@@ -386,6 +386,13 @@ static int reread_config(int reload)
 		switch_users();  /* Don't do this yet, if we're just starting up. */
 	}
 
+	/*
+	 *	Sanity check some things...
+	 */
+	if (reject_delay > cleanup_delay) {
+		reject_delay = cleanup_delay;
+	}
+
 	return 0;
 }
 
@@ -1931,6 +1938,18 @@ static REQUEST *rad_check_list(REQUEST *request)
 			if (last_request == curreq) {
 				last_request = rl_next(last_request);
 			}
+
+			/*
+			 *	If we're keeping a delayed reject, and we
+			 *	get a new request, then we send the reject
+			 *	before deleting it.
+			 */
+			if ((curreq->options & RAD_REQUEST_OPTION_DELAYED_REJECT) != 0) {
+			  curreq->options &= ~RAD_REQUEST_OPTION_DELAYED_REJECT;
+			  rad_send(curreq->reply, curreq->packet,
+				   curreq->secret);
+			}
+
 			rl_delete(curreq);
 
 			/*
