@@ -649,9 +649,6 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 	LDAP_CONN	*conn;
 	int		conn_id = -1;
 
-        check_pairs = check_pairs;
-        reply_pairs = reply_pairs;
-
 	DEBUG("rlm_ldap: Entering ldap_groupcmp()");
 
         if (check->strvalue == NULL || check->length == 0){
