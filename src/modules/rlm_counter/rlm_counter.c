@@ -54,6 +54,8 @@
 #define gdbm_fdesc(foo) (-1)
 #endif
 
+#define UNIQUEID_MAX_LEN 32
+
 static const char rcsid[] = "$Id$";
 
 /*
@@ -82,6 +84,11 @@ typedef struct rlm_counter_t {
 	GDBM_FILE gdbm;		/* The gdbm file handle */
 	pthread_mutex_t mutex;	/* A mutex to lock the gdbm file for only one reader/writer */
 } rlm_counter_t;
+
+typedef struct rad_counter {
+	unsigned int user_counter;
+	char uniqueid[UNIQUEID_MAX_LEN];
+} rad_counter;
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -115,7 +122,7 @@ static int counter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_
 	datum key_datum;
 	datum count_datum;
 	VALUE_PAIR *key_vp;
-	int counter;
+	rad_counter counter;
 
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
@@ -136,10 +143,10 @@ static int counter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_
 	if (count_datum.dptr == NULL) {
 		return -1;
 	}
-	memcpy(&counter, count_datum.dptr, sizeof(int));
+	memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
 	free(count_datum.dptr);
 
-	return counter - check->lvalue;
+	return counter.user_counter - check->lvalue;
 }
 
 static int add_defaults(rlm_counter_t *data)
@@ -491,8 +498,8 @@ static int counter_accounting(void *instance, REQUEST *request)
 	rlm_counter_t *data = (rlm_counter_t *)instance;
 	datum key_datum;
 	datum count_datum;
-	VALUE_PAIR *key_vp, *count_vp, *proto_vp;
-	int counter;
+	VALUE_PAIR *key_vp, *count_vp, *proto_vp, *uniqueid_vp;
+	rad_counter counter;
 	int rcode;
 	int acctstatustype = 0;
 	time_t diff;
@@ -507,6 +514,9 @@ static int counter_accounting(void *instance, REQUEST *request)
 		DEBUG("rlm_counter: We only run on Accounting-Stop packets.");
 		return RLM_MODULE_NOOP;
 	}
+	uniqueid_vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID);
+	if (uniqueid_vp != NULL)
+		DEBUG("rlm_counter: Packet Unique ID = '%s'",uniqueid_vp->strvalue);
 
 	/*
 	 *	Before doing anything else, see if we have to reset
@@ -560,11 +570,27 @@ static int counter_accounting(void *instance, REQUEST *request)
 	pthread_mutex_lock(&data->mutex);
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
 	pthread_mutex_unlock(&data->mutex);
-	if (count_datum.dptr == NULL)
-		counter = 0;
+	if (count_datum.dptr == NULL){
+		counter.user_counter = 0;
+		if (uniqueid_vp != NULL)
+			strncpy(uniqueid_vp->strvalue,counter.uniqueid,UNIQUEID_MAX_LEN - 1);
+		else
+			memset((char *)counter.uniqueid,0,UNIQUEID_MAX_LEN);
+	}
 	else{
-		memcpy(&counter, count_datum.dptr, sizeof(int));
+		memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
 		free(count_datum.dptr);
+		if (counter.uniqueid)
+			DEBUG("rlm_counter: Counter Unique ID = '%s'",counter.uniqueid);
+		if (uniqueid_vp != NULL){ 
+			if (counter.uniqueid != NULL && 
+				strncmp(uniqueid_vp->strvalue,counter.uniqueid, UNIQUEID_MAX_LEN - 1) == 0){
+				DEBUG("rlm_counter: Unique IDs for user match. Droping the request.");
+				return RLM_MODULE_NOOP;
+			}
+			strncpy(counter.uniqueid,uniqueid_vp->strvalue,UNIQUEID_MAX_LEN - 1);
+		}
+		DEBUG("rlm_counter: User=%s, Counter=%d.",request->username->strvalue,counter.user_counter);
 	}
 
 	if (data->count_attr == PW_ACCT_SESSION_TIME) {
@@ -579,24 +605,26 @@ static int counter_accounting(void *instance, REQUEST *request)
 		 *	day). That is the right thing
 		 */
 		diff = request->timestamp - data->last_reset;
-		counter += (count_vp->lvalue < diff) ? count_vp->lvalue : diff;
+		counter.user_counter += (count_vp->lvalue < diff) ? count_vp->lvalue : diff;
 
 	} else if (count_vp->type == PW_TYPE_INTEGER) {
 		/*
 		 *	Integers get counted, without worrying about
 		 *	reset dates.
 		 */
-		counter += count_vp->lvalue;
+		counter.user_counter += count_vp->lvalue;
 
 	} else {
 		/*
 		 *	The attribute is NOT an integer, just count once
 		 *	more that we've seen it.
 		 */
-		counter++;
+		counter.user_counter++;
 	}
-	count_datum.dptr = (char *) &counter;
-	count_datum.dsize = sizeof(int);
+
+	DEBUG("rlm_counter: User=%s, New Counter=%d.",request->username->strvalue,counter.user_counter);
+	count_datum.dptr = (rad_counter *) &counter;
+	count_datum.dsize = sizeof(rad_counter);
 
 	pthread_mutex_lock(&data->mutex);
 	rcode = gdbm_store(data->gdbm, key_datum, count_datum, GDBM_REPLACE);
@@ -622,7 +650,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 	int ret=RLM_MODULE_NOOP;
 	datum key_datum;
 	datum count_datum;
-	int counter=0;
+	rad_counter counter;
 	int res=0;
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
@@ -670,19 +698,26 @@ static int counter_authorize(void *instance, REQUEST *request)
 
 	key_datum.dptr = key_vp->strvalue;
 	key_datum.dsize = key_vp->length;
+
+
+	/*
+	 * Init to be sure
+	 */
+
+	counter.user_counter = 0;
 	
 	pthread_mutex_lock(&data->mutex);
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
 	pthread_mutex_unlock(&data->mutex);
 	if (count_datum.dptr != NULL){
-		memcpy(&counter, count_datum.dptr, sizeof(int));
+		memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
 		free(count_datum.dptr);
 	}
 
 	/*
 	 * Check if check item > counter
 	 */
-	res=check_vp->lvalue - counter;
+	res=check_vp->lvalue - counter.user_counter;
 	if (res > 0) {
 		if (data->count_attr == PW_ACCT_SESSION_TIME) {
 			/*
@@ -729,7 +764,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 
 		DEBUG2("rlm_counter: (Check item - counter) is greater than zero");
 		DEBUG2("rlm_counter: Authorized user %s, check_item=%d, counter=%d",
-				key_vp->strvalue,check_vp->lvalue,counter);
+				key_vp->strvalue,check_vp->lvalue,counter.user_counter);
 		DEBUG2("rlm_counter: Sent Reply-Item for user %s, Type=Session-Timeout, value=%d",
 				key_vp->strvalue,res);
 	}
@@ -751,7 +786,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 		ret=RLM_MODULE_REJECT;
 
 		DEBUG2("rlm_counter: Rejected user %s, check_item=%d, counter=%d",
-				key_vp->strvalue,check_vp->lvalue,counter);
+				key_vp->strvalue,check_vp->lvalue,counter.user_counter);
 	}
 
 	return ret;
