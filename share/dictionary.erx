@@ -27,29 +27,29 @@
 
 VENDOR          ERX     4874
 
-ATTRIBUTE	ERX-Virtual-Router-Name			1 string	ERX
-ATTRIBUTE	ERX-Address-Pool-Name			2 string	ERX
-ATTRIBUTE	ERX-Local-Loopback-Interface		3 string	ERX
-ATTRIBUTE	ERX-Primary-Dns				4 ipaddr	ERX
-ATTRIBUTE	ERX-Secondary-Dns			5 ipaddr	ERX
-ATTRIBUTE	ERX-Primary-Wins			6 ipaddr	ERX
-ATTRIBUTE	ERX-Secondary-Wins			7 ipaddr	ERX
-ATTRIBUTE	ERX-Tunnel-Virtual-Router		8 string	ERX
-ATTRIBUTE	ERX-Tunnel-Password			9 string	ERX
-ATTRIBUTE	ERX-Ingress-Policy-Name			10 string	ERX
-ATTRIBUTE	ERX-Egress-Policy-Name			11 string	ERX
-ATTRIBUTE	ERX-Ingress-Statistics			12 string	ERX
-ATTRIBUTE	ERX-Egress-Statistics			13 string	ERX
-ATTRIBUTE	ERX-Atm-Service-Category		14 integer	ERX
-ATTRIBUTE	ERX-Atm-PCR				15 integer	ERX
-ATTRIBUTE	ERX-Atm-SCR				16 integer	ERX
-ATTRIBUTE	ERX-Atm-MBS				17 integer	ERX
-ATTRIBUTE	ERX-Cli-Initial-Access-Level		18 string	ERX
-ATTRIBUTE	ERX-Cli-Allow-All-VR-Access		19 integer	ERX
-ATTRIBUTE	ERX-Alternate-Cli-Access-Level		20 string	ERX
-ATTRIBUTE	ERX-Alternate-Cli-Vrouter-Name		21 string	ERX
-ATTRIBUTE	ERX-Sa-Validate				22 integer	ERX
-ATTRIBUTE	ERX-Igmp-Enable				23 integer	ERX
+ATTRIBUTE	ERX-Virtual-Router-Name			1	string	ERX
+ATTRIBUTE	ERX-Address-Pool-Name			2	string	ERX
+ATTRIBUTE	ERX-Local-Loopback-Interface		3	string	ERX
+ATTRIBUTE	ERX-Primary-Dns				4	ipaddr	ERX
+ATTRIBUTE	ERX-Secondary-Dns			5	ipaddr	ERX
+ATTRIBUTE	ERX-Primary-Wins			6	ipaddr	ERX
+ATTRIBUTE	ERX-Secondary-Wins			7	ipaddr	ERX
+ATTRIBUTE	ERX-Tunnel-Virtual-Router		8	string	ERX
+ATTRIBUTE	ERX-Tunnel-Password			9	string	ERX
+ATTRIBUTE	ERX-Ingress-Policy-Name			10	string	ERX
+ATTRIBUTE	ERX-Egress-Policy-Name			11	string	ERX
+ATTRIBUTE	ERX-Ingress-Statistics			12	string	ERX
+ATTRIBUTE	ERX-Egress-Statistics			13	string	ERX
+ATTRIBUTE	ERX-Atm-Service-Category		14	integer	ERX
+ATTRIBUTE	ERX-Atm-PCR				15	integer	ERX
+ATTRIBUTE	ERX-Atm-SCR				16	integer	ERX
+ATTRIBUTE	ERX-Atm-MBS				17	integer	ERX
+ATTRIBUTE	ERX-Cli-Initial-Access-Level		18	string	ERX
+ATTRIBUTE	ERX-Cli-Allow-All-VR-Access		19	integer	ERX
+ATTRIBUTE	ERX-Alternate-Cli-Access-Level		20	string	ERX
+ATTRIBUTE	ERX-Alternate-Cli-Vrouter-Name		21	string	ERX
+ATTRIBUTE	ERX-Sa-Validate				22	integer	ERX
+ATTRIBUTE	ERX-Igmp-Enable				23	integer	ERX
 ATTRIBUTE	ERX-Pppoe-Description			24	string	ERX
 ATTRIBUTE	ERX-Redirect-VR-Name			25	string	ERX
 ATTRIBUTE	ERX-Qos-Profile-Name			26	string	ERX
@@ -64,13 +64,13 @@ ATTRIBUTE	ERX-Framed-Ip-Route-Tag			34	string	ERX
 ATTRIBUTE	ERX-Dial-Out-Number			35	string	ERX
 ATTRIBUTE	ERX-PPP-Username			36	string	ERX
 ATTRIBUTE	ERX-PPP-Password			37	string	ERX
-ATTRIBUTE	ERX-PPP-Auth-Protocol		38	integer	ERX
+ATTRIBUTE	ERX-PPP-Auth-Protocol			38	integer	ERX
 ATTRIBUTE	ERX-Minimum-BPS				39	integer	ERX
 ATTRIBUTE	ERX-Maximum-BPS				40	integer	ERX
 ATTRIBUTE	ERX-Bearer-Type				41	integer	ERX
 ATTRIBUTE	ERX-Input-Gigapkts			42	integer	ERX
 ATTRIBUTE	ERX-Output-Gigapkts			43	integer	ERX
-ATTRIBUTE	ERX-Tunnel-Interface-Id		44	string	ERX
+ATTRIBUTE	ERX-Tunnel-Interface-Id			44	string	ERX
 
 #
 #  Values	Attribute		Name			Number
