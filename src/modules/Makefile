@@ -36,6 +36,7 @@ install:
 	[ "lib/*.so" != "" ] && install -m 755 lib/*.so $(libdir)
 
 common:
+	@[ -d lib/ ] || mkdir lib
 	@rm -f lib/STATIC_MODULE_LDFLAGS
 	@for mod in rlm_*; do \
 		what=$(WHAT_TO_MAKE); \
