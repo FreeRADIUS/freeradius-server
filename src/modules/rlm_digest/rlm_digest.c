@@ -17,12 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2001  The FreeRADIUS server project
- * Copyright 2001  Kostas Kalevras <kkalev@noc.ntua.gr>
- *
- * Nov 03 2001, Kostas Kalevras <kkalev@noc.ntua.gr>
- * - Added authorize() function to set Auth-Type if Chap-Password exists
- * - Added module messages when rejecting user
+ * Copyright 2002  The FreeRADIUS server project
+ * Copyright 2002  Alan DeKok <aland@ox.org>
  */
 
 #include "autoconf.h"
