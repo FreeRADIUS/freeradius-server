@@ -28,7 +28,7 @@ $num = 0;
 $pagesize = ($pagesize) ? $pagesize : 10;
 $limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
 $selected[$pagesize] = 'selected';
-$order = ($order) ? $order : $config[general_accounting_info_order];
+$order = ($order != '') ? $order : $config[general_accounting_info_order];
 if ($order != 'desc' && $order != 'asc')
 	$order = 'desc';
 $selected[$order] = 'selected';
