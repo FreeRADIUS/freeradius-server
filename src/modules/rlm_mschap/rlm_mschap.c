@@ -718,7 +718,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			smbPasswd.smb_passwd = password->strvalue;
 			res++;
 		}
-		else if(hex2bin(password->strvalue,smbPasswd.smb_passwd_value,16) != 16) {
+		else if(password->length != 32 || hex2bin(password->strvalue,smbPasswd.smb_passwd_value,16) != 16) {
 			radlog(L_ERR, "rlm_mschap: Invalid LM Password text");
                 } 
                 else {
@@ -734,7 +734,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			smbPasswd.smb_nt_passwd = password->strvalue;
 			res++;
 		}
-		else if(hex2bin(password->strvalue,smbPasswd.smb_nt_passwd_value,16) != 16) {
+		else if(password->length != 32 || hex2bin(password->strvalue,smbPasswd.smb_nt_passwd_value,16) != 16) {
 			radlog(L_ERR, "rlm_mschap: Invalid NT Password text");
                 }
                 else {
@@ -918,6 +918,10 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		else {
 		        DEBUG2("rlm_mschap: Authentication failed");
 		}
+	}
+	else{
+		DEBUG2("No MS-CHAP related attributes in request");
+		return RLM_MODULE_REJECT;
 	}
 	
 	add_reply( &request->reply->vps, *response->strvalue,
