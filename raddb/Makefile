@@ -35,6 +35,12 @@ install:
 		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
 	fi
 	chmod 640 $(R)$(raddbdir)/naspasswd $(R)$(raddbdir)/clients $(R)$(raddbdir)/clients.conf
+	if [ ! -d $(R)$(raddbdir)/certs ]; then \
+		mkdir $(R)$(raddbdir)/certs; \
+		mkdir $(R)$(raddbdir)/certs/demoCA; \
+		cp certs/demoCA/* $(R)$(raddbdir)/certs/demoCA; \
+		cp certs/* $(R)$(raddbdir)/certs 2>/dev/null; \
+	fi
 
 clean:
 
