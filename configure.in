@@ -416,7 +416,6 @@ AC_CHECK_HEADERS( \
 	utmpx.h \
 	signal.h \
 	sys/select.h \
-	regex.h \
 	syslog.h \
 	inttypes.h \
 	stdint.h \
@@ -438,6 +437,17 @@ if test "x$WITH_SNMP" = "xyes"; then
   AC_CHECK_HEADER(asn1.h, AC_DEFINE(HAVE_ASN1_H),
 	AC_CHECK_HEADER(ucd-snmp/asn1.h, AC_DEFINE(HAVE_UCD_SNMP_ASN1_H)))
 fi
+
+REGEX=no
+AC_CHECK_HEADER(regex.h, REGEX=yes)
+
+REGEX_EXTENDED=no
+AC_EGREP_CPP(yes,
+  [#include <regex.h>
+   #ifdef REG_EXTENDED
+     yes
+   #endif
+   ], [AC_DEFINE(HAVE_REG_EXTENDED) REGEX_EXTENDED=yes])
 
 dnl #############################################################
 dnl #
@@ -610,6 +620,8 @@ AC_SUBST(USE_SHARED_LIBS)
 USE_STATIC_LIBS=$enable_static
 AC_SUBST(USE_STATIC_LIBS)
 AC_SUBST(STATIC_MODULES)
+AC_SUBST(REGEX)
+AC_SUBST(REGEX_EXTENDED)
 
 if test "x$WITH_SNMP" = "xyes"; then
   AC_DEFINE(WITH_SNMP)

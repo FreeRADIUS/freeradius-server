@@ -165,6 +165,18 @@ hostname_lookups = no
 allow_core_dumps = no
 
 #
+#  Regular expressions
+#
+#  These items are set at configure time.  If they're set to "yes",
+#  then setting them to "no" turns off regular expression support.
+#
+#  If they're set to "no" at configure time, then setting them to "yes"
+#  WILL NOT WORK.  It will give you an error.
+#
+regular_expressions	= @REGEX@
+extended_expressions	= @REGEX_EXTENDED@
+
+#
 #  Log the full User-Name attribute, as it was found in the request.
 #
 # allowed values: {no, yes}
