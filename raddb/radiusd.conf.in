@@ -826,6 +826,12 @@ modules {
 
 	# Include another file that has SQL-related stuff in it.  
 	# This is another file solely because it tends to be big.
+	#
+	#  The following configuration file is for use with MySQL.
+	#
+	# For Postgresql, use ${confdir}/postgresql.conf
+	# For MS-SQL, use ${confdir}/mssql.conf
+	#
 	$INCLUDE  ${confdir}/sql.conf
 
 	# Write a 'utmp' style log file, of which users are currently
@@ -872,7 +878,7 @@ modules {
 	#  It can also be user defined. It should be of the form:
 	#  num[hdwm] where:
 	#  h: hours, d: days, w: weeks, m: months
-	#  If the leter is ommited days will be assumed. In example:
+	#  If the letter is ommited days will be assumed. In example:
 	#  reset = 10h (reset every 10 hours)
 	#  reset = 12  (reset every 12 days)
 	#
@@ -889,11 +895,12 @@ modules {
 	#
 	# DEFAULT Ldap-Group == "students", Max-Daily-Session := 10800
 	#
-	# The allowed-servicetype attribute can be used to only take into account
-	# specific sessions. For example if a user  first loges in through a login
-	# menu and then selects ppp there will be two sessions. One for Login-User and
-	# one for Framed-User service type. We only need to take into account
-	# the second one.
+	#
+	# The allowed-servicetype attribute can be used to only take
+	# into account specific sessions. For example if a user first
+	# logs in through a login menu and then selects ppp there will
+	# be two sessions. One for Login-User and one for Framed-User
+	# service type. We only need to take into account the second one.
 	#
 	counter {
 		filename = ${raddbdir}/db.counter
