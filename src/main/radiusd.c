@@ -112,14 +112,15 @@ static void	usage(void);
 static void	sig_fatal (int);
 static void	sig_hup (int);
 
+static void	rad_reject(REQUEST *request);
 static int	rad_process (REQUEST *, int);
 static int	rad_clean_list(void);
 static REQUEST	*rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
 #ifndef WITH_THREAD_POOL
-static void	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
+static int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
-extern void	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
+extern int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #endif
 
 /*
@@ -750,7 +751,6 @@ int main(int argc, char **argv)
 int rad_process(REQUEST *request, int dospawn)
 {
 	RAD_REQUEST_FUNP fun;
-	int replicating = 0;
 
 	fun = NULL;
 
@@ -870,12 +870,53 @@ int rad_process(REQUEST *request, int dospawn)
 	 *	the work of handling a request, and exit.
 	 */
 	if (dospawn) {
-		rad_spawn_child(request, fun);
+		/*
+		 *	Maybe the spawn failed.  If so, then we
+		 *	trivially reject the request (because we can't
+		 *	handle it), and return.
+		 */
+		if (rad_spawn_child(request, fun) < 0) {
+			rad_reject(request);
+			request->finished = TRUE;
+		}
 		return 0;
 	}
 
 	rad_respond(request, fun);
 	return 0;
+}
+
+/*
+ *	Reject a request, by sending a trivial reply packet.
+ */
+static void rad_reject(REQUEST *request)
+{
+	DEBUG2("Rejecting request because server has too few resources to handle it.");
+	switch (request->packet->code) {
+		/*
+		 *	Accounting requests, etc. get dropped on the floor.
+		 */
+	case PW_ACCOUNTING_REQUEST:
+	default:
+		break;
+
+		/*
+		 *	Authentication requests get their Proxy-State
+		 *	attributes copied over, and an otherwise blank
+		 *	reject message sent.
+		 */
+	case PW_AUTHENTICATION_REQUEST:
+		request->reply = build_reply(PW_AUTHENTICATION_REJECT,
+					     request, NULL, NULL);
+		break;
+	}
+	
+	/*
+	 *	If a reply exists, send it.
+	 */
+	if (request->reply) {
+		rad_send(request->reply, request->secret);
+	}
 }
 
 /*
@@ -890,6 +931,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	RADIUS_PACKET	*packet;
 	const char	*secret;
 	int		replicating;
+	int		finished = FALSE;
 	
 	/*
 	 *	Put the decoded packet into it's proper place.
@@ -912,9 +954,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	if (rad_decode(packet, secret) != 0) {
 		log(L_ERR, "%s", librad_errstr);
-		/*
-		 *	Send a reject?
-		 */
+		rad_reject(request);
 		goto finished_request;
 	}
 	
@@ -975,17 +1015,20 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
  finished_request:
 	DEBUG2("Finished request");
-	request->finished = TRUE;
+	finished = TRUE;
 	
 	/*
 	 *	Go to the next request, without marking
 	 *	the current one as finished.
 	 */
  next_request:
+	DEBUG2("Going to the next request");
+
 #ifdef WITH_THREAD_POOL
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
-	DEBUG2("Going to the next request");
+	request->finished = finished; /* do as the LAST thing before exiting */
+	return 0;
 }
 
 /*
@@ -1446,7 +1489,7 @@ static void *rad_spawn_thread(void *arg)
  *	Spawns a child process or thread to perform
  *	authentication/accounting and respond to RADIUS clients.
  */
-static void rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
+static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	child_pid_t		child_pid;
 
@@ -1464,10 +1507,11 @@ static void rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	rcode = pthread_create(&child_pid, NULL, rad_spawn_thread, data);
 	if (rcode != 0) {
-	  log(L_ERR, "Thread create failed for request from nas %s - ID: %d : %s",
-	      nas_name2(request->packet),
-	      request->packet->id,
-	      strerror(errno));
+		log(L_ERR, "Thread create failed for request from nas %s - ID: %d : %s",
+		    nas_name2(request->packet),
+		    request->packet->id,
+		    strerror(errno));
+		return -1;
 	}
 
 	/*
@@ -1484,6 +1528,7 @@ static void rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 		log(L_ERR, "Fork failed for request from nas %s - ID: %d",
 				nas_name2(request->packet),
 				request->packet->id);
+		return -1;
 	}
 
 	if (child_pid == 0) {
@@ -1503,6 +1548,7 @@ static void rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	request->child_pid = child_pid;
 
 	sig_cleanup(SIGCHLD);
+	return 0;
 }
 #endif /* WITH_THREAD_POOL */
 
