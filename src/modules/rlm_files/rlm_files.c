@@ -44,12 +44,16 @@ static const char rcsid[] = "$Id$";
 #endif
 
 struct file_instance {
+	char *compat_mode;
+
         /* autz */
         char *usersfile;
         PAIR_LIST *users;
+
         /* preacct */
         char *acctusersfile;
         PAIR_LIST *acctusers;
+
         /*acct*/
         int detailperm;
 };
@@ -248,12 +252,10 @@ static int file_init(void)
 static struct file_instance config;
 
 static CONF_PARSER module_config[] = {
-        { "usersfile",     PW_TYPE_STRING_PTR,
-          &config.usersfile, RADIUS_USERS },
-        { "acctusersfile", PW_TYPE_STRING_PTR,
-          &config.acctusersfile, RADIUS_ACCT_USERS },
-        { "detailperm",    PW_TYPE_INTEGER,
-          &config.detailperm, "0600" },
+        { "usersfile",     PW_TYPE_STRING_PTR, &config.usersfile, RADIUS_USERS },
+        { "acctusersfile", PW_TYPE_STRING_PTR, &config.acctusersfile, RADIUS_ACCT_USERS },
+        { "detailperm",    PW_TYPE_INTEGER,    &config.detailperm, "0600" },
+	{ "compat",        PW_TYPE_STRING_PTR, &config.compat_mode, "cistron" },
 	{ NULL, -1, NULL, NULL }
 };
 
@@ -277,14 +279,27 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list)
 	}
 
         /*
-         *	Walk through the 'users' file list, sanity checking it.
+         *	Walk through the 'users' file list, if we're debugging,
+	 *	or if we're in compat_mode.
          */
-        if (debug_flag) {
+        if ((debug_flag) ||
+	    (strcmp(config.compat_mode, "cistron") == 0)) {
                 PAIR_LIST *entry;
                 VALUE_PAIR *vp;
+		int compat_mode = FALSE;
+
+		if (strcmp(config.compat_mode, "cistron") == 0) {
+			compat_mode = TRUE;
+		}
         
                 entry = users;
                 while (entry) {
+			if (compat_mode) {
+				DEBUG("[%s]:%d Cistron compatibility checks for entry %s ...",
+				      filename, entry->lineno,
+				      entry->name);
+			}
+
                         /*
                          *	Look for improper use of '=' in the
                          *	check items.  They should be using
@@ -308,13 +323,45 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list)
                                  */
                                 if (((vp->attribute & ~0xffff) != 0) ||
                                     (vp->attribute < 0x100)) {
-                                        log_debug("[%s]:%d WARNING! Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
-                                                  filename, entry->lineno,
-                                                  vp->name, vp->name,
-                                                  entry->name);
-                                        continue;
+					if (!compat_mode) {
+						DEBUG("[%s]:%d WARNING! Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
+						      filename, entry->lineno,
+						      vp->name, vp->name,
+						      entry->name);
+					} else {
+						DEBUG("\tChanging '%s =' to '%s =='",
+						      vp->name, vp->name);
+					}
+					vp->operator = T_OP_CMP_EQ;
+					continue;
                                 }
-                        }
+				
+				/*
+				 *	Cistron Compatibility mode.
+				 *
+				 *	Re-write selected attributes
+				 *	to be '+=', instead of '='.
+				 *
+				 *	All others get set to '=='
+				 */
+				if (compat_mode) {
+					switch (vp->attribute) {
+					default:
+						DEBUG("\tChanging '%s =' to '%s =='",
+						      vp->name, vp->name);
+						vp->operator = T_OP_CMP_EQ;
+						break;
+						
+					case PW_SIMULTANEOUS_USE:
+					case PW_AUTHTYPE:
+						DEBUG("\tChanging '%s =' to '%s +='",
+						      vp->name, vp->name);
+						vp->operator = T_OP_ADD;
+						break;
+					}
+				}
+				
+                        } /* end of loop over check items */
                 
                 
                         /*
