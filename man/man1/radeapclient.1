@@ -26,7 +26,7 @@ EAP Identity message.
 The \fIEAP-MD5-Password\fP attribute, if present is used to respond to an
 MD5 challenge. 
 .PP
-No other EAP types are currently supposed.
+No other EAP types are currently supported.
 
 .SH EXAMPLE
 
@@ -36,13 +36,13 @@ challenge.
 .sp
 .nf
 .ne 3
-( echo 'User-Name = "eapsim"';
-  echo 'EAP-MD5-Password = "simsim"';
-  echo 'NAS-IP-Address = marajade.sandelman.ottawa.on.ca';
+( echo 'User-Name = "bob"';
+  echo 'EAP-MD5-Password = "hello"';
+  echo 'NAS-IP-Address = marajade.sandelman.ottawa.on.c';
   echo 'EAP-Code = Response';
   echo 'EAP-Id = 210';
-  echo 'EAP-Type-Identify = "eapsim';
-  echo 'Message-Authenticator = 0';
+  echo 'EAP-Type-Identity = "bob";
+  echo 'Message-Authenticator = 0x00';
   echo 'NAS-Port = 0' ) >req.txt
   
 radeapclient -x localhost auth testing123 <req.txt
