@@ -51,6 +51,7 @@ typedef struct rlm_counter_t {
 	int     key_attr;
 	int     count_attr;
 	time_t	reset_time;
+	time_t  reset_count;
 	int     dict_attr;	/* attribute number for the counter. */
 	GDBM_FILE gdbm;
 } rlm_counter_t;
@@ -162,20 +163,35 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	data->count_attr = dattr->attr;
 
+
 	/*
 	 *  Discover when next to reset the database.
 	 */
 	now = time(NULL);
-	if (strcmp(data->reset, "daily") == 0) {
+	data->reset_time = 0;
+	data->reset_count = 0;
+	if (strcmp(data->reset, "hourly") == 0) {
+		/*
+		 *  Round up to the next nearest hour.
+		 */
+		data->reset_count = 3600;
+		data->reset_time = (now + 3600 - 1);
+		data->reset_time -= (data->reset_time % 3600);
+		
+	} else if (strcmp(data->reset, "daily") == 0) {
 		/*
 		 *  Round up to the next nearest day.
 		 */
+		data->reset_count = SECONDS_PER_DAY;
 		data->reset_time = (now + SECONDS_PER_DAY - 1);
 		data->reset_time -= (data->reset_time % SECONDS_PER_DAY);
 	} else if (strcmp(data->reset, "weekly") == 0) {
 		/*
-		 *  Yuck.  This involves more work.
+		 *  Round up to the next nearest week.
 		 */
+		data->reset_count = SECONDS_PER_WEEK;
+		data->reset_time = (now + SECONDS_PER_WEEK - 1);
+		data->reset_time -= (data->reset_time % SECONDS_PER_WEEK);
 	} else if (strcmp(data->reset, "monthly") == 0) {
 		/*
 		 *  Yuck.  This involves more work.
@@ -185,7 +201,8 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		       data->reset);
 		return -1;
 	}
-	
+
+
 	data->gdbm = gdbm_open(data->filename, sizeof(int),
 				   GDBM_WRCREAT | GDBM_SYNC, 0600, NULL);
 	if (data->gdbm == NULL) {
@@ -221,6 +238,31 @@ static int counter_accounting(void *instance, REQUEST *request)
 	VALUE_PAIR *key_vp, *count_vp;
 	int counter;
 	int rcode;
+
+	/*
+	 *	Before doing anything else, see if we have to reset
+	 *	the counters.
+	 */
+	if (data->reset_time &&
+	    (data->reset_time < request->timestamp)) {
+		gdbm_close(data->gdbm);
+
+		/*
+		 *	Re-set the next time to clean the database.
+		 */
+		data->reset_time += data->reset_count;
+
+		/*
+		 *	Open a completely new database.
+		 */
+		data->gdbm = gdbm_open(data->filename, sizeof(int),
+				       GDBM_NEWDB | GDBM_SYNC, 0600, NULL);
+		if (data->gdbm == NULL) {
+			radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
+			       data->filename, strerror(errno));
+			return RLM_MODULE_FAIL;
+		}
+	}
 
 	/*
 	 *	Look for the key.  User-Name is special.  It means
