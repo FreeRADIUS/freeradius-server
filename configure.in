@@ -312,7 +312,7 @@ if test "$WITH_THREADS" = "yes"; then
 dnl # 
 dnl # pthread stuff is usually in -lpthread
 dnl # 
-  AC_CHECK_LIB(pthread, pthread_create,
+  AC_CHECK_LIB(pthread, pthread_join,
     PTHREADLIB="-lpthread"
   )
 
