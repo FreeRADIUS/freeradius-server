@@ -4,8 +4,8 @@ AC_DEFUN(modname,[rlm_counter])
 
 if test x$with_[]modname != xno; then
 
-	AC_PROG_CPP
 	AC_PROG_CC
+	AC_PROG_CPP
 
 	AC_SMART_CHECK_INCLUDE(gdbm.h)
 	AC_SMART_CHECK_LIB(gdbm, gdbm_open)
@@ -30,6 +30,15 @@ if test x$with_[]modname != xno; then
 			]
 		)
 	fi
+
+	old_LIBS=$LIBS
+	LIBS="$LIBS $SMART_LIBS"
+	AC_CHECK_FUNC(gdbm_fdesc)
+	if test "x$ac_cv_func_gdbm_fdesc" = "xyes";
+	then
+		AC_DEFINE(HAVE_GDBM_FDESC)
+	fi
+	LIBS=$old_LIBS
 
 	targetname=modname
 else

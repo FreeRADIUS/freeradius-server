@@ -1,5 +1,3 @@
-/* config.h.in.  Generated automatically from configure.in by autoheader.  */
-
 /* do we need GDBM_SYNC */
 #undef NEED_GDBM_SYNC
 
