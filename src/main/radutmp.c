@@ -36,7 +36,7 @@ static const char rcsid[] =
 #include	"radiusd.h"
 #include	"radutmp.h"
 
-static char porttypes[] = "ASITX";
+static const char porttypes[] = "ASITX";
 
 #define LOCK_LEN sizeof(struct radutmp)
 
