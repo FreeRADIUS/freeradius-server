@@ -628,9 +628,7 @@ int rad_decode(RADIUS_PACKET *packet, char *secret)
 			switch (pair->type) {
 
 			case PW_TYPE_OCTETS:
-#ifdef ASCEND_BINARY
 			case PW_TYPE_ABINARY:
-#endif			 
 			case PW_TYPE_STRING:
 				/* attrlen always < MAX_STRING_LEN */
 				memcpy(pair->strvalue, ptr, attrlen);
