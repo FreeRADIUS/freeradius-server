@@ -83,7 +83,6 @@ static CONF_PARSER module_config[] = {
 	{"connect_failure_retry_delay", PW_TYPE_INTEGER, offsetof(SQL_CONFIG,connect_failure_retry_delay), NULL, "60"},
 	{"simul_count_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,simul_count_query), NULL, ""},
 	{"simul_verify_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,simul_verify_query), NULL, ""},
-	{"simul_zap_query", PW_TYPE_STRING_PTR, offsetof(SQL_CONFIG,simul_zap_query), NULL, ""},
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -862,19 +861,37 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
                         /*
                          *      Stale record - zap it.
                          */
-			if(inst->config->simul_zap_query[0] != 0) {
-				SQLSOCK *sqlsocket1;
-				radlog(L_ERR, "rlm_sql: Deleting stale session [%s] (from %s/%s)", 
-								row[1],row[3],row[4]);
-				sqlsocket1 = sql_get_socket(inst);
-				sprintf(querystr, inst->config->simul_zap_query, row[0]);
-				if (rlm_sql_query(sqlsocket1, inst, querystr)) {
-					radlog(L_ERR, "rlm_sql: Deletion of stale session [%s] failed",
-								row[1]);
-				}
-				(inst->module->sql_finish_select_query)(sqlsocket1, inst->config);
-				sql_release_socket(inst, sqlsocket1);
+			uint32_t nas_addr = 0;
+			uint32_t framed_addr = 0;
+			int nas_port = 0;
+			char proto = 'P';
+
+			if (row[3])
+				nas_addr = inet_addr(row[3]);
+			if (row[4])
+				nas_port = atoi(row[4]);
+			if (row[5])
+				framed_addr = inet_addr(row[5]);
+			if (row[7])
+				if (strcmp(row[7],"SLIP") == 0)
+					proto = 'S';
+			if (!row[2]){
+				(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+				sql_release_socket(inst, sqlsocket);
+				DEBUG("rlm_sql: Cannot zap stale entry. No username present in entry.");
+				return RLM_MODULE_FAIL;
 			}
+			if (!row[1]){
+				(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+				sql_release_socket(inst, sqlsocket);
+				DEBUG("rlm_sql: Cannot zap stale entry. No session id in entry.");
+				return RLM_MODULE_FAIL;
+			}
+
+			session_zap(request->packet->sockfd,
+			nas_addr,nas_port,row[2],row[1],
+			framed_addr, proto,0);
+
 		}
 	}
 

@@ -37,7 +37,6 @@ typedef struct sql_config {
 	char   *accounting_stop_query_alt;
 	char   *simul_count_query;
 	char   *simul_verify_query;
-	char   *simul_zap_query;
 	char   *groupmemb_query;
 	int     sqltrace;
 	char   *tracefile;
