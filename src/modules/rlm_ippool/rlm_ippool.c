@@ -746,7 +746,8 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		if (data_datum.dptr){
 			memcpy(&num,data_datum.dptr,sizeof(int));
 			free(data_datum.dptr);
-		}
+		} else
+			num = 0;
 		num++;
 		DEBUG("rlm_ippool: num: %d",num);
 		data_datum.dptr = (char *) &num;
