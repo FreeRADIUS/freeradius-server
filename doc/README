@@ -281,6 +281,9 @@
   The <terminal_server> name is the short name if one is defined in
   /etc/raddb/naslist.
 
+  For more configuration options on the detail file please see
+  README.rlm_detail as it expands upon this greatly.
+
 6.  MORE INFO, SUPPORT
 
   We know that the documentation provided is sparse. However it is not in
