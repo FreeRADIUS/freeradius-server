@@ -11,7 +11,7 @@
   module.
 
   The other concern most administrators have is rotating this file on a
-  regular basis (daily, monthly, etc.).  Often this is often done by some
+  regular basis (daily, monthly, etc.).  Often this is done by some
   external program.  Why not have the RADIUS daemon do this automatically?
   With all of the information available to the daemon we can easily have
   it generate detail files with variable file names.
