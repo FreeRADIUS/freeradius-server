@@ -29,7 +29,8 @@
 #		versanet_snmp    1.0    Author: support@versanetcomm.com
 #		bay_finger	 1.0	Author: chris@shenton.org
 #		cisco_l2tp	 1.14	Author: paul@distributel.net
-#		mikrotik_telnet  1.0    Author: Evren Yurtesen <yurtesen@ispro.net.tr>
+#		mikrotik_telnet  1.1    Author: Evren Yurtesen <yurtesen@ispro.net.tr>
+#		mikrotik_snmp    1.0    Author: Evren Yurtesen <yurtesen@ispro.net.tr>
 #		redback_telnet          Author: Eduardo Roldan
 #
 #	Config: $debug is the file you want to put debug messages in
@@ -37,6 +38,7 @@
 #		$snmpwalk is the location of your ``snmpwalk'' program
 #	        $snmp_timeout is the timeout for snmp queries
 #	        $snmp_retries is the number of retries for timed out snmp queries
+#		$snmp_version is the version of to use for snmp queries [1,2c,3]
 #		$rusers is the location of your ``rusers'' program
 #		$naspass is the location of your NAS admin password file
 #
@@ -54,6 +56,7 @@ $snmpget	= "@SNMPGET@";
 $snmpwalk	= "@SNMPWALK@";
 $snmp_timeout	= 5;
 $snmp_retries	= 1;
+$snmp_version	= "2c";
 $rusers		= "@RUSERS@";
 $naspass	= "$raddbdir/naspasswd";
 
@@ -148,8 +151,8 @@ sub snmpwalk_prog {
 	my ($host, $community, $oid) = @_;
 	local $_;
 
-	print LOG "snpwalk: $snmpwalk -r $snmp_retries -t $snmp_timeout -v2c -c '$community' $host $oid\n";
-	$_ = `$snmpwalk -r $snmp_retries -t $snmp_timeout -v2c -c '$community' $host $oid`;
+	print LOG "snpwalk: $snmpwalk -r $snmp_retries -t $snmp_timeout -v$snmp_version -c '$community' $host $oid\n";
+	$_ = `$snmpwalk -r $snmp_retries -t $snmp_timeout -v$snmp_version -c '$community' $host $oid`;
 
 	return $_;
 }
@@ -180,8 +183,8 @@ sub snmpget_prog {
 	my ($ret);
 	local $_;
 
-	print LOG "snmpget: $snmpget -r $snmp_retries -t $snmp_timeout -v2c -c '$community' $host $oid\n";
-	$_ = `$snmpget -r $snmp_retries -t $snmp_timeout -v2c -c '$community' $host $oid`;
+	print LOG "snmpget: $snmpget -r $snmp_retries -t $snmp_timeout -v$snmp_version -c '$community' $host $oid\n";
+	$_ = `$snmpget -r $snmp_retries -t $snmp_timeout -v$snmp_version -c '$community' $host $oid`;
 	if (/^.*(\s|\")([0-9A-Za-z]{8})(\s|\"|$).*$/) {
 		# Session ID format.
 		$ret = $2;
@@ -1152,6 +1155,53 @@ sub cisco_l2tp_snmp
   ($login eq "$ARGV[3]\@$realm") ? 1 : 0;
 }
 
+sub mikrotik_snmp {
+
+  # Set SNMP version
+  # MikroTik only supports version 1
+  $snmp_version = "1";
+ 
+  # Look up community string in naspasswd file.
+  ($login, $password) = naspasswd($ARGV[1], 1);
+  if ($login && $login ne 'SNMP') {
+    if($debug) {
+      print LOG "Error: Need SNMP community string for $ARGV[1]\n";
+    }
+    return 2;
+  } else { 
+  # If password is defined in naspasswd file, use it as community,
+  # otherwise use $cmmty_string
+    if ($password eq '') {
+      $password = "$cmmty_string";
+    }
+  }
+ 
+  # We want interface descriptions
+  $oid = "ifDescr";
+
+  # Mikrotik doesnt give port IDs correctly to RADIUS :(
+  # practically this would limit us to a simple only-one user limit for
+  # this script to work properly.
+  @output = snmpwalk_prog($ARGV[1], $password, "$oid");
+
+  foreach $line ( @output ) {
+    #remove newline
+    chomp $line;
+    #remove trailing whitespace
+    ($line = $line) =~ s/\s+$//;
+    if( $line =~ /<.*-$ARGV[3]>/ ) {
+      $username_seen++;
+    }
+  }
+
+  #lets return something
+  if ($username_seen > 0) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
 sub mikrotik_telnet {
   # Localize all variables first.
   my ($t, $login, $password);
@@ -1162,7 +1212,7 @@ sub mikrotik_telnet {
   $terminalserver = $ARGV[1];
   $user = $ARGV[3];
 
-  # Get login name and password for a certain NAS from $naspass.    
+  # Get login name and password for a certain NAS from $naspass.
   ($login, $password) = naspasswd($terminalserver, 1);
   return 2 if ($password eq "");
 
@@ -1172,7 +1222,13 @@ sub mikrotik_telnet {
   $t = new Net::Telnet (Timeout => 5,
                         Prompt => '//\[.*@.*\] > /');
 
-  $t->open($terminalserver);      
+  # Dont just exit when there is error
+  $t->errmode('return');
+                       
+  # Telnet to terminal server
+  $t->open($terminalserver) or return 2;
+
+  #Send login and password etc.
   $t->login(Name => $login,
             Password => $password,
   # We must detect if we are logged in from the login banner.
@@ -1194,33 +1250,45 @@ sub mikrotik_telnet {
   # Somehow routeros echo'es our commands 2 times. We dont want to mix
   # this with the real command prompt.
   $t->waitfor('/\[.*@.*\] > ppp active print column name detail/');
-  
+
   # Now lets get the list of online ppp users.
   ( $output ) = $t->waitfor('/\[.*@.*\] > /');
-  
-  # For debugging we can print the list to stdout     
-  #print $output;
+
+  # For debugging we can print the list to stdout
+#  print $output;
 
   #Lets logout to make everybody happy.
   #If we close the connection without logging out then routeros
   #starts to complain after a while. Saying;
-  #telnetd: All network ports in use. 
+  #telnetd: All network ports in use.
   $t->print("quit");
   $t->close;
-  
+
   #check for # of $user in output
   #the output includes only one = between name and username so we can
-  #safely use it as a seperator.  
-  @output = $output;
-  foreach $line ( @output ) {
-    if( $line =~ /name=/ ) {
-      @fields = split( /=/, $line );
-      if( $fields[2] == "\"$user\"") {
-        $username_seen++;
-      }
-    }
-  }
-  
+  #safely use it as a seperator.
+
+#disabled until mikrotik starts to send newline after each line...
+#  @output = $output;
+#  foreach $line ( @output ) {
+#    #remove newline
+#    chomp $line;
+#    #remove trailing whitespace
+#    ($line = $line) =~ s/\s+$//;
+#    if( $line =~ /name=/ ) {
+#      print($line);
+#      @fields = split( /=/, $line );
+#      if( $fields[1] == "\"$user\"") {
+#        $username_seen++;
+#      }
+#    }
+#  }
+
+  if( $output =~ /name="$user"/ ) {
+    $username_seen++;
+  } 
+
+  #lets return something
   if ($username_seen > 0) {
     return 1;
   } else {
@@ -1346,6 +1414,8 @@ if ($ARGV[0] eq 'livingston') {
         $ret = &cisco_l2tp_snmp;
 } elsif ($ARGV[0] eq 'mikrotik'){
         $ret = &mikrotik_telnet;
+} elsif ($ARGV[0] eq 'mikrotik_snmp'){
+        $ret = &mikrotik_snmp;
 } elsif ($ARGV[0] eq 'redback'){
         $ret = &redback_telnet;
 } elsif ($ARGV[0] eq 'other') {
