@@ -1,0 +1,127 @@
+Andrei Koulik agk@sci-nnov.ru
+
+I have written a radius module to be used for user authorization using
+ndbm database. I made it because I needed a light and faster database
+that can store large number of users records.
+
+Using dbm allows:
+
+1. Reduce disk space usage( db file with 60000 - 80000 users record uses
+          8-10 Mb file )
+2. Reduce memory usage ( do not load whole file into memory)
+3. Reduce CPU usage ( do not use linear search )
+4. Do not need radius restart then changes in users database
+
+Now it works fine and fast, but i should be sure in stability before i
+can use it in real work.
+
+For compatibility the users file format have been kept but has been
+extended to work around some ndbm restriction (like all key/data
+associations database). Below the list all important differences
+
+1. Possible to add more then one check_items-replay_items pair to one
+   user entity.
+   One  user entity may contain several check-replay pairs. All replay
+   items  of matched pair will be added to server reply by general way
+   (see  man  5  users  or  function pairmove). Using the special item
+   Fall-Through  you may control processing flow. If replay items list
+   contain  Fall-Through  =  No then processing of current user entity
+   stopped.  The  symbol semicolon (';') may be used to distinguish an
+   empty line from empty reply or empty checklist.
+
+2. Possible to link to other records.
+   The  special  item User-Category used to link to other user entity.
+   If  matched reply items list contain one or more User-Category then
+   all  user  entity  those  name is equal the value will be processed
+   according User-Category order. See examples below.
+
+3. Including files not supported any more due other mechanism of file
+   combining used.
+
+   The  parser,  used  to convert a plain text users file to dbm file,
+   can  read text data from stdin, so a good way is to store all users
+   files and groups into some directory and feed those files to parser
+   using command like:
+   cat *.users | sm_parser -o /etc/users_db_file
+
+Example:
+   in this example I use  '--' to mark my own comment (non syntactic )
+
+# record for agk and vlad user has administrative authorities
+agk             Auth-Type := Local, Password == "parol"
+                User-Category = Admin
+
+vlad            Auth-Type := Local, Password == "3APA3A"
+                User-Category = Admin
+
+# Record admin groups all administrative authorities
+Admin           Service-Type == Framed-User
+                Framed-Protocol = PPP,
+                Service-Type = Framed-User
+                              -- white line for readability
+                Service-Type == Login-User
+                Login-Service = Rlogin,
+                Login-IP-Host =  allow.bazara.net
+                              -- white line for readability
+                ;             -- not empty line but empty checklist
+                Reply-Message = "Good Luck"
+
+# Bob general user who can use PPP service only
+bob             Auth-Type := Local, Password == "testing"
+                User-Category = PPPOnly
+
+# this user are locked and will receive message "You are locked"
+# with deny reply
+steve           Auth-Type := Local, Password == "hello"
+                User-Category = Locked
+
+# group for users who can use PPP only
+PPPOnly         Service-Type == Framed-User
+                Framed-Protocol = PPP,
+                Service-Type = Framed-User,
+                Filter-Id = "std.ppp",
+                Fall-Through = No
+
+                ;
+                User-Category = ServiceDenied
+
+# used while service denied
+ServiceDenied   Auth-Type := Reject
+                Reply-Message = "Service Denied"
+
+Locked          Auth-Type := Reject
+                Reply-Message = "You are locked"
+
+# all users who was not find
+DEFAULT         Auth-Type := Reject
+                Reply-Message = "Who are you ?"
+
+
+  To create a dbm users file:
+
+     cat test.users | rlm_dbm_parser -f /etc/raddb/users_db
+
+add module dbm in radiusd.conf (see experimental.conf for an example)
+
+        dbm {
+                usersfile = ${raddbdir}/users_db
+        }
+
+and add dbm in authorize section:
+
+    authorize {
+	      preprocess
+	      suffix
+	      files
+	      dbm
+    }
+
+and start radiusd ....
+
+
+--
+Andrei Koulik.
+
+Original message at:
+
+http://lists.cistron.nl/pipermail/freeradius-devel/2001-October/001442.html
