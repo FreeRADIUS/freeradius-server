@@ -6,15 +6,15 @@
  *
  */
 #ifndef HAVE_STRNCASECMP
-extern int strncasecmp(char *s1, char *s2, int n)
+extern int strncasecmp(char *s1, char *s2, int n);
 #endif
 
 #ifndef HAVE_STRCASECMP
-extern int strcasecmp(char *s1, char *s2)
+extern int strcasecmp(char *s1, char *s2);
 #endif
 
 #ifndef HAVE_STRSEP
-extern char *strsep(char **stringp, const char *delim)
+extern char *strsep(char **stringp, const char *delim);
 #endif
 
 #ifdef NEED_DECLARATION_CRYPT
