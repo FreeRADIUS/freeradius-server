@@ -350,6 +350,11 @@ if test "x$WITH_UDPFROMTO" = "xyes"; then
 	AC_DEFINE(WITH_UDPFROMTO)
 fi
 
+dnl extra argument: --with-edir
+dnl If using Novell eDirectory, enable UP and Novell specific code
+AC_ARG_WITH(edir,
+[  --with-edir             Enable Novell eDirectory integration.  (default=no) ] , [] )
+
 dnl #############################################################
 dnl #
 dnl #  1. Checks for programs

@@ -758,6 +758,14 @@ $INCLUDE ${confdir}/eap.conf
 		#
 		# password_header = "{clear}"
 		#
+		# Set:
+		#	password_attribute = nspmPassword
+		#
+		# to get the user's password from a Novell eDirectory
+		# backend. This will work *only if* freeRADIUS is
+		# configured to build with --with-edir option.
+		#
+		#
 		#  The server can usually figure this out on its own, and pull
 		#  the correct User-Password or NT-Password from the database.
 		#
