@@ -109,13 +109,13 @@ clean:
 		radclient radzap builddbm
 
 install:
-	install -d -m 755			$(ROOT)$(sbindir)
-	install -m 755 -s radiusd		$(ROOT)$(sbindir)
-	install -m 755    checkrad.pl		$(ROOT)$(sbindir)/checkrad
-	install -d -m 755			$(ROOT)$(bindir)
-	install -m 755 -s radwho raduse		$(ROOT)$(bindir)
-	install -m 755 -s radzap $(BUILDDBM)	$(ROOT)$(bindir)
-	install -m 755    radlast		$(ROOT)$(bindir)
-	install -m 755    radtest radclient	$(ROOT)$(bindir)
-	install -d -m 755			$(ROOT)$(logdir)
-	install -d -m 755			$(ROOT)$(radacctdir)
+	install -d -m 755			$(sbindir)
+	install -m 755 -s radiusd		$(sbindir)
+	install -m 755    checkrad.pl		$(sbindir)/checkrad
+	install -d -m 755			$(bindir)
+	install -m 755 -s radwho raduse		$(bindir)
+	install -m 755 -s radzap $(BUILDDBM)	$(bindir)
+	install -m 755    radlast		$(bindir)
+	install -m 755    radtest radclient	$(bindir)
+	install -d -m 755			$(logdir)
+	install -d -m 755			$(radacctdir)

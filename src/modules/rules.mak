@@ -119,3 +119,8 @@ clean:
 
 distclean: clean
 	@rm -f config.h config.mak
+
+#
+# ??? do any module-specific installation?
+#
+install:

@@ -33,7 +33,8 @@ clean:
 install:
 	install -d -m 755 $(libdir)
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	[ "lib/*.so" != "" ] && install -m 755 lib/*.so $(libdir)
+	[ "lib/*.a" != "" ] && install -m 755 lib/*.a $(libdir)
+	[ "lib/*.la" != "" ] && install -m 755 lib/*.la $(libdir)
 
 common:
 	@[ -d lib/ ] || mkdir lib
