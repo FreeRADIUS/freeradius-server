@@ -336,22 +336,16 @@ if test "$WITH_THREAD_POOL" = "yes"; then
   fi
 fi
 
-dnl Check for -lsocket
-AC_CHECK_LIB(socket, getsockname,
-  SOCKETLIB="-lsocket"
-)
-AC_SUBST(SOCKETLIB)
+dnl Check if we need -lsocket
+AC_CHECK_LIB(socket, getsockname)
 
 dnl Check for -lresolv
 dnl This library may be needed later.
 AC_CHECK_LIB(resolv, inet_aton)
 
-dnl Check for -lnsl. We don't need yp_all, but usually if we want to
+dnl Check if we need -lnsl. Usually if we want to
 dnl link against -lsocket we need to include -lnsl as well.
-AC_CHECK_LIB(nsl, yp_all,
-  NSLLIB="-lnsl",
-)
-AC_SUBST(NSLLIB)
+AC_CHECK_LIB(nsl, inet_ntoa)
 
 dnl #############################################################
 dnl #
