@@ -281,7 +281,7 @@ $daily_limit = (is_numeric($daily_limit)) ? time2str($daily_limit) : $daily_limi
 $session_limit = (is_numeric($session_limit)) ? time2str($session_limit) : $session_limit;
 $remaining = (is_numeric($remaining)) ? time2str($remaining) : $remaining;
 
-if ($item_vals['Dialup-Access'][0] == 'FALSE' || (!isset($item_vals['Dialup-Access'][0]) && $attrmap['Dialup-Access'] != ''))
+if ($item_vals['Dialup-Access'][0] == 'FALSE' || (!isset($item_vals['Dialup-Access'][0]) && $attrmap['Dialup-Access'] != '' && $attrmap['Dialup-Access'] != 'none'))
 	$msg =<<<EON
 <font color=red><b> The user account is locked </b></font>
 EON;
