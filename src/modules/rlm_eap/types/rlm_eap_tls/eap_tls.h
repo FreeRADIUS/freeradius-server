@@ -69,19 +69,19 @@
  *	Hmm... since we dpeend on OpenSSL, it would be smarter to
  *	use the OpenSSL names for these.
  */
-enum {
+enum ContentType {
 	change_cipher_spec = 20, 
 	alert = 21, 
 	handshake = 22,
 	application_data = 23
-} ContentType;
+};
 
-enum {
+enum AlertLevel {
 	warning = 1,
 	fatal = 2
-} AlertLevel;
+};
 
-enum {
+enum AlertDescription {
 	close_notify = 0,
 	unexpected_message = 10,
 	bad_record_mac = 20,
@@ -105,9 +105,9 @@ enum {
 	internal_error = 80,
 	user_canceled = 90,
 	no_renegotiation = 100
-} AlertDescription;
+};
 
-enum {
+enum HandshakeType {
 	hello_request = 0,
 	client_hello = 1,
 	server_hello = 2,
@@ -118,7 +118,7 @@ enum {
 	certificate_verify = 15,
 	client_key_exchange = 16,
 	finished = 20
-} HandshakeType;
+};
 
 
 /*
