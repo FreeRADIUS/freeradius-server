@@ -19,7 +19,7 @@ User Collision in FreeRadius
         For example:
 
         o  ISP A (with 10,000 users) acquires ISP B (with 1,000 users).
-        o  ISP Adetermines that 375 of ISP B's 1,000 usernames conflict
+        o  ISP A determines that 375 of ISP B's 1,000 usernames conflict
            with usernames already in use at ISP A (eg 'foo' is valid
            username on both ISPs)
         o  ISP A, therefore, cannot merge its user files with ISP B and
@@ -147,7 +147,7 @@ D.  *Does* it work?
 
 1.  USAGE
 
-    Run configure with the --with-usercollideoption.  Then 'make' and
+    Run configure with the --with-usercollide option.  Then 'make' and
     'make install' again.
 
 2.  CAVEATS
