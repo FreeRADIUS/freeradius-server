@@ -159,8 +159,8 @@ reconfig:
 install:
 	if [ "x$(TARGET)" != "x" ]; then \
 	    $(LIBTOOL) --mode=install $(INSTALL) -c \
-		$(TARGET).la $(R)$(libdir)/$(TARGET).la; \
-	    rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la; \
-	    ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la; \
+		$(TARGET).la $(R)$(libdir)/$(TARGET).la || exit $?;\
+	    rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la || exit %?; \
+	    ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la || exit $?;\
 	fi
 	@[ "x$(RLM_INSTALL)" = "x" ] || $(MAKE) $(MFLAGS) $(RLM_INSTALL)
