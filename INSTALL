@@ -1,4 +1,14 @@
+  Please read the README in the doc/ subdirectory. Section 2 gives you
+complete details on how to configure, compile and install FreeRADIUS.
 
-Please read the README in the doc/ subdirectory. Paragraph 2 tells
-you how to configure, compile and install freeradius.
+  If you do not need to modify the default configuration, then take
+the following steps to build and install the server:
 
+
+    ./configure
+    make
+    make install
+
+
+  Configuring and running the server MAY be complicated.  Please read
+the documentation in the doc/ directory for further information.
