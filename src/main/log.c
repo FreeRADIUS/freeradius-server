@@ -73,7 +73,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 
 		if ((msgfd = fopen(mainconfig.log_file, "a")) == NULL) {
 		         fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
-				 progname, buffer, strerror(errno));
+				 progname, mainconfig.log_file, strerror(errno));
 				
 			 fprintf(stderr, "  (");
 			 vfprintf(stderr, fmt, ap);  /* the message that caused the log */
