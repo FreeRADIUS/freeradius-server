@@ -39,8 +39,7 @@ CREATE TABLE StartVoIP (
   RadiusServerName VARCHAR(32) DEFAULT '' NOT NULL
 );
 create index startvoip_AcctSessionId on startvoip (AcctSessionId);
-create index startvoip_NASIPAddress on startvoip (NASIPAddress);
-create index startvoip_h323SetupTime on startvoip (h323SetupTime);
+create index startvoipcombo on startvoip (h323SetupTime, nasipaddress);
 
 
 CREATE TABLE StartTelephony (
@@ -66,9 +65,7 @@ CREATE TABLE StartTelephony (
   RadiusServerName VARCHAR(32) DEFAULT '' NOT NULL
 );
 create index starttelephony_AcctSessionId on starttelephony (AcctSessionId);
-create index starttelephony_NASIPAddress on starttelephony (NASIPAddress);
-create index starttelephony_h323SetupTime on starttelephony (h323SetupTime);
-create index stoptelephonycombo on stoptelephony (h323SetupTime, nasipaddress);
+create index starttelephonycombo on starttelephony (h323SetupTime, nasipaddress);
 
 
 
@@ -114,11 +111,6 @@ CREATE TABLE StopVoIP (
   RadiusServerName varchar(32) DEFAULT '' NOT NULL
 );
 create index stopvoipAcctSessionId on stopvoip (AcctSessionId);
-create index stopvoipNASIPAddress on stopvoip (NASIPAddress);
-create index stopvoiph323SetupTime on stopvoip (h323SetupTime);
-create index stopvoipAcctSessionTime on stopvoip (AcctSessionTime);
-create index stopvoiph323remoteaddress on stopvoip (h323remoteaddress);
-create index stopvoiph323ConfID on stopvoip (h323ConfID);
 create index stopvoipcombo on stopvoip (h323SetupTime, nasipaddress);
 
 
@@ -161,10 +153,7 @@ CREATE TABLE StopTelephony (
   RadiusServerName varchar(32) DEFAULT '' NOT NULL
 );
 create index StopTelephonyAcctSessionId on stoptelephony (AcctSessionId);
-create index StopTelephonyNASIPAddress on stoptelephony (NASIPAddress);
-create index StopTelephonyh323ConnectTime on stoptelephony (h323SetupTime);
-create index StopTelephonyAcctSessionTime on stoptelephony (AcctSessionTime);
-create index StopTelephonyh323ConfID on stoptelephony (h323ConfID);
+create index stoptelephonycombo on stoptelephony (h323SetupTime, nasipaddress);
 
 
 /*
@@ -220,6 +209,7 @@ ORDER BY H323ConnectTime, CalledStationId, H323RemoteAddress ASC;
  *
  * Taken from cisco.com this data can be JOINED against h323DisconnectCause to
  * give human readable error reports.
+ *
  */
 
 
