@@ -45,8 +45,8 @@ binary-arch: build
 	install -g root -m 755 scripts/radiusd.cron.daily $(tmp)/$(prefix)/etc/cron.daily/freeradius
 	install -g root -m 755 scripts/radiusd.cron.monthly $(tmp)/$(prefix)/etc/cron.monthly/freeradius
 	install -g root -m 755 scripts/rc.radiusd $(tmp)/$(prefix)/etc/init.d/freeradius
-	TEMPFILE=`mktemp /tmp/radconf-XXXXXX`
-	cp $(tmp)/$(raddbdir)/radiusd.conf $$TEMPFILE
+	TEMPFILE=`mktemp /tmp/radconf-XXXXXX`; \
+	cp $(tmp)/$(raddbdir)/radiusd.conf $$TEMPFILE; \
 	cat $$TEMPFILE \
 		| sed -e 's/        /	/g' \
 		| sed -e '/^	example {/,/^	}/s/^/#/' \
@@ -54,7 +54,7 @@ binary-arch: build
 		| sed -e 's/^		#	shadow		=/		shadow		=/' \
 		| sed -e 's/^group = nobody/group = freerad/' \
 		| sed -e 's/^user = nobody/user = freerad/' \
-			> $(tmp)/$(raddbdir)/radiusd.conf
+			> $(tmp)/$(raddbdir)/radiusd.conf; \
 	rm $$TEMPFILE
 	# 
 	dh_strip
