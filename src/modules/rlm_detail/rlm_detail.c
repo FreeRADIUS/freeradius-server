@@ -76,8 +76,8 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 
 	p = strspn(config.detailfile, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/%.");
 
-	if (p!=strlen(config.detailfile)) {
-		radlog(L_ERR|L_CONS, "Illegal character.");
+	if (p != strlen(config.detailfile)) {
+		radlog(L_ERR|L_CONS, "rlm_detail: Illegal character in detail filename.");
 		return -1;
 	}
 			
@@ -98,42 +98,14 @@ static int detail_accounting(void *instance, REQUEST *request)
 {
 	int		outfd;
 	FILE		*outfp;
-	char		nasname[128];
-	char		buffer[512];
-	char		filename[512];
+	char		buffer[8192];
 	char		*p;
 	size_t		l;
 	VALUE_PAIR	*pair;
-	uint32_t	nas;
-	NAS		*cl;
 	int		ret = RLM_MODULE_OK;
 	struct stat	st;
 
 	struct detail_instance *inst = instance;
-
-	/*
-	 *	Find out the name of this terminal server. We try
-	 *	to find the PW_NAS_IP_ADDRESS in the naslist file.
-	 *	If that fails, we look for the originating address.
-	 *	Only if that fails we resort to a name lookup.
-	 */
-	cl = NULL;
-	nas = request->packet->src_ipaddr;
-	if ((pair = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS)) != NULL)
-		nas = pair->lvalue;
-	if (request->proxy && request->proxy->src_ipaddr)
-		nas = request->proxy->src_ipaddr;
-
-	if ((cl = nas_find(nas)) != NULL) {
-		if (cl->shortname[0])
-			strcpy(nasname, cl->shortname);
-		else
-			strcpy(nasname, cl->longname);
-	}
-
-	if (cl == NULL) {
-		ip_hostname(nasname, sizeof(nasname), nas);
-	}
 
 	/*
 	 *	Create a directory for this nas.
@@ -143,9 +115,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 	 *	feed it through radius_xlat2() to expand the
 	 *	variables.
 	 */
-	strNcpy(filename, inst->detailfile, sizeof(filename));
-
-	radius_xlat2(buffer, sizeof(buffer), filename, request,
+	radius_xlat2(buffer, sizeof(buffer), inst->detailfile, request,
 		     request->reply->vps);
 
 	/*
@@ -153,7 +123,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 	 *	-, _, / and \.  Anything else will be rejected.
 	 */
 
-	if(strstr(buffer, "..")) {
+	if (strstr(buffer, "..")) {
 		radlog(L_ERR, "Detail: Directory \"%s\" contains \"..\" which is not valid.",
 			buffer);
 		return RLM_MODULE_FAIL;
@@ -161,12 +131,15 @@ static int detail_accounting(void *instance, REQUEST *request)
 
 	l = strspn(buffer, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/.");
 
-	if (l!=strlen(buffer)) {
-		radlog(L_ERR, "Detail: Directory \"%s\" contains an invalid character.",
+	if (l != strlen(buffer)) {
+		radlog(L_ERR, "rlm_detail: Directory \"%s\" contains an invalid character.",
 		       buffer);
 		return RLM_MODULE_FAIL;
 	}
 			
+	/*
+	 *	Grab the last directory delimiter.
+	 */
 	p = strrchr(buffer,'/');
 
 	/*
