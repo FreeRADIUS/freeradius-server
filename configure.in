@@ -654,7 +654,8 @@ AC_CHECK_FUNCS( \
 	gethostname \
 	setlinebuf \
 	setvbuf \
-	getusershell
+	getusershell \
+	initgroups
 )
 RADIUSD_NEED_DECLARATIONS( \
 	crypt \
