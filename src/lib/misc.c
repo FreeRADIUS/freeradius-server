@@ -171,7 +171,7 @@ uint32_t ip_addr(const char *ip_str)
 	struct in_addr	in;
 
 	if (inet_aton(ip_str, &in) == 0)
-		return INADDR_NONE;
+		return htonl(INADDR_NONE);
 	return in.s_addr;
 }
 
