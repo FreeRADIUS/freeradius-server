@@ -79,7 +79,7 @@ static const char rcsid[] =
 #include "modules.h"
 #include "request_list.h"
 
-#if WITH_SNMP
+#ifdef WITH_SNMP
 #	include "radius_snmp.h"
 #endif
 
@@ -280,6 +280,9 @@ int main(int argc, char *argv[])
 	int radius_port = 0;
 	struct servent *svp;
 	struct timeval *tv = NULL;
+#ifdef HAVE_SIGACTION
+	struct sigaction act;
+#endif
 
 	syslog_facility = LOG_DAEMON;
 
@@ -300,6 +303,11 @@ int main(int argc, char *argv[])
 	 *	Ensure that the configuration is initialized.
 	 */
 	memset(&mainconfig, 0, sizeof(mainconfig));
+#ifdef HAVE_SIGACTION
+	act.sa_flags = 0 ;
+	sigemptyset( &act.sa_mask ) ;
+	act.sa_sigaction = NULL;
+#endif
 
 	/*  Process the options.  */
 	while ((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:p:sSvxXyz")) != EOF) {
@@ -421,7 +429,12 @@ int main(int argc, char *argv[])
 	 */
 	if ((mainconfig.allow_core_dumps == FALSE) && (debug_flag == 0)) {
 #ifdef SIGSEGV
+#ifdef HAVE_SIGACTION
+		act.sa_handler = sig_fatal;
+		sigaction(SIGSEGV, &act, NULL);
+#else
 		signal(SIGSEGV, sig_fatal);
+#endif
 #endif
 	}
 
@@ -589,7 +602,7 @@ int main(int argc, char *argv[])
 	 */
 	pair_builtincompare_init();
 
-#if WITH_SNMP
+#ifdef WITH_SNMP
 	if (mainconfig.do_snmp) radius_snmp_init();
 #endif
 
@@ -706,18 +719,30 @@ int main(int argc, char *argv[])
 	 *	handlers.  Before this, if we get any signal, we don't know
 	 *	what to do, so we might as well do the default, and die.
 	 */
-	signal(SIGHUP, sig_hup);
 	signal(SIGPIPE, SIG_IGN);	
+#ifdef HAVE_SIGACTION
+	act.sa_handler = sig_hup;
+	sigaction(SIGHUP, &act, NULL);
+	act.sa_handler = sig_fatal;
+	sigaction(SIGTERM, &act, NULL);
+#else
+	signal(SIGHUP, sig_hup);
 	signal(SIGTERM, sig_fatal);
-
+#endif
 	/*
 	 *	If we're debugging, then a CTRL-C will cause the
 	 *	server to die immediately.  Use SIGTERM to shut down
 	 *	the server cleanly in that case.
 	 */
 	if (debug_flag == 0) {
+#ifdef HAVE_SIGACTION
+	        act.sa_handler = sig_fatal;
+		sigaction(SIGINT, &act, NULL);
+		sigaction(SIGQUIT, &act, NULL);
+#else
 		signal(SIGINT, sig_fatal);
 		signal(SIGQUIT, sig_fatal);
+#endif
 	}
 
 #ifdef HAVE_PTHREAD_H
@@ -735,7 +760,12 @@ int main(int argc, char *argv[])
 	 *	requests, and shared memory, then we've got to
 	 *	re-enable SIGCHLD catching.
 	 */
+#ifdef HAVE_SIGACTION
+	act.sa_handler = sig_cleanup;
+	sigaction(SIGCHLD, &act, NULL);
+#else
 	signal(SIGCHLD, sig_cleanup);
+#endif
 #endif
 
 	radlog(L_INFO, "Ready to process requests.");
@@ -908,7 +938,7 @@ int main(int argc, char *argv[])
 				radlog(L_ERR, "%s", librad_errstr);
 				continue;
 			}
-#if WITH_SNMP
+#ifdef WITH_SNMP
 			if (mainconfig.do_snmp) {
 				if (fd == acctfd)
 					rad_snmp.acct.total_requests++;
@@ -982,7 +1012,7 @@ int main(int argc, char *argv[])
 			rad_process(request, spawn_flag);
 		} /* loop over authfd, acctfd, proxyfd */
 
-#if WITH_SNMP
+#ifdef WITH_SNMP
 		if (mainconfig.do_snmp) {
 			/*
 			 *  After handling all authentication/accounting
@@ -2177,7 +2207,16 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 
 	/* spawning and registering a child is a critical section, so
 	 * we refuse to handle SIGCHLDs normally until we're finished. */
+#ifdef HAVE_SIGACTION
+	struct sigaction act;
+	act.sa_flags = 0 ;
+	sigemptyset( &act.sa_mask ) ;
+	act.sa_sigaction = NULL;
+	act.sa_handler = queue_sig_cleanup;
+	sigaction(SIGCHLD, &act, NULL);
+#else
 	signal(SIGCHLD, queue_sig_cleanup);
+#endif
 
 	/*
 	 *  fork our child
@@ -2207,7 +2246,12 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	request->child_pid = child_pid;
 
 exit_child_critsec:
+#ifdef HAVE_SIGACTION
+	act.sa_handler = sig_cleanup;
+	sigaction(SIGCHLD, &act, NULL);
+#else
 	signal(SIGCHLD, sig_cleanup);
+#endif
 	if (needs_child_cleanup > 0) {
 		sig_cleanup(0);
 	}
