@@ -389,13 +389,13 @@ int unmap_eapsim_types(RADIUS_PACKET *r)
  */
 int
 eapsim_checkmac(VALUE_PAIR *rvps,
-		u_int8_t key[EAPSIM_NONCEMT_SIZE],
-		u_int8_t *extra, int extralen,
-		u_int8_t calcmac[20])
+		uint8_t key[EAPSIM_NONCEMT_SIZE],
+		uint8_t *extra, int extralen,
+		uint8_t calcmac[20])
 {
 	int ret;
 	eap_packet_t *e;
-	u_int8_t *buffer;
+	uint8_t *buffer;
 	int elen,len;
 	VALUE_PAIR *mac;
 
@@ -437,7 +437,7 @@ eapsim_checkmac(VALUE_PAIR *rvps,
 	 *
 	 */
 	{
-		u_int8_t *attr;
+		uint8_t *attr;
 
 		/* first attribute is 8 bytes into the EAP packet.
 		 * 4 bytes for EAP, 1 for type, 1 for subtype, 2 reserved.
@@ -606,7 +606,7 @@ main(int argc, char *argv[])
 		vpextra = pairfind(req->vps, ATTRIBUTE_EAP_SIM_EXTRA);
 		
 		if(vp != NULL && vpkey != NULL && vpextra!=NULL) {
-			u_int8_t calcmac[16];
+			uint8_t calcmac[16];
 
 			/* find the EAP-Message, copy it to req2 */
 
