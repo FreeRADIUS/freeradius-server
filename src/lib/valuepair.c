@@ -52,7 +52,7 @@ VALUE_PAIR *paircreate(int attr, int type)
 	if ((da = dict_attrbyvalue(attr)) != NULL)
 		strcpy(vp->name, da->name);
 	else
-		sprintf(vp->name, "Attr-%d", attr);
+		sprintf(vp->name, "Attr-%u", attr);
 	switch (vp->type) {
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_IPADDR:
