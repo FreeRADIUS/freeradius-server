@@ -91,7 +91,7 @@ int gethostname(char *name, int len)
 	char		*h;
 
 	h = getenv("HOSTNAME");
-	if (strlen(h) + 1 > len)
+	if (!h || (strlen(h) + 1 > len))
 		return -1;
 	strcpy(name, h);
 	return 0;
