@@ -5,9 +5,24 @@
  * Version:	$Id$
  */
 
+#if HAVE_ASN1_H
 #include	<asn1.h>
+#elif HAVE_UCD_SNMP_ASN1_H
+#include	<ucd-snmp/asn1.h>
+#endif
+
+#if HAVE_SNMP_H
 #include	<snmp.h>
+#elif HAVE_UCD_SNMP_SNMP_H
+#include	<ucd-snmp/snmp.h>
+#endif
+
+#if HAVE_SNMP_IMPL_H
 #include	<snmp_impl.h>
+#elif HAVE_UCD_SNMP_SNMP_IMPL_H
+#include	<ucd-snmp/snmp_impl.h>
+#endif
+
 #include        "smux.h"
 
 extern void radius_snmp_init(void);
@@ -42,7 +57,7 @@ typedef struct rad_snmp_server_t {
 typedef struct rad_snmp_t {
 	rad_snmp_server_t auth;
 	rad_snmp_server_t acct;
-	smux_event        smux_event;
+	smux_event_t      smux_event;
 	const char	  *smux_password;
 	int		  snmp_write_access;
 	int		  smux_fd;

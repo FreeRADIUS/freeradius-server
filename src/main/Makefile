@@ -28,11 +28,11 @@ all:	radiusd radwho radzap raduse radclient
 radiusd: $(SERVER_OBJS) ../lib/libradius.a
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
 		$(CFLAGS) $(LDFLAGS) -o $@ \
-		$(SERVER_OBJS) $(LIBS) $(SNMPLIB) $(LCRYPT) \
+		$(SERVER_OBJS) $(LIBS) $(LCRYPT) \
 		$(PTHREADLIB) $(LIBLTDL) $(MODULE_LIBS) 
 
 radiusd.o: radiusd.c $(INCLUDES)  ../include/request_list.h ../include/modules.h 
-	$(CC) $(CFLAGS) $(SNMPINC) -c radiusd.c
+	$(CC) $(CFLAGS) -c radiusd.c
 
 acct.o: acct.c $(INCLUDES) ../include/modules.h
 	$(CC) $(CFLAGS) -c acct.c
@@ -86,10 +86,10 @@ threads.o: threads.c $(INCLUDES)
 	$(CC) $(CFLAGS) -o threads.o -c threads.c
 
 smux.o: smux.c $(INCLUDES)
-	$(CC) $(CFLAGS) $(SNMPINC) -o smux.o -c smux.c
+	$(CC) $(CFLAGS) -o smux.o -c smux.c
 
 radius_snmp.o: radius_snmp.c $(INCLUDES)
-	$(CC) $(CFLAGS) $(SNMPINC) -o radius_snmp.o -c radius_snmp.c
+	$(CC) $(CFLAGS) -o radius_snmp.o -c radius_snmp.c
 
 radclient: radclient.o ../lib/libradius.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o radclient radclient.o $(LIBS)

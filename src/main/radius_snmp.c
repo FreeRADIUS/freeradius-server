@@ -14,9 +14,7 @@ static const char rcsid[] =
 
 #ifdef WITH_SNMP
 
-#if HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
+#include "libradius.h"
 
 #if HAVE_NETINET_IN_H
 #include <netinet/in.h>
@@ -24,12 +22,8 @@ static const char rcsid[] =
 
 #include <string.h>
 
-#include <asn1.h>
-#include <snmp.h>
-#include <snmp_impl.h>
-
+#include "radius_snmp.h"
 #include "radiusd.h"
-#include "smux.h"
 #include "conffile.h"
 
 extern RADCLIENT *clients;
@@ -109,10 +103,30 @@ static oid radius_oid [] = { RADIUSOID };
 #define RADIUSAUTHSERVUNKNOWNTYPES       12
 
 /* Hook functions. */
-static u_char *radAccServ ();
-static u_char *radAccEntry ();
-static u_char *radAuthServ ();
-static u_char *radAuthEntry ();
+static const unsigned char *radAccServ(struct variable *vp,
+				       oid     *name,
+				       size_t  *length,
+				       int     exact,
+				       size_t  *var_len,
+				       WriteMethod **write_method);
+static const unsigned char *radAccEntry(struct variable *vp,
+					oid     *name,
+					size_t  *length,
+					int     exact,
+					size_t  *var_len,
+					WriteMethod **write_method);
+static const u_char *radAuthServ(struct variable *vp,
+				 oid     *name,
+				 size_t  *length,
+				 int     exact,
+				 size_t  *var_len,
+				 WriteMethod **write_method);
+static const unsigned char *radAuthEntry(struct variable *vp,
+					 oid     *name,
+					 size_t  *length,
+					 int     exact,
+					 size_t  *var_len,
+					 WriteMethod **write_method);
 
 static struct variable radiusacc_variables[] = 
 {
@@ -230,7 +244,7 @@ radServReset (int action,
     u_char   *var_val,
     u_char   var_val_type,
     size_t   var_val_len,
-    u_char   *statP,
+    const unsigned char   *statP,
     oid      *name,
     size_t   name_len)
 {
@@ -260,7 +274,7 @@ radServReset (int action,
     return SNMP_ERR_NOERROR;
 }
 
-static unsigned char *
+static const unsigned char *
 radAccServ(struct variable *vp,
     oid     *name,
     size_t  *length,
@@ -280,7 +294,7 @@ radAccServ(struct variable *vp,
 
     case RADIUSACCSERVIDENT:
 	*var_len = strlen(rad_snmp.acct.ident);
-        return (unsigned char *) rad_snmp.acct.ident;
+        return (const unsigned char *) rad_snmp.acct.ident;
 
     case RADIUSACCSERVUPTIME:
 	rad_snmp.acct.uptime = (time(NULL) - rad_snmp.acct.start_time) * 100;
@@ -338,7 +352,7 @@ radAccServ(struct variable *vp,
     return NULL;
 }
 
-static unsigned char *
+static const unsigned char *
 radAccEntry(struct variable *vp,
     oid     *name,
     size_t  *length,
@@ -397,7 +411,7 @@ radAccEntry(struct variable *vp,
     return NULL;
 }
 
-static unsigned char *
+static const unsigned char *
 radAuthServ(struct variable *vp,
     oid     *name,
     size_t  *length,
@@ -419,7 +433,7 @@ radAuthServ(struct variable *vp,
 
     case RADIUSAUTHSERVIDENT:
 	*var_len = strlen(rad_snmp.auth.ident);
-        return (unsigned char *) rad_snmp.auth.ident;
+        return (const unsigned char *) rad_snmp.auth.ident;
 
     case RADIUSAUTHSERVUPTIME:
 	rad_snmp.auth.uptime = (time(NULL) - rad_snmp.auth.start_time) * 100;
@@ -481,7 +495,7 @@ radAuthServ(struct variable *vp,
     return NULL;
 }
 
-static unsigned char *
+static const unsigned char *
 radAuthEntry(struct variable *vp,
     oid     *name,
     size_t  *length,
@@ -564,7 +578,7 @@ radius_snmp_init (void)
   rad_snmp.auth.ident = "FreeRADIUS v0.1.0";
   rad_snmp.acct.ident = "FreeRADIUS v0.1.0";
 
-  rad_snmp.rad_snmp.smux_event = SMUX_NONE;
+  rad_snmp.smux_event = SMUX_NONE;
   rad_snmp.smux_password = NULL;
   rad_snmp.snmp_write_access = FALSE;
   rad_snmp.smux_fd = -1;

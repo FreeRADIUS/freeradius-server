@@ -165,21 +165,23 @@ WITH_THREAD_POOL=no
 AC_ARG_WITH(thread-pool,
 [  --with-thread-pool      Use a pool of threads for high-load systems.  (default=no) ],
 [ case "$withval" in
+    yes)
+	WITH_THREAD_POOL=yes
+	;;
     *)
-	WITH_THREAD_POOL=$withval
+        ;;
   esac ]
 )
 
 dnl extra argument: --with-snmp
+WITH_SNMP=yes
 AC_ARG_WITH(snmp,
-[  --with-snmp             Compile in SNMP support. (default=no)],
+[  --with-snmp             Compile in SNMP support. (default=yes)],
 [ case "$withval" in
-    no)
-	;;
     yes)
-	AC_DEFINE(WITH_SNMP)
-	SNMPLIB="-lsnmp -lcrypto"
-	SNMPINC=-I/usr/include/ucd-snmp
+        ;;
+    *)
+	WITH_SNMP=no
   esac ]
 )
 
@@ -372,6 +374,13 @@ dnl Check if we need -lnsl. Usually if we want to
 dnl link against -lsocket we need to include -lnsl as well.
 AC_CHECK_LIB(nsl, inet_ntoa)
 
+if test "x$WITH_SNMP" = "xyes"; then
+  AC_CHECK_LIB(snmp, snmp_build_var_op)
+  if test "x$ac_cv_lib_snmp_snmp_build_var_op" != "xyes"; then
+    WITH_SNMP=no
+  fi
+fi
+
 dnl #############################################################
 dnl #
 dnl #  3. Checks for header files
@@ -404,6 +413,18 @@ AC_CHECK_HEADERS( \
 	sys/socket.h \
 	sys/time.h
 )
+
+dnl #
+dnl #  If we have SNMP libraries, check for SNMP header files.
+dnl #
+if test "x$WITH_SNMP" = "xyes"; then
+  AC_CHECK_HEADER(snmp.h, AC_DEFINE(HAVE_SNMP_H),
+	AC_CHECK_HEADER(ucd-snmp/snmp.h, AC_DEFINE(HAVE_UCD_SNMP_SNMP_H)))
+  AC_CHECK_HEADER(snmp_impl.h, AC_DEFINE(HAVE_SNMP_IMPL_H),
+	AC_CHECK_HEADER(ucd-snmp/snmp_impl.h, AC_DEFINE(HAVE_UCD_SNMP_SNMP_IMPL_H)))
+  AC_CHECK_HEADER(asn1.h, AC_DEFINE(HAVE_ASN1_H),
+	AC_CHECK_HEADER(ucd-snmp/asn1.h, AC_DEFINE(HAVE_UCD_SNMP_ASN1_H)))
+fi
 
 dnl #############################################################
 dnl #
@@ -577,8 +598,9 @@ USE_STATIC_LIBS=$enable_static
 AC_SUBST(USE_STATIC_LIBS)
 AC_SUBST(STATIC_MODULES)
 
-AC_SUBST(SNMPLIB)
-AC_SUBST(SNMPINC)
+if test "x$WITH_SNMP" = "xyes"; then
+  AC_DEFINE(WITH_SNMP)
+fi
 
 AC_OUTPUT(\
 	./Make.inc \

@@ -42,14 +42,14 @@ struct variable;
     theoid, sizeof(theoid)/sizeof(oid))
 
 typedef int (WriteMethod)(int action,
-  u_char  *var_val,
-  u_char   var_val_type,
-  size_t   var_val_len,
-  u_char  *statP,
-  oid     *name,
-  size_t   length);
+			  u_char  *var_val,
+			  u_char   var_val_type,
+			  size_t   var_val_len,
+			  const unsigned char  *statP,
+			  oid     *name,
+			  size_t   length);
 
-typedef u_char *(FindVarMethod)(struct variable *vp,
+typedef const unsigned char *(FindVarMethod)(struct variable *vp,
   oid     *name,
   size_t  *length,
   int      exact,
@@ -122,12 +122,19 @@ struct subtree
     (u_char *) &snmp_in_addr_val \
   )
 
-enum smux_event {SMUX_NONE, SMUX_CONNECT, SMUX_READ};
+typedef enum smux_event_t {
+  SMUX_NONE, SMUX_CONNECT, SMUX_READ
+} smux_event_t;
 
-void smux_init (oid [], size_t);
-void smux_start (void);
-void smux_register_mib(char *, struct variable *, size_t, int, oid [], size_t);
+void smux_init(oid [], size_t);
+void smux_start(void);
+void smux_stop(void);
+void smux_register_mib(const char *, struct variable *, size_t, int, oid [], size_t);
 int smux_header_generic (struct variable *, oid [], size_t *, int, size_t *, 
     WriteMethod **);
+int smux_open(void);
+int smux_str2oid (char *str, oid *my_oid, size_t *oid_len);
+oid *smux_oid_dup (oid *objid, size_t objid_len);
+int smux_register(void);
 
 #endif /* _SMUX_H */

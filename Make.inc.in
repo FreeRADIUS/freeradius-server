@@ -37,9 +37,6 @@ INSTALL_SCRIPT	= ${INSTALL_PROGRAM}
 LCRYPT		= @CRYPTLIB@
 LIBS		= @LIBS@
 
-SNMPLIB		= @SNMPLIB@
-SNMPINC		= @SNMPINC@
-
 LOGDIR		= @logdir@
 RADDBDIR	= @raddbdir@
 RUNDIR		= @localstatedir@/run
