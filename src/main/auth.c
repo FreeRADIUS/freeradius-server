@@ -822,7 +822,6 @@ autz_redo:
 				user_msg = "\r\nAccess denied (external check failed).";
 
 			request->reply->code = PW_AUTHENTICATION_REJECT;
-			pairfree(&request->reply->vps);
 			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
 			request->reply->vps = tmp;
 			
