@@ -1,4 +1,4 @@
-freeradius (0.9.3-pre-1.0.0-pre0-0) unstable; urgency=low
+freeradius (0.9.3-pre-1.0.0-pre1-0) unstable; urgency=low
 
   * Added H323 billing stuff to the examples
   * Created Dialup-Admin package for the PHP-based web
