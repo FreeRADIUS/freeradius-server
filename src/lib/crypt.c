@@ -9,15 +9,13 @@
 
 #if HAVE_PTHREAD_H
 #include	<pthread.h>
-#endif
-
-static int lrad_crypt_init=0;
-static pthread_mutex_t lrad_crypt_mutex;
 
 /*
- * initializes authcrypt_mutex
+ *  No pthreads, no mutex.
  */
-
+static int lrad_crypt_init = 0;
+static pthread_mutex_t lrad_crypt_mutex;
+#endif
 
 /*
  * performs a crypt password check in an thread-safe way.
@@ -26,36 +24,54 @@ static pthread_mutex_t lrad_crypt_mutex;
  *          -1 -- failed to crypt
  *           1 -- check failed
  */
-int lrad_crypt_check(const char *key, const char *crypted) {
-  char *libc_crypted=NULL, *our_crypted=NULL;
-  int result=0;
-
+int lrad_crypt_check(const char *key, const char *crypted)
+{
+	char *passwd;
+	int cmp = 0;
+	
 #if HAVE_PTHREAD_H
-  if (!lrad_crypt_init == 0) {
-	pthread_mutex_init(&lrad_crypt_mutex, NULL);
-	lrad_crypt_init=1;
-  }
-
-  pthread_mutex_lock(&lrad_crypt_mutex);
+	/*
+	 *	Ensure we're thread-safe, as crypt() isn't.
+	 */
+	if (!lrad_crypt_init == 0) {
+		pthread_mutex_init(&lrad_crypt_mutex, NULL);
+		lrad_crypt_init = 1;
+	}
+	
+	pthread_mutex_lock(&lrad_crypt_mutex);
 #endif
+	
+	passwd = crypt(key, crypted);
 
-  libc_crypted=crypt(key,crypted);
-  if (libc_crypted)
-	our_crypted=strdup(libc_crypted);
-
+	/*
+	 *	Got something, check it within the lock.  This is
+	 *	faster than copying it to a local buffer, and the
+	 *	time spent within the lock is critical.
+	 */
+	if (passwd) {
+		cmp = strcmp(crypted, passwd);
+	}
+	
 #if HAVE_PTHREAD_H
-  pthread_mutex_unlock(&lrad_crypt_mutex);
+	pthread_mutex_unlock(&lrad_crypt_mutex);
 #endif
+	
+	/*
+	 *	Error.
+	 */
+	if (!passwd) {
+		return -1;
+	}
 
-  if (our_crypted == NULL)
-	return -1;
+	/*
+	 *	OK, return OK.
+	 */
+	if (cmp == 0) {
+		return 0;
+	}
 
-  if (strcmp(crypted, our_crypted) == 0)
-	result = 0;
-  else
-	result = 1;
-
-  free(our_crypted);
-
-  return result;
+	/*
+	 *	Comparison failed.
+	 */
+	return 1;
 }
