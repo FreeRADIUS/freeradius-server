@@ -107,6 +107,14 @@ else if ($badusers == 1){
       <input type=hidden name=badusers value="0">
 	<table border=1 bordercolordark=#ffffe0 bordercolorlight=#000000 width=100% cellpadding=2 cellspacing=0 bgcolor="#ffffe0" valign=top>
 <?php
+if ($user_type == 'group')
+	echo <<<EOM
+Note: The attributes contained in the groups the user belongs to<br>
+are extracted after the attributes in the radcheck/radreply tables.<br>
+Please take that into consideration when adding attributes in the group<br>
+and selecting operators.
+<br>
+EOM;
 if ($user_type != 'group'){
 	echo <<<EOM
 <tr>
