@@ -275,8 +275,10 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 {
 	int		i;
+	int		rcode;
 	char      	**q;
 	CONF_PAIR	*cp;
+	CONF_SECTION	*subsection;
 	uint32_t	ipaddr;
 	char		buffer[1024];
 	const char	*value;
@@ -294,6 +296,27 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 		
 		switch (variables[i].type)
 		{
+		case PW_TYPE_SUBSECTION:
+			subsection = cf_section_sub_find(cs,variables[i].name);
+
+			/*
+			 *	If the configuration section is NOT there,
+			 *	then ignore it.
+			 *
+			 *	FIXME! This is probably wrong... we should
+			 *	probably set the items to their default values.
+			 */
+			if (!subsection) {
+				break;
+			}
+
+			rcode = cf_section_parse(subsection,
+						 (CONF_PARSER *) variables[i].data);
+			if (rcode < 0) {
+				return -1;
+			}
+			break;
+
 		case PW_TYPE_BOOLEAN:
 			/*
 			 *	Allow yes/no and on/off
@@ -330,11 +353,13 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 			}
 
 			/*
-			 *	Expand variables while parsing.
+			 *	Expand variables while parsing,
+			 *	but ONLY expand ones which haven't already
+			 *	been expanded.
 			 */
-			if (value) {
-			  cf_expand_variables(NULL, 0, cs, buffer, value);
-			  value = buffer;
+			if (value && (value == variables[i].dflt)) {
+				cf_expand_variables(NULL, 0, cs, buffer,value);
+				value = buffer;
 			}
 
 			DEBUG2("Config: %s.%s = \"%s\"",

@@ -152,6 +152,19 @@ extern int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #endif
 
 /*
+ *	Map the proxy server configuration parameters to variables.
+ */
+static CONF_PARSER proxy_config[] = {
+  { "retry_delay",  PW_TYPE_INTEGER,
+    &proxy_retry_delay, Stringify(RETRY_DELAY) },
+  { "retry_count",  PW_TYPE_INTEGER,
+    &proxy_retry_count, Stringify(RETRY_COUNT) },
+  { "synchronous",  PW_TYPE_BOOLEAN, &proxy_synchronous, "yes" },
+
+  { NULL, -1, NULL, NULL }
+};
+
+/*
  *	A mapping of configuration file names to internal variables
  */
 static CONF_PARSER server_config[] = {
@@ -170,9 +183,9 @@ static CONF_PARSER server_config[] = {
   { "log_auth_goodpass",  PW_TYPE_BOOLEAN,    &mainconfig.log_auth_goodpass, "no" },
   { "pidfile",            PW_TYPE_STRING_PTR, &pid_file,          "${run_dir}/radiusd.pid"},
   { "bind_address",       PW_TYPE_IPADDR,     &myip,              "*" },
-  { "proxy_requests",     PW_TYPE_BOOLEAN,    &proxy_requests,    "yes" },
   { "user",           PW_TYPE_STRING_PTR, &uid_name,  NULL},
   { "group",          PW_TYPE_STRING_PTR, &gid_name,  NULL},
+
   { "usercollide",    PW_TYPE_BOOLEAN,    &mainconfig.do_usercollide, "no" },
   { "lower_user",     PW_TYPE_BOOLEAN,    &mainconfig.do_lower_user, "no" },
   { "lower_pass",     PW_TYPE_BOOLEAN,    &mainconfig.do_lower_pass, "no" },
@@ -180,19 +193,9 @@ static CONF_PARSER server_config[] = {
   { "nospace_user",   PW_TYPE_BOOLEAN,    &mainconfig.do_nospace_user, "no" },
   { "nospace_pass",   PW_TYPE_BOOLEAN,    &mainconfig.do_nospace_pass, "no" },
   { "nospace_time",   PW_TYPE_STRING_PTR, &mainconfig.nospace_time, "before" },
-  { NULL, -1, NULL, NULL }
-};
 
-/*
- *	Map the proxy server configuration parameters to variables.
- */
-static CONF_PARSER proxy_config[] = {
-  { "retry_delay",  PW_TYPE_INTEGER,
-    &proxy_retry_delay, Stringify(RETRY_DELAY) },
-  { "retry_count",  PW_TYPE_INTEGER,
-    &proxy_retry_count, Stringify(RETRY_COUNT) },
-  { "synchronous",  PW_TYPE_BOOLEAN, &proxy_synchronous, "yes" },
-
+  { "proxy_requests", PW_TYPE_BOOLEAN,    &proxy_requests,    "yes" },
+  { "proxy",          PW_TYPE_SUBSECTION, proxy_config,       NULL },
   { NULL, -1, NULL, NULL }
 };
 
@@ -311,15 +314,6 @@ static int reread_config(int reload)
 				exit(1);
 			}
 		}
-	}
-
-
-	/*
-	 *	Parse the server's proxy configuration values.
-	 */
-	if ((proxy_requests) &&
-	    ((cs = cf_section_find("proxy")) != NULL)) {
-		cf_section_parse(cs, proxy_config);
 	}
 
 	return 0;

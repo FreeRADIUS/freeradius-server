@@ -24,6 +24,7 @@ typedef struct conf_part CONF_SECTION;
  */
 #define PW_TYPE_STRING_PTR	100
 #define PW_TYPE_BOOLEAN		101
+#define PW_TYPE_SUBSECTION	102
 
 typedef struct CONF_PARSER {
   const char *name;
