@@ -138,6 +138,7 @@ static CONF_PARSER server_config[] = {
   { "pidfile",            PW_TYPE_STRING_PTR, &pid_file },
   { "log_dir",            PW_TYPE_STRING_PTR, &radlog_dir },
   { "acct_dir",           PW_TYPE_STRING_PTR, &radacct_dir },
+  { "bind_address",       PW_TYPE_IPADDR,     &myip },
 #if 0
   { "confdir",            PW_TYPE_STRING_PTR, &radius_dir },
 #endif
@@ -623,8 +624,13 @@ int main(int argc, char **argv)
 	 */
 	if (debug_flag) setlinebuf(stdout);
 
-	log(L_INFO, "Listening on ports %d/udp and %d/udp, with proxy on %d/udp.",
-	    auth_port, acct_port, proxy_port);
+	if (myip == 0) {
+		strcpy(buffer, "*");
+	} else {
+		ip_ntoa(buffer, myip);
+	}
+	log(L_INFO, "Listening on IP address %s, ports %d/udp and %d/udp, with proxy on %d/udp.",
+	    buffer, auth_port, acct_port, proxy_port);
 
 	/*
 	 *	Note that we NO LONGER fork an accounting process!
