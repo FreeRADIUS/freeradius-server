@@ -116,6 +116,12 @@ static int diameter_verify(const uint8_t *data, int data_len)
 		}
 
 		/*
+		 *	Check for broken implementations, which don't
+		 *	pad the AVP to a 4-octet boundary.
+		 */
+		if (data_len == length) break;
+
+		/*
 		 *	The length does NOT include the padding, so
 		 *	we've got to account for it here by rounding up
 		 *	to the nearest 4-byte boundary.
