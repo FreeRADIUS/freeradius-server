@@ -116,7 +116,7 @@ static int digest_authorize(void *instance, REQUEST *request)
 			sub = paircreate(PW_DIGEST_REALM - 1 + p[0],
 					 PW_TYPE_STRING);
 			if (!sub) {
-				exit(1); /* out of memory */
+				return RLM_MODULE_FAIL; /* out of memory */
 			}
 			memcpy(&sub->strvalue[0], &p[2], attrlen - 2);
 			sub->strvalue[attrlen - 2] = '\0';
