@@ -167,3 +167,23 @@ CREATE TABLE nas (
 	naslocation	VARCHAR(32)
 );
 
+/*
+ * Common utility function for date calculations. This is used in our
+ * alternative account stop query to calculate the start of a session.
+ *
+ * Please note that this requires the plpgsql to be available in your
+ * radius database. If it is not available you can register it with
+ * postgres by running this command:
+ *
+ *   createlang plpgsql <databasename>
+ */
+CREATE FUNCTION DATE_SUB(date,int4,text) RETURNS DATE AS '
+DECLARE
+        var1 date;
+        var2 text;
+BEGIN
+        var2 = $2 || '' '' || $3;
+        SELECT INTO var1
+                to_date($1 - var2::interval, ''YYYY-MM-DD'');
+RETURN var1;
+END;' LANGUAGE 'plpgsql';
