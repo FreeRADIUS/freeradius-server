@@ -197,6 +197,7 @@ int		session_zap(uint32_t nasaddr, int port, const char *user,
 void		debug_pair(FILE *, VALUE_PAIR *);
 int		log_err (char *);
 void		sig_cleanup(int);
+void		queue_sig_cleanup(int);
 int		rad_process(REQUEST *, int);
 int		rad_respond(REQUEST *, RAD_REQUEST_FUNP fun);
 

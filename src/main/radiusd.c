@@ -134,6 +134,7 @@ static gid_t server_gid;
 static const char *uid_name = NULL;
 static const char *gid_name = NULL;
 static int proxy_requests = TRUE;
+static int needs_child_cleanup = 0;
 int spawn_flag = TRUE;
 
 static void usage(void);
@@ -1934,8 +1935,14 @@ static void *rad_spawn_thread(void *arg)
 static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	child_pid_t		child_pid;
+	int retval = 0;
+
+	/* spawning and registering a child is a critical section, so
+	 * we refuse to handle SIGCHLDs normally until we're finished. */
+	signal(SIGCHLD, queue_sig_cleanup);
 
 #if HAVE_PTHREAD_H
+	{
 	int rcode;
 	spawn_thread_t *data;
 
@@ -1951,14 +1958,15 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if (rcode != 0) {
 		radlog(L_ERR, "Thread create failed for request from nas %s - ID: %d : %s",
 				nas_name2(request->packet), request->packet->id, strerror(errno));
-		return -1;
+		retval = -1;
+		goto exit_child_critsec;
 	}
 
 	/*
 	 *  Detach it, so it's state is automagically cleaned up on exit.
 	 */
 	pthread_detach(child_pid);
-
+	}
 #else
 	/*
 	 *  fork our child
@@ -1968,7 +1976,8 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 		radlog(L_ERR, "Fork failed for request from nas %s - ID: %d",
 				nas_name2(request->packet),
 				request->packet->id);
-		return -1;
+		retval = -1;
+		goto exit_child_critsec;
 	}
 
 	if (child_pid == 0) {
@@ -1986,7 +1995,13 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *  Register the Child
 	 */
 	request->child_pid = child_pid;
-	return 0;
+
+exit_child_critsec:
+	signal(SIGCHLD, sig_cleanup);
+	if (needs_child_cleanup > 0) {
+		sig_cleanup(0);
+	}
+	return retval;
 }
 #endif /* WITH_THREAD_POOL */
 
@@ -1999,6 +2014,14 @@ static int sig_cleanup_walker(REQUEST *req, void *data)
 		}
 	req->child_pid = NO_SUCH_CHILD_PID;
 	return 0;
+}
+
+
+/* used in critical section */
+void queue_sig_cleanup(int sig) {
+	sig = sig; /* -Wunused */
+	needs_child_cleanup++;
+	return;
 }
 
 
@@ -2054,6 +2077,7 @@ void sig_cleanup(int sig)
 
 	}
 #endif /* !defined HAVE_PTHREAD_H */
+	needs_child_cleanup = 0;  /* reset the queued cleanup number */
 }
 
 /*
