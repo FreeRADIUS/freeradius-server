@@ -221,7 +221,7 @@ int rad_check_password(REQUEST *request)
 		auth_type = auth_type_pair->lvalue;
 		auth_type_count++;
 
-		DEBUG2("  rad_check_password:  Found auth-type %s",
+		DEBUG2("  rad_check_password:  Found Auth-Type %s",
 				auth_type_pair->strvalue);
 		cur_config_item = auth_type_pair->next;
 
@@ -231,7 +231,7 @@ int rad_check_password(REQUEST *request)
 		}
 	}
 
-	if((auth_type_count>1) && (debug_flag)) {
+	if (( auth_type_count > 1) && (debug_flag)) {
 		radlog(L_ERR, "Warning:  Found %d auth-types on request for user '%s'", 
 			auth_type_count, request->username->strvalue);
 	}
@@ -394,7 +394,6 @@ int rad_authenticate(REQUEST *request)
 	char		*exec_program;
 	int		exec_wait;
 	int		seen_callback_id;
-	int 		nas_port = 0;
 	char		buf[1024], logstr[1024];
 
 	password = "";
@@ -673,32 +672,20 @@ int rad_authenticate(REQUEST *request)
 
 	/*
 	 *	Add the port number to the Framed-IP-Address if
-	 *	vp->addport is set, or if the Add-Port-To-IP-Address
-	 *	pair is present.
-	 *
-	 *	FIXME:  This doesn't work because PW_ADD_PORT_TO_IP_ADDRESS
-	 *	is never added to the request pairs!
+	 *	vp->addport is set.
 	 */
-	if ((tmp = pairfind(request->reply->vps, 
-			PW_FRAMED_IP_ADDRESS)) != NULL) {
+	if (((tmp = pairfind(request->reply->vps, 
+			    PW_FRAMED_IP_ADDRESS)) != NULL) &&
+	    (tmp->addport != 0)) {
 		VALUE_PAIR *vpPortId;
-		VALUE_PAIR *vpAddPort;
-
+		
 		/*
 		 *  Find the NAS port ID.
 		 */
 		if ((vpPortId = pairfind(request->packet->vps,
-				PW_NAS_PORT_ID)) != NULL)
-			nas_port = vpPortId->lvalue;
-
-		if((vpAddPort = pairfind(request->reply->vps,
-				PW_ADD_PORT_TO_IP_ADDRESS)) != NULL) {
-			if (tmp->addport || (vpAddPort && vpAddPort->lvalue)) {
-				tmp->lvalue = htonl(ntohl(tmp->lvalue) + nas_port);
-				tmp->addport = 0;
-			}
-			pairdelete(&request->reply->vps,
-					PW_ADD_PORT_TO_IP_ADDRESS);
+					 PW_NAS_PORT_ID)) != NULL) {
+		  tmp->lvalue = htonl(ntohl(tmp->lvalue) + vpPortId->lvalue);
+		  tmp->addport = 0;
 		}
 	}
 
