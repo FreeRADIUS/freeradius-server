@@ -778,7 +778,7 @@ int main(int argc, char **argv)
 
 		fp = fopen(pid_file, "w");
 		if (fp != NULL) {
-			fprintf(fp, "%d\n", radius_pid);
+			fprintf(fp, "%d\n", (int) radius_pid);
 			fclose(fp);
 		} else {
 			radlog(L_ERR|L_CONS, "Failed writing process id to file %s: %s\n",
@@ -2225,6 +2225,15 @@ static void proxy_retry(void)
 	time_t now = time(NULL);
 	REQUEST *p;
 	int id;
+
+	/*
+	 *	If we're not proxying, or if we're not re-trying
+	 *	requests, then don't bother walking through the list.
+	 */
+	if (!proxy_requests ||
+	    (proxy_retry_delay = 0)) {
+		return;
+	}
 	
 	/*
 	 *	Walk over all of the Id's.
