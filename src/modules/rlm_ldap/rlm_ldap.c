@@ -232,6 +232,7 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 	if (rc < 1) {
 		ldap_perror(inst->ld, "rlm_ldap: ldap_result()");
 		radlog(L_ERR, "rlm_ldap: ldap_result() failed - %s\n", strerror(errno));
+		ldap_msgfree(result);
 		return (RLM_MODULE_FAIL);
 	}
 	switch (ldap_result2error(inst->ld, *result, 0)) {
@@ -245,6 +246,7 @@ perform_search(void *instance, char *search_basedn, int scope, char *filter, cha
 	default:
 		DEBUG("rlm_ldap: ldap_search() failed");
 		inst->bound = 0;
+		ldap_msgfree(result);
 		return (RLM_MODULE_FAIL);
 	}
 
@@ -294,7 +296,6 @@ ldap_authorize(void *instance, REQUEST * request)
 
 	if ((res = perform_search(instance, inst->basedn, LDAP_SCOPE_SUBTREE, filter, attrs, &result)) != RLM_MODULE_OK) {
 		DEBUG("rlm_ldap: search failed");
-		ldap_msgfree(result);
 		return (res);
 	}
 	if ((msg = ldap_first_entry(inst->ld, result)) == NULL) {
@@ -533,7 +534,7 @@ ldap_detach(void *instance)
 	if (inst->filter)
 		free((char *) inst->filter);
 	if (inst->ld)
-		ldap_unbind_s(inst->ld);
+		ldap_memfree(inst->ld);
 
 	free(inst);
 
