@@ -188,22 +188,15 @@ const char *nas_name(uint32_t ipaddr)
  */
 const char *nas_name2(RADIUS_PACKET *packet)
 {
-	uint32_t	ipaddr;
 	NAS	        *nas;
-	VALUE_PAIR	*pair;
 
-	if ((pair = pairfind(packet->vps, PW_NAS_IP_ADDRESS)) != NULL)
-		ipaddr = pair->lvalue;
-	else
-		ipaddr = packet->src_ipaddr;
-
-	if ((nas = nas_find(ipaddr)) != NULL) {
+	if ((nas = nas_find(packet->src_ipaddr)) != NULL) {
 		if (nas->shortname[0])
 			return nas->shortname;
 		else
 			return nas->longname;
 	}
 
-	return client_name(ipaddr);
+	return client_name(packet->src_ipaddr);
 }
 
