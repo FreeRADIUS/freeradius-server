@@ -660,14 +660,14 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		      (struct sockaddr *)&saremote, sizeof(struct sockaddr_in));
 #else
 	{
-	struct sockaddr_in salocal;
-	memset ((char *) &salocal, '\0', sizeof (salocal));
-	salocal.sin_family = AF_INET;
-	salocal.sin_addr.s_addr = packet->src_ipaddr;
-
-	return sendfromto(packet->sockfd, packet->data, (int)packet->data_len, 0,
-			(struct sockaddr *)&salocal,  sizeof(struct sockaddr_in),
-			(struct sockaddr *)&saremote, sizeof(struct sockaddr_in));
+		struct sockaddr_in salocal;
+		memset ((char *) &salocal, '\0', sizeof (salocal));
+		salocal.sin_family = AF_INET;
+		salocal.sin_addr.s_addr = packet->src_ipaddr;
+		
+		return sendfromto(packet->sockfd, packet->data, (int)packet->data_len, 0,
+				  (struct sockaddr *)&salocal,  sizeof(struct sockaddr_in),
+				  (struct sockaddr *)&saremote, sizeof(struct sockaddr_in));
 	}
 #endif
 }
@@ -796,6 +796,7 @@ RADIUS_PACKET *rad_recv(int fd)
 #ifndef WITH_UDPFROMTO
 	packet->data_len = recvfrom(fd, data, sizeof(data),
 		0, (struct sockaddr *)&saremote, &salen);
+	packet->dst_ipaddr = htonl(INADDR_ANY); /* i.e. unknown */
 #else
 	{
 		socklen_t		salen_local;
