@@ -829,11 +829,7 @@ CONF_SECTION *conf_read(const char *fromfile, int fromline,
 		return NULL;
 	}
 
-	if(parent) {
-	    cs = cf_section_read(conffile, &lineno, fp, NULL, NULL, parent);
-	} else {
-	    cs = cf_section_read(conffile, &lineno, fp, NULL, NULL, NULL);
-	}
+	cs = cf_section_read(conffile, &lineno, fp, NULL, NULL, parent);
 
 	fclose(fp);
 
