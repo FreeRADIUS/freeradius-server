@@ -523,6 +523,10 @@ modules {
 	#  For Linux, see:
 	#	http://www.kernel.org/pub/linux/libs/pam/index.html
 	#
+	#  WARNING: On many systems, the system PAM libraries have
+	#           memory leaks!  We STRONGLY SUGGEST that you do not
+	#	    use PAM for authentication, due to those memory leaks.
+	#
 	pam {
 		#
 		#  The name to use for PAM authentication.
@@ -597,19 +601,25 @@ modules {
 		#  Invoke the default supported EAP type when
 		#  EAP-Identity response is received.
 		#
-		#  The incoming EAP messages MAY NOT specify which EAP
+		#  The incoming EAP messages DO NOT specify which EAP
 		#  type they will be using, so it MUST be set here.
 		#
 		#  For now, only one default EAP type may be used at a time.
 		#
 		default_eap_type = md5
 
-		# Default expiry time to clean the EAP list,
-		# It is maintained to correlate the
-		# EAP-response for each EAP-request sent.
+		#  Default expiry time to clean the EAP list, It is
+		#  maintained to correlate the EAP-Response for each
+		#  EAP-request sent.
 		timer_expire     = 60
 
 		# Supported EAP-types
+
+		#
+		#  We do NOT recommend using EAP-MD5 authentication
+		#  for wireless connections.  It is insecure, and does
+		#  not provide for dynamic WEP keys.
+		#
 		md5 {
 		}
 
@@ -631,34 +641,41 @@ modules {
 		#	private_key_password = password
 		#	private_key_file = /path/filename
 
-		#	If Private key & Certificate are located in the
-		#	same file, then private_key_file & certificate_file
-		#	must contain the same file name.
+			#  If Private key & Certificate are located in
+			#  the same file, then private_key_file &
+			#  certificate_file must contain the same file
+			#  name.
 		#	certificate_file = /path/filename
 
-		#	Trusted Root CA list
-			#CA_file = /path/filename
+			#  Trusted Root CA list
+		#	CA_file = /path/filename
 
 		#	dh_file = /path/filename
-			#random_file = /path/filename
-		#
-		# 	This can never exceed MAX_RADIUS_LEN (4096)
-		#	preferably half the MAX_RADIUS_LEN, to
-		#	accomodate other attributes in RADIUS packet.
-		#	On most APs the MAX packet length is configured
-		#	between 1500 - 1600. In these cases, fragment
-		#	size should be <= 1024.
-		#
+		#	random_file = /path/filename
+
+			#
+			#  This can never exceed the size of a RADIUS
+			#  packet (4096 bytes), and is preferably half
+			#  that, to accomodate other attributes in
+			#  RADIUS packet.  On most APs the MAX packet
+			#  length is configured between 1500 - 1600
+			#  In these cases, fragment size should be
+			#  1024 or less.
+			#
 		#		fragment_size = 1024
 
-		#	include_length is a flag which is by default set to yes
-		#	If set to yes, Total Length of the message is included
-		#	in EVERY packet we send.
-		#	If set to no, Total Length of the message is included
-		#	ONLY in the First packet of a fragment series.
-		#
+				#  include_length is a flag which is
+				#  by default set to yes If set to
+				#  yes, Total Length of the message is
+				#  included in EVERY packet we send.
+				#  If set to no, Total Length of the
+				#  message is included ONLY in the
+				#  First packet of a fragment series.
+				#
 		#		include_length = yes
 		#}
+
+
 	}
 
 	# Microsoft CHAP authentication
@@ -947,6 +964,41 @@ modules {
 		#  people from seeing that information.
 		detailperm = 0600
 	}
+
+	#
+	#  Many people want to log authentication requests.
+	#  Rather than modifying the server core to print out more
+	#  messages, we can use a different instance of the 'detail'
+	#  module, to log the authentication requests to a file.
+	#
+	#  You will also need to un-comment the 'auth_log' line
+	#  in the 'authorize' section, below.
+	#
+	# detail auth_log {
+		# detailfile = ${radacctdir}/%{Client-IP-Address}/auth-detail-%Y%m%d
+
+		#
+		#  This MUST be 0600, otherwise anyone can read
+		#  the users passwords!
+		# detailperm = 0600
+	# }
+
+	#
+	#  This module logs authentication reply packets sent
+	#  to a NAS.  Both Access-Accept and Access-Reject packets
+	#  are logged.
+	#
+	#  You will also need to un-comment the 'reply_log' line
+	#  in the 'post-auth' section, below.
+	#
+	# detail reply_log {
+		# detailfile = ${radacctdir}/%{Client-IP-Address}/reply-detail-%Y%m%d
+
+		#
+		#  This MUST be 0600, otherwise anyone can read
+		#  the users passwords!
+		# detailperm = 0600
+	# }
 
 	# Create a unique accounting session Id.  Many NASes re-use or
 	# repeat values for Acct-Session-Id, causing no end of
@@ -1341,6 +1393,12 @@ authorize {
 	#
 	#  It also adds a Client-IP-Address attribute to the request.
 	preprocess
+
+	#
+	#  If you want to have a log of authentication requests,
+	#  un-comment the following line, and the 'detail auth_log'
+	#  section, above.
+#	auth_log
 	
 	#
 	#  The chap module will set 'Auth-Type := CHAP' if we are
@@ -1527,6 +1585,12 @@ session {
 post-auth {
 	#  Get an address from the IP Pool.
 #	main_pool
+
+	#
+	#  If you want to have a log of authentication replies,
+	#  un-comment the following line, and the 'detail reply_log'
+	#  section, above.
+#	reply_log
 }
 
 #
@@ -1538,7 +1602,7 @@ post-auth {
 #  Only a few modules currently have this method.
 #
 pre-proxy {
-	# attr_rewrite
+#	attr_rewrite
 }
 
 #
@@ -1547,7 +1611,8 @@ pre-proxy {
 #  post-proxy stage.
 #
 post-proxy {
-	# attr_rewrite
+	#
+#	attr_rewrite
 
 	#
 	#  If you are proxing LEAP, you MUST configure the EAP
