@@ -21,7 +21,7 @@ $(DYNAMIC_OBJS): $(HEADERS)
 
 ifneq ($(USE_SHARED_LIBS),yes)
 #RLM_LIBS	+= $(shell for x in types/rlm_eap_*/*.la;do echo -dlpreopen $$x;done)
-STATIC_OBJS	+= $(shell for x in types/rlm_eap_*/.libs/*.a;do echo $$x;done)
+STATIC_OBJS	+= $(shell for x in types/rlm_eap_*/*.a;do echo $$x;done)
 endif
 
 all: 
