@@ -90,6 +90,7 @@ int			proxy_port;
 int			proxy_retry_delay = RETRY_DELAY;
 int			proxy_retry_count = RETRY_COUNT;
 int			proxy_synchronous = TRUE;
+int			need_reload = FALSE;
 
 static int		got_child = FALSE;
 static int		request_list_busy = FALSE;
@@ -101,7 +102,6 @@ int			smuxfd;
 #endif
 static int		spawn_flag = TRUE;
 static pid_t		radius_pid;
-static int		need_reload = FALSE;
 static struct rlimit	core_limits;
 static int		proxy_requests = TRUE;
 

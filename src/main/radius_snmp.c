@@ -22,15 +22,19 @@ static const char rcsid[] =
 #include <netinet/in.h>
 #endif
 
+#include <string.h>
+
 #include <asn1.h>
 #include <snmp.h>
 #include <snmp_impl.h>
 
 #include "smux.h"
+#include "radiusd.h"
 
 extern int snmp_acctotalrequests;
 extern int snmp_authtotalrequests;
-
+extern RADCLIENT *clients;
+extern int need_reload;
 
 #define RADACCOID 1,3,6,1,2,1,67,2,1,1,1
 #define RADAUTHOID 1,3,6,1,2,1,67,1,1,1,1
@@ -164,6 +168,93 @@ static struct variable radiusauth_variables[] =
 };
 
 
+static RADCLIENT *
+get_client(struct variable *v, oid objid[], size_t *objid_len, int exact)
+{
+  RADCLIENT *c;
+  int i, len;
+
+  len = *objid_len - v->namelen;
+
+  if (!clients)
+    return NULL;
+
+  if (exact)
+    {
+      /* Check the length. */
+      if (len != 1)
+	return NULL;
+      if (objid[v->namelen] == 0)
+	return NULL;
+
+      i = objid[v->namelen]-1;
+      c = clients;
+      while (i && c)
+	{
+	  c = c->next;
+	  i--;
+	}
+      if (c)
+	return c;
+      return NULL;
+    }
+  i = objid[v->namelen]-1;
+  *objid_len = v->namelen + 1;
+  if (!len || (objid[v->namelen] == 0))
+    {
+      objid[v->namelen]=1;
+      return clients;
+    }
+  c = clients->next;
+  while (i && c)
+    {
+      c = c->next;
+      i--;
+    }
+  if (c)
+    {
+      objid[v->namelen]++;
+      return c;
+    }
+  else
+    return NULL;
+}
+
+static int
+radServReset (int action,
+    u_char   *var_val,
+    u_char   var_val_type,
+    size_t   var_val_len,
+    u_char   *statP,
+    oid      *name,
+    size_t   name_len)
+{
+    int ret, i;
+    int big = SNMP_MAX_LEN;
+
+    switch (action)
+      {
+	case RESERVE1:
+	  if (var_val_type != INTEGER)
+	    return SNMP_ERR_WRONGTYPE;
+	  if (var_val_len != sizeof (long))
+	    return SNMP_ERR_WRONGLENGTH;
+	  if (! asn_parse_int(var_val, &big, &var_val_type, &i, sizeof(long)))
+	    return SNMP_ERR_WRONGENCODING;
+	  if (i != 2)
+	    return SNMP_ERR_WRONGVALUE;
+	  break;
+	case COMMIT:
+	  need_reload = TRUE;
+	  break;
+	case FREE:
+	  break;
+	default:
+	  return SNMP_ERR_GENERR;
+      }
+    return SNMP_ERR_NOERROR;
+}
+
 static unsigned char *
 radAccServ(struct variable *vp,
     oid     *name,
@@ -193,6 +284,7 @@ radAccServ(struct variable *vp,
         return (unsigned char *) NULL;
 
     case RADIUSACCSERVCONFIGRESET:
+	*write_method = radServReset;
 	result = 4;
         return (unsigned char *) &result;
 
@@ -236,15 +328,24 @@ radAccEntry(struct variable *vp,
     size_t  *var_len,
     WriteMethod **write_method)
 {
+    RADCLIENT *c;
+
+    *write_method = NULL; /* table is read only */
+    c = get_client(vp, name, length, exact);
+    if (!c)
+      return NULL;
+
     /* return the current value of the variable */
 
     switch (vp->magic) {
 
     case RADIUSACCCLIENTADDRESS:
-        return (unsigned char *) NULL;
+        *var_len = strlen(c->longname);
+        return c->longname;
 
     case RADIUSACCCLIENTID:
-        return (unsigned char *) NULL;
+        *var_len = strlen(c->shortname);
+        return c->shortname;
 
     case RADIUSACCSERVPACKETSDROPPED:
         return (unsigned char *) NULL;
@@ -295,8 +396,8 @@ radAuthServ(struct variable *vp,
     switch (vp->magic) {
 
     case RADIUSAUTHSERVIDENT:
-        *var_len = strlen(VERSION);
-        return (unsigned char *) VERSION;
+        *var_len = strlen("0.1.0");
+        return (unsigned char *) "0.1.0";
 
     case RADIUSAUTHSERVUPTIME:
         return (unsigned char *) NULL;
@@ -305,6 +406,7 @@ radAuthServ(struct variable *vp,
         return (unsigned char *) NULL;
 
     case RADIUSAUTHSERVCONFIGRESET:
+	*write_method = radServReset;
 	result = 4;
         return (unsigned char *) &result;
 
@@ -351,15 +453,24 @@ radAuthEntry(struct variable *vp,
     size_t  *var_len,
     WriteMethod **write_method)
 {
+    RADCLIENT *c;
+
+    *write_method = NULL; /* table is read only */
+    c = get_client(vp, name, length, exact);
+    if (!c)
+      return NULL;
+
     /* return the current value of the variable */
 
     switch (vp->magic) {
 
     case RADIUSAUTHCLIENTADDRESS:
-        return (unsigned char *) NULL;
+        *var_len = strlen(c->longname);
+        return (unsigned char *) c->longname;
 
     case RADIUSAUTHCLIENTID:
-        return (unsigned char *) NULL;
+        *var_len = strlen(c->shortname);
+        return (unsigned char *) c->shortname;
 
     case RADIUSAUTHSERVACCESSREQUESTS:
         return (unsigned char *) NULL;
@@ -392,17 +503,6 @@ radAuthEntry(struct variable *vp,
     return NULL;
 }
 
-static int
-write_radiusAuthServConfigReset_stub(int action,
-    u_char   *var_val,
-    u_char   var_val_type,
-    int      var_val_len,
-    u_char   *statP,
-    oid      *name,
-    int      name_len)
-{
-    return SNMP_ERR_NOERROR;
-}
 
 /* Register RADIUS MIBs. */
 void
