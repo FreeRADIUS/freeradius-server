@@ -3,8 +3,8 @@ include ../../Make.inc
 
 SRCS		= dict.c print.c radius.c valuepair.c token.c misc.c \
 		log.c filters.c missing.c md4.c md5.c sha1.c \
-		hmac.c hmacsha1.c \
-		snprintf.c isaac.c smbdes.c crypt.c 
+		hmac.c hmacsha1.c snprintf.c isaac.c smbdes.c crypt.c \
+		udpfromto.c
 
 INCLUDES	= ../include/radius.h ../include/libradius.h \
 		  ../include/missing.h ../include/autoconf.h
