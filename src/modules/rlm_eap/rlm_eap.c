@@ -189,7 +189,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	 */
 	if (handler->username == NULL) {
 		radlog(L_ERR, "rlm_eap: Unknown User, authentication failed");
-		eap_fail(request, handler->eap_ds->request);
+		eap_fail(request, handler->eap_ds);
 		eap_handler_free(&handler);
 		return RLM_MODULE_REJECT;
 	}
@@ -200,7 +200,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	if (eaptype_select(eap_stuff->typelist, handler,
 		eap_stuff->conf->default_eap_type) == EAP_INVALID) {
 
-		eap_fail(request, handler->eap_ds->request);
+		eap_fail(request, handler->eap_ds);
 		eap_handler_free(&handler);
 		return RLM_MODULE_INVALID;
 	}
@@ -209,7 +209,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	 * We are done, wrap the EAP-request in RADIUS to send
 	 * with all other required radius attributes
 	 */
-	eap_compose(request, handler->eap_ds->request);
+	eap_compose(request, handler->eap_ds);
 
 	/*
 	 * Add to the list only if it is EAP-Request,

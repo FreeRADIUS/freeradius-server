@@ -102,11 +102,11 @@ void		eaptype_freelist(EAP_TYPES **tl);
 
 /* EAP */
 int  		eap_start(REQUEST *request);
-void 		eap_fail(REQUEST *request, EAP_PACKET *reply);
-void 		eap_success(REQUEST *request, EAP_PACKET *reply);
+void 		eap_fail(REQUEST *request, EAP_DS *eap_ds);
+void 		eap_success(REQUEST *request, EAP_DS *eap_ds);
 int 		eap_validation(eap_packet_t *eap_msg);
 int 		eap_wireformat(EAP_PACKET *packet);
-int 		eap_compose(REQUEST *request, EAP_PACKET *reply);
+int 		eap_compose(REQUEST *request, EAP_DS *eap_ds);
 eap_packet_t 	*eap_attribute(VALUE_PAIR *vps);
 EAP_HANDLER 	*eap_handler(EAP_HANDLER **list, eap_packet_t **eap_msg, REQUEST *request);
 char 		*eap_identity(eap_packet_t *eap_packet);

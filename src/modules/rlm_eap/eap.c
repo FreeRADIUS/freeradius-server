@@ -415,7 +415,7 @@ int eap_wireformat(EAP_PACKET *reply)
  * Set the RADIUS reply codes based on EAP request codes
  * Append any additonal VPs to RADIUS reply
  */
-int eap_compose(REQUEST *request, EAP_PACKET *reply)
+int eap_compose(REQUEST *request, EAP_DS *eap_ds)
 {
 	uint16_t eap_len, len;
 	VALUE_PAIR *eap_msg;
@@ -423,6 +423,7 @@ int eap_compose(REQUEST *request, EAP_PACKET *reply)
 	VALUE_PAIR *vp;
 	eap_packet_t *eap_packet;
 	unsigned char 	*ptr;
+	EAP_PACKET *reply = eap_ds->request;
 
 	/*
 	 * ID serves to suppport request/response
@@ -579,7 +580,7 @@ int eap_start(REQUEST *request)
 	eapstart->request->code = PW_EAP_REQUEST;
 	eapstart->request->type.type = PW_EAP_IDENTITY;
 
-	eap_compose(request, eapstart->request);
+	eap_compose(request, eapstart);
 
 	eap_ds_free(&eapstart);
 	return EAP_FOUND;
@@ -588,19 +589,19 @@ int eap_start(REQUEST *request)
 /*
  * compose EAP FAILURE packet in EAP-Message
  */
-void eap_fail(REQUEST *request, EAP_PACKET *reply)
+void eap_fail(REQUEST *request, EAP_DS *eap_ds)
 {
-	reply->code = PW_EAP_FAILURE;
-	eap_compose(request, reply);
+	eap_ds->request->code = PW_EAP_FAILURE;
+	eap_compose(request, eap_ds);
 }
 
 /*
  * compose EAP SUCCESS packet in EAP-Message
  */
-void eap_success(REQUEST *request, EAP_PACKET *reply)
+void eap_success(REQUEST *request, EAP_DS *eap_ds)
 {
-	reply->code = PW_EAP_SUCCESS;
-	eap_compose(request, reply);
+	eap_ds->request->code = PW_EAP_SUCCESS;
+	eap_compose(request, eap_ds);
 }
 
 /*
