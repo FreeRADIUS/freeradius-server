@@ -7,7 +7,6 @@
 #define RADIUS_DICTIONARY	"dictionary"
 #define RADIUS_CLIENTS		"clients"
 #define RADIUS_NASLIST		"naslist"
-#define RADIUS_LOG		"radius.log"
 #define RADIUS_REALMS		"realms"
 
 #define RADUTMP			LOGDIR "/radutmp"

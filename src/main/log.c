@@ -115,7 +115,6 @@ int radlogdir_iswritable(const char *effectiveuser) {
 int vradlog(int lvl, const char *fmt, va_list ap)
 {
 	FILE *msgfd = NULL;
-	const char *s = ": ";
 	unsigned char *p;
 	char buffer[8192];
 	int len;
@@ -139,8 +138,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 
 	} else if (radlog_dest != RADLOG_SYSLOG) {
 
-	        sprintf(buffer, "%.1000s/%.1000s", radlog_dir, RADIUS_LOG);
-		if ((msgfd = fopen(buffer, "a")) == NULL) {
+		if ((msgfd = fopen(mainconfig.log_file, "a")) == NULL) {
 		         fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
 				 progname, buffer, strerror(errno));
 				
@@ -159,7 +157,9 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	} else
 #endif
 	{
+		const char *s = ": ";
 		time_t timeval;
+
 		timeval = time(NULL);
 		ctime_r(&timeval, buffer);
 

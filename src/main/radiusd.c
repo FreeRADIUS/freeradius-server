@@ -191,6 +191,7 @@ static CONF_PARSER server_config[] = {
 	{ "port", PW_TYPE_INTEGER, 0, &auth_port, Stringify(PW_AUTH_UDP_PORT) },
 	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, "no" },
 	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
+	{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, "$logdir/radius.log" },
 	{ "log_auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, "no" },
 	{ "log_auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
 	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
@@ -281,7 +282,7 @@ static int reread_config(int reload)
 		if (debug_flag) {
 			radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
 		} else {
-			radlog(L_ERR|L_CONS, "Errors reading radiusd.conf: For more information, please read the tail end of %s/%s", radlog_dir, RADIUS_LOG);
+			radlog(L_ERR|L_CONS, "Errors reading %s/radiusd.conf: For more information, please read the tail end of %s", radlog_dir, mainconfig.log_file);
 		}
 		return -1;
 	}

@@ -132,6 +132,7 @@ typedef struct main_config_t {
 	char	*do_nospace_user;
 	char	*do_nospace_pass;
 	char		*nospace_time;
+	char		*log_file;
 } MAIN_CONFIG_T;
 
 #define DEBUG	if(debug_flag)log_debug
