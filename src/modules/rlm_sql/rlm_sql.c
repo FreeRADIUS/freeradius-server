@@ -397,7 +397,7 @@ rlm_sql_accounting(void *instance, REQUEST * request)
 			case PW_NAS_PORT_TYPE:
 				dval = dict_valbyattr(PW_NAS_PORT_TYPE, pair->lvalue);
 				if (dval != NULL) {
-					strncpy(sqlrecord->NASPortType, dval->attrname, SQLBIGREC);
+					strncpy(sqlrecord->NASPortType, dval->name, SQLBIGREC);
 				}
 				break;
 
@@ -405,7 +405,7 @@ rlm_sql_accounting(void *instance, REQUEST * request)
 				sqlrecord->AcctStatusTypeId = pair->lvalue;
 				dval = dict_valbyattr(PW_ACCT_STATUS_TYPE, pair->lvalue);
 				if (dval != NULL) {
-					strncpy(sqlrecord->AcctStatusType, dval->attrname, SQLBIGREC);
+					strncpy(sqlrecord->AcctStatusType, dval->name, SQLBIGREC);
 				}
 				break;
 
@@ -416,7 +416,7 @@ rlm_sql_accounting(void *instance, REQUEST * request)
 			case PW_ACCT_AUTHENTIC:
 				dval = dict_valbyattr(PW_ACCT_AUTHENTIC, pair->lvalue);
 				if (dval != NULL) {
-					strncpy(sqlrecord->AcctAuthentic, dval->attrname, SQLBIGREC);
+					strncpy(sqlrecord->AcctAuthentic, dval->name, SQLBIGREC);
 				}
 				break;
 
@@ -449,21 +449,21 @@ rlm_sql_accounting(void *instance, REQUEST * request)
 			case PW_ACCT_TERMINATE_CAUSE:
 				dval = dict_valbyattr(PW_ACCT_TERMINATE_CAUSE, pair->lvalue);
 				if(dval != NULL) {
-					strncpy(sqlrecord->AcctTerminateCause, dval->attrname, SQLBIGREC);
+					strncpy(sqlrecord->AcctTerminateCause, dval->name, SQLBIGREC);
 				}
 				break;
 
 			case PW_SERVICE_TYPE:
 				dval = dict_valbyattr(PW_SERVICE_TYPE, pair->lvalue);
 				if (dval != NULL) {
-					strncpy(sqlrecord->ServiceType, dval->attrname, SQLBIGREC);
+					strncpy(sqlrecord->ServiceType, dval->name, SQLBIGREC);
 				}
 				break;
 
 			case PW_FRAMED_PROTOCOL:
 				dval = dict_valbyattr(PW_FRAMED_PROTOCOL, pair->lvalue);
 				if (dval != NULL) {
-					strncpy(sqlrecord->FramedProtocol, dval->attrname, SQLBIGREC);
+					strncpy(sqlrecord->FramedProtocol, dval->name, SQLBIGREC);
 				}
 				break;
 
@@ -483,8 +483,9 @@ rlm_sql_accounting(void *instance, REQUEST * request)
 			 */
       case 167971:
 				dval = dict_valbyattr(167971, pair->lvalue);
-				if(dval != NULL) 
-					strncpy(sqlrecord->ConnectInfo, dval->attrname, SQLBIGREC);
+				if(dval != NULL)  {
+					strncpy(sqlrecord->ConnectInfo, dval->name, SQLBIGREC);
+				}
 				break;
 
 			/* Appears to be LE-Terminate-Detail */
