@@ -64,11 +64,11 @@ uint32_t ip_getaddr(const char *host)
 	struct hostent	*hp;
 	uint32_t	 a;
 
-	if ((a = ip_addr(host)) != INADDR_NONE)
+	if ((a = ip_addr(host)) != htonl(INADDR_NONE))
 		return a;
 
 	if ((hp = gethostbyname(host)) == NULL)
-		return (uint32_t) INADDR_NONE;
+		return htonl((uint32_t) INADDR_NONE);
 
 	/*
 	 *	Paranoia from a Bind vulnerability.  An attacker
@@ -76,7 +76,7 @@ uint32_t ip_getaddr(const char *host)
 	 *	address.  If the length isn't 4, something's wrong.
 	 */
 	if (hp->h_length != sizeof(uint32_t)) {
-		return (uint32_t) INADDR_NONE;
+		return htonl((uint32_t) INADDR_NONE);
 	}
 
 	memcpy(&a, hp->h_addr, sizeof(uint32_t));
