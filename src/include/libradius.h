@@ -219,7 +219,7 @@ char *		ip_ntoa(char *, uint32_t);
 uint32_t	ip_addr(const char *);
 char		*strNcpy(char *dest, const char *src, int n);
 void		rad_lowercase(char *str);
-void		rad_nospace(char *str);
+void		rad_rmspace(char *str);
 
 #ifdef ASCEND_BINARY
 /* filters.c */

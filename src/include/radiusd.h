@@ -110,8 +110,10 @@ typedef struct main_config_t {
 	int		do_usercollide;
 	int		do_lower_user;
 	int		do_lower_pass;
+	char	*lower_time;
 	int		do_nospace_user;
 	int		do_nospace_pass;
+	char	*nospace_time;
 } MAIN_CONFIG_T;
 
 #define DEBUG	if(debug_flag)log_debug
@@ -131,6 +133,9 @@ typedef struct main_config_t {
 #define L_ERR			4
 #define L_PROXY			5
 #define L_CONS			128
+
+#define PW_ENCODED	0
+#define PW_DECODED	1
 
 #ifndef FALSE
 #define FALSE 0
@@ -249,6 +254,11 @@ int proxy_send(REQUEST *request);
 /* auth.c */
 char		*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
 int		rad_authenticate (REQUEST *);
+VALUE_PAIR *rad_getpass(REQUEST *request);
+int rad_loweruser(REQUEST *request);
+int rad_lowerpass(REQUEST *request);
+int rad_rmspace_user(REQUEST *request);
+int rad_rmspace_pass(REQUEST *request);
 
 /* exec.c */
 char		*radius_xlate(char *output, size_t outputlen,

@@ -315,7 +315,7 @@ int rad_authenticate(REQUEST *request)
 	 *
 	 *	This should ONLY be happening for proxy replies.
 	 */
-	if (request->config_items) {
+	if ((request->proxy_reply) && (request->config_items)) {
 	  pairfree(request->config_items);
 	  request->config_items = NULL;
 	}
@@ -374,71 +374,30 @@ int rad_authenticate(REQUEST *request)
 	 */
 	namepair = request->username;
 
-	/* 
-	 * Lowercase the username if we are configured
-	 * to do so
-	 */
-	if(mainconfig.do_lower_user) {
-		rad_lowercase(request->username->strvalue);
-		DEBUG2("rad_lowercase:  Username now '%s'", 
-			request->username->strvalue);
-	}
-
-	if(mainconfig.do_nospace_user) {
-		rad_nospace(request->username->strvalue);
-		DEBUG2("rad_nospace:  Username now '%s'", 
-			request->username->strvalue);
-	}
-
 	/*
 	 *	Discover which password we want to use.
 	 */
-	auth_item = pairfind(request->packet->vps, PW_PASSWORD);
-	if (auth_item != NULL) {	
-		/* If we proxied this, we already did pwdecode */
-		if (request->proxy == NULL) {
-			/* Decrypt the password, and remove trailing NULL's. */
-			rad_pwdecode((char *)auth_item->strvalue,
-				     auth_item->length, request->secret,
-				     (char *)request->packet->vector);
-		}
-
-		/* ignore more than one trailing '\0' */
-		auth_item->length = strlen(auth_item->strvalue);
+	if((auth_item = rad_getpass(request)) != NULL) {
 		password = (char *)auth_item->strvalue;
-		
-		/*
-		 *	Maybe there's a CHAP-Password?
-		 */
-	} else if ((auth_item = pairfind(request->packet->vps,
-					 PW_CHAP_PASSWORD)) != NULL) {
-		password = "<CHAP-PASSWORD>";
+	}
+
+	/*
+	 *	Maybe there's a CHAP-Password?
+	 */
+	if (auth_item==NULL) {
+		if((auth_item = pairfind(request->packet->vps, 
+				PW_CHAP_PASSWORD)) != NULL) {
+			password = "<CHAP-PASSWORD>";
 		
 		/*
 		 *	No password we recognize.
 		 */
-	} else {
-		password = "<NO-PASSWORD>";
+		} else {
+			password = "<NO-PASSWORD>";
+		}
 	}
-	
-	/*
-	 *	Update the password with OUR preference for the
-	 *	password.
-	 */
 	request->password = auth_item;
-
-	if(mainconfig.do_lower_pass) {
-		rad_lowercase(request->password->strvalue);
-		DEBUG2("rad_lowercase:  Password now '%s'", 
-			request->password->strvalue);
-	}
-
-	if(mainconfig.do_nospace_pass) {
-		rad_nospace(request->password->strvalue);
-		DEBUG2("rad_nospace:  Password now '%s'", 
-			request->password->strvalue);
-	}
-
+	
 	/*
 	 *	Get the user's authorization information from the database
 	 */
@@ -797,3 +756,126 @@ int rad_authenticate(REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
+/*
+ * Find the password pair, decode pass if
+ * needed, and return the value pair.  If
+ * not found, return NULL
+ */
+VALUE_PAIR *rad_getpass(REQUEST *request) {
+	VALUE_PAIR *auth_item;
+
+	auth_item = pairfind(request->packet->vps, PW_PASSWORD);
+	if(auth_item == NULL) {
+		return NULL;
+	}
+
+	/*
+	 * If we proxied already, it's been decoded
+	 * Or if the decoded flag is set...just return
+	 */
+	if ((request->proxy != NULL) || 
+			(auth_item->lvalue == PW_DECODED)) {
+		return auth_item;
+	}
+
+	/* 
+	 * If we get here, we have to decode pass
+	 */
+	rad_pwdecode((char *)auth_item->strvalue,
+								auth_item->length, request->secret,
+								(char *)request->packet->vector);
+
+	/* 
+	 * Set lvalue to PW_DECODED so we know not to
+	 * decode next time we get here
+	 */
+	auth_item->lvalue = PW_DECODED;
+
+	/* ignore more than one trailing '\0' */
+	auth_item->length = strlen(auth_item->strvalue);
+
+	return auth_item;
+}
+
+/* 
+ * FIXME:  The next four functions should all
+ * be in a module.  But not until we have
+ * more control over module execution.
+ * -jcarneal
+ */
+
+/*
+ * Lowercase the username of a request
+ * return 0 on success
+ */
+int rad_loweruser(REQUEST *request) {
+	VALUE_PAIR *user;
+
+	user = pairfind(request->packet->vps, PW_USER_NAME);
+
+	if(user == NULL) {
+		return -1;
+	}
+
+	rad_lowercase(user->strvalue);
+	DEBUG2("rad_loweruser:  Username now '%s'", user->strvalue);
+	return 0;
+}
+
+/*
+ * Lowercase the password of a request
+ * return 0 on success
+ */
+int rad_lowerpass(REQUEST *request) {
+	VALUE_PAIR *pass;
+
+	pass = rad_getpass(request);
+
+	if(pass == NULL) {
+		return -1;
+	}
+
+	rad_lowercase(pass->strvalue);
+	DEBUG2("rad_lowerpass:  Password now '%s'", pass->strvalue);
+	return 0;
+}
+
+
+/*
+ * Remove spaces in user
+ * return 0 on success
+ */
+int rad_rmspace_user(REQUEST *request) {
+	VALUE_PAIR *user;
+
+	user = pairfind(request->packet->vps, PW_USER_NAME);
+
+	if(user == NULL) {
+		return -1;
+	}
+
+	rad_rmspace(user->strvalue);
+	user->length = strlen(user->strvalue);
+	DEBUG2("rad_rmspace_user:  Username now '%s'", user->strvalue);
+	
+	return 0;
+}
+
+/*
+ * Remove spaces in user
+ * return 0 on success
+ */
+int rad_rmspace_pass(REQUEST *request) {
+	VALUE_PAIR *pass;
+
+	pass = rad_getpass(request);
+
+	if(pass == NULL) {
+		return -1;
+	}
+
+	rad_rmspace(pass->strvalue);
+	pass->length = strlen(pass->strvalue);
+	DEBUG2("rad_rmspace_pass:  Password now '%s'", pass->strvalue);
+	return 0;
+}

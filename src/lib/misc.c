@@ -140,7 +140,7 @@ void rad_lowercase(char *str) {
 /*
  * Remove spaces from a string
  */
-void rad_nospace(char *str) {
+void rad_rmspace(char *str) {
 	char *s = str;	
 	char *ptr = str;
 

@@ -186,6 +186,16 @@ usercollide = no
 lower_user = no
 lower_pass = no
 
+# 
+# If you have configured above to lowercase the username and
+# password, you can decide here *when* to do that.  You can
+# lowercase them "before" any processing occurs, or you can
+# lowercase "after" authentication processing once and the
+# server will retry with the new lowercased values.
+#
+# Valid values:  "before" / "after"
+lower_time = before
+
 # nospace_user / nospace_pass:
 # Some users like to enter spaces in their username or
 # password incorrectly.  To save yourself the tech support
@@ -193,6 +203,13 @@ lower_pass = no
 # Default is 'no' (don't remove spaces)
 nospace_user = no
 nospace_pass = no
+
+#
+# See above for lower_time explanation.  Works the same way
+# except does nospace processing.
+#
+# Valid values:  "before" / "after"
+nospace_time = before
 
 
 #######################################################################

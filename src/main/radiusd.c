@@ -188,8 +188,10 @@ static CONF_PARSER server_config[] = {
   { "usercollide",  			PW_TYPE_BOOLEAN,    &mainconfig.do_usercollide,		"no" },
   { "lower_user",  			PW_TYPE_BOOLEAN,    &mainconfig.do_lower_user,		"no" },
   { "lower_pass",  			PW_TYPE_BOOLEAN,    &mainconfig.do_lower_pass,		"no" },
+  { "lower_time",  			PW_TYPE_STRING_PTR,    &mainconfig.lower_time,		"before" },
   { "nospace_user", 			PW_TYPE_BOOLEAN,    &mainconfig.do_nospace_user,	"no" },
   { "nospace_pass", 			PW_TYPE_BOOLEAN,    &mainconfig.do_nospace_pass,	"no" },
+  { "nospace_time",  			PW_TYPE_STRING_PTR,    &mainconfig.nospace_time,		"before" },
   { NULL, -1, NULL, NULL }
 };
 
@@ -1291,6 +1293,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	const char	*secret;
 	int		finished = FALSE;
 	int		proxy_sent = 0;
+	int		reprocess = 0;
 	
 	/*
 	 *	Put the decoded packet into it's proper place.
@@ -1346,7 +1349,46 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	Let's process the request.
 	 */
 	assert(request->magic == REQUEST_MAGIC);
+
+	/* 
+	 * FIXME:  All this lowercase/nospace junk will be moved
+	 * into a module after module failover is fully in place
+	 */
+	/* See if we have to lower user/pass before processing */
+	if(strcmp(mainconfig.lower_time, "before") == 0) {
+		if(mainconfig.do_lower_user)
+			rad_loweruser(request);
+		if(mainconfig.do_lower_pass)
+			rad_lowerpass(request);
+	}
+	if(strcmp(mainconfig.nospace_time, "before") == 0) {
+		if(mainconfig.do_nospace_user)
+			rad_rmspace_user(request);
+		if(mainconfig.do_nospace_pass)
+			rad_rmspace_pass(request);
+	}
 	(*fun)(request);
+
+	/* See if we have to lower user/pass after processing */
+	if(strcmp(mainconfig.lower_time, "after") == 0) {
+		if(mainconfig.do_lower_user)
+			rad_loweruser(request);
+		if(mainconfig.do_lower_pass)
+			rad_lowerpass(request);
+		reprocess = 1;
+	}
+	if(strcmp(mainconfig.nospace_time, "after") == 0) {
+		if(mainconfig.do_nospace_user)
+			rad_rmspace_user(request);
+		if(mainconfig.do_nospace_pass)
+			rad_rmspace_pass(request);
+		reprocess = 1;
+	}
+	/* Reprocess if we rejected last time */
+	if((fun == rad_authenticate) &&
+			(request->reply->code == PW_AUTHENTICATION_REJECT) &&
+			(reprocess)) 
+		(*fun)(request);
 	
 	/*
 	 *	If we don't already have a proxy
