@@ -1,4 +1,4 @@
-#
+# -*- makefile -*-
 # Make.inc.in
 #
 # Version:	$Id$
@@ -18,7 +18,7 @@ dictdir		= $(datadir)/freeradius
 logdir		= @logdir@
 raddbdir	= @raddbdir@
 radacctdir	= @radacctdir@
-top_builddir	= @top_builddir@
+top_builddir	= @abs_top_builddir@
 top_srcdir	= @top_srcdir@
 
 MAKE		= @MAKE@
@@ -59,6 +59,9 @@ STATIC_MODULES	= @STATIC_MODULES@
 SNMP_INCLUDE	= @SNMP_INCLUDE@
 SNMP_LIBS	= @SNMP_LIBS@
 
+OPENSSL_LIBS	= @OPENSSL_LIBS@
+OPENSSL_INCLUDE = @OPENSSL_INCLUDE@
+
 #
 #  SQL driver defines
 #
@@ -70,3 +73,4 @@ RADIUSD_MINOR_VERSION	= @RADIUSD_MINOR_VERSION@
 RADIUSD_VERSION		= @RADIUSD_VERSION@
 
 MODULES			= @MODULES@
+HOSTINFO		= @HOSTINFO@

@@ -10,7 +10,10 @@ SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
 		  radius_snmp.o client.o request_list.o mainconfig.o
 INCLUDES	= ../include/radiusd.h ../include/radius.h ../include/libradius.h ../include/conf.h ../include/autoconf.h
 
-CFLAGS		+= -I../include $(SNMP_INCLUDE) 
+CFLAGS		+= -I../include 
+CFLAGS		+= -DHOSTINFO=\"${HOSTINFO}\"
+CFLAGS          += -DRADIUSD_VERSION=\"${RADIUSD_VERSION}\"
+CFLAGS          += $(SNMP_INCLUDE) 
 LDFLAGS		+= -L../lib
 MODULE_LIBS	= $(STATIC_MODULES)
 MODULE_OBJS	=
@@ -27,7 +30,7 @@ ifneq ($(USE_SHARED_LIBS),yes)
 #  For static linking...
 #
 MODULES += rlm_eap_md5  rlm_eap_leap rlm_eap_tls rlm_eap_ttls rlm_eap_sim
-LIBS += $(OPENSSL_LIB) -lcrypto -lssl -lcrypto -lssl -L../modules/rlm_eap/libeap -leap
+LIBS += -L$(OPENSSL_LIBS) -L../modules/rlm_eap/libeap -leap -lcrypto -lssl -lcrypto -lssl 
 #
 MODULE_LIBS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo -dlpreopen ../modules/$$x/$$x.la;done)
 MODULE_LIBS	+= $(shell for x in $(MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo -dlpreopen ../modules/*/types/$$x/$$x.la;done)
@@ -43,8 +46,8 @@ all:	$(BINARIES)
 radiusd: $(SERVER_OBJS) ../lib/libradius.a $(MODULE_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
 		$(CFLAGS) $(LDFLAGS) -o $@ \
-		$(SERVER_OBJS) $(LCRYPT) $(LIBS) \
-		$(PTHREADLIB) $(LIBLTDL) $(MODULE_LIBS) 
+		$(SERVER_OBJS) $(LCRYPT) $(MODULE_LIBS) $(LIBS) \
+		$(PTHREADLIB) $(LIBLTDL) 
 
 radiusd.o: radiusd.c $(INCLUDES)  ../include/request_list.h ../include/modules.h ../include/modcall.h ../include/modpriv.h
 	$(CC) $(CFLAGS) -c radiusd.c
