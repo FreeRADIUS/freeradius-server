@@ -56,6 +56,8 @@ Ver 1.59:
 * Change use of AcctStartTime with AcctStopTime in failed_logins.php3 to match that in user_admin
 * Fix a bug with failed logins in user_admin.
 * Add the failed logins page in the buttons page
+* Add a missing WHERE UserName = '$login' in the UPDATE statement in lib/sql/change_info.php3. Patch by
+  Eddie Bindt <eddieb@users.sourceforge.net>
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files

@@ -27,7 +27,7 @@ if ($link){
 				$res = @da_sql_query($link,$config,
 				"UPDATE $config[sql_user_info_table] SET Name = '$Fcn',Mail = '$Fmail',
 				Department = '$Fou', HomePhone = '$Fhomephone', WorkPhone = '$Ftelephonenumber',
-				Mobile = '$Fmobile';");
+				Mobile = '$Fmobile' WHERE UserName = '$login';");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config)){
 					echo "<b>Could not update user information in user info table: " . da_sql_error($link,$config) . "</b><br>\n";
 					$fail = 1;
