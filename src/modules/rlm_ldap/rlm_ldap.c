@@ -494,7 +494,7 @@ read_mappings(ldap_instance* inst)
 		}
 
 		if (token_count == 3) {
-			operator = T_INVALID; /* use defaults */
+			operator = T_OP_INVALID; /* use defaults */
 		} else {
 			char *ptr;
 			
@@ -1847,7 +1847,7 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 							token = T_OP_EQ;
 						}
 
-						if (element->operator != T_INVALID) {
+						if (element->operator != T_OP_INVALID) {
 							token = element->operator;
 						}
 					} else {
