@@ -90,7 +90,16 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	        msgfd = stderr;
 
 	} else if (radlog_dest != RADLOG_SYSLOG) {
-		if ((msgfd = fopen(mainconfig.log_file, "a")) == NULL) {
+		/*
+		 *	No log file set.  It must go to stdout.
+		 */
+		if (!mainconfig.log_file) {
+			msgfd = stdout;
+
+			/*
+			 *	Else try to open the file.
+			 */
+		} else if ((msgfd = fopen(mainconfig.log_file, "a")) == NULL) {
 		         fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
 				 progname, mainconfig.log_file, strerror(errno));
 				
@@ -99,7 +108,6 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 			 fprintf(stderr, ")\n");
 			 return -1;
 		}
-	
 	}
 
 #if HAVE_SYSLOG_H
