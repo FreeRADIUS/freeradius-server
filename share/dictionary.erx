@@ -8,6 +8,7 @@
 # Version:	$Id$
 #
 # Juniper ERX dictionaries are available at:
+#	http://www.juniper.net/techpubs/software/erx/junose52/unisphere5-2.dct
 #	http://www.juniper.net/techpubs/software/erx/erx50x/swconfig-broadband/html/radius-attributes.html
 # (The below are from when it was the Unisphere ERX)
 #	http://www.juniper.net/techpubs/software/erx/erx410/unisphere4-1.dct
@@ -71,6 +72,13 @@ ATTRIBUTE	ERX-Bearer-Type				41	integer	ERX
 ATTRIBUTE	ERX-Input-Gigapkts			42	integer	ERX
 ATTRIBUTE	ERX-Output-Gigapkts			43	integer	ERX
 ATTRIBUTE	ERX-Tunnel-Interface-Id			44	string	ERX
+ATTRIBUTE	ERX-IpV6-Virtual-Router			45	string	ERX
+ATTRIBUTE	ERX-IpV6-Local-Interface		46	string	ERX
+ATTRIBUTE	ERX-Ipv6-Primary-Dns			47	string	ERX
+ATTRIBUTE	ERX-Ipv6-Secondary-Dns			48	string	ERX
+ATTRIBUTE	Sdx-Service-Name			49	string	ERX
+ATTRIBUTE	Sdx-Session-Volume-Quota		50	string	ERX
+ATTRIBUTE	Sdx-Tunnel-Disconnect-Cause-Info	51	string	ERX
 
 #
 #  Values	Attribute		Name			Number
