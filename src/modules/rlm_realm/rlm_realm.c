@@ -18,7 +18,7 @@ static const char rcsid[] = "$Id$";
  */
 static REALM *realm_proxy(REQUEST *request)
 {
-	const char *name = request->username->strvalue;
+	const char *name;
 	char *realmname;
 	VALUE_PAIR *vp;
 	REALM *realm;
@@ -34,10 +34,11 @@ static REALM *realm_proxy(REQUEST *request)
 	 *	proxy it, either.
 	 */
 	if ((request->proxy != NULL) ||
-	    (name == NULL)) {
+	    (request->username == NULL)) {
 		return NULL;
 	}
 
+	name = request->username->strvalue;
 	realmname = strrchr(name, '@');
 	if (realmname != NULL)
 	  realmname++;
