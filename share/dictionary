@@ -38,30 +38,35 @@
 #
 $INCLUDE dictionary.compat	# compability issues
 $INCLUDE dictionary.acc
+$INCLUDE dictionary.alcatel
+$INCLUDE dictionary.alteon
 $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
+$INCLUDE dictionary.bintec
+$INCLUDE dictionary.cabletron
 $INCLUDE dictionary.cisco
 $INCLUDE dictionary.cisco.vpn3000
 $INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.colubris
+$INCLUDE dictionary.erx
+$INCLUDE dictionary.freeradius
+$INCLUDE dictionary.itk
+$INCLUDE dictionary.juniper
 $INCLUDE dictionary.livingston
 $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.nomadix
 $INCLUDE dictionary.quintum
 $INCLUDE dictionary.redback
+$INCLUDE dictionary.redcreek
 $INCLUDE dictionary.shasta
 $INCLUDE dictionary.shiva
+$INCLUDE dictionary.springtide
+$INCLUDE dictionary.telebit
 $INCLUDE dictionary.tunnel
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.versanet
-$INCLUDE dictionary.erx
-$INCLUDE dictionary.freeradius
-$INCLUDE dictionary.alcatel
-$INCLUDE dictionary.juniper
-$INCLUDE dictionary.alteon
 $INCLUDE dictionary.xedia
-$INCLUDE dictionary.springtide
 
 #
 #	Following are the proper new names. Use these.
