@@ -70,6 +70,7 @@ $INCLUDE dictionary.cisco
 $INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.colubris
+$INCLUDE dictionary.epygi
 $INCLUDE dictionary.erx
 $INCLUDE dictionary.extreme
 $INCLUDE dictionary.freeradius

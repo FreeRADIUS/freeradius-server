@@ -1,0 +1,116 @@
+#
+# dictionary.Epygi
+#
+
+VENDOR		Epygi		16459
+
+#
+#	Standard attribute
+#
+ATTRIBUTE	Epygi-AVPair		1	string		Epygi
+ATTRIBUTE	Epygi-NAS-Port		2	string		Epygi
+
+
+#
+#  Voice over IP attributes.
+#
+ATTRIBUTE	Epygi-h323-remote-address		23	string		Epygi
+ATTRIBUTE	Epygi-h323-conf-id			24	string		Epygi
+ATTRIBUTE	Epygi-h323-setup-time			25	string		Epygi
+ATTRIBUTE	Epygi-h323-call-origin			26	string		Epygi
+ATTRIBUTE	Epygi-h323-call-type			27	string		Epygi
+ATTRIBUTE	Epygi-h323-connect-time			28	string		Epygi
+ATTRIBUTE	Epygi-h323-disconnect-time		29	string		Epygi
+ATTRIBUTE	Epygi-h323-disconnect-cause		30	string		Epygi
+ATTRIBUTE	Epygi-h323-voice-quality		31	string		Epygi
+ATTRIBUTE	Epygi-h323-gw-id			33	string		Epygi
+ATTRIBUTE	Epygi-h323-incoming-conf-id		35	string		Epygi
+
+ATTRIBUTE	Epygi-h323-credit-amount		101	string		Epygi
+ATTRIBUTE	Epygi-h323-credit-time			102	string		Epygi
+ATTRIBUTE	Epygi-h323-return-code			103	string		Epygi
+ATTRIBUTE	Epygi-h323-prompt-id			104	string		Epygi
+ATTRIBUTE	Epygi-h323-time-and-day			105	string		Epygi
+ATTRIBUTE	Epygi-h323-redirect-number		106	string		Epygi
+ATTRIBUTE	Epygi-h323-preferred-lang		107	string		Epygi
+ATTRIBUTE	Epygi-h323-redirect-ip-address		108	string		Epygi
+ATTRIBUTE	Epygi-h323-billing-model		109	string		Epygi
+ATTRIBUTE	Epygi-h323-currency			110	string		Epygi
+
+
+ATTRIBUTE	Epygi-RegExpDate			150	string		Epygi
+ATTRIBUTE	Epygi-FiadID				151	string		Epygi
+ATTRIBUTE	Epygi-PortID				152	string		Epygi
+ATTRIBUTE	Epygi-AccessType			153	string		Epygi
+ATTRIBUTE	Epygi-CallInfo				154	string		Epygi
+
+ATTRIBUTE	Epygi-OrigCallID			170	string		Epygi
+ATTRIBUTE	Epygi-ParentCallID			171	string		Epygi
+ATTRIBUTE	Epygi-CallType				172	integer		Epygi 
+ATTRIBUTE	Epygi-DeviceName			173	string		Epygi
+ATTRIBUTE	Epygi-InterfaceName			174	integer		Epygi
+ATTRIBUTE	Epygi-InterfaceNumber			175	integer		Epygi
+ATTRIBUTE	Epygi-TimeslotNumber			176	integer		Epygi
+ATTRIBUTE	Epygi-OrigIpAddr			177	integer		Epygi
+ATTRIBUTE	Epygi-DestIpAddr			178	integer		Epygi
+ATTRIBUTE	Epygi-OrigIpPort			179	integer		Epygi
+ATTRIBUTE	Epygi-DestIpPort			180	integer		Epygi
+ATTRIBUTE	Epygi-CallingPartyNumber		181	string		Epygi
+ATTRIBUTE	Epygi-CalledPartyNumber			182	string		Epygi
+ATTRIBUTE	Epygi-DateTimeOrigination		183	integer		Epygi
+ATTRIBUTE	Epygi-DateTimeConnect			184	integer		Epygi
+ATTRIBUTE	Epygi-DateTimeDisconnect		185	integer		Epygi
+ATTRIBUTE	Epygi-Duration				186	integer		Epygi
+ATTRIBUTE	Epygi-OutSourceRTP_IP			187	integer		Epygi
+ATTRIBUTE	Epygi-OutDestRTP_IP			188	integer		Epygi
+ATTRIBUTE	Epygi-InSourceRTP_IP			189	integer		Epygi
+ATTRIBUTE	Epygi-InDestRTP_IP			190	integer		Epygi
+ATTRIBUTE	Epygi-OutSourceRTP_port			191	integer		Epygi
+ATTRIBUTE	Epygi-OutDestRTP_port			192	integer		Epygi
+ATTRIBUTE	Epygi-InSourceRTP_port			193	integer		Epygi
+ATTRIBUTE	Epygi-InDestRTP_port			194	integer		Epygi
+ATTRIBUTE	Epygi-CallRedirectReason		195	integer		Epygi
+ATTRIBUTE	Epygi-CallDisconnectReason		196	integer		Epygi
+ATTRIBUTE	Epygi-OutRTP_Payload			197	integer		Epygi
+ATTRIBUTE	Epygi-OutRTP_PacketSize			198	integer		Epygi
+ATTRIBUTE	Epygi-OutRTP_Packets			199	integer		Epygi
+ATTRIBUTE	Epygi-OutRTP_Octets			200	integer		Epygi
+ATTRIBUTE	Epygi-InRTP_Payload			201	integer		Epygi
+ATTRIBUTE	Epygi-InRTP_PacketSize			202	integer		Epygi
+ATTRIBUTE	Epygi-InRTP_Packets			203	integer		Epygi
+ATTRIBUTE	Epygi-InRTP_Octets			204	integer		Epygi
+ATTRIBUTE	Epygi-InRTP_PacketsLost			205	integer		Epygi
+ATTRIBUTE	Epygi-InRTP_PacketsDupl			206	integer		Epygi
+ATTRIBUTE	Epygi-InRTP_Jitter			207	integer		Epygi
+ATTRIBUTE	Epygi-InRTP_Latency			208	integer		Epygi
+
+VALUE		Epygi-CallType				Internal		0
+VALUE		Epygi-CallType				SIP			1
+VALUE		Epygi-CallType				H.323			2
+VALUE		Epygi-CallType				FXO			3
+VALUE		Epygi-CallType				T1-E1-CAS		4
+VALUE		Epygi-CallType				T1-E1-CCS		5
+VALUE		Epygi-CallType				ISDN-PRI		6
+
+VALUE		Epygi-InterfaceName			Ethernet		0
+VALUE		Epygi-InterfaceName			FXO			1
+VALUE		Epygi-InterfaceName			T1-E1-User		2
+VALUE		Epygi-InterfaceName			T1-E1-Network		3
+VALUE		Epygi-InterfaceName			ISDN			4
+
+VALUE		Epygi-CallRedirectReason		No-Reason		0
+VALUE		Epygi-CallRedirectReason		Call-Forward-Uncondit	1
+VALUE		Epygi-CallRedirectReason		Call-Forward-Busy	2
+VALUE		Epygi-CallRedirectReason		Call-Forward-NoAnswer	3
+VALUE		Epygi-CallRedirectReason		Call-Tranfer		4
+VALUE		Epygi-CallRedirectReason		Call-Park		5
+VALUE		Epygi-CallRedirectReason		Call-Pickup		6
+VALUE		Epygi-CallRedirectReason		ManyExtension-Ringing	7
+VALUE		Epygi-CallRedirectReason		Hunt-Group		8
+
+
+VALUE		Epygi-CallDisconnectReason		Call-Is-Redirected	0
+VALUE		Epygi-CallDisconnectReason		Call-Origin-OnHook	1
+VALUE		Epygi-CallDisconnectReason		Call-Temin-OnHook	2
+VALUE		Epygi-CallDisconnectReason		Disconected-by-CAC	3
+VALUE		Epygi-CallDisconnectReason		Other			4
