@@ -209,6 +209,9 @@ static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAI
 		return 1;
 	}
 
+	if (!req->username) {
+		return -1;
+	}
 	username = (char *)req->username->strvalue;
 
 	if (group_inst->cache_passwd &&
