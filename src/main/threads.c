@@ -21,7 +21,6 @@
  * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
-#include "autoconf.h"
 #include "libradius.h"
 
 #if HAVE_PTHREAD_H
@@ -30,6 +29,10 @@
 #include <string.h>
 #include <semaphore.h>
 #include <signal.h>
+
+#if HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
 
 #include "radiusd.h"
 #include "rad_assert.h"
@@ -740,14 +743,17 @@ pid_t rad_fork(int exec_wait)
 {
 	int i;
 	int found;
-	sigset_t sigset;
+	sigset_t set;
 
 	/*
 	 *	The thread is NOT interested in waiting for the exit
 	 *	status of the child process, so we don't bother
 	 *	updating our kludgy array.
+	 *
+	 *	Or, there no NO threads, so we can just do the fork
+	 *	thing.
 	 */
-	if (!exec_wait) {
+	if (!exec_wait || !pool_initialized) {
 		return fork();
 	}
 
@@ -792,9 +798,9 @@ pid_t rad_fork(int exec_wait)
 	 *	Note that we block SIGCHLD for ALL threads associated
 	 *	with this process!  This is to prevent race conditions!
 	 */
-	sigemptyset(&sigset);
-	sigaddset(&sigset, SIGCHLD);
-	sigprocmask(SIG_BLOCK, &sigset, NULL);
+	sigemptyset(&set);
+	sigaddset(&set, SIGCHLD);
+	sigprocmask(SIG_BLOCK, &set, NULL);
 
 	/*
 	 *	Do the fork.
@@ -820,7 +826,7 @@ pid_t rad_fork(int exec_wait)
 	 *	Unblock SIGCHLD, now that there's no chance of bad entries
 	 *	in the array.
 	 */
-	sigprocmask(SIG_UNBLOCK, &sigset, NULL);
+	sigprocmask(SIG_UNBLOCK, &set, NULL);
 
 	/*
 	 *	Return whatever we were told.
@@ -837,6 +843,13 @@ pid_t rad_waitpid(pid_t pid, int *status, int options)
 	int i, rcode;
 	int found;
 	pthread_t self = pthread_self();
+
+	/*
+	 *	No threads, nothing magic to do.
+	 */
+	if (!pool_initialized) {
+		return waitpid(pid, status, options);
+	}
 
 	/*
 	 *	We're only allowed to wait for a SPECIFIC pid.
@@ -907,6 +920,13 @@ pid_t rad_waitpid(pid_t pid, int *status, int options)
 int rad_savepid(pid_t pid, int status)
 {
 	int i;
+
+	/*
+	 *	No threads, nothing magic to do.
+	 */
+	if (!pool_initialized) {
+		return 0;
+	}
 
 	/*
 	 *	Do NOT lock the array, as nothing else sets the
