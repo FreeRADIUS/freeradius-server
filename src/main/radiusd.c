@@ -1438,7 +1438,6 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	RADIUS_PACKET *packet, *original;
 	const char *secret;
 	int finished = FALSE;
-	int proxy_sent = 0;
 	int reprocess = 0;
 	
 	/*
@@ -1558,6 +1557,8 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	if (proxy_requests) {
 		if (request->proxy == NULL) {
+			int proxy_sent = 0;
+
 			/*
 			 *  Try to proxy this request.  Returns:
 			 *  -1: error, drop the request
@@ -1659,33 +1660,27 @@ finished_request:
 	 *
 	 *  Hmm... cleaning them up in the child thread also seems
 	 *  to make the server run more efficiently!
-	 */
-
-	/*
-	 *  If we proxied this request, it's not safe to delete it until
-	 *  after the proxy reply.
 	 *
-	 *  However, we DO mark the request as no longer being handled
-	 *  by a thread.
+	 *  If we've delayed the REJECT, then do NOT clean up the request,
+	 *  as we haven't created the REJECT message yet.
 	 */
-	if (proxy_sent) {
-		goto postpone_request;
+	if ((request->options & RAD_REQUEST_OPTION_DELAYED_REJECT) == 0) {
+		if (request->packet) {
+			pairfree(&request->packet->vps);
+			request->username = NULL;
+			request->password = NULL;
+		}
+
+		/*
+		 *  If we've sent a reply to the NAS, then this request is
+		 *  pretty much finished, and we have no more need for any
+		 *  of the value-pair's in it, including the proxy stuff.
+		 */
+		if (request->reply->code != 0) {
+			pairfree(&request->reply->vps);
+		}
 	}
 
-	if (request->packet) {
-		pairfree(&request->packet->vps);
-		request->username = NULL;
-		request->password = NULL;
-	}
-
-	/*
-	 *  If we've sent a reply to the NAS, then this request is
-	 *  pretty much finished, and we have no more need for any
-	 *  of the value-pair's in it, including the proxy stuff.
-	 */
-	if (request->reply->code != 0) {
-		pairfree(&request->reply->vps);
-	}
 	pairfree(&request->config_items);
 	if (request->proxy) {
 		pairfree(&request->proxy->vps);
@@ -2385,11 +2380,9 @@ static int refresh_request(REQUEST *request, void *data)
 	}
 
 	/*
-	 *  If the request has finished processing,
-	 *  AND it's child has been cleaned up,
-	 *  AND it's time to clean up the request,
-	 *      OR, it's an accounting request.
-	 *  THEN, go delete it.
+	 *  If the request has finished processing, AND it's child has
+	 *  been cleaned up, AND it's time to clean up the request,
+	 *  OR, it's an accounting request.  THEN, go delete it.
 	 *
 	 *  If this is an accounting request, we delete it
 	 *  immediately, as there CANNOT be duplicate accounting
@@ -2416,8 +2409,7 @@ static int refresh_request(REQUEST *request, void *data)
 	}
 
 	/*
-	 *  Maybe the child process
-	 *  handling the request has hung:
+	 *  Maybe the child process handling the request has hung:
 	 *  kill it, and continue.
 	 */
 	if ((request->timestamp + max_request_time) <= info->now) {
@@ -2425,6 +2417,17 @@ static int refresh_request(REQUEST *request, void *data)
 
 		child_pid = request->child_pid;
 		number = request->number;
+
+		/*
+		 *  If the request is NOT finished, AND it's taken too
+		 *  long, THEN assert that there isn't a reply packet.
+		 *
+		 *  If there IS a reply packet, then it means that the
+		 *  reply was sent, the thread was finished, but that the
+		 *  server did NOT mark up the request as finished!
+		 */
+		rad_assert(request->reply != NULL);
+		rad_assert(request->reply->data != NULL);
 
 		if (kill_unresponsive_children) {
 			if (child_pid != NO_SUCH_CHILD_PID) {
