@@ -1,16 +1,31 @@
-FreeRADIUS 1.0.0 ; Date: $Date$, urgency=low
+FreeRADIUS 1.0.0 ; $Date$, urgency=low
 	* EAP-TTLS support in rlm_eap
-	* Fix compilation of rlm_counter when not building with pthreads
-	* Fix segfault due to poorly initialised value in rlm_mschap
 	* Added support for rejected packets to run an Post-Auth-Type REJECT
 	  stanza instead of skipping post-auth entirely.
 	* Added support for %{*:Packet-Type} translation. (Not for %{check:})
 	* Added support for %{check:Attribute-Name} to go with
 	  %{request:Attribute-Name} and the like.
 	* Add support to rlm_sql for post-authentication query execution.
-	* Imported iptool by Edwin Groothuis <edwin@mavetju.org> as
-	  rlm_ippool_tool
-	* Added database modification support to rlm_ippool_tool
+	
+FreeRADIUS 0.9.2 ; Date: 2003/10/14 19:00:09, urgency=low
+
+	* New rlm_ippool code to fix IP leaks
+	* New rlm_ippool_tool for manipulation of rlm_ippool databases
+
+	* Change radrelay to reject records without an Acct-Status-Type attribute
+	* Change rlm_counter to reject packets which predate last server reset
+	* Change version output to include GNU GPL information
+	* Change rlm_ldap to output bad search filters
+
+	* Fix compilation of various modules when not building with pthreads
+	* Fix segfault due to poorly initialised value in rlm_mschap
+	* Fix to only reject packets once
+	* Fix rlm_exec to work when wait=no
+	* Fix rlm_attr_filter to work in post-proxy (as intended)
+	* Fix rlm_sql to only try to load SQL drivers
+	* Fix to orrectly limit size of RADIUS packets
+	* Fix usage information to output to stdout when used with -h flag
+	* Fix configure to assume gethostbyname is BSD-Style on FreeBSD
 
 FreeRADIUS 0.9.1 ; Date: 2003/09/04 14:56:34, urgency=low
 
