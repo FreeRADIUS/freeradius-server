@@ -310,12 +310,12 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode) {
 
 /*************************************************************************
  *
- *	Function: _sql_fetch_row
+ *	Function: rlm_sql_fetch_row
  *
  *	Purpose: call the module's sql_fetch_row and implement re-connect
  *
  *************************************************************************/
-int _sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst) {
+int rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst) {
 	int ret;
 
 	ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
@@ -339,12 +339,12 @@ int _sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst) {
 
 /*************************************************************************
  *
- *	Function: _sql_query
+ *	Function: rlm_sql_query
  *
  *	Purpose: call the module's sql_query and implement re-connect
  *
  *************************************************************************/
-int _sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
+int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
 	int ret;
 
 	ret = (inst->module->sql_query)(sqlsocket, inst->config, query);
@@ -368,12 +368,12 @@ int _sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
 
 /*************************************************************************
  *
- *	Function: _sql_select_query
+ *	Function: rlm_sql_select_query
  *
  *	Purpose: call the module's sql_select_query and implement re-connect
  *
  *************************************************************************/
-int _sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
+int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query) {
 	int ret;
 
 	ret = (inst->module->sql_select_query)(sqlsocket, inst->config, query);
@@ -408,11 +408,11 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char 
 	SQL_ROW row;
 	int     rows = 0;
 
-	if (_sql_select_query(sqlsocket, inst, query)) {
+	if (rlm_sql_select_query(sqlsocket, inst, query)) {
 		radlog(L_ERR, "rlm_sql_getvpdata: database query error");
 		return -1;
 	}
-	while (_sql_fetch_row(sqlsocket, inst)==0) {
+	while (rlm_sql_fetch_row(sqlsocket, inst)==0) {
 		row = sqlsocket->row;
 		if (!row)
 			break;
@@ -543,12 +543,12 @@ int sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name, VALUE_PAIR
 	sprintf(querystr, "SELECT COUNT(*) FROM %s WHERE %s AND AcctStopTime = 0", inst->config->sql_acct_table, authstr);
 	
 
-	if (_sql_select_query(sqlsocket, inst, querystr)) {
+	if (rlm_sql_select_query(sqlsocket, inst, querystr)) {
 		radlog(L_ERR, "sql_check_multi: database query error");
 		return -1;
 	}
 
-	if (_sql_fetch_row(sqlsocket, inst->config)) {
+	if (rlm_sql_fetch_row(sqlsocket, inst->config)) {
 		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		return -1;
 	}
@@ -573,11 +573,11 @@ int sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name, VALUE_PAIR
 	count = 0;
 	sprintf(querystr, "SELECT * FROM %s WHERE %s AND AcctStopTime = 0", inst->config->sql_acct_table, authstr);
 
-	if (_sql_select_query(sqlsocket, inst, querystr)) {
+	if (rlm_sql_select_query(sqlsocket, inst, querystr)) {
 		radlog(L_ERR, "sql_check_multi: database query error");
 		return -1;
 	}
-	while (_sql_fetch_row(sqlsocket, inst) == 0) {
+	while (rlm_sql_fetch_row(sqlsocket, inst) == 0) {
 		int     check;
 		row = sqlsocket->row;
 		if (row == NULL) {
@@ -604,7 +604,7 @@ int sql_check_multi(SQL_INST * inst, SQLSOCK * sqlsocket, char *name, VALUE_PAIR
 				radlog(L_ERR, "rlm_sql:  Deleteing stale session [%s] (from nas %s/%s)", row[2], row[4], row[5]);
 				sqlsocket1 = sql_get_socket(inst);
 				sprintf(querystr, "DELETE FROM %s WHERE RadAcctId = '%s'", inst->config->sql_acct_table, row[0]);
-				if(_sql_query(sqlsocket1, inst, querystr)) {
+				if(rlm_sql_query(sqlsocket1, inst, querystr)) {
 					radlog(L_ERR, "rlm_sql: database query error");
 				} else {
 					(inst->module->sql_finish_query)(sqlsocket1, inst->config);

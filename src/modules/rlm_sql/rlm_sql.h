@@ -93,7 +93,7 @@ int     sql_read_naslist(SQLSOCK * sqlsocket);
 int     sql_read_clients(SQLSOCK * sqlsocket);
 int     sql_dict_init(SQLSOCK * sqlsocket);
 void    query_log(SQL_INST * inst, char *querystr);
-int	_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
-int	_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
-int	_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst);
+int	rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
+int	rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
+int	rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst);
 #endif
