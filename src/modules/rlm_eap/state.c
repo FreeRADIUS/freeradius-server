@@ -23,7 +23,6 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
-#include "radiusd.h"
 #include "rlm_eap.h"
 
 static const char rcsid[] = "$Id$";

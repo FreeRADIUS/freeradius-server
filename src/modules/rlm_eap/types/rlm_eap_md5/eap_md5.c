@@ -36,7 +36,7 @@
  */
 
 #include <stdio.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include "eap.h"
 
 #include "eap_md5.h"
