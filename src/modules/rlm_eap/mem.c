@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include "rlm_eap.h"
 
+static const char rcsid[] = "$Id$";
+
 /*
  * Allocate a new EAP_PACKET
  */
