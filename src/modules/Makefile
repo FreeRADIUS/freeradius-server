@@ -42,5 +42,5 @@ common:
 		what=$(WHAT_TO_MAKE); \
 		[ "$$what" = "all" ] && what="$(TARGET_LIBS)"; \
 		echo "Making $$what in $$mod..."; \
-		(cd $$mod ; $(MAKE) $(MFLAGS) $$what) || exit 1;\
+		(cd $$mod && $(MAKE) $(MFLAGS) $$what) || exit 1;\
 	done
