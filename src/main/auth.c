@@ -391,35 +391,36 @@ int rad_authenticate(REQUEST *request)
 	}
 
 	/*
-	 *	Decrypt the password, and remove trailing NULL's.
+	 *	Discover which password we want to use.
 	 */
 	auth_item = pairfind(request->packet->vps, PW_PASSWORD);
-	if (auth_item != NULL) {
-		int i;
-
+	if (auth_item != NULL) {	
 		/* If we proxied this, we already did pwdecode */
 		if (request->proxy == NULL) {
+			/* Decrypt the password, and remove trailing NULL's. */
 			rad_pwdecode((char *)auth_item->strvalue,
 				     auth_item->length, request->secret,
 				     (char *)request->packet->vector);
 		}
-		for (i = auth_item->length; i >=0; i--) {
-			if (auth_item->strvalue[i]) {
-				break;
-			} else {
-				auth_item->length = i;
-			}
-		}
+
+		/* ignore more than one trailing '\0' */
+		auth_item->length = strlen(auth_item->strvalue);
 		password = (char *)auth_item->strvalue;
+		
+		/*
+		 *	Maybe there's a CHAP-Password?
+		 */
+	} else if ((auth_item = pairfind(request->packet->vps,
+					 PW_CHAP_PASSWORD)) != NULL) {
+		password = "<CHAP-PASSWORD>";
+		
+		/*
+		 *	No password we recognize.
+		 */
+	} else {
+		password = "<NO-PASSWORD>";
 	}
-
-	/*
-	 *	Maybe there's a CHAP-Password?
-	 */
-	if (auth_item == NULL) {
-		auth_item = pairfind(request->packet->vps, PW_CHAP_PASSWORD);
-	}
-
+	
 	/*
 	 *	Update the password with OUR preference for the
 	 *	password.
