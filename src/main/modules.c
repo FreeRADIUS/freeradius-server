@@ -516,11 +516,11 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp,
 	subcomp->modulelist = ml;
 }
 
-static void load_component_section(CONF_SECTION *cs, int comp, const char *filename)
+static int load_component_section(CONF_SECTION *cs, int comp,
+				  const char *filename)
 {
 	modcallable *this;
 	CONF_ITEM *modref;
-	int modreflineno;
 	int idx;
 	indexed_modcallable *subcomp;
 	const char *modname;
@@ -531,10 +531,12 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 			modref=cf_item_find_next(cs, modref)) {
 
 		if (cf_item_is_section(modref)) {
+			const char *sec_name;
 			CONF_SECTION *scs;
 			scs = cf_itemtosection(modref);
 
-			if (strcmp(cf_section_name1(scs),
+			sec_name = cf_section_name1(scs);
+			if (strcmp(sec_name,
 				   subcomponent_names[comp]) == 0) {
 				load_subcomponent_section(scs, comp, filename);
 				continue;
@@ -543,18 +545,30 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 			/*
 			 *	Allow old names, too.
 			 */
-			if (strcmp(cf_section_name1(scs),
+			if (strcmp(sec_name,
 				   old_subcomponent_names[comp]) == 0) {
 				load_subcomponent_section(scs, comp, filename);
 				continue;
 			}
-			modreflineno = cf_section_lineno(scs);
+
+			/*
+			 *	It's a section, but nothing we recognize.
+			 *	Die!
+			 */
+			radlog(L_ERR|L_CONS, "%s[%d] Unknown configuration directive \"%s\" in %s section.",
+			       filename, cf_section_lineno(cs),
+			       sec_name, component_names[comp]);
+			return -1;
 		} else {
 			CONF_PAIR *cp;
 			cp = cf_itemtopair(modref);
-			modreflineno = cf_pair_lineno(cp);
 		}
 
+		/*
+		 *	FIXME: This calls exit if the reference can't be
+		 *	found.  We should instead print a better error,
+		 *	and return the failure code up the stack.
+		 */
 		this = compile_modsingle(comp, modref, filename, &modname);
 
 		if (comp == RLM_COMPONENT_AUTH) {
@@ -571,7 +585,7 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 
 		subcomp = new_sublist(comp, idx);
 		if (subcomp == NULL) {
-			radlog(L_ERR|L_CONS,
+			radlog(L_INFO|L_CONS,
 					"%s %s %s already configured - skipping",
 					filename, subcomponent_names[comp],
 					modname);
@@ -587,6 +601,8 @@ static void load_component_section(CONF_SECTION *cs, int comp, const char *filen
 		add_to_modcallable(&subcomp->modulelist, this,
 				comp, visiblename);
 	}
+
+	return 0;
 }
 
 typedef struct section_type_value_t {
@@ -831,7 +847,9 @@ int setup_modules(void)
 		if (cs == NULL) 
 			continue;
 		
-		load_component_section(cs, comp, filename);
+		if (load_component_section(cs, comp, filename) < 0) {
+			exit(1);
+		}
 	}
 
 	return 0;
