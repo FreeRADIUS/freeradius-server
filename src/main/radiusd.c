@@ -75,6 +75,9 @@ int			log_auth_pass  = FALSE;
 int			auth_port = 0;
 int			acct_port;
 int			proxy_port;
+int			proxy_retry_delay = RETRY_DELAY;
+int			proxy_retry_count = RETRY_COUNT;
+int			proxy_synchronous = TRUE;
 
 static int		got_child = FALSE;
 static int		request_list_busy = FALSE;
@@ -82,7 +85,7 @@ static int		authfd;
 static int		acctfd;
 int	        	proxyfd;
 static int		spawn_flag = TRUE;
-static int		radius_pid;
+static pid_t		radius_pid;
 static int		need_reload = FALSE;
 static struct rlimit	core_limits;
 static time_t		last_cleaned_list;
@@ -132,7 +135,7 @@ extern int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #endif
 
 /*
- *	A mapping of configuration file names to internal integers
+ *	A mapping of configuration file names to internal variables
  */
 static CONF_PARSER server_config[] = {
   { "max_request_time",   PW_TYPE_INTEGER,    &max_request_time },
@@ -150,6 +153,17 @@ static CONF_PARSER server_config[] = {
 #if 0
   { "confdir",            PW_TYPE_STRING_PTR, &radius_dir },
 #endif
+
+  { NULL, -1, NULL}
+};
+
+/*
+ *	Map the proxy server configuration parameters to variables.
+ */
+static CONF_PARSER proxy_config[] = {
+  { "retry_delay",  PW_TYPE_INTEGER,    &proxy_retry_delay },
+  { "retry_count",  PW_TYPE_INTEGER,    &proxy_retry_count },
+  { "synchonous",   PW_TYPE_BOOLEAN,    &proxy_synchronous },
 
   { NULL, -1, NULL}
 };
@@ -200,9 +214,12 @@ static void reread_config(int reload)
 			    strerror(errno));
 			exit(1);
 
-		} else if (core_limits.rlim_cur != 0)
+			/*
+			 *	If we're running as a daemon, and core
+			 *	dumps are enabled, log that information.
+			 */
+		} else if ((core_limits.rlim_cur != 0) && !debug_flag)
 		  log(L_INFO, "Core dumps are enabled.");
-
 
 	} else if (!debug_flag) {
 		/*
@@ -221,7 +238,6 @@ static void reread_config(int reload)
 			exit(1);
 		}
 	}
-
 }
 
 
@@ -382,7 +398,7 @@ int main(int argc, char **argv)
 #ifndef WITH_THREAD_POOL
 			spawn_flag = FALSE;
 #else
-			spawn_flag = FALSE;
+			spawn_flag = TRUE;
 #endif
 			dont_fork = TRUE;
 			debug_flag = 2;
@@ -592,7 +608,7 @@ int main(int argc, char **argv)
 		if(pid > 0) {
 			exit(0);
 		}
-#ifdef HAVE_SETSID
+#if HAVE_SETSID
 		setsid();
 #endif
 	}
@@ -624,7 +640,7 @@ int main(int argc, char **argv)
 	}
 #endif
 
-#ifdef WITH_THREAD_POOL
+#if WITH_THREAD_POOL
 	/*
 	 *  This really should only be just after the 'setsid()', above.
 	 *  That way, we only create the thread pool for daemon mode.
@@ -660,7 +676,7 @@ int main(int argc, char **argv)
 	 */
 	for(;;) {
 		if (need_reload) {
-			reread_config(1);
+			reread_config(TRUE);
 			need_reload = FALSE;
 		}
 
@@ -1079,7 +1095,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
  next_request:
 	DEBUG2("Going to the next request");
 
-#ifdef WITH_THREAD_POOL
+#if WITH_THREAD_POOL
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
 	request->finished = finished; /* do as the LAST thing before exiting */
@@ -1114,7 +1130,7 @@ static int rad_clean_list(void)
 		return FALSE;
 	}
 
-#ifdef WITH_THREAD_POOL
+#if WITH_THREAD_POOL
 	/*
 	 *	Only clean the thread pool if we've spawned child threads.
 	 */
@@ -1160,6 +1176,16 @@ static int rad_clean_list(void)
 				 */
 				curreq->child_pid = NO_SUCH_CHILD_PID;
 				curreq->finished = TRUE;
+				curreq->timestamp = 0;
+			}
+
+			/*
+			 *	If this is an accounting request, ensure
+			 *	that we delete it immediately: there can't
+			 *	ever be duplicates.
+			 */
+			if (curreq->finished &&
+			    curreq->packet->id == PW_ACCOUNTING_REQUEST) {
 				curreq->timestamp = 0;
 			}
 		
@@ -1336,11 +1362,18 @@ static REQUEST *rad_check_list(REQUEST *request)
 				 *	If so, then kick the proxy again.
 				 */
 			} else if (curreq->proxy != NULL) {
-				DEBUG2("Sending duplicate proxy request to client %s - ID: %d",
-				       client_name(curreq->proxy->dst_ipaddr),
-				       curreq->proxy->id);
-				curreq->proxy_next_try = curreq->timestamp + RETRY_DELAY;
-				rad_send(curreq->proxy, curreq->proxysecret);
+				if (proxy_synchronous) {
+					DEBUG2("Sending duplicate proxy request to client %s - ID: %d",
+					       client_name(curreq->proxy->dst_ipaddr),
+					       curreq->proxy->id);
+					curreq->proxy_next_try = request->timestamp + RETRY_DELAY;
+					rad_send(curreq->proxy, curreq->proxysecret);
+				} else {
+					DEBUG2("Ignoring duplicate authentication packet"
+					       " from client %s - ID: %d, due to outstanding proxy request.",
+					       client_name(request->packet->src_ipaddr),
+					       request->packet->id);
+				}
 			} else {
 				log(L_ERR,
 				"Dropping duplicate authentication packet"
@@ -1352,7 +1385,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 
 		      	/*
 			 *	Delete the duplicate request, and
-			 *	continue processing the request list.
+			 *	stop processing the request list.
 			 */
 			request_free(request);
 			request = NULL;
@@ -1451,18 +1484,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 		 *	makes us go over our configured bounds.
 		 */
 		if (request_count > max_requests) {
-			/*
-			 *	Too many: clean the request list,
-			 *	if we can.  This work is done here,
-			 *	as it's got to be done SOMETIME in the
-			 *	main thread, and now is as good as ever.
-			 *
-			 *	If we can't, then die horribly.
-			 */
-			if (rad_clean_list() == TRUE) {
-				return rad_check_list(request);
-			}
-
 			log(L_ERR, "Dropping request (%d is too many): "
 			    "from client %s - ID: %d", request_count, 
 			    client_name(request->packet->src_ipaddr),
@@ -1499,7 +1520,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 }
 
 #ifndef WITH_THREAD_POOL
-#ifdef HAVE_PTHREAD_H
+#if HAVE_PTHREAD_H
 typedef struct spawn_thread_t {
   REQUEST *request;
   RAD_REQUEST_FUNP fun;
@@ -1558,7 +1579,7 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	child_pid_t		child_pid;
 
-#ifdef HAVE_PTHREAD_H
+#if HAVE_PTHREAD_H
 	int rcode;
 	spawn_thread_t *data;
 
@@ -1717,13 +1738,7 @@ static void sig_fatal(int sig)
 {
 	const char *me = "MASTER: ";
 
-	if (radius_pid == getpid()) {
-		/*
-		 *      Kill all of the processes in the current
-		 *	process group.
-		 */
-		kill(0, SIGKILL);
-	} else {
+	if (radius_pid != getpid()) {
 		me = "CHILD: ";
 	}
 
@@ -1742,6 +1757,15 @@ static void sig_fatal(int sig)
 			break;
 	}
 
+
+	if (radius_pid == getpid()) {
+		/*
+		 *      Kill all of the processes in the current
+		 *	process group.
+		 */
+		kill(0, SIGKILL);
+	}
+
 	exit(sig == SIGTERM ? 0 : 1);
 }
 
@@ -1754,7 +1778,14 @@ static void sig_fatal(int sig)
 static void sig_hup(int sig)
 {
 	reset_signal(SIGHUP, sig_hup);
-	need_reload = TRUE;
+
+	/*
+	 *	Only do the reload if we're the main server, both
+	 *	for processes, and for threads.
+	 */
+	if (getpid() == radius_pid) {
+		need_reload = TRUE;
+	}
 }
 
 /*
