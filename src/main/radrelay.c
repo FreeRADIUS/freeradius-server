@@ -116,12 +116,14 @@ char *c_secret = NULL;
 char *c_shortname = NULL;
 
 struct relay_request slots[NR_SLOTS];
+char id_map[256];
 int request_head;
-int radius_id;
+unsigned int radius_id;
 int got_sigterm = 0;
 int debug = 0;
 
 
+int get_radius_id(void);
 void sigterm_handler(int sig);
 void ms_sleep(int msec);
 int isdateline(char *d);
@@ -133,6 +135,27 @@ void loop(struct relay_misc *r_args);
 int find_shortname(char *shortname, char **host, char **secret);
 void usage(void);
 
+
+/*
+ * Get a radius id which is not
+ * currently being used (outstanding request)
+ * Since NR_SLOTS < 256 we can't
+ * have more outstanding requests than radius ids
+ */
+int get_radius_id()
+{
+	unsigned int id;
+
+	id = radius_id & 0xff;
+
+	while(id_map[id] != 0){
+		id = radius_id & 0xff;
+		radius_id++;
+	}
+	id_map[id] = 1;
+
+	return id;
+}
 
 void sigterm_handler(int sig)
 {
@@ -274,8 +297,7 @@ int read_one(FILE *fp, struct relay_request *r_req)
 			r_req->timestamp -= vp->lvalue;
 			vp->lvalue = 0;
 		}
-		r_req->req->id = radius_id & 0xff;
-		radius_id++;
+		r_req->req->id = get_radius_id();
 	}
 
 	if (s == NULL) {
@@ -342,6 +364,7 @@ int do_recv(struct relay_misc *r_args)
 			 *	Got it. Clear slot.
 			 *	FIXME: check reponse digest ?
 			 */
+			id_map[r->req->id] = 0;
 			if (r->req->vps != NULL) {
 				pairfree(&r->req->vps);
 				r->req->vps = NULL;
@@ -406,8 +429,11 @@ int do_send(struct relay_request *r, char *secret)
 	 * loop. 
 	 */
 	if (r->retrans > 0){
-		r->req->id = radius_id & 0xff;
-		radius_id++;
+		r->req->id = get_radius_id();
+		if (r->req->data != NULL){
+			free(r->req->data);
+			r->req->data = NULL;
+		}
 	}
 	r->retrans = now + 3;
 
@@ -693,6 +719,7 @@ int main(int argc, char **argv)
 	char *shortname;
 	char *p;
 	int c;
+	int i;
 	int dontfork = 0;
 	struct relay_misc r_args;
 	FILE *sfile_fp;
@@ -917,6 +944,12 @@ int main(int argc, char **argv)
 		setsid();
 #endif
 	}
+
+	/*
+	 * Initialize the radius id map
+	 */
+	for(i=0;i<256;i++)
+		id_map[i] = 0;
 
 	/*
 	 *	Call main processing loop.
