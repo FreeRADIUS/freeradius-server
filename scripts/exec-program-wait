@@ -2,10 +2,19 @@
 #
 # $Id$
 #
-#  Sample script to run when a user's file entry is like:
+#  Sample script to run when a 'user' file entry is like:
 #
 #bob	Password == "bob"
 #	Exec-Program-Wait = "/path/to/program/exec-program-wait"
+#
+#  For 'acct_users':
+#
+#DEFAULT Acct-Status-Type == Start
+#	Exec-Program = "/path/to/exec/acct/start"
+#
+#DEFAULT Acct-Status-Type == Stop
+#	Exec-Program = "/path/to/exec/acct/stop"
+#
 #
 #
 #  The 
