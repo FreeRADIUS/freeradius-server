@@ -1,7 +1,7 @@
-Source: freeradius
+Source: radiusd-freeradius
 Section: net
 Priority: standard
-Maintainer: Chad Miller <cmiller@surfsouth.com>
+Maintainer: Chad Miller <cmiller@debian.org>
 Standards-Version: 3.2.1
 
 Package: freeradius

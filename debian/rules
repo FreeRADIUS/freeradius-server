@@ -40,13 +40,9 @@ binary-arch:	build checkroot
 	# man pages & docs
 	find $(tmp)$(mandir) -type f -exec gzip -9 {} \;  # policy, sec 6.1
 	dh_undocumented 
-	install -g root -m 644 debian/copyright $(tmp)$(pkgdocdir)/copyright  # policy, sec 6.6
-	install -g root -m 644 debian/TODO $(tmp)$(pkgdocdir)/todo.Debian
 	install -g root -m 644 CREDITS $(tmp)$(pkgdocdir)/credits
-	for doc in doc/*; do \
-		[ -f $$doc -a "$$doc" != doc/Makefile ] && install -g root -m 644 $$doc $(tmp)$(pkgdocdir)/; \
-	done
-	mv $(tmp)$(pkgdocdir)/ChangeLog $(tmp)$(pkgdocdir)/changelog  # policy, sec 6.8
+	dh_installdocs doc/*
+	dh_installchangelogs $(tmp)$(pkgdocdir)/ChangeLog
 	# supporting programs
 	install -g root -m 755 scripts/rc.radiusd $(tmp)/etc/init.d/radiusd
 	install -g root -m 755 scripts/radiusd.cron.daily $(tmp)/etc/cron.daily/radiusd
@@ -79,9 +75,9 @@ binary-arch:	build checkroot
 	dh_clean
 
 clean:	checkroot
+	dh_clean
 	[ -f Make.inc ] && make distclean || true
 	rm -f build debian/{files,substvars}
-	dh_clean
 
 binary: binary-indep binary-arch
 
