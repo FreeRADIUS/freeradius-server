@@ -28,6 +28,9 @@ typedef int (*RLM_ACCOUNTING_FUNCP)(REQUEST *request);
 #define RLM_COMPONENT_SESS 4
 #define RLM_COMPONENT_COUNT 5 /* How many components are there */
 
+#define RLM_TYPE_THREAD_SAFE	(0 << 0)
+#define RLM_TYPE_THREAD_UNSAFE	(1 << 0)
+
 typedef struct module_t {
 	const char	*name;
 	int	type;			/* reserved */
@@ -43,7 +46,7 @@ typedef struct module_t {
 } module_t;
 
 enum {
-	RLM_MODULE_REJECT,	/* reject the request */
+	RLM_MODULE_REJECT,	/* immediately reject the request */
 	RLM_MODULE_FAIL,	/* module failed, don't reply */
 	RLM_MODULE_OK,		/* the module is OK, continue */
 	RLM_MODULE_HANDLED,	/* the module handled the request, so stop. */

@@ -45,6 +45,9 @@ static module_instance_t *module_instance_list = NULL;
 
 typedef struct config_module_t {
 	module_instance_t	*instance;
+#if HAVE_PTHREAD_H
+	pthread_mutex_t		*mutex;
+#endif
 	struct config_module_t	*next;
 } config_module_t;
 
@@ -66,6 +69,16 @@ static void config_list_free(config_module_t **cf)
 
 	c = *cf;
 	while (c) {
+#if HAVE_PTHREAD_H
+		if (c->mutex) {
+			/*
+			 *	The mutex MIGHT be locked...
+			 *	we'll check for that later, I guess.
+			 */
+			pthread_mutex_destroy(c->mutex);
+			free(c->mutex);
+		}
+#endif
 		next = c->next;
 		free(c);
 		c = next;
@@ -390,6 +403,33 @@ static void add_to_list(config_module_t **head, module_instance_t *instance)
 
 	node->next = NULL;
 	node->instance = instance;
+
+#if HAVE_PTHREAD_H
+	/*
+	 *	If we're threaded, check if the module is thread-safe.
+	 *
+	 *	If it isn't, we create a mutex.
+	 */
+	if ((instance->entry->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
+		node->mutex = (pthread_mutex_t *) malloc(sizeof(pthread_mutex_t));
+		if (!node->mutex) {
+			radlog(L_ERR|L_CONS, "Out of memory\n");
+			exit(1);
+		}
+		
+		/*
+		 *	Initialize the mutex.
+		 */
+		pthread_mutex_init(node->mutex, NULL);
+	} else {
+		/*
+		 *	The module is thread-safe.  Don't give it a mutex.
+		 */
+		node->mutex = NULL;
+	}
+
+#endif	
+
 	*last = node;
 }
 
@@ -752,6 +792,36 @@ static void update_username(REQUEST *request, char *newname)
 	vp->length = strlen((char *)vp->strvalue);
 }
 
+#if HAVE_PTHREAD_H
+/*
+ *	Lock the mutex for the module
+ */
+static void safe_lock(config_module_t *instance)
+{
+	if (!instance->mutex) {
+		return;
+	}
+	pthread_mutex_lock(instance->mutex);
+}
+
+/*
+ *	Unlock the mutex for the module
+ */
+static void safe_unlock(config_module_t *instance)
+{
+	if (!instance->mutex) {
+		return;
+	}
+	pthread_mutex_unlock(instance->mutex);
+}
+#else
+/*
+ *	No threads: these functions become NULL's.
+ */
+#define safe_lock(foo)
+#define safe_unlock(foo)
+#endif
+
 /*
  *	Call all authorization modules until one returns
  *	somethings else than RLM_MODULE_OK
@@ -766,8 +836,10 @@ int module_authorize(REQUEST *request)
 
 	while (this && rcode == RLM_MODULE_OK) {
 		DEBUG2("  authorize: %s", this->instance->entry->module->name);
+		safe_lock(this);
 		rcode = (this->instance->entry->module->authorize)(
 			 this->instance->insthandle, request);
+		safe_unlock(this);
 		this = this->next;
 	}
 
@@ -843,8 +915,10 @@ int module_authenticate(int auth_type, REQUEST *request)
 	while (this && rcode == RLM_MODULE_FAIL) {
 		DEBUG2("  authenticate: %s",
 			this->instance->entry->module->name);
+		safe_lock(this);
 		rcode = (this->instance->entry->module->authenticate)(
 			this->instance->insthandle, request);
+		safe_unlock(this);
 		this = this->next;
 	}
 	return rcode;
@@ -864,8 +938,10 @@ int module_preacct(REQUEST *request)
 
 	while (this && (rcode == RLM_MODULE_OK)) {
 		DEBUG2("  preacct: %s", this->instance->entry->module->name);
+		safe_lock(this);
 		rcode = (this->instance->entry->module->preaccounting)
 				(this->instance->insthandle, request);
+		safe_unlock(this);
 		this = this->next;
 	}
 
@@ -885,8 +961,10 @@ int module_accounting(REQUEST *request)
 
 	while (this && (rcode == RLM_MODULE_OK)) {
 		DEBUG2("  accounting: %s", this->instance->entry->module->name);
+		safe_lock(this);
 		rcode = (this->instance->entry->module->accounting)
 				(this->instance->insthandle, request);
+		safe_unlock(this);
 		this = this->next;
 	}
 
@@ -918,8 +996,10 @@ int module_checksimul(REQUEST *request, int maxsimul)
 
 	while (this && (rcode == RLM_MODULE_FAIL)) {
 		DEBUG2("  checksimul: %s", this->instance->entry->module->name);
+		safe_lock(this);
 		rcode = (this->instance->entry->module->checksimul)
 				(this->instance->insthandle, request);
+		safe_unlock(this);
 		this = this->next;
 	}
 
