@@ -11,20 +11,23 @@ if test x$with_[]modname != xno; then
 		fail="$fail libgdbm"
 	fi
 
-	AC_MSG_CHECKING(to see GDBM_SYNC status)
-	AC_EGREP_CPP(found-gdbm-sync, [
+	if test "x$fail" = "x"; then
+		AC_MSG_CHECKING(to see GDBM_SYNC status)
+		AC_EGREP_CPP(found-gdbm-sync, [
 #include <gdbm.h>
 #ifdef GDBM_SYNC
 	found-gdbm-sync!
 #else
 	not found.  this version must use sync by default.
 #endif
-		], [
+			], [
 			AC_DEFINE(NEED_GDBM_SYNC, yes) 
 			AC_MSG_RESULT(needs it.)
-		], [
+			], [
 			AC_MSG_RESULT(SYNCs by default.)
-		])
+			]
+		)
+	fi
 
 	targetname=modname
 else

@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.5 
+# From configure.in Revision: 1.6 
 
 
 if test x$with_rlm_counter != xno; then
@@ -734,7 +734,7 @@ rm -f conftest*
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=libgdbm.so
+  file=libgdbm${libltdl_cv_shlibext}
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -824,10 +824,11 @@ fi
 		fail="$fail libgdbm"
 	fi
 
-	echo $ac_n "checking to see GDBM_SYNC status""... $ac_c" 1>&6
-echo "configure:829: checking to see GDBM_SYNC status" >&5
-	cat > conftest.$ac_ext <<EOF
-#line 831 "configure"
+	if test "x$fail" = "x"; then
+		echo $ac_n "checking to see GDBM_SYNC status""... $ac_c" 1>&6
+echo "configure:830: checking to see GDBM_SYNC status" >&5
+		cat > conftest.$ac_ext <<EOF
+#line 832 "configure"
 #include "confdefs.h"
 
 #include <gdbm.h>
@@ -836,7 +837,7 @@ echo "configure:829: checking to see GDBM_SYNC status" >&5
 #else
 	not found.  this version must use sync by default.
 #endif
-		
+			
 EOF
 if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
   egrep "found-gdbm-sync" >/dev/null 2>&1; then
@@ -847,15 +848,17 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 EOF
  
 			echo "$ac_t""needs it." 1>&6
-		
+			
 else
   rm -rf conftest*
   
 			echo "$ac_t""SYNCs by default." 1>&6
+			
 		
 fi
 rm -f conftest*
 
+	fi
 
 	targetname=rlm_counter
 else
