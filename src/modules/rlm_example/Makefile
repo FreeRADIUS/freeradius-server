@@ -25,7 +25,7 @@ include config.mak
 # RLM_CFLAGS defines addition C compiler flags.  You usually don't
 # want to modify this, though.
 #
-# The LIBS definition should list ALL required libraries.
+# The RLM_LIBS definition should list ALL required libraries.
 # These libraries really should be pulled from the 'config.mak'
 # definitions, if at all possible.  These definitions are also
 # echoed into another file in ../lib, where they're picked up by
@@ -46,7 +46,7 @@ HEADERS		= config.h other.h
 #		  -Wmissing-prototypes -Wmissing-declarations \
 #		  -Wnested-externs
 RLM_CFLAGS	=
-LIBS		= $(LIBC_STRCPY)
+RLM_LIBS	= $(LIBC_STRCPY)
 
 #######################################################################
 #
