@@ -9,10 +9,6 @@ if test x$with_[]modname != xno; then
 
 	AC_PROG_CC
 
-	if test "x$OPENSSL_LIBS" = "x"; then
-		fail="$fail OpenSSL"
-	fi
-
 	targetname=modname
 else
 	targetname=
