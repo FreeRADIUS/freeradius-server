@@ -10,12 +10,15 @@
  *  These are problematic, since postgres has neither of these
  *  (how to do these ..hmmm )
  */
-typedef char**  SQL_ROW;
+/*typedef char**  SQL_ROW;*/
  
 typedef struct rlm_sql_postgres_sock {
    PGconn          *conn;
    PGresult        *result;
-} rlm_sql_postges_sock;
+   int             cur_row;
+   int             num_fields;
+   char            **row;
+} rlm_sql_postgres_sock;
 
 
 int	sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config);

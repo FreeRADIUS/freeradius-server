@@ -41,6 +41,7 @@
  *
  *************************************************************************/
 int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+	char connstring[2048];
 
 	rlm_sql_postgres_sock *pg_sock;
 
@@ -48,8 +49,7 @@ int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	pg_sock = sqlsocket->conn;
    
-	char connstring[2048];
-	snprintf(connstring,2048,"dbname=%s host=%s user=%s password=%s", config->sql_db, config->sql_server, config->sql_login, config->sql_password);
+	snprintf(connstring, sizeof(connstring),"dbname=%s host=%s user=%s password=%s", config->sql_db, config->sql_server, config->sql_login, config->sql_password);
 
 	pg_sock->row=NULL;
 	pg_sock->result=NULL;
