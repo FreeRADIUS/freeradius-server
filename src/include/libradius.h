@@ -139,15 +139,15 @@ int		dict_vendorname(const char *name);
 void		librad_md5_calc(u_char *, u_char *, u_int);
 
 /* radius.c */
-int		rad_send(RADIUS_PACKET *, char *secret);
+int		rad_send(RADIUS_PACKET *, const char *secret);
 RADIUS_PACKET	*rad_recv(int fd);
-int		rad_decode(RADIUS_PACKET *packet, char *secret);
+int		rad_decode(RADIUS_PACKET *packet, const char *secret);
 RADIUS_PACKET	*rad_alloc(int newvector);
 void		rad_free(RADIUS_PACKET *);
-int		rad_pwencode(char *encpw, int *len, char *secret, char *vector);
-int		rad_pwdecode(char *encpw, int len, char *secret, char *vector);
-int		calc_digest (RADIUS_PACKET *packet, char *secret);
-int		calc_acctdigest(RADIUS_PACKET *packet, char *secret,
+int		rad_pwencode(char *encpw, int *len, const char *secret, const char *vector);
+int		rad_pwdecode(char *encpw, int len, const char *secret, const char *vector);
+int		calc_digest (RADIUS_PACKET *packet, const char *secret);
+int		calc_acctdigest(RADIUS_PACKET *packet, const char *secret,
 			char *data, int len);
 
 /* valuepair.c */

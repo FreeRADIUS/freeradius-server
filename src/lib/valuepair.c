@@ -362,7 +362,7 @@ static char *mystrtok(char **ptr, const char *sep)
 /*
  *	Turn printable string into time_t
  */
-static time_t gettime(char *valstr)
+static time_t gettime(const char *valstr)
 {
 	int		i;
 	time_t		t;

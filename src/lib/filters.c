@@ -358,11 +358,11 @@ static KeywordStruct filterCompare[] = {
 
 static char	curString[512];
 
-static int findKey ( char *string, KeywordStruct *list );
-static int isAllDigit ( char *token );
-static short a2octet ( char *tok, char *retBuf );
+static int findKey ( const char *string, KeywordStruct *list );
+static int isAllDigit ( const char *token );
+static short a2octet ( const char *tok, char *retBuf );
 static char defaultNetmask ( UINT4 address );
-static int ipAddressStringToValue ( char *string, UINT4 *ipAddress,
+static int ipAddressStringToValue ( const char *string, UINT4 *ipAddress,
 					 char *netmask);
 static int parseIpFilter ( RadFilter *curEntry );
 static int parseGenericFilter ( RadFilter *curEntry );
@@ -382,13 +382,13 @@ static int stringToNode   ( unsigned char* dest,  unsigned char* src );
      *
      *	returns:		Keyword value on a match or NO_TOKEN.
      */
-int findKey(char *string, KeywordStruct *list)
+int findKey(const char *string, KeywordStruct *list)
 {
     short 	len;
     KeywordStruct*  entry;
     char	buf[80], *ptr;
 
-    len = strlen( (char *) string );
+    len = strlen( string );
     for( ptr = buf ; len; len--, string++ ) {
 	if( isupper( *string ) ) {
 	    *ptr++ = tolower( *string );
@@ -419,12 +419,11 @@ int findKey(char *string, KeywordStruct *list)
      */
 
 static int
-isAllDigit(token)
-char	*token;
+isAllDigit(const char *token)
 {
     int i;
 
-    i = strlen( (char *) token );
+    i = strlen( token );
     while( i-- ) {
 	if( isdigit( *token ) ) {
 	    token++;
@@ -454,9 +453,7 @@ char	*token;
      * 
      */
 static short
-a2octet(tok, retBuf)
-char	*tok;
-char	*retBuf;
+a2octet(const char *tok, char *retBuf)
 {
     short	rc, len, val, retLen, i;
     char	buf[ RAD_MAX_FILTER_LEN *2 ];
@@ -465,7 +462,7 @@ char	*retBuf;
     rc = -1;
     retLen = 0;
 
-    if( ( len = strlen( (char*) tok ) ) <= ( RAD_MAX_FILTER_LEN*2 ) ) {
+    if( ( len = strlen( tok ) ) <= ( RAD_MAX_FILTER_LEN*2 ) ) {
 	retLen = len/2;
 	if( len % 2 ) {
 	    retLen++;
@@ -563,11 +560,11 @@ static char ipAddressDigits[] = "1234567890./";
      */
 
 static int
-ipAddressStringToValue(char *string, UINT4 *ipAddress,
+ipAddressStringToValue(const char *string, UINT4 *ipAddress,
 	char *netmask)
 {
     u_char*	dst;
-    char*	cp;
+    const char*	cp;
     int		numDots;
     int		i;
     long	value;
@@ -607,7 +604,7 @@ ipAddressStringToValue(char *string, UINT4 *ipAddress,
     cp = string;
 
     for ( i = 0; i < sizeof( *ipAddress ); i++ ) {
-	value = strtol( cp, (char**) &cp, 10 );
+	value = strtol( cp, &cp, 10 );
 	if (( value < 0 ) || ( value > 255 )) {
 	    return( FALSE );
 	}
@@ -621,7 +618,7 @@ ipAddressStringToValue(char *string, UINT4 *ipAddress,
        default netmask for this class of address. */
 
     if ( *cp == '/' ) {
-	value = strtol( cp + 1, (char**) &cp, 10 );
+	value = strtol( cp + 1, &cp, 10 );
 	if (( *cp != 0 ) || ( value < 0 ) || ( value > 32 )) {
 	    return FALSE;
 	}
@@ -1151,7 +1148,7 @@ doneErr:
      *	return:			-1 for error or 0.
      */
 int 
-filterBinary(VALUE_PAIR *pair, char *valstr)
+filterBinary(VALUE_PAIR *pair, const char *valstr)
 {
 
     char*		token;
@@ -1251,8 +1248,8 @@ void print_abinary(VALUE_PAIR *vp, u_char *buffer, int len)
   char *p;
   RadFilter	filter;
   
-  static char *action[] = {"drop", "forward"};
-  static char *direction[] = {"output", "input"};
+  static const char *action[] = {"drop", "forward"};
+  static const char *direction[] = {"output", "input"};
   
   p = buffer;
 

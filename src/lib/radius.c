@@ -53,7 +53,7 @@ typedef struct radius_packet_t {
  *	Reply to the request.  Also attach
  *	reply attribute value pairs and any user message provided.
  */
-int rad_send(RADIUS_PACKET *packet, char *secret)
+int rad_send(RADIUS_PACKET *packet, const char *secret)
 {
 	VALUE_PAIR		*reply;
 	struct	sockaddr	saremote;
@@ -308,7 +308,7 @@ int rad_send(RADIUS_PACKET *packet, char *secret)
  *	Validates the requesting client NAS.  Calculates the
  *	signature based on the clients private key.
  */
-int calc_acctdigest(RADIUS_PACKET *packet, char *secret, char *recvbuf, int len)
+int calc_acctdigest(RADIUS_PACKET *packet, const char *secret, char *recvbuf, int len)
 {
 	int		secretlen;
 	char		digest[AUTH_VECTOR_LEN];
@@ -487,7 +487,7 @@ RADIUS_PACKET *rad_recv(int fd)
 /*
  *	Calculate/check digest, and decode radius attributes.
  */
-int rad_decode(RADIUS_PACKET *packet, char *secret)
+int rad_decode(RADIUS_PACKET *packet, const char *secret)
 {
 	DICT_ATTR		*attr;
 	UINT4			lvalue;
@@ -701,7 +701,7 @@ int rad_decode(RADIUS_PACKET *packet, char *secret)
  *	int *pwlen is updated to the new length of the encrypted
  *	password - a multiple of 16 bytes.
  */
-int rad_pwencode(char *passwd, int *pwlen, char *secret, char *vector)
+int rad_pwencode(char *passwd, int *pwlen, const char *secret, const char *vector)
 {
 	u_char	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 1];
 	char	digest[AUTH_VECTOR_LEN];
@@ -754,7 +754,7 @@ int rad_pwencode(char *passwd, int *pwlen, char *secret, char *vector)
 /*
  *	Decode password.
  */
-int rad_pwdecode(char *passwd, int pwlen, char *secret, char *vector)
+int rad_pwdecode(char *passwd, int pwlen, const char *secret, const char *vector)
 {
 	u_char	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 1];
 	char	digest[AUTH_VECTOR_LEN];

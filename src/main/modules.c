@@ -144,7 +144,7 @@ static void add_to_list(config_module_t **head, module_list_t *entry)
  * FIXME: move this to dict.c as dict_valadd() and dict_valdel()
  *        also clear value in module_list free (nessecary?)
  */
-int new_authtype_value(char *name)
+static int new_authtype_value(const char *name)
 {
   static int max_value = 32767;
   DICT_VALUE *old_value, *new_value;
@@ -322,7 +322,7 @@ int read_modules_file(char *filename)
 		/* If there's an authentication method, add a new Auth-Type */
 		if (this->module->authenticate)
 			this->auth_type =
-				new_authtype_value((char *)this->module->name);
+				new_authtype_value(this->module->name);
 
 		/* split up the rest of the string into argv */
 		p = strtok(buffer, " \t");  /* find name */
