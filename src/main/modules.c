@@ -1,11 +1,13 @@
 /*
  * modules.c	Radius module support.
  *
- * Author:	Alan deKok <aland@ox.org>
+ * Author:	Alan DeKok <aland@ox.org>
  *
- * Version:	@(#)modules.c  1.00  10-Aug-1999  aland@ox.org
+ * Version:	$Id$
  *
  */
+
+static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
 
@@ -13,7 +15,7 @@
 #include	<stdlib.h>
 #include	<string.h>
 
-#ifdef HAVE_LIBDL
+#ifdef HAVE_DLFCN_H
 #  include	<dlfcn.h>
 #endif
 
