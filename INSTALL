@@ -5,10 +5,34 @@ complete details on how to configure, compile and install FreeRADIUS.
 the following steps to build and install the server:
 
 
-    ./configure
-    make
-    make install
+	$ ./configure
+	$ make
+	$ make install
 
+  Then, start the server in debugging mode:
+
+	$ radiusd -X
+
+  You should see a lot of text printed on the screen as it starts up.
+If you don't, or if you see error messages, please read the FAQ:
+
+	http://www.freeradius.org/faq/
+
+  If the server says "Ready to process requests.", then it is running
+properly.  From another shell (or another window), type:
+
+	$ radtest test test localhost 0 testing123
+
+  You should see the server print out more messages as it receives the
+request, and responds to it.  The 'radtest' program should receive the
+response within a few seconds.  It doesn't matter if the
+authentication request is accepted or rejected, what matters is that
+the server received the request, and responded to it.
+
+  You can now edit the 'radiusd.conf' file for your local system.
+Please read the ENTIRE file carefully, as many configuration options
+are only documented in comments in the file.
 
   Configuring and running the server MAY be complicated.  Please read
-the documentation in the doc/ directory for further information.
+the documentation in the doc/ directory for further information.  If
+you have any issues, the FAQ is also a good place to check.
