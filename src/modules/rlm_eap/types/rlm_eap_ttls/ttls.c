@@ -505,14 +505,16 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 #ifndef NDEBUG
 		int i;
 		
-		if (debug_flag > 2) for (i = 0; i < total; i++) {
-			if ((i & 0x0f) == 0) printf("  TTLS tunnel data out %04x: ", i);
-			
-			printf("%02x ", buffer[i]);
-			
-			if ((i & 0x0f) == 0x0f) printf("\n");
+		if (debug_flag > 2) {
+			for (i = 0; i < total; i++) {
+				if ((i & 0x0f) == 0) printf("  TTLS tunnel data out %04x: ", i);
+				
+				printf("%02x ", buffer[i]);
+				
+				if ((i & 0x0f) == 0x0f) printf("\n");
+			}
+			if ((total & 0x0f) != 0) printf("\n");
 		}
-		if ((total & 0x0f) != 0) printf("\n");
 #endif
 
 		record_plus(&tls_session->clean_in, buffer, total);
@@ -605,14 +607,16 @@ int eapttls_process(REQUEST *request, tls_session_t *tls_session)
 	data = tls_session->clean_out.data;
 
 #ifndef NDEBUG
-	if (debug_flag > 2) for (i = 0; i < data_len; i++) {
-		if ((i & 0x0f) == 0) printf("  TTLS tunnel data in %04x: ", i);
-		
-		printf("%02x ", data[i]);
-		
-		if ((i & 0x0f) == 0x0f) printf("\n");
+	if (debug_flag > 2) {
+		for (i = 0; i < data_len; i++) {
+			if ((i & 0x0f) == 0) printf("  TTLS tunnel data in %04x: ", i);
+			
+			printf("%02x ", data[i]);
+			
+			if ((i & 0x0f) == 0x0f) printf("\n");
+		}
+		if ((data_len & 0x0f) != 0) printf("\n");
 	}
-	if ((data_len & 0x0f) != 0) printf("\n");
 #endif
 
 	if (!diameter_verify(data, (int) data_len)) {
