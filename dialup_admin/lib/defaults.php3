@@ -5,7 +5,7 @@ if (!isset($text_default_vals)){
 		$val=chop($val);
 		if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
 			continue;
-		list($key,$v)=split(":[[:space:]]*",$val);
+		list($key,$v)=split(":[[:space:]]*",$val,2);
 		$text_default_vals["$key"][0]="$v";
 		$text_default_vals["$key"]['count']++;
 	}
