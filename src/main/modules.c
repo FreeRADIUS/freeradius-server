@@ -610,7 +610,8 @@ int module_authorize(REQUEST *request,
 /*
  *	Authenticate a user/password with various methods.
  */
-int module_authenticate(int auth_type, REQUEST *request)
+int module_authenticate(int auth_type, REQUEST *request, 
+		     VALUE_PAIR **check_items, VALUE_PAIR **reply_items)
 {
 	config_module_t	*this;
 
@@ -634,7 +635,7 @@ int module_authenticate(int auth_type, REQUEST *request)
 
 	DEBUG2("  authenticate: %s", this->instance->entry->module->name);
 	return (this->instance->entry->module->authenticate)(
-		this->instance->insthandle, request);
+		this->instance->insthandle, request, check_items, reply_items);
 }
 
 
