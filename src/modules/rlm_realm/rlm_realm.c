@@ -185,6 +185,13 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 	       username, realm->realm);
 
 	/*
+	 *	Add the realm name to the request.
+	 */
+	pairadd(&request->packet->vps, pairmake("Realm", realm->realm,
+						T_OP_EQ));
+	DEBUG2("    rlm_realm: Adding Realm = \"%s\"", realm->realm);
+
+	/*
 	 *	Figure out what to do with the request.
 	 */
 	is_local = FALSE;
@@ -224,13 +231,6 @@ static REALM *check_for_realm(void *instance, REQUEST *request)
 		}
 		break;
 	}
-
-	/*
-	 *	Add the realm name to the request.
-	 */
-	pairadd(&request->packet->vps, pairmake("Realm", realm->realm,
-						T_OP_EQ));
-	DEBUG2("    rlm_realm: Adding Realm = \"%s\"", realm->realm);
 
 	/*
 	 *	Local realm, don't proxy it.
