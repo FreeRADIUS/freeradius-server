@@ -1016,6 +1016,20 @@ RADIUS_PACKET *rad_recv(int fd)
 		return NULL;
 	}
 
+	/*
+	 * 	http://www.freeradius.org/rfc/rfc2869.html#EAP-Message
+	 *
+	 *	A packet with an EAP-Message attribute MUST also have
+	 *	a Message-Authenticator attribute.
+	 */
+	if (seen_eap &&
+	    (seen_eap == (PW_EAP_MESSAGE | PW_MESSAGE_AUTHENTICATOR))) {
+		librad_log("WARNING: Insecure packet from host %s:  Received EAP-Message with no Message-Authenticator.",
+			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
+		free(packet);
+		return NULL;
+	}
+
 	if (librad_debug) {
 		if ((hdr->code > 0) && (hdr->code < 52)) {
 			printf("rad_recv: %s packet from host %s:%d",
