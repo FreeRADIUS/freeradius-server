@@ -815,6 +815,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 		 */
 	case T_BACK_QUOTED_STRING:
 		vp = pairmake(attr, NULL, token);
+		if (!vp) return vp;
 		
 		vp->flags.do_xlat = 1;
 		strNcpy(vp->strvalue, value, sizeof(vp->strvalue));
