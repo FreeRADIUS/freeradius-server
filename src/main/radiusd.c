@@ -1021,7 +1021,7 @@ static void usage(void)
 	fprintf(stderr, "  -X              Turn on full debugging. (Means: -sfxxyz -l stdout)\n");
 	fprintf(stderr, "  -x              Turn on partial debugging. (-xx gives more debugging).\n");
 	fprintf(stderr, "  -y              Log authentication failures, with password.\n");
-	fprintf(stderr, "  -x              Log authentication successes, with password.\n");
+	fprintf(stderr, "  -z              Log authentication successes, with password.\n");
 	exit(1);
 }
 
