@@ -341,27 +341,39 @@ static int rlm_sql_authorize(void *instance, REQUEST * request) {
 		return RLM_MODULE_FAIL;
 
 	} else {
-
 		int     gcheck;
+		
+		radlog(L_DBG, "rlm_sql: User %s not found", sqlusername);
 
-		/*
-		 * We didn't find the user, so we try looking
-		 * for a DEFAULT entry
+                /*
+		 * We didn't find the user in radcheck, so we try looking
+		 * for radgroupcheck entry
 		 */
-		if (sql_set_user(inst, request, sqlusername, "DEFAULT") < 0) {
-			sql_release_socket(inst, sqlsocket);
-			return RLM_MODULE_FAIL;
-		}
-
-		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query, request, sql_escape_func);
-		gcheck = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
-		radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query, request, sql_escape_func);
-		gcheck = sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr, PW_VP_GROUPDATA);
-		if (gcheck)
-			found = 1;
-	}
+                radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query, request, sql_escape_func);
+                gcheck = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
+                radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query, request, sql_escape_func);
+                sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr, PW_VP_GROUPDATA);
+                if (gcheck) {
+                        found = 1;
+                } else {
+                        /*
+                        * We didn't find the user, so we try looking
+                        * for a DEFAULT entry
+                        */
+                        if (sql_set_user(inst, request, sqlusername, "DEFAULT") < 0) {
+                                sql_release_socket(inst, sqlsocket);
+                                return RLM_MODULE_FAIL;
+                        }
+                        radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_check_query, request, sql_escape_func);
+                        gcheck = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_GROUPDATA);
+                        radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authorize_group_reply_query, request, sql_escape_func);
+                        gcheck = sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr, PW_VP_GROUPDATA);
+                        if (gcheck)
+                                found = 1;
+                }
+        }
 	if (!found) {
-		radlog(L_DBG, "rlm_sql: User %s not found and DEFAULT not found", sqlusername);
+		radlog(L_DBG, "rlm_sql: DEFAULT not found", sqlusername);
 		sql_release_socket(inst, sqlsocket);
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
