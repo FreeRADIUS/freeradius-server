@@ -28,7 +28,7 @@ if test x$with_[]modname != xno; then
 	dnl extra argument: --with-rlm-sql-postgresql-include-dir
 	rlm_sql_postgresql_include_dir=
 	AC_ARG_WITH(rlm-sql-postgresql-include-dir,
-	[  --with-rlm--sql-postgresql-include-dir=DIR   Directory for PostgreSQL include files []],
+	[  --with-rlm-sql-postgresql-include-dir=DIR   Directory for PostgreSQL include files []],
 	[ case "$withval" in
 	    no)
 		AC_MSG_ERROR(Need rlm-sql-postgresql-include-dir)
@@ -43,7 +43,7 @@ if test x$with_[]modname != xno; then
 
 	smart_try_dir="$rlm_sql_postgresql_include_dir /usr/local/pgsql/include"
 	AC_SMART_CHECK_INCLUDE(libpq-fe.h)
-	if test "x$ac_cv_header_" != "xyes"; then
+	if test "x$ac_cv_header_libpq_fe_h" != "xyes"; then
 	  fail="$fail libpq-fe.h"
 	fi
 
