@@ -159,8 +159,6 @@ static int groupcmp(void *instance, VALUE_PAIR *request, VALUE_PAIR *check,
 		return 1;
 	}
 
-	radlog(L_ERR, "group = %s", group_inst->group_file);
-
 	username = (char *)request->strvalue;
 
 	if (group_inst->cache_passwd &&
