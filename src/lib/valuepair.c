@@ -46,6 +46,7 @@ VALUE_PAIR *paircreate(int attr, int type)
 		return NULL;
 	memset(vp, 0, sizeof(VALUE_PAIR));
 	vp->attribute = attr;
+	vp->operator = T_OP_EQ;
 	vp->type = type;
 	if ((da = dict_attrbyvalue(attr)) != NULL)
 		strcpy(vp->name, da->name);
@@ -192,14 +193,6 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 	tailto = *to;
 	for(i = *to; i; i = i->next) {
 		if (i->attribute == PW_PASSWORD ||
-		/*
-		 *	FIXME: this seems to be needed with PAM support
-		 *	to keep it around the Auth-Type = Pam stuff.
-		 *	Perhaps we should only do this if Auth-Type = Pam?
-		 */
-#ifdef WITH_PAM
-		    i->attribute == PAM_AUTH_ATTR ||
-#endif
 		    i->attribute == PW_CRYPT_PASSWORD)
 			has_password = 1;
 		tailto = i;
@@ -217,9 +210,6 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 		 */
 		if (has_password &&
 		    (i->attribute == PW_PASSWORD ||
-#ifdef WITH_PAM
-		     i->attribute == PAM_AUTH_ATTR ||
-#endif
 		     i->attribute == PW_CRYPT_PASSWORD)) {
 			tailfrom = i;
 			continue;
