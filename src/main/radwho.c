@@ -399,6 +399,11 @@ int main(int argc, char **argv)
 			break;
 	}
 
+	/*
+	 *	Ensure that the configuration is initialized.
+	 */
+	memset(&mainconfig, 0, sizeof(mainconfig));
+
 	/* Read radiusd.conf */
 	if ((maincs = read_radius_conf_file()) == NULL) {
 		fprintf(stderr, "%s: Errors reading radiusd.conf\n", argv[0]);

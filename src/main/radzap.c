@@ -201,6 +201,11 @@ int main(int argc, char **argv)
 	if (nas != NULL) 
 		ip = nas->ipaddr;
 
+	/*
+	 *	Ensure that the configuration is initialized.
+	 */
+	memset(&mainconfig, 0, sizeof(mainconfig));
+
         /* Read radiusd.conf */
 	if ((maincs = read_radius_conf_file()) == NULL) {
 		fprintf(stderr, "%s: Error reading radiusd.conf.\n", argv[0]);

@@ -619,6 +619,11 @@ int find_shortname(char *shortname, char **host, char **secret)
 {
 	CONF_SECTION *maincs, *cs;
 
+	/*
+	 *	Ensure that the configuration is initialized.
+	 */
+	memset(&mainconfig, 0, sizeof(mainconfig));
+
 	if ((maincs = read_radius_conf_file()) == NULL) {
 		fprintf(stderr, "Error reading radiusd.conf\n");
 		exit(1);
