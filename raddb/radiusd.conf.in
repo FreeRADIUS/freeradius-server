@@ -11,6 +11,14 @@
 #  	Also general configuration for modules can be done
 #  	in this file, it is exported through the API to
 #  	modules that ask for it.
+#
+#	The configuration variables defined here are of the form ${foo}
+#	They are local to this file, and do not change from request to
+#	request.
+#
+#	The per-request variables are of the form %{Attribute-Name}, and
+#	are taken from the values of the attribute in the incoming
+#	request.  See 'doc/variables.txt' for more information.
 
 # Stuff from autoconf
 prefix = @prefix@
