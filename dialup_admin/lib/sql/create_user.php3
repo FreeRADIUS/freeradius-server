@@ -5,6 +5,10 @@ else{
 	echo "<b>Could not include SQL library</b><br>\n";
 	exit();
 }
+if ($config[sql_use_operators] == 'true'){
+	$text = ',op';
+	$passwd_op = ",':='";
+}
 $da_abort=0;
 $link = @da_sql_pconnect($config);
 if ($link){
@@ -12,8 +16,8 @@ if ($link){
 		include("../lib/crypt/$config[general_encryption_method].php3");
 		$passwd = da_encrypt($passwd);
 		$res = @da_sql_query($link,$config,
-		"INSERT INTO $config[sql_check_table] (Attribute,Value,UserName)
-		VALUES ('$config[sql_password_attribute]','$passwd','$login');");
+		"INSERT INTO $config[sql_check_table] (Attribute,Value,UserName $text)
+		VALUES ('$config[sql_password_attribute]','$passwd','$login' $passwd_op);");
 		if (!$res || !@da_sql_affected_rows($link,$res,$config)){
 			echo "<b>Unable to add user $login. SQL error</b><br>\n";
 			$da_abort=1;
@@ -44,11 +48,15 @@ if ($link){
 				else if ($attr_type[$key] == 'replyItem')
 					$table = "$config[sql_reply_table]";
 				$val = $$attrmap["$key"];
+				$op_name = $attrmap["$key"] . '_op';
+				$op_val = $$op_name;
+				if ($op_val != '')
+					$op_val = ",'$op_val'";
 				if ($val == '' || $val == $default_vals["$key"])
 					continue;
 				$res = @da_sql_query($link,$config,
-				"INSERT INTO $table (Attribute,Value,UserName)
-				VALUES ('$attrmap[$key]','$val','$login');");
+				"INSERT INTO $table (Attribute,Value,UserName $text)
+				VALUES ('$attrmap[$key]','$val','$login' $op_val);");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
 					echo "<b>Query failed for attribute $key</b><br>\n";
 			}

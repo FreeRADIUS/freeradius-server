@@ -5,6 +5,12 @@ Ver 1.29:
 * Fix a bug in config.php3 when we have a directive containing ':'
 * Fix a bug in lib/ldap/change_attrs.php3 that did not allow changing more than one value of a 
   multivalued attribute simultaneously.
+* Added selection of ordering in user_accounting.php3. Now it can be either ascending (older records
+  first) or descending (most recent records first). Added a corresponding configuration directive.
+* Added operator support in sql. The eq(=),set(:=) and add(+=) operators are supported. Added an
+  sql_use_operators configuration directive. Hope everything works.
+* Fixed a bug in sql/change_attrs which did not allow multi valued attributes in sql.
+* unset item_vals before adding info in ldap and sql user_info files.
 Ver 1.28:
 * Make user_delete.php3 print something when a user is deleted
 * Cache nas hostname lookups in user_accounting

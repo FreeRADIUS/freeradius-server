@@ -5,6 +5,11 @@ else{
 	echo "<b>Could not include SQL library</b><br>\n";
 	exit();
 }
+if ($config[sql_use_operator] == 'true'){
+	$text1 = ',op';
+	$text2  = ",':='";
+	$text3 = "AND op = ':='";
+}
 $link = @da_sql_pconnect($config);
 if ($link){
 	if (is_file("../lib/crypt/$config[general_encryption_method].php3")){
@@ -17,15 +22,15 @@ if ($link){
 			$row = @da_sql_fetch_array($res,$config);
 			if ($row){
 				$res = @da_sql_query($link,$config,
-				"UPDATE $config[sql_check_table] SET Value = '$passwd' WHERE
+				"UPDATE $config[sql_check_table] SET Value = '$passwd' $text3 WHERE
 				Attribute = '$config[sql_password_attribute]' AND UserName = '$login';");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
 					echo "<b>Error while changing password</b><br>\n";	
 			}
 			else{
 				$res = @da_sql_query($link,$config,
-					"INSERT INTO $config[sql_check_table] (Attribute,Value,UserName)
-					VALUES ('$config[sql_password_attribute]','$passwd','$login');");
+					"INSERT INTO $config[sql_check_table] (Attribute,Value,UserName $text1)
+					VALUES ('$config[sql_password_attribute]','$passwd','$login' $text2);");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
 					echo "<b>Error while changing password</b><br>\n";
 			}

@@ -15,6 +15,7 @@ if ($ds) {
 		$user_exists = 'no';
 	else{
 		$user_exists = 'yes';
+		unset($item_vals);
 		$k = init_decoder();
 		$cn = ($info[0]['cn'][0]) ? $info[0]['cn'][0] : '-';
 		$cn_lang = $info[0]["cn;lang-$config[general_prefered_lang]"][0];

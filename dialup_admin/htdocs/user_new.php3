@@ -6,6 +6,18 @@ if ($show == 1){
 require('../conf/config.php3');
 require('../lib/attrshow.php3');
 require('../lib/defaults.php3');
+
+if ($config[general_lib_type] == 'sql' && $config[sql_use_operators] == 'true'){
+	$colspan=2;
+	$show_ops=1;
+	$op_eq = '=';
+	$op_set = ':=';
+	$op_add = '+=';
+}else{
+	$show_ops = 0;
+	$colspan=1;
+}
+
 ?>
 
 <html>
@@ -63,56 +75,56 @@ EOM;
 <?php
 	echo <<<EOM
 	<tr>
-		<td align=right bgcolor="#d0ddb0">
+		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Username
 		</td><td>
 		<input type=text name="login" value="$login" size=35>
 		</td>
 	</tr>
 	<tr>
-		<td align=right bgcolor="#d0ddb0">
+		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Password
 		</td><td>
 		<input type=text name="passwd" size=35>
 		</td>
 	</tr>
 	<tr>
-		<td align=right bgcolor="#d0ddb0">
+		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Name (First Name Surname)
 		</td><td>
 		<input type=text name="cn" value="$cn" size=35>
 		</td>
 	</tr>
 	<tr>
-		<td align=right bgcolor="#d0ddb0">
+		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Mail
 		</td><td>
 		<input type=text name="mail" value="$mail" size=35>
 		</td>
 	</tr>
 	<tr>
-		<td align=right bgcolor="#d0ddb0">
+		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Departement
 		</td><td>
 		<input type=text name="ou" value="$ou" size=35>
 		</td>
 	</tr>
 	<tr>
-		<td align=right bgcolor="#d0ddb0">
+		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Home Phone
 		</td><td>
 		<input type=text name="homephone" value="$homephone" size=35>
 		</td>
 	</tr>
 	<tr>
-		<td align=right bgcolor="#d0ddb0">
+		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Work Phone
 		</td><td>
 		<input type=text name="telephonenumber" value="$telephonenumber" size=35>
 		</td>
 	</tr>
 	<tr>
-		<td align=right bgcolor="#d0ddb0">
+		<td align=right colspan=$colspan bgcolor="#d0ddb0">
 		Mobile Phone
 		</td><td>
 		<input type=text name="mobile" value="$mobile" size=35>
@@ -123,12 +135,27 @@ EOM;
 		$name = $attrmap["$key"];
 		if ($name == 'none')
 			continue;
+		$oper_name = $name . '_op';
 		$val = ($item_vals["$key"][0] != "") ? $item_vals["$key"][0] : $default_vals["$key"];
 		print <<<EOM
 <tr>
 <td align=right bgcolor="#d0ddb0">
 $desc
 </td>
+EOM;
+
+		if ($show_ops)
+			print <<<EOM
+<td>
+<select name=$oper_name>
+<option selected value="=">=
+<option value=":=">:=
+<option value="+=">+=
+</select>
+</td>
+EOM;
+
+		print <<<EOM
 <td>
 <input type=text name="$name" value="$val" size=35>
 </td>

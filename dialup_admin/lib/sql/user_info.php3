@@ -6,26 +6,43 @@ else{
 	echo "<b>Could not include SQL library</b><br>\n";
 	exit();
 }
+if ($config[sql_use_operators] == 'true'){
+	$op = ',op';
+	$use_op = 1;
+}else{
+	$op = "";
+	$use_op = 0;
+}
 $user_exists = 'no';
+unset($item_vals);
+unset($tmp);
 $link = @da_sql_pconnect($config);
 if ($link){
 	$res = @da_sql_query($link,$config,
-	"SELECT Attribute,Value FROM $config[sql_check_table] WHERE UserName = '$login';");
+	"SELECT Attribute,Value $op FROM $config[sql_check_table] WHERE UserName = '$login';");
 	if ($res){
 		if (@da_sql_num_rows($res,$config))
 			$user_exists = 'yes';
 		while(($row = @da_sql_fetch_array($res,$config))){
 			$attr = $row[Attribute];
 			$val = $row[Value];
+			if ($use_op){
+				$oper = $row[op];
+				$tmp["$attr"][operator][]="$oper";
+			}
 			$tmp["$attr"][]="$val";
 			$tmp["$attr"][count]++;
 		}
 		$res = @da_sql_query($link,$config,
-		"SELECT Attribute,Value FROM $config[sql_reply_table] WHERE UserName = '$login';");
+		"SELECT Attribute,Value $op FROM $config[sql_reply_table] WHERE UserName = '$login';");
 		if ($res){
 			while(($row = @da_sql_fetch_array($res,$config))){
 				$attr = $row[Attribute];
 				$val = $row[Value];
+				if ($use_op){
+					$oper = $row[op];
+					$tmp["$attr"][operator][]="$oper";
+				}
 				$tmp["$attr"][] = "$val";
 				$tmp["$attr"][count]++;
 			}
@@ -50,6 +67,9 @@ if ($link){
 			if (isset($tmp[$val])){
 				$item_vals["$key"] = $tmp[$val];
 				$item_vals["$key"][count] = $tmp[$val][count];
+				if ($use_op)
+					$item_vals["$key"][operator] = $tmp[$val][operator];
+
 			}
 		}
 
