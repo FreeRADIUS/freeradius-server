@@ -1071,7 +1071,8 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 				goto next_request;
 			}
 		}
-	} else if (request->reply == NULL) {
+	} else if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+		   (request->reply == NULL)) {
 		/*
 		 *	We're not configured to reply to the packet,
 		 *	and we're not proxying, so the DEFAULT behaviour
@@ -1133,6 +1134,16 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
  next_request:
 	DEBUG2("Going to the next request");
 
+	/*
+	 *	If this is an accounting request, ensure
+	 *	that we delete it immediately, as there CANNOT be
+	 *	duplicate accounting packets.  If there are, then
+	 *	something else is seriously wrong...
+	 */
+	if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+		request->timestamp = 0;
+	}
+
 #if WITH_THREAD_POOL
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
@@ -1189,9 +1200,6 @@ static int rad_clean_list(void)
 		prevreq = NULL;
 
 		while (curreq != NULL) {
-			assert((curreq->finished == FALSE) ||
-			       (curreq->reply != NULL));
-			
 			/*
 			 *	Maybe the child process handling the request
 			 *	has hung: kill it, and continue.
@@ -1217,16 +1225,6 @@ static int rad_clean_list(void)
 				curreq->timestamp = 0;
 			}
 
-			/*
-			 *	If this is an accounting request, ensure
-			 *	that we delete it immediately: there can't
-			 *	ever be duplicates.
-			 */
-			if (curreq->finished &&
-			    curreq->packet->id == PW_ACCOUNTING_REQUEST) {
-				curreq->timestamp = 0;
-			}
-		
 			/*
 			 *	Delete the current request, if it's
 			 *	marked as such.  That is, the request
