@@ -327,6 +327,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 		} else if (c == '$') switch(*p) {
 			case '{': /* Attribute by Name */
 				decode_attribute(&p, &q, freespace, &openbraces, request, func);
+				break;
 			default:
 				*q++ = c;
 				*q++ = *p;
