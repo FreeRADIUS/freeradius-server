@@ -108,7 +108,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	oracle_sock = sqlsocket->conn;
 
-	if (OCIEnvCreate(&oracle_sock->env, OCI_DEFAULT, (dvoid *)0,
+	if (OCIEnvCreate(&oracle_sock->env, OCI_DEFAULT|OCI_THREADED, (dvoid *)0,
 		(dvoid * (*)(dvoid *, size_t)) 0,
 		(dvoid * (*)(dvoid *, dvoid *, size_t))0, 
 		(void (*)(dvoid *, dvoid *)) 0,
