@@ -93,7 +93,10 @@ static int do_log(int lvl, char *fmt, va_list ap)
 	strcat(buffer, "\n");
 
 	fputs(buffer, msgfd);
-	if (msgfd != stdout) fclose(msgfd);
+	if (msgfd != stdout)
+	  fclose(msgfd);
+	else
+	  fflush(stdout);
 
 	return 0;
 }
