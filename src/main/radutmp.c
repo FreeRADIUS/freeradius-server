@@ -439,7 +439,7 @@ int radutmp_add(REQUEST *request)
  *	Timeout handler (10 secs)
  */
 static int got_alrm;
-static void alrm_handler()
+static void alrm_handler(void)
 {
 	got_alrm = 1;
 }
