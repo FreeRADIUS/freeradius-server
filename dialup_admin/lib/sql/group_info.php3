@@ -29,7 +29,8 @@ if ($link){
 				$name = $row[groupname];
 				$existing_groups["$name"] = $row[counter];
 			}
-			ksort($existing_groups);
+			if (isset($existing_groups))
+				ksort($existing_groups);
 		}
 		else
 			echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";

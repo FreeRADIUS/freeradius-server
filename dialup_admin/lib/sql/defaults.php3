@@ -27,8 +27,12 @@ if ($login != ''){
 			$res = @da_sql_query($link,$config,
 			"SELECT groupname FROM $config[sql_usergroup_table] WHERE username = '$login';");
 			if ($res){
-				while(($row = @da_sql_fetch_array($res,$config)))
-					$member_groups[] = $row[groupname];
+				while(($row = @da_sql_fetch_array($res,$config))){
+					$group = $row[groupname];
+					$member_groups[$group] = $group;
+				}
+				if (isset($member_groups))
+					ksort($member_groups);
 			}
 			if (isset($member_groups)){
 				$in = '(';

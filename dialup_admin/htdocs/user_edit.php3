@@ -1,14 +1,19 @@
 <?php
 require('../conf/config.php3');
-if ($edit_group == 1){
-	header("Location: group_admin.php3?login=$group_to_edit");
-	exit;
-}
 require('../lib/attrshow.php3');
 require('../lib/defaults.php3');
+$extra_text = '';
 if ($user_type != 'group'){
 	if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
 		include("../lib/$config[general_lib_type]/user_info.php3");
+	if ($config[general_lib_type] == 'sql' && $config[sql_show_all_groups] == 'true'){
+		$extra_text = "<br><font size=-2><i>(The groups that the user is a member of are highlated)</i></font>";
+		$saved_login = $login;
+		$login = '';
+		if (is_file("../lib/sql/group_info.php3"))
+			include("../lib/sql/group_info.php3");
+		$login = $saved_login;
+	}
 }
 else{
 	if (is_file("../lib/$config[general_lib_type]/group_info.php3"))
@@ -82,6 +87,10 @@ if ($change == 1){
 			include("../lib/$config[general_lib_type]/change_passwd.php3");
 		if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
 			include("../lib/$config[general_lib_type]/user_info.php3");
+		if ($group_change && $config[general_lib_type] == 'sql' && $config[sql_show_all_groups] == 'true'){
+			include("../lib/sql/group_change.php3");
+			include("../lib/defaults.php3");
+		}
 	}
 	else{
 		if (is_file("../lib/$config[general_lib_type]/group_info.php3"))
@@ -100,6 +109,7 @@ else if ($badusers == 1){
       <input type=hidden name=change value="0">
       <input type=hidden name=add value="0">
       <input type=hidden name=badusers value="0">
+      <input type=hidden name=group_change value="0">
 	<table border=1 bordercolordark=#ffffe0 bordercolorlight=#000000 width=100% cellpadding=2 cellspacing=0 bgcolor="#ffffe0" valign=top>
 <?php
 if ($user_type == 'group')
@@ -241,20 +251,25 @@ EOM;
 if (isset($member_groups)){
 	echo <<<EOM
 <tr>
-<input type=hidden name=edit_group value=0>
 <td align=right colspan=$colspan bgcolor="#d0ddb0">
-Member of
+Member of $extra_text
 </td>
 <td>
-<select name="group_to_edit">
+<select size=2 name="edited_groups[]" multiple OnChange="this.form.group_change.value=1">
 EOM;
-	foreach ($member_groups as $group){
-		echo "<option value=\"$group\">$group\n";
+	if ($config[sql_show_all_groups] == 'true'){
+		foreach ($existing_groups as $group => $count){
+			if ($member_groups[$group] == $group)
+				echo "<option selected value=\"$group\">$group\n";
+			else
+				echo "<option value=\"$group\">$group\n";
+		}
+	}else{
+		foreach ($member_groups as $group)
+			echo "<option value=\"$group\">$group\n";
 	}
 	echo <<<EOM
 </select>
-&nbsp;&nbsp;&nbsp;
-<input type=submit class=button value="Edit Group" OnClick="this.form.edit_group.value=1">
 </td>
 </tr>
 EOM;
