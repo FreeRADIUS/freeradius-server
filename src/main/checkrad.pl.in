@@ -464,12 +464,15 @@ sub max40xx_finger {
 	while(<FD>) {
 	   $line = <FD>;
 	   if( $line =~ /Session/ ){
+		next;
+	   }
+
+	   if( $line =~ /$ARGV[4]/ ){
 	      return 1; # user is online
-	   }else{
-	      return 0; # user is offline
 	   }
 	}
 	close FD;
+	return 0; # user is offline
 }
 
 
