@@ -715,6 +715,15 @@ int eapttls_process(REQUEST *request, tls_session_t *tls_session)
 
 		for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
 			/*
+			 *	The attribute is a server-side thingy,
+			 *	don't copy it.
+			 */
+			if ((vp->attribute > 255) &&
+			    (VENDOR(vp->attribute) == 0)) {
+				continue;
+			}
+
+			/*
 			 *	The outside attribute is already in the
 			 *	tunnel, don't copy it.
 			 *
