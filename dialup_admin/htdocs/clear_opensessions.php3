@@ -66,12 +66,23 @@ print <<<EOM
 EOM;
  
 if ($drop_conns == 1){
+	$method = 'snmp';
+	$nastype = 'cisco';
+	if ($config[general_sessionclear_method] != '')
+		$method = $config[general_sessionclear_method];
+	if ($config[general_nas_type] != '')
+		$nastype = $config[general_nas_type];
 	if ($config[general_ld_library_path] != '')
 		putenv("LD_LIBRARY_PATH=$config[general_ld_library_path]");
+	$nas_by_ip = array();
+	$meth_by_ip = array();
+	$nastype_by_ip = array();
 	foreach ($nas_list as $nas){
 		if ($nas[ip] != ''){
 			$ip = $nas[ip];
 			$nas_by_ip[$ip] = $nas[community];
+			$meth_by_ip[$ip] = $nas[sessionclear_method];
+			$nastype_by_ip[$ip] = $nas[nas_type];
 		}
 	}
 
@@ -85,9 +96,16 @@ if ($drop_conns == 1){
 				$sessionid = $row[acctsessionid];
 				$sessionid = hexdec($sessionid);
 				$nas = $row[nasipaddress];
+				$port = $row[nasportid];
+				$meth = $meth_by_ip[$nas];
+				$nastype = ($nastype_by_ip[$nas] != '') ? $nastype_by_ip[$nas] : $nastype;
 				$comm = $nas_by_ip[$nas];
-				if ($comm != '')
-					exec("$config[general_sessionclear_bin] $nas $comm $sessionid $login");
+				if ($meth == '')
+					$meth = $method;
+				if ($meth == 'snmp' && $comm != '')
+					exec("$config[general_sessionclear_bin] $nas snmp $nastype $login $sessionid $comm");
+				if ($meth == 'telnet')
+					exec("$config[general_sessionclear_bin] $nas telnet $nastype $login $sessionid $port");
 			}
 		}
 		else
