@@ -1,0 +1,28 @@
+Input was: 
+   identity: (len=6)65617073696d00000000
+   nonce_mt: 4d6c40de483add9950902c4024ce765e
+   chal0: 89abcdef89abcdef89abcdef89abcdef
+   chal1: 9abcdef89abcdef89abcdef89abcdef8
+   chal2: abcdef89abcdef89abcdef89abcdef89
+   sres0: 1234abcd1234abcd1234abcd1234abcd
+   sres1: 234abcd1234abcd1234abcd1234abcd1
+   sres2: 34abcd1234abcd1234abcd1234abcd12
+   Kc0: 0011223344556677
+   Kc1: 1021324354657687
+   Kc2: 30415263748596a7
+   versionlist[4]: 00010000
+   select 00 01
+
+
+Output
+mk:         57c55bad5271e6c96f2cb7054ad64ad323d35360
+K_aut:      e7fc4e8f684129c5f53f738d16961f33
+K_encr:     4971bca4b8881cc1ff3ee26170781f9f
+msk:        27508c7091a0c767282d245fb753b38762
+            0f3f4c83_03001ecd_a385a49b_6ace7590_0bbe99ef
+            eb9e4209_088f5906_9f0ed753_50f0e32e_d4b9e50e
+            2a78aad6_86063f
+emsk:       61_b184ba17_8804aa87_71d93978
+            52ed2c8d_c2ed1583_08cc8200_3b0140f8_20034000
+            3b014003_00000098_bb024000_3b0140b8_f9ffbf8c
+            810408bc_3701408e_ff7701

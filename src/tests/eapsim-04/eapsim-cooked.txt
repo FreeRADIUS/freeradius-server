@@ -1,0 +1,224 @@
+
++++> About to send encoded packet:
+	User-Name = "1244070100000001@eapsim.foo"
+	NAS-IP-Address = marajade.sandelman.ottawa.on.ca
+	EAP-Code = Response
+	EAP-Type-Identity = "1244070100000001@eapsim.foo"
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	NAS-Port = 0
+	EAP-Sim-Chal1 = 0x101112131415161718191a1b1c1d1e1f
+	EAP-Sim-SRES1 = 0xd1d2d3d4
+	EAP-Sim-Chal2 = 0x202122232425262728292a2b2c2d2e2f
+	EAP-Sim-SRES2 = 0xe1e2e3e4
+	EAP-Sim-Chal3 = 0x303132333435363738393a3b3c3d3e3f
+	EAP-Sim-SRES3 = 0xf1f2f3f4
+	EAP-Sim-KC1 = 0xa0a1a2a3a4a5a6a7
+	EAP-Sim-KC2 = 0xb0b1b2b3b4b5b6b7
+	EAP-Sim-KC3 = 0xc0c1c2c3c4c5c6c7
+Sending Access-Request of id 999 to 127.0.0.1:1812
+	User-Name = "1244070100000001@eapsim.foo"
+	NAS-IP-Address = marajade.sandelman.ottawa.on.ca
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	NAS-Port = 0
+	EAP-Message = 0x02XX
+rad_recv: Access-Challenge packet from host 127.0.0.1:1812, id=999, length=114
+	Service-Type = Framed-User
+	Framed-Protocol = PPP
+	Framed-IP-Address = 172.16.3.34
+	Framed-IP-Netmask = 255.255.255.0
+	Framed-Routing = Broadcast-Listen
+	Framed-MTU = 1234
+	EAP-Message = 0x01XX
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+<+++ EAP decoded packet:
+	Service-Type = Framed-User
+	Framed-Protocol = PPP
+	Framed-IP-Address = 172.16.3.34
+	Framed-IP-Netmask = 255.255.255.0
+	Framed-Routing = Broadcast-Listen
+	Framed-MTU = 1234
+	EAP-Message = 0x01XX
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	EAP-Id = YY
+	EAP-Code = Request
+	EAP-Type-SIM = 0x0a00000f0200010001000011010100
+<+++ EAP-sim decoded packet:
+	Service-Type = Framed-User
+	Framed-Protocol = PPP
+	Framed-IP-Address = 172.16.3.34
+	Framed-IP-Netmask = 255.255.255.0
+	Framed-Routing = Broadcast-Listen
+	Framed-MTU = 1234
+	EAP-Message = 0x01XX
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	EAP-Id = YY
+	EAP-Code = Request
+	EAP-Type-SIM = 0x0a00000f0200010001000011010100
+	EAP-Sim-Subtype = Start
+	EAP-Sim-VERSION_LIST = 0x000100010000
+	EAP-Sim-FULLAUTH_ID_REQ = 0x0100
+
++++> About to send encoded packet:
+	User-Name = "1244070100000001@eapsim.foo"
+	NAS-IP-Address = marajade.sandelman.ottawa.on.ca
+	EAP-Code = Response
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	NAS-Port = 0
+	EAP-Sim-Chal1 = 0x101112131415161718191a1b1c1d1e1f
+	EAP-Sim-SRES1 = 0xd1d2d3d4
+	EAP-Sim-Chal2 = 0x202122232425262728292a2b2c2d2e2f
+	EAP-Sim-SRES2 = 0xe1e2e3e4
+	EAP-Sim-Chal3 = 0x303132333435363738393a3b3c3d3e3f
+	EAP-Sim-SRES3 = 0xf1f2f3f4
+	EAP-Sim-KC1 = 0xa0a1a2a3a4a5a6a7
+	EAP-Sim-KC2 = 0xb0b1b2b3b4b5b6b7
+	EAP-Sim-KC3 = 0xc0c1c2c3c4c5c6c7
+	EAP-Sim-State = 1
+	EAP-Sim-Subtype = Start
+	EAP-Sim-SELECTED_VERSION = 0x0001
+	EAP-Sim-NONCE_MT = 0x0000f6c27ad77e5378ca75bd18a3a29c0154
+	EAP-Sim-IDENTITY = 0x001b313234343037303130303030303030314065617073696d2e666f6f
+	EAP-Id = YY
+	EAP-Message = 0x02XX
+	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+Sending Access-Request of id 999 to 127.0.0.1:1812
+	User-Name = "1244070100000001@eapsim.foo"
+	NAS-IP-Address = marajade.sandelman.ottawa.on.ca
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	NAS-Port = 0
+	EAP-Message = 0x02XX
+	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+rad_recv: Access-Challenge packet from host 127.0.0.1:1812, id=999, length=174
+	Service-Type = Framed-User
+	Framed-Protocol = PPP
+	Framed-IP-Address = 172.16.3.34
+	Framed-IP-Netmask = 255.255.255.0
+	Framed-Routing = Broadcast-Listen
+	Framed-MTU = 1234
+	EAP-Message = 0x01XX
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+<+++ EAP decoded packet:
+	Service-Type = Framed-User
+	Framed-Protocol = PPP
+	Framed-IP-Address = 172.16.3.34
+	Framed-IP-Netmask = 255.255.255.0
+	Framed-Routing = Broadcast-Listen
+	Framed-MTU = 1234
+	EAP-Message = 0x01XX
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	EAP-Id = YY
+	EAP-Code = Request
+	EAP-Type-SIM = 0x0b0000010d101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f00000b050000cd9dfb465097028cbbe192960e9aeb2c
+<+++ EAP-sim decoded packet:
+	Service-Type = Framed-User
+	Framed-Protocol = PPP
+	Framed-IP-Address = 172.16.3.34
+	Framed-IP-Netmask = 255.255.255.0
+	Framed-Routing = Broadcast-Listen
+	Framed-MTU = 1234
+	EAP-Message = 0x01XX
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	EAP-Id = YY
+	EAP-Code = Request
+	EAP-Type-SIM = 0x0b0000010d101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f00000b050000cd9dfb465097028cbbe192960e9aeb2c
+	EAP-Sim-Subtype = Challenge
+	EAP-Sim-RAND = 0x101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f0000
+	EAP-Sim-MAC = 0x0000cd9dfb465097028cbbe192960e9aeb2c
+Input was: 
+   identity: (len=27)31323434303730313030
+   nonce_mt: f6c27ad77e5378ca75bd18a3a29c0154
+   chal0: 00000000000000000000000000000000
+   chal1: 00000000000000000000000000000000
+   chal2: 00000000000000000000000000000000
+   sres0: d1d2d3d4
+   sres1: e1e2e3e4
+   sres2: f1f2f3f4
+   Kc0: a0a1a2a3a4a5a6a7
+   Kc1: b0b1b2b3b4b5b6b7
+   Kc2: c0c1c2c3c4c5c6c7
+   versionlist[4]: 00010001
+   select 00 01
+
+
+Output
+mk:         5faa1150_e4800b01_af29d250_02481c87_ba6a561c
+K_aut:      324917c4_400053b8_9fb30ef6_9a93c955
+K_encr:     cb8d958d_d73350bd_c9683afa_97afa4e0
+msk:        871430e2_0dbb3a7b_4e893d11_95591f2c_3fb80eec
+            135092e6_79c09a13_814d907b_87ec0223_374a2b38
+            655c7b1d_9315a701_51f43857_da9e1611_8f0bcd3a
+            a4fa767c
+emsk:       871443f2_201bb875_1f2e2d2b_7682582d_83108bb7
+            a953ebd6_00000000_00000000_00000000_00000000
+            00000000_00000000_00000000_00000000_00000000
+            00000000
+
+hmac-sha1 key(16): 324917c4_400053b8_9fb30ef6_9a93c955
+DATA: (96)    01430050_120b0000_010d1011_12131415_16171819
+            1a1b1c1d_1e1f2021_22232425_26272829_2a2b2c2d
+            2e2f3031_32333435_36373839_3a3b3c3d_3e3f0000
+            0b050000_00000000_00000000_00000000_00000000
+            f6c27ad7_7e5378ca_75bd18a3_a29c0154
+MAC check succeed
+
+hmac-sha1 key(16): 324917c4_400053b8_9fb30ef6_9a93c955
+DATA: (40)    0243001c_120b0000_0b050000_00000000_00000000
+            00000000_00000000_d1d2d3d4_e1e2e3e4_f1f2f3f4
+
++++> About to send encoded packet:
+	User-Name = "1244070100000001@eapsim.foo"
+	NAS-IP-Address = marajade.sandelman.ottawa.on.ca
+	EAP-Code = Response
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	NAS-Port = 0
+	EAP-Sim-Chal1 = 0x101112131415161718191a1b1c1d1e1f
+	EAP-Sim-SRES1 = 0xd1d2d3d4
+	EAP-Sim-Chal2 = 0x202122232425262728292a2b2c2d2e2f
+	EAP-Sim-SRES2 = 0xe1e2e3e4
+	EAP-Sim-Chal3 = 0x303132333435363738393a3b3c3d3e3f
+	EAP-Sim-SRES3 = 0xf1f2f3f4
+	EAP-Sim-KC1 = 0xa0a1a2a3a4a5a6a7
+	EAP-Sim-KC2 = 0xb0b1b2b3b4b5b6b7
+	EAP-Sim-KC3 = 0xc0c1c2c3c4c5c6c7
+	EAP-Sim-State = 1
+	EAP-Sim-Subtype = Challenge
+	EAP-Id = YY
+	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	EAP-Sim-MAC = 0xd1d2d3d4e1e2e3e4f1f2f3f4
+	EAP-Sim-KEY = 0x324917c4400053b89fb30ef69a93c955
+	EAP-Message = 0x02XX
+Sending Access-Request of id 999 to 127.0.0.1:1812
+	User-Name = "1244070100000001@eapsim.foo"
+	NAS-IP-Address = marajade.sandelman.ottawa.on.ca
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	NAS-Port = 0
+	State = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	EAP-Message = 0x02XX
+rad_recv: Access-Accept packet from host 127.0.0.1:1812, id=999, length=109
+	Service-Type = Framed-User
+	Framed-Protocol = PPP
+	Framed-IP-Address = 172.16.3.34
+	Framed-IP-Netmask = 255.255.255.0
+	Framed-Routing = Broadcast-Listen
+	Framed-MTU = 1234
+	EAP-Message = 0x03XX
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	User-Name = "1244070100000001@eapsim.foo"
+<+++ EAP decoded packet:
+	Service-Type = Framed-User
+	Framed-Protocol = PPP
+	Framed-IP-Address = 172.16.3.34
+	Framed-IP-Netmask = 255.255.255.0
+	Framed-Routing = Broadcast-Listen
+	Framed-MTU = 1234
+	EAP-Message = 0x03XX
+	Message-Authenticator = 0xABCDABCDABCDABCDABCDABCDABCDABCD
+	User-Name = "1244070100000001@eapsim.foo"
+	EAP-Id = YY
+	EAP-Code = Success
