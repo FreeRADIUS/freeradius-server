@@ -89,6 +89,7 @@ static pid_t		radius_pid;
 static int		need_reload = FALSE;
 static struct rlimit	core_limits;
 static time_t		last_cleaned_list;
+static int		proxy_requests = TRUE;
 
 /*
  *  We keep the incoming requests in an array, indexed by ID.
@@ -150,6 +151,7 @@ static CONF_PARSER server_config[] = {
   { "log_dir",            PW_TYPE_STRING_PTR, &radlog_dir },
   { "acct_dir",           PW_TYPE_STRING_PTR, &radacct_dir },
   { "bind_address",       PW_TYPE_IPADDR,     &myip },
+  { "proxy_requests",     PW_TYPE_BOOLEAN,    &proxy_requests },
 #if 0
   { "confdir",            PW_TYPE_STRING_PTR, &radius_dir },
 #endif
@@ -237,6 +239,17 @@ static void reread_config(int reload)
 			    strerror(errno));
 			exit(1);
 		}
+	}
+
+	/*
+	 *	Parse the server's proxy configuration values.
+	 */
+	if (proxy_requests) {
+		cs = cf_section_find("proxy");
+		if (!cs)
+			return;
+		
+		cf_section_parse(cs, proxy_config);
 	}
 }
 
@@ -395,11 +408,7 @@ int main(int argc, char **argv)
 			 *  TOO LAZY to type '-sfxxyz -l stdout' themselves.
 			 */
 		case 'X':
-#ifndef WITH_THREAD_POOL
 			spawn_flag = FALSE;
-#else
-			spawn_flag = TRUE;
-#endif
 			dont_fork = TRUE;
 			debug_flag = 2;
 			librad_debug = 2;
@@ -535,37 +544,50 @@ int main(int argc, char **argv)
 	}
 
 	/*
-	 *	Open Proxy Socket.
+	 *	If we're proxying requests, open the proxy FD.
+	 *	Otherwise, don't do anything.
 	 */
-	proxyfd = socket (AF_INET, SOCK_DGRAM, 0);
-	if (proxyfd < 0) {
-		perror ("proxy socket");
-		exit(1);
-	}
-
-	sin = (struct sockaddr_in *) & salocal;
-        memset ((char *) sin, '\0', sizeof (salocal));
-	sin->sin_family = AF_INET;
-	sin->sin_addr.s_addr = myip;
-
-	/*
-	 *	Set the proxy port to be one more than the
-	 *	accounting port.
-	 */
-	for (proxy_port = acct_port + 1; proxy_port < 64000; proxy_port++) {
-		sin->sin_port = htons(proxy_port);
-		result = bind (proxyfd, & salocal, sizeof (*sin));
-		if (result == 0) {
-			break;
+	if (proxy_requests) {
+		/*
+		 *	Open Proxy Socket.
+		 */
+		proxyfd = socket (AF_INET, SOCK_DGRAM, 0);
+		if (proxyfd < 0) {
+			perror ("proxy socket");
+			exit(1);
 		}
-	}
+		
+		sin = (struct sockaddr_in *) & salocal;
+		memset ((char *) sin, '\0', sizeof (salocal));
+		sin->sin_family = AF_INET;
+		sin->sin_addr.s_addr = myip;
+		
+		/*
+		 *	Set the proxy port to be one more than the
+		 *	accounting port.
+		 */
+		for (proxy_port = acct_port + 1; proxy_port < 64000; proxy_port++) {
+			sin->sin_port = htons(proxy_port);
+			result = bind (proxyfd, & salocal, sizeof (*sin));
+			if (result == 0) {
+				break;
+			}
+		}
+		
+		/*
+		 *	Couldn't find a port to which we could bind.
+		 */
+		if (proxy_port == 64000) {
+			perror("proxy bind");
+			exit(1);
+		}
 
-	/*
-	 *	Couldn't find a port to which we could bind.
-	 */
-	if (proxy_port == 64000) {
-		perror("proxy bind");
-		exit(1);
+	} else {
+		/*
+		 *	NOT proxying requests, set the FD to a bad value.
+		 */
+		proxyfd = -1;
+		proxy_port = 0;
 	}
 
 	/*
@@ -642,8 +664,7 @@ int main(int argc, char **argv)
 
 #if WITH_THREAD_POOL
 	/*
-	 *  This really should only be just after the 'setsid()', above.
-	 *  That way, we only create the thread pool for daemon mode.
+	 *	If we're spawning children, set up the thread pool.
 	 */
 	if (spawn_flag) {
 		thread_pool_init();
@@ -661,8 +682,14 @@ int main(int argc, char **argv)
 	} else {
 		ip_ntoa(buffer, myip);
 	}
-	log(L_INFO, "Listening on IP address %s, ports %d/udp and %d/udp, with proxy on %d/udp.",
-	    buffer, auth_port, acct_port, proxy_port);
+
+	if (proxy_requests) {
+		log(L_INFO, "Listening on IP address %s, ports %d/udp and %d/udp, with proxy on %d/udp.",
+		    buffer, auth_port, acct_port, proxy_port);
+	} else {
+		log(L_INFO, "Listening on IP address %s, ports %d/udp and %d/udp.",
+		    buffer, auth_port, acct_port);
+	}
 
 	/*
 	 *	Note that we NO LONGER fork an accounting process!
@@ -701,7 +728,8 @@ int main(int argc, char **argv)
 			}
 			sig_fatal(101);
 		}
-		if (status == 0) {
+		if ((status == 0) &&
+		    proxy_requests) {
 			proxy_retry();
 		}
 		for (i = 0; i < 3; i++) {
@@ -1030,20 +1058,31 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	packet for this request, we MIGHT have
 	 *	to go proxy it.
 	 */
-	if (request->proxy == NULL) {
-		int sent;
-		sent = proxy_send(request);
-		
-		/*
-		 *	sent==1 means it's been proxied.  The child
-		 *	is done handling the request, but the request
-		 *	is NOT finished!
-		 */
-		if (sent == 1) {
-			goto next_request;
+	if (proxy_requests) {
+		if (request->proxy == NULL) {
+			int sent;
+			sent = proxy_send(request);
+			
+			/*
+			 *	sent==1 means it's been proxied.  The child
+			 *	is done handling the request, but the request
+			 *	is NOT finished!
+			 */
+			if (sent == 1) {
+				goto next_request;
+			}
 		}
+	} else if (request->reply == NULL) {
+		/*
+		 *	We're not configured to reply to the packet,
+		 *	and we're not proxying, so the DEFAULT behaviour
+		 *	is to REJECT the user.
+		 */
+		DEBUG2("There was no response configured: rejecting the user.");
+		rad_reject(request);
+		goto finished_request;
 	}
-	
+
 	/*
 	 *	If there's a reply, send it to the NAS.
 	 */
@@ -1153,7 +1192,7 @@ static int rad_clean_list(void)
 		while (curreq != NULL) {
 			assert((curreq->finished == FALSE) ||
 			       (curreq->reply != NULL));
-
+			
 			/*
 			 *	Maybe the child process handling the request
 			 *	has hung: kill it, and continue.
