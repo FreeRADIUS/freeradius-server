@@ -319,7 +319,7 @@ $csm	 = '.iso.org.dod.internet.private.enterprises.9';
 sub cisco_snmp {
 
 	# Look up community string in naspasswd file.
-	my ($login, $password) = naspasswd($ARGV[1], 1);
+	my ($login, $pass) = naspasswd($ARGV[1], 1);
 	if ($login && $login ne 'SNMP') {
 		if ($debug) {
 			print LOG
@@ -327,12 +327,28 @@ sub cisco_snmp {
 		}
 		return 2;
 	} else {
-		$password = "public";
+		$pass = "public";
 	}
 
-	$login = snmpget($ARGV[1], $password, "$csm.2.9.2.1.18.$ARGV[2]");
+	my $port = $ARGV[2];
+	my $sess_id = hex($ARGV[4]);
 
-	print LOG "  user at port S$ARGV[2]: $login\n" if ($debug);
+	if ($port < 20000) {
+		#
+		#	The AS5350 doesn't support polling the session ID,
+		#	so we do it based on nas-port-id. This only works
+		#	for analog sessions where port < 20000.
+		#	Yes, this means that simultaneous-use on the as5350
+		#	doesn't work for ISDN users.
+		#
+		$login = snmpget($ARGV[1], $pass, "$csm.2.9.2.1.18.$port");
+		print LOG "  user at port S$port: $login\n" if ($debug);
+	} else {
+		$login = snmpget($ARGV[1], $password,
+				"$csm.9.150.1.1.3.1.2.$sess_id");
+		print LOG "  user with session id $ARGV[4] ($sess_id): " .
+			"$login\n" if ($debug);
+	}
 
 	($login eq $ARGV[3]) ? 1 : 0;
 }
