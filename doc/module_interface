@@ -132,6 +132,4 @@ After all instances are detached, the destroy() method is called.
 
 It should release resources that were acquired by the init() method.
 
-See also src/modules/README for more information.
-
 --Alan Curry <pacman@world.std.com>
