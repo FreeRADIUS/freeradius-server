@@ -1782,6 +1782,15 @@ post-auth {
 	#
 	#  See "Authentication Logging Queries" in sql.conf
 #	sql
+
+	#
+	#  Access-Reject packets are sent through the REJECT sub-section
+	#  of the post-auth section.
+	#
+#	Post-Auth-Type REJECT {
+#		insert-module-name-here
+#	}
+
 }
 
 #
