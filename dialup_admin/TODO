@@ -10,3 +10,7 @@
   sql db if it cannot get user info from the nas server
 * Check out dbx library. It seems very promising for database independent code.
   We 'll see where it goes.
+* Add billing and statistics pages. Billing is a must. The page should also create
+  reports which could be printed or sent by email to the users containing their billing
+  information. We also need more statistics pages with fancy bars and diagrams. Ideas
+  are welcome.

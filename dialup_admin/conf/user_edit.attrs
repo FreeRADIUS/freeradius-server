@@ -15,8 +15,8 @@ Framed-Compression		<a href="help/framed_compression_help.html" target=fc_help o
 #Callback-Id
 #Framed-IPX-Network
 #Class
-Session-Timeout			Session Timeout
-Idle-Timeout			Idle Timeout
+Session-Timeout			<a href="help/session_timeout_help.html" target=st_help onclick=window.open("help/session_timeout_help.html","st_help","width=600,height=170,toolbar=no,scrollbars=no,resizable=yes") title="Session Timeout Help Page"><font color="blue">Session Timeout</font></a>
+Idle-Timeout			<a href="help/idle_timeout_help.html" target=it_help onclick=window.open("help/idle_timeout_help.html","it_help","width=600,height=170,toolbar=no,scrollbars=no,resizable=yes") title="Idle Timeout Help Page"><font color="blue">Idle Timeout</font></a>
 #Termination-Action
 #Login-LAT-Service
 #Login-LAT-Node

@@ -1,3 +1,11 @@
+Ver 1.50:
+* Add support for groups in SQL. Added several new files and modified a few more.
+* Default values in SQL are now extracted from the group membership. Added a lib/sql/defaults.php3 file.
+  As a result the default operator is not '=' anymore but whatever we find in the group check and reply tables.
+* In lib/sql/user_info.php3 set user_exists in more than one places.
+* Add support for the '=*' and '!*' operators
+* Added a HELP_WANTED file describing what are the major things missing which people could contribute.
+* Updated TODO
 Ver 1.30:
 * Add limit of results returned in accounting.php3
 * Fix a bug in time2strclock() in lib/functions.php3. Seconds ammount more than 9 would not show.

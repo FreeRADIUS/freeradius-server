@@ -13,16 +13,17 @@ if ($config[sql_use_operators] == 'true'){
 	$op = "";
 	$use_op = 0;
 }
-$user_exists = 'no';
+$group_exists = 'no';
 unset($item_vals);
 unset($tmp);
+unset($group_members);
 $link = @da_sql_pconnect($config);
 if ($link){
 	$res = @da_sql_query($link,$config,
-	"SELECT Attribute,Value $op FROM $config[sql_check_table] WHERE UserName = '$login';");
+	"SELECT Attribute,Value $op FROM $config[sql_groupcheck_table] WHERE GroupName = '$login';");
 	if ($res){
 		if (@da_sql_num_rows($res,$config))
-			$user_exists = 'yes';
+			$group_exists = 'yes';
 		while(($row = @da_sql_fetch_array($res,$config))){
 			$attr = $row[Attribute];
 			$val = $row[Value];
@@ -34,10 +35,10 @@ if ($link){
 			$tmp["$attr"][count]++;
 		}
 		$res = @da_sql_query($link,$config,
-		"SELECT Attribute,Value $op FROM $config[sql_reply_table] WHERE UserName = '$login';");
+		"SELECT Attribute,Value $op FROM $config[sql_groupreply_table] WHERE GroupName = '$login';");
 		if ($res){
 			if (@da_sql_num_rows($res,$config))
-				$user_exists = 'yes';
+				$group_exists = 'yes';
 			while(($row = @da_sql_fetch_array($res,$config))){
 				$attr = $row[Attribute];
 				$val = $row[Value];
@@ -48,23 +49,19 @@ if ($link){
 				$tmp["$attr"][] = "$val";
 				$tmp["$attr"][count]++;
 			}
-			if ($config[sql_use_user_info_table] == 'true'){
-				$res = @da_sql_query($link,$config,
-				"SELECT * FROM $config[sql_user_info_table] WHERE UserName = '$login';");
-				if ($res){
-					if (@da_sql_num_rows($res,$config))
-						$user_exists = 'yes';
-					if (($row = @da_sql_fetch_array($res,$config))){	
-						$cn = ($row[Name]) ? $row[Name] : '-';
-						$telephonenumber = ($row[WorkPhone]) ? $row[WorkPhone] : '-';
-						$homephone = ($row[HomePhone]) ? $row[HomePhone] : '-';
-						$ou = ($row[Department]) ? $row[Department] : '-';
-						$mail = ($row[Mail]) ? $row[Mail] : '-';
-						$mobile = ($row[Mobile]) ? $row[Mobile] : '-';
-					}
-				}			
-			}
 		}
+		else
+			echo "<b>Database query failed partially</b><br>\n";
+		$res = @da_sql_query($link,$config,
+		"SELECT UserName FROM $config[sql_usergroup_table] WHERE GroupName = '$login' ORDER BY UserName;");
+		if ($res){
+			if (@da_sql_num_rows($res,$config))
+				$group_exists = 'yes';
+			while(($row = @da_sql_fetch_array($res,$config))){
+				$member = $row[UserName];
+				$group_members[] = "$member";
+			}
+		}	
 		else
 			echo "<b>Database query failed partially</b><br>\n";
 		foreach($attrmap as $key => $val){

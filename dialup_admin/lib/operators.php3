@@ -10,6 +10,8 @@ $op_lt = '<';
 $op_le = '<=';
 $op_regeq = '=~';
 $op_regne = '!~';
+$op_exst = '=*';
+$op_nexst = '!*';
 
 // Check the operator if it is allowed for this type of
 // attribute (check or reply).
@@ -32,6 +34,8 @@ function check_operator($op,$type)
 		case '<=':
 		case '=~':
 		case '!~':
+		case '=*':
+		case '!*':
 			return ($type == 1) ? 0 : -1;
 	}
 }

@@ -27,12 +27,13 @@ if ($link){
 			$name = $attrmap["$key"] . $i;
 
 			$sql_attr=$attrmap["$key"];
+			$query_key = ($user_type == 'group') ? 'GroupName' : 'UserName';
 			if ($attr_type["$key"] == 'checkItem'){
-				$table = $config[sql_check_table];
+				$table = ($user_type == 'group') ? $config[sql_groupcheck_table] : $config[sql_check_table];
 				$type = 1;
 			}
 			else if ($attr_type["$key"] == 'replyItem'){
-				$table = $config[sql_reply_table];
+				$table = ($user_type == 'group') ? $config[sql_groupreply_table] : $config[sql_reply_table];
 				$type = 2;
 			}
 			if ($use_ops){
@@ -50,7 +51,7 @@ if ($link){
 			if ($use_ops && isset($item_vals["$key"][operator][$j]) &&
 				$op_val != $item_vals["$key"][operator][$j] ){
 				$res = @da_sql_query($link,$config,
-				"UPDATE $table SET op = '$op_val' WHERE UserName = '$login'
+				"UPDATE $table SET op = '$op_val' WHERE $query_key = '$login'
 				AND Attribute = '$sql_attr' AND Value = '$val';");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
 					echo "<b>Operator change failed for attribute $key</b><br>\n";
@@ -62,7 +63,7 @@ if ($link){
 	//	if value is null and corresponding value exists then delete
 			else if (($val == $default_vals["$key"] || $val == '') && isset($item_vals["$key"][$j])){
 				$res = @da_sql_query($link,$config,
-				"DELETE FROM $table WHERE UserName = '$login' AND Attribute = '$sql_attr';");
+				"DELETE FROM $table WHERE $query_key = '$login' AND Attribute = '$sql_attr';");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
 					echo "<b>Delete failed for attribute $key</b><br>\n";
 			}
@@ -74,12 +75,12 @@ if ($link){
 				if (isset($item_vals["$key"][$j])){
 					$old_val = $item_vals["$key"][$j];
 					$res = @da_sql_query($link,$config,
-					"UPDATE $table SET Value = '$val' WHERE UserName = '$login' AND
+					"UPDATE $table SET Value = '$val' WHERE $query_key = '$login' AND
 					Attribute = '$sql_attr' AND Value = '$old_val';");
 				}
 				else
 					$res = @da_sql_query($link,$config,
-					"INSERT INTO $table (UserName,Attribute,Value $text2)
+					"INSERT INTO $table ($query_key,Attribute,Value $text2)
 					VALUES ('$login','$sql_attr','$val' $op_val2);");
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
 					echo "<b>Change failed for attribute $key</b><br>\n";	
