@@ -35,85 +35,33 @@ static const char rcsid[] =
 
 #include	"radiusd.h"
 
-struct xlat_cmp {
-	char module[MAX_STRING_LEN];
-	int length;
-	void *instance;
-	RAD_XLAT_FUNC do_xlat;
-	struct xlat_cmp *next;
-};
+#include	"rad_assert.h"
 
-static struct xlat_cmp *cmp = NULL;
+typedef struct xlat_t {
+	char		module[MAX_STRING_LEN];
+	int		length;
+	void		*instance;
+	RAD_XLAT_FUNC	do_xlat;
+	int		internal;	/* not allowed to re-define these */
+} xlat_t;
+
+static rbtree_t *xlat_root = NULL;
 
 /*
- *      Register an xlat function.
+ *	Define all xlat's in the structure.
  */
-int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
-{
-	struct xlat_cmp      *c;
+static const char *internal_xlat[] = {"check",
+				      "request",
+				      "reply",
+				      "proxy-request",
+				      "proxy-reply",
+				      NULL};
+static int xlat_inst[] = { 0, 1, 2, 3, 4 };
 
-	if (module == NULL || strlen(module) == 0){
-		DEBUG("xlat_register: Invalid module name");
-		return -1;
-	}
-
-	xlat_unregister(module, func);
-
-	c = rad_malloc(sizeof(struct xlat_cmp));
-
-	c->do_xlat = func;
-	strNcpy(c->module, module, sizeof(c->module));
-	c->length = strlen(c->module);
-	c->instance = instance;
-	c->next = cmp;
-	cmp = c;
-
-	return 0;
-}
 
 /*
- *      Unregister an xlat function.
+ *	Convert the value on a VALUE_PAIR to string
  */
-void xlat_unregister(const char *module, RAD_XLAT_FUNC func)
-{
-	struct xlat_cmp      *c, *last;
-
-	last = NULL;
-	for (c = cmp; c; c = c->next) {
-		if (strncmp(c->module,module,c->length) == 0 && c->do_xlat == func)
-			break;
-		last = c;
-	}
-
-	if (c == NULL) return;
-
-	if (last != NULL)
-		last->next = c->next;
-	else
-		cmp = c->next;
-
-	free(c);
-}
-
-/*
- * find the appropriate registered xlat function.
- */
-static struct xlat_cmp *find_xlat_func(const char *module)
-{
-	struct xlat_cmp *c;
-
-	for (c = cmp; c; c = c->next){
-		if (strncmp(c->module,module,c->length) == 0 && *(module+c->length) == ':')
-			break;
-	}
-
-	return c;
-}
-
-
-/*
-   Convert the value on a VALUE_PAIR to string
-*/
 static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 			 int type, RADIUS_ESCAPE_STRING func)
 {
@@ -143,87 +91,241 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 	return strlen(out);
 }
 
+
 /*
- *	Decode an attribute name from a particular RADIUS_PACKET
- *	into a string.
+ *	Dynamically translate for check:, request:, reply:, etc.
  */
-static int decode_attr_packet(const char *from, char **to, int freespace,
-			      RADIUS_PACKET *packet,
-			      RADIUS_ESCAPE_STRING func)
-
+static int xlat_packet(void *instance, REQUEST *request,
+		       char *fmt, char *out, size_t outlen,
+		       RADIUS_ESCAPE_STRING func)
 {
-	DICT_ATTR *tmpda;
-	VALUE_PAIR *vp;
+	DICT_ATTR	*da;
+	VALUE_PAIR	*vp;
+	VALUE_PAIR	*vps = NULL;
+	RADIUS_PACKET	*packet = NULL;
 
-	tmpda = dict_attrbyname(from);
-	if (!tmpda) return 0;
-
-	/*
-	 *	See if the VP is defined.
-	 */
-	vp = pairfind(packet->vps, tmpda->attr);
-	if (vp) {
-		*to += valuepair2str(*to, freespace, vp,
-				     tmpda->type, func);
-		return 1;
-	}
-
-	/*
-	 *	Non-protocol attributes.
-	 */
-	switch (tmpda->attr) {
-		case PW_PACKET_TYPE:
-		{
-			DICT_VALUE *dval;
-
-			dval = dict_valbyattr(tmpda->attr, packet->code);
-			if (dval) {
-				snprintf(*to, freespace, "%s", dval->name);
-			} else {
-				snprintf(*to, freespace, "%d", packet->code);
-			}
-			*to += strlen(*to);
-			return 1;
-		}
+	switch (*(int*) instance) {
+	case 0:
+		vps = request->config_items;
 		break;
 
-		default:
-			break;
+	case 1:
+		vps = request->packet->vps;
+		packet = request->packet;
+		break;
+
+	case 2:
+		vps = request->reply->vps;
+		packet = request->reply;
+		break;
+
+	case 3:
+		if (request->proxy) vps = request->proxy->vps;
+		packet = request->proxy;
+		break;
+
+	case 4:
+		if (request->proxy_reply) vps = request->proxy_reply->vps;
+		packet = request->proxy_reply;
+		break;
+
+	default:		/* WTF? */
+		return 0;
 	}
 
-	return 0;
-}
-
-/*
- * Decode an attribute name from a particular VALUE_PAIR*
- * into a string.
- */
-static int decode_attr_vps(const char *from, char **to, int freespace,
-			      VALUE_PAIR *vps,
-			      RADIUS_ESCAPE_STRING func)
-
-{
-	DICT_ATTR *tmpda;
-	VALUE_PAIR *vp;
-
-	tmpda = dict_attrbyname(from);
-	if (!tmpda) return 0;
+	if (!vps) return 0;	/* silently fail */
 
 	/*
-	 *	See if the VP is defined.
+	 *	The "format" string is the attribute name.
 	 */
-	vp = pairfind(vps, tmpda->attr);
-	if (vp) {
-		*to += valuepair2str(*to, freespace, vp,
-				     tmpda->type, func);
-		return 1;
+	da = dict_attrbyname(fmt);
+	if (!da) return 0;
+
+	vp = pairfind(vps, da->attr);
+	if (!vp) {
+		/*
+		 *	Some "magic" handlers, which are never in VP's, but
+		 *	which are in the packet.
+		 *
+		 *	FIXME: Add SRC/DST IP address!
+		 */
+		if (packet) {
+			switch (da->attr) {
+			case PW_PACKET_TYPE:
+			{
+				DICT_VALUE *dval;
+				
+				dval = dict_valbyattr(da->attr, packet->code);
+				if (dval) {
+					snprintf(out, outlen, "%s", dval->name);
+				} else {
+					snprintf(out, outlen, "%d", packet->code);
+				}
+				return strlen(out);
+			}
+			break;
+			
+			default:
+				break;
+			}
+		}
+
+		/*
+		 *	Not found, die.
+		 */
+		return 0;
 	}
+
+	/*
+	 *	Convert the VP to a string, and return it.
+	 */
+	return valuepair2str(out, outlen, vp, da->type, func);
+}
+
+
+/*
+ *	Compare two xlat_t structs, based ONLY on the module name.
+ */
+static int xlat_cmp(const void *a, const void *b)
+{
+	if (((const xlat_t *)a)->length != ((const xlat_t *)b)->length) {
+		return ((const xlat_t *)a)->length - ((const xlat_t *)b)->length;
+	}
+
+	return memcmp(((const xlat_t *)a)->module,
+		      ((const xlat_t *)b)->module,
+		      ((const xlat_t *)a)->length);
+}
+
+
+/*
+ *	find the appropriate registered xlat function.
+ */
+static xlat_t *xlat_find(const char *module)
+{
+	char *p;
+	xlat_t my_xlat;
+
+	strNcpy(my_xlat.module, module, sizeof(my_xlat.module));
+
+	/*
+	 *	We get passed the WHOLE string, and all we want here
+	 *	is the first piece.
+	 */
+	p = strchr(my_xlat.module, ':');
+	if (p) *p = '\0';
+
+	my_xlat.length = strlen(my_xlat.module);
+
+	return rbtree_finddata(xlat_root, &my_xlat);
+}
+
+
+/*
+ *      Register an xlat function.
+ */
+int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
+{
+	xlat_t	*c;
+	xlat_t	my_xlat;
+
+	if ((module == NULL) || (strlen(module) == 0)) {
+		DEBUG("xlat_register: Invalid module name");
+		return -1;
+	}
+
+	/*
+	 *	Don't allow new regex stuff to be registered.
+	 */
+	if (strspn(module, "0123456789") == strlen(module)) {
+		DEBUG("xlat_register: Cannot define numeric xlats");
+		return -1;
+	}
+
+	/*
+	 *	First time around, build up the tree...
+	 *
+	 *	FIXME: This code should be hoisted out of this function,
+	 *	and into a global "initialization".  But it isn't critical...
+	 */
+	if (!xlat_root) {
+		int i;
+
+		xlat_root = rbtree_create(xlat_cmp, free, 0);
+		if (!xlat_root) {
+			DEBUG("xlat_register: Failed to create tree.");
+			return -1;
+		}
+
+		/*
+		 *	Register the internal xlat's.
+		 */
+		for (i = 0; internal_xlat[i] != NULL; i++) {
+			xlat_register(internal_xlat[i], xlat_packet, &xlat_inst[i]);
+			c = xlat_find(internal_xlat[i]);
+			rad_assert(c != NULL);
+			c->internal = TRUE;
+		}
+	}
+
+	/*
+	 *	If it already exists, replace the instance.
+	 */
+	strNcpy(my_xlat.module, module, sizeof(my_xlat.module));
+	my_xlat.length = strlen(my_xlat.module);
+	c = rbtree_finddata(xlat_root, &my_xlat);
+	if (c) {
+		if (c->internal) {
+			DEBUG("xlat_register: Cannot re-define internal xlat");
+			return -1;
+		}
+
+		c->do_xlat = func;
+		c->instance = instance;
+		return 0;
+	}
+
+	/*
+	 *	Doesn't exist.  Create it.
+	 */
+	c = rad_malloc(sizeof(xlat_t));
+	memset(c, 0, sizeof(*c));
+
+	c->do_xlat = func;
+	strNcpy(c->module, module, sizeof(c->module));
+	c->length = strlen(c->module);
+	c->instance = instance;
+
+	rbtree_insert(xlat_root, c);
 
 	return 0;
 }
 
 /*
- *  Decode an attribute name into a string.
+ *      Unregister an xlat function.
+ *
+ *	We can only have one function to call per name, so the
+ *	passing of "func" here is extraneous.
+ */
+void xlat_unregister(const char *module, RAD_XLAT_FUNC func)
+{
+	rbnode_t	*node;
+	xlat_t		my_xlat;
+
+	func = func;		/* -Wunused */
+
+	strNcpy(my_xlat.module, module, sizeof(my_xlat.module));
+	my_xlat.length = strlen(my_xlat.module);
+
+	node = rbtree_find(xlat_root, &my_xlat);
+	if (!node) return;
+
+	rbtree_delete(xlat_root, node);
+}
+
+
+/*
+ *	Decode an attribute name into a string.
  */
 static void decode_attribute(const char **from, char **to, int freespace,
 			     int *open, REQUEST *request,
@@ -234,7 +336,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	char *q, *pa;
 	int stop=0, found=0, retlen=0;
 	int openbraces = *open;
-	struct xlat_cmp *c;
+	xlat_t *c;
 
 	p = *from;
 	q = *to;
@@ -299,48 +401,12 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	*pa = '\0';
 
 	/*
-	 *	Find an attribute from the reply.
+	 *	Look up almost everything in the new tree of xlat
+	 *	functions.  this makes it a little quicker...
 	 */
-	if (strncasecmp(attrname,"reply:",6) == 0) {
-		found = decode_attr_packet(&attrname[6], &q, freespace,
-					   request->reply, func);
-
-		/*
-		 *	Find an attribute from the request.
-		 */
-	} else if (strncasecmp(attrname,"request:",8) == 0) {
-		found = decode_attr_packet(&attrname[8], &q, freespace,
-					   request->packet, func);
-
-		/*
-		 *	Find an attribute from the config items.
-		 */
-	} else if (strncasecmp(attrname,"check:",6) == 0) {
-		found = decode_attr_vps(&attrname[6], &q, freespace,
-					   request->config_items, func);
-
-		/*
-		 *	Find an attribute from the proxy request.
-		 */
-	} else if ((strncasecmp(attrname,"proxy-request:",14) == 0) &&
-		   (request->proxy_reply != NULL)) {
-		found = decode_attr_packet(&attrname[14], &q, freespace,
-					   request->proxy, func);
-
-		/*
-		 *	Find an attribute from the proxy reply.
-		 */
-	} else if ((strncasecmp(attrname,"proxy-reply:",12) == 0) &&
-		   (request->proxy_reply != NULL)) {
-		found = decode_attr_packet(&attrname[12], &q, freespace,
-					   request->proxy_reply, func);
-
-		/*
-		 *	Find a string from a registered function.
-		 */
-	} else if ((c = find_xlat_func(attrname)) != NULL) {
-		DEBUG("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
-		      c->module, attrname+ c->length + 1);
+	if ((c = xlat_find(attrname)) != NULL) {
+		if (!c->internal) DEBUG("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
+					c->module, attrname+ c->length + 1);
 		retlen = c->do_xlat(c->instance, request, attrname+(c->length+1), q, freespace, func);
 		/* If retlen is 0, treat it as not found */
 		if (retlen == 0) {
@@ -350,15 +416,6 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			q += retlen;
 		}
 
-		/*
-		 *	Nothing else, it MUST be a bare attribute name.
-		 */
-	} else if (decode_attr_packet(attrname, &q, freespace, request->packet, func)) {
-		found = 1;
-
-		/*
-		 *	Regex-style %{1}, %{2}, etc.
-		 */
 	} else if ((attrname[0] >= '0') && (attrname[0] <= '9')) {
 		int regex_num;
 		char *regex = NULL;
@@ -383,6 +440,18 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			found = 1;
 		}
 
+		/*
+		 *	Nothing else, it MUST be a bare attribute name, taken
+		 *	from the request ("1" in the magic structs. 
+		 */
+	} else if ((retlen = xlat_packet(&xlat_inst[1], request, attrname,
+					 q, freespace, func)) > 0) {
+		found = 1;
+		q += retlen;
+
+		/*
+		 *	Regex-style %{1}, %{2}, etc.
+		 */
 	} else if (dict_attrbyname(attrname) == NULL) {
 		/*
 		 *	No attribute by that name, return an error.
@@ -536,6 +605,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			}
 			p++;
+
+			/*
+			 *	Hmmm... ${User-Name} is a synonym for %{User-Name}
+			 *	Why, exactly?
+			 */
 		} else if (c == '$') switch(*p) {
 			case '{': /* Attribute by Name */
 				decode_attribute(&p, &q, freespace, &openbraces, request, func);
