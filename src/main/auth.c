@@ -664,18 +664,19 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if ((tmp = pairfind(request->reply->vps, 
 			PW_FRAMED_IP_ADDRESS)) != NULL) {
-		VALUE_PAIR *tmp2;
+		VALUE_PAIR *vpPortId;
+		VALUE_PAIR *vpAddPort;
 
 		/*
 		 *  Find the NAS port ID.
 		 */
-		if ((tmp = pairfind(request->packet->vps,
+		if ((vpPortId = pairfind(request->packet->vps,
 				PW_NAS_PORT_ID)) != NULL)
-			nas_port = tmp->lvalue;
+			nas_port = vpPortId->lvalue;
 
-		if((tmp2 = pairfind(request->reply->vps,
+		if((vpAddPort = pairfind(request->reply->vps,
 				PW_ADD_PORT_TO_IP_ADDRESS)) != NULL) {
-			if (tmp->addport || (tmp2 && tmp2->lvalue)) {
+			if (tmp->addport || (vpAddPort && vpAddPort->lvalue)) {
 				tmp->lvalue = htonl(ntohl(tmp->lvalue) + nas_port);
 				tmp->addport = 0;
 			}
