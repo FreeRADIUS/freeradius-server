@@ -104,7 +104,7 @@ int rad_accounting(REQUEST *request)
 			 */
 			rcode = radius_exec_program(exec_program, request,
 						    exec_wait, NULL, 0,
-						    request->packet->vps, &vp);
+						    request->packet->vps, &vp, 1);
 			free(exec_program);
 
 			/*

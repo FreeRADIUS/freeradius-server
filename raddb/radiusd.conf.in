@@ -1443,6 +1443,7 @@ $INCLUDE ${confdir}/eap.conf
 	exec {
 		wait = yes
 		input_pairs = request
+		shell_escape = yes
 	}
 
 	#
@@ -1456,7 +1457,24 @@ $INCLUDE ${confdir}/eap.conf
 	#  one section (e.g. 'authorize', 'pre_proxy', etc), then it
 	#  is probably best to define a different instance of the
 	#  'exec' module for every section.	
-	#	
+	#
+	#  The return value of the program run determines the result
+	#  of the exec instance call as follows:
+	#  (See doc/configurable_failover for details)
+	#
+	#  < 0 : fail      the module failed
+	#  = 0 : ok        the module succeeded
+	#  = 1 : reject    the module rejected the user
+	#  = 2 : fail      the module failed
+	#  = 3 : ok        the module succeeded
+	#  = 4 : handled   the module has done everything to handle the request
+	#  = 5 : invalid   the user's configuration entry was invalid
+	#  = 6 : userlock  the user was locked out
+	#  = 7 : notfound  the user was not found
+	#  = 8 : noop      the module did nothing
+	#  = 9 : updated   the module updated information in the request
+	#  > 9 : fail      the module failed
+	#
 	exec echo {
 		#
 		#  Wait for the program to finish.
@@ -1522,6 +1540,18 @@ $INCLUDE ${confdir}/eap.conf
 		#  being sent to the NAS.
 		#
 		#packet_type = Access-Accept
+
+		#
+		#  Should we escape the environment variables?
+		#  
+		#  If this is set, all the RADIUS attributes
+		#  are capitalised and dashes replaced with
+		#  underscores. Also, RADIUS values are surrounded
+		#  with double-quotes.
+		#
+		#  That is to say: User-Name=BobUser => USER_NAME="BobUser"
+		shell_escape = yes
+
 	}
 
 	#  Do server side ip pool management. Should be added in post-auth and

@@ -794,7 +794,7 @@ autz_redo:
 		r = radius_exec_program(exec_program, request,
 					exec_wait,
 					umsg, sizeof(umsg),
-					request->packet->vps, &tmp);
+					request->packet->vps, &tmp, 1);
 		free(exec_program);
 		exec_program = NULL;
 
@@ -877,7 +877,7 @@ autz_redo:
 		 *	No need to check the exit status here.
 		 */
 		radius_exec_program(exec_program, request, exec_wait,
-				    NULL, 0, request->packet->vps, NULL);
+				    NULL, 0, request->packet->vps, NULL, 1);
 	}
 
 	if (exec_program)

@@ -394,7 +394,8 @@ int		rad_postauth(REQUEST *);
 int		radius_exec_program(const char *,  REQUEST *, int,
 				    char *user_msg, int msg_len,
 				    VALUE_PAIR *input_pairs,
-				    VALUE_PAIR **output_pairs);
+				    VALUE_PAIR **output_pairs,
+					int shell_escape);
 
 /* timestr.c */
 int		timestr_match(char *, time_t);

@@ -45,6 +45,7 @@ typedef struct rlm_exec_t {
 	char	*output;
 	char	*packet_type;
 	int	packet_code;
+	int	shell_escape;
 } rlm_exec_t;
 
 /*
@@ -66,6 +67,7 @@ static CONF_PARSER module_config[] = {
 	  offsetof(rlm_exec_t,output), NULL, NULL },
 	{ "packet_type", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_exec_t,packet_type), NULL, NULL },
+	{ "shell_escape", PW_TYPE_BOOLEAN,  offsetof(rlm_exec_t,shell_escape), NULL, "yes" },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -140,7 +142,7 @@ static int exec_xlat(void *instance, REQUEST *request,
 	 */
 	DEBUG2("rlm_exec (%s): Executing %s", inst->xlat_name, fmt);
 	result = radius_exec_program(fmt, request, inst->wait,
-				     out, outlen, *input_pairs, NULL);
+				     out, outlen, *input_pairs, NULL, inst->shell_escape);
 	DEBUG2("rlm_exec (%s): result %d", inst->xlat_name, result);
 	if (result != 0) {
 		out[0] = '\0';
@@ -331,8 +333,8 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	 */
 	result = radius_exec_program(inst->program, request,
 				     inst->wait, NULL, 0,
-				     *input_pairs, &answer);
-	if (result != 0) {
+				     *input_pairs, &answer, inst->shell_escape);
+	if (result < 0) {
 		radlog(L_ERR, "rlm_exec (%s): External script failed",
 		       inst->xlat_name);
 		return RLM_MODULE_FAIL;
@@ -347,7 +349,13 @@ static int exec_dispatch(void *instance, REQUEST *request)
 
 	pairfree(&answer);
 
-	return RLM_MODULE_OK;
+	if (result == 0) {
+		return RLM_MODULE_OK;
+	}
+	if (result > RLM_MODULE_NUMCODES) {
+		return RLM_MODULE_FAIL;
+	}
+	return result-1;
 }
 
 

@@ -144,7 +144,8 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			int exec_wait,
 			char *user_msg, int msg_len,
 			VALUE_PAIR *input_pairs,
-			VALUE_PAIR **output_pairs)
+			VALUE_PAIR **output_pairs,
+			int shell_escape)
 {
 	VALUE_PAIR *vp;
 	char mycmd[1024];
@@ -391,16 +392,18 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			 *	variable...
 			 */
 			snprintf(buffer, sizeof(buffer), "%s=", vp->name);
-			for (p = buffer; *p != '='; p++) {
-				if (*p == '-') {
-					*p = '_';
-				} else if (isalpha((int) *p)) {
-					*p = toupper(*p);
+			if (shell_escape) {
+				for (p = buffer; *p != '='; p++) {
+					if (*p == '-') {
+						*p = '_';
+					} else if (isalpha((int) *p)) {
+						*p = toupper(*p);
+					}
 				}
 			}
 
 			n = strlen(buffer);
-			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, 1);
+			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, shell_escape);
 
 			envp[envlen++] = strdup(buffer);
 		}
@@ -562,5 +565,5 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 
 	radlog(L_ERR|L_CONS, "Exec-Program: Abnormal child exit: %s",
 	       strerror(errno));
-	return 1;
+	return 2;
 }
