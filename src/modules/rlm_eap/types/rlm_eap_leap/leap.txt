@@ -54,19 +54,20 @@ for EAP.
 
 The general description of the protocol is:
 
-1. AP->RS: Radius Request/EAP Identity, containing the name of the
+1. AP->RS: Access-Request/EAP Identity, containing the name of the
    user to be authenticated
 
-2. RS->AP: Radius Challenge/EAP Request/LEAP, containing a 8 octet random
-   MSCHAP Peer Challenge (PC)
+2. RS->AP: Access-Challenge/EAP Request/LEAP, containing a 8 octet random
+   MSCHAP Peer Challenge (PC) + State
 
-3. AP->RS: Radius request/EAP Response/LEAP, containing the 24 octet MSCHAP
-   response to the challenge in 2 above (PR).
+3. AP->RS: Access-Request/EAP Response/LEAP, containing the 24 octet MSCHAP
+   response to the challenge in 2 above (PR) + State
 
-4. RS->AP: Radius Access-Accept/EAP Success
+4. RS->AP: Access-Challenge/EAP Success (with EAP id++)
+   + State (may be different than the satate send in <2>)
 
-5. AP->RS: Radius Request/EAP Request/LEAP, containing 8 octet Access Point
-   Challenge (APC).
+5. AP->RS: Access-Request/EAP Request/LEAP, containing 8 octet Access Point
+   Challenge (APC) + State
 
 6. RS->AP: Radius Access-Accept/EAP Response/LEAP, containing 24 octet
    response to the challenge in 5 above (APR), plus a session key sent
