@@ -6,6 +6,7 @@ rlm_chap
 rlm_counter
 rlm_dbm
 rlm_detail
+rlm_eap
 rlm_fastusers
 rlm_files
 rlm_krb5
