@@ -162,11 +162,12 @@ static radclient_t *radclient_init(const char *filename)
 	int packet_number = 1;
 
 	start = NULL;
+	assert(filename != NULL);
 
 	/*
 	 *	Determine where to read the VP's from.
 	 */
-	if (filename && (strcmp(filename, "-") != 0)) {
+	if (strcmp(filename, "-") != 0) {
 		fp = fopen(filename, "r");
 		if (!fp) {
 			fprintf(stderr, "radclient: Error opening %s: %s\n",
@@ -867,6 +868,13 @@ int main(int argc, char **argv)
 	 *	Add the secret.
 	 */
 	if (argv[3]) secret = argv[3];
+
+	/*
+	 *	If no '-f' is specified, we're reading from stdin.
+	 */
+	if (rbtree_num_elements(filename_tree) == 0) {
+		rbtree_insert(filename_tree, "-");
+	}
 
 	/*
 	 *	Walk over the list of filenames, creating the requests.
