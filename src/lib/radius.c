@@ -2066,6 +2066,7 @@ static void random_vector(uint8_t *vector)
 		lrad_rand_pool.randrsl[2] = (uint32_t) vector;
 
 		lrad_randinit(&lrad_rand_pool, 1);
+		lrad_pool_initialized = 1;
 	}
 
 	lrad_isaac(&lrad_rand_pool);
