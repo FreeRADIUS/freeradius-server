@@ -53,6 +53,7 @@ Ver 1.59:
 * Fix a few more bugs
 * Add a failed logins page, to show the most recent failed logins.
 * Fix a bug in the failed logins page
+* Change use of AcctStartTime with AcctStopTime in failed_logins.php3 to match that in user_admin
 Ver 1.55:
 * Update the FAQ about missing attributes from the user/group edit pages and add a few comments
   in the configuration files

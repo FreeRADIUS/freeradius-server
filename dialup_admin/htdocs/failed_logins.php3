@@ -81,13 +81,13 @@ EOM;
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
-	"SELECT AcctStartTime,UserName,NASIPAddress,NASPortId,AcctTerminateCause,CallingStationId
+	"SELECT AcctStopTime,UserName,NASIPAddress,NASPortId,AcctTerminateCause,CallingStationId
 	FROM $config[sql_accounting_table]
-	WHERE AcctStartTime <= '$now_str' AND AcctStartTime >= '$prev_str'
+	WHERE AcctStopTime <= '$now_str' AND AcctStopTime >= '$prev_str'
 	AND (AcctTerminateCause LIKE 'Login-Incorrect%' OR
 	AcctTerminateCause LIKE 'Invalid-User%' OR
 	AcctTerminateCause LIKE 'Multiple-Logins%') $callerid_str
-	ORDER BY AcctStartTime $order $limit;");
+	ORDER BY AcctStopTime $order $limit;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$num++;
@@ -96,7 +96,7 @@ if ($link){
 				$acct_login = '-';
 			else
 				$acct_login = "<a href=\"user_admin.php3?login=$acct_login\" title=\"Edit user $acct_login\">$acct_login</a>";
-			$acct_time = $row[AcctStartTime];
+			$acct_time = $row[AcctStopTime];
 			$acct_server = $da_name_cache[$row[NASIPAddress]];
 			if (!isset($acct_server)){
 				$acct_server = gethostbyaddr($row[NASIPAddress]);
