@@ -97,6 +97,7 @@
  *	- Only add a failure message for bind as user failed in ldap_authenticate if the result of ldap_connect was
  *	  RLM_MODULE_REJECT
  *	- Make tls_mode a configurable option. Patch from John <jhogenmiller@pennswoods.net>
+ *	- Allow multiple regular profiles for an entry
  */
 static const char rcsid[] = "$Id$";
 
@@ -1080,22 +1081,26 @@ ldap_authorize(void *instance, REQUEST * request)
 	 */
 
 	if (inst->profile_attr){
-		if ((vals = ldap_get_values(conn->ld, msg, inst->profile_attr)) != NULL && strlen(vals[0])) {
+		if ((vals = ldap_get_values(conn->ld, msg, inst->profile_attr)) != NULL) {
+			unsigned int i=0;
 			strncpy(filter,"(objectclass=radiusprofile)",MAX_AUTH_QUERY_LEN);
 			if (inst->cache_timeout >0)
 				ldap_enable_cache(conn->ld, inst->cache_timeout, inst->cache_size);
-			if ((res = perform_search(instance, conn,
-				vals[0], LDAP_SCOPE_BASE, 
-				filter, inst->atts, &def_attr_result)) == RLM_MODULE_OK){
-				if ((def_attr_msg = ldap_first_entry(conn->ld,def_attr_result))){
-					if ((check_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->check_item_map,check_pairs,1)))
-						pairadd(check_pairs,check_tmp);
-					if ((reply_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->reply_item_map,reply_pairs,0)))
-						pairadd(reply_pairs,reply_tmp);
-				}
-				ldap_msgfree(def_attr_result);
-			} else 
-				DEBUG("rlm_ldap: profile_attribute search failed");
+			while(vals[i] != NULL && strlen(vals[i])){
+				if ((res = perform_search(instance, conn,
+					vals[i], LDAP_SCOPE_BASE, 
+					filter, inst->atts, &def_attr_result)) == RLM_MODULE_OK){
+					if ((def_attr_msg = ldap_first_entry(conn->ld,def_attr_result))){
+						if ((check_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->check_item_map,check_pairs,1)))
+							pairadd(check_pairs,check_tmp);
+						if ((reply_tmp = ldap_pairget(conn->ld,def_attr_msg,inst->reply_item_map,reply_pairs,0)))
+							pairadd(reply_pairs,reply_tmp);
+					}
+					ldap_msgfree(def_attr_result);
+				} else 
+					DEBUG("rlm_ldap: profile_attribute search failed");
+				i++;
+			}
 			ldap_value_free(vals);
 		}
 	}
