@@ -82,7 +82,7 @@ int sql_init_socketpool(SQL_INST * inst) {
 		sqlsocket->in_use = 0;
 #endif
 
-		if ((inst->module->sql_create_socket)(sqlsocket, inst->config) < 0) {
+		if ((inst->module->sql_init_socket)(sqlsocket, inst->config) < 0) {
 			radlog(L_CONS | L_ERR, "rlm_sql:  Failed to connect sqlsocket %d", i);
 			return -1;
 		}

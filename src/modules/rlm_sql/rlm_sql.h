@@ -41,7 +41,7 @@ typedef struct sql_socket {
 
 typedef struct rlm_sql_module_t {
 	const char *name;
-	int (*sql_create_socket)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+	int (*sql_init_socket)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_destroy_socket)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_query)(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *query);
 	int (*sql_select_query)(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *query);
@@ -50,7 +50,7 @@ typedef struct rlm_sql_module_t {
 	int (*sql_num_rows)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	SQL_ROW (*sql_fetch_row)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_free_result)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
-	int *(*sql_error)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+	char *(*sql_error)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_close)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_finish_query)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_finish_select_query)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
