@@ -562,7 +562,7 @@ fi
 
 
 
-# From configure.in Revision: 1.134 
+# From configure.in Revision: 1.135 
 RADIUSD_MAJOR_VERSION=0
 RADIUSD_MINOR_VERSION=5
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -4155,8 +4155,8 @@ if test "x$ODBC_INCLUDE" = "x"; then
 else
   echo "$ac_t""yes" 1>&6
   
-  echo $ac_n "checking for odbc_init in -lodbcclient""... $ac_c" 1>&6
-echo "configure:4160: checking for odbc_init in -lodbcclient" >&5
+  echo $ac_n "checking for SQLConnect in -lodbc""... $ac_c" 1>&6
+echo "configure:4160: checking for SQLConnect in -lodbc" >&5
 
   old_LIBS="$LIBS"
 
@@ -4164,7 +4164,7 @@ echo "configure:4160: checking for odbc_init in -lodbcclient" >&5
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=libodbcclient${libltdl_cv_shlibext}
+  file=libodbc${libltdl_cv_shlibext}
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -4191,7 +4191,7 @@ eval "odbc_lib_dir=\"\$odbc_lib_dir $DIRS\""
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=libodbcclient.a
+  file=libodbc.a
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -4216,18 +4216,18 @@ eval "odbc_lib_dir=\"\$odbc_lib_dir $DIRS\""
 
 
   for try in /usr/lib /usr/lib/odbc /usr/local/lib/odbc /usr/local/odbc/lib $odbc_lib_dir; do
-    LIBS="$old_LIBS -L$try -lodbcclient"
+    LIBS="$old_LIBS -L$try -lodbc"
     cat > conftest.$ac_ext <<EOF
 #line 4222 "configure"
 #include "confdefs.h"
-extern char odbc_init();
+extern char SQLConnect();
 int main() {
- odbc_init()
+ SQLConnect()
 ; return 0; }
 EOF
 if { (eval echo configure:4229: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
-  ODBC_LIBS="-L$try -lodbcclient"
+  ODBC_LIBS="-L$try -lodbc"
 else
   echo "configure: failed program was:" >&5
   cat conftest.$ac_ext >&5

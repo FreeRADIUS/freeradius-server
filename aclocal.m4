@@ -608,21 +608,21 @@ else
 dnl #
 dnl #  Now do the same thing, looking for the ODBC library directory
 dnl #
-  AC_MSG_CHECKING([for odbc_init in -lodbcclient])
+  AC_MSG_CHECKING([for SQLConnect in -lodbc])
 
 dnl #
 dnl #  Look for it in a number of directories.
 dnl #
   old_LIBS="$LIBS"
 
-  AC_LOCATE_DIR(odbc_lib_dir, [libodbcclient${libltdl_cv_shlibext}])
-  AC_LOCATE_DIR(odbc_lib_dir, [libodbcclient.a])
+  AC_LOCATE_DIR(odbc_lib_dir, [libodbc${libltdl_cv_shlibext}])
+  AC_LOCATE_DIR(odbc_lib_dir, [libodbc.a])
 
   for try in /usr/lib /usr/lib/odbc /usr/local/lib/odbc /usr/local/odbc/lib $odbc_lib_dir; do
-    LIBS="$old_LIBS -L$try -lodbcclient"
-    AC_TRY_LINK([extern char odbc_init();],
-                [ odbc_init()],
-                ODBC_LIBS="-L$try -lodbcclient",
+    LIBS="$old_LIBS -L$try -lodbc"
+    AC_TRY_LINK([extern char SQLConnect();],
+                [ SQLConnect()],
+                ODBC_LIBS="-L$try -lodbc",
                 ODBC_LIBS=)
     if test "x$ODBC_LIBS" != "x"; then
       break;
