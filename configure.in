@@ -323,10 +323,20 @@ if test "$WITH_THREADS" = "yes"; then
     AC_MSG_ERROR("You are trying to use threads without a POSIX <pthread.h>")
   fi
 
+dnl # 
+dnl # pthread stuff is usually in -lpthread
+dnl # 
   AC_CHECK_LIB(pthread, pthread_create,
     PTHREADLIB="-lpthread"
   )
+
+dnl # 
+dnl # Except for *BSD, where it's in -lc_r,
+dnl # and where we've got to add extra CFLAGS.
+dnl # 
   if test "X$PTHREADLIB" = "X"; then
+    SAVED_CFLAGS=$CFLAGS
+    CFLAGS="$CFLAGS -pthread -D_THREAD_SAFE"
     AC_CHECK_LIB(c_r, pthread_create,
       PTHREADLIB="-lc_r"
     )
