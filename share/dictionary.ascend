@@ -272,255 +272,256 @@ ATTRIBUTE	X-Ascend-Xmit-Rate			255	integer
 #
 #  Ascend vendor-specific attributes.
 #
-ATTRIBUTE	Ascend-Max-Shared-Users		2	integer		Ascend
-ATTRIBUTE	Ascend-UU-Info			7	string  	Ascend
-ATTRIBUTE	Ascend-CIR-Timer		9	integer  	Ascend
-ATTRIBUTE	Ascend-FR-08-Mode		10	integer  	Ascend
-ATTRIBUTE	Ascend-Destination-Nas-Port	11	integer  	Ascend
-ATTRIBUTE	Ascend-FR-SVC-Addr		12	string  	Ascend
-ATTRIBUTE	Ascend-NAS-Port-Format		13	integer  	Ascend
-ATTRIBUTE	Ascend-ATM-Fault-Management	14	integer  	Ascend
-ATTRIBUTE	Ascend-ATM-Loopback-Cell-Loss	15	integer  	Ascend
-ATTRIBUTE	Ascend-Ckt-Type			16	integer  	Ascend
-ATTRIBUTE	Ascend-SVC-Enabled		17	integer  	Ascend
-ATTRIBUTE	Ascend-Session-Type		18	integer  	Ascend
-ATTRIBUTE	Ascend-H323-Gatekeeper		19	ipaddr  	Ascend
-ATTRIBUTE	Ascend-Global-Call-Id		20	string  	Ascend
-ATTRIBUTE	Ascend-H323-Conference-Id	21	integer  	Ascend
-ATTRIBUTE	Ascend-H323-Fegw-Address	22	ipaddr  	Ascend
-ATTRIBUTE	Ascend-H323-Dialed-Time		23	integer  	Ascend
-ATTRIBUTE	Ascend-Dialed-Number		24	string  	Ascend
-ATTRIBUTE	Ascend-Inter-Arrival-Jitter	25	integer  	Ascend
-ATTRIBUTE	Ascend-Dropped-Octets		26	integer  	Ascend
-ATTRIBUTE	Ascend-Dropped-Packets		27	integer  	Ascend
-ATTRIBUTE	Ascend-Auth-Delay		28	integer		Ascend
-ATTRIBUTE	Ascend-X25-Pad-X3-Profile	29	integer  	Ascend
-ATTRIBUTE	Ascend-X25-Pad-X3-Parameters	30	string  	Ascend
-ATTRIBUTE	Ascend-Tunnel-VRouter-Name	31	string  	Ascend
-ATTRIBUTE	Ascend-X25-Reverse-Charging	32	integer  	Ascend
-ATTRIBUTE	Ascend-X25-Nui-Prompt		33	string  	Ascend
-ATTRIBUTE	Ascend-X25-Nui-Password-Prompt	34	string  	Ascend
-ATTRIBUTE	Ascend-X25-Cug			35	string  	Ascend
-ATTRIBUTE	Ascend-X25-Pad-Alias-1		36	string  	Ascend
-ATTRIBUTE	Ascend-X25-Pad-Alias-2		37	string  	Ascend
-ATTRIBUTE	Ascend-X25-Pad-Alias-3		38	string  	Ascend
-ATTRIBUTE	Ascend-X25-X121-Address		39	string  	Ascend
-ATTRIBUTE	Ascend-X25-Nui			40	string  	Ascend
-ATTRIBUTE	Ascend-X25-Rpoa			41	string  	Ascend
-ATTRIBUTE	Ascend-X25-Pad-Prompt		42	string  	Ascend
-ATTRIBUTE	Ascend-X25-Pad-Banner		43	string  	Ascend
-ATTRIBUTE	Ascend-X25-Profile-Name		44	string  	Ascend
-ATTRIBUTE	Ascend-Recv-Name		45	string  	Ascend
-ATTRIBUTE	Ascend-Bi-Directional-Auth	46	integer  	Ascend
-ATTRIBUTE	Ascend-MTU			47	integer  	Ascend
-ATTRIBUTE	Ascend-Call-Direction		48	integer  	Ascend
-ATTRIBUTE	Ascend-Service-Type		49	integer  	Ascend
-ATTRIBUTE	Ascend-Filter-Required		50	integer  	Ascend
-ATTRIBUTE	Ascend-Traffic-Shaper		51	integer  	Ascend
-ATTRIBUTE	Ascend-Access-Intercept-LEA	52	string  	Ascend
-ATTRIBUTE	Ascend-Access-Intercept-Log	53	string  	Ascend
-ATTRIBUTE	Ascend-Private-Route-Table-ID	54	string  	Ascend
-ATTRIBUTE	Ascend-Private-Route-Required	55	integer  	Ascend
-ATTRIBUTE	Ascend-Cache-Refresh		56	integer  	Ascend
-ATTRIBUTE	Ascend-Cache-Time		57	integer  	Ascend
-ATTRIBUTE	Ascend-Egress-Enabled		58	integer  	Ascend
-ATTRIBUTE	Ascend-QOS-Upstream		59	string  	Ascend
-ATTRIBUTE	Ascend-QOS-Downstream		60	string  	Ascend
-ATTRIBUTE	Ascend-ATM-Connect-Vpi		61	integer  	Ascend
-ATTRIBUTE	Ascend-ATM-Connect-Vci		62	integer  	Ascend
-ATTRIBUTE	Ascend-ATM-Connect-Group	63	integer  	Ascend
-ATTRIBUTE	Ascend-ATM-Group		64	integer  	Ascend
-ATTRIBUTE	Ascend-IPX-Header-Compression	65	integer  	Ascend
-ATTRIBUTE	Ascend-Calling-Id-Type-Of-Num	66	integer  	Ascend
-ATTRIBUTE	Ascend-Calling-Id-Number-Plan	67	integer  	Ascend
-ATTRIBUTE	Ascend-Calling-Id-Presentatn	68	integer  	Ascend
-ATTRIBUTE	Ascend-Calling-Id-Screening	69	integer  	Ascend
-ATTRIBUTE	Ascend-BIR-Enable		70	integer  	Ascend
-ATTRIBUTE	Ascend-BIR-Proxy		71	integer  	Ascend
-ATTRIBUTE	Ascend-BIR-Bridge-Group		72	integer  	Ascend
-ATTRIBUTE	Ascend-IPSEC-Profile		73	string  	Ascend
-ATTRIBUTE	Ascend-PPPoE-Enable		74	integer  	Ascend
-ATTRIBUTE	Ascend-Bridge-Non-PPPoE		75	integer  	Ascend
-ATTRIBUTE	Ascend-ATM-Direct		76	integer  	Ascend
-ATTRIBUTE	Ascend-ATM-Direct-Profile	77	string  	Ascend
-ATTRIBUTE	Ascend-Client-Primary-WINS	78	ipaddr  	Ascend
-ATTRIBUTE	Ascend-Client-Secondary-WINS	79	ipaddr  	Ascend
-ATTRIBUTE	Ascend-Client-Assign-WINS	80	integer  	Ascend
-ATTRIBUTE	Ascend-Auth-Type		81	integer  	Ascend
-ATTRIBUTE	Ascend-Port-Redir-Protocol	82	integer  	Ascend
-ATTRIBUTE	Ascend-Port-Redir-Portnum	83	integer  	Ascend
-ATTRIBUTE	Ascend-Port-Redir-Server	84	ipaddr  	Ascend
-ATTRIBUTE	Ascend-IP-Pool-Chaining		85	integer  	Ascend
-ATTRIBUTE	Ascend-Owner-IP-Addr		86	ipaddr  	Ascend
-ATTRIBUTE	Ascend-IP-TOS			87	integer  	Ascend
-ATTRIBUTE	Ascend-IP-TOS-Precedence	88	integer  	Ascend
-ATTRIBUTE	Ascend-IP-TOS-Apply-To		89	integer  	Ascend
-ATTRIBUTE	Ascend-Filter			90	string  	Ascend
-ATTRIBUTE	Ascend-Telnet-Profile		91	string  	Ascend
-ATTRIBUTE	Ascend-Dsl-Rate-Type		92	integer  	Ascend
-ATTRIBUTE	Ascend-Redirect-Number		93	string  	Ascend
-ATTRIBUTE	Ascend-ATM-Vpi			94	integer  	Ascend
-ATTRIBUTE	Ascend-ATM-Vci			95	integer  	Ascend
-ATTRIBUTE	Ascend-Source-IP-Check		96	integer		Ascend
-ATTRIBUTE	Ascend-Dsl-Rate-Mode		97	integer  	Ascend
-ATTRIBUTE	Ascend-Dsl-Upstream-Limit	98	integer  	Ascend
-ATTRIBUTE	Ascend-Dsl-Downstream-Limit	99	integer  	Ascend
-ATTRIBUTE	Ascend-Dsl-CIR-Recv-Limit	100	integer  	Ascend
-ATTRIBUTE	Ascend-Dsl-CIR-Xmit-Limit	101	integer  	Ascend
-ATTRIBUTE	Ascend-VRouter-Name		102	string  	Ascend
-ATTRIBUTE	Ascend-Source-Auth		103	string  	Ascend
-ATTRIBUTE	Ascend-Private-Route		104	string  	Ascend
-ATTRIBUTE	Ascend-Numbering-Plan-ID	105	integer  	Ascend
-ATTRIBUTE	Ascend-FR-Link-Status-DLCI	106	integer  	Ascend
-ATTRIBUTE	Ascend-Calling-Subaddress	107	string		Ascend
-ATTRIBUTE	Ascend-Callback-Delay		108	integer		Ascend
-ATTRIBUTE	Ascend-Endpoint-Disc		109	string		Ascend
-ATTRIBUTE	Ascend-Remote-FW		110	string		Ascend
-ATTRIBUTE	Ascend-Multicast-GLeave-Delay	111	integer		Ascend
-ATTRIBUTE	Ascend-CBCP-Enable		112	integer		Ascend
-ATTRIBUTE	Ascend-CBCP-Mode		113	integer		Ascend
-ATTRIBUTE	Ascend-CBCP-Delay		114	integer		Ascend
-ATTRIBUTE	Ascend-CBCP-Trunk-Group		115	integer		Ascend
-ATTRIBUTE	Ascend-Appletalk-Route		116	string		Ascend
-ATTRIBUTE	Ascend-Appletalk-Peer-Mode	117	integer		Ascend
-ATTRIBUTE	Ascend-Route-Appletalk		118	integer		Ascend
-ATTRIBUTE	Ascend-FCP-Parameter		119	string		Ascend
-ATTRIBUTE	Ascend-Modem-PortNo		120	integer		Ascend
-ATTRIBUTE	Ascend-Modem-SlotNo		121	integer		Ascend
-ATTRIBUTE	Ascend-Modem-ShelfNo		122	integer		Ascend
-ATTRIBUTE	Ascend-Call-Attempt-Limit	123	integer		Ascend
-ATTRIBUTE	Ascend-Call-Block-Duration	124	integer		Ascend
-ATTRIBUTE	Ascend-Maximum-Call-Duration	125	integer		Ascend
-ATTRIBUTE	Ascend-Temporary-Rtes		126	integer		Ascend
-ATTRIBUTE       Ascend-Tunneling-Protocol       127     integer		Ascend
-ATTRIBUTE       Ascend-Shared-Profile-Enable    128     integer		Ascend
-ATTRIBUTE	Ascend-Primary-Home-Agent	129	string		Ascend
-ATTRIBUTE	Ascend-Secondary-Home-Agent	130	string		Ascend
-ATTRIBUTE	Ascend-Dialout-Allowed		131	integer		Ascend
-ATTRIBUTE	Ascend-Client-Gateway		132	ipaddr		Ascend
-ATTRIBUTE	Ascend-BACP-Enable		133	integer		Ascend
-ATTRIBUTE	Ascend-DHCP-Maximum-Leases	134	integer		Ascend
-ATTRIBUTE	Ascend-Client-Primary-DNS	135	ipaddr		Ascend
-ATTRIBUTE	Ascend-Client-Secondary-DNS	136	ipaddr		Ascend
-ATTRIBUTE	Ascend-Client-Assign-DNS	137	integer		Ascend
-ATTRIBUTE	Ascend-User-Acct-Type		138	integer		Ascend
-ATTRIBUTE	Ascend-User-Acct-Host		139	ipaddr		Ascend
-ATTRIBUTE	Ascend-User-Acct-Port		140	integer		Ascend
-ATTRIBUTE	Ascend-User-Acct-Key		141	string		Ascend
-ATTRIBUTE	Ascend-User-Acct-Base		142	integer		Ascend
-ATTRIBUTE	Ascend-User-Acct-Time		143	integer		Ascend
-ATTRIBUTE	Ascend-Assign-IP-Client		144	ipaddr		Ascend
-ATTRIBUTE	Ascend-Assign-IP-Server		145	ipaddr		Ascend
-ATTRIBUTE	Ascend-Assign-IP-Global-Pool	146	string		Ascend
-ATTRIBUTE	Ascend-DHCP-Reply		147	integer		Ascend
-ATTRIBUTE	Ascend-DHCP-Pool-Number		148	integer		Ascend
-ATTRIBUTE	Ascend-Expect-Callback		149	integer		Ascend
-ATTRIBUTE	Ascend-Event-Type		150	integer		Ascend
-ATTRIBUTE	Ascend-Session-Svr-Key		151	string		Ascend
-ATTRIBUTE	Ascend-Multicast-Rate-Limit	152	integer		Ascend
-ATTRIBUTE	Ascend-IF-Netmask		153	ipaddr		Ascend
-ATTRIBUTE	Ascend-Remote-Addr		154	ipaddr		Ascend
-ATTRIBUTE	Ascend-Multicast-Client		155	integer		Ascend
-ATTRIBUTE	Ascend-FR-Circuit-Name		156	string		Ascend
-ATTRIBUTE	Ascend-FR-LinkUp		157	integer		Ascend
-ATTRIBUTE	Ascend-FR-Nailed-Grp		158	integer		Ascend
-ATTRIBUTE	Ascend-FR-Type			159	integer		Ascend
-ATTRIBUTE	Ascend-FR-Link-Mgt		160	integer		Ascend
-ATTRIBUTE	Ascend-FR-N391			161	integer		Ascend
-ATTRIBUTE	Ascend-FR-DCE-N392		162	integer		Ascend
-ATTRIBUTE	Ascend-FR-DTE-N392		163	integer		Ascend
-ATTRIBUTE	Ascend-FR-DCE-N393		164	integer		Ascend
-ATTRIBUTE	Ascend-FR-DTE-N393		165	integer		Ascend
-ATTRIBUTE	Ascend-FR-T391			166	integer		Ascend
-ATTRIBUTE	Ascend-FR-T392			167	integer		Ascend
-ATTRIBUTE	Ascend-Bridge-Address  	 	168	string		Ascend
-ATTRIBUTE       Ascend-TS-Idle-Limit            169     integer		Ascend
-ATTRIBUTE       Ascend-TS-Idle-Mode             170     integer		Ascend
-ATTRIBUTE	Ascend-DBA-Monitor	 	171	integer		Ascend
-ATTRIBUTE	Ascend-Base-Channel-Count 	172	integer		Ascend
-ATTRIBUTE	Ascend-Minimum-Channels		173	integer		Ascend
-ATTRIBUTE	Ascend-IPX-Route		174	string		Ascend
-ATTRIBUTE	Ascend-FT1-Caller		175	integer		Ascend
-ATTRIBUTE	Ascend-Backup			176	string		Ascend
-ATTRIBUTE	Ascend-Call-Type		177	integer		Ascend
-ATTRIBUTE	Ascend-Group			178	string		Ascend
-ATTRIBUTE	Ascend-FR-DLCI			179	integer		Ascend
-ATTRIBUTE	Ascend-FR-Profile-Name		180	string		Ascend
-ATTRIBUTE	Ascend-Ara-PW			181	string		Ascend
-ATTRIBUTE	Ascend-IPX-Node-Addr		182	string		Ascend
-ATTRIBUTE	Ascend-Home-Agent-IP-Addr	183	ipaddr		Ascend
-ATTRIBUTE	Ascend-Home-Agent-Password	184	string		Ascend
-ATTRIBUTE	Ascend-Home-Network-Name	185	string		Ascend
-ATTRIBUTE	Ascend-Home-Agent-UDP-Port	186	integer		Ascend
-ATTRIBUTE	Ascend-Multilink-ID		187	integer		Ascend
-ATTRIBUTE	Ascend-Num-In-Multilink		188	integer		Ascend
-ATTRIBUTE	Ascend-First-Dest		189	ipaddr		Ascend
-ATTRIBUTE	Ascend-Pre-Input-Octets		190	integer		Ascend
-ATTRIBUTE	Ascend-Pre-Output-Octets	191	integer		Ascend
-ATTRIBUTE	Ascend-Pre-Input-Packets	192	integer		Ascend
-ATTRIBUTE	Ascend-Pre-Output-Packets	193	integer		Ascend
-ATTRIBUTE	Ascend-Maximum-Time		194	integer		Ascend
-ATTRIBUTE	Ascend-Disconnect-Cause		195	integer		Ascend
-ATTRIBUTE	Ascend-Connect-Progress		196	integer		Ascend
-ATTRIBUTE	Ascend-Data-Rate		197	integer		Ascend
-ATTRIBUTE	Ascend-PreSession-Time		198	integer		Ascend
-ATTRIBUTE	Ascend-Token-Idle		199	integer		Ascend
-ATTRIBUTE	Ascend-Token-Immediate		200	integer		Ascend
-ATTRIBUTE	Ascend-Require-Auth		201	integer		Ascend
-ATTRIBUTE	Ascend-Number-Sessions		202	string		Ascend
-ATTRIBUTE	Ascend-Authen-Alias		203	string		Ascend
-ATTRIBUTE	Ascend-Token-Expiry		204	integer		Ascend
-ATTRIBUTE	Ascend-Menu-Selector		205	string		Ascend
-ATTRIBUTE	Ascend-Menu-Item		206	string		Ascend
-ATTRIBUTE	Ascend-PW-Warntime		207	integer		Ascend
-ATTRIBUTE	Ascend-PW-Lifetime		208	integer		Ascend
-ATTRIBUTE	Ascend-IP-Direct		209	ipaddr		Ascend
-ATTRIBUTE	Ascend-PPP-VJ-Slot-Comp		210	integer		Ascend
-ATTRIBUTE	Ascend-PPP-VJ-1172		211	integer		Ascend
-ATTRIBUTE	Ascend-PPP-Async-Map		212	integer		Ascend
-ATTRIBUTE	Ascend-Third-Prompt		213	string		Ascend
-ATTRIBUTE	Ascend-Send-Secret		214	string		Ascend encrypt=3
-ATTRIBUTE	Ascend-Receive-Secret		215	string		Ascend encrypt=3
-ATTRIBUTE	Ascend-IPX-Peer-Mode		216	integer		Ascend
-ATTRIBUTE	Ascend-IP-Pool-Definition	217	string		Ascend
-ATTRIBUTE	Ascend-Assign-IP-Pool		218	integer		Ascend
-ATTRIBUTE	Ascend-FR-Direct		219	integer		Ascend
-ATTRIBUTE	Ascend-FR-Direct-Profile	220	string		Ascend
-ATTRIBUTE	Ascend-FR-Direct-DLCI		221	integer		Ascend
-ATTRIBUTE	Ascend-Handle-IPX		222	integer		Ascend
-ATTRIBUTE	Ascend-Netware-timeout		223	integer		Ascend
-ATTRIBUTE	Ascend-IPX-Alias		224	integer		Ascend
-ATTRIBUTE	Ascend-Metric			225	integer		Ascend
-ATTRIBUTE	Ascend-PRI-Number-Type		226	integer		Ascend
-ATTRIBUTE	Ascend-Dial-Number		227	string		Ascend
-ATTRIBUTE	Ascend-Route-IP			228	integer		Ascend
-ATTRIBUTE	Ascend-Route-IPX		229	integer		Ascend
-ATTRIBUTE	Ascend-Bridge			230	integer		Ascend
-ATTRIBUTE	Ascend-Send-Auth		231	integer		Ascend
-ATTRIBUTE	Ascend-Send-Passwd		232	string		Ascend
-ATTRIBUTE	Ascend-Link-Compression		233	integer		Ascend
-ATTRIBUTE	Ascend-Target-Util		234	integer		Ascend
-ATTRIBUTE	Ascend-Maximum-Channels		235	integer		Ascend
-ATTRIBUTE	Ascend-Inc-Channel-Count	236	integer		Ascend
-ATTRIBUTE	Ascend-Dec-Channel-Count	237	integer		Ascend
-ATTRIBUTE	Ascend-Seconds-Of-History	238	integer		Ascend
-ATTRIBUTE	Ascend-History-Weigh-Type	239	integer		Ascend
-ATTRIBUTE	Ascend-Add-Seconds		240	integer		Ascend
-ATTRIBUTE	Ascend-Remove-Seconds		241	integer		Ascend
-ATTRIBUTE	Ascend-Data-Filter		242	abinary		Ascend
-ATTRIBUTE	Ascend-Call-Filter		243	abinary		Ascend
-ATTRIBUTE	Ascend-Idle-Limit		244	integer		Ascend
-ATTRIBUTE	Ascend-Preempt-Limit		245	integer		Ascend
-ATTRIBUTE	Ascend-Callback			246	integer		Ascend
-ATTRIBUTE	Ascend-Data-Svc			247	integer		Ascend
-ATTRIBUTE	Ascend-Force-56			248	integer		Ascend
-ATTRIBUTE	Ascend-Billing-Number		249	string		Ascend
-ATTRIBUTE	Ascend-Call-By-Call		250	integer		Ascend
-ATTRIBUTE	Ascend-Transit-Number		251	string		Ascend
-ATTRIBUTE	Ascend-Host-Info		252	string		Ascend
-ATTRIBUTE	Ascend-PPP-Address		253	ipaddr		Ascend
-ATTRIBUTE	Ascend-MPP-Idle-Percent		254	integer		Ascend
-ATTRIBUTE	Ascend-Xmit-Rate		255	integer		Ascend
+BEGIN-VENDOR Ascend
+ATTRIBUTE	Ascend-Max-Shared-Users		2	integer
+ATTRIBUTE	Ascend-UU-Info			7	string
+ATTRIBUTE	Ascend-CIR-Timer		9	integer
+ATTRIBUTE	Ascend-FR-08-Mode		10	integer
+ATTRIBUTE	Ascend-Destination-Nas-Port	11	integer
+ATTRIBUTE	Ascend-FR-SVC-Addr		12	string
+ATTRIBUTE	Ascend-NAS-Port-Format		13	integer
+ATTRIBUTE	Ascend-ATM-Fault-Management	14	integer
+ATTRIBUTE	Ascend-ATM-Loopback-Cell-Loss	15	integer
+ATTRIBUTE	Ascend-Ckt-Type			16	integer
+ATTRIBUTE	Ascend-SVC-Enabled		17	integer
+ATTRIBUTE	Ascend-Session-Type		18	integer
+ATTRIBUTE	Ascend-H323-Gatekeeper		19	ipaddr
+ATTRIBUTE	Ascend-Global-Call-Id		20	string
+ATTRIBUTE	Ascend-H323-Conference-Id	21	integer
+ATTRIBUTE	Ascend-H323-Fegw-Address	22	ipaddr
+ATTRIBUTE	Ascend-H323-Dialed-Time		23	integer
+ATTRIBUTE	Ascend-Dialed-Number		24	string
+ATTRIBUTE	Ascend-Inter-Arrival-Jitter	25	integer
+ATTRIBUTE	Ascend-Dropped-Octets		26	integer
+ATTRIBUTE	Ascend-Dropped-Packets		27	integer
+ATTRIBUTE	Ascend-Auth-Delay		28	integer
+ATTRIBUTE	Ascend-X25-Pad-X3-Profile	29	integer
+ATTRIBUTE	Ascend-X25-Pad-X3-Parameters	30	string
+ATTRIBUTE	Ascend-Tunnel-VRouter-Name	31	string
+ATTRIBUTE	Ascend-X25-Reverse-Charging	32	integer
+ATTRIBUTE	Ascend-X25-Nui-Prompt		33	string
+ATTRIBUTE	Ascend-X25-Nui-Password-Prompt	34	string
+ATTRIBUTE	Ascend-X25-Cug			35	string
+ATTRIBUTE	Ascend-X25-Pad-Alias-1		36	string
+ATTRIBUTE	Ascend-X25-Pad-Alias-2		37	string
+ATTRIBUTE	Ascend-X25-Pad-Alias-3		38	string
+ATTRIBUTE	Ascend-X25-X121-Address		39	string
+ATTRIBUTE	Ascend-X25-Nui			40	string
+ATTRIBUTE	Ascend-X25-Rpoa			41	string
+ATTRIBUTE	Ascend-X25-Pad-Prompt		42	string
+ATTRIBUTE	Ascend-X25-Pad-Banner		43	string
+ATTRIBUTE	Ascend-X25-Profile-Name		44	string
+ATTRIBUTE	Ascend-Recv-Name		45	string
+ATTRIBUTE	Ascend-Bi-Directional-Auth	46	integer
+ATTRIBUTE	Ascend-MTU			47	integer
+ATTRIBUTE	Ascend-Call-Direction		48	integer
+ATTRIBUTE	Ascend-Service-Type		49	integer
+ATTRIBUTE	Ascend-Filter-Required		50	integer
+ATTRIBUTE	Ascend-Traffic-Shaper		51	integer
+ATTRIBUTE	Ascend-Access-Intercept-LEA	52	string
+ATTRIBUTE	Ascend-Access-Intercept-Log	53	string
+ATTRIBUTE	Ascend-Private-Route-Table-ID	54	string
+ATTRIBUTE	Ascend-Private-Route-Required	55	integer
+ATTRIBUTE	Ascend-Cache-Refresh		56	integer
+ATTRIBUTE	Ascend-Cache-Time		57	integer
+ATTRIBUTE	Ascend-Egress-Enabled		58	integer
+ATTRIBUTE	Ascend-QOS-Upstream		59	string
+ATTRIBUTE	Ascend-QOS-Downstream		60	string
+ATTRIBUTE	Ascend-ATM-Connect-Vpi		61	integer
+ATTRIBUTE	Ascend-ATM-Connect-Vci		62	integer
+ATTRIBUTE	Ascend-ATM-Connect-Group	63	integer
+ATTRIBUTE	Ascend-ATM-Group		64	integer
+ATTRIBUTE	Ascend-IPX-Header-Compression	65	integer
+ATTRIBUTE	Ascend-Calling-Id-Type-Of-Num	66	integer
+ATTRIBUTE	Ascend-Calling-Id-Number-Plan	67	integer
+ATTRIBUTE	Ascend-Calling-Id-Presentatn	68	integer
+ATTRIBUTE	Ascend-Calling-Id-Screening	69	integer
+ATTRIBUTE	Ascend-BIR-Enable		70	integer
+ATTRIBUTE	Ascend-BIR-Proxy		71	integer
+ATTRIBUTE	Ascend-BIR-Bridge-Group		72	integer
+ATTRIBUTE	Ascend-IPSEC-Profile		73	string
+ATTRIBUTE	Ascend-PPPoE-Enable		74	integer
+ATTRIBUTE	Ascend-Bridge-Non-PPPoE		75	integer
+ATTRIBUTE	Ascend-ATM-Direct		76	integer
+ATTRIBUTE	Ascend-ATM-Direct-Profile	77	string
+ATTRIBUTE	Ascend-Client-Primary-WINS	78	ipaddr
+ATTRIBUTE	Ascend-Client-Secondary-WINS	79	ipaddr
+ATTRIBUTE	Ascend-Client-Assign-WINS	80	integer
+ATTRIBUTE	Ascend-Auth-Type		81	integer
+ATTRIBUTE	Ascend-Port-Redir-Protocol	82	integer
+ATTRIBUTE	Ascend-Port-Redir-Portnum	83	integer
+ATTRIBUTE	Ascend-Port-Redir-Server	84	ipaddr
+ATTRIBUTE	Ascend-IP-Pool-Chaining		85	integer
+ATTRIBUTE	Ascend-Owner-IP-Addr		86	ipaddr
+ATTRIBUTE	Ascend-IP-TOS			87	integer
+ATTRIBUTE	Ascend-IP-TOS-Precedence	88	integer
+ATTRIBUTE	Ascend-IP-TOS-Apply-To		89	integer
+ATTRIBUTE	Ascend-Filter			90	string
+ATTRIBUTE	Ascend-Telnet-Profile		91	string
+ATTRIBUTE	Ascend-Dsl-Rate-Type		92	integer
+ATTRIBUTE	Ascend-Redirect-Number		93	string
+ATTRIBUTE	Ascend-ATM-Vpi			94	integer
+ATTRIBUTE	Ascend-ATM-Vci			95	integer
+ATTRIBUTE	Ascend-Source-IP-Check		96	integer
+ATTRIBUTE	Ascend-Dsl-Rate-Mode		97	integer
+ATTRIBUTE	Ascend-Dsl-Upstream-Limit	98	integer
+ATTRIBUTE	Ascend-Dsl-Downstream-Limit	99	integer
+ATTRIBUTE	Ascend-Dsl-CIR-Recv-Limit	100	integer
+ATTRIBUTE	Ascend-Dsl-CIR-Xmit-Limit	101	integer
+ATTRIBUTE	Ascend-VRouter-Name		102	string
+ATTRIBUTE	Ascend-Source-Auth		103	string
+ATTRIBUTE	Ascend-Private-Route		104	string
+ATTRIBUTE	Ascend-Numbering-Plan-ID	105	integer
+ATTRIBUTE	Ascend-FR-Link-Status-DLCI	106	integer
+ATTRIBUTE	Ascend-Calling-Subaddress	107	string
+ATTRIBUTE	Ascend-Callback-Delay		108	integer
+ATTRIBUTE	Ascend-Endpoint-Disc		109	string
+ATTRIBUTE	Ascend-Remote-FW		110	string
+ATTRIBUTE	Ascend-Multicast-GLeave-Delay	111	integer
+ATTRIBUTE	Ascend-CBCP-Enable		112	integer
+ATTRIBUTE	Ascend-CBCP-Mode		113	integer
+ATTRIBUTE	Ascend-CBCP-Delay		114	integer
+ATTRIBUTE	Ascend-CBCP-Trunk-Group		115	integer
+ATTRIBUTE	Ascend-Appletalk-Route		116	string
+ATTRIBUTE	Ascend-Appletalk-Peer-Mode	117	integer
+ATTRIBUTE	Ascend-Route-Appletalk		118	integer
+ATTRIBUTE	Ascend-FCP-Parameter		119	string
+ATTRIBUTE	Ascend-Modem-PortNo		120	integer
+ATTRIBUTE	Ascend-Modem-SlotNo		121	integer
+ATTRIBUTE	Ascend-Modem-ShelfNo		122	integer
+ATTRIBUTE	Ascend-Call-Attempt-Limit	123	integer
+ATTRIBUTE	Ascend-Call-Block-Duration	124	integer
+ATTRIBUTE	Ascend-Maximum-Call-Duration	125	integer
+ATTRIBUTE	Ascend-Temporary-Rtes		126	integer
+ATTRIBUTE       Ascend-Tunneling-Protocol       127     integer
+ATTRIBUTE       Ascend-Shared-Profile-Enable    128     integer
+ATTRIBUTE	Ascend-Primary-Home-Agent	129	string
+ATTRIBUTE	Ascend-Secondary-Home-Agent	130	string
+ATTRIBUTE	Ascend-Dialout-Allowed		131	integer
+ATTRIBUTE	Ascend-Client-Gateway		132	ipaddr
+ATTRIBUTE	Ascend-BACP-Enable		133	integer
+ATTRIBUTE	Ascend-DHCP-Maximum-Leases	134	integer
+ATTRIBUTE	Ascend-Client-Primary-DNS	135	ipaddr
+ATTRIBUTE	Ascend-Client-Secondary-DNS	136	ipaddr
+ATTRIBUTE	Ascend-Client-Assign-DNS	137	integer
+ATTRIBUTE	Ascend-User-Acct-Type		138	integer
+ATTRIBUTE	Ascend-User-Acct-Host		139	ipaddr
+ATTRIBUTE	Ascend-User-Acct-Port		140	integer
+ATTRIBUTE	Ascend-User-Acct-Key		141	string
+ATTRIBUTE	Ascend-User-Acct-Base		142	integer
+ATTRIBUTE	Ascend-User-Acct-Time		143	integer
+ATTRIBUTE	Ascend-Assign-IP-Client		144	ipaddr
+ATTRIBUTE	Ascend-Assign-IP-Server		145	ipaddr
+ATTRIBUTE	Ascend-Assign-IP-Global-Pool	146	string
+ATTRIBUTE	Ascend-DHCP-Reply		147	integer
+ATTRIBUTE	Ascend-DHCP-Pool-Number		148	integer
+ATTRIBUTE	Ascend-Expect-Callback		149	integer
+ATTRIBUTE	Ascend-Event-Type		150	integer
+ATTRIBUTE	Ascend-Session-Svr-Key		151	string
+ATTRIBUTE	Ascend-Multicast-Rate-Limit	152	integer
+ATTRIBUTE	Ascend-IF-Netmask		153	ipaddr
+ATTRIBUTE	Ascend-Remote-Addr		154	ipaddr
+ATTRIBUTE	Ascend-Multicast-Client		155	integer
+ATTRIBUTE	Ascend-FR-Circuit-Name		156	string
+ATTRIBUTE	Ascend-FR-LinkUp		157	integer
+ATTRIBUTE	Ascend-FR-Nailed-Grp		158	integer
+ATTRIBUTE	Ascend-FR-Type			159	integer
+ATTRIBUTE	Ascend-FR-Link-Mgt		160	integer
+ATTRIBUTE	Ascend-FR-N391			161	integer
+ATTRIBUTE	Ascend-FR-DCE-N392		162	integer
+ATTRIBUTE	Ascend-FR-DTE-N392		163	integer
+ATTRIBUTE	Ascend-FR-DCE-N393		164	integer
+ATTRIBUTE	Ascend-FR-DTE-N393		165	integer
+ATTRIBUTE	Ascend-FR-T391			166	integer
+ATTRIBUTE	Ascend-FR-T392			167	integer
+ATTRIBUTE	Ascend-Bridge-Address  	 	168	string
+ATTRIBUTE       Ascend-TS-Idle-Limit            169     integer
+ATTRIBUTE       Ascend-TS-Idle-Mode             170     integer
+ATTRIBUTE	Ascend-DBA-Monitor	 	171	integer
+ATTRIBUTE	Ascend-Base-Channel-Count 	172	integer
+ATTRIBUTE	Ascend-Minimum-Channels		173	integer
+ATTRIBUTE	Ascend-IPX-Route		174	string
+ATTRIBUTE	Ascend-FT1-Caller		175	integer
+ATTRIBUTE	Ascend-Backup			176	string
+ATTRIBUTE	Ascend-Call-Type		177	integer
+ATTRIBUTE	Ascend-Group			178	string
+ATTRIBUTE	Ascend-FR-DLCI			179	integer
+ATTRIBUTE	Ascend-FR-Profile-Name		180	string
+ATTRIBUTE	Ascend-Ara-PW			181	string
+ATTRIBUTE	Ascend-IPX-Node-Addr		182	string
+ATTRIBUTE	Ascend-Home-Agent-IP-Addr	183	ipaddr
+ATTRIBUTE	Ascend-Home-Agent-Password	184	string
+ATTRIBUTE	Ascend-Home-Network-Name	185	string
+ATTRIBUTE	Ascend-Home-Agent-UDP-Port	186	integer
+ATTRIBUTE	Ascend-Multilink-ID		187	integer
+ATTRIBUTE	Ascend-Num-In-Multilink		188	integer
+ATTRIBUTE	Ascend-First-Dest		189	ipaddr
+ATTRIBUTE	Ascend-Pre-Input-Octets		190	integer
+ATTRIBUTE	Ascend-Pre-Output-Octets	191	integer
+ATTRIBUTE	Ascend-Pre-Input-Packets	192	integer
+ATTRIBUTE	Ascend-Pre-Output-Packets	193	integer
+ATTRIBUTE	Ascend-Maximum-Time		194	integer
+ATTRIBUTE	Ascend-Disconnect-Cause		195	integer
+ATTRIBUTE	Ascend-Connect-Progress		196	integer
+ATTRIBUTE	Ascend-Data-Rate		197	integer
+ATTRIBUTE	Ascend-PreSession-Time		198	integer
+ATTRIBUTE	Ascend-Token-Idle		199	integer
+ATTRIBUTE	Ascend-Token-Immediate		200	integer
+ATTRIBUTE	Ascend-Require-Auth		201	integer
+ATTRIBUTE	Ascend-Number-Sessions		202	string
+ATTRIBUTE	Ascend-Authen-Alias		203	string
+ATTRIBUTE	Ascend-Token-Expiry		204	integer
+ATTRIBUTE	Ascend-Menu-Selector		205	string
+ATTRIBUTE	Ascend-Menu-Item		206	string
+ATTRIBUTE	Ascend-PW-Warntime		207	integer
+ATTRIBUTE	Ascend-PW-Lifetime		208	integer
+ATTRIBUTE	Ascend-IP-Direct		209	ipaddr
+ATTRIBUTE	Ascend-PPP-VJ-Slot-Comp		210	integer
+ATTRIBUTE	Ascend-PPP-VJ-1172		211	integer
+ATTRIBUTE	Ascend-PPP-Async-Map		212	integer
+ATTRIBUTE	Ascend-Third-Prompt		213	string
+ATTRIBUTE	Ascend-Send-Secret		214	string	encrypt=3
+ATTRIBUTE	Ascend-Receive-Secret		215	string	encrypt=3
+ATTRIBUTE	Ascend-IPX-Peer-Mode		216	integer
+ATTRIBUTE	Ascend-IP-Pool-Definition	217	string
+ATTRIBUTE	Ascend-Assign-IP-Pool		218	integer
+ATTRIBUTE	Ascend-FR-Direct		219	integer
+ATTRIBUTE	Ascend-FR-Direct-Profile	220	string
+ATTRIBUTE	Ascend-FR-Direct-DLCI		221	integer
+ATTRIBUTE	Ascend-Handle-IPX		222	integer
+ATTRIBUTE	Ascend-Netware-timeout		223	integer
+ATTRIBUTE	Ascend-IPX-Alias		224	integer
+ATTRIBUTE	Ascend-Metric			225	integer
+ATTRIBUTE	Ascend-PRI-Number-Type		226	integer
+ATTRIBUTE	Ascend-Dial-Number		227	string
+ATTRIBUTE	Ascend-Route-IP			228	integer
+ATTRIBUTE	Ascend-Route-IPX		229	integer
+ATTRIBUTE	Ascend-Bridge			230	integer
+ATTRIBUTE	Ascend-Send-Auth		231	integer
+ATTRIBUTE	Ascend-Send-Passwd		232	string
+ATTRIBUTE	Ascend-Link-Compression		233	integer
+ATTRIBUTE	Ascend-Target-Util		234	integer
+ATTRIBUTE	Ascend-Maximum-Channels		235	integer
+ATTRIBUTE	Ascend-Inc-Channel-Count	236	integer
+ATTRIBUTE	Ascend-Dec-Channel-Count	237	integer
+ATTRIBUTE	Ascend-Seconds-Of-History	238	integer
+ATTRIBUTE	Ascend-History-Weigh-Type	239	integer
+ATTRIBUTE	Ascend-Add-Seconds		240	integer
+ATTRIBUTE	Ascend-Remove-Seconds		241	integer
+ATTRIBUTE	Ascend-Data-Filter		242	abinary
+ATTRIBUTE	Ascend-Call-Filter		243	abinary
+ATTRIBUTE	Ascend-Idle-Limit		244	integer
+ATTRIBUTE	Ascend-Preempt-Limit		245	integer
+ATTRIBUTE	Ascend-Callback			246	integer
+ATTRIBUTE	Ascend-Data-Svc			247	integer
+ATTRIBUTE	Ascend-Force-56			248	integer
+ATTRIBUTE	Ascend-Billing-Number		249	string
+ATTRIBUTE	Ascend-Call-By-Call		250	integer
+ATTRIBUTE	Ascend-Transit-Number		251	string
+ATTRIBUTE	Ascend-Host-Info		252	string
+ATTRIBUTE	Ascend-PPP-Address		253	ipaddr
+ATTRIBUTE	Ascend-MPP-Idle-Percent		254	integer
+ATTRIBUTE	Ascend-Xmit-Rate		255	integer
 
 
 # Ascend protocols
@@ -1167,3 +1168,4 @@ VALUE	Ascend-X25-Pad-X3-Profile		SCEN	3
 VALUE	Ascend-X25-Pad-X3-Profile		SHARK	8
 VALUE	Ascend-X25-Reverse-Charging		Reverse-Charging-No	0
 VALUE	Ascend-X25-Reverse-Charging		Reverse-Charging-Yes	1
+END-VENDOR Ascend
