@@ -28,6 +28,8 @@ typedef struct rlm_sql_iodbc_sock {
 	void	*conn;
 } rlm_sql_iodbc_sock;;
 
+static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 
 /*************************************************************************
  *
@@ -192,12 +194,12 @@ static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *************************************************************************/
 static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
-	int count=0;
+	SQLSMALLINT count=0;
 	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
 
-	SQLNumResultCols(iodbc_sock->stmt_handle, (SQLSMALLINT *)&count);
+	SQLNumResultCols(iodbc_sock->stmt_handle, &count);
 
-	return count;
+	return (int)count;
 }
 
 /*************************************************************************
