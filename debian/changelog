@@ -9,6 +9,7 @@ radiusd-freeradius (?) unstable; urgency=low
   * Fixed UUCP-style of restricting time of log-in.
   * Changed debugging messages to give more info about execution flow.
   * Better counter module.  
+  * Inserted CHAP support for SQL modules.
 
  -- Chad Miller <cmiller@debian.org>  [TBA]
 

@@ -292,18 +292,19 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 
 	char   sqlusername[MAX_STRING_LEN];
 	char    querystr[MAX_QUERY_LEN];
+	int	retval;
 	SQL_ROW row;
 	SQLSOCK *sqlsocket;
 	SQL_INST *inst = instance;
+	VALUE_PAIR *auth_item;
 
 	/*
 	 *      Ensure that a password attribute exists.
 	 */
-	if ((request->password == NULL) ||
-			(request->password->length == 0) ||
-			(request->password->attribute != PW_PASSWORD)) {
-		radlog(L_AUTH, "rlm_sql: Attribute \"Password\" is required for authentication.");
-		return RLM_MODULE_INVALID;
+	auth_item = request->password;
+	if ((auth_item == NULL) || (auth_item->length == 0)) {
+		DEBUG2("rlm_sql: auth: no password in the request\n");
+		return(RLM_MODULE_INVALID);
 	}
 
 	sqlsocket = sql_get_socket(inst);
@@ -320,8 +321,8 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 	 * 3. Remove SQL-User-Name local attr
 	 */
 	if(sql_set_user(inst, request, sqlusername, 0) < 0) {
-		sql_release_socket(inst, sqlsocket);
-		return RLM_MODULE_FAIL;
+		retval = RLM_MODULE_FAIL;
+		goto release_and_return;
 	}
 
 	radius_xlat(querystr, MAX_QUERY_LEN, inst->config->authenticate_query, request, NULL);
@@ -329,8 +330,8 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 
 	if ((inst->module->sql_select_query)(sqlsocket, inst->config, querystr) < 0) {
 		radlog(L_ERR, "rlm_sql_authenticate: database query error");
-		sql_release_socket(inst, sqlsocket);
-		return RLM_MODULE_REJECT;
+		retval = RLM_MODULE_REJECT;
+		goto release_and_return;
 	}
 
 	row = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
@@ -339,13 +340,14 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 
 	if (row == NULL) {
 		radlog(L_ERR, "rlm_sql_authenticate: no rows returned from query (no such user)");
-		return RLM_MODULE_REJECT;
+		retval = RLM_MODULE_REJECT;
+		goto return_only;
 	}
 
-	/* If this is a null the server will seg fault */
 	if (row[0] == NULL) {
-		radlog(L_ERR, "rlm_sql_authenticate: row[0] returned null.");
-		return RLM_MODULE_REJECT;
+		radlog(L_ERR, "rlm_sql_authenticate: row[0] returned NULL.");
+		retval = RLM_MODULE_REJECT;
+		goto return_only;
 	}
 
 	/*
@@ -353,15 +355,39 @@ static int rlm_sql_authenticate(void *instance, REQUEST * request) {
 	 * If the attribute name is "Crypt-Password", we assume an encrypted pasword in DB
 	 * Otherwise we should have a plain password in DB
 	 */
+
+	retval = RLM_MODULE_REJECT; /* by default */
 	if ((strcmp(row[1], "Crypt-Password") == 0) &&
 			(strcmp(crypt(request->password->strvalue, row[0]), row[0]) == 0)) {
-		return RLM_MODULE_OK;
-	} else if ((request->password->length == strlen(row[0])) && 
-			(strcmp(request->password->strvalue, row[0]) == 0)) {
-		return RLM_MODULE_OK;
-	}
-	return RLM_MODULE_REJECT;
+		retval = RLM_MODULE_OK;
+	} else {
+		if (auth_item->attribute != PW_CHAP_PASSWORD) {
+			if (strcmp(request->password->strvalue, row[0]) == 0) {
+				retval = RLM_MODULE_OK;
+			}
+		} else /* is CHAP */ {
+			VALUE_PAIR *password_pair;
+			char string[MAX_STRING_LEN];
 
+			password_pair = paircreate(PW_PASSWORD, PW_TYPE_STRING);
+			memcpy(password_pair->strvalue, row[0], strlen(row[0]));
+			password_pair->strvalue[strlen(row[0])] = '\0';
+			password_pair->length = strlen(row[0]);
+
+			rad_chap_encode(request->packet, string, auth_item->strvalue[0], password_pair);
+
+			if (memcmp(string + 1, auth_item->strvalue + 1, CHAP_VALUE_LENGTH) == 0) {
+				retval = RLM_MODULE_OK;
+			}
+		}
+	}
+
+	goto return_only;
+
+release_and_return:
+	sql_release_socket(inst, sqlsocket);
+return_only:
+	return(retval);
 }
 
 /*
