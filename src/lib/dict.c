@@ -214,6 +214,209 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 }
 
 /*
+ *	Process the ATTRIBUTE command
+ */
+static int process_attribute(const char* fn, const int line, const int block_vendor, const char* data) {
+	int		vendor;
+	char		namestr[256];
+	char		valstr[256];
+	char		typestr[256];
+	char		optstr[256];
+	int		value;
+	int		type;
+	char		*s, *c;
+	ATTR_FLAGS	flags;
+
+	vendor = 0;
+	optstr[0] = 0;
+	if(sscanf(data, "%s%s%s%s", namestr, valstr, typestr, optstr) < 3) {
+		librad_log("dict_init: %s[%d]: invalid ATTRIBUTE line",
+			fn, line);
+		return -1;
+	}
+
+	/*
+	 *	Validate all entries
+	 */
+	if (!isdigit((int) *valstr)) {
+		librad_log("dict_init: %s[%d]: invalid value", fn, line);
+		return -1;
+	}
+	if (valstr[0] != '0')
+		value = atoi(valstr);
+	else
+		sscanf(valstr, "%i", &value);
+
+	/*
+	 *	find the type of the attribute.
+	 */
+	type = lrad_str2int(type_table, typestr, -1);
+	if (type < 0) {
+		librad_log("dict_init: %s[%d]: invalid type \"%s\"",
+			fn, line, typestr);
+		return -1;
+	}
+
+	/*
+	 *	Ignore comments
+	 */
+	if (optstr[0] == '#') optstr[0] = '\0';
+
+	/*
+	 *	Only look up the vendor if the string
+	 *	is non-empty.
+	 */
+
+	memset(&flags, 0, sizeof(flags));
+	s = strtok(optstr, ",");
+	while(s) {
+		if (strcmp(s, "has_tag") == 0 ||
+		    strcmp(s, "has_tag=1") == 0) {
+			 /* Boolean flag, means this is a
+			    tagged attribute */
+			 flags.has_tag = 1;
+		}
+		else if (strncmp(s, "len+=", 5) == 0 ||
+			 strncmp(s, "len-=", 5) == 0) { 
+			  /* Length difference, to accomodate
+			     braindead NASes & their vendors */
+			  flags.len_disp = strtol(s + 5, &c, 0);
+			  if (*c) {
+				librad_log("dict_init: %s[%d] invalid option %s",
+					   fn, line, s);
+				return -1;
+			  }
+			  if (s[3] == '-') {
+				flags.len_disp = -flags.len_disp;
+			  }
+		}
+		else if (strncmp(s, "encrypt=", 8) == 0) {
+			  /* Encryption method, defaults to 0 (none).
+			     Currently valid is just type 2,
+			     Tunnel-Password style, which can only
+			     be applied to strings. */    
+			  flags.encrypt = strtol(s + 8, &c, 0);
+			  if (*c) {
+				librad_log( "dict_init: %s[%d] invalid option %s",
+					   fn, line, s);
+				return -1;
+			  }
+		}
+		else {
+			  /* Must be a vendor 'flag'... */
+			  if (strncmp(s, "vendor=", 5) == 0) {
+				/* New format */
+				s += 5;   
+			  }
+	 
+			  vendor = dict_vendorname(s);
+			  if (!vendor) {
+				librad_log( "dict_init: %s[%d]: unknown vendor %s",
+					   fn, line, optstr);
+				return -1;
+			  }
+			  if (block_vendor && optstr[0] &&
+			      (block_vendor != vendor)) {
+				librad_log("dict_init: %s[%d]: mismatched vendor %s within BEGIN-VENDOR/END-VENDOR block",
+					   fn, line, optstr);
+				return -1;
+			  }
+		}
+		s = strtok(NULL, ",");
+	}
+
+	if (block_vendor) vendor = block_vendor;
+
+	if (dict_addattr(namestr, vendor, type, value, flags) < 0) {
+		librad_log("dict_init: %s[%d]: %s",
+			   fn, line, librad_errstr);
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/*
+ *	Process the VALUE command
+ */
+static int process_value(const char* fn, const int line, const int block_vendor, const char* data) {
+	char	namestr[256];
+	char	valstr[256];
+	char	attrstr[256];
+	int	value;
+
+	if (sscanf(data, "%s%s%s", attrstr, namestr, valstr) != 3) {
+		librad_log("dict_init: %s[%d]: invalid VALUE line",
+			fn, line);
+		return -1;
+	}
+	/*
+	 *	For Compatibility, skip "Server-Config"
+	 */
+	if (strcasecmp(attrstr, "Server-Config") == 0)
+		return 0;
+
+	/*
+	 *	Validate all entries
+	 */
+	if (!isdigit((int) *valstr)) {
+		librad_log("dict_init: %s[%d]: invalid value",
+			fn, line);
+		return -1;
+	}
+	if (valstr[0] != '0')
+		value = atoi(valstr);
+	else
+		sscanf(valstr, "%i", &value);
+
+	if (dict_addvalue(namestr, attrstr, value) < 0) {
+		librad_log("dict_init: %s[%d]: %s", 
+			   fn, line, librad_errstr);
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/*
+ *	Process the VENDOR command
+ */
+static int process_vendor(const char* fn, const int line, const int block_vendor, const char* data) {
+	char	valstr[256];
+	char	attrstr[256];
+	int	value;
+
+	if (sscanf(data, "%s%s", attrstr, valstr) != 2) {
+		librad_log(
+		"dict_init: %s[%d] invalid VENDOR entry",
+			fn, line);
+		return -1;
+	}
+
+	/*
+	 *	 Validate all entries
+	 */
+	if (!isdigit((int) *valstr)) {
+		librad_log("dict_init: %s[%d]: invalid value",
+			fn, line);
+		return -1;
+	}
+	value = atoi(valstr);
+
+	/* Create a new VENDOR entry for the list */
+	if (dict_addvendor(attrstr, value) < 0) {
+		librad_log("dict_init: %s[%d]: %s",
+			   fn, line, librad_errstr);
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/*
  *	Initialize the dictionary.
  */
 static int my_dict_init(const char *dir, const char *fn, const char *src_file, int src_line)
@@ -221,21 +424,13 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 	FILE	*fp;
 	char 	dirtmp[256];
 	char	buf[256];
-	char	namestr[256];
-	char	valstr[256];
-	char	attrstr[256];
-	char	typestr[256];
 	char	optstr[256];
-	char	*p, *s, *c;
+	char	*p;
 	char	*keyword;
 	char	*data;
 	int	line = 0;
-	int	value;
-	int	type;
 	int	vendor;
 	int	block_vendor;
-	int	vendor_usr_seen = 0;
-	ATTR_FLAGS  flags;
 
 	if (strlen(fn) >= sizeof(dirtmp) / 2 ||
 	    strlen(dir) >= sizeof(dirtmp) / 2) {
@@ -310,223 +505,30 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		/*
 		 *	Perhaps this is an attribute.
 		 */
-		if (strcasecmp(keyword, "ATTRIBUTE") == 0) {
-			vendor = 0;
-			optstr[0] = 0;
-			if(sscanf(data, "%s%s%s%s", namestr,
-					valstr, typestr, optstr) < 3) {
-				librad_log(
-					"dict_init: %s[%d]: invalid ATTRIBUTE line",
-					fn, line);
+		if (strcasecmp(keyword, "ATTRIBUTE") == 0)
+			if (process_attribute(fn, line, block_vendor, data) == -1) {
 				fclose(fp);
 				return -1;
 			}
-
-			/*
-			 *	Validate all entries
-			 */
-			if (!isdigit((int) *valstr)) {
-				librad_log("dict_init: %s[%d]: invalid value",
-					fn, line);
-				fclose(fp);
-				return -1;
-			}
-			if (valstr[0] != '0')
-				value = atoi(valstr);
-			else
-				sscanf(valstr, "%i", &value);
-
-			/*
-			 *	find the type of the attribute.
-			 */
-			type = lrad_str2int(type_table, typestr, -1);
-			if (type < 0) {
-				librad_log("dict_init: %s[%d]: invalid type \"%s\"",
-					fn, line, typestr);
-				fclose(fp);
-				return -1;
-			}
-
-			/*
-			 *	Ignore comments
-			 */
-			if (optstr[0] == '#') {
-				optstr[0] = '\0';
-			}
-
-			/*
-			 *	Only look up the vendor if the string
-			 *	is non-empty.
-			 */
-
-			memset(&flags, 0, sizeof(flags));
-			s = strtok(optstr, ",");
-			while(s) {
-			        if (strcmp(s, "has_tag") == 0 ||
-				    strcmp(s, "has_tag=1") == 0) {
-				         /* Boolean flag, means this is a
-					    tagged attribute */
-				         flags.has_tag = 1;
-				}
-				else if (strncmp(s, "len+=", 5) == 0 ||
-					 strncmp(s, "len-=", 5) == 0) { 
-				          /* Length difference, to accomodate
-					     braindead NASes & their vendors */
-				          flags.len_disp = strtol(s + 5, &c, 0);
-					  if (*c) {
-					        librad_log(
-							   "dict_init: %s[%d] invalid option %s",
-							   fn, line, s);
-						fclose(fp);
-						return -1;
-					  }
-					  if (s[3] == '-') {
-					        flags.len_disp = -flags.len_disp;
-					  }
-				}
-				else if (strncmp(s, "encrypt=", 8) == 0) {
-				          /* Encryption method, defaults to 0 (none).
-					     Currently valid is just type 2,
-					     Tunnel-Password style, which can only
-					     be applied to strings. */    
-				          flags.encrypt = strtol(s + 8, &c, 0);
-					  if (*c) {
-					        librad_log(
-							   "dict_init: %s[%d] invalid option %s",
-							   fn, line, s);
-						fclose(fp);
-						return -1;
-					  }
-				}
-				else {
-				          /* Must be a vendor 'flag'... */
-				          if (strncmp(s, "vendor=", 5) == 0) {
-					        /* New format */
-					        s += 5;   
-					  }
-                         
-					  vendor = dict_vendorname(s);
-					  if (!vendor) {
-					        librad_log(
-							   "dict_init: %s[%d]: unknown vendor %s",
-							   fn, line, optstr);
-						fclose(fp);
-						return -1;
-					  }
-					  if (block_vendor && optstr[0] &&
-					      (block_vendor != vendor)) {
-					        librad_log(
-							   "dict_init: %s[%d]: mismatched vendor %s within BEGIN-VENDOR/END-VENDOR block",
-							   fn, line, optstr);
-						fclose(fp);
-						return -1;
-					  }
-				}
-				s = strtok(NULL, ",");
-			}
- 
-			if (block_vendor) vendor = block_vendor;
-
-			if (dict_addattr(namestr, vendor, type, value, flags) < 0) {
-				librad_log("dict_init: %s[%d]: %s",
-					   fn, line, librad_errstr);
-				fclose(fp);
-				return -1;
-			}
-			continue;
-		} /* ATTRIBUTE */
 
 		/*
 		 *	Process VALUE lines.
 		 */
-		if (strcasecmp(keyword, "VALUE") == 0) {
-			if (sscanf(data, "%s%s%s", attrstr,
-						namestr, valstr) != 3) {
-				librad_log("dict_init: %s[%d]: invalid VALUE line",
-					fn, line);
+		if (strcasecmp(keyword, "VALUE") == 0)
+			if (process_value(fn, line, block_vendor, data) == -1) {
 				fclose(fp);
 				return -1;
 			}
-			/*
-			 *	For Compatibility, skip "Server-Config"
-			 */
-			if (strcasecmp(attrstr, "Server-Config") == 0)
-				continue;
 
-			/*
-			 *	Validate all entries
-			 */
-			if (!isdigit((int) *valstr)) {
-				librad_log("dict_init: %s[%d]: invalid value",
-					fn, line);
-				fclose(fp);
-				return -1;
-			}
-			if (valstr[0] != '0')
-				value = atoi(valstr);
-			else
-				sscanf(valstr, "%i", &value);
-
-#if 0
-			/*
-			 *	This WOULD be nice, but the dictionary
-			 *	files require heavy editing to enable it,
-			 *	as many entries are out of order. :(
-			 */
-			if (dict_attrbyname(attrstr) == NULL) {
-				librad_log("dict_init: %s[%d]: No previously defined ATTRIBUTE %s for VALUE", 
-					   fn, line, attrstr);
-				fclose(fp);
-				return -1;
-			}
-#endif
-
-			if (dict_addvalue(namestr, attrstr, value) < 0) {
-				librad_log("dict_init: %s[%d]: %s", 
-					   fn, line, librad_errstr);
-				fclose(fp);
-				return -1;
-			}
-			continue;
-		} /* VALUE */
 
 		/*
 		 *	Process VENDOR lines.
 		 */
-		if (strcasecmp(keyword, "VENDOR") == 0) {
-
-			if (sscanf(data, "%s%s", attrstr, valstr) != 2) {
-				librad_log(
-				"dict_init: %s[%d] invalid VENDOR entry",
-					fn, line);
+		if (strcasecmp(keyword, "VENDOR") == 0)
+			if (process_vendor(fn, line, block_vendor, data) == -1) {
 				fclose(fp);
 				return -1;
 			}
-
-			/*
-			 *	 Validate all entries
-			 */
-			if (!isdigit((int) *valstr)) {
-				librad_log("dict_init: %s[%d]: invalid value",
-					fn, line);
-				fclose(fp);
-				return -1;
-			}
-			value = atoi(valstr);
-
-			/* Create a new VENDOR entry for the list */
-			if (dict_addvendor(attrstr, value) < 0) {
-				librad_log("dict_init: %s[%d]: %s",
-					   fn, line, librad_errstr);
-				fclose(fp);
-				return -1;
-			}
-
-			if (value == VENDORPEC_USR)
-				vendor_usr_seen = 1;
-
-			continue;
-		} /* VENDOR */
 
 		if (strcasecmp(keyword, "BEGIN-VENDOR") == 0) {
 			optstr[0] = 0;
