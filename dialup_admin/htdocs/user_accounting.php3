@@ -26,6 +26,11 @@ $num = 0;
 $pagesize = ($pagesize) ? $pagesize : 10;
 $limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
 $selected[$pagesize] = 'selected';
+$order = ($order) ? $order : $config[general_accounting_info_order];
+if ($order != 'desc' && $order != 'asc')
+	$order = 'desc';
+$selected[$order] = 'selected';
+
 
 echo <<<EOM
 <head>
@@ -77,7 +82,7 @@ if ($link){
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_accounting_table]
 	WHERE UserName = '$login' AND AcctStartTime <= '$now_str'
-	AND AcctStartTime >= '$prev_str' ORDER BY AcctStartTime ASC $limit;");
+	AND AcctStartTime >= '$prev_str' ORDER BY AcctStartTime $order $limit;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$tr_color='white';
@@ -148,7 +153,7 @@ echo <<<EOM
 <tr><td align="center">
 	<form action="user_accounting.php3" method="get" name="master">
 	<table border=0>
-		<tr><td colspan=5></td>
+		<tr><td colspan=6></td>
 			<td rowspan=3 valign="bottom">
 				<small>
 				the <b>from</b> date matches any login after the 00:00 that day,
@@ -157,8 +162,7 @@ echo <<<EOM
 			</td>
 		</tr>
 		<tr valign="bottom">
-			<td><small><b>user</td><td><small><b>from date</td><td><small><b>to date</td><td><small><b>pagesize</td><td>
-&nbsp;</td>
+			<td><small><b>user</td><td><small><b>from date</td><td><small><b>to date</td><td><small><b>pagesize</td><td><b>order</td>
 	<tr valign="middle"><td>
 <input type="text" name="login" size="11" value="$login"></td>
 <td><input type="text" name="prev_str" size="11" value="$prev_str"></td>
@@ -171,6 +175,11 @@ echo <<<EOM
 <option $selected[40] value="40">40
 <option $selected[80] value="80">80
 <option $selected[all] value="all">all
+</select>
+</td>
+<td><select name="order">
+<option $selected[asc] value="asc">older first
+<option $selected[desc] value="desc">recent first
 </select>
 </td>
 EOM;
