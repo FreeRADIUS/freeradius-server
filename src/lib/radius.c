@@ -322,8 +322,6 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 				          len++;
 					  if(TAG_VALID(reply->flags.tag)) {
 					          *ptr++ = reply->flags.tag;
-					  } else {
-					          *ptr++ = 0x00;
 					  }
 				  }
 				 
@@ -1096,12 +1094,25 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 				pair->length = strlen(pair->strvalue);
 			} else if (pair->flags.has_tag &&
 				   pair->type == PW_TYPE_STRING) {
-			        if(TAG_VALID(*ptr)) 
-				       pair->flags.tag = *ptr;
-				else
+				if(TAG_VALID(*ptr)) {
+				       pair->flags.tag = *ptr++;
+					pair->length--;
+				} else if(pair->flags.encrypt == 2) {
+					/*
+					 * from RFC2868 - 3.5.  Tunnel-Password
+					 * If the value of the Tag field is greater than
+					 * 0x00 and less than or equal to 0x1F, it SHOULD
+					 * be interpreted as indicating which tunnel
+					 * (of several alternatives) this attribute pertains;
+					 * otherwise, the Tag field SHOULD be ignored.
+					 */
+					pair->flags.tag = 0x00;
+					ptr++;
+					pair->length--;
+				} else {
 				       pair->flags.tag = 0x00;
-				pair->length--;
-				memcpy(pair->strvalue, ptr + 1, 
+				}
+				memcpy(pair->strvalue, ptr, 
 				       pair->length);
 			} else {
 				/* attrlen always < MAX_STRING_LEN */
