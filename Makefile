@@ -43,7 +43,7 @@ install:
 	$(INSTALL) -d -m 755	$(R)$(RUNDIR)
 	$(INSTALL) -d -m 700	$(R)$(logdir)
 	$(INSTALL) -d -m 700	$(R)$(radacctdir)
-	$(INSTALL) -d -m 700	$(R)$(datadir)
+	$(INSTALL) -d -m 755	$(R)$(datadir)
 	$(INSTALL) -d -m 755	$(R)$(dictdir)
 	for i in 1 5 8; do \
 		$(INSTALL) -d -m 755	$(R)$(mandir)/man$$i; \
