@@ -29,7 +29,7 @@ $now_str = ($now_str != '') ? "$now_str" : date($config[sql_date_format],$now + 
 $prev_str = ($prev_str != '') ? "$prev_str" : date($config[sql_date_format], $now - 604800 );
 $num = 0;
 $pagesize = ($pagesize) ? $pagesize : 10;
-if (!is_numeric($pagesize))
+if (!is_numeric($pagesize) && $pagesize != 'all')
 	$pagesize = 10;
 $limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
 $selected[$pagesize] = 'selected';
