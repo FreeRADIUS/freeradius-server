@@ -40,6 +40,7 @@ Ver 1.63:
 * Change AcctStopTime = '0' with AcctStopTime IS NULL
 * Add a few more attribute help pages from Ulrich Walcher <uwalcher@bcore.de>
 * Also check for $server != '' in stats.php3. Bug noted by Ulrich Walcher <uwalcher@bcore.de>
+* Consider the account locked either if Dialup-Access == FALSE or if it is not set at all
 Ver 1.62:
 * Remove one sql query from user_admin which was not needed.
 * Instead of a query like "LIKE 'YYYY-MM-DD%'" use "AcctStopTime >= 'YYYY-MM-DD 00:00:00 AND AcctStopTime
