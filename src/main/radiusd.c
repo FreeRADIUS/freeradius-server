@@ -1764,10 +1764,10 @@ static REQUEST *rad_check_list(REQUEST *request)
 			}
 
 		      	/*
-			 *	Delete the duplicate request, and
-			 *	stop processing the request list.
+			 *	Delete the duplicate request.
 			 */
 			request_free(&request);
+			return NULL;
 			
 			/*
 			 *	The packet vectors are different, so
@@ -1796,16 +1796,9 @@ static REQUEST *rad_check_list(REQUEST *request)
 				 request->packet->src_port,
 				 request->packet->id);
 			  request_free(&request);
+			  return NULL;
 		  }
 	} /* a similar packet already exists. */
-
-	/*
-	 *	If we've received a duplicate packet, 'request' is NULL,
-	 *	and we have nothing more to do.
-	 */
-	if (request == NULL) {
-		return NULL;
-	}
 
 	/*
 	 *	Count the total number of requests, to see if there
@@ -2017,8 +2010,9 @@ void sig_cleanup(int sig)
 			if (curreq->child_pid == pid) {
 				curreq->child_pid = NO_SUCH_CHILD_PID;
 				break;
+			}
 		}
-        }
+	}
 #endif /* !defined HAVE_PTHREAD_H */
 }
 
