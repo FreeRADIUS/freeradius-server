@@ -26,6 +26,7 @@ typedef struct sql_config {
 	char   *sql_dict_table;
 	char   *query_user;
 	char   *default_profile;
+	char   *nas_query;
 	char   *authorize_check_query;
 	char   *authorize_reply_query;
 	char   *authorize_group_check_query;

@@ -97,6 +97,8 @@ static CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,query_user), NULL, ""},
 	{"default_user_profile", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,default_profile), NULL, ""},
+	{"nas_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,nas_query), NULL, "SELECT id,nasname,shortname,type,secret FROM nas"},
 	{"authorize_check_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,authorize_check_query), NULL, ""},
 	{"authorize_reply_query", PW_TYPE_STRING_PTR,
@@ -275,7 +277,7 @@ static int generate_sql_clients(SQL_INST *inst)
 		radlog(L_ERR, "rlm_sql (%s): sql_nas_table is NULL.",inst->config->xlat_name);
 		return -1;
 	}
-	snprintf(querystr,MAX_QUERY_LEN - 1,"SELECT id,nasname,shortname,type,secret FROM %s",inst->config->sql_nas_table);
+	snprintf(querystr,MAX_QUERY_LEN - 1,inst->config->nas_query);
 
 	DEBUG("rlm_sql (%s): Query: %s",inst->config->xlat_name,querystr);
 	sqlsocket = sql_get_socket(inst);
