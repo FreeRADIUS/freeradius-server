@@ -1,0 +1,70 @@
+
+           	SIM Triplets 
+
+INTRODUCTION
+
+  The module rlm_sim_files reads challenges/responses for use by the
+EAP-SIM method. This module is a reference implementation for what someone
+might do via a database or other system.
+  It provides for authorization only.
+
+RADIUSD.CONF
+
+  To configure this module, list is in modules.
+  An optional option to set the file name exists, it otherwise defaults to
+${raddbdir}/simtriplets.dat.
+
+  e.g: in radiusd.conf, modules {},
+
+     sim_files {
+  	     simtriplets = "/some/file"
+     }
+
+
+  in radiusd.conf, authorize {}, add:
+     sim_files 
+
+  before eap.
+
+SIMTRIPLETS.DAT:
+
+  The format of the file is one triplet per line, with the userid, aka
+"imsi" first. Lines starting with # are considered comments.
+ 
+  imsi,challenge,kc,sres
+
+  for example:
+
+232420100000015,34000000000000000000000000000000,34112233,445566778899AABB
+
+  Types
+
+	imsi		- just a string
+	challenge	- 16-byte value in hex.
+	kc		- 4-byte value in hex, the client key (Kc)
+	sres		- 8-byte value in hex, the secure response
+
+  Note that EAP-SIM requires *three* sets of triplets, so there must be
+three challenges found in the file. The first three challenges are used.
+  Also note that the "0x" for hex is not required, and is illegal.
+  Space and tabs are not permitted.
+
+AUTHORIZATION
+  
+  Note, if the NAS continues to send the User-Name attribute in subsequent
+access-requests (such as continuations of the EAP-sim protocol), then the
+authorization process will be repeated. It is important that the same
+attributes are returned.
+
+  If this module is successful at retrieving three sets of triplets, then
+the EAP-Type: attribute will be set to SIM. The EAP module itself will set
+the Auth-Type to EAP when it sees the EAP-Message attribute.
+
+  See rlm_eap for details about the attributes used in EAP-sim.
+
+
+
+
+
+
+
