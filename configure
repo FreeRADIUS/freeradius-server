@@ -729,7 +729,7 @@ fi
 
 # From configure.in Revision: 1.177.2.11 
 RADIUSD_MAJOR_VERSION=0
-RADIUSD_MINOR_VERSION=9.2
+RADIUSD_MINOR_VERSION=9.3
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
 
 
@@ -2002,7 +2002,7 @@ else
   if { (eval echo configure:2003: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; }; then
     for file in conftest.*; do
       case $file in
-      *.$ac_ext | *.c | *.o | *.obj) ;;
+      *.c | *.o | *.obj) ;;
       *) ac_cv_exeext=`echo $file | sed -e s/conftest//` ;;
       esac
     done
@@ -8831,7 +8831,7 @@ if test "$no_recursion" != yes; then
       fi
     fi
 
-    cd "$ac_popdir"
+    cd $ac_popdir
   done
 fi
 

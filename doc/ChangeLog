@@ -1,4 +1,4 @@
-FreeRADIUS 0.9.3 ; $Date$, urgency=low
+FreeRADIUS 0.9.3 ; $Date$, urgency=high
 
 	* Fix a remote DoS and possible exploit due to mis-handling
 	  of tagged attributes, and Tunnel-Password attribute.

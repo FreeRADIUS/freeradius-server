@@ -1,3 +1,9 @@
+freeradius (0.9.2-0) unstable; urgency=high
+
+  * Fix for remote DoS with tagged attributes
+	
+ -- Alan DeKok <aland@ox.org>  Wed, 20 Nove 2003 15:13:31 +0400
+
 freeradius (0.9.3-0~pre0) unstable; urgency=low
 
   * Unrelease 0.9.3 update to FreeRADIUS
