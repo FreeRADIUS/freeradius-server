@@ -5,6 +5,9 @@
 *                                                                          *
 *                                     Mike Machado <mike@innercite.com>    *
 ***************************************************************************/
+#ifndef _RLM_SQL_H
+#define _RLM_SQL_H
+
 #if HAVE_PTHREAD_H
 #include        <pthread.h>
 #endif
@@ -86,3 +89,4 @@ int     sql_dict_init(SQLSOCK * sqlsocket);
 void    query_log(SQL_INST * inst, char *querystr);
 int     sql_escape_string(char *to, char *from, int length);
 int     sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, char *username);
+#endif
