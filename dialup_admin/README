@@ -84,7 +84,8 @@ htdocs:: user_state.php3 =>
 	overview of the status of a user. It will return the following fields
 	separated by new lines:
 	account_status(active or inactive),lock message,weekly limit,daily limit,
-	weekly used,weekly connections,daily used,daily connections
+	weekly used,weekly connections,daily used,daily connections,
+	active sessions number,active sessions time
 htdocs:: user_finger.php3 =>
 	It will finger the nas(es) and show the logged in users. If an argument server is passed then
 	it will only show users for the specific access server.
