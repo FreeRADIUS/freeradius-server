@@ -2,8 +2,8 @@
 include config.mak
 
 TARGET		= rlm_sql
-SRCS		= rlm_sql.c sql.c sql_module.c
-HEADERS		= rlm_sql.h sql_module.h
+SRCS		= rlm_sql.c sql.c
+HEADERS		= rlm_sql.h
 RLM_CFLAGS	= -I/usr/local/mysql/include # -DBINARY_FILTERS
 RLM_LIBS	=-L/usr/local/mysql/lib/mysql -lmysqlclient
 
@@ -22,3 +22,4 @@ include ../rules.mak
 # must be last
 config.mak:
 	@../checkconfig -l LIBMYSQL mysql_init -lmysqlclient -L/usr/local/lib/mysql
+
