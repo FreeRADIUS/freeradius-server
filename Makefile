@@ -42,7 +42,8 @@ install:
 	cd share; \
 	for i in dictionary*; do \
 		$(INSTALL) -m 644 $$i $(R)$(dictdir); \
-	done; \
+	done
+	$(LIBTOOL) --finish $(R)$(libdir)
 
 common:
 	@for dir in $(SUBDIRS); do \
