@@ -939,30 +939,34 @@ ldap_authorize(void *instance, REQUEST * request)
 			int passwd_len;
 
 			if ((passwd_vals = ldap_get_values(conn->ld,msg,inst->passwd_attr)) != NULL){
-				if (strlen(passwd_vals[0])){
-					passwd_val = passwd_vals[0];
+				unsigned int i=0;
+				while(passwd_vals[i] != NULL){
+					if (strlen(passwd_vals[i])){
+						passwd_val = passwd_vals[i];
 
-					if (inst->passwd_hdr && strlen(inst->passwd_hdr)){
-						passwd_val = strstr(passwd_val,inst->passwd_hdr);
-						if (passwd_val != NULL)
-							passwd_val += strlen(inst->passwd_hdr);
-						else
-							DEBUG("rlm_ldap: Password header not found in password %s for user %s", passwd_vals[0],request->username->strvalue);
-					}
-					if (passwd_val){
-						if ((passwd_item = paircreate(PW_PASSWORD,PW_TYPE_STRING)) == NULL){
-							radlog(L_ERR|L_CONS, "no memory");
-							ldap_value_free(passwd_vals);
-							ldap_msgfree(result);
-							ldap_release_conn(conn_id,inst->conns);
-							return RLM_MODULE_FAIL;
+						if (inst->passwd_hdr && strlen(inst->passwd_hdr)){
+							passwd_val = strstr(passwd_val,inst->passwd_hdr);
+							if (passwd_val != NULL)
+								passwd_val += strlen(inst->passwd_hdr);
+							else
+								DEBUG("rlm_ldap: Password header not found in password %s for user %s", passwd_vals[0],request->username->strvalue);
 						}
-						passwd_len = strlen(passwd_val);
-						strncpy(passwd_item->strvalue,passwd_val,MAX_STRING_LEN - 1);
-						passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
-						pairadd(&request->config_items,passwd_item);
-						DEBUG("rlm_ldap: Added password %s in check items",passwd_item->strvalue);
+						if (passwd_val){
+							if ((passwd_item = paircreate(PW_PASSWORD,PW_TYPE_STRING)) == NULL){
+								radlog(L_ERR|L_CONS, "no memory");
+								ldap_value_free(passwd_vals);
+								ldap_msgfree(result);
+								ldap_release_conn(conn_id,inst->conns);
+								return RLM_MODULE_FAIL;
+							}
+							passwd_len = strlen(passwd_val);
+							strncpy(passwd_item->strvalue,passwd_val,MAX_STRING_LEN - 1);
+							passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
+							pairadd(&request->config_items,passwd_item);
+							DEBUG("rlm_ldap: Added password %s in check items",passwd_item->strvalue);
+						}
 					}
+					i++;
 				}
 				ldap_value_free(passwd_vals);
 			}
