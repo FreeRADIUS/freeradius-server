@@ -373,8 +373,10 @@ ldap_authorize(void *instance, REQUEST * request)
 			if (!strncmp(vals[0], "FALSE", 5)) {
 				DEBUG("rlm_ldap: dialup access disabled");
 				ldap_msgfree(result);
+				ldap_value_free(vals);
 				return RLM_MODULE_USERLOCK;
 			}
+			ldap_value_free(vals);
 		} else {
 			DEBUG("rlm_ldap: no %s attribute - access denied by default", inst->access_attr);
 			ldap_msgfree(result);
@@ -398,6 +400,7 @@ ldap_authorize(void *instance, REQUEST * request)
 
 
 		if (res != RLM_MODULE_OK) {
+			ldap_msgfree(result);
 			if (res == RLM_MODULE_NOTFOUND)
 				return (RLM_MODULE_USERLOCK);
 			else
