@@ -55,7 +55,6 @@
 #include	"radiusd.h"
 #include	"modules.h"
 
-#include	"des.h"
 #include        "md4.h"
 #include        "md5.h"
 #include	"sha1.h"

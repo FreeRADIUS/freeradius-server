@@ -12,9 +12,9 @@ $(STATIC_OBJS): $(HEADERS)
 
 $(DYNAMIC_OBJS): $(HEADERS)
 
-smbencrypt: $(STATIC_OBJS)
-	$(CC) -I../../include $(LDFLAGS) -o smbencrypt smbencrypt.c deskey.o desport.o smbpass.o ../../lib/md4.o
+smbencrypt: smbencrypt.o smbpass.o $(HEADERS)
+	$(CC) -I../../include $(LDFLAGS) -o smbencrypt smbencrypt.o ../../lib/libradius.a
 
 smbencrypt-install:
-	$(INSTALL) -d -m 755				$(R)$(bindir)
+	$(INSTALL) -d -m 755 $(R)$(bindir)
 	$(INSTALL) -m 755 $(INSTALLSTRIP) smbencrypt $(R)$(bindir)
