@@ -175,7 +175,7 @@ int read_clients_file(const char *file)
 			return -1;
 		}
 		c->netmask = htonl(mask);
-		c->ipaddr &= mask;
+		c->ipaddr &= c->netmask; /* addr & mask are in network order */
 
 		strcpy((char *)c->secret, secret);
 		strcpy(c->shortname, shortnm);
@@ -184,8 +184,29 @@ int read_clients_file(const char *file)
 		 *	Only do DNS lookups for machines.  Just print
 		 *	the network as the long name.
 		 */
-		if (c->netmask == ~0U) {
+		if ((~mask) == 0) {
+			NAS *nas;
 			ip_hostname(c->longname, sizeof(c->longname), c->ipaddr);
+
+			/*
+			 *	Pull information over from the NAS.
+			 */
+			nas = nas_find(c->ipaddr);
+			if (nas) {
+				/*
+				 *	No short name in the 'clients' file,
+				 *	try copying one over from the
+				 *	'naslist' file.
+				 */
+				if (c->shortname[0] == '\0') {
+					strcpy(c->shortname, nas->shortname);
+				}
+
+				/*
+				 *  Copy the nastype over, too.
+				 */
+				strcpy(c->nastype, nas->nastype);
+			}
 		} else {
 			hostnm[strlen(hostnm)] = '/';
 			strNcpy(c->longname, hostnm, sizeof(c->longname));
