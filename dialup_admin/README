@@ -26,6 +26,14 @@ There are also a few more things included:
 * bin/clean_radacct: It will delete all entries in the radacct table with a starttime > 1 day and
   stoptime = 0. It will not do an harm even if it deletes valid entries since radiusd will fall
   back to insert if update fails.
+* bin/truncate_radacct: It will delete sessions from the radacct table which are older than a configurable
+  number of days
+* bin/tot_stats: Update the totacct table with aggregated daily accounting information for each user.
+  We keep a row per user for each day.
+* bin/monthly_tot_stats: Log in the mtotacct table aggregated accounting information for each user spaning
+  in one month period. If the current month has not ended it will log information up to the current month day
+
+
 
 
 The structure of the tree is:
