@@ -50,6 +50,7 @@ typedef struct sql_config {
 	int	query_on_not_found;
 	char   *sql_postauth_table;
 	char   *postauth_query;
+	char   *allowed_chars;
 
 	/* individual driver config */
 	void	*localcfg;

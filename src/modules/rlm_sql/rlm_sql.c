@@ -48,6 +48,8 @@ static const char rcsid[] =
 #include "rlm_sql.h"
 #include "rad_assert.h"
 
+static char *allowed_chars = NULL;
+
 static CONF_PARSER module_config[] = {
 	{"driver",PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,sql_driver), NULL, "mysql"},
@@ -129,6 +131,9 @@ static CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,sql_postauth_table), NULL, "radpostauth"},
 	{"postauth_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,postauth_query), NULL, ""},
+	{"safe-characters", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,allowed_chars), NULL, 
+	"@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: =/"},
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -415,7 +420,7 @@ static int sql_escape_func(char *out, int outlen, const char *in)
 		 *	mime-encoded equivalents.
 		 */
 		if ((in[0] < 32) ||
-		    strchr("@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: =/", *in) == NULL) {
+		    strchr(allowed_chars, *in) == NULL) {
 			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
 			in++;
 			out += 3;
@@ -699,11 +704,12 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 
 	if (inst->config->do_clients){
 		if (generate_sql_clients(inst) == -1){
-			radlog(L_ERR, "rlm_sql (%s): generate_sql_clients() returned error");
+			radlog(L_ERR, "rlm_sql (%s): generate_sql_clients() returned error",inst->config->xlat_name);
 			rlm_sql_detach(inst);
 			return -1;
 		}
 	}
+	allowed_chars = inst->config->allowed_chars;
 
 	*instance = inst;
 
