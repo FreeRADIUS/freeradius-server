@@ -93,9 +93,7 @@ int sql_init_socketpool(SQL_INST * inst)
 	SQLSOCK *sqlsocket;
 
 	inst->connect_after = 0;
-	inst->used = 0;
 	inst->sqlpool = NULL;
-	inst->socknr = 0;
 
 	for (i = 0; i < inst->config->num_sql_socks; i++) {
 		radlog(L_DBG, "rlm_sql (%s): starting %d",
@@ -110,21 +108,12 @@ int sql_init_socketpool(SQL_INST * inst)
 		sqlsocket->state = sockunconnected;
 
 #if HAVE_PTHREAD_H
-		rcode = pthread_cond_init(&sqlsocket->cond,NULL);
-		if (rcode != 0) {
-			radlog(L_ERR, "rlm_sql: Failed to init cond: %s",
-			       strerror(errno));
-			return 0;
-		}
-		
-		rcode = pthread_mutex_init(&sqlsocket->lock,NULL);
+		rcode = pthread_mutex_init(&sqlsocket->mutex,NULL);
 		if (rcode != 0) {
 			radlog(L_ERR, "rlm_sql: Failed to init lock: %s",
 			       strerror(errno));
 			return 0;
 		}
-#else
-		sqlsocket->in_use = SQLSOCK_UNLOCKED;
 #endif
 
 		if (time(NULL) > inst->connect_after) {
@@ -137,10 +126,7 @@ int sql_init_socketpool(SQL_INST * inst)
 		sqlsocket->next = inst->sqlpool;
 		inst->sqlpool = sqlsocket;
 	}
-
-#if HAVE_PTHREAD_H
-	pthread_mutex_init(&inst->mutex, NULL);
-#endif
+	inst->last_used = NULL;
 
 	return 1;
 }
@@ -159,9 +145,6 @@ void sql_poolfree(SQL_INST * inst)
 	for (cur = inst->sqlpool; cur; cur = cur->next) {
 		sql_close_socket(inst, cur);
 	}
-#if HAVE_PTHREAD_H
-	pthread_mutex_destroy(&inst->mutex);
-#endif
 }
 
 
@@ -178,8 +161,7 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket)
 	       inst->config->xlat_name, sqlsocket->id);
 	(inst->module->sql_close)(sqlsocket, inst->config);
 #if HAVE_PTHREAD_H
-	pthread_mutex_destroy(&sqlsocket->lock);
-	pthread_cond_destroy(&sqlsocket->cond);
+	pthread_mutex_destroy(&sqlsocket->mutex);
 #endif
 	free(sqlsocket);
 	return 1;
@@ -195,31 +177,30 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket)
  *************************************************************************/
 SQLSOCK * sql_get_socket(SQL_INST * inst)
 {
-	SQLSOCK *cur;
+	SQLSOCK *cur, *start;
 	int tried_to_connect = 0;
 	int unconnected = 0;
 
 	/*
-	 * Rotating the socket so that all get used and none get closed due to
-	 * inactivity from the SQL server ( such as mySQL ).
+	 *	Start at the last place we left off.
 	 */
-#if HAVE_PTHREAD_H
-	pthread_mutex_lock(&inst->mutex);
-#endif
+	start = inst->last_used;
+	if (!start) start = inst->sqlpool;
 
-	if(inst->socknr == 0) {
-	        inst->socknr = inst->config->num_sql_socks;
-	}
-	inst->socknr--;
-	cur = inst->sqlpool;
-	while (inst->socknr != cur->id) {
-	        cur = cur->next;
-	}
-#if HAVE_PTHREAD_H
-	pthread_mutex_unlock(&inst->mutex);
-#endif
+	cur = start;
 
 	while (cur) {
+#if HAVE_PTHREAD_H
+		/*
+		 *	If this socket is in use by another thread,
+		 *	skip it, and try another socket.
+		 *
+		 *	If it isn't used, then grab it ourselves.
+		 */
+		if (pthread_mutex_trylock(&cur->mutex) < 0) {
+			goto next;
+		} /* else we now have the lock */
+#endif
 
 		/*
 		 *	If we happen upon an unconnected socket, and
@@ -237,30 +218,44 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 		if (cur->state == sockunconnected) {
 			radlog(L_DBG, "rlm_sql (%s): Ignoring unconnected handle %d..", inst->config->xlat_name, cur->id);
 		        unconnected++;
-		} else {
-			/* should be connected, grab it */
 #if HAVE_PTHREAD_H
-		pthread_mutex_lock(&cur->lock);
-		if (pthread_cond_wait(&cur->cond,&cur->lock) != 0) {
-			pthread_mutex_unlock(&cur->lock);
-		} else {
-			pthread_mutex_unlock(&cur->lock);
-#else
-			if (cur->in_use == SQLSOCK_UNLOCKED) {
+			pthread_mutex_unlock(&cur->mutex);
 #endif
-				(inst->used)++;
-#ifndef HAVE_PTHREAD_H
-				cur->in_use = SQLSOCK_LOCKED;
-#endif
-				radlog(L_DBG, "rlm_sql (%s): Reserving sql socket id: %d", inst->config->xlat_name, cur->id);
-				if (unconnected != 0 || tried_to_connect != 0) {
-					radlog(L_INFO, "rlm_sql (%s): got socket %d after skipping %d unconnected handles, tried to reconnect %d though", inst->config->xlat_name, cur->id, unconnected, tried_to_connect);
-				}
-				return cur;
-			}
+			goto next;
 		}
 
+		/* should be connected, grab it */
+		radlog(L_DBG, "rlm_sql (%s): Reserving sql socket id: %d", inst->config->xlat_name, cur->id);
+
+		if (unconnected != 0 || tried_to_connect != 0) {
+			radlog(L_INFO, "rlm_sql (%s): got socket %d after skipping %d unconnected handles, tried to reconnect %d though", inst->config->xlat_name, cur->id, unconnected, tried_to_connect);
+
+			/*
+			 *	The socket is returned in the locked
+			 *	state.
+			 *
+			 *	We also remember where we left off,
+			 *	so that the next search can start from
+			 *	here.
+			 *
+			 *	Note that multiple threads MAY over-write
+			 *	the 'inst->last_used' variable.  This is OK,
+			 *	as it's a pointer only used for reading.
+			 */
+			inst->last_used = cur->next;
+			return cur;
+		}
+
+#if HAVE_PTHREAD_H
+		/*
+		 *	This was locked above, in 'trylock', so
+		 *	we've got to release it here.
+		 */
+		pthread_mutex_unlock(&cur->mutex);
+#endif
+
 		/* move along the list */
+	next:
 		cur = cur->next;
 
 		/*
@@ -274,11 +269,9 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 		}
 
 		/*
-		 *	we should check that after going back to the
-		 *	start of the list, remember to stop at the
-		 *	socket that we started at.
+		 *	If we're at the socket we started 
 		 */
-		if (cur->id == inst->socknr) {
+		if (cur == start) {
 			break;
 		}
 	}
@@ -297,11 +290,8 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
  *************************************************************************/
 int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket)
 {
-	(inst->used)--;
 #if HAVE_PTHREAD_H
-	pthread_cond_signal(&sqlsocket->cond);
-#else
-	sqlsocket->in_use = SQLSOCK_UNLOCKED;
+	pthread_mutex_unlock(&sqlsocket->mutex);
 #endif
 
 	radlog(L_DBG, "rlm_sql (%s): Released sql socket id: %d",

@@ -32,10 +32,7 @@ typedef char** SQL_ROW;
 typedef struct sql_socket {
 	int     id;
 #if HAVE_PTHREAD_H
-	pthread_mutex_t lock;
-	pthread_cond_t	cond;
-#else
-	int     in_use;
+	pthread_mutex_t mutex;
 #endif
 	struct sql_socket *next;
 	enum { sockconnected, sockunconnected } state;
@@ -63,17 +60,12 @@ typedef struct rlm_sql_module_t {
 } rlm_sql_module_t;
 
 typedef struct sql_inst {
-	int		used;
-	time_t connect_after;
+	time_t		connect_after;
 	SQLSOCK		*sqlpool;
+	SQLSOCK		*last_used;
 	SQL_CONFIG	*config;
 
 	rlm_sql_module_t *module;
-
-        int socknr;
-#if HAVE_PTHREAD_H
-        pthread_mutex_t mutex;
-#endif
 } SQL_INST;
 
 
