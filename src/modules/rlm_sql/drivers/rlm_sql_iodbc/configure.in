@@ -1,0 +1,110 @@
+AC_INIT(sql_iodbc.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_sql_iodbc])
+
+AC_PROG_CC
+AC_PROG_CPP
+
+AC_ARG_WITH(iodbc-include-dir,
+[  --with-iodbc-include-dir=DIR       Directory where the Iodbc includes may be found ],
+[ iodbc_include_dir="$withval" ]
+)
+
+AC_ARG_WITH(iodbc-lib-dir,
+[  --with-iodbc-lib-dir=DIR       Directory where the Iodbc libraries may be found ],
+[ iodbc_lib_dir="$withval" ]
+)
+
+AC_ARG_WITH(iodbc-dir,
+[  --with-iodbc-dir=DIR       Base directory where Iodbc is installed ],
+[ iodbc_lib_dir="$withval/lib/iodbc"
+  iodbc_include_dir="$withval/include"
+]
+)
+
+if test x$with_[]modname != xno; then
+
+	targetname=modname   # we might change this later.
+
+	AC_MSG_CHECKING([for isql.h])
+
+	AC_TRY_COMPILE([#include <isql.h>], [int a = 1;],
+		IODBC_INCLUDE=" ",
+		IODBC_INCLUDE=
+	)
+
+	if test "x$IODBC_INCLUDE" = "x"; then
+		old_CFLAGS="$CFLAGS"
+
+dnl		AC_LOCATE_DIR(iodbc_include_dir,[isql.h])
+
+		for try in /usr/local/include /usr/local/iodbc/include $iodbc_include_dir; do
+			CFLAGS="$old_CFLAGS -I$try"
+			AC_TRY_COMPILE([#include <isql.h>], [int a = 1;],
+				IODBC_INCLUDE="-I$try",
+				IODBC_INCLUDE=
+			)
+			if test "x$IODBC_INCLUDE" != "x"; then
+				break;
+			fi
+		done
+		CFLAGS="$old_CFLAGS"
+	fi
+
+	if test "x$IODBC_INCLUDE" = "x"; then
+		AC_MSG_RESULT(no)
+		AC_MSG_WARN([iodbc headers not found.  Use --with-iodbc-include-dir=<path>.])
+		targetname=   # disabled module
+	else
+		sql_iodbc_cflags="${sql_iodbc_cflags} ${IODBC_INCLUDE}"
+		AC_MSG_RESULT(yes)
+		AC_DEFINE(HAVE_IODBC_H)
+
+  
+		AC_MSG_CHECKING([for SQLConnect in -lodbc])
+
+		old_LIBS="$LIBS"
+
+dnl		AC_LOCATE_DIR(iodbc_lib_dir,[libodbc${libltdl_cv_shlibext}])
+dnl		AC_LOCATE_DIR(iodbc_lib_dir,[libodbc.a])
+
+		for try in /usr/lib /usr/lib/iodbc /usr/local/lib/iodbc /usr/local/iodbc/lib/iodbc $iodbc_lib_dir; do
+			LIBS="$old_LIBS -L$try -lodbc"
+			AC_TRY_LINK([extern char SQLConnect();], [SQLConnect()],
+				IODBC_LIBS="-L$try -lodbc",
+				IODBC_LIBS=
+			)
+			if test "x$IODBC_LIBS" != "x"; then
+				break;
+			fi
+		done
+		LIBS="$old_LIBS"
+
+		dnl #  If one or the other isn't found, disable them both..
+		dnl #  If both are found, enable them both.
+		if test "x$IODBC_LIBS" = "x"; then
+			AC_MSG_RESULT(no)
+			IODBC_INCLUDE=
+			AC_MSG_WARN([iodbc libraries not found.  Use --with-iodbc-lib-dir=<path>.])
+			targetname=   # disabled module
+		else
+			AC_MSG_RESULT(yes) 
+			sql_iodbc_ldflags="$sql_iodbc_ldflags $IODBC_LIBS"
+		fi
+	fi
+
+	sql_iodbc_ldflags="$sql_iodbc_ldflags $LIBS"
+
+	if test "x$targetname" = "x"; then
+		AC_MSG_WARN([sql submodule 'iodbc' disabled])
+	fi
+
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+AC_SUBST(sql_iodbc_ldflags)
+AC_SUBST(sql_iodbc_cflags)
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)

@@ -334,6 +334,12 @@ if test "$WITH_THREADS" = "yes"; then
     AC_MSG_ERROR("You are trying to use threads without a POSIX <pthread.h>")
   fi
 
+  dnl #
+  dnl #  If pthread_create is in the standard libs (e.g. libc),
+  dnl #  then don't do anything magical.
+  dnl #
+  AC_CHECK_FUNC(pthread_join, PTHREADLIB=" ")
+
 dnl # 
 dnl # pthread stuff is usually in -lpthread
 dnl # 
@@ -681,8 +687,6 @@ else
 	AC_MSG_RESULT([${gethostbyaddrrstyle}-style])
 fi
 
-
-ODBC_CHECKS
 
 dnl #############################################################
 dnl #
