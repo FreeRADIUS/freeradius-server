@@ -72,7 +72,7 @@ static const char *packet_codes[] = {
 /*
  *  Internal prototypes
  */
-static void make_secret(unsigned char *digest, u_int8_t *vector,
+static void make_secret(unsigned char *digest, uint8_t *vector,
 			const char *secret, char *value);
 
 /*
@@ -764,7 +764,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 				 */
 				if ((strcmp(pair->name, "Ascend-Send-Secret") == 0) ||
 				    (strcmp(pair->name, "Ascend-Receive-Secret") == 0)) {
-					u_int8_t my_digest[AUTH_VECTOR_LEN];
+					uint8_t my_digest[AUTH_VECTOR_LEN];
 					make_secret( my_digest, original->vector,
 						     secret, ptr);
 					memcpy(pair->strvalue, my_digest, AUTH_VECTOR_LEN );
@@ -1138,7 +1138,7 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
  *               that used when encrypting passwords to RADIUS.
  *
  *************************************************************************/
-static void make_secret(unsigned char *digest, u_int8_t *vector,
+static void make_secret(unsigned char *digest, uint8_t *vector,
 			const char *secret, char *value)
 {
         u_char  buffer[256 + AUTH_VECTOR_LEN];
