@@ -1,0 +1,69 @@
+AC_INIT(rlm_perl.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_perl])
+
+if test x$with_[]modname != xno; then
+
+	AC_PROG_CC
+	AC_PROG_CPP
+
+	dnl put configuration checks here.  
+	dnl set $fail to what's missing, on fatal errors.
+	dnl use AC_MSG_WARN() on important messages.
+
+	AC_CHECK_PROG(PERL, perl, yes, no)
+	if test "$PERL" = "no"; then
+           fail=$fail" perl"
+	else
+          old_CFLAGS=$CFLAGS
+          CFLAGS="$CFLAGS `perl -MExtUtils::Embed -e ccopts`"
+
+	  smart_try_dir=
+	  AC_SMART_CHECK_INCLUDE(EXTERN.h)
+	  if test "x$ac_cv_header_EXTERN_h" = "xyes"; then
+		perl_cflags='`perl -MExtUtils::Embed -e ccopts`'
+	  else
+		fail="$fail EXTERN.h"
+		targetname=
+	  fi
+
+	  AC_SMART_CHECK_INCLUDE(perl.h, [#include <EXTERN.h>])
+	  if test "x$ac_cv_header_perl_h" = "xyes"; then
+		perl_cflags='`perl -MExtUtils::Embed -e ccopts`'
+	  else
+		fail="$fail perl.h"
+		targetname=
+	  fi
+
+          perl_ldflags='`perl -MExtUtils::Embed -e ldopts`'
+
+          CFLAGS=$old_CFLAGS
+        fi
+	targetname=modname
+
+else
+	targetname=
+	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+fi
+
+dnl  Don't change this section.
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		targetname=""
+		perl_cflags=""
+		perl_ldflags=""
+	fi
+fi
+
+
+AC_SUBST(perl_cflags)
+AC_SUBST(perl_ldflags)
+
+AC_CONFIG_HEADER(config.h)
+
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)

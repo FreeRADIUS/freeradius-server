@@ -1,0 +1,7 @@
+/* config.h.in.  Generated automatically from configure.in by autoheader.  */
+
+/* Define if you have the <EXTERN.h> header file.  */
+#undef HAVE_EXTERN_H
+
+/* Define if you have the <perl.h> header file.  */
+#undef HAVE_PERL_H
