@@ -39,6 +39,15 @@ static DICT_ATTR	*dictionary_attributes = NULL;
 static DICT_VALUE	*dictionary_values = NULL;
 static DICT_VENDOR	*dictionary_vendors = NULL;
 
+#undef  WITH_RBTREE
+
+#ifdef WITH_RBTREE
+#include "./rbtree.c"
+
+static rbtree_t *attr_byname = NULL;
+static rbtree_t *attr_byvalue = NULL;
+#endif /* WITH_RBTREE */
+
 static const LRAD_NAME_NUMBER type_table[] = {
 	{ "string",	PW_TYPE_STRING },
 	{ "integer",	PW_TYPE_INTEGER },
@@ -88,6 +97,11 @@ static void dict_free(void)
 	dictionary_values = NULL;
 	dictionary_vendors = NULL;
 
+#ifdef WITH_RBTREE
+	rbtree_free(attr_byname);
+	rbtree_free(attr_byvalue);
+#endif
+
 	memset(base_attributes, 0, sizeof(base_attributes));
 }
 
@@ -122,7 +136,8 @@ int dict_addvendor(const char *name, int value)
 	return 0;
 }
 
-int dict_addattr(const char *name, int vendor, int type, int value, ATTR_FLAGS flags)
+int dict_addattr(const char *name, int vendor, int type, int value,
+		 ATTR_FLAGS flags)
 {
 	static int      max_attr = 0;
 	DICT_ATTR	*attr;
@@ -181,11 +196,27 @@ int dict_addattr(const char *name, int vendor, int type, int value, ATTR_FLAGS f
 	/*
 	 *	Add to the front of the list, so that
 	 *	values at the end of the file override
-	 *	those in the begin.
+	 *	those in the beginning.
 	 */
 	attr->next = dictionary_attributes;
 	dictionary_attributes = attr;
-	
+
+#ifdef WITH_RBTREE
+	/*
+	 *	Did NOT insert!
+	 */
+	if (rbtree_insert(attr_byname, attr) == 0) {
+		fprintf(stderr, "DUPLICATE ATTRIBUTE BY NAME: %s\n", attr->name);
+	}
+
+	/*
+	 *	We DO want to allow duplicates here?
+	 */
+	if (rbtree_insert(attr_byvalue, attr) == 0) {
+		fprintf(stderr, "DUPLICATE ATTRIBUTE BY VALUE: %s\n", attr->name);
+	}
+#endif	
+
 	return 0;
 }
 
@@ -618,6 +649,27 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 	return 0;
 }
 
+#ifdef WITH_RBTREE
+/*
+ *	Callbacks for red-black trees.
+ */
+static int attrname_cmp(const void *a, const void *b)
+{
+	return strcasecmp(((const DICT_ATTR *)a)->name,
+			  ((const DICT_ATTR *)b)->name);
+}
+
+/*
+ *	Return: < 0  if a < b,
+ *	        == 0 if a == b
+ */
+static int attrvalue_cmp(const void *a, const void *b)
+{
+	return (((const DICT_ATTR *)a)->attr - 
+		((const DICT_ATTR *)b)->attr);
+}
+#endif
+
 /*
  *	Initialize the directory, then fix the attr member of
  *	all attributes.
@@ -628,6 +680,18 @@ int dict_init(const char *dir, const char *fn)
 	DICT_VALUE	*dval;
 
 	dict_free();
+
+#ifdef WITH_RBTREE
+	attr_byname = rbtree_create(attrname_cmp, NULL, 0);
+	if (!attr_byname) {
+		return -1;
+	}
+
+	attr_byvalue = rbtree_create(attrvalue_cmp, NULL, 1);
+	if (!attr_byvalue) {
+		return -1;
+	}
+#endif
 
 	if (my_dict_init(dir, fn, NULL, 0) < 0)
 		return -1;
@@ -662,8 +726,20 @@ DICT_ATTR * dict_attrbyvalue(int val)
 	}
 
 	for (a = dictionary_attributes; a; a = a->next) {
-		if (a->attr == val)
+		if (a->attr == val) {
+#ifdef WITH_RBTREE
+			DICT_ATTR *b;
+			DICT_ATTR myattr;
+			
+			myattr.attr = val;
+			b = rbtree_find(attr_byvalue, &myattr); 
+			if (a != b) {
+				fprintf(stderr, "SHIT! %p %p %s\n",
+					a, b, a->name);
+			}
+#endif
 			return a;
+		}
 	}
 
 	return NULL;
@@ -677,8 +753,21 @@ DICT_ATTR * dict_attrbyname(const char *name)
 	DICT_ATTR	*a;
 
 	for (a = dictionary_attributes; a; a = a->next) {
-		if (strcasecmp(a->name, name) == 0)
+		if (strcasecmp(a->name, name) == 0) {
+#ifdef WITH_RBTREE
+			DICT_ATTR *b;
+			DICT_ATTR myattr;
+			
+			strNcpy(myattr.name, name, sizeof(myattr.name));
+
+			b = rbtree_find(attr_byname, &myattr); 
+			if (a != b) {
+				fprintf(stderr, "SHIT! %p %p %s\n",
+					a, b, name);
+			}
+#endif
 			return a;
+		}
 	}
 
 	return NULL;
