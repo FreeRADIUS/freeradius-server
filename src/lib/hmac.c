@@ -1,8 +1,25 @@
 /*
-   For the sake of illustration we provide the following sample code for
-   the implementation of HMAC-MD5 as well as some corresponding test
-   vectors (the code is based on MD5 code as described in [MD5]).
-*/
+ * hmac.c	For the sake of illustration we provide the following
+ *		sample code for the implementation of HMAC-MD5 as well
+ *		as some corresponding test vectors (the code is based
+ *		on MD5 code as described in [MD5]).
+ *
+ *   This library is free software; you can redistribute it and/or
+ *   modify it under the terms of the GNU Lesser General Public
+ *   License as published by the Free Software Foundation; either
+ *   version 2.1 of the License, or (at your option) any later version.
+ *
+ *   This library is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *   Lesser General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Lesser General Public
+ *   License along with this library; if not, write to the Free Software
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
+ *
+ * Copyright 2000  The FreeRADIUS server project
+ */
 
 /*
 ** Function: hmac_md5
