@@ -525,7 +525,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.9 
+# From configure.in Revision: 1.10 
 
 
 if test x$with_rlm_dbm != xno; then
