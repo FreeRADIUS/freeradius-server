@@ -671,13 +671,6 @@ if test "$WITH_THREAD_POOL" = "yes"; then
     AC_MSG_ERROR(You must have threading libraries for thread pools to work.)
   fi
 
-dnl #
-dnl #  Finally, after all of the checks above, we see if
-dnl #  we can REALLY use the thread pools.
-dnl #
-  if test "$WITH_THREAD_POOL" = "yes"; then
-    AC_DEFINE(WITH_THREAD_POOL,1)
-  fi
 fi
 
 dnl #############################################################
@@ -715,6 +708,8 @@ AC_SUBST(USE_SHARED_LIBS)
 USE_STATIC_LIBS=$enable_static
 AC_SUBST(USE_STATIC_LIBS)
 AC_SUBST(STATIC_MODULES)
+AC_SUBST(RADIUSD_MAJOR_VERSION)
+AC_SUBST(RADIUSD_MINOR_VERSION)
 AC_SUBST(RADIUSD_VERSION)
 export CFLAGS LIBS
 

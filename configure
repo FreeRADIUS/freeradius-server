@@ -562,7 +562,7 @@ fi
 
 
 
-# From configure.in Revision: 1.132 
+# From configure.in Revision: 1.133 
 RADIUSD_MAJOR_VERSION=0
 RADIUSD_MINOR_VERSION=5
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -4230,12 +4230,6 @@ if test "$WITH_THREAD_POOL" = "yes"; then
     { echo "configure: error: You must have threading libraries for thread pools to work." 1>&2; exit 1; }
   fi
 
-  if test "$WITH_THREAD_POOL" = "yes"; then
-    cat >> confdefs.h <<\EOF
-#define WITH_THREAD_POOL 1
-EOF
-
-  fi
 fi
 
 
@@ -4255,6 +4249,8 @@ subdirs="libltdl $mysubdirs"
 USE_SHARED_LIBS=$enable_shared
 
 USE_STATIC_LIBS=$enable_static
+
+
 
 
 
@@ -4451,6 +4447,8 @@ s%@INSTALLSTRIP@%$INSTALLSTRIP%g
 s%@USE_SHARED_LIBS@%$USE_SHARED_LIBS%g
 s%@USE_STATIC_LIBS@%$USE_STATIC_LIBS%g
 s%@STATIC_MODULES@%$STATIC_MODULES%g
+s%@RADIUSD_MAJOR_VERSION@%$RADIUSD_MAJOR_VERSION%g
+s%@RADIUSD_MINOR_VERSION@%$RADIUSD_MINOR_VERSION%g
 s%@RADIUSD_VERSION@%$RADIUSD_VERSION%g
 
 CEOF
