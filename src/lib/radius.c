@@ -1711,7 +1711,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *pas
 {
 	int		i;
 	char		*ptr;
-	char		string[MAX_STRING_LEN];
+	char		string[MAX_STRING_LEN * 2];
 	VALUE_PAIR	*challenge;
 
 	/*
