@@ -1,6 +1,8 @@
-radiusd-freeradius (?) unstable; urgency=low
+radiusd-freeradius (0.2+20010912-1) unstable; urgency=low
 
   * Build-dep mysql changed package names.
+  * Added build-dep for libmysqlclient10-dev.  (closes: Bug#111880)
+  * In acct_users, keep reply pairs.
   * Integer values are printed as unsigned numbers, to comply with RFC2866.
   * Fixed broken/reversed auth comparisons in SQL module.
   * Sucked out CPPness from inside a printf, as printf is a macro in newer
@@ -13,7 +15,7 @@ radiusd-freeradius (?) unstable; urgency=low
   * Inserted CHAP support for SQL modules.
   * Removed possible infinite loop.
 
- -- Chad Miller <cmiller@debian.org>  [TBA]
+ -- Chad Miller <cmiller@debian.org>  Wed, 12 Sep 2001 21:21:47 -0400
 
 radiusd-freeradius (0.1+20010527-1) unstable; urgency=low
 

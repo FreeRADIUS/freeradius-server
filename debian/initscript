@@ -1,0 +1,35 @@
+#!/bin/sh
+# Start/stop the FreeRADIUS daemon.
+
+set -u
+
+prog="radiusd"
+program="/usr/sbin/radiusd"
+pidfile="/var/run/radiusd/radiusd.pid"
+descr="FreeRADIUS daemon"
+
+test -f $program || exit 0
+
+case "$1" in
+start)	echo -n "Starting $descr: "
+        start-stop-daemon --start --quiet --pidfile $pidfile --exec $program
+        echo "$prog."
+	;;
+stop)	echo -n "Stopping $descr: "
+        start-stop-daemon --stop --quiet --pidfile $pidfile --exec $program
+        echo "$prog."
+        ;;
+restart) echo -n "Restarting $descr: "
+		$0 stop
+		$0 start
+        ;;
+reload|force-reload) 
+		echo -n "Reloading configuration files for $descr"
+		killall -HUP radiusd
+        echo "."
+        ;;
+*)	echo "Usage: /etc/init.d/radiusd start|stop|restart|reload|force-reload"
+        exit 1 
+        ;;
+esac
+exit 0

@@ -20,6 +20,7 @@ then
 		rm -f /usr/doc/radiusd-freeradius
 	fi
 	/etc/init.d/freeradius stop
+	rm -rf /var/run/radiusd
 fi
 
 exit 0

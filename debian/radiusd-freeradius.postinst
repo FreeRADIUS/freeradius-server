@@ -6,10 +6,10 @@ case "$1" in
   configure)
 
 	addgroup --system freerad || true
-	groups freerad >/dev/null || adduser --system --no-create-home --home /etc/raddb --ingroup freerad --disabled-password freerad
+	groups freerad 2>/dev/null || adduser --system --no-create-home --home /etc/raddb --ingroup freerad --disabled-password freerad
 
 	# make sure there is a user and group 'freerad'
-	groups freerad |grep freerad 2>/dev/null
+	groups freerad |grep freerad >/dev/null
 
 	# put user freerad in group shadow, so the daemon can auth locally
 	usermod -G shadow freerad
@@ -27,6 +27,9 @@ case "$1" in
 	if [ ! -f /var/log/radiusd-freeradius/radwtmp ]; then
 		touch /var/log/radiusd-freeradius/radwtmp
 	fi
+
+	mkdir /var/run/radiusd
+	chown freerad:freerad /var/run/radiusd
 
 	find /etc/raddb -type f -exec chgrp freerad {} \; -exec chmod 660 {} \;
 	find /etc/raddb -type d -exec chgrp freerad {} \; -exec chmod 2770 {} \;

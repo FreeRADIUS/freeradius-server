@@ -46,6 +46,7 @@ binary-arch: build
 	dh_undocumented 
 	install -g root -m 644 CREDITS $(tmp)/$(pkgdocdir)/credits
 	find doc -type f -maxdepth 1 ! -path doc/ChangeLog -exec dh_installdocs {} \;
+	find src/modules/rlm_sql/drivers -type f -name \*.sql -exec dh_installdocs {} \;
 	# dh_installchangelogs doc/ChangeLog
 	dh_compress
 	# supporting programs
@@ -58,6 +59,7 @@ binary-arch: build
 		| sed -e 's/        /	/g' \
 		| sed -e '/^	example {/,/^	}/s/^/#/' \
 		| sed -e 's/^		#	shadow		=/		shadow		=/' \
+		| sed -e 's#^\(run_dir = .{localstatedir}/run\)#\1/radiusd#' \
 		| sed -e 's/^group = nobody/group = freerad/' \
 		| sed -e 's/^user = nobody/user = freerad/' \
 			> $(tmp)/$(raddbdir)/radiusd.conf; \
