@@ -1,16 +1,29 @@
-.TH RADCLIENT 1 "24 February 2001" "" "FreeRADIUS Daemon"
+.TH RADCLIENT 1 "22 June 2004" "" "FreeRADIUS Daemon"
 .SH NAME
 radclient - send packets to a RADIUS server, show reply
 .SH SYNOPSIS
 .B radclient
 .RB [ \-d
 .IR raddb_directory ]
+.RB [ \-c
+.IR count ]
 .RB [ \-f
 .IR file ]
 .RB [ \-i
-.IR source_ip ]
-.RB [ \-xy ]
-\fIserver {acct|auth} secret\fP
+.IR id ]
+.RB [ \-n
+.IR num_requests_per_second ]
+.RB [ \-p
+.IR num_requests_in_parallel ]
+.RB [ \-r
+.IR num_retries ]
+.RB [ \-s ]
+.RB [ \-S
+.IR shared_secret_file ]
+.RB [ \-t
+.IR timeout ]
+.RB [ \-qvx ]
+\fIserver {acct|auth|status|disconnect} secret\fP
 .SH DESCRIPTION
 \fBradclient\fP is a radius client program. It can send arbitrary radius
 packets to a radius server, then shows the reply. It can be used to
@@ -26,6 +39,10 @@ The \fIUser-Password\fP attribute is automatically encrypted by \fIradclient\fP.
 
 .SH OPTIONS
 
+.IP \-c\ \fIcount\fP
+Send each packet \fIcount\fP times.
+\fI/etc/raddb\fP.
+
 .IP \-d\ \fIraddb_directory\fP
 The directory that contains the RADIUS dictionary files. Defaults to
 \fI/etc/raddb\fP.
@@ -34,14 +51,45 @@ The directory that contains the RADIUS dictionary files. Defaults to
 File to read the attribute/value pairs from. If this is not specified,
 they are read from stdin.
 
-.IP \-i\ \fIsource_ip\fP
-The source IP address to use for sending radius packets.
+.IP \-i\ \fIid\fP
+Use \fIid\fP as the RADIUS request Id.
 
-.IP \-x
-Print out extra debugging information.
+.IP \-n\ \fInum_requests_per_second\fP
+Send \fInum_requests_per_second\fP, evenly spaced over time.  By
+default, the requests are sent as fast as possible.  This option
+allows you to slow down the rate at which radclient sends requests.
+
+.IP \-p\ \fInum_requests_in_parallel\fP
+Send \fInum_requests_in_parallel\fP.  By default, radclient sends the
+first request listed in a file, waits for the response, and then sends
+the second request.   This option allows you to send many requests all
+at once.
 
 .IP \-q
 Go to quiet mode, and do not print out anything.
+
+.IP \-r\ \fInum_retries\fP
+Try to send each packet \fInum_retries\fP times, before giving up on
+it.  The default is 10.
+
+.IP \-s\
+Print out some summaries of packets sent and received.
+
+.IP \-S\ \fIshared_secret_file\fP
+Rather than reading the shared secret from the command-line (where it
+can be seen by others on the local system), read it instead from
+\fIshared_secret_file\fP.
+
+.IP \-t\ \fItimeout\fP
+Wait \fItimeout\fP seconds before deciding that the NAS has not
+responded to a request, and re-sending the packet.  The default
+timeout is 3.
+
+.IP \-v
+Print out version information.
+
+.IP \-x
+Print out extra debugging information.
 
 .IP server[:port]
 The hostname or IP address of the remote server. Optionally a UDP port
@@ -51,15 +99,18 @@ accounting packets, and \fBradius\fP for all other requests. If a
 service is not found in \fI/etc/services\fP, 1813 and 1812 are used
 respectively.
 
-.IP acct\ |\ auth
-Use \fBauth\fP to send an authentication packet, or \fBacct\fP to send
-an accounting packet. Instead of \fBauth\fP or \fBacct\fP, you can
-also use a decimal code here. For example, code 12 is \fBStatus-Server\fP.
+.IP acct\ |\ auth |\ status |\ disconnect
+Use \fBauth\fP to send an authentication packet (Access-Request),
+\fBacct\fP to send an accounting packet (Accounting-Request),
+\fBstatus\fP to send an status packet (Status-Server), or
+\fBdisconnect\fP to send a disconnection request. Instead of these
+values, you can also use a decimal code here. For example, code 12 is
+also \fBStatus-Server\fP.
 
 .IP secret
-The shared secret for this client. Needs to be defined on the radius
-server side too, for the IP address you are sending the radius packets
-from.
+The shared secret for this client.  It needs to be defined on the
+radius server side too, for the IP address you are sending the radius
+packets from.
 
 .SH EXAMPLE
 
@@ -74,7 +125,7 @@ A sample session that queries the remote server for \fIStatus-Server\fP
 $ echo "User-Name = fnord" | radclient 192.168.1.42 12 s3cr3t
 Sending request to server 192.168.1.42, port 1812.
 radrecv: Packet from host 192.168.1.42 code=2, id=140, length=54
-    Reply-Message = "Cistron Radius up 21 days, 02:05"
+    Reply-Message = "FreeRADIUS up 21 days, 02:05"
 
 .fi
 .sp
@@ -83,5 +134,6 @@ radrecv: Packet from host 192.168.1.42 code=2, id=140, length=54
 .SH SEE ALSO
 radiusd(8),
 radtest(1).
-.SH AUTHOR
+.SH AUTHORS
 Miquel van Smoorenburg, miquels@cistron.nl.
+Alan DeKok <aland@freeradius.org>
