@@ -1,8 +1,8 @@
 TARGET     = @targetname@
 SRCS       = rlm_ldap.c
 HEADERS    =
-RLM_CFLAGS = @libldap_cflags@
-RLM_LIBS   = @libldap_ldflags@
+RLM_CFLAGS = @ldap_cflags@
+RLM_LIBS   = @ldap_ldflags@
 
 include ../rules.mak
 
