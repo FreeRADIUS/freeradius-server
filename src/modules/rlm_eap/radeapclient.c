@@ -240,7 +240,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 {
 	VALUE_PAIR *vp, *newvp;
 	VALUE_PAIR *anyidreq_vp, *fullauthidreq_vp, *permanentidreq_vp;
-	u_int16_t *versions, selectedversion;
+	uint16_t *versions, selectedversion;
 	unsigned int i,versioncount;
 
 	/* form new response clear of any EAP stuff */
@@ -251,7 +251,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 		return 0;
 	}
 	
-	versions = (u_int16_t *)vp->strvalue;
+	versions = (uint16_t *)vp->strvalue;
 
 	/* verify that the attribute length is big enough for a length field */
 	if(vp->length < 4)
@@ -264,7 +264,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 	/* verify that the attribute length is big enough for the given number
 	 * of versions present.
 	 */
-	if((unsigned)vp->length <= (versioncount * sizeof(u_int16_t) + 2))
+	if((unsigned)vp->length <= (versioncount * sizeof(uint16_t) + 2))
 	{
 		fprintf(stderr, "start message is too short. Claimed %d versions does not fit in %d bytes\n", versioncount, vp->length);
 		return 0;
@@ -329,7 +329,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 	/* insert selected version into response. */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_SELECTED_VERSION,
 			   PW_TYPE_OCTETS);
-	versions = (u_int16_t *)newvp->strvalue;
+	versions = (uint16_t *)newvp->strvalue;
 	versions[0] = htons(selectedversion);
 	newvp->length = 2;
 	pairreplace(&(rep->vps), newvp);
@@ -340,7 +340,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 	vp = newvp = NULL;
 
 	{
-		u_int32_t nonce[4];
+		uint32_t nonce[4];
 		/*
 		 * insert a nonce_mt that we make up.
 		 */
@@ -362,7 +362,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 	}
 
 	{
-		u_int16_t *pidlen, idlen;
+		uint16_t *pidlen, idlen;
 
 		/*
 		 * insert the identity here.
@@ -376,7 +376,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 		newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_IDENTITY,
 				   PW_TYPE_OCTETS);
 		idlen = strlen(vp->strvalue);
-		pidlen = (u_int16_t *)newvp->strvalue;
+		pidlen = (uint16_t *)newvp->strvalue;
 		*pidlen = htons(idlen);
 		newvp->length = idlen + 2;
 
@@ -408,7 +408,7 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	VALUE_PAIR *mac, *randvp;
 	VALUE_PAIR *sres1,*sres2,*sres3;
 	VALUE_PAIR *Kc1, *Kc2, *Kc3;
-	u_int8_t calcmac[20];
+	uint8_t calcmac[20];
 
 	/* look for the AT_MAC and the challenge data */
 	mac   = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC);

@@ -66,7 +66,7 @@ static int eap_sim_compose(EAP_HANDLER *handler)
 static int eap_sim_sendstart(EAP_HANDLER *handler)
 {
 	VALUE_PAIR **vps, *newvp;
-	u_int16_t *words;
+	uint16_t *words;
 	struct eap_sim_server_state *ess;
 
 	rad_assert(handler->request != NULL);
@@ -86,8 +86,8 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 	/* the version list. We support only version 1. */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_VERSION_LIST,
 			PW_TYPE_OCTETS);
-	words = (u_int16_t *)newvp->strvalue;
-	newvp->length = 3*sizeof(u_int16_t);
+	words = (uint16_t *)newvp->strvalue;
+	newvp->length = 3*sizeof(uint16_t);
 	words[0] = htons(1);
 	words[1] = htons(EAP_SIM_VERSION);
 	words[2] = 0;
@@ -345,7 +345,7 @@ static int process_eap_sim_start(EAP_HANDLER *handler, VALUE_PAIR *vps)
 {
 	VALUE_PAIR *nonce_vp, *selectedversion_vp;
 	struct eap_sim_server_state *ess;
-	u_int16_t simversion;
+	uint16_t simversion;
 
 	ess = (struct eap_sim_server_state *)handler->opaque;
 
@@ -535,7 +535,10 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.2  2003-10-31 22:33:45  mcr
+ * Revision 1.3  2003-11-06 15:45:12  aland
+ * 	u_int -> uint
+ *
+ * Revision 1.2  2003/10/31 22:33:45  mcr
  * 	fixes for version list length types.
  * 	do not include length in hash.
  * 	use defines rather than constant sizes.
