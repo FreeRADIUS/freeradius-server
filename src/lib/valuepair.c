@@ -413,41 +413,47 @@ static char *mystrtok(char **ptr, const char *sep)
 
 /*
  *	Turn printable string into time_t
+ *	Returns -1 on error, 0 on OK.
  */
-static time_t gettime(const char *valstr)
+static int gettime(const char *valstr, time_t *lvalue)
 {
 	int		i;
 	time_t		t;
 	struct tm	*tm;
-	char		buf[32];
+	char		buf[64];
 	char		*p;
-	char		*y, *m, *d;
+	char		*year, *month, *day;
 
 	time(&t);
 	tm = localtime(&t);
 
-	strncpy(buf, valstr, sizeof(buf));
-	buf[sizeof(buf) - 1] = 0;
+	strNcpy(buf, valstr, sizeof(buf));
 	for (p = buf; *p; p++)
 		if (isupper(*p)) *p = tolower(*p);
 
 	p = buf;
-	d = mystrtok(&p, " \t");
-	m = mystrtok(&p, " \t");
-	y = mystrtok(&p, " \t");
-	if (!y || !m || !d) return 0;
+	day = mystrtok(&p, " \t");
+	month = mystrtok(&p, " \t");
+	year = mystrtok(&p, " \t");
+	if (!year || !month || !day) return -1;
 
+	tm->tm_mon = 12;
 	for (i = 0; i < 12; i++) {
-		if (strncmp(months[i], y, 3) == 0) {
+		if (strncmp(months[i], month, 3) == 0) {
 			tm->tm_mon = i;
-			i = 13;
+			break;
 		}
 	}
-	tm->tm_mday = atoi(m);
-	tm->tm_year = atoi(y);
+
+	/* month not found? */
+	if (tm->tm_mon == 12) return -1;
+
+	tm->tm_mday = atoi(day);
+	tm->tm_year = atoi(year);
 	if (tm->tm_year >= 1900) tm->tm_year -= 1900;
 
-	return mktime(tm);
+	*lvalue = mktime(tm);
+	return 0;
 }
 
 /*
@@ -458,7 +464,8 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	DICT_ATTR	*da;
 	DICT_VALUE	*dval;
 	VALUE_PAIR	*vp;
-	u_char		*p, *s;
+	u_char		*p;
+	char		*s;
 
 	if ((da = dict_attrbyname(attribute)) == NULL) {
 		librad_log("unknown attribute %s", attribute);
@@ -538,9 +545,10 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			break;
 
 		case PW_TYPE_DATE:
-			if ((vp->lvalue = gettime(value)) == (time_t)-1) {
+			if (gettime(value, (time_t *)&vp->lvalue) < 0) {
 				free(vp);
-				librad_log("failed to get time");
+				librad_log("failed to parse time string "
+					   "\"%s\"", value);
 				return NULL;
 			}
 			vp->length = 4;
