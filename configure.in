@@ -651,6 +651,7 @@ AC_CHECK_FUNCS( \
 	gmtime_r \
 	strsep \
 	inet_aton \
+	inet_pton \
 	gethostname \
 	setlinebuf \
 	setvbuf \
