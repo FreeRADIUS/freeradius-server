@@ -1636,13 +1636,19 @@ static struct timeval *rad_clean_list(time_t now)
 		 *	And only do this servicing, if we have a request
 		 *	to service.
 		 */
-		for (i = 0; i < cleanup_delay && last_request; i++) {
-			REQUEST *next = rl_next(last_request);
+		if (last_request) for (i = 0; i < cleanup_delay; i++) {
+			REQUEST *next;
 			
-				/*
-				 *	This function call MAY delete
-				 *	'last_request'.
-				 */
+			/*
+			 *	Nothing to do any more, exit.
+			 */
+			if (!last_request) break;
+			
+			/*
+			 *	This function call MAY delete
+			 *	'last_request'.
+			 */
+			next = rl_next(last_request);
 			refresh_request(last_request, &info);
 			last_request = next;
 		}
