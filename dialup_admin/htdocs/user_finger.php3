@@ -6,7 +6,7 @@ if (!isset($usage_summary)){
 <html>
 <head>
 <META HTTP-EQUIV="Refresh" CONTENT="50">
-<meta http-equiv="Content-Type" content="text/html; charset=<?php echo $config[general_charset]?>">
+<meta http-equiv="Content-Type" content="text/html; charset=$config[general_charset]">
 <title>User Finger Facility</title>
 <link rel="stylesheet" href="style.css">
 </head>
