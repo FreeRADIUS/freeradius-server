@@ -416,7 +416,10 @@ int main(int argc, char **argv)
 				continue;
 
 			packet = rad_recv(fd);
-			if (packet == NULL) continue;
+			if (packet == NULL) {
+				log(L_ERR, "%s", librad_errstr);
+				continue;
+			}
 
 			/*
 			 *	See if we know this client.

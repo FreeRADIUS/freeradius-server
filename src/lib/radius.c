@@ -346,7 +346,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	Check for packets smaller than the packet header.
 	 */
 	if (packet->data_len < AUTH_HDR_LEN) {
-		librad_log("Malformed RADIUS packet from host %s: too small",
+		librad_log("Malformed RADIUS packet from host %s: too short",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
 		free(packet->data);
 		free(packet);
@@ -386,8 +386,9 @@ RADIUS_PACKET *rad_recv(int fd)
 	count = totallen - AUTH_HDR_LEN;
 	while (count > 0) {
        		if (attr[1] < 2) {
-			librad_log("Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
-				   ip_ntoa(host_ipaddr, packet->src_ipaddr));
+			librad_log("Malformed RADIUS packet from host %s: attribute %d too short",
+				   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+				   attr[0]);
 			free(packet->data);
 			free(packet);
 			return NULL;
