@@ -163,6 +163,8 @@ EOM;
 EOM;
 	for( $k = 1; $k <= $server_loggedin[$j]; $k++){
 		$user = $finger_info[$j][$k][user];
+		if ($user == '')
+			$user = '&nbsp;';
 		$time = $finger_info[$j][$k][session_time];
 		$ip = $finger_info[$j][$k][ip];
 		$cid = $finger_info[$j][$k][callerid];
