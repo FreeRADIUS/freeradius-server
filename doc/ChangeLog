@@ -1,6 +1,7 @@
 FreeRADIUS 0.9.0 ; Date: 2003/07/04 21:01:29, urgency=low
 
 	* Many, many, bug fixes and feature enhancements.
+	* Fixes after beta testing of 0.9.0-pre1
 	* radrelay now updates packet 'id' on retransmissions.
 	* More checks for thread-safe functions.
 	* Fix CHAP related buffer overflow (ouch!), thanks to Masao NISHIKU.
