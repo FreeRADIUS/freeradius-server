@@ -268,6 +268,13 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		    buf[0] == '\n' || buf[0] == '\r')
 			continue;
 
+		/*
+		 *  Comments should NOT be appearing anywhere but
+		 *  as comments;
+		 */
+		p = strchr(buf, '#');
+		if (p) *p = '\0';
+
 		keyword = strtok(buf, " \t\r\n");
 		if (keyword == NULL)
 			continue;
@@ -283,6 +290,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		 *	See if we need to import another dictionary.
 		 */
 		if (strcasecmp(keyword, "$INCLUDE") == 0) {
+			p = strtok(data, " \t");
 			if (my_dict_init(dir, data, fn, line) < 0)
 				return -1;
 			continue;
