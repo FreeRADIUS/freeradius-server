@@ -62,7 +62,7 @@ typedef struct radius_packet_t {
   uint8_t	code;
   uint8_t	id;
   uint8_t	length[2];
-  uint8_t	vector[16];
+  uint8_t	vector[AUTH_VECTOR_LEN];
   uint8_t	data[1];
 } radius_packet_t;
 
@@ -134,7 +134,8 @@ static void make_secret(unsigned char *digest, uint8_t *vector,
  *	Reply to the request.  Also attach
  *	reply attribute value pairs and any user message provided.
  */
-int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *secret)
+int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+	     const char *secret)
 {
 	VALUE_PAIR		*reply;
 	struct	sockaddr_in	saremote;
@@ -604,7 +605,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
 {
 	u_char		digest[AUTH_VECTOR_LEN];
-	MD5_CTX	context;
+	MD5_CTX		context;
 
 	/*
 	 *	Older clients have the authentication vector set to
@@ -645,15 +646,23 @@ static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
  *	Validates the requesting client NAS.  Calculates the
  *	signature based on the clients private key.
  */
-static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret)
+static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+			    const char *secret)
 {
 	uint8_t		calc_digest[AUTH_VECTOR_LEN];
 	MD5_CTX		context;
 
 	/*
+	 *	Very bad!
+	 */
+	if (original == NULL) {
+		return 3;
+	}
+
+	/*
 	 *  Copy the original vector in place.
 	 */
-	memcpy(packet->data + 4, original->vector, sizeof(original->vector));
+	memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
 
 	/*
 	 *  MD5(packet + secret);
@@ -666,13 +675,13 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original, cons
 	/*
 	 *  Copy the packet's vector back to the packet.
 	 */
-	memcpy(packet->data + 4, packet->vector, sizeof(packet->vector));
+	memcpy(packet->data + 4, packet->vector, AUTH_VECTOR_LEN);
 
 	/*
 	 *	Return 0 if OK, 2 if not OK.
 	 */
 	packet->verified =
-		memcmp(packet->vector, calc_digest, sizeof(packet->vector)) ? 2 : 0;
+		memcmp(packet->vector, calc_digest, AUTH_VECTOR_LEN) ? 2 : 0;
 	return packet->verified;
 }
 
@@ -1118,6 +1127,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 *	Calculate and/or verify digest.
 	 */
 	switch(packet->code) {
+		int rcode;
+
 		case PW_AUTHENTICATION_REQUEST:
 		case PW_STATUS_SERVER:
 		case PW_DISCONNECT_REQUEST:
@@ -1141,12 +1152,14 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		case PW_AUTHENTICATION_ACK:
 		case PW_AUTHENTICATION_REJECT:
 		case PW_ACCOUNTING_RESPONSE:
-			if (calc_replydigest(packet, original, secret) > 1) {
+			rcode = calc_replydigest(packet, original, secret);
+			if (rcode > 1) {
 				char buffer[32];
 				librad_log("Received %s packet "
-					   "from %s with invalid signature!  (Shared secret is incorrect.)",
+					   "from %s with invalid signature (err=%d)!  (Shared secret is incorrect.)",
 					   packet_codes[packet->code],
-					   ip_ntoa(buffer, packet->src_ipaddr));
+					   ip_ntoa(buffer, packet->src_ipaddr),
+					   rcode);
 				return 1;
 			}
 		  break;
