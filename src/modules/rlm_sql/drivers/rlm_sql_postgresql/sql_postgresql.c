@@ -202,7 +202,7 @@ int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 			return -1;
 
 		if ((sql_store_result(sqlsocket, config) == 0)
-		    && sql_num_fields(sqlsocket, config))
+		    && (sql_num_fields(sqlsocket, config)>=0))
 			return 0;
 		else
 			return -1;
