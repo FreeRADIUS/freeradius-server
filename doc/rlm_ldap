@@ -1,40 +1,38 @@
 1.   INSTALATION
 
-This module depends on OpenLDAP v2.x SDK libraries.
-For details on obtaining source of OpenLDAP look at <http://www.openldap.org>.
-OpenLDAP SDK in turn depends on OpenSSL crypto libraries and (optionaly) on 
-Cyrus-SASL libraries.
+This module depends on OpenLDAP v2.x SDK libraries.  For details on obtaining
+source of OpenLDAP look at <http://www.openldap.org>.  OpenLDAP SDK in turn
+depends on OpenSSL crypto libraries and (optionaly) on Cyrus-SASL libraries.
 
 2. LDAP ATTRIBUTES
 
-The mapping between radius and ldap attributes is in raddb/ldap.attrmap. You should
-edit the file and add any new mapping which you need. The schema files is located in
-doc/RADIUS-LDAPv3.schema. Before adding any radius attributes the ldap server schema
-should be updated.
-All ldap entries containing radius attributes should contain at least
-objectclass: radiusprofile
-radiusCheckItem and radiusReplyItem are special. They allow the administrator to add any
-check or reply item respectively without adding it in the ldap schema. The format should be
-<ldap-attribute>: <radius-attribute> <operator> <value>
+The mapping between radius and ldap attributes is in raddb/ldap.attrmap. You
+should edit the file and add any new mapping which you need. The schema files
+is located in doc/RADIUS-LDAPv3.schema. Before adding any radius attributes
+the ldap server schema should be updated.  All ldap entries containing radius
+attributes should contain at least "objectclass: radiusprofile"
 
-ie
-radiusReplyItem: Cisco-AVPair := "ip:addr-pool=dialin_pool"
+radiusCheckItem and radiusReplyItem are special. They allow the administrator
+to add any check or reply item respectively without adding it in the ldap
+schema. The format should be <ldap-attribute>: <radius-attribute> <operator>
+<value>
+
+ie radiusReplyItem: Cisco-AVPair := "ip:addr-pool=dialin_pool"
 
 3. CONFIGURATION
 
 Add following subsection to the modules{} section of radiusd.conf to control
 the rlm_ldap module:
 
-  modules {
-	...
+  modules { ...
 	
 	ldap {
 
 #	server: LDAP server hostname/ip address
 #
-#	Optionaly could contain space separated list of host[:port],
-#	but redundancy/resiliency is better acheived configuring multiple 
-#	rlm_ldap module instances and invocing them in	redundand/failover
+#	Optionaly could contain space separated list of host[:port], but
+#	redundancy/resiliency is better acheived configuring multiple rlm_ldap
+#	module instances and invocing them in	redundand/failover
 #	configuration in authorize/authenticate sections
 #		
 #	default: settings for your system, as set in etc/openldap/ldap.conf
@@ -51,20 +49,17 @@ the rlm_ldap module:
 #
 		port = 636
 
-#	net_timeout: # of seconds to wait for response of the server 
-#			(network failures)
-#	default: 10
+#	net_timeout: # of seconds to wait for response of the server (network
+#	failures) default: 10
 #
 		net_timeout = 1
 
-#	timeout: # seconds to wait for LDAP query to finish
-#	default: 20
+#	timeout: # seconds to wait for LDAP query to finish default: 20
 #
 		timeout = 2
 
-#	timelimit: # of seconds server has to process the query 
-#			(server-side time limit)
-#	default: 20
+#	timelimit: # of seconds server has to process the query (server-side
+#	time limit) default: 20
 #
 		timelimit = 5
 
@@ -73,30 +68,25 @@ the rlm_ldap module:
 #	Example:(LDAP_DEBUG_FILTER+LDAP_DEBUG_CONNS)
 		ldap_debug = 0x0028 
 
-#	identity: DN under which LDAP searches are done
-#	password: pasword which authenticate this DN
-#	default: anonymous bind, no password required
-#	NOTE: searches are done now over unencrypted connection!
+#	identity: DN under which LDAP searches are done password: pasword
+#	which authenticate this DN default: anonymous bind, no password
+#	required NOTE: searches are done now over unencrypted connection!
 #
-#	identity = "cn=admin,o=My Org,c=UA"
-#	password = mypass
+#	identity = "cn=admin,o=My Org,c=UA" password = mypass
 
-#	ldap_cache_timeout: The timeout for the ldap cache in secs
-#	If it is set to zero then ldap caching will be disabled
-#	default: 0 (disabled)
+#	ldap_cache_timeout: The timeout for the ldap cache in secs If it is
+#	set to zero then ldap caching will be disabled default: 0 (disabled)
 
 	ldap_cache_timeout = 0
 
 #	ldap_cache_size: The maximum ldap cache size. If it is set to zero
-#	then the ldap cache size will be unlimited
-#	default: 0
+#	then the ldap cache size will be unlimited default: 0
 
 	ldap_cache_size = 0
 
-#	ldap_connections_number: The number of ldap connections that the module
-#	will keep open to use in requests. Usually it will not need to be larger
-#	than 5-10 connections
-#	default: 5
+#	ldap_connections_number: The number of ldap connections that the
+#	module will keep open to use in requests. Usually it will not need to
+#	be larger than 5-10 connections default: 5
 
 	ldap_connections_number = 5
 
@@ -104,148 +94,152 @@ the rlm_ldap module:
 #
 		basedn   = "o=My Org,c=UA"
 
-#	filter: LDAP search filter, to locate user object using name
-#	supplied by client during Radius authentication
+#	filter: LDAP search filter, to locate user object using name supplied
+#	by client during Radius authentication
 #	
-#	default: 
-#		filter   = "(uid=%u)"
+#	default: filter   = "(uid=%u)"
 
-#	default_profile: DN of a LDAP object, which contains default RADIUS 
-#	attributes. 
-#	default: NULL - use only user specific attributes or attributes, 
-#	supplied by other modules.
+#	default_profile: DN of a LDAP object, which contains default RADIUS
+#	attributes.  default: NULL - use only user specific attributes or
+#	attributes, supplied by other modules.
 #		
 	default_profile = "cn=RadProfile,o=My Org,c=UA"
 
-#	profile_attribute: user object attribute, which contains DN of 
-#	radiusProfile object for this user.
-#	default: NULL - use only user specific attributes or attributes,
-#       supplied by other modules.
+#	profile_attribute: user object attribute, which contains DN of
+#	radiusProfile object for this user.  default: NULL - use only user
+#	specific attributes or attributes, supplied by other modules.
 #
 #	profile_attribute = "radiusProfileDn"
 
-#	access_attr_used_for_allow: Define if the access attribute (described below) will be
-#	used to allow access (meaning if it exists then user remote access will be allowed)
-#	or to deny access.
-#	default: yes - used to allow access
+#	access_attr_used_for_allow: Define if the access attribute (described
+#	below) will be used to allow access (meaning if it exists then user
+#	remote access will be allowed) or to deny access.  default: yes - used
+#	to allow access
 
-#	access_attr: if attribute is specified, module checks for its existance
-#	in user object.
-#	If access_attr_used_for_allow is set to yes:
-#	  If it exists the user is allowed to get remote access.
-#	  If it exists and is set to FALSE the user is denied remote access.
-#	  If it does not exist user is denied remote access by default
-#	if access_attr_used_for_allow is set to no:
-#	  If it exists the user is denied remote access.
-#	  If it does not exist user is allowed remote access.
+#	access_attr: if attribute is specified, module checks for its
+#	existance in user object.  If access_attr_used_for_allow is set to
+#	yes: If it exists the user is allowed to get remote access.  If it
+#	exists and is set to FALSE the user is denied remote access.  If it
+#	does not exist user is denied remote access by default if
+#	access_attr_used_for_allow is set to no: If it exists the user is
+#	denied remote access.  If it does not exist user is allowed remote
+#	access.
+#
 #	default: NULL - don't check for the attribute
-		access_attr = "dialupAccess"
 
-#	password_header: If the user password is available we add it to the check items
-#	(to assist in CHAP ie) striping any headers first.
+	access_attr = "dialupAccess"
+
+#	password_header: If the user password is available we add it to the
+#	check items (to assist in CHAP ie) striping any headers first.
 #	default: NULL
 #
 #	password_header = "{clear}"
 
-#	password_attribute: Define the attribute which contains the user password.
+#	password_attribute: Define the attribute which contains the user
+#	password.
+#
 #	default: NULL - don't add password
 #
 #	password_attribute = "userPassword"
 
-#	groupname_attribute: The attribute used for searching for a group in the ldap server.
+#	groupname_attribute: The attribute containing group name in the LDAP
+#	server. It is used to search group by name.
+#
 #	default: cn - Search filter is "(cn=%GroupName)"
 #
 #	groupname_attribute = "cn"
 
-#	compare_check_items: Specifies if the module will do a comparison on the check items extracted
-#	from the ldap with the corresponding items present in the incoming request.
+#	compare_check_items: Specifies if the module will do a comparison on
+#	the check items extracted from the ldap with the corresponding items
+#	present in the incoming request.
+#
 #	default: no - don't do any comparisons
 #
 #	compare_check_items = yes
 	
 
-#	groupmembership_filter: The filter to search for group membership of a particular user
-#	after we have found the DN for the group.
+#	groupmembership_filter: The filter to search for group membership of a
+#	particular user after we have found the DN for the group.
+#
 #	default: (|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))
 #
 #	groupmembership_filter = "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"	
 
 
-#	groupmembership_attribute: The attribute in the user entry that states the group the user belongs to.
-#	The attribute can either contain the group name or the group DN. If it contains the group DN 
-#	groupname_attribute will also be used to find the group's name. The attribute will be used after a search
-#	based on the groupname_attribute and groupmembership_filter has failed.
-#	default: NULL - don't search for a group based on attributes in the user entry.
+#	groupmembership_attribute: The attribute in the user entry that states
+#	the group the user belongs to.  The attribute can either contain the
+#	group name or the group DN. If it contains the group DN
+#	groupmembership_attribute will also be used to find the group's name.
+#	The attribute will be used after a search based on the
+#	groupname_attribute and groupmembership_filter has failed.  default:
+#	NULL - don't search for a group based on attributes in the user entry.
 #
 #	groupmembership_attribute = "radiusGroupName"
 
-	}
-}
+	} }
 
-NOTE:
-As LDAP is case insensitive, you should probably also set "lower_user = yes" 
-and "lower_time = before" in main section of radiusd.conf, to get limits on 
-simultaneous logins working correctly. Otherwise, users will be able get large 
-number of sessions, capitalizing parts of their login names.
+NOTE: As LDAP is case insensitive, you should probably also set "lower_user =
+yes" and "lower_time = before" in main section of radiusd.conf, to get limits
+on simultaneous logins working correctly. Otherwise, users will be able get
+large number of sessions, capitalizing parts of their login names.
 
-MODULE MESSAGES:
-On user rejection rlm_ldap will return the following module messages:
+MODULE MESSAGES: On user rejection rlm_ldap will return the following module
+messages:
 
-"rlm_ldap: User not found"
-"rlm_ldap: Access Attribute denies access"
+"rlm_ldap: User not found" "rlm_ldap: Access Attribute denies access"
 "rlm_ldap: Bind as user failed"
 
 These messages will be visible in radius.log as aditional information in
 "Login incorrect" and "Invalid user" log messages.
 
-LDAP XLAT:
-The ldap module now supports LDAP URLs in xlat strings. That is you can now
-add LDAP URLs in the configuration options and hopefully shortly also in the
-users file. The strings will be of the following form:
+LDAP XLAT: The ldap module now supports LDAP URLs in xlat strings. That is you
+can now add LDAP URLs in the configuration options and hopefully shortly also
+in the users file. The strings will be of the following form:
 
 %{ldap:ldap:///dc=company,dc=com?uid?sub?uid=%u}
 
-The requested attributes list MUST contain only ONE attribute. In case this attribute
-is multi valued which value is returned is considered UNDEFINED.
-Also, adding the host:port information SHOULD be avoided unless there are more than one
-ldap module instances in which case the host,port information can be used to distinguish
-which module will actually return the information (the xlat function will return NULL if
-the host,port information does not correspond to the configured attributes).
-If there are more than one instances the module instance name can be used instead of the
-string 'ldap' before the ldap url to decide which instance will return the information.
+The requested attributes list MUST contain only ONE attribute. In case this
+attribute is multi valued which value is returned is considered UNDEFINED.
+Also, adding the host:port information SHOULD be avoided unless there are more
+than one ldap module instances in which case the host,port information can be
+used to distinguish which module will actually return the information (the
+xlat function will return NULL if the host,port information does not
+correspond to the configured attributes).  If there are more than one
+instances the module instance name can be used instead of the string 'ldap'
+before the ldap url to decide which instance will return the information.
 That is the xlat string will be of the form:
 
 %{$instance_name:ldap:///dc=comapny,dc=com?uid?sub?uid=%u}
 
-ie: ${ldap_company1:ldap:///dc=company1,dc=com?uid?sub?uid=%u}
+i.e.: ${ldap_company1:ldap:///dc=company1,dc=com?uid?sub?uid=%u}
 
 
-
-USER PROFILE ATTRIBUTE:
-The module can use the User-Profile attribute. If it is set, it will assume that it contains
-the DN of a profile entry containing radius attributes. This entry will _replace_ the default
-profile directive. That way we can use different profiles based on checks on the radius attributes
-contained in the Access-Request packets. For example (users file):
+USER PROFILE ATTRIBUTE: The module can use the User-Profile attribute. If it
+is set, it will assume that it contains the DN of a profile entry containing
+radius attributes. This entry will _replace_ the default profile directive.
+That way we can use different profiles based on checks on the radius
+attributes contained in the Access-Request packets. For example (users file):
 
 DEFAULT	Service-Type == Outbound-User, User-Profile := "uid=outbound-dialup,dc=company,dc=com"
  
 
-GROUP SUPPORT:
-The module supports searching for ldap groups by use of the Ldap-Group attribute. As long as the module
-has been instanciated it can be used to do group membership checks through other modules. For example in
-the users file:
+GROUP SUPPORT: The module supports searching for ldap groups by use of the
+Ldap-Group attribute. As long as the module has been instanciated it can be
+used to do group membership checks through other modules. For example in the
+users file:
 
-DEFAULT	Ldap-Group == "disabled", Auth-Type := Reject
+DEFAULT	Ldap-Group == "disabled", Auth-Type := Reject 
 	Reply-Message = "Sorry, you are not allowed to have dialup access"
 
-DIRECTORY COMPATIBILITY NOTE:
-If you use LDAP only for authorization and authentication (e.g. you can not
- afford schema extention), I propose to set all necessary attributes in 
-raddb/users file with following authorize section of radiusd.conf :
+DNs are also accepted as Ldap-Group values, i.e.:
 
-authorize { 
-	ldap {
-		notfound = return
-	} 
-	files  
-}
+DEFAULT	Ldap-Group == "cn=disabled,dc=company,dc=com", Auth-Type := Reject
+	Reply-Message = "Sorry, you are not allowed to have dialup access"
+
+
+DIRECTORY COMPATIBILITY NOTE: If you use LDAP only for authorization and
+authentication (e.g. you can not afford schema extention), I propose to set
+all necessary attributes in raddb/users file with following authorize section
+of radiusd.conf :
+
+authorize { ldap { notfound = return } files  }
