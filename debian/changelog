@@ -17,20 +17,23 @@ freeradius (1.0.cvs20041218-0) unstable; urgency=low
 
  -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sat, 18 Dec 2004 15:27:32 +1100
 
-freeradius (0.9.3-cvs20040421-0) unstable; urgency=low
+freeradius (1.0.0-0) unstable; urgency=low
 
+  * New upstream release
   * Added H323 billing stuff to the examples
   * Created Dialup-Admin package for the PHP-based web
     FreeRADIUS database (SQL/LDAP) frontend.
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 18 Apr 2004 23:11:43 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sat, 17 Jul 2004 16:21:38 +1000
 
-freeradius (0.9.3-cvs20040225-0) unstable; urgency=low
+freeradius (0.9.3-1) unstable; urgency=low
 
-  * Seperated rlm_sql_iodbc into it's own package, freeradius-iodbc
-  * Imported downstream debian/ changes
+  * New upstream release, incorporates security fix from 0.9.2-4.
+  * Correct build-dependancy on debhelper.
+     Closes: #234486
+  * Split iodbc SQL driver into its own package.
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed, 25 Feb 2004 00:00:03 +1100
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Tue, 24 Feb 2004 23:56:26 +1100
 
 freeradius (0.9.2-4) unstable; urgency=high
 
