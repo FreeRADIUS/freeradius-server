@@ -467,6 +467,7 @@ static int file_detach(void *instance)
         pairlist_free(&inst->acctusers);
         free(inst->usersfile);
         free(inst->acctusersfile);
+        free(inst->compat_mode);
         free(inst);
 	return 0;
 }
