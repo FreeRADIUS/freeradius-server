@@ -119,23 +119,19 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 	char clean_username[1024];
 	char buf[1024];
 
-	if (!mainconfig.log_auth)
+	if (!mainconfig.log_auth) {
 		return 0;
+	}
 
 	/* 
 	 *	Clean up the username
 	 */
 	if (request->username == NULL) {
-		DEBUG2("rad_authlog:  no username found");
-		return -1;
-	}
-
-	if (request->username->strvalue) {
+		strcpy(clean_username, "<no User-Name attribute>");
+	} else {
 		librad_safeprint((char *)request->username->strvalue,
 				request->username->length,
 				clean_username, sizeof(clean_username));
-	} else {
-		strcpy(clean_username, "<No Username>");
 	}
 
 	/* 
@@ -143,20 +139,13 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 	 */
 	if (mainconfig.log_auth_badpass || mainconfig.log_auth_goodpass) {
 		if (!request->password) {
-			DEBUG2("rad_authlog:  no password found");
-			return -1;
-		}
-
-		if (request->password->attribute == PW_CHAP_PASSWORD) {
+			strcpy(clean_password, "<no Password attribute>");
+		} else if (request->password->attribute == PW_CHAP_PASSWORD) {
 			strcpy(clean_password, "<CHAP-Password>");
 		} else {
-			if (request->username->strvalue) {
-				librad_safeprint((char *)request->password->strvalue,
-						 request->password->length,
-						 clean_password, sizeof(clean_password));
-			} else {
-				strcpy(clean_password, "<No Password>");
-			}
+			librad_safeprint((char *)request->password->strvalue,
+					 request->password->length,
+					 clean_password, sizeof(clean_password));
 		}
 	}
 
@@ -264,7 +253,7 @@ int rad_check_password(REQUEST *request)
 	 */
 	auth_item = request->password;
 	if (auth_item == NULL) {
-		DEBUG2("auth: No password in the request");
+		DEBUG2("auth: No Password or CHAP-Password attribute in the request");
 		return -1;
 	}
 
@@ -296,40 +285,45 @@ int rad_check_password(REQUEST *request)
 		case PW_AUTHTYPE_CRYPT:
 			DEBUG2("auth: type Crypt");
 			if (password_pair == NULL) {
-				result = auth_item->strvalue ? -1 : 0;
-				break;
+				DEBUG2("No Crypt-Password configured for the user");
+				rad_authlog("No Crypt-Password configured for the user", request, 0);
+				return -1;
 			}
+					
 			if (strcmp((char *)password_pair->strvalue,
-					crypt((char *)auth_item->strvalue,
-							(char *)password_pair->strvalue)) != 0)
+				   crypt((char *)auth_item->strvalue,
+					 (char *)password_pair->strvalue)) != 0)
 				result = -1;
 			break;
 		case PW_AUTHTYPE_LOCAL:
 			DEBUG2("auth: type Local");
+
+			/*
+			 *	Plain text password.
+			 */
+			if (password_pair == NULL) {
+				DEBUG2("auth: No Password configured for the user");
+				rad_authlog("No Password configured for the user", request, 0);
+				return -1;
+			}
+
 			/*
 			 *	Local password is just plain text.
 	 		 */
-			if (auth_item->attribute != PW_CHAP_PASSWORD) {
-
-				/*
-				 *	Plain text password.
-				 */
-				if (password_pair == NULL ||
-						strcmp((char *)password_pair->strvalue,
-								(char *)auth_item->strvalue)!=0)
-					result = -1;
+			if (auth_item->attribute == PW_PASSWORD) {
+				if (strcmp((char *)password_pair->strvalue,
+					   (char *)auth_item->strvalue) != 0) {
+					return -1;
+				}
+				DEBUG2("auth: user supplied Password matches local Password");
 				break;
+
+			} else if (auth_item->attribute != PW_CHAP_PASSWORD) {
+				DEBUG2("The user did not supply a Password or a CHAP-Password attribute");
+				rad_authlog("The user did not supply a Password or a CHAP-Password attribute", request, 0);
+				return -1;
 			}
 
-			/*
-			 *	CHAP - calculate MD5 sum over CHAP-ID,
-			 *	plain-text password and the Chap-Challenge.
-			 *	Compare to Chap-Response (strvalue + 1).
-			 */
-			if (password_pair == NULL) {
-				result= -1;
-				break;
-			}
 			rad_chap_encode(request->packet, string,
 					auth_item->strvalue[0], password_pair);
 
@@ -339,6 +333,7 @@ int rad_check_password(REQUEST *request)
 			if (memcmp(string + 1, auth_item->strvalue + 1,
 					CHAP_VALUE_LENGTH) != 0)
 				result = -1;
+			DEBUG2("auth: user supplied CHAP-Password matches local Password");
 			break;
 		default:
 			DEBUG2("auth: type \"%s\"",
