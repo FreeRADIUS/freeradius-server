@@ -72,24 +72,29 @@ static int valuebyname(char * out,int outlen,VALUE_PAIR * request, char * attrna
  *
  *	Replace %<whatever> in a string.
  *
- *	%p	 Port number
- *	%n	 NAS IP address
- *	%f	 Framed IP address
- *	%u	 User name
- *	%c	 Callback-Number
- *	%t	 MTU
  *	%a	 Protocol (SLIP/PPP)
- *	%s	 Speed (PW_CONNECT_INFO)
+ *	%c	 Callback-Number
+ *	%d	 request day (DD)
+ *	%f	 Framed IP address
  *	%i	 Calling Station ID
- *	%V	 Request-Authenticator (Verified/None)
- *	%C	 clientname
- *	%R	 radius_dir
- *	%A	 radacct_dir
- *	%L	 radlog_dir
  *	%l	 request timestamp
- *	%T	 request timestamp in database format
+ *	%m	 request month (MM)
+ *	%n	 NAS IP address
+ *	%p	 Port number
+ *	%s	 Speed (PW_CONNECT_INFO)
+ *	%t	 MTU
+ *	%u	 User name
+ *	%y	 request year (YY)
+ *	%A	 radacct_dir
+ *	%C	 clientname
  *	%D	 request date (YYYYMMDD)
  *	%I	 request in ctime format
+ *	%L	 radlog_dir
+ *	%R	 radius_dir
+ *	%T	 request timestamp in database format
+ *	%U	 Stripped User name
+ *	%V	 Request-Authenticator (Verified/None)
+ *	%Y	 request year (YYYY)
  *	%Z	 All request attributes except password (must have big buffer)
  *	${AttributeName}		Corresponding value for AttributeName in request
  *	${request:AttributeName}	Corresponding value for AttributeName in request
@@ -157,57 +162,62 @@ int radius_xlat2(char * out,int outlen, char *str, REQUEST * request, VALUE_PAIR
 			case '%':
 				*q++ = *p;
 				break;
-			case 'f': /* Framed IP address */
-				q += valuepair2str(q,freespace,pairfind(reply,PW_FRAMED_IP_ADDRESS),PW_TYPE_IPADDR);
-				break;
-			case 'n': /* NAS IP address */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_IP_ADDRESS),PW_TYPE_IPADDR);
-				break;
-			case 't': /* MTU */
-				q += valuepair2str(q,freespace,pairfind(reply,PW_FRAMED_MTU),PW_TYPE_INTEGER);
-				break;
-			case 'p': /* Port number */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_PORT_ID),PW_TYPE_INTEGER);
-				break;
-			case 'u': /* User name */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING);
-				break;
-			case 'U': /* Stripped User name */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_STRIPPED_USER_NAME),PW_TYPE_STRING);
-				break;
-			case 'i': /* Calling station ID */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CALLING_STATION_ID),PW_TYPE_STRING);
+			case 'a': /* Protocol: */
+				q += valuepair2str(q,freespace,pairfind(reply,PW_FRAMED_PROTOCOL),PW_TYPE_INTEGER);
 				break;
 			case 'c': /* Callback-Number */
 				q += valuepair2str(q,freespace,pairfind(reply,PW_CALLBACK_NUMBER),PW_TYPE_STRING);
 				break;
-			case 'a': /* Protocol: */
-				q += valuepair2str(q,freespace,pairfind(reply,PW_FRAMED_PROTOCOL),PW_TYPE_INTEGER);
+			case 'd': /* request year */
+				TM = localtime(&request->timestamp);
+				strftime(tmpdt,sizeof(tmpdt),"%d",TM);
+				strncpy(q,tmpdt,freespace);
+				i = strlen(q); q[i] = '\0'; q += i;
+				break;
+			case 'f': /* Framed IP address */
+				q += valuepair2str(q,freespace,pairfind(reply,PW_FRAMED_IP_ADDRESS),PW_TYPE_IPADDR);
+				break;
+			case 'i': /* Calling station ID */
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CALLING_STATION_ID),PW_TYPE_STRING);
+				break;
+			case 'l': /* request timestamp */
+				sprintf(tmpdt,"%ld",request->timestamp);
+				strncpy(q,tmpdt,freespace);
+				i = strlen(q); q[i] = '\0'; q += i;
+				break;
+			case 'm': /* request month */
+				TM = localtime(&request->timestamp);
+				strftime(tmpdt,sizeof(tmpdt),"%m",TM);
+				strncpy(q,tmpdt,freespace);
+				i = strlen(q); q[i] = '\0'; q += i;
+				break;
+			case 'n': /* NAS IP address */
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_IP_ADDRESS),PW_TYPE_IPADDR);
+				break;
+			case 'p': /* Port number */
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_PORT_ID),PW_TYPE_INTEGER);
 				break;
 			case 's': /* Speed */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CONNECT_INFO),PW_TYPE_STRING);
 				break;
-			case 'C': /* ClientName */
-				strncpy(q,client_name(request->packet->src_ipaddr),freespace-1);
-				i = strlen(q); q[i] = '\0'; q += i;
+			case 't': /* MTU */
+				q += valuepair2str(q,freespace,pairfind(reply,PW_FRAMED_MTU),PW_TYPE_INTEGER);
 				break;
-			case 'R': /* radius_dir */
-				strncpy(q,radius_dir,freespace-1);
+			case 'u': /* User name */
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING);
+				break;
+			case 'y': /* request year */
+				TM = localtime(&request->timestamp);
+				strftime(tmpdt,sizeof(tmpdt),"%y",TM);
+				strncpy(q,tmpdt,freespace);
 				i = strlen(q); q[i] = '\0'; q += i;
 				break;
 			case 'A': /* radacct_dir */
 				strncpy(q,radacct_dir,freespace-1);
 				i = strlen(q); q[i] = '\0'; q += i;
 				break;
-			case 'L': /* radlog_dir */
-				strncpy(q,radlog_dir,freespace-1);
-				i = strlen(q); q[i] = '\0'; q += i;
-				break;
-			case 'V': /* Request-Authenticator */
-				if (request->packet->verified)
-					strncpy(q,"Verified",freespace-1);
-				else
-					strncpy(q,"None",freespace-1);
+			case 'C': /* ClientName */
+				strncpy(q,client_name(request->packet->src_ipaddr),freespace-1);
 				i = strlen(q); q[i] = '\0'; q += i;
 				break;
 			case 'D': /* request date */
@@ -216,18 +226,37 @@ int radius_xlat2(char * out,int outlen, char *str, REQUEST * request, VALUE_PAIR
 				strncpy(q,tmpdt,freespace);
 				i = strlen(q); q[i] = '\0'; q += i;
 				break;
+			case 'I': /* request timestamp */
+				strncpy(q,ctime(&request->timestamp),freespace);
+				i = strlen(q); q[i] = '\0'; q += i;
+				break;
+			case 'L': /* radlog_dir */
+				strncpy(q,radlog_dir,freespace-1);
+				i = strlen(q); q[i] = '\0'; q += i;
+				break;
+			case 'R': /* radius_dir */
+				strncpy(q,radius_dir,freespace-1);
+				i = strlen(q); q[i] = '\0'; q += i;
+				break;
 			case 'T': /* request timestamp */
 				TM = localtime(&request->timestamp);
 				strftime(tmpdt,sizeof(tmpdt),"%Y-%m-%d-%H.%M.%S.000000",TM);
 				strncpy(q,tmpdt,freespace);
 				i = strlen(q); q[i] = '\0'; q += i;
 				break;
-			case 'I': /* request timestamp */
-				strncpy(q,ctime(&request->timestamp),freespace);
+			case 'U': /* Stripped User name */
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_STRIPPED_USER_NAME),PW_TYPE_STRING);
+				break;
+			case 'V': /* Request-Authenticator */
+				if (request->packet->verified)
+					strncpy(q,"Verified",freespace-1);
+				else
+					strncpy(q,"None",freespace-1);
 				i = strlen(q); q[i] = '\0'; q += i;
 				break;
-			case 'l': /* request timestamp */
-				sprintf(tmpdt,"%ld",request->timestamp);
+			case 'Y': /* request year */
+				TM = localtime(&request->timestamp);
+				strftime(tmpdt,sizeof(tmpdt),"%Y",TM);
 				strncpy(q,tmpdt,freespace);
 				i = strlen(q); q[i] = '\0'; q += i;
 				break;
