@@ -676,6 +676,11 @@ static int gettime(const char *valstr, time_t *lvalue)
 
 /*
  *  Parse a string value into a given VALUE_PAIR
+ *
+ *  FIXME: we probably want to fix this function to accept
+ *  octets as values for any type of attribute.  We should then
+ *  double-check the parsed value, to be sure it's legal for that
+ *  type (length, etc.)
  */
 VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 {
@@ -1157,6 +1162,14 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 #endif
 	}
 
+	/*
+	 *	FIXME: if (strcasecmp(attriobute, vp->name) != 0)
+	 *	then the user MAY have typed in the attribute name
+	 *	as Vendor-%d-Attr-%d, and the value MAY be octets.
+	 *
+	 *	We probably want to fix pairparsevalue to accept
+	 *	octets as values for any attribute.
+	 */
 	if (value && (pairparsevalue(vp, value) == NULL)) {
 		pairbasicfree(vp);
 		return NULL;
