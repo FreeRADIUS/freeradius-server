@@ -89,7 +89,7 @@ static int ns_mta_md5_pass(const char *clear, const char *encrypted)
   ns_mta_hash_alg(hashed, salt, clear);
   memcpy(&hashed[32], salt, 33);
 
-  if (strcmp(hashed,encrypted) == 0) {
+  if (strcasecmp(hashed,encrypted) == 0) {
     return 0;
   }
 
