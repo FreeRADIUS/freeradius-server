@@ -54,7 +54,7 @@
 #include	"modules.h"
 
 #include	"des.h"
-#include        "md4.h"
+#include        "md5.h"
 #include	"sha1.h"
 #include	"smbpass.h"
 
@@ -87,6 +87,29 @@ static void mschap2( const char *peer_challenge, const char *auth_challenge,
 		struct smb_passwd * smbPasswd, char *response);
 static void add_reply(VALUE_PAIR** vp, unsigned char ident,
                 const char* name, const char* value, int len);
+
+static void mppe_add_reply(VALUE_PAIR** vp,
+               const char* name, const char* value, int len);
+
+static void mppe_chap2_gen_keys128(uint8_t *secret,uint8_t *vector,
+                               uint8_t *nt_hash,uint8_t *response,
+                               uint8_t *sendkey,uint8_t *recvkey);
+
+static void mppe_chap2_get_keys128(uint8_t *nt_hashhash,uint8_t *nt_response,
+                               uint8_t *sendkey,uint8_t *recvkey);
+
+static void mppe_GetMasterKey(uint8_t *nt_hashhash,uint8_t *nt_response,
+                       uint8_t *masterkey);
+
+static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
+                               int keylen,int issend);
+
+static void mppe_gen_respkey(uint8_t* secret,uint8_t* vector,
+                       uint8_t* salt,uint8_t* enckey,uint8_t* key);
+
+void md4_calc (unsigned char *, unsigned char *, unsigned int);
+
+
 
 /* 
  *	parity_key takes a 7-byte string in szIn and returns an
@@ -316,6 +339,7 @@ static void auth_response(struct smb_passwd * smbPasswd, char *ntresponse,
 
 struct mschap_instance {
 	int ignore_password;
+	int use_mppe;
 	char *passwd_file;
 	char *auth_type;
 };
@@ -326,6 +350,8 @@ static CONF_PARSER module_config[] = {
 	 */
 	{ "ignore_password",    PW_TYPE_BOOLEAN,
 	  offsetof(struct mschap_instance,ignore_password), NULL, "no" },
+	{ "use_mppe",    PW_TYPE_BOOLEAN,
+	  offsetof(struct mschap_instance,use_mppe), NULL, "yes" },
 	{ "passwd",   PW_TYPE_STRING_PTR,
 	  offsetof(struct mschap_instance, passwd_file), NULL,  NULL },
 	{ "authtype",   PW_TYPE_STRING_PTR,
@@ -378,6 +404,171 @@ static void add_reply(VALUE_PAIR** vp, unsigned char ident,
 	pairadd(vp, reply_attr);
 }
 
+static void mppe_add_reply(VALUE_PAIR** vp,
+                       const char* name, const char* value, int len)
+{
+       VALUE_PAIR *reply_attr;
+       reply_attr = pairmake(name, "", T_OP_EQ);
+       memcpy(reply_attr->strvalue, value, len);
+       reply_attr->length = len;
+       pairadd(vp, reply_attr);
+}
+
+static void mppe_chap2_gen_keys128(uint8_t *secret,uint8_t *vector,
+                               uint8_t *nt_hash,uint8_t *response,
+                               uint8_t *sendkey,uint8_t *recvkey)
+{
+       uint8_t enckey1[16];
+       uint8_t enckey2[16];
+       uint8_t salt[2];
+       uint8_t nt_hashhash[16];
+
+       md4_calc(nt_hashhash,nt_hash,16);
+
+       mppe_chap2_get_keys128(nt_hashhash,response,enckey1,enckey2);
+
+       salt[0] = (vector[0] ^ vector[1]) | 0x80;
+       salt[1] = (vector[2] ^ vector[3]);
+
+       mppe_gen_respkey(secret,vector,salt,enckey1,sendkey);
+
+       salt[0] = (vector[4] ^ vector[5]) | 0x80;
+       salt[1] = (vector[6] ^ vector[7]);
+
+       mppe_gen_respkey(secret,vector,salt,enckey2,recvkey);
+}
+
+static void mppe_chap2_get_keys128(uint8_t *nt_hashhash,uint8_t *nt_response,
+                               uint8_t *sendkey,uint8_t *recvkey)
+{
+       uint8_t masterkey[16];
+
+       mppe_GetMasterKey(nt_hashhash,nt_response,masterkey);
+
+       mppe_GetAsymmetricStartKey(masterkey,sendkey,16,1);
+       mppe_GetAsymmetricStartKey(masterkey,recvkey,16,0);
+}
+
+static void mppe_GetMasterKey(uint8_t *nt_hashhash,uint8_t *nt_response,
+                       uint8_t *masterkey)
+{
+       uint8_t digest[20];
+       uint8_t magic1[27] =
+               { 0x54, 0x68, 0x69, 0x73, 0x20, 0x69, 0x73, 0x20, 0x74,
+                 0x68, 0x65, 0x20, 0x4d, 0x50, 0x50, 0x45, 0x20, 0x4d,
+                 0x61, 0x73, 0x74, 0x65, 0x72, 0x20, 0x4b, 0x65, 0x79 };
+
+       SHA1_CTX Context;
+
+       SHA1Init(&Context);
+       SHA1Update(&Context,nt_hashhash,16);
+       SHA1Update(&Context,nt_response,24);
+       SHA1Update(&Context,magic1,27);
+       SHA1Final(digest,&Context);
+
+       memcpy(masterkey,digest,16);
+}
+
+static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
+                               int keylen,int issend)
+{
+       uint8_t digest[20];
+       uint8_t SHSpad1[40] =
+               { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
+       uint8_t SHSpad2[40] =
+               { 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2,
+                 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2,
+                 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2,
+                 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2 };
+
+       uint8_t magic2[84] =
+               { 0x4f, 0x6e, 0x20, 0x74, 0x68, 0x65, 0x20, 0x63, 0x6c, 0x69,
+                 0x65, 0x6e, 0x74, 0x20, 0x73, 0x69, 0x64, 0x65, 0x2c, 0x20,
+                 0x74, 0x68, 0x69, 0x73, 0x20, 0x69, 0x73, 0x20, 0x74, 0x68,
+                 0x65, 0x20, 0x73, 0x65, 0x6e, 0x64, 0x20, 0x6b, 0x65, 0x79,
+                 0x3b, 0x20, 0x6f, 0x6e, 0x20, 0x74, 0x68, 0x65, 0x20, 0x73,
+                 0x65, 0x72, 0x76, 0x65, 0x72, 0x20, 0x73, 0x69, 0x64, 0x65,
+                 0x2c, 0x20, 0x69, 0x74, 0x20, 0x69, 0x73, 0x20, 0x74, 0x68,
+                 0x65, 0x20, 0x72, 0x65, 0x63, 0x65, 0x69, 0x76, 0x65, 0x20,
+                 0x6b, 0x65, 0x79, 0x2e };
+
+      uint8_t magic3[84] =
+               { 0x4f, 0x6e, 0x20, 0x74, 0x68, 0x65, 0x20, 0x63, 0x6c, 0x69,
+                 0x65, 0x6e, 0x74, 0x20, 0x73, 0x69, 0x64, 0x65, 0x2c, 0x20,
+                 0x74, 0x68, 0x69, 0x73, 0x20, 0x69, 0x73, 0x20, 0x74, 0x68,
+                 0x65, 0x20, 0x72, 0x65, 0x63, 0x65, 0x69, 0x76, 0x65, 0x20,
+                 0x6b, 0x65, 0x79, 0x3b, 0x20, 0x6f, 0x6e, 0x20, 0x74, 0x68,
+                 0x65, 0x20, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x20, 0x73,
+                 0x69, 0x64, 0x65, 0x2c, 0x20, 0x69, 0x74, 0x20, 0x69, 0x73,
+                 0x20, 0x74, 0x68, 0x65, 0x20, 0x73, 0x65, 0x6e, 0x64, 0x20,
+                 0x6b, 0x65, 0x79, 0x2e };
+
+       uint8_t *s;
+       SHA1_CTX Context;
+
+       memset(digest,0,20);
+
+       if(issend) {
+               s = magic3;
+       } else {
+               s = magic2;
+       }
+
+       SHA1Init(&Context);
+       SHA1Update(&Context,masterkey,16);
+       SHA1Update(&Context,SHSpad1,40);
+       SHA1Update(&Context,s,84);
+       SHA1Update(&Context,SHSpad2,40);
+       SHA1Final(digest,&Context);
+
+       memcpy(sesskey,digest,keylen);
+}
+
+static void mppe_gen_respkey(uint8_t* secret,uint8_t* vector,
+                       uint8_t* salt,uint8_t* enckey,uint8_t* key)
+{
+       uint8_t plain[32];
+       uint8_t buf[16];
+       int i;
+       MD5_CTX Context;
+       int slen;
+
+       for(slen=0;slen < 32;slen++) {
+               if(secret[slen] == 0) break;
+       }
+
+       memset(key,0,34);
+
+       memset(plain,0,32);
+       plain[0] = 16;
+       memcpy(plain + 1,enckey,16);
+
+       MD5Init(&Context);
+       MD5Update(&Context,secret,slen);
+       MD5Update(&Context,vector,AUTH_VECTOR_LEN);
+       MD5Update(&Context,salt,2);
+       MD5Final(buf,&Context);
+
+       for(i=0;i < 16;i++) {
+               plain[i] ^= buf[i];
+       }
+
+       MD5Init(&Context);
+       MD5Update(&Context,secret,slen);
+       MD5Update(&Context,plain,16);
+       MD5Final(buf,&Context);
+
+       for(i=0;i < 16;i++) {
+               plain[i + 16] ^= buf[i];
+       }
+
+       memcpy(key,salt,2);
+       memcpy(key + 2,plain,32);
+}
 
 
 /*
@@ -479,6 +670,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	VALUE_PAIR *password = NULL;
 	uint8_t calculated[32];
 	uint8_t msch2resp[42];
+        uint8_t mppe_sendkey[34];
+        uint8_t mppe_recvkey[34];
 	struct smb_passwd smbPasswd, *smbPasswd1 = NULL;
 	AUTHTYPE at = NONE;
 	int res = 0;
@@ -524,7 +717,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		else return RLM_MODULE_REJECT;
 	}
 	else if ( (challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE)) ){
-
+		res = RLM_MODULE_REJECT;
 		/*
 		 *	We need an MS-CHAP-Challenge attribute to calculate
 		 *	the response.
@@ -544,18 +737,18 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			 */
 				mschap(challenge->strvalue, &smbPasswd, calculated, 1);
 				if (memcmp(response->strvalue + 26, calculated, 24) == 0) {
-					return RLM_MODULE_OK;
+					res = RLM_MODULE_OK;
 				}
 			 }
 
-			if (smbPasswd.smb_passwd) {
+			if (res != RLM_MODULE_OK && smbPasswd.smb_passwd) {
 			/*
 			 *	Use LM response.
 			 */
 				mschap(challenge->strvalue, &smbPasswd, 
 					calculated, 0);
 				if (memcmp(response->strvalue + 2, calculated, 24) == 0) {
-					return RLM_MODULE_OK;
+					res = RLM_MODULE_OK;
 				}
 	    		}
 		}
@@ -578,13 +771,27 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 						msch2resp);
 					add_reply( &request->reply->vps, *response->strvalue,
 						"MS-CHAP2-Success", msch2resp, 42);
-					return RLM_MODULE_OK;
+					res = RLM_MODULE_OK;
 				}
 			}
 		}
 		else {
 			radlog(L_AUTH, "rlm_mschap: Response attribute not found");
 			return RLM_MODULE_INVALID;
+		}
+		if (res == RLM_MODULE_OK){
+			if (((struct mschap_instance *)instance)->use_mppe) {
+				mppe_chap2_gen_keys128(request->secret,request->packet->vector,
+					smbPasswd.smb_nt_passwd,
+					response->strvalue + 26,
+					mppe_sendkey,mppe_recvkey);
+				mppe_add_reply( &request->reply->vps,
+					"MS-MPPE-Recv-Key",mppe_recvkey,34);
+				mppe_add_reply( &request->reply->vps,
+					"MS-MPPE-Send-Key",mppe_sendkey,34);
+			}
+
+			return RLM_MODULE_OK;
 		}
 	}
 	
