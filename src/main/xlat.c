@@ -103,7 +103,7 @@ int radius_xlat2(char * out,int outlen, char *str, REQUEST * request, VALUE_PAIR
 {
 	char attrname[128];
 	char *pa;
-	int n, i, c,freespace;
+	int i, c,freespace;
 	char *p;
 	char *q;
 	VALUE_PAIR *tmp;

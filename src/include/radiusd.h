@@ -151,7 +151,7 @@ char		*nas_name2(RADIUS_PACKET *r);
 NAS		*nas_findbyname(char *nasname);
 
 /* version.c */
-void		version();
+void		version(void);
 
 /* log.c */
 int		log(int, char *, ...);
@@ -187,3 +187,6 @@ int		paircmp(VALUE_PAIR *request, VALUE_PAIR *check,
 			VALUE_PAIR **reply);
 void		pair_builtincompare_init(void);
 
+/* xlat.c */
+int            radius_xlat2(char * out, int outlen, char *str,
+                            REQUEST * request, VALUE_PAIR *reply);
