@@ -119,7 +119,8 @@ static void usage(void)
 }
 
 /*
- *	Free a radclient struct
+ *	Free a radclient struct, which may (or may not)
+ *	already be in the list.
  */
 static void radclient_free(radclient_t *radclient)
 {
@@ -134,7 +135,7 @@ static void radclient_free(radclient_t *radclient)
 	if (prev) {
 		assert(radclient_head != radclient);
 		prev->next = next;
-	} else {
+	} else if (radclient_head) {
 		assert(radclient_head == radclient);
 		radclient_head = next;
 	}
@@ -142,7 +143,7 @@ static void radclient_free(radclient_t *radclient)
 	if (next) {
 		assert(radclient_tail != radclient);
 		next->prev = prev;
-	} else {
+	} else if (radclient_tail) {
 		assert(radclient_tail == radclient);
 		radclient_tail = prev;
 	}
@@ -209,7 +210,7 @@ static radclient_t *radclient_init(const char *filename)
 		radclient->request->vps = readvp2(fp, &filedone, "radclient:");
 		if (!radclient->request->vps) {
 			radclient_free(radclient);
-			return NULL; /* memory leak "start" */
+			return start; /* done: return the list */
 		}
 
 		/*
