@@ -166,7 +166,7 @@ static CONF_PARSER server_config[] = {
   { "bind_address",       PW_TYPE_IPADDR,     &myip,              "*" },
   { "user",           PW_TYPE_STRING_PTR, &uid_name,  NULL},
   { "group",          PW_TYPE_STRING_PTR, &gid_name,  NULL},
-
+  { "usercollide",   PW_TYPE_BOOLEAN,    &mainconfig.do_usercollide,  "no" },
   { "lower_user",     PW_TYPE_STRING_PTR,    &mainconfig.do_lower_user, "no" },
   { "lower_pass",     PW_TYPE_STRING_PTR,    &mainconfig.do_lower_pass, "no" },
   { "nospace_user",   PW_TYPE_STRING_PTR,    &mainconfig.do_nospace_user, "no" },
