@@ -5,21 +5,21 @@ INSERT_GLOBAL_CONFIG(5)dnl
 dnl nothing
 INSERT_MODULE_INSTANTIATION(5)dnl
 
-#
-# The "always" module is here for debugging purposes. Each instance simply
-# returns the same result, always, without doing anything.
-#
-	always fail {
-		rcode = fail
-	}
-	always reject {
-		rcode = reject
-	}
-	always ok {
-		rcode = ok
-		simulcount = 0
-		mpp = no
-	}
+	#
+	# The "always" module is here for debugging purposes. Each instance simply
+	# returns the same result, always, without doing anything.
+	#
+#	always fail {
+#		rcode = fail
+#	}
+#	always reject {
+#		rcode = reject
+#	}
+#	always ok {
+#		rcode = ok
+#		simulcount = 0
+#		mpp = no
+#	}
 
 INSERT_DEF_AUTHENTICATION(5)dnl
 dnl nothing
