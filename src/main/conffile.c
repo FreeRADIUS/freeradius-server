@@ -187,102 +187,6 @@ void cf_section_free(CONF_SECTION *cs)
 }
 
 /*
- *	Parse a configuration section into user-supplied variables.
- */
-int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
-{
-	int		i;
-	char      	**q;
-	CONF_PAIR	*cp;
-	uint32_t	ipaddr;
-	char		buffer[1024];
-	const char	*value;
-
-	/*
-	 *	Handle the user-supplied variables.
-	 */
-	for (i = 0; variables[i].name != NULL; i++) {
-		value = variables[i].dflt;
-
-		cp = cf_pair_find(cs, variables[i].name);
-		if (cp) {
-			value = cp->value;
-		}
-		
-		switch (variables[i].type)
-		{
-		case PW_TYPE_BOOLEAN:
-			/*
-			 *	Allow yes/no and on/off
-			 */
-			if ((strcasecmp(value, "yes") == 0) ||
-			    (strcasecmp(value, "on") == 0)) {
-				*(int *)variables[i].data = 1;
-			} else if ((strcasecmp(value, "no") == 0) ||
-				   (strcasecmp(value, "off") == 0)) {
-				*(int *)variables[i].data = 0;
-			} else {
-				*(int *)variables[i].data = 0;
-				radlog(L_ERR, "Bad value \"%s\" for boolean variable %s", value, variables[i].name);
-				return -1;
-			}
-			DEBUG2("Config: %s.%s = %s",
-			       cs->name1,
-			       variables[i].name,
-			       value);
-			break;
-
-		case PW_TYPE_INTEGER:
-			*(int *)variables[i].data = strtol(value, 0, 0);
-			DEBUG2("Config: %s.%s = %d",
-			       cs->name1,
-			       variables[i].name,
-			       *(int *)variables[i].data);
-			break;
-			
-		case PW_TYPE_STRING_PTR:
-			q = (char **) variables[i].data;
-			if (*q != NULL) {
-				free(*q);
-			}
-			DEBUG2("Config: %s.%s = \"%s\"",
-			       cs->name1,
-			       variables[i].name,
-			       value ? value : "(null)");
-			*q = value ? strdup(value) : NULL;
-			break;
-
-		case PW_TYPE_IPADDR:
-			/*
-			 *	Allow '*' as any address
-			 */
-			if (strcmp(value, "*") == 0) {
-				*(uint32_t *) variables[i].data = 0;
-				break;
-			}
-			ipaddr = ip_getaddr(value);
-			if (ipaddr == 0) {
-				radlog(L_ERR, "Can't find IP address for host %s", value);
-				return -1;
-			}
-			DEBUG2("Config: %s.%s = %s IP address [%s]",
-			       cs->name1,
-			       variables[i].name,
-			       value, ip_ntoa(buffer, ipaddr));
-			*(uint32_t *) variables[i].data = ipaddr;
-			break;
-			
-		default:
-			radlog(L_ERR, "type %d not supported yet", variables[i].type);
-			return -1;
-			break;
-		} /* switch over variable type */
-	} /* for all variables in the configuration section */
-	
-	return 0;
-}
-
-/*
  *	Expand the variables in an input string.
  */
 static const char *cf_expand_variables(const char *cf, int *lineno,
@@ -355,6 +259,111 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 	*p = '\0';
 
 	return output;
+}
+
+/*
+ *	Parse a configuration section into user-supplied variables.
+ */
+int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
+{
+	int		i;
+	char      	**q;
+	CONF_PAIR	*cp;
+	uint32_t	ipaddr;
+	char		buffer[1024];
+	const char	*value;
+
+	/*
+	 *	Handle the user-supplied variables.
+	 */
+	for (i = 0; variables[i].name != NULL; i++) {
+		value = variables[i].dflt;
+
+		cp = cf_pair_find(cs, variables[i].name);
+		if (cp) {
+			value = cp->value;
+		}
+		
+		switch (variables[i].type)
+		{
+		case PW_TYPE_BOOLEAN:
+			/*
+			 *	Allow yes/no and on/off
+			 */
+			if ((strcasecmp(value, "yes") == 0) ||
+			    (strcasecmp(value, "on") == 0)) {
+				*(int *)variables[i].data = 1;
+			} else if ((strcasecmp(value, "no") == 0) ||
+				   (strcasecmp(value, "off") == 0)) {
+				*(int *)variables[i].data = 0;
+			} else {
+				*(int *)variables[i].data = 0;
+				radlog(L_ERR, "Bad value \"%s\" for boolean variable %s", value, variables[i].name);
+				return -1;
+			}
+			DEBUG2("Config: %s.%s = %s",
+			       cs->name1,
+			       variables[i].name,
+			       value);
+			break;
+
+		case PW_TYPE_INTEGER:
+			*(int *)variables[i].data = strtol(value, 0, 0);
+			DEBUG2("Config: %s.%s = %d",
+			       cs->name1,
+			       variables[i].name,
+			       *(int *)variables[i].data);
+			break;
+			
+		case PW_TYPE_STRING_PTR:
+			q = (char **) variables[i].data;
+			if (*q != NULL) {
+				free(*q);
+			}
+
+			/*
+			 *	Expand variables while parsing.
+			 */
+			if (value) {
+			  cf_expand_variables(NULL, 0, cs, buffer, value);
+			  value = buffer;
+			}
+
+			DEBUG2("Config: %s.%s = \"%s\"",
+			       cs->name1,
+			       variables[i].name,
+			       value ? value : "(null)");
+			*q = value ? strdup(value) : NULL;
+			break;
+
+		case PW_TYPE_IPADDR:
+			/*
+			 *	Allow '*' as any address
+			 */
+			if (strcmp(value, "*") == 0) {
+				*(uint32_t *) variables[i].data = 0;
+				break;
+			}
+			ipaddr = ip_getaddr(value);
+			if (ipaddr == 0) {
+				radlog(L_ERR, "Can't find IP address for host %s", value);
+				return -1;
+			}
+			DEBUG2("Config: %s.%s = %s IP address [%s]",
+			       cs->name1,
+			       variables[i].name,
+			       value, ip_ntoa(buffer, ipaddr));
+			*(uint32_t *) variables[i].data = ipaddr;
+			break;
+			
+		default:
+			radlog(L_ERR, "type %d not supported yet", variables[i].type);
+			return -1;
+			break;
+		} /* switch over variable type */
+	} /* for all variables in the configuration section */
+	
+	return 0;
 }
 
 /*
