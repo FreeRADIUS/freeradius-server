@@ -608,7 +608,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	int     acctstatustype = 0;
 	char    querystr[MAX_QUERY_LEN];
 	char    logstr[MAX_QUERY_LEN];
-	char	sqlusername[MAX_STRING_LEN];
+	char	sqlusername[2 * MAX_STRING_LEN + 10];
 
 #ifdef CISCO_ACCOUNTING_HACK
 	int     acctsessiontime = 0;
