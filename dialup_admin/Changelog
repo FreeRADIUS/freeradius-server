@@ -12,6 +12,8 @@ Ver 1.68:
 * Add a force directive in log_badlogins. If uncommented it will force inserts even if there are
   sql errors. That can help in case there is one sql query which stops the whole failed logins
   logging system from working
+* Sort the servers list in failed_logins,user_stats,stats
+* Add the /bin postgresql compatibility patch from Guy Fraser
 Ver 1.65:
 * Add a captions.conf file with a few configurable captions for now
 * Move the nas list to a separate file called naslist.conf

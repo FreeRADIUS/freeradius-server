@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #
 # Log failed logins in the sql database
-# Works only with mysql
+# Works with mysql and postgresql
 # It will read the sql parameters from the admin.conf file
 #
 # Usage:
@@ -29,7 +29,7 @@ $all_file=shift||'no';
 # CHANGE THESE TO MATCH YOUR SETUP
 #
 #$regexp = 'from client localhost port 135|from client blabla ';
-$tmpfile='/var/tmp/mysql.input';
+$tmpfile='/var/tmp/sql.input';
 #
 #
 
@@ -38,6 +38,9 @@ open CONF, "<$conf"
 while(<CONF>){
 	chomp;
 	($key,$val)=(split /:\s*/,$_);
+	# Fixme : recursivly solve %{.*} replacement for $val
+	# Fixme: Conf should be put in an associative array
+	$sql_type = $val if ($key eq 'sql_type');
 	$sql_server = $val if ($key eq 'sql_server');
 	$sql_username = $val if ($key eq 'sql_username');
 	$sql_password = $val if ($key eq 'sql_password');
@@ -49,16 +52,52 @@ while(<CONF>){
 	$domain = $val if ($key eq 'general_domain');
 	$sql_timeout = $val if ($key eq 'sql_connect_timeout');
 	$sql_extra = $val if ($key eq 'sql_extra_servers');
-	$mysql = $val if ($key eq 'sql_command');
+	$sqlcmd = $val if ($key eq 'sql_command');
+	$clients= $val if ($key eq 'general_clients_conf');
 }
 close CONF;
+
+open CLIENTS, "<$clients"
+	or die "Could not open $clients file\n";
+while(<CLIENTS>){
+	chomp;
+	s/^\s*//g;
+	s/\s*#.*//g;
+	if (!/^\s*$/ && /=/) {
+		($key,$val)=(split /\s*=\s*/,$_);
+		$client_short = $val if ($key eq 'shortname');
+	} else {
+		if (/\{/) {
+			s/.*client\s+([^\s]*)\s+\{.*$/\1/;
+			if (/^\d+\.\d+\.\d+\.\d+/) {
+				$client = $_;
+			} else {
+				if (/\./ || /localhost/) {
+					$name = $_ ;
+				} else {
+					$name = $_.".".$domain;
+				}
+				$addr = gethostbyname $name;
+				($a,$b,$c,$d)=unpack('C4',$addr);
+				$client = "$a.$b.$c.$d";
+#DEBUG#				print $name." = ".$client."\n";
+			}
+		} else {
+			if (/\}/) {
+				$client_array{$client_short} .= $client;
+			}
+		}
+	}
+}
+close CLIENTS;
+
 $realm_del = '@' if ($realm_del eq '');
 $realm_for = 'suffix' if ($realm_for eq '');
 $pass = ($sql_password ne '') ? "-p$sql_password" : '';
 die "SQL server not defined\n" if ($sql_server eq '');
 
-die "sql_command directive is not set in admin.conf\n" if ($mysql eq '');
-die "Could not find mysql binary. Please make sure that the \$mysql variable points to the right location\n" if (! -x $mysql);
+die "sql_command directive is not set in admin.conf\n" if ($sqlcmd eq '');
+die "Could not find sql binary. Please make sure that the \$sqlcmd variable points to the right location\n" if (! -x $sqlcmd);
 
 $opt = "";
 $opt = "-O connect_timeout=$sql_timeout" if ($sql_timeout);
@@ -129,13 +168,8 @@ for(;;){
 				$caller='' if (!defined($caller));
 				$user =~s/[^\w\-\.\d\!\@\s]//g;
 				$nas =~s/[^\w\.]//g;
-				if ($nas ne 'localhost' && $nas !~ /\.$domain$/){
-					$nas .= ".$domain";
-				}
 				$port =~s/[^\d]//g;
-				$addr = gethostbyname $nas;
-				($a,$b,$c,$d)=unpack('C4',$addr);
-				$addr = "$a.$b.$c.$d";
+				$addr = $client_array{$nas};
 				if ($user ne '' && $realm_strip eq 'yes'){
 					($one,$two) = (split /$realm_del/, $user)[0,1];
 					if ($two ne ''){
@@ -153,9 +187,13 @@ for(;;){
 					$ctx->add($time);
 					$ctx->add('badlogin');
 					$uniqueid = $ctx->hexdigest;
+#DEBUG#					print "INSERT INTO $sql_accounting_table (UserName,AcctUniqueId,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$uniqueid','$addr','$port','$time','$time','0','0','0','$caller','$cause');\n";
 					print TMP "INSERT INTO $sql_accounting_table (UserName,AcctUniqueId,NASIPAddress,NASPortId,AcctStartTime,AcctStopTime,AcctSessionTime,AcctInputOctets,AcctOutputOctets,CallingStationId,AcctTerminateCause) VALUES ('$user','$uniqueid','$addr','$port','$time','$time','0','0','0','$caller','$cause');\n";
 					close TMP;
-					`$mysql -h$server $opt -u$sql_username $pass $sql_database <$tmpfile.$server`;
+					$command = "$sqlcmd -h$server $opt -u$sql_username $pass $sql_database <$tmpfile.$server" if ($sql_type eq 'mysql');
+					$command = "$sqlcmd  -U $sql_username -f $tmpfile.$server $sql_database" if ($sql_type eq 'pg');
+					`$command`;
+
 					$exit = $? >> 8;
 					$delete{$server} = ($exit == 0) ? 1 : 0;
 					print "ERROR: SQL query failed for host $server\n" if ($exit != 0);
@@ -163,6 +201,10 @@ for(;;){
 			}
 		}
 	}
-	sleep 2;
-	seek LOG,0,1;
+	if ($all_file ne 'once') {
+		sleep 2;
+		seek LOG,0,1;
+	} else {
+		exit(0);
+	}
 }

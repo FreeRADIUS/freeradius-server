@@ -193,13 +193,21 @@ while(1){
 		break;
 	}
 	$name_ip = 'nas' . $i . '_ip';
-	if ($server == $config[$name_ip])
-		echo "<option selected value=\"$config[$name_ip]\">$config[$name]\n";
+	$ip = $config[$name_ip];
+	$name = $config[$name];
+	$servers[$name] = $ip;
+}
+ksort($servers);
+foreach ($servers as $name => $ip){
+	if ($server == $ip)
+		echo "<option selected value=\"$ip\">$name\n";
 	else
-		echo "<option value=\"$config[$name_ip]\">$config[$name]\n";
+		echo "<option value=\"$ip\">$name\n";
 }
 if ($server == '' || $server == 'all')
 	echo "<option selected value=\"all\">all\n";
+else
+	echo "<option value=\"all\">all\n";
 ?>
 </select>
 </td></tr>

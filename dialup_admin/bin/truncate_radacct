@@ -2,6 +2,7 @@
 #
 # Delete sessions from the radacct table which are older than
 # $back_days
+# Works with mysql and postgresql
 #
 use POSIX;
 
@@ -14,30 +15,33 @@ open CONF, "<$conf"
 while(<CONF>){
 	chomp;
 	($key,$val)=(split /:\s*/,$_);
+	$sql_type = $val if ($key eq 'sql_type');
 	$sql_server = $val if ($key eq 'sql_server');
 	$sql_username = $val if ($key eq 'sql_username');
 	$sql_password = $val if ($key eq 'sql_password');
 	$sql_database = $val if ($key eq 'sql_database');
 	$sql_accounting_table = $val if ($key eq 'sql_accounting_table');
-	$mysql = $val if ($key eq 'sql_command');
+	$sqlcmd = $val if ($key eq 'sql_command');
 }
 close CONF;
 
-die "sql_command directive is not set in admin.conf\n" if ($mysql eq '');
-die "Could not find mysql binary. Please make sure that the \$mysql variable points to the right location\n" if (! -x $mysql);
+die "sql_command directive is not set in admin.conf\n" if ($sqlcmd eq '');
+die "Could not find sql binary. Please make sure that the \$sqlcmd variable points to the right location\n" if (! -x $sqlcmd);
 
 $sql_password = ($sql_password eq '') ? '' : "-p$sql_password";
 
 ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime;
 $date = POSIX::strftime("%Y-%m-%d %T",$sec,$min,$hour,($mday - $back_days),$mon,$year,$wday,$yday,$isdst);
 print "$date\n";
-
-$query = "LOCK TABLES $sql_accounting_table WRITE;";
-$query .= "DELETE FROM $sql_accounting_table WHERE AcctStopTime < '$date' AND AcctStopTime != 0;";
-$query .= "UNLOCK TABLES;";
+$query = "";
+$query = "LOCK TABLES $sql_accounting_table WRITE;" if ($sql_type eq 'mysql');
+$query .= "DELETE FROM $sql_accounting_table WHERE AcctStopTime < '$date' AND AcctStopTime IS NOT NULL ;";
+$query .= "UNLOCK TABLES;" if ($sql_type eq 'mysql');
 print "$query\n";
 open TMP, ">/tmp/truncate_radacct.query"
         or die "Could not open tmp file\n";
 print TMP $query;
 close TMP;
-`$mysql -h$sql_server -u$sql_username $sql_password $sql_database </tmp/truncate_radacct.query`;
+$command = "$sqlcmd -h$sql_server -u$sql_username $sql_password $sql_database </tmp/truncate_radacct.query" if ($sql_type eq 'mysql');
+$command = "$sqlcmd  -U $sql_username -f /tmp/truncate_radacct.query $sql_database" if ($sql_type eq 'pg');
+`$command`;

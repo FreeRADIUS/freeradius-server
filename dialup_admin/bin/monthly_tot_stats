@@ -5,8 +5,10 @@ use POSIX;
 # each user spaning in one month period.
 # If the current month has not ended it will log information up to
 # the current month day
+# Works only with mysql and postgresql
+#
 
-$conf=shift||'/usr/local/dialupadmin/conf/admin.conf';
+$conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
 
 
 open CONF, "<$conf"
@@ -14,17 +16,18 @@ open CONF, "<$conf"
 while(<CONF>){
 	chomp;
 	($key,$val)=(split /:\s*/,$_);
+	$sql_type = $val if ($key eq 'sql_type');
 	$sql_server = $val if ($key eq 'sql_server');
 	$sql_username = $val if ($key eq 'sql_username');
 	$sql_password = $val if ($key eq 'sql_password');
 	$sql_database = $val if ($key eq 'sql_database');
 	$sql_accounting_table = $val if ($key eq 'sql_accounting_table');
-	$mysql = $val if ($key eq 'sql_command');
+	$sqlcmd = $val if ($key eq 'sql_command');
 }
 close CONF;
 
-die "sql_command directive is not set in admin.conf\n" if ($mysql eq '');
-die "Could not find mysql binary. Please make sure that the \$mysql variable points to the right location\n" if (! -x $mysql);
+die "sql_command directive is not set in admin.conf\n" if ($sqlcmd eq '');
+die "Could not find sql binary. Please make sure that the \$sqlcmd variable points to the right location\n" if (! -x $sqlcmd);
 
 $sql_password = ($sql_password == '') ? '' : "-p$sql_password";
 
@@ -42,7 +45,7 @@ $query2 = "INSERT INTO mtotacct (UserName,AcctDate,ConnNum,ConnTotDuration,
 	MAX(ConnMaxDuration),MIN(ConnMinDuration),SUM(InputOctets),
 	SUM(OutputOctets),NASIPAddress FROM totacct
 	WHERE AcctDate >= '$date_start' AND
-	AcctDate <= '$date_end' GROUP BY UserName;";
+	AcctDate <= '$date_end' GROUP BY UserName,NASIPAddress;";
 print "$query1\n";
 print "$query2\n";
 open TMP, ">/tmp/tot_stats.query"
@@ -50,4 +53,6 @@ open TMP, ">/tmp/tot_stats.query"
 print TMP $query1;
 print TMP $query2;
 close TMP;
-`$mysql -h $sql_server -u $sql_username $sql_password $sql_database </tmp/tot_stats.query`;
+$command = "$sqlcmd -h $sql_server -u $sql_username $sql_password $sql_database </tmp/tot_stats.query" if ($sql_type eq 'mysql');
+$command = "$sqlcmd  -U $sql_username -f /tmp/tot_stats.query $sql_database" if ($sql_type eq 'pg');
+`$command`;

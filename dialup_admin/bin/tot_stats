@@ -4,9 +4,10 @@ use POSIX;
 # Log in the totacct table aggregated daily accounting information for
 # each user.
 # We keep a row per user for each day.
+# Works with mysql and postgresql
+#
 
-
-$conf=shift||'/usr/local/dialupadmin/conf/admin.conf';
+$conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
 
 
 open CONF, "<$conf"
@@ -14,17 +15,18 @@ open CONF, "<$conf"
 while(<CONF>){
 	chomp;
 	($key,$val)=(split /:\s*/,$_);
+	$sql_type = $val if ($key eq 'sql_type');
 	$sql_server = $val if ($key eq 'sql_server');
 	$sql_username = $val if ($key eq 'sql_username');
 	$sql_password = $val if ($key eq 'sql_password');
 	$sql_database = $val if ($key eq 'sql_database');
 	$sql_accounting_table = $val if ($key eq 'sql_accounting_table');
-	$mysql = $val if ($key eq 'sql_command');
+	$sqlcmd = $val if ($key eq 'sql_command');
 }
 close CONF;
 
-die "sql_command directive is not set in admin.conf\n" if ($mysql eq '');
-die "Could not find mysql binary. Please make sure that the \$mysql variable points to the right location\n" if (! -x $mysql);
+die "sql_command directive is not set in admin.conf\n" if ($sqlcmd eq '');
+die "Could not find sql binary. Please make sure that the \$sqlcmd variable points to the right location\n" if (! -x $sqlcmd);
 
 $sql_password = ($sql_password == '') ? '' : "-p$sql_password";
 
@@ -33,16 +35,21 @@ $date_start = POSIX::strftime("%Y-%m-%d %T",0,0,0,($mday - 1),$mon,$year,$wday,$
 $date_small_start = POSIX::strftime("%Y-%m-%d",0,0,0,($mday - 1),$mon,$year,$wday,$yday,$isdst);
 $date_end = POSIX::strftime("%Y-%m-%d %T",0,0,0,$mday,$mon,$year,$wday,$yday,$isdst);
 
-$query = "INSERT INTO totacct (UserName,AcctDate,ConnNum,ConnTotDuration,
+$query1 = "DELETE FROM totacct WHERE AcctDate = '$date_start';";
+$query2 = "INSERT INTO totacct (UserName,AcctDate,ConnNum,ConnTotDuration,
 	ConnMaxDuration,ConnMinDuration,InputOctets,OutputOctets,NASIPAddress)
 	SELECT UserName,'$date_small_start',COUNT(*),SUM(AcctSessionTime),
 	MAX(AcctSessionTime),MIN(AcctSessionTime),SUM(AcctInputOctets),
 	SUM(AcctOutputOctets),NASIPAddress FROM radacct
 	WHERE AcctStopTime >= '$date_start' AND
-	AcctStopTime < '$date_end' GROUP BY UserName;";
-print "$query\n";
+	AcctStopTime < '$date_end' GROUP BY UserName,NASIPAddress;";
+print "$query1\n";
+print "$query2\n";
 open TMP, ">/tmp/tot_stats.query"
 	or die "Could not open tmp file\n";
-print TMP $query;
+print TMP $query1;
+print TMP $query2;
 close TMP;
-`$mysql -h $sql_server -u $sql_username $sql_password $sql_database </tmp/tot_stats.query`;
+$command = "$sqlcmd -h $sql_server -u $sql_username $sql_password $sql_database </tmp/tot_stats.query" if ($sql_type eq 'mysql');
+$command = "$sqlcmd  -U $sql_username -f /tmp/tot_stats.query $sql_database" if ($sql_type eq 'pg');
+`$command`;

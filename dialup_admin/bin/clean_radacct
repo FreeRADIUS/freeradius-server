@@ -2,6 +2,7 @@
 #
 # Clean stale open sessions from the radacct table.
 # we only clean up sessions which are older than $back_days
+# Works with mysql and postgresql
 #
 use POSIX;
 
@@ -14,17 +15,18 @@ open CONF, "<$conf"
 while(<CONF>){
 	chomp;
 	($key,$val)=(split /:\s*/,$_);
+	$sql_type = $val if ($key eq 'sql_type');
 	$sql_server = $val if ($key eq 'sql_server');
 	$sql_username = $val if ($key eq 'sql_username');
 	$sql_password = $val if ($key eq 'sql_password');
 	$sql_database = $val if ($key eq 'sql_database');
 	$sql_accounting_table = $val if ($key eq 'sql_accounting_table');
-	$mysql = $val if ($key eq 'sql_command');
+	$sqlcmd = $val if ($key eq 'sql_command');
 }
 close CONF;
 
-die "sql_command directive is not set in admin.conf\n" if ($mysql eq '');
-die "Could not find mysql binary. Please make sure that the \$mysql variable points to the right location\n" if (! -x $mysql);
+die "sql_command directive is not set in admin.conf\n" if ($sqlcmd eq '');
+die "Could not find sql binary. Please make sure that the \$sqlcmd variable points to the right location\n" if (! -x $sqlcmd);
 
 $sql_password = ($sql_password eq '') ? '' : "-p$sql_password";
 
@@ -32,10 +34,12 @@ $sql_password = ($sql_password eq '') ? '' : "-p$sql_password";
 $date = POSIX::strftime("%Y-%m-%d %T",$sec,$min,$hour,($mday - $back_days),$mon,$year,$wday,$yday,$isdst);
 print "$date\n";
 
-$query = "DELETE FROM $sql_accounting_table WHERE AcctStopTime = '0' AND AcctStartTime < '$date';";
+$query = "DELETE FROM $sql_accounting_table WHERE AcctStopTime IS NULL AND AcctStartTime < '$date';";
 print "$query\n";
 open TMP, ">/tmp/clean_radacct.query"
         or die "Could not open tmp file\n";
 print TMP $query;
 close TMP;
-`$mysql -h$sql_server -u$sql_username $sql_password $sql_database </tmp/clean_radacct.query`;
+$command = "$sqlcmd -h$sql_server -u$sql_username $sql_password $sql_database </tmp/clean_radacct.query" if ($sql_type eq 'mysql');
+$command = "$sqlcmd  -U $sql_username -f /tmp/clean_radacct.query $sql_database" if ($sql_type eq 'pg');
+`$command`;

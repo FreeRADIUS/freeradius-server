@@ -89,6 +89,7 @@ while(1){
 	$servers[$name] = $config[$ip];
 	$i++;
 }
+ksort($servers);
 if ($server != 'all' && $server != '')
 	$s = "AND nasipaddress = '$server'";
 
