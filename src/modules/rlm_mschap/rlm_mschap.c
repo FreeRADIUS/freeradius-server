@@ -243,13 +243,13 @@ static void mschap2(const char *peer_challenge, const char *auth_challenge,
  *	according to RFC 2759 GenerateAuthenticatorResponse()
  *	returns 42-octet response string
  */
-static void auth_response(const char *username, const char *nt_password,
+static void auth_response(const char *username,
+			  const char *nt_hash_hash,
 			  char *ntresponse,
 			  char *peer_challenge, char *auth_challenge,
 			  char *response)
 {
 	SHA1_CTX Context;
-	char hashhash[16];
 	const char magic1[39] =
 	{0x4D, 0x61, 0x67, 0x69, 0x63, 0x20, 0x73, 0x65, 0x72, 0x76,
 	 0x65, 0x72, 0x20, 0x74, 0x6F, 0x20, 0x63, 0x6C, 0x69, 0x65,
@@ -266,14 +266,8 @@ static void auth_response(const char *username, const char *nt_password,
         char challenge[8];
         char digest[20];
 
-	/*
-	 * Hash password hash into hashhash
-	 */
-
-	md4_calc(hashhash, nt_password, 16);
-
 	SHA1Init(&Context);
-	SHA1Update(&Context, hashhash, 16);
+	SHA1Update(&Context, nt_hash_hash, 16);
 	SHA1Update(&Context, ntresponse, 24);
 	SHA1Update(&Context, magic1, 39);
 	SHA1Final(digest, &Context);
@@ -1107,7 +1101,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		/*
 		 *	with_ntdomain_hack moved here
 		 */
-		if((username_string = strchr(username->strvalue, '\\')) != NULL) {
+		if ((username_string = strchr(username->strvalue, '\\')) != NULL) {
 		        if(inst->with_ntdomain_hack) {
 			        username_string++;
 			} else {
@@ -1138,11 +1132,17 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			return RLM_MODULE_REJECT;
 		}
 
-		auth_response(username_string,
-			      nt_password->strvalue, calculated,
-			      response->strvalue + 2,
-			      challenge->strvalue,
-			      msch2resp);
+		/*
+		 *	Get the NT-hash-hash
+		 */
+		md4_calc(calculated, nt_password->strvalue, 16);
+
+		auth_response(username_string, /* without the domain */
+			      calculated, /* nt-hash-hash */
+			      response->strvalue + 26, /* peer response */
+			      response->strvalue + 2, /* peer challenge */
+			      challenge->strvalue, /* our challenge */
+			      msch2resp); /* calculated MPPE key */
 		add_reply( &request->reply->vps, *response->strvalue,
 			   "MS-CHAP2-Success", msch2resp, 42);
 		chap = 2;
