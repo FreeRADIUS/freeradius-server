@@ -22,7 +22,7 @@
 #include <stdint.h>
 #endif
 
-#include "sha1.h"
+#include "../include/sha1.h"
 
 #define blk0(i) (block->l[i] = htonl(block->l[i]))
 
@@ -46,15 +46,15 @@
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
 
-void SHA1Transform(unsigned long state[5], const unsigned char buffer[64])
+void SHA1Transform(uint32_t state[5], const uint8_t buffer[64])
 {
-  unsigned long a, b, c, d, e;
+  uint32_t a, b, c, d, e;
   typedef union {
-    unsigned char c[64];
-    unsigned long l[16];
+    uint8_t c[64];
+    uint32_t l[16];
   } CHAR64LONG16;
   CHAR64LONG16 *block;
-  static unsigned char workspace[64];
+  uint8_t workspace[64];
 
     block = (CHAR64LONG16*)workspace;
     memcpy(block, buffer, 64);
@@ -112,7 +112,7 @@ void SHA1Init(SHA1_CTX* context)
 
 /* Run your data through this. */
 
-void SHA1Update(SHA1_CTX* context, const unsigned char* data, unsigned int len)
+void SHA1Update(SHA1_CTX* context, const uint8_t* data, unsigned int len)
 {
 unsigned int i, j;
 
@@ -134,13 +134,13 @@ unsigned int i, j;
 
 /* Add padding and return the message digest. */
 
-void SHA1Final(unsigned char digest[20], SHA1_CTX* context)
+void SHA1Final(uint8_t digest[20], SHA1_CTX* context)
 {
-unsigned long i, j;
-unsigned char finalcount[8];
+uint32_t i, j;
+uint8_t finalcount[8];
 
     for (i = 0; i < 8; i++) {
-        finalcount[i] = (unsigned char)((context->count[(i >= 4 ? 0 : 1)]
+        finalcount[i] = (uint8_t)((context->count[(i >= 4 ? 0 : 1)]
          >> ((3-(i & 3)) * 8) ) & 255);  /* Endian independent */
     }
     SHA1Update(context, "\200", 1);
@@ -149,7 +149,7 @@ unsigned char finalcount[8];
     }
     SHA1Update(context, finalcount, 8);  /* Should cause a SHA1Transform() */
     for (i = 0; i < 20; i++) {
-        digest[i] = (unsigned char)
+        digest[i] = (uint8_t)
          ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
     }
     /* Wipe variables */
@@ -163,12 +163,12 @@ unsigned char finalcount[8];
 #endif
 }
 
-void SHA1FinalNoLen(unsigned char digest[20], SHA1_CTX* context)
+void SHA1FinalNoLen(uint8_t digest[20], SHA1_CTX* context)
 {
-  unsigned long i, j;
+  uint32_t i, j;
 
     for (i = 0; i < 20; i++) {
-        digest[i] = (unsigned char)
+        digest[i] = (uint8_t)
          ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
     }
 

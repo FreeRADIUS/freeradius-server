@@ -12,21 +12,21 @@
 #define SHA1Final       	librad_SHA1Final
 
 typedef struct {
-    unsigned long state[5];
-    unsigned long count[2];
-    unsigned char buffer[64];
+    uint32_t state[5];
+    uint32_t count[2];
+    uint8_t buffer[64];
 } SHA1_CTX;
 
-void SHA1Transform(unsigned long state[5], const unsigned char buffer[64]);
+void SHA1Transform(uint32_t state[5], const uint8_t buffer[64]);
 void SHA1Init(SHA1_CTX* context);
-void SHA1Update(SHA1_CTX* context, const unsigned char* data, unsigned int len);
-void SHA1Final(unsigned char digest[20], SHA1_CTX* context);
+void SHA1Update(SHA1_CTX* context, const uint8_t* data, unsigned int len);
+void SHA1Final(uint8_t digest[20], SHA1_CTX* context);
 
 /*
  * this version implements a raw SHA1 transform, no length is appended,
  * nor any 128s out to the block size.
  */
-void SHA1FinalNoLen(unsigned char digest[20], SHA1_CTX* context);
+void SHA1FinalNoLen(uint8_t digest[20], SHA1_CTX* context);
 
 /*
  * FIPS 186-2 PRF based upon SHA1.
