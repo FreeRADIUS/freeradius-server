@@ -1057,9 +1057,9 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 				if (strcmp(row[7],"SLIP") == 0)
 					proto = 'S';
 
-			session_zap(request->packet->sockfd,
-			nas_addr,nas_port,row[2],row[1],
-			framed_addr, proto,0);
+			session_zap(request,
+				    nas_addr,nas_port,row[2],row[1],
+				    framed_addr, proto);
 		}
 	}
 
