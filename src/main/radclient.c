@@ -81,7 +81,6 @@ int main(int argc, char **argv)
 {
 	RADIUS_PACKET	*req;
 	RADIUS_PACKET	*rep = NULL;
-	VALUE_PAIR	*vp;
 	struct timeval	tv;
 	char		*p;
 	char		*secret = "secret";
@@ -193,12 +192,6 @@ int main(int argc, char **argv)
 	if ((req->vps = readvp(fp)) == NULL) {
 		exit(1);
 	}
-
-	/*
-	 *	Find the password pair and encode it.
-	 */
-	if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL)
-		rad_pwencode(vp->strvalue, &(vp->length), secret, req->vector);
 
 	/*
 	 *	Send request.

@@ -152,6 +152,19 @@ int rad_send(RADIUS_PACKET *packet, int activefd, char *secret)
 		switch(reply->type) {
 
 		case PW_TYPE_STRING:
+		  	/*
+			 *	If it's a password, encode it.
+			 */
+			if (!vendorpec) {
+				if (reply->attribute == PW_PASSWORD) {
+				  rad_pwencode(reply->strvalue,
+					       &(reply->length),
+					       secret, packet->vector);
+				} else if (reply->attribute == PW_CHAP_PASSWORD) {
+				  /* FIXME: encode it with CHAP-Challenge */
+				} 
+			}
+
 			/*
 			 *	FIXME: this is just to make sure but
 			 *	should NOT be needed. In fact I have no
@@ -455,9 +468,10 @@ int rad_decode(RADIUS_PACKET *packet, char *secret)
 		case PW_ACCOUNTING_REQUEST:
 			if (calc_acctdigest(packet, secret,
 			    packet->data, length) > 1) {
+				char buffer[32];
 				librad_log("Received accounting packet "
 				    "from %s with invalid signature!",
-				    inet_ntoa(*(struct in_addr*)&(packet->src_ipaddr)));
+				    ip_ntoa(buffer, packet->src_ipaddr));
 				return 1;
 			}
 			break;
@@ -492,7 +506,7 @@ int rad_decode(RADIUS_PACKET *packet, char *secret)
 			attribute = *ptr++;
 			attrlen   = *ptr++;
 		}
-		if (attrlen < 2) {
+		if (attrlen < 2) { /* rad_recv() now handles this check */
 			length = 0;
 			continue;
 		}
@@ -536,8 +550,9 @@ int rad_decode(RADIUS_PACKET *packet, char *secret)
 			DEBUG("attribute %d too long, %d >= %d\n", attribute,
 				attrlen, MAX_STRING_LEN);
 		}
+		/* rad_recv() now handles this check */
 		else if ( attrlen > length ) {
-			DEBUG("attribute %d longer as buffer left, %d > %d\n",
+			DEBUG("attribute %d longer than buffer left, %d > %d\n",
 				attribute, attrlen, length);
 		}
 		else {
@@ -550,6 +565,7 @@ int rad_decode(RADIUS_PACKET *packet, char *secret)
 				errno = ENOMEM;
 				return -1;
 			}
+
 			memset(pair, 0, sizeof(VALUE_PAIR));
 			if ((attr = dict_attrbyvalue(attribute)) == NULL) {
 				sprintf(pair->name, "Attr-%d", attribute);
@@ -564,43 +580,55 @@ int rad_decode(RADIUS_PACKET *packet, char *secret)
 
 			switch (attr->type) {
 
+			case PW_TYPE_OCTETS:
 #ifdef ASCEND_BINARY
 			case PW_TYPE_ABINARY:
 #endif			 
 			case PW_TYPE_STRING:
 				/* attrlen always < MAX_STRING_LEN */
 				memcpy(pair->strvalue, ptr, attrlen);
-				debug_pair(pair);
-				if (first_pair == NULL)
-					first_pair = pair;
-				else
-					prev->next = pair;
-				prev = pair;
 				break;
 			
 			case PW_TYPE_INTEGER:
 			case PW_TYPE_DATE:
 			case PW_TYPE_IPADDR:
-				memcpy(&lvalue, ptr, sizeof(UINT4));
+				/*
+				 *	Check for RFC compliance.
+				 *	If the attribute isn't compliant,
+				 *	turn it into a string of raw octets.
+				 *
+				 *	Also set the lvalue to something
+				 *	which should never match anything.
+				 */
+				if (attrlen != 4) {
+					pair->type = PW_TYPE_OCTETS;
+					memcpy(pair->strvalue, ptr, attrlen);
+					pair->lvalue = 0xbaddbadd;
+					break;
+				}
+				memcpy(&lvalue, ptr, 4);
 				if (attr->type != PW_TYPE_IPADDR)
 					pair->lvalue = ntohl(lvalue);
 				else
 					pair->lvalue = lvalue;
-				debug_pair(pair);
-				if (first_pair == NULL)
-					first_pair = pair;
-				else
-					prev->next = pair;
-				prev = pair;
 				break;
 			
 			default:
 				DEBUG("    %s (Unknown Type %d)\n",
 					attr->name,attr->type);
 				free(pair);
+				pair = NULL;
 				break;
 			}
 
+			if (pair) {
+				debug_pair(pair);
+				if (first_pair == NULL)
+					first_pair = pair;
+				else
+				  	prev->next = pair;
+				prev = pair;
+			}
 		}
 		ptr += attrlen;
 		length -= attrlen;

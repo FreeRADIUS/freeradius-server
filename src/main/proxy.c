@@ -278,14 +278,12 @@ int proxy_send(REQUEST *request, int activefd)
 	proxy_addinfo(request->proxy);
 
 	/*
-	 *	We need to re-encode the password with
-	 *	the new secret.
+	 *	We need to decode the password with the secret.
+	 *	rad_send() will re-encode it for us.
 	 */
 	if (passpair) {
 		rad_pwdecode(passpair->strvalue, passpair->length,
 			request->secret, request->packet->vector);
-		rad_pwencode(passpair->strvalue, &(passpair->length),
-			client->secret, request->packet->vector);
 	}
 
 	/*
