@@ -58,9 +58,7 @@ static int krb5_auth(void *instance, REQUEST *request)
                 KRB5_TGS_NAME
         };
         krb5_creds kcreds;
-	char *user, *pass;
-
-	radlog(L_AUTH, "rlm_krb5: krb5_auth started.");
+	const char *user, *pass;
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -101,8 +99,8 @@ static int krb5_auth(void *instance, REQUEST *request)
 	memset((char *)&kcreds, 0, sizeof(kcreds));
 	
 	if ( (r = krb5_parse_name(context, user, &kcreds.client)) ) {
-		radlog(L_AUTH, "rlm_krb5: krb5_parse_name failed: %s",
-			error_message(r));
+		radlog(L_AUTH, "rlm_krb5: [%s] krb5_parse_name failed: %s",
+			name, error_message(r));
 		return RLM_MODULE_REJECT;
 	}
 
@@ -114,15 +112,15 @@ static int krb5_auth(void *instance, REQUEST *request)
 		krb5_princ_realm(context, kcreds.client)->length,
 		krb5_princ_realm(context, kcreds.client)->data,
 		0)) ) {
-		radlog(L_AUTH, "rlm_krb5: krb5_build_principal_ext failed: %s",
-			error_message(r));
+		radlog(L_AUTH, "rlm_krb5: [%s] krb5_build_principal_ext failed: %s",
+			name, error_message(r));
 		return RLM_MODULE_REJECT;
 	}
 
 	if ( (r = krb5_get_in_tkt_with_password(context,
 		0, NULL, NULL, NULL, pass, 0, &kcreds, 0)) ) {
-		radlog(L_AUTH, "rlm_krb5: krb5_g_i_t_w_p failed: %s",
-			error_message(r));
+		radlog(L_AUTH, "rlm_krb5: [%s] krb5_g_i_t_w_p failed: %s",
+			name, error_message(r));
 		return RLM_MODULE_REJECT;
 	} else {
 		return RLM_MODULE_OK;
