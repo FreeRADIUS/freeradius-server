@@ -257,18 +257,6 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 }
 
 /*
- *	Authenticate a user.  For now, do nothing.
- */
-static int expr_authenticate(void *instance, REQUEST *request)
-{
-	/* quiet the compiler */
-	instance = instance;
-	request = request;
-	
-	return RLM_MODULE_NOOP;
-}
-
-/*
  * Detach a instance free all ..
  */
 static int expr_detach(void *instance)
@@ -297,7 +285,7 @@ module_t rlm_expr = {
 	NULL,				/* initialization */
 	expr_instantiate,		/* instantiation */
 	{
-		expr_authenticate,	/* authentication */
+		NULL,			/* authentication */
 		NULL,			/* authorization */
 		NULL,			/* pre-accounting */
 		NULL			/* accounting */
