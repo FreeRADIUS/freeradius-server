@@ -921,8 +921,8 @@ sub get_oidext {
 	$oid = $args{'tty'}+1257-1;
     }
     else {
-	$oid = 1257 + 256*int(($args{'ttq'}-1) / $hiper_density) +
-	                     (($args{'ttq'}-1) % $hiper_density);
+	$oid = 1257 + 256*int(($args{'tty'}-1) / $hiper_density) +
+	                     (($args{'tty'}-1) % $hiper_density);
     }
     return($oid);
 }
