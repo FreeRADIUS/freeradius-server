@@ -24,7 +24,7 @@ dynamic:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 install:
-	install -d -m 755 $(libdir)
+	$(INSTALL) -d -m 755 $(libdir)
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 clean:

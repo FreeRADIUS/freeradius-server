@@ -21,20 +21,20 @@ clean:
 
 install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	install -d -m 755	$(mandir);
+	$(INSTALL) -d -m 755	$(mandir);
 	for i in 1 5 8; do \
-		install -d -m 755	$(mandir)/man$$i; \
-		install -m 444 man/man$$i/*.$$i $(mandir)/man$$i; \
+		$(INSTALL) -d -m 755	$(mandir)/man$$i; \
+		$(INSTALL) -m 444 man/man$$i/*.$$i $(mandir)/man$$i; \
 	done
 	@echo "Creating/updating files in $(raddbdir)"; \
-	install -d -m 755	$(raddbdir); \
+	$(INSTALL) -d -m 755	$(raddbdir); \
 	cd raddb; \
 	for i in [a-c]* [e-z]*; do \
 		[ $$i != radiusd.conf.in -a ! -f $(raddbdir)/$$i ] && \
-                install -m 644 $$i $(raddbdir); \
+                $(INSTALL) -m 644 $$i $(raddbdir); \
 	done; \
 	for i in dictionary*; do \
-		[ ! -f $(raddbdir)/$$i ] && install -m 644 $$i $(raddbdir); \
+		[ ! -f $(raddbdir)/$$i ] && $(INSTALL) -m 644 $$i $(raddbdir); \
 		if [ "`find $$i -newer $(raddbdir)/$$i`" ]; then \
 			echo "** $(raddbdir)/$$i"; \
 			nt=1; \
