@@ -116,6 +116,9 @@ static void	sig_hup (int);
 static int	rad_process (REQUEST *, int);
 static void	rad_clean_list(void);
 static REQUEST	*rad_check_list(REQUEST *);
+#ifndef WITH_OLD_PROXY
+static REQUEST *proxy_check_list(REQUEST *request);
+#endif
 #ifndef WITH_THREAD_POOL
 static void	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
@@ -813,6 +816,7 @@ int rad_process(REQUEST *request, int dospawn)
 #ifdef WITH_OLD_PROXY
 			int recvd = proxy_receive(request);
 			if (recvd < 0) {
+				request_free(request);
 				return -1;
 			}
 			replicating = recvd;
@@ -826,6 +830,7 @@ int rad_process(REQUEST *request, int dospawn)
 		    request->packet->code,
 		    client_name(request->packet->src_ipaddr),
 		    request->packet->id);
+		request_free(request);
 		return -1;
 		break;
 	}
@@ -836,13 +841,18 @@ int rad_process(REQUEST *request, int dospawn)
 	 */
 	switch(request->packet->code) {
 
+#ifndef WITH_OLD_PROXY
+	case PW_AUTHENTICATION_ACK:
+	case PW_AUTHENTICATION_REJECT:
+#endif
 	case PW_AUTHENTICATION_REQUEST:
-		DEBUG2("Calling rad_authenticate");
 		fun = rad_authenticate;
 		break;
 	
+#ifndef WITH_OLD_PROXY
+	case PW_ACCOUNTING_RESPONSE:
+#endif
 	case PW_ACCOUNTING_REQUEST:
-		DEBUG2("Calling rad_accounting");
 		fun = rad_accounting;
 		break;
 	
@@ -854,24 +864,17 @@ int rad_process(REQUEST *request, int dospawn)
 		    "- ID %d : IGNORED",
 		    client_name(request->packet->src_ipaddr),
 		    request->packet->id);
+		request_free(request);
 		return -1;
 		break;
 	
-#ifndef WITH_OLD_PROXY
-	case PW_AUTHENTICATION_ACK:
-	case PW_AUTHENTICATION_REJECT:
-	case PW_ACCOUNTING_RESPONSE:
-		DEBUG2("Calling proxy_receive");
-		fun = proxy_receive;
-		break;
-#endif
-
 	default:
 		log(L_ERR, "Unknown packet type %d from client %s "
 		    "- ID %d : IGNORED",
 		    request->packet->code,
 		    client_name(request->packet->src_ipaddr),
 		    request->packet->id);
+		request_free(request);
 		return -1;
 		break;
 	}
@@ -880,6 +883,7 @@ int rad_process(REQUEST *request, int dospawn)
 	 *	If we did NOT select a function, then exit immediately.
 	 */
 	if (!fun) {
+		request_free(request);
 		return 0;
 	}
 
@@ -889,7 +893,6 @@ int rad_process(REQUEST *request, int dospawn)
 	 */
 	request = rad_check_list(request);
 	if (request == NULL) {
-		DEBUG2("Dropped duplicate");
 		return 0;
 	}
 	
@@ -908,6 +911,11 @@ int rad_process(REQUEST *request, int dospawn)
 	 */
 	(*fun)(request);
 	rad_respond(request);
+	
+	/*
+	 *	And the request is in the REQUEST_LIST, so we can't
+	 *	delete it...
+	 */
 
 	return 0;
 }
@@ -1128,7 +1136,7 @@ static REQUEST *rad_check_list(REQUEST *request)
 	 */
 	if ((request->packet->sockfd == proxyfd) ||
 	    (request->proxy != NULL)) {
-		return request;
+		return proxy_check_list(request);
 	}
 #endif
 
@@ -1531,23 +1539,23 @@ static void sig_hup(int sig)
 
 #ifndef WITH_OLD_PROXY
 /*
- *	Do a proxy receive of a packet, when using thread pools.
+ *	Do a proxy check of the REQUEST_LIST when using the new proxy code.
  *
  *	This function is here because it has to access the REQUEST_LIST
  *	structure, which is 'static' to this C file.
  */
-int proxy_receive(REQUEST *request)
+static REQUEST *proxy_check_list(REQUEST *request)
 {
 	int id;
 	REQUEST *oldreq;
 	RADIUS_PACKET *pkt;
-
+	
 	/*
 	 *	Find the original request in the request list
 	 */
 	oldreq = NULL;
 	pkt = request->packet;
-
+	
 	for (id = 0; (id < 256) && (oldreq == NULL); id++) {
 		for (oldreq = request_list[id].first_request ;
 		     oldreq != NULL ;
@@ -1560,35 +1568,26 @@ int proxy_receive(REQUEST *request)
 			}
 		}
 	}
-
+	
 	/*
 	 *	If we haven't found the old request, complain.
 	 */
 	if (oldreq == NULL) {
+		request_free(request);
 		log(L_PROXY, "Unrecognized proxy reply from server %s - ID %d",
 			client_name(request->packet->src_ipaddr),
 			request->packet->id);
-		return -1;
+		return NULL;
 	}
 
 	/*
 	 *	Refresh the old request,. and update it.
 	 */
 	oldreq->timestamp += 5;
-	oldreq->child_pid = request->child_pid;
 	oldreq->proxy_reply = request->packet;
 	request->packet = NULL;
 
-	request->child_pid = NO_SUCH_CHILD_PID;
-	request->finished = TRUE;
-	request->timestamp = 0;
-
-	/*
-	 *	Process the request as if it came in
-	 *	from a NAS, but don't spawn a child thread to handle it.
-	 */
-	rad_process(oldreq, FALSE);
-
-	return 0;
+	request_free(request);
+	return oldreq;
 }
 #endif
