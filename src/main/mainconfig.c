@@ -265,23 +265,34 @@ static int xlat_config(void *instance, REQUEST *request,
 
 	while (cp == NULL) {
 		int flag = 0;
+		char *name2;
 
 		/*
 		 *	Find the next section.
 		 */
+		name2 = NULL;
 		for (p = buffer; (*fmt != 0); p++, fmt++) {
+			if ((p - buffer) >= (sizeof(buffer) - 1)) break;
+
 			/*
 			 *	Allow '.' in names, by skipping over them
 			 *	in array references.  Geez, what a hack..
 			 */
 			*p = *fmt;
-			if (*p == '[') flag++;
-			if (*p == ']') {
-				flag--;
-				if (fmt[1] && (fmt[1] != '.')) {
-					radlog(L_ERR, "config: Unexpected text found after ']' in \"%s\"", start);
+			if (*p == '[') {
+				if (flag > 0) {
+					radlog(L_ERR, "config: Nested '[' in \"%s\"", start);
 					return 0;
 				}
+				flag++;
+				if (!name2) name2 = p;
+			}
+			if (*p == ']') {
+				if (flag == 0) {
+					radlog(L_ERR, "config: Unbalanced ']'");
+					return 0;
+				}
+				flag--;
 			}
 
 			if (*p == '.') {
@@ -292,46 +303,67 @@ static int xlat_config(void *instance, REQUEST *request,
 		*p = '\0';
 
 		/*
+		 *	Rip out name2, if applicable.
+		 */
+		p = NULL;
+		if (name2) {
+			*name2 = '\0';
+			name2++;
+
+			p = strchr(name2, ']');
+			*p = '\0';
+			p++;
+			if (!*p) p = NULL;
+		}
+		
+		/*
 		 *  The character is a '.', find a section (as the user
 		 *  has given us a subsection to find)
 		 */
-		if (*fmt == '.') {
+		if ((name2 != NULL) || (*fmt == '.')) {
 			CONF_SECTION *next;
+			
+			if (*fmt == '.') fmt++;	/* skip the period */
 
-			fmt++;	/* skip the period */
-
-			p = NULL;
 			if (cs == NULL) {
 				next = cf_section_find(buffer);
+			} else if (name2) {
+				next = cf_section_sub_find_name2(cs, buffer,
+								 name2);
 			} else {
-				if ((p = strchr(buffer, '[')) != NULL) {
-					char *q = NULL;
-					*p = '\0';
-					p++;
-					if ((q = strchr(p, ']')) == NULL) {
-						radlog(L_ERR, "config: Unbalanced reference in \"%s\"", start);
-						return 0;
-					}
-					*q = '\0';
-					next = cf_section_sub_find_name2(cs, buffer, p);
-				} else {
-					next = cf_subsection_find_next(cs, NULL, buffer);
-				}
+				next = cf_subsection_find_next(cs, NULL,
+							       buffer);
 			}
-			if (next == NULL) {
-				if (p) {
-					radlog(L_ERR, "config: section \"%s[%s]\" not found while dereferencing \"%s\"", buffer, p, start);
+			if (!next) {
+				if (name2) {
+					radlog(L_ERR, "config: section \"%s %s{}\" not found while dereferencing \"%s\"", buffer, name2, start);
 				} else {
-					radlog(L_ERR, "config: section \"%s\" not found while dereferencing \"%s\"", buffer, start);
+					radlog(L_ERR, "config: section \"%s {}\" not found while dereferencing \"%s\"", buffer, start);
 				}
 				return 0;
 			}
 			cs = next;
 
-		} else {	/* no period, must be a conf-part */
+			if (p) {
+				char *q;
+
+				*p = '\0';
+				p++;
+				q = strchr(p, ']');
+				if (q) *q = '\0';
+				
+				cp = cf_pair_find(cs, p);
+				
+				if (!cp) {
+					radlog(L_ERR, "config: item \"%s\" not found in section \"%s %s{}\"while dereferencing \"%s\"", p, buffer, name2, start);
+					return 0;
+				}
+			}
+
+		} else {	/* no period or name2, must be a conf-part */
 			cp = cf_pair_find(cs, buffer);
 
-			if (cp == NULL) {
+			if (!cp) {
 				radlog(L_ERR, "config: item \"%s\" not found while dereferencing \"%s\"", buffer, start);
 				return 0;
 			}
