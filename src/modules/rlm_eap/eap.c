@@ -423,7 +423,7 @@ int eap_compose(REQUEST *request, EAP_PACKET *reply)
 	 * ID serves to suppport request/response
 	 * retransmission in the EAP layer and as
 	 * such must be different for 'adjacent'
-	 * packets.
+	 * packets except in case of success/failure-replies.
 	 *
 	 * RFC2716 (EAP_TLS) requires this to be
 	 * incremented, RFC2284 only makes the above-
@@ -431,7 +431,16 @@ int eap_compose(REQUEST *request, EAP_PACKET *reply)
 	 */
 	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE);
 	rq = (EAP_PACKET *)eap_msg->strvalue;
-	reply->id = rq->id + 1;
+	reply->id = rq->id;
+
+	switch (reply->code) {
+		case PW_EAP_SUCCESS:
+		case PW_EAP_FAILURE:
+	    		break;
+
+		default:
+	    		++reply->id;
+	}
 
 	if (eap_wireformat(reply) == EAP_INVALID) {
 		return EAP_INVALID;
