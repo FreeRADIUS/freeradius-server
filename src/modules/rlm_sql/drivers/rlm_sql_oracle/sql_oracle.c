@@ -394,7 +394,7 @@ int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	num_fields = sql_num_fields(sqlsocket, config);
 	if (num_fields >= 0) {
-		for(i=0; i < sql_num_fields; i++) {
+		for(i=0; i < num_fields; i++) {
 			free(oracle_sock->results[i]);
 		}
 		free(oracle_sock->results);
