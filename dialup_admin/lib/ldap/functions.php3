@@ -35,13 +35,15 @@ function connect2db($config)
 	return $ds;
 }
 
-function get_user_info($ds,$user,$config)
+function get_user_info($ds,$user,$config,$decode_normal,$k)
 {
 	if ($ds){
 		$attrs = array('cn');
 		$sr=@ldap_search($ds,"$config[ldap_base]", "uid=" . $user,$attrs);
 		$info = @ldap_get_entries($ds, $sr);
 		$cn = $info[0]["cn"][0];
+		if ($cn != '' && $decode_normal == 1)
+			$cn = decode_string($cn,$k);
 		if ($cn == '')
 			$cn = '-';
 		return $cn;

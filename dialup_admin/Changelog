@@ -22,6 +22,8 @@ Ver 1.60:
 * Fix a small issue with the general_accounting_info_order
 * Fix a problem in failed_logins when NASIPAddress is not set.
 * Allow for multiple regular profile attributes in a user entry.
+* Allow for normal ldap user attributes to be utf8 encoded instead of ascii. Changing attribute values through
+  user_info will not work in that case.
 Ver 1.59:
 * Small html fixes in user_edit.php3 and password.php3
 * Show number of failed logins in the last 7 days in the user admin page

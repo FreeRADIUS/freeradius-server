@@ -11,6 +11,14 @@ User Finger Facility
 </head>
 
 <?php
+if ($config[general_decode_normal_attributes] == 'yes'){
+	if (is_file("../lib/lang/$config[general_prefered_lang]/utf8.php3"))
+		include_once("../lib/lang/$config[general_prefered_lang]/utf8.php3");
+	else
+		include_once('../lib/lang/default/utf8.php3');
+	$k = init_decoder();
+	$decode_normal = 1;
+}
 require('../lib/functions.php3');
 require("../lib/$config[general_lib_type]/functions.php3");
 
@@ -90,7 +98,7 @@ if ($link){
 				if ($finger_info[$servers_num][$num]['callerid'] == '')
 					$finger_info[$servers_num][$num]['callerid'] = '-';
 				if ($user_info["$user"] == ''){
-					$user_info["$user"] = get_user_info($link2,$user,$config);
+					$user_info["$user"] = get_user_info($link2,$user,$config,$decode_normal,$k);
 					if ($user_info["$user"] == '' || $user_info["$user"] == ' ')
 						$user_info["$user"] = 'Unknown User';
 				}

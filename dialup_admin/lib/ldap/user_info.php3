@@ -24,6 +24,9 @@ $mobile = '-';
 $mail = '-';
 $mailalt = '-';
 
+if ($config[general_decode_normal_attributes] == 'yes')
+	$decode_normal = 1;
+
 $ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
 if ($ds) {
 	$r=@da_ldap_bind($ds,$config);
@@ -38,12 +41,16 @@ if ($ds) {
 		unset($item_vals);
 		$k = init_decoder();
 		$cn = ($info[0]['cn'][0]) ? $info[0]['cn'][0] : '-';
+		if ($decode_normal)
+			$cn = decode_string($cn,$k);
 		$cn_lang = $info[0]["cn;lang-$config[general_prefered_lang]"][0];
 		$cn_lang = decode_string("$cn_lang", $k);
 		$cn_lang = ($cn_lang) ? $cn_lang : '-';
 		$telephonenumber = ($info[0]['telephonenumber'][0]) ? $info[0]['telephonenumber'][0] : '-';
 		$homephone = ($info[0]['homephone'][0]) ? $info[0]['homephone'][0] : '-';
 		$address = ($info[0]['postaladdress'][0]) ? $info[0]['postaladdress'][0] : '-';
+		if ($decode_normal)
+			$address = decode_string($address,$k);
 		$address_lang = $info[0]["postaladdress;lang-$config[general_prefered_lang]"][0];
 		$address_lang = decode_string("$address_lang",$k);
 		$address_lang = ($address_lang) ? $address_lang : '-';
@@ -55,11 +62,15 @@ if ($ds) {
 		$fax = ($info[0]['facsimiletelephonenumber'][0]) ? $info[0]['facsimiletelephonenumber'][0] : '-';
 		$url = ($info[0]['labeleduri'][0]) ? $info[0]['labeleduri'][0] : '-';
 		$ou = $info[0]['ou'][0];
+		if ($decode_normal)
+			$ou = decode_string($ou,$k);
 		$ou_lang = $info[0]["ou;lang-$config[general_prefered_lang]"][0];
 		$ou_lang = decode_string("$ou_lang", $k);
 		$ou_lang = ($ou_lang) ? $ou_lang : '-';
 		$mail = ($info[0]['mail'][0]) ? $info[0]['mail'][0] : '-';
 		$title = ($info[0]['title'][0]) ? $info[0]['title'][0] : '-';
+		if ($decode_normal)
+			$title = decode_string($title,$k);
 		$title_lang = $info[0]["title;lang-$config[general_prefered_lang]"][0];
 		$title_lang = decode_string("$title_lang", $k);
 		$title_lang = ($title_lang) ? $title_lang : '-';
