@@ -568,7 +568,26 @@ REALM *realm_find(const char *realm, int accounting)
 	 *	we return NULL, which means "no match found".
 	 */
 	if (!mainconfig.proxy_fallback && dead_match) {
-		return NULL;
+		if (mainconfig.wake_all_if_all_dead) {
+			REALM *rcl = NULL;
+			for (cl = mainconfig.realms; cl; cl = cl->next) {
+				if(strcasecmp(cl->realm,realm) == 0) {
+					if (!accounting && !cl->active) {
+						cl->active = TRUE;
+						rcl = cl;
+					}
+					else if (accounting &&
+						 !cl->acct_active) {
+						cl->acct_active = TRUE;
+						rcl = cl;
+					}
+				}
+			}
+			return rcl;
+		}
+		else {
+			return NULL;
+		}
 	}
 
 	/*      If we didn't find the realm 'NULL' don't return the 
