@@ -158,6 +158,8 @@
  *	- Small change to ldap_get_conn to fix problems on some platforms
  * Jul 2004, Kostas Kalevras <kkalev@noc.ntua.gr>
  *	- Don't core dump when ldap.attrmap contains only one reply item
+ * Sep 2004, Kostas Kalevras <kkalev@noc.ntua.gr>
+ *	- Store the LDAP-UserDN attribute in the check item list not in the incoming request
  */
 static const char rcsid[] = "$Id$";
 
@@ -814,7 +816,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
 	VALUE_PAIR	*vp_user_dn;
 	VALUE_PAIR      **request_pairs;
 
-	request_pairs = &req->packet->vps;
+	request_pairs = &req->config_items;
 
 	DEBUG("rlm_ldap: Entering ldap_groupcmp()");
 
@@ -1179,7 +1181,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	 * Adding new attribute containing DN for LDAP object associated with
 	 * given username
 	 */
-	pairadd(&request->packet->vps, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
+	pairadd(check_pairs, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
 	ldap_memfree(user_dn);
 
 
@@ -1467,7 +1469,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 	DEBUG("rlm_ldap: login attempt by \"%s\" with password \"%s\"",
 	       request->username->strvalue, request->password->strvalue);
 
-	while((vp_user_dn = pairfind(request->packet->vps, PW_LDAP_USERDN)) == NULL) {
+	while((vp_user_dn = pairfind(request->config_items, PW_LDAP_USERDN)) == NULL) {
 		if (!radius_xlat(filter, sizeof(filter), inst->filter,
 				request, NULL)) {
 			radlog (L_ERR, "rlm_ldap: unable to create filter.\n");
@@ -1505,7 +1507,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 			return RLM_MODULE_FAIL;
 		}
 		ldap_release_conn(conn_id,inst->conns);
-		pairadd(&request->packet->vps, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
+		pairadd(&request->config_items, pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
 		ldap_memfree(user_dn);
 		ldap_msgfree(result);
 	}
