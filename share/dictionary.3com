@@ -1,0 +1,15 @@
+#
+#	3com SuperStack Firewall dictionary
+#
+#		$Id$
+#
+
+VENDOR	3com	8741
+
+ATTRIBUTE	SS3-Firewall-User-Privilege		1	integer	3com
+VALUE		SS3-Firewall-User-Privilege	Remote-Access  		1
+VALUE		SS3-Firewall-User-Privilege	Bypass-Filters		2
+VALUE		SS3-Firewall-User-Privilege	VPN-Client-Access	3
+VALUE		SS3-Firewall-User-Privilege	Access-To-VPN		4
+VALUE		SS3-Firewall-User-Privilege	Limited-Management	5
+VALUE		SS3-Firewall-User-Privilege	L2TP-Client-Access	6
