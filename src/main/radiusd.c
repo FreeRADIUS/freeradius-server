@@ -129,6 +129,8 @@ static int	rad_process (REQUEST *, int);
 static int	rad_clean_list(void);
 static REQUEST	*rad_check_list(REQUEST *);
 static REQUEST *proxy_check_list(REQUEST *request);
+struct timeval *proxy_setuptimeout(struct timeval *);
+void		proxy_retry(void);
 #ifndef WITH_THREAD_POOL
 static int	rad_spawn_child(REQUEST *, RAD_REQUEST_FUNP);
 #else
@@ -1135,8 +1137,8 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	RADIUS_PACKET	*packet, *original;
 	const char	*secret;
-	int		replicating;
 	int		finished = FALSE;
+	int		proxy_sent = 0;
 	
 	/*
 	 *	Put the decoded packet into it's proper place.
@@ -1172,6 +1174,7 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	attributes from the list of VP's.
 	 */
 	if (request->proxy) {
+		int replicating;
 		replicating = proxy_receive(request);
 		if (replicating != 0) {
 			goto next_request;
@@ -1200,16 +1203,15 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	if (proxy_requests) {
 		if (request->proxy == NULL) {
-			int sent;
-			sent = proxy_send(request);
+			proxy_sent = proxy_send(request);
 			
 			/*
 			 *	sent==1 means it's been proxied.  The child
 			 *	is done handling the request, but the request
 			 *	is NOT finished!
 			 */
-			if (sent == 1) {
-				goto next_request;
+			if (proxy_sent == 1) {
+				goto postpone_request;
 			}
 		}
 	} else if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
@@ -1251,6 +1253,13 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	Hmm... cleaning them up in the child thread also seems
 	 *	to make the server run more efficiently!
 	 */
+
+	/*	If we proxied this request, it's not safe to delete it until
+	 *	after the proxy reply
+	 */
+	if (proxy_sent)
+		goto postpone_request;
+
 	if (request->packet && request->packet->vps) {
 		pairfree(request->packet->vps);
 		request->packet->vps = NULL;
@@ -1290,6 +1299,8 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
 	request->finished = finished; /* do as the LAST thing before exiting */
+
+ postpone_request:
 	return 0;
 }
 
@@ -1989,8 +2000,8 @@ static void sig_hup(int sig)
 /*
  *	Do a proxy check of the REQUEST_LIST when using the new proxy code.
  *
- *	This function is here because it has to access the REQUEST_LIST
- *	structure, which is 'static' to this C file.
+ *	This function and the next two are here because they have to access
+ *	the REQUEST_LIST structure, which is 'static' to this C file.
  */
 static REQUEST *proxy_check_list(REQUEST *request)
 {
@@ -2044,10 +2055,10 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	 *	If we haven't found the old request, complain.
 	 */
 	if (oldreq == NULL) {
-		request_free(request);
 		log(L_PROXY, "Unrecognized proxy reply from server %s - ID %d",
 		    client_name(request->packet->src_ipaddr),
 		    request->packet->id);
+		request_free(request);
 		return NULL;
 	}
 
@@ -2059,4 +2070,96 @@ static REQUEST *proxy_check_list(REQUEST *request)
 	request->packet = NULL;
 	request_free(request);
 	return oldreq;
+}
+
+struct timeval *proxy_setuptimeout(struct timeval *tv)
+{
+	time_t now = time(NULL);
+	time_t difference, smallest = 0;
+	int foundone = 0;
+	int id;
+	REQUEST *p;
+
+	if (proxy_requests) {
+		for (id = 0; id < 256; id++) {
+			for (p = request_list[id].first_request; p; p = p->next)
+			{
+				if (!p->proxy)
+					continue;
+				if (!p->proxy_is_replicate)
+					continue;
+				difference = p->proxy_next_try - now;
+				if (!foundone) {
+					foundone = 1;
+					smallest = difference;
+				} else {
+					if (difference < smallest)
+						smallest = difference;
+				}
+			}
+		}
+	}
+
+	/*
+	 *	Not found one, tell the server to wake up a second
+	 *	later anyways, so that it can service the lists.
+	 *
+	 *      FIXME: It would be better if the select() would
+	 *      actually wake up when there's something to do, and
+	 *      no sooner. Waking up _every_ second is kludgy
+	 */
+	if ((!foundone) ||
+	    (smallest == 0)) {
+		tv->tv_sec = 1;
+		tv->tv_usec = 0;
+		return tv;
+	}
+
+	tv->tv_sec = smallest;
+	tv->tv_usec = 0;
+	return tv;
+}
+
+void proxy_retry(void)
+{
+	time_t now = time(NULL);
+	REQUEST *p;
+	int id;
+
+	for (id = 0; id < 256; id++) {
+	  for (p = request_list[id].first_request; p; p = p->next) {
+	    if (!p->proxy)
+	      continue;
+	    if (p->proxy_next_try <= now) {
+	      if (p->proxy_try_count) {
+		--p->proxy_try_count;
+		p->proxy_next_try = now + proxy_retry_delay;
+		
+		/* Fix up Acct-Delay-Time */
+		if (p->proxy->code == PW_ACCOUNTING_REQUEST) {
+		  VALUE_PAIR *delaypair;
+		  delaypair = pairfind(p->proxy->vps, PW_ACCT_DELAY_TIME);
+
+		  if (!delaypair) {
+		    delaypair = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
+		    if (!delaypair) {
+		      log(L_ERR|L_CONS, "no memory");
+		      exit(1);
+		    }
+		    pairadd(&p->proxy->vps, delaypair);
+		  }
+		  delaypair->lvalue = now - p->proxy->timestamp;
+		  
+		  /* Must recompile the valuepairs to wire format */
+		  free(p->proxy->data);
+		  p->proxy->data = NULL;
+		}
+		
+		rad_send(p->proxy, p->proxysecret);
+	      } else {
+		p->finished = TRUE;
+	      }
+	    }
+	  }
+	}
 }

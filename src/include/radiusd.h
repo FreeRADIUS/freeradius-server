@@ -150,6 +150,8 @@ extern int		auth_port;
 extern int		acct_port;
 extern int		proxy_port;
 extern int		proxyfd;
+extern int		proxy_retry_count;
+extern int		proxy_retry_delay;
 
 /*
  *	Function prototypes.
@@ -206,8 +208,6 @@ int		pam_pass(char *name, char *passwd, const char *pamauth);
 /* proxy.c */
 int proxy_receive(REQUEST *request);
 int proxy_send(REQUEST *request);
-struct timeval *proxy_setuptimeout(struct timeval *);
-void proxy_retry(void);
 
 /* auth.c */
 char		*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);

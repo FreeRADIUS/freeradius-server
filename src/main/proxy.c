@@ -29,8 +29,6 @@ static const char rcsid[] = "$Id$";
 
 static uint32_t	proxy_id = 1;
 
-static REQUEST	*proxy_requests = NULL;
-
 static const int allowed[] = {
 	PW_SERVICE_TYPE,
 	PW_FRAMED_PROTOCOL,
@@ -171,6 +169,11 @@ int proxy_send(REQUEST *request)
 	char			*realmname;
 	int			replicating;
 
+#if 0	/* This looks bad to me... the timestamp is used below to figure the
+	 * next_try. The request needs to "hang around" until either the
+	 * other server sends a reply or the retry count has been exceeded.
+	 * Until then, it should not be eligible for the time-based cleanup.
+	 * --Pac. */
 	/*
 	 *	Ensure that the request hangs around for a little
 	 *	while longer.
@@ -178,6 +181,7 @@ int proxy_send(REQUEST *request)
 	 *	FIXME: This is a hack... it should be more intelligent.
 	 */
 	request->timestamp += 5;
+#endif
 
 	/* Look for proxy/replicate signs */
 	/* FIXME - What to do if multiple Proxy-To/Replicate-To attrs are
@@ -189,7 +193,7 @@ int proxy_send(REQUEST *request)
 	if (proxypair) {
 		realmpair = proxypair;
 		replicating = 0;
-	} else if( replicatepair) {
+	} else if (replicatepair) {
 		realmpair = replicatepair;
 		replicating = 1;
 	} else {
@@ -325,94 +329,18 @@ int proxy_send(REQUEST *request)
 	rad_send(request->proxy, (char *)realm->secret);
 	memcpy(request->proxysecret, realm->secret, sizeof(request->proxysecret));
 	request->proxy_is_replicate = replicating;
-	request->proxy_try_count = RETRY_COUNT - 1;
-	request->proxy_next_try = request->timestamp + RETRY_DELAY;
+	request->proxy_try_count = proxy_retry_count - 1;
+	request->proxy_next_try = request->timestamp + proxy_retry_delay;
 	delaypair = pairfind(vps, PW_ACCT_DELAY_TIME);
 	request->proxy->timestamp = request->timestamp - (delaypair ? delaypair->lvalue : 0);
 
+#if 0	/* You can't do this - the pairs are needed for the retries! --Pac. */
 	/*
 	 *	We can free proxy->vps now, not needed anymore.
 	 */
 	pairfree(request->proxy->vps);
 	request->proxy->vps = NULL;
+#endif
 
 	return replicating?2:1;
-}
-
-/*
- *  FIXME: Maybe keeping the proxy_requests list sorted by
- *  proxy_next_try would be cheaper than all this searching.
- */
-struct timeval *proxy_setuptimeout(struct timeval *tv)
-{
-	time_t now = time(NULL);
-	time_t difference, smallest;
-	int foundone = 0;
-	REQUEST *p;
-
-	smallest = 0;
-	for (p = proxy_requests; p; p = p->next) {
-		if (!p->proxy_is_replicate)
-			continue;
-		difference = p->proxy_next_try - now;
-		if (!foundone) {
-			foundone = 1;
-			smallest = difference;
-		} else {
-			if (difference < smallest)
-				smallest = difference;
-		}
-	}
-
-	/*
-	 *	Not found one, tell the server to wake up a second
-	 *	later anyways, so that it can service the lists.
-	 */
-	if ((!foundone) ||
-	    (smallest == 0)) {
-		tv->tv_sec = 1;
-		tv->tv_usec = 0;
-		return tv;
-	}
-
-	tv->tv_sec = smallest;
-	tv->tv_usec = 0;
-	return tv;
-}
-
-void proxy_retry(void)
-{
-	time_t now = time(NULL);
-	REQUEST *p;
-
-	for (p = proxy_requests; p; p = p->next) {
-	  if (p->proxy_next_try <= now) {
-	    if (p->proxy_try_count) {
-	      --p->proxy_try_count;
-	      p->proxy_next_try = now + RETRY_DELAY;
-	      
-	      /* Fix up Acct-Delay-Time */
-	      if (p->proxy->code == PW_ACCOUNTING_REQUEST) {
-		VALUE_PAIR *delaypair;
-		delaypair = pairfind(p->proxy->vps, PW_ACCT_DELAY_TIME);
-
-		if (!delaypair) {
-		  delaypair = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
-		  if (!delaypair) {
-		    log(L_ERR|L_CONS, "no memory");
-		    exit(1);
-		  }
-		  pairadd(&p->proxy->vps, delaypair);
-		}
-		delaypair->lvalue = now - p->proxy->timestamp;
-		
-		/* Must recompile the valuepairs to wire format */
-		free(p->proxy->data);
-		p->proxy->data = NULL;
-	      }
-	      
-	      rad_send(p->proxy, p->proxysecret);
-	    }
-	  }
-	}
 }

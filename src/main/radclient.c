@@ -71,7 +71,7 @@ static VALUE_PAIR *readvp(FILE *fp)
 
 static void usage(void)
 {
-	fprintf(stderr, "Usage: radclient [ -c count] [-d raddb ] [-f file] [-r retries] [-t timeout] [-i id] [-qvx]\n		server acct|auth <secret>\n");
+	fprintf(stderr, "Usage: radclient [-c count] [-d raddb] [-f file] [-r retries] [-t timeout]\n		[-i id] [-qvx] server acct|auth <secret>\n");
 	
 	fprintf(stderr, " -c count    Send 'count' packets.\n");
 	fprintf(stderr, " -d raddb    Set dictionary directory.\n");

@@ -62,7 +62,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 	if ((pair = pairfind(request->packet->vps, PW_NAS_PORT_ID)) != NULL)
 		port = pair->lvalue;
 
-	snprintf(buf, buflen, "from nas %.128s/S%d%s%.128s",
+	snprintf(buf, buflen, "from nas %.128s port %d%s%.128s",
 		 nas_name2(request->packet), port,
 		 (do_cli ? " cli " : ""), (do_cli ? (char *)cli->strvalue : ""));
 

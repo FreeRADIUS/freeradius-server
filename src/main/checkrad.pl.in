@@ -317,16 +317,16 @@ sub multitech_snmp {
 #
 # The finger response format is version-dependent. To do this *right*, you
 # need to know exactly where the port number and username are. I know that
-# for 1.7.2, but for others I just guess.
+# for 1.7.2, and 3.0.4 but for others I just guess.
 # Oh yeah and on top of it all, the thing truncates usernames. --Pac.
 #
-# 1.7.2 looks like this:
+# 1.7.2 and 3.0.4 both look like this:
 #
 # 0    0 000 00:56 luser         pppfsm  Incoming PPP, ppp00, 10.0.0.1
 #
 # and the truncated ones look like this:
 #
-# 25   0 000 00:15 longnameluse..pppfsm  Incoming PPP, ppp25, 209.43.25.164
+# 25   0 000 00:15 longnameluse..pppfsm  Incoming PPP, ppp25, 10.0.0.26
 #
 # Yes, the fields run together. Long Usernames Considered Harmful.
 #
@@ -342,8 +342,8 @@ sub computone_finger {
 			$ver = $1;
 			next;
 		}
-		# Check for 1.7.2
-		if ($ver eq '1.7.2') {
+		# Check for known versions
+		if ($ver eq '1.7.2' || $ver eq '3.0.4') {
 			if (/^\Q$ARGV[2]\E\s+\S+\s+\S+\s+\S+\s+\Q$trunc\E(\s+|\.\.)/) {
 	 			close FD;
 				return 1;
