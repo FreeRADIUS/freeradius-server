@@ -8,9 +8,14 @@
 static const char rcsid[] = "$Id$";
 
 #include	"autoconf.h"
+#include	"md5.h"
 
 #include	<stdlib.h>
+
+#if HAVE_UNISTD_H
 #include	<unistd.h>
+#endif
+
 #include	<fcntl.h>
 #include	<string.h>
 #include	<ctype.h>
@@ -339,6 +344,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 		  secretlen = strlen(secret);
 		  if (packet->code != PW_AUTHENTICATION_REQUEST &&
 		      packet->code != PW_STATUS_SERVER) {
+		    MD5_CTX	context;
 		      /*
 		       *	Set the Message-Authenticator attribute,
 		       *	BEFORE setting the reply authentication vector
@@ -365,13 +371,16 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
 					    secret, secretlen, calc_auth_vector);
 			      memcpy(msg_auth_ptr + 2, calc_auth_vector, AUTH_VECTOR_LEN);
 			      memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
-		        }
-			memcpy((char *)hdr + packet->data_len, secret, secretlen);
-			librad_md5_calc(digest, (unsigned char *)hdr,
-					packet->data_len + secretlen);
-			memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
-			memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
-			memset((char *)hdr + packet->data_len, 0, secretlen);
+		      }
+
+		      MD5Init(&context);
+		      MD5Update(&context, packet->data, packet->data_len);
+		      MD5Update(&context, secret, strlen(secret));
+		      MD5Final(digest, &context);
+
+		      memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
+		      memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
+		      memset((char *)hdr + packet->data_len, 0, secretlen);
 		  }
 
 		  /*
@@ -435,10 +444,10 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original, const char *s
  *	Validates the requesting client NAS.  Calculates the
  *	signature based on the clients private key.
  */
-int calc_acctdigest(RADIUS_PACKET *packet, const char *secret, char *recvbuf, int len)
+static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
 {
-	int		secretlen;
 	u_char		digest[AUTH_VECTOR_LEN];
+	MD5_CTX	context;
 
 	/*
 	 *	Older clients have the authentication vector set to
@@ -456,10 +465,15 @@ int calc_acctdigest(RADIUS_PACKET *packet, const char *secret, char *recvbuf, in
 	 *	and calculate the MD5 sum. This must be the same
 	 *	as the original MD5 sum (packet->vector).
 	 */
-	secretlen = strlen(secret);
-	memset(recvbuf + 4, 0, AUTH_VECTOR_LEN);
-	memcpy(recvbuf + len, secret, secretlen);
-	librad_md5_calc(digest, (u_char *)recvbuf, len + secretlen);
+	memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
+	
+	/*
+	 *  MD5(packet + secret);
+	 */
+	MD5Init(&context);
+	MD5Update(&context, packet->data, packet->data_len);
+	MD5Update(&context, secret, strlen(secret));
+	MD5Final(digest, &context);
 
 	/*
 	 *	Return 0 if OK, 2 if not OK.
@@ -474,15 +488,28 @@ int calc_acctdigest(RADIUS_PACKET *packet, const char *secret, char *recvbuf, in
  *	Validates the requesting client NAS.  Calculates the
  *	signature based on the clients private key.
  */
-static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret, char *recvbuf, int len)
+static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret)
 {
-	int		secretlen;
 	uint8_t		calc_digest[AUTH_VECTOR_LEN];
+	MD5_CTX		context;
 
-	memcpy(recvbuf + 4, original->vector, sizeof(original->vector));
-	secretlen = strlen(secret);
-	memcpy(recvbuf + len, secret, secretlen);
-	librad_md5_calc(calc_digest, (u_char *)recvbuf, len + secretlen);
+	/*
+	 *  Copy the original vector in place.
+	 */
+	memcpy(packet->data + 4, original->vector, sizeof(original->vector));
+
+	/*
+	 *  MD5(packet + secret);
+	 */
+	MD5Init(&context);
+	MD5Update(&context, packet->data, packet->data_len);
+	MD5Update(&context, secret, strlen(secret));
+	MD5Final(calc_digest, &context);
+
+	/*
+	 *  Copy the packet's vector back to the packet.
+	 */
+	memcpy(packet->data + 4, packet->vector, sizeof(packet->vector));
 
 	/*
 	 *	Return 0 if OK, 2 if not OK.
@@ -794,7 +821,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 	/*
 	 *	Calculate and/or verify digest.
 	 */
-	length = packet->data_len;
 	switch(packet->code) {
 		case PW_AUTHENTICATION_REQUEST:
 		case PW_STATUS_SERVER:
@@ -805,8 +831,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			break;
 
 		case PW_ACCOUNTING_REQUEST:
-			if (calc_acctdigest(packet, secret,
-			    (char *)packet->data, length) > 1) {
+			if (calc_acctdigest(packet, secret) > 1) {
 				char buffer[32];
 				librad_log("Received Accounting-Request packet "
 				    "from %s with invalid signature!",
@@ -819,9 +844,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 		case PW_AUTHENTICATION_ACK:
 		case PW_AUTHENTICATION_REJECT:
 		case PW_ACCOUNTING_RESPONSE:
-			if (calc_replydigest(packet, original, secret,
-					     (char *)packet->data,
-					     length) > 1) {
+			if (calc_replydigest(packet, original, secret) > 1) {
 				char buffer[32];
 				librad_log("Received %s packet "
 					   "from %s with invalid signature!",
