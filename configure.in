@@ -712,13 +712,19 @@ dnl #
 dnl #############################################################
 
 mysubdirs=
-if test "x$EXPERIMENTAL" != "x"; then
+if test "x$EXPERIMENTAL" = "xyes"; then
   for foo in `find src/modules -name configure -print`; do
     bar=`echo $foo | sed 's%/configure$%%g'`
     mysubdirs="$mysubdirs $bar"
   done
 else
-   mysubdirs=`cat src/modules/stable`
+   dnl # 
+   dnl # Find 'configure' in ONLY the stable modules
+   dnl # 
+   for foo in `find \`cat src/modules/stable | sed 's%rlm%src/modules/rlm%g'\` -name configure -print`; do
+    bar=`echo $foo | sed 's%/configure$%%g'`
+    mysubdirs="$mysubdirs $bar"
+  done
 fi
 
 dnl #

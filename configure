@@ -560,7 +560,7 @@ fi
 
 
 
-# From configure.in Revision: 1.143 
+# From configure.in Revision: 1.144 
 RADIUSD_MAJOR_VERSION=0
 RADIUSD_MINOR_VERSION=6
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -4331,13 +4331,16 @@ fi
 
 
 mysubdirs=
-if test "x$EXPERIMENTAL" != "x"; then
+if test "x$EXPERIMENTAL" = "xyes"; then
   for foo in `find src/modules -name configure -print`; do
     bar=`echo $foo | sed 's%/configure$%%g'`
     mysubdirs="$mysubdirs $bar"
   done
 else
-   mysubdirs=`cat src/modules/stable`
+            for foo in `find \`cat src/modules/stable | sed 's%rlm%src/modules/rlm%g'\` -name configure -print`; do
+    bar=`echo $foo | sed 's%/configure$%%g'`
+    mysubdirs="$mysubdirs $bar"
+  done
 fi
 
 subdirs="libltdl $mysubdirs"
