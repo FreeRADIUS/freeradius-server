@@ -386,6 +386,7 @@ int main(int argc, char **argv)
 		 */
 		if ((vp = pairfind(req->vps, PW_PASSWORD)) != NULL) {
 			strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
+			vp->length = strlen(password);
 			rad_pwencode((char *)vp->strvalue,
 				     &(vp->length),
 				     secret, (char *)req->vector);
