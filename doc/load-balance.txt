@@ -1,0 +1,81 @@
+  As of version 1.1.0, FreeRADIUS supports load balancing in module
+sections.  Please see the "configurable_failover" file in this
+directory for a more complete description of module sections.
+
+  The short summary is that you can use a "load-balance" section in
+any place where a module name may be used.  The semantics of the
+"load-balance" section are that one of the modules in the section will
+be chosen at random, evenly spread over the modules in the list.
+
+  An example is below:
+
+accounting {
+	load-balance {
+		sql1
+		sql2
+		sql2
+	}
+}
+
+  In this case, 1/3 of the RADIUS requests will be processed by
+"sql1", one third by "sql2", and 1/3 by "sql3".
+
+  The "load-balance" section can be nested in a "redundant" section,
+or vice-versa:
+
+accounting {
+	load-balance {
+		redundant {
+			sql1
+			sql2
+		}
+		redundant {
+			sql2
+			sql1
+		}
+	}
+}
+
+  This says "load balance between sql1 and sql2, but if sql1 is down,
+use sql2, and if sql2 is down, use sql1".  That way, you can guarantee
+both that load balancing occurs, and that the requests are *always*
+logged to one of the databases.
+
+accounting {
+	redundant {
+		load-balance {
+			sql1
+			sql2
+		}
+		detail
+	}
+}
+
+  This says "load balance between sql1 and sql2, but if the one being
+used is down, then log to detail".
+
+  And finally,
+
+accounting {
+	redundant {
+		load-balance {		# if this block fails, call detail
+			redundant {		# load balance
+				sql1			# if fail, use sql2
+				sql2
+			}
+			redundant {		# load balance
+				sql2			# if fail, use sql1
+				sql1
+			}
+		}
+		detail			# only if "load-balance" returns fails
+	}
+}
+
+This says "try to load balance between sql1 and sql2; if sql1 is down,
+use sql2; if sql2 is down use sql1; if both sql1 and sql2 are down,
+then log to the detail file"
+
+
+----------------------------------------------------------------------
+$Id$
