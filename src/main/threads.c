@@ -1079,6 +1079,7 @@ pid_t rad_fork(int exec_wait)
 		 *	put the answer.
 		 */
 		if (found < 0) {
+			sigprocmask(SIG_UNBLOCK, &set, NULL);
 			return (pid_t) -1;
 		}
 
