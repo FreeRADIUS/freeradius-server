@@ -614,11 +614,16 @@ int main(int argc, char *argv[])
 
 		fp = fopen(mainconfig.pid_file, "w");
 		if (fp != NULL) {
+			/*
+			 *	FIXME: What about following symlinks,
+			 *	and having it over-write a normal file?
+			 */
 			fprintf(fp, "%d\n", (int) radius_pid);
 			fclose(fp);
 		} else {
-			radlog(L_ERR|L_CONS, "Failed writing process id to file %s: %s\n",
-					mainconfig.pid_file, strerror(errno));
+			radlog(L_ERR|L_CONS, "Failed creating PID file %s: %s\n",
+			       mainconfig.pid_file, strerror(errno));
+			exit(1);
 		}
 	}
 
@@ -740,12 +745,18 @@ int main(int argc, char *argv[])
 			 */
 
 			/*
-			 *	Clean up the configuration data
-			 *	structures.
+			 *	We're exiting, so we can delete the PID
+			 *	file.  (If it doesn't exist, we can ignore
+			 *	the error returned by unlink)
 			 */
-			cf_section_free(&mainconfig.config);
-			realm_free(mainconfig.realms);
-			clients_free(mainconfig.clients);
+			if (dont_fork == FALSE) {
+				unlink(mainconfig.pid_file);
+			}
+
+			/*
+			 *	Free the configuration items.
+			 */
+			free_mainconfig();
 
 			/*
 			 *	SIGTERM gets do_exit=0,
