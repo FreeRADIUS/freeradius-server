@@ -2,6 +2,7 @@
 require('../conf/config.php3');
 require('../lib/functions.php3');
 require('../lib/sql/nas_list.php3');
+require('../lib/xlat.php3');
 ?>
 <html>
 <?php

@@ -11,9 +11,9 @@ if ($config[sql_nas_table] != ''){
 	}
 	$link = @da_sql_pconnect($config);
 	if ($link){
-		$auth_user = HTTP_SERVER_VARS["PHP_AUTH_USER"];
+		$auth_user = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
 		$extra = '';
-		if (isset($mappings[$auth_user][nasdb]){
+		if (isset($mappings[$auth_user][nasdb])){
 			$NAS_ARR = array();
 			$NAS_ARR = split(',',$mappings[$auth_user][nasdb]);
 			$extra = 'WHERE nasname IN (';

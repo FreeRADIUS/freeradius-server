@@ -16,7 +16,7 @@ else{
 EOM;
 	exit();
 }
-if ($config[general_restrict_nasadmin_access == 'yes'){
+if ($config[general_restrict_nasadmin_access] == 'yes'){
 	$auth_user = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
 	if ($auth_user == '' || $mappings[$auth_user][nasadmin] != 'yes'){
 		echo <<<EOM
