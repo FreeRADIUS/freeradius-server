@@ -78,8 +78,8 @@ void rbtree_free(rbtree_t *tree)
 
 #ifndef NDEBUG
 	tree->magic = 0;
-	tree->Root = NULL;
 #endif
+	tree->Root = NULL;
 	free(tree);
 }
 
