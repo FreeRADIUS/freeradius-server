@@ -67,7 +67,6 @@ static int		request_list_busy = 0;
 static int		sockfd;
 static int		acctfd;
 static int		spawn_flag;
-static int		acct_pid;
 static int		radius_pid;
 static int		need_reload = 0;
 static REQUEST		*first_request;
@@ -140,12 +139,8 @@ static void reread_config(int reload)
 	  if (pid == radius_pid) {
 			log(L_ERR|L_CONS,
 				"Errors reading config file - EXITING");
-			if (acct_pid) {
-				signal(SIGCHLD, SIG_DFL);
-				kill(acct_pid, SIGTERM);
-			}
-		}
 		exit(1);
+	  }
 	}
 }
 
@@ -469,27 +464,11 @@ int main(int argc, char **argv)
 	    auth_port, acct_port, proxy_port);
 
 	/*
-	 *	If we are in forking mode, we will start a child
-	 *	to listen for Accounting requests.  If not, we will 
-	 *	listen for them ourself.
+	 *	Note that we NO LONGER fork an accounting process!
+	 *	We used to do it for historical reasons, but that
+	 *	is no excuse...
 	 */
-	if (spawn_flag) {
-		acct_pid = fork();
-		if(acct_pid < 0) {
-			log(L_ERR|L_CONS, "Couldn't fork");
-			exit(1);
-		}
-		if(acct_pid > 0) {
-			close(acctfd);
-			acctfd = -1;
-			log(L_INFO, "Ready to process requests.");
-		}
-		else {
-			close(sockfd);
-			sockfd = -1;
-		}
-	} else
-		log(L_INFO, "Ready to process requests.");
+	log(L_INFO, "Ready to process requests.");
 
 	/*
 	 *	Receive user requests
@@ -498,8 +477,6 @@ int main(int argc, char **argv)
 		if (need_reload) {
 			reread_config(1);
 			need_reload = 0;
-			if (getpid() == radius_pid && acct_pid)
-				kill(acct_pid, SIGHUP);
 		}
 
 		FD_ZERO(&readfds);
@@ -936,9 +913,6 @@ void sig_cleanup(int sig)
                 if (pid <= 0)
                         return;
 
-		if (pid == acct_pid)
-			sig_fatal(100);
-
 		/*
 		 *	Check to see if the child did a bad thing.
 		 *	If so, kill ALL processes in the current
@@ -991,11 +965,10 @@ static void sig_fatal(int sig)
 
 	if (radius_pid == getpid()) {
 		/*
-		 *      FIXME: kill all children, not only the
-		 *      accounting process. Oh well..
+		 *      Kill all of the processes in the current
+		 *	process group.
 		 */
-		if (acct_pid > 0)
-			kill(acct_pid, SIGKILL);
+		kill(0, SIGKILL);
 	} else {
 		me = "CHILD: ";
 	}
