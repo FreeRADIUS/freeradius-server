@@ -805,12 +805,19 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		goto error;
 	}
 
+	/*
+	 *	Attr-%d
+	 */
 	if (strncasecmp(attribute, "Attr-", 5) == 0) {
 		attr = atoi(attribute + 5);
 		p = attribute + 5;
 		p += strspn(p, "0123456789");
 		if (*p != 0) goto error;
 
+
+		/*
+		 *	Vendor-%d-Attr-%d
+		 */
 	} else if (strncasecmp(attribute, "Vendor-", 7) == 0) {
 		int vendor;
 
@@ -824,6 +831,32 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		 *	Not Vendor-%d-Attr-%d
 		 */
 		if (strncasecmp(p, "-Attr-", 6) != 0) goto error;
+
+		p += 6;
+		attr = atoi(p);
+
+		p += strspn(p, "0123456789");
+		if (*p != 0) goto error;
+
+		if ((attr == 0) || (attr > 65535)) goto error;
+
+		attr |= (vendor << 16);
+
+		/*
+		 *	VendorName-Attr-%d
+		 */
+	} else if (((p = strchr(attribute, '-')) != NULL) &&
+		   (strncasecmp(p, "-Attr-", 6) == 0)) {
+		int vendor;
+		char buffer[256];
+
+		if ((p - attribute) >= sizeof(buffer)) goto error;
+
+		memcpy(buffer, attribute, p - attribute);
+		buffer[p - attribute] = '\0';
+
+		vendor = dict_vendorname(buffer);
+		if (vendor == 0) goto error;
 
 		p += 6;
 		attr = atoi(p);
