@@ -177,6 +177,10 @@ int proxy_send(REQUEST *request)
 	/*
 	 *	Copy the request, then look up
 	 *	name and (encrypted) password in the copy.
+	 *
+	 *	Note that the User-Name VP is the *original*
+	 *	VP as sent over by the client.  The Stripped-User-Name
+	 *	attribute is the one hacked through the 'hints' file.
 	 */
 	vps = paircopy(request->packet->vps);
 	namepair = pairfind(vps, PW_USER_NAME);
@@ -185,16 +189,6 @@ int proxy_send(REQUEST *request)
 		return 0;
 	}
 	passpair = pairfind(vps, PW_PASSWORD);
-
-	/*
-	 *	Use the original username if available. The one
-	 *	in the A/V pairs might have been stripped already.
-	 */
-	if (request->username[0]) {
-		strncpy(namepair->strvalue, request->username,
-			sizeof(namepair->strvalue));
-		namepair->strvalue[sizeof(namepair->strvalue) - 1] = 0;
-	}
 
 	/*
 	 *	Now check if we know this realm!
