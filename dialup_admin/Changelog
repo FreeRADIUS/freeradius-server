@@ -15,6 +15,8 @@ Ver 1.72:
   have different mappings for each administrator.
 * Use require_once instead of require when including xlat.php3
 * Add debug statements in sql connect functions
+* Add a missing.php3 file with functions that may be missing from the PHP version used. Include it
+  if a function is missing. Currently only array_change_key_case() is included
 Ver 1.70:
 * Add the /bin postgresql compatibility patch from Guy Fraser
 * Add ldap_userdn as a configuration directive. If set we use that for

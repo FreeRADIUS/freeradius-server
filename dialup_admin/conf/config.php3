@@ -96,4 +96,8 @@ if (!isset($mappings) && $config[general_username_mappings_file] != ''){
 	if ($config[general_use_session] == 'yes')
 		session_register('mappings');
 }
+
+//Include missing.php3 if needed
+if (!function_exists('array_change_key_case'))
+	include_once('../lib/missing.php3');
 ?>
