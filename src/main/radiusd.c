@@ -907,7 +907,10 @@ int main(int argc, char *argv[])
 	 *	If we're running as a daemon, close the default file
 	 *	descriptors, AFTER forking.
 	 */
-	if (debug_flag == FALSE) {
+	mainconfig.radlog_fd = -1;
+	if (debug_flag) {
+		mainconfig.radlog_fd = STDOUT_FILENO;
+	} else {
 		int devnull;
 
 		devnull = open("/dev/null", O_RDWR);
@@ -917,7 +920,13 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 		dup2(devnull, STDIN_FILENO);
+		if (mainconfig.radlog_dest == RADLOG_STDOUT) {
+			dup2(STDOUT_FILENO, mainconfig.radlog_fd);
+		}
 		dup2(devnull, STDOUT_FILENO);
+		if (mainconfig.radlog_dest != RADLOG_STDERR) {
+			dup2(STDERR_FILENO, mainconfig.radlog_fd);
+		}
 		dup2(devnull, STDERR_FILENO);
 		close(devnull);
 	}

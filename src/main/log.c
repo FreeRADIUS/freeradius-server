@@ -61,7 +61,7 @@ static LRAD_NAME_NUMBER levels[] = {
  */
 int vradlog(int lvl, const char *fmt, va_list ap)
 {
-	FILE *msgfd = NULL;
+	FILE *fp = NULL;
 	unsigned char *p;
 	char buffer[8192];
 	int len;
@@ -82,12 +82,13 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	if (mainconfig.radlog_dest == RADLOG_NULL) {
 		return 0;
 	}
-
-	if (mainconfig.radlog_dest == RADLOG_STDOUT) {
-	        msgfd = stdout;
-
-	} else if (mainconfig.radlog_dest == RADLOG_STDERR) {
-	        msgfd = stderr;
+	
+	*buffer = '\0';
+	len = 0;
+	if (mainconfig.radlog_fd != -1) {
+		/*
+		 *	Do nothing, but allow it.
+		 */
 
 #ifdef HAVE_SYSLOG_H
 	} else if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
@@ -100,34 +101,31 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		}
 #endif
 
-	} else {
+	} else if (!mainconfig.log_file) {
 		/*
-		 *	No log file set.  It must go to stdout.
+		 *	No log file set.  Discard it.
 		 */
-		if (!mainconfig.log_file) {
-			msgfd = stdout;
+		return 0;
 
-			/*
-			 *	Else try to open the file.
-			 */
-		} else if ((msgfd = fopen(mainconfig.log_file, "a")) == NULL) {
-		         fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
-				 progname, mainconfig.log_file, strerror(errno));
-
-			 fprintf(stderr, "  (");
-			 vfprintf(stderr, fmt, ap);  /* the message that caused the log */
-			 fprintf(stderr, ")\n");
-			 return -1;
-		}
+	} else if ((fp = fopen(mainconfig.log_file, "a")) == NULL) {
+		fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
+			progname, mainconfig.log_file, strerror(errno));
+		
+		fprintf(stderr, "  (");
+		vfprintf(stderr, fmt, ap);  /* the message that caused the log */
+		fprintf(stderr, ")\n");
+		return -1;
 	}
 
-#ifdef HAVE_SYSLOG_H
-	if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
-		*buffer = '\0';
-		len = 0;
-	} else
-#endif
-	{
+	/*
+	 *	Don't print timestamps to syslog, it does that for us.
+	 *	Don't print timestamps for low levels of debugging.
+	 *
+	 *	Print timestamps for non-debugging, and for high levels
+	 *	of debugging.
+	 */
+	if ((mainconfig.radlog_dest != RADLOG_SYSLOG) &&
+	    (debug_flag != 1) && (debug_flag != 2)) {
 		const char *s;
 		time_t timeval;
 
@@ -160,36 +158,8 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	}
 	strcat(buffer, "\n");
 
-	/*
-	 *   If we're debugging, for small values of debug, then
-	 *   we don't do timestamps.
-	 */
-	if ((debug_flag == 1) || (debug_flag == 2)) {
-		p = buffer + len;
-
-	} else {
-		/*
-		 *  No debugging, or lots of debugging.  Print
-		 *  the time stamps.
-		 */
-		p = buffer;
-	}
-
 #ifdef HAVE_SYSLOG_H
-	if (mainconfig.radlog_dest != RADLOG_SYSLOG)
-#endif
-	{
-		fputs(p, msgfd);
-		if (msgfd == stdout) {
-			fflush(stdout);
-		} else if (msgfd == stderr) {
-			fflush(stderr);
-		} else {
-			fclose(msgfd);
-		}
-	}
-#ifdef HAVE_SYSLOG_H
-	else {			/* it was syslog */
+	if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
 		switch(lvl & ~L_CONS) {
 			case L_DBG:
 				lvl = LOG_DEBUG;
@@ -207,9 +177,16 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 				lvl = LOG_ERR;
 				break;
 		}
-		syslog(lvl, "%s", buffer + len); /* don't print timestamp */
-	}
+		syslog(lvl, "%s", buffer);
+	} else
 #endif
+	if (fp != NULL) {
+		fputs(buffer, fp);
+		fflush(fp);
+		fclose(fp);
+	} else {
+		write(mainconfig.radlog_fd, buffer, strlen(buffer));
+	}
 
 	return 0;
 }

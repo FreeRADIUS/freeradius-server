@@ -227,6 +227,7 @@ typedef struct main_config_t {
 	const char	*gid_name;
 	rad_listen_t	*listen;
 	int		syslog_facility;
+	int		radlog_fd;
 	radlog_dest_t	radlog_dest;
 	CONF_SECTION	*config;
 	RADCLIENT	*clients;
