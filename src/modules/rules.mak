@@ -31,11 +31,13 @@ all: static dynamic
 
 #######################################################################
 #
-# define static and dynamic objects for the libraries
+# define static and dynamic objects for the libraries,
+# along with a number of other useful definitions.
 #
 #######################################################################
 STATIC_OBJS	= $(SRCS:.c=.o)
 DYNAMIC_OBJS	= $(SRCS:.c=.lo)
+CFLAGS		+= -I../../include
 
 #######################################################################
 #
@@ -43,12 +45,10 @@ DYNAMIC_OBJS	= $(SRCS:.c=.lo)
 #
 #######################################################################
 %.o : %.c
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(RLM_CFLAGS) -c $< -o $@
 
 %.lo : %.c
-	$(CC) $(CFLAGS) -fPIC -c $< -o $@
-
-CFLAGS		+= -I../../include
+	$(CC) $(CFLAGS) $(RLM_CFLAGS) -fPIC -c $< -o $@
 
 ifneq ($(TARGET),)
 #######################################################################
@@ -60,7 +60,7 @@ $(TARGET).a: $(STATIC_OBJS)
 	$(AR) crv $@ $^
 
 $(TARGET).so: $(DYNAMIC_OBJS)
-	$(CC) $(CFLAGS) $(LIBS) -shared $^ -o $@
+	$(CC) $(LIBS) -shared $^ -o $@
 
 #######################################################################
 #
