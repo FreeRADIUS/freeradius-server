@@ -110,7 +110,7 @@ checkrad   = ${sbindir}/checkrad
 
 #
 #  hostname_lookups: Log the names of clients or just their IP addresses
-#  e.g., www.freeradius.org (on) or 204.62.129.132 (off).
+#  e.g., www.freeradius.org (on) or 206.47.27.232 (off).
 #  The default is off because it'd be overall better for the net if people
 #  had to knowingly turn this feature on, since enabling it means that
 #  each client request will result in AT LEAST one lookup request to the
@@ -171,7 +171,7 @@ proxy_requests	= yes
 #
 #  SNMP configuration
 #
-#  NOTE: This part is only working if your radiusd is compiled with SNMP
+#  NOTE: This part will only work if your radiusd is compiled with SNMP
 #  support.
 #
 #  smux_password: Password used for SMUX registration.
@@ -203,7 +203,7 @@ proxy_requests	= yes
 #
 # allowed values: {no, yes}
 #
-#snmp_write_access = yes
+#snmp_write_access = no
 
 #######################################################################
 #
@@ -225,22 +225,30 @@ proxy server {
 #  sends it's retries to the server, then set this to 'yes', and
 #  set the other proxy configuration parameters to 0 (zero).
 #
-	synchronous = yes
+# allowed values: {no, yes}
+#
+	synchronous = no
 
 #
-#  The time (in seconds) to wait for a response from the proxy, before
-#  re-sending the proxied request.
+#  After sending a proxied request to the end server, we wait
+#  'retry_delay' seconds for the response.  If we do not receive a response
+#  from the end server within that time, then the proxy request is sent
+#  again to the end server.  We then wait another for another retry_delay.
 #
-#  If this time is set too high, then the NAS may re-send the request,
-#  or it may give up entirely, and reject the user.
+#  If this timeout is set too high, then the NAS *may* give up on the
+#  request before we send a reply back to it.  Most NAS boxes will give up
+#  on requests within 30 seconds.
 #
-#  If it is set too low, then the RADIUS server which receives the proxy
-#  request will get kicked unnecessarily.
+#  If this timeout is set too low, then the end server may not have time
+#  to finish processing the request, before it receives the retry.  Many
+#  radius servers can take 2-3 seconds to process a request.
 #
 	retry_delay = 5
 
 #
-#  The number of retries to send before giving up, and sending a reject
+#  The number of times we send retry packets to the end server.
+#  If we send 'retry_count' packets without receiving a response,
+#  then we give up on that server, and return a rejection
 #  message to the NAS.
 #
 	retry_count = 3
@@ -254,7 +262,7 @@ proxy server {
 #  take turns (round-robin) handling any incoming requests.
 #
 #
-#  You probably also want to have a few spare threads around,
+#  You probably want to have a few spare threads around,
 #  so that high-load situations can be handled immediately.  If you
 #  don't have any spare threads, then the request handling will
 #  be delayed while a new thread is created, and added to the pool.
