@@ -47,6 +47,9 @@ typedef struct module_instance_t {
 	char			name[MAX_STRING_LEN];
 	module_list_t		*entry;
         void                    *insthandle;
+#if HAVE_PTHREAD_H
+	pthread_mutex_t		*mutex;
+#endif
 } module_instance_t;
 
 /*
@@ -62,9 +65,6 @@ static module_instance_t *module_instance_list = NULL;
 typedef struct config_module_t {
 	struct config_module_t	*next;
 	module_instance_t	*instance;
-#if HAVE_PTHREAD_H
-	pthread_mutex_t		*mutex;
-#endif
 } config_module_t;
 
 typedef struct indexed_config_module_t {
@@ -108,16 +108,6 @@ static void config_list_free(config_module_t **cf)
 
 	c = *cf;
 	while (c) {
-#if HAVE_PTHREAD_H
-		if (c->mutex) {
-			/*
-			 *	The mutex MIGHT be locked...
-			 *	we'll check for that later, I guess.
-			 */
-			pthread_mutex_destroy(c->mutex);
-			free(c->mutex);
-		}
-#endif
 		next = c->next;
 		free(c);
 		c = next;
@@ -148,6 +138,16 @@ static void instance_list_free(module_instance_t **i)
 		next = c->next;
 		if(c->entry->module->detach)
 			(c->entry->module->detach)(c->insthandle);
+#if HAVE_PTHREAD_H
+		if (c->mutex) {
+			/*
+			 *	The mutex MIGHT be locked...
+			 *	we'll check for that later, I guess.
+			 */
+			pthread_mutex_destroy(c->mutex);
+			free(c->mutex);
+		}
+#endif
 		free(c);
 		c = next;
 	}
@@ -396,6 +396,26 @@ static module_instance_t *find_module_instance(const char *instname)
 	 */
 	strNcpy(node->name, instname, sizeof(node->name));
 
+#if HAVE_PTHREAD_H
+	/*
+	 *	If we're threaded, check if the module is thread-safe.
+	 *
+	 *	If it isn't, we create a mutex.
+	 */
+	if ((node->entry->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
+		node->mutex = (pthread_mutex_t *) rad_malloc(sizeof(pthread_mutex_t));
+		/*
+		 *	Initialize the mutex.
+		 */
+		pthread_mutex_init(node->mutex, NULL);
+	} else {
+		/*
+		 *	The module is thread-safe.  Don't give it a mutex.
+		 */
+		node->mutex = NULL;
+	}
+
+#endif	
 	*last = node;
 
 	DEBUG("Module: Instantiated %s (%s) ", name1, node->name);
@@ -442,27 +462,6 @@ static void add_to_list(int comp, module_instance_t *instance, int idx)
 	node = (config_module_t *) rad_malloc(sizeof(config_module_t));
 	node->next = NULL;
 	node->instance = instance;
-
-#if HAVE_PTHREAD_H
-	/*
-	 *	If we're threaded, check if the module is thread-safe.
-	 *
-	 *	If it isn't, we create a mutex.
-	 */
-	if ((instance->entry->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
-		node->mutex = (pthread_mutex_t *) rad_malloc(sizeof(pthread_mutex_t));
-		/*
-		 *	Initialize the mutex.
-		 */
-		pthread_mutex_init(node->mutex, NULL);
-	} else {
-		/*
-		 *	The module is thread-safe.  Don't give it a mutex.
-		 */
-		node->mutex = NULL;
-	}
-
-#endif	
 
 	*last = node;
 }
@@ -756,7 +755,7 @@ int setup_modules(void)
 /*
  *	Lock the mutex for the module
  */
-static void safe_lock(config_module_t *instance)
+static void safe_lock(module_instance_t *instance)
 {
 	if (instance->mutex) pthread_mutex_lock(instance->mutex);
 }
@@ -764,7 +763,7 @@ static void safe_lock(config_module_t *instance)
 /*
  *	Unlock the mutex for the module
  */
-static void safe_unlock(config_module_t *instance)
+static void safe_unlock(module_instance_t *instance)
 {
 	if (instance->mutex) pthread_mutex_unlock(instance->mutex);
 }
@@ -790,10 +789,10 @@ int module_authorize(REQUEST *request)
 
 	while (this && rcode == RLM_MODULE_OK) {
 		DEBUG2("  authorize: %s", this->instance->entry->module->name);
-		safe_lock(this);
+		safe_lock(this->instance);
 		rcode = (this->instance->entry->module->authorize)(
 			 this->instance->insthandle, request);
-		safe_unlock(this);
+		safe_unlock(this->instance);
 		this = this->next;
 	}
 
@@ -814,10 +813,10 @@ int module_authenticate(int auth_type, REQUEST *request)
 	while (this && rcode == RLM_MODULE_FAIL) {
 		DEBUG2("  authenticate: %s",
 		       this->instance->entry->module->name);
-		safe_lock(this);
+		safe_lock(this->instance);
 		rcode = (this->instance->entry->module->authenticate)(
 			 this->instance->insthandle, request);
-		safe_unlock(this);
+		safe_unlock(this->instance);
 		this = this->next;
 	}
 
@@ -838,10 +837,10 @@ int module_preacct(REQUEST *request)
 
 	while (this && (rcode == RLM_MODULE_OK)) {
 		DEBUG2("  preacct: %s", this->instance->entry->module->name);
-		safe_lock(this);
+		safe_lock(this->instance);
 		rcode = (this->instance->entry->module->preaccounting)
 				(this->instance->insthandle, request);
-		safe_unlock(this);
+		safe_unlock(this->instance);
 		this = this->next;
 	}
 
@@ -861,10 +860,10 @@ int module_accounting(REQUEST *request)
 
 	while (this && (rcode == RLM_MODULE_OK)) {
 		DEBUG2("  accounting: %s", this->instance->entry->module->name);
-		safe_lock(this);
+		safe_lock(this->instance);
 		rcode = (this->instance->entry->module->accounting)
 				(this->instance->insthandle, request);
-		safe_unlock(this);
+		safe_unlock(this->instance);
 		this = this->next;
 	}
 
@@ -896,10 +895,10 @@ int module_checksimul(REQUEST *request, int maxsimul)
 
 	while (this && (rcode == RLM_MODULE_FAIL)) {
 		DEBUG2("  checksimul: %s", this->instance->entry->module->name);
-		safe_lock(this);
+		safe_lock(this->instance);
 		rcode = (this->instance->entry->module->checksimul)
 				(this->instance->insthandle, request);
-		safe_unlock(this);
+		safe_unlock(this->instance);
 		this = this->next;
 	}
 
