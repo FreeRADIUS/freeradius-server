@@ -360,6 +360,11 @@ int read_clients_file(const char *file)
 		}
 
 		c->ipaddr = ip_getaddr(hostnm);
+		if (c->ipaddr == 0) {
+			log(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
+			    file, lineno, hostnm);
+			return -1;
+		}
 		strcpy(c->secret, secret);
 		strcpy(c->shortname, shortnm);
 		strcpy(c->longname, ip_hostname(c->ipaddr));
@@ -478,6 +483,11 @@ static int read_realms_file(const char *file)
 		}
 		if (strcmp(hostnm, "LOCAL") != 0)
 			c->ipaddr = ip_getaddr(hostnm);
+		if (c->ipaddr == 0) {
+			log(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
+			    file, lineno, hostnm);
+			return -1;
+		}
 
 		/*
 		 *	Double-check lengths to be sure they're sane

@@ -222,7 +222,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Process the options.
 	 */
-	while((argval = getopt(argc, argv, "ASa:ci:l:d:bfp:svxyz")) != EOF) {
+	while((argval = getopt(argc, argv, "ASa:ci:l:d:bfnp:svxyz")) != EOF) {
 
 		switch(argval) {
 
@@ -262,7 +262,11 @@ int main(int argc, char **argv)
 		case 'l':
 			radlog_dir = optarg;
 			break;
-		
+
+		case 'n':
+			librad_dodns = 0;
+			break;
+
 		case 'S':
 			log_stripped_names++;
 			break;
