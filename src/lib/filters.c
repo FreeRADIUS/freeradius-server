@@ -379,7 +379,7 @@ static int str2argv(char *str, char **argv, int max_argc)
  */
 static int hex2bin(const char *str, uint8_t *bin, int length)
 {
-	int		len;
+	unsigned int		len;
 	const		char *letters = "0123456789ABCDEFabcdef";
 
 	/*
@@ -623,6 +623,7 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 {
 	int		count = 0;
 	int		ip[4];
+	int             masklen;
 	uint32_t	netmask = 0;
 
 	/*
@@ -657,8 +658,9 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 
 			case '/': /* netmask  */
 				str++;
-				netmask = atoi(str);
-				if ((netmask < 0) || (netmask > 32)) return -1;
+				masklen = atoi(str);
+				if ((masklen < 0) || (masklen > 32)) return -1;
+				netmask = masklen;
 				goto finalize;
 				break;
 

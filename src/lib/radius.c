@@ -1756,8 +1756,8 @@ int rad_tunnel_pwdecode(char *passwd, int * pwlen, const char *secret, const cha
 	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
 	unsigned char	digest[AUTH_VECTOR_LEN];
 	char    salt[2];
-	int	i, n, ntimes, secretlen;
-	unsigned len;
+	int	ntimes, secretlen;
+	unsigned i, n, len;
 	
 	len = *pwlen;
 
