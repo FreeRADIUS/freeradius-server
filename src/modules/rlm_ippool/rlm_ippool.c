@@ -21,9 +21,11 @@
  * Copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>
  * 
  * March 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- * Initial release
+ * - Initial release
  * April 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- * Add support for the Pool-Name attribute
+ * - Add support for the Pool-Name attribute
+ * May 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
+ * - Check the return value of a gdbm_fetch() we didn't check
  */
 
 #include "config.h"
@@ -492,46 +494,48 @@ static int ippool_authorize(void *instance, REQUEST *request)
 	key_datum = gdbm_firstkey(data->gdbm);
 	while(key_datum.dptr){
 		data_datum = gdbm_fetch(data->gdbm, key_datum);
-		memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
-		free(data_datum.dptr);	
-		/*
-		 * If we find an entry for the same caller-id and nas with active=0
-		 * then we use that for multilink (MPPP) to work properly.
-		 */
-		if (cli != NULL && strcmp(entry.cli,cli) == 0 && entry.active){
-			memcpy(&key,key_datum.dptr,sizeof(ippool_key));
-			if (key.nas == nas)	
-				break;
-		}
-		if (entry.active == 0){
-			datum tmp;		
-
-			tmp.dptr = (uint32_t *) &entry.ipaddr;
-			tmp.dsize = sizeof(uint32_t);
-			if (data->ip_fd >= 0) rad_lockfd(data->ip_fd, sizeof(int));
-			data_datum = gdbm_fetch(data->ip, tmp);
-			if (data->ip_fd >= 0) rad_unlockfd(data->ip_fd, sizeof(int));
-
+		if (data_datum.dptr){
+			memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
+			free(data_datum.dptr);	
 			/*
-			 * If we find an entry in the ip index and the number is zero (meaning
-			 * that we haven't allocated the same ip address to another nas/port pair)
-			 * or if we don't find an entry then delete the session entry so
-			 * that we can change the key (nas/port)
-			 * Else we don't delete the session entry since we haven't yet deallocated the
-			 * corresponding ip address and we continue our search.
-			 */
+		 	* If we find an entry for the same caller-id and nas with active=1
+		 	* then we use that for multilink (MPPP) to work properly.
+		 	*/
+			if (cli != NULL && strcmp(entry.cli,cli) == 0 && entry.active){
+				memcpy(&key,key_datum.dptr,sizeof(ippool_key));
+				if (key.nas == nas)	
+					break;
+			}
+			if (entry.active == 0){
+				datum tmp;		
 
-			if (data_datum.dptr){
-				memcpy(&num,data_datum.dptr, sizeof(int));
-				free(data_datum.dptr);
-				if (num == 0){
+				tmp.dptr = (uint32_t *) &entry.ipaddr;
+				tmp.dsize = sizeof(uint32_t);
+				if (data->ip_fd >= 0) rad_lockfd(data->ip_fd, sizeof(int));
+				data_datum = gdbm_fetch(data->ip, tmp);
+				if (data->ip_fd >= 0) rad_unlockfd(data->ip_fd, sizeof(int));
+
+				/*
+				 * If we find an entry in the ip index and the number is zero (meaning
+				 * that we haven't allocated the same ip address to another nas/port pair)
+				 * or if we don't find an entry then delete the session entry so
+				 * that we can change the key (nas/port)
+				 * Else we don't delete the session entry since we haven't yet deallocated the
+				 * corresponding ip address and we continue our search.
+				 */
+
+				if (data_datum.dptr){
+					memcpy(&num,data_datum.dptr, sizeof(int));
+					free(data_datum.dptr);
+					if (num == 0){
+						delete = 1;
+						break;
+					}
+				}
+				else{
 					delete = 1;
 					break;
 				}
-			}
-			else{
-				delete = 1;
-				break;
 			}
 		}
 		nextkey = gdbm_nextkey(data->gdbm, key_datum);
