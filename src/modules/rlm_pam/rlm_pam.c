@@ -172,6 +172,24 @@ static int pam_auth(REQUEST *request)
 	const char *pam_auth_string = "radiusd";
 
 	/*
+	 *	We can only authenticate user requests which HAVE
+	 *	a User-Name attribute.
+	 */
+	if (!request->username) {
+		log(L_AUTH, "rlm_pam: Attribute \"User-Name\" is required for authentication.");
+		return RLM_MODULE_REJECT;
+	}
+
+	/*
+	 *	We can only authenticate user requests which HAVE
+	 *	a Password attribute.
+	 */
+	if (!request->password) {
+		log(L_AUTH, "rlm_pam: Attribute \"Password\" is required for authentication.");
+		return RLM_MODULE_REJECT;
+	}
+
+	/*
 	 *  Ensure that we're being passed a plain-text password,
 	 *  and not anything else.
 	 */
