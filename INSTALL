@@ -13,6 +13,20 @@ the following steps to build and install the server:
 	$ make
 	$ make install
 
+  Note that in this release, the location of the dictionary files has
+changed, to /usr/local/share/freeradius/dictionary.  Please ensure
+that /etc/raddb/dictionary is THE SAME as ./raddb/dictionary.  If not,
+you will have to copy it over by hand;
+
+	 $ cp ./raddb/dictionary /etc/raddb/dictionary
+
+  If you see errors like 'invalid keyword "ATTRIB_NMC"', then you
+should update the main dictionary file as described above.
+
+  Once the main dictionary file has been updated, and the server has
+been verified to work, all of the other (old) dictionary files in
+/etc/raddb may be deleted.
+
 
 1b. CUSTOM INSTALLATION
 
@@ -83,11 +97,13 @@ then compare its behaviour to what you intended, and edit the
 configuration files as appropriate.
 
   If you don't use debugging mode, then you will look dumb when you
-ask questions on the 'freeradius-users' list, and the final answer
-turns out to have been sitting in front of you all along.  Since the
-main developers of FreeRADIUS use debugging mode to track down their
-configuration problems with the server, it's probably a good idea for
-you to use it, too.
+ask questions on the 'freeradius-users' list, and the answer to your
+question was contained in the debug messages you posted to the list.
+
+   Since the main developers of FreeRADIUS use debugging mode to track
+down their configuration problems with the server, it's a good idea
+for you to use it, too.  If you don't, there is little hope for you to
+solve ANY configuration problem related to the server.
 
   To start the server in debugging mode, do:
 
