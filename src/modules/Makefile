@@ -29,14 +29,13 @@ install:
 
 clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	@rm -f *~ lib/[0-9a-z]* lib/STATIC_MODULE_LDFLAGS
+	@rm -f *~ lib/[0-9a-z]*
 
 distclean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 common:
 	@[ -d lib/ ] || mkdir lib
-	@rm -f lib/STATIC_MODULE_LDFLAGS
 	@for mod in rlm_*; do \
 		what=$(WHAT_TO_MAKE); \
 		[ "$$what" = "all" ] && what="$(TARGET_LIBS)"; \

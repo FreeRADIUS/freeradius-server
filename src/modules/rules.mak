@@ -70,11 +70,11 @@ ifneq ($(TARGET),)
 #
 #######################################################################
 $(TARGET).a: $(STATIC_OBJS)
-	$(LIBTOOL) --mode=link $(LD) -static $(CFLAGS) $(RLM_CFLAGS) $^ -o $@ 
+	$(LIBTOOL) --mode=link $(LD) -module -static $(CFLAGS) $(RLM_CFLAGS) $^ -o $@ 
 
 $(TARGET).la: $(DYNAMIC_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -export-dynamic $(CFLAGS) \
-	$(RLM_CFLAGS) -o $@ -module -rpath $(libdir) $^ $(RLM_LIBS)
+	$(LIBTOOL) --mode=link $(CC) -module -export-dynamic $(CFLAGS) \
+	$(RLM_CFLAGS) -o $@ -rpath $(libdir) $^ $(RLM_LIBS)
 
 #######################################################################
 #
@@ -87,10 +87,6 @@ $(TARGET).la: $(DYNAMIC_OBJS)
 #######################################################################
 static: $(TARGET).a
 	@cp $< ../lib
-	@[ "$RLM_LIBS" != "" ] && \
-		echo -n $(RLM_LIBS) " " >> ../lib/STATIC_MODULE_LDFLAGS
-	@[ "$LDFLAGS" != "" ] && \
-		echo -n $(LDFLAGS) " " >> ../lib/STATIC_MODULE_LDFLAGS
 
 dynamic: $(TARGET).la
 	@cp $< ../lib
