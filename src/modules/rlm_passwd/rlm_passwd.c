@@ -9,6 +9,7 @@
 
 struct mypasswd {
 	struct mypasswd *next;
+	char *listflag;
 	char *field[0];
 	char data[1];
 };
@@ -39,12 +40,22 @@ void printpw(struct mypasswd *pw, int nfields){
 }
 #endif
 
+
+static struct mypasswd * mypasswd_malloc(const char* buffer, int nfields, int* len)
+{
+	/* reserve memory for (struct mypasswd) + listflag (nfields * sizeof (char*)) +
+	** fields (nfields * sizeof (char)) + strlen (inst->format) + 1 */
+
+  	*len=sizeof (struct mypasswd) + nfields * sizeof (char*) + nfields * sizeof (char ) + strlen(buffer) + 1;
+  	return ((struct mypasswd *) rad_malloc(*len));
+}
+
 static int string_to_entry(const char* string, int nfields, char delimiter,
 	struct mypasswd *passwd, int bufferlen)
 {
 	char *str;
 	int len, i, fn=0;
-	
+
 
 	len = strlen(string);
 	if(!len) return 0;
@@ -52,12 +63,13 @@ static int string_to_entry(const char* string, int nfields, char delimiter,
 	if(!len) return 0;
 	if (string[len-1] == '\r') len--;
 	if(!len) return 0;
-	if (!len || !passwd || bufferlen < (len + nfields * sizeof (char*) + sizeof (struct mypasswd) + 1) ) return 0;
+	if (!len || !passwd || bufferlen < (len + nfields * sizeof (char*) + nfields * sizeof (char) + sizeof (struct mypasswd) + 1) ) return 0;
 	passwd->next = 0;
-	str = passwd->data + nfields * sizeof (char *);
+	str = passwd->data + nfields * sizeof (char) + nfields * sizeof (char*);
 	memcpy (str, string, len);
 	str[len] = 0;
 	passwd->field[fn++] = str;
+	passwd->listflag = passwd->data + nfields * sizeof (char *);
 	for(i=0; i < len; i++){
 		if (str[i] == delimiter) {
 			str[i] = 0;
@@ -69,7 +81,7 @@ static int string_to_entry(const char* string, int nfields, char delimiter,
 /*
 printpw(passwd, 7);
 */
-	return len + nfields * sizeof (char*) + sizeof (struct mypasswd) + 1;
+	return len + nfields * sizeof (char) + nfields * sizeof (char*) + sizeof (struct mypasswd) + 1;
 }
 
 
@@ -146,8 +158,7 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 	}
 	while (fgets(buffer, 1024, ht->fp)) {
 		if(*buffer && *buffer!='\n' && (!ignorenis || (*buffer != '+' && *buffer != '-')) ){
-			len = strlen(buffer) + nfields * sizeof (char *) + sizeof (struct mypasswd) + 1;
-			if(!(hashentry = (struct mypasswd *) malloc(len))){
+			if(!(hashentry = mypasswd_malloc(buffer, nfields, &len))){
 				release_hash_table(ht);
 				ht->tablesize = 0;
 				return ht;
@@ -319,8 +330,6 @@ static CONF_PARSER module_config[] = {
 	   offsetof(struct passwd_instance, ignorenislike), NULL,  "no" },
 	{ "hashsize",   PW_TYPE_INTEGER,
 	   offsetof(struct passwd_instance, hashsize), NULL,  "100" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 static int passwd_instantiate(CONF_SECTION *conf, void **instance)
@@ -328,7 +337,9 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 #define inst ((struct passwd_instance *)*instance)
 	int nfields=0, keyfield=-1, listable=0;
 	char *s;
+	char *lf=NULL; /* destination list flags temporary */ 
 	int len;
+	int i;
 	DICT_ATTR * da;
 	
 	*instance = rad_malloc(sizeof(struct passwd_instance));
@@ -341,14 +352,26 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_passwd: cann't find passwd file and/or format in configuration");
 		return -1;
 	}
+	lf=strdup(inst->format);
+	if ( lf == NULL) {
+		radlog(L_ERR, "rlm_passwd: memory allocation failed for lf");
+		return -1;
+	}
+	memset(lf, 0, strlen(inst->format));
 	s = inst->format - 1;
 	do {
 		if(s == inst->format - 1 || *s == ':'){
 			if(*(s+1) == '*'){
 				keyfield = nfields;
-				if(*(s+2) == ','){
-					listable = 1;
-				}
+				s++;
+			}
+			if(*(s+1) == ','){
+				listable = 1;
+				s++;
+			} 
+			if(*(s+1) == '='){
+				lf[nfields]=1;
+				s++;
 			}
 			nfields++;
 		}
@@ -362,8 +385,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_passwd: can't build hashtable from passwd file");
 		return -1;
 	}
-	len = strlen (inst->format)+ nfields * sizeof (char*) + sizeof (struct mypasswd) + 1;
-	if (! (inst->pwdfmt = (struct mypasswd *)rad_malloc(len)) ){
+	if (! (inst->pwdfmt = mypasswd_malloc(inst->format, nfields, &len)) ){
 		radlog(L_ERR, "rlm_passwd: memory allocation failed");
 		release_hash_table(inst->ht);
 		return -1;
@@ -373,8 +395,15 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 		release_hash_table(inst->ht);
 		return -1;
 	}
-	if (*inst->pwdfmt->field[keyfield] == '*') inst->pwdfmt->field[keyfield]++;
-	if (*inst->pwdfmt->field[keyfield] == ',') inst->pwdfmt->field[keyfield]++;
+	
+	memcpy(inst->pwdfmt->listflag, lf, nfields);
+
+	free(lf);
+	for (i=0; i<nfields; i++) {
+		if (*inst->pwdfmt->field[i] == '*') inst->pwdfmt->field[i]++;
+		if (*inst->pwdfmt->field[i] == ',') inst->pwdfmt->field[i]++;
+		if (*inst->pwdfmt->field[i] == '=') inst->pwdfmt->field[i]++;
+	}
 	if (!*inst->pwdfmt->field[keyfield]) {
 		radlog(L_ERR, "rlm_passwd: key field is empty");
 		release_hash_table(inst->ht);
@@ -404,18 +433,18 @@ static int passwd_detach (void *instance) {
 #undef inst
 }
 
-static void addresult (struct passwd_instance * inst, VALUE_PAIR ** vp, struct mypasswd * pw)
+static void addresult (struct passwd_instance * inst, VALUE_PAIR ** vp, struct mypasswd * pw, char when, char *listname)
 {
 	int i;
 	VALUE_PAIR *newpair;
 	
 	for (i=0; i<inst->nfields; i++) {
-		if (inst->pwdfmt->field[i] && *inst->pwdfmt->field[i] && pw->field[i] && i != inst->keyfield) {
+		if (inst->pwdfmt->field[i] && *inst->pwdfmt->field[i] && pw->field[i] && i != inst->keyfield  && inst->pwdfmt->listflag[i] == when) {
 			if (! (newpair = pairmake (inst->pwdfmt->field[i], pw->field[i], T_OP_EQ))) {
 				radlog(L_AUTH, "rlm_passwd: Unable to create %s: %s", inst->pwdfmt->field[i], pw->field[i]);
 				return;
 			}
-			radlog(L_INFO, "rlm_passwd: Added %s: %s", inst->pwdfmt->field[i], pw->field[i]);
+			radlog(L_INFO, "rlm_passwd: Added %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
 			pairadd (vp, newpair);
 		}
 	}
@@ -447,7 +476,8 @@ static int passwd_authorize(void *instance, REQUEST *request)
 			continue;
 		}
 		do {
-			addresult(inst, &request->config_items, pw);
+			addresult(inst, &request->config_items, pw, 0, "config_items");
+			addresult(inst, &request->packet->vps, 	pw, 1, "request_items");
 		} while ( (pw = get_next(name, inst->ht)) );
 		found++;
 		if (!inst->allowmultiple) break;
