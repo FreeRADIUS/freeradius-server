@@ -84,6 +84,7 @@ typedef struct rlm_ippool_t {
 	uint32_t range_stop;
 	uint32_t netmask;
 	int cache_size;
+	int override;
 	GDBM_FILE gdbm;
 	GDBM_FILE ip;
 	pthread_mutex_t session_mutex;
@@ -117,6 +118,7 @@ static CONF_PARSER module_config[] = {
   { "range-stop", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,range_stop), NULL, "0" },
   { "netmask", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,netmask), NULL, "0" },
   { "cache-size", PW_TYPE_INTEGER, offsetof(rlm_ippool_t,cache_size), NULL, "1000" },
+  { "override", PW_TYPE_BOOLEAN, offsetof(rlm_ippool_t,override), NULL, "no" },
   { NULL, -1, 0, NULL, NULL }
 };
 
@@ -505,10 +507,18 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		}
 	}
 	/*
-	 * If there is a Framed-IP-Address attribute in the reply do nothing
+	 * If there is a Framed-IP-Address attribute in the reply, check for override
 	 */
-	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS) != NULL)
-		return RLM_MODULE_NOOP;
+	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS) != NULL) {
+		if (data->override)
+		{
+			/* Override supplied Framed-IP-Address */
+			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS);
+		} else {
+			/* Abort */
+			return RLM_MODULE_NOOP;
+		}
+	}
 
 	/*
 	 * Walk through the database searching for an active=0 entry.
