@@ -77,7 +77,8 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	char *ptr, *s;
 	VALUE_PAIR *check_tmp;
 	VALUE_PAIR *reply_tmp;
-	PAIR_LIST *pl = NULL, *last = NULL, *t;
+	PAIR_LIST *pl = NULL, *t;
+	PAIR_LIST **last = &pl;
 	int lineno = 0;
 	int old_lineno = 0;
 	LRAD_TOKEN parsecode;
@@ -177,13 +178,16 @@ parse_again:
 					fclose(fp);
 				return -1;
 				}
-				if (last)
-					last->next = t;
-				else
-					pl = t;
-				last = t;
-				while (last && last->next)
-					last = last->next;
+				*last = t;
+
+				/*
+				 *	t may be NULL, it may have one
+				 *	entry, or it may be a linked list
+				 *	of entries.  Go to the end of the
+				 *	list.
+				 */
+				while (*last) 
+					last = &((*last)->next);
 				continue;
 			}
 
@@ -248,11 +252,9 @@ parse_again:
 				t->lineno = old_lineno;
 				check_tmp = NULL;
 				reply_tmp = NULL;
-				if (last)
-					last->next = t;
-				else
-					pl = t;
-				last = t;
+
+				*last = t;
+				last = &(t->next);
 
 				mode = FIND_MODE_NAME;
 				if (buffer[0] != 0)
