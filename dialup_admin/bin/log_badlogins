@@ -87,7 +87,11 @@ for(;;){
 				$do=1;
 			}
 			elsif (/Multiple logins/){
-				$cause='Multiple-Logins';
+				if (/MPP attempt/){
+					$cause='Multiple-Logins (MPP Attempt)';
+				}else{
+					$cause='Multiple-Logins';
+				}
 				$do=1;
 			}
 			elsif (/(Outside allowed timespan \(.+?\)):/){

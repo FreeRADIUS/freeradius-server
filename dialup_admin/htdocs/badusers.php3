@@ -63,6 +63,45 @@ print <<<EOM
 EOM;
 }
 
+if ($do_delete == 1 && ($row_id != 0 && is_numeric($row_id))){
+$link = @da_sql_connect($config);
+if ($link){
+	$search = @da_sql_query($link,$config,
+	"SELECT id,Admin FROM $config[sql_badusers_table]
+	WHERE id = '$row_id';");
+	if ($search){
+		$row = @da_sql_fetch_array($search,$config);
+		if ($row[id] == $row_id){
+			$admin = "$row[Admin]";
+			if (($admin != '-' && $HTTP_SERVER_VARS["PHP_AUTH_USER"] == $admin) || $admin == '-'){
+				$sql_servers = array();
+				if ($config[sql_extra_servers] != '')
+					$sql_servers = explode(' ',$config[sql_extra_servers]);
+				$sql_servers[] = $config[sql_server];
+				foreach ($sql_servers as $server){
+					$link2 = @da_sql_host_connect($server,$config);
+					if ($link2){
+						$r = da_sql_query($link2,$config,
+						"DELETE FROM $config[sql_badusers_table]
+						WHERE id = '$row_id';");
+						if (!$r)
+							echo "<b>SQL Error:" . da_sql_error($link2,$config) . "</b><br>\n";
+						@da_sql_close($link2,$config);
+					}
+					else
+						echo "<b>SQL Error: Could not connect to SQL database: $server</b><br>\n";
+				}
+			}
+		}
+	}
+	else
+		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
+	@da_sql_close($link,$config);
+}
+else
+	echo "<b>Could not connect to SQL database</b><br>\n";
+}
+
 echo <<<EOM
 <br><br>
 <table border=0 width=740 cellpadding=1 cellspacing=1>
@@ -79,29 +118,38 @@ echo <<<EOM
 	<table border=0 width=100% cellpadding=12 cellspacing=0 bgcolor="#ffffd0" valign=top>
 	<tr><td>
 <b>$prev_str</b> up to <b>$now_str</b>
+<form action="badusers.php3" method="get" name="master">
+<input type=hidden name=do_delete value=0>
+<input type=hidden name=row_id value=0>
 EOM;
 ?>
 
 <p>
 	<table border=1 bordercolordark=#ffffe0 bordercolorlight=#000000 width=100% cellpadding=2 cellspacing=0 bgcolor="#ffffe0" valign=top>
 	<tr bgcolor="#d0ddb0">
-	<th>#</th><th>user</th><th>date</th><th>admin</th><th>reason</th>
+	<th>#</th><th>user</th><th>date</th><th>admin</th><th>reason</th><th>administrator action</th>
 	</tr>
 
 <?php
+$auth_user = $HTTP_SERVER_VARS["PHP_AUTH_USER"];
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
 	"SELECT * FROM $config[sql_badusers_table]
-	WHERE username $usercheck AND date <= '$now_str'
-	AND date >= '$prev_str' ORDER BY date $order $limit;");
+	WHERE UserName $usercheck AND Date <= '$now_str'
+	AND Date >= '$prev_str' ORDER BY Date $order $limit;");
 	if ($search){
 		while( $row = @da_sql_fetch_array($search,$config) ){
 			$num++;
-			$user = "$row[username]";
-			$date = "$row[date]";
-			$reason = "$row[reason]";
-			$admin = "$row[admin]";
+			$id = $row[id];
+			$user = "$row[UserName]";
+			$date = "$row[Date]";
+			$reason = "$row[Reason]";
+			$admin = "$row[Admin]";
+			if ($admin == $auth_user || $admin == '-')
+	$action = "<td><input type=submit class=button value=\"Delete\" OnClick=\"this.form.do_delete.value=1;this.form.row_id.value=$id\"></td>";
+			else
+				$action = "<td>-</td>";
 			if ($admin == '')
 				$admin = '-';
 			if ($reason == '')
@@ -113,6 +161,7 @@ if ($link){
 				<td>$date</td>
 				<td>$admin</td>
 				<td>$reason</td>
+				$action
 			</tr>
 EOM;
 		}
@@ -127,7 +176,6 @@ echo <<<EOM
 <tr><td>
 <hr>
 <tr><td align="center">
-	<form action="badusers.php3" method="get" name="master">
 	<table border=0>
 		<tr><td colspan=6></td>
 			<td rowspan=3 valign="bottom">
