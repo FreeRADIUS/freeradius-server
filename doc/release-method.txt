@@ -45,12 +45,14 @@ cvs commit doc/ChangeLog
 #  Change version/revision numbers
 #
 vi configure.in
+vi redhat/freeradius.spec
+vi suse/freeradius.spec
 
 #
 #  Re-build and commit the configure script
 #
 autoconf
-cvs commit configure configure.in
+cvs commit configure configure.in redhat/freeradius.spec suse/freeradius.spec
 
 #
 #  tag the files for the release,
