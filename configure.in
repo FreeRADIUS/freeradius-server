@@ -496,6 +496,16 @@ AC_CHECK_TYPE_INCLUDE([
 #endif
 ],uint8_t, unsigned char)
 
+dnl check for uint16_t
+AC_CHECK_TYPE_INCLUDE([
+#ifdef HAVE_INTTYPES_H
+#include <inttypes.h>
+#endif
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+],uint16_t, unsigned short)
+
 dnl check for uint32_t
 AC_CHECK_TYPE_INCLUDE([
 #ifdef HAVE_INTTYPES_H
