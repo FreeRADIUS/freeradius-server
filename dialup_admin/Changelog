@@ -39,6 +39,7 @@ Ver 1.62:
   respectively. Also add two corresponding scripts in the bin folder, tot_stats and monthly_tot_stats. Lastly,
   create a new page, user_stats.php3 which will show the top users in connections or connections duration based
   on the data in the totacct table.
+* Add a few comments in the tot_stats and monthly_tot_stats scripts
 Ver 1.61:
 * Add a string encoder for greek
 * If general_decode_normal_attributes is set then encode attributes in lib/ldap/change_info. In the near future
