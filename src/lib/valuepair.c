@@ -718,7 +718,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	        return vp;
 	}
 
-	if (value && (pairparsevalue(vp, value) != NULL)) {
+	if (value && (pairparsevalue(vp, value) == NULL)) {
 		free(vp);
 		return NULL;
 	}
