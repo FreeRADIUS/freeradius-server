@@ -201,10 +201,8 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 	int	vendor;
 	int	block_vendor;
 	int	is_attrib;
-#ifdef ATTRIB_NMC
 	int	vendor_usr_seen = 0;
 	int	is_nmc;
-#endif
 
 	if (strlen(fn) >= sizeof(dirtmp) / 2 ||
 	    strlen(dir) >= sizeof(dirtmp) / 2) {
@@ -271,11 +269,11 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 		is_attrib = 0;
 		if (DICT_STRCMP(keyword, "ATTRIBUTE") == 0)
 			is_attrib = 1;
-#ifdef ATTRIB_NMC
+
 		is_nmc = 0;
 		if (DICT_STRCMP(keyword, "ATTRIB_NMC") == 0)
 			is_attrib = is_nmc = 1;
-#endif
+
 		if (is_attrib) {
 
 			vendor = 0;
@@ -288,7 +286,6 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				return -1;
 			}
 
-#ifdef ATTRIB_NMC
 			/*
 			 *	Convert ATTRIB_NMC into our format.
 			 *	We might need to add USR to the list of
@@ -304,7 +301,7 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 				}
 				strcpy(vendorstr, "USR");
 			}
-#endif
+
 			/*
 			 *	Validate all entries
 			 */
@@ -448,10 +445,10 @@ static int my_dict_init(const char *dir, const char *fn, const char *src_file, i
 					   fn, line, librad_errstr);
 				return -1;
 			}
-#ifdef ATTRIB_NMC
+
 			if (value == VENDORPEC_USR)
 				vendor_usr_seen = 1;
-#endif
+
 			continue;
 		}
 

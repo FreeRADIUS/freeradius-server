@@ -193,7 +193,6 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 				  total_length += 6;
 			  }
 
-#ifdef ATTRIB_NMC
 			  if (vendorpec == VENDORPEC_USR) {
 				  lvalue = htonl(reply->attribute & 0xFFFF);
 				  memcpy(ptr, &lvalue, 4);
@@ -212,9 +211,13 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 				  vendorcode = 0;
 				  vendorpec = 0;
 				  vsa_length_ptr = NULL;
-			  } else
-#endif
-			  {
+
+			  } else {
+				  /*
+				   *	All other attributes are as
+				   *	per the RFC spec.
+				   */
+
 				  *ptr++ = (reply->attribute & 0xFF);
 				  length_ptr = ptr;
 				  if (vsa_length_ptr) *vsa_length_ptr += 2;
@@ -663,7 +666,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 			memcpy(&lvalue, ptr, 4);
 			vendorpec = ntohl(lvalue);
 			if ((vendorcode = dict_vendorcode(vendorpec)) != 0) {
-#ifdef ATTRIB_NMC
+
 				if (vendorpec == VENDORPEC_USR) {
 					ptr += 4;
 					memcpy(&lvalue, ptr, 4);
@@ -673,9 +676,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secre
 					ptr += 4;
 					attrlen -= 8;
 					length -= 8;
-				} else
-#endif
-				{
+
+				} else {
 					ptr += 4;
 					vendorlen = attrlen - 4;
 					attribute = *ptr++ | (vendorcode << 16);
