@@ -212,8 +212,8 @@ int rad_send(RADIUS_PACKET *packet, const char *secret)
 
 				  length_ptr = vsa_length_ptr;
 
-				  total_length += 2;
-				  *length_ptr  += 2;
+				  total_length += 4;
+				  *length_ptr  += 4;
 				  ptr          += 4;
 
 				  /*
