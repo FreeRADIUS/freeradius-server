@@ -40,6 +40,12 @@ static const char *days[] =
 #define WEEKMIN		(24*60*7)
 #define val(x)		(( (x) < 48 || (x) > 57) ? 0 : ((x) - 48))
 
+#if 0 /* Set to 1 if you're a developer and want to debug this code */
+#	define timestr_debug DEBUG2
+#else
+#	define timestr_debug if (0) printf
+#endif
+
 /*
  *	String code.
  */
@@ -48,7 +54,7 @@ static int strcode (const char **str)
 	int i;
 	size_t l;
 
-	DEBUG2("strcode %s called\n", *str);
+	timestr_debug("strcode %s called\n", *str);
 
 	for (i = 0; i < 10; i++) {
 		l = strlen(days[i]);
@@ -59,7 +65,7 @@ static int strcode (const char **str)
 			break;
 		}
 	}
-	DEBUG2("strcode result %d\n", i);
+	timestr_debug("strcode result %d\n", i);
 
 	return (i >= 10) ? -1 : i;
 
@@ -74,7 +80,7 @@ static int hour_fill(char *bitmap, const char *tm)
 	int start, end;
 	int i, bit, byte;
 
-	DEBUG2("hour_fill called for %s\n", tm);
+	timestr_debug("hour_fill called for %s\n", tm);
 
 	/*
 	 *	Get timerange in start and end.
@@ -101,7 +107,7 @@ static int hour_fill(char *bitmap, const char *tm)
 	if (end >= DAYMIN) end = DAYMIN - 1;
 	if (start >= DAYMIN) start = DAYMIN - 1;
 
-	DEBUG2("hour_fill: range from %d to %d\n", start, end);
+	timestr_debug("hour_fill: range from %d to %d\n", start, end);
 
 	/*
 	 *	Fill bitmap.
@@ -110,7 +116,7 @@ static int hour_fill(char *bitmap, const char *tm)
 	while (1) {
 		byte = (i / 8);
 		bit = i % 8;
-		DEBUG2("setting byte %d, bit %d\n", byte, bit);
+		timestr_debug("setting byte %d, bit %d\n", byte, bit);
 		bitmap[byte] |= (1 << bit);
 		if (i == end) break;
 		i++;
@@ -134,7 +140,7 @@ static int day_fill(char *bitmap, const char *tm)
 	if (hr == tm) 
 		tm = "Al";
 
-	DEBUG2("dayfill: hr %s    tm %s\n", hr, tm);
+	timestr_debug("dayfill: hr %s    tm %s\n", hr, tm);
 
 	while ((start = strcode(&tm)) >= 0) {
 		/*
@@ -156,7 +162,7 @@ static int day_fill(char *bitmap, const char *tm)
 			end = 6;
 		}
 		n = start;
-		DEBUG2("day_fill: range from %d to %d\n", start, end);
+		timestr_debug("day_fill: range from %d to %d\n", start, end);
 		while (1) {
 			hour_fill(bitmap + 180 * n, hr);
 			if (n == end) break;
@@ -200,7 +206,7 @@ int timestr_match(char *tmstr, time_t t)
 	char bitmap[WEEKMIN / 8];
 	int now, tot, i;
 	int byte, bit;
-#ifdef DEBUG2
+#ifdef timestr_debug
 	int y;
 	char *s;
 	char null[8];
@@ -212,7 +218,7 @@ int timestr_match(char *tmstr, time_t t)
 	memset(bitmap, 0, sizeof(bitmap));
 	week_fill(bitmap, tmstr);
 
-#ifdef DEBUG2
+#ifdef timestr_debug
 	memset(null, 0, 8);
 	for (i = 0; i < 7; i++) {
 		printf("%d: ", i);
@@ -232,7 +238,7 @@ int timestr_match(char *tmstr, time_t t)
 	while (1) {
 		byte = i / 8;
 		bit = i % 8;
-		DEBUG2("READ: checking byte %d bit %d\n", byte, bit);
+		timestr_debug("READ: checking byte %d bit %d\n", byte, bit);
 		if (!(bitmap[byte] & (1 << bit)))
 			break;
 		tot += 60;
