@@ -17,8 +17,6 @@ if test x$with_[]modname != xno; then
         	else
 		  fail="$fail ndbm.h or gdbm/ndbm.h"
 		fi
-	else
-	  fail="$fail ndbm.h"
 	fi
 
 	AC_SMART_CHECK_LIB(ndbm, dbm_open)
@@ -27,8 +25,12 @@ if test x$with_[]modname != xno; then
 	fi
 
 	targetname=modname
+	dbm_utils="rlm_dbm_parser rlm_dbm_cat"
+	dbm_install="rlm_dbm_install"
 else
 	targetname=
+	dbm_utils=
+	dbm_install=
 	echo \*\*\* module modname is disabled.
 fi
 
@@ -47,4 +49,6 @@ dbm_cflags=$SMART_CFLAGS
 AC_SUBST(dbm_ldflags)
 AC_SUBST(dbm_cflags)
 AC_SUBST(targetname)
+AC_SUBST(dbm_utils)
+AC_SUBST(dbm_install)
 AC_OUTPUT(Makefile)

@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.1 
+# From configure.in Revision: 1.2 
 
 
 if test x$with_rlm_dbm != xno; then
@@ -1029,14 +1029,12 @@ fi
         	else
 		  fail="$fail ndbm.h or gdbm/ndbm.h"
 		fi
-	else
-	  fail="$fail ndbm.h"
 	fi
 
 	
 
 echo $ac_n "checking for dbm_open in -lndbm""... $ac_c" 1>&6
-echo "configure:1040: checking for dbm_open in -lndbm" >&5
+echo "configure:1038: checking for dbm_open in -lndbm" >&5
 
 smart_lib=
 smart_lib_dir=
@@ -1044,14 +1042,14 @@ smart_lib_dir=
   old_LIBS="$LIBS"
   LIBS="$LIBS -lndbm"
   cat > conftest.$ac_ext <<EOF
-#line 1048 "configure"
+#line 1046 "configure"
 #include "confdefs.h"
 extern char dbm_open();
 int main() {
  dbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:1055: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1053: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lndbm"
 else
@@ -1120,14 +1118,14 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
       LIBS="$old_LIBS -L$try -lndbm"
 
       cat > conftest.$ac_ext <<EOF
-#line 1124 "configure"
+#line 1122 "configure"
 #include "confdefs.h"
 extern char dbm_open();
 int main() {
  dbm_open()
 ; return 0; }
 EOF
-if { (eval echo configure:1131: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1129: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lndbm"
 else
@@ -1156,8 +1154,12 @@ fi
 	fi
 
 	targetname=rlm_dbm
+	dbm_utils="rlm_dbm_parser rlm_dbm_cat"
+	dbm_install="rlm_dbm_install"
 else
 	targetname=
+	dbm_utils=
+	dbm_install=
 	echo \*\*\* module rlm_dbm is disabled.
 fi
 
@@ -1173,6 +1175,8 @@ fi
 
 dbm_ldflags=$SMART_LIBS
 dbm_cflags=$SMART_CFLAGS
+
+
 
 
 
@@ -1325,6 +1329,8 @@ s%@CPP@%$CPP%g
 s%@dbm_ldflags@%$dbm_ldflags%g
 s%@dbm_cflags@%$dbm_cflags%g
 s%@targetname@%$targetname%g
+s%@dbm_utils@%$dbm_utils%g
+s%@dbm_install@%$dbm_install%g
 
 CEOF
 EOF

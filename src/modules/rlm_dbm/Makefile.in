@@ -1,10 +1,10 @@
 TARGET      = @targetname@
 SRCS        = rlm_dbm.c
 HEADERS     =
-RLM_UTILS   = rlm_dbm_parser rlm_dbm_cat
+RLM_UTILS   = @dbm_utils@
 RLM_CFLAGS  = @dbm_cflags@
 RLM_LIBS    = @dbm_ldflags@
-RLM_INSTALL = rlm_dbm_install
+RLM_INSTALL = @dbm_install@
 
 include ../rules.mak
 
