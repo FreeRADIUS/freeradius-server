@@ -43,7 +43,7 @@ ATTRIBUTE	h323-redirect-number		106	string		Cisco
 ATTRIBUTE	h323-preferred-lang		107	string		Cisco
 ATTRIBUTE	h323-redirect-ip-address	108	string		Cisco
 ATTRIBUTE	h323-billing-model		109	string		Cisco
-ATTRIBUTE	h323-currency-type		110	string
+ATTRIBUTE	h323-currency			110	string		Cisco
 
 #
 #	Extra attributes sent by the Cisco, if you configure
