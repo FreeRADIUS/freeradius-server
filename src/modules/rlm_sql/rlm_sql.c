@@ -565,6 +565,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	SQLSOCK *sqlsocket = NULL;
 	VALUE_PAIR *pair;
 	SQL_INST *inst = instance;
+	int	ret = RLM_MODULE_OK;
 	int     numaffected = 0;
 	int     acctstatustype = 0;
 	char    querystr[MAX_QUERY_LEN];
@@ -603,8 +604,10 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
 			if (querystr) {
-				if (rlm_sql_query(sqlsocket, inst, querystr))
+				if (rlm_sql_query(sqlsocket, inst, querystr)) {
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting for Acct On/Off packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+					ret = RLM_MODULE_FAIL;
+				}
 				(inst->module->sql_finish_query)(sqlsocket, inst->config);
 			}
 
@@ -627,8 +630,10 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
 			if (querystr) {
-				if (rlm_sql_query(sqlsocket, inst, querystr))
+				if (rlm_sql_query(sqlsocket, inst, querystr)) {
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting for ALIVE packet - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+					ret = RLM_MODULE_FAIL;
+				}
 				(inst->module->sql_finish_query)(sqlsocket, inst->config);
 			}
 
@@ -665,6 +670,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 					if (querystr) {
 						if (rlm_sql_query(sqlsocket, inst, querystr)) {
 							radlog(L_ERR, "rlm_sql: Couldn't update SQL" "accounting START record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+							ret = RLM_MODULE_FAIL;
 						}
 						(inst->module->sql_finish_query)(sqlsocket, inst->config);
 					}
@@ -692,6 +698,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			if (querystr) {
 				if (rlm_sql_query(sqlsocket, inst, querystr)) {
 					radlog(L_ERR, "rlm_sql: Couldn't update SQL accounting STOP record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+					ret = RLM_MODULE_FAIL;
 				}
 				else {
 					numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
@@ -726,6 +733,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 						if (querystr) {
 							if (rlm_sql_query(sqlsocket, inst, querystr)) {
 								radlog(L_ERR, "rlm_sql: Couldn't insert SQL accounting STOP record - %s", (char *)(inst->module->sql_error)(sqlsocket, inst->config));
+								ret = RLM_MODULE_FAIL;
 							}
 							(inst->module->sql_finish_query)(sqlsocket, inst->config);
 						}
@@ -738,7 +746,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 	sql_release_socket(inst, sqlsocket);
 
-	return RLM_MODULE_OK;
+	return ret;
 }
 
 
@@ -794,16 +802,13 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 
 	ret = rlm_sql_fetch_row(sqlsocket, inst);
 
-	if (ret == 0) {
-		row = sqlsocket->row;
-	}
-
-	if (ret) {
+	if (ret != 0) {
 		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
 	}
 
+	row = sqlsocket->row;
 	if (row == NULL) {
 		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst, sqlsocket);
