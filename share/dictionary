@@ -55,6 +55,7 @@ $INCLUDE dictionary.3com
 $INCLUDE dictionary.3gpp
 $INCLUDE dictionary.3gpp2
 $INCLUDE dictionary.acc
+$INCLUDE dictionary.airespace
 $INCLUDE dictionary.alcatel
 $INCLUDE dictionary.alteon
 $INCLUDE dictionary.ascend
@@ -305,6 +306,7 @@ ATTRIBUTE	Packet-Src-IP-Address	1084	ipaddr
 ATTRIBUTE	Packet-Dst-IP-Address	1085	ipaddr
 ATTRIBUTE	Packet-Src-Port		1086	integer
 ATTRIBUTE	Packet-Dst-Port		1087	integer
+ATTRIBUTE	Packet-Authentication-Vector 1088 octets
 
 #
 #	Range:	1084-1199
