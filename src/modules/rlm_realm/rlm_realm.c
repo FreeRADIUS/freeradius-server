@@ -24,6 +24,17 @@ static int realm_authorize(REQUEST *request,
 	VALUE_PAIR *vp;
 	REALM *realm;
 	const char *name = request->username->strvalue;
+
+	/*
+	 *	If the request has a proxy entry, then it's a proxy
+	 *	reply, and we're walking through the module list again.
+	 *
+	 *	In that case, don't bother trying to proxy the request
+	 *	again.
+	 */
+	if (request->proxy != NULL) {
+		return RLM_AUTZ_NOTFOUND;
+	}
 	
 	reply_pairs = reply_pairs; /* -Wunused */
 	
@@ -111,6 +122,17 @@ static int realm_preacct(REQUEST *request)
 	if (!name)
 	  return RLM_PRAC_OK;
 	
+	/*
+	 *	If the request has a proxy entry, then it's a proxy
+	 *	reply, and we're walking through the module list again.
+	 *
+	 *	In that case, don't bother trying to proxy the request
+	 *	again.
+	 */
+	if (request->proxy != NULL) {
+		return RLM_PRAC_OK;
+	}
+
 	realmname = strrchr(name, '@');
 	if (realmname != NULL)
 	  realmname++;
