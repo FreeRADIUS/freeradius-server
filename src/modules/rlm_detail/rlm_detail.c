@@ -134,6 +134,14 @@ static int detail_accounting(void *instance, REQUEST *request)
 	 *	variables.
 	 */
 	strNcpy(filename, inst->detailfile, sizeof(filename));
+
+	radius_xlat2(buffer, sizeof(buffer), filename, request,
+		     request->reply->vps);
+	
+	/*
+	 *	FIXME: Sanitize the name for security!
+	 */
+
 	p = strrchr(filename,'/');
 
 	/*
@@ -143,13 +151,6 @@ static int detail_accounting(void *instance, REQUEST *request)
 	if (p) {
 		*p = '\0';
 		
-		radius_xlat2(buffer, sizeof(buffer), filename, request,
-			     request->reply->vps);
-
-		/*
-		 *	FIXME: Sanitize the directory name for security!
-		 */
-
 		/*
 		 *	NO previously cached directory name, so we've
 		 *	got to create a new one.
