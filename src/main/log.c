@@ -116,9 +116,6 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	char buffer[8192];
 	time_t timeval;
 	int len;
-#if HAVE_SYSLOG_H
-	int use_syslog = FALSE;
-#endif
 
 	/*
 	 *	NOT debugging, and trying to log debug messages.
@@ -130,16 +127,12 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 	}
 
 	if (radlog_dir != NULL) {
-		if (debug_flag || (strcmp(radlog_dir, "stdout") == 0)) {
+		if (debug_flag || (radlog_dest = RADLOG_STDOUT)) {
 			msgfd = stdout;
 
-		} else if (strcmp(radlog_dir, "stderr") == 0) {
+		} else if (radlog_dest = RADLOG_STDERR) {
 			msgfd = stderr;
 
-#if HAVE_SYSLOG_H
-		} else if (strcmp(radlog_dir, "syslog") == 0) {
-			use_syslog = TRUE;
-#endif
 		} else {
 
 			sprintf(buffer, "%.1000s/%.1000s", radlog_dir, RADIUS_LOG);
@@ -157,7 +150,7 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 
 	timeval = time(NULL);
 #if HAVE_SYSLOG_H
-	if (use_syslog)
+	if (radlog_dest == RADLOG_SYSLOG)
 		*buffer = '\0';
 	else {
 		strcpy(buffer, ctime(&timeval));
@@ -215,7 +208,7 @@ static int do_log(int lvl, const char *fmt, va_list ap)
 
 
 #if HAVE_SYSLOG_H
-	if (!use_syslog) {
+	if (radlog_dest != RADLOG_SYSLOG) {
 		fputs(buffer, msgfd);
 #endif
 		if (msgfd == stdout) {

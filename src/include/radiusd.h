@@ -158,6 +158,13 @@ typedef struct main_config_t {
 /* for paircompare_register */
 typedef int (*RAD_COMPARE_FUNC)(void *instance, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 
+typedef enum radlog_dest_t {
+  RADLOG_FILES = 0,
+  RADLOG_SYSLOG,
+  RADLOG_STDOUT,
+  RADLOG_STDERR
+} radlog_dest_t;
+
 /*
  *	Global variables.
  */
@@ -169,6 +176,7 @@ extern const char	*radlog_dir;
 extern const char	*radlib_dir;
 extern const char	*radius_dir;
 extern const char	*radius_libdir;
+extern radlog_dest_t	radlog_dest;
 extern uint32_t		expiration_seconds;
 extern int		use_dbm;
 extern int		log_stripped_names;

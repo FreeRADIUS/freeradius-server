@@ -95,6 +95,7 @@ const char *progname = NULL;
 const char *radius_dir = NULL;
 const char *radacct_dir = NULL;
 const char *radlog_dir = NULL;
+radlog_dest_t radlog_dest = RADLOG_FILES;
 const char *radlib_dir = NULL;
 int syslog_facility;
 int log_stripped_names;
@@ -665,11 +666,17 @@ int main(int argc, char *argv[])
 	 *  Also, initialize the logging facility with the
 	 *  configuration that they asked for.
 	 */
-	if (!strcmp(radlog_dir, "syslog")) {
+	if (strcmp(radlog_dir, "syslog") == 0) {
 		openlog(progname, LOG_PID, syslog_facility);
+		radlog_dest = RADLOG_SYSLOG;
 	}
 	/* Do you want a warning if -g is used without a -l to activate it? */
 #endif
+	if (strcmp(radlog_dir, "stdout") == 0) {
+		radlog_dest = RADLOG_STDOUT;
+	} else if (strcmp(radlog_dir, "stderr") == 0) {
+		radlog_dest = RADLOG_STDERR;
+	}
 
 	/*  Initialize the request list.  */
 	rl_init();

@@ -57,6 +57,7 @@ int proxy_retry_count = RETRY_COUNT;
 int proxy_dead_time;
 int log_stripped_names;
 uint32_t myip = INADDR_ANY;
+radlog_dest_t radlog_dest = RADLOG_FILES;
 struct main_config_t mainconfig;
 
 /*
