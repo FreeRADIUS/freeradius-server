@@ -727,11 +727,14 @@ else
   done
 fi
 
+MODULES=`echo $mysubdirs | sed 's%src/modules/%%g'`
+
 dnl #
 dnl #  Don't change the variable name here.  Autoconf goes bonkers
 dnl #  if you do.
 dnl #
 AC_CONFIG_SUBDIRS($mysubdirs)
+AC_SUBST(MODULES)
 
 dnl #############################################################
 dnl #

@@ -36,7 +36,7 @@ distclean:
 
 common:
 	@[ -d lib/ ] || mkdir lib
-	@for mod in rlm_*; do \
+	@for mod in $(MODULES); do \
 		what=$(WHAT_TO_MAKE); \
 		[ "$$what" = "all" ] && what="$(TARGET_LIBS)"; \
 		echo "Making $$what in $$mod..."; \

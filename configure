@@ -560,7 +560,7 @@ fi
 
 
 
-# From configure.in Revision: 1.144 
+# From configure.in Revision: 1.145 
 RADIUSD_MAJOR_VERSION=0
 RADIUSD_MINOR_VERSION=6
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
@@ -4343,7 +4343,10 @@ else
   done
 fi
 
+MODULES=`echo $mysubdirs | sed 's%src/modules/%%g'`
+
 subdirs="libltdl $mysubdirs"
+
 
 
 
@@ -4547,6 +4550,7 @@ s%@ODBC_INCLUDE@%$ODBC_INCLUDE%g
 s%@LIBLTDL@%$LIBLTDL%g
 s%@INCLTDL@%$INCLTDL%g
 s%@top_builddir@%$top_builddir%g
+s%@MODULES@%$MODULES%g
 s%@INSTALLSTRIP@%$INSTALLSTRIP%g
 s%@USE_SHARED_LIBS@%$USE_SHARED_LIBS%g
 s%@USE_STATIC_LIBS@%$USE_STATIC_LIBS%g
