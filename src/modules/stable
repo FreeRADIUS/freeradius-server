@@ -19,6 +19,7 @@ rlm_mschap
 rlm_ns_mta_md5
 rlm_pam
 rlm_pap
+rlm_passwd
 rlm_preprocess
 rlm_radutmp
 rlm_realm
