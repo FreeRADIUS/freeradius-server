@@ -30,7 +30,7 @@ function check_day($day){
 
 $mapping = array(
 	'Mo' => 'Monday',
-	'Tu' => 'Tusday',
+	'Tu' => 'Tuesday',
 	'We' => 'Wednesday',
 	'Th' => 'Thursday',
 	'Fr' => 'Friday',
