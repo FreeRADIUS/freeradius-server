@@ -69,12 +69,17 @@ static void dict_free(void)
 /*
  *	Add vendor to the list.
  */
-static int addvendor(char *name, int value)
+int dict_addvendor(char *name, int value)
 {
 	DICT_VENDOR *vval;
 
+	if (strlen(name) > (sizeof(vval->vendorname) -1)) {
+		librad_log("dict_addvendor: vendor name too long");
+		return -1;
+	}
+
 	if ((vval =(DICT_VENDOR *)malloc(sizeof(DICT_VENDOR))) == NULL) {
-		librad_log("dict_init: out of memory");
+		librad_log("dict_addvendor: out of memory");
 		return -1;
 	}
 	strcpy(vval->vendorname, name);
@@ -88,15 +93,77 @@ static int addvendor(char *name, int value)
 	return 0;
 }
 
+int dict_addattr(char *name, int vendor, int type, int value)
+{
+	DICT_ATTR	*attr;
+
+	if (strlen(name) > (sizeof(attr->name) -1)) {
+		librad_log("dict_addattr: attribute name too long");
+		return -1;
+	}
+
+	/*
+	 *	Create a new attribute for the list
+	 */
+	if ((attr = (DICT_ATTR *)malloc(sizeof(DICT_ATTR))) == NULL) {
+		librad_log("dict_addattr: out of memory");
+		return -1;
+	}
+	strcpy(attr->name, name);
+	attr->attr = value;
+	attr->type = type;
+	if (vendor) {
+		attr->attr |= (vendor << 16);
+	}
+
+	/*
+	 *	Add to the front of the list, so that
+	 *	values at the end of the file override
+	 *	those in the begin.
+	 */
+	attr->next = dictionary_attributes;
+	dictionary_attributes = attr;
+	
+	return 0;
+}
+
+int dict_addvalue(char *namestr, char *attrstr, int value)
+{
+	DICT_VALUE	*dval;
+
+	if (strlen(namestr) > (sizeof(dval->name) -1)) {
+		librad_log("dict_addvalue: value name too long");
+		return -1;
+	}
+
+	if (strlen(attrstr) > (sizeof(dval->attrname) -1)) {
+		librad_log("dict_addvalue: attribute name too long");
+		return -1;
+	}
+
+	if ((dval = (DICT_VALUE *)malloc(sizeof(DICT_VALUE))) == NULL) {
+		librad_log("dict_addvalue: out of memory");
+		return -1;
+	}
+	
+	strcpy(dval->name, namestr);
+	strcpy(dval->attrname, attrstr);
+	dval->attr = 0;		/* ??? */
+	dval->value = value;
+	
+	/* Insert at front. */
+	dval->next = dictionary_values;
+	dictionary_values = dval;
+			
+	return 0;
+}
+
 /*
  *	Initialize the dictionary.
  */
 static int my_dict_init(char *dir, char *fn)
 {
 	FILE	*fp;
-	DICT_ATTR	*attr;
-	DICT_VALUE	*dval;
-	DICT_VENDOR	*v;
 	char 	dirtmp[256];
 	char	buf[256];
 	char	namestr[64];
@@ -189,7 +256,7 @@ static int my_dict_init(char *dir, char *fn)
 			 */
 			if (is_nmc && vendorstr[0] == 0) {
 				if (!vendor_usr_seen) {
-					if (addvendor("USR", VENDORPEC_USR) < 0)
+					if (dict_addvendor("USR", VENDORPEC_USR) < 0)
 						return -1;
 					vendor_usr_seen = 1;
 				}
@@ -199,13 +266,6 @@ static int my_dict_init(char *dir, char *fn)
 			/*
 			 *	Validate all entries
 			 */
-			if (strlen(namestr) > 31) {
-				librad_log(
-				"dict_init: %s[%d]: invalid name length",
-					fn, line);
-				return -1;
-			}
-
 			if (!isdigit(*valstr)) {
 				librad_log("dict_init: %s[%d]: invalid value",
 					fn, line);
@@ -229,13 +289,7 @@ static int my_dict_init(char *dir, char *fn)
 				return -1;
 			}
 
-			/*
-			 *	Find the vendor, if any.
-			 */
-			for (v = dictionary_vendors; v; v = v->next) {
-				if (strcmp(vendorstr, v->vendorname) == 0)
-					vendor = v->vendorcode;
-			}
+			vendor = dict_vendorname(vendorstr);
 			if (vendorstr[0] && !vendor) {
 				librad_log(
 					"dict_init: %s[%d]: unknown vendor %s",
@@ -243,27 +297,9 @@ static int my_dict_init(char *dir, char *fn)
 				return -1;
 			}
 
-			/*
-			 *	Create a new attribute for the list
-			 */
-			if ((attr = (DICT_ATTR *)malloc(sizeof(DICT_ATTR))) ==
-					NULL) {
-				librad_log("dict_init: out of memory");
+			if (dict_addattr(namestr, vendor, type, value) < 0) {
 				return -1;
 			}
-			strcpy(attr->name, namestr);
-			attr->attr = value;
-			attr->type = type;
-			if (vendor)
-				attr->attr |= (vendor << 16);
-
-			/*
-			 *	Add to the front of the list, so that
-			 *	values at the end of the file override
-			 *	those in the begin.
-			 */
-			attr->next = dictionary_attributes;
-			dictionary_attributes = attr;
 
 		}
 
@@ -287,20 +323,6 @@ static int my_dict_init(char *dir, char *fn)
 			/*
 			 *	Validate all entries
 			 */
-			if (strlen(attrstr) > 31) {
-				librad_log(
-				"dict_init: %s[%d]: invalid attribute length",
-					fn, line);
-				return -1;
-			}
-
-			if (strlen(namestr) > 31) {
-				librad_log(
-				"dict_init: %s[%d]: invalid name length",
-					fn, line);
-				return -1;
-			}
-
 			if (!isdigit(*valstr)) {
 				librad_log("dict_init: %s[%d]: invalid value",
 					fn, line);
@@ -311,20 +333,9 @@ static int my_dict_init(char *dir, char *fn)
 			else
 				sscanf(valstr, "%i", &value);
 
-			if ((dval = (DICT_VALUE *)malloc(sizeof(DICT_VALUE))) ==
-					NULL) {
-				librad_log("dict_init: out of memory");
+			if (dict_addvalue(namestr, attrstr, value) < 0) {
 				return -1;
 			}
-
-			strcpy(dval->name, namestr);
-			strcpy(dval->attrname, attrstr);
-			dval->attr = 0;
-			dval->value = value;
-
-			/* Insert at front. */
-			dval->next = dictionary_values;
-			dictionary_values = dval;
 		}
 
 		/*
@@ -342,13 +353,6 @@ static int my_dict_init(char *dir, char *fn)
 			/*
 			 *	 Validate all entries
 			 */
-			if (strlen(attrstr) > 31) {
-				librad_log(
-				"dict_init: %s[%d]: invalid attribute length",
-					fn, line);
-				return -1;
-			}
-
 			if (!isdigit(*valstr)) {
 				librad_log("dict_init: %s[%d]: invalid value",
 					fn, line);
@@ -357,7 +361,7 @@ static int my_dict_init(char *dir, char *fn)
 			value = atoi(valstr);
 
 			/* Create a new VENDOR entry for the list */
-			if (addvendor(attrstr, value) < 0)
+			if (dict_addvendor(attrstr, value) < 0)
 				return -1;
 #ifdef ATTRIB_NMC
 			if (value == VENDORPEC_USR)
@@ -485,3 +489,21 @@ int dict_vendorcode(int pec)
 	return v ? v->vendorcode : 0;
 }
 
+/*
+ *	Get the vendor code based on the vendor name
+ */
+int dict_vendorname(char *name)
+{
+	DICT_VENDOR *v;
+
+	/*
+	 *	Find the vendor, if any.
+	 */
+	for (v = dictionary_vendors; v; v = v->next) {
+		if (strcmp(name, v->vendorname) == 0) {
+			return v->vendorcode;
+		}
+	}
+
+	return 0;
+}
