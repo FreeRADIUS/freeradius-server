@@ -1,32 +1,4 @@
 /*
- * --- David Nicklay [ Wed Nov  3 23:18:46 EST 1999 ]
- * 
- */
-
-/*
- * - Postgres wants C style comments.
- * - datetimeOS DEFAULT '0000-00-00 00:00:00' should be
- *   DEFAULT now() in postgres
- * - postgres apparently creates an index for each
- *   column specified as UNIQUE 
- *   Consider implicit creation of <tablename_id_seq> for each SERIAL field!
- */
-
-
-
-/*
- * Table structure for table 'dictionary'
- */
-CREATE TABLE dictionary (
-  id SERIAL PRIMARY KEY,
-  Type VARCHAR(30),
-  Attribute VARCHAR(32),
-  Value VARCHAR(32),
-  Format VARCHAR(20),
-  Vendor VARCHAR(32)
-);
-
-/*
  * Table structure for table 'nas'
  * This is not currently used but FreeRADIUS but is usefull for reporting
  * anyway.
