@@ -37,9 +37,11 @@ char * ip_hostname(char *buf, size_t buflen, uint32_t ipaddr)
 {
 	struct		hostent *hp;
 #ifdef GETHOSTBYADDRRSTYLE
+#if (GETHOSTBYADDRRSTYLE == SYSVSTYLE) || (GETHOSTBYADDRRSTYLE == GNUSTYLE)
 	char buffer[2048];
 	struct hostent result;
 	int error;
+#endif
 #endif
 
 	/*
