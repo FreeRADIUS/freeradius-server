@@ -52,6 +52,10 @@ Write a file \fIdetail.auth\fP in addition to the standard \fBdetail\fP file
 in the same directory. This file will contain all the authentication-request
 records. This can be useful for debugging, but not for normal operation.
 
+This command line option is accepted only for backwards
+compatibility.  It no longer does anything.  See the configuration for
+the \fIdetail\fP module in \fIradiusd.conf\fP.
+
 .IP \-S
 Write the stripped usernames (without prefix or suffix) in the \fBdetail\fP
 file instead of the raw record as received from the terminal server.
@@ -129,9 +133,12 @@ This command line option is deprecated.  See the \fIport\fP
 configuration item in the \fIradiusd.conf\fP file.
 
 .IP \-s
-Normally, the server forks a seperate process for accounting, and a seperate
-process for every authentication request. With this flag the server will not
-do that. It won't even "daemonize" (auto-background) itself.
+Run in "single server" mode.  The server normally runs with multiple
+threads and/or processes, which can lower its response time to
+requests.  Some systems have issues with threading, however, so
+running in "single server" mode may help to address those issues.  In
+single server mode, the server will also not "daemonize"
+(auto-background) itself.
 
 .IP \-x
 Debug mode. In this mode the server will print details of every request
