@@ -6,12 +6,14 @@ Standards-Version: 3.2.1
 
 Package: freeradius
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: ${shlibs:Depends}, libltdl | libltdl0
+Build-depends: libltdl-dev | libltdl0-dev
 Provides: radiusd
 Conflicts: radiusd, radiusd-livingston, radiusd-cistron
 Description: A high-performance and highly configurable RADIUS server
  A high-performance and highly configurable RADIUS server.  freeradius is 
- similar to Livingston's 2.0 server, but has support for...
+ similar to Livingston's 2.0 and derived from Cistron's server, but has 
+ support for...
   - many vendor-specific attributes
   - proxying and replicating requests by any criteria
   - authentication on system passwd, MySQL, LDAP, users, PAM

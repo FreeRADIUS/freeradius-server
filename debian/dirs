@@ -1,4 +1,5 @@
 etc/
+etc/raddb
 etc/cron.daily
 etc/cron.monthly
 etc/init.d
@@ -13,6 +14,5 @@ usr/share/doc/freeradius
 usr/sbin
 usr/bin
 usr/lib
-usr/include
 var/
 var/log

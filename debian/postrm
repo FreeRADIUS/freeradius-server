@@ -2,18 +2,22 @@
 
 case "$1" in
 	remove)
-		update-rc.d radiusd remove > /dev/null
 		;;
 	purge)
-		update-rc.d radiusd remove > /dev/null
 		rmdir /etc/raddb 2>/dev/null
-		cd /var/log
+		cd /var/log/radiusd
 		rm -f radius.log radius.log.0 radius.log.*.gz
 		rm -f radwtmp radwtmp.0 radwtmp.*.gz
 		rm -f radutmp radwatch.log
 		[ -d radacct ] && rm -rf radacct
 		;;
 	*)
+		;;
+esac
+
+case "$1" in
+	remove|purge)
+		update-rc.d radiusd remove > /dev/null
 		;;
 esac
 

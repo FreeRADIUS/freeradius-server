@@ -9,6 +9,11 @@ SHELL=/bin/bash
 package = freeradius
 tmp     = $(shell pwd)/debian/tmp
 
+prefix	= /
+exec_prefix	= /usr
+mandir	= $(exec_prefix)/share/man
+pkgdocdir	= $(exec_prefix)/share/doc/freeradius
+
 define checkdir
 	test -f src/main/radiusd.c
 endef
@@ -16,7 +21,7 @@ endef
 build:
 # Builds the binary package.
 	$(checkdir)
-	./configure --prefix=/ --exec_prefix='/usr' --infodir='$${exec_prefix}/share/info' --mandir='$${exec_prefix}/share/man' --with-datadir='$${exec_prefix}/share' --includedir='$${exec_prefix}/include' --with-thread-pool --with-logdir='/var/log/radius'
+	./configure --prefix=$(prefix) --exec-prefix=$(exec_prefix) --mandir=$(mandir) --with-thread-pool --enable-ltdl-install=no
 	make
 	touch build
 
@@ -26,37 +31,57 @@ binary-indep:   build
 
 # Make a binary package (.deb file)
 binary-arch:	build checkroot
-	-rm -rf $(tmp)
+	dh_clean
 	dh_installdirs
-	make install prefix=/ exec_prefix=/usr R=$(tmp)
-	for documented in man1/radlast.1 man5/acct_users.5 man8/builddbm.8; do \
-		chmod 644 $(tmp)/usr/share/man/$${documented}; \
-		gzip -9 $(tmp)/usr/share/man/$${documented}; \
+	make install prefix=$(prefix) exec_prefix=$(exec_prefix) mandir=$(mandir) R=$(tmp)
+	# clean up install cruft.  $$&@!%
+	rmdir $(tmp)/include
+	rm $(tmp)/usr/sbin/rc.radiusd
+	# man pages & docs
+	find $(tmp)$(mandir) -type f -exec gzip -9 {} \;  # policy, sec 6.1
+	dh_undocumented 
+	install -g root -m 644 debian/copyright $(tmp)$(pkgdocdir)/copyright  # policy, sec 6.6
+	install -g root -m 644 debian/TODO $(tmp)$(pkgdocdir)/todo.Debian
+	install -g root -m 644 CREDITS $(tmp)$(pkgdocdir)/credits
+	for doc in doc/*; do \
+		[ -f $$doc -a "$$doc" != doc/Makefile ] && install -g root -m 644 $$doc $(tmp)$(pkgdocdir)/; \
 	done
-	dh_undocumented check-radiusd-config.1 checkrad.1 radiusd.1 radtest.1 radwatch.1 radwho.1 radzap.1
-	chmod 644 $(tmp)/usr/lib/*
-	#strip --strip-unneeded $(tmp)/usr/lib/*.{a,so.*}
-	dh_strip
-	#
-	install -g root -m 644 COPYRIGHT $(tmp)/usr/share/doc/freeradius/copyright
-	install -g root -m 644 CREDITS $(tmp)/usr/share/doc/freeradius/credits
-	rm $(tmp)/usr/sbin/rc.radiusd; install -g root -m 755 scripts/rc.radiusd $(tmp)/etc/init.d/radiusd
+	mv $(tmp)$(pkgdocdir)/ChangeLog $(tmp)$(pkgdocdir)/changelog  # policy, sec 6.8
+	# supporting programs
+	install -g root -m 755 scripts/rc.radiusd $(tmp)/etc/init.d/radiusd
 	install -g root -m 755 scripts/radiusd.cron.daily $(tmp)/etc/cron.daily/radiusd
 	install -g root -m 755 scripts/radiusd.cron.monthly $(tmp)/etc/cron.monthly/radiusd
+	# fix up conf file  --  all of these should be commented on in README.Debian
+	cp $(tmp)/etc/raddb/radiusd.conf newconf
+	cat newconf \
+		| sed -e 's/        /	/g' \
+		| sed -e 's/       /	/g' \
+		| sed -e '/^	pam {/,/^	}/s/^/#deb#/' \
+		| sed -e 's/^	pam$$/#deb#	pam/' \
+		| sed -e 's/^	radutmp$$/#deb#	radutmp/' \
+		| sed -e '/^	example {/,/^	}/s/^/#deb#/' \
+		| sed -e '/^	sql .*{/,/^	}/s/^/#deb#/' \
+		| sed -e 's/^		#	shadow		=/		shadow		=/' \
+		| sed -e 's/^group = nobody/group = nogroup/' \
+			> $(tmp)/etc/raddb/radiusd.conf
+	rm newconf
+	# 
+	dh_strip
 	dh_installdeb
 	dh_installchangelogs
-	dh_makeshlibs
-	dh_shlibdeps
 	dh_compress
 	dh_fixperms
+	dh_makeshlibs
+	dh_shlibdeps
+	dh_md5sums
 	dh_gencontrol
-	dpkg --build $(tmp) ..
-	rm -rf $(tmp)
+	dh_builddeb
+	dh_clean
 
 clean:	checkroot
 	[ -f Make.inc ] && make distclean || true
 	rm -f build debian/{files,substvars}
-	rm -rf $(tmp)
+	dh_clean
 
 binary: binary-indep binary-arch
 

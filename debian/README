@@ -1,0 +1,11 @@
+
+In the radiusd.conf file, broken/unconfigured/useless things are commented-out 
+by '#deb#' :
+ - pam module isn't installed
+ - radutmp works, but isn't configured
+ - sql isn't configured
+ - example is a development example
+
+Chad Miller <cmiller@surfsouth.com>  Sun, 26 Nov 2000 15:16:28 -0500
+
+$Id$
