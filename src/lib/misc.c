@@ -432,6 +432,8 @@ static const char *hextab = "0123456789abcdef";
 
 /*
  *	hex2bin
+ *
+ *	We allow: hex == bin
  */
 int lrad_hex2bin(const unsigned char *hex, unsigned char *bin, int len)
 {
@@ -439,8 +441,6 @@ int lrad_hex2bin(const unsigned char *hex, unsigned char *bin, int len)
 	char *c1, *c2;
 
 	for (i = 0; i < len; i++) {
-		if (!hex[1]) break; /* not aligned to 2 hex digits */
-		
 		if(!(c1 = memchr(hextab, tolower((int) hex[i << 1]), 16)) ||
 		   !(c2 = memchr(hextab, tolower((int) hex[(i << 1) + 1]), 16)))
 			break;
@@ -453,6 +453,7 @@ int lrad_hex2bin(const unsigned char *hex, unsigned char *bin, int len)
 
 /*
  *	bin2hex
+ *
  *	If the output buffer isn't long enough, we have a buffer overflow.
  */
 void lrad_bin2hex(const unsigned char *bin, unsigned char *hex, int len)
