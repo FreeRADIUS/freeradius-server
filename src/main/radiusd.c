@@ -77,8 +77,22 @@ static int		acctfd;
 static int		spawn_flag = FALSE;
 static int		radius_pid;
 static int		need_reload = FALSE;
-static REQUEST		*first_request = NULL;
 static struct rlimit	core_limits;
+
+/*
+ *  We keep the incoming requests in an array, indexed by ID.
+ *
+ *  Each array element contains a linked list of active requests,
+ *  a count of the number of requests, and a time at which the first
+ *  request in the list must be serviced.
+ */
+typedef struct REQUEST_LIST {
+  REQUEST	*first_request;
+  int		request_count;
+  time_t	service_time;
+} REQUEST_LIST;
+
+static REQUEST_LIST	request_list[256];
 
 /*
  *  Configuration items.
@@ -103,7 +117,7 @@ static void	sig_hup (int);
 static int	rad_process (REQUEST *);
 static int	rad_respond (REQUEST *);
 static REQUEST	*rad_check_list(REQUEST *);
-static void	rad_spawn_child(REQUEST *, FUNP, int);
+static void	rad_spawn_child(REQUEST *, FUNP);
 
 #ifdef WITH_NEW_CONFIG
 /*
@@ -371,6 +385,15 @@ int main(int argc, char **argv)
 #endif
 
 	/*
+	 *	Initialize the request_list[] array.
+	 */
+	for (i = 0; i < 256; i++) {
+	  request_list[i].first_request = NULL;
+	  request_list[i].request_count = 0;
+	  request_list[i].service_time = 0;
+	}
+
+	/*
 	 *	Open Authentication socket.
 	 */
 	svp = getservbyname ("radius", "udp");
@@ -446,7 +469,6 @@ int main(int argc, char **argv)
 	 */
 	for (proxy_port = acct_port + 1; proxy_port < 64000; proxy_port++) {
 		sin->sin_port = htons(proxy_port);
-	  
 		result = bind (proxyfd, & salocal, sizeof (*sin));
 		if (result == 0) {
 			break;
@@ -493,6 +515,7 @@ int main(int argc, char **argv)
 	 */
 	pair_builtincompare_init();
 
+#if 0
 	/*
 	 *	Connect 0, 1 and 2 to /dev/null.
 	 */
@@ -504,6 +527,7 @@ int main(int argc, char **argv)
 		dup2(devnull, 2);
 		if (devnull > 2) close(devnull);
 	}
+#endif
 
 	/*
 	 *	Disconnect from session
@@ -521,6 +545,7 @@ int main(int argc, char **argv)
 		setsid();
 #endif
 	}
+
 	/*
 	 *	Use linebuffered or unbuffered stdout if
 	 *	the debug flag is on.
@@ -783,7 +808,7 @@ int rad_process(REQUEST *request)
 		}
 
 		if (dospawn) {
-			rad_spawn_child(request, fun, replicating);
+			rad_spawn_child(request, fun);
 			/* AFTER spawning the child */
 			request_list_busy = FALSE;
 		} else {
@@ -827,7 +852,6 @@ static int rad_respond(REQUEST *request)
   return 0;
 }
 
-
 /*
  *	Walk through the request list, cleaning up complete child
  *	requests, and verifing that there is only one process
@@ -840,12 +864,14 @@ static REQUEST *rad_check_list(REQUEST *request)
 	REQUEST		*prevreq;
 	RADIUS_PACKET	*pkt;
 	time_t		curtime;
-	int		request_count;
 	child_pid_t    	child_pid;
+	int		request_count;
+	REQUEST_LIST	*request_list_entry;
+	int		i;
 
 	curtime = time(NULL);
-	request_count = 0;
-	curreq = first_request;
+	request_list_entry = &request_list[request->packet->id];
+	curreq = request_list_entry->first_request;
 	prevreq = NULL;
 	pkt = request->packet;
 
@@ -972,11 +998,16 @@ static REQUEST *rad_check_list(REQUEST *request)
 			 *	list of requests.
 			 */
 			prevreq = curreq->prev;
+			if (request_list_entry->request_count == 0) {
+			  DEBUG("HORRIBLE ERROR!!!");
+			} else {
+			  request_list_entry->request_count--;
+			}
 
 			if (prevreq == (REQUEST *)NULL) {
-				first_request = curreq->next;
+				request_list_entry->first_request = curreq->next;
 				request_free(curreq);
-				curreq = first_request;
+				curreq = request_list_entry->first_request;
 			} else {
 				prevreq->next = curreq->next;
 				request_free(curreq);
@@ -988,7 +1019,6 @@ static REQUEST *rad_check_list(REQUEST *request)
 		} else {	/* the request is still alive */
 			prevreq = curreq;
 			curreq = curreq->next;
-			request_count++;
 		}
 	} /* end of walking the request list */
 
@@ -1000,16 +1030,27 @@ static REQUEST *rad_check_list(REQUEST *request)
 	}
 
 	/*
-	 *	This is a new request.
+	 *	Count the total number of requests, to see if there
+	 *	are too many.  If so, stop counting immediately,
+	 *	and return with an error.
 	 */
-	if (request_count > max_requests) {
-		log(L_ERR, "Dropping request (too many): "
-				"from client %s - ID: %d",
-				client_name(request->packet->src_ipaddr),
-				request->packet->id);
-		sig_cleanup(SIGCHLD);
-		request_free(request);
-		return NULL;
+	request_count = 0;
+	for (i = 0; i < 256; i++) {
+		request_count += request_list[i].request_count;
+
+		/*
+		 *	This is a new request.  Let's see if it
+		 *	makes us go over our configured bounds.
+		 */
+		if (request_count > max_requests) {
+			log(L_ERR, "Dropping request (too many): "
+			    "from client %s - ID: %d",
+			    client_name(request->packet->src_ipaddr),
+			    request->packet->id);
+			sig_cleanup(SIGCHLD);
+			request_free(request);
+			return NULL;
+		}
 	}
 
 	/*
@@ -1019,9 +1060,10 @@ static REQUEST *rad_check_list(REQUEST *request)
 	request->next = (REQUEST *)NULL;
 	request->child_pid = NO_SUCH_CHILD_PID;
 	request->timestamp = curtime;
+	request_list_entry->request_count++;
 
 	if (prevreq == (REQUEST *)NULL)
-		first_request = request;
+		request_list_entry->first_request = request;
 	else
 		prevreq->next = request;
 
@@ -1037,16 +1079,17 @@ void remove_from_request_list(REQUEST *request)
 {
 	REQUEST *prevreq;
 	REQUEST *curreq;
-	
+
 	prevreq = NULL;
-	for (curreq = first_request; curreq; curreq = curreq->next) {
+	for (curreq = request_list[request->packet->id].first_request; curreq; curreq = curreq->next) {
 	  if (curreq == request) {
 	    if (prevreq) {
 	      prevreq->next = request->next;
 	    } else {
-	      first_request = request->next;
+	      request_list[request->packet->id].first_request = request->next;
 	    }
-	    break;
+	    request_list[request->packet->id].request_count--;
+	    return;
 	  }
 	}
 }
@@ -1071,7 +1114,7 @@ static void *rad_spawn_thread(void *arg)
  *	Spawns a child process or thread to perform
  *	authentication/accounting and respond to RADIUS clients.
  */
-static void rad_spawn_child(REQUEST *request, FUNP fun, int replicating)
+static void rad_spawn_child(REQUEST *request, FUNP fun)
 {
 	child_pid_t		child_pid;
 
@@ -1128,6 +1171,7 @@ static void rad_spawn_child(REQUEST *request, FUNP fun, int replicating)
 /*ARGSUSED*/
 void sig_cleanup(int sig)
 {
+	int		i;
 	int		status;
         pid_t		pid;
 	REQUEST		*curreq;
@@ -1163,14 +1207,19 @@ void sig_cleanup(int sig)
 			exit(1);
 		}
 
-		curreq = first_request;
-		while (curreq != (REQUEST *)NULL) {
-			if (curreq->child_pid == pid) {
-				curreq->child_pid = NO_SUCH_CHILD_PID;
-				curreq->timestamp = time(NULL);
-				break;
+		/*
+		 *	Service all of the requests in the queues
+		 */
+		for (i = 0; i < 256; i++) {
+			curreq = request_list[i].first_request;
+			while (curreq != (REQUEST *)NULL) {
+				if (curreq->child_pid == pid) {
+					curreq->child_pid = NO_SUCH_CHILD_PID;
+					curreq->timestamp = time(NULL);
+					break;
+				}
+				curreq = curreq->next;
 			}
-			curreq = curreq->next;
 		}
         }
 }
