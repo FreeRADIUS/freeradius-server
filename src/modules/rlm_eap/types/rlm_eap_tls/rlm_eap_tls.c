@@ -148,8 +148,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	}
 
 	/* Load the CAs we trust */
-	if (!(SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) ||
-	    (!SSL_CTX_set_default_verify_paths(ctx))) {
+	if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
 		ERR_print_errors_fp(stderr);
 		radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list");
 		return NULL;
