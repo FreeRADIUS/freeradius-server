@@ -297,6 +297,8 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 		 * for char/string type columns).
 		 */
 		switch(dtype) {
+		case SQLT_AFC:
+		case SQLT_VCS:
 		case SQLT_CHR:
 		case SQLT_STR:
 			x=OCIAttrGet((dvoid*)param, (ub4) OCI_DTYPE_PARAM,
