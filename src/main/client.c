@@ -21,10 +21,6 @@ static const char rcsid[] = "$Id$";
 #include	<ctype.h>
 #include	<fcntl.h>
 
-#if HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #include	"radiusd.h"
 #include	"conffile.h"
 
@@ -147,11 +143,7 @@ int read_clients_file(const char *file)
 		/*
 		 *	It should be OK now, let's create the buffer.
 		 */
-		if ((c = malloc(sizeof(RADCLIENT))) == NULL) {
-			radlog(L_CONS|L_ERR, "%s[%d]: out of memory",
-				file, lineno);
-			return -1;
-		}
+		c = rad_malloc(sizeof(RADCLIENT));
 
 		c->ipaddr = ip_getaddr(hostnm);
 		if (c->ipaddr == INADDR_NONE) {

@@ -1086,7 +1086,7 @@ smux_oid_dup (oid *objid, size_t objid_len)
 {
   oid *new;
 
-  new = (oid *)malloc(sizeof (oid) * objid_len);
+  new = (oid *)rad_malloc(sizeof (oid) * objid_len);
   oid_copy (new, objid, objid_len);
 
   return new;
@@ -1134,14 +1134,14 @@ smux_register_mib(char *descr, struct variable *var, size_t width, int num,
   struct subtree *tree, *tt;
   struct list *l, *ll;
 
-  tree = (struct subtree *)malloc(sizeof(struct subtree));
+  tree = (struct subtree *)rad_malloc(sizeof(struct subtree));
   oid_copy (tree->name, name, namelen);
   tree->name_len = namelen;
   tree->variables = var;
   tree->variables_num = num;
   tree->variables_width = width;
   tree->registered = 0;
-  l = (struct list *)malloc(sizeof(struct list));
+  l = (struct list *)rad_malloc(sizeof(struct list));
   l->data = tree;
   l->next = NULL;
 /* Build a treelist sorted by the name. This makes GETNEXT simpler */

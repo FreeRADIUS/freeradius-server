@@ -22,10 +22,6 @@ static const char rcsid[] = "$Id$";
 #include	<ctype.h>
 #include	<fcntl.h>
 
-#if HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #include	"radiusd.h"
 
 REALM			*realms;
@@ -260,10 +256,8 @@ parse_again:
 				/*
 				 *	Done with this entry...
 				 */
-				if ((t = malloc(sizeof(PAIR_LIST))) == NULL) {
-					perror(progname);
-					exit(1);
-				}
+				t = rad_malloc(sizeof(PAIR_LIST));
+
 				auth_type_fixup(check_tmp);
 				memset(t, 0, sizeof(*t));
 				t->name = strdup(entry);
@@ -382,11 +376,7 @@ int read_realms_file(const char *file)
 			continue;
 		}
 
-		if ((c = malloc(sizeof(REALM))) == NULL) {
-			radlog(L_CONS|L_ERR, "%s[%d]: out of memory",
-				file, lineno);
-			return -1;
-		}
+		c = rad_malloc(sizeof(REALM));
 		memset(c, 0, sizeof(REALM));
 
 		if ((s = strchr(hostnm, ':')) != NULL) {

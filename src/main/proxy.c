@@ -19,11 +19,6 @@ static const char rcsid[] = "$Id$";
 #include	<stdlib.h>
 #include	<ctype.h>
 #include	<string.h>
-
-#if HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #include	<assert.h>
 
 #include	"radiusd.h"
@@ -81,24 +76,20 @@ int proxy_receive(REQUEST *request)
         REALM           *realm;
         char            *realmname;
 
-	/*
-	 *	FIXME: calculate md5 checksum!
-	 */
-
 	proxypair = pairfind(request->config_items, PW_PROXY_TO_REALM);
 	replicatepair = pairfind(request->config_items, PW_REPLICATE_TO_REALM);
 	if(proxypair) {
-		realmpair=proxypair;
-		replicating=0;
+		realmpair = proxypair;
+		replicating = 0;
 	} else if(replicatepair) {
-		realmpair=replicatepair;
-		replicating=1;
+		realmpair = replicatepair;
+		replicating = 1;
 	} else {
 		radlog(L_PROXY, "Proxy reply to packet with no Realm");
 		return -1;
 	}
 
-	realmname=(char *)realmpair->strvalue;
+	realmname = (char *) realmpair->strvalue;
         realm = realm_find(realmname);
 	allowed_pairs = NULL;
 
@@ -352,6 +343,5 @@ int proxy_send(REQUEST *request)
 	 *	Do NOT free proxy->vps, the pairs are needed for the
 	 *	retries! --Pac.
 	 */
-
 	return replicating?2:1;
 }

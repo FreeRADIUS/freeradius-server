@@ -985,10 +985,7 @@ int main(int argc, char **argv)
 				continue;
 			}
 
-			if ((request = malloc(sizeof(REQUEST))) == NULL) {
-				radlog(L_ERR|L_CONS, "no memory");
-				exit(1);
-			}
+			request = rad_malloc(sizeof(REQUEST));
 			memset(request, 0, sizeof(REQUEST));
 #ifndef NDEBUG
 			request->magic = REQUEST_MAGIC;
@@ -1942,7 +1939,7 @@ static int rad_spawn_child(REQUEST *request, RAD_REQUEST_FUNP fun)
 	int rcode;
 	spawn_thread_t *data;
 
-	data = (spawn_thread_t *) malloc(sizeof(spawn_thread_t));
+	data = (spawn_thread_t *) rad_malloc(sizeof(spawn_thread_t));
 	memset(data, 0, sizeof(data));
 	data->request = request;
 	data->fun = fun;

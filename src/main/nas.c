@@ -17,10 +17,6 @@ static const char rcsid[] = "$Id$";
 #include	<stdlib.h>
 #include	<string.h>
 
-#if HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #include	"radiusd.h"
 
 static NAS	*naslist = NULL;
@@ -102,11 +98,7 @@ int read_naslist_file(char *file)
 		/*
 		 *	It should be OK now, let's create the buffer.
 		 */
-		if ((nas = malloc(sizeof(NAS))) == NULL) {
-			radlog(L_CONS|L_ERR, "%s[%d]: out of memory",
-				file, lineno);
-			return -1;
-		}
+		nas = rad_malloc(sizeof(NAS));
 
 		strcpy(nas->nastype, nastype);
 		strcpy(nas->shortname, shortnm);

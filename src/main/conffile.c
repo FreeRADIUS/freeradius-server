@@ -28,7 +28,6 @@
 static const char rcsid[] =
 "$Id$";
 
-#define xalloc malloc
 #define xstrdup strdup
 
 typedef enum conf_type {
@@ -110,7 +109,7 @@ static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
 {
 	CONF_PAIR	*cp;
 
-	cp = (CONF_PAIR *)xalloc(sizeof(CONF_PAIR));
+	cp = (CONF_PAIR *)rad_malloc(sizeof(CONF_PAIR));
 	memset(cp, 0, sizeof(CONF_PAIR));
 	cp->item.type = CONF_ITEM_PAIR;
 	cp->item.parent = parent;
@@ -159,7 +158,7 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 
 	if (name1 == NULL || !name1[0]) name1 = "main";
 
-	cs = (CONF_SECTION *)xalloc(sizeof(CONF_SECTION));
+	cs = (CONF_SECTION *)rad_malloc(sizeof(CONF_SECTION));
 	memset(cs, 0, sizeof(CONF_SECTION));
 	cs->item.type = CONF_ITEM_SECTION;
         cs->item.parent = parent;
@@ -333,7 +332,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 				radlog(L_ERR, "Bad value \"%s\" for boolean variable %s", value, variables[i].name);
 				return -1;
 			}
-			DEBUG2("Config: %s.%s = %s",
+			DEBUG2(" %s: %s = %s",
 			       cs->name1,
 			       variables[i].name,
 			       value);
@@ -341,7 +340,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 
 		case PW_TYPE_INTEGER:
 			*(int *)variables[i].data = strtol(value, 0, 0);
-			DEBUG2("Config: %s.%s = %d",
+			DEBUG2(" %s: %s = %d",
 			       cs->name1,
 			       variables[i].name,
 			       *(int *)variables[i].data);
@@ -363,7 +362,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 				value = buffer;
 			}
 
-			DEBUG2("Config: %s.%s = \"%s\"",
+			DEBUG2(" %s: %s = \"%s\"",
 			       cs->name1,
 			       variables[i].name,
 			       value ? value : "(null)");
@@ -383,7 +382,7 @@ int cf_section_parse(CONF_SECTION *cs, const CONF_PARSER *variables)
 				radlog(L_ERR, "Can't find IP address for host %s", value);
 				return -1;
 			}
-			DEBUG2("Config: %s.%s = %s IP address [%s]",
+			DEBUG2(" %s: %s = %s IP address [%s]",
 			       cs->name1,
 			       variables[i].name,
 			       value, ip_ntoa(buffer, ipaddr));
@@ -739,10 +738,7 @@ static int generate_realms(const char *filename)
 		/*
 		 * We've found a realm, allocate space for it
 		 */
-		if ((c = malloc(sizeof(REALM))) == NULL) {
-			radlog(L_CONS|L_ERR, "Out of memory");
-			return -1;
-		}
+		c = rad_malloc(sizeof(REALM));
 		memset(c, 0, sizeof(REALM));
 		/*
 		 * An authhost must exist in the configuration
@@ -865,10 +861,7 @@ static int generate_clients(const char *filename)
 		/*
 		 * The size is fine.. Let's create the buffer
 		 */
-		if ((c = malloc(sizeof(RADCLIENT))) == NULL) {
-			radlog(L_CONS|L_ERR, "Out of memory");
-			return -1;
-		}
+		c = rad_malloc(sizeof(RADCLIENT));
 
 		/*
 		 *	Look for netmasks.

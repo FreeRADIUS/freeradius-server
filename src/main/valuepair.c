@@ -18,10 +18,6 @@ static const char rcsid[] = "$Id$";
 #include	<netinet/in.h>
 #endif
 
-#ifdef HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #ifdef HAVE_REGEX_H
 #  include	<regex.h>
 #endif
@@ -133,8 +129,8 @@ int paircompare_register(int attr, int compare_attr, RAD_COMPARE_FUNC fun, void 
 
 	paircompare_unregister(attr, fun);
 
-	if ((c = malloc(sizeof(struct cmp))) == NULL)
-		return -1;
+	c = rad_malloc(sizeof(struct cmp));
+
 	if (compare_attr < 0) compare_attr = attr;
 	c->compare = fun;
 	c->attribute = attr;

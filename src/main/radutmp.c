@@ -20,10 +20,6 @@ static const char rcsid[] =
 #include	<ctype.h>
 #include	<signal.h>
 
-#if HAVE_MALLOC_H
-#  include <malloc.h>
-#endif
-
 #if HAVE_SYS_WAIT_H
 # include <sys/wait.h>
 #endif
@@ -403,13 +399,12 @@ int radutmp_add(REQUEST *request)
 		if (r >= 0 &&  (status == PW_STATUS_START ||
 				status == PW_STATUS_ALIVE)) {
 			if (cache == NULL) {
-			   if ((cache = malloc(sizeof(NAS_PORT))) != NULL) {
-				   cache->nasaddr = ut.nas_address;
-				   cache->port = ut.nas_port;
-				   cache->offset = off;
-				   cache->next = nas_port_list;
-				   nas_port_list = cache;
-			   }
+				cache = rad_malloc(sizeof(NAS_PORT));
+				cache->nasaddr = ut.nas_address;
+				cache->port = ut.nas_port;
+				cache->offset = off;
+				cache->next = nas_port_list;
+				nas_port_list = cache;
 			}
 			ut.type = P_LOGIN;
 			write(fd, &ut, sizeof(u));

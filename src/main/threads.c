@@ -9,10 +9,6 @@
 #include <assert.h>
 #include <signal.h>
 
-#if HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #include	"radiusd.h"
 #include	"conffile.h"
 
@@ -304,11 +300,7 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	/*
 	 *	Allocate a new thread handle.
 	 */
-	handle = (THREAD_HANDLE *) malloc(sizeof(THREAD_HANDLE));
-	if (handle == NULL) {
-		radlog(L_ERR|L_CONS, "no memory");
-		exit(1);
-	}
+	handle = (THREAD_HANDLE *) rad_malloc(sizeof(THREAD_HANDLE));
 	memset(handle, 0, sizeof(THREAD_HANDLE));
 	handle->prev = NULL;
 	handle->next = NULL;
