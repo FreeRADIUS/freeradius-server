@@ -240,7 +240,7 @@ const char	*client_name(uint32_t ipno);
 void		client_walk(void);
 
 /* files.c */
-REALM		*realm_find(const char *, int acct);
+REALM		*realm_find(const char *, int);
 REALM		*realm_findbyaddr(uint32_t ipno, int port);
 void		realm_disable(uint32_t ipno, int port);
 int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
