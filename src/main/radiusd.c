@@ -305,7 +305,7 @@ static int reread_config(int reload)
 			 *  dumps are enabled, log that information.
 			 */
 		} else if ((core_limits.rlim_cur != 0) && !debug_flag)
-			radlog(L_INFO, "Core dumps are enabled.");
+			radlog(L_INFO|L_CONS, "Core dumps are enabled.");
 
 	} else if (!debug_flag) {
 		/*
