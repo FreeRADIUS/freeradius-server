@@ -92,8 +92,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		vplen = vp->length;
 
 		/*
-
-		* the AT_MAC attribute is a bit different, when we get to this
+		 * the AT_MAC attribute is a bit different, when we get to this
 		 * attribute, we pull the contents out, save it for later
 		 * processing, set the size to 16 bytes (plus 2 bytes padding).
 		 *
