@@ -67,7 +67,7 @@ function da_sql_query($link,$config,$query)
 {
 	if ($config[sql_debug] == 'true')
 		print "<b>DEBUG(SQL,PG DRIVER): Query: <i>$query</i></b><br>\n";
-	return @pg_exec($link,$query);
+	return @pg_query($link,$query);
 }
 
 function da_sql_num_rows($result,$config)
@@ -99,7 +99,7 @@ function da_sql_affected_rows($link,$result,$config)
 
 function da_sql_list_fields($table,$link,$config)
 {
-	$res = @pg_exec($link,
+	$res = @pg_query($link,
 		"select count(*) from pg_attribute where attnum > '0' and
 		attrelid = (select oid from pg_class where relname='$table');");
 	if ($res){
@@ -110,7 +110,7 @@ function da_sql_list_fields($table,$link,$config)
 			$fields[num] = $row[0];
 		}
 	}
-	$res = @pg_exec($link,
+	$res = @pg_query($link,
 		"select attname from pg_attribute where attnum > '0' and
 		attrelid = (select oid from pg_class where relname='$table');");
 	if ($res)
