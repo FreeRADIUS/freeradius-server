@@ -179,7 +179,7 @@ static int sm_parse_user(DBM *pdb, const char * username, VALUE_PAIR const* requ
    	}
    	
    	ch = d.dptr;
-   	ch [ d.dsize ] = '\0'; /* should be closed by 0 */
+   	ch [ d.dsize - 1 ] = '\0'; /* should be closed by 0 */
    	
 	DEBUG2("sm_parse_user: start parsing: user: %s", username);
 	
@@ -321,7 +321,7 @@ static int rlm_dbm_authorize(void *instance, REQUEST *request)
 	DEBUG2("rlm_dbm: try open database file: %s\n",inst -> userfile);
 
 	/* open database */
-	if ( ( pdb = dbm_open(inst -> userfile, O_RDONLY, 0600) ) != NULL ) {
+	if ( ( pdb = dbm_open(inst->userfile, O_RDONLY, 0600) ) != NULL ) {
 		DEBUG("rlm_dbm: Call parse_user:\n");
 		found = sm_parse_user(pdb, name, request_pairs, &check_tmp, &reply_tmp, &ulist);
 	   	if ( found == RLM_MODULE_NOTFOUND ) {
@@ -331,7 +331,8 @@ static int rlm_dbm_authorize(void *instance, REQUEST *request)
 		dbm_close(pdb);
 	} else { 
 		found = RLM_MODULE_FAIL;
-		DEBUG2("rlm_dbm: Cannot open database file: %s\n",strerror(errno));
+		DEBUG2("rlm_dbm: Cannot open database file: %s\n",
+		       strerror(errno));
 	}
 
 	if ( found == RLM_MODULE_OK ) {
