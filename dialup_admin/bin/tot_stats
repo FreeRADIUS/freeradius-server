@@ -1,0 +1,37 @@
+#!/usr/bin/perl
+use POSIX;
+
+$conf=shift||'/usr/local/dialupadmin/conf/admin.conf';
+$mysql='/usr/local/mysql/bin/mysql';
+
+open CONF, "<$conf"
+	or die "Could not open configuration file\n";
+while(<CONF>){
+	chomp;
+	($key,$val)=(split /:\s*/,$_);
+	$sql_server = $val if ($key eq 'sql_server');
+	$sql_username = $val if ($key eq 'sql_username');
+	$sql_password = $val if ($key eq 'sql_password');
+	$sql_database = $val if ($key eq 'sql_database');
+	$sql_accounting_table = $val if ($key eq 'sql_accounting_table');
+}
+close CONF;
+
+($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime;
+$date_start = POSIX::strftime("%Y-%m-%d %T",0,0,0,($mday - 1),$mon,$year,$wday,$yday,$isdst);
+$date_small_start = POSIX::strftime("%Y-%m-%d",0,0,0,($mday - 1),$mon,$year,$wday,$yday,$isdst);
+$date_end = POSIX::strftime("%Y-%m-%d %T",0,0,0,$mday,$mon,$year,$wday,$yday,$isdst);
+
+$query = "INSERT INTO totacct (UserName,AcctDate,ConnNum,ConnTotDuration,
+	ConnMaxDuration,ConnMinDuration,InputOctets,OutputOctets,NASIPAddress)
+	SELECT UserName,'$date_small_start',COUNT(*),SUM(AcctSessionTime),
+	MAX(AcctSessionTime),MIN(AcctSessionTime),SUM(AcctInputOctets),
+	SUM(AcctOutputOctets),NASIPAddress FROM radacct
+	WHERE AcctStopTime >= '$date_start' AND
+	AcctStopTime < '$date_end' GROUP BY UserName;";
+print "$query\n";
+open TMP, ">/tmp/tot_stats.query"
+	or die "Could not open tmp file\n";
+print TMP $query;
+close TMP;
+`$mysql -h $sql_server -u $sql_username -p$sql_password $sql_database </tmp/tot_stats.query`;

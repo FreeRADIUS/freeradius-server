@@ -35,6 +35,10 @@ Ver 1.62:
 * Do a write lock in radacct before truncating it in truncate_radacct
 * In user_new show a select box with all the available groups. Based on an idea by Karel Stadler (kstadler)
 * Add a column Admin in the badusers table which will contain the administrator username if that is available
+* Add two new tables totacct and mtotacct containing per user aggregated statistics for each day and month
+  respectively. Also add two corresponding scripts in the bin folder, tot_stats and monthly_tot_stats. Lastly,
+  create a new page, user_stats.php3 which will show the top users in connections or connections duration based
+  on the data in the totacct table.
 Ver 1.61:
 * Add a string encoder for greek
 * If general_decode_normal_attributes is set then encode attributes in lib/ldap/change_info. In the near future
