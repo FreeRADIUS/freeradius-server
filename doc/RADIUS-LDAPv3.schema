@@ -578,3 +578,11 @@ objectclass
             radiusExpiration $ dialupAccess $ radiusNASIpAddress $
             radiusReplyMessage )
    )
+objectclass
+  ( 1.3.6.1.4.1.3317.4.3.2.2
+	NAME 'radiusObjectProfile'
+	SUP top STRUCTURAL
+	DESC 'A Container Objectclass to be used for creating radius profile object'
+	MUST cn
+	MAY ( uid $ userPassword $ description )
+  )
