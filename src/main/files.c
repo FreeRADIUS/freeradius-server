@@ -545,7 +545,7 @@ static int read_realms_file(const char *file)
 		}
 
 		if (strcmp(hostnm, "LOCAL") == 0) {
-			c->ipaddr = htonl(0x7f000001);
+			c->ipaddr = htonl(INADDR_LOOPBACK);
 		} else {
 			c->ipaddr = ip_getaddr(hostnm);
 		}
