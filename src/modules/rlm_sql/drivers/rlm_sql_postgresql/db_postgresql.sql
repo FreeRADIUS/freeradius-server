@@ -3,8 +3,7 @@
  *
  * Postgresql schema for FreeRADIUS
  *
- * All field lengths and types need checking as some are still either
- * suboptimal. -pnixon 2003-07-13
+ * All field lengths need checking as some are still suboptimal. -pnixon 2003-07-13
  *
  */
 
@@ -16,31 +15,40 @@
  */
 CREATE TABLE radacct (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
-	AcctSessionId		VARCHAR(32) DEFAULT '' NOT NULL,
-	AcctUniqueId		VARCHAR(32) DEFAULT '' NOT NULL,
-	UserName		VARCHAR(32) DEFAULT '' NOT NULL,
+	AcctSessionId		VARCHAR(32) NOT NULL,
+	AcctUniqueId		VARCHAR(32) NOT NULL,
+	UserName		VARCHAR(32),
 	Realm			VARCHAR(30),
 	NASIPAddress		INET NOT NULL,
-	NASPortId		NUMERIC(12),
+	NASPortId		INTEGER,
 	NASPortType		VARCHAR(32),
-	AcctStartTime		TIMESTAMP with time zone NOT NULL,
+	AcctStartTime		TIMESTAMP with time zone,
 	AcctStopTime		TIMESTAMP with time zone,
-	AcctSessionTime		NUMERIC(12),
+	AcctSessionTime		INTERVAL,
 	AcctAuthentic		VARCHAR(32),
 	ConnectInfo_start	VARCHAR(32),
 	ConnectInfo_stop	VARCHAR(32),
-	AcctInputOctets		NUMERIC(12),
-	AcctOutputOctets	NUMERIC(12),
-	CalledStationId		VARCHAR(50) DEFAULT '' NOT NULL,
-	CallingStationId	VARCHAR(50) DEFAULT '' NOT NULL,
-	AcctTerminateCause	VARCHAR(32) DEFAULT '' NOT NULL,
+	AcctInputOctets		BIGINT,
+	AcctOutputOctets	BIGINT,
+	CalledStationId		VARCHAR(50),
+	CallingStationId	VARCHAR(50),
+	AcctTerminateCause	INTEGER,
 	ServiceType		VARCHAR(32),
 	FramedProtocol		VARCHAR(32),
 	FramedIPAddress		INET,
-	AcctStartDelay		NUMERIC(12),
-	AcctStopDelay		NUMERIC(12)
+	AcctStartDelay		INTERVAL,
+	AcctStopDelay		INTERVAL
 );
-CREATE UNIQUE INDEX radacct_combo on radacct (AcctStartTime, nasipaddress, AcctUniqueId);
+-- This index may be usefull..
+-- CREATE UNIQUE INDEX radacct_whoson on radacct (AcctStartTime, nasipaddress);
+
+-- For use by onoff-, update-, stop- and simul_* queries
+CREATE INDEX radacct_active_user_idx ON radacct (userName) WHERE AcctStopTime IS NULL;
+-- and for common statistic queries:
+CREATE INDEX radacct_start_user_idx ON radacct (acctStartTime, UserName);
+-- and, optionally
+-- CREATE INDEX radacct_stop_user_idx ON radacct (acctStopTime, UserName);
+
 /*
  * There was WAAAY too many indexes previously. This combo index
  * should take care of the most common searches.
