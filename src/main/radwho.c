@@ -279,7 +279,7 @@ static void usage(int status)
 {
 	FILE *output = status?stderr:stdout;
 
-	fprintf(output, "Usage: radwho [-d raddb] [-cfihnprRsS] [-N nas] [-P nas_port] [-u user] [-U user]\n");
+	fprintf(output, "Usage: radwho [-d raddb] [-cfihnprRsSZ] [-N nas] [-P nas_port] [-u user] [-U user]\n");
 	fprintf(output, "       -c: show caller ID, if available\n");
 	fprintf(output, "       -d: set the raddb directory (default is %s)\n",
 		RADIUS_DIR);
@@ -289,12 +289,14 @@ static void usage(int status)
 	fprintf(output, "       -N <nas-ip-address>: Show entries matching the given NAS IP address\n");
 	fprintf(output, "       -p: show port type\n");
 	fprintf(output, "       -P <port>: Show entries matching the given nas port\n");
-	fprintf(output, "       -r: output as raw data\n");
-	fprintf(output, "       -R: output as RADIUS attributes and values\n");
+	fprintf(output, "       -r: Print output as raw comma-delimited data\n");
+	fprintf(output, "       -R: Print output as RADIUS attributes and values\n");
+	fprintf(output, "           Includes ALL information from the radutmp record.\n");
 	fprintf(output, "       -s: show full name\n");
 	fprintf(output, "       -S: hide shell users from radius\n");
 	fprintf(output, "       -u <user>: Show entries matching the given user\n");
 	fprintf(output, "       -U <user>: like -u, but case-sensitive\n");
+	fprintf(output, "       -Z: Include accounting stop information in radius output.  Requires -R.\n");
 	exit(status);
 }
 
@@ -398,14 +400,14 @@ int main(int argc, char **argv)
 	if (zap && !radiusoutput) zap = 0;
 
 	/*
-	 *	Don't zap EVERYONE.	
-	 */
-	if (zap && (nas_ip_address == INADDR_NONE)) usage(1);
-
-	/*
 	 *	zap EVERYONE, but only on this nas
 	 */
 	if (zap && !user && (~nas_port == 0)) {
+		/*
+		 *	We need to know which NAS to zap users in.
+		 */
+		if (nas_ip_address == INADDR_NONE) usage(1);
+
 		printf("Acct-Status-Type = Accounting-Off\n");
 		printf("NAS-IP-Address = %s\n",
 		       ip_hostname(buffer, sizeof(buffer), nas_ip_address));
@@ -537,14 +539,20 @@ int main(int argc, char **argv)
 			portno = rt.nas_port;
 		}
 
-#define CPY(foo) memcpy(buffer, foo, sizeof(foo));buffer[sizeof(foo)] = 0
 		/*
 		 *	Print output as RADIUS attributes
 		 */
 		if (radiusoutput) {
-			CPY(rt.login);
+			memcpy(nasname, rt.login, sizeof(rt.login));
+			nasname[sizeof(rt.login)] = '\0';
+
+			librad_safeprint(nasname, -1, buffer,
+					 sizeof(buffer));
 			printf("User-Name = \"%s\"\n", buffer);
-			printf("Acct-Session-Id = \"%s\"\n", session_id);
+
+			librad_safeprint(session_id, -1, buffer,
+					 sizeof(buffer));
+			printf("Acct-Session-Id = \"%s\"\n", buffer);
 
 			if (zap) printf("Acct-Status-Type = Stop\n");
 
@@ -579,6 +587,16 @@ int main(int argc, char **argv)
 			    (now - rt.time) <= (86400 * 365)) {
 				printf("Acct-Session-Time = %ld\n",
 				       now - rt.time);
+			}
+
+			if (rt.caller_id[0] != '\0') {
+				memcpy(nasname, rt.caller_id,
+				       sizeof(rt.caller_id));
+				nasname[sizeof(rt.caller_id)] = '\0';
+				
+				librad_safeprint(nasname, -1, buffer,
+						 sizeof(buffer));
+				printf("Calling-Station-Id = \"%s\"\n", buffer);
 			}
 
 			printf("\n"); /* separate entries with a blank line */
