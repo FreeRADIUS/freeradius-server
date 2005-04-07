@@ -69,6 +69,9 @@ void librad_safeprint(char *in, int inlen, char *out, int outlen)
 			case '\t':
 				sp = 't';
 				break;
+			case '"':
+				sp = '"';
+				break;
 			default:
 				if (*str < 32 || (*str >= 128)){
 					snprintf(out, outlen, "\\%03o", *str);
