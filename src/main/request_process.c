@@ -200,7 +200,7 @@ void rfc_clean(RADIUS_PACKET *packet)
 /*
  *	For debugging
  */
-static LRAD_NAME_NUMBER request_fail_reason[] = {
+static const LRAD_NAME_NUMBER request_fail_reason[] = {
 	{ "no threads available to handle the request",
 	  REQUEST_FAIL_NO_THREADS },
 
