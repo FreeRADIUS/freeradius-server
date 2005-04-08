@@ -148,7 +148,7 @@ static const LRAD_NAME_NUMBER str2dest[] = {
 /*
  *  Map the proxy server configuration parameters to variables.
  */
-static CONF_PARSER proxy_config[] = {
+static const CONF_PARSER proxy_config[] = {
 	{ "retry_delay",  PW_TYPE_INTEGER, 0, &mainconfig.proxy_retry_delay, Stringify(RETRY_DELAY) },
 	{ "retry_count",  PW_TYPE_INTEGER, 0, &mainconfig.proxy_retry_count, Stringify(RETRY_COUNT) },
 	{ "synchronous",  PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_synchronous, "no" },
@@ -164,7 +164,7 @@ static CONF_PARSER proxy_config[] = {
 /*
  *  Security configuration for the server.
  */
-static CONF_PARSER security_config[] = {
+static const CONF_PARSER security_config[] = {
 	{ "max_attributes",  PW_TYPE_INTEGER, 0, &librad_max_attributes, Stringify(0) },
 	{ "reject_delay",  PW_TYPE_INTEGER, 0, &mainconfig.reject_delay, Stringify(0) },
 	{ "status_server", PW_TYPE_BOOLEAN, 0, &mainconfig.status_server, "no"},
@@ -175,7 +175,7 @@ static CONF_PARSER security_config[] = {
 /*
  *  syslog configuration for the server.
  */
-static CONF_PARSER log_config[] = {
+static const CONF_PARSER log_config[] = {
 	{ "syslog_facility",  PW_TYPE_STRING_PTR, 0, &syslog_facility, Stringify(0) },
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -184,7 +184,7 @@ static CONF_PARSER log_config[] = {
 /*
  *  A mapping of configuration file names to internal variables
  */
-static CONF_PARSER server_config[] = {
+static const CONF_PARSER server_config[] = {
 	/*
 	 *	FIXME: 'prefix' is the ONLY one which should be
 	 *	configured at compile time.  Hard-coding it here is
@@ -237,7 +237,7 @@ static CONF_PARSER server_config[] = {
 /*
  *	Allowed to over-ride command-line
  */
-static CONF_PARSER bind_config[] = {
+static const CONF_PARSER bind_config[] = {
 	{ "bind_address", PW_TYPE_IPADDR, 0, &server_ip, "*" },
 	{ NULL, -1, 0, NULL, NULL }
 };
