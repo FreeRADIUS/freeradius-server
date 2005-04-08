@@ -72,7 +72,7 @@ static PAIR_LIST *fastuser_find(REQUEST *request, PAIR_LIST *user,
 static void fastuser_tablestats(PAIR_LIST **hashtable, int size);
 static int fastuser_passcheck(REQUEST *request, PAIR_LIST *user, const char *name);
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "usersfile",     PW_TYPE_STRING_PTR,
 	  offsetof(struct fastuser_instance,usersfile), NULL, "${raddbdir}/users_fast" },
 	{ "acctusersfile",     PW_TYPE_STRING_PTR,

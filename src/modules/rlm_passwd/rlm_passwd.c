@@ -353,7 +353,7 @@ struct passwd_instance {
 	int ignoreempty;
 };
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "filename",   PW_TYPE_STRING_PTR,
 	   offsetof(struct passwd_instance, filename), NULL,  NULL },
 	{ "format",   PW_TYPE_STRING_PTR,

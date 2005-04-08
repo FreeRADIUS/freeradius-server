@@ -62,7 +62,7 @@ typedef struct rlm_linelog_t {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "filename",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_linelog_t,filename), NULL,  NULL},
 	{ "format",  PW_TYPE_STRING_PTR,

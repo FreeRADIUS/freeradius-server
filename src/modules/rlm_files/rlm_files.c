@@ -65,7 +65,7 @@ static int fallthrough(VALUE_PAIR *vp)
 	return tmp ? tmp->lvalue : 0;
 }
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "usersfile",	   PW_TYPE_STRING_PTR,
 	  offsetof(struct file_instance,usersfile), NULL, "${raddbdir}/users" },
 	{ "acctusersfile", PW_TYPE_STRING_PTR,

@@ -76,7 +76,7 @@ struct sim_file_instance {
 	char *file;
 };
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "simtriplets",	PW_TYPE_STRING_PTR,
 	  offsetof(struct sim_file_instance, file),
 	  NULL, "${raddbdir}/simtriplets.dat" },

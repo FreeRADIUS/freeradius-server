@@ -50,7 +50,7 @@ typedef struct rlm_preprocess_t {
 	int		with_cisco_vsa_hack;
 } rlm_preprocess_t;
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "huntgroups",			PW_TYPE_STRING_PTR,
 	  offsetof(rlm_preprocess_t,huntgroup_file), NULL,
 	  "${raddbdir}/huntgroups" },

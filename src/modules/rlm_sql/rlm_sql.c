@@ -50,7 +50,7 @@ static const char rcsid[] =
 
 static char *allowed_chars = NULL;
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{"driver",PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,sql_driver), NULL, "mysql"},
 	{"server",PW_TYPE_STRING_PTR,

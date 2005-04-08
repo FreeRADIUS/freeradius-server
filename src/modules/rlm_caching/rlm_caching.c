@@ -117,7 +117,7 @@ typedef struct rlm_caching_data {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "filename", PW_TYPE_STRING_PTR, offsetof(rlm_caching_t,filename), NULL, NULL },
   { "key", PW_TYPE_STRING_PTR, offsetof(rlm_caching_t,key), NULL, "%{Acct-Unique-Session-Id}" },
   { "post-auth", PW_TYPE_STRING_PTR, offsetof(rlm_caching_t,post_auth), NULL,  NULL },

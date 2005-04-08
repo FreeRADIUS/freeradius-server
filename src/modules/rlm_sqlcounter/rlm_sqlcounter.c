@@ -86,7 +86,7 @@ typedef struct rlm_sqlcounter_t {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "counter-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,counter_name), NULL,  NULL },
   { "check-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,check_name), NULL, NULL },
   { "key", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,key_name), NULL, NULL },

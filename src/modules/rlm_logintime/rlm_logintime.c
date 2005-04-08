@@ -58,7 +58,7 @@ typedef struct rlm_logintime_t {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "reply-message", PW_TYPE_STRING_PTR, offsetof(rlm_logintime_t,msg), NULL, 
 	"You are calling outside your allowed timespan\r\n"},
   { "minimum-timeout", PW_TYPE_INTEGER, offsetof(rlm_logintime_t,min_time), NULL, "60" },

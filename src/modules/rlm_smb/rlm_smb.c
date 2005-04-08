@@ -57,7 +57,7 @@ typedef struct rlm_smb_t {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "server",  PW_TYPE_STRING_PTR, offsetof(rlm_smb_t,server), NULL,  NULL},
   { "backup",  PW_TYPE_STRING_PTR, offsetof(rlm_smb_t,backup), NULL,  NULL},
   { "domain",  PW_TYPE_STRING_PTR, offsetof(rlm_smb_t,domain), NULL,  NULL},

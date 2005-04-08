@@ -67,7 +67,7 @@ typedef struct rlm_checkval_t {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "item-name",  PW_TYPE_STRING_PTR, offsetof(rlm_checkval_t,item_name), NULL,  NULL},
   { "check-name",  PW_TYPE_STRING_PTR, offsetof(rlm_checkval_t,check_name), NULL,  NULL},
   { "data-type",    PW_TYPE_STRING_PTR, offsetof(rlm_checkval_t,data_type),NULL, "integer"},

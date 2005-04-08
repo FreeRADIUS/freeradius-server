@@ -194,7 +194,7 @@ static CONF_PARSER tls_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{"server", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,server), NULL, "localhost"},
 	{"port", PW_TYPE_INTEGER,

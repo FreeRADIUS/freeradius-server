@@ -73,7 +73,7 @@ struct detail_instance {
 	int locking;
 };
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "detailfile",    PW_TYPE_STRING_PTR,
 	  offsetof(struct detail_instance,detailfile), NULL, "%A/%{Client-IP-Address}/detail" },
 	{ "header",    PW_TYPE_STRING_PTR,

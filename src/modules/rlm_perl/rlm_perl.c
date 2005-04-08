@@ -122,7 +122,7 @@ typedef struct perl_inst {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "module",  PW_TYPE_STRING_PTR,
 	  offsetof(PERL_INST,module), NULL,  "module"},
 	{ "func_authorize", PW_TYPE_STRING_PTR,

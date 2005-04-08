@@ -60,7 +60,7 @@ static int rnd_fd;			/* fd for random device           */
 static unsigned char hmac_key[16];	/* to protect State attribute     */
 
 /* A mapping of configuration file names to internal variables. */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
     { "pwdfile", PW_TYPE_STRING_PTR, offsetof(x99_token_t, pwdfile),
       NULL, PWDFILE },
     { "syncdir", PW_TYPE_STRING_PTR, offsetof(x99_token_t, syncdir),

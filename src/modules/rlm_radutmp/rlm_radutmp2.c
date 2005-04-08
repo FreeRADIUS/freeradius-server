@@ -123,7 +123,7 @@ typedef struct rlm_radutmp_t {
 #define pthread_mutex_unlock(_x)
 #endif
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "filename", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_radutmp_t,filename), NULL,  RADUTMP },
 	{ "username", PW_TYPE_STRING_PTR,

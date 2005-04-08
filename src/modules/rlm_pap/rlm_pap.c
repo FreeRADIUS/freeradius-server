@@ -74,7 +74,7 @@ typedef struct rlm_pap_t {
  *      to the strdup'd string into 'config.string'.  This gets around
  *      buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "encryption_scheme", PW_TYPE_STRING_PTR, offsetof(rlm_pap_t,scheme), NULL, "auto" },
   { NULL, -1, 0, NULL, NULL }
 };

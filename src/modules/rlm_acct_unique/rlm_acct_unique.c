@@ -45,7 +45,7 @@ typedef struct rlm_acct_unique_t {
 	rlm_acct_unique_list_t *head;
 } rlm_acct_unique_t;
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "key",  PW_TYPE_STRING_PTR, offsetof(rlm_acct_unique_t,key), NULL,  NULL },
   { NULL, -1, 0, NULL, NULL }    /* end the list */
 };

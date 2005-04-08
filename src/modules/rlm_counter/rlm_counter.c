@@ -114,7 +114,7 @@ typedef struct rad_counter {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "filename", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,filename), NULL, NULL },
   { "key", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,key_name), NULL, NULL },
   { "reset", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,reset), NULL,  NULL },

@@ -63,7 +63,7 @@ struct unix_instance {
 	const char *radwtmp;
 };
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "radwtmp",  PW_TYPE_STRING_PTR,
 	  offsetof(struct unix_instance,radwtmp), NULL,   "NULL" },
 

@@ -56,7 +56,7 @@ typedef struct rlm_expiration_t {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "reply-message", PW_TYPE_STRING_PTR, offsetof(rlm_expiration_t,msg), NULL, "Password Has Expired\r\n"},
   { NULL, -1, 0, NULL, NULL }
 };

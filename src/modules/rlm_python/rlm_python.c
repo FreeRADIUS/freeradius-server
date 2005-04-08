@@ -101,7 +101,7 @@ typedef struct rlm_python_t {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "mod_instantiate",  PW_TYPE_STRING_PTR,
     offsetof(rlm_python_t, mod_instantiate), NULL,  NULL},
   { "func_instantiate",  PW_TYPE_STRING_PTR,

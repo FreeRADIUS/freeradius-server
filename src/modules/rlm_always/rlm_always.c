@@ -51,7 +51,7 @@ typedef struct rlm_always_t {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "rcode",      PW_TYPE_STRING_PTR, offsetof(rlm_always_t,rcode_str),
     NULL, "fail" },
   { "simulcount", PW_TYPE_INTEGER,    offsetof(rlm_always_t,simulcount),

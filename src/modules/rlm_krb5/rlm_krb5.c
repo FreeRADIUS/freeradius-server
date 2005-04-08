@@ -45,7 +45,7 @@ typedef struct rlm_krb5_t {
 	krb5_context *context;
 } rlm_krb5_t;
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "keytab", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_krb5_t,keytab), NULL, NULL },
 	{ "service_principal", PW_TYPE_STRING_PTR,

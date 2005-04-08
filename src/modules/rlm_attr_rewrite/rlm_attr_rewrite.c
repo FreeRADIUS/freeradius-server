@@ -60,7 +60,7 @@ typedef struct rlm_attr_rewrite_t {
 } rlm_attr_rewrite_t;
 
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "attribute", PW_TYPE_STRING_PTR, offsetof(rlm_attr_rewrite_t,attribute), NULL, NULL },
   { "searchfor", PW_TYPE_STRING_PTR, offsetof(rlm_attr_rewrite_t,search), NULL, NULL },
   { "searchin",  PW_TYPE_STRING_PTR, offsetof(rlm_attr_rewrite_t,searchin_str), NULL, "packet" },

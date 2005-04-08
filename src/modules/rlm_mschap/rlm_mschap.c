@@ -534,7 +534,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 }
 
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	/*
 	 *	Cache the password by default.
 	 */

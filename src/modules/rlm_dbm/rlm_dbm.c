@@ -72,7 +72,7 @@ typedef struct user_entry {
 } SM_USER_ENTRY;
 
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
         { "usersfile",     PW_TYPE_STRING_PTR,offsetof(struct rlm_dbm_t,userfile),
 		NULL, "/etc/uf" },
         { NULL, -1, 0, NULL, NULL }

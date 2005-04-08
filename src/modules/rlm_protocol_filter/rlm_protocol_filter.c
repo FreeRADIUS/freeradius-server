@@ -51,7 +51,7 @@ typedef struct rlm_protocol_filter_t {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "filename",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_protocol_filter_t,filename), NULL,
 	  "${raddbdir}/protocol_filter.conf"},

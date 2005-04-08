@@ -57,7 +57,7 @@ typedef struct rlm_exec_t {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "wait", PW_TYPE_BOOLEAN,  offsetof(rlm_exec_t,wait), NULL, "yes" },
 	{ "program",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_exec_t,program), NULL, NULL },

@@ -64,7 +64,7 @@ typedef struct rlm_radutmp_t {
 	int		callerid_ok;
 } rlm_radutmp_t;
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
 	{ "filename", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_radutmp_t,filename), NULL,  RADUTMP },
 	{ "username", PW_TYPE_STRING_PTR,
