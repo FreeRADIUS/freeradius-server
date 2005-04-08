@@ -1603,6 +1603,10 @@ $INCLUDE ${confdir}/eap.conf
 		# maximum-timeout: If not zero specifies the maximum time in seconds an
 		# entry may be active. Default: 0
 		maximum-timeout = 0
+
+		# The key to use for the session database (which holds the allocated ip's)
+		# normally it should just be the nas  ip/port (which is the default)
+		#key = "%{NAS-IP-Address} %{NAS-Port}"
 	}
 
 	# ANSI X9.9 token support.  Not included by default.
