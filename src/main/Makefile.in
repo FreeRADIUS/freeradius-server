@@ -20,7 +20,7 @@ MODULE_LIBS	= $(STATIC_MODULES)
 MODULE_OBJS	=
 VFLAGS		= -DRADIUSD_MAJOR_VERSION=$(RADIUSD_MAJOR_VERSION)
 VFLAGS		+= -DRADIUSD_MINOR_VERSION=$(RADIUSD_MINOR_VERSION)
-BINARIES	= radiusd radwho radzap radclient radrelay radsqlrelay
+BINARIES	= radiusd radwho radclient radrelay radsqlrelay
 LT_BIN_FLAGS	=
 
 #
@@ -158,19 +158,13 @@ radwho.o: radwho.c $(INCLUDES)
 radwho: radwho.o util.o log.o conffile.o ../lib/libradius.la
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o radwho radwho.o util.o log.o conffile.o ../lib/libradius.la $(LIBS)
 
-radzap.o: radzap.c $(INCLUDES)
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radzap.c
-
-radzap: radzap.o mainconfig.o util.o nas.o log.o client.o conffile.o files.o xlat.o ../lib/libradius.la
-	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o mainconfig.o util.o nas.o log.o client.o conffile.o files.o xlat.o ../lib/libradius.la $(LIBS)
-
 clean:
 	rm -rf *.o *.so *.lo *~ $(BINARIES) .libs
 
 install:
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radiusd$(EXEEXT)	$(R)$(sbindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radwho$(EXEEXT)	$(R)$(bindir)
-	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radzap$(EXEEXT)	$(R)$(bindir)
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radzap	$(R)$(bindir)
 	$(INSTALL) -m 755    radlast			$(R)$(bindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755    radclient$(EXEEXT)		$(R)$(bindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755    radrelay$(EXEEXT)		$(R)$(bindir)
