@@ -68,7 +68,7 @@ typedef struct {
 } modsingle;
 
 
-static LRAD_NAME_NUMBER grouptype_table[] = {
+static const LRAD_NAME_NUMBER grouptype_table[] = {
 	{ "", GROUPTYPE_SIMPLE },
 	{ "redundant ", GROUPTYPE_REDUNDANT },
 	{ "append ", GROUPTYPE_APPEND },
@@ -118,7 +118,7 @@ static void add_child(modgroup *g, modcallable *c)
 
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
-static LRAD_NAME_NUMBER rcode_table[] = {
+static const LRAD_NAME_NUMBER rcode_table[] = {
 	{ "reject",     RLM_MODULE_REJECT       },
 	{ "fail",       RLM_MODULE_FAIL         },
 	{ "ok",         RLM_MODULE_OK           },
@@ -638,7 +638,7 @@ static void dump_tree(int comp UNUSED, modcallable *c UNUSED)
 /* These are the default actions. For each component, the group{} block
  * behaves like the code from the old module_*() function. redundant{} and
  * append{} are based on my guesses of what they will be used for. --Pac. */
-static int
+static const int
 defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 {
 	/* authenticate */

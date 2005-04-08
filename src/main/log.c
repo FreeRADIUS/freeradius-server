@@ -46,7 +46,7 @@ static int openlog_run = 0;
  /*
  * Logging facility names
  */
-static LRAD_NAME_NUMBER levels[] = {
+static const LRAD_NAME_NUMBER levels[] = {
 	{ ": Debug: ",          L_DBG   },
 	{ ": Auth: ",           L_AUTH  },
 	{ ": Proxy: ",          L_PROXY },

@@ -53,9 +53,9 @@ rad_snmp_t		rad_snmp;
 #define RADAUTHOID 1,3,6,1,2,1,67,1,1,1,1
 #define RADIUSOID 1,3,6,1,4,1,3317,1,3,1
 
-static oid radacc_oid [] = { RADACCOID };
-static oid radauth_oid [] = { RADAUTHOID };
-static oid radius_oid [] = { RADIUSOID };
+static const oid radacc_oid [] = { RADACCOID };
+static const oid radauth_oid [] = { RADAUTHOID };
+static const oid radius_oid [] = { RADIUSOID };
 
 #define COUNTER ASN_COUNTER
 #define INTEGER ASN_INTEGER
@@ -142,7 +142,7 @@ static const unsigned char *radAuthEntry(struct variable *vp,
 	size_t  *var_len,
 	WriteMethod **write_method);
 
-static struct variable radiusacc_variables[] =
+static const struct variable radiusacc_variables[] =
 {
 	{RADIUSACCSERVIDENT, STRING, RONLY, radAccServ, 1, {1}},
 	{RADIUSACCSERVUPTIME, TIMETICKS, RONLY, radAccServ, 1, {2}},
@@ -169,7 +169,7 @@ static struct variable radiusacc_variables[] =
 	{RADIUSACCSERVUNKNOWNTYPES, COUNTER, RONLY, radAccEntry, 3, {14,1,11}},
 };
 
-static struct variable radiusauth_variables[] =
+static const struct variable radiusauth_variables[] =
 {
 	{RADIUSAUTHSERVIDENT, STRING, RONLY, radAuthServ, 1, {1}},
 	{RADIUSAUTHSERVUPTIME, TIMETICKS, RONLY, radAuthServ, 1, {2}},
@@ -542,7 +542,7 @@ radAuthEntry(struct variable *vp, oid	 *name, size_t *length, int exact,
 	return NULL;
 }
 
-static CONF_PARSER snmp_config[] = {
+static const CONF_PARSER snmp_config[] = {
 	{ "smux_password", PW_TYPE_STRING_PTR, 0, &rad_snmp.smux_password, "" },
 	{ "snmp_write_access",  PW_TYPE_BOOLEAN, 0, &rad_snmp.snmp_write_access, "no" },
 	{ NULL, -1, 0, NULL, NULL }
