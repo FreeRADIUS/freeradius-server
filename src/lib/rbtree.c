@@ -41,7 +41,7 @@ struct rbnode_t {
 };
 
 #define NIL &Sentinel           /* all leafs are sentinels */
-static rbnode_t Sentinel = { NIL, NIL, NULL, Black, NULL};
+static const rbnode_t Sentinel = { NIL, NIL, NULL, Black, NULL};
 
 struct rbtree_t {
 #ifndef NDEBUG
