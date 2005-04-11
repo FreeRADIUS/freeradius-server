@@ -137,14 +137,8 @@ radrelay.o: radrelay.c $(INCLUDES)
 radwho.o: radwho.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radwho.c
 
-radwho: radwho.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o
-	$(CC) $(LDFLAGS) -o radwho radwho.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o $(LIBS)
-
-radzap.o: radzap.c $(INCLUDES)
-	$(CC) $(CFLAGS) -c radzap.c
-
-radzap: radzap.o mainconfig.o util.o nas.o log.o client.o conffile.o files.o xlat.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o radzap radzap.o mainconfig.o util.o nas.o log.o client.o conffile.o files.o xlat.o $(LIBS)
+radwho: radwho.o util.o log.o conffile.o ../lib/libradius.la
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o radwho radwho.o util.o log.o conffile.o ../lib/libradius.la $(LIBS) $(LCRYPT)
 
 clean:
 	rm -rf *.o *.so *~ $(BINARIES) .libs
@@ -152,7 +146,7 @@ clean:
 install:
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radiusd$(EXEEXT)	$(R)$(sbindir)
 	$(INSTALL) -m 755 $(INSTALLSTRIP) radwho$(EXEEXT)	$(R)$(bindir)
-	$(INSTALL) -m 755 $(INSTALLSTRIP) radzap$(EXEEXT)	$(R)$(bindir)
+	$(INSTALL) -m 755 $(INSTALLSTRIP) radzap	$(R)$(bindir)
 	$(INSTALL) -m 755    radlast			$(R)$(bindir)
 	$(INSTALL) -m 755    radclient$(EXEEXT)		$(R)$(bindir)
 	$(INSTALL) -m 755    radrelay$(EXEEXT)		$(R)$(bindir)
