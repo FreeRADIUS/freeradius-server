@@ -762,7 +762,7 @@ int thread_pool_init(int spawn_flag)
 		thread_pool.spawn_flag = spawn_flag;
 
 		thread_pool.wait_head = thread_pool.wait_tail = 0;
-		if ((pthread_mutex_init(&thread_pool.mutex,NULL) != 0)) {
+		if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
 			radlog(L_ERR, "FATAL: Failed to initialize mutex: %s",
 			       strerror(errno));
 			exit(1);
