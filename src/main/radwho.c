@@ -234,32 +234,6 @@ static char *dotime(time_t t)
 	return s;
 }
 
-/*
- *	Shorten tty name.
- */
-static const char *ttyshort(char *tty)
-{
-	static char tmp[16];
-
-	if (tty[0] == '/') tty += 5;
-
-	if (strncmp(tty, "tty", 3) == 0) {
-		if (tty[3] >= '0' && tty[3] <= '9')
-			snprintf(tmp, sizeof(tmp), "v%.14s", tty + 3);
-		else
-			snprintf(tmp, sizeof(tmp), "%.15s", tty + 3);
-		return tmp;
-	}
-	if (strncmp(tty, "vc", 2) == 0) {
-		snprintf(tmp, sizeof(tmp), "v.14%s", tty + 2);
-		return tmp;
-	}
-	if (strncmp(tty, "cu", 2) == 0) {
-		return tmp + 2;
-	}
-	return "??";
-}
-
 
 /*
  *	Print address of NAS.
@@ -309,7 +283,6 @@ int main(int argc, char **argv)
 	CONF_SECTION *maincs, *cs;
 	FILE *fp;
 	struct radutmp rt;
-	struct utmp ut;
 	char inbuf[128];
 	char othername[256];
 	char nasname[1024];
