@@ -40,6 +40,6 @@ common:
 		what=$(WHAT_TO_MAKE); \
 		if [ -d $$mod ] && [ -f $$mod/Makefile ]; then \
 			echo "Making $$what in $$mod..."; \
-			(cd $$mod && $(MAKE) $(MFLAGS) $$what) || exit 1;\
+			(cd $$mod && $(MAKE) $(MFLAGS) $$what) || exit $?;\
 		fi; \
 	done
