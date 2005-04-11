@@ -1,4 +1,8 @@
 FreeRADIUS 1.0.3 ; $Date$, urgency=medium
+	* radzap now works, but it's command-line options have changed
+	  completely, and it's a shell script.
+	* radwho has updated command-line options, and no longer reads
+	  Unix "utmp" files.
 	* Fix bug in calling checkrad script with NAS port > 9999999
 	* Fix long-standing bug when both crypt and pthreads are in use
 
