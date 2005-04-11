@@ -21,7 +21,7 @@ common:
 		[ "$$what" = "all" ] && what="$(TARGET_LIBS)"; \
 		if [ -d $$mod ] && [ -f $$mod/Makefile ]; then \
 			echo "Making $$what in $$mod..."; \
-			(cd $$mod && $(MAKE) $(MFLAGS) $$what) || exit 1; \
+			(cd $$mod && $(MAKE) $(MFLAGS) $$what) || exit $?; \
 		fi; \
 	done
 
