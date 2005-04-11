@@ -1,4 +1,6 @@
 FreeRADIUS 1.0.3 ; $Date$, urgency=medium
+	* Fixes for forking external programs, so the server doesn't
+	  suddenly stop processing requests, or stop forking programs.
 	* radzap now works, but it's command-line options have changed
 	  completely, and it's a shell script.
 	* radwho has updated command-line options, and no longer reads
