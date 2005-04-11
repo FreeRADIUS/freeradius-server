@@ -405,10 +405,8 @@ void		xlat_unregister(const char *module, RAD_XLAT_FUNC func);
 extern		int thread_pool_init(void);
 extern		int thread_pool_clean(time_t now);
 extern		int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
-extern		void rad_exec_init(void);
 extern		pid_t rad_fork(int exec_wait);
 extern		pid_t rad_waitpid(pid_t pid, int *status, int options);
-extern		int rad_savepid(pid_t pid, int status);
 extern          int total_active_threads(void);
 
 #ifndef HAVE_PTHREAD_H
