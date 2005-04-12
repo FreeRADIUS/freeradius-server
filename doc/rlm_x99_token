@@ -1,10 +1,10 @@
 This is the combined README for pam_x99_auth, a PAM module, and
 rlm_x99_token, a FreeRADIUS module.  This module supports ANSI X9.9
 token authentication.  If you have questions not answered in this doc,
-contact Frank Cusack, <frank@google.com>.  Please send bug reports
+contact Frank Cusack, <fcusack@fcusack.com>.  Please send bug reports
 to the same address.
 
-This software is Copyright (c) 2002 Google, Inc.
+This software is Copyright (c) 2002-2005 Google, Inc.
 All Rights Reserved.
 
 See the COPYRIGHT file, included with this distribution, for copyright
@@ -27,8 +27,8 @@ and redistribution information.
 	Async support only.
 	Formerly Enigma Logic.
 
-	VASCO (DigiPass (various models))
-	<http://www.vasco.com/R3DEngine.asp?reference=03-01.01-01&lang=en>
+	VASCO (Digipass (various models))
+	<http://www.vasco.com/products/range.html>
 	Not supported.
 
 	ActivCard (ActivCard One)
@@ -37,14 +37,14 @@ and redistribution information.
 
 	PassGo (Defender aka SNK, Defender Plus, Defender One)
 	<http://www.passgo.com/products/defender/>
-	Fully supported.
+	Defender fully supported, Defender Plus and Defender One unsupported.
 	This product has a history of acquisition:
 	PassGo, Symantec, AXENT, AssureNet Pathways (name change only),
 	Digital Pathways.  Also, to add to the fun, PassGo was acquired
 	by AXENT, whom Symantec then acquired, and later forked off.  The
 	product was originally named "SecureNet Key" aka SNK or SNK/4.
 
-    If you know of other vendors, please email me (frank@google.com)
+    If you know of other vendors, please email me (fcusack@fcusack.com)
     and I'll add them to the list above.
 
     Although ActivCard has full specs, I cannot add support to the public
@@ -321,5 +321,5 @@ and redistribution information.
 8.  BUGS
 
     Send bug reports or any other questions to Frank Cusack,
-    <frank@google.com>.
+    <fcusack@fcusack.com>.
 

@@ -16,7 +16,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2001,2002  Google, Inc.
+ * Copyright 2001-2005 Google, Inc.
  */
 
 #ifndef X99_H
@@ -146,6 +146,20 @@ typedef struct x99_user_info_t {
     des_cblock keyblock;
 } x99_user_info_t;
 
+#ifdef PAM
+/* x99_cardops.c */
+/* return codes from x99_pw_valid() */
+#define X99_RC_OK		0
+#define X99_RC_USER_UNKNOWN	1
+#define X99_RC_AUTHINFO_UNAVAIL	2
+#define X99_RC_AUTH_ERR		3
+#define X99_RC_MAXTRIES		4
+#define X99_RC_SERVICE_ERR	5
+extern int x99_pw_valid(const char *username,
+			char *challenge, const char *passcode,
+			const x99_token_t *opt, int resync,
+			const char *log_prefix);
+#endif
 
 /* x99_mac.c */
 extern int x99_response(const char *challenge, char response[17],
