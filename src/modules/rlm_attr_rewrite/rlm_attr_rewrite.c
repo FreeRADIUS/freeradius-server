@@ -211,13 +211,17 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 				pairadd(&request->reply->vps,attr_vp);
 				break;
 			case RLM_REGEX_INPROXY:
-				if (!request->proxy)
+				if (!request->proxy) {
+					pairbasicfree(attr_vp);
 					return RLM_MODULE_NOOP;
+				}
 				pairadd(&request->proxy->vps, attr_vp);
 				break;
 			case RLM_REGEX_INPROXYREPLY:
-				if (!request->proxy_reply)
+				if (!request->proxy_reply) {
+					pairbasicfree(attr_vp);
 					return RLM_MODULE_NOOP;
+				}
 				pairadd(&request->proxy_reply->vps, attr_vp);
 				break;
 			default:
