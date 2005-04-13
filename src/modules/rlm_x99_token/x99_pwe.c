@@ -17,6 +17,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001,2002  Google, Inc.
+ * Copyright 2005 Frank Cusack
  */
 
 /*
@@ -107,7 +108,7 @@ x99_pwe_init(void)
 int
 x99_pw_present(const REQUEST *request)
 {
-    int i;
+    unsigned i;
 
     for (i = 0; i < sizeof(pwattr) && pwattr[i]; i += 2) {
 	if (pairfind(request->packet->vps, pwattr[i]) &&
@@ -360,7 +361,7 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	unsigned char password_md_md[MD4_DIGEST_LENGTH]; /* for mutual auth */
 	unsigned char input[MAX_STRING_LEN * 2]; /* doubled for unicode */
 	unsigned char output[24];
-	int password_len, i;
+	unsigned password_len, i;
 	VALUE_PAIR *vp;
 
 	DEBUG("rlm_x99_token: pw_valid: handling PW_MS_CHAP2_RESPONSE");

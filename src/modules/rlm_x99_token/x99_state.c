@@ -17,6 +17,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001,2002  Google, Inc.
+ * Copyright 2005 Frank Cusack
  */
 
 #ifdef FREERADIUS
@@ -88,7 +89,7 @@ x99_gen_state(char **ascii_state, unsigned char **raw_state,
     HMAC_CTX hmac_ctx;
     unsigned char hmac[MD5_DIGEST_LENGTH];
     char *p;
-    int i;
+    unsigned i;
 
     /*
      * Generate the hmac.  We already have a dependency on openssl for

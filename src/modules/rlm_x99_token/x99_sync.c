@@ -17,6 +17,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001,2002  Google, Inc.
+ * Copyright 2005 Frank Cusack
  */
 
 #ifdef FREERADIUS
@@ -25,6 +26,7 @@
 #include "x99.h"
 #include "x99_sync.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -78,7 +80,6 @@ x99_get_sync_data(const char *syncdir, const char *username,
 		  uint32_t card_id, int ewin, int twin,
 		  char challenge[MAX_CHALLENGE_LEN + 1], des_cblock keyblock)
 {
-    /* ARGSUSED */
     des_cblock output;
     int i, rc = -1;
     char *lock;
@@ -142,9 +143,12 @@ x99_get_sync_data(const char *syncdir, const char *username,
  */
 int
 x99_set_sync_data(const char *syncdir, const char *username,
-		  const char *challenge, const des_cblock keyblock)
+		  const char *challenge, const des_cblock keyblock
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+		  )
 {
-    /* ARGSUSED */
     int rc;
     char *lock;
 

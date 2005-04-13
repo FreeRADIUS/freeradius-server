@@ -17,6 +17,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001-2005 Google, Inc.
+ * Copyright 2005 Frank Cusack
  */
 
 #ifndef X99_H
@@ -193,7 +194,11 @@ extern int x99_get_sync_data(const char *syncdir, const char *username,
 			     char challenge[MAX_CHALLENGE_LEN + 1],
 			     des_cblock keyblock);
 extern int x99_set_sync_data(const char *syncdir, const char *username,
-			     const char *challenge, const des_cblock keyblock);
+			     const char *challenge, const des_cblock keyblock
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+			     );
 extern int x99_check_failcount(const char *syncdir, const x99_token_t *inst);
 extern int x99_incr_failcount(const char *syncdir, const char *username);
 extern int x99_reset_failcount(const char *syncdir, const char *username);
@@ -205,7 +210,11 @@ extern int x99_set_last_auth_pos(const char *syncdir, const char *username,
 				 unsigned pos);
 
 /* x99_site.c */
-extern int x99_challenge_transform(const char *username,
+extern int x99_challenge_transform(const char *username
+#ifdef ___GNUC__
+__attribute__ ((unused))
+#endif
+				   ,
 				   char challenge[MAX_CHALLENGE_LEN + 1]);
 
 /* x99_log.c */

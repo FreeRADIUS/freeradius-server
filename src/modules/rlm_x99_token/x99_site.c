@@ -17,6 +17,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001,2002  Google, Inc.
+ * Copyright 2005 Frank Cusack
  */
 
 /*
@@ -41,11 +42,13 @@ static const char rcsid[] = "$Id$";
 
 
 int
-x99_challenge_transform(const char *username,
+x99_challenge_transform(const char *username
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+			,
 			char challenge[MAX_CHALLENGE_LEN + 1])
 {
-    /* ARGSUSED */
-
     (void) strcpy(challenge, "DISABLED");
     return 0;
 }
