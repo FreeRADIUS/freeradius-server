@@ -7,6 +7,7 @@ Ver 1.80:
 * Rename the badusers date field to incidentdate to avoid reserved words in databases. Bug found by
   Peter Nixon
 * Count online users correctly (through a separate query) in user_finger.
+* Use the correct max results variable in lib/*/find.php3
 Ver 1.78:
 * Add a snmp_clearsession which can disconnect a user by using the Cisco AAA Session MIB
 * Add a configuration directive general_sessionclear_bin
