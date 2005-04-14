@@ -75,7 +75,6 @@ fi
 
 dnl libltdl is installable
 AC_LIBLTDL_INSTALLABLE
-FR_LIBLTDL_PATH
 
 dnl use system-wide libtool, if it exists
 AC_ARG_WITH(system-libtool, 

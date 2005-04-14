@@ -548,13 +548,4 @@ $1
  fi
 ])
 
-AC_DEFUN([FR_LIBLTDL_PATH],
-[
-   LIBLTDLPATH=
-   if test x"$enable_ltdl_install" = x"yes"; then
-     AC_CONFIG_SUBDIRS(libltdl)
-     LIBLTDLPATH=libltdl
-    fi
-   AC_SUBST(LIBLTDLPATH)
-])
 AC_INCLUDE(aclocal.m4)
