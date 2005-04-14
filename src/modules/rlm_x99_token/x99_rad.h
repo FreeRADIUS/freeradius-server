@@ -17,6 +17,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001,2002  Google, Inc.
+ * Copyright 2005 Frank Cusack
  */
 
 #ifndef X99_RAD_H
@@ -36,10 +37,15 @@ extern int x99_gen_state(char **ascii_state, unsigned char **raw_state,
 
 /* x99_pwe.c */
 #include "libradius.h"   /* VALUE_PAIR */
+struct x99_pwe_cmp_t {
+    const REQUEST *request;
+    const x99_token_t *inst;
+    int pwattr;		/* return value from x99_pwe_present() */
+    VALUE_PAIR **returned_vps;
+};
 extern void x99_pwe_init(void);
-extern int x99_pw_present(const REQUEST *request);
-extern int x99_pw_valid(const REQUEST *request, x99_token_t *inst,
-			int attr, const char *password, VALUE_PAIR **vps);
+extern int x99_pwe_present(const REQUEST *request);
+extern int x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password);
 
 #endif /* X99_RAD_H */
 

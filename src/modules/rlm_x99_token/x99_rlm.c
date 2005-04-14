@@ -18,6 +18,7 @@
  *
  * Copyright 2000,2001,2002  The FreeRADIUS server project
  * Copyright 2001,2002  Google, Inc.
+ * Copyright 2005 Frank Cusack
  */
 
 /*
@@ -143,7 +144,7 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
 
     /* Set up a storage area for instance data. */
     data = rad_malloc(sizeof(*data));
-    memset(data, 0, sizeof(*data));
+    (void) memset(data, 0, sizeof(*data));
 
     /* If the configuration parameters can't be parsed, then fail. */
     if (cf_section_parse(conf, data, module_config) < 0) {
@@ -291,9 +292,14 @@ x99_token_authorize(void *instance, REQUEST *request)
 
     x99_user_info_t user_info;
     int user_found, auth_type_found;
-    int pwattr;
     int32_t sflags = 0; /* flags for state */
     VALUE_PAIR *vp;
+    struct x99_pwe_cmp_t data = {
+	.request = request,
+	.inst = inst,
+	.returned_vps = NULL
+    };
+
 
     /* Early exit if Auth-Type != inst->name */
     auth_type_found = 0;
@@ -317,7 +323,7 @@ x99_token_authorize(void *instance, REQUEST *request)
 	return RLM_MODULE_INVALID;
     }
 
-    if ((pwattr = x99_pw_present(request)) == 0) {
+    if ((data.pwattr = x99_pwe_present(request)) == 0) {
 	x99_log(X99_LOG_AUTH, "autz: Attribute \"User-Password\" "
 		"or equivalent required for authentication.");
 	return RLM_MODULE_INVALID;
@@ -337,17 +343,16 @@ x99_token_authorize(void *instance, REQUEST *request)
     if (rc == -1) {
 	x99_log(X99_LOG_AUTH, "autz: user [%s] not found in %s",
 		request->username->strvalue, inst->pwdfile);
-	memset(&user_info, 0, sizeof(user_info)); /* X99_CF_NONE */
+	(void) memset(&user_info, 0, sizeof(user_info)); /* X99_CF_NONE */
 	user_found = 0;
     }
 
     /* fast_sync mode (challenge only if requested) */
     if (inst->fast_sync &&
 	((user_info.card_id & X99_CF_SM) || !user_found)) {
-
-	if ((x99_pw_valid(request, inst, pwattr, inst->resync_req, NULL) &&
+	if ((x99_pwe_cmp(&data, inst->resync_req) &&
 		/* Set a bit indicating resync */ (sflags |= htonl(1))) ||
-	    x99_pw_valid(request, inst, pwattr, inst->chal_req, NULL)) {
+	    x99_pwe_cmp(&data, inst->chal_req)) {
 	    /*
 	     * Generate a challenge if requested.  We don't test for card
 	     * support [for async] because it's tricky for unknown users.
@@ -457,7 +462,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
 
     x99_user_info_t user_info;
     char *username;
-    int i, pwattr, rc, fc;
+    int i, rc, fc;
     int32_t sflags = 0; 	/* flags from state */
     time_t last_auth;		/* time of last authentication */
     unsigned auth_pos = 0;	/* window position of last authentication */
@@ -465,6 +470,12 @@ x99_token_authenticate(void *instance, REQUEST *request)
     char challenge[MAX_CHALLENGE_LEN + 1];
     char e_response[9];		/* expected response */
     VALUE_PAIR *add_vps = NULL;
+
+    struct x99_pwe_cmp_t data = {
+	.request = request,
+	.inst = inst,
+	.returned_vps = &add_vps
+    };
 
     /* User-Name attribute required. */
     if (!request->username) {
@@ -474,7 +485,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
     }
     username = request->username->strvalue;
 
-    if ((pwattr = x99_pw_present(request)) == 0) {
+    if ((data.pwattr = x99_pwe_present(request)) == 0) {
 	x99_log(X99_LOG_AUTH, "auth: Attribute \"User-Password\" "
 		"or equivalent required for authentication.");
 	return RLM_MODULE_INVALID;
@@ -613,7 +624,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
     DEBUG("rlm_x99_token: auth: [%s], async challenge %s, "
 	  "expecting response %s", username, challenge, e_response);
 
-    if (x99_pw_valid(request, inst, pwattr, e_response, &add_vps)) {
+    if (x99_pwe_cmp(&data, e_response)) {
 	/* Password matches.  Is this allowed? */
 	if (!inst->allow_async) {
 	    x99_log(X99_LOG_AUTH,
@@ -734,7 +745,7 @@ sync_response:
 		  "expecting response %s", username, i, challenge, e_response);
 
 	    /* Test user-supplied passcode. */
-	    if (x99_pw_valid(request, inst, pwattr, e_response, &add_vps)) {
+	    if (x99_pwe_cmp(&data, e_response)) {
 		/*
 		 * Yay!  User authenticated via sync mode.  Resync.
 		 */
@@ -800,10 +811,10 @@ sync_response:
     }
     return RLM_MODULE_REJECT;
 
-    /* Must exit here after a successful return from x99_pw_valid(). */
+    /* Must exit here after a successful return from x99_pwe_cmp(). */
 return_pw_valid:
 
-    /* Handle any vps returned from x99_pw_valid(). */
+    /* Handle any vps returned from x99_pwe_cmp(). */
     if (rc == RLM_MODULE_OK) {
 	pairadd(&request->reply->vps, add_vps);
     } else {

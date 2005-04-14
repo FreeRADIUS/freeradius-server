@@ -103,39 +103,42 @@ x99_pwe_init(void)
 /*
  * Test for password presence in an Access-Request packet.
  * Returns 0 for "no supported password present", or an non-zero
- * opaque value that must be used when calling x99_pw_valid.
+ * opaque value that must be used when calling x99_pwe_cmp().
  */
 int
-x99_pw_present(const REQUEST *request)
+x99_pwe_present(const REQUEST *request)
 {
     unsigned i;
 
     for (i = 0; i < sizeof(pwattr) && pwattr[i]; i += 2) {
 	if (pairfind(request->packet->vps, pwattr[i]) &&
 	    pairfind(request->packet->vps, pwattr[i + 1])) {
-	    DEBUG("rlm_x99_token: pw_present: found password attributes %d, %d",
+	    DEBUG("rlm_x99_token: pwe_present: password attributes %d, %d",
 		   pwattr[i], pwattr[i + 1]);
 	    return i + 1; /* Can't return 0 (indicates failure) */
 	}
     }
 
+    DEBUG("rlm_x99_token: pwe_present: no password attributes present");
     return 0;
 }
 
 
 /*
- * Test for password validity.  attr must be the return value from
- * x99_pw_present().
+ * Test for passcode (password) equality.
  * returns 1 for match, 0 for non-match.
- * If vps is non-null, then on matches, it will point to vps that
- * should be added to an Access-Accept packet.  If access is denied,
+ * If data->returned_vps is non-null, then on matches, it will point to
+ * vps that should be added to an Access-Accept packet.  If access is denied,
  * the caller is responsible for freeing any vps returned.
- * (vps is used for MPPE atttributes.)
  */
 int
-x99_pw_valid(const REQUEST *request, x99_token_t *inst,
-	     int attr, const char *password, VALUE_PAIR **vps)
+x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 {
+    const REQUEST *request	= data->request;
+    const x99_token_t *inst	= data->inst;
+    int attr			= data->pwattr;
+    VALUE_PAIR **vps		= data->returned_vps;
+
     int match = 0;
     VALUE_PAIR *chal_vp, *resp_vp;
 
@@ -153,7 +156,7 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
     /* If modular, this would actually call the authentication function. */
     switch(pwattr[attr]) {
     case PW_PASSWORD:
-	DEBUG("rlm_x99_token: pw_valid: handling PW_PASSWORD");
+	DEBUG("rlm_x99_token: pwe_cmp: handling PW_PASSWORD");
 	match = !strcmp(password, resp_vp->strvalue);
 	break;
 
@@ -175,14 +178,14 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	unsigned char input[1 + MAX_STRING_LEN + 16];
 	unsigned char output[MD5_DIGEST_LENGTH];
 
-	DEBUG("rlm_x99_token: pw_valid: handling PW_CHAP_PASSWORD");
+	DEBUG("rlm_x99_token: pwe_cmp: handling PW_CHAP_PASSWORD");
 	if (1 + strlen(password) + chal_vp->length > sizeof(input)) {
-	    DEBUG("rlm_x99_token: pw_valid: CHAP-Challenge/password too long");
+	    DEBUG("rlm_x99_token: pwe_cmp: CHAP-Challenge/password too long");
 	    match = 0;
 	    break;
 	}
 	if (resp_vp->length != 17) {
-	    x99_log(X99_LOG_AUTH, "pw_valid: CHAP-Password wrong size");
+	    x99_log(X99_LOG_AUTH, "pwe_cmp: CHAP-Password wrong size");
 	    match = 0;
 	    break;
 	}
@@ -220,26 +223,26 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	int password_len, i;
 	VALUE_PAIR *vp;
 
-	DEBUG("rlm_x99_token: pw_valid: handling PW_MS_CHAP_RESPONSE");
+	DEBUG("rlm_x99_token: pwe_cmp: handling PW_MS_CHAP_RESPONSE");
 	if (chal_vp->length != 8) {
-	    x99_log(X99_LOG_AUTH, "pw_valid: MS-CHAP-Challenge wrong size");
+	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAP-Challenge wrong size");
 	    match = 0;
 	    break;
 	}
 	if (resp_vp->length != 50) {
-	    x99_log(X99_LOG_AUTH, "pw_valid: MS-CHAP-Response wrong size");
+	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAP-Response wrong size");
 	    match = 0;
 	    break;
 	}
 	if ((resp_vp->strvalue)[1] != 1) {
 	    x99_log(X99_LOG_AUTH,
-		    "pw_valid: MS-CHAP-Response bad flags (LM not supported)");
+		    "pwe_cmp: MS-CHAP-Response bad flags (LM not supported)");
 	    match = 0;
 	    break;
 	}
 	/* This is probably overkill. */
 	if (strlen(password) > MAX_STRING_LEN) {
-	    x99_log(X99_LOG_AUTH, "pw_valid: MS-CHAP password too long");
+	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAP password too long");
 	    match = 0;
 	    break;
 	}
@@ -364,20 +367,20 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
 	unsigned password_len, i;
 	VALUE_PAIR *vp;
 
-	DEBUG("rlm_x99_token: pw_valid: handling PW_MS_CHAP2_RESPONSE");
+	DEBUG("rlm_x99_token: pwe_cmp: handling PW_MS_CHAP2_RESPONSE");
 	if (chal_vp->length != 16) {
-	    x99_log(X99_LOG_AUTH,"pw_valid: MS-CHAP-Challenge (v2) wrong size");
+	    x99_log(X99_LOG_AUTH,"pwe_cmp: MS-CHAP-Challenge (v2) wrong size");
 	    match = 0;
 	    break;
 	}
 	if (resp_vp->length != 50) {
-	    x99_log(X99_LOG_AUTH, "pw_valid: MS-CHAP2-Response wrong size");
+	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAP2-Response wrong size");
 	    match = 0;
 	    break;
 	}
 	/* This is probably overkill. */
 	if (strlen(password) > MAX_STRING_LEN) {
-	    x99_log(X99_LOG_AUTH, "pw_valid: MS-CHAPv2 password too long");
+	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAPv2 password too long");
 	    match = 0;
 	    break;
 	}
@@ -727,7 +730,7 @@ x99_pw_valid(const REQUEST *request, x99_token_t *inst,
     break;
 
     default:
-	DEBUG("rlm_x99_token: pw_valid: unknown password type");
+	DEBUG("rlm_x99_token: pwe_cmp: unknown password type");
 	match = 0;
 	break;
 
