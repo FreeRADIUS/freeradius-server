@@ -8,6 +8,7 @@ function da_sql_limit($limit,$point,$config)
 			return '';
 		case 3:
 			return "LIMIT $limit";
+	}
 }
 
 function da_sql_host_connect($server,$config)
