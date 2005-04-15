@@ -372,7 +372,6 @@ static int str2argv(char *str, char **argv, int max_argc)
 
 
 /*
-/*
  *	ascend_parse_ipx_net
  *
  *	srcipxnet nnnn srcipxnode mmmmm [srcipxsoc cmd value ]
