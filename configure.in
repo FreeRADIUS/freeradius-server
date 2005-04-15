@@ -939,11 +939,11 @@ dnl #  Configure in any module directories.
 dnl #
 dnl #############################################################
 
-mysubdirs=
+mysubdirs="$LIBLTDLPATH"
 if test "x$EXPERIMENTAL" = "xyes"; then
   bar=`ls -1 src/modules/rlm_*/configure | sed 's%/configure%%'`
   dnl # get rid of LF's.
-  mysubdirs=`echo $bar`
+  mysubdirs=`echo $mysubdirs $bar`
 else
   dnl # 
   dnl # Find 'configure' in ONLY the stable modules
