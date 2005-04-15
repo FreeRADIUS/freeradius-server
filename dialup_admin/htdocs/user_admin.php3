@@ -214,9 +214,9 @@ if ($link){
 	}
 
 	$search = @da_sql_query($link,$config,
-	"SELECT da_sql_limit(1,0,$config) * FROM $config[sql_accounting_table]
-	WHERE username = '$login' AND acctstoptime IS NULL da_sql_limit(1,1,$config)
-	ORDER BY acctstarttime DESC da_sql_limit(1,2,$config);");
+	"SELECT " . da_sql_limit(1,0,$config) . " * FROM $config[sql_accounting_table]
+	WHERE username = '$login' AND acctstoptime IS NULL " . da_sql_limit(1,1,$config) . "
+	 ORDER BY acctstarttime DESC " . da_sql_limit(1,2,$config). " ;");
 	if ($search){
 		if (@da_sql_num_rows($search,$config)){
 			$logged_now = 1;
@@ -255,9 +255,9 @@ if ($link){
 		echo "<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 	if (! $logged_now){
 		$search = @da_sql_query($link,$config,
-		"SELECT da_sql_limit(1,0,$config) * FROM $config[sql_accounting_table]
-		WHERE username = '$login' AND acctsessiontime != '0' da_sql_limit(1,1,$config)
-		ORDER BY acctstoptime DESC da_sql_limit(1,2,$config);");
+		"SELECT " . da_sql_limit(1,0,$config) . " * FROM $config[sql_accounting_table]
+		WHERE username = '$login' AND acctsessiontime != '0' " . da_sql_limit(1,1,$config) . "
+		 ORDER BY acctstoptime DESC " . da_sql_limit(1,2,$config). " ;");
 		if ($search){
 			if (@da_sql_num_rows($search,$config)){
 				$row = @da_sql_fetch_array($search,$config);
