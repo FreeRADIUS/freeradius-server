@@ -320,3 +320,4 @@ EOM;
 }
 
 require('../html/user_admin.html.php3');
+?>
