@@ -4,12 +4,17 @@
 
 include ../../Make.inc
 
-SERVER_OBJS	= radiusd.o files.o util.o acct.o nas.o log.o valuepair.o \
-		  version.o proxy.o exec.o auth.o conffile.o \
-		  modules.o modcall.o session.o xlat.o threads.o smux.o \
-		  radius_snmp.o client.o request_list.o mainconfig.o \
-		  request_process.o
+SERVER_SRCS	= radiusd.c files.c util.c acct.c nas.c log.c valuepair.c \
+		  version.c proxy.c exec.c auth.c conffile.c \
+		  modules.c modcall.c session.c xlat.c threads.c smux.c \
+		  radius_snmp.c client.c request_list.c mainconfig.c \
+		  request_process.c
+
+SERVER_OBJS	+= $(SERVER_SRCS:.c=.o)
+
 INCLUDES	= ../include/radiusd.h ../include/radius.h ../include/libradius.h ../include/conf.h ../include/autoconf.h
+
+$(SERVER_OBJS): $(INCLUDES)
 
 CFLAGS		+= -I../include 
 CFLAGS		+= -DHOSTINFO=\"${HOSTINFO}\"
@@ -68,70 +73,70 @@ radiusd: $(SERVER_OBJS) ../lib/libradius.la $(MODULE_OBJS)
 		$(SERVER_OBJS) $(LCRYPT) $(MODULE_LIBS) $(LIBS) \
 		$(PTHREADLIB) $(LIBLTDL) $(LCRYPT) $(OPENSSL_LIBS)
 
-radiusd.o: radiusd.c $(INCLUDES)  ../include/request_list.h ../include/modules.h ../include/modcall.h ../include/modpriv.h
+radiusd.o: radiusd.c ../include/request_list.h ../include/modules.h ../include/modcall.h ../include/modpriv.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radiusd.c
 
-acct.o: acct.c $(INCLUDES) ../include/modules.h
+acct.o: acct.c ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c acct.c
 
-files.o: files.c $(INCLUDES)
+files.o: files.c 
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c files.c
 
-util.o: util.c $(INCLUDES)
+util.o: util.c 
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c util.c
 
-nas.o:  nas.c $(INCLUDES)
+nas.o:  nas.c 
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c nas.c
 
-log.o:  log.c $(INCLUDES)
+log.o:  log.c 
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c log.c
 
-conffile.o: conffile.c $(INCLUDES) ../include/modules.h
+conffile.o: conffile.c ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c conffile.c
 
-mainconfig.o: mainconfig.c $(INCLUDES) ../include/modules.h
+mainconfig.o: mainconfig.c ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c mainconfig.c
 
-modules.o:  modules.c $(INCLUDES)
+modules.o:  modules.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(VFLAGS) $(INCLTDL) -c modules.c
 
-modcall.o:  modcall.c $(INCLUDES)
+modcall.o:  modcall.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c modcall.c
 
-session.o:  session.c $(INCLUDES) ../include/modules.h
+session.o:  session.c ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c session.c
 
-request_list.o:  request_list.c $(INCLUDES)
+request_list.o:  request_list.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c request_list.c
 
-request_process.o:  request_process.c $(INCLUDES)
+request_process.o:  request_process.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c request_process.c
 
-proxy.o:  proxy.c $(INCLUDES)
+proxy.o:  proxy.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c proxy.c
 
-exec.o:  exec.c $(INCLUDES)
+exec.o:  exec.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c exec.c
 
-auth.o:  auth.c $(INCLUDES) ../include/modules.h
+auth.o:  auth.c ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c auth.c
 
-valuepair.o:  valuepair.c $(INCLUDES)
+valuepair.o:  valuepair.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c valuepair.c
 
-version.o: version.c $(INCLUDES)
+version.o: version.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -o version.o -c version.c
 
-xlat.o: xlat.c $(INCLUDES)
+xlat.o: xlat.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -o xlat.o -c xlat.c
 
-threads.o: threads.c $(INCLUDES)
+threads.o: threads.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -o threads.o -c threads.c
 
-smux.o: smux.c $(INCLUDES)
+smux.o: smux.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -o smux.o -c smux.c
 
-radius_snmp.o: radius_snmp.c $(INCLUDES)
+radius_snmp.o: radius_snmp.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -o radius_snmp.o -c radius_snmp.c
 
 radclient: radclient.o ../lib/libradius.la
