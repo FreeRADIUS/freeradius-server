@@ -14,8 +14,6 @@ SERVER_OBJS	+= $(SERVER_SRCS:.c=.o)
 
 INCLUDES	= ../include/radiusd.h ../include/radius.h ../include/libradius.h ../include/conf.h ../include/autoconf.h
 
-$(SERVER_OBJS): $(INCLUDES)
-
 CFLAGS		+= -I../include 
 CFLAGS		+= -DHOSTINFO=\"${HOSTINFO}\"
 CFLAGS          += -DRADIUSD_VERSION=\"${RADIUSD_VERSION}\"
@@ -66,6 +64,8 @@ LIBS		+= -lradius $(SNMP_LIBS)
 
 
 all:	$(BINARIES)
+
+$(SERVER_OBJS): $(INCLUDES)
 
 radiusd: $(SERVER_OBJS) ../lib/libradius.la $(MODULE_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
