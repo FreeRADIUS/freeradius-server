@@ -376,8 +376,7 @@ static int generate_sql_clients(SQL_INST *inst)
 			c->netmask = htonl(c->netmask);
 		}
 
-		c->ipaddr = ip_getaddr(row[1]);
-		if (c->ipaddr == INADDR_NONE) {
+		if (ip_hton(row[1], AF_INET, &c->ipaddr) < 0) {
 			radlog(L_CONS|L_ERR, "rlm_sql (%s): Failed to look up hostname %s",
 					inst->config->xlat_name, row[1]);
 			free(c);
@@ -389,11 +388,10 @@ static int generate_sql_clients(SQL_INST *inst)
 		 */
 		if (netmask) {
 			*netmask = '/';
-			c->ipaddr &= c->netmask;
+			c->ipaddr.ipaddr.ip4addr.s_addr &= c->netmask;
 			strcpy(c->longname, row[1]);
 		} else {
-			ip_hostname(c->longname, sizeof(c->longname),
-					c->ipaddr);
+			ip_ntoh(&c->ipaddr, c->longname, sizeof(c->longname));
 		}
 
 		strcpy((char *)c->secret, row[4]);
