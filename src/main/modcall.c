@@ -1090,7 +1090,6 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 		CONF_SECTION *cs = cf_itemtosection(ci);
 		CONF_PAIR *cp;
 		const char *attr, *value;
-		int rcode, action;
 
 		for (ci=cf_item_find_next(cs, NULL);
 		     ci != NULL;
