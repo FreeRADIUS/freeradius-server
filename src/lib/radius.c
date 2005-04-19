@@ -266,6 +266,7 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 	 *	First, do a hokey hack to figure out which address
 	 *	family, address, and port the socket is listening on.
 	 */
+	salen = sizeof(salocal);
 	if (getsockname(sockfd, (struct sockaddr *) &salocal,
 			&salen) < 0) return -1;
 
