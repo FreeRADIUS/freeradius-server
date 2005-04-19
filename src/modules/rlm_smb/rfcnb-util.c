@@ -29,6 +29,7 @@
 #include "rfcnb-priv.h"
 #include "rfcnb-util.h"
 #include "rfcnb-io.h"
+#include "libradius.h"
 
 extern void (*Prot_Print_Routine)(); /* Pointer to protocol print routine */
 
@@ -242,11 +243,11 @@ void RFCNB_Print_Pkt(FILE *fd, char *dirn, struct RFCNB_Pkt *pkt, int len)
     fprintf(fd, "SESSION MESSAGE: Length = %i\n", RFCNB_Pkt_Len(pkt -> data));
     RFCNB_Print_Hex(fd, pkt, RFCNB_Pkt_Hdr_Len,
 #ifdef RFCNB_PRINT_DATA
-		    RFCNB_Pkt_Len(pkt -> data) - RFCNB_Pkt_Hdr_Len);
+		    RFCNB_Pkt_Len(pkt -> data) - RFCNB_Pkt_Hdr_Len
 #else
-                    40);
+                    40
 #endif
-
+	    );
   if (Prot_Print_Routine != 0) { /* Print the rest of the packet */
 
     Prot_Print_Routine(fd, strcmp(dirn, "sent"), pkt, RFCNB_Pkt_Hdr_Len,
@@ -313,28 +314,20 @@ void RFCNB_Print_Pkt(FILE *fd, char *dirn, struct RFCNB_Pkt *pkt, int len)
 
 int RFCNB_Name_To_IP(char *host, struct in_addr *Dest_IP)
 
-{ int addr;         /* Assumes IP4, 32 bit network addresses */
-  struct hostent *hp;
+{
+	lrad_ipaddr_t ipaddr;
 
-        /* Use inet_addr to try to convert the address */
+	if (ip_hton(host, AF_INET, &ipaddr) < 0) {
+		/* Try NetBIOS name lookup, how the hell do we do that? */
+		
+		RFCNB_errno = RFCNBE_BadName;   /* Is this right? */
+		RFCNB_saved_errno = errno;
+		return(RFCNBE_Bad);
+		
+	}
 
-  if ((addr = ip_getaddr(host)) == INADDR_NONE) { /* Not in DNS */
-
-        /* Try NetBIOS name lookup, how the hell do we do that? */
-
-      RFCNB_errno = RFCNBE_BadName;   /* Is this right? */
-      RFCNB_saved_errno = errno;
-      return(RFCNBE_Bad);
-
-  }
-  else { /* We got an IP address */
-
-    memcpy((void *)Dest_IP, (void *)&addr, sizeof(struct in_addr));
-
-  }
-
-  return 0;
-
+	memcpy(Dest_IP, &ipaddr.ipaddr.ip4addr, sizeof(struct in_addr));
+	return 0;
 }
 
 /* Disconnect the TCP connection to the server */
