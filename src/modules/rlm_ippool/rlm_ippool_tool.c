@@ -322,8 +322,10 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 			else {
 				if (mppp)
 					extra = 1;
-//				if (!mppp)
-//					printf("Error in if statements!!!\n");
+#if 0
+				if (!mppp)
+					printf("Error in if statements!!!\n");
+#endif
 			}
 		}
 		free(key_datum.dptr);
@@ -497,11 +499,11 @@ void viewdb(char *sessiondbname,char *indexdbname,char *ipaddress, int old) {
 		    printf("ipaddr:%s active:%d cli:%s",
 			inet_ntoa(ipaddr),info.active,info.cli);
 
-		//
-		// algorythm copied from rlm_ippool.c:
-		// - set active to zero
-		// - set number of sessions to zero
-		//
+		/*
+		 * algorythm copied from rlm_ippool.c:
+		 * - set active to zero
+		 * - set number of sessions to zero
+		 */
 		if (rflag && MATCH_IP(ipaddress,ip)) {
 		    info.active=0;
 			save_datum.dptr = key_datum.dptr;
