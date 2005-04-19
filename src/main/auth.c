@@ -37,6 +37,7 @@ static const char rcsid[] = "$Id$";
 
 #include "radiusd.h"
 #include "modules.h"
+#include "rad_assert.h"
 
 /*
  *	Return a short string showing the terminal server, port
@@ -53,7 +54,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli) {
 		port = pair->lvalue;
 
 	snprintf(buf, buflen, "from client %.128s port %u%s%.128s",
-			client_name(request->packet->src_ipaddr), port,
+			client_name(&request->packet->src_ipaddr), port,
 			(do_cli ? " cli " : ""), (do_cli ? (char *)cli->strvalue : ""));
 
 	return buf;
@@ -589,7 +590,8 @@ autz_redo:
 		 *	realm (sigh).
 		 */
 		realm = realm_find(tmp->strvalue, 0);
-		if (realm && (realm->ipaddr == htonl(INADDR_NONE))) {
+		rad_assert(realm->ipaddr.af == AF_INET);
+		if (realm && (realm->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE))) {
 			DEBUG2("  WARNING: You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling invalid proxy request.", realm->realm);
 		} else {
 			/*

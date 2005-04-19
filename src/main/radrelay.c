@@ -96,15 +96,16 @@ struct relay_request {
 	time_t		retrans;			/* when to retrans */
 	unsigned int	retrans_num;			/* Number of retransmissions */
 	time_t		timestamp;			/* orig recv time */
-	uint32_t	client_ip;			/* Client-IP-Addr */
+	
+	lrad_ipaddr_t	client_ip;			/* Client-IP-Addr */
 	RADIUS_PACKET	*req;				/* Radius request */
 };
 
 struct relay_misc {
 	int		sockfd;				/* Main socket descriptor */
-	uint32_t 	dst_addr;			/* Destination address */
+	lrad_ipaddr_t 	dst_addr;			/* Destination address */
 	short 		dst_port;			/* Destination port */
-	uint32_t	src_addr;			/* Source address */
+	lrad_ipaddr_t	src_addr;			/* Source address */
 	char		detail[1024];			/* Detail file */
 	char 		*secret;			/* Secret */
 	char		f_secret[256];			/* File secret */
@@ -288,7 +289,7 @@ redo:
 					skip++;
 				} else
 				if (!strcasecmp(key, "Client-IP-Address")) {
-					r_req->client_ip = ip_getaddr(val);
+					ip_hton(val, AF_INET, &r_req->client_ip);
 					skip++;
 				} else
 				if (!strcasecmp(key, "Request-Authenticator"))
@@ -334,7 +335,7 @@ redo:
 			r_req->retrans = 0;
 			r_req->retrans_num = 0;
 			r_req->timestamp = 0;
-			r_req->client_ip = 0;
+			memset(&r_req->client_ip, 0, sizeof(r_req->client_ip));
 			goto redo;
 		}
 		if (r_req->timestamp == 0)
@@ -424,7 +425,7 @@ int do_recv(struct relay_misc *r_args)
 			r->retrans = 0;
 			r->retrans_num = 0;
 			r->timestamp = 0;
-			r->client_ip = 0;
+			memset(&r->client_ip, 0, sizeof(r->client_ip));
 			break;
 		}
 	}
@@ -445,8 +446,12 @@ int do_send(struct relay_request *r, char *secret)
 	/*
 	 *	Prevent loops.
 	 */
-	if (r->client_ip == r->req->dst_ipaddr) {
-		fprintf(stdout, "do_send: Client-IP == Dest-IP. Droping packet.\n");
+	if ((r->client_ip.af == r->req->dst_ipaddr.af) &&
+	    memcmp(&r->client_ip, &r->req->dst_ipaddr,
+		   ((r->client_ip.af == AF_INET) ?
+		    sizeof(r->client_ip.ipaddr.ip4addr) : /* FIXME: AF_INET6 */
+		    sizeof(r->client_ip.ipaddr.ip6addr)))) {
+		fprintf(stdout, "do_send: Client-IP == Dest-IP. Dropping packet.\n");
 		fprintf(stdout, "do_send: Free RADIUS ID = %d\n",r->req->id);
 		id_map[r->req->id] = 0;
 		if (r->req->vps != NULL) {
@@ -461,7 +466,7 @@ int do_send(struct relay_request *r, char *secret)
 		r->retrans = 0;
 		r->retrans_num = 0;
 		r->timestamp = 0;
-		r->client_ip = 0;
+		memset(&r->client_ip, 0, sizeof(r->client_ip));
 		return 0;
 	}
 
@@ -585,7 +590,7 @@ void loop(struct relay_misc *r_args)
 		slots[i].retrans = 0;
 		slots[i].retrans_num = 0;
 		slots[i].timestamp = 0;
-		slots[i].client_ip = 0;
+		memset(&slots[i].client_ip, 0, sizeof(slots[i].client_ip));
 		slots[i].req->sockfd = r_args->sockfd;
 		slots[i].req->dst_ipaddr = r_args->dst_addr;
 		slots[i].req->dst_port = r_args->dst_port;
@@ -837,9 +842,9 @@ int main(int argc, char **argv)
 	progname = argv[0];
 
 	r_args.sockfd = -1;
-	r_args.dst_addr = 0;
+	memset(&r_args.dst_addr, 0, sizeof(r_args.dst_addr));
 	r_args.dst_port = 0;
-	r_args.src_addr = 0;
+	memset(&r_args.src_addr, 0, sizeof(r_args.src_addr));
 	memset((char *) r_args.detail, 0, 1024);
 	memset((char *) r_args.f_secret, 0, 256);
 	r_args.secret = NULL;
@@ -941,7 +946,7 @@ int main(int argc, char **argv)
 			r_args.secret = r_args.f_secret;
 			break;
 		case 'i':
-			if ((r_args.src_addr = ip_getaddr(optarg)) == 0) {
+			if (ip_hton(optarg, AF_INET, &r_args.src_addr) < 0) {
 				fprintf(stderr, "%s: unknown host %s\n",
 					progname, optarg);
 				exit(1);
@@ -995,8 +1000,7 @@ int main(int argc, char **argv)
 	} else {
 		r_args.dst_port = ntohs(r_args.dst_port);
 	}
-	r_args.dst_addr = ip_getaddr(server_name);
-	if (r_args.dst_addr == 0) {
+	if (ip_hton(server_name, AF_INET, &r_args.dst_addr) < 0) {
 		fprintf(stderr, "%s: unknown host\n",
 			server_name);
 		exit(1);

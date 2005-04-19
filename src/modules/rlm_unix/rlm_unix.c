@@ -430,7 +430,6 @@ static char *uue(void *in)
 static int unix_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*vp;
-	RADCLIENT	*cl;
 	FILE		*fp;
 	struct utmp	ut;
 	time_t		t;
@@ -451,6 +450,11 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 */
 	if (!inst->radwtmp) {
 		DEBUG2("rlm_unix: No radwtmp file configured.  Ignoring accounting request.");
+		return RLM_MODULE_NOOP;
+	}
+
+	if (request->packet->src_ipaddr.af != AF_INET) {
+		DEBUG2("rlm_unix: IPv6 is not supported!");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -522,13 +526,21 @@ static int unix_accounting(void *instance, REQUEST *request)
 	if (strncmp(ut.ut_name, "!root", sizeof(ut.ut_name)) == 0 || !port_seen)
 		return RLM_MODULE_NOOP;
 
+	s = "";
+
 	/*
 	 *	If we didn't find out the NAS address, use the
 	 *	originator's IP address.
 	 */
-	if (nas_address == 0)
-		nas_address = request->packet->src_ipaddr;
-
+	if (nas_address == 0) {
+		RADCLIENT *cl;
+		nas_address = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+		
+		if ((cl = client_find(&request->packet->src_ipaddr)) != NULL)
+			s = cl->shortname;
+	}
+	if (!s || s[0] == 0) s = uue(&(nas_address));
+	
 #ifdef __linux__
 	/*
 	 *	Linux has a field for the client address.
@@ -539,10 +551,6 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	We use the tty field to store the terminal servers' port
 	 *	and address so that the tty field is unique.
 	 */
-	s = "";
-	if ((cl = client_find(nas_address)) != NULL)
-		s = cl->shortname;
-	if (s == NULL || s[0] == 0) s = uue(&(nas_address));
 	sprintf(buf, "%03d:%s", nas_port, s);
 	strNcpy(ut.ut_line, buf, sizeof(ut.ut_line));
 

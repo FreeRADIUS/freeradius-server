@@ -40,8 +40,7 @@ static const char rcsid[] = "$Id$";
 #include <fcntl.h>
 
 #include "radiusd.h"
-
-int maximum_proxies;
+#include "rad_assert.h"
 
 /*
  *	Free a PAIR_LIST
@@ -379,27 +378,27 @@ int read_realms_file(const char *file)
 			 *	Local realms don't have an IP address,
 			 *	secret, or port.
 			 */
-			c->acct_ipaddr = c->ipaddr = htonl(INADDR_NONE);
+			c->ipaddr.af = c->acct_ipaddr.af = AF_INET;
+			c->ipaddr.ipaddr.ip4addr.s_addr = c->acct_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 			c->secret[0] = '\0';
 			c->auth_port = 0;
 			c->acct_port = 0;
 
 		} else {
 			RADCLIENT *client;
-			c->ipaddr = ip_getaddr(hostnm);
-			c->acct_ipaddr = c->ipaddr;
 
-			if (c->ipaddr == htonl(INADDR_NONE)) {
+			if (ip_hton(hostnm, AF_INET, &c->ipaddr) < 0) {
 				radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
 				       file, lineno, hostnm);
 				return -1;
 			}
+			c->acct_ipaddr = c->ipaddr;
 
 			/*
 			 *	Find the remote server in the "clients" list.
 			 *	If we can't find it, there's a big problem...
 			 */
-			client = client_find(c->ipaddr);
+			client = client_find(&c->ipaddr);
 			if (client == NULL) {
 			  radlog(L_CONS|L_ERR, "%s[%d]: Cannot find 'clients' file entry of remote server %s for realm \"%s\"",
 				 file, lineno, hostnm, realm);
@@ -475,7 +474,10 @@ void realm_disable(uint32_t ipaddr, int port)
 
 	now = time(NULL);
 	for(cl = mainconfig.realms; cl; cl = cl->next) {
-		if ((ipaddr == cl->ipaddr) && (port == cl->auth_port)) {
+		if (cl->ipaddr.af != AF_INET) rad_assert(0 == 1);
+
+		if ((ipaddr == cl->ipaddr.ipaddr.ip4addr.s_addr) &&
+		    (port == cl->auth_port)) {
 			/*
 			 *	If we've received a reply (any reply)
 			 *	from the home server in the time spent
@@ -490,7 +492,8 @@ void realm_disable(uint32_t ipaddr, int port)
 			cl->wakeup = now + mainconfig.proxy_dead_time;
 			radlog(L_PROXY, "marking authentication server %s:%d for realm %s dead",
 				cl->server, port, cl->realm);
-		} else if ((ipaddr == cl->acct_ipaddr) && (port == cl->acct_port)) {
+		} else if ((ipaddr == cl->acct_ipaddr.ipaddr.ip4addr.s_addr) &&
+			   (port == cl->acct_port)) {
 			if (cl->last_reply > (( now - mainconfig.proxy_retry_delay * mainconfig.proxy_retry_count ))) {
 				continue;
 			}
@@ -639,10 +642,14 @@ REALM *realm_findbyaddr(uint32_t ipaddr, int port)
 	 *	doesn't matter if we think the realm is inactive.
 	 */
 	for (cl = mainconfig.realms; cl != NULL; cl = cl->next) {
-		if ((ipaddr == cl->ipaddr) && (port == cl->auth_port)) {
+		if (cl->ipaddr.af != AF_INET) rad_assert(0 == 1);
+
+		if ((ipaddr == cl->ipaddr.ipaddr.ip4addr.s_addr) &&
+		    (port == cl->auth_port)) {
 			return cl;
 
-		} else if ((ipaddr == cl->acct_ipaddr) && (port == cl->acct_port)) {
+		} else if ((ipaddr == cl->acct_ipaddr.ipaddr.ip4addr.s_addr) &&
+			   (port == cl->acct_port)) {
 			return cl;
 		}
 	}

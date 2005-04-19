@@ -158,13 +158,18 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 			 *	which we did NOT send a request to,
 			 *	then complain.
 			 */
-			if (((*rep)->src_ipaddr != req->dst_ipaddr) ||
+			if (((*rep)->src_ipaddr.af != req->dst_ipaddr.af) ||
+			    (memcmp(&(*rep)->src_ipaddr.ipaddr,
+				    &req->dst_ipaddr.ipaddr,
+				    ((req->dst_ipaddr.af == AF_INET ? /* AF_INET6? */
+				      sizeof(req->dst_ipaddr.ipaddr.ip4addr) : /* FIXME: AF_INET6 */
+				      sizeof(req->dst_ipaddr.ipaddr.ip6addr)))) != 0) ||
 			    ((*rep)->src_port != req->dst_port)) {
-				char src[64], dst[64];
+				char src[128], dst[128];
 
-				ip_ntoa(src, (*rep)->src_ipaddr);
-				ip_ntoa(dst, req->dst_ipaddr);
-				fprintf(stderr, "radclient: ERROR: Sent request to host %s:%d, got response from host %s:%d\n!",
+				ip_ntoh(&(*rep)->src_ipaddr, src, sizeof(src));
+				ip_ntoh(&req->dst_ipaddr, dst, sizeof(dst));
+				fprintf(stderr, "radclient: ERROR: Sent request to host %s port %d, got response from host %s port %d\n!",
 					dst, req->dst_port,
 					src, (*rep)->src_port);
 				exit(1);
@@ -1070,8 +1075,7 @@ int main(int argc, char **argv)
 	 *	Resolve hostname.
 	 */
 	req->dst_port = port;
-	req->dst_ipaddr = ip_getaddr(argv[1]);
-	if (req->dst_ipaddr == INADDR_NONE) {
+	if (ip_hton(argv[1], AF_INET, &req->dst_ipaddr) < 0) {
 		fprintf(stderr, "radclient: Failed to find IP address for host %s\n", argv[1]);
 		exit(1);
 	}

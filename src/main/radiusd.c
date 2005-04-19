@@ -86,7 +86,6 @@ int log_stripped_names;
 int debug_flag = 0;
 int log_auth_detail = FALSE;
 int need_reload = FALSE;
-int sig_hup_block = FALSE;
 const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
 static time_t time_now;
@@ -95,9 +94,7 @@ static pid_t radius_pid;
 /*
  *  Configuration items.
  */
-static int dont_fork = FALSE;
 static time_t start_time = 0;
-static int spawn_flag = TRUE;
 static int do_exit = 0;
 
 /*
@@ -135,8 +132,8 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 			if (listener->type != RAD_LISTEN_AUTH) {
 				RAD_SNMP_INC(rad_snmp.auth.total_packets_dropped);
 				radlog(L_ERR, "Authentication-Request sent to a non-authentication port from "
-					"client %s:%d - ID %d : IGNORED",
-					client_name(packet->src_ipaddr),
+				       "client %s port %d - ID %d : IGNORED",
+				       client_name(&packet->src_ipaddr),
 				       packet->src_port, packet->id);
 				return NULL;
 			}
@@ -151,8 +148,8 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 			if (listener->type != RAD_LISTEN_ACCT) {
 				RAD_SNMP_INC(rad_snmp.acct.total_packets_dropped);
 				radlog(L_ERR, "Accounting-Request packet sent to a non-accounting port from "
-				       "client %s:%d - ID %d : IGNORED",
-				       client_name(packet->src_ipaddr),
+				       "client %s port %d - ID %d : IGNORED",
+				       client_name(&packet->src_ipaddr),
 				       packet->src_port, packet->id);
 				return NULL;
 			}
@@ -170,9 +167,9 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 			if (listener->type != RAD_LISTEN_PROXY) {
 				RAD_SNMP_INC(rad_snmp.auth.total_packets_dropped);
 				radlog(L_ERR, "Authentication reply packet code %d sent to a non-proxy reply port from "
-				       "client %s:%d - ID %d : IGNORED",
+				       "client %s port %d - ID %d : IGNORED",
 				       packet->code,
-				       client_name(packet->src_ipaddr),
+				       client_name(&packet->src_ipaddr),
 				       packet->src_port, packet->id);
 				return NULL;
 			}
@@ -188,9 +185,9 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 			if (listener->type != RAD_LISTEN_PROXY) {
 				RAD_SNMP_INC(rad_snmp.acct.total_packets_dropped);
 				radlog(L_ERR, "Accounting reply packet code %d sent to a non-proxy reply port from "
-				       "client %s:%d - ID %d : IGNORED",
+				       "client %s port %d - ID %d : IGNORED",
 				       packet->code,
-				       client_name(packet->src_ipaddr),
+				       client_name(&packet->src_ipaddr),
 				       packet->src_port, packet->id);
 				return 0;
 			}
@@ -211,8 +208,8 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 			/*
 			 *  We don't support this anymore.
 			 */
-			radlog(L_ERR, "Deprecated password change request from client %s:%d - ID %d : IGNORED",
-					client_name(packet->src_ipaddr),
+			radlog(L_ERR, "Deprecated password change request from client %s port %d - ID %d : IGNORED",
+					client_name(&packet->src_ipaddr),
 			       packet->src_port, packet->id);
 			return NULL;
 			break;
@@ -222,7 +219,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 
 			radlog(L_ERR, "Unknown packet code %d from client %s:%d "
 			       "- ID %d : IGNORED", packet->code,
-			       client_name(packet->src_ipaddr),
+			       client_name(&packet->src_ipaddr),
 			       packet->src_port, packet->id);
 			return NULL;
 			break;
@@ -258,7 +255,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 			if (request_count > mainconfig.max_requests) {
 				radlog(L_ERR, "Dropping request (%d is too many): "
 				       "from client %s:%d - ID: %d", request_count,
-				       client_name(packet->src_ipaddr),
+				       client_name(&packet->src_ipaddr),
 				       packet->src_port, packet->id);
 				radlog(L_INFO, "WARNING: Please check the radiusd.conf file.\n"
 				       "\tThe value for 'max_requests' is probably set too low.\n");
@@ -322,7 +319,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 
 					DEBUG2("Ignoring duplicate packet from client "
 					       "%s:%d - ID: %d, due to outstanding proxied request %d.",
-					       client_name(packet->src_ipaddr),
+					       client_name(&packet->src_ipaddr),
 					       packet->src_port, packet->id,
 					       curreq->number);
 					return NULL;
@@ -338,11 +335,12 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 					 *	again.
 					 */
 				} else {
-					char buffer[64];
+					char buffer[128];
 
-					DEBUG2("Sending duplicate proxied request to home server %s:%d - ID: %d",
-					       ip_ntoa(buffer, curreq->proxy->dst_ipaddr),
-					       curreq->proxy->dst_port,
+					DEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
+					       inet_ntop(curreq->proxy->dst_ipaddr.af,
+							 &curreq->proxy->dst_ipaddr.ipaddr,
+							 buffer, sizeof(buffer)),					       curreq->proxy->dst_port,
 
 					       curreq->proxy->id);
 				}
@@ -357,8 +355,8 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 			 *	ignore the duplicate request.
 			 */
 			radlog(L_ERR, "Discarding duplicate request from "
-			       "client %s:%d - ID: %d due to unfinished request %d",
-			       client_name(packet->src_ipaddr),
+			       "client %s port %d - ID: %d due to unfinished request %d",
+			       client_name(&packet->src_ipaddr),
 			       packet->src_port, packet->id,
 			       curreq->number);
 			return NULL;
@@ -373,8 +371,8 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 		RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
 
 		radlog(L_ERR, "Dropping conflicting packet from "
-		       "client %s:%d - ID: %d due to unfinished request %d",
-		       client_name(packet->src_ipaddr),
+		       "client %s port %d - ID: %d due to unfinished request %d",
+		       client_name(&packet->src_ipaddr),
 		       packet->src_port, packet->id,
 		       curreq->number);
 		return NULL;
@@ -419,8 +417,8 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 		 */
 		if (curreq->reply->code != 0) {
 			DEBUG2("Sending duplicate reply "
-			       "to client %s:%d - ID: %d",
-			       client_name(packet->src_ipaddr),
+			       "to client %s port %d - ID: %d",
+			       client_name(&packet->src_ipaddr),
 			       packet->src_port, packet->id);
 			rad_send(curreq->reply, curreq->packet, curreq->secret);
 			return NULL;
@@ -432,8 +430,8 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 		 *
 		 *	This shouldn't happen, in general...
 		 */
-		DEBUG2("Discarding duplicate request from client %s:%d - ID: %d",
-		       client_name(packet->src_ipaddr),
+		DEBUG2("Discarding duplicate request from client %s port %d - ID: %d",
+		       client_name(&packet->src_ipaddr),
 		       packet->src_port, packet->id);
 		return NULL;
 	} /* else the vectors were different, so we discard the old request. */
@@ -465,7 +463,7 @@ static REQUEST *proxy_ok(RADIUS_PACKET *packet)
 {
 	REALM *cl;
 	REQUEST *oldreq;
-	char buffer[32];
+	char buffer[128];
 
 	/*
 	 *	Find the original request in the request list
@@ -478,8 +476,10 @@ static REQUEST *proxy_ok(RADIUS_PACKET *packet)
 	 *	request, as there's no way for us to send it to a NAS.
 	 */
 	if (!oldreq) {
-		radlog(L_PROXY, "No outstanding request was found for proxy reply from home server %s:%d - ID %d",
-		       ip_ntoa(buffer, packet->src_ipaddr),
+		radlog(L_PROXY, "No outstanding request was found for proxy reply from home server %s port %d - ID %d",
+		       inet_ntop(packet->src_ipaddr.af,
+				 &packet->src_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
 		       packet->src_port, packet->id);
 		return NULL;
 	}
@@ -493,8 +493,10 @@ static REQUEST *proxy_ok(RADIUS_PACKET *packet)
 	 */
 	if ((oldreq->reply->code != 0) ||
 	    (oldreq->finished)) {
-		radlog(L_ERR, "Reply from home server %s:%d  - ID: %d arrived too late for request %d. Try increasing 'retry_delay' or 'max_request_time'",
-		       ip_ntoa(buffer, packet->src_ipaddr),
+		radlog(L_ERR, "Reply from home server %s port %d  - ID: %d arrived too late for request %d. Try increasing 'retry_delay' or 'max_request_time'",
+		       inet_ntop(packet->src_ipaddr.af,
+				 &packet->src_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
 		       packet->src_port, packet->id,
 		       oldreq->number);
 		return NULL;
@@ -508,8 +510,10 @@ static REQUEST *proxy_ok(RADIUS_PACKET *packet)
 		if (memcmp(oldreq->proxy_reply->vector,
 			   packet->vector,
 			   sizeof(oldreq->proxy_reply->vector)) == 0) {
-			radlog(L_ERR, "Discarding duplicate reply from home server %s:%d  - ID: %d for request %d",
-			       ip_ntoa(buffer, packet->src_ipaddr),
+			radlog(L_ERR, "Discarding duplicate reply from home server %s port %d  - ID: %d for request %d",
+			       inet_ntop(packet->src_ipaddr.af,
+					 &packet->src_ipaddr.ipaddr,
+					 buffer, sizeof(buffer)),
 			       packet->src_port, packet->id,
 			       oldreq->number);
 		} else {
@@ -556,7 +560,10 @@ static REQUEST *proxy_ok(RADIUS_PACKET *packet)
 	 *	as garbage.
 	 */
 	for (cl = mainconfig.realms; cl != NULL; cl = cl->next) {
-		if (oldreq->proxy_reply->src_ipaddr == cl->ipaddr) {
+		if (oldreq->proxy_reply->src_ipaddr.af != cl->ipaddr.af) continue;
+		if (cl->ipaddr.af != AF_INET) continue; /* FIXME */
+
+		if (oldreq->proxy_reply->src_ipaddr.ipaddr.ip4addr.s_addr == cl->ipaddr.ipaddr.ip4addr.s_addr) {
 			if (oldreq->proxy_reply->src_port == cl->auth_port) {
 				cl->active = TRUE;
 				cl->last_reply = oldreq->timestamp;
@@ -674,6 +681,10 @@ int main(int argc, char *argv[])
 	int max_fd;
 	int status;
 	struct timeval *tv = NULL;
+	int spawn_flag = TRUE;
+	int dont_fork = FALSE;
+	int sig_hup_block = FALSE;
+
 #ifdef HAVE_SIGACTION
 	struct sigaction act;
 #endif
@@ -1096,9 +1107,9 @@ int main(int argc, char *argv[])
 				 */
 			        sig_hup_block = TRUE;
 			        if( (total_active_threads() == 0) ||
-				     (max_wait >= 5) ) {
-				  sig_hup_block = FALSE;
-				  break;
+				    (max_wait >= 5) ) {
+					sig_hup_block = FALSE;
+					break;
 				}
 				sleep(1);
 				max_wait++;
@@ -1200,28 +1211,13 @@ int main(int argc, char *argv[])
 			 *  Receive the packet.
 			 */
 			if (sig_hup_block != FALSE) {
-			  continue;
+				continue;
 			}
 			packet = rad_recv(listener->fd);
 			if (packet == NULL) {
 				radlog(L_ERR, "%s", librad_errstr);
 				continue;
 			}
-
-			/*
-			 *	If the destination IP is unknown, check
-			 *	if the listener has a known IP.  If so,
-			 *	use that.
-			 */
-			if ((packet->dst_ipaddr == htonl(INADDR_ANY)) &&
-			    (packet->dst_ipaddr != listener->ipaddr)) {
-				packet->dst_ipaddr = listener->ipaddr;
-			}
-
-			/*
-			 *	Fill in the destination port.
-			 */
-			packet->dst_port = listener->port;
 
 			RAD_SNMP_TYPE_INC(listener, total_requests);
 
@@ -1241,11 +1237,13 @@ int main(int argc, char *argv[])
 			 */
 			if (listener->type != RAD_LISTEN_PROXY) {
 				RADCLIENT *cl;
-				if ((cl = client_find(packet->src_ipaddr)) == NULL) {
+				if ((cl = client_find(&packet->src_ipaddr)) == NULL) {
 					RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
 
-					radlog(L_ERR, "Ignoring request from unknown client %s:%d",
-					ip_ntoa((char *)buffer, packet->src_ipaddr),
+					radlog(L_ERR, "Ignoring request from unknown client %s port %d",
+					       inet_ntop(packet->src_ipaddr.af,
+							 &packet->src_ipaddr.ipaddr,
+							 buffer, sizeof(buffer)),
 					packet->src_port);
 					rad_free(&packet);
 					continue;
@@ -1253,10 +1251,18 @@ int main(int argc, char *argv[])
 				secret = cl->secret;
 			} else {    /* It came in on the proxy port */
 				REALM *rl;
-				if ((rl = realm_findbyaddr(packet->src_ipaddr,packet->src_port)) == NULL) {
-					radlog(L_ERR, "Ignoring request from unknown home server %s:%d",
-					ip_ntoa((char *)buffer, packet->src_ipaddr),
-					packet->src_port);
+
+				if (packet->src_ipaddr.af != AF_INET) {
+					rad_assert("PROXY IPV6 NOT SUPPORTED" == NULL);
+				}
+
+				if ((rl = realm_findbyaddr(packet->src_ipaddr.ipaddr.ip4addr.s_addr,
+							   packet->src_port)) == NULL) {
+					radlog(L_ERR, "Ignoring request from unknown home server %s port %d",
+					       inet_ntop(packet->src_ipaddr.af,
+							 &packet->src_ipaddr.ipaddr,
+							 buffer, sizeof(buffer)),
+					       packet->src_port);
 					rad_free(&packet);
 					continue;
 				}

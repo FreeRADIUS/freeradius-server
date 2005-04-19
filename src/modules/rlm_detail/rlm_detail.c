@@ -35,6 +35,8 @@ static const char rcsid[] = "$Id$";
 
 #include	"radiusd.h"
 #include	"modules.h"
+#include	"rad_assert.h"
+
 #define 	DIRLEN	8192
 
 static const char *packet_codes[] = {
@@ -306,7 +308,12 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			proxy_realm = realm_find(pair->strvalue, TRUE);
 			if (proxy_realm) {
 				memset((char *) proxy_buffer, 0, 16);
-				ip_ntoa(proxy_buffer, proxy_realm->acct_ipaddr);
+
+				rad_assert(proxy_realm->acct_ipaddr.af == AF_INET);
+
+				inet_ntop(proxy_realm->acct_ipaddr.af,
+					  &proxy_realm->acct_ipaddr.ipaddr,
+					  proxy_buffer, sizeof(proxy_buffer));
 				fprintf(outfp, "\tFreeradius-Proxied-To = %s\n",
 					proxy_buffer);
 				DEBUG("rlm_detail: Freeradius-Proxied-To set to %s",

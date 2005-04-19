@@ -26,6 +26,18 @@
 #include <errno.h>
 #endif
 
+#ifdef HAVE_NETINET_IN_H
+#include	<netinet/in.h>
+#endif
+
+#ifdef HAVE_ARPA_INET_H
+#include	<arpa/inet.h>
+#endif
+
+#ifdef HAVE_SYS_SOCKET_H
+#include	<sys/socket.h>
+#endif
+
 #include <stdio.h>
 
 /*
@@ -141,6 +153,18 @@ typedef struct value_pair {
 	struct value_pair	*next;
 } VALUE_PAIR;
 
+
+typedef struct lrad_ipaddr_t {
+	int		af;	/* address family */
+	union {
+		struct in_addr	ip4addr;
+#ifdef AF_INET6
+		struct in6_addr ip6addr;
+#endif		
+	} ipaddr;
+} lrad_ipaddr_t;
+
+
 /*
  *	vector:		Request authenticator from access-request packet
  *			Put in there by rad_decode, and must be put in the
@@ -151,11 +175,11 @@ typedef struct value_pair {
  *	data,data_len:	Used between rad_recv and rad_decode.
  */
 typedef struct radius_packet {
-	int			sockfd;
-	uint32_t		src_ipaddr;
-	uint32_t		dst_ipaddr;
-	u_short			src_port;
-	u_short			dst_port;
+	int			sockfd;	
+	lrad_ipaddr_t		src_ipaddr;
+        lrad_ipaddr_t		dst_ipaddr;
+	uint16_t		src_port;
+	uint16_t		dst_port;
 	int			id;
 	unsigned int		code;
 	uint8_t			vector[AUTH_VECTOR_LEN];
@@ -291,8 +315,6 @@ const char *	ip_ntoa(char *, uint32_t);
 uint32_t	ip_addr(const char *);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t *ifid);
 uint8_t		*ifid_aton(const char *ifid_str, uint8_t *ifid);
-const char	*ipv6_ntoa(char *buffer, size_t size, void *ip6addr);
-int		ipv6_addr(const char *ip6_str, void *ip6addr);
 char		*strNcpy(char *dest, const char *src, int n);
 void		rad_lowercase(char *str);
 void		rad_rmspace(char *str);
@@ -301,6 +323,16 @@ int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
 void		lrad_bin2hex(const unsigned char *bin, unsigned char *hex, int len);
 int		lrad_hex2bin(const unsigned char *hex, unsigned char *bin, int len);
+#ifndef HAVE_INET_PTON
+int		inet_pton(int af, const char *src, void *dst);
+#endif
+#ifndef HAVE_INET_NTOP
+const char	*inet_ntop(int af, const void *src, char *dst, size_t cnt);
+#endif
+
+int		ip_hton(const char *src, int af, lrad_ipaddr_t *dst);
+const char	*ip_ntoh(const lrad_ipaddr_t *src, char *dst, size_t cnt);
+
 
 #ifdef ASCEND_BINARY
 /* filters.c */

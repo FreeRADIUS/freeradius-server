@@ -80,14 +80,40 @@ static int eap_detach(void *instance)
  */
 static int eap_handler_cmp(const void *a, const void *b)
 {
+	int rcode;
 	const EAP_HANDLER *one = a;
 	const EAP_HANDLER *two = b;
 
-	if (one->src_ipaddr < two->src_ipaddr) return -1;
-	if (one->src_ipaddr > two->src_ipaddr) return +1;
+
+	if (one->src_ipaddr.af < two->src_ipaddr.af) return -1;
+	if (one->src_ipaddr.af > two->src_ipaddr.af) return +1;
 
 	if (one->eap_id < two->eap_id) return -1;
 	if (one->eap_id > two->eap_id) return +1;
+
+	switch (one->src_ipaddr.af) {
+	case AF_INET:
+		rcode = memcmp(&one->src_ipaddr.ipaddr.ip4addr,
+			       &two->src_ipaddr.ipaddr.ip4addr,
+			       sizeof(one->src_ipaddr.ipaddr.ip4addr));
+		break;
+#ifdef AF_INET6
+	case AF_INET6:
+		rcode = memcmp(&one->src_ipaddr.ipaddr.ip6addr,
+			       &two->src_ipaddr.ipaddr.ip6addr,
+			       sizeof(one->src_ipaddr.ipaddr.ip6addr));
+#endif
+		break;
+	default:
+		return -1;	/* FIXME: die! */
+		break;
+	}
+	/*
+	 *	We could optimize this away, but the compiler should
+	 *	do that work for us, and this coding style helps us
+	 *	remember what to do if we add more checks later.
+	 */
+	if (rcode != 0) return rcode;
 
 	return memcmp(one->state, two->state, sizeof(one->state));
 }

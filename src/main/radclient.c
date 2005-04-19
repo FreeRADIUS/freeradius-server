@@ -250,7 +250,8 @@ static radclient_t *radclient_init(const char *filename)
 				break;
 
 			case PW_PACKET_DST_IP_ADDRESS:
-				radclient->request->dst_ipaddr = vp->lvalue;
+				radclient->request->dst_ipaddr.af = AF_INET;
+				radclient->request->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->lvalue;
 				break;
 
 			case PW_DIGEST_REALM:
@@ -300,13 +301,14 @@ static int radclient_sane(radclient_t *radclient)
 	if (radclient->request->dst_port == 0) {
 		radclient->request->dst_port = server_port;
 	}
-	if (radclient->request->dst_ipaddr == 0) {
+	if (radclient->request->dst_ipaddr.af == 0) {
 		if (server_ipaddr == INADDR_NONE) {
 			fprintf(stderr, "radclient: No server was given, but request %d in file %s did not contain Packet-Dst-IP-Address\n",
 				radclient->packet_number, radclient->filename);
 			return -1;
 		}
-		radclient->request->dst_ipaddr = server_ipaddr;
+		radclient->request->dst_ipaddr.af = AF_INET;
+		radclient->request->dst_ipaddr.ipaddr.ip4addr.s_addr = server_ipaddr;
 	}
 
 	if (radclient->request->code == 0) {
@@ -374,6 +376,7 @@ static int filename_walk(void *context, void *data)
  */
 static int request_cmp(const void *one, const void *two)
 {
+	int rcode;
 	const radclient_t *a = one;
 	const radclient_t *b = two;
 
@@ -384,8 +387,30 @@ static int request_cmp(const void *one, const void *two)
 	if (a->request->id < b->request->id) return -1;
 	if (a->request->id > b->request->id) return +1;
 
-	if (a->request->dst_ipaddr < b->request->dst_ipaddr) return -1;
-	if (a->request->dst_ipaddr > b->request->dst_ipaddr) return +1;
+	if (a->request->dst_ipaddr.af < b->request->dst_ipaddr.af) return -1;
+	if (a->request->dst_ipaddr.af > b->request->dst_ipaddr.af) return +1;
+
+	if (a->request->dst_ipaddr.af != AF_INET) return -1; /* FIXME */
+
+	switch (a->request->dst_ipaddr.af) {
+	case AF_INET:
+		rcode = memcmp(&a->request->dst_ipaddr.ipaddr.ip4addr,
+			       &b->request->dst_ipaddr.ipaddr.ip4addr,
+			       sizeof(a->request->dst_ipaddr.ipaddr.ip4addr));
+		break;
+
+#ifdef AF_INET6
+	case AF_INET6:
+		rcode = memcmp(&a->request->dst_ipaddr.ipaddr.ip6addr,
+			       &b->request->dst_ipaddr.ipaddr.ip6addr,
+			       sizeof(a->request->dst_ipaddr.ipaddr.ip6addr));
+		break;
+#endif
+
+	default:		/* FIXME: die! */
+		break;
+	}
+	if (rcode != 0) return rcode;
 
 	if (a->request->dst_port < b->request->dst_port) return -1;
 	if (a->request->dst_port > b->request->dst_port) return +1;
@@ -620,7 +645,8 @@ static int recv_one_packet(int wait_time)
 	 */
 	reply = rad_recv(sockfd);
 	if (!reply) {
-		fprintf(stderr, "radclient: received bad packet\n");
+		fprintf(stderr, "radclient: received bad packet: %s\n",
+			librad_errstr);
 		return -1;	/* bad packet */
 	}
 
@@ -678,6 +704,7 @@ static int recv_one_packet(int wait_time)
 
 	return 0;
 }
+
 
 static int getport(const char *name)
 {

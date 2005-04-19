@@ -81,6 +81,11 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 
         struct realm_config_t *inst = instance;
 
+	if (request->packet->src_ipaddr.af != AF_INET) {
+		DEBUG2("rlm_realm: IPv6 is not supported!");
+		return 0;
+	}
+
 	/* initiate returnrealm */
 	*returnrealm = NULL;
 
@@ -234,7 +239,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *	Perhaps accounting proxying was turned off.
 		 */
 	case PW_ACCOUNTING_REQUEST:
-		if (realm->acct_ipaddr == htonl(INADDR_NONE)) {
+		if (realm->acct_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE)) {
 			DEBUG2("    rlm_realm: Accounting realm is LOCAL.");
 			return 0;
 		}
@@ -249,7 +254,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *	Perhaps authentication proxying was turned off.
 		 */
 	case PW_AUTHENTICATION_REQUEST:
-		if (realm->ipaddr == htonl(INADDR_NONE)) {
+		if (realm->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE)) {
 			DEBUG2("    rlm_realm: Authentication realm is LOCAL.");
 			return 0;
 		}
@@ -269,12 +274,12 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	for (vp = request->packet->vps; vp; vp = vp->next) {
 		if (vp->attribute == PW_FREERADIUS_PROXIED_TO) {
 			if (request->packet->code == PW_AUTHENTICATION_REQUEST &&
-			    vp->lvalue == realm->ipaddr) {
+			    vp->lvalue == realm->ipaddr.ipaddr.ip4addr.s_addr) {
 				DEBUG2("    rlm_realm: Request not proxied due to Freeradius-Proxied-To");
 				return 0;
 			}
 			if (request->packet->code == PW_ACCOUNTING_REQUEST &&
-			    vp->lvalue == realm->acct_ipaddr) {
+			    vp->lvalue == realm->acct_ipaddr.ipaddr.ip4addr.s_addr) {
 				DEBUG2("    rlm_realm: Request not proxied due to Freeradius-Proxied-To");
 				return 0;
 			}

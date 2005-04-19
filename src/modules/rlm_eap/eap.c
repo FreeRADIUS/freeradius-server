@@ -630,7 +630,8 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		 *	to it.
 		 */
 		realm = realm_find(proxy->strvalue, 0);
-		if (realm && (realm->ipaddr == htonl(INADDR_NONE))) {
+		rad_assert(realm->ipaddr.af == AF_INET);
+		if (realm && (realm->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE))) {
 			proxy = NULL;
 		}
 	}

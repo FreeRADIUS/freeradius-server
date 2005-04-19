@@ -114,7 +114,7 @@ static int		proxy_fds[32];
  *	we look for a free Id from a sockfd, any sockfd.
  */
 typedef struct proxy_id_t {
-	uint32_t	dst_ipaddr;
+	lrad_ipaddr_t	dst_ipaddr;
 	int		dst_port;
 
 	/*
@@ -131,6 +131,7 @@ typedef struct proxy_id_t {
  */
 static int proxy_id_cmp(const void *one, const void *two)
 {
+	int rcode;
 	const proxy_id_t *a = one;
 	const proxy_id_t *b = two;
 
@@ -138,12 +139,36 @@ static int proxy_id_cmp(const void *one, const void *two)
 	 *	The following comparisons look weird, but it's
 	 *	the only way to make the comparisons work.
 	 */
-	if (a->dst_ipaddr < b->dst_ipaddr) return -1;
-	if (a->dst_ipaddr > b->dst_ipaddr) return +1;
-
 	if (a->dst_port < b->dst_port) return -1;
 	if (a->dst_port > b->dst_port) return +1;
 	
+	if (a->dst_ipaddr.af < b->dst_ipaddr.af) return -1;
+	if (a->dst_ipaddr.af > b->dst_ipaddr.af) return +1;
+
+	switch (a->dst_ipaddr.af) {
+	case AF_INET:
+		rcode = memcmp(&a->dst_ipaddr.ipaddr.ip4addr,
+			       &b->dst_ipaddr.ipaddr.ip4addr,
+			       sizeof(a->dst_ipaddr.ipaddr.ip4addr));
+		break;
+#ifdef AF_INET6
+	case AF_INET6:
+		rcode = memcmp(&a->dst_ipaddr.ipaddr.ip6addr,
+			       &b->dst_ipaddr.ipaddr.ip6addr,
+			       sizeof(a->dst_ipaddr.ipaddr.ip6addr));
+#endif
+		break;
+	default:
+		return -1;	/* FIXME: die! */
+		break;
+	}
+	/*
+	 *	We could optimize this away, but the compiler should
+	 *	do that work for us, and this coding style helps us
+	 *	remember what to do if we add more checks later.
+	 */
+	if (rcode != 0) return rcode;
+
 	/*
 	 *	Everything's equal.  Say so.
 	 */
@@ -157,6 +182,7 @@ static int proxy_id_cmp(const void *one, const void *two)
  */
 static int request_cmp(const void *one, const void *two)
 {
+	int rcode;
 	const REQUEST *a = one;
 	const REQUEST *b = two;
 
@@ -179,21 +205,59 @@ static int request_cmp(const void *one, const void *two)
 	if (a->packet->code < b->packet->code) return -1;
 	if (a->packet->code > b->packet->code) return +1;
 
-	if (a->packet->src_ipaddr < b->packet->src_ipaddr) return -1;
-	if (a->packet->src_ipaddr > b->packet->src_ipaddr) return +1;
+	if (a->packet->src_ipaddr.af < b->packet->src_ipaddr.af) return -1;
+	if (a->packet->src_ipaddr.af > b->packet->src_ipaddr.af) return +1;
 
 	if (a->packet->src_port < b->packet->src_port) return -1;
 	if (a->packet->src_port > b->packet->src_port) return +1;
+
+	switch (a->packet->src_ipaddr.af) {
+	case AF_INET:
+		rcode = memcmp(&a->packet->src_ipaddr.ipaddr.ip4addr,
+			       &b->packet->src_ipaddr.ipaddr.ip4addr,
+			       sizeof(a->packet->src_ipaddr.ipaddr.ip4addr));
+		break;
+#ifdef AF_INET6
+	case AF_INET6:
+		rcode = memcmp(&a->packet->src_ipaddr.ipaddr.ip6addr,
+			       &b->packet->src_ipaddr.ipaddr.ip6addr,
+			       sizeof(a->packet->src_ipaddr.ipaddr.ip6addr));
+#endif
+		break;
+	default:
+		return -1;	/* FIXME: die! */
+		break;
+	}
+	if (rcode != 0) return rcode;
 
 	/*
 	 *	Hmm... we may be listening on IPADDR_ANY, in which case
 	 *	the destination IP is important, too.
 	 */
-	if (a->packet->dst_ipaddr < b->packet->dst_ipaddr) return -1;
-	if (a->packet->dst_ipaddr > b->packet->dst_ipaddr) return +1;
+	if (a->packet->dst_ipaddr.af < b->packet->dst_ipaddr.af) return -1;
+	if (a->packet->dst_ipaddr.af > b->packet->dst_ipaddr.af) return +1;
 
 	if (a->packet->dst_port < b->packet->dst_port) return -1;
 	if (a->packet->dst_port > b->packet->dst_port) return +1;
+
+	switch (a->packet->dst_ipaddr.af) {
+	case AF_INET:
+		rcode = memcmp(&a->packet->dst_ipaddr.ipaddr.ip4addr,
+			       &b->packet->dst_ipaddr.ipaddr.ip4addr,
+			       sizeof(a->packet->dst_ipaddr.ipaddr.ip4addr));
+		break;
+#ifdef AF_INET6
+	case AF_INET6:
+		rcode = memcmp(&a->packet->dst_ipaddr.ipaddr.ip6addr,
+			       &b->packet->dst_ipaddr.ipaddr.ip6addr,
+			       sizeof(a->packet->dst_ipaddr.ipaddr.ip6addr));
+#endif
+		break;
+	default:
+		return -1;	/* FIXME: die! */
+		break;
+	}
+	if (rcode != 0) return rcode;
 
 	/*
 	 *	Everything's equal.  Say so.
@@ -207,6 +271,7 @@ static int request_cmp(const void *one, const void *two)
  */
 static int proxy_cmp(const void *one, const void *two)
 {
+	int rcode;
 	const REQUEST *a = one;
 	const REQUEST *b = two;
 
@@ -230,12 +295,30 @@ static int proxy_cmp(const void *one, const void *two)
 	 *	We've got to check packet codes, too.  But
 	 *	this should be done later, by someone else...
 	 */
-
-	if (a->proxy->dst_ipaddr < b->proxy->dst_ipaddr) return -1;
-	if (a->proxy->dst_ipaddr > b->proxy->dst_ipaddr) return +1;
+	if (a->proxy->dst_ipaddr.af < b->proxy->dst_ipaddr.af) return -1;
+	if (a->proxy->dst_ipaddr.af > b->proxy->dst_ipaddr.af) return +1;
 
 	if (a->proxy->dst_port < b->proxy->dst_port) return -1;
 	if (a->proxy->dst_port > b->proxy->dst_port) return +1;
+
+	switch (a->proxy->dst_ipaddr.af) {
+	case AF_INET:
+		rcode = memcmp(&a->packet->dst_ipaddr.ipaddr.ip4addr,
+			       &b->proxy->dst_ipaddr.ipaddr.ip4addr,
+			       sizeof(a->proxy->dst_ipaddr.ipaddr.ip4addr));
+		break;
+#ifdef AF_INET6
+	case AF_INET6:
+		rcode = memcmp(&a->proxy->dst_ipaddr.ipaddr.ip6addr,
+			       &b->proxy->dst_ipaddr.ipaddr.ip6addr,
+			       sizeof(a->proxy->dst_ipaddr.ipaddr.ip6addr));
+#endif
+		break;
+	default:
+		return -1;	/* FIXME: die! */
+		break;
+	}
+	if (rcode != 0) return rcode;
 
 	/*
 	 *	FIXME: Check the Proxy-State attribute, too.
@@ -385,9 +468,11 @@ static void rl_delete_proxy(REQUEST *request, rbnode_t *node)
 	entry = rbtree_finddata(proxy_id_tree, &myid);
 	if (entry) {
 		int i;
-
-		DEBUG3(" proxy: de-allocating %08x:%d %d",
-		       entry->dst_ipaddr,
+		char buf[128];
+		
+		DEBUG3(" proxy: de-allocating destination %s port %d - Id %d",
+		       inet_ntop(entry->dst_ipaddr.af,
+				 &entry->dst_ipaddr.ipaddr, buf, sizeof(buf)),
 		       entry->dst_port,
 		       request->proxy->id);
 
@@ -410,11 +495,14 @@ static void rl_delete_proxy(REQUEST *request, rbnode_t *node)
 			}
 		} /* else die horribly? */
 	} else {
+		char buf[128];
+
 		/*
 		 *	Hmm... not sure what to do here.
 		 */
-		DEBUG3(" proxy: FAILED TO FIND %08x:%d %d",
-		       myid.dst_ipaddr,
+		DEBUG3(" proxy: FAILED TO FIND destination %s port %d - Id %d",
+		       inet_ntop(myid.dst_ipaddr.af,
+				 &myid.dst_ipaddr.ipaddr, buf, sizeof(buf)),
 		       myid.dst_port,
 		       request->proxy->id);
 	}
@@ -603,6 +691,7 @@ int rl_add_proxy(REQUEST *request)
 	int		i, found, proxy;
 	uint32_t	mask;
 	proxy_id_t	myid, *entry;
+	char   		buf[128];
 
 	myid.dst_ipaddr = request->proxy->dst_ipaddr;
 	myid.dst_port = request->proxy->dst_port;
@@ -629,8 +718,9 @@ int rl_add_proxy(REQUEST *request)
 		entry->dst_port = request->proxy->dst_port;
 		entry->index = 0;
 
-		DEBUG3(" proxy: creating %08x:%d",
-		       entry->dst_ipaddr,
+		DEBUG3(" proxy: creating destination %s port %d",
+		       inet_ntop(entry->dst_ipaddr.af,
+				 &entry->dst_ipaddr.ipaddr, buf, sizeof(buf)),
 		       entry->dst_port);
 		
 		/*
@@ -750,8 +840,11 @@ int rl_add_proxy(REQUEST *request)
 		 *	If all Fd's are allocated, die.
 		 */
 		if (~mask == 0) {
-			radlog(L_ERR|L_CONS, "ERROR: More than 8000 proxied requests outstanding for home server %08x:%d",
-			       ntohs(entry->dst_ipaddr), entry->dst_port);
+			radlog(L_ERR|L_CONS, "ERROR: More than 8000 proxied requests outstanding for destination %s port %d",
+			       inet_ntop(entry->dst_ipaddr.af,
+					 &entry->dst_ipaddr.ipaddr,
+					 buf, sizeof(buf)),
+			       entry->dst_port);
 			return 0;
 		}
 		
@@ -833,8 +926,9 @@ int rl_add_proxy(REQUEST *request)
 	rad_assert(proxy_fds[proxy] != -1);
 	request->proxy->sockfd = proxy_fds[proxy];
 
-	DEBUG3(" proxy: allocating %08x:%d %d",
-	       entry->dst_ipaddr,
+	DEBUG3(" proxy: allocating destination %s port %d - Id %d",
+	       inet_ntop(entry->dst_ipaddr.af,
+			 &entry->dst_ipaddr.ipaddr, buf, sizeof(buf)),
 	       entry->dst_port,
 	       request->proxy->id);
 	
@@ -1116,9 +1210,9 @@ static int refresh_request(REQUEST *request, void *data)
 		if (request->proxy && !request->proxy_reply) {
 			rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 
-			radlog(L_ERR, "Rejecting request %d due to lack of any response from home server %s:%d",
+			radlog(L_ERR, "Rejecting request %d due to lack of any response from home server %s port %d",
 			       request->number,
-			       client_name(request->packet->src_ipaddr),
+			       client_name(&request->packet->src_ipaddr),
 			       request->packet->src_port);
 			request_reject(request, REQUEST_FAIL_HOME_SERVER);
 			return RL_WALK_CONTINUE;
@@ -1225,7 +1319,9 @@ static int refresh_request(REQUEST *request, void *data)
 	if (request->proxy_try_count == 0) {
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 		request_reject(request, REQUEST_FAIL_HOME_SERVER2);
-		realm_disable(request->proxy->dst_ipaddr,request->proxy->dst_port);
+		rad_assert(request->proxy->dst_ipaddr.af == AF_INET);
+		realm_disable(request->proxy->dst_ipaddr.ipaddr.ip4addr.s_addr,
+			      request->proxy->dst_port);
 		goto setup_timeout;
 	}
 
@@ -1317,7 +1413,8 @@ setup_timeout:
 			if (info->now > (request->timestamp + (mainconfig.proxy_retry_delay * mainconfig.proxy_retry_count))) {
 				rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 				request_reject(request, REQUEST_FAIL_HOME_SERVER3);
-				realm_disable(request->proxy->dst_ipaddr,
+				rad_assert(request->proxy->dst_ipaddr.af == AF_INET);
+				realm_disable(request->proxy->dst_ipaddr.ipaddr.ip4addr.s_addr,
 					      request->proxy->dst_port);
 				goto setup_timeout;
 			}

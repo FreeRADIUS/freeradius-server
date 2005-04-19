@@ -50,7 +50,7 @@ int		librad_debug = 0;
  *	Return a printable host name (or IP address in dot notation)
  *	for the supplied IP address.
  */
-char * ip_hostname(char *buf, size_t buflen, uint32_t ipaddr)
+char *ip_hostname(char *buf, size_t buflen, uint32_t ipaddr)
 {
 	struct		hostent *hp;
 #ifdef GETHOSTBYADDRRSTYLE
@@ -148,6 +148,8 @@ uint32_t ip_getaddr(const char *host)
 
 /*
  *	Return an IP address in standard dot notation
+ *
+ *	FIXME: DELETE THIS
  */
 const char *ip_ntoa(char *buffer, uint32_t ipaddr)
 {
@@ -165,6 +167,8 @@ const char *ip_ntoa(char *buffer, uint32_t ipaddr)
 /*
  *	Return an IP address from
  *	one supplied in standard dot notation.
+ *
+ *	FIXME: DELETE THIS
  */
 uint32_t ip_addr(const char *ip_str)
 {
@@ -346,87 +350,161 @@ uint8_t *ifid_aton(const char *ifid_str, uint8_t *ifid)
 	}
 	return ifid;
 }
+
+
+#ifndef HAVE_INET_PTON
 /*
- *	Return an IPv6 address in standard colon notation
+ *	Utility function, so that the rest of the server doesn't
+ *	have ifdef's around IPv6 support
  */
-const char *ipv6_ntoa(char *buffer, size_t size, void *ip6addr)
+int inet_pton(int af, const char *src, void *dst)
 {
-#if defined(HAVE_INET_NTOP) && defined(AF_INET6)
-	return inet_ntop(AF_INET6, (struct in6_addr *) ip6addr, buffer, size);
-#else
-	/*
-	 *	Do it really stupidly.
-	 */
-	snprintf(buffer, size, "%x:%x:%x:%x:%x:%x:%x:%x",
-		 (((uint8_t *) ip6addr)[0] << 8) | ((uint8_t *) ip6addr)[1],
-		 (((uint8_t *) ip6addr)[2] << 8) | ((uint8_t *) ip6addr)[3],
-		 (((uint8_t *) ip6addr)[4] << 8) | ((uint8_t *) ip6addr)[5],
-		 (((uint8_t *) ip6addr)[6] << 8) | ((uint8_t *) ip6addr)[7],
-		 (((uint8_t *) ip6addr)[8] << 8) | ((uint8_t *) ip6addr)[9],
-		 (((uint8_t *) ip6addr)[10] << 8) | ((uint8_t *) ip6addr)[11],
-		 (((uint8_t *) ip6addr)[12] << 8) | ((uint8_t *) ip6addr)[13],
-		 (((uint8_t *) ip6addr)[14] << 8) | ((uint8_t *) ip6addr)[15]);
-	return buffer;
-#endif
+	if (af != AF_INET) return -1; /* unsupported */
+
+	return inet_aton(src, dst);
 }
+#endif
 
 
+#ifndef HAVE_INET_NTOP
 /*
- *	Return an IPv6 address from
- *	one supplied in standard colon notation.
+ *	Utility function, so that the rest of the server doesn't
+ *	have ifdef's around IPv6 support
  */
-int ipv6_addr(const char *ip6_str, void *ip6addr)
+const char *inet_ntop(int af, const void *src, char *dst, size_t cnt)
 {
-#if defined(HAVE_INET_PTON) && defined(AF_INET6)
-	if (inet_pton(AF_INET6, ip6_str, (struct in6_addr *) ip6addr) != 1)
-		return -1;
-#else
-	/*
-	 *	Copied from the 'ifid' code above, with minor edits.
-	 */
-	static const char xdigits[] = "0123456789abcdef";
-	const char *p, *pch;
-	int num_id = 0, val = 0, idx = 0;
-	uint8_t *addr = ip6addr;
+	if (af == AF_INET) {
+		uint32_t ipaddr;
 
-	for (p = ip6_str; ; ++p) {
-		if (*p == ':' || *p == '\0') {
-			if (num_id <= 0)
-				return -1;
-
-			/*
-			 *	Drop 'val' into the array.
-			 */
-			addr[idx] = (val >> 8) & 0xff;
-			addr[idx + 1] = val & 0xff;
-			if (*p == '\0') {
-				/*
-				 *	Must have all entries before
-				 *	end of the string.
-				 */
-				if (idx != 14)
-					return -1;
-				break;
-			}
-			val = 0;
-			num_id = 0;
-			if ((idx += 2) > 14)
-				return -1;
-		} else if ((pch = strchr(xdigits, tolower(*p))) != NULL) {
-			if (++num_id > 8) /* no more than 8 16-bit numbers */
-				return -1;
-			/*
-			 *	Dumb version of 'scanf'
-			 */
-			val <<= 4;
-			val |= (pch - xdigits);
-		} else
-			return -1;
+		if (cnt <= 15) return NULL;
+		
+		ipaddr = *(uint32_t *) src;
+		ipaddr = ntohl(ipaddr);
+		
+		snprintf(dst, cnt, "%d.%d.%d.%d",
+			 (ipaddr >> 24) & 0xff,
+			 (ipaddr >> 16) & 0xff,
+			 (ipaddr >>  8) & 0xff,
+			 (ipaddr      ) & 0xff);
+		return dst;
 	}
+
+	return NULL;		/* don't support IPv6 */
+}
 #endif
+
+
+/*
+ *	Wrappers for IPv4/IPv6 host to IP address lookup.
+ *	This API returns only one IP address, of the specified
+ *	address family.
+ */
+int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
+{
+	struct hostent	*hp;
+#ifdef GETHOSTBYNAMERSTYLE
+#if (GETHOSTBYNAMERSTYLE == SYSVSTYLE) || (GETHOSTBYNAMERSTYLE == GNUSTYLE)
+	struct hostent result;
+	int error;
+	char buffer[2048];
+#endif
+#endif
+
+	if (af != AF_INET) return -1; /* only IPv4 for now */
+
+	dst->af = af;
+
+	/*
+	 *	No DNS lookups, assume it's an IP address.
+	 */
+	if (!librad_dodns) {
+		return inet_pton(af, src, &dst->ipaddr.ip4addr);
+	}
+	
+#ifdef GETHOSTBYNAMERSTYLE
+#if GETHOSTBYNAMERSTYLE == SYSVSTYLE
+	hp = gethostbyname_r(src, &result, buffer, sizeof(buffer), &error);
+#elif GETHOSTBYNAMERSTYLE == GNUSTYLE
+	if (gethostbyname_r(src, &result, buffer, sizeof(buffer),
+			    &hp, &error) != 0) {
+		return htonl(INADDR_NONE);
+	}
+#else
+	hp = gethostbyname(src);
+#endif
+#else
+	hp = gethostbyname(src);
+#endif
+	if (!hp) return -1;
+
+	if (hp->h_addrtype != af) return -1; /* not the right address family */
+
+	/*
+	 *	Paranoia from a Bind vulnerability.  An attacker
+	 *	can manipulate DNS entries to change the length of the
+	 *	address.  If the length isn't 4, something's wrong.
+	 */
+	if (hp->h_length != 4) {
+		return -1;
+	}
+
+	memcpy(&dst->ipaddr.ip4addr.s_addr, hp->h_addr,
+	       sizeof(dst->ipaddr.ip4addr.s_addr));
 	return 0;
+	
 }
 
+/*
+ *	Look IP addreses up, and print names (depending on DNS config)
+ */
+const char *ip_ntoh(const lrad_ipaddr_t *src, char *dst, size_t cnt)
+{
+	struct		hostent *hp;
+#ifdef GETHOSTBYADDRRSTYLE
+#if (GETHOSTBYADDRRSTYLE == SYSVSTYLE) || (GETHOSTBYADDRRSTYLE == GNUSTYLE)
+	char buffer[2048];
+	struct hostent result;
+	int error;
+#endif
+#endif
+
+	/*
+	 *	No DNS: don't look up host names
+	 */
+	if (!librad_dodns) {
+		return inet_ntop(src->af, &src->ipaddr, dst, cnt);
+	}
+
+	if (src->af != AF_INET) return NULL; /* invalid */
+
+#ifdef GETHOSTBYADDRRSTYLE
+#if GETHOSTBYADDRRSTYLE == SYSVSTYLE
+	hp = gethostbyaddr_r((const char *)&src->ipaddr.ip4addr.s_addr,
+			     sizeof(src->ipaddr.ip4addr.s_addr),
+			     src->af, &result, buffer, sizeof(buffer), &error);
+#elif GETHOSTBYADDRRSTYLE == GNUSTYLE
+	if (gethostbyaddr_r((const char *)&src->ipaddr.ip4addr.s_addr,
+			    sizeof(src->ipaddr.ip4addr.s_addr),
+			    src->af, &result, buffer, sizeof(buffer),
+			    &hp, &error) != 0) {
+		hp = NULL;
+	}
+#else
+	hp = gethostbyaddr((const char *)&src->ipaddr.ip4addr.s_addr,
+			   sizeof(src->ipaddr.ip4addr.s_addr), src->af);
+#endif
+#else
+	hp = gethostbyaddr((const char *)&src->ipaddr.ip4addr.s_addr,
+			   sizeof(src->ipaddr.ip4addr.s_addr), src->af);
+#endif
+	if ((hp == NULL) ||
+	    (strlen((char *)hp->h_name) >= cnt)) {
+		return inet_ntop(src->af, &src->ipaddr, dst, cnt);
+	}
+
+	strNcpy(dst, (char *)hp->h_name, cnt);
+	return dst;
+}
 
 static const char *hextab = "0123456789abcdef";
 

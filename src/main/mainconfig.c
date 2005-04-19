@@ -257,7 +257,6 @@ static int xlat_config(void *instance, REQUEST *request,
 	int i, argc, left;
 	const char *from, *value;
 	char *to;
-	char xlat_buffer[1024];
 	char myfmt[1024];
 	char argv_buf[1024];
 	char *argv[MAX_ARGV];
@@ -626,7 +625,8 @@ static int generate_realms(const char *filename)
 		 *	No authhost means LOCAL.
 		 */
 		if ((authhost = cf_section_value_find(cs, "authhost")) == NULL) {
-			c->ipaddr = htonl(INADDR_NONE);
+			c->ipaddr.af = AF_INET;
+			c->ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 			c->auth_port = auth_port;
 		} else {
 			if ((s = strchr(authhost, ':')) != NULL) {
@@ -640,11 +640,12 @@ static int generate_realms(const char *filename)
 				 *	Local realms don't have an IP address,
 				 *	secret, or port.
 				 */
-				c->ipaddr = htonl(INADDR_NONE);
+				c->ipaddr.af = AF_INET;
+				c->ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 				c->auth_port = auth_port;
 			} else {
-				c->ipaddr = ip_getaddr(authhost);
-				if (c->ipaddr == htonl(INADDR_NONE)) {
+				if (ip_hton(authhost, AF_INET,
+					    &c->ipaddr) < 0) {
 					radlog(L_ERR, "%s[%d]: Host %s not found",
 					       filename, cf_section_lineno(cs),
 					       authhost);
@@ -668,7 +669,8 @@ static int generate_realms(const char *filename)
 		 *	No accthost means LOCAL
 		 */
 		if ((accthost = cf_section_value_find(cs, "accthost")) == NULL) {
-			c->acct_ipaddr = htonl(INADDR_NONE);
+			c->acct_ipaddr.af = AF_INET;
+			c->acct_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 			c->acct_port = 0;
 		} else {
 			if ((s = strchr(accthost, ':')) != NULL) {
@@ -682,11 +684,12 @@ static int generate_realms(const char *filename)
 				 *	Local realms don't have an IP address,
 				 *	secret, or port.
 				 */
-				c->acct_ipaddr = htonl(INADDR_NONE);
+				c->acct_ipaddr.af = AF_INET;
+				c->acct_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 				c->acct_port = 0;
 			} else {
-				c->acct_ipaddr = ip_getaddr(accthost);
-				if (c->acct_ipaddr == htonl(INADDR_NONE)) {
+				if (ip_hton(accthost, AF_INET,
+					    &c->acct_ipaddr) < 0) {
 					radlog(L_ERR, "%s[%d]: Host %s not found",
 					       filename, cf_section_lineno(cs),
 					       accthost);
@@ -720,8 +723,10 @@ static int generate_realms(const char *filename)
 		 *	servers is set to LOCALHOST, then don't require
 		 *	a shared secret.
 		 */
-		if ((c->ipaddr != htonl(INADDR_NONE)) ||
-		    (c->acct_ipaddr != htonl(INADDR_NONE))) {
+		rad_assert(c->ipaddr.af == AF_INET);
+		rad_assert(c->acct_ipaddr.af == AF_INET);
+		if ((c->ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_NONE)) ||
+		    (c->acct_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_NONE))) {
 			if ((s = cf_section_value_find(cs, "secret")) == NULL ) {
 				radlog(L_ERR, "%s[%d]: No shared secret supplied for realm: %s",
 				       filename, cf_section_lineno(cs), name2);
@@ -795,9 +800,11 @@ static int generate_realms(const char *filename)
 		 *	Check that we cannot load balance to LOCAL
 		 *	realms, as that doesn't make any sense.
 		 */
+		rad_assert(c->ipaddr.af == AF_INET);
+		rad_assert(c->acct_ipaddr.af == AF_INET);
 		if ((c->ldflag == 1) &&
-		    ((c->ipaddr == htonl(INADDR_NONE)) ||
-		     (c->acct_ipaddr == htonl(INADDR_NONE)))) {
+		    ((c->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE)) ||
+		     (c->acct_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE)))) {
 			radlog(L_ERR | L_CONS, "ERROR: Realm %s cannot be load balanced to LOCAL",
 			       c->realm);
 			exit(1);
@@ -910,7 +917,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 			}
 		}
 
-		if((password = cf_section_value_find(cs, "password")) != NULL) {
+		if ((password = cf_section_value_find(cs, "password")) != NULL) {
 		        if(strlen(password) >= sizeof(c->password)) {
 			       radlog(L_ERR, "%s[%d]: password of length %d longer than the allowed maximum of %d",
 				      filename, cf_section_lineno(cs),
@@ -951,24 +958,23 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 			c->netmask = htonl(c->netmask);
 		}
 
-		c->ipaddr = ip_getaddr(hostnm);
-		if (c->ipaddr == INADDR_NONE) {
+		if (ip_hton(hostnm, AF_INET, &c->ipaddr) < 0) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
 					filename, cf_section_lineno(cs), hostnm);
 			clients_free(list);
 			return NULL;
 		}
+		rad_assert(c->ipaddr.af == AF_INET);
 
 		/*
 		 *	Update the client name again...
 		 */
 		if (netmask) {
 			*netmask = '/';
-			c->ipaddr &= c->netmask;
+			c->ipaddr.ipaddr.ip4addr.s_addr &= c->netmask;
 			strcpy(c->longname, hostnm);
 		} else {
-			ip_hostname(c->longname, sizeof(c->longname),
-					c->ipaddr);
+			ip_ntoh(&c->ipaddr, c->longname, sizeof(c->longname));
 		}
 
 		strcpy((char *)c->secret, secret);

@@ -38,6 +38,7 @@
 #include	"radiusd.h"
 #include	"radutmp.h"
 #include	"modules.h"
+#include	"rad_assert.h"
 
 #define LOCK_LEN sizeof(struct radutmp)
 
@@ -207,6 +208,11 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	NAS_PORT	*cache;
 	int		r;
 
+	if (request->packet->src_ipaddr.af != AF_INET) {
+		DEBUG("rlm_radutmp: IPv6 not supported!");
+		return RLM_MODULE_NOOP;
+	}
+
 	/*
 	 *	Which type is this.
 	 */
@@ -320,32 +326,31 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	 *	originator's IP address.
 	 */
 	if (nas_address == 0) {
-		nas_address = request->packet->src_ipaddr;
+		nas_address = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 		ut.nas_address = nas_address;
-		nas = client_name(nas_address);	/* MUST be a valid client */
+		nas = client_name(&request->packet->src_ipaddr); /* MUST be a valid client */
 
-	} else {		/* might be a client, might not be. */
+	} else if (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr == nas_address) {		/* might be a client, might not be. */
 		RADCLIENT *cl;
-
+		
 		/*
 		 *	Hack like 'client_name()', but with sane
 		 *	fall-back.
 		 */
-		cl = client_find(nas_address);
-		if (cl) {
-			if (cl->shortname[0]) {
-				nas = cl->shortname;
-			} else {
-				nas = cl->longname;
-			}
+		cl = client_find(&request->packet->src_ipaddr);
+		if (!cl) rad_assert(0 == 1); /* WTF? */
+		if (cl->shortname[0]) {
+			nas = cl->shortname;
 		} else {
-			/*
-			 *	The NAS isn't a client, it's behind
-			 *	a proxy server.  In that case, just
-			 *	get the IP address.
-			 */
-			nas = ip_ntoa(ip_name, nas_address);
+			nas = cl->longname;
 		}
+	} else {
+		/*
+		 *	The NAS isn't a client, it's behind
+		 *	a proxy server.  In that case, just
+		 *	get the IP address.
+		 */
+		nas = ip_ntoa(ip_name, nas_address);
 	}
 
 	/*

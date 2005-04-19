@@ -41,6 +41,8 @@ static const char rcsid[] = "$Id$";
 
 #include "radiusd.h"
 #include "conffile.h"
+#include "rad_assert.h"
+
 
 /*
  *	Free a RADCLIENT list.
@@ -172,14 +174,13 @@ int read_clients_file(const char *file)
 		c = rad_malloc(sizeof(RADCLIENT));
 		memset(c, 0, sizeof(*c));
 
-		c->ipaddr = ip_getaddr(hostnm);
-		if (c->ipaddr == INADDR_NONE) {
+		if (ip_hton(hostnm, AF_INET, &c->ipaddr) < 0) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
 					file, lineno, hostnm);
 			return -1;
 		}
 		c->netmask = htonl(mask);
-		c->ipaddr &= c->netmask; /* addr & mask are in network order */
+		c->ipaddr.ipaddr.ip4addr.s_addr &= c->netmask; /* addr & mask are in network order */
 
 		strcpy((char *)c->secret, secret);
 		strcpy(c->shortname, shortnm);
@@ -189,28 +190,7 @@ int read_clients_file(const char *file)
 		 *	the network as the long name.
 		 */
 		if ((~mask) == 0) {
-			NAS *nas;
-			ip_hostname(c->longname, sizeof(c->longname), c->ipaddr);
-
-			/*
-			 *	Pull information over from the NAS.
-			 */
-			nas = nas_find(c->ipaddr);
-			if (nas) {
-				/*
-				 *	No short name in the 'clients' file,
-				 *	try copying one over from the
-				 *	'naslist' file.
-				 */
-				if (c->shortname[0] == '\0') {
-					strcpy(c->shortname, nas->shortname);
-				}
-
-				/*
-				 *  Copy the nastype over, too.
-				 */
-				strcpy(c->nastype, nas->nastype);
-			}
+			ip_ntoh(&c->ipaddr, c->longname, sizeof(c->longname));
 		} else {
 			hostnm[strlen(hostnm)] = '/';
 			strNcpy(c->longname, hostnm, sizeof(c->longname));
@@ -232,13 +212,17 @@ int read_clients_file(const char *file)
 /*
  *	Find a client in the RADCLIENTS list.
  */
-RADCLIENT *client_find(uint32_t ipaddr)
+RADCLIENT *client_find(const lrad_ipaddr_t *ipaddr)
 {
 	RADCLIENT *cl;
 	RADCLIENT *match = NULL;
 
+	if (ipaddr->af != AF_INET) return NULL;	/* FIXME! */
+
 	for (cl = mainconfig.clients; cl; cl = cl->next) {
-		if ((ipaddr & cl->netmask) == cl->ipaddr) {
+		if (cl->ipaddr.af != ipaddr->af) continue;
+
+		if ((ipaddr->ipaddr.ip4addr.s_addr & cl->netmask) == cl->ipaddr.ipaddr.ip4addr.s_addr) {
 			if ((!match) ||
 			    (ntohl(cl->netmask) > ntohl(match->netmask))) {
 				match = cl;
@@ -249,28 +233,17 @@ RADCLIENT *client_find(uint32_t ipaddr)
 	return match;
 }
 
-/*
- *	Walk the RADCLIENT list displaying the clients.  This function
- *	is for debugging purposes.
- */
-void client_walk(void)
-{
-	RADCLIENT *cl;
-	char host_ipaddr[16];
-
-	for (cl = mainconfig.clients; cl != NULL; cl = cl->next)
-		radlog(L_ERR, "client: client_walk: %s\n",
-				ip_ntoa(host_ipaddr, cl->ipaddr));
-}
 
 /*
  *	Find the name of a client (prefer short name).
  */
-const char *client_name(uint32_t ipaddr)
+const char *client_name(const lrad_ipaddr_t *ipaddr)
 {
 	/* We don't call this unless we should know about the client. */
 	RADCLIENT *cl;
-	char host_ipaddr[16];
+	char host_ipaddr[128];
+
+	if (ipaddr->af != AF_INET) rad_assert(0 == 1);
 
 	if ((cl = client_find(ipaddr)) != NULL) {
 		if (cl->shortname[0])
@@ -287,7 +260,7 @@ const char *client_name(uint32_t ipaddr)
 	 * If you see lots of these, then there's something wrong.
 	 */
 	radlog(L_ERR, "Trying to look up name of unknown client %s.\n",
-	       ip_ntoa(host_ipaddr, ipaddr));
+	       ip_ntoh(ipaddr, host_ipaddr, sizeof(host_ipaddr)));
 
 	return "UNKNOWN-CLIENT";
 }

@@ -40,10 +40,6 @@ static const char rcsid[] = "$Id$";
 #include	"udpfromto.h"
 #endif
 
-#ifdef HAVE_NETINET_IN_H
-#include	<netinet/in.h>
-#endif
-
 #include	<sys/socket.h>
 
 #ifdef HAVE_ARPA_INET_H
@@ -86,6 +82,7 @@ typedef struct radius_packet_t {
 
 static lrad_randctx lrad_rand_pool;	/* across multiple calls */
 static int lrad_pool_initialized = 0;
+static int lrad_rand_index = 0;
 
 static const char *packet_codes[] = {
   "",
@@ -148,6 +145,208 @@ static const char *packet_codes[] = {
 static void make_secret(unsigned char *digest, uint8_t *vector,
 			const char *secret, char *value);
 
+
+/*
+ *	Wrapper for sendto which handles sendfromto, IPv6, and all
+ *	possible combinations.
+ */
+static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
+		      lrad_ipaddr_t *src_ipaddr, lrad_ipaddr_t *dst_ipaddr,
+		      int dst_port)
+{
+	/*
+	 *	Hmm... we saremote/saremote6 could probably be pointers
+	 *	to dst.
+	 */
+	const struct sockaddr	*dst;
+	socklen_t		sizeof_dst;
+	struct	sockaddr_in	saremote;
+#ifdef AF_INET6
+	struct sockaddr_in6	saremote6;
+#endif
+#ifdef WITH_UDPFROMTO
+	struct sockaddr_in	salocal;
+	const struct sockaddr	*src;
+	socklen_t		sizeof_src;
+#ifdef AF_INET6
+	struct sockaddr_in6	salocal6;
+#endif
+#endif
+
+#ifdef WITH_UDPFROMTO
+	/*
+	 *	From IPv4 to IPv6 is bad, as is the opposite.
+	 */
+	if (src_ipaddr->af != dst_ipaddr->af) return -1;	
+#endif
+
+	/*
+	 *	IPv4 is supported.
+	 */
+	if (dst_ipaddr->af == AF_INET) {
+		dst = (struct sockaddr *)  &saremote;
+		sizeof_dst = sizeof(saremote);
+
+		/*
+		 *	FIXME: flow info? Scope ID?
+		 *	See <netinet/in.h>
+		 */
+		memset(&saremote, 0, sizeof(saremote));
+		saremote.sin_family = AF_INET;
+		saremote.sin_addr = dst_ipaddr->ipaddr.ip4addr;
+		saremote.sin_port = dst_port;
+		saremote.sin_port = htons(saremote.sin_port);
+
+#ifdef WITH_UDPFROMTO
+		src = (struct sockaddr *) &salocal;
+		sizeof_src = sizeof(salocal);
+		memset (&salocal, 0, sizeof(salocal));
+		salocal.sin_family = AF_INET;
+		salocal.sin_addr.s_addr = src_ipaddr.addr.ip4addr;
+#else
+		src_ipaddr = src_ipaddr; /* -Wunused */
+#endif
+	}
+#ifdef AF_INET6
+	/*
+	 *	IPv6 MAY be supported.
+	 */
+	else if (dst_ipaddr->af == AF_INET6) {
+		dst = (struct sockaddr *)  &saremote6;
+		sizeof_dst = sizeof(saremote6);
+		
+		memset(&saremote6, 0, sizeof(saremote6));
+		saremote6.sin6_family = AF_INET6;
+		saremote6.sin6_addr = dst_ipaddr->ipaddr.ip6addr;
+		saremote6.sin6_port = dst_port;
+		saremote6.sin6_port = htons(saremote6.sin6_port);
+
+#ifdef WITH_UDPFROMTO
+		return -1;	/* UDPFROMTO && IPv6 is not supported */
+#endif
+	}
+#endif
+	/*
+	 *	Unknown address family, Die Die Die!
+	 */
+	else return -1;
+	
+	
+#ifndef WITH_UDPFROMTO
+	return sendto(sockfd, data, data_len, flags, dst, sizeof_dst);
+#else
+	return sendfromto(sockfd, data, data_len, flags,
+			  src, sizeof_src, dst, sizeof_dst);
+#endif
+}
+
+
+/*
+ *	Wrapper for recvfrom, which handles recvfromto, IPv6, and all
+ *	possible combinations.
+ */
+static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
+			    lrad_ipaddr_t *src_ipaddr, uint16_t *src_port,
+			    lrad_ipaddr_t *dst_ipaddr, uint16_t *dst_port)
+{
+	ssize_t			data_len;
+	struct sockaddr		*src;
+	socklen_t		sizeof_src;
+	const struct sockaddr	*dst;
+	socklen_t	        sizeof_dst;
+	struct sockaddr_in	salocal;
+	socklen_t		salen;
+	struct sockaddr_in	saremote;
+#ifdef AF_INET6
+	struct sockaddr_in6	saremote6;
+	struct sockaddr_in6	salocal6;
+#endif
+
+	/*
+	 *	First, do a hokey hack to figure out which address
+	 *	family, address, and port the socket is listening on.
+	 */
+	if (getsockname(sockfd, (struct sockaddr *) &salocal,
+			&salen) < 0) return -1;
+
+	if (salocal.sin_family == AF_INET) {
+		dst_ipaddr->af = AF_INET;
+		dst_ipaddr->ipaddr.ip4addr = salocal.sin_addr;
+		*dst_port = ntohs(salocal.sin_port);
+
+		src = (struct sockaddr *) &saremote;
+		sizeof_src = sizeof(saremote);
+		dst = (struct sockaddr *) &salocal;
+		sizeof_dst = sizeof(salocal);
+	}
+#ifdef AF_INET6
+	/*
+	 *	IPv6 MAY be supported.
+	 */
+	else if (salocal.sin_family == AF_INET6) {
+		memcpy(&salocal6, &salocal, sizeof(salocal6));
+		
+		dst_ipaddr->af = AF_INET;
+		dst_ipaddr->ipaddr.ip6addr = salocal6.sin6_addr;
+		*dst_port = ntohs(salocal6.sin6_port);
+
+		src = (struct sockaddr *) &saremote6;
+		sizeof_src = sizeof(saremote6);
+		dst = (struct sockaddr *) &salocal6;
+		sizeof_dst = sizeof(salocal6);
+#ifdef WITH_UDPFROMTO
+		return -1;	/* not supported for IPv6 */
+#endif
+	}
+#endif
+	/*
+	 *	Unknown address family, Die Die Die!
+	 */
+	else return -1;
+	
+	/*
+	 *	Receive the packet.
+	 */
+	memset(src, 0, sizeof_src);
+#ifndef WITH_UDPFROMTO
+	data_len = recvfrom(sockfd, buf, len, flags, src, &sizeof_src);
+#else
+	memset(dst, 0, sizeof_dst);
+
+	data_len = recvfromto(sockfd, buf, len, flags,
+			      src, &sizeof_src, dst, &sizeof_dst);
+#endif
+
+	/*
+	 *	FIXME: Check sizeof_src & sizeof_dst?
+	 */
+
+	if (data_len < 0) return data_len;
+
+	if (dst_ipaddr->af == AF_INET) {
+		src_ipaddr->af = AF_INET;
+#ifdef WITH_UDPFROMTO
+		dst_ipaddr->ipaddr.ip4addr = salocal.sin_addr;
+#endif
+		src_ipaddr->ipaddr.ip4addr = saremote.sin_addr;
+		*src_port = ntohs(saremote.sin_port);
+	}
+#ifdef AF_INET6
+	else if (dst_ipaddr->af == AF_INET6) {
+#ifdef WITH_UDPFROMTO
+		src_ipaddr->af = AF_INET6;
+		return -1;	/* should have been caught above */
+#endif		
+		src_ipaddr->ipaddr.ip6addr = saremote6.sin6_addr;
+		*src_port = ntohs(saremote6.sin6_port);
+	}
+#endif
+	else return -1;		/* should really have been caught above */
+	
+	return data_len;
+}
+
+
 /*
  *	Reply to the request.  Also attach
  *	reply attribute value pairs and any user message provided.
@@ -156,10 +355,8 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	     const char *secret)
 {
 	VALUE_PAIR		*reply;
-	struct	sockaddr_in	saremote;
-	struct	sockaddr_in	*sa;
 	const char		*what;
-	uint8_t			ip_buffer[16];
+	char			ip_buffer[128];
 
 	/*
 	 *	Maybe it's a fake packet.  Don't send it.
@@ -236,7 +433,9 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 
 		  DEBUG("Sending %s of id %d to %s:%d\n",
 			what, packet->id,
-			ip_ntoa((char *)ip_buffer, packet->dst_ipaddr),
+			inet_ntop(packet->dst_ipaddr.af,
+				  &packet->dst_ipaddr.ipaddr,
+				  ip_buffer, sizeof(ip_buffer)),
 			packet->dst_port);
 
 		  total_length = AUTH_HDR_LEN;
@@ -638,7 +837,9 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		   */
 	} else if (librad_debug) {
 	  	DEBUG("Re-sending %s of id %d to %s:%d\n", what, packet->id,
-		      ip_ntoa((char *)ip_buffer, packet->dst_ipaddr),
+		      inet_ntop(packet->dst_ipaddr.af,
+				&packet->dst_ipaddr.ipaddr,
+				ip_buffer, sizeof(ip_buffer)),
 		      packet->dst_port);
 
 		for (reply = packet->vps; reply; reply = reply->next) {
@@ -650,26 +851,9 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	/*
 	 *	And send it on it's way.
 	 */
-	sa = (struct sockaddr_in *) &saremote;
-        memset ((char *) sa, '\0', sizeof (saremote));
-	sa->sin_family = AF_INET;
-	sa->sin_addr.s_addr = packet->dst_ipaddr;
-	sa->sin_port = htons(packet->dst_port);
-#ifndef WITH_UDPFROMTO
-	return sendto(packet->sockfd, packet->data, (int)packet->data_len, 0,
-		      (struct sockaddr *)&saremote, sizeof(struct sockaddr_in));
-#else
-	{
-		struct sockaddr_in salocal;
-		memset ((char *) &salocal, '\0', sizeof (salocal));
-		salocal.sin_family = AF_INET;
-		salocal.sin_addr.s_addr = packet->src_ipaddr;
-		
-		return sendfromto(packet->sockfd, packet->data, (int)packet->data_len, 0,
-				  (struct sockaddr *)&salocal,  sizeof(struct sockaddr_in),
-				  (struct sockaddr *)&saremote, sizeof(struct sockaddr_in));
-	}
-#endif
+	return rad_sendto(packet->sockfd, packet->data, packet->data_len, 0,
+			  &packet->src_ipaddr, &packet->dst_ipaddr,
+			  packet->dst_port);
 }
 
 
@@ -767,13 +951,11 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 RADIUS_PACKET *rad_recv(int fd)
 {
 	RADIUS_PACKET		*packet;
-	struct sockaddr_in	saremote;
-	int			totallen;
-	socklen_t		salen;
 	uint8_t			*attr;
+	int			totallen;
 	int			count;
 	radius_packet_t		*hdr;
-	char			host_ipaddr[16];
+	char			host_ipaddr[128];
 	int			seen_eap;
 	uint8_t			data[MAX_PACKET_LEN];
 	int			num_attributes;
@@ -781,33 +963,15 @@ RADIUS_PACKET *rad_recv(int fd)
 	/*
 	 *	Allocate the new request data structure
 	 */
-	if ((packet = malloc(sizeof(RADIUS_PACKET))) == NULL) {
+	if ((packet = malloc(sizeof(*packet))) == NULL) {
 		librad_log("out of memory");
 		return NULL;
 	}
-	memset(packet, 0, sizeof(RADIUS_PACKET));
+	memset(packet, 0, sizeof(*packet));
 
-	/*
-	 *	Receive the packet.
-	 */
-	salen = sizeof(saremote);
-	memset(&saremote, 0, sizeof(saremote));
-#ifndef WITH_UDPFROMTO
-	packet->data_len = recvfrom(fd, data, sizeof(data),
-				    0, (struct sockaddr *)&saremote, &salen);
-	packet->dst_ipaddr = htonl(INADDR_ANY); /* i.e. unknown */
-#else
-	{
-		socklen_t		salen_local;
-		struct sockaddr_in	salocal;
-		salen_local = sizeof(salocal);
-		memset(&salocal, 0, sizeof(salocal));
-		packet->data_len = recvfromto(fd, data, sizeof(data), 0,
-					      (struct sockaddr *)&saremote, &salen,
-					      (struct sockaddr *)&salocal, &salen_local);
-		packet->dst_ipaddr = salocal.sin_addr.s_addr;
-	}
-#endif
+	packet->data_len = rad_recvfrom(fd, data, sizeof(data), 0,
+					&packet->src_ipaddr, &packet->src_port,
+					&packet->dst_ipaddr, &packet->dst_port);
 
 	/*
 	 *	Check for socket errors.
@@ -823,8 +987,6 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	messages which may come later.
 	 */
 	packet->sockfd = fd;
-	packet->src_ipaddr = saremote.sin_addr.s_addr;
-	packet->src_port = ntohs(saremote.sin_port);
 
 	/*
 	 *	FIXME: Do even more filtering by only permitting
@@ -846,7 +1008,9 @@ RADIUS_PACKET *rad_recv(int fd)
 	 */
 	if (packet->data_len < AUTH_HDR_LEN) {
 		librad_log("WARNING: Malformed RADIUS packet from host %s: too short (received %d < minimum %d)",
-			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     host_ipaddr, sizeof(host_ipaddr)),
 			   packet->data_len, AUTH_HDR_LEN);
 		free(packet);
 		return NULL;
@@ -859,7 +1023,9 @@ RADIUS_PACKET *rad_recv(int fd)
 	 */
 	if (packet->data_len > MAX_PACKET_LEN) {
 		librad_log("WARNING: Malformed RADIUS packet from host %s: too long (received %d > maximum %d)",
-			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     host_ipaddr, sizeof(host_ipaddr)),
 			   packet->data_len, MAX_PACKET_LEN);
 		free(packet);
 		return NULL;
@@ -880,7 +1046,9 @@ RADIUS_PACKET *rad_recv(int fd)
 	if ((hdr->code == 0) ||
 	    (hdr->code >= 52)) {
 		librad_log("WARNING: Bad RADIUS packet from host %s: unknown packet code %d",
-			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     host_ipaddr, sizeof(host_ipaddr)),
 			   hdr->code);
 		free(packet);
 		return NULL;
@@ -899,7 +1067,9 @@ RADIUS_PACKET *rad_recv(int fd)
 	 */
 	if (totallen < AUTH_HDR_LEN) {
 		librad_log("WARNING: Malformed RADIUS packet from host %s: too short (length %d < minimum %d)",
-			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     host_ipaddr, sizeof(host_ipaddr)),
 			   totallen, AUTH_HDR_LEN);
 		free(packet);
 		return NULL;
@@ -914,7 +1084,9 @@ RADIUS_PACKET *rad_recv(int fd)
 	 */
 	if (totallen > MAX_PACKET_LEN) {
 		librad_log("WARNING: Malformed RADIUS packet from host %s: too long (length %d > maximum %d)",
-			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     host_ipaddr, sizeof(host_ipaddr)),
 			   totallen, MAX_PACKET_LEN);
 		free(packet);
 		return NULL;
@@ -930,7 +1102,9 @@ RADIUS_PACKET *rad_recv(int fd)
 	 */
 	if (packet->data_len < totallen) {
 		librad_log("WARNING: Malformed RADIUS packet from host %s: received %d octets, packet length says %d",
-			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     host_ipaddr, sizeof(host_ipaddr)),
 			   packet->data_len, totallen);
 		free(packet);
 		return NULL;
@@ -974,7 +1148,9 @@ RADIUS_PACKET *rad_recv(int fd)
 		 */
 		if (attr[0] == 0) {
 			librad_log("WARNING: Malformed RADIUS packet from host %s: Invalid attribute 0",
-				   ip_ntoa(host_ipaddr, packet->src_ipaddr));
+				   inet_ntop(packet->src_ipaddr.af,
+					     &packet->src_ipaddr.ipaddr,
+					     host_ipaddr, sizeof(host_ipaddr)));
 			free(packet);
 			return NULL;
 		}
@@ -985,7 +1161,9 @@ RADIUS_PACKET *rad_recv(int fd)
 		 */
        		if (attr[1] < 2) {
 			librad_log("WARNING: Malformed RADIUS packet from host %s: attribute %d too short",
-				   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+				   inet_ntop(packet->src_ipaddr.af,
+					     &packet->src_ipaddr.ipaddr,
+					     host_ipaddr, sizeof(host_ipaddr)),
 				   attr[0]);
 			free(packet);
 			return NULL;
@@ -1005,7 +1183,9 @@ RADIUS_PACKET *rad_recv(int fd)
 		case PW_MESSAGE_AUTHENTICATOR:
 			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
 				librad_log("WARNING: Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
-					   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+					   inet_ntop(packet->src_ipaddr.af,
+						     &packet->src_ipaddr.ipaddr,
+						     host_ipaddr, sizeof(host_ipaddr)),
 					   attr[1] - 2);
 				free(packet);
 				return NULL;
@@ -1016,7 +1196,9 @@ RADIUS_PACKET *rad_recv(int fd)
 		case PW_VENDOR_SPECIFIC:
 			if (attr[1] <= 6) {
 				librad_log("WARNING: Malformed RADIUS packet from host %s: Vendor-Specific has invalid length %d",
-					   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+					   inet_ntop(packet->src_ipaddr.af,
+						     &packet->src_ipaddr.ipaddr,
+						     host_ipaddr, sizeof(host_ipaddr)),
 					   attr[1] - 2);
 				free(packet);
 				return NULL;
@@ -1028,7 +1210,9 @@ RADIUS_PACKET *rad_recv(int fd)
 			if ((attr[2] == 0) && (attr[3] == 0) &&
 			    (attr[4] == 0) && (attr[5] == 0)) {
 				librad_log("WARNING: Malformed RADIUS packet from host %s: Vendor-Specific has vendor ID of zero",
-					   ip_ntoa(host_ipaddr, packet->src_ipaddr));
+					   inet_ntop(packet->src_ipaddr.af,
+						     &packet->src_ipaddr.ipaddr,
+						     host_ipaddr, sizeof(host_ipaddr)));
 				free(packet);
 				return NULL;
 			}
@@ -1059,7 +1243,9 @@ RADIUS_PACKET *rad_recv(int fd)
 	 */
 	if (count != 0) {
 		librad_log("WARNING: Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
-			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     host_ipaddr, sizeof(host_ipaddr)));
 		free(packet);
 		return NULL;
 	}
@@ -1072,7 +1258,9 @@ RADIUS_PACKET *rad_recv(int fd)
 	if ((librad_max_attributes > 0) &&
 	    (num_attributes > librad_max_attributes)) {
 		librad_log("WARNING: Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
-			   ip_ntoa(host_ipaddr, packet->src_ipaddr),
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     host_ipaddr, sizeof(host_ipaddr)),
 			   num_attributes, librad_max_attributes);
 		free(packet);
 		return NULL;
@@ -1090,19 +1278,27 @@ RADIUS_PACKET *rad_recv(int fd)
 	    (seen_eap != PW_MESSAGE_AUTHENTICATOR) &&
 	    (seen_eap != (PW_EAP_MESSAGE | PW_MESSAGE_AUTHENTICATOR))) {
 		librad_log("WARNING: Insecure packet from host %s:  Received EAP-Message with no Message-Authenticator.",
-			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     host_ipaddr, sizeof(host_ipaddr)));
 		free(packet);
 		return NULL;
 	}
 
 	if (librad_debug) {
 		if ((hdr->code > 0) && (hdr->code < 52)) {
-			printf("rad_recv: %s packet from host %s:%d",
+			printf("rad_recv: %s packet from host %s port %d",
 			       packet_codes[hdr->code],
-			       ip_ntoa(host_ipaddr, packet->src_ipaddr), packet->src_port);
+			       inet_ntop(packet->src_ipaddr.af,
+					 &packet->src_ipaddr.ipaddr,
+					 host_ipaddr, sizeof(host_ipaddr)),
+			       packet->src_port);
 		} else {
-			printf("rad_recv: Packet from host %s:%d code=%d",
-			       ip_ntoa(host_ipaddr, packet->src_ipaddr), packet->src_port,
+			printf("rad_recv: Packet from host %s port %d code=%d",
+			       inet_ntop(packet->src_ipaddr.af,
+					 &packet->src_ipaddr.ipaddr,
+					 host_ipaddr, sizeof(host_ipaddr)),
+			       packet->src_port,
 			       hdr->code);
 		}
 		printf(", id=%d, length=%d\n", hdr->id, totallen);
@@ -1195,10 +1391,12 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			lrad_hmac_md5(packet->data, packet->data_len,
 				      secret, strlen(secret), calc_auth_vector);
 			if (memcmp(calc_auth_vector, msg_auth_vector,
-				    sizeof(calc_auth_vector)) != 0) {
+				   sizeof(calc_auth_vector)) != 0) {
 				char buffer[32];
 				librad_log("Received packet from %s with invalid Message-Authenticator!  (Shared secret is incorrect.)",
-					   ip_ntoa(buffer, packet->src_ipaddr));
+					   inet_ntop(packet->src_ipaddr.af,
+						     &packet->src_ipaddr.ipaddr,
+						     buffer, sizeof(buffer)));
 				/* Silently drop packet, according to RFC 3579 */
 				return -2;
 			} /* else the message authenticator was good */
@@ -1234,8 +1432,10 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (calc_acctdigest(packet, secret) > 1) {
 				char buffer[32];
 				librad_log("Received Accounting-Request packet "
-				    "from %s with invalid signature!  (Shared secret is incorrect.)",
-				    ip_ntoa(buffer, packet->src_ipaddr));
+					   "from %s with invalid signature!  (Shared secret is incorrect.)",
+					   inet_ntop(packet->src_ipaddr.af,
+						     &packet->src_ipaddr.ipaddr,
+						     buffer, sizeof(buffer)));
 				return -1;
 			}
 			break;
@@ -1248,9 +1448,11 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (rcode > 1) {
 				char buffer[32];
 				librad_log("Received %s packet "
-					   "from %s:%d with invalid signature (err=%d)!  (Shared secret is incorrect.)",
+					   "from client %s port %d with invalid signature (err=%d)!  (Shared secret is incorrect.)",
 					   packet_codes[packet->code],
-					   ip_ntoa(buffer, packet->src_ipaddr),
+					   inet_ntop(packet->src_ipaddr.af,
+						     &packet->src_ipaddr.ipaddr,
+						     buffer, sizeof(buffer)),
 					   packet->src_port,
 					   rcode);
 				return -1;
@@ -1565,6 +1767,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (pair->type != PW_TYPE_IPADDR) {
 				pair->lvalue = ntohl(lvalue);
 			} else {
+				lrad_ipaddr_t ipaddr;
+
 				 /*
 				  *  It's an IP address, keep it in network
 				  *  byte order, and put the ASCII IP
@@ -1572,7 +1776,13 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				  *  value.
 				  */
 				pair->lvalue = lvalue;
-				ip_ntoa(pair->strvalue, pair->lvalue);
+				ipaddr.af = AF_INET;
+				ipaddr.ipaddr.ip4addr.s_addr = lvalue;
+				inet_ntop(AF_INET, &ipaddr.ipaddr,
+					  pair->strvalue,
+					  sizeof(pair->strvalue) - 1);
+				
+				
 			}
 
 			/*
@@ -2092,7 +2302,6 @@ static void random_vector(uint8_t *vector)
 uint32_t lrad_rand(void)
 {
 	uint32_t answer;
-	static int rand_index = 0;
 
 	/*
 	 *	Ensure that the pool is initialized.
@@ -2106,18 +2315,18 @@ uint32_t lrad_rand(void)
 	/*
 	 *	Grab an entry from the pool.
 	 */
-	answer = lrad_rand_pool.randrsl[rand_index];
+	answer = lrad_rand_pool.randrsl[lrad_rand_index];
 
 	/*
 	 *	Go to the next entry (wrapping around to zero).
 	 */
-	rand_index++;
-	rand_index &= 0xff;
+	lrad_rand_index++;
+	lrad_rand_index &= 0xff;
 
 	/*
 	 *	Every 256 numbers, churn the pool again.
 	 */
-	if (rand_index == 0) {
+	if (lrad_rand_index == 0) {
 		lrad_isaac(&lrad_rand_pool);
 	}
 

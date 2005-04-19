@@ -37,6 +37,7 @@ static const char rcsid[] = "$Id$";
 
 #include	"radiusd.h"
 #include	"modules.h"
+#include	"rad_assert.h"
 
 typedef struct rlm_preprocess_t {
 	char		*huntgroup_file;
@@ -393,17 +394,21 @@ static int add_nas_attr(REQUEST *request)
 {
 	VALUE_PAIR *nas;
 
-	nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS);
-	if (!nas) {
-		nas = paircreate(PW_NAS_IP_ADDRESS, PW_TYPE_IPADDR);
+	if (request->packet->src_ipaddr.af == AF_INET) {
+		nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS);
 		if (!nas) {
-			radlog(L_ERR, "No memory");
-			return -1;
+			nas = paircreate(PW_NAS_IP_ADDRESS, PW_TYPE_IPADDR);
+			if (!nas) {
+				radlog(L_ERR, "No memory");
+				return -1;
+			}
+			
+			ip_ntoh(&request->packet->src_ipaddr,
+				nas->strvalue, sizeof(nas->strvalue));
+			nas->lvalue = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+			pairadd(&request->packet->vps, nas);
 		}
-		nas->lvalue = request->packet->src_ipaddr;
-		ip_hostname(nas->strvalue, sizeof(nas->strvalue), nas->lvalue);
-		pairadd(&request->packet->vps, nas);
-	}
+	} else rad_assert(0 == 1); /* AF_INET6 */
 
 	/*
 	 *	Add in a Client-IP-Address, to tell the user
@@ -421,8 +426,9 @@ static int add_nas_attr(REQUEST *request)
 	  radlog(L_ERR, "No memory");
 	  return -1;
 	}
-	nas->lvalue = request->packet->src_ipaddr;
-	ip_hostname(nas->strvalue, sizeof(nas->strvalue), nas->lvalue);
+	nas->lvalue = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+	ip_ntoh(&request->packet->src_ipaddr,
+		nas->strvalue, sizeof(nas->strvalue));
 	pairadd(&request->packet->vps, nas);
 	return 0;
 }

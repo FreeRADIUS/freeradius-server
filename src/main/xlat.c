@@ -142,7 +142,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 	 */
 	da = dict_attrbyname(fmt);
 	if (!da) {
-		int index;
+		int count;
 		const char *p = strchr(fmt, '[');
 		char buffer[256];
 
@@ -159,14 +159,14 @@ static int xlat_packet(void *instance, REQUEST *request,
 		 *	attributes of that name in the list.
 		 */
 		if ((p[1] == '#') && (p[2] == ']')) {
-			index = 0;
+			count = 0;
 
 			for (vp = pairfind(vps, da->attr);
 			     vp != NULL;
 			     vp = pairfind(vp->next, da->attr)) {
-				index++;
+				count++;
 			}
-			snprintf(out, outlen, "%d", index);
+			snprintf(out, outlen, "%d", count);
 			return strlen(out);
 		}
 
@@ -180,11 +180,11 @@ static int xlat_packet(void *instance, REQUEST *request,
 			for (vp = pairfind(vps, da->attr);
 			     vp != NULL;
 			     vp = pairfind(vp->next, da->attr)) {
-				index = valuepair2str(out, outlen - 1, vp, da->type, func);
-				rad_assert(index <= outlen);
-				total += index + 1;
-				outlen -= (index + 1);
-				out += index;
+				count = valuepair2str(out, outlen - 1, vp, da->type, func);
+				rad_assert(count <= outlen);
+				total += count + 1;
+				outlen -= (count + 1);
+				out += count;
 				
 				*(out++) = '\n';
 
@@ -194,7 +194,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 			return total;
 		}
 		
-		index = atoi(p + 1);
+		count = atoi(p + 1);
 
 		/*
 		 *	Skip the numbers.
@@ -212,8 +212,8 @@ static int xlat_packet(void *instance, REQUEST *request,
 		for (vp = pairfind(vps, da->attr);
 		     vp != NULL;
 		     vp = pairfind(vp->next, da->attr)) {
-			if (index == 0) break;
-			index--;
+			if (count == 0) break;
+			count--;
 		}
 
 		/*
@@ -252,12 +252,14 @@ static int xlat_packet(void *instance, REQUEST *request,
 
 			case PW_PACKET_SRC_IP_ADDRESS:
 				localvp.attribute = da->attr;
-				localvp.lvalue = packet->src_ipaddr;
+				rad_assert(packet->src_ipaddr.af == AF_INET);
+				localvp.lvalue = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 				break;
 			
 			case PW_PACKET_DST_IP_ADDRESS:
 				localvp.attribute = da->attr;
-				localvp.lvalue = packet->dst_ipaddr;
+				rad_assert(packet->dst_ipaddr.af == AF_INET);
+				localvp.lvalue = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 				break;
 			
 			case PW_PACKET_SRC_PORT:
@@ -934,7 +936,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'C': /* ClientName */
-				strNcpy(q,client_name(request->packet->src_ipaddr),freespace-1);
+				strNcpy(q,client_name(&request->packet->src_ipaddr),freespace-1);
 				q += strlen(q);
 				p++;
 				break;

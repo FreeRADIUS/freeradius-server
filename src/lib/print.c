@@ -104,7 +104,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 {
 	DICT_VALUE  *v;
 	char        buf[1024];
-	char        *a;
+	const char  *a;
 	time_t      t;
 	struct tm   s_tm;
 
@@ -179,20 +179,19 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			break;
 		case PW_TYPE_ABINARY:
 #ifdef ASCEND_BINARY
-		  a = buf;
-		  print_abinary(vp, (unsigned char *)buf, sizeof(buf));
-		  break;
+			a = buf;
+			print_abinary(vp, (unsigned char *)buf, sizeof(buf));
+			break;
 #else
 		  /* FALL THROUGH */
 #endif
 		case PW_TYPE_OCTETS:
-		  strcpy(buf, "0x");
-		  a = buf + 2;
-		  for (t = 0; t < vp->length; t++) {
-			sprintf(a, "%02x", vp->strvalue[t]);
-			a += 2;
-		  }
-		  a = buf;
+			if (outlen <= (2 * (vp->length + 1))) return 0;
+
+			strcpy(buf, "0x");
+			
+			lrad_bin2hex(vp->strvalue, buf + 2, vp->length);
+			a = buf;
 		  break;
 
 		case PW_TYPE_IFID:
@@ -200,7 +199,25 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			break;
 
 		case PW_TYPE_IPV6ADDR:
-			a = ipv6_ntoa(buf, sizeof(buf), vp->strvalue);
+#if defined(HAVE_INET_NTOP) && defined(AF_INET6)
+			a = inet_ntop(AF_INET6,
+				      (const struct in6_addr *) vp->strvalue,
+				      buf, sizeof(buf));
+#else
+			/*
+			 *	Do it really stupidly.
+			 */
+			snprintf(buf, sizeof(buf), "%x:%x:%x:%x:%x:%x:%x:%x",
+				 (vp->strvalue[0] << 8) | vp->strvalue[1],
+				 (vp->strvalue[2] << 8) | vp->strvalue[3],
+				 (vp->strvalue[4] << 8) | vp->strvalue[5],
+				 (vp->strvalue[6] << 8) | vp->strvalue[7],
+				 (vp->strvalue[8] << 8) | vp->strvalue[9],
+				 (vp->strvalue[10] << 8) | vp->strvalue[11],
+				 (vp->strvalue[12] << 8) | vp->strvalue[13],
+				 (vp->strvalue[15] << 8) | vp->strvalue[15]);
+			a = buf;
+#endif
 			break;
 
 		default:

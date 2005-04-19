@@ -674,6 +674,64 @@ static int gettime(const char *valstr, time_t *lvalue)
 	return 0;
 }
 
+
+/*
+ *	Return an IPv6 address from
+ *	one supplied in standard colon notation.
+ */
+static int ipv6_addr(const char *ip6_str, void *ip6addr)
+{
+#if defined(HAVE_INET_PTON) && defined(AF_INET6)
+	if (inet_pton(AF_INET6, ip6_str, (struct in6_addr *) ip6addr) != 1)
+		return -1;
+#else
+	/*
+	 *	Copied from the 'ifid' code in misc.c, with minor edits.
+	 */
+	static const char xdigits[] = "0123456789abcdef";
+	const char *p, *pch;
+	int num_id = 0, val = 0, idx = 0;
+	uint8_t *addr = ip6addr;
+
+	for (p = ip6_str; ; ++p) {
+		if (*p == ':' || *p == '\0') {
+			if (num_id <= 0)
+				return -1;
+
+			/*
+			 *	Drop 'val' into the array.
+			 */
+			addr[idx] = (val >> 8) & 0xff;
+			addr[idx + 1] = val & 0xff;
+			if (*p == '\0') {
+				/*
+				 *	Must have all entries before
+				 *	end of the string.
+				 */
+				if (idx != 14)
+					return -1;
+				break;
+			}
+			val = 0;
+			num_id = 0;
+			if ((idx += 2) > 14)
+				return -1;
+		} else if ((pch = strchr(xdigits, tolower(*p))) != NULL) {
+			if (++num_id > 8) /* no more than 8 16-bit numbers */
+				return -1;
+			/*
+			 *	Dumb version of 'scanf'
+			 */
+			val <<= 4;
+			val |= (pch - xdigits);
+		} else
+			return -1;
+	}
+#endif
+	return 0;
+}
+
+
 /*
  *  Parse a string value into a given VALUE_PAIR
  *

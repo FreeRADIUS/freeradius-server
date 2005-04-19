@@ -71,7 +71,6 @@ const char *radacct_dir = NULL;
 uint32_t myip = INADDR_ANY;
 int log_stripped_names;
 struct main_config_t mainconfig;
-void *rad_malloc(size_t size);
 
 /*
  *	Possible states for request->state
@@ -97,7 +96,7 @@ void *rad_malloc(size_t size);
  */
 struct relay_request {
 	int		state;				/* REQ_* state */
-	uint32_t	client_ip;			/* Client-IP-Addr */
+	lrad_ipaddr_t	client_ip;			/* Client-IP-Addr */
 	REQUEST		*req;				/* Radius request */
 };
 
@@ -108,7 +107,7 @@ struct sql_module {
 };
 
 struct relay_misc {
-	uint32_t 		dst_addr;		/* Destination address */
+	lrad_ipaddr_t 		dst_addr;		/* Destination address */
 	char			detail[1024];		/* Detail file */
 	char			*instance;		/* SQL module instance (if needed) */
 	int			sleep_time;		/* Sleep time (ms) between calls to do_send */
@@ -153,7 +152,7 @@ void sigterm_handler(int sig)
 /*
  *	Sleep a number of milli seconds
  */
-void inline ms_sleep(int msec)
+inline void ms_sleep(int msec)
 {
 	if (msec){
 		struct timeval tv;
@@ -169,7 +168,7 @@ void inline ms_sleep(int msec)
 /*
  *	Does this (remotely) look like "Tue Jan 23 06:55:48 2001" ?
  */
-int inline isdateline(char *d)
+inline int isdateline(char *d)
 {
 	int y;
 
@@ -263,7 +262,7 @@ redo:
 					skip++;
 				} else
 				if (!strcasecmp(key, "Client-IP-Address")) {
-					r_req->client_ip = ip_getaddr(val);
+					ip_hton(val, AF_INET, &r_req->client_ip);
 					skip++;
 				} else
 				if (!strcasecmp(key, "Request-Authenticator"))
@@ -306,7 +305,7 @@ redo:
 				r_req->req->packet->vps = NULL;
 			}
 			r_req->req->timestamp = 0;
-			r_req->client_ip = 0;
+			memset(&r_req->client_ip, 0, sizeof(r_req->client_ip));
 			goto redo;
 		}
 		if (r_req->req->timestamp == 0)
@@ -345,15 +344,19 @@ int do_send(struct relay_request *r, struct sql_module *sql)
 	/*
 	 *	Prevent loops.
 	 */
-	if (r->client_ip == r->req->packet->dst_ipaddr) {
-		fprintf(stdout, "%s: do_send: Client-IP == Dest-IP. Droping packet.\n",progname);
+	if ((r->client_ip.af == r->req->packet->dst_ipaddr.af) &&
+	    memcmp(&r->client_ip, &r->req->packet->dst_ipaddr,
+		   ((r->client_ip.af == AF_INET) ?
+		    sizeof(r->client_ip.ipaddr.ip4addr) : /* FIXME: AF_INET6 */
+		    sizeof(r->client_ip.ipaddr.ip6addr)))) {
+		fprintf(stdout, "%s: do_send: Client-IP == Dest-IP. Dropping packet.\n",progname);
 		if (r->req->packet->vps != NULL) {
 			pairfree(&r->req->packet->vps);
 			r->req->packet->vps = NULL;
 		}
 		r->state = STATE_EMPTY;
 		r->req->timestamp = 0;
-		r->client_ip = 0;
+		memset(&r->client_ip, 0, sizeof(r->client_ip));
 		return 0;
 	}
 
@@ -383,7 +386,7 @@ int do_send(struct relay_request *r, struct sql_module *sql)
 		}
 		r->state = STATE_EMPTY;
 		r->req->timestamp = 0;
-		r->client_ip = 0;
+		memset(&r->client_ip, 0, sizeof(r->client_ip));
 
 		return 1;
 	}
@@ -459,7 +462,7 @@ void loop(struct relay_misc *r_args)
 			exit(1);
 		}
 		slots[i].state = STATE_EMPTY;
-		slots[i].client_ip = 0;
+		memset(&slots[i].client_ip, 0, sizeof(slots[i].client_ip));
 		slots[i].req->packet->dst_ipaddr = r_args->dst_addr;
 		slots[i].req->packet->code = PW_ACCOUNTING_REQUEST;
 		slots[i].req->packet->vps = NULL;
@@ -675,8 +678,7 @@ struct sql_module *init_sql(struct relay_misc *r)
 	}
 	server = cf_section_value_find(subcs, "server");
 	if (server){
-		r->dst_addr = ip_getaddr(server);
-		if (r->dst_addr == 0) {
+		if (ip_hton(server, AF_INET, &r->dst_addr) < 0) {
 			fprintf(stderr, "%s: Unknown destination host in 'server' directive.\n",progname);
 			return NULL;
 		}

@@ -290,14 +290,17 @@ int proxy_send(REQUEST *request)
 	pairadd(&request->packet->vps,
 		pairmake("Realm", realm->realm, T_OP_EQ));
 
+
+	if (realm->ipaddr.af != AF_INET) rad_assert(0 == 1);
+
 	/*
 	 *	Access-Request: look for LOCAL realm.
 	 *	Accounting-Request: look for LOCAL realm.
 	 */
 	if (((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-	     (realm->ipaddr == htonl(INADDR_NONE))) ||
+	     (realm->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE))) ||
 	    ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
-	     (realm->acct_ipaddr == htonl(INADDR_NONE)))) {
+	     (realm->acct_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE)))) {
 		DEBUG2(" WARNING: Cancelling proxy to Realm %s, as the realm is local.",
 		       realm->realm);
 		return RLM_MODULE_NOOP;

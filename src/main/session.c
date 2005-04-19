@@ -41,7 +41,6 @@
 
 #include	"radiusd.h"
 #include	"rad_assert.h"
-#include	"modules.h"
 
 /* End a session by faking a Stop packet to all accounting modules */
 int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
@@ -130,11 +129,15 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	char	address[16];
 	char	port[11];
 	RADCLIENT *cl;
+	lrad_ipaddr_t ipaddr;
+
+	ipaddr.af = AF_INET;
+	ipaddr.ipaddr.ip4addr.s_addr = nasaddr;
 
 	/*
 	 *	Find NAS type.
 	 */
-	cl = client_find(nasaddr);
+	cl = client_find(&ipaddr);
 	if (!cl) {
 		/*
 		 *  Unknown NAS, so trusting radutmp.

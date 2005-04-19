@@ -106,7 +106,7 @@ typedef struct auth_req {
 typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 
 typedef struct radclient {
-	uint32_t		ipaddr;
+	lrad_ipaddr_t		ipaddr;
 	uint32_t		netmask;
 	char			longname[256];
 	u_char			secret[32];
@@ -129,8 +129,8 @@ typedef struct _realm {
 	char			realm[64];
 	char			server[64];
 	char			acct_server[64];
-	uint32_t		ipaddr;	/* authentication */
-	uint32_t		acct_ipaddr;
+	lrad_ipaddr_t		ipaddr;	/* authentication */
+	lrad_ipaddr_t		acct_ipaddr;
 	u_char			secret[32];
 	time_t			last_reply; /* last time we saw a packet */
 	int			auth_port;
@@ -344,9 +344,8 @@ void		rfc_clean(RADIUS_PACKET *packet);
 
 /* client.c */
 int		read_clients_file(const char *file);
-RADCLIENT	*client_find(uint32_t ipno);
-const char	*client_name(uint32_t ipno);
-void		client_walk(void);
+RADCLIENT	*client_find(const lrad_ipaddr_t *ipaddr);
+const char	*client_name(const lrad_ipaddr_t *ipaddr);
 void		clients_free(RADCLIENT *cl);
 
 /* files.c */
@@ -362,10 +361,6 @@ int		read_realms_file(const char *file);
 /* nas.c */
 int		read_naslist_file(char *);
 NAS		*nas_find(uint32_t ipno);
-const char	*nas_name(uint32_t ipno);
-const char	*nas_name2(RADIUS_PACKET *r);
-char  *		nas_name3(char *buf, size_t buflen, uint32_t ipno);
-NAS		*nas_findbyname(char *nasname);
 
 /* version.c */
 void		version(void);

@@ -380,8 +380,9 @@ REQUEST *request_alloc_fake(REQUEST *oldreq)
    *	Fill in the fake request packet.
    */
   request->packet->sockfd = -1;
-  request->packet->src_ipaddr = htonl(INADDR_LOOPBACK);
-  request->packet->dst_ipaddr = htonl(INADDR_LOOPBACK);
+  request->packet->src_ipaddr.af = AF_INET;
+  request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);
+  request->packet->dst_ipaddr = request->packet->src_ipaddr;
   request->packet->src_port = request->number >> 8;
   request->packet->dst_port = 0;
 
