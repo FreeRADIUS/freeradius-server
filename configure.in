@@ -673,7 +673,9 @@ AC_CHECK_FUNCS( \
 	setlinebuf \
 	setvbuf \
 	getusershell \
-	initgroups
+	initgroups \
+	getaddrinfo \
+	getnameinfo
 )
 RADIUSD_NEED_DECLARATIONS( \
 	crypt \
@@ -1004,7 +1006,7 @@ AC_SUBST(STATIC_MODULES)
 AC_SUBST(RADIUSD_MAJOR_VERSION)
 AC_SUBST(RADIUSD_MINOR_VERSION)
 AC_SUBST(RADIUSD_VERSION)
-export CFLAGS LIBS
+export CFLAGS LIBS LDFLAGS CPPFLAGS
 
 AC_OUTPUT(\
 	./Make.inc \
