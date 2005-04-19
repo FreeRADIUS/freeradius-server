@@ -573,7 +573,7 @@ void loop(struct relay_misc *r_args)
 				}
 				else if (state == STATE_SHUTDOWN) {
 					for (i = 0; i < NR_SLOTS; i++) {
-						rad_free(&slots[i].req);
+						request_free(&slots[i].req);
 					}
 					exit(0);
 				}
