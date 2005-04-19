@@ -66,7 +66,7 @@ static int totallost = 0;
 
 static int server_port = 0;
 static int packet_code = 0;
-static uint32_t server_ipaddr = INADDR_NONE;
+static lrad_ipaddr_t server_ipaddr;
 static int resend_count = 1;
 static int done = 1;
 
@@ -302,13 +302,12 @@ static int radclient_sane(radclient_t *radclient)
 		radclient->request->dst_port = server_port;
 	}
 	if (radclient->request->dst_ipaddr.af == 0) {
-		if (server_ipaddr == INADDR_NONE) {
+		if (server_ipaddr.af == AF_UNSPEC) {
 			fprintf(stderr, "radclient: No server was given, but request %d in file %s did not contain Packet-Dst-IP-Address\n",
 				radclient->packet_number, radclient->filename);
 			return -1;
 		}
-		radclient->request->dst_ipaddr.af = AF_INET;
-		radclient->request->dst_ipaddr.ipaddr.ip4addr.s_addr = server_ipaddr;
+		radclient->request->dst_ipaddr = server_ipaddr;
 	}
 
 	if (radclient->request->code == 0) {
@@ -904,9 +903,9 @@ int main(int argc, char **argv)
 	/*
 	 *	Resolve hostname.
 	 */
+	server_ipaddr.af = AF_UNSPEC;
 	if (strcmp(argv[1], "-") != 0) {
-		server_ipaddr = ip_getaddr(argv[1]);
-		if (server_ipaddr == INADDR_NONE) {
+		if (ip_hton(argv[1], AF_INET, &server_ipaddr) < 0) {
 			fprintf(stderr, "radclient: Failed to find IP address for host %s\n", argv[1]);
 			exit(1);
 		}
