@@ -681,9 +681,12 @@ static int gettime(const char *valstr, time_t *lvalue)
  */
 static int ipv6_addr(const char *ip6_str, void *ip6addr)
 {
-#if defined(HAVE_INET_PTON) && defined(AF_INET6)
-	if (inet_pton(AF_INET6, ip6_str, (struct in6_addr *) ip6addr) != 1)
-		return -1;
+#ifdef AF_INET6
+	lrad_ipaddr_t ipaddr;
+
+	if (ip_hton(ip6_str, AF_INET6, &ipaddr) < 0) return -1;
+
+	memcpy(ip6addr, &ipaddr.ipaddr.ip6addr, sizeof(ipaddr.ipaddr.ip6addr));
 #else
 	/*
 	 *	Copied from the 'ifid' code in misc.c, with minor edits.
