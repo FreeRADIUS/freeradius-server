@@ -44,6 +44,8 @@
 #endif
 #endif
 
+#include <ctype.h>
+
 #include "radiusd.h"
 #include "rad_assert.h"
 #include "conffile.h"
@@ -114,12 +116,12 @@ CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs)
  *	Create a new CONF_PAIR
  */
 static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
-		LRAD_TOKEN operator, CONF_SECTION *parent)
+				LRAD_TOKEN operator, CONF_SECTION *parent)
 {
 	CONF_PAIR *cp;
 
-	cp = (CONF_PAIR *)rad_malloc(sizeof(CONF_PAIR));
-	memset(cp, 0, sizeof(CONF_PAIR));
+	cp = rad_malloc(sizeof(*cp));
+	memset(cp, 0, sizeof(*cp));
 	cp->item.type = CONF_ITEM_PAIR;
 	cp->item.parent = parent;
 	cp->attr = strdup(attr);
@@ -239,15 +241,15 @@ void cf_section_free(CONF_SECTION **cs)
  *	Allocate a CONF_SECTION
  */
 static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
-		CONF_SECTION *parent)
+				      CONF_SECTION *parent)
 {
 	CONF_SECTION	*cs;
 
 	if (name1 == NULL || !name1[0])
 		name1 = "main";
 
-	cs = (CONF_SECTION *)rad_malloc(sizeof(CONF_SECTION));
-	memset(cs, 0, sizeof(CONF_SECTION));
+	cs = rad_malloc(sizeof(*cs));
+	memset(cs, 0, sizeof(*cs));
 	cs->item.type = CONF_ITEM_SECTION;
 	cs->item.parent = parent;
 	cs->name1 = strdup(name1);
@@ -595,7 +597,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			}
 
 			rcode = cf_section_parse(subsection, base,
-					(CONF_PARSER *) data);
+						 (CONF_PARSER *) data);
 			if (rcode < 0) {
 				return -1;
 			}
@@ -662,7 +664,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			 *	Allow '*' as any address
 			 */
 			if (strcmp(value, "*") == 0) {
-				*(uint32_t *) data = 0;
+				*(uint32_t *) data = htonl(INADDR_ANY);
 				break;
 			}
 			ipaddr = ip_getaddr(value);
@@ -1211,15 +1213,15 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION *cs,
 	 *	Else do it the old-fashioned way.
 	 */
 	for (ci = cs->children; ci; ci = ci->next) {
-		CONF_SECTION *cs;
+		CONF_SECTION *subcs;
 
 		if (ci->type != CONF_ITEM_SECTION)
 			continue;
 
-		cs = cf_itemtosection(ci);
-		if ((strcmp(cs->name1, name1) == 0) &&
-		    (cs->name2 != NULL) &&
-		    (strcmp(cs->name2, name2) == 0))
+		subcs = cf_itemtosection(ci);
+		if ((strcmp(subcs->name1, name1) == 0) &&
+		    (subcs->name2 != NULL) &&
+		    (strcmp(subcs->name2, name2) == 0))
 			break;
 	}
 
