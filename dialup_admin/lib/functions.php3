@@ -35,7 +35,16 @@ function time2strclock($time)
 	if (!$time)
 		return "00:00:00";
 
-	$str["hour"] = $str["min"] = $str["sec"] = "00";
+	$str["days"] = $str["hour"] = $str["min"] = $str["sec"] = "00";
+
+	$d = $time/86400;
+	$d = floor($d);
+	if ($d){
+		if ($d < 10)
+			$d = "0" . $d;
+		$str["days"] = "$d";
+		$time = $time % 86400;
+	}
 	$h = $time/3600;
 	$h = floor($h);
 	if ($h){
@@ -59,7 +68,10 @@ function time2strclock($time)
 	else
 		$time = "00";
 	$str["sec"] = "$time";
-	$ret = "$str[hour]:$str[min]:$str[sec]";
+	if ($str["days"] != "00")
+		$ret = "$str[days]:$str[hour]:$str[min]:$str[sec]";
+	else
+		$ret = "$str[hour]:$str[min]:$str[sec]";
 
 	return $ret;
 }
