@@ -1,4 +1,9 @@
 FreeRADIUS 1.1.0 ; $Date$, urgency=low
+	* radhow & radzap have been re-written, and have new command-line
+	  arguments.  radzap is now a shell script.  See the "man" pages
+	  for more information.
+	* rlm_ns_mta_md5 is deprecated.  rlm_pap does everything it does
+	  and more.
 	* The command-line options "-i ipaddr" and "-p port" now work.
 	* rlm_unix no longer reads /etc/passwd (etc.) directly.  See
 	  "man rlm_unix" for details.  Also see the "authorize" section
