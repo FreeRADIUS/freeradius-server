@@ -18,7 +18,7 @@ cd certs
 #
 # Generate DH stuff...
 #
-$(SSL)/bin/openssl gendh > dh
+${SSL}/bin/openssl gendh > dh
 
 #
 #  /dev/urandom is not a file, and we can't rely on "test -e" working
