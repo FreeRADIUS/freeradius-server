@@ -774,8 +774,17 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				p = NULL;
 				cs = value;
 			}
-			vp->lvalue = librad_dodns ? ip_getaddr(cs) :
-						    ip_addr(cs);
+			
+			{
+				lrad_ipaddr_t ipaddr;
+
+				if (ip_hton(cs, AF_INET, &ipaddr) < 0) {
+					librad_log("Failed to find IP address for %s", cs);
+					return NULL;
+				}
+
+				vp->lvalue = ipaddr.ipaddr.ip4addr.s_addr;
+			}
 			if (s) free(s);
 			vp->length = 4;
 			break;
