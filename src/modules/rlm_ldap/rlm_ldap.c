@@ -1455,7 +1455,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					sizeof(passwd_item->strvalue));
 				passwd_item->length = strlen(passwd_item->strvalue);
 				pairadd(&request->config_items,passwd_item);
-				DEBUG("rlm_ldap: Added % = %s in check items",
+				DEBUG("rlm_ldap: Added %s = %s in check items",
 				      passwd_item->name,
 				      passwd_item->strvalue);
 			}
