@@ -321,6 +321,8 @@ ATTRIBUTE	SHA-Password		1093	octets
 ATTRIBUTE	SSHA-Password		1094	octets
 ATTRIBUTE	MD5-Password		1095	octets
 ATTRIBUTE	SMD5-Password		1096	octets
+ATTRIBUTE	Packet-Src-IPv6-Address	1097	ipv6addr
+ATTRIBUTE	Packet-Dst-IPv6-Address	1098	ipv6addr
 
 #
 #	Range:	1097-1199

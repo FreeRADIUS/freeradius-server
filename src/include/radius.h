@@ -200,6 +200,9 @@
 #define PW_MD5_PASSWORD			1095
 #define PW_SMD5_PASSWORD		1096
 
+#define PW_PACKET_SRC_IPV6_ADDRESS	1097
+#define PW_PACKET_DST_IPV6_ADDRESS	1098
+
 /*
  *	Integer Translations
  */
