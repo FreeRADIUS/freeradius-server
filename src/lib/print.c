@@ -199,25 +199,9 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			break;
 
 		case PW_TYPE_IPV6ADDR:
-#if defined(HAVE_INET_NTOP) && defined(AF_INET6)
 			a = inet_ntop(AF_INET6,
 				      (const struct in6_addr *) vp->strvalue,
 				      buf, sizeof(buf));
-#else
-			/*
-			 *	Do it really stupidly.
-			 */
-			snprintf(buf, sizeof(buf), "%x:%x:%x:%x:%x:%x:%x:%x",
-				 (vp->strvalue[0] << 8) | vp->strvalue[1],
-				 (vp->strvalue[2] << 8) | vp->strvalue[3],
-				 (vp->strvalue[4] << 8) | vp->strvalue[5],
-				 (vp->strvalue[6] << 8) | vp->strvalue[7],
-				 (vp->strvalue[8] << 8) | vp->strvalue[9],
-				 (vp->strvalue[10] << 8) | vp->strvalue[11],
-				 (vp->strvalue[12] << 8) | vp->strvalue[13],
-				 (vp->strvalue[15] << 8) | vp->strvalue[15]);
-			a = buf;
-#endif
 			break;
 
 		default:

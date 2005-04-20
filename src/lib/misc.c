@@ -45,7 +45,6 @@ static const char rcsid[] =
 int		librad_dodns = 0;
 int		librad_debug = 0;
 
-
 /*
  *	Return a printable host name (or IP address in dot notation)
  *	for the supplied IP address.
@@ -374,18 +373,34 @@ int inet_pton(int af, const char *src, void *dst)
 const char *inet_ntop(int af, const void *src, char *dst, size_t cnt)
 {
 	if (af == AF_INET) {
-		uint32_t ipaddr;
+		struct in_addr *ipaddr = src;
 
-		if (cnt <= 15) return NULL;
-		
-		ipaddr = *(uint32_t *) src;
-		ipaddr = ntohl(ipaddr);
+		if (cnt <= INET_ADDRSTRLEN) return NULL;
 		
 		snprintf(dst, cnt, "%d.%d.%d.%d",
-			 (ipaddr >> 24) & 0xff,
-			 (ipaddr >> 16) & 0xff,
-			 (ipaddr >>  8) & 0xff,
-			 (ipaddr      ) & 0xff);
+			 ipaddr.s_addr[0], ipaddr.s_addr[1],
+			 ipaddr.s_addr[2], ipaddr.s_addr[3]);
+		return dst;
+	}
+
+	/*
+	 *	If the system doesn't define this, we define it
+	 *	in missing.h
+	 */
+	if (af == AF_INET6) {
+		struct in6_addr *ipaddr = src;
+		
+		if (cnt <= INET6_ADDRSTRLEN) return NULL;
+
+		snprintf(dst, cnt, "%x:%x:%x:%x:%x:%x:%x:%x",
+			 ipaddr.s6_addr[0], ipaddr.s6_addr[1], 
+			 ipaddr.s6_addr[2], ipaddr.s6_addr[3], 
+			 ipaddr.s6_addr[4], ipaddr.s6_addr[5], 
+			 ipaddr.s6_addr[6], ipaddr.s6_addr[7], 
+			 ipaddr.s6_addr[8], ipaddr.s6_addr[9], 
+			 ipaddr.s6_addr[10], ipaddr.s6_addr[11], 
+			 ipaddr.s6_addr[12], ipaddr.s6_addr[13], 
+			 ipaddr.s6_addr[14], ipaddr.s6_addr[15]);
 		return dst;
 	}
 
@@ -505,6 +520,7 @@ const char *ip_ntoh(const lrad_ipaddr_t *src, char *dst, size_t cnt)
 	strNcpy(dst, (char *)hp->h_name, cnt);
 	return dst;
 }
+
 
 static const char *hextab = "0123456789abcdef";
 
