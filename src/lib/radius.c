@@ -432,7 +432,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		  }
 		  memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
 
-		  DEBUG("Sending %s of id %d to %s:%d\n",
+		  DEBUG("Sending %s of id %d to %s port %d\n",
 			what, packet->id,
 			inet_ntop(packet->dst_ipaddr.af,
 				  &packet->dst_ipaddr.ipaddr,
@@ -837,7 +837,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		   *	the VP list again only for debugging.
 		   */
 	} else if (librad_debug) {
-	  	DEBUG("Re-sending %s of id %d to %s:%d\n", what, packet->id,
+	  	DEBUG("Re-sending %s of id %d to %s port %d\n", what, packet->id,
 		      inet_ntop(packet->dst_ipaddr.af,
 				&packet->dst_ipaddr.ipaddr,
 				ip_buffer, sizeof(ip_buffer)),
