@@ -557,10 +557,10 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 	char **q;
 	CONF_PAIR *cp;
 	CONF_SECTION *subsection;
-	uint32_t ipaddr;
 	char buffer[8192];
 	const char *value;
 	void *data;
+	lrad_ipaddr_t ipaddr;
 
 	/*
 	 *	Handle the user-supplied variables.
@@ -667,16 +667,16 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 				*(uint32_t *) data = htonl(INADDR_ANY);
 				break;
 			}
-			ipaddr = ip_getaddr(value);
-			if (ipaddr == 0) {
+			if (ip_hton(value, AF_INET, &ipaddr) < 0) {
 				radlog(L_ERR, "Can't find IP address for host %s", value);
 				return -1;
 			}
 			DEBUG2(" %s: %s = %s IP address [%s]",
 					cs->name1,
 					variables[i].name,
-					value, ip_ntoa(buffer, ipaddr));
-			*(uint32_t *) data = ipaddr;
+					value,
+			       ip_ntoh(&ipaddr, buffer, sizeof(buffer)));
+			*(uint32_t *) data = ipaddr.ipaddr.ip4addr.s_addr;
 			break;
 
 		default:
