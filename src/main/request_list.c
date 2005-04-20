@@ -151,12 +151,10 @@ static int proxy_id_cmp(const void *one, const void *two)
 			       &b->dst_ipaddr.ipaddr.ip4addr,
 			       sizeof(a->dst_ipaddr.ipaddr.ip4addr));
 		break;
-#ifdef AF_INET6
 	case AF_INET6:
 		rcode = memcmp(&a->dst_ipaddr.ipaddr.ip6addr,
 			       &b->dst_ipaddr.ipaddr.ip6addr,
 			       sizeof(a->dst_ipaddr.ipaddr.ip6addr));
-#endif
 		break;
 	default:
 		return -1;	/* FIXME: die! */
@@ -217,12 +215,10 @@ static int request_cmp(const void *one, const void *two)
 			       &b->packet->src_ipaddr.ipaddr.ip4addr,
 			       sizeof(a->packet->src_ipaddr.ipaddr.ip4addr));
 		break;
-#ifdef AF_INET6
 	case AF_INET6:
 		rcode = memcmp(&a->packet->src_ipaddr.ipaddr.ip6addr,
 			       &b->packet->src_ipaddr.ipaddr.ip6addr,
 			       sizeof(a->packet->src_ipaddr.ipaddr.ip6addr));
-#endif
 		break;
 	default:
 		return -1;	/* FIXME: die! */
@@ -246,12 +242,10 @@ static int request_cmp(const void *one, const void *two)
 			       &b->packet->dst_ipaddr.ipaddr.ip4addr,
 			       sizeof(a->packet->dst_ipaddr.ipaddr.ip4addr));
 		break;
-#ifdef AF_INET6
 	case AF_INET6:
 		rcode = memcmp(&a->packet->dst_ipaddr.ipaddr.ip6addr,
 			       &b->packet->dst_ipaddr.ipaddr.ip6addr,
 			       sizeof(a->packet->dst_ipaddr.ipaddr.ip6addr));
-#endif
 		break;
 	default:
 		return -1;	/* FIXME: die! */
@@ -307,12 +301,10 @@ static int proxy_cmp(const void *one, const void *two)
 			       &b->proxy->dst_ipaddr.ipaddr.ip4addr,
 			       sizeof(a->proxy->dst_ipaddr.ipaddr.ip4addr));
 		break;
-#ifdef AF_INET6
 	case AF_INET6:
 		rcode = memcmp(&a->proxy->dst_ipaddr.ipaddr.ip6addr,
 			       &b->proxy->dst_ipaddr.ipaddr.ip6addr,
 			       sizeof(a->proxy->dst_ipaddr.ipaddr.ip6addr));
-#endif
 		break;
 	default:
 		return -1;	/* FIXME: die! */

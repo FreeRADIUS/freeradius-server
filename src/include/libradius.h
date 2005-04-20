@@ -158,9 +158,7 @@ typedef struct lrad_ipaddr_t {
 	int		af;	/* address family */
 	union {
 		struct in_addr	ip4addr;
-#ifdef AF_INET6
-		struct in6_addr ip6addr;
-#endif		
+		struct in6_addr ip6addr; /* maybe defined in missing.h */
 	} ipaddr;
 } lrad_ipaddr_t;
 

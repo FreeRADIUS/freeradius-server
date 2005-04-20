@@ -97,12 +97,10 @@ static int eap_handler_cmp(const void *a, const void *b)
 			       &two->src_ipaddr.ipaddr.ip4addr,
 			       sizeof(one->src_ipaddr.ipaddr.ip4addr));
 		break;
-#ifdef AF_INET6
 	case AF_INET6:
 		rcode = memcmp(&one->src_ipaddr.ipaddr.ip6addr,
 			       &two->src_ipaddr.ipaddr.ip6addr,
 			       sizeof(one->src_ipaddr.ipaddr.ip6addr));
-#endif
 		break;
 	default:
 		return -1;	/* FIXME: die! */

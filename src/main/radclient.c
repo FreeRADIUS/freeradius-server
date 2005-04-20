@@ -397,15 +397,11 @@ static int request_cmp(const void *one, const void *two)
 			       &b->request->dst_ipaddr.ipaddr.ip4addr,
 			       sizeof(a->request->dst_ipaddr.ipaddr.ip4addr));
 		break;
-
-#ifdef AF_INET6
 	case AF_INET6:
 		rcode = memcmp(&a->request->dst_ipaddr.ipaddr.ip6addr,
 			       &b->request->dst_ipaddr.ipaddr.ip6addr,
 			       sizeof(a->request->dst_ipaddr.ipaddr.ip6addr));
 		break;
-#endif
-
 	default:		/* FIXME: die! */
 		break;
 	}
