@@ -352,15 +352,67 @@ uint8_t *ifid_aton(const char *ifid_str, uint8_t *ifid)
 
 
 #ifndef HAVE_INET_PTON
+static int inet_pton4(const char *src, struct in_addr *dst)
+{
+	int octet;
+	unsigned int num;
+	const char *p, *off;
+	uint8_t tmp[4];
+	static const char digits[] = "0123456789";
+	
+	octet = num = 0;
+	for (p = src; *p != '\0'; p++) {
+		while ((off = strchr(digits, *p)) != NULL) {
+			num *= 10;
+			num += (off - digits);
+			
+			if (num > 255) return 0;
+			
+			p++;
+		}
+		
+		/*
+		 *	Not a digit, MUST be a dot, else we
+		 *	die.
+		 */
+		if (*p != '.') return 0;
+		
+		tmp[octet++] = num;
+		p++;
+	}
+	
+	/*
+	 *	End of the string.  At the fourth
+	 *	octet is OK, anything else is an
+	 *	error.
+	 */
+	if (octet != 4) return 0;
+	
+	memcpy(dst, &tmp, sizeof(tmp));
+	return 1;
+}
+
+
+static int inet_pton6(const char *src, struct in6_addr *dst)
+{
+	return -1;		/* not implemented */
+}
+
 /*
  *	Utility function, so that the rest of the server doesn't
  *	have ifdef's around IPv6 support
  */
 int inet_pton(int af, const char *src, void *dst)
 {
-	if (af != AF_INET) return -1; /* unsupported */
+	if (af == AF_INET) {
+		return inet_pton4(src, dst);
+	}
 
-	return inet_aton(src, dst);
+	if (af == AF_INET6) {
+		return inet_pton6(src, dst);
+	}
+
+	return -1;
 }
 #endif
 
@@ -373,13 +425,13 @@ int inet_pton(int af, const char *src, void *dst)
 const char *inet_ntop(int af, const void *src, char *dst, size_t cnt)
 {
 	if (af == AF_INET) {
-		struct in_addr *ipaddr = src;
+		const uint8_t *ipaddr = src;
 
 		if (cnt <= INET_ADDRSTRLEN) return NULL;
 		
 		snprintf(dst, cnt, "%d.%d.%d.%d",
-			 ipaddr.s_addr[0], ipaddr.s_addr[1],
-			 ipaddr.s_addr[2], ipaddr.s_addr[3]);
+			 ipaddr[0], ipaddr[1],
+			 ipaddr[2], ipaddr[3]);
 		return dst;
 	}
 
@@ -388,19 +440,19 @@ const char *inet_ntop(int af, const void *src, char *dst, size_t cnt)
 	 *	in missing.h
 	 */
 	if (af == AF_INET6) {
-		struct in6_addr *ipaddr = src;
+		const struct in6_addr *ipaddr = src;
 		
 		if (cnt <= INET6_ADDRSTRLEN) return NULL;
 
 		snprintf(dst, cnt, "%x:%x:%x:%x:%x:%x:%x:%x",
-			 ipaddr.s6_addr[0], ipaddr.s6_addr[1], 
-			 ipaddr.s6_addr[2], ipaddr.s6_addr[3], 
-			 ipaddr.s6_addr[4], ipaddr.s6_addr[5], 
-			 ipaddr.s6_addr[6], ipaddr.s6_addr[7], 
-			 ipaddr.s6_addr[8], ipaddr.s6_addr[9], 
-			 ipaddr.s6_addr[10], ipaddr.s6_addr[11], 
-			 ipaddr.s6_addr[12], ipaddr.s6_addr[13], 
-			 ipaddr.s6_addr[14], ipaddr.s6_addr[15]);
+			 (ipaddr->s6_addr[0] << 8) | ipaddr->s6_addr[1],
+			 (ipaddr->s6_addr[2] << 8) | ipaddr->s6_addr[3],
+			 (ipaddr->s6_addr[4] << 8) | ipaddr->s6_addr[5],
+			 (ipaddr->s6_addr[6] << 8) | ipaddr->s6_addr[7],
+			 (ipaddr->s6_addr[8] << 8) | ipaddr->s6_addr[9],
+			 (ipaddr->s6_addr[10] << 8) | ipaddr->s6_addr[11],
+			 (ipaddr->s6_addr[12] << 8) | ipaddr->s6_addr[13],
+			 (ipaddr->s6_addr[14] << 8) | ipaddr->s6_addr[15]);
 		return dst;
 	}
 
