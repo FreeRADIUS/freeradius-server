@@ -116,6 +116,8 @@ static void usage(void)
 	fprintf(stderr, "  -t timeout  Wait 'timeout' seconds before retrying (may be a floating point number).\n");
 	fprintf(stderr, "  -v          Show program version information.\n");
 	fprintf(stderr, "  -x          Debugging mode.\n");
+	fprintf(stderr, "  -4          Use IPv4 address of server\n");
+	fprintf(stderr, "  -6          Use IPv6 address of server.\n");
 
 	exit(1);
 }
@@ -252,6 +254,13 @@ static radclient_t *radclient_init(const char *filename)
 			case PW_PACKET_DST_IP_ADDRESS:
 				radclient->request->dst_ipaddr.af = AF_INET;
 				radclient->request->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->lvalue;
+				break;
+
+			case PW_PACKET_DST_IPV6_ADDRESS:
+				radclient->request->dst_ipaddr.af = AF_INET6;
+				memcpy(&radclient->request->dst_ipaddr.ipaddr.ip6addr,
+				       vp->strvalue,
+				       sizeof(radclient->request->dst_ipaddr.ipaddr.ip6addr));
 				break;
 
 			case PW_DIGEST_REALM:
@@ -723,6 +732,7 @@ int main(int argc, char **argv)
 	int persec = 0;
 	int parallel = 1;
 	radclient_t	*this;
+	int force_af = AF_UNSPEC;
 
 	librad_debug = 0;
 
@@ -738,7 +748,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((c = getopt(argc, argv, "c:d:f:hi:n:p:qr:sS:t:vx")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "46c:d:f:hi:n:p:qr:sS:t:vx")) != EOF) switch(c) {
+		case '4':
+			force_af = AF_INET;
+			break;
+		case '6':
+			force_af = AF_INET6;
+			break;
 		case 'c':
 			if (!isdigit((int) *optarg))
 				usage();
@@ -891,9 +907,9 @@ int main(int argc, char **argv)
 	/*
 	 *	Resolve hostname.
 	 */
-	server_ipaddr.af = AF_UNSPEC;
+	server_ipaddr.af = force_af;
 	if (strcmp(argv[1], "-") != 0) {
-		if (ip_hton(argv[1], AF_UNSPEC, &server_ipaddr) <= 0) {
+		if (ip_hton(argv[1], force_af, &server_ipaddr) < 0) {
 			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", argv[1], strerror(errno));
 			exit(1);
 		}
