@@ -301,7 +301,7 @@ static int radclient_sane(radclient_t *radclient)
 	if (radclient->request->dst_port == 0) {
 		radclient->request->dst_port = server_port;
 	}
-	if (radclient->request->dst_ipaddr.af == 0) {
+	if (radclient->request->dst_ipaddr.af == AF_UNSPEC) {
 		if (server_ipaddr.af == AF_UNSPEC) {
 			fprintf(stderr, "radclient: No server was given, but request %d in file %s did not contain Packet-Dst-IP-Address\n",
 				radclient->packet_number, radclient->filename);
@@ -389,8 +389,6 @@ static int request_cmp(const void *one, const void *two)
 	if (a->request->dst_ipaddr.af < b->request->dst_ipaddr.af) return -1;
 	if (a->request->dst_ipaddr.af > b->request->dst_ipaddr.af) return +1;
 
-	if (a->request->dst_ipaddr.af != AF_INET) return -1; /* FIXME */
-
 	switch (a->request->dst_ipaddr.af) {
 	case AF_INET:
 		rcode = memcmp(&a->request->dst_ipaddr.ipaddr.ip4addr,
@@ -403,6 +401,7 @@ static int request_cmp(const void *one, const void *two)
 			       sizeof(a->request->dst_ipaddr.ipaddr.ip6addr));
 		break;
 	default:		/* FIXME: die! */
+		return -1;
 		break;
 	}
 	if (rcode != 0) return rcode;
@@ -848,13 +847,6 @@ int main(int argc, char **argv)
 		server_port = atoi(p);
 	}
 
-	/*
-	 *	Grab the socket.
-	 */
-	if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-		perror("radclient: socket: ");
-		exit(1);
-	}
 	memset(radius_id, 0, sizeof(radius_id));
 
 	/*
@@ -901,12 +893,19 @@ int main(int argc, char **argv)
 	 */
 	server_ipaddr.af = AF_UNSPEC;
 	if (strcmp(argv[1], "-") != 0) {
-		if (ip_hton(argv[1], AF_INET, &server_ipaddr) < 0) {
-			fprintf(stderr, "radclient: Failed to find IP address for host %s\n", argv[1]);
+		if (ip_hton(argv[1], AF_UNSPEC, &server_ipaddr) <= 0) {
+			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", argv[1], strerror(errno));
 			exit(1);
 		}
 	}
 
+	/*
+	 *	Grab the socket.
+	 */
+	if ((sockfd = socket(server_ipaddr.af, SOCK_DGRAM, 0)) < 0) {
+		perror("radclient: socket: ");
+		exit(1);
+	}
 	/*
 	 *	Add the secret.
 	 */
