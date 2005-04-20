@@ -679,6 +679,29 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			*(uint32_t *) data = ipaddr.ipaddr.ip4addr.s_addr;
 			break;
 
+#ifdef AF_INET6
+		case PW_TYPE_IPV6ADDR:
+			/*
+			 *	Allow '*' as any address
+			 */
+			if (strcmp(value, "*") == 0) {
+				memcpy(data, 0, sizeof(ipaddr.ipaddr.ip6addr));
+				break;
+			}
+			if (ip_hton(value, AF_INET6, &ipaddr) < 0) {
+				radlog(L_ERR, "Can't find IPv6 address for host %s", value);
+				return -1;
+			}
+			DEBUG2(" %s: %s = %s IPv6 address [%s]",
+					cs->name1,
+					variables[i].name,
+					value,
+			       ip_ntoh(&ipaddr, buffer, sizeof(buffer)));
+			memcpy(data, &ipaddr.ipaddr.ip6addr,
+			       sizeof(ipaddr.ipaddr.ip6addr));
+			break;
+#endif
+
 		default:
 			radlog(L_ERR, "type %d not supported yet", variables[i].type);
 			return -1;
