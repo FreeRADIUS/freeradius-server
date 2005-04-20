@@ -81,4 +81,42 @@ void endusershell(void);
 #define INADDR_NONE     ((uint32_t) 0xffffffff)
 #endif
 
+#ifndef INET_ADDRSTRLEN
+#define INET_ADDRSTRLEN 16
+#endif
+
+#ifndef AF_UNSPEC
+#define AF_UNSPEC 0
+#endif
+
+#ifndef AF_INET6
+#define AF_INET6 10
+#endif
+
+#ifndef HAVE_STRUCT_IN6_ADDR
+struct in6_addr
+{
+	union {
+		uint8_t	u6_addr8[16];
+		uint16_t u6_addr16[8];
+		uint32_t u6_addr32[4];
+	} in6_u;
+#define s6_addr			in6_u.u6_addr8
+#define s6_addr16		in6_u.u6_addr16
+#define s6_addr32		in6_u.u6_addr32
+};
+
+#ifndef INET6_ADDRSTRLEN
+#define INET6_ADDRSTRLEN 46
+#endif
+
+#ifndef IN6ADDR_ANY_INIT
+#define IN6ADDR_ANY_INIT 	{{{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 }}}
+#endif
+
+#ifndef IN6ADDR_LOOPBACK_INIT 
+#define IN6ADDR_LOOPBACK_INIT 	{{{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1 }}}
+#endif
+#endif /* HAVE_STRUCT_IN6_ADDR */
+
 #endif /* _FR_MISSING_H */

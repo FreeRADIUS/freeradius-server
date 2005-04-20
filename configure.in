@@ -645,6 +645,12 @@ FR_CHECK_TYPE_INCLUDE([
 #endif
 ],uint32_t, unsigned int, [uint32_t should be the canonical 'network integer])
 
+AC_CHECK_TYPE(struct in6_addr, AC_DEFINE(HAVE_STRUCT_IN6_ADDR, 1, [IPv6 address structure]), [], [
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+])
+
 dnl #############################################################
 dnl #
 dnl #  5. Checks for structures and functions
@@ -707,6 +713,13 @@ FR_CHECK_STRUCT_HAS_MEMBER([#include <netinet/in.h>], [struct in_pktinfo], ipi_a
 if test "x$ac_cv_type_struct_in_pktinfo_has_ipi_addr" = "xyes"
 then
 	AC_DEFINE(HAVE_IP_PKTINFO, [], [define if you have IP_PKTINFO (Linux)])
+fi
+
+dnl # struct in6_pktinfo
+FR_CHECK_STRUCT_HAS_MEMBER([#include <netinet/in.h>], [struct in6_pktinfo], ipi6_addr)
+if test "x$ac_cv_type_struct_in6_pktinfo_has_ipi6_addr" = "xyes"
+then
+	AC_DEFINE(HAVE_IN6_PKTINFO, [], [define if you have IN6_PKTINFO (Linux)])
 fi
 
 dnl #############################################################
