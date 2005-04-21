@@ -217,12 +217,27 @@ RADCLIENT *client_find(const lrad_ipaddr_t *ipaddr)
 	RADCLIENT *cl;
 	RADCLIENT *match = NULL;
 
-	if (ipaddr->af != AF_INET) return NULL;	/* FIXME! */
-
 	for (cl = mainconfig.clients; cl; cl = cl->next) {
+		/*
+		 *	Catch IPv6-mapped IPv4 addresses.
+		 */
+		if ((cl->ipaddr.af == AF_INET) &&
+		    (ipaddr->af == AF_INET6) &&
+		    IN6_IS_ADDR_V4MAPPED(&ipaddr->ipaddr.ip6addr) &&
+		    (((const uint32_t *) &cl->ipaddr.ipaddr.ip4addr)[0] ==
+		     ((const uint32_t *) &ipaddr->ipaddr.ip6addr)[3]) &&
+		    ((((const uint32_t *) &ipaddr->ipaddr.ip6addr)[3] & cl->netmask) == cl->ipaddr.ipaddr.ip4addr.s_addr)) {
+			if ((!match) ||
+			    (ntohl(cl->netmask) > ntohl(match->netmask))) {
+				match = cl;
+			}
+			
+		}
+
 		if (cl->ipaddr.af != ipaddr->af) continue;
 
-		if ((ipaddr->ipaddr.ip4addr.s_addr & cl->netmask) == cl->ipaddr.ipaddr.ip4addr.s_addr) {
+		if ((ipaddr->af == AF_INET) &&
+		    ((ipaddr->ipaddr.ip4addr.s_addr & cl->netmask) == cl->ipaddr.ipaddr.ip4addr.s_addr)) {
 			if ((!match) ||
 			    (ntohl(cl->netmask) > ntohl(match->netmask))) {
 				match = cl;
@@ -242,8 +257,6 @@ const char *client_name(const lrad_ipaddr_t *ipaddr)
 	/* We don't call this unless we should know about the client. */
 	RADCLIENT *cl;
 	char host_ipaddr[128];
-
-	if (ipaddr->af != AF_INET) rad_assert(0 == 1);
 
 	if ((cl = client_find(ipaddr)) != NULL) {
 		if (cl->shortname[0])
