@@ -707,7 +707,7 @@ int main(int argc, char *argv[])
 	 *	Ensure that the configuration is initialized.
 	 */
 	memset(&mainconfig, 0, sizeof(mainconfig));
-	mainconfig.myip = htonl(INADDR_NONE);
+	mainconfig.myip.af = AF_UNSPEC;
 	mainconfig.port = -1;
 
 #ifdef HAVE_SIGACTION
@@ -748,8 +748,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'i':
-				mainconfig.myip = ip_addr(optarg);
-				if (mainconfig.myip == htonl(INADDR_NONE)) {
+				if (ip_hton(optarg, AF_INET, &mainconfig.myip) < 0) {
 					fprintf(stderr, "radiusd: Invalid IP Address or hostname \"%s\"\n", optarg);
 					exit(1);
 				}
@@ -967,10 +966,11 @@ int main(int argc, char *argv[])
 	for (listener = mainconfig.listen;
 	     listener != NULL;
 	     listener = listener->next) {
-		if (listener->ipaddr == htonl(INADDR_ANY)) {
+		if ((listener->ipaddr.af == AF_INET) &&
+		    (listener->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
 			strcpy((char *)buffer, "*");
 		} else {
-			ip_ntoa((char *)buffer, listener->ipaddr);
+			ip_ntoh(&listener->ipaddr, buffer, sizeof(buffer));
 		}
 		
 		switch (listener->type) {

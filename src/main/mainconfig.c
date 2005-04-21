@@ -74,7 +74,7 @@ static gid_t server_gid;
 static const char *localstatedir = NULL;
 static const char *prefix = NULL;
 static int auth_port = 0;
-static uint32_t server_ip = 0;	/* INADDR_ANY */
+static uint32_t server_ip = 0; /* INADDR_ANY */
 static char *syslog_facility = NULL;
 static const LRAD_NAME_NUMBER str2fac[] = {
 #ifdef LOG_KERN
@@ -1044,8 +1044,7 @@ static void listen_free(rad_listen_t *list)
 static int listen_bind(rad_listen_t *this)
 {
 	struct sockaddr salocal;
-	struct sockaddr_in *sa;
-
+	socklen_t	salen;
 	rad_listen_t	**last;
 
 	/*
@@ -1089,9 +1088,14 @@ static int listen_bind(rad_listen_t *this)
 	for (last = &mainconfig.listen;
 	     *last != NULL;
 	     last = &((*last)->next)) {
-		if ((this->ipaddr == (*last)->ipaddr) &&
-		    (this->type == (*last)->type) &&
-		    (this->port == (*last)->port)) {
+		if ((this->type == (*last)->type) &&
+		    (this->port == (*last)->port) &&
+		    (this->ipaddr.af == (*last)->ipaddr.af) &&
+		    (memcmp(&this->ipaddr.ipaddr,
+			    &(*last)->ipaddr.ipaddr,
+			    ((this->ipaddr.af == AF_INET) ?
+			     sizeof(this->ipaddr.ipaddr.ip4addr) :
+			     sizeof(this->ipaddr.ipaddr.ip6addr))))) {
 			this->fd = (*last)->fd;
 			(*last)->fd = -1;
 			return 0;
@@ -1101,8 +1105,10 @@ static int listen_bind(rad_listen_t *this)
 	/*
 	 *	Create the socket.
 	 */
-	this->fd = socket(AF_INET, SOCK_DGRAM, 0);
+	this->fd = socket(this->ipaddr.af, SOCK_DGRAM, 0);
 	if (this->fd < 0) {
+		radlog(L_ERR|L_CONS, "ERROR: Failed to open socket: %s",
+		       strerror(errno));
 		return -1;
 	}
 	
@@ -1116,13 +1122,42 @@ static int listen_bind(rad_listen_t *this)
 	}
 #endif
 
-	sa = (struct sockaddr_in *) &salocal;
-	memset ((char *) sa, '\0', sizeof(salocal));
-	sa->sin_family = AF_INET;
-	sa->sin_addr.s_addr = this->ipaddr;
-	sa->sin_port = htons(this->port);
-	
-	if (bind(this->fd, &salocal, sizeof(*sa)) < 0) {
+	if (this->ipaddr.af == AF_INET) {
+		struct sockaddr_in *sa;
+
+		sa = (struct sockaddr_in *) &salocal;
+		memset(sa, 0, sizeof(salocal));
+		sa->sin_family = AF_INET;
+		sa->sin_addr = this->ipaddr.ipaddr.ip4addr;
+		sa->sin_port = htons(this->port);
+		salen = sizeof(*sa);
+
+	} else if (this->ipaddr.af == AF_INET6) {
+		struct sockaddr_in6 *sa;
+
+		sa = (struct sockaddr_in6 *) &salocal;
+		memset(sa, 0, sizeof(salocal));
+		sa->sin6_family = AF_INET6;
+		sa->sin6_addr = this->ipaddr.ipaddr.ip6addr;
+		sa->sin6_port = htons(this->port);
+		salen = sizeof(*sa);
+
+	} else {
+		radlog(L_ERR|L_CONS, "ERROR: Unsupported protocol family %d",
+		       this->ipaddr.af);
+		close(this->fd);
+		this->fd = -1;
+		return -1;
+	}
+
+	if (bind(this->fd, &salocal, salen) < 0) {
+		char buffer[128];
+
+		radlog(L_ERR|L_CONS, "ERROR: Bind to %s port %d failed: %s",
+		       inet_ntop(this->ipaddr.af, &this->ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+		       this->port, strerror(errno));
+				 
 		close(this->fd);
 		this->fd = -1;
 		return -1;
@@ -1148,7 +1183,8 @@ int proxy_new_listener(void)
 
 	memset(this, 0, sizeof(*this));
 
-	this->ipaddr = server_ip;
+	this->ipaddr.af = AF_INET;
+	this->ipaddr.ipaddr.ip4addr.s_addr = server_ip;
 	this->type = RAD_LISTEN_PROXY;
 
 	/*
@@ -1193,7 +1229,7 @@ static int listen_init(const char *filename, rad_listen_t **head)
 {
 	CONF_SECTION	*cs;
 	rad_listen_t	**last;
-	char		buffer[32];
+	char		buffer[128];
 	rad_listen_t	*this;
 
 	/*
@@ -1207,7 +1243,7 @@ static int listen_init(const char *filename, rad_listen_t **head)
 	 *	Walk through the "listen" directives, but ONLY if there
 	 *	was no address specified on the command-line.
 	 */
-	if (mainconfig.myip == htonl(INADDR_NONE))
+	if (mainconfig.myip.af == AF_UNSPEC)
 		for (cs = cf_subsection_find_next(mainconfig.config,
 						  NULL, "listen");
 		     cs != NULL;
@@ -1241,9 +1277,10 @@ static int listen_init(const char *filename, rad_listen_t **head)
 		 *	And bind it to the port.
 		 */
 		if (listen_bind(this) < 0) {
-			radlog(L_CONS|L_ERR, "%s[%d]: Error binding to port for %s:%d",
+			radlog(L_CONS|L_ERR, "%s[%d]: Error binding to port for %s port %d",
 			       filename, cf_section_lineno(cs),
-			       ip_ntoa(buffer, this->ipaddr), this->port);
+			       ip_ntoh(&this->ipaddr, buffer, sizeof(buffer)),
+			       this->port);
 			free(this);
 			return -1;
 		}
@@ -1294,7 +1331,8 @@ static int listen_init(const char *filename, rad_listen_t **head)
 		/*
 		 *	Create the proxy socket.
 		 */
-		this->ipaddr = server_ip;
+		this->ipaddr.af = AF_INET;
+		this->ipaddr.ipaddr.ip4addr.s_addr = server_ip;
 		this->type = RAD_LISTEN_PROXY;
 
 		/*
@@ -1330,7 +1368,7 @@ static int old_listen_init(rad_listen_t **head)
 	/*
 	 *	No IP from the command-line, look for bind_address.
 	 */
-	if (mainconfig.myip == htonl(INADDR_NONE)) {
+	if (mainconfig.myip.af == AF_UNSPEC) {
 		cp = cf_pair_find(mainconfig.config, "bind_address");
 		if (!cp) return 0;
 	}
@@ -1343,7 +1381,8 @@ static int old_listen_init(rad_listen_t **head)
 	/*
 	 *	Create the authentication socket.
 	 */
-       	this->ipaddr = server_ip; /* from command-line, or bind_address */
+	this->ipaddr.af = AF_INET;
+       	this->ipaddr.ipaddr.ip4addr.s_addr = server_ip;
 	this->type = RAD_LISTEN_AUTH;
 	this->port = auth_port;
 
@@ -1370,7 +1409,8 @@ static int old_listen_init(rad_listen_t **head)
 	 *
 	 *	The accounting port is always the authentication port + 1
 	 */
-       	this->ipaddr = server_ip;
+	this->ipaddr.af = AF_INET;
+       	this->ipaddr.ipaddr.ip4addr.s_addr = server_ip;
 	this->type = RAD_LISTEN_ACCT;
 	this->port = auth_port + 1;
 
@@ -1410,11 +1450,13 @@ CONF_SECTION *read_radius_conf_file(void)
 	 *	Read bind_address into server_ip, but only if an IP
 	 *	isn't specified on the command-line
 	 */
-	if (mainconfig.myip == htonl(INADDR_NONE)) {
+	if (mainconfig.myip.af == AF_UNSPEC) {
 		cf_section_parse(cs, NULL, bind_config);
-	} else {
-		server_ip = mainconfig.myip; /* over-ride server_ip */
-	}
+	} else if (mainconfig.myip.af == AF_INET) {
+		server_ip = mainconfig.myip.ipaddr.ip4addr.s_addr; /* over-ride server_ip */
+	} else if (mainconfig.myip.af == AF_INET6) {
+		rad_assert(0 == 1); /* IPv6 unsupported */
+	} else rad_assert(0 == 1);
 
 	/*
 	 *	If the port is specified on the command-line,

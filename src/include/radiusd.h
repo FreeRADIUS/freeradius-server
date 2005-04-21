@@ -172,7 +172,7 @@ typedef enum RAD_LISTEN_TYPE {
  */
 typedef struct rad_listen_t {
 	struct rad_listen_t *next; /* could be rbtree stuff */
-	uint32_t	ipaddr;
+	lrad_ipaddr_t	ipaddr;
 	RAD_LISTEN_TYPE	type;
 	int		port;
 	int		fd;
@@ -190,7 +190,7 @@ typedef enum radlog_dest_t {
 typedef struct main_config_t {
 	struct main_config *next;
 	time_t		config_dead_time;
-	uint32_t	myip;	/* from the command-line only */
+	lrad_ipaddr_t	myip;	/* from the command-line only */
 	int		port;	/* from the command-line only */
 	int		log_auth;
 	int		log_auth_badpass;
