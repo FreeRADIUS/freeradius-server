@@ -183,10 +183,6 @@ struct sockaddr_storage
 };
 #endif /* HAVE_STRUCT_SOCKADDR_STORAGE */
 
-#ifndef HAVE_SOCKLEN_T
-typedef unsigned int socklen_t;
-#endif /* HAVE_SOCKLEN_T */
-
 #ifndef HAVE_STRUCT_ADDRINFO
 
 /* for old netdb.h */
