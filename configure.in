@@ -657,6 +657,18 @@ AC_CHECK_TYPE(struct sockaddr_storage, AC_DEFINE(HAVE_STRUCT_SOCKADDR_STORAGE, 1
 #endif
 ])
 
+AC_CHECK_TYPE(struct addrinfo, AC_DEFINE(HAVE_STRUCT_SOCKADDR_ADDRINFO, 1, [Generic DNS lookups]), [], [
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif
+])
+
 dnl #############################################################
 dnl #
 dnl #  5. Checks for structures and functions
