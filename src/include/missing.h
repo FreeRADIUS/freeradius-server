@@ -183,4 +183,66 @@ struct sockaddr_storage
 };
 #endif /* HAVE_STRUCT_SOCKADDR_STORAGE */
 
+#ifndef HAVE_SOCKLEN_T
+typedef unsigned int socklen_t;
+#endif /* HAVE_SOCKLEN_T */
+
+#ifndef HAVE_STRUCT_ADDRINFO
+
+/* for old netdb.h */
+#ifndef EAI_SERVICE
+#define EAI_MEMORY      2
+#define EAI_FAMILY      5    /* ai_family not supported */
+#define EAI_NONAME      8    /* hostname nor servname provided, or not known */
+#define EAI_SERVICE     9   /* servname not supported for ai_socktype */
+#endif
+
+/* dummy value for old netdb.h */
+#ifndef AI_PASSIVE
+#define AI_PASSIVE      1
+#define AI_CANONNAME    2
+#define AI_NUMERICHOST  4
+#define NI_NUMERICHOST  2
+#define NI_NAMEREQD     4
+#define NI_NUMERICSERV  8
+
+struct addrinfo
+{
+  int ai_flags;			/* Input flags.  */
+  int ai_family;		/* Protocol family for socket.  */
+  int ai_socktype;		/* Socket type.  */
+  int ai_protocol;		/* Protocol for socket.  */
+  socklen_t ai_addrlen;		/* Length of socket address.  */
+  struct sockaddr *ai_addr;	/* Socket address for socket.  */
+  char *ai_canonname;		/* Canonical name for service location.  */
+  struct addrinfo *ai_next;	/* Pointer to next in list.  */
+};
+
+#endif /* AI_PASSIVE */
+
+#endif /* HAVE_STRUCT_ADDRINFO */
+
+/* Translate name of a service location and/or a service name to set of
+   socket addresses. */
+#ifndef HAVE_GETADDRINFO
+extern int getaddrinfo (const char *__name,
+			const char *__service,
+			const struct addrinfo *__req,
+			struct addrinfo **__pai);
+
+/* Free `addrinfo' structure AI including associated storage.  */
+extern void freeaddrinfo (struct addrinfo *__ai);
+
+/* Convert error return from getaddrinfo() to a string.  */
+extern char *gai_strerror (int __ecode);
+#endif
+
+/* Translate a socket address to a location and service name. */
+#ifndef HAVE_GETNAMEINFO
+extern int getnameinfo (const struct sockaddr *__sa,
+			socklen_t __salen, char *__host,
+			socklen_t __hostlen, char *__serv,
+			socklen_t __servlen, unsigned int __flags);
+#endif
+
 #endif /* _FR_MISSING_H */
