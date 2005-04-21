@@ -237,7 +237,7 @@ static const char *vp_tokens[] = {
   "=~",
   "!~",
   "=*",
-  "~*",
+  "!*",
   "==",
   "#",
   "<BARE-WORD>",
