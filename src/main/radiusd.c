@@ -217,7 +217,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 		default:
 			RAD_SNMP_INC(rad_snmp.auth.total_unknown_types);
 
-			radlog(L_ERR, "Unknown packet code %d from client %s:%d "
+			radlog(L_ERR, "Unknown packet code %d from client %s port %d "
 			       "- ID %d : IGNORED", packet->code,
 			       client_name(&packet->src_ipaddr),
 			       packet->src_port, packet->id);
@@ -254,7 +254,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 			 */
 			if (request_count > mainconfig.max_requests) {
 				radlog(L_ERR, "Dropping request (%d is too many): "
-				       "from client %s:%d - ID: %d", request_count,
+				       "from client %s port %d - ID: %d", request_count,
 				       client_name(&packet->src_ipaddr),
 				       packet->src_port, packet->id);
 				radlog(L_INFO, "WARNING: Please check the radiusd.conf file.\n"
@@ -318,7 +318,7 @@ static RAD_REQUEST_FUNP packet_ok(RADIUS_PACKET *packet,
 					RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
 
 					DEBUG2("Ignoring duplicate packet from client "
-					       "%s:%d - ID: %d, due to outstanding proxied request %d.",
+					       "%s port %d - ID: %d, due to outstanding proxied request %d.",
 					       client_name(&packet->src_ipaddr),
 					       packet->src_port, packet->id,
 					       curreq->number);
@@ -968,24 +968,28 @@ int main(int argc, char *argv[])
 	     listener = listener->next) {
 		if ((listener->ipaddr.af == AF_INET) &&
 		    (listener->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
-			strcpy((char *)buffer, "*");
+			strcpy(buffer, "*");
+		} else if ((listener->ipaddr.af == AF_INET6) &&
+			   (IN6_IS_ADDR_UNSPECIFIED(&listener->ipaddr.ipaddr))) {
+			strcpy(buffer, "* (IPv6)");
+
 		} else {
 			ip_ntoh(&listener->ipaddr, buffer, sizeof(buffer));
 		}
 		
 		switch (listener->type) {
 		case RAD_LISTEN_AUTH:
-			DEBUG("Listening on authentication %s:%d",
+			DEBUG("Listening on authentication address %s port %d",
 			      buffer, listener->port);
 			break;
 
 		case RAD_LISTEN_ACCT:
-			DEBUG("Listening on accounting %s:%d",
+			DEBUG("Listening on accounting addres %s port %d",
 			      buffer, listener->port);
 			break;
 
 		case RAD_LISTEN_PROXY:
-			DEBUG("Listening on proxy %s:%d",
+			DEBUG("Listening on proxy address %s port %d",
 			      buffer, listener->port);
 			break;
 
