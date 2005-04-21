@@ -856,11 +856,44 @@ int main(int argc, char **argv)
 	}
 
 	/*
-	 *	Strip port from hostname if needed.
+	 *	Resolve hostname.
 	 */
-	if ((p = strchr(argv[1], ':')) != NULL) {
-		*p++ = 0;
-		server_port = atoi(p);
+	server_ipaddr.af = force_af;
+	if (strcmp(argv[1], "-") != 0) {
+		const char *hostname = argv[1];
+		const char *portname = argv[1];
+		char buffer[256];
+
+		if (*argv[1] == '[') { /* IPv6 URL encoded */
+			p = strchr(argv[1], ']');
+			if ((p - argv[1]) >= sizeof(buffer)) {
+				usage();
+			}
+			
+			memcpy(buffer, argv[1] + 1, p - argv[1] - 1);
+			buffer[p - argv[1] - 1] = '\0';
+
+			hostname = buffer;
+			portname = p + 1;
+
+		}
+		p = strchr(portname, ':');
+		if (p) {
+			*p = '\0';
+			portname = p + 1;
+		} else {
+			portname = NULL;
+		}
+
+		if (ip_hton(hostname, force_af, &server_ipaddr) < 0) {
+			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", argv[1], strerror(errno));
+			exit(1);
+		}
+
+		/*
+		 *	Strip port from hostname if needed.
+		 */
+		if (portname) server_port = atoi(portname);
 	}
 
 	memset(radius_id, 0, sizeof(radius_id));
@@ -904,16 +937,6 @@ int main(int argc, char **argv)
 		usage();
 	}
 
-	/*
-	 *	Resolve hostname.
-	 */
-	server_ipaddr.af = force_af;
-	if (strcmp(argv[1], "-") != 0) {
-		if (ip_hton(argv[1], force_af, &server_ipaddr) < 0) {
-			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", argv[1], strerror(errno));
-			exit(1);
-		}
-	}
 
 	/*
 	 *	Grab the socket.
