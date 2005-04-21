@@ -394,7 +394,8 @@ static int add_nas_attr(REQUEST *request)
 {
 	VALUE_PAIR *nas;
 
-	if (request->packet->src_ipaddr.af == AF_INET) {
+	switch (request->packet->src_ipaddr.af) {
+	case AF_INET:
 		nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS);
 		if (!nas) {
 			nas = paircreate(PW_NAS_IP_ADDRESS, PW_TYPE_IPADDR);
@@ -408,7 +409,29 @@ static int add_nas_attr(REQUEST *request)
 			nas->lvalue = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 			pairadd(&request->packet->vps, nas);
 		}
-	} else rad_assert(0 == 1); /* AF_INET6 */
+		break;
+
+	case AF_INET6:
+		nas = pairfind(request->packet->vps, PW_NAS_IPV6_ADDRESS);
+		if (!nas) {
+			nas = paircreate(PW_NAS_IPV6_ADDRESS, PW_TYPE_IPV6ADDR);
+			if (!nas) {
+				radlog(L_ERR, "No memory");
+				return -1;
+			}
+			
+			memcpy(nas->strvalue,
+			       &request->packet->src_ipaddr.ipaddr,
+			       sizeof(request->packet->src_ipaddr.ipaddr));
+			pairadd(&request->packet->vps, nas);
+		}
+		break;
+
+	default:
+		radlog(L_ERR, "Unknown address family for packet");
+		return -1;
+	}
+
 
 	/*
 	 *	Add in a Client-IP-Address, to tell the user
@@ -423,8 +446,8 @@ static int add_nas_attr(REQUEST *request)
 	 */
 	nas = paircreate(PW_CLIENT_IP_ADDRESS, PW_TYPE_IPADDR);
 	if (!nas) {
-	  radlog(L_ERR, "No memory");
-	  return -1;
+		radlog(L_ERR, "No memory");
+		return -1;
 	}
 	nas->lvalue = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 	ip_ntoh(&request->packet->src_ipaddr,
