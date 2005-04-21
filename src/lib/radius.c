@@ -279,15 +279,11 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 		sizeof_src = sizeof(saremote);
 		dst = (struct sockaddr *) &salocal;
 		sizeof_dst = sizeof(salocal);
-	}
-#ifdef AF_INET6
-	/*
-	 *	IPv6 MAY be supported.
-	 */
-	else if (salocal.sin_family == AF_INET6) {
+
+	} else if (salocal.sin_family == AF_INET6) {
 		memcpy(&salocal6, &salocal, sizeof(salocal6));
 		
-		dst_ipaddr->af = AF_INET;
+		dst_ipaddr->af = AF_INET6;
 		dst_ipaddr->ipaddr.ip6addr = salocal6.sin6_addr;
 		*dst_port = ntohs(salocal6.sin6_port);
 
@@ -299,7 +295,7 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 		return -1;	/* not supported for IPv6 */
 #endif
 	}
-#endif
+
 	/*
 	 *	Unknown address family, Die Die Die!
 	 */
@@ -334,8 +330,8 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 	}
 #ifdef AF_INET6
 	else if (dst_ipaddr->af == AF_INET6) {
-#ifdef WITH_UDPFROMTO
 		src_ipaddr->af = AF_INET6;
+#ifdef WITH_UDPFROMTO
 		return -1;	/* should have been caught above */
 #endif		
 		src_ipaddr->ipaddr.ip6addr = saremote6.sin6_addr;
