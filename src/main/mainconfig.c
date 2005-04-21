@@ -994,25 +994,6 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 }
 
 
-/*
- *	Code for handling listening on multiple ports.
- */
-static rad_listen_t listen_inst;
-static const char *listen_type = NULL;
-
-static const CONF_PARSER listen_config[] = {
-	{ "ipaddr", PW_TYPE_IPADDR,
-	  offsetof(rad_listen_t,ipaddr), NULL, "0.0.0.0" },
-
-	{ "port", PW_TYPE_INTEGER,
-	  offsetof(rad_listen_t,port), NULL, "0" },
-
-	{ "type", PW_TYPE_STRING_PTR,
-	  0, &listen_type, "" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
-};
-
 static const LRAD_NAME_NUMBER listen_compare[] = {
 	{ "auth",	RAD_LISTEN_AUTH },
 	{ "acct",	RAD_LISTEN_ACCT },
@@ -1222,6 +1203,23 @@ int proxy_new_listener(void)
 
 
 /*
+ *	Code for handling listening on multiple ports.
+ */
+static const char *listen_type = NULL;
+static int listen_port;
+
+static const CONF_PARSER listen_config[] = {
+	{ "port", PW_TYPE_INTEGER,
+	  0, &listen_port, "0" },
+
+	{ "type", PW_TYPE_STRING_PTR,
+	  0, &listen_type, "" },
+
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+
+
+/*
  *	Generate a list of listeners.  Takes an input list of
  *	listeners, too, so we don't close sockets with waiting packets.
  */
@@ -1243,36 +1241,84 @@ static int listen_init(const char *filename, rad_listen_t **head)
 	 *	Walk through the "listen" directives, but ONLY if there
 	 *	was no address specified on the command-line.
 	 */
-	if (mainconfig.myip.af == AF_UNSPEC)
-		for (cs = cf_subsection_find_next(mainconfig.config,
-						  NULL, "listen");
-		     cs != NULL;
-		     cs = cf_subsection_find_next(mainconfig.config,
-						  cs, "listen")) {
-		memset(&listen_inst, 0, sizeof(listen_inst));
+	if (mainconfig.myip.af != AF_UNSPEC) goto do_proxy;
+
+	for (cs = cf_subsection_find_next(mainconfig.config,
+					  NULL, "listen");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(mainconfig.config,
+					  cs, "listen")) {
+		int type;
+		int lineno = cf_section_lineno(cs);
+		const char *value;
+		lrad_ipaddr_t ipaddr;
+		CONF_PAIR *cp;
+
+		listen_port = 0;
+		listen_type = NULL;
 		
 		/*
 		 *	Fix errors for later.
 		 */
-		if (cf_section_parse(cs, &listen_inst, listen_config) < 0) {
+		if (cf_section_parse(cs, NULL, listen_config) < 0) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Error parsing listen section.",
-			       filename, cf_section_lineno(cs));
+			       filename, lineno);
 			return -1;
 		}
 
+		type = RAD_LISTEN_NONE;
 		if (listen_type) {
-			listen_inst.type = lrad_str2int(listen_compare,
-							listen_type, 0);
+			type = lrad_str2int(listen_compare,
+					    listen_type, 0);
+			free(listen_type);
+			listen_type = NULL;
 		}
-		if (listen_inst.type == RAD_LISTEN_NONE) {
+
+		if (type == RAD_LISTEN_NONE) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Invalid type in listen section.",
-			       filename, cf_section_lineno(cs));
+			       filename, lineno);
+			return -1;
+		}
+			
+		/*
+		 *	Try IPv4 first
+		 */
+		if ((cp = cf_pair_find(cs, "ipaddr")) != NULL) {
+			value = cf_pair_value(cp);
+			ipaddr.af = AF_INET;
+			if (strcmp(value, "*") == 0) {
+				ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
+			} else {
+				if (ip_hton(value, AF_INET, &ipaddr) < 0) {
+					radlog(L_ERR, "%s[%d]: Cannot find IP address for host %s",
+					       filename, lineno, value);
+					return -1;
+				}
+			}
+		} else if ((cp = cf_pair_find(cs, "ipv6addr")) != NULL) {
+			value = cf_pair_value(cp);
+			ipaddr.af = AF_INET6;
+			if (strcmp(value, "*") == 0) {
+				memset(&ipaddr.ipaddr.ip6addr, 0,
+				       sizeof(ipaddr.ipaddr.ip6addr));
+			} else {
+				if (ip_hton(value, AF_INET6, &ipaddr) < 0) {
+					radlog(L_ERR, "%s[%d]: Cannot find IPv6 address for host %s",
+					       filename, lineno, value);
+					return -1;
+				}
+			}
+		} else {
+			radlog(L_ERR, "%s[%d]: No address specified in listen section",
+			       filename, lineno);
 			return -1;
 		}
 
 		this = rad_malloc(sizeof(*this));
-		memcpy(this, &listen_inst, sizeof(*this));
-		
+		this->ipaddr = ipaddr;
+		this->type = type;
+		this->port = listen_port;
+
 		/*
 		 *	And bind it to the port.
 		 */
@@ -1293,6 +1339,7 @@ static int listen_init(const char *filename, rad_listen_t **head)
 	 *	If we're proxying requests, open the proxy FD.
 	 *	Otherwise, don't do anything.
 	 */
+ do_proxy:
 	if (mainconfig.proxy_requests == TRUE) {
 		int		port = -1;
 		rad_listen_t	*auth;
