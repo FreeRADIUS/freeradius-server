@@ -123,7 +123,7 @@ typedef struct THREAD_POOL {
 	/*
 	 *	To ensure only one thread at a time touches the queue.
 	 */
-	pthread_mutex_t	mutex;
+	pthread_mutex_t	queue_mutex;
 
 	int		active_threads;
 	int		queue_head; /* first filled entry */
@@ -259,7 +259,7 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	int num_entries;
 
-	pthread_mutex_lock(&thread_pool.mutex);
+	pthread_mutex_lock(&thread_pool.queue_mutex);
 
 	thread_pool.request_count++;
 
@@ -288,7 +288,7 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 *	there's a serious problem.
 		 */
 		if (thread_pool.queue_size >= 65536) {
-			pthread_mutex_unlock(&thread_pool.mutex);
+			pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 			/*
 			 *	Mark the request as done.
@@ -326,7 +326,7 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	thread_pool.queue_tail++;
 	thread_pool.queue_tail &= (thread_pool.queue_size - 1);
 
-	pthread_mutex_unlock(&thread_pool.mutex);
+	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 	/*
 	 *	There's one more request in the queue.
@@ -350,14 +350,14 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 {
 	reap_children();
 
-	pthread_mutex_lock(&thread_pool.mutex);
+	pthread_mutex_lock(&thread_pool.queue_mutex);
 
 	/*
 	 *	Head & tail are the same.  There's nothing in
 	 *	the queue.
 	 */
 	if (thread_pool.queue_head == thread_pool.queue_tail) {
-		pthread_mutex_unlock(&thread_pool.mutex);
+		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		*request = NULL;
 		*fun = NULL;
 		return;
@@ -387,7 +387,7 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 */
 	thread_pool.active_threads++;
 
-	pthread_mutex_unlock(&thread_pool.mutex);
+	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 	/*
 	 *	If the request is currently being processed, then that
@@ -549,10 +549,10 @@ static void *request_handler_thread(void *arg)
 		/*
 		 *	Update the active threads.
 		 */
-		pthread_mutex_lock(&thread_pool.mutex);
+		pthread_mutex_lock(&thread_pool.queue_mutex);
 		rad_assert(thread_pool.active_threads > 0);
 		thread_pool.active_threads--;
-		pthread_mutex_unlock(&thread_pool.mutex);
+		pthread_mutex_unlock(&thread_pool.queue_mutex);
 	} while (self->status != THREAD_CANCELLED);
 
 	DEBUG2("Thread %d exiting...", self->thread_num);
@@ -798,7 +798,7 @@ int thread_pool_init(int spawn_flag)
 		exit(1);
 	}
 
-	rcode = pthread_mutex_init(&thread_pool.mutex,NULL);
+	rcode = pthread_mutex_init(&thread_pool.queue_mutex,NULL);
 	if (rcode != 0) {
 		radlog(L_ERR, "FATAL: Failed to initialize mutex: %s",
 		       strerror(errno));
