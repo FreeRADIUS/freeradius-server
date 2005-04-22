@@ -45,23 +45,26 @@ typedef struct CONF_PARSER {
 
 void		cf_pair_free(CONF_PAIR **cp);
 void		cf_section_free(CONF_SECTION **cp);
-int		cf_section_parse(CONF_SECTION *cs, void *base, const CONF_PARSER *variables);
+int		cf_pair_parse(const CONF_SECTION *cs, const CONF_PAIR *cp,
+			      const char *name, int type, void *data,
+			      const char *dflt);
+int		cf_section_parse(const CONF_SECTION *, void *base, const CONF_PARSER *variables);
 
 CONF_SECTION *conf_read(const char *fromfile, int fromline,
 			const char *conffile, CONF_SECTION *parent);
 
 
-CONF_PAIR	*cf_pair_find(CONF_SECTION *section, const char *name);
-CONF_PAIR	*cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char *name);
+CONF_PAIR	*cf_pair_find(const CONF_SECTION *, const char *name);
+CONF_PAIR	*cf_pair_find_next(const CONF_SECTION *, const CONF_PAIR *, const char *name);
 CONF_SECTION	*cf_section_find(const char *name);
-CONF_SECTION	*cf_section_sub_find(CONF_SECTION *section, const char *name);
-CONF_SECTION	*cf_section_sub_find_name2(CONF_SECTION *section, const char *name1, const char *name2);
-char 		*cf_section_value_find(CONF_SECTION *section, const char *attr);
+CONF_SECTION	*cf_section_sub_find(const CONF_SECTION *, const char *name);
+CONF_SECTION	*cf_section_sub_find_name2(const CONF_SECTION *, const char *name1, const char *name2);
+char 		*cf_section_value_find(const CONF_SECTION *, const char *attr);
 
 char *cf_pair_attr(CONF_PAIR *pair);
 char *cf_pair_value(CONF_PAIR *pair);
-char *cf_section_name1(CONF_SECTION *section);
-char *cf_section_name2(CONF_SECTION *section);
+const char *cf_section_name1(const CONF_SECTION *);
+const char *cf_section_name2(const CONF_SECTION *);
 int dump_config(void);
 CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 				      CONF_SECTION *subsection,

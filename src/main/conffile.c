@@ -74,8 +74,8 @@ struct conf_pair {
 };
 struct conf_part {
 	CONF_ITEM item;
-	char *name1;
-	char *name2;
+	const char *name1;
+	const char *name2;
 	struct conf_item *children;
 	rbtree_t	*pair_tree; /* and a partridge.. */
 	rbtree_t	*section_tree; /* no jokes here */
@@ -302,7 +302,7 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
 			rbtree_insert(cs->pair_tree, ci_new);
 			
 		} else if (ci_new->type == CONF_ITEM_SECTION) {
-			CONF_SECTION *cs_new = cf_itemtosection(ci_new);
+			const CONF_SECTION *cs_new = cf_itemtosection(ci_new);
 
 			if (!cs->section_tree) {
 				cs->section_tree = rbtree_create(section_cmp, NULL, 0);
@@ -345,13 +345,13 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
  *	Expand the variables in an input string.
  */
 static const char *cf_expand_variables(const char *cf, int *lineno,
-				       CONF_SECTION *outercs,
+				       const CONF_SECTION *outercs,
 				       char *output, const char *input)
 {
 	char *p;
 	const char *end, *ptr;
 	char name[8192];
-	CONF_SECTION *parentcs;
+	const CONF_SECTION *parentcs;
 
 	/*
 	 *	Find the master parent conf section.
@@ -373,7 +373,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 		if ((*ptr == '$') && (ptr[1] == '{')) {
 			int up;
 			CONF_PAIR *cp;
-			CONF_SECTION *cs;
+			const CONF_SECTION *cs;
 
 			/*
 			 *	FIXME: Add support for ${foo:-bar},
@@ -546,45 +546,149 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 	return output;
 }
 
+
+/*
+ *	Parses a CONF_PAIR into the specified format, with a default
+ *	value.
+ *
+ *	Returns -1 on error, 0 for correctly parsed, and 1 if the
+ *	default value was used.  Note that the default value will be
+ *	used ONLY if the CONF_PAIR is NULL.
+ */
+int cf_pair_parse(const CONF_SECTION *cs, const CONF_PAIR *cp,
+		   const char *name, int type, void *data, const char *dflt)
+{
+	int rcode = 0;
+	char **q;
+	const char *value;
+	lrad_ipaddr_t ipaddr;
+	char buffer[8192];
+
+	if (cp) {
+		value = cp->value;
+	} else {
+		rcode = 1;
+		value = dflt;
+	}
+
+	switch (type) {
+	case PW_TYPE_BOOLEAN:
+		/*
+		 *	Allow yes/no and on/off
+		 */
+		if ((strcasecmp(value, "yes") == 0) ||
+		    (strcasecmp(value, "on") == 0)) {
+			*(int *)data = 1;
+		} else if ((strcasecmp(value, "no") == 0) ||
+			   (strcasecmp(value, "off") == 0)) {
+			*(int *)data = 0;
+		} else {
+			*(int *)data = 0;
+			radlog(L_ERR, "Bad value \"%s\" for boolean variable %s", value, name);
+			return -1;
+		}
+		DEBUG2(" %s: %s = %s", cs->name1, name, value);
+		break;
+		
+	case PW_TYPE_INTEGER:
+		*(int *)data = strtol(value, 0, 0);
+		DEBUG2(" %s: %s = %d",
+		       cs->name1, name,
+		       *(int *)data);
+		break;
+		
+	case PW_TYPE_STRING_PTR:
+		q = (char **) data;
+		if (*q != NULL) {
+			free(*q);
+		}
+		
+		/*
+		 *	Expand variables which haven't already been
+		 *	expanded automagically when the configuration
+		 *	file was read.
+		 */
+		if (value && (value == dflt)) {
+			int lineno = cs->item.lineno;
+			value = cf_expand_variables("?",
+						    &lineno,
+						    cs, buffer, value);
+			if (!value) return -1;
+		}
+		
+		DEBUG2(" %s: %s = \"%s\"",
+		       cs->name1, name,
+		       value ? value : "(null)");
+		*q = value ? strdup(value) : NULL;
+		break;
+		
+	case PW_TYPE_IPADDR:
+		/*
+		 *	Allow '*' as any address
+		 */
+		if (strcmp(value, "*") == 0) {
+			*(uint32_t *) data = htonl(INADDR_ANY);
+			break;
+		}
+		if (ip_hton(value, AF_INET, &ipaddr) < 0) {
+			radlog(L_ERR, "Can't find IP address for host %s", value);
+			return -1;
+		}
+		DEBUG2(" %s: %s = %s IP address [%s]",
+		       cs->name1, name, value,
+		       ip_ntoh(&ipaddr, buffer, sizeof(buffer)));
+		*(uint32_t *) data = ipaddr.ipaddr.ip4addr.s_addr;
+		break;
+		
+	case PW_TYPE_IPV6ADDR:
+		/*
+		 *	Allow '*' as any address
+		 */
+		if (strcmp(value, "*") == 0) {
+			memcpy(data, 0, sizeof(ipaddr.ipaddr.ip6addr));
+			break;
+		}
+		if (ip_hton(value, AF_INET6, &ipaddr) < 0) {
+			radlog(L_ERR, "Can't find IPv6 address for host %s", value);
+			return -1;
+		}
+		DEBUG2(" %s: %s = %s IPv6 address [%s]",
+		       cs->name1, name, value,
+		       ip_ntoh(&ipaddr, buffer, sizeof(buffer)));
+		memcpy(data, &ipaddr.ipaddr.ip6addr,
+		       sizeof(ipaddr.ipaddr.ip6addr));
+		break;
+		
+	default:
+		radlog(L_ERR, "type %d not supported yet", type);
+		return -1;
+		break;
+	} /* switch over variable type */
+	
+	return rcode;
+}
+
 /*
  *	Parse a configuration section into user-supplied variables.
  */
-int cf_section_parse(CONF_SECTION *cs, void *base,
+int cf_section_parse(const CONF_SECTION *cs, void *base,
 		     const CONF_PARSER *variables)
 {
 	int i;
-	int rcode;
-	char **q;
-	CONF_PAIR *cp;
-	CONF_SECTION *subsection;
-	char buffer[8192];
-	const char *value;
+	const CONF_PAIR *cp;
 	void *data;
-	lrad_ipaddr_t ipaddr;
 
 	/*
-	 *	Handle the user-supplied variables.
+	 *	Handle the known configuration parameters.
 	 */
 	for (i = 0; variables[i].name != NULL; i++) {
-		value = variables[i].dflt;
-		if (variables[i].data) {
-			data = variables[i].data; /* prefer this. */
-		} else if (base) {
-			data = ((char *)base) + variables[i].offset;
-		} else {
-			data = variables[i].data;
-		}
-
-		cp = cf_pair_find(cs, variables[i].name);
-		if (cp) {
-			value = cp->value;
-		}
-
-		switch (variables[i].type)
-		{
-		case PW_TYPE_SUBSECTION:
-			subsection = cf_section_sub_find(cs,variables[i].name);
-
+		/*
+		 *	Handle subsections specially
+		 */
+		if (variables[i].type == PW_TYPE_SUBSECTION) {
+			const CONF_SECTION *subcs;
+			subcs = cf_section_sub_find(cs, variables[i].name);
+			
 			/*
 			 *	If the configuration section is NOT there,
 			 *	then ignore it.
@@ -592,121 +696,34 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			 *	FIXME! This is probably wrong... we should
 			 *	probably set the items to their default values.
 			 */
-			if (subsection == NULL) {
-				break;
-			}
+			if (!subcs) continue;
 
-			rcode = cf_section_parse(subsection, base,
-						 (CONF_PARSER *) data);
-			if (rcode < 0) {
+			if (!variables[i].data) {
+				DEBUG2("Internal sanity check 1 failed in cf_section_parse!");
 				return -1;
 			}
-			break;
-
-		case PW_TYPE_BOOLEAN:
-			/*
-			 *	Allow yes/no and on/off
-			 */
-			if ((strcasecmp(value, "yes") == 0) ||
-					(strcasecmp(value, "on") == 0)) {
-				*(int *)data = 1;
-			} else if ((strcasecmp(value, "no") == 0) ||
-						(strcasecmp(value, "off") == 0)) {
-				*(int *)data = 0;
-			} else {
-				*(int *)data = 0;
-				radlog(L_ERR, "Bad value \"%s\" for boolean variable %s", value, variables[i].name);
+			
+			if (cf_section_parse(subcs, base,
+					     (CONF_PARSER *) variables[i].data) < 0) {
 				return -1;
 			}
-			DEBUG2(" %s: %s = %s",
-					cs->name1,
-					variables[i].name,
-					value);
-			break;
-
-		case PW_TYPE_INTEGER:
-			*(int *)data = strtol(value, 0, 0);
-			DEBUG2(" %s: %s = %d",
-					cs->name1,
-					variables[i].name,
-					*(int *)data);
-			break;
-
-		case PW_TYPE_STRING_PTR:
-			q = (char **) data;
-			if (*q != NULL) {
-				free(*q);
-			}
-
-			/*
-			 *	Expand variables while parsing,
-			 *	but ONLY expand ones which haven't already
-			 *	been expanded.
-			 */
-			if (value && (value == variables[i].dflt)) {
-				value = cf_expand_variables("?",
-							    &cs->item.lineno,
-							    cs, buffer, value);
-				if (!value) {
-					return -1;
-				}
-			}
-
-			DEBUG2(" %s: %s = \"%s\"",
-					cs->name1,
-					variables[i].name,
-					value ? value : "(null)");
-			*q = value ? strdup(value) : NULL;
-			break;
-
-		case PW_TYPE_IPADDR:
-			/*
-			 *	Allow '*' as any address
-			 */
-			if (strcmp(value, "*") == 0) {
-				*(uint32_t *) data = htonl(INADDR_ANY);
-				break;
-			}
-			if (ip_hton(value, AF_INET, &ipaddr) < 0) {
-				radlog(L_ERR, "Can't find IP address for host %s", value);
-				return -1;
-			}
-			DEBUG2(" %s: %s = %s IP address [%s]",
-					cs->name1,
-					variables[i].name,
-					value,
-			       ip_ntoh(&ipaddr, buffer, sizeof(buffer)));
-			*(uint32_t *) data = ipaddr.ipaddr.ip4addr.s_addr;
-			break;
-
-#ifdef AF_INET6
-		case PW_TYPE_IPV6ADDR:
-			/*
-			 *	Allow '*' as any address
-			 */
-			if (strcmp(value, "*") == 0) {
-				memcpy(data, 0, sizeof(ipaddr.ipaddr.ip6addr));
-				break;
-			}
-			if (ip_hton(value, AF_INET6, &ipaddr) < 0) {
-				radlog(L_ERR, "Can't find IPv6 address for host %s", value);
-				return -1;
-			}
-			DEBUG2(" %s: %s = %s IPv6 address [%s]",
-					cs->name1,
-					variables[i].name,
-					value,
-			       ip_ntoh(&ipaddr, buffer, sizeof(buffer)));
-			memcpy(data, &ipaddr.ipaddr.ip6addr,
-			       sizeof(ipaddr.ipaddr.ip6addr));
-			break;
-#endif
-
-		default:
-			radlog(L_ERR, "type %d not supported yet", variables[i].type);
+			continue;
+		} /* else it's a CONF_PAIR */
+		
+		if (variables[i].data) {
+			data = variables[i].data; /* prefer this. */
+		} else if (base) {
+			data = ((char *)base) + variables[i].offset;
+		} else {
+			DEBUG2("Internal sanity check 2 failed in cf_section_parse!");
 			return -1;
-			break;
-		} /* switch over variable type */
+		}
+
+		cp = cf_pair_find(cs, variables[i].name);
+		if (cf_pair_parse(cs, cp, variables[i].name, variables[i].type,
+				  data, variables[i].dflt) < 0) {
+			return -1;
+		}
 	} /* for all variables in the configuration section */
 
 	return 0;
@@ -1059,7 +1076,7 @@ CONF_SECTION *conf_read(const char *fromfile, int fromline,
 /*
  * Return a CONF_PAIR within a CONF_SECTION.
  */
-CONF_PAIR *cf_pair_find(CONF_SECTION *cs, const char *name)
+CONF_PAIR *cf_pair_find(const CONF_SECTION *cs, const char *name)
 {
 	CONF_ITEM	*ci;
 
@@ -1108,28 +1125,28 @@ char *cf_pair_value(CONF_PAIR *pair)
  * Return the first label of a CONF_SECTION
  */
 
-char *cf_section_name1(CONF_SECTION *section)
+const char *cf_section_name1(const CONF_SECTION *cs)
 {
-	return (section ? section->name1 : NULL);
+	return (cs ? cs->name1 : NULL);
 }
 
 /*
  * Return the second label of a CONF_SECTION
  */
 
-char *cf_section_name2(CONF_SECTION *section)
+const char *cf_section_name2(const CONF_SECTION *cs)
 {
-	return (section ? section->name2 : NULL);
+	return (cs ? cs->name2 : NULL);
 }
 
 /*
  * Find a value in a CONF_SECTION
  */
-char *cf_section_value_find(CONF_SECTION *section, const char *attr)
+char *cf_section_value_find(const CONF_SECTION *cs, const char *attr)
 {
 	CONF_PAIR	*cp;
 
-	cp = cf_pair_find(section, attr);
+	cp = cf_pair_find(cs, attr);
 
 	return (cp ? cp->value : NULL);
 }
@@ -1140,7 +1157,8 @@ char *cf_section_value_find(CONF_SECTION *section, const char *attr)
  * attr is NULL, any attr matches.
  */
 
-CONF_PAIR *cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char *attr)
+CONF_PAIR *cf_pair_find_next(const CONF_SECTION *cs,
+			     const CONF_PAIR *pair, const char *attr)
 {
 	CONF_ITEM	*ci;
 
@@ -1150,7 +1168,7 @@ CONF_PAIR *cf_pair_find_next(CONF_SECTION *section, CONF_PAIR *pair, const char 
 	 */
 
 	if (pair == NULL){
-		return cf_pair_find(section, attr);
+		return cf_pair_find(cs, attr);
 	}
 
 	ci = cf_pairtoitem(pair)->next;
@@ -1181,7 +1199,7 @@ CONF_SECTION *cf_section_find(const char *name)
  * Find a sub-section in a section
  */
 
-CONF_SECTION *cf_section_sub_find(CONF_SECTION *cs, const char *name)
+CONF_SECTION *cf_section_sub_find(const CONF_SECTION *cs, const char *name)
 {
 	CONF_ITEM *ci;
 
@@ -1211,7 +1229,7 @@ CONF_SECTION *cf_section_sub_find(CONF_SECTION *cs, const char *name)
 /*
  * Find a CONF_SECTION with both names.
  */
-CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION *cs,
+CONF_SECTION *cf_section_sub_find_name2(const CONF_SECTION *cs,
 					const char *name1, const char *name2)
 {
 	CONF_ITEM    *ci;
