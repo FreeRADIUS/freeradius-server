@@ -1248,17 +1248,39 @@ static int listen_init(const char *filename, rad_listen_t **head)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(mainconfig.config,
 					  cs, "listen")) {
-		int type;
+		int rcode, type;
 		int lineno = cf_section_lineno(cs);
-		const char *value;
 		lrad_ipaddr_t ipaddr;
-		CONF_PAIR *cp;
 
 		listen_port = 0;
 		listen_type = NULL;
 		
 		/*
-		 *	Fix errors for later.
+		 *	Try IPv4 first
+		 */
+		ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
+		rcode = cf_item_parse(cs, "ipaddr", PW_TYPE_IPADDR,
+				      &ipaddr.ipaddr.ip4addr, NULL);
+		if (rcode < 0) return -1;
+
+		if (rcode == 0) { /* successfully parsed IPv4 */
+			ipaddr.af = AF_INET;
+
+		} else {	/* maybe IPv6? */
+			rcode = cf_item_parse(cs, "ipv6addr", PW_TYPE_IPV6ADDR,
+					      &ipaddr.ipaddr.ip6addr, NULL);
+			if (rcode < 0) return -1;
+
+			if (rcode == 1) {
+				radlog(L_ERR, "%s[%d]: No address specified in listen section",
+				       filename, lineno);
+				return -1;
+			}
+			ipaddr.af = AF_INET6;
+		}
+
+		/*
+		 *	Parse the configuration section
 		 */
 		if (cf_section_parse(cs, NULL, listen_config) < 0) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Error parsing listen section.",
@@ -1276,40 +1298,6 @@ static int listen_init(const char *filename, rad_listen_t **head)
 
 		if (type == RAD_LISTEN_NONE) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Invalid type in listen section.",
-			       filename, lineno);
-			return -1;
-		}
-			
-		/*
-		 *	Try IPv4 first
-		 */
-		if ((cp = cf_pair_find(cs, "ipaddr")) != NULL) {
-			value = cf_pair_value(cp);
-			ipaddr.af = AF_INET;
-			if (strcmp(value, "*") == 0) {
-				ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
-			} else {
-				if (ip_hton(value, AF_INET, &ipaddr) < 0) {
-					radlog(L_ERR, "%s[%d]: Cannot find IP address for host %s",
-					       filename, lineno, value);
-					return -1;
-				}
-			}
-		} else if ((cp = cf_pair_find(cs, "ipv6addr")) != NULL) {
-			value = cf_pair_value(cp);
-			ipaddr.af = AF_INET6;
-			if (strcmp(value, "*") == 0) {
-				memset(&ipaddr.ipaddr.ip6addr, 0,
-				       sizeof(ipaddr.ipaddr.ip6addr));
-			} else {
-				if (ip_hton(value, AF_INET6, &ipaddr) < 0) {
-					radlog(L_ERR, "%s[%d]: Cannot find IPv6 address for host %s",
-					       filename, lineno, value);
-					return -1;
-				}
-			}
-		} else {
-			radlog(L_ERR, "%s[%d]: No address specified in listen section",
 			       filename, lineno);
 			return -1;
 		}

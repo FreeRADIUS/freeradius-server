@@ -45,9 +45,8 @@ typedef struct CONF_PARSER {
 
 void		cf_pair_free(CONF_PAIR **cp);
 void		cf_section_free(CONF_SECTION **cp);
-int		cf_pair_parse(const CONF_SECTION *cs, const CONF_PAIR *cp,
-			      const char *name, int type, void *data,
-			      const char *dflt);
+int		cf_item_parse(const CONF_SECTION *cs, const char *name,
+			      int type, void *data, const char *dflt);
 int		cf_section_parse(const CONF_SECTION *, void *base, const CONF_PARSER *variables);
 
 CONF_SECTION *conf_read(const char *fromfile, int fromline,

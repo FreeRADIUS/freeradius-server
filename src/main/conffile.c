@@ -548,24 +548,30 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 
 
 /*
- *	Parses a CONF_PAIR into the specified format, with a default
- *	value.
+ *	Parses an item (not a CONF_ITEM) into the specified format,
+ *	with a default value.
  *
  *	Returns -1 on error, 0 for correctly parsed, and 1 if the
  *	default value was used.  Note that the default value will be
  *	used ONLY if the CONF_PAIR is NULL.
  */
-int cf_pair_parse(const CONF_SECTION *cs, const CONF_PAIR *cp,
-		   const char *name, int type, void *data, const char *dflt)
+int cf_item_parse(const CONF_SECTION *cs, const char *name,
+		  int type, void *data, const char *dflt)
 {
 	int rcode = 0;
 	char **q;
 	const char *value;
 	lrad_ipaddr_t ipaddr;
-	char buffer[8192];
+	const CONF_PAIR *cp;
+	char ipbuf[128];
 
+	cp = cf_pair_find(cs, name);
 	if (cp) {
 		value = cp->value;
+
+	} else if (!dflt) {
+		return 1;	/* nothing to parse, return default value */
+
 	} else {
 		rcode = 1;
 		value = dflt;
@@ -608,8 +614,14 @@ int cf_pair_parse(const CONF_SECTION *cs, const CONF_PAIR *cp,
 		 *	expanded automagically when the configuration
 		 *	file was read.
 		 */
-		if (value && (value == dflt)) {
+		if (value == dflt) {
+			char buffer[8192];
+
 			int lineno = cs->item.lineno;
+
+			/*
+			 *	FIXME: sizeof(buffer)?
+			 */
 			value = cf_expand_variables("?",
 						    &lineno,
 						    cs, buffer, value);
@@ -628,6 +640,7 @@ int cf_pair_parse(const CONF_SECTION *cs, const CONF_PAIR *cp,
 		 */
 		if (strcmp(value, "*") == 0) {
 			*(uint32_t *) data = htonl(INADDR_ANY);
+			DEBUG2(" %s: %s = *", cs->name1, name);
 			break;
 		}
 		if (ip_hton(value, AF_INET, &ipaddr) < 0) {
@@ -636,7 +649,7 @@ int cf_pair_parse(const CONF_SECTION *cs, const CONF_PAIR *cp,
 		}
 		DEBUG2(" %s: %s = %s IP address [%s]",
 		       cs->name1, name, value,
-		       ip_ntoh(&ipaddr, buffer, sizeof(buffer)));
+		       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
 		*(uint32_t *) data = ipaddr.ipaddr.ip4addr.s_addr;
 		break;
 		
@@ -645,7 +658,8 @@ int cf_pair_parse(const CONF_SECTION *cs, const CONF_PAIR *cp,
 		 *	Allow '*' as any address
 		 */
 		if (strcmp(value, "*") == 0) {
-			memcpy(data, 0, sizeof(ipaddr.ipaddr.ip6addr));
+			memset(data, 0, sizeof(ipaddr.ipaddr.ip6addr));
+			DEBUG2(" %s: %s = *", cs->name1, name);
 			break;
 		}
 		if (ip_hton(value, AF_INET6, &ipaddr) < 0) {
@@ -654,7 +668,7 @@ int cf_pair_parse(const CONF_SECTION *cs, const CONF_PAIR *cp,
 		}
 		DEBUG2(" %s: %s = %s IPv6 address [%s]",
 		       cs->name1, name, value,
-		       ip_ntoh(&ipaddr, buffer, sizeof(buffer)));
+		       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
 		memcpy(data, &ipaddr.ipaddr.ip6addr,
 		       sizeof(ipaddr.ipaddr.ip6addr));
 		break;
@@ -675,7 +689,6 @@ int cf_section_parse(const CONF_SECTION *cs, void *base,
 		     const CONF_PARSER *variables)
 {
 	int i;
-	const CONF_PAIR *cp;
 	void *data;
 
 	/*
@@ -699,7 +712,7 @@ int cf_section_parse(const CONF_SECTION *cs, void *base,
 			if (!subcs) continue;
 
 			if (!variables[i].data) {
-				DEBUG2("Internal sanity check 1 failed in cf_section_parse!");
+				DEBUG2("Internal sanity check 1 failed in cf_section_parse");
 				return -1;
 			}
 			
@@ -715,12 +728,14 @@ int cf_section_parse(const CONF_SECTION *cs, void *base,
 		} else if (base) {
 			data = ((char *)base) + variables[i].offset;
 		} else {
-			DEBUG2("Internal sanity check 2 failed in cf_section_parse!");
+			DEBUG2("Internal sanity check 2 failed in cf_section_parse");
 			return -1;
 		}
 
-		cp = cf_pair_find(cs, variables[i].name);
-		if (cf_pair_parse(cs, cp, variables[i].name, variables[i].type,
+		/*
+		 *	Parse the pair we found, or a default value.
+		 */
+		if (cf_item_parse(cs, variables[i].name, variables[i].type,
 				  data, variables[i].dflt) < 0) {
 			return -1;
 		}
