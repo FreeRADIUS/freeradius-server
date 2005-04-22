@@ -164,14 +164,18 @@ static const CONF_PARSER thread_config[] = {
  *	to add them at some point.
  */
 
-static  pthread_mutex_t *ssl_mutexes = NULL;
+static pthread_mutex_t *ssl_mutexes = NULL;
 
-
-static unsigned long ssl_id_function (void) {
-	return (unsigned long)pthread_self();
+static unsigned long ssl_id_function(void)
+{
+	return (unsigned long) pthread_self();
 }
 
-static void ssl_locking_function (int mode, int n, const char *file, int line) {
+static void ssl_locking_function(int mode, int n, const char *file, int line)
+{
+	file = file;		/* -Wunused */
+	line = line;		/* -Wunused */
+
 	if (mode & CRYPTO_LOCK) {
 		pthread_mutex_lock(&(ssl_mutexes[n]));
 	} else {
@@ -179,16 +183,17 @@ static void ssl_locking_function (int mode, int n, const char *file, int line) {
 	}
 }
 
-static int setup_ssl_mutexes (void) {
+static int setup_ssl_mutexes(void)
+{
 	int i;
 
-	ssl_mutexes = (pthread_mutex_t *)rad_malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t));
-	if(!ssl_mutexes) {
+	ssl_mutexes = rad_malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t));
+	if (!ssl_mutexes) {
 		radlog(L_ERR, "Error allocating memory for SSL mutexes!");
 		return 0;
 	}
 
-	for(i = 0; i < CRYPTO_num_locks(); i++) {
+	for (i = 0; i < CRYPTO_num_locks(); i++) {
 		pthread_mutex_init(&(ssl_mutexes[i]), NULL);
 	}
 
@@ -197,7 +202,6 @@ static int setup_ssl_mutexes (void) {
 
 	return 1;
 }
-
 #endif
 
 
@@ -822,7 +826,7 @@ int thread_pool_init(int spawn_flag)
 	 *	If we're linking with OpenSSL too, then we need
 	 *	to set up the mutexes and enable the thread callbacks.
 	 */
-	if(!setup_ssl_mutexes()) {
+	if (!setup_ssl_mutexes()) {
 		radlog(L_ERR, "FATAL: Failed to set up SSL mutexes");
 		exit(1);
 	}
