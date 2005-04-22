@@ -590,7 +590,7 @@ autz_redo:
 		 *	realm (sigh).
 		 */
 		realm = realm_find(tmp->strvalue, 0);
-		rad_assert(realm->ipaddr.af == AF_INET);
+		rad_assert((realm == NULL) || (realm->ipaddr.af == AF_INET));
 		if (realm && (realm->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE))) {
 			DEBUG2("  WARNING: You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling invalid proxy request.", realm->realm);
 		} else {

@@ -81,13 +81,13 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 
         struct realm_config_t *inst = instance;
 
+	/* initiate returnrealm */
+	*returnrealm = NULL;
+
 	if (request->packet->src_ipaddr.af != AF_INET) {
 		DEBUG2("rlm_realm: IPv6 is not supported!");
 		return 0;
 	}
-
-	/* initiate returnrealm */
-	*returnrealm = NULL;
 
 	/*
 	 *	If the request has a proxy entry, then it's a proxy
