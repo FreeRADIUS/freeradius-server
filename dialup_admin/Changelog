@@ -9,6 +9,8 @@ Ver 1.80:
 * Count online users correctly (through a separate query) in user_finger.
 * Use the correct max results variable in lib/*/find.php3
 * In time2strclock also show days if applicable
+* In lib/sql/attrmap.php3, only register variables once. Go through $show_attrs and set default attribute
+  mappings for any attribute that a mapping does not exist.
 Ver 1.78:
 * Add a snmp_clearsession which can disconnect a user by using the Cisco AAA Session MIB
 * Add a configuration directive general_sessionclear_bin
