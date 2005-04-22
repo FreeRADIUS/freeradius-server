@@ -835,6 +835,22 @@ static int generate_realms(const char *filename)
 }
 
 
+static const CONF_PARSER client_config[] = {
+	{ "secret",  PW_TYPE_STRING_PTR, 
+	  offsetof(RADCLIENT, secret), 0, NULL },
+	{ "shortname",  PW_TYPE_STRING_PTR, 
+	  offsetof(RADCLIENT, shortname), 0, NULL },
+	{ "nastype",  PW_TYPE_STRING_PTR, 
+	  offsetof(RADCLIENT, nastype), 0, NULL },
+	{ "login",  PW_TYPE_STRING_PTR, 
+	  offsetof(RADCLIENT, login), 0, NULL },
+	{ "password",  PW_TYPE_STRING_PTR, 
+	  offsetof(RADCLIENT, password), 0, NULL },
+
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+
 /*
  *	Create the linked list of realms from the new configuration
  *	type.  This way we don't have to change too much in the other
@@ -844,15 +860,13 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 {
 	CONF_SECTION	*cs;
 	RADCLIENT	*list, *c;
-	char		*hostnm, *secret, *shortnm, *netmask;
-	char            *nastype, *login, *password;
+	char		*hostnm, *netmask;
 	char		*name2;
 
 	list = NULL;
 	for (cs = cf_subsection_find_next(section, NULL, "client");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(section, cs, "client")) {
-
 		name2 = cf_section_name2(cs);
 		if (!name2) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Missing client name",
@@ -864,74 +878,20 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 		 * Check the lengths, we don't want any core dumps
 		 */
 		hostnm = name2;
-
-		if((secret = cf_section_value_find(cs, "secret")) == NULL) {
-			radlog(L_ERR, "%s[%d]: Missing secret for client: %s",
-				filename, cf_section_lineno(cs), name2);
-			clients_free(list);
-			return NULL;
-		}
-
-		if((shortnm = cf_section_value_find(cs, "shortname")) == NULL) {
-			radlog(L_ERR, "%s[%d]: Missing shortname for client: %s",
-				filename, cf_section_lineno(cs), name2);
-			clients_free(list);
-			return NULL;
-		}
-
 		netmask = strchr(hostnm, '/');
-
-		if (strlen(secret) >= sizeof(c->secret)) {
-			radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
-				filename, cf_section_lineno(cs),
-				strlen(secret), sizeof(c->secret) - 1);
-			clients_free(list);
-			return NULL;
-		}
-
-		if (strlen(shortnm) > sizeof(c->shortname)) {
-			radlog(L_ERR, "%s[%d]: Client short name of length %d is greater than the allowed maximum of %d.",
-					filename, cf_section_lineno(cs),
-			       strlen(shortnm), sizeof(c->shortname) - 1);
-			clients_free(list);
-			return NULL;
-		}
-
-		if((nastype = cf_section_value_find(cs, "nastype")) != NULL) {
-		        if(strlen(nastype) >= sizeof(c->nastype)) {
-			       radlog(L_ERR, "%s[%d]: nastype of length %d longer than the allowed maximum of %d",
-				      filename, cf_section_lineno(cs),
-				      strlen(nastype), sizeof(c->nastype) - 1);
-			       clients_free(list);
-			       return NULL;
-			}
-		}
-
-		if((login = cf_section_value_find(cs, "login")) != NULL) {
-		        if(strlen(login) >= sizeof(c->login)) {
-			       radlog(L_ERR, "%s[%d]: login of length %d longer than the allowed maximum of %d",
-				      filename, cf_section_lineno(cs),
-				      strlen(login), sizeof(c->login) - 1);
-			       clients_free(list);
-			       return NULL;
-			}
-		}
-
-		if ((password = cf_section_value_find(cs, "password")) != NULL) {
-		        if(strlen(password) >= sizeof(c->password)) {
-			       radlog(L_ERR, "%s[%d]: password of length %d longer than the allowed maximum of %d",
-				      filename, cf_section_lineno(cs),
-				      strlen(password), sizeof(c->password) - 1);
-			       clients_free(list);
-			       return NULL;
-			}
-		}
 
 		/*
 		 * The size is fine.. Let's create the buffer
 		 */
 		c = rad_malloc(sizeof(RADCLIENT));
 		memset(c, 0, sizeof(RADCLIENT));
+
+		if (cf_section_parse(cs, c, client_config) < 0) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Error parsing client section.",
+			       filename, cf_section_lineno(cs));
+			clients_free(list);
+			return NULL;
+		}
 
 		/*
 		 *	Look for netmasks.
@@ -972,19 +932,12 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 		if (netmask) {
 			*netmask = '/';
 			c->ipaddr.ipaddr.ip4addr.s_addr &= c->netmask;
-			strcpy(c->longname, hostnm);
+			c->longname = strdup(hostnm);
 		} else {
-			ip_ntoh(&c->ipaddr, c->longname, sizeof(c->longname));
+			char buffer[256];
+			ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
+			c->longname = strdup(buffer);
 		}
-
-		strcpy((char *)c->secret, secret);
-		strcpy(c->shortname, shortnm);
-		if(nastype != NULL)
-		        strcpy(c->nastype, nastype);
-		if(login != NULL)
-		        strcpy(c->login, login);
-		if(password != NULL)
-		        strcpy(c->password, password);
 
 		c->next = list;
 		list = c;

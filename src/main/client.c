@@ -51,8 +51,15 @@ void clients_free(RADCLIENT *cl)
 {
 	RADCLIENT *next;
 
-	while(cl) {
+	while (cl) {
 		next = cl->next;
+		free(cl->longname);
+		free(cl->secret);
+		free(cl->shortname);
+		free(cl->nastype);
+		free(cl->login);
+		free(cl->password);
+
 		free(cl);
 		cl = next;
 	}
@@ -143,31 +150,6 @@ int read_clients_file(const char *file)
 		}
 
 		/*
-		 *	Double-check lengths to be sure they're sane
-		 */
-		if (strlen(hostnm) >= sizeof(c->longname)) {
-			radlog(L_ERR, "%s[%d]: host name of length %d is greater than the allowed maximum of %d.",
-			       file, lineno,
-			       (int) strlen(hostnm),
-			       (int) sizeof(c->longname) - 1);
-			return -1;
-		}
-		if (strlen(secret) >= sizeof(c->secret)) {
-			radlog(L_ERR, "%s[%d]: secret of length %d is greater than the allowed maximum of %d.",
-			       file, lineno,
-			       (int) strlen(secret),
-			       (int) sizeof(c->secret) - 1);
-			return -1;
-		}
-		if (strlen(shortnm) > sizeof(c->shortname)) {
-			radlog(L_ERR, "%s[%d]: short name of length %d is greater than the allowed maximum of %d.",
-			       file, lineno,
-			       (int) strlen(shortnm),
-			       (int) sizeof(c->shortname) - 1);
-			return -1;
-		}
-
-		/*
 		 *	It should be OK now, let's create the buffer.
 		 */
 		got_clients = TRUE;
@@ -182,18 +164,19 @@ int read_clients_file(const char *file)
 		c->netmask = htonl(mask);
 		c->ipaddr.ipaddr.ip4addr.s_addr &= c->netmask; /* addr & mask are in network order */
 
-		strcpy((char *)c->secret, secret);
-		strcpy(c->shortname, shortnm);
+		c->secret = strdup(secret);
+		c->shortname = strdup(shortnm);
 
 		/*
 		 *	Only do DNS lookups for machines.  Just print
 		 *	the network as the long name.
 		 */
 		if ((~mask) == 0) {
-			ip_ntoh(&c->ipaddr, c->longname, sizeof(c->longname));
+			ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
+			c->longname = strdup(buffer);
 		} else {
 			hostnm[strlen(hostnm)] = '/';
-			strNcpy(c->longname, hostnm, sizeof(c->longname));
+			c->longname = strdup(hostnm);
 		}
 
 		c->next = mainconfig.clients;
@@ -231,7 +214,6 @@ RADCLIENT *client_find(const lrad_ipaddr_t *ipaddr)
 			    (ntohl(cl->netmask) > ntohl(match->netmask))) {
 				match = cl;
 			}
-			
 		}
 
 		if (cl->ipaddr.af != ipaddr->af) continue;
