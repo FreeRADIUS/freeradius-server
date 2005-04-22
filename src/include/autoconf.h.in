@@ -211,11 +211,11 @@
 /* Define to 1 if you have the `strsignal' function. */
 #undef HAVE_STRSIGNAL
 
+/* Generic DNS lookups */
+#undef HAVE_STRUCT_ADDRINFO
+
 /* IPv6 address structure */
 #undef HAVE_STRUCT_IN6_ADDR
-
-/* Generic DNS lookups */
-#undef HAVE_STRUCT_SOCKADDR_ADDRINFO
 
 /* Generic socket addresses */
 #undef HAVE_STRUCT_SOCKADDR_STORAGE

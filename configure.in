@@ -657,7 +657,7 @@ AC_CHECK_TYPE(struct sockaddr_storage, AC_DEFINE(HAVE_STRUCT_SOCKADDR_STORAGE, 1
 #endif
 ])
 
-AC_CHECK_TYPE(struct addrinfo, AC_DEFINE(HAVE_STRUCT_SOCKADDR_ADDRINFO, 1, [Generic DNS lookups]), [], [
+AC_CHECK_TYPE(struct addrinfo, AC_DEFINE(HAVE_STRUCT_ADDRINFO, 1, [Generic DNS lookups]), [], [
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
