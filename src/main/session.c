@@ -150,7 +150,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	/*
 	 *  No nastype, or nas type 'other', trust radutmp.
 	 */
-	if ((cl->nastype[0] == '\0') ||
+	if (!cl->nastype || (cl->nastype[0] == '\0') ||
 	    (strcmp(cl->nastype, "other") == 0)) {
 		DEBUG2("checkrad: No NAS type, or type \"other\" not checking");
 		return 1;
