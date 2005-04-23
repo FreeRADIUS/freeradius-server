@@ -871,7 +871,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		 */
 		cl = client_find(nas_address);
 		if (cl) {
-			if (cl->shortname[0]) {
+			if (cl->shortname && cl->shortname[0]) {
 				nas = cl->shortname;
 			} else {
 				nas = cl->longname;

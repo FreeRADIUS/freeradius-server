@@ -339,7 +339,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		 */
 		cl = client_find(&request->packet->src_ipaddr);
 		if (!cl) rad_assert(0 == 1); /* WTF? */
-		if (cl->shortname[0]) {
+		if (cl->shortname && cl->shortname[0]) {
 			nas = cl->shortname;
 		} else {
 			nas = cl->longname;
