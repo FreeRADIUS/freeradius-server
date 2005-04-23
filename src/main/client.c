@@ -172,8 +172,33 @@ int read_clients_file(const char *file)
 		 *	the network as the long name.
 		 */
 		if ((~mask) == 0) {
+
 			ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
 			c->longname = strdup(buffer);
+
+			/*
+			 *	Pull information over from the NAS.
+			 */
+			if (c->ipaddr.af == AF_INET) {
+				NAS *nas;
+				nas = nas_find(c->ipaddr.ipaddr.ip4addr.s_addr);
+				if (nas) {
+					/*
+					 *	No short name in the
+					 *	'clients' file, try
+					 *	copying one over from
+					 *	the 'naslist' file.
+					 */
+					if (!c->shortname) {
+						c->shortname = strdup(nas->shortname);
+					}
+					
+					/*
+					 *  Copy the nastype over, too.
+					 */
+					c->nastype = strdup(nas->nastype);
+				}
+			}
 		} else {
 			hostnm[strlen(hostnm)] = '/';
 			c->longname = strdup(hostnm);
@@ -241,7 +266,7 @@ const char *client_name(const lrad_ipaddr_t *ipaddr)
 	char host_ipaddr[128];
 
 	if ((cl = client_find(ipaddr)) != NULL) {
-		if (cl->shortname[0])
+		if (cl->shortname && cl->shortname[0])
 			return cl->shortname;
 		else
 			return cl->longname;
