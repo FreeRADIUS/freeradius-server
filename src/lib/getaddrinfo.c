@@ -1,25 +1,10 @@
 /*
- * These functions are used to avoid sprinkling of ifdefs 
- * all around the code.
- */
-/*
- * Mar  8, 2000 by Hajimu UMEMOTO <ume@mahoroba.org>
+ * These functions are defined and used only if the configure 
+ * cannot detect the standard getaddrinfo(), freeaddrinfo(),
+ * gai_strerror() and getnameinfo(). This avoids sprinkling of ifdefs.
  *
- * This file is based on ssh-1.2.27-IPv6-1.5 written by
- * KIKUCHI Takahiro <kick@kyoto.wide.ad.jp>
- */
-/*
- * fake library for ssh
- *
- * This file includes getaddrinfo(), freeaddrinfo(), gai_strerror()
- * and getnameinfo()
- *
- * But these functions are not implemented correctly. The minimum subset
- * is implemented for ssh use only. For exapmle, this routine assumes
- * that ai_family is AF_INET. Don't use it for another purpose.
- * 
- * In the case not using 'configure --enable-ipv6', this getaddrinfo.c
- * will be used if you have broken getaddrinfo or no getaddrinfo.
+ * FIXME: getaddrinfo() & getnameinfo() should 
+ *        return all IPv4 addresses provided by DNS lookup.
  */
 
 #include	"autoconf.h"
@@ -36,6 +21,180 @@
 #include 	<sys/param.h>
 
 #include	"missing.h"
+
+#ifdef HAVE_PTHREAD_H
+#include	<pthread.h>
+
+/* Thread safe DNS lookups */
+/* TODO There are some systems that use the same hostent structure
+    to return for gethostbyname() & gethostbyaddr(), if that is the
+    case then use only one mutex instead of seperate mutexes
+ */
+static int lrad_hostbyname = 0;
+static int lrad_hodtbyaddr = 0;
+static pthread_mutex_t lrad_hostbyname_mutex;
+static pthread_mutex_t lrad_hodtbyaddr_mutex;
+#endif
+
+#ifndef GETHOSTBYNAMERSTYLE 
+#define LOCAL_GETHOSTBYNAMERSTYLE 1
+#elif (GETHOSTBYNAMERSTYLE != SYSVSTYLE) && (GETHOSTBYNAMERSTYLE != GNUSTYLE)
+#define LOCAL_GETHOSTBYNAMERSTYLE 1
+#endif /* GETHOSTBYNAMERSTYLE */
+
+#ifndef GETHOSTBYADDRRSTYLE
+#define LOCAL_GETHOSTBYADDRR 1
+#elif (GETHOSTBYADDRRSTYLE != SYSVSTYLE) && (GETHOSTBYADDRRSTYLE != GNUSTYLE)
+#define LOCAL_GETHOSTBYADDRR 1
+#endif /* GETHOSTBYADDRRSTYLE */
+
+/*
+ * gethostbyaddr() & gethostbyname() return hostent structure
+ * To make these functions thread safe, we need to
+ * copy the data and not pointers
+ *
+ * struct hostent {
+ *    char    *h_name;        * official name of host *
+ *    char    **h_aliases;    * alias list *
+ *    int     h_addrtype;     * host address type *
+ *    int     h_length;       * length of address *
+ *    char    **h_addr_list;  * list of addresses *
+ * }
+ * This struct contains 3 pointers as members.
+ * The data from these pointers is copied into a buffer.
+ * The buffer is formatted as below to store the data
+ *  ---------------------------------------------------------------
+ * | h_name\0alias_array\0h_aliases\0..\0addr_array\0h_addr_list\0 |
+ *  ---------------------------------------------------------------
+ */
+#if (LOCAL_GETHOSTBYNAMER == 1) || (LOCAL_GETHOSTBYADDRR == 1)
+#define BUFFER_OVERFLOW 255
+int copy_hostent(struct hostent *from, struct hostent *to,
+           char *buffer, int buflen, int *error)
+{
+    int i, len;
+    char *ptr = buffer;
+    
+    *error = 0;
+    to->h_addrtype = from->h_addrtype;
+    to->h_length = from->h_length;
+    to->h_name = (char *)ptr;
+
+    /* copy hostname to buffer */
+    len=strlen(from->h_name)+1;
+    strcpy(ptr, from->h_name);
+    ptr += len;
+
+    /* copy aliases to buffer */
+    to->h_aliases = (char**)ptr;
+    for(i = 0; from->h_aliases[i]; i++);
+    ptr += (i+1) * sizeof(char *);
+
+    for(i = 0; from->h_aliases[i]; i++) {
+       len = strlen(from->h_aliases[i])+1;
+       if ((ptr-buffer)+len < buflen) {
+           to->h_aliases[i] = ptr;
+	       strcpy(ptr, from->h_aliases[i]);
+           ptr += len;
+       } else {
+           *error = BUFFER_OVERFLOW;
+           return *error;
+       }
+    }
+    to->h_aliases[i] = NULL;
+
+    /* copy addr_list to buffer */
+    to->h_addr_list = (char**)ptr;
+    for(i = 0; (int *)from->h_addr_list[i] != 0; i++);
+    ptr += (i+1) * sizeof(int *);
+     
+    for(i = 0; (int *)from->h_addr_list[i] != 0; i++) {
+       len = sizeof(int);
+       if ((ptr-buffer)+len < buflen) {
+           to->h_addr_list[i] = ptr;
+           memcpy(ptr, from->h_addr_list[i], len);
+           ptr += len;
+       } else {
+           *error = BUFFER_OVERFLOW;
+            return *error;
+       }
+    }
+    to->h_addr_list[i] = 0;
+    return *error;
+}
+#endif /* (LOCAL_GETHOSTBYNAMER == 1) || (LOCAL_GETHOSTBYADDRR == 1) */
+
+#ifdef LOCAL_GETHOSTBYNAMERSTYLE
+static struct hostent *
+gethostbyname_r(const char *hostname, struct hostent *result, 
+           char *buffer, int buflen, int *error)
+{
+    struct hostent *hp;
+
+#ifdef HAVE_PTHREAD_H
+    if (lrad_hostbyname == 0) {
+    	pthread_mutex_init(&lrad_hostbyname_mutex, NULL);
+	lrad_hostbyname = 1;
+    }
+    pthread_mutex_lock(&lrad_hostbyname_mutex);
+#endif
+
+    hp = gethostbyname(name);
+    if ((!hp) || (hp->h_addrtype != AF_INET) || (hp->h_length != 4)) {
+	 *error = h_errno;
+         hp = NULL;
+    } else {
+         copy_hostent(hp, result, buffer, buflen, error);
+         hp = result;
+    }
+
+#ifdef HAVE_PTHREAD_H
+    pthread_mutex_unlock(&lrad_hostbyname_mutex);
+#endif
+
+    return hp;
+}
+#endif /* GETHOSTBYNAMERSTYLE */
+
+
+#ifdef LOCAL_GETHOSTBYADDRRSTYLE
+static struct hostent *
+gethostbyaddr_r(const char *addr, int len, int type, struct hostent *result,
+           char *buffer, int buflen, int *error)
+{
+    struct hostent *hp;
+
+#ifdef HAVE_PTHREAD_H
+    if (lrad_hodtbyaddr == 0) {
+    	pthread_mutex_init(&lrad_hodtbyaddr_mutex, NULL);
+	lrad_hodtbyaddr = 1;
+    }
+    pthread_mutex_lock(&lrad_hodtbyaddr_mutex);
+#endif
+
+    hp = gethostbyaddr(addr, len, type);
+    if ((!hp) || (hp->h_addrtype != AF_INET) || (hp->h_length != 4)) {
+	 *error = h_errno;
+         hp = NULL;
+    } else {
+	 copy_hostent(hp, result, buffer, buflen, error);
+         hp = result;
+    }
+
+#ifdef HAVE_PTHREAD_H
+    pthread_mutex_unlock(&lrad_hodtbyaddr_mutex);
+#endif
+
+    return hp;
+}
+#endif /* GETHOSTBYADDRRSTYLE */
+
+/*
+ * Mar  8, 2000 by Hajimu UMEMOTO <ume@mahoroba.org>
+ *
+ * Below code is based on ssh-1.2.27-IPv6-1.5 written by
+ * KIKUCHI Takahiro <kick@kyoto.wide.ad.jp>
+ */
 
 #ifndef HAVE_GETADDRINFO
 static struct addrinfo *
@@ -99,8 +258,11 @@ getaddrinfo(const char *hostname, const char *servname,
 {
     struct addrinfo *cur, *prev = NULL;
     struct hostent *hp;
+    struct hostent result;
     struct in_addr in;
     int i, port = 0, socktype, proto;
+    int error;
+    char buffer[2048];
 
     if (hints && hints->ai_family != PF_INET && hints->ai_family != PF_UNSPEC)
         return EAI_FAMILY;
@@ -155,6 +317,7 @@ getaddrinfo(const char *hostname, const char *servname,
         else
             return EAI_MEMORY;
     }
+    /* Numeric IP Address */
     if (inet_aton(hostname, &in)) {
         *res = malloc_ai(port, in.s_addr, socktype, proto);
         if (*res)
@@ -164,8 +327,23 @@ getaddrinfo(const char *hostname, const char *servname,
     }
     if (hints && hints->ai_flags & AI_NUMERICHOST)
         return EAI_NONAME;
-    if ((hp = gethostbyname(hostname)) &&
-        hp->h_name && hp->h_name[0] && hp->h_addr_list[0]) {
+
+    /* DNS Lookup */
+#ifdef GETHOSTBYNAMERSTYLE
+#if GETHOSTBYNAMERSTYLE == SYSVSTYLE
+    hp = gethostbyname_r(hostname, &result, buffer, sizeof(buffer), &error);
+#elif GETHOSTBYNAMERSTYLE == GNUSTYLE
+    if (gethostbyname_r(hostname, &result, buffer, 
+         sizeof(buffer), &hp, &error) != 0) {
+		hp = NULL;
+	}
+#else
+    hp = gethostbyname_r(hostname, &result, buffer, sizeof(buffer), &error);
+#endif
+#else
+    hp = gethostbyname_r(hostname, &result, buffer, sizeof(buffer), &error);
+#endif
+    if (hp && hp->h_name && hp->h_name[0] && hp->h_addr_list[0]) {
         for (i = 0; hp->h_addr_list[i]; i++) {
             if ((cur = malloc_ai(port,
                                 ((struct in_addr *)hp->h_addr_list[i])->s_addr,
@@ -190,7 +368,8 @@ getaddrinfo(const char *hostname, const char *servname,
     }
     return EAI_NONAME;
 }
-#endif /*  HAVE_GETADDRINFO */
+#endif /* HAVE_GETADDRINFO */
+
 
 #ifndef HAVE_GETNAMEINFO
 int
@@ -201,7 +380,10 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen,
 {
     struct sockaddr_in *sin = (struct sockaddr_in *)sa;
     struct hostent *hp;
+    struct hostent result;
     char tmpserv[16];
+    char buffer[2048];
+    int error;
   
     if (serv) {
         snprintf(tmpserv, sizeof(tmpserv), "%d", ntohs(sin->sin_port));
@@ -212,6 +394,7 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen,
     }
     if (host) {
         if (flags & NI_NUMERICHOST) {
+            /*  No Reverse DNS lookup */
             if (flags & NI_NAMEREQD)
                 return EAI_NONAME;
             if (strlen(inet_ntoa(sin->sin_addr)) >= hostlen)
@@ -221,8 +404,29 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen,
                 return 0;
             }
         } else {
-            hp = gethostbyaddr((char *)&sin->sin_addr,
-                               sizeof(struct in_addr), AF_INET);
+        /*  Reverse DNS lookup required */
+#ifdef GETHOSTBYADDRRSTYLE
+#if GETHOSTBYADDRRSTYLE == SYSVSTYLE
+            hp = gethostbyaddr_r((char *)&sin->sin_addr,
+                               sizeof(struct in_addr), AF_INET,
+			       &result, buffer, sizeof(buffer), &error);
+#elif GETHOSTBYADDRRSTYLE == GNUSTYLE
+            if (gethostbyaddr_r((char *)&sin->sin_addr,
+                               sizeof(struct in_addr), AF_INET,
+				    &result, buffer, sizeof(buffer),
+				    &hp, &error) != 0) {
+			hp = NULL;
+	     }
+#else
+            hp = gethostbyaddr_r((char *)&sin->sin_addr,
+                               sizeof(struct in_addr), AF_INET, 
+			       &result, buffer, sizeof(buffer), &error);
+#endif
+#else
+            hp = gethostbyaddr_r((char *)&sin->sin_addr,
+                               sizeof(struct in_addr), AF_INET,
+			       &result, buffer, sizeof(buffer), &error);
+#endif
             if (hp)
                 if (strlen(hp->h_name) >= hostlen)
                     return EAI_MEMORY;
@@ -242,4 +446,4 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen,
     }
     return 0;
 }
-#endif /*  HAVE_GETNAMEINFO */
+#endif /* HAVE_GETNAMEINFO */
