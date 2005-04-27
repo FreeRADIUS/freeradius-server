@@ -30,6 +30,7 @@ static const char rcsid[] = "$Id$";
 #include	<ctype.h>
 #include	<string.h>
 
+#include	"missing.h"
 #include	"libradius.h"
 
 /*

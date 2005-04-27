@@ -39,8 +39,8 @@ static const char rcsid[] =
 #include	<fcntl.h>
 #include	<unistd.h>
 
-#include	"libradius.h"
 #include	"missing.h"
+#include	"libradius.h"
 
 int		librad_dodns = 0;
 int		librad_debug = 0;

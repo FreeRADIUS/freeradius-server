@@ -30,6 +30,7 @@ static const char rcsid[] = "$Id$";
 #include <stdarg.h>
 #include <string.h>
 
+#include "missing.h"
 #include "libradius.h"
 
 char librad_errstr[1024];

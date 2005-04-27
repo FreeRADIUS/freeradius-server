@@ -35,7 +35,6 @@ static const char rcsid[] = "$Id$";
 #include	<string.h>
 #include	<ctype.h>
 
-#include	"libradius.h"
 #ifdef WITH_UDPFROMTO
 #include	"udpfromto.h"
 #endif
@@ -53,6 +52,9 @@ static const char rcsid[] = "$Id$";
 #ifdef WIN32
 #include	<process.h>
 #endif
+
+#include	"missing.h"
+#include	"libradius.h"
 
 /*
  *  The RFC says 4096 octets max, and most packets are less than 256.
@@ -161,14 +163,14 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	const struct sockaddr	*dst;
 	socklen_t		sizeof_dst;
 	struct	sockaddr_in	saremote;
-#ifdef AF_INET6
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
 	struct sockaddr_in6	saremote6;
 #endif
 #ifdef WITH_UDPFROMTO
 	struct sockaddr_in	salocal;
 	const struct sockaddr	*src;
 	socklen_t		sizeof_src;
-#ifdef AF_INET6
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
 	struct sockaddr_in6	salocal6;
 #endif
 #endif
@@ -207,7 +209,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 		src_ipaddr = src_ipaddr; /* -Wunused */
 #endif
 	}
-#ifdef AF_INET6
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
 	/*
 	 *	IPv6 MAY be supported.
 	 */
@@ -257,7 +259,7 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 	struct sockaddr_in	salocal;
 	socklen_t		salen;
 	struct sockaddr_in	saremote;
-#ifdef AF_INET6
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
 	struct sockaddr_in6	saremote6;
 	struct sockaddr_in6	salocal6;
 #endif
@@ -280,6 +282,7 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 		dst = (struct sockaddr *) &salocal;
 		sizeof_dst = sizeof(salocal);
 
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (salocal.sin_family == AF_INET6) {
 		memcpy(&salocal6, &salocal, sizeof(salocal6));
 		
@@ -293,6 +296,7 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 		sizeof_dst = sizeof(salocal6);
 #ifdef WITH_UDPFROMTO
 		return -1;	/* not supported for IPv6 */
+#endif
 #endif
 	}
 
@@ -328,7 +332,7 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 		src_ipaddr->ipaddr.ip4addr = saremote.sin_addr;
 		*src_port = ntohs(saremote.sin_port);
 	}
-#ifdef AF_INET6
+#ifdef HVAE_STRUCT_SOCKADDR_IN6
 	else if (dst_ipaddr->af == AF_INET6) {
 		src_ipaddr->af = AF_INET6;
 #ifdef WITH_UDPFROMTO

@@ -12,8 +12,10 @@
 
 #include <string.h>
 #include <sys/types.h>
-#include "libradius.h"
 #include "sha1.h"
+
+#include "missing.h"
+#include "libradius.h"
 
 /*
 unsigned char*  text;                pointer to data stream

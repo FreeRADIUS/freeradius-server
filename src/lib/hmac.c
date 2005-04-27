@@ -24,9 +24,11 @@
 /*
 ** Function: hmac_md5
 */
+#include "autoconf.h"
 
 #include <string.h>
 #include "md5.h"
+#include "missing.h"
 #include "libradius.h"
 
 /*

@@ -22,6 +22,10 @@
 #include <stdint.h>
 #endif
 
+#ifdef HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif
+
 #include "../include/sha1.h"
 
 #define blk0(i) (block->l[i] = htonl(block->l[i]))

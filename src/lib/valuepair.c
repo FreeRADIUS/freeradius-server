@@ -31,8 +31,6 @@ static const char rcsid[] = "$Id$";
 #include	<string.h>
 #include	<ctype.h>
 
-#include	"libradius.h"
-
 #ifdef HAVE_MALLOC_H
 #  include	<malloc.h>
 #endif
@@ -42,6 +40,7 @@ static const char rcsid[] = "$Id$";
 #endif
 
 #include	"missing.h"
+#include	"libradius.h"
 
 static const char *months[] = {
         "jan", "feb", "mar", "apr", "may", "jun",

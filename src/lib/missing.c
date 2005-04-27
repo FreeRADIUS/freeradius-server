@@ -33,8 +33,8 @@ static const char rcsid[] = "$Id$";
 #include	<arpa/inet.h>
 #include	<ctype.h>
 
-#include	"libradius.h"
 #include	"missing.h"
+#include	"libradius.h"
 
 #ifndef HAVE_CRYPT
 char *crypt(char *key, char *salt)

@@ -32,8 +32,8 @@ static const char rcsid[] = "$Id$";
 #include	<malloc.h>
 #endif
 
-#include	"libradius.h"
 #include	"missing.h"
+#include	"libradius.h"
 
 /*
  *	There are very few vendors, and they're looked up only when we

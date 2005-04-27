@@ -11,6 +11,7 @@ MODIFIED:
 */
 
 #include "autoconf.h"
+#include "missing.h"
 #include "libradius.h"
 
 #define RANDSIZL   (8)  /* I recommend 8 for crypto, 4 for simulations */

@@ -27,6 +27,7 @@ static const char rcsid[] = "$Id$";
 #include <stdlib.h>
 #include <string.h>
 
+#include "missing.h"
 #include "libradius.h"
 
 /* red-black tree description */

@@ -22,15 +22,19 @@
 
 static const char rcsid[] = "$Id$";
 
+#include "autoconf.h"
+
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
 
-#include "libradius.h"
 
 #ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
 #endif
+
+#include "missing.h"
+#include "libradius.h"
 
 /*
  * Two types of filters are supported, GENERIC and IP.  The identifiers
