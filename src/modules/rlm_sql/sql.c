@@ -24,6 +24,7 @@
  * Copyright 2001  Chad Miller <cmiller@surfsouth.com>
  */
 
+#include	"autoconf.h"
 
 #include	<sys/types.h>
 #include	<sys/socket.h>
