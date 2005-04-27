@@ -374,6 +374,14 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 
 	if (!Z || Z == NIL) return;
 
+	if (Z == tree->Root) {
+		if (tree->freeNode) tree->freeNode(Z->Data);
+		free(Z);
+		tree->Root = NIL;
+		tree->num_elements--;
+		return;
+	}
+
 	if (Z->Left == NIL || Z->Right == NIL) {
 		/* Y has a NIL node as a child */
 		Y = Z;
