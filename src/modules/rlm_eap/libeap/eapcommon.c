@@ -57,6 +57,8 @@
  *
  */
 
+#include "autoconf.h"
+#include "missing.h"
 #include "libradius.h"
 #include "eap_types.h"
 

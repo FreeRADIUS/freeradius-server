@@ -48,6 +48,8 @@
  *
  */
 
+#include "autoconf.h"
+#include "missing.h"
 #include "libradius.h"
 #include "eap_types.h"
 #include "eap_sim.h"
