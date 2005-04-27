@@ -431,27 +431,6 @@ static int add_nas_attr(REQUEST *request)
 		return -1;
 	}
 
-
-	/*
-	 *	Add in a Client-IP-Address, to tell the user
-	 *	the source IP of the request.  That is, the client,
-	 *
-	 *	Note that this MAY BE different from the NAS-IP-Address,
-	 *	especially if the request is being proxied.
-	 *
-	 *	Note also that this is a server configuration item,
-	 *	and will NOT make it to any packets being sent from
-	 *	the server.
-	 */
-	nas = paircreate(PW_CLIENT_IP_ADDRESS, PW_TYPE_IPADDR);
-	if (!nas) {
-		radlog(L_ERR, "No memory");
-		return -1;
-	}
-	nas->lvalue = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
-	ip_ntoh(&request->packet->src_ipaddr,
-		nas->strvalue, sizeof(nas->strvalue));
-	pairadd(&request->packet->vps, nas);
 	return 0;
 }
 

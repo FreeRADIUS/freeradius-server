@@ -85,6 +85,9 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 	case PW_TYPE_IPADDR :
 		strNcpy(out,"?.?.?.?",outlen);
 		break;
+	case PW_TYPE_IPV6ADDR :
+		strNcpy(out,":?:",outlen);
+		break;
 	case PW_TYPE_DATE :
 		strNcpy(out,"0",outlen);
 		break;
@@ -249,6 +252,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 			}
 			break;
 
+			case PW_CLIENT_IP_ADDRESS: /* the same as below */
 			case PW_PACKET_SRC_IP_ADDRESS:
 				localvp.attribute = da->attr;
 				rad_assert(packet->src_ipaddr.af == AF_INET);
@@ -288,6 +292,22 @@ static int xlat_packet(void *instance, REQUEST *request,
 					strNcpy(out, "server_core", outlen);
 				}
 				return strlen(out);
+			
+			case PW_PACKET_SRC_IPV6_ADDRESS:
+				localvp.attribute = da->attr;
+				rad_assert(packet->src_ipaddr.af == AF_INET6);
+				memcpy(localvp.strvalue,
+				       &packet->src_ipaddr.ipaddr.ip4addr.s_addr,
+				       sizeof(packet->src_ipaddr.ipaddr.ip4addr.s_addr));
+				break;
+			
+			case PW_PACKET_DST_IPV6_ADDRESS:
+				localvp.attribute = da->attr;
+				rad_assert(packet->dst_ipaddr.af == AF_INET6);
+				memcpy(localvp.strvalue,
+				       &packet->dst_ipaddr.ipaddr.ip4addr.s_addr,
+				       sizeof(packet->dst_ipaddr.ipaddr.ip4addr.s_addr));
+				break;
 			
 			default:
 				return 0; /* not found */
