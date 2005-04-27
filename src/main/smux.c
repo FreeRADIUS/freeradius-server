@@ -29,8 +29,6 @@ static const char rcsid[] =
 
 #ifdef WITH_SNMP
 
-#include "libradius.h"
-
 #include <sys/socket.h>
 #include <sys/file.h>
 

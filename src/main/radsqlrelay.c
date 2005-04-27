@@ -30,7 +30,6 @@ char radrelay_rcsid[] =
 "$Id$";
 
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <sys/time.h>
 #include <sys/stat.h>

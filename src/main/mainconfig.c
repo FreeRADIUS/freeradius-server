@@ -22,7 +22,6 @@
  */
 
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -1066,6 +1065,7 @@ static int listen_bind(rad_listen_t *this)
 		sa->sin_port = htons(this->port);
 		salen = sizeof(*sa);
 
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (this->ipaddr.af == AF_INET6) {
 		struct sockaddr_in6 *sa;
 
@@ -1075,7 +1075,7 @@ static int listen_bind(rad_listen_t *this)
 		sa->sin6_addr = this->ipaddr.ipaddr.ip6addr;
 		sa->sin6_port = htons(this->port);
 		salen = sizeof(*sa);
-
+#endif
 	} else {
 		radlog(L_ERR|L_CONS, "ERROR: Unsupported protocol family %d",
 		       this->ipaddr.af);

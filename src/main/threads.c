@@ -21,7 +21,7 @@
  * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
-#include "libradius.h"
+#include "autoconf.h"
 
 #include <stdlib.h>
 #include <string.h>

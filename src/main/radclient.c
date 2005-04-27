@@ -24,7 +24,6 @@
 static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,6 +54,7 @@ static const char rcsid[] = "$Id$";
 #include "conf.h"
 #include "radpaths.h"
 #include "missing.h"
+#include "libradius.h"
 
 static int retries = 10;
 static float timeout = 3;

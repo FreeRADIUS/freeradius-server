@@ -29,7 +29,6 @@ char radrelay_rcsid[] =
 "$Id$";
 
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>

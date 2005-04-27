@@ -28,8 +28,6 @@ static const char rcsid[] =
 
 #ifdef WITH_SNMP
 
-#include "libradius.h"
-
 #ifdef HAVE_NETINET_IN_H
 #	include <netinet/in.h>
 #endif

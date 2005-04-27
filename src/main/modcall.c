@@ -19,6 +19,7 @@
  *
  * Copyright 2000  The FreeRADIUS server project
  */
+#include "autoconf.h"
 
 #include <stdlib.h>
 #include <string.h>

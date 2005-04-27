@@ -26,7 +26,6 @@ static const char rcsid[] =
 "$Id$";
 
 #include	"autoconf.h"
-#include	"libradius.h"
 
 #include	<stdio.h>
 #include	<stdlib.h>
