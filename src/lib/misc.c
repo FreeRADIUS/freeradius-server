@@ -360,9 +360,11 @@ static int inet_pton4(const char *src, struct in_addr *dst)
 	uint8_t tmp[4];
 	static const char digits[] = "0123456789";
 	
-	octet = num = 0;
-	for (p = src; *p != '\0'; p++) {
-		while ((off = strchr(digits, *p)) != NULL) {
+	octet = 0;
+	p = src;
+	while (1) {
+		num = 0;
+		while (*p && ((off = strchr(digits, *p)) != NULL)) {
 			num *= 10;
 			num += (off - digits);
 			
@@ -370,13 +372,16 @@ static int inet_pton4(const char *src, struct in_addr *dst)
 			
 			p++;
 		}
+		if (!*p) break;
 		
 		/*
 		 *	Not a digit, MUST be a dot, else we
 		 *	die.
 		 */
-		if (*p != '.') return 0;
-		
+		if (*p != '.') {
+			return 0;
+		}
+
 		tmp[octet++] = num;
 		p++;
 	}
@@ -386,7 +391,10 @@ static int inet_pton4(const char *src, struct in_addr *dst)
 	 *	octet is OK, anything else is an
 	 *	error.
 	 */
-	if (octet != 4) return 0;
+	if (octet != 3) {
+		return 0;
+	}
+	tmp[3] = num;
 	
 	memcpy(dst, &tmp, sizeof(tmp));
 	return 1;
@@ -477,24 +485,25 @@ int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
 #endif
 #endif
 
-	if (af != AF_INET) return -1; /* only IPv4 for now */
-
-	dst->af = af;
-
 	/*
 	 *	No DNS lookups, assume it's an IP address.
 	 */
 	if (!librad_dodns) {
-		return inet_pton(af, src, &dst->ipaddr.ip4addr);
+		dst->af = af;
+		return inet_pton(af, src, &dst->ipaddr);
 	}
-	
+
+	if (af == AF_UNSPEC) af = AF_INET;
+
+	if (af != AF_INET) return -1;
+
 #ifdef GETHOSTBYNAMERSTYLE
 #if GETHOSTBYNAMERSTYLE == SYSVSTYLE
 	hp = gethostbyname_r(src, &result, buffer, sizeof(buffer), &error);
 #elif GETHOSTBYNAMERSTYLE == GNUSTYLE
 	if (gethostbyname_r(src, &result, buffer, sizeof(buffer),
 			    &hp, &error) != 0) {
-		return htonl(INADDR_NONE);
+		return -1;
 	}
 #else
 	hp = gethostbyname(src);
