@@ -287,6 +287,21 @@ static int pap_authorize(void *instance, REQUEST *request)
 			found_pw = TRUE;
 			break;
 
+			/*
+			 *	If it's proxied somewhere, don't complain
+			 *	about not having passwords or Auth-Type.
+			 */
+		case PW_PROXY_TO_REALM:
+		{
+			REALM *realm = realm_find(vp->strvalue, 0);
+			if (realm &&
+			    (realm->ipaddr.af == AF_INET) &&
+			    (realm->ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_NONE))) {
+				return RLM_MODULE_NOOP;
+			}
+			break;
+		}
+
 		case PW_AUTH_TYPE:
 			auth_type = TRUE;
 			break;
