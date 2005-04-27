@@ -296,7 +296,7 @@ static int proxy_cmp(const void *one, const void *two)
 
 	switch (a->proxy->dst_ipaddr.af) {
 	case AF_INET:
-		rcode = memcmp(&a->packet->dst_ipaddr.ipaddr.ip4addr,
+		rcode = memcmp(&a->proxy->dst_ipaddr.ipaddr.ip4addr,
 			       &b->proxy->dst_ipaddr.ipaddr.ip4addr,
 			       sizeof(a->proxy->dst_ipaddr.ipaddr.ip4addr));
 		break;
