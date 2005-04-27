@@ -29,7 +29,6 @@
 #include "rfcnb-priv.h"
 #include "rfcnb-util.h"
 #include "rfcnb-io.h"
-#include "libradius.h"
 
 extern void (*Prot_Print_Routine)(); /* Pointer to protocol print routine */
 

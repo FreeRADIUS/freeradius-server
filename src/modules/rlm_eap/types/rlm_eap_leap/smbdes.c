@@ -43,7 +43,6 @@
    should confirm it for yourself (and maybe let me know if you come
    up with a different answer to the one above)
 */
-#include "libradius.h"
 #include <string.h>
 #include <ctype.h>
 

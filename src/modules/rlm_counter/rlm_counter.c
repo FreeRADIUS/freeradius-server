@@ -24,7 +24,6 @@
 
 #include "config.h"
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <stdio.h>
 #include <stdlib.h>

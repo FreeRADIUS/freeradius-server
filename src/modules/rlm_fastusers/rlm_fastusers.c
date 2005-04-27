@@ -23,7 +23,6 @@
  */
 
 #include        "autoconf.h"
-#include        "libradius.h"
 
 #include	<sys/socket.h>
 #include	<sys/time.h>

@@ -41,7 +41,6 @@ static const char rcsid[] = "$Id$";
 #include	<unistd.h>
 #include	<pthread.h>
 
-#include        "libradius.h"
 #include	"radiusd.h"
 #include	"conffile.h"
 #include	"modules.h"

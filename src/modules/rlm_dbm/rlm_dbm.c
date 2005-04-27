@@ -20,6 +20,8 @@
  * Copyright 2001 Koulik Andrei, Sandy Service
  */
 
+#include "autoconf.h"
+
 #include <string.h>
 #include <stdlib.h>
 
@@ -37,7 +39,6 @@
 
 #include <fcntl.h>
 
-#include "libradius.h"
 #include "radiusd.h"
 #include "modules.h"
 

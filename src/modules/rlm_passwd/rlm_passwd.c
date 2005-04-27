@@ -21,8 +21,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-/*#include "autoconf.h"
-#include "libradius.h"*/
+#include "autoconf.h"
 #include "radiusd.h"
 #include "modules.h"
 

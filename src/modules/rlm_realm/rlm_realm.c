@@ -35,7 +35,6 @@
 #include <netinet/in.h>
 #endif
 
-#include "libradius.h"
 #include "radiusd.h"
 #include "modules.h"
 
