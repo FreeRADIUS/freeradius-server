@@ -7,6 +7,7 @@
  * Version:	$Id$
  *
  */
+#include "missing.h"
 #include "libradius.h"
 #include "radpaths.h"
 #include "conf.h"
@@ -35,7 +36,6 @@ typedef pid_t child_pid_t;
 #include <arpa/inet.h>
 #endif
 
-#include "missing.h"
 
 #define NO_SUCH_CHILD_PID (child_pid_t) (0)
 
