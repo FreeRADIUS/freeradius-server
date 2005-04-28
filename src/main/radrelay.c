@@ -758,17 +758,14 @@ void loop(struct relay_misc *r_args)
 int find_shortname(char *shortname, char **host, char **secret)
 {
 	CONF_SECTION *maincs, *cs;
+	char buffer[256];
 
-	/*
-	 *	Ensure that the configuration is initialized.
-	 */
-	memset(&mainconfig, 0, sizeof(mainconfig));
-
-	if ((maincs = read_radius_conf_file()) == NULL) {
-		fprintf(stderr, "Error reading radiusd.conf\n");
-		exit(1);
+	/* Lets go look for the new configuration files */
+	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", radius_dir);
+	if ((maincs = conf_read(NULL, 0, buffer, NULL)) == NULL) {
+		return -1;
 	}
-
+	
 	/*
 	 * Find the first 'client' section.
 	 */
@@ -781,8 +778,6 @@ int find_shortname(char *shortname, char **host, char **secret)
 		 * or we find one that matches.
 		 */
 		while (cs && strcmp(shortname, c_shortname)) {
-			free(c_shortname);
-			free(c_secret);
 			cs = cf_subsection_find_next(cs, cs, "client");
 			if (cs) {
 				c_shortname = cf_section_value_find(cs, "shortname");
