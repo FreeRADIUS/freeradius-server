@@ -151,8 +151,8 @@ radrelay: radrelay.o util.o log.o conffile.o ../lib/libradius.la
 radrelay.o: radrelay.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radrelay.c
 
-radsqlrelay: radsqlrelay.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o valuepair.o ../lib/libradius.la
-	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self $(CFLAGS) $(LDFLAGS) -o radsqlrelay radsqlrelay.o mainconfig.o util.o nas.o client.o log.o conffile.o files.o xlat.o valuepair.o $(LIBLTDL) $(LCRYPT) $(LIBS)
+radsqlrelay: radsqlrelay.o util.o log.o conffile.o ../lib/libradius.la
+	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self $(CFLAGS) $(LDFLAGS) -o radsqlrelay radsqlrelay.o util.o log.o conffile.o $(LIBLTDL) $(LCRYPT) $(LIBS)
 
 radsqlrelay.o: radsqlrelay.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c radsqlrelay.c

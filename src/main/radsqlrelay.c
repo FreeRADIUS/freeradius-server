@@ -638,6 +638,7 @@ struct sql_module *init_sql(struct relay_misc *r)
 	char *name2;
 	char *server;
 	CONF_SECTION *maincs,*cs,*subcs = NULL;
+	char buffer[1024];
 
 	/*
 	 *      Ensure that the configuration is initialized.
@@ -645,11 +646,14 @@ struct sql_module *init_sql(struct relay_misc *r)
 	memset(&mainconfig, 0, sizeof(mainconfig));
 
 	/*
-	 * Hack to make DEBUG/DEBUG2 work
+	 *	Initialize dictionary.
 	 */
-	mainconfig.radlog_dest = RADLOG_STDOUT;
+	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
+		librad_perror("radrelay");
+		exit(1);
+	}
 
-	if ((maincs = read_radius_conf_file()) == NULL) {
+	if ((maincs = conf_read(NULL, 0, buffer, NULL)) == NULL) {
 		fprintf(stderr, "%s: Error reading radiusd.conf\n",progname);
 		return NULL;
 	}
