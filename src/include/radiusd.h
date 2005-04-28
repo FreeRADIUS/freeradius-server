@@ -180,9 +180,9 @@ typedef struct rad_listen_t {
 
 
 typedef enum radlog_dest_t {
-  RADLOG_FILES = 0,
+  RADLOG_STDOUT = 0,
+  RADLOG_FILES,
   RADLOG_SYSLOG,
-  RADLOG_STDOUT,
   RADLOG_STDERR,
   RADLOG_NULL
 } radlog_dest_t;
