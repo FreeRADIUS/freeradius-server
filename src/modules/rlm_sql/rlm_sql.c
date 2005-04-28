@@ -724,6 +724,39 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 				pairxlatmove(request, &request->reply->vps, &reply_tmp);
 				pairxlatmove(request, &request->config_items, &check_tmp);
 			}
+		} else {
+			/*
+			 *	rows == 0.  This is like having the username on a line
+			 * 	in the user's file with no check vp's.  As such, we treat
+			 *	it as found and add the reply attributes, so that we
+			 *	match expected behavior
+			 */
+			found = 1;
+			DEBUG2("rlm_sql (%s): User found in group %s",
+				inst->config->xlat_name, group_list_tmp->groupname);
+			/*
+			 *	Now get the reply pairs since the paircmp matched
+			 */
+			if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query, request, sql_escape_func)) {
+				radlog(L_ERR, "rlm_sql (%s): Error generating query; rejecting user",
+				       inst->config->xlat_name);
+				/* Remove the grouup we added above */
+				pairdelete(&request->packet->vps, PW_SQL_GROUP);
+				pairfree(&check_tmp);
+				return -1;
+			}
+			if (sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr) < 0) {
+				radlog(L_ERR, "rlm_sql (%s): Error retrieving reply pairs for group %s",
+				       inst->config->xlat_name, group_list_tmp->groupname);
+				/* Remove the grouup we added above */
+				pairdelete(&request->packet->vps, PW_SQL_GROUP);
+				pairfree(&check_tmp);
+				pairfree(&reply_tmp);
+				return -1;
+			}
+			*dofallthrough = fallthrough(reply_tmp);
+			pairxlatmove(request, &request->reply->vps, &reply_tmp);
+			pairxlatmove(request, &request->config_items, &check_tmp);
 		}
 
 		/*
