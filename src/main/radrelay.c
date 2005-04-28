@@ -761,6 +761,7 @@ int find_shortname(char *shortname, char **host, char **secret)
 	char buffer[256];
 
 	/* Lets go look for the new configuration files */
+	memset(&mainconfig, 0, sizeof(mainconfig)); /* for radlog() */
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", radius_dir);
 	if ((maincs = conf_read(NULL, 0, buffer, NULL)) == NULL) {
 		return -1;
