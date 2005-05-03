@@ -8,7 +8,7 @@ SERVER_SRCS	= radiusd.c files.c util.c acct.c nas.c log.c valuepair.c \
 		  version.c proxy.c exec.c auth.c conffile.c \
 		  modules.c modcall.c session.c xlat.c threads.c smux.c \
 		  radius_snmp.c client.c request_list.c mainconfig.c \
-		  request_process.c
+		  listen.c request_process.c
 
 SERVER_OBJS	+= $(SERVER_SRCS:.c=.o)
 
