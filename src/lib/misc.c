@@ -488,11 +488,6 @@ int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
 	/*
 	 *	No DNS lookups, assume it's an IP address.
 	 */
-	if (!librad_dodns) {
-		dst->af = af;
-		return inet_pton(af, src, &dst->ipaddr);
-	}
-
 	if (af == AF_UNSPEC) af = AF_INET;
 
 	if (af != AF_INET) return -1;
