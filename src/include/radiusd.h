@@ -170,13 +170,17 @@ typedef enum RAD_LISTEN_TYPE {
 /*
  *	For listening on multiple IP's and ports.
  */
-typedef struct rad_listen_t {
-	struct rad_listen_t *next; /* could be rbtree stuff */
+typedef struct rad_listen_t rad_listen_t;
+
+struct rad_listen_t {
+	struct rad_listen_t *next; /* should be rbtree stuff */
 	lrad_ipaddr_t	ipaddr;
 	RAD_LISTEN_TYPE	type;
 	int		port;
 	int		fd;
-} rad_listen_t;
+	int		(*recv)(rad_listen_t *,
+				RAD_REQUEST_FUNP *, REQUEST **);
+};
 
 
 typedef enum radlog_dest_t {
