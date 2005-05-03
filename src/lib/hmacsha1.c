@@ -12,6 +12,11 @@
 
 #include <string.h>
 #include <sys/types.h>
+
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+
 #include "sha1.h"
 
 #include "missing.h"
