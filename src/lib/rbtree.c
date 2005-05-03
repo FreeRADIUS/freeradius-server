@@ -273,7 +273,7 @@ int rbtree_insert(rbtree_t *tree, const void *Data)
 
 	/* setup new node */
 	if ((X = malloc (sizeof(*X))) == NULL) {
-		exit(1);
+		exit(1);	/* FIXME! */
 	}
 
 	X->Data = Data;
@@ -299,8 +299,7 @@ int rbtree_insert(rbtree_t *tree, const void *Data)
 	return 1;
 }
 
-
-static void DeleteFixup(rbtree_t *tree, rbnode_t *X)
+static void DeleteFixup(rbtree_t *tree, rbnode_t *X, rbnode_t *Parent)
 {
 	/*************************************
 	 *  maintain red-black tree balance  *
@@ -308,52 +307,54 @@ static void DeleteFixup(rbtree_t *tree, rbnode_t *X)
 	 *************************************/
 
 	while (X != tree->Root && X->Color == Black) {
-		if (X == X->Parent->Left) {
-			rbnode_t *W = X->Parent->Right;
+		if (X == Parent->Left) {
+			rbnode_t *W = Parent->Right;
 			if (W->Color == Red) {
 				W->Color = Black;
-				X->Parent->Color = Red;
-				RotateLeft(tree, X->Parent);
-				W = X->Parent->Right;
+				Parent->Color = Red;
+				RotateLeft(tree, Parent);
+				W = Parent->Right;
 			}
 			if (W->Left->Color == Black && W->Right->Color == Black) {
 				W->Color = Red;
-				X = X->Parent;
+				X = Parent;
+				Parent = X->Parent; /* NULL or NIL? */
 			} else {
 				if (W->Right->Color == Black) {
 					W->Left->Color = Black;
 					W->Color = Red;
 					RotateRight(tree, W);
-					W = X->Parent->Right;
+					W = Parent->Right;
 				}
-				W->Color = X->Parent->Color;
-				X->Parent->Color = Black;
+				W->Color = Parent->Color;
+				Parent->Color = Black;
 				W->Right->Color = Black;
-				RotateLeft(tree, X->Parent);
+				RotateLeft(tree, Parent);
 				X = tree->Root;
 			}
 		} else {
-			rbnode_t *W = X->Parent->Left;
+			rbnode_t *W = Parent->Left;
 			if (W->Color == Red) {
 				W->Color = Black;
-				X->Parent->Color = Red;
-				RotateRight(tree, X->Parent);
-				W = X->Parent->Left;
+				Parent->Color = Red;
+				RotateRight(tree, Parent);
+				W = Parent->Left;
 			}
 			if (W->Right->Color == Black && W->Left->Color == Black) {
 				W->Color = Red;
-				X = X->Parent;
+				X = Parent;
+				Parent = X->Parent; /* NULL or NIL? */
 			} else {
 				if (W->Left->Color == Black) {
 					W->Right->Color = Black;
 					W->Color = Red;
 					RotateLeft(tree, W);
-					W = X->Parent->Left;
+					W = Parent->Left;
 				}
-				W->Color = X->Parent->Color;
-				X->Parent->Color = Black;
+				W->Color = Parent->Color;
+				Parent->Color = Black;
 				W->Left->Color = Black;
-				RotateRight(tree, X->Parent);
+				RotateRight(tree, Parent);
 				X = tree->Root;
 			}
 		}
@@ -367,20 +368,13 @@ static void DeleteFixup(rbtree_t *tree, rbnode_t *X)
 void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 {
 	rbnode_t *X, *Y;
+	rbnode_t *Parent;
 
 	/*****************************
 	 *  delete node Z from tree  *
 	 *****************************/
 
 	if (!Z || Z == NIL) return;
-
-	if (Z == tree->Root) {
-		if (tree->freeNode) tree->freeNode(Z->Data);
-		free(Z);
-		tree->Root = NIL;
-		tree->num_elements--;
-		return;
-	}
 
 	if (Z->Left == NIL || Z->Right == NIL) {
 		/* Y has a NIL node as a child */
@@ -395,15 +389,17 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 	if (Y->Left != NIL)
 		X = Y->Left;
 	else
-		X = Y->Right;
+		X = Y->Right;	/* may be NIL! */
 
 	/* remove Y from the parent chain */
-	X->Parent = Y->Parent;
-	if (Y->Parent)
-		if (Y == Y->Parent->Left)
-			Y->Parent->Left = X;
+	Parent = Y->Parent;
+	if (X != NIL) X->Parent = Parent;
+
+	if (Parent)
+		if (Y == Parent->Left)
+			Parent->Left = X;
 		else
-			Y->Parent->Right = X;
+			Parent->Right = X;
 	else
 		tree->Root = X;
 
@@ -418,8 +414,9 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 	} else if (tree->freeNode) {
 		tree->freeNode(Z->Data);
 	}
-	if (Y->Color == Black)
-		DeleteFixup(tree, X);
+
+	if (Y->Color == Black && X != NIL)
+		DeleteFixup(tree, X, Parent);
 
 	free(Y);
 
