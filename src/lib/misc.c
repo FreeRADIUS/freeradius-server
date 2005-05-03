@@ -519,6 +519,7 @@ int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
 		return -1;
 	}
 
+	dst->af = af;
 	memcpy(&dst->ipaddr.ip4addr.s_addr, hp->h_addr,
 	       sizeof(dst->ipaddr.ip4addr.s_addr));
 	return 0;
