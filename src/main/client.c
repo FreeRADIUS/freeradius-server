@@ -249,6 +249,15 @@ RADCLIENT *client_find(const lrad_ipaddr_t *ipaddr)
 				match = cl;
 			}
 		}
+
+		/*
+		 *	Catch all other cases.
+		 */
+		if ((ipaddr->af == AF_INET6) &&
+		    IN6_ARE_ADDR_EQUAL(&cl->ipaddr.ipaddr.ip6addr,
+				       &ipaddr->ipaddr.ip6addr)) {
+			match = cl;
+		}
 	}
 
 	return match;

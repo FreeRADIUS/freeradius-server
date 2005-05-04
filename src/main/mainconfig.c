@@ -902,18 +902,18 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 			c->netmask = htonl(c->netmask);
 		}
 
-		if (ip_hton(hostnm, AF_INET, &c->ipaddr) < 0) {
-			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
-					filename, cf_section_lineno(cs), hostnm);
+		if (ip_hton(hostnm, AF_UNSPEC, &c->ipaddr) < 0) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s: %s",
+			       filename, cf_section_lineno(cs),
+			       hostnm, librad_errstr);
 			clients_free(list);
 			return NULL;
 		}
-		rad_assert(c->ipaddr.af == AF_INET);
 
 		/*
 		 *	Update the client name again...
 		 */
-		if (netmask) {
+		if (netmask && (c->ipaddr.af == AF_INET)) {
 			*netmask = '/';
 			c->ipaddr.ipaddr.ip4addr.s_addr &= c->netmask;
 			c->longname = strdup(hostnm);
