@@ -332,7 +332,7 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 		src_ipaddr->ipaddr.ip4addr = saremote.sin_addr;
 		*src_port = ntohs(saremote.sin_port);
 	}
-#ifdef HVAE_STRUCT_SOCKADDR_IN6
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
 	else if (dst_ipaddr->af == AF_INET6) {
 		src_ipaddr->af = AF_INET6;
 #ifdef WITH_UDPFROMTO
