@@ -318,7 +318,6 @@ static int radclient_sane(radclient_t *radclient)
 		}
 		radclient->request->dst_ipaddr = server_ipaddr;
 	}
-
 	if (radclient->request->code == 0) {
 		if (packet_code == -1) {
 			fprintf(stderr, "radclient: Request was \"auto\", but request %d in file %s did not contain Packet-Type\n",
@@ -878,7 +877,7 @@ int main(int argc, char **argv)
 
 		}
 		p = strchr(portname, ':');
-		if (p) {
+		if (p && (strchr(p + 1, ':') == NULL)) {
 			*p = '\0';
 			portname = p + 1;
 		} else {
