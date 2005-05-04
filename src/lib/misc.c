@@ -472,58 +472,55 @@ const char *inet_ntop(int af, const void *src, char *dst, size_t cnt)
 /*
  *	Wrappers for IPv4/IPv6 host to IP address lookup.
  *	This API returns only one IP address, of the specified
- *	address family.
+ *	address family, or the first address (of whatever family),
+ *	if AF_UNSPEC is used.
  */
 int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
 {
-	struct hostent	*hp;
-#ifdef GETHOSTBYNAMERSTYLE
-#if (GETHOSTBYNAMERSTYLE == SYSVSTYLE) || (GETHOSTBYNAMERSTYLE == GNUSTYLE)
-	struct hostent result;
 	int error;
-	char buffer[2048];
-#endif
-#endif
+	struct addrinfo hints, *ai = NULL, *res = NULL;
 
-	/*
-	 *	No DNS lookups, assume it's an IP address.
-	 */
-	if (af == AF_UNSPEC) af = AF_INET;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = af;
 
-	if (af != AF_INET) return -1;
-
-#ifdef GETHOSTBYNAMERSTYLE
-#if GETHOSTBYNAMERSTYLE == SYSVSTYLE
-	hp = gethostbyname_r(src, &result, buffer, sizeof(buffer), &error);
-#elif GETHOSTBYNAMERSTYLE == GNUSTYLE
-	if (gethostbyname_r(src, &result, buffer, sizeof(buffer),
-			    &hp, &error) != 0) {
-		return -1;
-	}
-#else
-	hp = gethostbyname(src);
-#endif
-#else
-	hp = gethostbyname(src);
-#endif
-	if (!hp) return -1;
-
-	if (hp->h_addrtype != af) return -1; /* not the right address family */
-
-	/*
-	 *	Paranoia from a Bind vulnerability.  An attacker
-	 *	can manipulate DNS entries to change the length of the
-	 *	address.  If the length isn't 4, something's wrong.
-	 */
-	if (hp->h_length != 4) {
+	if ((error = getaddrinfo(src, NULL, &hints, &res)) != 0) {
+		librad_log("%s", gai_strerror(error));
 		return -1;
 	}
 
-	dst->af = af;
-	memcpy(&dst->ipaddr.ip4addr.s_addr, hp->h_addr,
-	       sizeof(dst->ipaddr.ip4addr.s_addr));
-	return 0;
+	for (ai = res; ai; ai = ai->ai_next) {
+		if ((af == ai->ai_family) || !af)
+			break;
+	}
+
+	if (!ai) {
+		librad_log("ip_hton failed to find requested information for host %.100s", src);
+		return -1;
+	}
+
+	switch (ai->ai_family) {
+	case AF_INET :
+		dst->af = AF_INET;
+		memcpy(&dst->ipaddr, 
+		       &((struct sockaddr_in*)ai->ai_addr)->sin_addr, 
+		       sizeof(struct in_addr));
+		break;
+		
+	case AF_INET6 :
+		dst->af = AF_INET6;
+		memcpy(&dst->ipaddr, 
+		       &((struct sockaddr_in6*)ai->ai_addr)->sin6_addr, 
+		       sizeof(struct in6_addr));
+		break;
+		
+		/* Flow should never reach here */
+	case AF_UNSPEC :
+	default :
+		librad_log("ip_hton found unusable information for host %.100s", src);
+		return -1;
+	}
 	
+	return 0;
 }
 
 /*
