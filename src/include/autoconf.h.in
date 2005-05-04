@@ -217,6 +217,9 @@
 /* IPv6 address structure */
 #undef HAVE_STRUCT_IN6_ADDR
 
+/* IPv6 socket addresses */
+#undef HAVE_STRUCT_SOCKADDR_IN6
+
 /* Generic socket addresses */
 #undef HAVE_STRUCT_SOCKADDR_STORAGE
 
