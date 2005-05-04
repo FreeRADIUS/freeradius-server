@@ -667,11 +667,6 @@ REQUEST *rl_find(RADIUS_PACKET *packet)
 }
 
 /*
- *	See mainconfig.c
- */
-extern int proxy_new_listener(void);
-
-/*
  *	Add an entry to the proxy tree.
  *
  *	This is the ONLY function in this source file which may be called

@@ -437,11 +437,17 @@ extern          int total_active_threads(void);
 #define rad_waitpid waitpid
 #endif
 
-/* mainconfig.h */
+/* mainconfig.c */
 /* Define a global config structure */
 extern struct main_config_t mainconfig;
 
 int read_mainconfig(int reload);
 int free_mainconfig(void);
 CONF_SECTION *read_radius_conf_file(void); /* for radwho and friends. */
+
+/* listen.c */
+void listen_free(rad_listen_t **head);
+int listen_init(const char *filename, rad_listen_t **head);
+int proxy_new_listener(void);
+
 #endif /*RADIUSD_H*/
