@@ -110,6 +110,22 @@ static const CONF_PARSER module_config[] = {
 };
 
 
+/* transform x99_pw_valid() return code into an rlm return code */
+static int
+x99rc2rlmrc(int rc)
+{
+    switch (rc) {
+    case X99_RC_OK:                     return RLM_MODULE_OK;
+    case X99_RC_USER_UNKNOWN:           return RLM_MODULE_REJECT;
+    case X99_RC_AUTHINFO_UNAVAIL:       return RLM_MODULE_REJECT;
+    case X99_RC_AUTH_ERR:               return RLM_MODULE_REJECT;
+    case X99_RC_MAXTRIES:               return RLM_MODULE_USERLOCK;
+    case X99_RC_SERVICE_ERR:            return RLM_MODULE_FAIL;
+    default:                            return RLM_MODULE_FAIL;
+    }
+}
+
+
 /* per-module initialization */
 static int
 x99_token_init(void)
@@ -349,9 +365,9 @@ x99_token_authorize(void *instance, REQUEST *request)
     /* fast_sync mode (challenge only if requested) */
     if (inst->fast_sync &&
 	((user_info.card_id & X99_CF_SM) || !user_found)) {
-	if ((x99_pwe_cmp(&data, inst->resync_req) &&
+	if ((!x99_pwe_cmp(&data, inst->resync_req) &&
 		/* Set a bit indicating resync */ (sflags |= htonl(1))) ||
-	    x99_pwe_cmp(&data, inst->chal_req)) {
+	    !x99_pwe_cmp(&data, inst->chal_req)) {
 	    /*
 	     * Generate a challenge if requested.  We don't test for card
 	     * support [for async] because it's tricky for unknown users.
@@ -367,9 +383,12 @@ x99_token_authorize(void *instance, REQUEST *request)
 
 	} else {
 	    /*
-	     * Otherwise, this is the token sync response.  Signal
-	     * the authenticate code to ignore State.  We don't need
-	     * to set a value, /existence/ of the vp is the signal.
+	     * Otherwise, this is the token sync response.  Signal the
+	     * authenticate code to ignore any State attribute.  We don't
+	     * need to set a value, /existence/ of the vp is the signal.
+	     * We use this vp to protect against misconfiguration; in a
+	     * correct setup presence or absence of the State attribute
+	     * is itself enough information.
 	     */
 	    if ((vp = paircreate(PW_X99_FAST, PW_TYPE_INTEGER)) == NULL) {
 		x99_log(X99_LOG_CRIT, "autz: no memory");
@@ -387,7 +406,7 @@ x99_token_authorize(void *instance, REQUEST *request)
     } /* if (fast_sync && card supports sync mode) */
 
 gen_challenge:
-    /* Set the resync bit by default if the user can't request it. */
+    /* Set the resync bit by default if the user can't choose. */
     if (!inst->fast_sync)
 	sflags |= htonl(1);
 
@@ -461,13 +480,10 @@ x99_token_authenticate(void *instance, REQUEST *request)
 
     x99_user_info_t user_info;
     char *username;
-    int i, rc, fc;
+    int rc;
     int32_t sflags = 0; 	/* flags from state */
-    time_t last_auth;		/* time of last authentication */
-    unsigned auth_pos = 0;	/* window position of last authentication */
 
     char challenge[MAX_CHALLENGE_LEN + 1];
-    char e_response[9];		/* expected response */
     VALUE_PAIR *add_vps = NULL;
 
     struct x99_pwe_cmp_t data = {
@@ -486,7 +502,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
 
     if ((data.pwattr = x99_pwe_present(request)) == 0) {
 	x99_log(X99_LOG_AUTH, "auth: Attribute \"User-Password\" "
-		"or equivalent required for authentication.");
+			      "or equivalent required for authentication.");
 	return RLM_MODULE_INVALID;
     }
 
@@ -506,6 +522,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
     }
 
     /* Retrieve the challenge (from State attribute), unless (fast_sync). */
+    challenge[0] = '\0';
     if (pairfind(request->config_items, PW_X99_FAST) == NULL) {
 	VALUE_PAIR	*vp;
 	unsigned char	*state;
@@ -558,260 +575,17 @@ x99_token_authenticate(void *instance, REQUEST *request)
 		    username);
 	    return RLM_MODULE_FAIL;
 	}
-    } /* if (!fast_sync) */
-
-    /* Get the time of the last authentication. */
-    if (x99_get_last_auth(inst->syncdir, username, &last_auth) != 0) {
-	x99_log(X99_LOG_ERR,
-		"auth: unable to get last auth time for [%s]", username);
-	return RLM_MODULE_FAIL;
-    }
-
-    /* Check failure count. */
-    fc = x99_check_failcount(username, inst);
-    if ((fc == FAIL_ERR) || (fc == FAIL_HARD))
-	return RLM_MODULE_USERLOCK;
-
-    /* Some checks for ewindow2_size logic. */
-    if (fc == FAIL_SOFT) {
-	if (!inst->ewindow2_size)	/* no auto-resync */
-	    return RLM_MODULE_USERLOCK;
-
-	if (!pairfind(request->config_items, PW_X99_FAST)) {
-	    /*
-	     * ewindow2 softfail override requires two consecutive sync
-	     * responses.  Fail, and record that this was async.
-	     */
-	    if (x99_set_last_auth_pos(inst->syncdir, username, 0))
-		x99_log(X99_LOG_ERR,
-			"auth: failed to record last auth pos for [%s]",
-			username);
-	    return RLM_MODULE_USERLOCK;
-	}
-
-	/* We're now in "ewindow2 mode" ... subsequent logic must test fc */
-	goto sync_response;
-    }
-
-    /*
-     * Don't bother to check async response if either
-     * - the card doesn't support it, or
-     * - we're doing fast_sync.
-     */
-    if (!(user_info.card_id & X99_CF_AM) ||
-	pairfind(request->config_items, PW_X99_FAST)) {
-	goto sync_response;
-    }
-
-    /* Perform any site-specific transforms of the challenge. */
-    if (x99_challenge_transform(username, challenge) != 0) {
-	x99_log(X99_LOG_ERR,
-		"auth: challenge transform failed for [%s]", username);
-	return RLM_MODULE_FAIL;
-	/* NB: last_auth, failcount not updated. */
-    }
-
-    /* Calculate and test the async response. */
-    if (x99_response(challenge, e_response, user_info.card_id,
-		     user_info.keyblock) != 0) {
-	x99_log(X99_LOG_ERR,
-		"auth: unable to calculate async response for [%s], "
-		"to challenge %s", username, challenge);
-	return RLM_MODULE_FAIL;
-	/* NB: last_auth, failcount not updated. */
-    }
-    DEBUG("rlm_x99_token: auth: [%s], async challenge %s, "
-	  "expecting response %s", username, challenge, e_response);
-
-    if (x99_pwe_cmp(&data, e_response)) {
-	/* Password matches.  Is this allowed? */
-	if (!inst->allow_async) {
-	    x99_log(X99_LOG_AUTH,
-		    "auth: bad async for [%s]: disallowed by config", username);
-	    rc = RLM_MODULE_REJECT;
-	    goto return_pw_valid;
-	    /* NB: last_auth, failcount not updated. */
-	}
-
-	/* Make sure this isn't a replay by forcing a delay. */
-	if (time(NULL) - last_auth < inst->chal_delay) {
-	    x99_log(X99_LOG_AUTH,
-		    "auth: bad async for [%s]: too soon", username);
-	    rc = RLM_MODULE_REJECT;
-	    goto return_pw_valid;
-	    /* NB: last_auth, failcount not updated. */
-	}
-
-	if (user_info.card_id & X99_CF_SM) {
-	    x99_log(X99_LOG_INFO,
-		    "auth: [%s] authenticated in async mode", username);
-	}
-
-	rc = RLM_MODULE_OK;
-	if (ntohl(sflags) & 1) {
-	    /*
-	     * Resync the card.  The sync data doesn't mean anything for
-	     * async-only cards, but we want the side effects of resetting
-	     * the failcount and the last auth time.  We "fail-out" if we
-	     * can't do this, because if we can't update the last auth time,
-	     * we will be open to replay attacks over the lifetime of the
-	     * State attribute (inst->chal_delay).
-	     */
-	    if (x99_get_sync_data(inst->syncdir, username, user_info.card_id,
-				  1, 0, challenge, user_info.keyblock) != 0) {
-		x99_log(X99_LOG_ERR, "auth: unable to get sync data "
-			"e:%d t:%d for [%s] (for resync)", 1, 0, username);
-		rc = RLM_MODULE_FAIL;
-	    } else if (x99_set_sync_data(inst->syncdir, username, challenge,
-					 user_info.keyblock) != 0) {
-		x99_log(X99_LOG_ERR,
-			"auth: unable to set sync data for [%s] (for resync)",
-			username);
-		rc = RLM_MODULE_FAIL;
-	    }
-	} else {
-	    /* Just update failcount, last_auth, auth_pos. */
-	    if (x99_reset_failcount(inst->syncdir, username) != 0) {
-		x99_log(X99_LOG_ERR,
-			"auth: unable to reset failcount for [%s]", username);
-		rc = RLM_MODULE_FAIL;
-	    }
-	}
-	goto return_pw_valid;
-    } /* if (user authenticated async) */
-
-sync_response:
-    /*
-     * Calculate and test sync responses in the window.
-     * Note that we always accept a sync response, even
-     * if a challenge or resync was explicitly requested.
-     */
-    if ((user_info.card_id & X99_CF_SM) && inst->allow_sync) {
-	int start = 0, end = inst->ewindow_size;
-
-	/*
-	 * Tweak start,end for ewindow2_size logic.
-	 *
-	 * If user is in softfail, and their last response was correct,
-	 * start at that response.  We used to start at the NEXT
-	 * response (the one that will let them in), but the MS Windows
-	 * "incorrect password" dialog is confusing and users end up
-	 * reusing the same password twice; this has the effect that
-	 * ewindow2 doesn't work at all for them (they enter 1,1,2,2,3,3;
-	 * the 1,2 or 2,3 wouldn't work since the repeat would reset the
-	 * sequence).
-	 *
-	 * The response sequence 6,5,6 won't work (but 6,5,6,7 will).
-	 * That's OK; we want to optimize for the 6,7 sequence.  The user
-	 * can't generate the 6,5 sequence from the token anyway.
-	 *
-	 * If the user starts at the left edge of the window (0,1,2) they
-	 * have to enter three responses.  We don't accept the zeroeth
-	 * response as part of the sequence because we can't differentiate
-	 * between a correct entry of the zeroeth response (which stores
-	 * 0 as the last_auth_pos) and an incorrect entry (which "resets"
-	 * the last_auth_pos to 0).
-	 */
-	if (fc == FAIL_SOFT) {
-	    start = x99_get_last_auth_pos(inst->syncdir, username);
-	    end = inst->ewindow2_size;
-	}
-
-	challenge[0] = '\0';	/* initialize for x99_get_sync_data() */
-	for (i = start; i <= end; ++i) {
-	    /* Get sync challenge and key. */
-	    if (x99_get_sync_data(inst->syncdir, username, user_info.card_id,
-				  i, 0, challenge, user_info.keyblock) != 0) {
-		x99_log(X99_LOG_ERR,
-			"auth: unable to get sync data e:%d t:%d for [%s]",
-			i, 0, username);
-		rc = RLM_MODULE_FAIL;
-		goto return_pw_valid;
-		/* NB: last_auth, failcount not updated. */
-	    }
-
-	    /* Calculate sync response. */
-	    if (x99_response(challenge, e_response, user_info.card_id,
-			     user_info.keyblock) != 0) {
-		x99_log(X99_LOG_ERR, "auth: unable to calculate sync response "
-			"e:%d t:%d for [%s], to challenge %s",
-			i, 0, username, challenge);
-		rc = RLM_MODULE_FAIL;
-		goto return_pw_valid;
-		/* NB: last_auth, failcount not updated. */
-	    }
-	    DEBUG("rlm_x99_token: auth: [%s], sync challenge %d %s, "
-		  "expecting response %s", username, i, challenge, e_response);
-
-	    /* Test user-supplied passcode. */
-	    if (x99_pwe_cmp(&data, e_response)) {
-		/*
-		 * Yay!  User authenticated via sync mode.  Resync.
-		 */
-		rc = RLM_MODULE_OK;
-
-		/*
-		 * ewindow2_size logic
-		 */
-		if (fc == FAIL_SOFT) {
-		    /* User must authenticate twice in a row, ... */
-		    if (start && (i == start + 1) &&
-			/* ... within ewindow2_delay seconds. */
-			(time(NULL) - last_auth < inst->ewindow2_delay)) {
-			/* This is the 2nd of two consecutive responses. */
-			x99_log(X99_LOG_AUTH,
-				"auth: ewindow2 softfail override for [%s] at "
-				"window position %d", username, i);
-		    } else {
-			/* correct, but not consecutive or not soon enough */
-			DEBUG("rlm_x99_token: auth: [%s] ewindow2 candidate "
-			      "at position %i", username, i);
-			auth_pos = i;
-			rc = RLM_MODULE_REJECT;
-			break;
-		    }
-		}
-
-		/*
-		 * The same failure/replay issue applies here as in the
-		 * identical code block in the async section above, with
-		 * the additional problem that a response can be reused
-		 * indefinitely!  (until the sync data is updated)
-		 */
-		if (x99_get_sync_data(inst->syncdir,username,user_info.card_id,
-				      1, 0, challenge,user_info.keyblock) != 0){
-		    x99_log(X99_LOG_ERR, "auth: unable to get sync data "
-			    "e:%d t:%d for [%s] (for resync)", 1, 0, username);
-		    rc = RLM_MODULE_FAIL;
-		} else if (x99_set_sync_data(inst->syncdir, username, challenge,
-					     user_info.keyblock) != 0) {
-		    x99_log(X99_LOG_ERR,
-			    "auth: unable to set sync data for [%s] "
-			    "(for resync)", username);
-		    rc = RLM_MODULE_FAIL;
-		}
-		goto return_pw_valid;
-
-	    } /* if (passcode is valid) */
-	} /* for (each slot in the window) */
-    } /* if (card is in sync mode and sync mode allowed) */
-
-    /* Both async and sync mode failed. */
-    if ((fc != FAIL_SOFT) /* !already incremented by x99_check_failcount() */ &&
-	(x99_incr_failcount(inst->syncdir, username) != 0)) {
-	x99_log(X99_LOG_ERR,
-		"auth: unable to increment failure count for user [%s]",
+    } else if (pairfind(request->packet->vps, PW_STATE)) {
+	x99_log(X99_LOG_ERR, "auth: bad state for [%s]: "
+			     "present but should be absent (broken NAS?)",
 		username);
+	return RLM_MODULE_FAIL;
     }
-    if (x99_set_last_auth_pos(inst->syncdir, username, auth_pos)) {
-	x99_log(X99_LOG_ERR,
-		"auth: unable to set ewindow2 position for user [%s]",
-		username);
-    }
-    return RLM_MODULE_REJECT;
 
-    /* Must exit here after a successful return from x99_pwe_cmp(). */
-return_pw_valid:
+    /* do it */
+    rc = x99rc2rlmrc(x99_pw_valid(username, challenge, NULL, inst,
+				  ntohl(sflags) & 1,
+				  x99_pwe_cmp, &data, "auth"));
 
     /* Handle any vps returned from x99_pwe_cmp(). */
     if (rc == RLM_MODULE_OK) {

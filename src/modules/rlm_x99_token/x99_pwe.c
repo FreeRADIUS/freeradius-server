@@ -125,7 +125,7 @@ x99_pwe_present(const REQUEST *request)
 
 /*
  * Test for passcode (password) equality.
- * returns 1 for match, 0 for non-match.
+ * returns 0 for match, non-zero for non-match.
  * If data->returned_vps is non-null, then on matches, it will point to
  * vps that should be added to an Access-Accept packet.  If access is denied,
  * the caller is responsible for freeing any vps returned.
@@ -138,7 +138,7 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
     int attr			= data->pwattr;
     VALUE_PAIR **vps		= data->returned_vps;
 
-    int match = 0;
+    int nmatch = -1;
     VALUE_PAIR *chal_vp, *resp_vp;
 
     /*
@@ -156,7 +156,7 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
     switch(pwattr[attr]) {
     case PW_PASSWORD:
 	DEBUG("rlm_x99_token: pwe_cmp: handling PW_PASSWORD");
-	match = !strcmp(password, resp_vp->strvalue);
+	nmatch = strcmp(password, resp_vp->strvalue);
 	break;
 
     case PW_CHAP_PASSWORD:
@@ -180,12 +180,12 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 	DEBUG("rlm_x99_token: pwe_cmp: handling PW_CHAP_PASSWORD");
 	if (1 + strlen(password) + chal_vp->length > sizeof(input)) {
 	    DEBUG("rlm_x99_token: pwe_cmp: CHAP-Challenge/password too long");
-	    match = 0;
+	    nmatch = -1;
 	    break;
 	}
 	if (resp_vp->length != 17) {
 	    x99_log(X99_LOG_AUTH, "pwe_cmp: CHAP-Password wrong size");
-	    match = 0;
+	    nmatch = -1;
 	    break;
 	}
 	input[0] = *(resp_vp->strvalue);
@@ -193,7 +193,7 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 	(void) memcpy(&input[1+strlen(password)], chal_vp->strvalue,
 		      chal_vp->length);
 	(void) MD5(input, 1 + strlen(password) + chal_vp->length, output);
-	match = !memcmp(output, &(resp_vp->strvalue)[1], MD5_DIGEST_LENGTH);
+	nmatch = memcmp(output, &(resp_vp->strvalue)[1], MD5_DIGEST_LENGTH);
     } /* case PW_CHAP_PASSWORD */
     break;
 
@@ -225,24 +225,24 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 	DEBUG("rlm_x99_token: pwe_cmp: handling PW_MS_CHAP_RESPONSE");
 	if (chal_vp->length != 8) {
 	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAP-Challenge wrong size");
-	    match = 0;
+	    nmatch = -1;
 	    break;
 	}
 	if (resp_vp->length != 50) {
 	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAP-Response wrong size");
-	    match = 0;
+	    nmatch = -1;
 	    break;
 	}
 	if ((resp_vp->strvalue)[1] != 1) {
 	    x99_log(X99_LOG_AUTH,
 		    "pwe_cmp: MS-CHAP-Response bad flags (LM not supported)");
-	    match = 0;
+	    nmatch = -1;
 	    break;
 	}
 	/* This is probably overkill. */
 	if (strlen(password) > MAX_STRING_LEN) {
 	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAP password too long");
-	    match = 0;
+	    nmatch = -1;
 	    break;
 	}
 
@@ -276,8 +276,8 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 			    ks, DES_ENCRYPT);
 	}
 
-	match = !memcmp(output, resp_vp->strvalue + 26, 24);
-	if (!match || !vps)
+	nmatch = memcmp(output, resp_vp->strvalue + 26, 24);
+	if (nmatch || !vps)
 	    break;
 
 	/*
@@ -369,18 +369,18 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 	DEBUG("rlm_x99_token: pwe_cmp: handling PW_MS_CHAP2_RESPONSE");
 	if (chal_vp->length != 16) {
 	    x99_log(X99_LOG_AUTH,"pwe_cmp: MS-CHAP-Challenge (v2) wrong size");
-	    match = 0;
+	    nmatch = -1;
 	    break;
 	}
 	if (resp_vp->length != 50) {
 	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAP2-Response wrong size");
-	    match = 0;
+	    nmatch = -1;
 	    break;
 	}
 	/* This is probably overkill. */
 	if (strlen(password) > MAX_STRING_LEN) {
 	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAPv2 password too long");
-	    match = 0;
+	    nmatch = -1;
 	    break;
 	}
 
@@ -427,8 +427,8 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 			    ks, DES_ENCRYPT);
 	}
 
-	match = !memcmp(output, resp_vp->strvalue + 26, 24);
-	if (!match || !vps)
+	nmatch = memcmp(output, resp_vp->strvalue + 26, 24);
+	if (nmatch || !vps)
 	    break;
 
 	/*
@@ -730,12 +730,12 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 
     default:
 	DEBUG("rlm_x99_token: pwe_cmp: unknown password type");
-	match = 0;
+	nmatch = -1;
 	break;
 
     } /* switch(pwattr[attr]) */
 
-    return match;
+    return nmatch;
 }
 
 

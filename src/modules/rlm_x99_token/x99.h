@@ -72,11 +72,10 @@ typedef struct x99_token_t {
     char *syncdir;	/* dir containing sync mode and state info         */
     char *chal_prompt;	/* text to present challenge to user, must have %s */
     int chal_len;	/* challenge length, min 5 digits                  */
-    int chal_delay;	/* max delay time for response, in seconds         */
     int softfail;	/* number of auth fails before time delay starts   */
     int hardfail;	/* number of auth fails when user is locked out    */
-    int allow_sync;	/* useful to override pwdfile card_type settings   */
     int fast_sync;	/* response-before-challenge mode                  */
+    int allow_sync;	/* useful to override pwdfile card_type settings   */
     int allow_async;	/* C/R mode allowed?                               */
     char *chal_req;	/* keyword requesting challenge for fast_sync mode */
     char *resync_req;	/* keyword requesting resync for fast_sync mode    */
@@ -85,6 +84,7 @@ typedef struct x99_token_t {
     int ewindow2_delay;	/* softfail override max time delay                */
 #if defined(FREERADIUS)
     /* freeradius-specific items */
+    int chal_delay;		/* max delay time for response, in seconds */
     const char *name;		/* instance name for x99_token_authorize() */
     int mschapv2_mppe_policy;	/* whether or not do to mppe for mschapv2  */
     int mschapv2_mppe_types;	/* key type/length for mschapv2/mppe       */
@@ -147,7 +147,6 @@ typedef struct x99_user_info_t {
     des_cblock keyblock;
 } x99_user_info_t;
 
-#ifdef PAM
 /* x99_cardops.c */
 /* return codes from x99_pw_valid() */
 #define X99_RC_OK		0
@@ -156,11 +155,13 @@ typedef struct x99_user_info_t {
 #define X99_RC_AUTH_ERR		3
 #define X99_RC_MAXTRIES		4
 #define X99_RC_SERVICE_ERR	5
+struct x99_pwe_cmp_t;
+typedef int (*cmpfunc_t)(struct x99_pwe_cmp_t *data, const char *passcode);
 extern int x99_pw_valid(const char *username,
 			char *challenge, const char *passcode,
 			const x99_token_t *opt, int resync,
+			cmpfunc_t cmpfunc, void *data,
 			const char *log_prefix);
-#endif
 
 /* x99_mac.c */
 extern int x99_response(const char *challenge, char response[17],
