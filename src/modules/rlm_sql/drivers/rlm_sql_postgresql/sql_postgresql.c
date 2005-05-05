@@ -39,6 +39,8 @@
 
 /* Modification of rlm_sql_mysql to handle postgres */
 
+#include "autoconf.h"
+
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>

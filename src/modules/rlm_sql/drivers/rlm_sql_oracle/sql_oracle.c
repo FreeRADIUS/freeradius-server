@@ -19,6 +19,8 @@
  * Copyright 2000  David Kerry <davidk@snti.com>
  */
 
+#include "autoconf.h"
+
 #include <stdio.h>
 #include <sys/stat.h>
 #include <sys/time.h>

@@ -28,6 +28,8 @@
  * by Joerg Wendland <wendland@scan-plus.de>
  */
 
+#include "autoconf.h"
+
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>

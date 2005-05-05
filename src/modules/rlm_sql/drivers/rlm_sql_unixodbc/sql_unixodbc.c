@@ -19,6 +19,8 @@
  * Copyright 2000  Dmitri Ageev <d_ageev@ortcc.ru>
  */
 
+#include "autoconf.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include "radiusd.h"

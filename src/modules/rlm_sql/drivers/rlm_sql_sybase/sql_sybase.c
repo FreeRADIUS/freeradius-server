@@ -20,6 +20,8 @@
  * Copyright 2000  Mattias Sjostrom <mattias@nogui.se>
  */
 
+#include "autoconf.h"
+
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>

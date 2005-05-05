@@ -22,12 +22,14 @@
  * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
+#include "autoconf.h"
+
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include 	"radiusd.h"
+#include "radiusd.h"
 
 #include "config.h"
 
