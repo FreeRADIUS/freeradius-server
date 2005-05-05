@@ -29,8 +29,6 @@
 #ifdef FREERADIUS
 #define _LRAD_MD4_H
 #define _LRAD_SHA1_H
-#include "autoconf.h"
-#include "radiusd.h"
 #include "rad_assert.h"
 #endif
 #include "x99.h"

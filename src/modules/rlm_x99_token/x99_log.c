@@ -19,16 +19,13 @@
  * Copyright 2002  Google, Inc.
  */
 
-#ifdef FREERADIUS
-#include "radiusd.h"
-#endif
 #include "x99.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#ifndef FREERADIUS
+#ifdef PAM
 #include <syslog.h>
 #endif
 

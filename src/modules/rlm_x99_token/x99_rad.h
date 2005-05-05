@@ -23,6 +23,7 @@
 #ifndef X99_RAD_H
 #define X99_RAD_H
 
+#include "autoconf.h"
 #include "radiusd.h"
 #define X99_LOG_ERR  L_ERR
 #define X99_LOG_AUTH L_AUTH

@@ -20,9 +20,6 @@
  * Copyright 2005 Frank Cusack
  */
 
-#ifdef FREERADIUS
-#include "radiusd.h"
-#endif
 #include "x99.h"
 #include "x99_sync.h"
 

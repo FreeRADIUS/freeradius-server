@@ -48,11 +48,10 @@
 #include <time.h>
 #include <netinet/in.h>	/* htonl() */
 
+#include "x99.h"
 #ifdef FREERADIUS
-#include "radiusd.h"
 #include "modules.h"
 #endif
-#include "x99.h"
 
 static const char rcsid[] = "$Id$";
 

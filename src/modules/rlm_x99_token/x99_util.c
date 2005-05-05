@@ -19,9 +19,6 @@
  * Copyright 2001,2002  Google, Inc.
  */
 
-#ifdef FREERADIUS
-#include "radiusd.h"
-#endif
 #include "x99.h"
 
 #include <errno.h>

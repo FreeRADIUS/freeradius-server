@@ -23,7 +23,6 @@
 #ifdef FREERADIUS
 #define _LRAD_MD4_H
 #define _LRAD_SHA1_H
-#include "radiusd.h"
 #endif
 #include "x99.h"
 
