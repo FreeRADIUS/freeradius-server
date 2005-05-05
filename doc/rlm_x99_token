@@ -4,9 +4,6 @@ token authentication.  If you have questions not answered in this doc,
 contact Frank Cusack, <fcusack@fcusack.com>.  Please send bug reports
 to the same address.
 
-This software is Copyright (c) 2002-2005 Google, Inc.
-All Rights Reserved.
-
 See the COPYRIGHT file, included with this distribution, for copyright
 and redistribution information.
 
@@ -211,65 +208,83 @@ and redistribution information.
 
     ewindow_size:  This is how far out of [event] sync the server can
     get with the token.  The value is how far the user can be ahead of
-    the server -- essentially how many times the user can play with the
+    the server--essentially how many times the user can play with the
     token.  You'll want to set this to at least 1 or 2, in case the user
     mistypes the response and the token turns off before he is able to
     try again.  It's 'e'window because I am reserving twindow for
     time synchronous modes.
 
-    ewindow2_size:  This is similar to ewindow_size.  In "delay mode",
-    users' responses are normally /not/ checked during the delay period.
-    However, if ewindow2_size is non-zero, the response /is/ checked up to
-    ewindow2_size events/counts.  If the user gets two consecutive sync
-    responses correct within ewindow2_delay seconds, he is authenticated.
+    ewindow2_size:  This is similar to ewindow_size.  When the user goes
+    into "delay mode" (>softfail consecutive incorrect passcodes), this
+    extends the allowable event window, but requires the user to enter
+    two consecutive sync responses corrrectly, within ewindow2_delay
+    seconds.  The upside of having to enter 2 passcodes is that the delay
+    is overridden.  In practice, users that do have problems (and those
+    users tend to have them consistently) get into long lockout delays
+    and since no indication is given to the user about this state, they
+    need a way to get past it without calling the helpdesk.
 
 	For example, say softfail=1, ewindow_size=2 and ewindow2_size=8.
 	The server's state is such that the next 8 responses are
 	1, 2, ..., 8.  The user, however, has played with the token and
-	the response showing is '3'.
+	the response showing is '3', which he enters as the passcode.
 
-	This is ahead of ewindow_size, so the server refuses them (and
-	records the fact the last response was '3').
+	This is ahead of ewindow_size, so the server refuses him, and
+	places the user into "delay mode", since softfail is only 1.
+	Note that even though this response is within ewindow2_size
+	events, it is not recorded as such because when testing the
+	passcode, the user was /not yet/ in delay mode and so only
+	ewindow_size events were considered.  /AFTER/ testing the
+	passcode, the user is /THEN/ placed into delay mode.
 
 	The user tries again immediately, using '3' again.  Since the
-	user is now in "delay mode" (because softfail is only 1),
-	the server would normally refuse them (remember, we said they
-	tried again "immediately").  Even if the user weren't in delay
-	mode, the server would still refuse them because they are too
-	far ahead of the window.
+	user /is now/ in delay mode, the server would normally refuse
+	him (remember, we said he tried again "immediately").  Even if
+	the user weren't in delay mode (say, softfail is larger), the
+	server would still refuse him because he is too far ahead of
+	the normal ewindow_size window.
 
-	But since ewindow2_size is non-zero, instead the server looks
-	ahead up to 8 responses.  It stops at 3 and since the previous
-	response was not '2', it refuses the user, but records that the
-	last response was '3'.
+	But since he is in delay mode, and ewindow2_size is non-zero,
+	instead of simply rejecting responses beyond ewindow_size events,
+	the server looks ahead up to ewindow2_size (8 in this case) events.
+	It sees that '3' is within ewindow2_size events, records that the
+	user gave a correct sync response at position 3, and returns
+	failure.
 
 	Now the user tries again immediately, this time using the next
 	response of '4'.  Again, normally this would be refused since
 	the user is in delay mode.  But because ewindow2_size is set,
-	the server will check up to 8 responses and since '4' is within
-	the window, and the user's previous response ('3') matches the
-	previous response in the window, the user is authenticated.
+	the server sees that '4' is within the ewindow2_size window,
+	and that the user's previous response ('3') matches the
+	previous response in the window, so the user is authenticated
+	and returned to normal mode.
 
-	* If an attacker knows a response that is ahead of the window,
-	  they can launch a simple attack by just guessing in pairs:
-	  <known_response>, <guess>.  However, they could also simply
-	  just wait until the user advances the window so that their
-	  known response becomes valid, so this shouldn't be an issue.
-	  Nevertheless, you may wish to set hardfail when using
-	  ewindow2_size (but keep in mind the trivial DoS with hardfail).
+	Note that the user actually entered 3,3,4 and although the user
+	entered 3 correct passcodes, only the last 2 were consecutive
+	so this seems to match the description of this feature.
+	However, if the user had entered 3,4,5 he still would have had
+	to enter 3 passcodes!  Review the example to understand why.
 
-	* Setting ewindow2_size to ANY value increases CPU usage.
-	  Without it set, when a user is in softfail the server returns
-	  failure without checking response values.  With ewindow2_size
-	  set, the server now does check response values; and you
-	  normally want ewindow2_size to be somewhat large (compared to
-	  ewindow_size), so the number of values checked is GREATER when
-	  the softfail-imposed delay mode is in effect.
+	In practice, users generally enter a lot of bad passcodes to get
+	into softfail and then finally see what they're doing wrong and
+	so they do only enter 2 correct passcodes, ie if they are even
+	aware of this feature they don't get confused about why they
+	had to enter the '5' part of 3,4,5.
 
-	* Setting ewindow2_size to LARGE values may increase potential
-	  for abuse via DoS.  I  have not performed any server sizing
-	  exercises, but I expect that for most installations any modern
-	  hardware is fast enough for reasonable values.
+	It is recommended that you tell users to /always/ advance to the
+	next passcode on error, and that they should always try at least
+	3 (or 4) consecutive entries before calling the helpdesk.
+
+	The Windows VPN password error dialog is confusing and is a major
+	source of duplicate entries, which add an extra passcode entry to
+	ewindow2 mode.  Another significant source of passcode errors is
+	PC laptop users that have a docking station with keyboard.  Windows
+	keeps the numlock setting when undocking, and my experience is that
+	one of the first things that folks do after undocking is to VPN in.
+	The '0' key on the number row is a '.' instead of a '0' when numlock
+	is on.  And since the Windows VPN dialog can't know that it's safe
+	to display the passcode, the user can't tell that he's misentering
+	zeroes.  Ouch.
 
     radiusd.conf:  x99_token must be listed in both the authorize and
     authenticate stanzas.  In the authorize code, x99_token will set
