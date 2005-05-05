@@ -45,7 +45,7 @@ static const char rcsid[] = "$Id$";
  * non-NULL, will be pointing to allocated storage.  The caller is
  * responsible for freeing the storage.  raw_state will not be
  * null-terminated, the caller should know the expected size (any
- * variance is size is solely due to the length of the challenge arg).
+ * variance in size is solely due to the length of the challenge arg).
  *
  * In the simplest implementation, we would just use the challenge as state.
  * Unfortunately, the RADIUS secret protects only the User-Password
@@ -56,9 +56,9 @@ static const char rcsid[] = "$Id$";
  *
  * So, we have to make up for that deficiency by signing our state with
  * data unique to this specific request.  A NAS would use the Request
- * Authenticator, we don't know what that will be when the State is
+ * Authenticator, but we don't know what that will be when the State is
  * returned to us, so we'll use the time.  So our replay prevention
- * is limited to a time interval (inst->maxdelay).  We could keep
+ * is limited to a time interval (inst->chal_delay).  We could keep
  * track of all challenges issued over that time interval for
  * better protection.
  *
@@ -78,7 +78,7 @@ static const char rcsid[] = "$Id$";
  * only "this" server will be able to verify the hmac, due to the unique
  * key.  But I've left it in there for future consideration of sync'd
  * keys across servers (eg, using the RADIUS secret, which is probably
- * not a good idea, or reading from a file, which might be OK.)
+ * not a good idea; or reading from a file, which might be OK.)
  */
 int
 x99_gen_state(char **ascii_state, unsigned char **raw_state,
