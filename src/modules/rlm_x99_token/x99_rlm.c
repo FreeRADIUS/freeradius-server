@@ -27,7 +27,7 @@
  * ANSI X9.9 has been withdrawn as a standard, due to the weakness of DES.
  * An attacker can learn the token's secret by observing two
  * challenge/response pairs.  See ANSI document X9 TG-24-1999
- * <URL:http://www.x9.org/TG24_1999.pdf>.
+ * <URL:http://www.x9.org/docs/TG24_1999.pdf>.
  *
  * Please read the accompanying docs.
  */
