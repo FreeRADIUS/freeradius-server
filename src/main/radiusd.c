@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'i':
-				if (ip_hton(optarg, AF_INET, &mainconfig.myip) < 0) {
+				if (ip_hton(optarg, AF_UNSPEC, &mainconfig.myip) < 0) {
 					fprintf(stderr, "radiusd: Invalid IP Address or hostname \"%s\"\n", optarg);
 					exit(1);
 				}
@@ -404,10 +404,6 @@ int main(int argc, char *argv[])
 		if ((listener->ipaddr.af == AF_INET) &&
 		    (listener->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
 			strcpy(buffer, "*");
-		} else if ((listener->ipaddr.af == AF_INET6) &&
-			   (IN6_IS_ADDR_UNSPECIFIED(&listener->ipaddr.ipaddr))) {
-			strcpy(buffer, "* (IPv6)");
-
 		} else {
 			ip_ntoh(&listener->ipaddr, buffer, sizeof(buffer));
 		}
@@ -419,7 +415,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case RAD_LISTEN_ACCT:
-			DEBUG("Listening on accounting addres %s port %d",
+			DEBUG("Listening on accounting address %s port %d",
 			      buffer, listener->port);
 			break;
 
