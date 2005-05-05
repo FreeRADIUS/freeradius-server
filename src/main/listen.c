@@ -34,11 +34,6 @@
 #include <arpa/inet.h>
 #endif
 
-#include "radiusd.h"
-#include "rad_assert.h"
-#include "conffile.h"
-#include "token.h"
-
 #include <sys/resource.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -49,19 +44,21 @@
 #include "udpfromto.h"
 #endif
 
+#include "radiusd.h"
+#include "rad_assert.h"
+#include "conffile.h"
+#include "token.h"
+
 #include "radius_snmp.h"
 #include "request_list.h"
 
 static time_t start_time = 0;
-static int last_proxy_port = 0;
 
 /*
  *	FIXME: Delete this crap!
  */
 extern time_t time_now;
 extern int auth_port;
-
-static uint32_t server_ip = 0; /* INADDR_ANY */
 
 /*
  *	Process and reply to a server-status request.
@@ -305,8 +302,7 @@ static int common_checks(rad_listen_t *listener,
 	curreq = request_alloc(); /* never fails */
 	curreq->packet = packet;
 	curreq->number = request_num_counter++;
-	strNcpy(curreq->secret, secret,
-		sizeof(curreq->secret));
+	strNcpy(curreq->secret, secret, sizeof(curreq->secret));
 	
 	/*
 	 *	Remember the request in the list.
@@ -769,7 +765,8 @@ static int listen_bind(rad_listen_t *this)
 	 *	it's there, use that, rather than creating a new
 	 *	socket.  This allows HUP's to re-use the old sockets,
 	 *	which means that packets waiting in the socket queue
-	 *	don't get lost.  */
+	 *	don't get lost.
+	 */
 	for (last = &mainconfig.listen;
 	     *last != NULL;
 	     last = &((*last)->next)) {
@@ -858,44 +855,52 @@ static int listen_bind(rad_listen_t *this)
  *
  *	For now, don't take ipaddr or port.
  */
-int proxy_new_listener(void)
+int proxy_new_listener()
 {
-	int port;
-	rad_listen_t *this;
+	int last_proxy_port, port;
+	rad_listen_t *this, *old, **last;
 
 	this = rad_malloc(sizeof(*this));
 
 	memset(this, 0, sizeof(*this));
 
-	this->ipaddr.af = AF_INET;
-	this->ipaddr.ipaddr.ip4addr.s_addr = server_ip;
-	this->type = RAD_LISTEN_PROXY;
+	/*
+	 *	Find an existing proxy socket to copy.
+	 *
+	 *	FIXME: Make it per-realm, or per-home server!
+	 */
+	last_proxy_port = 0;
+	old = NULL;
+	last = &mainconfig.listen;
+	for (this = mainconfig.listen; this != NULL; this = this->next) {
+		if (this->type == RAD_LISTEN_PROXY) {
+			if (this->port > last_proxy_port) {
+				last_proxy_port = this->port + 1;
+			}
+			if (!old) old = this;
+		}
+
+		last = &(this->next);
+	}
+
+	if (!old) return -1;	/* This is a serious error. */
 
 	/*
-	 *	Proxying was not previously defined: die.
+	 *	FIXME: find a new IP address to listen on
 	 */
-	if (last_proxy_port == 0) return -1;
+	memcpy(&this->ipaddr, &old->ipaddr, sizeof(this->ipaddr));
+	this->type = RAD_LISTEN_PROXY;
 
 	/*
 	 *	Keep going until we find an unused port.
 	 */
-	for (port = last_proxy_port + 1; port < 64000; port++) {
+	for (port = last_proxy_port; port < 64000; port++) {
 		this->port = port;
 		if (listen_bind(this) == 0) {
-			rad_listen_t **last;
-
-			last_proxy_port = port;
-
 			/*
 			 *	Add the new listener to the list of
 			 *	listeners.
 			 */
-			for (last = &mainconfig.listen;
-			     *last != NULL;
-			     last = &((*last)->next)) {
-				/* do nothing */
-			}
-
 			*last = this;
 			return this->fd;
 		}
@@ -903,82 +908,6 @@ int proxy_new_listener(void)
 
 	return -1;
 }
-
-
-/*
- *	Hack the OLD way of listening on a socket.
- */
-static int old_listen_init(rad_listen_t **head)
-{
-	CONF_PAIR	*cp;
-	rad_listen_t 	*this, **last;
-
-	/*
-	 *	No IP from the command-line, look for bind_address.
-	 */
-	if (mainconfig.myip.af == AF_UNSPEC) {
-		cp = cf_pair_find(mainconfig.config, "bind_address");
-		if (!cp) return 0;
-	}
-
-	last = head;
-
-	this = rad_malloc(sizeof(*this));
-	memset(this, 0, sizeof(*this));
-
-	/*
-	 *	Create the authentication socket.
-	 */
-	this->ipaddr.af = AF_INET;
-       	this->ipaddr.ipaddr.ip4addr.s_addr = server_ip;
-	this->type = RAD_LISTEN_AUTH;
-	this->port = auth_port;
-
-	if (listen_bind(this) < 0) {
-		radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the authentication port %d", this->port);
-		free(this);
-		return -1;
-	}
-	auth_port = this->port;	/* may have been updated in listen_bind */
-	*last = this;
-	last = &(this->next);
-
-	/*
-	 *  Open Accounting Socket.
-	 *
-	 *  If we haven't already gotten acct_port from /etc/services,
-	 *  then make it auth_port + 1.
-	 */
-	this = rad_malloc(sizeof(*this));
-	memset(this, 0, sizeof(*this));
-
-	/*
-	 *	Create the accounting socket.
-	 *
-	 *	The accounting port is always the authentication port + 1
-	 */
-	this->ipaddr.af = AF_INET;
-       	this->ipaddr.ipaddr.ip4addr.s_addr = server_ip;
-	this->type = RAD_LISTEN_ACCT;
-	this->port = auth_port + 1;
-
-	if (listen_bind(this) < 0) {
-		radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the accounting port %d", this->port);
-		free(this);
-		return -1;
-	}
-	*last = this;
-
-	return 0;
-}
-
-/*
- *	FIXME: Get rid of this...
- */
-static const CONF_PARSER bind_config[] = {
-	{ "bind_address", PW_TYPE_IPADDR, 0, &server_ip, "*" },
-	{ NULL, -1, 0, NULL, NULL }
-};
 
 
 static const LRAD_NAME_NUMBER listen_compare[] = {
@@ -994,48 +923,107 @@ static const LRAD_NAME_NUMBER listen_compare[] = {
  */
 int listen_init(const char *filename, rad_listen_t **head)
 {
+	int		rcode;
 	CONF_SECTION	*cs;
 	rad_listen_t	**last;
 	char		buffer[128];
 	rad_listen_t	*this;
+	lrad_ipaddr_t	server_ipaddr;
 
+	/*
+	 *	We shouldn't be called with a pre-existing list.
+	 */
+	rad_assert(head && (*head == NULL));
+	
 	if (start_time != 0) start_time = time(NULL);
 
-	/*
-	 *	Read bind_address into server_ip, but only if an IP
-	 *	isn't specified on the command-line
-	 */
-	if (mainconfig.myip.af == AF_UNSPEC) {
-		cf_section_parse(mainconfig.config, NULL, bind_config);
-	} else if (mainconfig.myip.af == AF_INET) {
-		server_ip = mainconfig.myip.ipaddr.ip4addr.s_addr; /* over-ride server_ip */
-	} else if (mainconfig.myip.af == AF_INET6) {
-		rad_assert(0 == 1); /* IPv6 unsupported */
-	} else rad_assert(0 == 1);
+	last = head;
+	server_ipaddr.af = AF_UNSPEC;
 
-	if (old_listen_init(head) < 0) {
-		exit(1);
+	/*
+	 *	If the IP address was configured on the command-line,
+	 *	use that as the "bind_address"
+	 */
+	if (mainconfig.myip.af != AF_UNSPEC) {
+		memcpy(&server_ipaddr, &mainconfig.myip,
+		       sizeof(server_ipaddr));
+		goto bind_it;
 	}
 
 	/*
-	 *	Add to the end of the list.
+	 *	Else look for bind_address and/or listen sections.
 	 */
-	for (last = head; *last != NULL; last = &((*last)->next)) {
-		/* do nothing */
-	}
+	server_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
+	rcode = cf_item_parse(mainconfig.config, "bind_address",
+			      PW_TYPE_IPADDR,
+			      &server_ipaddr.ipaddr.ip4addr, NULL);
+	if (rcode < 0) return -1; /* error parsing it */
+	
+	if (rcode == 0) { /* successfully parsed IPv4 */
+		server_ipaddr.af = AF_INET;
 
-    	/*
-	 *	Walk through the "listen" directives, but ONLY if there
-	 *	was no address specified on the command-line.
+	bind_it:		
+		this = rad_malloc(sizeof(*this));
+		memset(this, 0, sizeof(*this));
+		
+		/*
+		 *	Create the authentication socket.
+		 */
+		this->ipaddr = server_ipaddr;
+		this->type = RAD_LISTEN_AUTH;
+		this->port = auth_port;
+		
+		if (listen_bind(this) < 0) {
+			radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the authentication port %d", this->port);
+			free(this);
+			return -1;
+		}
+		auth_port = this->port;	/* may have been updated in listen_bind */
+		*last = this;
+		last = &(this->next);
+		
+		/*
+		 *	Open Accounting Socket.
+		 *
+		 *	If we haven't already gotten acct_port from
+		 *	/etc/services, then make it auth_port + 1.
+		 */
+		this = rad_malloc(sizeof(*this));
+		memset(this, 0, sizeof(*this));
+		
+		/*
+		 *	Create the accounting socket.
+		 *
+		 *	The accounting port is always the authentication port + 1
+		 */
+		this->ipaddr = server_ipaddr;
+		this->type = RAD_LISTEN_ACCT;
+		this->port = auth_port + 1;
+		
+		if (listen_bind(this) < 0) {
+			radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the accounting port %d", this->port);
+			free(this);
+			return -1;
+		}
+		*last = this;
+		last = &(this->next);
+	} /* else there was no "bind_address" in the config */
+
+	/*
+	 *	They specified an IP on the command-line, ignore
+	 *	all listen sections.
 	 */
 	if (mainconfig.myip.af != AF_UNSPEC) goto do_proxy;
 
+	/*
+	 *	Walk through the "listen" sections, if they exist.
+	 */
 	for (cs = cf_subsection_find_next(mainconfig.config,
 					  NULL, "listen");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(mainconfig.config,
 					  cs, "listen")) {
-		int		rcode, type;
+		int		type;
 		char		*listen_type;
 		int		listen_port;
 		int		lineno = cf_section_lineno(cs);
@@ -1119,44 +1107,39 @@ int listen_init(const char *filename, rad_listen_t **head)
  do_proxy:
 	if (mainconfig.proxy_requests == TRUE) {
 		int		port = -1;
-		rad_listen_t	*auth;
+
+		/*
+		 *	No sockets to receive packets, therefore
+		 *	proxying is pointless.
+		 */
+		if (!*head) return -1;
 
 		/*
 		 *	Find the first authentication port,
 		 *	and use it
 		 */
-		for (auth = *head; auth != NULL; auth = auth->next) {
-			if (auth->type == RAD_LISTEN_AUTH) {
-				port = auth->port + 2;
+		for (this = *head; this != NULL; this = this->next) {
+			if (server_ipaddr.af == AF_UNSPEC) {
+				server_ipaddr = this->ipaddr;
+			}
+			
+			if ((port < 0) || (port == this->port)) {
+				port = this->port + 1;
+				if (this->type == RAD_LISTEN_AUTH) {
+					port++;	/* skip accounting port */
+				}
 				break;
 			}
 		}
-
-		/*
-		 *	Not found, pick an accounting port.
-		 */
-		if (port < 0) for (auth = *head; auth != NULL; auth = auth->next) {
-			if (auth->type == RAD_LISTEN_ACCT) {
-				port = auth->port + 1;
-				break;
-			}
-		}
-
-		/*
-		 *	Still no port.  Don't do anything.
-		 */
-		if (port < 0) {
-			return 0;
-		}
+		rad_assert(port > 0); /* must have found at least one entry! */
 
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));
 		
 		/*
-		 *	Create the proxy socket.
+		 *	Create the first proxy socket.
 		 */
-		this->ipaddr.af = AF_INET;
-		this->ipaddr.ipaddr.ip4addr.s_addr = server_ip;
+		this->ipaddr = server_ipaddr;
 		this->type = RAD_LISTEN_PROXY;
 
 		/*
@@ -1166,15 +1149,17 @@ int listen_init(const char *filename, rad_listen_t **head)
 		     this->port < 64000;
 		     this->port++) {
 			if (listen_bind(this) == 0) {
-				last_proxy_port = this->port;
 				*last = this;
-				return 0;
+				last = &(this->next); /* just in case */
+				break;
 			}
 		}
 
-		radlog(L_ERR|L_CONS, "Failed to open socket for proxying");
-		free(this);
-		return -1;
+		if (this->port >= 64000) {
+			radlog(L_ERR|L_CONS, "Failed to open socket for proxying");
+			free(this);
+			return -1;
+		}
 	}
 
 	return 0;
