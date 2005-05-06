@@ -74,7 +74,7 @@ void librad_safeprint(char *in, int inlen, char *out, int outlen)
 				sp = '"';
 				break;
 			default:
-				if (*str < 32 || (*str >= 128)){
+			  if (*str < 32 || (*str >= 128)){
 					snprintf(out, outlen, "\\%03o", *str);
 					done += 4;
 					out  += 4;
@@ -203,6 +203,24 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			a = inet_ntop(AF_INET6,
 				      (const struct in6_addr *) vp->strvalue,
 				      buf, sizeof(buf));
+			break;
+
+		case PW_TYPE_IPV6PREFIX:
+		{
+			struct in6_addr addr;
+
+			/*
+			 *	Alignment issues.
+			 */
+			memcpy(&addr, vp->strvalue + 2, sizeof(addr));
+
+			a = inet_ntop(AF_INET6, &addr, buf, sizeof(buf));
+			if (a) {
+				char *p = buf + strlen(buf);
+				
+				sprintf(p, "/%u", (unsigned int) vp->strvalue[1]);
+			}
+		}
 			break;
 
 		default:

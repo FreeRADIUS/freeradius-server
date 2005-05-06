@@ -675,66 +675,6 @@ static int gettime(const char *valstr, time_t *lvalue)
 
 
 /*
- *	Return an IPv6 address from
- *	one supplied in standard colon notation.
- */
-static int ipv6_addr(const char *ip6_str, void *ip6addr)
-{
-#ifdef AF_INET6
-	lrad_ipaddr_t ipaddr;
-
-	if (ip_hton(ip6_str, AF_INET6, &ipaddr) < 0) return -1;
-
-	memcpy(ip6addr, &ipaddr.ipaddr.ip6addr, sizeof(ipaddr.ipaddr.ip6addr));
-#else
-	/*
-	 *	Copied from the 'ifid' code in misc.c, with minor edits.
-	 */
-	static const char xdigits[] = "0123456789abcdef";
-	const char *p, *pch;
-	int num_id = 0, val = 0, idx = 0;
-	uint8_t *addr = ip6addr;
-
-	for (p = ip6_str; ; ++p) {
-		if (*p == ':' || *p == '\0') {
-			if (num_id <= 0)
-				return -1;
-
-			/*
-			 *	Drop 'val' into the array.
-			 */
-			addr[idx] = (val >> 8) & 0xff;
-			addr[idx + 1] = val & 0xff;
-			if (*p == '\0') {
-				/*
-				 *	Must have all entries before
-				 *	end of the string.
-				 */
-				if (idx != 14)
-					return -1;
-				break;
-			}
-			val = 0;
-			num_id = 0;
-			if ((idx += 2) > 14)
-				return -1;
-		} else if ((pch = strchr(xdigits, tolower(*p))) != NULL) {
-			if (++num_id > 8) /* no more than 8 16-bit numbers */
-				return -1;
-			/*
-			 *	Dumb version of 'scanf'
-			 */
-			val <<= 4;
-			val |= (pch - xdigits);
-		} else
-			return -1;
-	}
-#endif
-	return 0;
-}
-
-
-/*
  *  Parse a string value into a given VALUE_PAIR
  *
  *  FIXME: we probably want to fix this function to accept
@@ -887,7 +827,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 
 		case PW_TYPE_IPV6ADDR:
-			if (ipv6_addr(value, vp->strvalue) < 0) {
+			if (inet_pton(AF_INET6, value, vp->strvalue) <= 0) {
 				librad_log("failed to parse IPv6 address "
 					   "string \"%s\"", value);
 				return NULL;
@@ -898,6 +838,37 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			/*
 			 *  Anything else.
 			 */
+		case PW_TYPE_IPV6PREFIX:
+			p = strchr(value, '/');
+			if (!p || ((p - value) >= 256)) {
+				librad_log("invalid IPv6 prefix "
+					   "string \"%s\"", value);
+				return NULL;
+			} else {
+				unsigned int prefix;
+				char buffer[256], *eptr;
+				
+				memcpy(buffer, value, p - value);
+				buffer[p - value] = '\0';
+				
+				if (inet_pton(AF_INET6, buffer, vp->strvalue + 2) <= 0) {
+					librad_log("failed to parse IPv6 address "
+						   "string \"%s\"", value);
+					return NULL;
+				}
+				
+				prefix = strtoul(p + 1, &eptr, 10);
+				if ((prefix > 128) || *eptr) {
+					librad_log("failed to parse IPv6 address "
+						   "string \"%s\"", value);
+					return NULL;
+				}
+				vp->strvalue[1] = prefix;
+			}
+			vp->strvalue[0] = '\0';
+			vp->length = 16 + 2;
+			break;
+
 		default:
 			librad_log("unknown attribute type %d", vp->type);
 			return NULL;
