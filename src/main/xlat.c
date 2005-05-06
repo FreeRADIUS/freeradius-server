@@ -254,14 +254,18 @@ static int xlat_packet(void *instance, REQUEST *request,
 
 			case PW_CLIENT_IP_ADDRESS: /* the same as below */
 			case PW_PACKET_SRC_IP_ADDRESS:
+				if (packet->src_ipaddr.af != AF_INET) {
+					return 0;
+				}
 				localvp.attribute = da->attr;
-				rad_assert(packet->src_ipaddr.af == AF_INET);
 				localvp.lvalue = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 				break;
 			
 			case PW_PACKET_DST_IP_ADDRESS:
+				if (packet->dst_ipaddr.af != AF_INET) {
+					return 0;
+				}
 				localvp.attribute = da->attr;
-				rad_assert(packet->dst_ipaddr.af == AF_INET);
 				localvp.lvalue = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 				break;
 			
@@ -294,16 +298,20 @@ static int xlat_packet(void *instance, REQUEST *request,
 				return strlen(out);
 			
 			case PW_PACKET_SRC_IPV6_ADDRESS:
+				if (packet->src_ipaddr.af != AF_INET6) {
+					return 0;
+				}
 				localvp.attribute = da->attr;
-				rad_assert(packet->src_ipaddr.af == AF_INET6);
 				memcpy(localvp.strvalue,
 				       &packet->src_ipaddr.ipaddr.ip4addr.s_addr,
 				       sizeof(packet->src_ipaddr.ipaddr.ip4addr.s_addr));
 				break;
 			
 			case PW_PACKET_DST_IPV6_ADDRESS:
+				if (packet->dst_ipaddr.af != AF_INET6) {
+					return 0;
+				}
 				localvp.attribute = da->attr;
-				rad_assert(packet->dst_ipaddr.af == AF_INET6);
 				memcpy(localvp.strvalue,
 				       &packet->dst_ipaddr.ipaddr.ip4addr.s_addr,
 				       sizeof(packet->dst_ipaddr.ipaddr.ip4addr.s_addr));
