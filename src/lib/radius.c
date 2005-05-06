@@ -583,15 +583,6 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			  }
 
 			  switch(reply->type) {
-
-				  /*
-				   *	Ascend binary attributes are
-				   *	stored internally in binary form.
-				   */
-			  case PW_TYPE_IFID:
-			  case PW_TYPE_IPV6ADDR:
-			  case PW_TYPE_IPV6PREFIX:
-			  case PW_TYPE_ABINARY:
 			  case PW_TYPE_STRING:
 			  case PW_TYPE_OCTETS:
 				  /*
@@ -627,7 +618,22 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 					  reply->length = AUTH_VECTOR_LEN;
 					  break;
 				  } /* switch over encryption flags */
+				  /* FALL-THROUGH */
 
+				  /*
+				   *	None of these can have "encrypt"
+				   *	flags, so we skip them.
+				   */				  
+			  case PW_TYPE_IFID:
+			  case PW_TYPE_IPV6ADDR:
+			  case PW_TYPE_IPV6PREFIX:
+
+
+				  /*
+				   *	Ascend binary attributes are
+				   *	stored internally in binary form.
+				   */
+			  case PW_TYPE_ABINARY:
 				  len = reply->length;
 
 				  /*
@@ -1846,12 +1852,17 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				if (ptr[1] > 128) {
 					pair->type = PW_TYPE_OCTETS;
 				}
+
 				/*
 				 *	FIXME: double-check that
 				 *	(ptr[1] >> 3) matches attrlen + 2
 				 */
 			}
 			memcpy(pair->strvalue, ptr, attrlen);
+			if (attrlen < 18) {
+				memset(pair->strvalue + attrlen, 0,
+				       18 - attrlen);
+			}
 			break;
 
 		default:
