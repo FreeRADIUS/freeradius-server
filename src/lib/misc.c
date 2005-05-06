@@ -489,12 +489,13 @@ int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
 	}
 
 	for (ai = res; ai; ai = ai->ai_next) {
-		if ((af == ai->ai_family) || !af)
+		if ((af == ai->ai_family) || (af == AF_UNSPEC))
 			break;
 	}
 
 	if (!ai) {
 		librad_log("ip_hton failed to find requested information for host %.100s", src);
+		freeaddrinfo(ai);
 		return -1;
 	}
 
@@ -517,9 +518,11 @@ int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
 	case AF_UNSPEC :
 	default :
 		librad_log("ip_hton found unusable information for host %.100s", src);
+		freeaddrinfo(ai);
 		return -1;
 	}
 	
+	freeaddrinfo(ai);
 	return 0;
 }
 
