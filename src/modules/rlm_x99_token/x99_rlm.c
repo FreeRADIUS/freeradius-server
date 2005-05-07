@@ -358,25 +358,18 @@ x99_token_authorize(void *instance, REQUEST *request)
     if (rc == -1) {
 	x99_log(X99_LOG_AUTH, "autz: user [%s] not found in %s",
 		request->username->strvalue, inst->pwdfile);
-	(void) memset(&user_info, 0, sizeof(user_info)); /* X99_CF_NONE */
+	(void) memset(&user_info, 0, sizeof(user_info));
 	user_found = 0;
     }
 
     /* fast_sync mode (challenge only if requested) */
-    if (inst->fast_sync &&
-	((user_info.card_id & X99_CF_SM) || !user_found)) {
+    if (inst->fast_sync) {
 	if ((!x99_pwe_cmp(&data, inst->resync_req) &&
 		/* Set a bit indicating resync */ (sflags |= htonl(1))) ||
 	    !x99_pwe_cmp(&data, inst->chal_req)) {
 	    /*
-	     * Generate a challenge if requested.  We don't test for card
-	     * support [for async] because it's tricky for unknown users.
-	     * Some configurations would have a problem where known users
-	     * cannot request a challenge, but unknown users can.  This
-	     * reveals information.  The easiest fix seems to be to always
-	     * hand out a challenge on request.
-	     * We also don't test if the server allows async mode, this
-	     * would also reveal information.
+	     * Generate a challenge if requested.  Note that we do this
+	     * even if configuration doesn't allow async mode.
 	     */
 	    DEBUG("rlm_x99_token: autz: fast_sync challenge requested");
 	    goto gen_challenge;
@@ -418,14 +411,14 @@ gen_challenge:
 
     /*
      * Create the State attribute, which will be returned to us along with
-     * the response.  We will need this to verify the response.  Create
-     * a strong state if the user will be able use this with their token.
-     * Otherwise, we discard it anyway, so don't "waste" time with hmac.
-     * We also don't do the hmac if the user wasn't found (mask won't match).
-     * We always create at least a trivial state, so x99_token_authorize()
-     * can easily pass on to x99_token_authenticate().
+     * the response.  We will need this to verify the response.  It must
+     * be hmac protected to prevent insertion of arbitrary State by an
+     * inside attacker.  If we won't actually use the State (user doesn't
+     * exist or we don't allow async), we just use a trivial State.  We
+     * always create at least a trivial State, so x99_token_authorize()
+     * can quickly pass on to x99_token_authenticate().
      */
-    if (user_info.card_id & X99_CF_AM) {
+    if (inst->allow_async && user_found) {
 	time_t now = time(NULL);
 
 	if (sizeof(now) != 4 || sizeof(long) != 4) {
@@ -532,7 +525,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
 	    int e_length = inst->chal_len;
 
 	    /* Extend expected length if state should have been protected. */
-	    if (user_info.card_id & X99_CF_AM)
+	    if (inst->allow_async)
 		e_length += 4 + 4 + 16; /* sflags + time + hmac */
 
 	    if (vp->length != e_length) {
@@ -541,7 +534,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	    }
 
-	    if (user_info.card_id & X99_CF_AM) {
+	    if (inst->allow_async) {
 		/* Verify the state. */
 		(void) memset(challenge, 0, sizeof(challenge));
 		(void) memcpy(challenge, vp->strvalue, inst->chal_len);
