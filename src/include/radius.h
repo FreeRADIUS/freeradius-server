@@ -180,7 +180,9 @@
 #define PW_LDAP_GROUP			1074
 #define PW_MODULE_SUCCESS_MESSAGE	1075
 #define PW_MODULE_FAILURE_MESSAGE	1076
+#if 0 /* no longer used */
 #define PW_X99_FAST			1077
+#endif
 #define PW_REWRITE_RULE			1078
 #define PW_SQL_GROUP			1079
 #define PW_RESPONSE_PACKET_TYPE		1080

@@ -305,10 +305,8 @@ x99_token_authorize(void *instance, REQUEST *request)
     char *state;
     int rc;
 
-    x99_user_info_t user_info;
-    int user_found, auth_type_found;
+    int auth_type_found;
     int32_t sflags = 0; /* flags for state */
-    VALUE_PAIR *vp;
     struct x99_pwe_cmp_t data = {
 	.request = request,
 	.inst = inst,
@@ -344,24 +342,6 @@ x99_token_authorize(void *instance, REQUEST *request)
 	return RLM_MODULE_INVALID;
     }
 
-    /* Look up the user's info. */
-    user_found = 1;
-    if ((rc = x99_get_user_info(inst->pwdfile, request->username->strvalue,
-				&user_info)) == -2) {
-#if 0
-	/* x99_get_user_info() logs a more useful message, this is noisy. */
-	x99_log(X99_LOG_ERR, "autz: error reading user [%s] info",
-		request->username->strvalue);
-#endif
-	return RLM_MODULE_FAIL;
-    }
-    if (rc == -1) {
-	x99_log(X99_LOG_AUTH, "autz: user [%s] not found in %s",
-		request->username->strvalue, inst->pwdfile);
-	(void) memset(&user_info, 0, sizeof(user_info));
-	user_found = 0;
-    }
-
     /* fast_sync mode (challenge only if requested) */
     if (inst->fast_sync) {
 	if ((!x99_pwe_cmp(&data, inst->resync_req) &&
@@ -375,21 +355,7 @@ x99_token_authorize(void *instance, REQUEST *request)
 	    goto gen_challenge;
 
 	} else {
-	    /*
-	     * Otherwise, this is the token sync response.  Signal the
-	     * authenticate code to ignore any State attribute.  We don't
-	     * need to set a value, /existence/ of the vp is the signal.
-	     * We use this vp to protect against misconfiguration; in a
-	     * correct setup presence or absence of the State attribute
-	     * is itself enough information.
-	     */
-	    if ((vp = paircreate(PW_X99_FAST, PW_TYPE_INTEGER)) == NULL) {
-		x99_log(X99_LOG_CRIT, "autz: no memory");
-		return RLM_MODULE_FAIL;
-	    }
-	    pairadd(&request->config_items, vp);
-	    DEBUG("rlm_x99_token: autz: using fast_sync");
-
+	    /* Otherwise, this is the token sync response. */
 	    if (!auth_type_found)
 		pairadd(&request->config_items,
 			pairmake("Auth-Type", "x99_token", T_OP_EQ));
@@ -413,12 +379,12 @@ gen_challenge:
      * Create the State attribute, which will be returned to us along with
      * the response.  We will need this to verify the response.  It must
      * be hmac protected to prevent insertion of arbitrary State by an
-     * inside attacker.  If we won't actually use the State (user doesn't
-     * exist or we don't allow async), we just use a trivial State.  We
-     * always create at least a trivial State, so x99_token_authorize()
-     * can quickly pass on to x99_token_authenticate().
+     * inside attacker.  If we won't actually use the State (server config
+     * doesn't allow async), we just use a trivial State.  We always create
+     * at least a trivial State, so x99_token_authorize() can quickly pass
+     * on to x99_token_authenticate().
      */
-    if (inst->allow_async && user_found) {
+    if (inst->allow_async) {
 	time_t now = time(NULL);
 
 	if (sizeof(now) != 4 || sizeof(long) != 4) {
@@ -471,10 +437,9 @@ x99_token_authenticate(void *instance, REQUEST *request)
 {
     x99_token_t *inst = (x99_token_t *) instance;
 
-    x99_user_info_t user_info;
     char *username;
     int rc;
-    int32_t sflags = 0; 	/* flags from state */
+    int resync = 0;	/* resync flag for async mode */
 
     char challenge[MAX_CHALLENGE_LEN + 1];
     VALUE_PAIR *add_vps = NULL;
@@ -505,21 +470,13 @@ x99_token_authenticate(void *instance, REQUEST *request)
     pairadd(&request->packet->vps, pairmake("Module-Success-Message",
 					    X99_MODULE_NAME, T_OP_EQ));
 
-    /* Look up the user's info. */
-    if (x99_get_user_info(inst->pwdfile, username, &user_info) != 0) {
-#if 0
-	/* x99_get_user_info() logs a more useful message, this is noisy. */
-	x99_log(X99_LOG_AUTH, "auth: error reading user [%s] info", username);
-#endif
-	return RLM_MODULE_REJECT;
-    }
-
-    /* Retrieve the challenge (from State attribute), unless (fast_sync). */
+    /* Retrieve the challenge (from State attribute). */
     challenge[0] = '\0';
-    if (pairfind(request->config_items, PW_X99_FAST) == NULL) {
+    {
 	VALUE_PAIR	*vp;
 	unsigned char	*state;
-	time_t		then;
+	int32_t		sflags = 0; 	/* state flags */
+	time_t		then;		/* state timestamp */
 
 	if ((vp = pairfind(request->packet->vps, PW_STATE)) != NULL) {
 	    int e_length = inst->chal_len;
@@ -560,24 +517,13 @@ x99_token_authenticate(void *instance, REQUEST *request)
 			    "auth: bad state for [%s]: expired", username);
 		    return RLM_MODULE_REJECT;
 		}
-	    }
-	} else {
-	    /* This should only happen if the authorize code didn't run. */
-	    x99_log(X99_LOG_ERR, "auth: bad state for [%s]: missing "
-		    "(is x99_token listed in radiusd.conf's authorize stanza?)",
-		    username);
-	    return RLM_MODULE_FAIL;
-	}
-    } else if (pairfind(request->packet->vps, PW_STATE)) {
-	x99_log(X99_LOG_ERR, "auth: bad state for [%s]: "
-			     "present but should be absent (broken NAS?)",
-		username);
-	return RLM_MODULE_FAIL;
-    }
+		resync = ntohl(sflags) & 1;
+	    } /* if (State should have been protected) */
+	} /* if (State present) */
+    } /* code block */
 
     /* do it */
-    rc = x99rc2rlmrc(x99_pw_valid(username, challenge, NULL, inst,
-				  ntohl(sflags) & 1,
+    rc = x99rc2rlmrc(x99_pw_valid(username, challenge, NULL, inst, resync,
 				  x99_pwe_cmp, &data, "auth"));
 
     /* Handle any vps returned from x99_pwe_cmp(). */
