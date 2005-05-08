@@ -285,7 +285,7 @@ x99_token_instantiate(CONF_SECTION *conf, void **instance)
     if (!data->name)
 	data->name = cf_section_name1(conf);
     if (!data->name) {
-	x99_log(X99_LOG_ERR, "no instance name (this can't happen)");
+	x99_log(X99_LOG_CRIT, "no instance name (this can't happen)");
 	free(data);
 	return -1;
     }
@@ -327,7 +327,7 @@ x99_token_authorize(void *instance, REQUEST *request)
 
     /* The State attribute will be present if this is a response. */
     if (pairfind(request->packet->vps, PW_STATE) != NULL) {
-	DEBUG("rlm_x99_token: autz: Found response to access challenge");
+	DEBUG("rlm_x99_token: autz: Found response to Access-Challenge");
 	return RLM_MODULE_OK;
     }
 
