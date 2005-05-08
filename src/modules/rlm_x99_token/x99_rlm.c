@@ -303,23 +303,25 @@ x99_token_authorize(void *instance, REQUEST *request)
 
     char challenge[MAX_CHALLENGE_LEN + 1];	/* +1 for '\0' terminator */
     char *state;
-    int rc;
-
     int auth_type_found;
     int32_t sflags = 0; /* flags for state */
+
     struct x99_pwe_cmp_t data = {
 	.request = request,
 	.inst = inst,
 	.returned_vps = NULL
     };
 
-
     /* Early exit if Auth-Type != inst->name */
-    auth_type_found = 0;
-    if ((vp = pairfind(request->config_items, PW_AUTHTYPE)) != NULL) {
-	auth_type_found = 1;
-	if (strcmp(vp->strvalue, inst->name)) {
-	    return RLM_MODULE_NOOP;
+    {
+	VALUE_PAIR *vp;
+
+	auth_type_found = 0;
+	if ((vp = pairfind(request->config_items, PW_AUTHTYPE)) != NULL) {
+	    auth_type_found = 1;
+	    if (strcmp(vp->strvalue, inst->name)) {
+		return RLM_MODULE_NOOP;
+	    }
 	}
     }
 
