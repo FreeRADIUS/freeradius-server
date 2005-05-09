@@ -824,7 +824,22 @@ static int listen_bind(rad_listen_t *this)
 		sa->sin6_addr = this->ipaddr.ipaddr.ip6addr;
 		sa->sin6_port = htons(this->port);
 		salen = sizeof(*sa);
-#endif
+
+		/*
+		 *	Listening on '::' does NOT get you IPv4 to
+		 *	IPv6 mapping.  You've got to listen on an IPv4
+		 *	address, too.  This makes the rest of the server
+		 *	design a little simpler.
+		 */
+#ifdef IPV6_V6ONLY
+		if (IN6_IS_ADDR_UNSPECIFIED(&this->ipaddr.ipaddr.ip6addr)) {
+			int on = 1;
+			
+			setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
+				   (char *)&on, sizeof(on));
+		}
+#endif /* IPV6_V6ONLY */
+#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 	} else {
 		radlog(L_ERR|L_CONS, "ERROR: Unsupported protocol family %d",
 		       this->ipaddr.af);
