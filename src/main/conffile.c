@@ -653,14 +653,6 @@ int cf_item_parse(const CONF_SECTION *cs, const char *name,
 		break;
 		
 	case PW_TYPE_IPV6ADDR:
-		/*
-		 *	Allow '*' as any address
-		 */
-		if (strcmp(value, "*") == 0) {
-			memset(data, 0, sizeof(ipaddr.ipaddr.ip6addr));
-			DEBUG2(" %s: %s = *", cs->name1, name);
-			break;
-		}
 		if (ip_hton(value, AF_INET6, &ipaddr) < 0) {
 			radlog(L_ERR, "Can't find IPv6 address for host %s", value);
 			return -1;
