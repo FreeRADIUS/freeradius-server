@@ -4,9 +4,6 @@ o scan ALL modules, so that they use consistent names for structures
   call rlm_foo_detach() if anything goes wrong, instead of just free()'ing
   'inst'.  The cf_parse_section().. code may have malloc'd memory, and
   that needs to be free'd, too.
-o Add a 'listen' directive, ala Apache, so that we can listen
-  on multiple ports. Hmm... if we do that, we should allow multiple
-  virtual servers, too.
 o Stop unloading modules on HUP so that we can have persistant
   handles/socketc/etc from module_init().  Alan D. and Alan C. had a good
   plan for when to load/reload modules on the list recently...I say
@@ -29,9 +26,6 @@ o Manual pages for the daemon, utilities and conffiles (some done)
 o Fix all FIXME's in the source.
 o better SNMP statistics support, for the auth/acct servers, and for
   each client.
-o fix the proxy receive code, so that we don't have to look through ALL
-  of the requests to find the matching proxy.  This might be hard to do..
-  It would also involve thread locking issues.
 
 WAIT UNTIL NEXT RELEASE:
 o UPDATE accounting requests aren't handled as in 1.5.4.3 for wtmp
@@ -39,9 +33,6 @@ o UPDATE accounting requests aren't handled as in 1.5.4.3 for wtmp
 o New module: rlm_fastradwtmp. with a radutmp-style active session
   database to guarantee wtmp records are always written in matching
   pairs. Because radlast is slow.
-o New module: rlm_attrmap. assigns a single attribute based on a
-  username, with ed-friendly/awk-friendly config file. Because the
-  users file is too complicated.
 o replace the module_t method table with a set of register_* functions
   (so different instances of the same module can offer different
   methods)
@@ -52,7 +43,6 @@ o switch all timers from time() to gettimeofday() so processing is
 o SNMP support for querying users who are on-line.
 o New module: rlm_nsupdate (dyndns). Because dynamic addresses are
   cruel.
-o New module: rlm_perl.
 
 WILL NOT DO:
 o module initialization AFTER forking, not before.
@@ -66,6 +56,10 @@ o there should be a way that radius itself could
 	--- This work is for an external process to do ---
 
 DONE:
+o IPv6
+o proxy receive rbtree stuff
+o rlm_perl
+o "listen" directive
 o fix radwho to read modules{radutmp{filename = }}
 o Add 'initialize' list in modules, so explicitely give initialization order.
 o merge OSF/OSFIA patches from Cistron.
