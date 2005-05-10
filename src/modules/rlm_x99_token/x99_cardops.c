@@ -30,6 +30,11 @@ static const char rcsid[] = "$Id$";
 #include <string.h>
 
 #include "x99.h"
+#include "x99_cardops.h"
+
+/* Global data */
+cardops_t x99_cardops[X99_MAX_VENDORS];	/* cardops objects */
+int x99_num_cardops = 0;		/* number of cardops modules loaded */
 
 /*
  * Test for passcode validity.
@@ -46,11 +51,15 @@ static const char rcsid[] = "$Id$";
  * is required for RADIUS, where we might have a CHAP response instead
  * of the plaintext of the passcode from the user.
  *
+ * If challenge is supplied, then resync is used to determine if the card
+ * should be resynced or if this is a one-off response.  (If challenge is
+ * not supplied, this is sync mode response and the card is always resynced.)
+ *
  * Returns one of the X99_RC_* return codes.
  */
 int
 x99_pw_valid(const char *username, char *challenge, const char *passcode,
-	     const x99_token_t *opt, int resync, cmpfunc_t cmpfunc, void *data,
+	     int resync, const x99_token_t *opt, cmpfunc_t cmpfunc, void *data,
 	     const char *log_prefix)
 {
     int		rc, fc, nmatch, i;
@@ -59,7 +68,7 @@ x99_pw_valid(const char *username, char *challenge, const char *passcode,
     unsigned	auth_pos = 0;	/* window position of this authentication */
     time_t	last_auth_time;	/* time of last authentication */
 
-    x99_user_info_t	user_info;
+    x99_user_info_t	user_info = { .cardops = NULL };
 
     /* sanity */
     if (!challenge) {
@@ -88,6 +97,42 @@ x99_pw_valid(const char *username, char *challenge, const char *passcode,
 	rc = X99_RC_AUTHINFO_UNAVAIL;
 	goto auth_done_service_err;
     }
+    user_info.username = username;
+
+    /* Find the correct cardops module. */
+    for (i = 0; x99_cardops[i].prefix; i++) {
+	if (!strncasecmp(x99_cardops[i].prefix, user_info.card,
+			 x99_cardops[i].prefix_len)) {
+	    user_info.cardops = &x99_cardops[i];
+	    break;
+	}
+    }
+    if (!user_info.cardops) {
+	x99_log(X99_LOG_ERR,
+		"%s: invalid card type '%s' for [%s]",
+		log_prefix, user_info.card, username);
+	rc = X99_RC_SERVICE_ERR;
+	goto auth_done_service_err;
+    }
+
+    /* Convert name to a feature mask once, for fast operations later. */
+    if (user_info.cardops->name2fm(user_info.card, &user_info.featuremask)) {
+	x99_log(X99_LOG_ERR,
+		"%s: invalid card type '%s' for [%s]",
+		log_prefix, user_info.card, username);
+	rc = X99_RC_SERVICE_ERR;
+	goto auth_done_service_err;
+    }
+
+    /* Convert keystring to a keyblock. */
+    if (user_info.cardops->keystring2keyblock(user_info.keystring,
+					      user_info.keyblock)) {
+	x99_log(X99_LOG_ERR,
+		"%s: invalid key '%s' for [%s]",
+		log_prefix, user_info.keystring, username);
+	rc = X99_RC_SERVICE_ERR;
+	goto auth_done_service_err;
+    }
 
     /* Get the time of the last authentication. */
     if (x99_get_last_auth(opt->syncdir, username, &last_auth_time) != 0) {
@@ -111,7 +156,7 @@ async_response:
     /*
      * Test async response.
      */
-    if (*challenge && (user_info.card_id & X99_CF_AM) && opt->allow_async) {
+    if (*challenge && (user_info.featuremask & X99_CF_AM) && opt->allow_async){
 	/* Perform any site-specific transforms of the challenge. */
 	if (x99_challenge_transform(username, challenge) != 0) {
 	    x99_log(X99_LOG_ERR, "%s: challenge transform failed for [%s]",
@@ -122,8 +167,7 @@ async_response:
 	}
 
 	/* Calculate the async response. */
-	if (x99_response(challenge, e_response, user_info.card_id,
-			 user_info.keyblock) != 0) {
+	if (user_info.cardops->response(&user_info, challenge, e_response)!=0){
 	    x99_log(X99_LOG_ERR,
 		    "%s: unable to calculate async response for [%s], "
 		    "to challenge %s", log_prefix, username, challenge);
@@ -183,7 +227,7 @@ async_response:
 	    /* Authenticated in async mode. */
 	    rc = X99_RC_OK;
 	    /* special log message for sync users */
-	    if (user_info.card_id & X99_CF_SM)
+	    if (user_info.featuremask & X99_CF_SM)
 		x99_log(X99_LOG_INFO, "%s: [%s] authenticated in async mode",
 			log_prefix, username);
 	    goto auth_done;
@@ -196,7 +240,7 @@ sync_response:
      * Note that we always accept a sync response, even
      * if a challenge or resync was explicitly requested.
      */
-    if ((user_info.card_id & X99_CF_SM) && opt->allow_sync) {
+    if ((user_info.featuremask & X99_CF_SM) && opt->allow_sync) {
 	int start = 0, end = opt->ewindow_size, last_auth_pos = 0;
 
 	/* Increase window for ewindow2. */
@@ -213,13 +257,12 @@ sync_response:
 	    end = opt->ewindow2_size;
 	}
 
-	challenge[0] = '\0';	/* initialize for x99_get_sync_data() */
         for (i = start; i <= end; ++i) {
 	    /* Get sync challenge and key. */
-	    if (x99_get_sync_data(opt->syncdir, username, user_info.card_id,
-				  i, 0, challenge, user_info.keyblock) != 0) {
+	    if (user_info.cardops->challenge(opt->syncdir, &user_info,
+					     i, 0, challenge) != 0) {
 		x99_log(X99_LOG_ERR,
-			"%s: unable to get sync data e:%d t:%d for [%s]",
+			"%s: unable to get sync challenge e:%d t:%d for [%s]",
 			log_prefix, i, 0, username);
 		rc = X99_RC_SERVICE_ERR;
 		goto auth_done_service_err;
@@ -227,10 +270,10 @@ sync_response:
 	    }
 
 	    /* Calculate sync response. */
-	    if (x99_response(challenge, e_response, user_info.card_id,
-			     user_info.keyblock) != 0) {
+	    if (user_info.cardops->response(&user_info, challenge,
+					    e_response) != 0) {
 		x99_log(X99_LOG_ERR,
-			"(%s): unable to calculate sync response "
+			"%s: unable to calculate sync response "
 			"e:%d t:%d for [%s], to challenge %s",
 			log_prefix, i, 0, username, challenge);
 		rc = X99_RC_SERVICE_ERR;
@@ -346,9 +389,9 @@ auth_done:
 	     * and insert the captured State attribute into the new
 	     * Access-Request, and we'll give an Access-Accept.
 	     */
-	    if (x99_get_sync_data(opt->syncdir, username, user_info.card_id,
-				  1, 0, challenge, user_info.keyblock) != 0) {
-		x99_log(X99_LOG_ERR, "%s: unable to get sync data "
+	    if (user_info.cardops->challenge(opt->syncdir, &user_info,
+					     1, 0, challenge) != 0) {
+		x99_log(X99_LOG_ERR, "%s: unable to get sync challenge "
 			"e:%d t:%d for [%s] (for resync)",
 			log_prefix, 1, 0, username);
 		rc = X99_RC_SERVICE_ERR;

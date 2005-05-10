@@ -132,7 +132,7 @@ x99_gen_state(char **ascii_state, unsigned char **raw_state,
 
 	/* Add the challenge. */
 	for (i = 0; i < MAX_CHALLENGE_LEN / sizeof(des_cblock); ++i) {
-	    x99_keyblock_to_string(p, challenge, x99_hex_conversion);
+	    x99_keyblock2keystring(p, challenge, x99_hex_conversion);
 	    if (strlen(challenge) > sizeof(des_cblock)) {
 		challenge += sizeof(des_cblock);
 		p += 2 * sizeof(des_cblock);
@@ -147,14 +147,14 @@ x99_gen_state(char **ascii_state, unsigned char **raw_state,
 	    des_cblock cblock;
 	    (void) memcpy(cblock, &flags, 4);
 	    (void) memcpy(&cblock[4], &when, 4);
-	    x99_keyblock_to_string(p, cblock, x99_hex_conversion);
+	    x99_keyblock2keystring(p, cblock, x99_hex_conversion);
 	}
 	p += 16;
 
 	/* Add the hmac. */
-	x99_keyblock_to_string(p, hmac, x99_hex_conversion);
+	x99_keyblock2keystring(p, hmac, x99_hex_conversion);
 	p += 16;
-	x99_keyblock_to_string(p, &hmac[8], x99_hex_conversion);
+	x99_keyblock2keystring(p, &hmac[8], x99_hex_conversion);
 	p += 16;
 	*p = '\0';
     }

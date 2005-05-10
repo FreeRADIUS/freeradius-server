@@ -47,81 +47,23 @@ static const char rcsid[] = "$Id$";
  */
 
 
-/*
- * Get sync data for a given user.
+/* Get stored sync challenge for a given user.
  * Returns 0 on success, non-zero otherwise.
- *
- *  syncdir:  duh
- * username:  duh
- * card_id:   duh
- * ewin:      event window position (0 == now)
- * twin:      time window position (0 == now) (NOT IMPLEMENTED)
- * challenge: On successful return it will be filled in with the challenge
- *            expected for the given window slot.  On unsuccesful return,
- *            challenge may be overwritten and contain garbage.
- *            If ewin == 0, the stored "ewin 0" value is returned.
- *            If ewin > 0 and challenge points to a non-empty string, it
- *               will be taken as the challenge for (ewin - 1).  That is,
- *               ewin will not be used to calculate the next challenge;
- *               instead the passed in challenge is run through the sync
- *               calculation once to arrive at the next challenge.  This
- *               speeds things up since we don't have to iterate ewin times.
- *            If ewin > 0 and challenge points to an empty string, the
- *               stored "ewin 0" challenge value is run through the sync
- *               calculation ewin times.
- * keyblock:  Similar to challenge.  It may be updated for key changing
- *            sync modes. (NOT IMPLEMENTED)
  */
 int
-x99_get_sync_data(const char *syncdir, const char *username,
-		  uint32_t card_id, int ewin, int twin,
-		  char challenge[MAX_CHALLENGE_LEN + 1], des_cblock keyblock)
+x99_get_sync_challenge(const char *syncdir, const char *username,
+		       char challenge[MAX_CHALLENGE_LEN + 1])
 {
-    des_cblock output;
-    int i, rc = -1;
+    int rc;
     char *lock;
 
-    if (ewin == 0) {
-	if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
-	    return -1;
-	rc = x99_get_sd(syncdir, username, challenge, NULL, NULL, NULL);
-	x99_release_sd_lock(lock);
-	return rc;
-
-    } else if (challenge[0]) {
-	ewin = 1; /* only iterate once */
-
-    } else {
-	/* The hard way.  Get the zeroeth challenge. */
-	rc = x99_get_sync_data(syncdir, username, card_id, 0, twin,
-			       challenge, keyblock);
-	if (rc)
-	    return rc;
-    }
-
-    while (ewin--) {
-	if (card_id & X99_CF_CRYPTOCARD) {
-	    if ((rc = x99_mac(challenge, output, keyblock)) == 0) {
-		for (i = 0; i < 8; ++i) {
-		    output[i] &= 0x0f;
-		    if (output[i] > 9)
-			output[i] -= 10;
-		    output[i] |= 0x30;
-		}
-		(void) memcpy(challenge, output, 8);
-		challenge[8] = '\0';
-	    } else {
-		break;
-	    }
-	} else {
-	    /* No other vendors implemented yet. */
-	    rc = -1;
-	    break;
-	}
-    }
-
+    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+	return -1;
+    rc = x99_get_sd(syncdir, username, challenge, NULL, NULL, NULL);
+    x99_release_sd_lock(lock);
     return rc;
 }
+
 
 /*
  * Set sync data for a given user.
@@ -140,11 +82,11 @@ x99_get_sync_data(const char *syncdir, const char *username,
  */
 int
 x99_set_sync_data(const char *syncdir, const char *username,
-		  const char *challenge, const des_cblock keyblock
+		  const char *challenge,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-		  )
+		   const des_cblock keyblock)
 {
     int rc;
     char *lock;

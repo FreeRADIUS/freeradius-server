@@ -25,10 +25,11 @@
 
 #include "autoconf.h"
 #include "radiusd.h"
-#define X99_LOG_ERR  L_ERR
-#define X99_LOG_AUTH L_AUTH
-#define X99_LOG_INFO L_INFO
-#define X99_LOG_CRIT (L_ERR|L_CONS)
+#define X99_LOG_DEBUG L_DBG
+#define X99_LOG_ERR   L_ERR
+#define X99_LOG_AUTH  L_AUTH
+#define X99_LOG_INFO  L_INFO
+#define X99_LOG_CRIT  (L_ERR|L_CONS)
 
 /* x99_state.c */
 extern int x99_gen_state(char **ascii_state, unsigned char **raw_state,

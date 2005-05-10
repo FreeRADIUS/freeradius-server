@@ -40,7 +40,7 @@
 /* Default prompt for presentation of challenge */
 #define CHALLENGE_PROMPT "Challenge: %s\n Response: "
 
-/* Must be a multiple of sizeof(des_cblock) (8); read docs before changing. */
+/* Must be a multiple of sizeof(des_cblock) (8); read src before changing. */
 #define MAX_CHALLENGE_LEN 32
 
 /* Password that means "challenge me" in fast_sync mode */
@@ -101,50 +101,22 @@ typedef struct x99_token_t {
 #endif
 } x99_token_t;
 
-/* Bit maps for Card Features.  It is OK to insert values at will. */
-#define X99_CF_NONE		0
-/* Vendors */
-#define X99_CF_CRYPTOCARD	0x01 << 0  /* CRYPTOCard             */
-#define X99_CF_SNK		0x01 << 1  /* Symantec nee Axent nee */
-					   /* AssureNet Pathways nee */
-					   /* Digital Pathways       */
-					   /* "SecureNet Key"        */
-#define X99_CF_ACTIVCARD	0x01 << 2  /* ActivCard              */
-#define X99_CF_SCOMPUTING	0x01 << 3  /* Secure Computing       */
-#define X99_CF_VASCO		0x01 << 4  /* Vasco                  */
-/* modes */
-#define X99_CF_AM		0x01 << 5  /* async mode (chal/resp) */
-#define X99_CF_ES		0x01 << 6  /* event synchronous      */
-#define X99_CF_TS		0x01 << 7  /* time synchronous       */
-/* display modes */
-#define X99_CF_HD		0x01 << 8  /* hex display            */
-#define X99_CF_DD		0x01 << 9  /* dec display            */
-#define X99_CF_R8		0x01 << 10 /* 8 digit response       */
-#define X99_CF_R7		0x01 << 11 /* 7 digit response       */
-#define X99_CF_R6		0x01 << 12 /* 6 digit response       */
-#define X99_CF_MAX		0x01 << 31 /* MAX placeholder        */
-
-/* mask to test for sync mode */
-#define X99_CF_SM (X99_CF_ES|X99_CF_TS)
-
-/* cards and their features */
-#define CRYPTOCARD_H8_RC (X99_CF_CRYPTOCARD|X99_CF_HD|X99_CF_R8|X99_CF_AM)
-#define CRYPTOCARD_H7_RC (X99_CF_CRYPTOCARD|X99_CF_HD|X99_CF_R7|X99_CF_AM)
-#define CRYPTOCARD_D8_RC (X99_CF_CRYPTOCARD|X99_CF_DD|X99_CF_R8|X99_CF_AM)
-#define CRYPTOCARD_D7_RC (X99_CF_CRYPTOCARD|X99_CF_DD|X99_CF_R7|X99_CF_AM)
-#define CRYPTOCARD_H8_ES (X99_CF_CRYPTOCARD|X99_CF_HD|X99_CF_R8|X99_CF_ES)
-#define CRYPTOCARD_H7_ES (X99_CF_CRYPTOCARD|X99_CF_HD|X99_CF_R7|X99_CF_ES)
-#define CRYPTOCARD_D8_ES (X99_CF_CRYPTOCARD|X99_CF_DD|X99_CF_R8|X99_CF_ES)
-#define CRYPTOCARD_D7_ES (X99_CF_CRYPTOCARD|X99_CF_DD|X99_CF_R7|X99_CF_ES)
-#define CRYPTOCARD_H8_RS (CRYPTOCARD_H8_RC|CRYPTOCARD_H8_ES)
-#define CRYPTOCARD_H7_RS (CRYPTOCARD_H7_RC|CRYPTOCARD_H7_ES)
-#define CRYPTOCARD_D8_RS (CRYPTOCARD_D8_RC|CRYPTOCARD_D8_ES)
-#define CRYPTOCARD_D7_RS (CRYPTOCARD_D7_RC|CRYPTOCARD_D7_ES)
-
 /* user-specific info */
+#define X99_MAX_CARDNAME_LEN 32
+#define X99_MAX_KEY_LEN 256
+struct cardops_t;
 typedef struct x99_user_info_t {
-    uint32_t card_id;
-    des_cblock keyblock;
+    const char *username;
+    struct cardops_t *cardops;
+
+    char card[X99_MAX_CARDNAME_LEN + 1];
+    uint32_t featuremask;
+
+    char keystring[X99_MAX_KEY_LEN * 2 + 1];
+    unsigned char keyblock[X99_MAX_KEY_LEN];
+#if 0
+    void *keyschedule;
+#endif
 } x99_user_info_t;
 
 /* x99_cardops.c */
@@ -159,14 +131,14 @@ struct x99_pwe_cmp_t;
 typedef int (*cmpfunc_t)(struct x99_pwe_cmp_t *data, const char *passcode);
 extern int x99_pw_valid(const char *username,
 			char *challenge, const char *passcode,
-			const x99_token_t *opt, int resync,
+			int resync, const x99_token_t *opt,
 			cmpfunc_t cmpfunc, void *data,
 			const char *log_prefix);
 
 /* x99_mac.c */
-extern int x99_response(const char *challenge, char response[17],
-			uint32_t card_id, des_cblock keyblock);
-extern int x99_mac(const char *input, des_cblock output, des_cblock keyblock);
+extern int x99_mac(const unsigned char *input, size_t len,
+		   unsigned char output[8],
+		   unsigned char keyblock[X99_MAX_KEY_LEN]);
 
 /* x99_util.c */
 /* Character maps for generic hex and vendor specific decimal modes */
@@ -175,11 +147,11 @@ extern const char x99_cc_dec_conversion[];
 extern const char x99_snk_dec_conversion[];
 extern const char x99_sc_friendly_conversion[];
 
-extern int x99_get_challenge(int fd, char *challenge, int len);
 extern int x99_get_random(int fd, unsigned char *rnd_data, int req_bytes);
+extern int x99_get_challenge(int fd, char *challenge, int len);
 
-extern int x99_string_to_keyblock(const char *s, des_cblock keyblock);
-extern void x99_keyblock_to_string(char *s, const des_cblock keyblock,
+extern int x99_keystring2keyblock(const char *s, unsigned char keyblock[]);
+extern void x99_keyblock2keystring(char *s, const des_cblock keyblock,
 				   const char conversion[17]);
 
 extern int x99_get_user_info(const char *pwdfile, const char *username,
@@ -190,16 +162,10 @@ extern int x99_get_user_info(const char *pwdfile, const char *username,
 #define FAIL_HARD -2
 #define FAIL_SOFT -3
 
-extern int x99_get_sync_data(const char *syncdir, const char *username,
-			     uint32_t card_id, int ewin, int twin,
-			     char challenge[MAX_CHALLENGE_LEN + 1],
-			     des_cblock keyblock);
+extern int x99_get_sync_challenge(const char *syncdir, const char *username,
+				  char challenge[MAX_CHALLENGE_LEN + 1]);
 extern int x99_set_sync_data(const char *syncdir, const char *username,
-			     const char *challenge, const des_cblock keyblock
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-			     );
+			     const char *challenge, const des_cblock keyblock);
 extern int x99_check_failcount(const char *syncdir, const x99_token_t *inst);
 extern int x99_incr_failcount(const char *syncdir, const char *username);
 extern int x99_reset_failcount(const char *syncdir, const char *username);
@@ -211,11 +177,7 @@ extern int x99_set_last_auth_pos(const char *syncdir, const char *username,
 				 unsigned pos);
 
 /* x99_site.c */
-extern int x99_challenge_transform(const char *username
-#ifdef ___GNUC__
-__attribute__ ((unused))
-#endif
-				   ,
+extern int x99_challenge_transform(const char *username,
 				   char challenge[MAX_CHALLENGE_LEN + 1]);
 
 /* x99_log.c */

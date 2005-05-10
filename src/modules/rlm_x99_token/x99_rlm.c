@@ -525,7 +525,7 @@ x99_token_authenticate(void *instance, REQUEST *request)
     } /* code block */
 
     /* do it */
-    rc = x99rc2rlmrc(x99_pw_valid(username, challenge, NULL, inst, resync,
+    rc = x99rc2rlmrc(x99_pw_valid(username, challenge, NULL, resync, inst,
 				  x99_pwe_cmp, &data, "auth"));
 
     /* Handle any vps returned from x99_pwe_cmp(). */

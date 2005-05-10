@@ -42,11 +42,11 @@ static const char rcsid[] = "$Id$";
 
 
 int
-x99_challenge_transform(const char *username
+x99_challenge_transform(
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-			,
+			const char *username,
 			char challenge[MAX_CHALLENGE_LEN + 1])
 {
     (void) strcpy(challenge, "DISABLED");
