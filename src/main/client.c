@@ -76,7 +76,7 @@ int read_clients_file(const char *file)
 	char hostnm[256];
 	char secret[256];
 	char shortnm[256];
-	uint32_t mask;
+	int prefix = 0;
 	int lineno = 0;
 	char *p;
 	int got_clients = FALSE;
@@ -126,25 +126,16 @@ int read_clients_file(const char *file)
 		 *	Look for a mask in the hostname
 		 */
 		p = strchr(hostnm, '/');
-		mask = ~0;
 
 		if (p) {
-			int mask_length;
-
 			*p = '\0';
 			p++;
 
-			mask_length = atoi(p);
-			if ((mask_length < 0) || (mask_length > 32)) {
+			prefix = atoi(p);
+			if ((prefix < 0) || (prefix > 128)) {
 				radlog(L_ERR, "%s[%d]: Invalid value '%s' for IP network mask.",
 				       file, lineno, p);
 				return -1;
-			}
-
-			if (mask_length == 0) {
-				mask = 0;
-			} else {
-				mask = ~0 << (32 - mask_length);
 			}
 		}
 
@@ -155,52 +146,91 @@ int read_clients_file(const char *file)
 		c = rad_malloc(sizeof(RADCLIENT));
 		memset(c, 0, sizeof(*c));
 
-		if (ip_hton(hostnm, AF_INET, &c->ipaddr) < 0) {
+		if (ip_hton(hostnm, AF_UNSPEC, &c->ipaddr) < 0) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
 					file, lineno, hostnm);
 			return -1;
 		}
-		c->netmask = htonl(mask);
-		c->ipaddr.ipaddr.ip4addr.s_addr &= c->netmask; /* addr & mask are in network order */
-
+		c->prefix = prefix;
 		c->secret = strdup(secret);
 		c->shortname = strdup(shortnm);
 
-		/*
-		 *	Only do DNS lookups for machines.  Just print
-		 *	the network as the long name.
-		 */
-		if ((~mask) == 0) {
+		switch (c->ipaddr.af) {
+		case AF_INET :
+			if ((prefix < 0) || (prefix > 32)) {
+				radlog(L_ERR, "%s[%d]: Invalid value '%s' for IP network mask.",
+				       file, lineno, p);
+				return -1;
+			}
 
-			ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
-			c->longname = strdup(buffer);
+			if (prefix) {
+				c->ipaddr.ipaddr.ip4addr.s_addr &= 
+							~0 << (32 - prefix);
+				hostnm[strlen(hostnm)] = '/';
+				/* Long Name includes prefix too */
+				c->longname = strdup(hostnm);
+			} else {
 
+				/*
+				 * Only do DNS lookups for machines.  Just print
+				 * the network as the long name.
+				 */
+				ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
+				c->longname = strdup(buffer);
+
+			}
 			/*
 			 *	Pull information over from the NAS.
 			 */
-			if (c->ipaddr.af == AF_INET) {
-				NAS *nas;
-				nas = nas_find(c->ipaddr.ipaddr.ip4addr.s_addr);
-				if (nas) {
-					/*
-					 *	No short name in the
-					 *	'clients' file, try
-					 *	copying one over from
-					 *	the 'naslist' file.
-					 */
-					if (!c->shortname) {
-						c->shortname = strdup(nas->shortname);
-					}
-					
-					/*
-					 *  Copy the nastype over, too.
-					 */
-					c->nastype = strdup(nas->nastype);
+			NAS *nas;
+			nas = nas_find(c->ipaddr.ipaddr.ip4addr.s_addr);
+			if (nas) {
+				/*
+				 *	No short name in the
+				 *	'clients' file, try
+				 *	copying one over from
+				 *	the 'naslist' file.
+				 */
+				if (!c->shortname) {
+					c->shortname = strdup(nas->shortname);
 				}
+				
+				/*
+				 *  Copy the nastype over, too.
+				 */
+				c->nastype = strdup(nas->nastype);
 			}
-		} else {
-			hostnm[strlen(hostnm)] = '/';
-			c->longname = strdup(hostnm);
+			break;
+
+		case AF_INET6 :
+			if (prefix) {
+				unsigned char mask = 0x00;
+				int i;
+				for (i = 0; i < 16; i++) {
+					if (i < prefix/8) {
+						mask = 0xff;
+					} else if (i == prefix/8) {
+						mask = (0xff << prefix%8);
+					} else {
+						mask = 0x00;
+					}
+					c->ipaddr.ipaddr.ip6addr.s6_addr[i] &= mask;
+				}
+				hostnm[strlen(hostnm)] = '/';
+				c->longname = strdup(hostnm);
+			} else {
+
+				/*
+				 * Only do DNS lookups for machines.  Just print
+				 * the network as the long name.
+				 */
+				ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
+				c->longname = strdup(buffer);
+			}
+			/* TODO: NAS info as in IPv4 above */
+			break;
+		default :
+			break;
 		}
 
 		c->next = mainconfig.clients;
@@ -218,48 +248,71 @@ int read_clients_file(const char *file)
 
 /*
  *	Find a client in the RADCLIENTS list.
+ *      TODO: Stop looping once the match is found
  */
 RADCLIENT *client_find(const lrad_ipaddr_t *ipaddr)
 {
 	RADCLIENT *cl;
 	RADCLIENT *match = NULL;
 
+	switch (ipaddr->af) {
+	case AF_INET:
+	case AF_INET6:
+		break;
+	case AF_UNSPEC:
+	default :
+		return NULL;
+	}
+
 	for (cl = mainconfig.clients; cl; cl = cl->next) {
-		/*
-		 *	Catch IPv6-mapped IPv4 addresses.
-		 */
-		if ((cl->ipaddr.af == AF_INET) &&
-		    (ipaddr->af == AF_INET6) &&
-		    IN6_IS_ADDR_V4MAPPED(&ipaddr->ipaddr.ip6addr) &&
-		    (((const uint32_t *) &cl->ipaddr.ipaddr.ip4addr)[0] ==
-		     ((const uint32_t *) &ipaddr->ipaddr.ip6addr)[3]) &&
-		    ((((const uint32_t *) &ipaddr->ipaddr.ip6addr)[3] & cl->netmask) == cl->ipaddr.ipaddr.ip4addr.s_addr)) {
-			if ((!match) ||
-			    (ntohl(cl->netmask) > ntohl(match->netmask))) {
-				match = cl;
-			}
-		}
 
 		if (cl->ipaddr.af != ipaddr->af) continue;
 
-		if ((ipaddr->af == AF_INET) &&
-		    ((ipaddr->ipaddr.ip4addr.s_addr & cl->netmask) == cl->ipaddr.ipaddr.ip4addr.s_addr)) {
-			if ((!match) ||
-			    (ntohl(cl->netmask) > ntohl(match->netmask))) {
+		switch (ipaddr->af) {
+		case AF_INET:
+			if (cl->prefix) {
+				if ((ipaddr->ipaddr.ip4addr.s_addr & (~0 << cl->prefix)) == (cl->ipaddr.ipaddr.ip4addr.s_addr & (~0 << cl->prefix))) {
+					match = cl;
+				} else
+					break;
+
+			} else if ((!memcmp(&cl->ipaddr.ipaddr, &ipaddr->ipaddr, 4))) {
 				match = cl;
 			}
-		}
+			break;
 
-		/*
-		 *	Catch all other cases.
-		 */
-		if ((ipaddr->af == AF_INET6) &&
-		    IN6_ARE_ADDR_EQUAL(&cl->ipaddr.ipaddr.ip6addr,
+		case AF_INET6:
+			if (cl->prefix) {
+				unsigned char mask;
+				int flag = 1;
+				int i;
+				for (i = 0; i < 16; i++) {
+
+					if (i < (signed)(cl->prefix)/8) {
+						mask = 0xff;
+					} else if (i == (signed)(cl->prefix)/8) {
+						mask = (0xff << (signed)cl->prefix%8);
+					} else {
+						mask = 0x00;
+					}
+					if ((ipaddr->ipaddr.ip6addr.s6_addr[i] & mask) != (cl->ipaddr.ipaddr.ip6addr.s6_addr[i] & mask)) {
+						flag = 0;
+						break;
+					}
+				}
+				if (flag) {
+					match = cl;
+				}
+			} else if (IN6_ARE_ADDR_EQUAL(&cl->ipaddr.ipaddr.ip6addr,
 				       &ipaddr->ipaddr.ip6addr)) {
-			match = cl;
+				match =  cl;
+			}
+			break;
+
+		default:
+			break;
 		}
 	}
-
 	return match;
 }
 

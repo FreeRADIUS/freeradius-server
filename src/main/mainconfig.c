@@ -844,7 +844,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 {
 	CONF_SECTION	*cs;
 	RADCLIENT	*list, *c;
-	char		*hostnm, *netmask;
+	char		*hostnm, *prefix_ptr = NULL;
 	char		*name2;
 
 	list = NULL;
@@ -862,7 +862,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 		 * Check the lengths, we don't want any core dumps
 		 */
 		hostnm = name2;
-		netmask = strchr(hostnm, '/');
+		prefix_ptr = strchr(hostnm, '/');
 
 		/*
 		 * The size is fine.. Let's create the buffer
@@ -878,45 +878,30 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 		}
 
 		/*
-		 *	Look for netmasks.
+		 * Look for prefixes.
 		 */
-		c->netmask = ~0;
-		if (netmask) {
-			int mask_length;
-
-			mask_length = atoi(netmask + 1);
-			if ((mask_length < 0) || (mask_length > 32)) {
-				radlog(L_ERR, "%s[%d]: Invalid value '%s' for IP network mask.",
-						filename, cf_section_lineno(cs), netmask + 1);
+		c->prefix = 0;
+		if (prefix_ptr) {
+			c->prefix = atoi(prefix_ptr + 1);
+			if ((c->prefix < 0) || (c->prefix > 128)) {
+				radlog(L_ERR, "%s[%d]: Invalid Prefix value '%s' for IP.",
+						filename, cf_section_lineno(cs), prefix_ptr + 1);
 				clients_free(list);
 				return NULL;
 			}
-
-			if (mask_length == 0) {
-				c->netmask = 0;
-			} else {
-				c->netmask = ~0 << (32 - mask_length);
-			}
-
-			*netmask = '\0';
-			c->netmask = htonl(c->netmask);
+			/* Replace '/' with '\0' */
+			*prefix_ptr = '\0';
 		}
 
+		/*
+		 * Always get the numeric representation of IP
+		 */
 		if (ip_hton(hostnm, AF_UNSPEC, &c->ipaddr) < 0) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s: %s",
 			       filename, cf_section_lineno(cs),
 			       hostnm, librad_errstr);
 			clients_free(list);
 			return NULL;
-		}
-
-		/*
-		 *	Update the client name again...
-		 */
-		if (netmask && (c->ipaddr.af == AF_INET)) {
-			*netmask = '/';
-			c->ipaddr.ipaddr.ip4addr.s_addr &= c->netmask;
-			c->longname = strdup(hostnm);
 		} else {
 			char buffer[256];
 			ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
