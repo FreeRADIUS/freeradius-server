@@ -1,29 +1,23 @@
+# -*- text -*-
 #
-# dictionary.tunnel
+#	Attributes and values defined in RFC 2868.
+#	http://www.ietf.org/rfc/rfc2868.txt
 #
-#		Experimental tunneling attributes.
-#
-#
-# Version:	 $Id$
-#
-
-#
-#	Tunneling Attributes
+#	$Id$
 #
 ATTRIBUTE	Tunnel-Type			64	integer	has_tag
 ATTRIBUTE	Tunnel-Medium-Type		65	integer	has_tag
 ATTRIBUTE	Tunnel-Client-Endpoint		66	string	has_tag
 ATTRIBUTE	Tunnel-Server-Endpoint		67	string	has_tag
-ATTRIBUTE	Tunnel-Connection-Id		68	string	has_tag
+
 ATTRIBUTE	Tunnel-Password			69	string	has_tag,encrypt=2
+
 ATTRIBUTE	Tunnel-Private-Group-Id		81	string	has_tag
 ATTRIBUTE	Tunnel-Assignment-Id		82	string	has_tag
 ATTRIBUTE	Tunnel-Preference		83	integer	has_tag
-ATTRIBUTE       Acct-Tunnel-Packets-Lost	86	integer
+
 ATTRIBUTE	Tunnel-Client-Auth-Id		90	string	has_tag
 ATTRIBUTE	Tunnel-Server-Auth-Id		91	string	has_tag
-
-VALUE		Framed-Protocol		PPTP			9
 
 #	Tunnel Type
 
@@ -39,8 +33,6 @@ VALUE		Tunnel-Type	ESP	9
 VALUE		Tunnel-Type	GRE	10
 VALUE		Tunnel-Type	DVS	11
 VALUE		Tunnel-Type	IP-in-IP 12
-VALUE		Tunnel-Type	VLAN	13
-#
 
 #	Tunnel Medium Type
 
