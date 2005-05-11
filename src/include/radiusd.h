@@ -107,7 +107,7 @@ typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 
 typedef struct radclient {
 	lrad_ipaddr_t		ipaddr;
-	uint32_t		netmask;
+	int			prefix;
 	char			*longname;
 	u_char			*secret;
 	char			*shortname;
