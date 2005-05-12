@@ -719,7 +719,7 @@ static int proxy_socket_recv(rad_listen_t *listener,
 #define STATE_HEADER	(2)
 #define STATE_READING	(3)
 #define STATE_DONE	(4)
-
+#define STATE_WAITING	(5)
 
 /*
  *	For now, don't do anything...
@@ -728,6 +728,14 @@ static int detail_send(rad_listen_t *listener, REQUEST *request)
 {
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == detail_send);
+
+	if (request->simul_max >= 0) {
+		rad_assert(listener->outstanding != NULL);
+		rad_assert(request->simul_max < listener->max_outstanding);
+
+		listener->outstanding[request->simul_max] = 0;
+	}
+
 	return 0;
 }
 
@@ -735,6 +743,7 @@ static int detail_send(rad_listen_t *listener, REQUEST *request)
 static int detail_recv(rad_listen_t *listener,
 		       RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
 {
+	int		free_slot = -1;
 	char		key[256], value[1024];
 	VALUE_PAIR	*vp, **tail;
 	RADIUS_PACKET	*packet;
@@ -808,15 +817,36 @@ static int detail_recv(rad_listen_t *listener,
 	 *	continue.  This means that the server doesn't block
 	 *	while waiting for the lock to open...
 	 */
-	if ((listener->state == STATE_UNLOCKED) &&
-	    (rad_lockfd_nonblock(listener->fd, 0) < 0)) {
-		return 0;
+	if (listener->state == STATE_UNLOCKED) {
+		if (rad_lockfd_nonblock(listener->fd, 0) < 0) {
+			return 0;
+		}
+		/*
+		 *	Look for the header
+		 */
+		listener->state = STATE_HEADER;
 	}
 
 	/*
-	 *	Look for the header
+	 *	If we keep track of the outstanding requests, do so
+	 *	here.  Note that to minimize potential work, we do
+	 *	so only once the file is opened & locked.
 	 */
-	listener->state = STATE_HEADER;
+	if (listener->max_outstanding) {
+		int i;
+
+		for (i = 0; i < listener->max_outstanding; i++) {
+			if (!listener->outstanding[i]) {
+				free_slot = i;
+				break;
+			}
+		}
+
+		/*
+		 *	All of the slots are full, don't read data.
+		 */
+		if (free_slot < 0) return 0;
+	}
 
 	/*
 	 *	Catch an out of memory condition which will most likely
@@ -838,6 +868,24 @@ static int detail_recv(rad_listen_t *listener,
 	 */
 	if (feof(listener->fp)) {
 		rad_assert(listener->state == STATE_HEADER);
+
+		/*
+		 *	Don't unlink the file until we've received
+		 *	all of the responses.
+		 */
+		if (listener->max_outstanding > 0) {
+			int i;
+
+			for (i = 0; i < listener->max_outstanding; i++) {
+				/*
+				 *	FIXME: close the file?
+				 */
+				if (listener->outstanding[i]) {
+					listener->state = STATE_WAITING;
+					return 0;
+				}
+			}
+		}
 
 	cleanup:
 		rad_assert(listener->vps == NULL);
@@ -1005,6 +1053,13 @@ static int detail_recv(rad_listen_t *listener,
 		rad_free(&packet);
 		return 0;
 	}
+
+	/*
+	 *	Keep track of free slots, as a hack, in an otherwise
+	 *	unused 'int'
+	 */
+	(*prequest)->simul_max = free_slot;
+	if (free_slot) listener->outstanding[free_slot] = 1;
 
 	*pfun = rad_accounting;
 
@@ -1432,6 +1487,14 @@ int listen_init(const char *filename, rad_listen_t **head)
 			this->fd = -1;
 			this->fp = NULL;
 			this->state = STATE_UNOPENED;
+
+			rcode = cf_item_parse(cs, "max_outstanding",
+					      PW_TYPE_INTEGER,
+					      &(this->max_outstanding), "0");
+			if (rcode < 0) return -1;
+			if (this->max_outstanding > 0) {
+				this->outstanding = rad_malloc(sizeof(int) * this->max_outstanding);
+			}
 
 			*last = this;
 			last = &(this->next);		

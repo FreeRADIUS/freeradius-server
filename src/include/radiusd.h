@@ -181,27 +181,34 @@ typedef enum RAD_LISTEN_TYPE {
 
 struct rad_listen_t {
 	struct rad_listen_t *next; /* should be rbtree stuff */
-
-	lrad_ipaddr_t	ipaddr;
+	/*
+	 *	For normal sockets.
+	 */
+	RAD_LISTEN_TYPE	type;
 	int		fd;
+
+	int		(*recv)(rad_listen_t *,
+				RAD_REQUEST_FUNP *, REQUEST **);
+	int		(*send)(rad_listen_t *, REQUEST *);
+
+	/*
+	 *	For normal sockets.
+	 */
+	lrad_ipaddr_t	ipaddr;
+	int		port;
 
 	/*
 	 *	For detail file
+	 *
+	 *	FIXME: this stuff should either be in a union,
+	 *	or in a structure allocated per-type...
 	 */
 	const char	*detail;
 	VALUE_PAIR	*vps;
 	FILE		*fp;
 	int		state;
-
-	/*
-	 *	For normal sockets.
-	 */
-	RAD_LISTEN_TYPE	type;
-	int		port;
-
-	int		(*recv)(rad_listen_t *,
-				RAD_REQUEST_FUNP *, REQUEST **);
-	int		(*send)(rad_listen_t *, REQUEST *);
+	int		max_outstanding;
+	int		*outstanding;
 };
 
 
