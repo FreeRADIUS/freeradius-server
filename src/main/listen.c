@@ -740,6 +740,72 @@ static int detail_send(rad_listen_t *listener, REQUEST *request)
 }
 
 
+static int detail_open(rad_listen_t *listener)
+{
+	struct stat st;
+	char buffer[2048];
+	
+	snprintf(buffer, sizeof(buffer), "%s.work", listener->detail);
+	
+	/*
+	 *	Open detail.work first, so we don't lose
+	 *	accounting packets.  It's probably better to
+	 *	duplicate them than to lose them.
+	 *
+	 *	Note that we're not writing to the file, but
+	 *	we've got to open it for writing in order to
+	 *	establish the lock, to prevent rlm_detail from
+	 *	writing to it.
+	 */
+	listener->fd = open(buffer, O_RDWR);
+	if (listener->fd < 0) {
+		/*
+		 *	Try reading the detail file.  If it
+		 *	doesn't exist, we can't do anything.
+		 *
+		 *	Doing the stat will tell us if the file
+		 *	exists, even if we don't have permissions
+		 *	to read it.
+		 */
+		if (stat(listener->detail, &st) < 0) {
+			return 0;
+		}
+		
+		/*
+		 *	Open it BEFORE we rename it, just to
+		 *	be safe...
+		 */
+		listener->fd = open(listener->detail, O_RDWR);
+		if (listener->fd < 0) {
+			radlog(L_ERR, "Failed to open %s: %s",
+			       listener->detail, strerror(errno));
+			return 0;
+		}
+		
+		/*
+		 *	Rename detail to detail.work
+		 */
+		if (rename(listener->detail, buffer) < 0) {
+				close(listener->fd);
+				listener->fd = -1;
+				return 0;
+		}
+	} /* else detail.work existed, and we opened it */
+	
+	listener->state = STATE_UNLOCKED;
+	
+	rad_assert(listener->vps == NULL);
+	
+	rad_assert(listener->fp == NULL);
+	listener->fp = fdopen(listener->fd, "r");
+	if (!listener->fp) {
+		radlog(L_ERR, "Failed to re-open %s: %s",
+		       listener->detail, strerror(errno));
+		return 0;
+	}
+}
+
+
 static int detail_recv(rad_listen_t *listener,
 		       RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
 {
@@ -750,66 +816,7 @@ static int detail_recv(rad_listen_t *listener,
 	char		buffer[2048];
 
 	if (listener->fd < 0) {
-		struct stat st;
-
-		snprintf(buffer, sizeof(buffer), "%s.work", listener->detail);
-
-		/*
-		 *	Open detail.work first, so we don't lose
-		 *	accounting packets.  It's probably better to
-		 *	duplicate them than to lose them.
-		 *
-		 *	Note that we're not writing to the file, but
-		 *	we've got to open it for writing in order to
-		 *	establish the lock, to prevent rlm_detail from
-		 *	writing to it.
-		 */
-		listener->fd = open(buffer, O_RDWR);
-		if (listener->fd < 0) {
-			/*
-			 *	Try reading the detail file.  If it
-			 *	doesn't exist, we can't do anything.
-			 *
-			 *	Doing the stat will tell us if the file
-			 *	exists, even if we don't have permissions
-			 *	to read it.
-			 */
-			if (stat(listener->detail, &st) < 0) {
-				return 0;
-			}
-			
-			/*
-			 *	Open it BEFORE we rename it, just to
-			 *	be safe...
-			 */
-			listener->fd = open(listener->detail, O_RDWR);
-			if (listener->fd < 0) {
-				radlog(L_ERR, "Failed to open %s: %s",
-				       listener->detail, strerror(errno));
-				return 0;
-			}
-			
-			/*
-			 *	Rename detail to detail.work
-			 */
-			if (rename(listener->detail, buffer) < 0) {
-				close(listener->fd);
-				listener->fd = -1;
-				return 0;
-			}
-		} /* else detail.work existed, and we opened it */
-
-		listener->state = STATE_UNLOCKED;
-		
-		rad_assert(listener->vps == NULL);
-		
-		rad_assert(listener->fp == NULL);
-		listener->fp = fdopen(listener->fd, "r");
-		if (!listener->fp) {
-			radlog(L_ERR, "Failed to re-open %s: %s",
-			       listener->detail, strerror(errno));
-			return 0;
-		}
+		detail_open(listener);
 	}
 
 	/*
@@ -1495,6 +1502,8 @@ int listen_init(const char *filename, rad_listen_t **head)
 			if (this->max_outstanding > 0) {
 				this->outstanding = rad_malloc(sizeof(int) * this->max_outstanding);
 			}
+
+			detail_open(this);
 
 			*last = this;
 			last = &(this->next);		
