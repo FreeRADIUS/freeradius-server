@@ -46,7 +46,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
-#include <netinet/in.h>	/* htonl() */
+#include <netinet/in.h>	/* htonl(), ntohl() */
 
 #include "x99.h"
 #ifdef FREERADIUS

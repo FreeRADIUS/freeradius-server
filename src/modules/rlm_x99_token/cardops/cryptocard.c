@@ -47,7 +47,8 @@ static struct {
 };
 
 
-/* Convert card name to feature mask.
+/*
+ * Convert card name to feature mask.
  * Returns 0 on success, non-zero otherwise.
  */
 static int
@@ -72,6 +73,7 @@ cryptocard_name2fm(const char *name, uint32_t *featuremask)
 static int
 cryptocard_keystring2keyblock(const char *keystring, unsigned char keyblock[])
 {
+    /* 64-bit DES key with optional line ending */
     if ((strlen(keystring) & ~1) != 16)
 	return 1;
 
