@@ -88,6 +88,7 @@ typedef struct request_queue_t {
 
 
 #define MAX_WAITERS (256)
+
 /*
  *	A data structure to manage the thread pool.  There's no real
  *	need for a data structure, but it makes things conceptually
@@ -98,6 +99,7 @@ typedef struct THREAD_POOL {
 	THREAD_HANDLE *tail;
 
 	int total_threads;
+	int active_threads;
 	int max_thread_num;
 	int start_threads;
 	int max_threads;
@@ -125,7 +127,7 @@ typedef struct THREAD_POOL {
 	 */
 	pthread_mutex_t	queue_mutex;
 
-	int		active_threads;
+	int		max_queue_size;
 	int		queue_head; /* first filled entry */
 	int		queue_tail; /* first empty entry */
 	int		queue_size;
@@ -146,6 +148,7 @@ static const CONF_PARSER thread_config[] = {
 	{ "max_spare_servers",       PW_TYPE_INTEGER, 0, &thread_pool.max_spare_threads,       "10" },
 	{ "max_requests_per_server", PW_TYPE_INTEGER, 0, &thread_pool.max_requests_per_thread, "0" },
 	{ "cleanup_delay",           PW_TYPE_INTEGER, 0, &thread_pool.cleanup_delay,           "5" },
+	{ "max_queue_size",          PW_TYPE_INTEGER, 0, &thread_pool.max_queue_size,           "65536" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -288,10 +291,10 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		request_queue_t *new_queue;
 
 		/*
-		 *	If the queue becomes larger than 65536,
-		 *	there's a serious problem.
+		 *	If the queue becomes too large, then there's a
+		 *	serious problem.
 		 */
-		if (thread_pool.queue_size >= 65536) {
+		if (thread_pool.queue_size >= thread_pool.max_queue_size) {
 			pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 			/*
@@ -781,6 +784,9 @@ int thread_pool_init(int spawn_flag)
 
 	pool_cf = cf_section_find("thread");
 	if (pool_cf != NULL) {
+		/*
+		 *	FIXME: Check for errors?
+		 */
 		cf_section_parse(pool_cf, NULL, thread_config);
 	}
 
