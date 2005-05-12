@@ -263,6 +263,22 @@ static radclient_t *radclient_init(const char *filename)
 				       sizeof(radclient->request->dst_ipaddr.ipaddr.ip6addr));
 				break;
 
+			case PW_PACKET_SRC_PORT:
+				radclient->request->src_port = (vp->lvalue & 0xffff);
+				break;
+
+			case PW_PACKET_SRC_IP_ADDRESS:
+				radclient->request->src_ipaddr.af = AF_INET;
+				radclient->request->src_ipaddr.ipaddr.ip4addr.s_addr = vp->lvalue;
+				break;
+
+			case PW_PACKET_SRC_IPV6_ADDRESS:
+				radclient->request->src_ipaddr.af = AF_INET6;
+				memcpy(&radclient->request->src_ipaddr.ipaddr.ip6addr,
+				       vp->strvalue,
+				       sizeof(radclient->request->src_ipaddr.ipaddr.ip6addr));
+				break;
+
 			case PW_DIGEST_REALM:
 			case PW_DIGEST_NONCE:
 			case PW_DIGEST_METHOD:
@@ -732,6 +748,9 @@ int main(int argc, char **argv)
 	int parallel = 1;
 	radclient_t	*this;
 	int force_af = AF_UNSPEC;
+	int len = 0;
+        struct sockaddr_storage ss;
+        struct sockaddr_in *s4;
 
 	librad_debug = 0;
 
@@ -936,14 +955,6 @@ int main(int argc, char **argv)
 		usage();
 	}
 
-
-	/*
-	 *	Grab the socket.
-	 */
-	if ((sockfd = socket(server_ipaddr.af, SOCK_DGRAM, 0)) < 0) {
-		perror("radclient: socket: ");
-		exit(1);
-	}
 	/*
 	 *	Add the secret.
 	 */
@@ -969,6 +980,53 @@ int main(int argc, char **argv)
 	if (!radclient_head) {
 		fprintf(stderr, "radclient: Nothing to send.\n");
 		exit(1);
+	}
+
+	/*
+	 *	Grab the socket.
+	 */
+	if ((sockfd = socket(server_ipaddr.af, SOCK_DGRAM, 0)) < 0) {
+		perror("radclient: socket: ");
+		exit(1);
+	}
+
+	/*
+	 * Bind only if Packet-Src-IP(v6)Address Attribute is found
+	 */
+	switch (radclient_head->request->src_ipaddr.af) {
+	case AF_UNSPEC:
+	default:
+		break;
+
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+	case AF_INET6:
+		{
+			struct sockaddr_in6 *s6;
+			s6 = (struct sockaddr_in6 *)&ss;
+			len = sizeof(struct sockaddr_in6);
+			s6->sin6_family = AF_INET6;
+			s6->sin6_flowinfo = 0;
+			s6->sin6_port = htons(radclient_head->request->src_port);
+			memcpy(&s6->sin6_addr, &radclient_head->request->src_ipaddr.ipaddr, 16);
+		}
+		if (bind(sockfd, (struct sockaddr *)&ss, len) < 0) {
+			perror("radclient: bind: ");
+			exit(1);
+		}
+		break;
+#endif
+
+	case AF_INET:
+		s4 = (struct sockaddr_in *)&ss;
+		len = sizeof(struct sockaddr_in);
+		s4->sin_family = AF_INET;
+		s4->sin_port = htons(radclient_head->request->src_port);
+		memcpy(&s4->sin_addr, &radclient_head->request->src_ipaddr.ipaddr, 4);
+		if (bind(sockfd, (struct sockaddr *)&ss, len) < 0) {
+			perror("radclient: bind: ");
+			exit(1);
+		}
+		break;
 	}
 
 	/*
