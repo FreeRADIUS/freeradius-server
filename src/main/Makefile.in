@@ -19,7 +19,7 @@ MODULE_LIBS	= $(STATIC_MODULES)
 MODULE_OBJS	=
 VFLAGS		= -DRADIUSD_MAJOR_VERSION=$(RADIUSD_MAJOR_VERSION)
 VFLAGS		+= -DRADIUSD_MINOR_VERSION=$(RADIUSD_MINOR_VERSION)
-BINARIES	= radiusd radwho radzap radclient radrelay 
+BINARIES	= radiusd radwho radclient radrelay 
 
 #
 #  Not using shared libraries, add in ALL known static modules
