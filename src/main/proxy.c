@@ -489,8 +489,8 @@ int proxy_send(REQUEST *request)
 				return RLM_MODULE_FAIL; /* caller doesn't reply */
 			}
 
-			rad_send(request->proxy, NULL,
-				 (char *)request->proxysecret);
+			request->proxy_listener->send(request->proxy_listener,
+						      request);
 		}
 		rcode = RLM_MODULE_HANDLED; /* caller doesn't reply */
 	} else {
