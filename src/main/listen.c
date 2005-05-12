@@ -40,9 +40,15 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+
 #ifdef WITH_UDPFROMTO
 #include "udpfromto.h"
 #endif
+
+#include <fcntl.h>
 
 #include "radiusd.h"
 #include "rad_assert.h"
@@ -59,6 +65,12 @@ static time_t start_time = 0;
  */
 extern time_t time_now;
 extern int auth_port;
+
+/*
+ *	FIXME: Create a data structure to hold per-type information,
+ *	and use that when parsing types. This will clean up the code
+ *	a fair bit.
+ */
 
 /*
  *	Process and reply to a server-status request.
@@ -87,6 +99,8 @@ static int rad_status_server(REQUEST *request)
 	return 0;
 }
 
+static int request_num_counter = 0;
+
 /*
  *	Check for dups, etc.  Common to Access-Request &&
  *	Accounting-Request packets.
@@ -96,7 +110,6 @@ static int common_checks(rad_listen_t *listener,
 			 const uint8_t *secret)
 {
 	REQUEST	*curreq;
-	static int request_num_counter = 0;
 	char buffer[128];
 
 	/*
@@ -675,6 +688,293 @@ static int proxy_socket_recv(rad_listen_t *listener,
 	return 1;
 }
 
+#define STATE_UNOPENED	(0)
+#define STATE_UNLOCKED	(1)
+#define STATE_HEADER	(2)
+#define STATE_READING	(3)
+#define STATE_DONE	(4)
+
+
+static int detail_recv(rad_listen_t *listener,
+		       RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+{
+	char		key[256], value[1024];
+	VALUE_PAIR	*vp, **tail;
+	RADIUS_PACKET	*packet;
+	char		buffer[2048];
+
+	if (listener->fd < 0) {
+		struct stat st;
+
+		snprintf(buffer, sizeof(buffer), "%s.work", listener->detail);
+
+		/*
+		 *	Open detail.work first, so we don't lose
+		 *	accounting packets.  It's probably better to
+		 *	duplicate them than to lose them.
+		 *
+		 *	Note that we're not writing to the file, but
+		 *	we've got to open it for writing in order to
+		 *	establish the lock, to prevent rlm_detail from
+		 *	writing to it.
+		 */
+		listener->fd = open(buffer, O_RDWR);
+		if (listener->fd < 0) {
+			/*
+			 *	Try reading the detail file.  If it
+			 *	doesn't exist, we can't do anything.
+			 *
+			 *	Doing the stat will tell us if the file
+			 *	exists, even if we don't have permissions
+			 *	to read it.
+			 */
+			if (stat(listener->detail, &st) < 0) {
+				return 0;
+			}
+			
+			/*
+			 *	Open it BEFORE we rename it, just to
+			 *	be safe...
+			 */
+			listener->fd = open(listener->detail, O_RDWR);
+			if (listener->fd < 0) {
+				radlog(L_ERR, "Failed to open %s: %s",
+				       listener->detail, strerror(errno));
+				return 0;
+			}
+			
+			/*
+			 *	Rename detail to detail.work
+			 */
+			if (rename(listener->detail, buffer) < 0) {
+				close(listener->fd);
+				listener->fd = -1;
+				return 0;
+			}
+		} /* else detail.work existed, and we opened it */
+
+		listener->state = STATE_UNLOCKED;
+		
+		rad_assert(listener->vps == NULL);
+		
+		rad_assert(listener->fp == NULL);
+		listener->fp = fdopen(listener->fd, "r");
+		if (!listener->fp) {
+			radlog(L_ERR, "Failed to re-open %s: %s",
+			       listener->detail, strerror(errno));
+			return 0;
+		}
+	}
+
+	/*
+	 *	Try to lock fd.  If we can't, return.  If we can,
+	 *	continue.  This means that the server doesn't block
+	 *	while waiting for the lock to open...
+	 */
+	if ((listener->state == STATE_UNLOCKED) &&
+	    (rad_lockfd_nonblock(listener->fd, 0) < 0)) {
+		return 0;
+	}
+
+	/*
+	 *	Look for the header
+	 */
+	listener->state = STATE_HEADER;
+
+	/*
+	 *	Catch an out of memory condition which will most likely
+	 *	never be met.
+	 */
+	if (listener->state == STATE_DONE) goto alloc_packet;
+
+	/*
+	 *	If we're in another state, then it means that we read
+	 *	a partial packet, which is bad.
+	 */
+	rad_assert(listener->state == STATE_HEADER);
+	rad_assert(listener->vps == NULL);
+
+	/*
+	 *	We read the last packet, and returned it for
+	 *	processing.  We later come back here to shut
+	 *	everything down, and unlink the file.
+	 */
+	if (feof(listener->fp)) {
+		rad_assert(listener->state == STATE_HEADER);
+
+	cleanup:
+		rad_assert(listener->vps == NULL);
+
+		snprintf(buffer, sizeof(buffer), "%s.work", listener->detail);
+		unlink(buffer);
+		fclose(listener->fp); /* closes listener->fd */
+		listener->fp = NULL;
+		listener->fd = -1;
+		listener->state = STATE_UNOPENED;
+
+		/*
+		 *	Note that we don't open or create "detail"
+		 *	again, as we don't know what permissions to
+		 *	use.
+		 */
+		return 0;
+	}
+
+	tail = &listener->vps;
+
+	/*
+	 *	Fill the buffer...
+	 */
+	while (fgets(buffer, sizeof(buffer), listener->fp)) {
+		/*
+		 *	No CR, die.
+		 */
+		if (!strchr(buffer, '\n')) {
+			pairfree(&listener->vps);
+			goto cleanup;
+		}
+
+		/*
+		 *	We've read a header, possibly packet contents,
+		 *	and are now at the end of the packet.
+		 */
+		if ((listener->state == STATE_READING) &&
+		    (buffer[0] == '\n')) {
+			listener->state = STATE_DONE;
+			break;
+		}
+
+		/*
+		 *	Look for date/time header, and read VP's if
+		 *	found.  If not, keep reading lines until we
+		 *	find one.
+		 */
+		if (listener->state == STATE_HEADER) {
+			int y;
+			
+			if (sscanf(buffer, "%*s %*s %*d %*d:%*d:%*d %d", &y)) {
+				listener->state = STATE_READING;
+			}
+			continue;
+		}
+
+		/*
+		 *	We have a full "attribute = value" line.
+		 *	If it doesn't look reasonable, skip it.
+		 */
+		if (sscanf(buffer, "%255s = %1023s", key, value) != 2) {
+			continue;
+		}
+
+		/*
+		 *	Skip non-protocol attributes.
+		 *
+		 *	FIXME: Copy relevant code from radsqlrelay?
+		 */
+		if (!strcasecmp(key, "Timestamp")) continue;
+		if (!strcasecmp(key, "Client-IP-Address")) continue;
+		if (!strcasecmp(key, "Request-Authenticator")) continue;
+
+		/*
+		 *	Read one VP.
+		 *
+		 *	FIXME: do we want to check for non-protocol
+		 *	attributes like radsqlrelay does?
+		 */
+		vp = NULL;
+		if ((userparse(buffer, &vp) > 0) &&
+		    (vp != NULL)) {
+			*tail = vp;
+			tail = &(vp->next);
+		}
+	}
+
+	/*
+	 *	We got to EOF,  If we're in STATE_HEADER, it's OK.
+	 *	Otherwise it's a problem.  In any case, nuke the file
+	 *	and start over from scratch,
+	 */
+	if (feof(listener->fp)) {
+		goto cleanup;
+	}
+
+	/*
+	 *	FIXME: Do load management.
+	 */
+
+	/*
+	 *	If we're not done, then there's a problem.  The checks
+	 *	above for EOF
+	 */
+	rad_assert(listener->state == STATE_DONE);
+
+	/*
+	 *	The packet we read was empty, re-set the state to look
+	 *	for a header, and don't return anything.
+	 */
+	if (!listener->vps) {
+		listener->state = STATE_HEADER;
+		return 0;
+	}
+
+	/*
+	 *	Allocate the packet.  If we fail, it's a serious
+	 *	problem.
+	 */
+ alloc_packet:
+	packet = rad_alloc(0);
+	if (!packet) {
+		return 0;	/* maybe memory will magically free up... */
+	}
+
+	memset(packet, 0, sizeof(*packet));
+	packet->sockfd = -1;
+	packet->src_ipaddr.af = AF_INET;
+	packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
+	packet->code = PW_ACCOUNTING_REQUEST;
+	packet->timestamp = time(NULL);
+
+	/*
+	 *	We've got to give SOME value for Id & ports, so that
+	 *	the packets can be added to the request queue.
+	 *	However, we don't want to keep track of used/unused
+	 *	id's and ports, as that's a lot of work.  This hack
+	 *	ensures that (if we have real random numbers), that
+	 *	there will be a collision on every (2^(16+16+2+24))/2
+	 *	packets, on average.  That means we can read 2^32 (4G)
+	 *	packets before having a collision, which means it's
+	 *	effectively impossible.  Having 4G packets currently
+	 *	being process is ridiculous.
+	 */
+	packet->id = lrad_rand() & 0xff;
+	packet->src_port = lrad_rand() & 0xffff;
+	packet->dst_port = lrad_rand() & 0xffff;
+
+	packet->dst_ipaddr.af = AF_INET;
+	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl((INADDR_LOOPBACK & ~0xffffff) | (lrad_rand() & 0xffffff));
+
+	packet->vps = listener->vps;
+
+	/*
+	 *	Re-set the state.
+	 */
+	listener->vps = NULL;
+	listener->state = STATE_HEADER;
+
+	/*
+	 *	FIXME: many of these checks may not be necessary...
+	 */
+	if (!common_checks(listener, packet, prequest, "")) {
+		rad_free(&packet);
+		return 0;
+	}
+
+	*pfun = rad_accounting;
+
+	return 1;
+}
+
+
 /*
  *	Free a linked list of listeners;
  */
@@ -869,6 +1169,8 @@ static int listen_bind(rad_listen_t *this)
  *	Externally visible function for creating a new proxy LISTENER.
  *
  *	For now, don't take ipaddr or port.
+ *
+ *	FIXME: Not thread-safe!
  */
 int proxy_new_listener()
 {
@@ -928,6 +1230,7 @@ int proxy_new_listener()
 static const LRAD_NAME_NUMBER listen_compare[] = {
 	{ "auth",	RAD_LISTEN_AUTH },
 	{ "acct",	RAD_LISTEN_ACCT },
+	{ "detail",	RAD_LISTEN_DETAIL },
 	{ NULL, 0 },
 };
 
@@ -1047,6 +1350,52 @@ int listen_init(const char *filename, rad_listen_t **head)
 		listen_port = 0;
 		listen_type = NULL;
 		
+		rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
+				      &listen_type, "");
+		if (rcode < 0) return -1;
+		if (rcode == 1) {
+			free(listen_type);
+			radlog(L_ERR, "%s[%d]: No type specified in listen section",
+			       filename, lineno);
+			return -1;
+		}
+
+		type = lrad_str2int(listen_compare, listen_type,
+				    RAD_LISTEN_NONE);
+		if (type == RAD_LISTEN_NONE) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Invalid type in listen section.",
+			       filename, lineno);
+			return -1;
+		}
+
+		if (type == RAD_LISTEN_DETAIL) {
+			const char	*detail = NULL;
+
+			rcode = cf_item_parse(cs, "detail", PW_TYPE_STRING_PTR,
+					      &detail, NULL);
+			if (rcode < 0) return -1;
+			if (rcode == 1) {
+				radlog(L_ERR, "%s[%d]: No detail file specified in listen section",
+				       filename, lineno);
+				return -1;
+			}
+			
+			this = rad_malloc(sizeof(*this));
+			memset(this, 0, sizeof(*this));
+			this->type = type;
+			this->recv = detail_recv;
+
+			this->detail = detail;
+			this->vps = NULL;
+			this->fd = -1;
+			this->fp = NULL;
+			this->state = STATE_UNOPENED;
+
+			*last = this;
+			last = &(this->next);		
+			continue;
+		}
+
 		/*
 		 *	Try IPv4 first
 		 */
@@ -1071,32 +1420,14 @@ int listen_init(const char *filename, rad_listen_t **head)
 			ipaddr.af = AF_INET6;
 		}
 
-
 		rcode = cf_item_parse(cs, "port", PW_TYPE_INTEGER,
 				      &listen_port, "0");
 		if (rcode < 0) return -1;
 
-		rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
-				      &listen_type, "");
-		if (rcode < 0) return -1;
-		if (rcode == 1) {
-			free(listen_type);
-			radlog(L_ERR, "%s[%d]: No type specified in listen section",
-			       filename, lineno);
-			return -1;
-		}
-
-		type = lrad_str2int(listen_compare, listen_type,
-				    RAD_LISTEN_NONE);
-		if (type == RAD_LISTEN_NONE) {
-			radlog(L_CONS|L_ERR, "%s[%d]: Invalid type in listen section.",
-			       filename, lineno);
-			return -1;
-		}
-
 		this = rad_malloc(sizeof(*this));
-		this->ipaddr = ipaddr;
+		memset(this, 0, sizeof(*this));
 		this->type = type;
+		this->ipaddr = ipaddr;
 		this->port = listen_port;
 
 		/*
@@ -1174,6 +1505,26 @@ int listen_init(const char *filename, rad_listen_t **head)
 			radlog(L_ERR|L_CONS, "Failed to open socket for proxying");
 			free(this);
 			return -1;
+		}
+	}
+
+	/*
+	 *	Sanity check the configuration.
+	 */
+	rcode = 0;
+	for (this = *head; this != NULL; this = this->next) {
+		if (((this->type == RAD_LISTEN_ACCT) &&
+		     (rcode == RAD_LISTEN_DETAIL)) ||
+		    ((this->type == RAD_LISTEN_DETAIL) &&
+		     (rcode == RAD_LISTEN_ACCT))) {
+			rad_assert(0 == 1); /* FIXME: configuration error */
+		}
+
+		if (rcode != 0) continue;
+
+		if ((this->type == RAD_LISTEN_ACCT) ||
+		    (this->type == RAD_LISTEN_DETAIL)) {
+			rcode = this->type;
 		}
 	}
 

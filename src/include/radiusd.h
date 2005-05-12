@@ -158,12 +158,15 @@ typedef struct pair_list {
 
 /*
  *	Types of listeners.
+ *
+ *	FIXME: Separate ports for proxy auth/acct?
  */
 typedef enum RAD_LISTEN_TYPE {
 	RAD_LISTEN_NONE = 0,
 	RAD_LISTEN_AUTH,
 	RAD_LISTEN_ACCT,
-	RAD_LISTEN_PROXY
+	RAD_LISTEN_PROXY,
+	RAD_LISTEN_DETAIL
 } RAD_LISTEN_TYPE;
 
 
@@ -174,10 +177,24 @@ typedef struct rad_listen_t rad_listen_t;
 
 struct rad_listen_t {
 	struct rad_listen_t *next; /* should be rbtree stuff */
+
 	lrad_ipaddr_t	ipaddr;
+	int		fd;
+
+	/*
+	 *	For detail file
+	 */
+	const char	*detail;
+	VALUE_PAIR	*vps;
+	FILE		*fp;
+	int		state;
+
+	/*
+	 *	For normal sockets.
+	 */
 	RAD_LISTEN_TYPE	type;
 	int		port;
-	int		fd;
+
 	int		(*recv)(rad_listen_t *,
 				RAD_REQUEST_FUNP *, REQUEST **);
 };
