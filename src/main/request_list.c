@@ -103,6 +103,7 @@ static rbtree_t		*proxy_id_tree;
  *	"allocated" per Id, via a bit per proxy FD.
  */
 static int		proxy_fds[32];
+static rad_listen_t	*proxy_listeners[32];
 
 /*
  *	We can use 256 RADIUS Id's per dst ipaddr/port, per server
@@ -391,6 +392,7 @@ int rl_init(void)
 		     listener = listener->next) {
 			if (listener->type == RAD_LISTEN_PROXY) {
 				proxy_fds[listener->fd & 0x1f] = listener->fd;
+				proxy_listeners[listener->fd & 0x1f] = listener;
 				break;
 			}
 		}
@@ -718,6 +720,7 @@ int rl_add_proxy(REQUEST *request)
 		 *	memory leak.
 		 */
 		if (rbtree_insert(proxy_id_tree, entry) == 0) {
+			pthread_mutex_unlock(&proxy_mutex);
 			DEBUG2("ERROR: Failed to insert entry into proxy Id tree");
 			free(entry);
 			return 0;
@@ -777,6 +780,8 @@ int rl_add_proxy(REQUEST *request)
 	 *	No free Id, try to get a new FD.
 	 */
 	if (found < 0) {
+		rad_listen_t *proxy_listener;
+
 		/*
 		 *	First, see if there were FD's recently allocated,
 		 *	which we don't know about.
@@ -826,6 +831,7 @@ int rl_add_proxy(REQUEST *request)
 		 *	If all Fd's are allocated, die.
 		 */
 		if (~mask == 0) {
+			pthread_mutex_unlock(&proxy_mutex);
 			radlog(L_ERR|L_CONS, "ERROR: More than 8000 proxied requests outstanding for destination %s port %d",
 			       inet_ntop(entry->dst_ipaddr.af,
 					 &entry->dst_ipaddr.ipaddr,
@@ -838,8 +844,9 @@ int rl_add_proxy(REQUEST *request)
 		 *	Allocate a new proxy Fd.  This function adds it
 		 *	into the list of listeners.
 		 */
-		proxy = proxy_new_listener();
-		if (proxy < 0) {
+		proxy_listener = proxy_new_listener();
+		if (!proxy_listener) {
+			pthread_mutex_unlock(&proxy_mutex);
 			DEBUG2("ERROR: Failed to create a new socket for proxying requests.");
 			return 0;
 		}
@@ -848,6 +855,7 @@ int rl_add_proxy(REQUEST *request)
 		 *
 		 */
 		found = -1;
+		proxy = proxy_listener->fd;
 		for (i = 0; i < 32; i++) {
 			/*
 			 *	Found a free entry.  Save the socket,
@@ -911,6 +919,7 @@ int rl_add_proxy(REQUEST *request)
 
 	rad_assert(proxy_fds[proxy] != -1);
 	request->proxy->sockfd = proxy_fds[proxy];
+	request->proxy_listener = proxy_listeners[proxy];
 
 	DEBUG3(" proxy: allocating destination %s port %d - Id %d",
 	       inet_ntop(entry->dst_ipaddr.af,
@@ -919,6 +928,7 @@ int rl_add_proxy(REQUEST *request)
 	       request->proxy->id);
 	
 	if (!rbtree_insert(proxy_tree, request)) {
+		pthread_mutex_unlock(&proxy_mutex);
 		DEBUG2("ERROR: Failed to insert entry into proxy tree");
 		return 0;
 	}
@@ -1133,8 +1143,7 @@ static int refresh_request(REQUEST *request, void *data)
 			 *  don't do this again.
 			 */
 			request->options &= ~RAD_REQUEST_OPTION_DELAYED_REJECT;
-			rad_send(request->reply, request->packet,
-				 request->secret);
+			request->listener->send(request->listener, request);
 		}
 	}
 
@@ -1350,7 +1359,7 @@ static int refresh_request(REQUEST *request, void *data)
 	 *  Send the proxy packet.
 	 */
 	request->proxy_outstanding++;
-	rad_send(request->proxy, NULL, request->proxysecret);
+	request->proxy_listener->send(request->proxy_listener, request);
 
 setup_timeout:
 	/*
@@ -1466,6 +1475,15 @@ struct timeval *rl_clean_list(time_t now)
 
 	rl_walk_t info;
 
+	/*
+	 *	Already checked the list this second.  and there are
+	 *	no requests cached, don't do anything.
+	 */
+	if ((last_cleaned_list == now) &&
+	    (rl_num_requests() == 0)) {
+		return NULL;
+	}
+
 	info.now = now;
 	info.smallest = -1;
 
@@ -1526,8 +1544,6 @@ struct timeval *rl_clean_list(time_t now)
 			}
 
 		last_tv = tv;
-		DEBUG2("Waking up in %d seconds...",
-				(int) last_tv_ptr->tv_sec);
 		return last_tv_ptr;
 	}
 	last_cleaned_list = now;
@@ -1566,7 +1582,6 @@ struct timeval *rl_clean_list(time_t now)
 		if ((!mainconfig.proxy_requests) ||
 		    mainconfig.proxy_synchronous ||
 		    (rl_num_requests() == 0)) {
-			DEBUG2("Nothing to do.  Sleeping until we see a request.");
 			last_tv_ptr = NULL;
 			return NULL;
 		}
@@ -1592,7 +1607,6 @@ struct timeval *rl_clean_list(time_t now)
 	 */
 	tv.tv_sec = info.smallest;
 	tv.tv_usec = 0;
-	DEBUG2("Waking up in %d seconds...", (int) info.smallest);
 
 	/*
 	 *  Remember how long we should sleep for.

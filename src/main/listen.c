@@ -209,8 +209,7 @@ static int common_checks(rad_listen_t *listener,
 					       curreq->proxy->id);
 				}
 				curreq->proxy_next_try = time_now + mainconfig.proxy_retry_delay;
-				rad_send(curreq->proxy, curreq->packet,
-					 curreq->proxysecret);
+				listener->send(curreq->proxy_listener, curreq);
 				return 0;
 			} /* else the packet was not proxied */
 
@@ -270,7 +269,8 @@ static int common_checks(rad_listen_t *listener,
 		 */
 		if (curreq->options & RAD_REQUEST_OPTION_DELAYED_REJECT) {
 			curreq->options &= ~RAD_REQUEST_OPTION_DELAYED_REJECT;
-			rad_send(curreq->reply, curreq->packet, curreq->secret);
+			rad_assert(curreq->listener == listener);
+			listener->send(listener, curreq);
 			return 0;
 		}
 
@@ -283,7 +283,8 @@ static int common_checks(rad_listen_t *listener,
 			       "to client %s port %d - ID: %d",
 			       client_name(&packet->src_ipaddr),
 			       packet->src_port, packet->id);
-			rad_send(curreq->reply, curreq->packet, curreq->secret);
+			rad_assert(curreq->listener == listener);
+			listener->send(listener, curreq);
 			return 0;
 		}
 
@@ -313,6 +314,7 @@ static int common_checks(rad_listen_t *listener,
 	 */
 	
 	curreq = request_alloc(); /* never fails */
+	curreq->listener = listener;
 	curreq->packet = packet;
 	curreq->number = request_num_counter++;
 	strNcpy(curreq->secret, secret, sizeof(curreq->secret));
@@ -357,6 +359,30 @@ static int common_checks(rad_listen_t *listener,
 
 	*prequest = curreq;
 	return 1;
+}
+
+
+/*
+ *	Send a packet
+ */
+static int socket_send(rad_listen_t *listener, REQUEST *request)
+{
+	rad_assert(request->listener == listener);
+	rad_assert(listener->send == socket_send);
+	return rad_send(request->reply, request->packet, request->secret);
+
+}
+
+
+/*
+ *	Send a packet
+ */
+static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
+{
+	rad_assert(request->listener == listener);
+	rad_assert(listener->send == proxy_socket_send);
+	return rad_send(request->proxy, request->packet, request->proxysecret);
+
 }
 
 
@@ -695,6 +721,17 @@ static int proxy_socket_recv(rad_listen_t *listener,
 #define STATE_DONE	(4)
 
 
+/*
+ *	For now, don't do anything...
+ */
+static int detail_send(rad_listen_t *listener, REQUEST *request)
+{
+	rad_assert(request->listener == listener);
+	rad_assert(listener->send == detail_send);
+	return 0;
+}
+
+
 static int detail_recv(rad_listen_t *listener,
 		       RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
 {
@@ -1013,14 +1050,17 @@ static int listen_bind(rad_listen_t *this)
 	switch (this->type) {
 	case RAD_LISTEN_AUTH:
 		this->recv = auth_socket_recv;
+		this->send = socket_send;
 		break;
 
 	case RAD_LISTEN_ACCT:
 		this->recv = acct_socket_recv;
+		this->send = socket_send;
 		break;
 
 	case RAD_LISTEN_PROXY:
 		this->recv = proxy_socket_recv;
+		this->send = proxy_socket_send;
 		break;
 
 	default:
@@ -1170,9 +1210,10 @@ static int listen_bind(rad_listen_t *this)
  *
  *	For now, don't take ipaddr or port.
  *
- *	FIXME: Not thread-safe!
+ *	Not thread-safe, but all calls to it are protected by the
+ *	proxy mutex in request_list.c
  */
-int proxy_new_listener()
+rad_listen_t *proxy_new_listener()
 {
 	int last_proxy_port, port;
 	rad_listen_t *this, *old, **last;
@@ -1200,7 +1241,7 @@ int proxy_new_listener()
 		last = &(this->next);
 	}
 
-	if (!old) return -1;	/* This is a serious error. */
+	if (!old) return NULL;	/* This is a serious error. */
 
 	/*
 	 *	FIXME: find a new IP address to listen on
@@ -1219,11 +1260,11 @@ int proxy_new_listener()
 			 *	listeners.
 			 */
 			*last = this;
-			return this->fd;
+			return this;
 		}
 	}
 
-	return -1;
+	return NULL;
 }
 
 
@@ -1384,6 +1425,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 			memset(this, 0, sizeof(*this));
 			this->type = type;
 			this->recv = detail_recv;
+			this->send = detail_send;
 
 			this->detail = detail;
 			this->vps = NULL;

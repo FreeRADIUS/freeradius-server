@@ -424,6 +424,10 @@ int main(int argc, char *argv[])
 			      buffer, listener->port);
 			break;
 
+		case RAD_LISTEN_DETAIL:
+			DEBUG("Listening on detail file %s", listener->detail);
+			break;
+
 		default:
 			break;
 		}
@@ -573,6 +577,8 @@ int main(int argc, char *argv[])
 		for (listener = mainconfig.listen;
 		     listener != NULL;
 		     listener = listener->next) {
+			if (listener->fd < 0) continue;
+
 			FD_SET(listener->fd, &readfds);
 			if (listener->fd > max_fd) max_fd = listener->fd;
 		}
@@ -584,6 +590,14 @@ int main(int argc, char *argv[])
 			if (rad_snmp.smux_fd > max_fd) max_fd = rad_snmp.smux_fd;
 		}
 #endif
+
+		if (!tv) {
+			DEBUG2("Nothing to do.  Sleeping until we see a request.");
+		} else if (tv->tv_sec > 0) {
+			DEBUG2("Waking up in %d seconds...", (int) tv->tv_sec);
+
+		}
+
 		status = select(max_fd + 1, &readfds, NULL, NULL, tv);
 		if (status == -1) {
 			/*
@@ -639,8 +653,10 @@ int main(int argc, char *argv[])
 		     listener = listener->next) {
 			RAD_REQUEST_FUNP fun;
 
-			if (!FD_ISSET(listener->fd, &readfds))
+			if ((listener->fd >= 0) &&
+			    !FD_ISSET(listener->fd, &readfds))
 				continue;
+
 			/*
 			 *  Receive the packet.
 			 */
@@ -714,8 +730,6 @@ int main(int argc, char *argv[])
 			thread_pool_clean(time_now);
 		}
 #endif
-
-
 	} /* loop forever */
 }
 

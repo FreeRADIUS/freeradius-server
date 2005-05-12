@@ -48,6 +48,11 @@ typedef pid_t child_pid_t;
  */
 typedef struct request_data_t request_data_t;
 
+/*
+ *	For listening on multiple IP's and ports.
+ */
+typedef struct rad_listen_t rad_listen_t;
+
 #define REQUEST_DATA_REGEX (0xadbeef00)
 #define REQUEST_MAX_REGEX (8)
 
@@ -62,11 +67,15 @@ typedef struct auth_req {
 	VALUE_PAIR		*config_items;
 	VALUE_PAIR		*username;
 	VALUE_PAIR		*password;
+
 	request_data_t		*data;
 	char			secret[32];
 	child_pid_t    		child_pid;
 	time_t			timestamp;
 	int			number; /* internal server number */
+
+	rad_listen_t		*listener;
+	rad_listen_t		*proxy_listener;
 
 	/*
 	 *	We could almost keep a const char here instead of a
@@ -170,11 +179,6 @@ typedef enum RAD_LISTEN_TYPE {
 } RAD_LISTEN_TYPE;
 
 
-/*
- *	For listening on multiple IP's and ports.
- */
-typedef struct rad_listen_t rad_listen_t;
-
 struct rad_listen_t {
 	struct rad_listen_t *next; /* should be rbtree stuff */
 
@@ -197,6 +201,7 @@ struct rad_listen_t {
 
 	int		(*recv)(rad_listen_t *,
 				RAD_REQUEST_FUNP *, REQUEST **);
+	int		(*send)(rad_listen_t *, REQUEST *);
 };
 
 
@@ -465,6 +470,6 @@ CONF_SECTION *read_radius_conf_file(void); /* for radwho and friends. */
 /* listen.c */
 void listen_free(rad_listen_t **head);
 int listen_init(const char *filename, rad_listen_t **head);
-int proxy_new_listener(void);
+rad_listen_t *proxy_new_listener(void);
 
 #endif /*RADIUSD_H*/
