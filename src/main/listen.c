@@ -69,7 +69,10 @@ extern int auth_port;
 /*
  *	FIXME: Create a data structure to hold per-type information,
  *	and use that when parsing types. This will clean up the code
- *	a fair bit.
+ *	a fair lot.
+ *
+ *	FIXME: have the detail reader use another config "exit when done",
+ *	so that it can be used as a one-off tool to update stuff.
  */
 
 /*
@@ -363,12 +366,57 @@ static int common_checks(rad_listen_t *listener,
 
 
 /*
- *	Send a packet
+ *	Send an authentication response packet
  */
-static int socket_send(rad_listen_t *listener, REQUEST *request)
+static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 {
 	rad_assert(request->listener == listener);
-	rad_assert(listener->send == socket_send);
+	rad_assert(listener->send == auth_socket_send);
+
+	/*
+	 *	Ensure that the reply is sane
+	 */
+	if (request->reply->code == 0) {
+		DEBUG2("There was no response configured: rejecting request %d", request->number);
+		request->reply->code = PW_AUTHENTICATION_REJECT;
+	}
+
+	/*
+	 *	If we're delaying authentication rejects, then
+	 *	mark the request as delayed, and do NOT send a
+	 *	response right now.
+	 */
+	if ((request->reply->code == PW_AUTHENTICATION_REJECT) &&
+	    (mainconfig.reject_delay > 0) &&
+	    ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) == 0)) {
+		DEBUG2("Delaying request %d for %d seconds",
+		       request->number, mainconfig.reject_delay);
+		request->options |= RAD_REQUEST_OPTION_DELAYED_REJECT;
+		return 0;
+	}
+
+	return rad_send(request->reply, request->packet, request->secret);
+
+}
+
+
+/*
+ *	Send an accounting response packet (or not)
+ */
+static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
+{
+	rad_assert(request->listener == listener);
+	rad_assert(listener->send == acct_socket_send);
+
+	/*
+	 *	Accounting reject's are silently dropped.
+	 *
+	 *	We do it here to avoid polluting the rest of the
+	 *	code with this knowledge
+	 */
+	if (request->reply->code == 0) return 0;
+
+
 	return rad_send(request->reply, request->packet, request->secret);
 
 }
@@ -722,7 +770,8 @@ static int proxy_socket_recv(rad_listen_t *listener,
 #define STATE_WAITING	(5)
 
 /*
- *	For now, don't do anything...
+ *	If we're limiting outstanding packets, then mark the response
+ *	as being sent.
  */
 static int detail_send(rad_listen_t *listener, REQUEST *request)
 {
@@ -740,11 +789,18 @@ static int detail_send(rad_listen_t *listener, REQUEST *request)
 }
 
 
+/*
+ *	Open the detail file..
+ *
+ *	FIXME: create it, if it's not already there, so that the main
+ *	server select() will wake us up if there's anything to read.
+ */
 static int detail_open(rad_listen_t *listener)
 {
 	struct stat st;
 	char buffer[2048];
 	
+	rad_assert(listener->state == STATE_UNOPENED);
 	snprintf(buffer, sizeof(buffer), "%s.work", listener->detail);
 	
 	/*
@@ -786,13 +842,11 @@ static int detail_open(rad_listen_t *listener)
 		 *	Rename detail to detail.work
 		 */
 		if (rename(listener->detail, buffer) < 0) {
-				close(listener->fd);
-				listener->fd = -1;
-				return 0;
+			close(listener->fd);
+			listener->fd = -1;
+			return 0;
 		}
 	} /* else detail.work existed, and we opened it */
-	
-	listener->state = STATE_UNLOCKED;
 	
 	rad_assert(listener->vps == NULL);
 	
@@ -803,6 +857,10 @@ static int detail_open(rad_listen_t *listener)
 		       listener->detail, strerror(errno));
 		return 0;
 	}
+
+	listener->state = STATE_UNLOCKED;
+	
+	return 1;
 }
 
 
@@ -815,9 +873,11 @@ static int detail_recv(rad_listen_t *listener,
 	RADIUS_PACKET	*packet;
 	char		buffer[2048];
 
-	if (listener->fd < 0) {
-		detail_open(listener);
+	if (listener->state == STATE_UNOPENED) {
+		rad_assert(listener->fd < 0);
+		if (!detail_open(listener)) return 0;
 	}
+	rad_assert(listener->fd >= 0);
 
 	/*
 	 *	Try to lock fd.  If we can't, return.  If we can,
@@ -1112,12 +1172,12 @@ static int listen_bind(rad_listen_t *this)
 	switch (this->type) {
 	case RAD_LISTEN_AUTH:
 		this->recv = auth_socket_recv;
-		this->send = socket_send;
+		this->send = auth_socket_send;
 		break;
 
 	case RAD_LISTEN_ACCT:
 		this->recv = acct_socket_recv;
-		this->send = socket_send;
+		this->send = acct_socket_send;
 		break;
 
 	case RAD_LISTEN_PROXY:

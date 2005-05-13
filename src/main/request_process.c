@@ -91,25 +91,10 @@ static int process_post_proxy_fail(REQUEST *request)
 	}
 	
 	/*
-	 *	If a reply exists, send it.
-	 *
-	 *	But DON'T send a RADIUS packet for a fake request.
+	 *	Send the reply.  The sender takes care of quenching
+	 *	packets.
 	 */
-	if ((request->reply->code != 0) &&
-	    ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) == 0)) {
-		/*
-		 *	If we're not delaying authentication rejects,
-		 *	then send the response immediately.  Otherwise,
-		 *	mark the request as delayed, and do NOT send a
-		 *	response.
-		 */
-		if (mainconfig.reject_delay == 0) {
-			rad_send(request->reply, request->packet,
-				     request->secret);
-		} else {
-			request->options |= RAD_REQUEST_OPTION_DELAYED_REJECT;
-		}
-	}
+	request->listener->send(request->listener, request);
 
 	return 0;		/* ignored for now */
 }
@@ -119,7 +104,7 @@ static int process_post_proxy_fail(REQUEST *request)
  *	If we're told to proxess the request through the post-proxy "fail"
  *	subsection, do so.
  *
- *	Called only from request_reject in util.c
+ *	Called only from request_reject, below.
  */
 static void proxy_failed_home_server(REQUEST *request, request_fail_t reason)
 {
@@ -340,25 +325,10 @@ static const LRAD_NAME_NUMBER request_fail_reason[] = {
 	}
 
 	/*
-	 *	If a reply exists, send it.
-	 *
-	 *	But DON'T send a RADIUS packet for a fake request.
+	 *	Reject the request.  The sender will take care of delaying
+	 *	of quenching rejects.
 	 */
-	if ((request->reply->code != 0) &&
-	    ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) == 0)) {
-		/*
-		 *	If we're not delaying authentication rejects,
-		 *	then send the response immediately.  Otherwise,
-		 *	mark the request as delayed, and do NOT send a
-		 *	response.
-		 */
-		if (mainconfig.reject_delay == 0) {
-			rad_send(request->reply, request->packet,
-				     request->secret);
-		} else {
-			request->options |= RAD_REQUEST_OPTION_DELAYED_REJECT;
-		}
-	}
+	request->listener->send(request->listener, request);
 }
 
 
@@ -663,7 +633,6 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 *  and we're not proxying, so the DEFAULT behaviour
 		 *  is to REJECT the user.
 		 */
-		DEBUG2("There was no response configured: rejecting request %d", request->number);
 		request_reject(request, REQUEST_FAIL_NO_RESPONSE);
 		goto finished_request;
 	}
@@ -687,34 +656,15 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 */
 		vp = paircopy2(request->packet->vps, PW_PROXY_STATE);
 		if (vp) pairadd(&(request->reply->vps), vp);
-
-		/*
-		 *  If the request isn't an authentication reject, OR
-		 *  it's a reject, but the reject_delay is zero, then
-		 *  send it immediately.
-		 *
-		 *  Otherwise, delay the authentication reject to shut
-		 *  up DoS attacks.
-		 */
-		if ((request->reply->code != PW_AUTHENTICATION_REJECT) ||
-		    (mainconfig.reject_delay == 0)) {
-			/*
-			 *	Send the response. IF it's a real request.
-			 */
-			if ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) == 0) {
-				rad_send(request->reply, request->packet,
-					 request->secret);
-			}
-			/*
-			 *	Otherwise, it's a tunneled request.
-			 *	Don't do anything.
-			 */
-		} else {
-			DEBUG2("Delaying request %d for %d seconds",
-			       request->number, mainconfig.reject_delay);
-			request->options |= RAD_REQUEST_OPTION_DELAYED_REJECT;
-		}
 	}
+
+	/*
+	 *	ALWAYS call the sender to send the reply.  The sender
+	 *	will take care of doing the appropriate work to
+	 *	suppress packets which aren't supposed to be sent over
+	 *	the wire, or to be delayed.
+	 */
+	request->listener->send(request->listener, request);
 
 	/*
 	 *  We're done processing the request, set the
