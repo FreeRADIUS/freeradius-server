@@ -43,7 +43,7 @@ struct hashtable {
 	struct mypasswd *last_found;
 	char buffer[1024];
 	FILE *fp;
-	char *delimiter;
+	char delimiter;
 };
 
 
@@ -76,10 +76,11 @@ static struct mypasswd * mypasswd_malloc(const char* buffer, int nfields, int* l
 }
 
 static int string_to_entry(const char* string, int nfields, char delimiter,
-	struct mypasswd *passwd, int bufferlen)
+	struct mypasswd *passwd, size_t bufferlen)
 {
 	char *str;
-	int len, i, fn=0;
+	size_t len, i;
+	int fn=0;
 	char *data_beg;
 
 
@@ -89,7 +90,8 @@ static int string_to_entry(const char* string, int nfields, char delimiter,
 	if(!len) return 0;
 	if (string[len-1] == '\r') len--;
 	if(!len) return 0;
-	if (!len || !passwd || bufferlen < (len + nfields * sizeof (char*) + nfields * sizeof (char) + sizeof (struct mypasswd) + 1) ) return 0;
+	if (!len || !passwd ||
+	    bufferlen < (len + nfields * sizeof (char*) + nfields * sizeof (char) + sizeof (struct mypasswd) + 1) ) return 0;
 	passwd->next = NULL;
 	data_beg=(char *)passwd + sizeof(struct mypasswd);
 	str = data_beg + nfields * sizeof (char) + nfields * sizeof (char*);
@@ -147,12 +149,12 @@ static void release_ht(struct hashtable * ht){
 }
 
 static struct hashtable * build_hash_table (const char * file, int nfields,
-	int keyfield, int islist, int tablesize, int ignorenis, char * delimiter)
+	int keyfield, int islist, int tablesize, int ignorenis, char delimiter)
 {
 #define passwd ((struct mypasswd *) ht->buffer)
 	char buffer[1024];
 	struct hashtable* ht;
-	int len;
+	size_t len;
 	unsigned int h;
 	struct mypasswd *hashentry, *hashentry1;
 	char *list;
@@ -174,8 +176,8 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 	ht->keyfield = keyfield;
 	ht->islist = islist;
 	ht->ignorenis = ignorenis;
-	if (delimiter && *delimiter) ht->delimiter = delimiter;
-	else ht->delimiter = ":";
+	if (delimiter) ht->delimiter = delimiter;
+	else ht->delimiter = ':';
 	if(!tablesize) return ht;
 	if(!(ht->fp = fopen(file,"r"))) return NULL;
 	memset(ht->buffer, 0, 1024);
@@ -196,7 +198,7 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 				ht->tablesize = 0;
 				return ht;
 			}
-			len = string_to_entry(buffer, nfields, *ht->delimiter, hashentry, len);
+			len = string_to_entry(buffer, nfields, ht->delimiter, hashentry, len);
 			if(!hashentry->field[keyfield] || *hashentry->field[keyfield] == '\0') {
 				free(hashentry);
 				continue;
@@ -259,7 +261,7 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht)
 	printf("try to find in file\n");
 	if (!ht->fp) return NULL;
 	while (fgets(buffer, 1024,ht->fp)) {
-		if(*buffer && *buffer!='\n' && (len = string_to_entry(buffer, ht->nfields, *ht->delimiter, passwd, sizeof(ht->buffer)-1)) &&
+		if(*buffer && *buffer!='\n' && (len = string_to_entry(buffer, ht->nfields, ht->delimiter, passwd, sizeof(ht->buffer)-1)) &&
 			(!ht->ignorenis || (*buffer !='-' && *buffer != '+') ) ){
 			if(!ht->islist) {
 				if(!strcmp(passwd->field[ht->keyfield], name))
@@ -430,7 +432,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_passwd: no field market as key in format: %s", inst->format);
 		return -1;
 	}
-	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hashsize, inst->ignorenislike, inst->delimiter)) ){
+	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hashsize, inst->ignorenislike, *inst->delimiter)) ){
 		radlog(L_ERR, "rlm_passwd: can't build hashtable from passwd file");
 		return -1;
 	}
