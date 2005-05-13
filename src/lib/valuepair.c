@@ -1405,7 +1405,7 @@ VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
 		last_token = userparse(buf, &vp);
 		if (!vp) {
 			if (last_token != T_EOL) {
-				librad_perror(errprefix);
+				librad_perror("%s", errprefix);
 				error = 1;
 				break;
 			}
