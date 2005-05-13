@@ -268,8 +268,12 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 
 	case PW_EAP_NAK:
 		/*
-		 *	The one byte of NAK data is the preferred EAP type
-		 *	of the client.
+		 *	The NAK data is the preferred EAP type(s) of
+		 *	the client.
+		 *
+		 *	RFC 3748 says to list one or more proposed
+		 *	alternative types, one per octet, or to use
+		 *	0 for no alternative.
 		 */
 		DEBUG2("  rlm_eap: EAP NAK");
 
@@ -291,6 +295,10 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			return EAP_INVALID;
 		}
 
+		/*
+		 *	FIXME: Pick one type out of the one they asked
+		 *	for, as they may have asked for many.
+		 */
 		if ((eaptype->data[0] < PW_EAP_MD5) ||
 		    (eaptype->data[0] > PW_EAP_MAX_TYPES)) {
 			DEBUG2(" rlm_eap: NAK asked for bad type %d",
@@ -774,7 +782,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	asking for one which we don't support.
 	 *
 	 *	NAK is code + id + length1 + length + NAK
-	 *             + requested EAP type.
+	 *             + requested EAP type(s).
 	 *
 	 *	We know at this point that we can't handle the
 	 *	request.  We could either return an EAP-Fail here, but
