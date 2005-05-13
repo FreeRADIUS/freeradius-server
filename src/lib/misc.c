@@ -401,9 +401,101 @@ static int inet_pton4(const char *src, struct in_addr *dst)
 }
 
 
-static int inet_pton6(const char *src, struct in6_addr *dst)
+/* int
+ * inet_pton6(src, dst)
+ *	convert presentation level address to network order binary form.
+ * return:
+ *	1 if `src' is a valid [RFC1884 2.2] address, else 0.
+ * notice:
+ *	(1) does not touch `dst' unless it's returning 1.
+ *	(2) :: in a full address is silently ignored.
+ * credit:
+ *	inspired by Mark Andrews.
+ * author:
+ *	Paul Vixie, 1996.
+ */
+static int
+inet_pton6(const char *src, unsigned char *dst)
 {
-	return -1;		/* not implemented */
+	static const char xdigits_l[] = "0123456789abcdef",
+			  xdigits_u[] = "0123456789ABCDEF";
+	u_char tmp[IN6ADDRSZ], *tp, *endp, *colonp;
+	const char *xdigits, *curtok;
+	int ch, saw_xdigit;
+	u_int val;
+
+	memset((tp = tmp), 0, IN6ADDRSZ);
+	endp = tp + IN6ADDRSZ;
+	colonp = NULL;
+	/* Leading :: requires some special handling. */
+	if (*src == ':')
+		if (*++src != ':')
+			return (0);
+	curtok = src;
+	saw_xdigit = 0;
+	val = 0;
+	while ((ch = *src++) != '\0') {
+		const char *pch;
+
+		if ((pch = strchr((xdigits = xdigits_l), ch)) == NULL)
+			pch = strchr((xdigits = xdigits_u), ch);
+		if (pch != NULL) {
+			val <<= 4;
+			val |= (pch - xdigits);
+			if (val > 0xffff)
+				return (0);
+			saw_xdigit = 1;
+			continue;
+		}
+		if (ch == ':') {
+			curtok = src;
+			if (!saw_xdigit) {
+				if (colonp)
+					return (0);
+				colonp = tp;
+				continue;
+			}
+			if (tp + INT16SZ > endp)
+				return (0);
+			*tp++ = (u_char) (val >> 8) & 0xff;
+			*tp++ = (u_char) val & 0xff;
+			saw_xdigit = 0;
+			val = 0;
+			continue;
+		}
+		if (ch == '.' && ((tp + INADDRSZ) <= endp) &&
+		    inet_pton4(curtok, tp) > 0) {
+			tp += INADDRSZ;
+			saw_xdigit = 0;
+			break;	/* '\0' was seen by inet_pton4(). */
+		}
+		return (0);
+	}
+	if (saw_xdigit) {
+		if (tp + INT16SZ > endp)
+			return (0);
+		*tp++ = (u_char) (val >> 8) & 0xff;
+		*tp++ = (u_char) val & 0xff;
+	}
+	if (colonp != NULL) {
+		/*
+		 * Since some memmove()'s erroneously fail to handle
+		 * overlapping regions, we'll do the shift by hand.
+		 */
+		const int n = tp - colonp;
+		int i;
+
+		for (i = 1; i <= n; i++) {
+			endp[- i] = colonp[n - i];
+			colonp[n - i] = 0;
+		}
+		tp = endp;
+	}
+	if (tp != endp)
+		return (0);
+	/* bcopy(tmp, dst, IN6ADDRSZ); */
+	memcpy(dst, tmp, IN6ADDRSZ);
+	return (1);
 }
 
 /*
@@ -484,7 +576,7 @@ int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
 	hints.ai_family = af;
 
 	if ((error = getaddrinfo(src, NULL, &hints, &res)) != 0) {
-		librad_log("%s", gai_strerror(error));
+		librad_log("ip_nton: %s", gai_strerror(error));
 		return -1;
 	}
 
@@ -531,50 +623,44 @@ int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
  */
 const char *ip_ntoh(const lrad_ipaddr_t *src, char *dst, size_t cnt)
 {
-	struct		hostent *hp;
-#ifdef GETHOSTBYADDRRSTYLE
-#if (GETHOSTBYADDRRSTYLE == SYSVSTYLE) || (GETHOSTBYADDRRSTYLE == GNUSTYLE)
-	char buffer[2048];
-	struct hostent result;
-	int error;
-#endif
+	struct sockaddr_storage ss;
+	struct sockaddr_in  *s4;
+	int error, len;
+
+	memset(&ss, 0, sizeof(ss));
+        switch (src->af) {
+        case AF_INET :
+                s4 = (struct sockaddr_in *)&ss;
+                len    = sizeof(struct sockaddr_in);
+                s4->sin_family = AF_INET;
+                s4->sin_port = 0;
+                memcpy(&s4->sin_addr, &src->ipaddr.ip4addr, 4);
+                break;
+
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+        case AF_INET6 :
+		{
+		struct sockaddr_in6 *s6;
+
+                s6 = (struct sockaddr_in6 *)&ss;
+                len    = sizeof(struct sockaddr_in6);
+                s6->sin6_family = AF_INET6;
+                s6->sin6_flowinfo = 0;
+                s6->sin6_port = 0;
+                memcpy(&s6->sin6_addr, &src->ipaddr.ip6addr, 16);
+                break;
+		}
 #endif
 
-	/*
-	 *	No DNS: don't look up host names
-	 */
-	if (!librad_dodns) {
-		return inet_ntop(src->af, &src->ipaddr, dst, cnt);
+        default :
+                return NULL;
+        }
+
+	if ((error = getnameinfo(&ss, len, dst, cnt, NULL, 0,
+			 NI_NUMERICHOST | NI_NUMERICSERV)) != 0) {
+		librad_log("ip_ntoh: %s", gai_strerror(error));
+		return NULL;
 	}
-
-	if (src->af != AF_INET) return NULL; /* invalid */
-
-#ifdef GETHOSTBYADDRRSTYLE
-#if GETHOSTBYADDRRSTYLE == SYSVSTYLE
-	hp = gethostbyaddr_r((const char *)&src->ipaddr.ip4addr.s_addr,
-			     sizeof(src->ipaddr.ip4addr.s_addr),
-			     src->af, &result, buffer, sizeof(buffer), &error);
-#elif GETHOSTBYADDRRSTYLE == GNUSTYLE
-	if (gethostbyaddr_r((const char *)&src->ipaddr.ip4addr.s_addr,
-			    sizeof(src->ipaddr.ip4addr.s_addr),
-			    src->af, &result, buffer, sizeof(buffer),
-			    &hp, &error) != 0) {
-		hp = NULL;
-	}
-#else
-	hp = gethostbyaddr((const char *)&src->ipaddr.ip4addr.s_addr,
-			   sizeof(src->ipaddr.ip4addr.s_addr), src->af);
-#endif
-#else
-	hp = gethostbyaddr((const char *)&src->ipaddr.ip4addr.s_addr,
-			   sizeof(src->ipaddr.ip4addr.s_addr), src->af);
-#endif
-	if ((hp == NULL) ||
-	    (strlen((char *)hp->h_name) >= cnt)) {
-		return inet_ntop(src->af, &src->ipaddr, dst, cnt);
-	}
-
-	strNcpy(dst, (char *)hp->h_name, cnt);
 	return dst;
 }
 
