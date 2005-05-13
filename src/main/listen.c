@@ -804,6 +804,15 @@ static int detail_open(rad_listen_t *listener)
 	snprintf(buffer, sizeof(buffer), "%s.work", listener->detail);
 	
 	/*
+	 *	FIXME: Have "one-shot" configuration, where it
+	 *	will read the detail file, and exit once it's
+	 *	done.
+	 *
+	 *	FIXME: Try harder to open the detail file.
+	 *	Maybe sleep for X usecs if it doesn't exist?
+	 */
+
+	/*
 	 *	Open detail.work first, so we don't lose
 	 *	accounting packets.  It's probably better to
 	 *	duplicate them than to lose them.
@@ -885,6 +894,11 @@ static int detail_recv(rad_listen_t *listener,
 	 *	while waiting for the lock to open...
 	 */
 	if (listener->state == STATE_UNLOCKED) {
+		/*
+		 *	FIXME: Do we want to block, waiting for the lock?
+		 *	this means we're slower, but we're also more likely
+		 *	to steal the lock from rlm_detail.
+		 */
 		if (rad_lockfd_nonblock(listener->fd, 0) < 0) {
 			return 0;
 		}
@@ -963,6 +977,8 @@ static int detail_recv(rad_listen_t *listener,
 		listener->fp = NULL;
 		listener->fd = -1;
 		listener->state = STATE_UNOPENED;
+
+		detail_open(listener);
 
 		/*
 		 *	Note that we don't open or create "detail"
@@ -1129,6 +1145,15 @@ static int detail_recv(rad_listen_t *listener,
 	if (free_slot) listener->outstanding[free_slot] = 1;
 
 	*pfun = rad_accounting;
+
+	if (debug_flag) {
+		printf("detail_recv: Read packet from %s\n", listener->detail);
+		for (vp = packet->vps; vp; vp = vp->next) {
+			putchar('\t');
+			vp_print(stdout, vp);
+			putchar('\n');
+		}
+	}
 
 	return 1;
 }
