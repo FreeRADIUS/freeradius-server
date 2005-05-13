@@ -134,7 +134,7 @@ static const CONF_PARSER module_config[] = {
 	{"postauth_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,postauth_query), NULL, ""},
 	{"safe-characters", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,allowed_chars), NULL, 
+	 offsetof(SQL_CONFIG,allowed_chars), NULL,
 	"@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"},
 
 	{NULL, -1, 0, NULL, NULL}
@@ -268,9 +268,9 @@ static int generate_sql_clients(SQL_INST *inst)
 	SQL_ROW row;
 	char querystr[MAX_QUERY_LEN];
 	RADCLIENT *c;
-	char *netmask;
+	char *prefix_ptr = NULL;
 	unsigned int i = 0;
-	
+
 	DEBUG("rlm_sql (%s): - generate_sql_clients",inst->config->xlat_name);
 
 	if (inst->config->sql_nas_table == NULL){
@@ -316,8 +316,8 @@ static int generate_sql_clients(SQL_INST *inst)
 			radlog(L_ERR, "rlm_sql (%s): nasname of length %d is greater than the allowed maximum of %d",
 				inst->config->xlat_name,strlen(row[1]),sizeof(c->longname) - 1);
 			continue;
-		}	
-		
+		}
+
 		if (!row[2]){
 			radlog(L_ERR, "rlm_sql (%s): No short name found for row %s",inst->config->xlat_name,row[0]);
 			continue;
@@ -348,59 +348,49 @@ static int generate_sql_clients(SQL_INST *inst)
 		c = rad_malloc(sizeof(RADCLIENT));
 		memset(c, 0, sizeof(RADCLIENT));
 
-		c->netmask = ~0;
-		netmask = strchr(row[1], '/');
-		
 		/*
-		 *      Look for netmasks.
+		 *	Look for prefixes
 		 */
-		c->netmask = ~0;
-		if (netmask) {
-			int mask_length;
-
-			mask_length = atoi(netmask + 1);
-			if ((mask_length < 0) || (mask_length > 32)) {
-				radlog(L_ERR, "rlm_sql (%s): Invalid value '%s' for IP network mask for nasname %s.",
-						inst->config->xlat_name, netmask + 1,row[1]);
+		c->prefix = 0;
+		prefix_ptr = strchr(row[1], '/');
+		if (prefix_ptr) {
+			c->prefix = atoi(prefix_ptr + 1);
+			if ((c->prefix < 0) || (c->prefix > 128)) {
+				radlog(L_ERR, "rlm_sql (%s): Invalid Prefix value '%s' for IP.",
+				       inst->config->xlat_name, prefix_ptr + 1);
 				free(c);
 				continue;
 			}
-
-			if (mask_length == 0) {
-				c->netmask = 0;
-			} else {
-				c->netmask = ~0 << (32 - mask_length);
-			}
-
-			*netmask = '\0';
-			c->netmask = htonl(c->netmask);
-		}
-
-		if (ip_hton(row[1], AF_INET, &c->ipaddr) < 0) {
-			radlog(L_CONS|L_ERR, "rlm_sql (%s): Failed to look up hostname %s",
-					inst->config->xlat_name, row[1]);
-			free(c);
-			continue;
+			/* Replace '/' with '\0' */
+			*prefix_ptr = '\0';
 		}
 
 		/*
-		 *      Update the client name again...
+		 *	Always get the numeric representation of IP
 		 */
-		if (netmask) {
-			*netmask = '/';
-			c->ipaddr.ipaddr.ip4addr.s_addr &= c->netmask;
-			strcpy(c->longname, row[1]);
+		if (ip_hton(row[1], AF_UNSPEC, &c->ipaddr) < 0) {
+			radlog(L_CONS|L_ERR, "rlm_sql (%s): Failed to look up hostname %s: %s",
+			       inst->config->xlat_name,
+			       row[1], librad_errstr);
+			free(c);
+			continue;
 		} else {
-			ip_ntoh(&c->ipaddr, c->longname, sizeof(c->longname));
+			char buffer[256];
+			ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
+			c->longname = strdup(buffer);
 		}
 
+		/*
+		 *	Other values (secret, shortname, nastype)
+		 */
 		strcpy((char *)c->secret, row[4]);
 		strcpy(c->shortname, row[2]);
 		if(row[3] != NULL)
 			strcpy(c->nastype, row[3]);
 
-		DEBUG("rlm_sql (%s): Adding client %s (%s) to clients list",inst->config->xlat_name,
-			c->longname,c->shortname);
+		DEBUG("rlm_sql (%s): Adding client %s (%s) to clients list",
+		      inst->config->xlat_name,
+		      c->longname,c->shortname);
 
 		c->next = mainconfig.clients;
 		mainconfig.clients = c;
@@ -525,7 +515,7 @@ static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *reque
 			inst->config->xlat_name);
 		return -1;
 	}
-	
+
 	if (rlm_sql_select_query(sqlsocket, inst, querystr) < 0) {
 		radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
 			inst->config->xlat_name,querystr,
@@ -674,7 +664,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 		if (!sql_group) {
 			radlog(L_ERR, "rlm_sql (%s): Error creating Sql-Group attribute",
 			       inst->config->xlat_name);
-			return -1;	
+			return -1;
 		}
 		pairadd(&request->packet->vps, sql_group);
 		if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_check_query, request, sql_escape_func)) {
@@ -691,7 +681,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			/* Remove the grouup we added above */
 			pairdelete(&request->packet->vps, PW_SQL_GROUP);
 			pairfree(&check_tmp);
-			return -1;	
+			return -1;
 		} else if (rows > 0) {
 			/*
 			 *	Only do this if *some* check pairs were returned
