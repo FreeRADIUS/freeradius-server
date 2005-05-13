@@ -983,19 +983,18 @@ int main(int argc, char **argv)
 	}
 
 	/*
-	 *	Grab the socket.
-	 */
-	if ((sockfd = socket(server_ipaddr.af, SOCK_DGRAM, 0)) < 0) {
-		perror("radclient: socket: ");
-		exit(1);
-	}
-
-	/*
 	 * Bind only if Packet-Src-IP(v6)Address Attribute is found
 	 */
 	switch (radclient_head->request->src_ipaddr.af) {
 	case AF_UNSPEC:
 	default:
+		/*
+		 *	Grab the socket.
+		 */
+		if ((sockfd = socket(server_ipaddr.af, SOCK_DGRAM, 0)) < 0) {
+			perror("radclient: socket: ");
+			exit(1);
+		}
 		break;
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
@@ -1009,11 +1008,7 @@ int main(int argc, char **argv)
 			s6->sin6_port = htons(radclient_head->request->src_port);
 			memcpy(&s6->sin6_addr, &radclient_head->request->src_ipaddr.ipaddr, 16);
 		}
-		if (bind(sockfd, (struct sockaddr *)&ss, len) < 0) {
-			perror("radclient: bind: ");
-			exit(1);
-		}
-		break;
+		goto sock_bind;
 #endif
 
 	case AF_INET:
@@ -1022,6 +1017,15 @@ int main(int argc, char **argv)
 		s4->sin_family = AF_INET;
 		s4->sin_port = htons(radclient_head->request->src_port);
 		memcpy(&s4->sin_addr, &radclient_head->request->src_ipaddr.ipaddr, 4);
+		goto sock_bind;
+
+	sock_bind:
+		if ((sockfd = socket(radclient_head->request->src_ipaddr.af,
+				 SOCK_DGRAM, 0)) < 0) {
+
+			perror("radclient: socket: ");
+			exit(1);
+		}
 		if (bind(sockfd, (struct sockaddr *)&ss, len) < 0) {
 			perror("radclient: bind: ");
 			exit(1);
