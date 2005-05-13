@@ -19,17 +19,18 @@
  * Copyright 2000  Jeff Carneal <jeff@apex.net>
  */
 
+#include "autoconf.h"
+
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include 	"radiusd.h"
-#include  "rlm_sql.h"
-
 #include <isql.h>
 #include <isqlext.h>
 #include <sqltypes.h>
+
+#include "radiusd.h"
 #include "rlm_sql.h"
 
 typedef struct rlm_sql_iodbc_sock {
