@@ -231,6 +231,9 @@ static int xlat_packet(void *instance, REQUEST *request,
 		/*
 		 *	Some "magic" handlers, which are never in VP's, but
 		 *	which are in the packet.
+		 *
+		 *	FIXME: We should really do this in a more
+		 *	intelligent way...
 		 */
 		if (packet) {
 			VALUE_PAIR localvp;
@@ -315,6 +318,13 @@ static int xlat_packet(void *instance, REQUEST *request,
 				memcpy(localvp.strvalue,
 				       &packet->dst_ipaddr.ipaddr.ip4addr.s_addr,
 				       sizeof(packet->dst_ipaddr.ipaddr.ip4addr.s_addr));
+				break;
+			
+			case PW_SERVER_IDENTITY:
+				if (!request->listener->identity) return 0;
+
+				snprintf(out, outlen, "%s", request->listener->identity);
+				return strlen(out);
 				break;
 			
 			default:

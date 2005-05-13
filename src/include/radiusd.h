@@ -186,6 +186,7 @@ struct rad_listen_t {
 	 */
 	RAD_LISTEN_TYPE	type;
 	int		fd;
+	const char	*identity;
 
 	int		(*recv)(rad_listen_t *,
 				RAD_REQUEST_FUNP *, REQUEST **);

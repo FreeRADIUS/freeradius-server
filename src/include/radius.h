@@ -205,6 +205,7 @@
 
 #define PW_PACKET_SRC_IPV6_ADDRESS	1097
 #define PW_PACKET_DST_IPV6_ADDRESS	1098
+#define PW_SERVER_IDENTITY		1099
 
 /*
  *	Integer Translations

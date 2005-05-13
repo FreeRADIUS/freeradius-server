@@ -978,13 +978,12 @@ static int detail_recv(rad_listen_t *listener,
 		listener->fd = -1;
 		listener->state = STATE_UNOPENED;
 
-		detail_open(listener);
-
 		/*
-		 *	Note that we don't open or create "detail"
-		 *	again, as we don't know what permissions to
-		 *	use.
+		 *	Try to open "detail" again.  If we're on a
+		 *	busy RADIUS server, odds are that it will
+		 *	now exist.
 		 */
+		detail_open(listener);
 		return 0;
 	}
 
@@ -1530,13 +1529,14 @@ int listen_init(const char *filename, rad_listen_t **head)
 	     cs = cf_subsection_find_next(mainconfig.config,
 					  cs, "listen")) {
 		int		type;
-		char		*listen_type;
+		char		*listen_type, *identity;
 		int		listen_port;
 		int		lineno = cf_section_lineno(cs);
 		lrad_ipaddr_t	ipaddr;
 
 		listen_port = 0;
 		listen_type = NULL;
+		identity = NULL;
 		
 		rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
 				      &listen_type, "");
@@ -1547,6 +1547,14 @@ int listen_init(const char *filename, rad_listen_t **head)
 			       filename, lineno);
 			return -1;
 		}
+
+		/*
+		 *	FIXME: We leak identity if we return, but who
+		 *	cares...  the server will kill itself anyhow.
+		 */
+		rcode = cf_item_parse(cs, "identity", PW_TYPE_STRING_PTR,
+				      &identity, NULL);
+		if (rcode < 0) return -1;
 
 		type = lrad_str2int(listen_compare, listen_type,
 				    RAD_LISTEN_NONE);
@@ -1571,15 +1579,17 @@ int listen_init(const char *filename, rad_listen_t **head)
 			this = rad_malloc(sizeof(*this));
 			memset(this, 0, sizeof(*this));
 			this->type = type;
+			this->identity = identity;
+			this->fd = -1;
+
 			this->recv = detail_recv;
 			this->send = detail_send;
 
 			this->detail = detail;
 			this->vps = NULL;
-			this->fd = -1;
 			this->fp = NULL;
 			this->state = STATE_UNOPENED;
-
+			
 			rcode = cf_item_parse(cs, "max_outstanding",
 					      PW_TYPE_INTEGER,
 					      &(this->max_outstanding), "0");
@@ -1626,6 +1636,8 @@ int listen_init(const char *filename, rad_listen_t **head)
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));
 		this->type = type;
+		this->identity = identity;
+
 		this->ipaddr = ipaddr;
 		this->port = listen_port;
 
