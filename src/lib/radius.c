@@ -156,89 +156,78 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 		      lrad_ipaddr_t *src_ipaddr, lrad_ipaddr_t *dst_ipaddr,
 		      int dst_port)
 {
-	/*
-	 *	Hmm... we saremote/saremote6 could probably be pointers
-	 *	to dst.
-	 */
-	const struct sockaddr	*dst;
-	socklen_t		sizeof_dst;
-	struct	sockaddr_in	saremote;
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	struct sockaddr_in6	saremote6;
-#endif
-#ifdef WITH_UDPFROMTO
-	struct sockaddr_in	salocal;
-	const struct sockaddr	*src;
-	socklen_t		sizeof_src;
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	struct sockaddr_in6	salocal6;
-#endif
-#endif
+	struct sockaddr_storage	dst;
+	struct sockaddr_in	*s4remote;
+	socklen_t		sizeof_dst = sizeof(dst);
 
 #ifdef WITH_UDPFROMTO
+	struct sockaddr_storage	src;
+	struct sockaddr_in	*s4local;
+	socklen_t		sizeof_src = sizeof(src);
+
+	memset(&src, 0, sizeof(src));
 	/*
 	 *	From IPv4 to IPv6 is bad, as is the opposite.
 	 */
 	if (src_ipaddr->af != dst_ipaddr->af) return -1;	
 #endif
 
+	memset(&dst, 0, sizeof(dst));
 	/*
 	 *	IPv4 is supported.
 	 */
 	if (dst_ipaddr->af == AF_INET) {
-		dst = (struct sockaddr *)  &saremote;
-		sizeof_dst = sizeof(saremote);
+		s4remote = (struct sockaddr_in *)&dst;
+		sizeof_dst = sizeof(struct sockaddr_in);
 
-		/*
-		 *	FIXME: flow info? Scope ID?
-		 *	See <netinet/in.h>
-		 */
-		memset(&saremote, 0, sizeof(saremote));
-		saremote.sin_family = AF_INET;
-		saremote.sin_addr = dst_ipaddr->ipaddr.ip4addr;
-		saremote.sin_port = dst_port;
-		saremote.sin_port = htons(saremote.sin_port);
+		s4remote->sin_family = AF_INET;
+		s4remote->sin_addr = dst_ipaddr->ipaddr.ip4addr;
+		s4remote->sin_port = htons(dst_port);
 
 #ifdef WITH_UDPFROMTO
-		src = (struct sockaddr *) &salocal;
-		sizeof_src = sizeof(salocal);
-		memset (&salocal, 0, sizeof(salocal));
-		salocal.sin_family = AF_INET;
-		salocal.sin_addr.s_addr = src_ipaddr.addr.ip4addr;
-#else
-		src_ipaddr = src_ipaddr; /* -Wunused */
+		s4local = (struct sockaddr_in *)&src;
+		sizeof_src = sizeof(struct sockaddr_in);
+
+		s4local->sin_family = AF_INET;
+		s4local->sin_addr = src_ipaddr->ipaddr.ip4addr;
 #endif
 	}
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
 	/*
 	 *	IPv6 MAY be supported.
 	 */
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
 	else if (dst_ipaddr->af == AF_INET6) {
-		dst = (struct sockaddr *)  &saremote6;
-		sizeof_dst = sizeof(saremote6);
+		struct sockaddr_in6	*s6remote;
+		struct sockaddr_in6	*s6local;
+
+		s6remote = (struct sockaddr_in6 *)&dst;
+		sizeof_dst = sizeof(struct sockaddr_in6);
 		
-		memset(&saremote6, 0, sizeof(saremote6));
-		saremote6.sin6_family = AF_INET6;
-		saremote6.sin6_addr = dst_ipaddr->ipaddr.ip6addr;
-		saremote6.sin6_port = dst_port;
-		saremote6.sin6_port = htons(saremote6.sin6_port);
+		s6remote->sin6_family = AF_INET6;
+		s6remote->sin6_addr = dst_ipaddr->ipaddr.ip6addr;
+		s6remote->sin6_port = htons(dst_port);
 
 #ifdef WITH_UDPFROMTO
-		return -1;	/* UDPFROMTO && IPv6 is not supported */
+		s6local = (struct sockaddr_in6 *)&src;
+		sizeof_src = sizeof(struct sockaddr_in6);
+
+		s6local->sin6_family = AF_INET6;
+		s6local->sin6_addr = src_ipaddr->ipaddr.ip6addr;
 #endif
 	}
-#endif
+#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 	/*
 	 *	Unknown address family, Die Die Die!
 	 */
 	else return -1;
-	
-	
+
 #ifndef WITH_UDPFROMTO
-	return sendto(sockfd, data, data_len, flags, dst, sizeof_dst);
+	return sendto(sockfd, data, data_len, flags, 
+		(struct sockaddr *)&dst, sizeof_dst);
 #else
 	return sendfromto(sockfd, data, data_len, flags,
-			  src, sizeof_src, dst, sizeof_dst);
+		(struct sockaddr *)&src, sizeof_src, 
+		(struct sockaddr *)&dst, sizeof_dst);
 #endif
 }
 
@@ -251,98 +240,79 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 			    lrad_ipaddr_t *src_ipaddr, uint16_t *src_port,
 			    lrad_ipaddr_t *dst_ipaddr, uint16_t *dst_port)
 {
+	struct sockaddr_storage	src;
+	struct sockaddr_storage	dst;
+	struct sockaddr_in	*s4remote;
+	struct sockaddr_in	*s4local;
+	socklen_t		sizeof_src = sizeof(src);
+	socklen_t	        sizeof_dst = sizeof(dst);
 	ssize_t			data_len;
-	struct sockaddr		*src;
-	socklen_t		sizeof_src;
-	const struct sockaddr	*dst;
-	socklen_t	        sizeof_dst;
-	struct sockaddr_in	salocal;
-	socklen_t		salen;
-	struct sockaddr_in	saremote;
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	struct sockaddr_in6	saremote6;
-	struct sockaddr_in6	salocal6;
+
+	memset(&src, 0, sizeof_src);
+	memset(&dst, 0, sizeof_dst);
+
+	/*
+	 *	Receive the packet.
+	 */
+#ifdef WITH_UDPFROMTO
+
+	data_len = recvfromto(sockfd, buf, len, flags,
+			(struct sockaddr *)&src, &sizeof_src, 
+			(struct sockaddr *)&dst, &sizeof_dst);
+#else
+
+	data_len = recvfrom(sockfd, buf, len, flags, 
+			(struct sockaddr *)&src, &sizeof_src);
 #endif
 
 	/*
 	 *	First, do a hokey hack to figure out which address
 	 *	family, address, and port the socket is listening on.
 	 */
-	salen = sizeof(salocal);
-	if (getsockname(sockfd, (struct sockaddr *) &salocal,
-			&salen) < 0) return -1;
+	/*
+	 * Always get the listening socket details
+	 * and initialize the destination IP address.
+	 * Otherwise, request list comparison fails
+	 * and the server crashes abnormally
+	 */
+	if (getsockname(sockfd, (struct sockaddr *)&dst,
+			&sizeof_dst) < 0) return -1;
 
-	if (salocal.sin_family == AF_INET) {
-		dst_ipaddr->af = AF_INET;
-		dst_ipaddr->ipaddr.ip4addr = salocal.sin_addr;
-		*dst_port = ntohs(salocal.sin_port);
-
-		src = (struct sockaddr *) &saremote;
-		sizeof_src = sizeof(saremote);
-		dst = (struct sockaddr *) &salocal;
-		sizeof_dst = sizeof(salocal);
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	} else if (salocal.sin_family == AF_INET6) {
-		memcpy(&salocal6, &salocal, sizeof(salocal6));
-		
-		dst_ipaddr->af = AF_INET6;
-		dst_ipaddr->ipaddr.ip6addr = salocal6.sin6_addr;
-		*dst_port = ntohs(salocal6.sin6_port);
-
-		src = (struct sockaddr *) &saremote6;
-		sizeof_src = sizeof(saremote6);
-		dst = (struct sockaddr *) &salocal6;
-		sizeof_dst = sizeof(salocal6);
-#ifdef WITH_UDPFROMTO
-		return -1;	/* not supported for IPv6 */
-#endif
-#endif
+	if (src.ss_family != dst.ss_family) {
+		return -1;
 	}
-
-	/*
-	 *	Unknown address family, Die Die Die!
-	 */
-	else return -1;
-	
-	/*
-	 *	Receive the packet.
-	 */
-	memset(src, 0, sizeof_src);
-#ifndef WITH_UDPFROMTO
-	data_len = recvfrom(sockfd, buf, len, flags, src, &sizeof_src);
-#else
-	memset(dst, 0, sizeof_dst);
-
-	data_len = recvfromto(sockfd, buf, len, flags,
-			      src, &sizeof_src, dst, &sizeof_dst);
-#endif
-
-	/*
-	 *	FIXME: Check sizeof_src & sizeof_dst?
-	 */
 
 	if (data_len < 0) return data_len;
 
-	if (dst_ipaddr->af == AF_INET) {
+	if (src.ss_family == AF_INET) {
+		s4remote = (struct sockaddr_in *)&src;
 		src_ipaddr->af = AF_INET;
-#ifdef WITH_UDPFROMTO
-		dst_ipaddr->ipaddr.ip4addr = salocal.sin_addr;
-#endif
-		src_ipaddr->ipaddr.ip4addr = saremote.sin_addr;
-		*src_port = ntohs(saremote.sin_port);
+		src_ipaddr->ipaddr.ip4addr = s4remote->sin_addr;
+		*src_port = ntohs(s4remote->sin_port);
+
+		s4local = (struct sockaddr_in *)&dst;
+		dst_ipaddr->af = AF_INET;
+		dst_ipaddr->ipaddr.ip4addr = s4local->sin_addr;
+		*dst_port = ntohs(s4local->sin_port);
 	}
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
-	else if (dst_ipaddr->af == AF_INET6) {
+	else if (src.ss_family == AF_INET6) {
+		struct sockaddr_in6	*s6remote;
+		struct sockaddr_in6	*s6local;
+
+		s6remote = (struct sockaddr_in6 *)&src;
 		src_ipaddr->af = AF_INET6;
-#ifdef WITH_UDPFROMTO
-		return -1;	/* should have been caught above */
-#endif		
-		src_ipaddr->ipaddr.ip6addr = saremote6.sin6_addr;
-		*src_port = ntohs(saremote6.sin6_port);
+		src_ipaddr->ipaddr.ip6addr = s6remote->sin6_addr;
+		*src_port = ntohs(s6remote->sin6_port);
+
+		s6local = (struct sockaddr_in6 *)&dst;
+		dst_ipaddr->af = AF_INET6;
+		dst_ipaddr->ipaddr.ip6addr = s6local->sin6_addr;
+		*dst_port = ntohs(s6local->sin6_port);
 	}
 #endif
-	else return -1;		/* should really have been caught above */
+	/*  Unknown address family  */
+	else return -1;
 	
 	return data_len;
 }
