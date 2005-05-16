@@ -640,8 +640,10 @@ static int load_component_section(CONF_SECTION *cs, int comp,
  */
 int setup_modules(void)
 {
-	int comp;
-	CONF_SECTION *cs;
+	int		comp;
+	CONF_SECTION	*cs;
+	int		do_component[RLM_COMPONENT_COUNT];
+	rad_listen_t	*listener;
 
 	/*
 	 *  FIXME: This should be pulled from somewhere else.
@@ -690,6 +692,48 @@ int setup_modules(void)
 	}
 
 	/*
+	 *	Figure out which sections to load.
+	 */
+	memset(do_component, 0, sizeof(do_component));
+	for (listener = mainconfig.listen;
+	     listener != NULL;
+	     listener = listener->next) {
+		switch (listener->type) {
+		case RAD_LISTEN_AUTH:
+			do_component[RLM_COMPONENT_AUTZ] = 1;
+			do_component[RLM_COMPONENT_AUTH] = 1;
+			do_component[RLM_COMPONENT_POST_AUTH] = 1;
+			do_component[RLM_COMPONENT_SESS] = 1;
+			break;
+
+		case RAD_LISTEN_DETAIL:	/* just like acct */
+		case RAD_LISTEN_ACCT:
+			do_component[RLM_COMPONENT_PREACCT] = 1;
+			do_component[RLM_COMPONENT_ACCT] = 1;
+			break;
+
+		case RAD_LISTEN_PROXY:
+			do_component[RLM_COMPONENT_PRE_PROXY] = 1;
+			do_component[RLM_COMPONENT_POST_PROXY] = 1;
+			break;
+
+		default:
+			rad_assert(0 == 1);
+			break;
+		}
+	}
+
+	for (comp = RLM_COMPONENT_AUTH; comp < RLM_COMPONENT_COUNT; comp++) {
+		/*
+		 *	Have the debugging messages all in one place.
+		 */
+		if (!do_component[comp]) {
+			DEBUG2("modules: Not loading %s{} section",
+			       section_type_value[comp].section);
+		}
+	}
+
+	/*
 	 *	Create any DICT_VALUE's for the types.  See
 	 *	'doc/configurable_failover' for examples of 'authtype'
 	 *	used to create new Auth-Type values.  In order to
@@ -708,6 +752,12 @@ int setup_modules(void)
 		 */
 		static int my_value = 32767;
 
+		/*
+		 *	Not needed, don't load it.
+		 */
+		if (!do_component[comp]) {
+			continue;
+		}
 		cs = cf_section_find(section_type_value[comp].section);
 
 		if (!cs) continue;
