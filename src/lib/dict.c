@@ -131,7 +131,6 @@ int dict_addvendor(const char *name, int value)
 	}
 
 	if ((length = strlen(name)) >= DICT_VENDOR_MAX_NAME_LEN) {
-		fprintf(stderr, "SHIT %d\n", length);
 		librad_log("dict_addvendor: vendor name too long");
 		return -1;
 	}
