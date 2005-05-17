@@ -916,17 +916,14 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 }
 
 
-#ifndef RADIUS_CONFIG
-#define RADIUS_CONFIG "radiusd.conf"
-#endif
-
 CONF_SECTION *read_radius_conf_file(void)
 {
 	char buffer[256];
 	CONF_SECTION *cs;
 
 	/* Lets go look for the new configuration files */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
+		 radius_dir, mainconfig.radiusd_conf);
 	if ((cs = conf_read(NULL, 0, buffer, NULL)) == NULL) {
 		return NULL;
 	}
@@ -1004,13 +1001,14 @@ int read_mainconfig(int reload)
 	}
 
 	/* First read radiusd.conf */
-	DEBUG2("reread_config:  reading radiusd.conf");
+	DEBUG2("reread_config:  reading %s", mainconfig.radiusd_conf);
 	if ((cs = read_radius_conf_file()) == NULL) {
 		if (debug_flag ||
 		    (radlog_dir == NULL)) {
-			radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
+			radlog(L_ERR|L_CONS, "Errors reading %s", mainconfig.radiusd_conf);
 		} else {
-			radlog(L_ERR|L_CONS, "Errors reading %s/radiusd.conf: For more information, please read the tail end of %s", radlog_dir, mainconfig.log_file);
+			radlog(L_ERR|L_CONS, "Errors reading %s/%s: For more information, please read the tail end of %s",
+			       radlog_dir, mainconfig.radiusd_conf, mainconfig.log_file);
 		}
 		return -1;
 	}
@@ -1035,39 +1033,42 @@ int read_mainconfig(int reload)
 	}
 
 
-	/* old-style naslist file */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
-	DEBUG2("read_config_files:  reading naslist");
-	if (read_naslist_file(buffer) < 0) {
-		radlog(L_ERR|L_CONS, "Errors reading naslist");
-		return -1;
-	}
-	/* old-style clients file */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
-	DEBUG2("read_config_files:  reading clients");
-	if (read_clients_file(buffer) < 0) {
-		radlog(L_ERR|L_CONS, "Errors reading clients");
-		return -1;
+	if (strcmp(mainconfig.radiusd_conf, "radrelay.conf") != 0) {
+		/* old-style naslist file */
+		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
+		DEBUG2("read_config_files:  reading naslist");
+		if (read_naslist_file(buffer) < 0) {
+			radlog(L_ERR|L_CONS, "Errors reading naslist");
+			return -1;
+		}
+		/* old-style clients file */
+		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
+		DEBUG2("read_config_files:  reading clients");
+		if (read_clients_file(buffer) < 0) {
+			radlog(L_ERR|L_CONS, "Errors reading clients");
+			return -1;
+		}
+
+		/*
+		 *	Add to that, the *new* list of clients.
+		 */
+		snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
+			 radius_dir, mainconfig.radiusd_conf);
+		c = generate_clients(buffer, mainconfig.config);
+		if (!c) {
+			return -1;
+		}
+		
+		/*
+		 *	The new list of clients takes precedence over the old one.
+		 */
+		for (tail = c; tail->next != NULL; tail = tail->next) {
+			/* do nothing */
+		}
+		tail->next = mainconfig.clients;
+		mainconfig.clients = c;
 	}
 
-	/*
-	 *	Add to that, the *new* list of clients.
-	 */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
-	c = generate_clients(buffer, mainconfig.config);
-	if (!c) {
-		return -1;
-	}
-
-	/*
-	 *	The new list of clients takes precedence over the old one.
-	 */
-	for (tail = c; tail->next != NULL; tail = tail->next) {
-		/* do nothing */
-	}
-	tail->next = mainconfig.clients;
-	mainconfig.clients = c;
-	
 	/* old-style realms file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_REALMS);
 	DEBUG2("read_config_files:  reading realms");
@@ -1079,7 +1080,8 @@ int read_mainconfig(int reload)
 	/*
 	 *	If there isn't any realms it isn't fatal..
 	 */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CONFIG);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
+		 radius_dir, mainconfig.radiusd_conf);
 	if (generate_realms(buffer) < 0) {
 		return -1;
 	}
@@ -1180,7 +1182,7 @@ int read_mainconfig(int reload)
 	/*
 	 *	Read the list of listeners.
 	 */
-	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", radius_dir);
+	snprintf(buffer, sizeof(buffer), "%.200s/%s", radius_dir, mainconfig.radiusd_conf);
 	if (listen_init(buffer, &listener) < 0) {
 		exit(1);
 	}
@@ -1190,7 +1192,7 @@ int read_mainconfig(int reload)
 		exit(1);
 	}
 
-	listen_free(mainconfig.listen);
+	listen_free(&mainconfig.listen);
 	mainconfig.listen = listener;
 
 	return 0;
