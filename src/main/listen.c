@@ -138,8 +138,8 @@ static int common_checks(rad_listen_t *listener,
 				       "from client %s port %d - ID: %d", request_count,
 				       client_name(&packet->src_ipaddr),
 				       packet->src_port, packet->id);
-				radlog(L_INFO, "WARNING: Please check the radiusd.conf file.\n"
-				       "\tThe value for 'max_requests' is probably set too low.\n");
+				radlog(L_INFO, "WARNING: Please check the %s file.\n"
+				       "\tThe value for 'max_requests' is probably set too low.\n", mainconfig.radiusd_conf);
 				return 0;
 			} /* else there were a small number of requests */
 		} /* else there was no configured limit for requests */
@@ -1689,6 +1689,14 @@ int listen_init(const char *filename, rad_listen_t **head)
 			}
 		}
 		rad_assert(port > 0); /* must have found at least one entry! */
+
+		/*
+		 *	Address is still unspecified, use IPv4.
+		 */
+		if (server_ipaddr.af == AF_UNSPEC) {
+			server_ipaddr.af = AF_INET;
+			server_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
+		}
 
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));

@@ -322,10 +322,7 @@ module_instance_t *find_module_instance(const char *instname)
 	 */
 	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
 
-	/*
-	 *  FIXME: "radiusd.conf" is wrong here; must find cf filename
-	 */
-	node->entry = linkto_module(module_name, "radiusd.conf",
+	node->entry = linkto_module(module_name, mainconfig.radiusd_conf,
 				    cf_section_lineno(inst_cs));
 	if (!node->entry) {
 		free(node);
@@ -340,8 +337,9 @@ module_instance_t *find_module_instance(const char *instname)
 	    ((node->entry->module->instantiate)(inst_cs,
 			&node->insthandle) < 0)) {
 		radlog(L_ERR|L_CONS,
-				"radiusd.conf[%d]: %s: Module instantiation failed.\n",
-				cf_section_lineno(inst_cs), instname);
+				"%s[%d]: %s: Module instantiation failed.\n",
+		       mainconfig.radiusd_conf, cf_section_lineno(inst_cs),
+		       instname);
 		free(node);
 		return NULL;
 	}
@@ -445,8 +443,8 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
 		}
 	}
 
-	DEBUG2("  Processing the %s section of radiusd.conf",
-	       section_type_value[comp].section);
+	DEBUG2("  Processing the %s section of %s",
+	       section_type_value[comp].section, mainconfig.radiusd_conf);
 	return modcall(comp, this->modulelist, request);
 }
 
@@ -644,11 +642,6 @@ int setup_modules(void)
 	CONF_SECTION	*cs;
 	int		do_component[RLM_COMPONENT_COUNT];
 	rad_listen_t	*listener;
-
-	/*
-	 *  FIXME: This should be pulled from somewhere else.
-	 */
-	const char *filename="radiusd.conf";
 
 	/*
 	 *	No current list of modules: Go initialize libltdl.
@@ -896,7 +889,11 @@ int setup_modules(void)
 		if (cs == NULL)
 			continue;
 
-		if (load_component_section(cs, comp, filename) < 0) {
+		if (!do_component[comp]) {
+			continue;
+		}
+
+		if (load_component_section(cs, comp, mainconfig.radiusd_conf) < 0) {
 			return -1;
 		}
 	}

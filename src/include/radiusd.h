@@ -267,6 +267,7 @@ typedef struct main_config_t {
 	CONF_SECTION	*config;
 	RADCLIENT	*clients;
 	REALM		*realms;
+	const char	*radiusd_conf;
 } MAIN_CONFIG_T;
 
 #define DEBUG	if(debug_flag)log_debug

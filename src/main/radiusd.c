@@ -144,6 +144,7 @@ int main(int argc, char *argv[])
 	memset(&mainconfig, 0, sizeof(mainconfig));
 	mainconfig.myip.af = AF_UNSPEC;
 	mainconfig.port = -1;
+	mainconfig.radiusd_conf = "radiusd.conf";
 
 #ifdef HAVE_SIGACTION
 	memset(&act, 0, sizeof(act));
@@ -152,7 +153,7 @@ int main(int argc, char *argv[])
 #endif
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:p:sSvxXyz")) != EOF) {
+	while ((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:n:p:sSvxXyz")) != EOF) {
 
 		switch(argval) {
 
@@ -202,6 +203,12 @@ int main(int argc, char *argv[])
 			case 'g':
 				fprintf(stderr, "radiusd: -g is unsupported.  Use log_destination in radiusd.conf.\n");
 				exit(1);
+				break;
+
+			case 'n':
+				if (strcmp(optarg, "radrelay") == 0) {
+					mainconfig.radiusd_conf = "radrelay.conf";
+				}
 				break;
 
 			case 'S':
