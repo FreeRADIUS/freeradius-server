@@ -412,18 +412,18 @@ static int sql_escape_func(char *out, int outlen, const char *in)
 
 	while (in[0]) {
 		/*
-		 *  Only one byte left.
-		 */
-		if (outlen <= 1) {
-			break;
-		}
-
-		/*
 		 *	Non-printable characters get replaced with their
 		 *	mime-encoded equivalents.
 		 */
 		if ((in[0] < 32) ||
 		    strchr(allowed_chars, *in) == NULL) {
+			/*
+			 *	Only 3 or less bytes available.
+			 */
+			if (outlen <= 3) {
+				break;
+			}
+
 			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
 			in++;
 			out += 3;
@@ -433,7 +433,14 @@ static int sql_escape_func(char *out, int outlen, const char *in)
 		}
 
 		/*
-		 *	Else it's a nice character.
+		 *	Only one byte left.
+		 */
+		if (outlen <= 1) {
+			break;
+		}
+
+		/*
+		 *	Allowed character.
 		 */
 		*out = *in;
 		out++;
