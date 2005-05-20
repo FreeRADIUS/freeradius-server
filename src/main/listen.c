@@ -67,10 +67,21 @@ extern time_t time_now;
 extern int auth_port;
 
 /*
- *	FIXME: Create a data structure to hold per-type information,
- *	and use that when parsing types. This will clean up the code
- *	a fair lot.
- *
+ *	We'll use this below.
+ */
+typedef int (*rad_listen_parse_t)(const char *, int, const CONF_SECTION *, rad_listen_t *);
+typedef void (*rad_listen_free_t)(rad_listen_t *);
+
+typedef struct rad_listen_master_t {
+	rad_listen_parse_t	parse;
+	rad_listen_free_t	free;
+	rad_listen_recv_t	recv;
+	rad_listen_send_t	send;
+} rad_listen_master_t;
+
+static int listen_bind(rad_listen_t *this);
+
+/*
  *	FIXME: have the detail reader use another config "exit when done",
  *	so that it can be used as a one-off tool to update stuff.
  */
@@ -366,6 +377,62 @@ static int common_checks(rad_listen_t *listener,
 
 
 /*
+ *	Parse an authentication or accounting socket.
+ */
+static int common_socket_parse(const char *filename, int lineno,
+			     const CONF_SECTION *cs, rad_listen_t *this)
+{
+	int		rcode;
+	int		listen_port;
+	lrad_ipaddr_t	ipaddr;
+	
+	/*
+	 *	Try IPv4 first
+	 */
+	ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
+	rcode = cf_item_parse(cs, "ipaddr", PW_TYPE_IPADDR,
+			      &ipaddr.ipaddr.ip4addr, NULL);
+	if (rcode < 0) return -1;
+	
+	if (rcode == 0) { /* successfully parsed IPv4 */
+		ipaddr.af = AF_INET;
+		
+	} else {	/* maybe IPv6? */
+		rcode = cf_item_parse(cs, "ipv6addr", PW_TYPE_IPV6ADDR,
+				      &ipaddr.ipaddr.ip6addr, NULL);
+		if (rcode < 0) return -1;
+		
+		if (rcode == 1) {
+			radlog(L_ERR, "%s[%d]: No address specified in listen section",
+			       filename, lineno);
+			return -1;
+		}
+		ipaddr.af = AF_INET6;
+	}
+	
+	rcode = cf_item_parse(cs, "port", PW_TYPE_INTEGER,
+			      &listen_port, "0");
+	if (rcode < 0) return -1;
+	
+	this->ipaddr = ipaddr;
+	this->port = listen_port;
+	
+	/*
+	 *	And bind it to the port.
+	 */
+	if (listen_bind(this) < 0) {
+		char buffer[128];
+		radlog(L_CONS|L_ERR, "%s[%d]: Error binding to port for %s port %d",
+		       filename, cf_section_lineno(cs),
+		       ip_ntoh(&this->ipaddr, buffer, sizeof(buffer)),
+		       this->port);
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
  *	Send an authentication response packet
  */
 static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
@@ -427,7 +494,7 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
  */
 static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 {
-	rad_assert(request->listener == listener);
+	rad_assert(request->proxy_listener == listener);
 	rad_assert(listener->send == proxy_socket_send);
 	return rad_send(request->proxy, request->packet, request->proxysecret);
 
@@ -895,9 +962,13 @@ static int detail_recv(rad_listen_t *listener,
 	 */
 	if (listener->state == STATE_UNLOCKED) {
 		/*
-		 *	FIXME: Do we want to block, waiting for the lock?
-		 *	this means we're slower, but we're also more likely
-		 *	to steal the lock from rlm_detail.
+		 *	Note that we do NOT block waiting for the
+		 *	lock.  We've re-named the file above, so we've
+		 *	already guaranteed that any *new* detail
+		 *	writer will not be opening this file.  The
+		 *	only purpose of the lock is to catch a race
+		 *	condition where the execution "ping-pongs"
+		 *	between radiusd & radrelay.
 		 */
 		if (rad_lockfd_nonblock(listener->fd, 0) < 0) {
 			return 0;
@@ -1159,29 +1230,61 @@ static int detail_recv(rad_listen_t *listener,
 
 
 /*
- *	Free a linked list of listeners;
+ *	Free detail-specific stuff.
  */
-void listen_free(rad_listen_t **head)
+static void detail_free(rad_listen_t *this)
 {
-	rad_listen_t *list;
+	free(this->detail);
+	pairfree(&this->vps);
+	free(this->max_outstanding);
 
-	if (!head || !*head) return;
-
-	list = *head;
-	while (list) {
-		rad_listen_t *next = list->next;
-		
-		/*
-		 *	The code below may have eaten the FD.
-		 */
-		if (list->fd >= 0) close(list->fd);
-		free(list);
-		
-		list = next;
-	}
-
-	*head = NULL;
+	if (this->fp != NULL) fclose(this->fp);
 }
+
+
+/*
+ *	Parse a detail section.
+ */
+static int detail_parse(const char *filename, int lineno,
+			const CONF_SECTION *cs, rad_listen_t *this)
+{
+	int		rcode;
+	const char	*detail = NULL;
+
+	rcode = cf_item_parse(cs, "detail", PW_TYPE_STRING_PTR,
+			      &detail, NULL);
+	if (rcode < 0) return -1;
+	if (rcode == 1) {
+		radlog(L_ERR, "%s[%d]: No detail file specified in listen section",
+		       filename, lineno);
+		return -1;
+	}
+	
+	this->detail = detail;
+	this->vps = NULL;
+	this->fp = NULL;
+	this->state = STATE_UNOPENED;
+	
+	rcode = cf_item_parse(cs, "max_outstanding",
+			      PW_TYPE_INTEGER,
+			      &(this->max_outstanding), "0");
+	if (rcode < 0) return -1;
+	if (this->max_outstanding > 0) {
+		this->outstanding = rad_malloc(sizeof(int) * this->max_outstanding);
+	}
+	
+	detail_open(this);
+
+	return 0;
+}
+
+static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
+	{ NULL, NULL, NULL, NULL },	/* RAD_LISTEN_NONE */
+	{ common_socket_parse, NULL, auth_socket_recv, auth_socket_send },
+	{ common_socket_parse, NULL, acct_socket_recv, acct_socket_send },
+	{ NULL, NULL, proxy_socket_recv, proxy_socket_send },
+	{ detail_parse, detail_free, detail_recv, detail_send }
+};
 
 
 /*
@@ -1193,26 +1296,8 @@ static int listen_bind(rad_listen_t *this)
 	socklen_t	salen;
 	rad_listen_t	**last;
 
-	switch (this->type) {
-	case RAD_LISTEN_AUTH:
-		this->recv = auth_socket_recv;
-		this->send = auth_socket_send;
-		break;
-
-	case RAD_LISTEN_ACCT:
-		this->recv = acct_socket_recv;
-		this->send = acct_socket_send;
-		break;
-
-	case RAD_LISTEN_PROXY:
-		this->recv = proxy_socket_recv;
-		this->send = proxy_socket_send;
-		break;
-
-	default:
-		rad_assert(0 == 1);
-		return -1;
-	}
+	this->recv = master_listen[this->type].recv;
+	this->send = master_listen[this->type].send;
 
 	/*
 	 *	If the port is zero, then it means the appropriate
@@ -1431,7 +1516,6 @@ int listen_init(const char *filename, rad_listen_t **head)
 	int		rcode;
 	CONF_SECTION	*cs;
 	rad_listen_t	**last;
-	char		buffer[128];
 	rad_listen_t	*this;
 	lrad_ipaddr_t	server_ipaddr;
 
@@ -1530,13 +1614,9 @@ int listen_init(const char *filename, rad_listen_t **head)
 					  cs, "listen")) {
 		int		type;
 		char		*listen_type, *identity;
-		int		listen_port;
 		int		lineno = cf_section_lineno(cs);
-		lrad_ipaddr_t	ipaddr;
 
-		listen_port = 0;
-		listen_type = NULL;
-		identity = NULL;
+		listen_type = identity = NULL;
 		
 		rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
 				      &listen_type, "");
@@ -1564,97 +1644,32 @@ int listen_init(const char *filename, rad_listen_t **head)
 			return -1;
 		}
 
-		if (type == RAD_LISTEN_DETAIL) {
-			const char	*detail = NULL;
-
-			rcode = cf_item_parse(cs, "detail", PW_TYPE_STRING_PTR,
-					      &detail, NULL);
-			if (rcode < 0) return -1;
-			if (rcode == 1) {
-				radlog(L_ERR, "%s[%d]: No detail file specified in listen section",
-				       filename, lineno);
-				return -1;
-			}
-			
-			this = rad_malloc(sizeof(*this));
-			memset(this, 0, sizeof(*this));
-			this->type = type;
-			this->identity = identity;
-			this->fd = -1;
-
-			this->recv = detail_recv;
-			this->send = detail_send;
-
-			this->detail = detail;
-			this->vps = NULL;
-			this->fp = NULL;
-			this->state = STATE_UNOPENED;
-			
-			rcode = cf_item_parse(cs, "max_outstanding",
-					      PW_TYPE_INTEGER,
-					      &(this->max_outstanding), "0");
-			if (rcode < 0) return -1;
-			if (this->max_outstanding > 0) {
-				this->outstanding = rad_malloc(sizeof(int) * this->max_outstanding);
-			}
-
-			detail_open(this);
-
-			*last = this;
-			last = &(this->next);		
-			continue;
-		}
-
 		/*
-		 *	Try IPv4 first
+		 *	Set up cross-type data.
 		 */
-		ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-		rcode = cf_item_parse(cs, "ipaddr", PW_TYPE_IPADDR,
-				      &ipaddr.ipaddr.ip4addr, NULL);
-		if (rcode < 0) return -1;
-
-		if (rcode == 0) { /* successfully parsed IPv4 */
-			ipaddr.af = AF_INET;
-
-		} else {	/* maybe IPv6? */
-			rcode = cf_item_parse(cs, "ipv6addr", PW_TYPE_IPV6ADDR,
-					      &ipaddr.ipaddr.ip6addr, NULL);
-			if (rcode < 0) return -1;
-
-			if (rcode == 1) {
-				radlog(L_ERR, "%s[%d]: No address specified in listen section",
-				       filename, lineno);
-				return -1;
-			}
-			ipaddr.af = AF_INET6;
-		}
-
-		rcode = cf_item_parse(cs, "port", PW_TYPE_INTEGER,
-				      &listen_port, "0");
-		if (rcode < 0) return -1;
-
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));
+		
 		this->type = type;
 		this->identity = identity;
-
-		this->ipaddr = ipaddr;
-		this->port = listen_port;
+		this->fd = -1;
+		
+		this->recv = master_listen[type].recv;
+		this->send = master_listen[type].send;
 
 		/*
-		 *	And bind it to the port.
+		 *	Call per-type parsers, if they're necessary.
 		 */
-		if (listen_bind(this) < 0) {
-			radlog(L_CONS|L_ERR, "%s[%d]: Error binding to port for %s port %d",
-			       filename, cf_section_lineno(cs),
-			       ip_ntoh(&this->ipaddr, buffer, sizeof(buffer)),
-			       this->port);
-			free(this);
+		rad_assert(master_listen[type].parse != NULL);
+		if (master_listen[type].parse(filename, lineno,
+					      cs, this) < 0) {
+			listen_free(&this);
+			listen_free(head);
 			return -1;
 		}
 
 		*last = this;
-		last = &(this->next);		
+		last = &(this->next);	
 	}
 
 	/*
@@ -1750,3 +1765,33 @@ int listen_init(const char *filename, rad_listen_t **head)
 	return 0;
 }
 
+/*
+ *	Free a linked list of listeners;
+ */
+void listen_free(rad_listen_t **head)
+{
+	rad_listen_t *this;
+
+	if (!head || !*head) return;
+
+	this = *head;
+	while (this) {
+		rad_listen_t *next = this->next;
+		
+		free(this->identity);
+
+		/*
+		 *	Other code may have eaten the FD.
+		 */
+		if (this->fd >= 0) close(this->fd);
+
+		if (master_listen[this->type].free) {
+			master_listen[this->type].free(this);
+		}
+		free(this);
+		
+		this = next;
+	}
+
+	*head = NULL;
+}

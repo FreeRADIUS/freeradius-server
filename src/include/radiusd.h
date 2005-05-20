@@ -175,8 +175,12 @@ typedef enum RAD_LISTEN_TYPE {
 	RAD_LISTEN_AUTH,
 	RAD_LISTEN_ACCT,
 	RAD_LISTEN_PROXY,
-	RAD_LISTEN_DETAIL
+	RAD_LISTEN_DETAIL,
+	RAD_LISTEN_MAX
 } RAD_LISTEN_TYPE;
+
+typedef int (*rad_listen_recv_t)(rad_listen_t *, RAD_REQUEST_FUNP *, REQUEST **);
+typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
 
 
 struct rad_listen_t {
@@ -188,9 +192,8 @@ struct rad_listen_t {
 	int		fd;
 	const char	*identity;
 
-	int		(*recv)(rad_listen_t *,
-				RAD_REQUEST_FUNP *, REQUEST **);
-	int		(*send)(rad_listen_t *, REQUEST *);
+	rad_listen_recv_t recv;
+	rad_listen_send_t send;
 
 	/*
 	 *	For normal sockets.
