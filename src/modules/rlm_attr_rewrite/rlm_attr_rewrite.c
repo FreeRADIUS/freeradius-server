@@ -21,14 +21,12 @@
  * Copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>
  */
 
-#include "config.h"
 #include "autoconf.h"
-#include "libradius.h"
+#include "config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "config.h"
 #ifdef HAVE_REGEX_H
 #	include <regex.h>
 #endif
@@ -62,7 +60,7 @@ typedef struct rlm_attr_rewrite_t {
 } rlm_attr_rewrite_t;
 
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "attribute", PW_TYPE_STRING_PTR, offsetof(rlm_attr_rewrite_t,attribute), NULL, NULL },
   { "searchfor", PW_TYPE_STRING_PTR, offsetof(rlm_attr_rewrite_t,search), NULL, NULL },
   { "searchin",  PW_TYPE_STRING_PTR, offsetof(rlm_attr_rewrite_t,searchin_str), NULL, "packet" },
@@ -176,6 +174,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 	unsigned int len = 0;
 	char err_msg[MAX_STRING_LEN];
 	unsigned int i = 0;
+	unsigned int j = 0;
 	unsigned int counter = 0;
 	char new_str[MAX_STRING_LEN];
 	char *ptr, *ptr2;
@@ -188,7 +187,53 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 	}
 
-	if (!data->new_attr){
+	if (data->new_attr){
+		/* new_attribute = yes */
+		if (!radius_xlat(replace_STR, sizeof(replace_STR), data->replace, request, NULL)) {
+			DEBUG2("rlm_attr_rewrite: xlat on replace string failed.");
+			return ret;
+		}
+		replace_len = strlen(replace_STR);
+		attr_vp = pairmake(data->attribute,replace_STR,0);
+		if (attr_vp == NULL){
+			DEBUG2("rlm_attr_rewrite: Could not add new attribute %s with value '%s'",
+				data->attribute,replace_STR);
+			return ret;
+		}
+		switch(data->searchin){
+			case RLM_REGEX_INPACKET:
+				pairadd(&request->packet->vps,attr_vp);
+				break;
+			case RLM_REGEX_INCONFIG:
+				pairadd(&request->config_items,attr_vp);
+				break;
+			case RLM_REGEX_INREPLY:
+				pairadd(&request->reply->vps,attr_vp);
+				break;
+			case RLM_REGEX_INPROXY:
+				if (!request->proxy) {
+					pairbasicfree(attr_vp);
+					return RLM_MODULE_NOOP;
+				}
+				pairadd(&request->proxy->vps, attr_vp);
+				break;
+			case RLM_REGEX_INPROXYREPLY:
+				if (!request->proxy_reply) {
+					pairbasicfree(attr_vp);
+					return RLM_MODULE_NOOP;
+				}
+				pairadd(&request->proxy_reply->vps, attr_vp);
+				break;
+			default:
+				radlog(L_ERR, "rlm_attr_rewrite: Illegal value for searchin. Changing to packet.");
+				data->searchin = RLM_REGEX_INPACKET;
+				pairadd(&request->packet->vps,attr_vp);
+				break;
+		}
+		DEBUG2("rlm_attr_rewrite: Added attribute %s with value '%s'",data->attribute,replace_STR);
+		ret = RLM_MODULE_OK;
+	} else {
+		/* new_attribute = no */
 		switch (data->searchin) {
 			case RLM_REGEX_INPACKET:
 				if (data->attr_num == PW_USER_NAME)
@@ -239,17 +284,6 @@ do_again:
 			DEBUG2("rlm_attr_rewrite: xlat on search string failed.");
 			return ret;
 		}
-	}
-	if (data->new_attr){
-		if (!radius_xlat(replace_STR, sizeof(replace_STR), data->replace, request, NULL)) {
-			DEBUG2("rlm_attr_rewrite: xlat on replace string failed.");
-			return ret;
-		}
-		replace_len = strlen(replace_STR);
-	}
-
-	if (!data->new_attr){
-		unsigned int j = 0;
 
 		if ((err = regcomp(&preg,search_STR,cflags))) {
 			regerror(err, &preg, err_msg, MAX_STRING_LEN);
@@ -261,7 +295,7 @@ do_again:
 		counter = 0;
 
 		for ( i = 0 ;i < (unsigned)data->num_matches; i++) {
-			err = regexec(&preg, ptr2, 9, pmatch, 0);
+			err = regexec(&preg, ptr2, REQUEST_MAX_REGEX, pmatch, 0);
 			if (err == REG_NOMATCH) {
 				if (i == 0) {
 					DEBUG2("rlm_attr_rewrite: No match found for attribute %s with value '%s'",
@@ -299,14 +333,14 @@ do_again:
 				/*
 				 * We only run on the first match, sorry
 				 */
-				for(j = 0; j <= 8; j++){
+				for(j = 0; j <= REQUEST_MAX_REGEX; j++){
 					char *p;
 					char buffer[sizeof(attr_vp->strvalue)];
 
 					/*
 				   	 * Stolen from src/main/valuepair.c, paircmp()
 				 	 */
-				
+
 					/*
 					 * Delete old matches if the corresponding match does not
 					 * exist in the current regex
@@ -320,8 +354,9 @@ do_again:
 						break;
 					}
 					memcpy(buffer,
-						attr_vp->strvalue + pmatch[j].rm_so,pmatch[j].rm_eo);
-					buffer[pmatch[j].rm_eo] = '\0';
+					       attr_vp->strvalue + pmatch[j].rm_so,
+					       pmatch[j].rm_eo - pmatch[j].rm_so);
+					buffer[pmatch[j].rm_eo - pmatch[j].rm_so] = '\0';
 					p = strdup(buffer);
 					request_data_add(request,request,REQUEST_DATA_REGEX | j,p,free);
 				}
@@ -361,8 +396,10 @@ do_again:
 
 		DEBUG2("rlm_attr_rewrite: Changed value for attribute %s from '%s' to '%s'",
 				data->attribute, attr_vp->strvalue, new_str);
-		attr_vp->length = strlen(new_str);
-		strncpy(attr_vp->strvalue, new_str, (attr_vp->length + 1));
+		if (pairparsevalue(attr_vp, new_str) == NULL) {
+			DEBUG2("rlm_attr_rewrite: Could not write value '%s' into attribute %s: %s", new_str, data->attribute, librad_errstr);
+			return ret;
+		}
 
 to_do_again:
 		ret = RLM_MODULE_OK;
@@ -373,33 +410,6 @@ to_do_again:
 				goto do_again;
 		}
 	}
-	else{
-		attr_vp = pairmake(data->attribute,replace_STR,0);
-		if (attr_vp == NULL){
-			DEBUG2("rlm_attr_rewrite: Could not add new attribute %s with value '%s'",
-				data->attribute,replace_STR);
-			return ret;
-		}
-		switch(data->searchin){
-			case RLM_REGEX_INPACKET:
-				pairadd(&request->packet->vps,attr_vp);
-				break;
-			case RLM_REGEX_INCONFIG:
-				pairadd(&request->config_items,attr_vp);
-				break;
-			case RLM_REGEX_INREPLY:
-				pairadd(&request->reply->vps,attr_vp);
-				break;
-			default:
-				radlog(L_ERR, "rlm_attr_rewrite: Illegal value for searchin. Changing to packet.");
-				data->searchin = RLM_REGEX_INPACKET;
-				pairadd(&request->packet->vps,attr_vp);
-				break;
-		}
-		DEBUG2("rlm_attr_rewrite: Added attribute %s with value '%s'",data->attribute,replace_STR);
-		ret = RLM_MODULE_OK;
-	}
-
 
 	return ret;
 }
