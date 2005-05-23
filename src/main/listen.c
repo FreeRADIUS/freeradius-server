@@ -34,6 +34,10 @@
 #include <arpa/inet.h>
 #endif
 
+#ifdef HAVE_NET_IF_H
+#include <net/if.h>
+#endif
+
 #include <sys/resource.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -416,7 +420,7 @@ static int common_socket_parse(const char *filename, int lineno,
 	
 	this->ipaddr = ipaddr;
 	this->port = listen_port;
-	
+
 	/*
 	 *	And bind it to the port.
 	 */
@@ -427,6 +431,36 @@ static int common_socket_parse(const char *filename, int lineno,
 		       ip_ntoh(&this->ipaddr, buffer, sizeof(buffer)),
 		       this->port);
 		return -1;
+	}
+
+	/*
+	 *	If we can bind to interfaces, do so,
+	 *	else don't.
+	 */
+	if (cf_pair_find(cs, "interface")) {
+#ifndef SO_BINDTODEVICE
+		radlog(L_CONS|L_ERR, "%s[%d]: System does not support binding to interfaces, delete this line from the configuration file.",
+		       filename, cf_section_lineno(cs));
+		return -1;
+#else
+		const char *value;
+		const CONF_PAIR *cp = cf_pair_find(cs, "interface");
+		struct ifreq ifreq;
+
+		rad_assert(cp != NULL);
+		value = cf_pair_value(cp);
+		rad_assert(value != NULL);
+		
+		strcpy(ifreq.ifr_name, value);
+	
+		if (setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE,
+			       (char *)&ifreq, sizeof(ifreq)) < 0) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Failed binding to interface %s: %s",
+			       filename, cf_section_lineno(cs),
+			       value, strerror(errno));
+			return -1;
+		} /* else it worked. */
+#endif
 	}
 
 	return 0;
