@@ -83,6 +83,7 @@ struct main_config_t mainconfig;
 #define		STATE_BACKLOG	1
 #define		STATE_WAIT	2
 #define		STATE_SHUTDOWN	3
+#define		STATE_CLOSE	4
 
 #define		NR_SLOTS	64
 
@@ -116,7 +117,7 @@ char *c_shortname = NULL;
 
 struct relay_request slots[NR_SLOTS];
 char id_map[256];
-int request_head;
+int request_head = 0;
 int got_sigterm = 0;
 int debug = 0;
 
@@ -228,8 +229,8 @@ int read_one(FILE *fp, struct relay_request *r_req)
 	do {
 		x = rad_lockfd_nonblock(fileno(fp), 0);
 		if (x == -1)
-			ms_sleep(25);
-	} while (x == -1 && i++ < 80);
+			ms_sleep(100);
+	} while (x == -1 && i++ < 20);
 
 	if (x == -1)
 		return 0;
@@ -408,7 +409,7 @@ int do_recv(struct relay_misc *r_args)
 				free (r->req->data);
 				r->req->data = NULL;
 			}
-			r->state = 0;
+			r->state = STATE_EMPTY;
 			r->retrans = 0;
 			r->retrans_num = 0;
 			r->timestamp = 0;
@@ -445,7 +446,7 @@ int do_send(struct relay_request *r, char *secret)
 			free (r->req->data);
 			r->req->data = NULL;
 		}
-		r->state = 0;
+		r->state = STATE_EMPTY;
 		r->retrans = 0;
 		r->retrans_num = 0;
 		r->timestamp = 0;
@@ -533,9 +534,11 @@ int detail_move(char *from, char *to)
  *	STATE_RUN:	Reading from detail file, sending to server.
  *	STATE_BACKLOG:	Reading from the detail.work file, for example
  *			after a crash or restart. Sending to server.
- *	STATE_WAIT:	Reached end-of-file, renamed detail to
- *			detail.work, waiting for all outstanding
- *			requests to be answered.
+ *	STATE_WAIT:	Waiting for all outstanding requests to be handled.
+ *	STATE_CLOSE:	Reached end of detail.work file, waiting for
+ *			outstanding requests, and removing the file.
+ *	STATE_SHUTDOWN:	Got SIG_TERM, waiting for outstanding requests
+ *			and exiting program.
  */
 void loop(struct relay_misc *r_args)
 {
@@ -560,10 +563,10 @@ void loop(struct relay_misc *r_args)
 	 */
 	for (i = 0; i < NR_SLOTS; i++) {
 		if ((slots[i].req = rad_alloc(1)) == NULL) {
-			librad_perror("radclient");
+			librad_perror("radrelay");
 			exit(1);
 		}
-		slots[i].state = 0;
+		slots[i].state = STATE_EMPTY;
 		slots[i].retrans = 0;
 		slots[i].retrans_num = 0;
 		slots[i].timestamp = 0;
@@ -601,9 +604,19 @@ void loop(struct relay_misc *r_args)
 		 *	filled slot, we can read from the detail file.
 		 */
 		r = &slots[request_head];
-		if (fp && state != STATE_WAIT && state != STATE_SHUTDOWN &&
+		if (fp && (state == STATE_RUN || state == STATE_BACKLOG) &&
 		    r->state != STATE_FULL) {
 			if (read_one(fp, r) == EOF) do {
+
+				/*
+				 *	We've reached end of the <detail>.work
+				 *	It's going to be closed as soon as all
+				 *	outstanting requests are handled
+				 */
+				if (state == STATE_BACKLOG) {
+					state = STATE_CLOSE;
+					break;
+				}
 
 				/*
 				 *	End of file. See if the file has
@@ -621,19 +634,26 @@ void loop(struct relay_misc *r_args)
 				last_rename = now;
 
 				/*
-				 *	We rename the file
-				 *	to <file>.work and create an
-				 *	empty new file.
+				 *	We rename the file to <file>.work
+				 *	and create an empty new file.
 				 */
-				if (state == STATE_RUN &&
-				    detail_move(r_args->detail, work) == 0)
-					state = STATE_WAIT;
-				else if (state == STATE_BACKLOG)
-					state = STATE_WAIT;
+				if (detail_move(r_args->detail, work) == 0) {
+					if (debug_flag > 0)
+						fprintf(stderr, "Moving %s to %s\n",
+							r_args->detail, work);
+					/*
+					 *	rlm_detail might still write
+					 *	something to <detail>.work if
+					 *	it opens <detail> before it is
+					 *	renamed (race condition)
+					 */
+					ms_sleep(1000);
+					state = STATE_BACKLOG;
+				}
 				fpos = ftell(fp);
 				fseek(fp, 0L, SEEK_SET);
-				fseek(fp, fpos, SEEK_SET);
 				rad_unlockfd(fileno(fp), 0);
+				fseek(fp, fpos, SEEK_SET);
 			} while(0);
 			if (r->state == STATE_FULL)
 				request_head = (request_head + 1) % NR_SLOTS;
@@ -654,18 +674,21 @@ void loop(struct relay_misc *r_args)
 
 		/*
 		 *	If we're in STATE_WAIT and all slots are
-		 *	finally empty, we can copy the <detail>.work file
-		 *	to the definitive detail file and resume.
+		 *	finally empty, we can remove the <detail>.work
 		 */
-		if (state == STATE_WAIT || state == STATE_SHUTDOWN) {
+		if (state == STATE_WAIT || state == STATE_CLOSE || state == STATE_SHUTDOWN) {
 			for (i = 0; i < NR_SLOTS; i++)
 				if (slots[i].state != STATE_EMPTY)
 					break;
 			if (i == NR_SLOTS) {
-				if (fp) fclose(fp);
-				fp = NULL;
-				unlink(work);
-				if (state == STATE_SHUTDOWN) {
+				if (state == STATE_CLOSE) {
+					if (fp) fclose(fp);
+					fp = NULL;
+					if (debug_flag > 0)
+						fprintf(stderr, "Unlink file %s\n", work);
+					unlink(work);
+				}
+				else if (state == STATE_SHUTDOWN) {
 					for (i = 0; i < NR_SLOTS; i++) {
 						rad_free(&slots[i].req);
 					}
@@ -1005,4 +1028,3 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-
