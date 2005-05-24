@@ -49,12 +49,12 @@ static rbtree_t *xlat_root = NULL;
 /*
  *	Define all xlat's in the structure.
  */
-static const char *internal_xlat[] = {"check",
-				      "request",
-				      "reply",
-				      "proxy-request",
-				      "proxy-reply",
-				      NULL};
+static const char * const internal_xlat[] = {"check",
+					     "request",
+					     "reply",
+					     "proxy-request",
+					     "proxy-reply",
+					     NULL};
 
 #if REQUEST_MAX_REGEX > 8
 #error Please fix the following line
