@@ -306,6 +306,21 @@ int proxy_send(REQUEST *request)
 	}
 
 	/*
+	 *	This is mainly for radrelay.  Don't proxy packets back
+	 *	to servers which sent them to us.
+	 */
+	if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
+	    (request->listener->type == RAD_LISTEN_DETAIL) &&
+	    (realm->acct_ipaddr.af == AF_INET) &&
+	    (request->packet->src_ipaddr.af == AF_INET) &&
+	    (realm->acct_ipaddr.ipaddr.ip4addr.s_addr == request->packet->src_ipaddr.ipaddr.ip4addr.s_addr)) {
+		DEBUG2("    rlm_realm: Packet came from realm %s, proxy cancelled", realm->realm);
+		return RLM_MODULE_NOOP;
+	}
+
+
+
+	/*
 	 *	Allocate the proxy packet, only if it wasn't already
 	 *	allocated by a module.  This check is mainly to support
 	 *	the proxying of EAP-TTLS and EAP-PEAP tunneled requests.
