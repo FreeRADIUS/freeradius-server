@@ -188,7 +188,7 @@ static const char *action2str(int action)
 #endif
 
 /* Some short names for debugging output */
-static const char *comp2str[] = {
+static const char * const comp2str[] = {
 	"authenticate",
 	"authorize",
 	"preacct",
