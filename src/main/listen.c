@@ -969,6 +969,9 @@ static int detail_open(rad_listen_t *listener)
 	}
 
 	listener->state = STATE_UNLOCKED;
+
+	listener->client_ip.af = AF_UNSPEC;
+	listener->timestamp = 0;
 	
 	return 1;
 }
@@ -1140,12 +1143,31 @@ static int detail_recv(rad_listen_t *listener,
 
 		/*
 		 *	Skip non-protocol attributes.
-		 *
-		 *	FIXME: Copy relevant code from radsqlrelay?
 		 */
-		if (!strcasecmp(key, "Timestamp")) continue;
-		if (!strcasecmp(key, "Client-IP-Address")) continue;
 		if (!strcasecmp(key, "Request-Authenticator")) continue;
+
+		/*
+		 *	Set the original client IP address, based on
+		 *	what's in the detail file.
+		 *
+		 *	Hmm... we don't set the server IP address.
+		 *	or port.  Oh well.
+		 */
+		if (!strcasecmp(key, "Client-IP-Address")) {
+			listener->client_ip.af = AF_INET;
+			ip_hton(value, AF_INET, &listener->client_ip);
+			continue;
+		}
+
+		/*
+		 *	The original time at which we received the
+		 *	packet.  We need this to properly calculate
+		 *	Acct-Delay-Time.
+		 */
+		if (!strcasecmp(key, "Timestamp")) {
+			listener->timestamp = atoi(value);
+			continue;
+		}
 
 		/*
 		 *	Read one VP.
@@ -1158,7 +1180,7 @@ static int detail_recv(rad_listen_t *listener,
 		    (vp != NULL)) {
 			*tail = vp;
 			tail = &(vp->next);
-		}
+		}		
 	}
 
 	/*
@@ -1205,6 +1227,27 @@ static int detail_recv(rad_listen_t *listener,
 	packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 	packet->code = PW_ACCOUNTING_REQUEST;
 	packet->timestamp = time(NULL);
+
+	/*
+	 *	Look for Acct-Delay-Time, and update
+	 *	based on Acct-Delay-Time += (time(NULL) - timestamp)
+	 */
+	vp = pairfind(packet->vps, PW_ACCT_DELAY_TIME);
+	if (!vp) {
+		vp = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
+		rad_assert(vp != NULL);
+	}
+	if (listener->timestamp != 0) {
+		vp->lvalue += time(NULL) - listener->timestamp;
+	}
+
+	/*
+	 *	Remember where it came from, so that we don't
+	 *	proxy it to the place it came from...
+	 */
+	if (listener->client_ip.af != AF_UNSPEC) {
+		packet->src_ipaddr = listener->client_ip;
+	}
 
 	/*
 	 *	We've got to give SOME value for Id & ports, so that

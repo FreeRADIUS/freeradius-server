@@ -211,6 +211,8 @@ struct rad_listen_t {
 	VALUE_PAIR	*vps;
 	FILE		*fp;
 	int		state;
+	time_t		timestamp;
+	lrad_ipaddr_t	client_ip;
 	int		max_outstanding;
 	int		*outstanding;
 };
