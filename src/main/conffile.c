@@ -55,8 +55,10 @@ static const char rcsid[] =
 "$Id$";
 
 typedef enum conf_type {
+	CONF_ITEM_INVALID = 0,
 	CONF_ITEM_PAIR,
-	CONF_ITEM_SECTION
+	CONF_ITEM_SECTION,
+	CONF_ITEM_DATA
 } CONF_ITEM_TYPE;
 
 struct conf_item {
@@ -79,6 +81,18 @@ struct conf_part {
 	rbtree_t	*pair_tree; /* and a partridge.. */
 	rbtree_t	*section_tree; /* no jokes here */
 	rbtree_t	*name2_tree; /* for sections of the same name2 */
+};
+
+
+/*
+ *	Internal data that is associated with a configuration section,
+ *	so that we don't have to track it separately.
+ */
+struct conf_data {
+	CONF_ITEM  item;
+	const char *name;
+	void	   *data;	/* user data */
+	void       (*free)(void *); /* free user data function */
 };
 
 /*
@@ -109,6 +123,20 @@ CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs)
 	if (cs == NULL)
 		return NULL;
 	return (CONF_ITEM *)cs;
+}
+
+static CONF_DATA *cf_itemtodata(CONF_ITEM *ci)
+{
+	if (ci == NULL)
+		return NULL;
+	rad_assert(ci->type == CONF_ITEM_DATA);
+	return (CONF_DATA *)ci;
+}
+static CONF_ITEM *cf_datatoitem(CONF_DATA *cd)
+{
+	if (cd == NULL)
+		return NULL;
+	return (CONF_ITEM *)cd;
 }
 
 /*
@@ -150,6 +178,20 @@ void cf_pair_free(CONF_PAIR **cp)
 	*cp = NULL;
 }
 
+
+static void cf_data_free(CONF_DATA **cd)
+{
+	if (!cd || !*cd) return;
+
+	free((*cd)->name);
+	if (!(*cd)->free) {
+		free((*cd)->data);
+	} else {
+		((*cd)->free)((*cd)->data);
+	}
+
+	*cd = NULL;
+}
 
 /*
  *	rbtree callback function
@@ -204,12 +246,29 @@ void cf_section_free(CONF_SECTION **cs)
 
 	for (ci = (*cs)->children; ci; ci = next) {
 		next = ci->next;
-		if (ci->type==CONF_ITEM_PAIR) {
-			CONF_PAIR *pair = cf_itemtopair(ci);
-			cf_pair_free(&pair);
-		} else {
-			CONF_SECTION *section = cf_itemtosection(ci);
-			cf_section_free(&section);
+
+		switch (ci->type) {
+		case CONF_ITEM_PAIR: {
+				CONF_PAIR *pair = cf_itemtopair(ci);
+				cf_pair_free(&pair);
+			}
+			break;
+
+		case CONF_ITEM_SECTION: {
+				
+				CONF_SECTION *section = cf_itemtosection(ci);
+				cf_section_free(&section);
+			}
+			break;
+
+		case CONF_ITEM_DATA: {
+				CONF_DATA *data = cf_itemtodata(ci);
+				cf_data_free(&data);
+			}
+			break;
+
+		default:	/* should really be an error. */
+			break;
 		}
 	}
 
@@ -297,45 +356,54 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
 	 *	For fast lookups.
 	 */
 	while (ci_new) {
-		if (ci_new->type == CONF_ITEM_PAIR) {
-			rbtree_insert(cs->pair_tree, ci_new);
-			
-		} else if (ci_new->type == CONF_ITEM_SECTION) {
-			const CONF_SECTION *cs_new = cf_itemtosection(ci_new);
-
-			if (!cs->section_tree) {
-				cs->section_tree = rbtree_create(section_cmp, NULL, 0);
-				/* ignore any errors */
-			}
-			
-			if (cs->section_tree) {
-				rbtree_insert(cs->section_tree, cs_new);
-			}
-			
-			/*
-			 *	Two names: find the named instance.
-			 */
-			if (cs_new->name2) {
-				CONF_SECTION *old_cs;
+		switch (ci_new->type) {
+			case CONF_ITEM_PAIR:
+				rbtree_insert(cs->pair_tree, ci_new);
+				break;
+				
+			case CONF_ITEM_SECTION: {
+				const CONF_SECTION *cs_new = cf_itemtosection(ci_new);
+				
+				if (!cs->section_tree) {
+					cs->section_tree = rbtree_create(section_cmp, NULL, 0);
+					/* ignore any errors */
+				}
+				
+				if (cs->section_tree) {
+					rbtree_insert(cs->section_tree, cs_new);
+				}
 				
 				/*
-				 *	Find the FIRST CONF_SECTION having the
-				 *	given name1, and create a new tree
-				 *	under it.
+				 *	Two names: find the named instance.
 				 */
-				old_cs = rbtree_finddata(cs->section_tree, cs_new);
-				if (!old_cs) return; /* this is a bad error! */
-				
-				if (!old_cs->name2_tree) {
-					old_cs->name2_tree = rbtree_create(name2_cmp,
-									   NULL, 0);
-				}
-				if (old_cs->name2_tree) {
-					rbtree_insert(old_cs->name2_tree, cs_new);
-				}
-			} /* had a name2 */
-		} /* was a section */
+				if (cs_new->name2) {
+					CONF_SECTION *old_cs;
+					
+					/*
+					 *	Find the FIRST
+					 *	CONF_SECTION having
+					 *	the given name1, and
+					 *	create a new tree
+					 *	under it.
+					 */
+					old_cs = rbtree_finddata(cs->section_tree, cs_new);
+					if (!old_cs) return; /* this is a bad error! */
+					
+					if (!old_cs->name2_tree) {
+						old_cs->name2_tree = rbtree_create(name2_cmp,
+										   NULL, 0);
+					}
+					if (old_cs->name2_tree) {
+						rbtree_insert(old_cs->name2_tree, cs_new);
+					}
+				} /* had a name2 */
+				break;
+			} /* was a section */
 
+			default: /* FIXME: assert & error! */
+				break;
+
+		} /* switch over conf types */
 		ci_new = ci_new->next;
 	} /* loop over ci_new */
 }
@@ -1233,7 +1301,7 @@ CONF_SECTION *cf_section_sub_find(const CONF_SECTION *cs, const char *name)
 
 
 /*
- * Find a CONF_SECTION with both names.
+ *	Find a CONF_SECTION with both names.
  */
 CONF_SECTION *cf_section_sub_find_name2(const CONF_SECTION *cs,
 					const char *name1, const char *name2)
@@ -1244,7 +1312,7 @@ CONF_SECTION *cf_section_sub_find_name2(const CONF_SECTION *cs,
 
 	if (!cs) cs = mainconfig.config;
 
-	if (cs->section_tree) {
+	if (name1 && (cs->section_tree)) {
 		CONF_SECTION mycs, *master_cs;
 		
 		mycs.name1 = name1;
@@ -1266,6 +1334,15 @@ CONF_SECTION *cf_section_sub_find_name2(const CONF_SECTION *cs,
 			continue;
 
 		subcs = cf_itemtosection(ci);
+		if (!name1) {
+			if (!subcs->name2) {
+				if (strcmp(subcs->name1, name2) == 0) break;
+			} else {
+				if (strcmp(subcs->name2, name2) == 0) break;
+			}
+			continue; /* don't do the string comparisons below */
+		}
+
 		if ((strcmp(subcs->name1, name1) == 0) &&
 		    (subcs->name2 != NULL) &&
 		    (strcmp(subcs->name2, name2) == 0))
@@ -1343,6 +1420,82 @@ int cf_item_is_section(CONF_ITEM *item)
 }
 
 
+static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, const char *name,
+				void *data, void (*data_free)(void *))
+{
+	CONF_DATA *cd;
+
+	cd = rad_malloc(sizeof(*cd));
+	memset(cd, 0, sizeof(*cd));
+
+	cd->item.type = CONF_ITEM_DATA;
+	cd->item.parent = parent;
+	cd->name = strdup(name);
+	cd->data = data;
+	cd->free = data_free;
+
+	return cd;
+}
+
+
+/*
+ *	Find data from a particular section.
+ */
+void *cf_data_find(CONF_SECTION *cs, const char *name)
+{
+	CONF_ITEM *ci;
+
+	if (!cs || !name) return NULL;
+
+	for (ci = cs->children; ci != NULL; ci = ci->next) {
+		CONF_DATA *cd;
+
+		/*
+		 *	Data is always inserted at the front of the
+		 *	list.
+		 */
+		if (ci->type != CONF_ITEM_DATA) return NULL;
+
+		cd = cf_itemtodata(ci);
+		if (strcmp(name, cd->name) == 0) return cd->data;
+	}
+
+	return NULL;
+}
+
+
+/*
+ *	Add named data to a configuration section.
+ */
+int cf_data_add(CONF_SECTION *cs, const char *name,
+		void *data, void (*data_free)(void *))
+{
+	CONF_ITEM *ci;
+	CONF_DATA *cd;
+
+	if (!cs || !name || !data) return -1;
+
+	/*
+	 *	Already exists.  Can't add it.
+	 */
+	if (cf_data_find(cs, name) != NULL) return -1;
+
+	ci = cs->children;
+
+	cd = cf_data_alloc(cs, name, data, data_free);
+
+	/*
+	 *	Insert at the TOP of the list.
+	 */
+	ci = cf_datatoitem(cd);
+
+	ci->next = cs->children;
+	cs->children = ci;
+
+	return 0;
+}
+
+
 #if 0
 /*
  * JMG dump_config tries to dump the config structure in a readable format
@@ -1360,12 +1513,15 @@ static int dump_config_section(CONF_SECTION *cs, int indent)
 	 * so I had to get creative. --Pac. */
 
 	for (ci = cs->children; ci; ci = ci->next) {
-		if (ci->type == CONF_ITEM_PAIR) {
+		switch (ci->type) {
+		case CONF_ITEM_PAIR:
 			cp=cf_itemtopair(ci);
 			DEBUG("%.*s%s = %s",
 				indent, "\t\t\t\t\t\t\t\t\t\t\t",
 				cp->attr, cp->value);
-		} else {
+			break;
+
+		case CONF_ITEM_SECTION:
 			scs=cf_itemtosection(ci);
 			DEBUG("%.*s%s %s%s{",
 				indent, "\t\t\t\t\t\t\t\t\t\t\t",
@@ -1375,6 +1531,10 @@ static int dump_config_section(CONF_SECTION *cs, int indent)
 			dump_config_section(scs, indent+1);
 			DEBUG("%.*s}",
 				indent, "\t\t\t\t\t\t\t\t\t\t\t");
+			break;
+
+		default:	/* FIXME: Do more! */
+			break;
 		}
 	}
 

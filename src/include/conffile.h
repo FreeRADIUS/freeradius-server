@@ -17,6 +17,7 @@
 typedef struct conf_item CONF_ITEM;
 typedef struct conf_pair CONF_PAIR;
 typedef struct conf_part CONF_SECTION;
+typedef struct conf_data CONF_DATA;
 
 /*
  *  Instead of putting the information into a configuration structure,
@@ -59,6 +60,9 @@ CONF_SECTION	*cf_section_find(const char *name);
 CONF_SECTION	*cf_section_sub_find(const CONF_SECTION *, const char *name);
 CONF_SECTION	*cf_section_sub_find_name2(const CONF_SECTION *, const char *name1, const char *name2);
 char 		*cf_section_value_find(const CONF_SECTION *, const char *attr);
+
+void *cf_data_find(CONF_SECTION *, const char *);
+int cf_data_add(CONF_SECTION *, const char *, void *, void (*)(void *));
 
 char *cf_pair_attr(CONF_PAIR *pair);
 char *cf_pair_value(CONF_PAIR *pair);

@@ -43,11 +43,6 @@ static const char rcsid[] = "$Id$";
  */
 static module_list_t *module_list = NULL;
 
-/*
- *	Internal list of each module instance.
- */
-static module_instance_t *module_instance_list = NULL;
-
 typedef struct indexed_modcallable {
 	struct indexed_modcallable *next;
 	int idx;
@@ -110,31 +105,27 @@ static void indexed_modcallable_free(indexed_modcallable **cf)
 	*cf = NULL;
 }
 
-static void instance_list_free(module_instance_t **i)
+/*
+ *	Free a module instance.
+ */
+static void module_instance_free(module_instance_t *this)
 {
-	module_instance_t	*c, *next;
-
-	c = *i;
-	while (c) {
-		next = c->next;
-		if(c->entry->module->detach)
-			(c->entry->module->detach)(c->insthandle);
+	if (this->entry->module->detach)
+		(this->entry->module->detach)(this->insthandle);
 #ifdef HAVE_PTHREAD_H
-		if (c->mutex) {
-			/*
-			 *	FIXME
-			 *	The mutex MIGHT be locked...
-			 *	we'll check for that later, I guess.
-			 */
-			pthread_mutex_destroy(c->mutex);
-			free(c->mutex);
-		}
-#endif
-		free(c);
-		c = next;
+	if (this->mutex) {
+		/*
+		 *	FIXME
+		 *	The mutex MIGHT be locked...
+		 *	we'll check for that later, I guess.
+		 */
+		pthread_mutex_destroy(this->mutex);
+		free(this->mutex);
 	}
-	*i = NULL;
+#endif
+	free(this);
 }
+
 
 /*
  *	Remove all of the modules.
@@ -150,8 +141,6 @@ int detach_modules(void)
 	for (i = 0; i < RLM_COMPONENT_COUNT; i++) {
 		indexed_modcallable_free(&components[i]);
 	}
-
-	instance_list_free(&module_instance_list);
 
 	ml = module_list;
 	while (ml) {
@@ -249,44 +238,15 @@ static module_list_t *linkto_module(const char *module_name,
 /*
  *	Find a module instance.
  */
-module_instance_t *find_module_instance(const char *instname)
+module_instance_t *find_module_instance(CONF_SECTION *modules,
+					const char *instname)
 {
-	CONF_SECTION *cs, *inst_cs;
+	CONF_SECTION *cs;
 	const char *name1, *name2;
-	module_instance_t *node, **last;
+	module_instance_t *node;
 	char module_name[256];
 
-	/*
-	 *	Look through the global module instance list for the
-	 *	named module.
-	 */
-	last = &module_instance_list;
-	for (node = module_instance_list; node != NULL; node = node->next) {
-		/*
-		 *	Found the named instance.  Return it.
-		 */
-		if (strcmp(node->name, instname) == 0)
-			return node;
-
-		/*
-		 *	Keep a pointer to the last entry to update...
-		 */
-		last = &node->next;
-	}
-
-	/*
-	 *	Instance doesn't exist yet. Try to find the
-	 *	corresponding configuration section and create it.
-	 */
-
-	/*
-	 *	Look for the 'modules' configuration section.
-	 */
-	cs = cf_section_find("modules");
-	if (cs == NULL) {
-		radlog(L_ERR|L_CONS, "ERROR: Cannot find a 'modules' section in the configuration file.\n");
-		return NULL;
-	}
+	if (!modules) return NULL;
 
 	/*
 	 *	Module instances are declared in the modules{} block
@@ -294,20 +254,20 @@ module_instance_t *find_module_instance(const char *instname)
 	 *	name2 from the config section, or name1 if there was
 	 *	no name2.
 	 */
-	name1 = name2 = NULL;
-	for(inst_cs=cf_subsection_find_next(cs, NULL, NULL);
-	    inst_cs != NULL;
-	    inst_cs=cf_subsection_find_next(cs, inst_cs, NULL)) {
-		name1 = cf_section_name1(inst_cs);
-		name2 = cf_section_name2(inst_cs);
-		if ( (name2 && !strcmp(name2, instname)) ||
-		     (!name2 && !strcmp(name1, instname)) )
-			break;
-	}
-	if (inst_cs == NULL) {
+	cs = cf_section_sub_find_name2(modules, NULL, instname);
+	if (cs == NULL) {
 		radlog(L_ERR|L_CONS, "ERROR: Cannot find a configuration entry for module \"%s\".\n", instname);
 		return NULL;
 	}
+
+	/*
+	 *	If there's already module instance, return it.
+	 */
+	node = cf_data_find(cs, "instance");
+	if (node) return node;
+
+	name1 = cf_section_name1(cs);
+	name2 = cf_section_name2(cs);
 
 	/*
 	 *	Found the configuration entry.
@@ -323,7 +283,7 @@ module_instance_t *find_module_instance(const char *instname)
 	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
 
 	node->entry = linkto_module(module_name, mainconfig.radiusd_conf,
-				    cf_section_lineno(inst_cs));
+				    cf_section_lineno(cs));
 	if (!node->entry) {
 		free(node);
 		/* linkto_module logs any errors */
@@ -334,11 +294,10 @@ module_instance_t *find_module_instance(const char *instname)
 	 *	Call the module's instantiation routine.
 	 */
 	if ((node->entry->module->instantiate) &&
-	    ((node->entry->module->instantiate)(inst_cs,
-			&node->insthandle) < 0)) {
+	    ((node->entry->module->instantiate)(cs, &node->insthandle) < 0)) {
 		radlog(L_ERR|L_CONS,
 				"%s[%d]: %s: Module instantiation failed.\n",
-		       mainconfig.radiusd_conf, cf_section_lineno(inst_cs),
+		       mainconfig.radiusd_conf, cf_section_lineno(cs),
 		       instname);
 		free(node);
 		return NULL;
@@ -370,7 +329,7 @@ module_instance_t *find_module_instance(const char *instname)
 	}
 
 #endif
-	*last = node;
+	cf_data_add(cs, "instance", node, module_instance_free);
 
 	DEBUG("Module: Instantiated %s (%s) ", name1, node->name);
 
@@ -524,7 +483,7 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 	int idx;
 	indexed_modcallable *subcomp;
 	const char *modname;
-	char *visiblename;
+	const char *visiblename;
 
 	/*
 	 *	Loop over the entries in the named section.
@@ -639,7 +598,7 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 int setup_modules(void)
 {
 	int		comp;
-	CONF_SECTION	*cs;
+	CONF_SECTION	*cs, *modules;
 	int		do_component[RLM_COMPONENT_COUNT];
 	rad_listen_t	*listener;
 
@@ -844,6 +803,15 @@ int setup_modules(void)
 	} /* over the sections which can have redundent sub-sections */
 
 	/*
+	 *	Remember where the modules were stored.
+	 */
+	modules = cf_section_find("modules");
+	if (!modules) {
+		radlog(L_ERR, "Cannot find a \"modules\" section in the configuration file!");
+		return -1;
+	}
+
+	/*
 	 *  Look for the 'instantiate' section, which tells us
 	 *  the instantiation order of the modules, and also allows
 	 *  us to load modules with no authorize/authenticate/etc.
@@ -873,7 +841,7 @@ int setup_modules(void)
 
 			cp = cf_itemtopair(ci);
 			name = cf_pair_attr(cp);
-			module = find_module_instance(name);
+			module = find_module_instance(modules, name);
 			if (!module) {
 				return -1;
 			}

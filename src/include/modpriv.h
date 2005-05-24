@@ -31,4 +31,4 @@ typedef struct module_instance_t {
 #endif
 } module_instance_t;
 
-module_instance_t *find_module_instance(const char *instname);
+module_instance_t *find_module_instance(CONF_SECTION *, const char *instname);

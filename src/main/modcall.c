@@ -1025,28 +1025,16 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 	 *	See if the module is a virtual one.  If so, return that,
 	 *	rather than doing anything here.
 	 */
-	this = find_module_instance(modrefname);
+	this = find_module_instance(cf_section_find("modules"), modrefname);
 	if (!this) {
 		CONF_SECTION *cs, *subcs;
 
 		/*
-		 *	Then, look for a named "modules virtual {" section.
+		 *	Then, look for it in the "instantiate" section.
 		 */
 		if (((subcs = cf_section_find(NULL)) != NULL) &&
 		    ((cs = cf_section_sub_find_name2(subcs, "instantiate", NULL)) != NULL)) {
-			const char *name1, *name2;
-
-			name1 = name2 = NULL;
-			for (subcs = cf_subsection_find_next(cs, NULL, NULL);
-			     subcs != NULL;
-			     subcs=cf_subsection_find_next(cs, subcs, NULL)) {
-				name1 = cf_section_name1(subcs);
-				name2 = cf_section_name2(subcs);
-				if ((name2 && (strcmp(name2, modrefname) == 0)) ||
-				    (!name2 && (strcmp(name1, modrefname) == 0))) {
-					break;
-				}
-			}
+			subcs = cf_section_sub_find_name2(cs, NULL, modrefname);
 			if (subcs) {
 				/*
 				 *	As it's sole configuration, the
