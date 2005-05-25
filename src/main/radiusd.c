@@ -206,9 +206,13 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'n':
-				if (strcmp(optarg, "radrelay") == 0) {
-					mainconfig.radiusd_conf = "radrelay.conf";
-				}
+				if ((strchr(optarg, '/') != NULL) ||
+				    (strchr(optarg, '.') != NULL) ||
+				    (strlen(optarg) > 256)) usage(1);
+
+				snprintf(buffer, sizeof(buffer), "%s.conf",
+					 optarg);
+				mainconfig.radiusd_conf = strdup(buffer);
 				break;
 
 			case 'S':
