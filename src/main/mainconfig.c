@@ -1033,42 +1033,6 @@ int read_mainconfig(int reload)
 	}
 
 
-	if (strcmp(mainconfig.radiusd_conf, "radrelay.conf") != 0) {
-		/* old-style naslist file */
-		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
-		DEBUG2("read_config_files:  reading naslist");
-		if (read_naslist_file(buffer) < 0) {
-			radlog(L_ERR|L_CONS, "Errors reading naslist");
-			return -1;
-		}
-		/* old-style clients file */
-		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
-		DEBUG2("read_config_files:  reading clients");
-		if (read_clients_file(buffer) < 0) {
-			radlog(L_ERR|L_CONS, "Errors reading clients");
-			return -1;
-		}
-
-		/*
-		 *	Add to that, the *new* list of clients.
-		 */
-		snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
-			 radius_dir, mainconfig.radiusd_conf);
-		c = generate_clients(buffer, mainconfig.config);
-		if (!c) {
-			return -1;
-		}
-		
-		/*
-		 *	The new list of clients takes precedence over the old one.
-		 */
-		for (tail = c; tail->next != NULL; tail = tail->next) {
-			/* do nothing */
-		}
-		tail->next = mainconfig.clients;
-		mainconfig.clients = c;
-	}
-
 	/* old-style realms file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_REALMS);
 	DEBUG2("read_config_files:  reading realms");
@@ -1194,6 +1158,55 @@ int read_mainconfig(int reload)
 
 	listen_free(&mainconfig.listen);
 	mainconfig.listen = listener;
+
+	/*
+	 *	Walk through the listeners.  If we're listening on acct
+	 *	or auth, read in the clients files, else ignore them.
+	 */
+	for (listener = mainconfig.listen;
+	     listener != NULL;
+	     listener = listener->next) {
+		if ((listener->type == RAD_LISTEN_AUTH) ||
+		    (listener->type == RAD_LISTEN_ACCT)) {
+			break;
+		}
+	}
+
+	if (listener != NULL) {
+		/* old-style naslist file */
+		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
+		DEBUG2("read_config_files:  reading naslist");
+		if (read_naslist_file(buffer) < 0) {
+			radlog(L_ERR|L_CONS, "Errors reading naslist");
+			return -1;
+		}
+		/* old-style clients file */
+		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
+		DEBUG2("read_config_files:  reading clients");
+		if (read_clients_file(buffer) < 0) {
+			radlog(L_ERR|L_CONS, "Errors reading clients");
+			return -1;
+		}
+
+		/*
+		 *	Add to that, the *new* list of clients.
+		 */
+		snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
+			 radius_dir, mainconfig.radiusd_conf);
+		c = generate_clients(buffer, mainconfig.config);
+		if (!c) {
+			return -1;
+		}
+		
+		/*
+		 *	The new list of clients takes precedence over the old one.
+		 */
+		for (tail = c; tail->next != NULL; tail = tail->next) {
+			/* do nothing */
+		}
+		tail->next = mainconfig.clients;
+		mainconfig.clients = c;
+	}
 
 	return 0;
 }
