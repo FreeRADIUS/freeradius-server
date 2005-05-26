@@ -471,12 +471,6 @@ modules {
 		input_pairs = request
 		shell_escape = yes
 	}
-
-	# TESTING ONLY
-	detail {
-		detailfile = ${raddbdir}/detail-2
-	}
-
 }
 
 # Instantiation
