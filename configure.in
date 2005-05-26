@@ -493,6 +493,7 @@ AC_CHECK_HEADERS( \
 	sys/security.h \
 	fcntl.h \
 	sys/fcntl.h \
+	net/if.h \
 	prot.h \
 	sia.h \
 	siad.h
@@ -1059,5 +1060,6 @@ AC_OUTPUT(\
 	./scripts/radiusd.cron.monthly \
 	./scripts/cryptpasswd \
 	./raddb/dictionary \
-	./raddb/radiusd.conf
+	./raddb/radiusd.conf \
+	./raddb/radrelay.conf
 )

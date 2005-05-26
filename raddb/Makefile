@@ -7,7 +7,7 @@ FILES	= acct_users attrs clients clients.conf dictionary eap.conf \
 	  experimental.conf hints huntgroups ldap.attrmap \
 	  mssql.conf naslist naspasswd oraclesql.conf postgresql.conf \
 	  preproxy_users proxy.conf radiusd.conf realms snmp.conf \
-	  sql.conf users x99.conf x99passwd.sample
+	  sql.conf users x99.conf x99passwd.sample radrelay.conf
 
 all:
 
