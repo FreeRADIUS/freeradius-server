@@ -415,7 +415,7 @@ static int xlat_config(void *instance, REQUEST *request,
 	/*
 	 *	This can now have embedded periods in it.
 	 */
-	cp = cf_pair_find(cs, argv[argc]);
+	cp = cf_pair_find(cs, argv[argc - 1]);
 	if (!cp) {
 		radlog(L_ERR, "config: item \"%s\" not found while dereferencing \"%s\"", argv[argc], fmt);
 		return 0;
