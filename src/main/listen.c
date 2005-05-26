@@ -497,7 +497,6 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 	}
 
 	return rad_send(request->reply, request->packet, request->secret);
-
 }
 
 
@@ -1373,9 +1372,6 @@ static int listen_bind(rad_listen_t *this)
 	socklen_t	salen;
 	rad_listen_t	**last;
 
-	this->recv = master_listen[this->type].recv;
-	this->send = master_listen[this->type].send;
-
 	/*
 	 *	If the port is zero, then it means the appropriate
 	 *	thing from /etc/services.
@@ -1420,15 +1416,22 @@ static int listen_bind(rad_listen_t *this)
 	     last = &((*last)->next)) {
 		if ((this->type == (*last)->type) &&
 		    (this->port == (*last)->port) &&
-		    (this->ipaddr.af == (*last)->ipaddr.af) &&
-		    (memcmp(&this->ipaddr.ipaddr,
-			    &(*last)->ipaddr.ipaddr,
-			    ((this->ipaddr.af == AF_INET) ?
-			     sizeof(this->ipaddr.ipaddr.ip4addr) :
-			     sizeof(this->ipaddr.ipaddr.ip6addr))))) {
-			this->fd = (*last)->fd;
-			(*last)->fd = -1;
-			return 0;
+		    (this->ipaddr.af == (*last)->ipaddr.af)) {
+			int equal;
+
+			if (this->ipaddr.af == AF_INET) {
+				equal = (this->ipaddr.ipaddr.ip4addr.s_addr == (*last)->ipaddr.ipaddr.ip4addr.s_addr);
+			} else if (this->ipaddr.af == AF_INET6) {
+				equal = IN6_ARE_ADDR_EQUAL(&(this->ipaddr.ipaddr.ip6addr), &((*last)->ipaddr.ipaddr.ip6addr));
+			} else {
+				equal = 0;
+			}
+			
+			if (equal) {
+				this->fd = (*last)->fd;
+				(*last)->fd = -1;
+				return 0;
+			}
 		}
 	}
 
