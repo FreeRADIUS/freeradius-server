@@ -75,7 +75,6 @@ int read_naslist_file(char *file)
 		   ignored. */
 		return 0;
 	}
-	radlog(L_INFO, "Using deprecated naslist file.  Support for this will go away soon.");
 	while(fgets(buffer, 256, fp) != NULL) {
 		lineno++;
 		if (!feof(fp) && (strchr(buffer, '\n') == NULL)) {
@@ -141,6 +140,10 @@ int read_naslist_file(char *file)
 		naslist = nas;
 	}
 	fclose(fp);
+
+	if (naslist) {
+		radlog(L_INFO, "Using deprecated naslist file.  Support for this will go away soon.");
+	}
 
 	return 0;
 }
