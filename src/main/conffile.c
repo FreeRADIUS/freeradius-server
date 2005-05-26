@@ -340,29 +340,36 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 /*
  *	Add an item to a configuration section.
  */
-static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
+static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 {
-	CONF_ITEM *ci;
-
-	for (ci = cs->children; ci && ci->next; ci = ci->next)
-		;
-
-	if (ci == NULL)
-		cs->children = ci_new;
-	else
-		ci->next = ci_new;
+	CONF_ITEM **last;
 
 	/*
-	 *	For fast lookups.
+	 *	New entries are added at the bottom of the list.
 	 */
-	while (ci_new) {
-		switch (ci_new->type) {
+	for (last = &(cs->children);
+	     (*last) != NULL;
+	     last = &((*last)->next)) {
+		/* nothing */
+	}
+	*last = ci;
+
+	/*
+	 *	We may be adding a list, rather than just one element.
+	 *	If so, loop over all entries.
+	 */
+	for (*last = ci; ci != NULL; ci = ci->next) {
+		/*
+		 *	For fast lookups, pair's and sections get
+		 *	added to rbtree's.
+		 */
+		switch (ci->type) {
 			case CONF_ITEM_PAIR:
-				rbtree_insert(cs->pair_tree, ci_new);
+				rbtree_insert(cs->pair_tree, ci);
 				break;
 				
 			case CONF_ITEM_SECTION: {
-				const CONF_SECTION *cs_new = cf_itemtosection(ci_new);
+				const CONF_SECTION *cs_new = cf_itemtosection(ci);
 				
 				if (!cs->section_tree) {
 					cs->section_tree = rbtree_create(section_cmp, NULL, 0);
@@ -400,12 +407,17 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci_new)
 				break;
 			} /* was a section */
 
+			case CONF_ITEM_DATA:
+				/*
+				 *	Don't do anything special.
+				 */
+				break;
+
 			default: /* FIXME: assert & error! */
 				break;
 
 		} /* switch over conf types */
-		ci_new = ci_new->next;
-	} /* loop over ci_new */
+	} /* loop over ci */
 }
 
 /*
@@ -1470,7 +1482,6 @@ void *cf_data_find(CONF_SECTION *cs, const char *name)
 int cf_data_add(CONF_SECTION *cs, const char *name,
 		void *data, void (*data_free)(void *))
 {
-	CONF_ITEM *ci;
 	CONF_DATA *cd;
 
 	if (!cs || !name || !data) return -1;
@@ -1480,17 +1491,10 @@ int cf_data_add(CONF_SECTION *cs, const char *name,
 	 */
 	if (cf_data_find(cs, name) != NULL) return -1;
 
-	ci = cs->children;
-
 	cd = cf_data_alloc(cs, name, data, data_free);
+	if (!cd) return -1;
 
-	/*
-	 *	Insert at the TOP of the list.
-	 */
-	ci = cf_datatoitem(cd);
-
-	ci->next = cs->children;
-	cs->children = ci;
+	cf_item_add(cs, cf_datatoitem(cd));
 
 	return 0;
 }
