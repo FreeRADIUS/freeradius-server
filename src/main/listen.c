@@ -81,6 +81,7 @@ typedef struct rad_listen_master_t {
 	rad_listen_free_t	free;
 	rad_listen_recv_t	recv;
 	rad_listen_send_t	send;
+	rad_listen_update_t	update;
 } rad_listen_master_t;
 
 static int listen_bind(rad_listen_t *this);
@@ -130,18 +131,20 @@ static int common_checks(rad_listen_t *listener,
 	REQUEST	*curreq;
 	char buffer[128];
 
+	rad_assert(listener->rl != NULL);
+
 	/*
 	 *	If there is no existing request of id, code, etc.,
 	 *	then we can return, and let it be processed.
 	 */
-	if ((curreq = rl_find(packet)) == NULL) {
+	if ((curreq = rl_find(listener->rl, packet)) == NULL) {
 		/*
 		 *	Count the total number of requests, to see if
 		 *	there are too many.  If so, return with an
 		 *	error.
 		 */
 		if (mainconfig.max_requests) {
-			int request_count = rl_num_requests();
+			int request_count = rl_num_requests(listener->rl);
 
 			/*
 			 *	This is a new request.  Let's see if
@@ -190,43 +193,12 @@ static int common_checks(rad_listen_t *listener,
 			 *	from the home server.
 			 */
 			if (curreq->proxy && !curreq->proxy_reply) {
-				/*
-				 *	We're taking care of sending
-				 *	duplicate proxied packets, so
-				 *	we ignore any duplicate
-				 *	requests from the NAS.
-				 *
-				 *	FIXME: Make it ALWAYS synchronous!
-				 */
-				if (!mainconfig.proxy_synchronous) {
-					RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
-
-					DEBUG2("Ignoring duplicate packet from client "
-					       "%s port %d - ID: %d, due to outstanding proxied request %d.",
-					       client_name(&packet->src_ipaddr),
-					       packet->src_port, packet->id,
-					       curreq->number);
-					return 0;
-
-					/*
-					 *	We ARE proxying the request,
-					 *	and we have NOT received a
-					 *	proxy reply yet, and we ARE
-					 *	doing synchronous proxying.
-					 *
-					 *	In that case, go kick
-					 *	the home RADIUS server
-					 *	again.
-					 */
-				} else {
-					DEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
-					       inet_ntop(curreq->proxy->dst_ipaddr.af,
-							 &curreq->proxy->dst_ipaddr.ipaddr,
-							 buffer, sizeof(buffer)),					       curreq->proxy->dst_port,
-
-					       curreq->proxy->id);
-				}
-				curreq->proxy_next_try = time_now + mainconfig.proxy_retry_delay;
+				DEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
+				       inet_ntop(curreq->proxy->dst_ipaddr.af,
+						 &curreq->proxy->dst_ipaddr.ipaddr,
+						 buffer, sizeof(buffer)),					       curreq->proxy->dst_port,
+				       
+				       curreq->proxy->id);
 				listener->send(curreq->proxy_listener, curreq);
 				return 0;
 			} /* else the packet was not proxied */
@@ -325,7 +297,7 @@ static int common_checks(rad_listen_t *listener,
 	 *	only keeping it around to send out duplicate replies,
 	 *	if the first reply got lost in the network.
 	 */
-	if (curreq) rl_delete(curreq);
+	if (curreq) rl_delete(listener->rl, curreq);
 
 	/*
 	 *	A unique per-request counter.
@@ -340,7 +312,7 @@ static int common_checks(rad_listen_t *listener,
 	/*
 	 *	Remember the request in the list.
 	 */
-	rl_add(curreq);
+	rl_add(listener->rl, curreq);
 	
 	/*
 	 *	ADD IN "server identifier" from "listen"
@@ -1354,12 +1326,43 @@ static int detail_parse(const char *filename, int lineno,
 	return 0;
 }
 
+
+/*
+ *	See radiusd.c & request_list.c
+ */
+#define SLEEP_FOREVER (65536)
+/*
+ *	A generic "update the request list once a second" function.
+ */
+static int generic_update(rad_listen_t *this, time_t now)
+{
+	if (!this->rl) return SLEEP_FOREVER;
+
+	return rl_clean_list(this->rl, now);
+}
+
 static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
-	{ NULL, NULL, NULL, NULL },	/* RAD_LISTEN_NONE */
-	{ common_socket_parse, NULL, auth_socket_recv, auth_socket_send },
-	{ common_socket_parse, NULL, acct_socket_recv, acct_socket_send },
-	{ NULL, NULL, proxy_socket_recv, proxy_socket_send },
-	{ detail_parse, detail_free, detail_recv, detail_send }
+	{ NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
+
+	/* authentication */
+	{ common_socket_parse, NULL,
+	  auth_socket_recv, auth_socket_send,
+	  generic_update },
+
+	/* accounting */
+	{ common_socket_parse, NULL,
+	  acct_socket_recv, acct_socket_send,
+	  generic_update },
+
+	/* proxying */
+	{ NULL, NULL,
+	  proxy_socket_recv, proxy_socket_send,
+	  NULL },
+
+	/* detail */
+	{ detail_parse, detail_free,
+	  detail_recv, detail_send,
+	  generic_update}
 };
 
 
@@ -1736,6 +1739,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		
 		this->recv = master_listen[type].recv;
 		this->send = master_listen[type].send;
+		this->update = master_listen[type].update;
 
 		/*
 		 *	Call per-type parsers, if they're necessary.
@@ -1827,6 +1831,19 @@ int listen_init(const char *filename, rad_listen_t **head)
 	 */
 	rcode = 0;
 	for (this = *head; this != NULL; this = this->next) {
+		if (this->type != RAD_LISTEN_PROXY) {
+			/*
+			 *	FIXME: Pass type to rl_init, so that
+			 *	it knows how to deal with accounting
+			 *	packets.  i.e. it caches them, but
+			 *	doesn't bother trying to re-transmit.
+			 */
+			this->rl = rl_init();
+			if (!this->rl) {
+				rad_assert(0 == 1); /* FIXME: */
+			}
+		}
+
 		if (((this->type == RAD_LISTEN_ACCT) &&
 		     (rcode == RAD_LISTEN_DETAIL)) ||
 		    ((this->type == RAD_LISTEN_DETAIL) &&
@@ -1859,6 +1876,8 @@ void listen_free(rad_listen_t **head)
 		rad_listen_t *next = this->next;
 		
 		free(this->identity);
+
+		rl_deinit(this->rl);
 
 		/*
 		 *	Other code may have eaten the FD.

@@ -73,6 +73,8 @@ static const char rcsid[] =
 #include "request_list.h"
 #include "radius_snmp.h"
 
+#define SLEEP_FOREVER (65536)
+
 /*
  *  Global variables.
  */
@@ -115,10 +117,11 @@ int main(int argc, char *argv[])
 	int pid;
 	int max_fd;
 	int status;
-	struct timeval *tv = NULL;
+	int sleep_time = SLEEP_FOREVER;
 	int spawn_flag = TRUE;
 	int dont_fork = FALSE;
 	int sig_hup_block = FALSE;
+	time_t last_cleaned_lists = 0;
 
 #ifdef HAVE_SIGACTION
 	struct sigaction act;
@@ -301,13 +304,10 @@ int main(int argc, char *argv[])
 
 	/*  Reload the modules.  */
 	DEBUG2("radiusd:  entering modules setup");
-	if (setup_modules() < 0) {
+	if (setup_modules(1) < 0) {
 		radlog(L_ERR|L_CONS, "Errors setting up modules");
 		exit(1);
 	}
-
-	/*  Initialize the request list.  */
-	rl_init();
 
 #ifdef WITH_SNMP
 	if (mainconfig.do_snmp) radius_snmp_init();
@@ -570,7 +570,7 @@ int main(int argc, char *argv[])
 
 			/*  Reload the modules.  */
 			DEBUG2("radiusd:  entering modules setup");
-			if (setup_modules() < 0) {
+			if (setup_modules(0) < 0) {
 				radlog(L_ERR|L_CONS, "Errors setting up modules");
 				exit(1);
 			}
@@ -602,14 +602,18 @@ int main(int argc, char *argv[])
 		}
 #endif
 
-		if (!tv) {
+		if (sleep_time == SLEEP_FOREVER) {
 			DEBUG2("Nothing to do.  Sleeping until we see a request.");
-		} else if (tv->tv_sec > 0) {
-			DEBUG2("Waking up in %d seconds...", (int) tv->tv_sec);
+			status = select(max_fd + 1, &readfds, NULL, NULL, NULL);
+		} else {
+			struct timeval tv;
 
+			DEBUG2("Waking up in %d seconds...", sleep_time);
+
+			tv.tv_sec = sleep_time;
+			tv.tv_usec = 0;
+			status = select(max_fd + 1, &readfds, NULL, NULL, &tv);
 		}
-
-		status = select(max_fd + 1, &readfds, NULL, NULL, tv);
 		if (status == -1) {
 			/*
 			 *	On interrupts, we clean up the request
@@ -629,13 +633,11 @@ int main(int argc, char *argv[])
 				 *	and the like.
 				 */
 				detach_modules();
-				rl_deinit();
 				free_mainconfig();
 				xlat_free();
 				dict_free();
 				exit(1);
 #endif
-				tv = rl_clean_list(time(NULL));
 				continue;
 			}
 			radlog(L_ERR, "Unexpected error in select(): %s",
@@ -726,11 +728,26 @@ int main(int argc, char *argv[])
 #endif
 
 		/*
-		 *  After processing all new requests,
-		 *  check if we've got to delete old requests
-		 *  from the request list.
+		 *	Loop through the request lists once per
+		 *	second, to clean up old requests.
 		 */
-		tv = rl_clean_list(time_now);
+		if (last_cleaned_lists != time_now) {
+			last_cleaned_lists = time_now;
+
+			DEBUG2("--- Walking the entire request list ---");
+			sleep_time = SLEEP_FOREVER;
+			for (listener = mainconfig.listen;
+			     listener != NULL;
+			     listener = listener->next) {
+				int next;
+				
+				next = listener->update(listener, time_now);
+				if (next < sleep_time) {
+					sleep_time = next;
+				}
+			}
+		}
+
 #ifdef HAVE_PTHREAD_H
 
 		/*

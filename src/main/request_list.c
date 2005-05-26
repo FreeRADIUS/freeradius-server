@@ -51,28 +51,15 @@ typedef struct REQNODE {
 typedef struct REQUESTINFO {
 	REQNODE *first_request;
 	REQNODE *last_request;
-	int request_count;
-	time_t last_cleaned_list;
 } REQUESTINFO;
 
-static REQUESTINFO	request_list[256];
 
-/*
- *	Remember the next request at which we start walking
- *	the list.
- */
-static REQUEST *last_request = NULL;
+struct request_list_t {
+	REQUESTINFO	request_list[256];
+	rbtree_t	*request_tree;
+	int		request_count;
+};
 
-/*
- *	It MAY make more sense here to key off of the packet ID, just
- *	like the request_list.  Then again, saving another 8 lookups
- *	(on average) isn't much of a problem.
- *
- *	The "request_cmp" function keys off of the packet ID first,
- *	so the first 8 layers of the tree will be the fanned-out
- *	tree for packet ID's.
- */
-static rbtree_t		*request_tree;
 
 #ifdef HAVE_PTHREAD_H
 static pthread_mutex_t	proxy_mutex;
@@ -327,17 +314,27 @@ static int proxy_cmp(const void *one, const void *two)
 /*
  *	Initialize the request list.
  */
-int rl_init(void)
+request_list_t *rl_init(void)
 {
+	request_list_t *rl = rad_malloc(sizeof(*rl));
+
 	/*
 	 *	Initialize the request_list[] array.
 	 */
-	memset(request_list, 0, sizeof(request_list));
+	memset(rl, 0, sizeof(*rl));
 
-	request_tree = rbtree_create(request_cmp, NULL, 0);
-	if (!request_tree) {
+	rl->request_tree = rbtree_create(request_cmp, NULL, 0);
+	if (!rl->request_tree) {
 		rad_assert("FAIL" == NULL);
 	}
+
+	/*
+	 *	Hacks, so that multiple users can call rl_init,
+	 *	and it won't get excited.
+	 *
+	 *	FIXME: Move proxy stuff to another struct entirely.
+	 */
+	if (proxy_tree) return rl;
 
 	/*
 	 *	Create the tree for managing proxied requests and
@@ -398,7 +395,7 @@ int rl_init(void)
 		}
 	}
 
-	return 1;
+	return rl;
 }
 
 
@@ -407,15 +404,19 @@ int rl_init(void)
  *
  *	This should be called only when debugging the server...
  */
-void rl_deinit(void)
+void rl_deinit(request_list_t *rl)
 {
 	int i;
 
-	rbtree_free(proxy_tree);
-	proxy_tree = NULL;
+	if (!rl) return;
 
-	rbtree_free(proxy_id_tree);
-	proxy_id_tree = NULL;
+	if (proxy_tree) {
+		rbtree_free(proxy_tree);
+		proxy_tree = NULL;
+		
+		rbtree_free(proxy_id_tree);
+		proxy_id_tree = NULL;
+	}
 
 	/*
 	 *	Loop over the request list, deleting the requests.
@@ -423,7 +424,7 @@ void rl_deinit(void)
 	for (i = 0; i < 256; i++) {
 		REQNODE *this, *next;
 
-		for (this = request_list[i].first_request;
+		for (this = rl->request_list[i].first_request;
 		     this != NULL;
 		     this = next) {
 			next = this->next;
@@ -436,7 +437,7 @@ void rl_deinit(void)
 	/*
 	 *	Just to ensure no one is using the memory.
 	 */
-	memset(request_list, 0, sizeof(request_list));
+	memset(rl, 0, sizeof(*rl));
 }
 
 
@@ -505,7 +506,7 @@ static void rl_delete_proxy(REQUEST *request, rbnode_t *node)
 /*
  *	Delete a particular request.
  */
-void rl_delete(REQUEST *request)
+void rl_delete(request_list_t *rl, REQUEST *request)
 {
 	int id;
 	REQNODE *prev, *next;
@@ -515,27 +516,14 @@ void rl_delete(REQUEST *request)
 
 	id = request->packet->id;
 
-	/*
-	 *	Update the last request we touched.
-	 *
-	 *	This is so the periodic "walk & clean list"
-	 *	function, below, doesn't walk over all requests
-	 *	all of the time.  Rather, it tries to amortize
-	 *	the cost...
-	 */
-	if (last_request == request) {
-		last_request = rl_next(last_request);
-	}
-
-
 	if (prev == NULL) {
-		request_list[id].first_request = next;
+		rl->request_list[id].first_request = next;
 	} else {
 		prev->next = next;
 	}
 
 	if (next == NULL) {
-		request_list[id].last_request = prev;
+		rl->request_list[id].last_request = prev;
 	} else {
 		next->prev = prev;
 	}
@@ -585,9 +573,9 @@ void rl_delete(REQUEST *request)
 	{
 		rbnode_t *node;
 
-		node = rbtree_find(request_tree, request);
+		node = rbtree_find(rl->request_tree, request);
 		rad_assert(node != NULL);
-		rbtree_delete(request_tree, node);
+		rbtree_delete(rl->request_tree, node);
 
 
 		/*
@@ -605,14 +593,14 @@ void rl_delete(REQUEST *request)
 	}
 
 	request_free(&request);
-	request_list[id].request_count--;
+	rl->request_count--;
 
 }
 
 /*
  *	Add a request to the request list.
  */
-void rl_add(REQUEST *request)
+void rl_add(request_list_t *rl, REQUEST *request)
 {
 	int id = request->packet->id;
 	REQNODE *node;
@@ -626,27 +614,23 @@ void rl_add(REQUEST *request)
 	node->prev = NULL;
 	node->next = NULL;
 
-	if (!request_list[id].first_request) {
-		rad_assert(request_list[id].request_count == 0);
-
-		request_list[id].first_request = node;
-		request_list[id].last_request = node;
+	if (!rl->request_list[id].first_request) {
+		rl->request_list[id].first_request = node;
+		rl->request_list[id].last_request = node;
 	} else {
-		rad_assert(request_list[id].request_count != 0);
-
-		node->prev = request_list[id].last_request;
-		request_list[id].last_request->next = node;
-		request_list[id].last_request = node;
+		node->prev = rl->request_list[id].last_request;
+		rl->request_list[id].last_request->next = node;
+		rl->request_list[id].last_request = node;
 	}
 
 	/*
 	 *	Insert the request into the tree.
 	 */
-	if (rbtree_insert(request_tree, request) == 0) {
+	if (rbtree_insert(rl->request_tree, request) == 0) {
 		rad_assert("FAIL" == NULL);
 	}
 
-	request_list[id].request_count++;
+	rl->request_count++;
 }
 
 /*
@@ -659,13 +643,13 @@ void rl_add(REQUEST *request)
  *	We MUST NOT have two requests with identical (id/code/IP/port), and
  *	different vectors.  This is a serious error!
  */
-REQUEST *rl_find(RADIUS_PACKET *packet)
+REQUEST *rl_find(request_list_t *rl, RADIUS_PACKET *packet)
 {
 	REQUEST myrequest;
 
 	myrequest.packet = packet;
 
-	return rbtree_finddata(request_tree, &myrequest);
+	return rbtree_finddata(rl->request_tree, &myrequest);
 }
 
 /*
@@ -996,7 +980,7 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 /*
  *	Walk over all requests, performing a callback for each request.
  */
-int rl_walk(RL_WALK_FUNC walker, void *data)
+int rl_walk(request_list_t *rl, RL_WALK_FUNC walker, void *data)
 {
 	int id, rcode;
 	REQNODE *curreq, *next;
@@ -1009,7 +993,7 @@ int rl_walk(RL_WALK_FUNC walker, void *data)
 		/*
 		 *	Walk over the request list for each ID.
 		 */
-		for (curreq = request_list[id].first_request;
+		for (curreq = rl->request_list[id].first_request;
 				curreq != NULL ;
 				curreq = next) {
 			/*
@@ -1020,7 +1004,7 @@ int rl_walk(RL_WALK_FUNC walker, void *data)
 			 */
 			next = curreq->next;
 
-			rcode = walker(curreq->req, data);
+			rcode = walker(rl, curreq->req, data);
 			if (rcode != RL_WALK_CONTINUE) {
 				return rcode;
 			}
@@ -1034,7 +1018,7 @@ int rl_walk(RL_WALK_FUNC walker, void *data)
 /*
  *	Walk from one request to the next.
  */
-REQUEST *rl_next(REQUEST *request)
+REQUEST *rl_next(request_list_t *rl, REQUEST *request)
 {
 	int id, start_id;
 	int count;
@@ -1075,10 +1059,10 @@ REQUEST *rl_next(REQUEST *request)
 		/*
 		 *	This ID has a request, return it.
 		 */
-		if (request_list[id & 0xff].first_request != NULL) {
-			rad_assert(request_list[id&0xff].first_request->req != request);
+		if (rl->request_list[id & 0xff].first_request != NULL) {
+			rad_assert(rl->request_list[id&0xff].first_request->req != request);
 
-			return request_list[id & 0xff].first_request->req;
+			return rl->request_list[id & 0xff].first_request->req;
 		}
 	}
 
@@ -1093,40 +1077,38 @@ REQUEST *rl_next(REQUEST *request)
 /*
  *	Return the number of requests in the request list.
  */
-int rl_num_requests(void)
+int rl_num_requests(request_list_t *rl)
 {
-	int id;
-	int request_count = 0;
-
-	for (id = 0; id < 256; id++) {
-		request_count += request_list[id].request_count;
-	}
-
-	return request_count;
+	return rl->request_count;
 }
 
 
+/*
+ *	See also radiusd.c
+ */
+#define SLEEP_FOREVER (65536)
 typedef struct rl_walk_t {
 	time_t	now;
-	time_t	smallest;
+	int	sleep_time;
 } rl_walk_t;
 
 
 /*
- *  Refresh a request, by using proxy_retry_delay, cleanup_delay,
- *  max_request_time, etc.
+ *  Refresh a request, by using cleanup_delay, max_request_time, etc.
  *
  *  When walking over the request list, all of the per-request
  *  magic is done here.
  */
-static int refresh_request(REQUEST *request, void *data)
+static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
 {
+	int time_passed;
 	rl_walk_t *info = (rl_walk_t *) data;
-	time_t difference;
 	child_pid_t child_pid;
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 
+	time_passed = (int) (info->now - request->timestamp);
+	
 	/*
 	 *  If the request is marked as a delayed reject, AND it's
 	 *  time to send the reject, then do so now.
@@ -1134,33 +1116,42 @@ static int refresh_request(REQUEST *request, void *data)
 	if (request->finished &&
 	    ((request->options & RAD_REQUEST_OPTION_DELAYED_REJECT) != 0)) {
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-
-		difference = info->now - request->timestamp;
-		if (difference >= (time_t) mainconfig.reject_delay) {
-
+		if (time_passed >= mainconfig.reject_delay) {
 			/*
 			 *  Clear the 'delayed reject' bit, so that we
 			 *  don't do this again.
 			 */
 			request->options &= ~RAD_REQUEST_OPTION_DELAYED_REJECT;
 			request->listener->send(request->listener, request);
+
+		} else {
+			/*
+			 *	Subtract time passed from when we want to
+			 *	wake up, and set sleep_time.
+			 */
+			time_passed = mainconfig.reject_delay - time_passed;
+			goto setup_timeout;
 		}
+
+		/*
+		 *	This request can't affect sleep_time, continue.
+		 */
+		return RL_WALK_CONTINUE;
 	}
 
 	/*
-	 *  If the request has finished processing, AND it's child has
-	 *  been cleaned up, AND it's time to clean up the request,
-	 *  OR, it's an accounting request.  THEN, go delete it.
+	 *	If the request is finished, AND more than cleanup_delay
+	 *	seconds have passed since it was received, clean it up.
 	 *
-	 *  If this is a request which had the "don't cache" option
-	 *  set, then delete it immediately, as it CANNOT have a
-	 *  duplicate.
+	 *	OR, if this is a request which had the "don't cache"
+	 *	option set, then delete it immediately, as it CANNOT
+	 *	have a duplicate.
 	 */
-	if (request->finished &&
-	    ((request->timestamp + mainconfig.cleanup_delay <= info->now) ||
-	     ((request->options & RAD_REQUEST_OPTION_DONT_CACHE) != 0))) {
+	if ((request->finished &&
+	     (time_passed >= mainconfig.cleanup_delay)) ||
+	    ((request->options & RAD_REQUEST_OPTION_DONT_CACHE) != 0)) {
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-
+	
 		/*
 		 *  Request completed, delete it, and unlink it
 		 *  from the currently 'alive' list of requests.
@@ -1172,15 +1163,15 @@ static int refresh_request(REQUEST *request, void *data)
 		/*
 		 *  Delete the request.
 		 */
-		rl_delete(request);
+		rl_delete(rl, request);
 		return RL_WALK_CONTINUE;
 	}
 
 	/*
-	 *  Maybe the child process handling the request has hung:
-	 *  kill it, and continue.
+	 *	If more than max_request_time has passed since
+	 *	we received the request, kill it.
 	 */
-	if ((request->timestamp + mainconfig.max_request_time) <= info->now) {
+	if (time_passed >= mainconfig.max_request_time) {
 		int number;
 
 		child_pid = request->child_pid;
@@ -1244,8 +1235,8 @@ static int refresh_request(REQUEST *request, void *data)
 		}
 
 		/*
-		 *  Send a reject message for the request, mark it
-		 *  finished, and forget about the child.
+		 *	Send a reject message for the request, mark it
+		 *	finished, and forget about the child.
 		 */
 		request_reject(request,
 			       REQUEST_FAIL_SERVER_TIMEOUT);
@@ -1255,193 +1246,31 @@ static int refresh_request(REQUEST *request, void *data)
 		if (mainconfig.kill_unresponsive_children)
 			request->finished = TRUE;
 		return RL_WALK_CONTINUE;
-	} /* the request has been in the queue for too long */
+	} /* else the request is still allowed to be in the queue */
 
 	/*
-	 *  If the request is still being processed, then due to the
-	 *  above check, it's still within it's time limit.  In that
-	 *  case, don't do anything.
+	 *	If the request is still being processed, then due to
+	 *	the above check, it's still within it's time limit.
+	 *	In that case, wake up when it's time to delete it.
 	 */
 	if (request->child_pid != NO_SUCH_CHILD_PID) {
-		return RL_WALK_CONTINUE;
-	}
-
-	/*
-	 *  The request is finished.
-	 */
-	if (request->finished) goto setup_timeout;
-
-	/*
-	 *  We're not proxying requests at all.
-	 */
-	if (!mainconfig.proxy_requests) goto setup_timeout;
-
-	/*
-	 *  We're proxying synchronously, so we don't retry it here.
-	 *  Some other code takes care of retrying the proxy requests.
-	 */
-	if (mainconfig.proxy_synchronous) goto setup_timeout;
-
-	/*
-	 *  The proxy retry delay is zero, meaning don't retry.
-	 */
-	if (mainconfig.proxy_retry_delay == 0) goto setup_timeout;
-
-	/*
-	 *  There is no proxied request for this packet, so there's
-	 *  no proxy retries.
-	 */
-	if (!request->proxy) goto setup_timeout;
-
-	/*
-	 *  We've already seen the proxy reply, so we don't need
-	 *  to send another proxy request.
-	 */
-	if (request->proxy_reply) goto setup_timeout;
-
-	/*
-	 *  It's not yet time to re-send this proxied request.
-	 */
-	if (request->proxy_next_try > info->now) goto setup_timeout;
-
-	/*
-	 *  If the proxy retry count is zero, then
-	 *  we've sent the last try, and have NOT received
-	 *  a reply from the end server.  In that case,
-	 *  we don't bother trying again, but just mark
-	 *  the request as finished, and go to the next one.
-	 */
-	if (request->proxy_try_count == 0) {
-		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-		request_reject(request, REQUEST_FAIL_HOME_SERVER2);
-		rad_assert(request->proxy->dst_ipaddr.af == AF_INET);
-		realm_disable(request->proxy->dst_ipaddr.ipaddr.ip4addr.s_addr,
-			      request->proxy->dst_port);
+		time_passed = mainconfig.max_request_time - time_passed;
 		goto setup_timeout;
 	}
 
 	/*
-	 *  We're trying one more time, so count down
-	 *  the tries, and set the next try time.
-	 */
-	request->proxy_try_count--;
-	request->proxy_next_try = info->now + mainconfig.proxy_retry_delay;
-
-	/* Fix up Acct-Delay-Time */
-	if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
-		VALUE_PAIR *delaypair;
-		delaypair = pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME);
-
-		if (!delaypair) {
-			delaypair = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
-			if (!delaypair) {
-				radlog(L_ERR|L_CONS, "no memory");
-				exit(1);
-			}
-			pairadd(&request->proxy->vps, delaypair);
-		}
-		delaypair->lvalue = info->now - request->proxy->timestamp;
-
-		/* Must recompile the valuepairs to wire format */
-		free(request->proxy->data);
-		request->proxy->data = NULL;
-	} /* proxy accounting request */
-
-	/*
-	 *  Assert that we have NOT seen the proxy reply yet.
-	 *
-	 *  If we HAVE seen it, then we SHOULD NOT be bugging the
-	 *  home server!
-	 */
-	rad_assert(request->proxy_reply == NULL);
-
-	/*
-	 *  Send the proxy packet.
-	 */
-	request->proxy_outstanding++;
-	request->proxy_listener->send(request->proxy_listener, request);
-
-setup_timeout:
-	/*
-	 *  Don't do more long-term checks, if we've got to wake
-	 *  up now.
-	 */
-	if (info->smallest == 0) {
-		return RL_WALK_CONTINUE;
-	}
-
-	/*
-	 *  The request is finished.  Wake up when it's time to
-	 *  clean it up.
+	 *	If the request is finished, set the cleanup delay.
+	 *	Otherwise, set max request time.
 	 */
 	if (request->finished) {
-		difference = (request->timestamp + mainconfig.cleanup_delay) - info->now;
-
-		/*
-		 *  If the request is marked up to be rejected later,
-		 *  then wake up later.
-		 */
-		if ((request->options & RAD_REQUEST_OPTION_DELAYED_REJECT) != 0) {
-			if (difference >= (time_t) mainconfig.reject_delay) {
-				difference = (time_t) mainconfig.reject_delay;
-			}
-		}
-
-	} else if (request->proxy && !request->proxy_reply) {
-		/*
-		 *  The request is NOT finished, but there is an
-		 *  outstanding proxy request, with no matching
-		 *  proxy reply.
-		 *
-		 *  Wake up when it's time to re-send
-		 *  the proxy request.
-		 *
-		 *  But in synchronous proxy, we don't retry but we update
-		 *  the next retry time as NAS has not resent the request
-		 *  in the given retry window.
-		 */
-		if (mainconfig.proxy_synchronous) {
-			/*
-			 *	If the retry_delay * count has passed,
-			 *	then mark the realm dead.
-			 */
-			if (info->now > (request->timestamp + (mainconfig.proxy_retry_delay * mainconfig.proxy_retry_count))) {
-				rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-				request_reject(request, REQUEST_FAIL_HOME_SERVER3);
-				rad_assert(request->proxy->dst_ipaddr.af == AF_INET);
-				realm_disable(request->proxy->dst_ipaddr.ipaddr.ip4addr.s_addr,
-					      request->proxy->dst_port);
-				goto setup_timeout;
-			}
-			request->proxy_next_try = info->now + mainconfig.proxy_retry_delay;
-		}
-		difference = request->proxy_next_try - info->now;
+		time_passed = mainconfig.cleanup_delay - time_passed;
 	} else {
-		/*
-		 *  The request is NOT finished.
-		 *
-		 *  Wake up when it's time to kill the errant
-		 *  thread/process.
-		 */
-		difference = (request->timestamp + mainconfig.max_request_time) - info->now;
+		time_passed = mainconfig.max_request_time - time_passed;
 	}
 
-	/*
-	 *  If the server is CPU starved, then we CAN miss a time
-	 *  for servicing requests.  In which case the 'difference'
-	 *  value will be negative.  select() doesn't like that,
-	 *  so we fix it.
-	 */
-	if (difference < 0) {
-		difference = 0;
-	}
-
-	/*
-	 *  Update the 'smallest' time.
-	 */
-	if ((info->smallest < 0) ||
-		(difference < info->smallest)) {
-		info->smallest = difference;
+ setup_timeout:
+	if (time_passed < info->sleep_time) {
+		info->sleep_time = time_passed;
 	}
 
 	return RL_WALK_CONTINUE;
@@ -1455,163 +1284,18 @@ setup_timeout:
  *  - marking any requests which are finished, and expired
  *  - killing any processes which are NOT finished after a delay
  *  - deleting any marked requests.
+ *
+ *	Returns the number of millisends to sleep, before processing
+ *	something.
  */
-struct timeval *rl_clean_list(time_t now)
+int rl_clean_list(request_list_t *rl, time_t now)
 {
-	/*
-	 *  Static variables, so that we don't do all of this work
-	 *  more than once per second.
-	 *
-	 *  Note that we have 'tv' and 'last_tv'.  'last_tv' is
-	 *  pointed to by 'last_tv_ptr', and depending on the
-	 *  system implementation of select(), it MAY be modified.
-	 *
-	 *  In that was, we want to use the ORIGINAL value, from
-	 *  'tv', and wipe out the (possibly modified) last_tv.
-	 */
-	static time_t last_cleaned_list = 0;
-	static struct timeval tv, *last_tv_ptr = NULL;
-	static struct timeval last_tv;
-
 	rl_walk_t info;
 
-	/*
-	 *	Already checked the list this second.  and there are
-	 *	no requests cached, don't do anything.
-	 */
-	if ((last_cleaned_list == now) &&
-	    (rl_num_requests() == 0)) {
-		return NULL;
-	}
-
 	info.now = now;
-	info.smallest = -1;
+	info.sleep_time = SLEEP_FOREVER;
 
-	/*
-	 *  If we've already set up the timeout or cleaned the
-	 *  request list this second, then don't do it again.  We
-	 *  simply return the sleep delay from last time.
-	 *
-	 *  Note that if we returned NULL last time, there was nothing
-	 *  to do.  BUT we've been woken up since then, which can only
-	 *  happen if we received a packet.  And if we've received a
-	 *  packet, then there's some work to do in the future.
-	 *
-	 *  FIXME: We can probably use gettimeofday() for finer clock
-	 *  resolution, as the current method will cause it to sleep
-	 *  too long...
-	 */
-	if ((last_tv_ptr != NULL) &&
-	    (last_cleaned_list == now) &&
-	    (tv.tv_sec != 0)) {
-		int i;
+	rl_walk(rl, refresh_request, &info);
 
-		/*
-		 *  If we're NOT walking the entire request list,
-		 *  then we want to iteratively check the request
-		 *  list.
-		 *
-		 *  If there is NO previous request, go look for one.
-		 */
-		if (!last_request)
-			last_request = rl_next(last_request);
-
-		/*
-		 *  On average, there will be one request per
-		 *  'cleanup_delay' requests, which needs to be
-		 *  serviced.
-		 *
-		 *  And only do this servicing, if we have a request
-		 *  to service.
-		 */
-		if (last_request)
-			for (i = 0; i < mainconfig.cleanup_delay; i++) {
-				REQUEST *next;
-
-				/*
-				 *  This function call MAY delete the
-				 *  request pointed to by 'last_request'.
-				 */
-				next = rl_next(last_request);
-				refresh_request(last_request, &info);
-				last_request = next;
-
-				/*
-				 *  Nothing to do any more, exit.
-				 */
-				if (!last_request)
-					break;
-			}
-
-		last_tv = tv;
-		return last_tv_ptr;
-	}
-	last_cleaned_list = now;
-	last_request = NULL;
-	DEBUG2("--- Walking the entire request list ---");
-
-	/*
-	 *  Hmmm... this is Big Magic.  We make it seem like
-	 *  there's an additional second to wait, for a whole
-	 *  host of reasons which I can't explain adequately,
-	 *  but which cause the code to Just Work Right.
-	 */
-	info.now--;
-
-	rl_walk(refresh_request, &info);
-
-	/*
-	 *  We haven't found a time at which we need to wake up.
-	 *  Return NULL, so that the select() call will sleep forever.
-	 */
-	if (info.smallest < 0) {
-		/*
-		 *  If we're not proxying, then there really isn't anything
-		 *  to do.
-		 *
-		 *  If we ARE proxying, then we can safely sleep
-		 *  forever if we're told to NEVER send proxy retries
-		 *  ourselves, until the NAS kicks us again.
-		 *
-		 *  Otherwise, there are no outstanding requests, then
-		 *  we can sleep forever.  This happens when we get
-		 *  woken up with a bad packet.  It's discarded, so if
-		 *  there are no live requests, we can safely sleep
-		 *  forever.
-		 */
-		if ((!mainconfig.proxy_requests) ||
-		    mainconfig.proxy_synchronous ||
-		    (rl_num_requests() == 0)) {
-			last_tv_ptr = NULL;
-			return NULL;
-		}
-
-		/*
-		 *  We ARE proxying.  In that case, we avoid a race condition
-		 *  where a child thread handling a request proxies the
-		 *  packet, and sets the retry delay.  In that case, we're
-		 *  supposed to wake up in N seconds, but we can't, as
-		 *  we're sleeping forever.
-		 *
-		 *  Instead, we prevent the problem by waking up anyhow
-		 *  at the 'proxy_retry_delay' time, even if there's
-		 *  nothing to do.  In the worst case, this will cause
-		 *  the server to wake up every N seconds, to do a small
-		 *  amount of unnecessary work.
-		 */
-		info.smallest = mainconfig.proxy_retry_delay;
-	}
-	/*
-	 *  Set the time (in seconds) for how long we're
-	 *  supposed to sleep.
-	 */
-	tv.tv_sec = info.smallest;
-	tv.tv_usec = 0;
-
-	/*
-	 *  Remember how long we should sleep for.
-	 */
-	last_tv = tv;
-	last_tv_ptr = &last_tv;
-	return last_tv_ptr;
+	return info.sleep_time;
 }

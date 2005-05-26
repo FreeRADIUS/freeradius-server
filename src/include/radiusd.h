@@ -53,6 +53,11 @@ typedef struct request_data_t request_data_t;
  */
 typedef struct rad_listen_t rad_listen_t;
 
+/*
+ *	For request lists.
+ */
+typedef struct request_list_t request_list_t;
+
 #define REQUEST_DATA_REGEX (0xadbeef00)
 #define REQUEST_MAX_REGEX (8)
 
@@ -181,6 +186,7 @@ typedef enum RAD_LISTEN_TYPE {
 
 typedef int (*rad_listen_recv_t)(rad_listen_t *, RAD_REQUEST_FUNP *, REQUEST **);
 typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
+typedef int (*rad_listen_update_t)(rad_listen_t *, time_t);
 
 
 struct rad_listen_t {
@@ -191,9 +197,11 @@ struct rad_listen_t {
 	RAD_LISTEN_TYPE	type;
 	int		fd;
 	const char	*identity;
+	request_list_t	*rl;
 
 	rad_listen_recv_t recv;
 	rad_listen_send_t send;
+	rad_listen_update_t update;
 
 	/*
 	 *	For normal sockets.

@@ -144,7 +144,6 @@ static const LRAD_NAME_NUMBER str2dest[] = {
 static const CONF_PARSER proxy_config[] = {
 	{ "retry_delay",  PW_TYPE_INTEGER, 0, &mainconfig.proxy_retry_delay, Stringify(RETRY_DELAY) },
 	{ "retry_count",  PW_TYPE_INTEGER, 0, &mainconfig.proxy_retry_count, Stringify(RETRY_COUNT) },
-	{ "synchronous",  PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_synchronous, "no" },
 	{ "default_fallback", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_fallback, "no" },
 	{ "dead_time",    PW_TYPE_INTEGER, 0, &mainconfig.proxy_dead_time, Stringify(DEAD_TIME) },
         { "post_proxy_authorize", PW_TYPE_BOOLEAN, 0, &mainconfig.post_proxy_authorize, "yes" },
@@ -460,7 +459,7 @@ static int r_mkdir(const char *part)
 		return(1);
 
 	if (mkdir(part, 0770) != 0) {
-		fprintf(stderr, "mkdir(%s) error: %s\n", part, strerror(errno));
+		radlog(L_ERR, "mkdir(%s) error: %s\n", part, strerror(errno));
 		return(1);
 	}
 
