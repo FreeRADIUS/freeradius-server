@@ -144,6 +144,11 @@ static int common_checks(rad_listen_t *listener,
 		 *	error.
 		 */
 		if (mainconfig.max_requests) {
+			/*
+			 *	FIXME: This is now per-socket,
+			 *	when it should really be global
+			 *	to the server!
+			 */
 			int request_count = rl_num_requests(listener->rl);
 
 			/*
@@ -1187,7 +1192,7 @@ static int detail_recv(rad_listen_t *listener,
 	 *	problem.
 	 */
  alloc_packet:
-	packet = rad_alloc(0);
+	packet = rad_alloc(1);
 	if (!packet) {
 		return 0;	/* maybe memory will magically free up... */
 	}
@@ -1315,7 +1320,7 @@ static int detail_parse(const char *filename, int lineno,
 	
 	rcode = cf_item_parse(cs, "max_outstanding",
 			      PW_TYPE_INTEGER,
-			      &(this->max_outstanding), "0");
+			      &(this->max_outstanding), "100");
 	if (rcode < 0) return -1;
 	if (this->max_outstanding > 0) {
 		this->outstanding = rad_malloc(sizeof(int) * this->max_outstanding);
