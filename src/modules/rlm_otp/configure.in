@@ -1,7 +1,7 @@
 AC_PREREQ([2.53])
-AC_INIT(x99_rlm.c)
+AC_INIT(otp_rlm.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_x99_token])
+AC_DEFUN(modname,[rlm_otp])
 
 SMART_CFLAGS=
 if test x$with_[]modname != xno; then
@@ -36,10 +36,10 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-x99_token_cflags="$x99_token_cflags -DX99_MODULE_NAME=\\\"modname\\\" $SMART_CFLAGS"
-x99_token_cflags="$x99_token_cflags -DFREERADIUS"
-AC_SUBST(x99_token_cflags)
-AC_SUBST(x99_token_ldflags)
+otp_cflags="$otp_cflags -DOTP_MODULE_NAME=\\\"modname\\\" $SMART_CFLAGS"
+otp_cflags="$otp_cflags -DFREERADIUS"
+AC_SUBST(otp_cflags)
+AC_SUBST(otp_ldflags)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_OUTPUT(Makefile)  # keep this!  Don't change!

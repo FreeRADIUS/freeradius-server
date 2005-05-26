@@ -1609,8 +1609,8 @@ $INCLUDE ${confdir}/eap.conf
 		#key = "%{NAS-IP-Address} %{NAS-Port}"
 	}
 
-	# ANSI X9.9 token support.  Not included by default.
-	# $INCLUDE  ${confdir}/x99.conf
+	# OTP token support.  Not included by default.
+	# $INCLUDE  ${confdir}/otp.conf
 
 	#
 	#  Implements Login-Time, Current-Time, and Time-Of-Day

@@ -1,5 +1,5 @@
 /*
- * x99_mac.c
+ * otp_x99.c
  * $Id$
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -20,7 +20,7 @@
  * Copyright 2005 Frank Cusack
  */
 
-#include "x99.h"
+#include "otp.h"
 
 #include <string.h>
 #include <openssl/des.h>
@@ -44,12 +44,12 @@ static const char rcsid[] = "$Id$";
  * MACs should be supported).  Returns 0 on success, non-zero otherwise.
  */
 int
-x99_mac(const unsigned char *input, size_t len, unsigned char output[8],
-	unsigned char keyblock[X99_MAX_KEY_LEN])
+otp_x99_mac(const unsigned char *input, size_t len, unsigned char output[8],
+	    unsigned char keyblock[OTP_MAX_KEY_LEN])
 {
     des_key_schedule ks;
     des_cblock ivec;
-    des_cblock l_output[MAX_CHALLENGE_LEN / sizeof(des_cblock)];
+    des_cblock l_output[OTP_MAX_CHALLENGE_LEN / sizeof(des_cblock)];
     int rc;
 
     /*
@@ -62,7 +62,7 @@ x99_mac(const unsigned char *input, size_t len, unsigned char output[8],
      * TODO: store in user_info after generating
      */
     if ((rc = des_set_key_checked((const_des_cblock *) keyblock, ks)) != 0) {
-	x99_log(X99_LOG_ERR, "x99_mac: DES key %s",
+	otp_log(OTP_LOG_ERR, "otp_x99_mac: DES key %s",
 		rc == -1 ? "has incorrect parity" : "is weak");
 	return -1;
     }

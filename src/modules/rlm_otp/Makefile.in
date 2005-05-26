@@ -21,12 +21,12 @@
 #
 #######################################################################
 TARGET         = @targetname@
-SRCS           = x99_rlm.c x99_util.c x99_state.c x99_mac.c x99_sync.c
-SRCS          += x99_site.c x99_pwe.c x99_log.c x99_cardops.c
-HEADERS        = x99.h x99_rad.h x99_sync.h x99_pwe.h x99_cardops.h
-RLM_CFLAGS     = @x99_token_cflags@ $(OPENSSL_INCLUDE)
+SRCS           = otp_rlm.c otp_util.c otp_radstate.c otp_x99.c otp_sync.c
+SRCS          += otp_site.c otp_pwe.c otp_log.c otp_cardops.c
+HEADERS        = otp.h otp_rad.h otp_sync.h otp_pwe.h otp_cardops.h
+RLM_CFLAGS     = @otp_cflags@ $(OPENSSL_INCLUDE)
 CARDOPS_LTLIBS = $(patsubst %.c,%.lo,$(wildcard cardops/*.c))
-RLM_LIBS       = @x99_token_ldflags@ $(OPENSSL_LIBS) $(CARDOPS_LTLIBS)
+RLM_LIBS       = @otp_ldflags@ $(OPENSSL_LIBS) $(CARDOPS_LTLIBS)
 
 RLM_SUBDIRS = cardops
 

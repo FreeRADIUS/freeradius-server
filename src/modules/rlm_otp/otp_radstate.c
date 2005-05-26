@@ -1,5 +1,5 @@
 /*
- * x99_state.c
+ * otp_radstate.c
  * $Id$
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 #define _LRAD_MD4_H
 #define _LRAD_SHA1_H
 #endif
-#include "x99.h"
+#include "otp.h"
 
 #include <string.h>
 #include <openssl/des.h> /* des_cblock */
@@ -68,9 +68,9 @@ static const char rcsid[] = "$Id$";
  * the challenge, 'flags' is a 32-bit value that can be used to record
  * additional info, 'time' is the 32-bit time (LSB if time_t is 64 bits)
  * in network byte order, and 'key' is a random key, generated in
- * x99_token_init().  This means that only the server which generates
- * a challenge can verify it; this should be OK if your NAS's load balance
- * across RADIUS servers by a "first available" algorithm.  If your
+ * otp_init().  This means that only the server which generates a
+ * challenge can verify it; this should be OK if your NAS's load balance
+ * across RADIUS servers using a "first available" algorithm.  If your
  * NAS's round-robin (ugh), you could use the RADIUS secret instead, but
  * read RFC 2104 first, and make very sure you really want to do this.
  *
@@ -81,8 +81,8 @@ static const char rcsid[] = "$Id$";
  * not a good idea; or reading from a file, which might be OK.)
  */
 int
-x99_gen_state(char **ascii_state, unsigned char **raw_state,
-	      const char challenge[MAX_CHALLENGE_LEN + 1], int32_t flags,
+otp_gen_state(char **ascii_state, unsigned char **raw_state,
+	      const char challenge[OTP_MAX_CHALLENGE_LEN + 1], int32_t flags,
 	      int32_t when, const unsigned char key[16])
 {
     HMAC_CTX hmac_ctx;
@@ -131,8 +131,8 @@ x99_gen_state(char **ascii_state, unsigned char **raw_state,
 	p = *ascii_state + 2;
 
 	/* Add the challenge. */
-	for (i = 0; i < MAX_CHALLENGE_LEN / sizeof(des_cblock); ++i) {
-	    x99_keyblock2keystring(p, challenge, x99_hex_conversion);
+	for (i = 0; i < OTP_MAX_CHALLENGE_LEN / sizeof(des_cblock); ++i) {
+	    otp_keyblock2keystring(p, challenge, otp_hex_conversion);
 	    if (strlen(challenge) > sizeof(des_cblock)) {
 		challenge += sizeof(des_cblock);
 		p += 2 * sizeof(des_cblock);
@@ -147,14 +147,14 @@ x99_gen_state(char **ascii_state, unsigned char **raw_state,
 	    des_cblock cblock;
 	    (void) memcpy(cblock, &flags, 4);
 	    (void) memcpy(&cblock[4], &when, 4);
-	    x99_keyblock2keystring(p, cblock, x99_hex_conversion);
+	    otp_keyblock2keystring(p, cblock, otp_hex_conversion);
 	}
 	p += 16;
 
 	/* Add the hmac. */
-	x99_keyblock2keystring(p, hmac, x99_hex_conversion);
+	otp_keyblock2keystring(p, hmac, otp_hex_conversion);
 	p += 16;
-	x99_keyblock2keystring(p, &hmac[8], x99_hex_conversion);
+	otp_keyblock2keystring(p, &hmac[8], otp_hex_conversion);
 	p += 16;
 	*p = '\0';
     }

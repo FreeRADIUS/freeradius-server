@@ -21,8 +21,8 @@
 
 #include <string.h>
 
-#include "../x99.h"
-#include "../x99_cardops.h"
+#include "../otp.h"
+#include "../otp_cardops.h"
 #include "cryptocard.h"
 
 /* Card name to feature mask mappings */
@@ -77,7 +77,7 @@ cryptocard_keystring2keyblock(const char *keystring, unsigned char keyblock[])
     if ((strlen(keystring) & ~1) != 16)
 	return 1;
 
-    return x99_keystring2keyblock(keystring, keyblock);
+    return otp_keystring2keyblock(keystring, keyblock);
 }
 
 
@@ -86,27 +86,27 @@ cryptocard_keystring2keyblock(const char *keystring, unsigned char keyblock[])
  * Returns 0 on success, non-zero otherwise.
  */
 static int
-cryptocard_challenge(const char *syncdir, x99_user_info_t *user_info,
+cryptocard_challenge(const char *syncdir, otp_user_info_t *user_info,
 		     int ewin,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
 		     int twin,
-		     char challenge[MAX_CHALLENGE_LEN + 1])
+		     char challenge[OTP_MAX_CHALLENGE_LEN + 1])
 {
     unsigned char output[8];
     int i, rc = -1;
 
     if (ewin == 0) {
 	/* Return currently stored next challenge. */
-	return x99_get_sync_challenge(syncdir, user_info->username, challenge);
+	return otp_get_sync_challenge(syncdir, user_info->username, challenge);
 
     } else if (challenge[0]) {
 	/* iterate once on the supplied challenge */
 	ewin = 1;
     } else {
 	/* iterate ewin times on the stored next challenge */
-	rc = x99_get_sync_challenge(syncdir, user_info->username, challenge);
+	rc = otp_get_sync_challenge(syncdir, user_info->username, challenge);
 	if (rc)
 	    return rc;
     }
@@ -116,7 +116,8 @@ __attribute__ ((unused))
     }
 
     while (ewin--) {
-	if ((rc = x99_mac(challenge, 8, output, user_info->keyblock)) == 0) {
+	if ((rc = otp_x99_mac(challenge, 8, output,
+			      user_info->keyblock)) == 0) {
 	    /* convert the mac into the next challenge */
 	    for (i = 0; i < 8; ++i) {
 		output[i] &= 0x0f;
@@ -154,30 +155,31 @@ __attribute__ ((unused))
  * 5. Truncate the response for 7 digit display modes.
  */
 static int
-cryptocard_response(x99_user_info_t *user_info, const char *challenge,
-		    char response[X99_MAX_RESPONSE_LEN + 1])
+cryptocard_response(otp_user_info_t *user_info, const char *challenge,
+		    char response[OTP_MAX_RESPONSE_LEN + 1])
 {
     unsigned char output[8];
     char l_response[17];
     const char *conversion;
 
     /* Step 1, 2. */
-    if (x99_mac(challenge, strlen(challenge), output, user_info->keyblock) !=0)
+    if (otp_x99_mac(challenge, strlen(challenge), output,
+		    user_info->keyblock) !=0)
 	return 1;
 
     /* Setup for step 4. */
-    if (user_info->featuremask & X99_CF_DD)
-	conversion = x99_cc_dec_conversion;
+    if (user_info->featuremask & OTP_CF_DD)
+	conversion = otp_cc_dec_conversion;
     else
-	conversion = x99_hex_conversion;
+	conversion = otp_hex_conversion;
 
     /* Step 3, 4. */
-    x99_keyblock2keystring(l_response, output, conversion);
+    otp_keyblock2keystring(l_response, output, conversion);
     (void) memcpy(response, l_response, 8);
     response[8] = '\0';
 
     /* Step 5. */
-    if (user_info->featuremask & X99_CF_R7)
+    if (user_info->featuremask & OTP_CF_R7)
 	(void) memmove(&response[3], &response[4], 5);
 
     return 0;
@@ -199,11 +201,11 @@ static cardops_t cryptocard_cardops = {
 void
 cryptocard_init(void)
 {
-    if (x99_num_cardops == X99_MAX_VENDORS) {
-	x99_log(X99_LOG_ERR, "cryptocard_init: module limit exceeded");
+    if (otp_num_cardops == OTP_MAX_VENDORS) {
+	otp_log(OTP_LOG_ERR, "cryptocard_init: module limit exceeded");
 	return;
     }
 
-    x99_cardops[x99_num_cardops++] = cryptocard_cardops;
-    x99_log(X99_LOG_DEBUG, "cryptocard_init: loaded");
+    otp_cardops[otp_num_cardops++] = cryptocard_cardops;
+    otp_log(OTP_LOG_DEBUG, "cryptocard_init: loaded");
 }

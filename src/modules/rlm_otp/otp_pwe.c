@@ -1,5 +1,5 @@
 /*
- * x99_pwe.c
+ * otp_pwe.c
  * $Id$
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -31,8 +31,8 @@
 #define _LRAD_SHA1_H
 #include "rad_assert.h"
 #endif
-#include "x99.h"
-#include "x99_pwe.h"
+#include "otp.h"
+#include "otp_pwe.h"
 
 #include <openssl/des.h>
 #include <openssl/md4.h>
@@ -50,7 +50,7 @@ static int pwattr[8];
 
 /* Initialize the pwattr array for supported password encodings. */
 void
-x99_pwe_init(void)
+otp_pwe_init(void)
 {
     DICT_ATTR *da;
     int i = 0;
@@ -102,23 +102,23 @@ x99_pwe_init(void)
 /*
  * Test for password presence in an Access-Request packet.
  * Returns 0 for "no supported password present", or an non-zero
- * opaque value that must be used when calling x99_pwe_cmp().
+ * opaque value that must be used when calling otp_pwe_cmp().
  */
 int
-x99_pwe_present(const REQUEST *request)
+otp_pwe_present(const REQUEST *request)
 {
     unsigned i;
 
     for (i = 0; i < sizeof(pwattr) && pwattr[i]; i += 2) {
 	if (pairfind(request->packet->vps, pwattr[i]) &&
 	    pairfind(request->packet->vps, pwattr[i + 1])) {
-	    DEBUG("rlm_x99_token: pwe_present: password attributes %d, %d",
+	    DEBUG("rlm_otp: pwe_present: password attributes %d, %d",
 		   pwattr[i], pwattr[i + 1]);
 	    return i + 1; /* Can't return 0 (indicates failure) */
 	}
     }
 
-    DEBUG("rlm_x99_token: pwe_present: no password attributes present");
+    DEBUG("rlm_otp: pwe_present: no password attributes present");
     return 0;
 }
 
@@ -131,10 +131,10 @@ x99_pwe_present(const REQUEST *request)
  * the caller is responsible for freeing any vps returned.
  */
 int
-x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
+otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
 {
     const REQUEST *request	= data->request;
-    const x99_token_t *inst	= data->inst;
+    const otp_option_t *inst	= data->inst;
     int attr			= data->pwattr;
     VALUE_PAIR **vps		= data->returned_vps;
 
@@ -143,7 +143,7 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 
     /*
      * A module that does this might want to verify the presence of these.
-     * This code is self contained to x99, so I know these exist.
+     * This code is self contained to otp, so I know these exist.
      */
     chal_vp = pairfind(request->packet->vps, pwattr[attr - 1]);
     resp_vp = pairfind(request->packet->vps, pwattr[attr]);
@@ -155,7 +155,7 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
     /* If modular, this would actually call the authentication function. */
     switch(pwattr[attr]) {
     case PW_PASSWORD:
-	DEBUG("rlm_x99_token: pwe_cmp: handling PW_PASSWORD");
+	DEBUG("rlm_otp: pwe_cmp: handling PW_PASSWORD");
 	nmatch = strcmp(password, resp_vp->strvalue);
 	break;
 
@@ -177,14 +177,14 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 	unsigned char input[1 + MAX_STRING_LEN + 16];
 	unsigned char output[MD5_DIGEST_LENGTH];
 
-	DEBUG("rlm_x99_token: pwe_cmp: handling PW_CHAP_PASSWORD");
+	DEBUG("rlm_otp: pwe_cmp: handling PW_CHAP_PASSWORD");
 	if (1 + strlen(password) + chal_vp->length > sizeof(input)) {
-	    DEBUG("rlm_x99_token: pwe_cmp: CHAP-Challenge/password too long");
+	    DEBUG("rlm_otp: pwe_cmp: CHAP-Challenge/password too long");
 	    nmatch = -1;
 	    break;
 	}
 	if (resp_vp->length != 17) {
-	    x99_log(X99_LOG_AUTH, "pwe_cmp: CHAP-Password wrong size");
+	    otp_log(OTP_LOG_AUTH, "pwe_cmp: CHAP-Password wrong size");
 	    nmatch = -1;
 	    break;
 	}
@@ -222,26 +222,26 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 	int password_len, i;
 	VALUE_PAIR *vp;
 
-	DEBUG("rlm_x99_token: pwe_cmp: handling PW_MS_CHAP_RESPONSE");
+	DEBUG("rlm_otp: pwe_cmp: handling PW_MS_CHAP_RESPONSE");
 	if (chal_vp->length != 8) {
-	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAP-Challenge wrong size");
+	    otp_log(OTP_LOG_AUTH, "pwe_cmp: MS-CHAP-Challenge wrong size");
 	    nmatch = -1;
 	    break;
 	}
 	if (resp_vp->length != 50) {
-	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAP-Response wrong size");
+	    otp_log(OTP_LOG_AUTH, "pwe_cmp: MS-CHAP-Response wrong size");
 	    nmatch = -1;
 	    break;
 	}
 	if ((resp_vp->strvalue)[1] != 1) {
-	    x99_log(X99_LOG_AUTH,
+	    otp_log(OTP_LOG_AUTH,
 		    "pwe_cmp: MS-CHAP-Response bad flags (LM not supported)");
 	    nmatch = -1;
 	    break;
 	}
 	/* This is probably overkill. */
 	if (strlen(password) > MAX_STRING_LEN) {
-	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAP password too long");
+	    otp_log(OTP_LOG_AUTH, "pwe_cmp: MS-CHAP password too long");
 	    nmatch = -1;
 	    break;
 	}
@@ -269,7 +269,7 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 	    des_cblock key;
 	    des_key_schedule ks;
 
-	    x99_key_from_hash(&key, &nt_keys[i * 7]);
+	    otp_key_from_hash(&key, &nt_keys[i * 7]);
 	    des_set_key_unchecked(&key, ks);
 	    des_ecb_encrypt((des_cblock *) input,
 			    (des_cblock *) &output[i * 8],
@@ -293,11 +293,11 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 
 	/* First, set some related attributes. */
 	vp = pairmake("MS-MPPE-Encryption-Policy",
-		      x99_mppe_policy[inst->mschap_mppe_policy], T_OP_EQ);
+		      otp_mppe_policy[inst->mschap_mppe_policy], T_OP_EQ);
 	rad_assert(vp != NULL);
 	pairadd(vps, vp);
 	vp = pairmake("MS-MPPE-Encryption-Types",
-		      x99_mppe_types[inst->mschap_mppe_types], T_OP_EQ);
+		      otp_mppe_types[inst->mschap_mppe_types], T_OP_EQ);
 	rad_assert(vp != NULL);
 	pairadd(vps, vp);
 
@@ -366,20 +366,20 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 	unsigned password_len, i;
 	VALUE_PAIR *vp;
 
-	DEBUG("rlm_x99_token: pwe_cmp: handling PW_MS_CHAP2_RESPONSE");
+	DEBUG("rlm_otp: pwe_cmp: handling PW_MS_CHAP2_RESPONSE");
 	if (chal_vp->length != 16) {
-	    x99_log(X99_LOG_AUTH,"pwe_cmp: MS-CHAP-Challenge (v2) wrong size");
+	    otp_log(OTP_LOG_AUTH,"pwe_cmp: MS-CHAP-Challenge (v2) wrong size");
 	    nmatch = -1;
 	    break;
 	}
 	if (resp_vp->length != 50) {
-	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAP2-Response wrong size");
+	    otp_log(OTP_LOG_AUTH, "pwe_cmp: MS-CHAP2-Response wrong size");
 	    nmatch = -1;
 	    break;
 	}
 	/* This is probably overkill. */
 	if (strlen(password) > MAX_STRING_LEN) {
-	    x99_log(X99_LOG_AUTH, "pwe_cmp: MS-CHAPv2 password too long");
+	    otp_log(OTP_LOG_AUTH, "pwe_cmp: MS-CHAPv2 password too long");
 	    nmatch = -1;
 	    break;
 	}
@@ -420,7 +420,7 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 	    des_cblock key;
 	    des_key_schedule ks;
 
-	    x99_key_from_hash(&key, &nt_keys[i * 7]);
+	    otp_key_from_hash(&key, &nt_keys[i * 7]);
 	    des_set_key_unchecked(&key, ks);
 	    des_ecb_encrypt((des_cblock *) input,
 			    (des_cblock *) &output[i * 8],
@@ -539,11 +539,11 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
 
 	/* First, set some related attributes. */
 	vp = pairmake("MS-MPPE-Encryption-Policy",
-		      x99_mppe_policy[inst->mschapv2_mppe_policy], T_OP_EQ);
+		      otp_mppe_policy[inst->mschapv2_mppe_policy], T_OP_EQ);
 	rad_assert(vp != NULL);
 	pairadd(vps, vp);
 	vp = pairmake("MS-MPPE-Encryption-Types",
-		      x99_mppe_types[inst->mschapv2_mppe_types], T_OP_EQ);
+		      otp_mppe_types[inst->mschapv2_mppe_types], T_OP_EQ);
 	rad_assert(vp != NULL);
 	pairadd(vps, vp);
 
@@ -729,7 +729,7 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
     break;
 
     default:
-	DEBUG("rlm_x99_token: pwe_cmp: unknown password type");
+	DEBUG("rlm_otp: pwe_cmp: unknown password type");
 	nmatch = -1;
 	break;
 
@@ -746,7 +746,7 @@ x99_pwe_cmp(struct x99_pwe_cmp_t *data, const char *password)
  * We don't bother checking/setting parity.
  */
 static void
-x99_key_from_hash(des_cblock *key, const unsigned char hashbytes[7])
+otp_key_from_hash(des_cblock *key, const unsigned char hashbytes[7])
 {
     int i;
     unsigned char working;

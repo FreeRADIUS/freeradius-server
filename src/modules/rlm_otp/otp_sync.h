@@ -1,5 +1,5 @@
 /*
- * x99_log.c
+ * otp_sync.h
  * $Id$
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -16,42 +16,23 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2002  Google, Inc.
+ * Copyright 2001,2002  Google, Inc.
+ * Copyright 2005 Frank Cusack
  */
 
-#include "x99.h"
+#ifndef OTP_SYNC_H
+#define OTP_SYNC_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#ifdef PAM
-#include <syslog.h>
-#endif
+static int otp_get_failcount(const char *syncdir, const char *username,
+			     int *failcount);
+static char *otp_acquire_sd_lock(const char *syncdir, const char *username);
+static void otp_release_sd_lock(char *lockfile);
 
-static const char rcsid[] = "$Id$";
+static int otp_get_sd(const char *syncdir, const char *username,
+		      char challenge[OTP_MAX_CHALLENGE_LEN + 1], int *failures,
+		      time_t *last_async, unsigned *pos);
+static int otp_set_sd(const char *syncdir, const char *username,
+		      const char *challenge, int failures, time_t last_async,
+		      unsigned pos);
 
-void
-x99_log(int level, const char *format, ...)
-{
-    va_list ap;
-    char *fmt;
-
-    va_start(ap, format);
-    fmt = malloc(strlen(X99_MODULE_NAME) + strlen(format) + 3);
-    if (!fmt) {
-	va_end(ap);
-	return;
-    }
-    (void) sprintf(fmt, "%s: %s", X99_MODULE_NAME, format);
-
-#ifdef FREERADIUS
-    (void) vradlog(level, fmt, ap);
-#else
-    vsyslog(level, fmt, ap);
-#endif
-
-    va_end(ap);
-    free(fmt);
-}
-
+#endif /* OTP_SYNC_H */

@@ -1,5 +1,5 @@
 /*
- * x99_util.c	
+ * otp_util.c	
  * $Id$
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -17,9 +17,10 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001,2002  Google, Inc.
+ * Copyright 2005 Frank Cusack
  */
 
-#include "x99.h"
+#include "otp.h"
 
 #include <errno.h>
 #include <stdlib.h>
@@ -41,7 +42,7 @@ static const char rcsid[] = "$Id$";
  * Returns 0 on success, -1 on failure, rnd_data is filled in.
  */
 int
-x99_get_random(int fd, unsigned char *rnd_data, int req_bytes)
+otp_get_random(int fd, unsigned char *rnd_data, int req_bytes)
 {
     int bytes_read = 0;
 
@@ -50,8 +51,8 @@ x99_get_random(int fd, unsigned char *rnd_data, int req_bytes)
 
 	n = read(fd, rnd_data + bytes_read, req_bytes - bytes_read);
 	if (n <= 0) {
-	    x99_log(X99_LOG_ERR, "x99_get_random: error reading from %s: %s",
-		    DEVURANDOM, strerror(errno));
+	    otp_log(OTP_LOG_ERR, "otp_get_random: error reading from %s: %s",
+		    OTP_DEVURANDOM, strerror(errno));
 	    return -1;
 	}
 	bytes_read += n;
@@ -68,21 +69,21 @@ x99_get_random(int fd, unsigned char *rnd_data, int req_bytes)
  * Returns 0 on success, -1 on failure.
  */
 int
-x99_get_challenge(int fd, char *challenge, int len)
+otp_get_challenge(int fd, char *challenge, int len)
 {
-    unsigned char rawchallenge[MAX_CHALLENGE_LEN];
+    unsigned char rawchallenge[OTP_MAX_CHALLENGE_LEN];
     int i;
 
     if (fd == -1) {
-	if ((fd = open(DEVURANDOM, O_RDONLY)) == -1) {
-	    x99_log(X99_LOG_ERR, "error opening %s: %s", DEVURANDOM,
-		    strerror(errno));
+	if ((fd = open(OTP_DEVURANDOM, O_RDONLY)) == -1) {
+	    otp_log(OTP_LOG_ERR, "otp_get_challenge: error opening %s: %s",
+		    OTP_DEVURANDOM, strerror(errno));
 	    return -1;
 	}
     }
 
-    if (x99_get_random(fd, rawchallenge, len) == -1) {
-	x99_log(X99_LOG_ERR, "failed to obtain random data");
+    if (otp_get_random(fd, rawchallenge, len) == -1) {
+	otp_log(OTP_LOG_ERR, "otp_get_challenge: failed to obtain random data");
 	return -1;
     }
     /* Convert the raw bytes to a decimal string. */
@@ -99,7 +100,7 @@ x99_get_challenge(int fd, char *challenge, int len)
  * keyblock is filled in.  Returns 0 on success, -1 otherwise.
  */
 int
-x99_keystring2keyblock(const char *s, unsigned char keyblock[])
+otp_keystring2keyblock(const char *s, unsigned char keyblock[])
 {
     unsigned i;
     size_t l = strlen(s) & ~1;	/* ignore possible trailing newline */
@@ -150,10 +151,10 @@ x99_keystring2keyblock(const char *s, unsigned char keyblock[])
 
 
 /* Character maps for generic hex and vendor specific decimal modes */
-const char x99_hex_conversion[]         = "0123456789abcdef";
-const char x99_cc_dec_conversion[]      = "0123456789012345";
-const char x99_snk_dec_conversion[]     = "0123456789222333";
-const char x99_sc_friendly_conversion[] = "0123456789ahcpef";
+const char otp_hex_conversion[]         = "0123456789abcdef";
+const char otp_cc_dec_conversion[]      = "0123456789012345";
+const char otp_snk_dec_conversion[]     = "0123456789222333";
+const char otp_sc_friendly_conversion[] = "0123456789ahcpef";
 
 /*
  * Convert a DES keyblock to an ASCII string.
@@ -162,7 +163,7 @@ const char x99_sc_friendly_conversion[] = "0123456789ahcpef";
  * add a NULL string terminator and you get the 17 byte requirement.
  */
 void
-x99_keyblock2keystring(char *s, const des_cblock keyblock,
+otp_keyblock2keystring(char *s, const des_cblock keyblock,
 		       const char conversion[17])
 {
     int i;
@@ -184,8 +185,8 @@ x99_keyblock2keystring(char *s, const des_cblock keyblock,
  * returns 0 on success, -1 for user not found, -2 for other errors.
  */
 int
-x99_get_user_info(const char *pwdfile, const char *username,
-		  x99_user_info_t *user_info)
+otp_get_user_info(const char *pwdfile, const char *username,
+		  otp_user_info_t *user_info)
 {
     FILE *fp;
     char s[80];
@@ -195,18 +196,18 @@ x99_get_user_info(const char *pwdfile, const char *username,
 
     /* Verify permissions first. */
     if (stat(pwdfile, &st) != 0) {
-	x99_log(X99_LOG_ERR, "x99_get_user_info: pwdfile %s error: %s",
+	otp_log(OTP_LOG_ERR, "otp_get_user_info: pwdfile %s error: %s",
 		pwdfile, strerror(errno));
 	return -2;
     }
     if ((st.st_mode & (S_IXUSR|S_IRWXG|S_IRWXO)) != 0) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_user_info: pwdfile %s has loose permissions", pwdfile);
+	otp_log(OTP_LOG_ERR,
+		"otp_get_user_info: pwdfile %s has loose permissions", pwdfile);
 	return -2;
     }
 
     if ((fp = fopen(pwdfile, "r")) == NULL) {
-	x99_log(X99_LOG_ERR, "x99_get_user_info: error opening %s: %s",
+	otp_log(OTP_LOG_ERR, "otp_get_user_info: error opening %s: %s",
 		pwdfile, strerror(errno));
 	return -2;
     }
@@ -217,7 +218,7 @@ x99_get_user_info(const char *pwdfile, const char *username,
      */
     p = malloc(strlen(username) + 2);
     if (!p) {
-	x99_log(X99_LOG_CRIT, "x99_get_user_info: out of memory");
+	otp_log(OTP_LOG_CRIT, "otp_get_user_info: out of memory");
 	return -2;
     }
     (void) sprintf(p, "%s:", username);
@@ -225,8 +226,8 @@ x99_get_user_info(const char *pwdfile, const char *username,
     while (!feof(fp)) {
 	if (fgets(s, sizeof(s), fp) == NULL) {
 	    if (!feof(fp)) {
-		x99_log(X99_LOG_ERR,
-			"x99_get_user_info: error reading from %s: %s",
+		otp_log(OTP_LOG_ERR,
+			"otp_get_user_info: error reading from %s: %s",
 			pwdfile, strerror(errno));
 		(void) fclose(fp);
 		free(p);
@@ -242,7 +243,7 @@ x99_get_user_info(const char *pwdfile, const char *username,
     if (!found) {
 #if 0
 	/* Noisy ... let the caller report this. */
-	x99_log(X99_LOG_AUTH, "x99_get_user_info: [%s] not found in %s",
+	otp_log(OTP_LOG_AUTH, "otp_get_user_info: [%s] not found in %s",
 		username, pwdfile);
 #endif
 	return -1;
@@ -250,16 +251,16 @@ x99_get_user_info(const char *pwdfile, const char *username,
 
     /* Found him, skip to next field (card). */
     if ((p = strchr(s, ':')) == NULL) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_user_info: invalid format for [%s] in %s",
+	otp_log(OTP_LOG_ERR,
+		"otp_get_user_info: invalid format for [%s] in %s",
 		username, pwdfile);
 	return -2;
     }
     p++;
     /* strtok() */
     if ((q = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_user_info: invalid format for [%s] in %s",
+	otp_log(OTP_LOG_ERR,
+		"otp_get_user_info: invalid format for [%s] in %s",
 		username, pwdfile);
 	return -2;
     }
@@ -272,11 +273,11 @@ x99_get_user_info(const char *pwdfile, const char *username,
      * Rather than run through the card name twice here (strlen() + strcpy()),
      * we'll just depend on cardops to ferret out invalid names.
      */
-    (void) strncpy(user_info->card, p, X99_MAX_CARDNAME_LEN);
-    user_info->card[X99_MAX_CARDNAME_LEN] = '\0';
+    (void) strncpy(user_info->card, p, OTP_MAX_CARDNAME_LEN);
+    user_info->card[OTP_MAX_CARDNAME_LEN] = '\0';
     /* NOTE: keystring includes possible trailing newline */
-    (void) strncpy(user_info->keystring, q, X99_MAX_KEY_LEN * 2);
-    user_info->keystring[X99_MAX_KEY_LEN * 2] = '\0';
+    (void) strncpy(user_info->keystring, q, OTP_MAX_KEY_LEN * 2);
+    user_info->keystring[OTP_MAX_KEY_LEN * 2] = '\0';
 
     return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * x99_pwe.h
+ * otp_pwe.h
  * $Id$
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -17,10 +17,11 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001,2002  Google, Inc.
+ * Copyright 2005 Frank Cusack
  */
 
-#ifndef X99_PWE_H
-#define X99_PWE_H
+#ifndef OTP_PWE_H
+#define OTP_PWE_H
 
 /* Some hardcoding here ... because not all types have #defines */
 #define PW_MS_CHAP_CHALLENGE  ((311 << 16) | 11)
@@ -38,17 +39,17 @@
 #define MPPE_ENC_TYPES_RC4_40_128 "0x00000006"
 
 /* Translate the above into something easily usable. */
-static const char *x99_mppe_policy[3] = {
+static const char *otp_mppe_policy[3] = {
     MPPE_ENC_POL_ENCRYPTION_FORBIDDEN,
     MPPE_ENC_POL_ENCRYPTION_ALLOWED,
     MPPE_ENC_POL_ENCRYPTION_REQUIRED };
 
-static const char *x99_mppe_types[3] = {
+static const char *otp_mppe_types[3] = {
     MPPE_ENC_TYPES_RC4_40,
     MPPE_ENC_TYPES_RC4_128,
     MPPE_ENC_TYPES_RC4_40_128 };
 
-static void x99_key_from_hash(des_cblock *key,const unsigned char hashbytes[7]);
+static void otp_key_from_hash(des_cblock *key,const unsigned char hashbytes[7]);
 
-#endif /* X99_PWE_H */
+#endif /* OTP_PWE_H */
 

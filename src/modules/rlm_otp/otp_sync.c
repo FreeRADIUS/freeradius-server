@@ -1,5 +1,5 @@
 /*
- * x99_sync.c
+ * otp_sync.c
  * $Id$
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -20,8 +20,8 @@
  * Copyright 2005 Frank Cusack
  */
 
-#include "x99.h"
-#include "x99_sync.h"
+#include "otp.h"
+#include "otp_sync.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -51,16 +51,16 @@ static const char rcsid[] = "$Id$";
  * Returns 0 on success, non-zero otherwise.
  */
 int
-x99_get_sync_challenge(const char *syncdir, const char *username,
-		       char challenge[MAX_CHALLENGE_LEN + 1])
+otp_get_sync_challenge(const char *syncdir, const char *username,
+		       char challenge[OTP_MAX_CHALLENGE_LEN + 1])
 {
     int rc;
     char *lock;
 
-    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+    if ((lock = otp_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
-    rc = x99_get_sd(syncdir, username, challenge, NULL, NULL, NULL);
-    x99_release_sd_lock(lock);
+    rc = otp_get_sd(syncdir, username, challenge, NULL, NULL, NULL);
+    otp_release_sd_lock(lock);
     return rc;
 }
 
@@ -81,7 +81,7 @@ x99_get_sync_challenge(const char *syncdir, const char *username,
  *            key changes for successive challenges. (NOT IMPLEMENTED)
  */
 int
-x99_set_sync_data(const char *syncdir, const char *username,
+otp_set_sync_data(const char *syncdir, const char *username,
 		  const char *challenge,
 #ifdef __GNUC__
 __attribute__ ((unused))
@@ -91,11 +91,11 @@ __attribute__ ((unused))
     int rc;
     char *lock;
 
-    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+    if ((lock = otp_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
 
-    rc = x99_set_sd(syncdir, username, challenge, 0, time(NULL), 0);
-    x99_release_sd_lock(lock);
+    rc = otp_set_sd(syncdir, username, challenge, 0, time(NULL), 0);
+    otp_release_sd_lock(lock);
     return rc;
 }
 
@@ -105,42 +105,42 @@ __attribute__ ((unused))
  * Returns 0 on success, non-zero otherwise.
  */
 int
-x99_get_last_auth(const char *syncdir, const char *username, time_t *last_auth)
+otp_get_last_auth(const char *syncdir, const char *username, time_t *last_auth)
 {
     int rc;
     char *lock;
 
-    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+    if ((lock = otp_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
-    rc = x99_get_sd(syncdir, username, NULL, NULL, last_auth, NULL);
-    x99_release_sd_lock(lock);
+    rc = otp_get_sd(syncdir, username, NULL, NULL, last_auth, NULL);
+    otp_release_sd_lock(lock);
     return rc;
 }
 
 /*
  * Set the last auth time for a user to "now".
  * Returns 0 on success, non-zero otherwise.
- * Note that x99_set_sync_data() also resets the auth time.
+ * Note that otp_set_sync_data() also resets the auth time.
  * This function is no longer called, (the failcount() routines do this work),
  * but I'm saving it here for reference.
  */
 int
-x99_upd_last_auth(const char *syncdir, const char *username)
+otp_upd_last_auth(const char *syncdir, const char *username)
 {
     int failcount, rc;
     char *lock;
-    char challenge[MAX_CHALLENGE_LEN + 1];
+    char challenge[OTP_MAX_CHALLENGE_LEN + 1];
     unsigned pos;
 
-    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+    if ((lock = otp_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
 
-    rc = x99_get_sd(syncdir, username, challenge, &failcount, NULL, &pos);
+    rc = otp_get_sd(syncdir, username, challenge, &failcount, NULL, &pos);
     if (rc == 0)
-	rc = x99_set_sd(syncdir, username, challenge, failcount, time(NULL),
+	rc = otp_set_sd(syncdir, username, challenge, failcount, time(NULL),
 			pos);
 
-    x99_release_sd_lock(lock);
+    otp_release_sd_lock(lock);
     return rc;
 }
 
@@ -150,53 +150,53 @@ x99_upd_last_auth(const char *syncdir, const char *username)
  * Also updates last_auth.
  */
 int
-x99_incr_failcount(const char *syncdir, const char *username)
+otp_incr_failcount(const char *syncdir, const char *username)
 {
     int failcount, rc;
     char *lock;
-    char challenge[MAX_CHALLENGE_LEN + 1];
+    char challenge[OTP_MAX_CHALLENGE_LEN + 1];
     unsigned pos;
 
-    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+    if ((lock = otp_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
 
     /* Get current value. */
-    rc = x99_get_sd(syncdir, username, challenge, &failcount, NULL, &pos);
+    rc = otp_get_sd(syncdir, username, challenge, &failcount, NULL, &pos);
     if (rc == 0) {
 	/* Increment. */
 	if (++failcount == INT_MAX)
 	    failcount--;
-	rc = x99_set_sd(syncdir, username, challenge, failcount, time(NULL),
+	rc = otp_set_sd(syncdir, username, challenge, failcount, time(NULL),
 			pos);
     }
 
-    x99_release_sd_lock(lock);
+    otp_release_sd_lock(lock);
     return rc;
 }
 
 /*
  * Reset failure count to 0.  Also updates last_auth and resets pos.
  * Returns 0 on success, non-zero otherwise.
- * This is almost just like x99_incr_failcount().
- * x99_set_sync_data() resets the failcount also, but that's because
+ * This is almost just like otp_incr_failcount().
+ * otp_set_sync_data() resets the failcount also, but that's because
  * we keep the failcount and other sync data together; we don't want
- * to necessarily make that visible to our callers (x99_rlm.c).
+ * to necessarily make that visible to our callers (otp_cardops.c).
  */
 int
-x99_reset_failcount(const char *syncdir, const char *username)
+otp_reset_failcount(const char *syncdir, const char *username)
 {
     int rc;
     char *lock;
-    char challenge[MAX_CHALLENGE_LEN + 1];
+    char challenge[OTP_MAX_CHALLENGE_LEN + 1];
 
-    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+    if ((lock = otp_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
 
-    rc = x99_get_sd(syncdir, username, challenge, NULL, NULL, NULL);
+    rc = otp_get_sd(syncdir, username, challenge, NULL, NULL, NULL);
     if (rc == 0)
-	rc = x99_set_sd(syncdir, username, challenge, 0, time(NULL), 0);
+	rc = otp_set_sd(syncdir, username, challenge, 0, time(NULL), 0);
 
-    x99_release_sd_lock(lock);
+    otp_release_sd_lock(lock);
     return rc;
 }
 
@@ -204,39 +204,39 @@ x99_reset_failcount(const char *syncdir, const char *username)
 /*
  * checks the failure counter.
  * returns 0 if the user is allowed to authenticate, < 0 otherwise:
- *   FAIL_ERR if the user is failed due to internal error,
- *   FAIL_HARD if the user is failed "hard",
- *   FAIL_SOFT if the user is failed "soft".
+ *   OTP_FC_FAIL_ERR if the user is failed due to internal error,
+ *   OTP_FC_FAIL_HARD if the user is failed "hard",
+ *   OTP_FC_FAIL_SOFT if the user is failed "soft".
  * caller does not need to log failures, we do it (in order to be specific).
  */
 int
-x99_check_failcount(const char *username, const x99_token_t *inst)
+otp_check_failcount(const char *username, const otp_option_t *inst)
 {
     time_t last_auth;
     int failcount;
 
-    if (x99_get_last_auth(inst->syncdir, username, &last_auth) != 0) {
-	x99_log(X99_LOG_ERR,
+    if (otp_get_last_auth(inst->syncdir, username, &last_auth) != 0) {
+	otp_log(OTP_LOG_ERR,
 		"auth: unable to get last auth time for [%s]", username);
-	return FAIL_ERR;
+	return OTP_FC_FAIL_ERR;
     }
-    if (x99_get_failcount(inst->syncdir, username, &failcount) != 0) {
-	x99_log(X99_LOG_ERR,
+    if (otp_get_failcount(inst->syncdir, username, &failcount) != 0) {
+	otp_log(OTP_LOG_ERR,
 		"auth: unable to get failure count for [%s]", username);
-	return FAIL_ERR;
+	return OTP_FC_FAIL_ERR;
     }
 
     /* Check against hardfail setting. */
     if (inst->hardfail && failcount >= inst->hardfail) {
-	x99_log(X99_LOG_AUTH,
+	otp_log(OTP_LOG_AUTH,
 		"auth: %d/%d failed/max authentications for [%s]",
 		failcount, inst->hardfail, username);
-	if (x99_incr_failcount(inst->syncdir, username) != 0) {
-	    x99_log(X99_LOG_ERR,
+	if (otp_incr_failcount(inst->syncdir, username) != 0) {
+	    otp_log(OTP_LOG_ERR,
 		    "auth: unable to increment failure count for "
 		    "locked out user [%s]", username);
 	}
-	return FAIL_HARD;
+	return OTP_FC_FAIL_HARD;
     }
 
     /* Check against softfail setting. */
@@ -261,16 +261,16 @@ x99_check_failcount(const char *username, const x99_token_t *inst)
 	fcount = failcount - inst->softfail;
 	when = last_auth + (fcount > 5 ? 32 * 60 : (1 << fcount) * 60);
 	if (time(NULL) < when) {
-	    x99_log(X99_LOG_AUTH,
+	    otp_log(OTP_LOG_AUTH,
 		    "auth: user [%s] auth too soon while delayed, "
 		    "%d/%d failed/softfail authentications",
 		    username, failcount, inst->softfail);
-	    if (x99_incr_failcount(inst->syncdir, username) != 0) {
-		x99_log(X99_LOG_ERR,
+	    if (otp_incr_failcount(inst->syncdir, username) != 0) {
+		otp_log(OTP_LOG_ERR,
 			"auth: unable to increment failure count for "
 			"delayed user [%s]", username);
 	    }
-	    return FAIL_SOFT;
+	    return OTP_FC_FAIL_SOFT;
 	}
     }
 
@@ -283,19 +283,19 @@ x99_check_failcount(const char *username, const x99_token_t *inst)
  * a 0 position).
  */
 unsigned
-x99_get_last_auth_pos(const char *syncdir, const char *username)
+otp_get_last_auth_pos(const char *syncdir, const char *username)
 {
     int rc;
     char *lock;
-    char challenge[MAX_CHALLENGE_LEN + 1];
+    char challenge[OTP_MAX_CHALLENGE_LEN + 1];
     unsigned pos;
 
-    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+    if ((lock = otp_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
 
-    rc = x99_get_sd(syncdir, username, challenge, NULL, NULL, &pos);
+    rc = otp_get_sd(syncdir, username, challenge, NULL, NULL, &pos);
 
-    x99_release_sd_lock(lock);
+    otp_release_sd_lock(lock);
     return rc ? 0 : pos;
 }
 
@@ -303,23 +303,23 @@ x99_get_last_auth_pos(const char *syncdir, const char *username)
  * Record the last auth window position (for ewindow2).
  */
 int
-x99_set_last_auth_pos(const char *syncdir, const char *username, unsigned pos)
+otp_set_last_auth_pos(const char *syncdir, const char *username, unsigned pos)
 {
     int rc;
     char *lock;
-    char challenge[MAX_CHALLENGE_LEN + 1];
+    char challenge[OTP_MAX_CHALLENGE_LEN + 1];
     int failcount;
     time_t last_auth;
 
-    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+    if ((lock = otp_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
 
-    rc = x99_get_sd(syncdir, username, challenge, &failcount, &last_auth, NULL);
+    rc = otp_get_sd(syncdir, username, challenge, &failcount, &last_auth, NULL);
     if (rc == 0)
-	rc = x99_set_sd(syncdir, username, challenge, failcount, last_auth,
+	rc = otp_set_sd(syncdir, username, challenge, failcount, last_auth,
 			pos);
 
-    x99_release_sd_lock(lock);
+    otp_release_sd_lock(lock);
     return rc;
 }
 
@@ -329,15 +329,15 @@ x99_set_last_auth_pos(const char *syncdir, const char *username, unsigned pos)
  * Returns 0 on success, non-zero otherwise.
  */
 static int
-x99_get_failcount(const char *syncdir, const char *username, int *failcount)
+otp_get_failcount(const char *syncdir, const char *username, int *failcount)
 {
     int rc;
     char *lock;
 
-    if ((lock = x99_acquire_sd_lock(syncdir, username)) == NULL)
+    if ((lock = otp_acquire_sd_lock(syncdir, username)) == NULL)
 	return -1;
-    rc = x99_get_sd(syncdir, username, NULL, failcount, NULL, NULL);
-    x99_release_sd_lock(lock);
+    rc = otp_get_sd(syncdir, username, NULL, failcount, NULL, NULL);
+    otp_release_sd_lock(lock);
     return rc;
 }
 
@@ -367,11 +367,11 @@ x99_get_failcount(const char *syncdir, const char *username, int *failcount)
 
 
 /*
- * x99_acquire_sd_lock() returns NULL on failure, or a char *
- * which must be passed to x99_release_sd_lock() later.
+ * otp_acquire_sd_lock() returns NULL on failure, or a char *
+ * which must be passed to otp_release_sd_lock() later.
  */
 static char *
-x99_acquire_sd_lock(const char *syncdir, const char *username)
+otp_acquire_sd_lock(const char *syncdir, const char *username)
 {
     char *lockfile;
     int i, fd = -1;
@@ -379,13 +379,13 @@ x99_acquire_sd_lock(const char *syncdir, const char *username)
 
     /* Verify permissions first. */
     if (stat(syncdir, &st) != 0) {
-	x99_log(X99_LOG_ERR, "syncdir %s error: %s",
+	otp_log(OTP_LOG_ERR, "otp_acquire_sd_lock: syncdir %s error: %s",
 		syncdir, strerror(errno));
 	return NULL;
     }
     if (st.st_mode != (S_IFDIR|S_IRUSR|S_IWUSR|S_IXUSR)) {
-	x99_log(X99_LOG_ERR,
-		"x99_acquire_sd_lock: syncdir %s has loose permissions",
+	otp_log(OTP_LOG_ERR,
+		"otp_acquire_sd_lock: syncdir %s has loose permissions",
 		syncdir);
 	return NULL;
     }
@@ -393,7 +393,7 @@ x99_acquire_sd_lock(const char *syncdir, const char *username)
     /* We use dotfile locking. */
     lockfile = malloc(strlen(syncdir) + strlen(username) + 3);
     if (!lockfile) {
-	x99_log(X99_LOG_CRIT, "x99_acquire_sd_lock: out of memory");
+	otp_log(OTP_LOG_CRIT, "otp_acquire_sd_lock: out of memory");
 	return NULL;
     }
     (void) sprintf(lockfile, "%s/.%s", syncdir, username);
@@ -416,8 +416,8 @@ x99_acquire_sd_lock(const char *syncdir, const char *username)
 	usleep(500000); /* 0.5 second */
     }
     if (fd == -1) {
-	x99_log(X99_LOG_ERR,
-		"x99_acquire_sd_lock: unable to acquire lock for [%s]",
+	otp_log(OTP_LOG_ERR,
+		"otp_acquire_sd_lock: unable to acquire lock for [%s]",
 		username);
 	free(lockfile);
 	return NULL;
@@ -428,7 +428,7 @@ x99_acquire_sd_lock(const char *syncdir, const char *username)
 }
 
 static void
-x99_release_sd_lock(char *lockfile)
+otp_release_sd_lock(char *lockfile)
 {
     (void) unlink(lockfile);
     free(lockfile);
@@ -436,7 +436,7 @@ x99_release_sd_lock(char *lockfile)
 
 
 /*
- * x99_get_sd() returns 0 on success, non-zero otherwise.
+ * otp_get_sd() returns 0 on success, non-zero otherwise.
  * On successful returns, challenge, failures, last_auth, pos are filled in,
  * if non-NULL.
  * On unsuccessful returns, challenge, failures, last_auth, pos may be garbage.
@@ -444,8 +444,8 @@ x99_release_sd_lock(char *lockfile)
  * The caller must have obtained an exclusive lock on the sync file.
  */
 static int
-x99_get_sd(const char *syncdir, const char *username,
-	   char challenge[MAX_CHALLENGE_LEN + 1], int *failures,
+otp_get_sd(const char *syncdir, const char *username,
+	   char challenge[OTP_MAX_CHALLENGE_LEN + 1], int *failures,
 	   time_t *last_auth, unsigned *pos)
 {
     char syncfile[PATH_MAX + 1];
@@ -461,7 +461,7 @@ x99_get_sd(const char *syncdir, const char *username,
     /* Open sync file. */
     if ((fp = fopen(syncfile, "r")) == NULL) {
 	if (errno != ENOENT) {
-	    x99_log(X99_LOG_ERR, "x99_get_sd: unable to open sync file %s: %s",
+	    otp_log(OTP_LOG_ERR, "otp_get_sd: unable to open sync file %s: %s",
 		    syncfile, strerror(errno));
 	    return -1;
 	}
@@ -471,12 +471,12 @@ x99_get_sd(const char *syncdir, const char *username,
 	 */
 	if (failures)
 	    *failures = 0;
-	return x99_set_sd(syncdir, username, "NEWSTATE", 0, 0, 0);
+	return otp_set_sd(syncdir, username, "NEWSTATE", 0, 0, 0);
     }
 
     /* Read sync data. */
     if ((fgets(syncdata, sizeof(syncdata), fp) == NULL) || !strlen(syncdata)) {
-	x99_log(X99_LOG_ERR, "x99_get_sd: unable to read sync data from %s: %s",
+	otp_log(OTP_LOG_ERR, "otp_get_sd: unable to read sync data from %s: %s",
 		syncfile, strerror(errno));
 	(void) fclose(fp);
 	return -1;
@@ -487,14 +487,14 @@ x99_get_sd(const char *syncdir, const char *username,
     /* Now, parse the sync data. */
     /* Get the version. */
     if ((q = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_sd: invalid sync data for user %s", username);
+	otp_log(OTP_LOG_ERR,
+		"otp_get_sd: invalid sync data for user %s", username);
 	return -1;
     }
     *q++ = '\0';
     if ((sscanf(p, "%u", &ver) != 1) || (ver > 2)) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_sd: invalid sync data (version) for user %s",
+	otp_log(OTP_LOG_ERR,
+		"otp_get_sd: invalid sync data (version) for user %s",
 		username);
 	return -1;
     }
@@ -502,15 +502,15 @@ x99_get_sd(const char *syncdir, const char *username,
 
     /* Sanity check the username. */
     if ((q = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_sd: invalid sync data (username) for user %s",
+	otp_log(OTP_LOG_ERR,
+		"otp_get_sd: invalid sync data (username) for user %s",
 		username);
 	return -1;
     }
     *q++ = '\0';
     if (strcmp(p, username)) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_sd: invalid sync data (user mismatch) for user %s",
+	otp_log(OTP_LOG_ERR,
+		"otp_get_sd: invalid sync data (user mismatch) for user %s",
 		username);
 	return -1;
     }
@@ -518,15 +518,15 @@ x99_get_sd(const char *syncdir, const char *username,
 
     /* Get challenge. */
     if ((q = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_sd: invalid sync data (challenge) for user %s",
+	otp_log(OTP_LOG_ERR,
+		"otp_get_sd: invalid sync data (challenge) for user %s",
 		username);
 	return -1;
     }
     *q++ = '\0';
-    if (strlen(p) > MAX_CHALLENGE_LEN) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_sd: invalid sync data (challenge length) for user %s",
+    if (strlen(p) > OTP_MAX_CHALLENGE_LEN) {
+	otp_log(OTP_LOG_ERR,
+		"otp_get_sd: invalid sync data (challenge length) for user %s",
 		username);
 	return -1;
     }
@@ -536,23 +536,23 @@ x99_get_sd(const char *syncdir, const char *username,
 
     /* Eat key. */
     if ((p = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_sd: invalid sync data (key) for user %s", username);
+	otp_log(OTP_LOG_ERR,
+		"otp_get_sd: invalid sync data (key) for user %s", username);
 	return -1;
     }
     p++;
 
     /* Get failures. */
     if ((q = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_sd: invalid sync data (failures) for user %s",
+	otp_log(OTP_LOG_ERR,
+		"otp_get_sd: invalid sync data (failures) for user %s",
 		username);
 	return -1;
     }
     *q++ = '\0';
     if (failures && (sscanf(p, "%d", failures) != 1)) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_sd: invalid sync data (failures) for user %s",
+	otp_log(OTP_LOG_ERR,
+		"otp_get_sd: invalid sync data (failures) for user %s",
 		username);
 	return -1;
     }
@@ -560,15 +560,15 @@ x99_get_sd(const char *syncdir, const char *username,
 
     /* Get last_auth. */
     if ((q = strchr(p, ':')) == NULL) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_sd: invalid sync data (last_auth) for user %s",
+	otp_log(OTP_LOG_ERR,
+		"otp_get_sd: invalid sync data (last_auth) for user %s",
 		username);
 	return -1;
     }
     *q++ = '\0';
     if (last_auth && (sscanf(p, "%ld", last_auth) != 1)) {
-	x99_log(X99_LOG_ERR,
-		"x99_get_sd: invalid sync data (last_auth) for user %s",
+	otp_log(OTP_LOG_ERR,
+		"otp_get_sd: invalid sync data (last_auth) for user %s",
 		username);
 	return -1;
     }
@@ -579,8 +579,8 @@ x99_get_sd(const char *syncdir, const char *username,
 	if (ver == 1) {
 	    *pos = 0;
 	} else if (sscanf(p, "%u", pos) != 1) {
-	    x99_log(X99_LOG_ERR,
-		    "x99_get_sd: invalid sync data (win. pos) for user %s",
+	    otp_log(OTP_LOG_ERR,
+		    "otp_get_sd: invalid sync data (win. pos) for user %s",
 		    username);
 	    return -1;
 	}
@@ -590,11 +590,11 @@ x99_get_sd(const char *syncdir, const char *username,
 
 
 /*
- * See x99_get_sd().
+ * See otp_get_sd().
  * The caller must have obtained an exclusive lock on the sync file.
  */
 static int
-x99_set_sd(const char *syncdir, const char *username, const char *challenge,
+otp_set_sd(const char *syncdir, const char *username, const char *challenge,
 	   int failures, time_t last_auth, unsigned pos)
 {
     char syncfile[PATH_MAX + 1];
@@ -604,7 +604,7 @@ x99_set_sd(const char *syncdir, const char *username, const char *challenge,
     syncfile[PATH_MAX] = '\0';
 
     if ((fp = fopen(syncfile, "w")) == NULL) {
-	x99_log(X99_LOG_ERR, "x99_set_sd: unable to open sync file %s: %s",
+	otp_log(OTP_LOG_ERR, "otp_set_sd: unable to open sync file %s: %s",
 		syncfile, strerror(errno));
 	return -1;
     }
@@ -613,7 +613,7 @@ x99_set_sd(const char *syncdir, const char *username, const char *challenge,
     (void) fprintf(fp, "2:%s:%s:%s:%d:%ld:%u:\n", username, challenge, "",
 		   failures, last_auth, pos);
     if (fclose(fp) != 0) {
-	x99_log(X99_LOG_ERR, "x99_set_sd: unable to write sync file %s: %s",
+	otp_log(OTP_LOG_ERR, "otp_set_sd: unable to write sync file %s: %s",
 		syncfile, strerror(errno));
 	return -1;
     }
