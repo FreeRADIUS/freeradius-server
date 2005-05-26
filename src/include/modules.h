@@ -49,7 +49,7 @@ enum {
 	RLM_MODULE_NUMCODES	/* How many return codes there are */
 };
 
-int setup_modules(void);
+int setup_modules(int);
 int detach_modules(void);
 int module_authorize(int type, REQUEST *request);
 int module_authenticate(int type, REQUEST *request);

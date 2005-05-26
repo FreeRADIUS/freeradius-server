@@ -9,12 +9,11 @@
 /*
  *	Keep track of which modules we've loaded.
  */
-typedef struct module_list_t {
-	struct module_list_t	*next;
+typedef struct module_entry_t {
 	char			name[MAX_STRING_LEN];
 	module_t		*module;
 	lt_dlhandle		handle;
-} module_list_t;
+} module_entry_t;
 
 /*
  *	Per-instance data structure, to correlate the modules
@@ -22,9 +21,8 @@ typedef struct module_list_t {
  *	and the per-instance data structures.
  */
 typedef struct module_instance_t {
-	struct module_instance_t *next;
 	char			name[MAX_STRING_LEN];
-	module_list_t		*entry;
+	module_entry_t		*entry;
 	void                    *insthandle;
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		*mutex;

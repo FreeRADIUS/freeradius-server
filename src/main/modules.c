@@ -38,11 +38,6 @@ static const char rcsid[] = "$Id$";
 #include "ltdl.h"
 #include "rad_assert.h"
 
-/*
- *	Internal list of all of the modules we have loaded.
- */
-static module_list_t *module_list = NULL;
-
 typedef struct indexed_modcallable {
 	struct indexed_modcallable *next;
 	int idx;
@@ -108,8 +103,10 @@ static void indexed_modcallable_free(indexed_modcallable **cf)
 /*
  *	Free a module instance.
  */
-static void module_instance_free(module_instance_t *this)
+static void module_instance_free(void *data)
 {
+	module_instance_t *this = data;
+
 	if (this->entry->module->detach)
 		(this->entry->module->detach)(this->insthandle);
 #ifdef HAVE_PTHREAD_H
@@ -128,11 +125,24 @@ static void module_instance_free(module_instance_t *this)
 
 
 /*
+ *	Free a module entry.
+ */
+static void module_entry_free(void *data)
+{
+	module_entry_t *this = data;
+
+	if (this->module->destroy)
+		(this->module->destroy)();
+	lt_dlclose(this->handle);	/* ignore any errors */
+	free(this);
+}
+
+
+/*
  *	Remove all of the modules.
  */
 int detach_modules(void)
 {
-	module_list_t *ml, *next;
 	int i;
 
 	/*
@@ -142,44 +152,23 @@ int detach_modules(void)
 		indexed_modcallable_free(&components[i]);
 	}
 
-	ml = module_list;
-	while (ml) {
-		next = ml->next;
-		if (ml->module->destroy)
-			(ml->module->destroy)();
-		lt_dlclose(ml->handle);	/* ignore any errors */
-		free(ml);
-		ml = next;
-	}
-
-	module_list = NULL;
-
 	return 0;
 }
 
 /*
  *	Find a module on disk or in memory, and link to it.
  */
-static module_list_t *linkto_module(const char *module_name,
-				    const char *cffilename, int cflineno)
+static module_entry_t *linkto_module(CONF_SECTION *modules,
+				     const char *module_name,
+				     const char *cffilename, int cflineno)
 {
-	module_list_t *node;
+	module_entry_t *node;
 	lt_dlhandle handle;
 	char module_struct[256];
 	char *p;
 
-	/*
-	 *	Look through the global module library list for the
-	 *	named module.
-	 */
-	for (node = module_list; node != NULL; node = node->next) {
-		/*
-		 *	Found the named module.  Return it.
-		 */
-		if (strcmp(node->name, module_name) == 0)
-			return node;
-
-	}
+	node = cf_data_find(modules, module_name);
+	if (node) return node;
 
 	/*
 	 *	Keep the handle around so we can dlclose() it.
@@ -192,21 +181,23 @@ static module_list_t *linkto_module(const char *module_name,
 	}
 
 	/* make room for the module type */
-	node = (module_list_t *) rad_malloc(sizeof(module_list_t));
+	node = rad_malloc(sizeof(*node));
+	memset(node, 0, sizeof(*node));
 
 	/* fill in the module structure */
-	node->next = NULL;
 	node->handle = handle;
 	strNcpy(node->name, module_name, sizeof(node->name));
 
 	/*
 	 *	Link to the module's rlm_FOO{} module structure.
+	 *
+	 *	The module_name variable has the version number
+	 *	embedded in it, and we don't want that here.
 	 */
-	/* module_name has the version embedded; strip it. */
 	strcpy(module_struct, module_name);
 	p = strrchr(module_struct, '-');
-	if (p)
-		*p = '\0';
+	if (p) *p = '\0';
+
 	node->module = (module_t *) lt_dlsym(node->handle, module_struct);
 	if (!node->module) {
 		radlog(L_ERR|L_CONS, "%s[%d] Failed linking to "
@@ -229,8 +220,11 @@ static module_list_t *linkto_module(const char *module_name,
 
 	DEBUG("Module: Loaded %s ", node->module->name);
 
-	node->next = module_list;
-	module_list = node;
+	/*
+	 *	Add the module as "rlm_foo-version" to the configuration
+	 *	section.
+	 */
+	cf_data_add(modules, module_name, node, module_entry_free);
 
 	return node;
 }
@@ -273,7 +267,8 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 *	Found the configuration entry.
 	 */
 	node = rad_malloc(sizeof(*node));
-	node->next = NULL;
+	memset(node, 0, sizeof(*node));
+
 	node->insthandle = NULL;
 
 	/*
@@ -282,7 +277,8 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 */
 	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
 
-	node->entry = linkto_module(module_name, mainconfig.radiusd_conf,
+	node->entry = linkto_module(modules, module_name,
+				    mainconfig.radiusd_conf,
 				    cf_section_lineno(cs));
 	if (!node->entry) {
 		free(node);
@@ -347,6 +343,9 @@ static indexed_modcallable *lookup_by_index(indexed_modcallable *head, int idx)
 	return NULL;
 }
 
+/*
+ *	Create a new sublist.
+ */
 static indexed_modcallable *new_sublist(int comp, int idx)
 {
 	indexed_modcallable **head = &components[comp];
@@ -414,14 +413,10 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
 static int load_subcomponent_section(CONF_SECTION *cs, int comp,
 				     const char *filename)
 {
-	int idx;
 	indexed_modcallable *subcomp;
 	modcallable *ml;
 	DICT_VALUE *dval;
 	const char *name2 = cf_section_name2(cs);
-
-	static int meaningless_counter = 1;
-
 
 	rad_assert(comp >= RLM_COMPONENT_AUTH);
 	rad_assert(comp <= RLM_COMPONENT_COUNT);
@@ -448,20 +443,20 @@ static int load_subcomponent_section(CONF_SECTION *cs, int comp,
 	/*
 	 *	We must assign a numeric index to this subcomponent.
 	 *	It is generated and placed in the dictionary by
-	 *	new_sectiontype_value(). The others are just numbers
-	 *	that are pulled out of thin air, and the names are
-	 *	neither put into the dictionary nor checked for
-	 *	uniqueness, but all that could be fixed in a few
-	 *	minutes, if anyone cares...
+	 *	setup_modules(), when it loads the sections.  If it
+	 *	isn't found, it's a serious error.
 	 */
 	dval = dict_valbyname(section_type_value[comp].attr, name2);
-	if (dval) {
-		idx = dval->value;
-	} else {
-		idx = meaningless_counter++;
+	if (!dval) {
+		radlog(L_ERR|L_CONS,
+		       "%s[%d] %s %s Not previously configured",
+		       filename, cf_section_lineno(cs),
+		       section_type_value[comp].typename, name2);
+		modcallable_free(&ml);
+		return 0;
 	}
 
-	subcomp = new_sublist(comp, idx);
+	subcomp = new_sublist(comp, dval->value);
 	if (!subcomp) {
 		radlog(L_ERR|L_CONS,
 		       "%s[%d] %s %s already configured - skipping",
@@ -491,7 +486,6 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 	for (modref = cf_item_find_next(cs, NULL);
 	     modref != NULL;
 	     modref = cf_item_find_next(cs, modref)) {
-
 		/*
 		 *	Look for Auth-Type foo {}, which are special
 		 *	cases of named sections, and allowable ONLY
@@ -595,7 +589,7 @@ static int load_component_section(CONF_SECTION *cs, int comp,
  *	Libtool makes your life a LOT easier, especially with libltdl.
  *	see: http://www.gnu.org/software/libtool/
  */
-int setup_modules(void)
+int setup_modules(int init_ltdl)
 {
 	int		comp;
 	CONF_SECTION	*cs, *modules;
@@ -603,9 +597,9 @@ int setup_modules(void)
 	rad_listen_t	*listener;
 
 	/*
-	 *	No current list of modules: Go initialize libltdl.
+	 *	If necessary, initialize libltdl.
 	 */
-	if (!module_list) {
+	if (init_ltdl) {
 		/*
 		 *	Set the default list of preloaded symbols.
 		 *	This is used to initialize libltdl's list of
@@ -693,16 +687,12 @@ int setup_modules(void)
 	 *	those names, and create DICT_VALUE's for them.
 	 */
 	for (comp = RLM_COMPONENT_AUTH; comp < RLM_COMPONENT_COUNT; comp++) {
+		int		value;
 		const char	*name2;
 		DICT_ATTR	*dattr;
 		DICT_VALUE	*dval;
 		CONF_SECTION	*sub, *next;
 		CONF_PAIR	*cp;
-
-		/*
-		 *  Big-time YUCK
-		 */
-		static int my_value = 32767;
 
 		/*
 		 *	Not needed, don't load it.
@@ -727,7 +717,6 @@ int setup_modules(void)
 			 *	Allow some old names, too.
 			 */
 			if (!next && (comp <= 4)) {
-
 				next = cf_subsection_find_next(cs, sub,
 							       old_section_type_value[comp].typename);
 			}
@@ -753,12 +742,26 @@ int setup_modules(void)
        			 *	Find the attribute for the value.
 			 */
 			dattr = dict_attrbyvalue(section_type_value[comp].attr);
-			if (!dattr) continue;
+			if (!dattr) {
+				radlog(L_ERR, "%s[%d]: No such attribute %s",
+				       mainconfig.radiusd_conf,
+				       cf_section_lineno(sub),
+				       section_type_value[comp].typename);
+				continue;
+			}
 
 			/*
-			 *	Finally, create the new attribute.
+			 *	Create a new unique value with a
+			 *	meaningless number.  You can't look at
+			 *	it from outside of this code, so it
+			 *	doesn't matter.  The only requirement
+			 *	is that it's unique.
 			 */
-			if (dict_addvalue(name2, dattr->name, my_value++) < 0) {
+			do {
+				value = lrad_rand();
+			} while (dict_valbyattr(dattr->attr, value));
+
+			if (dict_addvalue(name2, dattr->name, value) < 0) {
 				radlog(L_ERR, "%s", librad_errstr);
 				return -1;
 			}
@@ -790,12 +793,21 @@ int setup_modules(void)
        			 *	Find the attribute for the value.
 			 */
 			dattr = dict_attrbyvalue(section_type_value[comp].attr);
-			if (!dattr) continue;
+			if (!dattr) {
+				radlog(L_ERR, "%s[%d]: No such attribute %s",
+				       mainconfig.radiusd_conf,
+				       cf_section_lineno(sub),
+				       section_type_value[comp].typename);
+				continue;
+			}
 
 			/*
 			 *	Finally, create the new attribute.
 			 */
-			if (dict_addvalue(name2, dattr->name, my_value++) < 0) {
+			do {
+				value = lrad_rand();
+			} while (dict_valbyattr(dattr->attr, value));
+			if (dict_addvalue(name2, dattr->name, value) < 0) {
 				radlog(L_ERR, "%s", librad_errstr);
 				return -1;
 			}
