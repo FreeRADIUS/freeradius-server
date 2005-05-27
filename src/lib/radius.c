@@ -157,19 +157,13 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 		      int dst_port)
 {
 	struct sockaddr_storage	dst;
-	struct sockaddr_in	*s4remote;
 	socklen_t		sizeof_dst = sizeof(dst);
 
 #ifdef WITH_UDPFROMTO
 	struct sockaddr_storage	src;
-	struct sockaddr_in	*s4local;
 	socklen_t		sizeof_src = sizeof(src);
 
 	memset(&src, 0, sizeof(src));
-	/*
-	 *	From IPv4 to IPv6 is bad, as is the opposite.
-	 */
-	if (src_ipaddr->af != dst_ipaddr->af) return -1;	
 #endif
 
 	memset(&dst, 0, sizeof(dst));
@@ -177,6 +171,11 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	 *	IPv4 is supported.
 	 */
 	if (dst_ipaddr->af == AF_INET) {
+		struct sockaddr_in	*s4remote;
+#ifdef WITH_UDPFROMTO
+		struct sockaddr_in	*s4local;
+#endif
+
 		s4remote = (struct sockaddr_in *)&dst;
 		sizeof_dst = sizeof(struct sockaddr_in);
 
@@ -191,14 +190,16 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 		s4local->sin_family = AF_INET;
 		s4local->sin_addr = src_ipaddr->ipaddr.ip4addr;
 #endif
-	}
+
 	/*
 	 *	IPv6 MAY be supported.
 	 */
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
-	else if (dst_ipaddr->af == AF_INET6) {
+	} else if (dst_ipaddr->af == AF_INET6) {
 		struct sockaddr_in6	*s6remote;
+#ifdef WITH_UDPFROMTO
 		struct sockaddr_in6	*s6local;
+#endif
 
 		s6remote = (struct sockaddr_in6 *)&dst;
 		sizeof_dst = sizeof(struct sockaddr_in6);
@@ -208,27 +209,40 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 		s6remote->sin6_port = htons(dst_port);
 
 #ifdef WITH_UDPFROMTO
+		return -1;	/* UDPFROMTO && IPv6 are not supported */
+#if 0
 		s6local = (struct sockaddr_in6 *)&src;
 		sizeof_src = sizeof(struct sockaddr_in6);
 
 		s6local->sin6_family = AF_INET6;
 		s6local->sin6_addr = src_ipaddr->ipaddr.ip6addr;
-#endif
-	}
+#endif /* #if 0 */
+#endif /* WITH_UDPFROMTO */
 #endif /* HAVE_STRUCT_SOCKADDR_IN6 */
-	/*
-	 *	Unknown address family, Die Die Die!
-	 */
-	else return -1;
+	} else return -1;   /* Unknown address family, Die Die Die! */
 
-#ifndef WITH_UDPFROMTO
+#ifdef WITH_UDPFROMTO
+	/*
+	 *	Only IPv4 is supported for udpfromto.
+	 *
+	 *	And if they don't specify a source IP address, don't
+	 *	use udpfromto.
+	 */
+	if ((dst_ipaddr->af == AF_INET) ||
+	    (src_ipaddr->af != AF_UNSPEC)) {
+		return sendfromto(sockfd, data, data_len, flags,
+				  (struct sockaddr *)&src, sizeof_src, 
+				  (struct sockaddr *)&dst, sizeof_dst);
+	}
+#else
+	src_ipaddr = src_ipaddr; /* -Wunused */
+#endif
+
+	/*
+	 *	No udpfromto, OR an IPv6 socket, fail gracefully.
+	 */
 	return sendto(sockfd, data, data_len, flags, 
 		(struct sockaddr *)&dst, sizeof_dst);
-#else
-	return sendfromto(sockfd, data, data_len, flags,
-		(struct sockaddr *)&src, sizeof_src, 
-		(struct sockaddr *)&dst, sizeof_dst);
-#endif
 }
 
 
@@ -242,8 +256,6 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 {
 	struct sockaddr_storage	src;
 	struct sockaddr_storage	dst;
-	struct sockaddr_in	*s4remote;
-	struct sockaddr_in	*s4local;
 	socklen_t		sizeof_src = sizeof(src);
 	socklen_t	        sizeof_dst = sizeof(dst);
 	ssize_t			data_len;
@@ -252,39 +264,39 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 	memset(&dst, 0, sizeof_dst);
 
 	/*
-	 *	Receive the packet.
-	 */
-#ifdef WITH_UDPFROMTO
-
-	data_len = recvfromto(sockfd, buf, len, flags,
-			(struct sockaddr *)&src, &sizeof_src, 
-			(struct sockaddr *)&dst, &sizeof_dst);
-#else
-
-	data_len = recvfrom(sockfd, buf, len, flags, 
-			(struct sockaddr *)&src, &sizeof_src);
-#endif
-
-	/*
-	 *	First, do a hokey hack to figure out which address
-	 *	family, address, and port the socket is listening on.
-	 */
-	/*
-	 * Always get the listening socket details
-	 * and initialize the destination IP address.
-	 * Otherwise, request list comparison fails
-	 * and the server crashes abnormally
+	 *	Get address family, etc. first, so we know if we
+	 *	need to do udpfromto.
+	 *
+	 *	FIXME: udpfromto also does this, but it's not
+	 *	a critical problem.
 	 */
 	if (getsockname(sockfd, (struct sockaddr *)&dst,
 			&sizeof_dst) < 0) return -1;
 
-	if (src.ss_family != dst.ss_family) {
-		return -1;
-	}
-
+	/*
+	 *	Receive the packet.
+	 */
+#ifdef WITH_UDPFROMTO
+	if (dst.ss_family == AF_INET) {
+		data_len = recvfromto(sockfd, buf, len, flags,
+				      (struct sockaddr *)&src, &sizeof_src, 
+				      (struct sockaddr *)&dst, &sizeof_dst);
+	} else
+#endif
+		/*
+		 *	No udpfromto, OR an IPv6 socket.  Fail gracefully.
+		 */
+		data_len = recvfrom(sockfd, buf, len, flags, 
+				    (struct sockaddr *)&src, &sizeof_src);
 	if (data_len < 0) return data_len;
 
+	/*
+	 *	Check address families, and update src/dst ports, etc.
+	 */
 	if (src.ss_family == AF_INET) {
+		struct sockaddr_in	*s4remote;
+		struct sockaddr_in	*s4local;
+
 		s4remote = (struct sockaddr_in *)&src;
 		src_ipaddr->af = AF_INET;
 		src_ipaddr->ipaddr.ip4addr = s4remote->sin_addr;
@@ -294,9 +306,9 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 		dst_ipaddr->af = AF_INET;
 		dst_ipaddr->ipaddr.ip4addr = s4local->sin_addr;
 		*dst_port = ntohs(s4local->sin_port);
-	}
+
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
-	else if (src.ss_family == AF_INET6) {
+	} else if (src.ss_family == AF_INET6) {
 		struct sockaddr_in6	*s6remote;
 		struct sockaddr_in6	*s6local;
 
@@ -309,11 +321,17 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 		dst_ipaddr->af = AF_INET6;
 		dst_ipaddr->ipaddr.ip6addr = s6local->sin6_addr;
 		*dst_port = ntohs(s6local->sin6_port);
-	}
 #endif
-	/*  Unknown address family  */
-	else return -1;
+	} else return -1;	/* Unknown address family, Die Die Die! */
 	
+	
+	/*
+	 *	Different address families should never happen.
+	 */
+	if (src.ss_family != dst.ss_family) {
+		return -1;
+	}
+
 	return data_len;
 }
 
