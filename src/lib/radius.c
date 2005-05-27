@@ -319,6 +319,482 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 
 
 /*
+ *	Encode a packet.
+ */
+static int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+		      const char *secret)
+{
+	radius_packet_t	*hdr;
+	uint32_t	lvalue;
+	uint8_t	        *ptr, *length_ptr, *vsa_length_ptr;
+	uint8_t		digest[16];
+	int		vendorcode, vendorpec;
+	uint16_t	total_length;
+	int		len, allowed;
+	VALUE_PAIR	*reply;
+	
+	/*
+	 *	For simplicity in the following logic, we allow
+	 *	the attributes to "overflow" the 4k maximum
+	 *	RADIUS packet size, by one attribute.
+	 *
+	 *	It's uint32_t, for alignment purposes.
+	 */
+	uint32_t	data[(MAX_PACKET_LEN + 256) / 4];
+
+	/*
+	 *	Double-check some things based on packet code.
+	 */
+	switch (packet->code) {
+	case PW_AUTHENTICATION_ACK:
+	case PW_AUTHENTICATION_REJECT:
+	case PW_ACCESS_CHALLENGE:
+		if (!original) {
+			librad_log("ERROR: Cannot sign response packet without a request packet.");
+			return -1;
+		}
+		break;
+		
+		/*
+		 *	These packet vectors start off as all zero.
+		 */
+	case PW_ACCOUNTING_REQUEST:
+	case PW_DISCONNECT_REQUEST:
+		memset(packet->vector, 0, sizeof(packet->vector));
+		break;
+		
+	default:
+		break;
+	}
+		
+	/*
+	 *	Use memory on the stack, until we know how
+	 *	large the packet will be.
+	 */
+	hdr = (radius_packet_t *) data;
+	
+	/*
+	 *	Build standard header
+	 */
+	hdr->code = packet->code;
+	hdr->id = packet->id;
+	
+	memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
+
+	total_length = AUTH_HDR_LEN;
+	packet->verified = 0;
+	
+	/*
+	 *	Load up the configuration values for the user
+	 */
+	ptr = hdr->data;
+	vendorcode = 0;
+	vendorpec = 0;
+	vsa_length_ptr = NULL;
+
+	/*
+	 *	FIXME: Loop twice over the reply list.  The first time,
+	 *	calculate the total length of data.  The second time,
+	 *	allocate the memory, and fill in the VP's.
+	 *
+	 *	Hmm... this may be slower than just doing a small
+	 *	memcpy.
+	 */
+	
+	/*
+	 *	Loop over the reply attributes for the packet.
+	 */
+	for (reply = packet->vps; reply; reply = reply->next) {
+		/*
+		 *	Ignore non-wire attributes
+		 */
+		if ((VENDOR(reply->attribute) == 0) &&
+		    ((reply->attribute & 0xFFFF) > 0xff)) {
+			continue;
+		}
+		
+		/*
+		 *	Check that the packet is no more than 4k in
+		 *	size, AFTER over-flowing the 4k boundary.
+		 *	Note that the 'data' buffer, above, is one
+		 *	attribute longer than necessary, in order to
+		 *	permit this overflow.
+		 */
+		if (total_length > MAX_PACKET_LEN) {
+			librad_log("ERROR: Too many attributes for packet, result is larger than RFC maximum of 4k");
+			return -1;
+		}
+		
+		/*
+		 *	Set the Message-Authenticator to the correct
+		 *	length and initial value.
+		 */
+		if (reply->attribute == PW_MESSAGE_AUTHENTICATOR) {
+			reply->length = AUTH_VECTOR_LEN;
+			memset(reply->strvalue, 0, AUTH_VECTOR_LEN);
+			packet->verified = total_length; /* HACK! */
+		}
+		
+		/*
+		 *	Print out ONLY the attributes which
+		 *	we're sending over the wire, and print
+		 *	them out BEFORE they're encrypted.
+		 */
+		debug_pair(reply);
+		
+		/*
+		 *	We have a different vendor.  Re-set
+		 *	the vendor codes.
+		 */
+		if (vendorcode != VENDOR(reply->attribute)) {
+			vendorcode = 0;
+			vendorpec = 0;
+			vsa_length_ptr = NULL;
+		}
+		
+		/*
+		 *	If the Vendor-Specific attribute is getting
+		 *	full, then create a new VSA attribute
+		 *
+		 *	FIXME: Multiple VSA's per Vendor-Specific
+		 *	SHOULD be configurable.  When that's done, the
+		 *	(1), below, can be changed to point to a
+		 *	configuration variable which is set TRUE if
+		 *	the NAS cannot understand multiple VSA's per
+		 *	Vendor-Specific
+		 */
+		if ((1) || /* ALWAYS create a new Vendor-Specific */
+		    (vsa_length_ptr &&
+		     (reply->length + *vsa_length_ptr) >= MAX_STRING_LEN)) {
+			vendorcode = 0;
+			vendorpec = 0;
+			vsa_length_ptr = NULL;
+		}
+		
+		/*
+		 *	Maybe we have the start of a set of
+		 *	(possibly many) VSA attributes from
+		 *	one vendor.  Set a global VSA wrapper
+		 */
+		if ((vendorcode == 0) &&
+		    ((vendorcode = VENDOR(reply->attribute)) != 0)) {
+			vendorpec  = dict_vendorpec(vendorcode);
+			
+			/*
+			 *	This is a potentially bad error...
+			 *	we can't find the vendor ID!
+			 */
+			if (vendorpec == 0) {
+				/* FIXME: log an error */
+				continue;
+			}
+			
+			/*
+			 *	Build a VSA header.
+			 */
+			*ptr++ = PW_VENDOR_SPECIFIC;
+			vsa_length_ptr = ptr;
+			*ptr++ = 6;
+			lvalue = htonl(vendorpec);
+			memcpy(ptr, &lvalue, 4);
+			ptr += 4;
+			total_length += 6;
+		}
+		
+		if (vendorpec == VENDORPEC_USR) {
+			lvalue = htonl(reply->attribute & 0xFFFF);
+			memcpy(ptr, &lvalue, 4);
+			
+			length_ptr = vsa_length_ptr;
+			
+			total_length += 4;
+			*length_ptr  += 4;
+			ptr          += 4;
+			
+			/*
+			 *	Each USR-style attribute gets it's own
+			 *	VSA wrapper, so we re-set the vendor
+			 *	specific information.
+			 */
+			vendorcode = 0;
+			vendorpec = 0;
+			vsa_length_ptr = NULL;
+			
+		} else {
+			/*
+			 *	All other attributes are encoded as
+			 *	per the RFC.
+			 */
+			*ptr++ = (reply->attribute & 0xFF);
+			length_ptr = ptr;
+			if (vsa_length_ptr) *vsa_length_ptr += 2;
+			*ptr++ = 2;
+			total_length += 2;
+		}
+
+		switch(reply->type) {
+		case PW_TYPE_STRING:
+		case PW_TYPE_OCTETS:
+			/*
+			 *  Encrypt the various password styles
+			 */
+			switch (reply->flags.encrypt) {
+			default:
+				break;
+				
+			case FLAG_ENCRYPT_USER_PASSWORD:
+				rad_pwencode((char *)reply->strvalue,
+					     &(reply->length),
+					     (const char *)secret,
+					     (const char *)packet->vector);
+				break;
+				
+			case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+				if (!original) {
+					librad_log("ERROR: No request packet, cannot encrypt Tunnel-Password attribute in the reply.");
+					return -1;
+				}
+				rad_tunnel_pwencode(reply->strvalue,
+						    &(reply->length),
+						    secret,
+						    original->vector);
+				break;
+				
+				
+			case FLAG_ENCRYPT_ASCEND_SECRET:
+				make_secret(digest, packet->vector,
+					    secret, reply->strvalue);
+				memcpy(reply->strvalue, digest, AUTH_VECTOR_LEN );
+				reply->length = AUTH_VECTOR_LEN;
+				break;
+			} /* switch over encryption flags */
+			/* FALL-THROUGH */
+			
+			/*
+			 *	None of these can have "encrypt"
+			 *	flags, so we skip them.
+			 */				  
+		case PW_TYPE_IFID:
+		case PW_TYPE_IPV6ADDR:
+		case PW_TYPE_IPV6PREFIX:
+			
+			/*
+			 *	Ascend binary attributes are
+			 *	stored internally in binary form.
+			 */
+		case PW_TYPE_ABINARY:
+			len = reply->length;
+			
+			/*
+			 *    Set the TAG at the beginning of the
+			 *    string if tagged.  If tag value is not
+			 *    valid for tagged attribute, make it 0x00
+			 *    per RFC 2868.  -cparker
+			 */
+			if (reply->flags.has_tag) {
+				if (TAG_VALID(reply->flags.tag)) {
+					len++;
+					*ptr++ = reply->flags.tag;
+					
+				} else if (reply->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
+					/*
+					 *  Tunnel passwords REQUIRE a
+					 *  tag, even if we don't have
+					 *  a valid tag.
+					 */
+					len++;
+					*ptr++ = 0x00;
+				} /* else don't write a tag */
+			} /* else the attribute doesn't have a tag */
+			
+			/*
+			 *	Ensure we don't go too far.  The
+			 *	'length' of the attribute may be
+			 *	0..255, minus whatever octets are used
+			 *	in the attribute header.
+			 */
+			allowed = 255;
+			if (vsa_length_ptr) {
+				allowed -= *vsa_length_ptr;
+			} else {
+				allowed -= *length_ptr;
+			}
+			
+			if (len > allowed) {
+				len = allowed;
+			}
+			
+			*length_ptr += len;
+			if (vsa_length_ptr) *vsa_length_ptr += len;
+			/*
+			 *  If we have tagged attributes we can't
+			 *  assume that len == reply->length.  Use
+			 *  reply->length for copying the string data
+			 *  into the packet.  Use len for the true
+			 *  length of the string+tags.
+			 */
+			memcpy(ptr, reply->strvalue, reply->length);
+			ptr += reply->length;
+			total_length += len;
+			break;
+			
+		case PW_TYPE_INTEGER:
+		case PW_TYPE_IPADDR:
+			*length_ptr += 4;
+			if (vsa_length_ptr) *vsa_length_ptr += 4;
+			
+			if (reply->type == PW_TYPE_INTEGER ) {
+				/*  If tagged, the tag becomes the MSB of the value */
+				if(reply->flags.has_tag) {
+					/*  Tag must be ( 0x01 -> 0x1F ) OR 0x00  */
+					if(!TAG_VALID(reply->flags.tag)) {
+						reply->flags.tag = 0x00;
+					}
+					lvalue = htonl((reply->lvalue & 0xffffff) |
+						       ((reply->flags.tag & 0xff) << 24));
+				} else {
+					lvalue = htonl(reply->lvalue);
+				}
+			} else {
+				/*
+				 *	IP address is already in
+				 *	network byte order.
+				 */
+				lvalue = reply->lvalue;
+			}
+			memcpy(ptr, &lvalue, 4);
+			ptr += 4;
+			total_length += 4;
+			break;
+			
+			/*
+			 *  There are no tagged date attributes.
+			 */
+		case PW_TYPE_DATE:
+			*length_ptr += 4;
+			if (vsa_length_ptr) *vsa_length_ptr += 4;
+			
+			lvalue = htonl(reply->lvalue);
+			memcpy(ptr, &lvalue, 4);
+			ptr += 4;
+			total_length += 4;
+			break;
+		default:
+			break;
+		}
+	} /* done looping over all attributes */
+	
+	/*
+	 *	Fill in the rest of the fields, and copy the data over
+	 *	from the local stack to the newly allocated memory.
+	 *
+	 *	Yes, all this 'memcpy' is slow, but it means
+	 *	that we only allocate the minimum amount of
+	 *	memory for a request.
+	 */
+	packet->data_len = total_length;
+	packet->data = (uint8_t *) malloc(packet->data_len);
+	if (!packet->data) {
+		librad_log("Out of memory");
+		return -1;
+	}
+	memcpy(packet->data, data, packet->data_len);
+	hdr = (radius_packet_t *) packet->data;
+	
+	total_length = htons(total_length);
+	memcpy(hdr->length, &total_length, sizeof(total_length));
+
+	return 0;
+}
+
+
+static int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+		    const char *secret)
+{
+	radius_packet_t	*hdr = (radius_packet_t *)packet->data;
+
+	/*
+	 *	If there's a Message-Authenticator, update it
+	 *	now, BEFORE updating the authentication vector.
+	 *
+	 *	This is a hack...
+	 */
+	if (packet->verified) {
+		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
+		
+		switch (packet->code) {
+		case PW_AUTHENTICATION_ACK:
+		case PW_AUTHENTICATION_REJECT:
+		case PW_ACCESS_CHALLENGE:
+			if (!original) {
+				librad_log("ERROR: Cannot sign response packet without a request packet.");
+				return -1;
+			}
+			memcpy(hdr->vector, original->vector,
+			       AUTH_VECTOR_LEN);
+			break;
+
+		default:	/* others have vector already set to zero */
+			break;
+			
+		}
+		
+		/*
+		 *	Set the authentication vector to zero,
+		 *	calculate the signature, and put it
+		 *	into the Message-Authenticator
+		 *	attribute.
+		 */
+		lrad_hmac_md5(packet->data, packet->data_len,
+			      secret, strlen(secret),
+			      calc_auth_vector);
+		memcpy(packet->data + packet->verified + 2,
+		       calc_auth_vector, AUTH_VECTOR_LEN);
+		
+		/*
+		 *	Copy the original request vector back
+		 *	to the raw packet.
+		 */
+		memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
+	}
+	
+	/*
+	 *	Switch over the packet code, deciding how to
+	 *	sign the packet.
+	 */
+	switch (packet->code) {
+		/*
+		 *	Request packets are not signed, bur
+		 *	have a random authentication vector.
+		 */
+	case PW_AUTHENTICATION_REQUEST:
+	case PW_STATUS_SERVER:
+		break;
+		
+		/*
+		 *	Reply packets are signed with the
+		 *	authentication vector of the request.
+		 */
+	default:
+		{
+			uint8_t digest[16];
+			
+			MD5_CTX	context;
+			MD5Init(&context);
+			MD5Update(&context, packet->data, packet->data_len);
+			MD5Update(&context, secret, strlen(secret));
+			MD5Final(digest, &context);
+			
+			memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
+			memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
+			break;
+		}
+	}/* switch over packet codes */
+
+	return 0;
+}
+
+/*
  *	Reply to the request.  Also attach
  *	reply attribute value pairs and any user message provided.
  */
@@ -346,62 +822,6 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *  First time through, allocate room for the packet
 	 */
 	if (!packet->data) {
-		  radius_packet_t	*hdr;
-		  uint32_t		lvalue;
-		  uint8_t		*ptr, *length_ptr, *vsa_length_ptr;
-		  uint8_t		digest[16];
-		  int			secretlen;
-		  int			vendorcode, vendorpec;
-		  u_short		total_length;
-		  int			len, allowed;
-		  int			msg_auth_offset = 0;
-
-		  /*
-		   *	For simplicity in the following logic, we allow
-		   *	the attributes to "overflow" the 4k maximum
-		   *	RADIUS packet size, by one attribute.
-		   */
-		  uint8_t		data[MAX_PACKET_LEN + 256];
-
-		  /*
-		   *	Use memory on the stack, until we know how
-		   *	large the packet will be.
-		   */
-		  hdr = (radius_packet_t *) data;
-
-		  /*
-		   *	Build standard header
-		   */
-		  hdr->code = packet->code;
-		  hdr->id = packet->id;
-
-		  /*
-		   *	Double-check some things based on packet code.
-		   */
-		  switch (packet->code) {
-		  case PW_AUTHENTICATION_ACK:
-		  case PW_AUTHENTICATION_REJECT:
-		  case PW_ACCESS_CHALLENGE:
-			  if (!original) {
-				  librad_log("ERROR: Cannot sign response packet without a request packet.");
-				  return -1;
-			  }
-			  break;
-
-			  /*
-			   *	These packet vectors start off as all zero.
-			   */
-		  case PW_ACCOUNTING_REQUEST:
-		  case PW_DISCONNECT_REQUEST:
-			  memset(packet->vector, 0, sizeof(packet->vector));
-			  break;
-
-		  default:
-			  break;
-
-		  }
-		  memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
-
 		  DEBUG("Sending %s of id %d to %s port %d\n",
 			what, packet->id,
 			inet_ntop(packet->dst_ipaddr.af,
@@ -409,409 +829,25 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				  ip_buffer, sizeof(ip_buffer)),
 			packet->dst_port);
 
-		  total_length = AUTH_HDR_LEN;
+		/*
+		 *	Encode the packet.
+		 */
+		if (rad_encode(packet, original, secret) < 0) {
+			return -1;
+		}
 
-		  /*
-		   *	Load up the configuration values for the user
-		   */
-		  ptr = hdr->data;
-		  vendorcode = 0;
-		  vendorpec = 0;
-		  vsa_length_ptr = NULL;
+		/*
+		 *	Re-sign it, including updating the
+		 *	Message-Authenticator.
+		 */
+		if (rad_sign(packet, original, secret) < 0) {
+			return -1;
+		}
 
-		  /*
-		   *	Loop over the reply attributes for the packet.
-		   */
-		  for (reply = packet->vps; reply; reply = reply->next) {
-			  /*
-			   *	Ignore non-wire attributes
-			   */
-			  if ((VENDOR(reply->attribute) == 0) &&
-			      ((reply->attribute & 0xFFFF) > 0xff)) {
-				  continue;
-			  }
-
-			  /*
-			   *	Check that the packet is no more than
-			   *	4k in size, AFTER over-flowing the 4k
-			   *	boundary.  Note that the 'data'
-			   *	buffer, above, is one attribute longer
-			   *	than necessary, in order to permit
-			   *	this overflow.
-			   */
-			  if (total_length > MAX_PACKET_LEN) {
-				  librad_log("ERROR: Too many attributes for packet, result is larger than RFC maximum of 4k");
-				  return -1;
-			  }
-
-			  /*
-			   *	Set the Message-Authenticator to the
-			   *	correct length and initial value.
-			   */
-			  if (reply->attribute == PW_MESSAGE_AUTHENTICATOR) {
-				  reply->length = AUTH_VECTOR_LEN;
-				  memset(reply->strvalue, 0, AUTH_VECTOR_LEN);
-				  msg_auth_offset = total_length;
-			  }
-
-			  /*
-			   *	Print out ONLY the attributes which
-			   *	we're sending over the wire, and print
-			   *	them out BEFORE they're encrypted.
-			   */
-			  debug_pair(reply);
-
-			  /*
-			   *	We have a different vendor.  Re-set
-			   *	the vendor codes.
-			   */
-			  if (vendorcode != VENDOR(reply->attribute)) {
-				  vendorcode = 0;
-				  vendorpec = 0;
-				  vsa_length_ptr = NULL;
-			  }
-
-			  /*
-			   *	If the Vendor-Specific attribute is getting
-			   *	full, then create a new VSA attribute
-			   *
-			   *	FIXME: Multiple VSA's per Vendor-Specific
-			   *	SHOULD be configurable.  When that's done,
-			   *	the (1), below, can be changed to point to
-			   *	a configuration variable which is set TRUE
-			   *	if the NAS cannot understand multiple VSA's
-			   *	per Vendor-Specific
-			   */
-			  if ((1) || /* ALWAYS create a new Vendor-Specific */
-			      (vsa_length_ptr &&
-			       (reply->length + *vsa_length_ptr) >= MAX_STRING_LEN)) {
-				  vendorcode = 0;
-				  vendorpec = 0;
-				  vsa_length_ptr = NULL;
-			  }
-
-			  /*
-			   *	Maybe we have the start of a set of
-			   *	(possibly many) VSA attributes from
-			   *	one vendor.  Set a global VSA wrapper
-			   */
-			  if ((vendorcode == 0) &&
-			      ((vendorcode = VENDOR(reply->attribute)) != 0)) {
-				  vendorpec  = dict_vendorpec(vendorcode);
-
-				  /*
-				   *	This is a potentially bad error...
-				   *	we can't find the vendor ID!
-				   */
-				  if (vendorpec == 0) {
-					  /* FIXME: log an error */
-					  continue;
-				  }
-
-				  /*
-				   *	Build a VSA header.
-				   */
-				  *ptr++ = PW_VENDOR_SPECIFIC;
-				  vsa_length_ptr = ptr;
-				  *ptr++ = 6;
-				  lvalue = htonl(vendorpec);
-				  memcpy(ptr, &lvalue, 4);
-				  ptr += 4;
-				  total_length += 6;
-			  }
-
-			  if (vendorpec == VENDORPEC_USR) {
-				  lvalue = htonl(reply->attribute & 0xFFFF);
-				  memcpy(ptr, &lvalue, 4);
-
-				  length_ptr = vsa_length_ptr;
-
-				  total_length += 4;
-				  *length_ptr  += 4;
-				  ptr          += 4;
-
-				  /*
-				   *	Each USR-style attribute gets
-				   *	it's own VSA wrapper, so we
-				   *	re-set the vendor specific
-				   *	information.
-				   */
-				  vendorcode = 0;
-				  vendorpec = 0;
-				  vsa_length_ptr = NULL;
-
-			  } else {
-				  /*
-				   *	All other attributes are as
-				   *	per the RFC spec.
-				   */
-				  *ptr++ = (reply->attribute & 0xFF);
-				  length_ptr = ptr;
-				  if (vsa_length_ptr) *vsa_length_ptr += 2;
-				  *ptr++ = 2;
-				  total_length += 2;
-			  }
-
-			  switch(reply->type) {
-			  case PW_TYPE_STRING:
-			  case PW_TYPE_OCTETS:
-				  /*
-				   *  Encrypt the various password styles
-				   */
-				  switch (reply->flags.encrypt) {
-				  default:
-					  break;
-
-				  case FLAG_ENCRYPT_USER_PASSWORD:
-				    rad_pwencode((char *)reply->strvalue,
-						 &(reply->length),
-						 (const char *)secret,
-						 (const char *)packet->vector);
-				    break;
-
-				  case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-					  if (!original) {
-						  librad_log("ERROR: No request packet, cannot encrypt Tunnel-Password attribute in the reply.");
-						  return -1;
-					  }
-					  rad_tunnel_pwencode(reply->strvalue,
-							      &(reply->length),
-							      secret,
-							      original->vector);
-					  break;
-
-
-				  case FLAG_ENCRYPT_ASCEND_SECRET:
-					  make_secret(digest, packet->vector,
-						      secret, reply->strvalue);
-					  memcpy(reply->strvalue, digest, AUTH_VECTOR_LEN );
-					  reply->length = AUTH_VECTOR_LEN;
-					  break;
-				  } /* switch over encryption flags */
-				  /* FALL-THROUGH */
-
-				  /*
-				   *	None of these can have "encrypt"
-				   *	flags, so we skip them.
-				   */				  
-			  case PW_TYPE_IFID:
-			  case PW_TYPE_IPV6ADDR:
-			  case PW_TYPE_IPV6PREFIX:
-
-
-				  /*
-				   *	Ascend binary attributes are
-				   *	stored internally in binary form.
-				   */
-			  case PW_TYPE_ABINARY:
-				  len = reply->length;
-
-				  /*
-				   *    Set the TAG at the beginning
-				   *    of the string if tagged.  If
-				   *    tag value is not valid for
-				   *    tagged attribute, make it 0x00
-				   *    per RFC 2868.  -cparker
-				   */
-				  if (reply->flags.has_tag) {
-					  if (TAG_VALID(reply->flags.tag)) {
-						  len++;
-						  *ptr++ = reply->flags.tag;
-
-					  } else if (reply->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
-						  /*
-						   *  Tunnel passwords
-						   *  REQUIRE a tag,
-						   *  even if we don't
-						   *  have a valid
-						   *  tag.
-						   */
-						  len++;
-						  *ptr++ = 0x00;
-					  } /* else don't write a tag */
-				  } /* else the attribute doesn't have a tag */
-
-				  /*
-				   *	Ensure we don't go too far.
-				   *	The 'length' of the attribute
-				   *	may be 0..255, minus whatever
-				   *	octets are used in the attribute
-				   *	header.
-				   */
-				  allowed = 255;
-				  if (vsa_length_ptr) {
-					  allowed -= *vsa_length_ptr;
-				  } else {
-					  allowed -= *length_ptr;
-				  }
-
-				  if (len > allowed) {
-					  len = allowed;
-				  }
-
-				  *length_ptr += len;
-				  if (vsa_length_ptr) *vsa_length_ptr += len;
-				  /*
-				   *  If we have tagged attributes we can't assume that
-				   *  len == reply->length.  Use reply->length for copying
-				   *  the string data into the packet.  Use len for the
-				   *  true length of the string+tags.
-				   */
-				  memcpy(ptr, reply->strvalue, reply->length);
-				  ptr += reply->length;
-				  total_length += len;
-				  break;
-
-			  case PW_TYPE_INTEGER:
-			  case PW_TYPE_IPADDR:
-				  *length_ptr += 4;
-				  if (vsa_length_ptr) *vsa_length_ptr += 4;
-
-				  if (reply->type == PW_TYPE_INTEGER ) {
-				          /*  If tagged, the tag becomes the MSB of the value */
-				          if(reply->flags.has_tag) {
-					         /*  Tag must be ( 0x01 -> 0x1F ) OR 0x00  */
-					         if(!TAG_VALID(reply->flags.tag)) {
-						       reply->flags.tag = 0x00;
-						 }
-					         lvalue = htonl((reply->lvalue & 0xffffff) |
-								((reply->flags.tag & 0xff) << 24));
-					  } else {
-					         lvalue = htonl(reply->lvalue);
-					  }
-				  } else {
-					  /*
-					   *  IP address is already in
-					   *  network byte order.
-					   */
-					  lvalue = reply->lvalue;
-				  }
-				  memcpy(ptr, &lvalue, 4);
-				  ptr += 4;
-				  total_length += 4;
-				  break;
-
-				  /*
-				   *  There are no tagged date attributes.
-				   */
-			  case PW_TYPE_DATE:
-				  *length_ptr += 4;
-				  if (vsa_length_ptr) *vsa_length_ptr += 4;
-
-				  lvalue = htonl(reply->lvalue);
-				  memcpy(ptr, &lvalue, 4);
-				  ptr += 4;
-				  total_length += 4;
-				  break;
-			  default:
-				  break;
-			  }
-		  } /* done looping over all attributes */
-
-		  /*
-		   *	Fill in the rest of the fields, and copy
-		   *	the data over from the local stack to
-		   *	the newly allocated memory.
-		   *
-		   *	Yes, all this 'memcpy' is slow, but it means
-		   *	that we only allocate the minimum amount of
-		   *	memory for a request.
-		   */
-		  packet->data_len = total_length;
-		  packet->data = (uint8_t *) malloc(packet->data_len);
-		  if (!packet->data) {
-			  librad_log("Out of memory");
-			  return -1;
-		  }
-		  memcpy(packet->data, data, packet->data_len);
-		  hdr = (radius_packet_t *) packet->data;
-
-		  total_length = htons(total_length);
-		  memcpy(hdr->length, &total_length, sizeof(u_short));
-
-		  /*
-		   *	If this is not an authentication request, we
-		   *	need to calculate the md5 hash over the entire packet
-		   *	and put it in the vector.
-		   */
-		  secretlen = strlen(secret);
-
-		  /*
-		   *	If there's a Message-Authenticator, update it
-		   *	now, BEFORE updating the authentication vector.
-		   */
-		  if (msg_auth_offset) {
-			  uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
-
-			  switch (packet->code) {
-			  default:
-				  break;
-
-			  case PW_AUTHENTICATION_ACK:
-			  case PW_AUTHENTICATION_REJECT:
-			  case PW_ACCESS_CHALLENGE:
-				  /* this was checked above */
-				  memcpy(hdr->vector, original->vector,
-					 AUTH_VECTOR_LEN);
-				  break;
-			  }
-
-			  /*
-			   *	Set the authentication vector to zero,
-			   *	calculate the signature, and put it
-			   *	into the Message-Authenticator
-			   *	attribute.
-			   */
-			  memset(packet->data + msg_auth_offset + 2,
-				 0, AUTH_VECTOR_LEN);
-			  lrad_hmac_md5(packet->data, packet->data_len,
-					secret, secretlen, calc_auth_vector);
-			  memcpy(packet->data + msg_auth_offset + 2,
-				 calc_auth_vector, AUTH_VECTOR_LEN);
-
-			  /*
-			   *	Copy the original request vector back
-			   *	to the raw packet.
-			   */
-			  memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
-		  }
-
-		  /*
-		   *	Switch over the packet code, deciding how to
-		   *	sign the packet.
-		   */
-		  switch (packet->code) {
-			  /*
-			   *	Request packets are not signed, bur
-			   *	have a random authentication vector.
-			   */
-		  case PW_AUTHENTICATION_REQUEST:
-		  case PW_STATUS_SERVER:
-			  break;
-
-			  /*
-			   *	Reply packets are signed with the
-			   *	authentication vector of the request.
-			   */
-		  default:
-		  	{
-				MD5_CTX	context;
-				MD5Init(&context);
-				MD5Update(&context, packet->data, packet->data_len);
-				MD5Update(&context, secret, strlen(secret));
-				MD5Final(digest, &context);
-
-				memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
-				memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
-				break;
-			}
-		  } /* switch over packet codes */
-
-
-		  /*
-		   *	If packet->data points to data, then we print out
-		   *	the VP list again only for debugging.
-		   */
+		/*
+		 *	If packet->data points to data, then we print out
+		 *	the VP list again only for debugging.
+		 */
 	} else if (librad_debug) {
 	  	DEBUG("Re-sending %s of id %d to %s port %d\n", what, packet->id,
 		      inet_ntop(packet->dst_ipaddr.af,
