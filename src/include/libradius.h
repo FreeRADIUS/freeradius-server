@@ -258,6 +258,11 @@ void lrad_hmac_sha1(const unsigned char *text, int text_len,
 int		rad_send(RADIUS_PACKET *, const RADIUS_PACKET *, const char *secret);
 RADIUS_PACKET	*rad_recv(int fd);
 int		rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret);
+int		rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+			   const char *secret);
+int		rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+			 const char *secret);
+
 RADIUS_PACKET	*rad_alloc(int newvector);
 void		rad_free(RADIUS_PACKET **);
 int		rad_pwencode(char *encpw, int *len, const char *secret, const char *vector);
@@ -375,6 +380,7 @@ uint32_t lrad_rand(void);	/* like rand(), but better. */
  *	just for hashing internal data.
  */
 uint32_t lrad_hash(const void *, size_t);
+uint32_t lrad_hash_update(const void *data, size_t size, uint32_t hash);
 
 /*
  *	If you need fewer than 32-bits of hash, use this macro to get

@@ -331,8 +331,8 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 /*
  *	Encode a packet.
  */
-static int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-		      const char *secret)
+int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+	       const char *secret)
 {
 	radius_packet_t	*hdr;
 	uint32_t	lvalue;
@@ -718,10 +718,27 @@ static int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 }
 
 
-static int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-		    const char *secret)
+/*
+ *	Sign a previously encoded packet.
+ */
+int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+	     const char *secret)
 {
 	radius_packet_t	*hdr = (radius_packet_t *)packet->data;
+
+	/*
+	 *	It wasn't assigned an Id, this is bad!
+	 */
+	if (packet->id < 0) {
+		librad_log("ERROR: RADIUS packets must be assigned an Id.");
+		return -1;
+	}
+
+	if (!packet->data || (packet->data_len < AUTH_HDR_LEN) ||
+	    (packet->verified < 0)) {
+		librad_log("ERROR: You must call rad_encode() before rad_sign()");
+		return -1;
+	}
 
 	/*
 	 *	If there's a Message-Authenticator, update it
@@ -729,7 +746,7 @@ static int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *
 	 *	This is a hack...
 	 */
-	if (packet->verified) {
+	if (packet->verified > 0) {
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 		
 		switch (packet->code) {
@@ -832,20 +849,20 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *  First time through, allocate room for the packet
 	 */
 	if (!packet->data) {
-		  DEBUG("Sending %s of id %d to %s port %d\n",
-			what, packet->id,
-			inet_ntop(packet->dst_ipaddr.af,
-				  &packet->dst_ipaddr.ipaddr,
-				  ip_buffer, sizeof(ip_buffer)),
+		DEBUG("Sending %s of id %d to %s port %d\n",
+		      what, packet->id,
+		      inet_ntop(packet->dst_ipaddr.af,
+				&packet->dst_ipaddr.ipaddr,
+				ip_buffer, sizeof(ip_buffer)),
 			packet->dst_port);
-
+		
 		/*
 		 *	Encode the packet.
 		 */
 		if (rad_encode(packet, original, secret) < 0) {
 			return -1;
 		}
-
+		
 		/*
 		 *	Re-sign it, including updating the
 		 *	Message-Authenticator.
@@ -2372,7 +2389,10 @@ RADIUS_PACKET *rad_alloc(int newvector)
 		librad_log("out of memory");
 		return NULL;
 	}
-	memset(rp, 0, sizeof(RADIUS_PACKET));
+	memset(rp, 0, sizeof(*rp));
+	rp->id = -1;
+	rp->verified = -1;
+
 	if (newvector)
 		random_vector(rp->vector);
 	lrad_rand();		/* stir the pool again */

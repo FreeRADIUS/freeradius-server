@@ -708,6 +708,9 @@ void lrad_bin2hex(const unsigned char *bin, unsigned char *hex, int len)
 }
 
 
+#define FNV_MAGIC_INIT (0x811c9dc5)
+#define FNV_MAGIC_PRIME (0x01000193)
+
 /*
  *	A fast hash function.  For details, see:
  *
@@ -720,7 +723,7 @@ uint32_t lrad_hash(const void *data, size_t size)
 {
 	const uint8_t *p = data;
 	const uint8_t *q = p + size;
-	uint32_t      hash = 0x811c9dc5;
+	uint32_t      hash = FNV_MAGIC_INIT;
 
 	/*
 	 *	FNV-1 hash each octet in the buffer
@@ -729,7 +732,7 @@ uint32_t lrad_hash(const void *data, size_t size)
 		/*
 		 *	Multiple by 32-bit magic FNV prime, mod 2^32
 		 */
-		hash *= 0x01000193;
+		hash *= FNV_MAGIC_PRIME;
 #if 0
 		/*
 		 *	Potential optimization.
@@ -744,4 +747,21 @@ uint32_t lrad_hash(const void *data, size_t size)
     }
 
     return hash;
+}
+
+/*
+ *	Continue hashing data.
+ */
+uint32_t lrad_hash_update(const void *data, size_t size, uint32_t hash)
+{
+	const uint8_t *p = data;
+	const uint8_t *q = p + size;
+
+	while (p < q) {
+		hash *= FNV_MAGIC_PRIME;
+		hash ^= (uint32_t) (*p++);
+    }
+
+    return hash;
+
 }
