@@ -49,8 +49,8 @@ typedef struct REQNODE {
 } REQNODE;
 
 typedef struct REQUESTINFO {
-	REQNODE *first_request;
-	REQNODE *last_request;
+	REQNODE *head;
+	REQNODE *tail;
 } REQUESTINFO;
 
 
@@ -424,7 +424,7 @@ void rl_deinit(request_list_t *rl)
 	for (i = 0; i < 256; i++) {
 		REQNODE *this, *next;
 
-		for (this = rl->request_list[i].first_request;
+		for (this = rl->request_list[i].head;
 		     this != NULL;
 		     this = next) {
 			next = this->next;
@@ -517,13 +517,13 @@ void rl_delete(request_list_t *rl, REQUEST *request)
 	id = request->packet->id;
 
 	if (prev == NULL) {
-		rl->request_list[id].first_request = next;
+		rl->request_list[id].head = next;
 	} else {
 		prev->next = next;
 	}
 
 	if (next == NULL) {
-		rl->request_list[id].last_request = prev;
+		rl->request_list[id].tail = prev;
 	} else {
 		next->prev = prev;
 	}
@@ -614,13 +614,13 @@ void rl_add(request_list_t *rl, REQUEST *request)
 	node->prev = NULL;
 	node->next = NULL;
 
-	if (!rl->request_list[id].first_request) {
-		rl->request_list[id].first_request = node;
-		rl->request_list[id].last_request = node;
+	if (!rl->request_list[id].head) {
+		rl->request_list[id].head = node;
+		rl->request_list[id].tail = node;
 	} else {
-		node->prev = rl->request_list[id].last_request;
-		rl->request_list[id].last_request->next = node;
-		rl->request_list[id].last_request = node;
+		node->prev = rl->request_list[id].tail;
+		rl->request_list[id].tail->next = node;
+		rl->request_list[id].tail = node;
 	}
 
 	/*
@@ -993,7 +993,7 @@ int rl_walk(request_list_t *rl, RL_WALK_FUNC walker, void *data)
 		/*
 		 *	Walk over the request list for each ID.
 		 */
-		for (curreq = rl->request_list[id].first_request;
+		for (curreq = rl->request_list[id].head;
 				curreq != NULL ;
 				curreq = next) {
 			/*
@@ -1059,10 +1059,10 @@ REQUEST *rl_next(request_list_t *rl, REQUEST *request)
 		/*
 		 *	This ID has a request, return it.
 		 */
-		if (rl->request_list[id & 0xff].first_request != NULL) {
-			rad_assert(rl->request_list[id&0xff].first_request->req != request);
+		if (rl->request_list[id & 0xff].head != NULL) {
+			rad_assert(rl->request_list[id&0xff].head->req != request);
 
-			return rl->request_list[id & 0xff].first_request->req;
+			return rl->request_list[id & 0xff].head->req;
 		}
 	}
 
