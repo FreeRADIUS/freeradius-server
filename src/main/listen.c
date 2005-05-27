@@ -1656,6 +1656,10 @@ int listen_init(const char *filename, rad_listen_t **head)
 			return -1;
 		}
 		auth_port = this->port;	/* may have been updated in listen_bind */
+		this->recv = master_listen[this->type].recv;
+		this->send = master_listen[this->type].send;
+		this->update = master_listen[this->type].update;
+
 		*last = this;
 		last = &(this->next);
 		
@@ -1682,6 +1686,11 @@ int listen_init(const char *filename, rad_listen_t **head)
 			free(this);
 			return -1;
 		}
+
+		this->recv = master_listen[this->type].recv;
+		this->send = master_listen[this->type].send;
+		this->update = master_listen[this->type].update;
+
 		*last = this;
 		last = &(this->next);
 	} /* else there was no "bind_address" in the config */
