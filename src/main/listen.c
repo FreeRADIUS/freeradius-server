@@ -82,7 +82,28 @@ typedef struct rad_listen_master_t {
 	rad_listen_recv_t	recv;
 	rad_listen_send_t	send;
 	rad_listen_update_t	update;
+	rad_listen_print_t	print;
 } rad_listen_master_t;
+
+typedef struct listen_socket_t {
+	/*
+	 *	For normal sockets.
+	 */
+	lrad_ipaddr_t	ipaddr;
+	int		port;
+} listen_socket_t;
+
+typedef struct listen_detail_t {
+	const char	*detail;
+	VALUE_PAIR	*vps;
+	FILE		*fp;
+	int		state;
+	time_t		timestamp;
+	lrad_ipaddr_t	client_ip;
+	int		max_outstanding;
+	int		*outstanding;
+} listen_detail_t;
+			       
 
 static int listen_bind(rad_listen_t *this);
 
@@ -357,6 +378,25 @@ static int common_checks(rad_listen_t *listener,
 }
 
 
+static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
+{
+	size_t len;
+	listen_socket_t *sock = this->data;
+
+	if ((sock->ipaddr.af == AF_INET) &&
+	    (sock->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
+		strcpy(buffer, "*");
+	} else {
+		ip_ntoh(&sock->ipaddr, buffer, bufsize);
+	}
+
+	len = strlen(buffer);
+
+	return len + snprintf(buffer + len, bufsize - len, " port %d",
+			      sock->port);
+}
+
+
 /*
  *	Parse an authentication or accounting socket.
  */
@@ -366,7 +406,10 @@ static int common_socket_parse(const char *filename, int lineno,
 	int		rcode;
 	int		listen_port;
 	lrad_ipaddr_t	ipaddr;
-	
+	listen_socket_t *sock;
+
+	this->data = sock = rad_malloc(sizeof(*sock));
+
 	/*
 	 *	Try IPv4 first
 	 */
@@ -395,8 +438,8 @@ static int common_socket_parse(const char *filename, int lineno,
 			      &listen_port, "0");
 	if (rcode < 0) return -1;
 	
-	this->ipaddr = ipaddr;
-	this->port = listen_port;
+	sock->ipaddr = ipaddr;
+	sock->port = listen_port;
 
 	/*
 	 *	And bind it to the port.
@@ -405,8 +448,8 @@ static int common_socket_parse(const char *filename, int lineno,
 		char buffer[128];
 		radlog(L_CONS|L_ERR, "%s[%d]: Error binding to port for %s port %d",
 		       filename, cf_section_lineno(cs),
-		       ip_ntoh(&this->ipaddr, buffer, sizeof(buffer)),
-		       this->port);
+		       ip_ntoh(&sock->ipaddr, buffer, sizeof(buffer)),
+		       sock->port);
 		return -1;
 	}
 
@@ -852,14 +895,16 @@ static int proxy_socket_recv(rad_listen_t *listener,
  */
 static int detail_send(rad_listen_t *listener, REQUEST *request)
 {
+	listen_detail_t *data = listener->data;
+
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == detail_send);
 
 	if (request->simul_max >= 0) {
-		rad_assert(listener->outstanding != NULL);
-		rad_assert(request->simul_max < listener->max_outstanding);
+		rad_assert(data->outstanding != NULL);
+		rad_assert(request->simul_max < data->max_outstanding);
 
-		listener->outstanding[request->simul_max] = 0;
+		data->outstanding[request->simul_max] = 0;
 	}
 
 	return 0;
@@ -872,13 +917,14 @@ static int detail_send(rad_listen_t *listener, REQUEST *request)
  *	FIXME: create it, if it's not already there, so that the main
  *	server select() will wake us up if there's anything to read.
  */
-static int detail_open(rad_listen_t *listener)
+static int detail_open(rad_listen_t *this)
 {
 	struct stat st;
 	char buffer[2048];
-	
-	rad_assert(listener->state == STATE_UNOPENED);
-	snprintf(buffer, sizeof(buffer), "%s.work", listener->detail);
+	listen_detail_t *data = this->data;
+
+	rad_assert(data->state == STATE_UNOPENED);
+	snprintf(buffer, sizeof(buffer), "%s.work", data->detail);
 	
 	/*
 	 *	FIXME: Have "one-shot" configuration, where it
@@ -899,8 +945,8 @@ static int detail_open(rad_listen_t *listener)
 	 *	establish the lock, to prevent rlm_detail from
 	 *	writing to it.
 	 */
-	listener->fd = open(buffer, O_RDWR);
-	if (listener->fd < 0) {
+	this->fd = open(buffer, O_RDWR);
+	if (this->fd < 0) {
 		/*
 		 *	Try reading the detail file.  If it
 		 *	doesn't exist, we can't do anything.
@@ -909,7 +955,7 @@ static int detail_open(rad_listen_t *listener)
 		 *	exists, even if we don't have permissions
 		 *	to read it.
 		 */
-		if (stat(listener->detail, &st) < 0) {
+		if (stat(data->detail, &st) < 0) {
 			return 0;
 		}
 		
@@ -917,37 +963,37 @@ static int detail_open(rad_listen_t *listener)
 		 *	Open it BEFORE we rename it, just to
 		 *	be safe...
 		 */
-		listener->fd = open(listener->detail, O_RDWR);
-		if (listener->fd < 0) {
+		this->fd = open(data->detail, O_RDWR);
+		if (this->fd < 0) {
 			radlog(L_ERR, "Failed to open %s: %s",
-			       listener->detail, strerror(errno));
+			       data->detail, strerror(errno));
 			return 0;
 		}
 		
 		/*
 		 *	Rename detail to detail.work
 		 */
-		if (rename(listener->detail, buffer) < 0) {
-			close(listener->fd);
-			listener->fd = -1;
+		if (rename(data->detail, buffer) < 0) {
+			close(this->fd);
+			this->fd = -1;
 			return 0;
 		}
 	} /* else detail.work existed, and we opened it */
 	
-	rad_assert(listener->vps == NULL);
+	rad_assert(data->vps == NULL);
 	
-	rad_assert(listener->fp == NULL);
-	listener->fp = fdopen(listener->fd, "r");
-	if (!listener->fp) {
+	rad_assert(data->fp == NULL);
+	data->fp = fdopen(this->fd, "r");
+	if (!data->fp) {
 		radlog(L_ERR, "Failed to re-open %s: %s",
-		       listener->detail, strerror(errno));
+		       data->detail, strerror(errno));
 		return 0;
 	}
 
-	listener->state = STATE_UNLOCKED;
+	data->state = STATE_UNLOCKED;
 
-	listener->client_ip.af = AF_UNSPEC;
-	listener->timestamp = 0;
+	data->client_ip.af = AF_UNSPEC;
+	data->timestamp = 0;
 	
 	return 1;
 }
@@ -961,8 +1007,9 @@ static int detail_recv(rad_listen_t *listener,
 	VALUE_PAIR	*vp, **tail;
 	RADIUS_PACKET	*packet;
 	char		buffer[2048];
+	listen_detail_t *data = listener->data;
 
-	if (listener->state == STATE_UNOPENED) {
+	if (data->state == STATE_UNOPENED) {
 		rad_assert(listener->fd < 0);
 		if (!detail_open(listener)) return 0;
 	}
@@ -973,7 +1020,7 @@ static int detail_recv(rad_listen_t *listener,
 	 *	continue.  This means that the server doesn't block
 	 *	while waiting for the lock to open...
 	 */
-	if (listener->state == STATE_UNLOCKED) {
+	if (data->state == STATE_UNLOCKED) {
 		/*
 		 *	Note that we do NOT block waiting for the
 		 *	lock.  We've re-named the file above, so we've
@@ -989,7 +1036,7 @@ static int detail_recv(rad_listen_t *listener,
 		/*
 		 *	Look for the header
 		 */
-		listener->state = STATE_HEADER;
+		data->state = STATE_HEADER;
 	}
 
 	/*
@@ -997,11 +1044,11 @@ static int detail_recv(rad_listen_t *listener,
 	 *	here.  Note that to minimize potential work, we do
 	 *	so only once the file is opened & locked.
 	 */
-	if (listener->max_outstanding) {
+	if (data->max_outstanding) {
 		int i;
 
-		for (i = 0; i < listener->max_outstanding; i++) {
-			if (!listener->outstanding[i]) {
+		for (i = 0; i < data->max_outstanding; i++) {
+			if (!data->outstanding[i]) {
 				free_slot = i;
 				break;
 			}
@@ -1017,50 +1064,50 @@ static int detail_recv(rad_listen_t *listener,
 	 *	Catch an out of memory condition which will most likely
 	 *	never be met.
 	 */
-	if (listener->state == STATE_DONE) goto alloc_packet;
+	if (data->state == STATE_DONE) goto alloc_packet;
 
 	/*
 	 *	If we're in another state, then it means that we read
 	 *	a partial packet, which is bad.
 	 */
-	rad_assert(listener->state == STATE_HEADER);
-	rad_assert(listener->vps == NULL);
+	rad_assert(data->state == STATE_HEADER);
+	rad_assert(data->vps == NULL);
 
 	/*
 	 *	We read the last packet, and returned it for
 	 *	processing.  We later come back here to shut
 	 *	everything down, and unlink the file.
 	 */
-	if (feof(listener->fp)) {
-		rad_assert(listener->state == STATE_HEADER);
+	if (feof(data->fp)) {
+		rad_assert(data->state == STATE_HEADER);
 
 		/*
 		 *	Don't unlink the file until we've received
 		 *	all of the responses.
 		 */
-		if (listener->max_outstanding > 0) {
+		if (data->max_outstanding > 0) {
 			int i;
 
-			for (i = 0; i < listener->max_outstanding; i++) {
+			for (i = 0; i < data->max_outstanding; i++) {
 				/*
 				 *	FIXME: close the file?
 				 */
-				if (listener->outstanding[i]) {
-					listener->state = STATE_WAITING;
+				if (data->outstanding[i]) {
+					data->state = STATE_WAITING;
 					return 0;
 				}
 			}
 		}
 
 	cleanup:
-		rad_assert(listener->vps == NULL);
+		rad_assert(data->vps == NULL);
 
-		snprintf(buffer, sizeof(buffer), "%s.work", listener->detail);
+		snprintf(buffer, sizeof(buffer), "%s.work", data->detail);
 		unlink(buffer);
-		fclose(listener->fp); /* closes listener->fd */
-		listener->fp = NULL;
+		fclose(data->fp); /* closes listener->fd */
+		data->fp = NULL;
 		listener->fd = -1;
-		listener->state = STATE_UNOPENED;
+		data->state = STATE_UNOPENED;
 
 		/*
 		 *	Try to open "detail" again.  If we're on a
@@ -1071,17 +1118,17 @@ static int detail_recv(rad_listen_t *listener,
 		return 0;
 	}
 
-	tail = &listener->vps;
+	tail = &data->vps;
 
 	/*
 	 *	Fill the buffer...
 	 */
-	while (fgets(buffer, sizeof(buffer), listener->fp)) {
+	while (fgets(buffer, sizeof(buffer), data->fp)) {
 		/*
 		 *	No CR, die.
 		 */
 		if (!strchr(buffer, '\n')) {
-			pairfree(&listener->vps);
+			pairfree(&data->vps);
 			goto cleanup;
 		}
 
@@ -1089,9 +1136,9 @@ static int detail_recv(rad_listen_t *listener,
 		 *	We've read a header, possibly packet contents,
 		 *	and are now at the end of the packet.
 		 */
-		if ((listener->state == STATE_READING) &&
+		if ((data->state == STATE_READING) &&
 		    (buffer[0] == '\n')) {
-			listener->state = STATE_DONE;
+			data->state = STATE_DONE;
 			break;
 		}
 
@@ -1100,11 +1147,11 @@ static int detail_recv(rad_listen_t *listener,
 		 *	found.  If not, keep reading lines until we
 		 *	find one.
 		 */
-		if (listener->state == STATE_HEADER) {
+		if (data->state == STATE_HEADER) {
 			int y;
 			
 			if (sscanf(buffer, "%*s %*s %*d %*d:%*d:%*d %d", &y)) {
-				listener->state = STATE_READING;
+				data->state = STATE_READING;
 			}
 			continue;
 		}
@@ -1130,8 +1177,8 @@ static int detail_recv(rad_listen_t *listener,
 		 *	or port.  Oh well.
 		 */
 		if (!strcasecmp(key, "Client-IP-Address")) {
-			listener->client_ip.af = AF_INET;
-			ip_hton(value, AF_INET, &listener->client_ip);
+			data->client_ip.af = AF_INET;
+			ip_hton(value, AF_INET, &data->client_ip);
 			continue;
 		}
 
@@ -1141,7 +1188,7 @@ static int detail_recv(rad_listen_t *listener,
 		 *	Acct-Delay-Time.
 		 */
 		if (!strcasecmp(key, "Timestamp")) {
-			listener->timestamp = atoi(value);
+			data->timestamp = atoi(value);
 			continue;
 		}
 
@@ -1164,7 +1211,7 @@ static int detail_recv(rad_listen_t *listener,
 	 *	Otherwise it's a problem.  In any case, nuke the file
 	 *	and start over from scratch,
 	 */
-	if (feof(listener->fp)) {
+	if (feof(data->fp)) {
 		goto cleanup;
 	}
 
@@ -1176,14 +1223,14 @@ static int detail_recv(rad_listen_t *listener,
 	 *	If we're not done, then there's a problem.  The checks
 	 *	above for EOF
 	 */
-	rad_assert(listener->state == STATE_DONE);
+	rad_assert(data->state == STATE_DONE);
 
 	/*
 	 *	The packet we read was empty, re-set the state to look
 	 *	for a header, and don't return anything.
 	 */
-	if (!listener->vps) {
-		listener->state = STATE_HEADER;
+	if (!data->vps) {
+		data->state = STATE_HEADER;
 		return 0;
 	}
 
@@ -1213,16 +1260,16 @@ static int detail_recv(rad_listen_t *listener,
 		vp = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
 		rad_assert(vp != NULL);
 	}
-	if (listener->timestamp != 0) {
-		vp->lvalue += time(NULL) - listener->timestamp;
+	if (data->timestamp != 0) {
+		vp->lvalue += time(NULL) - data->timestamp;
 	}
 
 	/*
 	 *	Remember where it came from, so that we don't
 	 *	proxy it to the place it came from...
 	 */
-	if (listener->client_ip.af != AF_UNSPEC) {
-		packet->src_ipaddr = listener->client_ip;
+	if (data->client_ip.af != AF_UNSPEC) {
+		packet->src_ipaddr = data->client_ip;
 	}
 
 	/*
@@ -1244,13 +1291,13 @@ static int detail_recv(rad_listen_t *listener,
 	packet->dst_ipaddr.af = AF_INET;
 	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl((INADDR_LOOPBACK & ~0xffffff) | (lrad_rand() & 0xffffff));
 
-	packet->vps = listener->vps;
+	packet->vps = data->vps;
 
 	/*
 	 *	Re-set the state.
 	 */
-	listener->vps = NULL;
-	listener->state = STATE_HEADER;
+	data->vps = NULL;
+	data->state = STATE_HEADER;
 
 	/*
 	 *	FIXME: many of these checks may not be necessary...
@@ -1265,12 +1312,12 @@ static int detail_recv(rad_listen_t *listener,
 	 *	unused 'int'
 	 */
 	(*prequest)->simul_max = free_slot;
-	if (free_slot) listener->outstanding[free_slot] = 1;
+	if (free_slot) data->outstanding[free_slot] = 1;
 
 	*pfun = rad_accounting;
 
 	if (debug_flag) {
-		printf("detail_recv: Read packet from %s\n", listener->detail);
+		printf("detail_recv: Read packet from %s\n", data->detail);
 		for (vp = packet->vps; vp; vp = vp->next) {
 			putchar('\t');
 			vp_print(stdout, vp);
@@ -1287,11 +1334,20 @@ static int detail_recv(rad_listen_t *listener,
  */
 static void detail_free(rad_listen_t *this)
 {
-	free(this->detail);
-	pairfree(&this->vps);
-	free(this->max_outstanding);
+	listen_detail_t *data = this->data;
 
-	if (this->fp != NULL) fclose(this->fp);
+	free(data->detail);
+	pairfree(&data->vps);
+	free(data->outstanding);
+
+	if (data->fp != NULL) fclose(data->fp);
+}
+
+
+static int detail_print(rad_listen_t *this, char *buffer, size_t bufsize)
+{
+	return snprintf(buffer, bufsize, "%s",
+			((listen_detail_t *)(this->data))->detail);
 }
 
 
@@ -1303,6 +1359,9 @@ static int detail_parse(const char *filename, int lineno,
 {
 	int		rcode;
 	const char	*detail = NULL;
+	listen_detail_t *data;
+
+	this->data = data = rad_malloc(sizeof(*data));
 
 	rcode = cf_item_parse(cs, "detail", PW_TYPE_STRING_PTR,
 			      &detail, NULL);
@@ -1313,17 +1372,17 @@ static int detail_parse(const char *filename, int lineno,
 		return -1;
 	}
 	
-	this->detail = detail;
-	this->vps = NULL;
-	this->fp = NULL;
-	this->state = STATE_UNOPENED;
+	data->detail = detail;
+	data->vps = NULL;
+	data->fp = NULL;
+	data->state = STATE_UNOPENED;
 	
 	rcode = cf_item_parse(cs, "max_outstanding",
 			      PW_TYPE_INTEGER,
-			      &(this->max_outstanding), "100");
+			      &(data->max_outstanding), "100");
 	if (rcode < 0) return -1;
-	if (this->max_outstanding > 0) {
-		this->outstanding = rad_malloc(sizeof(int) * this->max_outstanding);
+	if (data->max_outstanding > 0) {
+		data->outstanding = rad_malloc(sizeof(int) * data->max_outstanding);
 	}
 	
 	detail_open(this);
@@ -1347,27 +1406,27 @@ static int generic_update(rad_listen_t *this, time_t now)
 }
 
 static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
-	{ NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
+	{ NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
 
 	/* authentication */
 	{ common_socket_parse, NULL,
 	  auth_socket_recv, auth_socket_send,
-	  generic_update },
+	  generic_update, socket_print },
 
 	/* accounting */
 	{ common_socket_parse, NULL,
 	  acct_socket_recv, acct_socket_send,
-	  generic_update },
+	  generic_update, socket_print},
 
 	/* proxying */
 	{ NULL, NULL,
 	  proxy_socket_recv, proxy_socket_send,
-	  NULL },
+	  NULL, socket_print },
 
 	/* detail */
 	{ detail_parse, detail_free,
 	  detail_recv, detail_send,
-	  generic_update}
+	  generic_update, detail_print }
 };
 
 
@@ -1379,30 +1438,31 @@ static int listen_bind(rad_listen_t *this)
 	struct sockaddr salocal;
 	socklen_t	salen;
 	rad_listen_t	**last;
+	listen_socket_t *sock = this->data;
 
 	/*
 	 *	If the port is zero, then it means the appropriate
 	 *	thing from /etc/services.
 	 */
-	if (this->port == 0) {
+	if (sock->port == 0) {
 		struct servent	*svp;
 
 		switch (this->type) {
 		case RAD_LISTEN_AUTH:
 			svp = getservbyname ("radius", "udp");
 			if (svp != NULL) {
-				this->port = ntohs(svp->s_port);
+				sock->port = ntohs(svp->s_port);
 			} else {
-				this->port = PW_AUTH_UDP_PORT;
+				sock->port = PW_AUTH_UDP_PORT;
 			}
 			break;
 
 		case RAD_LISTEN_ACCT:
 			svp = getservbyname ("radacct", "udp");
 			if (svp != NULL) {
-				this->port = ntohs(svp->s_port);
+				sock->port = ntohs(svp->s_port);
 			} else {
-				this->port = PW_ACCT_UDP_PORT;
+				sock->port = PW_ACCT_UDP_PORT;
 			}
 			break;
 
@@ -1423,14 +1483,14 @@ static int listen_bind(rad_listen_t *this)
 	     *last != NULL;
 	     last = &((*last)->next)) {
 		if ((this->type == (*last)->type) &&
-		    (this->port == (*last)->port) &&
-		    (this->ipaddr.af == (*last)->ipaddr.af)) {
+		    (sock->port == ((listen_socket_t *)((*last)->data))->port) &&
+		    (sock->ipaddr.af == ((listen_socket_t *)((*last)->data))->ipaddr.af)) {
 			int equal;
 
-			if (this->ipaddr.af == AF_INET) {
-				equal = (this->ipaddr.ipaddr.ip4addr.s_addr == (*last)->ipaddr.ipaddr.ip4addr.s_addr);
-			} else if (this->ipaddr.af == AF_INET6) {
-				equal = IN6_ARE_ADDR_EQUAL(&(this->ipaddr.ipaddr.ip6addr), &((*last)->ipaddr.ipaddr.ip6addr));
+			if (sock->ipaddr.af == AF_INET) {
+				equal = (sock->ipaddr.ipaddr.ip4addr.s_addr == ((listen_socket_t *)((*last)->data))->ipaddr.ipaddr.ip4addr.s_addr);
+			} else if (sock->ipaddr.af == AF_INET6) {
+				equal = IN6_ARE_ADDR_EQUAL(&(sock->ipaddr.ipaddr.ip6addr), &(((listen_socket_t *)((*last)->data))->ipaddr.ipaddr.ip6addr));
 			} else {
 				equal = 0;
 			}
@@ -1446,7 +1506,7 @@ static int listen_bind(rad_listen_t *this)
 	/*
 	 *	Create the socket.
 	 */
-	this->fd = socket(this->ipaddr.af, SOCK_DGRAM, 0);
+	this->fd = socket(sock->ipaddr.af, SOCK_DGRAM, 0);
 	if (this->fd < 0) {
 		radlog(L_ERR|L_CONS, "ERROR: Failed to open socket: %s",
 		       strerror(errno));
@@ -1463,25 +1523,25 @@ static int listen_bind(rad_listen_t *this)
 	}
 #endif
 
-	if (this->ipaddr.af == AF_INET) {
+	if (sock->ipaddr.af == AF_INET) {
 		struct sockaddr_in *sa;
 
 		sa = (struct sockaddr_in *) &salocal;
 		memset(sa, 0, sizeof(salocal));
 		sa->sin_family = AF_INET;
-		sa->sin_addr = this->ipaddr.ipaddr.ip4addr;
-		sa->sin_port = htons(this->port);
+		sa->sin_addr = sock->ipaddr.ipaddr.ip4addr;
+		sa->sin_port = htons(sock->port);
 		salen = sizeof(*sa);
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
-	} else if (this->ipaddr.af == AF_INET6) {
+	} else if (sock->ipaddr.af == AF_INET6) {
 		struct sockaddr_in6 *sa;
 
 		sa = (struct sockaddr_in6 *) &salocal;
 		memset(sa, 0, sizeof(salocal));
 		sa->sin6_family = AF_INET6;
-		sa->sin6_addr = this->ipaddr.ipaddr.ip6addr;
-		sa->sin6_port = htons(this->port);
+		sa->sin6_addr = sock->ipaddr.ipaddr.ip6addr;
+		sa->sin6_port = htons(sock->port);
 		salen = sizeof(*sa);
 
 		/*
@@ -1491,7 +1551,7 @@ static int listen_bind(rad_listen_t *this)
 		 *	design a little simpler.
 		 */
 #ifdef IPV6_V6ONLY
-		if (IN6_IS_ADDR_UNSPECIFIED(&this->ipaddr.ipaddr.ip6addr)) {
+		if (IN6_IS_ADDR_UNSPECIFIED(&sock->ipaddr.ipaddr.ip6addr)) {
 			int on = 1;
 			
 			setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
@@ -1501,7 +1561,7 @@ static int listen_bind(rad_listen_t *this)
 #endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 	} else {
 		radlog(L_ERR|L_CONS, "ERROR: Unsupported protocol family %d",
-		       this->ipaddr.af);
+		       sock->ipaddr.af);
 		close(this->fd);
 		this->fd = -1;
 		return -1;
@@ -1511,9 +1571,9 @@ static int listen_bind(rad_listen_t *this)
 		char buffer[128];
 
 		radlog(L_ERR|L_CONS, "ERROR: Bind to %s port %d failed: %s",
-		       inet_ntop(this->ipaddr.af, &this->ipaddr.ipaddr,
+		       inet_ntop(sock->ipaddr.af, &sock->ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
-		       this->port, strerror(errno));
+		       sock->port, strerror(errno));
 				 
 		close(this->fd);
 		this->fd = -1;
@@ -1535,11 +1595,13 @@ static int listen_bind(rad_listen_t *this)
 rad_listen_t *proxy_new_listener()
 {
 	int last_proxy_port, port;
-	rad_listen_t *this, *old, **last;
+	rad_listen_t *this, *tmp, **last;
+	listen_socket_t *sock, *old;
 
 	this = rad_malloc(sizeof(*this));
-
 	memset(this, 0, sizeof(*this));
+	this->data = rad_malloc(sizeof(*sock));
+	memset(this->data, 0, sizeof(*sock));
 
 	/*
 	 *	Find an existing proxy socket to copy.
@@ -1549,30 +1611,32 @@ rad_listen_t *proxy_new_listener()
 	last_proxy_port = 0;
 	old = NULL;
 	last = &mainconfig.listen;
-	for (this = mainconfig.listen; this != NULL; this = this->next) {
-		if (this->type == RAD_LISTEN_PROXY) {
-			if (this->port > last_proxy_port) {
-				last_proxy_port = this->port + 1;
+	for (tmp = mainconfig.listen; tmp != NULL; tmp = tmp->next) {
+		if (tmp->type == RAD_LISTEN_PROXY) {
+			sock = tmp->data;
+			if (sock->port > last_proxy_port) {
+				last_proxy_port = sock->port + 1;
 			}
-			if (!old) old = this;
+			if (!old) old = sock;
 		}
 
-		last = &(this->next);
+		last = &(tmp->next);
 	}
 
 	if (!old) return NULL;	/* This is a serious error. */
 
 	/*
-	 *	FIXME: find a new IP address to listen on
+	 *	FIXME: find a new IP address to listen on?
 	 */
-	memcpy(&this->ipaddr, &old->ipaddr, sizeof(this->ipaddr));
+	sock = this->data;
+	memcpy(&sock->ipaddr, &old->ipaddr, sizeof(sock->ipaddr));
 	this->type = RAD_LISTEN_PROXY;
 
 	/*
 	 *	Keep going until we find an unused port.
 	 */
 	for (port = last_proxy_port; port < 64000; port++) {
-		this->port = port;
+		sock->port = port;
 		if (listen_bind(this) == 0) {
 			/*
 			 *	Add the new listener to the list of
@@ -1637,28 +1701,32 @@ int listen_init(const char *filename, rad_listen_t **head)
 	if (rcode < 0) return -1; /* error parsing it */
 	
 	if (rcode == 0) { /* successfully parsed IPv4 */
+		listen_socket_t *sock;
 		server_ipaddr.af = AF_INET;
 
 	bind_it:		
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));
+		this->data = sock = rad_malloc(sizeof(*sock));
+		memset(sock, 0, sizeof(*sock));
 		
 		/*
 		 *	Create the authentication socket.
 		 */
-		this->ipaddr = server_ipaddr;
 		this->type = RAD_LISTEN_AUTH;
-		this->port = auth_port;
+		sock->ipaddr = server_ipaddr;
+		sock->port = auth_port;
 		
 		if (listen_bind(this) < 0) {
-			radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the authentication port %d", this->port);
+			radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the authentication port %d", sock->port);
 			free(this);
 			return -1;
 		}
-		auth_port = this->port;	/* may have been updated in listen_bind */
+		auth_port = sock->port;	/* may have been updated in listen_bind */
 		this->recv = master_listen[this->type].recv;
 		this->send = master_listen[this->type].send;
 		this->update = master_listen[this->type].update;
+		this->print = master_listen[this->type].print;
 
 		*last = this;
 		last = &(this->next);
@@ -1671,18 +1739,21 @@ int listen_init(const char *filename, rad_listen_t **head)
 		 */
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));
+		this->data = sock = rad_malloc(sizeof(*sock));
+		memset(sock, 0, sizeof(*sock));
 		
 		/*
 		 *	Create the accounting socket.
 		 *
-		 *	The accounting port is always the authentication port + 1
+		 *	The accounting port is always the
+		 *	authentication port + 1
 		 */
-		this->ipaddr = server_ipaddr;
 		this->type = RAD_LISTEN_ACCT;
-		this->port = auth_port + 1;
+		sock->ipaddr = server_ipaddr;
+		sock->port = auth_port + 1;
 		
 		if (listen_bind(this) < 0) {
-			radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the accounting port %d", this->port);
+			radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the accounting port %d", sock->port);
 			free(this);
 			return -1;
 		}
@@ -1690,6 +1761,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		this->recv = master_listen[this->type].recv;
 		this->send = master_listen[this->type].send;
 		this->update = master_listen[this->type].update;
+		this->print = master_listen[this->type].print;
 
 		*last = this;
 		last = &(this->next);
@@ -1754,6 +1826,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		this->recv = master_listen[type].recv;
 		this->send = master_listen[type].send;
 		this->update = master_listen[type].update;
+		this->print = master_listen[type].print;
 
 		/*
 		 *	Call per-type parsers, if they're necessary.
@@ -1777,6 +1850,7 @@ int listen_init(const char *filename, rad_listen_t **head)
  do_proxy:
 	if (mainconfig.proxy_requests == TRUE) {
 		int		port = -1;
+		listen_socket_t *sock = this->data;
 
 		/*
 		 *	No sockets to receive packets, therefore
@@ -1790,11 +1864,11 @@ int listen_init(const char *filename, rad_listen_t **head)
 		 */
 		for (this = *head; this != NULL; this = this->next) {
 			if (server_ipaddr.af == AF_UNSPEC) {
-				server_ipaddr = this->ipaddr;
+				server_ipaddr = sock->ipaddr;
 			}
 			
-			if ((port < 0) || (port == this->port)) {
-				port = this->port + 1;
+			if ((port < 0) || (port == sock->port)) {
+				port = sock->port + 1;
 				if (this->type == RAD_LISTEN_AUTH) {
 					port++;	/* skip accounting port */
 				}
@@ -1813,19 +1887,21 @@ int listen_init(const char *filename, rad_listen_t **head)
 
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));
-		
+		this->data = sock = rad_malloc(sizeof(*sock));
+		memset(sock, 0, sizeof(*sock));
+
 		/*
 		 *	Create the first proxy socket.
 		 */
-		this->ipaddr = server_ipaddr;
 		this->type = RAD_LISTEN_PROXY;
+		sock->ipaddr = server_ipaddr;
 
 		/*
 		 *	Try to find a proxy port (value doesn't matter)
 		 */
-		for (this->port = port;
-		     this->port < 64000;
-		     this->port++) {
+		for (sock->port = port;
+		     sock->port < 64000;
+		     sock->port++) {
 			if (listen_bind(this) == 0) {
 				*last = this;
 				last = &(this->next); /* just in case */
@@ -1833,7 +1909,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 			}
 		}
 
-		if (this->port >= 64000) {
+		if (sock->port >= 64000) {
 			radlog(L_ERR|L_CONS, "Failed to open socket for proxying");
 			free(this);
 			return -1;
@@ -1901,6 +1977,7 @@ void listen_free(rad_listen_t **head)
 		if (master_listen[this->type].free) {
 			master_listen[this->type].free(this);
 		}
+		free(this->data);
 		free(this);
 		
 		this = next;

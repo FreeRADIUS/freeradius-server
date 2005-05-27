@@ -412,31 +412,22 @@ int main(int argc, char *argv[])
 	for (listener = mainconfig.listen;
 	     listener != NULL;
 	     listener = listener->next) {
-		if ((listener->ipaddr.af == AF_INET) &&
-		    (listener->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
-			strcpy(buffer, "*");
-		} else {
-			ip_ntoh(&listener->ipaddr, buffer, sizeof(buffer));
-		}
-		
+		listener->print(listener, buffer, sizeof(buffer));
 		switch (listener->type) {
 		case RAD_LISTEN_AUTH:
-			DEBUG("Listening on authentication address %s port %d",
-			      buffer, listener->port);
+			DEBUG("Listening on authentication address %s", buffer);
 			break;
 
 		case RAD_LISTEN_ACCT:
-			DEBUG("Listening on accounting address %s port %d",
-			      buffer, listener->port);
+			DEBUG("Listening on accounting address %s", buffer);
 			break;
 
 		case RAD_LISTEN_PROXY:
-			DEBUG("Listening on proxy address %s port %d",
-			      buffer, listener->port);
+			DEBUG("Listening on proxy address %s", buffer);
 			break;
 
 		case RAD_LISTEN_DETAIL:
-			DEBUG("Listening on detail file %s", listener->detail);
+			DEBUG("Listening on detail file %s", buffer);
 			break;
 
 		default:
