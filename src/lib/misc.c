@@ -706,3 +706,42 @@ void lrad_bin2hex(const unsigned char *bin, unsigned char *hex, int len)
 	*hex = '\0';
 	return;
 }
+
+
+/*
+ *	A fast hash function.  For details, see:
+ *
+ *	http://www.isthe.com/chongo/tech/comp/fnv/
+ *
+ *	Which also includes public domain source.  We've re-written
+ *	it here for our purposes.
+ */
+uint32_t lrad_hash(const void *data, size_t size)
+{
+	const uint8_t *p = data;
+	const uint8_t *q = p + size;
+	uint32_t      hash = 0x811c9dc5;
+
+	/*
+	 *	FNV-1 hash each octet in the buffer
+	 */
+	while (p < q) {
+		/*
+		 *	Multiple by 32-bit magic FNV prime, mod 2^32
+		 */
+		hash *= 0x01000193;
+#if 0
+		/*
+		 *	Potential optimization.
+		 */
+		hash += (hash<<1) + (hash<<4) + (hash<<7) + (hash<<8) + (hash<<24);
+#endif
+		/*
+		 *	XOR the 8-bit quantity into the bottom of
+		 *	the hash.
+		 */
+		hash ^= (uint32_t) (*p++);
+    }
+
+    return hash;
+}

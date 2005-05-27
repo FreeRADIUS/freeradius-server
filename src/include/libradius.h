@@ -369,6 +369,21 @@ void lrad_isaac(lrad_randctx *ctx);
 void lrad_randinit(lrad_randctx *ctx, int flag);
 uint32_t lrad_rand(void);	/* like rand(), but better. */
 
+
+/*
+ *	Fast hash, which isn't too bad.  Don't use for cryptography,
+ *	just for hashing internal data.
+ */
+uint32_t lrad_hash(const void *, size_t);
+
+/*
+ *	If you need fewer than 32-bits of hash, use this macro to get
+ *	the number of bits in the hash you need.  The upper bits of the
+ *	hash will be set to zero.
+ */
+#define LRAD_HASH_FOLD(hash, bits) (((hash >> bits) ^ hash) & (uint32_t) ((1 << bits) - 1))
+
+
 /* crypt wrapper from crypt.c */
 int lrad_crypt_check(const char *key, const char *salt);
 
