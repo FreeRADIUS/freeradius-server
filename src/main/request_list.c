@@ -1110,33 +1110,29 @@ static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
 	time_passed = (int) (info->now - request->timestamp);
 	
 	/*
-	 *  If the request is marked as a delayed reject, AND it's
-	 *  time to send the reject, then do so now.
+	 *	If the request is marked as a delayed reject, AND it's
+	 *	time to send the reject, then do so now.
 	 */
 	if (request->finished &&
 	    ((request->options & RAD_REQUEST_OPTION_DELAYED_REJECT) != 0)) {
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-		if (time_passed >= mainconfig.reject_delay) {
-			/*
-			 *  Clear the 'delayed reject' bit, so that we
-			 *  don't do this again.
-			 */
-			request->options &= ~RAD_REQUEST_OPTION_DELAYED_REJECT;
-			request->listener->send(request->listener, request);
-
-		} else {
-			/*
-			 *	Subtract time passed from when we want to
-			 *	wake up, and set sleep_time.
-			 */
-			time_passed = mainconfig.reject_delay - time_passed;
-			goto setup_timeout;
+		if (time_passed < mainconfig.reject_delay) {
+			goto reject_delay;
 		}
 
 		/*
-		 *	This request can't affect sleep_time, continue.
+		 *	Clear the 'delayed reject' bit, so that we
+		 *	don't do this again, and fall through to
+		 *	setting cleanup delay.
 		 */
-		return RL_WALK_CONTINUE;
+		request->options &= ~RAD_REQUEST_OPTION_DELAYED_REJECT;
+		request->listener->send(request->listener, request);
+
+		/*
+		 *	FIXME: Beware interaction with cleanup_delay,
+		 *	where we might send a reject, and immediately
+		 *	there-after clean it up!
+		 */
 	}
 
 	/*
@@ -1249,21 +1245,15 @@ static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
 	} /* else the request is still allowed to be in the queue */
 
 	/*
-	 *	If the request is still being processed, then due to
-	 *	the above check, it's still within it's time limit.
-	 *	In that case, wake up when it's time to delete it.
-	 */
-	if (request->child_pid != NO_SUCH_CHILD_PID) {
-		time_passed = mainconfig.max_request_time - time_passed;
-		goto setup_timeout;
-	}
-
-	/*
 	 *	If the request is finished, set the cleanup delay.
-	 *	Otherwise, set max request time.
+	 *	Otherwise, set reject delay or max request time.
 	 */
 	if (request->finished) {
 		time_passed = mainconfig.cleanup_delay - time_passed;
+	} else if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+		   (mainconfig.reject_delay > 0)) {
+	reject_delay:
+		time_passed = mainconfig.reject_delay - time_passed;
 	} else {
 		time_passed = mainconfig.max_request_time - time_passed;
 	}
