@@ -1,0 +1,89 @@
+.TH rlm_sql_log 5 "28 May 2005" "" "FreeRADIUS Module"
+.SH NAME
+rlm_sql_log \- FreeRADIUS Module
+.SH DESCRIPTION
+The \fBrlm_sql_log\fP module appends the SQL queries in a log file
+which is read later by the radsqlrelay program.
+.PP
+This module only performs the dynamic expansion of the variables found
+in the SQL statements. No operation is executed on the database server.
+(this could be done later by an external program) That means the module
+is useful only with non-"SELECT" statements.
+.PP
+The main configuration items to be aware of are the path of the log
+file and the different SQL queries.
+.IP "path"
+An entry named "path" sets the full path of the file where the SQL
+queries are recorded. (this variable is run through dynamic string
+expansion, and can include FreeRADIUS variables to create a dynamic
+filename)
+.IP "Accounting queries"
+When a accounting record is processed, the module searches a config
+entry named like the Acct-Status-Type attribut present in the
+packet. For example, if a SQL query has to be run on an accounting
+start, the entry must be named "Start". Other usual values for
+Acct-Status-Type are "Stop", "Alive", "Accounting-On", etc.
+.IP "Post-Auth query"
+An entry named "Post-Auth" sets the query to run during the
+post-authentication stage.
+.SH CONFIGURATION
+.DS
+modules {
+  ...
+.br
+  sql_log {
+.br
+    path = ${radacctdir}/sql-relay
+.br
+    acct_table = "radacct"
+.br
+    postauth_table = "radpostauth"
+.br
+
+.br
+    Start = "INSERT INTO ${acct_table} ..."
+.br
+    Stop = "UPDATE ${acct_table} SET ..."
+.br
+    Alive = "UPDATE ${acct_table} SET ..."
+.br
+
+.br
+    Post-Auth = "INSERT INTO ${postauth_table} ..."
+.br
+  }
+.br
+  ...
+.br
+}
+
+.br
+accounting {
+  ...
+.br
+  sql_log
+  ...
+.br
+}
+.br
+
+.br
+post-auth {
+  ...
+.br
+  sql_log
+  ...
+.br
+}
+.DE
+.SH SECTIONS
+.BR accounting,
+.BR post-auth
+.SH FILES
+.I /etc/raddb/radiusd.conf
+.SH SEE ALSO
+.BR radsqlrelay (8),
+.BR radiusd (8),
+.BR radiusd.conf (5)
+.SH AUTHOR
+Nicolas Baradakis <nicolas.baradakis@cegetel.net>
