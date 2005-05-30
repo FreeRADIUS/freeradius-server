@@ -1,0 +1,47 @@
+AC_PREREQ([2.53])
+AC_INIT(rlm_sql_log.c) # change 'example'
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_sql_log]) # change 'example'
+
+if test x$with_[]modname != xno; then
+
+	AC_PROG_CC
+	AC_PROG_CPP
+
+	dnl put configuration checks here.  
+	dnl set $fail to what's missing, on fatal errors.
+	dnl use AC_MSG_WARN() on important messages.
+	AC_CHECK_LIB(c, printf,
+		[ sql_log_ldflags="$sql_log_ldflags -lc" ],
+		[ fail=$fail" printf" ]
+	)
+
+	AC_CHECK_HEADER(stdio.h,
+		[ sql_log_cflags="$sql_log_cflags -I/usr/include" ],
+		[ fail=$fail" stdio.h" ]
+	)
+
+	AC_CHECK_HEADERS(stdio.h stdlib.h)  # for the config.h defs
+	AC_CHECK_FUNCS(printf)  # for the config.h defs
+
+	targetname=modname     # keep this!  Don't change!
+else
+	targetname=            # keep this!  Don't change!
+	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+fi
+
+dnl  Don't change this section.
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		targetname=""
+	fi
+fi
+
+AC_SUBST(sql_log_cflags)  # change 'example'
+AC_SUBST(sql_log_ldflags)  # change 'example'
+AC_SUBST(targetname)  # keep this!  Don't change!
+AC_OUTPUT(Makefile)  # keep this!  Don't change!
