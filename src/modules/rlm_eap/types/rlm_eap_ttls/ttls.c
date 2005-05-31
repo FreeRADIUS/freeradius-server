@@ -648,6 +648,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	tunneled user!
 		 */
 		if (t->use_tunneled_reply) {
+			pairdelete(&reply->vps, PW_PROXY_STATE);
 			pairadd(&request->reply->vps, reply->vps);
 			reply->vps = NULL;
 		}
