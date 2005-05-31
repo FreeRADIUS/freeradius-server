@@ -1,4 +1,6 @@
 FreeRADIUS 1.0.3 ; $Date$, urgency=medium
+	* Escape more strings in rlm_sql.
+	* Don't send Proxy-State from home server in TTLS.
 	* Fixes for forking external programs, so the server doesn't
 	  suddenly stop processing requests, or stop forking programs.
 	* radzap now works, but it's command-line options have changed
