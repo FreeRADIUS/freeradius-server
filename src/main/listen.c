@@ -34,15 +34,15 @@
 #include <arpa/inet.h>
 #endif
 
-#ifdef HAVE_NET_IF_H
-#include <net/if.h>
-#endif
-
 #include <sys/resource.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+
+#ifdef HAVE_NET_IF_H
+#include <net/if.h>
+#endif
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -217,6 +217,10 @@ static int common_checks(rad_listen_t *listener,
 			 *	It's not finished because the request
 			 *	was proxied, but there was no reply
 			 *	from the home server.
+			 *
+			 *	This code will never get hit for
+			 *	accounting packets, as they're always
+			 *	updated, and never re-transmitted.
 			 */
 			if (curreq->proxy && !curreq->proxy_reply) {
 				DEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
@@ -543,7 +547,9 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 
 
 /*
- *	Send a packet
+ *	Send a packet to a home server.
+ *
+ *	FIXME: have different code for proxy auth & acct!
  */
 static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 {
