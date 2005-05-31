@@ -1152,6 +1152,7 @@ static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
 		 *  Request completed, delete it, and unlink it
 		 *  from the currently 'alive' list of requests.
 		 */
+	cleanup:
 		DEBUG2("Cleaning up request %d ID %d with timestamp %08lx",
 				request->number, request->packet->id,
 				(unsigned long) request->timestamp);
@@ -1246,19 +1247,81 @@ static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
 
 	/*
 	 *	If the request is finished, set the cleanup delay.
-	 *	Otherwise, set reject delay or max request time.
 	 */
 	if (request->finished) {
 		time_passed = mainconfig.cleanup_delay - time_passed;
-	} else if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-		   (mainconfig.reject_delay > 0)) {
-	reject_delay:
-		time_passed = mainconfig.reject_delay - time_passed;
-	} else {
-		time_passed = mainconfig.max_request_time - time_passed;
+		goto setup_timeout;
 	}
 
- setup_timeout:
+	/*
+	 *	Set reject delay, if appropriate.
+	 */
+	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+	    (mainconfig.reject_delay > 0)) {
+	reject_delay:
+		time_passed = mainconfig.reject_delay - time_passed;
+		goto setup_timeout;
+	}
+
+	/*
+	 *	Accounting requests are always proxied
+	 *	asynchronously, authentication requests are
+	 *	always proxied synchronously.
+	 */
+	if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
+	    (request->proxy && !request->proxy_reply) &&
+	    (info->now != request->proxy_start_time)) {
+		/*
+		 *	We've tried to send it, but the home server
+		 *	hasn't responded.
+		 */
+		if (request->proxy_try_count == 0) {
+			request_reject(request, REQUEST_FAIL_HOME_SERVER2);
+			rad_assert(request->proxy->dst_ipaddr.af == AF_INET);
+			realm_disable(request->proxy->dst_ipaddr.ipaddr.ip4addr.s_addr,
+				      request->proxy->dst_port);
+			request->finished = TRUE;
+			goto cleanup; /* delete the request & continue */
+		}
+		
+		/*
+		 *	Figure out how long we have to wait before
+		 *	sending a re-transmit.
+		 */
+		time_passed = (info->now - request->proxy_start_time) % mainconfig.proxy_retry_delay;
+		if (time_passed == 0) {
+			VALUE_PAIR *vp;
+			vp = pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME);
+			if (!vp) {
+				vp = paircreate(PW_ACCT_DELAY_TIME,
+						PW_TYPE_INTEGER);
+				if (!vp) {
+					radlog(L_ERR|L_CONS, "no memory");
+					exit(1);
+				}
+				pairadd(&request->proxy->vps, vp);
+				vp->lvalue = info->now - request->proxy_start_time;
+			} else {
+				vp->lvalue += mainconfig.proxy_retry_delay;
+			}
+			
+			/*
+			 *	This function takes care of re-transmits.
+			 */
+			request->proxy_listener->send(request->proxy_listener, request);
+			request->proxy_try_count--;
+		}
+		time_passed = mainconfig.proxy_retry_delay - time_passed;
+		goto setup_timeout;
+	}
+
+	/*
+	 *	The request is still alive, wake up when it's
+	 *	taken too long.
+	 */
+	time_passed = mainconfig.max_request_time - time_passed;
+
+setup_timeout:		
 	if (time_passed < info->sleep_time) {
 		info->sleep_time = time_passed;
 	}

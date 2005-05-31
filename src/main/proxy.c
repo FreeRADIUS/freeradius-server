@@ -217,7 +217,6 @@ int proxy_send(REQUEST *request)
 	int pre_proxy_type = 0;
 	VALUE_PAIR *realmpair;
 	VALUE_PAIR *strippedname;
-	VALUE_PAIR *delaypair;
 	VALUE_PAIR *vp;
 	REALM *realm;
 	char *realmname;
@@ -450,9 +449,17 @@ int proxy_send(REQUEST *request)
 	 */
 	memcpy(request->proxysecret, realm->secret, sizeof(request->proxysecret));
 	request->proxy_try_count = mainconfig.proxy_retry_count - 1;
-	request->proxy_next_try = request->timestamp + mainconfig.proxy_retry_delay;
-	delaypair = pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME);
-	request->proxy->timestamp = request->timestamp - (delaypair ? delaypair->lvalue : 0);
+
+	vp = NULL;
+	if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+		vp = pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME);
+	}
+	if (vp) {
+		request->proxy->timestamp = request->timestamp - vp->lvalue;
+	} else {
+		request->proxy->timestamp = request->timestamp;
+	}
+	request->proxy_start_time = request->timestamp;
 
 	/*
 	 *  Do pre-proxying

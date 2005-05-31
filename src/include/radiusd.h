@@ -91,7 +91,7 @@ typedef struct auth_req {
 	char			proxysecret[32];
 	int			proxy_try_count;
 	int			proxy_outstanding;
-	time_t			proxy_next_try;
+	time_t			proxy_start_time;
 
 	int                     simul_max;
 	int                     simul_count;
