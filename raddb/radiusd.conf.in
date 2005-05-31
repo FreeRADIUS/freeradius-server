@@ -599,6 +599,7 @@ modules {
 	#   ssha  SSHA encryption		SSHA-Password
 	#     nt  NT-Password encryption	NT-Password
 	#     lm  LM-Password encryption	LM-Password
+	#         Netscape MTA hashing		NS-MTA-MD5-Password
 	#   auto  Automatically figure out what to do
 	#
 	#  For "auto" to work, the passwords given to the server by
@@ -730,25 +731,46 @@ $INCLUDE ${confdir}/eap.conf
 	#  and sample authorize{} and authenticate{} blocks 
 	ldap {
 		server = "ldap.your.domain"
-		# identity = "cn=admin,o=My Org,c=UA"
-		# password = mypass
+		#identity = "cn=admin,o=My Org,c=UA"
+		#password = mypass
 		basedn = "o=My Org,c=UA"
 		filter = "(uid=%{Stripped-User-Name:-%{User-Name}})"
-		# base_filter = "(objectclass=radiusprofile)"
+		#base_filter = "(objectclass=radiusprofile)"
 
-		# set this to 'yes' to use TLS encrypted connections
-		# to the LDAP database by using the StartTLS extended
-		# operation.
-		# The StartTLS operation is supposed to be used with normal
-		# ldap connections instead of using ldaps (port 689) connections
-		start_tls = no
+		#  How many connections to keep open to the LDAP server.
+		#  This saves time over opening a new LDAP socket for
+		#  every authentication request.
+		ldap_connections_number = 5
 
-		# tls_cacertfile	= /path/to/cacert.pem
-		# tls_cacertdir		= /path/to/ca/dir/
-		# tls_certfile		= /path/to/radius.crt
-		# tls_keyfile		= /path/to/radius.key
-		# tls_randfile		= /path/to/rnd
-		# tls_require_cert	= "demand"
+		timeout = 4
+		timelimit = 3
+		net_timeout = 1
+
+		#
+		#  This subsection configures the tls related items
+		#  that control how FreeRADIUS connects to an LDAP
+		#  server.  It contains all of the "tls_*" configuration
+		#  entries used in older versions of FreeRADIUS.  Those
+		#  configuration entries can still be used, but we recommend
+		#  using these.
+		#
+		tls {
+			# Set this to 'yes' to use TLS encrypted connections
+			# to the LDAP database by using the StartTLS extended
+			# operation.
+			#			
+			# The StartTLS operation is supposed to be
+			# used with normal ldap connections instead of
+			# using ldaps (port 689) connections
+			start_tls = no
+
+			# cacertfile	= /path/to/cacert.pem
+			# cacertdir		= /path/to/ca/dir/
+			# certfile		= /path/to/radius.crt
+			# keyfile		= /path/to/radius.key
+			# randfile		= /path/to/rnd
+			# require_cert	= "demand"
+		}
 
 		# default_profile = "cn=radprofile,ou=dialup,o=My Org,c=UA"
 		# profile_attribute = "radiusProfileDn"
@@ -758,42 +780,60 @@ $INCLUDE ${confdir}/eap.conf
 		# directory attributes.
 		dictionary_mapping = ${raddbdir}/ldap.attrmap
 
-		ldap_connections_number = 5
-
-		#
-		# NOTICE: The password_header directive is NOT case insensitive
-		#
-		# password_header = "{clear}"
-		#
-		#  The server can usually figure this out on its own, and pull
-		#  the correct User-Password or NT-Password from the database.
-		#
-		#  Note that NT-Passwords MUST be stored as a 32-digit hex
-		#  string, and MUST start off with "0x", such as:
-		#
-		#	0x000102030405060708090a0b0c0d0e0f
-		#
-		#  Without the leading "0x", NT-Passwords will not work.
-		#  This goes for NT-Passwords stored in SQL, too.
-		#
-		# Set password_attribute = nspmPassword to get user's password
-		# from a Novell eDirectory backend. This will work *only if*
-		# freeRADIUS is configured to build with --with-edir option.
+		#  Set password_attribute = nspmPassword to get the
+		#  user's password from a Novell eDirectory
+		#  backend. This will work ONLY IF FreeRADIUS has been
+		#  built with the --with-edir configure option.
 		#
 		# password_attribute = userPassword
+
+		#  As of 1.1.0, the LDAP module will auto-discover
+		#  the password headers (which are non-standard).
+		#  It will use the following table to map passwords
+		#  to RADIUS attributes.  The PAP module (see above)
+		#  can then automatically determine the hashing
+		#  method to use to authenticate the user.
 		#
-		# Un-comment the following to disable Novell eDirectory account
-		# policy check and intruder detection. This will work *only if*
-		# FreeRADIUS is configured to build with --with-edir option.
+		#	Header		Attribute
+		#	------		---------
+		#	{clear}		User-Password
+		#	{cleartext}	User-Password
+		#	{md5}		MD5-Password
+		#	{smd5}		SMD5-Password
+		#	{crypt}		Crypt-Password
+		#	{sha}		SHA-Password
+		#	{ssha}		SSHA-Password
+		#	{nt}		NT-Password
+		#	{ns-mta-md5}	NS-MTA-MD5-Password
+		#		
 		#
-		# edir_account_policy_check=no
+		#  The headers are compared in a case-insensitive manner.
+		#  The format of the password in LDAP (base 64-encoded, hex,
+		#  clear-text, whatever) is not that important.  The PAP
+		#  module will figure it out.
+		#
+		#  The default for "auto" is "no", to enable backwards
+		#  compatibility with the "password_header" directive,
+		#  which is now deprecated.  If this is set to "yes",
+		#  then the above table will be used, and the
+		#  "password_header" directive will be ignored.
+
+		#auto = yes
+
+		#  Un-comment the following to disable Novell
+		#  eDirectory account policy check and intruder
+		#  detection. This will work *only if* FreeRADIUS is
+		#  configured to build with --with-edir option.
+		#
+		#edir_account_policy_check = no
+
+		#
+		#  Group membership checking.  Disabled by default.
 		#
 		# groupname_attribute = cn
 		# groupmembership_filter = "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"
 		# groupmembership_attribute = radiusGroupName
-		timeout = 4
-		timelimit = 3
-		net_timeout = 1
+
 		# compare_check_items = yes
 		# do_xlat = yes
 		# access_attr_used_for_allow = yes
@@ -859,18 +899,10 @@ $INCLUDE ${confdir}/eap.conf
 	#  preacct sections.
 	#
 	#  Four config options:
-	#	format         -  must be 'prefix' or 'suffix'
+	#	format         -  must be "prefix" or "suffix"
+	#			  The special cases of "DEFAULT"
+	#			  and "NULL" are allowed, too.
 	#	delimiter      -  must be a single character
-	#	ignore_default -  set to 'yes' or 'no'
-	#       ignore_null    -  set to 'yes' or 'no'
-	#
-	#  ignore_default and ignore_null can be set to 'yes' to prevent
-	#  the module from matching against DEFAULT or NULL realms.  This
-	#  may be useful if you have have multiple instances of the
-	#  realm module.
-	#
-	#  They both default to 'no'.
-	#
 
 	#  'realm/username'
 	#
@@ -878,8 +910,6 @@ $INCLUDE ${confdir}/eap.conf
 	realm IPASS {
 		format = prefix
 		delimiter = "/"
-		ignore_default = no
-		ignore_null = no
 	}
 
 	#  'username@realm'
@@ -887,8 +917,6 @@ $INCLUDE ${confdir}/eap.conf
 	realm suffix {
 		format = suffix
 		delimiter = "@"
-		ignore_default = no
-		ignore_null = no
 	}
 
 	#  'username%realm'
@@ -896,8 +924,6 @@ $INCLUDE ${confdir}/eap.conf
 	realm realmpercent {
 		format = suffix
 		delimiter = "%"
-		ignore_default = no
-		ignore_null = no
 	}
 
 	#
@@ -906,8 +932,6 @@ $INCLUDE ${confdir}/eap.conf
 	realm ntdomain {
 		format = prefix
 		delimiter = "\\"
-		ignore_default = no
-		ignore_null = no
 	}	
 
 	#  A simple value checking module
@@ -1445,6 +1469,7 @@ $INCLUDE ${confdir}/eap.conf
 		wait = yes
 		input_pairs = request
 		shell_escape = yes
+		output = none
 	}
 
 	#
@@ -1620,6 +1645,14 @@ $INCLUDE ${confdir}/eap.conf
 		#  Don't worry about anything here for now..
 		#
 	}
+
+	#
+	#  Kerberos.  See doc/rlm_krb5 for minimal docs.
+	#
+#	krb5 {
+#		keytab = /path/to/keytab
+#		service_principal = name_of_principle
+#	}
 }
 
 # Instantiation
