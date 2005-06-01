@@ -1638,6 +1638,11 @@ rad_listen_t *proxy_new_listener()
 	memcpy(&sock->ipaddr, &old->ipaddr, sizeof(sock->ipaddr));
 	this->type = RAD_LISTEN_PROXY;
 
+	this->recv = master_listen[RAD_LISTEN_PROXY].recv;
+	this->send = master_listen[RAD_LISTEN_PROXY].send;
+	this->update = master_listen[RAD_LISTEN_PROXY].update;
+	this->print = master_listen[RAD_LISTEN_PROXY].print;
+
 	/*
 	 *	Keep going until we find an unused port.
 	 */
@@ -1901,6 +1906,11 @@ int listen_init(const char *filename, rad_listen_t **head)
 		 */
 		this->type = RAD_LISTEN_PROXY;
 		sock->ipaddr = server_ipaddr;
+
+		this->recv = master_listen[RAD_LISTEN_PROXY].recv;
+		this->send = master_listen[RAD_LISTEN_PROXY].send;
+		this->update = master_listen[RAD_LISTEN_PROXY].update;
+		this->print = master_listen[RAD_LISTEN_PROXY].print;
 
 		/*
 		 *	Try to find a proxy port (value doesn't matter)
