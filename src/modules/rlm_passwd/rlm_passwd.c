@@ -547,8 +547,8 @@ static int passwd_authorize(void *instance, REQUEST *request)
 	}
 	if (inst->authtype &&
 	    (key = pairmake ("Auth-Type", inst->authtype, T_OP_EQ))) {
-		radlog(L_INFO, "rlm_passwd: Adding \"Auth-Type = %s\"",
-		       inst->authtype);
+		DEBUG("rlm_passwd: Adding \"Auth-Type = %s\"",
+		      inst->authtype);
 		/*
 		 *	Don't call pairadd.  pairmove doesn't
 		 *	over-write existing attributes.
