@@ -1427,7 +1427,7 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	/* proxying */
 	{ NULL, NULL,
 	  proxy_socket_recv, proxy_socket_send,
-	  NULL, socket_print },
+	  generic_update, socket_print }, /* FIXME: update func is wrong! */
 
 	/* detail */
 	{ detail_parse, detail_free,
