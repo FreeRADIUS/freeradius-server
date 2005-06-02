@@ -90,6 +90,25 @@ ATTRIBUTE	Tunnel_Police_Burst		68	integer		Redback
 ATTRIBUTE	Tunnel_L2F_Second_Password	69	string		Redback
 ATTRIBUTE	TTY_Level_Max			72	integer		Redback 
 ATTRIBUTE	TTY_Level_Start			73	integer		Redback
+ATTRIBUTE	Qos-Policy-Policing		87	string		Redback
+ATTRIBUTE	Qos-Policy-Metering		88	string		Redback
+ATTRIBUTE	Qos-Policy-Queuing		89	string		Redback
+ATTRIBUTE	Igmp-Service-Profile		90	string		Redback
+ATTRIBUTE	Sub-Profile-Name		91	string		Redback
+ATTRIBUTE	Forward-Policy			92	string		Redback
+ATTRIBUTE	Reauth-String			94	string		Redback
+ATTRIBUTE	Reauth-More			95	integer		Redback
+ATTRIBUTE	Agent-Remote-Id			96	string		Redback
+ATTRIBUTE	Agent-Circuit-Id		97	string		Redback
+ATTRIBUTE	Platform-Type			98	integer		Redback
+ATTRIBUTE	RB-Client-NBNS-Pri		99	ipaddr		Redback
+ATTRIBUTE	RB-Client-NBNS-Sec		100	ipaddr		Redback
+ATTRIBUTE	Shaping-Profile-Name		101	string		Redback
+ATTRIBUTE	IP-Interface			104	string		Redback
+ATTRIBUTE	NAT-Policy-Name			105	string		Redback
+ATTRIBUTE	HTTP-Redirect-Profile-Name	107	string		Redback
+ATTRIBUTE	OS-Version			112	string		Redback
+ATTRIBUTE	Session-Traffic-Limit		113	string		Redback
 ATTRIBUTE	Acct_Input_Octets_64		128	octets		Redback
 ATTRIBUTE	Acct_Output_Octets_64		129	octets		Redback
 ATTRIBUTE	Acct_Input_Packets_64		130	octets		Redback
@@ -275,17 +294,38 @@ ATTRIBUTE	Tunnel-Rate-Limit-Burst		66	integer		Redback
 ATTRIBUTE	Tunnel-Police-Rate		67	integer		Redback
 ATTRIBUTE	Tunnel-Police-Burst		68	integer		Redback
 ATTRIBUTE	Tunnel-L2F-Second-Password	69	string		Redback
+ATTRIBUTE	ACL-Definition			70	string		Redback
+ATTRIBUTE	PPPoE-IP-Route-Add		71	string		Redback
 ATTRIBUTE	TTY-Level-Max			72	integer		Redback 
 ATTRIBUTE	TTY-Level-Start			73	integer		Redback
+ATTRIBUTE	Tunnel-Checksum			74	integer		Redback
+ATTRIBUTE	Tunnel-Profile			75	string		Redback
+ATTRIBUTE	Tunnel-Client-VPN		78	string		Redback
+ATTRIBUTE	Tunnel-Server-VPN		79	string		Redback
+ATTRIBUTE	Tunnel-Client-Rhost		80	string		Redback
+ATTRIBUTE	Tunnel-Server-Rhost		81	string		Redback
+ATTRIBUTE	Tunnel-Client-Int-Addr		82	ipaddr		Redback
+ATTRIBUTE	Tunnel-Server-Int-Addr		83	ipaddr		Redback
+ATTRIBUTE	Agent-Remote-Id			96	string		Redback
+ATTRIBUTE	Agent-Circuit-Id		97	string		Redback
+ATTRIBUTE	Platform-Type			98	integer		Redback
+ATTRIBUTE	Client-NBNS-Pri			99	ipaddr		Redback
+ATTRIBUTE	Client-NBNS-Sec			100	ipaddr		Redback
+ATTRIBUTE	BG-Cct-Addr-Max			103	integer		Redback
+ATTRIBUTE	IP-Interface-Name		104	string		Redback
+ATTRIBUTE	Rate-Limit-Excess-Burst		121	octets		Redback
+ATTRIBUTE	Police-Excess-Burst		122	octets		Redback
+ATTRIBUTE	Tunnel-Rate-Limit-Excess-Burst	123	octets		Redback
+ATTRIBUTE	Tunnel-Police-Excess-Burst	124	octets		Redback
 ATTRIBUTE	Acct-Input-Octets-64		128	octets		Redback
 ATTRIBUTE	Acct-Output-Octets-64		129	octets		Redback
 ATTRIBUTE	Acct-Input-Packets-64		130	octets		Redback
 ATTRIBUTE	Acct-Output-Packets-64		131	octets		Redback
 ATTRIBUTE	Assigned-IP-Address		132	ipaddr		Redback
-ATTRIBUTE	Acct-Mcast-In-Octets		133	integer		Redback
-ATTRIBUTE	Acct-Mcast-Out-Octets		134	integer		Redback
-ATTRIBUTE	Acct-Mcast-In-Packets		135	integer		Redback
-ATTRIBUTE	Acct-Mcast-Out-Packets		136	integer		Redback
+ATTRIBUTE	Acct-Mcast-In-Octets-64		133	octets		Redback
+ATTRIBUTE	Acct-Mcast-Out-Octets-64	134	octets		Redback
+ATTRIBUTE	Acct-Mcast-In-Packets-64	135	octets		Redback
+ATTRIBUTE	Acct-Mcast-Out-Packets-64	136	octets		Redback
 ATTRIBUTE	LAC-Port			137	integer		Redback
 ATTRIBUTE	LAC-Real-Port			138	integer		Redback
 ATTRIBUTE	LAC-Port-Type			139	integer		Redback
@@ -293,6 +333,16 @@ ATTRIBUTE	LAC-Real-Port-Type		140	integer		Redback
 ATTRIBUTE	Acct-Dyn-Ac-Ent			141	string		Redback
 ATTRIBUTE	Session-Error-Code		142	integer		Redback
 ATTRIBUTE	Session-Error-Msg		143	string		Redback
+ATTRIBUTE	Acct-Update-Reason		144	integer		Redback
+ATTRIBUTE	Mac-Addr			145	string		Redback
+ATTRIBUTE	Vlan-Source-Info		146	string		Redback
+ATTRIBUTE	Acct-Mcast-In-Octets		147	integer		Redback
+ATTRIBUTE	Acct-Mcast-Out-Octets		148	integer		Redback
+ATTRIBUTE	Acct-Mcast-In-Packets		149	integer		Redback
+ATTRIBUTE	Acct-Mcast-Out-Packets		150	integer		Redback
+ATTRIBUTE	Reauth-Session-Id		151	string		Redback
+
+
 
 VALUE	PVC-Encapsulation-Type	AAA-ENCAPS-ATM-RAW		1
 VALUE	PVC-Encapsulation-Type	AAA-ENCAPS-ATM-ROUTE1483	2
@@ -349,6 +399,14 @@ VALUE	Mcast-Receive		RECEIVE				2
 VALUE	Tunnel-DNIS		DNIS				1
 VALUE	Tunnel-DNIS		DNIS-Only			2
 
+VALUE	Platform-Type		SMS				1
+VALUE	Platform-Type		SmartEdge-800			2
+
+VALUE	Medium-Type		DSL				11
+VALUE	Medium-Type		Cable				12
+VALUE	Medium-Type		Wireless			13
+VALUE	Medium-Type		Satellite			14
+
 VALUE	LAC-Port-Type		NAS-PORT-TYPE-10BT		40
 VALUE	LAC-Port-Type		NAS-PORT-TYPE-100BT		41
 VALUE	LAC-Port-Type		NAS-PORT-TYPE-DS3-FR		42
@@ -391,3 +449,23 @@ VALUE	LAC-Real-Port-Type	NAS-PORT-TYPE-E3-FR		57
 VALUE	LAC-Real-Port-Type	NAS-PORT-TYPE-OC3-POS		58
 VALUE	LAC-Real-Port-Type	NAS-PORT-TYPE-OC12-POS		59
 VALUE	LAC-Real-Port-Type	NAS-PORT-TYPE-PPPOE		60
+
+# Although Redback uses - instead of _ in the Attributes, these values are listed
+# with _ in the latest (6.1.4.4) documentation, so I have entered them as so
+# graeme
+
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_SESSION_UP	1
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_SESSION_DOWN	2
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_PERIODIC		3
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_DYN_AC_ENT_START	4
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_DYN_AC_ENT_STOP	5
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_DYN_AC_ENT_TIMEOUT	6
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_SUBSCRIBER_REAUTHOR	7
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_PPP_IPCP_UP	8
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_PPP_MP_LINK_UP	9
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_DHCP_IP_ADDR_GRANTED	10
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_DHCP_IP_ADDR_RELEASED	11
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_ACL_TIMERED_ACTION	12
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_ACL_ACTION	13
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_CMD		14
+VALUE	Acct-Update-Reason	AAA_LOAD_ACCT_TEST		15
