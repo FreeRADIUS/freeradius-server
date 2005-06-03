@@ -710,7 +710,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 
 	default:
 		DEBUG2("  TTLS: Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
-		rcode = RLM_MODULE_REJECT;
+		rcode = RLM_MODULE_INVALID;
 		break;
 	}
 
@@ -817,7 +817,7 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
 		DEBUG2("  TTLS: Reply was rejected");
-		return 0;
+		break;
 
 	case RLM_MODULE_HANDLED:
 		DEBUG2("  TTLS: Reply was handled");
