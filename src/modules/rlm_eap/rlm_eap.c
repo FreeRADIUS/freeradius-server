@@ -520,6 +520,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		rcode = data->callback(handler, data->tls_session);
 		free(data);
 		if (rcode == 0) {
+			eap_fail(handler);
 			eap_handler_free(&handler);
 			return RLM_MODULE_REJECT;
 		}
