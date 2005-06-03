@@ -1,5 +1,7 @@
 FreeRADIUS 1.0.3 ; $Date$, urgency=medium
+	* Return EAP-Fail in Access-Reject, rather than an empty Access-Reject
 	* Escape more strings in rlm_sql.
+	  See http://www.freeradius.org/security.html
 	* Don't send Proxy-State from home server in TTLS.
 	* Fixes for forking external programs, so the server doesn't
 	  suddenly stop processing requests, or stop forking programs.
