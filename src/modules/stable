@@ -29,4 +29,5 @@ rlm_preprocess
 rlm_radutmp
 rlm_realm
 rlm_sql
+rlm_sql_log
 rlm_unix
