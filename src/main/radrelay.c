@@ -204,7 +204,7 @@ int read_one(FILE *fp, struct relay_request *r_req)
 {
 	VALUE_PAIR *vp;
 	char *s;
-	char buf[256];
+	char buf[2048];
 	char key[32], val[32];
 	int skip;
 	long fpos;
