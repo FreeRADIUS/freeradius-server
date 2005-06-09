@@ -6,10 +6,6 @@ freeradius (1.0.3-0) unstable; urgency=high
 	
  -- Alan DeKok <aland@ox.org>  Fri,  3 Jun 2005 11:29:34 -0700
 
-freeradius (1.0.2cvs20050305-0) unstable; urgency=low
-
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sat,  5 Mar 2005 15:02:06 +1100
-
 freeradius (1.0.2-0) unstable; urgency=low
 
   * New upstream release
