@@ -137,8 +137,8 @@ radrelay.o: radrelay.c $(INCLUDES)
 radwho.o: radwho.c $(INCLUDES)
 	$(CC) $(CFLAGS) -c radwho.c
 
-radwho: radwho.o util.o log.o conffile.o ../lib/libradius.la
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o radwho radwho.o util.o log.o conffile.o ../lib/libradius.la $(LIBS) $(LCRYPT)
+radwho: radwho.o util.o log.o conffile.o ../lib/libradius.a
+	$(CC) $(LDFLAGS) -o radwho radwho.o util.o log.o conffile.o $(LIBS) $(LCRYPT)
 
 clean:
 	rm -rf *.o *.so *~ $(BINARIES) .libs
