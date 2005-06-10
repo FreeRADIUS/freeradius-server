@@ -83,8 +83,7 @@ typedef struct radius_packet_t {
 } radius_packet_t;
 
 static lrad_randctx lrad_rand_pool;	/* across multiple calls */
-static int lrad_pool_initialized = 0;
-static int lrad_rand_index = 0;
+static int lrad_rand_index = -1;
 
 static const char *packet_codes[] = {
   "",
@@ -1921,11 +1920,13 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 *	Merge information from the outside world into our
 	 *	random pool
 	 */
-	for (length = 0; length < AUTH_VECTOR_LEN; length++) {
-		lrad_rand_pool.randmem[length] += packet->vector[length];
-	}
-	lrad_rand_pool.randmem[lrad_rand_pool.randmem[0] & 0xff] += packet->id;
-	lrad_rand_pool.randmem[lrad_rand_pool.randmem[1] & 0xff] += packet->data_len;
+	lvalue = lrad_hash(packet->vector, sizeof(packet->vector));
+	lrad_rand_pool.randmem[lrad_rand_index & 0xff] += lvalue;
+	lrad_rand_index++;
+	lvalue = lrad_hash(&packet->id, sizeof(packet->id));
+	lrad_rand_pool.randmem[lrad_rand_index & 0xff] += lvalue;
+	lrad_rand_index++;
+	lrad_rand_index &= 0xff;
 
 	return 0;
 }
@@ -2301,82 +2302,72 @@ int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id,
 	return 0;
 }
 
-/*
- *	Create a random vector of AUTH_VECTOR_LEN bytes.
- */
-static void random_vector(uint8_t *vector)
-{
-	int i;
-
-	if (!lrad_pool_initialized) {
-		int fd;
-
-		memset(&lrad_rand_pool, 0, sizeof(lrad_rand_pool));
-
-		fd = open("/dev/urandom", O_RDONLY);
-		if (fd >= 0) {
-			read(fd, lrad_rand_pool.randrsl,
-			     sizeof(lrad_rand_pool.randrsl));
-		} else {
-			/*
-			 *	Initialize the pool to something?
-			 */
-			lrad_rand_pool.randrsl[0] = (uint32_t) &lrad_pool_initialized;
-			lrad_rand_pool.randrsl[1] = (uint32_t) &i;
-			memcpy(&(lrad_rand_pool.randrsl[2]),
-			       vector, AUTH_VECTOR_LEN);
-		}
-
-		lrad_randinit(&lrad_rand_pool, 1);
-		lrad_pool_initialized = 1;
-	}
-
-	lrad_isaac(&lrad_rand_pool);
-
-	/*
-	 *	Copy the random data over.
-	 */
-	for (i = 0; i < AUTH_VECTOR_LEN; i++) {
-		*(vector++) = lrad_rand_pool.randrsl[i] & 0xff;
-	}
-}
 
 /*
  *	Return a 32-bit random number.
  */
 uint32_t lrad_rand(void)
 {
-	uint32_t answer;
+	uint32_t hash;
 
 	/*
 	 *	Ensure that the pool is initialized.
 	 */
-	if (!lrad_pool_initialized) {
-		uint8_t vector[AUTH_VECTOR_LEN];
+	if (lrad_rand_index < 0) {
+		int fd;
+		
+		memset(&lrad_rand_pool, 0, sizeof(lrad_rand_pool));
 
-		random_vector(vector);
+		fd = open("/dev/urandom", O_RDONLY);
+		if (fd >= 0) {
+			size_t total;
+			ssize_t this;
+
+			total = this = 0;
+			while (total < sizeof(lrad_rand_pool.randrsl)) {
+				this = read(fd, lrad_rand_pool.randrsl,
+					    sizeof(lrad_rand_pool.randrsl) - total);
+				if ((this < 0) && (errno != EINTR)) break;
+				if (this > 0) total += this;
+ 			}
+			close(fd);
+		} else {
+			uint8_t *p = lrad_rand_pool.randrsl;
+			time_t now = time(NULL);
+
+			memcpy(p, &fd, sizeof(fd));
+			p += sizeof(fd);
+			memcpy(p, &hash, sizeof(hash));
+			p += sizeof(hash);
+			memcpy(p, &now, sizeof(now));
+		}
+
+		lrad_randinit(&lrad_rand_pool, 1);
+		lrad_rand_index = 0;
 	}
 
 	/*
-	 *	Grab an entry from the pool.
+	 *	We don't return data directly from the pool.
+	 *	Rather, we return hashes of the data.
 	 */
-	answer = lrad_rand_pool.randrsl[lrad_rand_index];
-
-	/*
-	 *	Go to the next entry (wrapping around to zero).
-	 */
+	hash = lrad_hash(&lrad_rand_pool.randrsl[lrad_rand_index & 0xff],
+			 sizeof(lrad_rand_pool.randrsl[0]));
 	lrad_rand_index++;
-	lrad_rand_index &= 0xff;
+	hash = lrad_hash_update(&lrad_rand_pool.randrsl[lrad_rand_index & 0xff],
+				sizeof(lrad_rand_pool.randrsl[0]), hash);
+	lrad_rand_index++;
 
 	/*
-	 *	Every 256 numbers, churn the pool again.
+	 *	Every so often, churn the pool again.
 	 */
-	if (lrad_rand_index == 0) {
+	if ((hash & 0xff) == (lrad_rand_pool.randrsl[lrad_rand_index & 0xff] & 0xff)) {
 		lrad_isaac(&lrad_rand_pool);
 	}
 
-	return answer;
+	lrad_rand_index &= 0xff;
+	return hash;
 }
+
 
 /*
  *	Allocate a new RADIUS_PACKET
@@ -2393,8 +2384,15 @@ RADIUS_PACKET *rad_alloc(int newvector)
 	rp->id = -1;
 	rp->verified = -1;
 
-	if (newvector)
-		random_vector(rp->vector);
+	if (newvector) {
+		int i;
+		uint32_t hash;
+		
+		for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(uint32_t)) {
+			hash = lrad_rand();
+			memcpy(rp->vector + i, &hash, sizeof(hash));
+		}
+	}
 	lrad_rand();		/* stir the pool again */
 
 	return rp;
