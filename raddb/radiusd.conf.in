@@ -2101,15 +2101,15 @@ post-auth {
 pre-proxy {
 #	attr_rewrite
 
-	#  If you want to have a log of packets proxied to a home
-	#  server, un-comment the following line, and the
-	#  'detail pre_proxy_log' section, above.
-#	pre_proxy_log
-
 	#  Uncomment the following line if you want to filter requests
 	#  sent to remote servers based on the rules defined in the
 	#  'attrs.pre-proxy' file.
 #	attr_filter.pre-proxy
+
+	#  If you want to have a log of packets proxied to a home
+	#  server, un-comment the following line, and the
+	#  'detail pre_proxy_log' section, above.
+#	pre_proxy_log
 }
 
 #
