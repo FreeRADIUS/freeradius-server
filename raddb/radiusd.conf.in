@@ -1035,6 +1035,7 @@ $INCLUDE ${confdir}/eap.conf
 	files {
 		usersfile = ${confdir}/users
 		acctusersfile = ${confdir}/acct_users
+		preproxy_usersfile = ${confdir}/preproxy_users
 
 		#  If you want to use the old Cistron 'users' file
 		#  with FreeRADIUS, you should change the next line
@@ -1863,6 +1864,10 @@ post-auth {
 pre-proxy {
 #	attr_rewrite
 
+	#  Uncomment the following line if you want to change attributes
+	#  as defined in the preproxy_users file.
+#	files
+
 	#  If you want to have a log of packets proxied to a home
 	#  server, un-comment the following line, and the
 	#  'detail pre_proxy_log' section, above.
@@ -1875,7 +1880,6 @@ pre-proxy {
 #  post-proxy stage.
 #
 post-proxy {
-	#
 
 	#  If you want to have a log of replies from a home server,
 	#  un-comment the following line, and the 'detail post_proxy_log'
