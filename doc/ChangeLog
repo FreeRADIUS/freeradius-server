@@ -1,7 +1,11 @@
-FreeRADIUS 1.0.3 ; $Date$, urgency=medium
+FreeRADIUS 1.0.3 ; Date: 2005/06/03 17:15:11, urgency=high
+	Security Fixes
+	* Always escape the strings in the SQL module.
+	* Check buffer bound when input character needs escaping in
+	  the SQL module. Bug found by Primoz Bratanic.
+
+	Bug fixes
 	* Return EAP-Fail in Access-Reject, rather than an empty Access-Reject
-	* Escape more strings in rlm_sql.
-	  See http://www.freeradius.org/security.html
 	* Don't send Proxy-State from home server in TTLS.
 	* Fixes for forking external programs, so the server doesn't
 	  suddenly stop processing requests, or stop forking programs.
@@ -11,6 +15,10 @@ FreeRADIUS 1.0.3 ; $Date$, urgency=medium
 	  Unix "utmp" files.
 	* Fix bug in calling checkrad script with NAS port > 9999999
 	* Fix long-standing bug when both crypt and pthreads are in use
+	* Don't SEGV when rlm_sql gets 'NULL' value from request.
+	* Re-arrange code in radrelay to not duplicate accounting packets.
+	* In rlm_attr_rewrite, change the value when the attribute type
+	  is different from string.
 
 FreeRADIUS 1.0.2 ; Date: 2005/02/13 01:03:20, urgency=medium
 	* Novell eDirectoty support.  Patch from Novell.
@@ -39,7 +47,7 @@ FreeRADIUS 1.0.1 ; Date: 2004/09/02 10:52:03 , urgency=high
 	* Fix two remote crashes and a memory leak in RADIUS packet
 	  decoding.
 
-	Bug fixes.
+	Bug fixes
 	* Fix premature "success" during EAP/TLS handshake.
 	* Dictionary handling now complains about identically named
 	  values with different values, and rejects dictionary
