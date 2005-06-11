@@ -1,3 +1,9 @@
+FreeRADIUS 1.0.4 ; $Date$, urgency=medium
+
+	* Fix installation problem.
+	* Increase a buffer size, so radrelay doesn't truncate values.
+	* Updates in the documentation. Patches from Thor Spruyt.
+
 FreeRADIUS 1.0.3 ; Date: 2005/06/03 17:15:11, urgency=high
 	Security Fixes
 	* Always escape the strings in the SQL module.
