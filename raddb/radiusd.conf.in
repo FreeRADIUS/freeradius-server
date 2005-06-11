@@ -1062,6 +1062,7 @@ $INCLUDE ${confdir}/eap.conf
 	files {
 		usersfile = ${confdir}/users
 		acctusersfile = ${confdir}/acct_users
+		preproxy_usersfile = ${confdir}/preproxy_users
 
 		#  If you want to use the old Cistron 'users' file
 		#  with FreeRADIUS, you should change the next line
@@ -2100,6 +2101,10 @@ post-auth {
 #
 pre-proxy {
 #	attr_rewrite
+
+	#  Uncomment the following line if you want to change attributes
+	#  as defined in the preproxy_users file.
+#	files
 
 	#  Uncomment the following line if you want to filter requests
 	#  sent to remote servers based on the rules defined in the
