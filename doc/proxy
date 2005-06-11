@@ -1,15 +1,14 @@
 
-		FreeRadius as a proxy radius server.
+		FreeRADIUS as a proxy RADIUS server.
 
 
 0. INTRODUCTION
 
-  It is possible to use FreeRadius as a proxy radius server. This
-  means that it can consult a remote radius server to validate a user.
+  It is possible to use FreeRADIUS as a proxy RADIUS server. This
+  means that it can consult a remote RADIUS server to validate a user.
   This is handy for roaming setups, or for renting ports to someone else.
 
 1. FILES
-
 
   If a user logs in with a defined realm syntax, the "realm" portion is
   matched against the configuration to determine how the request should
@@ -17,38 +16,29 @@
 
                 username@realm
                 realm/username
+		username%realm
+		realm\username
 
   The realm parsing syntax ( and search order ) is userdefinable via the
   realm module config in the /etc/raddb/radiusd.conf configuration file.
+
   You can define multiple instances of the realm module to support multiple
   realm syntax's at the same time.  Be sure to pay close attention to the
   search order that you define, as you may inadvertantly get unexpected
   behaviour ( by having a user use 'realm1/username@realm2' for instance ).
-  
-  The realms are configured in two places.  The first place is the
-  file /etc/raddb/proxy.conf, which is included by radiusd.conf.  The
-  second place is from the /etc/raddb/realms file.  The formats and
-  sample configurations are included as comments in the respective
-  files.  The preferred ( as it is more flexible for future options )
-  file is proxy.conf.  It is not recommended to use both, as that could
-  cause confusion.
+  If you need to proxy to IPASS, it should go first, because usernames will
+  be in the form IPASS/username@realm and you want to proxy these users to
+  IPASS, not to the realm behind the @.
 
-  All accounting data for proxied requests does NOT get stored in the
-  standard logfiles, but in a seperate directory. The name of this
-  directory is the name of the remote radius server, and if you want you
-  can define a nickname for it in /etc/raddb/naslist just as for normal NASes.
-
-  If you use the /etc/raddb/realms file to enter realm configurations you will
-  need to add the hostname and secret for the remote server in the
-  file /etc/raddb/clients. On the remote server you need to add the
-  hostname of your server and the same secret to /etc/raddb/clients as well.
+  The realms are configured in the file /etc/raddb/proxy.conf, which is
+  included by radiusd.conf. The formats and sample configurations are
+  included as comments.
 
   The realm "DEFAULT" (without the quotes) matches all realms.
+  The realm "NULL" matches any requests WITHOUT a realm.
 
   If you set the remoteserver to "LOCAL", the request will be handled
   locally as usual, without sending it to a remote radius server.
-
-  The realm "NULL" matches any requests WITHOUT a realm.
 
   There are several options you can add in both files:
 
@@ -68,7 +58,31 @@
     realm configuration contains 'notrealm'.  This function used to be
     called 'notsuffix', and the old syntax is still supported.
 
-2. WHAT HAPPENS
+  The /etc/raddb/realms file is deprecated and should not be used anymore.
+  If you use the /etc/raddb/realms file to enter realm configurations you will
+  need to add the hostname and secret for the remote server in the
+  file /etc/raddb/clients.
+  It is not recommended to use both the realms file and the proxy.conf file,
+  as that could cause confusion.
+
+2. ACCOUNTING
+
+  All accounting data for proxied requests does NOT get stored in the
+  standard logfiles, but in a seperate directory. The name of this
+  directory is the name of the remote radius server, and if you want you
+  can define a nickname for it in /etc/raddb/naslist just as for normal NASes.
+
+3. REMOTE SERVER
+
+  When your server proxies requests to another server, it acts as a NAS for
+  the remote server. On the remote server, you need to add the hostname of
+  your server and the same secret to /etc/raddb/clients.conf as well.
+
+  As you might not control the remote radius server, you might want to
+  control the attributes sent back by the remote server in an Access-Accept
+  packet. Have a look at the attrs file for this!
+
+4. WHAT HAPPENS
 
   The exact thing that happens is this:
 
@@ -94,4 +108,3 @@
     this point is the one after hints file processing (regardless of
     the "hints" option). It also includes the realm (regardless of the
     setting of the "nostrip" option) unless the realm is LOCAL.
-
