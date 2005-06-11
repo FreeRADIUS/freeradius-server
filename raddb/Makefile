@@ -3,8 +3,8 @@ include ../Make.inc
 #
 #  The list of files to install.
 #
-FILES	= acct_users attrs clients clients.conf dictionary eap.conf \
-	  experimental.conf hints huntgroups ldap.attrmap \
+FILES	= acct_users attrs attrs.pre-proxy clients clients.conf dictionary \
+	  eap.conf experimental.conf hints huntgroups ldap.attrmap \
 	  mssql.conf naslist naspasswd oraclesql.conf postgresql.conf \
 	  preproxy_users proxy.conf radiusd.conf realms snmp.conf \
 	  sql.conf users x99.conf x99passwd.sample radrelay.conf
