@@ -81,6 +81,7 @@ struct conf_part {
 	rbtree_t	*pair_tree; /* and a partridge.. */
 	rbtree_t	*section_tree; /* no jokes here */
 	rbtree_t	*name2_tree; /* for sections of the same name2 */
+	rbtree_t	*data_tree;
 };
 
 
@@ -239,6 +240,17 @@ static int name2_cmp(const void *a, const void *b)
 
 
 /*
+ *	rbtree callback function
+ */
+static int data_cmp(const void *a, const void *b)
+{
+	const CONF_DATA *one = a;
+	const CONF_DATA *two = b;
+
+	return strcmp(one->name, two->name);
+}
+
+/*
  *	Free a CONF_SECTION
  */
 void cf_section_free(CONF_SECTION **cs)
@@ -285,6 +297,8 @@ void cf_section_free(CONF_SECTION **cs)
 		rbtree_free((*cs)->section_tree);
 	if ((*cs)->name2_tree)
 		rbtree_free((*cs)->name2_tree);
+	if ((*cs)->data_tree)
+		rbtree_free((*cs)->data_tree);
 
 	/*
 	 * And free the section
@@ -331,6 +345,10 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 		cf_section_free(&cs);
 		return NULL;
 	}
+
+	/*
+	 *	Don't create a data tree, it may not be needed.
+	 */
 
 	/*
 	 *	Don't create the section tree here, it may not
@@ -380,8 +398,7 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 				}
 				
 				if (cs->section_tree) {
-					rbtree_insert(cs->section_tree, cs_new);
-				}
+					rbtree_insert(cs->section_tree, cs_new);				}
 				
 				/*
 				 *	Two names: find the named instance.
@@ -411,9 +428,12 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 			} /* was a section */
 
 			case CONF_ITEM_DATA:
-				/*
-				 *	Don't do anything special.
-				 */
+				if (!cs->data_tree) {
+					cs->data_tree = rbtree_create(data_cmp, NULL, 0);
+				}
+				if (cs->data_tree) {
+					rbtree_insert(cs->data_tree, ci);
+				}
 				break;
 
 			default: /* FIXME: assert & error! */
@@ -1458,21 +1478,17 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, const char *name,
  */
 void *cf_data_find(CONF_SECTION *cs, const char *name)
 {
-	CONF_ITEM *ci;
-
 	if (!cs || !name) return NULL;
 
-	for (ci = cs->children; ci != NULL; ci = ci->next) {
-		CONF_DATA *cd;
+	/*
+	 *	Find the name in the tree, for speed.
+	 */
+	if (cs->data_tree) {
+		CONF_DATA mycd, *cd;
 
-		/*
-		 *	Data is always inserted at the front of the
-		 *	list.
-		 */
-		if (ci->type != CONF_ITEM_DATA) return NULL;
-
-		cd = cf_itemtodata(ci);
-		if (strcmp(name, cd->name) == 0) return cd->data;
+		mycd.name = name;
+		cd = rbtree_finddata(cs->data_tree, &mycd);
+		if (cd) return cd->data;
 	}
 
 	return NULL;
