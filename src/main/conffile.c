@@ -189,7 +189,10 @@ static void cf_data_free(CONF_DATA **cd)
 	} else {
 		((*cd)->free)((*cd)->data);
 	}
-
+#ifndef NDEBUG
+	memset(*cd, 0, sizeof(*cd));
+#endif
+	free(*cd);
 	*cd = NULL;
 }
 
