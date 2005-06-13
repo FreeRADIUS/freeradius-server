@@ -83,7 +83,7 @@ typedef struct radius_packet_t {
 } radius_packet_t;
 
 static lrad_randctx lrad_rand_pool;	/* across multiple calls */
-static int lrad_rand_index = -1;
+static volatile int lrad_rand_index = -1;
 
 static const char *packet_codes[] = {
   "",
@@ -2304,9 +2304,11 @@ int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id,
 
 
 /*
- *	Return a 32-bit random number.
+ *	Seed the random number generator.
+ *
+ *	May be called any number of times.
  */
-uint32_t lrad_rand(void)
+void lrad_rand_seed(const void *data, size_t size)
 {
 	uint32_t hash;
 
@@ -2332,35 +2334,64 @@ uint32_t lrad_rand(void)
  			}
 			close(fd);
 		} else {
-			uint8_t *p = lrad_rand_pool.randrsl;
 			time_t now = time(NULL);
 
-			memcpy(p, &fd, sizeof(fd));
-			p += sizeof(fd);
-			memcpy(p, &hash, sizeof(hash));
-			p += sizeof(hash);
-			memcpy(p, &now, sizeof(now));
+			lrad_rand_pool.randrsl[0] = fd;
+			lrad_rand_pool.randrsl[1] = hash;
+			lrad_rand_pool.randrsl[2] = now;
 		}
 
 		lrad_randinit(&lrad_rand_pool, 1);
 		lrad_rand_index = 0;
 	}
 
+	if (!data) return;
+
+	/*
+	 *	Seed the hash with data from the random pool, and update
+	 *	it with data from the user.
+	 */
+	hash = lrad_hash(lrad_rand_pool.randrsl, 8);
+	hash = lrad_hash_update(data, size, hash);
+	
+	lrad_rand_pool.randrsl[lrad_rand_index & 0xff] ^= hash;
+	lrad_rand_index++;
+	lrad_rand_index &= 0xff;
+
+	/*
+	 *	Churn the pool after seeding it.
+	 */
+	lrad_isaac(&lrad_rand_pool);
+}
+
+
+/*
+ *	Return a 32-bit random number.
+ */
+uint32_t lrad_rand(void)
+{
+	uint32_t hash;
+
+	/*
+	 *	Ensure that the pool is initialized.
+	 */
+	if (lrad_rand_index < 0) {
+		lrad_rand_seed(NULL, 0);
+	}
+
 	/*
 	 *	We don't return data directly from the pool.
-	 *	Rather, we return hashes of the data.
+	 *	Rather, we return a summary of the data.
 	 */
-	hash = lrad_hash(&lrad_rand_pool.randrsl[lrad_rand_index & 0xff],
-			 sizeof(lrad_rand_pool.randrsl[0]));
+	hash = lrad_rand_pool.randrsl[lrad_rand_index & 0xff];
 	lrad_rand_index++;
-	hash = lrad_hash_update(&lrad_rand_pool.randrsl[lrad_rand_index & 0xff],
-				sizeof(lrad_rand_pool.randrsl[0]), hash);
+	hash ^= lrad_rand_pool.randrsl[lrad_rand_index & 0xff];
 	lrad_rand_index++;
 
 	/*
 	 *	Every so often, churn the pool again.
 	 */
-	if ((hash & 0xff) == (lrad_rand_pool.randrsl[lrad_rand_index & 0xff] & 0xff)) {
+	if ((hash & 0x0f) == (lrad_rand_pool.randrsl[lrad_rand_index & 0xff] & 0x0f)) {
 		lrad_isaac(&lrad_rand_pool);
 	}
 

@@ -32,6 +32,12 @@ static const char rcsid[] = "$Id$";
 #include	<malloc.h>
 #endif
 
+#ifdef HAVE_SYS_STAT_H
+#include	<sys/stat.h>
+#endif
+
+#include	<unistd.h>
+
 #include	"missing.h"
 #include	"libradius.h"
 
@@ -325,15 +331,15 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 	 */
 	if (rbtree_insert(values_byname, dval) == 0) {
 		if (dattr) {
-			DICT_VALUE *dup;
+			DICT_VALUE *old;
 			
 			/*
 			 *	Suppress duplicates with the same
 			 *	name and value.  There are lots in
 			 *	dictionary.ascend.
 			 */
-			dup = dict_valbyname(dattr->attr, namestr);
-			if (dup && (dup->value == dval->value)) {
+			old = dict_valbyname(dattr->attr, namestr);
+			if (old && (old->value == dval->value)) {
 				free(dval);
 				return 0;
 			}
@@ -595,6 +601,14 @@ static int my_dict_init(const char *dir, const char *fn,
 				   src_file, src_line, fn, strerror(errno));
 		}
 		return -1;
+	} else {
+		/*
+		 *	Seed the random pool with data
+		 */
+		struct stat statbuf;
+
+		stat(fn, &statbuf); /* fopen() guarantees this will succeed */
+		lrad_rand_seed(&statbuf, sizeof(statbuf));
 	}
 
 	block_vendor = 0;
