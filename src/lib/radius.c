@@ -1920,13 +1920,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 *	Merge information from the outside world into our
 	 *	random pool
 	 */
-	lvalue = lrad_hash(packet->vector, sizeof(packet->vector));
-	lrad_rand_pool.randmem[lrad_rand_index & 0xff] += lvalue;
-	lrad_rand_index++;
-	lvalue = lrad_hash(&packet->id, sizeof(packet->id));
-	lrad_rand_pool.randmem[lrad_rand_index & 0xff] += lvalue;
-	lrad_rand_index++;
-	lrad_rand_index &= 0xff;
+	lrad_rand_seed(packet->data, AUTH_HDR_LEN);
 
 	return 0;
 }
@@ -2359,9 +2353,11 @@ void lrad_rand_seed(const void *data, size_t size)
 	lrad_rand_index &= 0xff;
 
 	/*
-	 *	Churn the pool after seeding it.
+	 *	Churn the pool every so often after seeding it.
 	 */
-	lrad_isaac(&lrad_rand_pool);
+	if ((hash & 0x03) == (lrad_rand_pool.randrsl[lrad_rand_index & 0xff] & 0x03)) {
+		lrad_isaac(&lrad_rand_pool);
+	}
 }
 
 
@@ -2370,7 +2366,7 @@ void lrad_rand_seed(const void *data, size_t size)
  */
 uint32_t lrad_rand(void)
 {
-	uint32_t hash;
+	uint32_t num;
 
 	/*
 	 *	Ensure that the pool is initialized.
@@ -2383,20 +2379,18 @@ uint32_t lrad_rand(void)
 	 *	We don't return data directly from the pool.
 	 *	Rather, we return a summary of the data.
 	 */
-	hash = lrad_rand_pool.randrsl[lrad_rand_index & 0xff];
-	lrad_rand_index++;
-	hash ^= lrad_rand_pool.randrsl[lrad_rand_index & 0xff];
+	num = lrad_rand_pool.randrsl[lrad_rand_index & 0xff];
 	lrad_rand_index++;
 
 	/*
-	 *	Every so often, churn the pool again.
+	 *	Every so often, churn the pool.
 	 */
-	if ((hash & 0x0f) == (lrad_rand_pool.randrsl[lrad_rand_index & 0xff] & 0x0f)) {
+	if ((num & 0x0f) == (lrad_rand_pool.randrsl[lrad_rand_index & 0xff] & 0x0f)) {
 		lrad_isaac(&lrad_rand_pool);
 	}
 
 	lrad_rand_index &= 0xff;
-	return hash;
+	return num;
 }
 
 
@@ -2417,10 +2411,15 @@ RADIUS_PACKET *rad_alloc(int newvector)
 
 	if (newvector) {
 		int i;
-		uint32_t hash;
-		
+		uint32_t hash, base;
+
+		/*
+		 *	Don't expose the actual contents of the random
+		 *	pool.
+		 */
+		base = lrad_rand();
 		for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(uint32_t)) {
-			hash = lrad_rand();
+			hash = lrad_rand() ^ base;
 			memcpy(rp->vector + i, &hash, sizeof(hash));
 		}
 	}
