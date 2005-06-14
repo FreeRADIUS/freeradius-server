@@ -654,8 +654,11 @@ static int gettime(const char *valstr, time_t *lvalue)
 		*(f[1]++) = '\0'; /* nuke it, and point to MM:SS */
 
 		f[2] = strchr(f[1], ':'); /* find : separator */
-		if (!f[2]) return -1;
-		*(f[2]++) = '\0';	/* nuke it, and point to SS */
+		if (f[2]) {
+		  *(f[2]++) = '\0';	/* nuke it, and point to SS */
+		} else {
+		  f[2] = "0";
+		}
 
 		tm->tm_hour = atoi(f[0]);
 		tm->tm_min = atoi(f[1]);
