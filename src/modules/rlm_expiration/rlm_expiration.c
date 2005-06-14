@@ -56,11 +56,10 @@ typedef struct rlm_expiration_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-  { "reply-message", PW_TYPE_STRING_PTR, offsetof(rlm_expiration_t,msg), NULL, "Password Has Expired\r\n"},
+  { "reply-message", PW_TYPE_STRING_PTR, offsetof(rlm_expiration_t,msg),
+    NULL, "Password Has Expired\r\n"},
   { NULL, -1, 0, NULL, NULL }
 };
-
-static int expiration_detach(void *instance);
 
 /*              
  *      Check if account has expired, and if user may login now.
@@ -68,7 +67,7 @@ static int expiration_detach(void *instance);
 static int expiration_authorize(void *instance, REQUEST *request)
 {
 	rlm_expiration_t *data = (rlm_expiration_t *)instance;
-	VALUE_PAIR *check_item = NULL;
+	VALUE_PAIR *vp, *check_item = NULL;
 	char msg[MAX_STRING_LEN];
 
 	if ((check_item = pairfind(request->config_items, PW_EXPIRATION)) != NULL){
@@ -80,15 +79,13 @@ static int expiration_authorize(void *instance, REQUEST *request)
 		*      why they're being rejected.
 		*/
 		DEBUG("rlm_expiration: Checking Expiration time: '%s'",check_item->strvalue);
-		if (check_item->lvalue < (unsigned) time(NULL)) {
+		if (((time_t) check_item->lvalue) <= request->timestamp) {
 			char logstr[MAX_STRING_LEN];
 			VALUE_PAIR *module_fmsg_vp;
 
 			DEBUG("rlm_expiration: Account has expired");
 
 			if (data->msg){
-				VALUE_PAIR *vp;
-
 				if (!radius_xlat(msg, sizeof(msg), data->msg, request, NULL)) {
 					radlog(L_ERR, "rlm_expiration: xlat failed.");
 					return RLM_MODULE_FAIL;
@@ -103,6 +100,23 @@ static int expiration_authorize(void *instance, REQUEST *request)
                         pairadd(&request->packet->vps, module_fmsg_vp);
 
 			return RLM_MODULE_USERLOCK;
+		}
+		/*
+		 *	Else the account hasn't expired, but it may do so
+		 *	in the future.  Set Session-Timeout.
+		 */
+		vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT);
+		if (!vp) {
+			vp = paircreate(PW_SESSION_TIMEOUT, PW_TYPE_INTEGER);
+			if (!vp) {
+				radlog(L_ERR|L_CONS, "No memory!");
+				return RLM_MODULE_FAIL;
+			}
+			pairadd(&request->reply->vps, vp);
+			vp->lvalue = (uint32_t) (((time_t) check_item->lvalue) - request->timestamp);
+
+		} else if (vp->lvalue > ((uint32_t) (((time_t) check_item->lvalue) - request->timestamp))) {
+			vp->lvalue = (uint32_t) (((time_t) check_item->lvalue) - request->timestamp);
 		}
 	}
 	else
@@ -126,11 +140,22 @@ static int expirecmp(void *instance, REQUEST *req,
 
 	now = (req) ? req->timestamp : time(NULL);
   
-	if (now <= (signed)check->lvalue)
+	if (now <= ((time_t) check->lvalue))
 		return 0;
 	return +1;
 }
 
+
+static int expiration_detach(void *instance)
+{
+	rlm_expiration_t *data = (rlm_expiration_t *) instance;
+
+	paircompare_unregister(PW_CURRENT_TIME, expirecmp);
+	if (data->msg)
+		free(data->msg);
+	free(instance);
+	return 0;
+}
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -181,17 +206,6 @@ static int expiration_instantiate(CONF_SECTION *conf, void **instance)
 
 	*instance = data;
 
-	return 0;
-}
-
-static int expiration_detach(void *instance)
-{
-	rlm_expiration_t *data = (rlm_expiration_t *) instance;
-
-	paircompare_unregister(PW_CURRENT_TIME, expirecmp);
-	if (data->msg)
-		free(data->msg);
-	free(instance);
 	return 0;
 }
 
