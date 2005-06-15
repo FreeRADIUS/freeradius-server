@@ -588,6 +588,21 @@ static int gettime(const char *valstr, time_t *lvalue)
 	if (!f[0] || !f[1] || !f[2]) return -1;
 
 	/*
+	 *	The time has a colon, where nothing else does.
+	 *	So if we find it, bubble it to the back of the list.
+	 */
+	if (f[3]) {
+		for (i = 0; i < 3; i++) {
+			if (strchr(f[i], ':')) {
+				p = f[3];
+				f[3] = f[i];
+				f[i] = p;
+				break;
+			}
+		}
+	}
+
+	/*
 	 *  The month is text, which allows us to find it easily.
 	 */
 	tm->tm_mon = 12;
