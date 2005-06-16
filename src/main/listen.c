@@ -1,5 +1,5 @@
 /*
- * socket.c	Handle socket stuff
+ * listen.c	Handle socket stuff
  *
  * Version:	$Id$
  *
@@ -510,8 +510,12 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 	 *	If we're delaying authentication rejects, then
 	 *	mark the request as delayed, and do NOT send a
 	 *	response right now.
+	 *
+	 *	However, if it's already marked as delayed, then
+	 *	send it now.
 	 */
 	if ((request->reply->code == PW_AUTHENTICATION_REJECT) &&
+	    ((request->options & RAD_REQUEST_OPTION_DELAYED_REJECT) == 0) &&
 	    (mainconfig.reject_delay > 0) &&
 	    ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) == 0)) {
 		DEBUG2("Delaying request %d for %d seconds",

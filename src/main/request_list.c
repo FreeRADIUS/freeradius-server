@@ -1125,8 +1125,8 @@ static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
 		 *	don't do this again, and fall through to
 		 *	setting cleanup delay.
 		 */
-		request->options &= ~RAD_REQUEST_OPTION_DELAYED_REJECT;
 		request->listener->send(request->listener, request);
+		request->options &= ~RAD_REQUEST_OPTION_DELAYED_REJECT;
 
 		/*
 		 *	FIXME: Beware interaction with cleanup_delay,
