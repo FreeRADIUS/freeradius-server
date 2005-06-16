@@ -1,9 +1,18 @@
+freeradius (1.0.4-0) unstable; urgency=medium
+
+  * New upstream release, fixing build problems.
+  * Prefer libpq-dev over postgresql-dev as a build-dependancy.
+   - This requires us to use pgconfig to find the headers.
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 16 Jun 2005 13:56:33 +1000
+
 freeradius (1.0.3-0) unstable; urgency=high
 
   * New upstream release
   * Urgency high for some denial-of-service fixes:
     - SQL injection attacks and DoS (core dump) via buffer overflow.
-	
+      Closes: #307720
+
  -- Alan DeKok <aland@ox.org>  Fri,  3 Jun 2005 11:29:34 -0700
 
 freeradius (1.0.2-0) unstable; urgency=low

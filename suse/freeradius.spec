@@ -17,7 +17,7 @@ License:      GPL, LGPL
 Group:        Productivity/Networking/Radius/Servers
 Provides:     radiusd
 Conflicts:    radiusd-livingston radiusd-cistron icradius
-Version:      1.0.3
+Version:      1.0.4
 Release:      1.suse
 URL:          http://www.freeradius.org/
 Summary:      Very highly Configurable Radius-Server

@@ -1,4 +1,4 @@
-FreeRADIUS 1.0.4 ; $Date$, urgency=medium
+FreeRADIUS 1.0.4 ; Date: 2005/06/11 22:46:52, urgency=medium
 
 	* Fix installation problem.
 	* Increase a buffer size, so radrelay doesn't truncate values.
