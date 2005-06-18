@@ -703,6 +703,17 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
 }
 
 
+#define IP_SRC_ADDR_FLAG    (1 << 0)
+#define IP_DEST_ADDR_FLAG   (1 << 1)
+#define IP_SRC_PORT_FLAG    (1 << 2)
+#define IP_DEST_PORT_FLAG   (1 << 3)
+#define IP_PROTO_FLAG       (1 << 4)
+#define IP_EST_FLAG         (1 << 5)
+
+#define DONE_FLAGS	(IP_SRC_ADDR_FLAG | IP_DEST_ADDR_FLAG | \
+			IP_SRC_PORT_FLAG | IP_DEST_PORT_FLAG | \
+			IP_PROTO_FLAG | IP_EST_FLAG)
+	
 /*
  *	ascend_parse_ip:
  *
@@ -749,39 +760,73 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 	 *	There may, or may not, be src & dst IP's in the string.
 	 */
 	flags = 0;
-	while ((argc > 0) && (flags != 7)) {
+	while ((argc > 0) && (flags != DONE_FLAGS)) {
 		token = lrad_str2int(filterKeywords, argv[0], -1);
 		switch (token) {
 		case FILTER_IP_SRC:
-			if (flags & 0x01) return -1;
+			if (flags & IP_SRC_ADDR_FLAG) return -1;
 			if (argc < 2) return -1;
 
 			rcode = ascend_parse_ipaddr(&filter->srcip, argv[1]);
 			if (rcode < 0) return rcode;
 
 			filter->srcmask = rcode;
-			flags |= 0x01;
+			flags |= IP_SRC_ADDR_FLAG;
 			argv += 2;
 			argc -= 2;
 			break;
 
 		case FILTER_IP_DST:
-			if (flags & 0x02) return -1;
+			if (flags & IP_DEST_ADDR_FLAG) return -1;
 			if (argc < 2) return -1;
 
 			rcode = ascend_parse_ipaddr(&filter->dstip, argv[1]);
 			if (rcode < 0) return rcode;
 
 			filter->dstmask = rcode;
-			flags |= 0x02;
+			flags |= IP_DEST_ADDR_FLAG;
 			argv += 2;
 			argc -= 2;
 			break;
 
-			/*
-			 *	Should be protocol, ASCII or otherwise.
-			 */
+		case FILTER_IP_SRC_PORT:
+			if (flags & IP_SRC_PORT_FLAG) return -1;
+			if (argc < 3) return -1;
+
+			rcode = ascend_parse_port(&filter->srcport,
+						  argv[1], argv[2]);
+			if (rcode < 0) return rcode;
+			filter->srcPortComp = rcode;
+
+			flags |= IP_SRC_PORT_FLAG;
+			argv += 3;
+			argc -= 3;
+			break;
+
+		case FILTER_IP_DST_PORT:
+			if (flags & IP_DEST_PORT_FLAG) return -1;
+			if (argc < 3) return -1;
+
+			rcode = ascend_parse_port(&filter->dstport,
+						  argv[1], argv[2]);
+			if (rcode < 0) return rcode;
+			filter->dstPortComp = rcode;
+
+			flags |= IP_DEST_PORT_FLAG;
+			argv += 3;
+			argc -= 3;
+			break;
+
+		case FILTER_EST:
+			if (flags & IP_EST_FLAG) return -1;
+			filter->established = 1;
+			argv++;
+			argc--;
+			flags |= IP_EST_FLAG;
+			break;
+
 		default:
+			if (flags & IP_PROTO_FLAG) return -1;
 			if (strspn(argv[0], "0123456789") == strlen(argv[0])) {
 				token = atoi(argv[0]);
 			} else {
@@ -793,74 +838,13 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 				}
 			}
 			filter->proto = token;
-			flags = 0x07; /* MUST have parsed everything. */
+			flags |= IP_PROTO_FLAG;
 
 			argv++;
 			argc--;
 			break;
 		}
-	} /* looking for src/dst IP, and proto */
-
-	/*
-	 *	Done looking for everything, return.
-	 */
-	if (argc == 0) return 0;
-
-	/*
-	 *	There may, or may not, be src & dst ports in the string.
-	 */
-	flags = 0;
-	while ((argc > 0) && (flags != 7)) {
-		token = lrad_str2int(filterKeywords, argv[0], -1);
-		switch (token) {
-		case FILTER_IP_SRC_PORT:
-			if (flags & 0x01) return -1;
-			if (argc < 3) return -1;
-
-			rcode = ascend_parse_port(&filter->srcport,
-						  argv[1], argv[2]);
-			if (rcode < 0) return rcode;
-			filter->srcPortComp = rcode;
-
-			flags |= 0x01;
-			argv += 3;
-			argc -= 3;
-			break;
-
-		case FILTER_IP_DST_PORT:
-			if (flags & 0x02) return -1;
-			if (argc < 3) return -1;
-
-			rcode = ascend_parse_port(&filter->dstport,
-						  argv[1], argv[2]);
-			if (rcode < 0) return rcode;
-			filter->dstPortComp = rcode;
-
-			flags |= 0x02;
-			argv += 3;
-			argc -= 3;
-			break;
-
-			/*
-			 *	Look for established connections.
-			 */
-		case FILTER_EST:
-			filter->established = 1;
-			argv++;
-			argc--;
-			flags = 0x07;
-			break;
-
-			/*
-			 *	Unknown thingy.
-			 */
-		default:
-			librad_log("Unknown string \"%s\" in IP data filter",
-				   argv[0]);
-			return -1;
-			break;
-		}
-	} /* looking for src/dst port */
+	}
 
 	/*
 	 *	We should have parsed everything by now.
