@@ -129,14 +129,6 @@ static const LRAD_NAME_NUMBER str2fac[] = {
 #endif
 	{ NULL, -1 }
 };
-static char *radlog_dest = NULL;
-static const LRAD_NAME_NUMBER str2dest[] = {
-	{ "files", RADLOG_FILES },
-	{ "syslog", RADLOG_SYSLOG },
-	{ "stdout", RADLOG_STDOUT },
-	{ "stderr", RADLOG_STDERR },
-	{ NULL, RADLOG_NULL }
-};
 
 /*
  *  Map the proxy server configuration parameters to variables.
@@ -202,7 +194,6 @@ static const CONF_PARSER server_config[] = {
 	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
 
 	{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, "${logdir}/radius.log" },
-	{ "log_destination", PW_TYPE_STRING_PTR, -1, &radlog_dest, "files" },
 	{ "log_auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, "no" },
 	{ "log_auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
 	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
@@ -584,7 +575,7 @@ static int generate_realms(const char *filename)
 	REALM *my_realms = NULL;
 	REALM *c, **tail;
 	char *s, *t, *authhost, *accthost;
-	char *name2;
+	const char *name2;
 
 	tail = &my_realms;
 	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "realm");
@@ -844,7 +835,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 	CONF_SECTION	*cs;
 	RADCLIENT	*list, *c;
 	char		*hostnm, *prefix_ptr = NULL;
-	char		*name2;
+	const char	*name2;
 
 	list = NULL;
 	for (cs = cf_subsection_find_next(section, NULL, "client");
@@ -915,6 +906,14 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 }
 
 
+static const LRAD_NAME_NUMBER str2dest[] = {
+	{ "files", RADLOG_FILES },
+	{ "syslog", RADLOG_SYSLOG },
+	{ "stdout", RADLOG_STDOUT },
+	{ "stderr", RADLOG_STDERR },
+	{ NULL, RADLOG_NULL }
+};
+
 CONF_SECTION *read_radius_conf_file(void)
 {
 	char buffer[256];
@@ -940,13 +939,18 @@ CONF_SECTION *read_radius_conf_file(void)
 	if (mainconfig.port != -1) auth_port = mainconfig.port;
 
 	/*
-	 *	Parse the log destination & syslog facility,
-	 *	so long as we're not debugging to STDOUT.
-	 *
-	 *	This really is a hack, but it works...
+	 *	Debug flag 1 MAY go to files.
+	 *	Debug flag 2 ALWAYS goes to stdout
 	 */
-	if ((debug_flag < 2) &&
-	    (mainconfig.radlog_dest != RADLOG_STDOUT)) {
+	if (debug_flag < 2) {
+		int rcode;
+		char *radlog_dest = NULL;
+
+		rcode = cf_item_parse(cs, "log_destination",
+				      PW_TYPE_STRING_PTR, &radlog_dest,
+				      "files");
+		if (rcode < 0) return NULL;
+	
 		mainconfig.radlog_dest = lrad_str2int(str2dest, radlog_dest, RADLOG_NULL);
 		if (mainconfig.radlog_dest == RADLOG_NULL) {
 			fprintf(stderr, "radiusd: Error: Unknown log_destination %s\n",
@@ -959,7 +963,7 @@ CONF_SECTION *read_radius_conf_file(void)
 			mainconfig.syslog_facility = lrad_str2int(str2fac, syslog_facility, -1);
 			if (mainconfig.syslog_facility < 0) {
 				fprintf(stderr, "radiusd: Error: Unknown syslog_facility %s\n",
-				       syslog_facility);
+					syslog_facility);
 				cf_section_free(&cs);
 				return NULL;
 			}
