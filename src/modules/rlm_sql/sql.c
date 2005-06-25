@@ -341,6 +341,22 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
 	}
 
 	/*
+	 *	Verify the 'op' field
+	 */
+	if (row[4] != NULL && row[4][0] != '\0') {
+		ptr = row[4];
+		operator = gettoken(&ptr, buf, sizeof(buf));
+	}
+	if (operator <= T_EOL) {
+		/*
+		 *  Complain about empty or invalid 'op' field
+		 */
+		operator = T_OP_CMP_EQ;
+		radlog(L_ERR, "rlm_sql: The 'op' field for attribute '%s = %s' is NULL, or non-existent.", row[2], row[3]);
+		radlog(L_ERR, "rlm_sql: You MUST FIX THIS if you want the configuration to behave as you expect.");
+	}
+
+	/*
 	 *	The 'Value' field may be empty or NULL
 	 */
 	value = row[3];
@@ -352,7 +368,6 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
 	   ((row[3][0] == '\'') || (row[3][0] == '`') || (row[3][0] == '"')) &&
 	   (row[3][0] == row[3][strlen(row[3])-1])) {
 
-		value = row[3];
 		token = gettoken(&value, buf, sizeof(buf));
 		switch (token) {
 			/*
@@ -378,22 +393,6 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
 			value = row[3];
 			break;
 		}
-	}
-
-	/*
-	 *	Verify the 'op' field
-	 */
-	if (row[4] != NULL && row[4][0] != '\0') {
-		ptr = row[4];
-		operator = gettoken(&ptr, buf, sizeof(buf));
-	}
-	if (operator <= T_EOL) {
-		/*
-		 *  Complain about empty or invalid 'op' field
-		 */
-		operator = T_OP_CMP_EQ;
-		radlog(L_ERR, "rlm_sql: The 'op' field for attribute '%s = %s' is NULL, or non-existent.", row[2], row[3]);
-		radlog(L_ERR, "rlm_sql: You MUST FIX THIS if you want the configuration to behave as you expect.");
 	}
 
 	/*
