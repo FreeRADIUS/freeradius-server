@@ -34,7 +34,6 @@
 
 /*
  * TODO: support setting multiple auth-types in authorize()
- * TODO: support soft PIN? ???
  * TODO: support other than ILP32 (for State)
  */
 
@@ -85,6 +84,8 @@ static const CONF_PARSER module_config[] = {
       NULL, OTP_CHALLENGE_REQ },
     { "resync_req", PW_TYPE_STRING_PTR, offsetof(otp_option_t, resync_req),
       NULL, OTP_RESYNC_REQ },
+    { "prepend_pin", PW_TYPE_BOOLEAN, offsetof(otp_option_t, prepend_pin),
+      NULL, "yes" },
     { "ewindow_size", PW_TYPE_INTEGER, offsetof(otp_option_t, ewindow_size),
       NULL, "0" },
     { "ewindow2_size", PW_TYPE_INTEGER, offsetof(otp_option_t, ewindow2_size),

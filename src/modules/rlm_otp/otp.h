@@ -79,6 +79,7 @@ typedef struct otp_option_t {
     int allow_async;	/* C/R mode allowed?                               */
     char *chal_req;	/* keyword requesting challenge for fast_sync mode */
     char *resync_req;	/* keyword requesting resync for fast_sync mode    */
+    int prepend_pin;	/* prepend (vs. append) PIN?                       */
     int ewindow_size;	/* sync mode event window size (right side value)  */
     int ewindow2_size;	/* softfail override event window size             */
     int ewindow2_delay;	/* softfail override max time delay                */
@@ -104,6 +105,7 @@ typedef struct otp_option_t {
 /* user-specific info */
 #define OTP_MAX_CARDNAME_LEN 32
 #define OTP_MAX_KEY_LEN 256
+#define OTP_MAX_PIN_LEN 256
 struct cardops_t;
 typedef struct otp_user_info_t {
     const char *username;
@@ -114,6 +116,7 @@ typedef struct otp_user_info_t {
 
     char keystring[OTP_MAX_KEY_LEN * 2 + 1];
     unsigned char keyblock[OTP_MAX_KEY_LEN];
+    char pin[OTP_MAX_PIN_LEN + 1];
 #if 0
     void *keyschedule;
 #endif

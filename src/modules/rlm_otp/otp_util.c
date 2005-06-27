@@ -103,7 +103,7 @@ int
 otp_keystring2keyblock(const char *s, unsigned char keyblock[])
 {
     unsigned i;
-    size_t l = strlen(s) & ~1;	/* ignore possible trailing newline */
+    size_t l = strlen(s);
 
     /*
      * We could just use sscanf, but we do this a lot, and have very
@@ -183,6 +183,7 @@ otp_keyblock2keystring(char *s, const des_cblock keyblock,
 /*
  * fill in user_info from our database (key file)
  * returns 0 on success, -1 for user not found, -2 for other errors.
+ * TODO: mmap and use pointers in otp_user_info_t?
  */
 int
 otp_get_user_info(const char *pwdfile, const char *username,
@@ -257,7 +258,6 @@ otp_get_user_info(const char *pwdfile, const char *username,
 	return -2;
     }
     p++;
-    /* strtok() */
     if ((q = strchr(p, ':')) == NULL) {
 	otp_log(OTP_LOG_ERR,
 		"otp_get_user_info: invalid format for [%s] in %s",
@@ -270,14 +270,58 @@ otp_get_user_info(const char *pwdfile, const char *username,
     /*
      * Unfortunately, we can't depend on having strl*, which would allow
      * us to check for buffer overflow and copy the string in the same step.
-     * Rather than run through the card name twice here (strlen() + strcpy()),
-     * we'll just depend on cardops to ferret out invalid names.
+     * TODO: implement our own strlcpy().
      */
-    (void) strncpy(user_info->card, p, OTP_MAX_CARDNAME_LEN);
-    user_info->card[OTP_MAX_CARDNAME_LEN] = '\0';
-    /* NOTE: keystring includes possible trailing newline */
-    (void) strncpy(user_info->keystring, q, OTP_MAX_KEY_LEN * 2);
-    user_info->keystring[OTP_MAX_KEY_LEN * 2] = '\0';
+    if (strlen(p) > OTP_MAX_CARDNAME_LEN) {
+	otp_log(OTP_LOG_ERR,
+		"otp_get_user_info: invalid format for [%s] in %s",
+		username, pwdfile);
+    }
+    (void) strcpy(user_info->card, p);
+
+    p = q;
+    /* optional PIN field */
+    if ((q = strchr(p, ':')) == NULL)
+	user_info->pin[0] = '\0';
+    else
+	*q++ = '\0';
+    /* p: key, q: PIN */
+
+    {
+	size_t l = strlen(p);
+
+	/* OTP_MAX_KEY_LEN keys with trailing newline won't work */
+	if (l > OTP_MAX_KEY_LEN * 2) {
+	    otp_log(OTP_LOG_ERR,
+		    "otp_get_user_info: invalid format for [%s] in %s",
+		    username, pwdfile);
+	}
+	(void) strcpy(user_info->keystring, p);
+	/* strip possible trailing newline */
+	if (l && user_info->keystring[l-1] == '\n')
+	    user_info->keystring[--l] = '\0';
+	/* check for empty key or odd len */
+	if (!l || l & 1) {
+	    otp_log(OTP_LOG_ERR,
+		    "otp_get_user_info: invalid format for [%s] in %s",
+		    username, pwdfile);
+	    return -2;
+	}
+    }
+
+    if (q) {
+	size_t l = strlen(q);
+
+	if (l > OTP_MAX_PIN_LEN) {
+	    otp_log(OTP_LOG_ERR,
+		    "otp_get_user_info: invalid format for [%s] in %s",
+		    username, pwdfile);
+	}
+	(void) strcpy(user_info->pin, q);
+	/* strip possible trailing newline */
+	if (l && user_info->pin[l-1] == '\n')
+	    user_info->pin[--l] = '\0';
+    }
 
     return 0;
 }

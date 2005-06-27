@@ -89,17 +89,20 @@
     user's token with the server initially.  More on this below.
 
 
-4.  END-USER OPERATION
+4.  END-USER TOKEN OPERATION
 
     In the very old days, the server would present a challenge to the
     user, which the user would then enter into their token, and give the
-    server the response.  We call this async mode.  This is now unsafe
-    given that DES is so weak.  Luckily, most tokens support a synchronous
-    mode which lets the user skip the part where they enter the challenge.
-    In this mode, the token and the server generate a "next challenge"
-    which is derived from an event and/or time counter and is implicit.
-    Besides offering better security, this mode also has the advantage
-    of giving a much better user experience.
+    server the response.  We call this async mode.  This is "klunky" by
+    modern standards of usability, and for X9.9 tokens is actually unsafe
+    given that DES is so weak.
+
+    Luckily, most tokens support a synchronous mode which lets the user
+    skip the part where they enter the challenge.  In this mode, the
+    token and the server generate a "next challenge" which is derived
+    from an event and/or time counter and is implicit.  Besides offering
+    better security, this mode also has the advantage of giving a much
+    better user experience.
 
     For some tokens, the token can display the synchronous challenge.
     The idea here is that the server would still present a challenge
@@ -200,6 +203,23 @@
     an attacker could try, at most, ~50 passwords/day.  No indication
     is given to the user that they are in "delay mode" (except that a
     valid password doesn't work), further thwarting an attacker.
+
+    prepend_pin:  Some tokens have what we call a "hard PIN"; users enter
+    a PIN into the token to activate it.  This has the advantage that
+    only the user knows the PIN, and that it is only entered into a secure
+    device, however, it has [token] UI challenges.  For usability reasons,
+    other tokens have a constantly active display and the user enters a
+    "soft PIN" as part of the passcode.  This has the advantage of a
+    better UI, but has the disadvantages that the PIN is susceptible to
+    capture, which can reduce the token to a single factor device; and
+    that the server admins know the PIN.  (Note that it doesn't matter
+    for hard PIN devices that admins don't know the PIN, since they know
+    the token secret; the loss incurred by admin exposure is not for
+    security of the device, but compromise of personal information.)
+    The prepend_pin setting toggles whether the user must prepend or
+    append the pin; the default is prepend.  Note that hard PIN devices
+    can utilize a soft PIN as well (which is in fact how the TRI-D
+    3-factor card operates).
 
     ewindow_size:  For cards with event synchronous modes, this is how
     far out of [event] sync the server can get with the token.  The value

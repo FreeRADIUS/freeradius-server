@@ -65,7 +65,9 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
 {
     int		rc, fc, nmatch, i;
 
-    char	e_response[9];	/* expected response */
+    		/* expected response */
+    char	e_response[OTP_MAX_RESPONSE_LEN + OTP_MAX_PIN_LEN + 1];
+    int		pin_adjust = 0;	/* pin offset in e_response */
     unsigned	auth_pos = 0;	/* window position of this authentication */
     time_t	last_auth_time;	/* time of last authentication */
 
@@ -135,6 +137,12 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
 	goto auth_done_service_err;
     }
 
+    /* Adjust e_response for PIN prepend. */
+    if (opt->prepend_pin) {
+	(void) strcpy(e_response, user_info.pin);
+	pin_adjust = strlen(e_response);
+    }
+
     /* Get the time of the last authentication. */
     if (otp_get_last_auth(opt->syncdir, username, &last_auth_time) != 0) {
 	otp_log(OTP_LOG_ERR,
@@ -168,7 +176,8 @@ async_response:
 	}
 
 	/* Calculate the async response. */
-	if (user_info.cardops->response(&user_info, challenge, e_response)!=0){
+	if (user_info.cardops->response(&user_info, challenge,
+					&e_response[pin_adjust]) != 0) {
 	    otp_log(OTP_LOG_ERR,
 		    "%s: unable to calculate async response for [%s], "
 		    "to challenge %s", log_prefix, username, challenge);
@@ -176,15 +185,21 @@ async_response:
 	    goto auth_done_service_err;
 	    /* NB: last_auth_time, failcount not updated. */
 	}
+	/* NOTE: We do not display the PIN. */
 #if defined(FREERADIUS)
 	DEBUG("rlm_otp_token: auth: [%s], async challenge %s, "
-	      "expecting response %s", username, challenge, e_response);
+	      "expecting response %s", username, challenge,
+	      &e_response[pin_adjust]);
 #elif defined(PAM)
 	if (opt->debug)
 	    otp_log(OTP_LOG_DEBUG, "%s: [%s], async challenge %s, "
-		    "expecting response %s", log_prefix, username, challenge,
-		    e_response);
+				   "expecting response %s",
+		    log_prefix, username, challenge, &e_response[pin_adjust]);
 #endif
+
+	/* Add PIN if needed. */
+	if (!opt->prepend_pin)
+	    (void) strcat(e_response, user_info.pin);
 
 	/* Test user-supplied passcode. */
 	if (passcode)
@@ -272,7 +287,7 @@ sync_response:
 
 	    /* Calculate sync response. */
 	    if (user_info.cardops->response(&user_info, challenge,
-					    e_response) != 0) {
+					    &e_response[pin_adjust]) != 0) {
 		otp_log(OTP_LOG_ERR,
 			"%s: unable to calculate sync response "
 			"e:%d t:%d for [%s], to challenge %s",
@@ -281,15 +296,22 @@ sync_response:
 		goto auth_done_service_err;
 		/* NB: last_auth_time, failcount not updated. */
 	    }
+	    /* NOTE: We do not display the PIN. */
 #if defined(FREERADIUS)
 	    DEBUG("rlm_otp_token: auth: [%s], sync challenge %d %s, "
-		  "expecting response %s", username, i, challenge, e_response);
+		  "expecting response %s", username, i, challenge,
+		  &e_response[pin_adjust]);
 #elif defined(PAM)
 	    if (opt->debug)
 		otp_log(OTP_LOG_DEBUG, "%s: [%s], sync challenge %d %s, "
-			"expecting response %s",
-			log_prefix, username, i, challenge, e_response);
+				       "expecting response %s",
+			log_prefix, username, i,
+			challenge, &e_response[pin_adjust]);
 #endif
+
+	    /* Add PIN if needed. */
+	    if (!opt->prepend_pin)
+		(void) strcat(e_response, user_info.pin);
 
 	    /* Test user-supplied passcode. */
 	    if (passcode)
@@ -298,8 +320,8 @@ sync_response:
 		nmatch = cmpfunc(data, e_response);
 	    if (!nmatch) {
 		if (fc == OTP_FC_FAIL_HARD) {
-		    otp_log(OTP_LOG_AUTH,
-			    "%s: bad sync auth for [%s]: valid but in hardfail",
+		    otp_log(OTP_LOG_AUTH, "%s: bad sync auth for [%s]: "
+					  "valid but in hardfail",
 			    log_prefix, username);
 		    rc = OTP_RC_MAXTRIES;
 		    goto auth_done;
@@ -311,9 +333,8 @@ sync_response:
 		if (fc == OTP_FC_FAIL_SOFT) {
 		    if (!opt->ewindow2_size) {
 			/* ewindow2 mode not configured */
-			otp_log(OTP_LOG_AUTH,
-				"%s: bad sync auth for [%s]: "
-				"valid but in softfail",
+			otp_log(OTP_LOG_AUTH, "%s: bad sync auth for [%s]: "
+					      "valid but in softfail",
 				log_prefix, username);
 			rc = OTP_RC_MAXTRIES;
 			goto auth_done;
