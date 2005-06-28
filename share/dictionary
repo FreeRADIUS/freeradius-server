@@ -80,6 +80,7 @@ $INCLUDE dictionary.acc
 $INCLUDE dictionary.airespace
 $INCLUDE dictionary.alcatel
 $INCLUDE dictionary.alteon
+$INCLUDE dictionary.aruba
 $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
@@ -131,6 +132,10 @@ $INCLUDE dictionary.xedia
 #
 $INCLUDE dictionary.freeradius.internal
 
+#
+#	Miscellaneous attributes defined in weird places that
+#	don't really belong anywhere else...
+#
 ATTRIBUTE	Originating-Line-Info	94	string
 
 #  As defined in draft-sterman-aaa-sip-00.txt
