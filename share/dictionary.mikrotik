@@ -10,4 +10,17 @@ ATTRIBUTE	Mikrotik-Recv-Limit		1	integer	Mikrotik
 ATTRIBUTE	Mikrotik-Xmit-Limit		2	integer	Mikrotik
 
 # this attribute is unused
-ATTRIBUTE	Mikrotik-Group		3	string	Mikrotik
+ATTRIBUTE	Mikrotik-Group			3	string	Mikrotik
+
+ATTRIBUTE	Mikrotik-Wireless-Forward	4	integer	Mikrotik
+ATTRIBUTE	Mikrotik-Wireless-Skip-Dot1x	5	integer	Mikrotik
+ATTRIBUTE	Mikrotik-Wireless-Enc-Algo	6	integer	Mikrotik
+ATTRIBUTE	WMikrotik-ireless-Enc-Key	7	string	Mikrotik
+ATTRIBUTE	Mikrotik-Rate-Limit		8	string	Mikrotik
+ATTRIBUTE	Mikrotik-Realm			9	string	Mikrotik
+
+# MikroTik Values
+
+VALUE	Mikrotik-Wireless-Enc-Algo	No-encryption		0
+VALUE	Mikrotik-Wireless-Enc-Algo	40-bit-WEP		1
+VALUE	Mikrotik-Wireless-Enc-Algo	104-bit-WEP		2

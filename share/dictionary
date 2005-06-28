@@ -107,6 +107,7 @@ $INCLUDE dictionary.karlnet
 $INCLUDE dictionary.livingston
 $INCLUDE dictionary.localweb
 $INCLUDE dictionary.microsoft
+$INCLUDE dictionary.mikrotik
 $INCLUDE dictionary.navini
 $INCLUDE dictionary.ntua
 $INCLUDE dictionary.nomadix
