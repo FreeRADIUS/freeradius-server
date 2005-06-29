@@ -963,6 +963,11 @@ pid_t rad_fork(int exec_wait)
 	if (exec_wait) return fork();
 
 	/*
+	 *	Ensure that children are reaped always.
+	 */
+	reap_children();
+
+	/*
 	 *	Lock the mutex.
 	 */
 	pthread_mutex_lock(&thread_pool.wait_mutex);
