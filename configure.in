@@ -427,8 +427,9 @@ else
   dnl # HP/UX requires linking with librt, too, to get the sem_* symbols.
   dnl # Some systems have them in -lsem
   dnl # Solaris has them in -lposix4
+  dnl # NetBSD has them in -lsemaphore
 
-  AC_SEARCH_LIBS(sem_init, pthread sem posix4 rt,
+  AC_SEARCH_LIBS(sem_init, pthread sem posix4 rt semaphore,
 	[],
 	[AC_MSG_ERROR(-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz)]
    )
