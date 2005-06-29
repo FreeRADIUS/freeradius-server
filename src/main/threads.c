@@ -324,6 +324,12 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	}
 
 	/*
+	 *	FIXME: If there are too many outstanding requests,
+	 *	return data to the server core which tells it to slow
+	 *	down on reading from the sockets.
+	 */
+
+	/*
 	 *	Add the data to the queue tail, increment the tail,
 	 *	and signal the semaphore that there's another request
 	 *	in the queue.
@@ -1063,6 +1069,8 @@ pid_t rad_fork(int exec_wait)
 	pid_t child_pid;
 
 	if (exec_wait) return fork();
+
+	reap_children();	/* be nice to non-wait thingies */
 
 	/*
 	 *	Lock the mutex.
