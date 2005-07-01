@@ -271,7 +271,8 @@ RADCLIENT *client_find(const lrad_ipaddr_t *ipaddr)
 		switch (ipaddr->af) {
 		case AF_INET:
 			if (cl->prefix) {
-				if ((htonl(ipaddr->ipaddr.ip4addr.s_addr) & (~0 << cl->prefix)) == (htonl(cl->ipaddr.ipaddr.ip4addr.s_addr) & (~0 << cl->prefix))) {
+				uint32_t mask = htonl(~((1 << (32 - cl->prefix)) - 1));
+				if ((ipaddr->ipaddr.ip4addr.s_addr & mask) == (cl->ipaddr.ipaddr.ip4addr.s_addr & mask)) {
 					match = cl;
 				} else
 					break;
