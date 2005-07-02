@@ -1,3 +1,23 @@
+freeradius (1.0.4-1) unstable; urgency=low
+  * ReDeianise upstream tarball:
+    - Deleted RFCs: 2243 2289 2433 2548 2618 2619 2620 2621 2716 2759 2809 2865
+                    2866 2867 2868 2869 2882 2924 3162 3575 3576 3579 3580
+                    draft-kamath-pppext-eap-mschapv2-00
+  * Convert to dpatch, dpatch-2-style interface.
+    - New build-dependancy on dpatch (>= 2)
+    - Created 01_NET-SNMP_build_support
+    - Created 02_EAP-SIM_doesnt_need_openssl
+    - Created 03_X99_is_not_stable
+  * Assemble the freeradius-dialupadmin in the binary-indep make target
+    Closes: #313173 (Thanks to Santiago Vila for spotting this)
+  * Include the example scripts in /usr/share/doc/freeradius/examples/scripts
+    except those three which are installed into the binary by the Makefile.
+    Closes: #314253 (Thanks to Michael Langer for spotting this)
+  * Suggest libdate-manip-perl for freeradius-dialupadmin
+    Closes: #306007 (Thanks to Feng Sian)
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed, 22 Jun 2005 16:03:27 +1000
+
 freeradius (1.0.4-0) unstable; urgency=medium
 
   * New upstream release, fixing build problems.
@@ -14,6 +34,57 @@ freeradius (1.0.3-0) unstable; urgency=high
       Closes: #307720
 
  -- Alan DeKok <aland@ox.org>  Fri,  3 Jun 2005 11:29:34 -0700
+
+freeradius (1.0.2-4) unstable; urgency=high
+
+  * Security fix stolen from CVS release_1_0 branch:
+   - Always use sql_escape_func when calling radius_xlat
+   - Add a test in sql_escape_func() to check buffer bound when
+     input character needs escaping.
+   - Urgency high as these are (theoretical) security issues.
+     Closes: #307720 (Thanks to Primoz Bratanic and Nicolas Baradakis)
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Mon, 23 May 2005 18:53:51 +1000
+
+freeradius (1.0.2-3) unstable; urgency=medium
+
+  * Fixes stolen from CVS release_1_0 branch:
+   - Fix missed SIGCHLD when waiting for external programs
+     when threaded. (Medium urgency as this can easily livelock
+     FreeRADIUS, which is an authentication server.)
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Mon, 18 Apr 2005 23:46:41 +1000
+
+freeradius (1.0.2-2) unstable; urgency=medium
+
+  * Get rid of extraneous '%' at the start of every reference to
+    /etc/freeradius-dialupadmin in freeradius-dialupadmin's configuration.
+     Closes: #299749
+  * Fixes stolen from CVS release_1_0 branch:
+   - Fix checkrad call for NAS ports > 9999999. (sprintf integer overrun,
+     reason for urgency medium.)
+   - Fix inverted test causing crash with pthreads and crypt
+     Closes: #300219 (Thanks Manuel Menal)
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed,  6 Apr 2005 12:33:05 +1000
+
+freeradius (1.0.2-1) unstable; urgency=low
+
+  * ReDebianise upstream tarball:
+    - Deleted RFCs: 2243 2289 2433 2548 2618 2619 2620 2621 2716 2759 2809 2865
+                    2866 2867 2868 2869 2882 2924 3162 3575 3576 3579 3580
+  * Allow rlm_eap_sim to build without OpenSSL
+  * Make init script return 1 if reloading kills the server
+    (Thanks to Nicolas Baradakis)
+     Closes: #292170
+  * Enable Novell eDirectory integration
+  * Enable udpfromto code so that replies come from the same address as
+    the request arrived at
+  * Build-depend on libmysqlclient12-dev as libmysqlclient10 has problems
+    accessing 4.0 series mySQL servers, and libmysqlclient12 can access
+    4.1 series mySQL servers.
+  
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Fri,  4 Mar 2005 09:30:40 +1100
 
 freeradius (1.0.2-0) unstable; urgency=low
 
@@ -35,6 +106,44 @@ freeradius (1.0.2-0) unstable; urgency=low
 
  -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed, 29 Dec 2004 20:12:52 +1100
 
+freeradius (1.0.1-2) unstable; urgency=high
+
+  * freeradius-dialupadmin Suggests php4-mysql | php4-pgsql
+     Closes: #279419
+  * Added a two-second pause to restart in init.d script
+     Closes: #262635
+  * FreeRADIUS module packages now depend on the same source
+    version of the main FreeRADIUS package.
+     Closes: #284353
+  * FreeRADIUS-dialupadmin's default paths in admin.conf are
+    now correct.
+     Closes: #280942
+  * FreeRADIUS-dialupadmin's help.php3 can now find README.
+     Closes: #280941
+  * Fixes stolen from 1.0.2 CVS:
+    - Bug fix to make udpfromto code work
+    - radrelay shouldn't dump core if it can't read a VP from the
+      detail file.
+    - Only initialize the random pool once.
+    - In rlm_sql, don't escape characters twice.
+    - In rlm_ldap, only claim Auth-Type if a plain text password is present.
+    - Locking fixes in threading code
+    - Fix building on gcc-4.0 by not trying to access static auth_port from
+      other files.
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed, 29 Dec 2004 20:19:42 +1100
+
+freeradius (1.0.1-1) unstable; urgency=high
+
+  * ReDebianise upstream tarball:
+    - Deleted RFCs: 2243 2289 2433 2548 2618 2619 2620 2621 2716 2759 2809 2865
+                    2866 2867 2868 2869 2882 2924 3162 3575 3576 3579 3580
+    - Remove CVS directories.
+  * Urgency high for security fix from 1.0.1-0 (CAN-2004-0938,
+    closes: #275136).
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 23 Sep 2004 22:28:11 +1000
+
 freeradius (1.0.1-0) unstable; urgency=high
 
   * New upstream release
@@ -43,6 +152,25 @@ freeradius (1.0.1-0) unstable; urgency=high
      radius packet decoding.
 
  -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu,  2 Sep 2004 17:12:23 +1000
+
+freeradius (1.0.0-1) unstable; urgency=low
+
+  * ReDebianise upstream tarball:
+    - Deleted RFCs: 2243 2289 2433 2548 2618 2619 2620 2621 2716 2759 2809 2865
+                    2866 2867 2868 2869 2882 2924 3162 3575 3576 3579 3580
+  * Support building with libsnmp5's UCD-SNMP compatiblity mode.
+    - libsnmp{4.2,5} still depend on OpenSSL, so SNMP's still disabled.
+  * Update for Debian Policy 3.6.11
+    - Change test for invoke-rc.d as per Policy 9.3.3.2
+  * Disable rlm_eap types PEAP, TLS and TTLS as they depend on OpenSSL.
+  * Disable rlm_sql driver PostgreSQL as it depends on OpenSSL.
+  * Disable rlm_x99_token as it depends on OpenSSL.
+  * Finally, -v is documented in radius(8).
+    - Closes: #151266
+  * Reword a sentence in radwatch(8) by removing the personal pronoun.
+    - Closes: #264522
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Tue, 17 Aug 2004 17:42:40 +1000
 
 freeradius (1.0.0-0) unstable; urgency=low
 
