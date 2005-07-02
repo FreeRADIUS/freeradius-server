@@ -1,5 +1,5 @@
 #! /bin/sh /usr/share/dpatch/dpatch-run
-## 02_EAP-SIM_doesnt_need_openssl.dpatch by  <tbble@keitarou>
+## 02_EAP-SIM_doesnt_need_openssl.dpatch by  <Paul.Hampson@anu.edu.au>
 ##
 ## All lines beginning with `## DP:' are a description of the patch.
 ## DP: EAP-SIM does not require openssl to build

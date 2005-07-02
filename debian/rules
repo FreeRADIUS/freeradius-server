@@ -17,6 +17,11 @@ logdir		= /var/log/$(package)
 pkgdocdir	= /usr/share/doc/$(package)
 raddbdir	= /etc/$(package)
 
+# All supported modules, irrespective of licensing
+#modulepackages = krb5 ldap mysql iodbc postgresql
+# Binary-distributable modules for the Debian archive.
+modulepackages = krb5 ldap mysql iodbc
+
 export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 
@@ -75,8 +80,8 @@ build: autotools build-simple
 
 binary-indep: stamp-build
 	dh_testroot
-	dh_clean
-	dh_installdirs
+	dh_clean -i -k
+	dh_installdirs -i
 	# Dialup-Admin
 	dh_installdocs -p freeradius-dialupadmin dialup_admin/README dialup_admin/doc/*
 	dh_installchangelogs -p freeradius-dialupadmin dialup_admin/Changelog
@@ -120,7 +125,18 @@ binary-indep: stamp-build
 		rm $$TEMPFILE; \
 	done
 
+	# bonus scipts
+	dh_installdeb -i
+	dh_compress -i
+	dh_fixperms -i
+	dh_md5sums -i
+	dh_gencontrol -i
+	dh_builddeb -i
+
 binary-arch: stamp-build
+	dh_testroot
+	dh_clean -s -k
+	dh_installdirs -s
 	make install R=$(freeradius_dir)
 
 	# rename radius binary to play nicely with others
@@ -135,14 +151,14 @@ binary-arch: stamp-build
 	rm -rf $(freeradius_dir)/usr/share/doc/freeradius-1.0.4
 
 	# split out inconvenient/controversal modules to other places
-	for modname in krb5 ldap mysql iodbc; do \
+	for modname in $(modulepackages); do \
 		mkdir -p $(debiandir)/$(package)-$${modname}/$(libdir); \
 		mv $(freeradius_dir)/$(libdir)/rlm*_$${modname}* $(debiandir)/$(package)-$${modname}/$(libdir)/; \
 	done
 
 	# man pages & docs
+	dh_installdocs -X\*.in -Xradwatch -Xcheck-radius-config -XChangeLog -X00-OLD -XCVS -XMakefile doc/*
 	install -g root -m 644 CREDITS $(freeradius_dir)/$(pkgdocdir)/credits
-	dh_installdocs -X.in -Xrc.radiusd -Xradwatch -Xcheck-radius-config -XChangeLog -X00-OLD -XCVS -XMakefile doc/*
 	dh_installexamples -XCVS `find src/modules/rlm_sql/drivers -type f -name \*.sql`
 	dh_installchangelogs doc/ChangeLog
 	#Rename manpage to go with binary
@@ -166,23 +182,21 @@ binary-arch: stamp-build
 	rm $$TEMPFILE
 
 	# bonus scipts
-
-
 ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
-	dh_strip
+	dh_strip -s
 endif
-	dh_installlogrotate
-	dh_installinit -n
-	dh_installpam --name=radiusd
+	dh_installlogrotate -s
+	dh_installinit -n -s
+	dh_installpam --name=radiusd -s
 	# We don't need ldconfig. None of our libraries go in it's paths
-	dh_makeshlibs -n
-	dh_shlibdeps
-	dh_installdeb
-	dh_compress
-	dh_fixperms
-	dh_md5sums
-	dh_gencontrol
-	dh_builddeb
+	dh_makeshlibs -n -s
+	dh_shlibdeps -s
+	dh_installdeb -s
+	dh_compress -s
+	dh_fixperms -s
+	dh_md5sums -s
+	dh_gencontrol -s
+	dh_builddeb -s
 
 clean: clean-patched unpatch
 
@@ -191,7 +205,10 @@ clean-patched:
 	rm -f stamp-build debian/{files,substvars} debian/*.debhelper libltdl/stamp-h1
 	[ -f Make.inc ] && make distclean || true
 	dh_clean
-	rm -rf $(freeradius_dir) $(debiandir)/$(package)-{krb5,ldap,mysql,iodbc}{,.substvars}
+	rm -rf $(freeradius_dir)
+	for modname in $(modulepackages); do \
+		rm -rf $(debiandir)/$(package)-$${modname}{,.substvars}; \
+	done
 	[ -f config.sub.dist ] && rm config.sub && mv config.sub.dist config.sub || true
 	[ -f config.guess.dist ] && rm config.guess && mv config.guess.dist config.guess || true
 

@@ -1,3 +1,5 @@
 01_NET-SNMP_build_support
 02_EAP-SIM_doesnt_need_openssl
 03_X99_is_not_stable
+04_bonus_control_code_in_clients_conf_5
+05_unbreak_quoted_sql_results

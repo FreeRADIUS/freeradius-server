@@ -1,3 +1,24 @@
+freeradius (1.0.4-2) unstable; urgency=low
+
+  * Fix my email address in the dpatches
+  * Remove extraneous ^g from man/man5/clients.conf.5
+    - Created 04_bonus_control_code_in_clients_conf_5
+  * Correct handing of parameterless call of init script, and
+    general init script neatening
+    (Thanks to Derrick Karpo)
+    Closes: #315438
+  * Correctly leave out the .in files in the examples
+  * Correctly use debhelper after splitting binary make target
+    into binary-arch and binary-indep.
+    (Thanks to Kurt Roeckx for actually hitting the bug)
+    Closes: #315770
+  * Steal fix from CVS release_1_0 tree for rlm_sql quoted values.
+    (Thanks to Nicolas Baradakis for the fix)
+    - Upstream bugzilla #242, src/modules/rlm_sql/sql.c 1.79.2.2
+    - Created 05_unbreak_quoted_sql_values
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Mon, 27 Jun 2005 03:13:48 +1000
+
 freeradius (1.0.4-1) unstable; urgency=low
   * ReDeianise upstream tarball:
     - Deleted RFCs: 2243 2289 2433 2548 2618 2619 2620 2621 2716 2759 2809 2865
