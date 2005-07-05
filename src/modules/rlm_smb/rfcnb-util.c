@@ -25,6 +25,7 @@
 
 #include <string.h>
 
+#include "libradius.h"
 #include "std-includes.h"
 #include "rfcnb-priv.h"
 #include "rfcnb-util.h"
