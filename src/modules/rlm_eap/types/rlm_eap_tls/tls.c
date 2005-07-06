@@ -25,9 +25,9 @@
 /* record */
 static void 		record_init(record_t *buf);
 static void 		record_close(record_t *buf);
-static unsigned int 	record_plus(record_t *buf, const unsigned char *ptr,
+static unsigned int 	record_plus(record_t *buf, const void *ptr,
 				    unsigned int size);
-static unsigned int 	record_minus(record_t *buf, unsigned char *ptr,
+static unsigned int 	record_minus(record_t *buf, void *ptr,
 				     unsigned int size);
 
 tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
@@ -330,7 +330,7 @@ static void record_close(record_t *rec)
  *	Copy data to the intermediate buffer, before we send
  *	it somewhere.
  */
-static unsigned int record_plus(record_t *rec, const unsigned char *ptr,
+static unsigned int record_plus(record_t *rec, const void *ptr,
 				unsigned int size)
 {
 	unsigned int added = MAX_RECORD_SIZE - rec->used;
@@ -347,7 +347,7 @@ static unsigned int record_plus(record_t *rec, const unsigned char *ptr,
 /*
  *	Take data from the buffer, and give it to the caller.
  */
-static unsigned int record_minus(record_t *rec, unsigned char *ptr,
+static unsigned int record_minus(record_t *rec, void *ptr,
 				 unsigned int size)
 {
 	unsigned int taken = rec->used;

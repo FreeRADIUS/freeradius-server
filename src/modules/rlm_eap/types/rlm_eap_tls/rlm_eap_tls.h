@@ -149,9 +149,9 @@ typedef struct _tls_session_t {
 
 	void 		(*record_init)(record_t *buf);
 	void 		(*record_close)(record_t *buf);
-	unsigned int 	(*record_plus)(record_t *buf, const unsigned char *ptr,
+	unsigned int 	(*record_plus)(record_t *buf, const void *ptr,
 				       unsigned int size);
-	unsigned int 	(*record_minus)(record_t *buf, unsigned char *ptr,
+	unsigned int 	(*record_minus)(record_t *buf, void *ptr,
 					unsigned int size);
 	
 
