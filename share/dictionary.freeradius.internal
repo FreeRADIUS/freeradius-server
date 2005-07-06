@@ -57,9 +57,10 @@ ATTRIBUTE	EAP-TLS-Require-Client-Cert	1019	integer
 ATTRIBUTE       EAP-Id                  1020    integer
 ATTRIBUTE	EAP-Code 		1021	integer
 ATTRIBUTE	EAP-MD5-Password	1022	string
+ATTRIBUTE	PEAP-Version		1023	integer
 
 #
-#	Range:	1022-1028
+#	Range:	1023-1028
 #		unused
 #
 ATTRIBUTE	User-Category		1029	string

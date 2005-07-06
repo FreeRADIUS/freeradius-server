@@ -1,3 +1,4 @@
+# -*- text -*-
 #
 #	Obsolete names for backwards compatibility with older users files.
 #	Move the $INCLUDE in the main dictionary file to the end if you want
