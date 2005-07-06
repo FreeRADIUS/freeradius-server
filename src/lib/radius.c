@@ -1937,57 +1937,64 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
  *	int *pwlen is updated to the new length of the encrypted
  *	password - a multiple of 16 bytes.
  */
-#define AUTH_PASS_LEN (16)
+#define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
 int rad_pwencode(char *passwd, int *pwlen, const char *secret,
 		 const char *vector)
 {
-	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 1];
-	char	digest[AUTH_VECTOR_LEN];
+	librad_MD5_CTX context, old;
+	uint8_t	digest[AUTH_VECTOR_LEN];
 	int	i, n, secretlen;
 	int	len;
 
 	/*
-	 *	Pad password to multiple of AUTH_PASS_LEN bytes.
+	 *	RFC maximum is 128 bytes.
+	 *
+	 *	If length is zero, pad it out with zeros.
+	 *
+	 *	If the length isn't aligned to 16 bytes,
+	 *	zero out the extra data.
 	 */
 	len = *pwlen;
-	if (len > 128) len = 128;
-	*pwlen = len;
-	if (len % AUTH_PASS_LEN != 0) {
-		n = AUTH_PASS_LEN - (len % AUTH_PASS_LEN);
-		for (i = len; n > 0; n--, i++)
-			passwd[i] = 0;
-		len = *pwlen = i;
 
-	} else if (len == 0) {
+	if (len > 128) len = 128;
+
+	if (len == 0) {
 		memset(passwd, 0, AUTH_PASS_LEN);
-		*pwlen = len = AUTH_PASS_LEN;
+		len = AUTH_PASS_LEN;
+	} else if ((len % AUTH_PASS_LEN) != 0) {
+		memset(&passwd[len], 0, AUTH_PASS_LEN - (len % AUTH_PASS_LEN));
+		len += AUTH_PASS_LEN - (len % AUTH_PASS_LEN);
 	}
+	*pwlen = len;
 
 	/*
 	 *	Use the secret to setup the decryption digest
 	 */
 	secretlen = strlen(secret);
-	memcpy(buffer, secret, secretlen);
-	memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
-	librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_VECTOR_LEN);
+	
+	librad_MD5Init(&context);
+	librad_MD5Update(&context, secret, secretlen);
+	old = context;		/* save intermediate work */
 
 	/*
-	 *	Now we can encode the password *in place*
+	 *	Encrypt it in place.  Don't bother checking
+	 *	len, as we've ensured above that it's OK.
 	 */
-	for (i = 0; i < AUTH_PASS_LEN; i++)
-		passwd[i] ^= digest[i];
-
-	if (len <= AUTH_PASS_LEN) return 0;
-
-	/*
-	 *	Length > AUTH_PASS_LEN, so we need to use the extended
-	 *	algorithm.
-	 */
-	for (n = 0; n < 128 && n <= (len - AUTH_PASS_LEN); n += AUTH_PASS_LEN) {
-		memcpy(buffer + secretlen, passwd + n, AUTH_PASS_LEN);
-		librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_PASS_LEN);
-		for (i = 0; i < AUTH_PASS_LEN; i++)
-			passwd[i + n + AUTH_PASS_LEN] ^= digest[i];
+	for (n = 0; n < len; n += AUTH_PASS_LEN) {
+		if (n == 0) {
+			librad_MD5Update(&context, vector, AUTH_PASS_LEN);
+			librad_MD5Final(digest, &context);
+		} else {
+			context = old;
+			librad_MD5Update(&context,
+					 passwd + n - AUTH_PASS_LEN,
+					 AUTH_PASS_LEN);
+			librad_MD5Final(digest, &context);
+		}
+		
+		for (i = 0; i < AUTH_PASS_LEN; i++) {
+			passwd[i + n] ^= digest[i];
+		}
 	}
 
 	return 0;
@@ -1999,49 +2006,56 @@ int rad_pwencode(char *passwd, int *pwlen, const char *secret,
 int rad_pwdecode(char *passwd, int pwlen, const char *secret,
 		 const char *vector)
 {
-	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 1];
-	char	digest[AUTH_VECTOR_LEN];
-	char	r[AUTH_VECTOR_LEN];
-	char	*s;
+	librad_MD5_CTX context, old;
+	uint8_t	digest[AUTH_VECTOR_LEN];
 	int	i, n, secretlen;
-	int	rlen;
+
+	/*
+	 *	The RFC's say that the maximum is 128.
+	 *	The buffer we're putting it into above is 254, so
+	 *	we don't need to do any length checking.
+	 */
+	if (pwlen > 128) pwlen = 128;
+
+	/*
+	 *	Catch idiots.
+	 */
+	if (pwlen == 0) goto done;
 
 	/*
 	 *	Use the secret to setup the decryption digest
 	 */
 	secretlen = strlen(secret);
-	memcpy(buffer, secret, secretlen);
-	memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
-	librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_VECTOR_LEN);
+	
+	librad_MD5Init(&context);
+	librad_MD5Update(&context, secret, secretlen);
+	old = context;		/* save intermediate work */
 
 	/*
-	 *	Now we can decode the password *in place*
+	 *	The inverse of the code above.
 	 */
-	memcpy(r, passwd, AUTH_PASS_LEN);
-	for (i = 0; i < AUTH_PASS_LEN && i < pwlen; i++)
-		passwd[i] ^= digest[i];
+	for (n = 0; n < pwlen; n += AUTH_PASS_LEN) {
+		if (n == 0) {
+			librad_MD5Update(&context, vector, AUTH_VECTOR_LEN);
+			librad_MD5Final(digest, &context);
 
-	if (pwlen <= AUTH_PASS_LEN) {
-		passwd[pwlen+1] = 0;
-		return pwlen;
-	}
+			context = old;
+			librad_MD5Update(&context, passwd, AUTH_PASS_LEN);
+		} else {
+			librad_MD5Final(digest, &context);
 
-	/*
-	 *	Length > AUTH_PASS_LEN, so we need to use the extended
-	 *	algorithm.
-	 */
-	rlen = ((pwlen - 1) / AUTH_PASS_LEN) * AUTH_PASS_LEN;
-
-	for (n = rlen; n > 0; n -= AUTH_PASS_LEN ) {
-		s = (n == AUTH_PASS_LEN) ? r : (passwd + n - AUTH_PASS_LEN);
-		memcpy(buffer + secretlen, s, AUTH_PASS_LEN);
-		librad_md5_calc((u_char *)digest, buffer, secretlen + AUTH_PASS_LEN);
-		for (i = 0; i < AUTH_PASS_LEN && (i + n) < pwlen; i++)
+			context = old;
+			librad_MD5Update(&context, passwd + n, AUTH_PASS_LEN);
+		}
+		
+		for (i = 0; i < AUTH_PASS_LEN; i++) {
 			passwd[i + n] ^= digest[i];
+		}
 	}
-	passwd[pwlen] = 0;
 
-	return pwlen;
+ done:
+	passwd[pwlen] = '\0';
+	return strlen(passwd);
 }
 
 static unsigned int salt_offset = 0;
