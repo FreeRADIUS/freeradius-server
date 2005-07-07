@@ -243,7 +243,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
  *	Wrapper for recvfrom, which handles recvfromto, IPv6, and all
  *	possible combinations.
  */
-static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
+static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 			    lrad_ipaddr_t *src_ipaddr, uint16_t *src_port,
 			    lrad_ipaddr_t *dst_ipaddr, uint16_t *dst_port)
 {
@@ -252,6 +252,9 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 	socklen_t		sizeof_src = sizeof(src);
 	socklen_t	        sizeof_dst = sizeof(dst);
 	ssize_t			data_len;
+	uint8_t			header[4];
+	void			*buf;
+	size_t			len;
 
 	memset(&src, 0, sizeof_src);
 	memset(&dst, 0, sizeof_dst);
@@ -265,6 +268,48 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 	 */
 	if (getsockname(sockfd, (struct sockaddr *)&dst,
 			&sizeof_dst) < 0) return -1;
+
+	/*
+	 *	Read the length of the packet, from the packet.
+	 *	This lets us allocate the buffer to use for
+	 *	reading the rest of the packet.
+	 */
+	data_len = recvfrom(sockfd, header, sizeof(header), MSG_PEEK,
+			    (struct sockaddr *)&src, &sizeof_src);
+	if (data_len <= 0) return -1;
+
+	/*
+	 *	Bad packet.  Return what little data is available.
+	 */
+	if (data_len < 4) {
+		buf = malloc(4);
+		recvfrom(sockfd, buf, 4, flags,
+			 (struct sockaddr *)&src, &sizeof_src);
+		*pbuf = buf;
+		return data_len;
+	}
+
+	/*
+	 *	Grab the packet length, and see if it's OK.
+	 *
+	 *	If not, read all of the bad data, and return.
+	 *
+	 *	We could allocate a larger buffer here, but that may
+	 *	potentially open us up to DoS attacks?
+	 */
+	len = (header[2] * 256) + header[3];
+	if (len > MAX_PACKET_LEN) {
+		char junk[1024];
+		while (recvfrom(sockfd, junk, sizeof(junk), 0,
+				(struct sockaddr *)&src, &sizeof_src) > 0) {
+			printf("SHIT %d\n", len);
+			/* do nothing with the data */
+		}
+		return -1;
+	}
+
+	buf = malloc(len);
+	if (!buf) return -1;
 
 	/*
 	 *	Receive the packet.
@@ -281,7 +326,10 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 		 */
 		data_len = recvfrom(sockfd, buf, len, flags, 
 				    (struct sockaddr *)&src, &sizeof_src);
-	if (data_len < 0) return data_len;
+	if (data_len < 0) {
+		free(buf);
+		return data_len;
+	}
 
 	/*
 	 *	Check address families, and update src/dst ports, etc.
@@ -313,15 +361,23 @@ static ssize_t rad_recvfrom(int sockfd, void *buf, size_t len, int flags,
 		dst_ipaddr->ipaddr.ip6addr = s6->sin6_addr;
 		*dst_port = ntohs(s6->sin6_port);
 #endif
-	} else return -1;	/* Unknown address family, Die Die Die! */
-	
+	} else {
+		free(buf);
+		return -1;	/* Unknown address family, Die Die Die! */
+	}
 	
 	/*
 	 *	Different address families should never happen.
 	 */
 	if (src.ss_family != dst.ss_family) {
+		free(buf);
 		return -1;
 	}
+
+	/*
+	 *	Tell the caller about the data
+	 */
+	*pbuf = buf;
 
 	return data_len;
 }
@@ -997,7 +1053,6 @@ RADIUS_PACKET *rad_recv(int fd)
 	radius_packet_t		*hdr;
 	char			host_ipaddr[128];
 	int			seen_eap;
-	uint8_t			data[MAX_PACKET_LEN];
 	int			num_attributes;
 
 	/*
@@ -1009,7 +1064,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	}
 	memset(packet, 0, sizeof(*packet));
 
-	packet->data_len = rad_recvfrom(fd, data, sizeof(data), 0,
+	packet->data_len = rad_recvfrom(fd, &packet->data, 0,
 					&packet->src_ipaddr, &packet->src_port,
 					&packet->dst_ipaddr, &packet->dst_port);
 
@@ -1018,6 +1073,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	 */
 	if (packet->data_len < 0) {
 		librad_log("Error receiving packet: %s", strerror(errno));
+		/* packet->data is NULL */
 		free(packet);
 		return NULL;
 	}
@@ -1052,7 +1108,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   packet->data_len, AUTH_HDR_LEN);
-		free(packet);
+		rad_free(&packet);
 		return NULL;
 	}
 
@@ -1067,7 +1123,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   packet->data_len, MAX_PACKET_LEN);
-		free(packet);
+		rad_free(&packet);
 		return NULL;
 	}
 
@@ -1076,8 +1132,8 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	i.e. We've received 128 bytes, and the packet header
 	 *	says it's 256 bytes long.
 	 */
-	totallen = (data[2] << 8) | data[3];
-	hdr = (radius_packet_t *)data;
+	totallen = (packet->data[2] << 8) | packet->data[3];
+	hdr = (radius_packet_t *)packet->data;
 
 	/*
 	 *	Code of 0 is not understood.
@@ -1090,7 +1146,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   hdr->code);
-		free(packet);
+		rad_free(&packet);
 		return NULL;
 	}
 
@@ -1111,7 +1167,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   totallen, AUTH_HDR_LEN);
-		free(packet);
+		rad_free(&packet);
 		return NULL;
 	}
 
@@ -1128,7 +1184,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   totallen, MAX_PACKET_LEN);
-		free(packet);
+		rad_free(&packet);
 		return NULL;
 	}
 
@@ -1146,7 +1202,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   packet->data_len, totallen);
-		free(packet);
+		rad_free(&packet);
 		return NULL;
 	}
 
@@ -1161,7 +1217,7 @@ RADIUS_PACKET *rad_recv(int fd)
 		 *	We're shortening the packet below, but just
 		 *	to be paranoid, zero out the extra data.
 		 */
-		memset(data + totallen, 0, packet->data_len - totallen);
+		memset(packet->data + totallen, 0, packet->data_len - totallen);
 		packet->data_len = totallen;
 	}
 
@@ -1191,7 +1247,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)));
-			free(packet);
+			rad_free(&packet);
 			return NULL;
 		}
 
@@ -1205,7 +1261,7 @@ RADIUS_PACKET *rad_recv(int fd)
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
 				   attr[0]);
-			free(packet);
+			rad_free(&packet);
 			return NULL;
 		}
 
@@ -1227,7 +1283,7 @@ RADIUS_PACKET *rad_recv(int fd)
 						     &packet->src_ipaddr.ipaddr,
 						     host_ipaddr, sizeof(host_ipaddr)),
 					   attr[1] - 2);
-				free(packet);
+				rad_free(&packet);
 				return NULL;
 			}
 			seen_eap |= PW_MESSAGE_AUTHENTICATOR;
@@ -1240,7 +1296,7 @@ RADIUS_PACKET *rad_recv(int fd)
 						     &packet->src_ipaddr.ipaddr,
 						     host_ipaddr, sizeof(host_ipaddr)),
 					   attr[1] - 2);
-				free(packet);
+				rad_free(&packet);
 				return NULL;
 			}
 
@@ -1253,7 +1309,7 @@ RADIUS_PACKET *rad_recv(int fd)
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.ipaddr,
 						     host_ipaddr, sizeof(host_ipaddr)));
-				free(packet);
+				rad_free(&packet);
 				return NULL;
 			}
 
@@ -1286,7 +1342,7 @@ RADIUS_PACKET *rad_recv(int fd)
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
-		free(packet);
+		rad_free(&packet);
 		return NULL;
 	}
 
@@ -1302,7 +1358,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   num_attributes, librad_max_attributes);
-		free(packet);
+		rad_free(&packet);
 		return NULL;
 	}
 
@@ -1321,7 +1377,7 @@ RADIUS_PACKET *rad_recv(int fd)
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
-		free(packet);
+		rad_free(&packet);
 		return NULL;
 	}
 
@@ -1350,18 +1406,6 @@ RADIUS_PACKET *rad_recv(int fd)
 	packet->code = hdr->code;
 	packet->id = hdr->id;
 	memcpy(packet->vector, hdr->vector, AUTH_VECTOR_LEN);
-
-	/*
-	 *  Now that we've sanity checked the packet, we can allocate
-	 *  memory for it, and copy the data from the local area to
-	 *  the packet buffer.
-	 */
-	if ((packet->data = malloc(packet->data_len)) == NULL) {
-		free(packet);
-		librad_log("out of memory");
-		return NULL;
-	}
-	memcpy(packet->data, data, packet->data_len);
 
 	return packet;
 }
@@ -2211,6 +2255,7 @@ int rad_tunnel_pwdecode(uint8_t *passwd, int *pwlen, const char *secret,
 	librad_MD5Update(&context, vector, AUTH_VECTOR_LEN);
 	librad_MD5Update(&context, passwd, 2);
 
+	reallen = 0;
 	for (n = 0; n < len; n += AUTH_PASS_LEN) {
 		int base = 0;
 
@@ -2450,8 +2495,8 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 	if (!radius_packet_ptr) return;
 	radius_packet = *radius_packet_ptr;
 
-	if (radius_packet->data) free(radius_packet->data);
-	if (radius_packet->vps) pairfree(&radius_packet->vps);
+	free(radius_packet->data);
+	pairfree(&radius_packet->vps);
 
 	free(radius_packet);
 
