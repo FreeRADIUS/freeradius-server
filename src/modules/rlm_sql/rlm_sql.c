@@ -312,33 +312,12 @@ static int generate_sql_clients(SQL_INST *inst)
 			radlog(L_ERR, "rlm_sql (%s): No nasname found for row %s",inst->config->xlat_name,row[0]);
 			continue;
 		}
-		if (strlen(row[1]) >= sizeof(c->longname)){
-			radlog(L_ERR, "rlm_sql (%s): nasname of length %d is greater than the allowed maximum of %d",
-				inst->config->xlat_name,strlen(row[1]),sizeof(c->longname) - 1);
-			continue;
-		}
-
 		if (!row[2]){
 			radlog(L_ERR, "rlm_sql (%s): No short name found for row %s",inst->config->xlat_name,row[0]);
 			continue;
 		}
-		if (strlen(row[2]) >= sizeof(c->shortname)){
-			radlog(L_ERR, "rlm_sql (%s): shortname of length %d is greater than the allowed maximum of %d",
-				inst->config->xlat_name,strlen(row[2]),sizeof(c->shortname) - 1);
-			continue;
-		}
-		if (row[3] && strlen(row[3]) >= sizeof(c->nastype)){
-			radlog(L_ERR, "rlm_sql (%s): nastype of length %d is greater than the allowed maximum of %d",
-				inst->config->xlat_name,strlen(row[3]),sizeof(c->nastype) - 1);
-			continue;
-		}
 		if (!row[4]){
 			radlog(L_ERR, "rlm_sql (%s): No secret found for row %s",inst->config->xlat_name,row[0]);
-			continue;
-		}
-		if (strlen(row[4]) >= sizeof(c->secret)){
-			radlog(L_ERR, "rlm_sql (%s): secret of length %d is greater than the allowed maximum of %d",
-				inst->config->xlat_name,strlen(row[4]),sizeof(c->secret) - 1);
 			continue;
 		}
 
@@ -383,10 +362,10 @@ static int generate_sql_clients(SQL_INST *inst)
 		/*
 		 *	Other values (secret, shortname, nastype)
 		 */
-		strcpy((char *)c->secret, row[4]);
-		strcpy(c->shortname, row[2]);
+		c->secret = (u_char *)strdup(row[4]);
+		c->shortname = strdup(row[2]);
 		if(row[3] != NULL)
-			strcpy(c->nastype, row[3]);
+			c->nastype = strdup(row[3]);
 
 		DEBUG("rlm_sql (%s): Adding client %s (%s) to clients list",
 		      inst->config->xlat_name,
