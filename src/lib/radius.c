@@ -707,6 +707,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		librad_log("Out of memory");
 		return -1;
 	}
+
 	memcpy(packet->data, data, packet->data_len);
 	hdr = (radius_packet_t *) packet->data;
 	
@@ -1356,9 +1357,9 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *  the packet buffer.
 	 */
 	if ((packet->data = malloc(packet->data_len)) == NULL) {
-	  free(packet);
-	  librad_log("out of memory");
-	  return NULL;
+		free(packet);
+		librad_log("out of memory");
+		return NULL;
 	}
 	memcpy(packet->data, data, packet->data_len);
 
@@ -2081,6 +2082,7 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret,
 	len = *pwlen;
 
 	if (len > 127) len = 127;
+
 	/*
 	 * Shift the password 3 positions right to place a salt and original
 	 * length, tag will be added automatically on packet send
@@ -2154,11 +2156,10 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret,
 int rad_tunnel_pwdecode(uint8_t *passwd, int *pwlen, const char *secret,
 			const char *vector)
 {
-	uint8_t		buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
+	librad_MD5_CTX  context, old;
 	uint8_t		digest[AUTH_VECTOR_LEN];
-	uint8_t		decrypted[MAX_STRING_LEN + 1];
 	int		secretlen;
-	unsigned	i, n, len;
+	unsigned	i, n, len, reallen;
 
 	len = *pwlen;
 
@@ -2189,68 +2190,65 @@ int rad_tunnel_pwdecode(uint8_t *passwd, int *pwlen, const char *secret,
 	len -= 2;		/* discount the salt */
 
 	/*
+	 *	Mash maximum values, too.
+	 */
+	if (len > 128) len = 128;
+
+	/*
 	 *	Use the secret to setup the decryption digest
 	 */
 	secretlen = strlen(secret);
+
+	librad_MD5Init(&context);
+	librad_MD5Update(&context, secret, secretlen);
+	old = context;		/* save intermediate work */
 
 	/*
 	 *	Set up the initial key:
 	 *
 	 *	 b(1) = MD5(secret + vector + salt)
 	 */
-	memcpy(buffer, secret, secretlen);
-	memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
-	memcpy(buffer + secretlen + AUTH_VECTOR_LEN, passwd, 2);
-	librad_md5_calc(digest, buffer, secretlen + AUTH_VECTOR_LEN + 2);
+	librad_MD5Update(&context, vector, AUTH_VECTOR_LEN);
+	librad_MD5Update(&context, passwd, 2);
 
-	/*
-	 *	A quick check: decrypt the first octet of the password,
-	 *	which is the 'data_len' field.  Ensure it's sane.
-	 *
-	 *	'n' doesn't include the 'data_len' octet
-	 *	'len' does.
-	 */
-	n = passwd[2] ^ digest[0];
-	if (n >= len) {
-		librad_log("tunnel password is too long for the attribute");
-		return -1;
-	}
-
-	/*
-	 *	Loop over the data, decrypting it, and generating
-	 *	the key for the next round of decryption.
-	 */
 	for (n = 0; n < len; n += AUTH_PASS_LEN) {
-		for (i = 0; i < AUTH_PASS_LEN; i++) {
-			decrypted[n + i] = passwd[n + i + 2] ^ digest[i];
+		int base = 0;
+
+		if (n == 0) {
+			librad_MD5Final(digest, &context);
+
+			context = old;
 
 			/*
-			 *	Encrypted password may not be aligned
-			 *	on 16 octets, so we catch that here...
+			 *	A quick check: decrypt the first octet
+			 *	of the password, which is the
+			 *	'data_len' field.  Ensure it's sane.
 			 */
-			if ((n + i) == len) break;
+			reallen = passwd[2] ^ digest[0];
+			if (reallen >= len) {
+				librad_log("tunnel password is too long for the attribute");
+				return -1;
+			}
+
+			librad_MD5Update(&context, passwd + 2, AUTH_PASS_LEN);
+
+			base = 1;
+		} else {
+			librad_MD5Final(digest, &context);
+
+			context = old;
+			librad_MD5Update(&context, passwd + n + 2, AUTH_PASS_LEN);
 		}
 
-		/*
-		 *	Update the digest, based on
-		 *
-		 *	b(n) = MD5(secret + cleartext(n-1)
-		 *
-		 *	but only if there's more data...
-		 */
-		memcpy(buffer + secretlen, passwd + n + 2, AUTH_PASS_LEN);
-		librad_md5_calc(digest, buffer, secretlen + AUTH_PASS_LEN);
+		for (i = base; i < AUTH_PASS_LEN; i++) {
+			passwd[n + i - 1] = passwd[n + i + 2] ^ digest[i];
+		}
 	}
 
-	/*
-	 *	We've already validated the length of the decrypted
-	 *	password.  Copy it back to the caller.
-	 */
-	memcpy(passwd, decrypted + 1, decrypted[0]);
-	passwd[decrypted[0]] = 0;
-	*pwlen = decrypted[0];
+	*pwlen = reallen;
+	passwd[reallen] = 0;
 
-	return decrypted[0];
+	return reallen;
 }
 
 /*
