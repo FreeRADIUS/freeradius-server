@@ -276,43 +276,40 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	 */
 	data_len = recvfrom(sockfd, header, sizeof(header), MSG_PEEK,
 			    (struct sockaddr *)&src, &sizeof_src);
-	if (data_len <= 0) return -1;
+	if (data_len < 0) return -1;
 
 	/*
-	 *	Bad packet.  Return what little data is available.
+	 *	Too little data is available, round it up to 4 bytes.
 	 */
 	if (data_len < 4) {
-		buf = malloc(4);
-		recvfrom(sockfd, buf, 4, flags,
-			 (struct sockaddr *)&src, &sizeof_src);
-		*pbuf = buf;
-		return data_len;
-	}
+		len = 4;
+	} else {		/* we got 4 bytes of data. */
+		/*
+		 *	See how long the packet says it is.
+		 */
+		len = (header[2] * 256) + header[3];
 
-	/*
-	 *	Grab the packet length, and see if it's OK.
-	 *
-	 *	If not, read all of the bad data, and return.
-	 *
-	 *	We could allocate a larger buffer here, but that may
-	 *	potentially open us up to DoS attacks?
-	 */
-	len = (header[2] * 256) + header[3];
-	if (len > MAX_PACKET_LEN) {
-		char junk[1024];
-		while (recvfrom(sockfd, junk, sizeof(junk), 0,
-				(struct sockaddr *)&src, &sizeof_src) > 0) {
-			printf("SHIT %d\n", len);
-			/* do nothing with the data */
+		/*
+		 *	Too short: read 4 bytes, and discard the rest.
+		 */
+		if (len < 4) {
+			len = 4;
+
+			/*
+			 *	Enforce RFC requirements, for sanity.
+			 *	Anything after 4k will be discarded.
+			 */
+		} else if (len > MAX_PACKET_LEN) {
+			len = MAX_PACKET_LEN;
 		}
-		return -1;
 	}
 
 	buf = malloc(len);
 	if (!buf) return -1;
 
 	/*
-	 *	Receive the packet.
+	 *	Receive the packet.  The OS will discard any data in the
+	 *	packet after "len" bytes.
 	 */
 #ifdef WITH_UDPFROMTO
 	if (dst.ss_family == AF_INET) {
