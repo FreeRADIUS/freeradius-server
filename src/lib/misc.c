@@ -728,7 +728,7 @@ uint32_t lrad_hash(const void *data, size_t size)
 	/*
 	 *	FNV-1 hash each octet in the buffer
 	 */
-	while (p < q) {
+	while (p != q) {
 		/*
 		 *	Multiple by 32-bit magic FNV prime, mod 2^32
 		 */
@@ -757,11 +757,37 @@ uint32_t lrad_hash_update(const void *data, size_t size, uint32_t hash)
 	const uint8_t *p = data;
 	const uint8_t *q = p + size;
 
-	while (p < q) {
+	while (p != q) {
 		hash *= FNV_MAGIC_PRIME;
 		hash ^= (uint32_t) (*p++);
     }
 
     return hash;
 
+}
+
+/*
+ *	Return a "folded" hash, where the lower "bits" are the
+ *	hash, and the upper bits are zero.
+ *
+ *	If you need a non-power-of-two hash, cope.
+ */
+uint32_t lrad_hash_fold(uint32_t hash, int bits)
+{
+	int count;
+	uint32_t result;
+
+	if ((bits <= 0) || (bits >= 32)) return hash;
+
+	result = hash;
+
+	/*
+	 *	Never use the same bits twice in an xor.
+	 */
+	for (count = 0; count < 32; count += bits) {
+		hash >>= bits;
+		result ^= hash;
+	}
+
+	return result & (((uint32_t) (1 << bits)) - 1);
 }
