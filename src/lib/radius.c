@@ -1407,34 +1407,24 @@ RADIUS_PACKET *rad_recv(int fd)
 	return packet;
 }
 
+
 /*
- *	Calculate/check digest, and decode radius attributes.
- *	Returns:
- *	-1 on decoding error
- *	-2 if decoding error implies the message should be silently dropped
- *	0 on success
+ *	Verify the signature of a packet.
  */
-int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	       const char *secret)
 {
-	uint32_t		lvalue;
-	uint32_t		vendorcode;
-	VALUE_PAIR		**tail;
-	VALUE_PAIR		*pair;
 	uint8_t			*ptr;
 	int			length;
-	int			attribute;
 	int			attrlen;
-	int			vendorlen;
-	radius_packet_t		*hdr;
 
-	hdr = (radius_packet_t *)packet->data;
+	if (!packet || !packet->data) return -1;
 
 	/*
 	 *	Before we allocate memory for the attributes, do more
 	 *	sanity checking.
 	 */
-	ptr = hdr->data;
+	ptr = packet->data + AUTH_HDR_LEN;
 	length = packet->data_len - AUTH_HDR_LEN;
 	while (length > 0) {
 		uint8_t	msg_auth_vector[AUTH_VECTOR_LEN];
@@ -1541,9 +1531,37 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		  break;
 	}
 
+	return 0;
+}
+
+
+/*
+ *	Calculate/check digest, and decode radius attributes.
+ *	Returns:
+ *	-1 on decoding error
+ *	-2 if decoding error implies the message should be silently dropped
+ *	0 on success
+ */
+int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+	       const char *secret)
+{
+	uint32_t		lvalue;
+	uint32_t		vendorcode;
+	VALUE_PAIR		**tail;
+	VALUE_PAIR		*pair;
+	uint8_t			*ptr;
+	int			length;
+	int			attribute;
+	int			attrlen;
+	int			vendorlen;
+	radius_packet_t		*hdr;
+
+	if (rad_verify(packet, original, secret) < 0) return -1;
+
 	/*
 	 *	Extract attribute-value pairs
 	 */
+	hdr = (radius_packet_t *)packet->data;
 	ptr = hdr->data;
 	length = packet->data_len - AUTH_HDR_LEN;
 

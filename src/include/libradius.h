@@ -257,6 +257,8 @@ void lrad_hmac_sha1(const unsigned char *text, int text_len,
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, const RADIUS_PACKET *, const char *secret);
 RADIUS_PACKET	*rad_recv(int fd);
+int		rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+			   const char *secret);
 int		rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret);
 int		rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			   const char *secret);
@@ -388,8 +390,7 @@ uint32_t lrad_hash_update(const void *data, size_t size, uint32_t hash);
  *	the number of bits in the hash you need.  The upper bits of the
  *	hash will be set to zero.
  */
-#define LRAD_HASH_FOLD(hash, bits) (((hash >> bits) ^ hash) & (uint32_t) ((1 << bits) - 1))
-
+uint32_t lrad_hash_fold(uint32_t hash, int bits);
 
 /* crypt wrapper from crypt.c */
 int lrad_crypt_check(const char *key, const char *salt);
