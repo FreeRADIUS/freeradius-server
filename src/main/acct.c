@@ -125,12 +125,28 @@ int rad_accounting(REQUEST *request)
 
 		/*
 		 *	Maybe one of the preacct modules has decided
-		 *	that a proxy should be used. If so, get out of
-		 *	here and send the proxied packet, but ONLY if
-		 *	there isn't one already...
+		 *	that a proxy should be used.
 		 */
-		if (pairfind(request->config_items, PW_PROXY_TO_REALM)) {
-			return reply;
+		if ((vp = pairfind(request->config_items, PW_PROXY_TO_REALM))) {
+			REALM *realm;
+
+			/*
+			 *	Check whether Proxy-To-Realm is
+			 *	a LOCAL realm.
+			 */
+			realm = realm_find(vp->strvalue, TRUE);
+			if (realm != NULL &&
+			    realm->ipaddr.af == AF_INET &&
+			    realm->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE)) {
+				DEBUG("rad_accounting: Cancelling proxy to realm %s, as it is a LOCAL realm.", realm->realm);
+				pairdelete(&request->config_items, PW_PROXY_TO_REALM);
+			} else {
+				/*
+				 *	Don't reply to the NAS now because
+				 *	we have to send the proxied packet.
+				 */
+				return reply;
+			}
 		}
 	}
 
@@ -153,4 +169,3 @@ int rad_accounting(REQUEST *request)
 
 	return reply;
 }
-
