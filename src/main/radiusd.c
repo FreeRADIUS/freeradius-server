@@ -274,14 +274,30 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/*
-	 *	Get our PID.
-	 */
-	radius_pid = getpid();
-
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (read_mainconfig(0) < 0) {
 		exit(1);
+	}
+
+	/*
+	 *  Disconnect from session
+	 */
+	if (debug_flag == 0 && dont_fork == FALSE) {
+		pid = fork();
+		if(pid < 0) {
+			radlog(L_ERR|L_CONS, "Couldn't fork");
+			exit(1);
+		}
+
+		/*
+		 *  The parent exits, so the child can run in the background.
+		 */
+		if (pid > 0) {
+			exit(0);
+		}
+#ifdef HAVE_SETSID
+		setsid();
+#endif
 	}
 
 	/*
@@ -312,27 +328,6 @@ int main(int argc, char *argv[])
 #ifdef WITH_SNMP
 	if (mainconfig.do_snmp) radius_snmp_init();
 #endif
-
-	/*
-	 *  Disconnect from session
-	 */
-	if (debug_flag == 0 && dont_fork == FALSE) {
-		pid = fork();
-		if(pid < 0) {
-			radlog(L_ERR|L_CONS, "Couldn't fork");
-			exit(1);
-		}
-
-		/*
-		 *  The parent exits, so the child can run in the background.
-		 */
-		if(pid > 0) {
-			exit(0);
-		}
-#ifdef HAVE_SETSID
-		setsid();
-#endif
-	}
 
 	/*
 	 *  Ensure that we're using the CORRECT pid after forking,
@@ -790,7 +785,7 @@ static void sig_fatal(int sig)
 	switch(sig) {
 		case SIGSEGV:
 			/* We can't really do anything intelligent here so just die */
-			exit(1);
+			_exit(1);
 		case SIGTERM:
 			do_exit = 1;
 			break;
