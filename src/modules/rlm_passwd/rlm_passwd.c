@@ -258,7 +258,7 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht)
 		}
 		return NULL;
 	}
-	printf("try to find in file\n");
+	/*	printf("try to find in file\n"); */
 	if (!ht->fp) return NULL;
 	while (fgets(buffer, 1024,ht->fp)) {
 		if(*buffer && *buffer!='\n' && (len = string_to_entry(buffer, ht->nfields, ht->delimiter, passwd, sizeof(ht->buffer)-1)) &&
@@ -471,7 +471,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 	inst->nfields = nfields;
 	inst->keyfield = keyfield;
 	inst->listable = listable;
-	radlog(L_INFO, "rlm_passwd: nfields: %d keyfield %d(%s) listable: %s", nfields, keyfield, inst->pwdfmt->field[keyfield], listable?"yes":"no");
+	DEBUG("rlm_passwd: nfields: %d keyfield %d(%s) listable: %s", nfields, keyfield, inst->pwdfmt->field[keyfield], listable?"yes":"no");
 	return 0;
 
 #undef inst
