@@ -1720,6 +1720,10 @@ int listen_init(const char *filename, rad_listen_t **head)
 		server_ipaddr.af = AF_INET;
 
 	bind_it:		
+		if (mainconfig.port) {
+			auth_port = mainconfig.port;
+		}
+
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));
 		this->data = sock = rad_malloc(sizeof(*sock));
@@ -1780,7 +1784,12 @@ int listen_init(const char *filename, rad_listen_t **head)
 
 		*last = this;
 		last = &(this->next);
-	} /* else there was no "bind_address" in the config */
+
+	} else if (mainconfig.port) { /* no bind address, but a port */
+		radlog(L_CONS|L_ERR, "The command-line says \"-p %d\", but there is no associated IP address to use",
+		       mainconfig.port);
+		return -1;
+	}
 
 	/*
 	 *	They specified an IP on the command-line, ignore
