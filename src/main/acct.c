@@ -136,8 +136,7 @@ int rad_accounting(REQUEST *request)
 			 */
 			realm = realm_find(vp->strvalue, TRUE);
 			if (realm != NULL &&
-			    realm->ipaddr.af == AF_INET &&
-			    realm->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE)) {
+			    realm->acct_ipaddr == htonl(INADDR_NONE)) {
 				DEBUG("rad_accounting: Cancelling proxy to realm %s, as it is a LOCAL realm.", realm->realm);
 				pairdelete(&request->config_items, PW_PROXY_TO_REALM);
 			} else {
