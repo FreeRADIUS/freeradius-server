@@ -474,6 +474,13 @@ int eap_compose(EAP_HANDLER *handler)
 			/*
 			 *	The Id is a simple "ack" for success
 			 *	and failure.
+			 *
+			 *	RFC 3748 section 4.2 says
+			 *
+			 *	... The Identifier field MUST match
+			 *	the Identifier field of the Response
+			 *	packet that it is sent in response
+			 *	to.
 			 */
 		case PW_EAP_SUCCESS:
 		case PW_EAP_FAILURE:
