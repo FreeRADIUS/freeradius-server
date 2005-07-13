@@ -676,6 +676,7 @@ static int recv_one_packet(int wait_time)
 	node = rbtree_find(request_tree, &myclient);
 	if (!node) {
 		fprintf(stderr, "radclient: received response to request we did not send.\n");
+		rad_free(&reply);
 		return -1;	/* got reply to packet we didn't send */
 	}
 
@@ -693,6 +694,7 @@ static int recv_one_packet(int wait_time)
 	 */
 	if (rad_decode(reply, radclient->request, secret) != 0) {
 		librad_perror("rad_decode");
+		rad_free(&radclient->reply);
 		totallost++;
 		return -1;
 	}
