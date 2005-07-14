@@ -456,7 +456,6 @@ void rfc_clean(RADIUS_PACKET *packet)
 		pairmove2(&vps, &(packet->vps), PW_EAP_MESSAGE);
 		pairmove2(&vps, &(packet->vps), PW_MESSAGE_AUTHENTICATOR);
 		pairmove2(&vps, &(packet->vps), PW_REPLY_MESSAGE);
-		pairmove2(&vps, &(packet->vps), PW_VENDOR_SPECIFIC);
 		break;
 	}
 
