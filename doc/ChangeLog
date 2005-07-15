@@ -1,5 +1,10 @@
-FreeRADIUS 1.0.4 ; Date: 2005/06/11 22:46:52, urgency=medium
+FreeRADIUS 1.0.5 ; $Date$, urgency=low
+	* Fix quote removal of the values from a SQL database.
+	* Reap the zombie process after a command run from "Exec-Program".
+	* Allow to cancel proxy of accounting with "Proxy-To-Realm := LOCAL".
+	* Don't copy VSA's to an Access-Reject packet.
 
+FreeRADIUS 1.0.4 ; Date: 2005/06/11 22:46:52, urgency=medium
 	* Fix installation problem.
 	* Increase a buffer size, so radrelay doesn't truncate values.
 	* Updates in the documentation. Patches from Thor Spruyt.
