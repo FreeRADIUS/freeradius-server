@@ -1195,7 +1195,7 @@ static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
 
 			radlog(L_ERR, "Rejecting request %d due to lack of any response from home server %s port %d",
 			       request->number,
-			       client_name(&request->packet->src_ipaddr),
+			       client_name_old(&request->packet->src_ipaddr),
 			       request->packet->src_port);
 			request_reject(request, REQUEST_FAIL_HOME_SERVER);
 			return RL_WALK_CONTINUE;

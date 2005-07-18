@@ -1,5 +1,5 @@
 /*
- * files.c	Read config files into memory.
+ * client.c	Read clients into memory.
  *
  * Version:     $Id$
  *
@@ -42,33 +42,234 @@ static const char rcsid[] = "$Id$";
 #include "conffile.h"
 #include "rad_assert.h"
 
+/*
+ *	Callback for freeing a client.
+ */
+static void client_free(void *ptr)
+{
+	RADCLIENT *client = ptr;
+
+	free(client->longname);
+	free(client->secret);
+	free(client->shortname);
+	free(client->nastype);
+	free(client->login);
+	free(client->password);
+	
+	free(client);
+}
+
+
+/*
+ *	Callback for comparing two clients.
+ */
+static int client_ipaddr_cmp(const void *one, const void *two)
+{
+	const RADCLIENT *a = one;
+	const RADCLIENT *b = two;
+
+	if (a->ipaddr.af < b->ipaddr.af) return -1;
+	if (a->ipaddr.af > b->ipaddr.af) return +1;
+
+	rad_assert(a->prefix == b->prefix);
+
+	switch (a->ipaddr.af) {
+	case AF_INET:
+		return memcmp(&a->ipaddr.ipaddr.ip4addr,
+			      &b->ipaddr.ipaddr.ip4addr,
+			      sizeof(a->ipaddr.ipaddr.ip4addr));
+		break;
+
+	case AF_INET6:
+		return memcmp(&a->ipaddr.ipaddr.ip6addr,
+			      &b->ipaddr.ipaddr.ip6addr,
+			      sizeof(a->ipaddr.ipaddr.ip6addr));
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Something bad happened...
+	 */
+	rad_assert("Internal sanity check failed");
+	return -1;
+}
+
 
 /*
  *	Free a RADCLIENT list.
  */
-void clients_free(RADCLIENT *cl)
+void clients_free(rbtree_t **client_trees)
 {
-	RADCLIENT *next;
+	int i;
 
-	while (cl) {
-		next = cl->next;
-		free(cl->longname);
-		free(cl->secret);
-		free(cl->shortname);
-		free(cl->nastype);
-		free(cl->login);
-		free(cl->password);
+	if (!client_trees) return;
 
-		free(cl);
-		cl = next;
+	for (i = 0; i <= 128; i++) {
+		if (client_trees[i]) rbtree_free(client_trees[i]);
+		client_trees[i] = NULL;
 	}
+}
+
+/*
+ *	Return a new, initialized, set of clients.
+ */
+rbtree_t **clients_init(void)
+{
+	rbtree_t **client_trees = calloc(sizeof(rbtree_t *), 129);
+
+	if (!client_trees) return NULL;
+
+	return client_trees;
+}
+
+
+/*
+ *	Sanity check a client.
+ */
+static int client_sane(RADCLIENT *client)
+{
+	switch (client->ipaddr.af) {
+	case AF_INET:
+		if (client->prefix > 32) {
+			return 0;
+		}
+
+		/*
+		 *	Zero out the subnet bits.
+		 */
+		if (client->prefix < 32) {
+			uint32_t mask = ~0;
+
+			mask <<= (32 - client->prefix);
+			client->ipaddr.ipaddr.ip4addr.s_addr &= mask;
+		}
+		break;
+
+	case AF_INET6:
+		if (client->prefix > 128) return 0;
+
+		if (client->prefix < 128) {
+			int i;
+			uint32_t mask, *addr;
+
+			addr = (uint32_t *) &client->ipaddr.ipaddr.ip6addr;
+
+			for (i = client->prefix; i < 128; i += 32) {
+				mask = ~0;
+				mask <<= ((128 - i) & 0x1f);
+				addr[i / 32] &= mask;
+			}
+		}
+		break;
+
+	default:
+		return 0;
+	}
+
+	return 1;
+}
+
+
+/*
+ *	Add a client to the tree.
+ */
+int client_add(rbtree_t **client_trees, RADCLIENT *client)
+{
+	if (!client_trees || !client) {
+		return 0;
+	}
+
+	if (client->prefix < 0) {
+		return 0;
+	}
+
+	if (!client_sane(client)) return 0;
+
+	/*
+	 *	Create a tree for it.
+	 */
+	if (!client_trees[client->prefix]) {
+		client_trees[client->prefix] = rbtree_create(client_ipaddr_cmp,
+							     client_free, 0);
+		if (!client_trees[client->prefix]) {
+			return 0;
+		}
+	}
+
+	if (rbtree_finddata(client_trees[client->prefix], client)) {
+		fprintf(stderr, "FUCK %s:%d\n", __FILE__, __LINE__);
+	}
+
+	/*
+	 *	Duplicate?
+	 */
+	if (!rbtree_insert(client_trees[client->prefix], client)) {
+		return 0;
+	}
+
+	return 1;
+}
+
+/*
+ *	Find a client in the RADCLIENTS list.
+ */
+RADCLIENT *client_find(const rbtree_t **client_trees,
+		       const lrad_ipaddr_t *ipaddr)
+{
+	int i, max_prefix;
+	RADCLIENT myclient;
+
+	if (!client_trees || !ipaddr) return NULL;
+
+	switch (ipaddr->af) {
+	case AF_INET:
+		max_prefix = 32;
+		break;
+
+	case AF_INET6:
+		max_prefix = 128;
+		break;
+
+	default :
+		return NULL;
+	}
+
+	for (i = max_prefix; i >= 0; i--) {
+		void *data;
+
+		myclient.prefix = i;
+		myclient.ipaddr = *ipaddr;
+		client_sane(&myclient);	/* clean up the ipaddress */
+
+		if (!client_trees[i]) continue;
+		
+		data = rbtree_finddata(client_trees[i], &myclient);
+		if (data) {
+			fprintf(stderr, "FOUND at %d\n", i);
+			return data;
+		}
+	}
+
+	return NULL;
+}
+
+
+/*
+ *	Old wrapper for client_find
+ */
+RADCLIENT *client_find_old(const lrad_ipaddr_t *ipaddr)
+{
+	return client_find(mainconfig.client_trees, ipaddr);
 }
 
 
 /*
  *	Read the clients file.
  */
-int read_clients_file(const char *file)
+int read_clients_file(rbtree_t **client_trees, const char *file)
 {
 	FILE *fp;
 	RADCLIENT *c;
@@ -80,9 +281,6 @@ int read_clients_file(const char *file)
 	int lineno = 0;
 	char *p;
 	int got_clients = FALSE;
-
-	clients_free(mainconfig.clients);
-	mainconfig.clients = NULL;
 
 	if ((fp = fopen(file, "r")) == NULL) {
 		/* The clients file is no longer required.  All configuration
@@ -164,8 +362,6 @@ int read_clients_file(const char *file)
 			}
 
 			if (prefix) {
-				c->ipaddr.ipaddr.ip4addr.s_addr &= 
-							~0 << (32 - prefix);
 				hostnm[strlen(hostnm)] = '/';
 				/* Long Name includes prefix too */
 				c->longname = strdup(hostnm);
@@ -204,18 +400,6 @@ int read_clients_file(const char *file)
 
 		case AF_INET6 :
 			if (prefix) {
-				unsigned char mask = 0x00;
-				int i;
-				for (i = 0; i < 16; i++) {
-					if (i < prefix/8) {
-						mask = 0xff;
-					} else if (i == prefix/8) {
-						mask = (0xff << prefix%8);
-					} else {
-						mask = 0x00;
-					}
-					c->ipaddr.ipaddr.ip6addr.s6_addr[i] &= mask;
-				}
 				hostnm[strlen(hostnm)] = '/';
 				c->longname = strdup(hostnm);
 			} else {
@@ -233,8 +417,14 @@ int read_clients_file(const char *file)
 			break;
 		}
 
-		c->next = mainconfig.clients;
-		mainconfig.clients = c;
+		/*
+		 *	Failed to add the client: ignore the error
+		 *	and continue.
+		 */
+		if (!client_add(client_trees, c)) {
+			client_free(c);
+
+		}
 	}
 	fclose(fp);
 
@@ -247,87 +437,16 @@ int read_clients_file(const char *file)
 
 
 /*
- *	Find a client in the RADCLIENTS list.
- *      TODO: Stop looping once the match is found
- */
-RADCLIENT *client_find(const lrad_ipaddr_t *ipaddr)
-{
-	RADCLIENT *cl;
-	RADCLIENT *match = NULL;
-
-	switch (ipaddr->af) {
-	case AF_INET:
-	case AF_INET6:
-		break;
-	case AF_UNSPEC:
-	default :
-		return NULL;
-	}
-
-	for (cl = mainconfig.clients; cl; cl = cl->next) {
-
-		if (cl->ipaddr.af != ipaddr->af) continue;
-
-		switch (ipaddr->af) {
-		case AF_INET:
-			if (cl->prefix) {
-				uint32_t mask = htonl(~((1 << (32 - cl->prefix)) - 1));
-				if ((ipaddr->ipaddr.ip4addr.s_addr & mask) == (cl->ipaddr.ipaddr.ip4addr.s_addr & mask)) {
-					match = cl;
-				} else
-					break;
-
-			} else if ((!memcmp(&cl->ipaddr.ipaddr, &ipaddr->ipaddr, 4))) {
-				match = cl;
-			}
-			break;
-
-		case AF_INET6:
-			if (cl->prefix) {
-				unsigned char mask;
-				int flag = 1;
-				int i;
-				for (i = 0; i < 16; i++) {
-
-					if (i < (signed)(cl->prefix)/8) {
-						mask = 0xff;
-					} else if (i == (signed)(cl->prefix)/8) {
-						mask = (0xff << (signed)cl->prefix%8);
-					} else {
-						mask = 0x00;
-					}
-					if ((ipaddr->ipaddr.ip6addr.s6_addr[i] & mask) != (cl->ipaddr.ipaddr.ip6addr.s6_addr[i] & mask)) {
-						flag = 0;
-						break;
-					}
-				}
-				if (flag) {
-					match = cl;
-				}
-			} else if (IN6_ARE_ADDR_EQUAL(&cl->ipaddr.ipaddr.ip6addr,
-				       &ipaddr->ipaddr.ip6addr)) {
-				match =  cl;
-			}
-			break;
-
-		default:
-			break;
-		}
-	}
-	return match;
-}
-
-
-/*
  *	Find the name of a client (prefer short name).
  */
-const char *client_name(const lrad_ipaddr_t *ipaddr)
+const char *client_name(const rbtree_t **client_trees,
+			const lrad_ipaddr_t *ipaddr)
 {
 	/* We don't call this unless we should know about the client. */
 	RADCLIENT *cl;
 	char host_ipaddr[128];
 
-	if ((cl = client_find(ipaddr)) != NULL) {
+	if ((cl = client_find(client_trees, ipaddr)) != NULL) {
 		if (cl->shortname && cl->shortname[0])
 			return cl->shortname;
 		else
@@ -345,4 +464,9 @@ const char *client_name(const lrad_ipaddr_t *ipaddr)
 	       ip_ntoh(ipaddr, host_ipaddr, sizeof(host_ipaddr)));
 
 	return "UNKNOWN-CLIENT";
+}
+
+const char *client_name_old(const lrad_ipaddr_t *ipaddr)
+{
+	return client_name(mainconfig.client_trees, ipaddr);
 }

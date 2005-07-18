@@ -128,7 +128,6 @@ typedef struct radclient {
 	char			*nastype;
 	char			*login;
 	char			*password;
-	struct radclient	*next;
 } RADCLIENT;
 
 typedef struct nas {
@@ -260,7 +259,7 @@ typedef struct main_config_t {
 	int		radlog_fd;
 	radlog_dest_t	radlog_dest;
 	CONF_SECTION	*config;
-	RADCLIENT	*clients;
+	rbtree_t	**client_trees; /* ptr to array of 128 masks */
 	REALM		*realms;
 	const char	*radiusd_conf;
 } MAIN_CONFIG_T;
@@ -373,10 +372,16 @@ void		request_reject(REQUEST *request, request_fail_t reason);
 void		rfc_clean(RADIUS_PACKET *packet);
 
 /* client.c */
-int		read_clients_file(const char *file);
-RADCLIENT	*client_find(const lrad_ipaddr_t *ipaddr);
-const char	*client_name(const lrad_ipaddr_t *ipaddr);
-void		clients_free(RADCLIENT *cl);
+rbtree_t	**clients_init(void);
+void		clients_free(rbtree_t **client_trees);
+int		client_add(rbtree_t **client_trees, RADCLIENT *client);
+RADCLIENT	*client_find(const rbtree_t **client_trees,
+			     const lrad_ipaddr_t *ipaddr);
+const char	*client_name(const rbtree_t **client_trees,
+			     const lrad_ipaddr_t *ipaddr);
+int		read_clients_file(rbtree_t **client_trees, const char *file);
+RADCLIENT	*client_find_old(const lrad_ipaddr_t *ipaddr);
+const char	*client_name_old(const lrad_ipaddr_t *ipaddr);
 
 /* files.c */
 REALM		*realm_find(const char *, int);

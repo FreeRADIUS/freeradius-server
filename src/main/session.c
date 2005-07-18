@@ -137,7 +137,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	/*
 	 *	Find NAS type.
 	 */
-	cl = client_find(&ipaddr);
+	cl = client_find_old(&ipaddr);
 	if (!cl) {
 		/*
 		 *  Unknown NAS, so trusting radutmp.

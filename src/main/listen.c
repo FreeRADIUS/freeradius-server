@@ -180,7 +180,7 @@ static int common_checks(rad_listen_t *listener,
 			if (request_count > mainconfig.max_requests) {
 				radlog(L_ERR, "Dropping request (%d is too many): "
 				       "from client %s port %d - ID: %d", request_count,
-				       client_name(&packet->src_ipaddr),
+				       client_name_old(&packet->src_ipaddr),
 				       packet->src_port, packet->id);
 				radlog(L_INFO, "WARNING: Please check the %s file.\n"
 				       "\tThe value for 'max_requests' is probably set too low.\n", mainconfig.radiusd_conf);
@@ -239,7 +239,7 @@ static int common_checks(rad_listen_t *listener,
 			 */
 			radlog(L_ERR, "Discarding duplicate request from "
 			       "client %s port %d - ID: %d due to unfinished request %d",
-			       client_name(&packet->src_ipaddr),
+			       client_name_old(&packet->src_ipaddr),
 			       packet->src_port, packet->id,
 			       curreq->number);
 			return 0;
@@ -255,7 +255,7 @@ static int common_checks(rad_listen_t *listener,
 
 		radlog(L_ERR, "Dropping conflicting packet from "
 		       "client %s port %d - ID: %d due to unfinished request %d",
-		       client_name(&packet->src_ipaddr),
+		       client_name_old(&packet->src_ipaddr),
 		       packet->src_port, packet->id,
 		       curreq->number);
 		return 0;
@@ -301,7 +301,7 @@ static int common_checks(rad_listen_t *listener,
 		if (curreq->reply->code != 0) {
 			DEBUG2("Sending duplicate reply "
 			       "to client %s port %d - ID: %d",
-			       client_name(&packet->src_ipaddr),
+			       client_name_old(&packet->src_ipaddr),
 			       packet->src_port, packet->id);
 			rad_assert(curreq->listener == listener);
 			listener->send(listener, curreq);
@@ -315,7 +315,7 @@ static int common_checks(rad_listen_t *listener,
 		 *	This shouldn't happen, in general...
 		 */
 		DEBUG2("Discarding duplicate request from client %s port %d - ID: %d",
-		       client_name(&packet->src_ipaddr),
+		       client_name_old(&packet->src_ipaddr),
 		       packet->src_port, packet->id);
 		return 0;
 	} /* else the vectors were different, so we discard the old request. */
@@ -586,7 +586,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 
 	RAD_SNMP_TYPE_INC(listener, total_requests); /* FIXME: auth specific */
 
-	if ((cl = client_find(&packet->src_ipaddr)) == NULL) {
+	if ((cl = client_find_old(&packet->src_ipaddr)) == NULL) {
 		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
 		
 		radlog(L_ERR, "Ignoring request from unknown client %s port %d",
@@ -620,7 +620,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 		
 		radlog(L_ERR, "Invalid packet code %d sent to authentication port from client %s port %d "
 		       "- ID %d : IGNORED", packet->code,
-		       client_name(&packet->src_ipaddr),
+		       client_name_old(&packet->src_ipaddr),
 		       packet->src_port, packet->id);
 		rad_free(&packet);
 		return 0;
@@ -656,7 +656,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 	
 	RAD_SNMP_TYPE_INC(listener, total_requests); /* FIXME: acct-specific */
 
-	if ((cl = client_find(&packet->src_ipaddr)) == NULL) {
+	if ((cl = client_find_old(&packet->src_ipaddr)) == NULL) {
 		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
 		
 		radlog(L_ERR, "Ignoring request from unknown client %s port %d",
@@ -680,7 +680,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 		radlog(L_ERR, "Invalid packet code %d sent to a accounting port "
 		       "from client %s port %d - ID %d : IGNORED",
 		       packet->code,
-		       client_name(&packet->src_ipaddr),
+		       client_name_old(&packet->src_ipaddr),
 		       packet->src_port, packet->id);
 		rad_free(&packet);
 		return 0;
@@ -1785,7 +1785,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		*last = this;
 		last = &(this->next);
 
-	} else if (mainconfig.port) { /* no bind address, but a port */
+	} else if (mainconfig.port > 0) { /* no bind address, but a port */
 		radlog(L_CONS|L_ERR, "The command-line says \"-p %d\", but there is no associated IP address to use",
 		       mainconfig.port);
 		return -1;

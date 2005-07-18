@@ -397,7 +397,7 @@ int read_realms_file(const char *file)
 			 *	Find the remote server in the "clients" list.
 			 *	If we can't find it, there's a big problem...
 			 */
-			client = client_find(&c->ipaddr);
+			client = client_find_old(&c->ipaddr);
 			if (client == NULL) {
 			  radlog(L_CONS|L_ERR, "%s[%d]: Cannot find 'clients' file entry of remote server %s for realm \"%s\"",
 				 file, lineno, hostnm, realm);

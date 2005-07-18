@@ -830,14 +830,14 @@ static const CONF_PARSER client_config[] = {
  *	type.  This way we don't have to change too much in the other
  *	source-files.
  */
-static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
+static int generate_clients(rbtree_t **client_trees,
+			   const char *filename, CONF_SECTION *section)
 {
 	CONF_SECTION	*cs;
-	RADCLIENT	*list, *c;
+	RADCLIENT	*c;
 	char		*hostnm, *prefix_ptr = NULL;
 	const char	*name2;
 
-	list = NULL;
 	for (cs = cf_subsection_find_next(section, NULL, "client");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(section, cs, "client")) {
@@ -845,8 +845,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 		if (!name2) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Missing client name",
 			       filename, cf_section_lineno(cs));
-			clients_free(list);
-			return NULL;
+			return 0;
 		}
 		/*
 		 * Check the lengths, we don't want any core dumps
@@ -863,21 +862,19 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 		if (cf_section_parse(cs, c, client_config) < 0) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Error parsing client section.",
 			       filename, cf_section_lineno(cs));
-			clients_free(list);
-			return NULL;
+			return 0;
 		}
 
 		/*
 		 * Look for prefixes.
 		 */
-		c->prefix = 0;
+		c->prefix = -1;
 		if (prefix_ptr) {
 			c->prefix = atoi(prefix_ptr + 1);
 			if ((c->prefix < 0) || (c->prefix > 128)) {
 				radlog(L_ERR, "%s[%d]: Invalid Prefix value '%s' for IP.",
 						filename, cf_section_lineno(cs), prefix_ptr + 1);
-				clients_free(list);
-				return NULL;
+				return 0;
 			}
 			/* Replace '/' with '\0' */
 			*prefix_ptr = '\0';
@@ -890,19 +887,35 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s: %s",
 			       filename, cf_section_lineno(cs),
 			       hostnm, librad_errstr);
-			clients_free(list);
-			return NULL;
+			return 0;
 		} else {
 			char buffer[256];
 			ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
 			c->longname = strdup(buffer);
 		}
 
-		c->next = list;
-		list = c;
+		if (c->prefix < 0) switch (c->ipaddr.af) {
+		case AF_INET:
+			c->prefix = 32;
+			break;
+		case AF_INET6:
+			c->prefix = 128;
+			break;
+		default:
+			break;
+		}
+
+		if (!client_add(client_trees, c)) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Failed to add client %s",
+			       filename, cf_section_lineno(cs), hostnm);
+			/*
+			 *	FIXME: MEMleak?
+			 */
+			return 0;
+		}
 	}
 
-	return list;
+	return 1;
 }
 
 
@@ -995,7 +1008,6 @@ int read_mainconfig(int reload)
 	char buffer[1024];
 	CONF_SECTION *cs, *oldcs;
 	rad_listen_t *listener;
-	RADCLIENT *c, *tail;
 
 	if (!reload) {
 		radlog(L_INFO, "Starting - reading configuration files ...");
@@ -1176,6 +1188,9 @@ int read_mainconfig(int reload)
 	}
 
 	if (listener != NULL) {
+		int i, total;
+		rbtree_t **client_trees, **old_trees;
+
 		/* old-style naslist file */
 		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
 		DEBUG2("read_config_files:  reading naslist");
@@ -1183,32 +1198,57 @@ int read_mainconfig(int reload)
 			radlog(L_ERR|L_CONS, "Errors reading naslist");
 			return -1;
 		}
-		/* old-style clients file */
-		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
+
+
+		client_trees = clients_init();
+		if (!client_trees) {
+			radlog(L_ERR|L_CONS, "Failed to create clients");
+			return -1;
+		}
+
+		/*
+		 *	Create the new clients first
+		 */
+		snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
+			 radius_dir, mainconfig.radiusd_conf);
+		if (!generate_clients(client_trees, buffer, mainconfig.config)) {
+			clients_free(client_trees);
+			return -1;
+		}
+
+		/*
+		 *	Then add the old ones.
+		 */
 		DEBUG2("read_config_files:  reading clients");
-		if (read_clients_file(buffer) < 0) {
+		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
+		if (read_clients_file(client_trees, buffer) < 0) {
+			clients_free(client_trees);
 			radlog(L_ERR|L_CONS, "Errors reading clients");
 			return -1;
 		}
 
 		/*
-		 *	Add to that, the *new* list of clients.
+		 *	Check if we have any clients defined.
 		 */
-		snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
-			 radius_dir, mainconfig.radiusd_conf);
-		c = generate_clients(buffer, mainconfig.config);
-		if (!c) {
+		total = 0;
+		for (i = 0; i < 128; i++) {
+			if (client_trees[i]) {
+				total += rbtree_num_elements(client_trees[i]);
+			}
+		}
+		if (!total) {
+			clients_free(client_trees);
+			radlog(L_ERR|L_CONS, "No clients defined: No reason to continue.");
 			return -1;
 		}
-		
+
 		/*
-		 *	The new list of clients takes precedence over the old one.
+		 *	Free the old trees AFTER replacing them with
+		 *	the new ones...
 		 */
-		for (tail = c; tail->next != NULL; tail = tail->next) {
-			/* do nothing */
-		}
-		tail->next = mainconfig.clients;
-		mainconfig.clients = c;
+		old_trees = mainconfig.client_trees;
+		mainconfig.client_trees = client_trees;
+		clients_free(old_trees);
 	}
 
 	return 0;
@@ -1225,7 +1265,7 @@ int free_mainconfig(void)
 	 */
 	cf_section_free(&mainconfig.config);
 	realm_free(mainconfig.realms);
-	clients_free(mainconfig.clients);
+	clients_free(mainconfig.client_trees);
 	listen_free(&mainconfig.listen);
 
 	return 0;
