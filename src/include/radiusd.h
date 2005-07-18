@@ -374,6 +374,7 @@ void		rfc_clean(RADIUS_PACKET *packet);
 /* client.c */
 rbtree_t	**clients_init(void);
 void		clients_free(rbtree_t **client_trees);
+void		client_free(RADCLIENT *client);
 int		client_add(rbtree_t **client_trees, RADCLIENT *client);
 RADCLIENT	*client_find(const rbtree_t **client_trees,
 			     const lrad_ipaddr_t *ipaddr);

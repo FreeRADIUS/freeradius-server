@@ -45,10 +45,8 @@ static const char rcsid[] = "$Id$";
 /*
  *	Callback for freeing a client.
  */
-static void client_free(void *ptr)
+void client_free(RADCLIENT *client)
 {
-	RADCLIENT *client = ptr;
-
 	free(client->longname);
 	free(client->secret);
 	free(client->shortname);
@@ -423,7 +421,6 @@ int read_clients_file(rbtree_t **client_trees, const char *file)
 		 */
 		if (!client_add(client_trees, c)) {
 			client_free(c);
-
 		}
 	}
 	fclose(fp);

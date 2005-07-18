@@ -908,9 +908,7 @@ static int generate_clients(rbtree_t **client_trees,
 		if (!client_add(client_trees, c)) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to add client %s",
 			       filename, cf_section_lineno(cs), hostnm);
-			/*
-			 *	FIXME: MEMleak?
-			 */
+			client_free(c);
 			return 0;
 		}
 	}

@@ -330,7 +330,7 @@ static int generate_sql_clients(SQL_INST *inst)
 		/*
 		 *	Look for prefixes
 		 */
-		c->prefix = 0;
+		c->prefix = -1;
 		prefix_ptr = strchr(row[1], '/');
 		if (prefix_ptr) {
 			c->prefix = atoi(prefix_ptr + 1);
@@ -359,6 +359,17 @@ static int generate_sql_clients(SQL_INST *inst)
 			c->longname = strdup(buffer);
 		}
 
+		if (c->prefix < 0) switch (c->ipaddr.af) {
+		case AF_INET:
+			c->prefix = 32;
+			break;
+		case AF_INET6:
+			c->prefix = 128;
+			break;
+		default:
+			break;
+		}
+
 		/*
 		 *	Other values (secret, shortname, nastype)
 		 */
@@ -370,10 +381,10 @@ static int generate_sql_clients(SQL_INST *inst)
 		DEBUG("rlm_sql (%s): Adding client %s (%s) to clients list",
 		      inst->config->xlat_name,
 		      c->longname,c->shortname);
-
-		c->next = mainconfig.clients;
-		mainconfig.clients = c;
-
+		if (!client_add(mainconfig.client_trees, c)) {
+			client_free(c);
+			return -1;
+		}
 	}
 	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 	sql_release_socket(inst, sqlsocket);
