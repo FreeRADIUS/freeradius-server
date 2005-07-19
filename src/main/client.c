@@ -43,7 +43,11 @@ static const char rcsid[] = "$Id$";
 #include "rad_assert.h"
 
 struct radclient_list {
+	/*
+	 *	FIXME: One set of trees for IPv4, and another for IPv6?
+	 */
 	rbtree_t	*trees[129]; /* for 0..128, inclusive. */
+	int		min_prefix;
 #ifdef WITH_SNMP
 	rbtree_t	*num;	/* client numbers 0..N */
 	int		max;
@@ -136,9 +140,11 @@ void clients_free(RADCLIENT_LIST *clients)
  */
 RADCLIENT_LIST *clients_init(void)
 {
-	RADCLIENT_LIST *clients = calloc(sizeof(rbtree_t *), 129);
+	RADCLIENT_LIST *clients = calloc(1, sizeof(RADCLIENT_LIST));
 
 	if (!clients) return NULL;
+
+	clients->min_prefix = 128;
 
 	return clients;
 }
@@ -232,6 +238,10 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	if (clients->num) rbtree_insert(clients->num, client);
 #endif
 
+	if (client->prefix < clients->min_prefix) {
+		clients->min_prefix = client->prefix;
+	}
+
 	return 1;
 }
 
@@ -282,7 +292,7 @@ RADCLIENT *client_find(const RADCLIENT_LIST *clients,
 		return NULL;
 	}
 
-	for (i = max_prefix; i >= 0; i--) {
+	for (i = max_prefix; i >= clients->min_prefix; i--) {
 		void *data;
 
 		myclient.prefix = i;
