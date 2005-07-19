@@ -128,7 +128,10 @@ typedef struct radclient {
 	char			*nastype;
 	char			*login;
 	char			*password;
+	int			number;	/* internal use only */
 } RADCLIENT;
+
+typedef struct radclient_list RADCLIENT_LIST;
 
 typedef struct nas {
 	uint32_t		ipaddr;
@@ -259,7 +262,7 @@ typedef struct main_config_t {
 	int		radlog_fd;
 	radlog_dest_t	radlog_dest;
 	CONF_SECTION	*config;
-	rbtree_t	**client_trees; /* ptr to array of 128 masks */
+	RADCLIENT_LIST	*clients;
 	REALM		*realms;
 	const char	*radiusd_conf;
 } MAIN_CONFIG_T;
@@ -372,15 +375,17 @@ void		request_reject(REQUEST *request, request_fail_t reason);
 void		rfc_clean(RADIUS_PACKET *packet);
 
 /* client.c */
-rbtree_t	**clients_init(void);
-void		clients_free(rbtree_t **client_trees);
+RADCLIENT_LIST	*clients_init(void);
+void		clients_free(RADCLIENT_LIST *clients);
 void		client_free(RADCLIENT *client);
-int		client_add(rbtree_t **client_trees, RADCLIENT *client);
-RADCLIENT	*client_find(const rbtree_t **client_trees,
+int		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
+RADCLIENT	*client_find(const RADCLIENT_LIST *clients,
 			     const lrad_ipaddr_t *ipaddr);
-const char	*client_name(const rbtree_t **client_trees,
+const char	*client_name(const RADCLIENT_LIST *clients,
 			     const lrad_ipaddr_t *ipaddr);
-int		read_clients_file(rbtree_t **client_trees, const char *file);
+int		read_clients_file(RADCLIENT_LIST *clients, const char *file);
+RADCLIENT	*client_findbynumber(const RADCLIENT_LIST *clients,
+				     int number);
 RADCLIENT	*client_find_old(const lrad_ipaddr_t *ipaddr);
 const char	*client_name_old(const lrad_ipaddr_t *ipaddr);
 

@@ -830,7 +830,7 @@ static const CONF_PARSER client_config[] = {
  *	type.  This way we don't have to change too much in the other
  *	source-files.
  */
-static int generate_clients(rbtree_t **client_trees,
+static int generate_clients(RADCLIENT_LIST *clients,
 			   const char *filename, CONF_SECTION *section)
 {
 	CONF_SECTION	*cs;
@@ -905,7 +905,7 @@ static int generate_clients(rbtree_t **client_trees,
 			break;
 		}
 
-		if (!client_add(client_trees, c)) {
+		if (!client_add(clients, c)) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to add client %s",
 			       filename, cf_section_lineno(cs), hostnm);
 			client_free(c);
@@ -1186,8 +1186,7 @@ int read_mainconfig(int reload)
 	}
 
 	if (listener != NULL) {
-		int i, total;
-		rbtree_t **client_trees, **old_trees;
+		RADCLIENT_LIST *clients, *old_clients;
 
 		/* old-style naslist file */
 		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
@@ -1198,8 +1197,8 @@ int read_mainconfig(int reload)
 		}
 
 
-		client_trees = clients_init();
-		if (!client_trees) {
+		clients = clients_init();
+		if (!clients) {
 			radlog(L_ERR|L_CONS, "Failed to create clients");
 			return -1;
 		}
@@ -1209,8 +1208,8 @@ int read_mainconfig(int reload)
 		 */
 		snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
 			 radius_dir, mainconfig.radiusd_conf);
-		if (!generate_clients(client_trees, buffer, mainconfig.config)) {
-			clients_free(client_trees);
+		if (!generate_clients(clients, buffer, mainconfig.config)) {
+			clients_free(clients);
 			return -1;
 		}
 
@@ -1219,24 +1218,9 @@ int read_mainconfig(int reload)
 		 */
 		DEBUG2("read_config_files:  reading clients");
 		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
-		if (read_clients_file(client_trees, buffer) < 0) {
-			clients_free(client_trees);
+		if (read_clients_file(clients, buffer) < 0) {
+			clients_free(clients);
 			radlog(L_ERR|L_CONS, "Errors reading clients");
-			return -1;
-		}
-
-		/*
-		 *	Check if we have any clients defined.
-		 */
-		total = 0;
-		for (i = 0; i < 128; i++) {
-			if (client_trees[i]) {
-				total += rbtree_num_elements(client_trees[i]);
-			}
-		}
-		if (!total) {
-			clients_free(client_trees);
-			radlog(L_ERR|L_CONS, "No clients defined: No reason to continue.");
 			return -1;
 		}
 
@@ -1244,9 +1228,9 @@ int read_mainconfig(int reload)
 		 *	Free the old trees AFTER replacing them with
 		 *	the new ones...
 		 */
-		old_trees = mainconfig.client_trees;
-		mainconfig.client_trees = client_trees;
-		clients_free(old_trees);
+		old_clients = mainconfig.clients;
+		mainconfig.clients = clients;
+		clients_free(old_clients);
 	}
 
 	return 0;
@@ -1263,7 +1247,7 @@ int free_mainconfig(void)
 	 */
 	cf_section_free(&mainconfig.config);
 	realm_free(mainconfig.realms);
-	clients_free(mainconfig.client_trees);
+	clients_free(mainconfig.clients);
 	listen_free(&mainconfig.listen);
 
 	return 0;

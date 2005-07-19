@@ -42,6 +42,14 @@ static const char rcsid[] = "$Id$";
 #include "conffile.h"
 #include "rad_assert.h"
 
+struct radclient_list {
+	rbtree_t	*trees[129]; /* for 0..128, inclusive. */
+#ifdef WITH_SNMP
+	rbtree_t	*num;	/* client numbers 0..N */
+	int		max;
+#endif
+};
+
 /*
  *	Callback for freeing a client.
  */
@@ -95,32 +103,44 @@ static int client_ipaddr_cmp(const void *one, const void *two)
 	return -1;
 }
 
+#ifdef WITH_SNMP
+static int client_num_cmp(const void *one, const void *two)
+{
+	const RADCLIENT *a = one;
+	const RADCLIENT *b = two;
+
+	return (a->number - b->number);
+}
+#endif
 
 /*
  *	Free a RADCLIENT list.
  */
-void clients_free(rbtree_t **client_trees)
+void clients_free(RADCLIENT_LIST *clients)
 {
 	int i;
 
-	if (!client_trees) return;
+	if (!clients) return;
 
 	for (i = 0; i <= 128; i++) {
-		if (client_trees[i]) rbtree_free(client_trees[i]);
-		client_trees[i] = NULL;
+		if (clients->trees[i]) rbtree_free(clients->trees[i]);
+		clients->trees[i] = NULL;
 	}
+#ifdef WITH_SNMP
+	if (clients->num) rbtree_free(clients->num);
+#endif
 }
 
 /*
  *	Return a new, initialized, set of clients.
  */
-rbtree_t **clients_init(void)
+RADCLIENT_LIST *clients_init(void)
 {
-	rbtree_t **client_trees = calloc(sizeof(rbtree_t *), 129);
+	RADCLIENT_LIST *clients = calloc(sizeof(rbtree_t *), 129);
 
-	if (!client_trees) return NULL;
+	if (!clients) return NULL;
 
-	return client_trees;
+	return clients;
 }
 
 
@@ -174,9 +194,9 @@ static int client_sane(RADCLIENT *client)
 /*
  *	Add a client to the tree.
  */
-int client_add(rbtree_t **client_trees, RADCLIENT *client)
+int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
-	if (!client_trees || !client) {
+	if (!clients || !client) {
 		return 0;
 	}
 
@@ -189,38 +209,65 @@ int client_add(rbtree_t **client_trees, RADCLIENT *client)
 	/*
 	 *	Create a tree for it.
 	 */
-	if (!client_trees[client->prefix]) {
-		client_trees[client->prefix] = rbtree_create(client_ipaddr_cmp,
-							     client_free, 0);
-		if (!client_trees[client->prefix]) {
+	if (!clients->trees[client->prefix]) {
+		clients->trees[client->prefix] = rbtree_create(client_ipaddr_cmp,
+							       client_free, 0);
+		if (!clients->trees[client->prefix]) {
 			return 0;
 		}
-	}
-
-	if (rbtree_finddata(client_trees[client->prefix], client)) {
-		fprintf(stderr, "FUCK %s:%d\n", __FILE__, __LINE__);
 	}
 
 	/*
 	 *	Duplicate?
 	 */
-	if (!rbtree_insert(client_trees[client->prefix], client)) {
+	if (!rbtree_insert(clients->trees[client->prefix], client)) {
 		return 0;
 	}
+
+#ifdef WITH_SNMP
+	if (!clients->num) rbtree_create(client_num_cmp, NULL, 0);
+
+	client->number = clients->max;
+	clients->max++;
+	if (clients->num) rbtree_insert(clients->num, client);
+#endif
 
 	return 1;
 }
 
+
+/*
+ *	Find a client in the RADCLIENTS list by number.
+ *	This is a support function for the SNMP code.
+ */
+RADCLIENT *client_findbynumber(const RADCLIENT_LIST *clients,
+			       int number)
+{
+#ifdef WITH_SNMP
+	if (!clients) return NULL;
+
+	if (clients->num) {
+		RADCLIENT myclient;
+		
+		myclient.number = number;
+		
+		return rbtree_finddata(clients->num, &myclient);
+	}
+#endif
+	return NULL;
+}
+
+
 /*
  *	Find a client in the RADCLIENTS list.
  */
-RADCLIENT *client_find(const rbtree_t **client_trees,
+RADCLIENT *client_find(const RADCLIENT_LIST *clients,
 		       const lrad_ipaddr_t *ipaddr)
 {
 	int i, max_prefix;
 	RADCLIENT myclient;
 
-	if (!client_trees || !ipaddr) return NULL;
+	if (!clients || !ipaddr) return NULL;
 
 	switch (ipaddr->af) {
 	case AF_INET:
@@ -242,11 +289,10 @@ RADCLIENT *client_find(const rbtree_t **client_trees,
 		myclient.ipaddr = *ipaddr;
 		client_sane(&myclient);	/* clean up the ipaddress */
 
-		if (!client_trees[i]) continue;
+		if (!clients->trees[i]) continue;
 		
-		data = rbtree_finddata(client_trees[i], &myclient);
+		data = rbtree_finddata(clients->trees[i], &myclient);
 		if (data) {
-			fprintf(stderr, "FOUND at %d\n", i);
 			return data;
 		}
 	}
@@ -260,14 +306,14 @@ RADCLIENT *client_find(const rbtree_t **client_trees,
  */
 RADCLIENT *client_find_old(const lrad_ipaddr_t *ipaddr)
 {
-	return client_find(mainconfig.client_trees, ipaddr);
+	return client_find(mainconfig.clients, ipaddr);
 }
 
 
 /*
  *	Read the clients file.
  */
-int read_clients_file(rbtree_t **client_trees, const char *file)
+int read_clients_file(RADCLIENT_LIST *clients, const char *file)
 {
 	FILE *fp;
 	RADCLIENT *c;
@@ -419,7 +465,7 @@ int read_clients_file(rbtree_t **client_trees, const char *file)
 		 *	Failed to add the client: ignore the error
 		 *	and continue.
 		 */
-		if (!client_add(client_trees, c)) {
+		if (!client_add(clients, c)) {
 			client_free(c);
 		}
 	}
@@ -436,14 +482,14 @@ int read_clients_file(rbtree_t **client_trees, const char *file)
 /*
  *	Find the name of a client (prefer short name).
  */
-const char *client_name(const rbtree_t **client_trees,
+const char *client_name(const RADCLIENT_LIST *clients,
 			const lrad_ipaddr_t *ipaddr)
 {
 	/* We don't call this unless we should know about the client. */
 	RADCLIENT *cl;
 	char host_ipaddr[128];
 
-	if ((cl = client_find(client_trees, ipaddr)) != NULL) {
+	if ((cl = client_find(clients, ipaddr)) != NULL) {
 		if (cl->shortname && cl->shortname[0])
 			return cl->shortname;
 		else
@@ -465,5 +511,5 @@ const char *client_name(const rbtree_t **client_trees,
 
 const char *client_name_old(const lrad_ipaddr_t *ipaddr)
 {
-	return client_name(mainconfig.client_trees, ipaddr);
+	return client_name(mainconfig.clients, ipaddr);
 }

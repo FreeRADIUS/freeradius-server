@@ -200,16 +200,12 @@ static const struct variable radiusauth_variables[] =
 static RADCLIENT *
 get_client(struct variable *v, oid objid[], size_t *objid_len, int exact)
 {
-#if 1
-	return NULL;
-#else
-#error FIXME: Look up clients by number?
 	RADCLIENT *c;
 	int i, len;
 
 	len = *objid_len - v->namelen;
 
-	if (!mainconfig.client_trees)
+	if (!mainconfig.clients)
 		return NULL;
 
 	if (exact) {
@@ -220,15 +216,8 @@ get_client(struct variable *v, oid objid[], size_t *objid_len, int exact)
 			return NULL;
 
 		i = objid[v->namelen]-1;
-		c = mainconfig.client_trees;
-		while (i && c)
-		{
-			c = c->next;
-			i--;
-		}
-		if (c)
-			return c;
-		return NULL;
+
+		return client_findbynumber(mainconfig.clients, i);
 	}
 	i = objid[v->namelen]-1;
 	*objid_len = v->namelen + 1;
@@ -236,17 +225,12 @@ get_client(struct variable *v, oid objid[], size_t *objid_len, int exact)
 		objid[v->namelen]=1;
 		return mainconfig.clients;
 	}
-	c = mainconfig.clients->next;
-	while (i && c) {
-		c = c->next;
-		i--;
-	}
+
+	c = client_findbynumber(mainconfig.clients, i);
 	if (c) {
 		objid[v->namelen]++;
-		return c;
-	} else
-		return NULL;
-#endif
+	}
+	return c;
 }
 
 static int
