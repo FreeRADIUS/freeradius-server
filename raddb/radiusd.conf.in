@@ -245,6 +245,10 @@ port = 0
 	#       wildcard    (*)
 #	ipaddr = *
 
+	#  OR, you can use an IPv6 address, but not both
+	#  at the same time.
+#	ipv6addr = ::	# any.  ::1 == localhost
+
 	#  Port on which to listen.
 	#  Allowed values are:
 	#	integer port number (1812)
@@ -257,6 +261,32 @@ port = 0
 	#	acct	listen for accounting packets
 	#
 #	type = auth
+
+	#  Some systems support binding to an interface, in addition
+	#  to the IP address.  This feature isn't strictly necessary,
+	#  but for sites with many IP addresses on one interface,
+	#  it's useful to say "listen on all addresses for eth0".
+	#
+	#  If your system does not support this feature, you will
+	#  get an error if you try to use it.
+	#
+#	interface = eth0
+
+	#  Per-socket lists of clients.  This is a very useful feature.
+	#
+	#  The name here is a reference to a section elsewhere in
+	#  radiusd.conf, or clients.conf.  Having the name as
+	#  a reference allows multiple sockets to use the same
+	#  set of clients.
+	#
+	#  If this configuration is used, then the global list of clients
+	#  is IGNORED for this "listen" section.  Take care configuring
+	#  this feature, to ensure you don't accidentally disable a
+	#  client you need.
+	#
+	#  See clients.conf for the configuration of "per_socket_clients".
+	#
+#	clients = per_socket_clients
 #}
 
 
