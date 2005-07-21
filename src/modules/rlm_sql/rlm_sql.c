@@ -381,7 +381,7 @@ static int generate_sql_clients(SQL_INST *inst)
 		DEBUG("rlm_sql (%s): Adding client %s (%s) to clients list",
 		      inst->config->xlat_name,
 		      c->longname,c->shortname);
-		if (!client_add(mainconfig.client_trees, c)) {
+		if (!client_add(mainconfig.clients, c)) {
 			client_free(c);
 			return -1;
 		}
