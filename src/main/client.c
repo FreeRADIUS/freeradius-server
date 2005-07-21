@@ -632,6 +632,11 @@ RADCLIENT_LIST *clients_parse_section(const char *filename,
 			c->longname = strdup(buffer);
 		}
 
+		/*
+		 *	This makes later life easier.
+		 */
+		if (!c->shortname) c->shortname = strdup(c->longname);
+
 		if (c->prefix < 0) switch (c->ipaddr.af) {
 		case AF_INET:
 			c->prefix = 32;
