@@ -377,6 +377,9 @@ void		rfc_clean(RADIUS_PACKET *packet);
 /* client.c */
 RADCLIENT_LIST	*clients_init(void);
 void		clients_free(RADCLIENT_LIST *clients);
+int		clients_parse_section(RADCLIENT_LIST *clients,
+				      const char *filename,
+				      CONF_SECTION *section);
 void		client_free(RADCLIENT *client);
 int		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 RADCLIENT	*client_find(const RADCLIENT_LIST *clients,

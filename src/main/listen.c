@@ -91,6 +91,7 @@ typedef struct listen_socket_t {
 	 */
 	lrad_ipaddr_t	ipaddr;
 	int		port;
+	RADCLIENT_LIST	*clients;
 } listen_socket_t;
 
 typedef struct listen_detail_t {
@@ -104,6 +105,28 @@ typedef struct listen_detail_t {
 	int		*outstanding;
 } listen_detail_t;
 			       
+
+/*
+ *	Find a per-socket client.
+ */
+static RADCLIENT *client_listener_find(const rad_listen_t *listener,
+				       const lrad_ipaddr_t *ipaddr)
+{
+	const RADCLIENT_LIST *clients;
+
+	rad_assert(listener != NULL);
+	rad_assert(ipaddr != NULL);
+
+	rad_assert((listener->type == RAD_LISTEN_AUTH) ||
+		   (listener->type == RAD_LISTEN_ACCT));
+
+	clients = ((listen_socket_t *)listener->data)->clients;
+	if (!clients) clients = mainconfig.clients;
+
+	rad_assert(clients != NULL);
+	
+	return client_find(clients, ipaddr);
+}
 
 static int listen_bind(rad_listen_t *this);
 
@@ -147,7 +170,7 @@ static int request_num_counter = 0;
  */
 static int common_checks(rad_listen_t *listener,
 			 RADIUS_PACKET *packet, REQUEST **prequest,
-			 const uint8_t *secret)
+			 const RADCLIENT *client)
 {
 	REQUEST	*curreq;
 	char buffer[128];
@@ -180,7 +203,7 @@ static int common_checks(rad_listen_t *listener,
 			if (request_count > mainconfig.max_requests) {
 				radlog(L_ERR, "Dropping request (%d is too many): "
 				       "from client %s port %d - ID: %d", request_count,
-				       client_name_old(&packet->src_ipaddr),
+				       client->longname,
 				       packet->src_port, packet->id);
 				radlog(L_INFO, "WARNING: Please check the %s file.\n"
 				       "\tThe value for 'max_requests' is probably set too low.\n", mainconfig.radiusd_conf);
@@ -239,7 +262,7 @@ static int common_checks(rad_listen_t *listener,
 			 */
 			radlog(L_ERR, "Discarding duplicate request from "
 			       "client %s port %d - ID: %d due to unfinished request %d",
-			       client_name_old(&packet->src_ipaddr),
+			       client->longname,
 			       packet->src_port, packet->id,
 			       curreq->number);
 			return 0;
@@ -255,7 +278,7 @@ static int common_checks(rad_listen_t *listener,
 
 		radlog(L_ERR, "Dropping conflicting packet from "
 		       "client %s port %d - ID: %d due to unfinished request %d",
-		       client_name_old(&packet->src_ipaddr),
+		       client->longname,
 		       packet->src_port, packet->id,
 		       curreq->number);
 		return 0;
@@ -301,7 +324,7 @@ static int common_checks(rad_listen_t *listener,
 		if (curreq->reply->code != 0) {
 			DEBUG2("Sending duplicate reply "
 			       "to client %s port %d - ID: %d",
-			       client_name_old(&packet->src_ipaddr),
+			       client->longname,
 			       packet->src_port, packet->id);
 			rad_assert(curreq->listener == listener);
 			listener->send(listener, curreq);
@@ -315,8 +338,7 @@ static int common_checks(rad_listen_t *listener,
 		 *	This shouldn't happen, in general...
 		 */
 		DEBUG2("Discarding duplicate request from client %s port %d - ID: %d",
-		       client_name_old(&packet->src_ipaddr),
-		       packet->src_port, packet->id);
+		       client->longname, packet->src_port, packet->id);
 		return 0;
 	} /* else the vectors were different, so we discard the old request. */
 
@@ -337,7 +359,7 @@ static int common_checks(rad_listen_t *listener,
 	curreq->listener = listener;
 	curreq->packet = packet;
 	curreq->number = request_num_counter++;
-	strNcpy(curreq->secret, secret, sizeof(curreq->secret));
+	strNcpy(curreq->secret, client->secret, sizeof(curreq->secret));
 	
 	/*
 	 *	Remember the request in the list.
@@ -400,6 +422,16 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 			      sock->port);
 }
 
+/*
+ *	Free spck-specific stuff.
+ */
+static void socket_free(rad_listen_t *this)
+{
+	listen_socket_t *sock = this->data;
+
+	if (sock->clients) clients_free(sock->clients);
+}
+
 
 /*
  *	Parse an authentication or accounting socket.
@@ -411,6 +443,8 @@ static int common_socket_parse(const char *filename, int lineno,
 	int		listen_port;
 	lrad_ipaddr_t	ipaddr;
 	listen_socket_t *sock;
+	const char	*section_name = NULL;
+	CONF_SECTION	*client_cs;
 
 	this->data = sock = rad_malloc(sizeof(*sock));
 
@@ -485,6 +519,34 @@ static int common_socket_parse(const char *filename, int lineno,
 			return -1;
 		} /* else it worked. */
 #endif
+	}
+
+	/*
+	 *	Look for the name of a section that holds a list
+	 *	of clients.
+	 */
+	rcode = cf_item_parse(cs, "clients", PW_TYPE_STRING_PTR,
+			      &section_name, NULL);
+	if (rcode < 0) return -1; /* bad string */
+	if (rcode > 0) return 0; /* non-existent is OK. */
+
+	client_cs = cf_section_find(section_name);
+	if (!client_cs) {
+		radlog(L_CONS|L_ERR, "%s[%d]: Failed to find client section %s",
+		       filename, cf_section_lineno(cs), section_name);
+		return -1;
+	}
+
+	sock->clients = clients_init();
+	if (!sock->clients) {
+		radlog(L_CONS|L_ERR, "%s[%d]: Failed to create data for client section %s",
+		       filename, cf_section_lineno(cs), section_name);
+		return -1;
+	}
+
+	if (!clients_parse_section(sock->clients, filename, client_cs)) {
+		/* caller takes care of freeign things */
+		return -1;
 	}
 
 	return 0;
@@ -576,7 +638,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
 	char		buffer[128];
-	RADCLIENT	*cl;
+	RADCLIENT	*client;
 
 	packet = rad_recv(listener->fd);
 	if (!packet) {
@@ -586,7 +648,8 @@ static int auth_socket_recv(rad_listen_t *listener,
 
 	RAD_SNMP_TYPE_INC(listener, total_requests); /* FIXME: auth specific */
 
-	if ((cl = client_find_old(&packet->src_ipaddr)) == NULL) {
+	if ((client = client_listener_find(listener,
+					   &packet->src_ipaddr)) == NULL) {
 		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
 		
 		radlog(L_ERR, "Ignoring request from unknown client %s port %d",
@@ -619,15 +682,15 @@ static int auth_socket_recv(rad_listen_t *listener,
 		RAD_SNMP_INC(rad_snmp.auth.total_unknown_types);
 		
 		radlog(L_ERR, "Invalid packet code %d sent to authentication port from client %s port %d "
-		       "- ID %d : IGNORED", packet->code,
-		       client_name_old(&packet->src_ipaddr),
+		       "- ID %d : IGNORED",
+		       packet->code, client->longname,
 		       packet->src_port, packet->id);
 		rad_free(&packet);
 		return 0;
 		break;
 	} /* switch over packet types */
 	
-	if (!common_checks(listener, packet, prequest, cl->secret)) {
+	if (!common_checks(listener, packet, prequest, client)) {
 		rad_free(&packet);
 		return 0;
 	}
@@ -646,7 +709,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
 	char		buffer[128];
-	RADCLIENT	*cl;
+	RADCLIENT	*client;
 	
 	packet = rad_recv(listener->fd);
 	if (!packet) {
@@ -656,7 +719,8 @@ static int acct_socket_recv(rad_listen_t *listener,
 	
 	RAD_SNMP_TYPE_INC(listener, total_requests); /* FIXME: acct-specific */
 
-	if ((cl = client_find_old(&packet->src_ipaddr)) == NULL) {
+	if ((client = client_listener_find(listener,
+					   &packet->src_ipaddr)) == NULL) {
 		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
 		
 		radlog(L_ERR, "Ignoring request from unknown client %s port %d",
@@ -679,8 +743,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 		 */
 		radlog(L_ERR, "Invalid packet code %d sent to a accounting port "
 		       "from client %s port %d - ID %d : IGNORED",
-		       packet->code,
-		       client_name_old(&packet->src_ipaddr),
+		       packet->code, client->longname,
 		       packet->src_port, packet->id);
 		rad_free(&packet);
 		return 0;
@@ -690,7 +753,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 	 *	FIXME: Accounting duplicates should be handled
 	 *	differently than authentication duplicates.
 	 */
-	if (!common_checks(listener, packet, prequest, cl->secret)) {
+	if (!common_checks(listener, packet, prequest, client)) {
 		rad_free(&packet);
 		return 0;
 	}
@@ -1008,6 +1071,23 @@ static int detail_open(rad_listen_t *this)
 	return 1;
 }
 
+/*
+ *	This is a bad hack, just so complaints have meaningful text.
+ */
+static const RADCLIENT detail_client = {
+	{		/* ipaddr */
+		AF_INET,
+		{{ INADDR_NONE }}
+	},
+	32,
+	"<detail-file>",
+	"secret",
+	"UNKNOWN-CLIENT",
+	"other",
+	"",
+	"",
+	-1
+};
 
 static int detail_recv(rad_listen_t *listener,
 		       RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
@@ -1312,7 +1392,7 @@ static int detail_recv(rad_listen_t *listener,
 	/*
 	 *	FIXME: many of these checks may not be necessary...
 	 */
-	if (!common_checks(listener, packet, prequest, "")) {
+	if (!common_checks(listener, packet, prequest, &detail_client)) {
 		rad_free(&packet);
 		return 0;
 	}
@@ -1415,16 +1495,18 @@ static int generic_update(rad_listen_t *this, time_t now)
 	return rl_clean_list(this->rl, now);
 }
 
+
+
 static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
 
 	/* authentication */
-	{ common_socket_parse, NULL,
+	{ common_socket_parse, socket_free,
 	  auth_socket_recv, auth_socket_send,
 	  generic_update, socket_print },
 
 	/* accounting */
-	{ common_socket_parse, NULL,
+	{ common_socket_parse, socket_free,
 	  acct_socket_recv, acct_socket_send,
 	  generic_update, socket_print},
 

@@ -523,3 +523,115 @@ const char *client_name_old(const lrad_ipaddr_t *ipaddr)
 {
 	return client_name(mainconfig.clients, ipaddr);
 }
+
+static const CONF_PARSER client_config[] = {
+	{ "secret",  PW_TYPE_STRING_PTR, 
+	  offsetof(RADCLIENT, secret), 0, NULL },
+	{ "shortname",  PW_TYPE_STRING_PTR, 
+	  offsetof(RADCLIENT, shortname), 0, NULL },
+	{ "nastype",  PW_TYPE_STRING_PTR, 
+	  offsetof(RADCLIENT, nastype), 0, NULL },
+	{ "login",  PW_TYPE_STRING_PTR, 
+	  offsetof(RADCLIENT, login), 0, NULL },
+	{ "password",  PW_TYPE_STRING_PTR, 
+	  offsetof(RADCLIENT, password), 0, NULL },
+
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+
+/*
+ *	Create the linked list of clients from the new configuration
+ *	type.  This way we don't have to change too much in the other
+ *	source-files.
+ */
+int clients_parse_section(RADCLIENT_LIST *clients,
+			  const char *filename, CONF_SECTION *section)
+{
+	CONF_SECTION	*cs;
+	RADCLIENT	*c;
+	char		*hostnm, *prefix_ptr = NULL;
+	const char	*name2;
+
+	for (cs = cf_subsection_find_next(section, NULL, "client");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(section, cs, "client")) {
+		name2 = cf_section_name2(cs);
+		if (!name2) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Missing client name",
+			       filename, cf_section_lineno(cs));
+			return 0;
+		}
+		/*
+		 * Check the lengths, we don't want any core dumps
+		 */
+		hostnm = name2;
+		prefix_ptr = strchr(hostnm, '/');
+
+		/*
+		 * The size is fine.. Let's create the buffer
+		 */
+		c = rad_malloc(sizeof(RADCLIENT));
+		memset(c, 0, sizeof(RADCLIENT));
+
+		if (cf_section_parse(cs, c, client_config) < 0) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Error parsing client section.",
+			       filename, cf_section_lineno(cs));
+			return 0;
+		}
+
+		/*
+		 * Look for prefixes.
+		 */
+		c->prefix = -1;
+		if (prefix_ptr) {
+			c->prefix = atoi(prefix_ptr + 1);
+			if ((c->prefix < 0) || (c->prefix > 128)) {
+				radlog(L_ERR, "%s[%d]: Invalid Prefix value '%s' for IP.",
+						filename, cf_section_lineno(cs), prefix_ptr + 1);
+				return 0;
+			}
+			/* Replace '/' with '\0' */
+			*prefix_ptr = '\0';
+		}
+
+		/*
+		 * Always get the numeric representation of IP
+		 */
+		if (ip_hton(hostnm, AF_UNSPEC, &c->ipaddr) < 0) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s: %s",
+			       filename, cf_section_lineno(cs),
+			       hostnm, librad_errstr);
+			return 0;
+		} else {
+			char buffer[256];
+			ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
+			c->longname = strdup(buffer);
+		}
+
+		if (c->prefix < 0) switch (c->ipaddr.af) {
+		case AF_INET:
+			c->prefix = 32;
+			break;
+		case AF_INET6:
+			c->prefix = 128;
+			break;
+		default:
+			break;
+		}
+
+		/*
+		 *	FIXME: Add the client as data via cf_data_add,
+		 *	for migration issues.
+		 */
+
+		if (!client_add(clients, c)) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Failed to add client %s",
+			       filename, cf_section_lineno(cs), hostnm);
+			client_free(c);
+			return 0;
+		}
+	}
+
+	return 1;
+}
