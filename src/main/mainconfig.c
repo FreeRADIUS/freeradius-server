@@ -1088,19 +1088,15 @@ int read_mainconfig(int reload)
 			return -1;
 		}
 
-		clients = clients_init();
-		if (!clients) {
-			radlog(L_ERR|L_CONS, "Failed to create clients");
-			return -1;
-		}
-
 		/*
-		 *	Create the new clients first
+		 *	Create the new clients first, and add them
+		 *	to the CONF_SECTION, where they're automagically
+		 *	freed if anything goes wrong.
 		 */
 		snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
 			 radius_dir, mainconfig.radiusd_conf);
-		if (!clients_parse_section(clients, buffer, mainconfig.config)) {
-			clients_free(clients);
+		clients = clients_parse_section(buffer, mainconfig.config);
+		if (!clients) {
 			return -1;
 		}
 
@@ -1110,7 +1106,6 @@ int read_mainconfig(int reload)
 		DEBUG2("read_config_files:  reading clients");
 		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
 		if (read_clients_file(clients, buffer) < 0) {
-			clients_free(clients);
 			radlog(L_ERR|L_CONS, "Errors reading clients");
 			return -1;
 		}
@@ -1121,7 +1116,6 @@ int read_mainconfig(int reload)
 		 */
 		old_clients = mainconfig.clients;
 		mainconfig.clients = clients;
-		clients_free(old_clients);
 	}
 
 	return 0;
@@ -1138,7 +1132,6 @@ int free_mainconfig(void)
 	 */
 	cf_section_free(&mainconfig.config);
 	realm_free(mainconfig.realms);
-	clients_free(mainconfig.clients);
 	listen_free(&mainconfig.listen);
 
 	return 0;

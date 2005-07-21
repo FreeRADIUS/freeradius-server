@@ -545,13 +545,36 @@ static const CONF_PARSER client_config[] = {
  *	type.  This way we don't have to change too much in the other
  *	source-files.
  */
-int clients_parse_section(RADCLIENT_LIST *clients,
-			  const char *filename, CONF_SECTION *section)
+RADCLIENT_LIST *clients_parse_section(const char *filename,
+				      CONF_SECTION *section)
 {
 	CONF_SECTION	*cs;
 	RADCLIENT	*c;
 	char		*hostnm, *prefix_ptr = NULL;
 	const char	*name2;
+	RADCLIENT_LIST	*clients;
+
+	/*
+	 *	Be forgiving.  If there's already a clients, return
+	 *	it.  Otherwise create a new one.
+	 */
+	clients = cf_data_find(section, "clients");
+	if (clients) return clients;
+
+	clients = clients_init();
+	if (!clients) return NULL;
+
+	/*
+	 *	Associate the clients structure with the section, where
+	 *	it will be freed once the section is freed.
+	 */
+	if (cf_data_add(section, "clients", clients, clients_free) < 0) {
+		radlog(L_ERR, "%s[%d]: Failed to associate clients with section %s",
+		       filename, cf_section_lineno(section),
+		       cf_section_name1(section));
+		clients_free(clients);
+		return NULL;
+	}
 
 	for (cs = cf_subsection_find_next(section, NULL, "client");
 	     cs != NULL;
@@ -560,7 +583,7 @@ int clients_parse_section(RADCLIENT_LIST *clients,
 		if (!name2) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Missing client name",
 			       filename, cf_section_lineno(cs));
-			return 0;
+			return NULL;
 		}
 		/*
 		 * Check the lengths, we don't want any core dumps
@@ -577,7 +600,7 @@ int clients_parse_section(RADCLIENT_LIST *clients,
 		if (cf_section_parse(cs, c, client_config) < 0) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Error parsing client section.",
 			       filename, cf_section_lineno(cs));
-			return 0;
+			return NULL;
 		}
 
 		/*
@@ -589,7 +612,7 @@ int clients_parse_section(RADCLIENT_LIST *clients,
 			if ((c->prefix < 0) || (c->prefix > 128)) {
 				radlog(L_ERR, "%s[%d]: Invalid Prefix value '%s' for IP.",
 						filename, cf_section_lineno(cs), prefix_ptr + 1);
-				return 0;
+				return NULL;
 			}
 			/* Replace '/' with '\0' */
 			*prefix_ptr = '\0';
@@ -602,7 +625,7 @@ int clients_parse_section(RADCLIENT_LIST *clients,
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s: %s",
 			       filename, cf_section_lineno(cs),
 			       hostnm, librad_errstr);
-			return 0;
+			return NULL;
 		} else {
 			char buffer[256];
 			ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
@@ -629,9 +652,9 @@ int clients_parse_section(RADCLIENT_LIST *clients,
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to add client %s",
 			       filename, cf_section_lineno(cs), hostnm);
 			client_free(c);
-			return 0;
+			return NULL;
 		}
 	}
 
-	return 1;
+	return clients;
 }

@@ -422,16 +422,6 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 			      sock->port);
 }
 
-/*
- *	Free spck-specific stuff.
- */
-static void socket_free(rad_listen_t *this)
-{
-	listen_socket_t *sock = this->data;
-
-	if (sock->clients) clients_free(sock->clients);
-}
-
 
 /*
  *	Parse an authentication or accounting socket.
@@ -537,15 +527,8 @@ static int common_socket_parse(const char *filename, int lineno,
 		return -1;
 	}
 
-	sock->clients = clients_init();
+	sock->clients = clients_parse_section(filename, client_cs);
 	if (!sock->clients) {
-		radlog(L_CONS|L_ERR, "%s[%d]: Failed to create data for client section %s",
-		       filename, cf_section_lineno(cs), section_name);
-		return -1;
-	}
-
-	if (!clients_parse_section(sock->clients, filename, client_cs)) {
-		/* caller takes care of freeign things */
 		return -1;
 	}
 
@@ -1501,12 +1484,12 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
 
 	/* authentication */
-	{ common_socket_parse, socket_free,
+	{ common_socket_parse, NULL,
 	  auth_socket_recv, auth_socket_send,
 	  generic_update, socket_print },
 
 	/* accounting */
-	{ common_socket_parse, socket_free,
+	{ common_socket_parse, NULL,
 	  acct_socket_recv, acct_socket_send,
 	  generic_update, socket_print},
 
