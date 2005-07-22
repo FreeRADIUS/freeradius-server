@@ -1785,7 +1785,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		server_ipaddr.af = AF_INET;
 
 	bind_it:		
-		if (mainconfig.port) {
+		if (mainconfig.port >= 0) {
 			auth_port = mainconfig.port;
 		}
 
