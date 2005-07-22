@@ -407,7 +407,8 @@ static const xlat_t *xlat_find(const char *module)
 	/*
 	 *	Look for dictionary attributes first.
 	 */
-	if (dict_attrbyname(module) != NULL) {
+	if ((dict_attrbyname(module) != NULL) ||
+	    (strchr(module, '[') != NULL)) {
 		static const xlat_t dict_xlat = {
 			"request",
 			7,
