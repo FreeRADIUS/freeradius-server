@@ -623,7 +623,10 @@ static int send_one_packet(radclient_t *radclient)
 	/*
 	 *	Send the packet.
 	 */
-	rad_send(radclient->request, NULL, secret);
+	if (rad_send(radclient->request, NULL, secret) < 0) {
+		fprintf(stderr, "radclient: Failed to send packet for ID %d: %s\n",
+			radclient->request->id, librad_errstr);
+	}
 
 	return 0;
 }
