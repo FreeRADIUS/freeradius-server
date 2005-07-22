@@ -1,6 +1,8 @@
 /*
  * sql_iodbc.c	iODBC support for FreeRadius
  *
+ * Version:	$Id$
+ *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -58,6 +60,7 @@ static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	rlm_sql_iodbc_sock *iodbc_sock;
+	SQLRETURN rcode;
 
 	if (!sqlsocket->conn) {
 		sqlsocket->conn = (rlm_sql_iodbc_sock *)rad_malloc(sizeof(rlm_sql_iodbc_sock));
@@ -68,21 +71,25 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	iodbc_sock = sqlsocket->conn;
 	memset(iodbc_sock, 0, sizeof(*iodbc_sock));
 
-	if(SQLAllocEnv(&iodbc_sock->env_handle) != SQL_SUCCESS) {
+	rcode = SQLAllocEnv(&iodbc_sock->env_handle);
+	if (!SQL_SUCCEEDED(rcode)) {
 		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocEnv failed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
 	}
 
-	if(SQLAllocConnect(iodbc_sock->env_handle, &iodbc_sock->dbc_handle) != SQL_SUCCESS) {
+	rcode = SQLAllocConnect(iodbc_sock->env_handle,
+				&iodbc_sock->dbc_handle);
+	if (!SQL_SUCCEEDED(rcode)) {
 		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocConnect failed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
 	}
 
-	if (SQLConnect(iodbc_sock->dbc_handle, config->sql_db, SQL_NTS,
-				config->sql_login, SQL_NTS, config->sql_password,
-				SQL_NTS) != SQL_SUCCESS) {
+	rcode = SQLConnect(iodbc_sock->dbc_handle, config->sql_db,
+			   SQL_NTS, config->sql_login, SQL_NTS,
+			   config->sql_password, SQL_NTS);
+	if (!SQL_SUCCEEDED(rcode)) {
 		radlog(L_CONS|L_ERR, "sql_create_socket: SQLConnectfailed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
@@ -116,8 +123,11 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
+	SQLRETURN rcode;
 
-	if(SQLAllocStmt(iodbc_sock->dbc_handle, &iodbc_sock->stmt_handle) != SQL_SUCCESS) {
+	rcode = SQLAllocStmt(iodbc_sock->dbc_handle,
+			     &iodbc_sock->stmt_handle);
+	if (!SQL_SUCCEEDED(rcode)) {
 		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocStmt failed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
@@ -130,7 +140,8 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 		return -1;
 	}
 
-	if (SQLExecDirect(iodbc_sock->stmt_handle, querystr, SQL_NTS) != SQL_SUCCESS) {
+	rcode = SQLExecDirect(iodbc_sock->stmt_handle, querystr, SQL_NTS);
+	if (!SQL_SUCCEEDED(rcode)) {
 		radlog(L_CONS|L_ERR, "sql_query: failed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
