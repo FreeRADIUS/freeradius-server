@@ -86,7 +86,6 @@ struct passwd *rad_fgetpwent(FILE *pwhandle) {
 	memset(gecostmp, 0, sizeof(gecostmp));
 	memset(homedirtmp, 0, sizeof(homedirtmp));
 	memset(shelltmp, 0, sizeof(shelltmp));
-	buffer[BUFSIZE] ='\0';
 
 	/* Get usernames from the password file */
 	ptr = buffer;
@@ -170,7 +169,6 @@ shadow_pwd_t *rad_fgetspent(FILE *sphandle) {
 	memset(&spbuf, 0, sizeof(shadow_pwd_t));
 	memset(username, 0, sizeof(username));
 	memset(userpwd, 0, sizeof(userpwd));
-	buffer[BUFSIZE] ='\0';
 
 	/* Get usernames from the shadow file */
 	ptr = buffer;
@@ -272,7 +270,6 @@ struct group *rad_fgetgrent(FILE *grhandle) {
 	memset(grpwd, 0, sizeof(grpwd));
 	memset(grmem, 0, sizeof(grmem));
 	memset(grmembuf, 0, sizeof(grmembuf));
-	buffer[BUFSIZE] ='\0';
 
 	/* Get the group name */
 	ptr = buffer;
