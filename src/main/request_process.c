@@ -101,27 +101,6 @@ static int process_post_proxy_fail(REQUEST *request)
 
 
 /*
- *	If we're told to proxess the request through the post-proxy "fail"
- *	subsection, do so.
- *
- *	Called only from request_reject, below.
- */
-static void proxy_failed_home_server(REQUEST *request, request_fail_t reason)
-{
-	DICT_VALUE	*val;
-
-	val = dict_valbyname(PW_POST_PROXY_TYPE, mainconfig.proxy_fail_type);
-	if (!val) {
-		DEBUG("ERROR: No such post-proxy type of \"%s\", cancelling post-proxy-failure call.", mainconfig.proxy_fail_type);
-		return;
-	}
-
-	request->options |= RAD_REQUEST_OPTION_REPROCESS;
-
-	thread_pool_addrequest(request, process_post_proxy_fail);
-}
-
-/*
  *  Perform any RFC specified cleaning of outgoing replies
  */
 void rfc_clean(RADIUS_PACKET *packet)
@@ -263,17 +242,35 @@ static const LRAD_NAME_NUMBER request_fail_reason[] = {
 	case REQUEST_FAIL_HOME_SERVER: /* Hmm... we may want only one */
 	case REQUEST_FAIL_HOME_SERVER2:
 	case REQUEST_FAIL_HOME_SERVER3:
+	{
+		DICT_VALUE	*val;
+		
+		/*
+		 *	Conditionally disable the home server we sent
+		 *	packets to.
+		 */
+		realm_disable(request);
+		
+		/*
+		 *	Not
+		 */
 		if (!mainconfig.proxy_fail_type) {
 			request->finished = TRUE;
-			break;
+			return;
 		}
-
-		/*
-		 *	This function takes care of doing everything
-		 *	below...
-		 */
-		proxy_failed_home_server(request, reason);
+		
+		val = dict_valbyname(PW_POST_PROXY_TYPE, mainconfig.proxy_fail_type);
+		if (!val) {
+			DEBUG("ERROR: No such post-proxy type of \"%s\", cancelling post-proxy-failure call.", mainconfig.proxy_fail_type);
+		return;
+		}
+		
+		request->options |= RAD_REQUEST_OPTION_REPROCESS;
+		
+		thread_pool_addrequest(request, process_post_proxy_fail);
+		
 		return;		
+	}
 		break;
 
 	case REQUEST_FAIL_SERVER_TIMEOUT:

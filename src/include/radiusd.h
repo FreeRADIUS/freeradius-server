@@ -395,7 +395,7 @@ const char	*client_name_old(const lrad_ipaddr_t *ipaddr);
 REALM		*realm_find(const char *, int);
 REALM		*realm_findbyaddr(uint32_t ipno, int port);
 void		realm_free(REALM *cl);
-void		realm_disable(uint32_t ipno, int port);
+void		realm_disable(REQUEST *);
 int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 int		read_config_files(void);

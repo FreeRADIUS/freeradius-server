@@ -466,16 +466,28 @@ int read_realms_file(const char *file)
 /*
  * Mark a host inactive
  */
-void realm_disable(uint32_t ipaddr, int port)
+void realm_disable(REQUEST *request)
 {
 	REALM *cl;
 	time_t now;
+	lrad_ipaddr_t *ipaddr;
+	int port;
 
 	now = time(NULL);
-	for(cl = mainconfig.realms; cl; cl = cl->next) {
-		if (cl->ipaddr.af != AF_INET) rad_assert(0 == 1);
 
-		if ((ipaddr == cl->ipaddr.ipaddr.ip4addr.s_addr) &&
+	if (!request || !request->proxy ||
+	    (request->proxy->dst_ipaddr.af != AF_INET)) return;
+	
+	ipaddr = &request->proxy->dst_ipaddr;
+	port = request->proxy->dst_port;
+
+	for (cl = mainconfig.realms; cl; cl = cl->next) {
+		if (ipaddr->af != cl->ipaddr.af) continue;
+
+		/*
+		 *	FIXME: Switch over AF
+		 */
+		if ((ipaddr->ipaddr.ip4addr.s_addr == cl->ipaddr.ipaddr.ip4addr.s_addr) &&
 		    (port == cl->auth_port)) {
 			/*
 			 *	If we've received a reply (any reply)
@@ -491,7 +503,7 @@ void realm_disable(uint32_t ipaddr, int port)
 			cl->wakeup = now + mainconfig.proxy_dead_time;
 			radlog(L_PROXY, "marking authentication server %s:%d for realm %s dead",
 				cl->server, port, cl->realm);
-		} else if ((ipaddr == cl->acct_ipaddr.ipaddr.ip4addr.s_addr) &&
+		} else if ((ipaddr->ipaddr.ip4addr.s_addr == cl->acct_ipaddr.ipaddr.ip4addr.s_addr) &&
 			   (port == cl->acct_port)) {
 			if (cl->last_reply > (( now - mainconfig.proxy_retry_delay * mainconfig.proxy_retry_count ))) {
 				continue;
