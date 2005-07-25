@@ -1198,6 +1198,7 @@ static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
 			       client_name_old(&request->packet->src_ipaddr),
 			       request->packet->src_port);
 			request_reject(request, REQUEST_FAIL_HOME_SERVER);
+			request->finished = TRUE;
 			return RL_WALK_CONTINUE;
 		}
 
@@ -1235,8 +1236,7 @@ static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
 		 *	Send a reject message for the request, mark it
 		 *	finished, and forget about the child.
 		 */
-		request_reject(request,
-			       REQUEST_FAIL_SERVER_TIMEOUT);
+		request_reject(request, REQUEST_FAIL_SERVER_TIMEOUT);
 		
 		request->child_pid = NO_SUCH_CHILD_PID;
 
@@ -1278,8 +1278,6 @@ static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
 		if (request->proxy_try_count == 0) {
 			request_reject(request, REQUEST_FAIL_HOME_SERVER2);
 			rad_assert(request->proxy->dst_ipaddr.af == AF_INET);
-			realm_disable(request->proxy->dst_ipaddr.ipaddr.ip4addr.s_addr,
-				      request->proxy->dst_port);
 			request->finished = TRUE;
 			goto cleanup; /* delete the request & continue */
 		}

@@ -242,9 +242,6 @@ static const LRAD_NAME_NUMBER request_fail_reason[] = {
 	case REQUEST_FAIL_HOME_SERVER: /* Hmm... we may want only one */
 	case REQUEST_FAIL_HOME_SERVER2:
 	case REQUEST_FAIL_HOME_SERVER3:
-	{
-		DICT_VALUE	*val;
-		
 		/*
 		 *	Conditionally disable the home server we sent
 		 *	packets to.
@@ -252,25 +249,22 @@ static const LRAD_NAME_NUMBER request_fail_reason[] = {
 		realm_disable(request);
 		
 		/*
-		 *	Not
+		 *	Not supposed to re-process it, 
 		 */
-		if (!mainconfig.proxy_fail_type) {
-			request->finished = TRUE;
+		if (mainconfig.proxy_fail_type) {
+			DICT_VALUE	*val;
+
+			val = dict_valbyname(PW_POST_PROXY_TYPE, mainconfig.proxy_fail_type);
+			if (!val) {
+				DEBUG("ERROR: No such post-proxy type of \"%s\", cancelling post-proxy-failure call.", mainconfig.proxy_fail_type);
+				return;
+			}
+			
+			request->options |= RAD_REQUEST_OPTION_REPROCESS;
+			
+			thread_pool_addrequest(request, process_post_proxy_fail);
 			return;
 		}
-		
-		val = dict_valbyname(PW_POST_PROXY_TYPE, mainconfig.proxy_fail_type);
-		if (!val) {
-			DEBUG("ERROR: No such post-proxy type of \"%s\", cancelling post-proxy-failure call.", mainconfig.proxy_fail_type);
-		return;
-		}
-		
-		request->options |= RAD_REQUEST_OPTION_REPROCESS;
-		
-		thread_pool_addrequest(request, process_post_proxy_fail);
-		
-		return;		
-	}
 		break;
 
 	case REQUEST_FAIL_SERVER_TIMEOUT:
@@ -322,7 +316,7 @@ static const LRAD_NAME_NUMBER request_fail_reason[] = {
 
 	/*
 	 *	Reject the request.  The sender will take care of delaying
-	 *	of quenching rejects.
+	 *	or quenching rejects.
 	 */
 	request->listener->send(request->listener, request);
 }
