@@ -55,7 +55,7 @@ static const char rcsid[] =
 static const char *hdr1 =
 "Login      Name              What  TTY  When      From      Location";
 static const char *rfmt1 = "%-10.10s %-17.17s %-5.5s %s%-3d %-9.9s %-9.9s %-.19s%s";
-static const char *rfmt1r = "%s,%s,%s,%s%d,%s,%s,%s%s";
+static const char *rfmt1r = "%s,%s,%s,%s%u,%s,%s,%s%s";
 
 static const char *hdr2 =
 "Login      Port    What      When          From       Location";
@@ -293,7 +293,8 @@ int main(int argc, char **argv)
 	int radiusoutput = 0;	/* Radius attributes */
 	char *p, *q;
 	const char *portind;
-	int c, portno;
+	int c;
+	unsigned int portno;
 	char buffer[2048];
 	const char *user = NULL;
 	int user_cmp = 0;
