@@ -375,7 +375,8 @@ int proxy_send(REQUEST *request)
 	 *	Doing it here catches the case of proxied tunneled
 	 *	requests.
 	 */
-	if ((strippedname = pairfind(request->proxy->vps, PW_STRIPPED_USER_NAME)) != NULL) {
+	if (realm->striprealm == TRUE &&
+	   (strippedname = pairfind(request->proxy->vps, PW_STRIPPED_USER_NAME)) != NULL) {
 		/*
 		 *	If there's a Stripped-User-Name attribute in
 		 *	the request, then use THAT as the User-Name
