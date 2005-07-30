@@ -42,7 +42,9 @@
 #include	"radiusd.h"
 #include	"rad_assert.h"
 
-/* End a session by faking a Stop packet to all accounting modules */
+/*
+ *	End a session by faking a Stop packet to all accounting modules.
+ */
 int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 		const char *user,
 		const char *sessionid, uint32_t cliaddr, char proto,
@@ -119,6 +121,11 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 
 /*
  *	Check one terminal server to see if a user is logged in.
+ *
+ *	Return values:
+ *		0 The user is off-line.
+ *		1 The user is logged in.
+ *		2 Some error occured.
  */
 int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 		 const char *session_id)
@@ -161,7 +168,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	 */
 	if ((pid = rad_fork(1)) < 0) { /* do wait for the fork'd result */
 		radlog(L_ERR, "Accounting: Failed in fork(): Cannot run checkrad\n");
-		return -1;
+		return 2;
 	}
 
 	if (pid > 0) {
@@ -234,5 +241,5 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	 *	Exit - 2 means "some error occured".
 	 */
 	exit(2);
-	return -1;
+	return 2;
 }
