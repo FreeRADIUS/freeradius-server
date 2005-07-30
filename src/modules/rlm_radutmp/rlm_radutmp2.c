@@ -1460,16 +1460,22 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 					     utmp_login, session_id);
 			rad_lockfd(fd, LOCK_LEN);
 
-			/*
-			 *	Failed to check the terminal server for
-			 *	duplicate logins: Return an error.
-			 */
-			if (rcode < 0) {
-				close(fd);
-				return RLM_MODULE_FAIL;
+			if (rcode == 0) {
+				/*
+				 *	Stale record - zap it.
+				 *
+				 *	Hmm... this ends up calling
+				 *	the accounting section
+				 *	recursively...
+				 */
+				session_zap(request, u.nas_address,
+					    u.nas_port, login, session_id,
+					    u.framed_address, u.proto,0);
 			}
-
-			if (rcode == 1) {
+			else if (rcode == 1) {
+				/*
+				 *	User is still logged in.
+				 */
 				++request->simul_count;
 
 				/*
@@ -1481,18 +1487,16 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 				else if (strchr("SCPA", u.proto) && call_num &&
 					!strncmp(u.caller_id,call_num,16))
 					request->simul_mpp = 2;
-			} else {
+			}
+			else {
 				/*
-				 *	Out of date record - zap it.
-				 *
-				 *	Hmm... this ends up calling
-				 *	the accounting section
-				 *	recursively...
+				 *	Failed to check the terminal
+				 *	server for duplicate logins:
+				 *	Return an error.
 				 */
-				session_zap(request,
-					    u.nas_address, u.nas_port, login,
-					    session_id, u.framed_address,
-					    u.proto,0);
+				close(fd);
+				radlog(L_ERR, "rlm_radutmp: Failed to check the terminal server for user '%s'.", utmp_login);
+				return RLM_MODULE_FAIL;
 			}
 		}
 	}
