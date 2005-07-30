@@ -90,7 +90,7 @@ static const CONF_PARSER module_config[] = {
 	{"readclients", PW_TYPE_BOOLEAN,
 	 offsetof(SQL_CONFIG,do_clients), NULL, "no"},
 	{"deletestalesessions", PW_TYPE_BOOLEAN,
-	 offsetof(SQL_CONFIG,deletestalesessions), NULL, "no"},
+	 offsetof(SQL_CONFIG,deletestalesessions), NULL, "yes"},
 	{"num_sql_socks", PW_TYPE_INTEGER,
 	 offsetof(SQL_CONFIG,num_sql_socks), NULL, "5"},
 	{"sql_user_name", PW_TYPE_STRING_PTR,
@@ -1421,10 +1421,12 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 		return RLM_MODULE_OK;
 	}
 
-	/* Looks like too many sessions, so lets start verifying them */
-
-	if (inst->config->simul_verify_query[0] == 0) {
-		/* No verify query defined, so skip verify step and rely on count query only */
+	/*
+	 *	Looks like too many sessions, so let's start verifying
+	 *	them, unless told to rely on count query only.
+	 */
+	if (inst->config->deletestalesessions == FALSE ||
+	    inst->config->simul_verify_query[0] == '\0') {
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_OK;
 	}
@@ -1470,19 +1472,32 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 
 		check = rad_check_ts(nas_addr, nas_port, row[2], row[1]);
 
-                /*
-                 *      Failed to check the terminal server for
-                 *      duplicate logins: Return an error.
-                 */
-		if (check < 0) {
-			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-			sql_release_socket(inst, sqlsocket);
-			DEBUG("rlm_sql (%s) rad_check_ts() failed.",
-			      inst->config->xlat_name);
-			return RLM_MODULE_FAIL;
-		}
+		if (check == 0) {
+			/*
+			 *	Stale record - zap it.
+			 */
+			uint32_t framed_addr = 0;
+			char proto = 0;
+			int sess_time = 0;
 
-		if(check == 1) {
+			if (row[5])
+				framed_addr = inet_addr(row[5]);
+			if (row[7]){
+				if (strcmp(row[7], "PPP") == 0)
+					proto = 'P';
+				else if (strcmp(row[7], "SLIP") == 0)
+					proto = 'S';
+			}
+			if (row[8])
+				sess_time = atoi(row[8]);
+
+			session_zap(request, nas_addr, nas_port, row[2],
+				    row[1], framed_addr, proto, sess_time);
+		}
+		else if (check == 1) {
+			/*
+			 *	User is still logged in.
+			 */
 			++request->simul_count;
 
                         /*
@@ -1495,37 +1510,26 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
                                 request->simul_mpp = 2;
 		}
 		else {
-                        /*
-                         *      Stale record - zap it.
-                         */
-			uint32_t framed_addr = 0;
-			char proto = 0;
-			int sess_time = 0;
-
-			if (row[5])
-				framed_addr = inet_addr(row[5]);
-			if (row[7]){
-				if (strcmp(row[7],"PPP") == 0)
-					proto = 'P';
-				else if (strcmp(row[7],"SLIP") == 0)
-					proto = 'S';
-			}
-			if (row[8])
-				sess_time = atoi(row[8]);
-
-			session_zap(request,
-				    nas_addr,nas_port,row[2],row[1],
-				    framed_addr, proto, sess_time);
+			/*
+			 *      Failed to check the terminal server for
+			 *      duplicate logins: return an error.
+			 */
+			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+			sql_release_socket(inst, sqlsocket);
+			radlog(L_ERR, "rlm_sql (%s): sql_checksimul: Failed to check the terminal server for user '%s'.", inst->config->xlat_name, row[2]);
+			return RLM_MODULE_FAIL;
 		}
 	}
 
 	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 	sql_release_socket(inst, sqlsocket);
 
-	/* The Auth module apparently looks at request->simul_count, not the return value
-	   of this module when deciding to deny a call for too many sessions */
+	/*
+	 *	The Auth module apparently looks at request->simul_count,
+	 *	not the return value of this module when deciding to deny
+	 *	a call for too many sessions.
+	 */
 	return RLM_MODULE_OK;
-
 }
 
 /*
