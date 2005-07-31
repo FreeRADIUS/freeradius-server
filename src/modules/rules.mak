@@ -13,7 +13,8 @@
 #
 # include ../rules.mak
 #
-# CFLAGS += my_c_flags
+# RLM_CFLAGS = my_cflags
+# RLM_LDLAGS = my_ldflags
 ##########################
 #
 # and everything will be automagically built
@@ -95,7 +96,7 @@ endif
 
 $(TARGET).la: $(DYNAMIC_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	-module $(LINK_MODE) $(CFLAGS) $(RLM_CFLAGS) $(RLM_LDFLAGS) \
+	-module $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) \
 	-o $@ -rpath $(libdir) $^ $(RLM_LIBS) $(LIBS)
 
 #######################################################################
