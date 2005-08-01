@@ -65,38 +65,45 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli) {
  */
 static int check_expiration(REQUEST *request)
 {
-	int result;
-	VALUE_PAIR *check_item = request->config_items;
+	VALUE_PAIR *check_item;
+	VALUE_PAIR *vp;
 
-	result = 0;
-	while (result == 0 && check_item != NULL) {
+	check_item = pairfind(request->config_items, PW_EXPIRATION);
 
-		/*
-		 *	Check expiration date if we are doing password aging.
-		 */
-		if (check_item->attribute == PW_EXPIRATION) {
-			/*
-			 *	Has this user's password expired?
-			 *
-			 *	If so, remove ALL reply attributes,
-			 *	and add our own Reply-Message, saying
-			 *	why they're being rejected.
-			 */
-			if (check_item->lvalue < (unsigned) time(NULL)) {
-				VALUE_PAIR *vp;
+	if (!check_item)  return 0;
 
-				result = -1;
-				vp = pairmake("Reply-Message",
-						"Password Has Expired\r\n",
-						T_OP_ADD);
-				pairfree(&request->reply->vps);
-				request->reply->vps = vp;
-				break;
-			}
-		}
-		check_item = check_item->next;
+	/*
+	 *	Has this user's password expired?
+	 *
+	 *	If so, remove ALL reply attributes,
+	 *	and add our own Reply-Message, saying
+	 *	why they're being rejected.
+	 */
+	if (((time_t) check_item->lvalue) <= request->timestamp) {
+		vp = pairmake("Reply-Message",
+			      "Password Has Expired\r\n",
+			      T_OP_ADD);
+		pairfree(&request->reply->vps);
+		request->reply->vps = vp;
+		return -1;
 	}
-	return result;
+
+#define EXP_TIMEOUT ((uint32_t) (((time_t) check_item->lvalue) - request->timestamp))
+	/*
+	 *	Otherwise, set the Session-Timeout based on expiration.
+	 */
+	vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT);
+	if (!vp) {
+		vp = pairmake("Session-Timeout", "0", T_OP_SET);
+		if (!vp) return -1; /* out of memory */
+		
+		vp->lvalue = EXP_TIMEOUT;
+		pairadd(&request->reply->vps, vp);
+	} else if (vp->lvalue > EXP_TIMEOUT) {
+		vp->lvalue = EXP_TIMEOUT;
+	} /* else Session-Timeout is smaller than Expiration, leave it alone */
+
+	return 0;
 }
 
 
