@@ -226,7 +226,6 @@ typedef struct main_config_t {
 	int		log_auth;
 	int		log_auth_badpass;
 	int		log_auth_goodpass;
-	int		do_usercollide;
 #ifdef WITH_SNMP
 	int		do_snmp;
 #endif

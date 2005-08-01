@@ -318,61 +318,15 @@ static int file_authorize(void *instance, REQUEST *request)
 		 *	entry to the current list of reply pairs.
 		 */
 		if ((paircmp(request, request_pairs, pl->check, reply_pairs) == 0)) {
-			if ((mainconfig.do_usercollide) &&
-			    (strcmp(pl->name, "DEFAULT"))) {
+			DEBUG2("    users: Matched entry %s at line %d", pl->name, pl->lineno);
+			found = 1;
+			check_tmp = paircopy(pl->check);
+			reply_tmp = paircopy(pl->reply);
+			pairxlatmove(request, reply_pairs, &reply_tmp);
+			pairmove(check_pairs, &check_tmp);
+			pairfree(&reply_tmp);
+			pairfree(&check_tmp); /* should be NULL */
 
-				/*
-				 * We have to make sure the password
-				 * matches as well
-				 */
-
-				/* Save the orginal config items */
-				check_save = paircopy(request->config_items);
-
-				/* Copy this users check pairs to the request */
-				check_tmp = paircopy(pl->check);
-				pairmove(check_pairs, &check_tmp);
-				pairfree(&check_tmp);
-
-				DEBUG2("    users: Checking entry %s at line %d", pl->name, pl->lineno);
-				/* Check the req to see if we matched */
-				if (rad_check_password(request)==0) {
-					DEBUG2("    users: Matched entry %s at line %d", pl->name, pl->lineno);
-
-					found = 1;
-
-					/* Free our saved config items */
-					pairfree(&check_save);
-
-					/*
-					 * Already copied check items, so
-					 * just copy reply here
-					 */
-					reply_tmp = paircopy(pl->reply);
-					pairxlatmove(request, reply_pairs, &reply_tmp);
-					pairfree(&reply_tmp);
-
-				/* We didn't match here */
-				} else {
-					/* Restore check items */
-					pairfree(&request->config_items);
-					request->config_items = paircopy(check_save);
-					check_pairs = &request->config_items;
-					continue;
-				}
-
-			/* No usercollide */
-			} else {
-
-				DEBUG2("    users: Matched entry %s at line %d", pl->name, pl->lineno);
-				found = 1;
-				check_tmp = paircopy(pl->check);
-				reply_tmp = paircopy(pl->reply);
-				pairxlatmove(request, reply_pairs, &reply_tmp);
-				pairmove(check_pairs, &check_tmp);
-				pairfree(&reply_tmp);
-				pairfree(&check_tmp); /* should be NULL */
-			}
 			/*
 			 *	Fallthrough?
 			 */

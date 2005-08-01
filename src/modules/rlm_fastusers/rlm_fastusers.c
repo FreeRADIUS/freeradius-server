@@ -69,7 +69,6 @@ static int fastuser_store(PAIR_LIST **hashtable, PAIR_LIST *entry, int idx);
 static PAIR_LIST *fastuser_find(REQUEST *request, PAIR_LIST *user,
 																const char *username);
 static void fastuser_tablestats(PAIR_LIST **hashtable, int size);
-static int fastuser_passcheck(REQUEST *request, PAIR_LIST *user, const char *name);
 
 static const CONF_PARSER module_config[] = {
 	{ "usersfile",     PW_TYPE_STRING_PTR,
@@ -437,19 +436,8 @@ static PAIR_LIST *fastuser_find(REQUEST *request, PAIR_LIST *user,
 	while((cur) && (!userfound)) {
 		if((strcmp(cur->name, username)==0) &&
 				paircmp(request, request->packet->vps, cur->check, &request->reply->vps) == 0) {
-			/*
-			 * Usercollide means we have to compare check pairs
-			 * AND the password
-			 */
-			if(mainconfig.do_usercollide) {
-				if((userfound = fastuser_passcheck(request, cur, username))==0) {
-					cur = cur->next;
-				}
-
-			} else {
 				userfound = 1;
 				DEBUG2("  fastusers: Matched %s at %d", cur->name, cur->lineno);
-			}
 		} else {
 			cur = cur->next;
 		}
@@ -495,45 +483,6 @@ static void fastuser_tablestats(PAIR_LIST **hashtable, int size) {
 		radlog(L_INFO, "rlm_fastusers:  Hash buckets with more than 256:  %d",
 					toomany);
 	}
-}
-
-static int fastuser_passcheck(REQUEST *request, PAIR_LIST *user,
-			      const char *name UNUSED)
-{
-	int found=0;
-	VALUE_PAIR	*check_save;
-
-	/*
-	 * We check for REJECT specially here or a REJECT
-	 * user will never match
-	 */
-	check_save = pairfind(user->check, PW_AUTHTYPE);
-	if((check_save) && check_save->lvalue == PW_AUTHTYPE_REJECT)  {
-		DEBUG2("  fastusers(uc):  User '%s' line %d is Auth-Type Reject, but usercollide match",
-					user->name, user->lineno);
-		return 1;
-	}
-
-	/* Save the orginal config items */
-	check_save = request->config_items;
-	request->config_items = NULL;
-
-	DEBUG2("  fastusers(uc): Checking %s at %d", user->name, user->lineno);
-
-	/* Copy this users check pairs to the request */
-	request->config_items = paircopy(user->check);
-
-	/* Check the req to see if we matched */
-	if(rad_check_password(request)==0) {
-		DEBUG2("  fastusers(uc): Matched %s at %d", user->name, user->lineno);
-		found = 1;
-	}
-
-	/* Restore check items */
-	pairfree(&request->config_items);
-	request->config_items = check_save;
-
-	return found;
 }
 
 /*
