@@ -582,6 +582,16 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			vendorpec = 0;
 			vsa_length_ptr = NULL;
 			
+		} else if (vendorpec == VENDORPEC_LUCENT) {
+			/*
+			 *	16-bit attribute, 8-bit length
+			 */
+			*ptr++ = ((reply->attribute >> 8) & 0xFF);
+			*ptr++ = (reply->attribute & 0xFF);
+			length_ptr = ptr;
+			if (vsa_length_ptr) *vsa_length_ptr += 3;
+			*ptr++ = 3;
+			total_length += 3;
 		} else {
 			/*
 			 *	All other attributes are encoded as
