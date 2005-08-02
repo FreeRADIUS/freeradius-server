@@ -1,8 +1,18 @@
 FreeRADIUS 1.1.0 ; $Date$, urgency=low
-	* radhow & radzap have been re-written, and have new command-line
+	* Support 16-bit Lucent VSA's (Used by Ascend)
+	* Use certificate chains, to support n-tier certificates.
+	  Patch from Mohammed Petiwala, closes bug #112.
+	* Permit per-socket list of clients in "listen" directives
+	* Faster client lookups, to permit scaling to 10^6 or more clients.
+	* Removed radrelay and radsqlrelay.  See "man radrelay.conf" for
+	  details.
+	* Re-organized the RFC dictionaries to be clearer
+	* Full IPv6 support.  The server can listen on IPv6 sockets,
+	  and send/receive IPv6 packets.
+	* radhwo & radzap have been re-written, and have new command-line
 	  arguments.  radzap is now a shell script.  See the "man" pages
 	  for more information.
-	* rlm_ns_mta_md5 is deprecated.  rlm_pap does everything it does
+	* rlm_ns_mta_md5 is deprecated.  rlm_pap does everything it does,
 	  and more.
 	* The command-line options "-i ipaddr" and "-p port" now work.
 	* rlm_unix no longer reads /etc/passwd (etc.) directly.  See
@@ -12,7 +22,9 @@ FreeRADIUS 1.1.0 ; $Date$, urgency=low
 	  arbitrary amounts of information can be stored in them.
 	* Fixed xlat's for %{config:...}.  Dynamic expanstion now works
 	  better, so %{config:section.subsection.%{User-Name}.item" works,
-	  even if the User-Name contains periods.
+	  even if the User-Name contains periods.  This is a cheap way
+	  of getting in-memory databases, as anything can be put into
+	  the configuration files.
 	* Fix locking issues for radrelay.
 	* Add radsqlrelay, which works like radrelay, but reads data
 	  from an SQL database.
