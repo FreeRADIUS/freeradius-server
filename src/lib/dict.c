@@ -192,16 +192,37 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		}
 	}
 
+	if (value < 0) {
+		librad_log("dict_addattr: ATTRIBUTE has invalid number (less than zero)");
+		return -1;
+	}
+
 	if (value >= 65536) {
-		librad_log("dict_addattr: ATTRIBUTE has invalid number.");
+		librad_log("dict_addattr: ATTRIBUTE has invalid number (larger than 65535).");
 		return -1;
 	}
 
-	if (vendor && !dict_vendorbyvalue(vendor)) {
-		librad_log("dict_addattr: Unknown vendor");
-		return -1;
-	}
+	if (vendor) {
+		/*
+		 *	If the vendor isn't defined, die/
+		 */
+		if (!dict_vendorbyvalue(vendor)) {
+			librad_log("dict_addattr: Unknown vendor");
+			return -1;
+		}
 
+		/*
+		 *	With a few exceptions, attributes can only be
+		 *	1..255.  The check above catches the less than
+		 *	zero case.
+		 */
+		if ((vendor != VENDORPEC_USR) &&
+		    (vendor != VENDORPEC_LUCENT) &&
+		    (value > 256)) {
+			librad_log("dict_addattr: ATTRIBUTE has invalid number (larger than 255).");
+			return -1;
+		}
+	}
 
 	/*
 	 *	Create a new attribute for the list
