@@ -1603,9 +1603,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		 */
 		if ((vendorlen <= 0) &&
 		    (attribute == PW_VENDOR_SPECIFIC)) {
-			int	sublen;
-			uint8_t	*subptr;
-
 			/*
 			 *	attrlen was checked to be >= 6, in rad_recv
 			 */
@@ -1627,35 +1624,49 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			 */
 
 			/*
-			 *	First, check to see if the
-			 *	sub-attributes fill the VSA, as
-			 *	defined by the RFC.  If not, then it
-			 *	may be a USR-style VSA, or it may be a
-			 *	vendor who packs all of the
-			 *	information into one nonsense
-			 *	attribute
+			 *	USR & Lucent are special, so everything
+			 *	else is normal.
 			 */
-			subptr = ptr + 4;
-			sublen = attrlen - 4;
+			if ((vendorcode != VENDORPEC_USR) &&
+			    (vendorcode != VENDORPEC_LUCENT)) {
+				int	sublen;
+				uint8_t	*subptr;
 
-			while (sublen > 0) {
-				if (subptr[1] < 2) { /* too short */
-					break;
+				/*
+				 *	First, check to see if the
+				 *	sub-attributes fill the VSA,
+				 *	as defined by the RFC.  If
+				 *	not, then it's a vendor who
+				 *	packs all of the information
+				 *	into one nonsense attribute
+				 */
+				subptr = ptr + 4;
+				sublen = attrlen - 4;
+				
+				while (sublen > 0) {
+					if (subptr[1] < 2) { /* too short */
+						break;
+					}
+					
+					if (subptr[1] > sublen) { /* too long */
+						break;
+					}
+					
+					sublen -= subptr[1]; /* just right */
+					subptr += subptr[1];
 				}
 
-				if (subptr[1] > sublen) { /* too long */
-					break;
-				}
-
-				sublen -= subptr[1]; /* just right */
-				subptr += subptr[1];
-			}
-
-			/*
-			 *	If the attribute is RFC compatible,
-			 *	then allow it as an RFC style VSA.
-			 */
-			if (sublen == 0) {
+				/*
+				 *	VSA's don't exactly fill the
+				 *	attribute.  Make a nonsense
+				 *	VSA.
+				 */
+				if (sublen != 0) goto create_pair;
+				
+				/*
+				 *	If the attribute is RFC compatible,
+				 *	then allow it as an RFC style VSA.
+				 */
 				ptr += 4;
 				vendorlen = attrlen - 4;
 				attribute = *ptr++ | (vendorcode << 16);
@@ -1705,8 +1716,17 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 					ptr += 8;
 					attrlen -= 8;
 					length -= 8;
-				} /* else it's not in the dictionary */
-			} /* else it was a stupid vendor format */
+				}
+			} else if ((vendorcode == VENDORPEC_LUCENT) &&
+				   (attrlen >= 7) &&
+				   ((ptr[6] + 4) == attrlen)) {
+				attribute = ((vendorcode << 16) |
+					     (ptr[4] << 8) |
+					     ptr[5]);
+				ptr += 7;
+				attrlen -= 7;
+				length -= 7;
+			} /* else something went catastrophically wrong */
 		} /* else it wasn't a VSA */
 
 		/*
