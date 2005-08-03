@@ -1643,7 +1643,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				subptr = ptr + 4;
 				sublen = attrlen - 4;
 				
-				while (sublen > 0) {
+				while (sublen >= 2) {
 					if (subptr[1] < 2) { /* too short */
 						break;
 					}
