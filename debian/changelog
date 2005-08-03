@@ -1,10 +1,45 @@
-freeradius (1.0.cvs20050326-0) unstable; urgency=low
+freeradius (1.1.0~pre0~cvs20050804-0) unstable; urgency=low
 
   * Current CVS version
-  * FreeRADIUS 1.1.0 is now able to use net-snmp in ucd-snmp
-    compatibility mode.
+  * Update for Debian Policy 3.6.2.0
+   - No changes needed.
   * FreeRADIUS 1.1.0 uses autoconf 2.5 and libtool 1.5
      Closes: #279391
+  * rlm_eap_* link statically to libeap and rlm_eap_tls as
+    neccessary, since trying to do it dynamically fails
+    to build due to libtool being too clever.
+
+  * The below changes were forward-ported from FreeRADIUS 1.0.x in
+    the Debian archive:
+  * Correct handing of parameterless call of init script, and
+    general init script neatening
+    (Thanks to Derrick Karpo)
+    Closes: #315438
+  * Correctly leave out the .in files in the examples
+  * Correctly use debhelper after splitting binary make target
+    into binary-arch and binary-indep.
+    (Thanks to Kurt Roeckx for actually hitting the bug)
+    Closes: #315770
+  * Convert to dpatch, dpatch-2-style interface.
+   - New build-dependancy on dpatch (>= 2)
+  * Assemble the freeradius-dialupadmin in the binary-indep make target
+    Closes: #313173 (Thanks to Santiago Vila for spotting this)
+  * Include the example scripts in /usr/share/doc/freeradius/examples/scripts
+    except those three which are installed into the binary by the Makefile.
+    Closes: #314253 (Thanks to Michael Langer for spotting this)
+  * Suggest libdate-manip-perl for freeradius-dialupadmin
+    Closes: #306007 (Thanks to Feng Sian)
+  * Prefer libpq-dev over postgresql-dev as a build-dependancy.
+   - This requires us to use pg_config to find the headers.
+  * Get rid of extraneous '%' at the start of every reference to
+    /etc/freeradius-dialupadmin in freeradius-dialupadmin's configuration.
+     Closes: #299749
+  * Enable Novell eDirectory integration
+  * Enable udpfromto code so that replies come from the same address as
+    the request arrived at
+  * Build-depend on libmysqlclient12-dev as libmysqlclient10 has problems
+    accessing 4.0 series mySQL servers, and libmysqlclient12 can access
+    4.1 series mySQL servers.
   * Update for Debian Policy 3.6.1.1
    - Change test if invoke-rc.d as per Policy 9.3.3.2
   * freeradius-dialupadmin Suggests php4-mysql | php4-pgsql
@@ -19,11 +54,16 @@ freeradius (1.0.cvs20050326-0) unstable; urgency=low
      Closes: #280942
   * FreeRADIUS-dialupadmin's help.php3 can now find README.
      Closes: #280941
-  * rlm_eap_* link statically to libeap and rlm_eap_tls as
-    neccessary, since trying to do it dynamically fails
-    to build due to libtool being too clever.
+  * Support building with libsnmp5's UCD-SNMP compatiblity mode.
+   - Prefer libsnmp5-dev over libsnmp4.2-dev
+  * Update for Debian Policy 3.6.11
+   - Change test for invoke-rc.d as per Policy 9.3.3.2
+  * Finally, -v is documented in radius(8).
+   - Closes: #151266
+  * Reword a sentence in radwatch(8) by removing the personal pronoun.
+   - Closes: #264522
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sat, 26 Mar 2005 23:45:09 +1100
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu,  4 Aug 2005 00:58:02 +1000
 
 freeradius (1.0.0-0) unstable; urgency=low
 

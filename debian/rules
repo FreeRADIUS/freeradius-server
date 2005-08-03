@@ -3,6 +3,8 @@
 #	debian/rules file for freeradius
 #
 
+.NOTPARALLEL:
+
 SHELL		=/bin/bash
 
 package		= freeradius
@@ -14,6 +16,11 @@ libdir		= /usr/lib/$(package)
 logdir		= /var/log/$(package)
 pkgdocdir	= /usr/share/doc/$(package)
 raddbdir	= /etc/$(package)
+
+# All supported modules, irrespective of licensing
+modulepackages = krb5 ldap mysql iodbc postgresql
+# Binary-distributable modules for the Debian archive.
+#modulepackages = krb5 ldap mysql iodbc
 
 export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
@@ -36,7 +43,7 @@ endif
 # Libtool won't play nice, so we won't play at all
 export RLM_EAP_LINK_MODE = -static
 
-build-simple stamp-build:
+build-simple stamp-build: patch
 	dh_testdir
 	# dh_testroot
 	./configure \
@@ -52,6 +59,9 @@ build-simple stamp-build:
 		--with-logdir=/var/log/$(package) \
 		--with-thread-pool --with-system-libtool \
 		--enable-ltdl-install=no --enable-strict-dependencies \
+		--with-udpfromto --with-edir \
+		--with-rlm_sql_postgresql_lib_dir=`pg_config --libdir` \
+		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
 		--enable-developer
 	
 	# Modify Make.inc for Debian...
@@ -68,55 +78,9 @@ build-simple stamp-build:
 build: autotools build-simple
 
 binary-indep: stamp-build
-
-binary-arch: stamp-build
 	dh_testroot
-	dh_clean
-	dh_installdirs
-	make install R=$(freeradius_dir)
-
-	# rename radius binary to play nicely with others
-	mv $(freeradius_dir)/usr/sbin/radiusd $(freeradius_dir)/usr/sbin/$(package)
-
-	# clean up install cruft.  $$&@!%
-	rm $(freeradius_dir)/usr/sbin/rc.radiusd
-	test ! -d $(freeradius_dir)/etc/raddb || rmdir $(freeradius_dir)/etc/raddb
-	test ! -d $(freeradius_dir)/var/log/radius/radacct || rmdir $(freeradius_dir)/var/log/radius/radacct
-	test ! -d $(freeradius_dir)/var/log/radius || rmdir $(freeradius_dir)/var/log/radius
-#	Yuck! the makefile in doc/ does this.
-	rm -rf $(freeradius_dir)/usr/share/doc/freeradius-1.1.0-pre0
-
-	# split out inconvenient/controversal modules to other places
-	for modname in krb5 ldap mysql postgresql iodbc; do \
-		mkdir -p $(debiandir)/$(package)-$${modname}/$(libdir); \
-		mv $(freeradius_dir)/$(libdir)/rlm*_$${modname}* $(debiandir)/$(package)-$${modname}/$(libdir)/; \
-	done
-
-	# man pages & docs
-	install -g root -m 644 CREDITS $(freeradius_dir)/$(pkgdocdir)/credits
-	dh_installdocs -XChangeLog -X00-OLD -XCVS -XMakefile doc/*
-	dh_installexamples -XCVS `find src/modules/rlm_sql/drivers -type f -name \*.sql`
-	dh_installchangelogs doc/ChangeLog
-	#Rename manpage to go with binary
-	mv $(freeradius_dir)/$(mandir)/man8/radiusd.8 $(freeradius_dir)/$(mandir)/man8/$(package).8
-
-	# SNMP mibs
-	install -g root -m 644 mibs/*.txt $(freeradius_dir)/usr/share/snmp/mibs
-
-	# supporting programs
-	TEMPFILE=`mktemp /tmp/radconf-XXXXXX`; \
-	cp $(freeradius_dir)/$(raddbdir)/radiusd.conf $$TEMPFILE; \
-	cat $$TEMPFILE \
-		| sed -e 's/        /	/g' \
-			-e '/^	example {/,/^	}/s/^/#/' \
-			-e 's/#	shadow = /shadow = /' \
-			-e 's/^#\?group = nobody/group = freerad/' \
-			-e 's/^#\?user = nobody/user = freerad/' \
-			-e 's!/run/radiusd!/run/freeradius!' \
-			-e 's!radiusd.pid!freeradius.pid!' \
-			> $(freeradius_dir)/$(raddbdir)/radiusd.conf; \
-	rm $$TEMPFILE
-
+	dh_clean -i -k
+	dh_installdirs -i
 	# Dialup-Admin
 	dh_installdocs -p freeradius-dialupadmin dialup_admin/README dialup_admin/doc/*
 	dh_installchangelogs -p freeradius-dialupadmin dialup_admin/Changelog
@@ -137,7 +101,7 @@ binary-arch: stamp-build
 			-e 's#/usr/local/radiusd#/usr#' \
 			-e 's#general_raddb_dir: %{general_radiusd_base_dir}/etc/raddb#general_raddb_dir: /etc/freeradius#' \
 			-e 's#general_clients_conf: /usr/local/etc/raddb/clients.conf#general_clients_conf: /etc/freeradius/clients.conf#' \
-			-e 's#%{general_base_dir}/conf#%/etc/freeradius-dialupadmin#' \
+			-e 's#%{general_base_dir}/conf#/etc/freeradius-dialupadmin#' \
 			-e 's#/usr/local/bin#/usr/bin#' \
 		> $(freeradius_dir)-dialupadmin/etc/freeradius-dialupadmin/admin.conf; \
 	rm $$TEMPFILE;
@@ -160,28 +124,90 @@ binary-arch: stamp-build
 		rm $$TEMPFILE; \
 	done
 
-ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
-	dh_strip
-endif
-	dh_installlogrotate
-	dh_installinit -n
-	dh_installpam --name=radiusd
-	# We don't need ldconfig. None of our libraries go in it's paths
-	dh_makeshlibs -n
-	dh_shlibdeps
-	dh_installdeb
-	dh_compress
-	dh_fixperms
-	dh_md5sums
-	dh_gencontrol
-	dh_builddeb
+	# bonus scipts
+	dh_installdeb -i
+	dh_compress -i
+	dh_fixperms -i
+	dh_md5sums -i
+	dh_gencontrol -i
+	dh_builddeb -i
 
-clean:	
+binary-arch: stamp-build
+	dh_testroot
+	dh_clean -s -k
+	dh_installdirs -s
+	make install R=$(freeradius_dir)
+
+	# rename radius binary to play nicely with others
+	mv $(freeradius_dir)/usr/sbin/radiusd $(freeradius_dir)/usr/sbin/$(package)
+
+	# clean up install cruft.  $$&@!%
+	rm $(freeradius_dir)/usr/sbin/rc.radiusd
+	test ! -d $(freeradius_dir)/etc/raddb || rmdir $(freeradius_dir)/etc/raddb
+	test ! -d $(freeradius_dir)/var/log/radius/radacct || rmdir $(freeradius_dir)/var/log/radius/radacct
+	test ! -d $(freeradius_dir)/var/log/radius || rmdir $(freeradius_dir)/var/log/radius
+#	Yuck! the makefile in doc/ does this.
+	rm -rf $(freeradius_dir)/usr/share/doc/freeradius-1.1.0-pre0
+
+	# split out inconvenient/controversal modules to other places
+	for modname in $(modulepackages); do \
+		mkdir -p $(debiandir)/$(package)-$${modname}/$(libdir); \
+		mv $(freeradius_dir)/$(libdir)/rlm*_$${modname}* $(debiandir)/$(package)-$${modname}/$(libdir)/; \
+	done
+
+	# man pages & docs
+	dh_installdocs -X\*.in -Xradwatch -Xcheck-radius-config -XChangeLog -X00-OLD -XCVS -XMakefile doc/*
+	install -g root -m 644 CREDITS $(freeradius_dir)/$(pkgdocdir)/credits
+	dh_installexamples -XCVS `find src/modules/rlm_sql/drivers -type f -name \*.sql`
+	dh_installchangelogs doc/ChangeLog
+	#Rename manpage to go with binary
+	mv $(freeradius_dir)/$(mandir)/man8/radiusd.8 $(freeradius_dir)/$(mandir)/man8/$(package).8
+
+	# SNMP mibs
+	install -g root -m 644 mibs/*.txt $(freeradius_dir)/usr/share/snmp/mibs
+
+	# supporting programs
+	TEMPFILE=`mktemp /tmp/radconf-XXXXXX`; \
+	cp $(freeradius_dir)/$(raddbdir)/radiusd.conf $$TEMPFILE; \
+	cat $$TEMPFILE \
+		| sed -e 's/        /	/g' \
+			-e '/^	example {/,/^	}/s/^/#/' \
+			-e 's/#	shadow = /shadow = /' \
+			-e 's/^#\?group = nobody/group = freerad/' \
+			-e 's/^#\?user = nobody/user = freerad/' \
+			-e 's!/run/radiusd!/run/freeradius!' \
+			-e 's!radiusd.pid!freeradius.pid!' \
+			> $(freeradius_dir)/$(raddbdir)/radiusd.conf; \
+	rm $$TEMPFILE
+
+	# bonus scipts
+ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+	dh_strip -s
+endif
+	dh_installlogrotate -s
+	dh_installinit -n -s
+	dh_installpam --name=radiusd -s
+	# We don't need ldconfig. None of our libraries go in it's paths
+	dh_makeshlibs -n -s
+	dh_shlibdeps -s
+	dh_installdeb -s
+	dh_compress -s
+	dh_fixperms -s
+	dh_md5sums -s
+	dh_gencontrol -s
+	dh_builddeb -s
+
+clean: clean-patched unpatch
+
+clean-patched:
 	dh_testdir
 	rm -f stamp-build debian/{files,substvars} debian/*.debhelper libltdl/stamp-h1
 	[ -f Make.inc ] && make distclean || true
 	dh_clean
-	rm -rf $(freeradius_dir) $(debiandir)/$(package)-{krb5,ldap,mysql,postgresql,iodbc}{,.substvars}
+	rm -rf $(freeradius_dir)
+	for modname in $(modulepackages); do \
+		rm -rf $(debiandir)/$(package)-$${modname}{,.substvars}; \
+	done
 	[ -f config.sub.dist ] && rm config.sub && mv config.sub.dist config.sub || true
 	[ -f config.guess.dist ] && rm config.guess && mv config.guess.dist config.guess || true
 
@@ -207,5 +233,15 @@ sanitycheck:
 	} || true
 	@test -n $$filename
 	@echo good.
+
+patch: stamp-patch
+stamp-patch:
+	dpatch apply-all
+#	dpatch call-all -a=pkg-info > stamp-patch
+	dpatch list-all > stamp-patch
+
+unpatch:
+	dpatch deapply-all
+	rm -rf stamp-patch debian/patched
 
 .PHONY: binary binary-arch binary-indep clean sanitycheck autotools
