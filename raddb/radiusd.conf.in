@@ -870,8 +870,6 @@ $INCLUDE ${confdir}/eap.conf
 	#
 	#            Field marked as ',' may contain a comma separated list
 	#            of attributes.
-	#   authtype - if record found this Auth-Type is used to authenticate
-	#            user
 	#   hashsize - hashtable size. If 0 or not specified records are not
 	#            stored in memory and file is red on every request.
 	#   allowmultiplekeys - if few records for every key are allowed
@@ -886,7 +884,6 @@ $INCLUDE ${confdir}/eap.conf
 	#passwd etc_smbpasswd {
 	#	filename = /etc/smbpasswd
 	#	format = "*User-Name::LM-Password:NT-Password:SMB-Account-CTRL-TEXT::"
-	#	authtype = MS-CHAP
 	#	hashsize = 100
 	#	ignorenislike = no
 	#	allowmultiplekeys = no

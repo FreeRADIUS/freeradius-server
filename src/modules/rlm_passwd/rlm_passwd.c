@@ -341,7 +341,6 @@ struct passwd_instance {
 	struct mypasswd *pwdfmt;
 	char *filename;
 	char *format;
-	char *authtype;
 	char * delimiter;
 	int allowmultiple;
 	int ignorenislike;
@@ -359,8 +358,6 @@ static const CONF_PARSER module_config[] = {
 	   offsetof(struct passwd_instance, filename), NULL,  NULL },
 	{ "format",   PW_TYPE_STRING_PTR,
 	   offsetof(struct passwd_instance, format), NULL,  NULL },
-	{ "authtype",   PW_TYPE_STRING_PTR,
-	   offsetof(struct passwd_instance, authtype), NULL,  NULL },
 	{ "delimiter",   PW_TYPE_STRING_PTR,
 	   offsetof(struct passwd_instance, delimiter), NULL,  ":" },
 	{ "ignorenislike",   PW_TYPE_BOOLEAN,
@@ -482,7 +479,6 @@ static int passwd_detach (void *instance) {
 	if(inst->ht) release_ht(inst->ht);
         if (inst->filename != NULL) 	free(inst->filename);
         if (inst->format != NULL) 	free(inst->format);
-        if (inst->authtype != NULL ) 	free(inst->authtype);
         if (inst->delimiter != NULL)	free(inst->delimiter);
 	free(instance);
 	return 0;
@@ -544,17 +540,6 @@ static int passwd_authorize(void *instance, REQUEST *request)
 	}
 	if(!found) {
 		return RLM_MODULE_NOTFOUND;
-	}
-	if (inst->authtype &&
-	    (key = pairmake ("Auth-Type", inst->authtype, T_OP_EQ))) {
-		DEBUG("rlm_passwd: Adding \"Auth-Type = %s\"",
-		      inst->authtype);
-		/*
-		 *	Don't call pairadd.  pairmove doesn't
-		 *	over-write existing attributes.
-		 */
-		pairmove(&request->config_items, &key);
-		pairfree(&key);	/* pairmove may have NOT moved it */
 	}
 	return RLM_MODULE_OK;
 
