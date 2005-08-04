@@ -59,6 +59,8 @@ ATTRIBUTE	Annex-Multicast-Rate-Limit	73	integer
 ATTRIBUTE	Annex-Maximum-Call-Duration	74	integer
 ATTRIBUTE	Annex-Multilink-Id		75	integer
 ATTRIBUTE	Annex-Num-In-Multilink		76	integer
+ATTRIBUTE	Annex-Secondary-Srv-Endpoint	79	string
+ATTRIBUTE	Annex-Gwy-Selection-Mode	80	integer
 ATTRIBUTE	Annex-Logical-Channel-Number	81	integer
 ATTRIBUTE	Annex-Wan-Number		82	integer
 ATTRIBUTE	Annex-Port			83	integer
