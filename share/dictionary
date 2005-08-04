@@ -112,6 +112,7 @@ $INCLUDE dictionary.mikrotik
 $INCLUDE dictionary.navini
 $INCLUDE dictionary.ntua
 $INCLUDE dictionary.nomadix
+$INCLUDE dictionary.packeteer
 $INCLUDE dictionary.propel
 $INCLUDE dictionary.quintum
 $INCLUDE dictionary.redback
