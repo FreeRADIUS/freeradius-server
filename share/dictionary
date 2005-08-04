@@ -106,6 +106,7 @@ $INCLUDE dictionary.juniper
 $INCLUDE dictionary.karlnet
 $INCLUDE dictionary.livingston
 $INCLUDE dictionary.localweb
+$INCLUDE dictionary.lucent
 $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.mikrotik
 $INCLUDE dictionary.navini
