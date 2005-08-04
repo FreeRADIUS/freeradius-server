@@ -37,4 +37,7 @@ ATTRIBUTE	3GPP-GGSN-IPv6-Address		16		ipv6addr
 #
 ATTRIBUTE	3GPP-IPv6-DNS-Servers		17		octets 
 
+ATTRIBUTE	3GPP-SGSN-MCC-MNC		18		string
+ATTRIBUTE	3GPP-Teardown-Indicator		19		octets
+
 END-VENDOR	3GPP
