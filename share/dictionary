@@ -101,6 +101,7 @@ $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.foundry
 $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.gemtek
+$INCLUDE dictionary.issanni
 $INCLUDE dictionary.itk
 $INCLUDE dictionary.juniper
 $INCLUDE dictionary.karlnet
