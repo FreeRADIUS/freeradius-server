@@ -34,7 +34,7 @@ FreeRADIUS 1.1.0 ; $Date$, urgency=low
 	  See "man rlm_pap" and the "authorize" section of "radiusd.conf".
 	* Don't call exit() if module instantiation files.
 	* "virtual" modules can now be used.  See the last bit of the
-	  "modules" section in "radiusd.conf".
+	  "instantiate" section in "radiusd.conf".
 	* Fix problems with Exec-Program-Wait & forking issues.
 	* Configuration files can now "$INCLUDE directory/", to automatically
 	  load all files in that directory.  Use with caution!
