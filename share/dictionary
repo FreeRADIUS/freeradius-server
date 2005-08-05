@@ -84,6 +84,7 @@ $INCLUDE dictionary.aruba
 $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
+$INCLUDE dictionary.cablelabs
 $INCLUDE dictionary.cabletron
 $INCLUDE dictionary.cisco
 #
@@ -125,6 +126,7 @@ $INCLUDE dictionary.sonicwall
 $INCLUDE dictionary.springtide
 $INCLUDE dictionary.telebit
 $INCLUDE dictionary.trapeze
+$INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.valemount
 $INCLUDE dictionary.versanet
