@@ -118,6 +118,7 @@ $INCLUDE dictionary.propel
 $INCLUDE dictionary.quintum
 $INCLUDE dictionary.redback
 $INCLUDE dictionary.redcreek
+$INCLUDE dictionary.roaringpenguin
 $INCLUDE dictionary.shasta
 $INCLUDE dictionary.shiva
 $INCLUDE dictionary.sonicwall
