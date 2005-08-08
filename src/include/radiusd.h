@@ -232,7 +232,6 @@ typedef struct main_config_t {
 	int		allow_core_dumps;
 	int		debug_level;
 	int		proxy_requests;
-	int		post_proxy_authorize;
 	int		wake_all_if_all_dead;
 	int		proxy_synchronous;
 	int		proxy_dead_time;

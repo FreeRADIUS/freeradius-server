@@ -888,12 +888,15 @@ int setup_modules(int init_ltdl)
 int module_authorize(int autz_type, REQUEST *request)
 {
 	/*
-	 *	We have a proxied packet, and we've been told
-	 *	to NOT pass proxied packets through 'authorize'
-	 *	a second time.  So stop.
+	 *	Older versions of the server would pass proxy requests
+	 *	through the 'authorize' sections twice; once when the
+	 *	packet was received from the NAS, and again after the
+	 *	reply was received from the home server.  Now that we
+	 *	have a 'post_proxy' section, the replies from the home
+	 *	server should be sent through that, instead of through
+	 *	the 'authorize' section again.
 	 */
-	if ((request->proxy != NULL &&
-	     mainconfig.post_proxy_authorize == FALSE)) {
+	if (request->proxy != NULL) {
 		DEBUG2(" authorize: Skipping authorize in post-proxy stage");
 		return RLM_MODULE_NOOP;
 	}
