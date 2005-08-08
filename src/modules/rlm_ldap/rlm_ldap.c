@@ -1474,7 +1474,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 			res = 0;
 
-			if ((passwd_item = pairfind(request->config_items, inst->passwd_rad_attr)) == NULL){
+			if ((passwd_item = pairfind(request->config_items, PW_USER_PASSWORD)) == NULL){
 			
 				universal_password = rad_malloc(universal_password_len);
 				memset(universal_password, 0, universal_password_len);
@@ -1495,7 +1495,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					}
 
 					if (passwd_val){
-						if ((passwd_item = paircreate(inst->passwd_rad_attr,PW_TYPE_STRING)) == NULL){
+						if ((passwd_item = paircreate(PW_USER_PASSWORD,PW_TYPE_STRING)) == NULL){
 							radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
                                                 	ldap_msgfree(result);
 							ldap_release_conn(conn_id,inst->conns);
