@@ -7,7 +7,7 @@
 #
 ##############################################################################
 
-VENDOR		Alcatel	3041
+VENDOR		Alcatel				3041
 
 BEGIN-VENDOR	Alcatel
 
@@ -53,37 +53,37 @@ ATTRIBUTE	AAT-Output-Octets-Diff			131	integer
 ATTRIBUTE	AAT-User-MAC-Address			132	string
 ATTRIBUTE	AAT-ATM-Traffic-Profile			133	string
 
-VALUE	AAT-MCast-Client	Multicast-No			0
-VALUE	AAT-MCast-Client	Multicast-Yes			1
+VALUE	AAT-MCast-Client		Multicast-No		0
+VALUE	AAT-MCast-Client		Multicast-Yes		1
 
-VALUE	AAT-Require-Auth	Not-Require-Auth		0
-VALUE	AAT-Require-Auth	Require-Auth			1
+VALUE	AAT-Require-Auth		Not-Require-Auth	0
+VALUE	AAT-Require-Auth		Require-Auth		1
 
 VALUE	AAT-FR-Direct			No			0
 VALUE	AAT-FR-Direct			Yes			1
 
-VALUE	AAT-Source-IP-Check	Source-IP-Check-No		0
-VALUE	AAT-Source-IP-Check	Source-IP-Check-Yes		1
+VALUE	AAT-Source-IP-Check		Source-IP-Check-No	0
+VALUE	AAT-Source-IP-Check		Source-IP-Check-Yes	1
 
-VALUE	AAT-IP-TOS		IP-TOS-Normal			0
-VALUE	AAT-IP-TOS		IP-TOS-Disabled			1
-VALUE	AAT-IP-TOS		IP-TOS-Cost			2
-VALUE	AAT-IP-TOS		IP-TOS-Reliability		4
-VALUE	AAT-IP-TOS		IP-TOS-Throughput		8
-VALUE	AAT-IP-TOS		IP-TOS-Latency			16
+VALUE	AAT-IP-TOS			IP-TOS-Normal		0
+VALUE	AAT-IP-TOS			IP-TOS-Disabled		1
+VALUE	AAT-IP-TOS			IP-TOS-Cost		2
+VALUE	AAT-IP-TOS			IP-TOS-Reliability	4
+VALUE	AAT-IP-TOS			IP-TOS-Throughput	8
+VALUE	AAT-IP-TOS			IP-TOS-Latency		16
 
-VALUE	AAT-IP-TOS-Apply-To	IP-TOS-Apply-To-Incoming	1024
-VALUE	AAT-IP-TOS-Apply-To	IP-TOS-Apply-To-Both		3072
-VALUE	AAT-IP-TOS-Apply-To	IP-TOS-Apply-To-Outgoing	2048
+VALUE	AAT-IP-TOS-Apply-To		IP-TOS-Apply-To-Incoming 1024
+VALUE	AAT-IP-TOS-Apply-To		IP-TOS-Apply-To-Both	3072
+VALUE	AAT-IP-TOS-Apply-To		IP-TOS-Apply-To-Outgoing 2048
 
-VALUE	AAT-IP-TOS-Precedence	IP-TOS-Precedence-Pri-Normal	0
-VALUE	AAT-IP-TOS-Precedence	IP-TOS-Precedence-Pri-One	32
-VALUE	AAT-IP-TOS-Precedence	IP-TOS-Precedence-Pri-Two	64
-VALUE	AAT-IP-TOS-Precedence	IP-TOS-Precedence-Pri-Three	96
-VALUE	AAT-IP-TOS-Precedence	IP-TOS-Precedence-Pri-Four	128
-VALUE	AAT-IP-TOS-Precedence	IP-TOS-Precedence-Pri-Five	160
-VALUE	AAT-IP-TOS-Precedence	IP-TOS-Precedence-Pri-Six	192
-VALUE	AAT-IP-TOS-Precedence	IP-TOS-Precedence-Pri-Seven	224
+VALUE	AAT-IP-TOS-Precedence		IP-TOS-Precedence-Pri-Normal 0
+VALUE	AAT-IP-TOS-Precedence		IP-TOS-Precedence-Pri-One 32
+VALUE	AAT-IP-TOS-Precedence		IP-TOS-Precedence-Pri-Two 64
+VALUE	AAT-IP-TOS-Precedence		IP-TOS-Precedence-Pri-Three 96
+VALUE	AAT-IP-TOS-Precedence		IP-TOS-Precedence-Pri-Four 128
+VALUE	AAT-IP-TOS-Precedence		IP-TOS-Precedence-Pri-Five 160
+VALUE	AAT-IP-TOS-Precedence		IP-TOS-Precedence-Pri-Six 192
+VALUE	AAT-IP-TOS-Precedence		IP-TOS-Precedence-Pri-Seven 224
 
 VALUE	AAT-Auth-Type			AAT-Auth-None		0
 VALUE	AAT-Auth-Type			AAT-Auth-Default	1
@@ -94,6 +94,5 @@ VALUE	AAT-Auth-Type			AAT-Auth-MS-CHAP	5
 
 VALUE	AAT-Client-Assign-DNS		DNS-Assign-No		0
 VALUE	AAT-Client-Assign-DNS		DNS-Assign-Yes		1
-
 
 END-VENDOR	Alcatel

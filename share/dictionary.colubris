@@ -1,9 +1,13 @@
 # -*- text -*-
 # Colubris dictionary - dictionary.colubris
 #
-VENDOR          Colubris                8744
+VENDOR		Colubris			8744
 #
 #       Vendor-specific attributes
 #
-ATTRIBUTE       Colubris-AVPair         0       string          Colubris
-ATTRIBUTE       Colubris-Intercept      1       integer         Colubris
+BEGIN-VENDOR	Colubris
+
+ATTRIBUTE	Colubris-AVPair				0	string
+ATTRIBUTE	Colubris-Intercept			1	integer
+
+END-VENDOR	Colubris

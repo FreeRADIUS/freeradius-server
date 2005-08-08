@@ -5,7 +5,7 @@
 #	$Id$
 #
 
-VENDOR Propel 14895
+VENDOR		Propel				14895
 
 BEGIN-VENDOR	Propel
 ATTRIBUTE	Propel-Accelerate			1	integer

@@ -9,10 +9,10 @@
 #	http://www.isi.edu/in-notes/iana/assignments/enterprise-numbers
 #
 
-VENDOR		FreeRADIUS	11344
+VENDOR		FreeRADIUS			11344
 
-BEGIN-VENDOR FreeRADIUS
+BEGIN-VENDOR	FreeRADIUS
 
-ATTRIBUTE	FreeRADIUS-Proxied-To		1	ipaddr
+ATTRIBUTE	FreeRADIUS-Proxied-To			1	ipaddr
 
 END-VENDOR FreeRADIUS

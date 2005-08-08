@@ -3,7 +3,7 @@
 #  dictionary.erx
 #
 #	Unisphere's broadband RAS
-#	From Terje Krogdahl <tekr@nextra.com>  
+#	From Terje Krogdahl <tekr@nextra.com>
 #	Last touched by Paul Hampson <Paul.Hampson@Pobox.Com>
 #
 # Version:	$Id$
@@ -27,68 +27,70 @@
 #
 #
 
-VENDOR          ERX     4874
+VENDOR		ERX				4874
 
-ATTRIBUTE	ERX-Virtual-Router-Name			1	string	ERX
-ATTRIBUTE	ERX-Address-Pool-Name			2	string	ERX
-ATTRIBUTE	ERX-Local-Loopback-Interface		3	string	ERX
-ATTRIBUTE	ERX-Primary-Dns				4	ipaddr	ERX
-ATTRIBUTE	ERX-Secondary-Dns			5	ipaddr	ERX
-ATTRIBUTE	ERX-Primary-Wins			6	ipaddr	ERX
-ATTRIBUTE	ERX-Secondary-Wins			7	ipaddr	ERX
-ATTRIBUTE	ERX-Tunnel-Virtual-Router		8	string	ERX
-ATTRIBUTE	ERX-Tunnel-Password			9	string	ERX
-ATTRIBUTE	ERX-Ingress-Policy-Name			10	string	ERX
-ATTRIBUTE	ERX-Egress-Policy-Name			11	string	ERX
-ATTRIBUTE	ERX-Ingress-Statistics			12	string	ERX
-ATTRIBUTE	ERX-Egress-Statistics			13	string	ERX
-ATTRIBUTE	ERX-Atm-Service-Category		14	integer	ERX
-ATTRIBUTE	ERX-Atm-PCR				15	integer	ERX
-ATTRIBUTE	ERX-Atm-SCR				16	integer	ERX
-ATTRIBUTE	ERX-Atm-MBS				17	integer	ERX
-ATTRIBUTE	ERX-Cli-Initial-Access-Level		18	string	ERX
-ATTRIBUTE	ERX-Cli-Allow-All-VR-Access		19	integer	ERX
-ATTRIBUTE	ERX-Alternate-Cli-Access-Level		20	string	ERX
-ATTRIBUTE	ERX-Alternate-Cli-Vrouter-Name		21	string	ERX
-ATTRIBUTE	ERX-Sa-Validate				22	integer	ERX
-ATTRIBUTE	ERX-Igmp-Enable				23	integer	ERX
-ATTRIBUTE	ERX-Pppoe-Description			24	string	ERX
-ATTRIBUTE	ERX-Redirect-VR-Name			25	string	ERX
-ATTRIBUTE	ERX-Qos-Profile-Name			26	string	ERX
-ATTRIBUTE	ERX-Pppoe-Max-Sessions			27	integer	ERX
-ATTRIBUTE	ERX-Pppoe-Url				28	string	ERX
-ATTRIBUTE	ERX-Qos-Profile-Interface-Type		29	integer	ERX
-ATTRIBUTE	ERX-Tunnel-Nas-Port-Method		30	integer	ERX
-ATTRIBUTE	ERX-Service-Bundle			31	string	ERX
-ATTRIBUTE	ERX-Tunnel-Tos				32	integer	ERX
-ATTRIBUTE	ERX-Tunnel-Maximum-Sessions		33	integer	ERX
-ATTRIBUTE	ERX-Framed-Ip-Route-Tag			34	string	ERX
-ATTRIBUTE	ERX-Dial-Out-Number			35	string	ERX
-ATTRIBUTE	ERX-PPP-Username			36	string	ERX
-ATTRIBUTE	ERX-PPP-Password			37	string	ERX
-ATTRIBUTE	ERX-PPP-Auth-Protocol			38	integer	ERX
-ATTRIBUTE	ERX-Minimum-BPS				39	integer	ERX
-ATTRIBUTE	ERX-Maximum-BPS				40	integer	ERX
-ATTRIBUTE	ERX-Bearer-Type				41	integer	ERX
-ATTRIBUTE	ERX-Input-Gigapkts			42	integer	ERX
-ATTRIBUTE	ERX-Output-Gigapkts			43	integer	ERX
-ATTRIBUTE	ERX-Tunnel-Interface-Id			44	string	ERX
-ATTRIBUTE	ERX-IpV6-Virtual-Router			45	string	ERX
-ATTRIBUTE	ERX-IpV6-Local-Interface		46	string	ERX
-ATTRIBUTE	ERX-Ipv6-Primary-Dns			47	string	ERX
-ATTRIBUTE	ERX-Ipv6-Secondary-Dns			48	string	ERX
-ATTRIBUTE	Sdx-Service-Name			49	string	ERX
-ATTRIBUTE	Sdx-Session-Volume-Quota		50	string	ERX
-ATTRIBUTE	Sdx-Tunnel-Disconnect-Cause-Info	51	string	ERX
+BEGIN-VENDOR	ERX
+
+ATTRIBUTE	ERX-Virtual-Router-Name			1	string
+ATTRIBUTE	ERX-Address-Pool-Name			2	string
+ATTRIBUTE	ERX-Local-Loopback-Interface		3	string
+ATTRIBUTE	ERX-Primary-Dns				4	ipaddr
+ATTRIBUTE	ERX-Secondary-Dns			5	ipaddr
+ATTRIBUTE	ERX-Primary-Wins			6	ipaddr
+ATTRIBUTE	ERX-Secondary-Wins			7	ipaddr
+ATTRIBUTE	ERX-Tunnel-Virtual-Router		8	string
+ATTRIBUTE	ERX-Tunnel-Password			9	string
+ATTRIBUTE	ERX-Ingress-Policy-Name			10	string
+ATTRIBUTE	ERX-Egress-Policy-Name			11	string
+ATTRIBUTE	ERX-Ingress-Statistics			12	string
+ATTRIBUTE	ERX-Egress-Statistics			13	string
+ATTRIBUTE	ERX-Atm-Service-Category		14	integer
+ATTRIBUTE	ERX-Atm-PCR				15	integer
+ATTRIBUTE	ERX-Atm-SCR				16	integer
+ATTRIBUTE	ERX-Atm-MBS				17	integer
+ATTRIBUTE	ERX-Cli-Initial-Access-Level		18	string
+ATTRIBUTE	ERX-Cli-Allow-All-VR-Access		19	integer
+ATTRIBUTE	ERX-Alternate-Cli-Access-Level		20	string
+ATTRIBUTE	ERX-Alternate-Cli-Vrouter-Name		21	string
+ATTRIBUTE	ERX-Sa-Validate				22	integer
+ATTRIBUTE	ERX-Igmp-Enable				23	integer
+ATTRIBUTE	ERX-Pppoe-Description			24	string
+ATTRIBUTE	ERX-Redirect-VR-Name			25	string
+ATTRIBUTE	ERX-Qos-Profile-Name			26	string
+ATTRIBUTE	ERX-Pppoe-Max-Sessions			27	integer
+ATTRIBUTE	ERX-Pppoe-Url				28	string
+ATTRIBUTE	ERX-Qos-Profile-Interface-Type		29	integer
+ATTRIBUTE	ERX-Tunnel-Nas-Port-Method		30	integer
+ATTRIBUTE	ERX-Service-Bundle			31	string
+ATTRIBUTE	ERX-Tunnel-Tos				32	integer
+ATTRIBUTE	ERX-Tunnel-Maximum-Sessions		33	integer
+ATTRIBUTE	ERX-Framed-Ip-Route-Tag			34	string
+ATTRIBUTE	ERX-Dial-Out-Number			35	string
+ATTRIBUTE	ERX-PPP-Username			36	string
+ATTRIBUTE	ERX-PPP-Password			37	string
+ATTRIBUTE	ERX-PPP-Auth-Protocol			38	integer
+ATTRIBUTE	ERX-Minimum-BPS				39	integer
+ATTRIBUTE	ERX-Maximum-BPS				40	integer
+ATTRIBUTE	ERX-Bearer-Type				41	integer
+ATTRIBUTE	ERX-Input-Gigapkts			42	integer
+ATTRIBUTE	ERX-Output-Gigapkts			43	integer
+ATTRIBUTE	ERX-Tunnel-Interface-Id			44	string
+ATTRIBUTE	ERX-IpV6-Virtual-Router			45	string
+ATTRIBUTE	ERX-IpV6-Local-Interface		46	string
+ATTRIBUTE	ERX-Ipv6-Primary-Dns			47	string
+ATTRIBUTE	ERX-Ipv6-Secondary-Dns			48	string
+ATTRIBUTE	Sdx-Service-Name			49	string
+ATTRIBUTE	Sdx-Session-Volume-Quota		50	string
+ATTRIBUTE	Sdx-Tunnel-Disconnect-Cause-Info	51	string
 
 #
 #  Values	Attribute		Name			Number
 #
-VALUE	ERX-Ingress-Statistics	disable			0
-VALUE	ERX-Ingress-Statistics	enable			1
+VALUE	ERX-Ingress-Statistics		disable			0
+VALUE	ERX-Ingress-Statistics		enable			1
 
-VALUE	ERX-Egress-Statistics	disable			0
-VALUE	ERX-Egress-Statistics	enable			1
+VALUE	ERX-Egress-Statistics		disable			0
+VALUE	ERX-Egress-Statistics		enable			1
 
 VALUE	ERX-Atm-Service-Category	UBR			1
 VALUE	ERX-Atm-Service-Category	UBRPCR			2
@@ -120,12 +122,14 @@ VALUE	ERX-Qos-Profile-Interface-Type	PPPOE-SUB		12
 VALUE	ERX-Tunnel-Nas-Port-Method	None			0
 VALUE	ERX-Tunnel-Nas-Port-Method	CISCO-CLID		1
 
-VALUE	ERX-PPP-Auth-Protocol	None		0
-VALUE	ERX-PPP-Auth-Protocol	PAP			1
-VALUE	ERX-PPP-Auth-Protocol	CHAP		2
-VALUE	ERX-PPP-Auth-Protocol	PAP-CHAP	3
-VALUE	ERX-PPP-Auth-Protocol	CHAP-PAP	4
+VALUE	ERX-PPP-Auth-Protocol		None			0
+VALUE	ERX-PPP-Auth-Protocol		PAP			1
+VALUE	ERX-PPP-Auth-Protocol		CHAP			2
+VALUE	ERX-PPP-Auth-Protocol		PAP-CHAP		3
+VALUE	ERX-PPP-Auth-Protocol		CHAP-PAP		4
 
-VALUE	ERX-Bearer-Type	None	0
-VALUE	ERX-Bearer-Type	Analog	1
-VALUE	ERX-Bearer-Type	Digital	2
+VALUE	ERX-Bearer-Type			None			0
+VALUE	ERX-Bearer-Type			Analog			1
+VALUE	ERX-Bearer-Type			Digital			2
+
+END-VENDOR	ERX

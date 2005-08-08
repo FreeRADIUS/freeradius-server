@@ -7,7 +7,7 @@
 #
 ##############################################################################
 
-VENDOR		Lucent	4846
+VENDOR		Lucent				4846
 
 BEGIN-VENDOR	Lucent
 
@@ -223,8 +223,8 @@ ATTRIBUTE	Lucent-PPP-VJ-Slot-Comp			210	integer
 ATTRIBUTE	Lucent-PPP-VJ-1172			211	integer
 ATTRIBUTE	Lucent-PPP-Async-Map			212	integer
 ATTRIBUTE	Lucent-Third-Prompt			213	string
-ATTRIBUTE	Lucent-Send-Secret			214   string encrypt=3
-ATTRIBUTE	Lucent-Receive-Secret			215   string encrypt=3
+ATTRIBUTE	Lucent-Send-Secret			214	string encrypt=3
+ATTRIBUTE	Lucent-Receive-Secret			215	string encrypt=3
 ATTRIBUTE	Lucent-IPX-Peer-Mode			216	integer
 ATTRIBUTE	Lucent-IP-Pool-Definition		217	string
 ATTRIBUTE	Lucent-Assign-IP-Pool			218	integer
@@ -277,10 +277,10 @@ ATTRIBUTE	Lucent-Max-RTP-Delay			264	integer
 ATTRIBUTE	Lucent-RTP-Port-Range			265	string
 ATTRIBUTE	Lucent-TOS-Copying			266	integer
 ATTRIBUTE	Lucent-Packet-Classification		267	integer
-ATTRIBUTE	Lucent-No-High-Prio-Pkt-Duratio 	268	integer
+ATTRIBUTE	Lucent-No-High-Prio-Pkt-Duratio		268	integer
 ATTRIBUTE	Lucent-AT-Answer-String			269	string
 ATTRIBUTE	Lucent-IP-OUTGOING-TOS			270	integer
-ATTRIBUTE	Lucent-IP-OUTGOING-TOS-Precedence 	271	integer
+ATTRIBUTE	Lucent-IP-OUTGOING-TOS-Precedence	271	integer
 ATTRIBUTE	Lucent-IP-OUTGOING-DSCP			272	integer
 ATTRIBUTE	Lucent-TermSrv-Login-Prompt		273	string
 ATTRIBUTE	Lucent-Multicast-Service-Profile-Name	274	string

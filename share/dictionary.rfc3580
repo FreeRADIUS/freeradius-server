@@ -5,12 +5,12 @@
 #
 #	$Id$
 #
-VALUE		Acct-Terminate-Cause	Supplicant-Restart	19
-VALUE		Acct-Terminate-Cause	Reauthentication-Failure 20
-VALUE		Acct-Terminate-Cause	Port-Reinit		21
-VALUE		Acct-Terminate-Cause	Port-Disabled		22
+VALUE	Acct-Terminate-Cause		Supplicant-Restart	19
+VALUE	Acct-Terminate-Cause		Reauthentication-Failure 20
+VALUE	Acct-Terminate-Cause		Port-Reinit		21
+VALUE	Acct-Terminate-Cause		Port-Disabled		22
 
-VALUE		NAS-Port-Type		Token-Ring		20
-VALUE		NAS-Port-Type		FDDI			21
+VALUE	NAS-Port-Type			Token-Ring		20
+VALUE	NAS-Port-Type			FDDI			21
 
-VALUE		Tunnel-Type		VLAN			13
+VALUE	Tunnel-Type			VLAN			13

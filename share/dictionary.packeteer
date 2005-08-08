@@ -8,9 +8,13 @@
 #
 ##############################################################################
 
-VENDOR		Packeteer	2334
+VENDOR		Packeteer			2334
 
 #
 #	Standard attribute
 #
-ATTRIBUTE	Packeteer-AVPair		1	string	Packeteer
+BEGIN-VENDOR	Packeteer
+
+ATTRIBUTE	Packeteer-AVPair			1	string
+
+END-VENDOR	Packeteer

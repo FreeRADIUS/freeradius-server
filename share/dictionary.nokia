@@ -3,23 +3,22 @@
 #	Nokia dictionary
 #	$Id$
 #
-VENDOR		Nokia	94
+VENDOR		Nokia				94
 
 BEGIN-VENDOR	Nokia
 
-ATTRIBUTE	Nokia-User-Profile	2	string
-ATTRIBUTE	Nokia-Service-Name	3	octets	# magic format
-ATTRIBUTE	Nokia-Service-Id	4	octets	# magic format
-ATTRIBUTE	Nokia-Service-Username	5	octets	# magic format
-ATTRIBUTE	Nokia-Service-Password	6	octets	# magic format
-ATTRIBUTE	Nokia-Service-Primary-Indicator    7 octets
-ATTRIBUTE	Nokia-Service-Charging-Type	   8 octets # magic format
-ATTRIBUTE	Nokia-Service-Encrypted-Password   9 octets # magic format
-ATTRIBUTE	Nokia-Session-Access-Method	  10 octets
-ATTRIBUTE	Nokia-Session-Charging-Type	  11 octets
+ATTRIBUTE	Nokia-User-Profile			2	string
+ATTRIBUTE	Nokia-Service-Name			3	octets	# magic format
+ATTRIBUTE	Nokia-Service-Id			4	octets	# magic format
+ATTRIBUTE	Nokia-Service-Username			5	octets	# magic format
+ATTRIBUTE	Nokia-Service-Password			6	octets	# magic format
+ATTRIBUTE	Nokia-Service-Primary-Indicator		7	octets
+ATTRIBUTE	Nokia-Service-Charging-Type		8	octets # magic format
+ATTRIBUTE	Nokia-Service-Encrypted-Password	9	octets # magic format
+ATTRIBUTE	Nokia-Session-Access-Method		10	octets
+ATTRIBUTE	Nokia-Session-Charging-Type		11	octets
 
 END-VENDOR	Nokia
-
 
 #       Enable by putting the line "$INCLUDE dictionary.nokia" into
 #       the main dictionary file. Don't forget to comment out the
@@ -40,11 +39,11 @@ END-VENDOR	Nokia
 #
 #	This is an incredibly stupid way of encoding the data.
 #
-ATTRIBUTE	Nokia-Primary-DNS-Server	135	ipaddr
-ATTRIBUTE	Nokia-Secondary-DNS-Server	135	ipaddr
-ATTRIBUTE	Nokia-IMSI			224	octets
-ATTRIBUTE	Nokia-Charging-Id		225	integer
-ATTRIBUTE	Nokia-Prepaid-Ind		226	integer
-ATTRIBUTE	Nokia-GGSN-IP-Address		227	ipaddr
-ATTRIBUTE	Nokia-SGSN-IP-Address		228	ipaddr
+ATTRIBUTE	Nokia-Primary-DNS-Server		135	ipaddr
+ATTRIBUTE	Nokia-Secondary-DNS-Server		135	ipaddr
+ATTRIBUTE	Nokia-IMSI				224	octets
+ATTRIBUTE	Nokia-Charging-Id			225	integer
+ATTRIBUTE	Nokia-Prepaid-Ind			226	integer
+ATTRIBUTE	Nokia-GGSN-IP-Address			227	ipaddr
+ATTRIBUTE	Nokia-SGSN-IP-Address			228	ipaddr
 
