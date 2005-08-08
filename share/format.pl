@@ -111,7 +111,7 @@ while (<>) {
     #
     #  Values.
     #
-    if (/^VALUE\s+([\w-]+)\s+([\w-]+)\s+(\w+)(.*)/) {
+    if (/^VALUE\s+([\w-]+)\s+([\w-\/,.]+)\s+(\w+)(.*)/) {
 	$attr=$1;
 	$len = length $attr;
 	if ($len < 32) {
