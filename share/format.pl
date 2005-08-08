@@ -24,6 +24,11 @@ while (<>) {
     s/[ \t]+$//;
 
     #
+    #  And CR's
+    #
+    s/\r//g;
+
+    #
     #  Suppress multiple blank lines
     #
     if (/^\s+$/) {
@@ -37,11 +42,11 @@ while (<>) {
     #
     #  Remember the vendor
     #
-    if (/^VENDOR\s+([\w-]+)\s+(\d+)/) {
+    if (/^VENDOR\s+([\w-]+)\s+(\w+)(.*)/) {
 	$name=$1;
 	$len = length $name;
 	if ($len < 32) {
-	    $lenx = 31 - $len;
+	    $lenx = 32 - $len;
 	    $lenx += 7;		# round up
 	    $lenx /= 8;
 	    $lenx = int $lenx;
@@ -49,7 +54,7 @@ while (<>) {
 	} else {
 	    $tabs = " ";
 	}
-	print "VENDOR\t$name$tabs$2\n";
+	print "VENDOR\t\t$name$tabs$2$3\n";
 	$vendor = $name;
 	next;
     }
@@ -66,7 +71,7 @@ while (<>) {
     #
     #  Get attribute.
     #
-    if (/^ATTRIBUTE\s+([\w-]+)\s+(\d+)\s+(\w+)(.*)/) {
+    if (/^ATTRIBUTE\s+([\w-]+)\s+(\w+)\s+(\w+)(.*)/) {
 	$name=$1;
 	$len = length $name;
 	if ($len < 40) {
@@ -106,7 +111,7 @@ while (<>) {
     #
     #  Values.
     #
-    if (/^VALUE\s+([\w-]+)\s+([\w-]+)\s+(\d+)/) {
+    if (/^VALUE\s+([\w-]+)\s+([\w-]+)\s+(\w+)(.*)/) {
 	$attr=$1;
 	$len = length $attr;
 	if ($len < 32) {
@@ -136,7 +141,7 @@ while (<>) {
 	    $lena = $len - 32;
 	}
 
-	$name=$2;
+	$name = $2;
 	$len = length $name;
 	if ($len < 24) {
 	    $lenx = 24 - $lena - $len;
@@ -151,7 +156,7 @@ while (<>) {
 	    $tabsn = " ";
 	}
 
-	print "VALUE\t$attr$tabsa$name$tabsn$3\n";
+	print "VALUE\t$attr$tabsa$name$tabsn$3$4\n";
 	next;
     }
 
