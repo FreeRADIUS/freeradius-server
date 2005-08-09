@@ -132,6 +132,110 @@ ATTRIBUTE	USR-DS0s				0xBE64	string
 ATTRIBUTE	USR-Gateway-IP-Address			0xBE66	ipaddr
 
 #
+#
+#
+ATTRIBUTE	CW-Version-Id				0x8000	integer
+ATTRIBUTE	CW-Account-Id				0x8001	string
+ATTRIBUTE	CW-Acct-Type				0x8002	integer
+ATTRIBUTE	CW-Acct-Identification-Code		0x8003	integer
+ATTRIBUTE	CW-Service-Type				0x8004	integer
+ATTRIBUTE	CW-Rate-Plan-Id				0x8005	integer
+ATTRIBUTE	CW-Source-Identifier			0x8006	integer
+ATTRIBUTE	CW-Session-Id				0x8007	string
+ATTRIBUTE	CW-Num-Call-Attempt-Session		0x8008	integer
+ATTRIBUTE	CW-Session-Sequence-Num			0x8009	integer
+ATTRIBUTE	CW-Session-Sequence-End			0x800a	integer
+ATTRIBUTE	CW-Authentication-Fail-Cnt		0x800b	integer
+ATTRIBUTE	CW-Clg-Party-E164-Type			0x800c	integer
+ATTRIBUTE	CW-Clg-Party-E164-Number		0x800d	string
+ATTRIBUTE	CW-Clg-Party-Trans-Protocol		0x800e	integer
+ATTRIBUTE	CW-Clg-Party-Trans-Port			0x800f	integer
+ATTRIBUTE	CW-Clg-Party-Trans-IP			0x8010	ipaddr
+ATTRIBUTE	CW-Clg-Party-Trans-DNS			0x8011	string
+ATTRIBUTE	CW-Cld-Party-E164-Type			0x8012	integer
+ATTRIBUTE	CW-Cld-Party-E164-Number		0x8013	string
+ATTRIBUTE	CW-Cld-Party-Trans-Protocol		0x8014	integer
+ATTRIBUTE	CW-Cld-Party-Trans-Port			0x8015	integer
+ATTRIBUTE	CW-Cld-Party-Trans-IP			0x8016	ipaddr
+ATTRIBUTE	CW-Cld-Party-Trans-DNS			0x8017	string
+ATTRIBUTE	CW-Orig-Line-Identifier			0x8018	integer
+ATTRIBUTE	CW-PSTN-Interface-Number		0x8019	integer
+ATTRIBUTE	CW-Ingr-Gway-E164-Type			0x801a	integer
+ATTRIBUTE	CW-Ingr-Gway-E164-Number		0x801b	string
+ATTRIBUTE	CW-Ingr-Gway-Trans-Protocol		0x801c	integer
+ATTRIBUTE	CW-Ingr-Gway-Trans-Port			0x801d	integer
+ATTRIBUTE	CW-Ingr-Gway-Trans-IP			0x801e	ipaddr
+ATTRIBUTE	CW-Ingr-Gway-Trans-DNS			0x801f	string
+ATTRIBUTE	CW-Egr-Gway-Trans-Protocol		0x8020	integer
+ATTRIBUTE	CW-Egr-Gway-Trans-Port			0x8021	integer
+ATTRIBUTE	CW-Egr-Gway-Trans-IP			0x8022	ipaddr
+ATTRIBUTE	CW-Egr-Gway-Trans-DNS			0x8023	string
+ATTRIBUTE	CW-Ingr-Gtkpr-Trans-Protocol		0x8024	integer
+ATTRIBUTE	CW-Ingr-Gtkpr-Trans-Port		0x8025	integer
+ATTRIBUTE	CW-Ingr-Gtkpr-Trans-IP			0x8026	ipaddr
+ATTRIBUTE	CW-Ingr-Gtkpr-Trans-DNS			0x8027	string
+ATTRIBUTE	CW-Egr-Gtkpr-Trans-Protocol		0x8028	integer
+ATTRIBUTE	CW-Egr-Gtkpr-Trans-Port			0x8029	integer
+ATTRIBUTE	CW-Egr-Gtkpr-Trans-IP			0x802a	ipaddr
+ATTRIBUTE	CW-Egr-Gtkpr-Trans-DNS			0x802b	string
+ATTRIBUTE	CW-Call-Identifier			0x802c	string
+ATTRIBUTE	CW-Call-Type				0x802d	integer
+ATTRIBUTE	CW-Call-Start-Ingr-GW-Sec		0x802e	string
+ATTRIBUTE	CW-Call-Start-Ingr-GW-Msec		0x802f	integer
+ATTRIBUTE	CW-Call-Start-Time-Ans-Sec		0x8030	string
+ATTRIBUTE	CW-Call-Start-Time-Ans-Msec		0x8031	integer
+ATTRIBUTE	CW-Call-End-Time-Sec			0x8032	string
+ATTRIBUTE	CW-Call-End-Time-Msec			0x8033	integer
+ATTRIBUTE	CW-Call-Durn-Connect-Disc		0x8034	integer
+ATTRIBUTE	CW-Codec-Type				0x8035	integer
+ATTRIBUTE	CW-Call-Termination-Cause		0x8036	integer
+ATTRIBUTE	CW-Audio-Packets-Sent			0x8037	integer
+ATTRIBUTE	CW-Audio-Packets-Received		0x8038	integer
+ATTRIBUTE	CW-Audio-Packets-Lost			0x8039	integer
+ATTRIBUTE	CW-Audio-Packets-In-Frame		0x803a	integer
+ATTRIBUTE	CW-Audio-Bytes-In-Frame			0x803b	integer
+ATTRIBUTE	CW-Audio-Signal-In-Packet		0x803c	integer
+ATTRIBUTE	CW-Port-Id-For-Call			0x803d	integer
+ATTRIBUTE	CW-Slot-Id-For-Call			0x803e	integer
+ATTRIBUTE	CW-Acct-Balance-Start-Curr		0x803f	integer
+ATTRIBUTE	CW-Acct-Balance-Start-Amt		0x8040	integer
+ATTRIBUTE	CW-Acct-Balance-Start-Dec		0x8041	integer
+ATTRIBUTE	CW-Acct-Balance-Decr-Curr		0x8042	integer
+ATTRIBUTE	CW-LRQ-Token				0x8043	string
+ATTRIBUTE	CW-ARQ-Token				0x8044	string
+ATTRIBUTE	CW-Token-Status				0x8045	integer
+ATTRIBUTE	CW-SS7-Destn-Ptcode-Type		0x8046	integer
+ATTRIBUTE	CW-SS7-Destn-Ptcode-Address		0x8047	integer
+ATTRIBUTE	CW-SS7-Orig-Ptcode-Type			0x8048	integer
+ATTRIBUTE	CW-SS7-Orig-Ptcode-Address		0x8049	integer
+ATTRIBUTE	CW-SS7-CIC				0x804a	integer
+ATTRIBUTE	CW-MGC-Id				0x804b	integer
+ATTRIBUTE	CW-MG-Id				0x804c	integer
+ATTRIBUTE	CW-Signaling-Protocol			0x804d	integer
+ATTRIBUTE	CW-Protocol-Transport			0x804e	integer
+ATTRIBUTE	CW-Local-Sig-Trans-Protocol		0x804f	integer
+ATTRIBUTE	CW-Local-Sig-Trans-Port			0x8050	integer
+ATTRIBUTE	CW-Local-Sig-Trans-IP			0x8051	ipaddr
+ATTRIBUTE	CW-Local-Sig-Trans-DNS			0x8052	string
+ATTRIBUTE	CW-Remote-Sig-Trans-Protocol		0x8053	integer
+ATTRIBUTE	CW-Remote-Sig-Trans-Port		0x8054	integer
+ATTRIBUTE	CW-Remote-Sig-Trans-IP			0x8055	ipaddr
+ATTRIBUTE	CW-Remote-Sig-Trans-DNS			0x8056	string
+ATTRIBUTE	CW-Local-MG-RTP-Protocol		0x8057	integer
+ATTRIBUTE	CW-Local-MG-RTP-Port			0x8058	integer
+ATTRIBUTE	CW-Local-MG-RTP-IP			0x8059	ipaddr
+ATTRIBUTE	CW-Local-MG-RTP-DNS			0x805a	string
+ATTRIBUTE	CW-Remote-MG-RTP-Protocol		0x805b	integer
+ATTRIBUTE	CW-Remote-MG-RTP-Port			0x805c	integer
+ATTRIBUTE	CW-Remote-MG-RTP-IP			0x805d	ipaddr
+ATTRIBUTE	CW-Remote-MG-RTP-DNS			0x805e	string
+ATTRIBUTE	CW-Call-Model				0x805f	integer
+ATTRIBUTE	CW-Call-Plan-Id				0x8060	integer
+ATTRIBUTE	CW-Trans-Cld-Party-E164-Type		0x8061	integer
+ATTRIBUTE	CW-Trans-Cld-Party-E164-Num		0x8062	string
+ATTRIBUTE	CW-OSP-Source-Device			0x8063	string
+
+#
 # These are CCA Radius attributes
 #
 ATTRIBUTE	USR-PW_USR_IFilter_IP			0x9000	string
@@ -1346,5 +1450,146 @@ VALUE	USR-Auth-Mode			Auth-Netware		6
 VALUE	USR-Auth-Mode			Auth-Skey		7
 VALUE	USR-Auth-Mode			Auth-EAP-Proxy		8
 VALUE	USR-Auth-Mode			Auth-UNIX-Crypt		9
+
+VALUE	CW-Acct-Type			COMS-UNKNOWN-ACCT-TYPE	0
+VALUE	CW-Acct-Type			COMS-PREPAID-ACCT	1
+VALUE	CW-Acct-Type			COMS-NEW-ACCT		2
+VALUE	CW-Acct-Type			COMS-SUSPENDED-ACCT	3
+VALUE	CW-Acct-Type			COMS-ADMINISTRATIVE-ACCT 4
+
+VALUE	CW-Source-Identifier		COMS-UNKNOWN-SOURCE	0
+VALUE	CW-Source-Identifier		COMS-INGRESS-OPEN	257
+VALUE	CW-Source-Identifier		COMS-EGRESS-OPEN	258
+VALUE	CW-Source-Identifier		COMS-GTKPR-GEN-INGR-OPEN 259
+VALUE	CW-Source-Identifier		COMS-GTKPR-GEN-EGR-OPEN	260
+VALUE	CW-Source-Identifier		COMS-INGRESS-CLOSE	513
+VALUE	CW-Source-Identifier		COMS-EGRESS-CLOSE	514
+VALUE	CW-Source-Identifier		COMS-GTKPR-GEN-INGR-CLOSE 515
+VALUE	CW-Source-Identifier		COMS-GTKPR-GEN-EGR-CLOSE 516
+
+VALUE	CW-Session-Sequence-End		NOT-THE-LAST-CALL	0
+VALUE	CW-Session-Sequence-End		LAST-CALL		1
+
+VALUE	CW-Clg-Party-E164-Type		comsUnknown		1
+VALUE	CW-Clg-Party-E164-Type		comsInternationalNumber	2
+VALUE	CW-Clg-Party-E164-Type		comsNationalNumber	3
+VALUE	CW-Clg-Party-E164-Type		comsNetworkSpecificNumber 4
+VALUE	CW-Clg-Party-E164-Type		comsSubscriberNumber	5
+VALUE	CW-Clg-Party-E164-Type		comsAbbreviatedNumber	6
+VALUE	CW-Clg-Party-E164-Type		comsReserved		7
+
+VALUE	CW-Clg-Party-Trans-Protocol	TCP			1
+VALUE	CW-Clg-Party-Trans-Protocol	UDP			2
+VALUE	CW-Clg-Party-Trans-Protocol	SCTP			3
+
+VALUE	CW-Cld-Party-E164-Type		comsUnknown		1
+VALUE	CW-Cld-Party-E164-Type		comsInternationalNumber	2
+VALUE	CW-Cld-Party-E164-Type		comsNationalNumber	3
+VALUE	CW-Cld-Party-E164-Type		comsNetworkSpecificNumber 4
+VALUE	CW-Cld-Party-E164-Type		comsSubscriberNumber	5
+VALUE	CW-Cld-Party-E164-Type		comsAbbreviatedNumber	6
+VALUE	CW-Cld-Party-E164-Type		comsReserved		7
+
+VALUE	CW-Cld-Party-Trans-Protocol	TCP			1
+VALUE	CW-Cld-Party-Trans-Protocol	UDP			2
+VALUE	CW-Cld-Party-Trans-Protocol	SCTP			3
+
+VALUE	CW-Ingr-Gway-E164-Type		comsUnknown		1
+VALUE	CW-Ingr-Gway-E164-Type		comsInternationalNumber	2
+VALUE	CW-Ingr-Gway-E164-Type		comsNationalNumber	3
+VALUE	CW-Ingr-Gway-E164-Type		comsNetworkSpecificNumber 4
+VALUE	CW-Ingr-Gway-E164-Type		comsSubscriberNumber	5
+VALUE	CW-Ingr-Gway-E164-Type		comsAbbreviatedNumber	6
+VALUE	CW-Ingr-Gway-E164-Type		comsReserved		7
+
+VALUE	CW-Ingr-Gway-Trans-Protocol	TCP			1
+VALUE	CW-Ingr-Gway-Trans-Protocol	UDP			2
+VALUE	CW-Ingr-Gway-Trans-Protocol	SCTP			3
+
+VALUE	CW-Egr-Gway-Trans-Protocol	TCP			1
+VALUE	CW-Egr-Gway-Trans-Protocol	UDP			2
+VALUE	CW-Egr-Gway-Trans-Protocol	SCTP			3
+
+VALUE	CW-Ingr-Gtkpr-Trans-Protocol	TCP			1
+VALUE	CW-Ingr-Gtkpr-Trans-Protocol	UDP			2
+VALUE	CW-Ingr-Gtkpr-Trans-Protocol	SCTP			3
+
+VALUE	CW-Egr-Gtkpr-Trans-Protocol	TCP			1
+VALUE	CW-Egr-Gtkpr-Trans-Protocol	UDP			2
+VALUE	CW-Egr-Gtkpr-Trans-Protocol	SCTP			3
+
+VALUE	CW-Call-Type			COMS-UNKNOWN-CALLTYPE	0
+VALUE	CW-Call-Type			COMS-PHONE-TO-PHONE	1
+VALUE	CW-Call-Type			COMS-PHONE-TO-PC	2
+VALUE	CW-Call-Type			COMS-PC-TO-PHONE	3
+VALUE	CW-Call-Type			COMS-PC-TO-PC		4
+
+VALUE	CW-Codec-Type			COMS-UNDEFINED-CODEC	0
+VALUE	CW-Codec-Type			COMS-G723-1		1
+VALUE	CW-Codec-Type			COMS-G729-A		2
+VALUE	CW-Codec-Type			COMS-G710-ALaw		3
+VALUE	CW-Codec-Type			COMS-G711-MuLaw		4
+VALUE	CW-Codec-Type			COMS-FAX-MODULATION	255
+
+VALUE	CW-Call-Termination-Cause	CAUSE-UNKNOWN		0
+VALUE	CW-Call-Termination-Cause	CAUSE-CLD-PARTY-TERMINATE 1
+VALUE	CW-Call-Termination-Cause	CAUSE-CLG-PARTY-TERMINATE 2
+VALUE	CW-Call-Termination-Cause	CAUSE-ACCT-BAL-DEPLETED	3
+VALUE	CW-Call-Termination-Cause	CAUSE-NO-EGR-PORTS-AVAIL 4
+VALUE	CW-Call-Termination-Cause	CAUSE-H225-UNABLE-TO-CON 5
+VALUE	CW-Call-Termination-Cause	CAUSE-H245-UNABLE-TO-CON 6
+VALUE	CW-Call-Termination-Cause	CAUSE-INGR-FACILITY-DISC 7
+VALUE	CW-Call-Termination-Cause	CAUSE-EGR-FACILITY-DISC	8
+VALUE	CW-Call-Termination-Cause	CAUSE-DIR-SERVER-DOWN	9
+VALUE	CW-Call-Termination-Cause	CAUSE-RATING-SERVER-DOWN 10
+VALUE	CW-Call-Termination-Cause	CAUSE-GATEWAY-SHUTDOWN	11
+VALUE	CW-Call-Termination-Cause	CAUSE-GTKPR-TERMINATE	12
+VALUE	CW-Call-Termination-Cause	CAUSE-GTKPR-SHUTDOWN-GTWAY 13
+VALUE	CW-Call-Termination-Cause	CAUSE-BUSY		14
+VALUE	CW-Call-Termination-Cause	CAUSE-ABANDON		15
+VALUE	CW-Call-Termination-Cause	CAUSE-INVALID-LOGIN-LIMIT 16
+VALUE	CW-Call-Termination-Cause	CAUSE-NOACCTNUMBER-ENTRY 17
+VALUE	CW-Call-Termination-Cause	CAUSE-SUSPENDED-ACCT-LOGIN 18
+VALUE	CW-Call-Termination-Cause	CAUSE-AUTHENT-SERVER-DOWN 19
+VALUE	CW-Call-Termination-Cause	CAUSE-GATEKEEPER-TIMEOUT 20
+VALUE	CW-Call-Termination-Cause	CAUSE-GATEWAY-NO-RESOURCES 21
+VALUE	CW-Call-Termination-Cause	CAUSE-ACCT-INUSE	22
+VALUE	CW-Call-Termination-Cause	CAUSE-DEBIT-ACCT-BAL-ZERO 23
+VALUE	CW-Call-Termination-Cause	CAUSE-DEBIT-ACCTBAL-INSUFF 24
+VALUE	CW-Call-Termination-Cause	CAUSE-INVALID-DESTNUMBER-THRESH 25
+VALUE	CW-Call-Termination-Cause	CAUSE-NO-DESTNUMBER-ENTRY 26
+VALUE	CW-Call-Termination-Cause	CAUSE-SEQUENCE-DIALING-THRESH 27
+
+VALUE	CW-Signaling-Protocol		SIG-UNKNOWN		0
+VALUE	CW-Signaling-Protocol		SIG-SIP			1
+VALUE	CW-Signaling-Protocol		SIG-H323		2
+
+VALUE	CW-Protocol-Transport		TCP			1
+VALUE	CW-Protocol-Transport		UDP			2
+VALUE	CW-Protocol-Transport		SCTP			3
+
+VALUE	CW-Local-Sig-Trans-Protocol	TCP			1
+VALUE	CW-Local-Sig-Trans-Protocol	UDP			2
+VALUE	CW-Local-Sig-Trans-Protocol	SCTP			3
+
+VALUE	CW-Remote-Sig-Trans-Protocol	TCP			1
+VALUE	CW-Remote-Sig-Trans-Protocol	UDP			2
+VALUE	CW-Remote-Sig-Trans-Protocol	SCTP			3
+
+VALUE	CW-Local-MG-RTP-Protocol	TCP			1
+VALUE	CW-Local-MG-RTP-Protocol	UDP			2
+VALUE	CW-Local-MG-RTP-Protocol	SCTP			3
+
+VALUE	CW-Remote-MG-RTP-Protocol	TCP			1
+VALUE	CW-Remote-MG-RTP-Protocol	UDP			2
+VALUE	CW-Remote-MG-RTP-Protocol	SCTP			3
+
+VALUE	CW-Trans-Cld-Party-E164-Type	Unknown			1
+VALUE	CW-Trans-Cld-Party-E164-Type	International-Number	2
+VALUE	CW-Trans-Cld-Party-E164-Type	National-Number		3
+VALUE	CW-Trans-Cld-Party-E164-Type	Network-Specific-Number 4
+VALUE	CW-Trans-Cld-Party-E164-Type	Subscriber-Number	5
+VALUE	CW-Trans-Cld-Party-E164-Type	Abbreviated-Number	6
+VALUE	CW-Trans-Cld-Party-E164-Type	Reserved		7
 
 END-VENDOR USR
