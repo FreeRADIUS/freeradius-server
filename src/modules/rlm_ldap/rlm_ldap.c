@@ -319,7 +319,7 @@ static void     fieldcpy(char *, char **);
 #endif
 static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *,VALUE_PAIR **,int);
 static int ldap_groupcmp(void *, REQUEST *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
-static int ldap_xlat(void *,REQUEST *, char *, char *,int, RADIUS_ESCAPE_STRING);
+static int ldap_xlat(void *, REQUEST *, char *, char *, size_t, RADIUS_ESCAPE_STRING);
 static LDAP    *ldap_connect(void *instance, const char *, const char *, int, int *, char **);
 static int     read_mappings(ldap_instance* inst);
 
@@ -368,7 +368,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	int att_map[3] = {0,0,0};
 	TLDAP_RADIUS *pair;
 	ATTR_FLAGS flags;
-	char *xlat_name;
+	const char *xlat_name;
 
 	inst = rad_malloc(sizeof *inst);
 	if (!inst) {
@@ -666,9 +666,6 @@ read_mappings(ldap_instance* inst)
 			if ((operator < T_OP_ADD) || (operator > T_OP_CMP_EQ)) {
 				radlog(L_ERR, "rlm_ldap: file %s: skipping line %i: unknown or invalid operator %s",
 				       filename, linenumber, opstring);
-				free(pair->attr);
-				free(pair->radius_attr);
-				free(pair);
 				continue;
 			}
 		}
@@ -1055,7 +1052,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
  * Do an xlat on an LDAP URL
  */
 static int ldap_xlat(void *instance, REQUEST *request, char *fmt,
-		     char *out, int freespace, RADIUS_ESCAPE_STRING func)
+		     char *out, size_t freespace, RADIUS_ESCAPE_STRING func)
 {
 	char url[MAX_FILTER_STR_LEN];
 	int res;
@@ -1660,10 +1657,10 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 	LDAP           *ld_user;
 	LDAPMessage    *result, *msg;
 	ldap_instance  *inst = instance;
-	char           *user_dn, *attrs[] = {"uid", NULL}, *err = NULL;
+	char           *user_dn, *attrs[] = {"uid", NULL};
 	char		filter[MAX_FILTER_STR_LEN];
 	char		basedn[MAX_FILTER_STR_LEN];
-	int             res;
+	int		res;
 	VALUE_PAIR     *vp_user_dn;
 	VALUE_PAIR      *module_fmsg_vp;
 	char            module_fmsg[MAX_STRING_LEN];
