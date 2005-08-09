@@ -98,6 +98,7 @@ $INCLUDE dictionary.colubris
 $INCLUDE dictionary.cosine
 $INCLUDE dictionary.epygi
 $INCLUDE dictionary.erx
+$INCLUDE dictionary.ericsson
 $INCLUDE dictionary.extreme
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.foundry
@@ -134,6 +135,7 @@ $INCLUDE dictionary.versanet
 $INCLUDE dictionary.waverider
 $INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia
+$INCLUDE dictionary.xylan
 
 #
 #	And finally the server internal attributes.
