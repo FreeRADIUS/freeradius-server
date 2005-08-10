@@ -41,12 +41,11 @@ static const char rcsid[] = "$Id$";
 #include	"missing.h"
 #include	"libradius.h"
 
-/*
- *	There are very few vendors, and they're looked up only when we
- *	read the dictionaries.  So it's OK to have a singly linked
- *	list here.
- */
-static DICT_VENDOR	*dictionary_vendors = NULL;
+#define DICT_VALUE_MAX_NAME_LEN (128)
+#define DICT_VENDOR_MAX_NAME_LEN (128)
+
+static rbtree_t *vendors_byname = NULL;
+static rbtree_t *vendors_byvalue = NULL;
 
 static rbtree_t *attributes_byname = NULL;
 static rbtree_t *attributes_byvalue = NULL;
@@ -93,20 +92,16 @@ static DICT_ATTR *base_attributes[256];
  */
 void dict_free(void)
 {
-	DICT_VENDOR	*dvend, *enext;
-
 	memset(base_attributes, 0, sizeof(base_attributes));
 
-	for (dvend = dictionary_vendors; dvend; dvend = enext) {
-		enext = dvend->next;
-		free(dvend);
-	}
-
-	dictionary_vendors = NULL;
-
 	/*
-	 *	Free the tree of attributes by name and value.
+	 *	Free the trees
 	 */
+	rbtree_free(vendors_byname);
+	rbtree_free(vendors_byvalue);
+	vendors_byname = NULL;
+	vendors_byvalue = NULL;
+
 	rbtree_free(attributes_byname);
 	rbtree_free(attributes_byvalue);
 	attributes_byname = NULL;
@@ -118,10 +113,6 @@ void dict_free(void)
 	values_byvalue = NULL;
 }
 
-/*
- *	This should be lots
- */
-#define DICT_VENDOR_MAX_NAME_LEN (1024)
 
 /*
  *	Add vendor to the list.
@@ -148,9 +139,41 @@ int dict_addvendor(const char *name, int value)
 	strcpy(dv->name, name);
 	dv->vendorpec  = value;
 
-	/* Insert at front. */
-	dv->next = dictionary_vendors;
-	dictionary_vendors = dv;
+	if (rbtree_insert(vendors_byname, dv) == 0) {
+		DICT_VENDOR *old_dv;
+
+		old_dv = rbtree_finddata(vendors_byname, dv);
+		if (!old_dv) {
+			librad_log("dict_addvendor: Failed inserting vendor name %s", name);
+			return -1;
+		}
+		if (old_dv->vendorpec != dv->vendorpec) {
+			librad_log("dict_addattr: Duplicate vendor name %s", name);
+			return -1;
+		}
+
+		/*
+		 *	Already inserted.  Discard the duplicate entry.
+		 */
+		free(dv);
+		return 0;
+	}
+
+	/*
+	 *	Insert the SAME pointer (not free'd when this tree is
+	 *	deleted), into another tree.
+	 *
+	 *	If the newly inserted entry is a duplicate of an existing
+	 *	entry, then the old entry is tossed, and the new one
+	 *	replaces it.  This behaviour is configured in the
+	 *	rbtree_create() function.
+	 *
+	 *	We want this behaviour because we want OLD names for
+	 *	the attributes to be read from the configuration
+	 *	files, but when we're printing them, (and looking up
+	 *	by value) we want to use the NEW name.
+	 */
+	rbtree_insert(vendors_byvalue, dv);
 
 	return 0;
 }
@@ -227,7 +250,7 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	/*
 	 *	Create a new attribute for the list
 	 */
-	if ((attr = (DICT_ATTR *)malloc(sizeof(DICT_ATTR))) == NULL) {
+	if ((attr = malloc(sizeof(*attr))) == NULL) {
 		librad_log("dict_addattr: out of memory");
 		return -1;
 	}
@@ -293,7 +316,6 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	return 0;
 }
 
-#define DICT_VALUE_MAX_NAME_LEN (128)
 
 /*
  *	Add a value for an attribute to the dictionary.
@@ -773,6 +795,25 @@ static int my_dict_init(const char *dir, const char *fn,
 /*
  *	Callbacks for red-black trees.
  */
+static int vendorname_cmp(const void *a, const void *b)
+{
+	return strcasecmp(((const DICT_VENDOR *)a)->name,
+			  ((const DICT_VENDOR *)b)->name);
+}
+
+/*
+ *	Return: < 0  if a < b,
+ *	        == 0 if a == b
+ */
+static int vendorvalue_cmp(const void *a, const void *b)
+{
+	return (((const DICT_VENDOR *)a)->vendorpec -
+		((const DICT_VENDOR *)b)->vendorpec);
+}
+
+/*
+ *	Callbacks for red-black trees.
+ */
 static int attrname_cmp(const void *a, const void *b)
 {
 	return strcasecmp(((const DICT_ATTR *)a)->name,
@@ -826,6 +867,27 @@ static int valuevalue_cmp(const void *a, const void *b)
 int dict_init(const char *dir, const char *fn)
 {
 	dict_free();
+
+	/*
+	 *	Create the tree of vendor by name.   There MAY NOT
+	 *	be multiple vendors of the same name.
+	 *
+	 *	Each vendor is malloc'd, so the free function is free.
+	 */
+	vendors_byname = rbtree_create(vendorname_cmp, free, 0);
+	if (!vendors_byname) {
+		return -1;
+	}
+
+	/*
+	 *	Create the tree of vendors by value.  There MAY
+	 *	be vendors of the same value.  If there are, we
+	 *	pick the latest one.
+	 */
+	vendors_byvalue = rbtree_create(vendorvalue_cmp, NULL, 1);
+	if (!vendors_byvalue) {
+		return -1;
+	}
 
 	/*
 	 *	Create the tree of attributes by name.   There MAY NOT
@@ -1052,7 +1114,7 @@ DICT_VALUE *dict_valbyattr(int attr, int val)
  */
 DICT_VALUE *dict_valbyname(int attr, const char *name)
 {
-	DICT_VALUE	*dv;	
+	DICT_VALUE	*dv;
 
 	/*
 	 *	This is a bit of a hack.
@@ -1078,18 +1140,25 @@ DICT_VALUE *dict_valbyname(int attr, const char *name)
  */
 int dict_vendorbyname(const char *name)
 {
-	DICT_VENDOR *v;
+	DICT_VENDOR	*dv, *found;
 
 	/*
-	 *	Find the vendor, if any.
+	 *	This is a bit of a hack.
 	 */
-	for (v = dictionary_vendors; v; v = v->next) {
-		if (strcasecmp(name, v->name) == 0) {
-			return v->vendorpec;
-		}
-	}
+	uint8_t		buffer[sizeof(*dv) + DICT_VENDOR_MAX_NAME_LEN];
 
-	return 0;
+	/*
+	 *	The name is too long, we can't find it.
+	 */
+	if (strlen(name) >= DICT_VENDOR_MAX_NAME_LEN) return 0;
+
+	dv = (DICT_VENDOR *) buffer;
+	strcpy(dv->name, name);
+	
+	found = rbtree_finddata(vendors_byname, dv);
+	if (!found) return 0;
+
+	return found->vendorpec;
 }
 
 /*
@@ -1097,17 +1166,9 @@ int dict_vendorbyname(const char *name)
  */
 DICT_VENDOR *dict_vendorbyvalue(int vendor)
 {
-	DICT_VENDOR *v;
+	DICT_VENDOR	myvendor;
 
-	/*
-	 *	Find the vendor, if any.
-	 */
-	for (v = dictionary_vendors; v; v = v->next) {
-		if (vendor == v->vendorpec) {
-			return v;
-		}
-	}
+	myvendor.vendorpec = vendor;
 
-	return NULL;
-
+	return rbtree_finddata(vendors_byvalue, &myvendor);
 }

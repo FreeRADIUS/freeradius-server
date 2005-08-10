@@ -137,7 +137,6 @@ typedef struct dict_value {
 } DICT_VALUE;
 
 typedef struct dict_vendor {
-	struct dict_vendor	*next;
 	int			vendorpec;
 	char			name[1];
 } DICT_VENDOR;
