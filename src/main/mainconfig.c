@@ -1002,12 +1002,91 @@ static int listen_init(const char *filename, rad_listen_t **head)
 	if (mainconfig.proxy_requests == TRUE) {
 		int		port = -1;
 		rad_listen_t	*auth;
+		int		num_realms = 0;
+		int		localhost = 0;
+		int		otherhost = 0;
+		REALM		*realm;
+		uint32_t	proxy_ip;
+		uint32_t	ipaddr;
+
+		/*
+		 *	If there are no realms configured, don't
+		 *	open the proxy port.
+		 */
+		for (realm = mainconfig.realms;
+		     realm != NULL;
+		     realm = realm->next) {
+			/*
+			 *	Ignore LOCAL realms.
+			 */
+			if ((realm->ipaddr == htonl(INADDR_NONE)) &&
+			    (realm->acct_ipaddr == htonl(INADDR_NONE))) {
+				continue;
+			}
+			num_realms++;
+
+			/*
+			 *	Loopback addresses
+			 */
+			if (realm->ipaddr == htonl(INADDR_LOOPBACK)) {
+				localhost = 1;
+			} else {
+				otherhost = 1;
+			}
+			if (realm->acct_ipaddr == htonl(INADDR_LOOPBACK)) {
+				localhost = 1;
+			} else {
+				otherhost = 1;
+			}
+		}
+
+		/*
+		 *	No external realms.  Don't open another port.
+		 */
+		if (num_realms == 0) {
+			return 0;
+		}
+
+		/*
+		 *	All of the realms are localhost, don't open
+		 *	an external port.
+		 */
+		if (localhost && !otherhost) {
+			proxy_ip = htonl(INADDR_LOOPBACK);
+		} else {
+			/*
+			 *	Multiple external realms, listen
+			 *	on any address that will send packets.
+			 */
+			proxy_ip = htonl(INADDR_NONE);
+		}
 
 		/*
 		 *	Find the first authentication port,
 		 *	and use it
 		 */
+		ipaddr = htonl(INADDR_NONE);
 		for (auth = *head; auth != NULL; auth = auth->next) {
+			/*
+			 *	Listening on ANY, use that.
+			 */
+			if (ipaddr != htonl(INADDR_ANY)) {
+				/*
+				 *	Not set.  Pick the first one.
+				 *	Or, ANY, pick that.
+				 */
+				if ((ipaddr == htonl(INADDR_NONE)) ||
+				    (auth->ipaddr == htonl(INADDR_ANY))) {
+					ipaddr = auth->ipaddr;
+
+					/*
+					 *	Else listening on multiple
+					 *	IP's, use ANY for proxying.
+					 */
+				} else if (ipaddr != auth->ipaddr) {
+					ipaddr = htonl(INADDR_ANY);
+				}
+			}
 			if (auth->type == RAD_LISTEN_AUTH) {
 				port = auth->port + 2;
 				break;
@@ -1033,11 +1112,18 @@ static int listen_init(const char *filename, rad_listen_t **head)
 
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));
+
+		/*
+		 *	More checks to do the right thing.
+		 */
+		if (proxy_ip == htonl(INADDR_NONE)) {
+			proxy_ip = ipaddr;
+		}
 		
 		/*
 		 *	Create the proxy socket.
 		 */
-		this->ipaddr = mainconfig.myip;
+		this->ipaddr = proxy_ip;
 		this->type = RAD_LISTEN_PROXY;
 
 		/*
