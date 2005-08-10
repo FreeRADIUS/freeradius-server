@@ -1939,7 +1939,7 @@ int listen_init(const char *filename, rad_listen_t **head)
  do_proxy:
 	if (mainconfig.proxy_requests == TRUE) {
 		int		port = -1;
-		listen_socket_t *sock = this->data;
+		listen_socket_t *sock = NULL;
 
 		/*
 		 *	No sockets to receive packets, therefore
@@ -1952,15 +1952,12 @@ int listen_init(const char *filename, rad_listen_t **head)
 		 *	and use it
 		 */
 		for (this = *head; this != NULL; this = this->next) {
-			if (server_ipaddr.af == AF_UNSPEC) {
-				server_ipaddr = sock->ipaddr;
-			}
-			
-			if ((port < 0) || (port == sock->port)) {
-				port = sock->port + 1;
-				if (this->type == RAD_LISTEN_AUTH) {
-					port++;	/* skip accounting port */
+			if (this->type == RAD_LISTEN_AUTH) {
+				sock = this->data;
+				if (server_ipaddr.af == AF_UNSPEC) {
+					server_ipaddr = sock->ipaddr;
 				}
+				port = sock->port + 2; /* skip acct port */
 				break;
 			}
 		}
