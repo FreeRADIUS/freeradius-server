@@ -68,7 +68,6 @@ static time_t start_time = 0;
  *	FIXME: Delete this crap!
  */
 extern time_t time_now;
-extern int auth_port;
 
 /*
  *	We'll use this below.
@@ -1750,6 +1749,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 	rad_listen_t	**last;
 	rad_listen_t	*this;
 	lrad_ipaddr_t	server_ipaddr;
+	int		auth_port = 0;
 
 	/*
 	 *	We shouldn't be called with a pre-existing list.
@@ -1760,6 +1760,19 @@ int listen_init(const char *filename, rad_listen_t **head)
 
 	last = head;
 	server_ipaddr.af = AF_UNSPEC;
+
+	/*
+	 *	If the port is specified on the command-line,
+	 *	it over-rides the configuration file.
+	 */
+	if (mainconfig.port >= 0) {
+		auth_port = mainconfig.port;
+	} else {
+		rcode = cf_item_parse(mainconfig.config, "port",
+				      PW_TYPE_INTEGER, &auth_port,
+				      Stringify(PW_AUTH_UDP_PORT));
+		if (rcode < 0) return -1; /* error parsing it */
+	}
 
 	/*
 	 *	If the IP address was configured on the command-line,
@@ -1784,11 +1797,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		listen_socket_t *sock;
 		server_ipaddr.af = AF_INET;
 
-	bind_it:		
-		if (mainconfig.port >= 0) {
-			auth_port = mainconfig.port;
-		}
-
+	bind_it:
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));
 		this->data = sock = rad_malloc(sizeof(*sock));
@@ -1865,11 +1874,9 @@ int listen_init(const char *filename, rad_listen_t **head)
 	/*
 	 *	Walk through the "listen" sections, if they exist.
 	 */
-	for (cs = cf_subsection_find_next(mainconfig.config,
-					  NULL, "listen");
+	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "listen");
 	     cs != NULL;
-	     cs = cf_subsection_find_next(mainconfig.config,
-					  cs, "listen")) {
+	     cs = cf_subsection_find_next(mainconfig.config, cs, "listen")) {
 		int		type;
 		char		*listen_type, *identity;
 		int		lineno = cf_section_lineno(cs);

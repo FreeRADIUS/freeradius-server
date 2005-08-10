@@ -67,7 +67,6 @@ static gid_t server_gid;
  */
 static const char *localstatedir = NULL;
 static const char *prefix = NULL;
-int auth_port = 0;
 static char *syslog_facility = NULL;
 static const LRAD_NAME_NUMBER str2fac[] = {
 #ifdef LOG_KERN
@@ -188,7 +187,6 @@ static const CONF_PARSER server_config[] = {
 	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &mainconfig.cleanup_delay, Stringify(CLEANUP_DELAY) },
 	{ "max_requests", PW_TYPE_INTEGER, 0, &mainconfig.max_requests, Stringify(MAX_REQUESTS) },
 	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &mainconfig.kill_unresponsive_children, Stringify(FALSE) },
-	{ "port", PW_TYPE_INTEGER, 0, &auth_port, Stringify(PW_AUTH_UDP_PORT) },
 	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &mainconfig.allow_core_dumps, "no" },
 	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
 
@@ -599,13 +597,13 @@ static int generate_realms(const char *filename)
 		if ((authhost = cf_section_value_find(cs, "authhost")) == NULL) {
 			c->ipaddr.af = AF_INET;
 			c->ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-			c->auth_port = auth_port;
+			c->auth_port = 0;
 		} else {
 			if ((s = strchr(authhost, ':')) != NULL) {
 				*s++ = 0;
 				c->auth_port = atoi(s);
 			} else {
-				c->auth_port = auth_port;
+				c->auth_port = PW_AUTH_UDP_PORT;
 			}
 			if (strcmp(authhost, "LOCAL") == 0) {
 				/*
@@ -614,7 +612,7 @@ static int generate_realms(const char *filename)
 				 */
 				c->ipaddr.af = AF_INET;
 				c->ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-				c->auth_port = auth_port;
+				c->auth_port = 0;
 			} else {
 				if (ip_hton(authhost, AF_INET,
 					    &c->ipaddr) < 0) {
@@ -649,7 +647,7 @@ static int generate_realms(const char *filename)
 				*s++ = 0;
 				c->acct_port = atoi(s);
 			} else {
-				c->acct_port = auth_port + 1;
+				c->acct_port = PW_ACCT_UDP_PORT;
 			}
 			if (strcmp(accthost, "LOCAL") == 0) {
 				/*
@@ -834,12 +832,6 @@ CONF_SECTION *read_radius_conf_file(void)
 	cf_section_parse(cs, NULL, server_config);
 
 	/*
-	 *	If the port is specified on the command-line,
-	 *	it over-rides the configuration file.
-	 */
-	if (mainconfig.port != -1) auth_port = mainconfig.port;
-
-	/*
 	 *	Debug flag 1 MAY go to files.
 	 *	Debug flag 2 ALWAYS goes to stdout
 	 */
@@ -928,15 +920,8 @@ int read_mainconfig(int reload)
 	cf_section_free(&oldcs);
 
 	/*
-	 *	Over-ride port & ipaddr with the command-line ones,
-	 *	if set.
+	 *	Old-style realms file.
 	 */
-	if (mainconfig.port != -1) {
-		auth_port = mainconfig.port;
-	}
-
-
-	/* old-style realms file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_REALMS);
 	DEBUG2("read_config_files:  reading realms");
 	if (read_realms_file(buffer) < 0) {
