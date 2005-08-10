@@ -106,6 +106,7 @@ $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.gemtek
 $INCLUDE dictionary.issanni
 $INCLUDE dictionary.itk
+$INCLUDE dictionary.ipunplugged
 $INCLUDE dictionary.juniper
 $INCLUDE dictionary.karlnet
 $INCLUDE dictionary.livingston
