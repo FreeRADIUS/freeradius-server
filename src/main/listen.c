@@ -1772,6 +1772,9 @@ int listen_init(const char *filename, rad_listen_t **head)
 				      PW_TYPE_INTEGER, &auth_port,
 				      Stringify(PW_AUTH_UDP_PORT));
 		if (rcode < 0) return -1; /* error parsing it */
+
+		if (rcode == 0)
+			radlog(L_INFO, "WARNING: The directive 'port' is deprecated, and will be removed in future versions of FreeRADIUS. Please edit the configuration files to use the directive 'listen'.");
 	}
 
 	/*
@@ -1796,6 +1799,8 @@ int listen_init(const char *filename, rad_listen_t **head)
 	if (rcode == 0) { /* successfully parsed IPv4 */
 		listen_socket_t *sock;
 		server_ipaddr.af = AF_INET;
+
+		radlog(L_INFO, "WARNING: The directive 'bind_adress' is deprecated, and will be removed in future versions of FreeRADIUS. Please edit the configuration files to use the directive 'listen'.");
 
 	bind_it:
 		this = rad_malloc(sizeof(*this));
