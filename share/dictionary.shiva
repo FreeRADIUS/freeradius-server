@@ -30,6 +30,25 @@ VENDOR		Shiva				166
 BEGIN-VENDOR	Shiva
 
 ATTRIBUTE	Shiva-User-Attributes			1	string
+ATTRIBUTE	Shiva-Compression			30	integer
+ATTRIBUTE	Shiva-Dialback-Delay			31	integer
+ATTRIBUTE	Shiva-Call-Durn-Trap			32	integer
+ATTRIBUTE	Shiva-Bandwidth-Trap			33	integer
+ATTRIBUTE	Shiva-Minimum-Call			34	integer
+ATTRIBUTE	Shiva-Default-Host			35	string
+ATTRIBUTE	Shiva-Menu-Name				36	string
+ATTRIBUTE	Shiva-User-Flags			37	string
+ATTRIBUTE	Shiva-Termtype				38	string
+ATTRIBUTE	Shiva-Break-Key				39	string
+ATTRIBUTE	Shiva-Fwd-Key				40	string
+ATTRIBUTE	Shiva-Bak-Key				41	string
+ATTRIBUTE	Shiva-Dial-Timeout			42	integer
+ATTRIBUTE	Shiva-LAT-Port				43	string
+ATTRIBUTE	Shiva-Max-VCs				44	integer
+ATTRIBUTE	Shiva-DHCP-Leasetime			45	integer
+ATTRIBUTE	Shiva-LAT-Groups			46	string
+ATTRIBUTE	Shiva-RTC-Timestamp			60	integer
+ATTRIBUTE	Shiva-Circuit-Type			61	integer
 ATTRIBUTE	Shiva-Called-Number			90	string
 ATTRIBUTE	Shiva-Calling-Number			91	string
 ATTRIBUTE	Shiva-Customer-Id			92	string
@@ -45,6 +64,19 @@ ATTRIBUTE	Shiva-Acct-Serv-Switch			101	ipaddr
 ATTRIBUTE	Shiva-Event-Flags			102	integer
 ATTRIBUTE	Shiva-Function				103	integer
 ATTRIBUTE	Shiva-Connect-Reason			104	integer
+
+VALUE	Shiva-Compression		None			0
+VALUE	Shiva-Compression		Negotiate		1
+VALUE	Shiva-Compression		Spider			2
+VALUE	Shiva-Compression		Predictor		3
+VALUE	Shiva-Compression		STAC			4
+
+VALUE	Shiva-Circuit-Type		Primary			1
+VALUE	Shiva-Circuit-Type		Secondary-Backup	2
+VALUE	Shiva-Circuit-Type		Secondary-Augment	3
+VALUE	Shiva-Circuit-Type		Secondary-Switch	4
+VALUE	Shiva-Circuit-Type		Listener		5
+VALUE	Shiva-Circuit-Type		RADIUS			6
 
 #	Shiva Type Of Service Values
 
