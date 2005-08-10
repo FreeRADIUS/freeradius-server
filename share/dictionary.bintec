@@ -9,18 +9,18 @@ VENDOR		BinTec				272
 
 #							(272 << 16) | N
 #
-VALUE	Framed-Protocol			Bintec-X25		17825794
-VALUE	Framed-Protocol			Bintec-X25-PPP		17825795
-VALUE	Framed-Protocol			Bintec-IP-LAPB		17825796
-VALUE	Framed-Protocol			Bintec-IP-HDLC		17825798
-VALUE	Framed-Protocol			Bintec-MPR-LAPB		17825799
-VALUE	Framed-Protocol			Bintec-MPR-HDLC		17825800
-VALUE	Framed-Protocol			Bintec-FRAME-RELAY	17825801
-VALUE	Framed-Protocol			Bintec-X31-BCHAN	17825802
-VALUE	Framed-Protocol			Bintec-X75-PPP		17825803
-VALUE	Framed-Protocol			Bintec-X75BTX-PPP	17825804
-VALUE	Framed-Protocol			Bintec-X25-NOSIG	17825805
-VALUE	Framed-Protocol			Bintec-X25-PPP-OPT	17825806
+VALUE	Framed-Protocol			Bintec-X25		0x01100002
+VALUE	Framed-Protocol			Bintec-X25-PPP		0x01100003
+VALUE	Framed-Protocol			Bintec-IP-LAPB		0x01100004
+VALUE	Framed-Protocol			Bintec-IP-HDLC		0x01100006
+VALUE	Framed-Protocol			Bintec-MPR-LAPB		0x01100007
+VALUE	Framed-Protocol			Bintec-MPR-HDLC		0x01100008
+VALUE	Framed-Protocol			Bintec-FRAME-RELAY	0x01100009
+VALUE	Framed-Protocol			Bintec-X31-BCHAN	0x0110000a
+VALUE	Framed-Protocol			Bintec-X75-PPP		0x0110000b
+VALUE	Framed-Protocol			Bintec-X75BTX-PPP	0x0110000c
+VALUE	Framed-Protocol			Bintec-X25-NOSIG	0x0110000d
+VALUE	Framed-Protocol			Bintec-X25-PPP-OPT	0x0110000e
 
 #
 #
