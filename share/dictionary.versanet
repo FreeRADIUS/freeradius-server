@@ -15,9 +15,9 @@
 #          >> set 34 23
 #          >> co
 #
-#This will let our unit transfer every detail terminal cause 
-#information to Redius server's accounting log file and  
-#save as "Vendor Specific=Terminate Cause". 
+#This will let our unit transfer every detail terminal cause
+#information to Redius server's accounting log file and
+#save as "Vendor Specific=Terminate Cause".
 #
 # Version:   @(#)dictionary.versanet 1.00 22-Jul-1999 support@versanetcomm.com
 #
@@ -50,6 +50,5 @@ VALUE	Versanet-Termination-Cause	Key-abort-disconnect	20
 VALUE	Versanet-Termination-Cause	Clears-previous-disc-reason 21
 VALUE	Versanet-Termination-Cause	No-connection-established 22
 VALUE	Versanet-Termination-Cause	Disconnect-after-three-retrains 23
-
 
 END-VENDOR	Versanet

@@ -105,7 +105,7 @@ VALUE	CVPN3000-Tunneling-Protocols	PPTP			1
 VALUE	CVPN3000-Tunneling-Protocols	L2TP			2
 VALUE	CVPN3000-Tunneling-Protocols	IPSec			4
 VALUE	CVPN3000-Tunneling-Protocols	PPTP-and-IPSec		5
-VALUE	CVPN3000-Tunneling-Protocols		L2TP/IPSec	8
+VALUE	CVPN3000-Tunneling-Protocols	L2TP/IPSec		8
 VALUE	CVPN3000-Tunneling-Protocols	All			15
 
 VALUE	CVPN3000-IPSec-Authentication	None			0
@@ -146,11 +146,11 @@ VALUE	CVPN3000-PPTP-Encryption	PPTP-128-Encryption-Req	5
 VALUE	CVPN3000-PPTP-Encryption	PPTP-40-or-128		6
 VALUE	CVPN3000-PPTP-Encryption	PPTP-40-or-128-Encry-Req 7
 VALUE	CVPN3000-PPTP-Encryption	PPTP-40-Stateless-Req	10
-VALUE	CVPN3000-PPTP-Encryption	PPTP-40-Enc/Stateless-Req	11
+VALUE	CVPN3000-PPTP-Encryption	PPTP-40-Enc/Stateless-Req 11
 VALUE	CVPN3000-PPTP-Encryption	PPTP-128-Stateless-Req	12
-VALUE	CVPN3000-PPTP-Encryption	PPTP-128-Enc/Stateless-Req	13
-VALUE	CVPN3000-PPTP-Encryption	PPTP-40/128-Stateless-Req	14
-VALUE	CVPN3000-PPTP-Encryption	PPTP-40/128-Enc/Statls-Req	15
+VALUE	CVPN3000-PPTP-Encryption	PPTP-128-Enc/Stateless-Req 13
+VALUE	CVPN3000-PPTP-Encryption	PPTP-40/128-Stateless-Req 14
+VALUE	CVPN3000-PPTP-Encryption	PPTP-40/128-Enc/Statls-Req 15
 
 VALUE	CVPN3000-L2TP-Encryption	L2TP-40bit		2
 VALUE	CVPN3000-L2TP-Encryption	L2TP-40-Encryption-Req	3
@@ -159,11 +159,11 @@ VALUE	CVPN3000-L2TP-Encryption	L2TP-128-Encryption-Req	5
 VALUE	CVPN3000-L2TP-Encryption	L2TP-40-or-128		6
 VALUE	CVPN3000-L2TP-Encryption	L2TP-40-or-128-Encry-Req 7
 VALUE	CVPN3000-L2TP-Encryption	L2TP-40-Stateless-Req	10
-VALUE	CVPN3000-L2TP-Encryption	L2TP-40-Enc/Stateless-Req	11
+VALUE	CVPN3000-L2TP-Encryption	L2TP-40-Enc/Stateless-Req 11
 VALUE	CVPN3000-L2TP-Encryption	L2TP-128-Stateless-Req	12
-VALUE	CVPN3000-L2TP-Encryption	L2TP-128-Enc/Stateless-Req	13
-VALUE	CVPN3000-L2TP-Encryption	L2TP-40/128-Stateless-Req	14
-VALUE	CVPN3000-L2TP-Encryption	L2TP-40/128-Enc/Statls-Req	15
+VALUE	CVPN3000-L2TP-Encryption	L2TP-128-Enc/Stateless-Req 13
+VALUE	CVPN3000-L2TP-Encryption	L2TP-40/128-Stateless-Req 14
+VALUE	CVPN3000-L2TP-Encryption	L2TP-40/128-Enc/Statls-Req 15
 
 VALUE	CVPN3000-Auth-Server-Type	First-Active-Server	0
 VALUE	CVPN3000-Auth-Server-Type	RADIUS			1

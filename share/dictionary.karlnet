@@ -23,9 +23,9 @@ ATTRIBUTE	KarlNet-TurboCell-TxRate		152	integer
 # "VALUE"       ATTRIBUTE-NAME               SETTING-NAME    SETTING-VALUE
 #---------------------------------------------------------------------------
 # 0x00 // Use the locally defined Data Rate
-VALUE	KarlNet-TurboCell-TxRate	TxRate-Local		0 
-# 0x08 // Use the maximum data rate possible 
-VALUE	KarlNet-TurboCell-TxRate	TxRate-MaxSpeed		8 
+VALUE	KarlNet-TurboCell-TxRate	TxRate-Local		0
+# 0x08 // Use the maximum data rate possible
+VALUE	KarlNet-TurboCell-TxRate	TxRate-MaxSpeed		8
 
 VALUE	KarlNet-TurboCell-TxRate	TxRate-11k		11
 VALUE	KarlNet-TurboCell-TxRate	TxRate-12k		12
@@ -2080,6 +2080,5 @@ VALUE	KarlNet-TurboCell-OpMode	Satellite-NT		3
 # ----------------------------------------------
 #  END OF KarlNet Vendor-specific information
 # ----------------------------------------------
-
 
 END-VENDOR	KarlNet

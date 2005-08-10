@@ -126,5 +126,4 @@ VALUE	Shiva-Function			Dialin			1
 VALUE	Shiva-Function			Dialout			2
 VALUE	Shiva-Function			Lan-To-Lan		3
 
-
 END-VENDOR	Shiva

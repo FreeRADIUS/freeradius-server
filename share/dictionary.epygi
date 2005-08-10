@@ -87,7 +87,7 @@ ATTRIBUTE	Epygi-InRTP_Latency			208	integer
 
 VALUE	Epygi-CallType			Internal		0
 VALUE	Epygi-CallType			SIP			1
-VALUE		Epygi-CallType				H.323			2
+VALUE	Epygi-CallType			H.323			2
 VALUE	Epygi-CallType			FXO			3
 VALUE	Epygi-CallType			T1-E1-CAS		4
 VALUE	Epygi-CallType			T1-E1-CCS		5

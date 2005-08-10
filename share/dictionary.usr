@@ -1646,7 +1646,7 @@ VALUE	CW-Remote-MG-RTP-Protocol	SCTP			3
 VALUE	CW-Trans-Cld-Party-E164-Type	Unknown			1
 VALUE	CW-Trans-Cld-Party-E164-Type	International-Number	2
 VALUE	CW-Trans-Cld-Party-E164-Type	National-Number		3
-VALUE	CW-Trans-Cld-Party-E164-Type	Network-Specific-Number 4
+VALUE	CW-Trans-Cld-Party-E164-Type	Network-Specific-Number	4
 VALUE	CW-Trans-Cld-Party-E164-Type	Subscriber-Number	5
 VALUE	CW-Trans-Cld-Party-E164-Type	Abbreviated-Number	6
 VALUE	CW-Trans-Cld-Party-E164-Type	Reserved		7
