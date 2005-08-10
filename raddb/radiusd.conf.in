@@ -187,63 +187,27 @@ cleanup_delay = 5
 #
 max_requests = 1024
 
-#  bind_address:  Make the server listen on a particular IP address, and
-#  send replies out from that address.  This directive is most useful
-#  for machines with multiple IP addresses on one interface.
+#  listen: Make the server listen on a particular IP address, and send
+#  replies out from that address. This directive is most useful for
+#  hosts with multiple IP addresses on one interface.
 #
-#  It can either contain "*", or an IP address, or a fully qualified
-#  Internet domain name.  The default is "*"
+#  If you want the server to listen on additional addresses, or on
+#  additionnal ports, you can use multiple "listen" sections.
 #
-#  As of 1.0, you can also use the "listen" directive.  See below for
-#  more information.
+#  Each section make the server listen for only one type of packet,
+#  therefore authentication and accounting have to be configured in
+#  different sections.
 #
-bind_address = *
-
-#  port: Allows you to bind FreeRADIUS to a specific port.
+#  The server ignore all "listen" section if you are using '-i' and '-p'
+#  on the command line.
 #
-#  The default port that most NAS boxes use is 1645, which is historical.
-#  RFC 2138 defines 1812 to be the new port.  Many new servers and
-#  NAS boxes use 1812, which can create interoperability problems.
-#
-#  The port is defined here to be 0 so that the server will pick up
-#  the machine's local configuration for the radius port, as defined
-#  in /etc/services.
-#
-#  If you want to use the default RADIUS port as defined on your server,
-#  (usually through 'grep radius /etc/services') set this to 0 (zero).
-#
-#  A port given on the command-line via '-p' over-rides this one.
-#
-#  As of 1.0, you can also use the "listen" directive.  See below for
-#  more information.
-#
-port = 0
-
-#
-#  By default, the server uses "bind_address" to listen to all IP's
-#  on a machine, or just one IP.  The "port" configuration is used
-#  to select the authentication port used when listening on those
-#  addresses.
-#
-#  If you want the server to listen on additional addresses, you can
-#  use the "listen" section.  A sample section (commented out) is included
-#  below.  This "listen" section duplicates the functionality of the
-#  "bind_address" and "port" configuration entries, but it only listens
-#  for authentication packets.
-#
-#  If you comment out the "bind_address" and "port" configuration entries,
-#  then it becomes possible to make the server accept only accounting,
-#  or authentication packets.  Previously, it always listened for both
-#  types of packets, and it was impossible to make it listen for only
-#  one type of packet.
-#
-#listen {
+listen {
 	#  IP address on which to listen.
 	#  Allowed values are:
 	#	dotted quad (1.2.3.4)
 	#       hostname    (radius.example.com)
 	#       wildcard    (*)
-#	ipaddr = *
+	ipaddr = *
 
 	#  OR, you can use an IPv6 address, but not both
 	#  at the same time.
@@ -253,14 +217,14 @@ port = 0
 	#  Allowed values are:
 	#	integer port number (1812)
 	#	0 means "use /etc/services for the proper port"
-#	port = 0
+	port = 0
 
 	#  Type of packets to listen for.
 	#  Allowed values are:
 	#	auth	listen for authentication packets
 	#	acct	listen for accounting packets
 	#
-#	type = auth
+	type = auth
 
 	#  Some systems support binding to an interface, in addition
 	#  to the IP address.  This feature isn't strictly necessary,
@@ -287,8 +251,19 @@ port = 0
 	#  See clients.conf for the configuration of "per_socket_clients".
 	#
 #	clients = per_socket_clients
-#}
+}
 
+#  This second "listen" section is for listening on the accounting
+#  port, too.
+#
+listen {
+	ipaddr = *
+#	ipv6addr = ::
+	port = 0
+	type = acct
+#	interface = eth0
+#	clients = per_socket_clients
+}
 
 #  hostname_lookups: Log the names of clients or just their IP addresses
 #  e.g., www.freeradius.org (on) or 206.47.27.232 (off).
