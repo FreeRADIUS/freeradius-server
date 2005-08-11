@@ -113,7 +113,7 @@ static int check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 		    break;
 #ifdef HAVE_REGEX_H
 		case T_OP_REG_EQ:
-		    regcomp(&reg, (char *)check_item->strvalue, 0);
+		    regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED);
 		    comp = regexec(&reg, (char *)reply_item->strvalue,
 				      0, NULL, 0);
 		    regfree(&reg);
@@ -125,7 +125,7 @@ static int check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 		    break;
 
 		case T_OP_REG_NE:
-		    regcomp(&reg, (char *)check_item->strvalue, 0);
+		    regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED);
 		    comp = regexec(&reg, (char *)reply_item->strvalue,
 				      0, NULL, 0);
 		    regfree(&reg);
