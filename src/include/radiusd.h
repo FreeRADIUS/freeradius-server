@@ -245,11 +245,6 @@ typedef struct main_config_t {
 	int		cleanup_delay;
 	int		max_requests;
 	int		kill_unresponsive_children;
-	char 		*do_lower_user;
-	char		*do_lower_pass;
-	char		*do_nospace_user;
-	char		*do_nospace_pass;
-	char		*nospace_time;
 	char		*log_file;
 	char		*checkrad;
 	const char      *pid_file;

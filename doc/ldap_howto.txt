@@ -1471,11 +1471,6 @@ log_stripped_names = no
 log_auth = no 
 log_auth_badpass = no 
 log_auth_goodpass = no 
-usercollide = no
-lower_user = before # lowercase username before auth
-lower_pass = no
-nospace_user = before
-nospace_pass = no
 
 #  The program to execute to do concurrency checks.
 #checkrad = ${sbindir}/checkrad

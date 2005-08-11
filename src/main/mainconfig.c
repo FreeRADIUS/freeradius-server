@@ -197,10 +197,6 @@ static const CONF_PARSER server_config[] = {
 	{ "pidfile", PW_TYPE_STRING_PTR, 0, &mainconfig.pid_file, "${run_dir}/radiusd.pid"},
 	{ "user", PW_TYPE_STRING_PTR, 0, &mainconfig.uid_name, NULL},
 	{ "group", PW_TYPE_STRING_PTR, 0, &mainconfig.gid_name, NULL},
-	{ "lower_user", PW_TYPE_STRING_PTR, 0, &mainconfig.do_lower_user, "no" },
-	{ "lower_pass", PW_TYPE_STRING_PTR, 0, &mainconfig.do_lower_pass, "no" },
-	{ "nospace_user", PW_TYPE_STRING_PTR, 0, &mainconfig.do_nospace_user, "no" },
-	{ "nospace_pass", PW_TYPE_STRING_PTR, 0, &mainconfig.do_nospace_pass, "no" },
 	{ "checkrad", PW_TYPE_STRING_PTR, 0, &mainconfig.checkrad, "${sbindir}/checkrad" },
 
 	{ "debug_level", PW_TYPE_INTEGER, 0, &mainconfig.debug_level, "0"},

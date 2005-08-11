@@ -323,42 +323,6 @@ static const LRAD_NAME_NUMBER request_fail_reason[] = {
 
 
 /*
- * FIXME:  The next two functions should all
- * be in a module.  But not until we have
- * more control over module execution.
- * -jcarneal
- */
-
-/*
- *  Lowercase the string value of a pair.
- */
-static int rad_lowerpair(REQUEST *request UNUSED, VALUE_PAIR *vp) {
-	if (vp == NULL) {
-		return -1;
-	}
-
-	rad_lowercase((char *)vp->strvalue);
-	DEBUG2("rad_lowerpair:  %s now '%s'", vp->name, vp->strvalue);
-	return 0;
-}
-
-/*
- *  Remove spaces in a pair.
- */
-static int rad_rmspace_pair(REQUEST *request UNUSED, VALUE_PAIR *vp) {
-	if (vp == NULL) {
-		return -1;
-	}
-
-	rad_rmspace((char *)vp->strvalue);
-	vp->length = strlen((char *)vp->strvalue);
-	DEBUG2("rad_rmspace_pair:  %s now '%s'", vp->name, vp->strvalue);
-
-	return 0;
-}
-
-
-/*
  *  Respond to a request packet.
  *
  *  Maybe we reply, maybe we don't.
@@ -370,7 +334,6 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	RADIUS_PACKET *packet, *original;
 	const char *secret;
 	int finished = FALSE;
-	int reprocess = 0;
 	int decoderesult = 0;
 
 	rad_assert(request->magic == REQUEST_MAGIC);
@@ -489,24 +452,6 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 				PW_USER_NAME);
 	}
 
-	/*
-	 *  FIXME:  All this lowercase/nospace junk will be moved
-	 *  into a module after module failover is fully in place
-	 *
-	 *  See if we have to lower user/pass before processing
-	 */
-	if(strcmp(mainconfig.do_lower_user, "before") == 0)
-		rad_lowerpair(request, request->username);
-	if(strcmp(mainconfig.do_lower_pass, "before") == 0)
-		rad_lowerpair(request,
-			      pairfind(request->packet->vps, PW_PASSWORD));
-
-	if(strcmp(mainconfig.do_nospace_user, "before") == 0)
-		rad_rmspace_pair(request, request->username);
-	if(strcmp(mainconfig.do_nospace_pass, "before") == 0)
-		rad_rmspace_pair(request,
-				 pairfind(request->packet->vps, PW_PASSWORD));
-
 	(*fun)(request);
 
 	/*
@@ -516,51 +461,6 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if (request->options & RAD_REQUEST_OPTION_REJECTED) {
 		finished = TRUE;
 		goto postpone_request;
-	}
-
-	/*
-	 *	Reprocess if we rejected last time
-	 */
-	if ((fun == rad_authenticate) &&
-	    (request->reply->code == PW_AUTHENTICATION_REJECT)) {
-	  /* See if we have to lower user/pass after processing */
-	  if (strcmp(mainconfig.do_lower_user, "after") == 0) {
-		  rad_lowerpair(request, request->username);
-		  reprocess = 1;
-	  }
-	  if (strcmp(mainconfig.do_lower_pass, "after") == 0) {
-		rad_lowerpair(request,
-			      pairfind(request->packet->vps, PW_PASSWORD));
-		reprocess = 1;
-	  }
-	  if (strcmp(mainconfig.do_nospace_user, "after") == 0) {
-		  rad_rmspace_pair(request, request->username);
-		  reprocess = 1;
-	  }
-	  if (strcmp(mainconfig.do_nospace_pass, "after") == 0) {
-		  rad_rmspace_pair(request,
-				   pairfind(request->packet->vps, PW_PASSWORD));
-		  reprocess = 1;
-	  }
-
-	  /*
-	   *	If we're re-processing the request, re-set it.
-	   */
-	  if (reprocess) {
-		  pairfree(&request->config_items);
-		  pairfree(&request->reply->vps);
-		  request->reply->code = 0;
-		  (*fun)(request);
-		  
-		  /*
-		   *	If the request took too long to process, don't do
-		   *	anything else.
-		   */
-		  if (request->options & RAD_REQUEST_OPTION_REJECTED) {
-			  finished = TRUE;
-			  goto postpone_request;
-		  }
-	  }
 	}
 
 	/*
