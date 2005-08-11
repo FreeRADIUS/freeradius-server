@@ -82,7 +82,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	}
 
 	/*
-	 *	Check for bad escapes
+	 *	Check for bad escapes.
 	 */
 	if (cmd[strlen(mycmd)] == '\\') {
 		radlog(L_ERR|L_CONS, "Command line has final backslash, without a following character");
@@ -95,7 +95,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 *	Split the string into argv's BEFORE doing radius_xlat...
 	 */
 	from = cmd;
-	to = mycmd; 
+	to = mycmd;
 	argc = 0;
 	while (*from) {
 		int length;
@@ -112,7 +112,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		argc++;
 
 		if (argc >= (MAX_ARGV - 1)) break;
-		
+
 		/*
 		 *	Copy the argv over to our buffer.
 		 */
@@ -136,7 +136,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			case '%':
 				if (from[1] == '{') {
 					*(to++) = *(from++);
-					
+
 					length = rad_copy_variable(to, from);
 					if (length < 0) {
 						radlog(L_ERR|L_CONS, "Invalid variable expansion passed as argument for external program");
@@ -154,7 +154,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			}
 		} /* end of string, or found a space */
 
-		*(to++) = '\0';	/* terminate the string. */
+		*(to++) = '\0';	/* terminate the string */
 	}
 
 	/*
@@ -166,7 +166,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	}
 
 	/*
-	 *	Expand each string, as appropriate
+	 *	Expand each string, as appropriate.
 	 */
 	to = argv_buf;
 	left = sizeof(argv_buf);
@@ -203,8 +203,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	argv[argc] = NULL;
 
 	/*
-	 *	Open a pipe for child/parent communication, if
-	 *	necessary.
+	 *	Open a pipe for child/parent communication, if necessary.
 	 */
 	if (exec_wait) {
 		if (pipe(pd) != 0) {
@@ -231,7 +230,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		/*
 		 *	Child process.
 		 *
-		 *	We try to be fail-safe here.  So if ANYTHING
+		 *	We try to be fail-safe here. So if ANYTHING
 		 *	goes wrong, we exit with status 1.
 		 */
 
@@ -343,8 +342,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	}
 
 	/*
-	 *	We're not waiting, exit, and ignore any child's
-	 *	status.
+	 *	We're not waiting, exit, and ignore any child's status.
 	 */
 	if (!exec_wait) {
 		return 0;
@@ -449,7 +447,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			}
 
 			/*
-			 *  Replace any trailing comma by a NUL.
+			 *	Replace any trailing comma by a NUL.
 			 */
 			if (answer[strlen(answer) - 1] == ',') {
 				answer[strlen(answer) - 1] = '\0';
@@ -467,7 +465,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 				*output_pairs = vp;
 			}
 		} /* else the answer was a set of VP's, not a text message */
-	} /* else we didn't read anything from the child. */
+	} /* else we didn't read anything from the child */
 
 	/*
 	 *	Call rad_waitpid (should map to waitpid on non-threaded
