@@ -45,10 +45,7 @@ int rad_accounting(REQUEST *request)
 	int		reply = RLM_MODULE_OK;
 
 	if (!request->proxy) { /* Only need to do this once, before proxying */
-		char		*exec_program;
-		int		exec_wait;
 		VALUE_PAIR	*vp;
-		int		rcode;
 		int		acct_type = 0;
 
 		reply = module_preacct(request);
@@ -66,61 +63,6 @@ int rad_accounting(REQUEST *request)
 		if (vp)
 			acct_type = vp->lvalue;
 		reply = module_accounting(acct_type,request);
-
-		/*
-		 *	See if we need to execute a program.
-		 *	FIXME: somehow cache this info, and only execute the
-		 *	program when we receive an Accounting-START packet.
-		 *	Only at that time we know dynamic IP etc.
-		 */
-		exec_program = NULL;
-		exec_wait = 0;
-		if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM)) != NULL) {
-			exec_wait = 0;
-			exec_program = strdup((char *)vp->strvalue);
-			pairdelete(&request->reply->vps, PW_EXEC_PROGRAM);
-		}
-
-		if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT)) != NULL) {
-			exec_wait = 1;
-			exec_program = strdup((char *)vp->strvalue);
-			pairdelete(&request->reply->vps, PW_EXEC_PROGRAM_WAIT);
-		}
-
-		/*
-		 *	If we want to exec a program, but wait for it,
-		 *	do it first before sending the reply, or
-		 *	proxying the packet.
-		 *
-		 *	If we're NOT waiting, then also do this now, but
-		 *	don't check the return code.
-		 */
-		if (exec_program) {
-			/*
-			 *	Wait for the answer.
-			 *	Don't look for a user message.
-			 *	Do look for returned VP's.
-			 */
-			rcode = radius_exec_program(exec_program, request,
-						    exec_wait, NULL, 0,
-						    request->packet->vps, &vp, 1);
-			free(exec_program);
-
-			/*
-			 *	Always add the value-pairs to the reply.
-			 *
-			 *	If we're not waiting, then the pairs
-			 *	will be empty, so this won't matter.
-			 */
-			pairmove(&request->reply->vps, &vp);
-			pairfree(&vp);
-
-			if (exec_wait) {
-				if (rcode != 0) {
-					return reply;
-				}
-			}
-		}
 
 		/*
 		 *	Maybe one of the preacct modules has decided

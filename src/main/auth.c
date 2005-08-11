@@ -440,8 +440,6 @@ int rad_authenticate(REQUEST *request)
 	char		umsg[MAX_STRING_LEN + 1];
 	const char	*user_msg = NULL;
 	const char	*password;
-	char		*exec_program;
-	int		exec_wait;
 	char		logstr[1024];
 	char		autz_retry = 0;
 	int		autz_type = 0;
@@ -753,72 +751,6 @@ autz_redo:
 	}
 
 	/*
-	 *	See if we need to execute a program.
-	 *	FIXME: somehow cache this info, and only execute the
-	 *	program when we receive an Accounting-START packet.
-	 *	Only at that time we know dynamic IP etc.
-	 */
-	exec_program = NULL;
-	exec_wait = 0;
-	if ((auth_item = pairfind(request->reply->vps, PW_EXEC_PROGRAM)) != NULL) {
-		exec_wait = 0;
-		exec_program = strdup((char *)auth_item->strvalue);
-		pairdelete(&request->reply->vps, PW_EXEC_PROGRAM);
-	}
-	if ((auth_item = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT)) != NULL) {
-		exec_wait = 1;
-		exec_program = strdup((char *)auth_item->strvalue);
-		pairdelete(&request->reply->vps, PW_EXEC_PROGRAM_WAIT);
-	}
-
-	/*
-	 *	If we want to exec a program, but wait for it,
-	 *	do it first before sending the reply.
-	 */
-	if (exec_program && exec_wait) {
-		r = radius_exec_program(exec_program, request,
-					exec_wait,
-					umsg, sizeof(umsg),
-					request->packet->vps, &tmp, 1);
-		free(exec_program);
-		exec_program = NULL;
-
-		/*
-		 *	Always add the value-pairs to the reply.
-		 */
-		pairmove(&request->reply->vps, &tmp);
-		pairfree(&tmp);
-
-		if (r != 0) {
-			/*
-			 *	Error. radius_exec_program() returns -1 on
-			 *	fork/exec errors, or >0 if the exec'ed program
-			 *	had a non-zero exit status.
-			 */
-			if (umsg[0] == '\0') {
-				user_msg = "\r\nAccess denied (external check failed).";
-			} else {
-				user_msg = &umsg[0];
-			}
-
-			request->reply->code = PW_AUTHENTICATION_REJECT;
-			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
-
-			pairadd(&request->reply->vps, tmp);
-			rad_authlog("Login incorrect (external check failed)",
-					request, 0);
-
-			rad_postauth_reject(request);
-
-			return RLM_MODULE_REJECT;
-		}
-
-		/*
-		 *	FIXME: Add Reply-Message with the text?
-		 */
-	}
-
-	/*
 	 *	Set the reply to Access-Accept, if it hasn't already
 	 *	been set to something.  (i.e. Access-Challenge)
 	 */
@@ -835,17 +767,9 @@ autz_redo:
 		rad_authlog("Login OK", request, 1);
 	}
 
-	if (exec_program && !exec_wait) {
-		/*
-		 *	No need to check the exit status here.
-		 */
-		radius_exec_program(exec_program, request, exec_wait,
-				    NULL, 0, request->packet->vps, NULL, 1);
-	}
-
-	if (exec_program)
-		free(exec_program);
-
+	/*
+	 *	Run the modules in the 'post-auth' section.
+	 */
 	result = rad_postauth(request);
 
 	return result;

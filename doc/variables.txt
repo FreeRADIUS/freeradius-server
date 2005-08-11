@@ -147,10 +147,10 @@ defined in 'sh'.  For example:
   Attributes as environment variables in executed programs
   --------------------------------------------------------
 
-  When calling an external program (e.g. from Exec-Program-Wait), these
-variables can be passed on the command line to the program.  In
-addition, the server places all of the attributes in the RADIUS
-request into environment variables for the external program.  The
+  When calling an external program (e.g. from 'rlm_exec' module),
+these variables can be passed on the command line to the program.
+In addition, the server places all of the attributes in the RADIUS
+request into environment variables for the external program. The
 variables are renamed under the following rules:
 
   1.  All letters are made upper-case.

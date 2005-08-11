@@ -125,34 +125,9 @@
   ----			----		------
   Simultaneous-Use	integer		Max. number of concurrent logins
   Fall-Through		integer		Yes/No
-  Exec-Program		string		program to execute after authentication
-  Exec-Program-Wait	string		ditto, but wait for program to finish
-  					before sending back auth. reply
   Login-Time		string		Defines when user may login.
   Current-Time		string		Allows you to perform time-based
 					checks when a request is received.
-
-  Exec-Program can take arguments. You can use variables in the
-  arguments, which are automatically expanded by the server.  See
-  'doc/variables.txt' for more information.
-
-  For example, use the following entry for someone who has BSMTP (queued
-  SMTP) service. "brunq" is the program that runs the SMTP queue.
-
-  robert	Service-Type = Framed-User
-  		Exec-Program = "/usr/local/sbin/brunq -h %f delta",
-  		Fall-Through = 1
-
-  The output from Exec-Program-Wait is parsed by the radius server. If
-  it looks like Attribute/Value pairs, they are decoded and added to the
-  reply sent to the NAS. This way, you can for example set Session-Timeout.
-
-  For backwards compatibility, if the output doesn't look like valid
-  radius A/V pairs, the output is taken as a message and added to the
-  reply sent to the NAS as Port-Message.
-
-  If Exec-Program-Wait returns a non-zero exit status, access will be
-  denied to the user. With a zero-exit status, access is granted.
 
   Login-Time defines the time span a user may login to the system. The
   format of a so-called time string is like the format used by UUCP.
@@ -219,17 +194,17 @@
   There are two GNU Mailman mailing lists hosted by Cistron Internet Services:
   a 'users' list, at:
 
-	http://lists.cistron.nl/archives/freeradius-users/
+	http://lists.freeradius.org/pipermail/freeradius-users/
 
   and a 'developers only' list, at
 
-	http://lists.cistron.nl/archives/freeradius-devel/
+	http://lists.freeradius.org/pipermail/freeradius-devel/
 
 6.  OTHER INFORMATION
 
   The files in other directories are:
 
-  debian/	Files to build a radiusd-freeradius Debian Linux package
+  debian/	Files to build a "freeradius" Debian Linux package.
 
   dialup_admin/	A PHP web front-end to manage an SQL database associated
 		with the server.

@@ -12,8 +12,6 @@
 
 # 	These attributes CAN go in the reply item list.
 ATTRIBUTE	Fall-Through				500	integer
-ATTRIBUTE	Exec-Program				502	string
-ATTRIBUTE	Exec-Program-Wait			503	string
 
 #	These attributes CANNOT go in the reply item list.
 
