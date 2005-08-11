@@ -4,13 +4,20 @@
 #	This is like the 'users' file, but it is processed only for
 #	accounting packets.
 #
-#DEFAULT Acct-Status-Type == Start
-#	Exec-Program = "/path/to/exec/acct/start"
+
+#  Select between different accounting methods based for example on the
+#  Realm, the Huntgroup-Name or any combinaison of the attribute/value
+#  pairs contained in an accounting packet.
 #
-#DEFAULT Acct-Status-Type == Stop
-#	Exec-Program = "/path/to/exec/acct/stop"
+#DEFAULT Realm == "foo.net", Acct-Type := sql_log.foo
 #
-#  For information on how the attributes from the request are passed
-#  to the program, see 'doc/variables.txt'
+#DEFAULT Huntgroup-Name == "wifi", Acct-Type := sql_log.wifi
 #
+#DEFAULT Client-IP-Address == 10.0.0.1, Acct-Type := sql_log.other
 #
+#DEFAULT Acct-Status-Type == Start, Acct-Type := sql_log.start
+
+#  Replace the User-Name with the Stripped-User-Name, if it exists.
+#
+#DEFAULT
+#	User-Name := "%{Stripped-User-Name:-%{User-Name}}"
