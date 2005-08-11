@@ -442,8 +442,7 @@ int rad_authenticate(REQUEST *request)
 	const char	*password;
 	char		*exec_program;
 	int		exec_wait;
-	int		seen_callback_id;
-	char		buf[1024], logstr[1024];
+	char		logstr[1024];
 	char		autz_retry = 0;
 	int		autz_type = 0;
 
@@ -773,21 +772,6 @@ autz_redo:
 	}
 
 	/*
-	 *	Hack - allow % expansion in certain value strings.
-	 *	This is nice for certain Exec-Program programs.
-	 */
-	seen_callback_id = 0;
-	if ((auth_item = pairfind(request->reply->vps, PW_CALLBACK_ID)) != NULL) {
-		seen_callback_id = 1;
-		radius_xlat(buf, sizeof(auth_item->strvalue),
-			    (char *)auth_item->strvalue, request, NULL);
-		strNcpy((char *)auth_item->strvalue, buf,
-			sizeof(auth_item->strvalue));
-		auth_item->length = strlen((char *)auth_item->strvalue);
-	}
-
-
-	/*
 	 *	If we want to exec a program, but wait for it,
 	 *	do it first before sending the reply.
 	 */
@@ -832,28 +816,6 @@ autz_redo:
 		/*
 		 *	FIXME: Add Reply-Message with the text?
 		 */
-	}
-
-	/*
-	 *	Delete "normal" A/V pairs when using callback.
-	 *
-	 *	FIXME: This is stupid. The portmaster should accept
-	 *	these settings instead of insisting on using a
-	 *	dialout location.
-	 *
-	 *	FIXME2: Move this into the above exec thingy?
-	 *	(if you knew how I use the exec_wait, you'd understand).
-	 */
-	if (seen_callback_id) {
-		pairdelete(&request->reply->vps, PW_FRAMED_PROTOCOL);
-		pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS);
-		pairdelete(&request->reply->vps, PW_FRAMED_IP_NETMASK);
-		pairdelete(&request->reply->vps, PW_FRAMED_ROUTE);
-		pairdelete(&request->reply->vps, PW_FRAMED_MTU);
-		pairdelete(&request->reply->vps, PW_FRAMED_COMPRESSION);
-		pairdelete(&request->reply->vps, PW_FILTER_ID);
-		pairdelete(&request->reply->vps, PW_PORT_LIMIT);
-		pairdelete(&request->reply->vps, PW_CALLBACK_NUMBER);
 	}
 
 	/*
