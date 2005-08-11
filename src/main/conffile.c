@@ -78,6 +78,7 @@ struct conf_part {
 	const char *name1;
 	const char *name2;
 	struct conf_item *children;
+	struct conf_item *tail;	/* for speed */
 	rbtree_t	*pair_tree; /* and a partridge.. */
 	rbtree_t	*section_tree; /* no jokes here */
 	rbtree_t	*name2_tree; /* for sections of the same name2 */
@@ -363,23 +364,20 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
  */
 static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 {
-	CONF_ITEM **last;
-
-	/*
-	 *	New entries are added at the bottom of the list.
-	 */
-	for (last = &(cs->children);
-	     (*last) != NULL;
-	     last = &((*last)->next)) {
-		/* nothing */
+	if (!cs->children) {
+		rad_assert(cs->tail == NULL);
+		cs->children = ci;
+	} else {
+		rad_assert(cs->tail != NULL);
+		cs->tail->next = ci;
 	}
-	*last = ci;
 
 	/*
-	 *	We may be adding a list, rather than just one element.
-	 *	If so, loop over all entries.
+	 *	Update the trees (and tail) for each item added.
 	 */
-	for (*last = ci; ci != NULL; ci = ci->next) {
+	for (/* nothing */; ci != NULL; ci = ci->next) {
+		cs->tail = ci;
+
 		/*
 		 *	For fast lookups, pair's and sections get
 		 *	added to rbtree's.
