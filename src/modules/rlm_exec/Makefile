@@ -1,8 +1,12 @@
+#
+# $Id$
+#
+
 TARGET		= rlm_exec
-SRCS		= rlm_exec.c
-HEADERS		= 
+SRCS		= exec.c rlm_exec.c
+HEADERS		=
 RLM_CFLAGS	=
-RLM_LIBS	= 
+RLM_LDFLAGS	=
 
 include ../rules.mak
 
