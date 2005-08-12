@@ -2609,6 +2609,9 @@ fi
 	if test "$ac_cv_header_ldap_h" != "yes"; then
 	  fail="$fail ldap.h"
 	fi
+	if test "x$fail" = "x"; then
+	  SMART_CFLAGS="$SMART_CFLAGS -I$rlm_ldap_include_dir"
+	fi
 
 
 
@@ -3694,11 +3697,13 @@ fi
  	      fail="$fail libldap"
 	    else
 		libldap=ldap
-           fi
+	    fi
           fi
         fi
 
 	if test x"$libldap" != "x"; then
+	  SMART_LIBS="$SMART_LIBS -L$rlm_ldap_lib_dir"
+
 
 
 sm_lib_safe=`echo ""$libldap"" | sed 'y%./+-%__p_%'`
