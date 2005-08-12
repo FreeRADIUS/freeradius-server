@@ -408,6 +408,7 @@ int read_clients_file(RADCLIENT_LIST *clients, const char *file)
 		c->shortname = strdup(shortnm);
 
 		switch (c->ipaddr.af) {
+			NAS *nas;
 		case AF_INET :
 			if ((prefix < 0) || (prefix > 32)) {
 				radlog(L_ERR, "%s[%d]: Invalid value '%s' for IP network mask.",
@@ -432,7 +433,6 @@ int read_clients_file(RADCLIENT_LIST *clients, const char *file)
 			/*
 			 *	Pull information over from the NAS.
 			 */
-			NAS *nas;
 			nas = nas_find(c->ipaddr.ipaddr.ip4addr.s_addr);
 			if (nas) {
 				/*
