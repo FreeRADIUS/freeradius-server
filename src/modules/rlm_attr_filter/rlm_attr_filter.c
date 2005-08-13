@@ -42,8 +42,11 @@
 
 static const char rcsid[] = "$Id$";
 
+/*
+ *	Define a structure with the module configuration, so it can
+ *	be used as the instance handle.
+ */
 struct attr_filter_instance {
-        /* autz */
         char *attrsfile;
         PAIR_LIST *attrs;
 };
@@ -252,156 +255,8 @@ static int attr_filter_instantiate(CONF_SECTION *conf, void **instance)
 		free(inst);
 		return -1;
 	}
-	radlog(L_ERR|L_CONS, " rlm_attr_filter: Authorize method will be"\
-                             " deprecated.");
 	*instance = inst;
 	return 0;
-}
-
-static int attr_filter_authorize(void *instance, REQUEST *request)
-{
-	struct attr_filter_instance *inst = instance;
-	VALUE_PAIR      *request_pairs;
-	VALUE_PAIR      **reply_items;
-	VALUE_PAIR      *reply_item;
-	VALUE_PAIR      *reply_tmp = NULL;
-	VALUE_PAIR      *check_item;
-	PAIR_LIST       *pl;
-	int             found = 0;
-	int             compare;
-	int             pass, fail;
-	VALUE_PAIR      *realmpair;
-	REALM           *realm;
-	char            *realmname;
-
-	/*
-	 *      It's not a proxy reply, so return NOOP
-	 */
-
-	if( request->proxy == NULL ) {
-		return( RLM_MODULE_NOOP );
-	}
-
-	request_pairs = request->packet->vps;
-	reply_items = &request->reply->vps;
-
-	/*
-	 *      Get the realm.  Can't use request->config_items as
-	 *      that gets freed by rad_authenticate....  use the one
-	 *      set in the original request vps
-	 */
-	realmpair = pairfind(request_pairs, PW_REALM);
-	if(!realmpair) {
-		/*    Can't find a realm, so no filtering of attributes
-		 *    or should we use a DEFAULT entry?
-		 *    For now, just return NOTFOUND. (maybe NOOP?)
-		 */
-		return RLM_MODULE_NOTFOUND;
-	}
-
-	realmname = (char *) realmpair->strvalue;
-	realm = realm_find(realmname, FALSE);
-
-	/*
-	 *      Find the attr_filter profile entry for the realm.
-	 */
-	for(pl = inst->attrs; pl; pl = pl->next) {
-
-		/*
-		 *  If the current entry is NOT a default,
-		 *  AND the realm does NOT match the current entry,
-		 *  then skip to the next entry.
-		 */
-		if ( (strcmp(pl->name, "DEFAULT") != 0) &&
-		     (strcmp(realmname, pl->name) != 0) )  {
-		    continue;
-		}
-
-		DEBUG2(" attr_filter: Matched entry %s at line %d", pl->name,
-								    pl->lineno);
-		found = 1;
-
-		check_item = pl->check;
-
-		while( check_item != NULL ) {
-
-		    /*
-		     *      If it is a SET operator, add the attribute to
-		     *      the reply list without checking reply_items.
-		     *
-		     */
-
-		    if( check_item->operator == T_OP_SET ) {
-			if (mypairappend(check_item, &reply_tmp) < 0) {
-				return RLM_MODULE_FAIL;
-			}
-		    }
-		    check_item = check_item->next;
-
-		}
-
-                /*
-                 * Iterate through the reply items, comparing each reply item
-		 * to every rule, then moving it to the reply_tmp list
-		 * only if it matches all rules for that attribute.
-		 * IE, Idle-Timeout is moved only if it matches all rules that
-                 * describe an Idle-Timeout.
-                 */
-
-		for(reply_item = *reply_items;
-		    reply_item != NULL;
-		    reply_item = reply_item->next ) {
-
-		    /* reset the pass,fail vars for each reply item */
-		    pass = fail = 0;
-
-		    /* reset the check_item pointer to beginning of the list */
-		    check_item = pl->check;
-
-		    while( check_item != NULL ) {
-
-			if(reply_item->attribute == check_item->attribute) {
-
-			    compare = simplepaircmp(request, reply_item,
-						    check_item);
-			    check_pair(check_item, reply_item, compare,
-				       &pass, &fail);
-			}
-
-			check_item = check_item->next;
-
-		    }
-
-		    /* only move attribute if it passed all rules */
-		    if (fail == 0 && pass > 0) {
-			if (mypairappend( reply_item, &reply_tmp) < 0) {
-				return RLM_MODULE_FAIL;
-			}
-		    }
-
-		}
-
-		/* If we shouldn't fall through, break */
-		if(!fallthrough(pl->check))
-		    break;
-	}
-
-	pairfree(&request->reply->vps);
-	request->reply->vps = reply_tmp;
-
-	/*
-	 *      See if we succeeded.  If we didn't find the realm,
-	 *      then exit from the module.
-	 */
-	if (!found)
-		return RLM_MODULE_OK;
-
-	/*
-	 *      Remove server internal parameters.
-	 */
-	pairdelete(reply_items, PW_FALL_THROUGH);
-
-	return RLM_MODULE_UPDATED;
 }
 
 static int attr_filter_accounting(void *instance, REQUEST *request)
@@ -807,7 +662,7 @@ module_t rlm_attr_filter = {
 	attr_filter_instantiate,	/* instantiation */
 	{
 		NULL,			/* authentication */
-		attr_filter_authorize,	/* authorization */
+		NULL,			/* authorization */
 		NULL,			/* preaccounting */
 		attr_filter_accounting,	/* accounting */
 		NULL,			/* checksimul */
