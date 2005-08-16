@@ -54,13 +54,13 @@ static const char rcsid[] =
  */
 static const char *hdr1 =
 "Login      Name              What  TTY  When      From      Location";
-static const char *rfmt1 = "%-10.10s %-17.17s %-5.5s %s%-3d %-9.9s %-9.9s %-.19s%s";
+static const char *rfmt1 = "%-10.10s %-17.17s %-5.5s %s%-3u %-9.9s %-9.9s %-.19s%s";
 static const char *rfmt1r = "%s,%s,%s,%s%u,%s,%s,%s%s";
 
 static const char *hdr2 =
 "Login      Port    What      When          From       Location";
-static const char *rfmt2 = "%-10.10s %s%-5d  %-6.6s %-13.13s %-10.10s %-.28s%s";
-static const char *rfmt2r = "%s,%s%d,%s,%s,%s,%s%s";
+static const char *rfmt2 = "%-10.10s %s%-5u  %-6.6s %-13.13s %-10.10s %-.28s%s";
+static const char *rfmt2r = "%s,%s%u,%s,%s,%s,%s%s";
 
 static const char *eol = "\n";
 static int showname = -1;
@@ -532,7 +532,7 @@ int main(int argc, char **argv)
 			printf("NAS-IP-Address = %s\n",
 			       ip_hostname(buffer, sizeof(buffer),
 					   rt.nas_address));
-			printf("NAS-Port = %d\n", rt.nas_port);
+			printf("NAS-Port = %u\n", rt.nas_port);
 
 			switch (rt.proto) {
 				case 'S':
