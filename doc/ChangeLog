@@ -1,4 +1,6 @@
 FreeRADIUS 1.0.5 ; $Date$, urgency=low
+	* Build on MAC OS X.  Still need --disable-shared, though.
+	* Fix bug #255 (crash with expired CRL's, etc.)
 	* Fix quote removal of the values from a SQL database.
 	* Reap the zombie process after a command run from "Exec-Program".
 	* Allow to cancel proxy of accounting with "Proxy-To-Realm := LOCAL".
