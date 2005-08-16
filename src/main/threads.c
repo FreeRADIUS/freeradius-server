@@ -27,7 +27,26 @@
 
 #include <stdlib.h>
 #include <string.h>
+
+/*
+ *	Other OS's have sem_init, OS X doesn't.
+ */
+#ifndef DARWIN
 #include <semaphore.h>
+#else
+#include <mach/task.h>
+#include <mach/semaphore.h>
+
+#undef sem_t
+#define sem_t semaphore_t
+#undef sem_init
+#define sem_init(s,p,c) semaphore_create(mach_task_self(),s,SYNC_POLICY_FIFO,c)
+#undef sem_wait
+#define sem_wait(s) semaphore_wait(*s)
+#undef sem_post
+#define sem_post(s) semaphore_signal(*s)
+#endif
+
 #include <signal.h>
 
 #ifdef HAVE_SYS_WAIT_H
