@@ -97,9 +97,11 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	err = X509_STORE_CTX_get_error(ctx);
 	depth = X509_STORE_CTX_get_error_depth(ctx);
 
-	if(!my_ok)
+	if (!my_ok) {
 		radlog(L_ERR,"--> verify error:num=%d:%s\n",err,
 			X509_verify_cert_error_string(err));
+		return my_ok;
+	}
 	/*
 	 *	Catch too long Certificate chains
 	 */
