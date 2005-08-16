@@ -272,7 +272,7 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		new_queue = rad_malloc(sizeof(*new_queue) * thread_pool.queue_size * 2);
 		memcpy(new_queue, thread_pool.queue,
 		       sizeof(*new_queue) * thread_pool.queue_size);
-		memset(new_queue + sizeof(*new_queue) * thread_pool.queue_size,
+		memset(new_queue + thread_pool.queue_size,
 		       0, sizeof(*new_queue) * thread_pool.queue_size);
 
 		free(thread_pool.queue);
