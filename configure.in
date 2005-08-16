@@ -461,6 +461,9 @@ case "$host" in
 *-interix*)
 	CFLAGS="$CFLAGS -D_ALL_SOURCE"
 	;;
+*-darwin*)
+	CFLAGS="$CFLAGS -DDARWIN"
+	;;
 esac
 
 AC_HEADER_DIRENT
