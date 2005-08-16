@@ -245,6 +245,7 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	num_entries = ((thread_pool.queue_tail + thread_pool.queue_size) -
 		       thread_pool.queue_head) % thread_pool.queue_size;
 	if (num_entries == (thread_pool.queue_size - 1)) {
+		int i;
 		request_queue_t *new_queue;
 
 		/*
@@ -270,13 +271,19 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 *	new one.
 		 */
 		new_queue = rad_malloc(sizeof(*new_queue) * thread_pool.queue_size * 2);
-		memcpy(new_queue, thread_pool.queue,
-		       sizeof(*new_queue) * thread_pool.queue_size);
+		/*
+		 *	Copy the queue element by element
+		 */
+		for (i = 0; i < thread_pool.queue_size; i++) {
+			new_queue[i] = thread_pool.queue[(i + thread_pool.queue_head) % thread_pool.queue_size];
+		}
 		memset(new_queue + thread_pool.queue_size,
 		       0, sizeof(*new_queue) * thread_pool.queue_size);
 
 		free(thread_pool.queue);
 		thread_pool.queue = new_queue;
+		thread_pool.queue_tail = ((thread_pool.queue_tail + thread_pool.queue_size) - thread_pool.queue_head) % thread_pool.queue_size;
+		thread_pool.queue_head = 0;
 		thread_pool.queue_size *= 2;
 	}
 
