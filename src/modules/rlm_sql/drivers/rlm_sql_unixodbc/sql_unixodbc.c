@@ -285,7 +285,9 @@ static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *
  *************************************************************************/
 static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-  /* Not used */
+    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+
+    SQLFreeStmt(unixodbc_sock->stmt_handle, SQL_CLOSE);
     return 0;
 }
 
