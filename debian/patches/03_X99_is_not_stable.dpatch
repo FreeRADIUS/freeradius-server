@@ -1,5 +1,5 @@
 #! /bin/sh /usr/share/dpatch/dpatch-run
-## 03_X99_is_not_stable.dpatch by  <Paul.Hampson@anu.edu.au>
+## 03_X99_is_not_stable.dpatch by Paul Hampson <Paul.Hampson@anu.edu.au>
 ##
 ## All lines beginning with `## DP:' are a description of the patch.
 ## DP: rlm_x99 (X.99 token support) is not stable

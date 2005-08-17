@@ -1,5 +1,5 @@
 #! /bin/sh /usr/share/dpatch/dpatch-run
-## 01_NET-SNMP_build_support.dpatch by  <Paul.Hampson@anu.edu.au>
+## 01_NET-SNMP_build_support.dpatch by Paul Hampson <Paul.Hampson@anu.edu.au>
 ##
 ## All lines beginning with `## DP:' are a description of the patch.
 ## DP: Support building against net-snmp in ucd-snmp compatibility mode

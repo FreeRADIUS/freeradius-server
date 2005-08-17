@@ -1,5 +1,5 @@
 #! /bin/sh /usr/share/dpatch/dpatch-run
-## 04_bonus_control_code_in_clients_conf_5.dpatch by  <Paul.Hampson@anu.edu.au>
+## 04_bonus_control_code_in_clients_conf_5.dpatch by Paul Hampson <Paul.Hampson@anu.edu.au>
 ##
 ## All lines beginning with `## DP:' are a description of the patch.
 ## DP: An extraneous ^g in the manpage source caused '.PP' to appear in the page
