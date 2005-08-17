@@ -543,29 +543,17 @@ modules {
 
 	# PAP module to authenticate users based on their stored password
 	#
-	#  Supports multiple encryption/hash schemes
+	#  Supports multiple encryption/hash schemes.  See "man passwd"
+	#  for details.
 	#
-	#  name   description                   attribute
-	#  ----   -----------                   ---------
-	#
-	#  clear  Clear text			User-Password
-	#  crypt  Unix crypt			Crypt-Password
-	#    md5  MD5 ecnryption		MD5-Password
-	#    smd5 SMD5 ecnryption		SMD5-Password
-	#   sha1  SHA1 encryption		SHA-Password
-	#   ssha  SSHA encryption		SSHA-Password
-	#     nt  NT-Password encryption	NT-Password
-	#     lm  LM-Password encryption	LM-Password
-	#         Netscape MTA hashing		NS-MTA-MD5-Password
-	#   auto  Automatically figure out what to do
-	#
-	#  For "auto" to work, the passwords given to the server by
-	#  a back-end database MUST be placed into the attribute listed
-	#  above.  We STRONGLY recommend using "auto".
-	#
-	#  DEFAULT: auto
+	#  The "auto_header" configuration item can be set to "yes".
+	#  In this case, the module will look inside of the User-Password
+	#  attribute for the headers {crypt}, {clear}, etc., and will
+	#  automatically create the attribute on the right-hand side,
+	#  with the correct value.  It will also automatically handle
+	#  Base-64 encoded data, hex strings, and binary data.
 	pap {
-		encryption_scheme = auto
+		auto_header = no
 	}
 
 	# CHAP module

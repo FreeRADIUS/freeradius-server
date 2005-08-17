@@ -62,6 +62,7 @@ typedef struct rlm_pap_t {
         char *scheme;  /* password encryption scheme */
 	int sch;
 	char norm_passwd;
+	int auto_header;
 } rlm_pap_t;
 
 /*
@@ -74,21 +75,40 @@ typedef struct rlm_pap_t {
  *      buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-  { "encryption_scheme", PW_TYPE_STRING_PTR, offsetof(rlm_pap_t,scheme), NULL, "auto" },
-  { NULL, -1, 0, NULL, NULL }
+	{ "encryption_scheme", PW_TYPE_STRING_PTR, offsetof(rlm_pap_t,scheme), NULL, "auto" },
+	{ "auto_header", PW_TYPE_BOOLEAN, offsetof(rlm_pap_t,auto_header), NULL, "no" },
+	{ NULL, -1, 0, NULL, NULL }
 };
 
 static const LRAD_NAME_NUMBER schemes[] = {
-  { "clear", PAP_ENC_CLEAR },
-  { "crypt", PAP_ENC_CRYPT },
-  { "md5", PAP_ENC_MD5 },
-  { "sha1", PAP_ENC_SHA1 },
-  { "nt", PAP_ENC_NT },
-  { "lm", PAP_ENC_LM },
-  { "smd5", PAP_ENC_SMD5 },
-  { "ssha", PAP_ENC_SSHA },
-  { "auto", PAP_ENC_AUTO },
-  { NULL, PAP_ENC_INVALID }
+	{ "clear", PAP_ENC_CLEAR },
+	{ "crypt", PAP_ENC_CRYPT },
+	{ "md5", PAP_ENC_MD5 },
+	{ "sha1", PAP_ENC_SHA1 },
+	{ "nt", PAP_ENC_NT },
+	{ "lm", PAP_ENC_LM },
+	{ "smd5", PAP_ENC_SMD5 },
+	{ "ssha", PAP_ENC_SSHA },
+	{ "auto", PAP_ENC_AUTO },
+	{ NULL, PAP_ENC_INVALID }
+};
+
+
+/*
+ *	For auto-header discovery.
+ */
+static const LRAD_NAME_NUMBER header_names[] = {
+	{ "{clear}",	PW_USER_PASSWORD },
+	{ "{cleartext}", PW_USER_PASSWORD },
+	{ "{md5}",	PW_MD5_PASSWORD },
+	{ "{smd5}",	PW_SMD5_PASSWORD },
+	{ "{crypt}",	PW_CRYPT_PASSWORD },
+	{ "{sha}",	PW_SHA_PASSWORD },
+	{ "{ssha}",	PW_SSHA_PASSWORD },
+	{ "{nt}",	PW_NT_PASSWORD },
+	{ "{x-nthash}",	PW_NT_PASSWORD },
+	{ "{ns-mta-md5}", PW_NS_MTA_MD5_PASSWORD },
+	{ NULL, 0 }
 };
 
 
@@ -96,7 +116,7 @@ static int pap_detach(void *instance)
 {
 	rlm_pap_t *inst = (rlm_pap_t *) instance;
 
-	if (inst->scheme) free((char *)inst->scheme);
+	free((char *)inst->scheme);
 	free(inst);
 
 	return 0;
@@ -259,15 +279,60 @@ static void normify(VALUE_PAIR *vp, int min_length)
  */
 static int pap_authorize(void *instance, REQUEST *request)
 {
+	rlm_pap_t *inst = instance;
 	int auth_type = FALSE;
 	int found_pw = FALSE;
+	int fixed_auto = FALSE;
 	VALUE_PAIR *vp;
-
-	instance = instance;	/* -Wunused */
 
 	for (vp = request->config_items; vp != NULL; vp = vp->next) {
 		switch (vp->attribute) {
 		case PW_USER_PASSWORD:
+			found_pw = TRUE;
+
+			/*
+			 *	Look for '{foo}', and use them
+			 */
+			if (inst->auto_header && (vp->strvalue[0] == '{')) {
+				int attr;
+				uint8_t *p;
+				char buffer[64];
+
+				p = strchr(vp->strvalue + 1, '}');
+				if (!p) break;
+
+				if ((p - vp->strvalue) > sizeof(buffer)) break;
+
+				memcpy(buffer, vp->strvalue,
+				       p - vp->strvalue + 1);
+				buffer[p - vp->strvalue + 1] = '\0';
+
+				attr = lrad_str2int(header_names, buffer, 0);
+				if (!attr) {
+					DEBUG2("rlm_pap: Using auto_header, and found unknown header {%s}: Not doing anything", buffer);
+					break;
+				}
+
+				/*
+				 *	Catch the case of cleartext.
+				 */
+				if (attr == PW_USER_PASSWORD) {
+					vp->length = strlen(p + 1);
+					memmove(vp->strvalue, p + 1,
+						vp->length + 1);
+				} else {
+					VALUE_PAIR *new_vp;
+					new_vp = paircreate(attr, PW_TYPE_STRING);
+					if (!new_vp) break; /* OOM */
+					
+					strcpy(new_vp->strvalue, p + 1);/* bounds OK */
+					new_vp->length = strlen(new_vp->strvalue);
+					pairadd(&request->config_items, new_vp);
+					fixed_auto = TRUE;
+				}
+			}
+			break;
+
 		case PW_CRYPT_PASSWORD:
 		case PW_NS_MTA_MD5_PASSWORD:
 			found_pw = TRUE;
@@ -321,6 +386,11 @@ static int pap_authorize(void *instance, REQUEST *request)
 	}
 
 	/*
+	 *	Don't leave the old User-Password laying around.
+	 */
+	if (fixed_auto) pairdelete(&request->config_items, PW_USER_PASSWORD);
+
+	/*
 	 *	Don't touch existing Auth-Types.
 	 */
 	if (auth_type) {
@@ -370,10 +440,6 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	char buff[MAX_STRING_LEN];
 	char buff2[MAX_STRING_LEN + 50];
 	int scheme = PAP_ENC_INVALID;
-
-	/* quiet the compiler */
-	instance = instance;
-	request = request;
 
 	if (!request->password){
 		radlog(L_AUTH, "rlm_pap: Attribute \"Password\" is required for authentication.");
