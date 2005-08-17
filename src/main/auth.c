@@ -891,7 +891,7 @@ autz_redo:
 	if (exec_program && exec_wait) {
 		r = radius_exec_program(exec_program, request,
 					exec_wait,
-					umsg, sizeof(umsg),
+					NULL, 0,
 					request->packet->vps, &tmp);
 		free(exec_program);
 		exec_program = NULL;
@@ -902,25 +902,31 @@ autz_redo:
 		pairmove(&request->reply->vps, &tmp);
 		pairfree(&tmp);
 
-		if (r != 0) {
+		if (r < 0) {
 			/*
 			 *	Error. radius_exec_program() returns -1 on
-			 *	fork/exec errors, or >0 if the exec'ed program
-			 *	had a non-zero exit status.
+			 *	fork/exec errors.
 			 */
-			if (umsg[0] == '\0') {
-				user_msg = "\r\nAccess denied (external check failed).";
-			} else {
-				user_msg = &umsg[0];
-			}
+			user_msg = "Access denied (external check failed)";
+			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
+			pairadd(&request->reply->vps, tmp);
 
 			request->reply->code = PW_AUTHENTICATION_REJECT;
-			tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
-
-			pairadd(&request->reply->vps, tmp);
 			rad_authlog("Login incorrect (external check failed)",
-					request, 0);
+				    request, 0);
+			rad_postauth_reject(request);
 
+			return RLM_MODULE_REJECT;
+		}
+		if (r > 0) {
+			/*
+			 *	Reject. radius_exec_program() returns >0
+			 *	if the exec'ed program had a non-zero
+			 *	exit status.
+			 */
+			request->reply->code = PW_AUTHENTICATION_REJECT;
+			rad_authlog("Login incorrect (external check said so)",
+				    request, 0);
 			rad_postauth_reject(request);
 
 			return RLM_MODULE_REJECT;
