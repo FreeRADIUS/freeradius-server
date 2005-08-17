@@ -91,6 +91,19 @@ int proxy_receive(REQUEST *request)
         pairfree(&request->config_items);
         pairfree(&request->proxy->vps);
 
+	/*
+	 *	FIXME: If the packet is an Access-Challenge,
+	 *	THEN add it to a cache, which does:
+	 *
+	 *	(src IP, State) -> (home server ip/port)
+	 *
+	 *	This allows the load-balancing code to
+	 *	work for EAP...
+	 *
+	 *	Alternately, we can delete the State from the home
+	 *	server, and use our own..  that might be better.
+	 */
+
         return rcode;
 }
 
@@ -126,6 +139,14 @@ static REALM *proxy_realm_ldb(REQUEST *request, const char *realm_name,
 {
 	REALM		*cl, *lb;
 	uint32_t	count;
+
+	/*
+	 *	FIXME: If the packet contains a State attribute,
+	 *	AND the realm is load-balance,
+	 *	AND there is a matching
+	 *	State attribute in the cached entry, THEN proxy it to
+	 *	that realm.
+	 */
 
 	lb = NULL;
 	count = 0;
