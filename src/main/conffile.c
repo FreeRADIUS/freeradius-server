@@ -836,6 +836,41 @@ int cf_section_parse(const CONF_SECTION *cs, void *base,
 	return 0;
 }
 
+
+/*
+ *	Free strings we've parsed into data structures.
+ */
+void cf_section_parse_free_strings(void *base, const CONF_PARSER *variables)
+{
+	int i;
+
+	if (!variables) return;
+	
+	/*
+	 *	Free up dynamically allocated string pointers.
+	 */
+	for (i = 0; variables[i].name != NULL; i++) {
+		char **p;
+
+		if (variables[i].type != PW_TYPE_STRING_PTR) {
+			continue;
+		}
+		
+		/*
+		 *	Prefer the data, if it's there.
+		 *	Else use the base + offset.
+		 */
+		if (variables[i].data) {
+			p = (char **) &(variables[i].data);
+		} else {
+			p = (char **) (((char *)base) + variables[i].offset);
+		}
+		free(*p);
+		*p = NULL;
+	}
+}
+
+
 /*
  *	Used in a few places, so in one function for clarity.
  */
