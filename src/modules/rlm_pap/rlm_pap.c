@@ -40,7 +40,8 @@
 #define PAP_ENC_CRYPT		1
 #define PAP_ENC_MD5		2
 #define PAP_ENC_SHA1		3
-#define PAP_MAX_ENC		3
+#define PAP_ENC_NT		4
+#define PAP_MAX_ENC		4
 
 #define PAP_INST_FREE(inst) \
 	free((char *)inst->scheme); \
@@ -130,6 +131,8 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 		inst->sch = PAP_ENC_MD5;
 	else if (strcasecmp(inst->scheme,"sha1") == 0)
 		inst->sch = PAP_ENC_SHA1;
+	else if (strcasecmp(inst->scheme,"nt") == 0)
+		inst->sch = PAP_ENC_NT;
 	else{
 		radlog(L_ERR, "rlm_pap: Wrong password scheme passed");
 		PAP_INST_FREE(inst);
@@ -281,6 +284,44 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			if (strcmp((char *)passwd_item->strvalue, buff) != 0){
 				DEBUG("rlm_pap: Passwords don't match");
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SHA1 password check failed");
+				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
+				return RLM_MODULE_REJECT;
+			}
+			break;
+		case PAP_ENC_NT:
+			DEBUG("rlm_pap: Using NT HASH encryption.");
+
+			if (passwd_item->length != 32) {
+				DEBUG("rlm_pap: Configured NT password has incorrect length");
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NT password has incorrect length");
+				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
+				pairadd(&request->packet->vps, module_fmsg_vp);
+				return RLM_MODULE_REJECT;
+			} else {
+				char szUnicodePass[513];
+				int nPasswordLen;
+				int i;
+				
+				/*
+				 *	NT passwords are unicode.  Convert plain text password
+				 *	to unicode by inserting a zero every other byte
+				 */
+				nPasswordLen = strlen(request->password->strvalue);
+				for (i = 0; i < nPasswordLen; i++) {
+					szUnicodePass[i << 1] = request->password->strvalue[i];
+					szUnicodePass[(i << 1) + 1] = 0;
+				}
+				
+				/* Encrypt Unicode password to a 16-byte MD4 hash */
+				md4_calc(digest, szUnicodePass, (nPasswordLen<<1) );
+				
+				pap_hexify(buff,digest,16);
+				buff[32] = '\0';
+			}
+			if (strcmp((char *)passwd_item->strvalue, buff) != 0){
+				DEBUG("rlm_pap: Passwords don't match");
+				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: NT HASH password check failed");
 				module_fmsg_vp = pairmake("Module-Failure-Message",module_fmsg, T_OP_EQ);
 				pairadd(&request->packet->vps, module_fmsg_vp);
 				return RLM_MODULE_REJECT;
