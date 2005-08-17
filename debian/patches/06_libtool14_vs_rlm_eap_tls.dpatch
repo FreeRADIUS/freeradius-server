@@ -1,0 +1,77 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 07_libtool14_vs_rlm_eap_tls.dpatch by Paul Hampson <Paul.Hampson@anu.edu.au>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: libtool 1.4 is the libtool for the FreeRADIUS 1.0 series,
+## DP: but it can't link against a library that's not lib*.so as
+## DP: it unconditionally changes references to libraries into
+## DP: "-Ldir -lblah" on the command line.
+## DP: This patch works around that by hardlinking rlm_eap_* to
+## DP: librlm_eap_* so that libtool can find it in the build
+## DP: directory. The right soname gets extracted, so at runtime
+## DP: the correct rlm_eap_* is used.
+## DP: From FreeRADIUS bugzilla #75 http://bugs.freeradius.org/show_bug.cgi?id=75
+## DP: Patch ID #77 by Luca Landi
+
+@DPATCH@
+diff -urNad --exclude=CVS --exclude=.svn ./src/modules/rlm_eap/types/Makefile /tmp/dpep-work.ntxebS/freeradius-1.0.4/src/modules/rlm_eap/types/Makefile
+--- ./src/modules/rlm_eap/types/Makefile	2005-04-12 07:18:28.000000000 +1000
++++ /tmp/dpep-work.ntxebS/freeradius-1.0.4/src/modules/rlm_eap/types/Makefile	2005-08-04 00:12:46.000000000 +1000
+@@ -16,7 +16,7 @@
+ 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+ 
+ common: 
+-	@for mod in rlm_eap*; do \
++	@for mod in rlm_eap_tls rlm_eap*; do \
+ 		what=$(WHAT_TO_MAKE); \
+ 		[ "$$what" = "all" ] && what="$(TARGET_LIBS)"; \
+ 		if [ -d $$mod ] && [ -f $$mod/Makefile ]; then \
+diff -urNad --exclude=CVS --exclude=.svn ./src/modules/rlm_eap/types/rlm_eap_peap/Makefile.in /tmp/dpep-work.ntxebS/freeradius-1.0.4/src/modules/rlm_eap/types/rlm_eap_peap/Makefile.in
+--- ./src/modules/rlm_eap/types/rlm_eap_peap/Makefile.in	2004-06-04 01:49:23.000000000 +1000
++++ /tmp/dpep-work.ntxebS/freeradius-1.0.4/src/modules/rlm_eap/types/rlm_eap_peap/Makefile.in	2005-08-04 00:12:46.000000000 +1000
+@@ -3,7 +3,7 @@
+ RLM_CFLAGS  = $(INCLTDL) -I../.. @eap_peap_cflags@ -I../rlm_eap_tls -DOPENSSL_NO_KRB5 -I@srcdir@/../../libeap
+ HEADERS     = ../rlm_eap_tls/rlm_eap_tls.h eap_peap.h ../../eap.h ../../rlm_eap.h
+ RLM_INSTALL = 
+-RLM_LIBS    = -L@srcdir@/../../libeap -leap @eap_peap_ldflags@
++RLM_LIBS    = -L@srcdir@/../../libeap -leap -L@srcdir@/../rlm_eap_tls -lrlm_eap_tls @eap_peap_ldflags@
+ 
+ $(STATIC_OBJS): $(HEADERS)
+ 
+diff -urNad --exclude=CVS --exclude=.svn ./src/modules/rlm_eap/types/rlm_eap_ttls/Makefile.in /tmp/dpep-work.ntxebS/freeradius-1.0.4/src/modules/rlm_eap/types/rlm_eap_ttls/Makefile.in
+--- ./src/modules/rlm_eap/types/rlm_eap_ttls/Makefile.in	2004-06-04 01:49:24.000000000 +1000
++++ /tmp/dpep-work.ntxebS/freeradius-1.0.4/src/modules/rlm_eap/types/rlm_eap_ttls/Makefile.in	2005-08-04 00:12:46.000000000 +1000
+@@ -3,7 +3,7 @@
+ RLM_CFLAGS  = $(INCLTDL) -I@srcdir@/../.. -I@srcdir@/../../libeap @eap_ttls_cflags@ -I../rlm_eap_tls -DOPENSSL_NO_KRB5
+ HEADERS     = ../rlm_eap_tls/rlm_eap_tls.h eap_ttls.h ../../eap.h ../../rlm_eap.h
+ RLM_INSTALL = 
+-RLM_LIBS    = -L@srcdir@/../../libeap -leap @eap_ttls_ldflags@
++RLM_LIBS    = -L@srcdir@/../../libeap -leap -L@srcdir@/../rlm_eap_tls -lrlm_eap_tls @eap_ttls_ldflags@
+ 
+ $(STATIC_OBJS): $(HEADERS)
+ 
+diff -urNad --exclude=CVS --exclude=.svn ./src/modules/rules.mak /tmp/dpep-work.ntxebS/freeradius-1.0.4/src/modules/rules.mak
+--- ./src/modules/rules.mak	2005-04-12 07:19:38.000000000 +1000
++++ /tmp/dpep-work.ntxebS/freeradius-1.0.4/src/modules/rules.mak	2005-08-04 00:12:46.000000000 +1000
+@@ -97,6 +97,13 @@
+ 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+ 	-module $(LINK_MODE) $(CFLAGS) $(RLM_CFLAGS) $(RLM_LDFLAGS) \
+ 	-o $@ -rpath $(libdir) $^ $(RLM_LIBS) $(LIBS)
++	for file in .libs/rlm_eap_*.so ; do \
++		[ -f $$file ] || continue; \
++		name=$${file#.libs/}; \
++		name=$${name%.so}; \
++		ln -s .libs/$${name}.so lib$${name}.so; \
++		ln -s .libs/$${name}.la lib$${name}.la; \
++	done
+ 
+ #######################################################################
+ #
+@@ -137,6 +144,7 @@
+ 	@rm -f *.a *.o *.lo *.la *~
+ 	@rm -rf .libs _libs
+ 	@rm -f config.cache config.log config.status $(RLM_UTILS)
++	@rm -f librlm_eap_*.la librlm_eap_*.so
+ 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=clean common
+ 
+ distclean: clean

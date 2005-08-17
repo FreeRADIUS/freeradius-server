@@ -1,3 +1,16 @@
+freeradius (1.0.5-0) unstable; urgency=low
+
+  * Fix my _name_ in the dpatches
+  * Remove patch to CVS ID header from 05_unbreak_quoted_sql_values
+    so as not to break things when comitting to FreeRADIUS CVS
+  * Take linking fix from FreeRADIUS bugzilla #75 to allow
+    rlm_eap_tls to be linked to by rlm_eap_ttls and rlm_eap_peap
+    even though we don't build them in the Debian archive.
+    (Thanks to Luca Landi for the patch)
+    - Created 06_libtool14_vs_rlm_eap_tls
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 18 Aug 2005 08:34:30 +1000
+  
 freeradius (1.0.4-2) unstable; urgency=low
 
   * Fix my email address in the dpatches
