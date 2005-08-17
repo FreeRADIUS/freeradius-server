@@ -41,12 +41,6 @@ static const CONF_PARSER module_config[] = {
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
 
-static int eap_init(void)
-{
-	return 0;
-}
-
-
 /*
  * delete all the allocated space by eap module
  */
@@ -654,10 +648,11 @@ static int eap_post_proxy(void *inst, REQUEST *request)
  *	That is, everything else should be 'static'.
  */
 module_t rlm_eap = {
+	RLM_MODULE_INIT,
 	"eap",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	eap_init,			/* initialization */
 	eap_instantiate,		/* instantiation */
+	eap_detach,			/* detach */
 	{
 		eap_authenticate,	/* authentication */
 		eap_authorize,		/* authorization */
@@ -668,6 +663,4 @@ module_t rlm_eap = {
 		eap_post_proxy,		/* post-proxy */
 		NULL			/* post-auth */
 	},
-	eap_detach,			/* detach */
-	NULL,				/* destroy */
 };

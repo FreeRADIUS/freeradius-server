@@ -788,10 +788,11 @@ static int fastuser_accounting(void *instance UNUSED, REQUEST *request UNUSED)
 
 /* globally exported name */
 module_t rlm_fastusers = {
+	RLM_MODULE_INIT,
 	"fastusers",
 	0,				/* type: reserved */
-	NULL,				/* initialization */
 	fastuser_instantiate,		/* instantiation */
+	fastuser_detach,		/* detach */
 	{
 		fastuser_authenticate,	/* authentication */
 		fastuser_authorize,	/* authorization */
@@ -802,7 +803,5 @@ module_t rlm_fastusers = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	fastuser_detach,		/* detach */
-	NULL				/* destroy */
 };
 

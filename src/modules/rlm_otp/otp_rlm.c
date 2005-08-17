@@ -573,6 +573,7 @@ otp_destroy(void)
  *	is single-threaded.
  */
 module_t rlm_otp = {
+	RLM_MODULE_INIT,
 	"otp",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	otp_init,			/* initialization */

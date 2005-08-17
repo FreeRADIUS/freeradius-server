@@ -938,10 +938,11 @@ static int counter_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_counter = {
-	"Counter",
+	 RLM_MODULE_INIT,
+	"counter",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	counter_instantiate,		/* instantiation */
+	counter_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		counter_authorize, 	/* authorization */
@@ -952,6 +953,4 @@ module_t rlm_counter = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	counter_detach,			/* detach */
-	NULL,				/* destroy */
 };

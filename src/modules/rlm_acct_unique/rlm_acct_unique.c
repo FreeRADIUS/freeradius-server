@@ -233,10 +233,11 @@ static int add_unique_id(void *instance, REQUEST *request)
 
 /* globally exported name */
 module_t rlm_acct_unique = {
+	RLM_MODULE_INIT,
 	"Acct-Unique-Session-Id",
 	0,				/* type: reserved */
-	NULL,				/* initialization */
 	unique_instantiate,		/* instantiation */
+	unique_detach,		/* detach */
 	{
 		NULL,			/* authentication */
 		add_unique_id,	/* authorization */
@@ -247,6 +248,4 @@ module_t rlm_acct_unique = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	unique_detach,		/* detach */
-	NULL,				/* destroy */
 };

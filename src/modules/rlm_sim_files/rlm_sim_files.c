@@ -274,10 +274,11 @@ static int sim_file_detach(void *instance)
 
 /* globally exported name */
 module_t rlm_sim_files = {
+	RLM_MODULE_INIT,
 	"sim_files",
 	0,				/* type: reserved */
-	NULL,				/* initialization */
 	sim_file_instantiate,		/* instantiation */
+	sim_file_detach,		/* detach */
 	{
 		NULL,			/* authentication */
 		sim_file_authorize, 	/* authorization */
@@ -288,7 +289,5 @@ module_t rlm_sim_files = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	sim_file_detach,		/* detach */
-	NULL				/* destroy */
 };
 

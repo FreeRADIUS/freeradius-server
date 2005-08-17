@@ -440,20 +440,19 @@ static int realm_detach(void *instance)
 
 /* globally exported name */
 module_t rlm_realm = {
-  "realm",
-  0,				/* type: reserved */
-  NULL,				/* initialization */
-  realm_instantiate,	       	/* instantiation */
-  {
-	  NULL,			/* authentication */
-	  realm_authorize,	/* authorization */
-	  realm_preacct,	/* preaccounting */
-	  NULL,			/* accounting */
-	  NULL,			/* checksimul */
-	  NULL,			/* pre-proxy */
-	  NULL,			/* post-proxy */
-	  NULL			/* post-auth */
-  },
-  realm_detach,			/* detach */
-  NULL,				/* destroy */
+	RLM_MODULE_INIT,
+	"realm",
+	0,				/* type: reserved */
+	realm_instantiate,	       	/* instantiation */
+	realm_detach,			/* detach */
+	{
+		NULL,			/* authentication */
+		realm_authorize,	/* authorization */
+		realm_preacct,	/* preaccounting */
+		NULL,			/* accounting */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
+	},
 };

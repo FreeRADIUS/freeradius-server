@@ -1317,20 +1317,19 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 }
 
 module_t rlm_mschap = {
-  "MS-CHAP",
-  RLM_TYPE_THREAD_SAFE,		/* type */
-  NULL,				/* initialize */
-  mschap_instantiate,		/* instantiation */
-  {
-	  mschap_authenticate,	/* authenticate */
-	  mschap_authorize,	/* authorize */
-	  NULL,			/* pre-accounting */
-	  NULL,			/* accounting */
-	  NULL,			/* checksimul */
-	  NULL,			/* pre-proxy */
-	  NULL,			/* post-proxy */
-	  NULL			/* post-auth */
-  },
-  mschap_detach,		/* detach */
-  NULL,				/* destroy */
+	RLM_MODULE_INIT,
+	"MS-CHAP",
+	RLM_TYPE_THREAD_SAFE,		/* type */
+	mschap_instantiate,		/* instantiation */
+	mschap_detach,		/* detach */
+	{
+		mschap_authenticate,	/* authenticate */
+		mschap_authorize,	/* authorize */
+		NULL,			/* pre-accounting */
+		NULL,			/* accounting */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
+	},
 };

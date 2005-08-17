@@ -312,16 +312,15 @@ static int expr_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_expr = {
+	RLM_MODULE_INIT,
 	"expr",				/* Name */
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	expr_instantiate,		/* instantiation */
+	expr_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,			/* authorization */
 		NULL,			/* pre-accounting */
 		NULL			/* accounting */
 	},
-	expr_detach,			/* detach */
-	NULL,				/* destroy */
 };

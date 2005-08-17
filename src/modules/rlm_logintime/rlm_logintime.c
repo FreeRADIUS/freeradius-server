@@ -328,10 +328,11 @@ static int logintime_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_logintime = {
+	RLM_MODULE_INIT,
 	"logintime",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	logintime_instantiate,		/* instantiation */
+	logintime_detach,		/* detach */
 	{
 		NULL,			/* authentication */
 		logintime_authorize, 	/* authorization */
@@ -342,6 +343,4 @@ module_t rlm_logintime = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	logintime_detach,		/* detach */
-	NULL,				/* destroy */
 };

@@ -335,10 +335,11 @@ static int checkval_accounting(void *instance, REQUEST *request)
  *	is single-threaded.
  */
 module_t rlm_checkval = {
+	 RLM_MODULE_INIT,
 	"checkval",
 	0,		/* type */
-	NULL,				/* initialization */
 	checkval_instantiate,		/* instantiation */
+	checkval_detach,		/* detach */
 	{
 		NULL,			/* authentication */
 		checkval_authorize, 	/* authorization */
@@ -349,6 +350,4 @@ module_t rlm_checkval = {
 		NULL,		        /* post-proxy */
 		NULL		        /* post-auth */
 	},
-	checkval_detach,		/* detach */
-	NULL,				/* destroy */
 };

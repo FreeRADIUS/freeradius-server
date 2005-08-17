@@ -309,10 +309,11 @@ void rlm_policy_free_item(policy_item_t *item)
  *	is single-threaded.
  */
 module_t rlm_policy = {
+	RLM_MODULE_INIT,
 	"policy",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	policy_instantiate,		/* instantiation */
+	policy_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		policy_authorize,	/* authorization */
@@ -323,6 +324,4 @@ module_t rlm_policy = {
 		policy_post_proxy,	/* post-proxy */
 		policy_post_auth	/* post-auth */
 	},
-	policy_detach,			/* detach */
-	NULL,				/* destroy */
 };

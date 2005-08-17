@@ -779,10 +779,11 @@ static int pap_authenticate(void *instance, REQUEST *request)
  *	is single-threaded.
  */
 module_t rlm_pap = {
+	RLM_MODULE_INIT,
 	"PAP",
 	0,				/* type */
-	NULL,				/* initialization */
 	pap_instantiate,		/* instantiation */
+	pap_detach,			/* detach */
 	{
 		pap_authenticate,	/* authentication */
 		pap_authorize,		/* authorization */
@@ -793,6 +794,4 @@ module_t rlm_pap = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	pap_detach,			/* detach */
-	NULL,				/* destroy */
 };

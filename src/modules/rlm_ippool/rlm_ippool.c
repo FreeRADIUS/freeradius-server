@@ -853,10 +853,11 @@ static int ippool_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_ippool = {
-	"IPPOOL",
+	RLM_MODULE_INIT,
+	"ippool",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	ippool_instantiate,		/* instantiation */
+	ippool_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,		 	/* authorization */
@@ -867,6 +868,4 @@ module_t rlm_ippool = {
 		NULL,			/* post-proxy */
 		ippool_postauth		/* post-auth */
 	},
-	ippool_detach,			/* detach */
-	NULL,				/* destroy */
 };

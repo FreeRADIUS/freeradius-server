@@ -500,10 +500,11 @@ static int caching_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_caching = {
+	RLM_MODULE_INIT,
 	"Caching",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	caching_instantiate,		/* instantiation */
+	caching_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		caching_authorize, 	/* authorization */
@@ -514,6 +515,4 @@ module_t rlm_caching = {
 		NULL,			/* post-proxy */
 		caching_postauth	/* post-auth */
 	},
-	caching_detach,			/* detach */
-	NULL,				/* destroy */
 };

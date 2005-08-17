@@ -64,21 +64,6 @@ static const CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-/*
- *	Do any per-module initialization.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	Try to avoid putting too much stuff in here - it's better to
- *	do it in instantiate() where it is not global.
- */
-static int example_init(void)
-{
-	/*
-	 *	Everything's OK, return without an error.
-	 */
-	return 0;
-}
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -232,10 +217,11 @@ static int example_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_example = {
+	RLM_MODULE_INIT,
 	"example",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	example_init,			/* initialization */
 	example_instantiate,		/* instantiation */
+	example_detach,			/* detach */
 	{
 		example_authenticate,	/* authentication */
 		example_authorize,	/* authorization */
@@ -246,6 +232,4 @@ module_t rlm_example = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	example_detach,			/* detach */
-	NULL,				/* destroy */
 };

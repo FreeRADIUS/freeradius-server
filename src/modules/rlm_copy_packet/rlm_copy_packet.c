@@ -131,10 +131,11 @@ static int packet_authorize(void *instance, REQUEST *request)
  *	is single-threaded.
  */
 module_t rlm_copy_packet = {
+	 RLM_MODULE_INIT,
 	"copy_packet",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	packet_instantiate,		/* instantiation */
+	packet_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		packet_authorize,	/* authorization */
@@ -145,6 +146,4 @@ module_t rlm_copy_packet = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	packet_detach,			/* detach */
-	NULL,				/* destroy */
 };

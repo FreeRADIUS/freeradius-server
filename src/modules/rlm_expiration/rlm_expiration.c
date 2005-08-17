@@ -219,10 +219,11 @@ static int expiration_instantiate(CONF_SECTION *conf, void **instance)
  *	is single-threaded.
  */
 module_t rlm_expiration = {
-	"Expiration",
+	RLM_MODULE_INIT,
+	"expiration",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	expiration_instantiate,		/* instantiation */
+	expiration_detach,		/* detach */
 	{
 		NULL,			/* authentication */
 		expiration_authorize, 	/* authorization */
@@ -233,6 +234,4 @@ module_t rlm_expiration = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	expiration_detach,		/* detach */
-	NULL,				/* destroy */
 };

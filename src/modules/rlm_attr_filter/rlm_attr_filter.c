@@ -656,10 +656,11 @@ static int attr_filter_detach(void *instance)
 
 /* globally exported name */
 module_t rlm_attr_filter = {
+	RLM_MODULE_INIT,
 	"attr_filter",
 	0,				/* type: reserved */
-	NULL,				/* initialization */
 	attr_filter_instantiate,	/* instantiation */
+	attr_filter_detach,		/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,			/* authorization */
@@ -670,7 +671,5 @@ module_t rlm_attr_filter = {
 		attr_filter_postproxy,	/* post-proxy */
 		NULL			/* post-auth */
 	},
-	attr_filter_detach,		/* detach */
-	NULL				/* destroy */
 };
 

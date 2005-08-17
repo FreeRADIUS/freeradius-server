@@ -190,7 +190,7 @@ static int exec_detach(void *instance)
 static int exec_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_exec_t	*inst;
-	char		*xlat_name;
+	const char	*xlat_name;
 
 	/*
 	 *	Set up a storage area for instance data
@@ -237,7 +237,7 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (inst->wait &&
 	    (inst->output == NULL)) {
-		radlog(L_INFO, "rlm_exec: Wait=yes but no output defined. Did you mean output=none?");
+		radlog(L_INFO, "rlm_exec: wait=yes but no output defined. Did you mean output=none?");
 	}
 
 	/*
@@ -368,10 +368,11 @@ static int exec_dispatch(void *instance, REQUEST *request)
  *	is single-threaded.
  */
 module_t rlm_exec = {
+	RLM_MODULE_INIT,
 	"exec",				/* Name */
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	exec_instantiate,		/* instantiation */
+	exec_detach,			/* detach */
 	{
 		exec_dispatch,		/* authentication */
 		exec_dispatch,	        /* authorization */
@@ -382,6 +383,4 @@ module_t rlm_exec = {
 		exec_dispatch,		/* post-proxy */
 		exec_dispatch		/* post-auth */
 	},
-	exec_detach,			/* detach */
-	NULL,				/* destroy */
 };

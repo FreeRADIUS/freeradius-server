@@ -286,21 +286,20 @@ static int pam_auth(void *instance, REQUEST *request)
 }
 
 module_t rlm_pam = {
-  "Pam",
-  RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
-  NULL,				/* initialize */
-  pam_instantiate,		/* instantiation */
-  {
-	  pam_auth,		/* authenticate */
-	  NULL,			/* authorize */
-	  NULL,			/* pre-accounting */
-	  NULL,			/* accounting */
-	  NULL,			/* checksimul */
-	  NULL,			/* pre-proxy */
-	  NULL,			/* post-proxy */
-	  NULL			/* post-auth */
-  },
-  pam_detach,			/* detach */
-  NULL,				/* destroy */
+	RLM_MODULE_INIT,
+	"pam",
+	RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
+	pam_instantiate,		/* instantiation */	
+	pam_detach,			/* detach */
+	{
+		pam_auth,		/* authenticate */
+		NULL,			/* authorize */
+		NULL,			/* pre-accounting */
+		NULL,			/* accounting */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
+	},
 };
 

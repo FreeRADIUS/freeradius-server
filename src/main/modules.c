@@ -131,8 +131,6 @@ static void module_entry_free(void *data)
 {
 	module_entry_t *this = data;
 
-	if (this->module->destroy)
-		(this->module->destroy)();
 	lt_dlclose(this->handle);	/* ignore any errors */
 	free(this);
 }
@@ -166,6 +164,7 @@ static module_entry_t *linkto_module(CONF_SECTION *modules,
 	lt_dlhandle handle;
 	char module_struct[256];
 	char *p;
+	const void *module;
 
 	node = cf_data_find(modules, module_name);
 	if (node) return node;
@@ -176,17 +175,9 @@ static module_entry_t *linkto_module(CONF_SECTION *modules,
 	handle = lt_dlopenext(module_name);
 	if (handle == NULL) {
 		radlog(L_ERR|L_CONS, "%s[%d] Failed to link to module '%s':"
-				" %s\n", cffilename, cflineno, module_name, lt_dlerror());
+		       " %s\n", cffilename, cflineno, module_name, lt_dlerror());
 		return NULL;
 	}
-
-	/* make room for the module type */
-	node = rad_malloc(sizeof(*node));
-	memset(node, 0, sizeof(*node));
-
-	/* fill in the module structure */
-	node->handle = handle;
-	strNcpy(node->name, module_name, sizeof(node->name));
 
 	/*
 	 *	Link to the module's rlm_FOO{} module structure.
@@ -198,25 +189,37 @@ static module_entry_t *linkto_module(CONF_SECTION *modules,
 	p = strrchr(module_struct, '-');
 	if (p) *p = '\0';
 
-	node->module = (module_t *) lt_dlsym(node->handle, module_struct);
-	if (!node->module) {
+	DEBUG3("    (Loaded %s, checking if it's valid)", module_name);
+
+	/*
+	 *	libltld MAY core here, if the handle it gives us contains
+	 *	garbage data.
+	 */
+	module = lt_dlsym(handle, module_struct);
+	if (!module) {
 		radlog(L_ERR|L_CONS, "%s[%d] Failed linking to "
 				"%s structure in %s: %s\n",
 				cffilename, cflineno,
 				module_name, cffilename, lt_dlerror());
-		lt_dlclose(node->handle);	/* ignore any errors */
-		free(node);
+		lt_dlclose(handle);
 		return NULL;
+	}
+	/*
+	 *	Before doing anything else, check if it's sane.
+	 */
+	if ((*(uint32_t *) module) != RLM_MODULE_MAGIC_NUMBER) {
+		lt_dlclose(handle);
+		DEBUG2("%08x %08x\n", (*(uint32_t *) handle), RLM_MODULE_MAGIC_NUMBER);
+		radlog(L_ERR|L_CONS, "%s[%d] Invalid version in module '%s'",
+		       cffilename, cflineno, module_name);
+		return NULL;
+		
 	}
 
-	/* call the modules initialization */
-	if (node->module->init && (node->module->init)() < 0) {
-		radlog(L_ERR|L_CONS, "%s[%d] Module initialization failed.\n",
-				cffilename, cflineno);
-		lt_dlclose(node->handle);	/* ignore any errors */
-		free(node);
-		return NULL;
-	}
+	/* make room for the module type */
+	node = rad_malloc(sizeof(*node));
+	memset(node, 0, sizeof(*node));
+	node->module = module;
 
 	DEBUG("Module: Loaded %s ", node->module->name);
 

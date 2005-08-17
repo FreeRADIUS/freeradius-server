@@ -140,10 +140,11 @@ static int chap_authenticate(void *instance, REQUEST *request)
  *	is single-threaded.
  */
 module_t rlm_chap = {
+	 RLM_MODULE_INIT,
 	"CHAP",
 	0,				/* type */
-	NULL,				/* initialization */
 	NULL,				/* instantiation */
+	NULL,				/* detach */
 	{
 		chap_authenticate,	/* authentication */
 		chap_authorize,	 	/* authorization */
@@ -154,6 +155,4 @@ module_t rlm_chap = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	NULL,				/* detach */
-	NULL,				/* destroy */
 };

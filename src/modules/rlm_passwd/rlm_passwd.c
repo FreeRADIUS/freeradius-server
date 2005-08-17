@@ -547,10 +547,11 @@ static int passwd_authorize(void *instance, REQUEST *request)
 }
 
 module_t rlm_passwd = {
+	RLM_MODULE_INIT,
 	"passwd",
 	RLM_TYPE_THREAD_SAFE, 		/* type */
-	NULL,				/* initialize */
 	passwd_instantiate,		/* instantiation */
+	passwd_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		passwd_authorize,	/* authorization */
@@ -561,7 +562,5 @@ module_t rlm_passwd = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	passwd_detach,			/* detach */
-	NULL				/* destroy */
 };
 #endif /* TEST */

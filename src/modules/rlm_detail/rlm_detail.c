@@ -175,15 +175,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		 */
 		if ((inst->last_made_directory == NULL) ||
 		    (strcmp(inst->last_made_directory, buffer) != 0)) {
-
-			/*
-			 *	Free any previously cached name.
-			 */
-			if (inst->last_made_directory != NULL) {
-				free((char *) inst->last_made_directory);
-				inst->last_made_directory = NULL;
-			}
-
+			free((char *) inst->last_made_directory);
 			inst->last_made_directory = strdup(buffer);
 		}
 
@@ -441,10 +433,11 @@ static int detail_detach(void *instance)
 
 /* globally exported name */
 module_t rlm_detail = {
+	RLM_MODULE_INIT,
 	"detail",
 	RLM_TYPE_THREAD_UNSAFE,        /* type: reserved */
-	NULL,				/* initialization */
 	detail_instantiate,		/* instantiation */
+	detail_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		detail_authorize, 	/* authorization */
@@ -455,7 +448,5 @@ module_t rlm_detail = {
 		detail_post_proxy,	/* post-proxy */
 		detail_postauth		/* post-auth */
 	},
-	detail_detach,			/* detach */
-	NULL				/* destroy */
 };
 

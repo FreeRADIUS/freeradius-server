@@ -76,7 +76,7 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_attr_rewrite_t *data;
 	DICT_ATTR *dattr;
-	char *instance_name = NULL;
+	const char *instance_name = NULL;
 
 	/*
 	 *	Set up a storage area for instance data
@@ -478,10 +478,11 @@ static int attr_rewrite_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_attr_rewrite = {
+	RLM_MODULE_INIT,
 	"attr_rewrite",
 	RLM_TYPE_THREAD_UNSAFE,		/* type */
-	NULL,				/* initialization */
 	attr_rewrite_instantiate,		/* instantiation */
+	attr_rewrite_detach,			/* detach */
 	{
 		attr_rewrite_authenticate,	/* authentication */
 		attr_rewrite_authorize, 	/* authorization */
@@ -492,6 +493,4 @@ module_t rlm_attr_rewrite = {
 		attr_rewrite_postproxy,		/* post-proxy */
 		attr_rewrite_postauth		/* post-auth */
 	},
-	attr_rewrite_detach,			/* detach */
-	NULL,				/* destroy */
 };

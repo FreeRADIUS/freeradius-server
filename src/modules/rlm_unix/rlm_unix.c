@@ -120,22 +120,6 @@ static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 
 
 /*
- *	Done once when the module is loaded, and NOT on a per-instance
- *	basis.
- */
-static int unix_init(void)
-{
-	/* FIXME - delay these until a group file has been read so we know
-	 * groupcmp can actually do something */
-	paircompare_register(PW_GROUP, PW_USER_NAME, groupcmp, NULL);
-#ifdef PW_GROUP_NAME /* compat */
-	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, groupcmp, NULL);
-#endif
-	return 0;
-}
-
-
-/*
  *	Detach.
  */
 static int unix_detach(void *instance)
@@ -143,6 +127,11 @@ static int unix_detach(void *instance)
 #define inst ((struct unix_instance *)instance)
 	if (inst->radwtmp)
 		free(inst->radwtmp);
+
+	paircompare_unregister(PW_GROUP, groupcmp);
+#ifdef PW_GROUP_NAME
+	paircompare_unregister(PW_GROUP_NAME, groupcmp);
+#endif
 #undef inst
 	free(instance);
 	return 0;
@@ -172,19 +161,15 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
+	/* FIXME - delay these until a group file has been read so we know
+	 * groupcmp can actually do something */
+	paircompare_register(PW_GROUP, PW_USER_NAME, groupcmp, NULL);
+#ifdef PW_GROUP_NAME /* compat */
+	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, groupcmp, NULL);
+#endif
+
 #undef inst
 
-	return 0;
-}
-
-
-
-static int unix_destroy(void)
-{
-	paircompare_unregister(PW_GROUP, groupcmp);
-#ifdef PW_GROUP_NAME
-	paircompare_unregister(PW_GROUP_NAME, groupcmp);
-#endif
 	return 0;
 }
 
@@ -604,20 +589,19 @@ static int unix_accounting(void *instance, REQUEST *request)
 
 /* globally exported name */
 module_t rlm_unix = {
-  "System",
-  RLM_TYPE_THREAD_UNSAFE,        /* type */
-  unix_init,                    /* initialization */
-  unix_instantiate,		/* instantiation */
-  {
-	  unix_authenticate,    /* authentication */
-	  unix_authorize,       /* authorization */
-	  NULL,                 /* preaccounting */
-	  unix_accounting,      /* accounting */
-	  NULL,                  /* checksimul */
-	  NULL,			/* pre-proxy */
-	  NULL,			/* post-proxy */
-	  NULL			/* post-auth */
-  },
-  unix_detach,                 	/* detach */
-  unix_destroy,                  /* destroy */
+	RLM_MODULE_INIT,
+	"System",
+	RLM_TYPE_THREAD_UNSAFE,        /* type */
+	unix_instantiate,		/* instantiation */
+	unix_detach,                 	/* detach */
+	{
+		unix_authenticate,    /* authentication */
+		unix_authorize,       /* authorization */
+		NULL,                 /* preaccounting */
+		unix_accounting,      /* accounting */
+		NULL,                  /* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
+	},
 };

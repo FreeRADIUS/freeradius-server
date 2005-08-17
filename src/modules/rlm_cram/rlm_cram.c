@@ -198,20 +198,19 @@ static int cram_authenticate(void * instance, REQUEST *request)
 }
 
 module_t rlm_cram = {
-  "CRAM",
-  RLM_TYPE_THREAD_SAFE,				/* type */
-  NULL,				/* initialize */
-  NULL,		/* instantiation */
-  {
-	  cram_authenticate,	/* authenticate */
-	  NULL,			/* authorize */
-	  NULL,			/* pre-accounting */
-	  NULL,			/* accounting */
-	  NULL,			/* checksimul */
-	  NULL,			/* pre-proxy */
-	  NULL,			/* post-proxy */
-	  NULL			/* post-auth */
-  },
-  NULL,				/* detach */
-  NULL,				/* destroy */
+	RLM_MODULE_INIT,
+	"CRAM",
+	RLM_TYPE_THREAD_SAFE,		/* type */
+	NULL,				/* instantiation */
+	NULL,				/* detach */
+	{
+		cram_authenticate,	/* authenticate */
+		NULL,			/* authorize */
+		NULL,			/* pre-accounting */
+		NULL,			/* accounting */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
+	},
 };

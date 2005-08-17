@@ -188,6 +188,8 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	VALUE_PAIR *vp;
 	VALUE_PAIR *qop, *nonce;
 
+	instance = instance;	/* -Wunused */
+
 	/*
 	 *	We require access to the plain-text password.
 	 */
@@ -487,10 +489,11 @@ static int digest_authenticate(void *instance, REQUEST *request)
  *	is single-threaded.
  */
 module_t rlm_digest = {
-	"DIGEST",
+	RLM_MODULE_INIT,
+	"digest",
 	0,				/* type */
-	NULL,				/* initialization */
 	NULL,				/* instantiation */
+	NULL,				/* detach */
 	{
 		digest_authenticate,	/* authentication */
 		digest_authorize, 	/* authorization */
@@ -501,6 +504,4 @@ module_t rlm_digest = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	NULL,				/* detach */
-	NULL,				/* destroy */
 };

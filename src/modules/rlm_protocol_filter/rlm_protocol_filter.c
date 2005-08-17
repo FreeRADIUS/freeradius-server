@@ -281,10 +281,11 @@ static int filter_authorize(void *instance, REQUEST *request)
  *	is single-threaded.
  */
 module_t rlm_protocol_filter = {
+	RLM_MODULE_INIT,
 	"protocol_filter",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	filter_instantiate,		/* instantiation */
+	filter_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		filter_authorize,	/* authorization */
@@ -295,6 +296,4 @@ module_t rlm_protocol_filter = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	filter_detach,			/* detach */
-	NULL,				/* destroy */
 };

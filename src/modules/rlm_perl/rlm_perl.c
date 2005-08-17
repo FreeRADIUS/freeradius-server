@@ -165,7 +165,7 @@ EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
  *	We clone it for every instance if we have perl
  *	with -Duseithreads compiled in
  */
-static PerlInterpreter	*interp;
+static PerlInterpreter	*interp = NULL;
 
 static const CONF_PARSER pool_conf[] = {
 	{ "max_clones", PW_TYPE_INTEGER, offsetof(PERL_POOL, max_clones), NULL,		"32"},
@@ -549,6 +549,18 @@ static int init_pool (CONF_SECTION *conf, PERL_INST *inst) {
 	int t;
 	PERL_POOL	*pool;
 
+	if (!interp) {
+#ifdef USE_ITHREADS
+		if ((interp = perl_alloc()) == NULL) {
+			radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
+			return -1;
+		}
+		
+		perl_construct(interp);
+		PL_perl_destruct_level = 2;
+#endif
+	}
+
 	pool = rad_malloc(sizeof(PERL_POOL));
 	memset(pool,0,sizeof(PERL_POOL));
 
@@ -587,15 +599,6 @@ static int init_pool (CONF_SECTION *conf, PERL_INST *inst) {
  */
 static int perl_init(void)
 {
-#ifdef USE_ITHREADS
-	if ((interp = perl_alloc()) == NULL) {
-		radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
-		return -1;
-	}
-
-	perl_construct(interp);
-	PL_perl_destruct_level = 2;
-#endif
 	return 0;
 
 }
@@ -1295,14 +1298,15 @@ static int perl_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_perl = {
+	RLM_MODULE_INIT,
 	"perl",				/* Name */
 #ifdef USE_ITHREADS
 	RLM_TYPE_THREAD_SAFE,		/* type */
 #else
 	RLM_TYPE_THREAD_UNSAFE,
 #endif
-	perl_init,			/* initialization */
 	perl_instantiate,		/* instantiation */
+	perl_detach,			/* detach */
 	{
 		perl_authenticate,
 		perl_authorize,
@@ -1313,6 +1317,4 @@ module_t rlm_perl = {
 		perl_post_proxy,	/* post-proxy */
 		perl_post_auth	  /* post-auth */
 	},
-	perl_detach,			/* detach */
-	NULL,				/* destroy */
 };

@@ -399,20 +399,19 @@ static int krb5_auth(void *instance, REQUEST *request)
 #endif /* HEIMDAL_KRB5 */
 
 module_t rlm_krb5 = {
-  "Kerberos",
-  RLM_TYPE_THREAD_UNSAFE,	/* type: not thread safe */
-  NULL,				/* initialize */
-  krb5_instantiate,   		/* instantiation */
-  {
-	  krb5_auth,		/* authenticate */
-	  NULL,			/* authorize */
-	  NULL,			/* pre-accounting */
-	  NULL,			/* accounting */
-	  NULL,			/* checksimul */
-	  NULL,			/* pre-proxy */
-	  NULL,			/* post-proxy */
-	  NULL			/* post-auth */
-  },
-  krb5_detach,			/* detach */
-  NULL,				/* destroy */
+	RLM_MODULE_INIT,
+	"Kerberos",
+	RLM_TYPE_THREAD_UNSAFE,	/* type: not thread safe */
+	krb5_instantiate,   		/* instantiation */
+	krb5_detach,			/* detach */
+	{
+		krb5_auth,		/* authenticate */
+		NULL,			/* authorize */
+		NULL,			/* pre-accounting */
+		NULL,			/* accounting */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
+	},
 };

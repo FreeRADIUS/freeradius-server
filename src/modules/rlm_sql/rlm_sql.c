@@ -152,20 +152,6 @@ static int fallthrough(VALUE_PAIR *vp)
 }
 
 
-/***********************************************************************
- * start of main routines
- ***********************************************************************/
-static int rlm_sql_init(void) {
-
-	/*
-	 * FIXME:
-	 * We should put the sqlsocket array here once
-	 * the module code is reworked to not unload
-	 * modules on HUP.  This way we can have
-	 * persistant connections.  -jcarneal
-	 */
-	return 0;
-}
 
 /*
  *	Yucky prototype.
@@ -909,11 +895,6 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	return RLM_MODULE_OK;
 }
 
-static int rlm_sql_destroy(void)
-{
-	return 0;
-}
-
 
 static int rlm_sql_authorize(void *instance, REQUEST * request)
 {
@@ -1579,10 +1560,11 @@ static int rlm_sql_postauth(void *instance, REQUEST *request) {
 
 /* globally exported name */
 module_t rlm_sql = {
+	RLM_MODULE_INIT,
 	"SQL",
 	RLM_TYPE_THREAD_SAFE,	/* type: reserved */
-	rlm_sql_init,		/* initialization */
 	rlm_sql_instantiate,	/* instantiation */
+	rlm_sql_detach,		/* detach */
 	{
 		NULL,			/* authentication */
 		rlm_sql_authorize,	/* authorization */
@@ -1593,6 +1575,4 @@ module_t rlm_sql = {
 		NULL,			/* post-proxy */
 		rlm_sql_postauth	/* post-auth */
 	},
-	rlm_sql_detach,		/* detach */
-	rlm_sql_destroy,	/* destroy */
 };

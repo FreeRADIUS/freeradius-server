@@ -147,10 +147,11 @@ static int do_linelog(rlm_linelog_t *inst, REQUEST *request)
  *	Externally visible module definition.
  */
 module_t rlm_linelog = {
+	RLM_MODULE_INIT,
 	"example",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	linelog_instantiate,		/* instantiation */
+	linelog_detach,			/* detach */
 	{
 		do_linelog,	/* authentication */
 		do_linelog,	/* authorization */
@@ -161,6 +162,4 @@ module_t rlm_linelog = {
 		do_linelog,	/* post-proxy */
 		do_linelog	/* post-auth */
 	},
-	linelog_detach,			/* detach */
-	NULL,				/* destroy */
 };

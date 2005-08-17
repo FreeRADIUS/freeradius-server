@@ -2457,10 +2457,11 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 
 /* globally exported name */
 module_t rlm_ldap = {
+	RLM_MODULE_INIT,
 	"LDAP",
 	RLM_TYPE_THREAD_SAFE,	/* type: reserved 	 */
-	NULL,			/* initialization 	 */
 	ldap_instantiate,	/* instantiation 	 */
+	ldap_detach,		/* detach 		 */
 	{
 		ldap_authenticate,	/* authentication 	 */
 		ldap_authorize,		/* authorization 	 */
@@ -2475,6 +2476,4 @@ module_t rlm_ldap = {
 		NULL
 #endif
 	},
-	ldap_detach,		/* detach 		 */
-	NULL,			/* destroy 		 */
 };

@@ -624,11 +624,12 @@ static int preprocess_detach(void *instance)
 }
 
 /* globally exported name */
-module_t rlm_preprocess = {
+module_t rlm_preprocess = {	
+	RLM_MODULE_INIT,
 	"preprocess",
 	0,			/* type: reserved */
-	NULL,			/* initialization */
 	preprocess_instantiate,	/* instantiation */
+	preprocess_detach,	/* detach */
 	{
 		NULL,			/* authentication */
 		preprocess_authorize,	/* authorization */
@@ -639,7 +640,5 @@ module_t rlm_preprocess = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	preprocess_detach,	/* detach */
-	NULL,			/* destroy */
 };
 

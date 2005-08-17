@@ -160,10 +160,11 @@ static int always_detach(void *instance)
 }
 
 module_t rlm_always = {
+	RLM_MODULE_INIT,
 	"always",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	always_instantiate,		/* instantiation */
+	always_detach,			/* detach */
 	{
 		always_return,		/* authentication */
 		always_return,		/* authorization */
@@ -174,6 +175,4 @@ module_t rlm_always = {
 		always_return,		/* post-proxy */
 		always_return		/* post-auth */
 	},
-	always_detach,			/* detach */
-	NULL,				/* destroy */
 };

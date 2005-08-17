@@ -651,10 +651,11 @@ static int sqlcounter_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_sqlcounter = {
+	RLM_MODULE_INIT,
 	"SQL Counter",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	sqlcounter_instantiate,		/* instantiation */
+	sqlcounter_detach,		/* detach */
 	{
 		NULL,			/* authentication */
 		sqlcounter_authorize, 	/* authorization */
@@ -665,7 +666,5 @@ module_t rlm_sqlcounter = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	sqlcounter_detach,		/* detach */
-	NULL,				/* destroy */
 };
 

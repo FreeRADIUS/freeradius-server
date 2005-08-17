@@ -286,7 +286,6 @@ static int file_authorize(void *instance, REQUEST *request)
 	const char	*name;
 	struct file_instance *inst = instance;
 	VALUE_PAIR **check_pairs, **reply_pairs;
-	VALUE_PAIR *check_save;
 
 	request_pairs = request->packet->vps;
 	check_pairs = &request->config_items;
@@ -519,10 +518,11 @@ static int file_detach(void *instance)
 
 /* globally exported name */
 module_t rlm_files = {
+	RLM_MODULE_INIT,
 	"files",
 	0,				/* type: reserved */
-	NULL,				/* initialization */
 	file_instantiate,		/* instantiation */
+	file_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		file_authorize, 	/* authorization */
@@ -533,7 +533,5 @@ module_t rlm_files = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	file_detach,			/* detach */
-	NULL				/* destroy */
 };
 

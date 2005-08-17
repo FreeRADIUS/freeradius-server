@@ -26,14 +26,16 @@ enum {
 #define RLM_TYPE_THREAD_SAFE	(0 << 0)
 #define RLM_TYPE_THREAD_UNSAFE	(1 << 0)
 
+#define RLM_MODULE_MAGIC_NUMBER ((uint32_t) (0xf4ee4ad12))
+#define RLM_MODULE_INIT RLM_MODULE_MAGIC_NUMBER
+
 typedef struct module_t {
+	uint32_t 	magic;	/* may later be opaque struct */
 	const char	*name;
-	int	type;			/* reserved */
-	int	(*init)(void);
-	int	(*instantiate)(CONF_SECTION *mod_cs, void **instance);
+	int		type;
+	int		(*instantiate)(CONF_SECTION *mod_cs, void **instance);
+	int		(*detach)(void *instance);
 	packetmethod	methods[RLM_COMPONENT_COUNT];
-	int	(*detach)(void *instance);
- 	int	(*destroy)(void);
 } module_t;
 
 enum {

@@ -369,10 +369,11 @@ static int rlm_dbm_detach(void *instance)
 
 /* globally exported name */
 module_t rlm_dbm = {
+	RLM_MODULE_INIT,
         "dbm",
         0,                              /* type: reserved */
-        NULL,                           /* initialization */
         rlm_dbm_instantiate,            /* instantiation */
+        rlm_dbm_detach,                 /* detach */
         {
                 NULL,                   /* authentication */
                 rlm_dbm_authorize,      /* authorization */
@@ -383,6 +384,4 @@ module_t rlm_dbm = {
                 NULL,			/* post-proxy */
                 NULL			/* post-auth */
 	},
-        rlm_dbm_detach,                 /* detach */
-	NULL                            /* destroy */
 };

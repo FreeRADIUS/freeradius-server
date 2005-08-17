@@ -755,21 +755,20 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 
 /* globally exported name */
 module_t rlm_radutmp = {
-  "radutmp",
-  0,                            /* type: reserved */
-  NULL,                 	/* initialization */
-  radutmp_instantiate,          /* instantiation */
-  {
-	  NULL,                 /* authentication */
-	  NULL,                 /* authorization */
-	  NULL,                 /* preaccounting */
-	  radutmp_accounting,   /* accounting */
-	  radutmp_checksimul,	/* checksimul */
-	  NULL,			/* pre-proxy */
-	  NULL,			/* post-proxy */
-	  NULL			/* post-auth */
-  },
-  radutmp_detach,               /* detach */
-  NULL,         	        /* destroy */
+	RLM_MODULE_INIT,
+	"radutmp",
+	0,                            /* type: reserved */
+	radutmp_instantiate,          /* instantiation */
+	radutmp_detach,               /* detach */
+	{
+		NULL,                 /* authentication */
+		NULL,                 /* authorization */
+		NULL,                 /* preaccounting */
+		radutmp_accounting,   /* accounting */
+		radutmp_checksimul,	/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
+	},
 };
 

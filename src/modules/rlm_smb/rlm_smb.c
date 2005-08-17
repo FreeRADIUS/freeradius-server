@@ -185,10 +185,11 @@ static int smb_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_smb = {
+	RLM_MODULE_INIT,
 	"SMB",
 	RLM_TYPE_THREAD_UNSAFE,		/* type */
-	NULL,				/* initialization */
 	smb_instantiate,		/* instantiation */
+	smb_detach,			/* detach */
 	{
 		smb_authenticate,	/* authentication */
 		NULL,			/* authorization */
@@ -199,6 +200,4 @@ module_t rlm_smb = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	smb_detach,			/* detach */
-	NULL,				/* destroy */
 };

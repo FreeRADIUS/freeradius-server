@@ -427,10 +427,11 @@ static int sql_log_postauth(void *instance, REQUEST *request)
  *	is single-threaded.
  */
 module_t rlm_sql_log = {
+	RLM_MODULE_INIT,
 	"sql_log",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	sql_log_instantiate,		/* instantiation */
+	sql_log_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,			/* authorization */
@@ -441,6 +442,4 @@ module_t rlm_sql_log = {
 		NULL,			/* post-proxy */
 		sql_log_postauth	/* post-auth */
 	},
-	sql_log_detach,			/* detach */
-	NULL,				/* destroy */
 };

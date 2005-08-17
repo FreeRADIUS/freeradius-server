@@ -162,25 +162,6 @@ static PyMethodDef radiusd_methods[] = {
     {NULL, NULL, 0, NULL}
 };
 
-/*
- *	Do any per-module initialization.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	Try to avoid putting too much stuff in here - it's better to
- *	do it in instantiate() where it is not global.
- */
-static int python_init(void)
-{
-    /*
-     * Initialize Python interpreter. Fatal error if this fails.
-     */
-    Py_Initialize();
-
-    radlog(L_DBG, "python_init done");
-
-    return 0;
-}
 
 /* Extract string representation of Python error. */
 static void python_error(void) {
@@ -574,8 +555,13 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
     int idx;
 
     /*
-	 *	Set up a storage area for instance data
-	 */
+     * Initialize Python interpreter. Fatal error if this fails.
+     */
+    Py_Initialize();
+
+    /*
+     *	Set up a storage area for instance data
+     */
     data = rad_malloc(sizeof(*data));
     if (!data) {
       return -1;
@@ -770,10 +756,11 @@ static int python_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_python = {
+	RLM_MODULE_INIT,
 	"python",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	python_init,			/* initialization */
 	python_instantiate,		/* instantiation */
+	python_detach,			/* detach */
 	{
 		python_authenticate,	/* authentication */
 		python_authorize,	/* authorization */
@@ -784,6 +771,4 @@ module_t rlm_python = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	python_detach,			/* detach */
-	NULL,				/* destroy */
 };
