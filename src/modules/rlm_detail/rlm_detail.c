@@ -177,14 +177,19 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 				inst->last_made_directory = NULL;
 			}
 
-			/*
-			 *	Go create possibly multiple directories.
-			 */
-			if (rad_mkdir(buffer, inst->dirperm) < 0) {
-				radlog(L_ERR, "rlm_detail: Failed to create directory %s: %s", buffer, strerror(errno));
-				return RLM_MODULE_FAIL;
-			}
 			inst->last_made_directory = strdup(buffer);
+		}
+
+		/*
+		 *	stat the directory, and don't do anything if
+		 *	it exists.  If it doesn't exist, create it.
+		 *
+		 *	This also catches the case where some idiot
+		 *	deleted a directory that the server was using.
+		 */
+		if (rad_mkdir(inst->last_made_directory, inst->dirperm) < 0) {
+			radlog(L_ERR, "rlm_detail: Failed to create directory %s: %s", inst->last_made_directory, strerror(errno));
+			return RLM_MODULE_FAIL;
 		}
 
 		*p = '/';
