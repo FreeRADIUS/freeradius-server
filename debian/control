@@ -1,6 +1,5 @@
 Source: freeradius
-Build-Depends: debhelper (>= 4.1.68), libltdl3-dev, libpam0g-dev, libmysqlclient12-dev, libgdbm-dev, libldap2-dev, libsasl2-dev, libiodbc2-dev, libkrb5-dev, libtool1.4 | libtool (< 1.5), autotools-dev, dpatch (>= 2)
-Build-Conflicts: libssl-dev
+Build-Depends: debhelper (>= 4.1.68), libltdl3-dev, libpam0g-dev, libpq-dev | postgresql-dev, libmysqlclient12-dev | libmysqlclient-dev, libgdbm-dev | libgdbmg1-dev, libldap2-dev, libsasl2-dev, libsnmp5-dev | libsnmp4.2-dev, libiodbc2-dev, libkrb5-dev, libssl-dev, libtool1.4 | libtool (< 1.5), snmp, autotools-dev
 Section: net
 Priority: optional
 Maintainer: Paul Hampson <Paul.Hampson@anu.edu.au>
@@ -10,7 +9,7 @@ Package: freeradius
 Architecture: any
 Depends: ${shlibs:Depends}
 Provides: radius-server
-Suggests: freeradius-ldap, freeradius-mysql, freeradius-krb5
+Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5
 Conflicts: radiusd-freeradius, radiusd-freeradius-krb5, radiusd-freeradius-ldap, radiusd-freeradius-postgresql, radiusd-freeradius-mysql
 Replaces: radiusd-freeradius
 Description: a high-performance and highly configurable RADIUS server
@@ -40,6 +39,15 @@ Depends: freeradius (= ${Source-Version}), ${shlibs:Depends}
 Description: LDAP module for FreeRADIUS server
  The FreeRADIUS server can use LDAP to authenticate users, and this module
  is necessary for that.
+
+Package: freeradius-postgresql
+Architecture: any
+Conflicts: radiusd-freeradius-postgresql
+Replaces: radiusd-freeradius-postgresql
+Depends: freeradius (= ${Source-Version}), ${shlibs:Depends}
+Description: PostgreSQL module for FreeRADIUS server
+ The FreeRADIUS server can use PostgreSQL to authenticate users and do
+ accounting, and this module is necessary for that.
 
 Package: freeradius-mysql
 Architecture: any

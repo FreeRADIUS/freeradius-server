@@ -18,9 +18,9 @@ pkgdocdir	= /usr/share/doc/$(package)
 raddbdir	= /etc/$(package)
 
 # All supported modules, irrespective of licensing
-#modulepackages = krb5 ldap mysql iodbc postgresql
+modulepackages = krb5 ldap mysql iodbc postgresql
 # Binary-distributable modules for the Debian archive.
-modulepackages = krb5 ldap mysql iodbc
+#modulepackages = krb5 ldap mysql iodbc
 
 export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
