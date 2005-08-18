@@ -1552,6 +1552,140 @@ int cf_data_add(CONF_SECTION *cs, const char *name,
 }
 
 
+/*
+ *	Compare two CONF_SECTIONS.  The items MUST be in the same
+ *	order.
+ */
+static int cf_section_cmp(CONF_SECTION *a, CONF_SECTION *b)
+{
+	CONF_ITEM *ca = a->children;
+	CONF_ITEM *cb = b->children;
+
+	while (1) {
+		CONF_PAIR *pa, *pb;
+
+		/*
+		 *	Done.  Stop.
+		 */
+		if (!ca && !cb) break;
+
+		/*
+		 *	Skip CONF_DATA.
+		 */
+		if (ca && ca->type == CONF_ITEM_DATA) {
+			ca = ca->next;
+			continue;
+		}
+		if (cb && cb->type == CONF_ITEM_DATA) {
+			cb = cb->next;
+			continue;
+		}
+
+		/*
+		 *	One is smaller than the other.  Exit.
+		 */
+		if (!ca || !cb) return 0;
+
+		if (ca->type != cb->type) return 0;
+
+		/*
+		 *	FIXME: Deal with this case, too!
+		 */
+		if (ca->type == CONF_ITEM_SECTION) return 0;
+
+		rad_assert(ca->type == CONF_ITEM_PAIR);
+
+		pa = cf_itemtopair(ca);
+		pb = cf_itemtopair(cb);
+
+		/*
+		 *	Different attr and/or value, Exit.
+		 */
+		if ((strcmp(pa->attr, pb->attr) != 0) ||
+		    (strcmp(pa->value, pb->value) != 0)) return 0;
+		
+
+		/*
+		 *	And go to the next element.
+		 */
+		ca = ca->next;
+		cb = cb->next;
+	}
+
+	/*
+	 *	They must be the same, say so.
+	 */
+	return 1;
+}
+
+
+/*
+ *	Migrate CONF_DATA from one section to another.
+ */
+int cf_section_migrate(CONF_SECTION *dst, CONF_SECTION *src)
+{
+	CONF_ITEM *ci;
+	CONF_SECTION *s, *d;
+
+	for (ci = src->children; ci != NULL; ci = ci->next) {
+		if (ci->type != CONF_ITEM_SECTION)
+			continue;
+
+		s = cf_itemtosection(ci);
+		d = cf_section_sub_find_name2(dst, s->name1, s->name2);
+
+		if (!d) continue; /* not in new one, don't migrate it */
+
+		/*
+		 *	A section of the same name is in BOTH src & dst,
+		 *	compare the CONF_PAIR's.  If they're all the same,
+		 *	then copy the CONF_DATA from one to the other.
+		 */
+		if (cf_section_cmp(s, d)) {
+			CONF_ITEM *cd, *next, **last;
+
+			rad_assert(d->data_tree == NULL);
+			d->data_tree = s->data_tree;
+			s->data_tree = NULL;
+
+			/*
+			 *	Walk through src, moving CONF_ITEM_DATA
+			 *	to dst, by hand.
+			 */
+			last = &(s->children);
+			for (cd = s->children; cd != NULL; cd = next) {
+				next = cd->next;
+
+				if (cd->type != CONF_ITEM_DATA) {
+					last = &(cd->next);
+					continue;
+				}
+
+				/*
+				 *	Remove it from the src list
+				 */
+				*last = cd->next;
+				cd->next = NULL;
+
+				/*
+				 *	Add it to the dst list
+				 */
+				if (!d->children) {
+					rad_assert(d->tail == NULL);
+					d->children = cd;
+				} else {
+					rad_assert(d->tail != NULL);
+					d->tail->next = cd;
+				}
+				d->tail = cd;
+			}
+		}
+	}
+	
+	return 1;		/* rcode means anything? */
+}
+
+
 #if 0
 /*
  * JMG dump_config tries to dump the config structure in a readable format

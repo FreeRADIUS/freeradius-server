@@ -86,4 +86,10 @@ CONF_PAIR *cf_itemtopair(CONF_ITEM *item);
 CONF_SECTION *cf_itemtosection(CONF_ITEM *item);
 CONF_ITEM *cf_pairtoitem(CONF_PAIR *cp);
 CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs);
+
+/*
+ *	Big magic.
+ */
+int cf_section_migrate(CONF_SECTION *dst, CONF_SECTION *src);
+
 #endif /* _CONFFILE_H */

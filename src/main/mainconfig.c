@@ -820,7 +820,7 @@ int read_mainconfig(int reload)
 	struct rlimit core_limits;
 	static int old_debug_level = -1;
 	char buffer[1024];
-	CONF_SECTION *cs, *oldcs;
+	CONF_SECTION *cs, *oldcs, *newcs;
 	rad_listen_t *listener;
 
 	if (!reload) {
@@ -847,14 +847,26 @@ int read_mainconfig(int reload)
 	}
 
 	/*
-	 *	FIXME: Merge the two configurations!
-	 */
-
-	/*
 	 *	This allows us to figure out where, relative to
 	 *	radiusd.conf, the other configuration files exist.
 	 */
 	cf_section_parse(cs, NULL, server_config);
+
+#if 0
+	/*
+	 *	Merge the old with the new.
+	 */
+	if (reload) {
+		newcs = cf_section_sub_find(cs, "modules");
+		oldcs = cf_section_sub_find(mainconfig.config, "modules");
+		if (newcs && oldcs) {
+			if (!cf_section_migrate(newcs, oldcs)) {
+				radlog(L_ERR|L_CONS, "Fatal error migrating configuration data");
+				return -1;
+			}
+		}
+	}
+#endif
 
 	/*
 	 *	Debug flag 1 MAY go to files.
