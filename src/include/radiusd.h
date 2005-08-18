@@ -475,7 +475,6 @@ extern struct main_config_t mainconfig;
 
 int read_mainconfig(int reload);
 int free_mainconfig(void);
-CONF_SECTION *read_radius_conf_file(void); /* for radwho and friends. */
 
 /* listen.c */
 void listen_free(rad_listen_t **head);

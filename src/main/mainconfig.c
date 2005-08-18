@@ -809,17 +809,46 @@ static const LRAD_NAME_NUMBER str2dest[] = {
 	{ NULL, RADLOG_NULL }
 };
 
-CONF_SECTION *read_radius_conf_file(void)
-{
-	char buffer[256];
-	CONF_SECTION *cs;
 
-	/* Lets go look for the new configuration files */
+/*
+ *	Read config files.
+ *
+ *	This function can ONLY be called from the main server process.
+ */
+int read_mainconfig(int reload)
+{
+	struct rlimit core_limits;
+	static int old_debug_level = -1;
+	char buffer[1024];
+	CONF_SECTION *cs, *oldcs;
+	rad_listen_t *listener;
+
+	if (!reload) {
+		radlog(L_INFO, "Starting - reading configuration files ...");
+	} else {
+		radlog(L_INFO, "Reloading configuration files.");
+	}
+
+	/* Initialize the dictionary */
+	DEBUG2("read_config_files:  reading dictionary");
+	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
+		radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
+				librad_errstr);
+		cf_section_free(&cs);
+		return NULL;
+	}
+
+	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
 		 radius_dir, mainconfig.radiusd_conf);
 	if ((cs = conf_read(NULL, 0, buffer, NULL)) == NULL) {
-		return NULL;
+		radlog(L_ERR|L_CONS, "Errors reading %s", buffer);
+		return -1;
 	}
+
+	/*
+	 *	FIXME: Merge the two configurations!
+	 */
 
 	/*
 	 *	This allows us to figure out where, relative to
@@ -857,51 +886,6 @@ CONF_SECTION *read_radius_conf_file(void)
 				return NULL;
 			}
 		}
-	}
-
-	/* Initialize the dictionary */
-	DEBUG2("read_config_files:  reading dictionary");
-	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
-		radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
-				librad_errstr);
-		cf_section_free(&cs);
-		return NULL;
-	}
-
-	return cs;
-}
-
-
-/*
- *	Read config files.
- *
- *	This function can ONLY be called from the main server process.
- */
-int read_mainconfig(int reload)
-{
-	struct rlimit core_limits;
-	static int old_debug_level = -1;
-	char buffer[1024];
-	CONF_SECTION *cs, *oldcs;
-	rad_listen_t *listener;
-
-	if (!reload) {
-		radlog(L_INFO, "Starting - reading configuration files ...");
-	} else {
-		radlog(L_INFO, "Reloading configuration files.");
-	}
-
-	/* First read radiusd.conf */
-	DEBUG2("reread_config:  reading %s", mainconfig.radiusd_conf);
-	if ((cs = read_radius_conf_file()) == NULL) {
-		if (debug_flag ||
-		    (radlog_dir == NULL)) {
-			radlog(L_ERR|L_CONS, "Errors reading %s", mainconfig.radiusd_conf);
-		} else {
-			radlog(L_ERR|L_CONS, "Errors reading %s/%s: For more information, please read the tail end of %s",
-			       radlog_dir, mainconfig.radiusd_conf, mainconfig.log_file);
-		}
-		return -1;
 	}
 
 	/*
