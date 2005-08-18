@@ -57,13 +57,15 @@ build-simple stamp-build: patch
 		--with-logdir=/var/log/$(package) \
 		--with-thread-pool --with-system-libtool \
 		--enable-ltdl-install=no --enable-strict-dependencies \
-		--without-rlm_eap_peap \
+		--with-udpfromto --with-edir \
+		--enable-developer
+
+#		To make SSL-free, add these:
+#		--without-rlm_eap_peap \
 		--without-rlm_eap_tls \
 		--without-rlm_eap_ttls \
 		--without-rlm_sql_postgresql \
 		--without-snmp \
-		--with-udpfromto --with-edir \
-		--enable-developer
 	
 	# Modify Make.inc for Debian...
 	TEMPFILE=`mktemp /tmp/radmake-XXXXXX`; \
