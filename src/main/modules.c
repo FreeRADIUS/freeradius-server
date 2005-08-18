@@ -149,7 +149,7 @@ static void module_entry_free(void *data)
 
 
 /*
- *	Remove all of the modules.
+ *	Remove the module lists.
  */
 int detach_modules(void)
 {
@@ -222,7 +222,6 @@ static module_entry_t *linkto_module(const char *module_name,
 	 */
 	if ((*(const uint32_t *) module) != RLM_MODULE_MAGIC_NUMBER) {
 		lt_dlclose(handle);
-		DEBUG2("%08x %08x\n", (*(uint32_t *) handle), RLM_MODULE_MAGIC_NUMBER);
 		radlog(L_ERR|L_CONS, "%s[%d] Invalid version in module '%s'",
 		       cffilename, cflineno, module_name);
 		return NULL;
