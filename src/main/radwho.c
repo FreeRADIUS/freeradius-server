@@ -534,7 +534,7 @@ int main(int argc, char **argv)
 			printf("NAS-IP-Address = %s\n",
 			       ip_hostname(buffer, sizeof(buffer),
 					   rt.nas_address));
-			printf("NAS-Port = %d\n", rt.nas_port);
+			printf("NAS-Port = %u\n", rt.nas_port);
 
 			switch (rt.proto) {
 				case 'S':
