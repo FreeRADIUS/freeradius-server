@@ -49,6 +49,7 @@ typedef struct indexed_modcallable {
  */
 static indexed_modcallable *components[RLM_COMPONENT_COUNT];
 
+static rbtree_t *module_tree = NULL;
 
 typedef struct section_type_value_t {
 	const char	*section;
@@ -125,6 +126,17 @@ static void module_instance_free(void *data)
 
 
 /*
+ *	Compare two module entries
+ */
+static int module_entry_cmp(const void *one, const void *two)
+{
+	const module_entry_t *a = one;
+	const module_entry_t *b = two;
+
+	return strcmp(a->name, b->name);
+}
+
+/*
  *	Free a module entry.
  */
 static void module_entry_free(void *data)
@@ -156,17 +168,18 @@ int detach_modules(void)
 /*
  *	Find a module on disk or in memory, and link to it.
  */
-static module_entry_t *linkto_module(CONF_SECTION *modules,
-				     const char *module_name,
+static module_entry_t *linkto_module(const char *module_name,
 				     const char *cffilename, int cflineno)
 {
+	module_entry_t myentry;
 	module_entry_t *node;
 	lt_dlhandle handle;
 	char module_struct[256];
 	char *p;
 	const void *module;
 
-	node = cf_data_find(modules, module_name);
+	strNcpy(myentry.name, module_name, sizeof(myentry.name));
+	node = rbtree_finddata(module_tree, &myentry);
 	if (node) return node;
 
 	/*
@@ -207,7 +220,7 @@ static module_entry_t *linkto_module(CONF_SECTION *modules,
 	/*
 	 *	Before doing anything else, check if it's sane.
 	 */
-	if ((*(uint32_t *) module) != RLM_MODULE_MAGIC_NUMBER) {
+	if ((*(const uint32_t *) module) != RLM_MODULE_MAGIC_NUMBER) {
 		lt_dlclose(handle);
 		DEBUG2("%08x %08x\n", (*(uint32_t *) handle), RLM_MODULE_MAGIC_NUMBER);
 		radlog(L_ERR|L_CONS, "%s[%d] Invalid version in module '%s'",
@@ -219,7 +232,9 @@ static module_entry_t *linkto_module(CONF_SECTION *modules,
 	/* make room for the module type */
 	node = rad_malloc(sizeof(*node));
 	memset(node, 0, sizeof(*node));
+	strNcpy(node->name, module_name, sizeof(node->name));
 	node->module = module;
+	node->handle = handle;
 
 	DEBUG("Module: Loaded %s ", node->module->name);
 
@@ -227,7 +242,12 @@ static module_entry_t *linkto_module(CONF_SECTION *modules,
 	 *	Add the module as "rlm_foo-version" to the configuration
 	 *	section.
 	 */
-	cf_data_add(modules, module_name, node, module_entry_free);
+	if (!rbtree_insert(module_tree, node)) {
+		radlog(L_ERR, "Failed to cache module %s", module_name);
+		lt_dlclose(handle);
+		free(node);
+		return NULL;
+	}
 
 	return node;
 }
@@ -258,7 +278,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	}
 
 	/*
-	 *	If there's already module instance, return it.
+	 *	If there's already a module instance, return it.
 	 */
 	node = cf_data_find(cs, "instance");
 	if (node) return node;
@@ -280,7 +300,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 */
 	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
 
-	node->entry = linkto_module(modules, module_name,
+	node->entry = linkto_module(module_name,
 				    mainconfig.radiusd_conf,
 				    cf_section_lineno(cs));
 	if (!node->entry) {
@@ -616,7 +636,6 @@ int setup_modules(int init_ltdl)
 			radlog(L_ERR|L_CONS, "Failed to initialize libraries: %s\n",
 					lt_dlerror());
 			return -1;
-
 		}
 
 		/*
@@ -635,6 +654,17 @@ int setup_modules(int init_ltdl)
 		for (comp = 0; comp < RLM_COMPONENT_COUNT; comp++) {
 			components[comp] = NULL;
 		}
+
+		/*
+		 *	Set up the internal module struct.
+		 */
+		module_tree = rbtree_create(module_entry_cmp,
+					    module_entry_free, 0);
+		if (!module_tree) {
+			radlog(L_ERR|L_CONS, "Failed to initialize modules\n");
+			return -1;
+		}
+		
 
 	} else {
 		detach_modules();

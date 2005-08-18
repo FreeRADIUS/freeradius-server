@@ -11,7 +11,7 @@
  */
 typedef struct module_entry_t {
 	char			name[MAX_STRING_LEN];
-	module_t		*module;
+	const module_t		*module;
 	lt_dlhandle		handle;
 } module_entry_t;
 

@@ -28,7 +28,7 @@ modcallable *compile_modsingle(int component, CONF_ITEM *ci,
 
 /* Add an entry to the end of a modgroup, creating it first if necessary */
 void add_to_modcallable(modcallable **parent, modcallable *this,
-		int component, char *name);
+			int component, const char *name);
 
 /* Free a tree returned by compile_modgroup or compile_modsingle */
 void modcallable_free(modcallable **pc);

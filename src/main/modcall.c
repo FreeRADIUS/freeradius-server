@@ -1254,7 +1254,7 @@ modcallable *compile_modgroup(int component, CONF_SECTION *cs,
 }
 
 void add_to_modcallable(modcallable **parent, modcallable *this,
-			int component, char *name)
+			int component, const char *name)
 {
 	modgroup *g;
 	
