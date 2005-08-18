@@ -318,13 +318,6 @@ int main(int argc, char *argv[])
 #endif
 	}
 
-	/*  Reload the modules.  */
-	DEBUG2("radiusd:  entering modules setup");
-	if (setup_modules(1) < 0) {
-		radlog(L_ERR|L_CONS, "Errors setting up modules");
-		exit(1);
-	}
-
 #ifdef WITH_SNMP
 	if (mainconfig.do_snmp) radius_snmp_init();
 #endif
@@ -551,13 +544,6 @@ int main(int argc, char *argv[])
 			}
 #endif
 			if (read_mainconfig(TRUE) < 0) {
-				exit(1);
-			}
-
-			/*  Reload the modules.  */
-			DEBUG2("radiusd:  entering modules setup");
-			if (setup_modules(0) < 0) {
-				radlog(L_ERR|L_CONS, "Errors setting up modules");
 				exit(1);
 			}
 

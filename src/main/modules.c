@@ -612,7 +612,7 @@ static int load_component_section(CONF_SECTION *cs, int comp,
  *	Libtool makes your life a LOT easier, especially with libltdl.
  *	see: http://www.gnu.org/software/libtool/
  */
-int setup_modules(int init_ltdl)
+int setup_modules(int reload)
 {
 	int		comp;
 	CONF_SECTION	*cs, *modules;
@@ -622,7 +622,7 @@ int setup_modules(int init_ltdl)
 	/*
 	 *	If necessary, initialize libltdl.
 	 */
-	if (init_ltdl) {
+	if (!reload) {
 		/*
 		 *	Set the default list of preloaded symbols.
 		 *	This is used to initialize libltdl's list of

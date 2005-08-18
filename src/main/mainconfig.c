@@ -1097,6 +1097,12 @@ int read_mainconfig(int reload)
 		mainconfig.clients = clients;
 	}
 
+	/*  Reload the modules.  */
+	DEBUG2("radiusd:  entering modules setup");
+	if (setup_modules(reload) < 0) {
+		radlog(L_ERR|L_CONS, "Errors setting up modules");
+		return -1;
+	}
 	return 0;
 }
 
