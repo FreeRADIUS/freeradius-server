@@ -53,6 +53,22 @@ static rbtree_t *attributes_byvalue = NULL;
 static rbtree_t *values_byvalue = NULL;
 static rbtree_t *values_byname = NULL;
 
+/*
+ *	For faster HUP's, we cache the stat information for
+ *	files we've $INCLUDEd
+ */
+typedef struct dict_stat_t {
+	struct dict_stat_t *next;
+	const char	   *name;
+	time_t		   mtime;
+} dict_stat_t;
+
+static const char *stat_root_dir = NULL;
+static const char *stat_root_file = NULL;
+
+static dict_stat_t *stat_head = NULL;
+static dict_stat_t *stat_tail = NULL;
+
 typedef struct value_fixup_t {
 	char		attrstr[40];
 	DICT_VALUE	*dval;
@@ -88,6 +104,82 @@ static const LRAD_NAME_NUMBER type_table[] = {
 static DICT_ATTR *base_attributes[256];
 
 /*
+ *	Free the list of stat buffers
+ */
+static void dict_stat_free(void)
+{
+	dict_stat_t *this, *next;
+
+	free(stat_root_dir);
+	stat_root_dir = NULL;
+	free(stat_root_file);
+	stat_root_file = NULL;
+
+	if (!stat_head) {
+		stat_tail = NULL;
+		return;
+	}
+
+	for (this = stat_head; this != NULL; this = next) {
+		next = this->next;
+		free(this->name);
+		free(this);
+	}
+
+	stat_head = stat_tail = NULL;
+}
+
+
+/*
+ *	Add an entry to the list of stat buffers.
+ */
+static void dict_stat_add(const char *name, const struct stat *stat_buf)
+{
+	dict_stat_t *this;
+
+	this = malloc(sizeof(*this));
+	memset(this, 0, sizeof(*this));
+
+	this->name = strdup(name);
+	this->mtime = stat_buf->st_mtime;
+
+	if (!stat_head) {
+		stat_head = stat_tail = this;
+	} else {
+		stat_tail->next = this;
+		stat_tail = this;
+	}
+}
+
+
+/*
+ *	See if any dictionaries have changed.  If not, don't
+ *	do anything.
+ */
+static int dict_stat_check(const char *root_dir, const char *root_file)
+{
+	struct stat buf;
+	dict_stat_t *this;
+
+	if (!stat_root_dir) return 0;
+	if (!stat_root_file) return 0;
+
+	if (strcmp(root_dir, stat_root_dir) != 0) return 0;
+	if (strcmp(root_file, stat_root_file) != 0) return 0;
+
+	if (!stat_head) return 0; /* changed, reload */
+
+	for (this = stat_head; this != NULL; this = this->next) {
+		if (stat(this->name, &buf) < 0) return 0;
+
+		if (buf.st_mtime != this->mtime) return 0;
+	}
+
+	return 1;
+}
+
+
+/*
  *	Free the dictionary_attributes and dictionary_values lists.
  */
 void dict_free(void)
@@ -111,6 +203,8 @@ void dict_free(void)
 	rbtree_free(values_byvalue);
 	values_byname = NULL;
 	values_byvalue = NULL;
+
+	dict_stat_free();
 }
 
 
@@ -615,6 +709,7 @@ static int my_dict_init(const char *dir, const char *fn,
 	int	line = 0;
 	int	vendor;
 	int	block_vendor;
+	struct stat statbuf;
 
 	if (strlen(fn) >= sizeof(dirtmp) / 2 ||
 	    strlen(dir) >= sizeof(dirtmp) / 2) {
@@ -644,15 +739,15 @@ static int my_dict_init(const char *dir, const char *fn,
 				   src_file, src_line, fn, strerror(errno));
 		}
 		return -1;
-	} else {
-		/*
-		 *	Seed the random pool with data
-		 */
-		struct stat statbuf;
-
-		stat(fn, &statbuf); /* fopen() guarantees this will succeed */
-		lrad_rand_seed(&statbuf, sizeof(statbuf));
 	}
+
+	stat(fn, &statbuf); /* fopen() guarantees this will succeed */
+	dict_stat_add(fn, &statbuf);
+
+	/*
+	 *	Seed the random pool with data.
+	 */
+	lrad_rand_seed(&statbuf, sizeof(statbuf));
 
 	block_vendor = 0;
 
@@ -866,7 +961,20 @@ static int valuevalue_cmp(const void *a, const void *b)
  */
 int dict_init(const char *dir, const char *fn)
 {
+	/*
+	 *	Check if we need to change anything.  If not, don't do
+	 *	anything.
+	 */
+	if (dict_stat_check(dir, fn)) {
+		return 0;
+	}
+
+	/*
+	 *	Free the dictionaries, and the stat cache.
+	 */
 	dict_free();
+	stat_root_dir = strdup(dir);
+	stat_root_file = strdup(fn);
 
 	/*
 	 *	Create the tree of vendor by name.   There MAY NOT
