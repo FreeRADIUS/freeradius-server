@@ -549,17 +549,6 @@ static int init_pool (CONF_SECTION *conf, PERL_INST *inst) {
 	int t;
 	PERL_POOL	*pool;
 
-	if (!interp) {
-#ifdef USE_ITHREADS
-		if ((interp = perl_alloc()) == NULL) {
-			radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
-			return -1;
-		}
-		
-		perl_construct(interp);
-		PL_perl_destruct_level = 2;
-#endif
-	}
 
 	pool = rad_malloc(sizeof(PERL_POOL));
 	memset(pool,0,sizeof(PERL_POOL));
@@ -773,6 +762,18 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 		embed[1] = inst->module;
 		embed[2] = "0";
 		argc = 3;
+	}
+
+	if (!interp) {
+#ifdef USE_ITHREADS
+		if ((interp = perl_alloc()) == NULL) {
+			radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
+			return -1;
+		}
+		
+		perl_construct(interp);
+		PL_perl_destruct_level = 2;
+#endif
 	}
 
 #ifdef USE_ITHREADS
