@@ -835,7 +835,7 @@ int read_mainconfig(int reload)
 		radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
 				librad_errstr);
 		cf_section_free(&cs);
-		return NULL;
+		return -1;
 	}
 
 	/* Read the configuration file */
