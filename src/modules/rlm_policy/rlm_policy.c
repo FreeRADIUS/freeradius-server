@@ -38,7 +38,7 @@ static const char rcsid[] = "$Id$";
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-  { "filename",  PW_TYPE_STRING_PTR,
+  { "filename",  PW_TYPE_FILENAME,
     offsetof(rlm_policy_t,filename), NULL,  NULL},
 
   { NULL, -1, 0, NULL, NULL }		/* end the list */

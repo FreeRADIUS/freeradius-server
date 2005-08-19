@@ -71,9 +71,9 @@ static PAIR_LIST *fastuser_find(REQUEST *request, PAIR_LIST *user,
 static void fastuser_tablestats(PAIR_LIST **hashtable, int size);
 
 static const CONF_PARSER module_config[] = {
-	{ "usersfile",     PW_TYPE_STRING_PTR,
+	{ "usersfile",     PW_TYPE_FILENAME,
 	  offsetof(struct fastuser_instance,usersfile), NULL, "${raddbdir}/users_fast" },
-	{ "acctusersfile",     PW_TYPE_STRING_PTR,
+	{ "acctusersfile",     PW_TYPE_FILENAME,
 	  offsetof(struct fastuser_instance,acctusersfile), NULL, "${raddbdir}/acct_users" },
 	{ "hashsize",     PW_TYPE_INTEGER,
 	  offsetof(struct fastuser_instance,hashsize), NULL, "100000" },

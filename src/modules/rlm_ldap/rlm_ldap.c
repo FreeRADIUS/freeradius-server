@@ -178,15 +178,15 @@ typedef struct {
 static CONF_PARSER tls_config[] = {
 	{"start_tls", PW_TYPE_BOOLEAN,
 	 offsetof(ldap_instance,start_tls), NULL, "no"},
-	{"cacertfile", PW_TYPE_STRING_PTR,
+	{"cacertfile", PW_TYPE_FILENAME,
 	 offsetof(ldap_instance,tls_cacertfile), NULL, NULL},
-	{"cacertdir", PW_TYPE_STRING_PTR,
+	{"cacertdir", PW_TYPE_FILENAME,
 	 offsetof(ldap_instance,tls_cacertdir), NULL, NULL},
-	{"certfile", PW_TYPE_STRING_PTR,
+	{"certfile", PW_TYPE_FILENAME,
 	 offsetof(ldap_instance,tls_certfile), NULL, NULL},
-	{"keyfile", PW_TYPE_STRING_PTR,
+	{"keyfile", PW_TYPE_FILENAME,
 	 offsetof(ldap_instance,tls_keyfile), NULL, NULL},
-	{"randfile", PW_TYPE_STRING_PTR,
+	{"randfile", PW_TYPE_STRING_PTR, /* OK if it changes on HUP */
 	 offsetof(ldap_instance,tls_randfile), NULL, NULL},
 	{"require_cert", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,tls_require_cert), NULL, TLS_DEFAULT_VERIFY},
@@ -225,15 +225,15 @@ static const CONF_PARSER module_config[] = {
 
 	{"start_tls", PW_TYPE_BOOLEAN,
 	 offsetof(ldap_instance,start_tls), NULL, "no"},
-	{"tls_cacertfile", PW_TYPE_STRING_PTR,
+	{"tls_cacertfile", PW_TYPE_FILENAME,
 	 offsetof(ldap_instance,tls_cacertfile), NULL, NULL},
-	{"tls_cacertdir", PW_TYPE_STRING_PTR,
+	{"tls_cacertdir", PW_TYPE_FILENAME,
 	 offsetof(ldap_instance,tls_cacertdir), NULL, NULL},
-	{"tls_certfile", PW_TYPE_STRING_PTR,
+	{"tls_certfile", PW_TYPE_FILENAME,
 	 offsetof(ldap_instance,tls_certfile), NULL, NULL},
-	{"tls_keyfile", PW_TYPE_STRING_PTR,
+	{"tls_keyfile", PW_TYPE_FILENAME,
 	 offsetof(ldap_instance,tls_keyfile), NULL, NULL},
-	{"tls_randfile", PW_TYPE_STRING_PTR,
+	{"tls_randfile", PW_TYPE_STRING_PTR, /* OK if it changes on HUP */
 	 offsetof(ldap_instance,tls_randfile), NULL, NULL},
 	{"tls_require_cert", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,tls_require_cert), NULL, TLS_DEFAULT_VERIFY},
@@ -284,7 +284,7 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(ldap_instance,groupmemb_attr), NULL, NULL},
 
 	/* file with mapping between LDAP and RADIUS attributes */
-	{"dictionary_mapping", PW_TYPE_STRING_PTR,
+	{"dictionary_mapping", PW_TYPE_FILENAME,
 	 offsetof(ldap_instance,dictionary_mapping), NULL, "${confdir}/ldap.attrmap"},
 
 	/*

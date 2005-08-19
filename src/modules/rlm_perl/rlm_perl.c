@@ -122,7 +122,7 @@ typedef struct perl_inst {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "module",  PW_TYPE_STRING_PTR,
+	{ "module",  PW_TYPE_FILENAME,
 	  offsetof(PERL_INST,module), NULL,  "module"},
 	{ "func_authorize", PW_TYPE_STRING_PTR,
 	  offsetof(PERL_INST,func_authorize), NULL, "authorize"},

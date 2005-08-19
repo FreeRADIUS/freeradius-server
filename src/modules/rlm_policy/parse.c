@@ -1445,6 +1445,8 @@ static int parse_named_policy(policy_lex_file_t *lexer)
 
 /*
  *	Parse an "include filename" statement
+ *
+ *	FIXME: Tie this file into the CONF_SECTION for HUP handling!
  */
 static int parse_include(policy_lex_file_t *lexer)
 {

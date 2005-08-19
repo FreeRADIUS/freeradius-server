@@ -65,11 +65,11 @@ static int fallthrough(VALUE_PAIR *vp)
 }
 
 static const CONF_PARSER module_config[] = {
-	{ "usersfile",	   PW_TYPE_STRING_PTR,
+	{ "usersfile",	   PW_TYPE_FILENAME,
 	  offsetof(struct file_instance,usersfile), NULL, "${raddbdir}/users" },
-	{ "acctusersfile", PW_TYPE_STRING_PTR,
+	{ "acctusersfile", PW_TYPE_FILENAME,
 	  offsetof(struct file_instance,acctusersfile), NULL, "${raddbdir}/acct_users" },
-	{ "preproxy_usersfile", PW_TYPE_STRING_PTR,
+	{ "preproxy_usersfile", PW_TYPE_FILENAME,
 	  offsetof(struct file_instance,preproxy_usersfile), NULL, "${raddbdir}/preproxy_users" },
 	{ "compat",	   PW_TYPE_STRING_PTR,
 	  offsetof(struct file_instance,compat_mode), NULL, "cistron" },

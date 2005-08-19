@@ -51,7 +51,7 @@ typedef struct rlm_protocol_filter_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "filename",  PW_TYPE_STRING_PTR,
+	{ "filename",  PW_TYPE_FILENAME,
 	  offsetof(rlm_protocol_filter_t,filename), NULL,
 	  "${raddbdir}/protocol_filter.conf"},
 
