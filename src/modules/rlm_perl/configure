@@ -2463,10 +2463,66 @@ ac_safe=`echo "EXTERN.h" | sed 'y%./+-%__pm%'`
 echo "$as_me:$LINENO: checking for EXTERN.h" >&5
 echo $ECHO_N "checking for EXTERN.h... $ECHO_C" >&6
 
+old_CFLAGS="$CFLAGS"
 smart_include=
 smart_include_dir=
 
-  old_CFLAGS="$CFLAGS"
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    CFLAGS="$old_CFLAGS -I$try"
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+		    #include <EXTERN.h>
+int
+main ()
+{
+ int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  smart_include="-I$try"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+smart_include=
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+    if test "x$smart_include" != "x"; then
+      break;
+    fi
+    CFLAGS="$old_CFLAGS"
+  done
+fi
+
+if test "x$smart_include" = "x"; then
   cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -2512,8 +2568,9 @@ sed 's/^/| /' conftest.$ac_ext >&5
 smart_include=
 fi
 rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
 
-  if test "x$smart_include" = "x"; then
+if test "x$smart_include" = "x"; then
 
 
 if test "x$LOCATE" != "x"; then
@@ -2542,17 +2599,16 @@ fi
 eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
 
 
-    for try in $smart_try_dir $smart_include_dir /usr/local/include/ /opt/include; do
-      CFLAGS="$old_CFLAGS -I$try"
-
-      cat >conftest.$ac_ext <<_ACEOF
+  for try in $smart_include_dir /usr/local/include /opt/include; do
+    CFLAGS="$old_CFLAGS -I$try"
+    cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
-		       #include <EXTERN.h>
+		    #include <EXTERN.h>
 int
 main ()
 {
@@ -2590,22 +2646,21 @@ sed 's/^/| /' conftest.$ac_ext >&5
 smart_include=
 fi
 rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
-
-      if test "x$smart_include" != "x"; then
-        break;
-      fi
-    done
+    if test "x$smart_include" != "x"; then
+      break;
+    fi
     CFLAGS="$old_CFLAGS"
-  fi
+  done
+fi
 
-        if test "x$smart_include" != "x"; then
-    echo "$as_me:$LINENO: result: yes" >&5
+if test "x$smart_include" != "x"; then
+  echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6
-    eval "ac_cv_header_$ac_safe=yes"
-    CFLAGS="$old_CFLAGS $smart_include"
-    SMART_CFLAGS="$SMART_CFLAGS $smart_include"
-  else
-    echo "$as_me:$LINENO: result: no" >&5
+  eval "ac_cv_header_$ac_safe=yes"
+  CFLAGS="$old_CFLAGS $smart_include"
+  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+else
+  echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6
 fi
 
@@ -2622,10 +2677,66 @@ ac_safe=`echo "perl.h" | sed 'y%./+-%__pm%'`
 echo "$as_me:$LINENO: checking for perl.h" >&5
 echo $ECHO_N "checking for perl.h... $ECHO_C" >&6
 
+old_CFLAGS="$CFLAGS"
 smart_include=
 smart_include_dir=
 
-  old_CFLAGS="$CFLAGS"
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    CFLAGS="$old_CFLAGS -I$try"
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+#include <EXTERN.h>
+		    #include <perl.h>
+int
+main ()
+{
+ int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
+  (eval $ac_compile) 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } &&
+	 { ac_try='test -z "$ac_c_werror_flag"			 || test ! -s conftest.err'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; } &&
+	 { ac_try='test -s conftest.$ac_objext'
+  { (eval echo "$as_me:$LINENO: \"$ac_try\"") >&5
+  (eval $ac_try) 2>&5
+  ac_status=$?
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); }; }; then
+  smart_include="-I$try"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+smart_include=
+fi
+rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+    if test "x$smart_include" != "x"; then
+      break;
+    fi
+    CFLAGS="$old_CFLAGS"
+  done
+fi
+
+if test "x$smart_include" = "x"; then
   cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -2671,8 +2782,9 @@ sed 's/^/| /' conftest.$ac_ext >&5
 smart_include=
 fi
 rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
 
-  if test "x$smart_include" = "x"; then
+if test "x$smart_include" = "x"; then
 
 
 if test "x$LOCATE" != "x"; then
@@ -2701,17 +2813,16 @@ fi
 eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
 
 
-    for try in $smart_try_dir $smart_include_dir /usr/local/include/ /opt/include; do
-      CFLAGS="$old_CFLAGS -I$try"
-
-      cat >conftest.$ac_ext <<_ACEOF
+  for try in $smart_include_dir /usr/local/include /opt/include; do
+    CFLAGS="$old_CFLAGS -I$try"
+    cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 #include <EXTERN.h>
-		       #include <perl.h>
+		    #include <perl.h>
 int
 main ()
 {
@@ -2749,22 +2860,21 @@ sed 's/^/| /' conftest.$ac_ext >&5
 smart_include=
 fi
 rm -f conftest.err conftest.$ac_objext conftest.$ac_ext
-
-      if test "x$smart_include" != "x"; then
-        break;
-      fi
-    done
+    if test "x$smart_include" != "x"; then
+      break;
+    fi
     CFLAGS="$old_CFLAGS"
-  fi
+  done
+fi
 
-        if test "x$smart_include" != "x"; then
-    echo "$as_me:$LINENO: result: yes" >&5
+if test "x$smart_include" != "x"; then
+  echo "$as_me:$LINENO: result: yes" >&5
 echo "${ECHO_T}yes" >&6
-    eval "ac_cv_header_$ac_safe=yes"
-    CFLAGS="$old_CFLAGS $smart_include"
-    SMART_CFLAGS="$SMART_CFLAGS $smart_include"
-  else
-    echo "$as_me:$LINENO: result: no" >&5
+  eval "ac_cv_header_$ac_safe=yes"
+  CFLAGS="$old_CFLAGS $smart_include"
+  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+else
+  echo "$as_me:$LINENO: result: no" >&5
 echo "${ECHO_T}no" >&6
 fi
 
