@@ -1,4 +1,6 @@
 FreeRADIUS 1.0.5 ; $Date$, urgency=low
+	* Calculate Message-Authenticator correctly for Accounting-Request
+	  and Accounting-Response.  Bug found by Paolo Rotela.
 	* Build on MAC OS X.  Still need --disable-shared, though.
 	* Fix bug #255 (crash with expired CRL's, etc.)
 	* Fix quote removal of the values from a SQL database.
