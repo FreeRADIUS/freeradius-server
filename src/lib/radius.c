@@ -571,6 +571,11 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			  default:
 				  break;
 
+			  case PW_ACCOUNTING_REQUEST:
+			  case PW_ACCOUNTING_RESPONSE:
+				  memset(hdr->vector, 0, AUTH_VECTOR_LEN);
+				  break;
+
 			  case PW_AUTHENTICATION_ACK:
 			  case PW_AUTHENTICATION_REJECT:
 			  case PW_ACCESS_CHALLENGE:
@@ -1175,6 +1180,11 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 			switch (packet->code) {
 			default:
+			  break;
+
+			case PW_ACCOUNTING_REQUEST:
+			case PW_ACCOUNTING_RESPONSE:
+			  memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
 			  break;
 
 			case PW_AUTHENTICATION_ACK:
