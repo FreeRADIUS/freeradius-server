@@ -815,6 +815,12 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		switch (packet->code) {
 		case PW_ACCOUNTING_REQUEST:
 		case PW_ACCOUNTING_RESPONSE:
+		case PW_DISCONNECT_REQUEST:
+		case PW_DISCONNECT_ACK:
+		case PW_DISCONNECT_NAK:
+		case PW_COF_REQUEST:
+		case PW_COF_ACK:
+		case PW_COF_NAK:
 			memset(hdr->vector, 0, AUTH_VECTOR_LEN);
 			break;
 
@@ -1465,6 +1471,12 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 			case PW_ACCOUNTING_REQUEST:
 			case PW_ACCOUNTING_RESPONSE:
+			case PW_DISCONNECT_REQUEST:
+			case PW_DISCONNECT_ACK:
+			case PW_DISCONNECT_NAK:
+			case PW_COF_REQUEST:
+			case PW_COF_ACK:
+			case PW_COF_NAK:
 			  	memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
 				break;
 
