@@ -177,7 +177,7 @@ static int fallthrough(VALUE_PAIR *vp)
 }
 
 static const CONF_PARSER module_config[] = {
-	{ "attrsfile",     PW_TYPE_STRING_PTR,
+	{ "attrsfile",     PW_TYPE_FILENAME,
 	  offsetof(struct attr_filter_instance,attrsfile), NULL, "${raddbdir}/attrs" },
 	{ NULL, -1, 0, NULL, NULL }
 };
