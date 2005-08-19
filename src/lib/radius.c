@@ -813,6 +813,11 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 		
 		switch (packet->code) {
+		case PW_ACCOUNTING_REQUEST:
+		case PW_ACCOUNTING_RESPONSE:
+			memset(hdr->vector, 0, AUTH_VECTOR_LEN);
+			break;
+
 		case PW_AUTHENTICATION_ACK:
 		case PW_AUTHENTICATION_REJECT:
 		case PW_ACCESS_CHALLENGE:
@@ -1456,17 +1461,22 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 			switch (packet->code) {
 			default:
-			  break;
+				break;
+
+			case PW_ACCOUNTING_REQUEST:
+			case PW_ACCOUNTING_RESPONSE:
+			  	memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
+				break;
 
 			case PW_AUTHENTICATION_ACK:
 			case PW_AUTHENTICATION_REJECT:
 			case PW_ACCESS_CHALLENGE:
-			  if (!original) {
-				  librad_log("ERROR: Cannot validate Message-Authenticator in response packet without a request packet.");
-				  return -1;
-			  }
-			  memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
-			  break;
+				if (!original) {
+					librad_log("ERROR: Cannot validate Message-Authenticator in response packet without a request packet.");
+					return -1;
+				}
+				memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
+				break;
 			}
 
 			lrad_hmac_md5(packet->data, packet->data_len,
