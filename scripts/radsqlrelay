@@ -152,7 +152,7 @@ my $data_source;
 if ($args{d} eq 'mysql') {
     $data_source = "DBI:mysql:database=$args{b};host=$args{h}";
 } elsif ($args{d} eq 'pg') {
-    $data_source = "DBI:pg:dbname=$args{b};host=$args{h}";
+    $data_source = "DBI:Pg:dbname=$args{b};host=$args{h}";
 } else {
     print STDERR "error: SQL driver not supported yet: $args{d}\n";
     exit 1;
