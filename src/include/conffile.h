@@ -27,6 +27,7 @@ typedef struct conf_data CONF_DATA;
 #define PW_TYPE_STRING_PTR	100
 #define PW_TYPE_BOOLEAN		101
 #define PW_TYPE_SUBSECTION	102
+#define PW_TYPE_FILENAME	103
 
 typedef struct CONF_PARSER {
   const char *name;
@@ -46,7 +47,7 @@ typedef struct CONF_PARSER {
 
 void		cf_pair_free(CONF_PAIR **cp);
 void		cf_section_free(CONF_SECTION **cp);
-int		cf_item_parse(const CONF_SECTION *cs, const char *name,
+int		cf_item_parse(CONF_SECTION *cs, const char *name,
 			      int type, void *data, const char *dflt);
 int		cf_section_parse(const CONF_SECTION *, void *base,
 				 const CONF_PARSER *variables);

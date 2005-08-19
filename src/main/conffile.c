@@ -93,9 +93,17 @@ struct conf_part {
 struct conf_data {
 	CONF_ITEM  item;
 	const char *name;
+	int	   flag;
 	void	   *data;	/* user data */
 	void       (*free)(void *); /* free user data function */
 };
+
+
+static int cf_data_add_internal(CONF_SECTION *cs, const char *name,
+				void *data, void (*data_free)(void *),
+				int flag);
+static void *cf_data_find_internal(CONF_SECTION *cs, const char *name,
+				   int flag);
 
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
@@ -245,8 +253,13 @@ static int name2_cmp(const void *a, const void *b)
  */
 static int data_cmp(const void *a, const void *b)
 {
+	int rcode;
+
 	const CONF_DATA *one = a;
 	const CONF_DATA *two = b;
+
+	rcode = one->flag - two->flag;
+	if (rcode != 0) return rcode;
 
 	return strcmp(one->name, two->name);
 }
@@ -655,7 +668,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
  *	default value was used.  Note that the default value will be
  *	used ONLY if the CONF_PAIR is NULL.
  */
-int cf_item_parse(const CONF_SECTION *cs, const char *name,
+int cf_item_parse(CONF_SECTION *cs, const char *name,
 		  int type, void *data, const char *dflt)
 {
 	int rcode = 0;
@@ -734,6 +747,59 @@ int cf_item_parse(const CONF_SECTION *cs, const char *name,
 		*q = value ? strdup(value) : NULL;
 		break;
 		
+		/*
+		 *	This is the same as PW_TYPE_STRING_PTR,
+		 *	except that we also "stat" the file, and
+		 *	cache the result.
+		 */
+	case PW_TYPE_FILENAME:
+		q = (char **) data;
+		if (*q != NULL) {
+			free(*q);
+		}
+		
+		/*
+		 *	Expand variables which haven't already been
+		 *	expanded automagically when the configuration
+		 *	file was read.
+		 */
+		if (value == dflt) {
+			char buffer[8192];
+
+			int lineno = cs->item.lineno;
+
+			/*
+			 *	FIXME: sizeof(buffer)?
+			 */
+			value = cf_expand_variables("?",
+						    &lineno,
+						    cs, buffer, value);
+			if (!value) return -1;
+		}
+		
+		DEBUG2(" %s: %s = \"%s\"",
+		       cs->name1, name,
+		       value ? value : "(null)");
+		*q = value ? strdup(value) : NULL;
+
+		/*
+		 *	And now we "stat" the file.XXX
+		 */
+		if (*q) {
+			struct stat buf;
+
+			if (stat(*q, &buf) == 0) {
+				time_t *mtime;
+
+				mtime = rad_malloc(sizeof(*mtime));
+				*mtime = buf.st_mtime;
+				/* FIXME: error? */
+				cf_data_add_internal(cs, *q, mtime, free,
+						     PW_TYPE_FILENAME);
+			}
+		}
+		break;
+
 	case PW_TYPE_IPADDR:
 		/*
 		 *	Allow '*' as any address
@@ -1506,13 +1572,11 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, const char *name,
 }
 
 
-/*
- *	Find data from a particular section.
- */
-void *cf_data_find(CONF_SECTION *cs, const char *name)
+static void *cf_data_find_internal(CONF_SECTION *cs, const char *name,
+				   int flag)
 {
 	if (!cs || !name) return NULL;
-
+	
 	/*
 	 *	Find the name in the tree, for speed.
 	 */
@@ -1520,6 +1584,7 @@ void *cf_data_find(CONF_SECTION *cs, const char *name)
 		CONF_DATA mycd, *cd;
 
 		mycd.name = name;
+		mycd.flag = flag;
 		cd = rbtree_finddata(cs->data_tree, &mycd);
 		if (cd) return cd->data;
 	}
@@ -1527,12 +1592,21 @@ void *cf_data_find(CONF_SECTION *cs, const char *name)
 	return NULL;
 }
 
+/*
+ *	Find data from a particular section.
+ */
+void *cf_data_find(CONF_SECTION *cs, const char *name)
+{
+	return cf_data_find_internal(cs, name, 0);
+}
+
 
 /*
  *	Add named data to a configuration section.
  */
-int cf_data_add(CONF_SECTION *cs, const char *name,
-		void *data, void (*data_free)(void *))
+static int cf_data_add_internal(CONF_SECTION *cs, const char *name,
+				void *data, void (*data_free)(void *),
+				int flag)
 {
 	CONF_DATA *cd;
 
@@ -1545,12 +1619,41 @@ int cf_data_add(CONF_SECTION *cs, const char *name,
 
 	cd = cf_data_alloc(cs, name, data, data_free);
 	if (!cd) return -1;
+	cd->flag = flag;
 
 	cf_item_add(cs, cf_datatoitem(cd));
 
 	return 0;
 }
 
+/*
+ *	Add named data to a configuration section.
+ */
+int cf_data_add(CONF_SECTION *cs, const char *name,
+		void *data, void (*data_free)(void *))
+{
+	return cf_data_add_internal(cs, name, data, data_free, 0);
+}
+
+
+/*
+ *	For a CONF_DATA element, stat the filename, if necessary.
+ */
+static int filename_stat(void *context, void *data)
+{
+	struct stat buf;
+	CONF_DATA *cd = data;
+
+	context = context;	/* -Wunused */
+
+	if (cd->flag != PW_TYPE_FILENAME) return 0;
+
+	if (stat(cd->name, &buf) < 0) return -1;
+
+	if (buf.st_mtime != *(time_t *) cd->data) return -1;
+
+	return 0;
+}
 
 /*
  *	Compare two CONF_SECTIONS.  The items MUST be in the same
@@ -1591,7 +1694,13 @@ static int cf_section_cmp(CONF_SECTION *a, CONF_SECTION *b)
 		/*
 		 *	FIXME: Deal with this case, too!
 		 */
-		if (ca->type == CONF_ITEM_SECTION) return 0;
+		if (ca->type == CONF_ITEM_SECTION) {
+			CONF_SECTION *sa = cf_itemtosection(ca);
+			CONF_SECTION *sb = cf_itemtosection(cb);
+
+			if (!cf_section_cmp(sa, sb)) return 0;
+			goto next;
+		}
 
 		rad_assert(ca->type == CONF_ITEM_PAIR);
 
@@ -1608,8 +1717,17 @@ static int cf_section_cmp(CONF_SECTION *a, CONF_SECTION *b)
 		/*
 		 *	And go to the next element.
 		 */
+	next:
 		ca = ca->next;
 		cb = cb->next;
+	}
+
+	/*
+	 *	Walk over the CONF_DATA, stat'ing PW_TYPE_FILENAME.
+	 */
+	if (a->data_tree &&
+	    (rbtree_walk(a->data_tree, InOrder, filename_stat, NULL) != 0)) {
+		return 0;
 	}
 
 	/*
@@ -1617,6 +1735,8 @@ static int cf_section_cmp(CONF_SECTION *a, CONF_SECTION *b)
 	 */
 	return 1;
 }
+
+
 
 
 /*
@@ -1681,7 +1801,7 @@ int cf_section_migrate(CONF_SECTION *dst, CONF_SECTION *src)
 			}
 		}
 	}
-	
+
 	return 1;		/* rcode means anything? */
 }
 
