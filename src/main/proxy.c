@@ -118,9 +118,11 @@ static void proxy_addinfo(REQUEST *request)
 static REALM *proxy_realm_ldb(REQUEST *request, const char *realm_name,
 			      int accounting)
 {
+	int		redone = 0;
 	REALM		*cl, *lb;
 	uint32_t	count;
 
+ redo:
 	lb = NULL;
 	count = 0;
 	for (cl = mainconfig.realms; cl; cl = cl->next) {
@@ -190,6 +192,25 @@ static REALM *proxy_realm_ldb(REQUEST *request, const char *realm_name,
 			lb = cl;
 		}
 	} /* loop over the realms */
+
+	/*
+	 *	All are dead, see if we have to wake
+	 */
+	if (!redone && !lb && mainconfig.wake_all_if_all_dead) {
+		for (cl = mainconfig.realms; cl; cl = cl->next) {
+			if(strcasecmp(cl->realm,realm_name) == 0) {
+				if (!accounting && !cl->active) {
+					cl->active = TRUE;
+				}
+				else if (accounting &&
+					 !cl->acct_active) {
+					cl->acct_active = TRUE;
+				}
+			}
+		}
+		redone = 1;
+		goto redo;
+	}
 
 	/*
 	 *	Return the load-balanced realm.
