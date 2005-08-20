@@ -20,7 +20,7 @@ CREATE TABLE radacct (
 	UserName		VARCHAR(32),
 	Realm			VARCHAR(30),
 	NASIPAddress		INET NOT NULL,
-	NASPortId		INTEGER,
+	NASPortId		BIGINT,
 	NASPortType		VARCHAR(32),
 	AcctStartTime		TIMESTAMP with time zone,
 	AcctStopTime		TIMESTAMP with time zone,
