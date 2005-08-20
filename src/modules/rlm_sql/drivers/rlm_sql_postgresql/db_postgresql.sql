@@ -81,6 +81,10 @@ CREATE TABLE radcheck (
 	Value		VARCHAR(40)
 );
 create index radcheck_UserName on radcheck (UserName,Attribute);
+/*
+ * Use this index if you use case insensitive queries
+ */
+-- create index radcheck_UserName_lower on radcheck (lower(UserName),Attribute);
 
 /*
  * Table structure for table 'radgroupcheck'
@@ -117,6 +121,10 @@ CREATE TABLE radreply (
 	Value		VARCHAR(40)
 );
 create index radreply_UserName on radreply (UserName,Attribute);
+/*
+ * Use this index if you use case insensitive queries
+ */
+-- create index radreply_UserName_lower on radreply (lower(UserName),Attribute);
 
 /*
  * Table structure for table 'usergroup'
@@ -127,6 +135,10 @@ CREATE TABLE usergroup (
 	GroupName	VARCHAR(30)
 );
 create index usergroup_UserName on usergroup (UserName);
+/*
+ * Use this index if you use case insensitive queries
+ */
+-- create index usergroup_UserName_lower on usergroup (lower(UserName));
 
 /*
  * Table structure for table 'realmgroup'
