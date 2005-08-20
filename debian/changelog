@@ -1,5 +1,8 @@
 freeradius (1.0.5-0) unstable; urgency=low
 
+  * New Upstream release, from release_1_0 branch
+    - Remove 04_bonus_control_code_in_clients_conf_5
+    - Remove 05_unbreak_quoted_sql_results
   * Fix my _name_ in the dpatches
   * Remove patch to CVS ID header from 05_unbreak_quoted_sql_values
     so as not to break things when comitting to FreeRADIUS CVS
@@ -9,7 +12,7 @@ freeradius (1.0.5-0) unstable; urgency=low
     (Thanks to Luca Landi for the patch)
     - Created 06_libtool14_vs_rlm_eap_tls
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 18 Aug 2005 08:34:30 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 21 Aug 2005 00:52:27 +1000
   
 freeradius (1.0.4-2) unstable; urgency=low
 
