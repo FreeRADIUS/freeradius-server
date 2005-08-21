@@ -17,7 +17,7 @@ CREATE TABLE radacct (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
 	AcctSessionId		VARCHAR(32) NOT NULL,
 	AcctUniqueId		VARCHAR(32) NOT NULL,
-	UserName		VARCHAR(32),
+	UserName		VARCHAR(253),
 	Realm			VARCHAR(30),
 	NASIPAddress		INET NOT NULL,
 	NASPortId		BIGINT,
@@ -185,8 +185,8 @@ CREATE TABLE nas (
 
 CREATE TABLE radpostauth (
 	id		BIGSERIAL PRIMARY KEY,
-	username	VARCHAR(64) NOT NULL,
-	pass		VARCHAR(64),
+	username	VARCHAR(253) NOT NULL,
+	pass		VARCHAR(253),
 	reply		VARCHAR(32),
 	authdate	TIMESTAMP with time zone NOT NULL default 'now'
 ) ;
