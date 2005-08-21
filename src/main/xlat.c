@@ -776,30 +776,23 @@ static void decode_attribute(const char **from, char **to, int freespace,
  */
 static int xlat_copy(char *out, int outlen, const char *in)
 {
-	int len = 0;
+	int freespace = outlen;
 
-	while (*in) {
-		/*
-		 *  Truncate, if too much.
-		 */
-		if (len >= outlen) {
-			break;
-		}
+	rad_assert(outlen >= 0);
 
+	while ((*in) && (freespace > 1)) {
 		/*
 		 *  Copy data.
 		 *
 		 *  FIXME: Do escaping of bad stuff!
 		 */
-		*out = *in;
+		*(out++) = *(in++);
 
-		out++;
-		in++;
-		len++;
+		freespace--;
 	}
-
 	*out = '\0';
-	return len;
+
+	return (outlen - freespace); /* count does not include NUL */
 }
 
 /*
