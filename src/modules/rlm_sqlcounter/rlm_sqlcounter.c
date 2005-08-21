@@ -294,12 +294,12 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, void *insta
 			case '%':
 				*q++ = *p;
 			case 'b': /* last_reset */
-				sprintf(tmpdt, "%lu", data->last_reset);
+				snprintf(tmpdt, sizeof(tmpdt), "%lu", data->last_reset);
 				strNcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				break;
 			case 'e': /* reset_time */
-				sprintf(tmpdt, "%lu", data->reset_time);
+				snprintf(tmpdt, sizeof(tmpdt), "%lu", data->reset_time);
 				strNcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				break;
@@ -346,7 +346,7 @@ static int sqlcounter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VAL
 	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, req, NULL);
 
 	/* third, wrap query with sql module call & expand */
-	sprintf(querystr, "%%{%%S:%s}", responsestr);
+	snprintf(querystr, sizeof(querystr), "%%{%%S:%s}", responsestr);
 	sqlcounter_expand(responsestr, MAX_QUERY_LEN, querystr, instance);
 
 	/* Finally, xlat resulting SQL query */
@@ -545,7 +545,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, request, NULL);
 
 	/* third, wrap query with sql module & expand */
-	sprintf(querystr, "%%{%%S:%s}", responsestr);
+	snprintf(querystr, sizeof(querystr), "%%{%%S:%s}", responsestr);
 	sqlcounter_expand(responsestr, MAX_QUERY_LEN, querystr, instance);
 
 	/* Finally, xlat resulting SQL query */
@@ -609,8 +609,8 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 
 		/*
 		 * User is denied access, send back a reply message
-		*/
-		sprintf(msg, "Your maximum %s usage time has been reached", data->reset);
+		 */
+		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", data->reset);
 		reply_item=pairmake("Reply-Message", msg, T_OP_EQ);
 		pairadd(&request->reply->vps, reply_item);
 
