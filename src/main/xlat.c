@@ -806,6 +806,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 	int i, c,freespace;
 	const char *p;
 	char *q;
+	char *nl;
 	VALUE_PAIR *tmp;
 	struct tm *TM, s_TM;
 	char tmpdt[40]; /* For temporary storing of dates */
@@ -948,13 +949,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 't': /* request timestamp */
-				CTIME_R(&request->timestamp, q, freespace);
-				q = strchr(q, '\n');
-				if (q) {
-					*q = '\0';
-				} else {
-					q += strlen(q);
-				}
+				CTIME_R(&request->timestamp, tmpdt, sizeof(tmpdt));
+				nl = strchr(tmpdt, '\n');
+				if (nl) *nl = '\0';
+				strNcpy(q, tmpdt, freespace);
+				q += strlen(q);
 				p++;
 				break;
 			case 'u': /* User name */
