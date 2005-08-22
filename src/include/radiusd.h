@@ -378,7 +378,6 @@ RADCLIENT	*client_find(const RADCLIENT_LIST *clients,
 			     const lrad_ipaddr_t *ipaddr);
 const char	*client_name(const RADCLIENT_LIST *clients,
 			     const lrad_ipaddr_t *ipaddr);
-int		read_clients_file(RADCLIENT_LIST *clients, const char *file);
 RADCLIENT	*client_findbynumber(const RADCLIENT_LIST *clients,
 				     int number);
 RADCLIENT	*client_find_old(const lrad_ipaddr_t *ipaddr);

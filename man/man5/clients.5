@@ -1,31 +1,9 @@
-.TH CLIENTS 5 "16 March 2001"
+.TH CLIENTS 5 "22 August 2002"
 .SH NAME
-clients \- RADIUS clients file
+clients \- FreeRADIUS configuration file.
 .SH DESCRIPTION
-The \fIclients\fP file resides in the radius database directory,
-by default \fI/etc/raddb\fP. Its use is depreciated in favour of 
-\fIclients.conf\fP.
-
-Every line starting with a hash sign
-.RB (' # ')
-is treated as comment and ignored.
-.PP
-Each line of the file contains two white-space delimited fields.
-.IP client hostname
-The RADIUS clients hostname.  This may be a plain hostname, or a
-dotted-quad IP address.
-.IP secret
-This is the so-called "shared secret" that is held between a RADIUS
-server and client. It is used to encrypt passwords in RADIUS packets,
-and also for authentication. You need to configure the same secret
-on the client (terminal server) as in this file.
-.PP
-The
-.I clients
-file is read by \fBradiusd\fP on startup only.
-.SH FILES
-.I /etc/raddb/clients
+This configuration file is no longer used by the server, and will not
+be read by the server. See the "scripts/clients.pl" program for a way
+to migrate this file to the new format.
 .SH "SEE ALSO"
-.BR radiusd (8),
 .BR clients.conf (5)
-.BR naslist (5)

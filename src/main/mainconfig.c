@@ -1076,16 +1076,6 @@ int read_mainconfig(int reload)
 		}
 
 		/*
-		 *	Then add the old ones.
-		 */
-		DEBUG2("read_config_files:  reading clients");
-		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CLIENTS);
-		if (read_clients_file(clients, buffer) < 0) {
-			radlog(L_ERR|L_CONS, "Errors reading clients");
-			return -1;
-		}
-
-		/*
 		 *	Free the old trees AFTER replacing them with
 		 *	the new ones...
 		 */
