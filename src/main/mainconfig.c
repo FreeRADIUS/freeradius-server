@@ -1055,14 +1055,6 @@ int read_mainconfig(int reload)
 	if (listener != NULL) {
 		RADCLIENT_LIST *clients, *old_clients;
 
-		/* old-style naslist file */
-		snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_NASLIST);
-		DEBUG2("read_config_files:  reading naslist");
-		if (read_naslist_file(buffer) < 0) {
-			radlog(L_ERR|L_CONS, "Errors reading naslist");
-			return -1;
-		}
-
 		/*
 		 *	Create the new clients first, and add them
 		 *	to the CONF_SECTION, where they're automagically

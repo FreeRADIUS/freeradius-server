@@ -1,30 +1,11 @@
-.TH NASLIST 5 "15 September 1997"
+.TH NASLIST 5 "12 August 2005"
 .SH NAME
 naslist \- RADIUS naslist file
 .SH DESCRIPTION
-The \fInaslist\fP file resides in the radius database directory,
-by default \fI/etc/raddb\fP. It contains a list of RADIUS network access
-servers (NASes).
-Every line starting with a hash sign
-.RB (' # ')
-is treated as comment and ignored.
-.PP
-Each line of the file contains three white-space delimited fields.
-.IP client hostname
-The NAS hostname. This may be a plain hostname, or a
-dotted-quad IP address.
-.IP shortname
-This field is optional, and declares a short alias for the NAS.
-.IP NAStype
-Type of NAS (terminalserver). This can be \fIlivingston\fP, \fIcisco\fP,
-\fIportslave\fP or \fIother\fP. This is passed to the external \fBchecklogin\fP
-program when it is called to detect double logins.
-.PP
-The
-.I naslist
-file is read by \fBradiusd\fP on startup only.
-.SH FILES
-.I /etc/raddb/naslist
+naslist \- FreeRADIUS configuration file.
+.SH DESCRIPTION
+This configuration file is no longer used by the server, and will not
+be read by the server. See the "scripts/clients.pl" program for a way
+to migrate this file to the new format.
 .SH "SEE ALSO"
-.BR radiusd (8),
-.BR clients (5)
+.BR clients.conf (5)

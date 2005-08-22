@@ -133,14 +133,6 @@ typedef struct radclient {
 
 typedef struct radclient_list RADCLIENT_LIST;
 
-typedef struct nas {
-	uint32_t		ipaddr;
-	char			longname[256];
-	char			shortname[32];
-	char			nastype[32];
-	struct nas		*next;
-} NAS;
-
 typedef struct _realm {
 	char			realm[64];
 	char			server[64];
@@ -392,10 +384,6 @@ int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 int		read_config_files(void);
 int		read_realms_file(const char *file);
-
-/* nas.c */
-int		read_naslist_file(char *);
-NAS		*nas_find(uint32_t ipno);
 
 /* version.c */
 void		version(void);

@@ -1,7 +1,0 @@
-#
-#	THIS FILE IS DEPRECATED.
-#
-#	You should NOT be using this file to configure the server.
-#	It is here ONLY for backwards compatibility.
-#
-#	See 'clients.conf' for the new configuration.
