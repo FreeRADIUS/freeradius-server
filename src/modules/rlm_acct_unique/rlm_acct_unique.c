@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "radiusd.h"
 #include "modules.h"
@@ -74,14 +75,21 @@ static int unique_parse_key(rlm_acct_unique_t *inst, char *key)
 	char *ptr, *prev, *keyptr;
 	DICT_ATTR *a;
 
-	keyptr = key;
-	ptr = key;
 	prev = key;
+	keyptr = ptr = key;
 
 	/* Let's remove spaces in the string */
-	rad_rmspace(key);
+	while (*keyptr) {
+		if (isspace((int) *keyptr)) {
+			keyptr++;
+		} else {
+			*(ptr++) = *(keyptr++);
+		}
+	}
+	*ptr = '\0';
 
-	ptr = key;
+
+	keyptr = ptr = key;
 	while(ptr) {
 		switch(*ptr) {
 		case ',':

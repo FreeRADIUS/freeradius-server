@@ -314,14 +314,10 @@ extern int	librad_max_attributes; /* per incoming packet */
 /*
  *	Several handy miscellaneous functions.
  */
-uint32_t	ip_getaddr (const char *);
 const char *	ip_ntoa(char *, uint32_t);
-uint32_t	ip_addr(const char *);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t *ifid);
 uint8_t		*ifid_aton(const char *ifid_str, uint8_t *ifid);
 char		*strNcpy(char *dest, const char *src, int n);
-void		rad_lowercase(char *str);
-void		rad_rmspace(char *str);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);

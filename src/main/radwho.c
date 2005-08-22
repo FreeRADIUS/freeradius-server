@@ -328,8 +328,7 @@ int main(int argc, char **argv)
 			showname = 0;
 			break;
 		case 'N':
-			nas_ip_address = ip_addr(optarg);
-			if (nas_ip_address == INADDR_NONE) {
+			if (inet_pton(AF_INET, optarg, &nas_ip_address) < 0) {
 				usage(1);
 			}
 			break;

@@ -47,57 +47,6 @@ int		librad_debug = 0;
 
 
 /*
- *	Return an IP address from a host
- *	name or address in dot notation.
- */
-uint32_t ip_getaddr(const char *host)
-{
-	struct hostent	*hp;
-	uint32_t	 a;
-#ifdef GETHOSTBYNAMERSTYLE
-#if (GETHOSTBYNAMERSTYLE == SYSVSTYLE) || (GETHOSTBYNAMERSTYLE == GNUSTYLE)
-	struct hostent result;
-	int error;
-	char buffer[2048];
-#endif
-#endif
-
-	if ((a = ip_addr(host)) != htonl(INADDR_NONE))
-		return a;
-
-#ifdef GETHOSTBYNAMERSTYLE
-#if GETHOSTBYNAMERSTYLE == SYSVSTYLE
-	hp = gethostbyname_r(host, &result, buffer, sizeof(buffer), &error);
-#elif GETHOSTBYNAMERSTYLE == GNUSTYLE
-	if (gethostbyname_r(host, &result, buffer, sizeof(buffer),
-			    &hp, &error) != 0) {
-		return htonl(INADDR_NONE);
-	}
-#else
-	hp = gethostbyname(host);
-#endif
-#else
-	hp = gethostbyname(host);
-#endif
-	if (hp == NULL) {
-		return htonl(INADDR_NONE);
-	}
-
-	/*
-	 *	Paranoia from a Bind vulnerability.  An attacker
-	 *	can manipulate DNS entries to change the length of the
-	 *	address.  If the length isn't 4, something's wrong.
-	 */
-	if (hp->h_length != 4) {
-		return htonl(INADDR_NONE);
-	}
-
-	memcpy(&a, hp->h_addr, sizeof(uint32_t));
-	return a;
-}
-
-
-/*
  *	Return an IP address in standard dot notation
  *
  *	FIXME: DELETE THIS
@@ -116,22 +65,6 @@ const char *ip_ntoa(char *buffer, uint32_t ipaddr)
 
 
 /*
- *	Return an IP address from
- *	one supplied in standard dot notation.
- *
- *	FIXME: DELETE THIS
- */
-uint32_t ip_addr(const char *ip_str)
-{
-	struct in_addr	in;
-
-	if (inet_aton(ip_str, &in) == 0)
-		return htonl(INADDR_NONE);
-	return in.s_addr;
-}
-
-
-/*
  *	Like strncpy, but always adds \0
  */
 char *strNcpy(char *dest, const char *src, int n)
@@ -146,33 +79,6 @@ char *strNcpy(char *dest, const char *src, int n)
 	*p = '\0';
 
 	return dest;
-}
-
-/*
- * Lowercase a string
- */
-void rad_lowercase(char *str) {
-	char *s;
-
-	for (s=str; *s; s++)
-		if (isupper((int) *s)) *s = tolower((int) *s);
-}
-
-/*
- * Remove spaces from a string
- */
-void rad_rmspace(char *str) {
-	char *s = str;
-	char *ptr = str;
-
-  while(ptr && *ptr!='\0') {
-    while(isspace((int) *ptr))
-      ptr++;
-    *s = *ptr;
-    ptr++;
-    s++;
-  }
-  *s = '\0';
 }
 
 /*
