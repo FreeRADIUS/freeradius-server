@@ -314,7 +314,6 @@ extern int	librad_max_attributes; /* per incoming packet */
 /*
  *	Several handy miscellaneous functions.
  */
-char *		ip_hostname (char *buf, size_t buflen, uint32_t ipaddr);
 uint32_t	ip_getaddr (const char *);
 const char *	ip_ntoa(char *, uint32_t);
 uint32_t	ip_addr(const char *);

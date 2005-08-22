@@ -239,9 +239,14 @@ static char *dotime(time_t t)
  */
 static const char *hostname(char *buf, size_t buflen, uint32_t ipaddr)
 {
+	/*
+	 *	WTF is this code for?
+	 */
 	if (ipaddr == 0 || ipaddr == (uint32_t)-1 || ipaddr == (uint32_t)-2)
 		return "";
-	return ip_hostname(buf, buflen, ipaddr);
+
+	return inet_ntop(AF_INET, &ipaddr, buf, buflen);
+
 }
 
 
@@ -383,7 +388,7 @@ int main(int argc, char **argv)
 
 		printf("Acct-Status-Type = Accounting-Off\n");
 		printf("NAS-IP-Address = %s\n",
-		       ip_hostname(buffer, sizeof(buffer), nas_ip_address));
+		       hostname(buffer, sizeof(buffer), nas_ip_address));
 		printf("Acct-Delay-Time = 0\n");
 		exit(0);	/* don't bother printing anything else */
 	}
@@ -530,8 +535,8 @@ int main(int argc, char **argv)
 			if (zap) printf("Acct-Status-Type = Stop\n");
 
 			printf("NAS-IP-Address = %s\n",
-			       ip_hostname(buffer, sizeof(buffer),
-					   rt.nas_address));
+			       hostname(buffer, sizeof(buffer),
+					rt.nas_address));
 			printf("NAS-Port = %u\n", rt.nas_port);
 
 			switch (rt.proto) {
@@ -549,8 +554,8 @@ int main(int argc, char **argv)
 			}
 			if (rt.framed_address != INADDR_NONE) {
 				printf("Framed-IP-Address = %s\n",
-				       ip_hostname(buffer, sizeof(buffer),
-						   rt.framed_address));
+				       hostname(buffer, sizeof(buffer),
+						rt.framed_address));
 			}
 			
 			/*
@@ -587,7 +592,7 @@ int main(int argc, char **argv)
 			       proto(rt.proto, rt.porttype),
 			       portind, portno,
 			       dotime(rt.time),
-			       ip_hostname(nasname, sizeof(nasname), rt.nas_address),
+			       hostname(nasname, sizeof(nasname), rt.nas_address),
 			       hostname(othername, sizeof(othername), rt.framed_address), eol);
 		} else {
 			printf((rawoutput == 0? rfmt2: rfmt2r),
@@ -595,7 +600,7 @@ int main(int argc, char **argv)
 			       portind, portno,
 			       proto(rt.proto, rt.porttype),
 			       dotime(rt.time),
-			       ip_hostname(nasname, sizeof(nasname), rt.nas_address),
+			       hostname(nasname, sizeof(nasname), rt.nas_address),
 			       hostname(othername, sizeof(othername), rt.framed_address),
 			       eol);
 		}

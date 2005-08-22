@@ -41,58 +41,9 @@ static const char rcsid[] =
 
 #include	"missing.h"
 #include	"libradius.h"
-#include	"rad_assert.h"
 
 int		librad_dodns = 0;
 int		librad_debug = 0;
-
-/*
- *	Return a printable host name (or IP address in dot notation)
- *	for the supplied IP address.
- */
-char *ip_hostname(char *buf, size_t buflen, uint32_t ipaddr)
-{
-	struct		hostent *hp;
-#ifdef GETHOSTBYADDRRSTYLE
-#if (GETHOSTBYADDRRSTYLE == SYSVSTYLE) || (GETHOSTBYADDRRSTYLE == GNUSTYLE)
-	char buffer[2048];
-	struct hostent result;
-	int error;
-#endif
-#endif
-
-	/*
-	 *	No DNS: don't look up host names
-	 */
-	if (librad_dodns == 0) {
-		ip_ntoa(buf, ipaddr);
-		return buf;
-	}
-
-#ifdef GETHOSTBYADDRRSTYLE
-#if GETHOSTBYADDRRSTYLE == SYSVSTYLE
-	hp = gethostbyaddr_r((char *)&ipaddr, sizeof(struct in_addr), AF_INET, &result, buffer, sizeof(buffer), &error);
-#elif GETHOSTBYADDRRSTYLE == GNUSTYLE
-	if (gethostbyaddr_r((char *)&ipaddr, sizeof(struct in_addr),
-			    AF_INET, &result, buffer, sizeof(buffer),
-			    &hp, &error) != 0) {
-		hp = NULL;
-	}
-#else
-	hp = gethostbyaddr((char *)&ipaddr, sizeof(struct in_addr), AF_INET);
-#endif
-#else
-	hp = gethostbyaddr((char *)&ipaddr, sizeof(struct in_addr), AF_INET);
-#endif
-	if ((hp == NULL) ||
-	    (strlen((char *)hp->h_name) >= buflen)) {
-		ip_ntoa(buf, ipaddr);
-		return buf;
-	}
-
-	strNcpy(buf, (char *)hp->h_name, buflen);
-	return buf;
-}
 
 
 /*
@@ -186,8 +137,6 @@ uint32_t ip_addr(const char *ip_str)
 char *strNcpy(char *dest, const char *src, int n)
 {
 	char *p = dest;
-
-	rad_assert(n > 0);
 
 	while ((n > 1) && (*src)) {
 		*(p++) = *(src++);
@@ -629,6 +578,14 @@ const char *ip_ntoh(const lrad_ipaddr_t *src, char *dst, size_t cnt)
 	struct sockaddr_storage ss;
 	struct sockaddr_in  *s4;
 	int error, len;
+
+	/*
+	 *	No DNS lookups
+	 */
+	if (!librad_dodns) {
+		return inet_ntop(src->af, &(src->ipaddr), dst, cnt);
+	}
+
 
 	memset(&ss, 0, sizeof(ss));
         switch (src->af) {
