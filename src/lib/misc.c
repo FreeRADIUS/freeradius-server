@@ -41,6 +41,7 @@ static const char rcsid[] =
 
 #include	"missing.h"
 #include	"libradius.h"
+#include	"rad_assert.h"
 
 int		librad_dodns = 0;
 int		librad_debug = 0;
@@ -185,6 +186,8 @@ uint32_t ip_addr(const char *ip_str)
 char *strNcpy(char *dest, const char *src, int n)
 {
 	char *p = dest;
+
+	rad_assert(n > 0);
 
 	while ((n > 1) && (*src)) {
 		*(p++) = *(src++);
