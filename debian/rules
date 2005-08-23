@@ -58,14 +58,20 @@ build-simple stamp-build: patch
 		--with-thread-pool --with-system-libtool \
 		--enable-ltdl-install=no --enable-strict-dependencies \
 		--with-udpfromto --with-edir \
+		--with-rlm_sql_postgresql_lib_dir=`pg_config --libdir` \
+		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
 		--enable-developer
 
-#		To make SSL-free, add these:
+#		To make SSL-free, add this:
 #		--without-rlm_eap_peap \
 		--without-rlm_eap_tls \
 		--without-rlm_eap_ttls \
 		--without-rlm_sql_postgresql \
 		--without-snmp \
+
+#		and remove these:
+#		--with-rlm_sql_postgresql_lib_dir=`pg_config --libdir` \
+		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
 	
 	# Modify Make.inc for Debian...
 	TEMPFILE=`mktemp /tmp/radmake-XXXXXX`; \
