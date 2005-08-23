@@ -53,9 +53,9 @@ diff -urNad --exclude=CVS --exclude=.svn ./src/modules/rlm_eap/types/rlm_eap_ttl
 diff -urNad --exclude=CVS --exclude=.svn ./src/modules/rules.mak /tmp/dpep-work.ntxebS/freeradius-1.0.4/src/modules/rules.mak
 --- ./src/modules/rules.mak	2005-04-12 07:19:38.000000000 +1000
 +++ /tmp/dpep-work.ntxebS/freeradius-1.0.4/src/modules/rules.mak	2005-08-04 00:12:46.000000000 +1000
-@@ -97,6 +97,13 @@
+@@ -98,6 +98,13 @@
  	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
- 	-module $(LINK_MODE) $(CFLAGS) $(RLM_CFLAGS) $(RLM_LDFLAGS) \
+ 	-module $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) \
  	-o $@ -rpath $(libdir) $^ $(RLM_LIBS) $(LIBS)
 +	for file in .libs/rlm_eap_*.so ; do \
 +		[ -f $$file ] || continue; \
@@ -67,7 +67,7 @@ diff -urNad --exclude=CVS --exclude=.svn ./src/modules/rules.mak /tmp/dpep-work.
  
  #######################################################################
  #
-@@ -137,6 +144,7 @@
+@@ -138,6 +145,7 @@
  	@rm -f *.a *.o *.lo *.la *~
  	@rm -rf .libs _libs
  	@rm -f config.cache config.log config.status $(RLM_UTILS)
