@@ -1611,12 +1611,12 @@ static int cf_data_add_internal(CONF_SECTION *cs, const char *name,
 {
 	CONF_DATA *cd;
 
-	if (!cs || !name || !data) return -1;
+	if (!cs || !name) return -1;
 
 	/*
 	 *	Already exists.  Can't add it.
 	 */
-	if (cf_data_find(cs, name) != NULL) return -1;
+	if (cf_data_find_internal(cs, name, flag) != NULL) return -1;
 
 	cd = cf_data_alloc(cs, name, data, data_free);
 	if (!cd) return -1;
@@ -1638,6 +1638,74 @@ int cf_data_add(CONF_SECTION *cs, const char *name,
 
 
 /*
+ *	Copy CONF_DATA from src to dst
+ */
+static void cf_section_copy_data(CONF_SECTION *s, CONF_SECTION *d)
+{
+	
+	CONF_ITEM *cd, *next, **last;
+
+	/*
+	 *	Don't check if s->data_tree is NULL.  It's child
+	 *	sections may have data, even if this section doesn't.
+	 */
+
+	rad_assert(d->data_tree == NULL);
+	d->data_tree = s->data_tree;
+	s->data_tree = NULL;
+	
+	/*
+	 *	Walk through src, moving CONF_ITEM_DATA
+	 *	to dst, by hand.
+	 */
+	last = &(s->children);
+	for (cd = s->children; cd != NULL; cd = next) {
+		next = cd->next;
+		
+		/*
+		 *	Recursively copy data from child sections.
+		 */
+		if (cd->type == CONF_ITEM_SECTION) {
+			CONF_SECTION *s1, *d1;
+			
+			s1 = cf_itemtosection(cd);
+			d1 = cf_section_sub_find_name2(d, s1->name1, s1->name2);
+			if (d1) {
+				cf_section_copy_data(s1, d1);
+			}
+			last = &(cd->next);
+			continue;
+		}
+
+		/*
+		 *	Not conf data, remember last ptr.
+		 */
+		if (cd->type != CONF_ITEM_DATA) {
+			last = &(cd->next);
+			continue;
+		}
+		
+		/*
+		 *	Remove it from the src list
+		 */
+		*last = cd->next;
+		cd->next = NULL;
+		
+		/*
+		 *	Add it to the dst list
+		 */
+		if (!d->children) {
+			rad_assert(d->tail == NULL);
+			d->children = cd;
+		} else {
+			rad_assert(d->tail != NULL);
+			d->tail->next = cd;
+		}
+		d->tail = cd;
+	}
+}
+
+/*
  *	For a CONF_DATA element, stat the filename, if necessary.
  */
 static int filename_stat(void *context, void *data)
@@ -1655,6 +1723,7 @@ static int filename_stat(void *context, void *data)
 
 	return 0;
 }
+
 
 /*
  *	Compare two CONF_SECTIONS.  The items MUST be in the same
@@ -1693,7 +1762,7 @@ static int cf_section_cmp(CONF_SECTION *a, CONF_SECTION *b)
 		if (ca->type != cb->type) return 0;
 
 		/*
-		 *	FIXME: Deal with this case, too!
+		 *	Deal with subsections.
 		 */
 		if (ca->type == CONF_ITEM_SECTION) {
 			CONF_SECTION *sa = cf_itemtosection(ca);
@@ -1763,43 +1832,7 @@ int cf_section_migrate(CONF_SECTION *dst, CONF_SECTION *src)
 		 *	then copy the CONF_DATA from one to the other.
 		 */
 		if (cf_section_cmp(s, d)) {
-			CONF_ITEM *cd, *next, **last;
-
-			rad_assert(d->data_tree == NULL);
-			d->data_tree = s->data_tree;
-			s->data_tree = NULL;
-
-			/*
-			 *	Walk through src, moving CONF_ITEM_DATA
-			 *	to dst, by hand.
-			 */
-			last = &(s->children);
-			for (cd = s->children; cd != NULL; cd = next) {
-				next = cd->next;
-
-				if (cd->type != CONF_ITEM_DATA) {
-					last = &(cd->next);
-					continue;
-				}
-
-				/*
-				 *	Remove it from the src list
-				 */
-				*last = cd->next;
-				cd->next = NULL;
-
-				/*
-				 *	Add it to the dst list
-				 */
-				if (!d->children) {
-					rad_assert(d->tail == NULL);
-					d->children = cd;
-				} else {
-					rad_assert(d->tail != NULL);
-					d->tail->next = cd;
-				}
-				d->tail = cd;
-			}
+			cf_section_copy_data(s, d);
 		}
 	}
 
