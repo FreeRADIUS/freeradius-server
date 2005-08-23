@@ -803,7 +803,7 @@ static int xlat_copy(char *out, int outlen, const char *in)
 int radius_xlat(char *out, int outlen, const char *fmt,
 		REQUEST *request, RADIUS_ESCAPE_STRING func)
 {
-	int i, c,freespace;
+	int c, len, freespace;
 	const char *p;
 	char *q;
 	char *nl;
@@ -909,9 +909,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'd': /* request day */
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%d",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%d", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'f': /* Framed IP address */
@@ -931,9 +933,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'm': /* request month */
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%m",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%m", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'n': /* NAS IP address */
@@ -972,16 +976,20 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'D': /* request date */
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%Y%m%d",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%Y%m%d", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'H': /* request hour */
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%H",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%H", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'L': /* radlog_dir */
@@ -1000,16 +1008,20 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'S': /* request timestamp in SQL format*/
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%Y-%m-%d %H:%M:%S",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%Y-%m-%d %H:%M:%S", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'T': /* request timestamp */
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%Y-%m-%d-%H.%M.%S.000000",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%Y-%m-%d-%H.%M.%S.000000", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'U': /* Stripped User name */
@@ -1026,9 +1038,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'Y': /* request year */
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%Y",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%Y", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'Z': /* Full request pairs except password */
@@ -1036,9 +1050,9 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				while (tmp && (freespace > 3)) {
 					if (tmp->attribute != PW_PASSWORD) {
 						*q++ = '\t';
-						i = vp_prints(q,freespace-2,tmp);
-						q += i;
-						freespace -= (i+2);
+						len = vp_prints(q, freespace - 2, tmp);
+						q += len;
+						freespace -= (len + 2);
 						*q++ = '\n';
 					}
 					tmp = tmp->next;
