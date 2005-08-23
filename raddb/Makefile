@@ -1,13 +1,19 @@
+#
+# Makefile
+#
+# Version:      $Id$
+#
+
 include ../Make.inc
 
 #
 #  The list of files to install.
 #
-FILES	= acct_users attrs attrs.pre-proxy clients clients.conf dictionary \
-	  eap.conf experimental.conf hints huntgroups ldap.attrmap \
-	  mssql.conf naslist naspasswd oraclesql.conf postgresql.conf \
-	  preproxy_users proxy.conf radiusd.conf realms snmp.conf \
-	  sql.conf users x99.conf x99passwd.sample radrelay.conf
+FILES = acct_users attrs attrs.pre-proxy clients.conf dictionary	\
+	eap.conf experimental.conf hints huntgroups ldap.attrmap	\
+	mssql.conf naspasswd oraclesql.conf postgresql.conf		\
+	preproxy_users proxy.conf radiusd.conf radrelay.conf		\
+	realms snmp.conf sql.conf users
 
 all:
 
@@ -34,7 +40,7 @@ install:
 		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
 		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
 	fi
-	chmod 640 $(R)$(raddbdir)/naspasswd $(R)$(raddbdir)/clients $(R)$(raddbdir)/clients.conf
+	chmod 640 $(R)$(raddbdir)/naspasswd $(R)$(raddbdir)/clients.conf
 	if [ ! -d $(R)$(raddbdir)/certs ]; then \
 		mkdir $(R)$(raddbdir)/certs; \
 		mkdir $(R)$(raddbdir)/certs/demoCA; \
@@ -43,4 +49,3 @@ install:
 	fi
 
 clean:
-
