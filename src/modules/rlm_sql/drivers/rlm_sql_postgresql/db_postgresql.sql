@@ -185,7 +185,7 @@ create index nas_nasname on nas (nasname);
 CREATE TABLE radpostauth (
 	id		BIGSERIAL PRIMARY KEY,
 	username	VARCHAR(253) NOT NULL,
-	pass		VARCHAR(253),
+	pass		VARCHAR(128),
 	reply		VARCHAR(32),
 	authdate	TIMESTAMP with time zone NOT NULL default 'now'
 ) ;
