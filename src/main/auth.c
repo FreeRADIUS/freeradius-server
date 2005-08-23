@@ -150,7 +150,7 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
  *
  *	NOTE: NOT the same as the RLM_ values !
  */
-int rad_check_password(REQUEST *request)
+static int rad_check_password(REQUEST *request)
 {
 	VALUE_PAIR *auth_type_pair;
 	VALUE_PAIR *cur_config_item;
