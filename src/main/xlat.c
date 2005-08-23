@@ -778,7 +778,7 @@ static int xlat_copy(char *out, int outlen, const char *in)
 {
 	int freespace = outlen;
 
-	rad_assert(outlen >= 0);
+	rad_assert(outlen > 0);
 
 	while ((*in) && (freespace > 1)) {
 		/*
