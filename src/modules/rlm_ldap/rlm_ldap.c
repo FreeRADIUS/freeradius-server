@@ -2041,7 +2041,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 	}
 
 
-#ifdef HAVE_INT_TLS_CONFIG
+#ifdef HAVE_LDAP_INT_TLS_CONFIG
 	if (ldap_int_tls_config(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT,
 				(inst->tls_require_cert)) != LDAP_OPT_SUCCESS) {
 		radlog(L_ERR, "rlm_ldap: could not set "
