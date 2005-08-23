@@ -1985,7 +1985,7 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	}
 
 
-#ifdef HAVE_INT_TLS_CONFIG
+#ifdef HAVE_LDAP_INT_TLS_CONFIG
 
 	if ( ldap_int_tls_config( NULL, LDAP_OPT_X_TLS_REQUIRE_CERT,
 							  (inst->tls_require_cert) )
