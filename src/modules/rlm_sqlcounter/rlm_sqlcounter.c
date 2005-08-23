@@ -97,6 +97,60 @@ static CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }
 };
 
+/*
+ *	Safe characters list for sql queries. Everything else is
+ *	replaced with their mime-encoded equivalents.
+ */
+static const char allowed_chars[] = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /";
+
+/*
+ *	Translate the SQL queries.
+ */
+static int sql_escape_func(char *out, int outlen, const char *in)
+{
+	int len = 0;
+
+	while (in[0]) {
+		/*
+		 *	Non-printable characters get replaced with their
+		 *	mime-encoded equivalents.
+		 */
+		if ((in[0] < 32) ||
+		    strchr(allowed_chars, *in) == NULL) {
+			/*
+			 *	Only 3 or less bytes available.
+			 */
+			if (outlen <= 3) {
+				break;
+			}
+
+			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
+			in++;
+			out += 3;
+			outlen -= 3;
+			len += 3;
+			continue;
+		}
+
+		/*
+		 *	Only one byte left.
+		 */
+		if (outlen <= 1) {
+			break;
+		}
+
+		/*
+		 *	Allowed character.
+		 */
+		*out = *in;
+		out++;
+		in++;
+		outlen--;
+		len++;
+	}
+	*out = '\0';
+	return len;
+}
 
 static int find_next_reset(rlm_sqlcounter_t *data, time_t timeval)
 {
@@ -343,14 +397,14 @@ static int sqlcounter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VAL
 	sqlcounter_expand(querystr, MAX_QUERY_LEN, data->query, instance);
 
 	/* second, xlat any request attribs in query */
-	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, req, NULL);
+	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, req, sql_escape_func);
 
 	/* third, wrap query with sql module call & expand */
 	snprintf(querystr, sizeof(querystr), "%%{%%S:%s}", responsestr);
 	sqlcounter_expand(responsestr, MAX_QUERY_LEN, querystr, instance);
 
 	/* Finally, xlat resulting SQL query */
-	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, req, NULL);
+	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, req, sql_escape_func);
 
 	counter = atoi(querystr);
 
@@ -542,14 +596,14 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	sqlcounter_expand(querystr, MAX_QUERY_LEN, data->query, instance);
 
 	/* second, xlat any request attribs in query */
-	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, request, NULL);
+	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, request, sql_escape_func);
 
 	/* third, wrap query with sql module & expand */
 	snprintf(querystr, sizeof(querystr), "%%{%%S:%s}", responsestr);
 	sqlcounter_expand(responsestr, MAX_QUERY_LEN, querystr, instance);
 
 	/* Finally, xlat resulting SQL query */
-	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, request, NULL);
+	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, request, sql_escape_func);
 
 	counter = atoi(querystr);
 
