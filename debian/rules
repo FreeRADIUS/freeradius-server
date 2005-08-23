@@ -91,9 +91,9 @@ binary-indep: stamp-build
 	dh_clean -i -k
 	dh_installdirs -i
 	# Dialup-Admin
-	dh_installdocs -p freeradius-dialupadmin dialup_admin/README dialup_admin/doc/*
-	dh_installchangelogs -p freeradius-dialupadmin dialup_admin/Changelog
-	dh_installexamples -p freeradius-dialupadmin dialup_admin/bin/dialup_admin.cron
+	dh_installdocs -p freeradius-dialupadmin -XCVS dialup_admin/README dialup_admin/doc/*
+	dh_installchangelogs -p freeradius-dialupadmin -XCVS dialup_admin/Changelog
+	dh_installexamples -p freeradius-dialupadmin -XCVS dialup_admin/bin/dialup_admin.cron
 	dh_install -p freeradius-dialupadmin -XCVS dialup_admin/conf/* etc/freeradius-dialupadmin/
 	dh_install -p freeradius-dialupadmin -XCVS -XChangelog -XREADME -Xconf/ -Xdoc/ -Xdialup_admin.cron dialup_admin/* usr/share/freeradius-dialupadmin/
 	dh_link -p freeradius-dialupadmin etc/freeradius-dialupadmin/ usr/share/freeradius-dialupadmin/conf
