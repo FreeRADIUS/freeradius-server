@@ -633,6 +633,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		 */
 		if (data->reset_time && (
 			res >= (data->reset_time - request->timestamp))) {
+			res = data->reset_time - request->timestamp;
 			res += check_vp->lvalue;
 		}
 
