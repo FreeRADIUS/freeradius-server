@@ -5,9 +5,9 @@
 ## DP: EAP-SIM does not require openssl to build
 
 @DPATCH@
-
---- freeradius-1.0.2.orig/src/modules/rlm_eap/types/rlm_eap_sim/configure
-+++ freeradius-1.0.2/src/modules/rlm_eap/types/rlm_eap_sim/configure
+diff -urNad --exclude=CVS --exclude=.svn ./src/modules/rlm_eap/types/rlm_eap_sim/configure /tmp/dpep-work.ZipMl1/release_1_0/src/modules/rlm_eap/types/rlm_eap_sim/configure
+--- ./src/modules/rlm_eap/types/rlm_eap_sim/configure	2005-08-21 00:40:15.000000000 +1000
++++ /tmp/dpep-work.ZipMl1/release_1_0/src/modules/rlm_eap/types/rlm_eap_sim/configure	2005-08-23 17:13:19.000000000 +1000
 @@ -11,10 +11,6 @@
  ac_help=
  ac_default_prefix=/usr/local
@@ -103,7 +103,7 @@
  if eval "test \"`echo '$''{'ac_cv_prog_cc_g'+set}'`\" = set"; then
    echo $ac_n "(cached) $ac_c" 1>&6
  else
-@@ -756,508 +752,6 @@
+@@ -756,593 +752,6 @@
  fi
  
  
@@ -140,12 +140,42 @@
 -echo $ac_n "checking for openssl/ssl.h""... $ac_c" 1>&6
 -echo "configure:791: checking for openssl/ssl.h" >&5
 -
+-old_CFLAGS="$CFLAGS"
 -smart_include=
 -smart_include_dir=
 -
--  old_CFLAGS="$CFLAGS"
+-if test "x$smart_try_dir" != "x"; then
+-  for try in $smart_try_dir; do
+-    CFLAGS="$old_CFLAGS -I$try"
+-    cat > conftest.$ac_ext <<EOF
+-#line 801 "configure"
+-#include "confdefs.h"
+-
+-		    #include <openssl/ssl.h>
+-int main() {
+- int a = 1;
+-; return 0; }
+-EOF
+-if { (eval echo configure:809: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+-  rm -rf conftest*
+-  smart_include="-I$try"
+-else
+-  echo "configure: failed program was:" >&5
+-  cat conftest.$ac_ext >&5
+-  rm -rf conftest*
+-  smart_include=
+-fi
+-rm -f conftest*
+-    if test "x$smart_include" != "x"; then
+-      break;
+-    fi
+-    CFLAGS="$old_CFLAGS"
+-  done
+-fi
+-
+-if test "x$smart_include" = "x"; then
 -  cat > conftest.$ac_ext <<EOF
--#line 798 "configure"
+-#line 828 "configure"
 -#include "confdefs.h"
 -
 -		  #include <openssl/ssl.h>
@@ -153,7 +183,7 @@
 - int a = 1;
 -; return 0; }
 -EOF
--if { (eval echo configure:806: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+-if { (eval echo configure:836: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
 -  rm -rf conftest*
 -  smart_include=" "
 -else
@@ -163,9 +193,10 @@
 -  smart_include=
 -fi
 -rm -f conftest*
+-fi
 -
--  if test "x$smart_include" = "x"; then
--    
+-if test "x$smart_include" = "x"; then
+-  
 -
 -if test "x$LOCATE" != "x"; then
 -        DIRS=
@@ -193,19 +224,18 @@
 -eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
 -
 -
--    for try in $smart_try_dir $smart_include_dir /usr/local/include/ /opt/include; do
--      CFLAGS="$old_CFLAGS -I$try"
--
--      cat > conftest.$ac_ext <<EOF
--#line 850 "configure"
+-  for try in $smart_include_dir /usr/local/include /opt/include; do
+-    CFLAGS="$old_CFLAGS -I$try"
+-    cat > conftest.$ac_ext <<EOF
+-#line 880 "configure"
 -#include "confdefs.h"
 -
--		       #include <openssl/ssl.h>
+-		    #include <openssl/ssl.h>
 -int main() {
 - int a = 1;
 -; return 0; }
 -EOF
--if { (eval echo configure:858: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+-if { (eval echo configure:888: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
 -  rm -rf conftest*
 -  smart_include="-I$try"
 -else
@@ -215,21 +245,20 @@
 -  smart_include=
 -fi
 -rm -f conftest*
--
--      if test "x$smart_include" != "x"; then
--        break;
--      fi
--    done
+-    if test "x$smart_include" != "x"; then
+-      break;
+-    fi
 -    CFLAGS="$old_CFLAGS"
--  fi
+-  done
+-fi
 -
--        if test "x$smart_include" != "x"; then
--    echo "$ac_t""yes" 1>&6
--    eval "ac_cv_header_$ac_safe=yes"
--    CFLAGS="$old_CFLAGS $smart_include"
--    SMART_CFLAGS="$SMART_CFLAGS $smart_include"
--  else
--    echo "$ac_t""no" 1>&6 
+-if test "x$smart_include" != "x"; then
+-  echo "$ac_t""yes" 1>&6
+-  eval "ac_cv_header_$ac_safe=yes"
+-  CFLAGS="$old_CFLAGS $smart_include"
+-  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+-else
+-  echo "$ac_t""no" 1>&6
 -fi
 -
 -	if test "x$ac_cv_header_openssl_ssl_h" != "xyes"; then
@@ -242,22 +271,49 @@
 -sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
 -sm_func_safe=`echo "DH_new" | sed 'y%./+-%__p_%'`
 -echo $ac_n "checking for DH_new in -lcrypto""... $ac_c" 1>&6
--echo "configure:895: checking for DH_new in -lcrypto" >&5
+-echo "configure:924: checking for DH_new in -lcrypto" >&5
 -
+-old_LIBS="$LIBS"
 -smart_lib=
 -smart_lib_dir=
 -
--  old_LIBS="$LIBS"
--  LIBS="$LIBS -lcrypto"
--  cat > conftest.$ac_ext <<EOF
--#line 903 "configure"
+-if test "x$smart_try_dir" != "x"; then
+-  for try in $smart_try_dir; do
+-    LIBS="-L$try -lcrypto $old_LIBS"
+-    cat > conftest.$ac_ext <<EOF
+-#line 934 "configure"
 -#include "confdefs.h"
 -extern char DH_new();
 -int main() {
 - DH_new()
 -; return 0; }
 -EOF
--if { (eval echo configure:910: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+-if { (eval echo configure:941: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+-  rm -rf conftest*
+-  smart_lib="-L$try -lcrypto"
+-else
+-  echo "configure: failed program was:" >&5
+-  cat conftest.$ac_ext >&5
+-fi
+-rm -f conftest*
+-    if test "x$smart_lib" != "x"; then
+-      break;
+-    fi
+-    LIBS="$old_LIBS"
+-  done
+-fi
+-
+-if test "x$smart_lib" = "x"; then
+-  LIBS="-lcrypto $old_LIBS"
+-  cat > conftest.$ac_ext <<EOF
+-#line 959 "configure"
+-#include "confdefs.h"
+-extern char DH_new();
+-int main() {
+- DH_new()
+-; return 0; }
+-EOF
+-if { (eval echo configure:966: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
 -  rm -rf conftest*
 -  smart_lib="-lcrypto"
 -else
@@ -265,9 +321,11 @@
 -  cat conftest.$ac_ext >&5
 -fi
 -rm -f conftest*
+-  LIBS="$old_LIBS"
+-fi
 -
--  if test "x$smart_lib" = "x"; then
--    
+-if test "x$smart_lib" = "x"; then
+-  
 -
 -if test "x$LOCATE" != "x"; then
 -        DIRS=
@@ -294,7 +352,7 @@
 -
 -eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 -
--    
+-  
 -
 -if test "x$LOCATE" != "x"; then
 -        DIRS=
@@ -322,18 +380,17 @@
 -eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 -
 -
--    for try in $smart_try_dir $smart_lib_dir /usr/local/lib/ /opt/lib; do
--      LIBS="$old_LIBS -L$try -lcrypto"
--
--      cat > conftest.$ac_ext <<EOF
--#line 979 "configure"
+-  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+-    LIBS="-L$try -lcrypto $old_LIBS"
+-    cat > conftest.$ac_ext <<EOF
+-#line 1036 "configure"
 -#include "confdefs.h"
 -extern char DH_new();
 -int main() {
 - DH_new()
 -; return 0; }
 -EOF
--if { (eval echo configure:986: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+-if { (eval echo configure:1043: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
 -  rm -rf conftest*
 -  smart_lib="-L$try -lcrypto"
 -else
@@ -341,20 +398,20 @@
 -  cat conftest.$ac_ext >&5
 -fi
 -rm -f conftest*
--      if test "x$smart_lib" != "x"; then
--        break;
--      fi
--    done
+-    if test "x$smart_lib" != "x"; then
+-      break;
+-    fi
 -    LIBS="$old_LIBS"
--  fi
+-  done
+-fi
 -
--        if test "x$smart_lib" != "x"; then
--    echo "$ac_t""yes" 1>&6
--    eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
--    LIBS="$old_LIBS $smart_lib"
--    SMART_LIBS="$SMART_LIBS $smart_lib"
--  else
--    echo "$ac_t""no" 1>&6 
+-if test "x$smart_lib" != "x"; then
+-  echo "$ac_t""yes" 1>&6
+-  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+-  LIBS="$smart_lib $old_LIBS"
+-  SMART_LIBS="$smart_lib $SMART_LIBS"
+-else
+-  echo "$ac_t""no" 1>&6
 -fi
 -
 -    if test "x$ac_cv_lib_crypto_DH_new" != "xyes"; then
@@ -366,22 +423,49 @@
 -sm_lib_safe=`echo "ssl" | sed 'y%./+-%__p_%'`
 -sm_func_safe=`echo "SSL_new" | sed 'y%./+-%__p_%'`
 -echo $ac_n "checking for SSL_new in -lssl""... $ac_c" 1>&6
--echo "configure:1019: checking for SSL_new in -lssl" >&5
+-echo "configure:1076: checking for SSL_new in -lssl" >&5
 -
+-old_LIBS="$LIBS"
 -smart_lib=
 -smart_lib_dir=
 -
--  old_LIBS="$LIBS"
--  LIBS="$LIBS -lssl"
--  cat > conftest.$ac_ext <<EOF
--#line 1027 "configure"
+-if test "x$smart_try_dir" != "x"; then
+-  for try in $smart_try_dir; do
+-    LIBS="-L$try -lssl $old_LIBS"
+-    cat > conftest.$ac_ext <<EOF
+-#line 1086 "configure"
 -#include "confdefs.h"
 -extern char SSL_new();
 -int main() {
 - SSL_new()
 -; return 0; }
 -EOF
--if { (eval echo configure:1034: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+-if { (eval echo configure:1093: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+-  rm -rf conftest*
+-  smart_lib="-L$try -lssl"
+-else
+-  echo "configure: failed program was:" >&5
+-  cat conftest.$ac_ext >&5
+-fi
+-rm -f conftest*
+-    if test "x$smart_lib" != "x"; then
+-      break;
+-    fi
+-    LIBS="$old_LIBS"
+-  done
+-fi
+-
+-if test "x$smart_lib" = "x"; then
+-  LIBS="-lssl $old_LIBS"
+-  cat > conftest.$ac_ext <<EOF
+-#line 1111 "configure"
+-#include "confdefs.h"
+-extern char SSL_new();
+-int main() {
+- SSL_new()
+-; return 0; }
+-EOF
+-if { (eval echo configure:1118: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
 -  rm -rf conftest*
 -  smart_lib="-lssl"
 -else
@@ -389,9 +473,11 @@
 -  cat conftest.$ac_ext >&5
 -fi
 -rm -f conftest*
+-  LIBS="$old_LIBS"
+-fi
 -
--  if test "x$smart_lib" = "x"; then
--    
+-if test "x$smart_lib" = "x"; then
+-  
 -
 -if test "x$LOCATE" != "x"; then
 -        DIRS=
@@ -418,7 +504,7 @@
 -
 -eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 -
--    
+-  
 -
 -if test "x$LOCATE" != "x"; then
 -        DIRS=
@@ -446,18 +532,17 @@
 -eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 -
 -
--    for try in $smart_try_dir $smart_lib_dir /usr/local/lib/ /opt/lib; do
--      LIBS="$old_LIBS -L$try -lssl"
--
--      cat > conftest.$ac_ext <<EOF
--#line 1103 "configure"
+-  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+-    LIBS="-L$try -lssl $old_LIBS"
+-    cat > conftest.$ac_ext <<EOF
+-#line 1188 "configure"
 -#include "confdefs.h"
 -extern char SSL_new();
 -int main() {
 - SSL_new()
 -; return 0; }
 -EOF
--if { (eval echo configure:1110: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+-if { (eval echo configure:1195: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
 -  rm -rf conftest*
 -  smart_lib="-L$try -lssl"
 -else
@@ -465,20 +550,20 @@
 -  cat conftest.$ac_ext >&5
 -fi
 -rm -f conftest*
--      if test "x$smart_lib" != "x"; then
--        break;
--      fi
--    done
+-    if test "x$smart_lib" != "x"; then
+-      break;
+-    fi
 -    LIBS="$old_LIBS"
--  fi
+-  done
+-fi
 -
--        if test "x$smart_lib" != "x"; then
--    echo "$ac_t""yes" 1>&6
--    eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
--    LIBS="$old_LIBS $smart_lib"
--    SMART_LIBS="$SMART_LIBS $smart_lib"
--  else
--    echo "$ac_t""no" 1>&6 
+-if test "x$smart_lib" != "x"; then
+-  echo "$ac_t""yes" 1>&6
+-  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+-  LIBS="$smart_lib $old_LIBS"
+-  SMART_LIBS="$smart_lib $SMART_LIBS"
+-else
+-  echo "$ac_t""no" 1>&6
 -fi
 -
 -    if test "x$ac_cv_lib_ssl_SSL_new" != "xyes"; then
@@ -486,7 +571,7 @@
 -    fi
 -
 -	echo $ac_n "checking how to run the C preprocessor""... $ac_c" 1>&6
--echo "configure:1139: checking how to run the C preprocessor" >&5
+-echo "configure:1224: checking how to run the C preprocessor" >&5
 -# On Suns, sometimes $CPP names a directory.
 -if test -n "$CPP" && test -d "$CPP"; then
 -  CPP=
@@ -501,13 +586,13 @@
 -  # On the NeXT, cc -E runs the code through the compiler's parser,
 -  # not just through cpp.
 -  cat > conftest.$ac_ext <<EOF
--#line 1154 "configure"
+-#line 1239 "configure"
 -#include "confdefs.h"
 -#include <assert.h>
 -Syntax Error
 -EOF
 -ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
--{ (eval echo configure:1160: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+-{ (eval echo configure:1245: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 -ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 -if test -z "$ac_err"; then
 -  :
@@ -518,13 +603,13 @@
 -  rm -rf conftest*
 -  CPP="${CC-cc} -E -traditional-cpp"
 -  cat > conftest.$ac_ext <<EOF
--#line 1171 "configure"
+-#line 1256 "configure"
 -#include "confdefs.h"
 -#include <assert.h>
 -Syntax Error
 -EOF
 -ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
--{ (eval echo configure:1177: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+-{ (eval echo configure:1262: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 -ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 -if test -z "$ac_err"; then
 -  :
@@ -535,13 +620,13 @@
 -  rm -rf conftest*
 -  CPP="${CC-cc} -nologo -E"
 -  cat > conftest.$ac_ext <<EOF
--#line 1188 "configure"
+-#line 1273 "configure"
 -#include "confdefs.h"
 -#include <assert.h>
 -Syntax Error
 -EOF
 -ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
--{ (eval echo configure:1194: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+-{ (eval echo configure:1279: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 -ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 -if test -z "$ac_err"; then
 -  :
@@ -572,17 +657,17 @@
 -do
 -ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
 -echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
--echo "configure:1225: checking for $ac_hdr" >&5
+-echo "configure:1310: checking for $ac_hdr" >&5
 -if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
 -  echo $ac_n "(cached) $ac_c" 1>&6
 -else
 -  cat > conftest.$ac_ext <<EOF
--#line 1230 "configure"
+-#line 1315 "configure"
 -#include "confdefs.h"
 -#include <$ac_hdr>
 -EOF
 -ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
--{ (eval echo configure:1235: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+-{ (eval echo configure:1320: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 -ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 -if test -z "$ac_err"; then
 -  rm -rf conftest*
@@ -612,7 +697,7 @@
  	targetname=rlm_eap_sim
  else
  	targetname=
-@@ -1419,7 +913,6 @@
+@@ -1504,7 +913,6 @@
  s%@infodir@%$infodir%g
  s%@mandir@%$mandir%g
  s%@CC@%$CC%g
@@ -620,8 +705,9 @@
  s%@eap_sim_ldflags@%$eap_sim_ldflags%g
  s%@eap_sim_cflags@%$eap_sim_cflags%g
  s%@targetname@%$targetname%g
---- freeradius-1.0.2.orig/src/modules/rlm_eap/types/rlm_eap_sim/configure.in
-+++ freeradius-1.0.2/src/modules/rlm_eap/types/rlm_eap_sim/configure.in
+diff -urNad --exclude=CVS --exclude=.svn ./src/modules/rlm_eap/types/rlm_eap_sim/configure.in /tmp/dpep-work.ZipMl1/release_1_0/src/modules/rlm_eap/types/rlm_eap_sim/configure.in
+--- ./src/modules/rlm_eap/types/rlm_eap_sim/configure.in	2004-02-05 18:29:57.000000000 +1100
++++ /tmp/dpep-work.ZipMl1/release_1_0/src/modules/rlm_eap/types/rlm_eap_sim/configure.in	2005-08-23 17:12:41.000000000 +1000
 @@ -9,54 +9,6 @@
  
  	AC_PROG_CC
