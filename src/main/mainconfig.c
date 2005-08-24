@@ -480,7 +480,7 @@ static int generate_realms(const char *filename)
 			}
 
 			if (strlen(s) >= sizeof(c->secret)) {
-				radlog(L_ERR, "%s[%d]: Secret of length %ld is greater than the allowed maximum of %ld.",
+				radlog(L_ERR, "%s[%d]: Secret of length %u is greater than the allowed maximum of %u.",
 				       filename, cf_section_lineno(cs),
 				       strlen(s), sizeof(c->secret) - 1);
 				return -1;
@@ -626,7 +626,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 		netmask = strchr(hostnm, '/');
 
 		if (strlen(secret) >= sizeof(c->secret)) {
-			radlog(L_ERR, "%s[%d]: Secret of length %ld is greater than the allowed maximum of %ld.",
+			radlog(L_ERR, "%s[%d]: Secret of length %u is greater than the allowed maximum of %u.",
 				filename, cf_section_lineno(cs),
 				strlen(secret), sizeof(c->secret) - 1);
 			clients_free(list);
@@ -634,7 +634,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 		}
 
 		if (strlen(shortnm) > sizeof(c->shortname)) {
-			radlog(L_ERR, "%s[%d]: Client short name of length %ld is greater than the allowed maximum of %ld.",
+			radlog(L_ERR, "%s[%d]: Client short name of length %u is greater than the allowed maximum of %u.",
 					filename, cf_section_lineno(cs),
 			       strlen(shortnm), sizeof(c->shortname) - 1);
 			clients_free(list);
@@ -643,7 +643,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 
 		if((nastype = cf_section_value_find(cs, "nastype")) != NULL) {
 		        if(strlen(nastype) >= sizeof(c->nastype)) {
-			       radlog(L_ERR, "%s[%d]: nastype of length %ld longer than the allowed maximum of %ld",
+			       radlog(L_ERR, "%s[%d]: nastype of length %u longer than the allowed maximum of %u",
 				      filename, cf_section_lineno(cs),
 				      strlen(nastype), sizeof(c->nastype) - 1);
 			       clients_free(list);
@@ -653,7 +653,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 
 		if((login = cf_section_value_find(cs, "login")) != NULL) {
 		        if(strlen(login) >= sizeof(c->login)) {
-			       radlog(L_ERR, "%s[%d]: login of length %ld longer than the allowed maximum of %ld",
+			       radlog(L_ERR, "%s[%d]: login of length %u longer than the allowed maximum of %u",
 				      filename, cf_section_lineno(cs),
 				      strlen(login), sizeof(c->login) - 1);
 			       clients_free(list);
@@ -663,7 +663,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 
 		if((password = cf_section_value_find(cs, "password")) != NULL) {
 		        if(strlen(password) >= sizeof(c->password)) {
-			       radlog(L_ERR, "%s[%d]: password of length %ld longer than the allowed maximum of %ld",
+			       radlog(L_ERR, "%s[%d]: password of length %u longer than the allowed maximum of %u",
 				      filename, cf_section_lineno(cs),
 				      strlen(password), sizeof(c->password) - 1);
 			       clients_free(list);
