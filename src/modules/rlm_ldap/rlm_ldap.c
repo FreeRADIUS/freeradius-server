@@ -368,7 +368,7 @@ static void     fieldcpy(char *, char **);
 #endif
 static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *,VALUE_PAIR **,char);
 static int ldap_groupcmp(void *, REQUEST *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
-static int ldap_xlat(void *,REQUEST *, char *, char *,int, RADIUS_ESCAPE_STRING);
+static int ldap_xlat(void *, REQUEST *, char *, char *, size_t, RADIUS_ESCAPE_STRING);
 static LDAP    *ldap_connect(void *instance, const char *, const char *, int, int *, char **);
 static int     read_mappings(ldap_instance* inst);
 
@@ -1054,8 +1054,8 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
  * Do an xlat on an LDAP URL
  */
 
-static int ldap_xlat(void *instance, REQUEST *request, char *fmt, char *out, int freespace,
-				RADIUS_ESCAPE_STRING func)
+static int ldap_xlat(void *instance, REQUEST *request, char *fmt, char *out,
+		     size_t freespace, RADIUS_ESCAPE_STRING func)
 {
 	char url[MAX_FILTER_STR_LEN];
 	int res;
@@ -1612,7 +1612,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 	LDAP           *ld_user;
 	LDAPMessage    *result, *msg;
 	ldap_instance  *inst = instance;
-	char           *user_dn, *attrs[] = {"uid", NULL}, *err = NULL;
+	char           *user_dn, *attrs[] = {"uid", NULL};
 	char		filter[MAX_FILTER_STR_LEN];
 	char		basedn[MAX_FILTER_STR_LEN];
 	int             res;
@@ -1621,6 +1621,9 @@ ldap_authenticate(void *instance, REQUEST * request)
 	char            module_fmsg[MAX_STRING_LEN];
 	LDAP_CONN	*conn;
 	int		conn_id = -1;
+#ifdef NOVELL
+	char		*err = NULL;
+#endif
 
 	DEBUG("rlm_ldap: - authenticate");
 
@@ -1809,13 +1812,10 @@ ldap_postauth(void *instance, REQUEST * request)
 			break;
 		case '2':
 			{
-				int err, conn_id = -1, i;
+				int err, conn_id = -1;
 				char *error_msg = NULL;
-				LDAP *ld;
 				VALUE_PAIR *vp_fdn, *vp_pwd;
 				DICT_ATTR *da;
-				ldap_instance	*inst = instance;
-				LDAP_CONN	*conn;
 
 				if(request->reply->code == PW_AUTHENTICATION_REJECT){
 					/* Bind to eDirectory as the RADIUS user with a wrong password. */
