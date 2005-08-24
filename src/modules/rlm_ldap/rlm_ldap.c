@@ -1666,6 +1666,9 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 	char            module_fmsg[MAX_STRING_LEN];
 	LDAP_CONN	*conn;
 	int		conn_id = -1;
+#ifdef NOVELL
+	char		*err = NULL;
+#endif
 
 	DEBUG("rlm_ldap: - authenticate");
 
@@ -1857,13 +1860,10 @@ static int ldap_postauth(void *instance, REQUEST * request)
 			break;
 		case '2':
 			{
-				int err, conn_id = -1, i;
+				int err, conn_id = -1;
 				char *error_msg = NULL;
-				LDAP *ld;
 				VALUE_PAIR *vp_fdn, *vp_pwd;
 				DICT_ATTR *da;
-				ldap_instance	*inst = instance;
-				LDAP_CONN	*conn;
 
 				if (request->reply->code == PW_AUTHENTICATION_REJECT) {
 				  /* Bind to eDirectory as the RADIUS user with a wrong password. */
