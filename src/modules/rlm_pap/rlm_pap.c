@@ -157,7 +157,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	char module_fmsg[MAX_STRING_LEN];
 	MD5_CTX md5_context;
 	SHA1_CTX sha1_context;
-	char digest[20];
+	unsigned char digest[20];
 	char buff[MAX_STRING_LEN];
 	rlm_pap_t *inst = (rlm_pap_t *) instance;
 

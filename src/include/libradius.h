@@ -291,7 +291,7 @@ char *		ip_ntoa(char *, uint32_t);
 uint32_t	ip_addr(const char *);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t *ifid);
 uint8_t		*ifid_aton(const char *ifid_str, uint8_t *ifid);
-char		*ipv6_ntoa(char *buffer, size_t size, void *ip6addr);
+const char	*ipv6_ntoa(char *buffer, size_t size, void *ip6addr);
 int		ipv6_addr(const char *ip6_str, void *ip6addr);
 char		*strNcpy(char *dest, const char *src, int n);
 void		rad_lowercase(char *str);

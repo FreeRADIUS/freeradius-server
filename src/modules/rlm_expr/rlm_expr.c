@@ -74,7 +74,8 @@ static expr_map_t map[] =
 static int get_number(REQUEST *request, const char **string, int *answer)
 {
 	int		i, found;
-	uint32_t       	result, x;
+	uint32_t	result;
+	int		x;
 	const char	*p;
 	expr_token_t	this;
 

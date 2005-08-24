@@ -187,7 +187,7 @@ static int pdb_decode_acct_ctrl(const char *p)
  *	ntpwdhash converts Unicode password to 16-byte NT hash
  *	with MD4
  */
-static void ntpwdhash (char *szHash, const char *szPassword)
+static void ntpwdhash (unsigned char *szHash, const char *szPassword)
 {
 	char szUnicodePass[513];
 	int nPasswordLen;
@@ -218,7 +218,7 @@ static void challenge_hash( const char *peer_challenge,
 			    const char *user_name, char *challenge )
 {
 	SHA1_CTX Context;
-	char hash[20];
+	unsigned char hash[20];
 
 	SHA1Init(&Context);
 	SHA1Update(&Context, peer_challenge, 16);
@@ -234,19 +234,19 @@ static void challenge_hash( const char *peer_challenge,
  *	returns 42-octet response string
  */
 static void auth_response(const char *username,
-			  const char *nt_hash_hash,
-			  char *ntresponse,
+			  const unsigned char *nt_hash_hash,
+			  unsigned char *ntresponse,
 			  char *peer_challenge, char *auth_challenge,
 			  char *response)
 {
 	SHA1_CTX Context;
-	const char magic1[39] =
+	const unsigned char magic1[39] =
 	{0x4D, 0x61, 0x67, 0x69, 0x63, 0x20, 0x73, 0x65, 0x72, 0x76,
 	 0x65, 0x72, 0x20, 0x74, 0x6F, 0x20, 0x63, 0x6C, 0x69, 0x65,
 	 0x6E, 0x74, 0x20, 0x73, 0x69, 0x67, 0x6E, 0x69, 0x6E, 0x67,
 	 0x20, 0x63, 0x6F, 0x6E, 0x73, 0x74, 0x61, 0x6E, 0x74};
 
-	const char magic2[41] =
+	const unsigned char magic2[41] =
 	{0x50, 0x61, 0x64, 0x20, 0x74, 0x6F, 0x20, 0x6D, 0x61, 0x6B,
 	 0x65, 0x20, 0x69, 0x74, 0x20, 0x64, 0x6F, 0x20, 0x6D, 0x6F,
 	 0x72, 0x65, 0x20, 0x74, 0x68, 0x61, 0x6E, 0x20, 0x6F, 0x6E,
@@ -254,7 +254,7 @@ static void auth_response(const char *username,
 	 0x6E};
 
         char challenge[8];
-        char digest[20];
+	unsigned char digest[20];
 
 	SHA1Init(&Context);
 	SHA1Update(&Context, nt_hash_hash, 16);
@@ -902,7 +902,8 @@ static void mppe_chap2_gen_keys128(uint8_t *nt_hashhash,uint8_t *response,
 static int mschap_authorize(void * instance, REQUEST *request)
 {
 #define inst ((rlm_mschap_t *)instance)
-	VALUE_PAIR *challenge = NULL, *response = NULL;
+	VALUE_PAIR *challenge = NULL;
+	VALUE_PAIR *response = NULL;
 	VALUE_PAIR *vp;
 	const char *authtype_name = "MS-CHAP";
 
@@ -966,7 +967,8 @@ static int mschap_authorize(void * instance, REQUEST *request)
 static int mschap_authenticate(void * instance, REQUEST *request)
 {
 #define inst ((rlm_mschap_t *)instance)
-	VALUE_PAIR *challenge = NULL, *response = NULL;
+	VALUE_PAIR *challenge = NULL;
+	VALUE_PAIR *response = NULL;
 	VALUE_PAIR *password = NULL;
 	VALUE_PAIR *lm_password, *nt_password, *smb_ctrl;
 	VALUE_PAIR *username;
