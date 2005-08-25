@@ -1,4 +1,40 @@
-FreeRADIUS 1.0.5 ; $Date$, urgency=low
+FreeRADIUS 1.0.5 ; $Date$, urgency=medium
+	Security Fixes
+	* SQL injection attack in the module "rlm_sqlcounter".
+	* Buffer overflows in the module "rlm_sqlcounter".
+	* Expansion of variable %t may write 26 bytes beyond the buffer
+	  bound. Primoz Bratanic is credited with the discovery of these
+	  three bugs.
+
+	Bug fixes
+	* Fix a memset(3) in the function request_enqueue() which was
+	  begining at the wrong address. Bug found by Matthias Ruttman.
+	* Fix an off-by-one error in the function xlat_copy().
+	  Bug found by Primoz Bratanic.
+	* Fix other off-by-one errors in module "rlm_unix", too.
+	  Bug found by Allan Bazinet.
+	* Fix a 2-byte over-run read in function rad_decode().
+	* Update thread pool queue properly.
+	* Autonconf tests try first any user-specified directory,
+	  otherwise they may pick up the wrong version.
+	* Delete the autoconf tests for the libldap dependancies.
+	* Install all the regular files under the "doc" directory.
+	* Distinguish between exit code <0 (failure) and >0 (reject)
+	  in Exec-Program-Wait. Patch from Thor Spruyt.
+	* Make Expiration work.
+	* Clean up the code for opening a proxy socket.
+	* When finding a realm to proxy to, if all are dead, wake them
+	  if wake_all_if_all_dead is true.
+	* In radwho, print the NAS-Port as unsigned int.
+	* Use extended regex instead of basic regex in rlm_attr_filter.
+	* Catch the case where someone deletes a directory that rlm_detail
+	  is using.
+	* Use the variable $(LDFLAGS) when linking a module.
+	* Ignore the Stripped-User-Name when a realm has the "nostrip"
+	  directive.
+	* Add support for NT-Password in rlm_pap.
+	* In rlm_sqlcounter, use the time left to the next reset if it's
+	  inferior to the time left in the counter.
 	* Calculate Message-Authenticator correctly for Accounting-Request
 	  and Accounting-Response.  Bug found by Paolo Rotela.
 	* Build on MAC OS X.  Still need --disable-shared, though.
