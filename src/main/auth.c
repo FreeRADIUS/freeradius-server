@@ -227,7 +227,7 @@ static int rad_check_password(REQUEST *request)
 	}
 
 	switch(auth_type) {
-		DICT_ATTR *da;
+		DICT_VALUE *dval;
 
 		case PW_AUTHTYPE_CRYPT:
 			/*
@@ -315,9 +315,9 @@ static int rad_check_password(REQUEST *request)
 			DEBUG2("auth: user supplied CHAP-Password matches local User-Password");
 			break;
 		default:
-			da = dict_valbyattr(PW_AUTH_TYPE, auth_type);
-			if (da) {
-				DEBUG2("auth: type \"%s\"", da->name);
+			dval = dict_valbyattr(PW_AUTH_TYPE, auth_type);
+			if (dval) {
+				DEBUG2("auth: type \"%s\"", dval->name);
 			} else {
 				DEBUG2("auth: type UNKNOWN-%d", auth_type);
 			}
