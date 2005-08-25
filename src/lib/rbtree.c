@@ -311,24 +311,26 @@ static void DeleteFixup(rbtree_t *tree, rbnode_t *X, rbnode_t *Parent)
 			rbnode_t *W = Parent->Right;
 			if (W->Color == Red) {
 				W->Color = Black;
-				Parent->Color = Red;
+				Parent->Color = Red; /* Parent != NIL? */
 				RotateLeft(tree, Parent);
 				W = Parent->Right;
 			}
 			if (W->Left->Color == Black && W->Right->Color == Black) {
-				W->Color = Red;
+				if (W != NIL) W->Color = Red;
 				X = Parent;
-				Parent = X->Parent; /* NULL or NIL? */
+				Parent = X->Parent;
 			} else {
 				if (W->Right->Color == Black) {
-					W->Left->Color = Black;
+					if (W->Left != NIL) W->Left->Color = Black;
 					W->Color = Red;
 					RotateRight(tree, W);
 					W = Parent->Right;
 				}
 				W->Color = Parent->Color;
-				Parent->Color = Black;
-				W->Right->Color = Black;
+				if (Parent != NIL) Parent->Color = Black;
+				if (W->Right->Color != Black) {
+					W->Right->Color = Black;
+				}
 				RotateLeft(tree, Parent);
 				X = tree->Root;
 			}
@@ -336,24 +338,26 @@ static void DeleteFixup(rbtree_t *tree, rbnode_t *X, rbnode_t *Parent)
 			rbnode_t *W = Parent->Left;
 			if (W->Color == Red) {
 				W->Color = Black;
-				Parent->Color = Red;
+				Parent->Color = Red; /* Parent != NIL? */
 				RotateRight(tree, Parent);
 				W = Parent->Left;
 			}
 			if (W->Right->Color == Black && W->Left->Color == Black) {
-				W->Color = Red;
+				if (W != NIL) W->Color = Red;
 				X = Parent;
-				Parent = X->Parent; /* NULL or NIL? */
+				Parent = X->Parent;
 			} else {
 				if (W->Left->Color == Black) {
-					W->Right->Color = Black;
+					if (W->Right != NIL) W->Right->Color = Black;
 					W->Color = Red;
 					RotateLeft(tree, W);
 					W = Parent->Left;
 				}
 				W->Color = Parent->Color;
-				Parent->Color = Black;
-				W->Left->Color = Black;
+				if (Parent != NIL) Parent->Color = Black;
+				if (W->Left->Color != Black) {
+					W->Left->Color = Black;
+				}
 				RotateRight(tree, Parent);
 				X = tree->Root;
 			}
