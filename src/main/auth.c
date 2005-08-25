@@ -227,6 +227,8 @@ static int rad_check_password(REQUEST *request)
 	}
 
 	switch(auth_type) {
+		DICT_ATTR *da;
+
 		case PW_AUTHTYPE_CRYPT:
 			/*
 			 *	Find the password sent by the user. It
@@ -313,8 +315,13 @@ static int rad_check_password(REQUEST *request)
 			DEBUG2("auth: user supplied CHAP-Password matches local User-Password");
 			break;
 		default:
-			DEBUG2("auth: type \"%s\"",
-					dict_valbyattr(PW_AUTH_TYPE, auth_type)->name);
+			da = dict_valbyattr(PW_AUTH_TYPE, auth_type);
+			if (da) {
+				DEBUG2("auth: type \"%s\"", da->name);
+			} else {
+				DEBUG2("auth: type UNKNOWN-%d", auth_type);
+			}
+
 			/*
 			 *	See if there is a module that handles
 			 *	this type, and turn the RLM_ return
