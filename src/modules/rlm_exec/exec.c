@@ -31,6 +31,10 @@ static const char rcsid[] = "$Id$";
 #include <ctype.h>
 #include <signal.h>
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #ifdef HAVE_SYS_WAIT_H
 #	include <sys/wait.h>
 #endif
@@ -226,6 +230,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		char *envp[MAX_ENVP];
 		int envlen;
 		char buffer[1024];
+		int maxfd = 256;
 
 		/*
 		 *	Child process.
@@ -287,12 +292,19 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		}
 		close(devnull);
 
+#ifdef _SC_OPEN_MAX
+		maxfd = sysconf(_SC_OPEN_MAX);
+		if (maxfd < 0) {
+			maxfd = 256;
+		}
+#endif
+
 		/*
 		 *	The server may have MANY FD's open.  We don't
 		 *	want to leave dangling FD's for the child process
 		 *	to play funky games with, so we close them.
 		 */
-		for (i = 3; i < 256; i++) {
+		for (i = 3; i < maxfd; i++) {
 			close(i);
 		}
 

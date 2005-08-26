@@ -137,6 +137,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	char	port[11];
 	RADCLIENT *cl;
 	lrad_ipaddr_t ipaddr;
+	int	maxfd = 256;
 
 	ipaddr.af = AF_INET;
 	ipaddr.ipaddr.ip4addr.s_addr = nasaddr;
@@ -207,10 +208,17 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 		return WEXITSTATUS(status);
 	}
 
+#ifdef _SC_OPEN_MAX
+	maxfd = sysconf(_SC_OPEN_MAX);
+	if (maxfd < 0) {
+	  maxfd = 256;
+	}
+#endif
+
 	/*
 	 *	Child - exec checklogin with the right parameters.
 	 */
-	for (n = 256; n >= 3; n--)
+	for (n = maxfd; n >= 3; n--)
 		close(n);
 
 	/*
