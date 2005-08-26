@@ -146,7 +146,7 @@ otp_instantiate(CONF_SECTION *conf, void **instance)
     }
 
     /* Onetime initialization. */
-    if (!ninstance)
+    if (!ninstance) {
 	/* Generate a random key, used to protect the State attribute. */
 	if (otp_get_random(-1, hmac_key, sizeof(hmac_key)) == -1) {
 	    otp_log(OTP_LOG_ERR, "failed to obtain random data for hmac_key");
@@ -555,7 +555,8 @@ otp_detach(void *instance)
      * so this does not need mutex protection.
      */
     if (--ninstance == 0)
-	memset(hmac_key, 0, sizeof(hmac_key);
+	memset(hmac_key, 0, sizeof(hmac_key));
+
     return 0;
 }
 

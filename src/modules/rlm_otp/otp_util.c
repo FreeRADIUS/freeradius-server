@@ -50,7 +50,7 @@ otp_get_random(int fd, unsigned char *rnd_data, int req_bytes)
 	int n;
 #ifdef FREERADIUS
 	/* Use goofy libradius interface to avoid fd init issues. */
-	int bytes_left = req_bytes - bytes_read;
+	unsigned int bytes_left = req_bytes - bytes_read;
 	uint32_t r = lrad_rand();
 
 	n = sizeof(r) < bytes_left ? sizeof(r) : bytes_left;
