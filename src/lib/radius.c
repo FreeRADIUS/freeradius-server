@@ -1813,6 +1813,9 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 				/*
 				 *	pair->length MAY be zero here.
+				 *
+				 *	See comment below about NUL
+				 *	termination.
 				 */
 				memcpy(pair->strvalue, ptr + offset,
 				       pair->length);
@@ -1825,6 +1828,15 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			case PW_TYPE_OCTETS:
 				/* attrlen always < MAX_STRING_LEN */
 				memcpy(pair->strvalue, ptr, attrlen);
+				/*
+				 *	Don't NUL terminate strings,
+				 *	as paircreate() zero-fills
+				 *	strvalue[], and strvalue[] is
+				 *	one more than the RADIUS max
+				 *	string length, to account for
+				 *	the trailing NUL needed by C.
+				 */
+
 			        pair->flags.tag = 0;
 			}
 
