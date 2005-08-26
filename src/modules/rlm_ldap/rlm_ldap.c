@@ -825,18 +825,21 @@ static int ldap_escape_func(char *out, int outlen, const char *in)
 			break;
 		}
 
-		if (strchr("*", *in)) {
-			in++;
-			outlen--;
+		if (strchr("*=\\,()", *in)) {
+			static const char *hex = "0123456789abcdef";
+			if (outlen <= 3) break;
+
+			*(out++) = '\\';
+			*(out++) = hex[((*in) >> 4) & 0x0f];
+			*(out++) = hex[(*in) & 0x0f];
+			outlen -= 3;
 			continue;
 		}
 
 		/*
 		 *	Else it's a nice character.
 		 */
-		*out = *in;
-		out++;
-		in++;
+		*(out++) = *(in++);
 		outlen--;
 		len++;
 	}
