@@ -48,13 +48,22 @@ otp_get_random(int fd, unsigned char *rnd_data, int req_bytes)
 
     while (bytes_read < req_bytes) {
 	int n;
+#ifdef FREERADIUS
+	/* Use goofy libradius interface to avoid fd init issues. */
+	int bytes_left = req_bytes - bytes_read;
+	uint32_t r = lrad_rand();
 
+	n = sizeof(r) < bytes_left ? sizeof(r) : bytes_left;
+	memcpy(rnd_data + bytes_read, &r, n);
+#else
 	n = read(fd, rnd_data + bytes_read, req_bytes - bytes_read);
 	if (n <= 0) {
 	    otp_log(OTP_LOG_ERR, "otp_get_random: error reading from %s: %s",
 		    OTP_DEVURANDOM, strerror(errno));
 	    return -1;
 	}
+#endif /* !FREERADIUS */
+
 	bytes_read += n;
     }
 

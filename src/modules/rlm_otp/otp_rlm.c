@@ -55,8 +55,8 @@
 static const char rcsid[] = "$Id$";
 
 /* Global data */
-static int rnd_fd;			/* fd for random device           */
 static unsigned char hmac_key[16];	/* to protect State attribute     */
+static int ninstance = 0;		/* #instances, for global init    */
 
 /* A mapping of configuration file names to internal variables. */
 static const CONF_PARSER module_config[] = {
@@ -127,29 +127,6 @@ otprc2rlmrc(int rc)
 }
 
 
-/* per-module initialization */
-static int
-otp_init(void)
-{
-    if ((rnd_fd = open(OTP_DEVURANDOM, O_RDONLY)) == -1) {
-	otp_log(OTP_LOG_ERR, "init: error opening %s: %s", OTP_DEVURANDOM,
-		strerror(errno));
-	return -1;
-    }
-
-    /* Generate a random key, used to protect the State attribute. */
-    if (otp_get_random(rnd_fd, hmac_key, sizeof(hmac_key)) == -1) {
-	otp_log(OTP_LOG_ERR, "init: failed to obtain random data for hmac_key");
-	return -1;
-    }
-
-    /* Initialize the passcode encoding/checking functions. */
-    otp_pwe_init();
-
-    return 0;
-}
-
-
 /* per-instance initialization */
 static int
 otp_instantiate(CONF_SECTION *conf, void **instance)
@@ -166,6 +143,26 @@ otp_instantiate(CONF_SECTION *conf, void **instance)
     if (cf_section_parse(conf, opt, module_config) < 0) {
 	free(opt);
 	return -1;
+    }
+
+    /* Onetime initialization. */
+    if (!ninstance)
+	/* Generate a random key, used to protect the State attribute. */
+	if (otp_get_random(-1, hmac_key, sizeof(hmac_key)) == -1) {
+	    otp_log(OTP_LOG_ERR, "failed to obtain random data for hmac_key");
+	    free(opt);
+	    return -1;
+	}
+
+	/* Initialize the passcode encoding/checking functions. */
+	otp_pwe_init();
+
+        /*
+	 * Don't do this again.
+	 * Only the main thread instantiates and detaches instances,
+	 * so this does not need mutex protection.
+	 */
+	ninstance++;
     }
 
     /* Verify ranges for those vars that are limited. */
@@ -374,7 +371,7 @@ gen_challenge:
 	sflags |= htonl(1);
 
     /* Generate a random challenge. */
-    if (otp_get_challenge(rnd_fd, challenge, inst->chal_len) == -1) {
+    if (otp_get_challenge(-1, challenge, inst->chal_len) == -1) {
 	otp_log(OTP_LOG_ERR, "autz: failed to obtain random challenge");
 	return RLM_MODULE_FAIL;
     }
@@ -553,18 +550,15 @@ otp_detach(void *instance)
     free(inst->chal_req);
     free(inst->resync_req);
     free(instance);
+    /*
+     * Only the main thread instantiates and detaches instances,
+     * so this does not need mutex protection.
+     */
+    if (--ninstance == 0)
+	memset(hmac_key, 0, sizeof(hmac_key);
     return 0;
 }
 
-
-/* per-module destruction */
-static int
-otp_destroy(void)
-{
-    (void) memset(hmac_key, 0, sizeof(hmac_key));
-    (void) close(rnd_fd);
-    return 0;
-}
 
 /*
  *	If the module needs to temporarily modify it's instantiation
@@ -576,11 +570,10 @@ module_t rlm_otp = {
 	RLM_MODULE_INIT,
 	"otp",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	otp_init,			/* initialization */
 	otp_instantiate,		/* instantiation */
 	{
 		otp_authenticate,	/* authentication */
-		otp_authorize,	/* authorization */
+		otp_authorize,		/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
@@ -588,6 +581,5 @@ module_t rlm_otp = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	otp_detach,		/* detach */
-	otp_destroy,		/* destroy */
+	otp_detach,			/* detach */
 };
