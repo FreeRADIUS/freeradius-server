@@ -116,7 +116,7 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 	s = buf;
 	escape = 0;
 
-	while (*p && buflen-- > 0) {
+	while (*p && buflen-- > 1) {
 		if (escape) {
 			escape = 0;
 			switch(*p) {
