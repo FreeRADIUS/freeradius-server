@@ -228,6 +228,11 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, 1);
 
 			envp[envlen++] = strdup(buffer);
+
+			/*
+			 *	Don't add too many attributes.
+			 */
+			if (envlen == (MAX_ENVP - 1)) break;
 		}
 		envp[envlen] = NULL;
 		execve(argv[0], argv, envp);
