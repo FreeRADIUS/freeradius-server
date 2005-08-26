@@ -359,7 +359,7 @@ static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     	256,
     	&length);
 
-    result = (char*)rad_malloc(strlen(state)+1+strlen(error));
+    result = (char*)rad_malloc(strlen(state)+2+strlen(error));
     sprintf(result, "%s %s", state, error);
     return result;
 }
