@@ -106,7 +106,7 @@ int sql_init_socketpool(SQL_INST * inst)
 		radlog(L_DBG, "rlm_sql (%s): starting %d",
 		       inst->config->xlat_name, i);
 
-		sqlsocket = rad_malloc(sizeof(*sqlsocket);
+		sqlsocket = rad_malloc(sizeof(*sqlsocket));
 		if (sqlsocket == NULL) {
 			return -1;
 		}
