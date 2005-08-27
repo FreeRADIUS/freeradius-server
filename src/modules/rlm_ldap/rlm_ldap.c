@@ -2369,12 +2369,14 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 	int             vals_count;
 	int             vals_idx;
 	char           *ptr;
+	char	       *value;
 	TLDAP_RADIUS   *element;
-	LRAD_TOKEN      token;
+	LRAD_TOKEN      token, operator;
 	int             is_generic_attribute;
-	char            value[256];
+	char		buf[MAX_STRING_LEN];
 	VALUE_PAIR     *pairlist = NULL;
 	VALUE_PAIR     *newpair = NULL;
+	char		do_xlat = FALSE;
 
 	/*
 	 *	check if there is a mapping from this LDAP attribute
@@ -2396,22 +2398,24 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 			is_generic_attribute = 1;
 		else
 			is_generic_attribute = 0;
-		
+
 		/*
 		 *	Find out how many values there are for the
 		 *	attribute and extract all of them.
 		 */
 		vals_count = ldap_count_values(vals);
-		
+
 		for (vals_idx = 0; vals_idx < vals_count; vals_idx++) {
-			ptr = vals[vals_idx];
-			
+			value = vals[vals_idx];
+
 			if (is_generic_attribute) {
-				/* this is a generic attribute */
+				/*
+				 *	This is a generic attribute.
+				 */
 				LRAD_TOKEN dummy; /* makes pairread happy */
-				
+
 				/* not sure if using pairread here is ok ... */
-				if ( (newpair = pairread(&ptr, &dummy)) != NULL) {
+				if ( (newpair = pairread(&value, &dummy)) != NULL) {
 					DEBUG("rlm_ldap: extracted attribute %s from generic item %s",
 					      newpair->name, vals[vals_idx]);
 					pairadd(&pairlist, newpair);
@@ -2420,32 +2424,80 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 					       element->attr, vals[vals_idx]);
 				}
 			} else {
-				/* this is a one-to-one-mapped attribute */
-				token = gettoken(&ptr, value, sizeof(value) - 1);
-				if (token < T_EQSTART || token > T_EQEND) {
-					if (is_check) {
-						token = T_OP_CMP_EQ;
-					} else {
-						token = T_OP_EQ;
-					}
-					
-					if (element->operator != T_OP_INVALID) {
-						token = element->operator;
-					}
+				/*
+				 *	This is a one-to-one-mapped attribute
+				 */
+				ptr = value;
+				operator = gettoken(&ptr, buf, sizeof(buf));
+				if (operator < T_EQSTART || operator > T_EQEND) {
+					/* no leading operator found */
+					if (element->operator != T_OP_INVALID)
+						operator = element->operator;
+					else if (is_check)
+						operator = T_OP_CMP_EQ;
+					else
+						operator = T_OP_EQ;
 				} else {
-					gettoken(&ptr, value, sizeof(value) - 1);
+					/* the value is after the operator */
+					value = ptr;
 				}
-				if (value[0] == 0) {
+
+				/*
+				 *	Do xlat if the *entire* string
+				 *	is quoted.
+				 */
+				if ((value[0] == '\'' || value[0] == '"' ||
+				     value[0] == '`') &&
+				    (value[0] == value[strlen(value)-1])) {
+					ptr = value;
+					token = gettoken(&ptr, buf, sizeof(buf));
+					switch (token) {
+					/* take the unquoted string */
+					case T_SINGLE_QUOTED_STRING:
+					case T_DOUBLE_QUOTED_STRING:
+						value = buf;
+						break;
+
+					/* the value will be xlat'ed later */
+					case T_BACK_QUOTED_STRING:
+						value = NULL;
+						do_xlat = TRUE;
+						break;
+
+					/* keep the original string */
+					default:
+						break;
+					}
+				}
+				if (value[0] == '\0') {
 					DEBUG("rlm_ldap: Attribute %s has no value", element->attr);
-					break;
+					continue;
 				}
 
 				DEBUG("rlm_ldap: Adding LDAP attribute %s as RADIUS attribute %s %s %s",
-				      element->attr,
-				      element->radius_attr,
-				      lrad_int2str(tokens, token, "?"), value);
-				if ((newpair = pairmake(element->radius_attr, value, token)) == NULL)
+				      element->attr, element->radius_attr,
+				      lrad_int2str(tokens, operator, "?"),
+				      value);
+
+				/*
+				 *	Create the pair.
+				 */
+				newpair = pairmake(element->radius_attr,
+						   value, operator);
+				if (newpair == NULL) {
+					radlog(L_ERR, "rlm_ldap: Failed to create the pair: %s", librad_errstr);
 					continue;
+				}
+				if (do_xlat) {
+					newpair->flags.do_xlat = 1;
+					strNcpy(newpair->strvalue, buf,
+						sizeof(newpair->strvalue));
+					newpair->length = 0;
+				}
+
+				/*
+				 *	Add the pair into the packet.
+				 */
 				if (!vals_idx){
 					pairdelete(pairs, newpair->attribute);
 				}
