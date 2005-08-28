@@ -58,7 +58,6 @@ typedef struct rlm_attr_rewrite_t {
 	char *name;		/* The module name */
 } rlm_attr_rewrite_t;
 
-
 static const CONF_PARSER module_config[] = {
   { "attribute", PW_TYPE_STRING_PTR, offsetof(rlm_attr_rewrite_t,attribute), NULL, NULL },
   { "searchfor", PW_TYPE_STRING_PTR, offsetof(rlm_attr_rewrite_t,search), NULL, NULL },
@@ -70,7 +69,6 @@ static const CONF_PARSER module_config[] = {
   { "max_matches", PW_TYPE_INTEGER, offsetof(rlm_attr_rewrite_t,num_matches), NULL, "10" },
   { NULL, -1, 0, NULL, NULL }
 };
-
 
 static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 {
@@ -413,7 +411,6 @@ to_do_again:
 	return ret;
 }
 
-
 static int attr_rewrite_accounting(void *instance, REQUEST *request)
 {
 	return do_attr_rewrite(instance, request);
@@ -423,15 +420,18 @@ static int attr_rewrite_authorize(void *instance, REQUEST *request)
 {
 	return do_attr_rewrite(instance, request);
 }
+
 static int attr_rewrite_authenticate(void *instance, REQUEST *request)
 {
 	return do_attr_rewrite(instance, request);
 }
+
 static int attr_rewrite_preacct(void *instance, REQUEST *request)
 {
 	return do_attr_rewrite(instance, request);
 }
-static int attr_rewrite_ismul(void *instance, REQUEST *request)
+
+static int attr_rewrite_checksimul(void *instance, REQUEST *request)
 {
 	return do_attr_rewrite(instance, request);
 }
@@ -488,7 +488,7 @@ module_t rlm_attr_rewrite = {
 		attr_rewrite_authorize, 	/* authorization */
 		attr_rewrite_preacct,		/* preaccounting */
 		attr_rewrite_accounting,	/* accounting */
-		attr_rewrite_ismul,		/* checksimul */
+		attr_rewrite_checksimul,	/* checksimul */
 		attr_rewrite_preproxy,		/* pre-proxy */
 		attr_rewrite_postproxy,		/* post-proxy */
 		attr_rewrite_postauth		/* post-auth */
