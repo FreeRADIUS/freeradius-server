@@ -1,14 +1,18 @@
 #
-# spec file for package freeradius (Version 1.0.3)
-#
-# Copyright (c) 2004 SUSE LINUX Products GmbH, Nuernberg, Germany.
-# This file and all modifications and additions to the pristine
-# package are under the same license as the package itself.
-#
-# Please submit bugfixes or comments via http://www.suse.de/feedback/
+# spec file for package freeradius
 #
 
 %define _oracle_support	0
+
+%define distroversion generic
+%{!?suse_version:%define suse_version 0}
+%{!?sles_version:%define sles_version 0}
+%if %suse_version > 0
+        %define distroversion   suse%{suse_version}
+%endif
+%if %sles_version > 0
+        %define distroversion   sles%{sles_version}
+%endif
 
 # neededforbuild  cyrus-sasl-devel db-devel heimdal-devel heimdal-lib mysql-devel mysql-shared openldap2 openldap2-client openldap2-devel openssl openssl-devel pam-devel postgresql postgresql-devel postgresql-libs python python-devel unixODBC unixODBC-devel
 
@@ -20,7 +24,7 @@ Group:        Productivity/Networking/Radius/Servers
 Provides:     radiusd
 Conflicts:    radiusd-livingston radiusd-cistron icradius
 Version:      1.0.2
-Release:      1.suse
+Release:      0.%{distroversion}
 URL:          http://www.freeradius.org/
 Summary:      Very highly Configurable Radius-Server
 Source0:      %{name}-%{version}.tar.gz
