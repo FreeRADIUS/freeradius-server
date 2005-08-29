@@ -349,7 +349,7 @@ static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     SQLCHAR error[256] = "";
     SQLINTEGER errornum = 0;
     SQLSMALLINT length = 255;
-    char *result;
+    static char result[1024];	/* NOT thread-safe! */
 
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
 
@@ -363,8 +363,8 @@ static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     	256,
     	&length);
 
-    result = (char*)rad_malloc(strlen(state)+2+strlen(error));
     sprintf(result, "%s %s", state, error);
+    result[sizeof(result) - 1] = '\0'; /* catch idiot thread issues */
     return result;
 }
 
