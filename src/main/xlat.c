@@ -380,6 +380,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	int stop=0, found=0, retlen=0;
 	int openbraces = *open;
 	xlat_t *c;
+	size_t namelen = sizeof(attrname);
 
 	p = *from;
 	q = *to;
@@ -397,7 +398,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	/*
 	 *  Copy over the rest of the string.
 	 */
-	while ((*p) && (!stop)) {
+	while ((*p) && (!stop) && (namelen > 1)) {
 		switch(*p) {
 			/*
 			 *  Allow braces inside things, too.
@@ -440,6 +441,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 				*pa++ = *p++;
 				break;
 		}
+		namelen--;
 	}
 	*pa = '\0';
 
