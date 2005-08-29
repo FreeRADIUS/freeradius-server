@@ -1273,6 +1273,9 @@ static int perl_detach(void *instance)
 	if (inst->func_accounting) free(inst->func_accounting);
 	if (inst->func_preacct) free(inst->func_preacct);
 	if (inst->func_checksimul) free(inst->func_checksimul);
+	if (inst->func_pre_proxy) free(inst->func_pre_proxy);
+	if (inst->func_post_proxy) free(inst->func_post_proxy);
+	if (inst->func_post_auth) free(inst->func_post_auth);
 	if (inst->func_detach) free(inst->func_detach);
 
 #ifdef USE_ITHREADS
@@ -1309,13 +1312,13 @@ module_t rlm_perl = {
 	perl_instantiate,		/* instantiation */
 	perl_detach,			/* detach */
 	{
-		perl_authenticate,
-		perl_authorize,
-		perl_preacct,
-		perl_accounting,
+		perl_authenticate,	/* authenticate */
+		perl_authorize,		/* authorize */
+		perl_preacct,		/* preacct */
+		perl_accounting,	/* accounting */
 		perl_checksimul,      	/* check simul */
-		perl_pre_proxy,	 /* pre-proxy */
+		perl_pre_proxy,		/* pre-proxy */
 		perl_post_proxy,	/* post-proxy */
-		perl_post_auth	  /* post-auth */
+		perl_post_auth		/* post-auth */
 	},
 };

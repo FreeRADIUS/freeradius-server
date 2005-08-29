@@ -37,7 +37,7 @@ use Data::Dumper;
 #my %RAD_CHECK;
 
 #
-# This the remaping of return values 
+# This the remapping of return values 
 #
 	use constant    RLM_MODULE_REJECT=>    0;#  /* immediately reject the request */
 	use constant	RLM_MODULE_FAIL=>      1;#  /* module failed, don't reply */
@@ -99,6 +99,30 @@ sub accounting {
 
 # Function to handle checksimul
 sub checksimul {
+	# For debugging purposes only
+#	&log_request_attributes;
+
+	return RLM_MODULE_OK;
+}
+
+# Function to handle pre_proxy
+sub pre_proxy {
+	# For debugging purposes only
+#	&log_request_attributes;
+
+	return RLM_MODULE_OK;
+}
+
+# Function to handle post_proxy
+sub post_proxy {
+	# For debugging purposes only
+#	&log_request_attributes;
+
+	return RLM_MODULE_OK;
+}
+
+# Function to handle post_auth
+sub post_auth {
 	# For debugging purposes only
 #	&log_request_attributes;
 
