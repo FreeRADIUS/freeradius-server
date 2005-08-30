@@ -628,6 +628,37 @@ static int process_attribute(const char* fn, const int line,
 	if (block_vendor) vendor = block_vendor;
 
 	/*
+	 *	Special checks for tags, they make our life much more
+	 *	difficult.
+	 */
+	if (flags.has_tag) {
+		/*
+		 *	VSA's can't be tagged.
+		 */
+		if (vendor) {
+			librad_log("dict_init: %s[%d]: Vendor attributes cannot be tagged.",
+				   fn, line);
+			return -1;
+		}
+
+		/*
+		 *	Only string, octets, and integer can be tagged.
+		 */
+		switch (type) {
+		case PW_TYPE_STRING:
+		case PW_TYPE_INTEGER:
+			break;
+
+		default:
+			librad_log("dict_init: %s[%d]: Attributes of type %s cannot be tagged.",
+				   fn, line,
+				   lrad_int2str(type_table, type, "?Unknown?"));
+			return -1;
+			
+		}
+	}
+
+	/*
 	 *	Add it in.
 	 */
 	if (dict_addattr(argv[0], vendor, type, value, flags) < 0) {
