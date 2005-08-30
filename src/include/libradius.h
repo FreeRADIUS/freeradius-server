@@ -203,7 +203,7 @@ void		vp_printlist(FILE *, VALUE_PAIR *);
  */
 int		dict_addvendor(const char *name, int value);
 int		dict_addattr(const char *name, int vendor, int type, int value, ATTR_FLAGS flags);
-int		dict_addvalue(const char *namestr, char *attrstr, int value);
+int		dict_addvalue(const char *namestr, const char *attrstr, int value);
 int		dict_init(const char *dir, const char *fn);
 void		dict_free(void);
 DICT_ATTR	*dict_attrbyvalue(int attr);
@@ -212,13 +212,6 @@ DICT_VALUE	*dict_valbyattr(int attr, int val);
 DICT_VALUE	*dict_valbyname(int attr, const char *val);
 int		dict_vendorbyname(const char *name);
 DICT_VENDOR	*dict_vendorbyvalue(int vendor);
-
-/*
- *  Compatibility
- */
-#define dict_vendorcode
-#define dict_vendorpec
-
 
 #if 1 /* FIXME: compat */
 #define dict_attrget	dict_attrbyvalue

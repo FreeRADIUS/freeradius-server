@@ -390,7 +390,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	uint32_t	lvalue;
 	uint8_t	        *ptr, *length_ptr, *vsa_length_ptr;
 	uint8_t		digest[16];
-	int		vendorcode, vendorpec;
+	int		vendorcode;
 	uint16_t	total_length;
 	int		len, allowed;
 	VALUE_PAIR	*reply;
@@ -451,7 +451,6 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 */
 	ptr = hdr->data;
 	vendorcode = 0;
-	vendorpec = 0;
 	vsa_length_ptr = NULL;
 
 	/*
@@ -510,7 +509,6 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 */
 		if (vendorcode != VENDOR(reply->attribute)) {
 			vendorcode = 0;
-			vendorpec = 0;
 			vsa_length_ptr = NULL;
 		}
 		
@@ -529,7 +527,6 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		    (vsa_length_ptr &&
 		     (reply->length + *vsa_length_ptr) >= MAX_STRING_LEN)) {
 			vendorcode = 0;
-			vendorpec = 0;
 			vsa_length_ptr = NULL;
 		}
 		
@@ -540,30 +537,19 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 */
 		if ((vendorcode == 0) &&
 		    ((vendorcode = VENDOR(reply->attribute)) != 0)) {
-			vendorpec  = dict_vendorpec(vendorcode);
-			
-			/*
-			 *	This is a potentially bad error...
-			 *	we can't find the vendor ID!
-			 */
-			if (vendorpec == 0) {
-				/* FIXME: log an error */
-				continue;
-			}
-			
 			/*
 			 *	Build a VSA header.
 			 */
 			*ptr++ = PW_VENDOR_SPECIFIC;
 			vsa_length_ptr = ptr;
 			*ptr++ = 6;
-			lvalue = htonl(vendorpec);
+			lvalue = htonl(vendorcode);
 			memcpy(ptr, &lvalue, 4);
 			ptr += 4;
 			total_length += 6;
 		}
 		
-		if (vendorpec == VENDORPEC_USR) {
+		if (vendorcode == VENDORPEC_USR) {
 			lvalue = htonl(reply->attribute & 0xFFFF);
 			memcpy(ptr, &lvalue, 4);
 			
@@ -579,10 +565,9 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			 *	specific information.
 			 */
 			vendorcode = 0;
-			vendorpec = 0;
 			vsa_length_ptr = NULL;
 			
-		} else if (vendorpec == VENDORPEC_LUCENT) {
+		} else if (vendorcode == VENDORPEC_LUCENT) {
 			/*
 			 *	16-bit attribute, 8-bit length
 			 */
