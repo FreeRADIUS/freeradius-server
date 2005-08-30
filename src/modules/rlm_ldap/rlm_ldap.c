@@ -330,8 +330,13 @@ static inline int ldap_get_conn(LDAP_CONN *conns,LDAP_CONN **ret,void *instance)
 
 	for(i=0;i<inst->num_conns;i++){
 		DEBUG("rlm_ldap: ldap_get_conn: Checking Id: %d",i);
-		if ((conns[i].locked == 0) &&
-		    (pthread_mutex_trylock(&conns[i].mutex) == 0)) {
+		if ((pthread_mutex_trylock(&conns[i].mutex) == 0)) {
+			if (conns[i].locked == 1) {
+				/* connection is already being used */
+				pthread_mutex_unlock(&(conns[i].mutex));
+				continue;
+			}
+			/* found an unused connection */
 			*ret = &conns[i];
 			conns[i].locked = 1;
 			DEBUG("rlm_ldap: ldap_get_conn: Got Id: %d",i);
