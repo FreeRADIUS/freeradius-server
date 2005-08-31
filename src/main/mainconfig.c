@@ -820,7 +820,7 @@ int read_mainconfig(int reload)
 	struct rlimit core_limits;
 	static int old_debug_level = -1;
 	char buffer[1024];
-	CONF_SECTION *cs, *oldcs, *newcs;
+	CONF_SECTION *cs, *oldcs;
 	rad_listen_t *listener;
 
 	if (!reload) {
@@ -857,6 +857,8 @@ int read_mainconfig(int reload)
 	 *	Merge the old with the new.
 	 */
 	if (reload) {
+		CONF_SECTION *newcs;
+
 		newcs = cf_section_sub_find(cs, "modules");
 		oldcs = cf_section_sub_find(mainconfig.config, "modules");
 		if (newcs && oldcs) {
@@ -879,14 +881,14 @@ int read_mainconfig(int reload)
 		rcode = cf_item_parse(cs, "log_destination",
 				      PW_TYPE_STRING_PTR, &radlog_dest,
 				      "files");
-		if (rcode < 0) return NULL;
+		if (rcode < 0) return -1;
 	
 		mainconfig.radlog_dest = lrad_str2int(str2dest, radlog_dest, RADLOG_NULL);
 		if (mainconfig.radlog_dest == RADLOG_NULL) {
 			fprintf(stderr, "radiusd: Error: Unknown log_destination %s\n",
 				radlog_dest);
 			cf_section_free(&cs);
-			return NULL;
+			return -1;
 		}
 		
 		if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
@@ -895,7 +897,7 @@ int read_mainconfig(int reload)
 				fprintf(stderr, "radiusd: Error: Unknown syslog_facility %s\n",
 					syslog_facility);
 				cf_section_free(&cs);
-				return NULL;
+				return -1;
 			}
 		}
 	}
