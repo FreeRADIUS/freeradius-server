@@ -59,12 +59,12 @@ static rbtree_t *values_byname = NULL;
  */
 typedef struct dict_stat_t {
 	struct dict_stat_t *next;
-	const char	   *name;
+	char	   	   *name;
 	time_t		   mtime;
 } dict_stat_t;
 
-static const char *stat_root_dir = NULL;
-static const char *stat_root_file = NULL;
+static char *stat_root_dir = NULL;
+static char *stat_root_file = NULL;
 
 static dict_stat_t *stat_head = NULL;
 static dict_stat_t *stat_tail = NULL;
@@ -1306,7 +1306,7 @@ DICT_ATTR *dict_attrbyname(const char *name)
 			/*
 			 *	myattr.name is a temporary buffer
 			 */
-			if ((q - name) >= sizeof(myattr.attr.name)) return NULL;
+			if (((size_t) (q - name)) >= sizeof(myattr.attr.name)) return NULL;
 			
 			memcpy(myattr.attr.name, name, q - name);
 			myattr.attr.name[q - name] = '\0';

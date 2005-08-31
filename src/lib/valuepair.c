@@ -962,7 +962,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		int vendor;
 		char buffer[256];
 
-		if ((p - attribute) >= sizeof(buffer)) goto error;
+		if (((size_t) (p - attribute)) >= sizeof(buffer)) goto error;
 
 		memcpy(buffer, attribute, p - attribute);
 		buffer[p - attribute] = '\0';
