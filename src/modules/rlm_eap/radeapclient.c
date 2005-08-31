@@ -737,11 +737,11 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 	 * buffer. We could also call rad_chap_encode, but it wants
 	 * a CHAP-Challenge, which we don't want to bother with.
 	 */
-	librad_MD5Init(&context);
-	librad_MD5Update(&context, &identifier, 1);
-	librad_MD5Update(&context, password, strlen(password));
-	librad_MD5Update(&context, value, valuesize);
-	librad_MD5Final(response, &context);
+	lrad_MD5Init(&context);
+	lrad_MD5Update(&context, &identifier, 1);
+	lrad_MD5Update(&context, password, strlen(password));
+	lrad_MD5Update(&context, value, valuesize);
+	lrad_MD5Final(response, &context);
 
 	vp = paircreate(ATTRIBUTE_EAP_BASE+PW_EAP_MD5, PW_TYPE_OCTETS);
 	vp->strvalue[0]=16;

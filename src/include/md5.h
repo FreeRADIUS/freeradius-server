@@ -28,11 +28,12 @@
  *  FreeRADIUS defines to ensure globally unique MD5 function names,
  *  so that we don't pick up vendor-specific broken MD5 libraries.
  */
-#define MD5_CTX		librad_MD5_CTX
-#define MD5Init		librad_MD5Init
-#define MD5Update	librad_MD5Update
-#define MD5Final	librad_MD5Final
-#define MD5Transform	librad_MD5Transform
+#define MD5_CTX		lrad_MD5_CTX
+#define MD5Init		lrad_MD5Init
+#define MD5Update	lrad_MD5Update
+#define MD5Final	lrad_MD5Final
+#define MD5Transform	lrad_MD5Transform
+
 
 /*  The below was retrieved from
  *  http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.h?rev=1.1
@@ -56,21 +57,21 @@
 #define	MD5_BLOCK_LENGTH		64
 #define	MD5_DIGEST_LENGTH		16
 
-typedef struct MD5Context {
+typedef struct lrad_MD5Context {
 	uint32_t state[4];			/* state */
 	uint32_t count[2];			/* number of bits, mod 2^64 */
 	uint8_t buffer[MD5_BLOCK_LENGTH];	/* input buffer */
-} MD5_CTX;
+} lrad_MD5_CTX;
 
 /* include <sys/cdefs.h> */
 
 /* __BEGIN_DECLS */
-void	 MD5Init(MD5_CTX *);
-void	 MD5Update(MD5_CTX *, const uint8_t *, size_t)
+void	 lrad_MD5Init(lrad_MD5_CTX *);
+void	 lrad_MD5Update(lrad_MD5_CTX *, const uint8_t *, size_t)
 /*		__attribute__((__bounded__(__string__,2,3)))*/;
-void	 MD5Final(uint8_t [MD5_DIGEST_LENGTH], MD5_CTX *)
+void	 lrad_MD5Final(uint8_t [MD5_DIGEST_LENGTH], lrad_MD5_CTX *)
 /*		__attribute__((__bounded__(__minbytes__,1,MD5_DIGEST_LENGTH)))*/;
-void	 MD5Transform(uint32_t [4], const uint8_t [MD5_BLOCK_LENGTH])
+void	 lrad_MD5Transform(uint32_t [4], const uint8_t [MD5_BLOCK_LENGTH])
 /*		__attribute__((__bounded__(__minbytes__,1,4)))*/
 /*		__attribute__((__bounded__(__minbytes__,2,MD5_BLOCK_LENGTH)))*/;
 /* __END_DECLS */

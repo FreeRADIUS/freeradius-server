@@ -89,7 +89,7 @@
 				     } \
 				} while(0)
 #  define TAG_VALID(x)          ((x) > 0 && (x) < 0x20)
-#  define TAG_VALID_ZERO(x)     ((x) >= 0 && (x) < 0x20)
+#  define TAG_VALID_ZERO(x)     ((x) < 0x20)
 #  define TAG_ANY               -128   /* minimum signed char */
 #endif
 
@@ -233,7 +233,7 @@ DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 
 /* md5.c */
 
-void		librad_md5_calc(u_char *, u_char *, u_int);
+void		librad_md5_calc(uint8_t *, const uint8_t *, unsigned int);
 
 /* hmac.c */
 
@@ -260,11 +260,16 @@ int		rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 
 RADIUS_PACKET	*rad_alloc(int newvector);
 void		rad_free(RADIUS_PACKET **);
-int		rad_pwencode(char *encpw, int *len, const char *secret, const char *vector);
-int		rad_pwdecode(char *encpw, int len, const char *secret, const char *vector);
-int		rad_tunnel_pwencode(char *encpw, int *len, const char *secret, const char *vector);
-int		rad_tunnel_pwdecode(uint8_t *encpw, int *len, const char *secret, const char *vector);
-int		rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *password);
+int		rad_pwencode(char *encpw, int *len, const char *secret,
+			     const uint8_t *vector);
+int		rad_pwdecode(char *encpw, int len, const char *secret,
+			     const uint8_t *vector);
+int		rad_tunnel_pwencode(char *encpw, int *len, const char *secret,
+				    const uint8_t *vector);
+int		rad_tunnel_pwdecode(uint8_t *encpw, int *len,
+				    const char *secret, const uint8_t *vector);
+int		rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output,
+				int id, VALUE_PAIR *password);
 
 /* valuepair.c */
 VALUE_PAIR	*paircreate(int attr, int type);
