@@ -10,19 +10,17 @@
  *  If we don't do this, it might pick up the systems broken MD5.
  *  - Alan DeKok <aland@ox.org>
  */
+#include "libradius.h"
 #include "../include/md5.h"
 
-void librad_md5_calc(unsigned char *output, unsigned char *input,
-		     unsigned int inputlen);
-
-void librad_md5_calc(unsigned char *output, unsigned char *input,
+void librad_md5_calc(uint8_t *output, const uint8_t *input,
 		     unsigned int inlen)
 {
-	MD5_CTX	context;
+	lrad_MD5_CTX	context;
 
-	MD5Init(&context);
-	MD5Update(&context, input, inlen);
-	MD5Final(output, &context);
+	lrad_MD5Init(&context);
+	lrad_MD5Update(&context, input, inlen);
+	lrad_MD5Final(output, &context);
 }
 
 /*	The below was retrieved from
@@ -81,7 +79,7 @@ static const uint8_t PADDING[MD5_BLOCK_LENGTH] = {
  * initialization constants.
  */
 void
-MD5Init(MD5_CTX *ctx)
+lrad_MD5Init(lrad_MD5_CTX *ctx)
 {
 	ctx->count[0] = 0;
 	ctx->count[1] = 0;
@@ -96,7 +94,7 @@ MD5Init(MD5_CTX *ctx)
  * of bytes.
  */
 void
-MD5Update(MD5_CTX *ctx, const unsigned char *input, size_t len)
+lrad_MD5Update(lrad_MD5_CTX *ctx, const unsigned char *input, size_t len)
 {
 	size_t have, need;
 
@@ -117,7 +115,7 @@ MD5Update(MD5_CTX *ctx, const unsigned char *input, size_t len)
 	if (len >= need) {
 		if (have != 0) {
 			memcpy(ctx->buffer + have, input, need);
-			MD5Transform(ctx->state, ctx->buffer);
+			lrad_MD5Transform(ctx->state, ctx->buffer);
 			input += need;
 			len -= need;
 			have = 0;
@@ -125,7 +123,7 @@ MD5Update(MD5_CTX *ctx, const unsigned char *input, size_t len)
 
 		/* Process data in MD5_BLOCK_LENGTH-byte chunks. */
 		while (len >= MD5_BLOCK_LENGTH) {
-			MD5Transform(ctx->state, input);
+			lrad_MD5Transform(ctx->state, input);
 			input += MD5_BLOCK_LENGTH;
 			len -= MD5_BLOCK_LENGTH;
 		}
@@ -141,7 +139,7 @@ MD5Update(MD5_CTX *ctx, const unsigned char *input, size_t len)
  * 1 0* (64-bit count of bits processed, MSB-first)
  */
 void
-MD5Final(unsigned char digest[MD5_DIGEST_LENGTH], MD5_CTX *ctx)
+lrad_MD5Final(uint8_t digest[MD5_DIGEST_LENGTH], MD5_CTX *ctx)
 {
 	uint8_t count[8];
 	size_t padlen;
@@ -155,8 +153,8 @@ MD5Final(unsigned char digest[MD5_DIGEST_LENGTH], MD5_CTX *ctx)
 	    ((ctx->count[0] >> 3) & (MD5_BLOCK_LENGTH - 1));
 	if (padlen < 1 + 8)
 		padlen += MD5_BLOCK_LENGTH;
-	MD5Update(ctx, PADDING, padlen - 8);		/* padlen - 8 <= 64 */
-	MD5Update(ctx, count, 8);
+	lrad_MD5Update(ctx, PADDING, padlen - 8); /* padlen - 8 <= 64 */
+	lrad_MD5Update(ctx, count, 8);
 
 	if (digest != NULL) {
 		for (i = 0; i < 4; i++)
@@ -184,7 +182,7 @@ MD5Final(unsigned char digest[MD5_DIGEST_LENGTH], MD5_CTX *ctx)
  * the data and converts bytes into longwords for this routine.
  */
 void
-MD5Transform(uint32_t state[4], const uint8_t block[MD5_BLOCK_LENGTH])
+lrad_MD5Transform(uint32_t state[4], const uint8_t block[MD5_BLOCK_LENGTH])
 {
 	uint32_t a, b, c, d, in[MD5_BLOCK_LENGTH / 4];
 

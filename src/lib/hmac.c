@@ -40,27 +40,27 @@ unsigned char*  digest;              caller digest to be filled in
 */
 
 void
-lrad_hmac_md5(const unsigned char *text, int text_len,
-	      const unsigned char *key, int key_len,
-	      unsigned char *digest)
+lrad_hmac_md5(const uint8_t *text, int text_len,
+	      const uint8_t *key, int key_len,
+	      uint8_t *digest)
 {
-        MD5_CTX context;
-        unsigned char k_ipad[65];    /* inner padding -
+        lrad_MD5_CTX context;
+        uint8_t k_ipad[65];    /* inner padding -
                                       * key XORd with ipad
                                       */
-        unsigned char k_opad[65];    /* outer padding -
+        uint8_t k_opad[65];    /* outer padding -
                                       * key XORd with opad
                                       */
-        unsigned char tk[16];
+        uint8_t tk[16];
         int i;
         /* if key is longer than 64 bytes reset it to key=MD5(key) */
         if (key_len > 64) {
 
-                MD5_CTX      tctx;
+		lrad_MD5_CTX      tctx;
 
-                MD5Init(&tctx);
-                MD5Update(&tctx, key, key_len);
-                MD5Final(tk, &tctx);
+                lrad_MD5Init(&tctx);
+                lrad_MD5Update(&tctx, key, key_len);
+                lrad_MD5Final(tk, &tctx);
 
                 key = tk;
                 key_len = 16;
@@ -92,20 +92,20 @@ lrad_hmac_md5(const unsigned char *text, int text_len,
         /*
          * perform inner MD5
          */
-        MD5Init(&context);                   /* init context for 1st
+        lrad_MD5Init(&context);                   /* init context for 1st
                                               * pass */
-        MD5Update(&context, k_ipad, 64);      /* start with inner pad */
-        MD5Update(&context, text, text_len); /* then text of datagram */
-        MD5Final(digest, &context);          /* finish up 1st pass */
+        lrad_MD5Update(&context, k_ipad, 64);      /* start with inner pad */
+        lrad_MD5Update(&context, text, text_len); /* then text of datagram */
+        lrad_MD5Final(digest, &context);          /* finish up 1st pass */
         /*
          * perform outer MD5
          */
-        MD5Init(&context);                   /* init context for 2nd
+        lrad_MD5Init(&context);                   /* init context for 2nd
                                               * pass */
-        MD5Update(&context, k_opad, 64);     /* start with outer pad */
-        MD5Update(&context, digest, 16);     /* then results of 1st
+        lrad_MD5Update(&context, k_opad, 64);     /* start with outer pad */
+        lrad_MD5Update(&context, digest, 16);     /* then results of 1st
                                               * hash */
-        MD5Final(digest, &context);          /* finish up 2nd pass */
+        lrad_MD5Final(digest, &context);          /* finish up 2nd pass */
 }
 
 /*
@@ -146,7 +146,7 @@ Test Vectors (Trailing '\0' of a character string not included in test):
 
 int main(int argc, char **argv)
 {
-  unsigned char digest[16];
+  uint8_t digest[16];
   char *key;
   int key_len;
   char *text;

@@ -237,15 +237,15 @@ void		librad_md5_calc(uint8_t *, const uint8_t *, unsigned int);
 
 /* hmac.c */
 
-void lrad_hmac_md5(const unsigned char *text, int text_len,
-		   const unsigned char *key, int key_len,
+void lrad_hmac_md5(const uint8_t *text, int text_len,
+		   const uint8_t *key, int key_len,
 		   unsigned char *digest);
 
 /* hmacsha1.c */
 
-void lrad_hmac_sha1(const unsigned char *text, int text_len,
-		    const unsigned char *key, int key_len,
-		    unsigned char *digest);
+void lrad_hmac_sha1(const uint8_t *text, int text_len,
+		    const uint8_t *key, int key_len,
+		    uint8_t *digest);
 
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, const RADIUS_PACKET *, const char *secret);
@@ -319,8 +319,8 @@ char		*strNcpy(char *dest, const char *src, int n);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
-void		lrad_bin2hex(const unsigned char *bin, unsigned char *hex, int len);
-int		lrad_hex2bin(const unsigned char *hex, unsigned char *bin, int len);
+void		lrad_bin2hex(const uint8_t *bin, char *hex, int len);
+int		lrad_hex2bin(const char *hex, uint8_t *bin, int len);
 #ifndef HAVE_INET_PTON
 int		inet_pton(int af, const char *src, void *dst);
 #endif
@@ -335,7 +335,7 @@ const char	*ip_ntoh(const lrad_ipaddr_t *src, char *dst, size_t cnt);
 #ifdef ASCEND_BINARY
 /* filters.c */
 int		ascend_parse_filter(VALUE_PAIR *pair);
-void		print_abinary(VALUE_PAIR *vp, u_char *buffer, int len);
+void		print_abinary(VALUE_PAIR *vp, char *buffer, int len);
 #endif /*ASCEND_BINARY*/
 
 #ifndef HAVE_SNPRINTF
@@ -396,7 +396,7 @@ rbtree_t       *rbtree_create(int (*Compare)(const void *, const void *),
 			       void (*freeNode)(void *),
 			       int replace_flag);
 void		rbtree_free(rbtree_t *tree);
-int		rbtree_insert(rbtree_t *tree, const void *Data);
+int		rbtree_insert(rbtree_t *tree, void *Data);
 void		rbtree_delete(rbtree_t *tree, rbnode_t *Z);
 int		rbtree_deletebydata(rbtree_t *tree, const void *data);
 rbnode_t       *rbtree_find(rbtree_t *tree, const void *Data);

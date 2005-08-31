@@ -233,7 +233,7 @@ static void InsertFixup(rbtree_t *tree, rbnode_t *X)
 /*
  *	Insert an element into the tree.
  */
-int rbtree_insert(rbtree_t *tree, const void *Data)
+int rbtree_insert(rbtree_t *tree, void *Data)
 {
 	rbnode_t *Current, *Parent, *X;
 

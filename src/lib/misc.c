@@ -538,7 +538,7 @@ static const char *hextab = "0123456789abcdef";
  *
  *	We allow: hex == bin
  */
-int lrad_hex2bin(const unsigned char *hex, unsigned char *bin, int len)
+int lrad_hex2bin(const char *hex, uint8_t *bin, int len)
 {
 	int i;
 	char *c1, *c2;
@@ -559,7 +559,7 @@ int lrad_hex2bin(const unsigned char *hex, unsigned char *bin, int len)
  *
  *	If the output buffer isn't long enough, we have a buffer overflow.
  */
-void lrad_bin2hex(const unsigned char *bin, unsigned char *hex, int len)
+void lrad_bin2hex(const uint8_t *bin, char *hex, int len)
 {
 	int i;
 

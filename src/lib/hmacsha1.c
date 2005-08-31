@@ -23,11 +23,11 @@
 #include "libradius.h"
 
 /*
-unsigned char*  text;                pointer to data stream
+uint8_t*  text;                pointer to data stream
 int             text_len;            length of data stream
-unsigned char*  key;                 pointer to authentication key
+uint8_t*  key;                 pointer to authentication key
 int             key_len;             length of authentication key
-unsigned char*  digest;              caller digest to be filled in
+uint8_t*  digest;              caller digest to be filled in
 */
 
 #ifdef HMAC_SHA1_DATA_PROBLEMS
@@ -35,18 +35,18 @@ unsigned int sha1_data_problems = 0;
 #endif
 
 void
-lrad_hmac_sha1(const unsigned char *text, int text_len,
-	       const unsigned char *key, int key_len,
-	       unsigned char *digest)
+lrad_hmac_sha1(const uint8_t *text, int text_len,
+	       const uint8_t *key, int key_len,
+	       uint8_t *digest)
 {
         SHA1_CTX context;
-        unsigned char k_ipad[65];    /* inner padding -
+        uint8_t k_ipad[65];    /* inner padding -
                                       * key XORd with ipad
                                       */
-        unsigned char k_opad[65];    /* outer padding -
+        uint8_t k_opad[65];    /* outer padding -
                                       * key XORd with opad
                                       */
-        unsigned char tk[20];
+        uint8_t tk[20];
         int i;
         /* if key is longer than 64 bytes reset it to key=SHA1(key) */
         if (key_len > 64) {
@@ -168,7 +168,7 @@ Test Vectors (Trailing '\0' of a character string not included in test):
   key =         "Jefe"
   data =        "what do ya want for nothing?"
   data_len =    28 bytes
-  digest =
+  digest =	effcdf6ae5eb2fa2d27416d5f184df9c259a7c79
 
   key =         0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
 
@@ -184,7 +184,7 @@ Test Vectors (Trailing '\0' of a character string not included in test):
 
 #ifdef TESTING
 /*
- *  cc -DTESTING -I ../include/ hmac.c md5.c -o hmac
+ *  cc -DTESTING -I ../include/ hmac.c sha1.c -o hmac
  *
  *  ./hmac Jefe "what do ya want for nothing?"
  */
@@ -194,7 +194,7 @@ Test Vectors (Trailing '\0' of a character string not included in test):
 
 int main(int argc, char **argv)
 {
-  unsigned char digest[20];
+  uint8_t digest[20];
   char *key;
   int key_len;
   char *text;
