@@ -2026,10 +2026,10 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 	/*
 	 *	Merge information from the outside world into our
-	 *	random pool
+	 *	random pool.
 	 */
 	lrad_rand_seed(packet->data, AUTH_HDR_LEN);
-
+	  
 	return 0;
 }
 
@@ -2475,7 +2475,7 @@ void lrad_rand_seed(const void *data, size_t size)
 	/*
 	 *	Churn the pool every so often after seeding it.
 	 */
-	if ((hash & 0x03) == (lrad_rand_pool.randrsl[lrad_rand_index & 0xff] & 0x03)) {
+	if ((hash & 0xff) == (lrad_rand_pool.randrsl[lrad_rand_index & 0xff] & 0xff)) {
 		lrad_isaac(&lrad_rand_pool);
 	}
 }
@@ -2505,7 +2505,7 @@ uint32_t lrad_rand(void)
 	/*
 	 *	Every so often, churn the pool.
 	 */
-	if ((num & 0x0f) == (lrad_rand_pool.randrsl[lrad_rand_index & 0xff] & 0x0f)) {
+	if ((num & 0xff) == (lrad_rand_pool.randrsl[lrad_rand_index & 0xff] & 0xff)) {
 		lrad_isaac(&lrad_rand_pool);
 	}
 
