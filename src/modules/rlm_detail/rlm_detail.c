@@ -321,7 +321,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	if (compat) {
 		if ((pair = pairfind(request->config_items,
 				     PW_PROXY_TO_REALM)) != NULL) {
-			proxy_realm = realm_find(pair->strvalue, TRUE);
+			proxy_realm = realm_find(pair->vp_strvalue, TRUE);
 			if (proxy_realm) {
 				memset((char *) proxy_buffer, 0, 16);
 

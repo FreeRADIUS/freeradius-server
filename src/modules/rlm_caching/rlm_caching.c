@@ -272,12 +272,12 @@ static int caching_postauth(void *instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 	if ((auth_type = pairfind(request->config_items, PW_AUTH_TYPE)) != NULL){
-		DEBUG("rlm_caching: Found Auth-Type, value: '%s'",auth_type->strvalue);
-		if (strcmp(auth_type->strvalue,"Reject") == 0 && data->cache_rejects == 0){
+		DEBUG("rlm_caching: Found Auth-Type, value: '%s'",auth_type->vp_strvalue);
+		if (strcmp(auth_type->vp_strvalue,"Reject") == 0 && data->cache_rejects == 0){
 			DEBUG("rlm_caching: No caching of Rejects. Returning NOOP");
 			return RLM_MODULE_NOOP;
 		}
-		if (strlen(auth_type->strvalue) > MAX_AUTH_TYPE - 1){
+		if (strlen(auth_type->vp_strvalue) > MAX_AUTH_TYPE - 1){
 			DEBUG("rlm_caching: Auth-Type value too large");
 			return RLM_MODULE_NOOP;
 		}
@@ -301,7 +301,7 @@ static int caching_postauth(void *instance, REQUEST *request)
 	memset(&cache_data,0,sizeof(rlm_caching_data));
 
 	cache_data.creation = time(NULL);
-	strcpy(cache_data.auth_type,auth_type->strvalue);
+	strcpy(cache_data.auth_type,auth_type->vp_strvalue);
 
 	size = MAX_RECORD_LEN;
 
@@ -318,7 +318,7 @@ static int caching_postauth(void *instance, REQUEST *request)
 		count += (ret + 1);
 		size -= (ret + 1);
 		DEBUG("rlm_caching: VP=%s,VALUE=%s,length=%d,cache record length=%d, space left=%d",
-			reply_vp->name,reply_vp->strvalue,ret,count,size);
+			reply_vp->name,reply_vp->vp_strvalue,ret,count,size);
 		reply_vp = reply_vp->next;
 	}
 	cache_data.len = count;
@@ -423,7 +423,7 @@ static int caching_authorize(void *instance, REQUEST *request)
 					pairadd(&request->reply->vps, reply_item);
 				len += (strlen(tmp) + 1);
 				DEBUG("rlm_caching: VP='%s',VALUE='%s',lenth='%d',cache record length='%d'",
-				reply_item->name,reply_item->strvalue,reply_item->length,len);
+				reply_item->name,reply_item->vp_strvalue,reply_item->length,len);
 				tmp = cache_data.data + len;
 			}
 		}
@@ -439,7 +439,7 @@ static int caching_authorize(void *instance, REQUEST *request)
 				pairadd(&request->config_items, item);
 			}
 			else{
-				strcmp(item->strvalue, cache_data.auth_type);
+				strcmp(item->vp_strvalue, cache_data.auth_type);
 				item->length = strlen(cache_data.auth_type);
 			}
 		}
@@ -451,7 +451,7 @@ static int caching_authorize(void *instance, REQUEST *request)
 				pairadd(&request->config_items, item);
 			}
 			else{
-				strcmp(item->strvalue, data->post_auth);
+				strcmp(item->vp_strvalue, data->post_auth);
 				item->length = strlen(data->post_auth);
 			}
 		}

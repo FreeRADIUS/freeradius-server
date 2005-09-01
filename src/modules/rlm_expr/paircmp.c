@@ -48,7 +48,7 @@ static int connectcmp(void *instance,
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
 
-	rate = atoi((char *)request->strvalue);
+	rate = atoi((char *)request->vp_strvalue);
 	return rate - check->lvalue;
 }
 
@@ -69,13 +69,13 @@ static int portcmp(void *instance,
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
 
-	if ((strchr((char *)check->strvalue, ',') == NULL) &&
-			(strchr((char *)check->strvalue, '-') == NULL)) {
+	if ((strchr((char *)check->vp_strvalue, ',') == NULL) &&
+			(strchr((char *)check->vp_strvalue, '-') == NULL)) {
 		return (request->lvalue - check->lvalue);
 	}
 
 	/* Same size */
-	strcpy(buf, (char *)check->strvalue);
+	strcpy(buf, (char *)check->vp_strvalue);
 	s = strtok(buf, ",");
 
 	while (s != NULL) {
@@ -109,7 +109,7 @@ static int presufcmp(void *instance,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	VALUE_PAIR *vp;
-	char *name = (char *)request->strvalue;
+	char *name = (char *)request->vp_strvalue;
 	char rest[MAX_STRING_LEN];
 	int len, namelen;
 	int ret = -1;
@@ -119,13 +119,13 @@ static int presufcmp(void *instance,
 
 #if 0 /* DEBUG */
 	printf("Comparing %s and %s, check->attr is %d\n",
-		name, check->strvalue, check->attribute);
+		name, check->vp_strvalue, check->attribute);
 #endif
 
-	len = strlen((char *)check->strvalue);
+	len = strlen((char *)check->vp_strvalue);
 	switch (check->attribute) {
 		case PW_PREFIX:
-			ret = strncmp(name, (char *)check->strvalue, len);
+			ret = strncmp(name, (char *)check->vp_strvalue, len);
 			if (ret == 0 && rest)
 				strcpy(rest, name + len);
 			break;
@@ -134,7 +134,7 @@ static int presufcmp(void *instance,
 			if (namelen < len)
 				break;
 			ret = strcmp(name + namelen - len,
-					(char *)check->strvalue);
+					(char *)check->vp_strvalue);
 			if (ret == 0 && rest) {
 				strNcpy(rest, name, namelen - len + 1);
 			}
@@ -160,7 +160,7 @@ static int presufcmp(void *instance,
 		pairadd(&request, vp);
 	}
 
-	strcpy((char *)vp->strvalue, rest);
+	strcpy((char *)vp->vp_strvalue, rest);
 	vp->length = strlen(rest);
 
 	return ret;
@@ -169,7 +169,7 @@ static int presufcmp(void *instance,
 
 /*
  *	Matches if there is NO SUCH ATTRIBUTE as the one named
- *	in check->strvalue.  If there IS such an attribute, it
+ *	in check->vp_strvalue.  If there IS such an attribute, it
  *	doesn't match.
  *
  *	This is ugly, and definitely non-optimal.  We should be
@@ -190,7 +190,7 @@ static int attrcmp(void *instance,
 	reply_pairs = reply_pairs;
 
 	if (check->lvalue == 0) {
-		dict = dict_attrbyname((char *)check->strvalue);
+		dict = dict_attrbyname((char *)check->vp_strvalue);
 		if (dict == NULL) {
 			return -1;
 		}

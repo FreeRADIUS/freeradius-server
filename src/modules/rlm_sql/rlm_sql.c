@@ -558,7 +558,7 @@ static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE
 	request = request;
 
 	DEBUG("rlm_sql (%s): - sql_groupcmp", inst->config->xlat_name);
-	if (!check || !check->strvalue || !check->length){
+	if (!check || !check->vp_strvalue || !check->length){
 		DEBUG("rlm_sql (%s): sql_groupcmp: Illegal group name",
 		      inst->config->xlat_name);
 		return 1;
@@ -597,10 +597,10 @@ static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE
 	}
 
 	for (group_list_tmp = group_list; group_list_tmp != NULL; group_list_tmp = group_list_tmp->next) {
-		if (strcmp(group_list_tmp->groupname, check->strvalue) == 0){
+		if (strcmp(group_list_tmp->groupname, check->vp_strvalue) == 0){
 			DEBUG("rlm_sql (%s): - sql_groupcmp finished: User is a member of group %s",
 			      inst->config->xlat_name,
-			      (char *)check->strvalue);
+			      (char *)check->vp_strvalue);
 			/* Free the grouplist */
 			sql_grouplist_free(&group_list);
 			/* Remove the username we (maybe) added above */
@@ -617,7 +617,7 @@ static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE
 	sql_release_socket(inst,sqlsocket);
 
 	DEBUG("rlm_sql (%s): - sql_groupcmp finished: User is NOT a member of group %s",
-	      inst->config->xlat_name, (char *)check->strvalue);
+	      inst->config->xlat_name, (char *)check->vp_strvalue);
 
 	return 1;
 }
@@ -1047,7 +1047,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 			char *profile = inst->config->default_profile;
 
 			if (user_profile != NULL)
-				profile = user_profile->strvalue;
+				profile = user_profile->vp_strvalue;
 			if (profile && strlen(profile)){
 				radlog(L_DBG, "rlm_sql (%s): Checking profile %s",
 				       inst->config->xlat_name, profile);
@@ -1426,7 +1426,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
         if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS)) != NULL)
                 ipno = vp->lvalue;
         if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
-                call_num = vp->strvalue;
+                call_num = vp->vp_strvalue;
 
 
 	while (rlm_sql_fetch_row(sqlsocket, inst) == 0) {

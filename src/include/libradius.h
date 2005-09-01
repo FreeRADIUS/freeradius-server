@@ -141,17 +141,86 @@ typedef struct dict_vendor {
 	char			name[1];
 } DICT_VENDOR;
 
+
+/*
+ *	ascend_ip_filter_t
+ *
+ *	The binary format of an IP filter.  ALL fields are stored in
+ *	network byte order.
+ *
+ *	srcip:		The source IP address.
+ *
+ *	dstip:		The destination IP address.
+ *
+ *	srcmask:	The number of leading one bits in the source address
+ *			mask.  Specifies the bits of interest.
+ *
+ *	dstmask:	The number of leading one bits in the destination
+ *			address mask. Specifies the bits of interest.
+ *
+ *	proto:		The IP protocol number
+ *
+ *	established:	A boolean value.  TRUE when we care about the
+ *			established state of a TCP connection.  FALSE when
+ *			we dont care.
+ *
+ *	srcport:	TCP or UDP source port number.
+ *
+ *	dstport:	TCP or UDP destination port number.
+ *
+ *	srcPortCmp:	One of the values of the RadFilterComparison
+ *			enumeration, specifying how to compare the
+ *			srcport value.
+ *
+ *	dstPortCmp:	One of the values of the RadFilterComparison
+ *			enumeration, specifying how to compare the
+ *			dstport value.
+ *
+ *	fill:		Round things out to a int16_t boundary.
+ */
+typedef struct ascend_ip_filter_t {
+	uint32_t	srcip;
+	uint32_t	dstip;
+	uint8_t 	srcmask;
+	uint8_t 	dstmask;
+	uint8_t		proto;
+	uint8_t		established;
+	uint16_t	srcport;
+	uint16_t	dstport;
+	uint8_t		srcPortComp;
+	uint8_t		dstPortComp;
+	unsigned char   fill[4];        /* used to be fill[2] */
+} ascend_ip_filter_t;
+
 typedef struct value_pair {
 	char			name[40];
 	int			attribute;
 	int			type;
-	int			length; /* of strvalue */
-	uint32_t		lvalue;
+	int			length; /* of data */
 	LRAD_TOKEN		operator;
-	uint8_t			strvalue[MAX_STRING_LEN];
+	uint32_t		lvalue;	/* DELETE ME ASAP */
+	union {
+		char			strvalue[MAX_STRING_LEN];
+		uint8_t			octets[MAX_STRING_LEN];
+		struct in_addr		ipaddr;
+		struct in6_addr		ipv6addr;
+		uint32_t		date;
+		uint32_t		integer;
+		ascend_ip_filter_t	filter;
+		uint8_t			ifid[8]; /* struct? */
+		uint8_t			ipv6prefix[18]; /* struct? */
+	} data;
         ATTR_FLAGS              flags;
 	struct value_pair	*next;
 } VALUE_PAIR;
+#define vp_strvalue   data.strvalue
+#define vp_octets     data.octets
+#define vp_ipaddr     lvalue
+#define vp_ipv6addr   data.ipv6addr
+#define vp_data       lvalue
+#define vp_integer    lvalue
+#define vp_ifid       data.ifid
+#define vp_ipv6prefix data.ipv6prefix
 
 
 typedef struct lrad_ipaddr_t {

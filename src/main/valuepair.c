@@ -113,16 +113,16 @@ static int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 				ret = 1; /* NOT equal */
 				break;
 			}
-			ret = memcmp(request->strvalue, check->strvalue,
+			ret = memcmp(request->vp_strvalue, check->vp_strvalue,
 					request->length);
 			break;
 		case PW_TYPE_STRING:
 			if (check->flags.caseless) {
-				ret = strcasecmp((char *)request->strvalue,
-						 (char *)check->strvalue);
+				ret = strcasecmp((char *)request->vp_strvalue,
+						 (char *)check->vp_strvalue);
 			} else {
-				ret = strcmp((char *)request->strvalue,
-					     (char *)check->strvalue);
+				ret = strcmp((char *)request->vp_strvalue,
+					     (char *)check->vp_strvalue);
 			}
 			break;
 		case PW_TYPE_INTEGER:
@@ -311,11 +311,11 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 		 */
 		if (check_item->flags.do_xlat) {
 			int rcode;
-			char buffer[sizeof(check_item->strvalue)];
+			char buffer[sizeof(check_item->vp_strvalue)];
 
 			check_item->flags.do_xlat = 0;
 			rcode = radius_xlat(buffer, sizeof(buffer),
-					    check_item->strvalue,
+					    check_item->vp_strvalue,
 					    req, NULL);
 
 			/*
@@ -370,10 +370,10 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 				/*
 				 *	Include substring matches.
 				 */
-				regcomp(&reg, (char *)check_item->strvalue,
+				regcomp(&reg, (char *)check_item->vp_strvalue,
 					REG_EXTENDED);
 				compare = regexec(&reg,
-						  (char *)auth_item->strvalue,
+						  (char *)auth_item->vp_strvalue,
 						  REQUEST_MAX_REGEX + 1,
 						  rxmatch, 0);
 				regfree(&reg);
@@ -383,7 +383,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 				 */
 				for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
 					char *p;
-					char buffer[sizeof(check_item->strvalue)];
+					char buffer[sizeof(check_item->vp_strvalue)];
 
 					/*
 					 *	Didn't match: delete old
@@ -409,7 +409,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 					 *	Copy substring into buffer.
 					 */
 					memcpy(buffer,
-					       auth_item->strvalue + rxmatch[i].rm_so,
+					       auth_item->vp_strvalue + rxmatch[i].rm_so,
 					       rxmatch[i].rm_eo - rxmatch[i].rm_so);
 					buffer[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
 
@@ -432,8 +432,8 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 				break;
 
 			case T_OP_REG_NE:
-				regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED|REG_NOSUB);
-				compare = regexec(&reg, (char *)auth_item->strvalue,
+				regcomp(&reg, (char *)check_item->vp_strvalue, REG_EXTENDED|REG_NOSUB);
+				compare = regexec(&reg, (char *)auth_item->vp_strvalue,
 						0, NULL, 0);
 				regfree(&reg);
 				if (compare == 0) result = -1;
@@ -507,11 +507,11 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 		 */
 		if (i->flags.do_xlat) {
 			int rcode;
-			char buffer[sizeof(i->strvalue)];
+			char buffer[sizeof(i->vp_strvalue)];
 
 			i->flags.do_xlat = 0;
 			rcode = radius_xlat(buffer, sizeof(buffer),
-					    i->strvalue,
+					    i->vp_strvalue,
 					    req, NULL);
 
 			/*
@@ -529,9 +529,9 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 			 */
 		case T_OP_SUB:		/* -= */
 			if (found) {
-				if (!i->strvalue[0] ||
-				    (strcmp((char *)found->strvalue,
-					    (char *)i->strvalue) == 0)){
+				if (!i->vp_strvalue[0] ||
+				    (strcmp((char *)found->vp_strvalue,
+					    (char *)i->vp_strvalue) == 0)){
 					pairdelete(to, found->attribute);
 
 					/*

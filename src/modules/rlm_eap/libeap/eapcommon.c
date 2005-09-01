@@ -264,7 +264,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 		 * This memory gets freed up when packet is freed up
 		 */
 		eap_msg = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
-		memcpy(eap_msg->strvalue, ptr, len);
+		memcpy(eap_msg->vp_strvalue, ptr, len);
 		eap_msg->length = len;
 		pairadd(&(packet->vps), eap_msg);
 		ptr += len;
@@ -281,7 +281,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 	vp = pairfind(packet->vps, PW_MESSAGE_AUTHENTICATOR);
 	if (!vp) {
 		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, PW_TYPE_OCTETS);
-		memset(vp->strvalue, 0, AUTH_VECTOR_LEN);
+		memset(vp->vp_strvalue, 0, AUTH_VECTOR_LEN);
 		vp->length = AUTH_VECTOR_LEN;
 		pairadd(&(packet->vps), vp);
 	}
@@ -387,7 +387,7 @@ void map_eap_types(RADIUS_PACKET *req)
 		ep.id   = id;
 		ep.type.type = eap_type;
 		ep.type.length = vp->length;
-		ep.type.data = vp->strvalue;
+		ep.type.data = vp->vp_strvalue;
 		eap_basic_compose(req, &ep);
 	}
 }
@@ -428,7 +428,7 @@ eap_packet_t *eap_attribute(VALUE_PAIR *vps)
 	 *	Get the Actual length from the EAP packet
 	 *	First EAP-Message contains the EAP packet header
 	 */
-	memcpy(&len, first->strvalue + 2, sizeof(len));
+	memcpy(&len, first->vp_strvalue + 2, sizeof(len));
 	len = ntohs(len);
 
 	/*
@@ -476,7 +476,7 @@ eap_packet_t *eap_attribute(VALUE_PAIR *vps)
 
 	/* RADIUS ensures order of attrs, so just concatenate all */
 	for (vp = first; vp; vp = pairfind(vp->next, PW_EAP_MESSAGE)) {
-		memcpy(ptr, vp->strvalue, vp->length);
+		memcpy(ptr, vp->vp_strvalue, vp->length);
 		ptr += vp->length;
 	}
 
@@ -544,7 +544,7 @@ void unmap_eap_types(RADIUS_PACKET *rep)
 		}
 
 		eap1 = paircreate(type, PW_TYPE_OCTETS);
-		memcpy(eap1->strvalue, &e->data[1], len);
+		memcpy(eap1->vp_strvalue, &e->data[1], len);
 		eap1->length = len;
 		pairadd(&(rep->vps), eap1);
 		break;

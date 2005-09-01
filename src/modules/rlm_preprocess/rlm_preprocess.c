@@ -123,7 +123,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 		/*
 		 *  No weird packing.  Ignore it.
 		 */
-		ptr = strchr(vp->strvalue, '='); /* find an '=' */
+		ptr = strchr(vp->vp_strvalue, '='); /* find an '=' */
 		if (!ptr) continue;
 
 		/*
@@ -141,7 +141,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 			char *p;
 			DICT_ATTR	*dattr;
 
-			p = vp->strvalue;
+			p = vp->vp_strvalue;
 			gettoken(&p, newattr, sizeof(newattr));
 
 			if (((dattr = dict_attrbyname(newattr)) != NULL) &&
@@ -163,9 +163,9 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 			 *	the right side of the '=' character.
 			 */
 			strNcpy(newattr, ptr + 1, sizeof(newattr));
-			strNcpy((char *)vp->strvalue, newattr,
-				sizeof(vp->strvalue));
-			vp->length = strlen((char *)vp->strvalue);
+			strNcpy((char *)vp->vp_strvalue, newattr,
+				sizeof(vp->vp_strvalue));
+			vp->length = strlen((char *)vp->vp_strvalue);
 		}
 	}
 }
@@ -200,10 +200,10 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 		 *
 		 *	FIXME: should we handle this as a REALM ?
 		 */
-		if ((ptr = strchr(namepair->strvalue, '\\')) != NULL) {
+		if ((ptr = strchr(namepair->vp_strvalue, '\\')) != NULL) {
 			strNcpy(newname, ptr + 1, sizeof(newname));
 			/* Same size */
-			strcpy(namepair->strvalue, newname);
+			strcpy(namepair->vp_strvalue, newname);
 			namepair->length = strlen(newname);
 		}
 	}
@@ -219,12 +219,12 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 		 *
 		 *	Reported by Lucas Heise <root@laonet.net>
 		 */
-		if ((strlen((char *)namepair->strvalue) > 10) &&
-		    (namepair->strvalue[10] == '/')) {
-			for (ptr = (char *)namepair->strvalue + 11; *ptr; ptr++)
+		if ((strlen((char *)namepair->vp_strvalue) > 10) &&
+		    (namepair->vp_strvalue[10] == '/')) {
+			for (ptr = (char *)namepair->vp_strvalue + 11; *ptr; ptr++)
 				*(ptr - 1) = *ptr;
 			*(ptr - 1) = 0;
-			namepair->length = strlen((char *)namepair->strvalue);
+			namepair->length = strlen((char *)namepair->vp_strvalue);
 		}
 	}
 
@@ -293,7 +293,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 	if ((tmp = pairfind(request_pairs, PW_USER_NAME)) == NULL)
 		name = NULL;
 	else
-		name = (char *)tmp->strvalue;
+		name = (char *)tmp->vp_strvalue;
 
 	if (name == NULL || name[0] == 0)
 		/*
@@ -371,9 +371,9 @@ static int huntgroup_access(REQUEST *request,
 					r = RLM_MODULE_FAIL;
 				}
 
-				strNcpy(vp->strvalue, i->name,
-					sizeof(vp->strvalue));
-				vp->length = strlen(vp->strvalue);
+				strNcpy(vp->vp_strvalue, i->name,
+					sizeof(vp->vp_strvalue));
+				vp->length = strlen(vp->vp_strvalue);
 
 				pairadd(&request_pairs, vp);
 			}
@@ -404,7 +404,7 @@ static int add_nas_attr(REQUEST *request)
 			}
 			
 			ip_ntoh(&request->packet->src_ipaddr,
-				nas->strvalue, sizeof(nas->strvalue));
+				nas->vp_strvalue, sizeof(nas->vp_strvalue));
 			nas->lvalue = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 			pairadd(&request->packet->vps, nas);
 		}
@@ -419,7 +419,7 @@ static int add_nas_attr(REQUEST *request)
 				return -1;
 			}
 			
-			memcpy(nas->strvalue,
+			memcpy(nas->vp_strvalue,
 			       &request->packet->src_ipaddr.ipaddr,
 			       sizeof(request->packet->src_ipaddr.ipaddr));
 			pairadd(&request->packet->vps, nas);
@@ -547,7 +547,7 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_FAIL;
 		}
 		vp->length = AUTH_VECTOR_LEN;
-		memcpy(vp->strvalue, request->packet->vector, AUTH_VECTOR_LEN);
+		memcpy(vp->vp_strvalue, request->packet->vector, AUTH_VECTOR_LEN);
 		pairadd(&request->packet->vps, vp);
 	}
 
@@ -555,7 +555,7 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 			     request->packet->vps)) != RLM_MODULE_OK) {
 		char buf[1024];
 		radlog(L_AUTH, "No huntgroup access: [%s] (%s)",
-		    request->username->strvalue,
+		    request->username->vp_strvalue,
 		    auth_name(buf, sizeof(buf), request, 1));
 		return r;
 	}
@@ -598,7 +598,7 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 			     request->packet->vps)) != RLM_MODULE_OK) {
 		char buf[1024];
 		radlog(L_INFO, "No huntgroup access: [%s] (%s)",
-		    request->username->strvalue,
+		    request->username->vp_strvalue,
 		    auth_name(buf, sizeof(buf), request, 1));
 		return r;
 	}

@@ -118,7 +118,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	We will be modifing this later, so we want our own copy
 	 *	of it.
 	 */
-	strNcpy(namebuf, (char *)request->username->strvalue, sizeof(namebuf));
+	strNcpy(namebuf, (char *)request->username->vp_strvalue, sizeof(namebuf));
 	username = namebuf;
 
 	switch(inst->format)
@@ -159,15 +159,15 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 */
 	if (realmname) {
 		DEBUG2("    rlm_realm: Looking up realm \"%s\" for User-Name = \"%s\"",
-		       realmname, request->username->strvalue);
+		       realmname, request->username->vp_strvalue);
 	} else {
 		if( inst->ignore_null ) {
 			DEBUG2("    rlm_realm: No '%c' in User-Name = \"%s\", skipping NULL due to config.",
-			inst->delim[0], request->username->strvalue);
+			inst->delim[0], request->username->vp_strvalue);
 			return 0;
 		}
 		DEBUG2("    rlm_realm: No '%c' in User-Name = \"%s\", looking up realm NULL",
-		       inst->delim[0], request->username->strvalue);
+		       inst->delim[0], request->username->vp_strvalue);
 	}
 
 	/*
@@ -210,8 +210,8 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 			DEBUG2("    rlm_realm: Setting Stripped-User-Name = \"%s\"", username);
 		}
 
-		strcpy(vp->strvalue, username);
-		vp->length = strlen((char *)vp->strvalue);
+		strcpy(vp->vp_strvalue, username);
+		vp->length = strlen((char *)vp->vp_strvalue);
 		request->username = vp;
 	}
 
@@ -400,7 +400,7 @@ static int realm_authorize(void *instance, REQUEST *request)
  */
 static int realm_preacct(void *instance, REQUEST *request)
 {
-	const char *name = (char *)request->username->strvalue;
+	const char *name = (char *)request->username->vp_strvalue;
 	REALM *realm;
 
 	if (!name)

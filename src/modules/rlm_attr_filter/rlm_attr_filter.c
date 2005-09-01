@@ -116,8 +116,8 @@ static int check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 		    break;
 #ifdef HAVE_REGEX_H
 		case T_OP_REG_EQ:
-		    regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED);
-		    comp = regexec(&reg, (char *)reply_item->strvalue,
+		    regcomp(&reg, (char *)check_item->vp_strvalue, REG_EXTENDED);
+		    comp = regexec(&reg, (char *)reply_item->vp_strvalue,
 				      0, NULL, 0);
 		    regfree(&reg);
 		    if (comp == 0) {
@@ -128,8 +128,8 @@ static int check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 		    break;
 
 		case T_OP_REG_NE:
-		    regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED);
-		    comp = regexec(&reg, (char *)reply_item->strvalue,
+		    regcomp(&reg, (char *)check_item->vp_strvalue, REG_EXTENDED);
+		    comp = regexec(&reg, (char *)reply_item->vp_strvalue,
 				      0, NULL, 0);
 		    regfree(&reg);
 		    if (comp != 0) {
@@ -294,7 +294,7 @@ static int attr_filter_accounting(void *instance, REQUEST *request)
 		return (RLM_MODULE_NOOP);
 	}
 
-	realmname = (char *) realmpair->strvalue;
+	realmname = (char *) realmpair->vp_strvalue;
 	realm = realm_find (realmname, FALSE);
 
 	/*
@@ -417,7 +417,7 @@ static int attr_filter_preproxy (void *instance, REQUEST *request)
 		return (RLM_MODULE_NOOP);
 	}
 
-	realmname = (char *)realmpair->strvalue;
+	realmname = (char *)realmpair->vp_strvalue;
 	realm = realm_find(realmname, FALSE);
 
 	for (pl = inst->attrs; pl; pl = pl->next) {
@@ -536,7 +536,7 @@ static int attr_filter_postproxy(void *instance, REQUEST *request)
 		return RLM_MODULE_NOTFOUND;
 	}
 
-	realmname = (char *) realmpair->strvalue;
+	realmname = (char *) realmpair->vp_strvalue;
 
 	realm = realm_find(realmname, FALSE);
 

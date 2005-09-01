@@ -139,8 +139,8 @@ static int smb_authenticate(void *instance, REQUEST *request)
 	/*
 	 *  Call the SMB magic to do the work.
 	 */
-	rcode = Valid_User(request->username->strvalue,
-			   request->password->strvalue,
+	rcode = Valid_User(request->username->vp_strvalue,
+			   request->password->vp_strvalue,
 			   data->server, data->backup, data->domain);
 
 	switch (rcode) {

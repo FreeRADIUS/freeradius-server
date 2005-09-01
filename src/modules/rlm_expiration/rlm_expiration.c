@@ -78,7 +78,7 @@ static int expiration_authorize(void *instance, REQUEST *request)
 		*      and add our own Reply-Message, saying
 		*      why they're being rejected.
 		*/
-		DEBUG("rlm_expiration: Checking Expiration time: '%s'",check_item->strvalue);
+		DEBUG("rlm_expiration: Checking Expiration time: '%s'",check_item->vp_strvalue);
 		if (((time_t) check_item->lvalue) <= request->timestamp) {
 			char logstr[MAX_STRING_LEN];
 			VALUE_PAIR *module_fmsg_vp;
@@ -95,7 +95,7 @@ static int expiration_authorize(void *instance, REQUEST *request)
 				pairfree(&request->reply->vps);
 				request->reply->vps = vp;
 			}
-                        snprintf(logstr, sizeof(logstr), "Account has expired [Expiration %s]",check_item->strvalue);
+                        snprintf(logstr, sizeof(logstr), "Account has expired [Expiration %s]",check_item->vp_strvalue);
                         module_fmsg_vp = pairmake("Module-Failure-Message", logstr, T_OP_EQ);
                         pairadd(&request->packet->vps, module_fmsg_vp);
 

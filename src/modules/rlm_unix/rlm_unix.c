@@ -98,13 +98,13 @@ static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 			return -1;
 		}
 	}
-	username = (char *)vp->strvalue;
+	username = (char *)vp->vp_strvalue;
 
 	pwd = getpwnam(username);
 	if (pwd == NULL)
 		return -1;
 
-	grp = getgrnam((char *)check->strvalue);
+	grp = getgrnam((char *)check->vp_strvalue);
 	if (grp == NULL)
 		return -1;
 
@@ -203,7 +203,7 @@ static int unix_getpw(void *instance, REQUEST *request, VALUE_PAIR **vp_list)
 		return RLM_MODULE_NOOP;
 	}
 
-	name = (char *)request->username->strvalue;
+	name = (char *)request->username->vp_strvalue;
 	encrypted_pass = NULL;
 
 #ifdef OSFC2
@@ -367,10 +367,10 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	0 means "ok"
 	 */
-	if (lrad_crypt_check((char *) request->password->strvalue,
-			     (char *) vp->strvalue) != 0) {
+	if (lrad_crypt_check((char *) request->password->vp_strvalue,
+			     (char *) vp->vp_strvalue) != 0) {
 		radlog(L_AUTH, "rlm_unix: [%s]: invalid password",
-		       request->username->strvalue);
+		       request->username->vp_strvalue);
 		return RLM_MODULE_REJECT;
 	}
 #endif /* OSFFIA */
@@ -475,9 +475,9 @@ static int unix_accounting(void *instance, REQUEST *request)
 		switch (vp->attribute) {
 			case PW_USER_NAME:
 				if (vp->length >= sizeof(ut.ut_name)) {
-					memcpy(ut.ut_name, (char *)vp->strvalue, sizeof(ut.ut_name));
+					memcpy(ut.ut_name, (char *)vp->vp_strvalue, sizeof(ut.ut_name));
 				} else {
-					strNcpy(ut.ut_name, (char *)vp->strvalue, sizeof(ut.ut_name));
+					strNcpy(ut.ut_name, (char *)vp->vp_strvalue, sizeof(ut.ut_name));
 				}
 				break;
 			case PW_LOGIN_IP_HOST:

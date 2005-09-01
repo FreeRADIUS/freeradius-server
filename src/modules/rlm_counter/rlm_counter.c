@@ -155,7 +155,7 @@ static int counter_cmp(void *instance,
 		return RLM_MODULE_NOOP;
 	}
 
-	key_datum.dptr = key_vp->strvalue;
+	key_datum.dptr = key_vp->vp_strvalue;
 	key_datum.dsize = key_vp->length;
 
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
@@ -587,7 +587,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	}
 	uniqueid_vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID);
 	if (uniqueid_vp != NULL)
-		DEBUG("rlm_counter: Packet Unique ID = '%s'",uniqueid_vp->strvalue);
+		DEBUG("rlm_counter: Packet Unique ID = '%s'",uniqueid_vp->vp_strvalue);
 
 	/*
 	 *	Before doing anything else, see if we have to reset
@@ -652,10 +652,10 @@ static int counter_accounting(void *instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-	key_datum.dptr = key_vp->strvalue;
+	key_datum.dptr = key_vp->vp_strvalue;
 	key_datum.dsize = key_vp->length;
 
-	DEBUG("rlm_counter: Searching the database for key '%s'",key_vp->strvalue);
+	DEBUG("rlm_counter: Searching the database for key '%s'",key_vp->vp_strvalue);
 	pthread_mutex_lock(&data->mutex);
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
 	pthread_mutex_unlock(&data->mutex);
@@ -663,7 +663,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 		DEBUG("rlm_counter: Could not find the requested key in the database.");
 		counter.user_counter = 0;
 		if (uniqueid_vp != NULL)
-			strncpy(counter.uniqueid,uniqueid_vp->strvalue,UNIQUEID_MAX_LEN - 1);
+			strncpy(counter.uniqueid,uniqueid_vp->vp_strvalue,UNIQUEID_MAX_LEN - 1);
 		else
 			memset((char *)counter.uniqueid,0,UNIQUEID_MAX_LEN);
 	}
@@ -675,13 +675,13 @@ static int counter_accounting(void *instance, REQUEST *request)
 			DEBUG("rlm_counter: Counter Unique ID = '%s'",counter.uniqueid);
 		if (uniqueid_vp != NULL){
 			if (counter.uniqueid != NULL &&
-				strncmp(uniqueid_vp->strvalue,counter.uniqueid, UNIQUEID_MAX_LEN - 1) == 0){
+				strncmp(uniqueid_vp->vp_strvalue,counter.uniqueid, UNIQUEID_MAX_LEN - 1) == 0){
 				DEBUG("rlm_counter: Unique IDs for user match. Droping the request.");
 				return RLM_MODULE_NOOP;
 			}
-			strncpy(counter.uniqueid,uniqueid_vp->strvalue,UNIQUEID_MAX_LEN - 1);
+			strncpy(counter.uniqueid,uniqueid_vp->vp_strvalue,UNIQUEID_MAX_LEN - 1);
 		}
-		DEBUG("rlm_counter: User=%s, Counter=%d.",request->username->strvalue,counter.user_counter);
+		DEBUG("rlm_counter: User=%s, Counter=%d.",request->username->vp_strvalue,counter.user_counter);
 	}
 
 	if (data->count_attr == PW_ACCT_SESSION_TIME) {
@@ -713,7 +713,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 		counter.user_counter++;
 	}
 
-	DEBUG("rlm_counter: User=%s, New Counter=%d.",request->username->strvalue,counter.user_counter);
+	DEBUG("rlm_counter: User=%s, New Counter=%d.",request->username->vp_strvalue,counter.user_counter);
 	count_datum.dptr = (char *) &counter;
 	count_datum.dsize = sizeof(rad_counter);
 
@@ -789,7 +789,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 		return ret;
 	}
 
-	key_datum.dptr = key_vp->strvalue;
+	key_datum.dptr = key_vp->vp_strvalue;
 	key_datum.dsize = key_vp->length;
 
 
@@ -799,7 +799,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 
 	counter.user_counter = 0;
 
-	DEBUG("rlm_counter: Searching the database for key '%s'",key_vp->strvalue);
+	DEBUG("rlm_counter: Searching the database for key '%s'",key_vp->vp_strvalue);
 	pthread_mutex_lock(&data->mutex);
 	count_datum = gdbm_fetch(data->gdbm, key_datum);
 	pthread_mutex_unlock(&data->mutex);
@@ -880,9 +880,9 @@ static int counter_authorize(void *instance, REQUEST *request)
 
 		DEBUG2("rlm_counter: (Check item - counter) is greater than zero");
 		DEBUG2("rlm_counter: Authorized user %s, check_item=%d, counter=%d",
-				key_vp->strvalue,check_vp->lvalue,counter.user_counter);
+				key_vp->vp_strvalue,check_vp->lvalue,counter.user_counter);
 		DEBUG2("rlm_counter: Sent Reply-Item for user %s, Type=Session-Timeout, value=%d",
-				key_vp->strvalue,res);
+				key_vp->vp_strvalue,res);
 	}
 	else{
 		char module_fmsg[MAX_STRING_LEN];
@@ -902,7 +902,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 		ret=RLM_MODULE_REJECT;
 
 		DEBUG2("rlm_counter: Rejected user %s, check_item=%d, counter=%d",
-				key_vp->strvalue,check_vp->lvalue,counter.user_counter);
+				key_vp->vp_strvalue,check_vp->lvalue,counter.user_counter);
 	}
 
 	return ret;

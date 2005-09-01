@@ -288,7 +288,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		   */
 		default:
 			vp->length = size;
-			memcpy(vp->strvalue, data, vp->length);
+			memcpy(vp->vp_strvalue, data, vp->length);
 			break;
 		}
 
@@ -308,8 +308,8 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 			 *	If the password is exactly 16 octets,
 			 *	it won't be zero-terminated.
 			 */
-			vp->strvalue[vp->length] = '\0';
-			vp->length = strlen(vp->strvalue);
+			vp->vp_strvalue[vp->length] = '\0';
+			vp->length = strlen(vp->vp_strvalue);
 			break;
 
 			/*
@@ -350,7 +350,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 						      sizeof(challenge));
 
 				for (i = 0; i < vp->length; i++) {
-					if (challenge[i] != vp->strvalue[i]) {
+					if (challenge[i] != vp->vp_strvalue[i]) {
 						DEBUG2("  TTLS: Tunneled challenge is incorrect");
 						pairfree(&first);
 						return NULL;
@@ -495,7 +495,7 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 		case PW_TYPE_STRING:
 		case PW_TYPE_OCTETS:
 		default:
-			memcpy(p, vp->strvalue, vp->length);
+			memcpy(p, vp->vp_strvalue, vp->length);
 			length = vp->length;
 			break;
 		}
@@ -998,22 +998,22 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			vp = pairfind(fake->packet->vps, PW_EAP_MESSAGE);
 			if (vp &&
 			    (vp->length >= EAP_HEADER_LEN + 2) &&
-			    (vp->strvalue[0] == PW_EAP_RESPONSE) &&
-			    (vp->strvalue[EAP_HEADER_LEN] == PW_EAP_IDENTITY) &&
-			    (vp->strvalue[EAP_HEADER_LEN + 1] != 0)) {
+			    (vp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
+			    (vp->vp_strvalue[EAP_HEADER_LEN] == PW_EAP_IDENTITY) &&
+			    (vp->vp_strvalue[EAP_HEADER_LEN + 1] != 0)) {
 				/*
 				 *	Create & remember a User-Name
 				 */
 				t->username = pairmake("User-Name", "", T_OP_EQ);
 				rad_assert(t->username != NULL);
 
-				memcpy(t->username->strvalue, vp->strvalue + 5,
+				memcpy(t->username->vp_strvalue, vp->vp_strvalue + 5,
 				       vp->length - 5);
 				t->username->length = vp->length - 5;
-				t->username->strvalue[t->username->length] = 0;
+				t->username->vp_strvalue[t->username->length] = 0;
 
 				DEBUG2("  TTLS: Got tunneled identity of %s",
-				       t->username->strvalue);
+				       t->username->vp_strvalue);
 
 				/*
 				 *	If there's a default EAP type,
@@ -1050,7 +1050,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 */
 	if (t->state) {
 		DEBUG2("  TTLS: Adding old state with %02x %02x",
-		       t->state->strvalue[0], t->state->strvalue[1]);
+		       t->state->vp_strvalue[0], t->state->vp_strvalue[1]);
 		vp = paircopy(t->state);
 		if (vp) pairadd(&fake->packet->vps, vp);
 	}
@@ -1163,7 +1163,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		vp = pairfind(fake->config_items, PW_PROXY_TO_REALM);
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
-			DEBUG2("  TTLS: Tunneled authentication will be proxied to %s", vp->strvalue);
+			DEBUG2("  TTLS: Tunneled authentication will be proxied to %s", vp->vp_strvalue);
 
 			/*
 			 *	Tell the original request that it's going

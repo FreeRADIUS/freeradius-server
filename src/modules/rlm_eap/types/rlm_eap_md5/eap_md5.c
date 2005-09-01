@@ -184,7 +184,7 @@ int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 	 */
 	*ptr++ = packet->id;
 	len++;
-	memcpy(ptr, password->strvalue, password->length);
+	memcpy(ptr, password->vp_strvalue, password->length);
 	ptr += password->length;
 	len += password->length;
 

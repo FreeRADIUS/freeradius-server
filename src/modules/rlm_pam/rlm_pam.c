@@ -267,10 +267,10 @@ static int pam_auth(void *instance, REQUEST *request)
 	 *	for backwards compatibility.
 	 */
 	pair = pairfind(request->config_items, PAM_AUTH_ATTR);
-	if (pair) pam_auth_string = (char *)pair->strvalue;
+	if (pair) pam_auth_string = (char *)pair->vp_strvalue;
 
-	r = pam_pass((char *)request->username->strvalue,
-		     (char *)request->password->strvalue,
+	r = pam_pass((char *)request->username->vp_strvalue,
+		     (char *)request->password->vp_strvalue,
 		     pam_auth_string);
 
 #ifdef HAVE_SYSLOG_H

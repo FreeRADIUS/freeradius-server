@@ -39,7 +39,7 @@ static void add_reply(VALUE_PAIR** vp,
 		return;
 	}
 
-	memcpy(reply_attr->strvalue, value, len);
+	memcpy(reply_attr->vp_strvalue, value, len);
 	reply_attr->length = len;
 	pairadd(vp, reply_attr);
 }

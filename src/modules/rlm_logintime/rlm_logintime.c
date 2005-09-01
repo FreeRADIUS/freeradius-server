@@ -82,7 +82,7 @@ static int timecmp(void *instance,
 	/*
 	 *      If there's a request, use that timestamp.       
 	 */
-	if (timestr_match((char *)check->strvalue,
+	if (timestr_match((char *)check->vp_strvalue,
 	req ? req->timestamp : time(NULL)) >= 0)
 		return 0;
 
@@ -113,9 +113,9 @@ static int time_of_day(void *instance,
 	 */
 	if (!req) return -1;
   
-	if (strspn(check->strvalue, "0123456789: ") != strlen(check->strvalue)) {
+	if (strspn(check->vp_strvalue, "0123456789: ") != strlen(check->vp_strvalue)) {
 		DEBUG("rlm_logintime: Bad Time-Of-Day value \"%s\"",
-		      check->strvalue);
+		      check->vp_strvalue);
 		return -1;
 	}
 
@@ -125,12 +125,12 @@ static int time_of_day(void *instance,
 	/*
 	 *	Time of day is a 24-hour clock
 	 */
-	p = check->strvalue;
+	p = check->vp_strvalue;
 	scan = atoi(p);
 	p = strchr(p, ':');
 	if ((scan > 23) || !p) {
 		DEBUG("rlm_logintime: Bad Time-Of-Day value \"%s\"",
-		      check->strvalue);
+		      check->vp_strvalue);
 		return -1;
 	}
 	when = scan * 3600;
@@ -139,7 +139,7 @@ static int time_of_day(void *instance,
 	scan = atoi(p);
 	if (scan > 59) {
 		DEBUG("rlm_logintime: Bad Time-Of-Day value \"%s\"",
-		      check->strvalue);
+		      check->vp_strvalue);
 		return -1;
 	}
 	when += scan * 60;
@@ -149,7 +149,7 @@ static int time_of_day(void *instance,
 		scan = atoi(p + 1);
 		if (scan > 59) {
 			DEBUG("rlm_logintime: Bad Time-Of-Day value \"%s\"",
-			      check->strvalue);
+			      check->vp_strvalue);
 			return -1;
 		}
 		when += scan;
@@ -176,8 +176,8 @@ static int logintime_authorize(void *instance, REQUEST *request)
 	 	 *      Authentication is OK. Now see if this
 	 	 *      user may login at this time of the day.
 	 	 */
-		DEBUG("rlm_logintime: Checking Login-Time: '%s'",check_item->strvalue);
-		r = timestr_match((char *)check_item->strvalue,
+		DEBUG("rlm_logintime: Checking Login-Time: '%s'",check_item->vp_strvalue);
+		r = timestr_match((char *)check_item->vp_strvalue,
 		request->timestamp);
 		if (r == 0) {   /* unlimited */
 			/*
@@ -213,7 +213,7 @@ static int logintime_authorize(void *instance, REQUEST *request)
 			}
 
 			snprintf(logstr, sizeof(logstr), "Outside allowed timespan (time allowed %s)",
-			check_item->strvalue);
+			check_item->vp_strvalue);
 			module_fmsg_vp = pairmake("Module-Failure-Message", logstr, T_OP_EQ);
 			pairadd(&request->packet->vps, module_fmsg_vp);
 

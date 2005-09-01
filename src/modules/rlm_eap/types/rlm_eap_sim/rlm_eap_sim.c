@@ -57,7 +57,7 @@ static void add_reply(VALUE_PAIR** vp,
 		return;
 	}
 
-	memcpy(reply_attr->strvalue, value, len);
+	memcpy(reply_attr->vp_strvalue, value, len);
 	reply_attr->length = len;
 	pairadd(vp, reply_attr);
 }
@@ -106,7 +106,7 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 	/* the version list. We support only version 1. */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_VERSION_LIST,
 			PW_TYPE_OCTETS);
-	words = (uint16_t *)newvp->strvalue;
+	words = (uint16_t *)newvp->vp_strvalue;
 	newvp->length = 3*sizeof(uint16_t);
 	words[0] = htons(1*sizeof(uint16_t));
 	words[1] = htons(EAP_SIM_VERSION);
@@ -126,8 +126,8 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_FULLAUTH_ID_REQ,
 			   PW_TYPE_OCTETS);
 	newvp->length = 2;
-	newvp->strvalue[0]=0;
-	newvp->strvalue[0]=1;
+	newvp->vp_strvalue[0]=0;
+	newvp->vp_strvalue[0]=1;
 	pairadd(vps, newvp);
 
 	/* the SUBTYPE, set to start. */
@@ -156,7 +156,7 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
 		       vp->length);
 		return 0;
 	}
-	memcpy(ess->keys.rand[chalno], vp->strvalue, EAPSIM_RAND_SIZE);
+	memcpy(ess->keys.rand[chalno], vp->vp_strvalue, EAPSIM_RAND_SIZE);
 
 	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_SRES1+chalno);
 	if(vp == NULL) {
@@ -169,7 +169,7 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
 		       vp->length);
 		return 0;
 	}
-	memcpy(ess->keys.sres[chalno], vp->strvalue, EAPSIM_SRES_SIZE);
+	memcpy(ess->keys.sres[chalno], vp->vp_strvalue, EAPSIM_SRES_SIZE);
 
 	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_KC1+chalno);
 	if(vp == NULL) {
@@ -182,7 +182,7 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
 		       vp->length);
 		return 0;
 	}
-	memcpy(ess->keys.Kc[chalno], vp->strvalue, EAPSIM_Kc_SIZE);
+	memcpy(ess->keys.Kc[chalno], vp->vp_strvalue, EAPSIM_Kc_SIZE);
 
 	return 1;
 }
@@ -229,10 +229,10 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	/* okay, we got the challenges! Put them into an attribute */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_RAND,
 			   PW_TYPE_OCTETS);
-	memset(newvp->strvalue,    0, 2); /* clear reserved bytes */
-	memcpy(newvp->strvalue+2+EAPSIM_RAND_SIZE*0, ess->keys.rand[0], EAPSIM_RAND_SIZE);
-	memcpy(newvp->strvalue+2+EAPSIM_RAND_SIZE*1, ess->keys.rand[1], EAPSIM_RAND_SIZE);
-	memcpy(newvp->strvalue+2+EAPSIM_RAND_SIZE*2, ess->keys.rand[2], EAPSIM_RAND_SIZE);
+	memset(newvp->vp_strvalue,    0, 2); /* clear reserved bytes */
+	memcpy(newvp->vp_strvalue+2+EAPSIM_RAND_SIZE*0, ess->keys.rand[0], EAPSIM_RAND_SIZE);
+	memcpy(newvp->vp_strvalue+2+EAPSIM_RAND_SIZE*1, ess->keys.rand[1], EAPSIM_RAND_SIZE);
+	memcpy(newvp->vp_strvalue+2+EAPSIM_RAND_SIZE*2, ess->keys.rand[2], EAPSIM_RAND_SIZE);
 	newvp->length = 2+EAPSIM_RAND_SIZE*3;
 	pairadd(outvps, newvp);
 
@@ -261,12 +261,12 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC,
 			   PW_TYPE_OCTETS);
-	memcpy(newvp->strvalue, ess->keys.nonce_mt, 16);
+	memcpy(newvp->vp_strvalue, ess->keys.nonce_mt, 16);
 	newvp->length = 16;
 	pairreplace(outvps, newvp);
 
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_KEY, PW_TYPE_OCTETS);
-	memcpy(newvp->strvalue, ess->keys.K_aut, 16);
+	memcpy(newvp->vp_strvalue, ess->keys.K_aut, 16);
 	newvp->length = 16;
 	pairreplace(outvps, newvp);
 
@@ -448,7 +448,7 @@ static int process_eap_sim_start(EAP_HANDLER *handler, VALUE_PAIR *vps)
 		DEBUG2("   EAP-Sim version field is too short.");
 		return 0;
 	}
-	memcpy(&simversion, selectedversion_vp->strvalue, sizeof(simversion));
+	memcpy(&simversion, selectedversion_vp->vp_strvalue, sizeof(simversion));
 	simversion = ntohs(simversion);
 	if(simversion != EAP_SIM_VERSION) {
 		DEBUG2("   EAP-Sim version %d is unknown.", simversion);
@@ -456,7 +456,7 @@ static int process_eap_sim_start(EAP_HANDLER *handler, VALUE_PAIR *vps)
 	}
 
 	/* record it for later keying */
- 	memcpy(ess->keys.versionselect, selectedversion_vp->strvalue,
+ 	memcpy(ess->keys.versionselect, selectedversion_vp->vp_strvalue,
 	       sizeof(ess->keys.versionselect));
 
 	/*
@@ -466,7 +466,7 @@ static int process_eap_sim_start(EAP_HANDLER *handler, VALUE_PAIR *vps)
 		DEBUG2("   EAP-Sim nonce_mt must be 16 bytes (+2 bytes padding), not %d", nonce_vp->length);
 		return 0;
 	}
-	memcpy(ess->keys.nonce_mt, nonce_vp->strvalue+2, 16);
+	memcpy(ess->keys.nonce_mt, nonce_vp->vp_strvalue+2, 16);
 
 	/* everything looks good, change states */
 	eap_sim_stateenter(handler, ess, eapsim_server_challenge);
@@ -621,7 +621,15 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.12  2004-03-19 02:20:35  mcr
+ * Revision 1.13  2005-09-01 21:51:08  aland
+ * 	s/->strvalue/->vp_strvalue/g
+ *
+ * 	Update libradius.h with a union of data, so that we can move
+ * 	to vp->vp_ipv6addr, vp->vp_octets, etc.
+ *
+ * 	The surprising thing is that it still builds & works.
+ *
+ * Revision 1.12  2004/03/19 02:20:35  mcr
  * 	increment the EAP-id on each stage of the transaction.
  *
  * Revision 1.11  2004/02/26 19:04:31  aland

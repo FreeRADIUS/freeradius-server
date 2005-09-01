@@ -137,7 +137,7 @@ static void ttls_free(void *p)
 
 	if (t->username) {
 		DEBUG2("  TTLS: Freeing handler for user %s",
-		       t->username->strvalue);
+		       t->username->vp_strvalue);
 	}
 
 	pairfree(&t->username);

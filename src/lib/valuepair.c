@@ -327,9 +327,9 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			   */
 			case T_OP_SUB:		/* -= */
 				if (found) {
-					if (!i->strvalue[0] ||
-					    (strcmp((char *)found->strvalue,
-						    (char *)i->strvalue) == 0)){
+					if (!i->vp_strvalue[0] ||
+					    (strcmp((char *)found->vp_strvalue,
+						    (char *)i->vp_strvalue) == 0)){
 						pairdelete(to, found->attribute);
 
 						/*
@@ -357,29 +357,29 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 
 			case T_OP_REG_EQ:
 			  if (found &&
-			      (i->strvalue[0] == 's')) {
+			      (i->vp_strvalue[0] == 's')) {
 			    regex_t		reg;
 			    regmatch_t		match[1];
 
 			    char *str;
 			    char *p, *q;
 
-			    p = i->strvalue + 1;
+			    p = i->vp_strvalue + 1;
 			    q = strchr(p + 1, *p);
 			    if (!q || (q[strlen(q) - 1] != *p)) {
 			      tailfrom = i;
 			      continue;
 			    }
-			    str = strdup(i->strvalue + 2);
+			    str = strdup(i->vp_strvalue + 2);
 			    q = strchr(str, *p);
 			    *(q++) = '\0';
 			    q[strlen(q) - 1] = '\0';
 
 			    regcomp(&reg, str, 0);
-			    if (regexec(&reg, found->strvalue,
+			    if (regexec(&reg, found->vp_strvalue,
 					1, match, 0) == 0) {
 			      fprintf(stderr, "\"%s\" will have %d to %d replaced with %s\n",
-				      found->strvalue, match[0].rm_so,
+				      found->vp_strvalue, match[0].rm_so,
 				      match[0].rm_eo, q);
 
 			    }
@@ -708,10 +708,10 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 	/*
 	 *	Even for integers, dates and ip addresses we
-	 *	keep the original string in vp->strvalue.
+	 *	keep the original string in vp->vp_strvalue.
 	 */
-	strNcpy((char *)vp->strvalue, value, sizeof(vp->strvalue));
-	vp->length = strlen(vp->strvalue);
+	strNcpy((char *)vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
+	vp->length = strlen(vp->vp_strvalue);
 
 	switch(vp->type) {
 		case PW_TYPE_STRING:
@@ -786,7 +786,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			/*
 			 *	Special case to convert filter to binary
 			 */
-			strNcpy(vp->strvalue, value, sizeof(vp->strvalue));
+			strNcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
 		  	if (ascend_parse_filter(vp) < 0 ) {
 				librad_log("failed to parse Ascend binary attribute: %s",
 					   librad_errstr);
@@ -804,7 +804,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			if (strncasecmp(value, "0x", 2) == 0) {
 				u_char *us;
 				cp = value + 2;
-				us = vp->strvalue;
+				us = vp->vp_strvalue;
 				vp->length = 0;
 
 
@@ -835,23 +835,23 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 
 		case PW_TYPE_IFID:
-			if (ifid_aton(value, vp->strvalue) == NULL) {
+			if (ifid_aton(value, vp->vp_strvalue) == NULL) {
 				librad_log("failed to parse interface-id "
 					   "string \"%s\"", value);
 				return NULL;
 			}
 			vp->length = 8;
-			vp->strvalue[vp->length] = '\0';
+			vp->vp_strvalue[vp->length] = '\0';
 			break;
 
 		case PW_TYPE_IPV6ADDR:
-			if (inet_pton(AF_INET6, value, vp->strvalue) <= 0) {
+			if (inet_pton(AF_INET6, value, vp->vp_strvalue) <= 0) {
 				librad_log("failed to parse IPv6 address "
 					   "string \"%s\"", value);
 				return NULL;
 			}
 			vp->length = 16; /* length of IPv6 address */
-			vp->strvalue[vp->length] = '\0';
+			vp->vp_strvalue[vp->length] = '\0';
 			break;
 			/*
 			 *  Anything else.
@@ -869,7 +869,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				memcpy(buffer, value, p - value);
 				buffer[p - value] = '\0';
 				
-				if (inet_pton(AF_INET6, buffer, vp->strvalue + 2) <= 0) {
+				if (inet_pton(AF_INET6, buffer, vp->vp_strvalue + 2) <= 0) {
 					librad_log("failed to parse IPv6 address "
 						   "string \"%s\"", value);
 					return NULL;
@@ -881,9 +881,9 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 						   "string \"%s\"", value);
 					return NULL;
 				}
-				vp->strvalue[1] = prefix;
+				vp->vp_strvalue[1] = prefix;
 			}
-			vp->strvalue[0] = '\0';
+			vp->vp_strvalue[0] = '\0';
 			vp->length = 16 + 2;
 			break;
 
@@ -1034,7 +1034,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 				librad_log("Attribute has invalid length");
 				return NULL;
 			}
-			memcpy(&vp->lvalue, vp->strvalue, sizeof(vp->lvalue));
+			memcpy(&vp->lvalue, vp->vp_strvalue, sizeof(vp->lvalue));
 			break;
 
 		case PW_TYPE_IFID:
@@ -1176,7 +1176,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		 */
 	case T_OP_CMP_TRUE:
 	case T_OP_CMP_FALSE:
-		vp->strvalue[0] = '\0';
+		vp->vp_strvalue[0] = '\0';
 		vp->length = 0;
 	        return vp;
 		break;
@@ -1317,7 +1317,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 				return NULL;
 			}
 
-			strNcpy(vp->strvalue, value, sizeof(vp->strvalue));
+			strNcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
 			vp->flags.do_xlat = 1;
 			vp->length = 0;
 		} else {
@@ -1337,7 +1337,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 		}
 
 		vp->flags.do_xlat = 1;
-		strNcpy(vp->strvalue, value, sizeof(vp->strvalue));
+		strNcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
 		vp->length = 0;
 		break;
 	}

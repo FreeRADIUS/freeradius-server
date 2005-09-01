@@ -54,7 +54,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli) {
 
 	snprintf(buf, buflen, "from client %.128s port %u%s%.128s",
 			client_name_old(&request->packet->src_ipaddr), port,
-			(do_cli ? " cli " : ""), (do_cli ? (char *)cli->strvalue : ""));
+			(do_cli ? " cli " : ""), (do_cli ? (char *)cli->vp_strvalue : ""));
 
 	return buf;
 }
@@ -91,7 +91,7 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 	if (username == NULL) {
 		strcpy(clean_username, "<no User-Name attribute>");
 	} else {
-		librad_safeprint((char *)username->strvalue,
+		librad_safeprint((char *)username->vp_strvalue,
 				username->length,
 				clean_username, sizeof(clean_username));
 	}
@@ -105,17 +105,17 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 
 			auth_type = pairfind(request->config_items,
 					     PW_AUTH_TYPE);
-			if (auth_type && (auth_type->strvalue[0] != '\0')) {
+			if (auth_type && (auth_type->vp_strvalue[0] != '\0')) {
 				snprintf(clean_password, sizeof(clean_password),
 					 "<via Auth-Type = %s>",
-					 auth_type->strvalue);
+					 auth_type->vp_strvalue);
 			} else {
 				strcpy(clean_password, "<no User-Password attribute>");
 			}
 		} else if (request->password->attribute == PW_CHAP_PASSWORD) {
 			strcpy(clean_password, "<CHAP-Password>");
 		} else {
-			librad_safeprint((char *)request->password->strvalue,
+			librad_safeprint((char *)request->password->vp_strvalue,
 					 request->password->length,
 					 clean_password, sizeof(clean_password));
 		}
@@ -173,7 +173,7 @@ static int rad_check_password(REQUEST *request)
 		auth_type_count++;
 
 		DEBUG2("  rad_check_password:  Found Auth-Type %s",
-				auth_type_pair->strvalue);
+				auth_type_pair->vp_strvalue);
 		cur_config_item = auth_type_pair->next;
 
 		if (auth_type == PW_AUTHTYPE_REJECT) {
@@ -184,7 +184,7 @@ static int rad_check_password(REQUEST *request)
 
 	if (( auth_type_count > 1) && (debug_flag)) {
 		radlog(L_ERR, "Warning:  Found %d auth-types on request for user '%s'",
-			auth_type_count, request->username->strvalue);
+			auth_type_count, request->username->vp_strvalue);
 	}
 
 	/*
@@ -249,8 +249,8 @@ static int rad_check_password(REQUEST *request)
 				return -1;
 			}
 
-			switch (lrad_crypt_check((char *)auth_item->strvalue,
-									 (char *)password_pair->strvalue)) {
+			switch (lrad_crypt_check((char *)auth_item->vp_strvalue,
+									 (char *)password_pair->vp_strvalue)) {
 			case -1:
 			  rad_authlog("Login incorrect "
 						  "(system failed to supply an encrypted password for comparison)", request, 0);
@@ -286,8 +286,8 @@ static int rad_check_password(REQUEST *request)
 			 *	Local password is just plain text.
 	 		 */
 			if (auth_item->attribute == PW_PASSWORD) {
-				if (strcmp((char *)password_pair->strvalue,
-					   (char *)auth_item->strvalue) != 0) {
+				if (strcmp((char *)password_pair->vp_strvalue,
+					   (char *)auth_item->vp_strvalue) != 0) {
 					DEBUG2("auth: user supplied User-Password does NOT match local User-Password");
 					return -1;
 				}
@@ -302,12 +302,12 @@ static int rad_check_password(REQUEST *request)
 			}
 
 			rad_chap_encode(request->packet, string,
-					auth_item->strvalue[0], password_pair);
+					auth_item->vp_strvalue[0], password_pair);
 
 			/*
 			 *	Compare them
 			 */
-			if (memcmp(string + 1, auth_item->strvalue + 1,
+			if (memcmp(string + 1, auth_item->vp_strvalue + 1,
 				   CHAP_VALUE_LENGTH) != 0) {
 				DEBUG2("auth: user supplied CHAP-Password does NOT match local User-Password");
 				return -1;
@@ -526,7 +526,7 @@ int rad_authenticate(REQUEST *request)
 	 */
 	auth_item = request->password;
 	if (auth_item) {
-		password = (const char *)auth_item->strvalue;
+		password = (const char *)auth_item->vp_strvalue;
 
 	} else {
 		/*
@@ -559,7 +559,7 @@ autz_redo:
 					PW_MODULE_FAILURE_MESSAGE)) != NULL){
 				char msg[MAX_STRING_LEN+16];
 				snprintf(msg, sizeof(msg), "Invalid user (%s)",
-					 module_msg->strvalue);
+					 module_msg->vp_strvalue);
 				rad_authlog(msg,request,0);
 			} else {
 				rad_authlog("Invalid user", request, 0);
@@ -592,7 +592,7 @@ autz_redo:
 		 *	Catch users who set Proxy-To-Realm to a LOCAL
 		 *	realm (sigh).
 		 */
-		realm = realm_find(tmp->strvalue, 0);
+		realm = realm_find(tmp->vp_strvalue, 0);
 		rad_assert((realm == NULL) || (realm->ipaddr.af == AF_INET));
 		if (realm && (realm->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE))) {
 			DEBUG2("  WARNING: You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling invalid proxy request.", realm->realm);
@@ -636,7 +636,7 @@ autz_redo:
 			char msg[MAX_STRING_LEN+19];
 
 			snprintf(msg, sizeof(msg), "Login incorrect (%s)",
-				 module_msg->strvalue);
+				 module_msg->vp_strvalue);
 			rad_authlog(msg, request, 0);
 		} else {
 			rad_authlog("Login incorrect", request, 0);
@@ -647,7 +647,7 @@ autz_redo:
 				(auth_item->attribute == PW_PASSWORD)) {
 			u_char *p;
 
-			p = auth_item->strvalue;
+			p = auth_item->vp_strvalue;
 			while (*p != '\0') {
 				if (!isprint((int) *p)) {
 					log_debug("  WARNING: Unprintable characters in the password.\n\t  Double-check the shared secret on the server and the NAS!");
@@ -750,7 +750,7 @@ autz_redo:
 		  unsigned long tvalue = ntohl(tmp->lvalue);
 		  tmp->lvalue = htonl(tvalue + vpPortId->lvalue);
 		  tmp->flags.addport = 0;
-		  ip_ntoa(tmp->strvalue, tmp->lvalue);
+		  ip_ntoa(tmp->vp_strvalue, tmp->lvalue);
 		} else {
 			DEBUG2("WARNING: No NAS-Port attribute in request.  CANNOT return a Framed-IP-Address + NAS-Port.\n");
 			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS);
@@ -768,7 +768,7 @@ autz_redo:
 		char msg[MAX_STRING_LEN+12];
 
 		snprintf(msg, sizeof(msg), "Login OK (%s)",
-			 module_msg->strvalue);
+			 module_msg->vp_strvalue);
 		rad_authlog(msg, request, 1);
 	} else {
 		rad_authlog("Login OK", request, 1);

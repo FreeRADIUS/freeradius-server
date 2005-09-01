@@ -226,9 +226,9 @@ static int sm_parse_user(DBM *pdb, const char * username, VALUE_PAIR const* requ
 						join_attr = vp;
    	 					while( (join_attr = pairfind(join_attr,SM_JOIN_ATTR) ) != NULL ) {
    	 					 	DEBUG2("rlm_dbm: Proccess nested record: username %s",
-   	 					 		(char *)join_attr->strvalue);
+   	 					 		(char *)join_attr->vp_strvalue);
    	 					 	/* res =  RLM_MODULE_NOTFOUND; */
-   	 						res =  sm_parse_user(pdb, (char *)join_attr->strvalue, request, &tmp_config,
+   	 						res =  sm_parse_user(pdb, (char *)join_attr->vp_strvalue, request, &tmp_config,
    	 					 			&nu_reply, ulist);
 							DEBUG("rlm_dbm: recived: %d\n",res);
 							switch ( res ) {
@@ -325,7 +325,7 @@ static int rlm_dbm_authorize(void *instance, REQUEST *request)
          *      Grab the canonical user name.
          */
         namepair = request->username;
-        name = namepair ? (char *) namepair->strvalue : "NONE";
+        name = namepair ? (char *) namepair->vp_strvalue : "NONE";
 
 	DEBUG2("rlm_dbm: try open database file: %s\n",inst -> userfile);
 

@@ -66,7 +66,7 @@ int proxy_receive(REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE);
 	if (vp) {
-		DEBUG2("  Found Post-Proxy-Type %s", vp->strvalue);
+		DEBUG2("  Found Post-Proxy-Type %s", vp->vp_strvalue);
 		post_proxy_type = vp->lvalue;
 	}
 	rcode = module_post_proxy(post_proxy_type, request);
@@ -119,8 +119,8 @@ static void proxy_addinfo(REQUEST *request)
 		radlog(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
-	sprintf((char *)proxy_pair->strvalue, "%d", request->packet->id);
-	proxy_pair->length = strlen((char *)proxy_pair->strvalue);
+	sprintf((char *)proxy_pair->vp_strvalue, "%d", request->packet->id);
+	proxy_pair->length = strlen((char *)proxy_pair->vp_strvalue);
 
 	pairadd(&request->proxy->vps, proxy_pair);
 }
@@ -289,7 +289,7 @@ int proxy_send(REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-	realmname = (char *)realmpair->strvalue;
+	realmname = (char *)realmpair->vp_strvalue;
 
 	/*
 	 *	Look for the realm, using the load balancing
@@ -421,8 +421,8 @@ int proxy_send(REQUEST *request)
 			vp->next = request->proxy->vps;
 			request->proxy->vps = vp;
 		}
-		memcpy(vp->strvalue, strippedname->strvalue,
-		       sizeof(vp->strvalue));
+		memcpy(vp->vp_strvalue, strippedname->vp_strvalue,
+		       sizeof(vp->vp_strvalue));
 		vp->length = strippedname->length;
 
 		/*
@@ -444,7 +444,7 @@ int proxy_send(REQUEST *request)
 			exit(1);
 		}
 		vp->length = AUTH_VECTOR_LEN;
-		memcpy(vp->strvalue, request->packet->vector, AUTH_VECTOR_LEN);
+		memcpy(vp->vp_strvalue, request->packet->vector, AUTH_VECTOR_LEN);
 		pairadd(&(request->proxy->vps), vp);
 	}
 
@@ -488,7 +488,7 @@ int proxy_send(REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE);
 	if (vp) {
-		DEBUG2("  Found Pre-Proxy-Type %s", vp->strvalue);
+		DEBUG2("  Found Pre-Proxy-Type %s", vp->vp_strvalue);
 		pre_proxy_type = vp->lvalue;
 	}
 	rcode = module_pre_proxy(pre_proxy_type, request);

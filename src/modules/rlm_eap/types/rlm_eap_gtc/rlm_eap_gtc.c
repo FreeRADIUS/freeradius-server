@@ -205,7 +205,7 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 		}
 
 		if (memcmp(eap_ds->response->type.data,
-			   vp->strvalue, vp->length) != 0) {
+			   vp->vp_strvalue, vp->length) != 0) {
 			DEBUG2("  rlm_eap_gtc: ERROR: Passwords are different");
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
@@ -230,8 +230,8 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 			return 0;
 		}
 		vp->length = eap_ds->response->type.length;
-		memcpy(vp->strvalue, eap_ds->response->type.data, vp->length);
-		vp->strvalue[vp->length] = 0;
+		memcpy(vp->vp_strvalue, eap_ds->response->type.data, vp->length);
+		vp->vp_strvalue[vp->length] = 0;
 
 		/*
 		 *	Add the password to the request, and allow

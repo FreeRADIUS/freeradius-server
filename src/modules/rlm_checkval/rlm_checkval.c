@@ -226,7 +226,7 @@ static int do_checkval(void *instance, REQUEST *request)
 			ret = RLM_MODULE_NOTFOUND;
 	}
 	if (item_vp)
-		DEBUG2("rlm_checkval: Item Name: %s, Value: %s",data->item_name, item_vp->strvalue);
+		DEBUG2("rlm_checkval: Item Name: %s, Value: %s",data->item_name, item_vp->vp_strvalue);
 	tmp = request->config_items;
 	do{
 		if (!(chk_vp = pairfind(tmp, data->chk_attr))){
@@ -238,7 +238,7 @@ static int do_checkval(void *instance, REQUEST *request)
 		}
 		if (!item_vp)
 			break;
-		DEBUG2("rlm_checkval: Value Name: %s, Value: %s",data->check_name, chk_vp->strvalue);
+		DEBUG2("rlm_checkval: Value Name: %s, Value: %s",data->check_name, chk_vp->vp_strvalue);
 
 		/*
 	 	* Check if item != check
@@ -249,8 +249,8 @@ static int do_checkval(void *instance, REQUEST *request)
 			if (item_vp->length != chk_vp->length)
 				ret = RLM_MODULE_REJECT;
 			else{
-				if (!memcmp(item_vp->strvalue,
-					    chk_vp->strvalue,
+				if (!memcmp(item_vp->vp_strvalue,
+					    chk_vp->vp_strvalue,
 					    (size_t) chk_vp->length))
 					ret = RLM_MODULE_OK;
 				else
@@ -272,13 +272,13 @@ static int do_checkval(void *instance, REQUEST *request)
 			char err_msg[MAX_STRING_LEN];
 
 			DEBUG("rlm_checkval: Doing regex");
-			err = regcomp(&reg, (char *)chk_vp->strvalue, REG_EXTENDED|REG_NOSUB);
+			err = regcomp(&reg, (char *)chk_vp->vp_strvalue, REG_EXTENDED|REG_NOSUB);
 			if (err){
 				regerror(err, &reg,err_msg, MAX_STRING_LEN);
 				DEBUG("rlm_checkval: regcomp() returned error: %s", err_msg);
 				return RLM_MODULE_FAIL;
 			}
-			if (regexec(&reg, (char *)item_vp->strvalue,0, NULL, 0) == 0)
+			if (regexec(&reg, (char *)item_vp->vp_strvalue,0, NULL, 0) == 0)
 				ret = RLM_MODULE_OK;
 			else
 				ret = RLM_MODULE_REJECT;

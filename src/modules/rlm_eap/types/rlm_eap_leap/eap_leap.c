@@ -210,7 +210,7 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 			 *  Yes, the *even* bytes have the values,
 			 *  and the *odd* bytes are zero.
 			 */
-			unicode[(i << 1)] = password->strvalue[i];
+			unicode[(i << 1)] = password->vp_strvalue[i];
 		}
 
 		/*
@@ -220,8 +220,8 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 
 	} else {		/* MUST be NT-Password */
 		if (password->length == 32) {
-			password->length = lrad_hex2bin(password->strvalue,
-							password->strvalue,
+			password->length = lrad_hex2bin(password->vp_strvalue,
+							password->vp_strvalue,
 							16);
 		}
 		if (password->length != 16) {
@@ -229,7 +229,7 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 			return 0;
 		}
 
-		memcpy(ntpwdhash, password->strvalue, 16);
+		memcpy(ntpwdhash, password->vp_strvalue, 16);
 	}
 	return 1;
 }
@@ -318,7 +318,7 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 	/*
 	 *	Copy the name over, and ensure it's NUL terminated.
 	 */
-	memcpy(reply->name, user_name->strvalue, user_name->length);
+	memcpy(reply->name, user_name->vp_strvalue, user_name->length);
 	reply->name[user_name->length] = '\0';
 	reply->name_len = user_name->length;
 
@@ -367,12 +367,12 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 	 */
 	librad_md5_calc(ntpwdhash, buffer, 16 + 8 + 24 + 8 + 24);
 
-	memcpy(vp->strvalue + vp->length, ntpwdhash, 16);
-	memset(vp->strvalue + vp->length + 16, 0,
-	       sizeof(vp->strvalue) - (vp->length + 16));
+	memcpy(vp->vp_strvalue + vp->length, ntpwdhash, 16);
+	memset(vp->vp_strvalue + vp->length + 16, 0,
+	       sizeof(vp->vp_strvalue) - (vp->length + 16));
 
 	i = 16;
-	rad_tunnel_pwencode(vp->strvalue + vp->length, &i,
+	rad_tunnel_pwencode(vp->vp_strvalue + vp->length, &i,
 			    request->secret, request->packet->vector);
 	vp->length += i;
 	pairadd(reply_vps, vp);
@@ -428,7 +428,7 @@ LEAP_PACKET *eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name)
 	/*
 	 *	Copy the name over, and ensure it's NUL terminated.
 	 */
-	memcpy(reply->name, user_name->strvalue, user_name->length);
+	memcpy(reply->name, user_name->vp_strvalue, user_name->length);
 	reply->name[user_name->length] = '\0';
 	reply->name_len = user_name->length;
 

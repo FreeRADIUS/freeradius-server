@@ -221,12 +221,12 @@ static radclient_t *radclient_init(const char *filename)
 		 *	Keep a copy of the the User-Password attribute.
 		 */
 		if ((vp = pairfind(radclient->request->vps, PW_PASSWORD)) != NULL) {
-			strNcpy(radclient->password, (char *)vp->strvalue, sizeof(vp->strvalue));
+			strNcpy(radclient->password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 			/*
 			 *	Otherwise keep a copy of the CHAP-Password attribute.
 			 */
 		} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD)) != NULL) {
-			strNcpy(radclient->password, (char *)vp->strvalue, sizeof(vp->strvalue));
+			strNcpy(radclient->password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 		} else {
 			radclient->password[0] = '\0';
 		}
@@ -259,7 +259,7 @@ static radclient_t *radclient_init(const char *filename)
 			case PW_PACKET_DST_IPV6_ADDRESS:
 				radclient->request->dst_ipaddr.af = AF_INET6;
 				memcpy(&radclient->request->dst_ipaddr.ipaddr.ip6addr,
-				       vp->strvalue,
+				       vp->vp_strvalue,
 				       sizeof(radclient->request->dst_ipaddr.ipaddr.ip6addr));
 				break;
 
@@ -275,7 +275,7 @@ static radclient_t *radclient_init(const char *filename)
 			case PW_PACKET_SRC_IPV6_ADDRESS:
 				radclient->request->src_ipaddr.af = AF_INET6;
 				memcpy(&radclient->request->src_ipaddr.ipaddr.ip6addr,
-				       vp->strvalue,
+				       vp->vp_strvalue,
 				       sizeof(radclient->request->src_ipaddr.ipaddr.ip6addr));
 				break;
 
@@ -290,10 +290,10 @@ static radclient_t *radclient_init(const char *filename)
 			case PW_DIGEST_NONCE_COUNT:
 			case PW_DIGEST_USER_NAME:
 				/* overlapping! */
-				memmove(&vp->strvalue[2], &vp->strvalue[0], vp->length);
-				vp->strvalue[0] = vp->attribute - PW_DIGEST_REALM + 1;
+				memmove(&vp->vp_strvalue[2], &vp->vp_strvalue[0], vp->length);
+				vp->vp_strvalue[0] = vp->attribute - PW_DIGEST_REALM + 1;
 				vp->length += 2;
-				vp->strvalue[1] = vp->length;
+				vp->vp_strvalue[1] = vp->length;
 				vp->attribute = PW_DIGEST_ATTRIBUTES;
 				break;
 			}
@@ -535,14 +535,14 @@ static int send_one_packet(radclient_t *radclient)
 			VALUE_PAIR *vp;
 
 			if ((vp = pairfind(radclient->request->vps, PW_PASSWORD)) != NULL) {
-				strNcpy((char *)vp->strvalue, radclient->password, strlen(radclient->password) + 1);
+				strNcpy((char *)vp->vp_strvalue, radclient->password, strlen(radclient->password) + 1);
 				vp->length = strlen(radclient->password);
 
 			} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD)) != NULL) {
-				strNcpy((char *)vp->strvalue, radclient->password, strlen(radclient->password) + 1);
+				strNcpy((char *)vp->vp_strvalue, radclient->password, strlen(radclient->password) + 1);
 				vp->length = strlen(radclient->password);
 
-				rad_chap_encode(radclient->request, (char *) vp->strvalue, radclient->request->id, vp);
+				rad_chap_encode(radclient->request, (char *) vp->vp_strvalue, radclient->request->id, vp);
 				vp->length = 17;
 			}
 		}

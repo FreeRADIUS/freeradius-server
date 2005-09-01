@@ -76,7 +76,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 		pairfree(&(stopreq->packet->vps)); \
 		return 0; \
 	} \
-	strNcpy((char *)vp->strvalue, v, sizeof vp->strvalue); \
+	strNcpy((char *)vp->vp_strvalue, v, sizeof vp->vp_strvalue); \
 	vp->length = strlen(v); \
 	pairadd(&(stopreq->packet->vps), vp); \
 	} while(0)

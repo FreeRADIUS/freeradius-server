@@ -408,7 +408,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 */
 		vp = pairfind(request->reply->vps, PW_USER_NAME);
 		if (!vp) {
-			vp = pairmake("User-Name", request->username->strvalue,
+			vp = pairmake("User-Name", request->username->vp_strvalue,
 				      T_OP_EQ);
 			rad_assert(vp != NULL);
 			pairadd(&(request->reply->vps), vp);
@@ -419,8 +419,8 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 *	terminated string in Access-Accept.
 		 */
 		if ((inst->cisco_accounting_username_bug) &&
-		    (vp->length < (int) sizeof(vp->strvalue))) {
-			vp->strvalue[vp->length] = '\0';
+		    (vp->length < (int) sizeof(vp->vp_strvalue))) {
+			vp->vp_strvalue[vp->length] = '\0';
 			vp->length++;
 		}
 	}
@@ -567,7 +567,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 			 */
 			vp = pairfind(request->reply->vps, PW_USER_NAME);
 			if (!vp) {
-				vp = pairmake("User-Name", request->username->strvalue,
+				vp = pairmake("User-Name", request->username->vp_strvalue,
 					      T_OP_EQ);
 				rad_assert(vp != NULL);
 				pairadd(&(request->reply->vps), vp);
@@ -601,7 +601,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		 *
 		 *	The format is VERY specific!
 		 */
-		if (strncasecmp(vp->strvalue, "leap:session-key=", 17) == 0) {
+		if (strncasecmp(vp->vp_strvalue, "leap:session-key=", 17) == 0) {
 			break;
 		}
 
@@ -624,7 +624,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 	 *	Decrypt the session key, using the proxy data.
 	 */
 	i = 34;			/* starts off with 34 octets */
-	len = rad_tunnel_pwdecode(vp->strvalue + 17, &i,
+	len = rad_tunnel_pwdecode(vp->vp_strvalue + 17, &i,
 				  request->proxysecret,
 				  request->proxy->vector);
 
@@ -635,7 +635,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 	/*
 	 *	Encrypt the session key again, using the request data.
 	 */
-	rad_tunnel_pwencode(vp->strvalue + 17, &len,
+	rad_tunnel_pwencode(vp->vp_strvalue + 17, &len,
 			    request->secret,
 			    request->packet->vector);
 

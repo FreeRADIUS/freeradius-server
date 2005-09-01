@@ -650,9 +650,9 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		ret=RLM_MODULE_OK;
 
 		DEBUG2("rlm_sqlcounter: Authorized user %s, check_item=%d, counter=%d",
-				key_vp->strvalue,check_vp->lvalue,counter);
+				key_vp->vp_strvalue,check_vp->lvalue,counter);
 		DEBUG2("rlm_sqlcounter: Sent Reply-Item for user %s, Type=Session-Timeout, value=%d",
-				key_vp->strvalue,reply_item->lvalue);
+				key_vp->vp_strvalue,reply_item->lvalue);
 	}
 	else{
 		char module_fmsg[MAX_STRING_LEN];
@@ -674,7 +674,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		ret=RLM_MODULE_REJECT;
 
 		DEBUG2("rlm_sqlcounter: Rejected user %s, check_item=%d, counter=%d",
-				key_vp->strvalue,check_vp->lvalue,counter);
+				key_vp->vp_strvalue,check_vp->lvalue,counter);
 	}
 
 	return ret;

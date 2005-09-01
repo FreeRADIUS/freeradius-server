@@ -556,7 +556,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 	 *	Grab the canonical user name.
 	 */
 	namepair = request->username;
-	name = namepair ? (char *) namepair->strvalue : "NONE";
+	name = namepair ? (char *) namepair->vp_strvalue : "NONE";
 
 	/*
 	 *	Find the entry for the user.
@@ -703,7 +703,7 @@ static int fastuser_preacct(void *instance, REQUEST *request)
 	struct fastuser_instance *inst = instance;
 
 	namepair = request->username;
-	name = namepair ? (char *) namepair->strvalue : "NONE";
+	name = namepair ? (char *) namepair->vp_strvalue : "NONE";
 	request_pairs = request->packet->vps;
 	config_pairs = &request->config_items;
 

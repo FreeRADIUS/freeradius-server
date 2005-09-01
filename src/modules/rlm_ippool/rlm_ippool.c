@@ -483,7 +483,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	 * run only if they match
 	 */
 	if ((vp = pairfind(request->config_items, PW_POOL_NAME)) != NULL){
-		if (data->name == NULL || (strcmp(data->name,vp->strvalue) && strcmp(vp->strvalue,"DEFAULT")))
+		if (data->name == NULL || (strcmp(data->name,vp->vp_strvalue) && strcmp(vp->vp_strvalue,"DEFAULT")))
 			return RLM_MODULE_NOOP;
 	} else {
 		DEBUG("rlm_ippool: Could not find Pool-Name attribute.");
@@ -495,7 +495,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	 * Find the caller id
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
-		cli = vp->strvalue;
+		cli = vp->vp_strvalue;
 
 
 	if (!radius_xlat(xlat_str,MAX_STRING_LEN,data->key, request, NULL)){
@@ -801,7 +801,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			return RLM_MODULE_FAIL;
 		}
 		vp->lvalue = entry.ipaddr;
-		ip_ntoa(vp->strvalue, vp->lvalue);
+		ip_ntoa(vp->vp_strvalue, vp->lvalue);
 		pairadd(&request->reply->vps, vp);
 
 		/*
@@ -813,7 +813,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 				radlog(L_ERR|L_CONS, "no memory");
 			else {
 				vp->lvalue = ntohl(data->netmask);
-				ip_ntoa(vp->strvalue, vp->lvalue);
+				ip_ntoa(vp->vp_strvalue, vp->lvalue);
 				pairadd(&request->reply->vps, vp);
 			}
 		}

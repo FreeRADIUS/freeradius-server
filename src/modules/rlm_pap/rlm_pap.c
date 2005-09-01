@@ -236,16 +236,16 @@ static void normify(VALUE_PAIR *vp, int min_length)
 	int decoded;
 	char buffer[64];
 	
-	if (min_length >= sizeof(buffer)) return; /* paranoia */
+	if ((size_t) min_length >= sizeof(buffer)) return; /* paranoia */
 
 	/*
 	 *	Hex encoding.
 	 */
 	if (vp->length >= (2 * min_length)) {
-		decoded = lrad_hex2bin(vp->strvalue, buffer, vp->length >> 1);
+		decoded = lrad_hex2bin(vp->vp_strvalue, buffer, vp->length >> 1);
 		if (decoded == (vp->length >> 1)) {
 			DEBUG2("rlm_pap: Normalizing %s from hex encoding", vp->name);
-			memcpy(vp->strvalue, buffer, decoded);
+			memcpy(vp->vp_strvalue, buffer, decoded);
 			vp->length = decoded;
 			return;
 		}
@@ -256,10 +256,10 @@ static void normify(VALUE_PAIR *vp, int min_length)
 	 *	and we want to avoid division...
 	 */
 	if ((vp->length * 3) >= ((min_length * 4))) {
-		decoded = base64_decode(vp->strvalue, buffer);
+		decoded = base64_decode(vp->vp_strvalue, buffer);
 		if (decoded >= min_length) {
 			DEBUG2("rlm_pap: Normalizing %s from base64 encoding", vp->name);
-			memcpy(vp->strvalue, buffer, decoded);
+			memcpy(vp->vp_strvalue, buffer, decoded);
 			vp->length = decoded;
 			return;
 		}
@@ -293,19 +293,19 @@ static int pap_authorize(void *instance, REQUEST *request)
 			/*
 			 *	Look for '{foo}', and use them
 			 */
-			if (inst->auto_header && (vp->strvalue[0] == '{')) {
+			if (inst->auto_header && (vp->vp_strvalue[0] == '{')) {
 				int attr;
-				uint8_t *p;
+				uint8_t *p, *q;
 				char buffer[64];
 
-				p = strchr(vp->strvalue + 1, '}');
+				q = vp->vp_strvalue;
+				p = strchr(q + 1, '}');
 				if (!p) break;
 
-				if ((p - vp->strvalue) > sizeof(buffer)) break;
+				if ((size_t) (p - q) > sizeof(buffer)) break;
 
-				memcpy(buffer, vp->strvalue,
-				       p - vp->strvalue + 1);
-				buffer[p - vp->strvalue + 1] = '\0';
+				memcpy(buffer, q, p - q + 1);
+				buffer[p - q + 1] = '\0';
 
 				attr = lrad_str2int(header_names, buffer, 0);
 				if (!attr) {
@@ -318,15 +318,15 @@ static int pap_authorize(void *instance, REQUEST *request)
 				 */
 				if (attr == PW_USER_PASSWORD) {
 					vp->length = strlen(p + 1);
-					memmove(vp->strvalue, p + 1,
+					memmove(vp->vp_strvalue, p + 1,
 						vp->length + 1);
 				} else {
 					VALUE_PAIR *new_vp;
 					new_vp = paircreate(attr, PW_TYPE_STRING);
 					if (!new_vp) break; /* OOM */
 					
-					strcpy(new_vp->strvalue, p + 1);/* bounds OK */
-					new_vp->length = strlen(new_vp->strvalue);
+					strcpy(new_vp->vp_strvalue, p + 1);/* bounds OK */
+					new_vp->length = strlen(new_vp->vp_strvalue);
 					pairadd(&request->config_items, new_vp);
 					fixed_auto = TRUE;
 				}
@@ -358,7 +358,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 			 */
 		case PW_PROXY_TO_REALM:
 		{
-			REALM *realm = realm_find(vp->strvalue, 0);
+			REALM *realm = realm_find(vp->vp_strvalue, 0);
 			if (realm &&
 			    (realm->ipaddr.af == AF_INET) &&
 			    (realm->ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_NONE))) {
@@ -465,7 +465,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	}
 
 	DEBUG("rlm_pap: login attempt with password %s",
-	      request->password->strvalue);
+	      request->password->vp_strvalue);
 
 	/*
 	 *	First, auto-detect passwords, by attribute in the
@@ -534,8 +534,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	case PAP_ENC_CLEAR:
 	do_clear:
 		DEBUG("rlm_pap: Using clear text password.");
-		if (strcmp((char *) vp->strvalue,
-			   (char *) request->password->strvalue) != 0){
+		if (strcmp((char *) vp->vp_strvalue,
+			   (char *) request->password->vp_strvalue) != 0){
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CLEAR TEXT password check failed");
 			goto make_msg;
 		}
@@ -547,8 +547,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	case PAP_ENC_CRYPT:
 	do_crypt:
 		DEBUG("rlm_pap: Using CRYPT encryption.");
-		if (lrad_crypt_check((char *) request->password->strvalue,
-				     (char *) vp->strvalue) != 0) {
+		if (lrad_crypt_check((char *) request->password->vp_strvalue,
+				     (char *) vp->vp_strvalue) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CRYPT password check failed");
 			goto make_msg;
 		}
@@ -567,10 +567,10 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 		
 		MD5Init(&md5_context);
-		MD5Update(&md5_context, request->password->strvalue,
+		MD5Update(&md5_context, request->password->vp_strvalue,
 			  request->password->length);
 		MD5Final(digest, &md5_context);
-		if (memcmp(digest, vp->strvalue, vp->length) != 0) {
+		if (memcmp(digest, vp->vp_strvalue, vp->length) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: MD5 password check failed");
 			goto make_msg;
 		}
@@ -589,15 +589,15 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 		
 		MD5Init(&md5_context);
-		MD5Update(&md5_context, request->password->strvalue,
+		MD5Update(&md5_context, request->password->vp_strvalue,
 			  request->password->length);
-		MD5Update(&md5_context, &vp->strvalue[16], vp->length - 16);
+		MD5Update(&md5_context, &vp->vp_strvalue[16], vp->length - 16);
 		MD5Final(digest, &md5_context);
 
 		/*
 		 *	Compare only the MD5 hash results, not the salt.
 		 */
-		if (memcmp(digest, vp->strvalue, 16) != 0) {
+		if (memcmp(digest, vp->vp_strvalue, 16) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SMD5 password check failed");
 			goto make_msg;
 		}
@@ -616,10 +616,10 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 		
 		SHA1Init(&sha1_context);
-		SHA1Update(&sha1_context, request->password->strvalue,
+		SHA1Update(&sha1_context, request->password->vp_strvalue,
 			   request->password->length);
 		SHA1Final(digest,&sha1_context);
-		if (memcmp(digest, vp->strvalue, vp->length) != 0) {
+		if (memcmp(digest, vp->vp_strvalue, vp->length) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SHA1 password check failed");
 			goto make_msg;
 		}
@@ -639,11 +639,11 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 		
 		SHA1Init(&sha1_context);
-		SHA1Update(&sha1_context, request->password->strvalue,
+		SHA1Update(&sha1_context, request->password->vp_strvalue,
 			   request->password->length);
-		SHA1Update(&sha1_context, &vp->strvalue[20], vp->length - 20);
+		SHA1Update(&sha1_context, &vp->vp_strvalue[20], vp->length - 20);
 		SHA1Final(digest,&sha1_context);
-		if (memcmp(digest, vp->strvalue, 20) != 0) {
+		if (memcmp(digest, vp->vp_strvalue, 20) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SSHA password check failed");
 			goto make_msg;
 		}
@@ -662,14 +662,14 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 		
 		sprintf(buff2,"%%{mschap:NT-Hash %s}",
-			request->password->strvalue);
+			request->password->vp_strvalue);
 		if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
 			DEBUG("rlm_pap: mschap xlat failed");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
 			goto make_msg;
 		}
 		if ((lrad_hex2bin(digest, digest, 16) != vp->length) ||
-		    (memcmp(digest, vp->strvalue, vp->length) != 0)) {
+		    (memcmp(digest, vp->vp_strvalue, vp->length) != 0)) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: NT password check failed");
 			goto make_msg;
 		}
@@ -686,14 +686,14 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured LM-Password has incorrect length");
 			goto make_msg;
 		}
-		sprintf(buff2,"%%{mschap:LM-Hash %s}",request->password->strvalue);
+		sprintf(buff2,"%%{mschap:LM-Hash %s}",request->password->vp_strvalue);
 		if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
 			DEBUG("rlm_pap: mschap xlat failed");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
 			goto make_msg;
 		}
 		if ((lrad_hex2bin(digest, digest, 16) != vp->length) ||
-		    (memcmp(digest, vp->strvalue, vp->length) != 0)) {
+		    (memcmp(digest, vp->vp_strvalue, vp->length) != 0)) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: LM password check failed");
 		make_msg:
 			DEBUG("rlm_pap: Passwords don't match");
@@ -718,7 +718,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	Sanity check the value of NS-MTA-MD5-Password
 		 */
-		if (lrad_hex2bin(vp->strvalue, buff, 32) != 16) {
+		if (lrad_hex2bin(vp->vp_strvalue, buff, 32) != 16) {
 			DEBUG("rlm_pap: Configured NS-MTA-MD5-Password has invalid value");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NS-MTA-MD5-Password has invalid value");
 			goto make_msg;
@@ -729,7 +729,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		 *
 		 *	This really: sizeof(buff) - 2 - 2*32 - strlen(passwd)
 		 */
-		if (strlen(request->password->strvalue) >= (sizeof(buff2) - 2 - 2 * 32)) {
+		if (strlen(request->password->vp_strvalue) >= (sizeof(buff2) - 2 - 2 * 32)) {
 			DEBUG("rlm_pap: Configured password is too long");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: password is too long");
 			goto make_msg;
@@ -741,13 +741,13 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		{
 			char *p = buff2;
 
-			memcpy(p, &vp->strvalue[32], 32);
+			memcpy(p, &vp->vp_strvalue[32], 32);
 			p += 32;
 			*(p++) = 89;
-			strcpy(p, request->password->strvalue);
+			strcpy(p, request->password->vp_strvalue);
 			p += strlen(p);
 			*(p++) = 247;
-			memcpy(p, &vp->strvalue[32], 32);
+			memcpy(p, &vp->vp_strvalue[32], 32);
 			p += 32;
 
 			MD5Init(&md5_context);

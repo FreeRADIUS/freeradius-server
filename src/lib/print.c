@@ -117,23 +117,23 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			if ((delimitst == 1) && vp->flags.has_tag) {
 				/* Tagged attribute: print delimter and ignore tag */
 				buf[0] = '"';
-				librad_safeprint((char *)(vp->strvalue),
+				librad_safeprint((char *)(vp->vp_strvalue),
 						 vp->length, buf + 1, sizeof(buf) - 2);
 				strcat(buf, "\"");
 			} else if (delimitst == 1) {
 				/* Non-tagged attribute: print delimter */
 				buf[0] = '"';
-				librad_safeprint((char *)vp->strvalue,
+				librad_safeprint((char *)vp->vp_strvalue,
 						 vp->length, buf + 1, sizeof(buf) - 2);
 				strcat(buf, "\"");
 
 			} else if (delimitst < 0) {
-				strNcpy(out, vp->strvalue, outlen);
+				strNcpy(out, vp->vp_strvalue, outlen);
 				return strlen(out);
 
 			} else {
 				/* Non-tagged attribute: no delimiter */
-				librad_safeprint((char *)vp->strvalue,
+				librad_safeprint((char *)vp->vp_strvalue,
 						 vp->length, buf, sizeof(buf));
 			}
 			a = buf;
@@ -171,8 +171,8 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			a = buf;
 			break;
 		case PW_TYPE_IPADDR:
-			if (vp->strvalue[0])
-				a = (char *)vp->strvalue;
+			if (vp->vp_strvalue[0])
+				a = (char *)vp->vp_strvalue;
 			else
 				a = inet_ntop(AF_INET, &(vp->lvalue),
 					      buf, sizeof(buf));
@@ -190,17 +190,17 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 
 			strcpy(buf, "0x");
 			
-			lrad_bin2hex(vp->strvalue, buf + 2, vp->length);
+			lrad_bin2hex(vp->vp_strvalue, buf + 2, vp->length);
 			a = buf;
 		  break;
 
 		case PW_TYPE_IFID:
-			a = ifid_ntoa(buf, sizeof(buf), vp->strvalue);
+			a = ifid_ntoa(buf, sizeof(buf), vp->vp_strvalue);
 			break;
 
 		case PW_TYPE_IPV6ADDR:
 			a = inet_ntop(AF_INET6,
-				      (const struct in6_addr *) vp->strvalue,
+				      (const struct in6_addr *) vp->vp_strvalue,
 				      buf, sizeof(buf));
 			break;
 
@@ -211,13 +211,13 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			/*
 			 *	Alignment issues.
 			 */
-			memcpy(&addr, vp->strvalue + 2, sizeof(addr));
+			memcpy(&addr, vp->vp_strvalue + 2, sizeof(addr));
 
 			a = inet_ntop(AF_INET6, &addr, buf, sizeof(buf));
 			if (a) {
 				char *p = buf + strlen(buf);
 				
-				sprintf(p, "/%u", (unsigned int) vp->strvalue[1]);
+				sprintf(p, "/%u", (unsigned int) vp->vp_strvalue[1]);
 			}
 		}
 			break;

@@ -162,32 +162,32 @@ static int cram_authenticate(void * instance, REQUEST *request)
 				radlog(L_AUTH, "rlm_cram: invalid MD5 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
-			calc_md5_digest(buffer, challenge->strvalue, challenge->length, password->strvalue);
-			if(!memcmp(buffer, response->strvalue, 16)) return RLM_MODULE_OK;
+			calc_md5_digest(buffer, challenge->vp_strvalue, challenge->length, password->vp_strvalue);
+			if(!memcmp(buffer, response->vp_strvalue, 16)) return RLM_MODULE_OK;
 			break;
 		case 3:				/*	APOP	*/
 			if(challenge->length < 5 || response->length != 16) {
 				radlog(L_AUTH, "rlm_cram: invalid APOP challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
-			calc_apop_digest(buffer, challenge->strvalue, challenge->length, password->strvalue);
-			if(!memcmp(buffer, response->strvalue, 16)) return RLM_MODULE_OK;
+			calc_apop_digest(buffer, challenge->vp_strvalue, challenge->length, password->vp_strvalue);
+			if(!memcmp(buffer, response->vp_strvalue, 16)) return RLM_MODULE_OK;
 			break;
 		case 8:				/*	CRAM-MD4	*/
 			if(challenge->length < 5 || response->length != 16) {
 				radlog(L_AUTH, "rlm_cram: invalid MD4 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
-			calc_md4_digest(buffer, challenge->strvalue, challenge->length, password->strvalue);
-			if(!memcmp(buffer, response->strvalue, 16)) return RLM_MODULE_OK;
+			calc_md4_digest(buffer, challenge->vp_strvalue, challenge->length, password->vp_strvalue);
+			if(!memcmp(buffer, response->vp_strvalue, 16)) return RLM_MODULE_OK;
 			break;
 		case 9:				/*	CRAM-SHA1	*/
 			if(challenge->length < 5 || response->length != 20) {
 				radlog(L_AUTH, "rlm_cram: invalid MD4 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
-			calc_sha1_digest(buffer, challenge->strvalue, challenge->length, password->strvalue);
-			if(!memcmp(buffer, response->strvalue, 20)) return RLM_MODULE_OK;
+			calc_sha1_digest(buffer, challenge->vp_strvalue, challenge->length, password->vp_strvalue);
+			if(!memcmp(buffer, response->vp_strvalue, 20)) return RLM_MODULE_OK;
 			break;
 		default:
 			radlog(L_AUTH, "rlm_cram: unsupported Sandy-Mail-Authtype");

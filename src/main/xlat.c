@@ -238,7 +238,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 		if (packet) {
 			VALUE_PAIR localvp;
 
-			localvp.strvalue[0] = 0;
+			localvp.vp_strvalue[0] = 0;
 
 			switch (da->attr) {
 			case PW_PACKET_TYPE:
@@ -284,7 +284,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 
 			case PW_PACKET_AUTHENTICATION_VECTOR:
 				localvp.attribute = da->attr;
-				memcpy(localvp.strvalue, packet->vector,
+				memcpy(localvp.vp_strvalue, packet->vector,
 				       sizeof(packet->vector));
 				localvp.length = sizeof(packet->vector);
 				break;
@@ -305,7 +305,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 					return 0;
 				}
 				localvp.attribute = da->attr;
-				memcpy(localvp.strvalue,
+				memcpy(localvp.vp_strvalue,
 				       &packet->src_ipaddr.ipaddr.ip4addr.s_addr,
 				       sizeof(packet->src_ipaddr.ipaddr.ip4addr.s_addr));
 				break;
@@ -315,7 +315,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 					return 0;
 				}
 				localvp.attribute = da->attr;
-				memcpy(localvp.strvalue,
+				memcpy(localvp.vp_strvalue,
 				       &packet->dst_ipaddr.ipaddr.ip4addr.s_addr,
 				       sizeof(packet->dst_ipaddr.ipaddr.ip4addr.s_addr));
 				break;

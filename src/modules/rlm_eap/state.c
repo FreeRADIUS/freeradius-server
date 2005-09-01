@@ -146,8 +146,8 @@ VALUE_PAIR *generate_state(time_t timestamp)
 		radlog(L_ERR, "rlm_eap: out of memory");
 		return NULL;
 	}
-	memcpy(state->strvalue, challenge, sizeof(challenge));
-	memcpy(state->strvalue + sizeof(challenge), hmac,
+	memcpy(state->vp_strvalue, challenge, sizeof(challenge));
+	memcpy(state->vp_strvalue + sizeof(challenge), hmac,
 	       EAP_USE_OF_HMAC);
 
 	state->length = sizeof(challenge) + EAP_USE_OF_HMAC;
@@ -174,7 +174,7 @@ int verify_state(VALUE_PAIR *state, time_t timestamp)
 	 *	The first 16 octets of the State attribute constains
 	 *	the random challenge.
 	 */
-	memcpy(value, state->strvalue, EAP_CHALLENGE_LEN);
+	memcpy(value, state->vp_strvalue, EAP_CHALLENGE_LEN);
 	memcpy(value + EAP_CHALLENGE_LEN, &timestamp, sizeof(timestamp));
 
 	/* Generate hmac.  */
@@ -185,7 +185,7 @@ int verify_state(VALUE_PAIR *state, time_t timestamp)
 	 *	Compare the hmac we calculated to the one in the
 	 *	packet.
 	 */
-	return memcmp(hmac, state->strvalue + EAP_CHALLENGE_LEN,
+	return memcmp(hmac, state->vp_strvalue + EAP_CHALLENGE_LEN,
 		      EAP_USE_OF_HMAC);
 }
 

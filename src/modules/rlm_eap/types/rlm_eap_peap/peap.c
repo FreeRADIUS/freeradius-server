@@ -167,12 +167,12 @@ static VALUE_PAIR *eap2vp(EAP_DS *eap_ds,
 	/*
 	 *	Hand-build an EAP packet from the crap in PEAP version 0.
 	 */
-	vp->strvalue[0] = PW_EAP_RESPONSE;
-	vp->strvalue[1] = eap_ds->response->id;
-	vp->strvalue[2] = 0;
-	vp->strvalue[3] = EAP_HEADER_LEN + data_len;
+	vp->vp_strvalue[0] = PW_EAP_RESPONSE;
+	vp->vp_strvalue[1] = eap_ds->response->id;
+	vp->vp_strvalue[2] = 0;
+	vp->vp_strvalue[3] = EAP_HEADER_LEN + data_len;
 
-	memcpy(vp->strvalue + EAP_HEADER_LEN, data, data_len);
+	memcpy(vp->vp_strvalue + EAP_HEADER_LEN, data, data_len);
 	vp->length = EAP_HEADER_LEN + data_len;
 
 	return vp;
@@ -202,7 +202,7 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 		if (debug_flag > 0) for (i = 0; i < total; i++) {
 			if ((i & 0x0f) == 0) printf("  PEAP tunnel data out %04x: ", i);
 
-			printf("%02x ", vp->strvalue[i + 4]);
+			printf("%02x ", vp->vp_strvalue[i + 4]);
 
 			if ((i & 0x0f) == 0x0f) printf("\n");
 		}
@@ -214,10 +214,10 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 	 *	Send the EAP data, WITHOUT the header.
 	 */
 #if 1
-	(tls_session->record_plus)(&tls_session->clean_in, vp->strvalue + EAP_HEADER_LEN,
+	(tls_session->record_plus)(&tls_session->clean_in, vp->vp_strvalue + EAP_HEADER_LEN,
 		vp->length - EAP_HEADER_LEN);
 #else
-	(tls_session->record_plus)(&tls_session->clean_in, vp->strvalue, vp->length);
+	(tls_session->record_plus)(&tls_session->clean_in, vp->vp_strvalue, vp->length);
 #endif
 	tls_handshake_send(tls_session);
 
@@ -672,10 +672,10 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			t->username = pairmake("User-Name", "", T_OP_EQ);
 			rad_assert(t->username != NULL);
 
-			memcpy(t->username->strvalue, data + 1, data_len - 1);
+			memcpy(t->username->vp_strvalue, data + 1, data_len - 1);
 			t->username->length = data_len - 1;
-			t->username->strvalue[t->username->length] = 0;
-			DEBUG2("  PEAP: Got tunneled identity of %s", t->username->strvalue);
+			t->username->vp_strvalue[t->username->length] = 0;
+			DEBUG2("  PEAP: Got tunneled identity of %s", t->username->vp_strvalue);
 
 			/*
 			 *	If there's a default EAP type,
@@ -695,7 +695,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		pairadd(&fake->packet->vps, vp);
 		fake->username = pairfind(fake->packet->vps, PW_USER_NAME);
 		DEBUG2("  PEAP: Setting User-Name to %s",
-		       fake->username->strvalue);
+		       fake->username->vp_strvalue);
 	}
 
 	/*
@@ -703,7 +703,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 */
 	if (t->state) {
 		DEBUG2("  PEAP: Adding old state with %02x %02x",
-		       t->state->strvalue[0], t->state->strvalue[1]);
+		       t->state->vp_strvalue[0], t->state->vp_strvalue[1]);
 		vp = paircopy(t->state);
 		if (vp) pairadd(&fake->packet->vps, vp);
 	}
@@ -868,7 +868,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				 *	done.  Handle it like normal.
 				 */
 				if ((fake->options & RAD_REQUEST_OPTION_PROXY_EAP) == 0) {
-					DEBUG2("    PEAP: Cancelling proxy to realm %s until the tunneled EAP session has been established", vp->strvalue);
+					DEBUG2("    PEAP: Cancelling proxy to realm %s until the tunneled EAP session has been established", vp->vp_strvalue);
 					goto do_process;
 				}
 
@@ -881,7 +881,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 					   PW_EAP_MESSAGE);
 			}
 
-			DEBUG2("  PEAP: Tunneled authentication will be proxied to %s", vp->strvalue);
+			DEBUG2("  PEAP: Tunneled authentication will be proxied to %s", vp->vp_strvalue);
 
 			/*
 			 *	Tell the original request that it's going

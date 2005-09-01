@@ -75,7 +75,7 @@ int rad_accounting(REQUEST *request)
 			 *	Check whether Proxy-To-Realm is
 			 *	a LOCAL realm.
 			 */
-			realm = realm_find(vp->strvalue, TRUE);
+			realm = realm_find(vp->vp_strvalue, TRUE);
 			if (realm != NULL &&
 			    realm->acct_ipaddr.af == AF_INET &&
 			    realm->acct_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE)) {

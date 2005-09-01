@@ -156,7 +156,7 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
     switch(pwattr[attr]) {
     case PW_PASSWORD:
 	DEBUG("rlm_otp: pwe_cmp: handling PW_PASSWORD");
-	nmatch = strcmp(password, resp_vp->strvalue);
+	nmatch = strcmp(password, resp_vp->vp_strvalue);
 	break;
 
     case PW_CHAP_PASSWORD:
@@ -188,12 +188,12 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
 	    nmatch = -1;
 	    break;
 	}
-	input[0] = *(resp_vp->strvalue);
+	input[0] = *(resp_vp->vp_strvalue);
 	(void) memcpy(&input[1], password, strlen(password));
-	(void) memcpy(&input[1+strlen(password)], chal_vp->strvalue,
+	(void) memcpy(&input[1+strlen(password)], chal_vp->vp_strvalue,
 		      chal_vp->length);
 	(void) MD5(input, 1 + strlen(password) + chal_vp->length, output);
-	nmatch = memcmp(output, &(resp_vp->strvalue)[1], MD5_DIGEST_LENGTH);
+	nmatch = memcmp(output, &(resp_vp->vp_strvalue)[1], MD5_DIGEST_LENGTH);
     } /* case PW_CHAP_PASSWORD */
     break;
 
@@ -233,7 +233,7 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
 	    nmatch = -1;
 	    break;
 	}
-	if ((resp_vp->strvalue)[1] != 1) {
+	if ((resp_vp->vp_strvalue)[1] != 1) {
 	    otp_log(OTP_LOG_AUTH,
 		    "pwe_cmp: MS-CHAP-Response bad flags (LM not supported)");
 	    nmatch = -1;
@@ -262,7 +262,7 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
 	(void) MD4(input, 2 * password_len, nt_keys);
 
 	/* The challenge gets encrypted. */
-	(void) memcpy(input, chal_vp->strvalue, 8);
+	(void) memcpy(input, chal_vp->vp_strvalue, 8);
 
 	/* Convert the password hash to keys, and do the encryptions. */
 	for (i = 0; i < 3; ++i) {
@@ -276,7 +276,7 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
 			    ks, DES_ENCRYPT);
 	}
 
-	nmatch = memcmp(output, resp_vp->strvalue + 26, 24);
+	nmatch = memcmp(output, resp_vp->vp_strvalue + 26, 24);
 	if (nmatch || !vps)
 	    break;
 
@@ -403,12 +403,12 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
 	{
 	    SHA_CTX ctx;
 	    unsigned char md[SHA_DIGEST_LENGTH];
-	    char *username = request->username->strvalue;
+	    char *username = request->username->vp_strvalue;
 	    int username_len = request->username->length;
 
 	    SHA1_Init(&ctx);
-	    SHA1_Update(&ctx, resp_vp->strvalue + 2, 16);
-	    SHA1_Update(&ctx, chal_vp->strvalue, 16);
+	    SHA1_Update(&ctx, resp_vp->vp_strvalue + 2, 16);
+	    SHA1_Update(&ctx, chal_vp->vp_strvalue, 16);
 	    SHA1_Update(&ctx, username, username_len);
 	    SHA1_Final(md, &ctx);
 
@@ -427,7 +427,7 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
 			    ks, DES_ENCRYPT);
 	}
 
-	nmatch = memcmp(output, resp_vp->strvalue + 26, 24);
+	nmatch = memcmp(output, resp_vp->vp_strvalue + 26, 24);
 	if (nmatch || !vps)
 	    break;
 
@@ -457,7 +457,7 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
 	    /*                    0x  (ID) ( ASCII("S="ASCII(auth_md))) */
 	    char auth_octet_string[2 + 2 + (2 * sizeof(auth_md_string))];
 
-	    char *username = request->username->strvalue;
+	    char *username = request->username->vp_strvalue;
 	    int username_len = request->username->length;
 
 	    /* "Magic server to client signing constant" */
@@ -478,14 +478,14 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
 	    (void) MD4(nt_keys, MD4_DIGEST_LENGTH, password_md_md);
 	    SHA1_Init(&ctx);
 	    SHA1_Update(&ctx, password_md_md, MD4_DIGEST_LENGTH);
-	    SHA1_Update(&ctx, resp_vp->strvalue + 26, 24);
+	    SHA1_Update(&ctx, resp_vp->vp_strvalue + 26, 24);
 	    SHA1_Update(&ctx, magic1, sizeof(magic1));
 	    SHA1_Final(md1, &ctx);
 
 	    /* MD2 */
 	    SHA1_Init(&ctx);
-	    SHA1_Update(&ctx, resp_vp->strvalue + 2, 16);
-	    SHA1_Update(&ctx, chal_vp->strvalue, 16);
+	    SHA1_Update(&ctx, resp_vp->vp_strvalue + 2, 16);
+	    SHA1_Update(&ctx, chal_vp->vp_strvalue, 16);
 	    SHA1_Update(&ctx, username, username_len);
 	    SHA1_Final(md2, &ctx);
 
@@ -505,7 +505,7 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
 	    /* And then octet conversion.  Ugh! */
 	    auth_octet_string[0] = '0';
 	    auth_octet_string[1] = 'x';
-	    (void) sprintf(&auth_octet_string[2], "%02X", resp_vp->strvalue[0]);
+	    (void) sprintf(&auth_octet_string[2], "%02X", resp_vp->vp_strvalue[0]);
 	    for (i = 0; i < sizeof(auth_md_string) - 1; ++i)
 		(void) sprintf(&auth_octet_string[i * 2 + 4], "%02X",
 			       auth_md_string[i]);
@@ -616,7 +616,7 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
 	    /* Generate the master session key. */
 	    SHA1_Init(&ctx);
 	    SHA1_Update(&ctx, password_md_md, MD4_DIGEST_LENGTH);
-	    SHA1_Update(&ctx, resp_vp->strvalue + 26, 24);
+	    SHA1_Update(&ctx, resp_vp->vp_strvalue + 26, 24);
 	    SHA1_Update(&ctx, Magic1, sizeof(Magic1));
 	    SHA1_Final(sha_md, &ctx);
 	    (void) memcpy(MasterKey, sha_md, 16);

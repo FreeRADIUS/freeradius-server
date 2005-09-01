@@ -253,8 +253,8 @@ static int krb5_auth(void *instance, REQUEST *request)
 	/*
 	 *	shortcuts
 	 */
-	user = request->username->strvalue;
-	pass = request->password->strvalue;
+	user = request->username->vp_strvalue;
+	pass = request->password->vp_strvalue;
 
 	/* Generate a unique cache_name */
 	memset(cache_name, 0, sizeof(cache_name));
@@ -362,8 +362,8 @@ static int krb5_auth(void *instance, REQUEST *request)
 	/*
 	 *	shortcuts
 	 */
-	user = request->username->strvalue;
-	pass = request->password->strvalue;
+	user = request->username->vp_strvalue;
+	pass = request->password->vp_strvalue;
 
 	if ( (r = krb5_parse_name(context, user, &userP)) ) {
 		radlog(L_AUTH, "rlm_krb5: [%s] krb5_parse_name failed: %s",

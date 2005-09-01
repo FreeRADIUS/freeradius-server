@@ -227,13 +227,13 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 			roundedlen = 20;
 			memset(&attr[2], 0, 18);
 			macspace = &attr[4];
-			append = vp->strvalue;
+			append = vp->vp_strvalue;
 			appendlen = vp->length;
 		}
 		else {
 			roundedlen = (vp->length + 2 + 3) & ~3;
 			memset(attr, 0, roundedlen);
-			memcpy(&attr[2], vp->strvalue, vp->length);
+			memcpy(&attr[2], vp->vp_strvalue, vp->length);
 		}
 		attr[0] = vp->attribute - ATTRIBUTE_EAP_SIM_BASE;
 		attr[1] = roundedlen >> 2;
@@ -284,7 +284,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 
 		/* HMAC it! */
 		lrad_hmac_sha1(buffer, hmaclen,
-			       vp->strvalue, vp->length,
+			       vp->vp_strvalue, vp->length,
 			       sha1digest);
 
 		/* done with the buffer, free it */
@@ -380,7 +380,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		}
 
 		newvp = paircreate(eapsim_attribute+ATTRIBUTE_EAP_SIM_BASE, PW_TYPE_OCTETS);
-		memcpy(newvp->strvalue, &attr[2], eapsim_len-2);
+		memcpy(newvp->vp_strvalue, &attr[2], eapsim_len-2);
 		newvp->length = eapsim_len-2;
 		pairadd(&(r->vps), newvp);
 		newvp = NULL;
@@ -403,7 +403,7 @@ int unmap_eapsim_types(RADIUS_PACKET *r)
 		return 0;
 	}
 
-	return unmap_eapsim_basictypes(r, esvp->strvalue, esvp->length);
+	return unmap_eapsim_basictypes(r, esvp->vp_strvalue, esvp->length);
 }
 
 /*
@@ -490,7 +490,7 @@ eapsim_checkmac(VALUE_PAIR *rvps,
 		       key, 16,
 		       calcmac);
 
-	if(memcmp(&mac->strvalue[2], calcmac, 16) == 0)	{
+	if(memcmp(&mac->vp_strvalue[2], calcmac, 16) == 0)	{
 		ret = 1;
 	} else {
 		ret = 0;
@@ -642,8 +642,8 @@ main(int argc, char *argv[])
 
 			memset(calcmac, 0, sizeof(calcmac));
 			printf("Confirming MAC...");
-			if(eapsim_checkmac(req2->vps, vpkey->strvalue,
-					   vpextra->strvalue, vpextra->length,
+			if(eapsim_checkmac(req2->vps, vpkey->vp_strvalue,
+					   vpextra->vp_strvalue, vpextra->length,
 					   calcmac)) {
 				printf("succeed\n");
 			} else {

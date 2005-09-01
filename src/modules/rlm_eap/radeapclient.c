@@ -257,7 +257,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 		return 0;
 	}
 
-	versions = (uint16_t *)vp->strvalue;
+	versions = (uint16_t *)vp->vp_strvalue;
 
 	/* verify that the attribute length is big enough for a length field */
 	if(vp->length < 4)
@@ -335,7 +335,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 	/* insert selected version into response. */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_SELECTED_VERSION,
 			   PW_TYPE_OCTETS);
-	versions = (uint16_t *)newvp->strvalue;
+	versions = (uint16_t *)newvp->vp_strvalue;
 	versions[0] = htons(selectedversion);
 	newvp->length = 2;
 	pairreplace(&(rep->vps), newvp);
@@ -352,15 +352,15 @@ static int process_eap_start(RADIUS_PACKET *req,
 		 */
 		newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_NONCE_MT,
 				   PW_TYPE_OCTETS);
-		newvp->strvalue[0]=0;
-		newvp->strvalue[1]=0;
+		newvp->vp_strvalue[0]=0;
+		newvp->vp_strvalue[1]=0;
 		newvp->length = 18;  /* 16 bytes of nonce + padding */
 
 		nonce[0]=lrad_rand();
 		nonce[1]=lrad_rand();
 		nonce[2]=lrad_rand();
 		nonce[3]=lrad_rand();
-		memcpy(&newvp->strvalue[2], nonce, 16);
+		memcpy(&newvp->vp_strvalue[2], nonce, 16);
 		pairreplace(&(rep->vps), newvp);
 
 		/* also keep a copy of the nonce! */
@@ -381,16 +381,16 @@ static int process_eap_start(RADIUS_PACKET *req,
 		}
 		newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_IDENTITY,
 				   PW_TYPE_OCTETS);
-		idlen = strlen(vp->strvalue);
-		pidlen = (uint16_t *)newvp->strvalue;
+		idlen = strlen(vp->vp_strvalue);
+		pidlen = (uint16_t *)newvp->vp_strvalue;
 		*pidlen = htons(idlen);
 		newvp->length = idlen + 2;
 
-		memcpy(&newvp->strvalue[2], vp->strvalue, idlen);
+		memcpy(&newvp->vp_strvalue[2], vp->vp_strvalue, idlen);
 		pairreplace(&(rep->vps), newvp);
 
 		/* record it */
-		memcpy(eapsim_mk.identity, vp->strvalue, idlen);
+		memcpy(eapsim_mk.identity, vp->vp_strvalue, idlen);
 		eapsim_mk.identitylen = idlen;
 	}
 
@@ -432,9 +432,9 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	  VALUE_PAIR *randcfgvp[3];
 	  unsigned char *randcfg[3];
 
-	  randcfg[0] = &randvp->strvalue[2];
-	  randcfg[1] = &randvp->strvalue[2+EAPSIM_RAND_SIZE];
-	  randcfg[2] = &randvp->strvalue[2+EAPSIM_RAND_SIZE*2];
+	  randcfg[0] = &randvp->vp_strvalue[2];
+	  randcfg[1] = &randvp->vp_strvalue[2+EAPSIM_RAND_SIZE];
+	  randcfg[2] = &randvp->vp_strvalue[2+EAPSIM_RAND_SIZE*2];
 
 	  randcfgvp[0] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND1);
 	  randcfgvp[1] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND2);
@@ -447,9 +447,9 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	    return 0;
 	  }
 
-	  if(memcmp(randcfg[0], randcfgvp[0]->strvalue, EAPSIM_RAND_SIZE)!=0 ||
-	     memcmp(randcfg[1], randcfgvp[1]->strvalue, EAPSIM_RAND_SIZE)!=0 ||
-	     memcmp(randcfg[2], randcfgvp[2]->strvalue, EAPSIM_RAND_SIZE)!=0) {
+	  if(memcmp(randcfg[0], randcfgvp[0]->vp_strvalue, EAPSIM_RAND_SIZE)!=0 ||
+	     memcmp(randcfg[1], randcfgvp[1]->vp_strvalue, EAPSIM_RAND_SIZE)!=0 ||
+	     memcmp(randcfg[2], randcfgvp[2]->vp_strvalue, EAPSIM_RAND_SIZE)!=0) {
 	    int rnum,i,j;
 
 	    fprintf(stderr, "radeapclient: one of rand 1,2,3 didn't match\n");
@@ -474,7 +474,7 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 		}
 		j++;
 
-		fprintf(stderr, "%02x", randcfgvp[rnum]->strvalue[i]);
+		fprintf(stderr, "%02x", randcfgvp[rnum]->vp_strvalue[i]);
 	      }
 	      fprintf(stderr, "\n");
 	    }
@@ -499,9 +499,9 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 		fprintf(stderr, "radeapclient: needs to have sres1, 2 and 3 set.\n");
 		return 0;
 	}
-	memcpy(eapsim_mk.sres[0], sres1->strvalue, sizeof(eapsim_mk.sres[0]));
-	memcpy(eapsim_mk.sres[1], sres2->strvalue, sizeof(eapsim_mk.sres[1]));
-	memcpy(eapsim_mk.sres[2], sres3->strvalue, sizeof(eapsim_mk.sres[2]));
+	memcpy(eapsim_mk.sres[0], sres1->vp_strvalue, sizeof(eapsim_mk.sres[0]));
+	memcpy(eapsim_mk.sres[1], sres2->vp_strvalue, sizeof(eapsim_mk.sres[1]));
+	memcpy(eapsim_mk.sres[2], sres3->vp_strvalue, sizeof(eapsim_mk.sres[2]));
 
 	Kc1 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_KC1);
 	Kc2 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_KC2);
@@ -513,9 +513,9 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 		fprintf(stderr, "radeapclient: needs to have Kc1, 2 and 3 set.\n");
 		return 0;
 	}
-	memcpy(eapsim_mk.Kc[0], Kc1->strvalue, sizeof(eapsim_mk.Kc[0]));
-	memcpy(eapsim_mk.Kc[1], Kc2->strvalue, sizeof(eapsim_mk.Kc[1]));
-	memcpy(eapsim_mk.Kc[2], Kc3->strvalue, sizeof(eapsim_mk.Kc[2]));
+	memcpy(eapsim_mk.Kc[0], Kc1->vp_strvalue, sizeof(eapsim_mk.Kc[0]));
+	memcpy(eapsim_mk.Kc[1], Kc2->vp_strvalue, sizeof(eapsim_mk.Kc[1]));
+	memcpy(eapsim_mk.Kc[2], Kc3->vp_strvalue, sizeof(eapsim_mk.Kc[2]));
 
 	/* all set, calculate keys */
 	eapsim_calculate_keys(&eapsim_mk);
@@ -560,14 +560,14 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	 */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC,
 			   PW_TYPE_OCTETS);
-	memcpy(newvp->strvalue+EAPSIM_SRES_SIZE*0, sres1->strvalue, EAPSIM_SRES_SIZE);
-	memcpy(newvp->strvalue+EAPSIM_SRES_SIZE*1, sres2->strvalue, EAPSIM_SRES_SIZE);
-	memcpy(newvp->strvalue+EAPSIM_SRES_SIZE*2, sres3->strvalue, EAPSIM_SRES_SIZE);
+	memcpy(newvp->vp_strvalue+EAPSIM_SRES_SIZE*0, sres1->vp_strvalue, EAPSIM_SRES_SIZE);
+	memcpy(newvp->vp_strvalue+EAPSIM_SRES_SIZE*1, sres2->vp_strvalue, EAPSIM_SRES_SIZE);
+	memcpy(newvp->vp_strvalue+EAPSIM_SRES_SIZE*2, sres3->vp_strvalue, EAPSIM_SRES_SIZE);
 	newvp->length = EAPSIM_SRES_SIZE*3;
 	pairreplace(&(rep->vps), newvp);
 
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_KEY, PW_TYPE_OCTETS);
-	memcpy(newvp->strvalue,    eapsim_mk.K_aut, EAPSIM_AUTH_SIZE);
+	memcpy(newvp->vp_strvalue,    eapsim_mk.K_aut, EAPSIM_AUTH_SIZE);
 	newvp->length = EAPSIM_AUTH_SIZE;
 	pairreplace(&(rep->vps), newvp);
 
@@ -720,9 +720,9 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 	}
 
 	/* got the details of the MD5 challenge */
-	valuesize = vp->strvalue[0];
-	value = &vp->strvalue[1];
-	name  = &vp->strvalue[valuesize+1];
+	valuesize = vp->vp_strvalue[0];
+	value = &vp->vp_strvalue[1];
+	name  = &vp->vp_strvalue[valuesize+1];
 	namesize = vp->length - (valuesize + 1);
 
 	/* sanitize items */
@@ -744,8 +744,8 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 	lrad_MD5Final(response, &context);
 
 	vp = paircreate(ATTRIBUTE_EAP_BASE+PW_EAP_MD5, PW_TYPE_OCTETS);
-	vp->strvalue[0]=16;
-	memcpy(&vp->strvalue[1], response, 16);
+	vp->vp_strvalue[0]=16;
+	memcpy(&vp->vp_strvalue[1], response, 16);
 	vp->length = 17;
 
 	pairreplace(&(rep->vps), vp);
@@ -770,15 +770,15 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	 *	Keep a copy of the the User-Password attribute.
 	 */
 	if ((vp = pairfind(rep->vps, ATTRIBUTE_EAP_MD5_PASSWORD)) != NULL) {
-		strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
+		strNcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 
 	} else 	if ((vp = pairfind(rep->vps, PW_PASSWORD)) != NULL) {
-		strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
+		strNcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 		/*
 		 *	Otherwise keep a copy of the CHAP-Password attribute.
 		 */
 	} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD)) != NULL) {
-		strNcpy(password, (char *)vp->strvalue, sizeof(vp->strvalue));
+		strNcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 	} else {
 		*password = '\0';
 	}
@@ -814,10 +814,10 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 		case PW_DIGEST_NONCE_COUNT:
 		case PW_DIGEST_USER_NAME:
 			/* overlapping! */
-			memmove(&vp->strvalue[2], &vp->strvalue[0], vp->length);
-			vp->strvalue[0] = vp->attribute - PW_DIGEST_REALM + 1;
+			memmove(&vp->vp_strvalue[2], &vp->vp_strvalue[0], vp->length);
+			vp->vp_strvalue[0] = vp->attribute - PW_DIGEST_REALM + 1;
 			vp->length += 2;
-			vp->strvalue[1] = vp->length;
+			vp->vp_strvalue[1] = vp->length;
 			vp->attribute = PW_DIGEST_ATTRIBUTES;
 			break;
 		}
@@ -838,14 +838,14 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 
 	if (*password != '\0') {
 		if ((vp = pairfind(rep->vps, PW_PASSWORD)) != NULL) {
-			strNcpy((char *)vp->strvalue, password, strlen(password) + 1);
+			strNcpy((char *)vp->vp_strvalue, password, strlen(password) + 1);
 			vp->length = strlen(password);
 
 		} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD)) != NULL) {
-			strNcpy((char *)vp->strvalue, password, strlen(password) + 1);
+			strNcpy((char *)vp->vp_strvalue, password, strlen(password) + 1);
 			vp->length = strlen(password);
 
-			rad_chap_encode(rep, (char *) vp->strvalue, rep->id, vp);
+			rad_chap_encode(rep, (char *) vp->vp_strvalue, rep->id, vp);
 			vp->length = 17;
 		}
 	} /* there WAS a password */

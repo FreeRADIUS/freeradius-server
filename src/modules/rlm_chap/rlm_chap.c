@@ -102,10 +102,10 @@ static int chap_authenticate(void *instance, REQUEST *request)
 	 *	Don't print out the CHAP password here.  It's binary crap.
 	 */
 	DEBUG("  rlm_chap: login attempt by \"%s\" with CHAP password",
-		request->username->strvalue);
+		request->username->vp_strvalue);
 
 	if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
-		DEBUG("  rlm_chap: Could not find clear text password for user %s",request->username->strvalue);
+		DEBUG("  rlm_chap: Could not find clear text password for user %s",request->username->vp_strvalue);
 		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_chap: Clear text password not available");
 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
 		pairadd(&request->packet->vps, module_fmsg_vp);
@@ -113,11 +113,11 @@ static int chap_authenticate(void *instance, REQUEST *request)
 	}
 
 	DEBUG("  rlm_chap: Using clear text password %s for user %s authentication.",
-	      passwd_item->strvalue, request->username->strvalue);
+	      passwd_item->vp_strvalue, request->username->vp_strvalue);
 
-	rad_chap_encode(request->packet,pass_str,request->password->strvalue[0],passwd_item);
+	rad_chap_encode(request->packet,pass_str,request->password->vp_strvalue[0],passwd_item);
 
-	if (memcmp(pass_str+1,request->password->strvalue+1,CHAP_VALUE_LENGTH) != 0){
+	if (memcmp(pass_str+1,request->password->vp_strvalue+1,CHAP_VALUE_LENGTH) != 0){
 		DEBUG("  rlm_chap: Pasword check failed");
 		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_chap: Wrong user password");
 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
@@ -125,7 +125,7 @@ static int chap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_REJECT;
 	}
 
-	DEBUG("  rlm_chap: chap user %s authenticated succesfully",request->username->strvalue);
+	DEBUG("  rlm_chap: chap user %s authenticated succesfully",request->username->vp_strvalue);
 
 	return RLM_MODULE_OK;
 }

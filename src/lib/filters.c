@@ -62,56 +62,6 @@ static const char rcsid[] = "$Id$";
 # define TRUE		(! FALSE)
 #endif
 
-/*
- *	ascend_ip_filter_t
- *
- *	The binary format of an IP filter.  ALL fields are stored in
- *	network byte order.
- *
- *	srcip:		The source IP address.
- *
- *	dstip:		The destination IP address.
- *
- *	srcmask:	The number of leading one bits in the source address
- *			mask.  Specifies the bits of interest.
- *
- *	dstmask:	The number of leading one bits in the destination
- *			address mask. Specifies the bits of interest.
- *
- *	proto:		The IP protocol number
- *
- *	established:	A boolean value.  TRUE when we care about the
- *			established state of a TCP connection.  FALSE when
- *			we dont care.
- *
- *	srcport:	TCP or UDP source port number.
- *
- *	dstport:	TCP or UDP destination port number.
- *
- *	srcPortCmp:	One of the values of the RadFilterComparison
- *			enumeration, specifying how to compare the
- *			srcport value.
- *
- *	dstPortCmp:	One of the values of the RadFilterComparison
- *			enumeration, specifying how to compare the
- *			dstport value.
- *
- *	fill:		Round things out to a int16_t boundary.
- */
-typedef struct ascend_ip_filter_t {
-	uint32_t	srcip;
-	uint32_t	dstip;
-	uint8_t 	srcmask;
-	uint8_t 	dstmask;
-	uint8_t		proto;
-	uint8_t		established;
-	uint16_t	srcport;
-	uint16_t	dstport;
-	uint8_t		srcPortComp;
-	uint8_t		dstPortComp;
-	unsigned char   fill[4];        /* used to be fill[2] */
-} ascend_ip_filter_t;
-
 
 /*
  *	ascend_ipx_net_t
@@ -1001,7 +951,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	 *	Once the filter is *completelty* parsed, then we will
 	 *	over-write it with the final binary filter.
 	 */
-	argc = str2argv(pair->strvalue, argv, 32);
+	argc = str2argv(pair->vp_strvalue, argv, 32);
 	if (argc < 3) return -1;
 
 	/*
@@ -1088,7 +1038,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	 */
 	if (rcode == 0) {
 		pair->length = SIZEOF_RADFILTER;
-		memcpy(pair->strvalue, &filter, sizeof(filter));
+		memcpy(pair->vp_strvalue, &filter, sizeof(filter));
 	}
 
 	return rcode;
@@ -1101,7 +1051,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
      * previous 'more'
      */
     if( prevRadPair ) {
-	filt = ( RadFilter * )prevRadPair->strvalue;
+	filt = ( RadFilter * )prevRadPair->vp_strvalue;
 	if(( tok != FILTER_GENERIC_TYPE ) || (rc == -1 ) ||
 	   ( prevRadPair->attribute != pair->attribute ) ||
 	   ( filt->indirection != radFil.indirection ) ||
@@ -1120,7 +1070,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
     }
 
     if( rc != -1 ) {
-	memcpy( pair->strvalue, (char *) &radFil, pair->length );
+	memcpy( pair->vp_strvalue, (char *) &radFil, pair->length );
     }
     return(rc);
 
@@ -1153,13 +1103,13 @@ void print_abinary(VALUE_PAIR *vp, char *buffer, int len)
     strcpy(p, "0x");
     p += 2;
     for (i = 0; i < vp->length; i++) {
-      sprintf(p, " %02x", vp->strvalue[i]);
+      sprintf(p, " %02x", vp->vp_strvalue[i]);
       p += 3;
     }
     return;
   }
 
-  memcpy(&filter, vp->strvalue, SIZEOF_RADFILTER); /* alignment issues */
+  memcpy(&filter, vp->vp_strvalue, SIZEOF_RADFILTER); /* alignment issues */
   *(p++) = '"';
   len -= 3;			/* account for leading & trailing quotes */
 

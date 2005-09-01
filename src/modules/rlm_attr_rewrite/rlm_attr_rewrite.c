@@ -180,7 +180,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 	int replace_len = 0;
 
 	if ((attr_vp = pairfind(request->config_items, PW_REWRITE_RULE)) != NULL){
-		if (data->name == NULL || strcmp(data->name,attr_vp->strvalue))
+		if (data->name == NULL || strcmp(data->name,attr_vp->vp_strvalue))
 			return RLM_MODULE_NOOP;
 	}
 
@@ -269,7 +269,7 @@ do_again:
 			DEBUG2("rlm_attr_rewrite: Could not find value pair for attribute %s",data->attribute);
 			return ret;
 		}
-		if (attr_vp->strvalue == NULL || attr_vp->length == 0){
+		if (attr_vp->vp_strvalue == NULL || attr_vp->length == 0){
 			DEBUG2("rlm_attr_rewrite: Attribute %s string value NULL or of zero length",data->attribute);
 			return ret;
 		}
@@ -288,7 +288,7 @@ do_again:
 			return ret;
 		}
 		ptr = new_str;
-		ptr2 = attr_vp->strvalue;
+		ptr2 = attr_vp->vp_strvalue;
 		counter = 0;
 
 		for ( i = 0 ;i < (unsigned)data->num_matches; i++) {
@@ -296,7 +296,7 @@ do_again:
 			if (err == REG_NOMATCH) {
 				if (i == 0) {
 					DEBUG2("rlm_attr_rewrite: No match found for attribute %s with value '%s'",
-							data->attribute, attr_vp->strvalue);
+							data->attribute, attr_vp->vp_strvalue);
 					regfree(&preg);
 					goto to_do_again;
 				} else
@@ -305,7 +305,7 @@ do_again:
 			if (err != 0) {
 				regfree(&preg);
 				radlog(L_ERR, "rlm_attr_rewrite: match failure for attribute %s with value '%s'",
-						data->attribute, attr_vp->strvalue);
+						data->attribute, attr_vp->vp_strvalue);
 				return ret;
 			}
 			if (pmatch[0].rm_so == -1)
@@ -318,7 +318,7 @@ do_again:
 			if (counter >= MAX_STRING_LEN) {
 				regfree(&preg);
 				DEBUG2("rlm_attr_rewrite: Replacement out of limits for attribute %s with value '%s'",
-						data->attribute, attr_vp->strvalue);
+						data->attribute, attr_vp->vp_strvalue);
 				return ret;
 			}
 
@@ -332,7 +332,7 @@ do_again:
 				 */
 				for(j = 0; j <= REQUEST_MAX_REGEX; j++){
 					char *p;
-					char buffer[sizeof(attr_vp->strvalue)];
+					char buffer[sizeof(attr_vp->vp_strvalue)];
 
 					/*
 				   	 * Stolen from src/main/valuepair.c, paircmp()
@@ -351,7 +351,7 @@ do_again:
 						break;
 					}
 					memcpy(buffer,
-					       attr_vp->strvalue + pmatch[j].rm_so,
+					       attr_vp->vp_strvalue + pmatch[j].rm_so,
 					       pmatch[j].rm_eo - pmatch[j].rm_so);
 					buffer[pmatch[j].rm_eo - pmatch[j].rm_so] = '\0';
 					p = strdup(buffer);
@@ -373,7 +373,7 @@ do_again:
 			if (counter >= MAX_STRING_LEN) {
 				regfree(&preg);
 				DEBUG2("rlm_attr_rewrite: Replacement out of limits for attribute %s with value '%s'",
-						data->attribute, attr_vp->strvalue);
+						data->attribute, attr_vp->vp_strvalue);
 				return ret;
 			}
 			if (replace_len){
@@ -386,13 +386,13 @@ do_again:
 		counter += len;
 		if (counter >= MAX_STRING_LEN){
 			DEBUG2("rlm_attr_rewrite: Replacement out of limits for attribute %s with value '%s'",
-					data->attribute, attr_vp->strvalue);
+					data->attribute, attr_vp->vp_strvalue);
 			return ret;
 		}
 		strncpy(ptr, ptr2, len);
 
 		DEBUG2("rlm_attr_rewrite: Changed value for attribute %s from '%s' to '%s'",
-				data->attribute, attr_vp->strvalue, new_str);
+				data->attribute, attr_vp->vp_strvalue, new_str);
 		if (pairparsevalue(attr_vp, new_str) == NULL) {
 			DEBUG2("rlm_attr_rewrite: Could not write value '%s' into attribute %s: %s", new_str, data->attribute, librad_errstr);
 			return ret;

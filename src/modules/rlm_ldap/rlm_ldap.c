@@ -878,7 +878,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 
 	DEBUG("rlm_ldap: Entering ldap_groupcmp()");
 
-	if (check->strvalue == NULL || check->length == 0){
+	if (check->vp_strvalue == NULL || check->length == 0){
                 DEBUG("rlm_ldap::ldap_groupcmp: Illegal group name");
                 return 1;
         }
@@ -941,14 +941,14 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
                 return 1;
         }
 
-	if (strchr((char *)check->strvalue,',') != NULL) {
+	if (strchr((char *)check->vp_strvalue,',') != NULL) {
 		/* This looks like a DN */
 		snprintf(filter,sizeof(filter), "%s",gr_filter);
-		snprintf(basedn,sizeof(basedn), "%s",(char *)check->strvalue);
+		snprintf(basedn,sizeof(basedn), "%s",(char *)check->vp_strvalue);
 	} else
 		snprintf(filter,sizeof(filter), "(&(%s=%s)%s)",
 			 inst->groupname_attr,
-			 (char *)check->strvalue,gr_filter);
+			 (char *)check->vp_strvalue,gr_filter);
 
 	if ((conn_id = ldap_get_conn(inst->conns,&conn,inst)) == -1) {
 		radlog(L_ERR, "rlm_ldap: All ldap connections are in use");
@@ -958,7 +958,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 	if ((res = perform_search(inst, conn, basedn, LDAP_SCOPE_SUBTREE,
 				filter, attrs, &result)) == RLM_MODULE_OK) {
 		DEBUG("rlm_ldap::ldap_groupcmp: User found in group %s",
-				(char *)check->strvalue);
+				(char *)check->vp_strvalue);
 		ldap_msgfree(result);
 		ldap_release_conn(conn_id,inst->conns);
         	return 0;
@@ -977,7 +977,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 		 *	membership using user object attributes is not
 		 *	specified in config file
 		 */
-		DEBUG("rlm_ldap::ldap_groupcmp: Group %s not found or user is not a member.",(char *)check->strvalue);
+		DEBUG("rlm_ldap::ldap_groupcmp: Group %s not found or user is not a member.",(char *)check->vp_strvalue);
 		return 1;
 	}
 
@@ -986,7 +986,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 		radlog(L_ERR, "rlm_ldap: Add ldap connections are in use");
 		return 1;
 	}
-	if ((res = perform_search(inst, conn, vp_user_dn->strvalue,
+	if ((res = perform_search(inst, conn, vp_user_dn->vp_strvalue,
 				  LDAP_SCOPE_BASE, filter, group_attrs,
 				  &result)) != RLM_MODULE_OK) {
 		DEBUG("rlm_ldap::ldap_groupcmp: Search returned error");
@@ -1011,7 +1011,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 				LDAPMessage *gr_result = NULL;
 				snprintf(filter,sizeof(filter), "(%s=%s)",
 					inst->groupname_attr,
-					(char *)check->strvalue);
+					(char *)check->vp_strvalue);
 				if ((res = perform_search(inst, conn, vals[i],
 						LDAP_SCOPE_BASE, filter,
 						attrs, &gr_result)) != RLM_MODULE_OK){
@@ -1028,7 +1028,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 					break;
 				}
 			} else {
-				if (strcmp(vals[i],(char *)check->strvalue) == 0){
+				if (strcmp(vals[i],(char *)check->vp_strvalue) == 0){
 					found = 1;
 					break;
 				}
@@ -1038,7 +1038,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 		ldap_msgfree(result);
 		if (found == 0){
 			DEBUG("rlm_ldap::groupcmp: Group %s not found or user not a member",
-				(char *)check->strvalue);
+				(char *)check->vp_strvalue);
 			ldap_release_conn(conn_id,inst->conns);
 			return 1;
 		}
@@ -1049,7 +1049,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 			return 1;
 	}
 
-	DEBUG("rlm_ldap::ldap_groupcmp: User found in group %s",(char *)check->strvalue);
+	DEBUG("rlm_ldap::ldap_groupcmp: User found in group %s",(char *)check->vp_strvalue);
 	ldap_release_conn(conn_id,inst->conns);
 
         return 0;
@@ -1214,12 +1214,12 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	/*
 	 * Check for valid input, zero length names not permitted
 	 */
-	if (request->username->strvalue == 0) {
+	if (request->username->vp_strvalue == 0) {
 		radlog(L_ERR, "rlm_ldap: zero length username not permitted\n");
 		return RLM_MODULE_INVALID;
 	}
 	DEBUG("rlm_ldap: performing user authorization for %s",
-	       request->username->strvalue);
+	       request->username->vp_strvalue);
 
 	if (!radius_xlat(filter, sizeof(filter), inst->filter,
 			 request, ldap_escape_func)) {
@@ -1271,7 +1271,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	if (inst->access_attr) {
 		if ((vals = ldap_get_values(conn->ld, msg, inst->access_attr)) != NULL) {
 			if (inst->default_allow){
-				DEBUG("rlm_ldap: checking if remote access for %s is allowed by %s", request->username->strvalue, inst->access_attr);
+				DEBUG("rlm_ldap: checking if remote access for %s is allowed by %s", request->username->vp_strvalue, inst->access_attr);
 				if (!strncmp(vals[0], "FALSE", 5)) {
 					DEBUG("rlm_ldap: dialup access disabled");
 					snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Access Attribute denies access");
@@ -1318,7 +1318,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 		strNcpy(filter,inst->base_filter,sizeof(filter));
 		if (user_profile)
-			profile = user_profile->strvalue;
+			profile = user_profile->vp_strvalue;
 		if (profile && strlen(profile)){
 			if ((res = perform_search(instance, conn,
 				profile, LDAP_SCOPE_BASE,
@@ -1441,7 +1441,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 							strlen(inst->passwd_hdr)) == 0) {
 						value += strlen(inst->passwd_hdr);
 					} else {
-						DEBUG("rlm_ldap: Password header not found in password %s for user %s", passwd_vals[0], request->username->strvalue);
+						DEBUG("rlm_ldap: Password header not found in password %s for user %s", passwd_vals[0], request->username->vp_strvalue);
 					}
 				}
 				if (!value) continue;
@@ -1455,13 +1455,13 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					ldap_release_conn(conn_id,inst->conns);
 					return RLM_MODULE_FAIL;
 				}
-				strNcpy(passwd_item->strvalue, value,
-					sizeof(passwd_item->strvalue));
-				passwd_item->length = strlen(passwd_item->strvalue);
+				strNcpy(passwd_item->vp_strvalue, value,
+					sizeof(passwd_item->vp_strvalue));
+				passwd_item->length = strlen(passwd_item->vp_strvalue);
 				pairadd(&request->config_items,passwd_item);
 				DEBUG("rlm_ldap: Added %s = %s in check items",
 				      passwd_item->name,
-				      passwd_item->strvalue);
+				      passwd_item->vp_strvalue);
 			}
 			ldap_value_free(passwd_vals);
 #ifdef NOVELL_UNIVERSAL_PASSWORD
@@ -1485,7 +1485,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 				memset(universal_password, 0, universal_password_len);
 
 				vp_user_dn = pairfind(request->config_items,PW_LDAP_USERDN);
-				res = nmasldap_get_password(conn->ld,vp_user_dn->strvalue,&universal_password_len,universal_password);
+				res = nmasldap_get_password(conn->ld,vp_user_dn->vp_strvalue,&universal_password_len,universal_password);
 
 				if (res == 0){
 					passwd_val = universal_password;
@@ -1496,7 +1496,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 						if (passwd_val != NULL)
 							passwd_val += strlen((char*)inst->passwd_hdr);
 						else
-							DEBUG("rlm_ldap: Password header not found in password %s for user %s ",passwd_val,request->username->strvalue);
+							DEBUG("rlm_ldap: Password header not found in password %s for user %s ",passwd_val,request->username->vp_strvalue);
 					}
 
 					if (passwd_val){
@@ -1510,7 +1510,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 						}
 
 						passwd_len = strlen(passwd_val);
-						strncpy(passwd_item->strvalue,passwd_val,MAX_STRING_LEN - 1);
+						strncpy(passwd_item->vp_strvalue,passwd_val,MAX_STRING_LEN - 1);
 						passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
 						pairadd(&request->config_items,passwd_item);
 
@@ -1539,8 +1539,8 @@ static int ldap_authorize(void *instance, REQUEST * request)
 									free(universal_password);
 									return RLM_MODULE_FAIL;
 								}
-								strcpy(vp_inst->strvalue, inst->xlat_name);
-								vp_inst->length = strlen(vp_inst->strvalue);
+								strcpy(vp_inst->vp_strvalue, inst->xlat_name);
+								vp_inst->length = strlen(vp_inst->vp_strvalue);
 								pairadd(&request->config_items, vp_inst);
 
 								/*
@@ -1559,10 +1559,10 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 								if(!inst->edir_account_policy_check){
 									/* Do nothing */
-									strcpy(vp_apc->strvalue, "1");
+									strcpy(vp_apc->vp_strvalue, "1");
 								}else{
 									/* Perform eDirectory account-policy check */
-									strcpy(vp_apc->strvalue, "2");
+									strcpy(vp_apc->vp_strvalue, "2");
 								}
 								vp_apc->length = 1;
 								pairadd(&request->config_items, vp_apc);
@@ -1570,7 +1570,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 						}
 #endif
 
-						DEBUG("rlm_ldap: Added the eDirectory password %s in check items as %s",passwd_item->strvalue,passwd_item->name);
+						DEBUG("rlm_ldap: Added the eDirectory password %s in check items as %s",passwd_item->vp_strvalue,passwd_item->name);
 					}
 				}
 				else {
@@ -1622,7 +1622,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 		vp_apc = pairfind(request->config_items, apc_attr);
 		if(vp_apc)
-			vp_apc->strvalue[0] = '1';
+			vp_apc->vp_strvalue[0] = '1';
 #endif
 
 		DEBUG("rlm_ldap: Pairs do not match. Rejecting user.");
@@ -1646,7 +1646,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 
 	DEBUG("rlm_ldap: user %s authorized to use remote access",
-	      request->username->strvalue);
+	      request->username->vp_strvalue);
 	ldap_msgfree(result);
 	ldap_release_conn(conn_id,inst->conns);
 
@@ -1723,7 +1723,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 
 
 	DEBUG("rlm_ldap: login attempt by \"%s\" with password \"%s\"",
-	       request->username->strvalue, request->password->strvalue);
+	       request->username->vp_strvalue, request->password->vp_strvalue);
 
 	while ((vp_user_dn = pairfind(request->config_items,
 				      PW_LDAP_USERDN)) == NULL) {
@@ -1769,16 +1769,16 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 		ldap_msgfree(result);
 	}
 
-	user_dn = vp_user_dn->strvalue;
+	user_dn = vp_user_dn->vp_strvalue;
 
 	DEBUG("rlm_ldap: user DN: %s", user_dn);
 
 #ifndef NOVELL
-	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
+	ld_user = ldap_connect(instance, user_dn, request->password->vp_strvalue,
 			       1, &res, NULL);
 #else
 	
-	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
+	ld_user = ldap_connect(instance, user_dn, request->password->vp_strvalue,
 			1, &res, &err);
 
 	if(err != NULL){
@@ -1797,8 +1797,8 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 		dattr = dict_attrbyname("eDir-APC");
 		apc_attr = dattr->attr;
 		vp_apc = pairfind(request->config_items, apc_attr);
-		if(vp_apc && vp_apc->strvalue[0] == '2')
-			vp_apc->strvalue[0] = '3';
+		if(vp_apc && vp_apc->vp_strvalue[0] == '2')
+			vp_apc->vp_strvalue[0] = '3';
 	}
 #endif
 
@@ -1817,7 +1817,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 	}
 
 	DEBUG("rlm_ldap: user %s authenticated succesfully",
-	      request->username->strvalue);
+	      request->username->vp_strvalue);
 	ldap_unbind_s(ld_user);
 	inst->failed_conns = 0;
 
@@ -1854,12 +1854,12 @@ static int ldap_postauth(void *instance, REQUEST * request)
 	 * Check if the password in the config items list is the user's UP which has
 	 * been read in the authorize method of this instance of the LDAP module.
 	 */
-	if((vp_inst == NULL) || strcmp(vp_inst->strvalue, inst->xlat_name))
+	if((vp_inst == NULL) || strcmp(vp_inst->vp_strvalue, inst->xlat_name))
 		return RLM_MODULE_NOOP;
 
 	vp_apc = pairfind(request->config_items, apc_attr);
 
-	switch(vp_apc->strvalue[0]){
+	switch(vp_apc->vp_strvalue[0]){
 		case '1':
 			/* Account policy check not enabled */
 		case '3':
@@ -1876,7 +1876,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 				if (request->reply->code == PW_AUTHENTICATION_REJECT) {
 				  /* Bind to eDirectory as the RADIUS user with a wrong password. */
 				  vp_pwd = pairfind(request->config_items, PW_PASSWORD);
-				  strcpy(password, vp_pwd->strvalue);
+				  strcpy(password, vp_pwd->vp_strvalue);
 				  if (strlen(password) > 0) {
 					  if (password[0] != 'a') {
 						  password[0] = 'a';
@@ -1894,7 +1894,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 						DEBUG("rlm_ldap: User's Universal Password not in config items list.");
 						return RLM_MODULE_FAIL;
 					}
-					strcpy(password, vp_pwd->strvalue);
+					strcpy(password, vp_pwd->vp_strvalue);
 				}
 
 				if ((da = dict_attrbyname("Ldap-UserDn")) == NULL) {
@@ -1926,7 +1926,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 						DEBUG2("rlm_ldap: closing existing LDAP connection");
 						ldap_unbind_s(conn->ld);
 					}
-					if ((conn->ld = ldap_connect(instance, (char *)vp_fdn->strvalue, password, 0, &res, &error_msg)) == NULL) {
+					if ((conn->ld = ldap_connect(instance, (char *)vp_fdn->vp_strvalue, password, 0, &res, &error_msg)) == NULL) {
 						radlog(L_ERR, "rlm_ldap: eDirectory account policy check failed.");
 						
 						if (error_msg != NULL) {
@@ -1935,12 +1935,12 @@ static int ldap_postauth(void *instance, REQUEST * request)
 							ldap_memfree((void *)error_msg);
 						}
 						
-						vp_apc->strvalue[0] = '3';
+						vp_apc->vp_strvalue[0] = '3';
 						ldap_release_conn(conn_id, inst->apc_conns);
 						return RLM_MODULE_REJECT;
 					}
 					conn->bound = 1;
-				} else if((err = ldap_simple_bind_s(conn->ld, (char *)vp_fdn->strvalue, password)) != LDAP_SUCCESS) {
+				} else if((err = ldap_simple_bind_s(conn->ld, (char *)vp_fdn->vp_strvalue, password)) != LDAP_SUCCESS) {
 					if (err == LDAP_SERVER_DOWN) {
 						conn->bound = 0;
 						goto postauth_reconnect;
@@ -1952,11 +1952,11 @@ static int ldap_postauth(void *instance, REQUEST * request)
 						pairadd(&request->reply->vps, pairmake("Reply-Message", error_msg, T_OP_EQ));
 						ldap_memfree((void *)error_msg);
 					}
-					vp_apc->strvalue[0] = '3';
+					vp_apc->vp_strvalue[0] = '3';
 					ldap_release_conn(conn_id, inst->apc_conns);
 					return RLM_MODULE_REJECT;
 				}
-				vp_apc->strvalue[0] = '3';
+				vp_apc->vp_strvalue[0] = '3';
 				ldap_release_conn(conn_id, inst->apc_conns);
 				return RLM_MODULE_OK;
 			}
@@ -2495,8 +2495,8 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 				}
 				if (do_xlat) {
 					newpair->flags.do_xlat = 1;
-					strNcpy(newpair->strvalue, buf,
-						sizeof(newpair->strvalue));
+					strNcpy(newpair->vp_strvalue, buf,
+						sizeof(newpair->vp_strvalue));
 					newpair->length = 0;
 				}
 

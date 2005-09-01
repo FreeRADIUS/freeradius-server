@@ -539,7 +539,7 @@ int eap_compose(EAP_HANDLER *handler)
 		 * This memory gets freed up when request is freed up
 		 */
 		eap_msg = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
-		memcpy(eap_msg->strvalue, ptr, len);
+		memcpy(eap_msg->vp_strvalue, ptr, len);
 		eap_msg->length = len;
 		pairadd(&(request->reply->vps), eap_msg);
 		ptr += len;
@@ -556,7 +556,7 @@ int eap_compose(EAP_HANDLER *handler)
 	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR);
 	if (!vp) {
 		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, PW_TYPE_OCTETS);
-		memset(vp->strvalue, 0, AUTH_VECTOR_LEN);
+		memset(vp->vp_strvalue, 0, AUTH_VECTOR_LEN);
 		vp->length = AUTH_VECTOR_LEN;
 		pairadd(&(request->reply->vps), vp);
 	}
@@ -644,7 +644,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		 *	If it's a LOCAL realm, then we're not proxying
 		 *	to it.
 		 */
-		realm = realm_find(proxy->strvalue, 0);
+		realm = realm_find(proxy->vp_strvalue, 0);
 		rad_assert(realm->ipaddr.af == AF_INET);
 		if (realm && (realm->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE))) {
 			proxy = NULL;
@@ -671,7 +671,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		 */
 		if (proxy) {
 		do_proxy:
-			DEBUG2("  rlm_eap: Request is supposed to be proxied to Realm %s.  Not doing EAP.", proxy->strvalue);
+			DEBUG2("  rlm_eap: Request is supposed to be proxied to Realm %s.  Not doing EAP.", proxy->vp_strvalue);
 			return EAP_NOOP;
 		}
 		
@@ -723,7 +723,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 */
 	vp = paircreate(PW_EAP_TYPE, PW_TYPE_INTEGER);
 	if (vp) {
-		vp->lvalue = eap_msg->strvalue[4];
+		vp->lvalue = eap_msg->vp_strvalue[4];
 		pairadd(&(request->packet->vps), vp);
 	}
 
@@ -745,13 +745,13 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	We're allowed only a few codes.  Request, Response,
 	 *	Success, or Failure.
 	 */
-	if ((eap_msg->strvalue[0] == 0) ||
-	    (eap_msg->strvalue[0] > PW_EAP_MAX_CODES)) {
+	if ((eap_msg->vp_strvalue[0] == 0) ||
+	    (eap_msg->vp_strvalue[0] > PW_EAP_MAX_CODES)) {
 		DEBUG2("  rlm_eap: Unknown EAP packet");
 	} else {
 		DEBUG2("  rlm_eap: EAP packet type %s id %d length %d",
-		       eap_codes[eap_msg->strvalue[0]],
-		       eap_msg->strvalue[1],
+		       eap_codes[eap_msg->vp_strvalue[0]],
+		       eap_msg->vp_strvalue[1],
 		       eap_msg->length);
 	}
 
@@ -761,8 +761,8 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	sending success/fail packets to us, as it doesn't make
 	 *	sense.
 	 */
-	if ((eap_msg->strvalue[0] != PW_EAP_REQUEST) &&
-	    (eap_msg->strvalue[0] != PW_EAP_RESPONSE)) {
+	if ((eap_msg->vp_strvalue[0] != PW_EAP_REQUEST) &&
+	    (eap_msg->vp_strvalue[0] != PW_EAP_RESPONSE)) {
 		DEBUG2("  rlm_eap: Ignoring EAP packet which we don't know how to handle.");
 		return EAP_FAIL;
 	}
@@ -775,11 +775,11 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	EAP-Identity, Notification, and NAK are all handled
 	 *	internally, so they never have handlers.
 	 */
-	if ((eap_msg->strvalue[4] >= PW_EAP_MD5) &&
+	if ((eap_msg->vp_strvalue[4] >= PW_EAP_MD5) &&
 	    inst->ignore_unknown_eap_types &&
-	    ((eap_msg->strvalue[4] == 0) ||
-	     (eap_msg->strvalue[4] > PW_EAP_MAX_TYPES) ||
-	     (inst->types[eap_msg->strvalue[4]] == NULL))) {
+	    ((eap_msg->vp_strvalue[4] == 0) ||
+	     (eap_msg->vp_strvalue[4] > PW_EAP_MAX_TYPES) ||
+	     (inst->types[eap_msg->vp_strvalue[4]] == NULL))) {
 		DEBUG2("  rlm_eap:  Ignoring Unknown EAP type");
 		return EAP_NOOP;
 	}
@@ -799,12 +799,12 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	returns NOOP, and another module may choose to proxy
 	 *	the request.
 	 */
-	if ((eap_msg->strvalue[4] == PW_EAP_NAK) &&
+	if ((eap_msg->vp_strvalue[4] == PW_EAP_NAK) &&
 	    (eap_msg->length >= (EAP_HEADER_LEN + 2)) &&
 	    inst->ignore_unknown_eap_types &&
-	    ((eap_msg->strvalue[5] == 0) ||
-	     (eap_msg->strvalue[5] > PW_EAP_MAX_TYPES) ||
-	     (inst->types[eap_msg->strvalue[5]] == NULL))) {
+	    ((eap_msg->vp_strvalue[5] == 0) ||
+	     (eap_msg->vp_strvalue[5] > PW_EAP_MAX_TYPES) ||
+	     (inst->types[eap_msg->vp_strvalue[5]] == NULL))) {
 		DEBUG2("  rlm_eap: Ignoring NAK with request for unknown EAP type");
 		return EAP_NOOP;
 	}
@@ -1047,7 +1047,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
                         *      request as the NAS is doing something
                         *      funny.
 			*/
-                       if (strncmp(handler->identity, vp->strvalue,
+                       if (strncmp(handler->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
                                radlog(L_ERR, "rlm_eap: Identity does not match User-Name.  Authentication failed.");
                                free(*eap_packet_p);
@@ -1102,7 +1102,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
                         *      identity, the NAS is doing something
                         *      funny, so reject the request.
 			*/
-                       if (strncmp(handler->identity, vp->strvalue,
+                       if (strncmp(handler->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
                                radlog(L_ERR, "rlm_eap: Identity does not match User-Name, setting from EAP Identity.");
                                free(*eap_packet_p);

@@ -196,7 +196,7 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	handler->timestamp = handler->request->timestamp;
 	handler->status = 1;
 
-	memcpy(handler->state, state->strvalue, sizeof(handler->state));
+	memcpy(handler->state, state->vp_strvalue, sizeof(handler->state));
 	handler->src_ipaddr = handler->request->packet->src_ipaddr;
 	handler->eap_id = handler->eap_ds->request->id;
 
@@ -273,7 +273,7 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 
 	myHandler.src_ipaddr = request->packet->src_ipaddr;
 	myHandler.eap_id = eap_packet->id;
-	memcpy(myHandler.state, state->strvalue, sizeof(myHandler.state));
+	memcpy(myHandler.state, state->vp_strvalue, sizeof(myHandler.state));
 
 	/*
 	 *	Playing with a data structure shared among threads

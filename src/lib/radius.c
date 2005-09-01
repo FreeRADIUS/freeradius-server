@@ -491,7 +491,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 */
 		if (reply->attribute == PW_MESSAGE_AUTHENTICATOR) {
 			reply->length = AUTH_VECTOR_LEN;
-			memset(reply->strvalue, 0, AUTH_VECTOR_LEN);
+			memset(reply->vp_strvalue, 0, AUTH_VECTOR_LEN);
 			packet->verified = total_length; /* HACK! */
 		}
 		
@@ -599,7 +599,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				break;
 				
 			case FLAG_ENCRYPT_USER_PASSWORD:
-				rad_pwencode((char *)reply->strvalue,
+				rad_pwencode((char *)reply->vp_strvalue,
 					     &(reply->length),
 					     secret,
 					     packet->vector);
@@ -610,7 +610,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 					librad_log("ERROR: No request packet, cannot encrypt Tunnel-Password attribute in the reply.");
 					return -1;
 				}
-				rad_tunnel_pwencode(reply->strvalue,
+				rad_tunnel_pwencode(reply->vp_strvalue,
 						    &(reply->length),
 						    secret,
 						    original->vector);
@@ -619,8 +619,8 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				
 			case FLAG_ENCRYPT_ASCEND_SECRET:
 				make_secret(digest, packet->vector,
-					    secret, reply->strvalue);
-				memcpy(reply->strvalue, digest, AUTH_VECTOR_LEN );
+					    secret, reply->vp_strvalue);
+				memcpy(reply->vp_strvalue, digest, AUTH_VECTOR_LEN );
 				reply->length = AUTH_VECTOR_LEN;
 				break;
 			} /* switch over encryption flags */
@@ -689,7 +689,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			 *  into the packet.  Use len for the true
 			 *  length of the string+tags.
 			 */
-			memcpy(ptr, reply->strvalue, reply->length);
+			memcpy(ptr, reply->vp_strvalue, reply->length);
 			ptr += reply->length;
 			total_length += len;
 			break;
@@ -1801,7 +1801,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				 *	See comment below about NUL
 				 *	termination.
 				 */
-				memcpy(pair->strvalue, ptr + offset,
+				memcpy(pair->vp_strvalue, ptr + offset,
 				       pair->length);
 			} else {
 			  /*
@@ -1811,7 +1811,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			case PW_TYPE_ABINARY:
 			case PW_TYPE_OCTETS:
 				/* attrlen always < MAX_STRING_LEN */
-				memcpy(pair->strvalue, ptr, attrlen);
+				memcpy(pair->vp_strvalue, ptr, attrlen);
 				/*
 				 *	Don't NUL terminate strings,
 				 *	as paircreate() zero-fills
@@ -1836,16 +1836,16 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				 */
 			case FLAG_ENCRYPT_USER_PASSWORD:
 				if (original) {
-					rad_pwdecode((char *)pair->strvalue,
+					rad_pwdecode((char *)pair->vp_strvalue,
 						     pair->length, secret,
 						     original->vector);
 				} else {
-					rad_pwdecode((char *)pair->strvalue,
+					rad_pwdecode((char *)pair->vp_strvalue,
 						     pair->length, secret,
 						     packet->vector);
 				}
 				if (pair->attribute == PW_USER_PASSWORD) {
-					pair->length = strlen(pair->strvalue);
+					pair->length = strlen(pair->vp_strvalue);
 				}
 				break;
 
@@ -1859,7 +1859,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 					free(pair);
 					return -1;
 				}
-				if (rad_tunnel_pwdecode(pair->strvalue,
+				if (rad_tunnel_pwdecode(pair->vp_strvalue,
 							&pair->length,
 							secret,
 							original->vector) < 0) {
@@ -1882,10 +1882,10 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 					make_secret(my_digest,
 						    original->vector,
 						    secret, ptr);
-					memcpy(pair->strvalue, my_digest,
+					memcpy(pair->vp_strvalue, my_digest,
 					       AUTH_VECTOR_LEN );
-					pair->strvalue[AUTH_VECTOR_LEN] = '\0';
-					pair->length = strlen(pair->strvalue);
+					pair->vp_strvalue[AUTH_VECTOR_LEN] = '\0';
+					pair->length = strlen(pair->vp_strvalue);
 				}
 				break;
 			} /* switch over encryption flags */
@@ -1904,7 +1904,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			 */
 			if (attrlen != 4) {
 				pair->type = PW_TYPE_OCTETS;
-				memcpy(pair->strvalue, ptr, attrlen);
+				memcpy(pair->vp_strvalue, ptr, attrlen);
 				pair->lvalue = 0xbad1bad1;
 				break;
 			}
@@ -1926,8 +1926,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				ipaddr.af = AF_INET;
 				ipaddr.ipaddr.ip4addr.s_addr = lvalue;
 				inet_ntop(AF_INET, &ipaddr.ipaddr,
-					  pair->strvalue,
-					  sizeof(pair->strvalue) - 1);
+					  pair->vp_strvalue,
+					  sizeof(pair->vp_strvalue) - 1);
 				
 				
 			}
@@ -1951,9 +1951,9 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				dval = dict_valbyattr(pair->attribute,
 						      pair->lvalue);
 				if (dval) {
-					strNcpy(pair->strvalue,
+					strNcpy(pair->vp_strvalue,
 						dval->name,
-						sizeof(pair->strvalue));
+						sizeof(pair->vp_strvalue));
 				}
 			}
 			break;
@@ -1964,7 +1964,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		case PW_TYPE_IFID:
 			if (attrlen != 8)
 				pair->type = PW_TYPE_OCTETS;
-			memcpy(pair->strvalue, ptr, attrlen);
+			memcpy(pair->vp_strvalue, ptr, attrlen);
 			break;
 
 			/*
@@ -1973,7 +1973,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		case PW_TYPE_IPV6ADDR:
 			if (attrlen != 16)
 				pair->type = PW_TYPE_OCTETS;
-			memcpy(pair->strvalue, ptr, attrlen);
+			memcpy(pair->vp_strvalue, ptr, attrlen);
 			break;
 
 			/*
@@ -1998,9 +1998,9 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				 *	(ptr[1] >> 3) matches attrlen + 2
 				 */
 			}
-			memcpy(pair->strvalue, ptr, attrlen);
+			memcpy(pair->vp_strvalue, ptr, attrlen);
 			if (attrlen < 18) {
-				memset(pair->strvalue + attrlen, 0,
+				memset(pair->vp_strvalue + attrlen, 0,
 				       18 - attrlen);
 			}
 			break;
@@ -2393,7 +2393,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 	*ptr++ = id;
 
 	i++;
-	memcpy(ptr, password->strvalue, password->length);
+	memcpy(ptr, password->vp_strvalue, password->length);
 	ptr += password->length;
 	i += password->length;
 
@@ -2403,7 +2403,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 	 */
 	challenge = pairfind(packet->vps, PW_CHAP_CHALLENGE);
 	if (challenge) {
-		memcpy(ptr, challenge->strvalue, challenge->length);
+		memcpy(ptr, challenge->vp_strvalue, challenge->length);
 		i += challenge->length;
 	} else {
 		memcpy(ptr, packet->vector, AUTH_VECTOR_LEN);

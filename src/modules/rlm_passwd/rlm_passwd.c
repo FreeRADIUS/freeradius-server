@@ -525,7 +525,7 @@ static int passwd_authorize(void *instance, REQUEST *request)
 				name = buffer;
 				break;
 			default:
-				name = key->strvalue;
+				name = key->vp_strvalue;
 		}
 		if (! (pw = get_pw_nam(name, inst->ht)) ) {
 			continue;

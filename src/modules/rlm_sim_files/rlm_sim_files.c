@@ -133,7 +133,7 @@ static int sim_file_authorize(void *instance, REQUEST *request)
 	 *	Grab the canonical user name.
 	 */
 	namepair = request->username;
-	name = namepair ? (char *) namepair->strvalue : "NONE";
+	name = namepair ? (char *) namepair->vp_strvalue : "NONE";
 
 	triplets = fopen(inst->file, "r");
 

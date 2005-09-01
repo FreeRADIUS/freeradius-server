@@ -295,7 +295,7 @@ static int file_authorize(void *instance, REQUEST *request)
 	 *	Grab the canonical user name.
 	 */
 	namepair = request->username;
-	name = namepair ? (char *) namepair->strvalue : "NONE";
+	name = namepair ? (char *) namepair->vp_strvalue : "NONE";
 
 	/*
 	 *	Find the entry for the user.
@@ -370,7 +370,7 @@ static int file_preacct(void *instance, REQUEST *request)
 	struct file_instance *inst = instance;
 
 	namepair = request->username;
-	name = namepair ? (char *) namepair->strvalue : "NONE";
+	name = namepair ? (char *) namepair->vp_strvalue : "NONE";
 	request_pairs = request->packet->vps;
 	config_pairs = &request->config_items;
 	reply_pairs = &request->reply->vps;
@@ -430,7 +430,7 @@ static int file_preproxy(void *instance, REQUEST *request)
 	struct file_instance *inst = instance;
 
 	namepair = request->username;
-	name = namepair ? (char *) namepair->strvalue : "NONE";
+	name = namepair ? (char *) namepair->vp_strvalue : "NONE";
 	request_pairs = request->packet->vps;
 	config_pairs = &request->config_items;
 	reply_pairs = &request->proxy->vps;
@@ -462,11 +462,11 @@ static int file_preproxy(void *instance, REQUEST *request)
 				 */
 				if (vp->flags.do_xlat) {
 					int rcode;
-					char buffer[sizeof(vp->strvalue)];
+					char buffer[sizeof(vp->vp_strvalue)];
 
 					vp->flags.do_xlat = 0;
 					rcode = radius_xlat(buffer, sizeof(buffer),
-							    vp->strvalue,
+							    vp->vp_strvalue,
 							    request, NULL);
 
 					/*

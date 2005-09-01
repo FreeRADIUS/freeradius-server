@@ -767,7 +767,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			check1 = 1;
 		if ((vp = pairfind(request->packet->vps, PW_ACCT_SESSION_ID))
 		     != NULL && vp->length == 8 &&
-		     memcmp(vp->strvalue, "00000000", 8) == 0)
+		     memcmp(vp->vp_strvalue, "00000000", 8) == 0)
 			check2 = 1;
 		if (check1 == 0 || check2 == 0) {
 #if 0 /* Cisco sometimes sends START records without username. */
@@ -825,18 +825,18 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 					 * 	of any string.
 					 * 	Compensate.
 					 */
-					if (vp->strvalue[vp->length - 1] == 0) {
+					if (vp->vp_strvalue[vp->length - 1] == 0) {
 						length--;
 					}
 
 					memcpy(utmp.session_id,
-					      vp->strvalue + length,
+					      vp->vp_strvalue + length,
 					      sizeof(utmp.session_id));
 				} else {
 					memset(utmp.session_id, 0,
 					       sizeof(utmp.session_id));
 					memcpy(utmp.session_id,
-					       vp->strvalue,
+					       vp->vp_strvalue,
 					       vp->length);
 				}
 				break;
@@ -847,7 +847,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			case PW_CALLING_STATION_ID:
 				if(inst->callerid_ok)
 					strNcpy(utmp.caller_id,
-						(char *)vp->strvalue,
+						(char *)vp->vp_strvalue,
 						sizeof(utmp.caller_id));
 				break;
 		}
@@ -1408,7 +1408,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS)) != NULL)
 		ipno = vp->lvalue;
 	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
-		call_num = vp->strvalue;
+		call_num = vp->vp_strvalue;
 
 	/*
 	 *	lock the file while reading/writing.

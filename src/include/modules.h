@@ -26,7 +26,7 @@ enum {
 #define RLM_TYPE_THREAD_SAFE	(0 << 0)
 #define RLM_TYPE_THREAD_UNSAFE	(1 << 0)
 
-#define RLM_MODULE_MAGIC_NUMBER ((uint32_t) (0xf4ee4ad12))
+#define RLM_MODULE_MAGIC_NUMBER ((uint32_t) (0xf4ee4ad2))
 #define RLM_MODULE_INIT RLM_MODULE_MAGIC_NUMBER
 
 typedef struct module_t {

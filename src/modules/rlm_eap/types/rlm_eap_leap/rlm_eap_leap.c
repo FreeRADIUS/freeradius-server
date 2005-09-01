@@ -108,7 +108,7 @@ static int leap_authenticate(void *instance, EAP_HANDLER *handler)
 	if (!(packet = eapleap_extract(handler->eap_ds)))
 		return 0;
 
-	username = (char *)handler->request->username->strvalue;
+	username = (char *)handler->request->username->vp_strvalue;
 
 	/*
 	 *	The password is never sent over the wire.
