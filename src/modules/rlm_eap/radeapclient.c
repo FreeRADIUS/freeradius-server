@@ -352,15 +352,15 @@ static int process_eap_start(RADIUS_PACKET *req,
 		 */
 		newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_NONCE_MT,
 				   PW_TYPE_OCTETS);
-		newvp->vp_strvalue[0]=0;
-		newvp->vp_strvalue[1]=0;
+		newvp->vp_octets[0]=0;
+		newvp->vp_octets[1]=0;
 		newvp->length = 18;  /* 16 bytes of nonce + padding */
 
 		nonce[0]=lrad_rand();
 		nonce[1]=lrad_rand();
 		nonce[2]=lrad_rand();
 		nonce[3]=lrad_rand();
-		memcpy(&newvp->vp_strvalue[2], nonce, 16);
+		memcpy(&newvp->vp_octets[2], nonce, 16);
 		pairreplace(&(rep->vps), newvp);
 
 		/* also keep a copy of the nonce! */
