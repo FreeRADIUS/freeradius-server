@@ -180,9 +180,9 @@ static void ntpwdhash (char *szHash, const char *szPassword)
  *	implements RFC2759 ChallengeHash()
  *	generates 64 bit challenge
  */
-static void challenge_hash( const char *peer_challenge,
-			    const char *auth_challenge,
-			    const char *user_name, char *challenge )
+static void challenge_hash( const uint8_t *peer_challenge,
+			    const uint8_t *auth_challenge,
+			    const char *user_name, uint8_t *challenge )
 {
 	SHA1_CTX Context;
 	char hash[20];
@@ -270,7 +270,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		       char *fmt, char *out, size_t outlen,
 		       RADIUS_ESCAPE_STRING func)
 {
-	int		i, data_len;
+	size_t		i, data_len;
 	uint8_t		*data = NULL;
 	uint8_t		buffer[32];
 	VALUE_PAIR	*user_name;
@@ -298,8 +298,9 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		 *	for MS-CHAPv2
 		 */
 		if (chap_challenge->length == 8) {
-			DEBUG2(" mschap1: %02x", chap_challenge->vp_strvalue[0]);
-			data = chap_challenge->vp_strvalue;
+			DEBUG2(" mschap1: %02x",
+			       chap_challenge->vp_octets[0]);
+			data = chap_challenge->vp_octets;
 			data_len = 8;
 
 			/*
@@ -309,7 +310,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		} else if (chap_challenge->length == 16) {
 			char *username_string;
 
-			DEBUG2(" mschap2: %02x", chap_challenge->vp_strvalue[0]);
+			DEBUG2(" mschap2: %02x", chap_challenge->vp_octets[0]);
 			response = pairfind(request->packet->vps,
 					    PW_MSCHAP2_RESPONSE);
 			if (!response) {
@@ -351,8 +352,8 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			 *	from the MS-CHAPv2 peer challenge,
 			 *	our challenge, and the user name.
 			 */
-			challenge_hash(response->vp_strvalue + 2,
-				       chap_challenge->vp_strvalue,
+			challenge_hash(response->vp_octets + 2,
+				       chap_challenge->vp_octets,
 				       username_string, buffer);
 			data = buffer;
 			data_len = 8;
@@ -380,7 +381,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		 *	if the second octet says so.
 		 */
 		if ((response->attribute == PW_MSCHAP_RESPONSE) &&
-		    ((response->vp_strvalue[1] & 0x01) == 0)) {
+		    ((response->vp_octets[1] & 0x01) == 0)) {
 			DEBUG2("  rlm_mschap: No NT-Response in MS-CHAP-Response");
 			return 0;
 		}
@@ -390,7 +391,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		 *	the NT-Response at the same offset, and are
 		 *	the same length.
 		 */
-		data = response->vp_strvalue + 26;
+		data = response->vp_octets + 26;
 		data_len = 24;
 		
 		/*
@@ -409,11 +410,11 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		 *	For MS-CHAPv1, the NT-Response exists only
 		 *	if the second octet says so.
 		 */
-		if ((response->vp_strvalue[1] & 0x01) != 0) {
+		if ((response->vp_octets[1] & 0x01) != 0) {
 			DEBUG2("  rlm_mschap: No LM-Response in MS-CHAP-Response");
 			return 0;
 		}
-		data = response->vp_strvalue + 2;
+		data = response->vp_octets + 2;
 		data_len = 24;
 
 		/*
@@ -635,8 +636,8 @@ static void add_reply(VALUE_PAIR** vp, unsigned char ident,
 		return;
 	}
 
-	reply_attr->vp_strvalue[0] = ident;
-	memcpy(reply_attr->vp_strvalue + 1, value, len);
+	reply_attr->vp_octets[0] = ident;
+	memcpy(reply_attr->vp_octets + 1, value, len);
 	reply_attr->length = len + 1;
 	pairadd(vp, reply_attr);
 }
@@ -654,7 +655,7 @@ static void mppe_add_reply(VALUE_PAIR **vp,
 	       return;
        }
 
-       memcpy(reply_attr->vp_strvalue, value, len);
+       memcpy(reply_attr->vp_octets, value, len);
        reply_attr->length = len;
        pairadd(vp, reply_attr);
 }
@@ -1072,7 +1073,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			radlog(L_ERR, "No memory");
 			return RLM_MODULE_FAIL;
 		} else {
-			ntpwdhash(nt_password->vp_strvalue, password->vp_strvalue);
+			ntpwdhash(nt_password->vp_strvalue,
+				  password->vp_strvalue);
 			nt_password->length = 16;
 			pairadd(&request->config_items, nt_password);
 		}
@@ -1115,7 +1117,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	We are doing MS-CHAP.  Calculate the MS-CHAP
 		 *	response
 		 */
-		if (response->vp_strvalue[1] & 0x01) {
+		if (response->vp_octets[1] & 0x01) {
 			DEBUG2("  rlm_mschap: Told to do MS-CHAPv1 with NT-Password");
 			password = nt_password;
 			offset = 26;
@@ -1128,10 +1130,10 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		/*
 		 *	Do the MS-CHAP authentication.
 		 */
-		if (do_mschap(inst, request, password, challenge->vp_strvalue,
-			      response->vp_strvalue + offset, nthashhash) < 0) {
+		if (do_mschap(inst, request, password, challenge->vp_octets,
+			      response->vp_octets + offset, nthashhash) < 0) {
 			DEBUG2("  rlm_mschap: MS-CHAP-Response is incorrect.");
-			add_reply(&request->reply->vps, *response->vp_strvalue,
+			add_reply(&request->reply->vps, *response->vp_octets,
 				  "MS-CHAP-Error", "E=691 R=1", 9);
 			return RLM_MODULE_REJECT;
 		}
@@ -1188,8 +1190,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	MS-CHAPv2 takes some additional data to create an
 		 *	MS-CHAPv1 challenge, and then does MS-CHAPv1.
 		 */
-		challenge_hash(response->vp_strvalue + 2, /* peer challenge */
-			       challenge->vp_strvalue, /* our challenge */
+		challenge_hash(response->vp_octets + 2, /* peer challenge */
+			       challenge->vp_octets, /* our challenge */
 			       username_string,	/* user name */
 			       mschapv1_challenge); /* resulting challenge */
 		
@@ -1197,9 +1199,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		       username_string);
 
 		if (do_mschap(inst, request, nt_password, mschapv1_challenge,
-			      response->vp_strvalue + 26, nthashhash) < 0) {
+			      response->vp_octets + 26, nthashhash) < 0) {
 			DEBUG2("  rlm_mschap: FAILED: MS-CHAP2-Response is incorrect");
-			add_reply(&request->reply->vps, *response->vp_strvalue,
+			add_reply(&request->reply->vps, *response->vp_octets,
 				  "MS-CHAP-Error", "E=691 R=1", 9);
 			return RLM_MODULE_REJECT;
 		}
@@ -1212,11 +1214,11 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 		auth_response(username_string, /* without the domain */
 			      nthashhash, /* nt-hash-hash */
-			      response->vp_strvalue + 26, /* peer response */
-			      response->vp_strvalue + 2, /* peer challenge */
-			      challenge->vp_strvalue, /* our challenge */
+			      response->vp_octets + 26, /* peer response */
+			      response->vp_octets + 2, /* peer challenge */
+			      challenge->vp_octets, /* our challenge */
 			      msch2resp); /* calculated MPPE key */
-		add_reply( &request->reply->vps, *response->vp_strvalue,
+		add_reply( &request->reply->vps, *response->vp_octets,
 			   "MS-CHAP2-Success", msch2resp, 42);
 		chap = 2;
 
@@ -1240,7 +1242,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		if (((smb_ctrl->lvalue & ACB_DISABLED) != 0) ||
 		    ((smb_ctrl->lvalue & ACB_NORMAL) == 0)) {
 			DEBUG2("  rlm_mschap: SMB-Account-Ctrl says that the account is disabled, or is not a normal account.");
-			add_reply( &request->reply->vps, *response->vp_strvalue,
+			add_reply( &request->reply->vps, *response->vp_octets,
 				   "MS-CHAP-Error", "E=691 R=1", 9);
 			return RLM_MODULE_NOTFOUND;
 		}
@@ -1250,7 +1252,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 */
 		if ((smb_ctrl->lvalue & ACB_AUTOLOCK) != 0) {
 			DEBUG2("  rlm_mschap: SMB-Account-Ctrl says that the account is locked out.");
-			add_reply( &request->reply->vps, *response->vp_strvalue,
+			add_reply( &request->reply->vps, *response->vp_octets,
 				   "MS-CHAP-Error", "E=647 R=0", 9);
 			return RLM_MODULE_USERLOCK;
 		}
@@ -1265,7 +1267,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			DEBUG2("rlm_mschap: adding MS-CHAPv1 MPPE keys");
 			memset(mppe_sendkey, 0, 32);
 			if (lm_password) {
-				memcpy(mppe_sendkey, lm_password->vp_strvalue, 8);
+				memcpy(mppe_sendkey, lm_password->vp_octets, 8);
 			}
 
 			/*
@@ -1288,7 +1290,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		} else if (chap == 2) {
 			DEBUG2("rlm_mschap: adding MS-CHAPv2 MPPE keys");
 			mppe_chap2_gen_keys128(nthashhash,
-					       response->vp_strvalue + 26,
+					       response->vp_octets + 26,
 					       mppe_sendkey, mppe_recvkey);
 			
 			mppe_add_reply(&request->reply->vps,
