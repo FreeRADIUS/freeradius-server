@@ -70,7 +70,7 @@ static int chap_authorize(void *instance, REQUEST *request)
 static int chap_authenticate(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *passwd_item;
-	char pass_str[MAX_STRING_LEN];
+	uint8_t pass_str[MAX_STRING_LEN];
 	VALUE_PAIR *module_fmsg_vp;
 	char module_fmsg[MAX_STRING_LEN];
 
@@ -98,6 +98,11 @@ static int chap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
+	if (request->password->length != CHAP_VALUE_LENGTH + 1) {
+		radlog(L_ERR, "rlm_chap: password supplied has wrong length");
+		return RLM_MODULE_INVALID;
+	}
+
 	/*
 	 *	Don't print out the CHAP password here.  It's binary crap.
 	 */
@@ -106,8 +111,10 @@ static int chap_authenticate(void *instance, REQUEST *request)
 
 	if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
 		DEBUG("  rlm_chap: Could not find clear text password for user %s",request->username->vp_strvalue);
-		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_chap: Clear text password not available");
-		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+		snprintf(module_fmsg, sizeof(module_fmsg),
+			 "rlm_chap: Clear text password not available");
+		module_fmsg_vp = pairmake("Module-Failure-Message",
+					  module_fmsg, T_OP_EQ);
 		pairadd(&request->packet->vps, module_fmsg_vp);
 		return RLM_MODULE_INVALID;
 	}
@@ -115,17 +122,22 @@ static int chap_authenticate(void *instance, REQUEST *request)
 	DEBUG("  rlm_chap: Using clear text password %s for user %s authentication.",
 	      passwd_item->vp_strvalue, request->username->vp_strvalue);
 
-	rad_chap_encode(request->packet,pass_str,request->password->vp_strvalue[0],passwd_item);
+	rad_chap_encode(request->packet,pass_str,
+			request->password->vp_octets[0],passwd_item);
 
-	if (memcmp(pass_str+1,request->password->vp_strvalue+1,CHAP_VALUE_LENGTH) != 0){
+	if (memcmp(pass_str + 1, request->password->vp_octets + 1,
+		   CHAP_VALUE_LENGTH) != 0){
 		DEBUG("  rlm_chap: Pasword check failed");
-		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_chap: Wrong user password");
-		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
+		snprintf(module_fmsg, sizeof(module_fmsg),
+			 "rlm_chap: Wrong user password");
+		module_fmsg_vp = pairmake("Module-Failure-Message",
+					  module_fmsg, T_OP_EQ);
 		pairadd(&request->packet->vps, module_fmsg_vp);
 		return RLM_MODULE_REJECT;
 	}
 
-	DEBUG("  rlm_chap: chap user %s authenticated succesfully",request->username->vp_strvalue);
+	DEBUG("  rlm_chap: chap user %s authenticated succesfully",
+	      request->username->vp_strvalue);
 
 	return RLM_MODULE_OK;
 }
