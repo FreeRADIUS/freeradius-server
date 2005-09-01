@@ -137,14 +137,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		len = strlen(buffer);
 	}
 
-#ifdef HAVE_VSNPRINTF
-	vsnprintf(buffer + len, sizeof(buffer) - len -1, fmt, ap);
-#else
-	vsprintf(buffer + len, fmt, ap);
-	if (strlen(buffer) >= sizeof(buffer) - 1)
-		/* What can we do? */
-		_exit(42);
-#endif
+	vsnprintf(buffer + len, sizeof(buffer) - len - 1, fmt, ap);
 
 	/*
 	 *	Filter out characters not in Latin-1.
