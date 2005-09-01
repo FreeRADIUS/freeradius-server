@@ -790,7 +790,7 @@ int setup_modules(int reload)
 			 *	is that it's unique.
 			 */
 			do {
-				value = lrad_rand();
+				value = lrad_rand() & 0x00ffffff;
 			} while (dict_valbyattr(dattr->attr, value));
 
 			if (dict_addvalue(name2, dattr->name, value) < 0) {
@@ -837,7 +837,7 @@ int setup_modules(int reload)
 			 *	Finally, create the new attribute.
 			 */
 			do {
-				value = lrad_rand();
+				value = lrad_rand() & 0x00ffffff;
 			} while (dict_valbyattr(dattr->attr, value));
 			if (dict_addvalue(name2, dattr->name, value) < 0) {
 				radlog(L_ERR, "%s", librad_errstr);
