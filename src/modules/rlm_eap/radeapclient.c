@@ -720,9 +720,9 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 	}
 
 	/* got the details of the MD5 challenge */
-	valuesize = vp->vp_strvalue[0];
-	value = &vp->vp_strvalue[1];
-	name  = &vp->vp_strvalue[valuesize+1];
+	valuesize = vp->vp_octets[0];
+	value = &vp->vp_octets[1];
+	name  = &vp->vp_octets[valuesize+1];
 	namesize = vp->length - (valuesize + 1);
 
 	/* sanitize items */
@@ -744,7 +744,7 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 	lrad_MD5Final(response, &context);
 
 	vp = paircreate(ATTRIBUTE_EAP_BASE+PW_EAP_MD5, PW_TYPE_OCTETS);
-	vp->vp_strvalue[0]=16;
+	vp->vp_octets[0]=16;
 	memcpy(&vp->vp_strvalue[1], response, 16);
 	vp->length = 17;
 
@@ -814,10 +814,10 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 		case PW_DIGEST_NONCE_COUNT:
 		case PW_DIGEST_USER_NAME:
 			/* overlapping! */
-			memmove(&vp->vp_strvalue[2], &vp->vp_strvalue[0], vp->length);
-			vp->vp_strvalue[0] = vp->attribute - PW_DIGEST_REALM + 1;
+			memmove(&vp->vp_strvalue[2], &vp->vp_octets[0], vp->length);
+			vp->vp_octets[0] = vp->attribute - PW_DIGEST_REALM + 1;
 			vp->length += 2;
-			vp->vp_strvalue[1] = vp->length;
+			vp->vp_octets[1] = vp->length;
 			vp->attribute = PW_DIGEST_ATTRIBUTES;
 			break;
 		}
