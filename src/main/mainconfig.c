@@ -38,6 +38,7 @@
 #include "rad_assert.h"
 #include "conffile.h"
 #include "token.h"
+#include "modules.h"
 
 #include <sys/resource.h>
 #include <unistd.h>
@@ -202,9 +203,9 @@ static const CONF_PARSER server_config[] = {
 	{ "debug_level", PW_TYPE_INTEGER, 0, &mainconfig.debug_level, "0"},
 
 	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_requests, "yes" },
-	{ "log", PW_TYPE_SUBSECTION, 0, log_config, NULL },
-	{ "proxy", PW_TYPE_SUBSECTION, 0, proxy_config, NULL },
-	{ "security", PW_TYPE_SUBSECTION, 0, security_config, NULL },
+	{ "log", PW_TYPE_SUBSECTION, 0, NULL,  (const void *) log_config},
+	{ "proxy", PW_TYPE_SUBSECTION, 0, NULL, (const void *) proxy_config },
+	{ "security", PW_TYPE_SUBSECTION, 0, NULL, (const void *) security_config },
 	{ NULL, -1, 0, NULL, NULL }
 };
 

@@ -875,7 +875,7 @@ int cf_section_parse(const CONF_SECTION *cs, void *base,
 			}
 			
 			if (cf_section_parse(subcs, base,
-					     (CONF_PARSER *) variables[i].data) < 0) {
+					     (const CONF_PARSER *) variables[i].dflt) < 0) {
 				return -1;
 			}
 			continue;

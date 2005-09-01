@@ -237,7 +237,7 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(ldap_instance,tls_randfile), NULL, NULL},
 	{"tls_require_cert", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,tls_require_cert), NULL, TLS_DEFAULT_VERIFY},
-	{ "tls", PW_TYPE_SUBSECTION, 0, tls_config, NULL },
+	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (const void *) tls_config },
 
 	/*
 	 *	DN's and filters.
