@@ -64,6 +64,57 @@ static const char rcsid[] = "$Id$";
 
 
 /*
+ *	ascend_ip_filter_t
+ *
+ *	The binary format of an IP filter.  ALL fields are stored in
+ *	network byte order.
+ *
+ *	srcip:		The source IP address.
+ *
+ *	dstip:		The destination IP address.
+ *
+ *	srcmask:	The number of leading one bits in the source address
+ *			mask.  Specifies the bits of interest.
+ *
+ *	dstmask:	The number of leading one bits in the destination
+ *			address mask. Specifies the bits of interest.
+ *
+ *	proto:		The IP protocol number
+ *
+ *	established:	A boolean value.  TRUE when we care about the
+ *			established state of a TCP connection.  FALSE when
+ *			we dont care.
+ *
+ *	srcport:	TCP or UDP source port number.
+ *
+ *	dstport:	TCP or UDP destination port number.
+ *
+ *	srcPortCmp:	One of the values of the RadFilterComparison
+ *			enumeration, specifying how to compare the
+ *			srcport value.
+ *
+ *	dstPortCmp:	One of the values of the RadFilterComparison
+ *			enumeration, specifying how to compare the
+ *			dstport value.
+ *
+ *	fill:		Round things out to a int16_t boundary.
+ */
+typedef struct ascend_ip_filter_t {
+	uint32_t	srcip;
+	uint32_t	dstip;
+	uint8_t 	srcmask;
+	uint8_t 	dstmask;
+	uint8_t		proto;
+	uint8_t		established;
+	uint16_t	srcport;
+	uint16_t	dstport;
+	uint8_t		srcPortComp;
+	uint8_t		dstPortComp;
+	unsigned char   fill[4];        /* used to be fill[2] */
+} ascend_ip_filter_t;
+
+
+/*
  *	ascend_ipx_net_t
  *
  *	net:      IPX Net address
@@ -166,9 +217,16 @@ typedef struct ascend_filter_t {
 		ascend_ip_filter_t   	 ip;
 		ascend_ipx_filter_t   	 ipx;
 		ascend_generic_filter_t	generic;
+		uint8_t			data[28]; /* ensure it's 32 bytes */
 	} u;
 } ascend_filter_t;
-#define SIZEOF_RADFILTER 32
+
+/*
+ *	This is a wild C hack...
+ */
+typedef struct _cpp_hack {
+	char data[(sizeof(ascend_filter_t) == 32) ? 1 : -1 ];
+} _cpp_hack;
 
 /*
  * FilterPortType:
@@ -1037,8 +1095,8 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	 *	Touch the VP only if everything was OK.
 	 */
 	if (rcode == 0) {
-		pair->length = SIZEOF_RADFILTER;
-		memcpy(pair->vp_strvalue, &filter, sizeof(filter));
+		pair->length = sizeof(filter);
+		memcpy(pair->vp_filter, &filter, sizeof(filter));
 	}
 
 	return rcode;
@@ -1070,7 +1128,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
     }
 
     if( rc != -1 ) {
-	memcpy( pair->vp_strvalue, (char *) &radFil, pair->length );
+	memcpy( pair->vp_strvalue, &radFil, pair->length );
     }
     return(rc);
 
@@ -1089,7 +1147,7 @@ void print_abinary(VALUE_PAIR *vp, char *buffer, int len)
 {
   int 			i;
   char			*p;
-  ascend_filter_t	filter;
+  ascend_filter_t	*filter;
 
   static const char *action[] = {"drop", "forward"};
   static const char *direction[] = {"out", "in"};
@@ -1099,24 +1157,24 @@ void print_abinary(VALUE_PAIR *vp, char *buffer, int len)
   /*
    *  Just for paranoia: wrong size filters get printed as octets
    */
-  if (vp->length > SIZEOF_RADFILTER) {
-    strcpy(p, "0x");
-    p += 2;
-    for (i = 0; i < vp->length; i++) {
-      sprintf(p, " %02x", vp->vp_strvalue[i]);
-      p += 3;
-    }
-    return;
+  if (vp->length != sizeof(filter)) {
+	  strcpy(p, "0x");
+	  p += 2;
+	  for (i = 0; i < vp->length; i++) {
+		  sprintf(p, " %02x", vp->vp_octets[i]);
+		  p += 3;
+	  }
+	  return;
   }
 
-  memcpy(&filter, vp->vp_strvalue, SIZEOF_RADFILTER); /* alignment issues */
   *(p++) = '"';
   len -= 3;			/* account for leading & trailing quotes */
 
+  filter = (ascend_filter_t *) &(vp->vp_filter);
   i = snprintf(p, len, "%s %s %s",
-	       lrad_int2str(filterType, filter.type, "??"),
-	       direction[filter.direction & 0x01],
-	       action[filter.forward & 0x01]);
+	       lrad_int2str(filterType, filter->type, "??"),
+	       direction[filter->direction & 0x01],
+	       action[filter->forward & 0x01]);
 
   p += i;
   len -= i;
@@ -1124,52 +1182,52 @@ void print_abinary(VALUE_PAIR *vp, char *buffer, int len)
   /*
    *	Handle IP filters
    */
-  if (filter.type == RAD_FILTER_IP) {
+  if (filter->type == RAD_FILTER_IP) {
 
-    if (filter.u.ip.srcip) {
+    if (filter->u.ip.srcip) {
       i = snprintf(p, len, " srcip %d.%d.%d.%d/%d",
-		   ((u_char *) &filter.u.ip.srcip)[0],
-		   ((u_char *) &filter.u.ip.srcip)[1],
-		   ((u_char *) &filter.u.ip.srcip)[2],
-		   ((u_char *) &filter.u.ip.srcip)[3],
-		   filter.u.ip.srcmask);
+		   ((uint8_t *) &filter->u.ip.srcip)[0],
+		   ((uint8_t *) &filter->u.ip.srcip)[1],
+		   ((uint8_t *) &filter->u.ip.srcip)[2],
+		   ((uint8_t *) &filter->u.ip.srcip)[3],
+		   filter->u.ip.srcmask);
       p += i;
       len -= i;
     }
 
-    if (filter.u.ip.dstip) {
+    if (filter->u.ip.dstip) {
       i = snprintf(p, len, " dstip %d.%d.%d.%d/%d",
-		   ((u_char *) &filter.u.ip.dstip)[0],
-		   ((u_char *) &filter.u.ip.dstip)[1],
-		   ((u_char *) &filter.u.ip.dstip)[2],
-		   ((u_char *) &filter.u.ip.dstip)[3],
-		   filter.u.ip.dstmask);
+		   ((uint8_t *) &filter->u.ip.dstip)[0],
+		   ((uint8_t *) &filter->u.ip.dstip)[1],
+		   ((uint8_t *) &filter->u.ip.dstip)[2],
+		   ((uint8_t *) &filter->u.ip.dstip)[3],
+		   filter->u.ip.dstmask);
       p += i;
       len -= i;
     }
 
     i =  snprintf(p, len, " %s",
-		  lrad_int2str(filterProtoName, filter.u.ip.proto, "??"));
+		  lrad_int2str(filterProtoName, filter->u.ip.proto, "??"));
     p += i;
     len -= i;
 
-    if (filter.u.ip.srcPortComp > RAD_NO_COMPARE) {
+    if (filter->u.ip.srcPortComp > RAD_NO_COMPARE) {
       i = snprintf(p, len, " srcport %s %d",
-		   lrad_int2str(filterCompare, filter.u.ip.srcPortComp, "??"),
-		   ntohs(filter.u.ip.srcport));
+		   lrad_int2str(filterCompare, filter->u.ip.srcPortComp, "??"),
+		   ntohs(filter->u.ip.srcport));
       p += i;
       len -= i;
     }
 
-    if (filter.u.ip.dstPortComp > RAD_NO_COMPARE) {
+    if (filter->u.ip.dstPortComp > RAD_NO_COMPARE) {
       i = snprintf(p, len, " dstport %s %d",
-		   lrad_int2str(filterCompare, filter.u.ip.dstPortComp, "??"),
-		   ntohs(filter.u.ip.dstport));
+		   lrad_int2str(filterCompare, filter->u.ip.dstPortComp, "??"),
+		   ntohs(filter->u.ip.dstport));
       p += i;
       len -= i;
     }
 
-    if (filter.u.ip.established) {
+    if (filter->u.ip.established) {
       i = snprintf(p, len, " est");
       p += i;
       len -= i;
@@ -1178,56 +1236,56 @@ void print_abinary(VALUE_PAIR *vp, char *buffer, int len)
     /*
      *	Handle IPX filters
      */
-  } else if (filter.type == RAD_FILTER_IPX) {
+  } else if (filter->type == RAD_FILTER_IPX) {
     /* print for source */
-    if (filter.u.ipx.src.net) {
+    if (filter->u.ipx.src.net) {
       i = snprintf(p, len, " srcipxnet 0x%04x srcipxnode 0x%02x%02x%02x%02x%02x%02x",
-		  (unsigned int)ntohl(filter.u.ipx.src.net),
-		  filter.u.ipx.src.node[0], filter.u.ipx.src.node[1],
-		  filter.u.ipx.src.node[2], filter.u.ipx.src.node[3],
-		  filter.u.ipx.src.node[4], filter.u.ipx.src.node[5]);
+		  (unsigned int)ntohl(filter->u.ipx.src.net),
+		  filter->u.ipx.src.node[0], filter->u.ipx.src.node[1],
+		  filter->u.ipx.src.node[2], filter->u.ipx.src.node[3],
+		  filter->u.ipx.src.node[4], filter->u.ipx.src.node[5]);
       p += i;
       len -= i;
 
-      if (filter.u.ipx.srcSocComp > RAD_NO_COMPARE) {
+      if (filter->u.ipx.srcSocComp > RAD_NO_COMPARE) {
 	i = snprintf(p, len, " srcipxsock %s 0x%04x",
-		     lrad_int2str(filterCompare, filter.u.ipx.srcSocComp, "??"),
-		     ntohs(filter.u.ipx.src.socket));
+		     lrad_int2str(filterCompare, filter->u.ipx.srcSocComp, "??"),
+		     ntohs(filter->u.ipx.src.socket));
 	p += i;
 	len -= i;
       }
     }
 
     /* same for destination */
-    if (filter.u.ipx.dst.net) {
+    if (filter->u.ipx.dst.net) {
       i = snprintf(p, len, " dstipxnet 0x%04x dstipxnode 0x%02x%02x%02x%02x%02x%02x",
-		  (unsigned int)ntohl(filter.u.ipx.dst.net),
-		  filter.u.ipx.dst.node[0], filter.u.ipx.dst.node[1],
-		  filter.u.ipx.dst.node[2], filter.u.ipx.dst.node[3],
-		  filter.u.ipx.dst.node[4], filter.u.ipx.dst.node[5]);
+		  (unsigned int)ntohl(filter->u.ipx.dst.net),
+		  filter->u.ipx.dst.node[0], filter->u.ipx.dst.node[1],
+		  filter->u.ipx.dst.node[2], filter->u.ipx.dst.node[3],
+		  filter->u.ipx.dst.node[4], filter->u.ipx.dst.node[5]);
       p += i;
       len -= i;
 
-      if (filter.u.ipx.dstSocComp > RAD_NO_COMPARE) {
+      if (filter->u.ipx.dstSocComp > RAD_NO_COMPARE) {
 	i = snprintf(p, len, " dstipxsock %s 0x%04x",
-		     lrad_int2str(filterCompare, filter.u.ipx.dstSocComp, "??"),
-		     ntohs(filter.u.ipx.dst.socket));
+		     lrad_int2str(filterCompare, filter->u.ipx.dstSocComp, "??"),
+		     ntohs(filter->u.ipx.dst.socket));
 	p += i;
 	len -= i;
       }
     }
 
 
-  } else if (filter.type == RAD_FILTER_GENERIC) {
+  } else if (filter->type == RAD_FILTER_GENERIC) {
     int count;
 
-    i = snprintf(p, len, " %u ", (unsigned int) ntohs(filter.u.generic.offset));
+    i = snprintf(p, len, " %u ", (unsigned int) ntohs(filter->u.generic.offset));
     p += i;
     i -= len;
 
     /* show the mask */
-    for (count = 0; count < ntohs(filter.u.generic.len); count++) {
-      i = snprintf(p, len, "%02x", filter.u.generic.mask[count]);
+    for (count = 0; count < ntohs(filter->u.generic.len); count++) {
+      i = snprintf(p, len, "%02x", filter->u.generic.mask[count]);
       p += i;
       len -= i;
     }
@@ -1237,17 +1295,17 @@ void print_abinary(VALUE_PAIR *vp, char *buffer, int len)
     len--;
 
     /* show the value */
-    for (count = 0; count < ntohs(filter.u.generic.len); count++) {
-      i = snprintf(p, len, "%02x", filter.u.generic.value[count]);
+    for (count = 0; count < ntohs(filter->u.generic.len); count++) {
+      i = snprintf(p, len, "%02x", filter->u.generic.value[count]);
       p += i;
       len -= i;
     }
 
-    i = snprintf(p, len, " %s", (filter.u.generic.compNeq) ? "!=" : "==");
+    i = snprintf(p, len, " %s", (filter->u.generic.compNeq) ? "!=" : "==");
     p += i;
     len -= i;
 
-    if (filter.u.generic.more != 0) {
+    if (filter->u.generic.more != 0) {
       i = snprintf(p, len, " more");
       p += i;
       len -= i;
