@@ -24,8 +24,7 @@
 	  *  Fetched from: http://savannah.gnu.org/cgi-bin/viewcvs/mailutils/mailutils/lib/snprintf.c?rev=1.4
 	  *  Fetched from: http://savannah.gnu.org/cgi-bin/viewcvs/mailutils/mailutils/lib/snprintf.h?rev=1.4
 	  *  Replace config.h with autoconf.h
-	  *  Protect with HAVE_LOCAL_SNPRINTF
-  
+	  *  Protect with HAVE_SNPRINTF and HAVE_VSNPRINTF
    1.3:
       *  add #include <config.h> ifdef HAVE_CONFIG_H
       *  cosmetic change, when exponent is 0 print xxxE+00
@@ -51,10 +50,9 @@
 */
 
 #include "autoconf.h"
-
-#ifdef HAVE_LOCAL_SNPRINTF
-
 #include "snprintf.h"
+
+#ifndef HAVE_VSNPRINTF
 
 /*
  * Find the nth power of 10
@@ -676,6 +674,8 @@ va_list args;
   return data.counter;
 }
 
+#endif /* HAVE_VSNPRINTF */
+
 #ifndef HAVE_SNPRINTF
 
 PUBLIC int
@@ -876,6 +876,4 @@ int main()
 
   return 0;
 }
-#endif
-
-#endif /* !HAVE_LOCAL_SNPRINTF */
+#endif /* !DRIVER */

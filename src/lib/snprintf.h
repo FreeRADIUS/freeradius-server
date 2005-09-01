@@ -44,6 +44,10 @@ Alain Magloire: alainm@rcsm.ee.mcgill.ca
 #include <stdlib.h>    /* for atoi() */
 #include <ctype.h>
 
+#define PRIVATE static
+#define PUBLIC
+
+#ifndef HAVE_VSNPRINTF
 
 /*
  * For the FLOATING POINT FORMAT :
@@ -117,8 +121,6 @@ struct DATA {
   int square, space, star_w, star_p, a_long, a_longlong;
 };
 
-#define PRIVATE static
-#define PUBLIC
 /* signature of the functions */
 #ifdef __STDC__
 /* the floating point stuff */
@@ -212,3 +214,5 @@ struct DATA {
               (p)->width = va_arg(args, int); \
             if ((p)->star_p == FOUND) \
               (p)->precision = va_arg(args, int)
+
+#endif /* HAVE_VSNPRINTF */

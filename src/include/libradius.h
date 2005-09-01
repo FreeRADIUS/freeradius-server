@@ -338,20 +338,13 @@ int		ascend_parse_filter(VALUE_PAIR *pair);
 void		print_abinary(VALUE_PAIR *vp, char *buffer, int len);
 #endif /*ASCEND_BINARY*/
 
-#ifndef HAVE_SNPRINTF
-#define HAVE_LOCAL_SNPRINTF
-#define snprintf lrad_snprintf
-#endif
-
+/* snprintf.c */
 #ifndef HAVE_VSNPRINTF
-#define HAVE_LOCAL_SNPRINTF
-#define vsnprintf lrad_vsnprintf
-#endif
-
-#ifdef HAVE_LOCAL_SNPRINTF
 #include <stdarg.h>
-int snprintf(char *str, size_t count, const char *fmt, ...);
 int vsnprintf(char *str, size_t count, const char *fmt, va_list arg);
+#endif
+#ifndef HAVE_SNPRINTF
+int snprintf(char *str, size_t count, const char *fmt, ...);
 #endif
 
 /* random numbers in isaac.c */
