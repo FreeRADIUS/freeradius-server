@@ -73,7 +73,7 @@ static int digest_authorize(void *instance, REQUEST *request)
 	while (vp) {
 		int length = vp->length;
 		int attrlen;
-		uint8_t *p = &vp->vp_strvalue[0];
+		uint8_t *p = &vp->vp_octets[0];
 		VALUE_PAIR *sub;
 
 		/*
@@ -117,8 +117,8 @@ static int digest_authorize(void *instance, REQUEST *request)
 			if (!sub) {
 				return RLM_MODULE_FAIL; /* out of memory */
 			}
-			memcpy(&sub->vp_strvalue[0], &p[2], attrlen - 2);
-			sub->vp_strvalue[attrlen - 2] = '\0';
+			memcpy(&sub->vp_octets[0], &p[2], attrlen - 2);
+			sub->vp_octets[attrlen - 2] = '\0';
 			sub->length = attrlen - 2;
 
 			if (debug_flag) {
@@ -161,6 +161,8 @@ static int digest_authorize(void *instance, REQUEST *request)
 
 /*
  *	Convert a string in hex to one in binary
+ *
+ *	FIXME: call lrad_hex2bin
  */
 static void hex2bin(uint8_t *out, const uint8_t *in)
 {
@@ -216,7 +218,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		DEBUG("ERROR: No Digest-User-Name: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
-	memcpy(&a1[0], &vp->vp_strvalue[0], vp->length);
+	memcpy(&a1[0], &vp->vp_octets[0], vp->length);
 	a1_len = vp->length;
 
 	a1[a1_len] = ':';
@@ -227,7 +229,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		DEBUG("ERROR: No Digest-Realm: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
-	memcpy(&a1[a1_len], &vp->vp_strvalue[0], vp->length);
+	memcpy(&a1[a1_len], &vp->vp_octets[0], vp->length);
 	a1_len += vp->length;
 
 	a1[a1_len] = ':';
@@ -238,7 +240,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		DEBUG("ERROR: No User-Password: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
-	memcpy(&a1[a1_len], &vp->vp_strvalue[0], vp->length);
+	memcpy(&a1[a1_len], &vp->vp_octets[0], vp->length);
 	a1_len += vp->length;
 
 	a1[a1_len] = '\0';
@@ -260,7 +262,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	Tack on the Digest-Nonce
 		 */
-		hex2bin(&a1[a1_len], &nonce->vp_strvalue[0]);
+		hex2bin(&a1[a1_len], &nonce->vp_octets[0]);
 		a1_len += (nonce->length >> 1); /* FIXME: CHECK LENGTH */
 
 		a1[a1_len] = ':';
@@ -272,7 +274,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		  return RLM_MODULE_INVALID;
 		}
 
-		hex2bin(&a1[a1_len], &vp->vp_strvalue[0]);
+		hex2bin(&a1[a1_len], &vp->vp_octets[0]);
 		a1_len += (vp->length >> 1); /* FIXME: CHECK LENGTH */
 
 	} else if ((vp != NULL) &&
@@ -293,7 +295,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		DEBUG("ERROR: No Digest-Method: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
-	memcpy(&a2[0], &vp->vp_strvalue[0], vp->length);
+	memcpy(&a2[0], &vp->vp_octets[0], vp->length);
 	a2_len = vp->length;
 
 	a2[a2_len] = ':';
@@ -304,7 +306,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		DEBUG("ERROR: No Digest-URI: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
-	memcpy(&a2[a2_len], &vp->vp_strvalue[0], vp->length);
+	memcpy(&a2[a2_len], &vp->vp_octets[0], vp->length);
 	a2_len += vp->length;
 
 	/*
@@ -331,7 +333,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		}
 
 		rad_assert(body->length == 32);	/* FIXME: check in 'auth' */
-		hex2bin(&a2[a2_len], &body->vp_strvalue[0]);
+		hex2bin(&a2[a2_len], &body->vp_octets[0]);
 		a2_len += (body->length >> 1);
 
 	} else if ((qop != NULL) &&
@@ -366,7 +368,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	kd[kd_len] = ':';
 	kd_len++;
 
-	memcpy(&kd[kd_len], nonce->vp_strvalue, nonce->length);
+	memcpy(&kd[kd_len], nonce->vp_octets, nonce->length);
 	kd_len += nonce->length;
 
 	/*
@@ -390,7 +392,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 			DEBUG("ERROR: No Digest-Nonce-Count: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
 		}
-		memcpy(&kd[kd_len], &vp->vp_strvalue[0], vp->length);
+		memcpy(&kd[kd_len], &vp->vp_octets[0], vp->length);
 		kd_len += vp->length;
 
 		kd[kd_len] = ':';
@@ -401,13 +403,13 @@ static int digest_authenticate(void *instance, REQUEST *request)
 			DEBUG("ERROR: No Digest-CNonce: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
 		}
-		memcpy(&kd[kd_len], &vp->vp_strvalue[0], vp->length);
+		memcpy(&kd[kd_len], &vp->vp_octets[0], vp->length);
 		kd_len += vp->length;
 
 		kd[kd_len] = ':';
 		kd_len++;
 
-		memcpy(&kd[kd_len], &qop->vp_strvalue[0], qop->length);
+		memcpy(&kd[kd_len], &qop->vp_octets[0], qop->length);
 		kd_len += qop->length;
 	}
 
@@ -450,7 +452,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	vp = pairfind(request->packet->vps, PW_DIGEST_RESPONSE);
 	rad_assert(vp != NULL);
 
-	hex2bin(&hash[0], &vp->vp_strvalue[0]);
+	hex2bin(&hash[0], &vp->vp_octets[0]);
 
 #ifndef NDEBUG
 	if (debug_flag) {
