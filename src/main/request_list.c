@@ -504,9 +504,9 @@ static void rl_delete_proxy(REQUEST *request, rbnode_t *node)
 
 
 /*
- *	Delete a particular request.
+ *	Yank a request from the tree, without free'ing it.
  */
-void rl_delete(request_list_t *rl, REQUEST *request)
+void rl_yank(request_list_t *rl, REQUEST *request)
 {
 	int id;
 	REQNODE *prev, *next;
@@ -592,10 +592,19 @@ void rl_delete(request_list_t *rl, REQUEST *request)
 		}
 	}
 
-	request_free(&request);
 	rl->request_count--;
-
 }
+
+
+/*
+ *	Used internally.
+ */
+void rl_delete(request_list_t *rl, REQUEST *request)
+{
+	rl_yank(rl, request);
+	request_free(&request);
+}
+
 
 /*
  *	Add a request to the request list.
