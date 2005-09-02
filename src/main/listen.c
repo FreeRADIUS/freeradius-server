@@ -348,13 +348,32 @@ static int common_checks(rad_listen_t *listener,
 	 *	only keeping it around to send out duplicate replies,
 	 *	if the first reply got lost in the network.
 	 */
-	if (curreq) rl_delete(listener->rl, curreq);
+	if (curreq) {
+		RADIUS_PACKET *reply = curreq->reply;
 
-	/*
-	 *	A unique per-request counter.
-	 */
-	
-	curreq = request_alloc(); /* never fails */
+		rl_yank(listener->rl, curreq);
+		rad_free(&curreq->packet);
+
+		if (curreq->reply) {
+			reply = curreq->reply;
+			pairfree(&reply->vps);
+			free(reply->data);
+			memset(reply, 0, sizeof(*reply));
+		}
+		memset(curreq, 0, sizeof(*curreq));
+#ifndef NDEBUG
+		curreq->magic = REQUEST_MAGIC;
+#endif
+		curreq->timestamp = time(NULL);
+		curreq->child_pid = NO_SUCH_CHILD_PID;
+		curreq->options = RAD_REQUEST_OPTION_NONE;
+		curreq->reply = reply;
+	} else {
+		/*
+		 *	A unique per-request counter.
+		 */
+		curreq = request_alloc(); /* never fails */
+	}
 	curreq->listener = listener;
 	curreq->packet = packet;
 	curreq->number = request_num_counter++;
@@ -378,11 +397,12 @@ static int common_checks(rad_listen_t *listener,
 	 *
 	 *	Build the reply template from the request
 	 *	template.
-		 */
-	rad_assert(curreq->reply == NULL);
-	if ((curreq->reply = rad_alloc(0)) == NULL) {
-		radlog(L_ERR, "No memory");
-		exit(1);
+	 */
+	if (!curreq->reply) {
+		if ((curreq->reply = rad_alloc(0)) == NULL) {
+			radlog(L_ERR, "No memory");
+			exit(1);
+		}
 	}
 
 	curreq->reply->sockfd = curreq->packet->sockfd;
@@ -436,6 +456,7 @@ static int common_socket_parse(const char *filename, int lineno,
 	CONF_SECTION	*client_cs;
 
 	this->data = sock = rad_malloc(sizeof(*sock));
+	memset(sock, 0, sizeof(*sock));
 
 	/*
 	 *	Try IPv4 first
