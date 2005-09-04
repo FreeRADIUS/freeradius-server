@@ -48,15 +48,7 @@ void librad_log(const char *fmt, ...)
 	char my_errstr[sizeof(librad_errstr)];
 
 	va_start(ap, fmt);
-
-#ifdef HAVE_VSNPRINTF
 	vsnprintf(my_errstr, sizeof(my_errstr), fmt, ap);
-#else
-	vsprintf(my_errstr, fmt, ap);
-	if (strlen(my_errstr) >= sizeof(my_errstr))
-		/* What can we do .. */
-		_exit(42);
-#endif
 	strcpy(librad_errstr, my_errstr);
 	va_end(ap);
 }
