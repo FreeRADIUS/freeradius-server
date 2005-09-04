@@ -7,7 +7,26 @@ FreeRADIUS 1.0.5 ; $Date$, urgency=medium
 	  three bugs.
 
 	Bug fixes
-	* Fix a memset(3) in the function request_enqueue() which was
+	* Don't de-reference a NULL pointer if the auth-type is unknown
+	  in the function rad_check_password().
+	* Escape more characters in the LDAP queries.
+	  Bug found by Suse engineers.
+	* In rlm_sql_unixodbc, don't call rad_malloc from sql_error(),
+	  it leaks memory.
+	* Fix an off-by-one error in the module rlm_sql_unixodbc.
+	  Bug found by Suse engineers.
+	* In rlm_sql, resize the buffer for the value of SQL-User-Name.
+	* Initialize memory for a new SQL socket in the module rlm_sql.
+	* Don't add too many attributes after running an external program.
+	  Bug found by Suse engineers.
+	* Fix an off-by-one error in the function getthing().
+	* snprintf() and vsnprintf() replacements were not compiled if
+	  the autoconf tests didn't find the functions.
+	* Don't use vsprintf() anymore, but the replacement for vsnprintf()
+	  in libradius instead.
+	* The function decode_attribute() may write beyond buffer bounds.
+	  Bug found by Suse engineers.
+	* Fix a memset() in the function request_enqueue() which was
 	  begining at the wrong address. Bug found by Matthias Ruttman.
 	* Fix an off-by-one error in the function xlat_copy().
 	  Bug found by Primoz Bratanic.
