@@ -11,8 +11,11 @@ freeradius (1.0.5-0) unstable; urgency=low
     even though we don't build them in the Debian archive.
     (Thanks to Luca Landi for the patch)
     - Created 06_libtool14_vs_rlm_eap_tls
+  * Fix ownership of files in /var/log/freeradius/ more efficiently
+    (Caught by Guido Trotter)
+    Closes: #326891
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 21 Aug 2005 00:52:27 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed,  7 Sep 2005 01:08:07 +1000
   
 freeradius (1.0.4-2) unstable; urgency=low
 
