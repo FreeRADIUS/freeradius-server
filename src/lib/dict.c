@@ -102,19 +102,20 @@ static uint32_t dict_hashname(const char *name)
 {
 	const char *p;
 	char *q;
+	size_t len = 0;
 	char buffer[1024];
 	
 	p = name;
 	q = buffer;
-	while (*p) {
+	while (*p && (len < sizeof(buffer))) {
 		if (isalpha(*p)) {
 			*(q++) = tolower((int) *(p++));
 		} else {
 			*(q++) = *(p++);
 		}
+		len++;
 	}
-	*q = '\0';
-	return lrad_hash(buffer, strlen(buffer));
+	return lrad_hash(buffer, len);
 }
 
 
