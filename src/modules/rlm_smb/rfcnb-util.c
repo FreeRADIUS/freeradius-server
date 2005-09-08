@@ -25,6 +25,7 @@
 
 #include <string.h>
 
+#include "autoconf.h"
 #include "libradius.h"
 #include "std-includes.h"
 #include "rfcnb-priv.h"
@@ -319,11 +320,11 @@ int RFCNB_Name_To_IP(char *host, struct in_addr *Dest_IP)
 
 	if (ip_hton(host, AF_INET, &ipaddr) < 0) {
 		/* Try NetBIOS name lookup, how the hell do we do that? */
-		
+
 		RFCNB_errno = RFCNBE_BadName;   /* Is this right? */
 		RFCNB_saved_errno = errno;
 		return(RFCNBE_Bad);
-		
+
 	}
 
 	memcpy(Dest_IP, &ipaddr.ipaddr.ip4addr, sizeof(struct in_addr));
@@ -506,12 +507,3 @@ int RFCNB_Session_Req(struct RFCNB_Con *con,
       break;
     }
 }
-
-
-
-
-
-
-
-
-

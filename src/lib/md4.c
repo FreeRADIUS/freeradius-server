@@ -1,18 +1,17 @@
 /*
- * md4c.c	MD4 message-digest algorithm
+ *  md4c.c	MD4 message-digest algorithm
  *
- * Version:	$Id$
+ *  Version:	$Id$
  *
- * This file is licensed under the LGPL, but is largely derived
- * from public domain source code.
+ *  This file is licensed under the LGPL, but is largely derived
+ *  from public domain source code.
  */
 
-/*#include "global.h"*/
+#include "autoconf.h"
+
 /*
  *  FORCE MD4 TO USE OUR MD4 HEADER FILE!
- *
  *  If we don't do this, it might pick up the systems broken MD4.
- *  - Paul Hampson, (cf Alan DeKok <aland@ox.org> in md5.c)
  */
 #include "../include/md4.h"
 
@@ -75,7 +74,7 @@ unsigned int inlen;                     /* length of input block */
  (((((uint32_t)x) & 0xff000000) >> 24) | \
  ((((uint32_t)x) & 0x00ff0000) >> 8) | \
  ((((uint32_t)x) & 0x0000ff00) << 8) | \
- ((((uint32_t)x) & 0x000000ff) << 24)) 
+ ((((uint32_t)x) & 0x000000ff) << 24))
 
 #define htole32_4(buf) do {						\
 	(buf)[ 0] = htole32((buf)[ 0]);					\
@@ -187,7 +186,7 @@ MD4Update(MD4_CTX *ctx, const unsigned char *buf, size_t len)
 }
 
 /*
- * Final wrapup - pad to 64-byte boundary with the bit pattern 
+ * Final wrapup - pad to 64-byte boundary with the bit pattern
  * 1 0* (64-bit count of bits processed, MSB-first)
  */
 void

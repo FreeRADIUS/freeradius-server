@@ -1,16 +1,19 @@
-/* MD5 message-digest algorithm */
-
-/* This file is licensed under the LGPL, but is largely derived from
- * public domain source code
+/*
+ *  md5.c	MD5 message-digest algorithm
+ *
+ *  Version:	$Id$
+ *
+ *  This file is licensed under the LGPL, but is largely derived
+ *  from public domain source code.
  */
+
+#include "autoconf.h"
+#include "libradius.h"
 
 /*
  *  FORCE MD5 TO USE OUR MD5 HEADER FILE!
- *
  *  If we don't do this, it might pick up the systems broken MD5.
- *  - Alan DeKok <aland@ox.org>
  */
-#include "libradius.h"
 #include "../include/md5.h"
 
 void librad_md5_calc(uint8_t *output, const uint8_t *input,
@@ -109,8 +112,6 @@ lrad_MD5Update(lrad_MD5_CTX *ctx, const unsigned char *input, size_t len)
 		ctx->count[1]++;
 	}
 	ctx->count[1] += ((uint32_t)len >> 29);
-
-	
 
 	if (len >= need) {
 		if (have != 0) {
