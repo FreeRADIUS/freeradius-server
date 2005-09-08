@@ -44,14 +44,14 @@ static const char rcsid[] = "$Id$";
 #define DICT_VALUE_MAX_NAME_LEN (128)
 #define DICT_VENDOR_MAX_NAME_LEN (128)
 
-static rbtree_t *vendors_byname = NULL;
-static rbtree_t *vendors_byvalue = NULL;
+static lrad_hash_table_t *vendors_byname = NULL;
+static lrad_hash_table_t *vendors_byvalue = NULL;
 
-static rbtree_t *attributes_byname = NULL;
-static rbtree_t *attributes_byvalue = NULL;
+static lrad_hash_table_t *attributes_byname = NULL;
+static lrad_hash_table_t *attributes_byvalue = NULL;
 
-static rbtree_t *values_byvalue = NULL;
-static rbtree_t *values_byname = NULL;
+static lrad_hash_table_t *values_byvalue = NULL;
+static lrad_hash_table_t *values_byname = NULL;
 
 /*
  *	For faster HUP's, we cache the stat information for
@@ -69,30 +69,10 @@ static char *stat_root_file = NULL;
 static dict_stat_t *stat_head = NULL;
 static dict_stat_t *stat_tail = NULL;
 
-/*
- *	Internal data structures to make it faster to manage
- *	the dictionaries.  Hmm... we COULD use a hash table, and
- *	get rid of the rbtree stuff, which could be faster.
- */
-typedef struct INT_DICT_VENDOR {
-	uint32_t	hash;
-	DICT_VENDOR	dv;
-} INT_DICT_VENDOR;
-
-typedef struct INT_DICT_ATTR {
-	uint32_t	hash;
-	DICT_ATTR	attr;
-} INT_DICT_ATTR;
-
-typedef struct INT_DICT_VALUE {
-	uint32_t	hash;
-	DICT_VALUE	dval;
-} INT_DICT_VALUE;
-
-
 typedef struct value_fixup_t {
 	char		attrstr[40];
-	INT_DICT_VALUE	*dval;
+	uint32_t	hash;
+	DICT_VALUE	*dval;
 	struct value_fixup_t *next;
 } value_fixup_t;
 
@@ -114,16 +94,6 @@ static const LRAD_NAME_NUMBER type_table[] = {
 	{ "ipv6prefix", PW_TYPE_IPV6PREFIX },
 	{ NULL, 0 }
 };
-
-/*
- *	Quick pointers to the base 0..255 attributes.
- *
- *	These attributes are referenced a LOT, especially during
- *	decoding of the on-the-wire packets.  It's useful to keep a
- *	cache of their dictionary entries, so looking them up is
- *	O(1), instead of O(log(N)).  (N==number of dictionary entries...)
- */
-static DICT_ATTR *base_attributes[256];
 
 /*
  *	Create the hash of the name.
@@ -229,23 +199,21 @@ static int dict_stat_check(const char *root_dir, const char *root_file)
  */
 void dict_free(void)
 {
-	memset(base_attributes, 0, sizeof(base_attributes));
-
 	/*
 	 *	Free the trees
 	 */
-	rbtree_free(vendors_byname);
-	rbtree_free(vendors_byvalue);
+	lrad_hash_table_free(vendors_byname);
+	lrad_hash_table_free(vendors_byvalue);
 	vendors_byname = NULL;
 	vendors_byvalue = NULL;
 
-	rbtree_free(attributes_byname);
-	rbtree_free(attributes_byvalue);
+	lrad_hash_table_free(attributes_byname);
+	lrad_hash_table_free(attributes_byvalue);
 	attributes_byname = NULL;
 	attributes_byvalue = NULL;
 
-	rbtree_free(values_byname);
-	rbtree_free(values_byvalue);
+	lrad_hash_table_free(values_byname);
+	lrad_hash_table_free(values_byvalue);
 	values_byname = NULL;
 	values_byvalue = NULL;
 
@@ -259,7 +227,8 @@ void dict_free(void)
 int dict_addvendor(const char *name, int value)
 {
 	size_t length;
-	INT_DICT_VENDOR *dv;
+	uint32_t hash;
+	DICT_VENDOR *dv;
 
 	if (value >= (1 << 16)) {
 	       	librad_log("dict_addvendor: Cannot handle vendor ID larger than 65535");
@@ -276,19 +245,19 @@ int dict_addvendor(const char *name, int value)
 		return -1;
 	}
 
-	dv->hash = dict_hashname(name);
-	strcpy(dv->dv.name, name);
-	dv->dv.vendorpec  = value;
+	hash = dict_hashname(name);
+	strcpy(dv->name, name);
+	dv->vendorpec  = value;
 
-	if (rbtree_insert(vendors_byname, dv) == 0) {
-		INT_DICT_VENDOR *old_dv;
+	if (lrad_hash_table_insert(vendors_byname, hash, dv) == 0) {
+		DICT_VENDOR *old_dv;
 
-		old_dv = rbtree_finddata(vendors_byname, dv);
+		old_dv = lrad_hash_table_finddata(vendors_byname, hash);
 		if (!old_dv) {
 			librad_log("dict_addvendor: Failed inserting vendor name %s", name);
 			return -1;
 		}
-		if (old_dv->dv.vendorpec != dv->dv.vendorpec) {
+		if (old_dv->vendorpec != dv->vendorpec) {
 			librad_log("dict_addvendor: Duplicate vendor name %s", name);
 			return -1;
 		}
@@ -307,14 +276,14 @@ int dict_addvendor(const char *name, int value)
 	 *	If the newly inserted entry is a duplicate of an existing
 	 *	entry, then the old entry is tossed, and the new one
 	 *	replaces it.  This behaviour is configured in the
-	 *	rbtree_create() function.
+	 *	lrad_hash_table_create() function.
 	 *
 	 *	We want this behaviour because we want OLD names for
 	 *	the attributes to be read from the configuration
 	 *	files, but when we're printing them, (and looking up
 	 *	by value) we want to use the NEW name.
 	 */
-	rbtree_insert(vendors_byvalue, dv);
+	lrad_hash_table_insert(vendors_byvalue, dv->vendorpec, dv);
 
 	return 0;
 }
@@ -326,9 +295,10 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		 ATTR_FLAGS flags)
 {
 	static int      max_attr = 0;
-	INT_DICT_ATTR	*attr;
+	uint32_t	hash;
+	DICT_ATTR	*attr;
 
-	if (strlen(name) > (sizeof(attr->attr.name) -1)) {
+	if (strlen(name) > (sizeof(attr->name) -1)) {
 		librad_log("dict_addattr: attribute name too long");
 		return -1;
 	}
@@ -395,28 +365,28 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		return -1;
 	}
 
-	attr->hash = dict_hashname(name);
-	strcpy(attr->attr.name, name);
-	attr->attr.attr = value;
-	attr->attr.attr |= (vendor << 16); /* FIXME: hack */
-	attr->attr.type = type;
-	attr->attr.flags = flags;
-	attr->attr.vendor = vendor;
+	hash = dict_hashname(name);
+	strcpy(attr->name, name);
+	attr->attr = value;
+	attr->attr |= (vendor << 16); /* FIXME: hack */
+	attr->type = type;
+	attr->flags = flags;
+	attr->vendor = vendor;
 
 
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
-	if (rbtree_insert(attributes_byname, attr) == 0) {
-		INT_DICT_ATTR	*a;
+	if (lrad_hash_table_insert(attributes_byname, hash, attr) == 0) {
+		DICT_ATTR	*a;
 
 		/*
 		 *	If the attribute has identical number, then
 		 *	ignore the duplicate.
 		 */
-		a = rbtree_finddata(attributes_byname, attr);
-		if (a && (strcasecmp(a->attr.name, attr->attr.name) == 0)) {
-			if (a->attr.attr != attr->attr.attr) {
+		a = lrad_hash_table_finddata(attributes_byname, hash);
+		if (a && (strcasecmp(a->name, attr->name) == 0)) {
+			if (a->attr != attr->attr) {
 				librad_log("dict_addattr: Duplicate attribute name %s", name);
 				return -1;
 			}
@@ -430,14 +400,6 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		}
 	}
 
-	if ((attr->attr.attr >= 0) && (attr->attr.attr < 256)) {
-		/*
-		 *	If it's an on-the-wire base attribute,
-		 *	then keep a quick reference to it, for speed.
-		 */
-		base_attributes[attr->attr.attr] = &(attr->attr);
-	}
-
 	/*
 	 *	Insert the SAME pointer (not free'd when this tree is
 	 *	deleted), into another tree.
@@ -445,14 +407,14 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	 *	If the newly inserted entry is a duplicate of an existing
 	 *	entry, then the old entry is tossed, and the new one
 	 *	replaces it.  This behaviour is configured in the
-	 *	rbtree_create() function.
+	 *	lrad_hash_table_create() function.
 	 *
 	 *	We want this behaviour because we want OLD names for
 	 *	the attributes to be read from the configuration
 	 *	files, but when we're printing them, (and looking up
 	 *	by value) we want to use the NEW name.
 	 */
-	rbtree_insert(attributes_byvalue, attr);
+	lrad_hash_table_insert(attributes_byvalue, (uint32_t) attr->attr, attr);
 
 	return 0;
 }
@@ -465,7 +427,8 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 {
 	size_t		length;
 	DICT_ATTR	*dattr;
-	INT_DICT_VALUE	*dval;
+	uint32_t	hash;
+	DICT_VALUE	*dval;
 
 	if ((length = strlen(namestr)) >= DICT_VALUE_MAX_NAME_LEN) {
 		librad_log("dict_addvalue: value name too long");
@@ -478,9 +441,9 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	}
 	memset(dval, 0, sizeof(*dval));
 
-	dval->hash = dict_hashname(namestr);
-	strcpy(dval->dval.name, namestr);
-	dval->dval.value = value;
+	hash = dict_hashname(namestr);
+	strcpy(dval->name, namestr);
+	dval->value = value;
 
 	/*
 	 *	Remember which attribute is associated with this
@@ -488,7 +451,8 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	 */
 	dattr = dict_attrbyname(attrstr);
 	if (dattr) {
-		dval->dval.attr = dattr->attr;
+		dval->attr = dattr->attr;
+		hash = lrad_hash_update(&dval->attr, sizeof(dval->attr), hash);
 	} else {
 		value_fixup_t *fixup;
 		
@@ -500,6 +464,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 		memset(fixup, 0, sizeof(*fixup));
 
 		strNcpy(fixup->attrstr, attrstr, sizeof(fixup->attrstr));
+		fixup->hash = hash;
 		fixup->dval = dval;
 		
 		/*
@@ -514,7 +479,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	/*
 	 *	Add the value into the dictionary.
 	 */
-	if (rbtree_insert(values_byname, dval) == 0) {
+	if (lrad_hash_table_insert(values_byname, hash, dval) == 0) {
 		if (dattr) {
 			DICT_VALUE *old;
 			
@@ -524,7 +489,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 			 *	dictionary.ascend.
 			 */
 			old = dict_valbyname(dattr->attr, namestr);
-			if (old && (old->value == dval->dval.value)) {
+			if (old && (old->value == dval->value)) {
 				free(dval);
 				return 0;
 			}
@@ -533,7 +498,14 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 		librad_log("dict_addvalue: Duplicate value name %s for attribute %s", namestr, attrstr);
 		return -1;
 	}
-	rbtree_insert(values_byvalue, dval);
+
+	/*
+	 *	There are multiple VALUE's, keyed by attribute, so we
+	 *	take care of that here.
+	 */
+	hash = dval->attr;
+	hash = lrad_hash_update(&dval->value, sizeof(dval->value), hash);
+	lrad_hash_table_insert(values_byvalue, hash, dval);
 
 	return 0;
 }
@@ -995,119 +967,6 @@ static int my_dict_init(const char *dir, const char *fn,
 }
 
 /*
- *	Callbacks for red-black trees.
- */
-static int vendorname_cmp(const void *a, const void *b)
-{
-	const INT_DICT_VENDOR *one = a;
-	const INT_DICT_VENDOR *two = b;
-
-	if (one->hash < two->hash) return -1;
-	if (one->hash > two->hash) return +1;
-
-	/*
-	 *	With a reasonable 32-bit hash, this cmp isn't strictly
-	 *	necessary.  Removing it makes very little difference
-	 *	in time, but could (one day) cause a problem.  So it's
-	 *	left in.
-	 */
-	return strcasecmp(one->dv.name, two->dv.name);
-}
-
-/*
- *	Return: < 0  if a < b,
- *	        == 0 if a == b
- */
-static int vendorvalue_cmp(const void *a, const void *b)
-{
-	/*
-	 *	Don't look at the hashes, as we don't care about names
-	 */
-
-	return (((const INT_DICT_VENDOR *)a)->dv.vendorpec -
-		((const INT_DICT_VENDOR *)b)->dv.vendorpec);
-}
-
-/*
- *	Callbacks for red-black trees.
- */
-static int attrname_cmp(const void *a, const void *b)
-{
-	const INT_DICT_ATTR *one = a;
-	const INT_DICT_ATTR *two = b;
-
-	if (one->hash < two->hash) return -1;
-	if (one->hash > two->hash) return +1;
-
-	/*
-	 *	With a reasonable 32-bit hash, this cmp isn't strictly
-	 *	necessary.  Removing it makes very little difference
-	 *	in time, but could (one day) cause a problem.  So it's
-	 *	left in.
-	 */
-	return strcasecmp(one->attr.name, two->attr.name);
-}
-
-/*
- *	Return: < 0  if a < b,
- *	        == 0 if a == b
- */
-static int attrvalue_cmp(const void *a, const void *b)
-{
-	/*
-	 *	Don't look at the hashes, as we don't care about names
-	 */
-
-	return (((const INT_DICT_ATTR *)a)->attr.attr -
-		((const INT_DICT_ATTR *)b)->attr.attr);
-}
-
-/*
- *	Compare values by name, keying off of the attribute number,
- *	and then the value name.
- */
-static int valuename_cmp(const void *a, const void *b)
-{
-	int rcode;
-	const INT_DICT_VALUE *one = a;
-	const INT_DICT_VALUE *two = b;
-
-	rcode = (one->dval.attr - two->dval.attr);
-	if (rcode != 0) return rcode;
-
-	if (one->hash < two->hash) return -1;
-	if (one->hash > two->hash) return +1;
-
-	/*
-	 *	With a reasonable 32-bit hash, this cmp isn't strictly
-	 *	necessary.  Removing it makes very little difference
-	 *	in time, but could (one day) cause a problem.  So it's
-	 *	left in.
-	 */
-	return strcasecmp(one->dval.name, two->dval.name);
-}
-
-/*
- *	Compare values by value, keying off of the attribute number,
- *	and then the value number.
- */
-static int valuevalue_cmp(const void *a, const void *b)
-{
-	int rcode;
-	const INT_DICT_VALUE *one = a;
-	const INT_DICT_VALUE *two = b;
-
-	rcode = (one->dval.attr - two->dval.attr);
-	if (rcode != 0) return rcode;
-
-	/*
-	 *	Don't look at the hashes, as we don't care about names
-	 */
-
-	return (one->dval.value - two->dval.value);
-}
-
-/*
  *	Initialize the directory, then fix the attr member of
  *	all attributes.
  */
@@ -1134,7 +993,7 @@ int dict_init(const char *dir, const char *fn)
 	 *
 	 *	Each vendor is malloc'd, so the free function is free.
 	 */
-	vendors_byname = rbtree_create(vendorname_cmp, free, 0);
+	vendors_byname = lrad_hash_table_create(8, free, 0);
 	if (!vendors_byname) {
 		return -1;
 	}
@@ -1144,7 +1003,7 @@ int dict_init(const char *dir, const char *fn)
 	 *	be vendors of the same value.  If there are, we
 	 *	pick the latest one.
 	 */
-	vendors_byvalue = rbtree_create(vendorvalue_cmp, NULL, 1);
+	vendors_byvalue = lrad_hash_table_create(8, NULL, 1);
 	if (!vendors_byvalue) {
 		return -1;
 	}
@@ -1155,7 +1014,7 @@ int dict_init(const char *dir, const char *fn)
 	 *
 	 *	Each attribute is malloc'd, so the free function is free.
 	 */
-	attributes_byname = rbtree_create(attrname_cmp, free, 0);
+	attributes_byname = lrad_hash_table_create(11, free, 0);
 	if (!attributes_byname) {
 		return -1;
 	}
@@ -1165,17 +1024,17 @@ int dict_init(const char *dir, const char *fn)
 	 *	be attributes of the same value.  If there are, we
 	 *	pick the latest one.
 	 */
-	attributes_byvalue = rbtree_create(attrvalue_cmp, NULL, 1);
+	attributes_byvalue = lrad_hash_table_create(11, NULL, 1);
 	if (!attributes_byvalue) {
 		return -1;
 	}
 
-	values_byname = rbtree_create(valuename_cmp, free, 0);
+	values_byname = lrad_hash_table_create(11, free, 0);
 	if (!values_byname) {
 		return -1;
 	}
 
-	values_byvalue = rbtree_create(valuevalue_cmp, NULL, 1);
+	values_byvalue = lrad_hash_table_create(11, NULL, 1);
 	if (!values_byvalue) {
 		return -1;
 	}
@@ -1186,6 +1045,7 @@ int dict_init(const char *dir, const char *fn)
 		return -1;
 
 	if (value_fixup) {
+		uint32_t hash;
 		DICT_ATTR *a;
 		value_fixup_t *this, *next;
 
@@ -1196,17 +1056,21 @@ int dict_init(const char *dir, const char *fn)
 			if (!a) {
 				librad_log(
 					"dict_init: No ATTRIBUTE \"%s\" defined for VALUE \"%s\"",
-					this->attrstr, this->dval->dval.name);
+					this->attrstr, this->dval->name);
 				return -1; /* leak, but they should die... */
 			}
 
-			this->dval->dval.attr = a->attr;
+			this->dval->attr = a->attr;
 
 			/*
 			 *	Add the value into the dictionary.
 			 */
-			if (rbtree_insert(values_byname, this->dval) == 0) {
-				librad_log("dict_addvalue: Duplicate value name %s for attribute %s", this->dval->dval.name, a->name);
+			hash = lrad_hash_update(&this->dval->attr,
+						sizeof(this->dval->attr),
+						this->hash);
+			if (lrad_hash_table_insert(values_byname,
+						   hash, this->dval) == 0) {
+				librad_log("dict_addvalue: Duplicate value name %s for attribute %s", this->dval->name, a->name);
 				return -1;
 			}
 			
@@ -1215,8 +1079,13 @@ int dict_init(const char *dir, const char *fn)
 			 *	prefer the new name when printing
 			 *	values.
 			 */
-			if (!rbtree_find(values_byvalue, this->dval)) {
-				rbtree_insert(values_byvalue, this->dval);
+			hash = (uint32_t) this->dval->attr;
+			hash = lrad_hash_update(&this->dval->value,
+						sizeof(this->dval->value),
+						hash);
+			if (!lrad_hash_table_finddata(values_byvalue, hash)) {
+				lrad_hash_table_insert(values_byvalue,
+						       hash, this->dval);
 			}
 			free(this);
 
@@ -1235,22 +1104,7 @@ int dict_init(const char *dir, const char *fn)
  */
 DICT_ATTR *dict_attrbyvalue(int val)
 {
-	/*
-	 *	If it's an on-the-wire base attribute, return
-	 *	the cached value for it.
-	 */
-	if ((val >= 0) && (val < 256)) {
-		return base_attributes[val];
-
-	} else {
-		INT_DICT_ATTR myattr, *da;
-
-		myattr.attr.attr = val;
-		da = rbtree_finddata(attributes_byvalue, &myattr);
-		if (da) return &(da->attr);
-	}
-
-	return NULL;		/* never reached, but useful */
+	return lrad_hash_table_finddata(attributes_byvalue, (uint32_t) val);
 }
 
 /*
@@ -1267,17 +1121,16 @@ DICT_ATTR *dict_attrbyvalue(int val)
  */
 DICT_ATTR *dict_attrbyname(const char *name)
 {
-	INT_DICT_ATTR myattr, *da;
+	DICT_ATTR *da;
 
-	myattr.hash = dict_hashname(name);
-	strNcpy(myattr.attr.name, name, sizeof(myattr.attr.name));
-	da = rbtree_finddata(attributes_byname, &myattr);
-	if (da) return &(da->attr);
+	da = lrad_hash_table_finddata(attributes_byname, dict_hashname(name));
+	if (da) return da;
 
 	{
 		int value, attr;
 		const char *p = name;
 		char *q;
+		char buffer[1024];
 		
 		/*
 		 *	Look for:
@@ -1303,18 +1156,15 @@ DICT_ATTR *dict_attrbyname(const char *name)
 			attr = value << 16; /* FIXME: horrid hack */
 
 		} else if ((q = strchr(name, '-')) != NULL) {
-			/*
-			 *	myattr.name is a temporary buffer
-			 */
-			if (((size_t) (q - name)) >= sizeof(myattr.attr.name)) return NULL;
+			if (((size_t) (q - name)) >= sizeof(buffer)) return NULL;
 			
-			memcpy(myattr.attr.name, name, q - name);
-			myattr.attr.name[q - name] = '\0';
+			memcpy(buffer, name, q - name);
+			buffer[q - name] = '\0';
 
 			/*
 			 *	No leading vendor name, stop looking.
 			 */
-			value = dict_vendorbyname(myattr.attr.name);
+			value = dict_vendorbyname(buffer);
 			if (!value) return NULL;
 
 			p = q + 1; /* skip the '-' */
@@ -1344,21 +1194,14 @@ DICT_ATTR *dict_attrbyname(const char *name)
 		 *	bother looking it up again.
 		 */
 		if (attr == 0) return NULL;
-		
+
 		/*
-		 *	Else maybe it's Vendor-%d-Attribute-Name
-		 */
-		strNcpy(myattr.attr.name, p, sizeof(myattr.attr.name));
+		 *	Maybe it's Vendor-%d-Attribute-name,
+		 *	but we don't support that.
+		 */ 
+		return NULL;
 	}
-	
-	/*
-	 *	FIXME: If it doesn't exist, maybe we want to create
-	 *	it, and make it type "octets"?
-	 */
-	myattr.hash = dict_hashname(myattr.attr.name);
-	da = rbtree_finddata(attributes_byname, &myattr);
-	if (da) return &(da->attr);
-	return NULL;
+	return NULL;		/* should never be reached */
 }
 
 /*
@@ -1366,14 +1209,11 @@ DICT_ATTR *dict_attrbyname(const char *name)
  */
 DICT_VALUE *dict_valbyattr(int attr, int val)
 {
-	INT_DICT_VALUE	myval, *dval;
+	uint32_t hash = attr;
 
-	myval.dval.attr = attr;
-	myval.dval.value = val;
+	hash = lrad_hash_update(&val, sizeof(val), hash);
 
-	dval = rbtree_finddata(values_byvalue, &myval);
-	if (dval) return &(dval->dval);
-	return NULL;
+	return lrad_hash_table_finddata(values_byvalue, hash);
 }
 
 /*
@@ -1381,26 +1221,12 @@ DICT_VALUE *dict_valbyattr(int attr, int val)
  */
 DICT_VALUE *dict_valbyname(int attr, const char *name)
 {
-	INT_DICT_VALUE	*dv;
+	uint32_t hash;
 
-	/*
-	 *	This is a bit of a hack.
-	 */
-	uint8_t		buffer[sizeof(*dv) + DICT_VALUE_MAX_NAME_LEN];
+	hash = dict_hashname(name);
+	hash = lrad_hash_update(&attr, sizeof(&attr), hash);
 
-	/*
-	 *	The name is too long, we can't find it.
-	 */
-	if (strlen(name) >= DICT_VALUE_MAX_NAME_LEN) return NULL;
-
-	dv = (INT_DICT_VALUE *) buffer;
-	dv->dval.attr = attr;
-	dv->hash = dict_hashname(name);
-	strcpy(dv->dval.name, name);
-
-	dv = rbtree_finddata(values_byname, dv);
-	if (dv) return &(dv->dval);
-	return NULL;
+	return lrad_hash_table_finddata(values_byname, hash);
 }
 
 /*
@@ -1410,26 +1236,15 @@ DICT_VALUE *dict_valbyname(int attr, const char *name)
  */
 int dict_vendorbyname(const char *name)
 {
-	INT_DICT_VENDOR	*dv, *found;
+	uint32_t hash;
+	DICT_VENDOR	*dv;
 
-	/*
-	 *	This is a bit of a hack.
-	 */
-	uint8_t		buffer[sizeof(*dv) + DICT_VENDOR_MAX_NAME_LEN];
-
-	/*
-	 *	The name is too long, we can't find it.
-	 */
-	if (strlen(name) >= DICT_VENDOR_MAX_NAME_LEN) return 0;
-
-	dv = (INT_DICT_VENDOR *) buffer;
-	dv->hash = dict_hashname(name);
-	strcpy(dv->dv.name, name);
+	hash = dict_hashname(name);
 	
-	found = rbtree_finddata(vendors_byname, dv);
-	if (!found) return 0;
+	dv = lrad_hash_table_finddata(vendors_byname, hash);
+	if (!dv) return 0;
 
-	return found->dv.vendorpec;
+	return dv->vendorpec;
 }
 
 /*
@@ -1437,12 +1252,6 @@ int dict_vendorbyname(const char *name)
  */
 DICT_VENDOR *dict_vendorbyvalue(int vendor)
 {
-	INT_DICT_VENDOR	myvendor, *dv;
+	return lrad_hash_table_finddata(vendors_byvalue, (uint32_t) vendor);
 
-	myvendor.dv.vendorpec = vendor;
-
-	dv = rbtree_finddata(vendors_byvalue, &myvendor);
-	if (dv) return &(dv->dv);
-
-	return NULL;
 }
