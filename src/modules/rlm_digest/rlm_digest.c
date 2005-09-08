@@ -67,6 +67,68 @@ static int digest_authorize(void *instance, REQUEST *request)
 	}
 
 	/*
+	 *	Everything's OK, add a digest authentication type.
+	 */
+	if (pairfind(request->config_items, PW_AUTHTYPE) == NULL) {
+		DEBUG("rlm_digest: Adding Auth-Type = DIGEST");
+		pairadd(&request->config_items,
+			pairmake("Auth-Type", "DIGEST", T_OP_EQ));
+	}
+
+	return RLM_MODULE_OK;
+}
+
+/*
+ *	Convert a string in hex to one in binary
+ *
+ *	FIXME: call lrad_hex2bin
+ */
+static void hex2bin(uint8_t *out, const uint8_t *in)
+{
+	unsigned int tmp;
+
+	while (*in) {
+		sscanf(in, "%02x", &tmp);
+		*out = tmp;
+		out++;
+		in += 2;
+	}
+}
+
+/*
+ *	Perform all of the wondrous variants of digest authentication.
+ */
+static int digest_authenticate(void *instance, REQUEST *request)
+{
+	int i;
+	int a1_len, a2_len, kd_len;
+	uint8_t a1[(MAX_STRING_LEN + 1) * 5]; /* can be 5 attributes */
+	uint8_t a2[(MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
+	uint8_t kd[(MAX_STRING_LEN + 1) * 5];
+	uint8_t hash[16];	/* MD5 output */
+	VALUE_PAIR *vp;
+	VALUE_PAIR *qop, *nonce;
+
+	instance = instance;	/* -Wunused */
+
+	/*
+	 *	We require access to the plain-text password.
+	 */
+	vp = pairfind(request->config_items, PW_PASSWORD);
+	if (!vp) {
+		radlog(L_AUTH, "rlm_digest: Configuration item \"User-Password\" is required for authentication.");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	We need these, too.
+	 */
+	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES);
+	if (vp == NULL) {
+		DEBUG("ERROR: You set 'Auth-Type = Digest' for a request that did not contain any digest attributes!");
+		return RLM_MODULE_INVALID;
+	}
+	/*
 	 *	Loop through the Digest-Attributes, sanity checking them.
 	 */
 	DEBUG("    rlm_digest: Converting Digest-Attributes to something sane...");
@@ -145,60 +207,6 @@ static int digest_authorize(void *instance, REQUEST *request)
 		 *	Find the next one, if it exists.
 		 */
 		vp = pairfind(vp->next, PW_DIGEST_ATTRIBUTES);
-	}
-
-	/*
-	 *	Everything's OK, add a digest authentication type.
-	 */
-	if (pairfind(request->config_items, PW_AUTHTYPE) == NULL) {
-		DEBUG("rlm_digest: Adding Auth-Type = DIGEST");
-		pairadd(&request->config_items,
-			pairmake("Auth-Type", "DIGEST", T_OP_EQ));
-	}
-
-	return RLM_MODULE_OK;
-}
-
-/*
- *	Convert a string in hex to one in binary
- *
- *	FIXME: call lrad_hex2bin
- */
-static void hex2bin(uint8_t *out, const uint8_t *in)
-{
-	unsigned int tmp;
-
-	while (*in) {
-		sscanf(in, "%02x", &tmp);
-		*out = tmp;
-		out++;
-		in += 2;
-	}
-}
-
-/*
- *	Perform all of the wondrous variants of digest authentication.
- */
-static int digest_authenticate(void *instance, REQUEST *request)
-{
-	int i;
-	int a1_len, a2_len, kd_len;
-	uint8_t a1[(MAX_STRING_LEN + 1) * 5]; /* can be 5 attributes */
-	uint8_t a2[(MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
-	uint8_t kd[(MAX_STRING_LEN + 1) * 5];
-	uint8_t hash[16];	/* MD5 output */
-	VALUE_PAIR *vp;
-	VALUE_PAIR *qop, *nonce;
-
-	instance = instance;	/* -Wunused */
-
-	/*
-	 *	We require access to the plain-text password.
-	 */
-	vp = pairfind(request->config_items, PW_PASSWORD);
-	if (!vp) {
-		radlog(L_AUTH, "rlm_digest: Configuration item \"User-Password\" is required for authentication.");
-		return RLM_MODULE_INVALID;
 	}
 
 	/*
