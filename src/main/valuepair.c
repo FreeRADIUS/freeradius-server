@@ -367,6 +367,13 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 				int i;
 				regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 
+				if ((auth_item->type == PW_TYPE_IPADDR) &&
+				    (auth_item->vp_strvalue[0] == '\0')) {
+				  inet_ntop(AF_INET, &(auth_item->lvalue),
+					    auth_item->vp_strvalue,
+					    sizeof(auth_item->vp_strvalue));
+				}
+
 				/*
 				 *	Include substring matches.
 				 */
@@ -432,6 +439,13 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 				break;
 
 			case T_OP_REG_NE:
+				if ((auth_item->type == PW_TYPE_IPADDR) &&
+				    (auth_item->vp_strvalue[0] == '\0')) {
+				  inet_ntop(AF_INET, &(auth_item->lvalue),
+					    auth_item->vp_strvalue,
+					    sizeof(auth_item->vp_strvalue));
+				}
+
 				regcomp(&reg, (char *)check_item->vp_strvalue, REG_EXTENDED|REG_NOSUB);
 				compare = regexec(&reg, (char *)auth_item->vp_strvalue,
 						0, NULL, 0);

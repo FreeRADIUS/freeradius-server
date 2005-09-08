@@ -402,9 +402,6 @@ static int add_nas_attr(REQUEST *request)
 				radlog(L_ERR, "No memory");
 				return -1;
 			}
-			
-			ip_ntoh(&request->packet->src_ipaddr,
-				nas->vp_strvalue, sizeof(nas->vp_strvalue));
 			nas->lvalue = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 			pairadd(&request->packet->vps, nas);
 		}

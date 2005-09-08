@@ -116,6 +116,13 @@ static int check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 		    break;
 #ifdef HAVE_REGEX_H
 		case T_OP_REG_EQ:
+		  if ((reply_item->type == PW_TYPE_IPADDR) &&
+		      (reply_item->vp_strvalue[0] == '\0')) {
+			  inet_ntop(AF_INET, &(reply_item->lvalue),
+				    reply_item->vp_strvalue,
+				    sizeof(reply_item->vp_strvalue));
+		  }
+
 		    regcomp(&reg, (char *)check_item->vp_strvalue, REG_EXTENDED);
 		    comp = regexec(&reg, (char *)reply_item->vp_strvalue,
 				      0, NULL, 0);
@@ -128,6 +135,13 @@ static int check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 		    break;
 
 		case T_OP_REG_NE:
+		  if ((reply_item->type == PW_TYPE_IPADDR) &&
+		      (reply_item->vp_strvalue[0] == '\0')) {
+			  inet_ntop(AF_INET, &(reply_item->lvalue),
+				    reply_item->vp_strvalue,
+				    sizeof(reply_item->vp_strvalue));
+		  }
+
 		    regcomp(&reg, (char *)check_item->vp_strvalue, REG_EXTENDED);
 		    comp = regexec(&reg, (char *)reply_item->vp_strvalue,
 				      0, NULL, 0);

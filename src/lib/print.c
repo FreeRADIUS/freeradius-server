@@ -171,11 +171,8 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			a = buf;
 			break;
 		case PW_TYPE_IPADDR:
-			if (vp->vp_strvalue[0])
-				a = (char *)vp->vp_strvalue;
-			else
-				a = inet_ntop(AF_INET, &(vp->lvalue),
-					      buf, sizeof(buf));
+			a = inet_ntop(AF_INET, &(vp->lvalue),
+				      buf, sizeof(buf));
 			break;
 		case PW_TYPE_ABINARY:
 #ifdef ASCEND_BINARY
