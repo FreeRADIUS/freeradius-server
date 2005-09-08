@@ -185,7 +185,6 @@ static lrad_hash_entry_t *list_split(lrad_hash_entry_t **head, uint32_t key)
 lrad_hash_table_t *lrad_hash_table_create(int size, void (*freeNode)(void *),
 					  int replace_flag)
 {
-	int i;
 	lrad_hash_table_t *ht;
 
 	if ((size <= 1) || (size > 31)) return NULL;
@@ -201,6 +200,7 @@ lrad_hash_table_t *lrad_hash_table_create(int size, void (*freeNode)(void *),
 	memset(ht, 0, sizeof(*ht));
 	ht->free = freeNode;
 	ht->num_buckets = size;
+	ht->replace_flag = replace_flag;
 
 	ht->buckets = malloc(sizeof(*ht->buckets) * ht->num_buckets);
 	if (!ht->buckets) {
@@ -232,6 +232,7 @@ int lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key, void *data)
 	node = list_find(ht->buckets[entry], reversed);
 	if (node) {
 		if (!ht->replace_flag) return 0;
+
 		list_delete(&ht->buckets[entry], node);
 
 		if (ht->free && node->data) ht->free(node->data);
