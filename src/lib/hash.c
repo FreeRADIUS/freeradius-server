@@ -360,6 +360,38 @@ void lrad_hash_table_free(lrad_hash_table_t *ht)
 	free(ht);
 }
 
+
+int lrad_hash_table_num_elements(lrad_hash_table_t *ht)
+{
+	if (!ht) return 0;
+
+	return ht->num_elements;
+}
+
+int lrad_hash_table_walk(lrad_hash_table *ht,
+			 int (*callback)(void * /* ctx */,
+					 void * /* data */),
+			 void *context)
+{
+	int i, rcode;;
+
+	if (!ht || !callback) return 0;
+
+	for (i = 0; i < num_elements; i++) {
+		lrad_hash_entry_t *node;
+
+		if (!ht->buckets[i]) continue;
+
+		for (node = ht->buckets[i]; node != NULL; node = node->next) {
+			rcode = callback(context, node->data);
+			if (rcode != 0) return rcode;
+		}
+	}
+
+	return 0;
+}
+
+
 #ifdef TESTING
 /*
  *  cc -DTESTING -I ../include/ hash.c -o hash

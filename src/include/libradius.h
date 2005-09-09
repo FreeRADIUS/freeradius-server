@@ -437,9 +437,15 @@ typedef struct lrad_hash_table_t lrad_hash_table_t;
 
 lrad_hash_table_t *lrad_hash_table_create(int size, void (*freeNode)(void *),
 					  int replace_flag);
-int lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key, void *data);
-void *lrad_hash_table_finddata(lrad_hash_table_t *ht, uint32_t key);
-int lrad_hash_table_delete(lrad_hash_table_t *ht, uint32_t key);
-void lrad_hash_table_free(lrad_hash_table_t *ht);
+void		lrad_hash_table_free(lrad_hash_table_t *ht);
+int		lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key,
+				       void *data);
+int		lrad_hash_table_delete(lrad_hash_table_t *ht, uint32_t key);
+void		*lrad_hash_table_finddata(lrad_hash_table_t *ht, uint32_t key);
+int		lrad_hash_table_num_elements(lrad_hash_table_t *ht);
+int		lrad_hash_table_walk(lrad_hash_table_t *ht,
+				     int (*callback)(void * /* ctx */,
+						     void * /* data */),
+				     void *context);
 
 #endif /*LIBRADIUS_H*/
