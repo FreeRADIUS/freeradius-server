@@ -368,7 +368,7 @@ int lrad_hash_table_num_elements(lrad_hash_table_t *ht)
 	return ht->num_elements;
 }
 
-int lrad_hash_table_walk(lrad_hash_table *ht,
+int lrad_hash_table_walk(lrad_hash_table_t *ht,
 			 int (*callback)(void * /* ctx */,
 					 void * /* data */),
 			 void *context)
@@ -377,7 +377,7 @@ int lrad_hash_table_walk(lrad_hash_table *ht,
 
 	if (!ht || !callback) return 0;
 
-	for (i = 0; i < num_elements; i++) {
+	for (i = 0; i < ht->num_elements; i++) {
 		lrad_hash_entry_t *node;
 
 		if (!ht->buckets[i]) continue;
