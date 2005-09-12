@@ -285,8 +285,8 @@ int lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key, void *data)
 		free(ht->buckets);
 		ht->buckets = buckets;
 		ht->num_buckets *= 2;
-		grow = 1;
 #ifdef TESTING
+		grow = 1;
 		fprintf(stderr, "GROW TO %d\n", ht->num_buckets);
 #endif
 	}
