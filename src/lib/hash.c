@@ -54,7 +54,10 @@ struct lrad_hash_table_t {
 	lrad_hash_entry_t	**buckets;
 };
 
+#ifdef TESTING
 static int grow = 0;
+#endif
+
 
 /*
  * perl -e 'foreach $i (0..255) {$r = 0; foreach $j (0 .. 7 ) { if (($i & ( 1<< $j)) != 0) { $r |= (1 << (7 - $j));}} print $r, ", ";if (($i & 7) == 7) {print "\n";}}'
@@ -338,6 +341,10 @@ int lrad_hash_table_delete(lrad_hash_table_t *ht, uint32_t key)
 	return 1;
 }
 
+
+/*
+ *	Free a hash table
+ */
 void lrad_hash_table_free(lrad_hash_table_t *ht)
 {
 	lrad_hash_entry_t *node, *next;
@@ -361,6 +368,9 @@ void lrad_hash_table_free(lrad_hash_table_t *ht)
 }
 
 
+/*
+ *	Count number of elements
+ */
 int lrad_hash_table_num_elements(lrad_hash_table_t *ht)
 {
 	if (!ht) return 0;
@@ -377,7 +387,7 @@ int lrad_hash_table_walk(lrad_hash_table_t *ht,
 
 	if (!ht || !callback) return 0;
 
-	for (i = 0; i < ht->num_elements; i++) {
+	for (i = 0; i < ht->num_buckets; i++) {
 		lrad_hash_entry_t *node;
 
 		if (!ht->buckets[i]) continue;
@@ -389,6 +399,91 @@ int lrad_hash_table_walk(lrad_hash_table_t *ht,
 	}
 
 	return 0;
+}
+
+
+#define FNV_MAGIC_INIT (0x811c9dc5)
+#define FNV_MAGIC_PRIME (0x01000193)
+
+/*
+ *	A fast hash function.  For details, see:
+ *
+ *	http://www.isthe.com/chongo/tech/comp/fnv/
+ *
+ *	Which also includes public domain source.  We've re-written
+ *	it here for our purposes.
+ */
+uint32_t lrad_hash(const void *data, size_t size)
+{
+	const uint8_t *p = data;
+	const uint8_t *q = p + size;
+	uint32_t      hash = FNV_MAGIC_INIT;
+
+	/*
+	 *	FNV-1 hash each octet in the buffer
+	 */
+	while (p != q) {
+		/*
+		 *	Multiple by 32-bit magic FNV prime, mod 2^32
+		 */
+		hash *= FNV_MAGIC_PRIME;
+#if 0
+		/*
+		 *	Potential optimization.
+		 */
+		hash += (hash<<1) + (hash<<4) + (hash<<7) + (hash<<8) + (hash<<24);
+#endif
+		/*
+		 *	XOR the 8-bit quantity into the bottom of
+		 *	the hash.
+		 */
+		hash ^= (uint32_t) (*p++);
+    }
+
+    return hash;
+}
+
+/*
+ *	Continue hashing data.
+ */
+uint32_t lrad_hash_update(const void *data, size_t size, uint32_t hash)
+{
+	const uint8_t *p = data;
+	const uint8_t *q = p + size;
+
+	while (p != q) {
+		hash *= FNV_MAGIC_PRIME;
+		hash ^= (uint32_t) (*p++);
+    }
+
+    return hash;
+
+}
+
+/*
+ *	Return a "folded" hash, where the lower "bits" are the
+ *	hash, and the upper bits are zero.
+ *
+ *	If you need a non-power-of-two hash, cope.
+ */
+uint32_t lrad_hash_fold(uint32_t hash, int bits)
+{
+	int count;
+	uint32_t result;
+
+	if ((bits <= 0) || (bits >= 32)) return hash;
+
+	result = hash;
+
+	/*
+	 *	Never use the same bits twice in an xor.
+	 */
+	for (count = 0; count < 32; count += bits) {
+		hash >>= bits;
+		result ^= hash;
+	}
+
+	return result & (((uint32_t) (1 << bits)) - 1);
 }
 
 
@@ -408,7 +503,7 @@ int main(int argc, char **argv)
 	uint32_t i, *p, *q;
 	lrad_hash_table_t *ht;
 
-	ht = lrad_hash_table_create(10, free);
+	ht = lrad_hash_table_create(10, free, 0);
 	if (!ht) {
 		fprintf(stderr, "Hash create failed\n");
 		exit(1);
