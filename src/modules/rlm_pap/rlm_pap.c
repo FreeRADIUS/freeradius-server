@@ -59,6 +59,7 @@ static const char rcsid[] = "$Id$";
  *      be used as the instance handle.
  */
 typedef struct rlm_pap_t {
+	const char *name;	/* CONF_SECTION->name, not strdup'd */
         char *scheme;  /* password encryption scheme */
 	int sch;
 	char norm_passwd;
@@ -158,6 +159,10 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
         *instance = inst;
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) {
+		inst->name = cf_section_name1(conf);
+	}
 
         return 0;
 }
@@ -415,9 +420,9 @@ static int pap_authorize(void *instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-
-	vp = pairmake("Auth-Type", "PAP", T_OP_SET);
+	vp = paircreate(PW_AUTH_TYPE, PW_TYPE_INTEGER);
 	if (!vp) return RLM_MODULE_FAIL;
+	pairparsevalue(vp, inst->name);
 
 	pairadd(&request->config_items, vp);
 
