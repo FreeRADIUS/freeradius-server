@@ -18,17 +18,17 @@
  * Copyright 2000  The FreeRADIUS server project
  */
 
-#include "libradius.h"
-#include <stdlib.h>
-#include <unistd.h>
+#include "autoconf.h"
 #include <string.h>
 
 #ifdef HAVE_CRYPT_H
 #include <crypt.h>
+#else
+#include <unistd.h>
 #endif
 
 #ifdef HAVE_PTHREAD_H
-#include	<pthread.h>
+#include <pthread.h>
 
 /*
  *  No pthreads, no mutex.
@@ -36,6 +36,8 @@
 static int lrad_crypt_init = 0;
 static pthread_mutex_t lrad_crypt_mutex;
 #endif
+
+#include "libradius.h"
 
 /*
  * performs a crypt password check in an thread-safe way.
