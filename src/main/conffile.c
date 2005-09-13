@@ -869,7 +869,7 @@ int cf_section_parse(const CONF_SECTION *cs, void *base,
 			 */
 			if (!subcs) continue;
 
-			if (!variables[i].data) {
+			if (!variables[i].dflt) {
 				DEBUG2("Internal sanity check 1 failed in cf_section_parse");
 				return -1;
 			}
