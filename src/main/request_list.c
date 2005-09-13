@@ -55,9 +55,8 @@ typedef struct REQUESTINFO {
 
 
 struct request_list_t {
-	REQUESTINFO	request_list[256];
-	rbtree_t	*request_tree;
-	int		request_count;
+	REQUESTINFO	  request_list[256];
+	lrad_hash_table_t *request_hash;
 };
 
 
@@ -161,90 +160,49 @@ static int proxy_id_cmp(const void *one, const void *two)
 }
 
 
-/*
- *	Compare two REQUEST data structures, based on a number
- *	of criteria.
- */
-static int request_cmp(const void *one, const void *two)
+void rl_packet_hash(RADIUS_PACKET *packet)
 {
-	int rcode;
-	const REQUEST *a = one;
-	const REQUEST *b = two;
+	uint32_t hash;
+
+	hash = lrad_hash(&packet->sockfd, sizeof(packet->sockfd));
+	hash = lrad_hash_update(&packet->id, sizeof(packet->id), hash);
+
+	hash = lrad_hash_update(&packet->code, sizeof(packet->code), hash);
+	hash = lrad_hash_update(&packet->src_ipaddr.af,
+				sizeof(packet->src_ipaddr.af), hash);
+	hash = lrad_hash_update(&packet->dst_port,
+				sizeof(packet->dst_port), hash);
+	hash = lrad_hash_update(&packet->dst_ipaddr.af,
+				sizeof(packet->dst_ipaddr.af), hash);
 
 	/*
-	 *	The following comparisons look weird, but it's
-	 *	the only way to make the comparisons work.
+	 *	The caller ensures that src & dst AF are the same.
 	 */
-
-	/*
-	 *	If the packets didn't arrive on the same socket,
-	 *	they're not identical, no matter what their src/dst
-	 *	ip/ports say.
-	 */
-	if (a->packet->sockfd < b->packet->sockfd) return -1;
-	if (a->packet->sockfd > b->packet->sockfd) return +1;
-
-	if (a->packet->id < b->packet->id) return -1;
-	if (a->packet->id > b->packet->id) return +1;
-
-	if (a->packet->code < b->packet->code) return -1;
-	if (a->packet->code > b->packet->code) return +1;
-
-	if (a->packet->src_ipaddr.af < b->packet->src_ipaddr.af) return -1;
-	if (a->packet->src_ipaddr.af > b->packet->src_ipaddr.af) return +1;
-
-	if (a->packet->src_port < b->packet->src_port) return -1;
-	if (a->packet->src_port > b->packet->src_port) return +1;
-
-	switch (a->packet->src_ipaddr.af) {
+	switch (packet->src_ipaddr.af) {
 	case AF_INET:
-		rcode = memcmp(&a->packet->src_ipaddr.ipaddr.ip4addr,
-			       &b->packet->src_ipaddr.ipaddr.ip4addr,
-			       sizeof(a->packet->src_ipaddr.ipaddr.ip4addr));
+		hash = lrad_hash_update(&packet->src_ipaddr.ipaddr.ip4addr,
+					sizeof(packet->src_ipaddr.ipaddr.ip4addr),
+					hash);
+		hash = lrad_hash_update(&packet->dst_ipaddr.ipaddr.ip4addr,
+					sizeof(packet->dst_ipaddr.ipaddr.ip4addr),
+					hash);
 		break;
 	case AF_INET6:
-		rcode = memcmp(&a->packet->src_ipaddr.ipaddr.ip6addr,
-			       &b->packet->src_ipaddr.ipaddr.ip6addr,
-			       sizeof(a->packet->src_ipaddr.ipaddr.ip6addr));
+		hash = lrad_hash_update(&packet->src_ipaddr.ipaddr.ip6addr,
+					sizeof(packet->src_ipaddr.ipaddr.ip6addr),
+					hash);
+		hash = lrad_hash_update(&packet->dst_ipaddr.ipaddr.ip6addr,
+					sizeof(packet->dst_ipaddr.ipaddr.ip6addr),
+					hash);
 		break;
 	default:
-		return -1;	/* FIXME: die! */
+		/* FIXME: die! */
 		break;
 	}
-	if (rcode != 0) return rcode;
 
-	/*
-	 *	Hmm... we may be listening on IPADDR_ANY, in which case
-	 *	the destination IP is important, too.
-	 */
-	if (a->packet->dst_ipaddr.af < b->packet->dst_ipaddr.af) return -1;
-	if (a->packet->dst_ipaddr.af > b->packet->dst_ipaddr.af) return +1;
-
-	if (a->packet->dst_port < b->packet->dst_port) return -1;
-	if (a->packet->dst_port > b->packet->dst_port) return +1;
-
-	switch (a->packet->dst_ipaddr.af) {
-	case AF_INET:
-		rcode = memcmp(&a->packet->dst_ipaddr.ipaddr.ip4addr,
-			       &b->packet->dst_ipaddr.ipaddr.ip4addr,
-			       sizeof(a->packet->dst_ipaddr.ipaddr.ip4addr));
-		break;
-	case AF_INET6:
-		rcode = memcmp(&a->packet->dst_ipaddr.ipaddr.ip6addr,
-			       &b->packet->dst_ipaddr.ipaddr.ip6addr,
-			       sizeof(a->packet->dst_ipaddr.ipaddr.ip6addr));
-		break;
-	default:
-		return -1;	/* FIXME: die! */
-		break;
-	}
-	if (rcode != 0) return rcode;
-
-	/*
-	 *	Everything's equal.  Say so.
-	 */
-	return 0;
+	packet->hash = hash;
 }
+
 
 /*
  *	Compare two REQUEST data structures, based on a number
@@ -323,8 +281,8 @@ request_list_t *rl_init(void)
 	 */
 	memset(rl, 0, sizeof(*rl));
 
-	rl->request_tree = rbtree_create(request_cmp, NULL, 0);
-	if (!rl->request_tree) {
+	rl->request_hash = lrad_hash_table_create(10, NULL, 0);
+	if (!rl->request_hash) {
 		rad_assert("FAIL" == NULL);
 	}
 
@@ -571,12 +529,10 @@ void rl_yank(request_list_t *rl, REQUEST *request)
 	 *	Delete the request from the tree.
 	 */
 	{
+		uint32_t hash;
 		rbnode_t *node;
 
-		node = rbtree_find(rl->request_tree, request);
-		rad_assert(node != NULL);
-		rbtree_delete(rl->request_tree, node);
-
+		lrad_hash_table_delete(rl->request_hash, request->packet->hash);
 
 		/*
 		 *	If there's a proxied packet, and we're still
@@ -591,8 +547,6 @@ void rl_yank(request_list_t *rl, REQUEST *request)
 			pthread_mutex_unlock(&proxy_mutex);
 		}
 	}
-
-	rl->request_count--;
 }
 
 
@@ -612,6 +566,7 @@ void rl_delete(request_list_t *rl, REQUEST *request)
 void rl_add(request_list_t *rl, REQUEST *request)
 {
 	int id = request->packet->id;
+	uint32_t hash;
 	REQNODE *node;
 
 	rad_assert(request->container == NULL);
@@ -635,11 +590,10 @@ void rl_add(request_list_t *rl, REQUEST *request)
 	/*
 	 *	Insert the request into the tree.
 	 */
-	if (rbtree_insert(rl->request_tree, request) == 0) {
+	if (lrad_hash_table_insert(rl->request_hash, request->packet->hash,
+				   request) == 0) {
 		rad_assert("FAIL" == NULL);
 	}
-
-	rl->request_count++;
 }
 
 /*
@@ -654,11 +608,7 @@ void rl_add(request_list_t *rl, REQUEST *request)
  */
 REQUEST *rl_find(request_list_t *rl, RADIUS_PACKET *packet)
 {
-	REQUEST myrequest;
-
-	myrequest.packet = packet;
-
-	return rbtree_finddata(rl->request_tree, &myrequest);
+	return lrad_hash_table_finddata(rl->request_hash, packet->hash);
 }
 
 /*
@@ -1088,7 +1038,7 @@ REQUEST *rl_next(request_list_t *rl, REQUEST *request)
  */
 int rl_num_requests(request_list_t *rl)
 {
-	return rl->request_count;
+	return lrad_hash_table_num_elements(rl->request_hash);
 }
 
 

@@ -18,6 +18,7 @@ extern int rl_add_proxy(REQUEST *request);
 extern REQUEST *rl_find_proxy(RADIUS_PACKET *packet);
 extern REQUEST *rl_next(request_list_t *, REQUEST *);
 extern int rl_num_requests(request_list_t *);
+extern void rl_packet_hash(RADIUS_PACKET *);
 
 #define RL_WALK_CONTINUE (0)
 #define RL_WALK_STOP     (-1)

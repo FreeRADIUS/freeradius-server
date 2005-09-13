@@ -176,6 +176,8 @@ static int common_checks(rad_listen_t *listener,
 
 	rad_assert(listener->rl != NULL);
 
+	rl_packet_hash(packet);
+
 	/*
 	 *	If there is no existing request of id, code, etc.,
 	 *	then we can return, and let it be processed.

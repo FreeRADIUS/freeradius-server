@@ -205,6 +205,7 @@ typedef struct radius_packet {
 	uint8_t			*data;
 	int			data_len;
 	VALUE_PAIR		*vps;
+	uint32_t		hash;
 } RADIUS_PACKET;
 
 /*
