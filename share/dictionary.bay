@@ -84,6 +84,9 @@ ATTRIBUTE	Annex-End-Modulation			98	string
 ATTRIBUTE	Annex-User-Level			100	integer
 ATTRIBUTE	Annex-Audit-Level			101	integer
 
+# Contivity
+ATTRIBUTE	CES-Group				102	string
+
 #	Annex Tunnel Authen Type Values
 
 VALUE	Annex-Tunnel-Authen-Type	none			0
