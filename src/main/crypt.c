@@ -19,16 +19,16 @@
  */
 
 #include "autoconf.h"
-#include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 
 #ifdef HAVE_CRYPT_H
 #include <crypt.h>
+#else
+#include <unistd.h>
 #endif
 
 #ifdef HAVE_PTHREAD_H
-#include	<pthread.h>
+#include <pthread.h>
 
 /*
  *  No pthreads, no mutex.
