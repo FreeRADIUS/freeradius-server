@@ -23,6 +23,10 @@
 #include <unistd.h>
 #include <string.h>
 
+#ifdef HAVE_CRYPT_H
+#include <crypt.h>
+#endif
+
 #ifdef HAVE_PTHREAD_H
 #include	<pthread.h>
 
