@@ -712,13 +712,13 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			if (data_datum_tmp.dptr != NULL){
 
 				rcode = gdbm_store(data->gdbm, key_datum, data_datum_tmp, GDBM_REPLACE);
+				free(data_datum_tmp.dptr);
 				if (rcode < 0) {
 					radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
 						data->session_db, gdbm_strerror(gdbm_errno));
 						pthread_mutex_unlock(&data->op_mutex);
 					return RLM_MODULE_FAIL;
 				}
-				free(data_datum_tmp.dptr);
 			}
 		}
 		else{
