@@ -824,25 +824,36 @@ static int ldap_escape_func(char *out, int outlen, const char *in)
 
 	while (in[0]) {
 		/*
-		 *  Only one byte left.
+		 *	Encode unsafe characters.
 		 */
-		if (outlen <= 1) {
-			break;
-		}
-
 		if (strchr("*=\\,()", *in)) {
-			static const char *hex = "0123456789abcdef";
-			if (outlen <= 3) break;
+			static const char hex[] = "0123456789abcdef";
+
+			/*
+			 *	Only 3 or less bytes available.
+			 */
+			if (outlen <= 3) {
+				break;
+			}
 
 			*(out++) = '\\';
 			*(out++) = hex[((*in) >> 4) & 0x0f];
 			*(out++) = hex[(*in) & 0x0f];
 			outlen -= 3;
+			len += 3;
+			in++;
 			continue;
 		}
 
 		/*
-		 *	Else it's a nice character.
+		 *	Only one byte left.
+		 */
+		if (outlen <= 1) {
+			break;
+		}
+
+		/*
+		 *	Allowed character.
 		 */
 		*(out++) = *(in++);
 		outlen--;
