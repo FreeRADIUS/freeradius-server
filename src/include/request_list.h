@@ -19,13 +19,6 @@ extern REQUEST *rl_find_proxy(RADIUS_PACKET *packet);
 extern REQUEST *rl_next(request_list_t *, REQUEST *);
 extern int rl_num_requests(request_list_t *);
 extern void rl_packet_hash(RADIUS_PACKET *);
-
-#define RL_WALK_CONTINUE (0)
-#define RL_WALK_STOP     (-1)
-
-typedef int (*RL_WALK_FUNC)(request_list_t *, REQUEST *, void *);
-
-extern int rl_walk(request_list_t *, RL_WALK_FUNC walker, void *data);
 extern int rl_clean_list(request_list_t *, time_t now);
 
 #endif /* _REQUEST_LIST_H */

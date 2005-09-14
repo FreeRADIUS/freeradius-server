@@ -32,31 +32,8 @@ static const char rcsid[] = "$Id$";
 #include "request_list.h"
 #include "radius_snmp.h"
 
-
-/*
- *	We keep the incoming requests in an array, indexed by ID.
- *
- *	Each array element contains a linked list of containers of
- *	active requests, a count of the number of requests, and a time
- *	at which the first request in the list must be serviced.
- *
- *	Note that we ALSO keep a tree view of the same data, below.
- *	Both views are needed for the server to work optimally.
- */
-typedef struct REQNODE {
-	struct REQNODE *prev, *next;
-	REQUEST *req;
-} REQNODE;
-
-typedef struct REQUESTINFO {
-	REQNODE *head;
-	REQNODE *tail;
-} REQUESTINFO;
-
-
 struct request_list_t {
-	REQUESTINFO	  request_list[256];
-	lrad_hash_table_t *request_hash;
+	lrad_hash_table_t *ht;
 };
 
 
@@ -281,8 +258,8 @@ request_list_t *rl_init(void)
 	 */
 	memset(rl, 0, sizeof(*rl));
 
-	rl->request_hash = lrad_hash_table_create(10, NULL, 0);
-	if (!rl->request_hash) {
+	rl->ht = lrad_hash_table_create(10, NULL, 0);
+	if (!rl->ht) {
 		rad_assert("FAIL" == NULL);
 	}
 
@@ -356,6 +333,16 @@ request_list_t *rl_init(void)
 	return rl;
 }
 
+static int rl_free_entry(void *ctx, void *data)
+{
+	REQUEST *request = data;
+
+	ctx = ctx;		/* -Wunused */
+
+	request_free(&request);
+	return 0;
+}
+
 
 /*
  *	Delete everything in the request list.
@@ -364,8 +351,6 @@ request_list_t *rl_init(void)
  */
 void rl_deinit(request_list_t *rl)
 {
-	int i;
-
 	if (!rl) return;
 
 	if (proxy_tree) {
@@ -377,21 +362,13 @@ void rl_deinit(request_list_t *rl)
 	}
 
 	/*
-	 *	Loop over the request list, deleting the requests.
+	 *	Delete everything in the table, too.
 	 */
-	for (i = 0; i < 256; i++) {
-		REQNODE *this, *next;
+	lrad_hash_table_walk(rl->ht, rl_free_entry, NULL);
 
-		for (this = rl->request_list[i].head;
-		     this != NULL;
-		     this = next) {
-			next = this->next;
+	lrad_hash_table_free(rl->ht);
 
-			request_free(&this->req);
-			free(this);
-		}
-	}
-	
+
 	/*
 	 *	Just to ensure no one is using the memory.
 	 */
@@ -466,28 +443,6 @@ static void rl_delete_proxy(REQUEST *request, rbnode_t *node)
  */
 void rl_yank(request_list_t *rl, REQUEST *request)
 {
-	int id;
-	REQNODE *prev, *next;
-
-	prev = ((REQNODE *) request->container)->prev;
-	next = ((REQNODE *) request->container)->next;
-
-	id = request->packet->id;
-
-	if (prev == NULL) {
-		rl->request_list[id].head = next;
-	} else {
-		prev->next = next;
-	}
-
-	if (next == NULL) {
-		rl->request_list[id].tail = prev;
-	} else {
-		next->prev = prev;
-	}
-
-	free(request->container);
-
 #ifdef WITH_SNMP
 	/*
 	 *	Update the SNMP statistics.
@@ -529,10 +484,9 @@ void rl_yank(request_list_t *rl, REQUEST *request)
 	 *	Delete the request from the tree.
 	 */
 	{
-		uint32_t hash;
 		rbnode_t *node;
 
-		lrad_hash_table_delete(rl->request_hash, request->packet->hash);
+		lrad_hash_table_delete(rl->ht, request->packet->hash);
 
 		/*
 		 *	If there's a proxied packet, and we're still
@@ -565,32 +519,10 @@ void rl_delete(request_list_t *rl, REQUEST *request)
  */
 void rl_add(request_list_t *rl, REQUEST *request)
 {
-	int id = request->packet->id;
-	uint32_t hash;
-	REQNODE *node;
-
-	rad_assert(request->container == NULL);
-
-	request->container = rad_malloc(sizeof(REQNODE));
-	node = (REQNODE *) request->container;
-	node->req = request;
-
-	node->prev = NULL;
-	node->next = NULL;
-
-	if (!rl->request_list[id].head) {
-		rl->request_list[id].head = node;
-		rl->request_list[id].tail = node;
-	} else {
-		node->prev = rl->request_list[id].tail;
-		rl->request_list[id].tail->next = node;
-		rl->request_list[id].tail = node;
-	}
-
 	/*
 	 *	Insert the request into the tree.
 	 */
-	if (lrad_hash_table_insert(rl->request_hash, request->packet->hash,
+	if (lrad_hash_table_insert(rl->ht, request->packet->hash,
 				   request) == 0) {
 		rad_assert("FAIL" == NULL);
 	}
@@ -608,7 +540,7 @@ void rl_add(request_list_t *rl, REQUEST *request)
  */
 REQUEST *rl_find(request_list_t *rl, RADIUS_PACKET *packet)
 {
-	return lrad_hash_table_finddata(rl->request_hash, packet->hash);
+	return lrad_hash_table_finddata(rl->ht, packet->hash);
 }
 
 /*
@@ -937,108 +869,11 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
 
 
 /*
- *	Walk over all requests, performing a callback for each request.
- */
-int rl_walk(request_list_t *rl, RL_WALK_FUNC walker, void *data)
-{
-	int id, rcode;
-	REQNODE *curreq, *next;
-
-	/*
-	 *	Walk over all 256 ID's.
-	 */
-	for (id = 0; id < 256; id++) {
-
-		/*
-		 *	Walk over the request list for each ID.
-		 */
-		for (curreq = rl->request_list[id].head;
-				curreq != NULL ;
-				curreq = next) {
-			/*
-			 *	The callback MIGHT delete the current
-			 *	request, so we CANNOT depend on curreq->next
-			 *	to be there, when going to the next element
-			 *	in the 'for' loop.
-			 */
-			next = curreq->next;
-
-			rcode = walker(rl, curreq->req, data);
-			if (rcode != RL_WALK_CONTINUE) {
-				return rcode;
-			}
-		}
-	}
-
-	return 0;
-}
-
-
-/*
- *	Walk from one request to the next.
- */
-REQUEST *rl_next(request_list_t *rl, REQUEST *request)
-{
-	int id, start_id;
-	int count;
-
-	/*
-	 *	If we were passed a request, then go to the "next" one.
-	 */
-	if (request != NULL) {
-		rad_assert(request->magic == REQUEST_MAGIC);
-
-		/*
-		 *	It has a "next", return it.
-		 */
-		if (((REQNODE *)request->container)->next != NULL) {
-			return ((REQNODE *)request->container)->next->req;
-		} else {
-			/*
-			 *	No "next", increment the ID, and look
-			 *	at that one.
-			 */
-			start_id = request->packet->id + 1;
-			start_id &= 0xff;
-			count = 255;
-		}
-	} else {
-		/*
-		 *	No input request, start looking at ID 0.
-		 */
-		start_id = 0;
-		count = 256;
-	}
-
-	/*
-	 *	Check all ID's, wrapping around at 255.
-	 */
-	for (id = start_id; id < (start_id + count); id++) {
-
-		/*
-		 *	This ID has a request, return it.
-		 */
-		if (rl->request_list[id & 0xff].head != NULL) {
-			rad_assert(rl->request_list[id&0xff].head->req != request);
-
-			return rl->request_list[id & 0xff].head->req;
-		}
-	}
-
-	/*
-	 *	No requests at all in the list. Nothing to do.
-	 */
-	DEBUG3("rl_next:  returning NULL");
-	return NULL;
-}
-
-
-/*
  *	Return the number of requests in the request list.
  */
 int rl_num_requests(request_list_t *rl)
 {
-	return lrad_hash_table_num_elements(rl->request_hash);
+	return lrad_hash_table_num_elements(rl->ht);
 }
 
 
@@ -1049,6 +884,7 @@ int rl_num_requests(request_list_t *rl)
 typedef struct rl_walk_t {
 	time_t	now;
 	int	sleep_time;
+	request_list_t *rl;
 } rl_walk_t;
 
 
@@ -1058,11 +894,13 @@ typedef struct rl_walk_t {
  *  When walking over the request list, all of the per-request
  *  magic is done here.
  */
-static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
+static int refresh_request(void *ctx, void *data)
 {
 	int time_passed;
-	rl_walk_t *info = (rl_walk_t *) data;
+	rl_walk_t *info = (rl_walk_t *) ctx;
 	child_pid_t child_pid;
+	request_list_t *rl = info->rl;
+	REQUEST *request = data;
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 
@@ -1120,7 +958,7 @@ static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
 		 *  Delete the request.
 		 */
 		rl_delete(rl, request);
-		return RL_WALK_CONTINUE;
+		return 0;
 	}
 
 	/*
@@ -1158,7 +996,7 @@ static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
 			       request->packet->src_port);
 			request_reject(request, REQUEST_FAIL_HOME_SERVER);
 			request->finished = TRUE;
-			return RL_WALK_CONTINUE;
+			return 0;
 		}
 
 		if (mainconfig.kill_unresponsive_children) {
@@ -1201,7 +1039,7 @@ static int refresh_request(request_list_t *rl, REQUEST *request, void *data)
 
 		if (mainconfig.kill_unresponsive_children)
 			request->finished = TRUE;
-		return RL_WALK_CONTINUE;
+		return 0;
 	} /* else the request is still allowed to be in the queue */
 
 	/*
@@ -1283,7 +1121,7 @@ setup_timeout:
 		info->sleep_time = time_passed;
 	}
 
-	return RL_WALK_CONTINUE;
+	return 0;
 }
 
 
@@ -1304,8 +1142,9 @@ int rl_clean_list(request_list_t *rl, time_t now)
 
 	info.now = now;
 	info.sleep_time = SLEEP_FOREVER;
+	info.rl = rl;
 
-	rl_walk(rl, refresh_request, &info);
+	lrad_hash_table_walk(rl->ht, refresh_request, &info);
 
 	return info.sleep_time;
 }
