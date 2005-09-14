@@ -12,7 +12,7 @@ extern request_list_t *rl_init(void);
 extern void rl_deinit(request_list_t *);
 extern void rl_yank(request_list_t *, REQUEST *);
 extern void rl_delete(request_list_t *, REQUEST *);
-extern void rl_add(request_list_t *, REQUEST *);
+extern int rl_add(request_list_t *, REQUEST *);
 extern REQUEST *rl_find(request_list_t *, RADIUS_PACKET *);
 extern int rl_add_proxy(REQUEST *request);
 extern REQUEST *rl_find_proxy(RADIUS_PACKET *packet);

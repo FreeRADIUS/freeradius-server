@@ -375,6 +375,11 @@ static int common_checks(rad_listen_t *listener,
 		 *	A unique per-request counter.
 		 */
 		curreq = request_alloc(); /* never fails */
+
+		if ((curreq->reply = rad_alloc(0)) == NULL) {
+			radlog(L_ERR, "No memory");
+			exit(1);
+		}
 	}
 	curreq->listener = listener;
 	curreq->packet = packet;
@@ -384,7 +389,11 @@ static int common_checks(rad_listen_t *listener,
 	/*
 	 *	Remember the request in the list.
 	 */
-	rl_add(listener->rl, curreq);
+	if (!rl_add(listener->rl, curreq)) {
+		radlog(L_ERR, "Failed to insert request %d in the list of live requests: discarding", curreq->number);
+		request_free(curreq);
+		return 0;
+	}
 	
 	/*
 	 *	ADD IN "server identifier" from "listen"
@@ -396,16 +405,11 @@ static int common_checks(rad_listen_t *listener,
 	 *	From here on in, if anything goes wrong, we
 	 *	send a reject message, instead of dropping the
 	 *	packet.
-	 *
-	 *	Build the reply template from the request
-	 *	template.
 	 */
-	if (!curreq->reply) {
-		if ((curreq->reply = rad_alloc(0)) == NULL) {
-			radlog(L_ERR, "No memory");
-			exit(1);
-		}
-	}
+
+	/*
+	 *	Build the reply template from the request.
+	 */
 
 	curreq->reply->sockfd = curreq->packet->sockfd;
 	curreq->reply->dst_ipaddr = curreq->packet->src_ipaddr;

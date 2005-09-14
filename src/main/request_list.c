@@ -481,31 +481,28 @@ void rl_yank(request_list_t *rl, REQUEST *request)
 #endif
 
 	/*
-	 *	Delete the request from the tree.
+	 *	Delete the request from the list.
 	 */
-	{
+	lrad_hash_table_delete(rl->ht, request->packet->hash);
+	
+	/*
+	 *	If there's a proxied packet, and we're still
+	 *	waiting for a reply, then delete the packet
+	 *	from the list of outstanding proxied requests.
+	 */
+	if (request->proxy &&
+	    (request->proxy_outstanding > 0)) {
 		rbnode_t *node;
-
-		lrad_hash_table_delete(rl->ht, request->packet->hash);
-
-		/*
-		 *	If there's a proxied packet, and we're still
-		 *	waiting for a reply, then delete the packet
-		 *	from the list of outstanding proxied requests.
-		 */
-		if (request->proxy &&
-		    (request->proxy_outstanding > 0)) {
-			pthread_mutex_lock(&proxy_mutex);
-			node = rbtree_find(proxy_tree, request);
-			rl_delete_proxy(request, node);
-			pthread_mutex_unlock(&proxy_mutex);
-		}
+		pthread_mutex_lock(&proxy_mutex);
+		node = rbtree_find(proxy_tree, request);
+		rl_delete_proxy(request, node);
+		pthread_mutex_unlock(&proxy_mutex);
 	}
 }
 
 
 /*
- *	Used internally.
+ *	Delete a request from the tree.
  */
 void rl_delete(request_list_t *rl, REQUEST *request)
 {
@@ -517,15 +514,9 @@ void rl_delete(request_list_t *rl, REQUEST *request)
 /*
  *	Add a request to the request list.
  */
-void rl_add(request_list_t *rl, REQUEST *request)
+int rl_add(request_list_t *rl, REQUEST *request)
 {
-	/*
-	 *	Insert the request into the tree.
-	 */
-	if (lrad_hash_table_insert(rl->ht, request->packet->hash,
-				   request) == 0) {
-		rad_assert("FAIL" == NULL);
-	}
+	return lrad_hash_table_insert(rl->ht, request->packet->hash, request);
 }
 
 /*
