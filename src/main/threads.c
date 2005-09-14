@@ -147,10 +147,9 @@ typedef struct THREAD_POOL {
 	pthread_mutex_t	queue_mutex;
 
 	int		max_queue_size;
-	int		queue_head; /* first filled entry */
-	int		queue_tail; /* first empty entry */
-	int		queue_size;
-	request_queue_t *queue;
+	uint32_t	queue_head; /* first filled entry */
+	uint32_t	queue_tail; /* first empty entry */
+	lrad_hash_table_t *queue;
 } THREAD_POOL;
 
 static THREAD_POOL thread_pool;
@@ -283,7 +282,7 @@ static void reap_children(void)
  */
 static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
-	int num_entries;
+	request_queue_t *entry;
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
@@ -293,61 +292,23 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	If the queue is empty, re-set the indices to zero,
 	 *	for no particular reason...
 	 */
-	if ((thread_pool.queue_head == thread_pool.queue_tail) &&
-	    (thread_pool.queue_head != 0)) {
+	if (lrad_hash_table_num_elements(thread_pool.queue) == 0) {
 		thread_pool.queue_head = thread_pool.queue_tail = 0;
 	}
 
 	/*
-	 *	If the queue is full, die.
-	 *
-	 *	The math is to take into account the fact that it's a
-	 *	circular queue.
+	 *	If the queue has hit it's maximum allowed size, then
+	 *	toss the request, as we're too busy!
 	 */
-	num_entries = ((thread_pool.queue_tail + thread_pool.queue_size) -
-		       thread_pool.queue_head) % thread_pool.queue_size;
-	if (num_entries == (thread_pool.queue_size - 1)) {
-		int i;
-		request_queue_t *new_queue;
-
-		/*
-		 *	If the queue becomes too large, then there's a
-		 *	serious problem.
-		 */
-		if (thread_pool.queue_size >= thread_pool.max_queue_size) {
-			pthread_mutex_unlock(&thread_pool.queue_mutex);
-
-			/*
-			 *	Mark the request as done.
-			 */
-			radlog(L_ERR|L_CONS, "!!! ERROR !!! The server is blocked: discarding new request %d", request->number);
-			request->finished = TRUE;
-			return;
-		}
-
-		/*
-		 *	Malloc a new queue, doubled in size, copy the
-		 *	data from the current queue over to it, zero
-		 *	out the second half of the queue, free the old
-		 *	one, and replace thread_pool.queue with the
-		 *	new one.
-		 */
-		new_queue = rad_malloc(sizeof(*new_queue) * thread_pool.queue_size * 2);
-		/*
-		 *	Copy the queue element by element
-		 */
-		for (i = 0; i < thread_pool.queue_size; i++) {
-			new_queue[i] = thread_pool.queue[(i + thread_pool.queue_head) % thread_pool.queue_size];
-		}
-		memset(new_queue + thread_pool.queue_size,
-		       0, sizeof(*new_queue) * thread_pool.queue_size);
-
-		free(thread_pool.queue);
-		thread_pool.queue = new_queue;
-		thread_pool.queue_tail = ((thread_pool.queue_tail + thread_pool.queue_size) - thread_pool.queue_head) % thread_pool.queue_size;
-		thread_pool.queue_head = 0;
-		thread_pool.queue_size *= 2;
+	if (lrad_hash_table_num_elements(thread_pool.queue) >= thread_pool.max_queue_size) {
+		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		
+		/*
+		 *	Mark the request as done.
+		 */
+		radlog(L_ERR|L_CONS, "!!! ERROR !!! The server is blocked: discarding new request %d", request->number);
+		request->finished = TRUE;
+		return;
 	}
 
 	/*
@@ -360,11 +321,24 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	Add the data to the queue tail, increment the tail,
 	 *	and signal the semaphore that there's another request
 	 *	in the queue.
+	 *
+	 *	Hmm... too many malloc's are a problem.  Could we put this
+	 *	into some kind of paged memory?
 	 */
-	thread_pool.queue[thread_pool.queue_tail].request = request;
-	thread_pool.queue[thread_pool.queue_tail].fun = fun;
+	entry = rad_malloc(sizeof(*entry));
+	entry->request = request;
+	entry->fun = fun;
+
+	if (!lrad_hash_table_insert(thread_pool.queue, thread_pool.queue_tail,
+				    entry)) {
+		pthread_mutex_unlock(&thread_pool.queue_mutex);
+		radlog(L_ERR, "!!! ERROR !!! Failed inserting request %d into the queue", request->number);
+		request->finished = TRUE;
+		free(entry);
+		return;
+	}
+
 	thread_pool.queue_tail++;
-	thread_pool.queue_tail &= (thread_pool.queue_size - 1);
 
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
@@ -388,6 +362,7 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
  */
 static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 {
+	request_queue_t *entry;
 	reap_children();
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
@@ -403,15 +378,31 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 		return;
 	}
 
-	*request = thread_pool.queue[thread_pool.queue_head].request;
-	*fun = thread_pool.queue[thread_pool.queue_head].fun;
+	/*
+	 *	Grab the entry from the hash table
+	 *
+	 *	Note that we *don't* have a "free" function,
+	 *	so "entry" is still valid after the "delete"
+	 */
+	entry = lrad_hash_table_finddata(thread_pool.queue, thread_pool.queue_head);
+	lrad_hash_table_delete(thread_pool.queue, thread_pool.queue_head);
+	if (!entry) {
+		thread_pool.queue_head++; /* skip it */
+		pthread_mutex_unlock(&thread_pool.queue_mutex);
+		*request = NULL;
+		*fun = NULL;
+		return;
+	}
+
+	*request = entry->request;
+	*fun = entry->fun;
+	free(entry);
 
 	rad_assert(*request != NULL);
 	rad_assert((*request)->magic == REQUEST_MAGIC);
 	rad_assert(*fun != NULL);
 
 	thread_pool.queue_head++;
-	thread_pool.queue_head &= (thread_pool.queue_size - 1);
 
 	/*
 	 *	FIXME: Check the request timestamp.  If it's more than
@@ -854,11 +845,7 @@ int thread_pool_init(int spawn_flag)
 	 *
 	 *	Allocate an initial queue, always as a power of 2.
 	 */
-	thread_pool.queue_size = 256;
-	thread_pool.queue = rad_malloc(sizeof(*thread_pool.queue) *
-				       thread_pool.queue_size);
-	memset(thread_pool.queue, 0, (sizeof(*thread_pool.queue) *
-				      thread_pool.queue_size));
+	thread_pool.queue = lrad_hash_table_create(8, NULL, 0);
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	/*
