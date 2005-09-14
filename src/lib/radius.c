@@ -1914,8 +1914,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (pair->type != PW_TYPE_IPADDR) {
 				pair->lvalue = ntohl(lvalue);
 			} else {
-				lrad_ipaddr_t ipaddr;
-
 				 /*
 				  *  It's an IP address, keep it in network
 				  *  byte order, and put the ASCII IP
@@ -1923,13 +1921,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				  *  value.
 				  */
 				pair->lvalue = lvalue;
-				ipaddr.af = AF_INET;
-				ipaddr.ipaddr.ip4addr.s_addr = lvalue;
-				inet_ntop(AF_INET, &ipaddr.ipaddr,
-					  pair->vp_strvalue,
-					  sizeof(pair->vp_strvalue) - 1);
-				
-				
 			}
 
 			/*
@@ -2448,11 +2439,9 @@ void lrad_rand_seed(const void *data, size_t size)
  			}
 			close(fd);
 		} else {
-			time_t now = time(NULL);
-
 			lrad_rand_pool.randrsl[0] = fd;
-			lrad_rand_pool.randrsl[1] = hash;
-			lrad_rand_pool.randrsl[2] = now;
+			lrad_rand_pool.randrsl[1] = time(NULL);
+			lrad_rand_pool.randrsl[2] = errno;
 		}
 
 		lrad_randinit(&lrad_rand_pool, 1);
@@ -2462,11 +2451,9 @@ void lrad_rand_seed(const void *data, size_t size)
 	if (!data) return;
 
 	/*
-	 *	Seed the hash with data from the random pool, and update
-	 *	it with data from the user.
+	 *	Hash the user data
 	 */
-	hash = lrad_hash(lrad_rand_pool.randrsl, 8);
-	hash = lrad_hash_update(data, size, hash);
+	hash = lrad_hash(data, size);
 	
 	lrad_rand_pool.randrsl[lrad_rand_index & 0xff] ^= hash;
 	lrad_rand_index++;
@@ -2475,7 +2462,7 @@ void lrad_rand_seed(const void *data, size_t size)
 	/*
 	 *	Churn the pool every so often after seeding it.
 	 */
-	if ((hash & 0xff) == (lrad_rand_pool.randrsl[lrad_rand_index & 0xff] & 0xff)) {
+	if (((int) (hash & 0xff)) == lrad_rand_index) {
 		lrad_isaac(&lrad_rand_pool);
 	}
 }
@@ -2501,15 +2488,15 @@ uint32_t lrad_rand(void)
 	 */
 	num = lrad_rand_pool.randrsl[lrad_rand_index & 0xff];
 	lrad_rand_index++;
+	lrad_rand_index &= 0xff;
 
 	/*
 	 *	Every so often, churn the pool.
 	 */
-	if ((num & 0xff) == (lrad_rand_pool.randrsl[lrad_rand_index & 0xff] & 0xff)) {
+	if (((int) (num & 0xff)) == lrad_rand_index) {
 		lrad_isaac(&lrad_rand_pool);
 	}
 
-	lrad_rand_index &= 0xff;
 	return num;
 }
 
