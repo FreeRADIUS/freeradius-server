@@ -168,6 +168,8 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
 {
 	VALUE_PAIR *i;
 
+	if (!add) return;
+
 	if (*first == NULL) {
 		*first = add;
 		return;
