@@ -803,11 +803,12 @@ static int generate_realms(const char *filename)
 
 
 static const LRAD_NAME_NUMBER str2dest[] = {
+	{ "null", RADLOG_NULL },
 	{ "files", RADLOG_FILES },
 	{ "syslog", RADLOG_SYSLOG },
 	{ "stdout", RADLOG_STDOUT },
 	{ "stderr", RADLOG_STDERR },
-	{ NULL, RADLOG_NULL }
+	{ NULL, RADLOG_NUM_DEST }
 };
 
 
@@ -884,8 +885,8 @@ int read_mainconfig(int reload)
 				      "files");
 		if (rcode < 0) return -1;
 	
-		mainconfig.radlog_dest = lrad_str2int(str2dest, radlog_dest, RADLOG_NULL);
-		if (mainconfig.radlog_dest == RADLOG_NULL) {
+		mainconfig.radlog_dest = lrad_str2int(str2dest, radlog_dest, RADLOG_NUM_DEST);
+		if (mainconfig.radlog_dest == RADLOG_NUM_DEST) {
 			fprintf(stderr, "radiusd: Error: Unknown log_destination %s\n",
 				radlog_dest);
 			cf_section_free(&cs);

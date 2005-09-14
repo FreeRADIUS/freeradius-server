@@ -207,7 +207,8 @@ typedef enum radlog_dest_t {
   RADLOG_FILES,
   RADLOG_SYSLOG,
   RADLOG_STDERR,
-  RADLOG_NULL
+  RADLOG_NULL,
+  RADLOG_NUM_DEST
 } radlog_dest_t;
 
 typedef struct main_config_t {
