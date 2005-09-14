@@ -378,6 +378,10 @@ int lrad_hash_table_num_elements(lrad_hash_table_t *ht)
 	return ht->num_elements;
 }
 
+
+/*
+ *	Walk over the nodes, allowing deletes & inserts to happen.
+ */
 int lrad_hash_table_walk(lrad_hash_table_t *ht,
 			 int (*callback)(void * /* ctx */,
 					 void * /* data */),
@@ -388,11 +392,13 @@ int lrad_hash_table_walk(lrad_hash_table_t *ht,
 	if (!ht || !callback) return 0;
 
 	for (i = 0; i < ht->num_buckets; i++) {
-		lrad_hash_entry_t *node;
+		lrad_hash_entry_t *node, *next;
 
 		if (!ht->buckets[i]) continue;
 
-		for (node = ht->buckets[i]; node != NULL; node = node->next) {
+		for (node = ht->buckets[i]; node != NULL; node = next) {
+			next = node->next;
+
 			rcode = callback(context, node->data);
 			if (rcode != 0) return rcode;
 		}
