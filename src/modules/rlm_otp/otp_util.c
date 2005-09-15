@@ -304,6 +304,7 @@ otp_get_user_info(const char *pwdfile, const char *username,
 	    otp_log(OTP_LOG_ERR,
 		    "otp_get_user_info: invalid format for [%s] in %s",
 		    username, pwdfile);
+            return -2;
 	}
 	(void) strcpy(user_info->keystring, p);
 	/* strip possible trailing newline */
