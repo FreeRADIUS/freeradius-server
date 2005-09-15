@@ -17,7 +17,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001,2002  Google, Inc.
- * Copyright 2005 Frank Cusack
+ * Copyright 2005 TRI-D Systems, Inc.
  */
 
 #ifdef FREERADIUS

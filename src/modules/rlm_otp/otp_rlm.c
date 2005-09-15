@@ -18,7 +18,7 @@
  *
  * Copyright 2000,2001,2002  The FreeRADIUS server project
  * Copyright 2001,2002  Google, Inc.
- * Copyright 2005 Frank Cusack
+ * Copyright 2005 TRI-D Systems, Inc.
  */
 
 /*

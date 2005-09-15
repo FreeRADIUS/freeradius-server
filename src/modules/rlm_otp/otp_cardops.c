@@ -20,7 +20,7 @@
  *
  *
  * Copyright 2002-2005  Google, Inc.
- * Copyright 2005 Frank Cusack
+ * Copyright 2005 TRI-D Systems, Inc.
  *
  */
 
