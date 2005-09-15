@@ -238,7 +238,7 @@ async_response:
 	    }
 	    if (fc == OTP_FC_FAIL_HARD) {
 		otp_log(OTP_LOG_AUTH,
-			"%s: bad async auth for [%s]: valid but in hardfail",
+			"%s: bad async auth for [%s]: valid but in hardfail "
 			" (%d/%d failed/max)", log_prefix, username,
 			user_state.failcount, opt->hardfail);
 		rc = OTP_RC_MAXTRIES;
@@ -246,7 +246,7 @@ async_response:
 	    }
 	    if (fc == OTP_FC_FAIL_SOFT) {
 		otp_log(OTP_LOG_AUTH,
-			"%s: bad async auth for [%s]: valid but in softfail",
+			"%s: bad async auth for [%s]: valid but in softfail "
 			" (%d/%d failed/max)", log_prefix, username,
 			user_state.failcount, opt->softfail);
 		rc = OTP_RC_MAXTRIES;
@@ -333,7 +333,7 @@ sync_response:
 	    if (!nmatch) {
 		if (fc == OTP_FC_FAIL_HARD) {
 		    otp_log(OTP_LOG_AUTH,
-			    "%s: bad sync auth for [%s]: valid but in hardfail",
+			    "%s: bad sync auth for [%s]: valid but in hardfail "
 			    " (%d/%d failed/max)", log_prefix, username,
 			    user_state.failcount, opt->hardfail);
 		    rc = OTP_RC_MAXTRIES;
@@ -348,7 +348,7 @@ sync_response:
 			/* ewindow2 mode not configured */
 			otp_log(OTP_LOG_AUTH,
 				"%s: bad sync auth for [%s]: "
-				"valid but in softfail",
+				"valid but in softfail "
 				" (%d/%d failed/max)", log_prefix, username,
 				user_state.failcount, opt->softfail);
 			rc = OTP_RC_MAXTRIES;
