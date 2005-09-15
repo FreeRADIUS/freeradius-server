@@ -324,12 +324,12 @@ otp_state_unparse(char *buf, size_t buflen, const char *username,
 	return -1;
 
     if (user_state->updated)
-	(void) snprintf(buf, buflen, "U %s 2:%s:%s:%s:%u:%ld:%d",
+	(void) snprintf(buf, buflen, "P %s 2:%s:%s:%s:%u:%ld:%d",
 			username, username, user_state->challenge,
 			user_state->csd, user_state->failcount,
 			user_state->authtime, user_state->authpos);
     else
-	(void) snprintf(buf, buflen, "U %s", username);
+	(void) snprintf(buf, buflen, "P %s", username);
     buf[buflen - 1] = '\0';
     if ((len = strlen(buf) + 1) == buflen) {
 	/*
