@@ -335,8 +335,8 @@
     expired: The state is older than maxdelay seconds.  If you get a lot
              of these you may wish to increase the value.
 
-    Another message you'll want to lookout for is
-    "%d/%d failed/max authentications" which indicates a user that is
+    Another set of messages you'll want to lookout for is "valid but in
+    hardfail" and "valid but in softfail", which indicate a user that is
     locked out due to exceeding hardfail or softfail failures.
 
     Also, look for "[%s] authenticated in async mode" which indicates
