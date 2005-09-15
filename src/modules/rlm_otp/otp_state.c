@@ -229,7 +229,7 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
 	(void) otp_state_put(username, user_state, log_prefix);
 	return -1;
     }
-    p += i;	/* challenge */
+    p += i + 1;	/* challenge */
 
     /* extract challenge */
     if ((q = strchr(p, ':')) == NULL) {
