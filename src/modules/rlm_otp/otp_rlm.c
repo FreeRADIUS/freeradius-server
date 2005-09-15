@@ -559,6 +559,7 @@ module_t rlm_otp = {
 	"otp",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	otp_instantiate,		/* instantiation */
+	otp_detach,			/* detach */
 	{
 		otp_authenticate,	/* authentication */
 		otp_authorize,		/* authorization */
@@ -569,5 +570,4 @@ module_t rlm_otp = {
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},
-	otp_detach,			/* detach */
 };
