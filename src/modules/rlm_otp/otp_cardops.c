@@ -69,7 +69,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
 
     		/* expected response */
     char	e_response[OTP_MAX_RESPONSE_LEN + OTP_MAX_PIN_LEN + 1];
-    int		pin_adjust = 0;	/* pin offset in e_response */
+    int		pin_offset = 0;	/* pin offset in e_response */
     int		authpos = -2;	/* window pos of last success auth, or -2 */
 
     otp_user_info_t	user_info  = { .cardops = NULL };
@@ -142,7 +142,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
     /* Adjust e_response for PIN prepend. */
     if (opt->prepend_pin) {
 	(void) strcpy(e_response, user_info.pin);
-	pin_adjust = strlen(e_response);
+	pin_offset = strlen(e_response);
     }
 
     /* Get user state. */
@@ -197,7 +197,7 @@ async_response:
 
 	/* Calculate the async response. */
 	if (user_info.cardops->response(&user_info, challenge,
-					&e_response[pin_adjust]) != 0) {
+					&e_response[pin_offset]) != 0) {
 	    otp_log(OTP_LOG_ERR,
 		    "%s: unable to calculate async response for [%s], "
 		    "to challenge %s", log_prefix, username, challenge);
@@ -209,12 +209,12 @@ async_response:
 #if defined(FREERADIUS)
 	DEBUG("rlm_otp_token: auth: [%s], async challenge %s, "
 	      "expecting response %s", username, challenge,
-	      &e_response[pin_adjust]);
+	      &e_response[pin_offset]);
 #elif defined(PAM)
 	if (opt->debug)
 	    otp_log(OTP_LOG_DEBUG, "%s: [%s], async challenge %s, "
 				   "expecting response %s",
-		    log_prefix, username, challenge, &e_response[pin_adjust]);
+		    log_prefix, username, challenge, &e_response[pin_offset]);
 #endif
 
 	/* Add PIN if needed. */
@@ -298,7 +298,7 @@ sync_response:
         for (i = 0; i <= end; ++i) {
 	    /* Calculate sync response. */
 	    if (user_info.cardops->response(&user_info, challenge,
-					    &e_response[pin_adjust]) != 0) {
+					    &e_response[pin_offset]) != 0) {
 		otp_log(OTP_LOG_ERR,
 			"%s: unable to calculate sync response "
 			"e:%d t:%d for [%s], to challenge %s",
@@ -311,13 +311,13 @@ sync_response:
 #if defined(FREERADIUS)
 	    DEBUG("rlm_otp_token: auth: [%s], sync challenge %d %s, "
 		  "expecting response %s", username, i, challenge,
-		  &e_response[pin_adjust]);
+		  &e_response[pin_offset]);
 #elif defined(PAM)
 	    if (opt->debug)
 		otp_log(OTP_LOG_DEBUG, "%s: [%s], sync challenge %d %s, "
 				       "expecting response %s",
 			log_prefix, username, i,
-			challenge, &e_response[pin_adjust]);
+			challenge, &e_response[pin_offset]);
 #endif
 
 	    /* Add PIN if needed. */
