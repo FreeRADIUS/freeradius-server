@@ -186,7 +186,8 @@ extern int otp_get_user_info(const char *pwdfile, const char *username,
 /* otp_state.c */
 extern int otp_state_get(const otp_option_t *opt, const char *username,
 			 otp_user_state_t *user_state, const char *log_prefix);
-extern int otp_state_put(const char *username, otp_user_state_t *user_state);
+extern int otp_state_put(const char *username, otp_user_state_t *user_state,
+			 const char *log_prefix);
 
 /* otp_site.c */
 extern int otp_challenge_transform(const char *username,

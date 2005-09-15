@@ -455,7 +455,7 @@ auth_done_service_err:	/* exit here for system errors */
      * and we'll give an Access-Accept.
      */
     if (user_state.locked) {
-	if (otp_state_put(username, &user_state) != 0) {
+	if (otp_state_put(username, &user_state, log_prefix) != 0) {
 	    otp_log(OTP_LOG_ERR,
 		    "%s: unable to put state for [%s]",
 		    log_prefix, username);
