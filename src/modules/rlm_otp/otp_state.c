@@ -366,10 +366,10 @@ xread(int *fdp, char *buf, size_t len, const char *log_prefix)
 	    }
 	}
 	if (!n) {
-	    /* XXX Can this happen? */
-	    otp_log(OTP_LOG_ERR, "%s: read 0 bytes from state manager",
+	    otp_log(OTP_LOG_ERR, "%s: state manager disconnect",
 		    log_prefix);
-	    continue;
+	    otp_state_putfd(fdp, 1);
+	    return -1;
 	}
 	nread += n;
 
