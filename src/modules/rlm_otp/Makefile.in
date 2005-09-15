@@ -34,7 +34,7 @@ RLM_SUBDIRS = cardops
 include ../rules.mak
 
 # Not part of RLM_CFLAGS to avoid propagation to subdirs
-CFLAGS     += -Wno-unused-label
+CFLAGS     += -Wno-unused-label -Wno-cast-qual
 
 $(STATIC_OBJS): $(HEADERS) $(CARDOPS_LTLIBS)
 

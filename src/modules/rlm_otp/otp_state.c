@@ -111,7 +111,7 @@ otp_state_put(const char *username, otp_user_state_t *user_state,
     }
 
     /* validate the state manager response */
-    if (len < 3 + ulen) {
+    if ((size_t) len < 3 + ulen) {
 	otp_log(OTP_LOG_ERR, "%s: state manager invalid PUT response for [%s]",
 		log_prefix, username);
 	rc = -1;
@@ -129,7 +129,7 @@ otp_state_put(const char *username, otp_user_state_t *user_state,
 	char *reason;
 
 	if (buf[ulen + 2] == '\0')
-	    reason = "[no reason given]";
+	    reason = (char *) "[no reason given]";
 	else
 	    reason = &buf[ulen + 2];
 	otp_log(OTP_LOG_ERR, "%s: state manager PUT rejected for [%s]: %s",
@@ -430,7 +430,7 @@ otp_state_connect(const char *path, const char *log_prefix)
 {
     int fd;
     struct sockaddr_un sa;
-    int sp_len;			/* sun_path length (strlen) */
+    size_t sp_len;		/* sun_path length (strlen) */
 
     /* setup for unix domain socket */
     sp_len = strlen(path);

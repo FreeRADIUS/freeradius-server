@@ -154,9 +154,10 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
     }
 
     /* Set fc (failcondition). */
-    if (opt->hardfail && user_state.failcount >= opt->hardfail) {
+    if (opt->hardfail && user_state.failcount >= (unsigned) opt->hardfail) {
 	fc = OTP_FC_FAIL_HARD;
-    } else if (opt->softfail && user_state.failcount >= opt->softfail) {
+    } else if (opt->softfail &&
+	       user_state.failcount >= (unsigned) opt->softfail) {
 	time_t when;
 	int fcount;
 
