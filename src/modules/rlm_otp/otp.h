@@ -127,11 +127,18 @@ typedef struct otp_user_info_t {
 #endif
 } otp_user_info_t;
 
+/* state manager fd pool */
+typedef struct lsmd_fd_t {
+    pthread_mutex_t	mutex;
+    int			fd;
+    struct lsmd_fd_t	*next;
+} lsmd_fd_t;
+
 /* user-specific state info */
 #define OTP_MAX_CSD_LEN 64
 typedef struct otp_user_state_t {
     int		locked;			/* locked aka success flag        */
-    int		*fdp;			/* fd for return data             */
+    lsmd_fd_t	*fdp;			/* fd for return data             */
     int		updated;		/* state updated? (1 unless err)  */
     char	challenge[OTP_MAX_CHALLENGE_LEN+1];	/* next sync chal */
     char	csd[OTP_MAX_CSD_LEN+1];	/* card specific data             */

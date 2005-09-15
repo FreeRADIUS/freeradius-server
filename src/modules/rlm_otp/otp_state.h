@@ -30,10 +30,12 @@ static int otp_state_parse(const char *buf, size_t buflen,
 static int otp_state_unparse(char *buf, size_t buflen, const char *username,
 			     otp_user_state_t *user_state,
 			     const char *log_prefix);
-static int xread(int *fdp, char *buf, size_t len, const char *log_prefix);
-static int xwrite(int *fdp, const char *buf, size_t len,
+static int xread(lsmd_fd_t *fdp, char *buf, size_t len, const char *log_prefix);
+static int xwrite(lsmd_fd_t *fdp, const char *buf, size_t len,
 		  const char *log_prefix);
-static int *otp_state_getfd(const otp_option_t *opt, const char *log_prefix);
-static void otp_state_putfd(int *fdp, int close_p);
+static int otp_state_connect(const char *path, const char *log_prefix);
+static lsmd_fd_t *otp_state_getfd(const otp_option_t *opt,
+				  const char *log_prefix);
+static void otp_state_putfd(lsmd_fd_t *fdp, int close_p);
 
 #endif /* OTP_STATE_H */

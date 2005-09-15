@@ -19,6 +19,13 @@
  * Copyright 2005 Frank Cusack
  */
 
+#ifdef FREERADIUS
+#ifndef _REENTRANT
+#define _REENTRANT
+#endif
+#include <pthread.h>
+#endif
+
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -37,9 +44,13 @@
 static const char rcsid[] = "$Id$";
 
 
-/* state manager fd for PAM */
 #if defined(PAM)
-static int lsmd_fd = -1;
+/* a single fd (no pool) */
+static lsmd_fd_t lsmd_fd = { .fd = -1 };
+#elif defined(FREERADIUS)
+/* pointer to head of fd pool */
+static lsmd_fd_t *lsmd_fd_head;
+static pthread_mutex_t lsmd_fd_head_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 /*
@@ -50,13 +61,13 @@ int
 otp_state_get(const otp_option_t *opt, const char *username,
 	      otp_user_state_t *user_state, const char *log_prefix)
 {
-    int *fdp;
+    lsmd_fd_t *fdp;
     char buf[1024];	/* state manager max len */
     int buflen;
 
     fdp = otp_state_getfd(opt, log_prefix);
-    if (*fdp == -1)
-	return *fdp;
+    if (!fdp || fdp->fd == -1)
+	return -1;
 
     user_state->fdp = fdp;
     (void) sprintf(buf, "G %s", username);	/* safe */
@@ -352,13 +363,13 @@ otp_state_unparse(char *buf, size_t buflen, const char *username,
  * buf[nread - 1] is guaranteed to be '\0'.
  */
 static int
-xread(int *fdp, char *buf, size_t len, const char *log_prefix)
+xread(lsmd_fd_t *fdp, char *buf, size_t len, const char *log_prefix)
 {
     ssize_t n;
     int nread = 0;	/* bytes read into buf */
 
     for (;;) {
-	if ((n = read(*fdp, &buf[nread], len - nread)) == -1) {
+	if ((n = read(fdp->fd, &buf[nread], len - nread)) == -1) {
 	    if (errno == EAGAIN || errno == EINTR) {
 		continue;
 	    } else {
@@ -392,13 +403,13 @@ xread(int *fdp, char *buf, size_t len, const char *log_prefix)
  * Returns 0 on success, -1 on failure.
  */
 static int
-xwrite(int *fdp, const char *buf, size_t len, const char *log_prefix)
+xwrite(lsmd_fd_t *fdp, const char *buf, size_t len, const char *log_prefix)
 {
     size_t nleft = len;
     ssize_t nwrote;
 
     while (nleft) {
-	if ((nwrote = write(*fdp, &buf[len - nleft], nleft)) == -1) {
+	if ((nwrote = write(fdp->fd, &buf[len - nleft], nleft)) == -1) {
 	    if (errno != EINTR) {
 		otp_log(OTP_LOG_ERR, "%s: write to state manager: %s",
 			log_prefix, strerror(errno));
@@ -413,54 +424,141 @@ xwrite(int *fdp, const char *buf, size_t len, const char *log_prefix)
 }
 
 
-#if defined(PAM)
-/* retrieve fd (possibly opening a new one) to state manager */
-static int *
-otp_state_getfd(const otp_option_t *opt, const char *log_prefix)
+/* connect to state manager and return fd */
+static int
+otp_state_connect(const char *path, const char *log_prefix)
 {
-    int *fdp = &lsmd_fd;
+    int fd;
     struct sockaddr_un sa;
     int sp_len;			/* sun_path length (strlen) */
 
-    /* return existing fd if open */
-    if (*fdp != -1)
-	return fdp;
-
     /* setup for unix domain socket */
-    sp_len = strlen(opt->lsmd_rp);
+    sp_len = strlen(path);
     if (sp_len > sizeof(sa.sun_path) - 1) {
 	otp_log(OTP_LOG_ERR, "%s: rendezvous point name too long", log_prefix);
-	return fdp;
+	return -1;
     }
     sa.sun_family = AF_UNIX;
-    (void) strcpy(sa.sun_path, opt->lsmd_rp);
+    (void) strcpy(sa.sun_path, path);
     
     /* connect to state manager */
-    if ((*fdp = socket(PF_UNIX, SOCK_STREAM, 0)) == -1) {
+    if ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1) {
 	otp_log(OTP_LOG_ERR, "%s: socket: %s", log_prefix, strerror(errno));
-	return fdp;
+	return -1;
     }
-    if (connect(*fdp, (struct sockaddr *) &sa,
+    if (connect(fd, (struct sockaddr *) &sa,
 		sizeof(sa.sun_family) + sp_len) == -1) {
 	otp_log(OTP_LOG_ERR, "%s: connect: %s", log_prefix, strerror(errno));
-	(void) close(*fdp);
-	*fdp = -1;
-	return fdp;
+	(void) close(fd);
+	return -1;
     }
+    return fd;
+}
 
-    /* success */
+
+#if defined(PAM)
+/* retrieve fd (possibly opening a new one) to state manager */
+static lsmd_fd_t *
+otp_state_getfd(const otp_option_t *opt, const char *log_prefix)
+{
+    lsmd_fd_t *fdp = &lsmd_fd;
+
+    /* return existing fd if open */
+    if (fdp->fd != -1)
+	return fdp;
+
+    fdp->fd = otp_state_connect(opt->lsmd_rp, log_prefix);
     return fdp;
 }
 
 
 /* disconnect from state manager */
 static void
-otp_state_putfd(int *fdp, int close_p)
+otp_state_putfd(lsmd_fd_t *fdp, int close_p)
 {
-    if (close_p) {
-	(void) close(*fdp);
-    }
-    *fdp = -1;
+    /* for PAM we always close the fd; leaving it open is a leak */
+    (void) close(fdp->fd);
+    fdp->fd = -1;
 }
+
 #elif defined(FREERADIUS)
+/*
+ * Retrieve fd (from pool) to state manager.
+ * It'd be simpler to use TLS but FR can have lots of threads
+ * and we don't want to waste fd's that way.
+ * We can't have a global fd because we'd then be pipelining
+ * requests to the state manager and we have no way to demultiplex
+ * the responses.
+ */
+static lsmd_fd_t *
+otp_state_getfd(const otp_option_t *opt, const char *log_prefix)
+{
+    int rc;
+    lsmd_fd_t *fdp;
+
+    /* walk the connection pool looking for an available fd */
+    for (fdp = lsmd_fd_head; fdp; fdp = fdp->next) {
+	rc = pthread_mutex_trylock(&fdp->mutex);
+        if (!rc)
+	    break;
+	if (rc != EBUSY) {
+	    otp_log(OTP_LOG_ERR, "%s: pthread_mutex_trylock: %s", log_prefix,
+		    strerror(errno));
+	    return NULL;
+	}
+    }
+
+    if (!fdp) {
+	/* no fd was available, add a new one */
+	if ((rc = pthread_mutex_lock(&lsmd_fd_head_mutex))) {
+	    otp_log(OTP_LOG_ERR, "%s: pthread_mutex_lock: %s", log_prefix,
+		    strerror(errno));
+	    return NULL;
+	}
+	fdp = rad_malloc(sizeof(*fdp));
+	if ((rc = pthread_mutex_init(&fdp->mutex, NULL))) {
+	    otp_log(OTP_LOG_ERR, "%s: pthread_mutex_init: %s", log_prefix,
+		    strerror(errno));
+	    free(fdp);
+	    return NULL;
+	}
+	if ((rc = pthread_mutex_lock(&fdp->mutex))) {
+	    otp_log(OTP_LOG_ERR, "%s: pthread_mutex_lock: %s", log_prefix,
+		    strerror(errno));
+	    free(fdp);
+	    return NULL;
+	}
+	fdp->next = lsmd_fd_head;
+	lsmd_fd_head = fdp;
+	if ((rc = pthread_mutex_unlock(&lsmd_fd_head_mutex))) {
+	    otp_log(OTP_LOG_ERR, "%s: pthread_mutex_unlock: %s", log_prefix,
+		    strerror(errno));
+	    /* deadlock */
+	    exit(1);
+	}
+	fdp->fd = otp_state_connect(opt->lsmd_rp, log_prefix);
+    }
+
+    return fdp;
+}
+
+/* disconnect from state manager */
+static void
+otp_state_putfd(lsmd_fd_t *fdp, int close_p)
+{
+    int rc;
+
+    /* close fd (used for errors) */
+    if (close_p) {
+	(void) close(fdp->fd);
+	fdp->fd = -1;
+    }
+    /* make connection available to another thread */
+    if ((rc = pthread_mutex_unlock(&fdp->mutex))) {
+	otp_log(OTP_LOG_ERR, "%s: pthread_mutex_unlock: %s", log_prefix,
+		strerror(errno));
+	/* lost fd */
+	exit(1);
+    }
+}
 #endif /* FREERADIUS */
