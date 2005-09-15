@@ -370,12 +370,12 @@ sync_response:
 			/* correct, but not consecutive or not soon enough */
 #if defined(FREERADIUS)
 			DEBUG("rlm_otp_token: auth: [%s] ewindow2 candidate "
-			      "at position %i", username, i);
+			      "at position %d", username, i);
 #elif defined(PAM)
 			if (opt->debug)
 			    otp_log(OTP_LOG_DEBUG,
 				    "%s: auth: [%s] ewindow2 candidate "
-				    "at position %i", log_prefix, username, i);
+				    "at position %d", log_prefix, username, i);
 #endif
 			authpos = i;
 			rc = OTP_RC_AUTH_ERR;
