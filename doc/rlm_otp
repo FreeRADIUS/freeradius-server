@@ -10,6 +10,13 @@
     FreeRADIUS is available at <http://www.freeradius.org/>.  The PAM
     module is available at <http://www.fcusack.com/>.
 
+    In addition to this module, you need the state manager software.
+    The state manager primarily handles global (across all of your
+    authentication servers) state associated with synchronous mode
+    tokens (see section 4).  It also handles other bookkeeping data
+    used to prevent passcode guessing attacks.  The state manager
+    is available from <http://www.fcusack.com/>.
+
 
 1.  SUPPORTED TOKENS
 
@@ -80,7 +87,7 @@
     use this module.  Currently, only OpenSSL is supported.
 
     You will also need /dev/urandom available.  This is available on all
-    Linux, *BSD and Solaris 9.  For Solaris 8, you'll need to install
+    Linux, *BSD and Solaris 9+.  For Solaris 8, you'll need to install
     patch 112438-01 (sparc) or 112439-01 (x86).  Information for other
     OS's is welcome.
 
@@ -197,12 +204,12 @@
 
     softfail/hardfail:  See otp.conf (FreeRADIUS) or the man page
     (PAM) for how these work.  It is critically important to have
-    these since the password (response) space is so small.  Without a
+    these since the passcode (response) space is so small.  Without a
     delay/lockout, it would be trivially easy for an attacker to just try
-    every possible password.  With the default softfail setting of 5,
-    an attacker could try, at most, ~50 passwords/day.  No indication
+    every possible passcode.  With the default softfail setting of 5,
+    an attacker could try, at most, ~50 passcodes/day.  No indication
     is given to the user that they are in "delay mode" (except that a
-    valid password doesn't work), further thwarting an attacker.
+    valid passcode doesn't work), further thwarting an attacker.
 
     prepend_pin:  Some tokens have what we call a "hard PIN"; users enter
     a PIN into the token to activate it.  This has the advantage that
@@ -307,10 +314,6 @@
     /etc/otppasswd, a file similar to /etc/passwd, contains usernames
     and keys.  See the sample otppasswd file.
 
-    /etc/otpsync.d contains "state files", one per user.  The state
-    file contains the information needed for synchronous mode as well
-    as softfail/hardfail data.
-
 
 8.  LOG MESSAGES
 
@@ -334,8 +337,7 @@
 
     Another message you'll want to lookout for is
     "%d/%d failed/max authentications" which indicates a user that is
-    locked out due to exceeding hardfail/softfail failures.  You can reset
-    this user by editing the state file (see otppasswd.sample).
+    locked out due to exceeding hardfail or softfail failures.
 
     Also, look for "[%s] authenticated in async mode" which indicates
     a user with a sync mode card that used async authentication.  You
