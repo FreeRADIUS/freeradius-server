@@ -23,6 +23,11 @@
 #ifndef OTP_H
 #define OTP_H
 
+#ifndef _REENTRANT
+#define _REENTRANT
+#endif
+#include <pthread.h>
+
 #include <inttypes.h>
 #include <openssl/des.h> /* des_cblock */
 #include <time.h>        /* time_t */
@@ -34,8 +39,8 @@
 /* Default passwd file */
 #define OTP_PWDFILE "/etc/otppasswd"
 
-/* Default sync dir */
-#define OTP_SYNCDIR "/etc/otpsync.d"
+/* state manager rendezvous point */
+#define OTP_LSMD_RP "/var/run/lsmd/socket"
 
 /* Default prompt for presentation of challenge */
 #define OTP_CHALLENGE_PROMPT "Challenge: %s\n Response: "
@@ -69,7 +74,7 @@
 /* struct used for instance/option data */
 typedef struct otp_option_t {
     char *pwdfile;	/* file containing user:card_type:key entries      */
-    char *syncdir;	/* dir containing sync mode and state info         */
+    char *lsmd_rp;	/* state manager rendezvous point                  */
     char *chal_prompt;	/* text to present challenge to user, must have %s */
     int chal_len;	/* challenge length, min 5 digits                  */
     int softfail;	/* number of auth fails before time delay starts   */
@@ -122,6 +127,24 @@ typedef struct otp_user_info_t {
 #endif
 } otp_user_info_t;
 
+/* user-specific state info */
+#define OTP_MAX_CSD_LEN 64
+typedef struct otp_user_state_t {
+    int		locked;			/* locked aka success flag        */
+    int		*fdp;			/* fd for return data             */
+    int		updated;		/* state updated? (1 unless err)  */
+    char	challenge[OTP_MAX_CHALLENGE_LEN+1];	/* next sync chal */
+    char	csd[OTP_MAX_CSD_LEN+1];	/* card specific data             */
+    unsigned	failcount;		/* number of consecutive failures */
+    time_t	authtime;		/* time of last auth              */
+    int		authpos;		/* window position for softfail   */
+} otp_user_state_t;
+
+/* fc (failcondition) shortcuts */
+#define OTP_FC_FAIL_NONE 0	/* no failures */
+#define OTP_FC_FAIL_HARD 1	/* failed hard */
+#define OTP_FC_FAIL_SOFT 2	/* failed soft */
+
 /* otp_cardops.c */
 /* return codes from otp_pw_valid() */
 #define OTP_RC_OK		0
@@ -141,7 +164,7 @@ extern int otp_pw_valid(const char *username,
 /* otp_x99.c */
 extern int otp_x99_mac(const unsigned char *input, size_t len,
 		       unsigned char output[8],
-		       unsigned char keyblock[OTP_MAX_KEY_LEN]);
+		       const unsigned char keyblock[OTP_MAX_KEY_LEN]);
 
 /* otp_util.c */
 /* Character maps for generic hex and vendor specific decimal modes */
@@ -160,24 +183,10 @@ extern void otp_keyblock2keystring(char *s, const des_cblock keyblock,
 extern int otp_get_user_info(const char *pwdfile, const char *username,
 			     otp_user_info_t *user_info);
 
-/* otp_sync.c */
-#define OTP_FC_FAIL_ERR  -1
-#define OTP_FC_FAIL_HARD -2
-#define OTP_FC_FAIL_SOFT -3
-
-extern int otp_get_sync_challenge(const char *syncdir, const char *username,
-				  char challenge[OTP_MAX_CHALLENGE_LEN + 1]);
-extern int otp_set_sync_data(const char *syncdir, const char *username,
-			     const char *challenge, const des_cblock keyblock);
-extern int otp_check_failcount(const char *syncdir, const otp_option_t *inst);
-extern int otp_incr_failcount(const char *syncdir, const char *username);
-extern int otp_reset_failcount(const char *syncdir, const char *username);
-extern int otp_get_last_auth(const char *syncdir, const char *username,
-			     time_t *last_auth);
-extern int otp_upd_last_auth(const char *syncdir, const char *username);
-extern unsigned otp_get_last_auth_pos(const char *syncdir,const char *username);
-extern int otp_set_last_auth_pos(const char *syncdir, const char *username,
-				 unsigned pos);
+/* otp_state.c */
+extern int otp_state_get(const otp_option_t *opt, const char *username,
+			 otp_user_state_t *user_state, const char *log_prefix);
+extern int otp_state_put(const char *username, otp_user_state_t *user_state);
 
 /* otp_site.c */
 extern int otp_challenge_transform(const char *username,
@@ -193,4 +202,3 @@ extern void otp_log(int level, const char *format, ...);
 #endif
 
 #endif /* OTP_H */
-

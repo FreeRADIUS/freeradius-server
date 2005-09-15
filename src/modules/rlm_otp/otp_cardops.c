@@ -26,6 +26,7 @@
 
 static const char rcsid[] = "$Id$";
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -63,15 +64,16 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
 	     cmpfunc_t cmpfunc, void *data,
 	     const char *log_prefix)
 {
-    int		rc, fc, nmatch, i;
+    int		rc, nmatch, i;
+    int		fc = OTP_FC_FAIL_NONE;	/* failcondition */
 
     		/* expected response */
     char	e_response[OTP_MAX_RESPONSE_LEN + OTP_MAX_PIN_LEN + 1];
     int		pin_adjust = 0;	/* pin offset in e_response */
-    unsigned	auth_pos = 0;	/* window position of this authentication */
-    time_t	last_auth_time;	/* time of last authentication */
+    int		authpos = -2;	/* window pos of last success auth, or -2 */
 
-    otp_user_info_t	user_info = { .cardops = NULL };
+    otp_user_info_t	user_info  = { .cardops = NULL };
+    otp_user_state_t	user_state = { .locked = 0 };
 
     /* sanity */
     if (!challenge) {
@@ -143,22 +145,40 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
 	pin_adjust = strlen(e_response);
     }
 
-    /* Get the time of the last authentication. */
-    if (otp_get_last_auth(opt->syncdir, username, &last_auth_time) != 0) {
-	otp_log(OTP_LOG_ERR,
-		"%s: unable to get last auth time for [%s]",
+    /* Get user state. */
+    if (otp_state_get(opt, username, &user_state, log_prefix) != 0) {
+	otp_log(OTP_LOG_ERR, "%s: unable to get state for [%s]",
 		log_prefix, username);
 	rc = OTP_RC_SERVICE_ERR;
 	goto auth_done_service_err;
-	/* NB: last_auth_time, failcount not updated. */
     }
 
-    /* Get failure count for later evaluation. */
-    fc = otp_check_failcount(username, opt);
-    if (fc == OTP_FC_FAIL_ERR) {
-	rc = OTP_RC_SERVICE_ERR;
-	goto auth_done_service_err;
-	/* NB: last_auth_time, failcount not updated. */
+    /* Set fc (failcondition). */
+    if (opt->hardfail && user_state.failcount >= opt->hardfail) {
+	fc = OTP_FC_FAIL_HARD;
+    } else if (opt->softfail && user_state.failcount >= opt->softfail) {
+	time_t when;
+	int fcount;
+
+	/*
+	 * Determine the next time this user can authenticate.
+	 *
+	 * Once we hit softfail, we introduce a 1m delay before the user
+	 * can authenticate.  For each successive failed authentication,
+	 * we double the delay time, up to a max of 32 minutes.  While in
+	 * the "delay mode" of operation, all authentication ATTEMPTS are
+	 * considered failures.  Also, each attempt during the delay period
+	 * restarts the clock.
+	 *
+	 * The advantage of a delay instead of a simple lockout is that an
+	 * attacker can't lock out a user as easily; the user need only wait
+	 * a bit before he can authenticate.
+	 */
+	fcount = user_state.failcount - opt->softfail;
+	when   = user_state.authtime +
+		 (fcount > 5 ? 32 * 60 : (1 << fcount) * 60);
+	if (time(NULL) < when)
+	    fc = OTP_FC_FAIL_SOFT;
     }
 
 async_response:
@@ -172,7 +192,7 @@ async_response:
 		    log_prefix, username);
 	    rc = OTP_RC_SERVICE_ERR;
 	    goto auth_done_service_err;
-	    /* NB: last_auth_time, failcount not updated. */
+	    /* NB: state not updated. */
 	}
 
 	/* Calculate the async response. */
@@ -183,7 +203,7 @@ async_response:
 		    "to challenge %s", log_prefix, username, challenge);
 	    rc = OTP_RC_SERVICE_ERR;
 	    goto auth_done_service_err;
-	    /* NB: last_auth_time, failcount not updated. */
+	    /* NB: state not updated. */
 	}
 	/* NOTE: We do not display the PIN. */
 #if defined(FREERADIUS)
@@ -218,14 +238,16 @@ async_response:
 	    if (fc == OTP_FC_FAIL_HARD) {
 		otp_log(OTP_LOG_AUTH,
 			"%s: bad async auth for [%s]: valid but in hardfail",
-			log_prefix, username);
+			" (%d/%d failed/max)", log_prefix, username,
+			user_state.failcount, opt->hardfail);
 		rc = OTP_RC_MAXTRIES;
 		goto auth_done;
 	    }
 	    if (fc == OTP_FC_FAIL_SOFT) {
 		otp_log(OTP_LOG_AUTH,
 			"%s: bad async auth for [%s]: valid but in softfail",
-			log_prefix, username);
+			" (%d/%d failed/max)", log_prefix, username,
+			user_state.failcount, opt->softfail);
 		rc = OTP_RC_MAXTRIES;
 		goto auth_done;
 	    }
@@ -260,37 +282,20 @@ sync_response:
      * a previous authentication is further ahead in the
      * window (when in softfail), because we want to
      * report a correct passcode even if it is behind
-     * the currently acceptable window,
+     * the currently acceptable window.
      */
     if ((user_info.featuremask & OTP_CF_SM) && opt->allow_sync) {
-	int end = opt->ewindow_size, last_auth_pos = 0;
+	int end = opt->ewindow_size;
 
 	/* Increase window for ewindow2. */
-	if (opt->ewindow2_size && fc == OTP_FC_FAIL_SOFT) {
-	    last_auth_pos = otp_get_last_auth_pos(opt->syncdir, username);
-	    if (last_auth_pos < 0) {
-		otp_log(OTP_LOG_ERR,
-			"%s: unable to get last auth window position for [%s]",
-			log_prefix, username);
-		rc = OTP_RC_SERVICE_ERR;
-		goto auth_done_service_err;
-		/* NB: last_auth_time, failcount not updated. */
-	    }
+	if (opt->ewindow2_size && fc == OTP_FC_FAIL_SOFT)
 	    end = opt->ewindow2_size;
-	}
 
+	/* Setup initial challenge. */
+	(void) strcpy(challenge, user_state.challenge);
+
+	/* Test each sync response in the window. */
         for (i = 0; i <= end; ++i) {
-	    /* Get sync challenge and key. */
-	    if (user_info.cardops->challenge(opt->syncdir, &user_info,
-					     i, 0, challenge) != 0) {
-		otp_log(OTP_LOG_ERR,
-			"%s: unable to get sync challenge e:%d t:%d for [%s]",
-			log_prefix, i, 0, username);
-		rc = OTP_RC_SERVICE_ERR;
-		goto auth_done_service_err;
-		/* NB: last_auth_time, failcount not updated. */
-	    }
-
 	    /* Calculate sync response. */
 	    if (user_info.cardops->response(&user_info, challenge,
 					    &e_response[pin_adjust]) != 0) {
@@ -300,7 +305,7 @@ sync_response:
 			log_prefix, i, 0, username, challenge);
 		rc = OTP_RC_SERVICE_ERR;
 		goto auth_done_service_err;
-		/* NB: last_auth_time, failcount not updated. */
+		/* NB: state not updated. */
 	    }
 	    /* NOTE: We do not display the PIN. */
 #if defined(FREERADIUS)
@@ -326,9 +331,10 @@ sync_response:
 		nmatch = cmpfunc(data, e_response);
 	    if (!nmatch) {
 		if (fc == OTP_FC_FAIL_HARD) {
-		    otp_log(OTP_LOG_AUTH, "%s: bad sync auth for [%s]: "
-					  "valid but in hardfail",
-			    log_prefix, username);
+		    otp_log(OTP_LOG_AUTH,
+			    "%s: bad sync auth for [%s]: valid but in hardfail",
+			    " (%d/%d failed/max)", log_prefix, username,
+			    user_state.failcount, opt->hardfail);
 		    rc = OTP_RC_MAXTRIES;
 		    goto auth_done;
 		}
@@ -339,9 +345,11 @@ sync_response:
 		if (fc == OTP_FC_FAIL_SOFT) {
 		    if (!opt->ewindow2_size) {
 			/* ewindow2 mode not configured */
-			otp_log(OTP_LOG_AUTH, "%s: bad sync auth for [%s]: "
-					      "valid but in softfail",
-				log_prefix, username);
+			otp_log(OTP_LOG_AUTH,
+				"%s: bad sync auth for [%s]: "
+				"valid but in softfail",
+				" (%d/%d failed/max)", log_prefix, username,
+				user_state.failcount, opt->softfail);
 			rc = OTP_RC_MAXTRIES;
 			goto auth_done;
 		    }
@@ -349,21 +357,10 @@ sync_response:
 		    /*
 		     * User must enter two consecutive correct sync passcodes
 		     * for ewindow2 softfail override.
-		     *
-		     * last_auth_pos == 0 could mean that the last entry was
-		     * correct and at the zeroeth sync position, or that the
-		     * last entry was correct and async, or that the last
-		     * entry was incorrect.  Since we can't differentiate,
-		     * we can't use a 0 last_auth_pos as the first passcode
-		     * in the ewindow2 sequence.  This means that users who
-		     * start an ewindow2 softfail override at the very left
-		     * edge of the window must enter 3 passcodes (0,1,2)
-		     * instead of 2.
-		     * TODO: update get_last_auth_pos to return pos+1.
 		     */
-		    if (last_auth_pos && (i == last_auth_pos + 1) &&
+		    if ((i == user_state.authpos + 1) &&
 			/* ... within ewindow2_delay seconds. */
-			(time(NULL) - last_auth_time < opt->ewindow2_delay)) {
+			(time(NULL) - user_state.authtime < opt->ewindow2_delay)) {
 			/* This is the 2nd of two consecutive responses. */
 			otp_log(OTP_LOG_AUTH,
 				"%s: ewindow2 softfail override for [%s] at "
@@ -379,11 +376,11 @@ sync_response:
 				    "%s: auth: [%s] ewindow2 candidate "
 				    "at position %i", log_prefix, username, i);
 #endif
-			auth_pos = i;
+			authpos = i;
 			rc = OTP_RC_AUTH_ERR;
 			goto auth_done;
 		    }
-		}
+		} /* if (in softfail) */
 
 		/* Authenticated in sync mode. */
 		rc = OTP_RC_OK;
@@ -391,6 +388,17 @@ sync_response:
 		goto auth_done;
 
 	    } /* if (passcode is valid) */
+
+	    /* Get next challenge (extra work at end of loop; TODO: fix). */
+	    if (user_info.cardops->challenge(&user_info,
+					     1, 0, challenge) != 0) {
+		otp_log(OTP_LOG_ERR,
+			"%s: unable to get sync challenge e:%d t:%d for [%s]",
+			log_prefix, i, 0, username);
+		rc = OTP_RC_SERVICE_ERR;
+		goto auth_done_service_err;
+		/* NB: state not updated. */
+	    }
 	} /* for (each slot in the window) */
     } /* if (sync mode possible) */
 
@@ -400,64 +408,60 @@ sync_response:
 auth_done:
     if (rc == OTP_RC_OK) {
 	if (resync) {
-	    /*
-	     * Resync the card.
-	     *
-	     * We "fail-out" if we can't do this, because for sync mode the
-	     * response can be reused until sync data is updated, an obvious
-	     * replay attack.
-	     *
-	     * For async mode with RADIUS, if we can't update the last auth
-	     * time (a side effect of otp_set_sync_data()), we will be open
-	     * to a less obvious replay attack over the lifetime of the State
-	     * attribute (opt->chal_delay): if someone that can see RADIUS
-	     * traffic captures an Access-Request containing a State
-	     * attribute, and can cause the NAS to cycle the request id
-	     * within opt->chal_delay secs, then they can login to the NAS
-	     * and insert the captured State attribute into the new
-	     * Access-Request, and we'll give an Access-Accept.
-	     */
-	    if (user_info.cardops->challenge(opt->syncdir, &user_info,
+	    /* Resync the card. */
+	    if (user_info.cardops->challenge(&user_info,
 					     1, 0, challenge) != 0) {
 		otp_log(OTP_LOG_ERR, "%s: unable to get sync challenge "
 			"e:%d t:%d for [%s] (for resync)",
 			log_prefix, 1, 0, username);
 		rc = OTP_RC_SERVICE_ERR;
-	    } else if (otp_set_sync_data(opt->syncdir, username, challenge,
-					 user_info.keyblock) != 0) {
-		otp_log(OTP_LOG_ERR,
-			"%s: unable to set sync data for [%s] (for resync)",
-			log_prefix, username);
-		rc = OTP_RC_SERVICE_ERR;
+		goto auth_done_service_err;
+		/* NB: state not updated. */
 	    }
-	} else {
-	    /* Just update failcount, last_auth_time, auth_pos. */
-	    if (otp_reset_failcount(opt->syncdir, username) != 0) {
-		otp_log(OTP_LOG_ERR,
-			"%s: unable to reset failcount for [%s]",
-			log_prefix, username);
-		rc = OTP_RC_SERVICE_ERR;
-	    }
+	    (void) strcpy(user_state.challenge, challenge);
 	}
+	user_state.failcount = 0;
+	user_state.authtime  = time(NULL);
+	user_state.authpos   = 0;
+	user_state.updated   = 1;
     } else {
-	if (otp_incr_failcount(opt->syncdir, username) != 0) {
-	    otp_log(OTP_LOG_ERR,
-		    "%s: unable to increment failure count for user [%s]",
-		    log_prefix, username);
-	    rc = OTP_RC_SERVICE_ERR;
-	}
-	if (otp_set_last_auth_pos(opt->syncdir, username, auth_pos)) {
-	    otp_log(OTP_LOG_ERR,
-		    "%s: unable to set auth window position for user [%s]",
-		    log_prefix, username);
-	    rc = OTP_RC_SERVICE_ERR;
-	}
 	/*
-	 * TODO: consolidate reset_failcount, incr_failcount, s_l_a_p
-	 * into set_sync_data with longterm lock.
+	 * Note that we initialized authpos to -2 to accomodate ewindow2 test
+	 * (i == user_state.authpos + 1) above; if we'd only set it to -1,
+	 * after a failure authpos+1 == 0 and user can login with only one
+	 * correct passcode (viz. the zeroeth passcode).
 	 */
+	user_state.authpos = authpos;
+	if (++user_state.failcount == UINT_MAX)
+	    user_state.failcount--;
+	user_state.updated = 1;
     }
 
 auth_done_service_err:	/* exit here for system errors */
+    /*
+     * Release and update state.
+     *
+     * We "fail-out" if we can't do this, because for sync mode the
+     * response can be reused until state data is updated, an obvious
+     * replay attack.
+     *
+     * For async mode with RADIUS, if we can't update the last auth
+     * time, we will be open to a less obvious replay attack over the
+     * lifetime of the State attribute (opt->chal_delay): if someone
+     * that can see RADIUS traffic captures an Access-Request containing
+     * a State attribute, and can cause the NAS to cycle the request id
+     * within opt->chal_delay secs, then they can login to the NAS and
+     * insert the captured State attribute into the new Access-Request,
+     * and we'll give an Access-Accept.
+     */
+    if (user_state.locked) {
+	if (otp_state_put(username, &user_state) != 0) {
+	    otp_log(OTP_LOG_ERR,
+		    "%s: unable to put state for [%s]",
+		    log_prefix, username);
+	    rc = OTP_RC_SERVICE_ERR;	/* no matter what it might have been */
+	}
+    }
+
     return rc;
 }

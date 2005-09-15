@@ -45,7 +45,7 @@ static const char rcsid[] = "$Id$";
  */
 int
 otp_x99_mac(const unsigned char *input, size_t len, unsigned char output[8],
-	    unsigned char keyblock[OTP_MAX_KEY_LEN])
+	    const unsigned char keyblock[OTP_MAX_KEY_LEN])
 {
     des_key_schedule ks;
     des_cblock ivec;

@@ -49,8 +49,8 @@ typedef struct cardops_t {
 
     int (*name2fm)(const char *name, uint32_t *featuremask);
     int (*keystring2keyblock)(const char *keystring, unsigned char keyblock[]);
-    int (*challenge)(const char *syncdir, otp_user_info_t *user_info,
-		     int ewin, int twin, char challenge[]);
+    int (*challenge)(const otp_user_info_t *user_info,
+		     unsigned int ewin, int twin, char challenge[]);
     int (*response)(otp_user_info_t *user_info, const char *challenge,
 		    char response[OTP_MAX_RESPONSE_LEN + 1]);
 } cardops_t;

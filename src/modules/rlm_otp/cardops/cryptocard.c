@@ -86,8 +86,7 @@ cryptocard_keystring2keyblock(const char *keystring, unsigned char keyblock[])
  * Returns 0 on success, non-zero otherwise.
  */
 static int
-cryptocard_challenge(const char *syncdir, otp_user_info_t *user_info,
-		     int ewin,
+cryptocard_challenge(const otp_user_info_t *user_info, unsigned int ewin,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
@@ -95,26 +94,13 @@ __attribute__ ((unused))
 		     char challenge[OTP_MAX_CHALLENGE_LEN + 1])
 {
     unsigned char output[8];
-    int i, rc = -1;
+    int i, rc = 0;
 
-    if (ewin == 0) {
-	/* Return currently stored next challenge. */
-	return otp_get_sync_challenge(syncdir, user_info->username, challenge);
-
-    } else if (challenge[0]) {
-	/* iterate once on the supplied challenge */
-	ewin = 1;
-    } else {
-	/* iterate ewin times on the stored next challenge */
-	rc = otp_get_sync_challenge(syncdir, user_info->username, challenge);
-	if (rc)
-	    return rc;
-    }
     /* CRYPTOCard sync challenges are always 8 bytes. */
-    if (strlen(challenge) != 8) {
+    if (strlen(challenge) != 8)
 	return -1;
-    }
 
+    /* iterate ewin times on the challenge */
     while (ewin--) {
 	if ((rc = otp_x99_mac(challenge, 8, output,
 			      user_info->keyblock)) == 0) {
