@@ -36,6 +36,7 @@ static int xwrite(lsmd_fd_t *fdp, const char *buf, size_t len,
 static int otp_state_connect(const char *path, const char *log_prefix);
 static lsmd_fd_t *otp_state_getfd(const otp_option_t *opt,
 				  const char *log_prefix);
-static void otp_state_putfd(lsmd_fd_t *fdp, int close_p);
+static void otp_state_putfd(lsmd_fd_t *fdp, int close_p,
+			    const char *log_prefix);
 
 #endif /* OTP_STATE_H */

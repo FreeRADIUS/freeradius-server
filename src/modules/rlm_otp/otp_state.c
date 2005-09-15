@@ -139,7 +139,7 @@ otp_state_put(const char *username, otp_user_state_t *user_state,
     }
 
 putfd:
-    otp_state_putfd(user_state->fdp, 0);
+    otp_state_putfd(user_state->fdp, 0, log_prefix);
     return rc;
 }
 
@@ -160,7 +160,7 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
     if (!buflen) {
 	otp_log(OTP_LOG_ERR, "%s: no state for [%s]",
 		log_prefix, username);
-	otp_state_putfd(user_state->fdp, 0);
+	otp_state_putfd(user_state->fdp, 0, log_prefix);
 	return -1;
     }
     /*
@@ -171,7 +171,7 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
     if (buf[buflen - 1] != '\0') {
 	otp_log(OTP_LOG_ERR, "%s: invalid state for [%s]",
 		log_prefix, username);
-	otp_state_putfd(user_state->fdp, 0);
+	otp_state_putfd(user_state->fdp, 0, log_prefix);
 	return -1;
     }
 
@@ -179,7 +179,7 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
     if (!(buf[0] == 'A' && buf[1] == ' ')) {
 	otp_log(OTP_LOG_INFO /* ERR? */, "%s: unable to lock state for [%s]",
 		log_prefix, username);
-	otp_state_putfd(user_state->fdp, 0);
+	otp_state_putfd(user_state->fdp, 0, log_prefix);
 	return -1;
     }
     user_state->locked = 1;
@@ -375,14 +375,14 @@ xread(lsmd_fd_t *fdp, char *buf, size_t len, const char *log_prefix)
 	    } else {
 		otp_log(OTP_LOG_ERR, "%s: read from state manager: %s",
 			log_prefix, strerror(errno));
-		otp_state_putfd(fdp, 1);
+		otp_state_putfd(fdp, 1, log_prefix);
 		return -1;
 	    }
 	}
 	if (!n) {
 	    otp_log(OTP_LOG_ERR, "%s: state manager disconnect",
 		    log_prefix);
-	    otp_state_putfd(fdp, 1);
+	    otp_state_putfd(fdp, 1, log_prefix);
 	    return -1;
 	}
 	nread += n;
@@ -413,7 +413,7 @@ xwrite(lsmd_fd_t *fdp, const char *buf, size_t len, const char *log_prefix)
 	    if (errno != EINTR) {
 		otp_log(OTP_LOG_ERR, "%s: write to state manager: %s",
 			log_prefix, strerror(errno));
-		otp_state_putfd(fdp, 1);
+		otp_state_putfd(fdp, 1, log_prefix);
 		return -1;
 	    }
 	}
@@ -474,7 +474,7 @@ otp_state_getfd(const otp_option_t *opt, const char *log_prefix)
 
 /* disconnect from state manager */
 static void
-otp_state_putfd(lsmd_fd_t *fdp, int close_p)
+otp_state_putfd(lsmd_fd_t *fdp, int close_p, log_prefix)
 {
     /* for PAM we always close the fd; leaving it open is a leak */
     (void) close(fdp->fd);
@@ -544,7 +544,7 @@ otp_state_getfd(const otp_option_t *opt, const char *log_prefix)
 
 /* disconnect from state manager */
 static void
-otp_state_putfd(lsmd_fd_t *fdp, int close_p)
+otp_state_putfd(lsmd_fd_t *fdp, int close_p, const char *log_prefix)
 {
     int rc;
 
