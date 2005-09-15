@@ -252,7 +252,7 @@ async_response:
 		goto auth_done;
 	    }
 #ifdef FREERADIUS
-	    if (time(NULL) - last_auth_time < opt->chal_delay) {
+	    if (time(NULL) - user_state.authtime < opt->chal_delay) {
 		otp_log(OTP_LOG_AUTH,
 			"%s: bad async auth for [%s]: valid but too soon",
 			log_prefix, username);
