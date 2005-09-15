@@ -255,9 +255,15 @@ sync_response:
      * Calculate and test sync responses in the window.
      * Note that we always accept a sync response, even
      * if a challenge or resync was explicitly requested.
+     * Note also that we always start at the 0th event
+     * window position, even though we may already know
+     * a previous authentication is further ahead in the
+     * window (when in softfail), because we want to
+     * report a correct passcode even if it is behind
+     * the currently acceptable window,
      */
     if ((user_info.featuremask & OTP_CF_SM) && opt->allow_sync) {
-	int start = 0, end = opt->ewindow_size, last_auth_pos = 0;
+	int end = opt->ewindow_size, last_auth_pos = 0;
 
 	/* Increase window for ewindow2. */
 	if (opt->ewindow2_size && fc == OTP_FC_FAIL_SOFT) {
@@ -273,7 +279,7 @@ sync_response:
 	    end = opt->ewindow2_size;
 	}
 
-        for (i = start; i <= end; ++i) {
+        for (i = 0; i <= end; ++i) {
 	    /* Get sync challenge and key. */
 	    if (user_info.cardops->challenge(opt->syncdir, &user_info,
 					     i, 0, challenge) != 0) {
