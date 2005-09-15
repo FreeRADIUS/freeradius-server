@@ -421,9 +421,7 @@ auth_done:
 	    (void) strcpy(user_state.challenge, challenge);
 	}
 	user_state.failcount = 0;
-	user_state.authtime  = time(NULL);
 	user_state.authpos   = 0;
-	user_state.updated   = 1;
     } else {
 	/*
 	 * Note that we initialized authpos to -2 to accomodate ewindow2 test
@@ -431,11 +429,12 @@ auth_done:
 	 * after a failure authpos+1 == 0 and user can login with only one
 	 * correct passcode (viz. the zeroeth passcode).
 	 */
-	user_state.authpos = authpos;
 	if (++user_state.failcount == UINT_MAX)
 	    user_state.failcount--;
-	user_state.updated = 1;
+	user_state.authpos = authpos;
     }
+    user_state.authtime = time(NULL);
+    user_state.updated = 1;
 
 auth_done_service_err:	/* exit here for system errors */
     /*
