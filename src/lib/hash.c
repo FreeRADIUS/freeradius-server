@@ -50,6 +50,7 @@ struct lrad_hash_table_t {
 	int			num_elements;
 	int			num_buckets; /* power of 2 */
 	int			replace_flag;
+	size_t			data_size;
 	void			(*free)(void *);
 	lrad_hash_entry_t	**buckets;
 };
@@ -216,7 +217,7 @@ lrad_hash_table_t *lrad_hash_table_create(int size, void (*freeNode)(void *),
 }
 
 /*
- *	Insert data.
+ *	Insert data, OR copy it, if ht->data_size != 0
  */
 int lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key, void *data)
 {
@@ -244,14 +245,19 @@ int lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key, void *data)
 		 *	Fall through to re-using the node.
 		 */
 	} else {
-		node = malloc(sizeof(*node));
+		node = malloc(sizeof(*node) + ht->data_size);
 		if (!node) return 0;
 	}
-	memset(node, 0, sizeof(*node));
+	memset(node, 0, sizeof(*node) + ht->data_size);
 	
-	node->key = reversed;
-	node->data = data;
 	node->next = NULL;
+	node->key = reversed;
+	if (ht->data_size) {
+		node->data = &node[1]; /* point to the end of the node */
+		memcpy(node->data, data, ht->data_size);
+	} else {
+		node->data = data;
+	}
 
 	list_insert(&(ht->buckets[entry]), node);
 	ht->num_elements++;
@@ -405,6 +411,23 @@ int lrad_hash_table_walk(lrad_hash_table_t *ht,
 	}
 
 	return 0;
+}
+
+
+/*
+ *	For users that have a small amount of data, and wish to associate
+ *	it directly with the hash entry, this saves a bit of memory &
+ *	malloc/free stuff.
+ */
+int lrad_hash_table_set_data_size(lrad_hash_table_t *ht, size_t data_size)
+{
+      if (!ht || ht->free) return 0;
+
+      if (ht->num_elements != 0) return 0;
+
+      ht->data_size = data_size;
+
+      return 1;
 }
 
 

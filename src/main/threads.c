@@ -282,7 +282,7 @@ static void reap_children(void)
  */
 static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
-	request_queue_t *entry;
+	request_queue_t entry;
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
@@ -325,16 +325,14 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	Hmm... too many malloc's are a problem.  Could we put this
 	 *	into some kind of paged memory?
 	 */
-	entry = rad_malloc(sizeof(*entry));
-	entry->request = request;
-	entry->fun = fun;
+	entry.request = request;
+	entry.fun = fun;
 
 	if (!lrad_hash_table_insert(thread_pool.queue, thread_pool.queue_tail,
-				    entry)) {
+				    &entry)) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		radlog(L_ERR, "!!! ERROR !!! Failed inserting request %d into the queue", request->number);
 		request->finished = TRUE;
-		free(entry);
 		return;
 	}
 
@@ -351,7 +349,6 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	the mutex, it will be unlocked, and there won't be
 	 *	contention.
 	 */
-
 	sem_post(&thread_pool.semaphore);
 
 	return;
@@ -385,9 +382,9 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	so "entry" is still valid after the "delete"
 	 */
 	entry = lrad_hash_table_finddata(thread_pool.queue, thread_pool.queue_head);
-	lrad_hash_table_delete(thread_pool.queue, thread_pool.queue_head);
 	if (!entry) {
 		thread_pool.queue_head++; /* skip it */
+		lrad_hash_table_delete(thread_pool.queue, thread_pool.queue_head);
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		*request = NULL;
 		*fun = NULL;
@@ -396,13 +393,13 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 
 	*request = entry->request;
 	*fun = entry->fun;
-	free(entry);
 
 	rad_assert(*request != NULL);
 	rad_assert((*request)->magic == REQUEST_MAGIC);
 	rad_assert(*fun != NULL);
 
 	thread_pool.queue_head++;
+	lrad_hash_table_delete(thread_pool.queue, thread_pool.queue_head);
 
 	/*
 	 *	FIXME: Check the request timestamp.  If it's more than
@@ -825,6 +822,7 @@ int thread_pool_init(int spawn_flag)
 	/*
 	 *	Initialize the queue of requests.
 	 */
+	memset(&thread_pool.semaphore, 0, sizeof(thread_pool.semaphore));
 	rcode = sem_init(&thread_pool.semaphore, 0, SEMAPHORE_LOCKED);
 	if (rcode != 0) {
 		radlog(L_ERR|L_CONS, "FATAL: Failed to initialize semaphore: %s",
@@ -846,6 +844,8 @@ int thread_pool_init(int spawn_flag)
 	 *	Allocate an initial queue, always as a power of 2.
 	 */
 	thread_pool.queue = lrad_hash_table_create(8, NULL, 0);
+	lrad_hash_table_set_data_size(thread_pool.queue,
+				      sizeof(request_queue_t));
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	/*

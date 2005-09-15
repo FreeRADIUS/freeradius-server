@@ -448,5 +448,7 @@ int		lrad_hash_table_walk(lrad_hash_table_t *ht,
 				     int (*callback)(void * /* ctx */,
 						     void * /* data */),
 				     void *context);
+int		lrad_hash_table_set_data_size(lrad_hash_table_t *ht,
+					      size_t data_size);
 
 #endif /*LIBRADIUS_H*/
