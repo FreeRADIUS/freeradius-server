@@ -532,7 +532,7 @@ otp_detach(void *instance)
     otp_option_t *inst = (otp_option_t *) instance;
 
     free(inst->pwdfile);
-    free(inst->syncdir);
+    free(inst->lsmd_rp);
     free(inst->chal_prompt);
     free(inst->chal_req);
     free(inst->resync_req);
