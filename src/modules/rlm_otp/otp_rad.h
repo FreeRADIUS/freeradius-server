@@ -32,22 +32,20 @@
 #define OTP_LOG_CRIT  (L_ERR|L_CONS)
 
 /* otp_state.c */
-extern int otp_gen_state(char **ascii_state, unsigned char **raw_state,
-			 const char challenge[OTP_MAX_CHALLENGE_LEN + 1],
-			 int32_t flags, int32_t when,
-			 const unsigned char key[16]);
+extern int otp_gen_state(char **, unsigned char **,
+                         const char [OTP_MAX_CHALLENGE_LEN + 1],
+                         int32_t, int32_t, const unsigned char [16]);
 
 /* otp_pwe.c */
 #include "libradius.h"   /* VALUE_PAIR */
 struct otp_pwe_cmp_t {
-    const REQUEST *request;
-    const otp_option_t *inst;
-    int pwattr;		/* return value from otp_pwe_present() */
-    VALUE_PAIR **returned_vps;
+  const REQUEST		*request;
+  const otp_option_t	*inst;
+  int			pwattr;	/* return value from otp_pwe_present() */
+  VALUE_PAIR		**returned_vps;
 };
 extern void otp_pwe_init(void);
-extern int otp_pwe_present(const REQUEST *request);
-extern int otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password);
+extern int otp_pwe_present(const REQUEST *);
+extern int otp_pwe_cmp(struct otp_pwe_cmp_t *, const char *);
 
 #endif /* OTP_RAD_H */
-

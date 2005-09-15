@@ -45,32 +45,32 @@ static const char rcsid[] = "$Id$";
  */
 int
 otp_x99_mac(const unsigned char *input, size_t len, unsigned char output[8],
-	    const unsigned char keyblock[OTP_MAX_KEY_LEN])
+            const unsigned char keyblock[OTP_MAX_KEY_LEN])
 {
-    des_key_schedule ks;
-    des_cblock ivec;
-    des_cblock l_output[OTP_MAX_CHALLENGE_LEN / sizeof(des_cblock)];
-    int rc;
+  des_key_schedule ks;
+  des_cblock ivec;
+  des_cblock l_output[OTP_MAX_CHALLENGE_LEN / sizeof(des_cblock)];
+  int rc;
 
-    /*
-     * Setup and verify the key.
-     * This may be a bit expensive to do every time, but it
-     * makes more sense for calling functions to deal with
-     * the key itself, rather than the schedule.  In practice,
-     * I don't think this will amount to much, but I haven't
-     * actually profiled it.
-     * TODO: store in user_info after generating
-     */
-    if ((rc = des_set_key_checked((const_des_cblock *) keyblock, ks)) != 0) {
-	otp_log(OTP_LOG_ERR, "otp_x99_mac: DES key %s",
-		rc == -1 ? "has incorrect parity" : "is weak");
-	return -1;
-    }
+  /*
+   * Setup and verify the key.
+   * This may be a bit expensive to do every time, but it
+   * makes more sense for calling functions to deal with
+   * the key itself, rather than the schedule.  In practice,
+   * I don't think this will amount to much, but I haven't
+   * actually profiled it.
+   * TODO: store in user_info after generating
+   */
+  if ((rc = des_set_key_checked((const_des_cblock *) keyblock, ks)) != 0) {
+    otp_log(OTP_LOG_ERR, "otp_x99_mac: DES key %s",
+            rc == -1 ? "has incorrect parity" : "is weak");
+    return -1;
+  }
 
-    (void) memset(ivec, 0, sizeof(ivec));
-    des_cbc_encrypt(input, (unsigned char *) l_output, len,
-		    ks, &ivec, DES_ENCRYPT);
-    (void) memcpy(output, l_output[(len - 1) / 8], 8);
-    return 0;
+  (void) memset(ivec, 0, sizeof(ivec));
+  des_cbc_encrypt(input, (unsigned char *) l_output, len,
+                  ks, &ivec, DES_ENCRYPT);
+  (void) memcpy(output, l_output[(len - 1) / 8], 8);
+  return 0;
 }
 

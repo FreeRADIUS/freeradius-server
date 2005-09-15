@@ -44,30 +44,30 @@ static const char rcsid[] = "$Id$";
 int
 otp_get_random(int fd, unsigned char *rnd_data, int req_bytes)
 {
-    int bytes_read = 0;
+  int bytes_read = 0;
 
-    while (bytes_read < req_bytes) {
-	int n;
+  while (bytes_read < req_bytes) {
+    int n;
 #ifdef FREERADIUS
-	/* Use goofy libradius interface to avoid fd init issues. */
-	unsigned int bytes_left = req_bytes - bytes_read;
-	uint32_t r = lrad_rand();
+    /* Use goofy libradius interface to avoid fd init issues. */
+    unsigned int bytes_left = req_bytes - bytes_read;
+    uint32_t r = lrad_rand();
 
-	n = sizeof(r) < bytes_left ? sizeof(r) : bytes_left;
-	memcpy(rnd_data + bytes_read, &r, n);
+    n = sizeof(r) < bytes_left ? sizeof(r) : bytes_left;
+    memcpy(rnd_data + bytes_read, &r, n);
 #else
-	n = read(fd, rnd_data + bytes_read, req_bytes - bytes_read);
-	if (n <= 0) {
-	    otp_log(OTP_LOG_ERR, "otp_get_random: error reading from %s: %s",
-		    OTP_DEVURANDOM, strerror(errno));
-	    return -1;
-	}
+    n = read(fd, rnd_data + bytes_read, req_bytes - bytes_read);
+    if (n <= 0) {
+      otp_log(OTP_LOG_ERR, "otp_get_random: error reading from %s: %s",
+              OTP_DEVURANDOM, strerror(errno));
+      return -1;
+    }
 #endif /* !FREERADIUS */
 
-	bytes_read += n;
-    }
+    bytes_read += n;
+  }
 
-    return 0;
+  return 0;
 }
 
 
@@ -80,27 +80,27 @@ otp_get_random(int fd, unsigned char *rnd_data, int req_bytes)
 int
 otp_get_challenge(int fd, char *challenge, int len)
 {
-    unsigned char rawchallenge[OTP_MAX_CHALLENGE_LEN];
-    int i;
+  unsigned char rawchallenge[OTP_MAX_CHALLENGE_LEN];
+  int i;
 
-    if (fd == -1) {
-	if ((fd = open(OTP_DEVURANDOM, O_RDONLY)) == -1) {
-	    otp_log(OTP_LOG_ERR, "otp_get_challenge: error opening %s: %s",
-		    OTP_DEVURANDOM, strerror(errno));
-	    return -1;
-	}
+  if (fd == -1) {
+    if ((fd = open(OTP_DEVURANDOM, O_RDONLY)) == -1) {
+      otp_log(OTP_LOG_ERR, "otp_get_challenge: error opening %s: %s",
+              OTP_DEVURANDOM, strerror(errno));
+      return -1;
     }
+  }
 
-    if (otp_get_random(fd, rawchallenge, len) == -1) {
-	otp_log(OTP_LOG_ERR, "otp_get_challenge: failed to obtain random data");
-	return -1;
-    }
-    /* Convert the raw bytes to a decimal string. */
-    for (i = 0; i < len; ++i)
-	challenge[i] = '0' + rawchallenge[i] % 10;
-    challenge[i] = '\0';
+  if (otp_get_random(fd, rawchallenge, len) == -1) {
+    otp_log(OTP_LOG_ERR, "otp_get_challenge: failed to obtain random data");
+    return -1;
+  }
+  /* Convert the raw bytes to a decimal string. */
+  for (i = 0; i < len; ++i)
+    challenge[i] = '0' + rawchallenge[i] % 10;
+  challenge[i] = '\0';
 
-    return 0;
+  return 0;
 }
 
 
@@ -111,51 +111,51 @@ otp_get_challenge(int fd, char *challenge, int len)
 int
 otp_keystring2keyblock(const char *s, unsigned char keyblock[])
 {
-    unsigned i;
-    size_t l = strlen(s);
+  unsigned i;
+  size_t l = strlen(s);
 
-    /*
-     * We could just use sscanf, but we do this a lot, and have very
-     * specific needs, and it's easy to implement, so let's go for it!
-     */
-    for (i = 0; i < l / 2; ++i) {
-	unsigned int n[2];
-	int j;
+  /*
+   * We could just use sscanf, but we do this a lot, and have very
+   * specific needs, and it's easy to implement, so let's go for it!
+   */
+  for (i = 0; i < l / 2; ++i) {
+    unsigned int n[2];
+    int j;
 
-	/* extract 2 nibbles */
-	n[0] = *s++;
-	n[1] = *s++;
+    /* extract 2 nibbles */
+    n[0] = *s++;
+    n[1] = *s++;
 
-	/* verify range */
-	for (j = 0; j < 2; ++j) {
-	    if ((n[j] >= '0' && n[j] <= '9') ||
-		(n[j] >= 'A' && n[j] <= 'F') ||
-		(n[j] >= 'a' && n[j] <= 'f'))
-		continue;
-	    return -1;
-	}
-
-	/* convert ASCII hex digits to numeric values */
-	n[0] -= '0';
-	n[1] -= '0';
-	if (n[0] > 9) {
-	    if (n[0] > 'F' - '0')
-		n[0] -= 'a' - '9' - 1;
-	    else
-		n[0] -= 'A' - '9' - 1;
-	}
-	if (n[1] > 9) {
-	    if (n[1] > 'F' - '0')
-		n[1] -= 'a' - '9' - 1;
-	    else
-		n[1] -= 'A' - '9' - 1;
-	}
-
-	/* store as octets */
-	keyblock[i]  = n[0] << 4;
-	keyblock[i] += n[1];
+    /* verify range */
+    for (j = 0; j < 2; ++j) {
+      if ((n[j] >= '0' && n[j] <= '9') ||
+          (n[j] >= 'A' && n[j] <= 'F') ||
+          (n[j] >= 'a' && n[j] <= 'f'))
+        continue;
+      return -1;
     }
-    return 0;
+
+    /* convert ASCII hex digits to numeric values */
+    n[0] -= '0';
+    n[1] -= '0';
+    if (n[0] > 9) {
+      if (n[0] > 'F' - '0')
+        n[0] -= 'a' - '9' - 1;
+      else
+        n[0] -= 'A' - '9' - 1;
+    }
+    if (n[1] > 9) {
+      if (n[1] > 'F' - '0')
+        n[1] -= 'a' - '9' - 1;
+      else
+        n[1] -= 'A' - '9' - 1;
+    }
+
+    /* store as octets */
+    keyblock[i]  = n[0] << 4;
+    keyblock[i] += n[1];
+  } /* for (each octet) */
+  return 0;
 }
 
 
@@ -173,19 +173,19 @@ const char otp_sc_friendly_conversion[] = "0123456789ahcpef";
  */
 void
 otp_keyblock2keystring(char *s, const des_cblock keyblock,
-		       const char conversion[17])
+                       const char conversion[17])
 {
-    int i;
+  int i;
 
-    for (i = 0; i < 8; ++i) {
-	unsigned n[2];
+  for (i = 0; i < 8; ++i) {
+    unsigned n[2];
 
-	n[0] = (keyblock[i] >> 4) & 0x0f;
-	n[1] = keyblock[i] & 0x0f;
-	s[2 * i + 0] = conversion[n[0]];
-	s[2 * i + 1] = conversion[n[1]];
-    }
-    s[16] = '\0';
+    n[0] = (keyblock[i] >> 4) & 0x0f;
+    n[1] = keyblock[i] & 0x0f;
+    s[2 * i + 0] = conversion[n[0]];
+    s[2 * i + 1] = conversion[n[1]];
+  }
+  s[16] = '\0';
 }
 
 
@@ -196,143 +196,135 @@ otp_keyblock2keystring(char *s, const des_cblock keyblock,
  */
 int
 otp_get_user_info(const char *pwdfile, const char *username,
-		  otp_user_info_t *user_info)
+                  otp_user_info_t *user_info)
 {
-    FILE *fp;
-    char s[80];
-    char *p, *q;
-    int found;
-    struct stat st;
+  FILE *fp;
+  char s[80];
+  char *p, *q;
+  int found;
+  struct stat st;
 
-    /* Verify permissions first. */
-    if (stat(pwdfile, &st) != 0) {
-	otp_log(OTP_LOG_ERR, "otp_get_user_info: pwdfile %s error: %s",
-		pwdfile, strerror(errno));
-	return -2;
-    }
-    if ((st.st_mode & (S_IXUSR|S_IRWXG|S_IRWXO)) != 0) {
-	otp_log(OTP_LOG_ERR,
-		"otp_get_user_info: pwdfile %s has loose permissions", pwdfile);
-	return -2;
-    }
+  /* Verify permissions first. */
+  if (stat(pwdfile, &st) != 0) {
+    otp_log(OTP_LOG_ERR, "otp_get_user_info: pwdfile %s error: %s",
+            pwdfile, strerror(errno));
+    return -2;
+  }
+  if ((st.st_mode & (S_IXUSR|S_IRWXG|S_IRWXO)) != 0) {
+    otp_log(OTP_LOG_ERR,
+            "otp_get_user_info: pwdfile %s has loose permissions", pwdfile);
+    return -2;
+  }
 
-    if ((fp = fopen(pwdfile, "r")) == NULL) {
-	otp_log(OTP_LOG_ERR, "otp_get_user_info: error opening %s: %s",
-		pwdfile, strerror(errno));
-	return -2;
-    }
+  if ((fp = fopen(pwdfile, "r")) == NULL) {
+    otp_log(OTP_LOG_ERR, "otp_get_user_info: error opening %s: %s",
+            pwdfile, strerror(errno));
+    return -2;
+  }
 
-    /*
-     * Find the requested user.
-     * Add a ':' to the username to make sure we don't match shortest prefix.
-     */
-    p = malloc(strlen(username) + 2);
-    if (!p) {
-	otp_log(OTP_LOG_CRIT, "otp_get_user_info: out of memory");
-	return -2;
+  /*
+   * Find the requested user.
+   * Add a ':' to the username to make sure we don't match shortest prefix.
+   */
+  p = malloc(strlen(username) + 2);
+  if (!p) {
+    otp_log(OTP_LOG_CRIT, "otp_get_user_info: out of memory");
+    return -2;
+  }
+  (void) sprintf(p, "%s:", username);
+  found = 0;
+  while (!feof(fp)) {
+    if (fgets(s, sizeof(s), fp) == NULL) {
+      if (!feof(fp)) {
+        otp_log(OTP_LOG_ERR, "otp_get_user_info: error reading from %s: %s",
+                pwdfile, strerror(errno));
+        (void) fclose(fp);
+        free(p);
+        return -2;
+      }
+    } else if (!strncmp(s, p, strlen(p))) {
+      found = 1;
+      break;
     }
-    (void) sprintf(p, "%s:", username);
-    found = 0;
-    while (!feof(fp)) {
-	if (fgets(s, sizeof(s), fp) == NULL) {
-	    if (!feof(fp)) {
-		otp_log(OTP_LOG_ERR,
-			"otp_get_user_info: error reading from %s: %s",
-			pwdfile, strerror(errno));
-		(void) fclose(fp);
-		free(p);
-		return -2;
-	    }
-	} else if (!strncmp(s, p, strlen(p))) {
-	    found = 1;
-	    break;
-	}
-    }
-    (void) fclose(fp);
-    free(p);
-    if (!found) {
+  }
+  (void) fclose(fp);
+  free(p);
+  if (!found) {
 #if 0
-	/* Noisy ... let the caller report this. */
-	otp_log(OTP_LOG_AUTH, "otp_get_user_info: [%s] not found in %s",
-		username, pwdfile);
+    /* Noisy ... let the caller report this. */
+    otp_log(OTP_LOG_AUTH, "otp_get_user_info: [%s] not found in %s",
+            username, pwdfile);
 #endif
-	return -1;
-    }
+    return -1;
+  }
 
-    /* Found him, skip to next field (card). */
-    if ((p = strchr(s, ':')) == NULL) {
-	otp_log(OTP_LOG_ERR,
-		"otp_get_user_info: invalid format for [%s] in %s",
-		username, pwdfile);
-	return -2;
-    }
-    p++;
-    if ((q = strchr(p, ':')) == NULL) {
-	otp_log(OTP_LOG_ERR,
-		"otp_get_user_info: invalid format for [%s] in %s",
-		username, pwdfile);
-	return -2;
-    }
+  /* Found him, skip to next field (card). */
+  if ((p = strchr(s, ':')) == NULL) {
+    otp_log(OTP_LOG_ERR, "otp_get_user_info: invalid format for [%s] in %s",
+            username, pwdfile);
+    return -2;
+  }
+  p++;
+  if ((q = strchr(p, ':')) == NULL) {
+    otp_log(OTP_LOG_ERR, "otp_get_user_info: invalid format for [%s] in %s",
+            username, pwdfile);
+    return -2;
+  }
+  *q++ = '\0';
+  /* p: card_type, q: key */
+
+  /*
+   * Unfortunately, we can't depend on having strl*, which would allow
+   * us to check for buffer overflow and copy the string in the same step.
+   * TODO: implement our own strlcpy().
+   */
+  if (strlen(p) > OTP_MAX_CARDNAME_LEN)
+    otp_log(OTP_LOG_ERR, "otp_get_user_info: invalid format for [%s] in %s",
+            username, pwdfile);
+  (void) strcpy(user_info->card, p);
+
+  p = q;
+  /* optional PIN field */
+  if ((q = strchr(p, ':')) == NULL)
+    user_info->pin[0] = '\0';
+  else
     *q++ = '\0';
-    /* p: card_type, q: key */
+  /* p: key, q: PIN */
 
-    /*
-     * Unfortunately, we can't depend on having strl*, which would allow
-     * us to check for buffer overflow and copy the string in the same step.
-     * TODO: implement our own strlcpy().
-     */
-    if (strlen(p) > OTP_MAX_CARDNAME_LEN) {
-	otp_log(OTP_LOG_ERR,
-		"otp_get_user_info: invalid format for [%s] in %s",
-		username, pwdfile);
+  {
+    size_t l = strlen(p);
+
+    /* OTP_MAX_KEY_LEN keys with trailing newline won't work */
+    if (l > OTP_MAX_KEY_LEN * 2) {
+      otp_log(OTP_LOG_ERR, "otp_get_user_info: invalid format for [%s] in %s",
+              username, pwdfile);
+      return -2;
     }
-    (void) strcpy(user_info->card, p);
-
-    p = q;
-    /* optional PIN field */
-    if ((q = strchr(p, ':')) == NULL)
-	user_info->pin[0] = '\0';
-    else
-	*q++ = '\0';
-    /* p: key, q: PIN */
-
-    {
-	size_t l = strlen(p);
-
-	/* OTP_MAX_KEY_LEN keys with trailing newline won't work */
-	if (l > OTP_MAX_KEY_LEN * 2) {
-	    otp_log(OTP_LOG_ERR,
-		    "otp_get_user_info: invalid format for [%s] in %s",
-		    username, pwdfile);
-            return -2;
-	}
-	(void) strcpy(user_info->keystring, p);
-	/* strip possible trailing newline */
-	if (l && user_info->keystring[l-1] == '\n')
-	    user_info->keystring[--l] = '\0';
-	/* check for empty key or odd len */
-	if (!l || l & 1) {
-	    otp_log(OTP_LOG_ERR,
-		    "otp_get_user_info: invalid format for [%s] in %s",
-		    username, pwdfile);
-	    return -2;
-	}
+    (void) strcpy(user_info->keystring, p);
+    /* strip possible trailing newline */
+    if (l && user_info->keystring[l - 1] == '\n')
+      user_info->keystring[--l] = '\0';
+    /* check for empty key or odd len */
+    if (!l || l & 1) {
+      otp_log(OTP_LOG_ERR, "otp_get_user_info: invalid format for [%s] in %s",
+              username, pwdfile);
+      return -2;
     }
+  }
 
-    if (q) {
-	size_t l = strlen(q);
+  if (q) {
+    size_t l = strlen(q);
 
-	if (l > OTP_MAX_PIN_LEN) {
-	    otp_log(OTP_LOG_ERR,
-		    "otp_get_user_info: invalid format for [%s] in %s",
-		    username, pwdfile);
-	}
-	(void) strcpy(user_info->pin, q);
-	/* strip possible trailing newline */
-	if (l && user_info->pin[l-1] == '\n')
-	    user_info->pin[--l] = '\0';
+    if (l > OTP_MAX_PIN_LEN) {
+      otp_log(OTP_LOG_ERR, "otp_get_user_info: invalid format for [%s] in %s",
+              username, pwdfile);
     }
+    (void) strcpy(user_info->pin, q);
+    /* strip possible trailing newline */
+    if (l && user_info->pin[l - 1] == '\n')
+      user_info->pin[--l] = '\0';
+  }
 
-    return 0;
+  return 0;
 }
 

@@ -40,16 +40,16 @@
 
 /* Translate the above into something easily usable. */
 static const char *otp_mppe_policy[3] = {
-    MPPE_ENC_POL_ENCRYPTION_FORBIDDEN,
-    MPPE_ENC_POL_ENCRYPTION_ALLOWED,
-    MPPE_ENC_POL_ENCRYPTION_REQUIRED };
+  MPPE_ENC_POL_ENCRYPTION_FORBIDDEN,
+  MPPE_ENC_POL_ENCRYPTION_ALLOWED,
+  MPPE_ENC_POL_ENCRYPTION_REQUIRED };
 
 static const char *otp_mppe_types[3] = {
-    MPPE_ENC_TYPES_RC4_40,
-    MPPE_ENC_TYPES_RC4_128,
-    MPPE_ENC_TYPES_RC4_40_128 };
+  MPPE_ENC_TYPES_RC4_40,
+  MPPE_ENC_TYPES_RC4_128,
+  MPPE_ENC_TYPES_RC4_40_128 };
 
-static void otp_key_from_hash(des_cblock *key,const unsigned char hashbytes[7]);
+static void otp_key_from_hash(des_cblock *, const unsigned char [7]);
 
 #endif /* OTP_PWE_H */
 

@@ -46,10 +46,10 @@ otp_challenge_transform(
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-			const char *username,
-			char challenge[OTP_MAX_CHALLENGE_LEN + 1])
+                        const char *username,
+                        char challenge[OTP_MAX_CHALLENGE_LEN + 1])
 {
-    (void) strcpy(challenge, "DISABLED");
-    return 0;
+  (void) strcpy(challenge, "DISABLED");
+  return 0;
 }
 

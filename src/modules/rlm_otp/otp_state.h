@@ -24,19 +24,14 @@
 
 #include "otp.h"
 
-static int otp_state_parse(const char *buf, size_t buflen,
-			   const char *username, otp_user_state_t *user_state,
-			   const char *log_prefix);
-static int otp_state_unparse(char *buf, size_t buflen, const char *username,
-			     otp_user_state_t *user_state,
-			     const char *log_prefix);
-static int xread(lsmd_fd_t *fdp, char *buf, size_t len, const char *log_prefix);
-static int xwrite(lsmd_fd_t *fdp, const char *buf, size_t len,
-		  const char *log_prefix);
-static int otp_state_connect(const char *path, const char *log_prefix);
-static lsmd_fd_t *otp_state_getfd(const otp_option_t *opt,
-				  const char *log_prefix);
-static void otp_state_putfd(lsmd_fd_t *fdp, int close_p,
-			    const char *log_prefix);
+static int otp_state_parse(const char *, size_t, const char *,
+                           otp_user_state_t *, const char *);
+static int otp_state_unparse(char *, size_t, const char *, otp_user_state_t *,
+                             const char *);
+static int xread(lsmd_fd_t *, char *, size_t, const char *);
+static int xwrite(lsmd_fd_t *, const char *, size_t, const char *);
+static int otp_state_connect(const char *, const char *);
+static lsmd_fd_t *otp_state_getfd(const otp_option_t *, const char *);
+static void otp_state_putfd(lsmd_fd_t *, int, const char *);
 
 #endif /* OTP_STATE_H */

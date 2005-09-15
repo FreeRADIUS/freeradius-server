@@ -38,15 +38,12 @@
 #define CRYPTOCARD_D8_RS (CRYPTOCARD_D8_RC|CRYPTOCARD_D8_ES)
 #define CRYPTOCARD_D7_RS (CRYPTOCARD_D7_RC|CRYPTOCARD_D7_ES)
 
-static int cryptocard_name2fm(const char *name, uint32_t *featuremask);
-static int cryptocard_keystring2keyblock(const char *keystring,
-					 unsigned char keyblock[]);
-static int cryptocard_challenge(const otp_user_info_t *user_info,
-				unsigned int ewin, int twin,
-				char challenge[OTP_MAX_CHALLENGE_LEN + 1]);
-static int cryptocard_response(otp_user_info_t *user_info,
-			       const char *challenge,
-			       char response[OTP_MAX_RESPONSE_LEN + 1]);
+static int cryptocard_name2fm(const char *, uint32_t *);
+static int cryptocard_keystring2keyblock(const char *, unsigned char []);
+static int cryptocard_challenge(const otp_user_info_t *, unsigned, int,
+                                char [OTP_MAX_CHALLENGE_LEN + 1]);
+static int cryptocard_response(otp_user_info_t *, const char *,
+                               char [OTP_MAX_RESPONSE_LEN + 1]);
 
 #ifdef __GNUC__
 __attribute__ ((constructor))

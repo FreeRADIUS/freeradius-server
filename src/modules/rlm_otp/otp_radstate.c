@@ -82,83 +82,83 @@ static const char rcsid[] = "$Id$";
  */
 int
 otp_gen_state(char **ascii_state, unsigned char **raw_state,
-	      const char challenge[OTP_MAX_CHALLENGE_LEN + 1], int32_t flags,
-	      int32_t when, const unsigned char key[16])
+              const char challenge[OTP_MAX_CHALLENGE_LEN + 1], int32_t flags,
+              int32_t when, const unsigned char key[16])
 {
-    HMAC_CTX hmac_ctx;
-    unsigned char hmac[MD5_DIGEST_LENGTH];
-    char *p;
-    unsigned i;
+  HMAC_CTX hmac_ctx;
+  unsigned char hmac[MD5_DIGEST_LENGTH];
+  char *p;
+  unsigned i;
 
-    /*
-     * Generate the hmac.  We already have a dependency on openssl for
-     * DES, so we'll use it's hmac functionality also -- saves us from
-     * having to collect the data to be signed into one contiguous piece.
-     */
-    HMAC_Init(&hmac_ctx, key, sizeof(key), EVP_md5());
-    HMAC_Update(&hmac_ctx, challenge, strlen(challenge));
-    HMAC_Update(&hmac_ctx, (unsigned char *) &flags, 4);
-    HMAC_Update(&hmac_ctx, (unsigned char *) &when, 4);
-    HMAC_Final(&hmac_ctx, hmac, NULL);
-    HMAC_cleanup(&hmac_ctx);
+  /*
+   * Generate the hmac.  We already have a dependency on openssl for
+   * DES, so we'll use it's hmac functionality also -- saves us from
+   * having to collect the data to be signed into one contiguous piece.
+   */
+  HMAC_Init(&hmac_ctx, key, sizeof(key), EVP_md5());
+  HMAC_Update(&hmac_ctx, challenge, strlen(challenge));
+  HMAC_Update(&hmac_ctx, (unsigned char *) &flags, 4);
+  HMAC_Update(&hmac_ctx, (unsigned char *) &when, 4);
+  HMAC_Final(&hmac_ctx, hmac, NULL);
+  HMAC_cleanup(&hmac_ctx);
 
-    /* Fill in raw_state if requested. */
-    if (raw_state) {
-	*raw_state = rad_malloc(strlen(challenge) + 8 + sizeof(hmac));
-	p = *raw_state;
-	(void) memcpy(p, challenge, strlen(challenge));
-	p += strlen(challenge);
-	(void) memcpy(p, &flags, 4);
-	p += 4;
-	(void) memcpy(p, &when, 4);
-	p += 4;
-	(void) memcpy(p, hmac, sizeof(hmac));
+  /* Fill in raw_state if requested. */
+  if (raw_state) {
+    *raw_state = rad_malloc(strlen(challenge) + 8 + sizeof(hmac));
+    p = *raw_state;
+    (void) memcpy(p, challenge, strlen(challenge));
+    p += strlen(challenge);
+    (void) memcpy(p, &flags, 4);
+    p += 4;
+    (void) memcpy(p, &when, 4);
+    p += 4;
+    (void) memcpy(p, hmac, sizeof(hmac));
+  }
+
+  /*
+   * Fill in ascii_state if requested.  (pairmake() forces us to to this.)
+   * "0x" is required for pairmake().  Note that each octet expands into
+   * 2 hex digits in ASCII (0xAA -> 0x4141).
+   */
+  if (ascii_state) {
+    *ascii_state = rad_malloc(2 +			/* "0x"      */
+                              strlen(challenge) * 2 +	/* challenge */
+                              8 +			/* flags     */
+                              8 +			/* time      */
+                              sizeof(hmac) * 2 +	/* hmac      */
+                              1);			/* '\0'      */
+    (void) sprintf(*ascii_state, "0x");
+    p = *ascii_state + 2;
+
+    /* Add the challenge. */
+    for (i = 0; i < OTP_MAX_CHALLENGE_LEN / sizeof(des_cblock); ++i) {
+      otp_keyblock2keystring(p, challenge, otp_hex_conversion);
+      if (strlen(challenge) > sizeof(des_cblock)) {
+        challenge += sizeof(des_cblock);
+        p += 2 * sizeof(des_cblock);
+      } else {
+        p += 2 * strlen(challenge);
+        break;
+      }
     }
 
-    /*
-     * Fill in ascii_state if requested.  (pairmake() forces us to to this.)
-     * "0x" is required for pairmake().  Note that each octet expands into
-     * 2 hex digits in ASCII (0xAA -> 0x4141).
-     */
-    if (ascii_state) {
-	*ascii_state = rad_malloc(2 +				/* "0x"      */
-				  strlen(challenge) * 2 +	/* challenge */
-				  8 +				/* flags     */
-				  8 +				/* time      */
-				  sizeof(hmac) * 2 +		/* hmac      */
-				  1);				/* '\0'      */
-	(void) sprintf(*ascii_state, "0x");
-	p = *ascii_state + 2;
+    /* Add the flags and time. */
+    {
+      des_cblock cblock;
 
-	/* Add the challenge. */
-	for (i = 0; i < OTP_MAX_CHALLENGE_LEN / sizeof(des_cblock); ++i) {
-	    otp_keyblock2keystring(p, challenge, otp_hex_conversion);
-	    if (strlen(challenge) > sizeof(des_cblock)) {
-		challenge += sizeof(des_cblock);
-		p += 2 * sizeof(des_cblock);
-	    } else {
-		p += 2 * strlen(challenge);
-		break;
-	    }
-	}
-
-	/* Add the flags and time. */
-	{
-	    des_cblock cblock;
-	    (void) memcpy(cblock, &flags, 4);
-	    (void) memcpy(&cblock[4], &when, 4);
-	    otp_keyblock2keystring(p, cblock, otp_hex_conversion);
-	}
-	p += 16;
-
-	/* Add the hmac. */
-	otp_keyblock2keystring(p, hmac, otp_hex_conversion);
-	p += 16;
-	otp_keyblock2keystring(p, &hmac[8], otp_hex_conversion);
-	p += 16;
-	*p = '\0';
+      (void) memcpy(cblock, &flags, 4);
+      (void) memcpy(&cblock[4], &when, 4);
+      otp_keyblock2keystring(p, cblock, otp_hex_conversion);
     }
+    p += 16;
 
-    return 0;
+    /* Add the hmac. */
+    otp_keyblock2keystring(p, hmac, otp_hex_conversion);
+    p += 16;
+    otp_keyblock2keystring(p, &hmac[8], otp_hex_conversion);
+    p += 16;
+    *p = '\0';
+  }
+
+  return 0;
 }
-

@@ -44,15 +44,14 @@
 
 /* cardops object */
 typedef struct cardops_t {
-    const char *prefix;
-    size_t prefix_len;	/* to avoid strlen(prefix) */
+  const char *prefix;
+  size_t prefix_len;	/* to avoid strlen(prefix) */
 
-    int (*name2fm)(const char *name, uint32_t *featuremask);
-    int (*keystring2keyblock)(const char *keystring, unsigned char keyblock[]);
-    int (*challenge)(const otp_user_info_t *user_info,
-		     unsigned int ewin, int twin, char challenge[]);
-    int (*response)(otp_user_info_t *user_info, const char *challenge,
-		    char response[OTP_MAX_RESPONSE_LEN + 1]);
+  int (*name2fm)(const char *, uint32_t *);
+  int (*keystring2keyblock)(const char *, unsigned char []);
+  int (*challenge)(const otp_user_info_t *, unsigned, int, char []);
+  int (*response)(otp_user_info_t *, const char *,
+                  char [OTP_MAX_RESPONSE_LEN + 1]);
 } cardops_t;
 #define OTP_MAX_VENDORS 16
 extern cardops_t otp_cardops[OTP_MAX_VENDORS];
