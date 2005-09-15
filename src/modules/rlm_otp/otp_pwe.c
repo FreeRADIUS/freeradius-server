@@ -617,7 +617,7 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
 	    /* Generate the master session key. */
 	    SHA1_Init(&ctx);
 	    SHA1_Update(&ctx, password_md_md, MD4_DIGEST_LENGTH);
-	    SHA1_Update(&ctx, resp_vp->strvalue + 26, 24);
+	    SHA1_Update(&ctx, resp_vp->vp_strvalue + 26, 24);
 	    SHA1_Update(&ctx, Magic1, sizeof(Magic1));
 	    SHA1_Final(sha_md, &ctx);
 	    (void) memcpy(MasterKey, sha_md, 16);
