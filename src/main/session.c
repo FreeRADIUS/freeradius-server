@@ -137,7 +137,6 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	char	port[11];
 	RADCLIENT *cl;
 	lrad_ipaddr_t ipaddr;
-	int	maxfd = 256;
 
 	ipaddr.af = AF_INET;
 	ipaddr.ipaddr.ip4addr.s_addr = nasaddr;
@@ -208,19 +207,6 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 		return WEXITSTATUS(status);
 	}
 
-#ifdef _SC_OPEN_MAX
-	maxfd = sysconf(_SC_OPEN_MAX);
-	if (maxfd < 0) {
-	  maxfd = 256;
-	}
-#endif
-
-	/*
-	 *	Child - exec checklogin with the right parameters.
-	 */
-	for (n = maxfd; n >= 3; n--)
-		close(n);
-
 	/*
 	 *  We don't close fd's 0, 1, and 2.  If we're in debugging mode,
 	 *  then they should go to stdout (etc), along with the other
@@ -229,6 +215,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	 *  If we're not in debugging mode, then the code in radiusd.c
 	 *  takes care of connecting fd's 0, 1, and 2 to /dev/null.
 	 */
+	closefrom(3);
 
 	ip_ntoa(address, nasaddr);
 	snprintf(port, 11, "%u", portnum);

@@ -710,7 +710,8 @@ AC_CHECK_FUNCS( \
 	getusershell \
 	initgroups \
 	getaddrinfo \
-	getnameinfo
+	getnameinfo \
+	closefrom
 )
 RADIUSD_NEED_DECLARATIONS( \
 	crypt \

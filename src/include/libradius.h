@@ -347,6 +347,9 @@ int		inet_pton(int af, const char *src, void *dst);
 #ifndef HAVE_INET_NTOP
 const char	*inet_ntop(int af, const void *src, char *dst, size_t cnt);
 #endif
+#ifndef HAVE_CLOSEFROM
+int		closefrom(int fd);
+#endif
 
 int		ip_hton(const char *src, int af, lrad_ipaddr_t *dst);
 const char	*ip_ntoh(const lrad_ipaddr_t *src, char *dst, size_t cnt);
