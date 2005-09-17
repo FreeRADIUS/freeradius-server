@@ -473,7 +473,7 @@ otp_state_getfd(const otp_option_t *opt, const char *log_prefix)
 
 /* disconnect from state manager */
 static void
-otp_state_putfd(lsmd_fd_t *fdp, int close_p, log_prefix)
+otp_state_putfd(lsmd_fd_t *fdp, int close_p, const char *log_prefix)
 {
   /* for PAM we always close the fd; leaving it open is a leak */
   (void) close(fdp->fd);
