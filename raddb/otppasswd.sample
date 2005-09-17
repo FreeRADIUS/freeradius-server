@@ -5,11 +5,12 @@ legal values.  The default location is /etc/otppasswd.
 This file must be mode 0400 or 0600 and owned by the user the radius
 server runs as (for FreeRADIUS) or root (for PAM).
 
-The format is username:card_type:key, eg
+The format is username:card_type:key[:pin], eg
 
 bob:cryptocard-d8-es:0101010101010101
 
 The username is limited in that the ':' character may not appear.
+The pin is optional (do not include the bracket characters!).
 The valid card types are:
 
 CRYPTOCard:
@@ -26,57 +27,6 @@ cryptocard-d8-rs	rc or es, 8 digit decimal response.
 cryptocard-h7-rs	rc or es, 7 digit hex response.
 cryptocard-d7-rs	rc or es, 7 digit decimal response.
 
-TRI-D:
-trid-alpha-3		TRI-D alpha card (email fcusack@fcusack.com)
-
-
-STATE:
-
-Along with the passwd file is a "state file" which contains state
-needed to authenticate synchronously, along with other persistent data.
-There is one state file per user, with the same name as the user.
-The default location for state files is in /etc/otpsync.d.  For most
-filesystems, this doesn't scale well beyond a few thousand users.
-
-The format is
-  "version:user:challenge:key:last_auth_s:last_auth_t:last_auth_p:".
-Note that the trailing colon is required.
-
-    version: 2
-       user: this is a sanity check field
-  challenge: the next synchronous challenge (for event synchronous modes)
-        csd: card specific data
-last_auth_s: 0 if the last auth was successful,
-             number of consecutive failures if unsucessful
-last_auth_t: the last time the user authenticated (success or failure)
-last_auth_p: >1 if the last auth was sync+correct and user is in softfail,
-             0 otherwise; if >1, it is the ewindow position of the last auth.
-
-If this file does not exist, the action taken depends on the token card.
-
-For CRYPTOCard, the user must authenticate asynchronously to initalize
-the state.  If your CRYPTOCard tokens aren't setup for async auth,
-or if you disallow it in the server config, then you'll (obviously)
-need to initialize the state when you issue tokens.  You can obtain
-the first challenge by compiling crcalc.c, included with the module.
-When prompted for the challenge, just hit return.  This will encrypt
-a zero block, which is what the token will also do upon programming.
-crcalc will display the next challenge, which you can then use to
-initialize the state file.  When creating this file, make sure it is
-owned by the user the server runs as (for FreeRADIUS) or root (for PAM).
-
-For example, you might initialize the state to:
-
-2:bob:12345678::0:0:0:
-
-For TRI-D, the state will be initialized by the module itself.  DO NOT
-create any initial state data yourself.  For the first authentication,
-users must give two consecutive passcodes, so that the card's clock
-offset can be determined.
-
-To reset locked-out users manually, you can set the failures field to 0.
-You may also need to reset the challenge field if they are too far out
-of sync.  Note that you must lock the state file before changing it!
-To lock, you must atomically create the file .<user>, e.g. '.bob',
-in the same dir as the state file.
-
+TRI-D: (email fcusack@fcusack.com>
+trid-alpha-3		TRI-D alpha card
+trid-beta-1		TRI-D beta card
