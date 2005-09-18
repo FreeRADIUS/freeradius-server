@@ -45,7 +45,8 @@ static const char rcsid[] = "$Id$";
  */
 int
 otp_x99_mac(const unsigned char *input, size_t len, unsigned char output[8],
-            const unsigned char keyblock[OTP_MAX_KEY_LEN])
+            const unsigned char keyblock[OTP_MAX_KEY_LEN],
+            const char *log_prefix)
 {
   des_key_schedule ks;
   des_cblock ivec;
@@ -62,7 +63,7 @@ otp_x99_mac(const unsigned char *input, size_t len, unsigned char output[8],
    * TODO: store in user_info after generating
    */
   if ((rc = des_set_key_checked((const_des_cblock *) keyblock, ks)) != 0) {
-    otp_log(OTP_LOG_ERR, "otp_x99_mac: DES key %s",
+    otp_log(OTP_LOG_ERR, "%s: otp_x99_mac: DES key %s", log_prefix,
             rc == -1 ? "has incorrect parity" : "is weak");
     return -1;
   }

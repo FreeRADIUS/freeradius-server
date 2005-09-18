@@ -49,9 +49,10 @@ typedef struct cardops_t {
 
   int (*name2fm)(const char *, uint32_t *);
   int (*keystring2keyblock)(const char *, unsigned char []);
-  int (*challenge)(const otp_user_info_t *, unsigned, int, char []);
+  int (*challenge)(const otp_user_info_t *, unsigned, int, char [],
+                   const char *);
   int (*response)(otp_user_info_t *, const char *,
-                  char [OTP_MAX_RESPONSE_LEN + 1]);
+                  char [OTP_MAX_RESPONSE_LEN + 1], const char *);
 } cardops_t;
 #define OTP_MAX_VENDORS 16
 extern cardops_t otp_cardops[OTP_MAX_VENDORS];

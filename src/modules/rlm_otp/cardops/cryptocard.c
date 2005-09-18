@@ -91,7 +91,8 @@ cryptocard_challenge(const otp_user_info_t *user_info, unsigned int ewin,
 __attribute__ ((unused))
 #endif
                      int twin,
-                     char challenge[OTP_MAX_CHALLENGE_LEN + 1])
+                     char challenge[OTP_MAX_CHALLENGE_LEN + 1],
+                     const char *log_prefix)
 {
   unsigned char output[8];
   int i, rc = 0;
@@ -102,7 +103,8 @@ __attribute__ ((unused))
 
   /* iterate ewin times on the challenge */
   while (ewin--) {
-    if ((rc = otp_x99_mac(challenge, 8, output, user_info->keyblock)) == 0) {
+    if ((rc = otp_x99_mac(challenge, 8, output, user_info->keyblock,
+                          log_prefix)) == 0) {
       /* convert the mac into the next challenge */
       for (i = 0; i < 8; ++i) {
         output[i] &= 0x0f;
@@ -141,7 +143,8 @@ __attribute__ ((unused))
  */
 static int
 cryptocard_response(otp_user_info_t *user_info, const char *challenge,
-                    char response[OTP_MAX_RESPONSE_LEN + 1])
+                    char response[OTP_MAX_RESPONSE_LEN + 1],
+                    const char *log_prefix)
 {
   unsigned char output[8];
   char l_response[17];
@@ -149,7 +152,7 @@ cryptocard_response(otp_user_info_t *user_info, const char *challenge,
 
   /* Step 1, 2. */
   if (otp_x99_mac(challenge, strlen(challenge), output,
-                  user_info->keyblock) !=0)
+                  user_info->keyblock, log_prefix) !=0)
     return 1;
 
   /* Setup for step 4. */

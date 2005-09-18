@@ -194,7 +194,8 @@ async_response:
 
     /* Calculate the async response. */
     if (user_info.cardops->response(&user_info, challenge,
-                                    &e_response[pin_offset]) != 0) {
+                                    &e_response[pin_offset],
+                                    log_prefix) != 0) {
       otp_log(OTP_LOG_ERR, "%s: unable to calculate async response for [%s], "
               "to challenge %s", log_prefix, username, challenge);
       rc = OTP_RC_SERVICE_ERR;
@@ -291,7 +292,8 @@ sync_response:
     for (i = 0; i <= end; ++i) {
       /* Calculate sync response. */
       if (user_info.cardops->response(&user_info, challenge,
-                                      &e_response[pin_offset]) != 0) {
+                                      &e_response[pin_offset],
+                                      log_prefix) != 0) {
         otp_log(OTP_LOG_ERR,
                 "%s: unable to calculate sync response "
                 "e:%d t:%d for [%s], to challenge %s",
@@ -382,7 +384,8 @@ sync_response:
       } /* if (passcode is valid) */
 
       /* Get next challenge (extra work at end of loop; TODO: fix). */
-      if (user_info.cardops->challenge(&user_info, 1, 0, challenge) != 0) {
+      if (user_info.cardops->challenge(&user_info, 1, 0,
+                                       challenge, log_prefix) != 0) {
         otp_log(OTP_LOG_ERR,
                 "%s: unable to get sync challenge e:%d t:%d for [%s]",
                 log_prefix, i, 0, username);
@@ -400,7 +403,8 @@ auth_done:
   if (rc == OTP_RC_OK) {
     if (resync) {
       /* Resync the card. */
-      if (user_info.cardops->challenge(&user_info, 1, 0, challenge) != 0) {
+      if (user_info.cardops->challenge(&user_info, 1, 0,
+                                       challenge, log_prefix) != 0) {
         otp_log(OTP_LOG_ERR, "%s: unable to get sync challenge "
                              "e:%d t:%d for [%s] (for resync)",
                 log_prefix, 1, 0, username);

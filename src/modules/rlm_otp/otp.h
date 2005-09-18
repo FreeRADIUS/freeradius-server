@@ -167,7 +167,7 @@ extern int otp_pw_valid(const char *, char *, const char *, int,
 
 /* otp_x99.c */
 extern int otp_x99_mac(const unsigned char *, size_t, unsigned char [8],
-                       const unsigned char [OTP_MAX_KEY_LEN]);
+                       const unsigned char [OTP_MAX_KEY_LEN], const char *);
 
 /* otp_hotp.c */
 extern int otp_hotp_mac(const unsigned char [8], unsigned char [7],
