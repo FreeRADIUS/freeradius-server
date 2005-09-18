@@ -22,7 +22,7 @@
 #######################################################################
 TARGET         = @targetname@
 SRCS           = otp_rlm.c otp_util.c otp_radstate.c otp_x99.c otp_state.c
-SRCS          += otp_site.c otp_pwe.c otp_log.c otp_cardops.c
+SRCS          += otp_site.c otp_pwe.c otp_log.c otp_cardops.c otp_hotp.c
 HEADERS        = otp.h otp_rad.h otp_pwe.h otp_cardops.h
 RLM_CFLAGS     = @otp_cflags@ $(OPENSSL_INCLUDE)
 CARDOPS_LTLIBS = $(patsubst %.c,%.lo,$(wildcard cardops/*.c))

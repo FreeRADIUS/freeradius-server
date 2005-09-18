@@ -169,6 +169,11 @@ extern int otp_pw_valid(const char *, char *, const char *, int,
 extern int otp_x99_mac(const unsigned char *, size_t, unsigned char [8],
                        const unsigned char [OTP_MAX_KEY_LEN]);
 
+/* otp_hotp.c */
+extern int otp_hotp_mac(const unsigned char [8], unsigned char [7],
+                        const unsigned char [OTP_MAX_KEY_LEN], size_t,
+                        const char *);
+
 /* otp_util.c */
 /* Character maps for generic hex and vendor specific decimal modes */
 extern const char otp_hex_conversion[];
