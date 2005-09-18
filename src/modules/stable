@@ -25,9 +25,11 @@ rlm_otp
 rlm_pam
 rlm_pap
 rlm_passwd
+rlm_perl
 rlm_preprocess
 rlm_radutmp
 rlm_realm
 rlm_sql
 rlm_sql_log
+rlm_sqlcounter
 rlm_unix
