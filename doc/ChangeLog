@@ -1,7 +1,10 @@
-FreeRADIUS 1.0.6 ; $Date$, urgency=low
-	Bug fixes
-	* Fix segfaults due to using default crypt implementation when crypt.h
-	  is available
+FreeRADIUS 1.0.6 ; $Date$, urgency=medium
+	Security Fixes
+	* format string error in rlm_sql.c which may cause remotely triggered
+	segfault, spotted by Primoz Bratanic
+	* Walk the whole string in when escaping strings in rlm_ldap
+	* Include crypt.h if it is available so we get a prototype for crypt(),
+	spotted by Konstantin Kubatkin
 
 FreeRADIUS 1.0.5 ; Date: 2005/09/04 16:23:00, urgency=medium
 	Security Fixes
