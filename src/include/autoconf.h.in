@@ -24,6 +24,9 @@
 /* Define if you have the <asn1.h>, <snmp_impl.h> and <snmp.h> header file. */
 #undef HAVE_ASN1_SNMP_SNMPIMPL_H
 
+/* Define to 1 if you have the `closefrom' function. */
+#undef HAVE_CLOSEFROM
+
 /* Do we have the crypt function */
 #undef HAVE_CRYPT
 
@@ -204,6 +207,12 @@
 
 /* Define to 1 if you have the <string.h> header file. */
 #undef HAVE_STRING_H
+
+/* Define to 1 if you have the `strlcat' function. */
+#undef HAVE_STRLCAT
+
+/* Define to 1 if you have the `strlcpy' function. */
+#undef HAVE_STRLCPY
 
 /* Define to 1 if you have the `strncasecmp' function. */
 #undef HAVE_STRNCASECMP
