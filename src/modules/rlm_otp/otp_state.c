@@ -139,6 +139,9 @@ otp_state_put(const char *username, otp_user_state_t *user_state,
     goto putfd;
   }
 
+  /* reset locked flag on successful PUT, to avoid further PUT's by caller */
+  user_state->locked = 0;
+
 putfd:
   otp_state_putfd(user_state->fdp, 0, log_prefix);
   return rc;
