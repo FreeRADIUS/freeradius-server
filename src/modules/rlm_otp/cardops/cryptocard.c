@@ -82,6 +82,28 @@ cryptocard_keystring2keyblock(const char *keystring, unsigned char keyblock[])
 
 
 /*
+ * Set nullstate.
+ * We don't currently support nullstate for CRYPTOCard, so return -1.
+ */
+static int
+cryptocard_nullstate(
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                      const otp_user_info_t *user_info,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                      otp_user_state_t *user_state, 
+                      const char *log_prefix)
+{
+  otp_log(OTP_LOG_ERR, "%s: null state not supported for CRYPTOCard",
+          log_prefix);
+  return -1;
+}
+
+
+/*
  * Return a synchronous challenge.
  * Returns 0 on success, non-zero otherwise.
  */
@@ -181,6 +203,7 @@ static cardops_t cryptocard_cardops = {
 
   .name2fm		= cryptocard_name2fm,
   .keystring2keyblock	= cryptocard_keystring2keyblock,
+  .nullstate		= cryptocard_nullstate,
   .challenge		= cryptocard_challenge,
   .response		= cryptocard_response
 };

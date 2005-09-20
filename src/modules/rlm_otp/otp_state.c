@@ -151,7 +151,7 @@ putfd:
 /*
  * Parse the state manager response into user_state.
  * Returns 0 on success, -1 on failure.
- * "Put"s state (releases lock, without update) on failure.
+ * "PUT"s state (releases lock, without update) on failure.
  */
 static int
 otp_state_parse(const char *buf, size_t buflen, const char *username,
@@ -188,7 +188,6 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
   user_state->updated = 0;	/* just release lock on failures */
 
   /*
-   * NOTE: Currently we do not support null state.
    * We don't do bounds checking for initial parsing,
    * so state manager response must contain at least
    * - ACK/NAK code + ' '
@@ -202,19 +201,24 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
   i = strlen(username);
   /* 'A <username> V:<username>:C' + terminator */
   if (buflen < 2 + i + 3 + i + 2 + 1) {
-    if (buflen < 2 + i + 1)
+    if (buflen < 2 + i + 1) {
       otp_log(OTP_LOG_ERR, "%s: invalid state data for [%s]",
               log_prefix, username);
-    else if (buflen == 2 + i + 1)
-      otp_log(OTP_LOG_ERR, "%s: null state data for [%s]",
+    } else if (buflen == 2 + i + 1) {
+      otp_log(OTP_LOG_DEBUG, "%s: null state data for [%s]",
               log_prefix, username);
-    else
+      user_state->nullstate = 1;
+      return 0;
+    } else {
       otp_log(OTP_LOG_ERR, "%s: short state data for [%s]",
               log_prefix, username);
+    }
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
+  } else {
+    user_state->nullstate = 0;
   }
-  p = (char *) &buf[2];
+  p = (char *) &buf[2];	/* username field of state manager response */
 
   /* verify username (in state manager response, not state itself) */
   if (!(strncmp(p, username, i) == 0 && p[i] == ' ')) {
