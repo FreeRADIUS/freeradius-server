@@ -711,7 +711,9 @@ AC_CHECK_FUNCS( \
 	initgroups \
 	getaddrinfo \
 	getnameinfo \
-	closefrom
+	closefrom \
+	strlcat \
+	strlcpy
 )
 RADIUSD_NEED_DECLARATIONS( \
 	crypt \
