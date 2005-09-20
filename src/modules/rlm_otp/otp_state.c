@@ -132,7 +132,7 @@ otp_state_put(const char *username, otp_user_state_t *user_state,
     if (buf[ulen + 2] == '\0')
       reason = (char *) "[no reason given]";
     else
-      reason = &buf[ulen + 2];
+      reason = &buf[ulen + 3];
     otp_log(OTP_LOG_ERR, "%s: state manager PUT rejected for [%s]: %s",
             log_prefix, username, reason);
     rc = -1;
