@@ -8,6 +8,19 @@
  * Version:	$Id$
  *
  */
+
+#ifdef HAVE_STDINT_H
+#include <stdint.h>
+#endif
+
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+
+/*
+ *	Functions from missing.c
+ */
+
 #ifndef HAVE_STRNCASECMP
 extern int strncasecmp(char *s1, char *s2, int n);
 #endif
@@ -21,6 +34,7 @@ extern char *strsep(char **stringp, const char *delim);
 #endif
 
 #ifndef HAVE_LOCALTIME_R
+struct tm;
 struct tm *localtime_r(const time_t *l_clock, struct tm *result);
 #endif
 
@@ -114,7 +128,7 @@ struct in6_addr
 #define IN6ADDR_ANY_INIT 	{{{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 }}}
 #endif
 
-#ifndef IN6ADDR_LOOPBACK_INIT 
+#ifndef IN6ADDR_LOOPBACK_INIT
 #define IN6ADDR_LOOPBACK_INIT 	{{{ 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1 }}}
 #endif
 
@@ -174,6 +188,10 @@ struct in6_addr
 #endif
 
 #endif /* HAVE_STRUCT_IN6_ADDR */
+
+/*
+ *	Functions from getaddrinfo.c
+ */
 
 #ifndef HAVE_STRUCT_SOCKADDR_STORAGE
 struct sockaddr_storage
@@ -239,6 +257,31 @@ extern int getnameinfo (const struct sockaddr *__sa,
 			socklen_t __salen, char *__host,
 			socklen_t __hostlen, char *__serv,
 			socklen_t __servlen, unsigned int __flags);
+#endif
+
+/*
+ *	Functions from snprintf.c
+ */
+
+#ifndef HAVE_VSNPRINTF
+#include <stdarg.h>
+extern int vsnprintf(char *str, size_t count, const char *fmt, va_list arg);
+#endif
+
+#ifndef HAVE_SNPRINTF
+extern int snprintf(char *str, size_t count, const char *fmt, ...);
+#endif
+
+/*
+ *	Functions from strl{cat,cpy}.c
+ */
+
+#ifndef HAVE_STRLCPY
+extern size_t strlcpy(char *dst, const char *src, size_t siz);
+#endif
+
+#ifndef HAVE_STRLCAT
+extern size_t strlcat(char *dst, const char *src, size_t siz);
 #endif
 
 #endif /* _FR_MISSING_H */
