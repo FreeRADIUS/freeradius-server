@@ -108,15 +108,14 @@ __attribute__ ((unused))
  * Returns 0 on success, non-zero otherwise.
  */
 static int
-cryptocard_challenge(const otp_user_info_t *user_info,
-                     otp_user_state_t *user_state, unsigned int ewin,
+cryptocard_challenge(const otp_user_info_t *user_info, unsigned int ewin,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
                      int twin,
+                     char challenge[OTP_MAX_CHALLENGE_LEN + 1],
                      const char *log_prefix)
 {
-  char *challenge = user_state->challenge;
   unsigned char output[8];
   int i, rc = 0;
 
@@ -165,11 +164,10 @@ __attribute__ ((unused))
  * 5. Truncate the response for 7 digit display modes.
  */
 static int
-cryptocard_response(otp_user_info_t *user_info, otp_user_state_t *user_state,
+cryptocard_response(otp_user_info_t *user_info, const char *challenge,
                     char response[OTP_MAX_RESPONSE_LEN + 1],
                     const char *log_prefix)
 {
-  char *challenge = user_state->challenge;
   unsigned char output[8];
   char l_response[17];
   const char *conversion;
