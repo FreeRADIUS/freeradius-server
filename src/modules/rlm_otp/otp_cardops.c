@@ -85,6 +85,8 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
              const char *log_prefix)
 {
   int	rc, nmatch, i, j;
+  int	i = 0, j = 0;	/* must initialize for async auth path */
+  int	k;
   int	fc = OTP_FC_FAIL_NONE;	/* failcondition */
 
   char	csd[OTP_MAX_CSD_LEN + 1]; /* working copy of csd */
@@ -128,10 +130,10 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   user_info.username = username;
 
   /* Find the correct cardops module. */
-  for (i = 0; otp_cardops[i].prefix; i++) {
-    if (!strncasecmp(otp_cardops[i].prefix, user_info.card,
-                     otp_cardops[i].prefix_len)) {
-      user_info.cardops = &otp_cardops[i];
+  for (k = 0; otp_cardops[k].prefix; i++) {
+    if (!strncasecmp(otp_cardops[k].prefix, user_info.card,
+                     otp_cardops[k].prefix_len)) {
+      user_info.cardops = &otp_cardops[k];
       break;
     }
   }
@@ -441,8 +443,8 @@ auth_done:
       if (user_info.cardops->challenge(&user_info, i,
                                        challenge, log_prefix) != 0) {
         otp_log(OTP_LOG_ERR, "%s: unable to get sync challenge "
-                             "e:%d t:%d for [%s] (for resync)",
-                log_prefix, 1, 0, username);
+                             "t:%d e:%d for [%s] (for resync)",
+                log_prefix, i, j, username);
         rc = OTP_RC_SERVICE_ERR;
         goto auth_done_service_err;
         /* NB: state not updated. */
