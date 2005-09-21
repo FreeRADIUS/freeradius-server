@@ -164,7 +164,12 @@ __attribute__ ((unused))
  * 5. Truncate the response for 7 digit display modes.
  */
 static int
-cryptocard_response(otp_user_info_t *user_info, const char *challenge,
+cryptocard_response(otp_user_info_t *user_info,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                    char *csd,
+                    const char *challenge,
                     char response[OTP_MAX_RESPONSE_LEN + 1],
                     const char *log_prefix)
 {

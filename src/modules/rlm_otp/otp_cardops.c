@@ -67,6 +67,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   int	rc, nmatch, i;
   int	fc = OTP_FC_FAIL_NONE;	/* failcondition */
 
+  char	csd[OTP_MAX_CSD_LEN + 1]; /* working copy of csd */
     	/* expected response */
   char 	e_response[OTP_MAX_RESPONSE_LEN + OTP_MAX_PIN_LEN + 1];
   int	pin_offset = 0;	/* pin offset in e_response */
@@ -158,6 +159,9 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
     }
   }
 
+  /* copy csd */
+  (void) strcpy(csd, user_state.csd);
+
   /* Set fc (failcondition). */
   if (opt->hardfail && user_state.failcount >= (unsigned) opt->hardfail) {
     fc = OTP_FC_FAIL_HARD;
@@ -201,7 +205,7 @@ async_response:
     }
 
     /* Calculate the async response. */
-    if (user_info.cardops->response(&user_info, challenge,
+    if (user_info.cardops->response(&user_info, csd, challenge,
                                     &e_response[pin_offset],
                                     log_prefix) != 0) {
       otp_log(OTP_LOG_ERR, "%s: unable to calculate async response for [%s], "
@@ -299,7 +303,7 @@ sync_response:
     /* Test each sync response in the window. */
     for (i = 0; i <= end; ++i) {
       /* Calculate sync response. */
-      if (user_info.cardops->response(&user_info, challenge,
+      if (user_info.cardops->response(&user_info, csd, challenge,
                                       &e_response[pin_offset],
                                       log_prefix) != 0) {
         otp_log(OTP_LOG_ERR,
@@ -421,6 +425,7 @@ auth_done:
         /* NB: state not updated. */
       }
       (void) strcpy(user_state.challenge, challenge);
+      (void) strcpy(user_state.csd, csd);
     }
     user_state.failcount = 0;
     user_state.authpos   = 0;
