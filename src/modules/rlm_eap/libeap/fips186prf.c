@@ -104,7 +104,7 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 	int j;
 	onesixty xval, xkey, w_0, w_1, sum, one;
 	uint8_t *f;
-	char zeros[64];
+	uint8_t zeros[64];
 
 	/*
 	 * let XKEY := MK,
@@ -266,7 +266,10 @@ main(int argc, char *argv[])
 
 /*
  * $Log$
- * Revision 1.3  2004-02-26 19:04:30  aland
+ * Revision 1.4  2005-09-21 03:02:40  nbk
+ * 	Fix compilation warnings.
+ *
+ * Revision 1.3  2004/02/26 19:04:30  aland
  * 	perl -i -npe "s/[ \t]+$//g" `find src -name "*.[ch]" -print`
  *
  * 	Whitespace changes only, from a fresh checkout.

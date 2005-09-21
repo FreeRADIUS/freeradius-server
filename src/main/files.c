@@ -410,17 +410,17 @@ int read_realms_file(const char *file)
 		 *	Double-check lengths to be sure they're sane
 		 */
 		if (strlen(hostnm) >= sizeof(c->server)) {
-			radlog(L_ERR, "%s[%d]: server name of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: server name of length %u is greater than the allowed maximum of %u.",
 			       file, lineno,
-			       (int) strlen(hostnm),
-			       (int) sizeof(c->server) - 1);
+			       strlen(hostnm),
+			       sizeof(c->server) - 1);
 			return -1;
 		}
 		if (strlen(realm) > sizeof(c->realm)) {
-			radlog(L_ERR, "%s[%d]: realm of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: realm of length %u is greater than the allowed maximum of %u.",
 			       file, lineno,
-			       (int) strlen(realm),
-			       (int) sizeof(c->realm) - 1);
+			       strlen(realm),
+			       sizeof(c->realm) - 1);
 			return -1;
 		}
 

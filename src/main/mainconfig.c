@@ -624,10 +624,10 @@ static int generate_realms(const char *filename)
 			 * Double check length, just to be sure!
 			 */
 			if (strlen(authhost) >= sizeof(c->server)) {
-				radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
+				radlog(L_ERR, "%s[%d]: Server name of length %u is greater than allowed: %u",
 				       filename, cf_section_lineno(cs),
-				       (int) strlen(authhost),
-				       (int) sizeof(c->server) - 1);
+				       strlen(authhost),
+				       sizeof(c->server) - 1);
 				return -1;
 			}
 		}
@@ -665,19 +665,19 @@ static int generate_realms(const char *filename)
 			}
 
 			if (strlen(accthost) >= sizeof(c->acct_server)) {
-				radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
+				radlog(L_ERR, "%s[%d]: Server name of length %u is greater than allowed: %u",
 				       filename, cf_section_lineno(cs),
-				       (int) strlen(accthost),
-				       (int) sizeof(c->acct_server) - 1);
+				       strlen(accthost),
+				       sizeof(c->acct_server) - 1);
 				return -1;
 			}
 		}
 
 		if (strlen(name2) >= sizeof(c->realm)) {
-			radlog(L_ERR, "%s[%d]: Realm name of length %d is greater than allowed %d",
+			radlog(L_ERR, "%s[%d]: Realm name of length %u is greater than allowed %u",
 			       filename, cf_section_lineno(cs),
-			       (int) strlen(name2),
-			       (int) sizeof(c->server) - 1);
+			       strlen(name2),
+			       sizeof(c->server) - 1);
 			return -1;
 		}
 
@@ -701,7 +701,7 @@ static int generate_realms(const char *filename)
 			}
 
 			if (strlen(s) >= sizeof(c->secret)) {
-				radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
+				radlog(L_ERR, "%s[%d]: Secret of length %u is greater than the allowed maximum of %u.",
 				       filename, cf_section_lineno(cs),
 				       strlen(s), sizeof(c->secret) - 1);
 				return -1;

@@ -441,7 +441,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	char module_fmsg[MAX_STRING_LEN];
 	MD5_CTX md5_context;
 	SHA1_CTX sha1_context;
-	char digest[40];
+	uint8_t digest[40];
 	char buff[MAX_STRING_LEN];
 	char buff2[MAX_STRING_LEN + 50];
 	int scheme = PAP_ENC_INVALID;
