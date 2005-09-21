@@ -192,7 +192,7 @@ typedef struct lrad_ipaddr_t {
  *	data,data_len:	Used between rad_recv and rad_decode.
  */
 typedef struct radius_packet {
-	int			sockfd;	
+	int			sockfd;
 	lrad_ipaddr_t		src_ipaddr;
         lrad_ipaddr_t		dst_ipaddr;
 	uint16_t		src_port;
@@ -361,15 +361,6 @@ int		ascend_parse_filter(VALUE_PAIR *pair);
 void		print_abinary(VALUE_PAIR *vp, char *buffer, int len);
 #endif /*ASCEND_BINARY*/
 
-/* snprintf.c */
-#ifndef HAVE_VSNPRINTF
-#include <stdarg.h>
-int vsnprintf(char *str, size_t count, const char *fmt, va_list arg);
-#endif
-#ifndef HAVE_SNPRINTF
-int snprintf(char *str, size_t count, const char *fmt, ...);
-#endif
-
 /* random numbers in isaac.c */
 /* context of random number generator */
 typedef struct lrad_randctx {
@@ -434,7 +425,7 @@ typedef enum { PreOrder, InOrder, PostOrder } RBTREE_ORDER;
  *	It should return 0 if all is OK, and !0 for any error.
  *	The walking will stop on any error.
  */
-int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order, int (*callback)(void *, void *), void *context); 
+int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order, int (*callback)(void *, void *), void *context);
 
 /* hash.c */
 typedef struct lrad_hash_table_t lrad_hash_table_t;
