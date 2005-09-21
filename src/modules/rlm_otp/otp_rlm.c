@@ -88,9 +88,9 @@ static const CONF_PARSER module_config[] = {
     NULL, "yes" },
   { "ewindow_size", PW_TYPE_INTEGER, offsetof(otp_option_t, ewindow_size),
     NULL, "0" },
-  { "ewindow2_size", PW_TYPE_INTEGER, offsetof(otp_option_t, ewindow2_size),
+  { "rwindow_size", PW_TYPE_INTEGER, offsetof(otp_option_t, rwindow_size),
     NULL, "0" },
-  { "ewindow2_delay", PW_TYPE_INTEGER, offsetof(otp_option_t, ewindow2_delay),
+  { "rwindow_delay", PW_TYPE_INTEGER, offsetof(otp_option_t, rwindow_delay),
     NULL, "60" },
   { "mschapv2_mppe", PW_TYPE_INTEGER,
     offsetof(otp_option_t, mschapv2_mppe_policy), NULL, "2" },
@@ -214,16 +214,16 @@ otp_instantiate(CONF_SECTION *conf, void **instance)
             OTP_MAX_EWINDOW_SIZE);
   }
 
-  if (opt->ewindow2_size && (opt->ewindow2_size < opt->ewindow_size)) {
-    opt->ewindow2_size = 0;
-    otp_log(OTP_LOG_ERR, "ewindow2_size must be at least as large as "
+  if (opt->rwindow_size && (opt->rwindow_size < opt->ewindow_size)) {
+    opt->rwindow_size = 0;
+    otp_log(OTP_LOG_ERR, "rwindow_size must be at least as large as "
                          "ewindow_size, using default of 0");
   }
 
-  if (opt->ewindow2_size && !opt->ewindow2_delay) {
-    opt->ewindow2_size = 0;
-    otp_log(OTP_LOG_ERR, "ewindow2_size is non-zero, "
-                         "but ewindow2_delay is zero; disabling ewindow2");
+  if (opt->rwindow_size && !opt->rwindow_delay) {
+    opt->rwindow_size = 0;
+    otp_log(OTP_LOG_ERR, "rwindow_size is non-zero, "
+                         "but rwindow_delay is zero; disabling rwindow");
   }
 
   if ((opt->mschapv2_mppe_policy > 2) || (opt->mschapv2_mppe_policy < 0)) {

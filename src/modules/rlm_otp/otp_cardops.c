@@ -293,9 +293,9 @@ sync_response:
   if ((user_info.featuremask & OTP_CF_SM) && opt->allow_sync) {
     int end = opt->ewindow_size;
 
-    /* Increase window for ewindow2. */
-    if (opt->ewindow2_size && fc == OTP_FC_FAIL_SOFT)
-      end = opt->ewindow2_size;
+    /* Increase window for rwindow. */
+    if (opt->rwindow_size && fc == OTP_FC_FAIL_SOFT)
+      end = opt->rwindow_size;
 
     /* Setup initial challenge. */
     (void) strcpy(challenge, user_state.challenge);
@@ -348,11 +348,11 @@ sync_response:
           }
 
           /*
-           * ewindow2_size logic
+           * rwindow_size logic
            */
           if (fc == OTP_FC_FAIL_SOFT) {
-            if (!opt->ewindow2_size) {
-              /* ewindow2 mode not configured */
+            if (!opt->rwindow_size) {
+              /* rwindow mode not configured */
               otp_log(OTP_LOG_AUTH,
                       "%s: bad sync auth for [%s]: valid but in softfail "
                       " (%d/%d failed/max)", log_prefix, username,
@@ -363,24 +363,24 @@ sync_response:
 
             /*
              * User must enter two consecutive correct sync passcodes
-             * for ewindow2 softfail override.
+             * for rwindow softfail override.
              */
             if ((i == user_state.authpos + 1) &&
-                /* ... within ewindow2_delay seconds. */
-                (time(NULL) - user_state.authtime < opt->ewindow2_delay)) {
+                /* ... within rwindow_delay seconds. */
+                (time(NULL) - user_state.authtime < opt->rwindow_delay)) {
               /* This is the 2nd of two consecutive responses. */
               otp_log(OTP_LOG_AUTH,
-                      "%s: ewindow2 softfail override for [%s] at "
+                      "%s: rwindow softfail override for [%s] at "
                       "window position e:%d t:%d", log_prefix, username, i, j);
             } else {
               /* correct, but not consecutive or not soon enough */
 #if defined(FREERADIUS)
-              DEBUG("rlm_otp_token: auth: [%s] ewindow2 candidate "
+              DEBUG("rlm_otp_token: auth: [%s] rwindow candidate "
                     "at window position e:%d t:%d", username, i, j);
 #elif defined(PAM)
               if (opt->debug)
                 otp_log(OTP_LOG_DEBUG,
-                        "%s: auth: [%s] ewindow2 candidate "
+                        "%s: auth: [%s] rwindow candidate "
                         "at window position e:%d t:%d", log_prefix, username,
                         i, j);
 #endif
@@ -434,7 +434,7 @@ auth_done:
     user_state.authpos   = 0;
   } else {
     /*
-     * Note that we initialized authpos to -2 to accomodate ewindow2 test
+     * Note that we initialized authpos to -2 to accomodate rwindow test
      * (i == user_state.authpos + 1) above; if we'd only set it to -1,
      * after a failure authpos+1 == 0 and user can login with only one
      * correct passcode (viz. the zeroeth passcode).

@@ -86,8 +86,8 @@ typedef struct otp_option_t {
   char *resync_req;	/* keyword requesting resync for fast_sync mode    */
   int prepend_pin;	/* prepend (vs. append) PIN?                       */
   int ewindow_size;	/* sync mode event window size (right side value)  */
-  int ewindow2_size;	/* softfail override event window size             */
-  int ewindow2_delay;	/* softfail override max time delay                */
+  int rwindow_size;	/* softfail override event window size             */
+  int rwindow_delay;	/* softfail override max time delay                */
 #if defined(FREERADIUS)
   /* freeradius-specific items */
   int chal_delay;		/* max delay time for response, in seconds */
