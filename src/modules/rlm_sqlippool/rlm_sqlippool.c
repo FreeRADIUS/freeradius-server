@@ -179,7 +179,7 @@ static int sqlippool_expand(char * out, int outlen, const char * fmt, void * ins
 			/*
 			 * We check if we're inside an open brace.  If we are
 			 * then we assume this brace is NOT literal, but is
-			 * a closing brace and apply it 
+			 * a closing brace and apply it
 			 */
 			if((c == '}') && openbraces) {
 				openbraces--;
@@ -215,7 +215,7 @@ static int sqlippool_expand(char * out, int outlen, const char * fmt, void * ins
 				*q++ = *p;
 				break;
 			case 'P': /* pool name */
-				strNcpy(q, data->pool_name, freespace); 
+				strNcpy(q, data->pool_name, freespace);
 				q += strlen(q);
 				break;
 			case 'I': /* IP address */
@@ -232,7 +232,7 @@ static int sqlippool_expand(char * out, int outlen, const char * fmt, void * ins
 				break;
 			case 'J': /* lease duration */
 				sprintf(tmp, "%d", data->lease_duration);
-				strNcpy(q, tmp, freespace); 
+				strNcpy(q, tmp, freespace);
 				q += strlen(q);
 				break;
 			default:
@@ -715,8 +715,8 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 	else
 		data->pool_name = strdup("ippool");
 
-	if ( !(data->sql_inst = (SQL_INST *) (find_module_instance(data->sql_instance_name))->insthandle) )
-	{
+	data->sql_inst = (SQL_INST *)(find_module_instance(cf_section_find("modules"), data->sql_instance_name))->insthandle;
+	if (data->sql_inst == NULL) {
 		radlog(L_ERR, "sqlippool_instantiate: failed to find sql instance named %s", data->sql_instance_name);
 		free(data);
 		exit(0);
@@ -753,7 +753,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	 * run only if they match
 	 */
 	if ((vp = pairfind(request->config_items, PW_POOL_NAME)) != NULL) {
-		if (data->pool_name == NULL || strcmp(data->pool_name, vp->strvalue) != 0) {
+		if (data->pool_name == NULL || strcmp(data->pool_name, vp->vp_strvalue) != 0) {
 			DEBUG("rlm_sqlippool: pool_name does not match");
 			return RLM_MODULE_NOOP;
 		}
@@ -800,7 +800,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	DEBUG("rlm_sqlippool: ip=[%s] len=%d", allocation, allocation_len);
 
 	if (allocation_len == 0)
-	{	
+	{
 		/*
 		 * COMMIT
 		 */
@@ -1074,7 +1074,7 @@ static int sqlippool_accounting_off(void * instance, REQUEST * request)
 
 /*
  *	Check for an Accounting-Stop
- *	If we find one and we have allocated an IP to this nas/port combination, deallocate it.	
+ *	If we find one and we have allocated an IP to this nas/port combination, deallocate it.
  */
 static int sqlippool_accounting(void * instance, REQUEST * request)
 {
@@ -1169,10 +1169,11 @@ static int sqlippool_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_sqlippool = {
-	"SQL IP Pool",	
+	RLM_MODULE_INIT,
+	"sqlippool",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* initialization */
 	sqlippool_instantiate,		/* instantiation */
+	sqlippool_detach,		/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,			/* authorization */
@@ -1182,7 +1183,5 @@ module_t rlm_sqlippool = {
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
 		sqlippool_postauth	/* post-auth */
-	},
-	sqlippool_detach,		/* detach */
-	NULL,				/* destroy */
+	}
 };
