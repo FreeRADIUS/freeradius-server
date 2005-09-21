@@ -29,6 +29,7 @@ static const char rcsid[] = "$Id$";
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "otp.h"
 #include "otp_cardops.h"
@@ -75,6 +76,8 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
 
   otp_user_info_t	user_info  = { .cardops = NULL };
   otp_user_state_t	user_state = { .locked = 0 };
+
+  time_t now = time(NULL);
 
   /* sanity */
   if (!challenge) {
@@ -186,7 +189,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
     fcount = user_state.failcount - opt->softfail;
     when   = user_state.authtime +
              (fcount > 5 ? 32 * 60 : (1 << fcount) * 60);
-    if (time(NULL) < when)
+    if (now < when)
       fc = OTP_FC_FAIL_SOFT;
   }
 
@@ -260,7 +263,7 @@ async_response:
         goto auth_done;
       }
 #ifdef FREERADIUS
-      if (time(NULL) - user_state.authtime < opt->chal_delay) {
+      if (now - user_state.authtime < opt->chal_delay) {
         otp_log(OTP_LOG_AUTH, "%s: bad async auth for [%s]: valid but too soon",
                 log_prefix, username);
         rc = OTP_RC_MAXTRIES;
@@ -367,7 +370,7 @@ sync_response:
              */
             if ((j == user_state.authpos + 1) &&
                 /* ... within rwindow_delay seconds. */
-                (time(NULL) - user_state.authtime < opt->rwindow_delay)) {
+                (now - user_state.authtime < opt->rwindow_delay)) {
               /* This is the 2nd of two consecutive responses. */
               otp_log(OTP_LOG_AUTH,
                       "%s: rwindow softfail override for [%s] at "
@@ -443,7 +446,7 @@ auth_done:
       user_state.failcount--;
     user_state.authpos = authpos;
   }
-  user_state.authtime = time(NULL);
+  user_state.authtime = now;
   user_state.updated = 1;
 
 auth_done_service_err:	/* exit here for system errors */
