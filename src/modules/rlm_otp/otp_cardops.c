@@ -84,9 +84,8 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
              cmpfunc_t cmpfunc, void *data,
              const char *log_prefix)
 {
-  int	rc, nmatch;
-  int	i = 0, j = 0;	/* must initialize for async auth path */
-  int	k;
+  int	rc, nmatch, i;
+  int	e = 0, t = 0;	/* must initialize for async auth path */
   int	fc = OTP_FC_FAIL_NONE;	/* failcondition */
 
   char	csd[OTP_MAX_CSD_LEN + 1]; /* working copy of csd */
@@ -130,10 +129,10 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   user_info.username = username;
 
   /* Find the correct cardops module. */
-  for (k = 0; otp_cardops[k].prefix; i++) {
-    if (!strncasecmp(otp_cardops[k].prefix, user_info.card,
-                     otp_cardops[k].prefix_len)) {
-      user_info.cardops = &otp_cardops[k];
+  for (i = 0; otp_cardops[i].prefix; i++) {
+    if (!strncasecmp(otp_cardops[i].prefix, user_info.card,
+                     otp_cardops[i].prefix_len)) {
+      user_info.cardops = &otp_cardops[i];
       break;
     }
   }
@@ -325,8 +324,8 @@ sync_response:
     (void) strcpy(challenge, user_state.challenge);
 
     /* Test each sync response in the window. */
-    for (i = 0; i <= (user_info.featuremask & OTP_CF_TW) * 2; ++i) {
-      for (j = 0; j <= end; ++j) {
+    for (t = 0; t <= (user_info.featuremask & OTP_CF_TW) * 2; ++t) {
+      for (e = 0; e <= end; ++e) {
         /* Calculate sync response. */
         if (user_info.cardops->response(&user_info, csd, challenge,
                                         &e_response[pin_offset],
@@ -334,7 +333,7 @@ sync_response:
           otp_log(OTP_LOG_ERR,
                   "%s: unable to calculate sync response "
                   "t:%d e:%d for [%s], to challenge %s",
-                  log_prefix, i, j, username, challenge);
+                  log_prefix, t, e, username, challenge);
           rc = OTP_RC_SERVICE_ERR;
           goto auth_done_service_err;
           /* NB: state not updated. */
@@ -342,13 +341,13 @@ sync_response:
         /* NOTE: We do not display the PIN. */
 #if defined(FREERADIUS)
         DEBUG("rlm_otp_token: auth: [%s], sync challenge t:%d e:%d %s, "
-              "expecting response %s", username, i, j, challenge,
+              "expecting response %s", username, t, e, challenge,
               &e_response[pin_offset]);
 #elif defined(PAM)
         if (opt->debug)
           otp_log(OTP_LOG_DEBUG, "%s: [%s], sync challenge t:%d e:%d %s, "
                                  "expecting response %s",
-                  log_prefix, username, i, j,
+                  log_prefix, username, t, e,
                   challenge, &e_response[pin_offset]);
 #endif
 
@@ -389,24 +388,24 @@ sync_response:
              * User must enter two consecutive correct sync passcodes
              * for rwindow softfail override.
              */
-            if (isconsecutive(&user_state, opt, j, now)) {
+            if (isconsecutive(&user_state, opt, e, now)) {
               /* This is the 2nd of two consecutive responses. */
               otp_log(OTP_LOG_AUTH,
                       "%s: rwindow softfail override for [%s] at "
-                      "window position t:%d e:%d", log_prefix, username, i, j);
+                      "window position t:%d e:%d", log_prefix, username, t, e);
             } else {
               /* correct, but not consecutive or not soon enough */
 #if defined(FREERADIUS)
               DEBUG("rlm_otp_token: auth: [%s] rwindow candidate "
-                    "at window position t:%d e:%d", username, i, j);
+                    "at window position t:%d e:%d", username, t, e);
 #elif defined(PAM)
               if (opt->debug)
                 otp_log(OTP_LOG_DEBUG,
                         "%s: auth: [%s] rwindow candidate "
                         "at window position t:%d e:%d", log_prefix, username,
-                        i, j);
+                        t, e);
 #endif
-              authpos = j;
+              authpos = e;
               rc = OTP_RC_AUTH_ERR;
               goto auth_done;
             }
@@ -420,11 +419,11 @@ sync_response:
         } /* if (passcode is valid) */
 
         /* Get next challenge (extra work at end of loop; TODO: fix). */
-        if (user_info.cardops->challenge(&user_info, i,
+        if (user_info.cardops->challenge(&user_info, t,
                                          challenge, log_prefix) != 0) {
           otp_log(OTP_LOG_ERR,
                   "%s: unable to get sync challenge t:%d e:%d for [%s]",
-                  log_prefix, i, j, username);
+                  log_prefix, t, e, username);
           rc = OTP_RC_SERVICE_ERR;
           goto auth_done_service_err;
           /* NB: state not updated. */
@@ -440,11 +439,11 @@ auth_done:
   if (rc == OTP_RC_OK) {
     if (resync) {
       /* Resync the card. */
-      if (user_info.cardops->challenge(&user_info, i,
+      if (user_info.cardops->challenge(&user_info, t,
                                        challenge, log_prefix) != 0) {
         otp_log(OTP_LOG_ERR, "%s: unable to get sync challenge "
                              "t:%d e:%d for [%s] (for resync)",
-                log_prefix, i, j, username);
+                log_prefix, t, e, username);
         rc = OTP_RC_SERVICE_ERR;
         goto auth_done_service_err;
         /* NB: state not updated. */
