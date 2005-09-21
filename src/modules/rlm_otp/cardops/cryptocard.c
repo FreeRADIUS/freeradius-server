@@ -108,41 +108,36 @@ __attribute__ ((unused))
  * Returns 0 on success, non-zero otherwise.
  */
 static int
-cryptocard_challenge(const otp_user_info_t *user_info, unsigned int ewin,
+cryptocard_challenge(const otp_user_info_t *user_info,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                     int twin,
+                     unsigned twin,
                      char challenge[OTP_MAX_CHALLENGE_LEN + 1],
                      const char *log_prefix)
 {
   unsigned char output[8];
-  int i, rc = 0;
+  int i;
 
   /* CRYPTOCard sync challenges are always 8 bytes. */
   if (strlen(challenge) != 8)
     return -1;
 
-  /* iterate ewin times on the challenge */
-  while (ewin--) {
-    if ((rc = otp_x99_mac(challenge, 8, output, user_info->keyblock,
-                          log_prefix)) == 0) {
-      /* convert the mac into the next challenge */
-      for (i = 0; i < 8; ++i) {
-        output[i] &= 0x0f;
-        if (output[i] > 9)
-          output[i] -= 10;
-        output[i] |= 0x30;
-      }
-      (void) memcpy(challenge, output, 8);
-      challenge[8] = '\0';
-    } else {
-      /* something went wrong */
-      break;
-    }
-  }
+  /* run x99 once on the challenge */
+  if (otp_x99_mac(challenge, 8, output, user_info->keyblock, log_prefix))
+    return -1;
 
-  return rc;
+  /* convert the mac into the next challenge */
+  for (i = 0; i < 8; ++i) {
+    output[i] &= 0x0f;
+    if (output[i] > 9)
+      output[i] -= 10;
+    output[i] |= 0x30;
+  }
+  (void) memcpy(challenge, output, 8);
+  challenge[8] = '\0';
+
+  return 0;
 }
 
 

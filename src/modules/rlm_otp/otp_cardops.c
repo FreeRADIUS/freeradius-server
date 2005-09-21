@@ -398,7 +398,7 @@ sync_response:
         } /* if (passcode is valid) */
 
         /* Get next challenge (extra work at end of loop; TODO: fix). */
-        if (user_info.cardops->challenge(&user_info, 1, j,
+        if (user_info.cardops->challenge(&user_info, j,
                                          challenge, log_prefix) != 0) {
           otp_log(OTP_LOG_ERR,
                   "%s: unable to get sync challenge e:%d t:%d for [%s]",
@@ -418,7 +418,7 @@ auth_done:
   if (rc == OTP_RC_OK) {
     if (resync) {
       /* Resync the card. */
-      if (user_info.cardops->challenge(&user_info, 1, 0,
+      if (user_info.cardops->challenge(&user_info, 0,
                                        challenge, log_prefix) != 0) {
         otp_log(OTP_LOG_ERR, "%s: unable to get sync challenge "
                              "e:%d t:%d for [%s] (for resync)",
