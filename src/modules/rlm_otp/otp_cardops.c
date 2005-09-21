@@ -38,6 +38,25 @@ static const char rcsid[] = "$Id$";
 cardops_t otp_cardops[OTP_MAX_VENDORS];	/* cardops objects */
 int otp_num_cardops = 0;		/* number of cardops modules loaded */
 
+static int isconsecutive(const otp_user_state_t *, const otp_option_t *,
+                         int, time_t);
+
+/*
+ * Helper function to determine if two authentications are consecutive.
+ * user_state contains the previous auth position, ewin and twin the current.
+ * Returns 1 on success (consecutive), 0 otherwise.
+ */
+static int
+isconsecutive(const otp_user_state_t *user_state, const otp_option_t *opt,
+              int ewin, time_t now)
+{
+  if ((ewin == user_state->authpos + 1) &&
+      ((uint32_t) now - user_state->authtime < opt->rwindow_delay))
+    return 1;
+  else
+    return 0;
+}
+
 /*
  * Test for passcode validity.
  *
@@ -368,9 +387,7 @@ sync_response:
              * User must enter two consecutive correct sync passcodes
              * for rwindow softfail override.
              */
-            if ((j == user_state.authpos + 1) &&
-                /* ... within rwindow_delay seconds. */
-                (now - user_state.authtime < opt->rwindow_delay)) {
+            if (isconsecutive(&user_state, opt, j, now)) {
               /* This is the 2nd of two consecutive responses. */
               otp_log(OTP_LOG_AUTH,
                       "%s: rwindow softfail override for [%s] at "
