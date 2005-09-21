@@ -37,6 +37,12 @@
 #define OTP_CF_R8		0x01 << 6  /* 8 digit response       */
 #define OTP_CF_R7		0x01 << 7  /* 7 digit response       */
 #define OTP_CF_R6		0x01 << 8  /* 6 digit response       */
+/* nominal twindow (TRI-D) */
+#define OTP_CF_TW0		0x01 << 9  /* twindow 2^0            */
+#define OTP_CF_TW1		0x01 << 10 /* twindow 2^1            */
+#define OTP_CF_TW2		0x01 << 11 /* twindow 2^2            */
+#define OTP_CF_TW3		0x01 << 12 /* twindow 2^3            */
+#define OTP_CF_TW		(OTP_CF_TW0|OTP_CF_TW1|OTP_CF_TW2|OTP_CF_TW3)
 
 #define OTP_CF_MAX		0x01 << 31 /* MAX placeholder        */
 
