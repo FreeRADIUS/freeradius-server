@@ -84,7 +84,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
              cmpfunc_t cmpfunc, void *data,
              const char *log_prefix)
 {
-  int	rc, nmatch, i, j;
+  int	rc, nmatch;
   int	i = 0, j = 0;	/* must initialize for async auth path */
   int	k;
   int	fc = OTP_FC_FAIL_NONE;	/* failcondition */
