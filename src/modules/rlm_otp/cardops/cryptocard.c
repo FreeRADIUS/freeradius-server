@@ -90,6 +90,10 @@ cryptocard_nullstate(
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
+                      const otp_option_t *opt,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
                       const otp_user_info_t *user_info,
 #ifdef __GNUC__
 __attribute__ ((unused))

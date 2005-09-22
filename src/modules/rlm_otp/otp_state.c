@@ -27,6 +27,7 @@
 #endif
 
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
@@ -231,7 +232,7 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
   p += 1;	/* beginning of state */
 
   /* version */
-  if (!(p[0] == '2' && p[1] == ':')) {
+  if (!(p[0] == '3' && p[1] == ':')) {
     otp_log(OTP_LOG_ERR, "%s: state data unacceptable version for [%s]",
             log_prefix, username);
     (void) otp_state_put(username, user_state, log_prefix);
@@ -296,6 +297,38 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
+  p = q;	/* authewin */
+
+  /* extract authewin */
+  if ((q = strchr(p, ':')) == NULL) {
+    otp_log(OTP_LOG_ERR, "%s: state data invalid authewin for [%s]",
+            log_prefix, username);
+    (void) otp_state_put(username, user_state, log_prefix);
+    return -1;
+  }
+  *q++ = '\0';
+  if (sscanf(p, "%d", &user_state->authewin) != 1) {
+    otp_log(OTP_LOG_ERR, "%s: state data invalid authewin for [%s]",
+            log_prefix, username);
+    (void) otp_state_put(username, user_state, log_prefix);
+    return -1;
+  }
+  p = q;	/* authtwin */
+
+  /* extract authtwin */
+  if ((q = strchr(p, ':')) == NULL) {
+    otp_log(OTP_LOG_ERR, "%s: state data invalid authtwin for [%s]",
+            log_prefix, username);
+    (void) otp_state_put(username, user_state, log_prefix);
+    return -1;
+  }
+  *q++ = '\0';
+  if (sscanf(p, "%d", &user_state->authtwin) != 1) {
+    otp_log(OTP_LOG_ERR, "%s: state data invalid authtwin for [%s]",
+            log_prefix, username);
+    (void) otp_state_put(username, user_state, log_prefix);
+    return -1;
+  }
   p = q;	/* authtime */
 
   /* extract authtime */
@@ -306,18 +339,8 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
     return -1;
   }
   *q++ = '\0';
-  /* breaks if time_t is not long */
-  if (sscanf(p, "%ld", &user_state->authtime) != 1) {
+  if (sscanf(p, "%" SCNu32, &user_state->authtime) != 1) {
     otp_log(OTP_LOG_ERR, "%s: state data invalid authtime for [%s]",
-            log_prefix, username);
-    (void) otp_state_put(username, user_state, log_prefix);
-    return -1;
-  }
-  p = q;	/* authpos */
-
-  /* extract authpos */
-  if (sscanf(p, "%d", &user_state->authpos) != 1) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid authpos for [%s]",
             log_prefix, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
@@ -341,10 +364,11 @@ otp_state_unparse(char *buf, size_t buflen, const char *username,
     return -1;
 
   if (user_state->updated)
-    (void) snprintf(buf, buflen, "P %s 2:%s:%s:%s:%u:%ld:%d",
-                    username, username, user_state->challenge,
-                    user_state->csd, user_state->failcount,
-                    user_state->authtime, user_state->authpos);
+    (void) snprintf(buf, buflen, "P %s 3:%s:%s:%s:%u:%d:%d:%" PRIu32 ":",
+                    username, username, user_state->challenge, user_state->csd,
+                    user_state->failcount,
+                    user_state->authewin, user_state->authtwin,
+                    user_state->authtime);
   else
     (void) snprintf(buf, buflen, "P %s", username);
   buf[buflen - 1] = '\0';

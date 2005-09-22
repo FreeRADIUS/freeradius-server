@@ -43,6 +43,11 @@
 #define OTP_CF_TW2		0x01 << 11 /* twindow 2^2            */
 #define OTP_CF_TW3		0x01 << 12 /* twindow 2^3            */
 #define OTP_CF_TW		(OTP_CF_TW0|OTP_CF_TW1|OTP_CF_TW2|OTP_CF_TW3)
+/* force rwindow for event+time sync cards (TRI-D) */
+#define OTP_CF_FRW0		0x01 << 13 /* force event window 2^0 */
+#define OTP_CF_FRW1		0x01 << 14 /* force event window 2^1 */
+#define OTP_CF_FRW2		0x01 << 15 /* force event window 2^2 */
+#define OTP_CF_FRW		(OTP_CF_FRW0|OTP_CF_FRW1|OTP_CF_FRW2)
 
 #define OTP_CF_MAX		0x01 << 31 /* MAX placeholder        */
 
@@ -55,7 +60,8 @@ typedef struct cardops_t {
 
   int (*name2fm)(const char *, uint32_t *);
   int (*keystring2keyblock)(const char *, unsigned char []);
-  int (*nullstate)(const otp_user_info_t *, otp_user_state_t *, const char *);
+  int (*nullstate)(const otp_option_t *, const otp_user_info_t *,
+                   otp_user_state_t *, const char *);
   int (*challenge)(const otp_user_info_t *, unsigned, char [], const char *);
   int (*response)(otp_user_info_t *, char *, const char *,
                   char [OTP_MAX_RESPONSE_LEN + 1], const char *);

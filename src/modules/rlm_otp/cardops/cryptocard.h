@@ -40,8 +40,8 @@
 
 static int cryptocard_name2fm(const char *, uint32_t *);
 static int cryptocard_keystring2keyblock(const char *, unsigned char []);
-static int cryptocard_nullstate(const otp_user_info_t *, otp_user_state_t *,
-                                const char *);
+static int cryptocard_nullstate(const otp_option_t *, const otp_user_info_t *,
+                                otp_user_state_t *, const char *);
 static int cryptocard_challenge(const otp_user_info_t *, unsigned,
                                 char [OTP_MAX_CHALLENGE_LEN + 1], const char *);
 static int cryptocard_response(otp_user_info_t *, char *, const char *,

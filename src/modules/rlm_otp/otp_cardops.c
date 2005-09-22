@@ -26,6 +26,7 @@
 
 static const char rcsid[] = "$Id$";
 
+#include <inttypes.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
@@ -38,20 +39,38 @@ static const char rcsid[] = "$Id$";
 cardops_t otp_cardops[OTP_MAX_VENDORS];	/* cardops objects */
 int otp_num_cardops = 0;		/* number of cardops modules loaded */
 
-static int isconsecutive(const otp_user_state_t *, const otp_option_t *,
-                         int, time_t);
+static int isconsecutive(const otp_option_t *, const otp_user_info_t *,
+                         const otp_user_state_t *, int, int, time_t);
 
 /*
  * Helper function to determine if two authentications are consecutive.
  * user_state contains the previous auth position, ewin and twin the current.
+ * rwindow is the size of the resync window, possibly forced by card
+ * capability; if so we use it to determine when to advance twin.
  * Returns 1 on success (consecutive), 0 otherwise.
  */
 static int
-isconsecutive(const otp_user_state_t *user_state, const otp_option_t *opt,
-              int ewin, time_t now)
+isconsecutive(const otp_option_t *opt, const otp_user_info_t *user_info,
+              const otp_user_state_t *user_state,
+              int twin, int ewin, time_t now)
 {
-  if ((ewin == user_state->authpos + 1) &&
-      ((uint32_t) now - user_state->authtime < opt->rwindow_delay))
+  int nextewin, nexttwin;
+  int frw = user_info->featuremask & OTP_CF_FRW;
+
+  /* we assume FRW implies ES && TS; all current cards work this way */
+  if (frw && user_state->authewin == frw) {
+    /* ewin already maxed, reset and advance twin */
+    nextewin = 0;
+    nexttwin = user_state->authtwin + 1;
+  } else {
+    nextewin = user_state->authewin + 1;
+    nexttwin = user_state->authtwin;
+  }
+
+  if ((ewin == nextewin) &&
+      (twin == nexttwin) &&
+      /* we might want to insert logging here someday */
+      ((uint32_t) now - user_state->authtime < (unsigned) opt->rwindow_delay))
     return 1;
   else
     return 0;
@@ -76,7 +95,7 @@ isconsecutive(const otp_user_state_t *user_state, const otp_option_t *opt,
  * should be resynced or if this is a one-off response.  (If challenge is
  * not supplied, this is sync mode response and the card is always resynced.)
  *
- * Returns one of the OTP_RC_* return codes.
+ * Returns one of the OTP_RC_* return codes.  challenge is overwritten.
  */
 int
 otp_pw_valid(const char *username, char *challenge, const char *passcode,
@@ -84,15 +103,16 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
              cmpfunc_t cmpfunc, void *data,
              const char *log_prefix)
 {
-  int	rc, nmatch, i;
-  int	e = 0, t = 0;	/* must initialize for async auth path */
-  int	fc = OTP_FC_FAIL_NONE;	/* failcondition */
+  int		rc, nmatch, i;
+  unsigned	e = 0, t = 0;	/* must initialize for async auth path */
+  int		fc;		/* failcondition */
 
   char	csd[OTP_MAX_CSD_LEN + 1]; /* working copy of csd */
     	/* expected response */
   char 	e_response[OTP_MAX_RESPONSE_LEN + OTP_MAX_PIN_LEN + 1];
   int	pin_offset = 0;	/* pin offset in e_response */
-  int	authpos = -2;	/* window pos of last success auth, or -2 */
+  int	authewin = -2;	/* ewindow pos of last success auth, or -2 */
+  int	authtwin = -2;	/* twindow pos of last success auth, or -2 */
 
   otp_user_info_t	user_info  = { .cardops = NULL };
   otp_user_state_t	user_state = { .locked = 0 };
@@ -174,7 +194,8 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
     goto auth_done_service_err;
   }
   if (user_state.nullstate) {
-    if (user_info.cardops->nullstate(&user_info, &user_state, log_prefix)) {
+    if (user_info.cardops->nullstate(opt, &user_info, &user_state,
+                                     log_prefix)) {
       otp_log(OTP_LOG_ERR, "%s: unable to set null state for [%s]",
               log_prefix, username);
       rc = OTP_RC_SERVICE_ERR;
@@ -188,8 +209,9 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   /* Set fc (failcondition). */
   if (opt->hardfail && user_state.failcount >= (unsigned) opt->hardfail) {
     fc = OTP_FC_FAIL_HARD;
-  } else if (opt->softfail && user_state.failcount >= (unsigned) opt->softfail){
-    time_t when;
+  } else if (opt->softfail &&
+             user_state.failcount >= (unsigned) opt->softfail) {
+    uint32_t when;
     int fcount;
 
     /*
@@ -205,12 +227,23 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
      * The advantage of a delay instead of a simple lockout is that an
      * attacker can't lock out a user as easily; the user need only wait
      * a bit before he can authenticate.
+     *
+     * Note that if the user waits for the delay period to expire, he
+     * is no longer in softfail and can only use ewindow, not rwindow.
      */
     fcount = user_state.failcount - opt->softfail;
-    when   = user_state.authtime +
-             (fcount > 5 ? 32 * 60 : (1 << fcount) * 60);
-    if (now < when)
+    /*
+     * when and authtime are uint32, but time is saved as int32,
+     * so this can't overflow
+     */
+    when = user_state.authtime +
+           (fcount > 5 ? 32 * 60 : (1 << fcount) * 60);
+    if ((uint32_t) now < when)
       fc = OTP_FC_FAIL_SOFT;
+    else
+      fc = OTP_FC_FAIL_NONE;
+  } else {
+    fc = OTP_FC_FAIL_NONE;
   }
 
 async_response:
@@ -283,7 +316,7 @@ async_response:
         goto auth_done;
       }
 #ifdef FREERADIUS
-      if (now - user_state.authtime < opt->chal_delay) {
+      if ((uint32_t) now - user_state.authtime < (unsigned) opt->chal_delay) {
         otp_log(OTP_LOG_AUTH, "%s: bad async auth for [%s]: valid but too soon",
                 log_prefix, username);
         rc = OTP_RC_MAXTRIES;
@@ -314,11 +347,21 @@ sync_response:
    * the currently acceptable window.
    */
   if ((user_info.featuremask & OTP_CF_SM) && opt->allow_sync) {
-    int end = opt->ewindow_size;
+    unsigned end, ewindow, rwindow;
 
-    /* Increase window for rwindow. */
-    if (opt->rwindow_size && fc == OTP_FC_FAIL_SOFT)
-      end = opt->rwindow_size;
+    if (user_info.featuremask & OTP_CF_FRW) {
+      /* force rwindow for e+t cards */
+      rwindow = user_info.featuremask & OTP_CF_FRW;
+      ewindow = 0; /* quiet compiler */
+    } else {
+      ewindow = opt->ewindow_size;
+      /* Increase window for softfail+rwindow. */
+      if (opt->rwindow_size && fc == OTP_FC_FAIL_SOFT)
+        rwindow = opt->rwindow_size;
+      else
+        rwindow = 0;
+    }
+    end = rwindow ? rwindow : ewindow;
 
     /* Setup initial challenge. */
     (void) strcpy(challenge, user_state.challenge);
@@ -371,10 +414,10 @@ sync_response:
           }
 
           /*
-           * rwindow_size logic
+           * rwindow logic
            */
           if (fc == OTP_FC_FAIL_SOFT) {
-            if (!opt->rwindow_size) {
+            if (!rwindow) {
               /* rwindow mode not configured */
               otp_log(OTP_LOG_AUTH,
                       "%s: bad sync auth for [%s]: valid but in softfail "
@@ -388,7 +431,7 @@ sync_response:
              * User must enter two consecutive correct sync passcodes
              * for rwindow softfail override.
              */
-            if (isconsecutive(&user_state, opt, e, now)) {
+            if (isconsecutive(opt, &user_info, &user_state, t, e, now)) {
               /* This is the 2nd of two consecutive responses. */
               otp_log(OTP_LOG_AUTH,
                       "%s: rwindow softfail override for [%s] at "
@@ -405,7 +448,8 @@ sync_response:
                         "at window position t:%d e:%d", log_prefix, username,
                         t, e);
 #endif
-              authpos = e;
+              authtwin = t;
+              authewin = e;
               rc = OTP_RC_AUTH_ERR;
               goto auth_done;
             }
@@ -418,7 +462,7 @@ sync_response:
 
         } /* if (passcode is valid) */
 
-        /* Get next challenge (extra work at end of loop; TODO: fix). */
+        /* Get next challenge (extra work at end of failing loop;TODO: fix). */
         if (user_info.cardops->challenge(&user_info, t,
                                          challenge, log_prefix) != 0) {
           otp_log(OTP_LOG_ERR,
@@ -452,19 +496,38 @@ auth_done:
       (void) strcpy(user_state.csd, csd);
     }
     user_state.failcount = 0;
-    user_state.authpos   = 0;
+    user_state.authewin  = 0;
+    user_state.authtwin  = 0;
+    user_state.authtime  = (int32_t) now;	/* cast prevents overflow */
   } else {
     /*
-     * Note that we initialized authpos to -2 to accomodate rwindow test
-     * (i == user_state.authpos + 1) above; if we'd only set it to -1,
-     * after a failure authpos+1 == 0 and user can login with only one
-     * correct passcode (viz. the zeroeth passcode).
+     * Note that we initialized auth[et]win to -2 to accomodate rwindow test
+     * (isconsecutive()) above; with authewin only (before we had authtwin),
+     * if we'd only set it to -1, after a failure and then consecutive test
+     * (isconsecutive()), authewin+1 = 0 and the user login with only one
+     * correct passcode (viz. the zeroeth passcode).  Now with authtwin that
+     * can't happen (authewin+1 = 0, but authtwin = -1) but it's worth
+     * documenting this.
      */
     if (++user_state.failcount == UINT_MAX)
       user_state.failcount--;
-    user_state.authpos = authpos;
+    user_state.authewin = authewin;
+    user_state.authtwin = authtwin;
+    /* authtime set to INT32_MAX by nullstate(); leave it to force softfail */
+    if (user_state.authtime != INT32_MAX)
+      user_state.authtime = (int32_t) now;	/* cast prevents overflow */
+    /*
+     * Note that we don't update the challenge.  Even for softfail (where
+     * we might have actually had a good auth), we want the challenge
+     * unchanged because we always start our sync loop at e:0 t:0 (and so
+     * challenge must stay as the 0'th challenge regardless of next valid
+     * authewin position, because the challenge() method can't return
+     * arbitrary event window positions).
+     *
+     * But we do update csd.  TODO: evaluate after implementing a csd card.
+     */
+    (void) strcpy(user_state.csd, csd);
   }
-  user_state.authtime = now;
   user_state.updated = 1;
 
 auth_done_service_err:	/* exit here for system errors */
