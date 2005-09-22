@@ -42,7 +42,14 @@ static const char rcsid[] = "$Id$";
  * Returns 0 on success, -1 on failure, rnd_data is filled in.
  */
 int
-otp_get_random(int fd, unsigned char *rnd_data, int req_bytes)
+otp_get_random(
+#ifdef FREERADIUS
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+#endif
+               int fd,
+               unsigned char *rnd_data, int req_bytes)
 {
   int bytes_read = 0;
 
