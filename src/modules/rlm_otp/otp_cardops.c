@@ -463,8 +463,8 @@ sync_response:
         } /* if (passcode is valid) */
 
         /* Get next challenge (extra work at end of failing loop;TODO: fix). */
-        if (user_info.cardops->challenge(&user_info, t,
-                                         challenge, log_prefix) != 0) {
+        if (user_info.cardops->challenge(&user_info, csd, challenge,
+                                         t, log_prefix) != 0) {
           otp_log(OTP_LOG_ERR,
                   "%s: unable to get sync challenge t:%d e:%d for [%s]",
                   log_prefix, t, e, username);
@@ -483,8 +483,8 @@ auth_done:
   if (rc == OTP_RC_OK) {
     if (resync) {
       /* Resync the card. */
-      if (user_info.cardops->challenge(&user_info, t,
-                                       challenge, log_prefix) != 0) {
+      if (user_info.cardops->challenge(&user_info, csd, challenge,
+                                       t, log_prefix) != 0) {
         otp_log(OTP_LOG_ERR, "%s: unable to get sync challenge "
                              "t:%d e:%d for [%s] (for resync)",
                 log_prefix, t, e, username);
@@ -528,10 +528,11 @@ auth_done:
     /*
      * Note that we don't update the challenge.  Even for softfail (where
      * we might have actually had a good auth), we want the challenge
-     * unchanged because we always start our sync loop at e:0 t:0 (and so
+     * unchanged because we always start our sync loop at e=0 t=0 (and so
      * challenge must stay as the 0'th challenge regardless of next valid
      * authewin position, because the challenge() method can't return
-     * arbitrary event window positions).
+     * arbitrary event window positions--since we start at e=0 the challenge
+     * must be the 0th challenge, i.e. unchanged).
      *
      * For similar reasons, we don't update csd.
      */

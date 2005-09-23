@@ -116,8 +116,12 @@ cryptocard_challenge(const otp_user_info_t *user_info,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                     unsigned twin,
+                     const char csd[OTP_MAX_CSD_LEN + 1],
                      char challenge[OTP_MAX_CHALLENGE_LEN + 1],
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                     unsigned twin,
                      const char *log_prefix)
 {
   unsigned char output[8];

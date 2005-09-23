@@ -62,7 +62,8 @@ typedef struct cardops_t {
   int (*keystring2keyblock)(const char *, unsigned char []);
   int (*nullstate)(const otp_option_t *, const otp_user_info_t *,
                    otp_user_state_t *, const char *);
-  int (*challenge)(const otp_user_info_t *, unsigned, char [], const char *);
+  int (*challenge)(const otp_user_info_t *, const char [], char [], unsigned,
+                   const char *);
   int (*response)(otp_user_info_t *, char *, const char *,
                   char [OTP_MAX_RESPONSE_LEN + 1], const char *);
   int (*updatecsd)(const otp_user_info_t *, otp_user_state_t *, const char *);
