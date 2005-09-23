@@ -369,7 +369,21 @@ sync_response:
     /* Test each sync response in the window. */
     for (t = 0; t <= (user_info.featuremask & OTP_CF_TW) * 2; ++t) {
       for (e = 0; e <= end; ++e) {
-        /* Calculate sync response. */
+        /*
+         * Calculate sync response.
+         *
+         * For event synchronous modes, we can never go backwards (the
+         * challenge() method can only walk forwards), so there is an
+         * implicit guarantee that we'll never get a response matching
+         * an event in the past.
+         *
+         * But for time synchronous modes, challenge() can walk backwards,
+         * in order to accomodate clock drift.  The cardops object must
+         * not return a valid response for a time earlier than one at
+         * which the user already authenticated.  This can be done either
+         * with challenge() (never return a challenge that is too early)
+         * or response() (never validate a challenge that is too early).
+         */
         if (user_info.cardops->response(&user_info, csd, challenge,
                                         &e_response[pin_offset],
                                         log_prefix) != 0) {
@@ -410,13 +424,10 @@ sync_response:
                     " (%d/%d failed/max)", log_prefix, username,
                     user_state.failcount, opt->hardfail);
             rc = OTP_RC_MAXTRIES;
-            goto auth_done;
-          }
-
-          /*
-           * rwindow logic
-           */
-          if (fc == OTP_FC_FAIL_SOFT) {
+          } else if (fc == OTP_FC_FAIL_SOFT) {
+            /*
+             * rwindow logic
+             */
             if (!rwindow) {
               /* rwindow mode not configured */
               otp_log(OTP_LOG_AUTH,
@@ -436,6 +447,7 @@ sync_response:
               otp_log(OTP_LOG_AUTH,
                       "%s: rwindow softfail override for [%s] at "
                       "window position t:%d e:%d", log_prefix, username, t, e);
+              rc = OTP_RC_OK;
             } else {
               /* correct, but not consecutive or not soon enough */
 #if defined(FREERADIUS)
@@ -451,13 +463,24 @@ sync_response:
               authtwin = t;
               authewin = e;
               rc = OTP_RC_AUTH_ERR;
-              goto auth_done;
             }
-          } /* if (in softfail) */
+          } else {
+            /* normal sync mode auth */
+            rc = OTP_RC_OK;
+          } /* else (!hardfail && !softfail) */
 
-          /* Authenticated in sync mode. */
-          rc = OTP_RC_OK;
+          /* force resync; this only has an effect if (rc == OTP_RC_OK) */
           resync = 1;
+          /* update csd on successful auth or rwindow candidate */
+          (void) strcpy(user_state.csd, csd);
+          if (user_info.cardops->updatecsd(&user_info, &user_state,
+                                           log_prefix) != 0) {
+            otp_log(OTP_LOG_ERR, "%s: unable to update csd for [%s]",
+                    log_prefix, username);
+            rc = OTP_RC_SERVICE_ERR;
+            goto auth_done_service_err;
+            /* NB: state not updated. */
+          }
           goto auth_done;
 
         } /* if (passcode is valid) */
@@ -482,7 +505,7 @@ sync_response:
 auth_done:
   if (rc == OTP_RC_OK) {
     if (resync) {
-      /* Resync the card. */
+      /* Resync the card (update the challenge). */
       if (user_info.cardops->challenge(&user_info, csd, challenge,
                                        t, log_prefix) != 0) {
         otp_log(OTP_LOG_ERR, "%s: unable to get sync challenge "
@@ -493,17 +516,7 @@ auth_done:
         /* NB: state not updated. */
       }
       (void) strcpy(user_state.challenge, challenge);
-    }
-    /* we always update csd on a successful auth */
-    (void) strcpy(user_state.csd, csd);
-    if (user_info.cardops->updatecsd(&user_info, &user_state,
-                                     log_prefix) != 0) {
-      otp_log(OTP_LOG_ERR, "%s: unable to update csd for [%s]",
-              log_prefix, username);
-      rc = OTP_RC_SERVICE_ERR;
-      goto auth_done_service_err;
-      /* NB: state not updated. */
-    }
+    } /* if (resync) */
     user_state.failcount = 0;
     user_state.authewin  = 0;
     user_state.authtwin  = 0;
@@ -533,10 +546,8 @@ auth_done:
      * authewin position, because the challenge() method can't return
      * arbitrary event window positions--since we start at e=0 the challenge
      * must be the 0th challenge, i.e. unchanged).
-     *
-     * For similar reasons, we don't update csd.
      */
-  }
+  } /* else (rc != OTP_RC_OK) */
   user_state.updated = 1;
 
 auth_done_service_err:	/* exit here for system errors */
