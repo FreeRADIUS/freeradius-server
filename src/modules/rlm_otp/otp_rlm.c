@@ -194,9 +194,24 @@ otp_instantiate(CONF_SECTION *conf, void **instance)
             "(or 0 == infinite), using default of 0");
   }
 
+  if (!opt->hardfail && opt->hardfail <= opt->softfail) {
+    /*
+     * This is noise if the admin leaves softfail alone, so it gets
+     * the default value of 5, and sets hardfail <= to that ... but
+     * in practice that will never happen.  Anyway, it is easily
+     * overcome with a softfail setting of 0.
+     *
+     * This is because we can't tell the difference between a default
+     * [softfail] value and an admin-configured one.
+     */
+    otp_log(OTP_LOG_ERR, "hardfail (%d) is less than softfail (%d), "
+                         "effectively disabling softfail",
+            opt->hardfail, opt->softfail);
+  }
+
   if (opt->fast_sync && !opt->allow_sync) {
     opt->fast_sync = 0;
-    otp_log(OTP_LOG_INFO,
+    otp_log(OTP_LOG_ERR,
             "fast_sync is yes, but allow_sync is no; disabling fast_sync");
   }
 
