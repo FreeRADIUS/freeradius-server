@@ -1030,7 +1030,8 @@ int read_mainconfig(int reload)
 	/*
 	 *	Read the list of listeners.
 	 */
-	snprintf(buffer, sizeof(buffer), "%.200s/%s", radius_dir, mainconfig.radiusd_conf);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
+		 radius_dir, mainconfig.radiusd_conf);
 	if (listen_init(buffer, &listener) < 0) {
 		exit(1);
 	}

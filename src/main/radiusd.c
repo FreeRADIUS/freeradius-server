@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 			case 'n':
 				if ((strchr(optarg, '/') != NULL) ||
 				    (strchr(optarg, '.') != NULL) ||
-				    (strlen(optarg) > 256)) usage(1);
+				    (strlen(optarg) > 45)) usage(1);
 
 				snprintf(buffer, sizeof(buffer), "%s.conf",
 					 optarg);
