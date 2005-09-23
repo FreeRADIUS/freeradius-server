@@ -46,7 +46,7 @@ otp_hotp_mac(const unsigned char counter[8], unsigned char output[7],
 {
   unsigned char hmac[EVP_MAX_MD_SIZE];	/* >=20 */
   int hmac_len = 0;
-  uint32_t p;
+  uint32_t dbc;		/* "dynamic binary code" from HOTP draft */
 
   /* 1. hmac */
   if (!HMAC(EVP_sha1(), keyblock, key_len, counter, 8, hmac, &hmac_len) ||
@@ -61,14 +61,14 @@ otp_hotp_mac(const unsigned char counter[8], unsigned char output[7],
 
     offset = hmac[19] & 0x0F;
     /* we can't just cast hmac[offset] because of alignment and endianness */
-    p = (hmac[offset] & 0x7F) << 24 |
-        hmac[offset + 1]      << 16 |
-        hmac[offset + 2]      << 8  |
-        hmac[offset + 3];
+    dbc = (hmac[offset] & 0x7F) << 24 |
+          hmac[offset + 1]      << 16 |
+          hmac[offset + 2]      << 8  |
+          hmac[offset + 3];
   }
 
   /* 3. int conversion and modulus (as string) */
-  (void) sprintf(output, "%06lu", p % 1000000L);
+  (void) sprintf(output, "%06lu", dbc % 1000000L);
 
   return 0;
 }
