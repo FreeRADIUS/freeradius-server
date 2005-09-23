@@ -200,6 +200,7 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "radiusd: -l %s is unsupported.  Use log_destination in radiusd.conf\n", optarg);
 					exit(1);
 				}
+				if (radlog_dir) free(radlog_dir);
 				radlog_dir = strdup(optarg);
 				break;
 
@@ -215,6 +216,8 @@ int main(int argc, char *argv[])
 
 				snprintf(buffer, sizeof(buffer), "%s.conf",
 					 optarg);
+				if (mainconfig.radiusd_conf)
+					free(mainconfig.radiusd_conf);
 				mainconfig.radiusd_conf = strdup(buffer);
 				break;
 
