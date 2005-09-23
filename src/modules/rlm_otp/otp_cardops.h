@@ -65,6 +65,7 @@ typedef struct cardops_t {
   int (*challenge)(const otp_user_info_t *, unsigned, char [], const char *);
   int (*response)(otp_user_info_t *, char *, const char *,
                   char [OTP_MAX_RESPONSE_LEN + 1], const char *);
+  int (*updatecsd)(const otp_user_info_t *, otp_user_state_t *, const char *);
 } cardops_t;
 #define OTP_MAX_VENDORS 16
 extern cardops_t otp_cardops[OTP_MAX_VENDORS];

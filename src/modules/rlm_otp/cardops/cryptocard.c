@@ -200,6 +200,26 @@ __attribute__ ((unused))
 }
 
 
+/* no csd so just return success */
+static int
+cryptocard_updatecsd(
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                     const otp_user_info_t *user_info,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                     otp_user_state_t *user_state,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                     const char *log_prefix)
+{
+  return 0;
+}
+
+
 /* cardops instance */
 static cardops_t cryptocard_cardops = {
   .prefix		= "cryptocard",
@@ -209,7 +229,8 @@ static cardops_t cryptocard_cardops = {
   .keystring2keyblock	= cryptocard_keystring2keyblock,
   .nullstate		= cryptocard_nullstate,
   .challenge		= cryptocard_challenge,
-  .response		= cryptocard_response
+  .response		= cryptocard_response,
+  .updatecsd		= cryptocard_updatecsd
 };
 
 /* constructor */

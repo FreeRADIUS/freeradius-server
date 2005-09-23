@@ -493,7 +493,16 @@ auth_done:
         /* NB: state not updated. */
       }
       (void) strcpy(user_state.challenge, challenge);
-      (void) strcpy(user_state.csd, csd);
+    }
+    /* we always update csd on a successful auth */
+    (void) strcpy(user_state.csd, csd);
+    if (user_info.cardops->updatecsd(&user_info, &user_state,
+                                     log_prefix) != 0) {
+      otp_log(OTP_LOG_ERR, "%s: unable to update csd for [%s]",
+              log_prefix, username);
+      rc = OTP_RC_SERVICE_ERR;
+      goto auth_done_service_err;
+      /* NB: state not updated. */
     }
     user_state.failcount = 0;
     user_state.authewin  = 0;
@@ -524,9 +533,8 @@ auth_done:
      * authewin position, because the challenge() method can't return
      * arbitrary event window positions).
      *
-     * But we do update csd.  TODO: evaluate after implementing a csd card.
+     * For similar reasons, we don't update csd.
      */
-    (void) strcpy(user_state.csd, csd);
   }
   user_state.updated = 1;
 
