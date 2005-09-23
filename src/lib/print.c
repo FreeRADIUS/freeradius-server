@@ -105,11 +105,12 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 {
 	DICT_VALUE  *v;
 	char        buf[1024];
-	const char  *a;
+	const char  *a = NULL;
+	size_t      len;
 	time_t      t;
 	struct tm   s_tm;
 
-	out[0] = 0;
+	out[0] = '\0';
 	if (!vp) return 0;
 
 	switch (vp->type) {
@@ -162,13 +163,13 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 		case PW_TYPE_DATE:
 			t = vp->lvalue;
 			if (delimitst) {
-			  strftime(buf, sizeof(buf), "\"%b %e %Y %H:%M:%S %Z\"",
-				   localtime_r(&t, &s_tm));
+			  len = strftime(buf, sizeof(buf), "\"%b %e %Y %H:%M:%S %Z\"",
+					 localtime_r(&t, &s_tm));
 			} else {
-			  strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z",
-				   localtime_r(&t, &s_tm));
+			  len = strftime(buf, sizeof(buf), "%b %e %Y %H:%M:%S %Z",
+					 localtime_r(&t, &s_tm));
 			}
-			a = buf;
+			if (len > 0) a = buf;
 			break;
 		case PW_TYPE_IPADDR:
 			a = inet_ntop(AF_INET, &(vp->lvalue),
@@ -213,17 +214,17 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			a = inet_ntop(AF_INET6, &addr, buf, sizeof(buf));
 			if (a) {
 				char *p = buf + strlen(buf);
-				
 				sprintf(p, "/%u", (unsigned int) vp->vp_strvalue[1]);
 			}
 		}
 			break;
 
 		default:
-			a = 0;
+			a = "UNKNOWN-TYPE";
 			break;
 	}
-	strNcpy(out, a?a:"UNKNOWN-TYPE", outlen);
+
+	if (a != NULL) strlcpy(out, a, outlen);
 
 	return strlen(out);
 }

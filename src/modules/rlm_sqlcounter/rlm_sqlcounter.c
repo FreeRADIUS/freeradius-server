@@ -152,21 +152,21 @@ static int sql_escape_func(char *out, int outlen, const char *in)
 
 static int find_next_reset(rlm_sqlcounter_t *data, time_t timeval)
 {
-	int ret=0;
-	unsigned int num=1;
-	char last = 0;
+	int ret = 0;
+	size_t len;
+	unsigned int num = 1;
+	char last = '\0';
 	struct tm *tm, s_tm;
 	char sCurrentTime[40], sNextTime[40];
 
 	tm = localtime_r(&timeval, &s_tm);
-	strftime(sCurrentTime, sizeof(sCurrentTime),"%Y-%m-%d %H:%M:%S",tm);
+	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
+	if (len == 0) *sCurrentTime = '\0';
 	tm->tm_sec = tm->tm_min = 0;
 
 	if (data->reset == NULL)
 		return -1;
 	if (isdigit((int) data->reset[0])){
-		unsigned int len=0;
-
 		len = strlen(data->reset);
 		if (len == 0)
 			return -1;
@@ -208,9 +208,11 @@ static int find_next_reset(rlm_sqlcounter_t *data, time_t timeval)
 			data->reset);
 		return -1;
 	}
-	strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
-	DEBUG2("rlm_sqlcounter: Current Time: %d [%s], Next reset %d [%s]",
-		(int)timeval,sCurrentTime,(int)data->reset_time, sNextTime);
+
+	len = strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
+	if (len == 0) *sNextTime = '\0';
+	DEBUG2("rlm_sqlcounter: Current Time: %li [%s], Next reset %li [%s]",
+		timeval, sCurrentTime, data->reset_time, sNextTime);
 
 	return ret;
 }
@@ -222,21 +224,21 @@ static int find_next_reset(rlm_sqlcounter_t *data, time_t timeval)
 
 static int find_prev_reset(rlm_sqlcounter_t *data, time_t timeval)
 {
-	int ret=0;
-	unsigned int num=1;
-	char last = 0;
+	int ret = 0;
+	size_t len;
+	unsigned int num = 1;
+	char last = '\0';
 	struct tm *tm, s_tm;
 	char sCurrentTime[40], sPrevTime[40];
 
 	tm = localtime_r(&timeval, &s_tm);
-	strftime(sCurrentTime, sizeof(sCurrentTime),"%Y-%m-%d %H:%M:%S",tm);
+	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
+	if (len == 0) *sCurrentTime = '\0';
 	tm->tm_sec = tm->tm_min = 0;
 
 	if (data->reset == NULL)
 		return -1;
 	if (isdigit((int) data->reset[0])){
-		unsigned int len=0;
-
 		len = strlen(data->reset);
 		if (len == 0)
 			return -1;
@@ -278,9 +280,10 @@ static int find_prev_reset(rlm_sqlcounter_t *data, time_t timeval)
 			data->reset);
 		return -1;
 	}
-	strftime(sPrevTime, sizeof(sPrevTime),"%Y-%m-%d %H:%M:%S",tm);
-	DEBUG2("rlm_sqlcounter: Current Time: %d [%s], Prev reset %d [%s]",
-		(int)timeval,sCurrentTime,(int)data->last_reset, sPrevTime);
+	len = strftime(sPrevTime, sizeof(sPrevTime), "%Y-%m-%d %H:%M:%S", tm);
+	if (len == 0) *sPrevTime = '\0';
+	DEBUG2("rlm_sqlcounter: Current Time: %li [%s], Prev reset %li [%s]",
+	       timeval, sCurrentTime, data->last_reset, sPrevTime);
 
 	return ret;
 }

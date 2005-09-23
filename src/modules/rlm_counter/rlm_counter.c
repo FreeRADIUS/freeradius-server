@@ -243,21 +243,21 @@ static int reset_db(rlm_counter_t *data)
 
 static int find_next_reset(rlm_counter_t *data, time_t timeval)
 {
-	int ret=0;
-	unsigned int num=1;
-	char last = 0;
+	int ret = 0;
+	size_t len;
+	unsigned int num = 1;
+	char last = '\0';
 	struct tm *tm, s_tm;
 	char sCurrentTime[40], sNextTime[40];
 
 	tm = localtime_r(&timeval, &s_tm);
-	strftime(sCurrentTime, sizeof(sCurrentTime),"%Y-%m-%d %H:%M:%S",tm);
+	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
+	if (len == 0) *sCurrentTime = '\0';
 	tm->tm_sec = tm->tm_min = 0;
 
 	if (data->reset == NULL)
 		return -1;
 	if (isdigit((int) data->reset[0])){
-		unsigned int len=0;
-
 		len = strlen(data->reset);
 		if (len == 0)
 			return -1;
@@ -299,9 +299,11 @@ static int find_next_reset(rlm_counter_t *data, time_t timeval)
 			data->reset);
 		return -1;
 	}
-	strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
-	DEBUG2("rlm_counter: Current Time: %d [%s], Next reset %d [%s]",
-		(int)timeval,sCurrentTime,(int)data->reset_time,sNextTime);
+
+	len = strftime(sNextTime, sizeof(sNextTime), "%Y-%m-%d %H:%M:%S", tm);
+	if (len == 0) *sNextTime = '\0';
+	DEBUG2("rlm_counter: Current Time: %li [%s], Next reset %li [%s]",
+		timeval, sCurrentTime, data->reset_time, sNextTime);
 
 	return ret;
 }
