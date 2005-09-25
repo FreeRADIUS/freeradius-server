@@ -252,7 +252,7 @@ static void rlm_perl_close_handles(void **handles)
 static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl)
 {
 	PerlInterpreter *clone;
-	UV	clone_flags = NULL;
+	UV clone_flags = 0;
 
 	PERL_SET_CONTEXT(perl);
 
@@ -1182,7 +1182,7 @@ static int perl_post_auth(void *instance, REQUEST *request)
 static int perl_detach(void *instance)
 {
 	PERL_INST	*inst = (PERL_INST *) instance;
-	int 		exitstatus=0,count=0, i=0;
+	int 		exitstatus = 0, count = 0;
 
 #ifdef USE_ITHREADS
 	POOL_HANDLE	*handle, *tmp, *tmp2;
