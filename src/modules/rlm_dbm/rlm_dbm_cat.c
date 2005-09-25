@@ -69,7 +69,11 @@ static void dump_record(datum key,datum data)
 	putchar('\n');
 }
 
-static void NEVER_RETURNS usage(void)
+#ifdef __GNUC__
+static void __attribute__((noreturn)) usage(void)
+#else
+static void usage(void)
+#endif
 {
 	fprintf(stderr, "Usage: %s: [-f file] [-w] [-i number] [-l number] [-v]\n\n",progname);
 
