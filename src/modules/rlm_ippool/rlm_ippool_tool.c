@@ -570,7 +570,7 @@ void viewdb(char *sessiondbname,char *indexdbname,char *ipaddress, int old) {
     gdbm_close(sessiondb);
 }
 
-void usage(char *argv0) {
+void NEVER_RETURNS usage(char *argv0) {
     printf("Usage: %s [-a] [-c] [-o] [-v] <session-db> <index-db> [ipaddress]\n",argv0);
     printf("-a: print all active entries\n");
     printf("-c: report number of active entries\n");

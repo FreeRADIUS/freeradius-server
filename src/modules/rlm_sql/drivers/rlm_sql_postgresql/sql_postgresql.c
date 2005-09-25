@@ -464,7 +464,7 @@ static int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
 }
 
 
-static int
+static int NEVER_RETURNS
 not_implemented(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
 	radlog(L_ERR, "sql_postgresql: calling unimplemented function");

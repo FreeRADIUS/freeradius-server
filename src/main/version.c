@@ -33,7 +33,7 @@ static const char rcsid[] = "$Id$";
 /*
  *	Display the revision number for this program
  */
-void version(void)
+void NEVER_RETURNS version(void)
 {
 
 	printf("%s: %s\n", progname, radiusd_version);

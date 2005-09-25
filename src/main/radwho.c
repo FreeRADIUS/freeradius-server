@@ -253,7 +253,7 @@ static const char *hostname(char *buf, size_t buflen, uint32_t ipaddr)
 /*
  *	Print usage message and exit.
  */
-static void usage(int status)
+static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status?stderr:stdout;
 

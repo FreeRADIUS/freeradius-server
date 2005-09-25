@@ -69,7 +69,7 @@ static void dump_record(datum key,datum data)
 	putchar('\n');
 }
 
-static void usage(void)
+static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: %s: [-f file] [-w] [-i number] [-l number] [-v]\n\n",progname);
 

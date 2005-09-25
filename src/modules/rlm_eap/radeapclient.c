@@ -81,7 +81,7 @@ char password[256];
 
 struct eapsim_keys eapsim_mk;
 
-static void usage(void)
+static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: radeapclient [options] server[:port] <command> [<secret>]\n");
 

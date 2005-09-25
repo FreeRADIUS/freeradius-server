@@ -98,7 +98,7 @@ static radclient_t *radclient_head = NULL;
 static radclient_t *radclient_tail = NULL;
 
 
-static void usage(void)
+static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: radclient [options] server[:port] <command> [<secret>]\n");
 

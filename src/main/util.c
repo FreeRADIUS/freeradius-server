@@ -319,7 +319,7 @@ void *rad_malloc(size_t size)
  *
  */
 
-void rad_assert_fail (const char *file, unsigned int line)
+void NEVER_RETURNS rad_assert_fail (const char *file, unsigned int line)
 {
 	radlog(L_ERR|L_CONS, "Assertion failed in %s, line %u", file, line);
 	abort();
