@@ -119,15 +119,20 @@ section".
 	
   In a configurable fail-over section, each of these codes may be
 listed, with a value.  If the code is not listed, or a configurable
-fail-over section is not defined, then default values are used.
+fail-over section is not defined, then values that make sense for the
+requested "group" (group, redundanct, load-balance, etc) are used.
+
+  The special code "default" can be used to set all return codes to
+the specified value.  This value will be used with a lower priority
+than ones that are explicitely set.
 
   The values for each code may be one of two things:
 
 	Value		Meaning
 	-----		-------
-	<number>	Priority for this return code
+	<number>	Priority for this return code.
 	return		stop processing this configurable fail-over list.
-	reject		Stop processing this configurable fail-over list
+	reject		Stop processing this configurable fail-over list.
 			and immediately return a reject.
 
   The <number> used for a value may be any decimal number between 1
@@ -252,12 +257,12 @@ authorize {
   }
 }
 
-This is the same as the first example, with the default behavior explicitly
+This is the same as the first example, with the behavior explicitly
 spelled out. Each SINGLE becomes its own section, containing a list of
 RESULTs that it may return and what ACTION should follow from them. So
-preprocess is called, and if it returns for example RLM_MODULE_REJECT, then
-the reject=return rule is applied, and the authorize{...} GROUP itself
-immediately returns RLM_MODULE_REJECT.
+preprocess is called, and if it returns for example RLM_MODULE_REJECT,
+then the reject=return rule is applied, and the authorize{...} GROUP
+itself immediately returns RLM_MODULE_REJECT.
 
 If preprocess returns RLM_MODULE_NOOP, the corresponding ACTION is "2". An
 integer ACTION serves two purposes - first, it tells the parent GROUP to go
@@ -270,6 +275,33 @@ preference level 2, and a notfound with preference level 1, so the
 authorize{...} GROUP as a whole returns RLM_MODULE_NOOP, which makes sense
 because to say the user was not found at all would be a lie, since preprocess
 apparently found him, or else it would have returned RLM_MODULE_NOTFOUND too.
+
+We could use the "default" code to simplify the above example a
+little.  The following two configurations are identical:
+
+...
+  files {
+    notfound = 1
+    noop     = 2
+    ok       = 3
+    updated  = 4
+    default  = return
+  }
+...
+
+When putting the "default" first, later definitions over-ride it's
+return code:
+
+...
+  files {
+    default  = return
+    notfound = 1
+    noop     = 2
+    ok       = 3
+    updated  = 4
+  }
+...
+
 
 [Take a deep breath - the worst is over]
 

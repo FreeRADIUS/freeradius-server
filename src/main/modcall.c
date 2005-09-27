@@ -139,15 +139,7 @@ static const LRAD_NAME_NUMBER rcode_table[] = {
 static int compile_action(modcallable *c, const char *attr, const char *value,
 			  const char *filename, int lineno)
 {
-	int rcode, action;
-
-	rcode = lrad_str2int(rcode_table, attr, -1);
-	if (rcode < 0) {
-		radlog(L_ERR|L_CONS,
-		       "%s[%d] Unknown module rcode '%s'.\n",
-		       filename, lineno, attr);
-		return 0;
-	}
+	int action;
 
 	if (!strcasecmp(value, "return"))
 		action = MOD_ACTION_RETURN;
@@ -169,7 +161,25 @@ static int compile_action(modcallable *c, const char *attr, const char *value,
 		return 0;
 	}
 
-	c->actions[rcode] = action;
+	if (strcasecmp(attr, "default") != 0) {
+		int rcode;
+
+		rcode = lrad_str2int(rcode_table, attr, -1);
+		if (rcode < 0) {
+			radlog(L_ERR|L_CONS,
+			       "%s[%d] Unknown module rcode '%s'.\n",
+			       filename, lineno, attr);
+			return 0;
+		}
+		c->actions[rcode] = action;
+
+	} else {		/* set all unset values to the default */
+		int i;
+
+		for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+			if (!c->actions[i]) c->actions[i] = action;
+		}
+	}
 
 	return 1;
 }
@@ -1142,6 +1152,7 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 					const char *filename, int grouptype,
 					int parentgrouptype)
 {
+	int i;
 	modgroup *g;
 	modcallable *c;
 	CONF_ITEM *ci;
@@ -1151,8 +1162,7 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 
 	c = mod_grouptocallable(g);
 	c->next = NULL;
-	memcpy(c->actions, defaultactions[component][parentgrouptype],
-	       sizeof(c->actions));
+	memset(c->actions, 0, sizeof(c->actions));
 
 	/*
 	 *	Remember the name for printing, etc.
@@ -1234,6 +1244,16 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 				modcallable_free(&c);
 				return NULL;
 			} /* else it worked */
+		}
+	}
+
+	/*
+	 *	Set the default actions, if they haven't already been
+	 *	set.
+	 */
+	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+		if (!c->actions[i]) {
+			c->actions[i] = defaultactions[component][parentgrouptype][i];
 		}
 	}
 
