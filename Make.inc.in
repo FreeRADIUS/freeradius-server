@@ -16,6 +16,7 @@ mandir		= @mandir@
 datadir		= @datadir@
 dictdir		= $(datadir)/freeradius
 logdir		= @logdir@
+includedir	= @includedir@
 raddbdir	= @raddbdir@
 radacctdir	= @radacctdir@
 top_builddir	= @abs_top_builddir@
