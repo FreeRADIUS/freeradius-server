@@ -196,8 +196,7 @@ int SMB_Figure_Protocol(char *dialects[], int prot_index)
 
 int SMB_Negotiate(SMB_Handle_Type Con_Handle, char *Prots[])
 
-{ struct SMB_Neg_Prot_Def *prot_pkt;
-  struct SMB_Neg_Prot_Resp_Def *resp_pkt;
+{
   struct RFCNB_Pkt *pkt;
   int prots_len, i, pkt_len, prot, alloc_len;
   char *p;
@@ -410,8 +409,7 @@ int SMB_Negotiate(SMB_Handle_Type Con_Handle, char *Prots[])
 
 void SMB_Get_My_Name(char *name, int len)
 
-{ int loc;
-
+{
   if (gethostname(name, len) < 0) { /* Error getting name */
 
     strncpy(name, "unknown", len);
@@ -438,8 +436,9 @@ SMB_Tree_Handle SMB_TreeConnect(SMB_Handle_Type Con_Handle,
 				char *password,
 				char *device)
 
-{ struct RFCNB_Pkt *pkt;
-  int param_len, i, pkt_len;
+{
+  struct RFCNB_Pkt *pkt;
+  int param_len, pkt_len;
   char *p;
   SMB_Tree_Handle tree;
 

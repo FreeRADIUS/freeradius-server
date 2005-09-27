@@ -398,7 +398,7 @@ int RFCNB_Session_Req(struct RFCNB_Con *con,
 
   /* Response packet should be no more than 9 bytes, make 16 jic */
 
-  char ln1[16], ln2[16], n1[32], n2[32], resp[16];
+  char resp[16];
   int len;
   struct RFCNB_Pkt *pkt, res_pkt;
 

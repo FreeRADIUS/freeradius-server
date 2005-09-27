@@ -53,7 +53,6 @@ void rfcnb_alarm(int sig)
 int RFCNB_Set_Timeout(int seconds)
 
 {
-  int temp;
   /* If we are on a Bezerkeley system, use sigvec, else sigaction */
 #ifndef SA_RESTART
   struct sigvec invec, outvec;

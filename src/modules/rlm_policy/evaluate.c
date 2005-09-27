@@ -462,7 +462,9 @@ static VALUE_PAIR *find_vp(REQUEST *request, const char *name)
 static int evaluate_assignment(policy_state_t *state, const policy_item_t *item)
 {
 	const policy_assignment_t *this;
+#if 0
 	const DICT_ATTR *dattr;
+#endif
 
 	this = (const policy_assignment_t *) item;
 
