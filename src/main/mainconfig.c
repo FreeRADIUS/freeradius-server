@@ -1080,6 +1080,8 @@ int read_mainconfig(int reload)
 		mainconfig.clients = clients;
 	}
 
+	rl_init_proxy();
+
 	/*  Reload the modules.  */
 	DEBUG2("radiusd:  entering modules setup");
 	if (setup_modules(reload) < 0) {
