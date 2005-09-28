@@ -1132,7 +1132,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 						 value, dp->d_name);
 					if ((stat(buf2, &stat_buf) != 0) ||
 					    S_ISDIR(stat_buf.st_mode)) continue;
-					if ((is = conf_read(cf, *lineno, buf2, parent)) == NULL) {
+					if ((is = conf_read(cf, *lineno, buf2, cs)) == NULL) {
 						closedir(dir);
 						cf_section_free(&cs);
 						return NULL;
@@ -1145,7 +1145,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 #endif
 			{ /* it was a normal file */
 				DEBUG2( "Config:   including file: %s", value );
-				if ((is = conf_read(cf, *lineno, value, parent)) == NULL) {
+				if ((is = conf_read(cf, *lineno, value, cs)) == NULL) {
 					cf_section_free(&cs);
 					return NULL;
 				}
