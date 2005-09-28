@@ -176,8 +176,6 @@ static int common_checks(rad_listen_t *listener,
 
 	rad_assert(listener->rl != NULL);
 
-	rl_packet_hash(packet);
-
 	/*
 	 *	If there is no existing request of id, code, etc.,
 	 *	then we can return, and let it be processed.
@@ -383,6 +381,7 @@ static int common_checks(rad_listen_t *listener,
 	}
 	curreq->listener = listener;
 	curreq->packet = packet;
+	curreq->packet->timestamp = curreq->timestamp;
 	curreq->number = request_num_counter++;
 	strNcpy(curreq->secret, client->secret, sizeof(curreq->secret));
 	
@@ -391,7 +390,7 @@ static int common_checks(rad_listen_t *listener,
 	 */
 	if (!rl_add(listener->rl, curreq)) {
 		radlog(L_ERR, "Failed to insert request %d in the list of live requests: discarding", curreq->number);
-		request_free(curreq);
+		request_free(&curreq);
 		return 0;
 	}
 	
@@ -628,8 +627,14 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
  */
 static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 {
+	listen_socket_t *sock = listener->data;
+
 	rad_assert(request->proxy_listener == listener);
 	rad_assert(listener->send == proxy_socket_send);
+
+	request->proxy->src_ipaddr = sock->ipaddr;
+	request->proxy->src_port = sock->port;
+
 	return rad_send(request->proxy, request->packet, request->proxysecret);
 
 }
