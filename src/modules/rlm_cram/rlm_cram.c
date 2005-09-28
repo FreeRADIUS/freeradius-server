@@ -131,7 +131,7 @@ static void calc_sha1_digest(char * buffer, const char * challenge, int challen,
 }
 
 
-static int cram_authenticate(void * instance, REQUEST *request)
+static int cram_authenticate(UNUSED void * instance, REQUEST *request)
 {
 	VALUE_PAIR *authtype, *challenge, *response, *password;
 	char buffer[64];

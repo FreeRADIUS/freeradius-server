@@ -102,7 +102,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
  *	Purpose: Free socket and any private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	free(sqlsocket->conn);
 	sqlsocket->conn = NULL;
@@ -172,7 +172,7 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
  *               set for the query.
  *
  *************************************************************************/
-static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+static int sql_store_result(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -198,7 +198,7 @@ static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *               of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+static int sql_num_fields(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	int     num = 0;
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
@@ -254,7 +254,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config,
  *               query
  *
  *************************************************************************/
-static int sql_num_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+static int sql_num_rows(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -274,7 +274,7 @@ static int sql_num_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *		 0 on success, -1 on failure, SQL_DOWN if database is down.
  *
  *************************************************************************/
-static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+static int sql_fetch_row(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -302,7 +302,7 @@ static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *               for a result set
  *
  *************************************************************************/
-static int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+static int sql_free_result(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -324,7 +324,7 @@ static int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *               connection
  *
  *************************************************************************/
-static char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+static char *sql_error(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -343,7 +343,7 @@ static char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *               connection
  *
  *************************************************************************/
-static int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+static int sql_close(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
@@ -363,7 +363,7 @@ static int sql_close(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+static int sql_finish_query(UNUSED SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	return 0;
 }
@@ -392,7 +392,7 @@ static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_affected_rows(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+static int sql_affected_rows(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 

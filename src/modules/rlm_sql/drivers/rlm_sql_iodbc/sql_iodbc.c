@@ -105,7 +105,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Free socket and private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	free(sqlsocket->conn);
 	sqlsocket->conn = NULL;
@@ -210,7 +210,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
  *               set for the query.
  *
  *************************************************************************/
-static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_store_result(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
 
 	return 0;
 }
@@ -224,7 +224,7 @@ static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_num_fields(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
 
 	SQLSMALLINT count=0;
 	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
@@ -242,7 +242,7 @@ static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               query
  *
  *************************************************************************/
-static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_num_rows(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
 	/*
 	 * I presume this function is used to determine the number of
 	 * rows in a result set *before* fetching them.  I don't think
@@ -262,7 +262,7 @@ static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'
  *
  *************************************************************************/
-static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_fetch_row(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
 
 	SQLRETURN rc;
 	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
@@ -313,7 +313,7 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static char *sql_error(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
 
 	SQLINTEGER errornum = 0;
 	SQLSMALLINT length = 0;
@@ -335,7 +335,7 @@ static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection and cleans up any open handles.
  *
  *************************************************************************/
-static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_close(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
 
 	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
 
@@ -386,7 +386,7 @@ static int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               or insert)
  *
  *************************************************************************/
-static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_affected_rows(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
 
 	SQLINTEGER count;
 	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;

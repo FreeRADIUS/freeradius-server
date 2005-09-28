@@ -166,7 +166,7 @@ static int sql_escape_func(char *out, int outlen, const char *in);
  */
 static int sql_xlat(void *instance, REQUEST *request,
 		    char *fmt, char *out, size_t freespace,
-		    RADIUS_ESCAPE_STRING func)
+		    UNUSED RADIUS_ESCAPE_STRING func)
 {
 	SQLSOCK *sqlsocket;
 	SQL_ROW row;
