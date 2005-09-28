@@ -147,24 +147,27 @@ static void packet_hash(RADIUS_PACKET *packet)
 {
 	uint32_t hash;
 
-	hash = lrad_hash(&packet->id, sizeof(packet->id));
-
-	hash = lrad_hash_update(&packet->src_ipaddr.af,
-				sizeof(packet->src_ipaddr.af), hash);
-	hash = lrad_hash_update(&packet->dst_ipaddr.af,
-				sizeof(packet->dst_ipaddr.af), hash);
+	hash = lrad_hash(&packet->src_port, sizeof(packet->src_port));
 
 	/*
-	 *	We shouldn't have to hash sockfd, code, or dst_port,
+	 *	We shouldn't have to hash af, sockfd, code, or dst_port,
 	 *	as they're the same for one request_list_t
 	 */
+#if 0
+	hash = lrad_hash_update(&packet->src_ipaddr.af,
+				sizeof(packet->src_ipaddr.af), hash);
+	
 	hash = lrad_hash_update(&packet->code, sizeof(packet->code), hash);
 	hash = lrad_hash_update(&packet->sockfd, sizeof(packet->sockfd), hash);
 	hash = lrad_hash_update(&packet->dst_port,
 				sizeof(packet->dst_port), hash);
+#endif
 
 	/*
 	 *	The caller ensures that src & dst AF are the same.
+	 *
+	 *	We use dst IP in the hash, as the sockfd may be listening
+	 *	on "*", with udpfromto, to get multiple dst IP's.
 	 */
 	switch (packet->src_ipaddr.af) {
 	case AF_INET:
@@ -188,7 +191,16 @@ static void packet_hash(RADIUS_PACKET *packet)
 		break;
 	}
 
-	packet->hash = hash;
+	/*
+	 *	Put the packet Id into the high byte of the hash,
+	 *	to minimize the number of possible collisions.
+	 *
+	 *	The hash table indexing is done via the low bits,
+	 *	so we shouldn't use those.
+	 */
+	rad_assert((packet->id >= 0) && (packet->id < 256));
+	packet->hash = packet->id << 24;
+	packet->hash |= hash >> 8;
 }
 
 
@@ -198,10 +210,6 @@ static int packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b)
 	if (a->id != b->id) return 0;
 
 	if (a->src_port != b->src_port) return 0;
-
-	if (a->src_ipaddr.af != b->src_ipaddr.af) return 0;
-
-	if (a->dst_ipaddr.af != b->dst_ipaddr.af) return 0;
 
 	switch (a->dst_ipaddr.af) {
 	case AF_INET:
@@ -228,6 +236,13 @@ static int packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b)
 		return 0;
 		break;
 	}
+
+	/*
+	 *	These next comparisons should reall be assertions.
+	 */
+	if (a->src_ipaddr.af != b->src_ipaddr.af) return 0;
+
+	if (a->dst_ipaddr.af != b->dst_ipaddr.af) return 0;
 
 	if (a->sockfd != b->sockfd) return 0;
 
