@@ -355,7 +355,7 @@ int SMB_Negotiate(SMB_Handle_Type Con_Handle, char *Prots[])
     Con_Handle -> Encrypt_Key_Len = SVAL(SMB_Hdr(pkt), SMB_negrLM_ekl_offset);
 
     p = (SMB_Hdr(pkt) + SMB_negrLM_buf_offset);
-    fprintf(stderr, "%d", (char *)(SMB_Hdr(pkt) + SMB_negrLM_buf_offset));
+    fprintf(stderr, "%s", (char *)(SMB_Hdr(pkt) + SMB_negrLM_buf_offset));
     memcpy(Con_Handle->Encrypt_Key, p, 8);
 
     p = (SMB_Hdr(pkt) + SMB_negrLM_buf_offset + Con_Handle -> Encrypt_Key_Len);
@@ -586,8 +586,8 @@ SMB_Tree_Handle SMB_TreeConnect(SMB_Handle_Type Con_Handle,
 
   if (Con_Handle -> first_tree == NULL) {
 
-    Con_Handle -> first_tree == tree;
-    Con_Handle -> last_tree == tree;
+    Con_Handle -> first_tree = tree;
+    Con_Handle -> last_tree = tree;
 
   }
   else {
