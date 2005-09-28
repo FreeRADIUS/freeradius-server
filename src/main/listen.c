@@ -565,6 +565,8 @@ static int common_socket_parse(const char *filename, int lineno,
  */
 static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 {
+	listen_socket_t *sock = listener->data;
+
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == auth_socket_send);
 
@@ -594,6 +596,9 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 		return 0;
 	}
 
+	request->reply->src_ipaddr = sock->ipaddr;
+	request->reply->src_port = sock->port;
+
 	return rad_send(request->reply, request->packet, request->secret);
 }
 
@@ -603,6 +608,8 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
  */
 static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 {
+	listen_socket_t *sock = listener->data;
+
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == acct_socket_send);
 
@@ -614,9 +621,10 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (request->reply->code == 0) return 0;
 
+	request->reply->src_ipaddr = sock->ipaddr;
+	request->reply->src_port = sock->port;
 
 	return rad_send(request->reply, request->packet, request->secret);
-
 }
 
 
@@ -636,7 +644,6 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 	request->proxy->src_port = sock->port;
 
 	return rad_send(request->proxy, request->packet, request->proxysecret);
-
 }
 
 
