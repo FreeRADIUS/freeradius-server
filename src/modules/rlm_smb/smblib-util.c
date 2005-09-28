@@ -23,8 +23,8 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
+#include <string.h>
 #include "smblib-priv.h"
-
 #include "rfcnb.h"
 
 /* Print out an SMB pkt in all its gory detail ... */
