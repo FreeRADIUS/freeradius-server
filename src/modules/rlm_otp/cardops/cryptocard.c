@@ -101,6 +101,10 @@ __attribute__ ((unused))
 __attribute__ ((unused))
 #endif
                       otp_user_state_t *user_state, 
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                      time_t when,
                       const char *log_prefix)
 {
   otp_log(OTP_LOG_ERR, "%s: null state not supported for CRYPTOCard",

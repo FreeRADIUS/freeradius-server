@@ -194,7 +194,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   }
   if (user_state.nullstate) {
     if (user_info.cardops->nullstate(opt, &user_info, &user_state,
-                                     log_prefix)) {
+                                     now, log_prefix)) {
       otp_log(OTP_LOG_ERR, "%s: unable to set null state for [%s]",
               log_prefix, username);
       rc = OTP_RC_SERVICE_ERR;
