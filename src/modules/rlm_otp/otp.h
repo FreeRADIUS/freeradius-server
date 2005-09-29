@@ -147,6 +147,7 @@ typedef struct otp_user_state_t {
   int		authewin;		/* ewindow position for softfail  */
   int		authtwin;		/* twindow position for softfail  */
   uint32_t	authtime;		/* time of last auth              */
+  uint32_t   	minauthtime;		/* minimum authtime               */
 } otp_user_state_t;
 
 /* fc (failcondition) shortcuts */

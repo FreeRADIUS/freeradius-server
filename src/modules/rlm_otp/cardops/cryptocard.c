@@ -20,6 +20,7 @@
  */
 
 #include <string.h>
+#include <time.h>
 
 #include "../otp.h"
 #include "../otp_cardops.h"
@@ -117,6 +118,10 @@ cryptocard_challenge(const otp_user_info_t *user_info,
 __attribute__ ((unused))
 #endif
                      const char csd[OTP_MAX_CSD_LEN + 1],
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                    time_t when,
                      char challenge[OTP_MAX_CHALLENGE_LEN + 1],
 #ifdef __GNUC__
 __attribute__ ((unused))
@@ -223,6 +228,40 @@ __attribute__ ((unused))
   return 0;
 }
 
+/* no twin so just return 0 */
+static int
+cryptocard_nexttwin(
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                    int twin)
+{
+  return 0;
+}
+
+/* no twin so just return success */
+static time_t
+cryptocard_twin2authtime(
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                         const char csd[OTP_MAX_CSD_LEN + 1],
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                         time_t when,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                         int twin,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                         const char *log_prefix)
+{
+  return 0;
+}
+
 
 /* cardops instance */
 static cardops_t cryptocard_cardops = {
@@ -234,7 +273,9 @@ static cardops_t cryptocard_cardops = {
   .nullstate		= cryptocard_nullstate,
   .challenge		= cryptocard_challenge,
   .response		= cryptocard_response,
-  .updatecsd		= cryptocard_updatecsd
+  .updatecsd		= cryptocard_updatecsd,
+  .nexttwin		= cryptocard_nexttwin,
+  .twin2authtime	= cryptocard_twin2authtime
 };
 
 /* constructor */

@@ -339,8 +339,24 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
     return -1;
   }
   *q++ = '\0';
-  if (sscanf(p, "%" SCNu32, &user_state->authtime) != 1) {
+  if (sscanf(p, "%" SCNx32, &user_state->authtime) != 1) {
     otp_log(OTP_LOG_ERR, "%s: state data invalid authtime for [%s]",
+            log_prefix, username);
+    (void) otp_state_put(username, user_state, log_prefix);
+    return -1;
+  }
+  p = q;	/* minauthtime */
+
+  /* extract minauthtime */
+  if ((q = strchr(p, ':')) == NULL) {
+    otp_log(OTP_LOG_ERR, "%s: state data invalid minauthtime for [%s]",
+            log_prefix, username);
+    (void) otp_state_put(username, user_state, log_prefix);
+    return -1;
+  }
+  *q++ = '\0';
+  if (sscanf(p, "%" SCNx32, &user_state->minauthtime) != 1) {
+    otp_log(OTP_LOG_ERR, "%s: state data invalid minauthtime for [%s]",
             log_prefix, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
@@ -364,11 +380,12 @@ otp_state_unparse(char *buf, size_t buflen, const char *username,
     return -1;
 
   if (user_state->updated)
-    (void) snprintf(buf, buflen, "P %s 3:%s:%s:%s:%u:%d:%d:%" PRIu32 ":",
+    (void) snprintf(buf, buflen, "P %s 3:%s:%s:%s:%u:%d:%d:%" PRIx32 ":"
+                                 "%" PRIx32 ":",
                     username, username, user_state->challenge, user_state->csd,
                     user_state->failcount,
                     user_state->authewin, user_state->authtwin,
-                    user_state->authtime);
+                    user_state->authtime, user_state->minauthtime);
   else
     (void) snprintf(buf, buflen, "P %s", username);
   buf[buflen - 1] = '\0';

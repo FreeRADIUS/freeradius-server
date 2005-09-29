@@ -21,7 +21,6 @@
  *
  * Copyright 2002-2005  Google, Inc.
  * Copyright 2005 TRI-D Systems, Inc.
- *
  */
 
 static const char rcsid[] = "$Id$";
@@ -61,7 +60,7 @@ isconsecutive(const otp_option_t *opt, const otp_user_info_t *user_info,
   if (frw && user_state->authewin == frw) {
     /* ewin already maxed, reset and advance twin */
     nextewin = 0;
-    nexttwin = user_state->authtwin + 1;
+    nexttwin = user_info->cardops->nexttwin(user_state->authtwin);
   } else {
     nextewin = user_state->authewin + 1;
     nexttwin = user_state->authtwin;
@@ -369,21 +368,7 @@ sync_response:
     /* Test each sync response in the window. */
     for (t = 0; t <= (user_info.featuremask & OTP_CF_TW) * 2; ++t) {
       for (e = 0; e <= end; ++e) {
-        /*
-         * Calculate sync response.
-         *
-         * For event synchronous modes, we can never go backwards (the
-         * challenge() method can only walk forwards), so there is an
-         * implicit guarantee that we'll never get a response matching
-         * an event in the past.
-         *
-         * But for time synchronous modes, challenge() can walk backwards,
-         * in order to accomodate clock drift.  The cardops object must
-         * not return a valid response for a time earlier than one at
-         * which the user already authenticated.  This can be done either
-         * with challenge() (never return a challenge that is too early)
-         * or response() (never validate a challenge that is too early).
-         */
+        /* Calculate sync response. */
         if (user_info.cardops->response(&user_info, csd, challenge,
                                         &e_response[pin_offset],
                                         log_prefix) != 0) {
@@ -424,6 +409,27 @@ sync_response:
                     " (%d/%d failed/max)", log_prefix, username,
                     user_state.failcount, opt->hardfail);
             rc = OTP_RC_MAXTRIES;
+          } else if (user_info.cardops->twin2authtime(csd, now, t, log_prefix)<
+                     user_state.minauthtime) {
+            /*
+             * For event synchronous modes, we can never go backwards (the
+             * challenge() method can only walk forwards), so there is an
+             * implicit guarantee that we'll never get a response matching
+             * an event in the past.
+             *
+             * But for time synchronous modes, challenge() can walk backwards,
+             * in order to accomodate clock drift.  We must never allow a
+             * successful auth for a correct passcode earlier in time than
+             * one already used successfully.
+             *
+             * We might move this test to before the response() call,
+             * to avoid the crypto.  We lose the report about old
+             * passcodes, but this is the case anyway for event sync.
+             */
+            otp_log(OTP_LOG_AUTH,
+                    "%s: bad sync auth for [%s]: valid but in the past",
+                    log_prefix, username);
+            rc = OTP_RC_AUTH_ERR;
           } else if (fc == OTP_FC_FAIL_SOFT) {
             /*
              * rwindow logic
@@ -467,7 +473,7 @@ sync_response:
           } else {
             /* normal sync mode auth */
             rc = OTP_RC_OK;
-          } /* else (!hardfail && !softfail) */
+          } /* else (!hardfail && !too_early && !softfail) */
 
           /* force resync; this only has an effect if (rc == OTP_RC_OK) */
           resync = 1;
@@ -486,7 +492,7 @@ sync_response:
         } /* if (passcode is valid) */
 
         /* Get next challenge (extra work at end of failing loop;TODO: fix). */
-        if (user_info.cardops->challenge(&user_info, csd, challenge,
+        if (user_info.cardops->challenge(&user_info, csd, now, challenge,
                                          t, log_prefix) != 0) {
           otp_log(OTP_LOG_ERR,
                   "%s: unable to get sync challenge t:%d e:%d for [%s]",
@@ -506,7 +512,7 @@ auth_done:
   if (rc == OTP_RC_OK) {
     if (resync) {
       /* Resync the card (update the challenge). */
-      if (user_info.cardops->challenge(&user_info, csd, challenge,
+      if (user_info.cardops->challenge(&user_info, csd, now, challenge,
                                        t, log_prefix) != 0) {
         otp_log(OTP_LOG_ERR, "%s: unable to get sync challenge "
                              "t:%d e:%d for [%s] (for resync)",
@@ -521,6 +527,9 @@ auth_done:
     user_state.authewin  = 0;
     user_state.authtwin  = 0;
     user_state.authtime  = (int32_t) now;	/* cast prevents overflow */
+    /* NOTE: csd is the value before calling updatecsd() */
+    user_state.minauthtime =
+      (int32_t) user_info.cardops->twin2authtime(csd, now, t, log_prefix);
   } else {
     /*
      * Note that we initialized auth[et]win to -2 to accomodate rwindow test
