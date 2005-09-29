@@ -116,10 +116,14 @@ otp_get_challenge(int fd, char *challenge, int len)
  * keyblock is filled in.  Returns 0 on success, -1 otherwise.
  */
 int
-otp_keystring2keyblock(const char *s, unsigned char keyblock[])
+otp_keystring2keyblock(const char *s, unsigned char keyblock[OTP_MAX_KEY_LEN])
 {
   unsigned i;
   size_t l = strlen(s);
+
+  /* overflow sanity check */
+  if (l > OTP_MAX_KEY_LEN * 2)
+    return -1;
 
   /*
    * We could just use sscanf, but we do this a lot, and have very
