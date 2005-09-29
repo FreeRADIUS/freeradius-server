@@ -383,8 +383,9 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, void *insta
 /*
  *	See if the counter matches.
  */
-static int sqlcounter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
-		VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+static int sqlcounter_cmp(void *instance, REQUEST *req,
+			  UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
+			  VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	rlm_sqlcounter_t *data = (rlm_sqlcounter_t *) instance;
 	int counter;

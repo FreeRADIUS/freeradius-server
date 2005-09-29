@@ -73,7 +73,7 @@ static const CONF_PARSER module_config[] = {
 /*
  *	The Group = handler.
  */
-static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
+static int groupcmp(void *instance, UNUSED REQUEST *req, VALUE_PAIR *request,
 		    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
 		    VALUE_PAIR **reply_pairs)
 {
@@ -178,7 +178,8 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
  *	Pull the users password from where-ever, and add it to
  *	the given vp list.
  */
-static int unix_getpw(void *instance, REQUEST *request, VALUE_PAIR **vp_list)
+static int unix_getpw(UNUSED void *instance, REQUEST *request,
+		      VALUE_PAIR **vp_list)
 {
 	const char	*name;
 	const char	*encrypted_pass;

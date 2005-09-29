@@ -104,7 +104,7 @@ static int md5_initiate(void *type_data, EAP_HANDLER *handler)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int md5_authenticate(void *arg, EAP_HANDLER *handler)
+static int md5_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
 {
 	MD5_PACKET	*packet;
 	MD5_PACKET	*reply;

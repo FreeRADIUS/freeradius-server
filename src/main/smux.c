@@ -1091,7 +1091,7 @@ smux_init (oid defoid[], size_t defoid_len)
 
 /* Register subtree to smux master tree. */
 void
-smux_register_mib(const char *descr, struct variable *var, size_t width,
+smux_register_mib(UNUSED const char *descr, struct variable *var, size_t width,
 		int num, oid name[], size_t namelen)
 {
 	struct subtree *tree, *tt;

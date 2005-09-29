@@ -866,9 +866,10 @@ static int ldap_escape_func(char *out, int outlen, const char *in)
 /*
  *	ldap_groupcmp(). Implement the Ldap-Group == "group" filter
  */
-static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
-			 VALUE_PAIR *check, VALUE_PAIR *check_pairs,
-			 VALUE_PAIR **reply_pairs)
+static int ldap_groupcmp(void *instance, REQUEST *req,
+			 UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
+			 UNUSED VALUE_PAIR *check_pairs,
+			 UNUSED VALUE_PAIR **reply_pairs)
 {
         char            filter[MAX_FILTER_STR_LEN];
         char            gr_filter[MAX_FILTER_STR_LEN];

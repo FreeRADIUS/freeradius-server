@@ -36,7 +36,7 @@
  * len = header + type + leap_typedata
  * leap_typedata = value_size + value
  */
-static int leap_initiate(void *instance, EAP_HANDLER *handler)
+static int leap_initiate(UNUSED void *instance, EAP_HANDLER *handler)
 {
 	leap_session_t	*session;
 	LEAP_PACKET	*reply;
@@ -86,7 +86,7 @@ static int leap_initiate(void *instance, EAP_HANDLER *handler)
 	return 1;
 }
 
-static int leap_authenticate(void *instance, EAP_HANDLER *handler)
+static int leap_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
 {
 	int		rcode;
 	leap_session_t	*session;

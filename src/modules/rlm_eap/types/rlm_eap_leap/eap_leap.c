@@ -384,7 +384,7 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
  *	If an EAP LEAP request needs to be initiated then
  *	create such a packet.
  */
-LEAP_PACKET *eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name)
+LEAP_PACKET *eapleap_initiate(UNUSED EAP_DS *eap_ds, VALUE_PAIR *user_name)
 {
 	int i;
 	LEAP_PACKET 	*reply;

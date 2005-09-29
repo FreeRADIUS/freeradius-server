@@ -196,7 +196,6 @@ static const struct variable radiusauth_variables[] =
 	{RADIUSAUTHSERVUNKNOWNTYPES, COUNTER, RONLY, radAuthEntry, 3, {15,1,12}},
 };
 
-
 static RADCLIENT *
 get_client(struct variable *v, oid objid[], size_t *objid_len, int exact)
 {
@@ -234,10 +233,10 @@ get_client(struct variable *v, oid objid[], size_t *objid_len, int exact)
 }
 
 static int
-radServReset (int action, u_char *var_val, u_char var_val_type,
-		size_t var_val_len, const unsigned char *statP, oid *name,
-		size_t name_len) {
-
+radServReset(int action, u_char *var_val, u_char var_val_type,
+	     size_t var_val_len, UNUSED const unsigned char *statP,
+	     UNUSED oid *name, UNUSED size_t name_len)
+{
 	long i;
 	int big = SNMP_MAX_LEN;
 

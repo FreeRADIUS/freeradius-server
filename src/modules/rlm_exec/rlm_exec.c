@@ -122,7 +122,7 @@ static VALUE_PAIR **decode_string(REQUEST *request, const char *string)
  */
 static int exec_xlat(void *instance, REQUEST *request,
 		     char *fmt, char *out, int outlen,
-		     RADIUS_ESCAPE_STRING func)
+		     UNUSED RADIUS_ESCAPE_STRING func)
 {
 	int		result;
 	rlm_exec_t	*inst = instance;
