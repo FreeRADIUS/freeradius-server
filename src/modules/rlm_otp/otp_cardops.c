@@ -480,7 +480,7 @@ sync_response:
           /* update csd on successful auth or rwindow candidate */
           (void) strcpy(user_state.csd, csd);
           if (user_info.cardops->updatecsd(&user_info, &user_state,
-                                           log_prefix) != 0) {
+                                           challenge, log_prefix) != 0) {
             otp_log(OTP_LOG_ERR, "%s: unable to update csd for [%s]",
                     log_prefix, username);
             rc = OTP_RC_SERVICE_ERR;

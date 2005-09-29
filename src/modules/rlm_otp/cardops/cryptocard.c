@@ -122,7 +122,7 @@ __attribute__ ((unused))
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                    time_t when,
+                     time_t when,
                      char challenge[OTP_MAX_CHALLENGE_LEN + 1],
 #ifdef __GNUC__
 __attribute__ ((unused))
@@ -221,6 +221,10 @@ __attribute__ ((unused))
 __attribute__ ((unused))
 #endif
                      otp_user_state_t *user_state,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                     const char challenge[OTP_MAX_CHALLENGE_LEN + 1],
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
