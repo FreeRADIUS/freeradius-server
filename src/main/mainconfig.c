@@ -39,6 +39,7 @@
 #include "conffile.h"
 #include "token.h"
 #include "modules.h"
+#include "request_list.h"
 
 #include <sys/resource.h>
 #include <unistd.h>
