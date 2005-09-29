@@ -109,12 +109,15 @@ static int linelog_instantiate(CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
-static int do_linelog(rlm_linelog_t *inst, REQUEST *request)
+static int do_linelog(void *instance, REQUEST *request)
 {
 	int fd;
 	char *p;
 	char buffer[4096];
 	char line[1024];
+	rlm_linelog_t *inst;
+
+	inst = (rlm_linelog_t*) instance;
 
 	/*
 	 *	FIXME: Check length.
