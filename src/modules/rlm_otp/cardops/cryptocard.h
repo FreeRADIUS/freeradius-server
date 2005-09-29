@@ -39,7 +39,8 @@
 #define CRYPTOCARD_D7_RS (CRYPTOCARD_D7_RC|CRYPTOCARD_D7_ES)
 
 static int cryptocard_name2fm(const char *, uint32_t *);
-static int cryptocard_keystring2keyblock(const char *, unsigned char []);
+static int cryptocard_keystring2keyblock(const char *,
+                                         unsigned char [OTP_MAX_KEY_LEN]);
 static int cryptocard_nullstate(const otp_option_t *, const otp_user_info_t *,
                                 otp_user_state_t *, const char *);
 static int cryptocard_challenge(const otp_user_info_t *,

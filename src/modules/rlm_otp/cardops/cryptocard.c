@@ -72,7 +72,8 @@ cryptocard_name2fm(const char *name, uint32_t *featuremask)
  * Returns 0 on success, non-zero otherwise.
  */
 static int
-cryptocard_keystring2keyblock(const char *keystring, unsigned char keyblock[])
+cryptocard_keystring2keyblock(const char *keystring,
+                              unsigned char keyblock[OTP_MAX_KEY_LEN])
 {
   /* 64-bit DES key with optional line ending */
   if ((strlen(keystring) & ~1) != 16)
