@@ -232,7 +232,7 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
   p += 1;	/* beginning of state */
 
   /* version */
-  if (!(p[0] == '3' && p[1] == ':')) {
+  if (!(p[0] == '4' && p[1] == ':')) {
     otp_log(OTP_LOG_ERR, "%s: state data unacceptable version for [%s]",
             log_prefix, username);
     (void) otp_state_put(username, user_state, log_prefix);
@@ -361,6 +361,22 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
+  p = q;	/* minewin */
+
+  /* extract minewin */
+  if ((q = strchr(p, ':')) == NULL) {
+    otp_log(OTP_LOG_ERR, "%s: state data invalid minewin for [%s]",
+            log_prefix, username);
+    (void) otp_state_put(username, user_state, log_prefix);
+    return -1;
+  }
+  *q++ = '\0';
+  if (sscanf(p, "%d", &user_state->minewin) != 1) {
+    otp_log(OTP_LOG_ERR, "%s: state data invalid minewin for [%s]",
+            log_prefix, username);
+    (void) otp_state_put(username, user_state, log_prefix);
+    return -1;
+  }
 
   return 0;
 }
@@ -380,12 +396,13 @@ otp_state_unparse(char *buf, size_t buflen, const char *username,
     return -1;
 
   if (user_state->updated)
-    (void) snprintf(buf, buflen, "P %s 3:%s:%s:%s:%u:%d:%d:%" PRIx32 ":"
-                                 "%" PRIx32 ":",
-                    username, username, user_state->challenge, user_state->csd,
-                    user_state->failcount,
+    (void) snprintf(buf, buflen, "P %s 4:%s:%s:%s:%u:%d:%d:%" PRIx32 ":"
+                                 "%" PRIx32 ":%d:",
+                    username, username, user_state->challenge,
+                    user_state->csd, user_state->failcount,
                     user_state->authewin, user_state->authtwin,
-                    user_state->authtime, user_state->minauthtime);
+                    user_state->authtime, user_state->minauthtime,
+                    user_state->minewin);
   else
     (void) snprintf(buf, buflen, "P %s", username);
   buf[buflen - 1] = '\0';
