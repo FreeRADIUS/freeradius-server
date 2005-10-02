@@ -106,7 +106,7 @@
   With the original RADIUS server, every user had to be defined in this
   file. There could be one default entry, where you could for example
   define that a user not in the radius file would be checked agains the
-  UNIX password file and on succesfull login would get a PPP connection.
+  UNIX password file and on successful login would get a PPP connection.
 
   In the new style file, you can define multiple DEFAULT entries. All
   entries are processed in the order as they appear in the users file.
