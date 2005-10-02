@@ -57,7 +57,7 @@ radius server.  We will spread the load among the group of radius
 servers that we have so some are acting as a primary to some NAS's and
 acting as a secondary to others.  In the event of a radius failure,
 the NAS should failover to the backup radius server.  How to configure
-this is dependant on the particular NAS being used.
+this is dependent on the particular NAS being used.
 
                                                                           
           Will use Radius acct data              Billing will provision   
