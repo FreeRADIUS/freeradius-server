@@ -72,8 +72,8 @@ typedef struct cardops_t {
   int (*updatecsd)(const otp_user_info_t *, otp_user_state_t *,
                    const char [OTP_MAX_CHALLENGE_LEN + 1], const char *);
   int (*nexttwin)(int);
-  int32_t (*twin2authtime)(const char [OTP_MAX_CSD_LEN + 1], time_t, int,
-                           const char *);
+  time_t (*twin2authtime)(const char [OTP_MAX_CSD_LEN + 1], time_t, int,
+                          const char *);
 } cardops_t;
 #define OTP_MAX_VENDORS 16
 extern cardops_t otp_cardops[OTP_MAX_VENDORS];
