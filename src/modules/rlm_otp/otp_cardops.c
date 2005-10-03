@@ -382,6 +382,15 @@ sync_response:
        * in order to accomodate clock drift.  We must never allow a
        * successful auth for a correct passcode earlier in time than
        * one already used successfully, so we skip out early here.
+       *
+       * It is CRITICAL that we call twin2authtime() rather than use
+       * our own idea of the time (based on 'now' +- twin), because
+       * 1 second later in real time can still be the same time window
+       * on the card.  This could give us a false positive (we'd reject
+       * a time which is ok for t or e+t cards).  Cardops modules must
+       * return values which are based on the time window of the card
+       * (e.g. 0 for times from 0-63, 64 for times from 64-127) so that
+       * our comparison works.
        */
       authtime = user_info.cardops->twin2authtime(csd, now, t, log_prefix);
       if (user_info.featuremask & OTP_CF_ES) {
