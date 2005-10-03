@@ -669,7 +669,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 
 			DEBUG2( "Config:   including file: %s", value );
 
-			if ((is = conf_read(cf, *lineno, value, parent)) == NULL) {
+			if ((is = conf_read(cf, *lineno, value, cs)) == NULL) {
 				cf_section_free(&cs);
 				return NULL;
 			}
