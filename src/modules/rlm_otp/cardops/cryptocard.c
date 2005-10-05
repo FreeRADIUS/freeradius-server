@@ -236,6 +236,14 @@ __attribute__ ((unused))
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
+                     unsigned twin,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                     time_t when,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
                      const char *log_prefix)
 {
   return 0;
