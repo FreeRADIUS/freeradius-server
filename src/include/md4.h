@@ -6,11 +6,8 @@
  *
  */
 
-
 #ifndef _LRAD_MD4_H
 #define _LRAD_MD4_H
-
-#include "autoconf.h"
 
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>

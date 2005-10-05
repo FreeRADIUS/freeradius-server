@@ -9,8 +9,6 @@
 #ifndef _LRAD_MD5_H
 #define _LRAD_MD5_H
 
-#include "autoconf.h"
-
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
 #endif
