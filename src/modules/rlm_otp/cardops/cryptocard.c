@@ -19,6 +19,7 @@
  * Copyright 2005 TRI-D Systems, Inc.
  */
 
+#include <inttypes.h>
 #include <string.h>
 #include <time.h>
 
@@ -260,6 +261,25 @@ __attribute__ ((unused))
   return 0;
 }
 
+/* no twin so just return 0 */
+static int
+cryptocard_maxtwin(
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                    const otp_user_info_t *user_info,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                    const char csd[OTP_MAX_CSD_LEN + 1],
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                    time_t when)
+{
+  return 0;
+}
+
 /* no twin so just return success */
 static time_t
 cryptocard_twin2authtime(
@@ -296,6 +316,7 @@ static cardops_t cryptocard_cardops = {
   .response		= cryptocard_response,
   .updatecsd		= cryptocard_updatecsd,
   .nexttwin		= cryptocard_nexttwin,
+  .maxtwin		= cryptocard_maxtwin,
   .twin2authtime	= cryptocard_twin2authtime
 };
 

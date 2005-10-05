@@ -349,7 +349,7 @@ sync_response:
    * (prior to) the last successful authentication.
    */
   if ((user_info.featuremask & OTP_CF_SM) && opt->allow_sync) {
-    unsigned end, ewindow, rwindow;
+    unsigned tend, end, ewindow, rwindow;
     uint32_t authtime;
 
     /* set ending ewin counter */
@@ -371,7 +371,8 @@ sync_response:
     (void) strcpy(challenge, user_state.challenge);
 
     /* Test each sync response in the window. */
-    for (t = 0; t <= (user_info.featuremask & OTP_CF_TW) * 2; ++t) {
+    tend = user_info.cardops->maxtwin(&user_info, csd, now);
+    for (t = 0; t <= tend; ++t) {
       /*
        * For event synchronous modes, we can never go backwards (the
        * challenge() method can only walk forward on the event counter),
