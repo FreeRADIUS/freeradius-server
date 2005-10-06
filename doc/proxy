@@ -19,12 +19,12 @@
 		username%realm
 		realm\username
 
-  The realm parsing syntax ( and search order ) is userdefinable via the
+  The realm parsing syntax ( and search order ) is user definable via the
   realm module config in the /etc/raddb/radiusd.conf configuration file.
 
   You can define multiple instances of the realm module to support multiple
   realm syntax's at the same time.  Be sure to pay close attention to the
-  search order that you define, as you may inadvertantly get unexpected
+  search order that you define, as you may inadvertently get unexpected
   behaviour ( by having a user use 'realm1/username@realm2' for instance ).
   If you need to proxy to IPASS, it should go first, because usernames will
   be in the form IPASS/username@realm and you want to proxy these users to
@@ -37,7 +37,7 @@
   The realm "DEFAULT" (without the quotes) matches all realms.
   The realm "NULL" matches any requests WITHOUT a realm.
 
-  If you set the remoteserver to "LOCAL", the request will be handled
+  If you set the remote server to "LOCAL", the request will be handled
   locally as usual, without sending it to a remote radius server.
 
   There are several options you can add in both files:
@@ -68,7 +68,7 @@
 2. ACCOUNTING
 
   All accounting data for proxied requests does NOT get stored in the
-  standard logfiles, but in a seperate directory. The name of this
+  standard logfiles, but in a separate directory. The name of this
   directory is the name of the remote radius server, and if you want you
   can define a nickname for it in /etc/raddb/naslist just as for normal NASes.
 
