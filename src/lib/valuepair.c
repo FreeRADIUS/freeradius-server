@@ -724,6 +724,14 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 		case PW_TYPE_IPADDR:
 			/*
+			 *	It's a comparison, not a real IP.
+			 */
+			if ((vp->operator == T_OP_REG_EQ) ||
+			    (vp->operator == T_OP_REG_NE)) {
+				break;
+			}
+
+			/*
 			 *	FIXME: complain if hostname
 			 *	cannot be resolved, or resolve later!
 			 */
