@@ -10,7 +10,7 @@ Radius DBM module
 
 1. WHAT DOES IT DO
 
-  Basicly, it opens the file you specifies in radiusd.conf and authenticates
+  Basically, it opens the file you specifies in radiusd.conf and authenticates
   users out of it. The file has to be a Berkeley or GDBM <** file database,
   and may be created by rlm_dbm_parse or by a custom program of your choice.
 
@@ -46,7 +46,7 @@ Radius DBM module
 
     rlm_dbm_cat: [-f file] [-w] [-i number] [-l number] [-v] [username ...]
 
-    rlm_dbm_cat simply lists the difinition(s) of the username(s) or group
+    rlm_dbm_cat simply lists the definition(s) of the username(s) or group
     name(s), or the entire database. It takes the following options:
 
       -f <filename>
