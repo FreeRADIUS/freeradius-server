@@ -120,11 +120,11 @@ section".
   In a configurable fail-over section, each of these codes may be
 listed, with a value.  If the code is not listed, or a configurable
 fail-over section is not defined, then values that make sense for the
-requested "group" (group, redundanct, load-balance, etc) are used.
+requested "group" (group, redundant, load-balance, etc) are used.
 
   The special code "default" can be used to set all return codes to
 the specified value.  This value will be used with a lower priority
-than ones that are explicitely set.
+than ones that are explicitly set.
 
   The values for each code may be one of two things:
 
@@ -143,7 +143,7 @@ returns "ok" with priority "3", the return code from the list of
 modules will be "ok", because it has higher priority than "fail".
 
   This configurability allows the administrator to permit some modules
-to fail, so long as a later module succeds.
+to fail, so long as a later module succeeds.
 
 
   More Complex Configurations

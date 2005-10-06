@@ -127,7 +127,7 @@ modules, the configuration is complex:
    }
 ...
 
-  For four or more modules, it quickly becomes unmanagable.
+  For four or more modules, it quickly becomes unmanageable.
 
   The solution is to use the "redundant-load-balance" section, which
 combines the features of "load-balance", with "redundant" fail-over
