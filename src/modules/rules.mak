@@ -39,7 +39,9 @@ all: static dynamic
 #
 #######################################################################
 STATIC_OBJS	+= $(SRCS:.c=.o)
+STATIC_OBJS	+= $(SRCS:.cpp=.o)
 DYNAMIC_OBJS	+= $(SRCS:.c=.lo)
+DYNAMIC_OBJS	+= $(SRCS:.cpp=.lo)
 CFLAGS		+= -I$(RLM_DIR)../../include
 
 #######################################################################
@@ -60,8 +62,14 @@ $(DYNAMIC_OBJS): $(SERVER_HEADERS)
 %.o : %.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(RLM_CFLAGS) -c $< -o $@
 
+%.o : %.cpp
+	$(LIBTOOL) --mode=compile $(CXX) $(CFLAGS) $(RLM_CFLAGS) -c $< -o $@
+
 %.lo : %.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(RLM_CFLAGS) -c $<
+
+%.lo : %.cpp
+	$(LIBTOOL) --mode=compile $(CXX) $(CFLAGS) $(RLM_CFLAGS) -c $<
 
 ifneq ($(TARGET),)
 #######################################################################

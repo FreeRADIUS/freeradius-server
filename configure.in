@@ -38,6 +38,7 @@ dnl #############################################################
 
 dnl Check for GNU cc
 AC_PROG_CC
+AC_PROG_CXX
 
 dnl #
 dnl # check for AIX, to allow us to use some BSD functions
