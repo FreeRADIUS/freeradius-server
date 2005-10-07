@@ -102,9 +102,9 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
              cmpfunc_t cmpfunc, void *data,
              const char *log_prefix)
 {
-  int		rc, nmatch, i;
-  unsigned	e = 0, t = 0;	/* must initialize for async auth path */
-  int		fc;		/* failcondition */
+  int	rc, nmatch, i;
+  int	e = 0, t = 0;	/* must initialize for async auth path */
+  int	fc;		/* failcondition */
 
   char	csd[OTP_MAX_CSD_LEN + 1]; /* working copy of csd */
     	/* expected response */
@@ -349,7 +349,7 @@ sync_response:
    * (prior to) the last successful authentication.
    */
   if ((user_info.featuremask & OTP_CF_SM) && opt->allow_sync) {
-    unsigned tend, end, ewindow, rwindow;
+    int tend, end, ewindow, rwindow;
     uint32_t authtime;
 
     /* set ending ewin counter */
