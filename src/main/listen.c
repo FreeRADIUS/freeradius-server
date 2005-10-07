@@ -596,9 +596,6 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 		return 0;
 	}
 
-	request->reply->src_ipaddr = sock->ipaddr;
-	request->reply->src_port = sock->port;
-
 	return rad_send(request->reply, request->packet, request->secret);
 }
 
@@ -620,9 +617,6 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 	 *	code with this knowledge
 	 */
 	if (request->reply->code == 0) return 0;
-
-	request->reply->src_ipaddr = sock->ipaddr;
-	request->reply->src_port = sock->port;
 
 	return rad_send(request->reply, request->packet, request->secret);
 }
