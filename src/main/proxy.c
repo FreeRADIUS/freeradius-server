@@ -80,9 +80,8 @@ int proxy_receive(REQUEST *request)
         request->proxy_reply->vps = NULL;
 
         /*
-         *	Free any other configuration items and proxy pairs
+	 *	Free proxy request pairs.
          */
-        pairfree(&request->config_items);
         pairfree(&request->proxy->vps);
 
         return rcode;
