@@ -169,9 +169,9 @@ static PerlInterpreter	*interp = NULL;
 
 static const CONF_PARSER pool_conf[] = {
 	{ "max_clones", PW_TYPE_INTEGER, offsetof(PERL_POOL, max_clones), NULL,		"32"},
-	{ "start_clones",PW_TYPE_INTEGER, offsetof(PERL_POOL, start_clones), NULL,		"5"},
-	{ "min_spare_clones",PW_TYPE_INTEGER, offsetof(PERL_POOL, min_spare_clones),NULL,	"3"},
-	{ "max_spare_clones",PW_TYPE_INTEGER, offsetof(PERL_POOL,max_spare_clones),NULL,	"3"},
+	{ "start_clones",PW_TYPE_INTEGER, offsetof(PERL_POOL, start_clones), NULL,		"32"},
+	{ "min_spare_clones",PW_TYPE_INTEGER, offsetof(PERL_POOL, min_spare_clones),NULL,	"0"},
+	{ "max_spare_clones",PW_TYPE_INTEGER, offsetof(PERL_POOL,max_spare_clones),NULL,	"32"},
 	{ "cleanup_delay",PW_TYPE_INTEGER, offsetof(PERL_POOL,cleanup_delay),NULL,		"5"},
 	{ "max_request_per_clone",PW_TYPE_INTEGER, offsetof(PERL_POOL,max_request_per_clone),NULL,	"0"},
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
