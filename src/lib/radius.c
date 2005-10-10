@@ -1552,6 +1552,277 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 
 /*
+ *	Parse a RADIUS attribute into a data structure.
+ */
+VALUE_PAIR *rad_attr2vp(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+			const char *secret, int attribute, int length,
+			uint8_t *data)
+{
+	VALUE_PAIR *pair;
+
+	if ((pair = paircreate(attribute, PW_TYPE_OCTETS)) == NULL) {
+		return NULL;
+	}
+	
+	pair->length = length;
+	pair->operator = T_OP_EQ;
+	pair->next = NULL;
+	
+	switch (pair->type) {
+		
+		/*
+		 *	The attribute may be zero length,
+		 *	or it may have a tag, and then no data...
+		 */
+	case PW_TYPE_STRING:
+		if (pair->flags.has_tag) {
+			int offset = 0;
+			
+			/*
+			 *	If there's sufficient room for
+			 *	a tag, and the tag looks valid,
+			 *	then use it.
+			 */
+			if ((pair->length > 0) &&
+			    TAG_VALID_ZERO(*data)) {
+				pair->flags.tag = *data;
+				pair->length--;
+				offset = 1;
+				
+				/*
+				 *	If the leading tag
+				 *	isn't valid, then it's
+				 *	ignored for the tunnel
+				 *	password attribute.
+				 */
+			} else if (pair->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
+				/*
+				 * from RFC2868 - 3.5.  Tunnel-Password
+				 * If the value of the Tag field is greater than
+				 * 0x00 and less than or equal to 0x1F, it SHOULD
+				 * be interpreted as indicating which tunnel
+				 * (of several alternatives) this attribute pertains;
+				 * otherwise, the Tag field SHOULD be ignored.
+				 */
+				pair->flags.tag = 0x00;
+				if (pair->length > 0) pair->length--;
+				offset = 1;
+			} else {
+				pair->flags.tag = 0x00;
+			}
+			
+			/*
+			 *	pair->length MAY be zero here.
+			 *
+			 *	See comment below about NUL
+			 *	termination.
+			 */
+			memcpy(pair->vp_strvalue, data + offset,
+			       pair->length);
+		} else {
+			/*
+			 *	Ascend binary attributes never have a
+			 *	tag, and neither do the 'octets' type.
+			 */
+		case PW_TYPE_ABINARY:
+		case PW_TYPE_OCTETS:
+			/* length always < MAX_STRING_LEN */
+			memcpy(pair->vp_strvalue, data, length);
+			/*
+			 *	Don't NUL terminate strings,
+			 *	as paircreate() zero-fills
+			 *	strvalue[], and strvalue[] is
+			 *	one more than the RADIUS max
+			 *	string length, to account for
+			 *	the trailing NUL needed by C.
+			 */
+			
+			pair->flags.tag = 0;
+		}
+		
+		/*
+		 *	Decrypt passwords here.
+		 */
+		switch (pair->flags.encrypt) {
+		default:
+			break;
+			
+			/*
+			 *  User-Password
+			 */
+		case FLAG_ENCRYPT_USER_PASSWORD:
+			if (original) {
+				rad_pwdecode((char *)pair->vp_strvalue,
+					     pair->length, secret,
+					     original->vector);
+			} else {
+				rad_pwdecode((char *)pair->vp_strvalue,
+					     pair->length, secret,
+					     packet->vector);
+			}
+			if (pair->attribute == PW_USER_PASSWORD) {
+				pair->length = strlen(pair->vp_strvalue);
+			}
+			break;
+			
+			/*
+			 *	Tunnel-Password's may go ONLY
+			 *	in response packets.
+			 */
+		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+			if (!original) {
+				librad_log("ERROR: Tunnel-Password attribute in request: Cannot decrypt it.");
+				free(pair);
+				return NULL;
+			}
+			if (rad_tunnel_pwdecode(pair->vp_strvalue,
+						&pair->length,
+						secret,
+						original->vector) < 0) {
+				free(pair);
+				return NULL;
+			}
+			break;
+			
+			/*
+			 *  Ascend-Send-Secret
+			 *  Ascend-Receive-Secret
+			 */
+		case FLAG_ENCRYPT_ASCEND_SECRET:
+			if (!original) {
+				librad_log("ERROR: Ascend-Send-Secret attribute in request: Cannot decrypt it.");
+				free(pair);
+				return NULL;
+			} else {
+				uint8_t my_digest[AUTH_VECTOR_LEN];
+				make_secret(my_digest,
+					    original->vector,
+					    secret, data);
+				memcpy(pair->vp_strvalue, my_digest,
+				       AUTH_VECTOR_LEN );
+				pair->vp_strvalue[AUTH_VECTOR_LEN] = '\0';
+				pair->length = strlen(pair->vp_strvalue);
+			}
+			break;
+		} /* switch over encryption flags */
+		break;	/* from octets/string/abinary */
+		
+	case PW_TYPE_INTEGER:
+	case PW_TYPE_DATE:
+	case PW_TYPE_IPADDR:
+		/*
+		 *	Check for RFC compliance.  If the
+		 *	attribute isn't compliant, turn it
+		 *	into a string of raw octets.
+		 *
+		 *	Also set the lvalue to something
+		 *	which should never match anything.
+		 */
+		if (length != 4) {
+			pair->type = PW_TYPE_OCTETS;
+			memcpy(pair->vp_strvalue, data, length);
+			pair->lvalue = 0xbad1bad1;
+			break;
+		}
+		
+		memcpy(&pair->lvalue, data, 4);
+		
+		if (pair->type != PW_TYPE_IPADDR) {
+			pair->lvalue = ntohl(pair->lvalue);
+		} else {
+			/*
+			 *  It's an IP address, keep it in network
+			 *  byte order, and put the ASCII IP
+			 *  address or host name into the string
+			 *  value.
+			 */
+		}
+		
+		/*
+		 *	Tagged attributes of type integer have
+		 *	special treatment.
+		 */
+		if (pair->flags.has_tag &&
+		    pair->type == PW_TYPE_INTEGER) {
+			pair->flags.tag = (pair->lvalue >> 24) & 0xff;
+			pair->lvalue &= 0x00ffffff;
+		}
+		
+		/*
+		 *	Try to get the name for integer
+		 *	attributes.
+		 */
+		if (pair->type == PW_TYPE_INTEGER) {
+			DICT_VALUE *dval;
+			dval = dict_valbyattr(pair->attribute,
+					      pair->lvalue);
+			if (dval) {
+				strNcpy(pair->vp_strvalue,
+					dval->name,
+					sizeof(pair->vp_strvalue));
+			}
+		}
+		break;
+		
+		/*
+		 *	IPv6 interface ID is 8 octets long.
+		 */
+	case PW_TYPE_IFID:
+		if (length != 8)
+			pair->type = PW_TYPE_OCTETS;
+		memcpy(pair->vp_strvalue, data, length);
+		break;
+		
+		/*
+		 *	IPv6 addresses are 16 octets long
+		 */
+	case PW_TYPE_IPV6ADDR:
+		if (length != 16)
+			pair->type = PW_TYPE_OCTETS;
+		memcpy(pair->vp_strvalue, data, length);
+		break;
+		
+		/*
+		 *	IPv6 prefixes are 2 to 18 octets long.
+		 *
+		 *	RFC 3162: The first octet is unused.
+		 *	The second is the length of the prefix
+		 *	the rest are the prefix data.
+		 *
+		 *	The prefix length can have value 0 to 128.
+		 */
+	case PW_TYPE_IPV6PREFIX:
+		if (length < 2 || length > 18)
+			pair->type = PW_TYPE_OCTETS;
+		if (length >= 2) {
+			if (data[1] > 128) {
+				pair->type = PW_TYPE_OCTETS;
+			}
+
+			/*
+			 *	FIXME: double-check that
+			 *	(data[1] >> 3) matches length + 2
+			 */
+		}
+		memcpy(pair->vp_strvalue, data, length);
+		if (length < 18) {
+			memset(pair->vp_strvalue + length, 0,
+			       18 - length);
+		}
+		break;
+
+	default:
+		DEBUG("    %s (Unknown Type %d)\n",
+		      pair->name, pair->type);
+		free(pair);
+		return NULL;
+	}
+
+	return pair;
+}
+
+
+/*
  *	Calculate/check digest, and decode radius attributes.
  *	Returns:
  *	-1 on decoding error
@@ -1742,266 +2013,12 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		 *	over-ride this one.
 		 */
 	create_pair:
-		if ((pair = paircreate(attribute, PW_TYPE_OCTETS)) == NULL) {
+		pair = rad_attr2vp(packet, original, secret,
+				 attribute, attrlen, ptr);
+		if (!pair) {
 			pairfree(&packet->vps);
 			librad_log("out of memory");
 			return -1;
-		}
-
-		pair->length = attrlen;
-		pair->operator = T_OP_EQ;
-		pair->next = NULL;
-
-		switch (pair->type) {
-
-			/*
-			 *	The attribute may be zero length,
-			 *	or it may have a tag, and then no data...
-			 */
-		case PW_TYPE_STRING:
-			if (pair->flags.has_tag) {
-				int offset = 0;
-
-				/*
-				 *	If there's sufficient room for
-				 *	a tag, and the tag looks valid,
-				 *	then use it.
-				 */
-				if ((pair->length > 0) &&
-				    TAG_VALID_ZERO(*ptr)) {
-					pair->flags.tag = *ptr;
-					pair->length--;
-					offset = 1;
-
-					/*
-					 *	If the leading tag
-					 *	isn't valid, then it's
-					 *	ignored for the tunnel
-					 *	password attribute.
-					 */
-				} else if (pair->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
-					/*
-					 * from RFC2868 - 3.5.  Tunnel-Password
-					 * If the value of the Tag field is greater than
-					 * 0x00 and less than or equal to 0x1F, it SHOULD
-					 * be interpreted as indicating which tunnel
-					 * (of several alternatives) this attribute pertains;
-					 * otherwise, the Tag field SHOULD be ignored.
-					 */
-					pair->flags.tag = 0x00;
-					if (pair->length > 0) pair->length--;
-					offset = 1;
-				} else {
-				       pair->flags.tag = 0x00;
-				}
-
-				/*
-				 *	pair->length MAY be zero here.
-				 *
-				 *	See comment below about NUL
-				 *	termination.
-				 */
-				memcpy(pair->vp_strvalue, ptr + offset,
-				       pair->length);
-			} else {
-			  /*
-			   *	Ascend binary attributes never have a
-			   *	tag, and neither do the 'octets' type.
-			   */
-			case PW_TYPE_ABINARY:
-			case PW_TYPE_OCTETS:
-				/* attrlen always < MAX_STRING_LEN */
-				memcpy(pair->vp_strvalue, ptr, attrlen);
-				/*
-				 *	Don't NUL terminate strings,
-				 *	as paircreate() zero-fills
-				 *	strvalue[], and strvalue[] is
-				 *	one more than the RADIUS max
-				 *	string length, to account for
-				 *	the trailing NUL needed by C.
-				 */
-
-			        pair->flags.tag = 0;
-			}
-
-			/*
-			 *	Decrypt passwords here.
-			 */
-			switch (pair->flags.encrypt) {
-			default:
-				break;
-
-				/*
-				 *  User-Password
-				 */
-			case FLAG_ENCRYPT_USER_PASSWORD:
-				if (original) {
-					rad_pwdecode((char *)pair->vp_strvalue,
-						     pair->length, secret,
-						     original->vector);
-				} else {
-					rad_pwdecode((char *)pair->vp_strvalue,
-						     pair->length, secret,
-						     packet->vector);
-				}
-				if (pair->attribute == PW_USER_PASSWORD) {
-					pair->length = strlen(pair->vp_strvalue);
-				}
-				break;
-
-				/*
-				 *	Tunnel-Password's may go ONLY
-				 *	in response packets.
-				 */
-			case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-				if (!original) {
-					librad_log("ERROR: Tunnel-Password attribute in request: Cannot decrypt it.");
-					free(pair);
-					return -1;
-				}
-				if (rad_tunnel_pwdecode(pair->vp_strvalue,
-							&pair->length,
-							secret,
-							original->vector) < 0) {
-					free(pair);
-					return -1;
-				}
-				break;
-
-				/*
-				 *  Ascend-Send-Secret
-				 *  Ascend-Receive-Secret
-				 */
-			case FLAG_ENCRYPT_ASCEND_SECRET:
-				if (!original) {
-					librad_log("ERROR: Ascend-Send-Secret attribute in request: Cannot decrypt it.");
-					free(pair);
-					return -1;
-				} else {
-					uint8_t my_digest[AUTH_VECTOR_LEN];
-					make_secret(my_digest,
-						    original->vector,
-						    secret, ptr);
-					memcpy(pair->vp_strvalue, my_digest,
-					       AUTH_VECTOR_LEN );
-					pair->vp_strvalue[AUTH_VECTOR_LEN] = '\0';
-					pair->length = strlen(pair->vp_strvalue);
-				}
-				break;
-			} /* switch over encryption flags */
-			break;	/* from octets/string/abinary */
-
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_DATE:
-		case PW_TYPE_IPADDR:
-			/*
-			 *	Check for RFC compliance.  If the
-			 *	attribute isn't compliant, turn it
-			 *	into a string of raw octets.
-			 *
-			 *	Also set the lvalue to something
-			 *	which should never match anything.
-			 */
-			if (attrlen != 4) {
-				pair->type = PW_TYPE_OCTETS;
-				memcpy(pair->vp_strvalue, ptr, attrlen);
-				pair->lvalue = 0xbad1bad1;
-				break;
-			}
-
-      			memcpy(&lvalue, ptr, 4);
-
-			if (pair->type != PW_TYPE_IPADDR) {
-				pair->lvalue = ntohl(lvalue);
-			} else {
-				 /*
-				  *  It's an IP address, keep it in network
-				  *  byte order, and put the ASCII IP
-				  *  address or host name into the string
-				  *  value.
-				  */
-				pair->lvalue = lvalue;
-			}
-
-			/*
-			 *	Tagged attributes of type integer have
-			 *	special treatment.
-			 */
-			if (pair->flags.has_tag &&
-			    pair->type == PW_TYPE_INTEGER) {
-			        pair->flags.tag = (pair->lvalue >> 24) & 0xff;
-				pair->lvalue &= 0x00ffffff;
-			}
-
-			/*
-			 *	Try to get the name for integer
-			 *	attributes.
-			 */
-			if (pair->type == PW_TYPE_INTEGER) {
-				DICT_VALUE *dval;
-				dval = dict_valbyattr(pair->attribute,
-						      pair->lvalue);
-				if (dval) {
-					strNcpy(pair->vp_strvalue,
-						dval->name,
-						sizeof(pair->vp_strvalue));
-				}
-			}
-			break;
-
-			/*
-			 *	IPv6 interface ID is 8 octets long.
-			 */
-		case PW_TYPE_IFID:
-			if (attrlen != 8)
-				pair->type = PW_TYPE_OCTETS;
-			memcpy(pair->vp_strvalue, ptr, attrlen);
-			break;
-
-			/*
-			 *	IPv6 addresses are 16 octets long
-			 */
-		case PW_TYPE_IPV6ADDR:
-			if (attrlen != 16)
-				pair->type = PW_TYPE_OCTETS;
-			memcpy(pair->vp_strvalue, ptr, attrlen);
-			break;
-
-			/*
-			 *	IPv6 prefixes are 2 to 18 octets long.
-			 *
-			 *	RFC 3162: The first octet is unused.
-			 *	The second is the length of the prefix
-			 *	the rest are the prefix data.
-			 *
-			 *	The prefix length can have value 0 to 128.
-			 */
-		case PW_TYPE_IPV6PREFIX:
-			if (attrlen < 2 || attrlen > 18)
-				pair->type = PW_TYPE_OCTETS;
-			if (attrlen >= 2) {
-				if (ptr[1] > 128) {
-					pair->type = PW_TYPE_OCTETS;
-				}
-
-				/*
-				 *	FIXME: double-check that
-				 *	(ptr[1] >> 3) matches attrlen + 2
-				 */
-			}
-			memcpy(pair->vp_strvalue, ptr, attrlen);
-			if (attrlen < 18) {
-				memset(pair->vp_strvalue + attrlen, 0,
-				       18 - attrlen);
-			}
-			break;
-
-		default:
-			DEBUG("    %s (Unknown Type %d)\n",
-			      pair->name, pair->type);
-			free(pair);
-			pair = NULL;
-			break;
 		}
 
 		if (pair) {
