@@ -41,10 +41,6 @@ static const char rcsid[] = "$Id$";
 
 #include	<sys/socket.h>
 
-#ifdef HAVE_ARPA_INET_H
-#include	<arpa/inet.h>
-#endif
-
 #ifdef HAVE_MALLOC_H
 #include	<malloc.h>
 #endif
@@ -961,7 +957,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
  */
 static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
 {
-	u_char		digest[AUTH_VECTOR_LEN];
+	uint8_t		digest[AUTH_VECTOR_LEN];
 	MD5_CTX		context;
 
 	/*
@@ -2419,7 +2415,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 	}
 
 	*output = id;
-	librad_md5_calc((u_char *)output + 1, (u_char *)string, i);
+	librad_md5_calc((uint8_t *)output + 1, (uint8_t *)string, i);
 
 	return 0;
 }
