@@ -168,7 +168,7 @@ static int client_sane(RADCLIENT *client)
 			uint32_t mask = ~0;
 
 			mask <<= (32 - client->prefix);
-			client->ipaddr.ipaddr.ip4addr.s_addr &= mask;
+			client->ipaddr.ipaddr.ip4addr.s_addr &= htonl(mask);
 		}
 		break;
 
