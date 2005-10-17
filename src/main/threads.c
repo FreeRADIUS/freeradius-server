@@ -280,7 +280,7 @@ static void reap_children(void)
  *
  *	This function should never fail.
  */
-static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
+static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	request_queue_t entry;
 
@@ -308,7 +308,7 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 */
 		radlog(L_ERR|L_CONS, "!!! ERROR !!! The server is blocked: discarding new request %d", request->number);
 		request->finished = TRUE;
-		return;
+		return 0;
 	}
 
 	/*
@@ -333,7 +333,7 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		radlog(L_ERR, "!!! ERROR !!! Failed inserting request %d into the queue", request->number);
 		request->finished = TRUE;
-		return;
+		return 0;
 	}
 
 	thread_pool.queue_tail++;
@@ -351,7 +351,7 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	sem_post(&thread_pool.semaphore);
 
-	return;
+	return 1;
 }
 
 /*
@@ -891,6 +891,11 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 	}
 
 	/*
+	 *	Add the new request to the queue.
+	 */
+	if (!request_enqueue(request, fun)) return 0;
+
+	/*
 	 *	If the thread pool is busy handling requests, then
 	 *	try to spawn another one.
 	 */
@@ -899,14 +904,9 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 			radlog(L_INFO,
 			       "The maximum number of threads (%d) are active, cannot spawn new thread to handle request",
 			       thread_pool.max_threads);
-			return 0;
+			return 1;
 		}
 	}
-
-	/*
-	 *	Add the new request to the queue.
-	 */
-	request_enqueue(request, fun);
 
 	return 1;
 }
