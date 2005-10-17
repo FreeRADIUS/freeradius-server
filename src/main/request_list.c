@@ -1077,6 +1077,7 @@ static int refresh_request(void *ctx, void *data)
 			goto reject_delay;
 		}
 
+	reject_packet:
 		/*
 		 *	Clear the 'delayed reject' bit, so that we
 		 *	don't do this again, and fall through to
@@ -1217,6 +1218,11 @@ static int refresh_request(void *ctx, void *data)
 	    (mainconfig.reject_delay > 0)) {
 	reject_delay:
 		time_passed = mainconfig.reject_delay - time_passed;
+
+		/*
+		 *	This catches a corner case, apparently.
+		 */
+		if (time_passed == 0) goto reject_packet;
 		goto setup_timeout;
 	}
 
