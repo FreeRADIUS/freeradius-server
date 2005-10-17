@@ -437,17 +437,24 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			/*
 			 *	If we're getting a User-Name formatted in this way,
 			 *	it's likely due to PEAP.  The Windows Domain will be
-			 *	the first domain component following the hostname.
+			 *	the first domain component following the hostname,
+			 *	or the machine name itself if only a hostname is supplied
 			 */
 			p = strchr(user_name->vp_strvalue, '.');
-			p++;
-			q = strchr(p, '.');
-			/*
-			 * use the same hack as below
-			 */
-			*q = '\0';
-			strNcpy(out, p, outlen);
-			*q = '.';
+			if (!p) {
+				DEBUG2("  rlm_mschap: setting NT-Domain to same as machine name");
+				strNcpy(out, user_name->vp_strvalue + 5, outlen);
+			} else {
+				p++;	/* skip the period */
+				q = strchr(p, '.');
+				/*
+				 * use the same hack as below
+				 * only if another period was found
+				 */
+				if (q) *q = '\0';
+				strNcpy(out, p, outlen);
+				if (q) *q = '.';
+			}
 		} else {
 			p = strchr(user_name->vp_strvalue, '\\');
 			if (!p) {
@@ -495,10 +502,11 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			p = strchr(user_name->vp_strvalue, '.');
 			/*
 			 * use the same hack as above
+			 * only if a period was found
 			 */
-			*p = '\0';
+			if (p) *p = '\0';
 			snprintf(out, outlen, "%s$", user_name->vp_strvalue + 5);
-			*p = '.';
+			if (p) *p = '.';
 		} else {
 			p = strchr(user_name->vp_strvalue, '\\');
 			if (p) {
