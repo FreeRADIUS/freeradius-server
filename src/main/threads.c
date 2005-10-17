@@ -383,8 +383,7 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 */
 	entry = lrad_hash_table_finddata(thread_pool.queue, thread_pool.queue_head);
 	if (!entry) {
-		thread_pool.queue_head++; /* skip it */
-		lrad_hash_table_delete(thread_pool.queue, thread_pool.queue_head);
+		lrad_hash_table_delete(thread_pool.queue, thread_pool.queue_head++);
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		*request = NULL;
 		*fun = NULL;
@@ -398,8 +397,7 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	rad_assert((*request)->magic == REQUEST_MAGIC);
 	rad_assert(*fun != NULL);
 
-	thread_pool.queue_head++;
-	lrad_hash_table_delete(thread_pool.queue, thread_pool.queue_head);
+	lrad_hash_table_delete(thread_pool.queue, thread_pool.queue_head++);
 
 	/*
 	 *	FIXME: Check the request timestamp.  If it's more than
