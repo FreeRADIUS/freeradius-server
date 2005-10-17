@@ -1218,11 +1218,13 @@ static int refresh_request(void *ctx, void *data)
 	    (mainconfig.reject_delay > 0)) {
 	reject_delay:
 		time_passed = mainconfig.reject_delay - time_passed;
-
+		
 		/*
 		 *	This catches a corner case, apparently.
 		 */
-		if (time_passed == 0) goto reject_packet;
+		if ((request->reply->code == PW_AUTHENTICATION_REJECT) &&
+		    (time_passed == 0)) goto reject_packet;
+		if (time_passed == 0) time_passed = 1;
 		goto setup_timeout;
 	}
 
