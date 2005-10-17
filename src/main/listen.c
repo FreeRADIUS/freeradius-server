@@ -1603,8 +1603,10 @@ static int listen_bind(rad_listen_t *this)
 			}
 			
 			if (equal) {
+				this->rl = (*last)->rl;
 				this->fd = (*last)->fd;
 				(*last)->fd = -1;
+				(*last)->rl = NULL;
 				return 0;
 			}
 		}
@@ -2057,7 +2059,8 @@ int listen_init(const char *filename, rad_listen_t **head)
 	 */
 	rcode = 0;
 	for (this = *head; this != NULL; this = this->next) {
-		if (this->type != RAD_LISTEN_PROXY) {
+		if ((this->type != RAD_LISTEN_PROXY) &&
+		    !this->rl) {
 			/*
 			 *	FIXME: Pass type to rl_init, so that
 			 *	it knows how to deal with accounting
