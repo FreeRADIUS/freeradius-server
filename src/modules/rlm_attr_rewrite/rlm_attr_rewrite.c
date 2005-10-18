@@ -343,7 +343,7 @@ do_again:
 					char buffer[sizeof(attr_vp->vp_strvalue)];
 
 					/*
-				   	 * Stolen from src/main/valuepair.c, paircmp()
+				   	 * Stolen from src/main/valuepair.c, paircompare()
 				 	 */
 
 					/*

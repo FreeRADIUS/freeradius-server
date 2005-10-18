@@ -1622,7 +1622,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 			pairadd(reply_pairs,reply_tmp);
 	}
 
-       if (inst->do_comp && paircmp(request,request->packet->vps,*check_pairs,reply_pairs) != 0){
+       if (inst->do_comp && paircompare(request,request->packet->vps,*check_pairs,reply_pairs) != 0){
 #ifdef NOVELL
 		/* Don't perform eDirectory APC if RADIUS authorize fails */
 		int apc_attr;

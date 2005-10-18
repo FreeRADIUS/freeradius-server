@@ -678,12 +678,12 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			/*
 			 *	Only do this if *some* check pairs were returned
 			 */
-			if (paircmp(request, request->packet->vps, check_tmp, &request->reply->vps) == 0) {
+			if (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) == 0) {
 				found = 1;
 				DEBUG2("rlm_sql (%s): User found in group %s",
 					inst->config->xlat_name, group_list_tmp->groupname);
 				/*
-				 *	Now get the reply pairs since the paircmp matched
+				 *	Now get the reply pairs since the paircompare matched
 				 */
 				if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query, request, sql_escape_func)) {
 					radlog(L_ERR, "rlm_sql (%s): Error generating query; rejecting user",
@@ -717,7 +717,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			DEBUG2("rlm_sql (%s): User found in group %s",
 				inst->config->xlat_name, group_list_tmp->groupname);
 			/*
-			 *	Now get the reply pairs since the paircmp matched
+			 *	Now get the reply pairs since the paircompare matched
 			 */
 			if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query, request, sql_escape_func)) {
 				radlog(L_ERR, "rlm_sql (%s): Error generating query; rejecting user",
@@ -980,11 +980,11 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		/*
 		 *	Only do this if *some* check pairs were returned
 		 */
-		if (paircmp(request, request->packet->vps, check_tmp, &request->reply->vps) == 0) {
+		if (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) == 0) {
 			found = 1;
 			DEBUG2("rlm_sql (%s): User found in radcheck table", inst->config->xlat_name);
 			/*
-			 *	Now get the reply pairs since the paircmp matched
+			 *	Now get the reply pairs since the paircompare matched
 			 */
 			if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_reply_query, request, sql_escape_func)) {
 				radlog(L_ERR, "rlm_sql (%s): Error generating query; rejecting user",

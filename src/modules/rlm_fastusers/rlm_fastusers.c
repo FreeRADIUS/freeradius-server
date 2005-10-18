@@ -435,7 +435,7 @@ static PAIR_LIST *fastuser_find(REQUEST *request, PAIR_LIST *user,
 	 */
 	while((cur) && (!userfound)) {
 		if((strcmp(cur->name, username)==0) &&
-				paircmp(request, request->packet->vps, cur->check, &request->reply->vps) == 0) {
+				paircompare(request, request->packet->vps, cur->check, &request->reply->vps) == 0) {
 				userfound = 1;
 				DEBUG2("  fastusers: Matched %s at %d", cur->name, cur->lineno);
 		} else {
@@ -605,7 +605,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 
 	curdefault = inst->defaults;
 	while(curdefault) {
-		if(paircmp(request, request->packet->vps, curdefault->check,
+		if(paircompare(request, request->packet->vps, curdefault->check,
 							&request->reply->vps) == 0) {
 			DEBUG2("  fastusers: Matched %s at %d",
 							curdefault->name, curdefault->lineno);
@@ -715,7 +715,7 @@ static int fastuser_preacct(void *instance, REQUEST *request)
 		if (strcmp(name, pl->name) && strcmp(pl->name, "DEFAULT"))
 			continue;
 
-		if (paircmp(request, request_pairs, pl->check, &reply_pairs) == 0) {
+		if (paircompare(request, request_pairs, pl->check, &reply_pairs) == 0) {
 			DEBUG2("  acct_users: Matched %s at %d",
 			       pl->name, pl->lineno);
 			found = 1;

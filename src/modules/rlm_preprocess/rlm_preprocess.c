@@ -260,7 +260,7 @@ static int hunt_paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check)
 		tmp = check_item->next;
 		check_item->next = NULL;
 
-		result = paircmp(req, request, check_item, NULL);
+		result = paircompare(req, request, check_item, NULL);
 
 		check_item->next = tmp;
 		check_item = check_item->next;
@@ -303,9 +303,9 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 
 	for (i = hints; i; i = i->next) {
 		/*
-		 *	Use "paircmp", which is a little more general...
+		 *	Use "paircompare", which is a little more general...
 		 */
-		if (paircmp(request, request_pairs, i->check, NULL) == 0) {
+		if (paircompare(request, request_pairs, i->check, NULL) == 0) {
 			DEBUG2("  hints: Matched %s at %d",
 			       i->name, i->lineno);
 			break;
@@ -348,7 +348,7 @@ static int huntgroup_access(REQUEST *request,
 		/*
 		 *	See if this entry matches.
 		 */
-		if (paircmp(request, request_pairs, i->check, NULL) != 0)
+		if (paircompare(request, request_pairs, i->check, NULL) != 0)
 			continue;
 
 		/*

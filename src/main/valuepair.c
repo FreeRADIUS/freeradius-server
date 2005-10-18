@@ -66,19 +66,11 @@ static struct cmp *cmp;
 /*
  *	Compare 2 attributes. May call the attribute compare function.
  */
-static int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
+static int compare_pair(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 		       VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	int ret = -2;
 	struct cmp *c;
-
-	/*
-	 *	Sanity check.
-	 */
-#if 0
-	if (request->attribute != check->attribute)
-		return -2;
-#endif
 
 	/*
 	 *      Check for =* and !* and return appropriately
@@ -219,7 +211,7 @@ void paircompare_unregister(int attr, RAD_COMPARE_FUNC fun)
  *
  *	Return 0 on match.
  */
-int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
+int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 {
 	VALUE_PAIR *check_item;
 	VALUE_PAIR *auth_item;
@@ -327,7 +319,7 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 		/*
 		 *	OK it is present now compare them.
 		 */
-		compare = paircompare(req, auth_item, check_item, check, reply);
+		compare = compare_pair(req, auth_item, check_item, check, reply);
 
 		switch (check_item->operator) {
 			case T_OP_EQ:
@@ -472,12 +464,12 @@ int paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **r
 }
 
 /*
- *      Compare two attributes simply.  Calls paircompare.
+ *      Compare two attributes simply.  Calls compare_pair.
  */
 
 int simplepaircmp(REQUEST *req, VALUE_PAIR *first, VALUE_PAIR *second)
 {
-	return paircompare( req, first, second, NULL, NULL );
+	return compare_pair( req, first, second, NULL, NULL );
 }
 
 

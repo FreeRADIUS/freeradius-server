@@ -32,11 +32,6 @@ typedef pid_t child_pid_t;
 #include <netinet/in.h>
 #endif
 
-#ifdef HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif
-
-
 #define NO_SUCH_CHILD_PID (child_pid_t) (0)
 
 #ifndef NDEBUG
@@ -123,7 +118,7 @@ typedef struct radclient {
 	lrad_ipaddr_t		ipaddr;
 	int			prefix;
 	char			*longname;
-	u_char			*secret;
+	char			*secret;
 	char			*shortname;
 	char			*nastype;
 	char			*login;
@@ -139,7 +134,7 @@ typedef struct _realm {
 	char			acct_server[64];
 	lrad_ipaddr_t		ipaddr;	/* authentication */
 	lrad_ipaddr_t		acct_ipaddr;
-	u_char			secret[32];
+	char			secret[32];
 	time_t			last_reply; /* last time we saw a packet */
 	int			auth_port;
 	int			acct_port;
@@ -427,8 +422,8 @@ int		paircompare_register(int attr, int otherattr,
 				     RAD_COMPARE_FUNC func,
 				     void *instance);
 void		paircompare_unregister(int attr, RAD_COMPARE_FUNC func);
-int		paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
-			VALUE_PAIR **reply);
+int		paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
+			    VALUE_PAIR **reply);
 int		simplepaircmp(REQUEST *, VALUE_PAIR *, VALUE_PAIR *);
 void		pair_builtincompare_init(void);
 void		pairxlatmove(REQUEST *, VALUE_PAIR **to, VALUE_PAIR **from);

@@ -316,7 +316,7 @@ static int file_authorize(void *instance, REQUEST *request)
 		 *	check pairs, then add the reply pairs from the
 		 *	entry to the current list of reply pairs.
 		 */
-		if ((paircmp(request, request_pairs, pl->check, reply_pairs) == 0)) {
+		if ((paircompare(request, request_pairs, pl->check, reply_pairs) == 0)) {
 			DEBUG2("    users: Matched entry %s at line %d", pl->name, pl->lineno);
 			found = 1;
 			check_tmp = paircopy(pl->check);
@@ -383,7 +383,7 @@ static int file_preacct(void *instance, REQUEST *request)
 		if (strcmp(name, pl->name) && strcmp(pl->name, "DEFAULT"))
 			continue;
 
-		if (paircmp(request, request_pairs, pl->check, reply_pairs) == 0) {
+		if (paircompare(request, request_pairs, pl->check, reply_pairs) == 0) {
 			DEBUG2("    acct_users: Matched entry %s at line %d",
 			       pl->name, pl->lineno);
 			found = 1;
@@ -446,7 +446,7 @@ static int file_preproxy(void *instance, REQUEST *request)
 		if (strcmp(name, pl->name) && strcmp(pl->name, "DEFAULT"))
 			continue;
 
-		if (paircmp(request, request_pairs, pl->check, reply_pairs) == 0) {
+		if (paircompare(request, request_pairs, pl->check, reply_pairs) == 0) {
 			VALUE_PAIR *vp;
 
 			DEBUG2("    preproxy_users: Matched entry %s at line %d",
