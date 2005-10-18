@@ -356,6 +356,7 @@ static int policy_stack_pop(policy_state_t *state, const policy_item_t **pitem)
 	 *	Named policies are on the stack for catching recursion.
 	 */
 	if ((*pitem)->type == POLICY_TYPE_NAMED_POLICY) {
+		state->depth--;
 		goto redo;
 	}
 
@@ -490,7 +491,7 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 {
 	int rcode;
 	const policy_condition_t *this;
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp = NULL;
 	const char *data = NULL;
 	int compare;
 #ifdef HAVE_REGEX_H
@@ -534,6 +535,15 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 		rcode = (rcode == FALSE); /* reverse sense of test */
 		break;
 
+	case POLICY_LEX_CMP_FALSE: /* non-existence */
+		if (this->lhs_type == POLICY_LEX_BARE_WORD) {
+			vp = find_vp(state->request, this->lhs);
+			rcode = (vp == NULL);
+		} else {
+			rcode = (data == NULL);
+		}
+		break;
+
 	case POLICY_LEX_CMP_TRUE: /* existence */
 		if (this->lhs_type == POLICY_LEX_BARE_WORD) {
 			vp = find_vp(state->request, this->lhs);
@@ -562,24 +572,22 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 		if (this->lhs_type == POLICY_LEX_BARE_WORD) {
 			VALUE_PAIR *myvp;
 
-
 			vp = find_vp(state->request, this->lhs);
+
+			/*
+			 *	A op B always returns FALSE if A doesn't
+			 *	exist.
+			 */
+			if (!vp) return FALSE; /* not in the request */
+
 			/*
 			 *	FIXME: Move sanity checks to
 			 *	post-parse code, so we don't do
 			 *	it on every packet.
 			 */
-			if (vp) {
-				vp_prints_value(buffer, sizeof(buffer), vp, 0);
-				myvp = pairmake(vp->name, this->rhs, T_OP_EQ);
-			} else {
-				buffer[0] = '\0';
-				myvp = pairmake(this->lhs, this->rhs, T_OP_EQ);
-			}
+			vp_prints_value(buffer, sizeof(buffer), vp, 0);
+			myvp = pairmake(vp->name, this->rhs, T_OP_EQ);
 			data = buffer;
-			if (!myvp) {
-				return FALSE;
-			}
 
 			/*
 			 *	FIXME: What to do about comparisons

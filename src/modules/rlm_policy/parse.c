@@ -98,6 +98,8 @@ const LRAD_NAME_NUMBER rlm_policy_tokens[] = {
 	{ "=", POLICY_LEX_ASSIGN },
 	{ "==", POLICY_LEX_CMP_EQUALS },
 	{ "!=", POLICY_LEX_CMP_NOT_EQUALS },
+	{ "=*", POLICY_LEX_CMP_TRUE },
+	{ "!*", POLICY_LEX_CMP_FALSE },
 	{ "<", POLICY_LEX_LT },
 	{ ">", POLICY_LEX_GT },
 	{ "<=", POLICY_LEX_LE },
@@ -699,8 +701,8 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 					lrad_int2str(rlm_policy_tokens, token, "?"));
 				return 0;
 			}
-			goto check;
 		} /* else it's a comparison? */
+		goto check;
 
 	case POLICY_LEX_DOUBLE_QUOTED_STRING:
 		this->lhs_type = token;
@@ -723,6 +725,8 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 		case POLICY_LEX_CMP_NOT_EQUALS:
 		case POLICY_LEX_RX_EQUALS:
 		case POLICY_LEX_RX_NOT_EQUALS:
+		case POLICY_LEX_CMP_TRUE:
+		case POLICY_LEX_CMP_FALSE:
 		case POLICY_LEX_LT:
 		case POLICY_LEX_GT:
 		case POLICY_LEX_LE:
