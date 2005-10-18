@@ -122,8 +122,23 @@ static int compare_pair(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 			ret = request->lvalue - check->lvalue;
 			break;
 		case PW_TYPE_IPADDR:
-			ret = ntohl(request->lvalue) - ntohl(check->lvalue);
+			ret = ntohl(request->vp_ipaddr) - ntohl(check->vp_ipaddr);
 			break;
+		case PW_TYPE_IPV6ADDR:
+			ret = memcmp(&request->vp_ipv6addr, &check->vp_ipv6addr,
+				     sizeof(request->vp_ipv6addr));
+			break;
+			
+		case PW_TYPE_IPV6PREFIX:
+			ret = memcmp(&request->vp_ipv6prefix, &check->vp_ipv6prefix,
+				     sizeof(request->vp_ipv6prefix));
+			break;
+		
+		case PW_TYPE_IFID:
+			ret = memcmp(&request->vp_ifid, &check->vp_ifid,
+				     sizeof(request->vp_ifid));
+			break;
+
 		default:
 			break;
 	}
