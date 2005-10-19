@@ -38,9 +38,7 @@
     purchase their dev kit ($$$) due to patents they hold on their
     specific X9.9 implementation.  For exorbitant fees, I can write the
     code for you.  Note that you may not redistribute any such code,
-    again due to patent issues.  Should you live in a country where
-    their patents do not apply, I can do the work for you for even more
-    exorbitant fees.
+    again due to patent issues.
 
     Other vendors' tokens are also theoretically supported, with the
     additional problem that you'll need to reverse engineer their
@@ -165,9 +163,7 @@
     passcodes (6-7 digit decimal display), the server cannot simply test
     "many" passcodes in an attempt to discover the event counter value,
     because a guessing attack is trivial with such a small response space.
-    Our solution for this is noted in section 6, below.  (And note that
-    I developed this long before the HOTP folks [independently, I assume]
-    incorporated it.)
+    Our solution for this is noted in section 6, below.
 
     Time synchronous tokens solve this problem quite nicely by eliminating
     the user from the equation.  As PEBKAC is generally the worst kind
@@ -194,7 +190,7 @@
 
     Since the normal mode of operation will be sync mode, we really only
     have async mode support for "last resort" user resync of the event
-    counter.  (For "normal" resync see the ewindow2 description
+    counter.  (For "normal" resync see the rwindow description
     in section 6.)
 
     Note that only some tokens support "user" sync/resync.  For others,
@@ -295,88 +291,125 @@
         CRYPTOCard supports a hard PIN; the biometric input on the TRI-D
         3-factor card can is roughly equivalent to a hard PIN.
 
-    ewindow_size:
-        For cards with event synchronous modes, this is how far out of
-        [event] sync the server can get with the token.  The value
+    ewindow_size: (event window)
+        For event-synchronous-only tokens (CRYPTOCard), this is how far
+        out of [event] sync the server can get with the token.  The value
         is how far the user can be ahead of the server--essentially
         how many times the user can play with the token.  You'll want
         to set this to at least 1 or 2, in case the user mistypes the
         response and the token turns off before he is able to try again.
         A more reasonable value is 5.
 
-    ewindow2_size/ewindow2_delay:
-        This is similar to ewindow_size.  For event synchronous tokens,
-        when the user goes into "delay mode" (>softfail consecutive
-        incorrect passcodes), this extends the allowable event window,
-        but requires the user to enter two consecutive sync responses
-        corrrectly, within ewindow2_delay seconds.  The upside of
-        having to enter 2 passcodes is that the delay is overridden.
-        In practice, users that do have problems (and those users tend to
-        have them consistently) get into long lockout delays and since
-        no indication is given to the user about this state, they need
-        a way to get past it without calling the helpdesk.
+        For event+time synchronous tokens (TRI-D), this value has no
+        meaning; the server determines how many events to test based on
+        card capabilities.
 
-	For example, say softfail=1, ewindow_size=2 and ewindow2_size=8.
-	The server's state is such that the next 8 responses are
-	1, 2, ..., 8.  The user, however, has played with the token and
-	the response showing is '3', which he enters as the passcode.
+        This value is ignored for time-synchronous-only tokens.
 
-	This is ahead of ewindow_size, so the server refuses him, and
-	places the user into "delay mode", since softfail is only 1.
-	Note that even though this response is within ewindow2_size
-	events, it is not recorded as such because when checking the
-	passcode, the user was /not yet/ in delay mode and so only
-	ewindow_size events were considered.  /AFTER/ testing the
-	passcode, the user is /THEN/ placed into delay mode.
+        Note that there is no analogous twindow_size setting; for
+        time synchronous (event+time or time only) tokens, the server
+        determines how far forward or backward to look based on card
+        characteristics.
 
-	The user tries again immediately, using '3' again.  Since the
-	user /is now/ in delay mode, the server would normally refuse
-	him (remember, we said he tried again "immediately").  Even if
-	the user weren't in delay mode (say, softfail is larger), the
-	server would still refuse him because he is too far ahead of
-	the normal ewindow_size window.
+    rwindow_size/rwindow_delay: (resync window)
+        This is similar to ewindow_size.  For event-synchronous-only
+        tokens (CRYPTOCard), when the user goes into delay mode (>softfail
+        consecutive incorrect passcodes), this extends the allowable
+        event window, but requires the user to enter TWO consecutive sync
+        responses corrrectly, within rwindow_delay seconds.  The upside
+        of having to enter 2 passcodes is that the delay is overridden.
 
-	But since he is in delay mode, and ewindow2_size is non-zero,
-	instead of simply rejecting responses beyond ewindow_size events,
-	the server looks ahead up to ewindow2_size (8 in this case) events.
-	It sees that '3' is within ewindow2_size events, records that the
-	user gave a correct sync response at position 3, and returns
-	failure.
+        In practice, users that do have problems with the allowable
+        event window (and those users tend to have them consistently)
+        get into long lockout delays and since no indication is given
+        to the user about this state, they need a way to get past it
+        without calling the helpdesk.
 
-	Now the user tries again immediately, this time using the next
-	response of '4'.  Again, normally this would be refused since
-	the user is in delay mode.  But because ewindow2_size is set,
-	the server sees that '4' is within the ewindow2_size window,
-	and that the user's previous response ('3') matches the
-	previous response in the window, so the user is authenticated
-	and returned to normal mode.
+        For example, say softfail=1, ewindow_size=2 and rwindow_size=8
+        (ignore rwindow_delay).  The server's state is such that the
+        next 8 responses are 1, 2, ..., 8.  The user, however, has played
+        with the token and the response showing is '3', which he enters
+        as the passcode.
 
-	Note that the user actually entered 3,3,4 and although the user
-	entered 3 correct passcodes, only the last 2 were consecutive
-	so this seems to match the description of this feature.
-	However, if the user had entered 3,4,5 he still would have had
-	to enter 3 passcodes!  Review the example to understand why.
+        This is ahead of ewindow_size, so the server refuses him,
+        and places the user into delay mode, since softfail is only 1.
+        Note that even though this response is within rwindow_size events,
+        it is not recorded as such because when checking the passcode,
+        the user was /not yet/ in delay mode and so only ewindow_size
+        events were considered.  /AFTER/ testing the passcode, the user
+        is /THEN/ placed into delay mode.
 
-	In practice, users generally enter a lot of bad passcodes to get
-	into softfail and then finally see what they're doing wrong and
-	so they do only enter 2 correct passcodes, ie if they are even
-	aware of this feature they don't get confused about why they
-	had to enter the '5' part of 3,4,5.
+        The user tries again immediately, using '3' again.  Since the
+        user /is now/ in delay mode, the server would normally refuse
+        him (remember, we said he tried again "immediately").  Even if
+        the user weren't in delay mode (say, softfail is larger), the
+        server would still refuse him because he is too far ahead of
+        the normal ewindow_size window.
 
-	It is recommended that you tell users to /always/ advance to the
-	next passcode on error, and that they should always try at least
-	3 (or 4) consecutive entries before calling the helpdesk.
+        But since he is in delay mode, and rwindow_size is non-zero,
+        instead of simply rejecting responses beyond ewindow_size
+        events, the server looks ahead up to rwindow_size (8 in this
+        case) events.  It sees that '3' is within rwindow_size events,
+        records that the user gave a correct sync response at position 3,
+        and returns failure.
 
-	The Windows VPN password error dialog is confusing and is a major
-	source of duplicate entries, which add an extra passcode entry to
-	ewindow2 mode.  Another significant source of passcode errors is
-	PC laptop users that have a docking station with keyboard.  Windows
-	keeps the numlock setting when undocking, and my experience is that
-	one of the first things that folks do after undocking is to VPN in.
-	The '0' key on the number row is a '.' instead of a '0' when numlock
-	is on.  And since the Windows VPN dialog can't know that it's safe
-	to display the passcode, the user can't tell that he's misentering
-	zeroes.  Ouch.
+        Now the user tries again immediately, this time using the next
+        response of '4'.  Again, normally this would be refused since
+        the user is in delay mode.  But because rwindow_size is set,
+        the server sees that '4' is within the rwindow_size window,
+        and that the user's previous response ('3') matches the previous
+        response in the window, so the user is authenticated and returned
+        to normal mode.
+
+        Note that the user actually entered 3,3,4 and although the user
+        entered 3 correct passcodes, only the last 2 were consecutive so
+        this seems to match the description of this feature.  However,
+        if the user had entered 3,4,5 he still would have had to enter
+        3 passcodes!  Review the example to understand why.
+
+        In practice, users generally enter a lot of bad passcodes to get
+        into softfail and then finally see what they're doing wrong and
+        so they do only enter 2 correct passcodes, ie if they are even
+        aware of this feature they don't get confused about why they
+        had to enter the '5' part of 3,4,5.
+
+        It is recommended that you tell users to /always/ advance to
+        the next passcode on error, and that they should always try at
+        least 3 (or 4) consecutive entries before calling the helpdesk.
+
+        The Windows VPN password error dialog is confusing and is a
+        major source of duplicate entries, which add an extra passcode
+        entry to rwindow mode.  Another significant source of passcode
+        errors is PC laptop users that have a docking station with
+        keyboard.  Windows keeps the numlock setting when undocking,
+        and my experience is that one of the first things that folks do
+        after undocking is to VPN in.  The '0' key on the number row
+        is a '.' instead of a '0' when numlock is on.  And since the
+        Windows VPN dialog can't know that it's safe to display the
+        passcode, the user can't tell that he's misentering zeroes.
+        This encourages getting out of sync.  Ouch.
+
+        For time synchronous tokens (event+time or time only), the
+        rwindow_size value has no meaning as there is no event counter
+        to lose track of.  (Clock drift affecting the time counter is
+        tracked by the server.)
+
+        However, the rwindow_delay value does have meaning.  If a user
+        goes into softfail (maybe by repeatedly trying their longterm
+        password or by a password guessing attack), they can still get
+        out of delay mode by entering two consecutive passcodes within
+        rwindow_delay seconds.
+
+        Also, for TRI-D tokens, rwindow_delay has an additional meaning.
+        You'll need to read the state manager documentation to understand
+        this, but the TRI-D token supports "null state" meaning that
+        the admin does not have to (and in fact must not) manually
+        initialize state when issuing a token.  State is automatically
+        initialized when a user first authenticates, however, the user
+        must authenticate twice, which uses the softfail mechanism and
+        thus depends on rwindow_delay.  It's not quite softfail because
+        the user cannot simply wait for the delay period to expire and
+        then authenticate only once.
 
 
 7.  FILES
