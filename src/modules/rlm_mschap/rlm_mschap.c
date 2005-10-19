@@ -453,7 +453,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		 *	Pull the NT-Domain out of the User-Name, if it exists.
 		 */
 	} else if (strcasecmp(fmt, "NT-Domain") == 0) {
-		char *p;
+		char *p, *q;
 
 		user_name = pairfind(request->packet->vps, PW_USER_NAME);
 		if (!user_name) {
@@ -461,18 +461,46 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			return 0;
 		}
 		
-		p = strchr(user_name->strvalue, '\\');
-		if (!p) {
-			DEBUG2("  rlm_mschap: No NT-Domain was found in the User-Name.");
-			return 0;
-		}
-
 		/*
-		 *	Hack.  This is simpler than the alternatives.
+		 *	First check to see if this is a host/ style User-Name
+		 *	(a la Kerberos host principal)
 		 */
-		*p = '\0';
-		strNcpy(out, user_name->strvalue, outlen);
-		*p = '\\';
+		if (strncmp(user_name->strvalue, "host/", 5) == 0) {
+			/*
+			 *	If we're getting a User-Name formatted in this way,
+			 *	it's likely due to PEAP.  The Windows Domain will be
+			 *	the first domain component following the hostname,
+			 *	or the machine name itself if only a hostname is supplied
+			 */
+			p = strchr(user_name->strvalue, '.');
+			if (!p) {
+				DEBUG2("  rlm_mschap: setting NT-Domain to same as machine name");
+				strNcpy(out, user_name->strvalue + 5, outlen);
+			} else {
+				p++;	/* skip the period */
+				q = strchr(p, '.');
+				/*
+				 * use the same hack as below
+				 * only if another period was found
+				 */
+				if (q) *q = '\0';
+				strNcpy(out, p, outlen);
+				if (q) *q = '.';
+			}
+		} else {
+			p = strchr(user_name->strvalue, '\\');
+			if (!p) {
+				DEBUG2("  rlm_mschap: No NT-Domain was found in the User-Name.");
+				return 0;
+			}
+
+			/*
+			 *	Hack.  This is simpler than the alternatives.
+			 */
+			*p = '\0';
+			strNcpy(out, user_name->strvalue, outlen);
+			*p = '\\';
+		}
 
 		return strlen(out);
 
@@ -488,14 +516,39 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			return 0;
 		}
 		
-		p = strchr(user_name->strvalue, '\\');
-		if (p) {
-			p++;	/* skip the backslash */
+		/*
+		 *	First check to see if this is a host/ style User-Name
+		 *	(a la Kerberos host principal)
+		 */
+		if (strncmp(user_name->strvalue, "host/", 5) == 0) {
+			/*
+			 *	If we're getting a User-Name formatted in this way,
+			 *	it's likely due to PEAP.  When authenticating this against
+			 *	a Domain, Windows will expect the User-Name to be in the
+			 *	format of hostname$, the SAM version of the name, so we
+			 *	have to convert it to that here.  We do so by stripping
+			 *	off the first 5 characters (host/), and copying everything
+			 *	from that point to the first period into a string and appending
+			 * 	a $ to the end.
+			 */
+			p = strchr(user_name->strvalue, '.');
+			/*
+			 * use the same hack as above
+			 * only if a period was found
+			 */
+			if (p) *p = '\0';
+			snprintf(out, outlen, "%s$", user_name->strvalue + 5);
+			if (p) *p = '.';
 		} else {
-			p = user_name->strvalue; /* use the whole User-Name */
+			p = strchr(user_name->strvalue, '\\');
+			if (p) {
+				p++;	/* skip the backslash */
+			} else {
+				p = user_name->strvalue; /* use the whole User-Name */
+			}
+			strNcpy(out, p, outlen);
 		}
 
-		strNcpy(out, p, outlen);
 		return strlen(out);
 
 	} else {
