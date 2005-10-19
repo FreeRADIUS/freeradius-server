@@ -301,6 +301,7 @@ VALUE_PAIR	*pairfind(VALUE_PAIR *, int);
 void		pairdelete(VALUE_PAIR **, int);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void            pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
+int		paircmp(VALUE_PAIR *check, VALUE_PAIR *data);
 VALUE_PAIR	*paircopy(VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, int attr);
 void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);

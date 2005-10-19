@@ -324,8 +324,8 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			switch (i->operator) {
 
 			  /*
-			   *  If a similar attribute is found,
-			   *  delete it.
+			   *	If matching attributes are found,
+			   *	delete them.
 			   */
 			case T_OP_SUB:		/* -= */
 				if (found) {
@@ -1451,3 +1451,166 @@ VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
 	return error ? NULL: list;
 }
 
+
+
+/*
+ *	Compare two pairs, using the operator from "one".
+ *
+ *	i.e. given two attributes, it does:
+ *
+ *	(two->data) (one->operator) (one->data)
+ *
+ *	e.g. "foo" != "bar"
+ */
+int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
+{
+	int compare;
+
+	switch (one->operator) {
+	case T_OP_CMP_TRUE:
+		return (two != NULL);
+
+	case T_OP_CMP_FALSE:
+		return (two == NULL);
+
+		/*
+		 *	One is a regex, compile it, print two to a string,
+		 *	and then do string comparisons.
+		 */
+	case T_OP_REG_EQ:
+	case T_OP_REG_NE:
+#ifndef HAVE_REGEX_H
+		return -1;
+#else
+		{
+			regex_t reg;
+			char buffer[MAX_STRING_LEN * 4 + 1];
+			
+			compare = regcomp(&reg, one->vp_strvalue,
+					  REG_EXTENDED);
+			if (compare != 0) {
+				regerror(compare, &reg, buffer, sizeof(buffer));
+				librad_log("Illegal regular expression in attribute: %s: %s",
+					   one->name, buffer);
+				return -1;
+			}
+
+			vp_prints_value(buffer, sizeof(buffer), two, 0);
+
+			/*
+			 *	Don't care about substring matches,
+			 *	oh well...
+			 */
+			compare = regexec(&reg, buffer, 0, NULL, 0);
+
+			regfree(&reg);
+			if (one->operator == T_OP_REG_EQ) return (compare == 0);
+			return (compare != 0);
+		}
+#endif
+
+	default:		/* we're OK */
+		break;
+	}
+		
+	/*
+	 *	After doing the previous check for special comparisons,
+	 *	do the per-type comparison here.
+	 */
+	switch (one->type) {
+	case PW_TYPE_ABINARY:
+	case PW_TYPE_OCTETS:
+	{
+		size_t length;
+		const uint8_t *p, *q;
+
+		if (one->length < two->length) {
+			length = one->length;
+		} else {
+			length = two->length;
+		}
+		
+		p = two->vp_octets;
+		q = one->vp_octets;
+		while (length) {
+			compare = ((int) *p) - ((int) *q);
+			if (compare != 0) goto type_switch;
+		}
+
+		/*
+		 *	Contents are the same.  The return code
+		 *	is therefore the difference in lengths.
+		 *
+		 *	i.e. "0x00" is smaller than "0x0000"
+		 */
+		compare = two->length - one->length;
+	}
+		break;
+
+	case PW_TYPE_STRING:
+		if (one->flags.caseless) {
+			compare = strcasecmp(two->vp_strvalue,
+					     one->vp_strvalue);
+		} else {
+			compare = strcmp(two->vp_strvalue,
+					 one->vp_strvalue);
+		}
+		break;
+		
+	case PW_TYPE_INTEGER:
+	case PW_TYPE_DATE:
+		compare = two->lvalue - one->lvalue;
+		break;
+
+	case PW_TYPE_IPADDR:
+		compare = ntohl(two->vp_ipaddr) - ntohl(one->vp_ipaddr);
+		break;
+
+	case PW_TYPE_IPV6ADDR:
+		compare = memcmp(&two->vp_ipv6addr, &one->vp_ipv6addr,
+				 sizeof(two->vp_ipv6addr));
+		break;
+		
+	case PW_TYPE_IPV6PREFIX:
+		compare = memcmp(&two->vp_ipv6prefix, &one->vp_ipv6prefix,
+				 sizeof(two->vp_ipv6prefix));
+		break;
+
+	case PW_TYPE_IFID:
+		compare = memcmp(&two->vp_ifid, &one->vp_ifid,
+				 sizeof(two->vp_ifid));
+		break;
+
+	default:
+		return 0;	/* unknown type */
+	}
+
+	/*
+	 *	Now do the operator comparison.
+	 */
+ type_switch:
+	switch (one->operator) {
+	case T_OP_CMP_EQ:
+		return (compare == 0);
+		
+	case T_OP_NE:
+		return (compare != 0);
+		
+	case T_OP_LT:
+		return (compare < 0);
+		
+	case T_OP_GT:
+		return (compare > 0);
+
+	case T_OP_LE:
+		return (compare <= 0);
+
+	case T_OP_GE:
+		return (compare >= 0);
+
+	default:
+		return 0;
+	}
+
+	return 0;
+}
