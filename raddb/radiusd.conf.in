@@ -757,13 +757,13 @@ $INCLUDE ${confdir}/eap.conf
 		#  clear-text, whatever) is not that important.  The PAP
 		#  module will figure it out.
 		#
-		#  The default for "auto" is "no", to enable backwards
+		#  The default for "auto_header" is "no", to enable backwards
 		#  compatibility with the "password_header" directive,
 		#  which is now deprecated.  If this is set to "yes",
 		#  then the above table will be used, and the
 		#  "password_header" directive will be ignored.
 
-		#auto = yes
+		#auto_header = yes
 
 		#  Un-comment the following to disable Novell
 		#  eDirectory account policy check and intruder

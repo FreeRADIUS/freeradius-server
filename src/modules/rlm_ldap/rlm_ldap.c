@@ -1437,7 +1437,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					if (!p) continue;
 					if ((p - value + 1) >= sizeof(autobuf))
 						continue; /* paranoia */
-					memcpy(autobuf, p, p - value + 1);
+					memcpy(autobuf, value, p - value + 1);
 					autobuf[p - value + 1] = '\0';
 				
 					attr = lrad_str2int(header_names,
