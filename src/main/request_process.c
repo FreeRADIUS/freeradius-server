@@ -272,11 +272,6 @@ static const LRAD_NAME_NUMBER request_fail_reason[] = {
 		       request->number,
 		       request->module ? request->module : "<server core>",
 		       request->component ? request->component : "<server core>");
-
-		/*
-		 *	Tell the server to stop processing the request
-		 */
-		request->options |= RAD_REQUEST_OPTION_STOP_NOW;
 		break;
 
 	default:		/* no additional messages, or things to do */
@@ -453,6 +448,15 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	}
 
 	(*fun)(request);
+
+	/*
+	 *	If the request took too long to process, don't do
+	 *	anything else.
+	 */
+	if (request->options & RAD_REQUEST_OPTION_STOP_NOW) {
+		finished = TRUE;
+		goto postpone_request;
+	}
 
 	/*
 	 *	If the request took too long to process, don't do
