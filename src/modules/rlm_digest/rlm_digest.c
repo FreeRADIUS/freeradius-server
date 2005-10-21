@@ -106,7 +106,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	uint8_t a2[(MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
 	uint8_t kd[(MAX_STRING_LEN + 1) * 5];
 	uint8_t hash[16];	/* MD5 output */
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp, *passwd;
 	VALUE_PAIR *qop, *nonce;
 
 	instance = instance;	/* -Wunused */
@@ -114,9 +114,10 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	We require access to the plain-text password.
 	 */
-	vp = pairfind(request->config_items, PW_PASSWORD);
-	if (!vp) {
-		radlog(L_AUTH, "rlm_digest: Configuration item \"User-Password\" is required for authentication.");
+	passwd = pairfind(request->config_items, PW_PASSWORD);
+	if (!passwd) passwd = pairfind(request->config_items, PW_MD5_PASSWORD);
+	if (!passwd) {
+		radlog(L_AUTH, "rlm_digest: Configuration item \"User-Password\" or MD5-Password is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -128,6 +129,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		DEBUG("ERROR: You set 'Auth-Type = Digest' for a request that did not contain any digest attributes!");
 		return RLM_MODULE_INVALID;
 	}
+
 	/*
 	 *	Loop through the Digest-Attributes, sanity checking them.
 	 */
@@ -243,16 +245,15 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	a1[a1_len] = ':';
 	a1_len++;
 
-	vp = pairfind(request->config_items, PW_PASSWORD);
-	if (!vp) {
-		DEBUG("ERROR: No User-Password: Cannot perform Digest authentication");
-		return RLM_MODULE_INVALID;
+	if (passwd->attribute == PW_USER_PASSWORD) {
+		memcpy(&a1[a1_len], &passwd->vp_octets[0], passwd->length);
+		a1_len += passwd->length;
+		a1[a1_len] = '\0';
+		DEBUG2("A1 = %s", a1);
+	} else {
+		a1[a1_len] = '\0';
+		DEBUG2("A1 = %s (using MD5-Password)", a1);
 	}
-	memcpy(&a1[a1_len], &vp->vp_octets[0], vp->length);
-	a1_len += vp->length;
-
-	a1[a1_len] = '\0';
-	DEBUG2("A1 = %s", a1);
 
 	/*
 	 *	See which variant we calculate.
@@ -260,8 +261,18 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	vp = pairfind(request->packet->vps, PW_DIGEST_ALGORITHM);
 	if ((vp != NULL) &&
 	    (strcasecmp(vp->vp_strvalue, "MD5-sess") == 0)) {
-		librad_md5_calc(hash, &a1[0], a1_len);
-		memcpy(&a1[0], hash, 16);
+		/*
+		 *	K1 = H(A1) : Digest-Nonce ... : H(A2)
+		 *
+		 *	If we find MD5-Password, we assume it contains
+		 *	H(A1).
+		 */
+		if (passwd->attribute == PW_USER_PASSWORD) {
+			librad_md5_calc(hash, &a1[0], a1_len);
+			memcpy(&a1[0], hash, 16);
+		} else {
+			memcpy(&a1[0], passwd->vp_octets, 16);
+		}
 		a1_len = 16;
 
 		a1[a1_len] = ':';
