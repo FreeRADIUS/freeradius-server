@@ -272,6 +272,7 @@ static const LRAD_NAME_NUMBER request_fail_reason[] = {
 		       request->number,
 		       request->module ? request->module : "<server core>",
 		       request->component ? request->component : "<server core>");
+		request->options |= RAD_REQUEST_OPTION_STOP_NOW;
 		break;
 
 	default:		/* no additional messages, or things to do */
