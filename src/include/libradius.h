@@ -289,9 +289,12 @@ int		rad_tunnel_pwdecode(uint8_t *encpw, int *len,
 				    const char *secret, const uint8_t *vector);
 int		rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output,
 				int id, VALUE_PAIR *password);
-VALUE_PAIR	*rad_attr2vp(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+VALUE_PAIR	*rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			     const char *secret, int attribute, int length,
-			     uint8_t *data);
+			     const uint8_t *data);
+int		rad_vp2attr(const RADIUS_PACKET *packet,
+			    const RADIUS_PACKET *original,
+			    const char *secret, VALUE_PAIR *vp, uint8_t *ptr);
 
 /* valuepair.c */
 VALUE_PAIR	*paircreate(int attr, int type);

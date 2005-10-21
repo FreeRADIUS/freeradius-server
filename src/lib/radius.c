@@ -139,8 +139,8 @@ static const char *packet_codes[] = {
 /*
  *  Internal prototypes
  */
-static void make_secret(uint8_t *digest, uint8_t *vector,
-			const char *secret, uint8_t *value);
+static void make_secret(uint8_t *digest, const uint8_t *vector,
+			const char *secret, const uint8_t *value);
 
 /*
  *	Wrapper for sendto which handles sendfromto, IPv6, and all
@@ -375,6 +375,232 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 }
 
 
+int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+		const char *secret, VALUE_PAIR *vp, uint8_t *ptr)
+{
+	int		vendorcode, allowed;
+	int		len, total_length;
+	uint32_t	lvalue;
+	uint8_t		*length_ptr, *vsa_length_ptr;
+	uint8_t		digest[16];
+
+	vendorcode = total_length = 0;
+	length_ptr = vsa_length_ptr = NULL;
+	
+	/*
+	 *	Maybe we have the start of a set of
+	 *	(possibly many) VSA attributes from
+	 *	one vendor.  Set a global VSA wrapper
+	 */
+	if ((vendorcode == 0) &&
+	    ((vendorcode = VENDOR(vp->attribute)) != 0)) {
+		/*
+		 *	Build a VSA header.
+		 */
+		*ptr++ = PW_VENDOR_SPECIFIC;
+		vsa_length_ptr = ptr;
+		*ptr++ = 6;
+		lvalue = htonl(vendorcode);
+		memcpy(ptr, &lvalue, 4);
+		ptr += 4;
+		total_length += 6;
+	}
+		
+	if (vendorcode == VENDORPEC_USR) {
+		lvalue = htonl(vp->attribute & 0xFFFF);
+		memcpy(ptr, &lvalue, 4);
+	  
+		length_ptr = vsa_length_ptr;
+	  
+		total_length += 4;
+		*length_ptr  += 4;
+		ptr          += 4;
+	  
+		/*
+		 *	Each USR-style attribute gets it's own
+		 *	VSA wrapper, so we re-set the vendor
+		 *	specific information.
+		 */
+		vendorcode = 0;
+		vsa_length_ptr = NULL;
+	  
+	} else if (vendorcode == VENDORPEC_LUCENT) {
+		/*
+		 *	16-bit attribute, 8-bit length
+		 */
+		*ptr++ = ((vp->attribute >> 8) & 0xFF);
+		*ptr++ = (vp->attribute & 0xFF);
+		length_ptr = ptr;
+		if (vsa_length_ptr) *vsa_length_ptr += 3;
+		*ptr++ = 3;
+		total_length += 3;
+	} else {
+		/*
+		 *	All other attributes are encoded as
+		 *	per the RFC.
+		 */
+		*ptr++ = (vp->attribute & 0xFF);
+		length_ptr = ptr;
+		if (vsa_length_ptr) *vsa_length_ptr += 2;
+		*ptr++ = 2;
+		total_length += 2;
+	}
+
+	switch(vp->type) {
+	case PW_TYPE_STRING:
+	case PW_TYPE_OCTETS:
+		/*
+		 *  Encrypt the various password styles
+		 */
+		switch (vp->flags.encrypt) {
+		default:
+			break;
+				
+		case FLAG_ENCRYPT_USER_PASSWORD:
+			rad_pwencode((char *)vp->vp_strvalue,
+				     &(vp->length),
+				     secret,
+				     packet->vector);
+			break;
+				
+		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+			if (!original) {
+				librad_log("ERROR: No request packet, cannot encrypt Tunnel-Password attribute in the vp.");
+				return -1;
+			}
+			rad_tunnel_pwencode(vp->vp_strvalue,
+					    &(vp->length),
+					    secret,
+					    original->vector);
+			break;
+				
+				
+		case FLAG_ENCRYPT_ASCEND_SECRET:
+			make_secret(digest, packet->vector,
+				    secret, vp->vp_strvalue);
+			memcpy(vp->vp_strvalue, digest, AUTH_VECTOR_LEN );
+			vp->length = AUTH_VECTOR_LEN;
+			break;
+		} /* switch over encryption flags */
+		/* FALL-THROUGH */
+			
+		/*
+		 *	None of these can have "encrypt"
+		 *	flags, so we skip them.
+		 */				  
+	case PW_TYPE_IFID:
+	case PW_TYPE_IPV6ADDR:
+	case PW_TYPE_IPV6PREFIX:
+			
+		/*
+		 *	Ascend binary attributes are
+		 *	stored internally in binary form.
+		 */
+	case PW_TYPE_ABINARY:
+		len = vp->length;
+			
+		/*
+		 *    Set the TAG at the beginning of the
+		 *    string if tagged.  If tag value is not
+		 *    valid for tagged attribute, make it 0x00
+		 *    per RFC 2868.  -cparker
+		 */
+		if (vp->flags.has_tag) {
+			if (TAG_VALID(vp->flags.tag)) {
+				len++;
+				*ptr++ = vp->flags.tag;
+					
+			} else if (vp->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
+				/*
+				 *  Tunnel passwords REQUIRE a
+				 *  tag, even if we don't have
+				 *  a valid tag.
+				 */
+				len++;
+				*ptr++ = 0x00;
+			} /* else don't write a tag */
+		} /* else the attribute doesn't have a tag */
+			
+		/*
+		 *	Ensure we don't go too far.  The
+		 *	'length' of the attribute may be
+		 *	0..255, minus whatever octets are used
+		 *	in the attribute header.
+		 */
+		allowed = 255;
+		if (vsa_length_ptr) {
+			allowed -= *vsa_length_ptr;
+		} else {
+			allowed -= *length_ptr;
+		}
+			
+		if (len > allowed) {
+			len = allowed;
+		}
+			
+		*length_ptr += len;
+		if (vsa_length_ptr) *vsa_length_ptr += len;
+		/*
+		 *  If we have tagged attributes we can't
+		 *  assume that len == vp->length.  Use
+		 *  vp->length for copying the string data
+		 *  into the packet.  Use len for the true
+		 *  length of the string+tags.
+		 */
+		memcpy(ptr, vp->vp_strvalue, vp->length);
+		ptr += vp->length;
+		total_length += len;
+		break;
+			
+	case PW_TYPE_INTEGER:
+	case PW_TYPE_IPADDR:
+		*length_ptr += 4;
+		if (vsa_length_ptr) *vsa_length_ptr += 4;
+			
+		if (vp->type == PW_TYPE_INTEGER ) {
+			/*  If tagged, the tag becomes the MSB of the value */
+			if(vp->flags.has_tag) {
+				/*  Tag must be ( 0x01 -> 0x1F ) OR 0x00  */
+				if(!TAG_VALID(vp->flags.tag)) {
+					vp->flags.tag = 0x00;
+				}
+				lvalue = htonl((vp->lvalue & 0xffffff) |
+					       ((vp->flags.tag & 0xff) << 24));
+			} else {
+				lvalue = htonl(vp->lvalue);
+			}
+		} else {
+			/*
+			 *	IP address is already in
+			 *	network byte order.
+			 */
+			lvalue = vp->lvalue;
+		}
+		memcpy(ptr, &lvalue, 4);
+		ptr += 4;
+		total_length += 4;
+		break;
+			
+		/*
+		 *  There are no tagged date attributes.
+		 */
+	case PW_TYPE_DATE:
+		*length_ptr += 4;
+		if (vsa_length_ptr) *vsa_length_ptr += 4;
+			
+		lvalue = htonl(vp->lvalue);
+		memcpy(ptr, &lvalue, 4);
+		ptr += 4;
+		total_length += 4;
+		break;
+	default:
+		break;
+	}
+
+	return total_length;	/* of attribute */
+}
+
+
 /*
  *	Encode a packet.
  */
@@ -382,12 +608,9 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	       const char *secret)
 {
 	radius_packet_t	*hdr;
-	uint32_t	lvalue;
-	uint8_t	        *ptr, *length_ptr, *vsa_length_ptr;
-	uint8_t		digest[16];
-	int		vendorcode;
+	uint8_t	        *ptr;
 	uint16_t	total_length;
-	int		len, allowed;
+	int		len;
 	VALUE_PAIR	*reply;
 	
 	/*
@@ -445,8 +668,6 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *	Load up the configuration values for the user
 	 */
 	ptr = hdr->data;
-	vendorcode = 0;
-	vsa_length_ptr = NULL;
 
 	/*
 	 *	FIXME: Loop twice over the reply list.  The first time,
@@ -497,243 +718,11 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 *	them out BEFORE they're encrypted.
 		 */
 		debug_pair(reply);
-		
-		/*
-		 *	We have a different vendor.  Re-set
-		 *	the vendor codes.
-		 */
-		if (vendorcode != VENDOR(reply->attribute)) {
-			vendorcode = 0;
-			vsa_length_ptr = NULL;
-		}
-		
-		/*
-		 *	If the Vendor-Specific attribute is getting
-		 *	full, then create a new VSA attribute
-		 *
-		 *	FIXME: Multiple VSA's per Vendor-Specific
-		 *	SHOULD be configurable.  When that's done, the
-		 *	(1), below, can be changed to point to a
-		 *	configuration variable which is set TRUE if
-		 *	the NAS cannot understand multiple VSA's per
-		 *	Vendor-Specific
-		 */
-		if ((1) || /* ALWAYS create a new Vendor-Specific */
-		    (vsa_length_ptr &&
-		     (reply->length + *vsa_length_ptr) >= MAX_STRING_LEN)) {
-			vendorcode = 0;
-			vsa_length_ptr = NULL;
-		}
-		
-		/*
-		 *	Maybe we have the start of a set of
-		 *	(possibly many) VSA attributes from
-		 *	one vendor.  Set a global VSA wrapper
-		 */
-		if ((vendorcode == 0) &&
-		    ((vendorcode = VENDOR(reply->attribute)) != 0)) {
-			/*
-			 *	Build a VSA header.
-			 */
-			*ptr++ = PW_VENDOR_SPECIFIC;
-			vsa_length_ptr = ptr;
-			*ptr++ = 6;
-			lvalue = htonl(vendorcode);
-			memcpy(ptr, &lvalue, 4);
-			ptr += 4;
-			total_length += 6;
-		}
-		
-		if (vendorcode == VENDORPEC_USR) {
-			lvalue = htonl(reply->attribute & 0xFFFF);
-			memcpy(ptr, &lvalue, 4);
-			
-			length_ptr = vsa_length_ptr;
-			
-			total_length += 4;
-			*length_ptr  += 4;
-			ptr          += 4;
-			
-			/*
-			 *	Each USR-style attribute gets it's own
-			 *	VSA wrapper, so we re-set the vendor
-			 *	specific information.
-			 */
-			vendorcode = 0;
-			vsa_length_ptr = NULL;
-			
-		} else if (vendorcode == VENDORPEC_LUCENT) {
-			/*
-			 *	16-bit attribute, 8-bit length
-			 */
-			*ptr++ = ((reply->attribute >> 8) & 0xFF);
-			*ptr++ = (reply->attribute & 0xFF);
-			length_ptr = ptr;
-			if (vsa_length_ptr) *vsa_length_ptr += 3;
-			*ptr++ = 3;
-			total_length += 3;
-		} else {
-			/*
-			 *	All other attributes are encoded as
-			 *	per the RFC.
-			 */
-			*ptr++ = (reply->attribute & 0xFF);
-			length_ptr = ptr;
-			if (vsa_length_ptr) *vsa_length_ptr += 2;
-			*ptr++ = 2;
-			total_length += 2;
-		}
 
-		switch(reply->type) {
-		case PW_TYPE_STRING:
-		case PW_TYPE_OCTETS:
-			/*
-			 *  Encrypt the various password styles
-			 */
-			switch (reply->flags.encrypt) {
-			default:
-				break;
-				
-			case FLAG_ENCRYPT_USER_PASSWORD:
-				rad_pwencode((char *)reply->vp_strvalue,
-					     &(reply->length),
-					     secret,
-					     packet->vector);
-				break;
-				
-			case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-				if (!original) {
-					librad_log("ERROR: No request packet, cannot encrypt Tunnel-Password attribute in the reply.");
-					return -1;
-				}
-				rad_tunnel_pwencode(reply->vp_strvalue,
-						    &(reply->length),
-						    secret,
-						    original->vector);
-				break;
-				
-				
-			case FLAG_ENCRYPT_ASCEND_SECRET:
-				make_secret(digest, packet->vector,
-					    secret, reply->vp_strvalue);
-				memcpy(reply->vp_strvalue, digest, AUTH_VECTOR_LEN );
-				reply->length = AUTH_VECTOR_LEN;
-				break;
-			} /* switch over encryption flags */
-			/* FALL-THROUGH */
-			
-			/*
-			 *	None of these can have "encrypt"
-			 *	flags, so we skip them.
-			 */				  
-		case PW_TYPE_IFID:
-		case PW_TYPE_IPV6ADDR:
-		case PW_TYPE_IPV6PREFIX:
-			
-			/*
-			 *	Ascend binary attributes are
-			 *	stored internally in binary form.
-			 */
-		case PW_TYPE_ABINARY:
-			len = reply->length;
-			
-			/*
-			 *    Set the TAG at the beginning of the
-			 *    string if tagged.  If tag value is not
-			 *    valid for tagged attribute, make it 0x00
-			 *    per RFC 2868.  -cparker
-			 */
-			if (reply->flags.has_tag) {
-				if (TAG_VALID(reply->flags.tag)) {
-					len++;
-					*ptr++ = reply->flags.tag;
-					
-				} else if (reply->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
-					/*
-					 *  Tunnel passwords REQUIRE a
-					 *  tag, even if we don't have
-					 *  a valid tag.
-					 */
-					len++;
-					*ptr++ = 0x00;
-				} /* else don't write a tag */
-			} /* else the attribute doesn't have a tag */
-			
-			/*
-			 *	Ensure we don't go too far.  The
-			 *	'length' of the attribute may be
-			 *	0..255, minus whatever octets are used
-			 *	in the attribute header.
-			 */
-			allowed = 255;
-			if (vsa_length_ptr) {
-				allowed -= *vsa_length_ptr;
-			} else {
-				allowed -= *length_ptr;
-			}
-			
-			if (len > allowed) {
-				len = allowed;
-			}
-			
-			*length_ptr += len;
-			if (vsa_length_ptr) *vsa_length_ptr += len;
-			/*
-			 *  If we have tagged attributes we can't
-			 *  assume that len == reply->length.  Use
-			 *  reply->length for copying the string data
-			 *  into the packet.  Use len for the true
-			 *  length of the string+tags.
-			 */
-			memcpy(ptr, reply->vp_strvalue, reply->length);
-			ptr += reply->length;
-			total_length += len;
-			break;
-			
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_IPADDR:
-			*length_ptr += 4;
-			if (vsa_length_ptr) *vsa_length_ptr += 4;
-			
-			if (reply->type == PW_TYPE_INTEGER ) {
-				/*  If tagged, the tag becomes the MSB of the value */
-				if(reply->flags.has_tag) {
-					/*  Tag must be ( 0x01 -> 0x1F ) OR 0x00  */
-					if(!TAG_VALID(reply->flags.tag)) {
-						reply->flags.tag = 0x00;
-					}
-					lvalue = htonl((reply->lvalue & 0xffffff) |
-						       ((reply->flags.tag & 0xff) << 24));
-				} else {
-					lvalue = htonl(reply->lvalue);
-				}
-			} else {
-				/*
-				 *	IP address is already in
-				 *	network byte order.
-				 */
-				lvalue = reply->lvalue;
-			}
-			memcpy(ptr, &lvalue, 4);
-			ptr += 4;
-			total_length += 4;
-			break;
-			
-			/*
-			 *  There are no tagged date attributes.
-			 */
-		case PW_TYPE_DATE:
-			*length_ptr += 4;
-			if (vsa_length_ptr) *vsa_length_ptr += 4;
-			
-			lvalue = htonl(reply->lvalue);
-			memcpy(ptr, &lvalue, 4);
-			ptr += 4;
-			total_length += 4;
-			break;
-		default:
-			break;
-		}
+		len = rad_vp2attr(packet, original, secret, reply, ptr);
+		if (len < 0) return -1;
+		ptr += len;
+		total_length += len;
 	} /* done looping over all attributes */
 	
 	/*
@@ -1550,9 +1539,9 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 /*
  *	Parse a RADIUS attribute into a data structure.
  */
-VALUE_PAIR *rad_attr2vp(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			const char *secret, int attribute, int length,
-			uint8_t *data)
+			const uint8_t *data)
 {
 	VALUE_PAIR *pair;
 
@@ -2577,8 +2566,8 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
  *               that used when encrypting passwords to RADIUS.
  *
  *************************************************************************/
-static void make_secret(uint8_t *digest, uint8_t *vector,
-			const char *secret, uint8_t *value)
+static void make_secret(uint8_t *digest, const uint8_t *vector,
+			const char *secret, const uint8_t *value)
 {
         uint8_t  buffer[256 + AUTH_VECTOR_LEN];
         int             secretLen = strlen(secret);
