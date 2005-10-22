@@ -375,10 +375,15 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 }
 
 
+/*
+ *	Parse a data structure into a RADIUS attribute.
+ *
+ *	FIXME: vp should really be "const"!
+ */
 int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		const char *secret, VALUE_PAIR *vp, uint8_t *ptr)
 {
-	int		vendorcode, allowed;
+	int		vendorcode;
 	int		len, total_length;
 	uint32_t	lvalue;
 	uint8_t		*length_ptr, *vsa_length_ptr;
@@ -388,12 +393,10 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	length_ptr = vsa_length_ptr = NULL;
 	
 	/*
-	 *	Maybe we have the start of a set of
-	 *	(possibly many) VSA attributes from
-	 *	one vendor.  Set a global VSA wrapper
+	 *	For interoperability, always put vendor attributes
+	 *	into their own VSA.
 	 */
-	if ((vendorcode == 0) &&
-	    ((vendorcode = VENDOR(vp->attribute)) != 0)) {
+	if ((vendorcode = VENDOR(vp->attribute)) != 0) {
 		/*
 		 *	Build a VSA header.
 		 */
@@ -404,48 +407,52 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		memcpy(ptr, &lvalue, 4);
 		ptr += 4;
 		total_length += 6;
-	}
 		
-	if (vendorcode == VENDORPEC_USR) {
-		lvalue = htonl(vp->attribute & 0xFFFF);
-		memcpy(ptr, &lvalue, 4);
-	  
-		length_ptr = vsa_length_ptr;
-	  
-		total_length += 4;
-		*length_ptr  += 4;
-		ptr          += 4;
-	  
-		/*
-		 *	Each USR-style attribute gets it's own
-		 *	VSA wrapper, so we re-set the vendor
-		 *	specific information.
-		 */
-		vendorcode = 0;
-		vsa_length_ptr = NULL;
-	  
-	} else if (vendorcode == VENDORPEC_LUCENT) {
-		/*
-		 *	16-bit attribute, 8-bit length
-		 */
-		*ptr++ = ((vp->attribute >> 8) & 0xFF);
-		*ptr++ = (vp->attribute & 0xFF);
-		length_ptr = ptr;
-		if (vsa_length_ptr) *vsa_length_ptr += 3;
-		*ptr++ = 3;
-		total_length += 3;
+		if (vendorcode == VENDORPEC_USR) {
+			lvalue = htonl(vp->attribute & 0xFFFF);
+			memcpy(ptr, &lvalue, 4);
+			
+			length_ptr = vsa_length_ptr;
+			
+			total_length += 4;
+			*length_ptr  += 4;
+			ptr          += 4;
+			
+			/*
+			 *	We don't have two different lengths.
+			 */
+			vsa_length_ptr = NULL;
+			
+		} else if (vendorcode == VENDORPEC_LUCENT) {
+			/*
+			 *	16-bit attribute, 8-bit length
+			 */
+			*ptr++ = ((vp->attribute >> 8) & 0xFF);
+			*ptr++ = (vp->attribute & 0xFF);
+			length_ptr = ptr;
+			*vsa_length_ptr += 3;
+			*ptr++ = 3;
+			total_length += 3;
+		} else {
+			/*
+			 *	All other VSA's are encoded the same
+			 *	as RFC attributes.
+			 */
+			*vsa_length_ptr += 2;
+			goto rfc;
+		}
 	} else {
+	rfc:
 		/*
 		 *	All other attributes are encoded as
 		 *	per the RFC.
 		 */
 		*ptr++ = (vp->attribute & 0xFF);
 		length_ptr = ptr;
-		if (vsa_length_ptr) *vsa_length_ptr += 2;
 		*ptr++ = 2;
 		total_length += 2;
 	}
-
+	
 	switch(vp->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
@@ -527,19 +534,13 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 *	0..255, minus whatever octets are used
 		 *	in the attribute header.
 		 */
-		allowed = 255;
-		if (vsa_length_ptr) {
-			allowed -= *vsa_length_ptr;
-		} else {
-			allowed -= *length_ptr;
-		}
-			
-		if (len > allowed) {
-			len = allowed;
+		if ((len + total_length) > 255) {
+			len = 255 - total_length;
 		}
 			
 		*length_ptr += len;
 		if (vsa_length_ptr) *vsa_length_ptr += len;
+
 		/*
 		 *  If we have tagged attributes we can't
 		 *  assume that len == vp->length.  Use
