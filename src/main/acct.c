@@ -26,14 +26,11 @@
 static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <stdlib.h>
-#include <string.h>
 
 #include "radiusd.h"
 #include "modules.h"
-
 
 /*
  *	rad_accounting: call modules.
@@ -45,28 +42,39 @@ int rad_accounting(REQUEST *request)
 {
 	int		reply = RLM_MODULE_OK;
 
-	if (!request->proxy) { /* Only need to do this once, before proxying */
+	/*
+	 *	Run the modules only once, before proxying.
+	 */
+	if (!request->proxy) {
 		char		*exec_program;
 		int		exec_wait;
 		VALUE_PAIR	*vp;
 		int		rcode;
-		int		acct_type = 0;
+		int		acct_type;
 
 		reply = module_preacct(request);
 		if (reply != RLM_MODULE_NOOP &&
 		    reply != RLM_MODULE_OK &&
+		    reply != RLM_MODULE_HANDLED &&
 		    reply != RLM_MODULE_UPDATED)
 			return reply;
 
 		/*
-		 *	Do accounting, ONLY the first time through.
-		 *	This is to ensure that we log the packet
-		 *	immediately, even if the proxy never does.
+		 *	Do the data storage before proxying. This is to ensure
+		 *	that we log the packet, even if the proxy never does.
+		 *
+		 *	In case the accounting module returns FAIL, it's still
+		 *	useful to send the data to the proxy.
 		 */
 		vp = pairfind(request->config_items, PW_ACCT_TYPE);
-		if (vp)
-			acct_type = vp->lvalue;
-		reply = module_accounting(acct_type,request);
+		acct_type = vp ? vp->lvalue : 0;
+		reply = module_accounting(acct_type, request);
+		if (reply != RLM_MODULE_NOOP &&
+		    reply != RLM_MODULE_OK &&
+		    reply != RLM_MODULE_HANDLED &&
+		    reply != RLM_MODULE_UPDATED &&
+		    reply != RLM_MODULE_FAIL)
+			return reply;
 
 		/*
 		 *	See if we need to execute a program.
@@ -142,7 +150,8 @@ int rad_accounting(REQUEST *request)
 			} else {
 				/*
 				 *	Don't reply to the NAS now because
-				 *	we have to send the proxied packet.
+				 *	we have to send the proxied packet
+				 *	before that.
 				 */
 				return reply;
 			}
@@ -158,6 +167,7 @@ int rad_accounting(REQUEST *request)
 	 *      Accounting-Response.
 	 */
 	if (reply == RLM_MODULE_OK ||
+	    reply == RLM_MODULE_HANDLED ||
 	    reply == RLM_MODULE_UPDATED) {
 
 		/*
