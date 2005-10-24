@@ -384,10 +384,13 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		const char *secret, VALUE_PAIR *vp, uint8_t *ptr)
 {
 	int		vendorcode;
-	int		len, total_length;
+	int		offset, len, total_length;
 	uint32_t	lvalue;
 	uint8_t		*length_ptr, *vsa_length_ptr;
 	uint8_t		digest[16];
+	const uint8_t	*data = NULL;
+	uint8_t		array[4];
+
 
 	vendorcode = total_length = 0;
 	length_ptr = vsa_length_ptr = NULL;
@@ -452,151 +455,124 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		*ptr++ = 2;
 		total_length += 2;
 	}
+
+	offset = 0;
+	if (vp->flags.has_tag) {
+		if (TAG_VALID(vp->flags.tag)) {
+			ptr[0] = vp->flags.tag & 0xff;
+			offset = 1;
+	    
+		} else if (vp->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
+			/*
+			 *	Tunnel passwords REQUIRE a tag, even
+			 *	if don't have a valid tag.
+			 */
+			ptr[0] = 0;
+			offset = 1;
+		} /* else don't write a tag */
+	} /* else the attribute doesn't have a tag */
 	
+	/*
+	 *	Encrypt the various password styles
+	 */
+	switch (vp->flags.encrypt) {
+	case FLAG_ENCRYPT_USER_PASSWORD:
+		rad_pwencode((char *)vp->vp_strvalue,
+			     &(vp->length),
+			     secret,
+			     packet->vector);
+		break;
+		
+	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+		if (!original) {
+			librad_log("ERROR: No request packet, cannot encrypt Tunnel-Password attribute in the vp.");
+			return -1;
+		}
+		rad_tunnel_pwencode(vp->vp_strvalue,
+				    &(vp->length),
+				    secret,
+				    original->vector);
+		break;
+		
+		
+	case FLAG_ENCRYPT_ASCEND_SECRET:
+		make_secret(digest, packet->vector,
+			    secret, vp->vp_strvalue);
+		memcpy(vp->vp_strvalue, digest, AUTH_VECTOR_LEN );
+		vp->length = AUTH_VECTOR_LEN;
+		break;
+		
+	default:
+		break;
+		
+	} /* switch over encryption flags */
+			
+	/*
+	 *	Set up the default sources for the data.
+	 */
+	data = vp->vp_octets;
+	len = vp->length;
+
 	switch(vp->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
-		/*
-		 *  Encrypt the various password styles
-		 */
-		switch (vp->flags.encrypt) {
-		default:
-			break;
-				
-		case FLAG_ENCRYPT_USER_PASSWORD:
-			rad_pwencode((char *)vp->vp_strvalue,
-				     &(vp->length),
-				     secret,
-				     packet->vector);
-			break;
-				
-		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-			if (!original) {
-				librad_log("ERROR: No request packet, cannot encrypt Tunnel-Password attribute in the vp.");
-				return -1;
-			}
-			rad_tunnel_pwencode(vp->vp_strvalue,
-					    &(vp->length),
-					    secret,
-					    original->vector);
-			break;
-				
-				
-		case FLAG_ENCRYPT_ASCEND_SECRET:
-			make_secret(digest, packet->vector,
-				    secret, vp->vp_strvalue);
-			memcpy(vp->vp_strvalue, digest, AUTH_VECTOR_LEN );
-			vp->length = AUTH_VECTOR_LEN;
-			break;
-		} /* switch over encryption flags */
-		/* FALL-THROUGH */
-			
-		/*
-		 *	None of these can have "encrypt"
-		 *	flags, so we skip them.
-		 */				  
 	case PW_TYPE_IFID:
 	case PW_TYPE_IPV6ADDR:
 	case PW_TYPE_IPV6PREFIX:
-			
-		/*
-		 *	Ascend binary attributes are
-		 *	stored internally in binary form.
-		 */
 	case PW_TYPE_ABINARY:
-		len = vp->length;
-			
-		/*
-		 *    Set the TAG at the beginning of the
-		 *    string if tagged.  If tag value is not
-		 *    valid for tagged attribute, make it 0x00
-		 *    per RFC 2868.  -cparker
-		 */
-		if (vp->flags.has_tag) {
-			if (TAG_VALID(vp->flags.tag)) {
-				len++;
-				*ptr++ = vp->flags.tag;
-					
-			} else if (vp->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
-				/*
-				 *  Tunnel passwords REQUIRE a
-				 *  tag, even if we don't have
-				 *  a valid tag.
-				 */
-				len++;
-				*ptr++ = 0x00;
-			} /* else don't write a tag */
-		} /* else the attribute doesn't have a tag */
-			
-		/*
-		 *	Ensure we don't go too far.  The
-		 *	'length' of the attribute may be
-		 *	0..255, minus whatever octets are used
-		 *	in the attribute header.
-		 */
-		if ((len + total_length) > 255) {
-			len = 255 - total_length;
-		}
-			
-		*length_ptr += len;
-		if (vsa_length_ptr) *vsa_length_ptr += len;
-
-		/*
-		 *  If we have tagged attributes we can't
-		 *  assume that len == vp->length.  Use
-		 *  vp->length for copying the string data
-		 *  into the packet.  Use len for the true
-		 *  length of the string+tags.
-		 */
-		memcpy(ptr, vp->vp_strvalue, vp->length);
-		ptr += vp->length;
-		total_length += len;
+		/* nothing more to do */
 		break;
 			
 	case PW_TYPE_INTEGER:
-	case PW_TYPE_IPADDR:
-		*length_ptr += 4;
-		if (vsa_length_ptr) *vsa_length_ptr += 4;
-			
-		if (vp->type == PW_TYPE_INTEGER ) {
-			/*  If tagged, the tag becomes the MSB of the value */
-			if(vp->flags.has_tag) {
-				/*  Tag must be ( 0x01 -> 0x1F ) OR 0x00  */
-				if(!TAG_VALID(vp->flags.tag)) {
-					vp->flags.tag = 0x00;
-				}
-				lvalue = htonl((vp->lvalue & 0xffffff) |
-					       ((vp->flags.tag & 0xff) << 24));
-			} else {
-				lvalue = htonl(vp->lvalue);
-			}
-		} else {
-			/*
-			 *	IP address is already in
-			 *	network byte order.
-			 */
-			lvalue = vp->lvalue;
-		}
-		memcpy(ptr, &lvalue, 4);
-		ptr += 4;
-		total_length += 4;
+		lvalue = htonl(vp->lvalue);
+		memcpy(array, &lvalue, sizeof(lvalue));
+
+		/*
+		 *	Perhaps discard the first octet.
+		 */
+		data = &array[offset];
+		len -= offset;
 		break;
 			
+	case PW_TYPE_IPADDR:
+		data = (const uint8_t *) &vp->lvalue;
+		break;
+
 		/*
 		 *  There are no tagged date attributes.
 		 */
 	case PW_TYPE_DATE:
-		*length_ptr += 4;
-		if (vsa_length_ptr) *vsa_length_ptr += 4;
-			
 		lvalue = htonl(vp->lvalue);
-		memcpy(ptr, &lvalue, 4);
-		ptr += 4;
-		total_length += 4;
+		data = (const uint8_t *) &lvalue;
 		break;
-	default:
-		break;
+
+	default:		/* unknown type: ignore it */
+		return 0;
 	}
+
+	/*
+	 *	Bound the data to 255 bytes.
+	 */
+	if (len + offset + total_length > 255)
+		len = 255 - offset - total_length;
+
+	/*
+	 *	Copy the data over
+	 */
+	memcpy(ptr + offset, data, len);
+
+	/*
+	 *	Account for the tag (if any).
+	 */
+	len += offset;
+
+	/*
+	 *	Update the various lengths.
+	 */
+	*length_ptr += len;
+	if (vsa_length_ptr) *vsa_length_ptr += len;
+	ptr += len;
+	total_length += len;
 
 	return total_length;	/* of attribute */
 }
