@@ -9,6 +9,8 @@
 # Version:	$Id$
 #
 # Juniper ERX dictionaries are available at:
+#	http://www.juniper.net/techpubs/software/erx/junose700/unisphere7-0.dct
+#	http://www.juniper.net/techpubs/software/erx/junose700/swconfig-broadband/html/radius-attributes.html
 #	http://www.juniper.net/techpubs/software/erx/junose52/unisphere5-2.dct
 #	http://www.juniper.net/techpubs/software/erx/erx50x/swconfig-broadband/html/radius-attributes.html
 # (The below are from when it was the Unisphere ERX)
@@ -82,6 +84,19 @@ ATTRIBUTE	ERX-Ipv6-Secondary-Dns			48	string
 ATTRIBUTE	Sdx-Service-Name			49	string
 ATTRIBUTE	Sdx-Session-Volume-Quota		50	string
 ATTRIBUTE	Sdx-Tunnel-Disconnect-Cause-Info	51	string
+ATTRIBUTE	ERX-Radius-Client-Address		52	ipaddr
+ATTRIBUTE	ERX-Service-Description			53	string
+ATTRIBUTE	ERX-L2tp-Recv-Window-Size		54	integer
+ATTRIBUTE	ERX-Dhcp-Options			55	string
+ATTRIBUTE	ERX-Dhcp-Mac-Addr			56	string
+ATTRIBUTE	ERX-Dhcp-Gi-Address			57	ipaddr
+ATTRIBUTE	ERX-LI-Action				58	integer	encrypt=2
+ATTRIBUTE	ERX-Med-Dev-Handle			59	octets	encrypt=2
+ATTRIBUTE	ERX-Med-Ip-Address			60	ipaddr	encrypt=2
+ATTRIBUTE	ERX-Med-Port-Number			61	integer	encrypt=2
+ATTRIBUTE	ERX-MLPPP-Bundle-Name			62	string
+ATTRIBUTE	ERX-Interface-Desc			63	string
+ATTRIBUTE	ERX-Tunnel-Group			64	string
 
 #
 #  Values	Attribute		Name			Number
@@ -131,5 +146,9 @@ VALUE	ERX-PPP-Auth-Protocol		CHAP-PAP		4
 VALUE	ERX-Bearer-Type			None			0
 VALUE	ERX-Bearer-Type			Analog			1
 VALUE	ERX-Bearer-Type			Digital			2
+
+VALUE	ERX-LI-Action			off			0
+VALUE	ERX-LI-Action			on			1
+VALUE	ERX-LI-Action			noop			2
 
 END-VENDOR	ERX
