@@ -825,6 +825,8 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 				       inst->config->xlat_name, profile);
 				if (sql_set_user(inst, request, sqlusername, profile) < 0) {
 					sql_release_socket(inst, sqlsocket);
+					pairfree(&reply_tmp);
+					pairfree(&check_tmp);
 					return RLM_MODULE_FAIL;
 				}
 				radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_check_query,
@@ -849,6 +851,8 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		       inst->config->xlat_name);
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
+		pairfree(&reply_tmp);
+		pairfree(&check_tmp);
 		return RLM_MODULE_NOTFOUND;
 	}
 
