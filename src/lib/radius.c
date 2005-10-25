@@ -80,6 +80,8 @@ typedef struct radius_packet_t {
 
 static lrad_randctx lrad_rand_pool;	/* across multiple calls */
 static volatile int lrad_rand_index = -1;
+static unsigned int salt_offset = 0;
+
 
 static const char *packet_codes[] = {
   "",
@@ -136,11 +138,6 @@ static const char *packet_codes[] = {
   "IP-Address-Release"
 };
 
-/*
- *  Internal prototypes
- */
-static void make_secret(uint8_t *digest, const uint8_t *vector,
-			const char *secret, const uint8_t *value);
 
 /*
  *	Wrapper for sendto which handles sendfromto, IPv6, and all
@@ -375,22 +372,166 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 }
 
 
+#define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
+/*************************************************************************
+ *
+ *      Function: make_secret
+ *
+ *      Purpose: Build an encrypted secret value to return in a reply
+ *               packet.  The secret is hidden by xoring with a MD5 digest
+ *               created from the shared secret and the authentication
+ *               vector.  We put them into MD5 in the reverse order from
+ *               that used when encrypting passwords to RADIUS.
+ *
+ *************************************************************************/
+static void make_secret(uint8_t *digest, const uint8_t *vector,
+			const char *secret, const uint8_t *value)
+{
+	lrad_MD5_CTX context;
+        int             i;
+
+	lrad_MD5Init(&context);
+	lrad_MD5Update(&context, vector, AUTH_VECTOR_LEN);
+	lrad_MD5Update(&context, secret, strlen(secret));
+	lrad_MD5Final(digest, &context);
+
+        for ( i = 0; i < AUTH_VECTOR_LEN; i++ ) {
+		digest[i] ^= value[i];
+        }
+}
+
+#define MAX_PASS_LEN (128)
+static void make_passwd(uint8_t *output, int *outlen,
+			const uint8_t *input, int inlen,
+			const char *secret, const uint8_t *vector)
+{
+	lrad_MD5_CTX context, old;
+	uint8_t	digest[AUTH_VECTOR_LEN];
+	uint8_t passwd[MAX_PASS_LEN];
+	int	i, n;
+	int	len;
+
+	/*
+	 *	If the length is zero, round it up.
+	 */
+	len = inlen;
+	if (len == 0) {
+		len = AUTH_PASS_LEN;
+	}
+	else if (len > MAX_PASS_LEN) len = MAX_PASS_LEN;
+
+	else if ((len & 0x0f) != 0) {
+		len += 0x0f;
+		len &= ~0x0f;
+	}
+	*outlen = len;
+
+	memcpy(passwd, input, len);
+	memset(passwd + len, 0, sizeof(passwd) - len);
+
+	lrad_MD5Init(&context);
+	lrad_MD5Update(&context, secret, strlen(secret));
+	old = context;
+
+	/*
+	 *	Do first pass.
+	 */
+	lrad_MD5Update(&context, vector, AUTH_PASS_LEN);
+
+	for (n = 0; n < len; n += AUTH_PASS_LEN) {
+		if (n > 0) {
+			context = old;
+			lrad_MD5Update(&context,
+				       passwd + n - AUTH_PASS_LEN,
+				       AUTH_PASS_LEN);
+		}
+
+		lrad_MD5Final(digest, &context);
+		for (i = 0; i < AUTH_PASS_LEN; i++) {
+			passwd[i + n] ^= digest[i];
+		}
+	}
+
+	memcpy(output, passwd, len);
+}
+
+static void make_tunnel_passwd(uint8_t *output, int *outlen,
+			       const uint8_t *input, int inlen,
+			       const char *secret, const uint8_t *vector)
+{
+	lrad_MD5_CTX context, old;
+	uint8_t	digest[AUTH_VECTOR_LEN];
+	uint8_t passwd[AUTH_PASS_LEN + AUTH_VECTOR_LEN];
+	int	i, n;
+	int	len;
+
+	/*
+	 *	Length of the encrypted data is password length plus
+	 *	one byte for the length of the password.
+	 */
+	len = inlen + 1;
+	if (len > AUTH_PASS_LEN) len = AUTH_PASS_LEN;
+	else if ((len & 0x0f) != 0) {
+		len += 0x0f;
+		len &= ~0x0f;
+	}
+	*outlen = len + 2;	/* account for the salt */
+
+	/*
+	 *	Copy the password over.
+	 */
+	memcpy(passwd + 3, input, len);
+	memset(passwd + 3 + len, 0, sizeof(passwd) - 3 - len);
+
+	/*
+	 *	Generate salt.  The RFC's say:
+	 *
+	 *	The high bit of salt[0] must be set, each salt in a
+	 *	packet should be unique, and they should be random
+	 *
+	 *	So, we set the high bit, add in a counter, and then
+	 *	add in some CSPRNG data.  should be OK..
+	 */
+	passwd[0] = (0x80 | ( ((salt_offset++) & 0x0f) << 3) |
+		     (lrad_rand() & 0x07));
+	passwd[1] = lrad_rand();
+	passwd[2] = inlen;	/* length of the password string */
+
+	lrad_MD5Init(&context);
+	lrad_MD5Update(&context, secret, strlen(secret));
+	old = context;
+
+	lrad_MD5Update(&context, vector, AUTH_VECTOR_LEN);
+	lrad_MD5Update(&context, &passwd[0], 2);
+
+	for (n = 0; n < len; n += AUTH_PASS_LEN) {
+		if (n > 0) {
+			context = old;
+			lrad_MD5Update(&context,
+				       passwd + 2 + n - AUTH_PASS_LEN,
+				       AUTH_PASS_LEN);
+		}
+
+		lrad_MD5Final(digest, &context);
+		for (i = 0; i < AUTH_PASS_LEN; i++) {
+			passwd[i + 2 + n] ^= digest[i];
+		}
+	}
+	memcpy(output, passwd, len + 2);
+}
+
 /*
  *	Parse a data structure into a RADIUS attribute.
- *
- *	FIXME: vp should really be "const"!
  */
 int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-		const char *secret, VALUE_PAIR *vp, uint8_t *ptr)
+		const char *secret, const VALUE_PAIR *vp, uint8_t *ptr)
 {
 	int		vendorcode;
 	int		offset, len, total_length;
 	uint32_t	lvalue;
 	uint8_t		*length_ptr, *vsa_length_ptr;
-	uint8_t		digest[16];
 	const uint8_t	*data = NULL;
 	uint8_t		array[4];
-
 
 	vendorcode = total_length = 0;
 	length_ptr = vsa_length_ptr = NULL;
@@ -473,45 +614,22 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	} /* else the attribute doesn't have a tag */
 	
 	/*
-	 *	Encrypt the various password styles
-	 */
-	switch (vp->flags.encrypt) {
-	case FLAG_ENCRYPT_USER_PASSWORD:
-		rad_pwencode((char *)vp->vp_strvalue,
-			     &(vp->length),
-			     secret,
-			     packet->vector);
-		break;
-		
-	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-		if (!original) {
-			librad_log("ERROR: No request packet, cannot encrypt Tunnel-Password attribute in the vp.");
-			return -1;
-		}
-		rad_tunnel_pwencode(vp->vp_strvalue,
-				    &(vp->length),
-				    secret,
-				    original->vector);
-		break;
-		
-		
-	case FLAG_ENCRYPT_ASCEND_SECRET:
-		make_secret(digest, packet->vector,
-			    secret, vp->vp_strvalue);
-		memcpy(vp->vp_strvalue, digest, AUTH_VECTOR_LEN );
-		vp->length = AUTH_VECTOR_LEN;
-		break;
-		
-	default:
-		break;
-		
-	} /* switch over encryption flags */
-			
-	/*
 	 *	Set up the default sources for the data.
 	 */
 	data = vp->vp_octets;
 	len = vp->length;
+
+	/*
+	 *	Encrypted passwords can't be very long.
+	 *	This check also ensures that the hashed version
+	 *	of the password + attribute header fits into one
+	 *	attribute.
+	 *
+	 *	FIXME: Print a warning message if it's too long?
+	 */
+	if (vp->flags.encrypt && (len > MAX_PASS_LEN)) {
+		len = MAX_PASS_LEN;
+	}
 
 	switch(vp->type) {
 	case PW_TYPE_STRING:
@@ -524,6 +642,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		break;
 			
 	case PW_TYPE_INTEGER:
+		len = 4;	/* just in case */
 		lvalue = htonl(vp->lvalue);
 		memcpy(array, &lvalue, sizeof(lvalue));
 
@@ -536,6 +655,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			
 	case PW_TYPE_IPADDR:
 		data = (const uint8_t *) &vp->lvalue;
+		len = 4;	/* just in case */
 		break;
 
 		/*
@@ -544,22 +664,63 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	case PW_TYPE_DATE:
 		lvalue = htonl(vp->lvalue);
 		data = (const uint8_t *) &lvalue;
+		len = 4;	/* just in case */
 		break;
 
 	default:		/* unknown type: ignore it */
-		return 0;
+		librad_log("ERROR: Unknown attribute type %d", vp->type);
+		return -1;
 	}
 
 	/*
 	 *	Bound the data to 255 bytes.
 	 */
-	if (len + offset + total_length > 255)
+	if (len + offset + total_length > 255) {
 		len = 255 - offset - total_length;
+	}	
 
 	/*
-	 *	Copy the data over
+	 *	Encrypt the various password styles
+	 *
+	 *	Attributes with encrypted values MUST be less than
+	 *	128 bytes long.
 	 */
-	memcpy(ptr + offset, data, len);
+	switch (vp->flags.encrypt) {
+	case FLAG_ENCRYPT_USER_PASSWORD:
+		make_passwd(ptr + offset, &len,
+			    vp->vp_octets, len,
+			    secret, packet->vector);
+		break;
+		
+	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+		if (!original) {
+			librad_log("ERROR: No request packet, cannot encrypt %s attribute in the vp.", vp->name);
+			return -1;
+		}
+
+		make_tunnel_passwd(ptr + offset, &len,
+				   vp->vp_octets, len,
+				   secret, original->vector);
+		break;
+
+		/*
+		 *	The code above ensures that this attribute
+		 *	always fits.
+		 */
+	case FLAG_ENCRYPT_ASCEND_SECRET:
+		make_secret(ptr + offset, packet->vector,
+			    secret, vp->vp_strvalue);
+		len = AUTH_VECTOR_LEN;
+		break;
+
+		
+	default:
+		/*
+		 *	Just copy the data over
+		 */
+		memcpy(ptr + offset, data, len);
+		break;
+	} /* switch over encryption flags */
 
 	/*
 	 *	Account for the tag (if any).
@@ -1526,6 +1687,7 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *origin
 		return NULL;
 	}
 	
+	if (length > 253) length = 253;	/* paranoia (pair-anoia?) */
 	pair->length = length;
 	pair->operator = T_OP_EQ;
 	pair->next = NULL;
@@ -1633,16 +1795,13 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *origin
 			 */
 		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
 			if (!original) {
-				librad_log("ERROR: Tunnel-Password attribute in request: Cannot decrypt it.");
-				free(pair);
-				return NULL;
+				goto raw;
 			}
 			if (rad_tunnel_pwdecode(pair->vp_strvalue,
 						&pair->length,
 						secret,
 						original->vector) < 0) {
-				free(pair);
-				return NULL;
+				goto raw;
 			}
 			break;
 			
@@ -1652,9 +1811,7 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *origin
 			 */
 		case FLAG_ENCRYPT_ASCEND_SECRET:
 			if (!original) {
-				librad_log("ERROR: Ascend-Send-Secret attribute in request: Cannot decrypt it.");
-				free(pair);
-				return NULL;
+				goto raw;
 			} else {
 				uint8_t my_digest[AUTH_VECTOR_LEN];
 				make_secret(my_digest,
@@ -1774,10 +1931,17 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *origin
 		break;
 
 	default:
-		DEBUG("    %s (Unknown Type %d)\n",
-		      pair->name, pair->type);
-		free(pair);
-		return NULL;
+	raw:
+		pair->type = PW_TYPE_OCTETS;
+		pair->length = length;
+		memcpy(pair->vp_octets, data, length);
+
+		/*
+		 *	Ensure there's no encryption or tag stuff,
+		 *	we just pass the attribute as-is.
+		 */
+		memset(&pair->flags, 0, sizeof(pair->flags));
+		return pair;
 	}
 
 	return pair;
@@ -2015,7 +2179,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
  *	int *pwlen is updated to the new length of the encrypted
  *	password - a multiple of 16 bytes.
  */
-#define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
 int rad_pwencode(char *passwd, int *pwlen, const char *secret,
 		 const uint8_t *vector)
 {
@@ -2136,7 +2299,6 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret,
 	return strlen(passwd);
 }
 
-static unsigned int salt_offset = 0;
 
 /*
  *	Encode Tunnel-Password attributes when sending them out on the wire.
@@ -2530,33 +2692,4 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 	free(radius_packet);
 
 	*radius_packet_ptr = NULL;
-}
-
-/*************************************************************************
- *
- *      Function: make_secret
- *
- *      Purpose: Build an encrypted secret value to return in a reply
- *               packet.  The secret is hidden by xoring with a MD5 digest
- *               created from the shared secret and the authentication
- *               vector.  We put them into MD5 in the reverse order from
- *               that used when encrypting passwords to RADIUS.
- *
- *************************************************************************/
-static void make_secret(uint8_t *digest, const uint8_t *vector,
-			const char *secret, const uint8_t *value)
-{
-        uint8_t  buffer[256 + AUTH_VECTOR_LEN];
-        int             secretLen = strlen(secret);
-        int             i;
-
-        memcpy(buffer, vector, AUTH_VECTOR_LEN );
-        memcpy(buffer + AUTH_VECTOR_LEN, secret, secretLen );
-
-        librad_md5_calc(digest, buffer, AUTH_VECTOR_LEN + secretLen );
-        memset(buffer, 0, sizeof(buffer));
-
-        for ( i = 0; i < AUTH_VECTOR_LEN; i++ ) {
-		digest[i] ^= value[i];
-        }
 }
