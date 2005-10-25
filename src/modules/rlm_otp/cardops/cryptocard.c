@@ -280,16 +280,13 @@ __attribute__ ((unused))
   return 0;
 }
 
-/* no twin so just return success */
+/* no twin so just return current time */
 static time_t
 cryptocard_twin2authtime(
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
                          const char csd[OTP_MAX_CSD_LEN + 1],
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
                          time_t when,
 #ifdef __GNUC__
 __attribute__ ((unused))
@@ -300,7 +297,7 @@ __attribute__ ((unused))
 #endif
                          const char *log_prefix)
 {
-  return 0;
+  return when;
 }
 
 

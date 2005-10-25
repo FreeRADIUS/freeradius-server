@@ -547,8 +547,8 @@ auth_done:
     user_state.authtwin  = 0;
     user_state.authtime  = (int32_t) now;	/* cast prevents overflow */
     /* NOTE: csd is the value before calling updatecsd() */
-    user_state.minauthtime =
-      (int32_t) user_info.cardops->twin2authtime(csd, now, t, log_prefix);
+    user_state.minauthtime = (user_info.featuremask & OTP_CF_TS) ?
+      (int32_t) user_info.cardops->twin2authtime(csd, now, t, log_prefix) : 0;
     user_state.minewin = e;
   } else {
     /*
