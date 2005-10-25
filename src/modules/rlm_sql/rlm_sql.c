@@ -755,14 +755,8 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		return RLM_MODULE_INVALID;
 	}
 
-
 	/*
-	 *  After this point, ALL 'return's MUST release the SQL socket!
-	 */
-
-
-	/*
-	 * Set, escape, and check the user attr here
+	 *	Set, escape, and check the user attr here.
 	 */
 	if (sql_set_user(inst, request, sqlusername, NULL) < 0)
 		return RLM_MODULE_FAIL;
@@ -772,8 +766,12 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	if (sqlsocket == NULL) {
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
-		return(RLM_MODULE_FAIL);
+		return RLM_MODULE_FAIL;
 	}
+
+	/*
+	 *	After this point, ALL 'return's MUST release the SQL socket!
+	 */
 
 	found = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr, PW_VP_USERDATA);
 	/*
@@ -826,6 +824,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 				radlog(L_DBG, "rlm_sql (%s): Checking profile %s",
 				       inst->config->xlat_name, profile);
 				if (sql_set_user(inst, request, sqlusername, profile) < 0) {
+					sql_release_socket(inst, sqlsocket);
 					return RLM_MODULE_FAIL;
 				}
 				radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_check_query,
@@ -839,10 +838,15 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 			}
 		}
 	}
+
+	/*
+	 *	We don't need the SQL socket anymore.
+	 */
+	sql_release_socket(inst, sqlsocket);
+
 	if (!found) {
 		radlog(L_DBG, "rlm_sql (%s): User not found",
 		       inst->config->xlat_name);
-		sql_release_socket(inst, sqlsocket);
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 		return RLM_MODULE_NOTFOUND;
@@ -865,7 +869,6 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		       inst->config->xlat_name, sqlusername);
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
-		sql_release_socket(inst, sqlsocket);
 		pairfree(&reply_tmp);
 		pairfree(&check_tmp);
 		return RLM_MODULE_NOTFOUND;
@@ -878,7 +881,6 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 
 	/* Remove the username we (maybe) added above */
 	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
-	sql_release_socket(inst, sqlsocket);
 
 	return RLM_MODULE_OK;
 }
