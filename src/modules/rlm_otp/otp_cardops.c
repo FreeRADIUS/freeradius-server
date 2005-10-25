@@ -25,6 +25,10 @@
 
 static const char rcsid[] = "$Id$";
 
+#ifdef __linux__
+#define _GNU_SOURCE	/* RTLD_DEFAULT */
+#endif
+#include <dlfcn.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -117,6 +121,23 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   otp_user_state_t	user_state = { .locked = 0 };
 
   time_t now = time(NULL);
+
+  /*
+   * In the Cyclades ACS environment (2.3.0 tested), the runtime linker
+   * apparently does not run static constructors in ELF .ctors sections.
+   * Since that is how we initialize cardops modules, we have an ugly
+   * workaround here.  Our other choice is to implement cardops modules
+   * as full-fledged shared libraries, which is just too much work.
+   */
+  if (otp_num_cardops == 0) {
+    void (*cardops_init)(void);
+
+    /* ctors did not run; execute all known constructors */
+    if ((cardops_init = dlsym(RTLD_DEFAULT, "cryptocard_init")))
+      (*cardops_init)();
+    if ((cardops_init = dlsym(RTLD_DEFAULT, "trid_init")))
+      (*cardops_init)();
+  }
 
   /* sanity */
   if (!challenge) {
