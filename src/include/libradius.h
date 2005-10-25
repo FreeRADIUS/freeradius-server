@@ -79,6 +79,7 @@
 #  define AUTH_HDR_LEN		20
 #  define VENDORPEC_USR		429
 #define VENDORPEC_LUCENT	4846
+#define VENDORPEC_STARENT	8164
 #  define VENDOR(x)		((x >> 16) & 0xffff)
 #  define DEBUG			if (librad_debug) printf
 #  define debug_pair(vp)	do { if (librad_debug) { \

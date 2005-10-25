@@ -577,6 +577,20 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			*vsa_length_ptr += 3;
 			*ptr++ = 3;
 			total_length += 3;
+
+		} else if (vendorcode == VENDORPEC_STARENT) {
+			/*
+			 *	16-bit attribute, 16-bit length
+			 *	with the upper 8 bits of the length
+			 *	always zero!
+			 */
+			*ptr++ = ((vp->attribute >> 8) & 0xFF);
+			*ptr++ = (vp->attribute & 0xFF);
+			*ptr++ = 0;
+			length_ptr = ptr;
+			*vsa_length_ptr += 4;
+			*ptr++ = 4;
+			total_length += 4;
 		} else {
 			/*
 			 *	All other VSA's are encoded the same

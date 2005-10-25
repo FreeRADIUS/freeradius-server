@@ -352,6 +352,7 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		 */
 		if ((vendor != VENDORPEC_USR) &&
 		    (vendor != VENDORPEC_LUCENT) &&
+		    (vendor != VENDORPEC_STARENT) &&
 		    (value > 256)) {
 			librad_log("dict_addattr: ATTRIBUTE has invalid number (larger than 255).");
 			return -1;

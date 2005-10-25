@@ -127,6 +127,7 @@ $INCLUDE dictionary.shasta
 $INCLUDE dictionary.shiva
 $INCLUDE dictionary.sonicwall
 $INCLUDE dictionary.springtide
+$INCLUDE dictionary.starent
 $INCLUDE dictionary.telebit
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.t_systems_nova
