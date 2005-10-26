@@ -742,6 +742,12 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	len += offset;
 
 	/*
+	 *	RFC 2865 section 5 says that zero-length attributes
+	 *	MUST NOT be sent.
+	 */
+	if (len == 0) return 0;
+
+	/*
 	 *	Update the various lengths.
 	 */
 	*length_ptr += len;
