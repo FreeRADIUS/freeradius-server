@@ -480,8 +480,8 @@ static void make_tunnel_passwd(uint8_t *output, int *outlen,
 	/*
 	 *	Copy the password over.
 	 */
-	memcpy(passwd + 3, input, len);
-	memset(passwd + 3 + len, 0, sizeof(passwd) - 3 - len);
+	memcpy(passwd + 3, input, inlen);
+	memset(passwd + 3 + inlen, 0, sizeof(passwd) - 3 - inlen);
 
 	/*
 	 *	Generate salt.  The RFC's say:
@@ -702,7 +702,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	switch (vp->flags.encrypt) {
 	case FLAG_ENCRYPT_USER_PASSWORD:
 		make_passwd(ptr + offset, &len,
-			    vp->vp_octets, len,
+			    data, len,
 			    secret, packet->vector);
 		break;
 		
@@ -713,7 +713,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		}
 
 		make_tunnel_passwd(ptr + offset, &len,
-				   vp->vp_octets, len,
+				   data, len,
 				   secret, original->vector);
 		break;
 
@@ -723,7 +723,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 */
 	case FLAG_ENCRYPT_ASCEND_SECRET:
 		make_secret(ptr + offset, packet->vector,
-			    secret, vp->vp_strvalue);
+			    secret, data);
 		len = AUTH_VECTOR_LEN;
 		break;
 
@@ -1695,224 +1695,162 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *origin
 			const char *secret, int attribute, int length,
 			const uint8_t *data)
 {
-	VALUE_PAIR *pair;
+	int offset = 0;
+	VALUE_PAIR *vp;
 
-	if ((pair = paircreate(attribute, PW_TYPE_OCTETS)) == NULL) {
+	if ((vp = paircreate(attribute, PW_TYPE_OCTETS)) == NULL) {
 		return NULL;
 	}
 	
+	/*
+	 *	If length is greater than 253, something is SERIOUSLY
+	 *	wrong.
+	 */
 	if (length > 253) length = 253;	/* paranoia (pair-anoia?) */
-	pair->length = length;
-	pair->operator = T_OP_EQ;
-	pair->next = NULL;
-	
-	switch (pair->type) {
-		
+
+	vp->length = length;
+	vp->operator = T_OP_EQ;
+	vp->next = NULL;
+
+	/*
+	 *	Handle tags.
+	 */
+	if (vp->flags.has_tag) {
+		if (TAG_VALID(data[0]) ||
+		    (vp->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
+			/*
+			 *	Tunnel passwords REQUIRE a tag, even
+			 *	if don't have a valid tag.
+			 */
+			vp->flags.tag = data[0];
+
+			if ((vp->type == PW_TYPE_STRING) ||
+			    (vp->type == PW_TYPE_OCTETS)) offset = 1;
+		}
+	}
+
+	/*
+	 *	Copy the data to be decrypted
+	 */
+	memcpy(&vp->vp_octets[0], data + offset, length - offset);
+	vp->length -= offset;
+
+	/*
+	 *	Decrypt the attribute.
+	 */
+	switch (vp->flags.encrypt) {
 		/*
-		 *	The attribute may be zero length,
-		 *	or it may have a tag, and then no data...
+		 *  User-Password
 		 */
-	case PW_TYPE_STRING:
-		if (pair->flags.has_tag) {
-			int offset = 0;
-			
-			/*
-			 *	If there's sufficient room for
-			 *	a tag, and the tag looks valid,
-			 *	then use it.
-			 */
-			if ((pair->length > 0) &&
-			    TAG_VALID_ZERO(*data)) {
-				pair->flags.tag = *data;
-				pair->length--;
-				offset = 1;
-				
-				/*
-				 *	If the leading tag
-				 *	isn't valid, then it's
-				 *	ignored for the tunnel
-				 *	password attribute.
-				 */
-			} else if (pair->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
-				/*
-				 * from RFC2868 - 3.5.  Tunnel-Password
-				 * If the value of the Tag field is greater than
-				 * 0x00 and less than or equal to 0x1F, it SHOULD
-				 * be interpreted as indicating which tunnel
-				 * (of several alternatives) this attribute pertains;
-				 * otherwise, the Tag field SHOULD be ignored.
-				 */
-				pair->flags.tag = 0x00;
-				if (pair->length > 0) pair->length--;
-				offset = 1;
-			} else {
-				pair->flags.tag = 0x00;
-			}
-			
-			/*
-			 *	pair->length MAY be zero here.
-			 *
-			 *	See comment below about NUL
-			 *	termination.
-			 */
-			memcpy(pair->vp_strvalue, data + offset,
-			       pair->length);
+	case FLAG_ENCRYPT_USER_PASSWORD:
+		if (original) {
+			rad_pwdecode((char *)vp->vp_strvalue,
+				     vp->length, secret,
+				     original->vector);
 		} else {
-			/*
-			 *	Ascend binary attributes never have a
-			 *	tag, and neither do the 'octets' type.
-			 */
-		case PW_TYPE_ABINARY:
-		case PW_TYPE_OCTETS:
-			/* length always < MAX_STRING_LEN */
-			memcpy(pair->vp_strvalue, data, length);
-			/*
-			 *	Don't NUL terminate strings,
-			 *	as paircreate() zero-fills
-			 *	strvalue[], and strvalue[] is
-			 *	one more than the RADIUS max
-			 *	string length, to account for
-			 *	the trailing NUL needed by C.
-			 */
-			
-			pair->flags.tag = 0;
+			rad_pwdecode((char *)vp->vp_strvalue,
+				     vp->length, secret,
+				     packet->vector);
 		}
-		
-		/*
-		 *	Decrypt passwords here.
-		 */
-		switch (pair->flags.encrypt) {
-		default:
-			break;
-			
-			/*
-			 *  User-Password
-			 */
-		case FLAG_ENCRYPT_USER_PASSWORD:
-			if (original) {
-				rad_pwdecode((char *)pair->vp_strvalue,
-					     pair->length, secret,
-					     original->vector);
-			} else {
-				rad_pwdecode((char *)pair->vp_strvalue,
-					     pair->length, secret,
-					     packet->vector);
-			}
-			if (pair->attribute == PW_USER_PASSWORD) {
-				pair->length = strlen(pair->vp_strvalue);
-			}
-			break;
-			
-			/*
-			 *	Tunnel-Password's may go ONLY
-			 *	in response packets.
-			 */
-		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-			if (!original) {
-				goto raw;
-			}
-			if (rad_tunnel_pwdecode(pair->vp_strvalue,
-						&pair->length,
-						secret,
-						original->vector) < 0) {
-				goto raw;
-			}
-			break;
-			
-			/*
-			 *  Ascend-Send-Secret
-			 *  Ascend-Receive-Secret
-			 */
-		case FLAG_ENCRYPT_ASCEND_SECRET:
-			if (!original) {
-				goto raw;
-			} else {
-				uint8_t my_digest[AUTH_VECTOR_LEN];
-				make_secret(my_digest,
-					    original->vector,
-					    secret, data);
-				memcpy(pair->vp_strvalue, my_digest,
-				       AUTH_VECTOR_LEN );
-				pair->vp_strvalue[AUTH_VECTOR_LEN] = '\0';
-				pair->length = strlen(pair->vp_strvalue);
-			}
-			break;
-		} /* switch over encryption flags */
-		break;	/* from octets/string/abinary */
-		
-	case PW_TYPE_INTEGER:
-	case PW_TYPE_DATE:
-	case PW_TYPE_IPADDR:
-		/*
-		 *	Check for RFC compliance.  If the
-		 *	attribute isn't compliant, turn it
-		 *	into a string of raw octets.
-		 *
-		 *	Also set the lvalue to something
-		 *	which should never match anything.
-		 */
-		if (length != 4) {
-			pair->type = PW_TYPE_OCTETS;
-			memcpy(pair->vp_strvalue, data, length);
-			pair->lvalue = 0xbad1bad1;
-			break;
-		}
-		
-		memcpy(&pair->lvalue, data, 4);
-		
-		if (pair->type != PW_TYPE_IPADDR) {
-			pair->lvalue = ntohl(pair->lvalue);
-		} else {
-			/*
-			 *  It's an IP address, keep it in network
-			 *  byte order, and put the ASCII IP
-			 *  address or host name into the string
-			 *  value.
-			 */
-		}
-		
-		/*
-		 *	Tagged attributes of type integer have
-		 *	special treatment.
-		 */
-		if (pair->flags.has_tag &&
-		    pair->type == PW_TYPE_INTEGER) {
-			pair->flags.tag = (pair->lvalue >> 24) & 0xff;
-			pair->lvalue &= 0x00ffffff;
-		}
-		
-		/*
-		 *	Try to get the name for integer
-		 *	attributes.
-		 */
-		if (pair->type == PW_TYPE_INTEGER) {
-			DICT_VALUE *dval;
-			dval = dict_valbyattr(pair->attribute,
-					      pair->lvalue);
-			if (dval) {
-				strNcpy(pair->vp_strvalue,
-					dval->name,
-					sizeof(pair->vp_strvalue));
-			}
+		if (vp->attribute == PW_USER_PASSWORD) {
+			vp->length = strlen(vp->vp_strvalue);
 		}
 		break;
 		
 		/*
+		 *	Tunnel-Password's may go ONLY
+		 *	in response packets.
+		 */
+	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+		if (!original) goto raw;
+		
+		if (rad_tunnel_pwdecode(vp->vp_octets, &vp->length,
+					secret, original->vector) < 0) {
+			goto raw;
+		}
+		break;
+		
+		/*
+		 *  Ascend-Send-Secret
+		 *  Ascend-Receive-Secret
+		 */
+	case FLAG_ENCRYPT_ASCEND_SECRET:
+		if (!original) {
+			goto raw;
+		} else {
+			uint8_t my_digest[AUTH_VECTOR_LEN];
+			make_secret(my_digest,
+				    original->vector,
+				    secret, data);
+			memcpy(vp->vp_strvalue, my_digest,
+			       AUTH_VECTOR_LEN );
+			vp->vp_strvalue[AUTH_VECTOR_LEN] = '\0';
+			vp->length = strlen(vp->vp_strvalue);
+		}
+		break;
+
+	default:
+		break;
+	} /* switch over encryption flags */
+
+
+	switch (vp->type) {
+	case PW_TYPE_STRING:
+	case PW_TYPE_OCTETS:
+		/* nothing more to do */
+		break;
+
+	case PW_TYPE_INTEGER:
+		if (vp->length != 4) goto raw;
+
+		memcpy(&vp->lvalue, vp->vp_octets, 4);
+		vp->lvalue = ntohl(vp->lvalue);
+
+		if (vp->flags.has_tag) vp->lvalue &= 0x00ffffff;
+
+		/*
+		 *	Try to get named VALUEs
+		 */
+		{
+			DICT_VALUE *dval;
+			dval = dict_valbyattr(vp->attribute,
+					      vp->lvalue);
+			if (dval) {
+				strNcpy(vp->vp_strvalue,
+					dval->name,
+					sizeof(vp->vp_strvalue));
+			}
+		}
+		break;
+
+	case PW_TYPE_DATE:
+		if (vp->length != 4) goto raw;
+
+		memcpy(&vp->lvalue, vp->vp_octets, 4);
+		vp->lvalue = ntohl(vp->lvalue);
+		break;
+
+
+	case PW_TYPE_IPADDR:
+		if (vp->length != 4) goto raw;
+
+		memcpy(&vp->lvalue, vp->vp_octets, 4);
+		break;
+
+		/*
 		 *	IPv6 interface ID is 8 octets long.
 		 */
 	case PW_TYPE_IFID:
-		if (length != 8)
-			pair->type = PW_TYPE_OCTETS;
-		memcpy(pair->vp_strvalue, data, length);
+		if (vp->length != 8) goto raw;
+		/* vp->vp_ifid == vp->vp_octets */
 		break;
 		
 		/*
 		 *	IPv6 addresses are 16 octets long
 		 */
 	case PW_TYPE_IPV6ADDR:
-		if (length != 16)
-			pair->type = PW_TYPE_OCTETS;
-		memcpy(pair->vp_strvalue, data, length);
+		if (vp->length != 16) goto raw;
+		/* vp->vp_ipv6addr == vp->vp_octets */
 		break;
 		
 		/*
@@ -1925,40 +1863,34 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *origin
 		 *	The prefix length can have value 0 to 128.
 		 */
 	case PW_TYPE_IPV6PREFIX:
-		if (length < 2 || length > 18)
-			pair->type = PW_TYPE_OCTETS;
-		if (length >= 2) {
-			if (data[1] > 128) {
-				pair->type = PW_TYPE_OCTETS;
-			}
+		if (vp->length < 2 || vp->length > 18) goto raw;
+		if (vp->vp_octets[1] > 128) goto raw;
 
-			/*
-			 *	FIXME: double-check that
-			 *	(data[1] >> 3) matches length + 2
-			 */
-		}
-		memcpy(pair->vp_strvalue, data, length);
-		if (length < 18) {
-			memset(pair->vp_strvalue + length, 0,
-			       18 - length);
+		/*
+		 *	FIXME: double-check that
+		 *	(vp->vp_octets[1] >> 3) matches vp->length + 2
+		 */
+		if (vp->length < 18) {
+			memset(vp->vp_octets + vp->length, 0,
+			       18 - vp->length);
 		}
 		break;
 
 	default:
 	raw:
-		pair->type = PW_TYPE_OCTETS;
-		pair->length = length;
-		memcpy(pair->vp_octets, data, length);
+		vp->type = PW_TYPE_OCTETS;
+		vp->length = length;
+		memcpy(vp->vp_octets, data, length);
+		
 
 		/*
 		 *	Ensure there's no encryption or tag stuff,
 		 *	we just pass the attribute as-is.
 		 */
-		memset(&pair->flags, 0, sizeof(pair->flags));
-		return pair;
+		memset(&vp->flags, 0, sizeof(vp->flags));
 	}
 
-	return pair;
+	return vp;
 }
 
 
@@ -2045,7 +1977,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			 *	else is normal.
 			 */
 			if ((vendorcode != VENDORPEC_USR) &&
-			    (vendorcode != VENDORPEC_LUCENT)) {
+			    (vendorcode != VENDORPEC_LUCENT) &&
+			    (vendorcode != VENDORPEC_STARENT)) {
 				int	sublen;
 				uint8_t	*subptr;
 
@@ -2134,6 +2067,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 					attrlen -= 8;
 					length -= 8;
 				}
+
 			} else if ((vendorcode == VENDORPEC_LUCENT) &&
 				   (attrlen >= 7) &&
 				   ((ptr[6] + 4) == attrlen)) {
@@ -2143,6 +2077,17 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				ptr += 7;
 				attrlen -= 7;
 				length -= 7;
+
+			} else if ((vendorcode == VENDORPEC_STARENT) &&
+				   (attrlen >= 8) &&
+				   (ptr[6] == 0) &&
+				   ((ptr[7] + 4) == attrlen)) {
+				attribute = ((vendorcode << 16) |
+					     (ptr[4] << 8) |
+					     ptr[5]);
+				ptr += 8;
+				attrlen -= 8;
+				length -= 8;
 			} /* else something went catastrophically wrong */
 		} /* else it wasn't a VSA */
 
@@ -2161,11 +2106,9 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			return -1;
 		}
 
-		if (pair) {
-			debug_pair(pair);
-			*tail = pair;
-			tail = &pair->next;
-		}
+		debug_pair(pair);
+		*tail = pair;
+		tail = &pair->next;
 
 		ptr += attrlen;
 		length -= attrlen;
