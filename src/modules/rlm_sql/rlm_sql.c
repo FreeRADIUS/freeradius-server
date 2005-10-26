@@ -790,6 +790,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		sql_release_socket(inst, sqlsocket);
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
+		pairfree(&check_tmp);
 		return RLM_MODULE_FAIL;
 
 	} else {
