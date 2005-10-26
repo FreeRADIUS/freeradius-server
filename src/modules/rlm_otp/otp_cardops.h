@@ -50,6 +50,11 @@
 #define OTP_CF_FRW1		0x01 << 14 /* force event window 2^1 */
 #define OTP_CF_FRW2		0x01 << 15 /* force event window 2^2 */
 #define OTP_CF_FRW		(OTP_CF_FRW0|OTP_CF_FRW1|OTP_CF_FRW2)
+/* vendor specific */
+#define OTP_CF_VS1		0x01 << 16 /* vendor specific 1      */
+#define OTP_CF_VS2		0x01 << 17 /* vendor specific 2      */
+#define OTP_CF_VS3		0x01 << 18 /* vendor specific 3      */
+#define OTP_CF_VS4		0x01 << 19 /* vendor specific 4      */
 
 #define OTP_CF_MAX		0x01 << 31 /* MAX placeholder        */
 
