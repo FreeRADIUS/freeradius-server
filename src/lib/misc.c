@@ -590,12 +590,14 @@ int closefrom(int fd)
 	}
 #endif
 
+	if (fd > maxfd) return 0;
+
 	/*
 	 *	FIXME: return EINTR?
 	 *
 	 *	Use F_CLOSEM?
 	 */
-	for (i = fd; fd < maxfd; i++) {
+	for (i = fd; i < maxfd; i++) {
 		close(i);
 	}
 
