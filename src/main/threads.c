@@ -106,8 +106,6 @@ typedef struct request_queue_t {
 } request_queue_t;
 
 
-#define MAX_WAITERS (256)
-
 /*
  *	A data structure to manage the thread pool.  There's no real
  *	need for a data structure, but it makes things conceptually
@@ -130,10 +128,8 @@ typedef struct THREAD_POOL {
 	int cleanup_delay;
 	int spawn_flag;
 
-	int		wait_head;
-	int		wait_tail;
 	pthread_mutex_t	wait_mutex;
-	pid_t		wait[MAX_WAITERS];
+	lrad_hash_table_t *waiters;
 
 	/*
 	 *	All threads wait on this semaphore, for requests
@@ -227,6 +223,31 @@ static int setup_ssl_mutexes(void)
 
 
 /*
+ *	Callback for reaping
+ */
+static int reap_callback(void *ctx, void *data)
+{
+	int rcode;
+	pid_t pid = *(pid_t *) data;
+	lrad_hash_table_t *ht = ctx;
+
+	/*
+	 *	Child is still alive, do nothing.
+	 */
+	if (waitpid(pid, NULL, WNOHANG) == 0) return 0;
+	if (rcode == 0) return 0;
+
+	/*
+	 *	Else no child, or was already reaped
+	 */
+
+	lrad_hash_table_delete(ht, pid);
+
+	return 0;
+}
+
+
+/*
  *	We don't want to catch SIGCHLD for a host of reasons.
  *
  *	- exec_wait means that someone, somewhere, somewhen, will
@@ -244,34 +265,14 @@ static int setup_ssl_mutexes(void)
  */
 static void reap_children(void)
 {
-	if (thread_pool.wait_head != thread_pool.wait_tail) {
-		int num;
-		
-		pthread_mutex_lock(&thread_pool.wait_mutex);
-		for (num = ((thread_pool.wait_tail + MAX_WAITERS) - thread_pool.wait_head) % MAX_WAITERS;
-		     num != 0;
-		     num--) {
-			pid_t pid = thread_pool.wait[thread_pool.wait_head];
-			
-			thread_pool.wait_head++;
-			thread_pool.wait_head %= MAX_WAITERS;
-			
-			/*
-			 *	Child is still alive: move it to the tail.
-			 */
-			if (waitpid(pid, NULL, WNOHANG) == 0) {
-				if (((thread_pool.wait_tail + 1) % MAX_WAITERS)
-				    == thread_pool.wait_head) {
-					rad_assert(0 == 1);
-				}
+	if (lrad_hash_table_num_elements(thread_pool.waiters) == 0) return;
 
-				thread_pool.wait[thread_pool.wait_tail] = pid;
-				thread_pool.wait_tail++;
-				thread_pool.wait_tail %= MAX_WAITERS;
-			} /* else no child, or was already reaped */
-		}
-		pthread_mutex_unlock(&thread_pool.wait_mutex);
-	}
+	pthread_mutex_lock(&thread_pool.wait_mutex);
+
+	lrad_hash_table_walk(thread_pool.waiters,
+			     reap_callback, thread_pool.waiters);
+
+	pthread_mutex_unlock(&thread_pool.wait_mutex);
 }
 
 /*
@@ -787,12 +788,22 @@ int thread_pool_init(int spawn_flag)
 		thread_pool.cleanup_delay = 5;
 		thread_pool.spawn_flag = spawn_flag;
 
-		thread_pool.wait_head = thread_pool.wait_tail = 0;
 		if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
-			radlog(L_ERR, "FATAL: Failed to initialize mutex: %s",
+			radlog(L_ERR, "FATAL: Failed to initialize wait mutex: %s",
 			       strerror(errno));
 			exit(1);
 		}		
+		
+		/*
+		 *	Create the hash table of child PID's
+		 */
+		thread_pool.waiters = lrad_hash_table_create(8, NULL, 0);
+		if (!thread_pool.waiters) {
+			radlog(L_ERR, "FATAL: Failed to set up wait hash");
+			exit(1);
+		}
+		lrad_hash_table_set_data_size(thread_pool.waiters,
+					      sizeof(pid_t));
 	}
 
 	/*
@@ -830,7 +841,7 @@ int thread_pool_init(int spawn_flag)
 
 	rcode = pthread_mutex_init(&thread_pool.queue_mutex,NULL);
 	if (rcode != 0) {
-		radlog(L_ERR, "FATAL: Failed to initialize mutex: %s",
+		radlog(L_ERR, "FATAL: Failed to initialize queue mutex: %s",
 		       strerror(errno));
 		exit(1);
 	}
@@ -842,6 +853,10 @@ int thread_pool_init(int spawn_flag)
 	 *	Allocate an initial queue, always as a power of 2.
 	 */
 	thread_pool.queue = lrad_hash_table_create(8, NULL, 0);
+	if (!thread_pool.queue) {
+		radlog(L_ERR, "FATAL: Failed to set up queue hash");
+		exit(1);
+	}
 	lrad_hash_table_set_data_size(thread_pool.queue,
 				      sizeof(request_queue_t));
 
@@ -1084,32 +1099,34 @@ pid_t rad_fork(int exec_wait)
 
 	reap_children();	/* be nice to non-wait thingies */
 
-	/*
-	 *	Lock the mutex.
-	 */
-	pthread_mutex_lock(&thread_pool.wait_mutex);
-
-	/*
-	 *	No room to save the PID: die.
-	 */
-	if (((thread_pool.wait_tail + 1) % MAX_WAITERS)
-	    == thread_pool.wait_head) {
-		rad_assert(0 == 1);
+	if (lrad_hash_table_num_elements(thread_pool.waiters) >= 1024) {
+		return -1;
 	}
 
 	/*
 	 *	Fork & save the PID for later reaping.
 	 */
 	child_pid = fork();
-	if (child_pid != 0) {
-		thread_pool.wait[thread_pool.wait_tail] = child_pid;
-		thread_pool.wait_tail++;
-		thread_pool.wait_tail %= MAX_WAITERS;
+	if (child_pid > 0) {
+		int rcode;
 
+		/*
+		 *	Lock the mutex.
+		 */
+		pthread_mutex_lock(&thread_pool.wait_mutex);
+
+		rcode = lrad_hash_table_insert(thread_pool.waiters,
+					       child_pid, &child_pid);
+		
 		/*
 		 *	Unlock the mutex.
 		 */
 		pthread_mutex_unlock(&thread_pool.wait_mutex);
+
+		if (!rcode) {
+			radlog(L_ERR, "Failed to store PID, creating what will be a zombie process %d",
+			       (int) child_pid);
+		}
 	}
 
 	/*
