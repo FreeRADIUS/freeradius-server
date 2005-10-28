@@ -1,10 +1,16 @@
-FreeRADIUS 1.0.6 ; $Date$, urgency=medium
-	Security Fixes
-	* format string error in rlm_sql.c which may cause remotely triggered
-	segfault, spotted by Primoz Bratanic
-	* Walk the whole string in when escaping strings in rlm_ldap
+FreeRADIUS 1.0.6 ; $Date$, urgency=low
+	* Don't leak memory in module "rlm_sql".
+	* Add PEAP machine authentication support in module "rlm_mschap".
+	* Queue the request before looking for available threads.
+	* Don't free the check items after we received the proxy reply.
+	* Expand config variables in included files, too.
+	* Check the return value of accounting modules and don't proxy
+	  invalid requests.
+	* In rlm_passwd, don't close a file stream more than once.
+	* Fix format string errors in rlm_sql.c, spotted by Primoz Bratanic.
+	* Walk the whole string in when escaping strings in rlm_ldap.
 	* Include crypt.h if it is available so we get a prototype for crypt(),
-	spotted by Konstantin Kubatkin
+	  spotted by Konstantin Kubatkin.
 
 FreeRADIUS 1.0.5 ; Date: 2005/09/04 16:23:00, urgency=medium
 	Security Fixes
