@@ -44,7 +44,7 @@ int rad_accounting(REQUEST *request)
 	 */
 	if (!request->proxy) {
 		VALUE_PAIR	*vp;
-		int		acct_type;
+		int		acct_type = 0;
 
 		reply = module_preacct(request);
 		if (reply != RLM_MODULE_NOOP &&
@@ -61,7 +61,10 @@ int rad_accounting(REQUEST *request)
 		 *	useful to send the data to the proxy.
 		 */
 		vp = pairfind(request->config_items, PW_ACCT_TYPE);
-		acct_type = vp ? vp->lvalue : 0;
+		if (vp) {
+			DEBUG2("  Found Acct-Type %s", vp->vp_strvalue);
+			acct_type = vp->lvalue;
+		}
 		reply = module_accounting(acct_type, request);
 		if (reply != RLM_MODULE_NOOP &&
 		    reply != RLM_MODULE_OK &&

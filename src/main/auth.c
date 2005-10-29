@@ -367,14 +367,16 @@ int rad_postauth(REQUEST *request)
 {
 	int	result;
 	int	postauth_type = 0;
-	VALUE_PAIR	*postauth_type_item = NULL;
+	VALUE_PAIR *vp;
 
 	/*
 	 *	Do post-authentication calls. ignoring the return code.
 	 */
-	postauth_type_item = pairfind(request->config_items, PW_POST_AUTH_TYPE);
-	if (postauth_type_item)
-		postauth_type = postauth_type_item->lvalue;
+	vp = pairfind(request->config_items, PW_POST_AUTH_TYPE);
+	if (vp) {
+		DEBUG2("  Found Post-Auth-Type %s", vp->vp_strvalue);
+		postauth_type = vp->lvalue;
+	}
 	result = module_post_auth(postauth_type, request);
 	switch (result) {
 	default:
@@ -568,11 +570,11 @@ autz_redo:
 		}
 		return r;
 	}
-	if (!autz_retry){
-		VALUE_PAIR	*autz_type_item = NULL;
-		autz_type_item = pairfind(request->config_items, PW_AUTZ_TYPE);
-		if (autz_type_item){
-			autz_type = autz_type_item->lvalue;
+	if (!autz_retry) {
+		tmp = pairfind(request->config_items, PW_AUTZ_TYPE);
+		if (tmp) {
+			DEBUG2("  Found Autz-Type %s", tmp->vp_strvalue);
+			autz_type = tmp->lvalue;
 			autz_retry = 1;
 			goto autz_redo;
 		}
@@ -660,19 +662,20 @@ autz_redo:
 
 	if (result >= 0 &&
 	    (check_item = pairfind(request->config_items, PW_SIMULTANEOUS_USE)) != NULL) {
-		VALUE_PAIR	*session_type;
-		int		sess_type = 0;
+		int session_type = 0;
 
-		session_type = pairfind(request->config_items, PW_SESSION_TYPE);
-		if (session_type)
-			sess_type = session_type->lvalue;
+		tmp = pairfind(request->config_items, PW_SESSION_TYPE);
+		if (tmp) {
+			DEBUG2("  Found Session-Type %s", tmp->vp_strvalue);
+			session_type = tmp->lvalue;
+		}
 
 		/*
 		 *	User authenticated O.K. Now we have to check
 		 *	for the Simultaneous-Use parameter.
 		 */
 		if (namepair &&
-		    (r = module_checksimul(sess_type,request, check_item->lvalue)) != 0) {
+		    (r = module_checksimul(session_type, request, check_item->lvalue)) != 0) {
 			char mpp_ok = 0;
 
 			if (r == 2){
