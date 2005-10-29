@@ -45,11 +45,13 @@
 #define OTP_CF_TW2		0x01 << 11 /* twindow 2^2            */
 #define OTP_CF_TW3		0x01 << 12 /* twindow 2^3            */
 #define OTP_CF_TW		(OTP_CF_TW0|OTP_CF_TW1|OTP_CF_TW2|OTP_CF_TW3)
+#define OTP_CF_TW_SHIFT		9          /* convert mask to value  */
 /* force rwindow for event+time sync cards (TRI-D) */
 #define OTP_CF_FRW0		0x01 << 13 /* force event window 2^0 */
 #define OTP_CF_FRW1		0x01 << 14 /* force event window 2^1 */
 #define OTP_CF_FRW2		0x01 << 15 /* force event window 2^2 */
 #define OTP_CF_FRW		(OTP_CF_FRW0|OTP_CF_FRW1|OTP_CF_FRW2)
+#define OTP_CF_FRW_SHIFT	13         /* convert mask to value  */
 /* vendor specific */
 #define OTP_CF_VS1		0x01 << 16 /* vendor specific 1      */
 #define OTP_CF_VS2		0x01 << 17 /* vendor specific 2      */

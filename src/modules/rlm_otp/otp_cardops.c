@@ -58,7 +58,7 @@ isconsecutive(const otp_option_t *opt, const otp_user_info_t *user_info,
               int twin, int ewin, time_t now)
 {
   int nextewin, nexttwin;
-  int frw = user_info->featuremask & OTP_CF_FRW;
+  int frw = (user_info->featuremask & OTP_CF_FRW) >> OTP_CF_FRW_SHIFT;
 
   /* we assume FRW implies ES && TS; all current cards work this way */
   if (frw && user_state->authewin == frw) {
@@ -376,7 +376,7 @@ sync_response:
     /* set ending ewin counter */
     if (user_info.featuremask & OTP_CF_FRW) {
       /* force rwindow for e+t cards */
-      rwindow = user_info.featuremask & OTP_CF_FRW;
+      rwindow = (user_info.featuremask & OTP_CF_FRW) >> OTP_CF_FRW_SHIFT;
       ewindow = 0; /* quiet compiler */
     } else {
       ewindow = opt->ewindow_size;
