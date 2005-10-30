@@ -456,51 +456,42 @@ int rad_authenticate(REQUEST *request)
 	password = "";
 
 	/*
-	 *	If this request got proxied to another server,
-	 *	AND it was an authentication request, then we need
-	 *	to add an initial Auth-Type: Auth-Accept for success,
-	 *	Auth-Reject for fail. We also need to add the reply
-	 *	pairs from the server to the initial reply.
-	 *
-	 *	Huh?  If the request wasn't an authentication request,
-	 *	WTF are we doing here?
+	 *	If this request got proxied to another server, we need
+	 *	to check whether it authenticated the request or not.
 	 */
-	if ((request->proxy_reply) &&
-	    (request->packet->code == PW_AUTHENTICATION_REQUEST)) {
-		tmp = paircreate(PW_AUTH_TYPE, PW_TYPE_INTEGER);
-		if (tmp == NULL) {
-			radlog(L_ERR|L_CONS, "no memory");
-			exit(1);
-		}
-
+	if (request->proxy_reply) {
+		switch (request->proxy_reply->code) {
 		/*
-		 *	Challenges are punted back to the NAS
-		 *	without any further processing.
+		 *	Reply of ACCEPT means accept, thus set Auth-Type
+		 *	accordingly.
 		 */
-		if (request->proxy_reply->code == PW_ACCESS_CHALLENGE) {
+		case PW_AUTHENTICATION_ACK:
+			tmp = paircreate(PW_AUTH_TYPE, PW_TYPE_INTEGER);
+			if (tmp == NULL) {
+				radlog(L_ERR|L_CONS, "Not enough memory");
+				exit(1);
+			}
+			tmp->lvalue = PW_AUTHTYPE_ACCEPT;
+			pairadd(&request->config_items, tmp);
+			break;
+		/*
+		 *	Challenges are punted back to the NAS without any
+		 *	further processing.
+		 */
+		case PW_ACCESS_CHALLENGE:
 			request->reply->code = PW_ACCESS_CHALLENGE;
 			return RLM_MODULE_HANDLED;
-		}
-
 		/*
-		 *	Reply of ACCEPT means accept, ALL other
-		 *	replies mean reject.  This is fail-safe.
-		 */
-		if (request->proxy_reply->code == PW_AUTHENTICATION_ACK)
-			tmp->lvalue = PW_AUTHTYPE_ACCEPT;
-		else
-			tmp->lvalue = PW_AUTHTYPE_REJECT;
-		pairadd(&request->config_items, tmp);
-
-		/*
-		 *	If it's an Access-Reject, then do NOT do any
-		 *	authorization or authentication.  They're being
-		 *	rejected, so we minimize the amount of work
+		 *	ALL other replies mean reject. (this is fail-safe)
+		 *
+		 *	Do NOT do any authorization or authentication. They
+		 *	are being rejected, so we minimize the amount of work
 		 *	done by the server, by rejecting them here.
 		 */
-		if ((request->proxy_reply->code != PW_AUTHENTICATION_ACK) &&
-		    (request->proxy_reply->code != PW_ACCESS_CHALLENGE)) {
-			rad_authlog("Login incorrect (Home Server says so)", request, 0);
+		case PW_AUTHENTICATION_REJECT:
+		default:
+			rad_authlog("Login incorrect (Home Server says so)",
+				    request, 0);
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 			rad_postauth_reject(request);
 			return RLM_MODULE_REJECT;
