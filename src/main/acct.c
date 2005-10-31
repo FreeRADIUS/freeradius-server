@@ -40,7 +40,7 @@ static const char rcsid[] = "$Id$";
  */
 int rad_accounting(REQUEST *request)
 {
-	int		reply = RLM_MODULE_OK;
+	int result = RLM_MODULE_OK;
 
 	/*
 	 *	Run the modules only once, before proxying.
@@ -50,31 +50,71 @@ int rad_accounting(REQUEST *request)
 		int		exec_wait;
 		VALUE_PAIR	*vp;
 		int		rcode;
-		int		acct_type;
+		int		acct_type = 0;
 
-		reply = module_preacct(request);
-		if (reply != RLM_MODULE_NOOP &&
-		    reply != RLM_MODULE_OK &&
-		    reply != RLM_MODULE_HANDLED &&
-		    reply != RLM_MODULE_UPDATED)
-			return reply;
+		result = module_preacct(request);
+		switch (result) {
+			/*
+			 *	The module has a number of OK return codes.
+			 */
+			case RLM_MODULE_NOOP:
+			case RLM_MODULE_OK:
+			case RLM_MODULE_UPDATED:
+				break;
+			/*
+			 *	The module handled the request, stop here.
+			 */
+			case RLM_MODULE_HANDLED:
+				return result;
+			/*
+			 *	The module failed, or said the request is
+			 *	invalid, therefore we stop here.
+			 */
+			case RLM_MODULE_FAIL:
+			case RLM_MODULE_INVALID:
+			case RLM_MODULE_NOTFOUND:
+			case RLM_MODULE_REJECT:
+			case RLM_MODULE_USERLOCK:
+			default:
+				return result;
+		}
 
 		/*
 		 *	Do the data storage before proxying. This is to ensure
 		 *	that we log the packet, even if the proxy never does.
-		 *
-		 *	In case the accounting module returns FAIL, it's still
-		 *	useful to send the data to the proxy.
 		 */
 		vp = pairfind(request->config_items, PW_ACCT_TYPE);
-		acct_type = vp ? vp->lvalue : 0;
-		reply = module_accounting(acct_type, request);
-		if (reply != RLM_MODULE_NOOP &&
-		    reply != RLM_MODULE_OK &&
-		    reply != RLM_MODULE_HANDLED &&
-		    reply != RLM_MODULE_UPDATED &&
-		    reply != RLM_MODULE_FAIL)
-			return reply;
+		if (vp) {
+			DEBUG2("  Found Acct-Type %s", vp->strvalue);
+			acct_type = vp->lvalue;
+		}
+		result = module_accounting(acct_type, request);
+		switch (result) {
+			/*
+			 *	In case the accounting module returns FAIL,
+			 *	it's still useful to send the data to the
+			 *	proxy.
+			 */
+			case RLM_MODULE_FAIL:
+			case RLM_MODULE_NOOP:
+			case RLM_MODULE_OK:
+			case RLM_MODULE_UPDATED:
+				break;
+			/*
+			 *	The module handled the request, don't reply.
+			 */
+			case RLM_MODULE_HANDLED:
+				return result;
+			/*
+			 *	Neither proxy, nor reply to invalid requests.
+			 */
+			case RLM_MODULE_INVALID:
+			case RLM_MODULE_NOTFOUND:
+			case RLM_MODULE_REJECT:
+			case RLM_MODULE_USERLOCK:
+			default:
+				return result;
+		}
 
 		/*
 		 *	See if we need to execute a program.
@@ -126,7 +166,7 @@ int rad_accounting(REQUEST *request)
 
 			if (exec_wait) {
 				if (rcode != 0) {
-					return reply;
+					return result;
 				}
 			}
 		}
@@ -153,7 +193,7 @@ int rad_accounting(REQUEST *request)
 				 *	we have to send the proxied packet
 				 *	before that.
 				 */
-				return reply;
+				return result;
 			}
 		}
 	}
@@ -166,15 +206,31 @@ int rad_accounting(REQUEST *request)
 	 *      storage did not succeed, so radiusd should not send
 	 *      Accounting-Response.
 	 */
-	if (reply == RLM_MODULE_OK ||
-	    reply == RLM_MODULE_HANDLED ||
-	    reply == RLM_MODULE_UPDATED) {
-
+	switch (result) {
 		/*
-		 *	Now send back an ACK to the NAS.
+		 *	Send back an ACK to the NAS.
 		 */
-		request->reply->code = PW_ACCOUNTING_RESPONSE;
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			request->reply->code = PW_ACCOUNTING_RESPONSE;
+			break;
+		/*
+		 *	The module handled the request, don't reply.
+		 */
+		case RLM_MODULE_HANDLED:
+			break;
+		/*
+		 *	Failed to log or to proxy the accounting data,
+		 *	therefore don't reply to the NAS.
+		 */
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_INVALID:
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_REJECT:
+		case RLM_MODULE_USERLOCK:
+		default:
+			break;
 	}
-
-	return reply;
+	return result;
 }
