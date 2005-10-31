@@ -44,10 +44,7 @@ static const char rcsid[] = "$Id$";
 
 /*
  *	We received a response from a remote radius server.
- *	Find the original request, then return.
- *	Returns:   1 replication don't reply
- *	           0 proxy found
- *		  -1 error don't reply
+ *	Call the post-proxy modules.
  */
 int proxy_receive(REQUEST *request)
 {
@@ -118,8 +115,8 @@ static void proxy_addinfo(REQUEST *request)
 		radlog(L_ERR|L_CONS, "no memory");
 		exit(1);
 	}
-	sprintf((char *)proxy_pair->vp_strvalue, "%d", request->packet->id);
-	proxy_pair->length = strlen((char *)proxy_pair->vp_strvalue);
+	sprintf(proxy_pair->vp_strvalue, "%d", request->packet->id);
+	proxy_pair->length = strlen(proxy_pair->vp_strvalue);
 
 	pairadd(&request->proxy->vps, proxy_pair);
 }
@@ -308,7 +305,6 @@ int proxy_send(REQUEST *request)
 	pairadd(&request->packet->vps,
 		pairmake("Realm", realm->realm, T_OP_EQ));
 
-
 	/*
 	 *	Access-Request: look for LOCAL realm.
 	 *	Accounting-Request: look for LOCAL realm.
@@ -336,8 +332,6 @@ int proxy_send(REQUEST *request)
 		DEBUG2("    rlm_realm: Packet came from realm %s, proxy cancelled", realm->realm);
 		return RLM_MODULE_NOOP;
 	}
-
-
 
 	/*
 	 *	Allocate the proxy packet, only if it wasn't already
@@ -483,7 +477,7 @@ int proxy_send(REQUEST *request)
 	request->proxy_start_time = request->timestamp;
 
 	/*
-	 *  Do pre-proxying
+	 *	Do pre-proxying.
 	 */
 	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE);
 	if (vp) {
@@ -491,29 +485,25 @@ int proxy_send(REQUEST *request)
 		pre_proxy_type = vp->lvalue;
 	}
 	rcode = module_pre_proxy(pre_proxy_type, request);
-
+	switch (rcode) {
 	/*
-	 *	Do NOT free request->proxy->vps, the pairs are needed
-	 *	for the retries! --Pac.
-	 */
-
-	/*
-	 *	Delay sending the proxy packet until after we've
-	 *	done the work above, playing with the request.
-	 *
-	 *	After this point, it becomes dangerous to play
-	 *	with the request data structure, as the reply MAY
-	 *	come in and get processed before we're done with it here.
-	 *
 	 *	Only proxy the packet if the pre-proxy code succeeded.
 	 */
-	if ((rcode == RLM_MODULE_OK) ||
-	    (rcode == RLM_MODULE_NOOP) ||
-	    (rcode == RLM_MODULE_UPDATED)) {
+	case RLM_MODULE_NOOP:
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		/*
+		 *	Delay sending the proxy packet until after we've
+		 *	done the work above, playing with the request.
+		 *
+		 *	After this point, it becomes dangerous to play with
+		 *	the request data structure, as the reply MAY come in
+		 *	and get processed before we're done with it here.
+		 */
 		request->options |= RAD_REQUEST_OPTION_PROXIED;
 
 		/*
-		 *	IF it's a fake request, don't send the proxy
+		 *	If it's a fake request, don't send the proxy
 		 *	packet.  The outer tunnel session will take
 		 *	care of doing that.
 		 */
@@ -536,9 +526,28 @@ int proxy_send(REQUEST *request)
 						      request);
 		}
 		rcode = RLM_MODULE_HANDLED; /* caller doesn't reply */
-	} else {
+		break;
+	/*
+	 *	The module handled the request, don't reply.
+	 */
+	case RLM_MODULE_HANDLED:
+		break;
+	/*
+	 *	Neither proxy, nor reply to invalid requests.
+	 */
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_NOTFOUND:
+	case RLM_MODULE_REJECT:
+	case RLM_MODULE_USERLOCK:
+	default:
 		rcode = RLM_MODULE_FAIL; /* caller doesn't reply */
+		break;
 	}
 
+	/*
+	 *	Do NOT free request->proxy->vps, the pairs are needed
+	 *	for the retries!
+	 */
 	return rcode;
 }

@@ -337,12 +337,13 @@ static int rad_check_password(REQUEST *request)
 				 *	is the same as an explicit REJECT!
 				 */
 				case RLM_MODULE_FAIL:
-				case RLM_MODULE_REJECT:
-				case RLM_MODULE_USERLOCK:
 				case RLM_MODULE_INVALID:
-				case RLM_MODULE_NOTFOUND:
 				case RLM_MODULE_NOOP:
+				case RLM_MODULE_NOTFOUND:
+				case RLM_MODULE_REJECT:
 				case RLM_MODULE_UPDATED:
+				case RLM_MODULE_USERLOCK:
+				default:
 					result = -1;
 					break;
 				case RLM_MODULE_OK:
@@ -379,30 +380,32 @@ int rad_postauth(REQUEST *request)
 	}
 	result = module_post_auth(postauth_type, request);
 	switch (result) {
-	default:
-	  break;
-
-	  /*
-	   *	The module failed, or said to reject the user: Do so.
-	   */
-	case RLM_MODULE_FAIL:
-	case RLM_MODULE_REJECT:
-	case RLM_MODULE_USERLOCK:
-	case RLM_MODULE_INVALID:
-	  request->reply->code = PW_AUTHENTICATION_REJECT;
-	  result = RLM_MODULE_REJECT;
-	  break;
-
-	  /*
-	   *	The module had a number of OK return codes.
-	   */
-	case RLM_MODULE_NOTFOUND:
-	case RLM_MODULE_NOOP:
-	case RLM_MODULE_UPDATED:
-	case RLM_MODULE_OK:
-	case RLM_MODULE_HANDLED:
-	  result = RLM_MODULE_OK;
-	  break;
+		/*
+		 *	The module failed, or said to reject the user: Do so.
+		 */
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_INVALID:
+		case RLM_MODULE_REJECT:
+		case RLM_MODULE_USERLOCK:
+		default:
+			request->reply->code = PW_AUTHENTICATION_REJECT;
+			result = RLM_MODULE_REJECT;
+			break;
+		/*
+		 *	The module handled the request, cancel the reply.
+		 */
+		case RLM_MODULE_HANDLED:
+			/* FIXME */
+			break;
+		/*
+		 *	The module had a number of OK return codes.
+		 */
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			result = RLM_MODULE_OK;
+			break;
 	}
 	return result;
 }
@@ -445,7 +448,7 @@ int rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*auth_item;
 	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
-	int		result, r;
+	int		result;
 	char		umsg[MAX_STRING_LEN + 1];
 	const char	*user_msg = NULL;
 	const char	*password;
@@ -480,7 +483,7 @@ int rad_authenticate(REQUEST *request)
 		 */
 		case PW_ACCESS_CHALLENGE:
 			request->reply->code = PW_ACCESS_CHALLENGE;
-			return RLM_MODULE_HANDLED;
+			return RLM_MODULE_OK;
 		/*
 		 *	ALL other replies mean reject. (this is fail-safe)
 		 *
@@ -542,15 +545,23 @@ int rad_authenticate(REQUEST *request)
 	 *	Get the user's authorization information from the database
 	 */
 autz_redo:
-	r = module_authorize(autz_type, request);
-	if (r != RLM_MODULE_NOTFOUND &&
-	    r != RLM_MODULE_NOOP &&
-	    r != RLM_MODULE_OK &&
-	    r != RLM_MODULE_UPDATED) {
-		if (r != RLM_MODULE_FAIL && r != RLM_MODULE_HANDLED) {
+	result = module_authorize(autz_type, request);
+	switch (result) {
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			break;
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_HANDLED:
+			return result;
+		case RLM_MODULE_INVALID:
+		case RLM_MODULE_REJECT:
+		case RLM_MODULE_USERLOCK:
+		default:
 			if ((module_msg = pairfind(request->packet->vps,
-					PW_MODULE_FAILURE_MESSAGE)) != NULL){
-				char msg[MAX_STRING_LEN+16];
+					PW_MODULE_FAILURE_MESSAGE)) != NULL) {
+				char msg[MAX_STRING_LEN + 16];
 				snprintf(msg, sizeof(msg), "Invalid user (%s)",
 					 module_msg->vp_strvalue);
 				rad_authlog(msg,request,0);
@@ -558,8 +569,7 @@ autz_redo:
 				rad_authlog("Invalid user", request, 0);
 			}
 			request->reply->code = PW_AUTHENTICATION_REJECT;
-		}
-		return r;
+			return result;
 	}
 	if (!autz_retry) {
 		tmp = pairfind(request->config_items, PW_AUTZ_TYPE);
@@ -653,7 +663,7 @@ autz_redo:
 
 	if (result >= 0 &&
 	    (check_item = pairfind(request->config_items, PW_SIMULTANEOUS_USE)) != NULL) {
-		int session_type = 0;
+		int r, session_type = 0;
 
 		tmp = pairfind(request->config_items, PW_SESSION_TYPE);
 		if (tmp) {
