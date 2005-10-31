@@ -227,7 +227,6 @@ static int setup_ssl_mutexes(void)
  */
 static int reap_callback(void *ctx, void *data)
 {
-	int rcode;
 	pid_t pid = *(pid_t *) data;
 	lrad_hash_table_t *ht = ctx;
 
@@ -235,7 +234,6 @@ static int reap_callback(void *ctx, void *data)
 	 *	Child is still alive, do nothing.
 	 */
 	if (waitpid(pid, NULL, WNOHANG) == 0) return 0;
-	if (rcode == 0) return 0;
 
 	/*
 	 *	Else no child, or was already reaped
