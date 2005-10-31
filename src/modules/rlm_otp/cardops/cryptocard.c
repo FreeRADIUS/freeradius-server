@@ -245,6 +245,10 @@ __attribute__ ((unused))
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
+                     int auth_rc,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
                      const char *log_prefix)
 {
   return 0;

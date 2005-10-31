@@ -228,7 +228,10 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
 
   /* Set fc (failcondition). */
   if (opt->hardfail && user_state.failcount >= (unsigned) opt->hardfail) {
+    /* NOTE: persistent softfail stops working */
     fc = OTP_FC_FAIL_HARD;
+  } else if (opt->softfail && user_state.authtime == INT32_MAX) {
+    fc = OTP_FC_FAIL_SOFT;
   } else if (opt->softfail &&
              user_state.failcount >= (unsigned) opt->softfail) {
     uint32_t when;
@@ -542,7 +545,7 @@ sync_response:
           /* update csd on successful auth or rwindow candidate */
           (void) strcpy(user_state.csd, csd);
           if (user_info.cardops->updatecsd(&user_info, &user_state, challenge,
-                                           t, now, log_prefix) != 0) {
+                                           t, now, rc, log_prefix) != 0) {
             otp_log(OTP_LOG_ERR, "%s: unable to update csd for [%s]",
                     log_prefix, username);
             rc = OTP_RC_SERVICE_ERR;
