@@ -70,10 +70,21 @@ isconsecutive(const otp_option_t *opt, const otp_user_info_t *user_info,
     nexttwin = user_state->authtwin;
   }
 
+  /*
+   * Determine if this is the next passcode
+   *   - event cards: next event
+   *   - time cards: probably broken due to ewin increment
+   *   - e+t cards: see intro comment
+   * and if so, see if we're within rwindow_delay (arguably should be done
+   * by caller, but caller code reads better if we do it here).  If we're
+   * in persistent softfail, we can't test for rwindow_delay since the saved
+   * authtime is used as a sentinel (and breaks the math).
+   */
   if ((ewin == nextewin) &&
       (twin == nexttwin) &&
       /* we might want to insert logging here someday */
-      ((uint32_t) now - user_state->authtime < (unsigned) opt->rwindow_delay))
+      ((user_state->authtime == INT32_MAX) /* persistent softfail */ ||
+      ((uint32_t) now - user_state->authtime < (unsigned) opt->rwindow_delay)))
     return 1;
   else
     return 0;
