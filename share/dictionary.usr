@@ -53,7 +53,7 @@ VALUE	Multi-Link-Flag			False			0
 #	normal vendor-specific format would work just as well.
 #
 #
-VENDOR		USR				429
+VENDOR		USR				429	format=4,0
 BEGIN-VENDOR	USR
 
 ATTRIBUTE	USR-Last-Number-Dialed-Out		0x0066	string

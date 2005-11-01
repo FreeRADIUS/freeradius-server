@@ -138,6 +138,8 @@ typedef struct dict_value {
 
 typedef struct dict_vendor {
 	int			vendorpec;
+	int			type; /* length of type data */
+	int			length;	/* length of length data */
 	char			name[1];
 } DICT_VENDOR;
 

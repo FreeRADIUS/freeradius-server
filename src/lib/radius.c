@@ -540,7 +540,28 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *	For interoperability, always put vendor attributes
 	 *	into their own VSA.
 	 */
-	if ((vendorcode = VENDOR(vp->attribute)) != 0) {
+	if ((vendorcode = VENDOR(vp->attribute)) == 0) {
+		*(ptr++) = vp->attribute & 0xFF;
+		length_ptr = ptr;
+		*(ptr++) = 2;
+		total_length += 2;
+
+	} else {
+		int vsa_tlen = 1;
+		int vsa_llen = 1;
+		DICT_VENDOR *dv = dict_vendorbyvalue(vendorcode);
+
+		/*
+		 *	This must be an RFC-format attribute.  If it
+		 *	wasn't, then the "decode" function would have
+		 *	made a Vendor-Specific attribute (i.e. type
+		 *	26), and we would have "vendorcode == 0" here.
+		 */
+		if (dv) {
+			vsa_tlen = dv->type;
+			vsa_llen = dv->length;
+		}
+
 		/*
 		 *	Build a VSA header.
 		 */
@@ -551,64 +572,52 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		memcpy(ptr, &lvalue, 4);
 		ptr += 4;
 		total_length += 6;
-		
-		if (vendorcode == VENDORPEC_USR) {
-			lvalue = htonl(vp->attribute & 0xFFFF);
-			memcpy(ptr, &lvalue, 4);
-			
-			length_ptr = vsa_length_ptr;
-			
-			total_length += 4;
-			*length_ptr  += 4;
-			ptr          += 4;
-			
-			/*
-			 *	We don't have two different lengths.
-			 */
-			vsa_length_ptr = NULL;
-			
-		} else if (vendorcode == VENDORPEC_LUCENT) {
-			/*
-			 *	16-bit attribute, 8-bit length
-			 */
-			*ptr++ = ((vp->attribute >> 8) & 0xFF);
-			*ptr++ = (vp->attribute & 0xFF);
-			length_ptr = ptr;
-			*vsa_length_ptr += 3;
-			*ptr++ = 3;
-			total_length += 3;
 
-		} else if (vendorcode == VENDORPEC_STARENT) {
-			/*
-			 *	16-bit attribute, 16-bit length
-			 *	with the upper 8 bits of the length
-			 *	always zero!
-			 */
-			*ptr++ = ((vp->attribute >> 8) & 0xFF);
-			*ptr++ = (vp->attribute & 0xFF);
-			*ptr++ = 0;
-			length_ptr = ptr;
-			*vsa_length_ptr += 4;
-			*ptr++ = 4;
-			total_length += 4;
-		} else {
-			/*
-			 *	All other VSA's are encoded the same
-			 *	as RFC attributes.
-			 */
-			*vsa_length_ptr += 2;
-			goto rfc;
+		switch (vsa_tlen) {
+		case 1:
+			ptr[0] = (vp->attribute & 0xFF);
+			break;
+
+		case 2:
+			ptr[0] = ((vp->attribute >> 8) & 0xFF);
+			ptr[1] = (vp->attribute & 0xFF);
+			break;
+
+		case 4:
+			ptr[0] = 0;
+			ptr[1] = 0;
+			ptr[2] = ((vp->attribute >> 8) & 0xFF);
+			ptr[3] = (vp->attribute & 0xFF);
+			break;
+
+		default:
+			return 0; /* silently discard it */
 		}
-	} else {
-	rfc:
-		/*
-		 *	All other attributes are encoded as
-		 *	per the RFC.
-		 */
-		*ptr++ = (vp->attribute & 0xFF);
-		length_ptr = ptr;
-		*ptr++ = 2;
-		total_length += 2;
+		ptr += vsa_tlen;
+
+		switch (vsa_llen) {
+		case 0:
+			length_ptr = vsa_length_ptr;
+			vsa_length_ptr = NULL;
+			break;
+		case 1:
+			ptr[0] = 0;
+			length_ptr = ptr;
+			break;
+		case 2:
+			ptr[0] = 0;
+			ptr[1] = 0;
+			length_ptr = ptr + 1;
+			break;
+
+		default:
+			return 0; /* silently discard it */
+		}
+		ptr += vsa_llen;
+
+		total_length += vsa_tlen + vsa_llen;
+		if (vsa_length_ptr) *vsa_length_ptr += vsa_tlen + vsa_llen;
+		*length_ptr += vsa_tlen + vsa_llen;
 	}
 
 	offset = 0;
@@ -1433,37 +1442,6 @@ RADIUS_PACKET *rad_recv(int fd)
 			}
 			seen_eap |= PW_MESSAGE_AUTHENTICATOR;
 			break;
-
-		case PW_VENDOR_SPECIFIC:
-			if (attr[1] <= 6) {
-				librad_log("WARNING: Malformed RADIUS packet from host %s: Vendor-Specific has invalid length %d",
-					   inet_ntop(packet->src_ipaddr.af,
-						     &packet->src_ipaddr.ipaddr,
-						     host_ipaddr, sizeof(host_ipaddr)),
-					   attr[1] - 2);
-				rad_free(&packet);
-				return NULL;
-			}
-
-			/*
-			 *	Don't allow VSA's with vendor zero.
-			 */
-			if ((attr[2] == 0) && (attr[3] == 0) &&
-			    (attr[4] == 0) && (attr[5] == 0)) {
-				librad_log("WARNING: Malformed RADIUS packet from host %s: Vendor-Specific has vendor ID of zero",
-					   inet_ntop(packet->src_ipaddr.af,
-						     &packet->src_ipaddr.ipaddr,
-						     host_ipaddr, sizeof(host_ipaddr)));
-				rad_free(&packet);
-				return NULL;
-			}
-
-			/*
-			 *	Don't look at the contents of VSA's,
-			 *	too many vendors have non-standard
-			 *	formats.
-			 */
-			break;
 		}
 
 		/*
@@ -1915,11 +1893,13 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	VALUE_PAIR		**tail;
 	VALUE_PAIR		*pair;
 	uint8_t			*ptr;
-	int			length;
+	int			packet_length;
 	int			attribute;
 	int			attrlen;
 	int			vendorlen;
 	radius_packet_t		*hdr;
+	int			vsa_tlen, vsa_llen;
+	DICT_VENDOR		*dv = NULL;
 
 	if (rad_verify(packet, original, secret) < 0) return -1;
 
@@ -1928,7 +1908,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 */
 	hdr = (radius_packet_t *)packet->data;
 	ptr = hdr->data;
-	length = packet->data_len - AUTH_HDR_LEN;
+	packet_length = packet->data_len - AUTH_HDR_LEN;
 
 	/*
 	 *	There may be VP's already in the packet.  Don't
@@ -1940,30 +1920,66 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 	vendorcode = 0;
 	vendorlen  = 0;
+	vsa_tlen = vsa_llen = 1;
 
-	while (length > 0) {
-		if (vendorlen > 0) {
-			attribute = *ptr++ | (vendorcode << 16);
-			attrlen   = *ptr++;
-		} else {
-			attribute = *ptr++;
-			attrlen   = *ptr++;
-		}
-
-		attrlen -= 2;
-		length  -= 2;
+	/*
+	 *	We have to read at least two bytes.
+	 *
+	 *	rad_recv() above ensures that this is OK.
+	 */
+	while (packet_length > 0) {
+		attribute = -1;
+		attrlen = -1;
 
 		/*
-		 *	This could be a Vendor-Specific attribute.
+		 *	Normal attribute, handle it like normal.
 		 */
-		if ((vendorlen <= 0) &&
-		    (attribute == PW_VENDOR_SPECIFIC)) {
+		if (vendorcode == 0) {
 			/*
-			 *	attrlen was checked to be >= 6, in rad_recv
+			 *	No room to read attr/length,
+			 *	or bad attribute, or attribute is
+			 *	too short, or attribute is too long,
+			 *	stop processing the packet.
+			 */
+			if ((packet_length < 2) ||
+			    (ptr[0] == 0) ||  (ptr[1] < 2) ||
+			    (ptr[1] > packet_length)) break;
+
+			attribute = *ptr++;
+			attrlen   = *ptr++;
+
+			attrlen -= 2;
+			packet_length  -= 2;
+
+			if (attribute != PW_VENDOR_SPECIFIC) goto create_pair;
+			
+			/*
+			 *	No vendor code, or ONLY vendor code.
+			 */
+			if (attrlen <= 4) goto create_pair;
+
+			vendorlen = 0;
+		}
+		
+		/*
+		 *	Handle Vendor-Specific
+		 */
+		if (vendorlen == 0) {
+			uint8_t *subptr;
+			int sublen;
+			int myvendor;
+			
+			/*
+			 *	attrlen was checked above.
 			 */
 			memcpy(&lvalue, ptr, 4);
-			vendorcode = ntohl(lvalue);
+			myvendor = ntohl(lvalue);
 
+			/*
+			 *	Zero isn't allowed.
+			 */
+			if (myvendor == 0) goto create_pair;
+			
 			/*
 			 *	This is an implementation issue.
 			 *	We currently pack vendor into the upper
@@ -1971,131 +1987,148 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			 *	so we can't handle vendor numbers larger
 			 *	than 16 bits.
 			 */
-			if (vendorcode > 65535) goto create_pair;
+			if (myvendor > 65535) goto create_pair;
+			
+			vsa_tlen = vsa_llen = 1;
+			dv = dict_vendorbyvalue(myvendor);
+			if (dv) {
+				vsa_tlen = dv->type;
+				vsa_llen = dv->length;
+			}
+			
+			/*
+			 *	Sweep through the list of VSA's,
+			 *	seeing if they exactly fill the
+			 *	outer Vendor-Specific attribute.
+			 *
+			 *	If not, create a raw Vendor-Specific.
+			 */
+			subptr = ptr + 4;
+			sublen = attrlen - 4;
 
 			/*
-			 *	vendorcode was checked to be non-zero
-			 *	above, in rad_recv.
+			 *	See if we can parse it.
 			 */
-
-			/*
-			 *	USR & Lucent are special, so everything
-			 *	else is normal.
-			 */
-			if ((vendorcode != VENDORPEC_USR) &&
-			    (vendorcode != VENDORPEC_LUCENT) &&
-			    (vendorcode != VENDORPEC_STARENT)) {
-				int	sublen;
-				uint8_t	*subptr;
+			do {
+				int myattr = 0;
 
 				/*
-				 *	First, check to see if the
-				 *	sub-attributes fill the VSA,
-				 *	as defined by the RFC.  If
-				 *	not, then it's a vendor who
-				 *	packs all of the information
-				 *	into one nonsense attribute
+				 *	Don't have a type, it's bad.
 				 */
-				subptr = ptr + 4;
-				sublen = attrlen - 4;
-				
-				while (sublen >= 2) {
-					if (subptr[1] < 2) { /* too short */
-						break;
-					}
-					
-					if (subptr[1] > sublen) { /* too long */
-						break;
-					}
-					
-					sublen -= subptr[1]; /* just right */
-					subptr += subptr[1];
-				}
-
-				/*
-				 *	VSA's don't exactly fill the
-				 *	attribute.  Make a nonsense
-				 *	VSA.
-				 */
-				if (sublen != 0) goto create_pair;
+				if (sublen < vsa_tlen) goto create_pair;
 				
 				/*
-				 *	If the attribute is RFC compatible,
-				 *	then allow it as an RFC style VSA.
+				 *	Ensure that the attribute number
+				 *	is OK.
 				 */
-				ptr += 4;
-				vendorlen = attrlen - 4;
-				attribute = *ptr++ | (vendorcode << 16);
-				attrlen   = *ptr++;
-				attrlen -= 2;
-				length -= 6;
-
-				/*
-				 *	USR-style attributes are 4 octets,
-				 *	with the upper 2 octets being zero.
-				 *
-				 *	The upper octets may not be zero,
-				 *	but that then means we won't be
-				 *	able to pack the vendor & attribute
-				 *	into a 32-bit number, so we can't
-				 *	handle it.
-				 *
-				 *
-				 *	FIXME: Update the dictionaries so
-				 *	that we key off of per-attribute
-				 *	flags "4-octet", instead of hard
-				 *	coding USR here.  This will also
-				 *	let us send packets with other
-				 *	vendors having 4-octet attributes.
-				 */
-			} else if ((vendorcode == VENDORPEC_USR) &&
-				   ((ptr[4] == 0) && (ptr[5] == 0)) &&
-				   (attrlen >= 8)) {
-				DICT_ATTR *da;
-
-				da = dict_attrbyvalue((vendorcode << 16) |
-						      (ptr[6] << 8) |
-						      ptr[7]);
-
-				/*
-				 *	See if it's in the dictionary.
-				 *	If so, it's a valid USR style
-				 *	attribute.  If not, it's not...
-				 *
-				 *	Don't touch 'attribute' until
-				 *	we know what to do!
-				 */
-				if (da != NULL) {
-					attribute = ((vendorcode << 16) |
-						     (ptr[6] << 8) |
-						     ptr[7]);
-					ptr += 8;
-					attrlen -= 8;
-					length -= 8;
+				switch (vsa_tlen) {
+				case 1:
+					myattr = subptr[0];
+					break;
+					
+				case 2:
+					myattr = (subptr[0] << 8) | subptr[1];
+					break;
+					
+				case 4:
+					if ((subptr[0] != 0) ||
+					    (subptr[1] != 0)) goto create_pair;
+					
+					myattr = (subptr[2] << 8) | subptr[3];
+					break;
+					
+					/*
+					 *	Our dictionary is broken.
+					 */
+				default:
+					goto create_pair;
 				}
+				
+				/*
+				 *	Not enough room for one more
+				 *	attribute.  Die!
+				 */
+				if (sublen < vsa_tlen + vsa_llen) goto create_pair;
+				switch (vsa_llen) {
+				case 0:
+					attribute = (myvendor << 16) | myattr;
+					ptr += 4 + vsa_tlen;
+					attrlen -= (4 + vsa_tlen);
+					packet_length -= 4 + vsa_tlen;
+					goto create_pair;
 
-			} else if ((vendorcode == VENDORPEC_LUCENT) &&
-				   (attrlen >= 7) &&
-				   ((ptr[6] + 4) == attrlen)) {
-				attribute = ((vendorcode << 16) |
-					     (ptr[4] << 8) |
-					     ptr[5]);
-				ptr += 7;
-				attrlen -= 7;
-				length -= 7;
+				case 1:
+					if (subptr[vsa_tlen] < (vsa_tlen + vsa_llen))
+						goto create_pair;
 
-			} else if ((vendorcode == VENDORPEC_STARENT) &&
-				   (attrlen >= 8) &&
-				   (ptr[6] == 0) &&
-				   ((ptr[7] + 4) == attrlen)) {
-				attribute = ((vendorcode << 16) |
-					     (ptr[4] << 8) |
-					     ptr[5]);
-				ptr += 8;
-				attrlen -= 8;
-				length -= 8;
-			} /* else something went catastrophically wrong */
-		} /* else it wasn't a VSA */
+					if (subptr[vsa_tlen] > sublen)
+						goto create_pair;
+					sublen -= subptr[vsa_tlen];
+					subptr += subptr[vsa_tlen];
+					break;
+
+				case 2:
+					if (subptr[vsa_tlen] != 0) goto create_pair;
+					if (subptr[vsa_tlen + 1] < (vsa_tlen + vsa_llen))
+						goto create_pair;
+					if (subptr[vsa_tlen + 1] > sublen)
+						goto create_pair;
+					sublen -= subptr[vsa_tlen + 1];
+					subptr += subptr[vsa_tlen + 1];
+					break;
+
+					/*
+					 *	Our dictionaries are
+					 *	broken.
+					 */
+				default:
+					goto create_pair;
+				}
+			} while (sublen > 0);
+
+			vendorcode = myvendor;
+			vendorlen = attrlen - 4;
+			packet_length -= 4;
+
+			ptr += 4;
+		}
+
+		/*
+		 *	attrlen is the length of this attribute.
+		 *	total_len is the length of the encompassing
+		 *	attribute.
+		 */
+		switch (vsa_tlen) {
+		case 1:
+			attribute = ptr[0];
+			break;
+			
+		case 2:
+			attribute = (ptr[0] << 8) | ptr[1];
+			break;
+
+		default:	/* can't hit this. */
+			return -1;
+		}
+		attribute |= (vendorcode << 16);
+		ptr += vsa_tlen;
+
+		switch (vsa_llen) {
+		case 1:
+			attrlen = ptr[0] - (vsa_tlen + vsa_llen);
+			break;
+			
+		case 2:
+			attrlen = ptr[1] - (vsa_tlen + vsa_llen);
+			break;
+
+		default:	/* can't hit this. */
+			return -1;
+		}
+		ptr += vsa_llen;
+		vendorlen -= vsa_tlen + vsa_llen + attrlen;
+		if (vendorlen == 0) vendorcode = 0;
+		packet_length -= (vsa_tlen + vsa_llen);
 
 		/*
 		 *	Create the attribute, setting the default type
@@ -2117,8 +2150,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		tail = &pair->next;
 
 		ptr += attrlen;
-		length -= attrlen;
-		if (vendorlen > 0) vendorlen -= (attrlen + 2);
+		packet_length -= attrlen;
 	}
 
 	/*

@@ -10,7 +10,7 @@
 #
 ##############################################################################
 
-VENDOR		Starent				8164
+VENDOR		Starent				8164	format=2,2
 
 BEGIN-VENDOR	Starent
 

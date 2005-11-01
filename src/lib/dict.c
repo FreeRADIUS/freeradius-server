@@ -249,6 +249,7 @@ int dict_addvendor(const char *name, int value)
 	hash = dict_hashname(name);
 	strcpy(dv->name, name);
 	dv->vendorpec  = value;
+	dv->type = dv->length = 1; /* defaults */
 
 	if (lrad_hash_table_insert(vendors_byname, hash, dv) == 0) {
 		DICT_VENDOR *old_dv;
@@ -337,10 +338,12 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	}
 
 	if (vendor) {
+		DICT_VENDOR *dv = dict_vendorbyvalue(vendor);
+
 		/*
 		 *	If the vendor isn't defined, die/
 		 */
-		if (!dict_vendorbyvalue(vendor)) {
+		if (!dv) {
 			librad_log("dict_addattr: Unknown vendor");
 			return -1;
 		}
@@ -350,13 +353,10 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		 *	1..255.  The check above catches the less than
 		 *	zero case.
 		 */
-		if ((vendor != VENDORPEC_USR) &&
-		    (vendor != VENDORPEC_LUCENT) &&
-		    (vendor != VENDORPEC_STARENT) &&
-		    (value > 256)) {
+		if ((dv->type == 1) && (value >= 256)) {
 			librad_log("dict_addattr: ATTRIBUTE has invalid number (larger than 255).");
 			return -1;
-		}
+		} /* else 256..65535 are allowed */
 	}
 
 	/*
@@ -702,7 +702,7 @@ static int process_vendor(const char* fn, const int line, char **argv,
 {
 	int	value;
 
-	if (argc != 2) {
+	if ((argc < 2) || (argc > 3)) {
 		librad_log( "dict_init: %s[%d] invalid VENDOR entry",
 			    fn, line);
 		return -1;
@@ -723,6 +723,56 @@ static int process_vendor(const char* fn, const int line, char **argv,
 		librad_log("dict_init: %s[%d]: %s",
 			   fn, line, librad_errstr);
 		return -1;
+	}
+
+	/*
+	 *	Look for a format statement
+	 */
+	if (argc == 3) {
+		int type, length;
+		const char *p;
+		DICT_VENDOR *dv;
+
+		if (strncasecmp(argv[2], "format=", 7) != 0) {
+			librad_log("dict_init: %s[%d]: Invalid format for VENDOR.  Expected \"format=\", got \"%s\"",
+				   fn, line, argv[2]);
+			return -1;
+		}
+
+		p = argv[2] + 7;
+		if ((strlen(p) != 3) || 
+		    !isdigit((int) p[0]) ||
+		    (p[1] != ',') ||
+		    !isdigit((int) p[2])) {
+			librad_log("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
+				   fn, line, p);
+			return -1;
+		}
+
+		type = (int) (p[0] - '0');
+		length = (int) (p[2] - '0');
+
+		dv = dict_vendorbyvalue(value);
+		if (!dv) {
+			librad_log("dict_init: %s[%d]: Failed adding format for VENDOR",
+				   fn, line);
+			return -1;
+		}
+
+		if ((type != 1) && (type != 2) && (type != 4)) {
+			librad_log("dict_init: %s[%d]: invalid type value %d for VENDOR",
+				   fn, line, type);
+			return -1;
+		}
+
+		if ((length != 0) && (length != 1) && (length != 2)) {
+			librad_log("dict_init: %s[%d]: invalid length value %d for VENDOR",
+				   fn, line, length);
+			return -1;
+		}
+
+		dv->type = type;
+		dv->length = length;
 	}
 
 	return 0;
@@ -1255,5 +1305,4 @@ int dict_vendorbyname(const char *name)
 DICT_VENDOR *dict_vendorbyvalue(int vendor)
 {
 	return lrad_hash_table_finddata(vendors_byvalue, (uint32_t) vendor);
-
 }

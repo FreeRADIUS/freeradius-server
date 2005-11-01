@@ -7,7 +7,7 @@
 #
 ##############################################################################
 
-VENDOR		Lucent				4846
+VENDOR		Lucent				4846	format=2,1
 
 BEGIN-VENDOR	Lucent
 
