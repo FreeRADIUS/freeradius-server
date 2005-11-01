@@ -457,7 +457,7 @@ sync_response:
 
         /* Get next challenge. */
         if (user_info.cardops->challenge(&user_info, csd, now, challenge,
-                                         e, t, log_prefix) != 0) {
+                                         t, e, log_prefix) != 0) {
           otp_log(OTP_LOG_ERR,
                   "%s: unable to get sync challenge t:%d e:%d for [%s]",
                   log_prefix, t, e, username);
@@ -578,8 +578,8 @@ auth_done:
     if (resync)
       (void) strcpy(user_state.challenge, challenge);	/* update challenge */
     user_state.failcount = 0;
-    user_state.authewin  = 0;
     user_state.authtwin  = 0;
+    user_state.authewin  = 0;
     user_state.authtime  = (int32_t) now;	/* cast prevents overflow */
     /* NOTE: csd is the value before calling updatecsd() */
     user_state.minauthtime = (user_info.featuremask & OTP_CF_TS) ?
@@ -597,8 +597,8 @@ auth_done:
      */
     if (++user_state.failcount == UINT_MAX)
       user_state.failcount--;
-    user_state.authewin = authewin;
     user_state.authtwin = authtwin;
+    user_state.authewin = authewin;
     /* authtime set to INT32_MAX by nullstate(); leave it to force softfail */
     if (user_state.authtime != INT32_MAX)
       user_state.authtime = (int32_t) now;	/* cast prevents overflow */

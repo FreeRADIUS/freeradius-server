@@ -132,11 +132,11 @@ __attribute__ ((unused))
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                     unsigned ewin,
+                     unsigned twin,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                     unsigned twin,
+                     unsigned ewin,
                      const char *log_prefix)
 {
   unsigned char output[8];
