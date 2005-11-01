@@ -91,6 +91,19 @@ VALUE_PAIR *paircreate(int attr, int type)
 		case PW_TYPE_DATE:
 			vp->length = 4;
 			break;
+
+		case PW_TYPE_IFID:
+			vp->length = sizeof(vp->vp_ifid);
+			break;
+
+		case PW_TYPE_IPV6ADDR:
+			vp->length = sizeof(vp->vp_ipv6addr);
+			break;
+
+		case PW_TYPE_IPV6PREFIX:
+			vp->length = sizeof(vp->vp_ipv6prefix);
+			break;
+
 		default:
 			vp->length = 0;
 			break;
@@ -1254,7 +1267,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 {
 	char		buf[64];
 	char		attr[64];
-	char		value[256];
+	char		value[512];
 	char		*p;
 	LRAD_TOKEN	token, t, xlat;
 	VALUE_PAIR	*vp;
@@ -1321,6 +1334,10 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 	case T_DOUBLE_QUOTED_STRING:
 		p = strchr(value, '%');
 		if (p && (p[1] == '{')) {
+			if (strlen(value) >= sizeof(vp->vp_strvalue)) {
+				librad_log("Value too long");
+				return NULL;
+			}
 			vp = pairmake(attr, NULL, token);
 			if (!vp) {
 				*eol = T_OP_INVALID;
@@ -1340,6 +1357,11 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 		 *	Mark the pair to be allocated later.
 		 */
 	case T_BACK_QUOTED_STRING:
+		if (strlen(value) >= sizeof(vp->vp_strvalue)) {
+			librad_log("Value too long");
+			return NULL;
+		}
+
 		vp = pairmake(attr, NULL, token);
 		if (!vp) {
 			*eol = T_OP_INVALID;
@@ -1461,6 +1483,8 @@ VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
  *	(two->data) (one->operator) (one->data)
  *
  *	e.g. "foo" != "bar"
+ *
+ *	Returns true (comparison is true), or false (comparison is not true);
  */
 int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 {
