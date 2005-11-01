@@ -21,6 +21,7 @@ dnl #
 dnl #############################################################
 
 AC_PREREQ([2.50])
+export CFLAGS LIBS LDFLAGS CPPFLAGS
 AC_INIT(src/main/radiusd.c)
 AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
@@ -1052,7 +1053,6 @@ AC_SUBST(STATIC_MODULES)
 AC_SUBST(RADIUSD_MAJOR_VERSION)
 AC_SUBST(RADIUSD_MINOR_VERSION)
 AC_SUBST(RADIUSD_VERSION)
-export CFLAGS LIBS LDFLAGS CPPFLAGS
 
 AC_OUTPUT(\
 	./Make.inc \
