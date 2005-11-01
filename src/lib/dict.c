@@ -701,6 +701,7 @@ static int process_vendor(const char* fn, const int line, char **argv,
 			  int argc)
 {
 	int	value;
+	const	char *format = NULL;
 
 	if ((argc < 2) || (argc > 3)) {
 		librad_log( "dict_init: %s[%d] invalid VENDOR entry",
@@ -729,17 +730,31 @@ static int process_vendor(const char* fn, const int line, char **argv,
 	 *	Look for a format statement
 	 */
 	if (argc == 3) {
+		format = argv[2];
+
+	} else if (value == VENDORPEC_USR) { /* catch dictionary screw-ups */
+		format = "format=4,0";
+
+	} else if (value == VENDORPEC_LUCENT) {
+		format = "format=2,1";
+
+	} else if (value == VENDORPEC_STARENT) {
+		format = "format=2,2";
+
+	} /* else no fixups to do */
+
+	if (format) {
 		int type, length;
 		const char *p;
 		DICT_VENDOR *dv;
 
-		if (strncasecmp(argv[2], "format=", 7) != 0) {
+		if (strncasecmp(format, "format=", 7) != 0) {
 			librad_log("dict_init: %s[%d]: Invalid format for VENDOR.  Expected \"format=\", got \"%s\"",
-				   fn, line, argv[2]);
+				   fn, line, format);
 			return -1;
 		}
 
-		p = argv[2] + 7;
+		p = format + 7;
 		if ((strlen(p) != 3) || 
 		    !isdigit((int) p[0]) ||
 		    (p[1] != ',') ||
