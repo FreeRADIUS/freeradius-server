@@ -141,8 +141,8 @@ typedef struct otp_user_state_t {
   lsmd_fd_t	*fdp;			/* fd for return data             */
   int		nullstate;		/* null state?                    */
   int		updated;		/* state updated? (1 unless err)  */
-  char		challenge[OTP_MAX_CHALLENGE_LEN+1];	/* next sync chal */
-  char  	csd[OTP_MAX_CSD_LEN+1];	/* card specific data             */
+  char		challenge[OTP_MAX_CHALLENGE_LEN+1];	/* prev sync chal */
+  char		csd[OTP_MAX_CSD_LEN+1];	/* card specific data             */
   unsigned	failcount;		/* number of consecutive failures */
   int		authewin;		/* ewindow position for softfail  */
   int		authtwin;		/* twindow position for softfail  */
