@@ -131,6 +131,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   otp_user_info_t	user_info  = { .cardops = NULL };
   otp_user_state_t	user_state = { .locked = 0 };
 
+  time_t authtime = 0;		/* must initialize in case of async auth */
   time_t now = time(NULL);
 
   /*
@@ -234,9 +235,6 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
     }
   }
 
-  /* copy csd */
-  (void) strcpy(csd, user_state.csd);
-
   /* Set fc (failcondition). */
   if (opt->hardfail && user_state.failcount >= (unsigned) opt->hardfail) {
     /* NOTE: persistent softfail stops working */
@@ -279,6 +277,9 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   } else {
     fc = OTP_FC_FAIL_NONE;
   }
+
+  /* copy csd */
+  (void) strcpy(csd, user_state.csd);
 
 async_response:
   /*
@@ -385,7 +386,6 @@ sync_response:
    */
   if ((user_info.featuremask & OTP_CF_SM) && opt->allow_sync) {
     int tend, end, ewindow, rwindow;
-    uint32_t authtime;
 
     /* set ending ewin counter */
     if (user_info.featuremask & OTP_CF_FRW) {
@@ -409,50 +409,28 @@ sync_response:
     tend = user_info.cardops->maxtwin(&user_info, csd, now);
     for (t = 0; t <= tend; ++t) {
       /*
-       * For event synchronous modes, we can never go backwards (the
-       * challenge() method can only walk forward on the event counter),
-       * so there is an implicit guarantee that we'll never get a
-       * response matching an event in the past.
+       * Get the authtime, which is like the current time ('now') but moves
+       * in card clock increments (eg, 0,60,120 instead of 0..60..120) and
+       * is adjusted by the time window ('t').
        *
-       * But for time synchronous modes, challenge() can walk backwards,
-       * in order to accomodate clock drift.  We must never allow a
-       * successful auth for a correct passcode earlier in time than
-       * one already used successfully, so we skip out early here.
-       *
-       * It is CRITICAL that we call twin2authtime() rather than use
-       * our own idea of the time (based on 'now' +- twin), because
-       * 1 second later in real time can still be the same time window
-       * on the card.  This could give us a false positive (we'd reject
-       * a time which is ok for t or e+t cards).  Cardops modules must
-       * return values which are based on the time window of the card
-       * (e.g. 0 for times from 0-63, 64 for times from 64-127) so that
-       * our comparison works.
+       * The authtime value is saved as user_state.minauthtime if the auth
+       * is successful, thus allowing the isearly() test (just below) to
+       * work.
        */
       authtime = user_info.cardops->twin2authtime(csd, now, t, log_prefix);
-      if (user_info.featuremask & OTP_CF_ES) {
-        /* e+t cards (or e only, which will be a no-op); less than */
-        if (authtime < user_state.minauthtime)
-          continue;
-      } else {
-        /* t only; less than or equal */
-        if (authtime <= user_state.minauthtime)
-          continue;
-      }
-
       for (e = 0; e <= end; ++e) {
         /*
-         * For e+t cards, the auth *time* can be the same, as long as
-         * the auth *event* is later.  So, above we kicked out all earlier
-         * times, and now we kick out all earlier events.  Note that the
-         * 'min' part of the var names is really a misnomer--it's the
-         * 'last' [successful] authtime/authevent.  (Not to be confused
-         * with authtime/authewin which is the last authtime/authevent
-         * regardless of success of failure, used for rwindow logic.)
+         * For event synchronous modes, we can never go backwards (the
+         * challenge() method can only walk forward on the event counter),
+         * so there is an implicit guarantee that we'll never get a
+         * response matching an event in the past.
          *
-         * We don't test for e+t because for event only or time only cards
-         * this is a no-op.
+         * But for time synchronous modes, challenge() can walk backwards,
+         * in order to accomodate clock drift.  We must never allow a
+         * successful auth for a correct passcode earlier in time than
+         * one already used successfully, so we skip out early here.
          */
-        if (authtime == user_state.minauthtime && e <= user_state.minewin)
+        if (user_info.cardops->isearly(&user_state, authtime, e, log_prefix))
           continue;
 
         /* Get next challenge. */
@@ -577,14 +555,12 @@ auth_done:
   if (rc == OTP_RC_OK) {
     if (resync)
       (void) strcpy(user_state.challenge, challenge);	/* update challenge */
-    user_state.failcount = 0;
-    user_state.authtwin  = 0;
-    user_state.authewin  = 0;
-    user_state.authtime  = (int32_t) now;	/* cast prevents overflow */
-    /* NOTE: csd is the value before calling updatecsd() */
-    user_state.minauthtime = (user_info.featuremask & OTP_CF_TS) ?
-      (int32_t) user_info.cardops->twin2authtime(csd, now, t, log_prefix) : 0;
-    user_state.minewin = e;
+    user_state.failcount   = 0;
+    user_state.authtwin    = 0;
+    user_state.authewin    = 0;
+    user_state.authtime    = now;
+    user_state.minauthtime = authtime;
+    user_state.minewin     = e;
   } else {
     /*
      * Note that we initialized auth[et]win to -2 to accomodate rwindow test

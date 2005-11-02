@@ -254,6 +254,31 @@ __attribute__ ((unused))
   return 0;
 }
 
+
+/* events can only go forward, so an auth can never be too early */
+static int
+cryptocard_isearly(
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                   const otp_user_state_t *user_state,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                   time_t authtime,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                   unsigned ewin,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                   const char *log_prefix)
+{
+  return 0;
+}
+
+
 /* no twin so just return 0 */
 static int
 cryptocard_nexttwin(
@@ -264,6 +289,7 @@ __attribute__ ((unused))
 {
   return 0;
 }
+
 
 /* no twin so just return 0 */
 static int
@@ -283,6 +309,7 @@ __attribute__ ((unused))
 {
   return 0;
 }
+
 
 /* no twin so just return current time */
 static time_t
@@ -316,10 +343,12 @@ static cardops_t cryptocard_cardops = {
   .challenge		= cryptocard_challenge,
   .response		= cryptocard_response,
   .updatecsd		= cryptocard_updatecsd,
+  .isearly		= cryptocard_isearly,
   .nexttwin		= cryptocard_nexttwin,
   .maxtwin		= cryptocard_maxtwin,
   .twin2authtime	= cryptocard_twin2authtime
 };
+
 
 /* constructor */
 void
