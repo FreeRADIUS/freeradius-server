@@ -79,23 +79,6 @@ static int digest_authorize(void *instance, REQUEST *request)
 }
 
 /*
- *	Convert a string in hex to one in binary
- *
- *	FIXME: call lrad_hex2bin
- */
-static void hex2bin(uint8_t *out, const uint8_t *in)
-{
-	unsigned int tmp;
-
-	while (*in) {
-		sscanf(in, "%02x", &tmp);
-		*out = tmp;
-		out++;
-		in += 2;
-	}
-}
-
-/*
  *	Perform all of the wondrous variants of digest authentication.
  */
 static int digest_authenticate(void *instance, REQUEST *request)
@@ -281,7 +264,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	Tack on the Digest-Nonce
 		 */
-		hex2bin(&a1[a1_len], &nonce->vp_octets[0]);
+		lrad_hex2bin(&nonce->vp_octets[0], &a1[a1_len], nonce->length >> 1);
 		a1_len += (nonce->length >> 1); /* FIXME: CHECK LENGTH */
 
 		a1[a1_len] = ':';
@@ -293,7 +276,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		  return RLM_MODULE_INVALID;
 		}
 
-		hex2bin(&a1[a1_len], &vp->vp_octets[0]);
+		lrad_hex2bin(&vp->vp_octets[0], &a1[a1_len], vp->length >> 1);
 		a1_len += (vp->length >> 1); /* FIXME: CHECK LENGTH */
 
 	} else if ((vp != NULL) &&
@@ -352,7 +335,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		}
 
 		rad_assert(body->length == 32);	/* FIXME: check in 'auth' */
-		hex2bin(&a2[a2_len], &body->vp_octets[0]);
+		lrad_hex2bin(&body->vp_octets[0], &a2[a2_len], body->length >> 1);
 		a2_len += (body->length >> 1);
 
 	} else if ((qop != NULL) &&
@@ -471,7 +454,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	vp = pairfind(request->packet->vps, PW_DIGEST_RESPONSE);
 	rad_assert(vp != NULL);
 
-	hex2bin(&hash[0], &vp->vp_octets[0]);
+	lrad_hex2bin(&vp->vp_octets[0], &hash[0], vp->length >> 1);
 
 #ifndef NDEBUG
 	if (debug_flag) {
