@@ -55,7 +55,7 @@ static int cryptocard_response(otp_user_info_t *,
                                const char *);
 static int cryptocard_updatecsd(const otp_user_info_t *, otp_user_state_t *,
                                 const char [OTP_MAX_CHALLENGE_LEN + 1],
-                                unsigned, time_t, int, const char *);
+                                int, time_t, int, const char *);
 static int cryptocard_isearly(const otp_user_state_t *, time_t, int,
                               const char *);
 static int cryptocard_nexttwin(int);

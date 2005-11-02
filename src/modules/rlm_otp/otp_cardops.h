@@ -79,7 +79,7 @@ typedef struct cardops_t {
                   char [OTP_MAX_RESPONSE_LEN + 1], const char *);
   int (*updatecsd)(const otp_user_info_t *, otp_user_state_t *,
                    const char [OTP_MAX_CHALLENGE_LEN + 1],
-                   unsigned, time_t, int, const char *);
+                   int, time_t, int, const char *);
   int (*isearly)(const otp_user_state_t *, time_t, int, const char *);
   int (*nexttwin)(int);
   int (*maxtwin)(const otp_user_info_t *, const char [OTP_MAX_CSD_LEN + 1],
