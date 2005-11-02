@@ -121,7 +121,6 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   int	e = 0, t = 0;	/* must initialize for async auth path */
   int	fc;		/* failcondition */
 
-  char	csd[OTP_MAX_CSD_LEN + 1]; /* working copy of csd */
     	/* expected response */
   char 	e_response[OTP_MAX_RESPONSE_LEN + OTP_MAX_PIN_LEN + 1];
   int	pin_offset = 0;	/* pin offset in e_response */
@@ -278,9 +277,6 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
     fc = OTP_FC_FAIL_NONE;
   }
 
-  /* copy csd */
-  (void) strcpy(csd, user_state.csd);
-
 async_response:
   /*
    * Test async response.
@@ -296,7 +292,7 @@ async_response:
     }
 
     /* Calculate the async response. */
-    if (user_info.cardops->response(&user_info, csd, challenge,
+    if (user_info.cardops->response(&user_info, user_state.csd, challenge,
                                     &e_response[pin_offset],
                                     log_prefix) != 0) {
       otp_log(OTP_LOG_ERR, "%s: unable to calculate async response for [%s], "
@@ -406,7 +402,7 @@ sync_response:
     (void) strcpy(challenge, user_state.challenge);
 
     /* Test each sync response in the window. */
-    tend = user_info.cardops->maxtwin(&user_info, csd, now);
+    tend = user_info.cardops->maxtwin(&user_info, user_state.csd, now);
     for (t = 0; t <= tend; ++t) {
       /*
        * Get the authtime, which is like the current time ('now') but moves
@@ -417,7 +413,8 @@ sync_response:
        * is successful, thus allowing the isearly() test (just below) to
        * work.
        */
-      authtime = user_info.cardops->twin2authtime(csd, now, t, log_prefix);
+      authtime = user_info.cardops->twin2authtime(user_state.csd, now, t,
+                                                  log_prefix);
       for (e = 0; e <= end; ++e) {
         /*
          * For event synchronous modes, we can never go backwards (the
@@ -434,8 +431,8 @@ sync_response:
           continue;
 
         /* Get next challenge. */
-        if (user_info.cardops->challenge(&user_info, csd, now, challenge,
-                                         t, e, log_prefix) != 0) {
+        if (user_info.cardops->challenge(&user_info, user_state.csd, now,
+                                         challenge, t, e, log_prefix) != 0) {
           otp_log(OTP_LOG_ERR,
                   "%s: unable to get sync challenge t:%d e:%d for [%s]",
                   log_prefix, t, e, username);
@@ -444,7 +441,7 @@ sync_response:
           /* NB: state not updated. */
         }
         /* Calculate sync response. */
-        if (user_info.cardops->response(&user_info, csd, challenge,
+        if (user_info.cardops->response(&user_info, user_state.csd, challenge,
                                         &e_response[pin_offset],
                                         log_prefix) != 0) {
           otp_log(OTP_LOG_ERR,
@@ -532,7 +529,6 @@ sync_response:
           /* force resync; this only has an effect if (rc == OTP_RC_OK) */
           resync = 1;
           /* update csd on successful auth or rwindow candidate */
-          (void) strcpy(user_state.csd, csd);
           if (user_info.cardops->updatecsd(&user_info, &user_state, challenge,
                                            t, now, rc, log_prefix) != 0) {
             otp_log(OTP_LOG_ERR, "%s: unable to update csd for [%s]",
