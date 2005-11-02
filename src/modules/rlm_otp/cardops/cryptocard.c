@@ -269,7 +269,7 @@ __attribute__ ((unused))
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                   unsigned ewin,
+                   int ewin,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
