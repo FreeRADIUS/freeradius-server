@@ -378,8 +378,18 @@ sync_response:
          * successful auth for a correct passcode earlier in time than
          * one already used successfully, so we skip out early here.
          */
-        if (user_info.cardops->isearly(&user_state, authtime, e, log_prefix))
+        if (user_info.cardops->isearly(&user_state, authtime, e)) {
+#if defined(FREERADIUS)
+          DEBUG("rlm_otp_token: auth: [%s], sync challenge t:%d e:%d is early",
+                username, t, e);
+#elif defined(PAM)
+          if (opt->debug)
+            otp_log(OTP_LOG_DEBUG,
+                    "%s: [%s], sync challenge t:%d e:%d is early",
+                    log_prefix, username, t, e);
+#endif
           continue;
+        }
 
         /* Get next challenge. */
         if (user_info.cardops->challenge(&user_info, user_state.csd, now,
@@ -452,30 +462,49 @@ sync_response:
              */
             if (user_info.cardops->isconsecutive(&user_info, &user_state,
                                                  t, e, log_prefix)) {
-              /* This is the 2nd of two consecutive responses. */
-              otp_log(OTP_LOG_AUTH,
-                      "%s: rwindow softfail override for [%s] at "
-                      "window position t:%d e:%d", log_prefix, username, t, e);
-              rc = OTP_RC_OK;
-            } else {
-              /* correct, but not consecutive or not soon enough */
-#if defined(FREERADIUS)
-              DEBUG("rlm_otp_token: auth: [%s] rwindow candidate "
-                    "at window position t:%d e:%d", username, t, e);
-#elif defined(PAM)
-              if (opt->debug)
-                otp_log(OTP_LOG_DEBUG,
-                        "%s: auth: [%s] rwindow candidate "
-                        "at window position t:%d e:%d", log_prefix, username,
+              /*
+               * This is the 2nd of two consecutive responses, is it
+               * soon enough?  Note that for persistent softfail we can't
+               * enforce rwindow_delay b/c the previous authtime is also
+               * the persistent softfail sentinel.
+               */
+              if (user_state.authtime == INT32_MAX ||
+                  now - user_state.authtime < opt->rwindow_delay) {
+                otp_log(OTP_LOG_AUTH,
+                        "%s: rwindow softfail override for [%s] at "
+                        "window position t:%d e:%d", log_prefix, username,
                         t, e);
+                rc = OTP_RC_OK;
+                goto sync_done;
+              } else {
+                /* consecutive but not soon enough */
+                otp_log(OTP_LOG_AUTH,
+                        "%s: late override for [%s] at "
+                        "window position t:%d e:%d", log_prefix, username,
+                        t, e);
+                rc = OTP_RC_AUTH_ERR;
+              }
+            } /* if (passcode is consecutive */
+
+            /* passcode correct, but not consecutive or not soon enough */
+#if defined(FREERADIUS)
+            DEBUG("rlm_otp_token: auth: [%s] rwindow candidate "
+                  "at window position t:%d e:%d", username, t, e);
+#elif defined(PAM)
+            if (opt->debug)
+              otp_log(OTP_LOG_DEBUG,
+                      "%s: auth: [%s] rwindow candidate "
+                      "at window position t:%d e:%d", log_prefix, username,
+                      t, e);
 #endif
-              rc = OTP_RC_AUTH_ERR;
-            }
+            rc = OTP_RC_AUTH_ERR;
+
           } else {
             /* normal sync mode auth */
             rc = OTP_RC_OK;
           } /* else (!hardfail && !softfail) */
 
+sync_done:
           /* force resync; this only has an effect if (rc == OTP_RC_OK) */
           resync = 1;
           /* update csd (and rd) on successful auth or rwindow candidate */

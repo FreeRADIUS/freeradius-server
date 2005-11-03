@@ -273,11 +273,7 @@ __attribute__ ((unused))
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                   int ewin,
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                   const char *log_prefix)
+                   int ewin)
 {
   return 0;
 }
