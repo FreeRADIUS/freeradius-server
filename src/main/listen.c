@@ -565,8 +565,6 @@ static int common_socket_parse(const char *filename, int lineno,
  */
 static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 {
-	listen_socket_t *sock = listener->data;
-
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == auth_socket_send);
 
@@ -605,8 +603,6 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
  */
 static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 {
-	listen_socket_t *sock = listener->data;
-
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == acct_socket_send);
 
@@ -1694,6 +1690,42 @@ static int listen_bind(rad_listen_t *this)
 
 
 /*
+ *	Allocate & initialize a new listener.
+ */
+static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
+{
+	rad_listen_t *this;
+
+	this = rad_malloc(sizeof(*this));
+	memset(this, 0, sizeof(*this));
+
+	this->type = type;
+	this->recv = master_listen[this->type].recv;
+	this->send = master_listen[this->type].send;
+	this->update = master_listen[this->type].update;
+	this->print = master_listen[this->type].print;
+
+	switch (type) {
+	case RAD_LISTEN_AUTH:
+	case RAD_LISTEN_ACCT:
+	case RAD_LISTEN_PROXY:
+		this->data = rad_malloc(sizeof(listen_socket_t));
+		memset(this->data, 0, sizeof(listen_socket_t));
+		break;
+
+	case RAD_LISTEN_DETAIL:
+		this->data = rad_malloc(sizeof(listen_detail_t));
+		memset(this->data, 0, sizeof(listen_detail_t));
+		
+	default:
+		break;
+	}
+
+	return this;
+}
+
+
+/*
  *	Externally visible function for creating a new proxy LISTENER.
  *
  *	For now, don't take ipaddr or port.
@@ -1707,10 +1739,7 @@ rad_listen_t *proxy_new_listener()
 	rad_listen_t *this, *tmp, **last;
 	listen_socket_t *sock, *old;
 
-	this = rad_malloc(sizeof(*this));
-	memset(this, 0, sizeof(*this));
-	this->data = rad_malloc(sizeof(*sock));
-	memset(this->data, 0, sizeof(*sock));
+	this = listen_alloc(RAD_LISTEN_PROXY);
 
 	/*
 	 *	Find an existing proxy socket to copy.
@@ -1739,12 +1768,6 @@ rad_listen_t *proxy_new_listener()
 	 */
 	sock = this->data;
 	memcpy(&sock->ipaddr, &old->ipaddr, sizeof(sock->ipaddr));
-	this->type = RAD_LISTEN_PROXY;
-
-	this->recv = master_listen[RAD_LISTEN_PROXY].recv;
-	this->send = master_listen[RAD_LISTEN_PROXY].send;
-	this->update = master_listen[RAD_LISTEN_PROXY].update;
-	this->print = master_listen[RAD_LISTEN_PROXY].print;
 
 	/*
 	 *	Keep going until we find an unused port.
@@ -1838,29 +1861,19 @@ int listen_init(const char *filename, rad_listen_t **head)
 		radlog(L_INFO, "WARNING: The directive 'bind_adress' is deprecated, and will be removed in future versions of FreeRADIUS. Please edit the configuration files to use the directive 'listen'.");
 
 	bind_it:
-		this = rad_malloc(sizeof(*this));
-		memset(this, 0, sizeof(*this));
-		this->data = sock = rad_malloc(sizeof(*sock));
-		memset(sock, 0, sizeof(*sock));
-		
-		/*
-		 *	Create the authentication socket.
-		 */
-		this->type = RAD_LISTEN_AUTH;
+		this = listen_alloc(RAD_LISTEN_AUTH);
+		sock = this->data;
+
 		sock->ipaddr = server_ipaddr;
 		sock->port = auth_port;
 		
 		if (listen_bind(this) < 0) {
+			listen_free(&this);
+			listen_free(head);
 			radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the authentication port %d", sock->port);
-			free(this);
 			return -1;
 		}
 		auth_port = sock->port;	/* may have been updated in listen_bind */
-		this->recv = master_listen[this->type].recv;
-		this->send = master_listen[this->type].send;
-		this->update = master_listen[this->type].update;
-		this->print = master_listen[this->type].print;
-
 		*last = this;
 		last = &(this->next);
 		
@@ -1870,10 +1883,8 @@ int listen_init(const char *filename, rad_listen_t **head)
 		 *	If we haven't already gotten acct_port from
 		 *	/etc/services, then make it auth_port + 1.
 		 */
-		this = rad_malloc(sizeof(*this));
-		memset(this, 0, sizeof(*this));
-		this->data = sock = rad_malloc(sizeof(*sock));
-		memset(sock, 0, sizeof(*sock));
+		this = listen_alloc(RAD_LISTEN_ACCT);
+		sock = this->data;
 		
 		/*
 		 *	Create the accounting socket.
@@ -1881,20 +1892,15 @@ int listen_init(const char *filename, rad_listen_t **head)
 		 *	The accounting port is always the
 		 *	authentication port + 1
 		 */
-		this->type = RAD_LISTEN_ACCT;
 		sock->ipaddr = server_ipaddr;
 		sock->port = auth_port + 1;
 		
 		if (listen_bind(this) < 0) {
+			listen_free(&this);
+			listen_free(head);
 			radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the accounting port %d", sock->port);
-			free(this);
 			return -1;
 		}
-
-		this->recv = master_listen[this->type].recv;
-		this->send = master_listen[this->type].send;
-		this->update = master_listen[this->type].update;
-		this->print = master_listen[this->type].print;
 
 		*last = this;
 		last = &(this->next);
@@ -1927,6 +1933,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 				      &listen_type, "");
 		if (rcode < 0) return -1;
 		if (rcode == 1) {
+			listen_free(head);
 			free(listen_type);
 			radlog(L_ERR, "%s[%d]: No type specified in listen section",
 			       filename, lineno);
@@ -1943,7 +1950,9 @@ int listen_init(const char *filename, rad_listen_t **head)
 
 		type = lrad_str2int(listen_compare, listen_type,
 				    RAD_LISTEN_NONE);
+		free(listen_type);
 		if (type == RAD_LISTEN_NONE) {
+			listen_free(head);
 			radlog(L_CONS|L_ERR, "%s[%d]: Invalid type in listen section.",
 			       filename, lineno);
 			return -1;
@@ -1952,18 +1961,10 @@ int listen_init(const char *filename, rad_listen_t **head)
 		/*
 		 *	Set up cross-type data.
 		 */
-		this = rad_malloc(sizeof(*this));
-		memset(this, 0, sizeof(*this));
-		
-		this->type = type;
+		this = listen_alloc(type);
 		this->identity = identity;
 		this->fd = -1;
 		
-		this->recv = master_listen[type].recv;
-		this->send = master_listen[type].send;
-		this->update = master_listen[type].update;
-		this->print = master_listen[type].print;
-
 		/*
 		 *	Call per-type parsers, if they're necessary.
 		 */
@@ -2018,21 +2019,13 @@ int listen_init(const char *filename, rad_listen_t **head)
 			server_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
 		}
 
-		this = rad_malloc(sizeof(*this));
-		memset(this, 0, sizeof(*this));
-		this->data = sock = rad_malloc(sizeof(*sock));
-		memset(sock, 0, sizeof(*sock));
+		this = listen_alloc(RAD_LISTEN_PROXY);
+		sock = this->data;
 
 		/*
 		 *	Create the first proxy socket.
 		 */
-		this->type = RAD_LISTEN_PROXY;
 		sock->ipaddr = server_ipaddr;
-
-		this->recv = master_listen[RAD_LISTEN_PROXY].recv;
-		this->send = master_listen[RAD_LISTEN_PROXY].send;
-		this->update = master_listen[RAD_LISTEN_PROXY].update;
-		this->print = master_listen[RAD_LISTEN_PROXY].print;
 
 		/*
 		 *	Try to find a proxy port (value doesn't matter)
@@ -2048,8 +2041,9 @@ int listen_init(const char *filename, rad_listen_t **head)
 		}
 
 		if (sock->port >= 64000) {
+			listen_free(head);
+			listen_free(&this);
 			radlog(L_ERR|L_CONS, "Failed to open socket for proxying");
-			free(this);
 			return -1;
 		}
 	}
