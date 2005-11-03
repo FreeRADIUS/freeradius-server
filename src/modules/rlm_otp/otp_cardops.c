@@ -42,53 +42,6 @@ static const char rcsid[] = "$Id$";
 cardops_t otp_cardops[OTP_MAX_VENDORS];	/* cardops objects */
 int otp_num_cardops = 0;		/* number of cardops modules loaded */
 
-static int isconsecutive(const otp_option_t *, const otp_user_info_t *,
-                         const otp_user_state_t *, int, int, time_t);
-
-/*
- * Helper function to determine if two authentications are consecutive.
- * user_state contains the previous auth position, ewin and twin the current.
- * rwindow is the size of the resync window, possibly forced by card
- * capability; if so we use it to determine when to advance twin.
- * Returns 1 on success (consecutive), 0 otherwise.
- */
-static int
-isconsecutive(const otp_option_t *opt, const otp_user_info_t *user_info,
-              const otp_user_state_t *user_state,
-              int twin, int ewin, time_t now)
-{
-  int nextewin, nexttwin;
-  int frw = (user_info->featuremask & OTP_CF_FRW) >> OTP_CF_FRW_SHIFT;
-
-  /* we assume FRW implies ES && TS; all current cards work this way */
-  if (frw && user_state->authewin == frw) {
-    /* ewin already maxed, reset and advance twin */
-    nextewin = 0;
-    nexttwin = user_info->cardops->nexttwin(user_state->authtwin);
-  } else {
-    nextewin = user_state->authewin + 1;
-    nexttwin = user_state->authtwin;
-  }
-
-  /*
-   * Determine if this is the next passcode
-   *   - event cards: next event
-   *   - time cards: probably broken due to ewin increment
-   *   - e+t cards: see intro comment
-   * and if so, see if we're within rwindow_delay (arguably should be done
-   * by caller, but caller code reads better if we do it here).  If we're
-   * in persistent softfail, we can't test for rwindow_delay since the saved
-   * authtime is used as a sentinel (and breaks the math).
-   */
-  if ((ewin == nextewin) &&
-      (twin == nexttwin) &&
-      /* we might want to insert logging here someday */
-      ((user_state->authtime == INT32_MAX) /* persistent softfail */ ||
-      ((uint32_t) now - user_state->authtime < (unsigned) opt->rwindow_delay)))
-    return 1;
-  else
-    return 0;
-}
 
 /*
  * Test for passcode validity.
@@ -123,9 +76,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
 
     	/* expected response */
   char 	e_response[OTP_MAX_RESPONSE_LEN + OTP_MAX_PIN_LEN + 1];
-  int	pin_offset = 0;	/* pin offset in e_response */
-  int	authewin = -2;	/* ewindow pos of last success auth, or -2 */
-  int	authtwin = -2;	/* twindow pos of last success auth, or -2 */
+  int	pin_offset = 0;	/* pin offset in e_response (prepend or append) */
 
   otp_user_info_t	user_info  = { .cardops = NULL };
   otp_user_state_t	user_state = { .locked = 0 };
@@ -499,7 +450,8 @@ sync_response:
              * User must enter two consecutive correct sync passcodes
              * for rwindow softfail override.
              */
-            if (isconsecutive(opt, &user_info, &user_state, t, e, now)) {
+            if (user_info.cardops->isconsecutive(&user_info, &user_state,
+                                                 t, e, log_prefix)) {
               /* This is the 2nd of two consecutive responses. */
               otp_log(OTP_LOG_AUTH,
                       "%s: rwindow softfail override for [%s] at "
@@ -517,8 +469,6 @@ sync_response:
                         "at window position t:%d e:%d", log_prefix, username,
                         t, e);
 #endif
-              authtwin = t;
-              authewin = e;
               rc = OTP_RC_AUTH_ERR;
             }
           } else {
@@ -528,9 +478,9 @@ sync_response:
 
           /* force resync; this only has an effect if (rc == OTP_RC_OK) */
           resync = 1;
-          /* update csd on successful auth or rwindow candidate */
+          /* update csd (and rd) on successful auth or rwindow candidate */
           if (user_info.cardops->updatecsd(&user_info, &user_state, challenge,
-                                           t, now, rc, log_prefix) != 0) {
+                                           t, e, now, rc, log_prefix) != 0) {
             otp_log(OTP_LOG_ERR, "%s: unable to update csd for [%s]",
                     log_prefix, username);
             rc = OTP_RC_SERVICE_ERR;
@@ -552,25 +502,12 @@ auth_done:
     if (resync)
       (void) strcpy(user_state.challenge, challenge);	/* update challenge */
     user_state.failcount   = 0;
-    user_state.authtwin    = 0;
-    user_state.authewin    = 0;
     user_state.authtime    = now;
     user_state.minauthtime = authtime;
     user_state.minewin     = e;
   } else {
-    /*
-     * Note that we initialized auth[et]win to -2 to accomodate rwindow test
-     * (isconsecutive()) above; with authewin only (before we had authtwin),
-     * if we'd only set it to -1, after a failure and then consecutive test
-     * (isconsecutive()), authewin+1 = 0 and the user login with only one
-     * correct passcode (viz. the zeroeth passcode).  Now with authtwin that
-     * can't happen (authewin+1 = 0, but authtwin = -1) but it's worth
-     * documenting this.
-     */
     if (++user_state.failcount == UINT_MAX)
       user_state.failcount--;
-    user_state.authtwin = authtwin;
-    user_state.authewin = authewin;
     /* authtime set to INT32_MAX by nullstate(); leave it to force softfail */
     if (user_state.authtime != INT32_MAX)
       user_state.authtime = (int32_t) now;	/* cast prevents overflow */
@@ -579,7 +516,7 @@ auth_done:
      * we might have actually had a good auth), we want the challenge
      * unchanged because we always start our sync loop at e=0 t=0 (and so
      * challenge must stay as the 0'th challenge regardless of next valid
-     * authewin position, because the challenge() method can't return
+     * window position, because the challenge() method can't return
      * arbitrary event window positions--since we start at e=0 the challenge
      * must be the 0th challenge, i.e. unchanged).
      */

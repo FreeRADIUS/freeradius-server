@@ -219,16 +219,16 @@ __attribute__ ((unused))
 }
 
 
-/* no csd so just return success */
+/*
+ * Update rd (there is no csd for cryptocard).
+ * Returns 0 if succesful, -1 otherwise.
+ */
 static int
 cryptocard_updatecsd(
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
                      const otp_user_info_t *user_info,
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
                      otp_user_state_t *user_state,
 #ifdef __GNUC__
 __attribute__ ((unused))
@@ -238,19 +238,23 @@ __attribute__ ((unused))
 __attribute__ ((unused))
 #endif
                      int twin,
+                     int ewin,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
                      time_t when,
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
                      int auth_rc,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
                      const char *log_prefix)
 {
+  if (auth_rc == OTP_RC_OK)
+    user_state->rd[0] = '\0';				/* reset */
+  else
+    (void) sprintf(user_state->rd, "%" PRIx32,
+                   (int32_t) ewin);			/* rwindow candidate */
+
   return 0;
 }
 
@@ -279,15 +283,37 @@ __attribute__ ((unused))
 }
 
 
-/* no twin so just return 0 */
+/*
+ * Determine if a window position if consecutive relative to a saved
+ * (rwindow candidate) window position, for rwindow override.
+ * user_state contains the previous auth position, twin and ewin the current.
+ * Returns 1 on success (consecutive), 0 otherwise.
+ */
 static int
-cryptocard_nexttwin(
+cryptocard_isconsecutive(
+                         const otp_user_info_t *user_info,
+                         const otp_user_state_t *user_state,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                    int twin)
+                         int twin,
+                         int ewin,
+                         const char *log_prefix)
 {
-  return 0;
+  int rcanewin;		/* saved rwindow candidate window position */
+
+  /* extract the saved rwindow candidate position */
+  if (sscanf(user_state->rd, "%" SCNx32, &rcanewin) != 1) {
+    otp_log(OTP_LOG_ERR, "%s: %s: invalid rwindow data for [%s]", log_prefix,
+            __func__, user_info->username);
+    return 0;
+  }
+
+  /* Is this the next passcode? */
+  if (ewin == rcanewin + 1)
+    return 1;	/* yes */
+  else
+    return 0;	/* no */
 }
 
 
@@ -344,7 +370,7 @@ static cardops_t cryptocard_cardops = {
   .response		= cryptocard_response,
   .updatecsd		= cryptocard_updatecsd,
   .isearly		= cryptocard_isearly,
-  .nexttwin		= cryptocard_nexttwin,
+  .isconsecutive	= cryptocard_isconsecutive,
   .maxtwin		= cryptocard_maxtwin,
   .twin2authtime	= cryptocard_twin2authtime
 };

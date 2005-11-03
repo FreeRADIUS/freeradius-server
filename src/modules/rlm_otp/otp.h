@@ -136,19 +136,20 @@ typedef struct lsmd_fd_t {
 
 /* user-specific state info */
 #define OTP_MAX_CSD_LEN 64
+#define OTP_MAX_RD_LEN 8
 typedef struct otp_user_state_t {
   int		locked;			/* locked aka success flag        */
   lsmd_fd_t	*fdp;			/* fd for return data             */
   int		nullstate;		/* null state?                    */
   int		updated;		/* state updated? (1 unless err)  */
+
   char		challenge[OTP_MAX_CHALLENGE_LEN+1];	/* prev sync chal */
-  char		csd[OTP_MAX_CSD_LEN+1];	/* card specific data             */
+  char		csd[OTP_MAX_CSD_LEN+1];	/* card-specific data             */
+  char		rd[OTP_MAX_RD_LEN+1];	/* rwindow data                   */
   unsigned	failcount;		/* number of consecutive failures */
-  int		authewin;		/* ewindow position for softfail  */
-  int		authtwin;		/* twindow position for softfail  */
   uint32_t	authtime;		/* time of last auth              */
   uint32_t   	minauthtime;		/* minimum authtime               */
-  int   	minewin;		/* minimum ewin                   */
+  int		minewin;		/* minimum ewin                   */
 } otp_user_state_t;
 
 /* fc (failcondition) shortcuts */

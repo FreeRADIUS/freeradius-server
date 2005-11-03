@@ -232,7 +232,7 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
   p += 1;	/* beginning of state */
 
   /* version */
-  if (!(p[0] == '4' && p[1] == ':')) {
+  if (!(p[0] == '5' && p[1] == ':')) {
     otp_log(OTP_LOG_ERR, "%s: state data unacceptable version for [%s]",
             log_prefix, username);
     (void) otp_state_put(username, user_state, log_prefix);
@@ -281,6 +281,23 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
     return -1;
   }
   (void) strcpy(user_state->csd, p);
+  p = q;	/* rd */
+
+  /* extract rd */
+  if ((q = strchr(p, ':')) == NULL) {
+    otp_log(OTP_LOG_ERR, "%s: state data invalid rd for [%s]",
+            log_prefix, username);
+    (void) otp_state_put(username, user_state, log_prefix);
+    return -1;
+  }
+  *q++ = '\0';
+  if (strlen(p) > OTP_MAX_RD_LEN) {
+    otp_log(OTP_LOG_ERR, "%s: state data rd too long for [%s]",
+            log_prefix, username);
+    (void) otp_state_put(username, user_state, log_prefix);
+    return -1;
+  }
+  (void) strcpy(user_state->rd, p);
   p = q;	/* failcount */
 
   /* extract failcount */
@@ -293,38 +310,6 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
   *q++ = '\0';
   if (sscanf(p, "%u", &user_state->failcount) != 1) {
     otp_log(OTP_LOG_ERR, "%s: state data invalid failcount for [%s]",
-            log_prefix, username);
-    (void) otp_state_put(username, user_state, log_prefix);
-    return -1;
-  }
-  p = q;	/* authewin */
-
-  /* extract authewin */
-  if ((q = strchr(p, ':')) == NULL) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid authewin for [%s]",
-            log_prefix, username);
-    (void) otp_state_put(username, user_state, log_prefix);
-    return -1;
-  }
-  *q++ = '\0';
-  if (sscanf(p, "%d", &user_state->authewin) != 1) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid authewin for [%s]",
-            log_prefix, username);
-    (void) otp_state_put(username, user_state, log_prefix);
-    return -1;
-  }
-  p = q;	/* authtwin */
-
-  /* extract authtwin */
-  if ((q = strchr(p, ':')) == NULL) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid authtwin for [%s]",
-            log_prefix, username);
-    (void) otp_state_put(username, user_state, log_prefix);
-    return -1;
-  }
-  *q++ = '\0';
-  if (sscanf(p, "%d", &user_state->authtwin) != 1) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid authtwin for [%s]",
             log_prefix, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
@@ -396,11 +381,11 @@ otp_state_unparse(char *buf, size_t buflen, const char *username,
     return -1;
 
   if (user_state->updated)
-    (void) snprintf(buf, buflen, "P %s 4:%s:%s:%s:%u:%d:%d:%" PRIx32 ":"
+    (void) snprintf(buf, buflen, "P %s 5:%s:%s:%s:%s:%u:%" PRIx32 ":"
                                  "%" PRIx32 ":%d:",
-                    username, username, user_state->challenge,
-                    user_state->csd, user_state->failcount,
-                    user_state->authewin, user_state->authtwin,
+                    username,
+                    /* 5, */ username, user_state->challenge,
+                    user_state->csd, user_state->rd, user_state->failcount,
                     user_state->authtime, user_state->minauthtime,
                     user_state->minewin);
   else

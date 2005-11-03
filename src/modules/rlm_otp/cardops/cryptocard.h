@@ -55,10 +55,12 @@ static int cryptocard_response(otp_user_info_t *,
                                const char *);
 static int cryptocard_updatecsd(const otp_user_info_t *, otp_user_state_t *,
                                 const char [OTP_MAX_CHALLENGE_LEN + 1],
-                                int, time_t, int, const char *);
+                                int, int, time_t, int, const char *);
 static int cryptocard_isearly(const otp_user_state_t *, time_t, int,
                               const char *);
-static int cryptocard_nexttwin(int);
+static int cryptocard_isconsecutive(const otp_user_info_t *,
+                                    const otp_user_state_t *, int, int,
+                                    const char *);
 static int cryptocard_maxtwin(const otp_user_info_t *,
                               const char [OTP_MAX_CSD_LEN + 1], time_t);
 static time_t cryptocard_twin2authtime(const char [OTP_MAX_CSD_LEN + 1],
