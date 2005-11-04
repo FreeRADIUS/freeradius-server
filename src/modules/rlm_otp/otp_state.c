@@ -308,7 +308,7 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
     return -1;
   }
   *q++ = '\0';
-  if (sscanf(p, "%u", &user_state->failcount) != 1) {
+  if (sscanf(p, "%" SCNx32, &user_state->failcount) != 1) {
     otp_log(OTP_LOG_ERR, "%s: state data invalid failcount for [%s]",
             log_prefix, username);
     (void) otp_state_put(username, user_state, log_prefix);
@@ -356,7 +356,7 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
     return -1;
   }
   *q++ = '\0';
-  if (sscanf(p, "%d", &user_state->minewin) != 1) {
+  if (sscanf(p, "%" SCNx32, &user_state->minewin) != 1) {
     otp_log(OTP_LOG_ERR, "%s: state data invalid minewin for [%s]",
             log_prefix, username);
     (void) otp_state_put(username, user_state, log_prefix);
@@ -381,13 +381,16 @@ otp_state_unparse(char *buf, size_t buflen, const char *username,
     return -1;
 
   if (user_state->updated)
-    (void) snprintf(buf, buflen, "P %s 5:%s:%s:%s:%s:%u:%" PRIx32 ":"
-                                 "%" PRIx32 ":%d:",
-                    username,
-                    /* 5, */ username, user_state->challenge,
-                    user_state->csd, user_state->rd, user_state->failcount,
-                    user_state->authtime, user_state->mincardtime,
-                    user_state->minewin);
+    (void) snprintf(buf, buflen, "P %s "
+                                 "5:%s:%s:"
+                                 "%s:%s:"
+                                 "%" PRIx32 ":%" PRIx32 ":"
+                                 "%" PRIx32 ":%" PRIx32 ":",
+                    /* 'P ', */ username,
+                    /* '5:', */ username, user_state->challenge,
+                    user_state->csd, user_state->rd,
+                    user_state->failcount, user_state->authtime,
+                    user_state->mincardtime, user_state->minewin);
   else
     (void) snprintf(buf, buflen, "P %s", username);
   buf[buflen - 1] = '\0';

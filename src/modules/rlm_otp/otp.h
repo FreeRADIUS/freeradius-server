@@ -146,10 +146,10 @@ typedef struct otp_user_state_t {
   char		challenge[OTP_MAX_CHALLENGE_LEN+1];	/* prev sync chal */
   char		csd[OTP_MAX_CSD_LEN+1];	/* card-specific data             */
   char		rd[OTP_MAX_RD_LEN+1];	/* rwindow data                   */
-  unsigned	failcount;		/* number of consecutive failures */
+  uint32_t	failcount;		/* number of consecutive failures */
   uint32_t	authtime;		/* time of last auth              */
   uint32_t   	mincardtime;		/* minimum cardtime               */
-  int		minewin;		/* minimum ewin                   */
+  uint32_t	minewin;		/* minimum ewin                   */
 } otp_user_state_t;
 
 /* fc (failcondition) shortcuts */
