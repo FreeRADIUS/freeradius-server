@@ -230,7 +230,6 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		char *envp[MAX_ENVP];
 		int envlen;
 		char buffer[1024];
-		int maxfd = 256;
 
 		/*
 		 *	Child process.
@@ -292,21 +291,12 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		}
 		close(devnull);
 
-#ifdef _SC_OPEN_MAX
-		maxfd = sysconf(_SC_OPEN_MAX);
-		if (maxfd < 0) {
-			maxfd = 256;
-		}
-#endif
-
 		/*
 		 *	The server may have MANY FD's open.  We don't
 		 *	want to leave dangling FD's for the child process
 		 *	to play funky games with, so we close them.
 		 */
-		for (i = 3; i < maxfd; i++) {
-			close(i);
-		}
+		closefrom(3);
 
 		/*
 		 *	Set up the environment variables.
@@ -343,6 +333,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			if (envlen == (MAX_ENVP - 1)) break;
 		}
 		envp[envlen] = NULL;
+
 		execve(argv[0], argv, envp);
 		radlog(L_ERR, "Exec-Program: FAILED to execute %s: %s",
 		       argv[0], strerror(errno));
