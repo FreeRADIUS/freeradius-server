@@ -456,12 +456,9 @@ static int common_socket_parse(const char *filename, int lineno,
 	int		rcode;
 	int		listen_port;
 	lrad_ipaddr_t	ipaddr;
-	listen_socket_t *sock;
+	listen_socket_t *sock = this->data;
 	const char	*section_name = NULL;
 	CONF_SECTION	*client_cs;
-
-	this->data = sock = rad_malloc(sizeof(*sock));
-	memset(sock, 0, sizeof(*sock));
 
 	/*
 	 *	Try IPv4 first
@@ -1452,6 +1449,16 @@ static int detail_print(rad_listen_t *this, char *buffer, size_t bufsize)
 }
 
 
+static const CONF_PARSER detail_config[] = {
+	{ "detail",   PW_TYPE_STRING_PTR,
+	  offsetof(listen_detail_t, detail), NULL,  NULL },
+	{ "max_outstanding",  PW_TYPE_INTEGER,
+	   offsetof(listen_detail_t, max_outstanding), NULL, "100" },
+
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+
+
 /*
  *	Parse a detail section.
  */
@@ -1459,29 +1466,29 @@ static int detail_parse(const char *filename, int lineno,
 			const CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
-	const char	*detail = NULL;
 	listen_detail_t *data;
 
-	this->data = data = rad_malloc(sizeof(*data));
+	data = this->data;
 
-	rcode = cf_item_parse(cs, "detail", PW_TYPE_STRING_PTR,
-			      &detail, NULL);
-	if (rcode < 0) return -1;
-	if (rcode == 1) {
+	rcode = cf_section_parse(cs, data, detail_config);
+	if (rcode < 0) {
+		radlog(L_ERR, "%s[%d]: Failed parsing listen section",
+		       filename, lineno);
+		return -1;
+	}
+
+	if (!data->detail) {
 		radlog(L_ERR, "%s[%d]: No detail file specified in listen section",
 		       filename, lineno);
 		return -1;
 	}
 	
-	data->detail = detail;
 	data->vps = NULL;
 	data->fp = NULL;
 	data->state = STATE_UNOPENED;
-	
-	rcode = cf_item_parse(cs, "max_outstanding",
-			      PW_TYPE_INTEGER,
-			      &(data->max_outstanding), "100");
-	if (rcode < 0) return -1;
+
+	if (data->max_outstanding > 32768) data->max_outstanding = 32768;
+
 	if (data->max_outstanding > 0) {
 		data->outstanding = rad_malloc(sizeof(int) * data->max_outstanding);
 	}
@@ -1941,12 +1948,15 @@ int listen_init(const char *filename, rad_listen_t **head)
 		}
 
 		/*
-		 *	FIXME: We leak identity if we return, but who
-		 *	cares...  the server will kill itself anyhow.
+		 *	See if there's an identity.
 		 */
 		rcode = cf_item_parse(cs, "identity", PW_TYPE_STRING_PTR,
 				      &identity, NULL);
-		if (rcode < 0) return -1;
+		if (rcode < 0) {
+			listen_free(head);
+			free(identity);
+			return -1;
+		}
 
 		type = lrad_str2int(listen_compare, listen_type,
 				    RAD_LISTEN_NONE);
@@ -1966,9 +1976,8 @@ int listen_init(const char *filename, rad_listen_t **head)
 		this->fd = -1;
 		
 		/*
-		 *	Call per-type parsers, if they're necessary.
+		 *	Call per-type parser.
 		 */
-		rad_assert(master_listen[type].parse != NULL);
 		if (master_listen[type].parse(filename, lineno,
 					      cs, this) < 0) {
 			listen_free(&this);
