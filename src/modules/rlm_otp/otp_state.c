@@ -330,18 +330,18 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
-  p = q;	/* minauthtime */
+  p = q;	/* mincardtime */
 
-  /* extract minauthtime */
+  /* extract mincardtime */
   if ((q = strchr(p, ':')) == NULL) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid minauthtime for [%s]",
+    otp_log(OTP_LOG_ERR, "%s: state data invalid mincardtime for [%s]",
             log_prefix, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
   *q++ = '\0';
-  if (sscanf(p, "%" SCNx32, &user_state->minauthtime) != 1) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid minauthtime for [%s]",
+  if (sscanf(p, "%" SCNx32, &user_state->mincardtime) != 1) {
+    otp_log(OTP_LOG_ERR, "%s: state data invalid mincardtime for [%s]",
             log_prefix, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
@@ -386,7 +386,7 @@ otp_state_unparse(char *buf, size_t buflen, const char *username,
                     username,
                     /* 5, */ username, user_state->challenge,
                     user_state->csd, user_state->rd, user_state->failcount,
-                    user_state->authtime, user_state->minauthtime,
+                    user_state->authtime, user_state->mincardtime,
                     user_state->minewin);
   else
     (void) snprintf(buf, buflen, "P %s", username);

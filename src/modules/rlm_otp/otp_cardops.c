@@ -81,7 +81,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   otp_user_info_t	user_info  = { .cardops = NULL };
   otp_user_state_t	user_state = { .locked = 0 };
 
-  time_t authtime = 0;		/* must initialize in case of async auth */
+  time_t cardtime = 0;		/* must initialize in case of async auth */
   time_t now = time(NULL);
 
   /*
@@ -356,15 +356,15 @@ sync_response:
     tend = user_info.cardops->maxtwin(&user_info, user_state.csd, now);
     for (t = 0; t <= tend; ++t) {
       /*
-       * Get the authtime, which is like the current time ('now') but moves
+       * Get the cardtime, which is like the current time ('now') but moves
        * in card clock increments (eg, 0,60,120 instead of 0..60..120) and
        * is adjusted by the time window ('t').
        *
-       * The authtime value is saved as user_state.minauthtime if the auth
+       * The cardtime value is saved as user_state.mincardtime if the auth
        * is successful, thus allowing the isearly() test (just below) to
        * work.
        */
-      authtime = user_info.cardops->twin2authtime(user_state.csd, now, t,
+      cardtime = user_info.cardops->time2cardtime(user_state.csd, now, t,
                                                   log_prefix);
       for (e = 0; e <= end; ++e) {
         /*
@@ -378,7 +378,7 @@ sync_response:
          * successful auth for a correct passcode earlier in time than
          * one already used successfully, so we skip out early here.
          */
-        if (user_info.cardops->isearly(&user_state, authtime, e)) {
+        if (user_info.cardops->isearly(&user_state, cardtime, e)) {
 #if defined(FREERADIUS)
           DEBUG("rlm_otp_token: auth: [%s], sync challenge t:%d e:%d is early",
                 username, t, e);
@@ -469,7 +469,7 @@ sync_response:
                * the persistent softfail sentinel.
                */
               if (user_state.authtime == INT32_MAX ||
-                  now - user_state.authtime < opt->rwindow_delay) {
+                  now - user_state.authtime < (unsigned) opt->rwindow_delay) {
                 otp_log(OTP_LOG_AUTH,
                         "%s: rwindow softfail override for [%s] at "
                         "window position t:%d e:%d", log_prefix, username,
@@ -532,7 +532,7 @@ auth_done:
       (void) strcpy(user_state.challenge, challenge);	/* update challenge */
     user_state.failcount   = 0;
     user_state.authtime    = now;
-    user_state.minauthtime = authtime;
+    user_state.mincardtime = cardtime;
     user_state.minewin     = e;
   } else {
     if (++user_state.failcount == UINT_MAX)

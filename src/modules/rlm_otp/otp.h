@@ -148,7 +148,7 @@ typedef struct otp_user_state_t {
   char		rd[OTP_MAX_RD_LEN+1];	/* rwindow data                   */
   unsigned	failcount;		/* number of consecutive failures */
   uint32_t	authtime;		/* time of last auth              */
-  uint32_t   	minauthtime;		/* minimum authtime               */
+  uint32_t   	mincardtime;		/* minimum cardtime               */
   int		minewin;		/* minimum ewin                   */
 } otp_user_state_t;
 

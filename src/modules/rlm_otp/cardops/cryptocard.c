@@ -335,7 +335,7 @@ __attribute__ ((unused))
 
 /* no twin so just return current time */
 static time_t
-cryptocard_twin2authtime(
+cryptocard_time2cardtime(
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
@@ -368,7 +368,7 @@ static cardops_t cryptocard_cardops = {
   .isearly		= cryptocard_isearly,
   .isconsecutive	= cryptocard_isconsecutive,
   .maxtwin		= cryptocard_maxtwin,
-  .twin2authtime	= cryptocard_twin2authtime
+  .time2cardtime	= cryptocard_time2cardtime
 };
 
 
