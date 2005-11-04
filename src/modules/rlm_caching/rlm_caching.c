@@ -399,7 +399,7 @@ static int caching_authorize(void *instance, REQUEST *request)
 		free(data_datum.dptr);
 
 		if (delete_cache == 0 && cache_data.creation + data->cache_ttl <= time(NULL)){
-			DEBUG("rlm_cacing: Cache entry has expired");
+			DEBUG("rlm_caching: Cache entry has expired");
 			DEBUG("rlm_caching: Cache Queries: %7d, Cache Hits: %7d, Hit Ratio: %.2f%%",
 			data->cache_queries,data->cache_hits,hit_ratio);
 			show_hit_ratio;
