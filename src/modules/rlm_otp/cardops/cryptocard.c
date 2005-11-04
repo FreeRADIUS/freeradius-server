@@ -269,11 +269,11 @@ __attribute__ ((unused))
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                   time_t authtime,
+                   const char challenge[OTP_MAX_CHALLENGE_LEN + 1],
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                   int ewin)
+                   const char *log_prefix)
 {
   return 0;
 }
@@ -333,27 +333,6 @@ __attribute__ ((unused))
 }
 
 
-/* no twin so just return current time */
-static time_t
-cryptocard_time2cardtime(
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                         const char csd[OTP_MAX_CSD_LEN + 1],
-                         time_t when,
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                         int twin,
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                         const char *log_prefix)
-{
-  return when;
-}
-
-
 /* cardops instance */
 static cardops_t cryptocard_cardops = {
   .prefix		= "cryptocard",
@@ -368,7 +347,6 @@ static cardops_t cryptocard_cardops = {
   .isearly		= cryptocard_isearly,
   .isconsecutive	= cryptocard_isconsecutive,
   .maxtwin		= cryptocard_maxtwin,
-  .time2cardtime	= cryptocard_time2cardtime
 };
 
 

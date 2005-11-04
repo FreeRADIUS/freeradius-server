@@ -81,7 +81,6 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   otp_user_info_t	user_info  = { .cardops = NULL };
   otp_user_state_t	user_state = { .locked = 0 };
 
-  time_t cardtime = 0;		/* must initialize in case of async auth */
   time_t now = time(NULL);
 
   /*
@@ -355,18 +354,18 @@ sync_response:
     /* Test each sync response in the window. */
     tend = user_info.cardops->maxtwin(&user_info, user_state.csd, now);
     for (t = 0; t <= tend; ++t) {
-      /*
-       * Get the cardtime, which is like the current time ('now') but moves
-       * in card clock increments (eg, 0,60,120 instead of 0..60..120) and
-       * is adjusted by the time window ('t').
-       *
-       * The cardtime value is saved as user_state.mincardtime if the auth
-       * is successful, thus allowing the isearly() test (just below) to
-       * work.
-       */
-      cardtime = user_info.cardops->time2cardtime(user_state.csd, now, t,
-                                                  log_prefix);
       for (e = 0; e <= end; ++e) {
+        /* Get next challenge. */
+        if (user_info.cardops->challenge(&user_info, user_state.csd, now,
+                                         challenge, t, e, log_prefix) != 0) {
+          otp_log(OTP_LOG_ERR,
+                  "%s: unable to get sync challenge t:%d e:%d for [%s]",
+                  log_prefix, t, e, username);
+          rc = OTP_RC_SERVICE_ERR;
+          goto auth_done_service_err;
+          /* NB: state not updated. */
+        }
+
         /*
          * For event synchronous modes, we can never go backwards (the
          * challenge() method can only walk forward on the event counter),
@@ -378,7 +377,7 @@ sync_response:
          * successful auth for a correct passcode earlier in time than
          * one already used successfully, so we skip out early here.
          */
-        if (user_info.cardops->isearly(&user_state, cardtime, e)) {
+        if (user_info.cardops->isearly(&user_state, challenge, log_prefix)) {
 #if defined(FREERADIUS)
           DEBUG("rlm_otp_token: auth: [%s], sync challenge t:%d e:%d is early",
                 username, t, e);
@@ -391,16 +390,6 @@ sync_response:
           continue;
         }
 
-        /* Get next challenge. */
-        if (user_info.cardops->challenge(&user_info, user_state.csd, now,
-                                         challenge, t, e, log_prefix) != 0) {
-          otp_log(OTP_LOG_ERR,
-                  "%s: unable to get sync challenge t:%d e:%d for [%s]",
-                  log_prefix, t, e, username);
-          rc = OTP_RC_SERVICE_ERR;
-          goto auth_done_service_err;
-          /* NB: state not updated. */
-        }
         /* Calculate sync response. */
         if (user_info.cardops->response(&user_info, user_state.csd, challenge,
                                         &e_response[pin_offset],
@@ -507,7 +496,7 @@ sync_response:
 sync_done:
           /* force resync; this only has an effect if (rc == OTP_RC_OK) */
           resync = 1;
-          /* update csd (and rd) on successful auth or rwindow candidate */
+          /* update csd (et al.) on successful auth or rwindow candidate */
           if (user_info.cardops->updatecsd(&user_info, &user_state, challenge,
                                            t, e, now, rc, log_prefix) != 0) {
             otp_log(OTP_LOG_ERR, "%s: unable to update csd for [%s]",
@@ -532,8 +521,6 @@ auth_done:
       (void) strcpy(user_state.challenge, challenge);	/* update challenge */
     user_state.failcount   = 0;
     user_state.authtime    = now;
-    user_state.mincardtime = cardtime;
-    user_state.minewin     = e;
   } else {
     if (++user_state.failcount == UINT_MAX)
       user_state.failcount--;

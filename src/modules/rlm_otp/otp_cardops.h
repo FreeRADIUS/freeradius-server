@@ -80,13 +80,12 @@ typedef struct cardops_t {
   int (*updatecsd)(const otp_user_info_t *, otp_user_state_t *,
                    const char [OTP_MAX_CHALLENGE_LEN + 1],
                    int, int, time_t, int, const char *);
-  int (*isearly)(const otp_user_state_t *, time_t, int);
+  int (*isearly)(const otp_user_state_t *,
+                 const char [OTP_MAX_CHALLENGE_LEN + 1], const char *);
   int (*isconsecutive)(const otp_user_info_t *, const otp_user_state_t *, int,
                        int, const char *);
   int (*maxtwin)(const otp_user_info_t *, const char [OTP_MAX_CSD_LEN + 1],
                  time_t);
-  time_t (*time2cardtime)(const char [OTP_MAX_CSD_LEN + 1], time_t, int,
-                          const char *);
 } cardops_t;
 #define OTP_MAX_VENDORS 16
 extern cardops_t otp_cardops[OTP_MAX_VENDORS];

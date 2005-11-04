@@ -346,22 +346,6 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
-  p = q;	/* minewin */
-
-  /* extract minewin */
-  if ((q = strchr(p, ':')) == NULL) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid minewin for [%s]",
-            log_prefix, username);
-    (void) otp_state_put(username, user_state, log_prefix);
-    return -1;
-  }
-  *q++ = '\0';
-  if (sscanf(p, "%" SCNx32, &user_state->minewin) != 1) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid minewin for [%s]",
-            log_prefix, username);
-    (void) otp_state_put(username, user_state, log_prefix);
-    return -1;
-  }
 
   return 0;
 }
@@ -385,12 +369,12 @@ otp_state_unparse(char *buf, size_t buflen, const char *username,
                                  "5:%s:%s:"
                                  "%s:%s:"
                                  "%" PRIx32 ":%" PRIx32 ":"
-                                 "%" PRIx32 ":%" PRIx32 ":",
+                                 "%" PRIx32 ":",
                     /* 'P ', */ username,
                     /* '5:', */ username, user_state->challenge,
                     user_state->csd, user_state->rd,
                     user_state->failcount, user_state->authtime,
-                    user_state->mincardtime, user_state->minewin);
+                    user_state->mincardtime);
   else
     (void) snprintf(buf, buflen, "P %s", username);
   buf[buflen - 1] = '\0';

@@ -149,7 +149,6 @@ typedef struct otp_user_state_t {
   uint32_t	failcount;		/* number of consecutive failures */
   uint32_t	authtime;		/* time of last auth              */
   uint32_t   	mincardtime;		/* minimum cardtime               */
-  uint32_t	minewin;		/* minimum ewin                   */
 } otp_user_state_t;
 
 /* fc (failcondition) shortcuts */
