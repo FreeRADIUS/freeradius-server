@@ -145,6 +145,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	for (p = (unsigned char *)buffer; *p != '\0'; p++) {
 		if (*p == '\r' || *p == '\n')
 			*p = ' ';
+		else if (*p == '\t') continue;
 		else if (*p < 32 || (*p >= 128 && *p <= 160))
 			*p = '?';
 	}
