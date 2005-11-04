@@ -2005,6 +2005,33 @@ int listen_init(const char *filename, rad_listen_t **head)
 		if (!*head) return -1;
 
 		/*
+		 *	If we previously had proxy sockets, copy them
+		 *	to the new config.
+		 */
+		if (mainconfig.listen != NULL) {
+			rad_listen_t *old, *next, **tail;
+
+			tail = &mainconfig.listen;
+			for (old = mainconfig.listen;
+			     old != NULL;
+			     old = next) {
+				next = old->next;
+
+				if (old->type != RAD_LISTEN_PROXY) {
+					tail = &((*tail)->next);
+					continue;
+				}
+
+				*last = old;
+				*tail = next;
+				old->next = NULL;
+				last = &(old->next);
+			}
+
+			goto done;
+		}
+
+		/*
 		 *	Find the first authentication port,
 		 *	and use it
 		 */
@@ -2091,6 +2118,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		}
 	}
 
+ done:
 	return 0;
 }
 
