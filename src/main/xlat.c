@@ -529,6 +529,8 @@ void xlat_unregister(const char *module, RAD_XLAT_FUNC func)
 
 	func = func;		/* -Wunused */
 
+	if (!module) return;
+
 	strNcpy(my_xlat.module, module, sizeof(my_xlat.module));
 	my_xlat.length = strlen(my_xlat.module);
 
