@@ -242,7 +242,7 @@ async_response:
     }
 
     /* Calculate the async response. */
-    if (user_info.cardops->response(&user_info, user_state.csd, challenge,
+    if (user_info.cardops->response(&user_info, challenge,
                                     &e_response[pin_offset],
                                     log_prefix) != 0) {
       otp_log(OTP_LOG_ERR, "%s: unable to calculate async response for [%s], "
@@ -390,7 +390,7 @@ sync_response:
         }
 
         /* Calculate sync response. */
-        if (user_info.cardops->response(&user_info, user_state.csd, challenge,
+        if (user_info.cardops->response(&user_info, challenge,
                                         &e_response[pin_offset],
                                         log_prefix) != 0) {
           otp_log(OTP_LOG_ERR,

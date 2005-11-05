@@ -49,7 +49,6 @@ static int cryptocard_challenge(const otp_user_info_t *,
                                 char [OTP_MAX_CHALLENGE_LEN + 1], time_t,
                                 int, int, const char *);
 static int cryptocard_response(otp_user_info_t *,
-                               const char [OTP_MAX_CSD_LEN + 1],
                                const char [OTP_MAX_CHALLENGE_LEN + 1],
                                char [OTP_MAX_RESPONSE_LEN + 1],
                                const char *);

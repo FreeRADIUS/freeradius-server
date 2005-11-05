@@ -184,10 +184,6 @@ __attribute__ ((unused))
  */
 static int
 cryptocard_response(otp_user_info_t *user_info,
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                    const char csd[OTP_MAX_CSD_LEN + 1],
                     const char challenge[OTP_MAX_CHALLENGE_LEN + 1],
                     char response[OTP_MAX_RESPONSE_LEN + 1],
                     const char *log_prefix)
