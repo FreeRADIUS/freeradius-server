@@ -63,7 +63,7 @@ static int cryptocard_isconsecutive(const otp_user_info_t *,
                                     const otp_user_state_t *, int, int,
                                     const char *);
 static int cryptocard_maxtwin(const otp_user_info_t *,
-                              const char [OTP_MAX_CSD_LEN + 1], time_t);
+                              const char [OTP_MAX_CSD_LEN + 1]);
 
 #ifdef __GNUC__
 __attribute__ ((constructor))

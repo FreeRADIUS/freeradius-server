@@ -323,11 +323,7 @@ __attribute__ ((unused))
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                    const char csd[OTP_MAX_CSD_LEN + 1],
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                    time_t when)
+                    const char csd[OTP_MAX_CSD_LEN + 1])
 {
   return 0;
 }

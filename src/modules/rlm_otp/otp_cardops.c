@@ -352,7 +352,7 @@ sync_response:
     (void) strcpy(challenge, user_state.challenge);
 
     /* Test each sync response in the window. */
-    tend = user_info.cardops->maxtwin(&user_info, user_state.csd, now);
+    tend = user_info.cardops->maxtwin(&user_info, user_state.csd);
     for (t = 0; t <= tend; ++t) {
       for (e = 0; e <= end; ++e) {
         /* Get next challenge. */
