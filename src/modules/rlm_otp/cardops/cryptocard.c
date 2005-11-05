@@ -116,14 +116,15 @@ __attribute__ ((unused))
 
 /*
  * Return a synchronous challenge.
- * Returns 0 on success, non-zero otherwise.
+ * Returns 0 on success, -1 otherwise.
+ * (-2 rc is for early challenge, N/A for cryptocard.)
  */
 static int
 cryptocard_challenge(const otp_user_info_t *user_info,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                     const char csd[OTP_MAX_CSD_LEN + 1],
+                     const otp_user_state_t *user_state,
                      char challenge[OTP_MAX_CHALLENGE_LEN + 1],
 #ifdef __GNUC__
 __attribute__ ((unused))
@@ -259,26 +260,6 @@ __attribute__ ((unused))
 }
 
 
-/* events can only go forward, so an auth can never be too early */
-static int
-cryptocard_isearly(
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                   const otp_user_state_t *user_state,
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                   const char challenge[OTP_MAX_CHALLENGE_LEN + 1],
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                   const char *log_prefix)
-{
-  return 0;
-}
-
-
 /*
  * Determine if a window position if consecutive relative to a saved
  * (rwindow candidate) window position, for rwindow override.
@@ -340,7 +321,6 @@ static cardops_t cryptocard_cardops = {
   .challenge		= cryptocard_challenge,
   .response		= cryptocard_response,
   .updatecsd		= cryptocard_updatecsd,
-  .isearly		= cryptocard_isearly,
   .isconsecutive	= cryptocard_isconsecutive,
   .maxtwin		= cryptocard_maxtwin,
 };

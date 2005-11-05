@@ -356,28 +356,27 @@ sync_response:
     for (t = 0; t <= tend; ++t) {
       for (e = 0; e <= end; ++e) {
         /* Get next challenge. */
-        if (user_info.cardops->challenge(&user_info, user_state.csd, challenge,
-                                         now, t, e, log_prefix) != 0) {
+        rc = user_info.cardops->challenge(&user_info, &user_state, challenge,
+                                          now, t, e, log_prefix);
+        if (rc == -1) {
           otp_log(OTP_LOG_ERR,
                   "%s: unable to get sync challenge t:%d e:%d for [%s]",
                   log_prefix, t, e, username);
           rc = OTP_RC_SERVICE_ERR;
           goto auth_done_service_err;
           /* NB: state not updated. */
-        }
-
-        /*
-         * For event synchronous modes, we can never go backwards (the
-         * challenge() method can only walk forward on the event counter),
-         * so there is an implicit guarantee that we'll never get a
-         * response matching an event in the past.
-         *
-         * But for time synchronous modes, challenge() can walk backwards,
-         * in order to accomodate clock drift.  We must never allow a
-         * successful auth for a correct passcode earlier in time than
-         * one already used successfully, so we skip out early here.
-         */
-        if (user_info.cardops->isearly(&user_state, challenge, log_prefix)) {
+        } else if (rc == -2) {
+          /*
+           * For event synchronous modes, we can never go backwards (the
+           * challenge() method can only walk forward on the event counter),
+           * so there is an implicit guarantee that we'll never get a
+           * response matching an event in the past.
+           *
+           * But for time synchronous modes, challenge() can walk backwards,
+           * in order to accomodate clock drift.  We must never allow a
+           * successful auth for a correct passcode earlier in time than
+           * one already used successfully, so we skip out early here.
+           */
 #if defined(FREERADIUS)
           DEBUG("rlm_otp_token: auth: [%s], sync challenge t:%d e:%d is early",
                 username, t, e);
