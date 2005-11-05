@@ -124,19 +124,19 @@ cryptocard_challenge(const otp_user_info_t *user_info,
 __attribute__ ((unused))
 #endif
                      const char csd[OTP_MAX_CSD_LEN + 1],
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                     time_t when,
                      char challenge[OTP_MAX_CHALLENGE_LEN + 1],
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                     unsigned twin,
+                     time_t when,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                     unsigned ewin,
+                     int twin,
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+                     int ewin,
                      const char *log_prefix)
 {
   unsigned char output[8];

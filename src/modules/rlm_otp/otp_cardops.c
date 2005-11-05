@@ -356,8 +356,8 @@ sync_response:
     for (t = 0; t <= tend; ++t) {
       for (e = 0; e <= end; ++e) {
         /* Get next challenge. */
-        if (user_info.cardops->challenge(&user_info, user_state.csd, now,
-                                         challenge, t, e, log_prefix) != 0) {
+        if (user_info.cardops->challenge(&user_info, user_state.csd, challenge,
+                                         now, t, e, log_prefix) != 0) {
           otp_log(OTP_LOG_ERR,
                   "%s: unable to get sync challenge t:%d e:%d for [%s]",
                   log_prefix, t, e, username);
