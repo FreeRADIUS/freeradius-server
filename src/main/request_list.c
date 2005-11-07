@@ -26,6 +26,7 @@ static const char rcsid[] = "$Id$";
 
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 #include "radiusd.h"
 #include "rad_assert.h"
@@ -424,6 +425,16 @@ static int rl_free_entry(void *ctx, void *data)
 	for (entry = data; entry != NULL; entry = next) {
 		next = entry->next;
 
+#ifdef HAVE_PTHREAD_H 
+		/*
+		 *	If someone is processing this request, kill
+		 *	them, and mark the request as not being used.
+		 */
+		if (request->child_pid != NO_SUCH_CHILD_PID) {
+			pthread_kill(request->child_pid, SIGKILL);
+			request->child_pid = NO_SUCH_CHILD_PID;
+		}
+#endif
 		request_free(&request);
 		if (entry != data) free(entry);
 	}
