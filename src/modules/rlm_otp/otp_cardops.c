@@ -78,7 +78,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   char 	e_response[OTP_MAX_RESPONSE_LEN + OTP_MAX_PIN_LEN + 1];
   int	pin_offset = 0;	/* pin offset in e_response (prepend or append) */
 
-  otp_user_info_t	user_info  = { .cardops = NULL };
+  otp_card_info_t	card_info  = { .cardops = NULL };
   otp_user_state_t	user_state = { .locked = 0 };
 
   time_t now = time(NULL);
@@ -112,7 +112,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   }
 
   /* Look up user info. */
-  rc = otp_get_user_info(opt->pwdfile, username, &user_info);
+  rc = otp_get_card_info(opt->pwdfile, username, &card_info);
   if (rc == -1) {
     otp_log(OTP_LOG_INFO, "%s: user [%s] not found in %s",
             log_prefix, username, opt->pwdfile);
@@ -120,50 +120,50 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
     goto auth_done_service_err;
   } else if (rc == -2) {
 #if 0
-    /* otp_get_user_info() logs a more useful message, this is noisy. */
+    /* otp_get_card_info() logs a more useful message, this is noisy. */
     otp_log(OTP_LOG_ERR, "%s: error reading user [%s] info",
             log_prefix, username);
 #endif
     rc = OTP_RC_AUTHINFO_UNAVAIL;
     goto auth_done_service_err;
   }
-  user_info.username = username;
+  card_info.username = username;
 
   /* Find the correct cardops module. */
   for (i = 0; otp_cardops[i].prefix; i++) {
-    if (!strncasecmp(otp_cardops[i].prefix, user_info.card,
+    if (!strncasecmp(otp_cardops[i].prefix, card_info.card,
                      otp_cardops[i].prefix_len)) {
-      user_info.cardops = &otp_cardops[i];
+      card_info.cardops = &otp_cardops[i];
       break;
     }
   }
-  if (!user_info.cardops) {
+  if (!card_info.cardops) {
     otp_log(OTP_LOG_ERR, "%s: invalid card type '%s' for [%s]",
-            log_prefix, user_info.card, username);
+            log_prefix, card_info.card, username);
     rc = OTP_RC_SERVICE_ERR;
     goto auth_done_service_err;
   }
 
   /* Convert name to a feature mask once, for fast operations later. */
-  if (user_info.cardops->name2fm(user_info.card, &user_info.featuremask)) {
+  if (card_info.cardops->name2fm(card_info.card, &card_info.featuremask)) {
     otp_log(OTP_LOG_ERR, "%s: invalid card type '%s' for [%s]",
-            log_prefix, user_info.card, username);
+            log_prefix, card_info.card, username);
     rc = OTP_RC_SERVICE_ERR;
     goto auth_done_service_err;
   }
 
   /* Convert keystring to a keyblock. */
-  if (user_info.cardops->keystring2keyblock(user_info.keystring,
-                                            user_info.keyblock)) {
+  if (card_info.cardops->keystring2keyblock(card_info.keystring,
+                                            card_info.keyblock)) {
     otp_log(OTP_LOG_ERR, "%s: invalid key '%s' for [%s]",
-            log_prefix, user_info.keystring, username);
+            log_prefix, card_info.keystring, username);
     rc = OTP_RC_SERVICE_ERR;
     goto auth_done_service_err;
   }
 
   /* Adjust e_response for PIN prepend. */
   if (opt->prepend_pin) {
-    (void) strcpy(e_response, user_info.pin);
+    (void) strcpy(e_response, card_info.pin);
     pin_offset = strlen(e_response);
   }
 
@@ -175,7 +175,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
     goto auth_done_service_err;
   }
   if (user_state.nullstate) {
-    if (user_info.cardops->nullstate(opt, &user_info, &user_state,
+    if (card_info.cardops->nullstate(opt, &card_info, &user_state,
                                      now, log_prefix)) {
       otp_log(OTP_LOG_ERR, "%s: unable to set null state for [%s]",
               log_prefix, username);
@@ -231,7 +231,7 @@ async_response:
   /*
    * Test async response.
    */
-  if (*challenge && (user_info.featuremask & OTP_CF_AM) && opt->allow_async) {
+  if (*challenge && (card_info.featuremask & OTP_CF_AM) && opt->allow_async) {
     /* Perform any site-specific transforms of the challenge. */
     if (otp_challenge_transform(username, challenge) != 0) {
       otp_log(OTP_LOG_ERR, "%s: challenge transform failed for [%s]",
@@ -242,7 +242,7 @@ async_response:
     }
 
     /* Calculate the async response. */
-    if (user_info.cardops->response(&user_info, challenge,
+    if (card_info.cardops->response(&card_info, challenge,
                                     &e_response[pin_offset],
                                     log_prefix) != 0) {
       otp_log(OTP_LOG_ERR, "%s: unable to calculate async response for [%s], "
@@ -265,7 +265,7 @@ async_response:
 
     /* Add PIN if needed. */
     if (!opt->prepend_pin)
-      (void) strcat(e_response, user_info.pin);
+      (void) strcat(e_response, card_info.pin);
 
     /* Test user-supplied passcode. */
     if (passcode)
@@ -309,7 +309,7 @@ async_response:
       /* Authenticated in async mode. */
       rc = OTP_RC_OK;
       /* special log message for sync users */
-      if (user_info.featuremask & OTP_CF_SM)
+      if (card_info.featuremask & OTP_CF_SM)
         otp_log(OTP_LOG_INFO, "%s: [%s] authenticated in async mode",
                 log_prefix, username);
       goto auth_done;
@@ -330,13 +330,13 @@ sync_response:
    * restart the rwindow sequence, as long as they don't go beyond
    * (prior to) the last successful authentication.
    */
-  if ((user_info.featuremask & OTP_CF_SM) && opt->allow_sync) {
+  if ((card_info.featuremask & OTP_CF_SM) && opt->allow_sync) {
     int tend, end, ewindow, rwindow;
 
     /* set ending ewin counter */
-    if (user_info.featuremask & OTP_CF_FRW) {
+    if (card_info.featuremask & OTP_CF_FRW) {
       /* force rwindow for e+t cards */
-      rwindow = (user_info.featuremask & OTP_CF_FRW) >> OTP_CF_FRW_SHIFT;
+      rwindow = (card_info.featuremask & OTP_CF_FRW) >> OTP_CF_FRW_SHIFT;
       ewindow = 0; /* quiet compiler */
     } else {
       ewindow = opt->ewindow_size;
@@ -352,11 +352,11 @@ sync_response:
     (void) strcpy(challenge, user_state.challenge);
 
     /* Test each sync response in the window. */
-    tend = user_info.cardops->maxtwin(&user_info, user_state.csd);
+    tend = card_info.cardops->maxtwin(&card_info, user_state.csd);
     for (t = 0; t <= tend; ++t) {
       for (e = 0; e <= end; ++e) {
         /* Get next challenge. */
-        rc = user_info.cardops->challenge(&user_info, &user_state, challenge,
+        rc = card_info.cardops->challenge(&card_info, &user_state, challenge,
                                           now, t, e, log_prefix);
         if (rc == -1) {
           otp_log(OTP_LOG_ERR,
@@ -390,7 +390,7 @@ sync_response:
         }
 
         /* Calculate sync response. */
-        if (user_info.cardops->response(&user_info, challenge,
+        if (card_info.cardops->response(&card_info, challenge,
                                         &e_response[pin_offset],
                                         log_prefix) != 0) {
           otp_log(OTP_LOG_ERR,
@@ -416,7 +416,7 @@ sync_response:
 
         /* Add PIN if needed. */
         if (!opt->prepend_pin)
-          (void) strcat(e_response, user_info.pin);
+          (void) strcat(e_response, card_info.pin);
 
         /* Test user-supplied passcode. */
         if (passcode)
@@ -448,7 +448,7 @@ sync_response:
              * User must enter two consecutive correct sync passcodes
              * for rwindow softfail override.
              */
-            if (user_info.cardops->isconsecutive(&user_info, &user_state,
+            if (card_info.cardops->isconsecutive(&card_info, &user_state,
                                                  e, log_prefix)) {
               /*
                * This is the 2nd of two consecutive responses, is it
@@ -496,7 +496,7 @@ sync_done:
           /* force resync; this only has an effect if (rc == OTP_RC_OK) */
           resync = 1;
           /* update csd (et al.) on successful auth or rwindow candidate */
-          if (user_info.cardops->updatecsd(&user_info, &user_state,
+          if (card_info.cardops->updatecsd(&card_info, &user_state,
                                            now, t, e, rc, log_prefix) != 0) {
             otp_log(OTP_LOG_ERR, "%s: unable to update csd for [%s]",
                     log_prefix, username);

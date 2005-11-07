@@ -97,7 +97,7 @@ __attribute__ ((unused))
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                      const otp_user_info_t *user_info,
+                      const otp_card_info_t *card_info,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
@@ -120,7 +120,7 @@ __attribute__ ((unused))
  * (-2 rc is for early challenge, N/A for cryptocard.)
  */
 static int
-cryptocard_challenge(const otp_user_info_t *user_info,
+cryptocard_challenge(const otp_card_info_t *card_info,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
@@ -148,7 +148,7 @@ __attribute__ ((unused))
     return -1;
 
   /* run x99 once on the challenge */
-  if (otp_x99_mac(challenge, 8, output, user_info->keyblock, log_prefix))
+  if (otp_x99_mac(challenge, 8, output, card_info->keyblock, log_prefix))
     return -1;
 
   /* convert the mac into the next challenge */
@@ -183,7 +183,7 @@ __attribute__ ((unused))
  * 5. Truncate the response for 7 digit display modes.
  */
 static int
-cryptocard_response(otp_user_info_t *user_info,
+cryptocard_response(otp_card_info_t *card_info,
                     const char challenge[OTP_MAX_CHALLENGE_LEN + 1],
                     char response[OTP_MAX_RESPONSE_LEN + 1],
                     const char *log_prefix)
@@ -194,11 +194,11 @@ cryptocard_response(otp_user_info_t *user_info,
 
   /* Step 1, 2. */
   if (otp_x99_mac(challenge, strlen(challenge), output,
-                  user_info->keyblock, log_prefix) !=0)
+                  card_info->keyblock, log_prefix) !=0)
     return 1;
 
   /* Setup for step 4. */
-  if (user_info->featuremask & OTP_CF_DD)
+  if (card_info->featuremask & OTP_CF_DD)
     conversion = otp_cc_dec_conversion;
   else
     conversion = otp_hex_conversion;
@@ -209,7 +209,7 @@ cryptocard_response(otp_user_info_t *user_info,
   response[8] = '\0';
 
   /* Step 5. */
-  if (user_info->featuremask & OTP_CF_R7)
+  if (card_info->featuremask & OTP_CF_R7)
     (void) memmove(&response[3], &response[4], 5);
 
   return 0;
@@ -225,7 +225,7 @@ cryptocard_updatecsd(
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                     const otp_user_info_t *user_info,
+                     const otp_card_info_t *card_info,
                      otp_user_state_t *user_state,
 #ifdef __GNUC__
 __attribute__ ((unused))
@@ -263,7 +263,7 @@ cryptocard_isconsecutive(
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                         const otp_user_info_t *user_info,
+                         const otp_card_info_t *card_info,
                          const otp_user_state_t *user_state,
                          int thisewin, const char *log_prefix)
 {
@@ -272,7 +272,7 @@ __attribute__ ((unused))
   /* extract the saved rwindow candidate position */
   if (sscanf(user_state->rd, "%" SCNx32, &nextewin) != 1) {
     otp_log(OTP_LOG_ERR, "%s: %s: invalid rwindow data for [%s]", log_prefix,
-            __func__, user_info->username);
+            __func__, card_info->username);
     return 0;
   }
   nextewin++;
@@ -291,7 +291,7 @@ cryptocard_maxtwin(
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                    const otp_user_info_t *user_info,
+                    const otp_card_info_t *card_info,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif

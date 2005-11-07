@@ -42,21 +42,21 @@
 static int cryptocard_name2fm(const char *, uint32_t *);
 static int cryptocard_keystring2keyblock(const char *,
                                          unsigned char [OTP_MAX_KEY_LEN]);
-static int cryptocard_nullstate(const otp_option_t *, const otp_user_info_t *,
+static int cryptocard_nullstate(const otp_option_t *, const otp_card_info_t *,
                                 otp_user_state_t *, time_t, const char *);
-static int cryptocard_challenge(const otp_user_info_t *, otp_user_state_t *,
+static int cryptocard_challenge(const otp_card_info_t *, otp_user_state_t *,
                                 char [OTP_MAX_CHALLENGE_LEN + 1], time_t,
                                 int, int, const char *);
-static int cryptocard_response(otp_user_info_t *,
+static int cryptocard_response(otp_card_info_t *,
                                const char [OTP_MAX_CHALLENGE_LEN + 1],
                                char [OTP_MAX_RESPONSE_LEN + 1],
                                const char *);
-static int cryptocard_updatecsd(const otp_user_info_t *, otp_user_state_t *,
+static int cryptocard_updatecsd(const otp_card_info_t *, otp_user_state_t *,
                                 time_t, int, int, int, const char *);
-static int cryptocard_isconsecutive(const otp_user_info_t *,
+static int cryptocard_isconsecutive(const otp_card_info_t *,
                                     const otp_user_state_t *, int,
                                     const char *);
-static int cryptocard_maxtwin(const otp_user_info_t *,
+static int cryptocard_maxtwin(const otp_card_info_t *,
                               const char [OTP_MAX_CSD_LEN + 1]);
 
 #ifdef __GNUC__

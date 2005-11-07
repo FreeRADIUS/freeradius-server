@@ -112,7 +112,7 @@ typedef struct otp_option_t {
 #define OTP_MAX_KEY_LEN 256
 #define OTP_MAX_PIN_LEN 256
 struct cardops_t;
-typedef struct otp_user_info_t {
+typedef struct otp_card_info_t {
   const char *username;
   struct cardops_t *cardops;
 
@@ -125,7 +125,7 @@ typedef struct otp_user_info_t {
 #if 0
   void *keyschedule;
 #endif
-} otp_user_info_t;
+} otp_card_info_t;
 
 /* state manager fd pool */
 typedef struct lsmd_fd_t {
@@ -194,7 +194,7 @@ extern int otp_get_challenge(int, char *, int);
 extern int otp_keystring2keyblock(const char *, unsigned char []);
 extern void otp_keyblock2keystring(char *, const des_cblock, const char [17]);
 
-extern int otp_get_user_info(const char *, const char *, otp_user_info_t *);
+extern int otp_get_card_info(const char *, const char *, otp_card_info_t *);
 
 /* otp_state.c */
 extern int otp_state_get(const otp_option_t *, const char *,

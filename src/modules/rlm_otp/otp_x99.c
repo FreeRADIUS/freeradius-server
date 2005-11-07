@@ -60,7 +60,7 @@ otp_x99_mac(const unsigned char *input, size_t len, unsigned char output[8],
    * the key itself, rather than the schedule.  In practice,
    * I don't think this will amount to much, but I haven't
    * actually profiled it.
-   * TODO: store in user_info after generating
+   * TODO: store in card_info after generating
    */
   if ((rc = des_set_key_checked((const_des_cblock *) keyblock, ks)) != 0) {
     otp_log(OTP_LOG_ERR, "%s: otp_x99_mac: DES key %s", log_prefix,
