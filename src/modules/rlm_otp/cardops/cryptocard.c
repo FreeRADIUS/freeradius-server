@@ -124,7 +124,7 @@ cryptocard_challenge(const otp_user_info_t *user_info,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                     const otp_user_state_t *user_state,
+                     otp_user_state_t *user_state,
                      char challenge[OTP_MAX_CHALLENGE_LEN + 1],
 #ifdef __GNUC__
 __attribute__ ((unused))
@@ -230,16 +230,12 @@ __attribute__ ((unused))
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                     const char challenge[OTP_MAX_CHALLENGE_LEN + 1],
+                     time_t when,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
                      int twin,
                      int ewin,
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                     time_t when,
                      int auth_rc,
 #ifdef __GNUC__
 __attribute__ ((unused))
@@ -264,26 +260,25 @@ __attribute__ ((unused))
  */
 static int
 cryptocard_isconsecutive(
-                         const otp_user_info_t *user_info,
-                         const otp_user_state_t *user_state,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
-                         int twin,
-                         int ewin,
-                         const char *log_prefix)
+                         const otp_user_info_t *user_info,
+                         const otp_user_state_t *user_state,
+                         int thisewin, const char *log_prefix)
 {
-  int rcanewin;		/* saved rwindow candidate window position */
+  int nextewin;
 
   /* extract the saved rwindow candidate position */
-  if (sscanf(user_state->rd, "%" SCNx32, &rcanewin) != 1) {
+  if (sscanf(user_state->rd, "%" SCNx32, &nextewin) != 1) {
     otp_log(OTP_LOG_ERR, "%s: %s: invalid rwindow data for [%s]", log_prefix,
             __func__, user_info->username);
     return 0;
   }
+  nextewin++;
 
   /* Is this the next passcode? */
-  if (ewin == rcanewin + 1)
+  if (thisewin == nextewin)
     return 1;	/* yes */
   else
     return 0;	/* no */

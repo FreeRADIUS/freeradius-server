@@ -449,7 +449,7 @@ sync_response:
              * for rwindow softfail override.
              */
             if (user_info.cardops->isconsecutive(&user_info, &user_state,
-                                                 t, e, log_prefix)) {
+                                                 e, log_prefix)) {
               /*
                * This is the 2nd of two consecutive responses, is it
                * soon enough?  Note that for persistent softfail we can't
@@ -496,8 +496,8 @@ sync_done:
           /* force resync; this only has an effect if (rc == OTP_RC_OK) */
           resync = 1;
           /* update csd (et al.) on successful auth or rwindow candidate */
-          if (user_info.cardops->updatecsd(&user_info, &user_state, challenge,
-                                           t, e, now, rc, log_prefix) != 0) {
+          if (user_info.cardops->updatecsd(&user_info, &user_state,
+                                           now, t, e, rc, log_prefix) != 0) {
             otp_log(OTP_LOG_ERR, "%s: unable to update csd for [%s]",
                     log_prefix, username);
             rc = OTP_RC_SERVICE_ERR;
