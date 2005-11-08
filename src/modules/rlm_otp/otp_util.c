@@ -49,7 +49,13 @@ __attribute__ ((unused))
 #endif
 #endif
                int fd,
-               unsigned char *rnd_data, int req_bytes)
+               unsigned char *rnd_data, int req_bytes,
+#ifdef FREERADIUS
+#ifdef __GNUC__
+__attribute__ ((unused))
+#endif
+#endif
+               const char *log_prefix)
 {
   int bytes_read = 0;
 
@@ -65,8 +71,8 @@ __attribute__ ((unused))
 #else
     n = read(fd, rnd_data + bytes_read, req_bytes - bytes_read);
     if (n <= 0) {
-      otp_log(OTP_LOG_ERR, "otp_get_random: error reading from %s: %s",
-              OTP_DEVURANDOM, strerror(errno));
+      otp_log(OTP_LOG_ERR, "%s: %s: error reading from %s: %s",
+              log_prefix, __func__, OTP_DEVURANDOM, strerror(errno));
       return -1;
     }
 #endif /* !FREERADIUS */
@@ -87,21 +93,23 @@ __attribute__ ((unused))
  * and null termination).
  */
 int
-otp_get_challenge(int fd, char challenge[OTP_MAX_CHALLENGE_LEN + 1], int len)
+otp_get_challenge(int fd, char challenge[OTP_MAX_CHALLENGE_LEN + 1], int len,
+                  const char *log_prefix)
 {
   unsigned char rawchallenge[OTP_MAX_CHALLENGE_LEN];
   int i;
 
   if (fd == -1) {
     if ((fd = open(OTP_DEVURANDOM, O_RDONLY)) == -1) {
-      otp_log(OTP_LOG_ERR, "otp_get_challenge: error opening %s: %s",
-              OTP_DEVURANDOM, strerror(errno));
+      otp_log(OTP_LOG_ERR, "%s: %s: error opening %s: %s",
+              log_prefix, __func__, OTP_DEVURANDOM, strerror(errno));
       return -1;
     }
   }
 
-  if (otp_get_random(fd, rawchallenge, len) == -1) {
-    otp_log(OTP_LOG_ERR, "otp_get_challenge: failed to obtain random data");
+  if (otp_get_random(fd, rawchallenge, len, log_prefix) == -1) {
+    otp_log(OTP_LOG_ERR, "%s: %s: failed to obtain random data",
+            log_prefix, __func__);
     return -1;
   }
   /* Convert the raw bytes to ASCII decimal. */
@@ -210,7 +218,7 @@ otp_keyblock2keystring(char *s, const unsigned char *keyblock, size_t len,
  */
 int
 otp_get_card_info(const char *pwdfile, const char *username,
-                  otp_card_info_t *card_info)
+                  otp_card_info_t *card_info, const char *log_prefix)
 {
   FILE *fp;
   char s[80];
@@ -220,18 +228,18 @@ otp_get_card_info(const char *pwdfile, const char *username,
 
   /* Verify permissions first. */
   if (stat(pwdfile, &st) != 0) {
-    otp_log(OTP_LOG_ERR, "otp_get_card_info: pwdfile %s error: %s",
-            pwdfile, strerror(errno));
+    otp_log(OTP_LOG_ERR, "%s: %s: pwdfile %s error: %s",
+            log_prefix, __func__, pwdfile, strerror(errno));
     return -2;
   }
   if ((st.st_mode & (S_IXUSR|S_IRWXG|S_IRWXO)) != 0) {
-    otp_log(OTP_LOG_ERR,
-            "otp_get_card_info: pwdfile %s has loose permissions", pwdfile);
+    otp_log(OTP_LOG_ERR, "%s: %s: pwdfile %s has loose permissions",
+            log_prefix, __func__, pwdfile);
     return -2;
   }
 
   if ((fp = fopen(pwdfile, "r")) == NULL) {
-    otp_log(OTP_LOG_ERR, "otp_get_card_info: error opening %s: %s",
+    otp_log(OTP_LOG_ERR, "%s: %s: error opening %s: %s", log_prefix, __func__,
             pwdfile, strerror(errno));
     return -2;
   }
@@ -242,7 +250,7 @@ otp_get_card_info(const char *pwdfile, const char *username,
    */
   p = malloc(strlen(username) + 2);
   if (!p) {
-    otp_log(OTP_LOG_CRIT, "otp_get_card_info: out of memory");
+    otp_log(OTP_LOG_CRIT, "%s: %s: out of memory", log_prefix, __func__);
     return -2;
   }
   (void) sprintf(p, "%s:", username);
@@ -250,8 +258,8 @@ otp_get_card_info(const char *pwdfile, const char *username,
   while (!feof(fp)) {
     if (fgets(s, sizeof(s), fp) == NULL) {
       if (!feof(fp)) {
-        otp_log(OTP_LOG_ERR, "otp_get_card_info: error reading from %s: %s",
-                pwdfile, strerror(errno));
+        otp_log(OTP_LOG_ERR, "%s: %s: error reading from %s: %s",
+                log_prefix, __func__, pwdfile, strerror(errno));
         (void) fclose(fp);
         free(p);
         return -2;
@@ -264,24 +272,21 @@ otp_get_card_info(const char *pwdfile, const char *username,
   (void) fclose(fp);
   free(p);
   if (!found) {
-#if 0
-    /* Noisy ... let the caller report this. */
-    otp_log(OTP_LOG_AUTH, "otp_get_card_info: [%s] not found in %s",
+    otp_log(OTP_LOG_AUTH, "%s: %s: [%s] not found in %s", log_prefix, __func__,
             username, pwdfile);
-#endif
     return -1;
   }
 
   /* Found him, skip to next field (card). */
   if ((p = strchr(s, ':')) == NULL) {
-    otp_log(OTP_LOG_ERR, "otp_get_card_info: invalid format for [%s] in %s",
-            username, pwdfile);
+    otp_log(OTP_LOG_ERR, "%s: %s: invalid format for [%s] in %s",
+            log_prefix, __func__, username, pwdfile);
     return -2;
   }
   p++;
   if ((q = strchr(p, ':')) == NULL) {
-    otp_log(OTP_LOG_ERR, "otp_get_card_info: invalid format for [%s] in %s",
-            username, pwdfile);
+    otp_log(OTP_LOG_ERR, "%s: %s: invalid format for [%s] in %s",
+            log_prefix, __func__, username, pwdfile);
     return -2;
   }
   *q++ = '\0';
@@ -293,8 +298,8 @@ otp_get_card_info(const char *pwdfile, const char *username,
    * TODO: implement our own strlcpy().
    */
   if (strlen(p) > OTP_MAX_CARDNAME_LEN)
-    otp_log(OTP_LOG_ERR, "otp_get_card_info: invalid format for [%s] in %s",
-            username, pwdfile);
+    otp_log(OTP_LOG_ERR, "%s: %s: invalid format for [%s] in %s",
+            log_prefix, __func__, username, pwdfile);
   (void) strcpy(card_info->card, p);
 
   p = q;
@@ -310,8 +315,8 @@ otp_get_card_info(const char *pwdfile, const char *username,
 
     /* OTP_MAX_KEY_LEN keys with trailing newline won't work */
     if (l > OTP_MAX_KEY_LEN * 2) {
-      otp_log(OTP_LOG_ERR, "otp_get_card_info: invalid format for [%s] in %s",
-              username, pwdfile);
+      otp_log(OTP_LOG_ERR, "%s: %s: invalid format for [%s] in %s",
+              log_prefix, __func__, username, pwdfile);
       return -2;
     }
     (void) strcpy(card_info->keystring, p);
@@ -320,8 +325,8 @@ otp_get_card_info(const char *pwdfile, const char *username,
       card_info->keystring[--l] = '\0';
     /* check for empty key or odd len */
     if (!l || l & 1) {
-      otp_log(OTP_LOG_ERR, "otp_get_card_info: invalid format for [%s] in %s",
-              username, pwdfile);
+      otp_log(OTP_LOG_ERR, "%s: %s: invalid format for [%s] in %s",
+              log_prefix, __func__, username, pwdfile);
       return -2;
     }
   }
@@ -330,8 +335,8 @@ otp_get_card_info(const char *pwdfile, const char *username,
     size_t l = strlen(q);
 
     if (l > OTP_MAX_PIN_LEN) {
-      otp_log(OTP_LOG_ERR, "otp_get_card_info: invalid format for [%s] in %s",
-              username, pwdfile);
+      otp_log(OTP_LOG_ERR, "%s: %s: invalid format for [%s] in %s",
+              log_prefix, __func__, username, pwdfile);
     }
     (void) strcpy(card_info->pin, q);
     /* strip possible trailing newline */

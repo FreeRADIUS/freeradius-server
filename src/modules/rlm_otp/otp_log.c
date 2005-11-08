@@ -36,23 +36,13 @@ void
 otp_log(int level, const char *format, ...)
 {
   va_list ap;
-  char *fmt;
-
   va_start(ap, format);
-  fmt = malloc(strlen(OTP_MODULE_NAME) + strlen(format) + 3);
-  if (!fmt) {
-    va_end(ap);
-    return;
-  }
-  (void) sprintf(fmt, "%s: %s", OTP_MODULE_NAME, format);
 
 #ifdef FREERADIUS
-  (void) vradlog(level, fmt, ap);
+  (void) vradlog(level, format, ap);
 #else
-  vsyslog(level, fmt, ap);
+  vsyslog(level, format, ap);
 #endif
 
   va_end(ap);
-  free(fmt);
 }
-

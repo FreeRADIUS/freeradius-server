@@ -128,6 +128,7 @@ otprc2rlmrc(int rc)
 static int
 otp_instantiate(CONF_SECTION *conf, void **instance)
 {
+  const char *log_prefix = OTP_MODULE_NAME;
   otp_option_t *opt;
   char *p;
 
@@ -144,8 +145,9 @@ otp_instantiate(CONF_SECTION *conf, void **instance)
   /* Onetime initialization. */
   if (!ninstance) {
     /* Generate a random key, used to protect the State attribute. */
-    if (otp_get_random(-1, hmac_key, sizeof(hmac_key)) == -1) {
-      otp_log(OTP_LOG_ERR, "failed to obtain random data for hmac_key");
+    if (otp_get_random(-1, hmac_key, sizeof(hmac_key), log_prefix) == -1) {
+      otp_log(OTP_LOG_ERR, "%s: %s: failed to obtain random data for hmac_key",
+              log_prefix, __func__);
       free(opt);
       return -1;
     }
@@ -165,8 +167,8 @@ otp_instantiate(CONF_SECTION *conf, void **instance)
   if ((opt->chal_len < 5) || (opt->chal_len > OTP_MAX_CHALLENGE_LEN)) {
     opt->chal_len = 6;
     otp_log(OTP_LOG_ERR,
-            "invalid challenge_length, range 5-%d, using default of 6",
-            OTP_MAX_CHALLENGE_LEN);
+            "%s: %s: invalid challenge_length, range 5-%d, using default of 6",
+            log_prefix, __func__, OTP_MAX_CHALLENGE_LEN);
   }
 
   /* Enforce a single "%" sequence, which must be "%s" */
@@ -175,20 +177,23 @@ otp_instantiate(CONF_SECTION *conf, void **instance)
       strncmp(p,"%s",2)) {
     free(opt->chal_prompt);
     opt->chal_prompt = strdup(OTP_CHALLENGE_PROMPT);
-    otp_log(OTP_LOG_ERR, "invalid challenge_prompt, using default of \"%s\"",
-            OTP_CHALLENGE_PROMPT);
+    otp_log(OTP_LOG_ERR,
+            "%s: %s: invalid challenge_prompt, using default of \"%s\"",
+            log_prefix, __func__, OTP_CHALLENGE_PROMPT);
   }
 
   if (opt->softfail < 0) {
     opt->softfail = 5;
-    otp_log(OTP_LOG_ERR, "softfail must be at least 1 "
-            "(or 0 == infinite), using default of 5");
+    otp_log(OTP_LOG_ERR, "%s: %s: softfail must be at least 1 "
+                         "(or 0 == infinite), using default of 5",
+            log_prefix, __func__);
   }
 
   if (opt->hardfail < 0) {
     opt->hardfail = 0;
-    otp_log(OTP_LOG_ERR, "hardfail must be at least 1 "
-            "(or 0 == infinite), using default of 0");
+    otp_log(OTP_LOG_ERR, "%s: %s: hardfail must be at least 1 "
+                         "(or 0 == infinite), using default of 0",
+            log_prefix, __func__);
   }
 
   if (!opt->hardfail && opt->hardfail <= opt->softfail) {
@@ -201,20 +206,22 @@ otp_instantiate(CONF_SECTION *conf, void **instance)
      * This is because we can't tell the difference between a default
      * [softfail] value and an admin-configured one.
      */
-    otp_log(OTP_LOG_ERR, "hardfail (%d) is less than softfail (%d), "
+    otp_log(OTP_LOG_ERR, "%s: %s: hardfail (%d) is less than softfail (%d), "
                          "effectively disabling softfail",
-            opt->hardfail, opt->softfail);
+            log_prefix, __func__, opt->hardfail, opt->softfail);
   }
 
   if (opt->fast_sync && !opt->allow_sync) {
     opt->fast_sync = 0;
-    otp_log(OTP_LOG_ERR,
-            "fast_sync is yes, but allow_sync is no; disabling fast_sync");
+    otp_log(OTP_LOG_ERR, "%s: %s: fast_sync is yes, but allow_sync is no; "
+                         "disabling fast_sync",
+            log_prefix, __func__);
   }
 
   if (!opt->allow_sync && !opt->allow_async) {
     otp_log(OTP_LOG_ERR,
-            "at least one of {allow_async, allow_sync} must be set");
+            "%s: %s: at least one of {allow_async, allow_sync} must be set",
+            log_prefix, __func__);
     free(opt);
     return -1;
   }
@@ -222,42 +229,50 @@ otp_instantiate(CONF_SECTION *conf, void **instance)
   if ((opt->ewindow_size > OTP_MAX_EWINDOW_SIZE) ||
     (opt->ewindow_size < 0)) {
     opt->ewindow_size = 0;
-    otp_log(OTP_LOG_ERR, "max ewindow_size is %d, using default of 0",
-            OTP_MAX_EWINDOW_SIZE);
+    otp_log(OTP_LOG_ERR, "%s: %s: max ewindow_size is %d, using default of 0",
+            log_prefix, __func__, OTP_MAX_EWINDOW_SIZE);
   }
 
   if (opt->rwindow_size && (opt->rwindow_size < opt->ewindow_size)) {
     opt->rwindow_size = 0;
-    otp_log(OTP_LOG_ERR, "rwindow_size must be at least as large as "
-                         "ewindow_size, using default of 0");
+    otp_log(OTP_LOG_ERR, "%s: %s: rwindow_size must be at least as large as "
+                         "ewindow_size, using default of 0",
+            log_prefix, __func__);
   }
 
   if (opt->rwindow_size && !opt->rwindow_delay) {
     opt->rwindow_size = 0;
-    otp_log(OTP_LOG_ERR, "rwindow_size is non-zero, "
-                         "but rwindow_delay is zero; disabling rwindow");
+    otp_log(OTP_LOG_ERR, "%s: %s: rwindow_size is non-zero, "
+                         "but rwindow_delay is zero; disabling rwindow",
+            log_prefix, __func__);
   }
 
   if ((opt->mschapv2_mppe_policy > 2) || (opt->mschapv2_mppe_policy < 0)) {
     opt->mschapv2_mppe_policy = 2;
-    otp_log(OTP_LOG_ERR, "invalid value for mschapv2_mppe, using default of 2");
+    otp_log(OTP_LOG_ERR,
+            "%s: %s: invalid value for mschapv2_mppe, using default of 2",
+            log_prefix, __func__);
   }
 
   if ((opt->mschapv2_mppe_types > 2) || (opt->mschapv2_mppe_types < 0)) {
     opt->mschapv2_mppe_types = 2;
     otp_log(OTP_LOG_ERR,
-            "invalid value for mschapv2_mppe_bits, using default of 2");
+            "%s: %s: invalid value for mschapv2_mppe_bits, using default of 2",
+            log_prefix, __func__);
   }
 
   if ((opt->mschap_mppe_policy > 2) || (opt->mschap_mppe_policy < 0)) {
     opt->mschap_mppe_policy = 2;
-    otp_log(OTP_LOG_ERR, "invalid value for mschap_mppe, using default of 2");
+    otp_log(OTP_LOG_ERR,
+            "%s: %s: invalid value for mschap_mppe, using default of 2",
+            log_prefix, __func__);
   }
 
   if (opt->mschap_mppe_types != 2) {
     opt->mschap_mppe_types = 2;
     otp_log(OTP_LOG_ERR,
-            "invalid value for mschap_mppe_bits, using default of 2");
+            "%s: %s: invalid value for mschap_mppe_bits, using default of 2",
+            log_prefix, __func__);
   }
 
   /* set the instance name (for use with authorize()) */
@@ -265,7 +280,8 @@ otp_instantiate(CONF_SECTION *conf, void **instance)
   if (!opt->name)
     opt->name = cf_section_name1(conf);
   if (!opt->name) {
-    otp_log(OTP_LOG_CRIT, "no instance name (this can't happen)");
+    otp_log(OTP_LOG_CRIT, "%s: %s: no instance name (this can't happen)",
+            log_prefix, __func__);
     free(opt);
     return -1;
   }
@@ -284,6 +300,7 @@ static int
 otp_authorize(void *instance, REQUEST *request)
 {
   otp_option_t *inst = (otp_option_t *) instance;
+  const char *log_prefix = OTP_MODULE_NAME;
 
   char challenge[OTP_MAX_CHALLENGE_LEN + 1];	/* +1 for '\0' terminator */
   char *state;
@@ -317,21 +334,23 @@ otp_authorize(void *instance, REQUEST *request)
   /* User-Name attribute required. */
   if (!request->username) {
     otp_log(OTP_LOG_AUTH,
-            "autz: Attribute \"User-Name\" required for authentication.");
+            "%s: %s: Attribute \"User-Name\" required for authentication.",
+            log_prefix, __func__);
     return RLM_MODULE_INVALID;
   }
 
-  if ((data.pwattr = otp_pwe_present(request)) == 0) {
-    otp_log(OTP_LOG_AUTH, "autz: Attribute \"User-Password\" "
-            "or equivalent required for authentication.");
+  if ((data.pwattr = otp_pwe_present(request, log_prefix)) == 0) {
+    otp_log(OTP_LOG_AUTH, "%s: %s: Attribute \"User-Password\" "
+                          "or equivalent required for authentication.",
+            log_prefix, __func__);
     return RLM_MODULE_INVALID;
   }
 
   /* fast_sync mode (challenge only if requested) */
   if (inst->fast_sync) {
-    if ((!otp_pwe_cmp(&data, inst->resync_req) &&
+    if ((!otp_pwe_cmp(&data, inst->resync_req, log_prefix) &&
         /* Set a bit indicating resync */ (sflags |= htonl(1))) ||
-        !otp_pwe_cmp(&data, inst->chal_req)) {
+        !otp_pwe_cmp(&data, inst->chal_req, log_prefix)) {
       /*
        * Generate a challenge if requested.  Note that we do this
        * even if configuration doesn't allow async mode.
@@ -354,8 +373,9 @@ gen_challenge:
     sflags |= htonl(1);
 
   /* Generate a random challenge. */
-  if (otp_get_challenge(-1, challenge, inst->chal_len) == -1) {
-    otp_log(OTP_LOG_ERR, "autz: failed to obtain random challenge");
+  if (otp_get_challenge(-1, challenge, inst->chal_len, log_prefix) == -1) {
+    otp_log(OTP_LOG_ERR, "%s: %s: failed to obtain random challenge",
+            log_prefix, __func__);
     return RLM_MODULE_FAIL;
   }
 
@@ -372,14 +392,16 @@ gen_challenge:
     time_t now = time(NULL);
 
     if (sizeof(now) != 4 || sizeof(long) != 4) {
-      otp_log(OTP_LOG_ERR, "autz: only ILP32 arch is supported");
+      otp_log(OTP_LOG_ERR, "%s: %s: only ILP32 arch is supported",
+              log_prefix, __func__);
       return RLM_MODULE_FAIL;
     }
     now = htonl(now);
 
     if (otp_gen_state(&state, NULL, challenge, inst->chal_len, sflags,
                       now, hmac_key) != 0) {
-      otp_log(OTP_LOG_ERR, "autz: failed to generate state");
+      otp_log(OTP_LOG_ERR, "%s: %s: failed to generate state",
+              log_prefix, __func__);
       return RLM_MODULE_FAIL;
     }
   } else {
@@ -421,6 +443,7 @@ static int
 otp_authenticate(void *instance, REQUEST *request)
 {
   otp_option_t *inst = (otp_option_t *) instance;
+  const char *log_prefix = OTP_MODULE_NAME;
 
   char *username;
   int rc;
@@ -438,14 +461,16 @@ otp_authenticate(void *instance, REQUEST *request)
   /* User-Name attribute required. */
   if (!request->username) {
     otp_log(OTP_LOG_AUTH,
-            "auth: Attribute \"User-Name\" required for authentication.");
+            "%s: %s: Attribute \"User-Name\" required for authentication.",
+            log_prefix, __func__);
     return RLM_MODULE_INVALID;
   }
   username = request->username->vp_strvalue;
 
-  if ((data.pwattr = otp_pwe_present(request)) == 0) {
-    otp_log(OTP_LOG_AUTH, "auth: Attribute \"User-Password\" "
-                          "or equivalent required for authentication.");
+  if ((data.pwattr = otp_pwe_present(request, log_prefix)) == 0) {
+    otp_log(OTP_LOG_AUTH, "%s: %s: Attribute \"User-Password\" "
+                          "or equivalent required for authentication.",
+            log_prefix, __func__);
     return RLM_MODULE_INVALID;
   }
 
@@ -470,7 +495,8 @@ otp_authenticate(void *instance, REQUEST *request)
         e_length += 4 + 4 + 16; /* sflags + time + hmac */
 
       if (vp->length != e_length) {
-        otp_log(OTP_LOG_AUTH, "auth: bad state for [%s]: length", username);
+        otp_log(OTP_LOG_AUTH, "%s: %s: bad state for [%s]: length",
+                log_prefix, __func__, username);
         return RLM_MODULE_INVALID;
       }
 
@@ -481,11 +507,13 @@ otp_authenticate(void *instance, REQUEST *request)
         (void) memcpy(&then, vp->vp_strvalue + inst->chal_len + 4, 4);
         if (otp_gen_state(NULL, &state, challenge, inst->chal_len,
                           sflags, then, hmac_key) != 0) {
-          otp_log(OTP_LOG_ERR, "auth: failed to generate state");
+          otp_log(OTP_LOG_ERR, "%s: %s: failed to generate state",
+                  log_prefix, __func__);
           return RLM_MODULE_FAIL;
         }
         if (memcmp(state, vp->vp_strvalue, vp->length)) {
-          otp_log(OTP_LOG_AUTH, "auth: bad state for [%s]: hmac", username);
+          otp_log(OTP_LOG_AUTH, "%s: %s: bad state for [%s]: hmac",
+                  log_prefix, __func__, username);
           free(state);
           return RLM_MODULE_REJECT;
         }
@@ -494,7 +522,8 @@ otp_authenticate(void *instance, REQUEST *request)
         /* State is valid, but check expiry. */
         then = ntohl(then);
         if (time(NULL) - then > inst->chal_delay) {
-          otp_log(OTP_LOG_AUTH, "auth: bad state for [%s]: expired", username);
+          otp_log(OTP_LOG_AUTH, "%s: %s: bad state for [%s]: expired",
+                  log_prefix, __func__, username);
           return RLM_MODULE_REJECT;
         }
         resync = ntohl(sflags) & 1;
@@ -504,7 +533,7 @@ otp_authenticate(void *instance, REQUEST *request)
 
   /* do it */
   rc = otprc2rlmrc(otp_pw_valid(username, challenge, NULL, resync, inst,
-                                otp_pwe_cmp, &data, "auth"));
+                                otp_pwe_cmp, &data, log_prefix));
 
   /* Handle any vps returned from otp_pwe_cmp(). */
   if (rc == RLM_MODULE_OK) {

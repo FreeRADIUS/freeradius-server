@@ -108,8 +108,8 @@ __attribute__ ((unused))
                       time_t when,
                       const char *log_prefix)
 {
-  otp_log(OTP_LOG_ERR, "%s: null state not supported for CRYPTOCard",
-          log_prefix);
+  otp_log(OTP_LOG_ERR, "%s: %s: null state not supported for CRYPTOCard",
+          log_prefix, __func__);
   return -1;
 }
 
@@ -253,8 +253,8 @@ __attribute__ ((unused))
 
   /* extract the saved rwindow candidate position */
   if (sscanf(user_state->rd, "%" SCNx32, &nextewin) != 1) {
-    otp_log(OTP_LOG_ERR, "%s: %s: invalid rwindow data for [%s]", log_prefix,
-            __func__, card_info->username);
+    otp_log(OTP_LOG_ERR, "%s: %s: invalid rwindow data for [%s]",
+            log_prefix, __func__, card_info->username);
     return 0;
   }
   nextewin++;

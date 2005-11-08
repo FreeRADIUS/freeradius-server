@@ -45,7 +45,7 @@ struct otp_pwe_cmp_t {
   VALUE_PAIR		**returned_vps;
 };
 extern void otp_pwe_init(void);
-extern int otp_pwe_present(const REQUEST *);
-extern int otp_pwe_cmp(struct otp_pwe_cmp_t *, const char *);
+extern int otp_pwe_present(const REQUEST *, const char *);
+extern int otp_pwe_cmp(struct otp_pwe_cmp_t *, const char *, const char *);
 
 #endif /* OTP_RAD_H */

@@ -51,7 +51,7 @@ otp_hotp_mac(const unsigned char counter[8], unsigned char output[7],
   /* 1. hmac */
   if (!HMAC(EVP_sha1(), keyblock, key_len, counter, 8, hmac, &hmac_len) ||
       hmac_len != 20) {
-    otp_log(OTP_LOG_ERR, "%s: HMAC failed", log_prefix);
+    otp_log(OTP_LOG_ERR, "%s: %s: HMAC failed", log_prefix, __func__);
     return -1;
   }
 

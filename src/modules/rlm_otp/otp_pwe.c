@@ -105,20 +105,20 @@ otp_pwe_init(void)
  * opaque value that must be used when calling otp_pwe_cmp().
  */
 int
-otp_pwe_present(const REQUEST *request)
+otp_pwe_present(const REQUEST *request, const char *log_prefix)
 {
   unsigned i;
 
   for (i = 0; i < sizeof(pwattr) && pwattr[i]; i += 2) {
     if (pairfind(request->packet->vps, pwattr[i]) &&
         pairfind(request->packet->vps, pwattr[i + 1])) {
-      DEBUG("rlm_otp: pwe_present: password attributes %d, %d",
+      DEBUG("%s: %s: password attributes %d, %d", log_prefix, __func__,
              pwattr[i], pwattr[i + 1]);
       return i + 1; /* Can't return 0 (indicates failure) */
     }
   }
 
-  DEBUG("rlm_otp: pwe_present: no password attributes present");
+  DEBUG("%s: %s: no password attributes present", log_prefix, __func__);
   return 0;
 }
 
@@ -131,7 +131,8 @@ otp_pwe_present(const REQUEST *request)
  * the caller is responsible for freeing any vps returned.
  */
 int
-otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
+otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password,
+            const char *log_prefix)
 {
   const REQUEST *request	= data->request;
   const otp_option_t *inst	= data->inst;
@@ -155,7 +156,7 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
   /* If modular, this would actually call the authentication function. */
   switch(pwattr[attr]) {
   case PW_PASSWORD:
-    DEBUG("rlm_otp: pwe_cmp: handling PW_PASSWORD");
+    DEBUG("%s: %s: handling PW_PASSWORD", log_prefix, __func__);
     nmatch = strcmp(password, resp_vp->vp_strvalue);
     break;
 
@@ -177,14 +178,15 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
     unsigned char input[1 + MAX_STRING_LEN + 16];
     unsigned char output[MD5_DIGEST_LENGTH];
 
-    DEBUG("rlm_otp: pwe_cmp: handling PW_CHAP_PASSWORD");
+    DEBUG("%s: %s: handling PW_CHAP_PASSWORD", log_prefix, __func__);
     if (1 + strlen(password) + chal_vp->length > sizeof(input)) {
-      DEBUG("rlm_otp: pwe_cmp: CHAP-Challenge/password too long");
+      DEBUG("%s: %s: CHAP-Challenge/password too long", log_prefix, __func__);
       nmatch = -1;
       break;
     }
     if (resp_vp->length != 17) {
-      otp_log(OTP_LOG_AUTH, "pwe_cmp: CHAP-Password wrong size");
+      otp_log(OTP_LOG_AUTH, "%s: %s: CHAP-Password wrong size",
+              log_prefix, __func__);
       nmatch = -1;
       break;
     }
@@ -222,26 +224,30 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
     int password_len, i;
     VALUE_PAIR *vp;
 
-    DEBUG("rlm_otp: pwe_cmp: handling PW_MS_CHAP_RESPONSE");
+    DEBUG("%s: %s: handling PW_MS_CHAP_RESPONSE", log_prefix, __func__);
     if (chal_vp->length != 8) {
-      otp_log(OTP_LOG_AUTH, "pwe_cmp: MS-CHAP-Challenge wrong size");
+      otp_log(OTP_LOG_AUTH, "%s: %s: MS-CHAP-Challenge wrong size",
+              log_prefix, __func__);
       nmatch = -1;
       break;
     }
     if (resp_vp->length != 50) {
-      otp_log(OTP_LOG_AUTH, "pwe_cmp: MS-CHAP-Response wrong size");
+      otp_log(OTP_LOG_AUTH, "%s: %s: MS-CHAP-Response wrong size",
+              log_prefix, __func__);
       nmatch = -1;
       break;
     }
     if ((resp_vp->vp_strvalue)[1] != 1) {
       otp_log(OTP_LOG_AUTH,
-              "pwe_cmp: MS-CHAP-Response bad flags (LM not supported)");
+              "%s: %s: MS-CHAP-Response bad flags (LM not supported)",
+              log_prefix, __func__);
       nmatch = -1;
       break;
     }
     /* This is probably overkill. */
     if (strlen(password) > MAX_STRING_LEN) {
-      otp_log(OTP_LOG_AUTH, "pwe_cmp: MS-CHAP password too long");
+      otp_log(OTP_LOG_AUTH, "%s: %s: MS-CHAP password too long",
+              log_prefix, __func__);
       nmatch = -1;
       break;
     }
@@ -366,20 +372,23 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
     unsigned password_len, i;
     VALUE_PAIR *vp;
 
-    DEBUG("rlm_otp: pwe_cmp: handling PW_MS_CHAP2_RESPONSE");
+    DEBUG("%s: %s: handling PW_MS_CHAP2_RESPONSE", log_prefix, __func__);
     if (chal_vp->length != 16) {
-      otp_log(OTP_LOG_AUTH,"pwe_cmp: MS-CHAP-Challenge (v2) wrong size");
+      otp_log(OTP_LOG_AUTH, "%s: %s: MS-CHAP-Challenge (v2) wrong size",
+              log_prefix, __func__);
       nmatch = -1;
       break;
     }
     if (resp_vp->length != 50) {
-      otp_log(OTP_LOG_AUTH, "pwe_cmp: MS-CHAP2-Response wrong size");
+      otp_log(OTP_LOG_AUTH, "%s: %s: MS-CHAP2-Response wrong size",
+              log_prefix, __func__);
       nmatch = -1;
       break;
     }
     /* This is probably overkill. */
     if (strlen(password) > MAX_STRING_LEN) {
-      otp_log(OTP_LOG_AUTH, "pwe_cmp: MS-CHAPv2 password too long");
+      otp_log(OTP_LOG_AUTH, "%s: %s: MS-CHAPv2 password too long",
+              log_prefix, __func__);
       nmatch = -1;
       break;
     }
@@ -726,7 +735,7 @@ otp_pwe_cmp(struct otp_pwe_cmp_t *data, const char *password)
   break;
 
   default:
-    DEBUG("rlm_otp: pwe_cmp: unknown password type");
+    DEBUG("%s: %s: unknown password type", log_prefix, __func__);
     nmatch = -1;
     break;
 

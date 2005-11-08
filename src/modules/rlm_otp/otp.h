@@ -166,7 +166,7 @@ typedef struct otp_user_state_t {
 #define OTP_RC_MAXTRIES		4
 #define OTP_RC_SERVICE_ERR	5
 struct otp_pwe_cmp_t;
-typedef int (*cmpfunc_t)(struct otp_pwe_cmp_t *, const char *);
+typedef int (*cmpfunc_t)(struct otp_pwe_cmp_t *, const char *, const char *);
 extern int otp_pw_valid(const char *, char *, const char *, int,
                         const otp_option_t *, cmpfunc_t, void *, const char *);
 
@@ -186,14 +186,15 @@ extern const char otp_cc_dec_conversion[];
 extern const char otp_snk_dec_conversion[];
 extern const char otp_sc_friendly_conversion[];
 
-extern int otp_get_random(int, unsigned char *, int);
-extern int otp_get_challenge(int, char *, int);
+extern int otp_get_random(int, unsigned char *, int, const char *);
+extern int otp_get_challenge(int, char *, int, const char *);
 
 extern ssize_t otp_keystring2keyblock(const char *, unsigned char []);
 extern char *otp_keyblock2keystring(char *, const unsigned char [], size_t,
                                     const char [17]);
 
-extern int otp_get_card_info(const char *, const char *, otp_card_info_t *);
+extern int otp_get_card_info(const char *, const char *, otp_card_info_t *,
+                             const char *);
 
 /* otp_state.c */
 extern int otp_state_get(const otp_option_t *, const char *,

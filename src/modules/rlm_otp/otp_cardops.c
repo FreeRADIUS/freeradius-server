@@ -106,24 +106,18 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
     goto auth_done_service_err;
   }
   if (!passcode && !cmpfunc) {
-    otp_log(OTP_LOG_CRIT, "%s: Can't test passcode validity!", log_prefix);
+    otp_log(OTP_LOG_CRIT, "%s: %s: Can't test passcode validity!",
+            log_prefix, __func__);
     rc = OTP_RC_SERVICE_ERR;
     goto auth_done_service_err;
   }
 
-  /* Look up user info. */
-  rc = otp_get_card_info(opt->pwdfile, username, &card_info);
+  /* Look up user info.  (errors are logged by the function) */
+  rc = otp_get_card_info(opt->pwdfile, username, &card_info, log_prefix);
   if (rc == -1) {
-    otp_log(OTP_LOG_INFO, "%s: user [%s] not found in %s",
-            log_prefix, username, opt->pwdfile);
     rc = OTP_RC_USER_UNKNOWN;
     goto auth_done_service_err;
   } else if (rc == -2) {
-#if 0
-    /* otp_get_card_info() logs a more useful message, this is noisy. */
-    otp_log(OTP_LOG_ERR, "%s: error reading user [%s] info",
-            log_prefix, username);
-#endif
     rc = OTP_RC_AUTHINFO_UNAVAIL;
     goto auth_done_service_err;
   }
@@ -138,16 +132,16 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
     }
   }
   if (!card_info.cardops) {
-    otp_log(OTP_LOG_ERR, "%s: invalid card type '%s' for [%s]",
-            log_prefix, card_info.card, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: invalid card type '%s' for [%s]",
+            log_prefix, __func__, card_info.card, username);
     rc = OTP_RC_SERVICE_ERR;
     goto auth_done_service_err;
   }
 
   /* Convert name to a feature mask once, for fast operations later. */
   if (card_info.cardops->name2fm(card_info.card, &card_info.featuremask)) {
-    otp_log(OTP_LOG_ERR, "%s: invalid card type '%s' for [%s]",
-            log_prefix, card_info.card, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: invalid card type '%s' for [%s]",
+            log_prefix, __func__, card_info.card, username);
     rc = OTP_RC_SERVICE_ERR;
     goto auth_done_service_err;
   }
@@ -155,8 +149,8 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   /* Convert keystring to a keyblock. */
   if (card_info.cardops->keystring2keyblock(card_info.keystring,
                                             card_info.keyblock) < 0) {
-    otp_log(OTP_LOG_ERR, "%s: invalid key '%s' for [%s]",
-            log_prefix, card_info.keystring, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: invalid key '%s' for [%s]",
+            log_prefix, __func__, card_info.keystring, username);
     rc = OTP_RC_SERVICE_ERR;
     goto auth_done_service_err;
   }
@@ -169,16 +163,16 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
 
   /* Get user state. */
   if (otp_state_get(opt, username, &user_state, log_prefix) != 0) {
-    otp_log(OTP_LOG_ERR, "%s: unable to get state for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: unable to get state for [%s]",
+            log_prefix, __func__, username);
     rc = OTP_RC_SERVICE_ERR;
     goto auth_done_service_err;
   }
   if (user_state.nullstate) {
     if (card_info.cardops->nullstate(opt, &card_info, &user_state,
                                      now, log_prefix)) {
-      otp_log(OTP_LOG_ERR, "%s: unable to set null state for [%s]",
-              log_prefix, username);
+      otp_log(OTP_LOG_ERR, "%s: %s: unable to set null state for [%s]",
+              log_prefix, __func__, username);
       rc = OTP_RC_SERVICE_ERR;
       goto auth_done_service_err;
     }
@@ -237,8 +231,8 @@ async_response:
     /* Perform any site-specific transforms of the challenge. */
     if ((chal_len = otp_challenge_transform(username,
                                             challenge, opt->chal_len)) < 0) {
-      otp_log(OTP_LOG_ERR, "%s: challenge transform failed for [%s]",
-              log_prefix, username);
+      otp_log(OTP_LOG_ERR, "%s: %s: challenge transform failed for [%s]",
+              log_prefix, __func__, username);
       rc = OTP_RC_SERVICE_ERR;
       goto auth_done_service_err;
       /* NB: state not updated. */
@@ -248,8 +242,9 @@ async_response:
     if (card_info.cardops->response(&card_info, challenge, chal_len,
                                     &e_response[pin_offset],
                                     log_prefix) != 0) {
-      otp_log(OTP_LOG_ERR, "%s: unable to calculate async response for [%s], "
-                           "to challenge %s", log_prefix, username, challenge);
+      otp_log(OTP_LOG_ERR,
+              "%s: %s: unable to calculate async response for [%s], "
+              "to challenge %s", log_prefix, __func__, username, challenge);
       rc = OTP_RC_SERVICE_ERR;
       goto auth_done_service_err;
       /* NB: state not updated. */
@@ -260,8 +255,8 @@ async_response:
       char s[OTP_MAX_CHALLENGE_LEN * 2 + 1];
 
       otp_log(OTP_LOG_DEBUG,
-              "%s: [%s], async challenge %s, expecting response %s",
-              log_prefix, username,
+              "%s: %s: [%s], async challenge %s, expecting response %s",
+              log_prefix, __func__, username,
               card_info.cardops->printchallenge(s, challenge, chal_len),
               &e_response[pin_offset]);
     }
@@ -274,27 +269,27 @@ async_response:
     if (passcode)
       nmatch = strcmp(passcode, e_response);
     else
-      nmatch = cmpfunc(data, e_response);
+      nmatch = cmpfunc(data, e_response, log_prefix);
     if (!nmatch) {
       if (!opt->allow_async) {
-        otp_log(OTP_LOG_AUTH,
-                "%s: bad async auth for [%s]: valid but disallowed by config",
-                log_prefix, username);
+        otp_log(OTP_LOG_AUTH, "%s: %s: bad async auth for [%s]: "
+                              "valid but disallowed by config",
+                log_prefix, __func__, username);
         rc = OTP_RC_AUTH_ERR;
         goto auth_done;
       }
       if (fc == OTP_FC_FAIL_HARD) {
         otp_log(OTP_LOG_AUTH,
-                "%s: bad async auth for [%s]: valid but in hardfail "
-                " (%d/%d failed/max)", log_prefix, username,
+                "%s: %s: bad async auth for [%s]: valid but in hardfail "
+                " (%d/%d failed/max)", log_prefix, __func__, username,
                 user_state.failcount, opt->hardfail);
         rc = OTP_RC_MAXTRIES;
         goto auth_done;
       }
       if (fc == OTP_FC_FAIL_SOFT) {
         otp_log(OTP_LOG_AUTH,
-                "%s: bad async auth for [%s]: valid but in softfail "
-                " (%d/%d failed/max)", log_prefix, username,
+                "%s: %s: bad async auth for [%s]: valid but in softfail "
+                " (%d/%d failed/max)", log_prefix, __func__, username,
                 user_state.failcount, opt->softfail);
         rc = OTP_RC_MAXTRIES;
         goto auth_done;
@@ -302,8 +297,8 @@ async_response:
 #ifdef FREERADIUS
       if ((uint32_t) now - user_state.authtime < (unsigned) opt->chal_delay) {
         otp_log(OTP_LOG_AUTH,
-                "%s: bad async auth for [%s]: valid but too soon",
-                log_prefix, username);
+                "%s: %s: bad async auth for [%s]: valid but too soon",
+                log_prefix, __func__, username);
         rc = OTP_RC_MAXTRIES;
         goto auth_done;
       }
@@ -313,8 +308,8 @@ async_response:
       rc = OTP_RC_OK;
       /* special log message for sync users */
       if (card_info.featuremask & OTP_CF_SM)
-        otp_log(OTP_LOG_INFO, "%s: [%s] authenticated in async mode",
-                log_prefix, username);
+        otp_log(OTP_LOG_INFO, "%s: %s: [%s] authenticated in async mode",
+                log_prefix, __func__, username);
       goto auth_done;
     } /* if (user authenticated async) */
   } /* if (async mode possible) */
@@ -363,8 +358,8 @@ sync_response:
                                           now, t, e, log_prefix);
         if (rc == -1) {
           otp_log(OTP_LOG_ERR,
-                  "%s: unable to get sync challenge t:%d e:%d for [%s]",
-                  log_prefix, t, e, username);
+                  "%s: %s: unable to get sync challenge t:%d e:%d for [%s]",
+                  log_prefix, __func__, t, e, username);
           rc = OTP_RC_SERVICE_ERR;
           goto auth_done_service_err;
           /* NB: state not updated. */
@@ -382,8 +377,8 @@ sync_response:
            */
           if (opt->debug)
             otp_log(OTP_LOG_DEBUG,
-                    "%s: [%s], sync challenge t:%d e:%d is early",
-                    log_prefix, username, t, e);
+                    "%s: %s: [%s], sync challenge t:%d e:%d is early",
+                    log_prefix, __func__, username, t, e);
           continue;
         }
 
@@ -392,9 +387,9 @@ sync_response:
                                         &e_response[pin_offset],
                                         log_prefix) != 0) {
           otp_log(OTP_LOG_ERR,
-                  "%s: unable to calculate sync response "
+                  "%s: %s: unable to calculate sync response "
                   "t:%d e:%d for [%s], to challenge %s",
-                  log_prefix, t, e, username, challenge);
+                  log_prefix, __func__, t, e, username, challenge);
           rc = OTP_RC_SERVICE_ERR;
           goto auth_done_service_err;
           /* NB: state not updated. */
@@ -404,9 +399,9 @@ sync_response:
         if (opt->debug) {
           char s[OTP_MAX_CHALLENGE_LEN * 2 + 1];
 
-          otp_log(OTP_LOG_DEBUG, "%s: [%s], sync challenge t:%d e:%d %s, "
+          otp_log(OTP_LOG_DEBUG, "%s: %s: [%s], sync challenge t:%d e:%d %s, "
                                  "expecting response %s",
-                  log_prefix, username, t, e,
+                  log_prefix, __func__, username, t, e,
                   card_info.cardops->printchallenge(s, challenge,
                                                     user_state.clen),
                   &e_response[pin_offset]);
@@ -420,12 +415,12 @@ sync_response:
         if (passcode)
           nmatch = strcmp(passcode, e_response);
         else
-          nmatch = cmpfunc(data, e_response);
+          nmatch = cmpfunc(data, e_response, log_prefix);
         if (!nmatch) {
           if (fc == OTP_FC_FAIL_HARD) {
             otp_log(OTP_LOG_AUTH,
-                    "%s: bad sync auth for [%s]: valid but in hardfail "
-                    " (%d/%d failed/max)", log_prefix, username,
+                    "%s: %s: bad sync auth for [%s]: valid but in hardfail "
+                    " (%d/%d failed/max)", log_prefix, __func__, username,
                     user_state.failcount, opt->hardfail);
             rc = OTP_RC_MAXTRIES;
           } else if (fc == OTP_FC_FAIL_SOFT) {
@@ -435,8 +430,8 @@ sync_response:
             if (!rwindow) {
               /* rwindow mode not configured */
               otp_log(OTP_LOG_AUTH,
-                      "%s: bad sync auth for [%s]: valid but in softfail "
-                      " (%d/%d failed/max)", log_prefix, username,
+                      "%s: %s: bad sync auth for [%s]: valid but in softfail "
+                      " (%d/%d failed/max)", log_prefix, __func__, username,
                       user_state.failcount, opt->softfail);
               rc = OTP_RC_MAXTRIES;
               goto auth_done;
@@ -457,17 +452,17 @@ sync_response:
               if (user_state.authtime == INT32_MAX ||
                   now - user_state.authtime < (unsigned) opt->rwindow_delay) {
                 otp_log(OTP_LOG_AUTH,
-                        "%s: rwindow softfail override for [%s] at "
-                        "window position t:%d e:%d", log_prefix, username,
-                        t, e);
+                        "%s: %s: rwindow softfail override for [%s] at "
+                        "window position t:%d e:%d", log_prefix, __func__,
+                        username, t, e);
                 rc = OTP_RC_OK;
                 goto sync_done;
               } else {
                 /* consecutive but not soon enough */
                 otp_log(OTP_LOG_AUTH,
-                        "%s: late override for [%s] at "
-                        "window position t:%d e:%d", log_prefix, username,
-                        t, e);
+                        "%s: %s: late override for [%s] at "
+                        "window position t:%d e:%d", log_prefix, __func__,
+                        username, t, e);
                 rc = OTP_RC_AUTH_ERR;
               }
             } /* if (passcode is consecutive */
@@ -479,9 +474,9 @@ sync_response:
 #elif defined(PAM)
             if (opt->debug)
               otp_log(OTP_LOG_DEBUG,
-                      "%s: auth: [%s] rwindow candidate "
-                      "at window position t:%d e:%d", log_prefix, username,
-                      t, e);
+                      "%s: %s: auth: [%s] rwindow candidate "
+                      "at window position t:%d e:%d", log_prefix, __func__,
+                      username, t, e);
 #endif
             rc = OTP_RC_AUTH_ERR;
 
@@ -495,8 +490,8 @@ sync_done:
           resync = 1;
           /* update csd (et al.) on successful auth or rwindow candidate */
           if (card_info.cardops->updatecsd(&user_state, now, t, e, rc) != 0) {
-            otp_log(OTP_LOG_ERR, "%s: unable to update csd for [%s]",
-                    log_prefix, username);
+            otp_log(OTP_LOG_ERR, "%s: %s: unable to update csd for [%s]",
+                    log_prefix, __func__, username);
             rc = OTP_RC_SERVICE_ERR;
             goto auth_done_service_err;
             /* NB: state not updated. */
@@ -554,8 +549,8 @@ auth_done_service_err:	/* exit here for system errors */
    */
   if (user_state.locked) {
     if (otp_state_put(username, &user_state, log_prefix) != 0) {
-      otp_log(OTP_LOG_ERR, "%s: unable to put state for [%s]",
-              log_prefix, username);
+      otp_log(OTP_LOG_ERR, "%s: %s: unable to put state for [%s]",
+              log_prefix, __func__, username);
       rc = OTP_RC_SERVICE_ERR;	/* no matter what it might have been */
     }
   }

@@ -113,8 +113,8 @@ otp_state_put(const char *username, otp_user_state_t *user_state,
 
   /* validate the state manager response */
   if ((size_t) len < 3 + ulen) {
-    otp_log(OTP_LOG_ERR, "%s: state manager invalid PUT response for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state manager invalid PUT response for [%s]",
+            log_prefix, __func__, username);
     rc = -1;
     goto putfd;
   }
@@ -122,8 +122,8 @@ otp_state_put(const char *username, otp_user_state_t *user_state,
         buf[1] == ' ' &&
         !strncmp(username, &buf[2], ulen) &&
         (buf[ulen + 2] == ' ' || buf[ulen + 2] == '\0'))) {
-    otp_log(OTP_LOG_ERR, "%s: state manager invalid PUT response for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state manager invalid PUT response for [%s]",
+            log_prefix, __func__, username);
     rc = -1;
     goto putfd;
   }
@@ -134,8 +134,8 @@ otp_state_put(const char *username, otp_user_state_t *user_state,
       reason = (char *) "[no reason given]";
     else
       reason = &buf[ulen + 3];
-    otp_log(OTP_LOG_ERR, "%s: state manager PUT rejected for [%s]: %s",
-            log_prefix, username, reason);
+    otp_log(OTP_LOG_ERR, "%s: %s: state manager PUT rejected for [%s]: %s",
+            log_prefix, __func__, username, reason);
     rc = -1;
     goto putfd;
   }
@@ -163,7 +163,8 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
 
   /* sanity checks */
   if (!buflen) {
-    otp_log(OTP_LOG_ERR, "%s: no state for [%s]", log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: no state for [%s]",
+            log_prefix, __func__, username);
     otp_state_putfd(user_state->fdp, 0, log_prefix);
     return -1;
   }
@@ -173,15 +174,16 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
    * idiom works (there is always a char after the ':').
    */
   if (buf[buflen - 1] != '\0') {
-    otp_log(OTP_LOG_ERR, "%s: invalid state for [%s]", log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: invalid state for [%s]",
+            log_prefix, __func__, username);
     otp_state_putfd(user_state->fdp, 0, log_prefix);
     return -1;
   }
 
   /* Is this an ack or a nak? */
   if (!(buf[0] == 'A' && buf[1] == ' ')) {
-      otp_log(OTP_LOG_INFO /* ERR? */, "%s: unable to lock state for [%s]",
-            log_prefix, username);
+      otp_log(OTP_LOG_INFO, "%s: %s: unable to lock state for [%s]",
+            log_prefix, __func__, username);
     otp_state_putfd(user_state->fdp, 0, log_prefix);
     return -1;
   }
@@ -203,16 +205,16 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
   /* 'A <username> V:<username>:C' + terminator */
   if (buflen < 2 + i + 3 + i + 2 + 1) {
     if (buflen < 2 + i + 1) {
-      otp_log(OTP_LOG_ERR, "%s: invalid state data for [%s]",
-              log_prefix, username);
+      otp_log(OTP_LOG_ERR, "%s: %s: invalid state data for [%s]",
+              log_prefix, __func__, username);
     } else if (buflen == 2 + i + 1) {
-      otp_log(OTP_LOG_DEBUG, "%s: null state data for [%s]",
-              log_prefix, username);
+      otp_log(OTP_LOG_DEBUG, "%s: %s: null state data for [%s]",
+              log_prefix, __func__, username);
       user_state->nullstate = 1;
       return 0;
     } else {
-      otp_log(OTP_LOG_ERR, "%s: short state data for [%s]",
-              log_prefix, username);
+      otp_log(OTP_LOG_ERR, "%s: %s: short state data for [%s]",
+              log_prefix, __func__, username);
     }
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
@@ -223,8 +225,8 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
 
   /* verify username (in state manager response, not state itself) */
   if (!(strncmp(p, username, i) == 0 && p[i] == ' ')) {
-    otp_log(OTP_LOG_ERR, "%s: state manager username mismatch for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state manager username mismatch for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
@@ -233,8 +235,8 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
 
   /* version */
   if (!(p[0] == '5' && p[1] == ':')) {
-    otp_log(OTP_LOG_ERR, "%s: state data unacceptable version for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data unacceptable version for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
@@ -242,8 +244,8 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
 
   /* sanity check username */
   if (!(strncmp(p, username, i) == 0 && p[i] == ':')) {
-    otp_log(OTP_LOG_ERR, "%s: state data username mismatch for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data username mismatch for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
@@ -251,22 +253,22 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
 
   /* extract challenge */
   if ((q = strchr(p, ':')) == NULL) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid challenge for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data invalid challenge for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
   *q++ = '\0';
   if (strlen(p) > OTP_MAX_CHALLENGE_LEN * 2) {
-    otp_log(OTP_LOG_ERR, "%s: state data challenge too long for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data challenge too long for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
   user_state->clen = otp_keystring2keyblock(p, user_state->challenge);
   if (user_state->clen < 0) {
-    otp_log(OTP_LOG_ERR, "%s: state data challenge invalid for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data challenge invalid for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
@@ -274,15 +276,15 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
 
   /* extract csd */
   if ((q = strchr(p, ':')) == NULL) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid csd for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data invalid csd for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
   *q++ = '\0';
   if (strlen(p) > OTP_MAX_CSD_LEN) {
-    otp_log(OTP_LOG_ERR, "%s: state data csd too long for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data csd too long for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
@@ -291,15 +293,15 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
 
   /* extract rd */
   if ((q = strchr(p, ':')) == NULL) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid rd for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data invalid rd for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
   *q++ = '\0';
   if (strlen(p) > OTP_MAX_RD_LEN) {
-    otp_log(OTP_LOG_ERR, "%s: state data rd too long for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data rd too long for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
@@ -308,15 +310,15 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
 
   /* extract failcount */
   if ((q = strchr(p, ':')) == NULL) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid failcount for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data invalid failcount for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
   *q++ = '\0';
   if (sscanf(p, "%" SCNx32, &user_state->failcount) != 1) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid failcount for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data invalid failcount for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
@@ -324,15 +326,15 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
 
   /* extract authtime */
   if ((q = strchr(p, ':')) == NULL) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid authtime for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data invalid authtime for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
   *q++ = '\0';
   if (sscanf(p, "%" SCNx32, &user_state->authtime) != 1) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid authtime for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data invalid authtime for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
@@ -340,15 +342,15 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
 
   /* extract mincardtime */
   if ((q = strchr(p, ':')) == NULL) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid mincardtime for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data invalid mincardtime for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
   *q++ = '\0';
   if (sscanf(p, "%" SCNx32, &user_state->mincardtime) != 1) {
-    otp_log(OTP_LOG_ERR, "%s: state data invalid mincardtime for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data invalid mincardtime for [%s]",
+            log_prefix, __func__, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
@@ -396,8 +398,8 @@ otp_state_unparse(char *buf, size_t buflen, const char *username,
      * without a lot of work.  Guaranteed anyway, due to small max
      * username, challenge, csd len's, assuming maximally (1024) sized buf.
      */
-    otp_log(OTP_LOG_ERR, "%s: state data (unparse) too long for [%s]",
-            log_prefix, username);
+    otp_log(OTP_LOG_ERR, "%s: %s: state data (unparse) too long for [%s]",
+            log_prefix, __func__, username);
     return -1;
   }
 
@@ -421,15 +423,15 @@ xread(lsmd_fd_t *fdp, char *buf, size_t len, const char *log_prefix)
       if (errno == EAGAIN || errno == EINTR) {
         continue;
       } else {
-        otp_log(OTP_LOG_ERR, "%s: read from state manager: %s",
-                log_prefix, strerror(errno));
+        otp_log(OTP_LOG_ERR, "%s: %s: read from state manager: %s",
+                log_prefix, __func__, strerror(errno));
         otp_state_putfd(fdp, 1, log_prefix);
         return -1;
       }
     }
     if (!n) {
-      otp_log(OTP_LOG_ERR, "%s: state manager disconnect",
-              log_prefix);
+      otp_log(OTP_LOG_ERR, "%s: %s: state manager disconnect",
+              log_prefix, __func__);
       otp_state_putfd(fdp, 1, log_prefix);
       return -1;
     }
@@ -459,8 +461,8 @@ xwrite(lsmd_fd_t *fdp, const char *buf, size_t len, const char *log_prefix)
   while (nleft) {
     if ((nwrote = write(fdp->fd, &buf[len - nleft], nleft)) == -1) {
       if (errno != EINTR) {
-        otp_log(OTP_LOG_ERR, "%s: write to state manager: %s",
-                log_prefix, strerror(errno));
+        otp_log(OTP_LOG_ERR, "%s: %s: write to state manager: %s",
+                log_prefix, __func__, strerror(errno));
         otp_state_putfd(fdp, 1, log_prefix);
         return -1;
       }
@@ -483,7 +485,8 @@ otp_state_connect(const char *path, const char *log_prefix)
   /* setup for unix domain socket */
   sp_len = strlen(path);
   if (sp_len > sizeof(sa.sun_path) - 1) {
-    otp_log(OTP_LOG_ERR, "%s: rendezvous point name too long", log_prefix);
+    otp_log(OTP_LOG_ERR, "%s: %s: rendezvous point name too long",
+            log_prefix, __func__);
     return -1;
   }
   sa.sun_family = AF_UNIX;
@@ -491,12 +494,14 @@ otp_state_connect(const char *path, const char *log_prefix)
     
   /* connect to state manager */
   if ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1) {
-    otp_log(OTP_LOG_ERR, "%s: socket: %s", log_prefix, strerror(errno));
+    otp_log(OTP_LOG_ERR, "%s: %s: socket: %s", log_prefix, __func__,
+            strerror(errno));
     return -1;
   }
   if (connect(fd, (struct sockaddr *) &sa,
               sizeof(sa.sun_family) + sp_len) == -1) {
-    otp_log(OTP_LOG_ERR, "%s: connect: %s", log_prefix, strerror(errno));
+    otp_log(OTP_LOG_ERR, "%s: %s: connect: %s", log_prefix, __func__,
+            strerror(errno));
     (void) close(fd);
     return -1;
   }
@@ -550,8 +555,8 @@ otp_state_getfd(const otp_option_t *opt, const char *log_prefix)
     if (!rc)
       break;
     if (rc != EBUSY) {
-      otp_log(OTP_LOG_ERR, "%s: pthread_mutex_trylock: %s", log_prefix,
-              strerror(errno));
+      otp_log(OTP_LOG_ERR, "%s: %s: pthread_mutex_trylock: %s",
+              log_prefix, __func__, strerror(errno));
       return NULL;
     }
   }
@@ -559,28 +564,28 @@ otp_state_getfd(const otp_option_t *opt, const char *log_prefix)
   if (!fdp) {
     /* no fd was available, add a new one */
     if ((rc = pthread_mutex_lock(&lsmd_fd_head_mutex))) {
-      otp_log(OTP_LOG_ERR, "%s: pthread_mutex_lock: %s", log_prefix,
-              strerror(errno));
+      otp_log(OTP_LOG_ERR, "%s: %s: pthread_mutex_lock: %s",
+              log_prefix, __func__, strerror(errno));
       return NULL;
     }
     fdp = rad_malloc(sizeof(*fdp));
     if ((rc = pthread_mutex_init(&fdp->mutex, NULL))) {
-      otp_log(OTP_LOG_ERR, "%s: pthread_mutex_init: %s", log_prefix,
-              strerror(errno));
+      otp_log(OTP_LOG_ERR, "%s: %s: pthread_mutex_init: %s",
+              log_prefix, __func__, strerror(errno));
       free(fdp);
       return NULL;
     }
     if ((rc = pthread_mutex_lock(&fdp->mutex))) {
-      otp_log(OTP_LOG_ERR, "%s: pthread_mutex_lock: %s", log_prefix,
-              strerror(errno));
+      otp_log(OTP_LOG_ERR, "%s: %s: pthread_mutex_lock: %s",
+              log_prefix, __func__, strerror(errno));
       free(fdp);
       return NULL;
     }
     fdp->next = lsmd_fd_head;
     lsmd_fd_head = fdp;
     if ((rc = pthread_mutex_unlock(&lsmd_fd_head_mutex))) {
-      otp_log(OTP_LOG_ERR, "%s: pthread_mutex_unlock: %s", log_prefix,
-              strerror(errno));
+      otp_log(OTP_LOG_ERR, "%s: %s: pthread_mutex_unlock: %s",
+              log_prefix, __func__, strerror(errno));
       /* deadlock */
       exit(1);
     }
@@ -603,8 +608,8 @@ otp_state_putfd(lsmd_fd_t *fdp, int close_p, const char *log_prefix)
   }
   /* make connection available to another thread */
   if ((rc = pthread_mutex_unlock(&fdp->mutex))) {
-    otp_log(OTP_LOG_ERR, "%s: pthread_mutex_unlock: %s", log_prefix,
-            strerror(errno));
+    otp_log(OTP_LOG_ERR, "%s: %s: pthread_mutex_unlock: %s",
+            log_prefix, __func__, strerror(errno));
     /* lost fd */
     exit(1);
   }
