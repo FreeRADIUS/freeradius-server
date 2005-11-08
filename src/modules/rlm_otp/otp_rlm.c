@@ -389,14 +389,14 @@ gen_challenge:
     }
     now = htonl(now);
 
-    if (otp_gen_state(&state, NULL, challenge, sflags, now, hmac_key) != 0) {
+    if (otp_gen_state(&state, NULL, challenge, inst->chal_len, sflags,
+                      now, hmac_key) != 0) {
       otp_log(OTP_LOG_ERR, "autz: failed to generate state");
       return RLM_MODULE_FAIL;
     }
   } else {
-    /* x2 b/c pairmake() string->octet needs even num of digits */
-    state = rad_malloc(3 + inst->chal_len * 2);
-    (void) sprintf(state, "0x%s%s", challenge, challenge);
+    state = rad_malloc(5);
+    (void) sprintf(state, "0x00");
   }
   pairadd(&request->reply->vps, pairmake("State", state, T_OP_EQ));
   free(state);
@@ -407,6 +407,7 @@ gen_challenge:
 
     u_challenge = rad_malloc(strlen(inst->chal_prompt) +
                              OTP_MAX_CHALLENGE_LEN + 1);
+/* XXX */
     (void) sprintf(u_challenge, inst->chal_prompt, challenge);
     pairadd(&request->reply->vps,
             pairmake("Reply-Message", u_challenge, T_OP_EQ));
@@ -437,7 +438,7 @@ otp_authenticate(void *instance, REQUEST *request)
   int rc;
   int resync = 0;	/* resync flag for async mode */
 
-  char challenge[OTP_MAX_CHALLENGE_LEN + 1];
+  unsigned char challenge[OTP_MAX_CHALLENGE_LEN];	/* cf. authorize() */
   VALUE_PAIR *add_vps = NULL;
 
   struct otp_pwe_cmp_t data = {
@@ -467,12 +468,11 @@ otp_authenticate(void *instance, REQUEST *request)
                                           OTP_MODULE_NAME, T_OP_EQ));
 
   /* Retrieve the challenge (from State attribute). */
-  challenge[0] = '\0';
   {
     VALUE_PAIR	*vp;
     unsigned char	*state;
     int32_t		sflags = 0; 	/* state flags */
-    time_t		then;		/* state timestamp */
+    int32_t		then;		/* state timestamp */
 
     if ((vp = pairfind(request->packet->vps, PW_STATE)) != NULL) {
       int e_length = inst->chal_len;
@@ -488,11 +488,10 @@ otp_authenticate(void *instance, REQUEST *request)
 
       if (inst->allow_async) {
         /* Verify the state. */
-        (void) memset(challenge, 0, sizeof(challenge));
         (void) memcpy(challenge, vp->vp_strvalue, inst->chal_len);
         (void) memcpy(&sflags, vp->vp_strvalue + inst->chal_len, 4);
         (void) memcpy(&then, vp->vp_strvalue + inst->chal_len + 4, 4);
-        if (otp_gen_state(NULL, &state, challenge,
+        if (otp_gen_state(NULL, &state, challenge, inst->chal_len,
                           sflags, then, hmac_key) != 0) {
           otp_log(OTP_LOG_ERR, "auth: failed to generate state");
           return RLM_MODULE_FAIL;

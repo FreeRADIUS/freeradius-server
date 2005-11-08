@@ -154,7 +154,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
 
   /* Convert keystring to a keyblock. */
   if (card_info.cardops->keystring2keyblock(card_info.keystring,
-                                            card_info.keyblock)) {
+                                            card_info.keyblock) < 0) {
     otp_log(OTP_LOG_ERR, "%s: invalid key '%s' for [%s]",
             log_prefix, card_info.keystring, username);
     rc = OTP_RC_SERVICE_ERR;
@@ -232,8 +232,11 @@ async_response:
    * Test async response.
    */
   if (*challenge && (card_info.featuremask & OTP_CF_AM) && opt->allow_async) {
+    ssize_t chal_len;
+
     /* Perform any site-specific transforms of the challenge. */
-    if (otp_challenge_transform(username, challenge) != 0) {
+    if ((chal_len = otp_challenge_transform(username,
+                                            challenge, opt->chal_len)) < 0) {
       otp_log(OTP_LOG_ERR, "%s: challenge transform failed for [%s]",
               log_prefix, username);
       rc = OTP_RC_SERVICE_ERR;
@@ -242,7 +245,7 @@ async_response:
     }
 
     /* Calculate the async response. */
-    if (card_info.cardops->response(&card_info, challenge,
+    if (card_info.cardops->response(&card_info, challenge, chal_len,
                                     &e_response[pin_offset],
                                     log_prefix) != 0) {
       otp_log(OTP_LOG_ERR, "%s: unable to calculate async response for [%s], "
@@ -251,17 +254,26 @@ async_response:
       goto auth_done_service_err;
       /* NB: state not updated. */
     }
-    /* NOTE: We do not display the PIN. */
+
+    {
+      char s[OTP_MAX_CHALLENGE_LEN * 2 + 1];
+
+      /* NOTE: We do not display the PIN. */
 #if defined(FREERADIUS)
-    DEBUG("rlm_otp_token: auth: [%s], async challenge %s, "
-          "expecting response %s", username, challenge,
-          &e_response[pin_offset]);
+      DEBUG("rlm_otp_token: auth: [%s], async challenge %s, "
+            "expecting response %s", username,
+            card_info.cardops->printchallenge(s, challenge, chal_len),
+            &e_response[pin_offset]);
 #elif defined(PAM)
-    if (opt->debug)
-      otp_log(OTP_LOG_DEBUG, "%s: [%s], async challenge %s, "
-                             "expecting response %s",
-              log_prefix, username, challenge, &e_response[pin_offset]);
+      if (opt->debug) {
+        otp_log(OTP_LOG_DEBUG,
+                "%s: [%s], async challenge %s, expecting response %s",
+                log_prefix, username,
+                card_info.cardops->printchallenge(s, challenge, chal_len),
+                &e_response[pin_offset]);
+      }
 #endif
+    }
 
     /* Add PIN if needed. */
     if (!opt->prepend_pin)
@@ -349,7 +361,7 @@ sync_response:
     end = rwindow ? rwindow : ewindow;
 
     /* Setup initial challenge. */
-    (void) strcpy(challenge, user_state.challenge);
+    (void) memcpy(challenge, user_state.challenge, user_state.clen);
 
     /* Test each sync response in the window. */
     tend = card_info.cardops->maxtwin(&card_info, user_state.csd);
@@ -390,7 +402,7 @@ sync_response:
         }
 
         /* Calculate sync response. */
-        if (card_info.cardops->response(&card_info, challenge,
+        if (card_info.cardops->response(&card_info, challenge, user_state.clen,
                                         &e_response[pin_offset],
                                         log_prefix) != 0) {
           otp_log(OTP_LOG_ERR,
@@ -401,18 +413,27 @@ sync_response:
           goto auth_done_service_err;
           /* NB: state not updated. */
         }
-        /* NOTE: We do not display the PIN. */
+
+        {
+          char s[OTP_MAX_CHALLENGE_LEN * 2 + 1];
+
+          /* NOTE: We do not display the PIN. */
 #if defined(FREERADIUS)
-        DEBUG("rlm_otp_token: auth: [%s], sync challenge t:%d e:%d %s, "
-              "expecting response %s", username, t, e, challenge,
-              &e_response[pin_offset]);
+          DEBUG("rlm_otp_token: auth: [%s], sync challenge t:%d e:%d %s, "
+                "expecting response %s", username, t, e,
+                card_info.cardops->printchallenge(s, challenge,
+                                                  user_state.clen),
+                &e_response[pin_offset]);
 #elif defined(PAM)
-        if (opt->debug)
-          otp_log(OTP_LOG_DEBUG, "%s: [%s], sync challenge t:%d e:%d %s, "
-                                 "expecting response %s",
-                  log_prefix, username, t, e,
-                  challenge, &e_response[pin_offset]);
+          if (opt->debug)
+            otp_log(OTP_LOG_DEBUG, "%s: [%s], sync challenge t:%d e:%d %s, "
+                                   "expecting response %s",
+                    log_prefix, username, t, e,
+                    card_info.cardops->printchallenge(s, challenge,
+                                                      user_state.clen),
+                    &e_response[pin_offset]);
 #endif
+        }
 
         /* Add PIN if needed. */
         if (!opt->prepend_pin)
@@ -496,8 +517,7 @@ sync_done:
           /* force resync; this only has an effect if (rc == OTP_RC_OK) */
           resync = 1;
           /* update csd (et al.) on successful auth or rwindow candidate */
-          if (card_info.cardops->updatecsd(&card_info, &user_state,
-                                           now, t, e, rc, log_prefix) != 0) {
+          if (card_info.cardops->updatecsd(&user_state, now, t, e, rc) != 0) {
             otp_log(OTP_LOG_ERR, "%s: unable to update csd for [%s]",
                     log_prefix, username);
             rc = OTP_RC_SERVICE_ERR;
@@ -517,7 +537,7 @@ sync_done:
 auth_done:
   if (rc == OTP_RC_OK) {
     if (resync)
-      (void) strcpy(user_state.challenge, challenge);	/* update challenge */
+      (void) memcpy(user_state.challenge, challenge, user_state.clen);
     user_state.failcount   = 0;
     user_state.authtime    = now;
   } else {

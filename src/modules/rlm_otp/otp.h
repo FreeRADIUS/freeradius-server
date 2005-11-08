@@ -46,7 +46,7 @@
 #define OTP_CHALLENGE_PROMPT "Challenge: %s\n Response: "
 
 /* Must be a multiple of sizeof(des_cblock) (8); read src before changing. */
-#define OTP_MAX_CHALLENGE_LEN 32
+#define OTP_MAX_CHALLENGE_LEN 16
 
 /* Password that means "challenge me" in fast_sync mode */
 #define OTP_CHALLENGE_REQ "challenge"
@@ -142,8 +142,9 @@ typedef struct otp_user_state_t {
   lsmd_fd_t	*fdp;			/* fd for return data             */
   int		nullstate;		/* null state?                    */
   int		updated;		/* state updated? (1 unless err)  */
+  ssize_t	clen;			/* challenge length               */
 
-  char		challenge[OTP_MAX_CHALLENGE_LEN+1];	/* prev sync chal */
+  unsigned char	challenge[OTP_MAX_CHALLENGE_LEN];	/* prev sync chal */
   char		csd[OTP_MAX_CSD_LEN+1];	/* card-specific data             */
   char		rd[OTP_MAX_RD_LEN+1];	/* rwindow data                   */
   uint32_t	failcount;		/* number of consecutive failures */
@@ -192,8 +193,9 @@ extern const char otp_sc_friendly_conversion[];
 extern int otp_get_random(int, unsigned char *, int);
 extern int otp_get_challenge(int, char *, int);
 
-extern int otp_keystring2keyblock(const char *, unsigned char []);
-extern void otp_keyblock2keystring(char *, const des_cblock, const char [17]);
+extern ssize_t otp_keystring2keyblock(const char *, unsigned char []);
+extern char *otp_keyblock2keystring(char *, const unsigned char [], size_t,
+                                    const char [17]);
 
 extern int otp_get_card_info(const char *, const char *, otp_card_info_t *);
 
@@ -203,8 +205,9 @@ extern int otp_state_get(const otp_option_t *, const char *,
 extern int otp_state_put(const char *, otp_user_state_t *, const char *);
 
 /* otp_site.c */
-extern int otp_challenge_transform(const char *,
-                                   char [OTP_MAX_CHALLENGE_LEN + 1]);
+extern ssize_t otp_challenge_transform(const char *,
+                                       unsigned char [OTP_MAX_CHALLENGE_LEN],
+                                       size_t);
 
 /* otp_log.c */
 extern void otp_log(int, const char *, ...);

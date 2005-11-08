@@ -81,11 +81,13 @@ __attribute__ ((unused))
 /*
  * Return a random challenge.
  * fd must be either -1 or an open fd to the random device.
- * challenge is filled in on successful return (must be size len+1).
+ * challenge is filled in on successful return (must be at least size len+1).
  * Returns 0 on success, -1 on failure.
+ * NOTE: This is really cryptocard-specific (automatic ASCII conversion
+ * and null termination).
  */
 int
-otp_get_challenge(int fd, char *challenge, int len)
+otp_get_challenge(int fd, char challenge[OTP_MAX_CHALLENGE_LEN + 1], int len)
 {
   unsigned char rawchallenge[OTP_MAX_CHALLENGE_LEN];
   int i;
@@ -102,10 +104,10 @@ otp_get_challenge(int fd, char *challenge, int len)
     otp_log(OTP_LOG_ERR, "otp_get_challenge: failed to obtain random data");
     return -1;
   }
-  /* Convert the raw bytes to a decimal string. */
+  /* Convert the raw bytes to ASCII decimal. */
   for (i = 0; i < len; ++i)
     challenge[i] = '0' + rawchallenge[i] % 10;
-  challenge[i] = '\0';
+  challenge[len] = '\0';
 
   return 0;
 }
@@ -113,9 +115,9 @@ otp_get_challenge(int fd, char *challenge, int len)
 
 /*
  * Convert the ASCII string representation of a key to raw octets.
- * keyblock is filled in.  Returns 0 on success, -1 otherwise.
+ * keyblock is filled in.  Returns keylen on success, -1 otherwise.
  */
-int
+ssize_t
 otp_keystring2keyblock(const char *s, unsigned char keyblock[OTP_MAX_KEY_LEN])
 {
   unsigned i;
@@ -166,7 +168,8 @@ otp_keystring2keyblock(const char *s, unsigned char keyblock[OTP_MAX_KEY_LEN])
     keyblock[i]  = n[0] << 4;
     keyblock[i] += n[1];
   } /* for (each octet) */
-  return 0;
+
+  return l/2;
 }
 
 
@@ -177,18 +180,16 @@ const char otp_snk_dec_conversion[]     = "0123456789222333";
 const char otp_sc_friendly_conversion[] = "0123456789ahcpef";
 
 /*
- * Convert a DES keyblock to an ASCII string.
- * Fills in s, which must point to at least 17 bytes of space.
- * Note that each octet expands into 2 hex digits in ASCII (0xAA -> 0x4141);
- * add a NULL string terminator and you get the 17 byte requirement.
+ * Convert a keyblock to an ASCII string.
+ * Fills in s, which must point to at least len*2+1 bytes of space.
  */
-void
-otp_keyblock2keystring(char *s, const des_cblock keyblock,
+char *
+otp_keyblock2keystring(char *s, const unsigned char *keyblock, size_t len,
                        const char conversion[17])
 {
-  int i;
+  unsigned i;
 
-  for (i = 0; i < 8; ++i) {
+  for (i = 0; i < len; ++i) {
     unsigned n[2];
 
     n[0] = (keyblock[i] >> 4) & 0x0f;
@@ -196,7 +197,9 @@ otp_keyblock2keystring(char *s, const des_cblock keyblock,
     s[2 * i + 0] = conversion[n[0]];
     s[2 * i + 1] = conversion[n[1]];
   }
-  s[16] = '\0';
+  s[2 * len] = '\0';
+
+  return s;
 }
 
 

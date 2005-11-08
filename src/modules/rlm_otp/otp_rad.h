@@ -31,9 +31,9 @@
 #define OTP_LOG_INFO  L_INFO
 #define OTP_LOG_CRIT  (L_ERR|L_CONS)
 
-/* otp_state.c */
+/* otp_radstate.c */
 extern int otp_gen_state(char **, unsigned char **,
-                         const char [OTP_MAX_CHALLENGE_LEN + 1],
+                         const unsigned char [OTP_MAX_CHALLENGE_LEN], size_t,
                          int32_t, int32_t, const unsigned char [16]);
 
 /* otp_pwe.c */

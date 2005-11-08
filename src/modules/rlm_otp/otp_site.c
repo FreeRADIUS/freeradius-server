@@ -41,15 +41,19 @@
 static const char rcsid[] = "$Id$";
 
 
-int
+ssize_t
 otp_challenge_transform(
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
                         const char *username,
-                        char challenge[OTP_MAX_CHALLENGE_LEN + 1])
+                        unsigned char challenge[OTP_MAX_CHALLENGE_LEN],
+                        size_t clen)
 {
-  (void) strcpy(challenge, "DISABLED");
-  return 0;
-}
+  int i;
 
+  for (i = 0; i < clen; ++clen)
+    challenge[i] = '\0';
+
+  return clen;
+}

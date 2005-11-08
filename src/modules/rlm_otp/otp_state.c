@@ -257,13 +257,19 @@ otp_state_parse(const char *buf, size_t buflen, const char *username,
     return -1;
   }
   *q++ = '\0';
-  if (strlen(p) > OTP_MAX_CHALLENGE_LEN) {
+  if (strlen(p) > OTP_MAX_CHALLENGE_LEN * 2) {
     otp_log(OTP_LOG_ERR, "%s: state data challenge too long for [%s]",
             log_prefix, username);
     (void) otp_state_put(username, user_state, log_prefix);
     return -1;
   }
-  (void) strcpy(user_state->challenge, p);
+  user_state->clen = otp_keystring2keyblock(p, user_state->challenge);
+  if (user_state->clen < 0) {
+    otp_log(OTP_LOG_ERR, "%s: state data challenge invalid for [%s]",
+            log_prefix, username);
+    (void) otp_state_put(username, user_state, log_prefix);
+    return -1;
+  }
   p = q;	/* csd */
 
   /* extract csd */
@@ -359,6 +365,7 @@ otp_state_unparse(char *buf, size_t buflen, const char *username,
                   otp_user_state_t *user_state, const char *log_prefix)
 {
   size_t len;
+  char s[OTP_MAX_CHALLENGE_LEN * 2 + 1];
 
   /* perhaps this isn't our job, but it's safe */
   if (!user_state->locked)
@@ -366,18 +373,23 @@ otp_state_unparse(char *buf, size_t buflen, const char *username,
 
   if (user_state->updated)
     (void) snprintf(buf, buflen, "P %s "
-                                 "5:%s:%s:"
+                                 "5:%s:"
+                                 "%s:"
                                  "%s:%s:"
                                  "%" PRIx32 ":%" PRIx32 ":"
                                  "%" PRIx32 ":",
                     /* 'P ', */ username,
-                    /* '5:', */ username, user_state->challenge,
+                    /* '5:', */ username,
+                    otp_keyblock2keystring(s, user_state->challenge,
+                                           user_state->clen,
+                                           otp_hex_conversion),
                     user_state->csd, user_state->rd,
                     user_state->failcount, user_state->authtime,
                     user_state->mincardtime);
   else
     (void) snprintf(buf, buflen, "P %s", username);
   buf[buflen - 1] = '\0';
+
   if ((len = strlen(buf) + 1) == buflen) {
     /*
      * Short by one, but the best we can do b/c of different snprintf()'s

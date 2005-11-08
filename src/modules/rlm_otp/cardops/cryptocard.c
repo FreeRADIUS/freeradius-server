@@ -70,7 +70,7 @@ cryptocard_name2fm(const char *name, uint32_t *featuremask)
 
 /*
  * Convert an ASCII keystring to a keyblock.
- * Returns 0 on success, non-zero otherwise.
+ * Returns keylen on success, -1 otherwise.
  */
 static int
 cryptocard_keystring2keyblock(const char *keystring,
@@ -121,11 +121,8 @@ __attribute__ ((unused))
  */
 static int
 cryptocard_challenge(const otp_card_info_t *card_info,
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
                      otp_user_state_t *user_state,
-                     char challenge[OTP_MAX_CHALLENGE_LEN + 1],
+                     unsigned char challenge[OTP_MAX_CHALLENGE_LEN],
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
@@ -143,12 +140,9 @@ __attribute__ ((unused))
   unsigned char output[8];
   int i;
 
-  /* CRYPTOCard sync challenges are always 8 bytes. */
-  if (strlen(challenge) != 8)
-    return -1;
-
-  /* run x99 once on the challenge */
-  if (otp_x99_mac(challenge, 8, output, card_info->keyblock, log_prefix))
+  /* run x99 once on the previous challenge */
+  if (otp_x99_mac(challenge, user_state->clen, output, card_info->keyblock,
+                  log_prefix))
     return -1;
 
   /* convert the mac into the next challenge */
@@ -159,7 +153,7 @@ __attribute__ ((unused))
     output[i] |= 0x30;
   }
   (void) memcpy(challenge, output, 8);
-  challenge[8] = '\0';
+  user_state->clen = 8;
 
   return 0;
 }
@@ -184,16 +178,15 @@ __attribute__ ((unused))
  */
 static int
 cryptocard_response(otp_card_info_t *card_info,
-                    const char challenge[OTP_MAX_CHALLENGE_LEN + 1],
-                    char response[OTP_MAX_RESPONSE_LEN + 1],
+                    const unsigned char challenge[OTP_MAX_CHALLENGE_LEN],
+                    size_t len, char response[OTP_MAX_RESPONSE_LEN + 1],
                     const char *log_prefix)
 {
   unsigned char output[8];
-  char l_response[17];
   const char *conversion;
 
   /* Step 1, 2. */
-  if (otp_x99_mac(challenge, strlen(challenge), output,
+  if (otp_x99_mac(challenge, len, output,
                   card_info->keyblock, log_prefix) !=0)
     return 1;
 
@@ -204,9 +197,7 @@ cryptocard_response(otp_card_info_t *card_info,
     conversion = otp_hex_conversion;
 
   /* Step 3, 4. */
-  otp_keyblock2keystring(l_response, output, conversion);
-  (void) memcpy(response, l_response, 8);
-  response[8] = '\0';
+  (void) otp_keyblock2keystring(response, output, 4, conversion);
 
   /* Step 5. */
   if (card_info->featuremask & OTP_CF_R7)
@@ -221,12 +212,7 @@ cryptocard_response(otp_card_info_t *card_info,
  * Returns 0 if succesful, -1 otherwise.
  */
 static int
-cryptocard_updatecsd(
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                     const otp_card_info_t *card_info,
-                     otp_user_state_t *user_state,
+cryptocard_updatecsd(otp_user_state_t *user_state,
 #ifdef __GNUC__
 __attribute__ ((unused))
 #endif
@@ -236,11 +222,7 @@ __attribute__ ((unused))
 #endif
                      int twin,
                      int ewin,
-                     int auth_rc,
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                     const char *log_prefix)
+                     int auth_rc)
 {
   if (auth_rc == OTP_RC_OK)
     user_state->rd[0] = '\0';				/* reset */
@@ -301,6 +283,19 @@ __attribute__ ((unused))
 }
 
 
+/* return human-readable challenge */
+static char *
+cryptocard_printchallenge(char s[OTP_MAX_CHALLENGE_LEN * 2 + 1],
+                          const unsigned char challenge[OTP_MAX_CHALLENGE_LEN],
+                          size_t len)
+{
+  /* cryptocard challenge is implicitly ASCII */
+  (void) memcpy(s, challenge, len);
+  s[len] = '\0';
+  return s;
+}
+
+
 /* cardops instance */
 static cardops_t cryptocard_cardops = {
   .prefix		= "cryptocard",
@@ -314,6 +309,7 @@ static cardops_t cryptocard_cardops = {
   .updatecsd		= cryptocard_updatecsd,
   .isconsecutive	= cryptocard_isconsecutive,
   .maxtwin		= cryptocard_maxtwin,
+  .printchallenge	= cryptocard_printchallenge,
 };
 
 

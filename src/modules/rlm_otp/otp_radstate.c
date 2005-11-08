@@ -63,12 +63,12 @@ static const char rcsid[] = "$Id$";
  * better protection.
  *
  * Our state, then, is
- *   (challenge + resync + time + hmac(challenge + resync + time, key)),
- * where '+' denotes concatentation, 'challenge' is the ASCII octets of
+ *   (challenge + flags + time + hmac(challenge + resync + time, key)),
+ * where '+' denotes concatentation, 'challenge' is ...
  * the challenge, 'flags' is a 32-bit value that can be used to record
  * additional info, 'time' is the 32-bit time (LSB if time_t is 64 bits)
  * in network byte order, and 'key' is a random key, generated in
- * otp_init().  This means that only the server which generates a
+ * otp_instantiate().  This means that only the server which generates a
  * challenge can verify it; this should be OK if your NAS's load balance
  * across RADIUS servers using a "first available" algorithm.  If your
  * NAS's round-robin (ugh), you could use the RADIUS secret instead, but
@@ -82,13 +82,13 @@ static const char rcsid[] = "$Id$";
  */
 int
 otp_gen_state(char **ascii_state, unsigned char **raw_state,
-              const char challenge[OTP_MAX_CHALLENGE_LEN + 1], int32_t flags,
-              int32_t when, const unsigned char key[16])
+              const unsigned char challenge[OTP_MAX_CHALLENGE_LEN],
+              size_t clen,
+              int32_t flags, int32_t when, const unsigned char key[16])
 {
   HMAC_CTX hmac_ctx;
   unsigned char hmac[MD5_DIGEST_LENGTH];
   char *p;
-  unsigned i;
 
   /*
    * Generate the hmac.  We already have a dependency on openssl for
@@ -96,7 +96,7 @@ otp_gen_state(char **ascii_state, unsigned char **raw_state,
    * having to collect the data to be signed into one contiguous piece.
    */
   HMAC_Init(&hmac_ctx, key, sizeof(key), EVP_md5());
-  HMAC_Update(&hmac_ctx, challenge, strlen(challenge));
+  HMAC_Update(&hmac_ctx, challenge, clen);
   HMAC_Update(&hmac_ctx, (unsigned char *) &flags, 4);
   HMAC_Update(&hmac_ctx, (unsigned char *) &when, 4);
   HMAC_Final(&hmac_ctx, hmac, NULL);
@@ -104,10 +104,10 @@ otp_gen_state(char **ascii_state, unsigned char **raw_state,
 
   /* Fill in raw_state if requested. */
   if (raw_state) {
-    *raw_state = rad_malloc(strlen(challenge) + 8 + sizeof(hmac));
+    *raw_state = rad_malloc(clen + 8 + sizeof(hmac));
     p = *raw_state;
-    (void) memcpy(p, challenge, strlen(challenge));
-    p += strlen(challenge);
+    (void) memcpy(p, challenge, clen);
+    p += clen;
     (void) memcpy(p, &flags, 4);
     p += 4;
     (void) memcpy(p, &when, 4);
@@ -122,7 +122,7 @@ otp_gen_state(char **ascii_state, unsigned char **raw_state,
    */
   if (ascii_state) {
     *ascii_state = rad_malloc(2 +			/* "0x"      */
-                              strlen(challenge) * 2 +	/* challenge */
+                              clen * 2 +		/* challenge */
                               8 +			/* flags     */
                               8 +			/* time      */
                               sizeof(hmac) * 2 +	/* hmac      */
@@ -131,33 +131,19 @@ otp_gen_state(char **ascii_state, unsigned char **raw_state,
     p = *ascii_state + 2;
 
     /* Add the challenge. */
-    for (i = 0; i < OTP_MAX_CHALLENGE_LEN / sizeof(des_cblock); ++i) {
-      otp_keyblock2keystring(p, challenge, otp_hex_conversion);
-      if (strlen(challenge) > sizeof(des_cblock)) {
-        challenge += sizeof(des_cblock);
-        p += 2 * sizeof(des_cblock);
-      } else {
-        p += 2 * strlen(challenge);
-        break;
-      }
-    }
+    (void) otp_keyblock2keystring(p, challenge, clen, otp_hex_conversion);
+    p += clen * 2;
 
     /* Add the flags and time. */
-    {
-      des_cblock cblock;
-
-      (void) memcpy(cblock, &flags, 4);
-      (void) memcpy(&cblock[4], &when, 4);
-      otp_keyblock2keystring(p, cblock, otp_hex_conversion);
-    }
-    p += 16;
+    (void) otp_keyblock2keystring(p, (unsigned char *) &flags, 4,
+                                  otp_hex_conversion);
+    p += 8;
+    (void) otp_keyblock2keystring(p, (unsigned char *) &when, 4,
+                                  otp_hex_conversion);
+    p += 8;
 
     /* Add the hmac. */
-    otp_keyblock2keystring(p, hmac, otp_hex_conversion);
-    p += 16;
-    otp_keyblock2keystring(p, &hmac[8], otp_hex_conversion);
-    p += 16;
-    *p = '\0';
+    (void) otp_keyblock2keystring(p, hmac, 16, otp_hex_conversion);
   }
 
   return 0;

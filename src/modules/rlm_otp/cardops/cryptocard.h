@@ -26,14 +26,14 @@
 #include "../otp_cardops.h"
 
 /* card modes */
-#define CRYPTOCARD_H8_RC (OTP_CF_HD|OTP_CF_R8|OTP_CF_AM)
-#define CRYPTOCARD_H7_RC (OTP_CF_HD|OTP_CF_R7|OTP_CF_AM)
-#define CRYPTOCARD_D8_RC (OTP_CF_DD|OTP_CF_R8|OTP_CF_AM)
-#define CRYPTOCARD_D7_RC (OTP_CF_DD|OTP_CF_R7|OTP_CF_AM)
-#define CRYPTOCARD_H8_ES (OTP_CF_HD|OTP_CF_R8|OTP_CF_ES)
-#define CRYPTOCARD_H7_ES (OTP_CF_HD|OTP_CF_R7|OTP_CF_ES)
-#define CRYPTOCARD_D8_ES (OTP_CF_DD|OTP_CF_R8|OTP_CF_ES)
-#define CRYPTOCARD_D7_ES (OTP_CF_DD|OTP_CF_R7|OTP_CF_ES)
+#define CRYPTOCARD_H8_RC (OTP_CF_HD|OTP_CF_R8|OTP_CF_AM|OTP_CF_C8)
+#define CRYPTOCARD_H7_RC (OTP_CF_HD|OTP_CF_R7|OTP_CF_AM|OTP_CF_C8)
+#define CRYPTOCARD_D8_RC (OTP_CF_DD|OTP_CF_R8|OTP_CF_AM|OTP_CF_C8)
+#define CRYPTOCARD_D7_RC (OTP_CF_DD|OTP_CF_R7|OTP_CF_AM|OTP_CF_C8)
+#define CRYPTOCARD_H8_ES (OTP_CF_HD|OTP_CF_R8|OTP_CF_ES|OTP_CF_C8)
+#define CRYPTOCARD_H7_ES (OTP_CF_HD|OTP_CF_R7|OTP_CF_ES|OTP_CF_C8)
+#define CRYPTOCARD_D8_ES (OTP_CF_DD|OTP_CF_R8|OTP_CF_ES|OTP_CF_C8)
+#define CRYPTOCARD_D7_ES (OTP_CF_DD|OTP_CF_R7|OTP_CF_ES|OTP_CF_C8)
 #define CRYPTOCARD_H8_RS (CRYPTOCARD_H8_RC|CRYPTOCARD_H8_ES)
 #define CRYPTOCARD_H7_RS (CRYPTOCARD_H7_RC|CRYPTOCARD_H7_ES)
 #define CRYPTOCARD_D8_RS (CRYPTOCARD_D8_RC|CRYPTOCARD_D8_ES)
@@ -45,19 +45,21 @@ static int cryptocard_keystring2keyblock(const char *,
 static int cryptocard_nullstate(const otp_option_t *, const otp_card_info_t *,
                                 otp_user_state_t *, time_t, const char *);
 static int cryptocard_challenge(const otp_card_info_t *, otp_user_state_t *,
-                                char [OTP_MAX_CHALLENGE_LEN + 1], time_t,
+                                unsigned char [OTP_MAX_CHALLENGE_LEN], time_t,
                                 int, int, const char *);
 static int cryptocard_response(otp_card_info_t *,
-                               const char [OTP_MAX_CHALLENGE_LEN + 1],
-                               char [OTP_MAX_RESPONSE_LEN + 1],
+                               const unsigned char [OTP_MAX_CHALLENGE_LEN],
+                               size_t, char [OTP_MAX_RESPONSE_LEN + 1],
                                const char *);
-static int cryptocard_updatecsd(const otp_card_info_t *, otp_user_state_t *,
-                                time_t, int, int, int, const char *);
+static int cryptocard_updatecsd(otp_user_state_t *, time_t, int, int, int);
 static int cryptocard_isconsecutive(const otp_card_info_t *,
                                     const otp_user_state_t *, int,
                                     const char *);
 static int cryptocard_maxtwin(const otp_card_info_t *,
                               const char [OTP_MAX_CSD_LEN + 1]);
+static char *cryptocard_printchallenge(char [OTP_MAX_CHALLENGE_LEN * 2 + 1],
+                                   const unsigned char [OTP_MAX_CHALLENGE_LEN],
+                                       size_t);
 
 #ifdef __GNUC__
 __attribute__ ((constructor))
