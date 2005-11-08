@@ -152,6 +152,7 @@ typedef struct otp_user_state_t {
 
   int32_t	scratch1;		/* card-specific scratch data     */
   int32_t	scratch2;		/* card-specific scratch data     */
+  int32_t	scratch3;		/* card-specific scratch data     */
 } otp_user_state_t;
 
 /* fc (failcondition) shortcuts */
