@@ -373,7 +373,7 @@ gen_challenge:
     sflags |= htonl(1);
 
   /* Generate a random challenge. */
-  if (otp_get_challenge(-1, challenge, inst->chal_len, log_prefix) == -1) {
+  if (otp_async_challenge(-1, challenge, inst->chal_len, log_prefix) == -1) {
     otp_log(OTP_LOG_ERR, "%s: %s: failed to obtain random challenge",
             log_prefix, __func__);
     return RLM_MODULE_FAIL;

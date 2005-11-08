@@ -187,7 +187,7 @@ extern const char otp_snk_dec_conversion[];
 extern const char otp_sc_friendly_conversion[];
 
 extern int otp_get_random(int, unsigned char *, int, const char *);
-extern int otp_get_challenge(int, char *, int, const char *);
+extern int otp_async_challenge(int, char *, int, const char *);
 
 extern ssize_t otp_keystring2keyblock(const char *, unsigned char []);
 extern char *otp_keyblock2keystring(char *, const unsigned char [], size_t,

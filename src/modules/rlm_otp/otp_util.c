@@ -93,8 +93,8 @@ __attribute__ ((unused))
  * and null termination).
  */
 int
-otp_get_challenge(int fd, char challenge[OTP_MAX_CHALLENGE_LEN + 1], int len,
-                  const char *log_prefix)
+otp_async_challenge(int fd, char challenge[OTP_MAX_CHALLENGE_LEN + 1], int len,
+                    const char *log_prefix)
 {
   unsigned char rawchallenge[OTP_MAX_CHALLENGE_LEN];
   int i;
