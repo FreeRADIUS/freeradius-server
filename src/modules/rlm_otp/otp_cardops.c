@@ -468,16 +468,11 @@ sync_response:
             } /* if (passcode is consecutive */
 
             /* passcode correct, but not consecutive or not soon enough */
-#if defined(FREERADIUS)
-            DEBUG("rlm_otp_token: auth: [%s] rwindow candidate "
-                  "at window position t:%d e:%d", username, t, e);
-#elif defined(PAM)
             if (opt->debug)
               otp_log(OTP_LOG_DEBUG,
-                      "%s: %s: auth: [%s] rwindow candidate "
+                      "%s: %s: [%s] rwindow candidate "
                       "at window position t:%d e:%d", log_prefix, __func__,
                       username, t, e);
-#endif
             rc = OTP_RC_AUTH_ERR;
 
           } else {
