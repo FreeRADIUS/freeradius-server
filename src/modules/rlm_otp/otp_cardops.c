@@ -255,24 +255,15 @@ async_response:
       /* NB: state not updated. */
     }
 
-    {
+    /* NOTE: We do not display the PIN. */
+    if (opt->debug) {
       char s[OTP_MAX_CHALLENGE_LEN * 2 + 1];
 
-      /* NOTE: We do not display the PIN. */
-#if defined(FREERADIUS)
-      DEBUG("rlm_otp_token: auth: [%s], async challenge %s, "
-            "expecting response %s", username,
-            card_info.cardops->printchallenge(s, challenge, chal_len),
-            &e_response[pin_offset]);
-#elif defined(PAM)
-      if (opt->debug) {
-        otp_log(OTP_LOG_DEBUG,
-                "%s: [%s], async challenge %s, expecting response %s",
-                log_prefix, username,
-                card_info.cardops->printchallenge(s, challenge, chal_len),
-                &e_response[pin_offset]);
-      }
-#endif
+      otp_log(OTP_LOG_DEBUG,
+              "%s: [%s], async challenge %s, expecting response %s",
+              log_prefix, username,
+              card_info.cardops->printchallenge(s, challenge, chal_len),
+              &e_response[pin_offset]);
     }
 
     /* Add PIN if needed. */
@@ -389,15 +380,10 @@ sync_response:
            * successful auth for a correct passcode earlier in time than
            * one already used successfully, so we skip out early here.
            */
-#if defined(FREERADIUS)
-          DEBUG("rlm_otp_token: auth: [%s], sync challenge t:%d e:%d is early",
-                username, t, e);
-#elif defined(PAM)
           if (opt->debug)
             otp_log(OTP_LOG_DEBUG,
                     "%s: [%s], sync challenge t:%d e:%d is early",
                     log_prefix, username, t, e);
-#endif
           continue;
         }
 
@@ -414,25 +400,16 @@ sync_response:
           /* NB: state not updated. */
         }
 
-        {
+        /* NOTE: We do not display the PIN. */
+        if (opt->debug) {
           char s[OTP_MAX_CHALLENGE_LEN * 2 + 1];
 
-          /* NOTE: We do not display the PIN. */
-#if defined(FREERADIUS)
-          DEBUG("rlm_otp_token: auth: [%s], sync challenge t:%d e:%d %s, "
-                "expecting response %s", username, t, e,
-                card_info.cardops->printchallenge(s, challenge,
-                                                  user_state.clen),
-                &e_response[pin_offset]);
-#elif defined(PAM)
-          if (opt->debug)
-            otp_log(OTP_LOG_DEBUG, "%s: [%s], sync challenge t:%d e:%d %s, "
-                                   "expecting response %s",
-                    log_prefix, username, t, e,
-                    card_info.cardops->printchallenge(s, challenge,
-                                                      user_state.clen),
-                    &e_response[pin_offset]);
-#endif
+          otp_log(OTP_LOG_DEBUG, "%s: [%s], sync challenge t:%d e:%d %s, "
+                                 "expecting response %s",
+                  log_prefix, username, t, e,
+                  card_info.cardops->printchallenge(s, challenge,
+                                                    user_state.clen),
+                  &e_response[pin_offset]);
         }
 
         /* Add PIN if needed. */

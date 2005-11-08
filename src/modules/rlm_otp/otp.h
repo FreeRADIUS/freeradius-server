@@ -88,6 +88,7 @@ typedef struct otp_option_t {
   int ewindow_size;	/* sync mode event window size (right side value)  */
   int rwindow_size;	/* softfail override event window size             */
   int rwindow_delay;	/* softfail override max time delay                */
+  int debug;		/* print debug info?                               */
 #if defined(FREERADIUS)
   /* freeradius-specific items */
   int chal_delay;		/* max delay time for response, in seconds */
@@ -98,12 +99,7 @@ typedef struct otp_option_t {
   int mschap_mppe_types;	/* key type/length for mschap/mppe         */
 #elif defined(PAM)
   /* PAM specific items */
-  int debug;		/* print debug info?                               */
   char *fast_prompt;	/* fast mode prompt                                */
-#endif
-#if 0
-  int twindow_min;	/* sync mode time window left side                 */
-  int twindow_max;	/* sync mode time window right side                */
 #endif
 } otp_option_t;
 

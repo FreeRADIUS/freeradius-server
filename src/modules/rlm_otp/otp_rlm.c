@@ -100,12 +100,9 @@ static const CONF_PARSER module_config[] = {
     offsetof(otp_option_t, mschap_mppe_policy), NULL, "2" },
   { "mschap_mppe_bits", PW_TYPE_INTEGER,
     offsetof(otp_option_t, mschap_mppe_types), NULL, "2" },
-#if 0
-  { "twindow_min", PW_TYPE_INTEGER, offsetof(otp_option_t, twindow_min),
-    NULL, "0" },
-  { "twindow_max", PW_TYPE_INTEGER, offsetof(otp_option_t, twindow_max),
-    NULL, "0" },
-#endif
+
+  { "debug", PW_TYPE_BOOLEAN, offsetof(otp_option_t, debug),
+    NULL, "no" },
 
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -263,20 +260,7 @@ otp_instantiate(CONF_SECTION *conf, void **instance)
             "invalid value for mschap_mppe_bits, using default of 2");
   }
 
-#if 0
-  if (opt->twindow_max - opt->twindow_min > OTP_MAX_TWINDOW_SIZE) {
-    opt->twindow_min = opt->twindow_max = 0;
-    otp_log(OTP_LOG_ERR, "max time window size is %d, using default of 0",
-            OTP_MAX_TWINDOW_SIZE);
-  }
-  if ((opt->twindow_min > 0) || (opt->twindow_max < 0) ||
-      (opt->twindow_max < opt->twindow_min)) {
-    opt->twindow_min = opt->twindow_max = 0;
-    otp_log(OTP_LOG_ERR, "invalid values for time window, using default of 0");
-  }
-#endif
-
-  /* Set the instance name (for use with authorize()) */
+  /* set the instance name (for use with authorize()) */
   opt->name = cf_section_name2(conf);
   if (!opt->name)
     opt->name = cf_section_name1(conf);
@@ -285,6 +269,10 @@ otp_instantiate(CONF_SECTION *conf, void **instance)
     free(opt);
     return -1;
   }
+
+  /* set debug opt for portable debug output (see DEBUG definition) */
+  if (debug_flag)
+    opt->debug = 1;
 
   *instance = opt;
   return 0;
