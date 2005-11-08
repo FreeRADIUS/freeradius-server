@@ -50,7 +50,7 @@ __attribute__ ((unused))
                         unsigned char challenge[OTP_MAX_CHALLENGE_LEN],
                         size_t clen)
 {
-  int i;
+  unsigned i;
 
   for (i = 0; i < clen; ++clen)
     challenge[i] = '\0';
