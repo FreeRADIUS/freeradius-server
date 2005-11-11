@@ -21,13 +21,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #ifndef HAVE_STRLCAT
 
 #include <sys/types.h>
 #include <string.h>
-#include "missing.h"
+#include <freeradius-devel/missing.h>
 
 /*
  * Appends src to string dst of size siz (unlike strncat, siz is the

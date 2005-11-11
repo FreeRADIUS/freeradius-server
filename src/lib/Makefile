@@ -14,7 +14,7 @@ SRCS		= dict.c filters.c hash.c hmac.c hmacsha1.c isaac.c log.c \
 INCLUDES	= ../include/radius.h ../include/libradius.h \
 		  ../include/missing.h ../include/autoconf.h
 
-CFLAGS		+= -D_LIBRADIUS -I../include 
+CFLAGS		+= -D_LIBRADIUS -I$(top_builddir)/src
 
 # if you have problems with things that need SHA1-HMAC, this will
 # dump the key and the input to the hash so you can compare to what

@@ -49,7 +49,7 @@
 
 #include "otp.h"
 #ifdef FREERADIUS
-#include "modules.h"
+#include <freeradius-devel/modules.h>
 #endif
 
 static const char rcsid[] = "$Id$";

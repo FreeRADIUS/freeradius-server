@@ -23,7 +23,7 @@
 static const char rcsid[] =
 "$Id$";
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<stdio.h>
 #include	<sys/types.h>
@@ -39,8 +39,8 @@ static const char rcsid[] =
 #include	<fcntl.h>
 #include	<unistd.h>
 
-#include	"missing.h"
-#include	"libradius.h"
+#include	<freeradius-devel/missing.h>
+#include	<freeradius-devel/libradius.h>
 
 int		librad_dodns = 0;
 int		librad_debug = 0;

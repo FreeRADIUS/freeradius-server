@@ -23,15 +23,15 @@
 
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 
-#include "missing.h"
-#include "libradius.h"
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/libradius.h>
 
 char librad_errstr[1024];
 

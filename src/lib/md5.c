@@ -7,8 +7,8 @@
  *  from public domain source code.
  */
 
-#include "autoconf.h"
-#include "libradius.h"
+#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/libradius.h>
 
 /*
  *  FORCE MD5 TO USE OUR MD5 HEADER FILE!

@@ -7,11 +7,11 @@
  * Version:	$Id$
  *
  */
-#include "missing.h"
-#include "libradius.h"
-#include "radpaths.h"
-#include "conf.h"
-#include "conffile.h"
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/radpaths.h>
+#include <freeradius-devel/conf.h>
+#include <freeradius-devel/conffile.h>
 
 #include <stdarg.h>
 

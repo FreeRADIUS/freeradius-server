@@ -42,20 +42,20 @@
 
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<stdio.h>
 #include	<stdlib.h>
 #include    	<string.h>
 #include 	<ctype.h>
 
-#include	"radiusd.h"
-#include	"modules.h"
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/modules.h>
 
-#include        "md4.h"
-#include        "md5.h"
-#include	"sha1.h"
-#include	"rad_assert.h"
+#include        <freeradius-devel/md4.h>
+#include        <freeradius-devel/md5.h>
+#include	<freeradius-devel/sha1.h>
+#include	<freeradius-devel/rad_assert.h>
 
 #include	"smbdes.h"
 

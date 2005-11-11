@@ -22,7 +22,7 @@
 
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,8 +41,8 @@ static const char rcsid[] = "$Id$";
 #include <netinet/in.h>
 #endif
 
-#include "radiusd.h"
-#include "rad_assert.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 /*
  *	The signal() function in Solaris 2.5.1 sets SA_NODEFER in

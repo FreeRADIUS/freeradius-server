@@ -9,7 +9,7 @@ include ../Make.inc
 SUBDIRS		= include lib modules main
 WHAT_TO_MAKE	= all
 
-all:
+all: freeradius-devel
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 clean:
@@ -25,3 +25,5 @@ common:
 		(cd $$dir && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit $?;\
 	done
 
+freeradius-devel:
+	ln -s include freeradius-devel

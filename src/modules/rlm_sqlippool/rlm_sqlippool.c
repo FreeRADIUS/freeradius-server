@@ -7,8 +7,8 @@
  */
 
 #include "config.h"
-#include "autoconf.h"
-#include "libradius.h"
+#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/libradius.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,10 +16,9 @@
 #include <ctype.h>
 #include <netinet/in.h>
 
-#include "radiusd.h"
-#include "modules.h"
-#include "conffile.h"
-#include "modpriv.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/modpriv.h>
 
 #include "rlm_sql.h"
 #include "ip_set.h"
@@ -494,18 +493,20 @@ static int sqlippool_initialize_range(void * instance)
 	{
 		uint32_t ip;
 		uint32_t h_ip;		/* ip in host order */
+		lrad_ipaddr_t ipaddr;
 
 		ip_buffer_len = sqlippool_queryn_fetch(ip_buffer, sizeof(ip_buffer),
 						       sqlsocket, instance);
 		if (ip_buffer_len == 0)
 			break;
 
-		ip = ip_addr(ip_buffer);
-		if (ip == INADDR_NONE) {
+		
+		if (ip_hton(ip_buffer, AF_INET, &ipaddr) < 0) {
 			radlog(L_ERR, "sqlippool_initialize_range: invalid IP number in pool");
 			/* XXX store and delete */
 			continue;
 		}
+		ip = ipaddr.ipaddr.ip4addr.s_addr;
 
 		h_ip = ntohl(ip);
 		ip_set_add(&ips, h_ip);
@@ -736,6 +737,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	char allocation[MAX_STRING_LEN];
 	int allocation_len;
+	lrad_ipaddr_t ipaddr;
 	uint32_t ip_allocation;
 	VALUE_PAIR * vp;
 	SQLSOCK * sqlsocket;
@@ -812,8 +814,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		return RLM_MODULE_NOOP;
 	}
 
-	ip_allocation = ip_addr(allocation);
-	if (ip_allocation == INADDR_NONE)
+	if (ip_hton(allocation, AF_INET, &ipaddr) < 0)
 	{
 		/*
 		 * Invalid IP number - run INIT-DELETE and complain
@@ -835,6 +836,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		sql_release_socket(data->sql_inst, sqlsocket);
 		return RLM_MODULE_NOOP;
 	}
+	ip_allocation = ipaddr.ipaddr.ip4addr.s_addr;
 
 	/*
 	 * UPDATE

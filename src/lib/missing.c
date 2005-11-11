@@ -23,7 +23,7 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<stdio.h>
 #include	<stdlib.h>
@@ -33,8 +33,8 @@ static const char rcsid[] = "$Id$";
 #include	<arpa/inet.h>
 #include	<ctype.h>
 
-#include	"missing.h"
-#include	"libradius.h"
+#include	<freeradius-devel/missing.h>
+#include	<freeradius-devel/libradius.h>
 
 #ifndef HAVE_CRYPT
 char *crypt(char *key, char *salt)

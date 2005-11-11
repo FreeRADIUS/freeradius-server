@@ -19,13 +19,13 @@
  * Copyright 2002  3APA3A for FreeRADIUS project
  */
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 #include        <stdio.h>
 #include        <stdlib.h>
 #include        <string.h>
 #include        <ctype.h>
 
-#include        "md4.h"
+#include        <freeradius-devel/md4.h>
 
 #include	"smbdes.h"
 

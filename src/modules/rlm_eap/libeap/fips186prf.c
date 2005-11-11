@@ -43,7 +43,7 @@
  *
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,9 +61,9 @@
 #include <inttypes.h>
 #endif
 
-#include <rad_assert.h>
+#include <freeradius-devel/rad_assert.h>
 
-#include "sha1.h"
+#include <freeradius-devel/sha1.h>
 
 /*
  * we do it in 8-bit chunks, because we have to keep the numbers
@@ -266,7 +266,17 @@ main(int argc, char *argv[])
 
 /*
  * $Log$
- * Revision 1.4  2005-09-21 03:02:40  nbk
+ * Revision 1.5  2005-11-11 00:32:58  aland
+ * 	Include files used to build the server are now <freeradius-devel/*.h>
+ * 	If this is bad, we can easily change it in the future to something
+ * 	like <freeradius/*.h>.
+ *
+ * 	Also, updated rlm_sqlippool to build with the recent cleanups.
+ *
+ * 	The work was done via a Perl script, and the server rebuilt &
+ * 	tested to be sure it works.
+ *
+ * Revision 1.4  2005/09/21 03:02:40  nbk
  * 	Fix compilation warnings.
  *
  * Revision 1.3  2004/02/26 19:04:30  aland

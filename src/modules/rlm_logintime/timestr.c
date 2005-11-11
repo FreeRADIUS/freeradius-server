@@ -23,14 +23,14 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
-#include "radiusd.h"
+#include <freeradius-devel/radiusd.h>
 
 static const char *days[] =
 	{ "su", "mo", "tu", "we", "th", "fr", "sa", "wk", "any", "al" };

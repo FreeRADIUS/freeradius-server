@@ -24,7 +24,7 @@
  * Copyright 2001  Chad Miller <cmiller@surfsouth.com>
  */
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<sys/types.h>
 #include	<sys/socket.h>
@@ -45,8 +45,8 @@
 #include	<errno.h>
 #include	<sys/wait.h>
 
-#include	"radiusd.h"
-#include	"conffile.h"
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/conffile.h>
 #include	"rlm_sql.h"
 
 #ifdef HAVE_PTHREAD_H

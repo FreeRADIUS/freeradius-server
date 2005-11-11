@@ -21,7 +21,7 @@
  * Copyright 2003  Alan DeKok <aland@freeradius.org>
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 #include "eap_tls.h"
 
 #ifdef HAVE_OPENSSL_RAND_H

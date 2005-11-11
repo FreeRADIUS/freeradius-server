@@ -4,7 +4,7 @@
  *
  * Version: $Id$ */
 
-#include "conffile.h" /* Need CONF_* definitions */
+#include <freeradius-devel/conffile.h> /* Need CONF_* definitions */
 
 /*
  *	For each authorize/authtype/etc, we have an ordered

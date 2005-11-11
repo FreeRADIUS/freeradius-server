@@ -20,7 +20,7 @@
  * Copyright 2000,2001,2002,2003,2004  The FreeRADIUS server project
  */
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<sys/types.h>
 #include	<stdio.h>
@@ -34,10 +34,10 @@
 
 #include "config.h"
 
-#include	"radiusd.h"
-#include	"radutmp.h"
-#include	"modules.h"
-#include	"rad_assert.h"
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/radutmp.h>
+#include	<freeradius-devel/modules.h>
+#include	<freeradius-devel/rad_assert.h>
 
 #define LOCK_LEN sizeof(struct radutmp)
 

@@ -22,7 +22,7 @@
 
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <string.h>
 #include <ctype.h>
@@ -33,8 +33,8 @@ static const char rcsid[] = "$Id$";
 #include <netinet/in.h>
 #endif
 
-#include "missing.h"
-#include "libradius.h"
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/libradius.h>
 
 /*
  * Two types of filters are supported, GENERIC and IP.  The identifiers

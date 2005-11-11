@@ -42,7 +42,7 @@ STATIC_OBJS	+= $(SRCS:.c=.o)
 STATIC_OBJS	+= $(SRCS:.cpp=.o)
 DYNAMIC_OBJS	+= $(SRCS:.c=.lo)
 DYNAMIC_OBJS	+= $(SRCS:.cpp=.lo)
-CFLAGS		+= -I$(RLM_DIR)../../include
+CFLAGS		+= -I$(top_builddir)/src
 
 #######################################################################
 #

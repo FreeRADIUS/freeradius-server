@@ -22,8 +22,8 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
-#include	"md5.h"
+#include	<freeradius-devel/autoconf.h>
+#include	<freeradius-devel/md5.h>
 
 #include	<stdlib.h>
 
@@ -36,7 +36,7 @@ static const char rcsid[] = "$Id$";
 #include	<ctype.h>
 
 #ifdef WITH_UDPFROMTO
-#include	"udpfromto.h"
+#include	<freeradius-devel/udpfromto.h>
 #endif
 
 #include	<sys/socket.h>
@@ -49,8 +49,8 @@ static const char rcsid[] = "$Id$";
 #include	<process.h>
 #endif
 
-#include	"missing.h"
-#include	"libradius.h"
+#include	<freeradius-devel/missing.h>
+#include	<freeradius-devel/libradius.h>
 
 /*
  *  The RFC says 4096 octets max, and most packets are less than 256.

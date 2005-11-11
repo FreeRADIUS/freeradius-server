@@ -20,14 +20,14 @@
  * Copyright 2003  The FreeRADIUS server project
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "eap_mschapv2.h"
 
-#include <rad_assert.h>
+#include <freeradius-devel/rad_assert.h>
 
 typedef struct rlm_eap_mschapv2_t {
         int with_ntdomain_hack;

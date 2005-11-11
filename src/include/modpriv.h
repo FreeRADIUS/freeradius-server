@@ -2,8 +2,8 @@
  * accessed from anywhere else.
  *
  * Version: $Id$ */
-#include "radiusd.h"
-#include "modules.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 #include "ltdl.h"
 
 /*

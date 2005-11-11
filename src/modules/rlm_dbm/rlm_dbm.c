@@ -20,7 +20,7 @@
  * Copyright 2001 Koulik Andrei, Sandy Service
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <string.h>
 #include <stdlib.h>
@@ -39,8 +39,8 @@
 
 #include <fcntl.h>
 
-#include "radiusd.h"
-#include "modules.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 
 #ifdef SANDY_MOD
 #	include "sandymod.h"

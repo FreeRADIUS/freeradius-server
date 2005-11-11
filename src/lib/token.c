@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "token.h"
+#include <freeradius-devel/token.h>
 
 static const char rcsid[] = "$Id$";
 

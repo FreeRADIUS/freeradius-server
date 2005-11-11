@@ -53,7 +53,7 @@
  SUCH DAMAGE.
 */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -65,8 +65,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../../include/md5.h"
-#include "missing.h"
-#include "libradius.h"
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/libradius.h>
 
 int active=0;
 

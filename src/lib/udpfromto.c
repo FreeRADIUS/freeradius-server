@@ -34,7 +34,7 @@
  * Version: $Id$
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #ifdef WITH_UDPFROMTO
 static const char rcsid[] = "$Id$";
@@ -51,7 +51,7 @@ static const char rcsid[] = "$Id$";
 #include <fcntl.h>
 #include <string.h>
 
-#include "udpfromto.h"
+#include <freeradius-devel/udpfromto.h>
 
 int udpfromto_init(int s)
 {

@@ -22,7 +22,7 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<stdlib.h>
 #include	<ctype.h>
@@ -38,8 +38,8 @@ static const char rcsid[] = "$Id$";
 
 #include	<unistd.h>
 
-#include	"missing.h"
-#include	"libradius.h"
+#include	<freeradius-devel/missing.h>
+#include	<freeradius-devel/libradius.h>
 
 #define DICT_VALUE_MAX_NAME_LEN (128)
 #define DICT_VENDOR_MAX_NAME_LEN (128)

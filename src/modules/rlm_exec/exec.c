@@ -21,7 +21,7 @@
  */
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <sys/file.h>
 
@@ -45,8 +45,8 @@ static const char rcsid[] = "$Id$";
 #	define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
 
-#include "radiusd.h"
-#include "rad_assert.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #define MAX_ARGV (256)
 /*

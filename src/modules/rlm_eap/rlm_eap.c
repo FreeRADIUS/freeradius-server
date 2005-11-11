@@ -22,9 +22,9 @@
  * Copyright 2003  Alan DeKok <aland@freeradius.org>
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 #include "rlm_eap.h"
-#include "modules.h"
+#include <freeradius-devel/modules.h>
 
 static const char rcsid[] = "$Id$";
 

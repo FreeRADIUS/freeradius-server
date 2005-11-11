@@ -22,13 +22,13 @@
 
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdlib.h>
 #include <string.h>
 
-#include "missing.h"
-#include "libradius.h"
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/libradius.h>
 
 /* red-black tree description */
 typedef enum { Black, Red } NodeColor;

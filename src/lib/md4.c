@@ -7,7 +7,7 @@
  *  from public domain source code.
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 /*
  *  FORCE MD4 TO USE OUR MD4 HEADER FILE!

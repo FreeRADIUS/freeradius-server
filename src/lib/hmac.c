@@ -24,12 +24,12 @@
 /*
 ** Function: hmac_md5
 */
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <string.h>
-#include "md5.h"
-#include "missing.h"
-#include "libradius.h"
+#include <freeradius-devel/md5.h>
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/libradius.h>
 
 /*
 unsigned char*  text;                pointer to data stream

@@ -23,13 +23,13 @@
 
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "radiusd.h"
+#include <freeradius-devel/radiusd.h>
 
 
 /*

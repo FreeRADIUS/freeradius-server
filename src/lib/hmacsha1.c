@@ -8,7 +8,7 @@
 ** Function: hmac_sha1
 */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <string.h>
 #include <sys/types.h>
@@ -17,10 +17,10 @@
 #include <stdint.h>
 #endif
 
-#include "sha1.h"
+#include <freeradius-devel/sha1.h>
 
-#include "missing.h"
-#include "libradius.h"
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/libradius.h>
 
 /*
 uint8_t*  text;                pointer to data stream

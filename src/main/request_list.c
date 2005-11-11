@@ -22,16 +22,16 @@
  */
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 
-#include "radiusd.h"
-#include "rad_assert.h"
-#include "request_list.h"
-#include "radius_snmp.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/request_list.h>
+#include <freeradius-devel/radius_snmp.h>
 
 struct request_list_t {
 	lrad_hash_table_t *ht;

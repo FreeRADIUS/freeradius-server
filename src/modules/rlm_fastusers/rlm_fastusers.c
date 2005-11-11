@@ -22,7 +22,7 @@
  * Copyright 2000  Jeff Carneal <jeff@apex.net>
  */
 
-#include        "autoconf.h"
+#include        <freeradius-devel/autoconf.h>
 
 #include	<sys/socket.h>
 #include	<sys/time.h>
@@ -37,8 +37,8 @@
 #include	<fcntl.h>
 #include	<limits.h>
 
-#include	"radiusd.h"
-#include	"modules.h"
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/modules.h>
 
 struct fastuser_instance {
 	char *compat_mode;

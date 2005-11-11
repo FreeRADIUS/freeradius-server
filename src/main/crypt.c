@@ -18,7 +18,7 @@
  * Copyright 2000-2005  The FreeRADIUS server project
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 #include <string.h>
 
 #ifdef HAVE_CRYPT_H
@@ -37,8 +37,8 @@ static int lrad_crypt_init = 0;
 static pthread_mutex_t lrad_crypt_mutex;
 #endif
 
-#include "missing.h"
-#include "libradius.h"
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/libradius.h>
 
 /*
  * performs a crypt password check in an thread-safe way.

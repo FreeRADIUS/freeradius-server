@@ -7,7 +7,7 @@
  *        return all IPv4 addresses provided by DNS lookup.
  */
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<stdio.h>
 #include 	<string.h>
@@ -20,7 +20,7 @@
 #include	<ctype.h>
 #include 	<sys/param.h>
 
-#include	"missing.h"
+#include	<freeradius-devel/missing.h>
 
 #ifdef HAVE_PTHREAD_H
 #include	<pthread.h>

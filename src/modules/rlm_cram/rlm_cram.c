@@ -41,19 +41,19 @@
  *   (c) 2002 by SANDY (http://www.sandy.ru/) under GPL
  */
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<stdio.h>
 #include	<stdlib.h>
 #include    	<string.h>
 #include 	<ctype.h>
 
-#include	"radiusd.h"
-#include	"modules.h"
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/modules.h>
 
-#include        "md4.h"
-#include        "md5.h"
-#include        "sha1.h"
+#include        <freeradius-devel/md4.h>
+#include        <freeradius-devel/md5.h>
+#include        <freeradius-devel/sha1.h>
 
 
 #define		SM_AUTHTYPE	((11406<<16)|101)

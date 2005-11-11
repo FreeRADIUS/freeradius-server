@@ -8,17 +8,17 @@
 
 #if 0
 #include "config.h"
-#include "autoconf.h"
-#include "libradius.h"
+#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/libradius.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
-#include "radiusd.h"
-#include "modules.h"
-#include "conffile.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/conffile.h>
 #endif
 
 #include <sys/types.h>

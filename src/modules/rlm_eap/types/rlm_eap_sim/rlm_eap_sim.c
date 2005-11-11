@@ -25,7 +25,7 @@
  *
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,7 +34,7 @@
 #include "eap_types.h"
 #include "eap_sim.h"
 
-#include <rad_assert.h>
+#include <freeradius-devel/rad_assert.h>
 
 struct eap_sim_server_state {
 	enum eapsim_serverstates state;
@@ -621,7 +621,17 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.13  2005-09-01 21:51:08  aland
+ * Revision 1.14  2005-11-11 00:32:59  aland
+ * 	Include files used to build the server are now <freeradius-devel/*.h>
+ * 	If this is bad, we can easily change it in the future to something
+ * 	like <freeradius/*.h>.
+ *
+ * 	Also, updated rlm_sqlippool to build with the recent cleanups.
+ *
+ * 	The work was done via a Perl script, and the server rebuilt &
+ * 	tested to be sure it works.
+ *
+ * Revision 1.13  2005/09/01 21:51:08  aland
  * 	s/->strvalue/->vp_strvalue/g
  *
  * 	Update libradius.h with a union of data, so that we can move

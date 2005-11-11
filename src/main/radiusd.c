@@ -29,7 +29,7 @@
 static const char rcsid[] =
 "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <sys/file.h>
 
@@ -66,12 +66,12 @@ static const char rcsid[] =
 #	define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
 
-#include "radiusd.h"
-#include "rad_assert.h"
-#include "conffile.h"
-#include "modules.h"
-#include "request_list.h"
-#include "radius_snmp.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/conffile.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/request_list.h>
+#include <freeradius-devel/radius_snmp.h>
 
 #define SLEEP_FOREVER (65536)
 

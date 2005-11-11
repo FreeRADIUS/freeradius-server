@@ -23,17 +23,17 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 
-#include "libradius.h"
-#include "radiusd.h"
-#include "modules.h"
-#include "conffile.h"
+#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/conffile.h>
 
 static const char rcsid[] = "$Id$";
 

@@ -32,13 +32,13 @@
 
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdlib.h>
 #include <string.h>
 
-#include "missing.h"
-#include "libradius.h"
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/libradius.h>
 
 typedef struct lrad_hash_entry_t {
 	struct lrad_hash_entry_t *next;

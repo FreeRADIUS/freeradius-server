@@ -1,7 +1,7 @@
 TARGET      = @targetname@
 SRCS        = rlm_eap.c eap.c mem.c state.c
 HEADERS     = eap.h rlm_eap.h
-RLM_CFLAGS  = $(INCLTDL) -I@srcdir@/libeap
+RLM_CFLAGS  = $(INCLTDL) -I$(top_builddir)/src/modules/rlm_eap/libeap
 CLIENTLIBS  = libeap/libeap.la -L../../lib -lradius
 RLM_LIBS    = libeap/libeap.la $(LIBLTDL)
 #RLM_LIBS    = $(shell for x in types/rlm_eap*/rlm_eap*.la;do echo -dlpreopen $$x;done)

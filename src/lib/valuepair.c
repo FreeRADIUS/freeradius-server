@@ -22,7 +22,7 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<sys/types.h>
 
@@ -39,8 +39,8 @@ static const char rcsid[] = "$Id$";
 #  include	<regex.h>
 #endif
 
-#include	"missing.h"
-#include	"libradius.h"
+#include	<freeradius-devel/missing.h>
+#include	<freeradius-devel/libradius.h>
 
 static const char *months[] = {
         "jan", "feb", "mar", "apr", "may", "jun",

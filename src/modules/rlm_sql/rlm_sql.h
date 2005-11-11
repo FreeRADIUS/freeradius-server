@@ -15,7 +15,6 @@
 #include	<ltdl.h>
 
 #include "conf.h"
-#include "conffile.h"
 
 #define SQLSOCK_LOCKED		0
 #define SQLSOCK_UNLOCKED	1

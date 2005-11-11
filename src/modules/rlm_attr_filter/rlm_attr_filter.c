@@ -22,7 +22,7 @@
  * Copyright (C) 2001 Chris Parker <cparker@starnetusa.net>
  */
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<sys/stat.h>
 
@@ -33,9 +33,9 @@
 #include	<fcntl.h>
 #include        <limits.h>
 
-#include	"radiusd.h"
-#include	"rad_assert.h"
-#include	"modules.h"
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/rad_assert.h>
+#include	<freeradius-devel/modules.h>
 
 static const char rcsid[] = "$Id$";
 

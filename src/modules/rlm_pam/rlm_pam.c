@@ -28,7 +28,7 @@
  * Copyright 1999  miguel a.l. paraz <map@iphil.net>
  */
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	"config.h"
 
@@ -49,8 +49,8 @@
 #include	<syslog.h>
 #endif
 
-#include	"radiusd.h"
-#include	"modules.h"
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/modules.h>
 
 typedef struct rlm_pam_t {
 	const char *pam_auth_name;

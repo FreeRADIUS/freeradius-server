@@ -23,8 +23,8 @@
 #ifndef OTP_RAD_H
 #define OTP_RAD_H
 
-#include "autoconf.h"
-#include "radiusd.h"
+#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
 #define OTP_LOG_DEBUG L_DBG
 #define OTP_LOG_ERR   L_ERR
 #define OTP_LOG_AUTH  L_AUTH
@@ -37,7 +37,7 @@ extern int otp_gen_state(char **, unsigned char **,
                          int32_t, int32_t, const unsigned char [16]);
 
 /* otp_pwe.c */
-#include "libradius.h"   /* VALUE_PAIR */
+#include <freeradius-devel/libradius.h>   /* VALUE_PAIR */
 struct otp_pwe_cmp_t {
   const REQUEST		*request;
   const otp_option_t	*inst;

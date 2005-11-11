@@ -36,10 +36,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "radiusd.h"
-#include "modules.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 
-#include "rad_assert.h"
+#include <freeradius-devel/rad_assert.h>
 
 #define PW_EAP_REQUEST		1
 #define PW_EAP_RESPONSE		2

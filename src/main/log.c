@@ -25,7 +25,7 @@
 
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +34,7 @@ static const char rcsid[] = "$Id$";
 #include <sys/types.h>
 #include <errno.h>
 
-#include "radiusd.h"
+#include <freeradius-devel/radiusd.h>
 
 #ifdef HAVE_SYSLOG_H
 #	include <syslog.h>

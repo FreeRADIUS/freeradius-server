@@ -21,7 +21,7 @@
  */
 
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<stdio.h>
 #include	<stdlib.h>
@@ -39,8 +39,8 @@
 #include	<netinet/in.h>
 #endif
 
-#include	"radiusd.h"
-#include	"rad_assert.h"
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/rad_assert.h>
 
 /*
  *	End a session by faking a Stop packet to all accounting modules.

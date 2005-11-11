@@ -14,7 +14,7 @@ SERVER_OBJS	+= $(SERVER_SRCS:.c=.o)
 
 INCLUDES	= ../include/radiusd.h ../include/radius.h ../include/libradius.h ../include/conf.h ../include/autoconf.h
 
-CFLAGS		+= -I../include 
+CFLAGS		+= -I$(top_builddir)/src
 CFLAGS		+= -DHOSTINFO=\"${HOSTINFO}\"
 CFLAGS          += -DRADIUSD_VERSION=\"${RADIUSD_VERSION}\"
 CFLAGS          += $(SNMP_INCLUDE) 

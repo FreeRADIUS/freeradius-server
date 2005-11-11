@@ -21,7 +21,7 @@
  * Copyright 2000  Jeff Carneal <jeff@apex.net>
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <sys/stat.h>
@@ -32,7 +32,7 @@
 #include <isqlext.h>
 #include <sqltypes.h>
 
-#include "radiusd.h"
+#include <freeradius-devel/radiusd.h>
 #include "rlm_sql.h"
 
 typedef struct rlm_sql_iodbc_sock {

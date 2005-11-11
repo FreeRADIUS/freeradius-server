@@ -26,7 +26,7 @@
  * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -45,11 +45,11 @@
 
 #include <ctype.h>
 
-#include "radiusd.h"
-#include "rad_assert.h"
-#include "conffile.h"
-#include "token.h"
-#include "modules.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/conffile.h>
+#include <freeradius-devel/token.h>
+#include <freeradius-devel/modules.h>
 
 static const char rcsid[] =
 "$Id$";

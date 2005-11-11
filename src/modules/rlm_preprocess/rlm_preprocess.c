@@ -25,7 +25,7 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<sys/stat.h>
 
@@ -34,9 +34,9 @@ static const char rcsid[] = "$Id$";
 #include	<string.h>
 #include	<ctype.h>
 
-#include	"radiusd.h"
-#include	"modules.h"
-#include	"rad_assert.h"
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/modules.h>
+#include	<freeradius-devel/rad_assert.h>
 
 typedef struct rlm_preprocess_t {
 	char		*huntgroup_file;

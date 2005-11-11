@@ -54,8 +54,8 @@
 # endif
 #endif
 
-#include "radius.h"
-#include "token.h"
+#include <freeradius-devel/radius.h>
+#include <freeradius-devel/token.h>
 
 #ifdef SIZEOF_UNSIGNED_INT
 #if SIZEOF_UNSIGNED_INT != 4
@@ -66,8 +66,8 @@
 /*
  *  Include for modules.
  */
-#include <sha1.h>
-#include <md4.h>
+#include <freeradius-devel/sha1.h>
+#include <freeradius-devel/md4.h>
 
 #define EAP_START               2
 

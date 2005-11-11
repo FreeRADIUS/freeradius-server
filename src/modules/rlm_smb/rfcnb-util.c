@@ -25,8 +25,8 @@
 
 #include <string.h>
 
-#include "autoconf.h"
-#include "libradius.h"
+#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/libradius.h>
 #include "std-includes.h"
 #include "rfcnb-priv.h"
 #include "rfcnb-util.h"

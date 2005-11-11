@@ -22,8 +22,8 @@
 
 #include "rlm_policy.h"
 
-#include "modules.h"
-#include "conffile.h"
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/conffile.h>
 
 static const char rcsid[] = "$Id$";
 

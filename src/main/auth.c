@@ -24,7 +24,7 @@
 
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -34,9 +34,9 @@ static const char rcsid[] = "$Id$";
 #	include <netinet/in.h>
 #endif
 
-#include "radiusd.h"
-#include "modules.h"
-#include "rad_assert.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 /*
  *	Return a short string showing the terminal server, port

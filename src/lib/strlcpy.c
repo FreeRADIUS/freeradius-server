@@ -21,12 +21,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #ifndef HAVE_STRLCPY
 
 #include <sys/types.h>
-#include "missing.h"
+#include <freeradius-devel/missing.h>
 
 /*
  * Copy src to string dst of size siz.  At most siz-1 characters

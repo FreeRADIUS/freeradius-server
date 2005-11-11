@@ -26,7 +26,7 @@
 static const char rcsid[] =
 "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -38,10 +38,10 @@ static const char rcsid[] =
 #include <netinet/in.h>
 #endif
 
-#include "sysutmp.h"
-#include "radutmp.h"
-#include "radiusd.h"
-#include "conffile.h"
+#include <freeradius-devel/sysutmp.h>
+#include <freeradius-devel/radutmp.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/conffile.h>
 
 /*
  *	FIXME: put in header file.

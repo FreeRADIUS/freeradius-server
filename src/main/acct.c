@@ -25,9 +25,9 @@
 
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
-#include "radiusd.h"
-#include "modules.h"
+#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 
 /*
  *	rad_accounting: call modules.

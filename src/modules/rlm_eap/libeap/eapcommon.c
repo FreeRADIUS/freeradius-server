@@ -57,9 +57,9 @@
  *
  */
 
-#include "autoconf.h"
-#include "missing.h"
-#include "libradius.h"
+#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/libradius.h>
 #include "eap_types.h"
 
 static const char rcsid[] = "$Id$";

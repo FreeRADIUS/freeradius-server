@@ -20,7 +20,7 @@
  * Copyright 2001 Koulik Andrei, Sandy Service
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>

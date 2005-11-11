@@ -9,7 +9,7 @@
  */
 
 #include <stddef.h>
-#include "token.h"
+#include <freeradius-devel/token.h>
 
 /*
  * Export the minimum amount of information about these structs

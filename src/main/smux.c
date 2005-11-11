@@ -25,7 +25,7 @@
 static const char rcsid[] =
 "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #ifdef WITH_SNMP
 
@@ -43,9 +43,9 @@ static const char rcsid[] =
 #include <fcntl.h>
 #include <ctype.h>
 
-#include "radiusd.h"
-#include "radius_snmp.h"
-#include "smux.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/radius_snmp.h>
+#include <freeradius-devel/smux.h>
 
 #define min(A,B) ((A) < (B) ? (A) : (B))
 

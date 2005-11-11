@@ -49,7 +49,7 @@
 
 */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 #include "snprintf.h"
 
 #ifndef HAVE_VSNPRINTF

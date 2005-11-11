@@ -7,7 +7,7 @@
 
 #ifndef RADIUS_MODULES_H
 #define RADIUS_MODULES_H
-#include "conffile.h"
+#include <freeradius-devel/conffile.h>
 
 typedef int (*packetmethod)(void *instance, REQUEST *request);
 

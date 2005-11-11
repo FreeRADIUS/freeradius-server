@@ -30,7 +30,7 @@
 #endif
 #endif
 
-#include <modules.h>
+#include <freeradius-devel/modules.h>
 
 const LRAD_NAME_NUMBER policy_return_codes[] = {
 	{ "reject", RLM_MODULE_REJECT },

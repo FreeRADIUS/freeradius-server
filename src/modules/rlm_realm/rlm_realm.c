@@ -21,7 +21,7 @@
  * FIXME add copyrights
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,8 +35,8 @@
 #include <netinet/in.h>
 #endif
 
-#include "radiusd.h"
-#include "modules.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 
 static const char rcsid[] = "$Id$";
 

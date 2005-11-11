@@ -24,7 +24,7 @@
 static const char rcsid[] =
 "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #ifdef WITH_SNMP
 
@@ -34,10 +34,10 @@ static const char rcsid[] =
 
 #include <string.h>
 
-#include "smux.h"
-#include "radius_snmp.h"
-#include "radiusd.h"
-#include "conffile.h"
+#include <freeradius-devel/smux.h>
+#include <freeradius-devel/radius_snmp.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/conffile.h>
 
 extern int need_reload;
 

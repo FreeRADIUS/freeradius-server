@@ -21,7 +21,7 @@
  * Copyright 2005  Alan DeKok <aland@ox.org>
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -49,18 +49,18 @@
 #endif
 
 #ifdef WITH_UDPFROMTO
-#include "udpfromto.h"
+#include <freeradius-devel/udpfromto.h>
 #endif
 
 #include <fcntl.h>
 
-#include "radiusd.h"
-#include "rad_assert.h"
-#include "conffile.h"
-#include "token.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/conffile.h>
+#include <freeradius-devel/token.h>
 
-#include "radius_snmp.h"
-#include "request_list.h"
+#include <freeradius-devel/radius_snmp.h>
+#include <freeradius-devel/request_list.h>
 
 static time_t start_time = 0;
 

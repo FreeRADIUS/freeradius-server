@@ -21,7 +21,7 @@
  * Copyright 2002  Alan DeKok <aland@ox.org>
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -34,12 +34,12 @@
 #include <arpa/inet.h>
 #endif
 
-#include "radiusd.h"
-#include "rad_assert.h"
-#include "conffile.h"
-#include "token.h"
-#include "modules.h"
-#include "request_list.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/conffile.h>
+#include <freeradius-devel/token.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/request_list.h>
 
 #include <sys/resource.h>
 #include <unistd.h>

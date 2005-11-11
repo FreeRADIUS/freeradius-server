@@ -29,7 +29,7 @@
 #ifdef FREERADIUS
 #define _LRAD_MD4_H
 #define _LRAD_SHA1_H
-#include "rad_assert.h"
+#include <freeradius-devel/rad_assert.h>
 #endif
 #include "otp.h"
 #include "otp_pwe.h"

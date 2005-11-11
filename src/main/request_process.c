@@ -24,7 +24,7 @@
 
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <sys/socket.h>
 
@@ -37,9 +37,9 @@ static const char rcsid[] = "$Id$";
 #include <ctype.h>
 #include <string.h>
 
-#include "radiusd.h"
-#include "rad_assert.h"
-#include "modules.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/modules.h>
 
 
 /*

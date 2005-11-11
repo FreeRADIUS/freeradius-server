@@ -23,7 +23,7 @@
 
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<sys/stat.h>
 
@@ -34,8 +34,8 @@ static const char rcsid[] = "$Id$";
 #include	<fcntl.h>
 #include	<limits.h>
 
-#include	"radiusd.h"
-#include	"modules.h"
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/modules.h>
 
 struct file_instance {
 	char *compat_mode;

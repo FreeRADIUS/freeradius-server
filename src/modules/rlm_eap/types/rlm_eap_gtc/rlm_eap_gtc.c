@@ -20,14 +20,14 @@
  * Copyright 2003  The FreeRADIUS server project
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "eap.h"
 
-#include <rad_assert.h>
+#include <freeradius-devel/rad_assert.h>
 
 /*
  *	EAP-GTC is just ASCII data carried inside of the EAP session.

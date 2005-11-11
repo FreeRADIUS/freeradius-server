@@ -28,14 +28,14 @@
  * by Joerg Wendland <wendland@scan-plus.de>
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "radiusd.h"
+#include <freeradius-devel/radiusd.h>
 #include <sql.h>
 #include <sqlcli.h>
 #include "rlm_sql.h"

@@ -19,17 +19,17 @@
  *
  * Copyright 2000  The FreeRADIUS server project
  */
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include "radiusd.h"
-#include "rad_assert.h"
-#include "conffile.h"
-#include "modpriv.h"
-#include "modules.h"
-#include "modcall.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/conffile.h>
+#include <freeradius-devel/modpriv.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/modcall.h>
 
 /* mutually-recursive static functions need a prototype up front */
 static modcallable *do_compile_modgroup(int, CONF_SECTION *, const char *,

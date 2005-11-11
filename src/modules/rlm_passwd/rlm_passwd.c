@@ -21,9 +21,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "autoconf.h"
-#include "radiusd.h"
-#include "modules.h"
+#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 
 
 struct mypasswd {

@@ -24,7 +24,7 @@
 
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <sys/stat.h>
 
@@ -38,8 +38,8 @@ static const char rcsid[] = "$Id$";
 #include <ctype.h>
 #include <fcntl.h>
 
-#include "radiusd.h"
-#include "rad_assert.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 /*
  *	Free a PAIR_LIST

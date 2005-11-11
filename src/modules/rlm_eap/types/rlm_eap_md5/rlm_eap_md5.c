@@ -21,14 +21,14 @@
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "eap_md5.h"
 
-#include <rad_assert.h>
+#include <freeradius-devel/rad_assert.h>
 
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.

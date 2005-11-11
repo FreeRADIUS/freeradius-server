@@ -23,7 +23,7 @@
  */
 static const char rcsid[] = "$Id$";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -49,10 +49,10 @@ static const char rcsid[] = "$Id$";
 #	include <getopt.h>
 #endif
 
-#include "conf.h"
-#include "radpaths.h"
-#include "missing.h"
-#include "../include/md5.h"
+#include <freeradius-devel/conf.h>
+#include <freeradius-devel/radpaths.h>
+#include <freeradius-devel/missing.h>
+#include <freeradius-devel/md5.h>
 
 #include "eap_types.h"
 #include "eap_sim.h"

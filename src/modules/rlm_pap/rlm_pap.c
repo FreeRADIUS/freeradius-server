@@ -21,7 +21,7 @@
  * Copyright 2001  Kostas Kalevras <kkalev@noc.ntua.gr>
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,9 +29,9 @@
 #include <unistd.h>
 #include <ctype.h>
 
-#include "radiusd.h"
-#include "modules.h"
-#include "conffile.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/conffile.h>
 #include "../../include/md5.h"
 #include "../../include/sha1.h"
 

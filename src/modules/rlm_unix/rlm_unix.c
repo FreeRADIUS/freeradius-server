@@ -25,7 +25,7 @@
  */
 static const char rcsid[] = "$Id$";
 
-#include	"autoconf.h"
+#include	<freeradius-devel/autoconf.h>
 
 #include	<stdlib.h>
 #include	<string.h>
@@ -50,9 +50,9 @@ static const char rcsid[] = "$Id$";
 #  include	<siad.h>
 #endif
 
-#include	"radiusd.h"
-#include	"modules.h"
-#include	"sysutmp.h"
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/modules.h>
+#include	<freeradius-devel/sysutmp.h>
 
 static char trans[64] =
    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

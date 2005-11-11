@@ -21,15 +21,15 @@
  * Copyright 2003  Kostas Kalevras <kkalev@noc.ntua.gr>
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "radiusd.h"
-#include "modules.h"
-#include "conffile.h"
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/conffile.h>
 #ifdef HAVE_REGEX_H
 #	include <regex.h>
 #endif

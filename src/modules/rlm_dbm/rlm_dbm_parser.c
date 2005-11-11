@@ -24,7 +24,7 @@
 char sccsid[] =
 "$Id$ sandy module project\n Copyright 2001 Sandy Service\nCopyright 2001 Koulik Andrei";
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 #include <fcntl.h>
 
 #include <stdlib.h>
@@ -45,11 +45,11 @@ char sccsid[] =
 #include <ctype.h>
 #include <string.h>
 
-#include "radiusd.h"
+#include <freeradius-devel/radiusd.h>
 
-#include "conf.h"
-#include "radpaths.h"
-#include "missing.h"
+#include <freeradius-devel/conf.h>
+#include <freeradius-devel/radpaths.h>
+#include <freeradius-devel/missing.h>
 
 #define	MAX_BUFF_SIZE	1024
 

@@ -6,7 +6,7 @@
  *  Version:	$Id$
  */
 
-#include "autoconf.h"
+#include <freeradius-devel/autoconf.h>
 
 #include <string.h>
 
