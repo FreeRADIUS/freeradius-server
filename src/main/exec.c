@@ -88,7 +88,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	/*
 	 *	Check for bad escapes.
 	 */
-	if (cmd[strlen(mycmd)] == '\\') {
+	if (cmd[strlen(cmd) - 1] == '\\') {
 		radlog(L_ERR|L_CONS, "Command line has final backslash, without a following character");
 		return -1;
 	}
