@@ -4,11 +4,11 @@
 
 include ../../Make.inc
 
-SERVER_SRCS	= radiusd.c files.c util.c acct.c log.c valuepair.c  \
-		  version.c proxy.c auth.c conffile.c modules.c modcall.c  \
-		  session.c xlat.c threads.c smux.c radius_snmp.c client.c \
-		  request_list.c mainconfig.c listen.c request_process.c \
-		  crypt.c
+SERVER_SRCS	= acct.c auth.c client.c conffile.c crypt.c exec.c files.c \
+		  listen.c log.c mainconfig.c modules.c modcall.c proxy.c  \
+		  radiusd.c radius_snmp.c request_list.c request_process.c \
+		  session.c smux.c threads.c util.c valuepair.c version.c  \
+		  xlat.c
 
 SERVER_OBJS	+= $(SERVER_SRCS:.c=.o)
 
