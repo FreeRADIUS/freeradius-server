@@ -3,7 +3,7 @@
 #
 
 TARGET		= rlm_exec
-SRCS		= exec.c rlm_exec.c
+SRCS		= rlm_exec.c
 HEADERS		=
 RLM_CFLAGS	=
 RLM_LDFLAGS	=
