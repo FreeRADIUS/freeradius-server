@@ -454,4 +454,14 @@ int		lrad_hash_table_walk(lrad_hash_table_t *ht,
 int		lrad_hash_table_set_data_size(lrad_hash_table_t *ht,
 					      size_t data_size);
 
+/*
+ *	FIFOs
+ */
+typedef struct lrad_fifo_t lrad_fifo_t;
+lrad_fifo_t *lrad_fifo_create(int max_entries, void (*freeNode)(void *));
+void lrad_fifo_free(lrad_fifo_t *fi);
+int lrad_fifo_push(lrad_fifo_t *fi, void *data);
+void *lrad_fifo_pop(lrad_fifo_t *fi);
+void *lrad_fifo_peek(lrad_fifo_t *fi);
+
 #endif /*LIBRADIUS_H*/

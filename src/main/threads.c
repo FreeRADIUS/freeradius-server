@@ -75,6 +75,15 @@ static const char rcsid[] =
 #define THREAD_CANCELLED	(2)
 #define THREAD_EXITED		(3)
 
+#define NUM_FIFOS               (2)
+
+/*
+ *     Ordered this way because we prefer proxy, then ongoing, then
+ *     start.
+ */
+#define FIFO_START   (1)
+#define FIFO_PROXY   (0)
+
 /*
  *  A data structure which contains the information about
  *  the current thread.
@@ -143,9 +152,9 @@ typedef struct THREAD_POOL {
 	pthread_mutex_t	queue_mutex;
 
 	int		max_queue_size;
-	uint32_t	queue_head; /* first filled entry */
-	uint32_t	queue_tail; /* first empty entry */
-	lrad_hash_table_t *queue;
+	int		num_queued;
+	int		fifo_state;
+	lrad_fifo_t	*fifo[NUM_FIFOS];
 } THREAD_POOL;
 
 static THREAD_POOL thread_pool;
@@ -281,25 +290,17 @@ static void reap_children(void)
  */
 static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
-	request_queue_t entry;
+	int fifo = FIFO_START;
+	request_queue_t *entry;
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
 	thread_pool.request_count++;
 
 	/*
-	 *	If the queue is empty, re-set the indices to zero,
-	 *	for no particular reason...
+	 *	FIXME: Handle proxy replies separately?
 	 */
-	if (lrad_hash_table_num_elements(thread_pool.queue) == 0) {
-		thread_pool.queue_head = thread_pool.queue_tail = 0;
-	}
-
-	/*
-	 *	If the queue has hit it's maximum allowed size, then
-	 *	toss the request, as we're too busy!
-	 */
-	if (lrad_hash_table_num_elements(thread_pool.queue) >= thread_pool.max_queue_size) {
+	if (thread_pool.num_queued >= thread_pool.max_queue_size) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		
 		/*
@@ -311,31 +312,32 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	}
 
 	/*
-	 *	FIXME: If there are too many outstanding requests,
-	 *	return data to the server core which tells it to slow
-	 *	down on reading from the sockets.
-	 */
-
-	/*
-	 *	Add the data to the queue tail, increment the tail,
-	 *	and signal the semaphore that there's another request
-	 *	in the queue.
+	 *	Requests get handled in priority.  First, we handle
+	 *	replies from a home server, to finish ongoing requests.
 	 *
-	 *	Hmm... too many malloc's are a problem.  Could we put this
-	 *	into some kind of paged memory?
+	 *	Then, we handle requests with State, to finish
+	 *	multi-packet transactions.
+	 *
+	 *	Finally, we handle new requests.
 	 */
-	entry.request = request;
-	entry.fun = fun;
+	if (request->proxy_reply) {
+		fifo = FIFO_PROXY;
+	} else {
+		fifo = FIFO_START;
+	}
 
-	if (!lrad_hash_table_insert(thread_pool.queue, thread_pool.queue_tail,
-				    &entry)) {
+	entry = rad_malloc(sizeof(*entry));
+	entry->request = request;
+	entry->fun = fun;
+
+	if (!lrad_fifo_push(thread_pool.fifo[fifo], entry)) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		radlog(L_ERR, "!!! ERROR !!! Failed inserting request %d into the queue", request->number);
 		request->finished = TRUE;
 		return 0;
 	}
 
-	thread_pool.queue_tail++;
+	thread_pool.num_queued++;
 
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
@@ -356,61 +358,62 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 /*
  *	Remove a request from the queue.
  */
-static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
+static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 {
+	int fifo_state;
 	request_queue_t *entry;
+
 	reap_children();
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
-	/*
-	 *	Head & tail are the same.  There's nothing in
-	 *	the queue.
-	 */
-	if (thread_pool.queue_head == thread_pool.queue_tail) {
-		pthread_mutex_unlock(&thread_pool.queue_mutex);
-		*request = NULL;
-		*fun = NULL;
-		return;
-	}
+	fifo_state = thread_pool.fifo_state;
 
-	/*
-	 *	Grab the entry from the hash table
-	 *
-	 *	Note that we *don't* have a "free" function,
-	 *	so "entry" is still valid after the "delete"
-	 */
-	entry = lrad_hash_table_finddata(thread_pool.queue, thread_pool.queue_head);
+ retry:
+	do {
+		/*
+		 *	Pop an entry from the current queue, and go to
+		 *	the next queue.
+		 */
+		entry = lrad_fifo_pop(thread_pool.fifo[fifo_state]);
+		fifo_state++;
+		if (fifo_state >= NUM_FIFOS) fifo_state = 0;
+	} while ((fifo_state != thread_pool.fifo_state) && !entry);
+
 	if (!entry) {
-		lrad_hash_table_delete(thread_pool.queue, thread_pool.queue_head++);
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		*request = NULL;
 		*fun = NULL;
-		return;
+		return 0;
 	}
 
+	rad_assert(thread_pool.num_queued > 0);
+	thread_pool.num_queued--;
 	*request = entry->request;
 	*fun = entry->fun;
+	free(entry);
 
 	rad_assert(*request != NULL);
 	rad_assert((*request)->magic == REQUEST_MAGIC);
 	rad_assert(*fun != NULL);
 
-	lrad_hash_table_delete(thread_pool.queue, thread_pool.queue_head++);
-
 	/*
-	 *	FIXME: Check the request timestamp.  If it's more than
-	 *	"clean_delay" seconds old, then discard the request,
-	 *	log an error, and try to de-queue another request.
+	 *	If the request has sat in the queue for too long,
+	 *	kill it.
 	 *
 	 *	The main clean-up code won't delete the request from
-	 *	the request list, because it's not marked "finished"
+	 *	the request list, until it's marked "finished"
 	 */
+	if ((*request)->options & RAD_REQUEST_OPTION_STOP_NOW) {
+		(*request)->finished = 1;
+		goto retry;
+	}
 
 	/*
 	 *	The thread is currently processing a request.
 	 */
 	thread_pool.active_threads++;
+	thread_pool.fifo_state = fifo_state;
 
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
@@ -488,7 +491,7 @@ static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 		}
 	}
 
-	return;
+	return 1;
 }
 
 
@@ -555,8 +558,7 @@ static void *request_handler_thread(void *arg)
 		 *	It may be empty, in which case we fail
 		 *	gracefully.
 		 */
-		request_dequeue(&self->request, &fun);
-		if (!self->request) continue;
+		if (!request_dequeue(&self->request, &fun)) continue;
 
 		self->request->child_pid = self->pthread_id;
 		self->request_count++;
@@ -845,18 +847,15 @@ int thread_pool_init(int spawn_flag)
 	}
 
 	/*
-	 *	Queue head & tail are set to zero by the memset,
-	 *	above.
-	 *
-	 *	Allocate an initial queue, always as a power of 2.
+	 *	Allocate multiple fifos.
 	 */
-	thread_pool.queue = lrad_hash_table_create(8, NULL, 0);
-	if (!thread_pool.queue) {
-		radlog(L_ERR, "FATAL: Failed to set up queue hash");
-		exit(1);
+	for (i = 0; i < NUM_FIFOS; i++) {
+		thread_pool.fifo[i] = lrad_fifo_create(65536, NULL);
+		if (!thread_pool.fifo[i]) {
+			radlog(L_ERR, "FATAL: Failed to set up request fifo");
+			exit(1);
+		}
 	}
-	lrad_hash_table_set_data_size(thread_pool.queue,
-				      sizeof(request_queue_t));
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	/*
