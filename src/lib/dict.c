@@ -1176,99 +1176,11 @@ DICT_ATTR *dict_attrbyvalue(int val)
 
 /*
  *	Get an attribute by its name.
- *
- *	We can refer to an attribute by it's name, or by
- *	canonical reference:
- *
- *	Attribute-Name
- *	Attr-%d
- *	VendorName-Attr-%d
- *	Vendor-%d-Attr-%d
- *	VendorName-Attribute-Name
  */
 DICT_ATTR *dict_attrbyname(const char *name)
 {
-	DICT_ATTR *da;
-
-	da = lrad_hash_table_finddata(attributes_byname, dict_hashname(name));
-	if (da) return da;
-
-	{
-		int value, attr;
-		const char *p = name;
-		char *q;
-		char buffer[1024];
-		
-		/*
-		 *	Look for:
-		 *
-		 *	Vendor-%d-Attr-%d
-		 *	VendorName-Attr-%d
-		 *	Attr-%d		%d = 1-65535
-		 */
-
-		attr = 0;
-
-		if (strncasecmp(p, "Vendor-", 7) == 0) {
-			p += 7;
-			value = (int) strtol(p, &q, 10);
-
-			/*
-			 *	Validate the parsed data.
-			 */
-			if ((value <= 0) || (value > 65535)) {
-				return NULL;
-			}
-			p = q + 1; /* skip the '-' */
-			attr = value << 16; /* FIXME: horrid hack */
-
-		} else if ((q = strchr(name, '-')) != NULL) {
-			if (((size_t) (q - name)) >= sizeof(buffer)) return NULL;
-			
-			memcpy(buffer, name, q - name);
-			buffer[q - name] = '\0';
-
-			/*
-			 *	No leading vendor name, stop looking.
-			 */
-			value = dict_vendorbyname(buffer);
-			if (!value) return NULL;
-
-			p = q + 1; /* skip the '-' */
-			attr = value << 16;
-		}
-
-		/*
-		 *	Accept only certain names.
-		 */
-		if (strncasecmp(p, "Attr-", 5) == 0) {
-			value = (int) strtol(p + 5, &q, 10);
-			if (*q) return NULL; /* characters after the digits */
-			if ((value <= 0) || (value > 65535)) return NULL; /* bad value */
-			attr |= value;
-
-			/*
-			 *	FIXME: If it doesn't exit, maybe we
-			 *	want to create it, and make it type
-			 *	"octets"?
-			 */
-			return dict_attrbyvalue(attr);
-		}
-
-		/*
-		 *	If there's no leading Vendor-%d, or Vendorname,
-		 *	and the attribute is not Attr-%d, then don't
-		 *	bother looking it up again.
-		 */
-		if (attr == 0) return NULL;
-
-		/*
-		 *	Maybe it's Vendor-%d-Attribute-name,
-		 *	but we don't support that.
-		 */ 
-		return NULL;
-	}
-	return NULL;		/* should never be reached */
+	return lrad_hash_table_finddata(attributes_byname,
+					dict_hashname(name));
 }
 
 /*
