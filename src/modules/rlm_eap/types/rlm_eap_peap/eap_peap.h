@@ -22,7 +22,7 @@
 #ifndef _EAP_PEAP_H
 #define _EAP_PEAP_H
 
-#include "rlm_eap_tls.h"
+#include "eap_tls.h"
 
 typedef struct peap_tunnel_t {
 	VALUE_PAIR	*username;

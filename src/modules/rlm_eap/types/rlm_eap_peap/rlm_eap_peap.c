@@ -21,7 +21,6 @@
  */
 
 #include <freeradius-devel/autoconf.h>
-#include "rlm_eap_tls.h"
 #include "eap_peap.h"
 
 typedef struct rlm_eap_peap_t {

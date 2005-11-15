@@ -19,7 +19,6 @@
  *
  *   Copyright 2003 Alan DeKok <aland@freeradius.org>
  */
-#include "rlm_eap_tls.h"
 #include "eap_ttls.h"
 
 /*
