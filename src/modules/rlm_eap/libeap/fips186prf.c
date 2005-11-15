@@ -261,39 +261,3 @@ main(int argc, char *argv[])
 	printf("\n");
 }
 #endif
-
-
-
-/*
- * $Log$
- * Revision 1.5  2005-11-11 00:32:58  aland
- * 	Include files used to build the server are now <freeradius-devel/*.h>
- * 	If this is bad, we can easily change it in the future to something
- * 	like <freeradius/*.h>.
- *
- * 	Also, updated rlm_sqlippool to build with the recent cleanups.
- *
- * 	The work was done via a Perl script, and the server rebuilt &
- * 	tested to be sure it works.
- *
- * Revision 1.4  2005/09/21 03:02:40  nbk
- * 	Fix compilation warnings.
- *
- * Revision 1.3  2004/02/26 19:04:30  aland
- * 	perl -i -npe "s/[ \t]+$//g" `find src -name "*.[ch]" -print`
- *
- * 	Whitespace changes only, from a fresh checkout.
- *
- * 	For bug # 13
- *
- * Revision 1.2  2003/11/06 15:37:24  aland
- * 	Update includes to work a little better
- *
- * Revision 1.1  2003/10/29 02:49:19  mcr
- * 	initial commit of eap-sim
- *
- *
- * Local Variables:
- * c-style: bsd
- * End:
- */
