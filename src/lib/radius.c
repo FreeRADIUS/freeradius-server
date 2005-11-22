@@ -227,7 +227,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	 *	No udpfromto, OR an IPv6 socket, fail gracefully.
 	 */
 	return sendto(sockfd, data, data_len, flags, 
-		(struct sockaddr *)&dst, sizeof_dst);
+		      (struct sockaddr *)&dst, sizeof_dst);
 }
 
 
@@ -461,17 +461,26 @@ static void make_tunnel_passwd(uint8_t *output, int *outlen,
 {
 	lrad_MD5_CTX context, old;
 	uint8_t	digest[AUTH_VECTOR_LEN];
-	uint8_t passwd[AUTH_PASS_LEN + AUTH_VECTOR_LEN];
+	uint8_t passwd[MAX_STRING_LEN + AUTH_VECTOR_LEN];
 	int	i, n;
 	int	len;
+
+	/*
+	 *	Maximum attribute length is 253, minus 1 for the tag,
+	 *	2 for the salt yeilds 250.  However, the encrypted
+	 *	attribute must be a multiple of 16, meaning it can be
+	 *	no more than 240 bytes.  And, one byte of that is
+	 *	taken up by the length octet, leaving 239 for the
+	 *	password data.
+	 */
+	if (inlen > 239) inlen = 239;
 
 	/*
 	 *	Length of the encrypted data is password length plus
 	 *	one byte for the length of the password.
 	 */
 	len = inlen + 1;
-	if (len > AUTH_PASS_LEN) len = AUTH_PASS_LEN;
-	else if ((len & 0x0f) != 0) {
+	if ((len & 0x0f) != 0) {
 		len += 0x0f;
 		len &= ~0x0f;
 	}
@@ -641,18 +650,6 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 */
 	data = vp->vp_octets;
 	len = vp->length;
-
-	/*
-	 *	Encrypted passwords can't be very long.
-	 *	This check also ensures that the hashed version
-	 *	of the password + attribute header fits into one
-	 *	attribute.
-	 *
-	 *	FIXME: Print a warning message if it's too long?
-	 */
-	if (vp->flags.encrypt && (len > MAX_PASS_LEN)) {
-		len = MAX_PASS_LEN;
-	}
 
 	switch(vp->type) {
 	case PW_TYPE_STRING:
@@ -2424,11 +2421,6 @@ int rad_tunnel_pwdecode(uint8_t *passwd, int *pwlen, const char *secret,
 	len -= 2;		/* discount the salt */
 
 	/*
-	 *	Mash maximum values, too.
-	 */
-	if (len > 128) len = 128;
-
-	/*
 	 *	Use the secret to setup the decryption digest
 	 */
 	secretlen = strlen(secret);
@@ -2479,6 +2471,11 @@ int rad_tunnel_pwdecode(uint8_t *passwd, int *pwlen, const char *secret,
 			passwd[n + i - 1] = passwd[n + i + 2] ^ digest[i];
 		}
 	}
+
+	/*
+	 *	See make_tunnel_password, above.
+	 */
+	if (reallen > 239) reallen = 239;
 
 	*pwlen = reallen;
 	passwd[reallen] = 0;
