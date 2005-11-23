@@ -456,7 +456,7 @@ static void make_passwd(uint8_t *output, int *outlen,
 }
 
 static void make_tunnel_passwd(uint8_t *output, int *outlen,
-			       const uint8_t *input, int inlen,
+			       const uint8_t *input, int inlen, int room,
 			       const char *secret, const uint8_t *vector)
 {
 	lrad_MD5_CTX context, old;
@@ -466,14 +466,26 @@ static void make_tunnel_passwd(uint8_t *output, int *outlen,
 	int	len;
 
 	/*
-	 *	Maximum attribute length is 253, minus 1 for the tag,
-	 *	2 for the salt yeilds 250.  However, the encrypted
-	 *	attribute must be a multiple of 16, meaning it can be
-	 *	no more than 240 bytes.  And, one byte of that is
-	 *	taken up by the length octet, leaving 239 for the
-	 *	password data.
+	 *	Account for 2 bytes of the salt, and round the room
+	 *	available down to the nearest multiple of 16.  Then,
+	 *	subtract one from that to account for the length byte,
+	 *	and the resulting number is the upper bound on the data
+	 *	to copy.
+	 *
+	 *	We could short-cut this calculation just be forcing
+	 *	inlen to be no more than 239.  It would work for all
+	 *	VSA's, as we don't pack multiple VSA's into one
+	 *	attribute.
+	 *
+	 *	However, this calculation is more general, if a little
+	 *	complex.  And it will work in the future for all possible
+	 *	kinds of weird attribute packing.
 	 */
-	if (inlen > 239) inlen = 239;
+	room -= 2;
+	room -= (room & 0x0f);
+	room--;
+
+	if (inlen > room) inlen = room;
 
 	/*
 	 *	Length of the encrypted data is password length plus
@@ -718,8 +730,19 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			return -1;
 		}
 
+		/*
+		 *	Check if 255 - offset - total_length is less
+		 *	than 18.  If so, we can't fit the data into
+		 *	the available space, and we discard the
+		 *	attribute.
+		 *
+		 *	This is ONLY a problem if we have multiple VSA's
+		 *	in one Vendor-Specific, though.
+		 */
+		if ((255 - offset - total_length) < 18) return 0;
+
 		make_tunnel_passwd(ptr + offset, &len,
-				   data, len,
+				   data, len, 255 - offset - total_length,
 				   secret, original->vector);
 		break;
 
