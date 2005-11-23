@@ -89,7 +89,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	uint8_t a2[(MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
 	uint8_t kd[(MAX_STRING_LEN + 1) * 5];
 	uint8_t hash[16];	/* MD5 output */
-	VALUE_PAIR *vp, *passwd;
+	VALUE_PAIR *vp, *passwd, *algo;
 	VALUE_PAIR *qop, *nonce;
 
 	instance = instance;	/* -Wunused */
@@ -240,10 +240,19 @@ static int digest_authenticate(void *instance, REQUEST *request)
 
 	/*
 	 *	See which variant we calculate.
+	 *	Assume MD5 if no Digest-Algorithm attribute received
 	 */
-	vp = pairfind(request->packet->vps, PW_DIGEST_ALGORITHM);
-	if ((vp != NULL) &&
-	    (strcasecmp(vp->vp_strvalue, "MD5-sess") == 0)) {
+	algo = pairfind(request->packet->vps, PW_DIGEST_ALGORITHM);
+	if ((algo == NULL) || 
+	    (strcasecmp(algo->vp_strvalue, "MD5") == 0)) {
+		/*
+		 *	Set A1 to MD5-Password if no User-Password found
+		 */
+		if (passwd->attribute != PW_USER_PASSWORD) {
+			memcpy(&a1[0], passwd->vp_octets, 16);
+		}
+
+	} else if (strcasecmp(algo->vp_strvalue, "MD5-sess") == 0) {
 		/*
 		 *	K1 = H(A1) : Digest-Nonce ... : H(A2)
 		 *
@@ -290,8 +299,8 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		lrad_hex2bin(&vp->vp_octets[0], &a1[a1_len], vp->length >> 1);
 		a1_len += (vp->length >> 1);
 
-	} else if ((vp != NULL) &&
-		   (strcasecmp(vp->vp_strvalue, "MD5") != 0)) {
+	} else if ((algo != NULL) &&
+		   (strcasecmp(algo->vp_strvalue, "MD5") != 0)) {
 		/*
 		 *	We check for "MD5-sess" and "MD5".
 		 *	Anything else is an error.
@@ -359,13 +368,18 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	DEBUG2("A2 = %s", a2);
 
 	/*
-	 *     KD = H(A1) : Digest-Nonce ... : H(A2)
+	 *     KD = H(A1) : Digest-Nonce ... : H(A2).
+	 *     Compute MD5 if Digest-Algorithm == "MD5-Sess",
+	 *     or if we found a User-Password.
 	 */
-	librad_md5_calc(&hash[0], &a1[0], a1_len);
-
-	for (i = 0; i < 16; i++) {
-		sprintf(&kd[i * 2], "%02x", hash[i]);
+	if (((algo != NULL) && 
+	     (strcasecmp(algo->vp_strvalue, "MD5-Sess") == 0)) ||
+	    (passwd->attribute == PW_USER_PASSWORD)) {
+		librad_md5_calc(&hash[0], &a1[0], a1_len);
+	} else {
+		memcpy(&hash[0], &a1[0], a1_len);
 	}
+	lrad_bin2hex(hash, kd, sizeof(hash));
 
 #ifndef NDEBUG
 	if (debug_flag) {
@@ -434,9 +448,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 
 	librad_md5_calc(&hash[0], &a2[0], a2_len);
 
-	for (i = 0; i < 16; i++) {
-		sprintf(&kd[kd_len + (i * 2)], "%02x", hash[i]);
-	}
+	lrad_bin2hex(hash, kd + kd_len, sizeof(hash));
 
 #ifndef NDEBUG
 	if (debug_flag) {
