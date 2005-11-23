@@ -262,22 +262,33 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		a1_len++;
 
 		/*
-		 *	Tack on the Digest-Nonce
+		 *	Tack on the Digest-Nonce. Length must be even
 		 */
+		if ((nonce->length & 1) != 0) {
+			DEBUG("ERROR: Received Digest-Nonce hex string with invalid length: Cannot perform Digest authentication");
+			return RLM_MODULE_INVALID;
+		} 
 		lrad_hex2bin(&nonce->vp_octets[0], &a1[a1_len], nonce->length >> 1);
-		a1_len += (nonce->length >> 1); /* FIXME: CHECK LENGTH */
+		a1_len += (nonce->length >> 1);
 
 		a1[a1_len] = ':';
 		a1_len++;
 
 		vp = pairfind(request->packet->vps, PW_DIGEST_CNONCE);
 		if (!vp) {
-		  DEBUG("ERROR: No Digest-CNonce: Cannot perform Digest authentication");
-		  return RLM_MODULE_INVALID;
+			DEBUG("ERROR: No Digest-CNonce: Cannot perform Digest authentication");
+			return RLM_MODULE_INVALID;
 		}
 
+		/*
+		 *      Digest-CNonce length must be even
+		 */
+		if ((vp->length & 1) != 0) {
+			DEBUG("ERROR: Received Digest-CNonce hex string with invalid length: Cannot perform Digest authentication");
+			return RLM_MODULE_INVALID;
+		}
 		lrad_hex2bin(&vp->vp_octets[0], &a1[a1_len], vp->length >> 1);
-		a1_len += (vp->length >> 1); /* FIXME: CHECK LENGTH */
+		a1_len += (vp->length >> 1);
 
 	} else if ((vp != NULL) &&
 		   (strcasecmp(vp->vp_strvalue, "MD5") != 0)) {
