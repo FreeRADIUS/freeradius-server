@@ -95,6 +95,10 @@ void endusershell(void);
 #define INADDR_NONE     ((uint32_t) 0xffffffff)
 #endif
 
+#ifndef INADDRSZ
+#define INADDRSZ 4
+#endif
+
 #ifndef INET_ADDRSTRLEN
 #define INET_ADDRSTRLEN 16
 #endif
@@ -105,7 +109,6 @@ void endusershell(void);
 
 #ifndef AF_INET6
 #define AF_INET6 10
-#endif
 
 #ifndef HAVE_STRUCT_IN6_ADDR
 struct in6_addr
@@ -119,6 +122,10 @@ struct in6_addr
 #define s6_addr16		in6_u.u6_addr16
 #define s6_addr32		in6_u.u6_addr32
 };
+
+#ifndef IN6ADDRSZ
+#define IN6ADDRSZ 16
+#endif
 
 #ifndef INET6_ADDRSTRLEN
 #define INET6_ADDRSTRLEN 46
@@ -188,6 +195,7 @@ struct in6_addr
 #endif
 
 #endif /* HAVE_STRUCT_IN6_ADDR */
+#endif
 
 /*
  *	Functions from getaddrinfo.c
