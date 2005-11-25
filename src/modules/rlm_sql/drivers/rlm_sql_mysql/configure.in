@@ -3,117 +3,177 @@ AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_sql_mysql])
 AC_CONFIG_HEADER(config.h)
 
-AC_PROG_CC
-AC_PROG_CPP
-
-AC_ARG_WITH(mysql-include-dir,
-[  --with-mysql-include-dir=DIR       Directory where the MySQL includes may be found ],
-[ mysql_include_dir="$withval" ]
-)
-
-AC_ARG_WITH(mysql-lib-dir,
-[  --with-mysql-lib-dir=DIR       Directory where the MySQL libraries may be found ],
-[ mysql_lib_dir="$withval" ]
-)
-
-AC_ARG_WITH(mysql-dir,
-[  --with-mysql-dir=DIR       Base directory where MySQL is installed ],
-[ mysql_lib_dir="$withval/lib/mysql"
-  mysql_include_dir="$withval/include"
-]
-)
+SMART_LIBS=""
+SMART_CLFAGS=""
+mysql_lib_dir=""
+mysql_include_dir=""
 
 if test x$with_[]modname != xno; then
 
-	targetname=modname   # we might change this later.
+    targetname=modname # we change this if a test fails
 
-	AC_CHECK_PROG(MYSQL_CONFIG, mysql_config, yes, no)
-	if test "x$MYSQL_CONFIG" = "xyes"
-	then
-		sql_mysql_ldflags=`mysql_config --libs`
-		sql_mysql_cflags=`mysql_config --cflags`
-		AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
+    dnl ############################################################
+    dnl # Check for command line options
+    dnl ############################################################
+
+    dnl extra argument: --with-mysql-dir=DIR
+    AC_ARG_WITH(mysql-dir,
+    [  --with-mysql-dir=DIR          base directory where MySQL is installed ],
+    [ mysql_lib_dir="$withval/lib/mysql"
+      mysql_include_dir="$withval/include" ]
+    )
+
+    dnl extra argument: --with-mysql-lib-dir=DIR
+    AC_ARG_WITH(mysql-lib-dir,
+    [  --with-mysql-lib-dir=DIR      directory where the MySQL libraries may be found ],
+    [ mysql_lib_dir="$withval" ]
+    )
+
+    dnl extra argument: --with-mysql-include-dir=DIR
+    AC_ARG_WITH(mysql-include-dir,
+    [  --with-mysql-include-dir=DIR  directory where the MySQL includes may be found ],
+    [ mysql_include_dir="$withval" ]
+    )
+
+    dnl extra argument: --with-threads
+    mysql_with_threads=yes
+    AC_ARG_WITH(threads,
+    [  --with-threads                use threads, if available. (default=yes) ],
+    [ case "$withval" in
+	no)
+	    mysql_with_threads=no
+	    ;;
+	*)
+	    ;;
+	esac ]
+    )
+
+    dnl ############################################################
+    dnl # Check for programs
+    dnl ############################################################
+
+    AC_PROG_CC
+    AC_CHECK_PROG(MYSQL_CONFIG, mysql_config, yes, no)
+
+    dnl ############################################################
+    dnl # Check for libraries
+    dnl ############################################################
+
+    dnl pthread stuff is usually in -lpthread
+    dnl or in -lc_r, on *BSD
+    if test "x$mysql_with_threads" = "xyes"; then
+	AC_CHECK_LIB(pthread, pthread_create,
+		     [ LIBS="-lpthread $LIBS" ],
+		     AC_CHECK_LIB(c_r, pthread_create,
+				  [ LIBS="-lc_r $LIBS" ],
+				  [ mysql_with_threads=no ]
+				  )
+		     )
+    fi
+
+    if test "x$mysql_with_threads" = "xyes"; then
+	dnl try to link to libmysqlclient_r
+	if test "x$MYSQL_CONFIG" = "xyes"; then
+	    mysql_libs="$(mysql_config --libs_r)"
+	    old_LIBS="$LIBS"
+	    LIBS="$mysql_libs $LIBS"
+	    AC_MSG_CHECKING([for mysql_init in -lmysqlclient_r (using mysql_config)])
+	    AC_TRY_LINK_FUNC(mysql_init, have_libmysqlclient_r=yes)
+	    LIBS="$old_LIBS"
+	    if test "x$have_libmysqlclient_r" = "xyes"; then
+		AC_MSG_RESULT(yes)
+		SMART_LIBS="$mysql_libs $SMART_LIBS"
+	    else
+		AC_MSG_RESULT(no)
+	    fi
+	fi
+	if test "x$have_libmysqlclient_r" != "xyes"; then
+	    dnl mysql_config didn't work :(
+	    smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql \
+		/usr/local/lib/mysql /usr/local/mysql/lib/mysql"
+	    FR_SMART_CHECK_LIB(mysqlclient_r, mysql_init)
+	    if test "x$ac_cv_lib_mysqlclient_r_mysql_init" != "xyes"
+		then
+		dnl nothing worked :(
+		AC_MSG_WARN([mysql libraries not found. Use --with-mysql-lib-dir=<path>.])
+		targetname="" # disable module
+	    fi
+	fi
+    else
+	dnl try to link to libmysqlclient (without threads support)
+	if test "x$MYSQL_CONFIG" = "xyes"; then
+	    mysql_libs="$(mysql_config --libs)"
+	    old_LIBS="$LIBS"
+	    LIBS="$mysql_libs $LIBS"
+	    AC_MSG_CHECKING([for mysql_init in -lmysqlclient (using mysql_config)])
+	    AC_TRY_LINK_FUNC(mysql_init, have_libmysqlclient=yes)
+	    LIBS="$old_LIBS"
+	    if test "x$have_libmysqlclient" = "xyes"; then
+		AC_MSG_RESULT(yes)
+		SMART_LIBS="$mysql_libs $SMART_LIBS"
+	    else
+		AC_MSG_RESULT(no)
+	    fi
+	fi
+	if test "x$have_libmysqlclient" != "xyes"; then
+	    dnl mysql_config didn't work :(
+	    smart_try_dir="$mysql_lib_dir /usr/lib /usr/lib/mysql \
+		/usr/local/lib/mysql /usr/local/mysql/lib/mysql"
+	    FR_SMART_CHECK_LIB(mysqlclient, mysql_init)
+	    if test "x$ac_cv_lib_mysqlclient_mysql_init" != "xyes"
+		then
+		dnl nothing worked :(
+		AC_MSG_WARN([mysql libraries not found. Use --with-mysql-lib-dir=<path>.])
+		targetname="" # disable module
+	    fi
+	fi
+    fi
+
+    dnl ############################################################
+    dnl # Check for header files
+    dnl ############################################################
+
+    if test "x$MYSQL_CONFIG" = "xyes"; then
+	mysql_cflags="$(mysql_config --cflags)"
+	old_CFLAGS="$CFLAGS"
+	CFLAGS="$CFLAGS $mysql_cflags"
+	AC_MSG_CHECKING([for mysql.h (using mysql_config)])
+	AC_TRY_COMPILE([#include <mysql.h>], [int a = 1;],
+		       have_mysql_h=yes)
+	if test "x$have_mysql_h" = "xyes"; then
+	    AC_MSG_RESULT(yes)
+	    AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
+	    SMART_CFLAGS="$SMART_CFLAGS $mysql_cflags"
 	else
-		AC_CHECK_LIB(z, compress, LIBS="$LIBS -lz")
-
-		AC_MSG_CHECKING([for mysql/mysql.h])
-
-		AC_TRY_COMPILE([#include <mysql/mysql.h>], [int a = 1;],
-			MYSQL_INCLUDE=" ",
-			MYSQL_INCLUDE=
-		)
-
-		if test "x$MYSQL_INCLUDE" = "x"; then
-			old_CFLAGS="$CFLAGS"
-
-dnl			FR_LOCATE_DIR(mysql_include_dir,[mysql/mysql.h])
-
-			for try in $mysql_include_dir /usr/local/include /usr/local/mysql/include ; do
-				CFLAGS="$old_CFLAGS -I$try"
-				AC_TRY_COMPILE([#include <mysql/mysql.h>], [int a = 1;],
-					MYSQL_INCLUDE="-I$try",
-					MYSQL_INCLUDE=
-				)
-				if test "x$MYSQL_INCLUDE" != "x"; then
-					AC_DEFINE(HAVE_MYSQL_MYSQL_H, [], [Define if you have <mysql/mysql.h>])
-					break;
-				fi
-			done
-			CFLAGS="$old_CFLAGS"
-		fi
-
-		if test "x$MYSQL_INCLUDE" = "x"; then
-			AC_MSG_RESULT(no)
-			AC_MSG_WARN([mysql headers not found.  Use --with-mysql-include-dir=<path>.])
-			targetname=   # disabled module
-		else
-			sql_mysql_cflags="${sql_mysql_cflags} ${MYSQL_INCLUDE}"
-			AC_MSG_RESULT(yes)
-			AC_DEFINE(HAVE_MYSQL_H, [], [Define if you have <mysql.h>])
-  
-			AC_MSG_CHECKING([for mysql_init in -lmysqlclient])
-
-			old_LIBS="$LIBS"
-
-dnl			FR_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.so])
-dnl			FR_LOCATE_DIR(mysql_lib_dir,[libmysqlclient.a])
-
-			for try in $mysql_lib_dir /usr/lib /usr/lib/mysql /usr/local/lib/mysql /usr/local/mysql/lib/mysql; do
-				LIBS="$old_LIBS -L$try -lmysqlclient"
-				AC_TRY_LINK([extern char mysql_init();], [mysql_init()],
-					MYSQL_LIBS="-L$try -lmysqlclient $old_LIBS",
-					MYSQL_LIBS=
-				)
-				if test "x$MYSQL_LIBS" != "x"; then
-					break;
-				fi
-			done
-			LIBS="$old_LIBS"
-
-			dnl #  If one or the other isn't found, disable them both..
-			dnl #  If both are found, enable them both.
-			if test "x$MYSQL_LIBS" = "x"; then
-				AC_MSG_RESULT(no)
-				MYSQL_INCLUDE=
-				AC_MSG_WARN([mysql libraries not found.  Use --with-mysql-lib-dir=<path>.])
-				targetname=   # disabled module
-			else
-				AC_MSG_RESULT(yes) 
-				sql_mysql_ldflags="$sql_mysql_ldflags $MYSQL_LIBS"
-			fi
-		fi
-		sql_mysql_ldflags="$sql_mysql_ldflags $LIBS"
+	    AC_MSG_RESULT(no)
 	fi
-
-	if test "x$targetname" = "x"; then
-		AC_MSG_WARN([sql submodule 'mysql' disabled])
+	CFLAGS="$old_CFLAGS"
+    fi
+    if test "x$have_mysql_h" != "xyes"; then
+	dnl mysql_config didn't work :(
+	smart_try_dir="$mysql_include_dir /usr/local/include \
+		/usr/local/mysql/include"
+	FR_SMART_CHECK_INCLUDE(mysql/mysql.h)
+	if test "$ac_cv_header_mysql_mysql_h" = "yes"; then
+	    AC_DEFINE(HAVE_MYSQL_MYSQL_H, [],
+		      [Define if you have <mysql/mysql.h>])
+	else
+	    dnl nothing worked :(
+	    AC_MSG_WARN([mysql headers not found. Use --with-mysql-include-dir=<path>.])
+	    targetname="" # disable module
 	fi
+    fi
 
+    if test "x$targetname" = "x"; then
+	AC_MSG_WARN([sql submodule 'mysql' disabled])
+    fi
 else
-	targetname=
-	echo \*\*\* module modname is disabled.
+    targetname=
+    echo \*\*\* module modname is disabled.
 fi
 
+sql_mysql_ldflags="$SMART_LIBS"
+sql_mysql_cflags="$SMART_CFLAGS"
 AC_SUBST(sql_mysql_ldflags)
 AC_SUBST(sql_mysql_cflags)
 AC_SUBST(targetname)
