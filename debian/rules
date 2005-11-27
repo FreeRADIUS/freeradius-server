@@ -43,7 +43,8 @@ endif
 # Libtool won't play nice, so we won't play at all
 export RLM_EAP_LINK_MODE = -static
 
-build-simple stamp-build: patch
+build-simple: stamp-build
+stamp-build: stamp-patch
 	dh_testdir
 	# dh_testroot
 	./configure \
@@ -83,7 +84,7 @@ binary-indep: stamp-build
 	dh_clean -i -k
 	dh_installdirs -i
 	# Dialup-Admin
-	dh_installdocs -p freeradius-dialupadmin dialup_admin/README dialup_admin/doc/*
+	dh_installdocs -p freeradius-dialupadmin -XCVS dialup_admin/README dialup_admin/doc/*
 	dh_installchangelogs -p freeradius-dialupadmin dialup_admin/Changelog
 	dh_installexamples -p freeradius-dialupadmin dialup_admin/bin/dialup_admin.cron
 	dh_install -p freeradius-dialupadmin -XCVS dialup_admin/conf/* etc/freeradius-dialupadmin/
@@ -245,4 +246,4 @@ unpatch:
 	dpatch deapply-all
 	rm -rf stamp-patch debian/patched
 
-.PHONY: binary binary-arch binary-indep clean sanitycheck autotools
+.PHONY: binary binary-arch binary-indep clean clean-patched sanitycheck autotools build build-simple patch unpatch
