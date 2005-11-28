@@ -1235,7 +1235,7 @@ static int refresh_request(void *ctx, void *data)
 		 */
 		if ((request->reply->code == PW_AUTHENTICATION_REJECT) &&
 		    (time_passed == 0)) goto reject_packet;
-		if (time_passed == 0) time_passed = 1;
+		if (time_passed <= 0) time_passed = 1;
 		goto setup_timeout;
 	}
 
@@ -1296,6 +1296,8 @@ static int refresh_request(void *ctx, void *data)
 	time_passed = mainconfig.max_request_time - time_passed;
 
 setup_timeout:		
+	if (time_passed < 0) time_passed = 1;
+
 	if (time_passed < info->sleep_time) {
 		info->sleep_time = time_passed;
 	}
