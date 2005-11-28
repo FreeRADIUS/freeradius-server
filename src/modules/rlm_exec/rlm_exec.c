@@ -43,7 +43,7 @@ typedef struct rlm_exec_t {
 	char	*input;
 	char	*output;
 	char	*packet_type;
-	int	packet_code;
+	unsigned int	packet_code;
 	int	shell_escape;
 } rlm_exec_t;
 
@@ -359,6 +359,68 @@ static int exec_dispatch(void *instance, REQUEST *request)
 
 
 /*
+ *	First, look for Exec-Program && Exec-Program-Wait.
+ *
+ *	Then, call exec_dispatch.
+ */
+static int exec_postauth(void *instance, REQUEST *request)
+{
+	int result;
+	int exec_wait = 0;
+	VALUE_PAIR *vp, *tmp;
+	rlm_exec_t *inst = (rlm_exec_t *) instance;
+
+	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM);
+	if (vp) {
+		exec_wait = 0;
+
+	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT)) != NULL) {
+		exec_wait = 1;
+	}
+	if (!vp) goto dispatch;
+
+	tmp = NULL;
+	result = radius_exec_program(vp->vp_strvalue, request, exec_wait,
+				     NULL, 0, request->packet->vps, &tmp,
+				     inst->shell_escape);
+
+	/*
+	 *	Always add the value-pairs to the reply.
+	 */
+	pairmove(&request->reply->vps, &tmp);
+	pairfree(&tmp);
+
+	if (result < 0) {
+		/*
+		 *	Error. radius_exec_program() returns -1 on
+		 *	fork/exec errors.
+		 */
+		tmp = pairmake("Reply-Message", "Access denied (external check failed)", T_OP_SET);
+		pairadd(&request->reply->vps, tmp);
+		
+		DEBUG2("Login incorrect (external check failed)");
+
+		request->reply->code = PW_AUTHENTICATION_REJECT;
+		return RLM_MODULE_REJECT;
+	}
+	if (result > 0) {
+		/*
+		 *	Reject. radius_exec_program() returns >0
+		 *	if the exec'ed program had a non-zero
+		 *	exit status.
+		 */
+		request->reply->code = PW_AUTHENTICATION_REJECT;
+		DEBUG2("Login incorrect (external check said so)");
+		return RLM_MODULE_REJECT;
+	}
+
+ dispatch:
+	if (!inst->program) return RLM_MODULE_NOOP;
+
+	return exec_dispatch(instance, request);
+}
+
+/*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  *
@@ -381,6 +443,6 @@ module_t rlm_exec = {
 		NULL,			/* check simul */
 		exec_dispatch,		/* pre-proxy */
 		exec_dispatch,		/* post-proxy */
-		exec_dispatch		/* post-auth */
+		exec_postauth		/* post-auth */
 	},
 };
