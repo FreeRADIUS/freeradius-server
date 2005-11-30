@@ -1,0 +1,16 @@
+#  As defined in draft-sterman-aaa-sip-00.txt
+ATTRIBUTE	Digest-Response				206	string
+ATTRIBUTE	Digest-Attributes			207	octets	# stupid format
+
+BEGIN-SUB-ATTR Digest-Attributes
+ATTRIBUTE	Digest-Realm				1	string
+ATTRIBUTE	Digest-Nonce				2	string
+ATTRIBUTE	Digest-Method				3	string
+ATTRIBUTE	Digest-URI				4	string
+ATTRIBUTE	Digest-QOP				5	string
+ATTRIBUTE	Digest-Algorithm			6	string
+ATTRIBUTE	Digest-Body-Digest			7	string
+ATTRIBUTE	Digest-CNonce				8	string
+ATTRIBUTE	Digest-Nonce-Count			9	string
+ATTRIBUTE	Digest-User-Name			10	string
+END-SUB-ATTR

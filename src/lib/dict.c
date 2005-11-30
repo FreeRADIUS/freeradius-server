@@ -32,27 +32,50 @@ static const char rcsid[] = "$Id$";
 #include	<malloc.h>
 #endif
 
-#include	"libradius.h"
+#ifdef HAVE_SYS_STAT_H
+#include	<sys/stat.h>
+#endif
+
+#include	<unistd.h>
+
 #include	"missing.h"
+#include	"libradius.h"
+
+#define DICT_VALUE_MAX_NAME_LEN (128)
+#define DICT_VENDOR_MAX_NAME_LEN (128)
+
+static lrad_hash_table_t *vendors_byname = NULL;
+static lrad_hash_table_t *vendors_byvalue = NULL;
+
+static lrad_hash_table_t *attributes_byname = NULL;
+static lrad_hash_table_t *attributes_byvalue = NULL;
+
+static lrad_hash_table_t *values_byvalue = NULL;
+static lrad_hash_table_t *values_byname = NULL;
 
 /*
- *	There are very few vendors, and they're looked up only when we
- *	read the dictionaries.  So it's OK to have a singly linked
- *	list here.
+ *	For faster HUP's, we cache the stat information for
+ *	files we've $INCLUDEd
  */
-static DICT_VENDOR	*dictionary_vendors = NULL;
+typedef struct dict_stat_t {
+	struct dict_stat_t *next;
+	char	   	   *name;
+	time_t		   mtime;
+} dict_stat_t;
 
-static rbtree_t *attributes_byname = NULL;
-static rbtree_t *attributes_byvalue = NULL;
+static char *stat_root_dir = NULL;
+static char *stat_root_file = NULL;
 
-static rbtree_t *values_byvalue = NULL;
-static rbtree_t *values_byname = NULL;
+static dict_stat_t *stat_head = NULL;
+static dict_stat_t *stat_tail = NULL;
 
 typedef struct value_fixup_t {
 	char		attrstr[40];
+	uint32_t	hash;
 	DICT_VALUE	*dval;
 	struct value_fixup_t *next;
 } value_fixup_t;
+
 
 /*
  *	So VALUEs in the dictionary can have forward references.
@@ -73,72 +96,196 @@ static const LRAD_NAME_NUMBER type_table[] = {
 };
 
 /*
- *	Quick pointers to the base 0..255 attributes.
- *
- *	These attributes are referenced a LOT, especially during
- *	decoding of the on-the-wire packets.  It's useful to keep a
- *	cache of their dictionary entries, so looking them up is
- *	O(1), instead of O(log(N)).  (N==number of dictionary entries...)
+ *	Create the hash of the name.
  */
-static DICT_ATTR *base_attributes[256];
+static uint32_t dict_hashname(const char *name)
+{
+	const char *p;
+	char *q;
+	size_t len = 0;
+	char buffer[1024];
+	
+	p = name;
+	q = buffer;
+	while (*p && (len < sizeof(buffer))) {
+		if (isalpha(*p)) {
+			*(q++) = tolower((int) *(p++));
+		} else {
+			*(q++) = *(p++);
+		}
+		len++;
+	}
+	return lrad_hash(buffer, len);
+}
+
+
+/*
+ *	Free the list of stat buffers
+ */
+static void dict_stat_free(void)
+{
+	dict_stat_t *this, *next;
+
+	free(stat_root_dir);
+	stat_root_dir = NULL;
+	free(stat_root_file);
+	stat_root_file = NULL;
+
+	if (!stat_head) {
+		stat_tail = NULL;
+		return;
+	}
+
+	for (this = stat_head; this != NULL; this = next) {
+		next = this->next;
+		free(this->name);
+		free(this);
+	}
+
+	stat_head = stat_tail = NULL;
+}
+
+
+/*
+ *	Add an entry to the list of stat buffers.
+ */
+static void dict_stat_add(const char *name, const struct stat *stat_buf)
+{
+	dict_stat_t *this;
+
+	this = malloc(sizeof(*this));
+	memset(this, 0, sizeof(*this));
+
+	this->name = strdup(name);
+	this->mtime = stat_buf->st_mtime;
+
+	if (!stat_head) {
+		stat_head = stat_tail = this;
+	} else {
+		stat_tail->next = this;
+		stat_tail = this;
+	}
+}
+
+
+/*
+ *	See if any dictionaries have changed.  If not, don't
+ *	do anything.
+ */
+static int dict_stat_check(const char *root_dir, const char *root_file)
+{
+	struct stat buf;
+	dict_stat_t *this;
+
+	if (!stat_root_dir) return 0;
+	if (!stat_root_file) return 0;
+
+	if (strcmp(root_dir, stat_root_dir) != 0) return 0;
+	if (strcmp(root_file, stat_root_file) != 0) return 0;
+
+	if (!stat_head) return 0; /* changed, reload */
+
+	for (this = stat_head; this != NULL; this = this->next) {
+		if (stat(this->name, &buf) < 0) return 0;
+
+		if (buf.st_mtime != this->mtime) return 0;
+	}
+
+	return 1;
+}
+
 
 /*
  *	Free the dictionary_attributes and dictionary_values lists.
  */
 void dict_free(void)
 {
-	DICT_VENDOR	*dvend, *enext;
-
-	memset(base_attributes, 0, sizeof(base_attributes));
-
-	for (dvend = dictionary_vendors; dvend; dvend = enext) {
-		enext = dvend->next;
-		free(dvend);
-	}
-
-	dictionary_vendors = NULL;
-
 	/*
-	 *	Free the tree of attributes by name and value.
+	 *	Free the trees
 	 */
-	rbtree_free(attributes_byname);
-	rbtree_free(attributes_byvalue);
+	lrad_hash_table_free(vendors_byname);
+	lrad_hash_table_free(vendors_byvalue);
+	vendors_byname = NULL;
+	vendors_byvalue = NULL;
+
+	lrad_hash_table_free(attributes_byname);
+	lrad_hash_table_free(attributes_byvalue);
 	attributes_byname = NULL;
 	attributes_byvalue = NULL;
 
-	rbtree_free(values_byname);
-	rbtree_free(values_byvalue);
+	lrad_hash_table_free(values_byname);
+	lrad_hash_table_free(values_byvalue);
 	values_byname = NULL;
 	values_byvalue = NULL;
+
+	dict_stat_free();
 }
+
 
 /*
  *	Add vendor to the list.
  */
 int dict_addvendor(const char *name, int value)
 {
-	DICT_VENDOR *vval;
+	size_t length;
+	uint32_t hash;
+	DICT_VENDOR *dv;
 
 	if (value >= (1 << 16)) {
 	       	librad_log("dict_addvendor: Cannot handle vendor ID larger than 65535");
 		return -1;
 	}
 
-	if (strlen(name) > (sizeof(vval->name) -1)) {
+	if ((length = strlen(name)) >= DICT_VENDOR_MAX_NAME_LEN) {
 		librad_log("dict_addvendor: vendor name too long");
 		return -1;
 	}
-
-	if ((vval =(DICT_VENDOR *)malloc(sizeof(DICT_VENDOR))) == NULL) {
+	
+	if ((dv = malloc(sizeof(*dv) + length)) == NULL) {
 		librad_log("dict_addvendor: out of memory");
 		return -1;
 	}
-	strcpy(vval->name, name);
-	vval->vendorpec  = value;
 
-	/* Insert at front. */
-	vval->next = dictionary_vendors;
-	dictionary_vendors = vval;
+	hash = dict_hashname(name);
+	strcpy(dv->name, name);
+	dv->vendorpec  = value;
+	dv->type = dv->length = 1; /* defaults */
+
+	if (lrad_hash_table_insert(vendors_byname, hash, dv) == 0) {
+		DICT_VENDOR *old_dv;
+
+		old_dv = lrad_hash_table_finddata(vendors_byname, hash);
+		if (!old_dv) {
+			librad_log("dict_addvendor: Failed inserting vendor name %s", name);
+			return -1;
+		}
+		if (old_dv->vendorpec != dv->vendorpec) {
+			librad_log("dict_addvendor: Duplicate vendor name %s", name);
+			return -1;
+		}
+
+		/*
+		 *	Already inserted.  Discard the duplicate entry.
+		 */
+		free(dv);
+		return 0;
+	}
+
+	/*
+	 *	Insert the SAME pointer (not free'd when this tree is
+	 *	deleted), into another tree.
+	 *
+	 *	If the newly inserted entry is a duplicate of an existing
+	 *	entry, then the old entry is tossed, and the new one
+	 *	replaces it.  This behaviour is configured in the
+	 *	lrad_hash_table_create() function.
+	 *
+	 *	We want this behaviour because we want OLD names for
+	 *	the attributes to be read from the configuration
+	 *	files, but when we're printing them, (and looking up
+	 *	by value) we want to use the NEW name.
+	 */
+	lrad_hash_table_insert(vendors_byvalue, dv->vendorpec, dv);
 
 	return 0;
 }
@@ -150,6 +297,7 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		 ATTR_FLAGS flags)
 {
 	static int      max_attr = 0;
+	uint32_t	hash;
 	DICT_ATTR	*attr;
 
 	if (strlen(name) > (sizeof(attr->name) -1)) {
@@ -164,8 +312,7 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	 *	and use that.
 	 */
 	if (value == -1) {
-		attr = dict_attrbyname(name);
-		if (attr != NULL) {
+		if (dict_attrbyname(name)) {
 			return 0; /* exists, don't add it again */
 		}
 
@@ -180,36 +327,66 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		}
 	}
 
-	if (value >= 65536) {
-		librad_log("dict_addattr: ATTRIBUTE has invalid number.");
+	if (value < 0) {
+		librad_log("dict_addattr: ATTRIBUTE has invalid number (less than zero)");
 		return -1;
+	}
+
+	if (value >= 65536) {
+		librad_log("dict_addattr: ATTRIBUTE has invalid number (larger than 65535).");
+		return -1;
+	}
+
+	if (vendor) {
+		DICT_VENDOR *dv = dict_vendorbyvalue(vendor);
+
+		/*
+		 *	If the vendor isn't defined, die/
+		 */
+		if (!dv) {
+			librad_log("dict_addattr: Unknown vendor");
+			return -1;
+		}
+
+		/*
+		 *	With a few exceptions, attributes can only be
+		 *	1..255.  The check above catches the less than
+		 *	zero case.
+		 */
+		if ((dv->type == 1) && (value >= 256)) {
+			librad_log("dict_addattr: ATTRIBUTE has invalid number (larger than 255).");
+			return -1;
+		} /* else 256..65535 are allowed */
 	}
 
 	/*
 	 *	Create a new attribute for the list
 	 */
-	if ((attr = (DICT_ATTR *)malloc(sizeof(DICT_ATTR))) == NULL) {
+	if ((attr = malloc(sizeof(*attr))) == NULL) {
 		librad_log("dict_addattr: out of memory");
 		return -1;
 	}
+
+	hash = dict_hashname(name);
 	strcpy(attr->name, name);
 	attr->attr = value;
+	attr->attr |= (vendor << 16); /* FIXME: hack */
 	attr->type = type;
 	attr->flags = flags;
+	attr->vendor = vendor;
 
-	if (vendor) attr->attr |= (vendor << 16);
 
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
-	if (rbtree_insert(attributes_byname, attr) == 0) {
+	if (lrad_hash_table_insert(attributes_byname, hash, attr) == 0) {
 		DICT_ATTR	*a;
 
 		/*
 		 *	If the attribute has identical number, then
 		 *	ignore the duplicate.
 		 */
-		a = rbtree_finddata(attributes_byname, attr);
+		a = lrad_hash_table_finddata(attributes_byname, hash);
 		if (a && (strcasecmp(a->name, attr->name) == 0)) {
 			if (a->attr != attr->attr) {
 				librad_log("dict_addattr: Duplicate attribute name %s", name);
@@ -217,20 +394,12 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 			}
 
 			/*
-			 *	Same name, same attr, maybe the
-			 *	flags and/or type is different.
-			 *	Let the new value over-ride the
-			 *	old one.
+			 *	Same name, same vendor, same attr,
+			 *	maybe the flags and/or type is
+			 *	different.  Let the new value
+			 *	over-ride the old one.
 			 */
 		}
-	}
-
-	if ((attr->attr >= 0) && (attr->attr < 256)) {
-		/*
-		 *	If it's an on-the-wire base attribute,
-		 *	then keep a quick reference to it, for speed.
-		 */
-		base_attributes[attr->attr] = attr;
 	}
 
 	/*
@@ -240,37 +409,41 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	 *	If the newly inserted entry is a duplicate of an existing
 	 *	entry, then the old entry is tossed, and the new one
 	 *	replaces it.  This behaviour is configured in the
-	 *	rbtree_create() function.
+	 *	lrad_hash_table_create() function.
 	 *
 	 *	We want this behaviour because we want OLD names for
 	 *	the attributes to be read from the configuration
 	 *	files, but when we're printing them, (and looking up
 	 *	by value) we want to use the NEW name.
 	 */
-	rbtree_insert(attributes_byvalue, attr);
+	lrad_hash_table_insert(attributes_byvalue, (uint32_t) attr->attr, attr);
 
 	return 0;
 }
 
+
 /*
  *	Add a value for an attribute to the dictionary.
  */
-int dict_addvalue(const char *namestr, char *attrstr, int value)
+int dict_addvalue(const char *namestr, const char *attrstr, int value)
 {
+	size_t		length;
 	DICT_ATTR	*dattr;
+	uint32_t	hash;
 	DICT_VALUE	*dval;
 
-	if (strlen(namestr) > (sizeof(dval->name) -1)) {
+	if ((length = strlen(namestr)) >= DICT_VALUE_MAX_NAME_LEN) {
 		librad_log("dict_addvalue: value name too long");
 		return -1;
 	}
 
-	if ((dval = (DICT_VALUE *)malloc(sizeof(DICT_VALUE))) == NULL) {
+	if ((dval = malloc(sizeof(*dval) + length)) == NULL) {
 		librad_log("dict_addvalue: out of memory");
 		return -1;
 	}
 	memset(dval, 0, sizeof(*dval));
 
+	hash = dict_hashname(namestr);
 	strcpy(dval->name, namestr);
 	dval->value = value;
 
@@ -281,6 +454,7 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 	dattr = dict_attrbyname(attrstr);
 	if (dattr) {
 		dval->attr = dattr->attr;
+		hash = lrad_hash_update(&dval->attr, sizeof(dval->attr), hash);
 	} else {
 		value_fixup_t *fixup;
 		
@@ -292,6 +466,7 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 		memset(fixup, 0, sizeof(*fixup));
 
 		strNcpy(fixup->attrstr, attrstr, sizeof(fixup->attrstr));
+		fixup->hash = hash;
 		fixup->dval = dval;
 		
 		/*
@@ -306,17 +481,17 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 	/*
 	 *	Add the value into the dictionary.
 	 */
-	if (rbtree_insert(values_byname, dval) == 0) {
+	if (lrad_hash_table_insert(values_byname, hash, dval) == 0) {
 		if (dattr) {
-			DICT_VALUE *dup;
+			DICT_VALUE *old;
 			
 			/*
 			 *	Suppress duplicates with the same
 			 *	name and value.  There are lots in
 			 *	dictionary.ascend.
 			 */
-			dup = dict_valbyname(dattr->attr, namestr);
-			if (dup && (dup->value == dval->value)) {
+			old = dict_valbyname(dattr->attr, namestr);
+			if (old && (old->value == dval->value)) {
 				free(dval);
 				return 0;
 			}
@@ -325,7 +500,14 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
 		librad_log("dict_addvalue: Duplicate value name %s for attribute %s", namestr, attrstr);
 		return -1;
 	}
-	rbtree_insert(values_byvalue, dval);
+
+	/*
+	 *	There are multiple VALUE's, keyed by attribute, so we
+	 *	take care of that here.
+	 */
+	hash = dval->attr;
+	hash = lrad_hash_update(&dval->value, sizeof(dval->value), hash);
+	lrad_hash_table_insert(values_byvalue, hash, dval);
 
 	return 0;
 }
@@ -334,21 +516,16 @@ int dict_addvalue(const char *namestr, char *attrstr, int value)
  *	Process the ATTRIBUTE command
  */
 static int process_attribute(const char* fn, const int line,
-			     const int block_vendor, const char* data)
+			     const int block_vendor, char **argv,
+			     int argc)
 {
-	int		vendor;
-	char		namestr[256];
-	char		valstr[256];
-	char		typestr[256];
-	char		optstr[256];
+	int		vendor = 0;
 	int		value;
 	int		type;
 	char		*s, *c;
 	ATTR_FLAGS	flags;
 
-	vendor = 0;
-	optstr[0] = 0;
-	if(sscanf(data, "%s%s%s%s", namestr, valstr, typestr, optstr) < 3) {
+	if ((argc < 3) || (argc > 4)) {
 		librad_log("dict_init: %s[%d]: invalid ATTRIBUTE line",
 			fn, line);
 		return -1;
@@ -357,96 +534,108 @@ static int process_attribute(const char* fn, const int line,
 	/*
 	 *	Validate all entries
 	 */
-	if (!isdigit((int) *valstr)) {
+	if (!isdigit((int) argv[1][0])) {
 		librad_log("dict_init: %s[%d]: invalid value", fn, line);
 		return -1;
 	}
-	if (valstr[0] != '0')
-		value = atoi(valstr);
-	else
-		sscanf(valstr, "%i", &value);
+	sscanf(argv[1], "%i", &value);
 
 	/*
 	 *	find the type of the attribute.
 	 */
-	type = lrad_str2int(type_table, typestr, -1);
+	type = lrad_str2int(type_table, argv[2], -1);
 	if (type < 0) {
 		librad_log("dict_init: %s[%d]: invalid type \"%s\"",
-			fn, line, typestr);
+			fn, line, argv[2]);
 		return -1;
 	}
-
-	/*
-	 *	Ignore comments
-	 */
-	if (optstr[0] == '#') optstr[0] = '\0';
 
 	/*
 	 *	Only look up the vendor if the string
 	 *	is non-empty.
 	 */
-
 	memset(&flags, 0, sizeof(flags));
-	s = strtok(optstr, ",");
-	while(s) {
-		if (strcmp(s, "has_tag") == 0 ||
-		    strcmp(s, "has_tag=1") == 0) {
-			 /* Boolean flag, means this is a
-			    tagged attribute */
-			 flags.has_tag = 1;
+	if (argc == 4) {
+		s = strtok(argv[3], ",");
+		while (s) {
+			if (strcmp(s, "has_tag") == 0 ||
+			    strcmp(s, "has_tag=1") == 0) {
+				/* Boolean flag, means this is a
+				   tagged attribute */
+				flags.has_tag = 1;
+				
+			} else if (strncmp(s, "encrypt=", 8) == 0) {
+				/* Encryption method, defaults to 0 (none).
+				   Currently valid is just type 2,
+				   Tunnel-Password style, which can only
+				   be applied to strings. */
+				flags.encrypt = strtol(s + 8, &c, 0);
+				if (*c) {
+					librad_log( "dict_init: %s[%d] invalid option %s",
+						    fn, line, s);
+					return -1;
+				}
+			} else {
+				/* Must be a vendor 'flag'... */
+				if (strncmp(s, "vendor=", 7) == 0) {
+					/* New format */
+					s += 7;
+				}
+				
+				vendor = dict_vendorbyname(s);
+				if (!vendor) {
+					librad_log( "dict_init: %s[%d]: unknown vendor %s",
+						    fn, line, s);
+					return -1;
+				}
+				if (block_vendor && argv[3][0] &&
+				    (block_vendor != vendor)) {
+					librad_log("dict_init: %s[%d]: mismatched vendor %s within BEGIN-VENDOR/END-VENDOR block",
+						   fn, line, argv[3]);
+					return -1;
+				}
+			}
+			s = strtok(NULL, ",");
 		}
-		else if (strncmp(s, "len+=", 5) == 0 ||
-			 strncmp(s, "len-=", 5) == 0) {
-			  /* Length difference, to accomodate
-			     braindead NASes & their vendors */
-			  flags.len_disp = strtol(s + 5, &c, 0);
-			  if (*c) {
-				librad_log("dict_init: %s[%d] invalid option %s",
-					   fn, line, s);
-				return -1;
-			  }
-			  if (s[3] == '-') {
-				flags.len_disp = -flags.len_disp;
-			  }
-		}
-		else if (strncmp(s, "encrypt=", 8) == 0) {
-			  /* Encryption method, defaults to 0 (none).
-			     Currently valid is just type 2,
-			     Tunnel-Password style, which can only
-			     be applied to strings. */
-			  flags.encrypt = strtol(s + 8, &c, 0);
-			  if (*c) {
-				librad_log( "dict_init: %s[%d] invalid option %s",
-					   fn, line, s);
-				return -1;
-			  }
-		}
-		else {
-			  /* Must be a vendor 'flag'... */
-			  if (strncmp(s, "vendor=", 7) == 0) {
-				/* New format */
-				s += 7;
-			  }
-
-			  vendor = dict_vendorbyname(s);
-			  if (!vendor) {
-				librad_log( "dict_init: %s[%d]: unknown vendor %s",
-					   fn, line, optstr);
-				return -1;
-			  }
-			  if (block_vendor && optstr[0] &&
-			      (block_vendor != vendor)) {
-				librad_log("dict_init: %s[%d]: mismatched vendor %s within BEGIN-VENDOR/END-VENDOR block",
-					   fn, line, optstr);
-				return -1;
-			  }
-		}
-		s = strtok(NULL, ",");
 	}
 
 	if (block_vendor) vendor = block_vendor;
 
-	if (dict_addattr(namestr, vendor, type, value, flags) < 0) {
+	/*
+	 *	Special checks for tags, they make our life much more
+	 *	difficult.
+	 */
+	if (flags.has_tag) {
+		/*
+		 *	VSA's can't be tagged.
+		 */
+		if (vendor) {
+			librad_log("dict_init: %s[%d]: Vendor attributes cannot be tagged.",
+				   fn, line);
+			return -1;
+		}
+
+		/*
+		 *	Only string, octets, and integer can be tagged.
+		 */
+		switch (type) {
+		case PW_TYPE_STRING:
+		case PW_TYPE_INTEGER:
+			break;
+
+		default:
+			librad_log("dict_init: %s[%d]: Attributes of type %s cannot be tagged.",
+				   fn, line,
+				   lrad_int2str(type_table, type, "?Unknown?"));
+			return -1;
+			
+		}
+	}
+
+	/*
+	 *	Add it in.
+	 */
+	if (dict_addattr(argv[0], vendor, type, value, flags) < 0) {
 		librad_log("dict_init: %s[%d]: %s",
 			   fn, line, librad_errstr);
 		return -1;
@@ -459,14 +648,12 @@ static int process_attribute(const char* fn, const int line,
 /*
  *	Process the VALUE command
  */
-static int process_value(const char* fn, const int line, const char* data)
+static int process_value(const char* fn, const int line, char **argv,
+			 int argc)
 {
-	char	namestr[256];
-	char	valstr[256];
-	char	attrstr[256];
 	int	value;
 
-	if (sscanf(data, "%s%s%s", attrstr, namestr, valstr) != 3) {
+	if (argc != 3) {
 		librad_log("dict_init: %s[%d]: invalid VALUE line",
 			fn, line);
 		return -1;
@@ -474,23 +661,30 @@ static int process_value(const char* fn, const int line, const char* data)
 	/*
 	 *	For Compatibility, skip "Server-Config"
 	 */
-	if (strcasecmp(attrstr, "Server-Config") == 0)
+	if (strcasecmp(argv[0], "Server-Config") == 0)
 		return 0;
 
 	/*
 	 *	Validate all entries
 	 */
-	if (!isdigit((int) *valstr)) {
+	if (!isdigit((int) argv[2][0])) {
 		librad_log("dict_init: %s[%d]: invalid value",
 			fn, line);
 		return -1;
 	}
-	if (valstr[0] != '0')
-		value = atoi(valstr);
-	else
-		sscanf(valstr, "%i", &value);
+	sscanf(argv[2], "%i", &value);
 
-	if (dict_addvalue(namestr, attrstr, value) < 0) {
+	/*
+	 *	valuepair.c will get excited when creating attributes,
+	 *	if it sees values which look like integers, so we can't
+	 *	use them here.
+	 */
+	if (isdigit(argv[1][0])) {
+		librad_log("dict_init: %s[%d]: Names for VALUEs cannot start with a digit.",
+			   fn, line);
+	}
+	
+	if (dict_addvalue(argv[1], argv[0], value) < 0) {
 		librad_log("dict_init: %s[%d]: %s",
 			   fn, line, librad_errstr);
 		return -1;
@@ -503,39 +697,142 @@ static int process_value(const char* fn, const int line, const char* data)
 /*
  *	Process the VENDOR command
  */
-static int process_vendor(const char* fn, const int line, const char* data)
+static int process_vendor(const char* fn, const int line, char **argv,
+			  int argc)
 {
-	char	valstr[256];
-	char	attrstr[256];
 	int	value;
+	const	char *format = NULL;
 
-	if (sscanf(data, "%s%s", attrstr, valstr) != 2) {
-		librad_log(
-		"dict_init: %s[%d] invalid VENDOR entry",
-			fn, line);
+	if ((argc < 2) || (argc > 3)) {
+		librad_log( "dict_init: %s[%d] invalid VENDOR entry",
+			    fn, line);
 		return -1;
 	}
 
 	/*
 	 *	 Validate all entries
 	 */
-	if (!isdigit((int) *valstr)) {
+	if (!isdigit((int) argv[1][0])) {
 		librad_log("dict_init: %s[%d]: invalid value",
 			fn, line);
 		return -1;
 	}
-	value = atoi(valstr);
+	value = atoi(argv[1]);
 
 	/* Create a new VENDOR entry for the list */
-	if (dict_addvendor(attrstr, value) < 0) {
+	if (dict_addvendor(argv[0], value) < 0) {
 		librad_log("dict_init: %s[%d]: %s",
 			   fn, line, librad_errstr);
 		return -1;
 	}
 
+	/*
+	 *	Look for a format statement
+	 */
+	if (argc == 3) {
+		format = argv[2];
+
+	} else if (value == VENDORPEC_USR) { /* catch dictionary screw-ups */
+		format = "format=4,0";
+
+	} else if (value == VENDORPEC_LUCENT) {
+		format = "format=2,1";
+
+	} else if (value == VENDORPEC_STARENT) {
+		format = "format=2,2";
+
+	} /* else no fixups to do */
+
+	if (format) {
+		int type, length;
+		const char *p;
+		DICT_VENDOR *dv;
+
+		if (strncasecmp(format, "format=", 7) != 0) {
+			librad_log("dict_init: %s[%d]: Invalid format for VENDOR.  Expected \"format=\", got \"%s\"",
+				   fn, line, format);
+			return -1;
+		}
+
+		p = format + 7;
+		if ((strlen(p) != 3) || 
+		    !isdigit((int) p[0]) ||
+		    (p[1] != ',') ||
+		    !isdigit((int) p[2])) {
+			librad_log("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
+				   fn, line, p);
+			return -1;
+		}
+
+		type = (int) (p[0] - '0');
+		length = (int) (p[2] - '0');
+
+		dv = dict_vendorbyvalue(value);
+		if (!dv) {
+			librad_log("dict_init: %s[%d]: Failed adding format for VENDOR",
+				   fn, line);
+			return -1;
+		}
+
+		if ((type != 1) && (type != 2) && (type != 4)) {
+			librad_log("dict_init: %s[%d]: invalid type value %d for VENDOR",
+				   fn, line, type);
+			return -1;
+		}
+
+		if ((length != 0) && (length != 1) && (length != 2)) {
+			librad_log("dict_init: %s[%d]: invalid length value %d for VENDOR",
+				   fn, line, length);
+			return -1;
+		}
+
+		dv->type = type;
+		dv->length = length;
+	}
+
 	return 0;
 }
 
+/*
+ *	String split routine.  Splits an input string IN PLACE
+ *	into pieces, based on spaces.
+ */
+static int str2argv(char *str, char **argv, int max_argc)
+{
+	int argc = 0;
+
+	while (*str) {
+		if (argc >= max_argc) return argc;
+
+		/*
+		 *	Chop out comments early.
+		 */
+		if (*str == '#') {
+			*str = '\0';
+			break;
+		}
+
+		while ((*str == ' ') ||
+		       (*str == '\t') ||
+		       (*str == '\r') ||
+		       (*str == '\n')) *(str++) = '\0';
+
+		if (!*str) return argc;
+
+		argv[argc] = str;
+		argc++;
+
+		while (*str &&
+		       (*str != ' ') &&
+		       (*str != '\t') &&
+		       (*str != '\r') &&
+		       (*str != '\n')) str++;
+	}
+
+	return argc;
+}
+
+#define MAX_ARGV (16)
 
 /*
  *	Initialize the dictionary.
@@ -546,13 +843,13 @@ static int my_dict_init(const char *dir, const char *fn,
 	FILE	*fp;
 	char 	dirtmp[256];
 	char	buf[256];
-	char	optstr[256];
 	char	*p;
-	char	*keyword;
-	char	*data;
 	int	line = 0;
 	int	vendor;
 	int	block_vendor;
+	struct stat statbuf;
+	char	*argv[MAX_ARGV];
+	int	argc;
 
 	if (strlen(fn) >= sizeof(dirtmp) / 2 ||
 	    strlen(dir) >= sizeof(dirtmp) / 2) {
@@ -584,6 +881,14 @@ static int my_dict_init(const char *dir, const char *fn,
 		return -1;
 	}
 
+	stat(fn, &statbuf); /* fopen() guarantees this will succeed */
+	dict_stat_add(fn, &statbuf);
+
+	/*
+	 *	Seed the random pool with data.
+	 */
+	lrad_rand_seed(&statbuf, sizeof(statbuf));
+
 	block_vendor = 0;
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
@@ -599,25 +904,30 @@ static int my_dict_init(const char *dir, const char *fn,
 		p = strchr(buf, '#');
 		if (p) *p = '\0';
 
-		keyword = strtok(buf, " \t\r\n");
-		if (keyword == NULL) {
-			continue;
-		}
+		argc = str2argv(buf, argv, MAX_ARGV);
+		if (argc == 0) continue;
 
-		data    = strtok(NULL, "\r\n");
-		if (data == NULL || data[0] == 0) {
-			librad_log("dict_init: %s[%d]: invalid entry for keyword %s",
-				fn, line, keyword);
+		if (argc == 1) {
+			librad_log( "dict_init: %s[%d] invalid entry",
+				    fn, line);
 			fclose(fp);
 			return -1;
+		}
+
+		if (0) {
+			int i;
+
+			fprintf(stderr, "ARGC = %d\n",argc);
+			for (i = 0; i < argc; i++) {
+				fprintf(stderr, "\t%s\n", argv[i]);
+			}
 		}
 
 		/*
 		 *	See if we need to import another dictionary.
 		 */
-		if (strcasecmp(keyword, "$INCLUDE") == 0) {
-			p = strtok(data, " \t");
-			if (my_dict_init(dir, data, fn, line) < 0) {
+		if (strcasecmp(argv[0], "$INCLUDE") == 0) {
+			if (my_dict_init(dir, argv[1], fn, line) < 0) {
 				fclose(fp);
 				return -1;
 			}
@@ -627,8 +937,9 @@ static int my_dict_init(const char *dir, const char *fn,
 		/*
 		 *	Perhaps this is an attribute.
 		 */
-		if (strcasecmp(keyword, "ATTRIBUTE") == 0) {
-			if (process_attribute(fn, line, block_vendor, data) == -1) {
+		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
+			if (process_attribute(fn, line, block_vendor,
+					      argv + 1, argc - 1) == -1) {
 				fclose(fp);
 				return -1;
 			}
@@ -638,8 +949,9 @@ static int my_dict_init(const char *dir, const char *fn,
 		/*
 		 *	Process VALUE lines.
 		 */
-		if (strcasecmp(keyword, "VALUE") == 0) {
-			if (process_value(fn, line, data) == -1) {
+		if (strcasecmp(argv[0], "VALUE") == 0) {
+			if (process_value(fn, line,
+					  argv + 1, argc - 1) == -1) {
 				fclose(fp);
 				return -1;
 			}
@@ -649,17 +961,17 @@ static int my_dict_init(const char *dir, const char *fn,
 		/*
 		 *	Process VENDOR lines.
 		 */
-		if (strcasecmp(keyword, "VENDOR") == 0) {
-			if (process_vendor(fn, line, data) == -1) {
+		if (strcasecmp(argv[0], "VENDOR") == 0) {
+			if (process_vendor(fn, line,
+					   argv + 1, argc - 1) == -1) {
 				fclose(fp);
 				return -1;
 			}
 			continue;
 		}
 
-		if (strcasecmp(keyword, "BEGIN-VENDOR") == 0) {
-			optstr[0] = 0;
-			if (sscanf(data, "%s", optstr) != 1) {
+		if (strcasecmp(argv[0], "BEGIN-VENDOR") == 0) {
+			if (argc != 2) {
 				librad_log(
 				"dict_init: %s[%d] invalid BEGIN-VENDOR entry",
 					fn, line);
@@ -667,11 +979,11 @@ static int my_dict_init(const char *dir, const char *fn,
 				return -1;
 			}
 
-			vendor = dict_vendorbyname(optstr);
+			vendor = dict_vendorbyname(argv[1]);
 			if (!vendor) {
 				librad_log(
 					"dict_init: %s[%d]: unknown vendor %s",
-					fn, line, optstr);
+					fn, line, argv[1]);
 				fclose(fp);
 				return -1;
 			}
@@ -679,9 +991,8 @@ static int my_dict_init(const char *dir, const char *fn,
 			continue;
 		} /* BEGIN-VENDOR */
 
-		if (strcasecmp(keyword, "END-VENDOR") == 0) {
-			optstr[0] = 0;
-			if (sscanf(data, "%s", optstr) != 1) {
+		if (strcasecmp(argv[0], "END-VENDOR") == 0) {
+			if (argc != 2) {
 				librad_log(
 				"dict_init: %s[%d] invalid END-VENDOR entry",
 					fn, line);
@@ -689,11 +1000,11 @@ static int my_dict_init(const char *dir, const char *fn,
 				return -1;
 			}
 
-			vendor = dict_vendorbyname(optstr);
+			vendor = dict_vendorbyname(argv[1]);
 			if (!vendor) {
 				librad_log(
 					"dict_init: %s[%d]: unknown vendor %s",
-					fn, line, optstr);
+					fn, line, argv[1]);
 				fclose(fp);
 				return -1;
 			}
@@ -701,7 +1012,7 @@ static int my_dict_init(const char *dir, const char *fn,
 			if (vendor != block_vendor) {
 				librad_log(
 					"dict_init: %s[%d]: END-VENDOR %s does not match any previous BEGIN-VENDOR",
-					fn, line, optstr);
+					fn, line, argv[1]);
 				fclose(fp);
 				return -1;
 			}
@@ -714,7 +1025,7 @@ static int my_dict_init(const char *dir, const char *fn,
 		 */
 		librad_log(
 			"dict_init: %s[%d] invalid keyword \"%s\"",
-			fn, line, keyword);
+			fn, line, argv[0]);
 		fclose(fp);
 		return -1;
 	}
@@ -723,61 +1034,46 @@ static int my_dict_init(const char *dir, const char *fn,
 }
 
 /*
- *	Callbacks for red-black trees.
- */
-static int attrname_cmp(const void *a, const void *b)
-{
-	return strcasecmp(((const DICT_ATTR *)a)->name,
-			  ((const DICT_ATTR *)b)->name);
-}
-
-/*
- *	Return: < 0  if a < b,
- *	        == 0 if a == b
- */
-static int attrvalue_cmp(const void *a, const void *b)
-{
-	return (((const DICT_ATTR *)a)->attr -
-		((const DICT_ATTR *)b)->attr);
-}
-
-/*
- *	Compare values by name, keying off of the attribute number,
- *	and then the value name.
- */
-static int valuename_cmp(const void *a, const void *b)
-{
-	int rcode;
-	rcode = (((const DICT_VALUE *)a)->attr -
-		 ((const DICT_VALUE *)b)->attr);
-	if (rcode != 0) return rcode;
-
-return strcasecmp(((const DICT_VALUE *)a)->name,
-			  ((const DICT_VALUE *)b)->name);
-}
-
-/*
- *	Compare values by value, keying off of the attribute number,
- *	and then the value number.
- */
-static int valuevalue_cmp(const void *a, const void *b)
-{
-	int rcode;
-	rcode = (((const DICT_VALUE *)a)->attr -
-		 ((const DICT_VALUE *)b)->attr);
-	if (rcode != 0) return rcode;
-
-	return (((const DICT_VALUE *)a)->value -
-		 ((const DICT_VALUE *)b)->value);
-}
-
-/*
  *	Initialize the directory, then fix the attr member of
  *	all attributes.
  */
 int dict_init(const char *dir, const char *fn)
 {
+	/*
+	 *	Check if we need to change anything.  If not, don't do
+	 *	anything.
+	 */
+	if (dict_stat_check(dir, fn)) {
+		return 0;
+	}
+
+	/*
+	 *	Free the dictionaries, and the stat cache.
+	 */
 	dict_free();
+	stat_root_dir = strdup(dir);
+	stat_root_file = strdup(fn);
+
+	/*
+	 *	Create the tree of vendor by name.   There MAY NOT
+	 *	be multiple vendors of the same name.
+	 *
+	 *	Each vendor is malloc'd, so the free function is free.
+	 */
+	vendors_byname = lrad_hash_table_create(8, free, 0);
+	if (!vendors_byname) {
+		return -1;
+	}
+
+	/*
+	 *	Create the tree of vendors by value.  There MAY
+	 *	be vendors of the same value.  If there are, we
+	 *	pick the latest one.
+	 */
+	vendors_byvalue = lrad_hash_table_create(8, NULL, 1);
+	if (!vendors_byvalue) {
+		return -1;
+	}
 
 	/*
 	 *	Create the tree of attributes by name.   There MAY NOT
@@ -785,7 +1081,7 @@ int dict_init(const char *dir, const char *fn)
 	 *
 	 *	Each attribute is malloc'd, so the free function is free.
 	 */
-	attributes_byname = rbtree_create(attrname_cmp, free, 0);
+	attributes_byname = lrad_hash_table_create(11, free, 0);
 	if (!attributes_byname) {
 		return -1;
 	}
@@ -795,17 +1091,17 @@ int dict_init(const char *dir, const char *fn)
 	 *	be attributes of the same value.  If there are, we
 	 *	pick the latest one.
 	 */
-	attributes_byvalue = rbtree_create(attrvalue_cmp, NULL, 1);
+	attributes_byvalue = lrad_hash_table_create(11, NULL, 1);
 	if (!attributes_byvalue) {
 		return -1;
 	}
 
-	values_byname = rbtree_create(valuename_cmp, free, 0);
+	values_byname = lrad_hash_table_create(11, free, 0);
 	if (!values_byname) {
 		return -1;
 	}
 
-	values_byvalue = rbtree_create(valuevalue_cmp, NULL, 1);
+	values_byvalue = lrad_hash_table_create(11, NULL, 1);
 	if (!values_byvalue) {
 		return -1;
 	}
@@ -816,6 +1112,7 @@ int dict_init(const char *dir, const char *fn)
 		return -1;
 
 	if (value_fixup) {
+		uint32_t hash;
 		DICT_ATTR *a;
 		value_fixup_t *this, *next;
 
@@ -835,7 +1132,11 @@ int dict_init(const char *dir, const char *fn)
 			/*
 			 *	Add the value into the dictionary.
 			 */
-			if (rbtree_insert(values_byname, this->dval) == 0) {
+			hash = lrad_hash_update(&this->dval->attr,
+						sizeof(this->dval->attr),
+						this->hash);
+			if (lrad_hash_table_insert(values_byname,
+						   hash, this->dval) == 0) {
 				librad_log("dict_addvalue: Duplicate value name %s for attribute %s", this->dval->name, a->name);
 				return -1;
 			}
@@ -845,8 +1146,13 @@ int dict_init(const char *dir, const char *fn)
 			 *	prefer the new name when printing
 			 *	values.
 			 */
-			if (!rbtree_find(values_byvalue, this->dval)) {
-				rbtree_insert(values_byvalue, this->dval);
+			hash = (uint32_t) this->dval->attr;
+			hash = lrad_hash_update(&this->dval->value,
+						sizeof(this->dval->value),
+						hash);
+			if (!lrad_hash_table_finddata(values_byvalue, hash)) {
+				lrad_hash_table_insert(values_byvalue,
+						       hash, this->dval);
 			}
 			free(this);
 
@@ -865,21 +1171,7 @@ int dict_init(const char *dir, const char *fn)
  */
 DICT_ATTR *dict_attrbyvalue(int val)
 {
-	/*
-	 *	If it's an on-the-wire base attribute, return
-	 *	the cached value for it.
-	 */
-	if ((val >= 0) && (val < 256)) {
-		return base_attributes[val];
-
-	} else {
-		DICT_ATTR myattr;
-
-		myattr.attr = val;
-		return rbtree_finddata(attributes_byvalue, &myattr);
-	}
-
-	return NULL;		/* never reached, but useful */
+	return lrad_hash_table_finddata(attributes_byvalue, (uint32_t) val);
 }
 
 /*
@@ -887,11 +1179,8 @@ DICT_ATTR *dict_attrbyvalue(int val)
  */
 DICT_ATTR *dict_attrbyname(const char *name)
 {
-	DICT_ATTR myattr;
-
-	strNcpy(myattr.name, name, sizeof(myattr.name));
-
-	return rbtree_finddata(attributes_byname, &myattr);
+	return lrad_hash_table_finddata(attributes_byname,
+					dict_hashname(name));
 }
 
 /*
@@ -899,48 +1188,42 @@ DICT_ATTR *dict_attrbyname(const char *name)
  */
 DICT_VALUE *dict_valbyattr(int attr, int val)
 {
-	DICT_VALUE	myval;
+	uint32_t hash = attr;
 
-	myval.attr = attr;
-	myval.value = val;
+	hash = lrad_hash_update(&val, sizeof(val), hash);
 
-	return rbtree_finddata(values_byvalue, &myval);
+	return lrad_hash_table_finddata(values_byvalue, hash);
 }
 
 /*
- *	Get a value by its name.
- *      If you pass an actual attr, it will try to match it.
- *      If you just want it to return on the first match,
- *      send it 0 as the attr. I hope this works the way it
- *      seems to. :) --kph
+ *	Get a value by its name, keyed off of an attribute.
  */
 DICT_VALUE *dict_valbyname(int attr, const char *name)
 {
-	DICT_VALUE	myval;
+	uint32_t hash;
 
-	myval.attr = attr;
-	strNcpy(myval.name, name, sizeof(myval.name));
+	hash = dict_hashname(name);
+	hash = lrad_hash_update(&attr, sizeof(&attr), hash);
 
-	return rbtree_finddata(values_byname, &myval);
+	return lrad_hash_table_finddata(values_byname, hash);
 }
 
 /*
  *	Get the vendor PEC based on the vendor name
+ *
+ *	This is efficient only for small numbers of vendors.
  */
 int dict_vendorbyname(const char *name)
 {
-	DICT_VENDOR *v;
+	uint32_t hash;
+	DICT_VENDOR	*dv;
 
-	/*
-	 *	Find the vendor, if any.
-	 */
-	for (v = dictionary_vendors; v; v = v->next) {
-		if (strcasecmp(name, v->name) == 0) {
-			return v->vendorpec;
-		}
-	}
+	hash = dict_hashname(name);
+	
+	dv = lrad_hash_table_finddata(vendors_byname, hash);
+	if (!dv) return 0;
 
-	return 0;
+	return dv->vendorpec;
 }
 
 /*
@@ -948,17 +1231,5 @@ int dict_vendorbyname(const char *name)
  */
 DICT_VENDOR *dict_vendorbyvalue(int vendor)
 {
-	DICT_VENDOR *v;
-
-	/*
-	 *	Find the vendor, if any.
-	 */
-	for (v = dictionary_vendors; v; v = v->next) {
-		if (vendor == v->vendorpec) {
-			return v;
-		}
-	}
-
-	return NULL;
-
+	return lrad_hash_table_finddata(vendors_byvalue, (uint32_t) vendor);
 }

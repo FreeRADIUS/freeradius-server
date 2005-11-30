@@ -1,3 +1,4 @@
+# -*- text -*-
 #
 # Version $Id$
 #
@@ -17,17 +18,18 @@
 #	composed of Attribute/Value Pairs.  The value of each attribute
 #	is specified as one of 4 data types.  Valid data types are:
 #
-#	string  - 0-253 octets
-#	ipaddr  - 4 octets in network byte order
-#	integer - 32 bit value in big endian order (high byte first)
-#	date    - 32 bit value in big endian order - seconds since
-#					00:00:00 GMT,  Jan.  1,  1970
-#	ifid    - 8 octets in network byte order
+#	text       - printable, generally UTF-8 encoded (subset of 'string')
+#	string     - 0-253 octets
+#	ipaddr     - 4 octets in network byte order
+#	integer    - 32 bit value in big endian order (high byte first)
+#	date       - 32 bit value in big endian order - seconds since
+#		     00:00:00 GMT,  Jan.  1,  1970
+#	ifid       - 8 octets in network byte order
 #	ipv6addr   - 16 octets in network byte order
 #	ipv6prefix - 18 octets in network byte order
 #
 #	FreeRADIUS includes extended data types which are not defined
-#	in RFC 2865 or RFC 2866, or RFC 3162.  These data types are:
+#	in the RFC's.  These data types are:
 #
 #	abinary - Ascend's binary filter format.
 #	octets  - raw octets, printed and input as hex strings.
@@ -46,738 +48,127 @@
 #
 
 #
-#	Include compatibility dictionary for older users file. Move this
-#	directive to the end of the file if you want to see the old names
-#	in the logfiles, INSTEAD OF the new names.
+#	Include compatibility dictionary for older users file. Move
+#	this directive to the end of this file if you want to see the
+#	old names in the logfiles, INSTEAD OF the new names.
 #
-$INCLUDE dictionary.compat	# compability issues
+$INCLUDE dictionary.compat
+
+#
+#	Include the RFC dictionaries next.
+#
+#	For a complete list of the standard attributes and values,
+#	see:
+#		http://www.iana.org/assignments/radius-types
+#
+$INCLUDE dictionary.rfc2865
+$INCLUDE dictionary.rfc2866
+$INCLUDE dictionary.rfc2867
+$INCLUDE dictionary.rfc2868
+$INCLUDE dictionary.rfc2869
+$INCLUDE dictionary.rfc3162
+$INCLUDE dictionary.rfc3576
+$INCLUDE dictionary.rfc3580
+
+#
+#	Include vendor dictionaries after the standard ones.
+#
 $INCLUDE dictionary.3com
 $INCLUDE dictionary.3gpp
 $INCLUDE dictionary.3gpp2
 $INCLUDE dictionary.acc
+$INCLUDE dictionary.airespace
 $INCLUDE dictionary.alcatel
 $INCLUDE dictionary.alteon
+$INCLUDE dictionary.aruba
 $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
+$INCLUDE dictionary.cablelabs
 $INCLUDE dictionary.cabletron
 $INCLUDE dictionary.cisco
 #
-#  This is the same as the altiga dictionary.
+#	 The Cisco VPN300 dictionary is the same as the altiga one.
+#	 You shouldn't use both at the same time.
 #
 #$INCLUDE dictionary.cisco.vpn3000
 $INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.colubris
+$INCLUDE dictionary.cosine
+$INCLUDE dictionary.epygi
 $INCLUDE dictionary.erx
+$INCLUDE dictionary.ericsson
 $INCLUDE dictionary.extreme
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.foundry
 $INCLUDE dictionary.gandalf
-$INCLUDE dictionary.garderos
+$INCLUDE dictionary.gemtek
+$INCLUDE dictionary.issanni
 $INCLUDE dictionary.itk
+$INCLUDE dictionary.ipunplugged
 $INCLUDE dictionary.juniper
 $INCLUDE dictionary.karlnet
 $INCLUDE dictionary.livingston
 $INCLUDE dictionary.localweb
+$INCLUDE dictionary.lucent
 $INCLUDE dictionary.microsoft
+$INCLUDE dictionary.mikrotik
 $INCLUDE dictionary.navini
+$INCLUDE dictionary.netscreen
+$INCLUDE dictionary.ntua
 $INCLUDE dictionary.nomadix
+$INCLUDE dictionary.packeteer
 $INCLUDE dictionary.propel
 $INCLUDE dictionary.quintum
 $INCLUDE dictionary.redback
 $INCLUDE dictionary.redcreek
+$INCLUDE dictionary.roaringpenguin
 $INCLUDE dictionary.shasta
 $INCLUDE dictionary.shiva
 $INCLUDE dictionary.sonicwall
 $INCLUDE dictionary.springtide
+$INCLUDE dictionary.starent
 $INCLUDE dictionary.telebit
 $INCLUDE dictionary.trapeze
-$INCLUDE dictionary.tunnel
+$INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.valemount
 $INCLUDE dictionary.versanet
+$INCLUDE dictionary.waverider
 $INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia
+$INCLUDE dictionary.xylan
 
 #
-#	The following are the proper new names. Use these.
+#	And finally the server internal attributes.
 #
-#	http://www.iana.org/assignments/radius-types
+$INCLUDE dictionary.freeradius.internal
+
 #
-ATTRIBUTE	User-Name		1	string
-ATTRIBUTE	User-Password		2	string encrypt=1
-ATTRIBUTE	CHAP-Password		3	octets
-ATTRIBUTE	NAS-IP-Address		4	ipaddr
-ATTRIBUTE	NAS-Port		5	integer
-ATTRIBUTE	Service-Type		6	integer
-ATTRIBUTE	Framed-Protocol		7	integer
-ATTRIBUTE	Framed-IP-Address	8	ipaddr
-ATTRIBUTE	Framed-IP-Netmask	9	ipaddr
-ATTRIBUTE	Framed-Routing		10	integer
-ATTRIBUTE	Filter-Id		11	string
-ATTRIBUTE	Framed-MTU		12	integer
-ATTRIBUTE	Framed-Compression	13	integer
-ATTRIBUTE	Login-IP-Host		14	ipaddr
-ATTRIBUTE	Login-Service		15	integer
-ATTRIBUTE	Login-TCP-Port		16	integer
-ATTRIBUTE	Reply-Message		18	string
-ATTRIBUTE	Callback-Number		19	string
-ATTRIBUTE	Callback-Id		20	string
-ATTRIBUTE	Framed-Route		22	string
-ATTRIBUTE	Framed-IPX-Network	23	ipaddr
-ATTRIBUTE	State			24	octets
-ATTRIBUTE	Class			25	octets
-ATTRIBUTE	Vendor-Specific		26	octets
-ATTRIBUTE	Session-Timeout		27	integer
-ATTRIBUTE	Idle-Timeout		28	integer
-ATTRIBUTE	Termination-Action	29	integer
-ATTRIBUTE	Called-Station-Id	30	string
-ATTRIBUTE	Calling-Station-Id	31	string
-ATTRIBUTE	NAS-Identifier		32	string
-ATTRIBUTE	Proxy-State		33	octets
-ATTRIBUTE	Login-LAT-Service	34	string
-ATTRIBUTE	Login-LAT-Node		35	string
-ATTRIBUTE	Login-LAT-Group		36	octets
-ATTRIBUTE	Framed-AppleTalk-Link	37	integer
-ATTRIBUTE	Framed-AppleTalk-Network 38	integer
-ATTRIBUTE	Framed-AppleTalk-Zone	39	string
-
-ATTRIBUTE	Acct-Status-Type	40	integer
-ATTRIBUTE	Acct-Delay-Time		41	integer
-ATTRIBUTE	Acct-Input-Octets	42	integer
-ATTRIBUTE	Acct-Output-Octets	43	integer
-ATTRIBUTE	Acct-Session-Id		44	string
-ATTRIBUTE	Acct-Authentic		45	integer
-ATTRIBUTE	Acct-Session-Time	46	integer
-ATTRIBUTE       Acct-Input-Packets	47	integer
-ATTRIBUTE       Acct-Output-Packets	48	integer
-ATTRIBUTE	Acct-Terminate-Cause	49	integer
-ATTRIBUTE	Acct-Multi-Session-Id	50	string
-ATTRIBUTE	Acct-Link-Count		51	integer
-ATTRIBUTE	Acct-Input-Gigawords    52      integer
-ATTRIBUTE	Acct-Output-Gigawords   53      integer
-ATTRIBUTE	Event-Timestamp         55      date
-
-ATTRIBUTE	CHAP-Challenge		60	octets
-ATTRIBUTE	NAS-Port-Type		61	integer
-ATTRIBUTE	Port-Limit		62	integer
-ATTRIBUTE	Login-LAT-Port		63	integer
-
-ATTRIBUTE	Acct-Tunnel-Connection	68	string
-
-ATTRIBUTE	ARAP-Password           70      string
-ATTRIBUTE	ARAP-Features           71      string
-ATTRIBUTE	ARAP-Zone-Access        72      integer
-ATTRIBUTE	ARAP-Security           73      integer
-ATTRIBUTE	ARAP-Security-Data      74      string
-ATTRIBUTE	Password-Retry          75      integer
-ATTRIBUTE	Prompt                  76      integer
-ATTRIBUTE	Connect-Info		77	string
-ATTRIBUTE	Configuration-Token	78	string
-ATTRIBUTE	EAP-Message		79	octets
-ATTRIBUTE	Message-Authenticator	80	octets
-ATTRIBUTE	ARAP-Challenge-Response	84	string	# 10 octets
-ATTRIBUTE	Acct-Interim-Interval   85      integer
-ATTRIBUTE	NAS-Port-Id		87	string
-ATTRIBUTE	Framed-Pool		88	string
-ATTRIBUTE	NAS-IPv6-Address	95	ipv6addr
-ATTRIBUTE	Framed-Interface-Id	96	ifid
-ATTRIBUTE	Framed-IPv6-Prefix	97	octets # ipv6prefix
-ATTRIBUTE	Login-IPv6-Host		98	ipv6addr
-ATTRIBUTE	Framed-IPv6-Route	99	string
-ATTRIBUTE	Framed-IPv6-Pool	100	string
-
-#  As defined in RFC 3576
-ATTRIBUTE	Error-Cause		101	integer
+#	Miscellaneous attributes defined in weird places that
+#	don't really belong anywhere else...
+#
+ATTRIBUTE	Originating-Line-Info			94	string
 
 #  As defined in draft-sterman-aaa-sip-00.txt
-ATTRIBUTE	Digest-Response		206	string
-ATTRIBUTE	Digest-Attributes	207	octets	# stupid format
-
-#
-#	Experimental Non Protocol Attributes used by FreeRADIUS
-#
-
-#	The attributes number ranges are allocates as follows:
-#
-#	Range:	500-999
-#		server-side attributes which can go in a reply list
-
-# 	These attributes CAN go in the reply item list.
-ATTRIBUTE	Fall-Through		500	integer
-ATTRIBUTE	Exec-Program		502	string
-ATTRIBUTE	Exec-Program-Wait	503	string
-
-#	These attributes CANNOT go in the reply item list.
-
-#
-#	Range:	1000+
-#		Attributes which cannot go in a reply list.
-#
-#
-#	Range:	1000-1199
-#		Miscellaneous server attributes.
-#
-#
-#	Non-Protocol Attributes
-#	These attributes are used internally by the server
-#
-ATTRIBUTE	Auth-Type		1000	integer
-ATTRIBUTE	Menu			1001	string
-ATTRIBUTE	Termination-Menu	1002	string
-ATTRIBUTE	Prefix			1003	string
-ATTRIBUTE	Suffix			1004	string
-ATTRIBUTE	Group			1005	string
-ATTRIBUTE	Crypt-Password		1006	string
-ATTRIBUTE	Connect-Rate		1007	integer
-ATTRIBUTE	Add-Prefix		1008	string
-ATTRIBUTE	Add-Suffix		1009	string
-ATTRIBUTE	Expiration		1010	date
-ATTRIBUTE	Autz-Type		1011	integer
-ATTRIBUTE	Acct-Type		1012	integer
-ATTRIBUTE	Session-Type		1013	integer
-ATTRIBUTE	Post-Auth-Type		1014	integer
-ATTRIBUTE	Pre-Proxy-Type		1015	integer
-ATTRIBUTE	Post-Proxy-Type		1016	integer
-ATTRIBUTE	Pre-Acct-Type		1017	integer
-
-#
-#	This is the EAP type of authentication, which is set
-#	by the EAP module, for informational purposes only.
-#
-ATTRIBUTE	EAP-Type		1018	integer
-ATTRIBUTE	EAP-TLS-Require-Client-Cert	1019	integer
-ATTRIBUTE       EAP-Id                  1020    integer
-ATTRIBUTE	EAP-Code 		1021	integer
-ATTRIBUTE	EAP-MD5-Password	1022	string
-#
-#	Range:	1022-1028
-#		unused
-#
-ATTRIBUTE	User-Category		1029	string
-ATTRIBUTE	Group-Name		1030	string
-ATTRIBUTE	Huntgroup-Name		1031	string
-ATTRIBUTE	Simultaneous-Use	1034	integer
-ATTRIBUTE	Strip-User-Name		1035	integer
-ATTRIBUTE	Hint			1040	string
-ATTRIBUTE	Pam-Auth		1041	string
-ATTRIBUTE	Login-Time		1042	string
-ATTRIBUTE	Stripped-User-Name	1043	string
-ATTRIBUTE	Current-Time		1044	string
-ATTRIBUTE	Realm			1045	string
-ATTRIBUTE	No-Such-Attribute	1046	string
-ATTRIBUTE	Packet-Type		1047	integer
-ATTRIBUTE	Proxy-To-Realm		1048	string
-ATTRIBUTE	Replicate-To-Realm	1049	string
-ATTRIBUTE	Acct-Session-Start-Time	1050	date
-ATTRIBUTE	Acct-Unique-Session-Id  1051	string
-ATTRIBUTE	Client-IP-Address	1052	ipaddr
-ATTRIBUTE	Ldap-UserDn		1053	string
-ATTRIBUTE	NS-MTA-MD5-Password	1054	string
-ATTRIBUTE	SQL-User-Name	 	1055	string
-ATTRIBUTE	LM-Password		1057	octets
-ATTRIBUTE	NT-Password		1058	octets
-ATTRIBUTE	SMB-Account-CTRL	1059	integer
-ATTRIBUTE	SMB-Account-CTRL-TEXT	1061	string
-ATTRIBUTE	User-Profile		1062	string
-ATTRIBUTE	Digest-Realm		1063	string
-ATTRIBUTE	Digest-Nonce		1064	string
-ATTRIBUTE	Digest-Method		1065	string
-ATTRIBUTE	Digest-URI		1066	string
-ATTRIBUTE	Digest-QOP		1067	string
-ATTRIBUTE	Digest-Algorithm	1068	string
-ATTRIBUTE	Digest-Body-Digest	1069	string
-ATTRIBUTE	Digest-CNonce		1070	string
-ATTRIBUTE	Digest-Nonce-Count	1071	string
-ATTRIBUTE	Digest-User-Name	1072	string
-ATTRIBUTE	Pool-Name		1073	string
-ATTRIBUTE	Ldap-Group		1074	string
-ATTRIBUTE	Module-Success-Message	1075	string
-ATTRIBUTE	Module-Failure-Message	1076	string
-#		X99-Fast		1077	integer
-ATTRIBUTE	Rewrite-Rule		1078	string
-ATTRIBUTE	Sql-Group		1079	string
-ATTRIBUTE	Response-Packet-Type	1080	integer
-ATTRIBUTE	Packet-Dst-Port		1081	integer
-ATTRIBUTE	MS-CHAP-Use-NTLM-Auth	1082	integer
-ATTRIBUTE	NTLM-User-Name		1083	string
-
-#
-#	Range:	1084-1199
-#		unused.
-#
-
-#
-#	Range:	1200-1279
-#		EAP-SIM (and other EAP type) weirdness.
-#
-#	For EAP-SIM, some attribute definitions for database interface
-#
-ATTRIBUTE	EAP-Sim-Subtype         1200    integer
-
-ATTRIBUTE	EAP-Sim-Rand1           1201	octets
-ATTRIBUTE	EAP-Sim-Rand2           1202	octets
-ATTRIBUTE	EAP-Sim-Rand3           1203	octets
-
-ATTRIBUTE	EAP-Sim-SRES1           1204	octets
-ATTRIBUTE	EAP-Sim-SRES2           1205	octets
-ATTRIBUTE	EAP-Sim-SRES3           1206	octets
-
-VALUE           EAP-Sim-Subtype         Start             10
-VALUE           EAP-Sim-Subtype         Challenge         11
-VALUE           EAP-Sim-Subtype         Notification      12
-VALUE           EAP-Sim-Subtype         Re-authentication 13
-
-# this attribute is used internally by the client code.
-ATTRIBUTE 	EAP-Sim-State	        1207	integer
-
-ATTRIBUTE       EAP-Sim-IMSI            1208	string
-ATTRIBUTE       EAP-Sim-HMAC            1209	string
-ATTRIBUTE	EAP-Sim-KEY             1210    octets
-ATTRIBUTE	EAP-Sim-EXTRA           1211    octets
-
-ATTRIBUTE	EAP-Sim-KC1             1212	octets
-ATTRIBUTE	EAP-Sim-KC2             1213	octets
-ATTRIBUTE	EAP-Sim-KC3             1214	octets
-
-#
-#	Range:	1280 - 1535
-#		EAP-type specific attributes
-#
-
-# these are PW_EAP_X  + 1280
-ATTRIBUTE	EAP-Type-Identity	1281	string
-ATTRIBUTE	EAP-Type-Notification	1282	string
-ATTRIBUTE	EAP-Type-NAK		1283	string
-ATTRIBUTE	EAP-Type-MD5		1284	octets
-ATTRIBUTE	EAP-Type-OTP		1285	string
-ATTRIBUTE	EAP-Type-GTC		1286	string
-ATTRIBUTE	EAP-Type-TLS		1297	octets
-ATTRIBUTE       EAP-Type-SIM            1298	octets
-ATTRIBUTE	EAP-Type-LEAP		1301	octets
-ATTRIBUTE	EAP-Type-SIM2		1302	octets
-ATTRIBUTE	EAP-Type-TTLS		1305	octets
-ATTRIBUTE	EAP-Type-PEAP		1309	octets
-
-#
-#	Range:	1536 - 1791
-#		EAP Sim sub-types.
-#
-
-# these are PW_EAP_SIM_X + 1536
-ATTRIBUTE       EAP-Sim-RAND            1537    octets
-ATTRIBUTE       EAP-Sim-PADDING         1542    octets
-ATTRIBUTE       EAP-Sim-NONCE_MT        1543    octets
-ATTRIBUTE       EAP-Sim-PERMANENT_ID_REQ 1546    octets
-ATTRIBUTE       EAP-Sim-MAC             1547    octets
-ATTRIBUTE       EAP-Sim-NOTIFICATION    1548    octets
-ATTRIBUTE       EAP-Sim-ANY_ID_REQ      1549    octets
-ATTRIBUTE       EAP-Sim-IDENTITY        1550    octets
-ATTRIBUTE       EAP-Sim-VERSION_LIST    1551    octets
-ATTRIBUTE       EAP-Sim-SELECTED_VERSION 1552   octets
-ATTRIBUTE       EAP-Sim-FULLAUTH_ID_REQ 1553    octets
-ATTRIBUTE       EAP-Sim-COUNTER         1555    octets
-ATTRIBUTE       EAP-Sim-COUNTER_TOO_SMALL 1556  octets
-ATTRIBUTE       EAP-Sim-NONCE_S         1557    octets
-ATTRIBUTE       EAP-Sim-IV              1665    octets
-ATTRIBUTE       EAP-Sim-ENCR_DATA       1666    octets
-ATTRIBUTE       EAP-Sim-NEXT_PSEUDONUM  1668    octets
-ATTRIBUTE       EAP-Sim-NEXT_REAUTH_ID  1669    octets
-ATTRIBUTE       EAP-Sim-CHECKCODE       1670    octets
-
-
-#
-#	Range:	1800-2999
-#		Free
-#
-#	Range:	3000-3999
-#		Site-local attributes (see raddb/dictionary.in)
-#		Do NOT define attributes in this range!
-#
-#	Range:	4000-65535
-#		Unused
-#
-#	Range:	65536-
-#		Invalid.  Don't use.
-#
-
+ATTRIBUTE	Digest-Response				206	string
+ATTRIBUTE	Digest-Attributes			207	octets	# stupid format
 
 #
 #	Integer Translations
 #
+VALUE	Service-Type			Voice			12
+VALUE	Service-Type			Fax			13
+VALUE	Service-Type			Modem-Relay		14
+VALUE	Service-Type			IAPP-Register		15
+VALUE	Service-Type			IAPP-AP-Check		16
 
-#	User Types
+VALUE	Framed-Protocol			GPRS-PDP-Context	7
 
-VALUE		Service-Type		Login-User		1
-VALUE		Service-Type		Framed-User		2
-VALUE		Service-Type		Callback-Login-User	3
-VALUE		Service-Type		Callback-Framed-User	4
-VALUE		Service-Type		Outbound-User		5
-VALUE		Service-Type		Administrative-User	6
-VALUE		Service-Type		NAS-Prompt-User		7
-VALUE		Service-Type		Authenticate-Only	8
-VALUE		Service-Type		Callback-NAS-Prompt	9
-VALUE		Service-Type		Call-Check		10
-VALUE		Service-Type		Callback-Administrative	11
-VALUE		Service-Type		Voice			12
-VALUE		Service-Type		Fax			13
-VALUE		Service-Type		Modem-Relay		14
-VALUE		Service-Type		IAPP-Register		15
-VALUE		Service-Type		IAPP-AP-Check		16
+VALUE	NAS-Port-Type			Wireless-CDMA2000	22
+VALUE	NAS-Port-Type			Wireless-UMTS		23
+VALUE	NAS-Port-Type			Wireless-1X-EV		24
+VALUE	NAS-Port-Type			IAPP			25
 
-#	Framed Protocols
-
-VALUE		Framed-Protocol		PPP			1
-VALUE		Framed-Protocol		SLIP			2
-VALUE		Framed-Protocol		ARAP			3
-VALUE		Framed-Protocol		Gandalf-SLML		4
-VALUE		Framed-Protocol		Xylogics-IPX-SLIP	5
-VALUE		Framed-Protocol		X.75-Synchronous	6
-VALUE		Framed-Protocol		GPRS-PDP-Context	7
-
-#	Framed Routing Values
-
-VALUE		Framed-Routing		None			0
-VALUE		Framed-Routing		Broadcast		1
-VALUE		Framed-Routing		Listen			2
-VALUE		Framed-Routing		Broadcast-Listen	3
-
-#	Framed Compression Types
-
-VALUE		Framed-Compression	None			0
-VALUE		Framed-Compression	Van-Jacobson-TCP-IP	1
-VALUE		Framed-Compression	IPX-Header-Compression	2
-VALUE		Framed-Compression	Stac-LZS		3
-
-#	Login Services
-
-VALUE		Login-Service		Telnet			0
-VALUE		Login-Service		Rlogin			1
-VALUE		Login-Service		TCP-Clear		2
-VALUE		Login-Service		PortMaster		3
-VALUE		Login-Service		LAT			4
-VALUE		Login-Service		X25-PAD			5
-VALUE		Login-Service		X25-T3POS		6
-VALUE		Login-Service		TCP-Clear-Quiet		7
-
-#	Login-TCP-Port		(see /etc/services for more examples)
-
-VALUE		Login-TCP-Port		Telnet			23
-VALUE		Login-TCP-Port		Rlogin			513
-VALUE		Login-TCP-Port		Rsh			514
-
-#	Status Types
-
-VALUE		Acct-Status-Type	Start			1
-VALUE		Acct-Status-Type	Stop			2
-VALUE		Acct-Status-Type	Interim-Update		3
-VALUE		Acct-Status-Type	Alive			3
-VALUE		Acct-Status-Type	Accounting-On		7
-VALUE		Acct-Status-Type	Accounting-Off		8
-#	RFC 2867 Additional Status-Type Values
-VALUE		Acct-Status-Type	Tunnel-Start		9
-VALUE		Acct-Status-Type	Tunnel-Stop		10
-VALUE		Acct-Status-Type	Tunnel-Reject		11
-VALUE		Acct-Status-Type	Tunnel-Link-Start	12
-VALUE		Acct-Status-Type	Tunnel-Link-Stop	13
-VALUE		Acct-Status-Type	Tunnel-Link-Reject	14
-VALUE		Acct-Status-Type	Failed			15
-
-#	Authentication Types
-
-VALUE		Acct-Authentic		RADIUS			1
-VALUE		Acct-Authentic		Local			2
-VALUE		Acct-Authentic		Remote			3
-VALUE		Acct-Authentic		Diameter		4
-
-#	Termination Options
-
-VALUE		Termination-Action	Default			0
-VALUE		Termination-Action	RADIUS-Request		1
-
-#	NAS Port Types
-
-VALUE		NAS-Port-Type		Async			0
-VALUE		NAS-Port-Type		Sync			1
-VALUE		NAS-Port-Type		ISDN			2
-VALUE		NAS-Port-Type		ISDN-V120		3
-VALUE		NAS-Port-Type		ISDN-V110		4
-VALUE		NAS-Port-Type		Virtual			5
-VALUE		NAS-Port-Type		PIAFS			6
-VALUE		NAS-Port-Type		HDLC-Clear-Channel	7
-VALUE		NAS-Port-Type		X.25			8
-VALUE		NAS-Port-Type		X.75			9
-VALUE		NAS-Port-Type		G.3-Fax			10
-VALUE		NAS-Port-Type		SDSL			11
-VALUE		NAS-Port-Type		ADSL-CAP		12
-VALUE		NAS-Port-Type		ADSL-DMT		13
-VALUE		NAS-Port-Type		IDSL			14
-VALUE		NAS-Port-Type		Ethernet		15
-VALUE		NAS-Port-Type		xDSL			16
-VALUE		NAS-Port-Type		Cable			17
-VALUE		NAS-Port-Type		Wireless-Other		18
-VALUE		NAS-Port-Type		Wireless-802.11		19
-VALUE		NAS-Port-Type		Token-Ring		20
-VALUE		NAS-Port-Type		FDDI			21
-VALUE		NAS-Port-Type		Wireless-CDMA2000	22
-VALUE		NAS-Port-Type		Wireless-UMTS		23
-VALUE		NAS-Port-Type		Wireless-1X-EV		24
-VALUE		NAS-Port-Type		IAPP			25
-
-#	Acct Terminate Causes
-
-VALUE           Acct-Terminate-Cause    User-Request            1
-VALUE           Acct-Terminate-Cause    Lost-Carrier            2
-VALUE           Acct-Terminate-Cause    Lost-Service            3
-VALUE           Acct-Terminate-Cause    Idle-Timeout            4
-VALUE           Acct-Terminate-Cause    Session-Timeout         5
-VALUE           Acct-Terminate-Cause    Admin-Reset             6
-VALUE           Acct-Terminate-Cause    Admin-Reboot            7
-VALUE           Acct-Terminate-Cause    Port-Error              8
-VALUE           Acct-Terminate-Cause    NAS-Error               9
-VALUE           Acct-Terminate-Cause    NAS-Request             10
-VALUE           Acct-Terminate-Cause    NAS-Reboot              11
-VALUE           Acct-Terminate-Cause    Port-Unneeded           12
-VALUE           Acct-Terminate-Cause    Port-Preempted          13
-VALUE           Acct-Terminate-Cause    Port-Suspended          14
-VALUE           Acct-Terminate-Cause    Service-Unavailable     15
-VALUE           Acct-Terminate-Cause    Callback                16
-VALUE           Acct-Terminate-Cause    User-Error              17
-VALUE           Acct-Terminate-Cause    Host-Request            18
-VALUE		Acct-Terminate-Cause	Supplicant-Restart	19
-VALUE		Acct-Terminate-Cause	Reauthentication-Failure 20
-VALUE		Acct-Terminate-Cause	Port-Reinit		21
-VALUE		Acct-Terminate-Cause	Port-Disabled		22
-
-#VALUE		Tunnel-Type		L2TP			3
-#VALUE		Tunnel-Medium-Type	IP			1
-
-VALUE		Prompt			No-Echo			0
-VALUE		Prompt			Echo			1
-
-#
-#	Error causes
-#
-VALUE		Error-Cause		Residual-Context-Removed	201
-VALUE		Error-Cause		Invalid-EAP-Packet		202
-VALUE		Error-Cause		Unsupported-Attribute		401
-VALUE		Error-Cause		Missing-Attribute		402
-VALUE		Error-Cause		NAS-Identification-Mismatch	403
-VALUE		Error-Cause		Invalid-Request			404
-VALUE		Error-Cause		Unsupported-Service		405
-VALUE		Error-Cause		Unsupported-Extension		406
-VALUE		Error-Cause		Administratively-Prohibited	501
-VALUE		Error-Cause		Proxy-Request-Not-Routable	502
-VALUE		Error-Cause		Session-Context-Not-Found	503
-VALUE		Error-Cause		Session-Context-Not-Removable	504
-VALUE		Error-Cause		Proxy-Processing-Error		505
-VALUE		Error-Cause		Resources-Unavailable		506
-VALUE		Error-Cause		Request-Initiated		507
-
-#
-#	Non-Protocol Integer Translations
-#
-
-VALUE		Auth-Type		Local			0
-VALUE		Auth-Type		System			1
-VALUE		Auth-Type		SecurID			2
-VALUE		Auth-Type		Crypt-Local		3
-VALUE		Auth-Type		Reject			4
-VALUE		Auth-Type		ActivCard		5
-VALUE		Auth-Type		EAP			6
-VALUE		Auth-Type		ARAP			7
-
-#
-#	FreeRADIUS extensions (most originally from Cistron)
-#
-VALUE		Auth-Type		Accept			254
-
-VALUE		Auth-Type		PAP			1024
-VALUE		Auth-Type		CHAP			1025
-VALUE		Auth-Type		LDAP			1026
-VALUE		Auth-Type		PAM			1027
-VALUE		Auth-Type		MS-CHAP			1028
-VALUE		Auth-Type		Kerberos		1029
-VALUE		Auth-Type		CRAM			1030
-VALUE		Auth-Type		NS-MTA-MD5		1031
-# 1032 is unused (was a duplicate of CRAM)
-VALUE		Auth-Type		SMB			1033
-
-#
-#	Authorization type, too.
-#
-VALUE		Autz-Type		Local			0
-
-#
-#	And accounting
-#
-VALUE		Acct-Type		Local			0
-
-#
-#	And Session handling
-#
-VALUE		Session-Type		Local			0
-
-#
-#	And Post-Auth
-VALUE		Post-Auth-Type		Local			0
-
-#
-#	Experimental Non-Protocol Integer Translations for FreeRADIUS
-#
-VALUE		Fall-Through		No			0
-VALUE		Fall-Through		Yes			1
-
-VALUE		Packet-Type	Access-Request			1
-VALUE		Packet-Type	Access-Accept			2
-VALUE		Packet-Type	Access-Reject			3
-VALUE		Packet-Type	Accounting-Request		4
-VALUE		Packet-Type	Accounting-Response		5
-VALUE		Packet-Type	Accounting-Status		6
-VALUE		Packet-Type	Password-Request		7
-VALUE		Packet-Type	Password-Accept			8
-VALUE		Packet-Type	Password-Reject			9
-VALUE		Packet-Type	Accounting-Message		10
-VALUE		Packet-Type	Access-Challenge		11
-VALUE		Packet-Type	Status-Server			12
-VALUE		Packet-Type	Status-Client			13
-
-#
-#  Defined in RFC 2882
-#
-VALUE		Packet-Type	Disconnect-Request		40
-VALUE		Packet-Type	Disconnect-ACK			41
-VALUE		Packet-Type	Disconnect-NAK			42
-VALUE		Packet-Type	CoA-Request			43
-VALUE		Packet-Type	CoA-ACK				44
-VALUE		Packet-Type	CoA-NAK				45
-
-#
-#	The following packet types are described in RFC 2882,
-#	but they are NOT part of the RADIUS standard.  Instead,
-#	they are informational about vendor-specific extensions
-#	to the RADIUS standard.
-#
-VALUE		Packet-Type	Resource-Free-Request		21
-VALUE		Packet-Type	Resource-Free-Response		22
-VALUE		Packet-Type	Resource-Query-Request		23
-VALUE		Packet-Type	Resource-Query-Response		24
-VALUE		Packet-Type	Alternate-Resource-Reclaim-Request 25
-VALUE		Packet-Type	NAS-Reboot-Request		26
-VALUE		Packet-Type	NAS-Reboot-Response		27
-VALUE		Packet-Type	Next-Passcode			29
-VALUE		Packet-Type	New-Pin				30
-VALUE		Packet-Type	Terminate-Session		31
-VALUE		Packet-Type	Password-Expired		32
-VALUE		Packet-Type	Event-Request			33
-VALUE		Packet-Type	Event-Response			34
-VALUE		Packet-Type	Disconnect-Request		40
-VALUE		Packet-Type	Disconnect-ACK			41
-VALUE		Packet-Type	Disconnect-NAK			42
-VALUE		Packet-Type	CoF-Request			43
-VALUE		Packet-Type	CoF-ACK				44
-VALUE		Packet-Type	CoF-NAK				45
-VALUE		Packet-Type	IP-Address-Allocate		50
-VALUE		Packet-Type	IP-Address-Release		51
-
-VALUE		Response-Packet-Type	Access-Request			1
-VALUE		Response-Packet-Type	Access-Accept			2
-VALUE		Response-Packet-Type	Access-Reject			3
-VALUE		Response-Packet-Type	Accounting-Request		4
-VALUE		Response-Packet-Type	Accounting-Response		5
-VALUE		Response-Packet-Type	Accounting-Status		6
-VALUE		Response-Packet-Type	Password-Request		7
-VALUE		Response-Packet-Type	Password-Accept			8
-VALUE		Response-Packet-Type	Password-Reject			9
-VALUE		Response-Packet-Type	Accounting-Message		10
-VALUE		Response-Packet-Type	Access-Challenge		11
-VALUE		Response-Packet-Type	Status-Server			12
-VALUE		Response-Packet-Type	Status-Client			13
-
-#
-#	EAP Sub-types, inside of Request and Response packets
-#
-#	http://www.iana.org/assignments/ppp-numbers
-#		"PPP EAP REQUEST/RESPONSE TYPES"
-#	
-#
-#	See dictionary.microsoft, MS-Acct-EAP-Type for similar definitions
-#
-VALUE		EAP-Type	None			0
-VALUE		EAP-Type	Identity		1
-VALUE		EAP-Type	Notification		2
-VALUE		EAP-Type	NAK			3
-VALUE		EAP-Type	MD5-Challenge		4
-VALUE		EAP-Type	One-Time-Password	5
-VALUE		EAP-Type	Generic-Token-Card	6
-VALUE		EAP-Type	RSA-Public-Key		9
-VALUE		EAP-Type	DSS-Unilateral		10
-VALUE		EAP-Type	KEA			11
-VALUE		EAP-Type	KEA-Validate		12
-VALUE		EAP-Type	KEA			11
-VALUE		EAP-Type	EAP-TLS			13
-VALUE		EAP-Type	Defender-Token		14
-VALUE		EAP-Type	RSA-SecurID-EAP		15
-VALUE		EAP-Type	Arcot-Systems-EAP	16
-VALUE		EAP-Type	Cisco-LEAP		17
-VALUE		EAP-Type	Nokia-IP-Smart-Card	18
-VALUE		EAP-Type	SIM             	18
-VALUE		EAP-Type	SRP-SHA1-Part-1		19
-VALUE		EAP-Type	SRP-SHA1-Part-2		20
-VALUE		EAP-Type	EAP-TTLS		21
-VALUE		EAP-Type	Remote-Access-Service	22
-VALUE		EAP-Type	UMTS			23
-VALUE		EAP-Type	EAP-3Com-Wireless	24
-VALUE		EAP-Type	PEAP			25
-VALUE		EAP-Type	MS-EAP-Authentication	26
-VALUE		EAP-Type	MAKE			27
-VALUE		EAP-Type	CRYPTOCard		28
-VALUE		EAP-Type	EAP-MSCHAP-V2		29
-VALUE		EAP-Type	DynamID			30
-VALUE		EAP-Type	Rob-EAP			31
-VALUE		EAP-Type	SecurID-EAP		32
-VALUE		EAP-Type	MS-Authentication-TLV	33
-VALUE		EAP-Type	SentriNET		34
-VALUE		EAP-Type	EAP-Actiontec-Wireless	35
-VALUE		EAP-Type	Cogent-Biomentric-EAP	36
-VALUE		EAP-Type	AirFortress-EAP		37
-VALUE		EAP-Type	EAP-HTTP-Digest		38
-VALUE		EAP-Type	SecuriSuite-EAP		39
-VALUE		EAP-Type	DeviceConnect-EAP	40
-VALUE		EAP-Type	EAP-SPEKE		41
-VALUE		EAP-Type	EAP-MOBAC		42
-
-#
-#	These are duplicate values, to get around the problem of
-#	having two MS-CHAPv2 EAP types.
-#
-VALUE		EAP-Type	Microsoft-MS-CHAPv2	26
-VALUE		EAP-Type	Cisco-MS-CHAPv2		29
-
-#
-#	And this is what most people mean by MS-CHAPv2
-#
-VALUE		EAP-Type	MS-CHAP-V2		26
-
-
-#
-#	This says TLS, but it's only valid for TTLS & PEAP.
-#	EAP-TLS *always* requires a client certificate.
-#
-VALUE	EAP-TLS-Require-Client-Cert No	0
-VALUE	EAP-TLS-Require-Client-Cert Yes	1
-
-#
-# 	These are the EAP-Code values.
-#
-VALUE	EAP-Code     Request     1
-VALUE   EAP-Code     Response    2
-VALUE   EAP-Code     Success     3
-VALUE   EAP-Code     Failure     4
-
-#
-#  For MS-CHAP, do we run ntlm_auth, or not.
-#
-VALUE	MS-CHAP-Use-NTLM-Auth	No	0
-VALUE	MS-CHAP-Use-NTLM-Auth	Yes	1
+VALUE	Framed-Protocol			PPTP			9

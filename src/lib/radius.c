@@ -85,7 +85,8 @@ typedef struct radius_packet_t {
 } radius_packet_t;
 
 static lrad_randctx lrad_rand_pool;	/* across multiple calls */
-static int lrad_pool_initialized = 0;
+static volatile int lrad_rand_index = -1;
+static unsigned int salt_offset = 0;
 
 static const char *packet_codes[] = {
   "",
@@ -142,11 +143,656 @@ static const char *packet_codes[] = {
   "IP-Address-Release"
 };
 
+
+#define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
+/*************************************************************************
+ *
+ *      Function: make_secret
+ *
+ *      Purpose: Build an encrypted secret value to return in a reply
+ *               packet.  The secret is hidden by xoring with a MD5 digest
+ *               created from the shared secret and the authentication
+ *               vector.  We put them into MD5 in the reverse order from
+ *               that used when encrypting passwords to RADIUS.
+ *
+ *************************************************************************/
+static void make_secret(uint8_t *digest, const uint8_t *vector,
+			const char *secret, const uint8_t *value)
+{
+	MD5_CTX context;
+        int             i;
+
+	MD5Init(&context);
+	MD5Update(&context, vector, AUTH_VECTOR_LEN);
+	MD5Update(&context, secret, strlen(secret));
+	MD5Final(digest, &context);
+
+        for ( i = 0; i < AUTH_VECTOR_LEN; i++ ) {
+		digest[i] ^= value[i];
+        }
+}
+
+#define MAX_PASS_LEN (128)
+static void make_passwd(uint8_t *output, int *outlen,
+			const uint8_t *input, int inlen,
+			const char *secret, const uint8_t *vector)
+{
+	MD5_CTX context, old;
+	uint8_t	digest[AUTH_VECTOR_LEN];
+	uint8_t passwd[MAX_PASS_LEN];
+	int	i, n;
+	int	len;
+
+	/*
+	 *	If the length is zero, round it up.
+	 */
+	len = inlen;
+	if (len == 0) {
+		len = AUTH_PASS_LEN;
+	}
+	else if (len > MAX_PASS_LEN) len = MAX_PASS_LEN;
+
+	else if ((len & 0x0f) != 0) {
+		len += 0x0f;
+		len &= ~0x0f;
+	}
+	*outlen = len;
+
+	memcpy(passwd, input, len);
+	memset(passwd + len, 0, sizeof(passwd) - len);
+
+	MD5Init(&context);
+	MD5Update(&context, secret, strlen(secret));
+	old = context;
+
+	/*
+	 *	Do first pass.
+	 */
+	MD5Update(&context, vector, AUTH_PASS_LEN);
+
+	for (n = 0; n < len; n += AUTH_PASS_LEN) {
+		if (n > 0) {
+			context = old;
+			MD5Update(&context,
+				       passwd + n - AUTH_PASS_LEN,
+				       AUTH_PASS_LEN);
+		}
+
+		MD5Final(digest, &context);
+		for (i = 0; i < AUTH_PASS_LEN; i++) {
+			passwd[i + n] ^= digest[i];
+		}
+	}
+
+	memcpy(output, passwd, len);
+}
+
+static void make_tunnel_passwd(uint8_t *output, int *outlen,
+			       const uint8_t *input, int inlen,
+			       const char *secret, const uint8_t *vector)
+{
+	MD5_CTX context, old;
+	uint8_t	digest[AUTH_VECTOR_LEN];
+	uint8_t passwd[AUTH_PASS_LEN + AUTH_VECTOR_LEN];
+	int	i, n;
+	int	len;
+
+	/*
+	 *	Length of the encrypted data is password length plus
+	 *	one byte for the length of the password.
+	 */
+	len = inlen + 1;
+	if (len > AUTH_PASS_LEN) len = AUTH_PASS_LEN;
+	else if ((len & 0x0f) != 0) {
+		len += 0x0f;
+		len &= ~0x0f;
+	}
+	*outlen = len + 2;	/* account for the salt */
+
+	/*
+	 *	Copy the password over.
+	 */
+	memcpy(passwd + 3, input, inlen);
+	memset(passwd + 3 + inlen, 0, sizeof(passwd) - 3 - inlen);
+
+	/*
+	 *	Generate salt.  The RFC's say:
+	 *
+	 *	The high bit of salt[0] must be set, each salt in a
+	 *	packet should be unique, and they should be random
+	 *
+	 *	So, we set the high bit, add in a counter, and then
+	 *	add in some CSPRNG data.  should be OK..
+	 */
+	passwd[0] = (0x80 | ( ((salt_offset++) & 0x0f) << 3) |
+		     (lrad_rand() & 0x07));
+	passwd[1] = lrad_rand();
+	passwd[2] = inlen;	/* length of the password string */
+
+	MD5Init(&context);
+	MD5Update(&context, secret, strlen(secret));
+	old = context;
+
+	MD5Update(&context, vector, AUTH_VECTOR_LEN);
+	MD5Update(&context, &passwd[0], 2);
+
+	for (n = 0; n < len; n += AUTH_PASS_LEN) {
+		if (n > 0) {
+			context = old;
+			MD5Update(&context,
+				       passwd + 2 + n - AUTH_PASS_LEN,
+				       AUTH_PASS_LEN);
+		}
+
+		MD5Final(digest, &context);
+		for (i = 0; i < AUTH_PASS_LEN; i++) {
+			passwd[i + 2 + n] ^= digest[i];
+		}
+	}
+	memcpy(output, passwd, len + 2);
+}
+
 /*
- *  Internal prototypes
+ *	Parse a data structure into a RADIUS attribute.
  */
-static void make_secret(unsigned char *digest, uint8_t *vector,
-			const char *secret, char *value);
+int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+		const char *secret, const VALUE_PAIR *vp, uint8_t *ptr)
+{
+	int		vendorcode;
+	int		offset, len, total_length;
+	uint32_t	lvalue;
+	uint8_t		*length_ptr, *vsa_length_ptr;
+	const uint8_t	*data = NULL;
+	uint8_t		array[4];
+
+	vendorcode = total_length = 0;
+	length_ptr = vsa_length_ptr = NULL;
+	
+	/*
+	 *	For interoperability, always put vendor attributes
+	 *	into their own VSA.
+	 */
+	if ((vendorcode = VENDOR(vp->attribute)) != 0) {
+		/*
+		 *	Build a VSA header.
+		 */
+		*ptr++ = PW_VENDOR_SPECIFIC;
+		vsa_length_ptr = ptr;
+		*ptr++ = 6;
+		lvalue = htonl(vendorcode);
+		memcpy(ptr, &lvalue, 4);
+		ptr += 4;
+		total_length += 6;
+		
+		if (vendorcode == VENDORPEC_USR) {
+			lvalue = htonl(vp->attribute & 0xFFFF);
+			memcpy(ptr, &lvalue, 4);
+			
+			length_ptr = vsa_length_ptr;
+			
+			total_length += 4;
+			*length_ptr  += 4;
+			ptr          += 4;
+			
+			/*
+			 *	We don't have two different lengths.
+			 */
+			vsa_length_ptr = NULL;
+			
+		} else if (vendorcode == VENDORPEC_LUCENT) {
+			/*
+			 *	16-bit attribute, 8-bit length
+			 */
+			*ptr++ = ((vp->attribute >> 8) & 0xFF);
+			*ptr++ = (vp->attribute & 0xFF);
+			length_ptr = ptr;
+			*vsa_length_ptr += 3;
+			*ptr++ = 3;
+			total_length += 3;
+
+		} else if (vendorcode == VENDORPEC_STARENT) {
+			/*
+			 *	16-bit attribute, 16-bit length
+			 *	with the upper 8 bits of the length
+			 *	always zero!
+			 */
+			*ptr++ = ((vp->attribute >> 8) & 0xFF);
+			*ptr++ = (vp->attribute & 0xFF);
+			*ptr++ = 0;
+			length_ptr = ptr;
+			*vsa_length_ptr += 4;
+			*ptr++ = 4;
+			total_length += 4;
+		} else {
+			/*
+			 *	All other VSA's are encoded the same
+			 *	as RFC attributes.
+			 */
+			*vsa_length_ptr += 2;
+			goto rfc;
+		}
+	} else {
+	rfc:
+		/*
+		 *	All other attributes are encoded as
+		 *	per the RFC.
+		 */
+		*ptr++ = (vp->attribute & 0xFF);
+		length_ptr = ptr;
+		*ptr++ = 2;
+		total_length += 2;
+	}
+
+	offset = 0;
+	if (vp->flags.has_tag) {
+		if (TAG_VALID(vp->flags.tag)) {
+			ptr[0] = vp->flags.tag & 0xff;
+			offset = 1;
+	    
+		} else if (vp->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
+			/*
+			 *	Tunnel passwords REQUIRE a tag, even
+			 *	if don't have a valid tag.
+			 */
+			ptr[0] = 0;
+			offset = 1;
+		} /* else don't write a tag */
+	} /* else the attribute doesn't have a tag */
+	
+	/*
+	 *	Set up the default sources for the data.
+	 */
+	data = vp->strvalue;
+	len = vp->length;
+
+	/*
+	 *	Encrypted passwords can't be very long.
+	 *	This check also ensures that the hashed version
+	 *	of the password + attribute header fits into one
+	 *	attribute.
+	 *
+	 *	FIXME: Print a warning message if it's too long?
+	 */
+	if (vp->flags.encrypt && (len > MAX_PASS_LEN)) {
+		len = MAX_PASS_LEN;
+	}
+
+	switch(vp->type) {
+	case PW_TYPE_STRING:
+	case PW_TYPE_OCTETS:
+	case PW_TYPE_IFID:
+	case PW_TYPE_IPV6ADDR:
+	case PW_TYPE_IPV6PREFIX:
+	case PW_TYPE_ABINARY:
+		/* nothing more to do */
+		break;
+			
+	case PW_TYPE_INTEGER:
+		len = 4;	/* just in case */
+		lvalue = htonl(vp->lvalue);
+		memcpy(array, &lvalue, sizeof(lvalue));
+
+		/*
+		 *	Perhaps discard the first octet.
+		 */
+		data = &array[offset];
+		len -= offset;
+		break;
+			
+	case PW_TYPE_IPADDR:
+		data = (const uint8_t *) &vp->lvalue;
+		len = 4;	/* just in case */
+		break;
+
+		/*
+		 *  There are no tagged date attributes.
+		 */
+	case PW_TYPE_DATE:
+		lvalue = htonl(vp->lvalue);
+		data = (const uint8_t *) &lvalue;
+		len = 4;	/* just in case */
+		break;
+
+	default:		/* unknown type: ignore it */
+		librad_log("ERROR: Unknown attribute type %d", vp->type);
+		return -1;
+	}
+
+	/*
+	 *	Bound the data to 255 bytes.
+	 */
+	if (len + offset + total_length > 255) {
+		len = 255 - offset - total_length;
+	}	
+
+	/*
+	 *	Encrypt the various password styles
+	 *
+	 *	Attributes with encrypted values MUST be less than
+	 *	128 bytes long.
+	 */
+	switch (vp->flags.encrypt) {
+	case FLAG_ENCRYPT_USER_PASSWORD:
+		make_passwd(ptr + offset, &len,
+			    data, len,
+			    secret, packet->vector);
+		break;
+		
+	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+		if (!original) {
+			librad_log("ERROR: No request packet, cannot encrypt %s attribute in the vp.", vp->name);
+			return -1;
+		}
+
+		make_tunnel_passwd(ptr + offset, &len,
+				   data, len,
+				   secret, original->vector);
+		break;
+
+		/*
+		 *	The code above ensures that this attribute
+		 *	always fits.
+		 */
+	case FLAG_ENCRYPT_ASCEND_SECRET:
+		make_secret(ptr + offset, packet->vector,
+			    secret, data);
+		len = AUTH_VECTOR_LEN;
+		break;
+
+		
+	default:
+		/*
+		 *	Just copy the data over
+		 */
+		memcpy(ptr + offset, data, len);
+		break;
+	} /* switch over encryption flags */
+
+	/*
+	 *	Account for the tag (if any).
+	 */
+	len += offset;
+
+	/*
+	 *	RFC 2865 section 5 says that zero-length attributes
+	 *	MUST NOT be sent.
+	 */
+	if (len == 0) return 0;
+
+	/*
+	 *	Update the various lengths.
+	 */
+	*length_ptr += len;
+	if (vsa_length_ptr) *vsa_length_ptr += len;
+	ptr += len;
+	total_length += len;
+
+	return total_length;	/* of attribute */
+}
+
+
+/*
+ *	Encode a packet.
+ */
+int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+	       const char *secret)
+{
+	radius_packet_t	*hdr;
+	uint8_t	        *ptr;
+	uint16_t	total_length;
+	int		len;
+	VALUE_PAIR	*reply;
+	
+	/*
+	 *	For simplicity in the following logic, we allow
+	 *	the attributes to "overflow" the 4k maximum
+	 *	RADIUS packet size, by one attribute.
+	 *
+	 *	It's uint32_t, for alignment purposes.
+	 */
+	uint32_t	data[(MAX_PACKET_LEN + 256) / 4];
+
+	/*
+	 *	Double-check some things based on packet code.
+	 */
+	switch (packet->code) {
+	case PW_AUTHENTICATION_ACK:
+	case PW_AUTHENTICATION_REJECT:
+	case PW_ACCESS_CHALLENGE:
+		if (!original) {
+			librad_log("ERROR: Cannot sign response packet without a request packet.");
+			return -1;
+		}
+		break;
+		
+		/*
+		 *	These packet vectors start off as all zero.
+		 */
+	case PW_ACCOUNTING_REQUEST:
+	case PW_DISCONNECT_REQUEST:
+		memset(packet->vector, 0, sizeof(packet->vector));
+		break;
+		
+	default:
+		break;
+	}
+		
+	/*
+	 *	Use memory on the stack, until we know how
+	 *	large the packet will be.
+	 */
+	hdr = (radius_packet_t *) data;
+	
+	/*
+	 *	Build standard header
+	 */
+	hdr->code = packet->code;
+	hdr->id = packet->id;
+	
+	memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
+
+	total_length = AUTH_HDR_LEN;
+	packet->verified = 0;
+	
+	/*
+	 *	Load up the configuration values for the user
+	 */
+	ptr = hdr->data;
+
+	/*
+	 *	FIXME: Loop twice over the reply list.  The first time,
+	 *	calculate the total length of data.  The second time,
+	 *	allocate the memory, and fill in the VP's.
+	 *
+	 *	Hmm... this may be slower than just doing a small
+	 *	memcpy.
+	 */
+	
+	/*
+	 *	Loop over the reply attributes for the packet.
+	 */
+	for (reply = packet->vps; reply; reply = reply->next) {
+		/*
+		 *	Ignore non-wire attributes
+		 */
+		if ((VENDOR(reply->attribute) == 0) &&
+		    ((reply->attribute & 0xFFFF) > 0xff)) {
+			continue;
+		}
+		
+		/*
+		 *	Check that the packet is no more than 4k in
+		 *	size, AFTER over-flowing the 4k boundary.
+		 *	Note that the 'data' buffer, above, is one
+		 *	attribute longer than necessary, in order to
+		 *	permit this overflow.
+		 */
+		if (total_length > MAX_PACKET_LEN) {
+			librad_log("ERROR: Too many attributes for packet, result is larger than RFC maximum of 4k");
+			return -1;
+		}
+		
+		/*
+		 *	Set the Message-Authenticator to the correct
+		 *	length and initial value.
+		 */
+		if (reply->attribute == PW_MESSAGE_AUTHENTICATOR) {
+			reply->length = AUTH_VECTOR_LEN;
+			memset(reply->strvalue, 0, AUTH_VECTOR_LEN);
+			packet->verified = total_length; /* HACK! */
+		}
+		
+		/*
+		 *	Print out ONLY the attributes which
+		 *	we're sending over the wire, and print
+		 *	them out BEFORE they're encrypted.
+		 */
+		debug_pair(reply);
+
+		len = rad_vp2attr(packet, original, secret, reply, ptr);
+		if (len < 0) return -1;
+		ptr += len;
+		total_length += len;
+	} /* done looping over all attributes */
+	
+	/*
+	 *	Fill in the rest of the fields, and copy the data over
+	 *	from the local stack to the newly allocated memory.
+	 *
+	 *	Yes, all this 'memcpy' is slow, but it means
+	 *	that we only allocate the minimum amount of
+	 *	memory for a request.
+	 */
+	packet->data_len = total_length;
+	packet->data = (uint8_t *) malloc(packet->data_len);
+	if (!packet->data) {
+		librad_log("Out of memory");
+		return -1;
+	}
+
+	memcpy(packet->data, data, packet->data_len);
+	hdr = (radius_packet_t *) packet->data;
+	
+	total_length = htons(total_length);
+	memcpy(hdr->length, &total_length, sizeof(total_length));
+
+	return 0;
+}
+
+
+/*
+ *	Sign a previously encoded packet.
+ */
+int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+	     const char *secret)
+{
+	radius_packet_t	*hdr = (radius_packet_t *)packet->data;
+
+	/*
+	 *	It wasn't assigned an Id, this is bad!
+	 */
+	if (packet->id < 0) {
+		librad_log("ERROR: RADIUS packets must be assigned an Id.");
+		return -1;
+	}
+
+	if (!packet->data || (packet->data_len < AUTH_HDR_LEN) ||
+	    (packet->verified < 0)) {
+		librad_log("ERROR: You must call rad_encode() before rad_sign()");
+		return -1;
+	}
+
+	/*
+	 *	If there's a Message-Authenticator, update it
+	 *	now, BEFORE updating the authentication vector.
+	 *
+	 *	This is a hack...
+	 */
+	if (packet->verified > 0) {
+		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
+		
+		switch (packet->code) {
+		case PW_ACCOUNTING_REQUEST:
+		case PW_ACCOUNTING_RESPONSE:
+		case PW_DISCONNECT_REQUEST:
+		case PW_DISCONNECT_ACK:
+		case PW_DISCONNECT_NAK:
+		case PW_COF_REQUEST:
+		case PW_COF_ACK:
+		case PW_COF_NAK:
+			memset(hdr->vector, 0, AUTH_VECTOR_LEN);
+			break;
+
+		case PW_AUTHENTICATION_ACK:
+		case PW_AUTHENTICATION_REJECT:
+		case PW_ACCESS_CHALLENGE:
+			if (!original) {
+				librad_log("ERROR: Cannot sign response packet without a request packet.");
+				return -1;
+			}
+			memcpy(hdr->vector, original->vector,
+			       AUTH_VECTOR_LEN);
+			break;
+
+		default:	/* others have vector already set to zero */
+			break;
+			
+		}
+		
+		/*
+		 *	Set the authentication vector to zero,
+		 *	calculate the signature, and put it
+		 *	into the Message-Authenticator
+		 *	attribute.
+		 */
+		lrad_hmac_md5(packet->data, packet->data_len,
+			      secret, strlen(secret),
+			      calc_auth_vector);
+		memcpy(packet->data + packet->verified + 2,
+		       calc_auth_vector, AUTH_VECTOR_LEN);
+		
+		/*
+		 *	Copy the original request vector back
+		 *	to the raw packet.
+		 */
+		memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
+	}
+	
+	/*
+	 *	Switch over the packet code, deciding how to
+	 *	sign the packet.
+	 */
+	switch (packet->code) {
+		/*
+		 *	Request packets are not signed, bur
+		 *	have a random authentication vector.
+		 */
+	case PW_AUTHENTICATION_REQUEST:
+	case PW_STATUS_SERVER:
+		break;
+		
+		/*
+		 *	Reply packets are signed with the
+		 *	authentication vector of the request.
+		 */
+	default:
+		{
+			uint8_t digest[16];
+			
+			MD5_CTX	context;
+			MD5Init(&context);
+			MD5Update(&context, packet->data, packet->data_len);
+			MD5Update(&context, secret, strlen(secret));
+			MD5Final(digest, &context);
+			
+			memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
+			memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
+			break;
+		}
+	}/* switch over packet codes */
+
+	return 0;
+}
 
 /*
  *	Reply to the request.  Also attach
@@ -156,10 +802,10 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	     const char *secret)
 {
 	VALUE_PAIR		*reply;
+	const char		*what;
+	char			ip_buffer[128];
 	struct	sockaddr_in	saremote;
 	struct	sockaddr_in	*sa;
-	const char		*what;
-	uint8_t			ip_buffer[16];
 
 	/*
 	 *	Maybe it's a fake packet.  Don't send it.
@@ -178,467 +824,33 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *  First time through, allocate room for the packet
 	 */
 	if (!packet->data) {
-		  radius_packet_t	*hdr;
-		  uint32_t		lvalue;
-		  uint8_t		*ptr, *length_ptr, *vsa_length_ptr;
-		  uint8_t		digest[16];
-		  int			secretlen;
-		  int			vendorcode, vendorpec;
-		  u_short		total_length;
-		  int			len, allowed;
-		  int			msg_auth_offset = 0;
+		DEBUG("Sending %s of id %d to %s port %d\n",
+		      what, packet->id,
+		      ip_ntoa(ip_buffer, packet->dst_ipaddr),
+		      packet->dst_port);
+		
+		/*
+		 *	Encode the packet.
+		 */
+		if (rad_encode(packet, original, secret) < 0) {
+			return -1;
+		}
+		
+		/*
+		 *	Re-sign it, including updating the
+		 *	Message-Authenticator.
+		 */
+		if (rad_sign(packet, original, secret) < 0) {
+			return -1;
+		}
 
-		  /*
-		   *	For simplicity in the following logic, we allow
-		   *	the attributes to "overflow" the 4k maximum
-		   *	RADIUS packet size, by one attribute.
-		   */
-		  uint8_t		data[MAX_PACKET_LEN + 256];
-
-		  /*
-		   *	Use memory on the stack, until we know how
-		   *	large the packet will be.
-		   */
-		  hdr = (radius_packet_t *) data;
-
-		  /*
-		   *	Build standard header
-		   */
-		  hdr->code = packet->code;
-		  hdr->id = packet->id;
-
-		  /*
-		   *	Double-check some things based on packet code.
-		   */
-		  switch (packet->code) {
-		  case PW_AUTHENTICATION_ACK:
-		  case PW_AUTHENTICATION_REJECT:
-		  case PW_ACCESS_CHALLENGE:
-			  if (!original) {
-				  librad_log("ERROR: Cannot sign response packet without a request packet.");
-				  return -1;
-			  }
-			  break;
-
-			  /*
-			   *	These packet vectors start off as all zero.
-			   */
-		  case PW_ACCOUNTING_REQUEST:
-		  case PW_DISCONNECT_REQUEST:
-			  memset(packet->vector, 0, sizeof(packet->vector));
-			  break;
-
-		  default:
-			  break;
-
-		  }
-		  memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
-
-		  DEBUG("Sending %s of id %d to %s:%d\n",
-			what, packet->id,
-			ip_ntoa((char *)ip_buffer, packet->dst_ipaddr),
-			packet->dst_port);
-
-		  total_length = AUTH_HDR_LEN;
-
-		  /*
-		   *	Load up the configuration values for the user
-		   */
-		  ptr = hdr->data;
-		  vendorcode = 0;
-		  vendorpec = 0;
-		  vsa_length_ptr = NULL;
-
-		  /*
-		   *	Loop over the reply attributes for the packet.
-		   */
-		  for (reply = packet->vps; reply; reply = reply->next) {
-			  /*
-			   *	Ignore non-wire attributes
-			   */
-			  if ((VENDOR(reply->attribute) == 0) &&
-			      ((reply->attribute & 0xFFFF) > 0xff)) {
-				  continue;
-			  }
-
-			  /*
-			   *	Check that the packet is no more than
-			   *	4k in size, AFTER over-flowing the 4k
-			   *	boundary.  Note that the 'data'
-			   *	buffer, above, is one attribute longer
-			   *	than necessary, in order to permit
-			   *	this overflow.
-			   */
-			  if (total_length > MAX_PACKET_LEN) {
-				  librad_log("ERROR: Too many attributes for packet, result is larger than RFC maximum of 4k");
-				  return -1;
-			  }
-
-			  /*
-			   *	Set the Message-Authenticator to the
-			   *	correct length and initial value.
-			   */
-			  if (reply->attribute == PW_MESSAGE_AUTHENTICATOR) {
-				  reply->length = AUTH_VECTOR_LEN;
-				  memset(reply->strvalue, 0, AUTH_VECTOR_LEN);
-				  msg_auth_offset = total_length;
-			  }
-
-			  /*
-			   *	Print out ONLY the attributes which
-			   *	we're sending over the wire, and print
-			   *	them out BEFORE they're encrypted.
-			   */
-			  debug_pair(reply);
-
-			  /*
-			   *	We have a different vendor.  Re-set
-			   *	the vendor codes.
-			   */
-			  if (vendorcode != VENDOR(reply->attribute)) {
-				  vendorcode = 0;
-				  vendorpec = 0;
-				  vsa_length_ptr = NULL;
-			  }
-
-			  /*
-			   *	If the Vendor-Specific attribute is getting
-			   *	full, then create a new VSA attribute
-			   *
-			   *	FIXME: Multiple VSA's per Vendor-Specific
-			   *	SHOULD be configurable.  When that's done,
-			   *	the (1), below, can be changed to point to
-			   *	a configuration variable which is set TRUE
-			   *	if the NAS cannot understand multiple VSA's
-			   *	per Vendor-Specific
-			   */
-			  if ((1) || /* ALWAYS create a new Vendor-Specific */
-			      (vsa_length_ptr &&
-			       (reply->length + *vsa_length_ptr) >= MAX_STRING_LEN)) {
-				  vendorcode = 0;
-				  vendorpec = 0;
-				  vsa_length_ptr = NULL;
-			  }
-
-			  /*
-			   *	Maybe we have the start of a set of
-			   *	(possibly many) VSA attributes from
-			   *	one vendor.  Set a global VSA wrapper
-			   */
-			  if ((vendorcode == 0) &&
-			      ((vendorcode = VENDOR(reply->attribute)) != 0)) {
-				  vendorpec  = dict_vendorpec(vendorcode);
-
-				  /*
-				   *	This is a potentially bad error...
-				   *	we can't find the vendor ID!
-				   */
-				  if (vendorpec == 0) {
-					  /* FIXME: log an error */
-					  continue;
-				  }
-
-				  /*
-				   *	Build a VSA header.
-				   */
-				  *ptr++ = PW_VENDOR_SPECIFIC;
-				  vsa_length_ptr = ptr;
-				  *ptr++ = 6;
-				  lvalue = htonl(vendorpec);
-				  memcpy(ptr, &lvalue, 4);
-				  ptr += 4;
-				  total_length += 6;
-			  }
-
-			  if (vendorpec == VENDORPEC_USR) {
-				  lvalue = htonl(reply->attribute & 0xFFFF);
-				  memcpy(ptr, &lvalue, 4);
-
-				  length_ptr = vsa_length_ptr;
-
-				  total_length += 4;
-				  *length_ptr  += 4;
-				  ptr          += 4;
-
-				  /*
-				   *	Each USR-style attribute gets
-				   *	it's own VSA wrapper, so we
-				   *	re-set the vendor specific
-				   *	information.
-				   */
-				  vendorcode = 0;
-				  vendorpec = 0;
-				  vsa_length_ptr = NULL;
-
-			  } else {
-				  /*
-				   *	All other attributes are as
-				   *	per the RFC spec.
-				   */
-				  *ptr++ = (reply->attribute & 0xFF);
-				  length_ptr = ptr;
-				  if (vsa_length_ptr) *vsa_length_ptr += 2;
-				  *ptr++ = 2;
-				  total_length += 2;
-			  }
-
-			  switch(reply->type) {
-
-				  /*
-				   *	Ascend binary attributes are
-				   *	stored internally in binary form.
-				   */
-			  case PW_TYPE_IFID:
-			  case PW_TYPE_IPV6ADDR:
-			  case PW_TYPE_IPV6PREFIX:
-			  case PW_TYPE_ABINARY:
-			  case PW_TYPE_STRING:
-			  case PW_TYPE_OCTETS:
-				  /*
-				   *  Encrypt the various password styles
-				   */
-				  switch (reply->flags.encrypt) {
-				  default:
-					  break;
-
-				  case FLAG_ENCRYPT_USER_PASSWORD:
-				    rad_pwencode((char *)reply->strvalue,
-						 &(reply->length),
-						 (const char *)secret,
-						 (const char *)packet->vector);
-				    break;
-
-				  case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-					  if (!original) {
-						  librad_log("ERROR: No request packet, cannot encrypt Tunnel-Password attribute in the reply.");
-						  return -1;
-					  }
-					  rad_tunnel_pwencode(reply->strvalue,
-							      &(reply->length),
-							      secret,
-							      original->vector);
-					  break;
-
-
-				  case FLAG_ENCRYPT_ASCEND_SECRET:
-					  make_secret(digest, packet->vector,
-						      secret, reply->strvalue);
-					  memcpy(reply->strvalue, digest, AUTH_VECTOR_LEN );
-					  reply->length = AUTH_VECTOR_LEN;
-					  break;
-				  } /* switch over encryption flags */
-
-				  len = reply->length;
-
-				  /*
-				   *    Set the TAG at the beginning
-				   *    of the string if tagged.  If
-				   *    tag value is not valid for
-				   *    tagged attribute, make it 0x00
-				   *    per RFC 2868.  -cparker
-				   */
-				  if (reply->flags.has_tag) {
-					  if (TAG_VALID(reply->flags.tag)) {
-						  len++;
-						  *ptr++ = reply->flags.tag;
-
-					  } else if (reply->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
-						  /*
-						   *  Tunnel passwords
-						   *  REQUIRE a tag,
-						   *  even if we don't
-						   *  have a valid
-						   *  tag.
-						   */
-						  len++;
-						  *ptr++ = 0x00;
-					  } /* else don't write a tag */
-				  } /* else the attribute doesn't have a tag */
-
-				  /*
-				   *	Ensure we don't go too far.
-				   *	The 'length' of the attribute
-				   *	may be 0..255, minus whatever
-				   *	octets are used in the attribute
-				   *	header.
-				   */
-				  allowed = 255;
-				  if (vsa_length_ptr) {
-					  allowed -= *vsa_length_ptr;
-				  } else {
-					  allowed -= *length_ptr;
-				  }
-
-				  if (len > allowed) {
-					  len = allowed;
-				  }
-
-				  *length_ptr += len;
-				  if (vsa_length_ptr) *vsa_length_ptr += len;
-				  /*
-				   *  If we have tagged attributes we can't assume that
-				   *  len == reply->length.  Use reply->length for copying
-				   *  the string data into the packet.  Use len for the
-				   *  true length of the string+tags.
-				   */
-				  memcpy(ptr, reply->strvalue, reply->length);
-				  ptr += reply->length;
-				  total_length += len;
-				  break;
-
-			  case PW_TYPE_INTEGER:
-			  case PW_TYPE_IPADDR:
-				  *length_ptr += 4;
-				  if (vsa_length_ptr) *vsa_length_ptr += 4;
-
-				  if (reply->type == PW_TYPE_INTEGER ) {
-				          /*  If tagged, the tag becomes the MSB of the value */
-				          if(reply->flags.has_tag) {
-					         /*  Tag must be ( 0x01 -> 0x1F ) OR 0x00  */
-					         if(!TAG_VALID(reply->flags.tag)) {
-						       reply->flags.tag = 0x00;
-						 }
-					         lvalue = htonl((reply->lvalue & 0xffffff) |
-								((reply->flags.tag & 0xff) << 24));
-					  } else {
-					         lvalue = htonl(reply->lvalue);
-					  }
-				  } else {
-					  /*
-					   *  IP address is already in
-					   *  network byte order.
-					   */
-					  lvalue = reply->lvalue;
-				  }
-				  memcpy(ptr, &lvalue, 4);
-				  ptr += 4;
-				  total_length += 4;
-				  break;
-
-				  /*
-				   *  There are no tagged date attributes.
-				   */
-			  case PW_TYPE_DATE:
-				  *length_ptr += 4;
-				  if (vsa_length_ptr) *vsa_length_ptr += 4;
-
-				  lvalue = htonl(reply->lvalue);
-				  memcpy(ptr, &lvalue, 4);
-				  ptr += 4;
-				  total_length += 4;
-				  break;
-			  default:
-				  break;
-			  }
-		  } /* done looping over all attributes */
-
-		  /*
-		   *	Fill in the rest of the fields, and copy
-		   *	the data over from the local stack to
-		   *	the newly allocated memory.
-		   *
-		   *	Yes, all this 'memcpy' is slow, but it means
-		   *	that we only allocate the minimum amount of
-		   *	memory for a request.
-		   */
-		  packet->data_len = total_length;
-		  packet->data = (uint8_t *) malloc(packet->data_len);
-		  if (!packet->data) {
-			  librad_log("Out of memory");
-			  return -1;
-		  }
-		  memcpy(packet->data, data, packet->data_len);
-		  hdr = (radius_packet_t *) packet->data;
-
-		  total_length = htons(total_length);
-		  memcpy(hdr->length, &total_length, sizeof(u_short));
-
-		  /*
-		   *	If this is not an authentication request, we
-		   *	need to calculate the md5 hash over the entire packet
-		   *	and put it in the vector.
-		   */
-		  secretlen = strlen(secret);
-
-		  /*
-		   *	If there's a Message-Authenticator, update it
-		   *	now, BEFORE updating the authentication vector.
-		   */
-		  if (msg_auth_offset) {
-			  uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
-
-			  switch (packet->code) {
-			  default:
-				  break;
-
-			  case PW_AUTHENTICATION_ACK:
-			  case PW_AUTHENTICATION_REJECT:
-			  case PW_ACCESS_CHALLENGE:
-				  /* this was checked above */
-				  memcpy(hdr->vector, original->vector,
-					 AUTH_VECTOR_LEN);
-				  break;
-			  }
-
-			  /*
-			   *	Set the authentication vector to zero,
-			   *	calculate the signature, and put it
-			   *	into the Message-Authenticator
-			   *	attribute.
-			   */
-			  memset(packet->data + msg_auth_offset + 2,
-				 0, AUTH_VECTOR_LEN);
-			  lrad_hmac_md5(packet->data, packet->data_len,
-					secret, secretlen, calc_auth_vector);
-			  memcpy(packet->data + msg_auth_offset + 2,
-				 calc_auth_vector, AUTH_VECTOR_LEN);
-
-			  /*
-			   *	Copy the original request vector back
-			   *	to the raw packet.
-			   */
-			  memcpy(hdr->vector, packet->vector, AUTH_VECTOR_LEN);
-		  }
-
-		  /*
-		   *	Switch over the packet code, deciding how to
-		   *	sign the packet.
-		   */
-		  switch (packet->code) {
-			  /*
-			   *	Request packets are not signed, bur
-			   *	have a random authentication vector.
-			   */
-		  case PW_AUTHENTICATION_REQUEST:
-		  case PW_STATUS_SERVER:
-			  break;
-
-			  /*
-			   *	Reply packets are signed with the
-			   *	authentication vector of the request.
-			   */
-		  default:
-		  	{
-				MD5_CTX	context;
-				MD5Init(&context);
-				MD5Update(&context, packet->data, packet->data_len);
-				MD5Update(&context, secret, strlen(secret));
-				MD5Final(digest, &context);
-
-				memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
-				memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
-				break;
-			}
-		  } /* switch over packet codes */
-
-
-		  /*
-		   *	If packet->data points to data, then we print out
-		   *	the VP list again only for debugging.
-		   */
+		/*
+		 *	If packet->data points to data, then we print out
+		 *	the VP list again only for debugging.
+		 */
 	} else if (librad_debug) {
-	  	DEBUG("Re-sending %s of id %d to %s:%d\n", what, packet->id,
-		      ip_ntoa((char *)ip_buffer, packet->dst_ipaddr),
+	  	DEBUG("Re-sending %s of id %d to %s port %d\n", what, packet->id,
+		      ip_ntoa(ip_buffer, packet->dst_ipaddr),
 		      packet->dst_port);
 
 		for (reply = packet->vps; reply; reply = reply->next) {
@@ -1012,33 +1224,6 @@ RADIUS_PACKET *rad_recv(int fd)
 			}
 			seen_eap |= PW_MESSAGE_AUTHENTICATOR;
 			break;
-
-		case PW_VENDOR_SPECIFIC:
-			if (attr[1] <= 6) {
-				librad_log("WARNING: Malformed RADIUS packet from host %s: Vendor-Specific has invalid length %d",
-					   ip_ntoa(host_ipaddr, packet->src_ipaddr),
-					   attr[1] - 2);
-				free(packet);
-				return NULL;
-			}
-
-			/*
-			 *	Don't allow VSA's with vendor zero.
-			 */
-			if ((attr[2] == 0) && (attr[3] == 0) &&
-			    (attr[4] == 0) && (attr[5] == 0)) {
-				librad_log("WARNING: Malformed RADIUS packet from host %s: Vendor-Specific has vendor ID of zero",
-					   ip_ntoa(host_ipaddr, packet->src_ipaddr));
-				free(packet);
-				return NULL;
-			}
-
-			/*
-			 *	Don't look at the contents of VSA's,
-			 *	too many vendors have non-standard
-			 *	formats.
-			 */
-			break;
 		}
 
 		/*
@@ -1130,30 +1315,24 @@ RADIUS_PACKET *rad_recv(int fd)
 	return packet;
 }
 
+
 /*
- *	Calculate/check digest, and decode radius attributes.
+ *	Verify the signature of a packet.
  */
-int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+static int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	       const char *secret)
 {
-	uint32_t		lvalue;
-	uint32_t		vendorcode;
-	VALUE_PAIR		**tail;
-	VALUE_PAIR		*pair;
 	uint8_t			*ptr;
 	int			length;
-	int			attribute;
 	int			attrlen;
-	int			vendorlen;
-	radius_packet_t		*hdr;
 
-	hdr = (radius_packet_t *)packet->data;
+	if (!packet || !packet->data) return -1;
 
 	/*
 	 *	Before we allocate memory for the attributes, do more
 	 *	sanity checking.
 	 */
-	ptr = hdr->data;
+	ptr = packet->data + AUTH_HDR_LEN;
 	length = packet->data_len - AUTH_HDR_LEN;
 	while (length > 0) {
 		uint8_t	msg_auth_vector[AUTH_VECTOR_LEN];
@@ -1175,27 +1354,39 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 			switch (packet->code) {
 			default:
-			  break;
+				break;
+
+			case PW_ACCOUNTING_REQUEST:
+			case PW_ACCOUNTING_RESPONSE:
+			case PW_DISCONNECT_REQUEST:
+			case PW_DISCONNECT_ACK:
+			case PW_DISCONNECT_NAK:
+			case PW_COF_REQUEST:
+			case PW_COF_ACK:
+			case PW_COF_NAK:
+			  	memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
+				break;
 
 			case PW_AUTHENTICATION_ACK:
 			case PW_AUTHENTICATION_REJECT:
 			case PW_ACCESS_CHALLENGE:
-			  if (!original) {
-				  librad_log("ERROR: Cannot validate Message-Authenticator in response packet without a request packet.");
-				  return -1;
-			  }
-			  memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
-			  break;
+				if (!original) {
+					librad_log("ERROR: Cannot validate Message-Authenticator in response packet without a request packet.");
+					return -1;
+				}
+				memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
+				break;
 			}
 
 			lrad_hmac_md5(packet->data, packet->data_len,
 				      secret, strlen(secret), calc_auth_vector);
 			if (memcmp(calc_auth_vector, msg_auth_vector,
-				    sizeof(calc_auth_vector)) != 0) {
+				   sizeof(calc_auth_vector)) != 0) {
 				char buffer[32];
 				librad_log("Received packet from %s with invalid Message-Authenticator!  (Shared secret is incorrect.)",
 					   ip_ntoa(buffer, packet->src_ipaddr));
-				return -1;
+				/* Silently drop packet, according to RFC 3579 */
+				return -2;
 			} /* else the message authenticator was good */
 
 			/*
@@ -1229,8 +1420,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (calc_acctdigest(packet, secret) > 1) {
 				char buffer[32];
 				librad_log("Received Accounting-Request packet "
-				    "from %s with invalid signature!  (Shared secret is incorrect.)",
-				    ip_ntoa(buffer, packet->src_ipaddr));
+					   "from %s with invalid signature!  (Shared secret is incorrect.)",
+					   ip_ntoa(buffer, packet->src_ipaddr));
 				return -1;
 			}
 			break;
@@ -1243,7 +1434,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (rcode > 1) {
 				char buffer[32];
 				librad_log("Received %s packet "
-					   "from %s:%d with invalid signature (err=%d)!  (Shared secret is incorrect.)",
+					   "from client %s port %d with invalid signature (err=%d)!  (Shared secret is incorrect.)",
 					   packet_codes[packet->code],
 					   ip_ntoa(buffer, packet->src_ipaddr),
 					   packet->src_port,
@@ -1253,11 +1444,243 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		  break;
 	}
 
+	return 0;
+}
+
+
+/*
+ *	Parse a RADIUS attribute into a data structure.
+ */
+static VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+			const char *secret, int attribute, int length,
+			const uint8_t *data)
+{
+	int offset = 0;
+	VALUE_PAIR *vp;
+
+	if ((vp = paircreate(attribute, PW_TYPE_OCTETS)) == NULL) {
+		return NULL;
+	}
+	
+	/*
+	 *	If length is greater than 253, something is SERIOUSLY
+	 *	wrong.
+	 */
+	if (length > 253) length = 253;	/* paranoia (pair-anoia?) */
+
+	vp->length = length;
+	vp->operator = T_OP_EQ;
+	vp->next = NULL;
+
+	/*
+	 *	Handle tags.
+	 */
+	if (vp->flags.has_tag) {
+		if (TAG_VALID(data[0]) ||
+		    (vp->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
+			/*
+			 *	Tunnel passwords REQUIRE a tag, even
+			 *	if don't have a valid tag.
+			 */
+			vp->flags.tag = data[0];
+
+			if ((vp->type == PW_TYPE_STRING) ||
+			    (vp->type == PW_TYPE_OCTETS)) offset = 1;
+		}
+	}
+
+	/*
+	 *	Copy the data to be decrypted
+	 */
+	memcpy(&vp->strvalue[0], data + offset, length - offset);
+	vp->length -= offset;
+
+	/*
+	 *	Decrypt the attribute.
+	 */
+	switch (vp->flags.encrypt) {
+		/*
+		 *  User-Password
+		 */
+	case FLAG_ENCRYPT_USER_PASSWORD:
+		if (original) {
+			rad_pwdecode((char *)vp->strvalue,
+				     vp->length, secret,
+				     original->vector);
+		} else {
+			rad_pwdecode((char *)vp->strvalue,
+				     vp->length, secret,
+				     packet->vector);
+		}
+		if (vp->attribute == PW_USER_PASSWORD) {
+			vp->length = strlen(vp->strvalue);
+		}
+		break;
+		
+		/*
+		 *	Tunnel-Password's may go ONLY
+		 *	in response packets.
+		 */
+	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+		if (!original) goto raw;
+		
+		if (rad_tunnel_pwdecode(vp->strvalue, &vp->length,
+					secret, original->vector) < 0) {
+			goto raw;
+		}
+		break;
+		
+		/*
+		 *  Ascend-Send-Secret
+		 *  Ascend-Receive-Secret
+		 */
+	case FLAG_ENCRYPT_ASCEND_SECRET:
+		if (!original) {
+			goto raw;
+		} else {
+			uint8_t my_digest[AUTH_VECTOR_LEN];
+			make_secret(my_digest,
+				    original->vector,
+				    secret, data);
+			memcpy(vp->strvalue, my_digest,
+			       AUTH_VECTOR_LEN );
+			vp->strvalue[AUTH_VECTOR_LEN] = '\0';
+			vp->length = strlen(vp->strvalue);
+		}
+		break;
+
+	default:
+		break;
+	} /* switch over encryption flags */
+
+
+	switch (vp->type) {
+	case PW_TYPE_STRING:
+	case PW_TYPE_OCTETS:
+		/* nothing more to do */
+		break;
+
+	case PW_TYPE_INTEGER:
+		if (vp->length != 4) goto raw;
+
+		memcpy(&vp->lvalue, vp->strvalue, 4);
+		vp->lvalue = ntohl(vp->lvalue);
+
+		if (vp->flags.has_tag) vp->lvalue &= 0x00ffffff;
+
+		/*
+		 *	Try to get named VALUEs
+		 */
+		{
+			DICT_VALUE *dval;
+			dval = dict_valbyattr(vp->attribute,
+					      vp->lvalue);
+			if (dval) {
+				strNcpy(vp->strvalue,
+					dval->name,
+					sizeof(vp->strvalue));
+			}
+		}
+		break;
+
+	case PW_TYPE_DATE:
+		if (vp->length != 4) goto raw;
+
+		memcpy(&vp->lvalue, vp->strvalue, 4);
+		vp->lvalue = ntohl(vp->lvalue);
+		break;
+
+
+	case PW_TYPE_IPADDR:
+		if (vp->length != 4) goto raw;
+
+		memcpy(&vp->lvalue, vp->strvalue, 4);
+		break;
+
+		/*
+		 *	IPv6 interface ID is 8 octets long.
+		 */
+	case PW_TYPE_IFID:
+		if (vp->length != 8) goto raw;
+		/* vp->vp_ifid == vp->strvalue */
+		break;
+		
+		/*
+		 *	IPv6 addresses are 16 octets long
+		 */
+	case PW_TYPE_IPV6ADDR:
+		if (vp->length != 16) goto raw;
+		/* vp->vp_ipv6addr == vp->strvalue */
+		break;
+		
+		/*
+		 *	IPv6 prefixes are 2 to 18 octets long.
+		 *
+		 *	RFC 3162: The first octet is unused.
+		 *	The second is the length of the prefix
+		 *	the rest are the prefix data.
+		 *
+		 *	The prefix length can have value 0 to 128.
+		 */
+	case PW_TYPE_IPV6PREFIX:
+		if (vp->length < 2 || vp->length > 18) goto raw;
+		if (vp->strvalue[1] > 128) goto raw;
+
+		/*
+		 *	FIXME: double-check that
+		 *	(vp->strvalue[1] >> 3) matches vp->length + 2
+		 */
+		if (vp->length < 18) {
+			memset(vp->strvalue + vp->length, 0,
+			       18 - vp->length);
+		}
+		break;
+
+	default:
+	raw:
+		vp->type = PW_TYPE_OCTETS;
+		vp->length = length;
+		memcpy(vp->strvalue, data, length);
+		
+
+		/*
+		 *	Ensure there's no encryption or tag stuff,
+		 *	we just pass the attribute as-is.
+		 */
+		memset(&vp->flags, 0, sizeof(vp->flags));
+	}
+
+	return vp;
+}
+
+
+/*
+ *	Calculate/check digest, and decode radius attributes.
+ */
+int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+	       const char *secret)
+{
+	uint32_t		lvalue;
+	uint32_t		vendorcode;
+	VALUE_PAIR		**tail;
+	VALUE_PAIR		*pair;
+	uint8_t			*ptr;
+	int			packet_length;
+	int			attribute;
+	int			attrlen;
+	int			vendorlen;
+	radius_packet_t		*hdr;
+	int			vsa_tlen, vsa_llen;
+	DICT_VENDOR		*dv = NULL;
+
+	if (rad_verify(packet, original, secret) < 0) return -1;
+
 	/*
 	 *	Extract attribute-value pairs
 	 */
+	hdr = (radius_packet_t *)packet->data;
 	ptr = hdr->data;
-	length = packet->data_len - AUTH_HDR_LEN;
+	packet_length = packet->data_len - AUTH_HDR_LEN;
 
 	/*
 	 *	There may be VP's already in the packet.  Don't
@@ -1269,33 +1692,66 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 	vendorcode = 0;
 	vendorlen  = 0;
+	vsa_tlen = vsa_llen = 1;
 
-	while (length > 0) {
-		if (vendorlen > 0) {
-			attribute = *ptr++ | (vendorcode << 16);
-			attrlen   = *ptr++;
-		} else {
-			attribute = *ptr++;
-			attrlen   = *ptr++;
-		}
-
-		attrlen -= 2;
-		length  -= 2;
+	/*
+	 *	We have to read at least two bytes.
+	 *
+	 *	rad_recv() above ensures that this is OK.
+	 */
+	while (packet_length > 0) {
+		attribute = -1;
+		attrlen = -1;
 
 		/*
-		 *	This could be a Vendor-Specific attribute.
+		 *	Normal attribute, handle it like normal.
 		 */
-		if ((vendorlen <= 0) &&
-		    (attribute == PW_VENDOR_SPECIFIC)) {
-			int	sublen;
-			uint8_t	*subptr;
-
+		if (vendorcode == 0) {
 			/*
-			 *	attrlen was checked to be >= 6, in rad_recv
+			 *	No room to read attr/length,
+			 *	or bad attribute, or attribute is
+			 *	too short, or attribute is too long,
+			 *	stop processing the packet.
+			 */
+			if ((packet_length < 2) ||
+			    (ptr[0] == 0) ||  (ptr[1] < 2) ||
+			    (ptr[1] > packet_length)) break;
+
+			attribute = *ptr++;
+			attrlen   = *ptr++;
+
+			attrlen -= 2;
+			packet_length  -= 2;
+
+			if (attribute != PW_VENDOR_SPECIFIC) goto create_pair;
+			
+			/*
+			 *	No vendor code, or ONLY vendor code.
+			 */
+			if (attrlen <= 4) goto create_pair;
+
+			vendorlen = 0;
+		}
+		
+		/*
+		 *	Handle Vendor-Specific
+		 */
+		if (vendorlen == 0) {
+			uint8_t *subptr;
+			int sublen;
+			int myvendor;
+			
+			/*
+			 *	attrlen was checked above.
 			 */
 			memcpy(&lvalue, ptr, 4);
-			vendorcode = ntohl(lvalue);
+			myvendor = ntohl(lvalue);
 
+			/*
+			 *	Zero isn't allowed.
+			 */
+			if (myvendor == 0) goto create_pair;
+			
 			/*
 			 *	This is an implementation issue.
 			 *	We currently pack vendor into the upper
@@ -1303,95 +1759,148 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			 *	so we can't handle vendor numbers larger
 			 *	than 16 bits.
 			 */
-			if (vendorcode > 65535) goto create_pair;
-
+			if (myvendor > 65535) goto create_pair;
+			
+			vsa_tlen = vsa_llen = 1;
+			dv = dict_vendorbyvalue(myvendor);
+			if (dv) {
+				vsa_tlen = dv->type;
+				vsa_llen = dv->length;
+			}
+			
 			/*
-			 *	vendorcode was checked to be non-zero
-			 *	above, in rad_recv.
-			 */
-
-			/*
-			 *	First, check to see if the
-			 *	sub-attributes fill the VSA, as
-			 *	defined by the RFC.  If not, then it
-			 *	may be a USR-style VSA, or it may be a
-			 *	vendor who packs all of the
-			 *	information into one nonsense
-			 *	attribute
+			 *	Sweep through the list of VSA's,
+			 *	seeing if they exactly fill the
+			 *	outer Vendor-Specific attribute.
+			 *
+			 *	If not, create a raw Vendor-Specific.
 			 */
 			subptr = ptr + 4;
 			sublen = attrlen - 4;
 
-			while (sublen > 0) {
-				if (subptr[1] < 2) { /* too short */
-					break;
-				}
-
-				if (subptr[1] > sublen) { /* too long */
-					break;
-				}
-
-				sublen -= subptr[1]; /* just right */
-				subptr += subptr[1];
-			}
-
 			/*
-			 *	If the attribute is RFC compatible,
-			 *	then allow it as an RFC style VSA.
+			 *	See if we can parse it.
 			 */
-			if (sublen == 0) {
-				ptr += 4;
-				vendorlen = attrlen - 4;
-				attribute = *ptr++ | (vendorcode << 16);
-				attrlen   = *ptr++;
-				attrlen -= 2;
-				length -= 6;
+			do {
+				int myattr = 0;
 
 				/*
-				 *	USR-style attributes are 4 octets,
-				 *	with the upper 2 octets being zero.
-				 *
-				 *	The upper octets may not be zero,
-				 *	but that then means we won't be
-				 *	able to pack the vendor & attribute
-				 *	into a 32-bit number, so we can't
-				 *	handle it.
-				 *
-				 *
-				 *	FIXME: Update the dictionaries so
-				 *	that we key off of per-attribute
-				 *	flags "4-octet", instead of hard
-				 *	coding USR here.  This will also
-				 *	let us send packets with other
-				 *	vendors having 4-octet attributes.
+				 *	Don't have a type, it's bad.
 				 */
-			} else if ((vendorcode == VENDORPEC_USR) &&
-				   ((ptr[4] == 0) && (ptr[5] == 0)) &&
-				   (attrlen >= 8)) {
-				DICT_ATTR *da;
-
-				da = dict_attrbyvalue((vendorcode << 16) |
-						      (ptr[6] << 8) |
-						      ptr[7]);
-
+				if (sublen < vsa_tlen) goto create_pair;
+				
 				/*
-				 *	See if it's in the dictionary.
-				 *	If so, it's a valid USR style
-				 *	attribute.  If not, it's not...
-				 *
-				 *	Don't touch 'attribute' until
-				 *	we know what to do!
+				 *	Ensure that the attribute number
+				 *	is OK.
 				 */
-				if (da != NULL) {
-					attribute = ((vendorcode << 16) |
-						     (ptr[6] << 8) |
-						     ptr[7]);
-					ptr += 8;
-					attrlen -= 8;
-					length -= 8;
-				} /* else it's not in the dictionary */
-			} /* else it was a stupid vendor format */
-		} /* else it wasn't a VSA */
+				switch (vsa_tlen) {
+				case 1:
+					myattr = subptr[0];
+					break;
+					
+				case 2:
+					myattr = (subptr[0] << 8) | subptr[1];
+					break;
+					
+				case 4:
+					if ((subptr[0] != 0) ||
+					    (subptr[1] != 0)) goto create_pair;
+					
+					myattr = (subptr[2] << 8) | subptr[3];
+					break;
+					
+					/*
+					 *	Our dictionary is broken.
+					 */
+				default:
+					goto create_pair;
+				}
+				
+				/*
+				 *	Not enough room for one more
+				 *	attribute.  Die!
+				 */
+				if (sublen < vsa_tlen + vsa_llen) goto create_pair;
+				switch (vsa_llen) {
+				case 0:
+					attribute = (myvendor << 16) | myattr;
+					ptr += 4 + vsa_tlen;
+					attrlen -= (4 + vsa_tlen);
+					packet_length -= 4 + vsa_tlen;
+					goto create_pair;
+
+				case 1:
+					if (subptr[vsa_tlen] < (vsa_tlen + vsa_llen))
+						goto create_pair;
+
+					if (subptr[vsa_tlen] > sublen)
+						goto create_pair;
+					sublen -= subptr[vsa_tlen];
+					subptr += subptr[vsa_tlen];
+					break;
+
+				case 2:
+					if (subptr[vsa_tlen] != 0) goto create_pair;
+					if (subptr[vsa_tlen + 1] < (vsa_tlen + vsa_llen))
+						goto create_pair;
+					if (subptr[vsa_tlen + 1] > sublen)
+						goto create_pair;
+					sublen -= subptr[vsa_tlen + 1];
+					subptr += subptr[vsa_tlen + 1];
+					break;
+
+					/*
+					 *	Our dictionaries are
+					 *	broken.
+					 */
+				default:
+					goto create_pair;
+				}
+			} while (sublen > 0);
+
+			vendorcode = myvendor;
+			vendorlen = attrlen - 4;
+			packet_length -= 4;
+
+			ptr += 4;
+		}
+
+		/*
+		 *	attrlen is the length of this attribute.
+		 *	total_len is the length of the encompassing
+		 *	attribute.
+		 */
+		switch (vsa_tlen) {
+		case 1:
+			attribute = ptr[0];
+			break;
+			
+		case 2:
+			attribute = (ptr[0] << 8) | ptr[1];
+			break;
+
+		default:	/* can't hit this. */
+			return -1;
+		}
+		attribute |= (vendorcode << 16);
+		ptr += vsa_tlen;
+
+		switch (vsa_llen) {
+		case 1:
+			attrlen = ptr[0] - (vsa_tlen + vsa_llen);
+			break;
+			
+		case 2:
+			attrlen = ptr[1] - (vsa_tlen + vsa_llen);
+			break;
+
+		default:	/* can't hit this. */
+			return -1;
+		}
+		ptr += vsa_llen;
+		vendorlen -= vsa_tlen + vsa_llen + attrlen;
+		if (vendorlen == 0) vendorcode = 0;
+		packet_length -= (vsa_tlen + vsa_llen);
 
 		/*
 		 *	Create the attribute, setting the default type
@@ -1400,273 +1909,28 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		 *	over-ride this one.
 		 */
 	create_pair:
-		if ((pair = paircreate(attribute, PW_TYPE_OCTETS)) == NULL) {
+		pair = rad_attr2vp(packet, original, secret,
+				 attribute, attrlen, ptr);
+		if (!pair) {
 			pairfree(&packet->vps);
 			librad_log("out of memory");
 			return -1;
 		}
 
-		pair->length = attrlen;
-		pair->operator = T_OP_EQ;
-		pair->next = NULL;
-
-		switch (pair->type) {
-
-			/*
-			 *	The attribute may be zero length,
-			 *	or it may have a tag, and then no data...
-			 */
-		case PW_TYPE_STRING:
-			if (pair->flags.has_tag) {
-				int offset = 0;
-
-				/*
-				 *	If there's sufficient room for
-				 *	a tag, and the tag looks valid,
-				 *	then use it.
-				 */
-				if ((pair->length > 0) &&
-				    TAG_VALID_ZERO(*ptr)) {
-					pair->flags.tag = *ptr;
-					pair->length--;
-					offset = 1;
-
-					/*
-					 *	If the leading tag
-					 *	isn't valid, then it's
-					 *	ignored for the tunnel
-					 *	password attribute.
-					 */
-				} else if (pair->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD) {
-					/*
-					 * from RFC2868 - 3.5.  Tunnel-Password
-					 * If the value of the Tag field is greater than
-					 * 0x00 and less than or equal to 0x1F, it SHOULD
-					 * be interpreted as indicating which tunnel
-					 * (of several alternatives) this attribute pertains;
-					 * otherwise, the Tag field SHOULD be ignored.
-					 */
-					pair->flags.tag = 0x00;
-					if (pair->length > 0) pair->length--;
-					offset = 1;
-				} else {
-				       pair->flags.tag = 0x00;
-				}
-
-				/*
-				 *	pair->length MAY be zero here.
-				 */
-				memcpy(pair->strvalue, ptr + offset,
-				       pair->length);
-			} else {
-			  /*
-			   *	Ascend binary attributes never have a
-			   *	tag, and neither do the 'octets' type.
-			   */
-			case PW_TYPE_ABINARY:
-			case PW_TYPE_OCTETS:
-				/* attrlen always < MAX_STRING_LEN */
-				memcpy(pair->strvalue, ptr, attrlen);
-			        pair->flags.tag = 0;
-			}
-
-			/*
-			 *	Decrypt passwords here.
-			 */
-			switch (pair->flags.encrypt) {
-			default:
-				break;
-
-				/*
-				 *  User-Password
-				 */
-			case FLAG_ENCRYPT_USER_PASSWORD:
-				if (original) {
-					rad_pwdecode((char *)pair->strvalue,
-						     pair->length, secret,
-						     (char *)original->vector);
-				} else {
-					rad_pwdecode((char *)pair->strvalue,
-						     pair->length, secret,
-						     (char *)packet->vector);
-				}
-				if (pair->attribute == PW_USER_PASSWORD) {
-					pair->length = strlen(pair->strvalue);
-				}
-				break;
-
-				/*
-				 *	Tunnel-Password's may go ONLY
-				 *	in response packets.
-				 */
-			case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-				if (!original) {
-					librad_log("ERROR: Tunnel-Password attribute in request: Cannot decrypt it.");
-					free(pair);
-					return -1;
-				}
-				if (rad_tunnel_pwdecode(pair->strvalue,
-							&pair->length,
-							secret,
-							(char *)original->vector) < 0) {
-					free(pair);
-					return -1;
-				}
-				break;
-
-				/*
-				 *  Ascend-Send-Secret
-				 *  Ascend-Receive-Secret
-				 */
-			case FLAG_ENCRYPT_ASCEND_SECRET:
-				if (!original) {
-					librad_log("ERROR: Ascend-Send-Secret attribute in request: Cannot decrypt it.");
-					free(pair);
-					return -1;
-				} else {
-					uint8_t my_digest[AUTH_VECTOR_LEN];
-					make_secret(my_digest,
-						    original->vector,
-						    secret, ptr);
-					memcpy(pair->strvalue, my_digest,
-					       AUTH_VECTOR_LEN );
-					pair->strvalue[AUTH_VECTOR_LEN] = '\0';
-					pair->length = strlen(pair->strvalue);
-				}
-				break;
-			} /* switch over encryption flags */
-			break;	/* from octets/string/abinary */
-
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_DATE:
-		case PW_TYPE_IPADDR:
-			/*
-			 *	Check for RFC compliance.  If the
-			 *	attribute isn't compliant, turn it
-			 *	into a string of raw octets.
-			 *
-			 *	Also set the lvalue to something
-			 *	which should never match anything.
-			 */
-			if (attrlen != 4) {
-				pair->type = PW_TYPE_OCTETS;
-				memcpy(pair->strvalue, ptr, attrlen);
-				pair->lvalue = 0xbad1bad1;
-				break;
-			}
-
-      			memcpy(&lvalue, ptr, 4);
-
-			if (pair->type != PW_TYPE_IPADDR) {
-				pair->lvalue = ntohl(lvalue);
-			} else {
-				 /*
-				  *  It's an IP address, keep it in network
-				  *  byte order, and put the ASCII IP
-				  *  address or host name into the string
-				  *  value.
-				  */
-				pair->lvalue = lvalue;
-				ip_ntoa(pair->strvalue, pair->lvalue);
-			}
-
-			/*
-			 *	Tagged attributes of type integer have
-			 *	special treatment.
-			 */
-			if (pair->flags.has_tag &&
-			    pair->type == PW_TYPE_INTEGER) {
-			        pair->flags.tag = (pair->lvalue >> 24) & 0xff;
-				pair->lvalue &= 0x00ffffff;
-			}
-
-			/*
-			 *	Try to get the name for integer
-			 *	attributes.
-			 */
-			if (pair->type == PW_TYPE_INTEGER) {
-				DICT_VALUE *dval;
-				dval = dict_valbyattr(pair->attribute,
-						      pair->lvalue);
-				if (dval) {
-					strNcpy(pair->strvalue,
-						dval->name,
-						sizeof(pair->strvalue));
-				}
-			}
-			break;
-
-			/*
-			 *	IPv6 interface ID is 8 octets long.
-			 */
-		case PW_TYPE_IFID:
-			if (attrlen != 8)
-				pair->type = PW_TYPE_OCTETS;
-			memcpy(pair->strvalue, ptr, attrlen);
-			break;
-
-			/*
-			 *	IPv6 addresses are 16 octets long
-			 */
-		case PW_TYPE_IPV6ADDR:
-			if (attrlen != 16)
-				pair->type = PW_TYPE_OCTETS;
-			memcpy(pair->strvalue, ptr, attrlen);
-			break;
-
-			/*
-			 *	IPv6 prefixes are 2 to 18 octets long.
-			 *
-			 *	RFC 3162: The first octet is unused.
-			 *	The second is the length of the prefix
-			 *	the rest are the prefix data.
-			 *
-			 *	The prefix length can have value 0 to 128.
-			 */
-		case PW_TYPE_IPV6PREFIX:
-			if (attrlen < 2 || attrlen > 18)
-				pair->type = PW_TYPE_OCTETS;
-			if (attrlen >= 2) {
-				if (ptr[1] > 128) {
-					pair->type = PW_TYPE_OCTETS;
-				}
-				/*
-				 *	FIXME: double-check that
-				 *	(ptr[1] >> 3) matches attrlen + 2
-				 */
-			}
-			memcpy(pair->strvalue, ptr, attrlen);
-			break;
-
-		default:
-			DEBUG("    %s (Unknown Type %d)\n",
-			      pair->name, pair->type);
-			free(pair);
-			pair = NULL;
-			break;
-		}
-
-		if (pair) {
-			debug_pair(pair);
-			*tail = pair;
-			tail = &pair->next;
-		}
+		debug_pair(pair);
+		*tail = pair;
+		tail = &pair->next;
 
 		ptr += attrlen;
-		length -= attrlen;
-		if (vendorlen > 0) vendorlen -= (attrlen + 2);
+		packet_length -= attrlen;
 	}
 
 	/*
 	 *	Merge information from the outside world into our
-	 *	random pool
+	 *	random pool.
 	 */
-	for (length = 0; length < AUTH_VECTOR_LEN; length++) {
-		lrad_rand_pool.randmem[length] += packet->vector[length];
-	}
-	lrad_rand_pool.randmem[lrad_rand_pool.randmem[0] & 0xff] += packet->id;
-	lrad_rand_pool.randmem[lrad_rand_pool.randmem[1] & 0xff] += packet->data_len;
-
+	lrad_rand_seed(packet->data, AUTH_HDR_LEN);
+	  
 	return 0;
 }
 
@@ -1682,7 +1946,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
  *	int *pwlen is updated to the new length of the encrypted
  *	password - a multiple of 16 bytes.
  */
-#define AUTH_PASS_LEN (16)
 int rad_pwencode(char *passwd, int *pwlen, const char *secret,
 		 const char *vector)
 {
@@ -1789,7 +2052,6 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret,
 	return pwlen;
 }
 
-static unsigned int salt_offset = 0;
 
 /*
  *	Encode Tunnel-Password attributes when sending them out on the wire.
@@ -2041,75 +2303,97 @@ int rad_chap_encode(RADIUS_PACKET *packet, char *output, int id,
 	return 0;
 }
 
+
 /*
- *	Create a random vector of AUTH_VECTOR_LEN bytes.
+ *	Seed the random number generator.
+ *
+ *	May be called any number of times.
  */
-static void random_vector(uint8_t *vector)
+void lrad_rand_seed(const void *data, size_t size)
 {
-	int i;
-
-	if (!lrad_pool_initialized) {
-		memset(&lrad_rand_pool, 0, sizeof(lrad_rand_pool));
-
-		/*
-		 *	Initialize the state to something, using
-		 *	numbers which aren't random, but which also
-		 *	aren't static.
-		 */
-		lrad_rand_pool.randrsl[0] = (uint32_t) &lrad_pool_initialized;
-		lrad_rand_pool.randrsl[1] = (uint32_t) &i;
-		lrad_rand_pool.randrsl[2] = (uint32_t) vector;
-
-		lrad_randinit(&lrad_rand_pool, 1);
-		lrad_pool_initialized = 1;
-	}
-
-	lrad_isaac(&lrad_rand_pool);
+	uint32_t hash;
 
 	/*
-	 *	Copy the random data over.
+	 *	Ensure that the pool is initialized.
 	 */
-	for (i = 0; i < AUTH_VECTOR_LEN; i++) {
-		*(vector++) = lrad_rand_pool.randrsl[i] & 0xff;
+	if (lrad_rand_index < 0) {
+		int fd;
+		
+		memset(&lrad_rand_pool, 0, sizeof(lrad_rand_pool));
+
+		fd = open("/dev/urandom", O_RDONLY);
+		if (fd >= 0) {
+			size_t total;
+			ssize_t this;
+
+			total = this = 0;
+			while (total < sizeof(lrad_rand_pool.randrsl)) {
+				this = read(fd, lrad_rand_pool.randrsl,
+					    sizeof(lrad_rand_pool.randrsl) - total);
+				if ((this < 0) && (errno != EINTR)) break;
+				if (this > 0) total += this;
+ 			}
+			close(fd);
+		} else {
+			lrad_rand_pool.randrsl[0] = fd;
+			lrad_rand_pool.randrsl[1] = time(NULL);
+			lrad_rand_pool.randrsl[2] = errno;
+		}
+
+		lrad_randinit(&lrad_rand_pool, 1);
+		lrad_rand_index = 0;
+	}
+
+	if (!data) return;
+
+	/*
+	 *	Hash the user data
+	 */
+	hash = lrad_hash(data, size);
+	
+	lrad_rand_pool.randrsl[lrad_rand_index & 0xff] ^= hash;
+	lrad_rand_index++;
+	lrad_rand_index &= 0xff;
+
+	/*
+	 *	Churn the pool every so often after seeding it.
+	 */
+	if (((int) (hash & 0xff)) == lrad_rand_index) {
+		lrad_isaac(&lrad_rand_pool);
 	}
 }
+
 
 /*
  *	Return a 32-bit random number.
  */
 uint32_t lrad_rand(void)
 {
-	uint32_t answer;
-	static int rand_index = 0;
+	uint32_t num;
 
 	/*
 	 *	Ensure that the pool is initialized.
 	 */
-	if (!lrad_pool_initialized) {
-		uint8_t vector[AUTH_VECTOR_LEN];
-
-		random_vector(vector);
+	if (lrad_rand_index < 0) {
+		lrad_rand_seed(NULL, 0);
 	}
 
 	/*
-	 *	Grab an entry from the pool.
+	 *	We don't return data directly from the pool.
+	 *	Rather, we return a summary of the data.
 	 */
-	answer = lrad_rand_pool.randrsl[rand_index];
+	num = lrad_rand_pool.randrsl[lrad_rand_index & 0xff];
+	lrad_rand_index++;
+	lrad_rand_index &= 0xff;
 
 	/*
-	 *	Go to the next entry (wrapping around to zero).
+	 *	Every so often, churn the pool.
 	 */
-	rand_index++;
-	rand_index &= 0xff;
-
-	/*
-	 *	Every 256 numbers, churn the pool again.
-	 */
-	if (rand_index == 0) {
+	if (((int) (num & 0xff)) == lrad_rand_index) {
 		lrad_isaac(&lrad_rand_pool);
 	}
 
-	return answer;
+	return num;
 }
 
 /*
@@ -2124,8 +2408,20 @@ RADIUS_PACKET *rad_alloc(int newvector)
 		return NULL;
 	}
 	memset(rp, 0, sizeof(RADIUS_PACKET));
-	if (newvector)
-		random_vector(rp->vector);
+	if (newvector) {
+		int i;
+		uint32_t hash, base;
+
+		/*
+		 *	Don't expose the actual contents of the random
+		 *	pool.
+		 */
+		base = lrad_rand();
+		for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(uint32_t)) {
+			hash = lrad_rand() ^ base;
+			memcpy(rp->vector + i, &hash, sizeof(hash));
+		}
+	}
 	lrad_rand();
 
 	return rp;
@@ -2147,33 +2443,4 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 	free(radius_packet);
 
 	*radius_packet_ptr = NULL;
-}
-
-/*************************************************************************
- *
- *      Function: make_secret
- *
- *      Purpose: Build an encrypted secret value to return in a reply
- *               packet.  The secret is hidden by xoring with a MD5 digest
- *               created from the shared secret and the authentication
- *               vector.  We put them into MD5 in the reverse order from
- *               that used when encrypting passwords to RADIUS.
- *
- *************************************************************************/
-static void make_secret(unsigned char *digest, uint8_t *vector,
-			const char *secret, char *value)
-{
-        u_char  buffer[256 + AUTH_VECTOR_LEN];
-        int             secretLen = strlen(secret);
-        int             i;
-
-        memcpy(buffer, vector, AUTH_VECTOR_LEN );
-        memcpy(buffer + AUTH_VECTOR_LEN, secret, secretLen );
-
-        librad_md5_calc(digest, buffer, AUTH_VECTOR_LEN + secretLen );
-        memset(buffer, 0, sizeof(buffer));
-
-        for ( i = 0; i < AUTH_VECTOR_LEN; i++ ) {
-		digest[i] ^= value[i];
-        }
 }

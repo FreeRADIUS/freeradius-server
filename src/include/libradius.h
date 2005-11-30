@@ -68,6 +68,8 @@
 #ifdef _LIBRADIUS
 #  define AUTH_HDR_LEN		20
 #  define VENDORPEC_USR		429
+#define VENDORPEC_LUCENT	4846
+#define VENDORPEC_STARENT	8164
 #  define VENDOR(x)		((x >> 16) & 0xffff)
 #  define DEBUG			if (librad_debug) printf
 #  define debug_pair(vp)	do { if (librad_debug) { \
@@ -119,15 +121,16 @@ typedef struct dict_attr {
 } DICT_ATTR;
 
 typedef struct dict_value {
-	char			name[40];
 	int			attr;
 	int			value;
+	char			name[1];
 } DICT_VALUE;
 
 typedef struct dict_vendor {
-	char			name[40];
 	int			vendorpec;
-	struct dict_vendor	*next;
+	int			type; /* length of type data */
+	int			length;	/* length of length data */
+	char			name[1];
 } DICT_VENDOR;
 
 typedef struct value_pair {
@@ -182,7 +185,7 @@ void		vp_printlist(FILE *, VALUE_PAIR *);
  */
 int		dict_addvendor(const char *name, int value);
 int		dict_addattr(const char *name, int vendor, int type, int value, ATTR_FLAGS flags);
-int		dict_addvalue(const char *namestr, char *attrstr, int value);
+int		dict_addvalue(const char *namestr, const char *attrstr, int value);
 int		dict_init(const char *dir, const char *fn);
 DICT_ATTR	*dict_attrbyvalue(int attr);
 DICT_ATTR	*dict_attrbyname(const char *attr);
@@ -243,6 +246,13 @@ int		rad_pwdecode(char *encpw, int len, const char *secret, const char *vector);
 int		rad_tunnel_pwencode(char *encpw, int *len, const char *secret, const char *vector);
 int		rad_tunnel_pwdecode(uint8_t *encpw, int *len, const char *secret, const char *vector);
 int		rad_chap_encode(RADIUS_PACKET *packet, char *output, int id, VALUE_PAIR *password);
+int		rad_vp2attr(const RADIUS_PACKET *packet,
+			    const RADIUS_PACKET *original, const char *secret,
+			    const VALUE_PAIR *vp, uint8_t *ptr);
+int		rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+			   const char *secret);
+int		rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+			 const char *secret);
 
 /* valuepair.c */
 VALUE_PAIR	*paircreate(int attr, int type);
@@ -291,7 +301,7 @@ char *		ip_ntoa(char *, uint32_t);
 uint32_t	ip_addr(const char *);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t *ifid);
 uint8_t		*ifid_aton(const char *ifid_str, uint8_t *ifid);
-char		*ipv6_ntoa(char *buffer, size_t size, void *ip6addr);
+const char	*ipv6_ntoa(char *buffer, size_t size, void *ip6addr);
 int		ipv6_addr(const char *ip6_str, void *ip6addr);
 char		*strNcpy(char *dest, const char *src, int n);
 void		rad_lowercase(char *str);
@@ -306,10 +316,13 @@ int		ascend_parse_filter(VALUE_PAIR *pair);
 void		print_abinary(VALUE_PAIR *vp, u_char *buffer, int len);
 #endif /*ASCEND_BINARY*/
 
-#ifdef HAVE_LOCAL_SNPRINTF
+/* snprintf.c */
+#ifndef HAVE_VSNPRINTF
 #include <stdarg.h>
-int snprintf(char *str, size_t count, const char *fmt, ...);
 int vsnprintf(char *str, size_t count, const char *fmt, va_list arg);
+#endif
+#ifndef HAVE_SNPRINTF
+int snprintf(char *str, size_t count, const char *fmt, ...);
 #endif
 
 /* random numbers in isaac.c */
@@ -326,6 +339,7 @@ typedef struct lrad_randctx {
 void lrad_isaac(lrad_randctx *ctx);
 void lrad_randinit(lrad_randctx *ctx, int flag);
 uint32_t lrad_rand(void);	/* like rand(), but better. */
+void lrad_rand_seed(const void *, size_t ); /* seed the random pool */
 
 /* crypt wrapper from crypt.c */
 int lrad_crypt_check(const char *key, const char *salt);
@@ -349,4 +363,34 @@ void	       *rbtree_node2data(rbtree_t *tree, rbnode_t *node);
 typedef enum { PreOrder, InOrder, PostOrder } RBTREE_ORDER;
 int rbtree_walk(rbtree_t *tree, int (*callback)(void *), RBTREE_ORDER order);
 
+/*
+ *	Fast hash, which isn't too bad.  Don't use for cryptography,
+ *	just for hashing internal data.
+ */
+uint32_t lrad_hash(const void *, size_t);
+uint32_t lrad_hash_update(const void *data, size_t size, uint32_t hash);
+
+/*
+ *	If you need fewer than 32-bits of hash, use this macro to get
+ *	the number of bits in the hash you need.  The upper bits of the
+ *	hash will be set to zero.
+ */
+uint32_t lrad_hash_fold(uint32_t hash, int bits);
+
+typedef struct lrad_hash_table_t lrad_hash_table_t;
+
+lrad_hash_table_t *lrad_hash_table_create(int size, void (*freeNode)(void *),
+					  int replace_flag);
+void		lrad_hash_table_free(lrad_hash_table_t *ht);
+int		lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key,
+				       void *data);
+int		lrad_hash_table_delete(lrad_hash_table_t *ht, uint32_t key);
+void		*lrad_hash_table_finddata(lrad_hash_table_t *ht, uint32_t key);
+int		lrad_hash_table_num_elements(lrad_hash_table_t *ht);
+int		lrad_hash_table_walk(lrad_hash_table_t *ht,
+				     int (*callback)(void * /* ctx */,
+						     void * /* data */),
+				     void *context);
+int		lrad_hash_table_set_data_size(lrad_hash_table_t *ht,
+					      size_t data_size);
 #endif /*LIBRADIUS_H*/

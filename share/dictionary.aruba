@@ -1,0 +1,17 @@
+# -*- text -*-
+#
+#	As posted to the list.
+#
+#	Version: $Id$
+#
+VENDOR		Aruba				14823
+BEGIN-VENDOR	Aruba
+
+ATTRIBUTE	Aruba-User-Role				1	string
+ATTRIBUTE	Aruba-User-Vlan				2	integer
+ATTRIBUTE	Aruba-Priv-Admin-User			3	integer
+ATTRIBUTE	Aruba-Admin-Role			4	string
+ATTRIBUTE	Aruba-Essid-Name			5	string
+ATTRIBUTE	Aruba-Location-Id			6	string
+
+END-VENDOR	Aruba
