@@ -1,17 +1,12 @@
-FreeRADIUS 1.1.0 ; $Date$, urgency=low
-	* Support 16-bit Lucent VSA's (Used by Ascend)
+FreeRADIUS 2.0.0 ; $Date$, urgency=low
 	* Use certificate chains, to support n-tier certificates.
 	  Patch from Mohammed Petiwala, closes bug #112.
 	* Permit per-socket list of clients in "listen" directives
 	* Faster client lookups, to permit scaling to 10^6 or more clients.
 	* Removed radrelay and radsqlrelay.  See "man radrelay.conf" for
 	  details.
-	* Re-organized the RFC dictionaries to be clearer
 	* Full IPv6 support.  The server can listen on IPv6 sockets,
 	  and send/receive IPv6 packets.
-	* radhwo & radzap have been re-written, and have new command-line
-	  arguments.  radzap is now a shell script.  See the "man" pages
-	  for more information.
 	* rlm_ns_mta_md5 is deprecated.  rlm_pap does everything it does,
 	  and more.
 	* The command-line options "-i ipaddr" and "-p port" now work.
@@ -39,10 +34,6 @@ FreeRADIUS 1.1.0 ; $Date$, urgency=low
 	* Configuration files can now "$INCLUDE directory/", to automatically
 	  load all files in that directory.  Use with caution!
 	* Fix for log_dest = stdout/stderr.
-	* Removed (for almost all uses) length restrictions on vendor names
-	  and VALUE names.
-	* Security fixes for EAP-SIM.
-	* rlm_ldap now supports Novell eDirectory. (Patch from Novell.)
 	* New "policy" module, which has none of the limitations of the
 	  "users" file.  See "man rlm_policy" for details.
 	* Added even more dictionaries.
@@ -60,10 +51,6 @@ FreeRADIUS 1.1.0 ; $Date$, urgency=low
 	  certain attributes.
 	* Don't escape printed strings during xlat's, to avoid the
 	  infinite expansion of backslashes..
-	* Better checks on incoming packets, so that rad_decode() doesn't
-	  leak memory, or memcpy infinite amounts of data on bad packets.
-	* Update the dictionaries, so that VALUEs with the same name,
-	  but different numbers, aren't allowed.
 	* rlm_eap now uses trees, rather than linked lists, to maintain
 	  it's list of active sessions.
 	* Silently drop packets with bad Message-Authenticators, as per RFC3579
