@@ -105,6 +105,8 @@ static rbtree_t		*proxy_id_tree;
  */
 static int		proxy_fds[32];
 
+static uint32_t		proxy_ipaddr;
+
 /*
  *	We can use 256 RADIUS Id's per dst ipaddr/port, per server
  *	socket.  So, to allocate them, we key off of dst ipaddr/port,
@@ -316,6 +318,7 @@ int rl_init(void)
 		     listener != NULL;
 		     listener = listener->next) {
 			if (listener->type == RAD_LISTEN_PROXY) {
+				proxy_ipaddr = listener->ipaddr;
 				proxy_fds[listener->fd & 0x1f] = listener->fd;
 				break;
 			}
@@ -791,6 +794,7 @@ int rl_add_proxy(REQUEST *request)
 	 */
 	entry->id[found] |= (1 << proxy);
 	request->proxy->id = found;
+	request->proxy->src_ipaddr = proxy_ipaddr;
 
 	rad_assert(proxy_fds[proxy] != -1);
 	request->proxy->sockfd = proxy_fds[proxy];
