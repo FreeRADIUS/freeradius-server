@@ -1,4 +1,112 @@
-FreeRADIUS 1.0.2 ; $Date$, urgency=medium
+FreeRADIUS 1.1.0 ; $Date$, urgency=low
+	* Copied dictionaries from the CVS head (many, many, more vendors)
+	* Enabled support for weird VSA formats, like Lucent and Starent.
+	* Don't leak memory in module "rlm_sql".
+	* Add PEAP machine authentication support in module "rlm_mschap".
+	* Queue the request before looking for available threads.
+	* Don't free the check items after we received the proxy reply.
+	* Expand config variables in included files, too.
+	* Check the return value of accounting modules and don't proxy
+	  invalid requests.
+	* In rlm_passwd, don't close a file stream more than once.
+	* Fix format string errors in rlm_sql.c, spotted by Primoz Bratanic.
+	* Walk the whole string in when escaping strings in rlm_ldap.
+	* Include crypt.h if it is available so we get a prototype for crypt(),
+	  spotted by Konstantin Kubatkin.
+
+FreeRADIUS 1.0.5 ; Date: 2005/09/04 16:23:00, urgency=medium
+	Security Fixes
+	* SQL injection attack in the module "rlm_sqlcounter".
+	* Buffer overflows in the module "rlm_sqlcounter".
+	* Expansion of variable %t may write 26 bytes beyond the buffer
+	  bound. Primoz Bratanic is credited with the discovery of these
+	  three bugs.
+
+	Bug fixes
+	* Don't de-reference a NULL pointer if the auth-type is unknown
+	  in the function rad_check_password().
+	* Escape more characters in the LDAP queries.
+	  Bug found by Suse engineers.
+	* In rlm_sql_unixodbc, don't call rad_malloc from sql_error(),
+	  it leaks memory.
+	* Fix an off-by-one error in the module rlm_sql_unixodbc.
+	  Bug found by Suse engineers.
+	* In rlm_sql, resize the buffer for the value of SQL-User-Name.
+	* Initialize memory for a new SQL socket in the module rlm_sql.
+	* Don't add too many attributes after running an external program.
+	  Bug found by Suse engineers.
+	* Fix an off-by-one error in the function getthing().
+	* snprintf() and vsnprintf() replacements were not compiled if
+	  the autoconf tests didn't find the functions.
+	* Don't use vsprintf() anymore, but the replacement for vsnprintf()
+	  in libradius instead.
+	* The function decode_attribute() may write beyond buffer bounds.
+	  Bug found by Suse engineers.
+	* Fix a memset() in the function request_enqueue() which was
+	  begining at the wrong address. Bug found by Matthias Ruttman.
+	* Fix an off-by-one error in the function xlat_copy().
+	  Bug found by Primoz Bratanic.
+	* Fix other off-by-one errors in module "rlm_unix", too.
+	  Bug found by Allan Bazinet.
+	* Fix a 2-byte over-run read in function rad_decode().
+	* Update thread pool queue properly.
+	* Autonconf tests try first any user-specified directory,
+	  otherwise they may pick up the wrong version.
+	* Delete the autoconf tests for the libldap dependancies.
+	* Install all the regular files under the "doc" directory.
+	* Distinguish between exit code <0 (failure) and >0 (reject)
+	  in Exec-Program-Wait. Patch from Thor Spruyt.
+	* Make Expiration work.
+	* Clean up the code for opening a proxy socket.
+	* When finding a realm to proxy to, if all are dead, wake them
+	  if wake_all_if_all_dead is true.
+	* In radwho, print the NAS-Port as unsigned int.
+	* Use extended regex instead of basic regex in rlm_attr_filter.
+	* Catch the case where someone deletes a directory that rlm_detail
+	  is using.
+	* Use the variable $(LDFLAGS) when linking a module.
+	* Ignore the Stripped-User-Name when a realm has the "nostrip"
+	  directive.
+	* Add support for NT-Password in rlm_pap.
+	* In rlm_sqlcounter, use the time left to the next reset if it's
+	  inferior to the time left in the counter.
+	* Calculate Message-Authenticator correctly for Accounting-Request
+	  and Accounting-Response.  Bug found by Paolo Rotela.
+	* Build on MAC OS X.  Still need --disable-shared, though.
+	* Fix bug #255 (crash with expired CRL's, etc.)
+	* Fix quote removal of the values from a SQL database.
+	* Reap the zombie process after a command run from "Exec-Program".
+	* Allow to cancel proxy of accounting with "Proxy-To-Realm := LOCAL".
+	* Don't copy VSA's to an Access-Reject packet.
+
+FreeRADIUS 1.0.4 ; Date: 2005/06/11 22:46:52, urgency=medium
+	* Fix installation problem.
+	* Increase a buffer size, so radrelay doesn't truncate values.
+	* Updates in the documentation. Patches from Thor Spruyt.
+
+FreeRADIUS 1.0.3 ; Date: 2005/06/03 17:15:11, urgency=high
+	Security Fixes
+	* Always escape the strings in the SQL module.
+	* Check buffer bound when input character needs escaping in
+	  the SQL module. Bug found by Primoz Bratanic.
+
+	Bug fixes
+	* Return EAP-Fail in Access-Reject, rather than an empty Access-Reject
+	* Don't send Proxy-State from home server in TTLS.
+	* Fixes for forking external programs, so the server doesn't
+	  suddenly stop processing requests, or stop forking programs.
+	* radzap now works, but it's command-line options have changed
+	  completely, and it's a shell script.
+	* radwho has updated command-line options, and no longer reads
+	  Unix "utmp" files.
+	* Fix bug in calling checkrad script with NAS port > 9999999
+	* Fix long-standing bug when both crypt and pthreads are in use
+	* Don't SEGV when rlm_sql gets 'NULL' value from request.
+	* Re-arrange code in radrelay to not duplicate accounting packets.
+	* In rlm_attr_rewrite, change the value when the attribute type
+	  is different from string.
+
+FreeRADIUS 1.0.2 ; Date: 2005/02/13 01:03:20, urgency=medium
 	* Novell eDirectoty support.  Patch from Novell.
 	* localweb & Trapeze dictionary updates.
 	* EAP-SIM fixes.
@@ -25,7 +133,7 @@ FreeRADIUS 1.0.1 ; Date: 2004/09/02 10:52:03 , urgency=high
 	* Fix two remote crashes and a memory leak in RADIUS packet
 	  decoding.
 
-	Bug fixes.
+	Bug fixes
 	* Fix premature "success" during EAP/TLS handshake.
 	* Dictionary handling now complains about identically named
 	  values with different values, and rejects dictionary
