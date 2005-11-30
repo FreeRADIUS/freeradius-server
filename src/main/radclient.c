@@ -319,10 +319,12 @@ static int filename_cmp(const void *one, const void *two)
 	return strcmp((const char *) one, (const char *) two);
 }
 
-static int filename_walk(void *data)
+static int filename_walk(void *context, void *data)
 {
 	const char	*filename = data;
 	radclient_t	*radclient;
+
+	context = context;	/* -Wunused */
 
 	/*
 	 *	Initialize the request we're about
@@ -865,7 +867,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Walk over the list of filenames, creating the requests.
 	 */
-	if (rbtree_walk(filename_tree, filename_walk, InOrder) != 0) {
+	if (rbtree_walk(filename_tree, InOrder, filename_walk, NULL) != 0) {
 		exit(1);
 	}
 

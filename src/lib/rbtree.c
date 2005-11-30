@@ -27,6 +27,7 @@ static const char rcsid[] = "$Id$";
 #include <stdlib.h>
 #include <string.h>
 
+#include "missing.h"
 #include "libradius.h"
 
 /* red-black tree description */
@@ -41,7 +42,7 @@ struct rbnode_t {
 };
 
 #define NIL &Sentinel           /* all leafs are sentinels */
-static rbnode_t Sentinel = { NIL, NIL, NULL, Black, NULL};
+static const rbnode_t Sentinel = { NIL, NIL, NULL, Black, NULL};
 
 struct rbtree_t {
 #ifndef NDEBUG
@@ -232,7 +233,7 @@ static void InsertFixup(rbtree_t *tree, rbnode_t *X)
 /*
  *	Insert an element into the tree.
  */
-int rbtree_insert(rbtree_t *tree, const void *Data)
+int rbtree_insert(rbtree_t *tree, void *Data)
 {
 	rbnode_t *Current, *Parent, *X;
 
@@ -272,7 +273,7 @@ int rbtree_insert(rbtree_t *tree, const void *Data)
 
 	/* setup new node */
 	if ((X = malloc (sizeof(*X))) == NULL) {
-		exit(1);
+		exit(1);	/* FIXME! */
 	}
 
 	X->Data = Data;
@@ -298,8 +299,7 @@ int rbtree_insert(rbtree_t *tree, const void *Data)
 	return 1;
 }
 
-
-static void DeleteFixup(rbtree_t *tree, rbnode_t *X)
+static void DeleteFixup(rbtree_t *tree, rbnode_t *X, rbnode_t *Parent)
 {
 	/*************************************
 	 *  maintain red-black tree balance  *
@@ -307,52 +307,58 @@ static void DeleteFixup(rbtree_t *tree, rbnode_t *X)
 	 *************************************/
 
 	while (X != tree->Root && X->Color == Black) {
-		if (X == X->Parent->Left) {
-			rbnode_t *W = X->Parent->Right;
+		if (X == Parent->Left) {
+			rbnode_t *W = Parent->Right;
 			if (W->Color == Red) {
 				W->Color = Black;
-				X->Parent->Color = Red;
-				RotateLeft(tree, X->Parent);
-				W = X->Parent->Right;
+				Parent->Color = Red; /* Parent != NIL? */
+				RotateLeft(tree, Parent);
+				W = Parent->Right;
 			}
 			if (W->Left->Color == Black && W->Right->Color == Black) {
-				W->Color = Red;
-				X = X->Parent;
+				if (W != NIL) W->Color = Red;
+				X = Parent;
+				Parent = X->Parent;
 			} else {
 				if (W->Right->Color == Black) {
-					W->Left->Color = Black;
+					if (W->Left != NIL) W->Left->Color = Black;
 					W->Color = Red;
 					RotateRight(tree, W);
-					W = X->Parent->Right;
+					W = Parent->Right;
 				}
-				W->Color = X->Parent->Color;
-				X->Parent->Color = Black;
-				W->Right->Color = Black;
-				RotateLeft(tree, X->Parent);
+				W->Color = Parent->Color;
+				if (Parent != NIL) Parent->Color = Black;
+				if (W->Right->Color != Black) {
+					W->Right->Color = Black;
+				}
+				RotateLeft(tree, Parent);
 				X = tree->Root;
 			}
 		} else {
-			rbnode_t *W = X->Parent->Left;
+			rbnode_t *W = Parent->Left;
 			if (W->Color == Red) {
 				W->Color = Black;
-				X->Parent->Color = Red;
-				RotateRight(tree, X->Parent);
-				W = X->Parent->Left;
+				Parent->Color = Red; /* Parent != NIL? */
+				RotateRight(tree, Parent);
+				W = Parent->Left;
 			}
 			if (W->Right->Color == Black && W->Left->Color == Black) {
-				W->Color = Red;
-				X = X->Parent;
+				if (W != NIL) W->Color = Red;
+				X = Parent;
+				Parent = X->Parent;
 			} else {
 				if (W->Left->Color == Black) {
-					W->Right->Color = Black;
+					if (W->Right != NIL) W->Right->Color = Black;
 					W->Color = Red;
 					RotateLeft(tree, W);
-					W = X->Parent->Left;
+					W = Parent->Left;
 				}
-				W->Color = X->Parent->Color;
-				X->Parent->Color = Black;
-				W->Left->Color = Black;
-				RotateRight(tree, X->Parent);
+				W->Color = Parent->Color;
+				if (Parent != NIL) Parent->Color = Black;
+				if (W->Left->Color != Black) {
+					W->Left->Color = Black;
+				}
+				RotateRight(tree, Parent);
 				X = tree->Root;
 			}
 		}
@@ -366,6 +372,7 @@ static void DeleteFixup(rbtree_t *tree, rbnode_t *X)
 void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 {
 	rbnode_t *X, *Y;
+	rbnode_t *Parent;
 
 	/*****************************
 	 *  delete node Z from tree  *
@@ -386,15 +393,17 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 	if (Y->Left != NIL)
 		X = Y->Left;
 	else
-		X = Y->Right;
+		X = Y->Right;	/* may be NIL! */
 
 	/* remove Y from the parent chain */
-	X->Parent = Y->Parent;
-	if (Y->Parent)
-		if (Y == Y->Parent->Left)
-			Y->Parent->Left = X;
+	Parent = Y->Parent;
+	if (X != NIL) X->Parent = Parent;
+
+	if (Parent)
+		if (Y == Parent->Left)
+			Parent->Left = X;
 		else
-			Y->Parent->Right = X;
+			Parent->Right = X;
 	else
 		tree->Root = X;
 
@@ -409,13 +418,30 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 	} else if (tree->freeNode) {
 		tree->freeNode(Z->Data);
 	}
-	if (Y->Color == Black)
-		DeleteFixup(tree, X);
+
+	if (Y->Color == Black && X != NIL)
+		DeleteFixup(tree, X, Parent);
 
 	free(Y);
 
 	tree->num_elements--;
 }
+
+/*
+ *	Delete a node from the tree, based on given data, which MUST
+ *	have come from rbtree_finddata().
+ */
+int rbtree_deletebydata(rbtree_t *tree, const void *data)
+{
+	rbnode_t *node = rbtree_find(tree, data);
+	
+	if (!node) return 0;	/* false */
+
+	rbtree_delete(tree, node);
+
+	return 1;
+}
+
 
 /*
  *	Find an element in the tree, returning the data, not the node.
@@ -460,20 +486,21 @@ void *rbtree_finddata(rbtree_t *tree, const void *Data)
  *	We call ourselves recursively for each function, but that's OK,
  *	as the stack is only log(N) deep, which is ~12 entries deep.
  */
-static int WalkNodePreOrder(rbnode_t *X, int (*callback)(void *))
+static int WalkNodePreOrder(rbnode_t *X,
+			    int (*callback)(void *, void *), void *context)
 {
 	int rcode;
 
-	rcode = callback(X->Data);
+	rcode = callback(context, X->Data);
 	if (rcode != 0) return rcode;
 
 	if (X->Left != NIL) {
-		rcode = WalkNodePreOrder(X->Left, callback);
+		rcode = WalkNodePreOrder(X->Left, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
 	if (X->Right != NIL) {
-		rcode = WalkNodePreOrder(X->Right, callback);
+		rcode = WalkNodePreOrder(X->Right, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
@@ -483,20 +510,21 @@ static int WalkNodePreOrder(rbnode_t *X, int (*callback)(void *))
 /*
  *	Inorder
  */
-static int WalkNodeInOrder(rbnode_t *X, int (*callback)(void *))
+static int WalkNodeInOrder(rbnode_t *X,
+			   int (*callback)(void *, void *), void *context)
 {
 	int rcode;
 
 	if (X->Left != NIL) {
-		rcode = WalkNodeInOrder(X->Left, callback);
+		rcode = WalkNodeInOrder(X->Left, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
-	rcode = callback(X->Data);
+	rcode = callback(context, X->Data);
 	if (rcode != 0) return rcode;
 
 	if (X->Right != NIL) {
-		rcode = WalkNodeInOrder(X->Right, callback);
+		rcode = WalkNodeInOrder(X->Right, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
@@ -507,21 +535,22 @@ static int WalkNodeInOrder(rbnode_t *X, int (*callback)(void *))
 /*
  *	PostOrder
  */
-static int WalkNodePostOrder(rbnode_t *X, int (*callback)(void *))
+static int WalkNodePostOrder(rbnode_t *X,
+			     int (*callback)(void *, void*), void *context)
 {
 	int rcode;
 
 	if (X->Left != NIL) {
-		rcode = WalkNodeInOrder(X->Left, callback);
+		rcode = WalkNodeInOrder(X->Left, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
 	if (X->Right != NIL) {
-		rcode = WalkNodeInOrder(X->Right, callback);
+		rcode = WalkNodeInOrder(X->Right, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
-	rcode = callback(X->Data);
+	rcode = callback(context, X->Data);
 	if (rcode != 0) return rcode;
 
 	return 0;		/* we know everything returned zero */
@@ -534,15 +563,16 @@ static int WalkNodePostOrder(rbnode_t *X, int (*callback)(void *))
  *	The callback function should return 0 to continue walking.
  *	Any other value stops the walk, and is returned.
  */
-int rbtree_walk(rbtree_t *tree, int (*callback)(void *), RBTREE_ORDER order)
+int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order,
+		int (*callback)(void *, void *), void *context)
 {
 	switch (order) {
 	case PreOrder:
-		return WalkNodePreOrder(tree->Root, callback);
+		return WalkNodePreOrder(tree->Root, callback, context);
 	case InOrder:
-		return WalkNodeInOrder(tree->Root, callback);
+		return WalkNodeInOrder(tree->Root, callback, context);
 	case PostOrder:
-		return WalkNodePostOrder(tree->Root, callback);
+		return WalkNodePostOrder(tree->Root, callback, context);
 
 	default:
 		break;
