@@ -1,13 +1,31 @@
-.TH dictionary 5 "04 Jan 2004"
+.TH dictionary 5 "31 Oct 2005"
 .SH NAME
 dictionary \- RADIUS dictionary file
 .SH DESCRIPTION
-The \fIdictionary\fP file resides in the radius database directory,
-by default \fI/etc/raddb\fP. It contains a list of RADIUS attributes
-and values, which the server uses to map between descriptive names and
-on-the-wire data.  The names have no meaning outside of the RADIUS
-server itself, and are never exchanged between server and clients.
+The master RADIUS dictionary file resides in
+\fI/etc/raddb/dictionary\fP.  It references other \fIdictionary\fP
+files located in \fI/usr/local/share/freeradius/\fP.  Each dictionary
+file contains a list of RADIUS attributes and values, which the server
+uses to map between descriptive names and on-the-wire data.  The names
+have no meaning outside of the RADIUS server itself, and are never
+exchanged between server and clients.
+.PP
+That is, editing the dictionaries will have NO EFFECT on anything
+other than the server that is reading those files.  Adding new
+attributes to the dictionaries will have NO EFFECT on RADIUS clients,
+and will not make RADIUS clients magically understand those
+attributes.  The dictionaries are solely for local administrator
+convenience, and are specific to each version of FreeRADIUS.
+.PP
+The dictionaries in \fI/usr/local/share\fP SHOULD NOT be edited unless
+you know exactly what you are doing.  Changing them will most likely
+break your RADIUS deployment.
+.PP
+If you need to add new attributes, please edit the
+\fI/etc/raddb/dictionary\fP file.  It's sole purpose is to contain
+site-local defintions that are added by the local administrator.
 
+.SH FORMAT
 Every line starting with a hash sign
 .RB (' # ')
 is treated as comment and ignored.
@@ -70,17 +88,27 @@ up the value of that attribute by number in the dictionary, and uses
 the name found there for printing diagnostic and log messages.
 
 .TP 0.5i
-.B VENDOR vendor-name number
+.B VENDOR vendor-name number [format=t,l]
 Define a Vendor Specific Attribute encapsulation for \fIvendor-name\fP
 to \fInumber\fP.  For a list of vendor names and numbers, see
 http://www.iana.org/enterprise-numbers.txt.
+.PP
+The "format=t,l" statement tells the server how many octets to use to
+encode/decode the vendor "type" and "length" fields in the attributes.
+The default is "format=1,1", which does not have to be specified.  For
+USR VSA's, the format is "format=4,0", for Lucent VSA's it's
+"format=2,1", and for Starent VSA's it's "format=2,2".
+.PP
+The supported values for the number of type octets (i.e. the first
+digit) are 1, 2, and 4.  The support values for the number of length
+octets (i.e. the second digit) are 0, 1, and 2.  Any combination of
+those values will work.
 
 .TP 0.5i
 .B $INCLUDE filename
 Include dictionary entries from the file \fIfilename\fP.  The
 \fIfilename\fP is taken as relative to the location of the file which
 is asking for the inclusion.
-
 .PP
 .SH FILES
 .I /etc/raddb/dictionary,
