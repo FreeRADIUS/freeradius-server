@@ -1,20 +1,8 @@
 1. INTRODUCTION
 
   The FreeRADIUS Server Project is a high performance and highly
-configurable GPL'd free RADIUS server. The server is similar in some
-respects to Livingston's 2.0 server.  While FreeRADIUS started as a
-variant of the Cistron RADIUS server, they don't share a lot in common
-any more.  It now has many more features than Cistron or Livingston,
-and is much more configurable.
-
-  FreeRADIUS is an Internet authentication daemon, which implements
-the RADIUS protocol, as defined in RFC 2865 (and others).  It allows
-Network Access Servers (NAS boxes) to perform authentication for
-dial-up users.  There are also RADIUS clients available for Web
-servers, firewalls, Unix logins, and more.  Using RADIUS allows
-authentication and authorization for a network to be centralized, and
-minimizes the amount of re-configuration which has to be done when
-adding or deleting new users.
+configurable GPL'd free RADIUS server. It is stable, and is currently
+being used in many deployments with millions of users.
 
   Please see the main web page (http://www.freeradius.org) for more
 information.
@@ -47,7 +35,9 @@ discussions about common problems and solution.
 
   See 'doc/README' for more information about FreeRADIUS.
 
-  There is now an O'Reilly book available, which we recommend highly:
+  There is now an O'Reilly book available, which we recommend for
+people new to RADIUS.  It covers an earlier version of the server, but
+much of the information is applicable to this version also.
 
 http://www.amazon.com/exec/obidos/ASIN/0596003226/freeradiusorg-20/
 

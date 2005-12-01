@@ -1,26 +1,104 @@
-Unless otherwise mentioned, this copyright applies to all files in
-this distribution.
+1. COPYRIGHT
 
-The code in this package was originally written by Miquel van Smoorenburg
-<miquels@cistron.nl> for Cistron Internet Services B.V.  A 
-significant fraction of the code was written by others for the 
+Unless otherwise mentioned, the copyrights described in section 4,
+below, apply to all files in this distribution.
+
+2. BACKGROUND
+
+Much of the code in this package was originally written by Miquel van
+Smoorenburg <miquels@cistron.nl> for Cistron Internet Services B.V.  A
+significant fraction of the code was written by others for the
 FreeRADIUS Server Project.
 
-Copyright (C) 2000-2002 The FreeRADIUS Server Project
-Copyright (C) 1997-1999 Cistron Internet Services B.V.
+3. INDIVIDUAL DIRECTORIES
 
-The license for all source code and documentation except
-the files in src/lib directory is the GNU GPL version 2:
+3.1 doc/rfc/
 
-This program is free software; you can redistribute it and/or
-modify it under the terms of the GNU General Public License
-as published by the Free Software Foundation; either version
-2 of the License, or (at your option) any later version.
+Most of the files in this directory are copyrighted by the Internet
+Society, Inc.  See the contents of the files for details.
 
-The license for all files in the src/lib directory is the
-GNU LGPL version 2:
+3.2 src/lib/
 
-This library is free software; you can redistribute it and/or
-modify it under the terms of the GNU Library General Public
-License as published by the Free Software Foundation; either
-version 2 of the License, or (at your option) any later version.
+Copyright for files in this directory is held by the contributors.
+See the contents of the files for details
+
+3.2.1 LICENSE
+
+The license for all files in the src/lib directory is the GNU LGPL
+version 2, which is included with this program in the file
+src/lib/LICENSE.
+
+3.3 libltdl/
+
+Most of the files in this directory are copyright the Free Software
+Foundation, Inc.  See the contents of the files for details.
+
+4. ALL OTHER FILES
+
+Copyright for files in this directory is held by the contributors.
+See the contents of the files for details.  Files without explicit
+copyright notices are copyright The FreeRADIUS Server Project.  See
+section 4.2 for more information.
+
+4.1 LICENSE
+
+The license for all other source code and documentation except the
+files in src/lib directory is the GNU GPL version 2, which is included
+with this program in the LICENSE file in this directory.
+
+4.2 LIST OF COPYRIGHT HOLDERS
+
+Portions of the source code and documentation included here are
+copyright by one or more of the following organizations and
+individuals.  This list is not exhaustive.  Consult the individual
+files for more detailed copyright statements.
+
+
+Copyright (C) 1999, 2000, 2001, 2002, 2003, 2004, 2005 The FreeRADIUS
+Server Project
+
+Copyright (C) 1999, 2000, 2001, 2002, 2003, 2004, 2005 Alan DeKok
+<aland@ox.org>
+
+Copyright (C) 1996, 1997, 1999, 2000, 2002, 2003, 2004, 2005 Free
+Software Foundation, Inc.
+
+Copyright (C) 2003, 2004, 2005 Kostas Kalevras <kkalev@noc.ntua.gr>
+
+Copyright (C) 2004  Cladju Consulting, Inc.
+
+Copyright (C) 2001, 2002, 2003, 2004, 2005 Google, Inc.
+
+Copyright (C) 2003, 2004  Michael Richardson <mcr@sandelman.ottawa.on.ca>
+
+Copyright (C) 2002, 2003, 2004 Novell, Inc.
+
+Copyright (C) 2002  Miguel A.L. Paraz <mparaz@mparaz.com>
+
+Copyright (C) 2002 Simon Ekstrand <simon@routemeister.net>
+
+Copyright (C) 2001  Chad Miller <cmiller@surfsouth.com>
+
+Copyright (C) 2001 hereUare Communications, Inc.
+
+Copyright (C) 2000 Jochen Friedrich <jochen@scram.de>
+
+Copyright (C) 2000, 2002 Miquel van Smoorenburg
+
+Copyright (C) 2000  Jeff Carneal <jeff@apex.net>
+
+Copyright (C) 2000  Alan Curry <pacman@world.std.com>
+
+Copyright (C) 2000  David Kerry <davidk@snti.com>
+
+Copyright (C) 2000  Dmitri Ageev <d_ageev@ortcc.ru>
+
+Copyright (C) 2000  Nathan Neulinger <nneul@umr.edu>
+
+Copyright (C) 2000  Mike Machado <mike@innercite.com>
+
+Copyright (C) 2000, 2001  Chad Miller <cmiller@surfsouth.com>
+
+Copyright (C) 1997, 1998, 1999 Cistron Internet Services B.V.
+
+Copyright (C) 1999 Kunihiro Ishiguro <kunihiro@zebra.org>
