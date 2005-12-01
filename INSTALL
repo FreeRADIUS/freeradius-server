@@ -50,14 +50,6 @@ following list is a selection from the available flags:
   --with-edir             Compile with support for Novell eDirectory
                               integration.
 
-  To get the defaults that Cistron Radius used up to 1.5.4.3-beta18, use:
-
-	./configure --localstatedir=/var --sysconfdir=/etc
-
-  That means binaries will get installed in /usr/local/{bin,sbin},
-manpages in /usr/local/man, configuration files in /etc/raddb, and
-logfiles in /var/log and /var/log/radacct.
-
   Now type "make". The binaries will be compiled.
 
   Then do "make install". That will install the binaries, the 'man'
