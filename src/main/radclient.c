@@ -24,7 +24,6 @@
 static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,6 +54,7 @@ static const char rcsid[] = "$Id$";
 #include "conf.h"
 #include "radpaths.h"
 #include "missing.h"
+#include "libradius.h"
 
 static int retries = 10;
 static float timeout = 3;
@@ -98,7 +98,7 @@ static radclient_t *radclient_head = NULL;
 static radclient_t *radclient_tail = NULL;
 
 
-static void usage(void)
+static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: radclient [options] server[:port] <command> [<secret>]\n");
 
@@ -106,12 +106,14 @@ static void usage(void)
 	fprintf(stderr, "  -c count    Send each packet 'count' times.\n");
 	fprintf(stderr, "  -d raddb    Set dictionary directory.\n");
 	fprintf(stderr, "  -f file     Read packets from file, not stdin.\n");
-	fprintf(stderr, "  -r retries  If timeout, retry sending the packet 'retries' times.\n");
-	fprintf(stderr, "  -t timeout  Wait 'timeout' seconds before retrying (may be a floating point number).\n");
 	fprintf(stderr, "  -i id       Set request id to 'id'.  Values may be 0..255\n");
-	fprintf(stderr, "  -S file     read secret from file, not command line.\n");
+	fprintf(stderr, "  -n num      Send N requests/s\n");
+	fprintf(stderr, "  -p num      Send 'num' packets from a file in parallel.\n");
 	fprintf(stderr, "  -q          Do not print anything out.\n");
+	fprintf(stderr, "  -r retries  If timeout, retry sending the packet 'retries' times.\n");
 	fprintf(stderr, "  -s          Print out summary information of auth results.\n");
+	fprintf(stderr, "  -S file     read secret from file, not command line.\n");
+	fprintf(stderr, "  -t timeout  Wait 'timeout' seconds before retrying (may be a floating point number).\n");
 	fprintf(stderr, "  -v          Show program version information.\n");
 	fprintf(stderr, "  -x          Debugging mode.\n");
 
@@ -217,12 +219,12 @@ static radclient_t *radclient_init(const char *filename)
 		 *	Keep a copy of the the User-Password attribute.
 		 */
 		if ((vp = pairfind(radclient->request->vps, PW_PASSWORD)) != NULL) {
-			strNcpy(radclient->password, (char *)vp->strvalue, sizeof(vp->strvalue));
+			strNcpy(radclient->password, (char *)vp->strvalue, sizeof(radclient->password));
 			/*
 			 *	Otherwise keep a copy of the CHAP-Password attribute.
 			 */
 		} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD)) != NULL) {
-			strNcpy(radclient->password, (char *)vp->strvalue, sizeof(vp->strvalue));
+			strNcpy(radclient->password, (char *)vp->strvalue, sizeof(radclient->password));
 		} else {
 			radclient->password[0] = '\0';
 		}
@@ -479,12 +481,12 @@ static int send_one_packet(radclient_t *radclient)
 			VALUE_PAIR *vp;
 
 			if ((vp = pairfind(radclient->request->vps, PW_PASSWORD)) != NULL) {
-				strNcpy((char *)vp->strvalue, radclient->password, strlen(radclient->password) + 1);
-				vp->length = strlen(radclient->password);
+				strNcpy((char *)vp->strvalue, radclient->password, sizeof(vp->strvalue));
+				vp->length = strlen(vp->strvalue);
 
 			} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD)) != NULL) {
-				strNcpy((char *)vp->strvalue, radclient->password, strlen(radclient->password) + 1);
-				vp->length = strlen(radclient->password);
+				strNcpy((char *)vp->strvalue, radclient->password, sizeof(vp->strvalue));
+				vp->length = strlen(vp->strvalue);
 
 				rad_chap_encode(radclient->request, (char *) vp->strvalue, radclient->request->id, vp);
 				vp->length = 17;
@@ -567,7 +569,10 @@ static int send_one_packet(radclient_t *radclient)
 	/*
 	 *	Send the packet.
 	 */
-	rad_send(radclient->request, NULL, secret);
+	if (rad_send(radclient->request, NULL, secret) < 0) {
+		fprintf(stderr, "radclient: Failed to send packet for ID %d: %s\n",
+			radclient->request->id, librad_errstr);
+	}
 
 	return 0;
 }
@@ -619,6 +624,7 @@ static int recv_one_packet(int wait_time)
 	node = rbtree_find(request_tree, &myclient);
 	if (!node) {
 		fprintf(stderr, "radclient: received response to request we did not send.\n");
+		rad_free(&reply);
 		return -1;	/* got reply to packet we didn't send */
 	}
 
@@ -636,6 +642,7 @@ static int recv_one_packet(int wait_time)
 	 */
 	if (rad_decode(reply, radclient->request, secret) != 0) {
 		librad_perror("rad_decode");
+		rad_free(&radclient->reply);
 		totallost++;
 		return -1;
 	}
@@ -686,6 +693,8 @@ int main(int argc, char **argv)
 	char filesecret[256];
 	FILE *fp;
 	int do_summary = 0;
+	int persec = 0;
+	int parallel = 1;
 	radclient_t	*this;
 
 	librad_debug = 0;
@@ -702,7 +711,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:S:xv")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "c:d:f:hi:n:p:qr:sS:t:vx")) != EOF) switch(c) {
 		case 'c':
 			if (!isdigit((int) *optarg))
 				usage();
@@ -714,18 +723,6 @@ int main(int argc, char **argv)
 		case 'f':
 			rbtree_insert(filename_tree, optarg);
 			break;
-		case 'q':
-			do_output = 0;
-			break;
-		case 'x':
-			librad_debug++;
-			break;
-		case 'r':
-			if (!isdigit((int) *optarg))
-				usage();
-			retries = atoi(optarg);
-			if ((retries == 0) || (retries > 1000)) usage();
-			break;
 		case 'i':
 			if (!isdigit((int) *optarg))
 				usage();
@@ -734,17 +731,28 @@ int main(int argc, char **argv)
 				usage();
 			}
 			break;
-		case 's':
-			do_summary = 1;
+
+		case 'n':
+			persec = atoi(optarg);
+			if (persec <= 0) usage();
 			break;
-		case 't':
+
+		case 'p':
+			parallel = atoi(optarg);
+			if (parallel <= 0) usage();
+			break;
+
+		case 'q':
+			do_output = 0;
+			break;
+		case 'r':
 			if (!isdigit((int) *optarg))
 				usage();
-			timeout = atof(optarg);
+			retries = atoi(optarg);
+			if ((retries == 0) || (retries > 1000)) usage();
 			break;
-		case 'v':
-			printf("radclient: $Id$ built on " __DATE__ " at " __TIME__ "\n");
-			exit(0);
+		case 's':
+			do_summary = 1;
 			break;
                case 'S':
 		       fp = fopen(optarg, "r");
@@ -774,6 +782,18 @@ int main(int argc, char **argv)
                        }
                        secret = filesecret;
 		       break;
+		case 't':
+			if (!isdigit((int) *optarg))
+				usage();
+			timeout = atof(optarg);
+			break;
+		case 'v':
+			printf("radclient: $Id$ built on " __DATE__ " at " __TIME__ "\n");
+			exit(0);
+			break;
+		case 'x':
+			librad_debug++;
+			break;
 		case 'h':
 		default:
 			usage();
@@ -816,6 +836,11 @@ int main(int argc, char **argv)
 		if (server_port == 0) server_port = getport("radius");
 		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
 		packet_code = PW_AUTHENTICATION_REQUEST;
+
+	} else if (strcmp(argv[2], "challenge") == 0) {
+		if (server_port == 0) server_port = getport("radius");
+		if (server_port == 0) server_port = PW_AUTH_UDP_PORT;
+		packet_code = PW_ACCESS_CHALLENGE;
 
 	} else if (strcmp(argv[2], "acct") == 0) {
 		if (server_port == 0) server_port = getport("radacct");
@@ -901,6 +926,7 @@ int main(int argc, char **argv)
 	 *	loop.
 	 */
 	do {
+		int n = parallel;
 		radclient_t *next;
 		const char *filename = NULL;
 
@@ -931,16 +957,56 @@ int main(int argc, char **argv)
 
 			/*
 			 *	Packets from multiple '-f' are sent
-			 *	in parallel.  Packets from one file
-			 *	are sent in series.
+			 *	in parallel.
+			 *
+			 *	Packets from one file are sent in
+			 *	series, unless '-p' is specified, in
+			 *	which case N packets from each file
+			 *	are sent in parallel.
 			 */
 			if (this->filename != filename) {
 				filename = this->filename;
+				n = parallel;
+			}
+
+			if (n > 0) {
+				n--;
 
 				/*
 				 *	Send the current packet.
 				 */
 				send_one_packet(this);
+
+				/*
+				 *	Wait a little before sending
+				 *	the next packet, if told to.
+				 */
+				if (persec) {
+					struct timeval tv;
+
+					/*
+					 *	Don't sleep elsewhere.
+					 */
+					sleep_time = 0;
+
+					if (persec == 1) {
+						tv.tv_sec = 1;
+						tv.tv_usec = 0;
+					} else {
+						tv.tv_sec = 0;
+						tv.tv_usec = 1000000/persec;
+					}
+					
+					/*
+					 *	Sleep for milliseconds,
+					 *	portably.
+					 *
+					 *	If we get an error or
+					 *	a signal, treat it like
+					 *	a normal timeout.
+					 */
+					select(0, NULL, NULL, NULL, &tv);
+				}
 
 				/*
 				 *	If we haven't sent this packet
