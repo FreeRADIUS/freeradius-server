@@ -936,12 +936,42 @@ ac_safe=`echo "Python.h" | sed 'y%./+-%__pm%'`
 echo $ac_n "checking for Python.h""... $ac_c" 1>&6
 echo "configure:938: checking for Python.h" >&5
 
+old_CFLAGS="$CFLAGS"
 smart_include=
 smart_include_dir=
 
-  old_CFLAGS="$CFLAGS"
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    CFLAGS="$old_CFLAGS -I$try"
+    cat > conftest.$ac_ext <<EOF
+#line 948 "configure"
+#include "confdefs.h"
+
+		    #include <Python.h>
+int main() {
+ int a = 1;
+; return 0; }
+EOF
+if { (eval echo configure:956: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+  rm -rf conftest*
+  smart_include="-I$try"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+  rm -rf conftest*
+  smart_include=
+fi
+rm -f conftest*
+    if test "x$smart_include" != "x"; then
+      break;
+    fi
+  done
+  CFLAGS="$old_CFLAGS"
+fi
+
+if test "x$smart_include" = "x"; then
   cat > conftest.$ac_ext <<EOF
-#line 945 "configure"
+#line 975 "configure"
 #include "confdefs.h"
 
 		  #include <Python.h>
@@ -949,7 +979,7 @@ int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:953: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:983: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   smart_include=" "
 else
@@ -959,9 +989,10 @@ else
   smart_include=
 fi
 rm -f conftest*
+fi
 
-  if test "x$smart_include" = "x"; then
-    
+if test "x$smart_include" = "x"; then
+  
 
 if test "x$LOCATE" != "x"; then
         DIRS=
@@ -989,19 +1020,18 @@ fi
 eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
 
 
-    for try in $smart_try_dir $smart_include_dir /usr/local/include/ /opt/include; do
-      CFLAGS="$old_CFLAGS -I$try"
-
-      cat > conftest.$ac_ext <<EOF
-#line 997 "configure"
+  for try in $smart_include_dir /usr/local/include /opt/include; do
+    CFLAGS="$old_CFLAGS -I$try"
+    cat > conftest.$ac_ext <<EOF
+#line 1027 "configure"
 #include "confdefs.h"
 
-		       #include <Python.h>
+		    #include <Python.h>
 int main() {
  int a = 1;
 ; return 0; }
 EOF
-if { (eval echo configure:1005: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+if { (eval echo configure:1035: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
   rm -rf conftest*
   smart_include="-I$try"
 else
@@ -1011,21 +1041,20 @@ else
   smart_include=
 fi
 rm -f conftest*
+    if test "x$smart_include" != "x"; then
+      break;
+    fi
+  done
+  CFLAGS="$old_CFLAGS"
+fi
 
-      if test "x$smart_include" != "x"; then
-        break;
-      fi
-    done
-    CFLAGS="$old_CFLAGS"
-  fi
-
-        if test "x$smart_include" != "x"; then
-    echo "$ac_t""yes" 1>&6
-    eval "ac_cv_header_$ac_safe=yes"
-    CFLAGS="$old_CFLAGS $smart_include"
-    SMART_CFLAGS="$SMART_CFLAGS $smart_include"
-  else
-    echo "$ac_t""no" 1>&6 
+if test "x$smart_include" != "x"; then
+  echo "$ac_t""yes" 1>&6
+  eval "ac_cv_header_$ac_safe=yes"
+  CFLAGS="$old_CFLAGS $smart_include"
+  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+else
+  echo "$ac_t""no" 1>&6
 fi
 
 		CFLAGS=$old_CFLAGS
@@ -1045,22 +1074,49 @@ fi
 sm_lib_safe=`echo "python${PY_VERSION}" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "Py_Initialize" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for Py_Initialize in -lpython${PY_VERSION}""... $ac_c" 1>&6
-echo "configure:1049: checking for Py_Initialize in -lpython${PY_VERSION}" >&5
+echo "configure:1078: checking for Py_Initialize in -lpython${PY_VERSION}" >&5
 
+old_LIBS="$LIBS"
 smart_lib=
 smart_lib_dir=
 
-  old_LIBS="$LIBS"
-  LIBS="$LIBS -lpython${PY_VERSION}"
-  cat > conftest.$ac_ext <<EOF
-#line 1057 "configure"
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    LIBS="-L$try -lpython${PY_VERSION} $old_LIBS"
+    cat > conftest.$ac_ext <<EOF
+#line 1088 "configure"
 #include "confdefs.h"
 extern char Py_Initialize();
 int main() {
  Py_Initialize()
 ; return 0; }
 EOF
-if { (eval echo configure:1064: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1095: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+  rm -rf conftest*
+  smart_lib="-L$try -lpython${PY_VERSION}"
+else
+  echo "configure: failed program was:" >&5
+  cat conftest.$ac_ext >&5
+fi
+rm -f conftest*
+    if test "x$smart_lib" != "x"; then
+      break;
+    fi
+  done
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+  LIBS="-lpython${PY_VERSION} $old_LIBS"
+  cat > conftest.$ac_ext <<EOF
+#line 1113 "configure"
+#include "confdefs.h"
+extern char Py_Initialize();
+int main() {
+ Py_Initialize()
+; return 0; }
+EOF
+if { (eval echo configure:1120: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-lpython${PY_VERSION}"
 else
@@ -1068,9 +1124,11 @@ else
   cat conftest.$ac_ext >&5
 fi
 rm -f conftest*
+  LIBS="$old_LIBS"
+fi
 
-  if test "x$smart_lib" = "x"; then
-    
+if test "x$smart_lib" = "x"; then
+  
 
 if test "x$LOCATE" != "x"; then
         DIRS=
@@ -1097,7 +1155,7 @@ fi
 
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
-    
+  
 
 if test "x$LOCATE" != "x"; then
         DIRS=
@@ -1125,18 +1183,17 @@ fi
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
-    for try in $smart_try_dir $smart_lib_dir /usr/local/lib/ /opt/lib; do
-      LIBS="$old_LIBS -L$try -lpython${PY_VERSION}"
-
-      cat > conftest.$ac_ext <<EOF
-#line 1133 "configure"
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+    LIBS="-L$try -lpython${PY_VERSION} $old_LIBS"
+    cat > conftest.$ac_ext <<EOF
+#line 1190 "configure"
 #include "confdefs.h"
 extern char Py_Initialize();
 int main() {
  Py_Initialize()
 ; return 0; }
 EOF
-if { (eval echo configure:1140: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:1197: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   smart_lib="-L$try -lpython${PY_VERSION}"
 else
@@ -1144,20 +1201,20 @@ else
   cat conftest.$ac_ext >&5
 fi
 rm -f conftest*
-      if test "x$smart_lib" != "x"; then
-        break;
-      fi
-    done
-    LIBS="$old_LIBS"
-  fi
+    if test "x$smart_lib" != "x"; then
+      break;
+    fi
+  done
+  LIBS="$old_LIBS"
+fi
 
-        if test "x$smart_lib" != "x"; then
-    echo "$ac_t""yes" 1>&6
-    eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-    LIBS="$old_LIBS $smart_lib"
-    SMART_LIBS="$SMART_LIBS $smart_lib"
-  else
-    echo "$ac_t""no" 1>&6 
+if test "x$smart_lib" != "x"; then
+  echo "$ac_t""yes" 1>&6
+  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+  LIBS="$smart_lib $old_LIBS"
+  SMART_LIBS="$smart_lib $SMART_LIBS"
+else
+  echo "$ac_t""no" 1>&6
 fi
 
 		LIBS=$old_LIBS
