@@ -434,8 +434,8 @@ if test "x$smart_try_dir" != "x"; then
     if test "x$smart_lib" != "x"; then
       break;
     fi
-    LIBS="$old_LIBS"
   done
+  LIBS="$old_LIBS"
 fi
 
 dnl #
@@ -464,8 +464,8 @@ if test "x$smart_lib" = "x"; then
     if test "x$smart_lib" != "x"; then
       break;
     fi
-    LIBS="$old_LIBS"
   done
+  LIBS="$old_LIBS"
 fi
 
 dnl #
@@ -511,8 +511,8 @@ if test "x$smart_try_dir" != "x"; then
     if test "x$smart_include" != "x"; then
       break;
     fi
-    CFLAGS="$old_CFLAGS"
   done
+  CFLAGS="$old_CFLAGS"
 fi
 
 dnl #
@@ -542,8 +542,8 @@ if test "x$smart_include" = "x"; then
     if test "x$smart_include" != "x"; then
       break;
     fi
-    CFLAGS="$old_CFLAGS"
   done
+  CFLAGS="$old_CFLAGS"
 fi
 
 dnl #
