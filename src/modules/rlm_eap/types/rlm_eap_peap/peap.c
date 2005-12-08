@@ -393,7 +393,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		fake->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 		DEBUG2("  PEAP: Passing reply back for EAP-MS-CHAP-V2 %p %d",
 		       fake, fake->reply->code);
-		rcode = module_post_proxy(fake);
+		rcode = module_post_proxy(0, fake);
 
 		/*
 		 *	FIXME: If rcode returns fail, do something

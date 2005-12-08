@@ -53,6 +53,8 @@ static const char rcsid[] = "$Id$";
 int proxy_receive(REQUEST *request)
 {
         int rcode;
+	int post_proxy_type = 0;
+	VALUE_PAIR *vp;
 
         /*
          *	Delete any reply we had accumulated until now.
@@ -63,7 +65,12 @@ int proxy_receive(REQUEST *request)
 	 *	Run the packet through the post-proxy stage,
 	 *	BEFORE playing games with the attributes.
 	 */
-        rcode = module_post_proxy(request);
+	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE);
+	if (vp) {
+		DEBUG2("  Found Post-Proxy-Type %s", vp->strvalue);
+		post_proxy_type = vp->lvalue;
+	}
+	rcode = module_post_proxy(post_proxy_type, request);
 
         /*
          *	Delete the Proxy-State Attributes from the reply.
@@ -80,9 +87,8 @@ int proxy_receive(REQUEST *request)
         request->proxy_reply->vps = NULL;
 
         /*
-         *	Free any other configuration items and proxy pairs
+	 *	Free proxy request pairs.
          */
-        pairfree(&request->config_items);
         pairfree(&request->proxy->vps);
 
         return rcode;
@@ -118,9 +124,11 @@ static void proxy_addinfo(REQUEST *request)
 static REALM *proxy_realm_ldb(REQUEST *request, const char *realm_name,
 			      int accounting)
 {
+	int		redone = 0;
 	REALM		*cl, *lb;
 	uint32_t	count;
 
+ redo:
 	lb = NULL;
 	count = 0;
 	for (cl = mainconfig.realms; cl; cl = cl->next) {
@@ -192,6 +200,25 @@ static REALM *proxy_realm_ldb(REQUEST *request, const char *realm_name,
 	} /* loop over the realms */
 
 	/*
+	 *	All are dead, see if we have to wake
+	 */
+	if (!redone && !lb && mainconfig.wake_all_if_all_dead) {
+		for (cl = mainconfig.realms; cl; cl = cl->next) {
+			if(strcasecmp(cl->realm,realm_name) == 0) {
+				if (!accounting && !cl->active) {
+					cl->active = TRUE;
+				}
+				else if (accounting &&
+					 !cl->acct_active) {
+					cl->acct_active = TRUE;
+				}
+			}
+		}
+		redone = 1;
+		goto redo;
+	}
+
+	/*
 	 *	Return the load-balanced realm.
 	 */
 	return lb;
@@ -208,6 +235,7 @@ static REALM *proxy_realm_ldb(REQUEST *request, const char *realm_name,
 int proxy_send(REQUEST *request)
 {
 	int rcode;
+	int pre_proxy_type = 0;
 	VALUE_PAIR *realmpair;
 	VALUE_PAIR *strippedname;
 	VALUE_PAIR *delaypair;
@@ -351,7 +379,8 @@ int proxy_send(REQUEST *request)
 	 *	Doing it here catches the case of proxied tunneled
 	 *	requests.
 	 */
-	if ((strippedname = pairfind(request->proxy->vps, PW_STRIPPED_USER_NAME)) != NULL) {
+	if (realm->striprealm == TRUE &&
+	   (strippedname = pairfind(request->proxy->vps, PW_STRIPPED_USER_NAME)) != NULL) {
 		/*
 		 *	If there's a Stripped-User-Name attribute in
 		 *	the request, then use THAT as the User-Name
@@ -432,7 +461,12 @@ int proxy_send(REQUEST *request)
 	/*
 	 *  Do pre-proxying
 	 */
-	rcode = module_pre_proxy(request);
+	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE);
+	if (vp) {
+		DEBUG2("  Found Pre-Proxy-Type %s", vp->strvalue);
+		pre_proxy_type = vp->lvalue;
+	}
+	rcode = module_pre_proxy(pre_proxy_type, request);
 
 	/*
 	 *	Do NOT free request->proxy->vps, the pairs are needed

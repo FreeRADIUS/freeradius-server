@@ -498,6 +498,10 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp,
 		dval = dict_valbyname(PW_ACCT_TYPE, cf_section_name2(cs));
 	} else if (comp == RLM_COMPONENT_SESS) {
 		dval = dict_valbyname(PW_SESSION_TYPE, cf_section_name2(cs));
+	} else if (comp == RLM_COMPONENT_PRE_PROXY) {
+		dval = dict_valbyname(PW_PRE_PROXY_TYPE, cf_section_name2(cs));
+	} else if (comp == RLM_COMPONENT_POST_PROXY) {
+		dval = dict_valbyname(PW_POST_PROXY_TYPE, cf_section_name2(cs));
 	} else if (comp == RLM_COMPONENT_POST_AUTH) {
 		dval = dict_valbyname(PW_POST_AUTH_TYPE, cf_section_name2(cs));
 	}
@@ -939,17 +943,17 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
 /*
  *	Do pre-proxying for ALL configured sessions
  */
-int module_pre_proxy(REQUEST *request)
+int module_pre_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_PRE_PROXY, 0, request);
+	return indexed_modcall(RLM_COMPONENT_PRE_PROXY, type, request);
 }
 
 /*
  *	Do post-proxying for ALL configured sessions
  */
-int module_post_proxy(REQUEST *request)
+int module_post_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_POST_PROXY, 0, request);
+	return indexed_modcall(RLM_COMPONENT_POST_PROXY, type, request);
 }
 
 /*
