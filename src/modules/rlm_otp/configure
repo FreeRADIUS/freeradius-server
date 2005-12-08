@@ -838,6 +838,13 @@ if test -n "$ac_init_help"; then
 
   cat <<\_ACEOF
 
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-rlm-otp-lib-dir directory for otp libs
+  --with-rlm-otp-include-dir directory for otp includes
+  --with-openssl-includes=DIR       Directory to look for OpenSSL include files
+
 Some influential environment variables:
   CC          C compiler command
   CFLAGS      C compiler flags
@@ -2857,9 +2864,30 @@ fi
 
 
 
-	if test "x$OPENSSL_LIBS" = "x"; then
-		fail="$fail OpenSSL"
-	fi
+
+# Check whether --with-rlm-otp-lib-dir or --without-rlm-otp-lib-dir was given.
+if test "${with_rlm_otp_lib_dir+set}" = set; then
+  withval="$with_rlm_otp_lib_dir"
+  otp_ldflags="$otp_ldflags -L$withval"
+fi;
+
+# Check whether --with-rlm-otp-include-dir or --without-rlm-otp-include-dir was given.
+if test "${with_rlm_otp_include_dir+set}" = set; then
+  withval="$with_rlm_otp_include_dir"
+  otp_cflags="$otp_cflags -I$withval"
+fi;
+
+
+# Check whether --with-openssl-includes or --without-openssl-includes was given.
+if test "${with_openssl_includes+set}" = set; then
+  withval="$with_openssl_includes"
+   case "$withval" in
+	    *)
+		SMART_CFLAGS="$SMART_CFLAGS -I$withval"
+		;;
+	  esac
+
+fi;
 
 	targetname=rlm_otp     # keep this!  Don't change!
 else

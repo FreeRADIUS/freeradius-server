@@ -15,9 +15,25 @@ if test x$with_[]modname != xno; then
 		[ fail="$fail inttypes.h" ]
 	)
 
-	if test "x$OPENSSL_LIBS" = "x"; then
-		fail="$fail OpenSSL"
-	fi
+	dnl mostly for openssl
+	AC_ARG_WITH(rlm-otp-lib-dir,
+		    [  --with-rlm-otp-lib-dir directory for otp libs],
+		    otp_ldflags="$otp_ldflags -L$withval")
+	AC_ARG_WITH(rlm-otp-include-dir,
+		    [  --with-rlm-otp-include-dir directory for otp includes],
+		    otp_cflags="$otp_cflags -I$withval")
+
+	dnl #
+	dnl # extra argument: --openssl-includes=dir
+	dnl #
+	AC_ARG_WITH(openssl-includes,
+	[  --with-openssl-includes=DIR       Directory to look for OpenSSL include files],
+	[ case "$withval" in
+	    *)
+		SMART_CFLAGS="$SMART_CFLAGS -I$withval"
+		;;
+	  esac ]
+	)
 
 	targetname=modname     # keep this!  Don't change!
 else

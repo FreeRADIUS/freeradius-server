@@ -49,7 +49,7 @@
 
 #include "otp.h"
 #ifdef FREERADIUS
-#include <freeradius-devel/modules.h>
+#include <modules.h>
 #endif
 
 static const char rcsid[] = "$Id$";
@@ -320,7 +320,7 @@ otp_authorize(void *instance, REQUEST *request)
     auth_type_found = 0;
     if ((vp = pairfind(request->config_items, PW_AUTHTYPE)) != NULL) {
       auth_type_found = 1;
-      if (strcmp(vp->vp_strvalue, inst->name))
+      if (strcmp(vp->strvalue, inst->name))
         return RLM_MODULE_NOOP;
     }
   }
@@ -465,7 +465,7 @@ otp_authenticate(void *instance, REQUEST *request)
             log_prefix, __func__);
     return RLM_MODULE_INVALID;
   }
-  username = request->username->vp_strvalue;
+  username = request->username->strvalue;
 
   if ((data.pwattr = otp_pwe_present(request, log_prefix)) == 0) {
     otp_log(OTP_LOG_AUTH, "%s: %s: Attribute \"User-Password\" "
@@ -502,16 +502,16 @@ otp_authenticate(void *instance, REQUEST *request)
 
       if (inst->allow_async) {
         /* Verify the state. */
-        (void) memcpy(challenge, vp->vp_strvalue, inst->chal_len);
-        (void) memcpy(&sflags, vp->vp_strvalue + inst->chal_len, 4);
-        (void) memcpy(&then, vp->vp_strvalue + inst->chal_len + 4, 4);
+        (void) memcpy(challenge, vp->strvalue, inst->chal_len);
+        (void) memcpy(&sflags, vp->strvalue + inst->chal_len, 4);
+        (void) memcpy(&then, vp->strvalue + inst->chal_len + 4, 4);
         if (otp_gen_state(NULL, &state, challenge, inst->chal_len,
                           sflags, then, hmac_key) != 0) {
           otp_log(OTP_LOG_ERR, "%s: %s: failed to generate state",
                   log_prefix, __func__);
           return RLM_MODULE_FAIL;
         }
-        if (memcmp(state, vp->vp_strvalue, vp->length)) {
+        if (memcmp(state, vp->strvalue, vp->length)) {
           otp_log(OTP_LOG_AUTH, "%s: %s: bad state for [%s]: hmac",
                   log_prefix, __func__, username);
           free(state);
@@ -575,11 +575,10 @@ otp_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_otp = {
-  RLM_MODULE_INIT,
   "otp",
   RLM_TYPE_THREAD_SAFE,		/* type */
+  NULL,				/* initialization */
   otp_instantiate,		/* instantiation */
-  otp_detach,			/* detach */
   {
     otp_authenticate,		/* authentication */
     otp_authorize,		/* authorization */
@@ -590,4 +589,6 @@ module_t rlm_otp = {
     NULL,			/* post-proxy */
     NULL			/* post-auth */
   },
+  otp_detach,			/* detach */
+  NULL,				/* destroy */
 };
