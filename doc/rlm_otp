@@ -1,0 +1,454 @@
+0.  INTRODUCTION
+
+    This is the combined README for pam_otp_auth, a PAM module, and
+    rlm_otp, a FreeRADIUS module.  See the COPYRIGHT file, included with
+    this distribution, for copyright and redistribution information.
+    If you have questions not answered in this doc, please contact
+    Frank Cusack, <fcusack@fcusack.com>.  Please send bug reports to
+    the same address.
+
+    FreeRADIUS is available at <http://www.freeradius.org/>.  The PAM
+    module is available at <http://www.fcusack.com/>.
+
+    In addition to this module, you need the state manager software.
+    The state manager primarily handles global (across all of your
+    authentication servers) state associated with synchronous mode
+    tokens (see section 4).  It also handles other bookkeeping data
+    used to prevent passcode guessing attacks.  The state manager
+    is available from <http://www.fcusack.com/>.
+
+
+1.  SUPPORTED TOKENS
+
+    Tokens that use ANSI X9.9 or HOTP (these two cover all tokens made
+    today, except for RSA Securid) can theoretically be authenticated
+    via this module.  In practice, however, only the TRI-D Systems and
+    PassGo/Axent "Defender Handheld" tokens are functional, and due to
+    the weakness of X9.9 (see next section) use of the Defender token
+    should, in a just world, cause you to lose your job.
+
+    Various CRYPTOCard tokens are fully supported, but with the problem
+    that you need to either reverse engineer the token programming
+    protocol, or reverse engineer the keystore encryption.  Both of
+    these are quite possible; I've done it myself and have done a very
+    large CRYPTOCard deployment at my former employer.  However, don't
+    ask me for help with this, your message will simply be trashed.
+
+    ActivCard can theoretically be supported, however you'll need to
+    purchase their dev kit ($$$) due to patents they hold on their
+    specific X9.9 implementation.  For exorbitant fees, I can write the
+    code for you.  Note that you may not redistribute any such code,
+    again due to patent issues.
+
+    Other vendors' tokens are also theoretically supported, with the
+    additional problem that you'll need to reverse engineer their
+    synchronous challenge generation algorithm.  Again, I can help you
+    with this for an exorbitant fee.
+
+    I *strongly* discourage the use of "soft tokens" or PDA tokens.
+    These are easily compromisable, since the key is insufficiently
+    protected.
+
+    Throughout the remainder of this document, wherever applicable I
+    point out differences in the two main tokens supported, TRI-D and
+    CRYPTOCard.
+
+
+2.  STRONG WARNING SECTION
+
+    ANSI X9.9 has been withdrawn as a standard, due to the weakness
+    of DES.  An attacker can learn the token's secret by observing
+    two challenge/response pairs.  See ANSI document X9 TG-24-1999,
+    <http://www.x9.org/docs/TG24_1999.pdf>.
+
+    For X9.9 tokens, the obvious fix is to not issue a challenge; the
+    attacker will not have access to the plaintext.  This is possible
+    since most X9.9 tokens support a synchronous mode; the only exception
+    I know of is the PassGo/Axent Defender Handheld.
+
+    The default configuration of this module effectively disables pure
+    challenge/response (hereafter: async) mode, for this reason.
+
+    In practice, async mode authentication is a poor user experience and
+    is exceedingly rare.  No new token deployments should use async mode.
+
+    Does your token use X9.9?  Ask your vendor.  (Don't ask if they use
+    X9.9, ask what response generation method they use.  If they won't
+    give you an answer, email me and I'll tell you what they use.  Then
+    make sure you don't do business with them.)
+
+    CRYPTOCard uses X9.9; TRI-D uses HOTP.
+
+
+3.  INSTALLATION
+
+    You'll need to have DES and SHA-1 libraries in order to build and
+    use this module.  Currently, only OpenSSL is supported.
+
+    You will also need /dev/urandom available.  This is available on all
+    Linux, *BSD and Solaris 9+.  For Solaris 8, you'll need to install
+    patch 112438-01 (sparc) or 112439-01 (x86).  Information for other
+    OS's is welcome.
+
+    You'll also need to write a site-specific challenge transform in
+    order to use async mode.  For CRYPTOCard, you might need async mode to
+    sync the user's token with the server initially.  More on this below.
+    For TRI-D, async mode is not supported.
+
+
+4.  TOKEN OPERATION
+
+    In the very old days, the server would present a challenge to the
+    user, which the user would then enter into their token, and give the
+    server the response.  We call this async mode.  This is "klunky"
+    by modern standards of usability, and for X9.9 tokens is actually
+    unsafe given that DES is so weak.  As noted above, CRYPTOCard supports
+    async mode; TRI-D does not.
+
+    Luckily, most tokens support a synchronous mode which lets the user
+    skip the part where they enter the challenge.  In this mode, the
+    token and the server generate a "next challenge" which is derived
+    from an event and/or time counter and is implicit.  Besides offering
+    better security, this mode also has the advantage of giving a much
+    better user experience.  Both the TRI-D and CRYPTOCard tokens have a
+    synchronous mode.
+
+    For some tokens, the token can display the synchronous challenge.
+    The idea here is that the server would still present a challenge
+    to the user, but the user wouldn't have to enter it--they'd just
+    have to verify it matches.  Then they can safely just press some
+    function key to obtain the response.  From a security perspective,
+    this is no better than pure async mode, since an attacker can still
+    observe the plaintext/ciphertext pair.
+
+    So when operating in this mixed async-sync mode, instead of presenting
+    the synchronous challenge, the server ALWAYS displays a random
+    challenge.  Instead of verifying that the challenge matches the token
+    display, the user should just skip past the token challenge display
+    to obtain the response.  This might be confusing; you will need to
+    train users.  Even with training, they will forget.  Be warned!
+    This mixed mode is useless and stupid.  If you can disable token
+    support for this, do so.
+
+    For other tokens, the token does not display the synchronous
+    challenge--only the response is displayed.  This is a bit easier on
+    the user; they won't be confused as to which number to enter for the
+    response.  I can't recommend this mode highly enough.  With tokens
+    like this, you should configure the server to likewise not present
+    a challenge (this is the default).  This appears to the user to be
+    close to a normal password authentication.
+
+    Older CRYPTOCard tokens only supported the mixed async-sync mode.
+    Newer ones support both sync modes.  TRI-D supports only the "pure"
+    sync mode.
+
+    It's worth repeating that async mode is vastly inferior to either
+    sync mode, and the mixed async-sync mode is vastly inferior to the
+    pure sync mode.  In addition to the shielding of the plaintext,
+    and ease of use, another advantage of sync mode is that it supports
+    authentication methods where a challenge cannot be presented to the
+    user, e.g. PPTP without EAP.
+
+    In sync mode, there are two ways to generate the implied challenge;
+    either event or time based.  "Events" are token operations--each
+    time the token is activated an event counter advances.
+
+    CRYPTOCard is event synchronous; TRI-D is both time and event
+    synchronous.
+
+    Event synchronous tokens have the problem that if users play with
+    the token as a toy (say, to generate winning lottery numbers),
+    the server has no way to know this and so it has a different idea
+    of the counter value.  Since there are typically only 1-10 million
+    passcodes (6-7 digit decimal display), the server cannot simply test
+    "many" passcodes in an attempt to discover the event counter value,
+    because a guessing attack is trivial with such a small response space.
+    Our solution for this is noted in section 6, below.
+
+    Time synchronous tokens solve this problem quite nicely by eliminating
+    the user from the equation.  As PEBKAC is generally the worst kind
+    of problem, and most difficult to solve, this is clearly better than
+    event synchronous.  However, it is not without its own problems.
+    First, a real time clock must be on the token, which today is not
+    a technical hurdle, but it is an added expense.  To keep costs low,
+    the clock on the token keeps poor time, so the server has to track
+    drift.  Also, the token is typically exposed to adverse environmental
+    conditions, which (especially in such a small and necessarily cheap
+    package) affects the clock and so the drift is not constant.
+
+    But even varying clock drift is not especially difficult to handle on
+    the server.  A worse problem is that the timer interval (normally one
+    minute) also limits login rate.  Even "normal" users commonly want
+    to login more frequently than this.  Making users wait one minute to
+    login again is practically forever.  TRI-D addresses this with the
+    activation button on the token.  Each time it is pressed an event
+    counter is combined with the time counter to generate a new passcode.
+    The event counter is reset whenever the time counter advances.
+
+
+5.  SITE-SPECIFIC CHALLENGE TRANSFORM
+
+    Since the normal mode of operation will be sync mode, we really only
+    have async mode support for "last resort" user resync of the event
+    counter.  (For "normal" resync see the rwindow description
+    in section 6.)
+
+    Note that only some tokens support "user" sync/resync.  For others,
+    admin intervention is required for resync.  CRYPTOCard supports
+    this; TRI-D does not (since it is time-based, there is no resync).
+
+    Since pure challenge/response with X9.9 is unsafe, I came up with the
+    concept of the "site-specific challenge transform".  For the user,
+    this means that instead of entering the challenge as presented to
+    them, they enter something based on the challenge.  For example,
+    a simple transform would be to enter the challenge backwards; if
+    the server presents "123456" the user enters "654321".  This has
+    the effect that an observer does not have access to the plaintext.
+
+    This is security through obscurity, and is not really "safe", but
+    for an outsider it may present at least some barrier.  Even though
+    it presents no advantage in the face of a determined attacker,
+    I recommend using it.  It may stop a more opportunistic attacker
+    and isn't difficult to use.
+
+    The server logs each time a user authenticates via async mode,
+    so I recommend a log scanner which alerts you to this.  You should
+    reprogram tokens when the user authenticates via async mode.
+
+    otp_site.c implements the site-specific challenge transform.
+    The default transform is to replace the challenge with the text
+    "DISABLED".  This effectively disables async mode (the user will
+    not be able to enter this into their token).
+
+    DO NOT use the transform suggested above, reversing the challenge.
+    That is now exceptionally weak.  An example of a possibly strong
+    transform is to have the user enter the square of the challenge.
+    The VASCO DigiPass 500 is also a [regular] calculator, so this could
+    be a good one if you use that token.  Well, there's no support
+    for that token, and now that I've mentioned it, it is another
+    exceptionally weak transform, but you get the idea.
+
+    Note that older CRYPTOCard RB-1 tokens support arbitrarily
+    long challenge strings.  You should take advantage of this when
+    implementing your transform.  You will still have to stay under
+    MAX_CHALLENGE_LEN digits.  (This is why MAX_CHALLENGE_LEN is set to 32
+    even though the displayed challenge would generally be much smaller.)
+
+    If you do not believe applying a transform gives any advantage, you
+    can just comment out the single line of code there.  This actually
+    may have some benefit, since your users don't need to be trained.
+    I can guarantee your most annoying user will complain when they
+    can't remember what they really are supposed to enter into the token.
+    Also, this can be safe if you diligently reprogram tokens when async
+    mode has been used.  You might automatically disable a token after
+    two async authentications.
+
+
+6.  CONFIGURATION
+
+    Most of the configuration is documented fairly well in the sample
+    otp.conf file (FreeRADIUS) or man page (PAM).  I will only discuss
+    a few options here.
+
+    softfail/hardfail:
+        After hardfail consecutive failed login attempts, the user's
+        token is disabled.  Because this allows a trivial DoS attack,
+        the default value is 0, and instead we recommend using softfail.
+
+        After softfail consecutive failed login attempts, the user is put
+        into "delay mode", where they are unable to login for a delay which
+        increases for each failed attempt.
+
+        It is critically important to have these options since the
+        passcode (response) space is so small.  Without a delay/lockout,
+        it would be trivially easy for an attacker to just try every
+        possible passcode.  With the default softfail setting of 5, an
+        attacker could try, at most, ~50 passcodes/day.  No indication
+        is given to the user that they are in delay mode (except that
+        a valid passcode doesn't work), further thwarting an attacker,
+        albeit at some small cost to the legitimate user.
+
+    prepend_pin:
+        Some tokens have what we call a "hard PIN"; users enter a PIN into
+        the token to activate it.  This has the advantage that only the
+        user knows the PIN, and that it is only entered into a secure
+        device, however, it has [token] UI challenges.
+
+        For usability reasons, other tokens have a constantly active
+        display and the user enters a "soft PIN" as part of the passcode.
+        This has the advantage of a better UI, but has the disadvantages
+        that the PIN is susceptible to capture, which can reduce the
+        token to a single factor device; and that the server admins know
+        the PIN.  (Note that it doesn't matter for hard PIN devices that
+        admins don't know the PIN, since they know the token secret;
+        the loss incurred by admin exposure is not for security of the
+        device, but compromise of personal information.)
+
+        The prepend_pin setting toggles whether the user must prepend or
+        append the soft PIN; the default is to prepend.  Note that hard
+        PIN devices can utilize a soft PIN as well.
+
+        CRYPTOCard supports a hard PIN; the biometric input on the TRI-D
+        3-factor card can is roughly equivalent to a hard PIN.
+
+    ewindow_size: (event window)
+        For event-synchronous-only tokens (CRYPTOCard), this is how far
+        out of [event] sync the server can get with the token.  The value
+        is how far the user can be ahead of the server--essentially
+        how many times the user can play with the token.  You'll want
+        to set this to at least 1 or 2, in case the user mistypes the
+        response and the token turns off before he is able to try again.
+        A more reasonable value is 5.
+
+        For event+time synchronous tokens (TRI-D), this value has no
+        meaning; the server determines how many events to test based on
+        card capabilities.
+
+        This value is ignored for time-synchronous-only tokens.
+
+        Note that there is no analogous twindow_size setting; for
+        time synchronous (event+time or time only) tokens, the server
+        determines how far forward or backward to look based on card
+        characteristics.
+
+    rwindow_size/rwindow_delay: (resync window)
+        This is similar to ewindow_size.  For event-synchronous-only
+        tokens (CRYPTOCard), when the user goes into delay mode (>softfail
+        consecutive incorrect passcodes), this extends the allowable
+        event window, but requires the user to enter TWO consecutive sync
+        responses corrrectly, within rwindow_delay seconds.  The upside
+        of having to enter 2 passcodes is that the delay is overridden.
+
+        In practice, users that do have problems with the allowable
+        event window (and those users tend to have them consistently)
+        get into long lockout delays and since no indication is given
+        to the user about this state, they need a way to get past it
+        without calling the helpdesk.
+
+        For example, say softfail=1, ewindow_size=2 and rwindow_size=8
+        (ignore rwindow_delay).  The server's state is such that the
+        next 8 responses are 1, 2, ..., 8.  The user, however, has played
+        with the token and the response showing is '3', which he enters
+        as the passcode.
+
+        This is ahead of ewindow_size, so the server refuses him,
+        and places the user into delay mode, since softfail is only 1.
+        Note that even though this response is within rwindow_size events,
+        it is not recorded as such because when checking the passcode,
+        the user was /not yet/ in delay mode and so only ewindow_size
+        events were considered.  /AFTER/ testing the passcode, the user
+        is /THEN/ placed into delay mode.
+
+        The user tries again immediately, using '3' again.  Since the
+        user /is now/ in delay mode, the server would normally refuse
+        him (remember, we said he tried again "immediately").  Even if
+        the user weren't in delay mode (say, softfail is larger), the
+        server would still refuse him because he is too far ahead of
+        the normal ewindow_size window.
+
+        But since he is in delay mode, and rwindow_size is non-zero,
+        instead of simply rejecting responses beyond ewindow_size
+        events, the server looks ahead up to rwindow_size (8 in this
+        case) events.  It sees that '3' is within rwindow_size events,
+        records that the user gave a correct sync response at position 3,
+        and returns failure.
+
+        Now the user tries again immediately, this time using the next
+        response of '4'.  Again, normally this would be refused since
+        the user is in delay mode.  But because rwindow_size is set,
+        the server sees that '4' is within the rwindow_size window,
+        and that the user's previous response ('3') matches the previous
+        response in the window, so the user is authenticated and returned
+        to normal mode.
+
+        Note that the user actually entered 3,3,4 and although the user
+        entered 3 correct passcodes, only the last 2 were consecutive so
+        this seems to match the description of this feature.  However,
+        if the user had entered 3,4,5 he still would have had to enter
+        3 passcodes!  Review the example to understand why.
+
+        In practice, users generally enter a lot of bad passcodes to get
+        into softfail and then finally see what they're doing wrong and
+        so they do only enter 2 correct passcodes, ie if they are even
+        aware of this feature they don't get confused about why they
+        had to enter the '5' part of 3,4,5.
+
+        It is recommended that you tell users to /always/ advance to
+        the next passcode on error, and that they should always try at
+        least 3 (or 4) consecutive entries before calling the helpdesk.
+
+        The Windows VPN password error dialog is confusing and is a
+        major source of duplicate entries, which add an extra passcode
+        entry to rwindow mode.  Another significant source of passcode
+        errors is PC laptop users that have a docking station with
+        keyboard.  Windows keeps the numlock setting when undocking,
+        and my experience is that one of the first things that folks do
+        after undocking is to VPN in.  The '0' key on the number row
+        is a '.' instead of a '0' when numlock is on.  And since the
+        Windows VPN dialog can't know that it's safe to display the
+        passcode, the user can't tell that he's misentering zeroes.
+        This encourages getting out of sync.  Ouch.
+
+        For time synchronous tokens (event+time or time only), the
+        rwindow_size value has no meaning as there is no event counter
+        to lose track of.  (Clock drift affecting the time counter is
+        tracked by the server.)
+
+        However, the rwindow_delay value does have meaning.  If a user
+        goes into softfail (maybe by repeatedly trying their longterm
+        password or by a password guessing attack), they can still get
+        out of delay mode by entering two consecutive passcodes within
+        rwindow_delay seconds.
+
+        Also, for TRI-D tokens, rwindow_delay has an additional meaning.
+        You'll need to read the state manager documentation to understand
+        this, but the TRI-D token supports "null state" meaning that
+        the admin does not have to (and in fact must not) manually
+        initialize state when issuing a token.  State is automatically
+        initialized when a user first authenticates, however, the user
+        must authenticate twice, which uses the softfail mechanism and
+        thus depends on rwindow_delay.  It's not quite softfail because
+        the user cannot simply wait for the delay period to expire and
+        then authenticate only once.
+
+
+7.  FILES
+
+    /etc/otppasswd, a file similar to /etc/passwd, contains usernames
+    and keys.  See the sample otppasswd file.
+
+
+8.  LOG MESSAGES
+
+    All errors begin with "rlm_otp" (FreeRADIUS) or "pam_otp_auth"
+    (PAM).  Only errors are logged, there are no "success" log messages
+    (besides FreeRADIUS/PAM standard messages).  You will want to scan
+    for errors automatically or periodically.
+
+    "bad state" messages (FreeRADIUS) indicate a problem with the State
+    attribute, which the server uses to track async challenges.  They are
+    all of the form "bad state for [%s]: <problem>", where <problem>
+    is one of:
+
+    length:  The length is not as expected.  Could be an attempted attack,
+             but more likely a network blip.
+    hmac:    The state is protected by a cryptographic hash which was not
+             able to be verified.  This could be because you just HUP'd
+             the server.
+    expired: The state is older than maxdelay seconds.  If you get a lot
+             of these you may wish to increase the value.
+
+    Another set of messages you'll want to lookout for is "valid but in
+    hardfail" and "valid but in softfail", which indicate a user that is
+    locked out due to exceeding hardfail or softfail failures.
+
+    Also, look for "[%s] authenticated in async mode" which indicates
+    a user with a sync mode card that used async authentication.  You
+    may wish to reprogram these users' cards.
+
+
+9.  BUGS
+
+    Send bug reports or any other questions to Frank Cusack,
+    <fcusack@fcusack.com>.
+

@@ -18,6 +18,7 @@ FreeRADIUS 1.1.0 ; $Date$, urgency=low
 	  spotted by Konstantin Kubatkin.
 	* Removed (for almost all uses) length restrictions on vendor names
 	  and VALUE names.
+	* rlm_x99_token has become rlm_otp (with lots of changes).
 
 FreeRADIUS 1.0.5 ; Date: 2005/09/04 16:23:00, urgency=medium
 	Security Fixes

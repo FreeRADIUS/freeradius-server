@@ -1,0 +1,45 @@
+AC_PREREQ([2.53])
+AC_INIT(otp_rlm.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_otp])
+
+SMART_CFLAGS=
+if test x$with_[]modname != xno; then
+
+	dnl put configuration checks here.  
+	dnl set $fail to what's missing, on fatal errors.
+	dnl use AC_MSG_WARN() on important messages.
+
+	dnl test for almost-c99 compliant compiler
+	AC_CHECK_HEADER(inttypes.h, ,
+		[ fail="$fail inttypes.h" ]
+	)
+
+	if test "x$OPENSSL_LIBS" = "x"; then
+		fail="$fail OpenSSL"
+	fi
+
+	targetname=modname     # keep this!  Don't change!
+else
+	targetname=            # keep this!  Don't change!
+	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+fi
+
+dnl  Don't change this section.
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		targetname=""
+	fi
+fi
+
+otp_cflags="$otp_cflags -DOTP_MODULE_NAME=\\\"modname\\\" $SMART_CFLAGS"
+otp_cflags="$otp_cflags -DFREERADIUS"
+AC_SUBST(otp_cflags)
+AC_SUBST(otp_ldflags)
+
+AC_SUBST(targetname)  # keep this!  Don't change!
+AC_OUTPUT(Makefile)  # keep this!  Don't change!

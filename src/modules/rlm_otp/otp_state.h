@@ -1,5 +1,5 @@
 /*
- * x99_log.c
+ * otp_state.h
  * $Id$
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -16,45 +16,22 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2002  Google, Inc.
+ * Copyright 2005 TRI-D Systems, Inc.
  */
 
-#ifdef FREERADIUS
-#include "radiusd.h"
-#endif
-#include "x99.h"
+#ifndef OTP_STATE_H
+#define OTP_STATE_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <string.h>
-#ifndef FREERADIUS
-#include <syslog.h>
-#endif
+#include "otp.h"
 
-static const char rcsid[] = "$Id$";
+static int otp_state_parse(const char *, size_t, const char *,
+                           otp_user_state_t *, const char *);
+static int otp_state_unparse(char *, size_t, const char *, otp_user_state_t *,
+                             const char *);
+static int xread(lsmd_fd_t *, char *, size_t, const char *);
+static int xwrite(lsmd_fd_t *, const char *, size_t, const char *);
+static int otp_state_connect(const char *, const char *);
+static lsmd_fd_t *otp_state_getfd(const otp_option_t *, const char *);
+static void otp_state_putfd(lsmd_fd_t *, int, const char *);
 
-void
-x99_log(int level, const char *format, ...)
-{
-    va_list ap;
-    char *fmt;
-
-    va_start(ap, format);
-    fmt = malloc(strlen(X99_MODULE_NAME) + strlen(format) + 3);
-    if (!fmt) {
-	va_end(ap);
-	return;
-    }
-    (void) sprintf(fmt, "%s: %s", X99_MODULE_NAME, format);
-
-#ifdef FREERADIUS
-    (void) vradlog(level, fmt, ap);
-#else
-    vsyslog(level, fmt, ap);
-#endif
-
-    va_end(ap);
-    free(fmt);
-}
-
+#endif /* OTP_STATE_H */

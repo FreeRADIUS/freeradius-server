@@ -1,5 +1,5 @@
 /*
- * x99_site.c
+ * otp_log.c
  * $Id$
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -16,37 +16,33 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2001,2002  Google, Inc.
+ * Copyright 2002  Google, Inc.
+ * Copyright 2005 TRI-D Systems, Inc.
  */
 
-/*
- * IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT
- *
- * In order to safely use challenge/response (async) mode, you must
- * - implement a site-specific transform of the challenge, and/or
- * - only allow async mode from secure locations.
- *
- * Note that you cannot easily just disallow async mode completely
- * as you typically must provide a way to resynchronize the token.
- *
- * Please read the accompanying docs for more info.
- *
- * IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT  IMPORTANT
- */
+#include "otp.h"
 
-#include "x99.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
+#ifdef PAM
+#include <syslog.h>
+#endif
 
 static const char rcsid[] = "$Id$";
 
-
-int
-x99_challenge_transform(const char *username,
-			char challenge[MAX_CHALLENGE_LEN + 1])
+void
+otp_log(int level, const char *format, ...)
 {
-    /* ARGSUSED */
+  va_list ap;
+  va_start(ap, format);
 
-    (void) strcpy(challenge, "DISABLED");
-    return 0;
+#ifdef FREERADIUS
+  (void) vradlog(level, format, ap);
+#else
+  vsyslog(level, format, ap);
+#endif
+
+  va_end(ap);
 }
-

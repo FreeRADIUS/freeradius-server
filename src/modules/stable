@@ -17,6 +17,7 @@ rlm_krb5
 rlm_ldap
 rlm_mschap
 rlm_ns_mta_md5
+rlm_otp
 rlm_pam
 rlm_pap
 rlm_passwd
@@ -25,5 +26,4 @@ rlm_radutmp
 rlm_realm
 rlm_sql
 rlm_unix
-rlm_x99_token
 rlm_checkval
