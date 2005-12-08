@@ -4037,51 +4037,75 @@ dnl #######################################################################
 dnl #
 dnl #  Look for a library in a number of places.
 dnl #
+dnl #  AC_SMART_CHECK_LIB(library, function)
+dnl #
 AC_DEFUN(AC_SMART_CHECK_LIB, [
 
 sm_lib_safe=`echo "$1" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "$2" | sed 'y%./+-%__p_%'`
 AC_MSG_CHECKING([for $2 in -l$1])
 
+old_LIBS="$LIBS"
 smart_lib=
 smart_lib_dir=
 
 dnl #
-dnl #  Try to link it first, using the default libs && library paths
+dnl #  Try first any user-specified directory, otherwise we may pick up
+dnl #  the wrong version.
 dnl #
-  old_LIBS="$LIBS"
-  LIBS="$LIBS -l$1"
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    LIBS="-L$try -l$1 $old_LIBS"
+    AC_TRY_LINK([extern char $2();],
+		[ $2()],
+		smart_lib="-L$try -l$1")
+    if test "x$smart_lib" != "x"; then
+      break;
+    fi
+  done
+  LIBS="$old_LIBS"
+fi
+
+dnl #
+dnl #  Try using the default library path.
+dnl #
+if test "x$smart_lib" = "x"; then
+  LIBS="-l$1 $old_LIBS"
   AC_TRY_LINK([extern char $2();],
-              [ $2()],
+	      [ $2()],
 	      smart_lib="-l$1")
+  LIBS="$old_LIBS"
+fi
 
-  if test "x$smart_lib" = "x"; then
-    AC_LOCATE_DIR(smart_lib_dir,[lib$1${libltdl_cv_shlibext}])
-    AC_LOCATE_DIR(smart_lib_dir,[lib$1.a])
+dnl #
+dnl #  Try to guess possible locations.
+dnl #
+if test "x$smart_lib" = "x"; then
+  AC_LOCATE_DIR(smart_lib_dir,[lib$1${libltdl_cv_shlibext}])
+  AC_LOCATE_DIR(smart_lib_dir,[lib$1.a])
 
-    for try in $smart_try_dir $smart_lib_dir /usr/local/lib/ /opt/lib; do
-      LIBS="$old_LIBS -L$try -l$1"
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+    LIBS="-L$try -l$1 $old_LIBS"
+    AC_TRY_LINK([extern char $2();],
+		[ $2()],
+		smart_lib="-L$try -l$1")
+    if test "x$smart_lib" != "x"; then
+      break;
+    fi
+  done
+  LIBS="$old_LIBS"
+fi
 
-      AC_TRY_LINK([extern char $2();],
-                  [ $2()],
-  		  smart_lib="-L$try -l$1")
-      if test "x$smart_lib" != "x"; then
-        break;
-      fi
-    done
-    LIBS="$old_LIBS"
-  fi
-
-  dnl #
-  dnl #  Found it, set the appropriate variable.
-  dnl #
-  if test "x$smart_lib" != "x"; then
-    AC_MSG_RESULT(yes)
-    eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-    LIBS="$old_LIBS $smart_lib"
-    SMART_LIBS="$SMART_LIBS $smart_lib"
-  else
-    AC_MSG_RESULT(no) 
+dnl #
+dnl #  Found it, set the appropriate variable.
+dnl #
+if test "x$smart_lib" != "x"; then
+  AC_MSG_RESULT(yes)
+  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+  LIBS="$smart_lib $old_LIBS"
+  SMART_LIBS="$smart_lib $SMART_LIBS"
+else
+  AC_MSG_RESULT(no)
 fi
 ])
 
@@ -4096,48 +4120,70 @@ AC_DEFUN(AC_SMART_CHECK_INCLUDE, [
 ac_safe=`echo "$1" | sed 'y%./+-%__pm%'`
 AC_MSG_CHECKING([for $1])
 
+old_CFLAGS="$CFLAGS"
 smart_include=
 smart_include_dir=
 
 dnl #
-dnl #  Try to link it first, using the default includes
+dnl #  Try first any user-specified directory, otherwise we may pick up
+dnl #  the wrong version.
 dnl #
-  old_CFLAGS="$CFLAGS"
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    CFLAGS="$old_CFLAGS -I$try"
+    AC_TRY_COMPILE([$2
+		    #include <$1>],
+		   [ int a = 1;],
+		   smart_include="-I$try",
+		   smart_include=)
+    if test "x$smart_include" != "x"; then
+      break;
+    fi
+  done
+  CFLAGS="$old_CFLAGS"
+fi
+
+dnl #
+dnl #  Try using the default includes
+dnl #
+if test "x$smart_include" = "x"; then
   AC_TRY_COMPILE([$2
 		  #include <$1>],
-                 [ int a = 1;],
-                 smart_include=" ",
-                 smart_include=)
+		 [ int a = 1;],
+		 smart_include=" ",
+		 smart_include=)
+fi
 
-  if test "x$smart_include" = "x"; then
-    AC_LOCATE_DIR(smart_include_dir,$1)
+dnl #
+dnl #  Try to guess possible locations.
+dnl #
+if test "x$smart_include" = "x"; then
+  AC_LOCATE_DIR(smart_include_dir,$1)
 
-    for try in $smart_try_dir $smart_include_dir /usr/local/include/ /opt/include; do
-      CFLAGS="$old_CFLAGS -I$try"
+  for try in $smart_include_dir /usr/local/include /opt/include; do
+    CFLAGS="$old_CFLAGS -I$try"
+    AC_TRY_COMPILE([$2
+		    #include <$1>],
+		   [ int a = 1;],
+		   smart_include="-I$try",
+		   smart_include=)
+    if test "x$smart_include" != "x"; then
+      break;
+    fi
+  done
+  CFLAGS="$old_CFLAGS"
+fi
 
-      AC_TRY_COMPILE([$2
-		       #include <$1>],
-                     [ int a = 1;],
-                     smart_include="-I$try",
-                     smart_include=)
-
-      if test "x$smart_include" != "x"; then
-        break;
-      fi
-    done
-    CFLAGS="$old_CFLAGS"
-  fi
-
-  dnl #
-  dnl #  Found it, set the appropriate variable.
-  dnl #
-  if test "x$smart_include" != "x"; then
-    AC_MSG_RESULT(yes)
-    eval "ac_cv_header_$ac_safe=yes"
-    CFLAGS="$old_CFLAGS $smart_include"
-    SMART_CFLAGS="$SMART_CFLAGS $smart_include"
-  else
-    AC_MSG_RESULT(no) 
+dnl #
+dnl #  Found it, set the appropriate variable.
+dnl #
+if test "x$smart_include" != "x"; then
+  AC_MSG_RESULT(yes)
+  eval "ac_cv_header_$ac_safe=yes"
+  CFLAGS="$old_CFLAGS $smart_include"
+  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+else
+  AC_MSG_RESULT(no)
 fi
 ])
 
