@@ -642,9 +642,8 @@ static int recv_one_packet(int wait_time)
 	 */
 	if (rad_decode(reply, radclient->request, secret) != 0) {
 		librad_perror("rad_decode");
-		rad_free(&radclient->reply);
 		totallost++;
-		return -1;
+		goto packet_done; /* shared secret is incorrect */
 	}
 
 	/* libradius debug already prints out the value pairs for us */
@@ -659,7 +658,8 @@ static int recv_one_packet(int wait_time)
 		totaldeny++;
 	}
 
-	if (radclient->reply) rad_free(&radclient->reply);
+packet_done:
+	rad_free(&radclient->reply);
 
 	/*
 	 *	Once we've sent the packet as many times as requested,
