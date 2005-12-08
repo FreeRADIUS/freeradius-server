@@ -141,7 +141,51 @@ static int xlat_packet(void *instance, REQUEST *request,
 	 *	The "format" string is the attribute name.
 	 */
 	da = dict_attrbyname(fmt);
-	if (!da) return 0;
+	if (!da) {
+		int index;
+		const char *p = strchr(fmt, '[');
+		char buffer[256];
+
+		if (!p) return 0;
+		if (strlen(fmt) > sizeof(buffer)) return 0;
+
+		strNcpy(buffer, fmt, p - fmt + 1);
+
+		index = atoi(p + 1);
+
+		/*
+		 *	Check the format of the index before looking
+		 *	the attribute up in the dictionary, because
+		 *	it's a cheap check.
+		 */
+		p += 1 + strspn(p + 1, "0123456789");
+		if (*p != ']') {
+			DEBUG2("xlat: Invalid array reference in string at %s %s",
+			       fmt, p);
+			return 0;
+		}
+
+		da = dict_attrbyname(buffer);
+		if (!da) return 0;
+
+
+		/*
+		 *	Find the N'th value.
+		 */
+		for (vp = pairfind(vps, da->attr);
+		     vp != NULL;
+		     vp = pairfind(vp->next, da->attr)) {
+			if (index == 0) break;
+			index--;
+		}
+
+		/*
+		 *	Non-existent array reference.
+		 */
+		if (!vp) return 0;
+
+		return valuepair2str(out, outlen, vp, da->type, func);
+	}
 
 	vp = pairfind(vps, da->attr);
 	if (!vp) {
@@ -380,6 +424,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	int stop=0, found=0, retlen=0;
 	int openbraces = *open;
 	xlat_t *c;
+	size_t namelen = sizeof(attrname);
 
 	p = *from;
 	q = *to;
@@ -397,7 +442,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	/*
 	 *  Copy over the rest of the string.
 	 */
-	while ((*p) && (!stop)) {
+	while ((*p) && (!stop) && (namelen > 1)) {
 		switch(*p) {
 			/*
 			 *  Allow braces inside things, too.
@@ -440,6 +485,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 				*pa++ = *p++;
 				break;
 		}
+		namelen--;
 	}
 	*pa = '\0';
 
@@ -529,30 +575,23 @@ static void decode_attribute(const char **from, char **to, int freespace,
  */
 static int xlat_copy(char *out, int outlen, const char *in)
 {
-	int len = 0;
+	int freespace = outlen;
 
-	while (*in) {
-		/*
-		 *  Truncate, if too much.
-		 */
-		if (len >= outlen) {
-			break;
-		}
+	rad_assert(outlen > 0);
 
+	while ((*in) && (freespace > 1)) {
 		/*
 		 *  Copy data.
 		 *
 		 *  FIXME: Do escaping of bad stuff!
 		 */
-		*out = *in;
+		*(out++) = *(in++);
 
-		out++;
-		in++;
-		len++;
+		freespace--;
 	}
-
 	*out = '\0';
-	return len;
+
+	return (outlen - freespace); /* count does not include NUL */
 }
 
 /*
@@ -563,9 +602,10 @@ static int xlat_copy(char *out, int outlen, const char *in)
 int radius_xlat(char *out, int outlen, const char *fmt,
 		REQUEST *request, RADIUS_ESCAPE_STRING func)
 {
-	int i, c,freespace;
+	int c, len, freespace;
 	const char *p;
 	char *q;
+	char *nl;
 	VALUE_PAIR *tmp;
 	struct tm *TM, s_TM;
 	char tmpdt[40]; /* For temporary storing of dates */
@@ -668,9 +708,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'd': /* request day */
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%d",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%d", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'f': /* Framed IP address */
@@ -690,9 +732,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'm': /* request month */
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%m",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%m", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'n': /* NAS IP address */
@@ -708,7 +752,10 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 't': /* request timestamp */
-				CTIME_R(&request->timestamp, q, freespace);
+				CTIME_R(&request->timestamp, tmpdt, sizeof(tmpdt));
+				nl = strchr(tmpdt, '\n');
+				if (nl) *nl = '\0';
+				strNcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				p++;
 				break;
@@ -728,16 +775,20 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'D': /* request date */
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%Y%m%d",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%Y%m%d", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'H': /* request hour */
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%H",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%H", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'L': /* radlog_dir */
@@ -756,16 +807,20 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'S': /* request timestamp in SQL format*/
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%Y-%m-%d %H:%M:%S",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%Y-%m-%d %H:%M:%S", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'T': /* request timestamp */
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%Y-%m-%d-%H.%M.%S.000000",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%Y-%m-%d-%H.%M.%S.000000", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'U': /* Stripped User name */
@@ -782,9 +837,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'Y': /* request year */
 				TM = localtime_r(&request->timestamp, &s_TM);
-				strftime(tmpdt,sizeof(tmpdt),"%Y",TM);
-				strNcpy(q,tmpdt,freespace);
-				q += strlen(q);
+				len = strftime(tmpdt, sizeof(tmpdt), "%Y", TM);
+				if (len > 0) {
+					strNcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
 				p++;
 				break;
 			case 'Z': /* Full request pairs except password */
@@ -792,9 +849,9 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				while (tmp && (freespace > 3)) {
 					if (tmp->attribute != PW_PASSWORD) {
 						*q++ = '\t';
-						i = vp_prints(q,freespace-2,tmp);
-						q += i;
-						freespace -= (i+2);
+						len = vp_prints(q, freespace - 2, tmp);
+						q += len;
+						freespace -= (len + 2);
 						*q++ = '\n';
 					}
 					tmp = tmp->next;
