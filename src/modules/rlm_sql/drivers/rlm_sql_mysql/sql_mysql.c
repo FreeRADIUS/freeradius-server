@@ -74,6 +74,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 			sqlsocket->id);
 
 	mysql_init(&(mysql_sock->conn));
+	mysql_options(&(mysql_sock->conn), MYSQL_READ_DEFAULT_GROUP, "freeradius");
 	if (!(mysql_sock->sock = mysql_real_connect(&(mysql_sock->conn),
 						    config->sql_server,
 						    config->sql_login,
