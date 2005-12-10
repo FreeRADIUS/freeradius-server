@@ -99,13 +99,15 @@ sub process_file($$)
 {
     my ($dbinfo, $path) = @_;
 
-    until (rename($path, $path.'.work')) {
-	if ($! == ENOENT) {
-	    sleep(1);
-	    return if $need_exit;
-	} else {
-	    print STDERR "error: Couldn't move $path to $path.work: $!\n";
-	    exit 1;
+    unless (-e $path.'.work') {
+	until (rename($path, $path.'.work')) {
+	    if ($! == ENOENT) {
+		sleep(1);
+		return if $need_exit;
+	    } else {
+		print STDERR "error: Couldn't move $path to $path.work: $!\n";
+		exit 1;
+	    }
 	}
     }
 
@@ -171,10 +173,6 @@ my %dbinfo = (
 connect_wait(\%dbinfo);
 
 my $path = shift @ARGV;
-
-if (-e $path.'.work') {
-    process_file(\%dbinfo, $path.'.work');
-}
 
 until ($need_exit) {
     process_file(\%dbinfo, $path);
