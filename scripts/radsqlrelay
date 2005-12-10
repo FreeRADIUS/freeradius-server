@@ -52,7 +52,7 @@ sub got_signal()
 # c2ph says: typedef='s2 l2 i', sizeof=16
 my $FLOCK_STRUCT = 's2l2i';
 
-sub setlock ($;$$)
+sub setlock($;$$)
 {
     my ($fh, $start, $len) = @_;
     $start = 0 unless defined $start;
@@ -67,13 +67,14 @@ sub setlock ($;$$)
 sub usage()
 {
     print STDERR <<HERE;
-usage: radsqlrelay [-d sql_driver] [-b database] [-h host] [-u user] [-p password] [-1] file_path
+usage: radsqlrelay [options] file_path
 options:
 	-?		Print this help message.
 	-1		One-shot mode: push the file to database and exit.
 	-b database	Name of the database to use.
 	-d sql_driver	Driver to use: mysql, pg.
 	-h host		Connect to host.
+	-P port		Port number to use for connection.
 	-p passord	Password to use when connecting to server.
 	-u user		User for login.
 	-x		Turn on debugging.
@@ -126,19 +127,19 @@ sub process_file($$)
     }
 
     unlink($path.'.work');
-    close(FILE); # and unlock #
+    close(FILE); # and unlock
 }
 
 # sub main()
 
 my %args = (
-	    d => 'mysql',
 	    b => 'radius',
+	    d => 'mysql',
 	    h => 'localhost',
-	    u => 'radius',
 	    p => 'radius',
+	    u => 'radius',
 );
-my $ret = getopts("d:b:fh:u:p:x1?", \%args);
+my $ret = getopts("b:d:fh:P:p:u:x1?", \%args);
 if (!$ret or @ARGV != 1) {
     usage();
     exit 1;
@@ -149,14 +150,15 @@ if ($args{'?'}) {
 }
 
 my $data_source;
-if ($args{d} eq 'mysql') {
+if (lc($args{d}) eq 'mysql') {
     $data_source = "DBI:mysql:database=$args{b};host=$args{h}";
-} elsif ($args{d} eq 'pg') {
+} elsif (lc($args{d}) eq 'pg') {
     $data_source = "DBI:Pg:dbname=$args{b};host=$args{h}";
 } else {
     print STDERR "error: SQL driver not supported yet: $args{d}\n";
     exit 1;
 }
+$data_source .= ";port=$args{P}" if $args{'P'};
 
 $SIG{INT} = \&got_signal;
 $SIG{TERM} = \&got_signal;
