@@ -1,0 +1,114 @@
+.TH rlm_sql_log 5 "28 May 2005" "" "FreeRADIUS Module"
+.SH NAME
+rlm_sql_log \- FreeRADIUS Module
+.SH DESCRIPTION
+The \fBrlm_sql_log\fP module appends the SQL queries in a log file
+which is read later by the scripts/radsqlrelay Perl program.
+.PP
+The purpose of this module is to de-couple the storage of long-term
+accounting data in SQL from "live" information needed by the RADIUS
+server as it's running.  If you are not using SQL for simultaneous
+login restrictions (i.e. "sql" is not listed in the "session" section
+of "radiusd.conf"), then this module allows you to log SQL queries to
+a file, and then process them at your leisure.
+.PP
+The benefit of this approach is that for a busy server, the overhead
+of performing SQL queries may be significant.  Also, if the SQL
+databases are large (as is typical for ones storing months of data),
+the INSERTs and UPDATEs may take a relatively long time.  Rather than
+slowing down the RADIUS server by having it interact with a database,
+you can just log the queries to a file, and then run those queries on
+another machine, or at a time when the RADIUS server is typically
+lightly loaded.
+.PP
+If the "sql" module is listed in the "session" section of
+"radiusd.conf", then a similar system can still be used.  In that
+case, one database would be used to maintain "live" session
+information.  That database would be small, fast, and information
+would be deleted from it when a user logs out.  A second database
+would store long-term accounting information, as described above.
+.SH LIMITATIONS
+This module only performs the dynamic expansion of the variables found
+in the SQL statements. No operation is executed on the database server.
+(this would be done later by an external program) That means the module
+is useful only with non-"SELECT" statements.
+.SH CONFIGURATION
+The main configuration items to be aware of are the path of the log
+file and the different SQL queries.
+.IP "path"
+An entry named "path" sets the full path of the file where the SQL
+queries are recorded. (this variable is run through dynamic string
+expansion, and can include FreeRADIUS variables to create a dynamic
+filename)
+.IP "Accounting queries"
+When a accounting record is processed, the module searches a config
+entry keyed by the Acct-Status-Type attribute present in the
+packet. For example, the SQL to be run on an accounting start must be
+named "Start" in the configuration for the module. Other usual values
+for Acct-Status-Type are "Stop", "Alive", "Accounting-On", etc.  See
+the VALUEs for Acct-Status-Type in the dictionary.rfc2866 file.
+.IP "Post-Auth query"
+An entry named "Post-Auth" sets the query to run during the
+post-authentication stage.  This query is mainly used to log sessions
+where there may not be a later accounting packet.
+.PP
+.DS
+modules {
+  ...
+.br
+  sql_log {
+.br
+    path = ${radacctdir}/sql-relay
+.br
+    acct_table = "radacct"
+.br
+    postauth_table = "radpostauth"
+.br
+
+.br
+    Start = "INSERT INTO ${acct_table} ..."
+.br
+    Stop = "UPDATE ${acct_table} SET ..."
+.br
+    Alive = "UPDATE ${acct_table} SET ..."
+.br
+
+.br
+    Post-Auth = "INSERT INTO ${postauth_table} ..."
+.br
+  }
+.br
+  ...
+.br
+}
+
+.br
+accounting {
+  ...
+.br
+  sql_log
+  ...
+.br
+}
+.br
+
+.br
+post-auth {
+  ...
+.br
+  sql_log
+  ...
+.br
+}
+.DE
+.SH SECTIONS
+.BR accounting,
+.BR post-auth
+.SH FILES
+.I /etc/raddb/radiusd.conf
+.SH SEE ALSO
+.BR radsqlrelay (8),
+.BR radiusd (8),
+.BR radiusd.conf (5)
+.SH AUTHOR
+Nicolas Baradakis <nicolas.baradakis@cegetel.net>

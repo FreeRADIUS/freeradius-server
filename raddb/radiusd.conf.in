@@ -1145,9 +1145,50 @@ $INCLUDE ${confdir}/eap.conf
 		# detailperm = 0600
 	# }
 
-	# Create a unique accounting session Id.  Many NASes re-use or
-	# repeat values for Acct-Session-Id, causing no end of
-	# confusion.
+	#
+	#  The rlm_sql_log module appends the SQL queries in a log
+	#  file which is read later by the radsqlrelay program.
+	#
+	#  This module only performs the dynamic expansion of the
+	#  variables found in the SQL statements. No operation is
+	#  executed on the database server. (this could be done
+	#  later by an external program) That means the module is
+	#  useful only with non-"SELECT" statements.
+	#
+	#  See rlm_sql_log(5) manpage.
+	#
+#	sql_log {
+#		path = ${radacctdir}/sql-relay
+#		acct_table = "radacct"
+#		postauth_table = "radpostauth"
+#
+#		Start = "INSERT INTO ${acct_table} (AcctSessionId, UserName, \
+#		 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
+#		 AcctSessionTime, AcctTerminateCause) VALUES                 \
+#		 ('%{Acct-Session-Id}', '%{User-Name}', '%{NAS-IP-Address}', \
+#		 '%{Framed-IP-Address}', '%S', '0', '0', '');"
+#		Stop = "INSERT INTO ${acct_table} (AcctSessionId, UserName,  \
+#		 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
+#		 AcctSessionTime, AcctTerminateCause) VALUES                 \
+#		 ('%{Acct-Session-Id}', '%{User-Name}', '%{NAS-IP-Address}', \
+#		 '%{Framed-IP-Address}', '0', '%S', '%{Acct-Session-Time}',  \
+#		 '%{Acct-Terminate-Cause}');"
+#		Alive = "INSERT INTO ${acct_table} (AcctSessionId, UserName, \
+#		 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
+#		 AcctSessionTime, AcctTerminateCause) VALUES                 \
+#		 ('%{Acct-Session-Id}', '%{User-Name}', '%{NAS-IP-Address}', \
+#		 '%{Framed-IP-Address}', '0', '0', '%{Acct-Session-Time}','');"
+#
+#		Post-Auth = "INSERT INTO ${postauth_table}                   \
+#		 (user, pass, reply, date) VALUES                            \
+#		 ('%{User-Name}', '%{User-Password:-Chap-Password}',         \
+#		 '%{reply:Packet-Type}', '%S');"
+#	}
+
+	#
+	#  Create a unique accounting session Id.  Many NASes re-use
+	#  or repeat values for Acct-Session-Id, causing no end of
+	#  confusion.
 	#
 	#  This module will add a (probably) unique session id 
 	#  to an accounting packet based on the attributes listed
@@ -1796,6 +1837,11 @@ accounting {
 	#  See "Accounting queries" in sql.conf
 #	sql
 
+	#
+	#  Instead of sending the query to the SQL server,
+	#  write it into a log file.
+	#
+#	sql_log
 
 	#  Cisco VoIP specific bulk accounting
 #	pgsql-voip
@@ -1829,10 +1875,16 @@ post-auth {
 #	reply_log
 
 	#
-	#  After authenticating the user, do another SQL qeury.
+	#  After authenticating the user, do another SQL query.
 	#
 	#  See "Authentication Logging Queries" in sql.conf
 #	sql
+
+	#
+	#  Instead of sending the query to the SQL server,
+	#  write it into a log file.
+	#
+#	sql_log
 
 	#
 	#  Un-comment the following if you have set
