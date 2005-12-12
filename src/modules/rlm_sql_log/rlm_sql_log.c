@@ -161,6 +161,7 @@ static int sql_log_detach(void *instance)
 		free(*p);
 		*p = NULL;
 	}
+	allowed_chars = NULL;
 	free(inst);
 	return 0;
 }
