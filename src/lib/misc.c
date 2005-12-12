@@ -349,7 +349,7 @@ uint8_t *ifid_aton(const char *ifid_str, uint8_t *ifid)
 /*
  *	Return an IPv6 address in standard colon notation
  */
-char *ipv6_ntoa(char *buffer, size_t size, void *ip6addr)
+const char *ipv6_ntoa(char *buffer, size_t size, void *ip6addr)
 {
 #if defined(HAVE_INET_NTOP) && defined(AF_INET6)
 	return inet_ntop(AF_INET6, (struct in6_addr *) ip6addr, buffer, size);
@@ -426,3 +426,46 @@ int ipv6_addr(const char *ip6_str, void *ip6addr)
 #endif
 	return 0;
 }
+
+static const char *hextab = "0123456789abcdef";
+
+/*
+ *	hex2bin
+ *
+ *	We allow: hex == bin
+ */
+int lrad_hex2bin(const char *hex, uint8_t *bin, int len)
+{
+	int i;
+	char *c1, *c2;
+
+	for (i = 0; i < len; i++) {
+		if(!(c1 = memchr(hextab, tolower((int) hex[i << 1]), 16)) ||
+		   !(c2 = memchr(hextab, tolower((int) hex[(i << 1) + 1]), 16)))
+			break;
+                 bin[i] = ((c1-hextab)<<4) + (c2-hextab);
+	}
+
+	return i;
+}
+
+
+/*
+ *	bin2hex
+ *
+ *	If the output buffer isn't long enough, we have a buffer overflow.
+ */
+void lrad_bin2hex(const uint8_t *bin, char *hex, int len)
+{
+	int i;
+
+	for (i = 0; i < len; i++) {
+		hex[0] = hextab[((*bin) >> 4) & 0x0f];
+		hex[1] = hextab[*bin & 0x0f];
+		hex += 2;
+		bin++;
+	}
+	*hex = '\0';
+	return;
+}
+
