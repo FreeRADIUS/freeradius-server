@@ -70,6 +70,7 @@ typedef struct rlm_sqlcounter_t {
 	char *sqlmod_inst;	/* instance of SQL module to use, usually just 'sql' */
 	char *query;		/* SQL query to retrieve current session time */
 	char *reset;  		/* daily, weekly, monthly, never or user defined */
+	char *allowed_chars;	/* safe characters list for SQL queries */
 	time_t reset_time;
 	time_t last_reset;
 	int  key_attr;		/* attribute number for key field */
@@ -92,14 +93,11 @@ static const CONF_PARSER module_config[] = {
   { "sqlmod-inst", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,sqlmod_inst), NULL, NULL },
   { "query", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,query), NULL, NULL },
   { "reset", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,reset), NULL,  NULL },
+  { "safe-characters", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,allowed_chars), NULL, "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"},
   { NULL, -1, 0, NULL, NULL }
 };
 
-/*
- *	Safe characters list for sql queries. Everything else is
- *	replaced with their mime-encoded equivalents.
- */
-static const char allowed_chars[] = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /";
+static char *allowed_chars = NULL;
 
 /*
  *	Translate the SQL queries.
@@ -547,6 +545,12 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	paircompare_register(data->dict_attr, 0, sqlcounter_cmp, data);
 
+	/*
+	 *	Safe characters list for sql queries. Everything else is
+	 *	replaced with their mime-encoded equivalents.
+	 */
+	allowed_chars = data->allowed_chars;
+
 	*instance = data;
 
 	return 0;
@@ -712,6 +716,8 @@ static int sqlcounter_detach(void *instance)
 	free(data->check_name);
 	free(data->sqlmod_inst);
 	free(data->counter_name);
+	free(data->allowed_chars);
+	allowed_chars = NULL;
 
 	free(instance);
 	return 0;
