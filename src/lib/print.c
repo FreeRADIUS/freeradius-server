@@ -170,12 +170,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			a = buf;
 			break;
 		case PW_TYPE_IPADDR:
-			if (vp->strvalue[0])
-				a = (char *)vp->strvalue;
-			else
-				a = ip_hostname((char *)vp->strvalue,
-						sizeof(vp->strvalue),
-						vp->lvalue);
+			a = ip_ntoa(buf, vp->lvalue);
 			break;
 		case PW_TYPE_ABINARY:
 #ifdef ASCEND_BINARY
@@ -236,7 +231,7 @@ static const char *vp_tokens[] = {
   "=~",
   "!~",
   "=*",
-  "~*",
+  "!*",
   "==",
   "#",
   "<BARE-WORD>",
