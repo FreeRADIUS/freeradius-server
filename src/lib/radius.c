@@ -1590,11 +1590,16 @@ static VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET 
 		vp->lvalue = ntohl(vp->lvalue);
 		break;
 
-
+		/*
+		 *	IPv4 address. Keep it in network byte order in
+		 *	vp->lvalue and put ASCII IP address in standard
+		 *	dot notation into vp->strvalue.
+		 */
 	case PW_TYPE_IPADDR:
 		if (vp->length != 4) goto raw;
 
 		memcpy(&vp->lvalue, vp->strvalue, 4);
+		ip_ntoa(vp->strvalue, vp->lvalue);
 		break;
 
 		/*
