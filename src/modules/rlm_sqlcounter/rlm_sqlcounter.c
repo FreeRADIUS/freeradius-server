@@ -97,6 +97,60 @@ static CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }
 };
 
+/*
+ *	Safe characters list for sql queries. Everything else is
+ *	replaced with their mime-encoded equivalents.
+ */
+static const char allowed_chars[] = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /";
+
+/*
+ *	Translate the SQL queries.
+ */
+static int sql_escape_func(char *out, int outlen, const char *in)
+{
+	int len = 0;
+
+	while (in[0]) {
+		/*
+		 *	Non-printable characters get replaced with their
+		 *	mime-encoded equivalents.
+		 */
+		if ((in[0] < 32) ||
+		    strchr(allowed_chars, *in) == NULL) {
+			/*
+			 *	Only 3 or less bytes available.
+			 */
+			if (outlen <= 3) {
+				break;
+			}
+
+			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
+			in++;
+			out += 3;
+			outlen -= 3;
+			len += 3;
+			continue;
+		}
+
+		/*
+		 *	Only one byte left.
+		 */
+		if (outlen <= 1) {
+			break;
+		}
+
+		/*
+		 *	Allowed character.
+		 */
+		*out = *in;
+		out++;
+		in++;
+		outlen--;
+		len++;
+	}
+	*out = '\0';
+	return len;
+}
 
 static int find_next_reset(rlm_sqlcounter_t *data, time_t timeval)
 {
@@ -294,12 +348,12 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, void *insta
 			case '%':
 				*q++ = *p;
 			case 'b': /* last_reset */
-				sprintf(tmpdt, "%lu", data->last_reset);
+				snprintf(tmpdt, sizeof(tmpdt), "%lu", data->last_reset);
 				strNcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				break;
 			case 'e': /* reset_time */
-				sprintf(tmpdt, "%lu", data->reset_time);
+				snprintf(tmpdt, sizeof(tmpdt), "%lu", data->reset_time);
 				strNcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				break;
@@ -343,14 +397,14 @@ static int sqlcounter_cmp(void *instance, REQUEST *req, VALUE_PAIR *request, VAL
 	sqlcounter_expand(querystr, MAX_QUERY_LEN, data->query, instance);
 
 	/* second, xlat any request attribs in query */
-	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, req, NULL);
+	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, req, sql_escape_func);
 
 	/* third, wrap query with sql module call & expand */
-	sprintf(querystr, "%%{%%S:%s}", responsestr);
+	snprintf(querystr, sizeof(querystr), "%%{%%S:%s}", responsestr);
 	sqlcounter_expand(responsestr, MAX_QUERY_LEN, querystr, instance);
 
 	/* Finally, xlat resulting SQL query */
-	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, req, NULL);
+	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, req, sql_escape_func);
 
 	counter = atoi(querystr);
 
@@ -374,6 +428,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	DICT_ATTR *dattr;
 	ATTR_FLAGS flags;
 	time_t now;
+	char buffer[MAX_STRING_LEN];
 
 	/*
 	 *	Set up a storage area for instance data
@@ -400,6 +455,11 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_sqlcounter: 'key' must be set.");
 		return -1;
 	}
+	sql_escape_func(buffer, sizeof(buffer), data->key_name);
+	if (strcmp(buffer, data->key_name) != 0) {
+		radlog(L_ERR, "rlm_sqlcounter: The value for option 'key' is too long or contains unsafe characters.");
+		return -1;
+	}
 	dattr = dict_attrbyname(data->key_name);
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: No such attribute %s",
@@ -408,6 +468,18 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	data->key_attr = dattr->attr;
 
+	/*
+	 *	Check the "sqlmod-inst" option.
+	 */
+	if (data->sqlmod_inst == NULL) {
+		radlog(L_ERR, "rlm_sqlcounter: 'sqlmod-inst' must be set.");
+		return -1;
+	}
+	sql_escape_func(buffer, sizeof(buffer), data->sqlmod_inst);
+	if (strcmp(buffer, data->sqlmod_inst) != 0) {
+		radlog(L_ERR, "rlm_sqlcounter: The value for option 'sqlmod-inst' is too long or contains unsafe characters.");
+		return -1;
+	}
 
 	/*
 	 *  Create a new attribute for the counter.
@@ -542,14 +614,14 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	sqlcounter_expand(querystr, MAX_QUERY_LEN, data->query, instance);
 
 	/* second, xlat any request attribs in query */
-	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, request, NULL);
+	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, request, sql_escape_func);
 
 	/* third, wrap query with sql module & expand */
-	sprintf(querystr, "%%{%%S:%s}", responsestr);
+	snprintf(querystr, sizeof(querystr), "%%{%%S:%s}", responsestr);
 	sqlcounter_expand(responsestr, MAX_QUERY_LEN, querystr, instance);
 
 	/* Finally, xlat resulting SQL query */
-	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, request, NULL);
+	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, request, sql_escape_func);
 
 	counter = atoi(querystr);
 
@@ -579,6 +651,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		 */
 		if (data->reset_time && (
 			res >= (data->reset_time - request->timestamp))) {
+			res = data->reset_time - request->timestamp;
 			res += check_vp->lvalue;
 		}
 
@@ -609,8 +682,8 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 
 		/*
 		 * User is denied access, send back a reply message
-		*/
-		sprintf(msg, "Your maximum %s usage time has been reached", data->reset);
+		 */
+		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", data->reset);
 		reply_item=pairmake("Reply-Message", msg, T_OP_EQ);
 		pairadd(&request->reply->vps, reply_item);
 
