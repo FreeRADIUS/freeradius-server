@@ -22,7 +22,6 @@
  */
 
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +30,6 @@
 #include "radiusd.h"
 #include "modules.h"
 #include "conffile.h"
-#include "rad_assert.h"
 
 static const char rcsid[] = "$Id$";
 
@@ -64,6 +62,55 @@ static int digest_authorize(void *instance, REQUEST *request)
 	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES);
 	if (vp == NULL) {
 		DEBUG("ERROR: Received Digest-Response without Digest-Attributes");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	Everything's OK, add a digest authentication type.
+	 */
+	if (pairfind(request->config_items, PW_AUTHTYPE) == NULL) {
+		DEBUG("rlm_digest: Adding Auth-Type = DIGEST");
+		pairadd(&request->config_items,
+			pairmake("Auth-Type", "DIGEST", T_OP_EQ));
+	}
+
+	return RLM_MODULE_OK;
+}
+
+/*
+ *	Perform all of the wondrous variants of digest authentication.
+ */
+static int digest_authenticate(void *instance, REQUEST *request)
+{
+	int i;
+	size_t a1_len, a2_len, kd_len;
+	uint8_t a1[(MAX_STRING_LEN + 1) * 5]; /* can be 5 attributes */
+	uint8_t a2[(MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
+	uint8_t kd[(MAX_STRING_LEN + 1) * 5];
+	uint8_t hash[16];	/* MD5 output */
+	VALUE_PAIR *vp, *passwd, *algo;
+	VALUE_PAIR *qop, *nonce;
+
+	instance = instance;	/* -Wunused */
+
+	/*
+	 *	We require access to the plain-text password.
+	 */
+	passwd = pairfind(request->config_items, PW_PASSWORD);
+#ifdef PW_MD5_PASSWORD
+ 	if (!passwd) passwd = pairfind(request->config_items, PW_MD5_PASSWORD);
+#endif
+	if (!passwd) {
+		radlog(L_AUTH, "rlm_digest: Configuration item \"User-Password\" or MD5-Password is required for authentication.");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	We need these, too.
+	 */
+	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES);
+	if (vp == NULL) {
+		DEBUG("ERROR: You set 'Auth-Type = Digest' for a request that did not contain any digest attributes!");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -149,56 +196,6 @@ static int digest_authorize(void *instance, REQUEST *request)
 	}
 
 	/*
-	 *	Everything's OK, add a digest authentication type.
-	 */
-	if (pairfind(request->config_items, PW_AUTHTYPE) == NULL) {
-		DEBUG("rlm_digest: Adding Auth-Type = DIGEST");
-		pairadd(&request->config_items,
-			pairmake("Auth-Type", "DIGEST", T_OP_EQ));
-	}
-
-	return RLM_MODULE_OK;
-}
-
-/*
- *	Convert a string in hex to one in binary
- */
-static void hex2bin(uint8_t *out, const uint8_t *in)
-{
-	unsigned int tmp;
-
-	while (*in) {
-		sscanf(in, "%02x", &tmp);
-		*out = tmp;
-		out++;
-		in += 2;
-	}
-}
-
-/*
- *	Perform all of the wondrous variants of digest authentication.
- */
-static int digest_authenticate(void *instance, REQUEST *request)
-{
-	int i;
-	int a1_len, a2_len, kd_len;
-	uint8_t a1[(MAX_STRING_LEN + 1) * 5]; /* can be 5 attributes */
-	uint8_t a2[(MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
-	uint8_t kd[(MAX_STRING_LEN + 1) * 5];
-	uint8_t hash[16];	/* MD5 output */
-	VALUE_PAIR *vp;
-	VALUE_PAIR *qop, *nonce;
-
-	/*
-	 *	We require access to the plain-text password.
-	 */
-	vp = pairfind(request->config_items, PW_PASSWORD);
-	if (!vp) {
-		radlog(L_AUTH, "rlm_digest: Configuration item \"User-Password\" is required for authentication.");
-		return RLM_MODULE_INVALID;
-	}
-
-	/*
 	 *	We require access to the Digest-Nonce-Value
 	 */
 	nonce = pairfind(request->packet->vps, PW_DIGEST_NONCE);
@@ -232,50 +229,79 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	a1[a1_len] = ':';
 	a1_len++;
 
-	vp = pairfind(request->config_items, PW_PASSWORD);
-	if (!vp) {
-		DEBUG("ERROR: No User-Password: Cannot perform Digest authentication");
-		return RLM_MODULE_INVALID;
+	if (passwd->attribute == PW_USER_PASSWORD) {
+		memcpy(&a1[a1_len], &passwd->strvalue[0], passwd->length);
+		a1_len += passwd->length;
+		a1[a1_len] = '\0';
+		DEBUG2("A1 = %s", a1);
+	} else {
+		a1[a1_len] = '\0';
+		DEBUG2("A1 = %s (using MD5-Password)", a1);
 	}
-	memcpy(&a1[a1_len], &vp->strvalue[0], vp->length);
-	a1_len += vp->length;
-
-	a1[a1_len] = '\0';
-	DEBUG2("A1 = %s", a1);
 
 	/*
 	 *	See which variant we calculate.
+	 *	Assume MD5 if no Digest-Algorithm attribute received
 	 */
-	vp = pairfind(request->packet->vps, PW_DIGEST_ALGORITHM);
-	if ((vp != NULL) &&
-	    (strcasecmp(vp->strvalue, "MD5-sess") == 0)) {
-		librad_md5_calc(hash, &a1[0], a1_len);
-		memcpy(&a1[0], hash, 16);
-		a1_len = 16;
+	algo = pairfind(request->packet->vps, PW_DIGEST_ALGORITHM);
+	if ((algo == NULL) || 
+	    (strcasecmp(algo->strvalue, "MD5") == 0)) {
+		/*
+		 *	Set A1 to MD5-Password if no User-Password found
+		 */
+		if (passwd->attribute != PW_USER_PASSWORD) {
+			memcpy(&a1[0], passwd->strvalue, 16);
+		}
+
+	} else if (strcasecmp(algo->strvalue, "MD5-sess") == 0) {
+		/*
+		 *	K1 = H(A1) : Digest-Nonce ... : H(A2)
+		 *
+		 *	If we find MD5-Password, we assume it contains
+		 *	H(A1).
+		 */
+		if (passwd->attribute == PW_USER_PASSWORD) {
+			librad_md5_calc(hash, &a1[0], a1_len);
+			lrad_bin2hex(hash, &a1[0], 16);
+		} else {
+			lrad_bin2hex(passwd->strvalue, &a1[0], 16);
+		}
+		a1_len = 32;
 
 		a1[a1_len] = ':';
 		a1_len++;
 
 		/*
-		 *	Tack on the Digest-Nonce
+		 *	Tack on the Digest-Nonce. Length must be even
 		 */
-		hex2bin(&a1[a1_len], &nonce->strvalue[0]);
-		a1_len += (nonce->length >> 1); /* FIXME: CHECK LENGTH */
+		if ((nonce->length & 1) != 0) {
+			DEBUG("ERROR: Received Digest-Nonce hex string with invalid length: Cannot perform Digest authentication");
+			return RLM_MODULE_INVALID;
+		}
+		memcpy(&a1[a1_len], &nonce->strvalue[0], nonce->length);
+		a1_len += nonce->length;
 
 		a1[a1_len] = ':';
 		a1_len++;
 
 		vp = pairfind(request->packet->vps, PW_DIGEST_CNONCE);
 		if (!vp) {
-		  DEBUG("ERROR: No Digest-CNonce: Cannot perform Digest authentication");
-		  return RLM_MODULE_INVALID;
+			DEBUG("ERROR: No Digest-CNonce: Cannot perform Digest authentication");
+			return RLM_MODULE_INVALID;
 		}
 
-		hex2bin(&a1[a1_len], &vp->strvalue[0]);
-		a1_len += (vp->length >> 1); /* FIXME: CHECK LENGTH */
+		/*
+		 *      Digest-CNonce length must be even
+		 */
+		if ((vp->length & 1) != 0) {
+			DEBUG("ERROR: Received Digest-CNonce hex string with invalid length: Cannot perform Digest authentication");
+			return RLM_MODULE_INVALID;
+		}
+		memcpy(&a1[a1_len], &vp->strvalue[0], vp->length);
+		a1_len += vp->length;
 
-	} else if ((vp != NULL) &&
-		   (strcasecmp(vp->strvalue, "MD5") != 0)) {
+	} else if ((algo != NULL) &&
+		   (strcasecmp(algo->strvalue, "MD5") != 0)) {
 		/*
 		 *	We check for "MD5-sess" and "MD5".
 		 *	Anything else is an error.
@@ -329,9 +355,13 @@ static int digest_authenticate(void *instance, REQUEST *request)
 			return RLM_MODULE_INVALID;
 		}
 
-		rad_assert(body->length == 32);	/* FIXME: check in 'auth' */
-		hex2bin(&a2[a2_len], &body->strvalue[0]);
-		a2_len += (body->length >> 1);
+		if ((a2_len + body->length) > sizeof(a2)) {
+			DEBUG("ERROR: Digest-Body-Digest is too long");
+			return RLM_MODULE_INVALID;
+		}
+
+		memcpy(a2 + a2_len, body->strvalue, body->length);
+		a2_len += body->length;
 
 	} else if ((qop != NULL) &&
 		   (strcasecmp(qop->strvalue, "auth") != 0)) {
@@ -343,13 +373,19 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	DEBUG2("A2 = %s", a2);
 
 	/*
-	 *     KD = H(A1) : Digest-Nonce ... : H(A2)
+	 *     KD = H(A1) : Digest-Nonce ... : H(A2).
+	 *     Compute MD5 if Digest-Algorithm == "MD5-Sess",
+	 *     or if we found a User-Password.
 	 */
-	librad_md5_calc(&hash[0], &a1[0], a1_len);
-
-	for (i = 0; i < 16; i++) {
-		sprintf(&kd[i * 2], "%02x", hash[i]);
+	if (((algo != NULL) && 
+	     (strcasecmp(algo->strvalue, "MD5-Sess") == 0)) ||
+	    (passwd->attribute == PW_USER_PASSWORD)) {
+	  a1[a1_len] = '\0';
+		librad_md5_calc(&hash[0], &a1[0], a1_len);
+	} else {
+		memcpy(&hash[0], &a1[0], a1_len);
 	}
+	lrad_bin2hex(hash, kd, sizeof(hash));
 
 #ifndef NDEBUG
 	if (debug_flag) {
@@ -418,9 +454,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 
 	librad_md5_calc(&hash[0], &a2[0], a2_len);
 
-	for (i = 0; i < 16; i++) {
-		sprintf(&kd[kd_len + (i * 2)], "%02x", hash[i]);
-	}
+	lrad_bin2hex(hash, kd + kd_len, sizeof(hash));
 
 #ifndef NDEBUG
 	if (debug_flag) {
@@ -447,9 +481,12 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	 *	Get the binary value of Digest-Response
 	 */
 	vp = pairfind(request->packet->vps, PW_DIGEST_RESPONSE);
-	rad_assert(vp != NULL);
+	if (!vp) {
+		DEBUG("ERROR: No Digest-Response attribute in the request.  Cannot perform digest authentication");
+		return RLM_MODULE_INVALID;
+	}
 
-	hex2bin(&hash[0], &vp->strvalue[0]);
+	lrad_hex2bin(&vp->strvalue[0], &hash[0], vp->length >> 1);
 
 #ifndef NDEBUG
 	if (debug_flag) {
