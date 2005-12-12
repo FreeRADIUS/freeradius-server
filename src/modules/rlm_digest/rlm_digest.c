@@ -260,11 +260,11 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		 */
 		if (passwd->attribute == PW_USER_PASSWORD) {
 			librad_md5_calc(hash, &a1[0], a1_len);
-			memcpy(&a1[0], hash, 16);
+			lrad_bin2hex(hash, &a1[0], 16);
 		} else {
-			memcpy(&a1[0], passwd->vp_octets, 16);
+			lrad_bin2hex(passwd->vp_octets, &a1[0], 16);
 		}
-		a1_len = 16;
+		a1_len = 32;
 
 		a1[a1_len] = ':';
 		a1_len++;
@@ -275,9 +275,9 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		if ((nonce->length & 1) != 0) {
 			DEBUG("ERROR: Received Digest-Nonce hex string with invalid length: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
-		} 
-		lrad_hex2bin(&nonce->vp_octets[0], &a1[a1_len], nonce->length >> 1);
-		a1_len += (nonce->length >> 1);
+		}
+		memcpy(&a1[a1_len], &nonce->vp_octets[0], nonce->length);
+		a1_len += nonce->length;
 
 		a1[a1_len] = ':';
 		a1_len++;
@@ -295,8 +295,8 @@ static int digest_authenticate(void *instance, REQUEST *request)
 			DEBUG("ERROR: Received Digest-CNonce hex string with invalid length: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
 		}
-		lrad_hex2bin(&vp->vp_octets[0], &a1[a1_len], vp->length >> 1);
-		a1_len += (vp->length >> 1);
+		memcpy(&a1[a1_len], &vp->vp_octets[0], vp->length);
+		a1_len += vp->length;
 
 	} else if ((algo != NULL) &&
 		   (strcasecmp(algo->vp_strvalue, "MD5") != 0)) {
@@ -378,6 +378,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	if (((algo != NULL) && 
 	     (strcasecmp(algo->vp_strvalue, "MD5-Sess") == 0)) ||
 	    (passwd->attribute == PW_USER_PASSWORD)) {
+	  a1[a1_len] = '\0';
 		librad_md5_calc(&hash[0], &a1[0], a1_len);
 	} else {
 		memcpy(&hash[0], &a1[0], a1_len);
