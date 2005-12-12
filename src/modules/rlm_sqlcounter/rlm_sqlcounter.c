@@ -430,6 +430,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	DICT_ATTR *dattr;
 	ATTR_FLAGS flags;
 	time_t now;
+	char buffer[MAX_STRING_LEN];
 
 	/*
 	 *	Set up a storage area for instance data
@@ -456,6 +457,11 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_sqlcounter: 'key' must be set.");
 		return -1;
 	}
+	sql_escape_func(buffer, sizeof(buffer), data->key_name);
+	if (strcmp(buffer, data->key_name) != 0) {
+		radlog(L_ERR, "rlm_sqlcounter: The value for option 'key' is too long or contains unsafe characters.");
+		return -1;
+	}
 	dattr = dict_attrbyname(data->key_name);
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: No such attribute %s",
@@ -464,6 +470,18 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	data->key_attr = dattr->attr;
 
+	/*
+	 *	Check the "sqlmod-inst" option.
+	 */
+	if (data->sqlmod_inst == NULL) {
+		radlog(L_ERR, "rlm_sqlcounter: 'sqlmod-inst' must be set.");
+		return -1;
+	}
+	sql_escape_func(buffer, sizeof(buffer), data->sqlmod_inst);
+	if (strcmp(buffer, data->sqlmod_inst) != 0) {
+		radlog(L_ERR, "rlm_sqlcounter: The value for option 'sqlmod-inst' is too long or contains unsafe characters.");
+		return -1;
+	}
 
 	/*
 	 *  Create a new attribute for the counter.
