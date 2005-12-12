@@ -30,7 +30,6 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/conffile.h>
-#include <freeradius-devel/rad_assert.h>
 
 static const char rcsid[] = "$Id$";
 
@@ -84,7 +83,7 @@ static int digest_authorize(void *instance, REQUEST *request)
 static int digest_authenticate(void *instance, REQUEST *request)
 {
 	int i;
-	int a1_len, a2_len, kd_len;
+	size_t a1_len, a2_len, kd_len;
 	uint8_t a1[(MAX_STRING_LEN + 1) * 5]; /* can be 5 attributes */
 	uint8_t a2[(MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
 	uint8_t kd[(MAX_STRING_LEN + 1) * 5];
@@ -354,9 +353,13 @@ static int digest_authenticate(void *instance, REQUEST *request)
 			return RLM_MODULE_INVALID;
 		}
 
-		rad_assert(body->length == 32);	/* FIXME: check in 'auth' */
-		lrad_hex2bin(&body->vp_octets[0], &a2[a2_len], body->length >> 1);
-		a2_len += (body->length >> 1);
+		if ((a2_len + body->length) > sizeof(a2)) {
+			DEBUG("ERROR: Digest-Body-Digest is too long");
+			return RLM_MODULE_INVALID;
+		}
+
+		memcpy(a2 + a2_len, body->vp_octets, body->length);
+		a2_len += body->length;
 
 	} else if ((qop != NULL) &&
 		   (strcasecmp(qop->vp_strvalue, "auth") != 0)) {
@@ -475,7 +478,10 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	 *	Get the binary value of Digest-Response
 	 */
 	vp = pairfind(request->packet->vps, PW_DIGEST_RESPONSE);
-	rad_assert(vp != NULL);
+	if (!vp) {
+		DEBUG("ERROR: No Digest-Response attribute in the request.  Cannot perform digest authentication");
+		return RLM_MODULE_INVALID;
+	}
 
 	lrad_hex2bin(&vp->vp_octets[0], &hash[0], vp->length >> 1);
 
