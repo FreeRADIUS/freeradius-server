@@ -890,6 +890,7 @@ int read_mainconfig(int reload)
 		if (mainconfig.radlog_dest == RADLOG_NUM_DEST) {
 			fprintf(stderr, "radiusd: Error: Unknown log_destination %s\n",
 				radlog_dest);
+			free(radlog_dest);
 			cf_section_free(&cs);
 			return -1;
 		}
@@ -899,10 +900,12 @@ int read_mainconfig(int reload)
 			if (mainconfig.syslog_facility < 0) {
 				fprintf(stderr, "radiusd: Error: Unknown syslog_facility %s\n",
 					syslog_facility);
+				free(radlog_dest);
 				cf_section_free(&cs);
 				return -1;
 			}
 		}
+		free(radlog_dest);
 	}
 
 	/*
