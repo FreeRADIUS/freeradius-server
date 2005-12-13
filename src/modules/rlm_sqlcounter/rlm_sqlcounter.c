@@ -447,6 +447,12 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	/*
+	 *	Safe characters list for sql queries. Everything else is
+	 *	replaced rwith their mime-encoded equivalents.
+	 */
+	allowed_chars = data->allowed_chars;
+
+	/*
 	 *	Discover the attribute number of the key.
 	 */
 	if (data->key_name == NULL) {
@@ -542,12 +548,6 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Register the counter comparison operation.
 	 */
 	paircompare_register(data->dict_attr, 0, sqlcounter_cmp, data);
-
-	/*
-	 *	Safe characters list for sql queries. Everything else is
-	 *	replaced with their mime-encoded equivalents.
-	 */
-	allowed_chars = data->allowed_chars;
 
 	*instance = data;
 
