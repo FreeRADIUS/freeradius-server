@@ -29,7 +29,6 @@ char radrelay_rcsid[] =
 "$Id$";
 
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -83,8 +82,11 @@ struct main_config_t mainconfig;
 #define		STATE_BACKLOG	1
 #define		STATE_WAIT	2
 #define		STATE_SHUTDOWN	3
+#define		STATE_CLOSE	4
 
-#define		NR_SLOTS	64
+#define		NR_SLOTS		64
+#define		DEFAULT_SLEEP		50
+#define		DEFAULT_SLEEP_EVERY	1
 
 /*
  *	A relay request.
@@ -106,6 +108,16 @@ struct relay_misc {
 	char		detail[1024];			/* Detail file */
 	char 		*secret;			/* Secret */
 	char		f_secret[256];			/* File secret */
+	int		sleep_time;			/* Time to sleep between sending packets */
+	int		sleep_every;			/* Sleep every so many packets */
+	int		records_print;			/* Print statistics after so many records */
+};
+
+struct relay_stats {
+	time_t		startup;
+	uint32_t	records_read;			/* Records read */
+	uint32_t	packets_sent;			/* Packets sent */
+	uint32_t	last_print_records;		/* Records on last statistics printout */
 };
 
 /*
@@ -116,7 +128,7 @@ char *c_shortname = NULL;
 
 struct relay_request slots[NR_SLOTS];
 char id_map[256];
-int request_head;
+int request_head = 0;
 int got_sigterm = 0;
 int debug = 0;
 
@@ -168,7 +180,7 @@ void sigterm_handler(int sig)
 /*
  *	Sleep a number of milli seconds
  */
-void ms_sleep(int msec)
+inline void ms_sleep(int msec)
 {
 	struct timeval tv;
 
@@ -180,7 +192,7 @@ void ms_sleep(int msec)
 /*
  *	Does this (remotely) look like "Tue Jan 23 06:55:48 2001" ?
  */
-int isdateline(char *d)
+inline int isdateline(char *d)
 {
 	int y;
 
@@ -203,7 +215,7 @@ int read_one(FILE *fp, struct relay_request *r_req)
 {
 	VALUE_PAIR *vp;
 	char *s;
-	char buf[256];
+	char buf[2048];
 	char key[32], val[32];
 	int skip;
 	long fpos;
@@ -228,8 +240,8 @@ int read_one(FILE *fp, struct relay_request *r_req)
 	do {
 		x = rad_lockfd_nonblock(fileno(fp), 0);
 		if (x == -1)
-			ms_sleep(25);
-	} while (x == -1 && i++ < 80);
+			ms_sleep(100);
+	} while (x == -1 && i++ < 20);
 
 	if (x == -1)
 		return 0;
@@ -408,7 +420,7 @@ int do_recv(struct relay_misc *r_args)
 				free (r->req->data);
 				r->req->data = NULL;
 			}
-			r->state = 0;
+			r->state = STATE_EMPTY;
 			r->retrans = 0;
 			r->retrans_num = 0;
 			r->timestamp = 0;
@@ -445,7 +457,7 @@ int do_send(struct relay_request *r, char *secret)
 			free (r->req->data);
 			r->req->data = NULL;
 		}
-		r->state = 0;
+		r->state = STATE_EMPTY;
 		r->retrans = 0;
 		r->retrans_num = 0;
 		r->timestamp = 0;
@@ -533,18 +545,21 @@ int detail_move(char *from, char *to)
  *	STATE_RUN:	Reading from detail file, sending to server.
  *	STATE_BACKLOG:	Reading from the detail.work file, for example
  *			after a crash or restart. Sending to server.
- *	STATE_WAIT:	Reached end-of-file, renamed detail to
- *			detail.work, waiting for all outstanding
- *			requests to be answered.
+ *	STATE_WAIT:	Waiting for all outstanding requests to be handled.
+ *	STATE_CLOSE:	Reached end of detail.work file, waiting for
+ *			outstanding requests, and removing the file.
+ *	STATE_SHUTDOWN:	Got SIG_TERM, waiting for outstanding requests
+ *			and exiting program.
  */
 void loop(struct relay_misc *r_args)
 {
 	FILE *fp = NULL;
 	struct relay_request *r;
 	struct timeval tv;
+	struct relay_stats stats;
 	fd_set readfds;
 	char work[1030];
-	time_t now, last_rename = 0;
+	time_t now, uptime, last_rename = 0;
 	int i, n;
 	int state = STATE_RUN;
 	int id;
@@ -555,15 +570,18 @@ void loop(struct relay_misc *r_args)
 
 	id = ((int)getpid() & 0xff);
 
+	memset(&stats,0,sizeof(struct relay_stats));
+	stats.startup = time(NULL);
+
 	/*
 	 * Initialize all our slots, might as well do this right away.
 	 */
 	for (i = 0; i < NR_SLOTS; i++) {
 		if ((slots[i].req = rad_alloc(1)) == NULL) {
-			librad_perror("radclient");
+			librad_perror("radrelay");
 			exit(1);
 		}
-		slots[i].state = 0;
+		slots[i].state = STATE_EMPTY;
 		slots[i].retrans = 0;
 		slots[i].retrans_num = 0;
 		slots[i].timestamp = 0;
@@ -601,9 +619,19 @@ void loop(struct relay_misc *r_args)
 		 *	filled slot, we can read from the detail file.
 		 */
 		r = &slots[request_head];
-		if (fp && state != STATE_WAIT && state != STATE_SHUTDOWN &&
+		if (fp && (state == STATE_RUN || state == STATE_BACKLOG) &&
 		    r->state != STATE_FULL) {
 			if (read_one(fp, r) == EOF) do {
+
+				/*
+				 *	We've reached end of the <detail>.work
+				 *	It's going to be closed as soon as all
+				 *	outstanting requests are handled
+				 */
+				if (state == STATE_BACKLOG) {
+					state = STATE_CLOSE;
+					break;
+				}
 
 				/*
 				 *	End of file. See if the file has
@@ -621,20 +649,43 @@ void loop(struct relay_misc *r_args)
 				last_rename = now;
 
 				/*
-				 *	We rename the file
-				 *	to <file>.work and create an
-				 *	empty new file.
+				 *	We rename the file to <file>.work
+				 *	and create an empty new file.
 				 */
-				if (state == STATE_RUN &&
-				    detail_move(r_args->detail, work) == 0)
-					state = STATE_WAIT;
-				else if (state == STATE_BACKLOG)
-					state = STATE_WAIT;
+				if (detail_move(r_args->detail, work) == 0) {
+					if (debug_flag > 0)
+						fprintf(stderr, "Moving %s to %s\n",
+							r_args->detail, work);
+					/*
+					 *	rlm_detail might still write
+					 *	something to <detail>.work if
+					 *	it opens <detail> before it is
+					 *	renamed (race condition)
+					 */
+					ms_sleep(1000);
+					state = STATE_BACKLOG;
+				}
 				fpos = ftell(fp);
 				fseek(fp, 0L, SEEK_SET);
-				fseek(fp, fpos, SEEK_SET);
 				rad_unlockfd(fileno(fp), 0);
+				fseek(fp, fpos, SEEK_SET);
 			} while(0);
+			if (r_args->records_print && state == STATE_RUN){
+				stats.records_read++;
+				if (stats.last_print_records - stats.records_read >= r_args->records_print){
+					now = time(NULL);
+					uptime = (stats.startup == now) ? 1 : now - stats.startup;
+					fprintf(stderr, "%s: Running and Processing Records.\n",progname);
+					fprintf(stderr, "Seconds since startup: %ld\n",uptime);
+					fprintf(stderr, "Records Read: %d\n",stats.records_read);
+					fprintf(stderr, "Packets Sent: %d\n",stats.packets_sent);
+					fprintf(stderr, "Record Rate since startup: %.2f\n",
+						(double)stats.records_read / uptime);
+					fprintf(stderr, "Packet Rate since startup: %.2f\n",
+						(double)stats.packets_sent / uptime);
+					stats.last_print_records = stats.records_read;
+				}
+			}
 			if (r->state == STATE_FULL)
 				request_head = (request_head + 1) % NR_SLOTS;
 		}
@@ -654,18 +705,21 @@ void loop(struct relay_misc *r_args)
 
 		/*
 		 *	If we're in STATE_WAIT and all slots are
-		 *	finally empty, we can copy the <detail>.work file
-		 *	to the definitive detail file and resume.
+		 *	finally empty, we can remove the <detail>.work
 		 */
-		if (state == STATE_WAIT || state == STATE_SHUTDOWN) {
+		if (state == STATE_WAIT || state == STATE_CLOSE || state == STATE_SHUTDOWN) {
 			for (i = 0; i < NR_SLOTS; i++)
 				if (slots[i].state != STATE_EMPTY)
 					break;
 			if (i == NR_SLOTS) {
-				if (fp) fclose(fp);
-				fp = NULL;
-				unlink(work);
-				if (state == STATE_SHUTDOWN) {
+				if (state == STATE_CLOSE) {
+					if (fp) fclose(fp);
+					fp = NULL;
+					if (debug_flag > 0)
+						fprintf(stderr, "Unlink file %s\n", work);
+					unlink(work);
+				}
+				else if (state == STATE_SHUTDOWN) {
 					for (i = 0; i < NR_SLOTS; i++) {
 						rad_free(&slots[i].req);
 					}
@@ -682,11 +736,14 @@ void loop(struct relay_misc *r_args)
 		for (i = 0; i < NR_SLOTS; i++) {
 			if (slots[i].state == STATE_FULL) {
 				n += do_send(&slots[i], r_args->secret);
-				ms_sleep(140);
+				if ((n % r_args->sleep_every) == 0)
+					ms_sleep(r_args->sleep_time);
 				if (n > NR_SLOTS / 2)
 					break;
 			}
 		}
+		if (r_args->records_print)
+			stats.packets_sent += n;
 	}
 }
 
@@ -697,15 +754,13 @@ void loop(struct relay_misc *r_args)
 int find_shortname(char *shortname, char **host, char **secret)
 {
 	CONF_SECTION *maincs, *cs;
+	char buffer[256];
 
-	/*
-	 *	Ensure that the configuration is initialized.
-	 */
-	memset(&mainconfig, 0, sizeof(mainconfig));
-
-	if ((maincs = read_radius_conf_file()) == NULL) {
-		fprintf(stderr, "Error reading radiusd.conf\n");
-		exit(1);
+	/* Lets go look for the new configuration files */
+	memset(&mainconfig, 0, sizeof(mainconfig)); /* for radlog() */
+	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", radius_dir);
+	if ((maincs = conf_read(NULL, 0, buffer, NULL)) == NULL) {
+		return -1;
 	}
 
 	/*
@@ -720,8 +775,6 @@ int find_shortname(char *shortname, char **host, char **secret)
 		 * or we find one that matches.
 		 */
 		while (cs && strcmp(shortname, c_shortname)) {
-			free(c_shortname);
-			free(c_secret);
 			cs = cf_subsection_find_next(cs, cs, "client");
 			if (cs) {
 				c_shortname = cf_section_value_find(cs, "shortname");
@@ -743,7 +796,8 @@ int find_shortname(char *shortname, char **host, char **secret)
 void usage(void)
 {
 	fprintf(stderr, "Usage: radrelay [-a accounting_dir] [-d radius_dir] [-i local_ip] [-s secret]\n");
-	fprintf(stderr, "[-S secret_file] [-fx] <[-n shortname] [-r remote-server[:port]]> detailfile\n");
+	fprintf(stderr, "[-e sleep_every packets] [-t sleep_time (ms)] [-S secret_file] [-fx]\n");
+	fprintf(stderr, "[-R records_print] <[-n shortname] [-r remote-server[:port]]> detailfile\n");
 	fprintf(stderr, " -a accounting_dir     Base accounting directory.\n");
 	fprintf(stderr, " -d radius_dir         Base radius (raddb) directory.\n");
 	fprintf(stderr, " -f                    Stay in the foreground (don't fork).\n");
@@ -751,6 +805,11 @@ void usage(void)
 	fprintf(stderr, " -i local_ip           Use local_ip as source address.\n");
 	fprintf(stderr, " -n shortname          Use the [shortname] entry from clients.conf for\n");
 	fprintf(stderr, "                       ip-adress and secret.\n");
+	fprintf(stderr, " -t sleep_time		Sleep so much time (in ms) between sending packets. Default: %dms.\n",
+						DEFAULT_SLEEP);
+	fprintf(stderr, " -e sleep_every	Sleep after sending so many packets. Default: %d\n",
+						DEFAULT_SLEEP_EVERY);
+	fprintf(stderr, " -R records_print	If in foreground mode, print statistics after so many records read.\n");
 	fprintf(stderr, " -r remote-server      The destination address/hostname.\n");
 	fprintf(stderr, " -s secret             Server secret.\n");
 	fprintf(stderr, " -S secret_file        Read server secret from file.\n");
@@ -780,6 +839,8 @@ int main(int argc, char **argv)
 	memset((char *) r_args.detail, 0, 1024);
 	memset((char *) r_args.f_secret, 0, 256);
 	r_args.secret = NULL;
+	r_args.sleep_time = DEFAULT_SLEEP;
+	r_args.sleep_every = DEFAULT_SLEEP_EVERY;
 
 	shortname = NULL;
 	server_name = NULL;
@@ -797,7 +858,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Process the options.
 	 */
-	while ((c = getopt(argc, argv, "a:d:fhi:n:r:s:S:x")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "a:d:fhi:t:e:n:r:R:s:S:x")) != EOF) switch(c) {
 		case 'a':
 			if (strlen(optarg) > 1021) {
 				fprintf(stderr, "%s: acct_dir to long\n", progname);
@@ -815,6 +876,19 @@ int main(int argc, char **argv)
 			break;
 		case 'n':
 			shortname = optarg;
+			break;
+		case 't':
+			r_args.sleep_time = atoi(optarg);
+			break;
+		case 'e':
+			r_args.sleep_every = atoi(optarg);
+			break;
+		case 'R':
+			if (!dontfork){
+				fprintf(stderr, "%s: Not in foreground mode. Can't print statistics.\n",progname);
+				usage();
+			}
+			r_args.records_print = atoi(optarg);
 			break;
 		case 'r':
 			server_name = optarg;
@@ -1005,4 +1079,3 @@ int main(int argc, char **argv)
 
 	return 0;
 }
-
