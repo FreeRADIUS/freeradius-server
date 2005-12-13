@@ -424,6 +424,7 @@ static int rl_free_entry(void *ctx, void *data)
 
 	for (entry = data; entry != NULL; entry = next) {
 		next = entry->next;
+		request = entry->request;
 
 #ifdef HAVE_PTHREAD_H 
 		/*
