@@ -426,19 +426,20 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		/*
 		 * Allocate room for <instance>-Ldap-Group
 		 */
-		group_name = malloc((strlen(xlat_name) + 1 + 11) * sizeof(char));
-		rad_assert(group_name != NULL);
+		group_name = rad_malloc((strlen(xlat_name) + 1 + 11) * sizeof(char));
 		sprintf(group_name,"%s-Ldap-Group",xlat_name);
 		DEBUG("rlm_ldap: Creating new attribute %s",group_name);
 		dict_addattr(group_name, 0, PW_TYPE_STRING, -1, flags);
 		dattr = dict_attrbyname(group_name);
 		if (dattr == NULL){
 			radlog(L_ERR, "rlm_ldap: Failed to create attribute %s",group_name);
+			free(group_name);
 			free(inst);	/* FIXME: detach */
 			return -1;
 		}
 		DEBUG("rlm_ldap: Registering ldap_groupcmp for %s",group_name);
 		paircompare_register(dattr->attr, PW_USER_NAME, ldap_groupcmp, inst);
+		free(group_name);
 	}
 	else {
 		xlat_name = cf_section_name1(conf);
