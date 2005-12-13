@@ -794,6 +794,7 @@ static int rlm_sql_detach(void *instance)
 			free(*p);
 			*p = NULL;
 		}
+		allowed_chars = NULL;
 		free(inst->config);
 		inst->config = NULL;
 	}
