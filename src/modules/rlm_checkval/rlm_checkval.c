@@ -283,6 +283,7 @@ static int do_checkval(void *instance, REQUEST *request)
 				ret = RLM_MODULE_OK;
 			else
 				ret = RLM_MODULE_REJECT;
+			regfree(&reg);
 		}
 #endif
 		tmp = chk_vp->next;
