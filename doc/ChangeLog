@@ -18,6 +18,7 @@ FreeRADIUS 1.1.0 ; $Date$, urgency=low
 	  the SQL server's capabilities.
 
 	Bug fixes
+	* rlm_digest has a number of bug fixes to authentication types.
 	* Don't leak memory in module "rlm_sql".
 	* Update the dictionaries, so that VALUEs with the same name,
 	  but different numbers, aren't allowed.
