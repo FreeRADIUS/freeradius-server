@@ -61,15 +61,17 @@ stamp-build: stamp-patch
 		--with-logdir=/var/log/$(package) \
 		--with-thread-pool --with-system-libtool \
 		--enable-ltdl-install=no --enable-strict-dependencies \
-		--with-udpfromto --with-edir \
+		--with-large-files --with-udpfromto --with-edir \
 		--with-rlm_sql_postgresql_lib_dir=`pg_config --libdir` \
 		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
 		--enable-developer
 
 #		To make SSL-free, add this:
 #		--without-rlm_eap_peap \
+		--without-rlm_eap_sim \
 		--without-rlm_eap_tls \
 		--without-rlm_eap_ttls \
+		--without-rlm_otp \
 		--without-rlm_sql_postgresql \
 		--without-snmp \
 
@@ -160,7 +162,7 @@ binary-arch: stamp-build
 	test ! -d $(freeradius_dir)/var/log/radius/radacct || rmdir $(freeradius_dir)/var/log/radius/radacct
 	test ! -d $(freeradius_dir)/var/log/radius || rmdir $(freeradius_dir)/var/log/radius
 #	Yuck! the makefile in doc/ does this.
-	rm -rf $(freeradius_dir)/usr/share/doc/freeradius-1.0.5
+	rm -rf $(freeradius_dir)/usr/share/doc/freeradius-1.1.0-pre0
 
 	# split out inconvenient/controversal modules to other places
 	for modname in $(modulepackages); do \
