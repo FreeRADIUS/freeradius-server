@@ -21,6 +21,7 @@ rlm_otp
 rlm_pam
 rlm_pap
 rlm_passwd
+rlm_perl
 rlm_preprocess
 rlm_radutmp
 rlm_realm
