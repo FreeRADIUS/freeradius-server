@@ -55,15 +55,11 @@ static const char rcsid[] =
  */
 static const char *hdr1 =
 "Login      Name              What  TTY  When      From      Location";
-static const char *ufmt1 = "%-10.10s %-17.17s %-5.5s %-4.4s %-9.9s %-9.9s %-.16s%s";
-static const char *ufmt1r = "%s,%s,%s,%s,%s,%s,%s%s";
 static const char *rfmt1 = "%-10.10s %-17.17s %-5.5s %s%-3d %-9.9s %-9.9s %-.19s%s";
-static const char *rfmt1r = "%s,%s,%s,%s%d,%s,%s,%s%s";
+static const char *rfmt1r = "%s,%s,%s,%s%u,%s,%s,%s%s";
 
 static const char *hdr2 =
 "Login      Port    What      When          From       Location";
-static const char *ufmt2 = "%-10.10s %-6.6d %-7.7s %-13.13s %-10.10s %-.16s%s";
-static const char *ufmt2r = "%s,%d,%s,%s,%s,%s%s";
 static const char *rfmt2 = "%-10.10s %s%-5d  %-6.6s %-13.13s %-10.10s %-.28s%s";
 static const char *rfmt2r = "%s,%s%d,%s,%s,%s,%s%s";
 
@@ -74,7 +70,6 @@ static int showcid = 0;
 int debug_flag = 0;
 const char *progname = "radwho";
 const char *radlog_dir = NULL;
-radlog_dest_t radlog_dest = RADLOG_FILES;
 const char *radutmp_file = NULL;
 
 const char *radius_dir = NULL;
@@ -83,11 +78,18 @@ const char *radlib_dir = NULL;
 uint32_t myip = INADDR_ANY;
 int log_stripped_names;
 
+radlog_dest_t radlog_dest = RADLOG_STDOUT;
+
+/*
+ *	Global, for log.c to use.
+ */
+struct main_config_t mainconfig;
+
 struct radutmp_config_t {
   char *radutmp_fn;
 } radutmpconfig;
 
-static CONF_PARSER module_config[] = {
+static const CONF_PARSER module_config[] = {
   { "filename", PW_TYPE_STRING_PTR, 0, &radutmpconfig.radutmp_fn,  RADUTMP },
   { NULL, -1, 0, NULL, NULL }
 };
@@ -234,71 +236,6 @@ static char *dotime(time_t t)
 	return s;
 }
 
-#if 0 /*UNUSED*/
-/*
- *	See how long a tty has been idle.
- */
-char *idletime(char *line)
-{
-	char tty[16];
-	static char tmp[8];
-	time_t t;
-	struct stat st;
-	int hr, min, days;
-
-	if (line[0] == '/')
-		strcpy(tty, "/dev/");
-	else
-		tty[0] = 0;
-	strncat(tty, line, 10);
-	tty[15] = 0;
-
-	tmp[0] = 0;
-	if (stat(tty, &st) == 0) {
-		time(&t);
-		t -= st.st_mtime;
-		if (t >= 60) {
-			min = (t / 60);
-			hr = min / 24;
-			days = hr / 24;
-			min %= 60;
-			hr %= 24;
-			if (days > 0)
-				snprintf(tmp, sizeof(tmp), "%dd", days);
-			else
-				snprintf(tmp, sizeof(tmp), "%2d:%02d", hr, min);
-		}
-	}
-	return tmp;
-}
-#endif
-
-/*
- *	Shorten tty name.
- */
-static const char *ttyshort(char *tty)
-{
-	static char tmp[16];
-
-	if (tty[0] == '/') tty += 5;
-
-	if (strncmp(tty, "tty", 3) == 0) {
-		if (tty[3] >= '0' && tty[3] <= '9')
-			snprintf(tmp, sizeof(tmp), "v%.14s", tty + 3);
-		else
-			snprintf(tmp, sizeof(tmp), "%.15s", tty + 3);
-		return tmp;
-	}
-	if (strncmp(tty, "vc", 2) == 0) {
-		snprintf(tmp, sizeof(tmp), "v.14%s", tty + 2);
-		return tmp;
-	}
-	if (strncmp(tty, "cu", 2) == 0) {
-		return tmp + 2;
-	}
-	return "??";
-}
-
 
 /*
  *	Print address of NAS.
@@ -314,21 +251,29 @@ static const char *hostname(char *buf, size_t buflen, uint32_t ipaddr)
 /*
  *	Print usage message and exit.
  */
-static void usage(void)
+static void NEVER_RETURNS usage(int status)
 {
-	fprintf(stderr, "Usage: radwho [-d raddb] [-lhfnsipcr]\n");
-	fprintf(stderr, "       -d: set the raddb directory (default is %s)\n",
+	FILE *output = status?stderr:stdout;
+
+	fprintf(output, "Usage: radwho [-d raddb] [-cfihnprRsSZ] [-N nas] [-P nas_port] [-u user] [-U user]\n");
+	fprintf(output, "       -c: show caller ID, if available\n");
+	fprintf(output, "       -d: set the raddb directory (default is %s)\n",
 		RADIUS_DIR);
-	fprintf(stderr, "       -l: show local (shell) users too\n");
-	fprintf(stderr, "       -h: hide shell users from radius\n");
-	fprintf(stderr, "       -f: give fingerd output\n");
-	fprintf(stderr, "       -n: no full name\n");
-	fprintf(stderr, "       -s: show full name\n");
-	fprintf(stderr, "       -i: show session ID\n");
-	fprintf(stderr, "       -p: show port type\n");
-	fprintf(stderr, "       -c: show caller ID, if available\n");
-	fprintf(stderr, "       -r: output as raw data\n");
-	exit(1);
+	fprintf(output, "       -f: give fingerd output\n");
+	fprintf(output, "       -i: show session ID\n");
+	fprintf(output, "       -n: no full name\n");
+	fprintf(output, "       -N <nas-ip-address>: Show entries matching the given NAS IP address\n");
+	fprintf(output, "       -p: show port type\n");
+	fprintf(output, "       -P <port>: Show entries matching the given nas port\n");
+	fprintf(output, "       -r: Print output as raw comma-delimited data\n");
+	fprintf(output, "       -R: Print output as RADIUS attributes and values\n");
+	fprintf(output, "           Includes ALL information from the radutmp record.\n");
+	fprintf(output, "       -s: show full name\n");
+	fprintf(output, "       -S: hide shell users from radius\n");
+	fprintf(output, "       -u <user>: Show entries matching the given user\n");
+	fprintf(output, "       -U <user>: like -u, but case-sensitive\n");
+	fprintf(output, "       -Z: Include accounting stop information in radius output.  Requires -R.\n");
+	exit(status);
 }
 
 
@@ -340,41 +285,51 @@ int main(int argc, char **argv)
 	CONF_SECTION *maincs, *cs;
 	FILE *fp;
 	struct radutmp rt;
-	struct utmp ut;
-	int hdrdone = 0;
 	char inbuf[128];
-	char myname[128];
 	char othername[256];
 	char nasname[1024];
 	char session_id[sizeof(rt.session_id)+1];
 	int fingerd = 0;
-	int showlocal = 0;
 	int hideshell = 0;
 	int showsid = 0;
 	int rawoutput = 0;
+	int radiusoutput = 0;	/* Radius attributes */
 	char *p, *q;
 	const char *portind;
-	int c, portno;
+	int c;
+	unsigned int portno;
+	char buffer[2048];
+	const char *user = NULL;
+	int user_cmp = 0;
+	time_t now = 0;
+	uint32_t nas_port = ~0;
+	uint32_t nas_ip_address = INADDR_NONE;
+	int zap = 0;
 
-	radius_dir = strdup(RADIUS_DIR);
+	radius_dir = RADIUS_DIR;
 
-	while((c = getopt(argc, argv, "d:flhnsipcr")) != EOF) switch(c) {
+	while((c = getopt(argc, argv, "d:flnN:sSipP:crRu:U:Z")) != EOF) switch(c) {
 		case 'd':
-			if (radius_dir) free(radius_dir);
-			radius_dir = strdup(optarg);
+			radius_dir = optarg;
 			break;
 		case 'f':
 			fingerd++;
 			showname = 0;
 			break;
-		case 'l':
-			showlocal = 1;
-			break;
 		case 'h':
+			usage(0);
+			break;
+		case 'S':
 			hideshell = 1;
 			break;
 		case 'n':
 			showname = 0;
+			break;
+		case 'N':
+			nas_ip_address = ip_addr(optarg);
+			if (nas_ip_address == INADDR_NONE) {
+				usage(1);
+			}
 			break;
 		case 's':
 			showname = 1;
@@ -385,6 +340,9 @@ int main(int argc, char **argv)
 		case 'p':
 			showptype = 1;
 			break;
+		case 'P':
+			nas_port = atoi(optarg);
+			break;
 		case 'c':
 			showcid = 1;
 			showname = 1;
@@ -392,29 +350,67 @@ int main(int argc, char **argv)
 		case 'r':
 			rawoutput = 1;
 			break;
+		case 'R':
+			radiusoutput = 1;
+			now = time(NULL);
+			break;
+		case 'u':
+			user = optarg;
+			user_cmp = 0;
+			break;
+		case 'U':
+			user = optarg;
+			user_cmp = 1;
+			break;
+		case 'Z':
+			zap = 1;
+			break;
 		default:
-			usage();
+			usage(1);
 			break;
 	}
 
 	/*
-	 *	Ensure that the configuration is initialized.
+	 *	Be safe.
+	 */
+	if (zap && !radiusoutput) zap = 0;
+
+	/*
+	 *	zap EVERYONE, but only on this nas
+	 */
+	if (zap && !user && (~nas_port == 0)) {
+		/*
+		 *	We need to know which NAS to zap users in.
+		 */
+		if (nas_ip_address == INADDR_NONE) usage(1);
+
+		printf("Acct-Status-Type = Accounting-Off\n");
+		printf("NAS-IP-Address = %s\n",
+		       ip_hostname(buffer, sizeof(buffer), nas_ip_address));
+		printf("Acct-Delay-Time = 0\n");
+		exit(0);	/* don't bother printing anything else */
+	}
+	
+	/*
+	 *	Initialize mainconfig
 	 */
 	memset(&mainconfig, 0, sizeof(mainconfig));
 
-	/* Read radiusd.conf */
-	if ((maincs = read_radius_conf_file()) == NULL) {
-		fprintf(stderr, "%s: Errors reading radiusd.conf\n", argv[0]);
+        /* Read radiusd.conf */
+	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", radius_dir);
+	maincs = conf_read(NULL, 0, buffer, NULL);
+	if (!maincs) {
+		fprintf(stderr, "%s: Error reading radiusd.conf.\n", argv[0]);
 		exit(1);
 	}
 
-	/* Read the radutmp section of radiusd.conf */
-	cs = cf_section_sub_find(cf_section_sub_find(maincs, "modules"), "radutmp");
-	if(!cs) {
-		fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf!\n",
-			argv[0]);
-		exit(1);
-	}
+        /* Read the radutmp section of radiusd.conf */
+        cs = cf_section_sub_find(cf_section_sub_find(maincs, "modules"), "radutmp");
+        if(!cs) {
+                fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf!\n",
+                        argv[0]);
+                exit(1);
+        }
 
 	cf_section_parse(cs, NULL, module_config);
 
@@ -451,108 +447,161 @@ int main(int argc, char **argv)
 		if (*p) sys_finger(p);
 	}
 
-	if (showlocal && (fp = fopen(radutmp_file, "r"))) {
-		if (rawoutput == 0)
-		{
-			fputs(showname ? hdr1 : hdr2, stdout);
-			fputs(eol, stdout);
-		}
-		hdrdone = 1;
-
-		/*
-		 *	Show the logged in UNIX users.
-		 */
-		gethostname(myname, 128);
-		while(fread(&ut, sizeof(ut), 1, fp) == 1) {
-#ifdef USER_PROCESS
-			if (ut.ut_user[0] && ut.ut_line[0] &&
-				ut.ut_type == USER_PROCESS) {
-#else
-			if (ut.ut_user[0] && ut.ut_line[0]) {
-#endif
-#ifdef UT_HOSTSIZE
-
-#ifdef HAVE_UTMPX_H
-#	define UT_TIME ut_xtime
-#else
-#	define UT_TIME ut_time
-#endif
-			if (showname)
-				printf((rawoutput == 0? ufmt1: ufmt1r),
-						ut.ut_name,
-						fullname(ut.ut_name),
-						"shell",
-						ttyshort(ut.ut_line),
-						dotime(ut.UT_TIME),
-						ut.ut_host,
-						myname, eol);
-			else
-				printf((rawoutput==0? ufmt2:ufmt2r),
-						ut.ut_name,
-						ttyshort(ut.ut_line),
-						"shell",
-						dotime(ut.UT_TIME),
-						ut.ut_host,
-						myname, eol);
-#endif
-			}
-		}
-		fclose(fp);
-	}
-
 	/*
 	 *	Show the users logged in on the terminal server(s).
 	 */
-	if ((fp = fopen(radutmp_file, "r")) == NULL)
+	if ((fp = fopen(radutmp_file, "r")) == NULL) {
+		fprintf(stderr, "%s: Error reading %s: %s\n",
+			progname, radutmp_file, strerror(errno));
 		return 0;
+	}
 
-	if (!hdrdone) {
+	/*
+	 *	Don't print the headers if raw or RADIUS
+	 */
+	if (!rawoutput && !radiusoutput) {
 		fputs(showname ? hdr1 : hdr2, stdout);
 		fputs(eol, stdout);
 	}
 
-	while(fread(&rt, sizeof(rt), 1, fp) == 1) {
-		if (rt.type == P_LOGIN) {
-			/*
-			 *	We don't show shell users if we are
-			 *	fingerd, as we have done that above.
-			 */
-			if (hideshell && !strchr("PCS", rt.proto))
+	/*
+	 *	Read the file, printing out active entries.
+	 */
+	while (fread(&rt, sizeof(rt), 1, fp) == 1) {
+		if (rt.type != P_LOGIN) continue; /* hide logout sessions */
+
+		/*
+		 *	We don't show shell users if we are
+		 *	fingerd, as we have done that above.
+		 */
+		if (hideshell && !strchr("PCS", rt.proto))
+			continue;
+
+		/*
+		 *	Print out sessions only for the given user.
+		 */
+		if (user) {	/* only for a particular user */
+			if (((user_cmp == 0) &&
+			     (strncasecmp(rt.login, user, strlen(user)) != 0)) ||
+			    ((user_cmp == 1) &&
+			     (strncmp(rt.login, user, strlen(user)) != 0))) {
 				continue;
-
-			memcpy(session_id, rt.session_id, sizeof(rt.session_id));
-			session_id[sizeof(rt.session_id)] = 0;
-
-			if (!rawoutput && rt.nas_port > (showname ? 999 : 99999)) {
-				portind = ">";
-				portno = (showname ? 999 : 99999);
-			} else {
-				portind = "S";
-				portno = rt.nas_port;
 			}
-			if (showname)
-				printf((rawoutput == 0? rfmt1: rfmt1r),
-						rt.login,
-						showcid ? rt.caller_id :
-						(showsid? session_id : fullname(rt.login)),
-						proto(rt.proto, rt.porttype),
-						portind, portno,
-						dotime(rt.time),
-						nas_name3(nasname, sizeof(nasname), rt.nas_address),
-						hostname(othername, sizeof(othername), rt.framed_address), eol);
-			else
-				printf((rawoutput == 0? rfmt2: rfmt2r),
-						rt.login,
-						portind, portno,
-						proto(rt.proto, rt.porttype),
-						dotime(rt.time),
-						nas_name3(nasname, sizeof(nasname), rt.nas_address),
-						hostname(othername, sizeof(othername), rt.framed_address),
-						eol);
+		}
+
+		/*
+		 *	Print out only for the given NAS port.
+		 */
+		if (~nas_port != 0) {
+			if (rt.nas_port != nas_port) continue;
+		}
+
+		/*
+		 *	Print out only for the given NAS IP address
+		 */
+		if (nas_ip_address != INADDR_NONE) {
+			if (rt.nas_address != nas_ip_address) continue;
+		}
+		
+		memcpy(session_id, rt.session_id, sizeof(rt.session_id));
+		session_id[sizeof(rt.session_id)] = 0;
+		
+		if (!rawoutput && rt.nas_port > (showname ? 999 : 99999)) {
+			portind = ">";
+			portno = (showname ? 999 : 99999);
+		} else {
+			portind = "S";
+			portno = rt.nas_port;
+		}
+
+		/*
+		 *	Print output as RADIUS attributes
+		 */
+		if (radiusoutput) {
+			memcpy(nasname, rt.login, sizeof(rt.login));
+			nasname[sizeof(rt.login)] = '\0';
+
+			librad_safeprint(nasname, -1, buffer,
+					 sizeof(buffer));
+			printf("User-Name = \"%s\"\n", buffer);
+
+			librad_safeprint(session_id, -1, buffer,
+					 sizeof(buffer));
+			printf("Acct-Session-Id = \"%s\"\n", buffer);
+
+			if (zap) printf("Acct-Status-Type = Stop\n");
+
+			printf("NAS-IP-Address = %s\n",
+			       ip_hostname(buffer, sizeof(buffer),
+					   rt.nas_address));
+			printf("NAS-Port = %u\n", rt.nas_port);
+
+			switch (rt.proto) {
+				case 'S':
+					printf("Service-Type = Framed-User\n");
+					printf("Framed-Protocol = SLIP\n");
+					break;
+				case 'P':
+					printf("Service-Type = Framed-User\n");
+					printf("Framed-Protocol = PPP\n");
+					break;
+				default:
+					printf("Service-type = Login-User\n");
+					break;
+			}
+			if (rt.framed_address != INADDR_NONE) {
+				printf("Framed-IP-Address = %s\n",
+				       ip_hostname(buffer, sizeof(buffer),
+						   rt.framed_address));
+			}
+			
+			/*
+			 *	Some sanity checks on the time
+			 */
+			if ((rt.time <= now) &&
+			    (now - rt.time) <= (86400 * 365)) {
+				printf("Acct-Session-Time = %ld\n",
+				       now - rt.time);
+			}
+
+			if (rt.caller_id[0] != '\0') {
+				memcpy(nasname, rt.caller_id,
+				       sizeof(rt.caller_id));
+				nasname[sizeof(rt.caller_id)] = '\0';
+				
+				librad_safeprint(nasname, -1, buffer,
+						 sizeof(buffer));
+				printf("Calling-Station-Id = \"%s\"\n", buffer);
+			}
+
+			printf("\n"); /* separate entries with a blank line */
+			continue;
+		}
+
+		/*
+		 *	Show the fill name, or not.
+		 */
+		if (showname) {
+			printf((rawoutput == 0? rfmt1: rfmt1r),
+			       rt.login,
+			       showcid ? rt.caller_id :
+			       (showsid? session_id : fullname(rt.login)),
+			       proto(rt.proto, rt.porttype),
+			       portind, portno,
+			       dotime(rt.time),
+			       ip_hostname(nasname, sizeof(nasname), rt.nas_address),
+			       hostname(othername, sizeof(othername), rt.framed_address), eol);
+		} else {
+			printf((rawoutput == 0? rfmt2: rfmt2r),
+			       rt.login,
+			       portind, portno,
+			       proto(rt.proto, rt.porttype),
+			       dotime(rt.time),
+			       ip_hostname(nasname, sizeof(nasname), rt.nas_address),
+			       hostname(othername, sizeof(othername), rt.framed_address),
+			       eol);
 		}
 	}
-	fflush(stdout);
-	fflush(stderr);
 	fclose(fp);
 
 	return 0;

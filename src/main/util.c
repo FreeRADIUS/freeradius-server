@@ -325,7 +325,7 @@ void xfree(const char *ptr)
  *
  */
 
-void rad_assert_fail (const char *file, unsigned int line)
+void NEVER_RETURNS rad_assert_fail (const char *file, unsigned int line)
 {
 	radlog(L_ERR|L_CONS, "Assertion failed in %s, line %u", file, line);
 	abort();
@@ -456,7 +456,6 @@ void rfc_clean(RADIUS_PACKET *packet)
 		pairmove2(&vps, &(packet->vps), PW_EAP_MESSAGE);
 		pairmove2(&vps, &(packet->vps), PW_MESSAGE_AUTHENTICATOR);
 		pairmove2(&vps, &(packet->vps), PW_REPLY_MESSAGE);
-		pairmove2(&vps, &(packet->vps), PW_VENDOR_SPECIFIC);
 		break;
 	}
 
