@@ -1,11 +1,26 @@
 FreeRADIUS 1.1.0 ; $Date$, urgency=low
+	Feature improvements
 	* Copied dictionaries from the CVS head (many, many, more vendors)
 	* Enabled support for weird VSA formats, like Lucent and Starent.
 	* Support encrypted IP address and integers, for Juniper clients.
+	* Add PEAP machine authentication support in module "rlm_mschap".
+	* Support User-Password field encryption in digest mode.
+	* rlm_x99_token has become rlm_otp (with lots of changes).
+	* Add rlm_sqlcounter to the list of stable modules.
+	* Read MySQL specific options in sections [freeradius] and [client]
+	  from file "my.cnf".
+	* Support the ${Cisco-AVPair[n]} syntax.
+	* Execute modules in {Pre,Post}-Proxy-Type stanzas.
+	* Add new options to radclient to run stress tests on the server.
+	* New module "rlm_sql_log" to postpone the storage of accounting data
+	  in a SQL database. See rlm_sql_log(5) manpage.
+	* New program "radsqlrelay" which sends the SQL logfile according to
+	  the SQL server's capabilities.
+
+	Bug fixes
 	* Don't leak memory in module "rlm_sql".
 	* Update the dictionaries, so that VALUEs with the same name,
 	  but different numbers, aren't allowed.
-	* Add PEAP machine authentication support in module "rlm_mschap".
 	* Queue the request before looking for available threads.
 	* Don't free the check items after we received the proxy reply.
 	* Expand config variables in included files, too.
@@ -18,7 +33,12 @@ FreeRADIUS 1.1.0 ; $Date$, urgency=low
 	  spotted by Konstantin Kubatkin.
 	* Removed (for almost all uses) length restrictions on vendor names
 	  and VALUE names.
-	* rlm_x99_token has become rlm_otp (with lots of changes).
+	* Don't leak memory when proxying an Access-Challenge response.
+	* Make the sleep time user-defined, so radrelay can send more than
+	  7 requests/s.
+	* Fix a memory leak in rlm_checkval.
+	* radclient doesn't resend countless times packets with invalid
+	  signature.
 
 FreeRADIUS 1.0.5 ; Date: 2005/09/04 16:23:00, urgency=medium
 	Security Fixes
