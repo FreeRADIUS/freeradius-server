@@ -147,15 +147,6 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 		type = SSL_FILETYPE_ASN1;
 	}
 
-	/* Load the CAs we trust */
-	if (!(SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) ||
-	    (!SSL_CTX_set_default_verify_paths(ctx))) {
-		ERR_print_errors_fp(stderr);
-		radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list");
-		return NULL;
-	}
-	SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
-
 	/*
 	 * Set the password to load private key
 	 */
@@ -164,12 +155,37 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 		SSL_CTX_set_default_passwd_cb(ctx, cbtls_password);
 	}
 
-	/* Load our keys and certificates*/
-	if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
+	/*
+	 *	Load our keys and certificates
+	 *
+	 *	If certificates are of type PEM then we can make use
+	 *	of cert chain authentication using openssl api call
+	 *	SSL_CTX_use_certificate_chain_file.  Please see how
+	 *	the cert chain needs to be given in PEM from
+	 *	openSSL.org
+	 */
+	if (type == SSL_FILETYPE_PEM) {
+		radlog(L_INFO, "rlm_eap_tls: Loading the certificate file as a chain");
+		if (!(SSL_CTX_use_certificate_chain_file(ctx, conf->certificate_file))) {
+			ERR_print_errors_fp(stderr);
+			radlog(L_ERR, "rlm_eap_tls: Error reading certificate file");
+			return NULL;
+		}
+
+	} else if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
 		ERR_print_errors_fp(stderr);
 		radlog(L_ERR, "rlm_eap_tls: Error reading certificate file");
 		return NULL;
 	}
+
+
+	/* Load the CAs we trust */
+	if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
+		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list");
+		return NULL;
+	}
+	SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
 
 	if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
 		ERR_print_errors_fp(stderr);
