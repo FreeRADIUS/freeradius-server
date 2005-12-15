@@ -16,12 +16,12 @@ if test x$with_[]modname != xno; then
            fail=$fail" perl"
 	else
           old_CFLAGS=$CFLAGS
-          CFLAGS="$CFLAGS `perl -MExtUtils::Embed -e ccopts`"
+          CFLAGS="$CFLAGS `perl -MExtUtils::Embed -e ccopts; perl -MConfig -e 'print $Config{cppflags}'`"
 
 	  smart_try_dir=
 	  AC_SMART_CHECK_INCLUDE(EXTERN.h)
 	  if test "x$ac_cv_header_EXTERN_h" = "xyes"; then
-		perl_cflags='`perl -MExtUtils::Embed -e ccopts`'
+		perl_cflags="`perl -MExtUtils::Embed -e ccopts; perl -MConfig -e 'print $Config{cppflags}'`"
 	  else
 		fail="$fail EXTERN.h"
 		targetname=
@@ -29,7 +29,7 @@ if test x$with_[]modname != xno; then
 
 	  AC_SMART_CHECK_INCLUDE(perl.h, [#include <EXTERN.h>])
 	  if test "x$ac_cv_header_perl_h" = "xyes"; then
-		perl_cflags='`perl -MExtUtils::Embed -e ccopts`'
+		perl_cflags="`perl -MExtUtils::Embed -e ccopts; perl -MConfig -e 'print $Config{cppflags}'`"
 	  else
 		fail="$fail perl.h"
 		targetname=
