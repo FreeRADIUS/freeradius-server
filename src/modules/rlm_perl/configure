@@ -521,7 +521,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.1 
+# From configure.in Revision: 1.1.10.1 
 
 
 if test x$with_rlm_perl != xno; then
@@ -864,7 +864,7 @@ fi
            fail=$fail" perl"
 	else
           old_CFLAGS=$CFLAGS
-          CFLAGS="$CFLAGS `perl -MExtUtils::Embed -e ccopts`"
+          CFLAGS="$CFLAGS `perl -MExtUtils::Embed -e ccopts; perl -MConfig -e 'print $Config{cppflags}'`"
 
 	  smart_try_dir=
 	  
