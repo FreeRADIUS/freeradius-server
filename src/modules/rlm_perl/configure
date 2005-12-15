@@ -995,7 +995,7 @@ else
 fi
 
 	  if test "x$ac_cv_header_EXTERN_h" = "xyes"; then
-		perl_cflags='`perl -MExtUtils::Embed -e ccopts`'
+		perl_cflags="`perl -MExtUtils::Embed -e ccopts; perl -MConfig -e 'print $Config{cppflags}'`"
 	  else
 		fail="$fail EXTERN.h"
 		targetname=
@@ -1129,7 +1129,7 @@ else
 fi
 
 	  if test "x$ac_cv_header_perl_h" = "xyes"; then
-		perl_cflags='`perl -MExtUtils::Embed -e ccopts`'
+		perl_cflags="`perl -MExtUtils::Embed -e ccopts; perl -MConfig -e 'print $Config{cppflags}'`"
 	  else
 		fail="$fail perl.h"
 		targetname=
