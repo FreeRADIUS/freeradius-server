@@ -48,7 +48,7 @@ struct modcallable {
 	struct modcallable *next;
 	int actions[RLM_MODULE_NUMCODES];
 	const char *name;
-	enum { MOD_SINGLE, MOD_GROUP, MOD_LOAD_BALANCE } type;
+	enum { MOD_SINGLE, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE  } type;
 };
 
 typedef struct {
@@ -70,7 +70,9 @@ static modsingle *mod_callabletosingle(modcallable *p)
 }
 static modgroup *mod_callabletogroup(modcallable *p)
 {
-	rad_assert((p->type==MOD_GROUP) || (p->type==MOD_LOAD_BALANCE));
+	rad_assert((p->type==MOD_GROUP) ||
+		   (p->type==MOD_LOAD_BALANCE) ||
+		   (p->type==MOD_REDUNDANT_LOAD_BALANCE));
 	return (modgroup *)p;
 }
 static modcallable *mod_singletocallable(modsingle *p)
@@ -100,7 +102,7 @@ static void add_child(modgroup *g, modcallable *c)
 
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
-static LRAD_NAME_NUMBER rcode_table[] = {
+static const LRAD_NAME_NUMBER rcode_table[] = {
 	{ "reject",     RLM_MODULE_REJECT       },
 	{ "fail",       RLM_MODULE_FAIL         },
 	{ "ok",         RLM_MODULE_OK           },
@@ -226,11 +228,72 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request,
 	return myresult;
 }
 
+
+/*
+ *	Helper function for call_modgroup, and call_modredundantloadbalance
+ *
+ *	Returns 0 for "stop", and "1" for continue.
+ */
+static int call_one(int component, modcallable *p, REQUEST *request,
+		    int *priority, int *result)
+{
+	int r;
+
+#ifdef RAD_REQUEST_OPTION_STOP_NOW
+	/*
+	 *	A module has taken too long to process the request,
+	 *	and we've been told to stop processing it.
+	 */
+	if (request->options & RAD_REQUEST_OPTION_STOP_NOW) {
+		*result = RLM_MODULE_FAIL;
+		return 0;
+	}
+#endif
+	
+	/* Call this child by recursing into modcall */
+	r = modcall(component, p, request);
+	
+#if 0
+	DEBUG2("%s: action for %s is %s",
+	       comp2str[component], lrad_int2str(rcode_table, r, "??"),
+	       action2str(p->actions[r]));
+#endif
+	
+	/*
+	 * 	Find an action to go with the child's result. If it is
+	 * 	"return", break out of the loop so the rest of the
+	 * 	children in the list will be skipped.
+	 */
+	if (p->actions[r] == MOD_ACTION_RETURN) {
+		*result = r;
+		return 0;
+	}
+	
+	/* If "reject" break out of the loop and return reject */
+	if (p->actions[r] == MOD_ACTION_REJECT) {
+		*result = RLM_MODULE_REJECT;
+		return 0;
+	}
+	
+	/*
+	 *	Otherwise, the action is a number, the preference
+	 *	level of this return code. If no higher preference has
+	 *	been seen yet, remember this one
+	 . */
+	if (p->actions[r] >= *priority) {
+		*result = r;
+		*priority = p->actions[r];
+	}
+	
+	return 1;
+}
+
+
 static int call_modgroup(int component, modgroup *g, REQUEST *request,
-		int default_result)
+			 int default_result)
 {
 	int myresult = default_result;
-	int myresultpref;
+	int priority = 0;	/* default result has lowest priority  */
 	modcallable *p;
 
 	/*
@@ -241,42 +304,10 @@ static int call_modgroup(int component, modgroup *g, REQUEST *request,
 		return default_result;
 	}
 
-	/* Assign the lowest possible preference to the default return code */
-	myresultpref = 0;
-
 	/* Loop over the children */
-	for(p = g->children; p; p = p->next) {
-		int r = RLM_MODULE_FAIL;
-
-		/* Call this child by recursing into modcall */
-		r = modcall(component, p, request);
-
-#if 0
-		DEBUG2("%s: action for %s is %s",
-			comp2str[component], lrad_int2str(rcode_table, r, "??"),
-			action2str(p->actions[r]));
-#endif
-
-		/* Find an action to go with the child's result. If "return",
-		 * break out of the loop so the rest of the children in the
-		 * list will be skipped. */
-		if(p->actions[r] == MOD_ACTION_RETURN) {
-			myresult = r;
+	for (p = g->children; p; p = p->next) {
+		if (!call_one(component, p, request, &priority, &myresult)) {
 			break;
-		}
-
-		/* If "reject" break out of the loop and return reject */
-		if (p->actions[r] == MOD_ACTION_REJECT) {
-			myresult = RLM_MODULE_REJECT;
-			break;
-		}
-
-		/* Otherwise, the action is a number, the preference level of
-		 * this return code. If no higher preference has been seen
-		 * yet, remember this one. */
-		if(p->actions[r] >= myresultpref) {
-			myresult = r;
-			myresultpref = p->actions[r];
 		}
 	}
 
@@ -330,6 +361,88 @@ static int call_modloadbalance(int component, modgroup *g, REQUEST *request,
 
 	/* Call the chosen child by recursing into modcall */
 	return modcall(component, child, request);
+}
+
+
+/*
+ *	For more than 2 modules with redundancy + load balancing
+ *	across all of them, layering the "redundant" and
+ *	"load-balance" groups gets too complicated.  As a result, we
+ *	implement a special function to do this.
+ */
+static int call_modredundantloadbalance(int component, modgroup *g, REQUEST *request,
+					int default_result)
+{
+	int count = 1;
+	int myresult = default_result;
+	int priority = 0;	/* default result has lowest priority  */
+	modcallable *p, *child = NULL;
+
+	/*
+	 *	Catch people who have issues.
+	 */
+	if (!g->children) {
+		DEBUG2("  WARNING! Asked to process empty redundant-load-balance group.  Returning %s.", lrad_int2str(rcode_table, default_result, "??"));
+		return default_result;
+	}
+
+	/*
+	 *	Pick a random child.
+	 */
+
+	/* Loop over the children */
+	for(p = g->children; p; p = p->next) {
+		if (!child) {
+			child = p;
+			count = 1;
+			continue;
+		}
+
+		/*
+		 *	Keep track of how many load balancing servers
+		 *	we've gone through.
+		 */
+		count++;
+
+		/*
+		 *	See the "camel book" for why this works.
+		 *
+		 *	If (rand(0..n) < 1), pick the current realm.
+		 *	We add a scale factor of 65536, to avoid
+		 *	floating point.
+		 */
+		if ((count * (lrad_rand() & 0xffff)) < (uint32_t) 0x10000) {
+			child = p;
+		}
+	}
+	rad_assert(child != NULL);
+
+	/*
+	 *	Call the chosen child, with fail-over to the next one
+	 *	if it is down.
+	 */
+	p = child;
+	do {
+		/*
+		 *	Call the chosen entry.  If we're done, then
+		 *	stop.
+		 */
+		if (!call_one(component, p, request, &priority, &myresult)) {
+			break;
+		}
+		
+		/*
+		 *	Go to the next one, and wrap around to the beginning if
+		 *	we reach the end.
+		 */
+		p = p->next;
+		if (!p) p = g->children;
+	} while (p != child);
+
+	/*
+	 *	And return whatever was decided.
+	 */
+	return myresult;
 }
 
 int modcall(int component, modcallable *c, REQUEST *request)
@@ -387,6 +500,23 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						       myresult);
 			
 			DEBUG2("modcall: load-balance group %s returns %s for request %d",
+			       c->name,
+			       lrad_int2str(rcode_table, myresult, "??"),
+			       request->number);
+		}
+		break;
+		
+	case MOD_REDUNDANT_LOAD_BALANCE:
+		{
+			modgroup *g = mod_callabletogroup(c);
+			
+			DEBUG2("modcall: entering redundant-load-balance group %s for request %d",
+			       c->name, request->number);
+			
+			myresult = call_modredundantloadbalance(component, g, request,
+								myresult);
+			
+			DEBUG2("modcall: redundant-load-balance group %s returns %s for request %d",
 			       c->name,
 			       lrad_int2str(rcode_table, myresult, "??"),
 			       request->number);
@@ -481,7 +611,7 @@ static void dump_tree(int comp UNUSED, modcallable *c UNUSED)
 /* These are the default actions. For each component, the group{} block
  * behaves like the code from the old module_*() function. redundant{} and
  * append{} are based on my guesses of what they will be used for. --Pac. */
-static int
+static const int
 defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 {
 	/* authenticate */
@@ -875,6 +1005,13 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 					GROUPTYPE_SIMPLEGROUP, grouptype);
 			csingle->type = MOD_LOAD_BALANCE;
 			return csingle;
+		} else if (strcmp(modrefname, "redundant-load-balance") == 0) {
+			*modname = "UnnamedGroup";
+			csingle= do_compile_modgroup(component, cs, filename,
+					GROUPTYPE_REDUNDANT, grouptype);
+			if (!csingle) return NULL;
+			csingle->type = MOD_REDUNDANT_LOAD_BALANCE;
+			return csingle;
 		}
 	} else {
 		CONF_PAIR *cp = cf_itemtopair(ci);
@@ -977,6 +1114,10 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 			}
 		}
 	}
+
+	/*
+	 *	FIXME: If there are no children, return NULL?
+	 */
 	return mod_grouptocallable(g);
 }
 
