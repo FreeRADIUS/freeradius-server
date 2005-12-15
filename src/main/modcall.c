@@ -48,7 +48,7 @@ struct modcallable {
 	struct modcallable *next;
 	int actions[RLM_MODULE_NUMCODES];
 	const char *name;
-	enum { MOD_SINGLE, MOD_GROUP } type;
+	enum { MOD_SINGLE, MOD_GROUP, MOD_LOAD_BALANCE } type;
 };
 
 typedef struct {
@@ -70,7 +70,7 @@ static modsingle *mod_callabletosingle(modcallable *p)
 }
 static modgroup *mod_callabletogroup(modcallable *p)
 {
-	rad_assert(p->type==MOD_GROUP);
+	rad_assert((p->type==MOD_GROUP) || (p->type==MOD_LOAD_BALANCE));
 	return (modgroup *)p;
 }
 static modcallable *mod_singletocallable(modsingle *p)
@@ -283,6 +283,55 @@ static int call_modgroup(int component, modgroup *g, REQUEST *request,
 	return myresult;
 }
 
+static int call_modloadbalance(int component, modgroup *g, REQUEST *request,
+			       int default_result)
+{
+	int count = 1;
+	modcallable *p, *child = NULL;
+
+	/*
+	 *	Catch people who have issues.
+	 */
+	if (!g->children) {
+		DEBUG2("  WARNING! Asked to process empty load-balance group.  Returning %s.", lrad_int2str(rcode_table, default_result, "??"));
+		return default_result;
+	}
+
+	/*
+	 *	Pick a random child.
+	 */
+
+	/* Loop over the children */
+	for(p = g->children; p; p = p->next) {
+		if (!child) {
+			child = p;
+			count = 1;
+			continue;
+		}
+
+		/*
+		 *	Keep track of how many load balancing servers
+		 *	we've gone through.
+		 */
+		count++;
+
+		/*
+		 *	See the "camel book" for why this works.
+		 *
+		 *	If (rand(0..n) < 1), pick the current realm.
+		 *	We add a scale factor of 65536, to avoid
+		 *	floating point.
+		 */
+		if ((count * (lrad_rand() & 0xffff)) < (uint32_t) 0x10000) {
+			child = p;
+		}
+	}
+	rad_assert(child != NULL);
+
+	/* Call the chosen child by recursing into modcall */
+	return modcall(component, child, request);
+}
+
 int modcall(int component, modcallable *c, REQUEST *request)
 {
 	int myresult;
@@ -326,27 +375,58 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		return myresult;
 	}
 
-	if(c->type==MOD_GROUP) {
-		modgroup *g = mod_callabletogroup(c);
+	switch (c->type) {
+	case MOD_LOAD_BALANCE:
+		{
+			modgroup *g = mod_callabletogroup(c);
+			
+			DEBUG2("modcall: entering load-balance group %s for request %d",
+			       c->name, request->number);
+			
+			myresult = call_modloadbalance(component, g, request,
+						       myresult);
+			
+			DEBUG2("modcall: load-balance group %s returns %s for request %d",
+			       c->name,
+			       lrad_int2str(rcode_table, myresult, "??"),
+			       request->number);
+		}
+		break;
+		
+	case MOD_GROUP:
+		{
+			modgroup *g = mod_callabletogroup(c);
+			
+			DEBUG2("modcall: entering group %s for request %d",
+			       c->name, request->number);
+			
+			myresult = call_modgroup(component, g, request,
+						 myresult);
+			
+			DEBUG2("modcall: group %s returns %s for request %d",
+			       c->name,
+			       lrad_int2str(rcode_table, myresult, "??"),
+			       request->number);
+		}
+		break;
+		
+	case MOD_SINGLE:
+		{
+			modsingle *sp = mod_callabletosingle(c);
+			
+			myresult = call_modsingle(component, sp, request,
+						  myresult);
+			
+			DEBUG2("  modcall[%s]: module \"%s\" returns %s for request %d",
+			       comp2str[component], c->name,
+			       lrad_int2str(rcode_table, myresult, "??"),
+			       request->number);
+		}
+		break;
 
-		DEBUG2("modcall: entering group %s for request %d",
-		       c->name, request->number);
-
-		myresult = call_modgroup(component, g, request, myresult);
-
-		DEBUG2("modcall: group %s returns %s for request %d",
-		        c->name,
-		       lrad_int2str(rcode_table, myresult, "??"),
-		       request->number);
-	} else {
-		modsingle *sp = mod_callabletosingle(c);
-
-		myresult = call_modsingle(component, sp, request, myresult);
-
-		DEBUG2("  modcall[%s]: module \"%s\" returns %s for request %d",
-		       comp2str[component], c->name,
-		       lrad_int2str(rcode_table, myresult, "??"),
-		       request->number);
+	default:
+		radlog(L_ERR, "Internal error processing module entry");
+		break;
 	}
 
 	return myresult;
@@ -743,9 +823,9 @@ static void override_actions(modcallable *c, CONF_SECTION *cs,
 	for(ci=cf_item_find_next(cs, NULL); ci != NULL; ci=cf_item_find_next(cs, ci)) {
 		if(cf_item_is_section(ci)) {
 			radlog(L_ERR|L_CONS,
-					"%s[%d] Subsection of module instance call "
-					"not allowed\n", filename,
-					cf_section_lineno(cf_itemtosection(ci)));
+			       "%s[%d] Subsection of module instance call "
+			       "not allowed\n", filename,
+			       cf_section_lineno(cf_itemtosection(ci)));
 			exit(1);
 		}
 		cp = cf_itemtopair(ci);
@@ -759,8 +839,8 @@ static void override_actions(modcallable *c, CONF_SECTION *cs,
 }
 
 static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
-		const char *filename, int grouptype,
-		const char **modname)
+					 const char *filename, int grouptype,
+					 const char **modname)
 {
 	int lineno;
 	const char *modrefname;
@@ -789,6 +869,12 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 			*modname = "UnnamedGroup";
 			return do_compile_modgroup(component, cs, filename,
 					GROUPTYPE_APPEND, grouptype);
+		} else if (strcmp(modrefname, "load-balance") == 0) {
+			*modname = "UnnamedGroup";
+			csingle= do_compile_modgroup(component, cs, filename,
+					GROUPTYPE_SIMPLEGROUP, grouptype);
+			csingle->type = MOD_LOAD_BALANCE;
+			return csingle;
 		}
 	} else {
 		CONF_PAIR *cp = cf_itemtopair(ci);
@@ -813,6 +899,8 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 
 	this = find_module_instance(modrefname);
 	if (this == NULL) {
+		radlog(L_ERR|L_CONS, "%s[%d] Unknown module \"%s\".", filename,
+		       lineno, modrefname);
 		exit(1); /* FIXME */
 	}
 
@@ -827,8 +915,8 @@ modcallable *compile_modsingle(int component, CONF_ITEM *ci,
 		const char *filename, const char **modname)
 {
 	modcallable *ret = do_compile_modsingle(component, ci, filename,
-		GROUPTYPE_SIMPLEGROUP,
-		modname);
+						GROUPTYPE_SIMPLEGROUP,
+						modname);
 	dump_tree(component, ret);
 	return ret;
 }
@@ -857,7 +945,7 @@ static modcallable *do_compile_modgroup(int component, CONF_SECTION *cs,
 			const char *junk;
 			modcallable *single;
 			single = do_compile_modsingle(component, ci, filename,
-					grouptype, &junk);
+						      grouptype, &junk);
 			add_child(g, single);
 		} else {
 			const char *attr, *value;
