@@ -1,5 +1,7 @@
 FreeRADIUS 1.1.0 ; $Date$, urgency=low
 	Feature improvements
+	* Modules can be load balanced, both in isolation and redundantly.
+	  See doc/load-balance.txt for more information.
 	* rlm_perl is now marked "stable"
 	* N-tier certificate patch from Mohammed Petiwala.
 	* Copied dictionaries from the CVS head (many, many, more vendors)
