@@ -1,5 +1,5 @@
 #
-# spec file for package freeradius (Version 1.0.2)
+# spec file for package freeradius (Version 1.1.0)
 #
 # Copyright (c) 2004 SUSE LINUX Products GmbH, Nuernberg, Germany.
 # This file and all modifications and additions to the pristine
@@ -17,7 +17,7 @@ License:      GPL, LGPL
 Group:        Productivity/Networking/Radius/Servers
 Provides:     radiusd
 Conflicts:    radiusd-livingston radiusd-cistron icradius
-Version:      1.0.2
+Version:      1.1.0
 Release:      1.suse
 URL:          http://www.freeradius.org/
 Summary:      Very highly Configurable Radius-Server
