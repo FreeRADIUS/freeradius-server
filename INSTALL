@@ -13,7 +13,7 @@ the following steps to build and install the server:
 	$ make
 	$ make install
 
-  Note that in this release, the location of the dictionary files has
+  Note that as of 1.0.0, the location of the dictionary files has
 changed, to /usr/local/share/freeradius/dictionary.  Please ensure
 that /etc/raddb/dictionary is THE SAME as ./raddb/dictionary.  If not,
 you will have to copy it over by hand;

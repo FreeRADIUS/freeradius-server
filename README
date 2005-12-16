@@ -12,6 +12,23 @@ information.
   To install the server, please see the INSTALL file in this
 directory.
 
+  The differences between 1.0.x and 1.1.0 are documented in the file
+doc/ChangeLog.  What these differences mean for an administrator
+upgrading from 1.0.x are as follows:
+
+  * You MUST use the new dictionaries.  This is NOT done by default,
+    because you may have edited the installed version of /etc/raddb/dictionary.
+    If you have not edited /etc/raddb/dictionary, then you can make
+    the server use the new dictionaries by copying the
+    raddb/dictionary file from this directory to /etc/raddb.  Without
+    this change, the server WILL NOT WORK PROPERLY.
+
+  * Sites using SQL for logging should look into using the new
+    rlm_sql_log module.  See it's "man" page for details.
+
+  * Sites using rlm_x99_token will have to update their configuration
+    to use rlm_otp.
+
 3. DEBUGGING THE SERVER
 
   Run the server in debugging mode, (radiusd -X) and READ the output.
@@ -30,6 +47,10 @@ documentation, other than comments in the configuration file.
   Type some key words into the search box, and you should find
 discussions about common problems and solution.
 
+
+  See the Wiki
+
+	http://wiki.freeradius.org
 
 4. ADDITIONAL INFORMATION
 
