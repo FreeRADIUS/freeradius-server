@@ -235,6 +235,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	} else {
 		a1[a1_len] = '\0';
 		DEBUG2("A1 = %s (using MD5-Password)", a1);
+		a1_len = 16;
 	}
 
 	/*
@@ -378,7 +379,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	if (((algo != NULL) && 
 	     (strcasecmp(algo->vp_strvalue, "MD5-Sess") == 0)) ||
 	    (passwd->attribute == PW_USER_PASSWORD)) {
-	  a1[a1_len] = '\0';
+		a1[a1_len] = '\0';
 		librad_md5_calc(&hash[0], &a1[0], a1_len);
 	} else {
 		memcpy(&hash[0], &a1[0], a1_len);
