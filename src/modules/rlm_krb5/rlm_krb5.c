@@ -330,7 +330,7 @@ static int krb5_auth(void *instance, REQUEST *request)
 	krb5_ccache id;
 	krb5_principal userP;
 
-	krb5_context context = *(krb5_context *) instance; /* copy data */
+	krb5_context context = *((rlm_krb5_t *)instance)->context; /* copy data */
 	const char *user, *pass;
 
 	/*
