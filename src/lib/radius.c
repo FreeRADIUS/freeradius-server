@@ -228,22 +228,43 @@ static void make_passwd(uint8_t *output, int *outlen,
 }
 
 static void make_tunnel_passwd(uint8_t *output, int *outlen,
-			       const uint8_t *input, int inlen,
+			       const uint8_t *input, int inlen, int room,
 			       const char *secret, const uint8_t *vector)
 {
 	MD5_CTX context, old;
 	uint8_t	digest[AUTH_VECTOR_LEN];
-	uint8_t passwd[AUTH_PASS_LEN + AUTH_VECTOR_LEN];
+	uint8_t passwd[MAX_STRING_LEN + AUTH_VECTOR_LEN];
 	int	i, n;
 	int	len;
+
+	/*
+	 *	Account for 2 bytes of the salt, and round the room
+	 *	available down to the nearest multiple of 16.  Then,
+	 *	subtract one from that to account for the length byte,
+	 *	and the resulting number is the upper bound on the data
+	 *	to copy.
+	 *
+	 *	We could short-cut this calculation just be forcing
+	 *	inlen to be no more than 239.  It would work for all
+	 *	VSA's, as we don't pack multiple VSA's into one
+	 *	attribute.
+	 *
+	 *	However, this calculation is more general, if a little
+	 *	complex.  And it will work in the future for all possible
+	 *	kinds of weird attribute packing.
+	 */
+	room -= 2;
+	room -= (room & 0x0f);
+	room--;
+
+	if (inlen > room) inlen = room;
 
 	/*
 	 *	Length of the encrypted data is password length plus
 	 *	one byte for the length of the password.
 	 */
 	len = inlen + 1;
-	if (len > AUTH_PASS_LEN) len = AUTH_PASS_LEN;
-	else if ((len & 0x0f) != 0) {
+	if ((len & 0x0f) != 0) {
 		len += 0x0f;
 		len &= ~0x0f;
 	}
@@ -291,6 +312,7 @@ static void make_tunnel_passwd(uint8_t *output, int *outlen,
 	}
 	memcpy(output, passwd, len + 2);
 }
+
 
 /*
  *	Parse a data structure into a RADIUS attribute.
@@ -484,8 +506,22 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			return -1;
 		}
 
+		/*
+		 *	Check if 255 - offset - total_length is less
+		 *	than 18.  If so, we can't fit the data into
+		 *	the available space, and we discard the
+		 *	attribute.
+		 *
+		 *	This is ONLY a problem if we have multiple VSA's
+		 *	in one Vendor-Specific, though.
+		 */
+		if ((255 - offset - total_length) < 18) return 0;
+
+		/*
+		 *	Can't make the password, suppress it.
+		 */
 		make_tunnel_passwd(ptr + offset, &len,
-				   data, len,
+				   data, len, 255 - offset - total_length,
 				   secret, original->vector);
 		break;
 
