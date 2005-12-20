@@ -237,6 +237,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	} else {
 		a1[a1_len] = '\0';
 		DEBUG2("A1 = %s (using MD5-Password)", a1);
+		a1_len = 16;
 	}
 
 	/*
