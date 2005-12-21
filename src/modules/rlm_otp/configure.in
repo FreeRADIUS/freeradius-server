@@ -27,29 +27,33 @@ if test x$with_[]modname != xno; then
 	otp_ldflags="-L$withval $otp_ldflags")
 	AC_ARG_WITH(rlm-otp-include-dir,
 	[  --with-rlm-otp-include-dir    directory for otp includes],
-	otp_cflags="-I$withval $otp_cflags")
-
-	dnl extra argument: --openssl-includes=dir
-	AC_ARG_WITH(openssl-includes,
-	[  --with-openssl-includes=DIR   directory to look for OpenSSL include files],
-	otp_cflags="-I$withval $otp_cflags")
+	otp_cflags="$otp_cflags -I$withval")
 
 	dnl extra argument: --openssl-libraries=dir
 	AC_ARG_WITH(openssl-libraries,
 	[  --with-openssl-libraries=DIR  directory to look for OpenSSL library files],
 	otp_ldflags="-L$withval $otp_ldflags")
 
+	dnl extra argument: --openssl-includes=dir
+	AC_ARG_WITH(openssl-includes,
+	[  --with-openssl-includes=DIR   directory to look for OpenSSL include files],
+	otp_cflags="$otp_cflags -I$withval")
 
 	dnl ############################################################
 	dnl # Check for libraries
 	dnl ############################################################
 
+	old_LDFLAGS="$LDFLAGS"
+	LDFLAGS="$otp_ldflags $LDFLAGS"
 	AC_CHECK_LIB(ssl, SSL_new, [], [ fail="$fail openssl-libs" ])
+	LDFLAGS="$old_LDFLAGS"
 
 	dnl ############################################################
 	dnl # Check for header files
 	dnl ############################################################
 
+	old_CFLAGS="$CFLAGS"
+	CFLAGS="$CFLAGS $otp_cflags"
 	AC_CHECK_HEADERS( \
 		openssl/des.h \
 		openssl/hmac.h \
@@ -59,6 +63,7 @@ if test x$with_[]modname != xno; then
 		[],
 		[ fail="$fail openssl-includes" ]
 	)
+	CFLAGS="$old_CFLAGS"
 
 	targetname=modname     # keep this!  Don't change!
 else
