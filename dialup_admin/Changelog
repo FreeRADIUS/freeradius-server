@@ -1,3 +1,10 @@
+Ver 1.70.1:
+* Report correct data transfer statistics for users
+* Lower-case sql column names to match creation scripts
+* Fix creation of empty groups
+* Put quote around usernames in HTML output
+* Properly notice when we've got a blank password to SQL
+
 Ver 1.70:
 * Add the /bin postgresql compatibility patch from Guy Fraser
 * Add ldap_userdn as a configuration directive. If set we use that for
