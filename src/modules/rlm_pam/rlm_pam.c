@@ -126,7 +126,7 @@ static int PAM_conv (int num_msg,
   int size = sizeof(struct pam_response);
   my_PAM *pam_config = (my_PAM *) appdata_ptr;
 
-#define GET_MEM if (reply) realloc(reply, size); else reply = rad_malloc(size); \
+#define GET_MEM if (reply) reply = realloc(reply, size); else reply = rad_malloc(size); \
   size += sizeof(struct pam_response)
 #define COPY_STRING(s) ((s) ? strdup(s) : NULL)
 
