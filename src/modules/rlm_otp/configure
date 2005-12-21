@@ -16,9 +16,9 @@ ac_help="$ac_help
 ac_help="$ac_help
   --with-rlm-otp-include-dir    directory for otp includes"
 ac_help="$ac_help
-  --with-openssl-includes=DIR   directory to look for OpenSSL include files"
-ac_help="$ac_help
   --with-openssl-libraries=DIR  directory to look for OpenSSL library files"
+ac_help="$ac_help
+  --with-openssl-includes=DIR   directory to look for OpenSSL include files"
 
 # Initialize some variables set by options.
 # The variables have the same names as the options, with
@@ -529,7 +529,7 @@ else
 fi
 
 
-# From configure.in Revision: 1.1.2.3 
+# From configure.in Revision: 1.1.2.4 
 
 
 otp_cflags=
@@ -664,14 +664,7 @@ fi
 	# Check whether --with-rlm-otp-include-dir or --without-rlm-otp-include-dir was given.
 if test "${with_rlm_otp_include_dir+set}" = set; then
   withval="$with_rlm_otp_include_dir"
-  otp_cflags="-I$withval $otp_cflags"
-fi
-
-
-		# Check whether --with-openssl-includes or --without-openssl-includes was given.
-if test "${with_openssl_includes+set}" = set; then
-  withval="$with_openssl_includes"
-  otp_cflags="-I$withval $otp_cflags"
+  otp_cflags="$otp_cflags -I$withval"
 fi
 
 
@@ -682,10 +675,18 @@ if test "${with_openssl_libraries+set}" = set; then
 fi
 
 
+		# Check whether --with-openssl-includes or --without-openssl-includes was given.
+if test "${with_openssl_includes+set}" = set; then
+  withval="$with_openssl_includes"
+  otp_cflags="$otp_cflags -I$withval"
+fi
+
 
 			
+	old_LDFLAGS="$LDFLAGS"
+	LDFLAGS="$otp_ldflags $LDFLAGS"
 	echo $ac_n "checking for SSL_new in -lssl""... $ac_c" 1>&6
-echo "configure:689: checking for SSL_new in -lssl" >&5
+echo "configure:690: checking for SSL_new in -lssl" >&5
 ac_lib_var=`echo ssl'_'SSL_new | sed 'y%./+-%__p_%'`
 if eval "test \"`echo '$''{'ac_cv_lib_$ac_lib_var'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
@@ -693,7 +694,7 @@ else
   ac_save_LIBS="$LIBS"
 LIBS="-lssl  $LIBS"
 cat > conftest.$ac_ext <<EOF
-#line 697 "configure"
+#line 698 "configure"
 #include "confdefs.h"
 /* Override any gcc2 internal prototype to avoid an error.  */
 /* We use char because int might match the return type of a gcc2
@@ -704,7 +705,7 @@ int main() {
 SSL_new()
 ; return 0; }
 EOF
-if { (eval echo configure:708: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+if { (eval echo configure:709: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
   rm -rf conftest*
   eval "ac_cv_lib_$ac_lib_var=yes"
 else
@@ -732,8 +733,11 @@ else
  fail="$fail openssl-libs" 
 fi
 
+	LDFLAGS="$old_LDFLAGS"
 
 			
+	old_CFLAGS="$CFLAGS"
+	CFLAGS="$CFLAGS $otp_cflags"
 	for ac_hdr in \
 		openssl/des.h \
 		openssl/hmac.h \
@@ -743,17 +747,17 @@ fi
 do
 ac_safe=`echo "$ac_hdr" | sed 'y%./+-%__p_%'`
 echo $ac_n "checking for $ac_hdr""... $ac_c" 1>&6
-echo "configure:747: checking for $ac_hdr" >&5
+echo "configure:751: checking for $ac_hdr" >&5
 if eval "test \"`echo '$''{'ac_cv_header_$ac_safe'+set}'`\" = set"; then
   echo $ac_n "(cached) $ac_c" 1>&6
 else
   cat > conftest.$ac_ext <<EOF
-#line 752 "configure"
+#line 756 "configure"
 #include "confdefs.h"
 #include <$ac_hdr>
 EOF
 ac_try="$ac_cpp conftest.$ac_ext >/dev/null 2>conftest.out"
-{ (eval echo configure:757: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
+{ (eval echo configure:761: \"$ac_try\") 1>&5; (eval $ac_try) 2>&5; }
 ac_err=`grep -v '^ *+' conftest.out | grep -v "^conftest.${ac_ext}\$"`
 if test -z "$ac_err"; then
   rm -rf conftest*
@@ -781,6 +785,7 @@ fail="$fail openssl-includes"
 fi
 done
 
+	CFLAGS="$old_CFLAGS"
 
 	targetname=rlm_otp     # keep this!  Don't change!
 else
