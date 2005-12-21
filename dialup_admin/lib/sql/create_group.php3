@@ -26,6 +26,14 @@ if ($link){
 				$da_abort=1;
 			}
 		}
+	} else {
+		$res = @da_sql_query($link,$config,
+		"INSERT INTO $config[sql_usergroup_table] (groupname)
+		VALUES ('$login');");
+		if (!$res || !@da_sql_affected_rows($link,$res,$config)){
+			echo "<b>Unable to create group $login: " . da_sql_error($link,$config) . "</b><br>\n";
+			$da_abort=1;
+		}
 	}
 	if (!$da_abort){
 		foreach($show_attrs as $key => $attr){

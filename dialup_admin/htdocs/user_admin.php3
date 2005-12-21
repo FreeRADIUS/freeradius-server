@@ -246,7 +246,7 @@ if ($link){
 				$lastlog_input = 'not available';
 			$lastlog_output = $row['acctoutputoctets'];
 			if ($lastlog_output)
-				$lastlog_input = bytes2str($lastlog_output);
+				$lastlog_output = bytes2str($lastlog_output);
 			else
 				$lastlog_output = 'not available';
 		}

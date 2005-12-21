@@ -58,13 +58,14 @@ EOM;
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = @da_sql_query($link,$config,
-	"SELECT COUNT(*) as counter,groupname FROM $config[sql_usergroup_table] GROUP BY groupname;");
+	"SELECT COUNT(*) as counter,groupname,MAX(username) AS usersample FROM $config[sql_usergroup_table] GROUP BY groupname;");
 	if ($search){
 		if (@da_sql_num_rows($search,$config)){
 			while( $row = @da_sql_fetch_array($search,$config) ){
 				$num++;
 				$group = $row[groupname];
 				$num_members = $row[counter];
+				if ($row[usersample] == "") $num_members--;
 				echo <<<EOM
 		<tr align=center>
 			<td>$num</td>
