@@ -108,7 +108,7 @@ static uint32_t dict_hashname(const char *name)
 	p = name;
 	q = buffer;
 	while (*p && (len < sizeof(buffer))) {
-		if (isalpha(*p)) {
+		if (isalpha((int) *p)) {
 			*(q++) = tolower((int) *(p++));
 		} else {
 			*(q++) = *(p++);
@@ -679,7 +679,7 @@ static int process_value(const char* fn, const int line, char **argv,
 	 *	if it sees values which look like integers, so we can't
 	 *	use them here.
 	 */
-	if (isdigit(argv[1][0])) {
+	if (isdigit((int) argv[1][0])) {
 		librad_log("dict_init: %s[%d]: Names for VALUEs cannot start with a digit.",
 			   fn, line);
 	}
