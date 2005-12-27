@@ -447,6 +447,14 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	/*
+	 *	No query, die.
+	 */
+	if (data->query == NULL) {
+		radlog(L_ERR, "rlm_sqlcounter: 'query' must be set.");
+		return -1;
+	}
+
+	/*
 	 *	Safe characters list for sql queries. Everything else is
 	 *	replaced rwith their mime-encoded equivalents.
 	 */
