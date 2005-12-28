@@ -1,5 +1,8 @@
 FreeRADIUS 1.1.0 ; $Date$, urgency=low
 	Feature improvements
+	* rlm_ldap has "set_auth_type" configuration option, which should
+	  address some configuration problems when using it.
+	* Fix MIT Kerberos bug
 	* Modules can be load balanced, both in isolation and redundantly.
 	  See doc/load-balance.txt for more information.
 	* rlm_perl is now marked "stable"
@@ -22,6 +25,8 @@ FreeRADIUS 1.1.0 ; $Date$, urgency=low
 	  the SQL server's capabilities.
 
 	Bug fixes
+	* #306 (HUP when built with threads, but executed with -s)
+	* #285 (more attributes in dictionary.cisco.vpn3000)
 	* rlm_digest has a number of bug fixes to authentication types.
 	* Don't leak memory in module "rlm_sql".
 	* Update the dictionaries, so that VALUEs with the same name,
