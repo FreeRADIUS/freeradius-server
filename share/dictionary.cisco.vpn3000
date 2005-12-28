@@ -75,7 +75,12 @@ ATTRIBUTE	CVPN3000-IPSec-Authorization-Type	65	integer
 ATTRIBUTE	CVPN3000-IPSec-Authorization-Required	66	integer
 ATTRIBUTE	CVPN3000-IPSec-DN-Field			67	string
 ATTRIBUTE	CVPN3000-IPSec-Confidence-Level		68	integer
+ATTRIBUTE	CVPN3000-WebVPN-Content-Filter		69	integer
+ATTRIBUTE	CVPN3000-WebVPN-Enable-functions	70	integer
+ATTRIBUTE	CVPN3000-WebVPN-Exchange-Addr		74	string
 ATTRIBUTE	CVPN3000-LEAP-Bypass			75	integer
+ATTRIBUTE	CVPN3000-WebVPN-Exchnage-NETBIOS-name	78	string
+ATTRIBUTE	CVPN3000-Port-Forwarding-Name		79	string
 ATTRIBUTE	CVPN3000-Partition-Primary-DHCP		128	ipaddr
 ATTRIBUTE	CVPN3000-Partition-Secondary-DHCP	129	ipaddr
 ATTRIBUTE	CVPN3000-Partition-Premise-Router	131	ipaddr
