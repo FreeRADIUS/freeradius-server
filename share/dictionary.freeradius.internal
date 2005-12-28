@@ -277,7 +277,8 @@ VALUE	Auth-Type			Accept			254
 
 VALUE	Auth-Type			PAP			1024
 VALUE	Auth-Type			CHAP			1025
-VALUE	Auth-Type			LDAP			1026
+# 1026 was LDAP, but we deleted it.  Adding it back will break the
+# ldap module.
 VALUE	Auth-Type			PAM			1027
 VALUE	Auth-Type			MS-CHAP			1028
 VALUE	Auth-Type			Kerberos		1029
