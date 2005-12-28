@@ -794,6 +794,18 @@ $INCLUDE ${confdir}/eap.conf
 		# compare_check_items = yes
 		# do_xlat = yes
 		# access_attr_used_for_allow = yes
+
+		#
+		#  By default, if the packet contains a User-Password,
+		#  and no other module is configured to handle the
+		#  authentication, the LDAP module sets itself to do
+		#  LDAP bind for authentication.
+		#
+		#  You can disable this behavior by setting the following
+		#  configuration entry to "no".
+		#
+		#  allowed values: {no, yes}
+		# set_auth_type = yes
 	}
 
 	# passwd module allows to do authorization via any passwd-like

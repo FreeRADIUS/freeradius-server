@@ -309,6 +309,7 @@ typedef struct {
 #ifdef NOVELL
 	int			edir_account_policy_check;
 #endif
+	int		set_auth_type;
 }               ldap_instance;
 
 /* The default setting for TLS Certificate Verification */
@@ -356,6 +357,7 @@ static CONF_PARSER module_config[] = {
 	{"edir_account_policy_check", PW_TYPE_BOOLEAN, offsetof(ldap_instance,edir_account_policy_check), NULL, "yes"},
 #endif
 
+	{"set_auth_type", PW_TYPE_BOOLEAN, offsetof(ldap_instance,set_auth_type), NULL, "yes"},
 	{NULL, -1, 0, NULL, NULL}
 };
 
@@ -368,7 +370,7 @@ static void     fieldcpy(char *, char **);
 #endif
 static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *,VALUE_PAIR **,char);
 static int ldap_groupcmp(void *, REQUEST *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
-static int ldap_xlat(void *,REQUEST *, char *, char *,int, RADIUS_ESCAPE_STRING);
+static int ldap_xlat(void *, REQUEST *, char *, char *, size_t, RADIUS_ESCAPE_STRING);
 static LDAP    *ldap_connect(void *instance, const char *, const char *, int, int *, char **);
 static int     read_mappings(ldap_instance* inst);
 
@@ -417,6 +419,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	TLDAP_RADIUS *pair;
 	ATTR_FLAGS flags;
 	char *xlat_name;
+	DICT_VALUE *dv;
 
 	inst = rad_malloc(sizeof *inst);
 	if (!inst) {
@@ -490,6 +493,19 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	inst->xlat_name = strdup(xlat_name);
 	DEBUG("rlm_ldap: Registering ldap_xlat with xlat_name %s",xlat_name);
 	xlat_register(xlat_name,ldap_xlat,inst);
+
+	/*
+	 *	Over-ride set_auth_type if there's no Auth-Type of our name.
+	 *	This automagically catches the case where LDAP is listed
+	 *	in "authorize", but not "authenticate".
+	 */
+	dv = dict_valbyname(PW_AUTH_TYPE, xlat_name);
+	if (!dv) {
+		if (inst->set_auth_type) {
+			DEBUG2("rlm_ldap: Over-riding set_auth_type, as we're not listed in the \"authenticate\" section.");
+		}
+	  inst->set_auth_type = 0;
+	}
 
 #ifdef NOVELL
 	/*
@@ -828,24 +844,38 @@ static int ldap_escape_func(char *out, int outlen, const char *in)
 
 	while (in[0]) {
 		/*
-		 *  Only one byte left.
+		 *	Encode unsafe characters.
+		 */
+		if (strchr("*=\\,()", *in)) {
+			static const char hex[] = "0123456789abcdef";
+
+			/*
+			 *	Only 3 or less bytes available.
+			 */
+			if (outlen <= 3) {
+				break;
+			}
+
+			*(out++) = '\\';
+			*(out++) = hex[((*in) >> 4) & 0x0f];
+			*(out++) = hex[(*in) & 0x0f];
+			outlen -= 3;
+			len += 3;
+			in++;
+			continue;
+		}
+
+		/*
+		 *	Only one byte left.
 		 */
 		if (outlen <= 1) {
 			break;
 		}
 
-		if (strchr("*", *in)) {
-			in++;
-			outlen--;
-			continue;
-		}
-
 		/*
-		 *	Else it's a nice character.
+		 *	Allowed character.
 		 */
-		*out = *in;
-		out++;
-		in++;
+		*(out++) = *(in++);
 		outlen--;
 		len++;
 	}
@@ -1054,8 +1084,8 @@ static int ldap_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALU
  * Do an xlat on an LDAP URL
  */
 
-static int ldap_xlat(void *instance, REQUEST *request, char *fmt, char *out, int freespace,
-				RADIUS_ESCAPE_STRING func)
+static int ldap_xlat(void *instance, REQUEST *request, char *fmt, char *out,
+		     size_t freespace, RADIUS_ESCAPE_STRING func)
 {
 	char url[MAX_FILTER_STR_LEN];
 	int res;
@@ -1583,13 +1613,15 @@ ldap_authorize(void *instance, REQUEST * request)
 
 	/*
  	 * Module should default to LDAP authentication if no Auth-Type
-	 * specified
+	 * specified.  Note that we do this ONLY if configured, AND we
+	 * set the Auth-Type to our module name, which allows multiple
+	 * ldap instances to work.
 	 */
-	if ((pairfind(*check_pairs, PW_AUTH_TYPE) == NULL) &&
+	if (inst->set_auth_type &&
+	    (pairfind(*check_pairs, PW_AUTH_TYPE) == NULL) &&
 	    request->password &&
 	    (request->password->attribute == PW_USER_PASSWORD))
-		pairadd(check_pairs, pairmake("Auth-Type", "LDAP", T_OP_EQ));
-
+		pairadd(check_pairs, pairmake("Auth-Type", inst->xlat_name, T_OP_EQ));
 
 	DEBUG("rlm_ldap: user %s authorized to use remote access",
 	      request->username->strvalue);
@@ -1612,7 +1644,7 @@ ldap_authenticate(void *instance, REQUEST * request)
 	LDAP           *ld_user;
 	LDAPMessage    *result, *msg;
 	ldap_instance  *inst = instance;
-	char           *user_dn, *attrs[] = {"uid", NULL}, *err = NULL;
+	char           *user_dn, *attrs[] = {"uid", NULL};
 	char		filter[MAX_FILTER_STR_LEN];
 	char		basedn[MAX_FILTER_STR_LEN];
 	int             res;
@@ -1621,6 +1653,9 @@ ldap_authenticate(void *instance, REQUEST * request)
 	char            module_fmsg[MAX_STRING_LEN];
 	LDAP_CONN	*conn;
 	int		conn_id = -1;
+#ifdef NOVELL
+	char		*err = NULL;
+#endif
 
 	DEBUG("rlm_ldap: - authenticate");
 
@@ -1809,13 +1844,10 @@ ldap_postauth(void *instance, REQUEST * request)
 			break;
 		case '2':
 			{
-				int err, conn_id = -1, i;
+				int err, conn_id = -1;
 				char *error_msg = NULL;
-				LDAP *ld;
 				VALUE_PAIR *vp_fdn, *vp_pwd;
 				DICT_ATTR *da;
-				ldap_instance	*inst = instance;
-				LDAP_CONN	*conn;
 
 				if(request->reply->code == PW_AUTHENTICATION_REJECT){
 					/* Bind to eDirectory as the RADIUS user with a wrong password. */
@@ -1985,7 +2017,7 @@ ldap_connect(void *instance, const char *dn, const char *password, int auth, int
 	}
 
 
-#ifdef HAVE_INT_TLS_CONFIG
+#ifdef HAVE_LDAP_INT_TLS_CONFIG
 
 	if ( ldap_int_tls_config( NULL, LDAP_OPT_X_TLS_REQUIRE_CERT,
 							  (inst->tls_require_cert) )
