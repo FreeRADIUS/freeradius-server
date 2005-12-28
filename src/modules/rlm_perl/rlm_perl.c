@@ -764,8 +764,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 		argc = 3;
 	}
 
-	if (!interp) {
 #ifdef USE_ITHREADS
+	if (!interp) {
 		if ((interp = perl_alloc()) == NULL) {
 			radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
 			return -1;
@@ -773,10 +773,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 		
 		perl_construct(interp);
 		PL_perl_destruct_level = 2;
-#endif
 	}
 
-#ifdef USE_ITHREADS
 	inst->perl = perl_clone(interp ,CLONEf_KEEP_PTR_TABLE);
 	{
 	dTHXa(inst->perl);
