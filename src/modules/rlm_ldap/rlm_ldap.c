@@ -2063,7 +2063,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 	}
 	
 	if (inst->tls_cacertdir != NULL) {
-		DEBUG("rlm_ldap: setting TLS CACert File to %s", inst->tls_cacertdir);
+		DEBUG("rlm_ldap: setting TLS CACert Directory to %s", inst->tls_cacertdir);
 		
 		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_CACERTDIR,
 				      (void *) inst->tls_cacertdir )
