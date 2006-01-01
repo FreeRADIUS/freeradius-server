@@ -1,0 +1,370 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 01_NET-SNMP_build_support.dpatch by Paul Hampson <Paul.Hampson@anu.edu.au>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Support building against net-snmp in ucd-snmp compatibility mode
+
+@DPATCH@
+diff -ruN freeradius-1.1.0.orig/aclocal.m4 freeradius-1.1.0/aclocal.m4
+--- freeradius-1.1.0.orig/aclocal.m4	2006-01-01 18:28:15.314577752 +0100
++++ freeradius-1.1.0/aclocal.m4	2006-01-01 18:31:04.612840504 +0100
+@@ -3770,6 +3770,7 @@
+ #ifdef HAVE_UNISTD_H
+ #include <unistd.h>
+ #endif
++#include <ucd-snmp/ucd-snmp-config.h>
+ #include <ucd-snmp/asn1.h>
+ #include <ucd-snmp/snmp.h>
+ #include <ucd-snmp/snmp_impl.h>],
+@@ -3800,6 +3801,7 @@
+ #ifdef HAVE_UNISTD_H
+ #include <unistd.h>
+ #endif
++#include <ucd-snmp/ucd-snmp-config.h>
+ #include <ucd-snmp/asn1.h>
+ #include <ucd-snmp/snmp.h>
+ #include <ucd-snmp/snmp_impl.h>],
+diff -ruN freeradius-1.1.0.orig/configure freeradius-1.1.0/configure
+--- freeradius-1.1.0.orig/configure	2006-01-01 18:28:15.323576384 +0100
++++ freeradius-1.1.0/configure	2006-01-01 18:32:01.013266336 +0100
+@@ -8442,6 +8442,7 @@
+ #ifdef HAVE_UNISTD_H
+ #include <unistd.h>
+ #endif
++#include <ucd-snmp/ucd-snmp-config.h>
+ #include <ucd-snmp/asn1.h>
+ #include <ucd-snmp/snmp.h>
+ #include <ucd-snmp/snmp_impl.h>
+@@ -8449,7 +8450,7 @@
+  int a = 1;
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8453: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
++if { (eval echo configure:8454: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+   rm -rf conftest*
+   SNMP_INCLUDE="";ucdsnmp=yes
+ else
+@@ -8465,7 +8466,7 @@
+   for try in /usr/include /usr/local/include $with_snmp_include_dir; do
+     CFLAGS="$old_CFLAGS -I$try"
+     cat > conftest.$ac_ext <<EOF
+-#line 8469 "configure"
++#line 8470 "configure"
+ #include "confdefs.h"
+ 
+ #ifdef HAVE_SYS_TYPES_H
+@@ -8483,6 +8484,7 @@
+ #ifdef HAVE_UNISTD_H
+ #include <unistd.h>
+ #endif
++#include <ucd-snmp/ucd-snmp-config.h>
+ #include <ucd-snmp/asn1.h>
+ #include <ucd-snmp/snmp.h>
+ #include <ucd-snmp/snmp_impl.h>
+@@ -8490,7 +8492,7 @@
+  int a = 1;
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8494: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
++if { (eval echo configure:8496: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+   rm -rf conftest*
+   SNMP_INCLUDE="-I$try";ucdsnmp=yes
+ else
+@@ -8512,7 +8514,7 @@
+   for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $with_snmp_include_dir; do
+     CFLAGS="$old_CFLAGS -I$try"
+ cat > conftest.$ac_ext <<EOF
+-#line 8516 "configure"
++#line 8518 "configure"
+ #include "confdefs.h"
+ 
+ #ifdef HAVE_SYS_TYPES_H
+@@ -8537,7 +8539,7 @@
+  int a = 1;
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8541: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
++if { (eval echo configure:8543: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+   rm -rf conftest*
+   SNMP_INCLUDE="";ucdsnmp=no
+ else
+@@ -8559,7 +8561,7 @@
+   for try in /usr/include/ucd-snmp /usr/local/include/ucd-snmp $with_snmp_include_dir; do
+     CFLAGS="$old_CFLAGS -I$try"
+     cat > conftest.$ac_ext <<EOF
+-#line 8563 "configure"
++#line 8565 "configure"
+ #include "confdefs.h"
+ 
+ #ifdef HAVE_SYS_TYPES_H
+@@ -8584,7 +8586,7 @@
+  int a = 1;
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8588: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
++if { (eval echo configure:8590: \"$ac_compile\") 1>&5; (eval $ac_compile) 2>&5; }; then
+   rm -rf conftest*
+   SNMP_INCLUDE="-I$try";ucdsnmp=no
+ else
+@@ -8618,19 +8620,19 @@
+ 
+   fi
+   echo $ac_n "checking for snmp_build_var_op in -lsnmp""... $ac_c" 1>&6
+-echo "configure:8622: checking for snmp_build_var_op in -lsnmp" >&5
++echo "configure:8624: checking for snmp_build_var_op in -lsnmp" >&5
+ 
+   old_LIBS="$LIBS"
+   LIBS="$old_LIBS -lsnmp"
+   cat > conftest.$ac_ext <<EOF
+-#line 8627 "configure"
++#line 8629 "configure"
+ #include "confdefs.h"
+ extern char snmp_build_var_op();
+ int main() {
+  snmp_build_var_op()
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8634: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++if { (eval echo configure:8636: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+   rm -rf conftest*
+   SNMP_LIBS="-lsnmp"
+ else
+@@ -8645,14 +8647,14 @@
+     for try in /usr/lib /usr/local/lib /usr/local/snmp/lib $with_snmp_lib_dir; do
+       LIBS="$old_LIBS -L$try -lsnmp"
+       cat > conftest.$ac_ext <<EOF
+-#line 8649 "configure"
++#line 8651 "configure"
+ #include "confdefs.h"
+ extern char snmp_build_var_op();
+ int main() {
+  snmp_build_var_op()
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8656: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++if { (eval echo configure:8658: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+   rm -rf conftest*
+   SNMP_LIBS="-L$try -lsnmp"
+ else
+@@ -8667,14 +8669,14 @@
+       fi
+       LIBS="$old_LIBS -L$try -lsnmp -lcrypto"
+       cat > conftest.$ac_ext <<EOF
+-#line 8671 "configure"
++#line 8673 "configure"
+ #include "confdefs.h"
+ extern char snmp_build_var_op();
+ int main() {
+  snmp_build_var_op()
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8678: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++if { (eval echo configure:8680: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+   rm -rf conftest*
+   SNMP_LIBS="-L$try -lsnmp -lcrypto"
+ else
+@@ -8689,14 +8691,14 @@
+       fi
+       LIBS="$old_LIBS -L$try -lsnmp -lcrypto -lkstat"
+       cat > conftest.$ac_ext <<EOF
+-#line 8693 "configure"
++#line 8695 "configure"
+ #include "confdefs.h"
+ extern char snmp_build_var_op();
+ int main() {
+  snmp_build_var_op()
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8700: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++if { (eval echo configure:8702: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+   rm -rf conftest*
+   SNMP_LIBS="-L$try -lsnmp -lcrypto -lkstat"
+ else
+@@ -8734,7 +8736,7 @@
+ 
+ gethostbyaddrrstyle=""
+ echo $ac_n "checking gethostbyaddr_r() syntax""... $ac_c" 1>&6
+-echo "configure:8738: checking gethostbyaddr_r() syntax" >&5
++echo "configure:8740: checking gethostbyaddr_r() syntax" >&5
+ case "$host" in
+ *-freebsd*)
+ 	cat >> confdefs.h <<\EOF
+@@ -8747,7 +8749,7 @@
+ esac
+ if test "x$gethostbyaddrrstyle" = "x"; then
+ 	cat > conftest.$ac_ext <<EOF
+-#line 8751 "configure"
++#line 8753 "configure"
+ #include "confdefs.h"
+ 
+ #include <stdio.h>
+@@ -8757,7 +8759,7 @@
+  gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL, NULL) 
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8761: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++if { (eval echo configure:8763: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+   rm -rf conftest*
+   
+ 	cat >> confdefs.h <<\EOF
+@@ -8774,7 +8776,7 @@
+ fi
+ if test "x$gethostbyaddrrstyle" = "x"; then
+ 	cat > conftest.$ac_ext <<EOF
+-#line 8778 "configure"
++#line 8780 "configure"
+ #include "confdefs.h"
+ 
+ #include <stdio.h>
+@@ -8784,7 +8786,7 @@
+  gethostbyaddr_r(NULL, 0, 0, NULL, NULL, 0, NULL)  
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8788: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++if { (eval echo configure:8790: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+   rm -rf conftest*
+   
+ 		cat >> confdefs.h <<\EOF
+@@ -8801,7 +8803,7 @@
+ fi
+ if test "x$gethostbyaddrrstyle" = "x"; then
+ 	cat > conftest.$ac_ext <<EOF
+-#line 8805 "configure"
++#line 8807 "configure"
+ #include "confdefs.h"
+ 
+ #include <stdio.h>
+@@ -8811,7 +8813,7 @@
+  gethostbyaddr(NULL, 0, 0)  
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8815: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++if { (eval echo configure:8817: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+   rm -rf conftest*
+   
+ 		cat >> confdefs.h <<\EOF
+@@ -8839,9 +8841,9 @@
+ 
+ gethostbynamerstyle=""
+ echo $ac_n "checking gethostbyname_r() syntax""... $ac_c" 1>&6
+-echo "configure:8843: checking gethostbyname_r() syntax" >&5
++echo "configure:8845: checking gethostbyname_r() syntax" >&5
+ cat > conftest.$ac_ext <<EOF
+-#line 8845 "configure"
++#line 8847 "configure"
+ #include "confdefs.h"
+ 
+ #include <stdio.h>
+@@ -8851,7 +8853,7 @@
+  gethostbyname_r(NULL, NULL, NULL, 0, NULL, NULL) 
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8855: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++if { (eval echo configure:8857: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+   rm -rf conftest*
+   
+ 	cat >> confdefs.h <<\EOF
+@@ -8867,7 +8869,7 @@
+ rm -f conftest*
+ if test "x$gethostbynamerstyle" = "x"; then
+ 	cat > conftest.$ac_ext <<EOF
+-#line 8871 "configure"
++#line 8873 "configure"
+ #include "confdefs.h"
+ 
+ #include <stdio.h>
+@@ -8877,7 +8879,7 @@
+  gethostbyname_r(NULL, NULL, NULL, 0, NULL)  
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8881: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++if { (eval echo configure:8883: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+   rm -rf conftest*
+   
+ 		cat >> confdefs.h <<\EOF
+@@ -8894,7 +8896,7 @@
+ fi
+ if test "x$gethostbynamerstyle" = "x"; then
+ 	cat > conftest.$ac_ext <<EOF
+-#line 8898 "configure"
++#line 8900 "configure"
+ #include "confdefs.h"
+ 
+ #include <stdio.h>
+@@ -8904,7 +8906,7 @@
+  gethostbyname(NULL)  
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8908: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++if { (eval echo configure:8910: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+   rm -rf conftest*
+   
+ 		cat >> confdefs.h <<\EOF
+@@ -8932,9 +8934,9 @@
+ 
+ ctimerstyle=""
+ echo $ac_n "checking ctime_r() syntax""... $ac_c" 1>&6
+-echo "configure:8936: checking ctime_r() syntax" >&5
++echo "configure:8938: checking ctime_r() syntax" >&5
+ cat > conftest.$ac_ext <<EOF
+-#line 8938 "configure"
++#line 8940 "configure"
+ #include "confdefs.h"
+ 
+ #include <time.h>
+@@ -8943,7 +8945,7 @@
+  ctime_r(NULL, NULL, 0) 
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8947: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++if { (eval echo configure:8949: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+   rm -rf conftest*
+   
+ 	cat >> confdefs.h <<\EOF
+@@ -8959,7 +8961,7 @@
+ rm -f conftest*
+ if test "x$ctimerstyle" = "x"; then
+ 	cat > conftest.$ac_ext <<EOF
+-#line 8963 "configure"
++#line 8965 "configure"
+ #include "confdefs.h"
+ 
+ #include <time.h>
+@@ -8968,7 +8970,7 @@
+  ctime_r(NULL, NULL) 
+ ; return 0; }
+ EOF
+-if { (eval echo configure:8972: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
++if { (eval echo configure:8974: \"$ac_link\") 1>&5; (eval $ac_link) 2>&5; } && test -s conftest${ac_exeext}; then
+   rm -rf conftest*
+   
+ 		cat >> confdefs.h <<\EOF
+@@ -8993,7 +8995,7 @@
+ 
+ if test x"$rad_enable_largefiles" = xyes ; then
+     echo $ac_n "checking for largefile linkage""... $ac_c" 1>&6
+-echo "configure:8997: checking for largefile linkage" >&5
++echo "configure:8999: checking for largefile linkage" >&5
+     case "$host" in
+     *-aix4.01*)
+         echo "$ac_t""no" 1>&6
+@@ -9030,7 +9032,7 @@
+         # Extract the first word of "getconf", so it can be a program name with args.
+ set dummy getconf; ac_word=$2
+ echo $ac_n "checking for $ac_word""... $ac_c" 1>&6
+-echo "configure:9034: checking for $ac_word" >&5
++echo "configure:9036: checking for $ac_word" >&5
+ if eval "test \"`echo '$''{'ac_cv_path_GETCONF'+set}'`\" = set"; then
+   echo $ac_n "(cached) $ac_c" 1>&6
+ else
+diff -ruN freeradius-1.1.0.orig/src/include/radius_snmp.h freeradius-1.1.0/src/include/radius_snmp.h
+--- freeradius-1.1.0.orig/src/include/radius_snmp.h	2006-01-01 18:28:15.587536256 +0100
++++ freeradius-1.1.0/src/include/radius_snmp.h	2006-01-01 18:31:04.739821200 +0100
+@@ -11,6 +11,7 @@
+ #include	<snmp_impl.h>
+ #else
+ #ifdef HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H
++#include	<ucd-snmp/ucd-snmp-config.h>
+ #include	<ucd-snmp/asn1.h>
+ #include	<ucd-snmp/snmp.h>
+ #include	<ucd-snmp/snmp_impl.h>
