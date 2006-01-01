@@ -1,9 +1,69 @@
-freeradius (1.1.0~pre0~cvs20051215-0) unstable; urgency=low
+freeradius (1.1.0-0) unstable; urgency=low
 
-  * New upstream release, from branch_1_1 in the CVS.
-  * See doc/ChangeLog for feature improvements.
+  * New upstream release.
+  * Update set of patches:
+    - 01_NET-SNMP_build_support.dpatch
+    - 06_libtool14_vs_rlm_eap_tls.dpatch
+    - 13_a_libtool14_to_call_your_own.dpatch
 
- -- Nicolas Baradakis <nbk@sitadelle.com>  Thu, 15 Dec 2005 20:23:03 +0100
+ -- Nicolas Baradakis <nbk@sitadelle.com>  Sun,  1 Jan 2006 18:15:47 +0100
+
+freeradius (1.0.5-2) unstable; urgency=low
+
+  * Stop dragging non-PIC code from libeap.a into rlm_eap_sim.so and
+    rlm_eap.so.
+    (Thanks to Peter Salinger)
+    Closes: #288547
+    - Rename 06_libtool14_vs_rlm_eap_tls to 06_libtool14_vs_rlm_eap
+      and modify with Peter's changes and some Makefile hackery to
+      get it all linking
+  * Don't rerun configure during the build.
+    (Thanks to Kurt Roeckx)
+  * A whole bunch of dialup-admin fixes from Arve Seljebu and Tobias
+    - Report correct data transfer statistics for users
+      Closes: #329672
+    - Lower-case sql column names to match creation scripts
+      Closes: #333709
+    - Fix creation of empty groups
+      Closes: #333739
+    - Put quote around usernames in HTML output
+      Closes: #333742
+    - Properly notice when we've got a blank password to SQL
+      Closes: #333744
+    - Created 12_dialup_admin_various_fixes
+  * Stop using libtool1.4 to build against, now that we can't have it and
+    libltdl3-dev installed at the same time
+    Closes: #279391
+    - Created 13_a_libtool14_to_call_your_own to get most recent ltmain.sh
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 16 Oct 2005 21:26:30 +1000
+
+freeradius (1.0.5-1) unstable; urgency=high
+
+  * Urgency high for security fixes below, all reported upstream
+  * ReDebianise upstream tarball:
+    - Deleted RFCs: 2243 2289 2433 2548 2618 2619 2620 2621 2716 2759 2809 2865
+                    2866 2867 2868 2869 2882 2924 3162 3575 3576 3579 3580
+                    draft-kamath-pppext-eap-mschapv2-00
+  * Add missed build-dependancy on dpatch (>=2)
+  * Update to Standards-Version 3.6.2.0
+    - No changes needed
+  * Repair some minorly broken manpages
+    - Created 07_manpage_fixups.dpatch
+  * Security fixes stolen from CVS release_1_0 branch:
+    - Be sure we use crypt.h if we have it, to avoid segfaulting on a
+      bad built-in crypt() definition, spotted by Konstantin Kubatkin
+      + Created 09_use_crypth_if_we_have_it
+    - Make sure we escape the entire LDAP string, instead of
+      aborting as soon as it becomes possible to be out of space
+      + Created 10_escape_entire_ldap_string
+    - Don't xlat the UserName attribute before we can be sure of meeting
+      any escape sequences it may contain, spotted by Primoz Bratanic
+      + Created 11_dont_xlat_possibly_bad_usernames_in_bad_accounting_packets
+  * Depend on adduser, so our postinst can create the freerad user
+  * Don't install the .in versions of the example scripts.
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Mon, 19 Sep 2005 15:10:40 +1000
 
 freeradius (1.0.5-0) unstable; urgency=low
 
@@ -23,7 +83,7 @@ freeradius (1.0.5-0) unstable; urgency=low
     Closes: #326891
 
  -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed,  7 Sep 2005 01:08:07 +1000
-  
+
 freeradius (1.0.4-2) unstable; urgency=low
 
   * Fix my email address in the dpatches
@@ -130,7 +190,7 @@ freeradius (1.0.2-1) unstable; urgency=low
   * Build-depend on libmysqlclient12-dev as libmysqlclient10 has problems
     accessing 4.0 series mySQL servers, and libmysqlclient12 can access
     4.1 series mySQL servers.
-  
+
  -- Paul Hampson <Paul.Hampson@anu.edu.au>  Fri,  4 Mar 2005 09:30:40 +1100
 
 freeradius (1.0.2-0) unstable; urgency=low
@@ -272,7 +332,7 @@ freeradius (0.9.2-2) unstable; urgency=low
     - No changes needed
 
  -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun,  9 Nov 2003 00:07:52 +1100
-  
+
 freeradius (0.9.2-1) unstable; urgency=low
 
   * Deleted RFCs: 2243 2289 2433 2548 2618 2616 2620 2621
@@ -323,12 +383,12 @@ freeradius (0.9.0-1) unstable; urgency=low
  -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 20 Jul 2003 06:56:28 +1000
 
 radiusd-freeradius (0.7+cvs20021113-1) unstable; urgency=low
- 
+
   * Explicitly excluding modules not in the "stable" list.
   * Updated policy version number.
   * Moved from non-US/main to main.
   * Put pidfile in package's own directory.
-  * Package not as buggy and unstable modules are easily identifiable. 
+  * Package not as buggy and unstable modules are easily identifiable.
     (closes: Bug#142217)
   * Init script handles failure better. (closes: Bug#151264)
   * New upstream release.  (closes: Bug#140536)
@@ -344,9 +404,9 @@ radiusd-freeradius (0.7+cvs20021113-1) unstable; urgency=low
 
 radiusd-freeradius (0.5+cvs20020408-1) unstable; urgency=high
 
-  * New build-dep on libssl-dev, which is implied by another dep, but making 
+  * New build-dep on libssl-dev, which is implied by another dep, but making
     explicit for builders on Potato.  (closes: Bug#131832)
-  * Built against new postgresql libraries, so automatic dep tracking has 
+  * Built against new postgresql libraries, so automatic dep tracking has
     the correct version, now.  (closes: Bug#139290)
   * Removed python example module.
   * Explicitly disabled beta ippool module.
@@ -367,7 +427,7 @@ radiusd-freeradius (0.3-2) unstable; urgency=low
   * Fixed permissions of log files. (closes: Bug#116242,#116243)
   * Close file descriptors of stdin, stdout, stderr, if not debugging.
     (closes: Bug#116768)
-  * Made package "non-native".  (An upload issue, not code.)  
+  * Made package "non-native".  (An upload issue, not code.)
     (closes: Bug#119161)
 
  -- Chad Miller <cmiller@debian.org>  Tue, 20 Nov 2001 10:50:20 -0500
@@ -397,7 +457,7 @@ radiusd-freeradius (0.2+20010912-1) unstable; urgency=low
   * Added user 'freerad' into the 'shadow' group.
   * Fixed UUCP-style of restricting time of log-in.
   * Changed debugging messages to give more info about execution flow.
-  * Better counter module.  
+  * Better counter module.
   * Inserted CHAP support for SQL modules.
   * Removed possible infinite loop.
 
