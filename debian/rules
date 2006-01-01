@@ -59,7 +59,6 @@ stamp-build: stamp-patch
 		--localstatedir=/var \
 		--with-raddbdir=$(raddbdir) \
 		--with-logdir=/var/log/$(package) \
-		--with-thread-pool --with-system-libtool \
 		--enable-ltdl-install=no --enable-strict-dependencies \
 		--with-large-files --with-udpfromto --with-edir \
 		--with-rlm_sql_postgresql_lib_dir=`pg_config --libdir` \
