@@ -10,7 +10,7 @@
 
 # neededforbuild  cyrus-sasl-devel db-devel heimdal-devel heimdal-lib mysql-devel mysql-shared openldap2 openldap2-client openldap2-devel openssl openssl-devel pam-devel postgresql postgresql-devel postgresql-libs python python-devel unixODBC unixODBC-devel
 
-BuildRequires: aaa_base acl attr bash bind-utils bison bzip2 coreutils cpio cpp cracklib cvs cyrus-sasl db devs diffutils e2fsprogs file filesystem fillup findutils flex gawk gdbm-devel glibc glibc-devel glibc-locale gpm grep groff gzip info insserv less libacl libattr libgcc libnscd libselinux libstdc++ libxcrypt libzio m4 make man mktemp module-init-tools ncurses ncurses-devel net-tools netcfg openldap2-client openssl pam pam-modules patch permissions popt procinfo procps psmisc pwdutils rcs readline sed strace syslogd sysvinit tar tcpd texinfo timezone unzip util-linux vim zlib zlib-devel autoconf automake binutils cyrus-sasl-devel db-devel e2fsprogs-devel gcc gdbm gettext heimdal-devel heimdal-lib libtool mysql-devel mysql-shared openldap2 openldap2-devel openssl-devel pam-devel perl postgresql postgresql-devel postgresql-libs python python-devel rpm unixODBC unixODBC-devel
+BuildRequires: aaa_base acl attr bash bind-utils bison bzip2 coreutils cpio cpp cracklib cvs cyrus-sasl db devs diffutils e2fsprogs file filesystem fillup findutils flex gawk gdbm-devel glibc glibc-devel glibc-locale gpm grep groff gzip info insserv less libacl libattr libgcc libnscd libselinux libstdc++ libxcrypt libzio m4 make man mktemp module-init-tools ncurses ncurses-devel net-tools netcfg openldap2-client openssl pam pam-modules patch permissions popt procinfo procps psmisc pwdutils rcs readline sed strace syslogd sysvinit tar tcpd texinfo timezone unzip util-linux vim zlib zlib-devel autoconf automake binutils cyrus-sasl-devel db-devel e2fsprogs-devel gcc gdbm gettext heimdal-devel heimdal-lib libtool mysql-devel mysql-shared openldap2 openldap2-devel openssl-devel pam-devel perl perl-devel postgresql postgresql-devel postgresql-libs python python-devel rpm unixODBC unixODBC-devel
 
 Name:         freeradius
 License:      GPL, LGPL
@@ -77,10 +77,9 @@ CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing" ./configure \
 		--mandir=%{_mandir} \
                 --libdir=/usr/lib/freeradius \
 		--localstatedir=/var \
-		--with-threads \
-		--with-thread-pool \
-		--with-snmp \
 		--with-large-files \
+		--with-udpfromto \
+		--with-edir \
 		--disable-ltdl-install \
 		--with-ltdl-lib=/usr/lib \
 		--with-ltdl-include=/usr/include \

@@ -20,7 +20,7 @@ configurable GPL'd RADIUS server. It is somewhat similar to the
 Livingston 2.0 RADIUS server, but has many more features, and is much
 more configurable.
 
-%prep 
+%prep
 %setup
 
 %build
@@ -29,13 +29,12 @@ CFLAGS="$RPM_OPT_FLAGS" \
 	--localstatedir=%{_localstatedir} \
 	--sysconfdir=%{_sysconfdir} \
 	--mandir=%{_mandir} \
-	--with-threads \
-	--with-thread-pool \
 	--with-system-libtool \
 	--disable-ltdl-install \
 	--with-ltdl-lib=/usr/lib \
 	--with-ltdl-include=/usr/include \
 	--with-gnu-ld \
+	--with-large-files --with-udpfromto --with-edir \
 	--with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
 	--with-rlm-krb5-include-dir=/usr/kerberos/include \
 	--with-rlm-krb5-lib-dir=/usr/kerberos/lib
