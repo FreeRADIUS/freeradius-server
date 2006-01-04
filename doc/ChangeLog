@@ -49,6 +49,7 @@ FreeRADIUS 1.1.0 ; $Date$, urgency=low
 	* Fix a memory leak in rlm_checkval.
 	* radclient doesn't resend countless times packets with invalid
 	  signature.
+	* Fix segfault and mem leak in rlm_pam.
 
 FreeRADIUS 1.0.5 ; Date: 2005/09/04 16:23:00, urgency=medium
 	Security Fixes
