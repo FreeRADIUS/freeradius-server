@@ -1,0 +1,101 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 14_static_rlm_eap_link_mode.dpatch by Nicolas Baradakis <nbk@sitadelle.com>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Defined magic variable RLM_EAP_LINK_MODE, which should be set
+## DP: to -static.
+
+@DPATCH@
+
+diff -ruN freeradius-1.1.0.orig/src/main/Makefile.in freeradius-1.1.0/src/main/Makefile.in
+--- freeradius-1.1.0.orig/src/main/Makefile.in	2006-01-05 19:26:03.906085736 +0100
++++ freeradius-1.1.0/src/main/Makefile.in	2006-01-05 19:33:35.307462296 +0100
+@@ -43,6 +43,15 @@
+ MODULE_OBJS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo ../modules/$$x/$$x.la;done)
+ MODULE_OBJS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo ../modules/*/types/$$x/$$x.la;done)
+ MODULE_OBJS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$$x/$$x.la && echo ../modules/*/drivers/$$x/$$x.la;done)
++else
++
++#
++#  Weird EAP nonsense
++#
++ifeq ($(RLM_EAP_LINK_MODE),-static)
++LIBS        += $(shell test -f ../modules/rlm_eap/libeap/libeap.a && echo -L../modules/rlm_eap/libeap -leap)
++MODULE_LIBS	+= $(shell for x in rlm_eap_tls rlm_eap_ttls rlm_eap_peap;do test -f ../modules/*/types/$$x/$$x.la && echo -dlpreopen ../modules/*/types/$$x/$$x.la;done)
++endif
+ endif
+ 
+ LIBS		+= -lradius $(SNMP_LIBS)
+diff -ruN freeradius-1.1.0.orig/src/modules/rlm_eap/libeap/Makefile freeradius-1.1.0/src/modules/rlm_eap/libeap/Makefile
+--- freeradius-1.1.0.orig/src/modules/rlm_eap/libeap/Makefile	2006-01-05 19:26:03.971075856 +0100
++++ freeradius-1.1.0/src/modules/rlm_eap/libeap/Makefile	2006-01-05 20:16:37.558900408 +0100
+@@ -7,6 +7,8 @@
+ 
+ CFLAGS		+= -DEAPLIB -I../../../include 
+ 
++LINK_MODE	= $(RLM_EAP_LINK_MODE)
++
+ all:	static dynamic
+ 
+ TARGET=$(LIBPREFIX)eap
+diff -ruN freeradius-1.1.0.orig/src/modules/rlm_eap/types/rlm_eap_peap/Makefile.in freeradius-1.1.0/src/modules/rlm_eap/types/rlm_eap_peap/Makefile.in
+--- freeradius-1.1.0.orig/src/modules/rlm_eap/types/rlm_eap_peap/Makefile.in	2006-01-05 19:26:04.058062632 +0100
++++ freeradius-1.1.0/src/modules/rlm_eap/types/rlm_eap_peap/Makefile.in	2006-01-05 20:56:45.654814184 +0100
+@@ -3,7 +3,8 @@
+ RLM_CFLAGS  = $(INCLTDL) -I../.. @eap_peap_cflags@ -I../rlm_eap_tls -DOPENSSL_NO_KRB5 -I@srcdir@/../../libeap
+ HEADERS     = ../rlm_eap_tls/rlm_eap_tls.h eap_peap.h ../../eap.h ../../rlm_eap.h
+ RLM_INSTALL = 
+-RLM_LIBS    = @srcdir@/../../libeap/libeap.la @srcdir@/../rlm_eap_tls/librlm_eap_tls.la @eap_peap_ldflags@
++RLM_LIBS    = @srcdir@/../../libeap/libeap.la @srcdir@/../rlm_eap_tls/rlm_eap_tls.la @eap_peap_ldflags@
++LINK_MODE   = $(RLM_EAP_LINK_MODE)
+ 
+ $(STATIC_OBJS): $(HEADERS)
+ 
+diff -ruN freeradius-1.1.0.orig/src/modules/rlm_eap/types/rlm_eap_tls/Makefile.in freeradius-1.1.0/src/modules/rlm_eap/types/rlm_eap_tls/Makefile.in
+--- freeradius-1.1.0.orig/src/modules/rlm_eap/types/rlm_eap_tls/Makefile.in	2006-01-05 19:26:04.064061720 +0100
++++ freeradius-1.1.0/src/modules/rlm_eap/types/rlm_eap_tls/Makefile.in	2006-01-05 19:40:56.381408864 +0100
+@@ -4,6 +4,7 @@
+ HEADERS     = rlm_eap_tls.h eap_tls.h ../../eap.h ../../rlm_eap.h
+ RLM_INSTALL = 
+ RLM_LIBS    += @eap_tls_ldflags@
++LINK_MODE   = $(RLM_EAP_LINK_MODE)
+ 
+ $(STATIC_OBJS): $(HEADERS)
+ 
+diff -ruN freeradius-1.1.0.orig/src/modules/rlm_eap/types/rlm_eap_ttls/Makefile.in freeradius-1.1.0/src/modules/rlm_eap/types/rlm_eap_ttls/Makefile.in
+--- freeradius-1.1.0.orig/src/modules/rlm_eap/types/rlm_eap_ttls/Makefile.in	2006-01-05 19:26:04.071060656 +0100
++++ freeradius-1.1.0/src/modules/rlm_eap/types/rlm_eap_ttls/Makefile.in	2006-01-05 20:56:59.126766136 +0100
+@@ -3,7 +3,8 @@
+ RLM_CFLAGS  = $(INCLTDL) -I@srcdir@/../.. -I@srcdir@/../../libeap @eap_ttls_cflags@ -I../rlm_eap_tls -DOPENSSL_NO_KRB5
+ HEADERS     = ../rlm_eap_tls/rlm_eap_tls.h eap_ttls.h ../../eap.h ../../rlm_eap.h
+ RLM_INSTALL = 
+-RLM_LIBS    = @srcdir@/../../libeap/libeap.la @srcdir@/../rlm_eap_tls/librlm_eap_tls.la @eap_ttls_ldflags@
++RLM_LIBS    = @srcdir@/../../libeap/libeap.la @srcdir@/../rlm_eap_tls/rlm_eap_tls.la @eap_ttls_ldflags@
++LINK_MODE   = $(RLM_EAP_LINK_MODE)
+ 
+ $(STATIC_OBJS): $(HEADERS)
+ 
+diff -ruN freeradius-1.1.0.orig/src/modules/rules.mak freeradius-1.1.0/src/modules/rules.mak
+--- freeradius-1.1.0.orig/src/modules/rules.mak	2006-01-05 19:26:03.939080720 +0100
++++ freeradius-1.1.0/src/modules/rules.mak	2006-01-05 20:09:37.637738128 +0100
+@@ -81,9 +81,9 @@
+ #  Yes, this is a horrible hack.
+ #
+ ifeq ($(findstring $(TARGET),$(STATIC_MODULES)),)
+-LINK_MODE=-export-dynamic
++LINK_MODE += -export-dynamic
+ else
+-LINK_MODE=-static
++LINK_MODE += -static
+ endif
+ 
+ #
+@@ -91,7 +91,7 @@
+ #  link mode to static.
+ #
+ ifneq ($(USE_SHARED_LIBS),yes)
+-LINK_MODE=-static
++LINK_MODE += -static
+ endif
+ 
+ $(TARGET).la: $(DYNAMIC_OBJS)
