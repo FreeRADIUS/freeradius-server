@@ -1,3 +1,4 @@
 01_NET-SNMP_build_support.dpatch
 06_libtool14_vs_rlm_eap_tls.dpatch
 13_a_libtool14_to_call_your_own.dpatch
+14_static_rlm_eap_link_mode.dpatch
