@@ -1,8 +1,13 @@
+#
+# $Id$
+#
+
 TARGET      = @targetname@
 SRCS        = rlm_eap_md5.c eap_md5.c
-RLM_CFLAGS  = $(INCLTDL) -I../.. -I../../libeap
 HEADERS     = eap_md5.h
-RLM_INSTALL = 
+RLM_CFLAGS  = $(INCLTDL) -I../.. -I../../libeap @eap_md5_cflags@
+RLM_LDFLAGS = @eap_md5_ldflags@
+RLM_INSTALL =
 
 $(STATIC_OBJS): $(HEADERS)
 

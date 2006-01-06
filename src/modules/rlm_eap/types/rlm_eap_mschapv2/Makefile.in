@@ -1,8 +1,13 @@
+#
+# $Id$
+#
+
 TARGET      = @targetname@
 SRCS        = rlm_eap_mschapv2.c
-RLM_CFLAGS  = $(INCLTDL) -I../.. -I../../libeap
 HEADERS     = eap_mschapv2.h
-RLM_INSTALL = 
+RLM_CFLAGS  = $(INCLTDL) -I../.. -I../../libeap @eap_mschapv2_cflags@
+RLM_LDFLAGS = @eap_mschapv2_ldflags@
+RLM_INSTALL =
 
 $(STATIC_OBJS): $(HEADERS)
 

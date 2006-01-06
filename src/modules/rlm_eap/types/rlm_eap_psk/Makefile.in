@@ -1,10 +1,13 @@
-# Generated automatically from Makefile.in by configure.
+#
+# $Id$
+#
+
 TARGET      = rlm_eap_psk
 SRCS        = rlm_eap_psk.cpp eap_psk.cpp eap_psk_ssm.cpp AES.cpp OMAC.cpp CTR.cpp EAX.cpp SOBMMO.cpp userinfo.c
-RLM_CFLAGS  = $(INCLTDL) -I../.. -I../../libeap
 HEADERS     = eap_psk.h eap_psk_ssm.h AES.h OMAC.h CTR.h EAX.h BlockCipher.h SOBMMO.h userinfo.h
-RLM_INSTALL = 
-RLM_LIBS   += -lstdc++
+RLM_CFLAGS  = $(INCLTDL) -I../.. -I../../libeap
+RLM_LIBS    = -lstdc++
+RLM_INSTALL =
 
 $(STATIC_OBJS): $(HEADERS)
 

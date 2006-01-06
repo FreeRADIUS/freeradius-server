@@ -1,9 +1,13 @@
+#
+# $Id$
+#
+
 TARGET      = @targetname@
-SRCS        = rlm_eap_sim.c 
-RLM_CFLAGS  = $(INCLTDL) -I@srcdir@/../.. -I@srcdir@/../../libeap
+SRCS        = rlm_eap_sim.c
 HEADERS     = eap_sim.h
-RLM_LIBS    = -L@srcdir@/../../libeap -leap
-RLM_INSTALL = 
+RLM_CFLAGS  = $(INCLTDL) -I@srcdir@/../.. -I@srcdir@/../../libeap @eap_sim_cflags@
+RLM_LIBS    = @eap_sim_ldflags@ -L@srcdir@/../../libeap -leap
+RLM_INSTALL =
 
 $(STATIC_OBJS): $(HEADERS)
 

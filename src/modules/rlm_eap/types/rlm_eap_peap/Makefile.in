@@ -1,9 +1,13 @@
+#
+# $Id$
+#
+
 TARGET      = @targetname@
 SRCS        = rlm_eap_peap.c peap.c
-RLM_CFLAGS  = $(INCLTDL) -I../.. @eap_peap_cflags@ $(OPENSSL_INCLUDE) -I../rlm_eap_tls -DOPENSSL_NO_KRB5 -I@srcdir@/../../libeap
-HEADERS     = ../rlm_eap_tls/rlm_eap_tls.h eap_peap.h ../../eap.h ../../rlm_eap.h
-RLM_INSTALL = 
-RLM_LIBS    = -L@srcdir@/../../libeap -leap @eap_peap_ldflags@ $(OPENSSL_LIBS)
+HEADERS     = eap_peap.h ../../eap.h ../../rlm_eap.h
+RLM_CFLAGS  = $(INCLTDL) -I../.. $(OPENSSL_INCLUDE) -I@srcdir@/../../libeap -DOPENSSL_NO_KRB5 @eap_peap_cflags@
+RLM_LIBS    = @eap_peap_ldflags@ -L@srcdir@/../../libeap -leap $(OPENSSL_LIBS)
+RLM_INSTALL =
 LINK_MODE   = $(RLM_EAP_LINK_MODE)
 
 $(STATIC_OBJS): $(HEADERS)
