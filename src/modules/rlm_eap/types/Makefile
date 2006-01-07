@@ -1,3 +1,7 @@
+#
+# $Id$
+#
+
 TARGET_LIBS = static dynamic
 
 all:
@@ -15,9 +19,8 @@ clean:
 install:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
-# List tls first, other modules depend on it
-common: 
-	@for mod in rlm_eap_tls rlm_eap*; do \
+common:
+	@for mod in rlm_eap*; do \
 		what=$(WHAT_TO_MAKE); \
 		[ "$$what" = "all" ] && what="$(TARGET_LIBS)"; \
 		if [ -d $$mod ] && [ -f $$mod/Makefile ]; then \
@@ -25,4 +28,3 @@ common:
 			(cd $$mod && $(MAKE) $(MFLAGS) $$what) || exit $?; \
 		fi; \
 	done
-
