@@ -8,7 +8,6 @@ HEADERS     = eap_peap.h ../../eap.h ../../rlm_eap.h
 RLM_CFLAGS  = $(INCLTDL) -I../.. $(OPENSSL_INCLUDE) -I../../libeap -DOPENSSL_NO_KRB5 @eap_peap_cflags@
 RLM_LIBS    = @eap_peap_ldflags@ ../../libeap/libeap.la $(OPENSSL_LIBS)
 RLM_INSTALL =
-LINK_MODE   = $(RLM_EAP_LINK_MODE)
 
 $(STATIC_OBJS): $(HEADERS)
 

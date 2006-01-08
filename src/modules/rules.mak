@@ -86,9 +86,9 @@ ifneq ($(TARGET),)
 #  Yes, this is a horrible hack.
 #
 ifeq ($(findstring $(TARGET),$(STATIC_MODULES)),)
-LINK_MODE +=-export-dynamic
+LINK_MODE = -export-dynamic
 else
-LINK_MODE +=-static
+LINK_MODE = -static
 endif
 
 #
@@ -96,7 +96,7 @@ endif
 #  link mode to static.
 #
 ifneq ($(USE_SHARED_LIBS),yes)
-LINK_MODE += -static
+LINK_MODE = -static
 endif
 
 $(TARGET).la: $(DYNAMIC_OBJS)

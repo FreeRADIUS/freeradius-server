@@ -49,15 +49,6 @@ MODULE_LIBS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$
 MODULE_OBJS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo ../modules/$$x/$$x.la;done)
 MODULE_OBJS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo ../modules/*/types/$$x/$$x.la;done)
 MODULE_OBJS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$$x/$$x.la && echo ../modules/*/drivers/$$x/$$x.la;done)
-else
-
-#
-#  Weird EAP nonsense
-#
-ifeq ($(RLM_EAP_LINK_MODE),-static)
-LIBS        += $(shell test -f ../modules/rlm_eap/libeap/libeap.a && echo -L../modules/rlm_eap/libeap -leap)
-MODULE_LIBS	+= $(shell for x in rlm_eap_tls rlm_eap_ttls rlm_eap_peap;do test -f ../modules/*/types/$$x/$$x.la && echo -dlpreopen ../modules/*/types/$$x/$$x.la;done)
-endif
 endif
 
 LIBS		+= -lradius $(SNMP_LIBS)
