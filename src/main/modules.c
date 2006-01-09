@@ -481,6 +481,9 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp,
 	static int meaningless_counter = 1;
 
 	ml = compile_modgroup(comp, cs, filename);
+	if (!ml) {
+		return; /* FIXME: pull full fix from CVS head */
+	}
 
 	/* We must assign a numeric index to this subcomponent. For
 	 * auth, it is generated and placed in the dictionary by
@@ -564,12 +567,15 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 			cp = cf_itemtopair(modref);
 		}
 
-		/*
-		 *	FIXME: This calls exit if the reference can't be
-		 *	found.  We should instead print a better error,
-		 *	and return the failure code up the stack.
-		 */
 		this = compile_modsingle(comp, modref, filename, &modname);
+                if (!this) {
+                        radlog(L_ERR|L_CONS,
+                               "%s[%d] Failed to parse %s section.\n",
+                               filename, cf_section_lineno(cs),
+                               cf_section_name1(cs));
+                        return -1;
+                }
+
 
 		if (comp == RLM_COMPONENT_AUTH) {
 			DICT_VALUE *dval;
