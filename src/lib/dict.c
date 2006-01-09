@@ -1179,6 +1179,8 @@ DICT_ATTR *dict_attrbyvalue(int val)
  */
 DICT_ATTR *dict_attrbyname(const char *name)
 {
+	if (!name) return NULL;
+
 	return lrad_hash_table_finddata(attributes_byname,
 					dict_hashname(name));
 }
@@ -1202,6 +1204,8 @@ DICT_VALUE *dict_valbyname(int attr, const char *name)
 {
 	uint32_t hash;
 
+	if (!name) return NULL;
+
 	hash = dict_hashname(name);
 	hash = lrad_hash_update(&attr, sizeof(&attr), hash);
 
@@ -1217,6 +1221,8 @@ int dict_vendorbyname(const char *name)
 {
 	uint32_t hash;
 	DICT_VENDOR	*dv;
+
+	if (!name) return 0;
 
 	hash = dict_hashname(name);
 	
