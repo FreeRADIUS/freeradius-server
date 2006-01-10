@@ -35,7 +35,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/socket.h>
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
 #include <sys/un.h>
 #endif
 
