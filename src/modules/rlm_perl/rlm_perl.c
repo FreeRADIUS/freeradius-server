@@ -45,6 +45,10 @@
 #include <dlfcn.h>
 #include <semaphore.h>
 
+#ifdef __APPLE__
+extern char **environ;
+#endif
+
 static const char rcsid[] = "$Id$";
 
 #ifdef USE_ITHREADS
@@ -576,21 +580,6 @@ static int init_pool (CONF_SECTION *conf, PERL_INST *inst) {
 	return 1;
 }
 #endif
-/*
- *	Do any per-module initialization.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	Try to avoid putting too much stuff in here - it's better to
- *	do it in instantiate() where it is not global.
- *	I use one global interpetator to make things more fastest for
- *	Threading env I clone new perl from this interp.
- */
-static int perl_init(void)
-{
-	return 0;
-
-}
 
 static void xs_init(pTHX)
 {
@@ -632,7 +621,7 @@ static XS(XS_radiusd_radlog)
  * The xlat function
  */
 static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
-		     int freespace, RADIUS_ESCAPE_STRING func)
+		     size_t freespace, RADIUS_ESCAPE_STRING func)
 {
 
 	PERL_INST	*inst= (PERL_INST *) instance;
@@ -733,7 +722,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	HV		*rad_request_proxy_reply_hv;
 	AV		*end_AV;
 
-	char *embed[4], *xlat_name;
+	char *embed[4];
+	const char *xlat_name;
 	int exitstatus = 0, argc=0;
 
 	/*
