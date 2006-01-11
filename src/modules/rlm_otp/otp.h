@@ -31,6 +31,7 @@
 #include <inttypes.h>
 #include <openssl/des.h> /* des_cblock */
 #include <time.h>        /* time_t */
+#include <sys/types.h>   /* size_t and ssize_t */
 
 /*
  * Things you might like to change (although most are configurables)
