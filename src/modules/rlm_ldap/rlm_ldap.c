@@ -2495,7 +2495,7 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 
 					/* the value will be xlat'ed later */
 					case T_BACK_QUOTED_STRING:
-						value = NULL;
+						value = buf;
 						do_xlat = TRUE;
 						break;
 
@@ -2518,7 +2518,8 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 				 *	Create the pair.
 				 */
 				newpair = pairmake(element->radius_attr,
-						   value, operator);
+						   do_xlat ? NULL : value,
+						   operator);
 				if (newpair == NULL) {
 					radlog(L_ERR, "rlm_ldap: Failed to create the pair: %s", librad_errstr);
 					continue;
