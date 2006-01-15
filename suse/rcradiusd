@@ -2,7 +2,7 @@
 # Copyright (c) 2001       SuSE GmbH Nuernberg, Germany.
 #               2002, 2003 SuSE Linux AG, Nuernberg, Germany.
 #
-# Author: Wolfgang Rosenauer <feedback@suse.de>, 2000-2003
+# Author: Wolfgang Rosenauer, 2000-2003
 #
 # /etc/init.d/radiusd
 #
@@ -21,7 +21,9 @@
 ### END INIT INFO
 
 RADIUSD_BIN=/usr/sbin/radiusd
-test -x $RADIUSD_BIN || exit 5
+test -x $RADIUSD_BIN || { echo "$RADIUSD_BIN not installed"; \
+	if [ "$1" = "stop" ]; then exit 0;
+	else exit 5; fi; }
 
 . /etc/rc.status
 
@@ -37,10 +39,18 @@ case "$1" in
 	killproc -TERM $RADIUSD_BIN 
 	rc_status -v	
 	;;
-    try-restart)
+    try-restart|condrestart)
 	## If first returns OK call the second, if first or
 	## second command fails, set echo return value.
-	$0 status >/dev/null &&  $0 restart
+	if test "$1" = "condrestart"; then
+		echo "${attn} Use try-restart ${done}(LSB)${attn} rather than condrestart ${warn}(RH)${norm}"
+	fi
+	$0 status
+	if test $? = 0; then
+	        $0 restart
+	else
+	        rc_reset        # Not running is not a failure.
+	fi
 	rc_status
 	;;
     restart)

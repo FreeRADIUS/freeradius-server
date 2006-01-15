@@ -1,0 +1,139 @@
+--- dialup_admin/bin/clean_radacct
++++ dialup_admin/bin/clean_radacct
+@@ -6,7 +6,7 @@
+ #
+ use POSIX;
+ 
+-$conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
++$conf=shift||'/usr/share/dialup_admin/conf/admin.conf';
+ $back_days = 35;
+ 
+ 
+--- dialup_admin/bin/dialup_admin.cron
++++ dialup_admin/bin/dialup_admin.cron
+@@ -1,4 +1,4 @@
+-1 0 * * * /usr/local/dialup_admin/bin/tot_stats >/dev/null 2>&1
+-5 0 * * * /usr/local/dialup_admin/bin/monthly_tot_stats >/dev/null 2>&1
+-10 0 1 * * /usr/local/dialup_admin/bin/truncate_radacct >/dev/null 2>&1
+-15 0 1 * * /usr/local/dialup_admin/bin/clean_radacct >/dev/null 2>&1
++1 0 * * * /usr/share/dialup_admin/bin/tot_stats >/dev/null 2>&1
++5 0 * * * /usr/share/dialup_admin/bin/monthly_tot_stats >/dev/null 2>&1
++10 0 1 * * /usr/share/dialup_admin/bin/truncate_radacct >/dev/null 2>&1
++15 0 1 * * /usr/share/dialup_admin/bin/clean_radacct >/dev/null 2>&1
+--- dialup_admin/bin/log_badlogins
++++ dialup_admin/bin/log_badlogins
+@@ -17,7 +17,7 @@
+ $|=1;
+ 
+ $file=shift||'none';
+-$conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
++$conf=shift||'/usr/share/dialup_admin/conf/admin.conf';
+ $all_file=shift||'no';
+ #
+ # Uncomment to force inserts even if there are sql errors. That can
+--- dialup_admin/bin/monthly_tot_stats
++++ dialup_admin/bin/monthly_tot_stats
+@@ -8,7 +8,7 @@
+ # Works only with mysql and postgresql
+ #
+ 
+-$conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
++$conf=shift||'/usr/share/dialup_admin/conf/admin.conf';
+ 
+ 
+ open CONF, "<$conf"
+--- dialup_admin/bin/showmodem
++++ dialup_admin/bin/showmodem
+@@ -7,7 +7,7 @@
+ $comm=shift || "public";
+ $type=shift|| "xml";
+ 
+-$conf='/usr/local/dialup_admin/conf/admin.conf';
++$conf='/usr/share/dialup_admin/conf/admin.conf';
+ open CONF, "<$conf"
+ 	or die "Could not open configuration file\n";
+ while(<CONF>){
+--- dialup_admin/bin/snmpfinger
++++ dialup_admin/bin/snmpfinger
+@@ -6,7 +6,7 @@
+ $comm=shift || 'public';
+ $type=shift || 'cisco';
+ 
+-$conf='/usr/local/dialup_admin/conf/admin.conf';
++$conf='/usr/share/dialup_admin/conf/admin.conf';
+ open CONF, "<$conf"
+ 	or die "Could not open configuration file\n";
+ while(<CONF>){
+--- dialup_admin/bin/tot_stats
++++ dialup_admin/bin/tot_stats
+@@ -7,7 +7,7 @@
+ # Works with mysql and postgresql
+ #
+ 
+-$conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
++$conf=shift||'/usr/share/dialup_admin/conf/admin.conf';
+ 
+ 
+ open CONF, "<$conf"
+--- dialup_admin/bin/truncate_radacct
++++ dialup_admin/bin/truncate_radacct
+@@ -6,7 +6,7 @@
+ #
+ use POSIX;
+ 
+-$conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
++$conf=shift||'/usr/share/dialup_admin/conf/admin.conf';
+ $back_days = 90;
+ 
+ 
+--- dialup_admin/conf/admin.conf
++++ dialup_admin/conf/admin.conf
+@@ -19,11 +19,11 @@
+ #
+ # The directory where dialupadmin is installed
+ #
+-general_base_dir: /usr/local/dialup_admin
++general_base_dir: /usr/share/dialup_admin
+ #
+ # The base directory of the freeradius radius installation
+ #
+-general_radiusd_base_dir: /usr/local/radiusd
++general_radiusd_base_dir: /
+ general_domain: company.com
+ #
+ # Set it to yes to use sessions and cache the various mappings
+@@ -66,8 +66,8 @@
+ general_raddb_dir: %{general_radiusd_base_dir}/etc/raddb
+ general_ldap_attrmap: %{general_raddb_dir}/ldap.attrmap
+ # Need to fix admin.conf file parser
+-#general_clients_conf: %{general_raddb_dir}/clients.conf
+-general_clients_conf: /usr/local/etc/raddb/clients.conf
++general_clients_conf: %{general_raddb_dir}/clients.conf
++#general_clients_conf: /usr/local/etc/raddb/clients.conf
+ general_sql_attrmap: %{general_base_dir}/conf/sql.attrmap
+ general_accounting_attrs_file: %{general_base_dir}/conf/accounting.attrs
+ general_extra_ldap_attrmap: %{general_base_dir}/conf/extra.ldap-attrmap
+@@ -235,19 +235,19 @@
+ # This variable is used by the scripts in the bin folder
+ # It should contain the path to the sql binary used to run
+ # sql commands (mysql and psql are only supported for now)
+-sql_command: /usr/local/bin/mysql
++sql_command: /usr/bin/mysql
+ #
+ # This variable is used by the scripts in the bin folder
+ # It should contain the snmp type and  path to the binary 
+ # used to run snmp commands. 
+ # (ucd = UCD-Snmp and net = Net-Snmp are only supported for now)
+ general_snmp_type: net
+-general_snmpwalk_command: /usr/local/bin/snmpwalk
+-general_snmpget_command: /usr/local/bin/snmpget
++general_snmpwalk_command: /usr/bin/snmpwalk
++general_snmpget_command: /usr/bin/snmpget
+ #
+ # Uncomment to enable sql debug
+ #
+-sql_debug: true
++#sql_debug: true
+ #
+ # If set to yes then the HTTP credentials (http authentication)
+ # will be used to connect to the sql server instead of sql_username

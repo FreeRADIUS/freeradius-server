@@ -1,0 +1,44 @@
+--- src/modules/rlm_eap/libeap/Makefile
++++ src/modules/rlm_eap/libeap/Makefile
+@@ -40,7 +40,7 @@
+ 
+ $(TARGET).la: $(DYNAMIC_OBJS)
+ 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+-	-module $(LINK_MODE) $(CFLAGS) -o $@ -rpath $(libdir) $^ 
++	-module $(LINK_MODE) $(CFLAGS) -o $@ -rpath $(libdir) -L/lib64 -L/usr/lib64 $^ 
+ 
+ static: $(TARGET).a
+ 
+--- src/modules/rlm_sql/drivers/rules.mak
++++ src/modules/rlm_sql/drivers/rules.mak
+@@ -93,7 +93,7 @@
+ $(TARGET).la: $(DYNAMIC_OBJS)
+ 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+ 	-module $(LINK_MODE) $(CFLAGS) \
+-	$(RLM_SQL_CFLAGS) -o $@ -rpath $(libdir) $^ $(RLM_SQL_LIBS)
++	$(RLM_SQL_CFLAGS) -o $@ -rpath $(libdir) $^ -L/lib64 -L/usr/lib64 $(RLM_SQL_LIBS)
+ 
+ #######################################################################
+ #
+--- src/modules/rlm_dbm/Makefile.in
++++ src/modules/rlm_dbm/Makefile.in
+@@ -3,7 +3,7 @@
+ HEADERS     =
+ RLM_UTILS   = @dbm_utils@
+ RLM_CFLAGS  = @dbm_cflags@
+-RLM_LIBS    = @dbm_ldflags@
++RLM_LIBS    = -lgdbm -lgdbm_compat
+ RLM_INSTALL = @dbm_install@
+ 
+ include ../rules.mak
+--- src/modules/rules.mak.orig	2005-09-20 06:36:41.000000000 +0200
++++ src/modules/rules.mak	2005-09-20 06:36:56.000000000 +0200
+@@ -97,7 +97,7 @@ endif
+ $(TARGET).la: $(DYNAMIC_OBJS)
+ 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+ 	-module $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) \
+-	-o $@ -rpath $(libdir) $^ $(RLM_LIBS) $(LIBS)
++	-o $@ -rpath $(libdir) $^ -L/lib64 -L/usr/lib64 $(RLM_LIBS) $(LIBS)
+ 
+ #######################################################################
+ #
