@@ -1207,7 +1207,7 @@ DICT_VALUE *dict_valbyname(int attr, const char *name)
 	if (!name) return NULL;
 
 	hash = dict_hashname(name);
-	hash = lrad_hash_update(&attr, sizeof(&attr), hash);
+	hash = lrad_hash_update(&attr, sizeof(attr), hash);
 
 	return lrad_hash_table_finddata(values_byname, hash);
 }
