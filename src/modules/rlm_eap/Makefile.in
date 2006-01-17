@@ -1,12 +1,16 @@
+#
+# $Id$
+#
+
 TARGET      = @targetname@
 SRCS        = rlm_eap.c eap.c mem.c state.c
 HEADERS     = eap.h rlm_eap.h
-RLM_CFLAGS  = $(INCLTDL) -I$(top_builddir)/src/modules/rlm_eap/libeap
-CLIENTLIBS  = libeap/libeap.la -L../../lib -lradius
+RLM_CFLAGS  = $(INCLTDL) -Ilibeap
+CLIENTLIBS  = libeap/libeap.la
 RLM_LIBS    = libeap/libeap.la $(LIBLTDL)
 #RLM_LIBS    = $(shell for x in types/rlm_eap*/rlm_eap*.la;do echo -dlpreopen $$x;done)
 RLM_INSTALL = install-types
-RLM_SUBDIRS = libeap @eaptypes@ 
+RLM_SUBDIRS = libeap @eaptypes@
 RLM_UTILS   = radeapclient
 
 .PHONY: all install-types common
@@ -15,24 +19,23 @@ $(STATIC_OBJS): $(HEADERS)
 
 #
 #  Statically link a few modules.
-# 
+#
 STATIC_OBJS	+= $(shell ls -1 types/rlm_eap_gtc/rlm_eap_gtc.a types/rlm_eap_leap/rlm_eap_leap.a types/rlm_eap_md5/rlm_eap_md5.a types/rlm_eap_mschapv2/rlm_eap_mschapv2.a types/rlm_eap_peap/rlm_eap_peap.a types/rlm_eap_sim/rlm_eap_sim.a types/rlm_eap_tls/rlm_eap_tls.a types/rlm_eap_ttls/rlm_eap_ttls.a 2>/dev/null)
 
 $(DYNAMIC_OBJS): $(HEADERS)
 
 all: common
-	@$(MAKE) $(MFLAGS) radeapclient
 
-radeapclient: radeapclient.o ../../lib/libradius.la
+radeapclient: radeapclient.lo $(CLIENTLIBS)
 	(cd libeap && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit $?
-	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) ${RLM_CFLAGS} $(LDFLAGS) -o radeapclient radeapclient.o -static $(CLIENTLIBS) $(LIBS) $(LCRYPT)
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) -static -o radeapclient radeapclient.lo $(CLIENTLIBS) $(LIBS)
 
-radeapclient.o: radeapclient.c $(INCLUDES)
-	$(CC) $(CFLAGS) ${RLM_CFLAGS} -c radeapclient.c
+radeapclient.o: radeapclient.c $(HEADERS)
+	$(CC) $(CFLAGS) $(RLM_CFLAGS) -c radeapclient.c
 
 install-types: 
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=install common
-	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radeapclient$(EXEEXT)	$(R)$(bindir)
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radeapclient$(EXEEXT) $(R)$(bindir)
 
 common:
 	@for dir in $(RLM_SUBDIRS); do  \
@@ -42,4 +45,3 @@ common:
 
 ## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
 include ../rules.mak
-
