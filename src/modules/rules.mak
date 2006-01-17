@@ -7,7 +7,7 @@
 #
 # e.g.
 #
-##########################
+############################
 # TARGET = rlm_foo
 # SRCS   = rlm_foo.c other.c
 #
@@ -15,7 +15,7 @@
 #
 # RLM_CFLAGS = my_cflags
 # RLM_LDLAGS = my_ldflags
-##########################
+############################
 #
 # and everything will be automagically built
 #
@@ -50,7 +50,10 @@ CFLAGS		+= -I$(top_builddir)/src
 # change.
 #
 #######################################################################
-SERVER_HEADERS	= $(RLM_DIR)../../include/radiusd.h $(RLM_DIR)../../include/radius.h $(RLM_DIR)../../include/modules.h
+SERVER_HEADERS	= $(top_builddir)/src/include/radius.h  \
+		  $(top_builddir)/src/include/radiusd.h \
+		  $(top_builddir)/src/include/modules.h
+
 $(STATIC_OBJS):  $(SERVER_HEADERS)
 $(DYNAMIC_OBJS): $(SERVER_HEADERS)
 
@@ -102,7 +105,7 @@ endif
 $(TARGET).la: $(DYNAMIC_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
 	-module $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) \
-	-o $@ -rpath $(libdir) $^ $(RLM_DIR)../../lib/libradius.la \
+	-o $@ -rpath $(libdir) $^ $(top_builddir)/src/lib/libradius.la \
 	$(RLM_LIBS) $(LIBS)
 
 #######################################################################
@@ -153,7 +156,7 @@ distclean: clean
 	@test -f Makefile.in && rm -f Makefile
 
 reconfig:
-	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in ] && $(AUTOCONF) -I $(RLM_DIR)../../..
+	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in ] && $(AUTOCONF) -I $(top_builddir)
 	@[ "x$(AUTOHEADER)" != "x" ] && [ -f ./configure.in ] && \
 	if grep AC_CONFIG_HEADERS configure.in >/dev/null; then\
 		$(AUTOHEADER);\
