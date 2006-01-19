@@ -1,9 +1,9 @@
 <?php
+require('../conf/config.php3');
 if ($show == 1 && isset($del_members)){
         header("Location: user_admin.php3?login=$del_members[0]");
         exit;
 }
-require('../conf/config.php3');
 if ($config[general_lib_type] != 'sql'){
 	echo <<<EOM
 <title>Group Administration Page</title>

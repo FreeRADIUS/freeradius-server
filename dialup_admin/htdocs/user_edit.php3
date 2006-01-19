@@ -1,9 +1,9 @@
 <?php
+require('../conf/config.php3');
 if ($edit_group == 1){
 	header("Location: group_admin.php3?login=$group_to_edit");
 	exit;
 }
-require('../conf/config.php3');
 require('../lib/attrshow.php3');
 require('../lib/defaults.php3');
 if ($user_type != 'group'){

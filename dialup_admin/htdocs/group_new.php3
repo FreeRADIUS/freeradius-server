@@ -1,9 +1,9 @@
 <?php
+require('../conf/config.php3');
 if ($show == 1){
 	header("Location: group_admin.php3?login=$login");
 	exit;
 }
-require('../conf/config.php3');
 
 if ($config[general_lib_type] != 'sql'){
 	echo <<<EOM

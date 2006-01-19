@@ -1,3 +1,8 @@
+Ver 1.70.2:
+* Fix redirects in dialup-admin pages on servers with register_globals
+  turned off.
+* HTTP form fields will always fail is_int, use in_numeric instead.
+
 Ver 1.70.1:
 * Report correct data transfer statistics for users
 * Lower-case sql column names to match creation scripts

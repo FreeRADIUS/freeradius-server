@@ -31,8 +31,8 @@ if ($start == '' && $stop == ''){
 $start = da_sql_escape_string($start);
 $stop = da_sql_escape_string($stop);
 $pagesize = ($pagesize) ? $pagesize : 10;
-if (!is_int($pagesize))
-	$pagezise = 10;
+if (!is_numeric($pagesize) && $pagesize != 'all')
+	$pagesize = 10;
 $limit = ($pagesize == 'all') ? '' : "LIMIT $pagesize";
 $selected[$pagesize] = 'selected';
 $order = ($order) ? $order : $config[general_accounting_info_order];

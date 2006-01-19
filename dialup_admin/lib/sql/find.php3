@@ -9,7 +9,7 @@ else{
 $link = @da_sql_pconnect($config);
 if ($link){
 	$search = da_sql_escape_string($search);
-	if (!is_int($max_results))
+	if (!is_numeric($max_results))
 		$max_results = 10;
 	if (($search_IN == 'name' || $search_IN == 'ou') && $config[sql_use_user_info_table] == 'true'){
 		$attr = ($search_IN == 'name') ? 'name' : 'department';
