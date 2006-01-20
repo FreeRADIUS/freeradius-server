@@ -434,6 +434,15 @@ dnl Check if we need -lnsl. Usually if we want to
 dnl link against -lsocket we need to include -lnsl as well.
 AC_CHECK_LIB(nsl, inet_ntoa)
 
+dnl Check the pcap library for the RADIUS sniffer.
+PCAP_LIBS=
+AC_CHECK_LIB(pcap, pcap_open_live,
+	[ PCAP_LIBS="-lpcap"
+	AC_DEFINE(HAVE_LIBPCAP, 1,
+		[Define to 1 if you have the `pcap' library (-lpcap).])
+	],
+	[ AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer.]) ])
+
 dnl #############################################################
 dnl #
 dnl #  3. Checks for header files
@@ -583,6 +592,19 @@ fi
 AC_SUBST(OPENSSL_INCLUDE)
 AC_SUBST(OPENSSL_LIBS)
 export OPENSSL_LIBS
+
+dnl Check the pcap includes for the RADIUS sniffer.
+if test "x$PCAP_LIBS" = x; then
+    AC_MSG_NOTICE([skipping test for pcap.h.])
+else
+    AC_CHECK_HEADER(pcap.h,
+	AC_DEFINE(HAVE_PCAP_H, 1,
+		[Define to 1 if you have the <pcap.h> header file.]),
+	[ PCAP_LIBS=
+	AC_MSG_WARN([pcap.h not found, silently disabling the RADIUS sniffer.])
+	])
+fi
+AC_SUBST(PCAP_LIBS)
 
 dnl #############################################################
 dnl #
