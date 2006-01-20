@@ -27,6 +27,14 @@ BINARIES	= radiusd radwho radclient
 LT_BIN_FLAGS	=
 
 #
+#  The RADIUS sniffer
+#
+PCAP_LIBS	= @PCAP_LIBS@
+ifneq ($(PCAP_LIBS),)
+BINARIES	+= radsniff
+endif
+
+#
 #  Not using shared libraries, add in ALL known static modules
 # at build time.
 #
@@ -141,6 +149,12 @@ radwho.o: radwho.c $(INCLUDES)
 
 radwho: radwho.o util.o log.o conffile.o ../lib/libradius.la
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o radwho radwho.o util.o log.o conffile.o ../lib/libradius.la $(LIBS)
+
+radsniff.lo: radsniff.c $(INCLUDES) ../include/radsniff.h
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radsniff.c
+
+radsniff: radsniff.lo ../lib/libradius.la
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o radsniff radsniff.lo $(LIBS) $(PCAP_LIBS)
 
 clean:
 	rm -rf *.o *.so *.lo *~ $(BINARIES) .libs
