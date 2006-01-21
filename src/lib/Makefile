@@ -1,3 +1,6 @@
+#
+# $Id$
+#
 
 include ../../Make.inc
 
@@ -9,7 +12,7 @@ SRCS		= dict.c print.c radius.c valuepair.c token.c misc.c \
 INCLUDES	= ../include/radius.h ../include/libradius.h \
 		  ../include/missing.h ../include/autoconf.h
 
-CFLAGS		+= -D_LIBRADIUS -I../include 
+CFLAGS		+= -D_LIBRADIUS -I../include
 
 # if you have problems with things that need SHA1-HMAC, this will
 # dump the key and the input to the hash so you can compare to what
@@ -39,9 +42,7 @@ $(DYNAMIC_OBJS): $(INCLUDES)
 
 
 $(TARGET).a: $(STATIC_OBJS)
-	$(LIBTOOL) --mode=link $(LD) \
-	-module -static $(CFLAGS) $^ -o $@ 
-
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -static -o $@ $^ $(LCRYPT)
 
 ifneq ($(USE_SHARED_LIBS),yes)
 LINK_MODE=-static
@@ -49,7 +50,7 @@ endif
 
 $(TARGET).la: $(DYNAMIC_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	-module $(LINK_MODE) $(CFLAGS) -o $@ -rpath $(libdir) $^ 
+	$(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^ $(LCRYPT)
 
 static: $(TARGET).a
 
