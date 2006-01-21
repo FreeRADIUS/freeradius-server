@@ -49,7 +49,7 @@ endif
 
 $(TARGET).la: $(DYNAMIC_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	$(LINK_MODE) $(CFLAGS) -o $@ -rpath $(libdir) $^ $(LCRYPT)
+	$(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^
 
 static:
 
