@@ -10,21 +10,20 @@ SERVER_SRCS	= acct.c auth.c client.c conffile.c crypt.c exec.c files.c \
 		  session.c smux.c threads.c util.c valuepair.c version.c  \
 		  xlat.c
 
-SERVER_OBJS	+= $(SERVER_SRCS:.c=.o)
+SERVER_OBJS	+= $(SERVER_SRCS:.c=.lo)
 
-INCLUDES	= ../include/radiusd.h ../include/radius.h ../include/libradius.h ../include/conf.h ../include/autoconf.h
+INCLUDES	= ../include/autoconf.h ../include/conf.h    \
+		  ../include/libradius.h ../include/radius.h \
+		  ../include/radiusd.h
 
 CFLAGS		+= -I$(top_builddir)/src
 CFLAGS		+= -DHOSTINFO=\"${HOSTINFO}\"
-CFLAGS          += -DRADIUSD_VERSION=\"${RADIUSD_VERSION}\"
-CFLAGS          += $(SNMP_INCLUDE) 
-LDFLAGS		+= -L../lib
-MODULE_LIBS	= $(STATIC_MODULES)
-MODULE_OBJS	=
+CFLAGS		+= -DRADIUSD_VERSION=\"${RADIUSD_VERSION}\"
+CFLAGS		+= $(SNMP_INCLUDE)
 VFLAGS		= -DRADIUSD_MAJOR_VERSION=$(RADIUSD_MAJOR_VERSION)
 VFLAGS		+= -DRADIUSD_MINOR_VERSION=$(RADIUSD_MINOR_VERSION)
+MODULE_LIBS	= $(STATIC_MODULES)
 BINARIES	= radiusd radwho radclient
-LT_BIN_FLAGS	=
 
 #
 #  The RADIUS sniffer
@@ -36,134 +35,142 @@ endif
 
 #
 #  Not using shared libraries, add in ALL known static modules
-# at build time.
+#  at build time.
 #
 ifneq ($(USE_SHARED_LIBS),yes)
 #
 #  For static linking...
 #
-LT_BIN_FLAGS	= -static -all-static
+LINK_MODE	= -static -all-static
 
 SUB_MODULES += rlm_eap_md5 rlm_eap_leap rlm_eap_tls rlm_eap_ttls rlm_eap_sim
 SUB_MODULES += rlm_eap_peap rlm_eap_mschapv2 rlm_eap_gtc
 SUB_MODULES += rlm_sql_db2 rlm_sql_freetds rlm_sql_iodbc rlm_sql_mysql
 SUB_MODULES += rlm_sql_oracle rlm_sql_postgresql rlm_sql_sybase rlm_sql_unixodbc
-LIBS        += $(shell test -f ../modules/rlm_eap/libeap/libeap.a && echo -L../modules/rlm_eap/libeap -leap)
+LIBS        += $(shell test -f ../modules/rlm_eap/libeap/libeap.la && echo ../modules/rlm_eap/libeap/libeap.la)
 
-#
 MODULE_LIBS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo -dlpreopen ../modules/$$x/$$x.la;done)
 MODULE_LIBS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo -dlpreopen ../modules/*/types/$$x/$$x.la;done)
 MODULE_LIBS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$$x/$$x.la && echo -dlpreopen ../modules/*/drivers/$$x/$$x.la;done)
-MODULE_OBJS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo ../modules/$$x/$$x.la;done)
-MODULE_OBJS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo ../modules/*/types/$$x/$$x.la;done)
-MODULE_OBJS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$$x/$$x.la && echo ../modules/*/drivers/$$x/$$x.la;done)
 endif
 
-LIBS		+= -lradius $(SNMP_LIBS)
+LIBS		+= ../lib/libradius.la
 
 
-all:	$(BINARIES)
+all: $(BINARIES)
 
 $(SERVER_OBJS): $(INCLUDES)
 
-radiusd: $(SERVER_OBJS) ../lib/libradius.la $(MODULE_OBJS)
+radiusd: $(SERVER_OBJS) $(MODULE_LIBS) ../lib/libradius.la
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
-		$(LT_BIN_FLAGS) $(CFLAGS) $(LDFLAGS) -o $@ \
-		$(SERVER_OBJS) $(LCRYPT) $(MODULE_LIBS) $(LIBS) \
-		$(PTHREADLIB) $(LIBLTDL) $(LCRYPT) $(OPENSSL_LIBS)
+		$(LDFLAGS) $(LINK_MODE) -o $@ $(SERVER_OBJS)      \
+		$(MODULE_LIBS) $(LIBS) $(SNMP_LIBS) $(LCRYPT)     \
+		$(PTHREADLIB) $(LIBLTDL) $(OPENSSL_LIBS)
 
-radiusd.o: radiusd.c ../include/request_list.h ../include/modules.h ../include/modcall.h ../include/modpriv.h
+radiusd.lo: radiusd.c ../include/request_list.h ../include/modules.h ../include/modcall.h ../include/modpriv.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radiusd.c
 
-acct.o: acct.c ../include/modules.h
+acct.lo: acct.c ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c acct.c
 
-files.o: files.c 
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c files.c
-
-util.o: util.c 
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c util.c
-
-log.o:  log.c 
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c log.c
-
-conffile.o: conffile.c ../include/modules.h
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c conffile.c
-
-mainconfig.o: mainconfig.c ../include/modules.h
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c mainconfig.c
-
-modules.o:  modules.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(VFLAGS) $(INCLTDL) -c modules.c
-
-modcall.o:  modcall.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c modcall.c
-
-session.o:  session.c ../include/modules.h
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c session.c
-
-request_list.o:  request_list.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c request_list.c
-
-request_process.o:  request_process.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c request_process.c
-
-proxy.o:  proxy.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c proxy.c
-
-exec.o:  exec.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c exec.c
-
-auth.o:  auth.c ../include/modules.h
+auth.lo: auth.c ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c auth.c
 
-valuepair.o:  valuepair.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c valuepair.c
+client.lo: client.c ../include/conffile.h
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c client.c
 
-version.o: version.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -o version.o -c version.c
+conffile.lo: conffile.c ../include/conffile.h ../include/modules.h
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c conffile.c
 
-xlat.o: xlat.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -o xlat.o -c xlat.c
-
-threads.o: threads.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -o threads.o -c threads.c
-
-smux.o: smux.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -o smux.o -c smux.c
-
-radius_snmp.o: radius_snmp.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -o radius_snmp.o -c radius_snmp.c
-
-crypt.o: crypt.c 
+crypt.lo: crypt.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c crypt.c
 
-radclient: radclient.o ../lib/libradius.la
-	$(LIBTOOL) --mode=link $(CC) $(CFLAGS) $(LDFLAGS) -o radclient radclient.o ../lib/libradius.la $(LIBS)
+exec.lo: exec.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c exec.c
 
-radclient.o: radclient.c $(INCLUDES)
+files.lo: files.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c files.c
+
+listen.lo: listen.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c listen.c
+
+log.lo: log.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c log.c
+
+mainconfig.lo: mainconfig.c ../include/modules.h
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c mainconfig.c
+
+modcall.lo: modcall.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c modcall.c
+
+modules.lo: modules.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(VFLAGS) $(INCLTDL) -c modules.c
+
+proxy.lo: proxy.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c proxy.c
+
+radius_snmp.lo: radius_snmp.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radius_snmp.c
+
+request_list.lo: request_list.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c request_list.c
+
+request_process.lo: request_process.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c request_process.c
+
+session.lo: session.c ../include/modules.h
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c session.c
+
+smux.lo: smux.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c smux.c
+
+threads.lo: threads.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c threads.c
+
+util.lo: util.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c util.c
+
+valuepair.lo: valuepair.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c valuepair.c
+
+version.lo: version.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c version.c
+
+xlat.lo: xlat.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c xlat.c
+
+#
+# Helper programs
+#
+
+radclient.lo: radclient.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radclient.c
 
-radwho.o: radwho.c $(INCLUDES)
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radwho.c
-
-radwho: radwho.o util.o log.o conffile.o ../lib/libradius.la
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o radwho radwho.o util.o log.o conffile.o ../lib/libradius.la $(LIBS)
+radclient: radclient.lo ../lib/libradius.la
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radclient radclient.lo $(LIBS)
 
 radsniff.lo: radsniff.c $(INCLUDES) ../include/radsniff.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radsniff.c
 
 radsniff: radsniff.lo ../lib/libradius.la
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) -o radsniff radsniff.lo $(LIBS) $(PCAP_LIBS)
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radsniff radsniff.lo $(LIBS) $(PCAP_LIBS)
+
+radwho.lo: radwho.c $(INCLUDES)
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radwho.c
+
+radwho: radwho.lo util.lo log.lo conffile.lo ../lib/libradius.la
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radwho radwho.lo util.lo log.lo conffile.lo $(LIBS)
+
 
 clean:
 	rm -rf *.o *.so *.lo *~ $(BINARIES) .libs
 
 install:
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radiusd$(EXEEXT)	$(R)$(sbindir)
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radclient$(EXEEXT)	$(R)$(bindir)
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radsniff$(EXEEXT)	$(R)$(bindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radwho$(EXEEXT)	$(R)$(bindir)
-	$(INSTALL) -m 755    radzap			$(R)$(bindir)
-	$(INSTALL) -m 755    radlast			$(R)$(bindir)
-	$(LIBTOOL) --mode=install $(INSTALL) -m 755    radclient$(EXEEXT)		$(R)$(bindir)
-	$(INSTALL) -m 755    radtest 			$(R)$(bindir)
 	$(INSTALL) -m 755    checkrad.pl		$(R)$(sbindir)/checkrad
+	$(INSTALL) -m 755    radlast			$(R)$(bindir)
+	$(INSTALL) -m 755    radtest 			$(R)$(bindir)
+	$(INSTALL) -m 755    radzap			$(R)$(bindir)
