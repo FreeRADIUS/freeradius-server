@@ -1,18 +1,41 @@
 #
-# $Id$
+# Makefile
+#
+# Version:	$Id$
 #
 
-TARGET		= $(LIBPREFIX)eap
-SRCS		= fips186prf.c eapcrypto.c eapcommon.c eapsimlib.c \
-		  eap_tls.c tls.c cb.c mppe_keys.c
+include ../../../../Make.inc
+
+SRCS		= cb.c eap_tls.c eapcommon.c eapcrypto.c eapsimlib.c \
+		  fips186prf.c mppe_keys.c tls.c
+LT_OBJS		= $(SRCS:.c=.lo)
 INCLUDES	= eap_types.h eap_tls.h
-RLM_CFLAGS	= -DEAPLIB -I. -I.. -I$(top_builddir)/src
+CFLAGS		+= -DEAPLIB -I. -I.. -I$(top_builddir)/src
+ifeq ($(USE_SHARED_LIBS),yes)
+LINK_MODE	= -export-dynamic
+else
+LINK_MODE	= -static
+endif
+TARGET		= $(LIBPREFIX)eap
 
-RLM_DIR		= ../
-include ../../rules.mak
+# Define new rule for libtool objects
+%.lo: %.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $<
 
-# Redefine sane link command
-$(TARGET).la: $(DYNAMIC_OBJS)
+all: $(TARGET).la
+
+$(TARGET).la: $(LT_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	$(LINK_MODE) $(RLM_LDFLAGS) $(LDFLAGS) -o $@ -rpath $(libdir) \
-	$^ $(top_builddir)/src/lib/libradius.la $(RLM_LIBS) $(LIBS)
+	$(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^ \
+	$(top_builddir)/src/lib/libradius.la $(LIBS)
+
+$(LT_OBJS): $(INCLUDES)
+
+clean:
+	rm -f *.o *.lo $(TARGET).la
+	rm -rf .libs
+
+install: all
+	$(LIBTOOL) --mode=install $(INSTALL) -c $(TARGET).la $(R)$(libdir)
+	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la;
+	ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la
