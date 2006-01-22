@@ -1,3 +1,7 @@
+#
+# $Id$
+#
+
 TARGET      = @targetname@
 SRCS        = rlm_dbm.c
 HEADERS     =
@@ -8,10 +12,10 @@ RLM_INSTALL = @dbm_install@
 
 include ../rules.mak
 
-rlm_dbm_parser: rlm_dbm_parser.o ../../lib/libradius.la
+rlm_dbm_parser: rlm_dbm_parser.lo ../../lib/libradius.la
 	$(LIBTOOL) --mode=link $(CC) $^ $(LIBS) $(RLM_LIBS) -o $@
 
-rlm_dbm_cat: rlm_dbm_cat.o ../../lib/libradius.la
+rlm_dbm_cat: rlm_dbm_cat.lo ../../lib/libradius.la
 	$(LIBTOOL) --mode=link $(CC) $^ $(LIBS) $(RLM_LIBS) -o $@
 
 #
