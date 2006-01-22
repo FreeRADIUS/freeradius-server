@@ -1,6 +1,8 @@
+#
+# $Id$
+#
 
 INCLUDE += -I/usr/local/include/
-
 
 TARGET      = @targetname@
 SRCS        = rlm_sqlippool.c ip_set.c
@@ -11,6 +13,4 @@ RLM_INSTALL =
 
 include ../rules.mak
 
-$(STATIC_OBJS): $(HEADERS)
-
-$(DYNAMIC_OBJS): $(HEADERS)
+$(LT_OBJS): $(HEADERS)

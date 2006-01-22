@@ -20,7 +20,9 @@
 #
 #######################################################################
 
-all: dynamic
+.PHONY: all build-module clean distclean install reconfig
+
+all: build-module
 
 #######################################################################
 #
@@ -31,12 +33,11 @@ all: dynamic
 
 #######################################################################
 #
-# define static and dynamic objects for the libraries,
+# define libtool objects for the libraries,
 # along with a number of other useful definitions.
 #
 #######################################################################
-STATIC_OBJS	= $(SRCS:.c=.o)
-DYNAMIC_OBJS	= $(SRCS:.c=.lo)
+LT_OBJS		= $(SRCS:.c=.lo)
 CFLAGS		+= -I../.. -I$(top_builddir)/src/
 
 #######################################################################
@@ -46,18 +47,14 @@ CFLAGS		+= -I../.. -I$(top_builddir)/src/
 #
 #######################################################################
 SERVER_HEADERS	= ../../rlm_sql.h
-$(STATIC_OBJS):  $(SERVER_HEADERS)
-$(DYNAMIC_OBJS): $(SERVER_HEADERS)
+$(LT_OBJS):  $(SERVER_HEADERS)
 
 #######################################################################
 #
 # define new rules
 #
 #######################################################################
-%.o : %.c
-	$(CC) $(CFLAGS) $(RLM_SQL_CFLAGS) -c $< -o $@
-
-%.lo : %.c
+%.lo: %.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(RLM_SQL_CFLAGS) -c $<
 
 ifneq ($(TARGET),)
@@ -66,8 +63,6 @@ ifneq ($(TARGET),)
 # Define a number of new targets
 #
 #######################################################################
-$(TARGET).a: $(STATIC_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -module -static $(CFLAGS) $(RLM_SQL_CFLAGS) $^ -o $@ 
 
 #
 #  If the module is in the list of static modules, then the "dynamic"
@@ -90,11 +85,6 @@ ifneq ($(USE_SHARED_LIBS),yes)
 LINK_MODE=-static
 endif
 
-$(TARGET).la: $(DYNAMIC_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	-module $(LINK_MODE) $(CFLAGS) \
-	$(RLM_SQL_CFLAGS) -o $@ -rpath $(libdir) $^ $(RLM_SQL_LIBS)
-
 #######################################################################
 #
 #  Generic targets so we can sweep through all modules
@@ -104,11 +94,14 @@ $(TARGET).la: $(DYNAMIC_OBJS)
 # a level, to the 'src/modules' directory, for general consumption.
 #
 #######################################################################
-static: $(TARGET).a
+build-module: $(TARGET).la
+	@[ -d .libs ] && cp .libs/* ../lib
 	@cp $< ../lib
 
-dynamic: $(TARGET).la
-	@cp $< ../lib
+$(TARGET).la: $(LT_OBJS)
+	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+	-module $(LINK_MODE) $(LDFLAGS) $(RLM_SQL_LDFLAGS) -o $@ \
+	-rpath $(libdir) $^ $(RLM_SQL_LIBS)
 
 #######################################################################
 #
@@ -116,9 +109,7 @@ dynamic: $(TARGET).la
 #
 #######################################################################
 else
-static:
-
-dynamic:
+build-module:
 
 # if $(TARGET) == ""
 endif

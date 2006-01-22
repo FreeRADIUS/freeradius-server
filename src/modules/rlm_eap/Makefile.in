@@ -8,32 +8,34 @@ HEADERS     = eap.h rlm_eap.h
 RLM_CFLAGS  = $(INCLTDL) -Ilibeap
 CLIENTLIBS  = libeap/libeap.la
 RLM_LIBS    = libeap/libeap.la $(LIBLTDL)
-#RLM_LIBS    = $(shell for x in types/rlm_eap*/rlm_eap*.la;do echo -dlpreopen $$x;done)
-RLM_INSTALL = install-types
+RLM_INSTALL = install-subdirs
 RLM_SUBDIRS = libeap @eaptypes@
 RLM_UTILS   = radeapclient
 
-.PHONY: all install-types common
+#
+# Not using shared libraries, add in ALL known static modules
+# at build time.
+#
+#ifneq ($(USE_SHARED_LIBS),yes)
+#RLM_LIBS  += $(shell for x in types/rlm_eap*/rlm_eap*.la;do echo -dlpreopen $$x;done)
+#endif
 
-$(STATIC_OBJS): $(HEADERS)
+.PHONY: all install-subdirs common
 
 #
-#  Statically link a few modules.
+# We need libeap.la before we can build anything else
 #
-STATIC_OBJS	+= $(shell ls -1 types/rlm_eap_gtc/rlm_eap_gtc.a types/rlm_eap_leap/rlm_eap_leap.a types/rlm_eap_md5/rlm_eap_md5.a types/rlm_eap_mschapv2/rlm_eap_mschapv2.a types/rlm_eap_peap/rlm_eap_peap.a types/rlm_eap_sim/rlm_eap_sim.a types/rlm_eap_tls/rlm_eap_tls.a types/rlm_eap_ttls/rlm_eap_ttls.a 2>/dev/null)
-
-$(DYNAMIC_OBJS): $(HEADERS)
-
 all: common
 
+$(LT_OBJS): $(HEADERS)
+
 radeapclient: radeapclient.lo $(CLIENTLIBS)
-	(cd libeap && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit $?
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) -static -o radeapclient radeapclient.lo $(CLIENTLIBS) $(LIBS)
 
-radeapclient.o: radeapclient.c $(HEADERS)
-	$(CC) $(CFLAGS) $(RLM_CFLAGS) -c radeapclient.c
+radeapclient.lo: radeapclient.c $(HEADERS)
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(RLM_CFLAGS) -c radeapclient.c
 
-install-types: 
+install-subdirs:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=install common
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radeapclient$(EXEEXT) $(R)$(bindir)
 

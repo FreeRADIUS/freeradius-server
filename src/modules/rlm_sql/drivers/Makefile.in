@@ -3,12 +3,6 @@ SQL_MODULES		= @SQL_MODULES@
 all:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
-static:
-	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-
-dynamic:
-	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-
 clean:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	@rm -f lib/rlm_*
@@ -17,12 +11,10 @@ clean:
 install:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
-common: 
+common:
 	@[ -d lib/ ] || mkdir lib
 	@for mod in $(SQL_MODULES); do \
 		what=$(WHAT_TO_MAKE); \
-		[ "$$what" = "all" ] && what="$(TARGET_LIBS)"; \
 		echo "Making $$what in $$mod..."; \
 		(cd $$mod && $(MAKE) $(MFLAGS) $$what) || exit $?;\
 	done
-

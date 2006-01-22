@@ -11,6 +11,8 @@ SRCS		= dict.c filters.c hash.c hmac.c hmacsha1.c isaac.c log.c \
 		  sha1.c snprintf.c strlcat.c strlcpy.c token.c udpfromto.c \
 		  valuepair.c fifo.c
 
+LT_OBJS		= $(SRCS:.c=.lo)
+
 INCLUDES	= ../include/radius.h ../include/libradius.h \
 		  ../include/missing.h ../include/autoconf.h
 
@@ -21,46 +23,31 @@ CFLAGS		+= -D_LIBRADIUS -I$(top_builddir)/src
 # the other end is doing.
 CFLAGS += -DHMAC_SHA1_DATA_PROBLEMS
 
-TARGET=$(LIBPREFIX)radius
+ifeq ($(USE_SHARED_LIBS),yes)
+LINK_MODE	= -export-dynamic
+else
+LINK_MODE	= -static
+endif
 
-all:	$(TARGET).la
+TARGET		= $(LIBPREFIX)radius
 
-STATIC_OBJS	= $(SRCS:.c=.o)
-DYNAMIC_OBJS	= $(SRCS:.c=.lo)
-
-$(STATIC_OBJS):  $(INCLUDES)
-$(DYNAMIC_OBJS): $(INCLUDES)
-
-#######################################################################
-#
-# define new rules
-#
-#######################################################################
-%.o : %.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $< -o $@
-
+# Define new rule for libtool objects
 %.lo : %.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $<
 
+all: $(TARGET).la
 
-ifneq ($(USE_SHARED_LIBS),yes)
-LINK_MODE=-static
-endif
-
-$(TARGET).la: $(DYNAMIC_OBJS)
+$(TARGET).la: $(LT_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
 	$(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^
 
-static:
-
-dynamic: $(TARGET).la
+$(LT_OBJS): $(INCLUDES)
 
 clean:
-	rm -f *.o *.lo $(TARGET).a $(TARGET).la
+	rm -f *.o *.lo $(TARGET).la
 	rm -rf .libs
 
 install: all
-	$(LIBTOOL) --mode=install $(INSTALL) -c \
-		$(TARGET).la $(R)$(libdir)/$(TARGET).la;
+	$(LIBTOOL) --mode=install $(INSTALL) -c $(TARGET).la $(R)$(libdir)
 	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la;
 	ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la

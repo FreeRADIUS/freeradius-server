@@ -16,7 +16,7 @@
 # ../main/Makefile for building the version of the server with
 # statically linked modules.  Get it from autoconf.
 #
-# RLM_INSTALL is the names of additional rules you need to install 
+# RLM_INSTALL is the names of additional rules you need to install
 # some particular portion of the module.  Usually, leave it blank.
 #
 #######################################################################
@@ -30,21 +30,20 @@ RLM_LIBS       = @otp_ldflags@ $(OPENSSL_LIBS) $(CARDOPS_LTLIBS)
 
 RLM_SUBDIRS = cardops
 
-## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
-include ../rules.mak
-
 # Not part of RLM_CFLAGS to avoid propagation to subdirs
 CFLAGS     += -Wno-unused-label -Wno-cast-qual
 
-$(STATIC_OBJS): $(HEADERS) $(CARDOPS_LTLIBS)
+# We need to compile cardops before anything else.
+all: common
 
-$(DYNAMIC_OBJS): $(HEADERS) $(CARDOPS_LTLIBS)
+$(LT_OBJS): $(HEADERS) $(CARDOPS_LTLIBS)
 
 # Note: dynamic libs only
 $(CARDOPS_LTLIBS) common:
-	@what=$(WHAT_TO_MAKE); \
-	[ -z "$$what" ] && what=dynamic; \
 	for dir in $(RLM_SUBDIRS); do \
-		echo "Making $$what in $$dir ..."; \
-		$(MAKE) $(MFLAGS) -C $$dir RLM_CFLAGS="$(RLM_CFLAGS)" $$what || exit $?; \
+		echo "Making $(WHAT_TO_MAKE) in $$dir ..."; \
+		$(MAKE) $(MFLAGS) -C $$dir RLM_CFLAGS="$(RLM_CFLAGS)" $(WHAT_TO_MAKE) || exit $?; \
 	done
+
+## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
+include ../rules.mak

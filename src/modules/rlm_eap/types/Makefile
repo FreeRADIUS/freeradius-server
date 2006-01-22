@@ -1,16 +1,10 @@
 #
-# $Id$
+# Makefile
+#
+# Version:	$Id$
 #
 
-TARGET_LIBS = static dynamic
-
 all:
-	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-
-static:
-	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-
-dynamic:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 clean:
@@ -21,10 +15,8 @@ install:
 
 common:
 	@for mod in rlm_eap*; do \
-		what=$(WHAT_TO_MAKE); \
-		[ "$$what" = "all" ] && what="$(TARGET_LIBS)"; \
 		if [ -d $$mod ] && [ -f $$mod/Makefile ]; then \
-			echo "Making $$what in $$mod..."; \
-			(cd $$mod && $(MAKE) $(MFLAGS) $$what) || exit $?; \
+			echo "Making $(WHAT_TO_MAKE) in $$mod..."; \
+			$(MAKE) $(MFLAGS) -C $$mod $(WHAT_TO_MAKE) || exit $?; \
 		fi; \
 	done

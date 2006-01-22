@@ -1,3 +1,7 @@
+#
+# $Id$
+#
+
 TARGET     = @targetname@
 SRCS       = rlm_ldap.c @edir@
 HEADERS    =
@@ -6,7 +10,4 @@ RLM_LIBS   = @ldap_ldflags@
 
 include ../rules.mak
 
-$(STATIC_OBJS): $(HEADERS)
-
-$(DYNAMIC_OBJS): $(HEADERS)
-
+$(LT_OBJS): $(HEADERS)

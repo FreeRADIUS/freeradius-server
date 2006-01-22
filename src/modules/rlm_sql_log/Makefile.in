@@ -16,7 +16,7 @@
 # ../main/Makefile for building the version of the server with
 # statically linked modules.  Get it from autoconf.
 #
-# RLM_INSTALL is the names of additional rules you need to install 
+# RLM_INSTALL is the names of additional rules you need to install
 # some particular portion of the module.  Usually, leave it blank.
 #
 #######################################################################
@@ -25,15 +25,9 @@ SRCS        = rlm_sql_log.c
 HEADERS     =
 RLM_CFLAGS  = @sql_log_cflags@
 RLM_LIBS    = @sql_log_ldflags@
-RLM_INSTALL = install-sql_log
+RLM_INSTALL =
 
 ## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
 include ../rules.mak
 
-$(STATIC_OBJS): $(HEADERS)
-
-$(DYNAMIC_OBJS): $(HEADERS)
-
-## the rule that RLM_INSTALL tells the parent rules.mak to use.
-install-sql_log:
-	touch .
+$(LT_OBJS): $(HEADERS)

@@ -1,15 +1,9 @@
 #
 #  Make a unique Acct-Unique-Session-Id
 #
+#  Version:	$Id$
 #
 TARGET		= rlm_acct_unique
 SRCS		= rlm_acct_unique.c
-HEADERS		= 
-RLM_CFLAGS	=
-RLM_LIBS	=
 
 include ../rules.mak
-
-$(STATIC_OBJS): $(HEADERS)
-
-$(DYNAMIC_OBJS): $(HEADERS)

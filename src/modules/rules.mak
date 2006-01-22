@@ -23,7 +23,9 @@
 
 include $(RLM_DIR)../../../Make.inc
 
-all: static dynamic
+.PHONY: all build-module clean distclean install reconfig
+
+all: build-module
 
 #######################################################################
 #
@@ -34,14 +36,12 @@ all: static dynamic
 
 #######################################################################
 #
-# define static and dynamic objects for the libraries,
+# define libtool objects for the libraries,
 # along with a number of other useful definitions.
 #
 #######################################################################
-STATIC_OBJS	+= $(SRCS:.c=.o)
-STATIC_OBJS	+= $(SRCS:.cpp=.o)
-DYNAMIC_OBJS	+= $(SRCS:.c=.lo)
-DYNAMIC_OBJS	+= $(SRCS:.cpp=.lo)
+LT_OBJS		+= $(SRCS:.c=.lo)
+LT_OBJS		+= $(SRCS:.cpp=.lo)
 CFLAGS		+= -I$(top_builddir)/src
 
 #######################################################################
@@ -54,24 +54,17 @@ SERVER_HEADERS	= $(top_builddir)/src/include/radius.h  \
 		  $(top_builddir)/src/include/radiusd.h \
 		  $(top_builddir)/src/include/modules.h
 
-$(STATIC_OBJS):  $(SERVER_HEADERS)
-$(DYNAMIC_OBJS): $(SERVER_HEADERS)
+$(LT_OBJS): $(SERVER_HEADERS)
 
 #######################################################################
 #
 # define new rules
 #
 #######################################################################
-%.o : %.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(RLM_CFLAGS) -c $< -o $@
-
-%.o : %.cpp
-	$(LIBTOOL) --mode=compile $(CXX) $(CFLAGS) $(RLM_CFLAGS) -c $< -o $@
-
-%.lo : %.c
+%.lo: %.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(RLM_CFLAGS) -c $<
 
-%.lo : %.cpp
+%.lo: %.cpp
 	$(LIBTOOL) --mode=compile $(CXX) $(CFLAGS) $(RLM_CFLAGS) -c $<
 
 ifneq ($(TARGET),)
@@ -102,12 +95,6 @@ ifneq ($(USE_SHARED_LIBS),yes)
 LINK_MODE = -static
 endif
 
-$(TARGET).la: $(DYNAMIC_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	-module $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) \
-	-o $@ -rpath $(libdir) $^ $(top_builddir)/src/lib/libradius.la \
-	$(RLM_LIBS) $(LIBS)
-
 #######################################################################
 #
 #  Generic targets so we can sweep through all modules
@@ -117,15 +104,17 @@ $(TARGET).la: $(DYNAMIC_OBJS)
 # a level, to the 'src/modules' directory, for general consumption.
 #
 #######################################################################
-#static: $(TARGET).a $(RLM_UTILS)
-#	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=static common
-#	@cp $< $(top_builddir)/src/modules/lib
-static:
 
-dynamic: $(TARGET).la $(RLM_UTILS)
-	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=dynamic common
+build-module: $(TARGET).la $(RLM_UTILS)
+	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=all common
 	@[ -d .libs ] && cp .libs/* $(top_builddir)/src/modules/lib
 	@cp $< $(top_builddir)/src/modules/lib
+
+$(TARGET).la: $(LT_OBJS)
+	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+	-module $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) -o $@     \
+	-rpath $(libdir) $^ $(top_builddir)/src/lib/libradius.la \
+	$(RLM_LIBS) $(LIBS)
 
 #######################################################################
 #
@@ -133,9 +122,7 @@ dynamic: $(TARGET).la $(RLM_UTILS)
 #
 #######################################################################
 else
-static:
-
-dynamic:
+build-module:
 
 # if $(TARGET) == ""
 endif

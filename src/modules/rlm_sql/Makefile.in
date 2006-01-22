@@ -1,6 +1,10 @@
+#
+# $Id$
+#
+
 TARGET		= @targetname@
 SRCS		= rlm_sql.c sql.c
-HEADERS		= rlm_sql.h rlm_sql_conf.h
+HEADERS		= rlm_sql.h conf.h
 RLM_INSTALL	= install-drivers
 RLM_CFLAGS	= $(INCLTDL) -I$(top_builddir)/src/modules/rlm_sql
 RLM_LIBS	= $(LIBLTDL)
@@ -14,26 +18,16 @@ RLM_SUBDIRS	= drivers
 #RLM_LIBS	+= $(shell for x in drivers/rlm_*/rlm_*.la;do echo -dlpreopen $$x;done)
 #endif
 
-$(STATIC_OBJS): $(HEADERS)
+# this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
+include ../rules.mak
 
-$(DYNAMIC_OBJS): $(HEADERS) 
-
-
-all:
-	@$(MAKE) $(MFLAGS) static dynamic
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-
-allclean:
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=clean common
+$(LT_OBJS): $(HEADERS)
 
 install-drivers:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=install common
 
-common: 
+common:
 	@for dir in $(RLM_SUBDIRS); do \
 		echo "Making $(WHAT_TO_MAKE) in $$dir..."; \
 		(cd $$dir && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit $?;\
 	done
-
-include ../rules.mak
-
