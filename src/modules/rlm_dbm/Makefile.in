@@ -21,6 +21,6 @@ rlm_dbm_cat: rlm_dbm_cat.lo ../../lib/libradius.la
 #
 #  Install the utility programs in the bin directory.
 #
-rlm_dbm_install:
-	$(INSTALL) -m 755 $(INSTALLSTRIP) rlm_dbm_parser$(EXEEXT) $(R)$(bindir)
-	$(INSTALL) -m 755 $(INSTALLSTRIP) rlm_dbm_cat$(EXEEXT)    $(R)$(bindir)
+rlm_dbm_install: rlm_dbm_cat rlm_dbm_parser
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) rlm_dbm_cat$(EXEEXT) $(R)$(bindir)
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) rlm_dbm_parser$(EXEEXT) $(R)$(bindir)
