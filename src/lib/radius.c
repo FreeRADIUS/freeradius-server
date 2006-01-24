@@ -83,6 +83,7 @@ static volatile int lrad_rand_index = -1;
 static unsigned int salt_offset = 0;
 
 
+#define MAX_PACKET_CODE (52)
 static const char *packet_codes[] = {
   "",
   "Access-Request",
@@ -464,6 +465,11 @@ static void make_tunnel_passwd(uint8_t *output, int *outlen,
 	uint8_t passwd[MAX_STRING_LEN + AUTH_VECTOR_LEN];
 	int	i, n;
 	int	len;
+
+	/*
+	 *	Be paranoid.
+	 */
+	if (room > 253) room = 253;
 
 	/*
 	 *	Account for 2 bytes of the salt, and round the room
@@ -1069,7 +1075,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		return 0;
 	}
 
-	if ((packet->code > 0) && (packet->code < 52)) {
+	if ((packet->code > 0) && (packet->code < MAX_PACKET_CODE)) {
 		what = packet_codes[packet->code];
 	} else {
 		what = "Reply";
@@ -1314,7 +1320,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	Code of 16 or greate is not understood.
 	 */
 	if ((hdr->code == 0) ||
-	    (hdr->code >= 52)) {
+	    (hdr->code >= MAX_PACKET_CODE)) {
 		librad_log("WARNING: Bad RADIUS packet from host %s: unknown packet code %d",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
@@ -1525,7 +1531,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	}
 
 	if (librad_debug) {
-		if ((hdr->code > 0) && (hdr->code < 52)) {
+		if ((hdr->code > 0) && (hdr->code < MAX_PACKET_CODE)) {
 			printf("rad_recv: %s packet from host %s port %d",
 			       packet_codes[hdr->code],
 			       inet_ntop(packet->src_ipaddr.af,
@@ -1642,10 +1648,27 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	} /* loop over the packet, sanity checking the attributes */
 
 	/*
+	 *	It looks like a RADIUS packet, but we can't validate
+	 *	the signature.
+	 */
+	if ((packet->code == 0) || packet->code >= MAX_PACKET_CODE) {
+		char buffer[32];
+		librad_log("Received Unknown packet code %d"
+			   "from client %s port %d: Cannot validate signature",
+			   packet->code,
+			   inet_ntop(packet->src_ipaddr.af,
+				     &packet->src_ipaddr.ipaddr,
+				     buffer, sizeof(buffer)),
+			   packet->src_port);
+		return -1;
+	}
+
+	/*
 	 *	Calculate and/or verify digest.
 	 */
 	switch(packet->code) {
 		int rcode;
+		char buffer[32];
 
 		case PW_AUTHENTICATION_REQUEST:
 		case PW_STATUS_SERVER:
@@ -1658,7 +1681,6 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 		case PW_ACCOUNTING_REQUEST:
 			if (calc_acctdigest(packet, secret) > 1) {
-				char buffer[32];
 				librad_log("Received Accounting-Request packet "
 					   "from %s with invalid signature!  (Shared secret is incorrect.)",
 					   inet_ntop(packet->src_ipaddr.af,
@@ -1674,7 +1696,6 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		case PW_ACCOUNTING_RESPONSE:
 			rcode = calc_replydigest(packet, original, secret);
 			if (rcode > 1) {
-				char buffer[32];
 				librad_log("Received %s packet "
 					   "from client %s port %d with invalid signature (err=%d)!  (Shared secret is incorrect.)",
 					   packet_codes[packet->code],
@@ -1685,7 +1706,17 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 					   rcode);
 				return -1;
 			}
-		  break;
+			break;
+
+		default:
+			librad_log("Received Unknown packet code %d"
+				   "from client %s port %d: Cannot validate signature",
+				   packet->code,
+				   inet_ntop(packet->src_ipaddr.af,
+					     &packet->src_ipaddr.ipaddr,
+						     buffer, sizeof(buffer)),
+				   packet->src_port);
+			return -1;
 	}
 
 	return 0;
