@@ -101,13 +101,6 @@ static const char *packet_codes[] = {
 static RADIUS_PACKET *init_packet(const uint8_t *data, size_t data_len)
 {
 	RADIUS_PACKET		*packet;
-	uint8_t			*attr;
-	int			totallen;
-	int			count;
-	radius_packet_t		*hdr;
-	char			host_ipaddr[128];
-	int			seen_eap;
-	int			num_attributes;
 
 	/*
 	 *	Allocate the new request data structure
@@ -118,320 +111,18 @@ static RADIUS_PACKET *init_packet(const uint8_t *data, size_t data_len)
 	}
 	memset(packet, 0, sizeof(*packet));
 
-/* 	packet->data_len = rad_recvfrom(fd, &packet->data, 0, */
-/* 					&packet->src_ipaddr, &packet->src_port, */
-/* 					&packet->dst_ipaddr, &packet->dst_port); */
-
 	packet->data = data;
 	packet->data_len = data_len;
 
-	/*
-	 *	Check for socket errors.
-	 */
-/* 	if (packet->data_len < 0) { */
-/* 		librad_log("Error receiving packet: %s", strerror(errno)); */
-/* 		/\* packet->data is NULL *\/ */
-/* 		free(packet); */
-/* 		return NULL; */
-/* 	} */
-
-	/*
-	 *	Fill IP header fields.  We need these for the error
-	 *	messages which may come later.
-	 */
-/* 	packet->sockfd = fd; */
-
-	/*
-	 *	FIXME: Do even more filtering by only permitting
-	 *	certain IP's.  The problem is that we don't know
-	 *	how to do this properly for all possible clients...
-	 */
+	if (!rad_packet_ok(packet)) {
+		rad_free(&packet);
+		return NULL;
+	}
 
 	/*
 	 *	Explicitely set the VP list to empty.
 	 */
 	packet->vps = NULL;
-
-	/*
-	 *	Check for packets smaller than the packet header.
-	 *
-	 *	RFC 2865, Section 3., subsection 'length' says:
-	 *
-	 *	"The minimum length is 20 ..."
-	 */
-	if (packet->data_len < AUTH_HDR_LEN) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: too short (received %d < minimum %d)",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-			   packet->data_len, AUTH_HDR_LEN);
-		rad_free(&packet);
-		return NULL;
-	}
-
-	/*
-	 *	RFC 2865, Section 3., subsection 'length' says:
-	 *
-	 *	" ... and maximum length is 4096."
-	 */
-	if (packet->data_len > MAX_RADIUS_LEN) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: too long (received %d > maximum %d)",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-			   packet->data_len, MAX_RADIUS_LEN);
-		rad_free(&packet);
-		return NULL;
-	}
-
-	/*
-	 *	Check for packets with mismatched size.
-	 *	i.e. We've received 128 bytes, and the packet header
-	 *	says it's 256 bytes long.
-	 */
-	totallen = (packet->data[2] << 8) | packet->data[3];
-	hdr = (radius_packet_t *)packet->data;
-
-	/*
-	 *	Code of 0 is not understood.
-	 *	Code of 16 or greate is not understood.
-	 */
-	if ((hdr->code == 0) ||
-	    (hdr->code >= 52)) {
-		librad_log("WARNING: Bad RADIUS packet from host %s: unknown packet code %d",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-			   hdr->code);
-		rad_free(&packet);
-		return NULL;
-	}
-
-	/*
-	 *	Repeat the length checks.  This time, instead of
-	 *	looking at the data we received, look at the value
-	 *	of the 'length' field inside of the packet.
-	 *
-	 *	Check for packets smaller than the packet header.
-	 *
-	 *	RFC 2865, Section 3., subsection 'length' says:
-	 *
-	 *	"The minimum length is 20 ..."
-	 */
-	if (totallen < AUTH_HDR_LEN) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: too short (length %d < minimum %d)",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-			   totallen, AUTH_HDR_LEN);
-		rad_free(&packet);
-		return NULL;
-	}
-
-	/*
-	 *	And again, for the value of the 'length' field.
-	 *
-	 *	RFC 2865, Section 3., subsection 'length' says:
-	 *
-	 *	" ... and maximum length is 4096."
-	 */
-	if (totallen > MAX_RADIUS_LEN) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: too long (length %d > maximum %d)",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-			   totallen, MAX_RADIUS_LEN);
-		rad_free(&packet);
-		return NULL;
-	}
-
-	/*
-	 *	RFC 2865, Section 3., subsection 'length' says:
-	 *
-	 *	"If the packet is shorter than the Length field
-	 *	indicates, it MUST be silently discarded."
-	 *
-	 *	i.e. No response to the NAS.
-	 */
-	if (packet->data_len < totallen) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: received %d octets, packet length says %d",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-			   packet->data_len, totallen);
-		rad_free(&packet);
-		return NULL;
-	}
-
-	/*
-	 *	RFC 2865, Section 3., subsection 'length' says:
-	 *
-	 *	"Octets outside the range of the Length field MUST be
-	 *	treated as padding and ignored on reception."
-	 */
-	if (packet->data_len > totallen) {
-		/*
-		 *	We're shortening the packet below, but just
-		 *	to be paranoid, zero out the extra data.
-		 */
-		memset(packet->data + totallen, 0, packet->data_len - totallen);
-		packet->data_len = totallen;
-	}
-
-	/*
-	 *	Walk through the packet's attributes, ensuring that
-	 *	they add up EXACTLY to the size of the packet.
-	 *
-	 *	If they don't, then the attributes either under-fill
-	 *	or over-fill the packet.  Any parsing of the packet
-	 *	is impossible, and will result in unknown side effects.
-	 *
-	 *	This would ONLY happen with buggy RADIUS implementations,
-	 *	or with an intentional attack.  Either way, we do NOT want
-	 *	to be vulnerable to this problem.
-	 */
-	attr = hdr->data;
-	count = totallen - AUTH_HDR_LEN;
-	seen_eap = 0;
-	num_attributes = 0;
-
-	while (count > 0) {
-		/*
-		 *	Attribute number zero is NOT defined.
-		 */
-		if (attr[0] == 0) {
-			librad_log("WARNING: Malformed RADIUS packet from host %s: Invalid attribute 0",
-				   inet_ntop(packet->src_ipaddr.af,
-					     &packet->src_ipaddr.ipaddr,
-					     host_ipaddr, sizeof(host_ipaddr)));
-			rad_free(&packet);
-			return NULL;
-		}
-
-		/*
-		 *	Attributes are at LEAST as long as the ID & length
-		 *	fields.  Anything shorter is an invalid attribute.
-		 */
-       		if (attr[1] < 2) {
-			librad_log("WARNING: Malformed RADIUS packet from host %s: attribute %d too short",
-				   inet_ntop(packet->src_ipaddr.af,
-					     &packet->src_ipaddr.ipaddr,
-					     host_ipaddr, sizeof(host_ipaddr)),
-				   attr[0]);
-			rad_free(&packet);
-			return NULL;
-		}
-
-		/*
-		 *	Sanity check the attributes for length.
-		 */
-		switch (attr[0]) {
-		default:	/* don't do anything by default */
-			break;
-
-		case PW_EAP_MESSAGE:
-			seen_eap |= PW_EAP_MESSAGE;
-			break;
-
-		case PW_MESSAGE_AUTHENTICATOR:
-			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
-				librad_log("WARNING: Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
-					   inet_ntop(packet->src_ipaddr.af,
-						     &packet->src_ipaddr.ipaddr,
-						     host_ipaddr, sizeof(host_ipaddr)),
-					   attr[1] - 2);
-				rad_free(&packet);
-				return NULL;
-			}
-			seen_eap |= PW_MESSAGE_AUTHENTICATOR;
-			break;
-		}
-
-		/*
-		 *	FIXME: Look up the base 255 attributes in the
-		 *	dictionary, and switch over their type.  For
-		 *	integer/date/ip, the attribute length SHOULD
-		 *	be 6.
-		 */
-		count -= attr[1];	/* grab the attribute length */
-		attr += attr[1];
-		num_attributes++;	/* seen one more attribute */
-	}
-
-	/*
-	 *	If the attributes add up to a packet, it's allowed.
-	 *
-	 *	If not, we complain, and throw the packet away.
-	 */
-	if (count != 0) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)));
-		rad_free(&packet);
-		return NULL;
-	}
-
-	/*
-	 *	If we're configured to look for a maximum number of
-	 *	attributes, and we've seen more than that maximum,
-	 *	then throw the packet away, as a possible DoS.
-	 */
-	if ((librad_max_attributes > 0) &&
-	    (num_attributes > librad_max_attributes)) {
-		librad_log("WARNING: Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-			   num_attributes, librad_max_attributes);
-		rad_free(&packet);
-		return NULL;
-	}
-
-	/*
-	 * 	http://www.freeradius.org/rfc/rfc2869.html#EAP-Message
-	 *
-	 *	A packet with an EAP-Message attribute MUST also have
-	 *	a Message-Authenticator attribute.
-	 *
-	 *	A Message-Authenticator all by itself is OK, though.
-	 */
-	if (seen_eap &&
-	    (seen_eap != PW_MESSAGE_AUTHENTICATOR) &&
-	    (seen_eap != (PW_EAP_MESSAGE | PW_MESSAGE_AUTHENTICATOR))) {
-		librad_log("WARNING: Insecure packet from host %s:  Received EAP-Message with no Message-Authenticator.",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)));
-		rad_free(&packet);
-		return NULL;
-	}
-
-	if (librad_debug) {
-		if ((hdr->code > 0) && (hdr->code < 52)) {
-			printf("rad_recv: %s packet from host %s port %d",
-			       packet_codes[hdr->code],
-			       inet_ntop(packet->src_ipaddr.af,
-					 &packet->src_ipaddr.ipaddr,
-					 host_ipaddr, sizeof(host_ipaddr)),
-			       packet->src_port);
-		} else {
-			printf("rad_recv: Packet from host %s port %d code=%d",
-			       inet_ntop(packet->src_ipaddr.af,
-					 &packet->src_ipaddr.ipaddr,
-					 host_ipaddr, sizeof(host_ipaddr)),
-			       packet->src_port,
-			       hdr->code);
-		}
-		printf(", id=%d, length=%d\n", hdr->id, totallen);
-	}
-
-	/*
-	 *	Fill RADIUS header fields
-	 */
-	packet->code = hdr->code;
-	packet->id = hdr->id;
-	memcpy(packet->vector, hdr->vector, AUTH_VECTOR_LEN);
 
 	return packet;
 }
@@ -762,10 +453,10 @@ static void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_c
 	RADIUS_PACKET *request;
 
 	/* Define our packet's attributes */
-	ethernet = (struct ethernet_header*)(packet);
-	ip = (struct ip_header*)(packet + size_ethernet);
-	udp = (struct udp_header*)(packet + size_ethernet + size_ip);
-	payload = (u_char *)(packet + size_ethernet + size_ip + size_udp);
+	ethernet = (const struct ethernet_header*)(packet);
+	ip = (const struct ip_header*)(packet + size_ethernet);
+	udp = (const struct udp_header*)(packet + size_ethernet + size_ip);
+	payload = (const u_char *)(packet + size_ethernet + size_ip + size_udp);
 
 	/* Read the RADIUS packet structure */
 	request = init_packet(payload, header->len - size_ethernet - size_ip - size_udp);
@@ -804,6 +495,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "usage: radsniff [options]\n");
 	fprintf(output, "options:\n");
 	fprintf(output, "\t-c count\tNumber of packets to capture.\n");
+	fprintf(output, "\t-d directory\tDirectory where the dictionaries are found\n");
 	fprintf(output, "\t-f filter\tPCAP filter. (default is udp port 1812 or 1813 or 1814)\n");
 	fprintf(output, "\t-h\t\tPrint this help message.\n");
 	fprintf(output, "\t-i interface\tInterface to capture.\n");
@@ -820,24 +512,18 @@ int main(int argc, char *argv[])
 	struct bpf_program fp;          /* hold compiled program */
 	bpf_u_int32 maskp;              /* subnet mask */
 	bpf_u_int32 netp;               /* ip */
-	char *pcap_filter = "udp port 1812 or 1813 or 1814";
+	const char *pcap_filter = "udp port 1812 or 1813 or 1814";
 	char *radius_filter = NULL;
 	int packet_count = -1;		/* how many packets to sniff */
 	int opt;
 	LRAD_TOKEN parsecode;
-
-	/* For FreeRADIUS */
-	const char radius_dir[] = RADIUS_DIR;
-        if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
-                librad_perror("radsniff");
-                return 1;
-        }
+	char *radius_dir = RADIUS_DIR;
 
 	/* Default device */
 	dev = pcap_lookupdev(errbuf);
 
 	/* Get options */
-	while ((opt = getopt(argc, argv, "c:f:hi:r:s:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:d:f:hi:r:s:")) != EOF) {
 		switch (opt)
 		{
 		case 'c':
@@ -846,6 +532,9 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "radsniff: Invalid number of packets \"%s\"\n", optarg);
 				exit(1);
 			}
+			break;
+		case 'd':
+			radius_dir = optarg;
 			break;
 		case 'f':
 			pcap_filter = optarg;
@@ -872,6 +561,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
+        if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
+                librad_perror("radsniff");
+                return 1;
+        }
 	/* Set our device */
 	pcap_lookupnet(dev, &netp, &maskp, errbuf);
 

@@ -1220,13 +1220,15 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	return packet->verified;
 }
 
+
 /*
- *	Receive UDP client requests, and fill in
- *	the basics of a RADIUS_PACKET structure.
+ *	See if the data pointed to by PTR is a valid RADIUS packet.
+ *
+ *	packet is not 'const * const' because we may update data_len,
+ *	if there's more data in the UDP packet than in the RADIUS packet.
  */
-RADIUS_PACKET *rad_recv(int fd)
+int rad_packet_ok(RADIUS_PACKET *packet)
 {
-	RADIUS_PACKET		*packet;
 	uint8_t			*attr;
 	int			totallen;
 	int			count;
@@ -1234,46 +1236,6 @@ RADIUS_PACKET *rad_recv(int fd)
 	char			host_ipaddr[128];
 	int			seen_eap;
 	int			num_attributes;
-
-	/*
-	 *	Allocate the new request data structure
-	 */
-	if ((packet = malloc(sizeof(*packet))) == NULL) {
-		librad_log("out of memory");
-		return NULL;
-	}
-	memset(packet, 0, sizeof(*packet));
-
-	packet->data_len = rad_recvfrom(fd, &packet->data, 0,
-					&packet->src_ipaddr, &packet->src_port,
-					&packet->dst_ipaddr, &packet->dst_port);
-
-	/*
-	 *	Check for socket errors.
-	 */
-	if (packet->data_len < 0) {
-		librad_log("Error receiving packet: %s", strerror(errno));
-		/* packet->data is NULL */
-		free(packet);
-		return NULL;
-	}
-
-	/*
-	 *	Fill IP header fields.  We need these for the error
-	 *	messages which may come later.
-	 */
-	packet->sockfd = fd;
-
-	/*
-	 *	FIXME: Do even more filtering by only permitting
-	 *	certain IP's.  The problem is that we don't know
-	 *	how to do this properly for all possible clients...
-	 */
-
-	/*
-	 *	Explicitely set the VP list to empty.
-	 */
-	packet->vps = NULL;
 
 	/*
 	 *	Check for packets smaller than the packet header.
@@ -1288,8 +1250,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   packet->data_len, AUTH_HDR_LEN);
-		rad_free(&packet);
-		return NULL;
+		return 0;
 	}
 
 	/*
@@ -1303,8 +1264,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   packet->data_len, MAX_PACKET_LEN);
-		rad_free(&packet);
-		return NULL;
+		return 0;
 	}
 
 	/*
@@ -1326,8 +1286,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   hdr->code);
-		rad_free(&packet);
-		return NULL;
+		return 0;
 	}
 
 	/*
@@ -1347,8 +1306,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   totallen, AUTH_HDR_LEN);
-		rad_free(&packet);
-		return NULL;
+		return 0;
 	}
 
 	/*
@@ -1364,8 +1322,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   totallen, MAX_PACKET_LEN);
-		rad_free(&packet);
-		return NULL;
+		return 0;
 	}
 
 	/*
@@ -1382,8 +1339,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   packet->data_len, totallen);
-		rad_free(&packet);
-		return NULL;
+		return 0;
 	}
 
 	/*
@@ -1427,8 +1383,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)));
-			rad_free(&packet);
-			return NULL;
+			return 0;
 		}
 
 		/*
@@ -1441,8 +1396,7 @@ RADIUS_PACKET *rad_recv(int fd)
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
 				   attr[0]);
-			rad_free(&packet);
-			return NULL;
+			return 0;
 		}
 
 		/*
@@ -1463,8 +1417,7 @@ RADIUS_PACKET *rad_recv(int fd)
 						     &packet->src_ipaddr.ipaddr,
 						     host_ipaddr, sizeof(host_ipaddr)),
 					   attr[1] - 2);
-				rad_free(&packet);
-				return NULL;
+				return 0;
 			}
 			seen_eap |= PW_MESSAGE_AUTHENTICATOR;
 			break;
@@ -1491,8 +1444,7 @@ RADIUS_PACKET *rad_recv(int fd)
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
-		rad_free(&packet);
-		return NULL;
+		return 0;
 	}
 
 	/*
@@ -1507,8 +1459,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
 			   num_attributes, librad_max_attributes);
-		rad_free(&packet);
-		return NULL;
+		return 0;
 	}
 
 	/*
@@ -1526,14 +1477,81 @@ RADIUS_PACKET *rad_recv(int fd)
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
+		return 0;
+	}
+
+	/*
+	 *	Fill RADIUS header fields
+	 */
+	packet->code = hdr->code;
+	packet->id = hdr->id;
+	memcpy(packet->vector, hdr->vector, AUTH_VECTOR_LEN);
+
+	return 1;
+}
+
+
+/*
+ *	Receive UDP client requests, and fill in
+ *	the basics of a RADIUS_PACKET structure.
+ */
+RADIUS_PACKET *rad_recv(int fd)
+{
+	RADIUS_PACKET		*packet;
+
+	/*
+	 *	Allocate the new request data structure
+	 */
+	if ((packet = malloc(sizeof(*packet))) == NULL) {
+		librad_log("out of memory");
+		return NULL;
+	}
+	memset(packet, 0, sizeof(*packet));
+
+	packet->data_len = rad_recvfrom(fd, &packet->data, 0,
+					&packet->src_ipaddr, &packet->src_port,
+					&packet->dst_ipaddr, &packet->dst_port);
+
+	/*
+	 *	Check for socket errors.
+	 */
+	if (packet->data_len < 0) {
+		librad_log("Error receiving packet: %s", strerror(errno));
+		/* packet->data is NULL */
+		free(packet);
+		return NULL;
+	}
+
+	/*
+	 *	See if it's a well-formed RADIUS packet.
+	 */
+	if (!rad_packet_ok(packet)) {
 		rad_free(&packet);
 		return NULL;
 	}
 
+	/*
+	 *	Remember which socket we read the packet from.
+	 */
+	packet->sockfd = fd;
+
+	/*
+	 *	FIXME: Do even more filtering by only permitting
+	 *	certain IP's.  The problem is that we don't know
+	 *	how to do this properly for all possible clients...
+	 */
+
+	/*
+	 *	Explicitely set the VP list to empty.
+	 */
+	packet->vps = NULL;
+
 	if (librad_debug) {
-		if ((hdr->code > 0) && (hdr->code < MAX_PACKET_CODE)) {
+		char host_ipaddr[128];
+
+		if ((packet->code > 0) && (packet->code < MAX_PACKET_CODE)) {
 			printf("rad_recv: %s packet from host %s port %d",
-			       packet_codes[hdr->code],
+			       packet_codes[packet->code],
 			       inet_ntop(packet->src_ipaddr.af,
 					 &packet->src_ipaddr.ipaddr,
 					 host_ipaddr, sizeof(host_ipaddr)),
@@ -1544,17 +1562,10 @@ RADIUS_PACKET *rad_recv(int fd)
 					 &packet->src_ipaddr.ipaddr,
 					 host_ipaddr, sizeof(host_ipaddr)),
 			       packet->src_port,
-			       hdr->code);
+			       packet->code);
 		}
-		printf(", id=%d, length=%d\n", hdr->id, totallen);
+		printf(", id=%d, length=%d\n", packet->id, packet->data_len);
 	}
-
-	/*
-	 *	Fill RADIUS header fields
-	 */
-	packet->code = hdr->code;
-	packet->id = hdr->id;
-	memcpy(packet->vector, hdr->vector, AUTH_VECTOR_LEN);
 
 	return packet;
 }
