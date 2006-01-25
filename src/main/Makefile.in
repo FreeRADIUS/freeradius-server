@@ -52,6 +52,9 @@ LIBS        += $(shell test -f ../modules/rlm_eap/libeap/libeap.la && echo ../mo
 MODULE_LIBS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo -dlpreopen ../modules/$$x/$$x.la;done)
 MODULE_LIBS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo -dlpreopen ../modules/*/types/$$x/$$x.la;done)
 MODULE_LIBS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$$x/$$x.la && echo -dlpreopen ../modules/*/drivers/$$x/$$x.la;done)
+MODULE_OBJS     += $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo ../modules/$$x/$$x.la;done) 	 
+MODULE_OBJS     += $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo ../modules/*/types/$$x/$$x.la;done) 	 
+MODULE_OBJS     += $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$$x/$$x.la && echo ../modules/*/drivers/$$x/$$x.la;done)
 endif
 
 LIBS		+= ../lib/libradius.la
@@ -61,7 +64,7 @@ all: $(BINARIES)
 
 $(SERVER_OBJS): $(INCLUDES)
 
-radiusd: $(SERVER_OBJS) ../lib/libradius.la
+radiusd: $(SERVER_OBJS) $(MODULE_OBJS) ../lib/libradius.la
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
 		$(LDFLAGS) $(LINK_MODE) -o $@ $(SERVER_OBJS)      \
 		$(MODULE_LIBS) $(LIBS) $(SNMP_LIBS) $(LCRYPT)     \
