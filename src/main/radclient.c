@@ -474,6 +474,8 @@ static void print_hex(RADIUS_PACKET *packet)
 {
 	int i;
 
+	if (!packet->data) return;
+
 	printf("  Code:\t\t%u\n", packet->data[0]);
 	printf("  Id:\t\t%u\n", packet->data[1]);
 	printf("  Length:\t%u\n", ((packet->data[2] << 8) |
@@ -598,6 +600,11 @@ static int send_one_packet(radclient_t *radclient)
 				vp->length = strlen(vp->vp_strvalue);
 
 			} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD)) != NULL) {
+			  /*
+			   *	FIXME: AND there's no CHAP-Challenge,
+			   *	       AND vp->length != 17
+			   *	       AND rad_chap_encode() != vp->vp_octets
+			   */
 				strNcpy(vp->vp_strvalue, radclient->password,
 					sizeof(vp->vp_strvalue));
 				vp->length = strlen(vp->vp_strvalue);
@@ -759,12 +766,22 @@ static int recv_one_packet(int wait_time)
 	radclient->reply = reply;
 
 	/*
-	 *	FIXME: Do stuff to process the reply.
+	 *	Fails the signature validation: not a real reply.
+	 *	FIXME: Silently drop it and listen for another packet.
+	 */
+	if (rad_verify(reply, radclient->request, secret) < 0) {
+		librad_perror("rad_verify");
+		totallost++;
+		goto packet_done; /* shared secret is incorrect */
+	}
+
+	/*
+	 *	If this fails, we're out of memory.
 	 */
 	if (rad_decode(reply, radclient->request, secret) != 0) {
 		librad_perror("rad_decode");
 		totallost++;
-		goto packet_done; /* shared secret is incorrect */
+		goto packet_done;
 	}
 
 	/* libradius debug already prints out the value pairs for us */

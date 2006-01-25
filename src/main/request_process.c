@@ -330,7 +330,6 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	RADIUS_PACKET *packet, *original;
 	const char *secret;
 	int finished = FALSE;
-	int decoderesult = 0;
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 
@@ -341,7 +340,6 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) != 0) {
 		goto skip_decode;
 	}
-
 
 	/*
 	 *	Re-process the request.
@@ -376,20 +374,30 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *  format) and don't need to be "decoded"
 	 */
 	if (packet->data) {
+		int decoderesult;
+
+		/*
+		 *	Fails verification: silently discard it.
+		 */
+		decoderesult = rad_verify(packet, original, secret);
+		if (decoderesult < 0) {
+			radlog(L_ERR, "%s Dropping packet without response.", librad_errstr);
+			/* Since accounting packets get this set in
+			 * request_reject but no response is sent...
+			 */
+			request->options |= RAD_REQUEST_OPTION_REJECTED;
+			goto finished_request;
+		}
+
+		/*
+		 *	Can't decode it.  This usually means we're out
+		 *	of memory.
+		 */
 		decoderesult = rad_decode(packet, original, secret);
-		switch (decoderesult) {
-			case -1:
-				radlog(L_ERR, "%s", librad_errstr);
-				request_reject(request, REQUEST_FAIL_DECODE);
-				goto finished_request;
-				break;
-			case -2:
-				radlog(L_ERR, "%s Dropping packet without response.", librad_errstr);
-				/* Since accounting packets get this set in
-				 * request_reject but no response is sent...
-				 */
-				request->options |= RAD_REQUEST_OPTION_REJECTED;
-				goto finished_request;
+		if (decoderesult < 0) {
+			radlog(L_ERR, "%s", librad_errstr);
+			request_reject(request, REQUEST_FAIL_DECODE);
+			goto finished_request;
 		}
 	}
 

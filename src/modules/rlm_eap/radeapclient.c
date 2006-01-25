@@ -186,6 +186,17 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 		exit(1);
 	}
 
+	/*
+	 *	FIXME: Discard the packet & listen for another.
+	 *
+	 *	Hmm... we should really be using eapol_test, which does
+	 *	a lot more than radeapclient.
+       	 */
+	if (rad_verify(*rep, req, secret) != 0) {
+		librad_perror("rad_verify");
+		exit(1);
+	}
+
 	if (rad_decode(*rep, req, secret) != 0) {
 		librad_perror("rad_decode");
 		exit(1);
