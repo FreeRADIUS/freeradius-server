@@ -14,13 +14,17 @@ include ../rules.mak
 
 $(LT_OBJS): $(HEADERS)
 
-rlm_ippool_tool: rlm_ippool_tool.lo
-	$(LIBTOOL) --mode=link $(CC) -o rlm_ippool_tool $^ ../../lib/libradius.la $(RLM_LIBS) $(LIBS)
+rlm_ippool_tool: rlm_ippool_tool.lo ../../lib/libradius.la
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) \
+		-o $@ $^ $(RLM_LIBS) $(LIBS)
 
 rlm_ippool_tool.8: rlm_ippool_tool.pod
-	pod2man --release=" " --date="October 2nd, 2003" --center="FreeRADIUS Daemon" --section=8 rlm_ippool_tool.pod > rlm_ippool_tool.8
+	pod2man --release=" " --date="October 2nd, 2003" \
+		--center="FreeRADIUS Daemon" --section=8 \
+		rlm_ippool_tool.pod > rlm_ippool_tool.8
 
 # Install binary files into the bin directory
 rlm_ippool_install: rlm_ippool_tool rlm_ippool_tool.8
-	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) rlm_ippool_tool$(EXEEXT) $(R)$(bindir)
 	$(INSTALL) -m 644 rlm_ippool_tool.8 $(R)$(mandir)/man8
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) \
+		rlm_ippool_tool$(EXEEXT) $(R)$(bindir)
