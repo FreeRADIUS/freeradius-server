@@ -115,8 +115,10 @@ $INCLUDE dictionary.lucent
 $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.mikrotik
 $INCLUDE dictionary.navini
+$INCLUDE dictionary.netscreen
 $INCLUDE dictionary.ntua
 $INCLUDE dictionary.nomadix
+$INCLUDE dictionary.nortel
 $INCLUDE dictionary.packeteer
 $INCLUDE dictionary.propel
 $INCLUDE dictionary.quintum
