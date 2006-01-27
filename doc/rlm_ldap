@@ -353,3 +353,34 @@ all necessary attributes in raddb/users file with following authorize section
 of radiusd.conf :
 
 authorize { ldap { notfound = return } files  }
+
+LDAP and Active Directory
+-------------------------
+
+Active directory does not return anything in the userPassword
+attribute, unlike other LDAP servers.  As a result, you cannot use
+Active Directory to perform CHAP, MS-CHAP, or EAP-MD5 authentication.
+You can only use PAP, and then only if you list "ldap" in the
+"authenticate" section.
+
+To do MS-CHAP against an Active Directory domain, see the comments in
+radiusd.conf, about "ntlm_auth".  You will need to install Samba.
+
+
+If you see "Operations error" returned from an LDAp query, you may
+need to set dsHeuristics to 0000002 in Active Directory.  This allows
+searches to function similar to how they did in Active Directory
+2k2. You can update dsHeuristics by launching ldp.exe, going to
+'connection' and create a new connection. Then goto bind and bind to
+your ldap server. Next select the 'Browse' menu and choose
+'modify'. The DN *might* look like this:
+
+CN=Directory Service,CN=Windows
+NT,CN=Services,CN=Configuration,DC=mycompany,DC=com
+
+Attribute is: dsHeuristics
+Value is: 0000002
+
+Set the operation to replace and you should be set.  This should solve
+the 'Operations error' error that happens when attempting to search
+without specifying an OU.
