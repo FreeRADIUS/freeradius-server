@@ -114,20 +114,21 @@ section".
 	fail		the module failed
 	reject		the module rejected the user
 	userlock	the user was locked out
-	invalid		the users configuration entry was invilad
+	invalid		the user's configuration entry was invalid
 	handled		the module has done everything to handle the request
 	
   In a configurable fail-over section, each of these codes may be
 listed, with a value.  If the code is not listed, or a configurable
-fail-over section is not defined, then default values are used.
+fail-over section is not defined, then values that make sense for the
+requested "group" (group, redundant, load-balance, etc) are used.
 
   The values for each code may be one of two things:
 
 	Value		Meaning
 	-----		-------
-	<number>	Priority for this return code
+	<number>	Priority for this return code.
 	return		stop processing this configurable fail-over list.
-	reject		Stop processing this configurable fail-over list
+	reject		Stop processing this configurable fail-over list.
 			and immediately return a reject.
 
   The <number> used for a value may be any decimal number between 1
@@ -138,7 +139,7 @@ returns "ok" with priority "3", the return code from the list of
 modules will be "ok", because it has higher priority than "fail".
 
   This configurability allows the administrator to permit some modules
-to fail, so long as a later module succeds.
+to fail, so long as a later module succeeds.
 
 
   More Complex Configurations
@@ -252,12 +253,12 @@ authorize {
   }
 }
 
-This is the same as the first example, with the default behavior explicitly
+This is the same as the first example, with the behavior explicitly
 spelled out. Each SINGLE becomes its own section, containing a list of
 RESULTs that it may return and what ACTION should follow from them. So
-preprocess is called, and if it returns for example RLM_MODULE_REJECT, then
-the reject=return rule is applied, and the authorize{...} GROUP itself
-immediately returns RLM_MODULE_REJECT.
+preprocess is called, and if it returns for example RLM_MODULE_REJECT,
+then the reject=return rule is applied, and the authorize{...} GROUP
+itself immediately returns RLM_MODULE_REJECT.
 
 If preprocess returns RLM_MODULE_NOOP, the corresponding ACTION is "2". An
 integer ACTION serves two purposes - first, it tells the parent GROUP to go
