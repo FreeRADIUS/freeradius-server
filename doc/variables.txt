@@ -15,10 +15,10 @@
      %{proxy-reply:Attribute-Name}   The value of the given Attribute-Name
                                      in the proxy reply packet (if it exists)
 
-  The above variable expansions also support the meta-Attribute
+  The above variable expansions also support the meta-attribute
 Packet-Type as well. See the RADIUS dictionary for details on its
 values.
-	 
+ 
      %{check:Attribute-Name}         Corresponding value for Attribute-Name
                                      in check items for request
 	
@@ -43,7 +43,6 @@ matching defines other special variables, just like in Perl.
 and only when the expression matches.  They are NOT defined for the
 operator !~, or when =~ doesn't match.  Any use of =~ destroys all
 previous values of %{0}..%{8}, but the variables.
-
 
   Some examples.
 
@@ -93,13 +92,27 @@ defined in 'sh'.  For example:
     When attribute Bar is unset:  returns literal string 'baz'
 
 
+  Multiple-valued attributes
+  --------------------------
+
+     %{Attribute-Name[index]}
+	Reference the N'th occurance of the given attribute.  The
+	indexes start at zero.  This feature is NOT available for
+	non-attribute dynamic translations, like %{sql:...}.
+
+ 	e.g. %{User-Name[0]} is the same as %{User-Name}
+	e.g. %{Cisco-AVPair[2]} references the value of the *third*
+	     Cisco-AVPair attribute (if it exists) in the request
+	     packet,
+
+
   Attributes as environment variables in executed programs
   --------------------------------------------------------
 
-  When calling an external program (e.g. from Exec-Program-Wait), these
-variables can be passed on the command line to the program.  In
-addition, the server places all of the attributes in the RADIUS
-request into environment variables for the external program.  The
+  When calling an external program (e.g. from 'rlm_exec' module),
+these variables can be passed on the command line to the program.
+In addition, the server places all of the attributes in the RADIUS
+request into environment variables for the external program. The
 variables are renamed under the following rules:
 
   1.  All letters are made upper-case.
