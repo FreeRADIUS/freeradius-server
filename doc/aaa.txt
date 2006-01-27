@@ -32,7 +32,7 @@ Authentication is simply a process of comparing user's credentials in
 request with credentials stored in database.  Authentication usually
 deals with password encryption.  PAP, CHAP, MS-CHAP are authentication
 modules.  Few modules act as both authorization and authentication.
-For example, the MS-CHAP module is normally authentication one, but it
+For example, the MS-CHAP module is normally authentication only, but it
 may be used during authorization to verify that request contains
 MS-CHAP related attribute and only in this case perform MS-CHAP based
 authentication. LDAP is normally an authorization module, but it may
