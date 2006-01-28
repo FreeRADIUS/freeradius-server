@@ -1,0 +1,78 @@
+"Duane Cox" <duanec@mail.illicom.net> says:
+
+Hope this helps.
+
+If you are running freeradius as other than root.root, make sure that
+this user or group can read /etc/odbc/
+
+
+cd /usr/src &&
+rm -fr unixODBC-2.2.11
+tar -zxvf unixODBC-2.2.11.tar.gz &&
+cd unixODBC-2.2.11 &&
+sed -i "s/void yyerror/#define YY_FLUSH_BUFFER\n\n&/" sqp/lex.l &&
+./configure --prefix=/usr --libexecdir=/usr/sbin --localstatedir=/var --sysconfdir=/etc/odbc --enable-ltdllib --with-gnu-ld --disa
+ble-gui &&
+make &&
+make install &&
+find doc -name "Makefile*" -exec rm {} \; &&
+chmod 644 doc/{lst,ProgrammerManual/Tutorial}/* &&
+install -v -m755 -d /usr/share/doc/unixODBC-2.2.11 &&
+cp -v -R doc/* /usr/share/doc/unixODBC-2.2.11 &&
+rmdir /etc/odbc/ODBCDataSources &&
+chown -fR root.odbc /etc/odbc &&
+chmod 750 /etc/odbc &&
+chmod 640 /etc/odbc/*
+
+cd /usr/src &&
+rm -fr freetds-0.63
+tar -zxvf freetds-0.63.tar.gz &&
+cd freetds-0.63 &&
+./configure --prefix=/usr --libexecdir=/usr/sbin --localstatedir=/var --sysconfdir=/etc --with-unixodbc=/usr/lib --disable-apps &&
+make &&
+make install &&
+rm -f /etc/{freetds,locales}.conf
+
+cd /usr/src &&
+rm -fr freeradius-1.0.5 &&
+tar -zxvf freeradius-1.0.5.tar.gz &&
+cd freeradius-1.0.5 &&
+patch -Np1 -i ../freeradius-1.0.5-stdout_log-1.patch &&
+./configure --prefix=/usr --libexecdir=/usr/sbin --localstatedir=/var --sysconfdir=/etc --with-raddbdir=/srv/radiusd --with-logdir
+=/var/log --with-radacctdir=/srv/radiusd/acct --with-gnu-ld --without-rlm_x99_token &&
+make &&
+make install
+
+cat /etc/odbc.ini
+[MSSQL-DB]
+description     = FreeRADIUS ODBC for MSSQL 7.0
+driver          = FreeTDS
+server          = mssql.yourdomain.com
+port            = 1433
+database        = mydatabase
+tds_version     = 7.0
+language        = us_english
+
+cat /etc/odbcinst.ini
+[FreeTDS]
+description     = FreeTDS driver for MSSQL
+driver          = /usr/lib/libtdsodbc.so
+setup           = /usr/lib/libtdsS.so
+fileusage       = 1
+
+cat /srv/radiusd/mssql.conf
+sql {
+        driver = "rlm_sql_unixodbc"
+        server = "MSSQL-DB"
+
+        login = "mylogin"
+        password = "mypassword"
+
+        radius_db = "mydatabase"
+
+        acct_table1 = "radacct"
+        acct_table2 = "radacct"
+
+        authcheck_table = "radcheck"
+        authreply_table = "radreply"
+ [SNIP...]
