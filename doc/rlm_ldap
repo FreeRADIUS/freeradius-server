@@ -1,8 +1,13 @@
-1.   INSTALATION
+1.   INSTALLATION
 
 This module depends on OpenLDAP v2.x SDK libraries.  For details on obtaining
 source of OpenLDAP look at <http://www.openldap.org>.  OpenLDAP SDK in turn
 depends on OpenSSL crypto libraries and (optionaly) on Cyrus-SASL libraries.
+
+See also: http://www.tldp.org/HOWTO/LDAP-Implementation-HOWTO/radius.html
+
+It's not up to date, though.  For example, you do NOT have to edit
+the "dictionary" file.
 
 2. LDAP ATTRIBUTES
 
@@ -304,27 +309,32 @@ DEFAULT	Ldap-Group == "cn=disabled,dc=company,dc=com", Auth-Type := Reject
 
 
 
-Also if you are using multiple ldap module instances a per instance Ldap-Group attribute is
-registered and can be used. It is of the form <instance_name>-Ldap-Group. In other words if
-in radiusd.conf we configure an ldap module instance like:
+Also if you are using multiple ldap module instances a per instance
+Ldap-Group attribute is registered and can be used. It is of the form
+<instance_name>-Ldap-Group. In other words if in radiusd.conf we
+configure an ldap module instance like:
 
 ldap myname { [...] }
 
-we can then use the myname-Ldap-Group attribute to match user groups. Make sure though that the
-ldap module is instantiated *before* the files module so that it will have time to register
-the corresponding attribute. One solution would be to add the ldap module in the instantiate{}
-block in radiusd.conf
+we can then use the myname-Ldap-Group attribute to match user
+groups. Make sure though that the ldap module is instantiated *before*
+the files module so that it will have time to register the
+corresponding attribute. One solution would be to add the ldap module
+in the instantiate{} block in radiusd.conf
 
 
 USERDN Attribute:
-When rlm_ldap has found the DN corresponding to the username provided in the access-request
-(all this happens in the authorize section) it will add an Ldap-UserDN attribute in the check
-items list containing that DN. The attribute will be searched for in the authenticate section
-and if present will be used for authentication (ldap bind with the user DN/password). Otherwise
-a search will be performed to find the user dn. If the administrator wishes to use rlm_ldap only
-for authentication or does not wish to populate the identity,password configuration attributes
-he can set this attribute by other means and avoid the ldap search completely. For instance it can
-be set through the users file in the authorize section:
+When rlm_ldap has found the DN corresponding to the username provided
+in the access-request (all this happens in the authorize section) it
+will add an Ldap-UserDN attribute in the check items list containing
+that DN. The attribute will be searched for in the authenticate
+section and if present will be used for authentication (ldap bind with
+the user DN/password). Otherwise a search will be performed to find
+the user dn. If the administrator wishes to use rlm_ldap only for
+authentication or does not wish to populate the identity,password
+configuration attributes he can set this attribute by other means and
+avoid the ldap search completely. For instance it can be set through
+the users file in the authorize section:
 
 DEFAULT	Ldap-UserDN := `uid=%{User-Name},ou=people,dc=company,dc=com`
 
@@ -335,3 +345,34 @@ all necessary attributes in raddb/users file with following authorize section
 of radiusd.conf :
 
 authorize { ldap { notfound = return } files  }
+
+LDAP and Active Directory
+-------------------------
+
+Active directory does not return anything in the userPassword
+attribute, unlike other LDAP servers.  As a result, you cannot use
+Active Directory to perform CHAP, MS-CHAP, or EAP-MD5 authentication.
+You can only use PAP, and then only if you list "ldap" in the
+"authenticate" section.
+
+To do MS-CHAP against an Active Directory domain, see the comments in
+radiusd.conf, about "ntlm_auth".  You will need to install Samba.
+
+
+If you see "Operations error" returned from an LDAp query, you may
+need to set dsHeuristics to 0000002 in Active Directory.  This allows
+searches to function similar to how they did in Active Directory
+2k2. You can update dsHeuristics by launching ldp.exe, going to
+'connection' and create a new connection. Then goto bind and bind to
+your ldap server. Next select the 'Browse' menu and choose
+'modify'. The DN *might* look like this:
+
+CN=Directory Service,CN=Windows
+NT,CN=Services,CN=Configuration,DC=mycompany,DC=com
+
+Attribute is: dsHeuristics
+Value is: 0000002
+
+Set the operation to replace and you should be set.  This should solve
+the 'Operations error' error that happens when attempting to search
+without specifying an OU.
