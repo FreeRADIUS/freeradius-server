@@ -57,7 +57,7 @@ radius server.  We will spread the load among the group of radius
 servers that we have so some are acting as a primary to some NAS's and
 acting as a secondary to others.  In the event of a radius failure,
 the NAS should failover to the backup radius server.  How to configure
-this is dependant on the particular NAS being used.
+this is dependent on the particular NAS being used.
 
                                                                           
           Will use Radius acct data              Billing will provision   
@@ -1423,7 +1423,7 @@ schema.ldif -h ldapmaster.mydomain.com
 -run slapcat to see what the directory looks like
 $ slapcat
 
-If all went well the LDAP directory should be up and running and propogated to 
+If all went well the LDAP directory should be up and running and propagated to 
 the slaves.  Now you can add your users to the master.
 
 Now its time to setup FreeRadius.  First cd into /usr/local/etc/raddb and take 
@@ -1471,11 +1471,6 @@ log_stripped_names = no
 log_auth = no 
 log_auth_badpass = no 
 log_auth_goodpass = no 
-usercollide = no
-lower_user = before # lowercase username before auth
-lower_pass = no
-nospace_user = before
-nospace_pass = no
 
 #  The program to execute to do concurrency checks.
 #checkrad = ${sbindir}/checkrad
