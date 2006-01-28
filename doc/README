@@ -3,7 +3,7 @@
   All code in this server was written for this project.
 
   The server is mostly compatible with livingston radiusd-2.01
-  (no menus or s/key support though) but with more feautures, such as:
+  (no menus or s/key support though) but with more features, such as:
 
     o Can limit the maximum number of simultaneous logins on a per-user basis!
     o Multiple DEFAULT entries, that can optionally fall-through.
@@ -106,7 +106,7 @@
   With the original RADIUS server, every user had to be defined in this
   file. There could be one default entry, where you could for example
   define that a user not in the radius file would be checked agains the
-  UNIX password file and on succesfull login would get a PPP connection.
+  UNIX password file and on successful login would get a PPP connection.
 
   In the new style file, you can define multiple DEFAULT entries. All
   entries are processed in the order as they appear in the users file.
@@ -146,10 +146,6 @@
   The output from Exec-Program-Wait is parsed by the radius server. If
   it looks like Attribute/Value pairs, they are decoded and added to the
   reply sent to the NAS. This way, you can for example set Session-Timeout.
-
-  For backwards compatibility, if the output doesn't look like valid
-  radius A/V pairs, the output is taken as a message and added to the
-  reply sent to the NAS as Port-Message.
 
   If Exec-Program-Wait returns a non-zero exit status, access will be
   denied to the user. With a zero-exit status, access is granted.
@@ -219,17 +215,17 @@
   There are two GNU Mailman mailing lists hosted by Cistron Internet Services:
   a 'users' list, at:
 
-	http://lists.cistron.nl/archives/freeradius-users/
+	http://lists.freeradius.org/pipermail/freeradius-users/
 
   and a 'developers only' list, at
 
-	http://lists.cistron.nl/archives/freeradius-devel/
+	http://lists.freeradius.org/pipermail/freeradius-devel/
 
 6.  OTHER INFORMATION
 
   The files in other directories are:
 
-  debian/	Files to build a radiusd-freeradius Debian Linux package
+  debian/	Files to build a "freeradius" Debian Linux package.
 
   dialup_admin/	A PHP web front-end to manage an SQL database associated
 		with the server.
@@ -249,13 +245,13 @@
 
   redhat/	Additional files for a RedHat Linux system.
 
-  scripts/	Sample scripts for startup and maintenance
+  scripts/	Sample scripts for startup and maintenance.
 
   src/		Source code
   src/main	source code for the daemon and associated utilities
   src/lib	source code for the RADIUS library
   src/include	header files
-  src/modules	dynamic plug-in modules  
+  src/modules	dynamic plug-in modules
 
   src/billing	Some scripts and configuration files to assist in billing,
 		Currently mostly VoIP related.
