@@ -38,7 +38,7 @@ attributetype
      DESC ''
      EQUALITY caseIgnoreIA5Match
      SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-     SINGLE-VALUE 
+     SINGLE-VALUE
    )
 
 attributetype
@@ -91,7 +91,7 @@ attributetype
      DESC ''
      EQUALITY caseIgnoreIA5Match
      SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-     SINGLE-VALUE 
+     SINGLE-VALUE
    )
 
 attributetype
@@ -100,7 +100,6 @@ attributetype
       DESC ''
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-      SINGLE-VALUE
    )
 
 attributetype
@@ -118,7 +117,6 @@ attributetype
       DESC ''
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-      SINGLE-VALUE
    )
 
 attributetype
@@ -136,7 +134,6 @@ attributetype
       DESC ''
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-      SINGLE-VALUE
    )
 
 attributetype
@@ -215,7 +212,7 @@ attributetype
       DESC ''
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-      SINGLE-VALUE 
+      SINGLE-VALUE
    )
 
 attributetype
@@ -241,7 +238,6 @@ attributetype
       DESC ''
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-      SINGLE-VALUE
    )
 
 attributetype
@@ -340,7 +336,7 @@ attributetype
       DESC ''
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-      SINGLE-VALUE 
+      SINGLE-VALUE
    )
 
 attributetype
@@ -349,7 +345,7 @@ attributetype
       DESC ''
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-      SINGLE-VALUE 
+      SINGLE-VALUE
    )
 
 attributetype
@@ -358,7 +354,7 @@ attributetype
       DESC ''
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-      SINGLE-VALUE 
+      SINGLE-VALUE
    )
 
 attributetype
@@ -468,7 +464,7 @@ attributetype
       NAME 'radiusSimultaneousUse'
       DESC ''
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.27
-      SINGLE-VALUE 
+      SINGLE-VALUE
    )
 
 attributetype
@@ -477,7 +473,7 @@ attributetype
       DESC ''
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-      SINGLE-VALUE 
+      SINGLE-VALUE
    )
 
 attributetype
@@ -486,7 +482,7 @@ attributetype
       DESC ''
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-      SINGLE-VALUE 
+      SINGLE-VALUE
    )
 
 attributetype
@@ -494,7 +490,7 @@ attributetype
       NAME 'radiusStripUserName'
       DESC ''
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.7
-      SINGLE-VALUE 
+      SINGLE-VALUE
    )
 
 attributetype
@@ -503,7 +499,7 @@ attributetype
       DESC ''
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-      SINGLE-VALUE 
+      SINGLE-VALUE
    )
 
 attributetype
@@ -512,7 +508,7 @@ attributetype
       DESC ''
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
-      SINGLE-VALUE 
+      SINGLE-VALUE
    )
 
 attributetype
@@ -537,6 +533,7 @@ attributetype
       DESC ''
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
+      SINGLE-VALUE
    )
 
 attributetype
@@ -564,7 +561,7 @@ objectclass
             radiusFramedMTU $ radiusFramedProtocol $
 	    radiusCheckItem $ radiusReplyItem $
             radiusFramedRoute $ radiusFramedRouting $ radiusIdleTimeout $
-            radiusGroupName $ radiusHint $ radiusHuntgroupName $ 
+            radiusGroupName $ radiusHint $ radiusHuntgroupName $
             radiusLoginIPHost $ radiusLoginLATGroup $ radiusLoginLATNode $
             radiusLoginLATPort $ radiusLoginLATService $ radiusLoginService $
             radiusLoginTCPPort $ radiusLoginTime $ radiusPasswordRetry $
