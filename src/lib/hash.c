@@ -240,13 +240,13 @@ int lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key, void *data)
 		list_delete(&ht->buckets[entry], node);
 
 		if (ht->free && node->data) ht->free(node->data);
-
 		/*
 		 *	Fall through to re-using the node.
 		 */
 	} else {
 		node = malloc(sizeof(*node) + ht->data_size);
 		if (!node) return 0;
+		ht->num_elements++;
 	}
 	memset(node, 0, sizeof(*node) + ht->data_size);
 	
@@ -260,7 +260,6 @@ int lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key, void *data)
 	}
 
 	list_insert(&(ht->buckets[entry]), node);
-	ht->num_elements++;
 
 	/*
 	 *	Check the load factor, and grow the table if
