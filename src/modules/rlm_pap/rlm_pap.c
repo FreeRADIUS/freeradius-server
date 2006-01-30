@@ -386,7 +386,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 	 *	Print helpful warnings if there was no password.
 	 */
 	if (!found_pw) {
-		DEBUG("rlm_pap: WARNING! No \"known good\" password found for the user.  Authentication will probably fail");
+		DEBUG("rlm_pap: WARNING! No \"known good\" password found for the user.  Authentication may fail because of this.");
 		return RLM_MODULE_NOOP;
 	}
 
