@@ -251,8 +251,9 @@ AC_ARG_WITH(experimental-modules,
 )
 
 dnl #
-dnl # extra argument: --openssl-includes=dir
+dnl # extra argument: --with-openssl-includes=dir
 dnl #
+OPENSSL_INCLUDE_DIR=
 AC_ARG_WITH(openssl-includes,
 [  --with-openssl-includes=DIR      Directory to look for OpenSSL include files],
 [ case "$withval" in
@@ -262,8 +263,9 @@ AC_ARG_WITH(openssl-includes,
 )
 
 dnl #
-dnl # extra argument: --openssl-libraries=dir
+dnl # extra argument: --with-openssl-libraries=dir
 dnl #
+OPENSSL_LIB_DIR=
 AC_ARG_WITH(openssl-libraries,
 [  --with-openssl-libraries=DIR     Directory to look for OpenSSL library files],
 [ case "$withval" in
@@ -434,6 +436,28 @@ dnl Check if we need -lnsl. Usually if we want to
 dnl link against -lsocket we need to include -lnsl as well.
 AC_CHECK_LIB(nsl, inet_ntoa)
 
+dnl Check for OpenSSL libraries.
+OPENSSL_LIBS=
+old_LIBS=$LIBS
+if test "x$OPENSSL_LIB_DIR" != "x"; then
+    LIBS="-L$OPENSSL_LIB_DIR $LIBS"
+fi
+AC_CHECK_LIB(crypto, DH_new,
+    [
+	AC_DEFINE(HAVE_LIBCRYPTO, 1,
+	    [Define to 1 if you have the `crypto' library (-lcrypto).])
+	AC_CHECK_LIB(ssl, SSL_new,
+	    [
+		AC_DEFINE(HAVE_LIBSSL, 1,
+		    [Define to 1 if you have the `ssl' library (-lssl).])
+		if test "x$OPENSSL_LIB_DIR" != "x"; then
+		    OPENSSL_LIBS="-L$OPENSSL_LIB_DIR"
+		fi
+		OPENSSL_LIBS="$OPENSSL_LIBS -lcrypto -lssl -lcrypto"
+	    ], [])
+    ], [])
+LIBS=$old_LIBS
+
 dnl Check the pcap library for the RADIUS sniffer.
 PCAP_LIBS=
 AC_CHECK_LIB(pcap, pcap_open_live,
@@ -528,66 +552,46 @@ then
   AC_DEFINE(OSFSIA, [], [define if you have OSFSIA authentication])
 fi
 
-smart_try_dir="$OPENSSL_INCLUDE_DIR"
-dnl # stupid RedHat shit
-CFLAGS="$CFLAGS -DOPENSSL_NO_KRB5"
-FR_SMART_CHECK_INCLUDE(openssl/ssl.h)
-OPENSSL_INCLUDE=
-OPENSSL_LIBS=
-if test "x$ac_cv_header_openssl_ssl_h" = "xyes"; then
-  AC_DEFINE(HAVE_OPENSSL_SSL_H, [], [define if you have openssl/ssl.h])
-  old_CPPFLAGS="$CPPFLAGS"
-  if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-      CPPFLAGS="-I$OPENSSL_INCLUDE_DIR $CPPFLAGS"
-  fi
-  AC_CHECK_HEADERS( \
-	  openssl/err.h \
-	  openssl/crypto.h \
-	  openssl/rand.h \
-	  openssl/engine.h
-  )
-  CPPFLAGS="$old_CPPFLAGS"
-
-  AC_MSG_CHECKING([for OpenSSL version >= 0.9.7])
-       old_CPPFLAGS=$CPPFLAGS
-       old_LIBS="$LIBS"
-       if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-           CPPFLAGS="-I$OPENSSL_INCLUDE_DIR"
-	   fi
-       AC_EGREP_CPP(yes,
-       [#include <openssl/crypto.h>
-       #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
-        yes
-       #endif
-       ], goodssl="yes")
-           if test "x$goodssl" != "xyes"; then
-             AC_MSG_RESULT(no)
-	     OPENSSL_INCLUDE=
-	     OPENSSL_LIBS=
-           else
-             AC_MSG_RESULT(yes)
-
-             # Look for the OpenSSL libraries.
-	     smart_try_dir=$OPENSSL_LIB_DIR
-	     FR_SMART_CHECK_LIB(crypto, DH_new)
-	     if test "x$ac_cv_lib_crypto_DH_new" = "xyes"; then
-	       FR_SMART_CHECK_LIB(ssl, SSL_new)
-	       if test "x$ac_cv_lib_ssl_SSL_new" = "xyes"; then
-                 if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
-		   OPENSSL_INCLUDE="-I$OPENSSL_INCLUDE_DIR"
-	         fi
-		 if test "x$OPENSSL_LIB_DIR" != "x"; then
-		   OPENSSL_LIBS="-L$OPENSSL_LIB_DIR"
-	         fi
-                 OPENSSL_LIBS="$OPENSSL_LIBS -lcrypto -lssl -lcrypto"
-	       else
-		 OPENSSL_INCLUDE=
-		 OPENSSL_LIBS=
-	       fi
-	     fi
-           fi
-       CPPFLAGS=$old_CPPFLAGS
-       LIBS="$old_LIBS"
+dnl Check for OpenSSL includes.
+OPENSSL_INCLUDE="-DNO_OPENSSL"
+if test "x$OPENSSL_LIBS" = "x"; then
+    AC_MSG_NOTICE([skipping test for openssl/ssl.h])
+else
+    old_CPPFLAGS=$CPPFLAGS
+    if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
+	CPPFLAGS="$CPPFLAGS -I$OPENSSL_INCLUDE_DIR"
+    fi
+    dnl # stupid RedHat shit
+    CPPFLAGS="$CPPFLAGS -DOPENSSL_NO_KRB5"
+    AC_CHECK_HEADERS( \
+	openssl/ssl.h \
+	openssl/crypto.h \
+	openssl/err.h \
+	openssl/engine.h,
+	[],
+	OPENSSL_LIBS=
+    )
+    if test "x$OPENSSL_LIBS" != "x"; then
+	AC_MSG_CHECKING([for OpenSSL version >= 0.9.7])
+	AC_EGREP_CPP(yes,
+	    [#include <openssl/crypto.h>
+	     #if (OPENSSL_VERSION_NUMBER >= 0x00907000L)
+	     yes
+	     #endif
+	    ], goodssl="yes")
+	if test "x$goodssl" != "xyes"; then
+	    AC_MSG_RESULT(no)
+	    OPENSSL_LIBS=
+	else
+	    AC_MSG_RESULT(yes)
+	    if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
+		OPENSSL_INCLUDE="-I$OPENSSL_INCLUDE_DIR -DOPENSSL_NO_KRB5"
+	    else
+		OPENSSL_INCLUDE="-DOPENSSL_NO_KRB5"
+	    fi
+	fi
+    fi
+    CPPFLAGS=$old_CPPFLAGS
 fi
 AC_SUBST(OPENSSL_INCLUDE)
 AC_SUBST(OPENSSL_LIBS)
