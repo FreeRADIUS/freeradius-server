@@ -20,6 +20,7 @@ CFLAGS		+= -I$(top_builddir)/src
 CFLAGS		+= -DHOSTINFO=\"${HOSTINFO}\"
 CFLAGS		+= -DRADIUSD_VERSION=\"${RADIUSD_VERSION}\"
 CFLAGS		+= $(SNMP_INCLUDE)
+CFLAGS		+= $(OPENSSL_INCLUDE)
 VFLAGS		= -DRADIUSD_MAJOR_VERSION=$(RADIUSD_MAJOR_VERSION)
 VFLAGS		+= -DRADIUSD_MINOR_VERSION=$(RADIUSD_MINOR_VERSION)
 MODULE_LIBS	= $(STATIC_MODULES)
@@ -52,8 +53,8 @@ LIBS        += $(shell test -f ../modules/rlm_eap/libeap/libeap.la && echo ../mo
 MODULE_LIBS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo -dlpreopen ../modules/$$x/$$x.la;done)
 MODULE_LIBS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo -dlpreopen ../modules/*/types/$$x/$$x.la;done)
 MODULE_LIBS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$$x/$$x.la && echo -dlpreopen ../modules/*/drivers/$$x/$$x.la;done)
-MODULE_OBJS     += $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo ../modules/$$x/$$x.la;done) 	 
-MODULE_OBJS     += $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo ../modules/*/types/$$x/$$x.la;done) 	 
+MODULE_OBJS     += $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo ../modules/$$x/$$x.la;done)
+MODULE_OBJS     += $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo ../modules/*/types/$$x/$$x.la;done)
 MODULE_OBJS     += $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$$x/$$x.la && echo ../modules/*/drivers/$$x/$$x.la;done)
 endif
 
