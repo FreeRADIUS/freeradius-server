@@ -27,14 +27,13 @@ HEADERS        = otp.h otp_rad.h otp_pwe.h otp_cardops.h
 RLM_CFLAGS     = @otp_cflags@ $(OPENSSL_INCLUDE)
 CARDOPS_LTLIBS = $(patsubst %.c,%.lo,$(wildcard cardops/*.c))
 RLM_LIBS       = @otp_ldflags@ $(OPENSSL_LIBS) $(CARDOPS_LTLIBS)
+RLM_SUBDIRS    = cardops
 
-RLM_SUBDIRS = cardops
+## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
+include ../rules.mak
 
 # Not part of RLM_CFLAGS to avoid propagation to subdirs
 CFLAGS     += -Wno-unused-label -Wno-cast-qual
-
-# We need to compile cardops before anything else.
-all: common
 
 $(LT_OBJS): $(HEADERS) $(CARDOPS_LTLIBS)
 
@@ -44,6 +43,3 @@ $(CARDOPS_LTLIBS) common:
 		echo "Making $(WHAT_TO_MAKE) in $$dir ..."; \
 		$(MAKE) $(MFLAGS) -C $$dir RLM_CFLAGS="$(RLM_CFLAGS)" $(WHAT_TO_MAKE) || exit $?; \
 	done
-
-## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
-include ../rules.mak
