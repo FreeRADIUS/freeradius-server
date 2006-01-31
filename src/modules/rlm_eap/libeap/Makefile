@@ -6,11 +6,13 @@
 
 include ../../../../Make.inc
 
-SRCS		= cb.c eap_tls.c eapcommon.c eapcrypto.c eapsimlib.c \
-		  fips186prf.c mppe_keys.c tls.c
+SRCS		= eapcommon.c eapcrypto.c eapsimlib.c fips186prf.c
+ifneq ($(OPENSSL_LIBS),)
+SRCS		+= cb.c eap_tls.c mppe_keys.c tls.c
+endif
 LT_OBJS		= $(SRCS:.c=.lo)
 INCLUDES	= eap_types.h eap_tls.h
-CFLAGS		+= -DEAPLIB -I. -I.. -I$(top_builddir)/src
+CFLAGS		+= -DEAPLIB -I. -I.. -I$(top_builddir)/src $(OPENSSL_INCLUDE)
 ifeq ($(USE_SHARED_LIBS),yes)
 LINK_MODE	= -export-dynamic
 else
