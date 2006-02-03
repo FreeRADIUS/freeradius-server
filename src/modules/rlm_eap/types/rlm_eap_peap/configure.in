@@ -1,16 +1,42 @@
+#
+# Autoconf input file.
+#
+# Version:	$Id$
+#
+
+AC_PREREQ([2.53])
 AC_INIT(rlm_eap_peap.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_eap_peap])
 
 fail=
-SMART_LIBS=
-SMART_CLFAGS=
+eap_peap_ldflags=
+eap_peap_cflags=
+
 if test x$with_[]modname != xno; then
 
-	AC_PROG_CC
+	dnl ############################################################
+	dnl # Check for command line options
+	dnl ############################################################
 
-	if test "x$OPENSSL_LIBS" = "x"; then
-		fail="$fail OpenSSL"
+	AC_ARG_WITH(rlm-eap-peap-lib-dir,
+	[  --with-rlm-eap-peap-lib-dir      directory for eap-peap libs],
+	eap_peap_ldflags="-L$withval")
+
+	AC_ARG_WITH(rlm-eap-peap-include-dir,
+	[  --with-rlm-eap-peap-include-dir  directory for eap-peap includes],
+	eap_peap_cflags="-I$withval")
+
+	dnl ############################################################
+	dnl # Check for OpenSSL support
+	dnl ############################################################
+
+	AC_MSG_CHECKING(for OpenSSL support)
+	if test "x$OPENSSL_LIBS" != "x"; then
+		AC_MSG_RESULT(yes)
+	else
+		AC_MSG_RESULT(no)
+		fail="OpenSSL"
 	fi
 
 	targetname=modname
@@ -26,17 +52,15 @@ if test x"$fail" != x""; then
 		AC_MSG_WARN([silently not building ]modname[.])
 		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.])
 		if test x"$headersuggestion" != x; then
-			AC_MSG_WARN([$headersuggestion]) 
+			AC_MSG_WARN([$headersuggestion])
 		fi
 		if test x"$libsuggestion" != x; then
-			AC_MSG_WARN([$libsuggestion]) 
+			AC_MSG_WARN([$libsuggestion])
 		fi
 		targetname=""
 	fi
 fi
 
-eap_peap_ldflags=$SMART_LIBS
-eap_peap_cflags=$SMART_CFLAGS
 AC_SUBST(eap_peap_ldflags)
 AC_SUBST(eap_peap_cflags)
 AC_SUBST(targetname)
