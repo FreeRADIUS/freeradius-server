@@ -72,7 +72,7 @@ CREATE UNIQUE INDEX radacct_idx1
 CREATE SEQUENCE radacct_seq START WITH 1 INCREMENT BY 1;
 
 /* Trigger to emulate a serial # on the primary key */
-CREATE OR REPLACE TRIGGER radacct_serialnumber 
+CREATE OR REPLACE TRIGGER radacct_serialnumber
 	BEFORE INSERT OR UPDATE OF radacctid ON radacct
 	FOR EACH ROW
 	BEGIN
@@ -95,7 +95,7 @@ CREATE TABLE radcheck (
 CREATE SEQUENCE radcheck_seq START WITH 1 INCREMENT BY 1;
 
 /* Trigger to emulate a serial # on the primary key */
-CREATE OR REPLACE TRIGGER radcheck_serialnumber 
+CREATE OR REPLACE TRIGGER radcheck_serialnumber
 	BEFORE INSERT OR UPDATE OF id ON radcheck
 	FOR EACH ROW
 	BEGIN
@@ -143,7 +143,7 @@ CREATE INDEX radreply_idx1 ON radreply(UserName);
 CREATE SEQUENCE radreply_seq START WITH 1 INCREMENT BY 1;
 
 /* Trigger to emulate a serial # on the primary key */
-CREATE OR REPLACE TRIGGER radreply_serialnumber 
+CREATE OR REPLACE TRIGGER radreply_serialnumber
 	BEFORE INSERT OR UPDATE OF id ON radreply
 	FOR EACH ROW
 	BEGIN
@@ -164,7 +164,7 @@ CREATE TABLE usergroup (
 CREATE SEQUENCE usergroup_seq START WITH 1 INCREMENT BY 1;
 
 /* Trigger to emulate a serial # on the primary key */
-CREATE OR REPLACE TRIGGER usergroup_serialnumber 
+CREATE OR REPLACE TRIGGER usergroup_serialnumber
 	BEFORE INSERT OR UPDATE OF id ON usergroup
 	FOR EACH ROW
 	BEGIN
