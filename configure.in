@@ -3,7 +3,7 @@ dnl #
 dnl #  For information about autoconf, see:
 dnl #
 dnl #  http://www.gnu.org/software/autoconf/
-dnl #  
+dnl #
 dnl #  The recommended order is:
 dnl #
 dnl #  AC_INIT(file)
@@ -27,8 +27,8 @@ AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
 
 dnl # The version of the software
-RADIUSD_MAJOR_VERSION=1
-RADIUSD_MINOR_VERSION=1.0-pre0
+RADIUSD_MAJOR_VERSION=2
+RADIUSD_MINOR_VERSION=0.0-pre0
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
 PACKAGE=freeradius
 
@@ -76,7 +76,7 @@ dnl libltdl is installable
 AC_LIBLTDL_INSTALLABLE
 
 dnl use system-wide libtool, if it exists
-AC_ARG_WITH(system-libtool, 
+AC_ARG_WITH(system-libtool,
 [  --with-system-libtool              try to use libtool installed in your system [default=use our own]],
 [ AC_PATH_PROG(LIBTOOL, libtool,,$PATH:/usr/local/bin) ],
 [
@@ -375,20 +375,20 @@ dnl #############################################################
 
 dnl If using pthreads, check for -lpthread (posix) or -lc_r (*BSD)
 old_CFLAGS=$CFLAGS
-if test "x$WITH_THREADS" = "xyes"; then 
+if test "x$WITH_THREADS" = "xyes"; then
   if test $ac_cv_prog_suncc = "yes"; then
     CFLAGS="$CFLAGS -mt"
   fi
 
   AC_CHECK_HEADERS(pthread.h, [], [ WITH_THREADS="no" ])
 
-dnl # 
+dnl #
 dnl # pthread stuff is usually in -lpthread
 dnl # or in -lc_r, on *BSD
-dnl # 
+dnl #
 dnl # On Some systems, we need extra pre-processor flags, to get them to
 dnl # to do the threading properly.
-dnl # 
+dnl #
   AC_CHECK_LIB(pthread, pthread_create,
 		[ CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
                   LIBS="$LIBS -lpthread" ],
@@ -399,9 +399,9 @@ dnl #
 		)
 fi
 
-dnl # 
+dnl #
 dnl # If we have NO pthread libraries, remove any knowledge of threads.
-dnl # 
+dnl #
 if test "x$WITH_THREADS" != "xyes"; then
   CFLAGS=$old_CFLAGS
   ac_cv_header_pthread_h="no"
@@ -473,8 +473,8 @@ dnl #############################################################
 dnl #
 dnl # Interix requires us to set -D_ALL_SOURCE, otherwise
 dnl # getopt will be #included, but won't link.  <sigh>
-dnl # 
-dnl # 
+dnl #
+dnl #
 case "$host" in
 *-interix*)
 	CFLAGS="$CFLAGS -D_ALL_SOURCE"
@@ -616,7 +616,7 @@ dnl #############################################################
 dnl #
 dnl # Ensure that these are defined
 dnl #
-AC_TYPE_OFF_T 
+AC_TYPE_OFF_T
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_TYPE_UID_T
@@ -777,7 +777,7 @@ dnl #############################################################
 dnl #
 dnl # Ensure that these are defined
 dnl #
-AC_C_CONST 
+AC_C_CONST
 
 dnl #
 dnl # See if this is OS/2
@@ -1006,9 +1006,9 @@ if test "x$EXPERIMENTAL" = "xyes"; then
   dnl # get rid of LF's.
   mysubdirs=`echo $mysubdirs $bar`
 else
-  dnl # 
+  dnl #
   dnl # Find 'configure' in ONLY the stable modules
-  dnl # 
+  dnl #
   for bar in `cat "${srcdir}"/src/modules/stable`; do
     if test -f "${srcdir}"/src/modules/$bar/configure; then
       mysubdirs="$mysubdirs src/modules/$bar"
