@@ -20,7 +20,7 @@ dnl #  AC_OUTPUT([file...])
 dnl #
 dnl #############################################################
 
-AC_PREREQ([2.50])
+AC_PREREQ([2.59])
 export CFLAGS LIBS LDFLAGS CPPFLAGS
 AC_INIT(src/main/radiusd.c)
 AC_CONFIG_HEADER(src/include/autoconf.h)
@@ -51,9 +51,6 @@ AC_AIX
 AC_PROG_GCC_TRADITIONAL
 AC_PROG_CC_SUNPRO
 AC_PROG_RANLIB
-
-abs_top_builddir=`pwd`
-AC_SUBST(abs_top_builddir)
 
 dnl Compile in large (2G+) file support.
 AC_SYS_LARGEFILE
