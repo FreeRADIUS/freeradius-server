@@ -6,7 +6,7 @@
 
 include ../Make.inc
 
-SUBDIRS		= rfc
+SUBDIRS		= examples rfc
 WHAT_TO_MAKE	= all
 
 all:
@@ -26,8 +26,10 @@ install:
 	done
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
-common:
-	@for dir in $(SUBDIRS); do \
-		echo "Making $(WHAT_TO_MAKE) in $$dir..."; \
-		(cd $$dir && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit $?;\
-	done
+common: $(SUBDIRS)
+
+$(SUBDIRS):
+	@echo "Making $(WHAT_TO_MAKE) in $@..."
+	$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
+
+.PHONY: all clean install common $(SUBDIRS)
