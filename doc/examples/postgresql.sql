@@ -153,7 +153,7 @@ create index usergroup_UserName on usergroup (UserName);
 
 /*
  * Table structure for table 'realms'
- * This is not yet used by FreeRADIUS 
+ * This is not yet used by FreeRADIUS
  */
 --CREATE TABLE realms (
 --	id		SERIAL PRIMARY KEY,
