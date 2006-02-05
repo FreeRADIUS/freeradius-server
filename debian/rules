@@ -56,13 +56,25 @@ stamp-build: stamp-patch
 		--localstatedir=/var \
 		--with-raddbdir=$(raddbdir) \
 		--with-logdir=/var/log/$(package) \
-		--with-thread-pool --with-system-libtool \
-		--enable-ltdl-install=no --enable-strict-dependencies \
-		--with-udpfromto --with-edir \
+		--with-system-libtool --disable-ltdl-install \
+		--with-large-files --with-udpfromto --with-edir \
 		--with-rlm_sql_postgresql_lib_dir=`pg_config --libdir` \
 		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
+		--enable-strict-dependencies \
 		--enable-developer
-	
+
+#		To make SSL-free, add this:
+#		--without-rlm_eap_peap \
+		--without-rlm_eap_tls \
+		--without-rlm_eap_ttls \
+		--without-rlm_otp \
+		--without-rlm_sql_postgresql \
+		--without-snmp \
+
+#		and remove these:
+#		--with-rlm_sql_postgresql_lib_dir=`pg_config --libdir` \
+		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
+
 	# Modify Make.inc for Debian...
 	TEMPFILE=`mktemp /tmp/radmake-XXXXXX`; \
 	cp Make.inc $$TEMPFILE; \
@@ -145,8 +157,10 @@ binary-arch: stamp-build
 	test ! -d $(freeradius_dir)/etc/raddb || rmdir $(freeradius_dir)/etc/raddb
 	test ! -d $(freeradius_dir)/var/log/radius/radacct || rmdir $(freeradius_dir)/var/log/radius/radacct
 	test ! -d $(freeradius_dir)/var/log/radius || rmdir $(freeradius_dir)/var/log/radius
-#	Yuck! the makefile in doc/ does this.
-	rm -rf $(freeradius_dir)/usr/share/doc/freeradius-1.1.0-pre0
+#	this is from the Makefile in doc/
+	rm -f $(freeradius_dir)/usr/share/doc/freeradius/ChangeLog
+#	and this one from the Makefile in src/modules/rlm_perl
+	rm -f $(freeradius_dir)/etc/freeradius/example.pl
 
 	# split out inconvenient/controversal modules to other places
 	for modname in $(modulepackages); do \
@@ -155,9 +169,9 @@ binary-arch: stamp-build
 	done
 
 	# man pages & docs
-	dh_installdocs -X\*.in -Xradwatch -Xcheck-radius-config -XChangeLog -X00-OLD -XCVS -XMakefile doc/*
+	dh_installdocs
 	install -g root -m 644 CREDITS $(freeradius_dir)/$(pkgdocdir)/credits
-	dh_installexamples -XCVS `find src/modules/rlm_sql/drivers -type f -name \*.sql`
+	dh_installexamples -XCVS -XMakefile -X\\.in src/modules/rlm_perl/example.pl
 	dh_installchangelogs doc/ChangeLog
 	#Rename manpage to go with binary
 	mv $(freeradius_dir)/$(mandir)/man8/radiusd.8 $(freeradius_dir)/$(mandir)/man8/$(package).8
