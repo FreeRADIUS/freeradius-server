@@ -1,13 +1,13 @@
 Source: freeradius
-Build-Depends: debhelper (>= 4.1.68), libltdl3-dev, libpam0g-dev, libpq-dev | postgresql-dev, libmysqlclient14-dev | libmysqlclient-dev, libgdbm-dev, libldap2-dev, libsasl2-dev, libsnmp5-dev | libsnmp4.2-dev, libiodbc2-dev, libkrb5-dev, snmp, autotools-dev, dpatch (>= 2), libperl-dev, libssl-dev
+Build-Depends: debhelper (>= 4.2.32), dpatch (>= 2), autotools-dev, libtool (>= 1.5), libltdl3-dev, libpam0g-dev, libmysqlclient15-dev | libmysqlclient14-dev | libmysqlclient-dev, libgdbm-dev, libldap2-dev, libsasl2-dev, libiodbc2-dev, libkrb5-dev, libperl-dev, snmp, libsnmp9-dev | libsnmp5-dev | libsnmp4.2-dev, libpq-dev | postgresql-dev, libssl-dev
 Section: net
 Priority: optional
 Maintainer: Paul Hampson <Paul.Hampson@anu.edu.au>
-Standards-Version: 3.6.1.1
+Standards-Version: 3.6.2.0
 
 Package: freeradius
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: adduser, ${shlibs:Depends}
 Provides: radius-server
 Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5
 Conflicts: radiusd-freeradius, radiusd-freeradius-krb5, radiusd-freeradius-ldap, radiusd-freeradius-postgresql, radiusd-freeradius-mysql
@@ -67,9 +67,9 @@ Description: iODBC module for FreeRADIUS server
 
 Package: freeradius-dialupadmin
 Architecture: all
-Depends: apache | httpd, php4 | php4-cgi
-Suggests: php4-mysql | php4-pgsql, libdate-manip-perl
+Depends: php4 | php4-cgi
 Recommends: ${perl:Depends}
+Suggests: apache2-mpm-prefork | httpd, php4-mysql | php4-pgsql, libdate-manip-perl
 Description: set of PHP scripts for administering a FreeRADIUS server
  These scripts provide a web-based interface for administering a FreeRADIUS
  server which stores authentication information in either SQL or LDAP.
