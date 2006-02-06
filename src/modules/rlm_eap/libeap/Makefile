@@ -1,57 +1,47 @@
+#
+# Makefile
+#
+# Version:	$Id$
+#
 
 include ../../../../Make.inc
 
-SRCS		= fips186prf.c eapcrypto.c eapcommon.c eapsimlib.c
+SRCS		= eapcommon.c eapcrypto.c eapsimlib.c fips186prf.c
+ifneq ($(OPENSSL_LIBS),)
+SRCS		+= cb.c eap_tls.c mppe_keys.c tls.c
+endif
+LT_OBJS		= $(SRCS:.c=.lo)
+INCLUDES	= eap_types.h eap_tls.h
+CFLAGS		+= -DEAPLIB -I. -I.. -I$(top_builddir)/src/include $(OPENSSL_INCLUDE)
+ifeq ($(USE_SHARED_LIBS),yes)
+LINK_MODE	= -export-dynamic
+else
+LINK_MODE	= -static
+endif
+TARGET		= $(LIBPREFIX)eap
 
-INCLUDES	= 
-
-CFLAGS		+= -DEAPLIB -I../../../include 
-
-all:	static dynamic
-
-TARGET=$(LIBPREFIX)eap
-
-STATIC_OBJS	= $(SRCS:.c=.o)
-DYNAMIC_OBJS	= $(SRCS:.c=.lo)
-
-$(STATIC_OBJS):  $(INCLUDES)
-$(DYNAMIC_OBJS): $(INCLUDES)
-
-#######################################################################
-#
-# define new rules
-#
-#######################################################################
-%.o : %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-%.lo : %.c
+# Define new rule for libtool objects
+%.lo: %.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $<
 
+all: static dynamic
 
-$(TARGET).a: $(STATIC_OBJS)
-	$(LIBTOOL) --mode=link $(LD) \
-	-module -static $(CFLAGS) $^ -o $@ 
-
-
-ifneq ($(USE_SHARED_LIBS),yes)
-LINK_MODE=-static
-endif
-
-$(TARGET).la: $(DYNAMIC_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	-module $(LINK_MODE) $(CFLAGS) -o $@ -rpath $(libdir) $^ 
-
-static: $(TARGET).a
+static: $(TARGET).la
 
 dynamic: $(TARGET).la
 
+$(TARGET).la: $(LT_OBJS)
+	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+	$(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^ \
+	$(top_builddir)/src/lib/libradius.la $(LIBS)
+
+$(LT_OBJS): $(INCLUDES)
+
 clean:
-	rm -f *.o *.lo $(TARGET).a $(TARGET).la
+	rm -f *.o *.lo $(TARGET).la
 	rm -rf .libs
 
-install: static dynamic
-	$(LIBTOOL) --mode=install $(INSTALL) -c \
-		$(TARGET).la $(R)$(libdir)/$(TARGET).la;
+install: all
+	$(LIBTOOL) --mode=install $(INSTALL) -c $(TARGET).la $(R)$(libdir)
 	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la;
 	ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la

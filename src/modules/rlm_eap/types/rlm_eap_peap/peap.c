@@ -19,7 +19,6 @@
  *
  *   Copyright 2003 Alan DeKok <aland@freeradius.org>
  */
-#include "eap_tls.h"
 #include "eap_peap.h"
 
 /*
@@ -45,14 +44,13 @@ static int eappeap_failure(EAP_HANDLER *handler, tls_session_t *tls_session)
 	tlv_packet[9] = 0;
 	tlv_packet[10] = EAP_TLV_FAILURE;
 
-	record_plus(&tls_session->clean_in, tlv_packet, 11);
+	(tls_session->record_plus)(&tls_session->clean_in, tlv_packet, 11);
 
 	/*
 	 *	FIXME: Check the return code.
 	 */
 	tls_handshake_send(tls_session);
-	record_init(&tls_session->clean_in);
-
+	
 	return 1;
 }
 
@@ -80,13 +78,12 @@ static int eappeap_success(EAP_HANDLER *handler, tls_session_t *tls_session)
 	tlv_packet[9] = 0;
 	tlv_packet[10] = EAP_TLV_SUCCESS;
 
-	record_plus(&tls_session->clean_in, tlv_packet, 11);
+	(tls_session->record_plus)(&tls_session->clean_in, tlv_packet, 11);
 
 	/*
 	 *	FIXME: Check the return code.
 	 */
 	tls_handshake_send(tls_session);
-	record_init(&tls_session->clean_in);
 
 	return 1;
 }
@@ -216,13 +213,12 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 	 *	Send the EAP data, WITHOUT the header.
 	 */
 #if 1
-	record_plus(&tls_session->clean_in, vp->strvalue + EAP_HEADER_LEN,
+	(tls_session->record_plus)(&tls_session->clean_in, vp->strvalue + EAP_HEADER_LEN,
 		vp->length - EAP_HEADER_LEN);
 #else
-	record_plus(&tls_session->clean_in, vp->strvalue, vp->length);
+	(tls_session->record_plus)(&tls_session->clean_in, vp->strvalue, vp->length);
 #endif
 	tls_handshake_send(tls_session);
-	record_init(&tls_session->clean_in);
 
 	return 1;
 }
@@ -258,7 +254,7 @@ static int eappeap_check_tlv(const uint8_t *data)
  *	Use a reply packet to determine what to do.
  */
 static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
-			 REQUEST *request, RADIUS_PACKET *reply)
+			 UNUSED REQUEST *request, RADIUS_PACKET *reply)
 {
 	int rcode = RLM_MODULE_REJECT;
 	VALUE_PAIR *vp;
@@ -290,13 +286,16 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	tunneled user!
 		 */
 		if (t->use_tunneled_reply) {
+			DEBUG2("  Saving tunneled attributes for later");
+
 			/*
 			 *	Clean up the tunneled reply.
 			 */
 			pairdelete(&reply->vps, PW_PROXY_STATE);
 			pairdelete(&reply->vps, PW_EAP_MESSAGE);
+			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR);
 
-			pairadd(&request->reply->vps, reply->vps);
+			t->accept_vps = reply->vps;
 			reply->vps = NULL;
 		}
 		break;
@@ -326,6 +325,26 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 */
 		vp = NULL;
 		pairmove2(&vp, &(reply->vps), PW_EAP_MESSAGE);
+
+		/*
+		 *	Handle EAP-MSCHAP-V2, where Access-Accept's
+		 *	from the home server may contain MS-CHAP-Success,
+		 *	which the module turns into challenges, so that
+		 *	the client may respond to the challenge with
+		 *	an "ack" packet.
+		 */
+		if (t->home_access_accept && t->use_tunneled_reply) {
+			DEBUG2("  Saving tunneled attributes for later");
+
+			/*
+			 *	Clean up the tunneled reply.
+			 */
+			pairdelete(&reply->vps, PW_PROXY_STATE);
+			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR);
+			
+			t->accept_vps = reply->vps;
+			reply->vps = NULL;
+		}
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
@@ -374,6 +393,9 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 	if (fake && (handler->request->proxy_reply->code == PW_AUTHENTICATION_ACK)) {
 		VALUE_PAIR *vp;
 		REQUEST *request = handler->request;
+		peap_tunnel_t *t = tls_session->opaque;
+
+		t->home_access_accept = TRUE;
 
 		/*
 		 *	Terrible hacks.
@@ -525,7 +547,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *
 	 *	I *really* don't like these 'record_t' things...
 	 */
-	data_len = record_minus(&tls_session->dirty_in, buffer, sizeof(buffer));
+	data_len = (tls_session->record_minus)(&tls_session->dirty_in, buffer, sizeof(buffer));
 	data = buffer;
 
 	/*
@@ -540,7 +562,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	go there, too...
 	 */
 	BIO_write(tls_session->into_ssl, buffer, data_len);
-	record_init(&tls_session->clean_out);
+	(tls_session->record_init)(&tls_session->clean_out);
 
 	/*
 	 *	Read (and decrypt) the tunneled data from the SSL session,
@@ -604,7 +626,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		return RLM_MODULE_REJECT;
 
 	} else if (t->status == PEAP_STATUS_SENT_TLV_FAILURE) {
-		DEBUG2("  rlm_eap_peap:  Had sent TLV failure, rejecting.");
+		DEBUG2("  rlm_eap_peap:  Had sent TLV failure.  User was rejcted rejected earlier in this session.");
 		return RLM_MODULE_REJECT;
 	}
 

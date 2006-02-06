@@ -268,8 +268,12 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 
 	case PW_EAP_NAK:
 		/*
-		 *	The one byte of NAK data is the preferred EAP type
-		 *	of the client.
+		 *	The NAK data is the preferred EAP type(s) of
+		 *	the client.
+		 *
+		 *	RFC 3748 says to list one or more proposed
+		 *	alternative types, one per octet, or to use
+		 *	0 for no alternative.
 		 */
 		DEBUG2("  rlm_eap: EAP NAK");
 
@@ -291,6 +295,10 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			return EAP_INVALID;
 		}
 
+		/*
+		 *	FIXME: Pick one type out of the one they asked
+		 *	for, as they may have asked for many.
+		 */
 		if ((eaptype->data[0] < PW_EAP_MD5) ||
 		    (eaptype->data[0] > PW_EAP_MAX_TYPES)) {
 			DEBUG2(" rlm_eap: NAK asked for bad type %d",
@@ -466,6 +474,13 @@ int eap_compose(EAP_HANDLER *handler)
 			/*
 			 *	The Id is a simple "ack" for success
 			 *	and failure.
+			 *
+			 *	RFC 3748 section 4.2 says
+			 *
+			 *	... The Identifier field MUST match
+			 *	the Identifier field of the Response
+			 *	packet that it is sent in response
+			 *	to.
 			 */
 		case PW_EAP_SUCCESS:
 		case PW_EAP_FAILURE:
@@ -773,7 +788,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	asking for one which we don't support.
 	 *
 	 *	NAK is code + id + length1 + length + NAK
-	 *             + requested EAP type.
+	 *             + requested EAP type(s).
 	 *
 	 *	We know at this point that we can't handle the
 	 *	request.  We could either return an EAP-Fail here, but
@@ -1056,7 +1071,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 			radlog(L_ERR, "rlm_eap: Identity Unknown, authentication failed");
 			free(*eap_packet_p);
 			*eap_packet_p = NULL;
-			eap_handler_free(&handler);
+			eap_handler_free(handler);
 			return NULL;
 		}
 
@@ -1091,7 +1106,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
                                radlog(L_ERR, "rlm_eap: Identity does not match User-Name, setting from EAP Identity.");
                                free(*eap_packet_p);
                                *eap_packet_p = NULL;
-                               eap_handler_free(&handler);
+                               eap_handler_free(handler);
                                return NULL;
                        }
 	       }
@@ -1101,7 +1116,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 	if (handler->eap_ds == NULL) {
 		free(*eap_packet_p);
 		*eap_packet_p = NULL;
-		eap_handler_free(&handler);
+		eap_handler_free(handler);
 		return NULL;
 	}
 

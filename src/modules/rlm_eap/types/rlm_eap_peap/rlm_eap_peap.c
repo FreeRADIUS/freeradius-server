@@ -21,7 +21,6 @@
  */
 
 #include "autoconf.h"
-#include "eap_tls.h"
 #include "eap_peap.h"
 
 typedef struct rlm_eap_peap_t {
@@ -131,6 +130,7 @@ static void peap_free(void *p)
 
 	pairfree(&t->username);
 	pairfree(&t->state);
+	pairfree(&t->accept_vps);
 
 	free(t);
 }
@@ -186,11 +186,11 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 			eap_packet.length[1] = EAP_HEADER_LEN + 1;
 			eap_packet.data[0] = PW_EAP_IDENTITY;
 
-			record_plus(&tls_session->clean_in,
-				    &eap_packet, sizeof(eap_packet));
-
+			(tls_session->record_plus)(&tls_session->clean_in,
+						  &eap_packet, sizeof(eap_packet));
+			
 			tls_handshake_send(tls_session);
-			record_init(&tls_session->clean_in);
+			(tls_session->record_init)(&tls_session->clean_in);
 		}
 		eaptls_request(handler->eap_ds, tls_session);
 		DEBUG2("  rlm_eap_peap: EAPTLS_SUCCESS");
@@ -251,9 +251,22 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 
 	case RLM_MODULE_OK:
 		eaptls_success(handler->eap_ds, 0);
+
+		/*
+		 *	Move the saved VP's from the Access-Accept to
+		 *	our Access-Accept.
+		 */
+		if (((peap_tunnel_t *) tls_session->opaque)->accept_vps) {
+			DEBUG2("  Using saved attributes from the original Access-Accept");
+		}
+		pairadd(&handler->request->reply->vps,
+			((peap_tunnel_t *) tls_session->opaque)->accept_vps);
+		((peap_tunnel_t *) tls_session->opaque)->accept_vps = NULL;
+
 		eaptls_gen_mppe_keys(&handler->request->reply->vps,
 				     tls_session->ssl,
 				     "client EAP encryption");
+
 		return 1;
 
 		/*

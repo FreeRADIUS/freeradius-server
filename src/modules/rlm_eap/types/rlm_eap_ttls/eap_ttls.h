@@ -22,7 +22,7 @@
 #ifndef _EAP_TTLS_H
 #define _EAP_TTLS_H
 
-#include "rlm_eap_tls.h"
+#include "eap_tls.h"
 
 typedef struct ttls_tunnel_t {
 	VALUE_PAIR	*username;

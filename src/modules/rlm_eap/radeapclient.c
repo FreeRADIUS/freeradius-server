@@ -24,7 +24,6 @@
 static const char rcsid[] = "$Id$";
 
 #include "autoconf.h"
-#include "libradius.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,7 +52,7 @@ static const char rcsid[] = "$Id$";
 #include "conf.h"
 #include "radpaths.h"
 #include "missing.h"
-#include "../include/md5.h"
+#include "../../include/md5.h"
 
 #include "eap_types.h"
 #include "eap_sim.h"
@@ -164,7 +163,7 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 
 				ip_ntoa(src, (*rep)->src_ipaddr);
 				ip_ntoa(dst, req->dst_ipaddr);
-				fprintf(stderr, "radclient: ERROR: Sent request to host %s:%d, got response from host %s:%d\n!",
+				fprintf(stderr, "radclient: ERROR: Sent request to host %s port %d, got response from host %s port %d\n!",
 					dst, req->dst_port,
 					src, (*rep)->src_port);
 				exit(1);
@@ -182,6 +181,12 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 		exit(1);
 	}
 
+	/*
+	 *	FIXME: Discard the packet & listen for another.
+	 *
+	 *	Hmm... we should really be using eapol_test, which does
+	 *	a lot more than radeapclient.
+	 */
 	if (rad_decode(*rep, req, secret) != 0) {
 		librad_perror("rad_decode");
 		exit(1);

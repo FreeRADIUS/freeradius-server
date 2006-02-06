@@ -19,7 +19,6 @@
  *
  *   Copyright 2003 Alan DeKok <aland@freeradius.org>
  */
-#include "eap_tls.h"
 #include "eap_ttls.h"
 
 /*
@@ -540,13 +539,12 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 		}
 #endif
 
-		record_plus(&tls_session->clean_in, buffer, total);
+		(tls_session->record_plus)(&tls_session->clean_in, buffer, total);
 
 		/*
 		 *	FIXME: Check the return code.
 		 */
 		tls_handshake_send(tls_session);
-		record_init(&tls_session->clean_in);
 	}
 
 	/*
@@ -630,18 +628,6 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			 */
 			pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE);
 			pairfree(&vp);
-
-			/*
-			 *	If we've been told to use the attributes from
-			 *	the reply, then do so.
-			 *
-			 *	WARNING: This may leak information about the
-			 *	tunneled user!
-			 */
-			if (t->use_tunneled_reply) {
-				pairadd(&request->reply->vps, reply->vps);
-				reply->vps = NULL;
-			}
 		}
 
 		/*
@@ -651,6 +637,19 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		if (vp) {
 			vp2diameter(tls_session, vp);
 			pairfree(&vp);
+		}
+
+		/*
+		 *	If we've been told to use the attributes from
+		 *	the reply, then do so.
+		 *
+		 *	WARNING: This may leak information about the
+		 *	tunneled user!
+		 */
+		if (t->use_tunneled_reply) {
+			pairdelete(&reply->vps, PW_PROXY_STATE);
+			pairadd(&request->reply->vps, reply->vps);
+			reply->vps = NULL;
 		}
 		break;
 
@@ -710,7 +709,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 
 	default:
 		DEBUG2("  TTLS: Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
-		rcode = RLM_MODULE_REJECT;
+		rcode = RLM_MODULE_INVALID;
 		break;
 	}
 
@@ -817,7 +816,7 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
 		DEBUG2("  TTLS: Reply was rejected");
-		return 0;
+		break;
 
 	case RLM_MODULE_HANDLED:
 		DEBUG2("  TTLS: Reply was handled");
@@ -873,7 +872,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *
 	 *	I *really* don't like these 'record_t' things...
 	 */
-	data_len = record_minus(&tls_session->dirty_in, buffer, sizeof(buffer));
+	data_len = (tls_session->record_minus)(&tls_session->dirty_in, buffer, sizeof(buffer));
 	data = buffer;
 
 	/*
@@ -888,7 +887,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	go there, too...
 	 */
 	BIO_write(tls_session->into_ssl, buffer, data_len);
-	record_init(&tls_session->clean_out);
+	(tls_session->record_init)(&tls_session->clean_out);
 
 	/*
 	 *	Read (and decrypt) the tunneled data from the SSL session,
