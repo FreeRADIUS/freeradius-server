@@ -480,7 +480,7 @@ static int generate_realms(const char *filename)
 			}
 
 			if (strlen(s) >= sizeof(c->secret)) {
-				radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
+				radlog(L_ERR, "%s[%d]: Secret of length %u is greater than the allowed maximum of %u.",
 				       filename, cf_section_lineno(cs),
 				       strlen(s), sizeof(c->secret) - 1);
 				return -1;
@@ -626,7 +626,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 		netmask = strchr(hostnm, '/');
 
 		if (strlen(secret) >= sizeof(c->secret)) {
-			radlog(L_ERR, "%s[%d]: Secret of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: Secret of length %u is greater than the allowed maximum of %u.",
 				filename, cf_section_lineno(cs),
 				strlen(secret), sizeof(c->secret) - 1);
 			clients_free(list);
@@ -634,7 +634,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 		}
 
 		if (strlen(shortnm) > sizeof(c->shortname)) {
-			radlog(L_ERR, "%s[%d]: Client short name of length %d is greater than the allowed maximum of %d.",
+			radlog(L_ERR, "%s[%d]: Client short name of length %u is greater than the allowed maximum of %u.",
 					filename, cf_section_lineno(cs),
 			       strlen(shortnm), sizeof(c->shortname) - 1);
 			clients_free(list);
@@ -643,7 +643,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 
 		if((nastype = cf_section_value_find(cs, "nastype")) != NULL) {
 		        if(strlen(nastype) >= sizeof(c->nastype)) {
-			       radlog(L_ERR, "%s[%d]: nastype of length %d longer than the allowed maximum of %d",
+			       radlog(L_ERR, "%s[%d]: nastype of length %u longer than the allowed maximum of %u",
 				      filename, cf_section_lineno(cs),
 				      strlen(nastype), sizeof(c->nastype) - 1);
 			       clients_free(list);
@@ -653,7 +653,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 
 		if((login = cf_section_value_find(cs, "login")) != NULL) {
 		        if(strlen(login) >= sizeof(c->login)) {
-			       radlog(L_ERR, "%s[%d]: login of length %d longer than the allowed maximum of %d",
+			       radlog(L_ERR, "%s[%d]: login of length %u longer than the allowed maximum of %u",
 				      filename, cf_section_lineno(cs),
 				      strlen(login), sizeof(c->login) - 1);
 			       clients_free(list);
@@ -663,7 +663,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 
 		if((password = cf_section_value_find(cs, "password")) != NULL) {
 		        if(strlen(password) >= sizeof(c->password)) {
-			       radlog(L_ERR, "%s[%d]: password of length %d longer than the allowed maximum of %d",
+			       radlog(L_ERR, "%s[%d]: password of length %u longer than the allowed maximum of %u",
 				      filename, cf_section_lineno(cs),
 				      strlen(password), sizeof(c->password) - 1);
 			       clients_free(list);
@@ -1002,12 +1002,91 @@ static int listen_init(const char *filename, rad_listen_t **head)
 	if (mainconfig.proxy_requests == TRUE) {
 		int		port = -1;
 		rad_listen_t	*auth;
+		int		num_realms = 0;
+		int		localhost = 0;
+		int		otherhost = 0;
+		REALM		*realm;
+		uint32_t	proxy_ip;
+		uint32_t	ipaddr;
+
+		/*
+		 *	If there are no realms configured, don't
+		 *	open the proxy port.
+		 */
+		for (realm = mainconfig.realms;
+		     realm != NULL;
+		     realm = realm->next) {
+			/*
+			 *	Ignore LOCAL realms.
+			 */
+			if ((realm->ipaddr == htonl(INADDR_NONE)) &&
+			    (realm->acct_ipaddr == htonl(INADDR_NONE))) {
+				continue;
+			}
+			num_realms++;
+
+			/*
+			 *	Loopback addresses
+			 */
+			if (realm->ipaddr == htonl(INADDR_LOOPBACK)) {
+				localhost = 1;
+			} else {
+				otherhost = 1;
+			}
+			if (realm->acct_ipaddr == htonl(INADDR_LOOPBACK)) {
+				localhost = 1;
+			} else {
+				otherhost = 1;
+			}
+		}
+
+		/*
+		 *	No external realms.  Don't open another port.
+		 */
+		if (num_realms == 0) {
+			return 0;
+		}
+
+		/*
+		 *	All of the realms are localhost, don't open
+		 *	an external port.
+		 */
+		if (localhost && !otherhost) {
+			proxy_ip = htonl(INADDR_LOOPBACK);
+		} else {
+			/*
+			 *	Multiple external realms, listen
+			 *	on any address that will send packets.
+			 */
+			proxy_ip = htonl(INADDR_NONE);
+		}
 
 		/*
 		 *	Find the first authentication port,
 		 *	and use it
 		 */
+		ipaddr = htonl(INADDR_NONE);
 		for (auth = *head; auth != NULL; auth = auth->next) {
+			/*
+			 *	Listening on ANY, use that.
+			 */
+			if (ipaddr != htonl(INADDR_ANY)) {
+				/*
+				 *	Not set.  Pick the first one.
+				 *	Or, ANY, pick that.
+				 */
+				if ((ipaddr == htonl(INADDR_NONE)) ||
+				    (auth->ipaddr == htonl(INADDR_ANY))) {
+					ipaddr = auth->ipaddr;
+
+					/*
+					 *	Else listening on multiple
+					 *	IP's, use ANY for proxying.
+					 */
+				} else if (ipaddr != auth->ipaddr) {
+					ipaddr = htonl(INADDR_ANY);
+				}
+			}
 			if (auth->type == RAD_LISTEN_AUTH) {
 				port = auth->port + 2;
 				break;
@@ -1033,11 +1112,18 @@ static int listen_init(const char *filename, rad_listen_t **head)
 
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));
+
+		/*
+		 *	More checks to do the right thing.
+		 */
+		if (proxy_ip == htonl(INADDR_NONE)) {
+			proxy_ip = ipaddr;
+		}
 		
 		/*
 		 *	Create the proxy socket.
 		 */
-		this->ipaddr = mainconfig.myip;
+		this->ipaddr = proxy_ip;
 		this->type = RAD_LISTEN_PROXY;
 
 		/*
@@ -1188,7 +1274,7 @@ int read_mainconfig(int reload)
 		    (radlog_dir == NULL)) {
 			radlog(L_ERR|L_CONS, "Errors reading radiusd.conf");
 		} else {
-			radlog(L_ERR|L_CONS, "Errors reading %s/radiusd.conf: For more information, please read the tail end of %s", radlog_dir, mainconfig.log_file);
+			radlog(L_ERR|L_CONS, "Errors reading %s/radiusd.conf: For more information, please read the tail end of %s", radius_dir, mainconfig.log_file);
 		}
 		return -1;
 	}
