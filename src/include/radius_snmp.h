@@ -5,19 +5,9 @@
  */
 #ifdef WITH_SNMP
 
-#ifdef HAVE_ASN1_SNMP_SNMPIMPL_H
-#include	<asn1.h>
-#include	<snmp.h>
-#include	<snmp_impl.h>
-#else
-#ifdef HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H
-#include	<ucd-snmp/asn1.h>
-#include	<ucd-snmp/snmp.h>
-#include	<ucd-snmp/snmp_impl.h>
-#endif
-#endif
-
-#include        "smux.h"
+typedef enum smux_event_t {
+  SMUX_NONE, SMUX_CONNECT, SMUX_READ
+} smux_event_t;
 
 extern void radius_snmp_init(void);
 extern int smux_connect(void);

@@ -36,6 +36,7 @@ static const char rcsid[] =
 
 #include <string.h>
 
+#include "smux.h"
 #include "radius_snmp.h"
 #include "radiusd.h"
 #include "conffile.h"

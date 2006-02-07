@@ -11,6 +11,19 @@
 #ifndef _SMUX_H
 #define _SMUX_H
 
+#ifdef HAVE_ASN1_SNMP_SNMPIMPL_H
+#include <asn1.h>
+#include <snmp.h>
+#include <snmp_impl.h>
+#else
+# ifdef HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H
+# include <ucd-snmp/ucd-snmp-config.h>
+# include <ucd-snmp/asn1.h>
+# include <ucd-snmp/snmp.h>
+# include <ucd-snmp/snmp_impl.h>
+# endif
+#endif
+
 #define SMUX_PORT_DEFAULT 199
 
 #define SMUXMAXPKTSIZE    1500
@@ -119,10 +132,6 @@ struct subtree
     snmp_in_addr_val = V, \
     (u_char *) &snmp_in_addr_val \
   )
-
-typedef enum smux_event_t {
-  SMUX_NONE, SMUX_CONNECT, SMUX_READ
-} smux_event_t;
 
 void smux_init(oid [], size_t);
 void smux_start(void);
