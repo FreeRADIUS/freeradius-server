@@ -18,14 +18,20 @@ cryptocard-h8-rc	random challenge, 8 digit hex response.
 cryptocard-d8-rc	random challenge, 8 digit decimal response.
 cryptocard-h7-rc	random challenge, 7 digit hex response.
 cryptocard-d7-rc	random challenge, 7 digit dec response.
+cryptocard-hp-rc	random challenge, phone hex response.
+cryptocard-p7-rc	random challenge, phone dec response.
 cryptocard-h8-es	event synchronous (only), 8 digit hex response.
 cryptocard-d8-es	event synchronous (only), 8 digit decimal response.
 cryptocard-h7-es	event synchronous (only), 7 digit hex response.
 cryptocard-d7-es	event synchronous (only), 7 digit decimal response.
+cryptocard-hp-es	event synchronous (only), phone hex response.
+cryptocard-dp-es	event synchronous (only), phone decimal response.
 cryptocard-h8-rs	rc or es, 8 digit hex response.
 cryptocard-d8-rs	rc or es, 8 digit decimal response.
 cryptocard-h7-rs	rc or es, 7 digit hex response.
 cryptocard-d7-rs	rc or es, 7 digit decimal response.
+cryptocard-hp-rs	rc or es, phone hex response.
+cryptocard-dp-rs	rc or es, phone decimal response.
 
 TRI-D: (email fcusack@fcusack.com)
 trid-alpha-3		TRI-D alpha card

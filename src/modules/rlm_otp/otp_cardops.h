@@ -16,7 +16,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2005 TRI-D Systems, Inc.
+ * Copyright 2005,2006 TRI-D Systems, Inc.
  */
 
 #ifndef OTP_CARDOPS_H
@@ -39,29 +39,30 @@
 #define OTP_CF_R8		0x01 << 6  /* 8 digit response       */
 #define OTP_CF_R7		0x01 << 7  /* 7 digit response       */
 #define OTP_CF_R6		0x01 << 8  /* 6 digit response       */
+#define OTP_CF_RP		0x01 << 9  /* phone response         */
 /* sync challenge length */
-#define OTP_CF_C8		0x01 << 9  /* 8 byte challenge       */
-#define OTP_CF_C4		0x01 << 10 /* 4 byte challenge       */
+#define OTP_CF_C8		0x01 << 10 /* 8 byte challenge       */
+#define OTP_CF_C4		0x01 << 11 /* 4 byte challenge       */
 #define OTP_CF_CL		(OTP_CF_C8|OTP_CF_C4)
-#define OTP_CF_CL_SHIFT		9          /* convert mask to value  */
+#define OTP_CF_CL_SHIFT		10         /* convert mask to value  */
 /* nominal twindow (TRI-D) */
-#define OTP_CF_TW0		0x01 << 11 /* twindow 2^0            */
-#define OTP_CF_TW1		0x01 << 12 /* twindow 2^1            */
-#define OTP_CF_TW2		0x01 << 13 /* twindow 2^2            */
-#define OTP_CF_TW3		0x01 << 14 /* twindow 2^3            */
+#define OTP_CF_TW0		0x01 << 12 /* twindow 2^0            */
+#define OTP_CF_TW1		0x01 << 13 /* twindow 2^1            */
+#define OTP_CF_TW2		0x01 << 14 /* twindow 2^2            */
+#define OTP_CF_TW3		0x01 << 15 /* twindow 2^3            */
 #define OTP_CF_TW		(OTP_CF_TW0|OTP_CF_TW1|OTP_CF_TW2|OTP_CF_TW3)
-#define OTP_CF_TW_SHIFT		11        /* convert mask to value  */
+#define OTP_CF_TW_SHIFT		12        /* convert mask to value  */
 /* force rwindow for event+time sync cards (TRI-D) */
-#define OTP_CF_FRW0		0x01 << 15 /* force event window 2^0 */
-#define OTP_CF_FRW1		0x01 << 16 /* force event window 2^1 */
-#define OTP_CF_FRW2		0x01 << 17 /* force event window 2^2 */
+#define OTP_CF_FRW0		0x01 << 16 /* force event window 2^0 */
+#define OTP_CF_FRW1		0x01 << 17 /* force event window 2^1 */
+#define OTP_CF_FRW2		0x01 << 18 /* force event window 2^2 */
 #define OTP_CF_FRW		(OTP_CF_FRW0|OTP_CF_FRW1|OTP_CF_FRW2)
-#define OTP_CF_FRW_SHIFT	15         /* convert mask to value  */
+#define OTP_CF_FRW_SHIFT	16         /* convert mask to value  */
 /* vendor specific */
-#define OTP_CF_VS1		0x01 << 18 /* vendor specific 1      */
-#define OTP_CF_VS2		0x01 << 19 /* vendor specific 2      */
-#define OTP_CF_VS3		0x01 << 20 /* vendor specific 3      */
-#define OTP_CF_VS4		0x01 << 21 /* vendor specific 4      */
+#define OTP_CF_VS1		0x01 << 19 /* vendor specific 1      */
+#define OTP_CF_VS2		0x01 << 20 /* vendor specific 2      */
+#define OTP_CF_VS3		0x01 << 21 /* vendor specific 3      */
+#define OTP_CF_VS4		0x01 << 22 /* vendor specific 4      */
 
 #define OTP_CF_MAX		0x01 << 31 /* MAX placeholder        */
 
