@@ -489,11 +489,13 @@ otp_authenticate(void *instance, REQUEST *request)
     int32_t		then;		/* state timestamp */
 
     if ((vp = pairfind(request->packet->vps, PW_STATE)) != NULL) {
-      int e_length = inst->chal_len;
+      int e_length;
 
-      /* Extend expected length if state should have been protected. */
+      /* set expected State length */
       if (inst->allow_async)
-        e_length += 4 + 4 + 16; /* sflags + time + hmac */
+        e_length += inst->chal_len + 4 + 4 + 16; /* see otp_gen_state() */
+      else
+        e_length = 1;
 
       if (vp->length != e_length) {
         otp_log(OTP_LOG_AUTH, "%s: %s: bad state for [%s]: length",
