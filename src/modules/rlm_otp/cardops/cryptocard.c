@@ -16,7 +16,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2005 TRI-D Systems, Inc.
+ * Copyright 2005,2006 TRI-D Systems, Inc.
  */
 
 #include <inttypes.h>
@@ -36,14 +36,20 @@ static struct {
   { "cryptocard-d8-rc", CRYPTOCARD_D8_RC },
   { "cryptocard-h7-rc", CRYPTOCARD_H7_RC },
   { "cryptocard-d7-rc", CRYPTOCARD_D7_RC },
+  { "cryptocard-hp-rc", CRYPTOCARD_HP_RC },
+  { "cryptocard-dp-rc", CRYPTOCARD_DP_RC },
   { "cryptocard-h8-es", CRYPTOCARD_H8_ES },
   { "cryptocard-d8-es", CRYPTOCARD_D8_ES },
   { "cryptocard-h7-es", CRYPTOCARD_H7_ES },
   { "cryptocard-d7-es", CRYPTOCARD_D7_ES },
+  { "cryptocard-hp-es", CRYPTOCARD_HP_ES },
+  { "cryptocard-dp-es", CRYPTOCARD_DP_ES },
   { "cryptocard-h8-rs", CRYPTOCARD_H8_RS },
   { "cryptocard-d8-rs", CRYPTOCARD_D8_RS },
   { "cryptocard-h7-rs", CRYPTOCARD_H7_RS },
   { "cryptocard-d7-rs", CRYPTOCARD_D7_RS },
+  { "cryptocard-hp-rs", CRYPTOCARD_HP_RS },
+  { "cryptocard-dp-rs", CRYPTOCARD_DP_RS },
 
   { NULL, 0 }					/* end of list */
 };
@@ -202,6 +208,8 @@ cryptocard_response(otp_card_info_t *card_info,
   /* Step 5. */
   if (card_info->featuremask & OTP_CF_R7)
     (void) memmove(&response[3], &response[4], 5);
+  else if (card_info->featuremask & OTP_CF_RP)
+    response[3] = '-';
 
   return 0;
 }
