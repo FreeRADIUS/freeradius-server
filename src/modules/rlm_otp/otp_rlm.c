@@ -50,8 +50,8 @@
 static const char rcsid[] = "$Id$";
 
 /* Global data */
-static unsigned char hmac_key[16];	/* to protect State attribute     */
-static int ninstance = 0;		/* #instances, for global init    */
+static unsigned char hmac_key[16];	/* to protect State attribute  */
+static int ninstance = 0;		/* #instances, for global init */
 
 /* A mapping of configuration file names to internal variables. */
 static const CONF_PARSER module_config[] = {
@@ -473,15 +473,16 @@ otp_authenticate(void *instance, REQUEST *request)
   {
     VALUE_PAIR	*vp;
     unsigned char	*state;
-    int32_t		sflags = 0; 	/* state flags */
-    int32_t		then;		/* state timestamp */
+    unsigned char	*raw_state;
+    unsigned char	*rad_state;
+    int32_t		sflags = 0; 	/* state flags           */
+    int32_t		then;		/* state timestamp       */
+    int			e_length;	/* expected State length */
 
     if ((vp = pairfind(request->packet->vps, PW_STATE)) != NULL) {
-      int e_length;
-
       /* set expected State length */
       if (inst->allow_async)
-        e_length += inst->chal_len + 4 + 4 + 16; /* see otp_gen_state() */
+        e_length += inst->chal_len * 2 + 8 + 8 + 32; /* see otp_gen_state() */
       else
         e_length = 1;
 
@@ -492,16 +493,32 @@ otp_authenticate(void *instance, REQUEST *request)
       }
 
       if (inst->allow_async) {
-        /* Verify the state. */
-        (void) memcpy(challenge, vp->vp_strvalue, inst->chal_len);
-        (void) memcpy(&sflags, vp->vp_strvalue + inst->chal_len, 4);
-        (void) memcpy(&then, vp->vp_strvalue + inst->chal_len + 4, 4);
+        /*
+         * Verify the state.
+         */
+
+        /* ASCII decode */
+        rad_state = rad_malloc(e_length + 1);
+        (void) memcpy(rad_state, vp->vp_strvalue, vp->length);
+        rad_state[e_length] = '\0';
+        (void) otp_keystring2keyblock(rad_state, raw_state);
+        free(rad_state);
+        
+        /* extract data from State */
+        raw_state = rad_malloc(e_length / 2);
+        (void) memcpy(challenge, raw_state, inst->chal_len);
+        (void) memcpy(&sflags, raw_state + inst->chal_len, 4);
+        (void) memcpy(&then, raw_state + inst->chal_len + 4, 4);
+        free(raw_state);
+
+        /* generate new state from returned input data */
         if (otp_gen_state(NULL, &state, challenge, inst->chal_len,
                           sflags, then, hmac_key) != 0) {
           otp_log(OTP_LOG_ERR, "%s: %s: failed to generate state",
                   log_prefix, __func__);
           return RLM_MODULE_FAIL;
         }
+        /* compare generated state against returned state to verify hmac */
         if (memcmp(state, vp->vp_strvalue, vp->length)) {
           otp_log(OTP_LOG_AUTH, "%s: %s: bad state for [%s]: hmac",
                   log_prefix, __func__, username);
