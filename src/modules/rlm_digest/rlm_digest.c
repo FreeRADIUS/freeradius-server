@@ -97,9 +97,9 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	 *	We require access to the plain-text password.
 	 */
 	passwd = pairfind(request->config_items, PW_PASSWORD);
-	if (!passwd) passwd = pairfind(request->config_items, PW_MD5_PASSWORD);
+	if (!passwd) passwd = pairfind(request->config_items, PW_DIGEST_HA1);
 	if (!passwd) {
-		radlog(L_AUTH, "rlm_digest: Configuration item \"User-Password\" or MD5-Password is required for authentication.");
+		radlog(L_AUTH, "rlm_digest: Configuration item \"User-Password\" or \"Digest-HA1\" is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -234,7 +234,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		DEBUG2("A1 = %s", a1);
 	} else {
 		a1[a1_len] = '\0';
-		DEBUG2("A1 = %s (using MD5-Password)", a1);
+		DEBUG2("A1 = %s (using Digest-HA1)", a1);
 		a1_len = 16;
 	}
 
@@ -246,7 +246,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	if ((algo == NULL) || 
 	    (strcasecmp(algo->vp_strvalue, "MD5") == 0)) {
 		/*
-		 *	Set A1 to MD5-Password if no User-Password found
+		 *	Set A1 to Digest-HA1 if no User-Password found
 		 */
 		if (passwd->attribute != PW_USER_PASSWORD) {
 			memcpy(&a1[0], passwd->vp_octets, 16);
@@ -256,7 +256,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	K1 = H(A1) : Digest-Nonce ... : H(A2)
 		 *
-		 *	If we find MD5-Password, we assume it contains
+		 *	If we find Digest-HA1, we assume it contains
 		 *	H(A1).
 		 */
 		if (passwd->attribute == PW_USER_PASSWORD) {
