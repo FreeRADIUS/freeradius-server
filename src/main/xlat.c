@@ -321,7 +321,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 				break;
 			
 			case PW_SERVER_IDENTITY:
-				if (!request->listener->identity) return 0;
+				if (!request->listener || !request->listener->identity) return 0;
 
 				snprintf(out, outlen, "%s", request->listener->identity);
 				return strlen(out);
@@ -368,7 +368,7 @@ static int xlat_regex(void *instance, REQUEST *request,
 	fmt = fmt;		/* -Wunused */
 	func = func;		/* -Wunused FIXME: do escaping? */
 	
-	regex = request_data_get(request, request,
+	regex = request_data_reference(request, request,
 				 REQUEST_DATA_REGEX | *(int *)instance);
 	if (!regex) return 0;
 
@@ -377,7 +377,6 @@ static int xlat_regex(void *instance, REQUEST *request,
 	 *	a zero byte.
 	 */
 	strNcpy(out, regex, outlen);
-	free(regex); /* was strdup'd */
 	return strlen(out);
 }
 #endif				/* HAVE_REGEX_H */

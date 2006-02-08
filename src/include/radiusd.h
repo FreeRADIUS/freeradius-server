@@ -180,6 +180,7 @@ typedef int (*rad_listen_print_t)(rad_listen_t *, char *, size_t);
 
 struct rad_listen_t {
 	struct rad_listen_t *next; /* should be rbtree stuff */
+
 	/*
 	 *	For normal sockets.
 	 */
@@ -346,6 +347,8 @@ int		request_data_add(REQUEST *request,
 				 void *unique_ptr, int unique_int,
 				 void *opaque, void (*free_opaque)(void *));
 void		*request_data_get(REQUEST *request,
+				  void *unique_ptr, int unique_int);
+void		*request_data_reference(REQUEST *request,
 				  void *unique_ptr, int unique_int);
 int		rad_copy_string(char *dst, const char *src);
 int		rad_copy_variable(char *dst, const char *from);
