@@ -27,7 +27,7 @@
 static int otp_state_parse(const char *, size_t, const char *,
                            otp_user_state_t *, const char *);
 static ssize_t otp_state_unparse(char *, size_t, const char *,
-				 otp_user_state_t *, const char *);
+                                 otp_user_state_t *, const char *);
 static int xread(lsmd_fd_t *, char *, size_t, const char *);
 static int xwrite(lsmd_fd_t *, const char *, size_t, const char *);
 static int otp_state_connect(const char *, const char *);
