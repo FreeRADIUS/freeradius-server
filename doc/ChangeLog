@@ -1,4 +1,21 @@
-FreeRADIUS 1.1.0 ; $Date$, urgency=low
+FreeRADIUS 1.1.1 ; $Date$, urgency=low
+	* Fix an error on x86_64 machines when reading dictionnaries.
+	  (closes: #312)
+	* Fix compilation errors on FreeBSD and NetBSD because of rlm_otp
+	  module. (closes: #314 #328)
+	* Fix libtool problems on Debian with rlm_eap_peap and rlm_eap_ttls
+	  modules. (closes: #75)
+	* Put the eap sessions into a tree, so that looking them up is very
+	  fast, and no longer O(n) in the number of sessions.
+	* Make "use_tunneled_reply" work properly for PEAP.
+	* Copy the whole string when getting a one-to-one-mapped attribute
+	  from LDAP (closes: #261)
+	* Add support for xlat expansion of attributes from LDAP.
+	* Fix net-snmp's ucd-snmp compatibility mode.
+	* Install the schema examples for a set of backends with the rest
+	  of the documentation.
+
+FreeRADIUS 1.1.0 ; Date: 2006/01/04 05:55:19, urgency=low
 	Feature improvements
 	* rlm_ldap has "set_auth_type" configuration option, which should
 	  address some configuration problems when using it.
