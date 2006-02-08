@@ -35,9 +35,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/socket.h>
-#if defined(__linux__) || defined(__APPLE__)
 #include <sys/un.h>
-#endif
 
 #include "otp.h"
 #include "otp_state.h"
