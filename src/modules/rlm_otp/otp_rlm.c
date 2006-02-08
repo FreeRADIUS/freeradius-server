@@ -394,7 +394,8 @@ gen_challenge:
     }
   } else {
     state = rad_malloc(5);
-    (void) sprintf(state, "0x00");
+    /* a non-NUL byte, so that Cisco (see otp_gen_state()) returns it */
+    (void) sprintf(state, "0x01");
   }
   pairadd(&request->reply->vps, pairmake("State", state, T_OP_EQ));
   free(state);
