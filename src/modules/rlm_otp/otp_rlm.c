@@ -482,7 +482,7 @@ otp_authenticate(void *instance, REQUEST *request)
     if ((vp = pairfind(request->packet->vps, PW_STATE)) != NULL) {
       /* set expected State length */
       if (inst->allow_async)
-        e_length += inst->chal_len * 2 + 8 + 8 + 32; /* see otp_gen_state() */
+        e_length = inst->chal_len * 2 + 8 + 8 + 32; /* see otp_gen_state() */
       else
         e_length = 1;
 
