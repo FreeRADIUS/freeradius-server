@@ -18,7 +18,7 @@
  *
  * Copyright 2000,2001,2002  The FreeRADIUS server project
  * Copyright 2001,2002  Google, Inc.
- * Copyright 2005 TRI-D Systems, Inc.
+ * Copyright 2005,2006 TRI-D Systems, Inc.
  */
 
 /*
@@ -417,7 +417,6 @@ gen_challenge:
 
     u_challenge = rad_malloc(strlen(inst->chal_prompt) +
                              OTP_MAX_CHALLENGE_LEN + 1);
-/* XXX */
     (void) sprintf(u_challenge, inst->chal_prompt, challenge);
     pairadd(&request->reply->vps,
             pairmake("Reply-Message", u_challenge, T_OP_EQ));
@@ -457,6 +456,8 @@ otp_authenticate(void *instance, REQUEST *request)
     .inst		= inst,
     .returned_vps	= &add_vps
   };
+
+  challenge[0] = '\0';	/* initialize for otp_pw_valid() */
 
   /* User-Name attribute required. */
   if (!request->username) {
