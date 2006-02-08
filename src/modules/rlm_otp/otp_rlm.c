@@ -32,11 +32,6 @@
  * Please read the accompanying docs.
  */
 
-/*
- * TODO: support setting multiple auth-types in authorize()
- * TODO: support other than ILP32 (for State)
- */
-
 
 #include <stdlib.h>
 #include <string.h>
@@ -389,14 +384,7 @@ gen_challenge:
    * otp_authenticate().
    */
   if (inst->allow_async) {
-    time_t now = time(NULL);
-
-    if (sizeof(now) != 4 || sizeof(long) != 4) {
-      otp_log(OTP_LOG_ERR, "%s: %s: only ILP32 arch is supported",
-              log_prefix, __func__);
-      return RLM_MODULE_FAIL;
-    }
-    now = htonl(now);
+    int32_t now = htonl(time(NULL));	/* low-order 32 bits on LP64 */
 
     if (otp_gen_state(&state, NULL, challenge, inst->chal_len, sflags,
                       now, hmac_key) != 0) {
