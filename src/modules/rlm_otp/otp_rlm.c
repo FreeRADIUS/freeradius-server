@@ -498,15 +498,16 @@ otp_authenticate(void *instance, REQUEST *request)
          * Verify the state.
          */
 
-        /* ASCII decode */
         rad_state = rad_malloc(e_length + 1);
+        raw_state = rad_malloc(e_length / 2);
+
+        /* ASCII decode */
         (void) memcpy(rad_state, vp->strvalue, vp->length);
         rad_state[e_length] = '\0';
         (void) otp_keystring2keyblock(rad_state, raw_state);
         free(rad_state);
         
         /* extract data from State */
-        raw_state = rad_malloc(e_length / 2);
         (void) memcpy(challenge, raw_state, inst->chal_len);
         (void) memcpy(&sflags, raw_state + inst->chal_len, 4);
         (void) memcpy(&then, raw_state + inst->chal_len + 4, 4);
