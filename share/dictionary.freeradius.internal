@@ -107,7 +107,7 @@ ATTRIBUTE	Module-Failure-Message			1076	string
 ATTRIBUTE	Rewrite-Rule				1078	string
 ATTRIBUTE	Sql-Group				1079	string
 ATTRIBUTE	Response-Packet-Type			1080	integer
-ATTRIBUTE	Digest-HA1				1081	octets
+ATTRIBUTE	Digest-HA1				1081	string
 ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1082	integer
 ATTRIBUTE	NTLM-User-Name				1083	string
 ATTRIBUTE	Packet-Src-IP-Address			1084	ipaddr
