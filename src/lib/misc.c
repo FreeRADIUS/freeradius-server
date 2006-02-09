@@ -581,7 +581,7 @@ void lrad_bin2hex(const uint8_t *bin, char *hex, int len)
 int closefrom(int fd)
 {
 	int i;
-	int maxfd;
+	int maxfd = 256;
 
 #ifdef _SC_OPEN_MAX
 	maxfd = sysconf(_SC_OPEN_MAX);
