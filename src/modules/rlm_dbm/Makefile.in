@@ -1,3 +1,7 @@
+#
+# $Id$
+#
+
 TARGET      = @targetname@
 SRCS        = rlm_dbm.c
 HEADERS     =
@@ -8,15 +12,19 @@ RLM_INSTALL = @dbm_install@
 
 include ../rules.mak
 
-rlm_dbm_parser: rlm_dbm_parser.o ../../lib/libradius.a
-	$(LIBTOOL) --mode=link $(CC) $^ $(LIBS) $(RLM_LIBS) -o $@
+rlm_dbm_parser: rlm_dbm_parser.lo ../../lib/libradius.la
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) \
+		-o $@ $^ $(RLM_LIBS) $(LIBS)
 
-rlm_dbm_cat: rlm_dbm_cat.o ../../lib/libradius.a
-	$(LIBTOOL) --mode=link $(CC) $^ $(LIBS) $(RLM_LIBS) -o $@
+rlm_dbm_cat: rlm_dbm_cat.lo ../../lib/libradius.la
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) \
+		-o $@ $^ $(RLM_LIBS) $(LIBS)
 
 #
 #  Install the utility programs in the bin directory.
 #
-rlm_dbm_install:
-	$(INSTALL) -m 755 $(INSTALLSTRIP) rlm_dbm_parser$(EXEEXT) $(R)$(bindir)
-	$(INSTALL) -m 755 $(INSTALLSTRIP) rlm_dbm_cat$(EXEEXT)    $(R)$(bindir)
+rlm_dbm_install: rlm_dbm_cat rlm_dbm_parser
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) \
+		rlm_dbm_cat$(EXEEXT) $(R)$(bindir)
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) \
+		rlm_dbm_parser$(EXEEXT) $(R)$(bindir)
