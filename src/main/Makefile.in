@@ -40,7 +40,7 @@ SUB_MODULES += rlm_sql_db2 rlm_sql_freetds rlm_sql_iodbc rlm_sql_mysql
 SUB_MODULES += rlm_sql_oracle rlm_sql_postgresql rlm_sql_sybase rlm_sql_unixodbc
 LIBS        += $(shell test -f ../modules/rlm_eap/libeap/libeap.la && echo ../modules/rlm_eap/libeap/libeap.la)
 ifneq ($(OPENSSL_LIBS),)
-LIBS += -L$(OPENSSL_LIBS) -lcrypto -lssl -lcrypto -lssl
+LIBS += $(OPENSSL_LIBS)
 endif
 
 MODULE_LIBS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo -dlpreopen ../modules/$$x/$$x.la;done)
@@ -146,7 +146,7 @@ radclient: radclient.lo ../lib/libradius.la
 radrelay.lo: radrelay.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radrelay.c
 
-radrelay: radrelay.lo mainconfig.lo util.lo nas.lo client.lo log.lo conffile.lo files.lo xlat.lo ../lib/libradius.a
+radrelay: radrelay.lo mainconfig.lo util.lo nas.lo client.lo log.lo conffile.lo files.lo xlat.lo ../lib/libradius.la
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radrelay radrelay.lo mainconfig.lo util.lo nas.lo client.lo log.lo conffile.lo files.lo xlat.lo $(LIBS)
 
 radwho.lo: radwho.c $(INCLUDES)
