@@ -323,7 +323,7 @@ security {
 	max_attributes = 200
 
 	#
-	#  delayed_reject: When sending an Access-Reject, it can be
+	#  reject_delay: When sending an Access-Reject, it can be
 	#  delayed for a few seconds.  This may help slow down a DoS
 	#  attack.  It also helps to slow down people trying to brute-force
 	#  crack a users password.
