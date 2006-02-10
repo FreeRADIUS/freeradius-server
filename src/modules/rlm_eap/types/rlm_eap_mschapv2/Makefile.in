@@ -1,12 +1,14 @@
+#
+# $Id$
+#
+
 TARGET      = @targetname@
 SRCS        = rlm_eap_mschapv2.c
-RLM_CFLAGS  = $(INCLTDL) -I../.. -I../../libeap
 HEADERS     = eap_mschapv2.h
-RLM_INSTALL = 
-
-$(STATIC_OBJS): $(HEADERS)
-
-$(DYNAMIC_OBJS): $(HEADERS)
+RLM_CFLAGS  = -I../.. -I../../libeap $(INCLTDL)
+RLM_INSTALL =
 
 RLM_DIR=../../
 include ${RLM_DIR}../rules.mak
+
+$(LT_OBJS): $(HEADERS)

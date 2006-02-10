@@ -24,11 +24,7 @@ TARGET		= $(LIBPREFIX)eap
 %.lo: %.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $<
 
-all: static dynamic
-
-static: $(TARGET).la
-
-dynamic: $(TARGET).la
+all: $(TARGET).la
 
 $(TARGET).la: $(LT_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \

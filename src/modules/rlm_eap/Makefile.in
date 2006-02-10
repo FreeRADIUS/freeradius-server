@@ -13,19 +13,23 @@ RLM_SUBDIRS = libeap @eaptypes@
 RLM_UTILS   = radeapclient
 
 #
-#  Statically link a few modules.
+# Not using shared libraries, add in ALL known static modules
+# at build time.
 #
-STATIC_OBJS += $(shell ls -1 types/rlm_eap_md5/rlm_eap_md5.a types/rlm_eap_leap/rlm_eap_leap.a types/rlm_eap_tls/rlm_eap_tls.a types/rlm_eap_ttls/rlm_eap_ttls.a types/rlm_eap_sim/rlm_eap_sim.a 2>/dev/null)
+#ifneq ($(USE_SHARED_LIBS),yes)
+#RLM_LIBS  += $(shell for x in types/rlm_eap*/rlm_eap*.la;do echo -dlpreopen $$x;done)
+#endif
 
-## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
-include ../rules.mak
+.PHONY: all install-subdirs common
 
-$(STATIC_OBJS): $(HEADERS)
+#
+# We need libeap.la before we can build anything else
+#
+all: common
 
-$(DYNAMIC_OBJS): $(HEADERS)
+$(LT_OBJS): $(HEADERS)
 
-radeapclient: radeapclient.lo
-	$(MAKE) $(MFLAGS) -C libeap $(WHAT_TO_MAKE)
+radeapclient: radeapclient.lo $(CLIENTLIBS)
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) -static -o radeapclient radeapclient.lo $(CLIENTLIBS) $(LIBS)
 
 radeapclient.lo: radeapclient.c $(HEADERS)
@@ -41,4 +45,5 @@ common:
 		(cd $$dir && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit $?;\
 	done
 
-.PHONY: all install-subdirs common static dynamic
+## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
+include ../rules.mak

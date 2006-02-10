@@ -1,12 +1,14 @@
+#
+# $Id$
+#
+
 TARGET      = @targetname@
 SRCS        = rlm_eap_md5.c eap_md5.c
-RLM_CFLAGS  = $(INCLTDL) -I../.. -I../../libeap
 HEADERS     = eap_md5.h
-RLM_INSTALL = 
-
-$(STATIC_OBJS): $(HEADERS)
-
-$(DYNAMIC_OBJS): $(HEADERS)
+RLM_CFLAGS  = -I../.. -I../../libeap $(INCLTDL)
+RLM_INSTALL =
 
 RLM_DIR=../../
 include ${RLM_DIR}../rules.mak
+
+$(LT_OBJS): $(HEADERS)

@@ -6,6 +6,4 @@ HEADERS     = $(wildcard *.h)
 RLM_DIR=../
 include $(RLM_DIR)../rules.mak
 
-$(STATIC_OBJS): $(HEADERS)
-
-$(DYNAMIC_OBJS): $(HEADERS)
+$(LT_OBJS): $(HEADERS)

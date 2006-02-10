@@ -7,14 +7,15 @@
 #
 # e.g.
 #
-##########################
+############################
 # TARGET = rlm_foo
 # SRCS   = rlm_foo.c other.c
 #
 # include ../rules.mak
 #
-# CFLAGS += my_c_flags
-##########################
+# RLM_CFLAGS = my_cflags
+# RLM_LDLAGS = my_ldflags
+############################
 #
 # and everything will be automagically built
 #
@@ -22,7 +23,9 @@
 
 include $(RLM_DIR)../../../Make.inc
 
-all: static dynamic
+.PHONY: all build-module clean distclean install reconfig
+
+all: build-module
 
 #######################################################################
 #
@@ -33,13 +36,13 @@ all: static dynamic
 
 #######################################################################
 #
-# define static and dynamic objects for the libraries,
+# define libtool objects for the libraries,
 # along with a number of other useful definitions.
 #
 #######################################################################
-STATIC_OBJS	+= $(SRCS:.c=.o)
-DYNAMIC_OBJS	+= $(SRCS:.c=.lo)
-CFLAGS		+= -I$(RLM_DIR)../../include
+LT_OBJS		+= $(SRCS:.c=.lo)
+LT_OBJS		+= $(SRCS:.cpp=.lo)
+CFLAGS		+= -I$(top_builddir)/src/include
 
 #######################################################################
 #
@@ -47,20 +50,22 @@ CFLAGS		+= -I$(RLM_DIR)../../include
 # change.
 #
 #######################################################################
-SERVER_HEADERS	= $(RLM_DIR)../../include/radiusd.h $(RLM_DIR)../../include/radius.h $(RLM_DIR)../../include/modules.h
-$(STATIC_OBJS):  $(SERVER_HEADERS)
-$(DYNAMIC_OBJS): $(SERVER_HEADERS)
+SERVER_HEADERS	= $(top_builddir)/src/include/radius.h  \
+		  $(top_builddir)/src/include/radiusd.h \
+		  $(top_builddir)/src/include/modules.h
+
+$(LT_OBJS): $(SERVER_HEADERS)
 
 #######################################################################
 #
 # define new rules
 #
 #######################################################################
-%.o : %.c
-	$(CC) $(CFLAGS) $(RLM_CFLAGS) -c $< -o $@
-
-%.lo : %.c
+%.lo: %.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(RLM_CFLAGS) -c $<
+
+%.lo: %.cpp
+	$(LIBTOOL) --mode=compile $(CXX) $(CFLAGS) $(RLM_CFLAGS) -c $<
 
 ifneq ($(TARGET),)
 #######################################################################
@@ -68,9 +73,6 @@ ifneq ($(TARGET),)
 # Define a number of new targets
 #
 #######################################################################
-$(TARGET).a: $(STATIC_OBJS)
-	$(LIBTOOL) --mode=link $(LD) \
-	-module -static $(CFLAGS) $(RLM_CFLAGS) $^ -o $@ 
 
 #
 #  If the module is in the list of static modules, then the "dynamic"
@@ -80,9 +82,9 @@ $(TARGET).a: $(STATIC_OBJS)
 #  Yes, this is a horrible hack.
 #
 ifeq ($(findstring $(TARGET),$(STATIC_MODULES)),)
-LINK_MODE=-export-dynamic
+LINK_MODE = -export-dynamic
 else
-LINK_MODE=-static
+LINK_MODE = -static
 endif
 
 #
@@ -90,13 +92,8 @@ endif
 #  link mode to static.
 #
 ifneq ($(USE_SHARED_LIBS),yes)
-LINK_MODE=-static
+LINK_MODE = -static
 endif
-
-$(TARGET).la: $(DYNAMIC_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	-module $(LINK_MODE) $(CFLAGS) $(RLM_CFLAGS) $(RLM_LDFLAGS) \
-	-o $@ -rpath $(libdir) $^ $(RLM_LIBS) $(LIBS)
 
 #######################################################################
 #
@@ -107,13 +104,17 @@ $(TARGET).la: $(DYNAMIC_OBJS)
 # a level, to the 'src/modules' directory, for general consumption.
 #
 #######################################################################
-static: $(TARGET).a  $(RLM_UTILS)
-	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=static common
+
+build-module: $(TARGET).la $(RLM_UTILS)
+	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=all common
+	@[ -d .libs ] && cp .libs/* $(top_builddir)/src/modules/lib
 	@cp $< $(top_builddir)/src/modules/lib
 
-dynamic: $(TARGET).la $(RLM_UTILS)
-	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=dynamic common
-	@cp $< $(top_builddir)/src/modules/lib
+$(TARGET).la: $(LT_OBJS)
+	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+	-module $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) -o $@     \
+	-rpath $(libdir) $^ $(top_builddir)/src/lib/libradius.la \
+	$(RLM_LIBS) $(LIBS)
 
 #######################################################################
 #
@@ -121,9 +122,7 @@ dynamic: $(TARGET).la $(RLM_UTILS)
 #
 #######################################################################
 else
-static:
-
-dynamic:
+build-module:
 
 # if $(TARGET) == ""
 endif
@@ -144,7 +143,7 @@ distclean: clean
 	@test -f Makefile.in && rm -f Makefile
 
 reconfig:
-	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in ] && $(AUTOCONF) -l $(RLM_DIR)../../..
+	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in ] && $(AUTOCONF) -l $(top_builddir)
 	@[ "x$(AUTOHEADER)" != "x" ] && [ -f ./config.h.in ] && $(AUTOHEADER)
 
 #
@@ -154,10 +153,10 @@ reconfig:
 #  Otherwise, install the libraries into $(libdir)
 #
 install:
+	@[ "x$(RLM_INSTALL)" = "x" ] || $(MAKE) $(MFLAGS) $(RLM_INSTALL)
 	if [ "x$(TARGET)" != "x" ]; then \
 	    $(LIBTOOL) --mode=install $(INSTALL) -c \
-		$(TARGET).la $(R)$(libdir)/$(TARGET).la; \
-	    rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la; \
-	    ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la; \
+		$(TARGET).la $(R)$(libdir)/$(TARGET).la || exit $?;\
+	    rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la || exit %?; \
+	    ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la || exit $?;\
 	fi
-	@[ "x$(RLM_INSTALL)" = "x" ] || $(MAKE) $(MFLAGS) $(RLM_INSTALL)

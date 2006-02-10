@@ -1,3 +1,7 @@
+#
+# $Id$
+#
+
 TARGET     = @targetname@
 SRCS       = rlm_krb5.c
 HEADERS    =
@@ -6,6 +10,4 @@ RLM_CFLAGS = @krb5_cflags@ -I/usr/include/et
 
 include ../rules.mak
 
-$(STATIC_OBJS): $(HEADERS)
-
-$(DYNAMIC_OBJS): $(HEADERS)
+$(LT_OBJS): $(HEADERS)
