@@ -101,6 +101,7 @@ $INCLUDE dictionary.erx
 $INCLUDE dictionary.ericsson
 $INCLUDE dictionary.extreme
 $INCLUDE dictionary.freeradius
+$INCLUDE dictionary.fortinet
 $INCLUDE dictionary.foundry
 $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.gemtek
