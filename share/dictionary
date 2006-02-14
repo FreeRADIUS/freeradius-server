@@ -101,6 +101,7 @@ $INCLUDE dictionary.erx
 $INCLUDE dictionary.ericsson
 $INCLUDE dictionary.extreme
 $INCLUDE dictionary.freeradius
+$INCLUDE dictionary.fortinet
 $INCLUDE dictionary.foundry
 $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.gemtek
@@ -118,6 +119,7 @@ $INCLUDE dictionary.navini
 $INCLUDE dictionary.netscreen
 $INCLUDE dictionary.ntua
 $INCLUDE dictionary.nomadix
+$INCLUDE dictionary.nortel
 $INCLUDE dictionary.packeteer
 $INCLUDE dictionary.propel
 $INCLUDE dictionary.quintum
