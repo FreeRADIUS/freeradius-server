@@ -17,7 +17,7 @@
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  * Copyright 2001,2002  Google, Inc.
- * Copyright 2005 TRI-D Systems, Inc.
+ * Copyright 2005,2006 TRI-D Systems, Inc.
  */
 
 /*
@@ -26,9 +26,6 @@
  * In order to safely use challenge/response (async) mode, you must
  * - implement a site-specific transform of the challenge, and/or
  * - only allow async mode from secure locations.
- *
- * Note that you cannot easily just disallow async mode completely
- * as you typically must provide a way to resynchronize the token.
  *
  * Please read the accompanying docs for more info.
  *
@@ -41,19 +38,28 @@
 static const char rcsid[] = "$Id$";
 
 
+/*
+ * The default transform appends the first 2 username chars to the
+ * challenge.  This results in a challenge that generally cannot be
+ * entered on any supported token, thus forcing a site-specific
+ * implementation to support async mode.
+ */
 ssize_t
-otp_challenge_transform(
-#ifdef __GNUC__
-__attribute__ ((unused))
-#endif
-                        const char *username,
+otp_challenge_transform(const char *username,
                         unsigned char challenge[OTP_MAX_CHALLENGE_LEN],
                         size_t clen)
 {
-  unsigned i;
+  /* overwrite challenge in-place if not enough room */
+  switch (OTP_MAX_CHALLENGE_LEN - clen) {
+    case 0: clen -= 2; break;
+    case 1: clen -= 1; break;
+  }
 
-  for (i = 0; i < clen; ++clen)
-    challenge[i] = '\0';
+  /* append first 2 username chars to challenge */
+  if (*username)
+    challenge[clen++] = *username++;
+  if (*username)
+    challenge[clen++] = *username++;
 
   return clen;
 }
