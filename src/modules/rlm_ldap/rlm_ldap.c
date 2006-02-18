@@ -193,6 +193,7 @@ static const char rcsid[] = "$Id$";
  *      every use of the pthread functions.
  */
 #define pthread_mutex_lock(a)
+#define pthread_mutex_trylock(a) (0)
 #define pthread_mutex_unlock(a)
 #define pthread_mutex_init(a,b)
 #define pthread_mutex_destroy(a)
