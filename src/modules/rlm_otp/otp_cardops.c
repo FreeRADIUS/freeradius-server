@@ -229,13 +229,17 @@ async_response:
     ssize_t chal_len;
 
     /* Perform any site-specific transforms of the challenge. */
-    if ((chal_len = otp_challenge_transform(username,
-                                            challenge, opt->chal_len)) < 0) {
-      otp_log(OTP_LOG_ERR, "%s: %s: challenge transform failed for [%s]",
-              log_prefix, __func__, username);
-      rc = OTP_RC_SERVICE_ERR;
-      goto auth_done_service_err;
-      /* NB: state not updated. */
+    if (opt->site_transform) {
+      if ((chal_len = otp_challenge_transform(username,
+                                              challenge, opt->chal_len)) < 0) {
+        otp_log(OTP_LOG_ERR, "%s: %s: challenge transform failed for [%s]",
+                log_prefix, __func__, username);
+        rc = OTP_RC_SERVICE_ERR;
+        goto auth_done_service_err;
+        /* NB: state not updated. */
+      }
+    } else {
+      chal_len = opt->chal_len;
     }
 
     /* Calculate the async response. */

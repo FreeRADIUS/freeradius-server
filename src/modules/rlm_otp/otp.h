@@ -89,6 +89,7 @@ typedef struct otp_option_t {
   int ewindow_size;	/* sync mode event window size (right side value)  */
   int rwindow_size;	/* softfail override event window size             */
   int rwindow_delay;	/* softfail override max time delay                */
+  int site_transform;	/* apply site transform to challenge? (undoc)      */
   int debug;		/* print debug info?                               */
 #if defined(FREERADIUS)
   /* freeradius-specific items */

@@ -96,6 +96,8 @@ static const CONF_PARSER module_config[] = {
   { "mschap_mppe_bits", PW_TYPE_INTEGER,
     offsetof(otp_option_t, mschap_mppe_types), NULL, "2" },
 
+  { "site_transform", PW_TYPE_BOOLEAN, offsetof(otp_option_t, site_transform),
+    NULL, "yes" },
   { "debug", PW_TYPE_BOOLEAN, offsetof(otp_option_t, debug),
     NULL, "no" },
 
