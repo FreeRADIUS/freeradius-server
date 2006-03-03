@@ -1,4 +1,6 @@
 /***************************************************************************
+ * $Id$		   *
+ *									   *
  * db_mssql.sql                 					   *
  *                                                                         *
  * Database schema for MSSQL server					   *
@@ -17,6 +19,7 @@ CREATE TABLE [radacct] (
 	[AcctSessionId] [varchar] (32) NOT NULL ,
 	[AcctUniqueId] [varchar] (32) NOT NULL ,
 	[UserName] [varchar] (64) NOT NULL ,
+	[GroupName] [varchar] (64) NOT NULL ,
 	[Realm] [varchar] (64) NULL ,
 	[NASIPAddress] [varchar] (15) NOT NULL ,
 	[NASPortId] [int] NULL ,

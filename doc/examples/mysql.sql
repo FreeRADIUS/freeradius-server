@@ -1,4 +1,6 @@
 ###########################################################################
+# $Id$                 #
+#                                                                         #
 #  db_mysql.sql                     rlm_sql - FreeRADIUS SQL Module       #
 #                                                                         #
 #     Database schema for MySQL rlm_sql module                            #
@@ -17,6 +19,7 @@ CREATE TABLE radacct (
   AcctSessionId varchar(32) NOT NULL default '',
   AcctUniqueId varchar(32) NOT NULL default '',
   UserName varchar(64) NOT NULL default '',
+  GroupName varchar(64) NOT NULL default '',
   Realm varchar(64) default '',
   NASIPAddress varchar(15) NOT NULL default '',
   NASPortId int(12) default NULL,
