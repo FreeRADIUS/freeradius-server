@@ -96,8 +96,15 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	We require access to the plain-text password.
 	 */
-	passwd = pairfind(request->config_items, PW_PASSWORD);
-	if (!passwd) passwd = pairfind(request->config_items, PW_DIGEST_HA1);
+	passwd = pairfind(request->config_items, PW_DIGEST_HA1);
+	if (passwd) {
+		if (passwd->length != 32) {
+			radlog(L_AUTH, "rlm_digest: Digest-HA1 has invalid length, authentication failed.");
+			return RLM_MODULE_INVALID;
+		}
+	} else {
+		passwd = pairfind(request->config_items, PW_PASSWORD);
+	}
 	if (!passwd) {
 		radlog(L_AUTH, "rlm_digest: Configuration item \"User-Password\" or \"Digest-HA1\" is required for authentication.");
 		return RLM_MODULE_INVALID;
@@ -248,8 +255,8 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	Set A1 to Digest-HA1 if no User-Password found
 		 */
-		if (passwd->attribute != PW_USER_PASSWORD) {
-			memcpy(&a1[0], passwd->vp_octets, 16);
+		if (passwd->attribute == PW_DIGEST_HA1) {
+			lrad_hex2bin(passwd->vp_strvalue, &a1[0], 16);
 		}
 
 	} else if (strcasecmp(algo->vp_strvalue, "MD5-sess") == 0) {
@@ -262,8 +269,8 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		if (passwd->attribute == PW_USER_PASSWORD) {
 			librad_md5_calc(hash, &a1[0], a1_len);
 			lrad_bin2hex(hash, &a1[0], 16);
-		} else {
-			lrad_bin2hex(passwd->vp_octets, &a1[0], 16);
+		} else {	/* MUST be Digest-HA1 */
+			memcpy(&a1[0], passwd->vp_strvalue, 32);
 		}
 		a1_len = 32;
 
