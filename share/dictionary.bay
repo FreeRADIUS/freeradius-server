@@ -87,6 +87,18 @@ ATTRIBUTE	Annex-Audit-Level			101	integer
 # Contivity
 ATTRIBUTE	CES-Group				102	string
 
+# Passport 8000 Series Specific Attributes
+#
+ATTRIBUTE	Passport-Access-Priority		192	integer
+
+VALUE	Passport-Access-Priority	None-Access		0
+VALUE	Passport-Access-Priority	Read-Only-Access	1
+VALUE	Passport-Access-Priority	L1-Read-Write-Access	2
+VALUE	Passport-Access-Priority	L2-Read-Write-Access	3
+VALUE	Passport-Access-Priority	L3-Read-Write-Access	4
+VALUE	Passport-Access-Priority	Read-Write-Access	5
+VALUE	Passport-Access-Priority	Read-Write-All-Access	6
+
 #	Annex Tunnel Authen Type Values
 
 VALUE	Annex-Tunnel-Authen-Type	none			0
