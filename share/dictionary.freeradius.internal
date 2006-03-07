@@ -348,12 +348,16 @@ VALUE	Packet-Type			Terminate-Session	31
 VALUE	Packet-Type			Password-Expired	32
 VALUE	Packet-Type			Event-Request		33
 VALUE	Packet-Type			Event-Response		34
+
+#	RFC 3576 allocates packet types 40-45
+
 VALUE	Packet-Type			Disconnect-Request	40
 VALUE	Packet-Type			Disconnect-ACK		41
 VALUE	Packet-Type			Disconnect-NAK		42
-VALUE	Packet-Type			CoF-Request		43
-VALUE	Packet-Type			CoF-ACK			44
-VALUE	Packet-Type			CoF-NAK			45
+VALUE	Packet-Type			CoA-Request		43
+VALUE	Packet-Type			CoA-ACK			44
+VALUE	Packet-Type			CoA-NAK			45
+
 VALUE	Packet-Type			IP-Address-Allocate	50
 VALUE	Packet-Type			IP-Address-Release	51
 

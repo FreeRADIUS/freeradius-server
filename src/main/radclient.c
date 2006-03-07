@@ -1032,6 +1032,10 @@ int main(int argc, char **argv)
 		if (server_port == 0) server_port = PW_POD_UDP_PORT;
 		packet_code = PW_DISCONNECT_REQUEST;
 
+	} else if (strcmp(argv[2], "coa") == 0) {
+		if (server_port == 0) server_port = PW_POD_UDP_PORT;
+		packet_code = PW_COA_REQUEST;
+
 	} else if (strcmp(argv[2], "auto") == 0) {
 		packet_code = -1;
 
