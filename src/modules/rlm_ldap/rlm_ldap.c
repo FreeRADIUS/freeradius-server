@@ -1672,8 +1672,10 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	if (inst->set_auth_type &&
 	    (pairfind(*check_pairs, PW_AUTH_TYPE) == NULL) &&
 	    request->password &&
-	    (request->password->attribute == PW_USER_PASSWORD))
+	    (request->password->attribute == PW_USER_PASSWORD)) {
 		pairadd(check_pairs, pairmake("Auth-Type", inst->xlat_name, T_OP_EQ));
+		DEBUG("rlm_ldap: Setting Auth-Type = %s", inst->xlat_name);
+	}
 
 	DEBUG("rlm_ldap: user %s authorized to use remote access",
 	      request->username->vp_strvalue);
