@@ -102,7 +102,7 @@ static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: radclient [options] server[:port] <command> [<secret>]\n");
 
-	fprintf(stderr, "  <command>    One of auth, acct, status, or disconnect.\n");
+	fprintf(stderr, "  <command>    One of auth, acct, status, coa, or disconnect.\n");
 	fprintf(stderr, "  -c count    Send each packet 'count' times.\n");
 	fprintf(stderr, "  -d raddb    Set dictionary directory.\n");
 	fprintf(stderr, "  -f file     Read packets from file, not stdin.\n");
@@ -856,6 +856,10 @@ int main(int argc, char **argv)
 	} else if (strcmp(argv[2], "disconnect") == 0) {
 		if (server_port == 0) server_port = PW_POD_UDP_PORT;
 		packet_code = PW_DISCONNECT_REQUEST;
+
+	} else if (strcmp(argv[2], "coa") == 0) {
+		if (server_port == 0) server_port = PW_POD_UDP_PORT;
+		packet_code = PW_COA_REQUEST;
 
 	} else if (strcmp(argv[2], "auto") == 0) {
 		packet_code = -1;

@@ -351,9 +351,15 @@ VALUE	Packet-Type			Event-Response		34
 VALUE	Packet-Type			Disconnect-Request	40
 VALUE	Packet-Type			Disconnect-ACK		41
 VALUE	Packet-Type			Disconnect-NAK		42
+
+# Old names, if no one uses them, they should be deleted.
 VALUE	Packet-Type			CoF-Request		43
 VALUE	Packet-Type			CoF-ACK			44
 VALUE	Packet-Type			CoF-NAK			45
+
+VALUE	Packet-Type			CoA-Request		43
+VALUE	Packet-Type			CoA-ACK			44
+VALUE	Packet-Type			CoA-NAK			45
 VALUE	Packet-Type			IP-Address-Allocate	50
 VALUE	Packet-Type			IP-Address-Release	51
 

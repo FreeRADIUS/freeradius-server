@@ -132,9 +132,9 @@ static const char *packet_codes[] = {
   "Disconnect-Request",
   "Disconnect-ACK",
   "Disconnect-NAK",
-  "CoF-Request",
-  "CoF-ACK",
-  "CoF-NAK",
+  "CoA-Request",
+  "CoA-ACK",
+  "CoA-NAK",
   "46",
   "47",
   "48",
@@ -606,6 +606,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 */
 	case PW_ACCOUNTING_REQUEST:
 	case PW_DISCONNECT_REQUEST:
+	case PW_COA_REQUEST:
 		memset(packet->vector, 0, sizeof(packet->vector));
 		break;
 		
@@ -753,9 +754,9 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		case PW_DISCONNECT_REQUEST:
 		case PW_DISCONNECT_ACK:
 		case PW_DISCONNECT_NAK:
-		case PW_COF_REQUEST:
-		case PW_COF_ACK:
-		case PW_COF_NAK:
+		case PW_COA_REQUEST:
+		case PW_COA_ACK:
+		case PW_COA_NAK:
 			memset(hdr->vector, 0, AUTH_VECTOR_LEN);
 			break;
 
@@ -1397,9 +1398,9 @@ static int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			case PW_DISCONNECT_REQUEST:
 			case PW_DISCONNECT_ACK:
 			case PW_DISCONNECT_NAK:
-			case PW_COF_REQUEST:
-			case PW_COF_ACK:
-			case PW_COF_NAK:
+			case PW_COA_REQUEST:
+			case PW_COA_ACK:
+			case PW_COA_NAK:
 			  	memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
 				break;
 
