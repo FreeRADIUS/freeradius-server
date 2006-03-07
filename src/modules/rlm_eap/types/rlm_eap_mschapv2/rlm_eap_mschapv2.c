@@ -449,6 +449,11 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		break;
 
 	case PW_EAP_MSCHAPV2_SUCCESS:
+		if (data->code != PW_EAP_MSCHAPV2_SUCCESS) {
+			radlog(L_ERR, "rlm_eap_mschapv2: Unexpected success received");
+			return 0;
+		}
+
 		/*
 		 *	It's a success.  Don't proxy it.
 		 */
