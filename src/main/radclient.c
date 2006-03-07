@@ -102,7 +102,7 @@ static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: radclient [options] server[:port] <command> [<secret>]\n");
 
-	fprintf(stderr, "  <command>    One of auth, acct, status, or disconnect.\n");
+	fprintf(stderr, "  <command>    One of auth, acct, status, coa, or disconnect.\n");
 	fprintf(stderr, "  -c count    Send each packet 'count' times.\n");
 	fprintf(stderr, "  -d raddb    Set dictionary directory.\n");
 	fprintf(stderr, "  -f file     Read packets from file, not stdin.\n");
