@@ -2,13 +2,13 @@
 #
 #  dictionary.erx
 #
-#	Unisphere's broadband RAS
+#	Juniper's (was Unisphere's) broadband RAS
 #	From Terje Krogdahl <tekr@nextra.com>
-#	Last touched by Paul Hampson <Paul.Hampson@Pobox.Com>
 #
 # Version:	$Id$
 #
 # Juniper ERX dictionaries are available at:
+#	http://www.juniper.net/techpubs/software/erx/junose71/unisphere7-1.dct
 #	http://www.juniper.net/techpubs/software/erx/junose700/unisphere7-0.dct
 #	http://www.juniper.net/techpubs/software/erx/junose700/swconfig-broadband/html/radius-attributes.html
 #	http://www.juniper.net/techpubs/software/erx/junose52/unisphere5-2.dct
@@ -98,6 +98,21 @@ ATTRIBUTE	ERX-MLPPP-Bundle-Name			62	string
 ATTRIBUTE	ERX-Interface-Desc			63	string
 ATTRIBUTE	ERX-Tunnel-Group			64	string
 
+ATTRIBUTE	ERX-DF-Bit				70	integer
+
+ATTRIBUTE	ERX-IGMP-Access-Name			71	string
+ATTRIBUTE	ERX-IGMP-Access-Src-Name		72	string
+ATTRIBUTE	ERX-IGMP-OIF-Map-Name			73	string
+
+ATTRIBUTE	ERX-MLD-Access-Name			74	string
+ATTRIBUTE	ERX-MLD-Access-Src-Name			75	string
+ATTRIBUTE	ERX-MLD-OIF-Map-Name			76	string
+ATTRIBUTE	ERX-MLD-Version				77	integer
+ATTRIBUTE	ERX-IGMP-Version			78	integer
+ATTRIBUTE	ERX-IP-Mcast-Adm-Bw-Limit		79	integer
+ATTRIBUTE	ERX-IPv6-Mcast-Adm-Bw-Limit		80	integer
+ATTRIBUTE	ERX-Qos-Parameters			82	string
+
 #
 #  Values	Attribute		Name			Number
 #
@@ -150,5 +165,15 @@ VALUE	ERX-Bearer-Type			Digital			2
 VALUE	ERX-LI-Action			off			0
 VALUE	ERX-LI-Action			on			1
 VALUE	ERX-LI-Action			noop			2
+
+VALUE	ERX-DF-Bit			dont-ignore-df-bit	0
+VALUE	ERX-DF-Bit			ignore-df-bit		1
+
+VALUE	ERX-MLD-Version			v1			1
+VALUE	ERX-MLD-Version			v2			2
+
+VALUE	ERX-IGMP-Version		v1			1
+VALUE	ERX-IGMP-Version		v2			2
+VALUE	ERX-IGMP-Version		v3			3
 
 END-VENDOR	ERX
