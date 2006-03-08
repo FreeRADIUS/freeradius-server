@@ -1,4 +1,9 @@
 FreeRADIUS 1.1.1 ; $Date$, urgency=low
+	* Additional tests and fixes for Digest module from Phillipe Sultan.
+	* Additional state checking in the EAP-MSCHAPv2 module.
+	  Bug found by Steffen Schuster.
+	* Fix handling of CoA-Request packets (close #344).  Also correct
+	  name of CoA packets.
 	* Fix an error on x86_64 machines when reading dictionaries.
 	  (closes: #312)
 	* Fix compilation errors on FreeBSD and NetBSD because of rlm_otp
