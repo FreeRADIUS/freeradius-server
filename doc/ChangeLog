@@ -1,27 +1,32 @@
 FreeRADIUS 1.1.1 ; $Date$, urgency=low
-	* Additional tests and fixes for Digest module from Phillipe Sultan.
+	Security fixes
 	* Additional state checking in the EAP-MSCHAPv2 module.
 	  Bug found by Steffen Schuster.
+	
+	Feature improvements
+	* Additional tests and fixes for Digest module from Phillipe Sultan.
+	* Add new "phone" response mode to rlm_otp/cryptocard.
+	* Put the eap sessions into a tree, so that looking them up is very
+	  fast, and no longer O(n) in the number of sessions.
+	* Install the schema examples for a set of backends with the rest
+	  of the documentation.
+	* Add support for xlat expansion of attributes from LDAP.
+
+	Bug fixes
 	* Fix handling of CoA-Request packets (close #344).  Also correct
 	  name of CoA packets.
 	* Fix an error on x86_64 machines when reading dictionaries.
 	  (closes: #312)
 	* Fix compilation errors on FreeBSD and NetBSD because of rlm_otp
 	  module. (closes: #314 #328)
-	* Add new "phone" response mode to rlm_otp/cryptocard.
 	* Workaround Cisco bug in State attribute handling in rlm_otp.
 	* Support LP64 for async mode in rlm_otp.
 	* Fix libtool problems on Debian with rlm_eap_peap and rlm_eap_ttls
 	  modules. (closes: #75)
-	* Put the eap sessions into a tree, so that looking them up is very
-	  fast, and no longer O(n) in the number of sessions.
 	* Make "use_tunneled_reply" work properly for PEAP.
 	* Copy the whole string when getting a one-to-one-mapped attribute
 	  from LDAP (closes: #261)
-	* Add support for xlat expansion of attributes from LDAP.
 	* Fix net-snmp's ucd-snmp compatibility mode.
-	* Install the schema examples for a set of backends with the rest
-	  of the documentation.
 
 FreeRADIUS 1.1.0 ; Date: 2006/01/04 05:55:19, urgency=low
 	Feature improvements
