@@ -16,7 +16,7 @@
  *
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2000  The FreeRADIUS server project
  */
@@ -47,15 +47,7 @@ void librad_log(const char *fmt, ...)
 	char my_errstr[sizeof(librad_errstr)];
 
 	va_start(ap, fmt);
-
-#ifdef HAVE_VSNPRINTF
 	vsnprintf(my_errstr, sizeof(my_errstr), fmt, ap);
-#else
-	vsprintf(my_errstr, fmt, ap);
-	if (strlen(my_errstr) >= sizeof(my_errstr))
-		/* What can we do .. */
-		_exit(42);
-#endif
 	strcpy(librad_errstr, my_errstr);
 	va_end(ap);
 }

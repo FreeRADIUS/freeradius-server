@@ -13,18 +13,22 @@
  *
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2000  The FreeRADIUS server project
  */
 
-#include "libradius.h"
-#include <stdlib.h>
-#include <unistd.h>
+#include "autoconf.h"
 #include <string.h>
 
+#ifdef HAVE_CRYPT_H
+#include <crypt.h>
+#else
+#include <unistd.h>
+#endif
+
 #ifdef HAVE_PTHREAD_H
-#include	<pthread.h>
+#include <pthread.h>
 
 /*
  *  No pthreads, no mutex.
@@ -32,6 +36,8 @@
 static int lrad_crypt_init = 0;
 static pthread_mutex_t lrad_crypt_mutex;
 #endif
+
+#include "libradius.h"
 
 /*
  * performs a crypt password check in an thread-safe way.
@@ -49,7 +55,7 @@ int lrad_crypt_check(const char *key, const char *crypted)
 	/*
 	 *	Ensure we're thread-safe, as crypt() isn't.
 	 */
-	if (!lrad_crypt_init == 0) {
+	if (lrad_crypt_init == 0) {
 		pthread_mutex_init(&lrad_crypt_mutex, NULL);
 		lrad_crypt_init = 1;
 	}

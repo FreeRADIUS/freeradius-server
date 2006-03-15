@@ -16,7 +16,7 @@
  *
  *   You should have received a copy of the GNU Lesser General Public
  *   License along with this library; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2000  The FreeRADIUS server project
  */
@@ -116,7 +116,7 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 	s = buf;
 	escape = 0;
 
-	while (*p && buflen-- > 0) {
+	while (*p && buflen-- > 1) {
 		if (escape) {
 			escape = 0;
 			switch(*p) {
