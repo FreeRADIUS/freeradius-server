@@ -1,0 +1,24 @@
+# -*- text -*-
+##############################################################################
+#
+#	HP ProCurve VSA's
+#
+#	$Id$
+#
+##############################################################################
+
+VENDOR		HP				11 
+
+# Management authorization
+BEGIN-VENDOR	HP
+
+ATTRIBUTE	HP-Privelege-Level			1	integer
+ATTRIBUTE	HP-Command-String			2	string
+ATTRIBUTE	HP-Command-Exception			3	integer
+
+# Access control
+ATTRIBUTE	HP-Port-Priority-Regeneration-Table	40	string
+ATTRIBUTE	HP-Bandwidth-Max-Ingress		46	integer
+ATTRIBUTE	HP-Nas-Filter-Rule			61	string
+
+END-VENDOR	HP
