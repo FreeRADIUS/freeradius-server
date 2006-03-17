@@ -4,6 +4,7 @@ FreeRADIUS 1.1.1 ; $Date$, urgency=low
 	  Bug found by Steffen Schuster.
 	
 	Feature improvements
+	* More dictionary updates
 	* Additional tests and fixes for Digest module from Phillipe Sultan.
 	* Add new "phone" response mode to rlm_otp/cryptocard.
 	* Put the eap sessions into a tree, so that looking them up is very
@@ -13,6 +14,7 @@ FreeRADIUS 1.1.1 ; $Date$, urgency=low
 	* Add support for xlat expansion of attributes from LDAP.
 
 	Bug fixes
+	* Fix rlm_perl crash. (closes: #348)
 	* Fix handling of CoA-Request packets (close #344).  Also correct
 	  name of CoA packets.
 	* Fix an error on x86_64 machines when reading dictionaries.
