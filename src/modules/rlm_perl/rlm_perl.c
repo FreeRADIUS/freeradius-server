@@ -778,7 +778,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 #ifdef USE_ITHREADS
-	inst->perl = perl_clone(interp ,CLONEf_KEEP_PTR_TABLE);
+	inst->perl = interp;
 	{
 	dTHXa(inst->perl);
 	}
