@@ -765,7 +765,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 		PL_perl_destruct_level = 2;
 	}
 
-	inst->perl = perl_clone(interp ,CLONEf_KEEP_PTR_TABLE);
+	inst->perl = interp;
 	{
 	dTHXa(inst->perl);
 	}
