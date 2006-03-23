@@ -14,10 +14,10 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,  USA
  *
  * Copyright 2001-2005 Google, Inc.
- * Copyright 2005 TRI-D Systems, Inc.
+ * Copyright 2005,2006 TRI-D Systems, Inc.
  */
 
 #ifndef OTP_H
@@ -179,7 +179,7 @@ extern int otp_x99_mac(const unsigned char *, size_t, unsigned char [8],
 /* otp_hotp.c */
 extern int otp_hotp_mac(const unsigned char [8], unsigned char [7],
                         const unsigned char [OTP_MAX_KEY_LEN], size_t,
-                        const char *);
+                        int, const char *);
 
 /* otp_util.c */
 /* Character maps for generic hex and vendor specific decimal modes */

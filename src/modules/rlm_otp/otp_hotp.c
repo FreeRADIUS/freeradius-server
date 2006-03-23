@@ -14,9 +14,9 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301,  USA
  *
- * Copyright 2005 TRI-D Systems, Inc.
+ * Copyright 2005,2006 TRI-D Systems, Inc.
  */
 
 #include <openssl/hmac.h>
@@ -27,7 +27,12 @@ static const char rcsid[] = "$Id$";
 
 
 /*
- * This implements HOTP per draft-mraihi-oath-hmac-otp-04.txt, for Digit = 6.
+ * This implements HOTP per RFC4226, for Digit = 6, 7, 8, 9.
+ * (Not explicit in RFC4226, except mentioned as an aside in section E.2,
+ *  the maximum OTP length is 9 digits due to the 32-bit restriction in
+ *  step 3.  Note that sample code in RFC4226 is wrong in that they allow
+ *  Digit = 1-5 as well; RFC4226 is explicit that the minimum value for
+ *  Digit is 6.)
  *
  * The HOTP algorithm is:
  * 1. HS = HMAC-SHA-1(K, C)
@@ -42,11 +47,15 @@ static const char rcsid[] = "$Id$";
 int
 otp_hotp_mac(const unsigned char counter[8], unsigned char output[7],
              const unsigned char keyblock[OTP_MAX_KEY_LEN], size_t key_len,
-             const char *log_prefix)
+             int d, const char *log_prefix)
 {
   unsigned char hmac[EVP_MAX_MD_SIZE];	/* >=20 */
   int hmac_len = 0;
   uint32_t dbc;		/* "dynamic binary code" from HOTP draft */
+  long dmod[10] = { 0, 0, 0, 0, 0, 0,		/* modulus table */
+                    1000000L, 10000000L, 100000000L, 1000000000L };
+  char *fmt[10] = { 0, 0, 0, 0, 0, 0,		/* format table  */
+                    "%06lu", "%07lu", "%08lu", "%09lu" };
 
   /* 1. hmac */
   if (!HMAC(EVP_sha1(), keyblock, key_len, counter, 8, hmac, &hmac_len) ||
@@ -68,7 +77,7 @@ otp_hotp_mac(const unsigned char counter[8], unsigned char output[7],
   }
 
   /* 3. int conversion and modulus (as string) */
-  (void) sprintf(output, "%06lu", dbc % 1000000L);
+  (void) sprintf(output, fmt[d], dbc % dmod[d]);
 
   return 0;
 }
