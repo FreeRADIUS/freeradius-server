@@ -686,7 +686,8 @@ AC_CHECK_FUNCS( \
 	setlinebuf \
 	setvbuf \
 	getusershell \
-	initgroups
+	initgroups \
+	closefrom
 )
 RADIUSD_NEED_DECLARATIONS( \
 	crypt \

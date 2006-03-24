@@ -30,6 +30,7 @@ static const char rcsid[] = "$Id$";
 #include <string.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <unistd.h>
 #include <signal.h>
 
 #ifdef HAVE_SYS_WAIT_H
@@ -128,7 +129,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 
 	if ((pid = rad_fork(exec_wait)) == 0) {
 #define MAX_ENVP 1024
-		int i, devnull;
+		int devnull;
 		char *envp[MAX_ENVP];
 		int envlen;
 		char buffer[1024];
@@ -198,9 +199,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 *	want to leave dangling FD's for the child process
 		 *	to play funky games with, so we close them.
 		 */
-		for (i = 3; i < 256; i++) {
-			close(i);
-		}
+		closefrom(3);
 
 		/*
 		 *	Set up the environment variables.
@@ -228,6 +227,11 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, 1);
 
 			envp[envlen++] = strdup(buffer);
+
+			/*
+			 *	Don't add too many attributes.
+			 */
+			if (envlen == (MAX_ENVP - 1)) break;
 		}
 		envp[envlen] = NULL;
 		execve(argv[0], argv, envp);

@@ -469,3 +469,33 @@ void lrad_bin2hex(const uint8_t *bin, char *hex, int len)
 	return;
 }
 
+/*
+ *	So we don't have ifdef's in the rest of the code
+ */
+#ifndef HAVE_CLOSEFROM
+int closefrom(int fd)
+{
+	int i;
+	int maxfd = 256;
+
+#ifdef _SC_OPEN_MAX
+	maxfd = sysconf(_SC_OPEN_MAX);
+	if (maxfd < 0) {
+	  maxfd = 256;
+	}
+#endif
+
+	if (fd > maxfd) return 0;
+
+	/*
+	 *	FIXME: return EINTR?
+	 *
+	 *	Use F_CLOSEM?
+	 */
+	for (i = fd; i < maxfd; i++) {
+		close(i);
+	}
+
+	return 0;
+}
+#endif

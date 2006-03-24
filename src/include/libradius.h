@@ -311,6 +311,9 @@ int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
 void		lrad_bin2hex(const uint8_t *bin, char *hex, int len);
 int		lrad_hex2bin(const char *hex, uint8_t *bin, int len);
+#ifndef HAVE_CLOSEFROM
+int		closefrom(int fd);
+#endif
 
 #ifdef ASCEND_BINARY
 /* filters.c */

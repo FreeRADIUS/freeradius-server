@@ -127,7 +127,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	int	status;
 	int	n;
 	char	address[16];
-	char	port[8];
+	char	port[11];
 	RADCLIENT *cl;
 
 	/*
@@ -196,11 +196,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 		return WEXITSTATUS(status);
 	}
 
-	/*
-	 *	Child - exec checklogin with the right parameters.
-	 */
-	for (n = 256; n >= 3; n--)
-		close(n);
+	closefrom(3);
 
 	/*
 	 *  We don't close fd's 0, 1, and 2.  If we're in debugging mode,
@@ -212,7 +208,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	 */
 
 	ip_ntoa(address, nasaddr);
-	sprintf(port, "%u", portnum);
+	snprintf(port, 11, "%u", portnum);
 
 #ifdef __EMX__
 	/* OS/2 can't directly execute scripts then we call the command
