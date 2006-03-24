@@ -43,7 +43,7 @@ install:
 	$(INSTALL) -d -m 755	$(R)$(RUNDIR)
 	$(INSTALL) -d -m 700	$(R)$(logdir)
 	$(INSTALL) -d -m 700	$(R)$(radacctdir)
-	$(INSTALL) -d -m 700	$(R)$(datadir)
+	$(INSTALL) -d -m 755	$(R)$(datadir)
 	$(INSTALL) -d -m 755	$(R)$(dictdir)
 	for i in 1 5 8; do \
 		$(INSTALL) -d -m 755	$(R)$(mandir)/man$$i; \
@@ -62,7 +62,7 @@ install:
 common:
 	@for dir in $(SUBDIRS); do \
 		echo "Making $(WHAT_TO_MAKE) in $$dir..."; \
-		(cd $$dir && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit 1;\
+		(cd $$dir && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit $?;\
 	done
 
 distclean: clean
