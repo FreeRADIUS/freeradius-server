@@ -102,6 +102,7 @@ typedef struct otp_option_t {
 #elif defined(PAM)
   /* PAM specific items */
   char *fast_prompt;	/* fast mode prompt                                */
+  int useauthtok;	/* use_first_pass                                  */
 #endif
 } otp_option_t;
 
