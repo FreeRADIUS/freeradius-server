@@ -882,6 +882,12 @@ static int my_dict_init(const char *dir, const char *fn,
 	}
 
 	stat(fn, &statbuf); /* fopen() guarantees this will succeed */
+	if (!S_ISREG(statbuf.st_mode)) {
+		fclose(fp);
+		librad_log("dict_init: Dictionary \"%s\" is not a regular file",
+			   fn);
+		return -1;	  
+	}
 	dict_stat_add(fn, &statbuf);
 
 	/*
