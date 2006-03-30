@@ -882,13 +882,13 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
  *     Value Pair Format
  *
  */
-static int pairadd_sv(VALUE_PAIR **vp, char *key, SV *sv) {
+static int pairadd_sv(VALUE_PAIR **vp, char *key, SV *sv, int operator) {
        char            *val;
        VALUE_PAIR      *vpp;
 
        if (SvOK(sv)) {
                val = SvPV_nolen(sv);
-               vpp = pairmake(key, val, T_OP_EQ);
+               vpp = pairmake(key, val, operator);
                if (vpp != NULL) {
                        pairadd(vp, vpp);
                        radlog(L_DBG,
@@ -922,9 +922,9 @@ static int get_hv_content(HV *my_hv, VALUE_PAIR **vp)
                        len = av_len(av);
                        for (j = 0; j <= len; j++) {
                                av_sv = av_fetch(av, j, 0);
-                               ret = pairadd_sv(vp, key, *av_sv) + ret;
+                               ret = pairadd_sv(vp, key, *av_sv, T_OP_ADD) + ret;
                        }
-               } else ret = pairadd_sv(vp, key, res_sv) + ret;
+               } else ret = pairadd_sv(vp, key, res_sv, T_OP_EQ) + ret;
         }
 
         return ret;
