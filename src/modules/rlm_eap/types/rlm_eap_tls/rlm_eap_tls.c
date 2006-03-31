@@ -63,6 +63,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(EAP_TLS_CONF, check_crl), NULL, "no"},
 	{ "check_cert_cn", PW_TYPE_STRING_PTR,
 	  offsetof(EAP_TLS_CONF, check_cert_cn), NULL, NULL},
+	{ "cipher_list", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, cipher_list), NULL, NULL},
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -186,6 +188,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 		return NULL;
 	}
 	SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
+	}
 
 	if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
 		ERR_print_errors_fp(stderr);
@@ -270,6 +273,15 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 		radlog(L_ERR, "rlm_eap_tls: Error loading randomness");
 		return NULL;
 	}
+
+	/*
+	 * Set the cipher list if we were told to
+	 */
+	if (conf->cipher_list) {
+		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
+			radlog(L_ERR, "rlm_eap_tls: Error setting cipher list");
+			return NULL;
+		}
 
 	return ctx;
 }
