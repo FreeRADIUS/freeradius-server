@@ -188,7 +188,6 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 		return NULL;
 	}
 	SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
-	}
 
 	if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
 		ERR_print_errors_fp(stderr);
@@ -282,6 +281,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 			radlog(L_ERR, "rlm_eap_tls: Error setting cipher list");
 			return NULL;
 		}
+	}
 
 	return ctx;
 }
