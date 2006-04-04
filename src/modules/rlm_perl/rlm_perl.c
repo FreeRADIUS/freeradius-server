@@ -755,17 +755,16 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 #ifdef USE_ITHREADS
-	if (!interp) {
-		if ((interp = perl_alloc()) == NULL) {
-			radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
-			return -1;
-		}
-		
-		perl_construct(interp);
-		PL_perl_destruct_level = 2;
-	}
-
 	inst->perl = interp;
+	
+	if ((inst->perl = perl_alloc()) == NULL) {
+		radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
+		return (-1);
+	}
+		
+	perl_construct(inst->perl);
+	PL_perl_destruct_level = 2;
+
 	{
 	dTHXa(inst->perl);
 	}
