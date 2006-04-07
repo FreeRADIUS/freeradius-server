@@ -2,8 +2,9 @@
  * Id: postgresql.conf,v 1.8.2.11 2003/07/15 11:15:43 pnixon Exp $
  *
  * --- Peter Nixon [ codemonkey@peternixon.net ]
- * This is a custom SQL schema for doing H323 VoIP accounting with FreeRadius and
- * Cisco gateways (I am using 5300 and 5350 series).
+ * This is a custom SQL schema for doing H323 and SIP VoIP accounting with FreeRadius
+ * and Cisco equipment. It is currently known to work with 3640, 5300 and 5350 series
+ * as well as CSPS (Cisco SIP Proxy Server).
  * It will scale ALOT better than the default radius schema which is designed for
  * simple dialup installations of FreeRadius.
  *
@@ -180,6 +181,9 @@ CREATE VIEW customerip AS
  *  An asterisk (*) means that after a gateway reboot, the gateway clock was not manually set
  *  and the gateway has not synchronized with an NTP server yet. A dot (.) means the gateway
  *  NTP has lost synchronization with an NTP server."
+ *
+ * We therefore do not bother to strip asterisks (*) from timestamps, as you NEED ntp setup
+ * unless you don't care about billing at all!
  *
  *  * Example useage:
  *      insert into mytable values (strip_dot('.16:46:02.356 EET Wed Dec 11 2002'));
