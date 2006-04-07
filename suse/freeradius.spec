@@ -143,6 +143,7 @@ make
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/var/lib/radiusd
+mkdir -p $RPM_BUILD_ROOT/usr/lib/radiusd
 make install R=$RPM_BUILD_ROOT
 # modify default configuration
 RADDB=$RPM_BUILD_ROOT%{_sysconfdir}/raddb
