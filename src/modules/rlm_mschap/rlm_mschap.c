@@ -187,7 +187,7 @@ static int pdb_decode_acct_ctrl(const char *p)
  *	ntpwdhash converts Unicode password to 16-byte NT hash
  *	with MD4
  */
-static void ntpwdhash (char *szHash, const char *szPassword)
+static void ntpwdhash (unsigned char *szHash, const char *szPassword)
 {
 	char szUnicodePass[513];
 	int nPasswordLen;
@@ -218,7 +218,7 @@ static void challenge_hash( const char *peer_challenge,
 			    const char *user_name, char *challenge )
 {
 	SHA1_CTX Context;
-	char hash[20];
+	unsigned char hash[20];
 
 	SHA1Init(&Context);
 	SHA1Update(&Context, peer_challenge, 16);
@@ -234,19 +234,19 @@ static void challenge_hash( const char *peer_challenge,
  *	returns 42-octet response string
  */
 static void auth_response(const char *username,
-			  const char *nt_hash_hash,
-			  char *ntresponse,
+			  const unsigned char *nt_hash_hash,
+			  unsigned char *ntresponse,
 			  char *peer_challenge, char *auth_challenge,
 			  char *response)
 {
 	SHA1_CTX Context;
-	const char magic1[39] =
+	const unsigned char magic1[39] =
 	{0x4D, 0x61, 0x67, 0x69, 0x63, 0x20, 0x73, 0x65, 0x72, 0x76,
 	 0x65, 0x72, 0x20, 0x74, 0x6F, 0x20, 0x63, 0x6C, 0x69, 0x65,
 	 0x6E, 0x74, 0x20, 0x73, 0x69, 0x67, 0x6E, 0x69, 0x6E, 0x67,
 	 0x20, 0x63, 0x6F, 0x6E, 0x73, 0x74, 0x61, 0x6E, 0x74};
 
-	const char magic2[41] =
+	const unsigned char magic2[41] =
 	{0x50, 0x61, 0x64, 0x20, 0x74, 0x6F, 0x20, 0x6D, 0x61, 0x6B,
 	 0x65, 0x20, 0x69, 0x74, 0x20, 0x64, 0x6F, 0x20, 0x6D, 0x6F,
 	 0x72, 0x65, 0x20, 0x74, 0x68, 0x61, 0x6E, 0x20, 0x6F, 0x6E,
@@ -254,7 +254,7 @@ static void auth_response(const char *username,
 	 0x6E};
 
         char challenge[8];
-        char digest[20];
+	unsigned char digest[20];
 
 	SHA1Init(&Context);
 	SHA1Update(&Context, nt_hash_hash, 16);
@@ -288,7 +288,6 @@ typedef struct rlm_mschap_t {
         int with_ntdomain_hack;	/* this should be in another module */
 	char *passwd_file;
 	char *xlat_name;
-	char *auth_type;	/* I don't think this is needed... */
 	char *ntlm_auth;
 } rlm_mschap_t;
 
@@ -453,7 +452,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		 *	Pull the NT-Domain out of the User-Name, if it exists.
 		 */
 	} else if (strcasecmp(fmt, "NT-Domain") == 0) {
-		char *p;
+		char *p, *q;
 
 		user_name = pairfind(request->packet->vps, PW_USER_NAME);
 		if (!user_name) {
@@ -461,18 +460,46 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			return 0;
 		}
 		
-		p = strchr(user_name->strvalue, '\\');
-		if (!p) {
-			DEBUG2("  rlm_mschap: No NT-Domain was found in the User-Name.");
-			return 0;
-		}
-
 		/*
-		 *	Hack.  This is simpler than the alternatives.
+		 *	First check to see if this is a host/ style User-Name
+		 *	(a la Kerberos host principal)
 		 */
-		*p = '\0';
-		strNcpy(out, user_name->strvalue, outlen);
-		*p = '\\';
+		if (strncmp(user_name->strvalue, "host/", 5) == 0) {
+			/*
+			 *	If we're getting a User-Name formatted in this way,
+			 *	it's likely due to PEAP.  The Windows Domain will be
+			 *	the first domain component following the hostname,
+			 *	or the machine name itself if only a hostname is supplied
+			 */
+			p = strchr(user_name->strvalue, '.');
+			if (!p) {
+				DEBUG2("  rlm_mschap: setting NT-Domain to same as machine name");
+				strNcpy(out, user_name->strvalue + 5, outlen);
+			} else {
+				p++;	/* skip the period */
+				q = strchr(p, '.');
+				/*
+				 * use the same hack as below
+				 * only if another period was found
+				 */
+				if (q) *q = '\0';
+				strNcpy(out, p, outlen);
+				if (q) *q = '.';
+			}
+		} else {
+			p = strchr(user_name->strvalue, '\\');
+			if (!p) {
+				DEBUG2("  rlm_mschap: No NT-Domain was found in the User-Name.");
+				return 0;
+			}
+
+			/*
+			 *	Hack.  This is simpler than the alternatives.
+			 */
+			*p = '\0';
+			strNcpy(out, user_name->strvalue, outlen);
+			*p = '\\';
+		}
 
 		return strlen(out);
 
@@ -488,14 +515,39 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			return 0;
 		}
 		
-		p = strchr(user_name->strvalue, '\\');
-		if (p) {
-			p++;	/* skip the backslash */
+		/*
+		 *	First check to see if this is a host/ style User-Name
+		 *	(a la Kerberos host principal)
+		 */
+		if (strncmp(user_name->strvalue, "host/", 5) == 0) {
+			/*
+			 *	If we're getting a User-Name formatted in this way,
+			 *	it's likely due to PEAP.  When authenticating this against
+			 *	a Domain, Windows will expect the User-Name to be in the
+			 *	format of hostname$, the SAM version of the name, so we
+			 *	have to convert it to that here.  We do so by stripping
+			 *	off the first 5 characters (host/), and copying everything
+			 *	from that point to the first period into a string and appending
+			 * 	a $ to the end.
+			 */
+			p = strchr(user_name->strvalue, '.');
+			/*
+			 * use the same hack as above
+			 * only if a period was found
+			 */
+			if (p) *p = '\0';
+			snprintf(out, outlen, "%s$", user_name->strvalue + 5);
+			if (p) *p = '.';
 		} else {
-			p = user_name->strvalue; /* use the whole User-Name */
+			p = strchr(user_name->strvalue, '\\');
+			if (p) {
+				p++;	/* skip the backslash */
+			} else {
+				p = user_name->strvalue; /* use the whole User-Name */
+			}
+			strNcpy(out, p, outlen);
 		}
 
-		strNcpy(out, p, outlen);
 		return strlen(out);
 
 	} else {
@@ -547,8 +599,6 @@ static CONF_PARSER module_config[] = {
 	  offsetof(rlm_mschap_t,with_ntdomain_hack), NULL, "no" },
 	{ "passwd",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, passwd_file), NULL,  NULL },
-	{ "authtype",   PW_TYPE_STRING_PTR,
-	  offsetof(rlm_mschap_t, auth_type), NULL,  NULL },
 	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, ntlm_auth), NULL,  NULL },
 
@@ -561,9 +611,8 @@ static CONF_PARSER module_config[] = {
  */
 static int mschap_detach(void *instance){
 #define inst ((rlm_mschap_t *)instance)
-	if (inst->passwd_file) free(inst->passwd_file);
-	if (inst->auth_type) free(inst->auth_type);
-	if (inst->ntlm_auth) free(inst->ntlm_auth);
+	free(inst->passwd_file);
+	free(inst->ntlm_auth);
 	if (inst->xlat_name) {
 		xlat_unregister(inst->xlat_name, mschap_xlat);
 		free(inst->xlat_name);
@@ -902,9 +951,9 @@ static void mppe_chap2_gen_keys128(uint8_t *nt_hashhash,uint8_t *response,
 static int mschap_authorize(void * instance, REQUEST *request)
 {
 #define inst ((rlm_mschap_t *)instance)
-	VALUE_PAIR *challenge = NULL, *response = NULL;
+	VALUE_PAIR *challenge = NULL;
+	VALUE_PAIR *response = NULL;
 	VALUE_PAIR *vp;
-	const char *authtype_name = "MS-CHAP";
 
 	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE);
 	if (!challenge) {
@@ -923,24 +972,17 @@ static int mschap_authorize(void * instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-	/*
-	 *	Choose MS-CHAP, or whatever else they told us to use.
-	 */
-	if (inst->auth_type) {
-		authtype_name = inst->auth_type;
-	}
-
-	DEBUG2("  rlm_mschap: Found MS-CHAP attributes.  Setting 'Auth-Type  = %s'", authtype_name);
+	DEBUG2("  rlm_mschap: Found MS-CHAP attributes.  Setting 'Auth-Type  = %s'", inst->xlat_name);
 
 	/*
 	 *	Set Auth-Type to MS-CHAP.  The authentication code
 	 *	will take care of turning clear-text passwords into
 	 *	NT/LM passwords.
 	 */
-	pairdelete(&request->config_items, PW_AUTHTYPE);
-	vp = pairmake("Auth-Type", authtype_name, T_OP_EQ);
+	vp = pairmake("Auth-Type", inst->xlat_name, T_OP_EQ);
 	rad_assert(vp != NULL);
-	pairadd(&request->config_items, vp);
+	pairmove(&request->config_items, &vp);
+	pairfree(&vp);		/* may be NULL */
 
 	return RLM_MODULE_OK;
 #undef inst
@@ -966,7 +1008,8 @@ static int mschap_authorize(void * instance, REQUEST *request)
 static int mschap_authenticate(void * instance, REQUEST *request)
 {
 #define inst ((rlm_mschap_t *)instance)
-	VALUE_PAIR *challenge = NULL, *response = NULL;
+	VALUE_PAIR *challenge = NULL;
+	VALUE_PAIR *response = NULL;
 	VALUE_PAIR *password = NULL;
 	VALUE_PAIR *lm_password, *nt_password, *smb_ctrl;
 	VALUE_PAIR *username;
