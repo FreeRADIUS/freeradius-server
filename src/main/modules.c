@@ -541,13 +541,15 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 	for (modref=cf_item_find_next(cs, NULL);
 			modref != NULL;
 			modref=cf_item_find_next(cs, modref)) {
+		CONF_PAIR *cp = NULL;
+		CONF_SECTION *scs = NULL;
 
 		if (cf_item_is_section(modref)) {
 			const char *sec_name;
-			CONF_SECTION *scs;
 			scs = cf_itemtosection(modref);
 
 			sec_name = cf_section_name1(scs);
+
 			if (strcmp(sec_name,
 				   subcomponent_names[comp]) == 0) {
 				load_subcomponent_section(scs, comp, filename);
@@ -562,8 +564,8 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 				load_subcomponent_section(scs, comp, filename);
 				continue;
 			}
+			cp = NULL;
 		} else {
-			CONF_PAIR *cp;
 			cp = cf_itemtopair(modref);
 		}
 
@@ -576,19 +578,32 @@ static int load_component_section(CONF_SECTION *cs, int comp,
                         return -1;
                 }
 
-
 		if (comp == RLM_COMPONENT_AUTH) {
 			DICT_VALUE *dval;
+			const char *modrefname = NULL;
 
-			dval = dict_valbyname(PW_AUTH_TYPE, modname);
+			if (cp) {
+				modrefname = cf_pair_attr(cp);
+			} else {
+				modrefname = cf_section_name2(scs);
+				if (!modrefname) {
+					radlog(L_ERR|L_CONS,
+					       "%s[%d] Failed to parse %s sub-section.\n",
+					       filename, cf_section_lineno(scs),
+					       cf_section_name1(scs));
+					return -1;
+				}
+			}
+			
+			dval = dict_valbyname(PW_AUTH_TYPE, modrefname);
 			if (!dval) {
 				/*
 				 *	It's a section, but nothing we
 				 *	recognize.  Die!
 				 */
 				radlog(L_ERR|L_CONS, "%s[%d] Unknown Auth-Type \"%s\" in %s section.",
-				       filename, cf_section_lineno(cs),
-				       modname, component_names[comp]);
+				       filename, cf_section_lineno(scs),
+				       modrefname, component_names[comp]);
 				return -1;
 			}
 			idx = dval->value;
