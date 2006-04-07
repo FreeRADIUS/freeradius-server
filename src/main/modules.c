@@ -470,7 +470,7 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
 }
 
 /* Load a flat module list, as found inside an authtype{} block */
-static void load_subcomponent_section(CONF_SECTION *cs, int comp,
+static int load_subcomponent_section(CONF_SECTION *cs, int comp,
 				      const char *filename)
 {
 	int idx;
@@ -482,7 +482,7 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp,
 
 	ml = compile_modgroup(comp, cs, filename);
 	if (!ml) {
-		return; /* FIXME: pull full fix from CVS head */
+		return 0;
 	}
 
 	/* We must assign a numeric index to this subcomponent. For
@@ -522,10 +522,12 @@ static void load_subcomponent_section(CONF_SECTION *cs, int comp,
 				filename, cf_section_lineno(cs),
 				subcomponent_names[comp], cf_section_name2(cs));
 		modcallable_free(&ml);
-		return;
+		return 1;
 	}
 
 	subcomp->modulelist = ml;
+
+	return 1;
 }
 
 static int load_component_section(CONF_SECTION *cs, int comp,
@@ -552,7 +554,10 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 
 			if (strcmp(sec_name,
 				   subcomponent_names[comp]) == 0) {
-				load_subcomponent_section(scs, comp, filename);
+				if (!load_subcomponent_section(scs, comp,
+							       filename)) {
+					return -1; /* FIXME: memleak? */
+				}
 				continue;
 			}
 
@@ -561,7 +566,10 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 			 */
 			if (strcmp(sec_name,
 				   old_subcomponent_names[comp]) == 0) {
-				load_subcomponent_section(scs, comp, filename);
+				if (!load_subcomponent_section(scs, comp,
+							       filename)) {
+					return -1; /* FIXME: memleak? */
+				}
 				continue;
 			}
 			cp = NULL;
