@@ -625,11 +625,6 @@ $INCLUDE ${confdir}/eap.conf
 		#  If you are using /etc/smbpasswd, see the 'passwd'
 		#  module for an example of how to use /etc/smbpasswd
 
-		# authtype value, if present, will be used
-		# to overwrite (or add) Auth-Type during
-		# authorization. Normally should be MS-CHAP
-		authtype = MS-CHAP
-		
 		# if use_mppe is not set to no mschap will
 		# add MS-CHAP-MPPE-Keys for MS-CHAPv1 and
 		# MS-MPPE-Recv-Key/MS-MPPE-Send-Key for MS-CHAPv2

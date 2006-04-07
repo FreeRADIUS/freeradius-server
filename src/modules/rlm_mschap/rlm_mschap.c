@@ -255,7 +255,6 @@ typedef struct rlm_mschap_t {
         int with_ntdomain_hack;	/* this should be in another module */
 	char *passwd_file;
 	char *xlat_name;
-	char *auth_type;	/* I don't think this is needed... */
 	char *ntlm_auth;
 } rlm_mschap_t;
 
@@ -601,8 +600,6 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_mschap_t,with_ntdomain_hack), NULL, "no" },
 	{ "passwd",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, passwd_file), NULL,  NULL },
-	{ "authtype",   PW_TYPE_STRING_PTR,
-	  offsetof(rlm_mschap_t, auth_type), NULL,  NULL },
 	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, ntlm_auth), NULL,  NULL },
 
@@ -615,9 +612,8 @@ static const CONF_PARSER module_config[] = {
  */
 static int mschap_detach(void *instance){
 #define inst ((rlm_mschap_t *)instance)
-	if (inst->passwd_file) free(inst->passwd_file);
-	if (inst->auth_type) free(inst->auth_type);
-	if (inst->ntlm_auth) free(inst->ntlm_auth);
+	free(inst->passwd_file);
+	free(inst->ntlm_auth);
 	if (inst->xlat_name) {
 		xlat_unregister(inst->xlat_name, mschap_xlat);
 		free(inst->xlat_name);
@@ -960,7 +956,6 @@ static int mschap_authorize(void * instance, REQUEST *request)
 #define inst ((rlm_mschap_t *)instance)
 	VALUE_PAIR *challenge = NULL, *response = NULL;
 	VALUE_PAIR *vp;
-	const char *authtype_name = "MS-CHAP";
 
 	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE);
 	if (!challenge) {
@@ -979,24 +974,17 @@ static int mschap_authorize(void * instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-	/*
-	 *	Choose MS-CHAP, or whatever else they told us to use.
-	 */
-	if (inst->auth_type) {
-		authtype_name = inst->auth_type;
-	}
-
-	DEBUG2("  rlm_mschap: Found MS-CHAP attributes.  Setting 'Auth-Type  = %s'", authtype_name);
+	DEBUG2("  rlm_mschap: Found MS-CHAP attributes.  Setting 'Auth-Type  = %s'", inst->xlat_name);
 
 	/*
 	 *	Set Auth-Type to MS-CHAP.  The authentication code
 	 *	will take care of turning clear-text passwords into
 	 *	NT/LM passwords.
 	 */
-	pairdelete(&request->config_items, PW_AUTHTYPE);
-	vp = pairmake("Auth-Type", authtype_name, T_OP_EQ);
+	vp = pairmake("Auth-Type", inst->xlat_name, T_OP_EQ);
 	rad_assert(vp != NULL);
-	pairadd(&request->config_items, vp);
+	pairmove(&request->config_items, &vp);
+	pairfree(&vp);		/* may be NULL */
 
 	return RLM_MODULE_OK;
 #undef inst
