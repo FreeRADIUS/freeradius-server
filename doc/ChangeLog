@@ -1,3 +1,13 @@
+FreeRADIUS 1.1.2 ; $Date$, urgency=low
+
+	Bug fixes
+	* Don't forcibly over-write Auth-Type in the mschap module.
+	  This prevents an earlier module from forcing reject.
+	* Use the correct module reference in the authenticate section,
+	  where Auth-Type wasn't explicitely specified.
+	* If there are typos in a subsection in radiusd.conf, exit
+	  after printing an error, rather than continuing.
+
 FreeRADIUS 1.1.1 ; $Date$, urgency=low
 	Security fixes
 	* Additional state checking in the EAP-MSCHAPv2 module.
