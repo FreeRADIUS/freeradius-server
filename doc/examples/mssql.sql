@@ -22,7 +22,7 @@ CREATE TABLE [radacct] (
 	[GroupName] [varchar] (64) NOT NULL ,
 	[Realm] [varchar] (64) NULL ,
 	[NASIPAddress] [varchar] (15) NOT NULL ,
-	[NASPortId] [int] NULL ,
+	[NASPortId] [varchar] (15) NULL ,
 	[NASPortType] [varchar] (32) NULL ,
 	[AcctStartTime] [datetime] NOT NULL ,
 	[AcctStopTime] [datetime] NOT NULL ,

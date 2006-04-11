@@ -22,7 +22,7 @@ CREATE TABLE radacct (
   GroupName varchar(64) NOT NULL default '',
   Realm varchar(64) default '',
   NASIPAddress varchar(15) NOT NULL default '',
-  NASPortId int(12) default NULL,
+  NASPortId varchar(15) default NULL,
   NASPortType varchar(32) default NULL,
   AcctStartTime datetime NOT NULL default '0000-00-00 00:00:00',
   AcctStopTime datetime NOT NULL default '0000-00-00 00:00:00',

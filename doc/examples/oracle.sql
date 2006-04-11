@@ -47,7 +47,7 @@ CREATE TABLE radacct (
 	groupname		VARCHAR(32) NOT NULL,
 	realm			VARCHAR(30),
 	nasipaddress		VARCHAR(15) NOT NULL,
-	nasportid		NUMERIC(12),
+	nasportid		VARCHAR(15),
 	nasporttype		VARCHAR(32),
 	acctstarttime		TIMESTAMP WITH TIME ZONE,
 	acctstoptime		TIMESTAMP WITH TIME ZONE,
