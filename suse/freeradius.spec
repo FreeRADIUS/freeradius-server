@@ -1,12 +1,18 @@
 #
-# spec file for package freeradius (Version 1.1.1)
+# spec file for package freeradius
 #
-# Copyright (c) 2005 SUSE LINUX Products GmbH, Nuernberg, Germany.
-# This file and all modifications and additions to the pristine
-# package are under the same license as the package itself.
-#
-# Please submit bugfixes or comments via http://bugs.opensuse.org
-#
+
+%define _oracle_support	0
+
+%define distroversion generic
+%{!?suse_version:%define suse_version 0}
+%{!?sles_version:%define sles_version 0}
+%if %suse_version > 0
+        %define distroversion   suse%{suse_version}
+%endif
+%if %sles_version > 0
+        %define distroversion   sles%{sles_version}
+%endif
 
 # neededforbuild  apache2-devel-packages cyrus-sasl-devel db-devel kerberos-devel-packages mysql-devel mysql-shared openldap2 openldap2-client openldap2-devel openssl openssl-devel pam-devel postgresql-devel postgresql-libs python python-devel unixODBC unixODBC-devel
 
@@ -17,22 +23,17 @@ License:      GPL, LGPL
 Group:        Productivity/Networking/Radius/Servers
 Provides:     radiusd
 Conflicts:    radiusd-livingston radiusd-cistron icradius
-Version:      1.1.1
-Release:      0
+Version:      1.1.2
+Release:      0.%{distroversion}
 URL:          http://www.freeradius.org/
 Summary:      Very highly Configurable Radius-Server
 Source0:      %{name}-%{version}.tar.gz
-Source1:      rcradiusd
-Source2:      README.SuSE
-Source3:      admin-httpd.conf
-Patch0:       edir.patch
-Patch1:       dialup_admin.patch
-Patch2:       lib64.patch
 %if %suse_version > 800
 PreReq:       /usr/sbin/useradd /usr/sbin/groupadd
 PreReq:       %insserv_prereq %fillup_prereq
 %endif
 BuildRoot:    %{_tmppath}/%{name}-%{version}-build
+Autoreqprov:  off
 %define apxs2 apxs2-prefork
 %define apache2_sysconfdir %(%{apxs2} -q SYSCONFDIR)
 
@@ -56,12 +57,31 @@ Authors:
     Alan Curry
     various other people
 
+%if %_oracle_support == 1
+%package oracle
+BuildRequires: oracle-instantclient-basic oracle-instantclient-devel
+Group:        Productivity/Networking/Radius/Servers
+Summary:      FreeRADIUS Oracle database support
+Requires:     oracle-instantclient-basic
+Autoreqprov:  off
+
+%description oracle
+The FreeRADIUS server has a number of features found in other servers,
+and additional features not found in any other server. Rather than
+doing a feature by feature comparison, we will simply list the features
+of the server, and let you decide if they satisfy your needs.
+
+Support for RFC and VSA Attributes Additional server configuration
+attributes Selecting a particular configuration Authentication methods
+%endif
+
 %package dialupadmin
 Group:        Productivity/Networking/Radius/Servers
 Summary:      Web management for FreeRADIUS
 Requires:     http_daemon apache2-mod_php4 php4
 Requires:     php4-ldap php4-mysql perl-DateManip
 Requires:     php4-pgsql php4-session
+Autoreqprov:  off
 
 %description dialupadmin
 Dialup Admin supports users either in SQL (MySQL or PostgreSQL are
@@ -80,6 +100,7 @@ Authors:
 %package devel
 Group:        Development/Libraries/C and C++
 Summary:      FreeRADIUS Development Files (static libs)
+Autoreqprov:  off
 
 %description devel
 These are the static libraries for the FreeRADIUS package.
@@ -96,11 +117,6 @@ Authors:
 
 %prep
 %setup -q
-%patch0
-%patch1
-%ifarch x86_64 s390x
-%patch2
-%endif
 rm -rf `find . -name CVS`
 
 %build
@@ -133,6 +149,12 @@ ln -sf %{_libdir}/libmysqlclient_r.so.12 %{_libdir}/mysql/libmysqlclient_r.so
 		--with-rlm-krb5-include-dir=/usr/include/heimdal/ \
 %endif
 		--with-rlm-krb5-lib-dir=%{_libdir} \
+%if %_oracle_support == 1
+		--with-rlm_sql_oracle \
+		--with-oracle-lib-dir=/usr/lib/oracle/10.1.0.3/client/lib/ \
+%else
+		--without-rlm_sql_oracle \
+%endif
 		--enable-strict-dependencies \
 		--with-edir \
 		--with-udpfromto
@@ -143,7 +165,6 @@ make
 rm -rf $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/var/lib/radiusd
-mkdir -p $RPM_BUILD_ROOT/usr/lib/freeradius
 make install R=$RPM_BUILD_ROOT
 # modify default configuration
 RADDB=$RPM_BUILD_ROOT%{_sysconfdir}/raddb
@@ -162,15 +183,20 @@ install -m 644 suse/radiusd-pam-old $RPM_BUILD_ROOT/etc/pam.d/radiusd
 %endif
 install -m 644 suse/radiusd-logrotate $RPM_BUILD_ROOT/etc/logrotate.d/radiusd
 install -d -m 755 $RPM_BUILD_ROOT/etc/init.d
-install    -m 744 %SOURCE1 $RPM_BUILD_ROOT/etc/init.d/radiusd
+install    -m 744 suse/rcradiusd $RPM_BUILD_ROOT/etc/init.d/radiusd
 ln -sf ../../etc/init.d/radiusd $RPM_BUILD_ROOT/usr/sbin/rcradiusd
 mv -v doc/README doc/README.doc
 # install dialup_admin
-mkdir -p $RPM_BUILD_ROOT%{_datadir}/dialup_admin
+DIALUPADMIN=$RPM_BUILD_ROOT%{_datadir}/dialup_admin
+mkdir -p $DIALUPADMIN
 cp -r dialup_admin/* $RPM_BUILD_ROOT%{_datadir}/dialup_admin
+perl -i -pe 's/^#general_base_dir\:.*$/general_base_dir\: \/usr\/share\/freeradius-dialupadmin/'   $DIALUPADMIN/conf/admin.conf
+perl -i -pe 's/^#general_radiusd_base_dir\:.*$/general_radiusd_base_dir\: \//'   $DIALUPADMIN/conf/admin.conf
+perl -i -pe 's/^#general_snmpwalk_command\:.*$/general_snmpwalk_command\: \/usr\/bin\/snmpwalk/'   $DIALUPADMIN/conf/admin.conf
+perl -i -pe 's/^#general_snmpget_command\:.*$/general_snmpget_command\: \/usr\/bin\/snmpget/'   $DIALUPADMIN/conf/admin.conf
 # apache2 config
 install -d -m 755 $RPM_BUILD_ROOT%{apache2_sysconfdir}/conf.d
-install -m 644 %SOURCE3 $RPM_BUILD_ROOT%{apache2_sysconfdir}/conf.d/radius.conf
+install -m 644 suse/admin-httpd.conf $RPM_BUILD_ROOT%{apache2_sysconfdir}/conf.d/radius.conf
 # remove unneeded stuff
 rm -rf doc/00-OLD
 rm -f $RPM_BUILD_ROOT/etc/raddb/experimental.conf $RPM_BUILD_ROOT/usr/sbin/radwatch $RPM_BUILD_ROOT/usr/sbin/rc.radiusd
@@ -202,10 +228,10 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root)
 # doc
-%doc $RPM_SOURCE_DIR/README.SuSE
+%doc suse/README.SuSE
 %doc doc/* LICENSE COPYRIGHT CREDITS README
-%doc src/modules/rlm_sql/drivers/rlm_sql_mysql/db_mysql.sql
-%doc scripts/create-users.pl scripts/CA.* scripts/certs.sh 
+%doc doc/examples/*
+%doc scripts/create-users.pl scripts/CA.* scripts/certs.sh
 %doc scripts/users2mysql.pl scripts/xpextensions
 %doc scripts/cryptpasswd scripts/exec-program-wait scripts/radiusd2ldif.pl
 # SuSE
@@ -230,6 +256,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/naspasswd
 %attr(640,-,radiusd) %ghost %config(noreplace) /etc/raddb/oraclesql.conf
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/postgresql.conf
+%attr(640,-,radiusd) %config(noreplace) /etc/raddb/sqlippool.conf
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/preproxy_users
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/proxy.conf
 %config(noreplace) /etc/raddb/radiusd.conf
@@ -263,6 +290,13 @@ rm -rf $RPM_BUILD_ROOT
 %attr(700,radiusd,radiusd) %dir /var/log/radius/
 %attr(700,radiusd,radiusd) %dir /var/log/radius/radacct/
 %attr(644,radiusd,radiusd) /var/log/radius/radutmp
+
+%if %_oracle_support == 1
+%files oracle
+%defattr(-,root,root)
+%attr(755,root,root) %dir /usr/lib/freeradius
+%attr(755,root,root) /usr/lib/freeradius/rlm_sql_oracle*.so*
+%endif
 
 %files dialupadmin
 %defattr(-,root,root)
