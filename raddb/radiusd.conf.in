@@ -1736,6 +1736,8 @@ $INCLUDE ${confdir}/eap.conf
 		#key = "%{NAS-IP-Address} %{NAS-Port}"
 	}
 
+	# $INCLUDE  ${confdir}/sqlippool.conf
+
 	# OTP token support.  Not included by default.
 	# $INCLUDE  ${confdir}/otp.conf
 
