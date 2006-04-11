@@ -28,9 +28,6 @@ Release:      0.%{distroversion}
 URL:          http://www.freeradius.org/
 Summary:      Very highly Configurable Radius-Server
 Source0:      %{name}-%{version}.tar.gz
-Source1:      rcradiusd
-Source2:      README.SuSE
-Source3:      admin-httpd.conf
 %if %suse_version > 800
 PreReq:       /usr/sbin/useradd /usr/sbin/groupadd
 PreReq:       %insserv_prereq %fillup_prereq
@@ -186,7 +183,7 @@ install -m 644 suse/radiusd-pam-old $RPM_BUILD_ROOT/etc/pam.d/radiusd
 %endif
 install -m 644 suse/radiusd-logrotate $RPM_BUILD_ROOT/etc/logrotate.d/radiusd
 install -d -m 755 $RPM_BUILD_ROOT/etc/init.d
-install    -m 744 %SOURCE1 $RPM_BUILD_ROOT/etc/init.d/radiusd
+install    -m 744 suse/rcradiusd $RPM_BUILD_ROOT/etc/init.d/radiusd
 ln -sf ../../etc/init.d/radiusd $RPM_BUILD_ROOT/usr/sbin/rcradiusd
 mv -v doc/README doc/README.doc
 # install dialup_admin
@@ -199,7 +196,7 @@ perl -i -pe 's/^#general_snmpwalk_command\:.*$/general_snmpwalk_command\: \/usr\
 perl -i -pe 's/^#general_snmpget_command\:.*$/general_snmpget_command\: \/usr\/bin\/snmpget/'   $DIALUPADMIN/conf/admin.conf
 # apache2 config
 install -d -m 755 $RPM_BUILD_ROOT%{apache2_sysconfdir}/conf.d
-install -m 644 %SOURCE3 $RPM_BUILD_ROOT%{apache2_sysconfdir}/conf.d/radius.conf
+install -m 644 suse/admin-httpd.conf $RPM_BUILD_ROOT%{apache2_sysconfdir}/conf.d/radius.conf
 # remove unneeded stuff
 rm -rf doc/00-OLD
 rm -f $RPM_BUILD_ROOT/etc/raddb/experimental.conf $RPM_BUILD_ROOT/usr/sbin/radwatch $RPM_BUILD_ROOT/usr/sbin/rc.radiusd
@@ -231,9 +228,9 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root)
 # doc
-%doc $RPM_SOURCE_DIR/README.SuSE
+%doc suse/README.SuSE
 %doc doc/* LICENSE COPYRIGHT CREDITS README
-%doc src/modules/rlm_sql/drivers/rlm_sql_mysql/db_mysql.sql
+%doc doc/examples/*
 %doc scripts/create-users.pl scripts/CA.* scripts/certs.sh
 %doc scripts/users2mysql.pl scripts/xpextensions
 %doc scripts/cryptpasswd scripts/exec-program-wait scripts/radiusd2ldif.pl
@@ -259,6 +256,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/naspasswd
 %attr(640,-,radiusd) %ghost %config(noreplace) /etc/raddb/oraclesql.conf
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/postgresql.conf
+%attr(640,-,radiusd) %config(noreplace) /etc/raddb/sqlippool.conf
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/preproxy_users
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/proxy.conf
 %config(noreplace) /etc/raddb/radiusd.conf
