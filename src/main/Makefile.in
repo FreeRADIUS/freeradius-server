@@ -172,8 +172,10 @@ clean:
 install:
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radiusd$(EXEEXT)	$(R)$(sbindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radclient$(EXEEXT)	$(R)$(bindir)
-	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radsniff$(EXEEXT)	$(R)$(bindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radwho$(EXEEXT)	$(R)$(bindir)
+ifneq ($(PCAP_LIBS),)
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radsniff$(EXEEXT)	$(R)$(bindir)
+endif
 	$(INSTALL) -m 755    checkrad.pl		$(R)$(sbindir)/checkrad
 	$(INSTALL) -m 755    radlast			$(R)$(bindir)
 	$(INSTALL) -m 755    radtest 			$(R)$(bindir)
