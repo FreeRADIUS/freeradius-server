@@ -48,6 +48,7 @@ clean:
 	rm -rf .libs
 
 install: all
+	$(INSTALL) -d -m 755	$(R)$(libdir)
 	$(LIBTOOL) --mode=install $(INSTALL) -c $(TARGET).la \
 		$(R)$(libdir)/$(TARGET).la
 	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la;
