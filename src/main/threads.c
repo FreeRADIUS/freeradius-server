@@ -248,7 +248,7 @@ static int reap_callback(void *ctx, void *data)
 	 *	Else no child, or was already reaped
 	 */
 
-	lrad_hash_table_delete(ht, pid);
+	lrad_hash_table_delete(ht, lrad_hash(&pid, sizeof(pid)));
 
 	return 0;
 }
@@ -797,13 +797,11 @@ int thread_pool_init(int spawn_flag)
 		/*
 		 *	Create the hash table of child PID's
 		 */
-		thread_pool.waiters = lrad_hash_table_create(8, NULL, 0);
+		thread_pool.waiters = lrad_hash_table_create(free);
 		if (!thread_pool.waiters) {
 			radlog(L_ERR, "FATAL: Failed to set up wait hash");
 			exit(1);
 		}
-		lrad_hash_table_set_data_size(thread_pool.waiters,
-					      sizeof(pid_t));
 	}
 
 	/*
@@ -1106,6 +1104,9 @@ pid_t rad_fork(int exec_wait)
 	child_pid = fork();
 	if (child_pid > 0) {
 		int rcode;
+		pid_t *ptr = rad_malloc(sizeof(*ptr));
+
+		*ptr = child_pid;
 
 		/*
 		 *	Lock the mutex.
@@ -1113,7 +1114,9 @@ pid_t rad_fork(int exec_wait)
 		pthread_mutex_lock(&thread_pool.wait_mutex);
 
 		rcode = lrad_hash_table_insert(thread_pool.waiters,
-					       child_pid, &child_pid);
+					       lrad_hash(&child_pid,
+							 sizeof(child_pid)),
+					       ptr);
 		
 		/*
 		 *	Unlock the mutex.

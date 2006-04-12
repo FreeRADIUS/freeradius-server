@@ -32,20 +32,22 @@ static const char rcsid[] = "$Id$";
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/libradius.h>
 
-/*
- *	The fifo is based on the hash tables, not for speed, but to
- *	allow the fifo to grow automatically.  If we put array code
- *	here to implement fifos, then we have to mix the semantics of
- *	fifo push/pull with array re-sizing, which could add bugs.
- */
+typedef struct lrad_fifo_entry_t {
+	struct lrad_fifo_entry_t *next;
+	void			*data;
+} lrad_fifo_entry_t;
+
 struct lrad_fifo_t {
-	lrad_hash_table_t *ht;
-	int head;
-	int tail;
+	lrad_fifo_entry_t *head, **tail;
+	lrad_fifo_entry_t *freelist;
+
+	int num_elements;
 	int max_entries;
+	lrad_fifo_free_t freeNode;
 };
 
-lrad_fifo_t *lrad_fifo_create(int max_entries, void (*freeNode)(void *))
+
+lrad_fifo_t *lrad_fifo_create(int max_entries, lrad_fifo_free_t freeNode)
 {
 	lrad_fifo_t *fi;
 
@@ -56,84 +58,101 @@ lrad_fifo_t *lrad_fifo_create(int max_entries, void (*freeNode)(void *))
 
 	memset(fi, 0, sizeof(*fi));
 
-	fi->ht = lrad_hash_table_create(5, freeNode, 0);
-	if (!fi->ht) {
-		free(fi);
-		return NULL;
-	}
-
 	fi->max_entries = max_entries;
+	fi->freeNode = freeNode;
 
 	return fi;
+}
+
+static void lrad_fifo_free_entries(lrad_fifo_t *fi, lrad_fifo_entry_t *head)
+{
+	lrad_fifo_entry_t *next;
+
+	while (head) {
+		next = head->next;
+
+		if (fi->freeNode && head->data) fi->freeNode(head->data);
+		free(head);
+
+		head = next;
+	}
 }
 
 void lrad_fifo_free(lrad_fifo_t *fi)
 {
 	if (!fi) return;
 
-	if (fi->ht) lrad_hash_table_free(fi->ht);
+	lrad_fifo_free_entries(fi, fi->head);
+	lrad_fifo_free_entries(fi, fi->freelist);
 
 	free(fi);
 }
 
+static lrad_fifo_entry_t *lrad_fifo_alloc_entry(lrad_fifo_t *fi)
+{
+	lrad_fifo_entry_t *entry;
+
+	if (fi->freelist) {
+		entry = fi->freelist;
+		fi->freelist = entry->next;
+	} else {
+		entry = malloc(sizeof(*entry));
+		if (!entry) return NULL;
+	}
+
+	memset(entry, 0, sizeof(*entry));
+	return entry;
+}
+
 int lrad_fifo_push(lrad_fifo_t *fi, void *data)
 {
-	if (!fi || !fi->ht || !data) return 0;
+	lrad_fifo_entry_t *entry;
 
-	if (lrad_hash_table_num_elements(fi->ht) >= fi->max_entries) return 0;
+	if (!fi || !data) return 0;
 
-	if (!lrad_hash_table_insert(fi->ht, fi->tail, data)) return 0;
+	if (fi->num_elements >= fi->max_entries) return 0;
 
-	fi->tail++;
-	
+	entry = lrad_fifo_alloc_entry(fi);
+	if (!entry) return 0;
+
+	if (!fi->head) {
+		fi->head = entry;
+	} else {
+		*fi->tail = entry;
+	}
+	fi->tail = &(entry->next);
+
+	fi->num_elements++;
+
 	return 1;
 }
+
+static void lrad_fifo_free_entry(lrad_fifo_t *fi, lrad_fifo_entry_t *entry)
+{
+	entry->data = NULL;
+	entry->next = fi->freelist;
+	fi->freelist = entry->next;
+}
+
 
 void *lrad_fifo_pop(lrad_fifo_t *fi)
 {
 	void *data;
+	lrad_fifo_entry_t *entry;
 
-	if (!fi || !fi->ht) return 0;
+	if (!fi || !fi->head) return 0;
 
-	if (lrad_hash_table_num_elements(fi->ht) == 0) {
-		fi->head = fi->tail = 0;
-		return NULL;
-	}
+	entry = fi->head;
+	fi->head = entry->next;
 
-	data = lrad_hash_table_finddata(fi->ht, fi->head);
-	if (!data) {
-		/*
-		 *	This is a SERIOUS error!
-		 *	How do we recover from it?
-		 *	What do we do?
-		 */
-		fi->head++;
-		return NULL;
-	}
+	data = entry->data;
+	lrad_fifo_free_entry(fi, entry);
 
-	lrad_hash_table_delete(fi->ht, fi->head++);
+	fi->num_elements--;
 
-	return data;
-}
-
-void *lrad_fifo_peek(lrad_fifo_t *fi)
-{
-	void *data;
-
-	if (!fi || !fi->ht) return 0;
-
-	if (lrad_hash_table_num_elements(fi->ht) == 0) {
-		return NULL;
-	}
-
-	data = lrad_hash_table_finddata(fi->ht, fi->head);
-	if (!data) {
-		/*
-		 *	This is a SERIOUS error!
-		 *	How do we recover from it?
-		 *	What do we do?
-		 */
-		return NULL;
+	if (!fi->head) {
+		fi->tail = NULL;
+		fi->num_elements = 0;
 	}
 
 	return data;

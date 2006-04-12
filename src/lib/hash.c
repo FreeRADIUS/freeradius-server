@@ -40,25 +40,36 @@ static const char rcsid[] = "$Id$";
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/libradius.h>
 
+/*
+ *	A reasonable number of buckets to start off with.
+ *	Should be a power of two.
+ */
+#define LRAD_HASH_NUM_BUCKETS (64)
+
 typedef struct lrad_hash_entry_t {
 	struct lrad_hash_entry_t *next;
-	uint32_t	key; /* reversed image of the key */
-	void		*data;
+	uint32_t	reversed;
+	uint32_t	key;
+ 	void		*data;
 } lrad_hash_entry_t;
+
 
 struct lrad_hash_table_t {
 	int			num_elements;
 	int			num_buckets; /* power of 2 */
-	int			replace_flag;
-	size_t			data_size;
-	void			(*free)(void *);
+	int			next_grow;
+	int			mask;
+
+	lrad_hash_table_free_t	free;
+
+	lrad_hash_entry_t	null;
+
 	lrad_hash_entry_t	**buckets;
 };
 
 #ifdef TESTING
 static int grow = 0;
 #endif
-
 
 /*
  * perl -e 'foreach $i (0..255) {$r = 0; foreach $j (0 .. 7 ) { if (($i & ( 1<< $j)) != 0) { $r |= (1 << (7 - $j));}} print $r, ", ";if (($i & 7) == 7) {print "\n";}}'
@@ -100,6 +111,45 @@ static const uint8_t reversed_byte[256] = {
 
 
 /*
+ * perl -e 'foreach $i (0..255) {$r = 0;foreach $j (0 .. 7) { $r = $i & (1 << (7 - $j)); last if ($r)} print $i & ~($r), ", ";if (($i & 7) == 7) {print "\n";}}'
+ */
+static uint8_t parent_byte[256] = {
+	0, 0, 0, 1, 0, 1, 2, 3,
+	0, 1, 2, 3, 4, 5, 6, 7,
+	0, 1, 2, 3, 4, 5, 6, 7,
+	8, 9, 10, 11, 12, 13, 14, 15,
+	0, 1, 2, 3, 4, 5, 6, 7,
+	8, 9, 10, 11, 12, 13, 14, 15,
+	16, 17, 18, 19, 20, 21, 22, 23,
+	24, 25, 26, 27, 28, 29, 30, 31,
+	0, 1, 2, 3, 4, 5, 6, 7,
+	8, 9, 10, 11, 12, 13, 14, 15,
+	16, 17, 18, 19, 20, 21, 22, 23,
+	24, 25, 26, 27, 28, 29, 30, 31,
+	32, 33, 34, 35, 36, 37, 38, 39,
+	40, 41, 42, 43, 44, 45, 46, 47,
+	48, 49, 50, 51, 52, 53, 54, 55,
+	56, 57, 58, 59, 60, 61, 62, 63,
+	0, 1, 2, 3, 4, 5, 6, 7,
+	8, 9, 10, 11, 12, 13, 14, 15,
+	16, 17, 18, 19, 20, 21, 22, 23,
+	24, 25, 26, 27, 28, 29, 30, 31,
+	32, 33, 34, 35, 36, 37, 38, 39,
+	40, 41, 42, 43, 44, 45, 46, 47,
+	48, 49, 50, 51, 52, 53, 54, 55,
+	56, 57, 58, 59, 60, 61, 62, 63,
+	64, 65, 66, 67, 68, 69, 70, 71,
+	72, 73, 74, 75, 76, 77, 78, 79,
+	80, 81, 82, 83, 84, 85, 86, 87,
+	88, 89, 90, 91, 92, 93, 94, 95,
+	96, 97, 98, 99, 100, 101, 102, 103,
+	104, 105, 106, 107, 108, 109, 110, 111,
+	112, 113, 114, 115, 116, 117, 118, 119,
+	120, 121, 122, 123, 124, 125, 126, 127
+};
+
+
+/*
  *	Reverse a key.
  */
 static uint32_t reverse(uint32_t key)
@@ -110,30 +160,54 @@ static uint32_t reverse(uint32_t key)
 		(reversed_byte[(key >> 24) & 0xff]));
 }
 
-static lrad_hash_entry_t *list_find(lrad_hash_entry_t *head, uint32_t key)
+/*
+ *	Take the parent by discarding the highest bit that is set.
+ */
+static uint32_t parent_of(uint32_t key)
+{
+	if (key > 0x00ffffff)
+		return (key & 0x00ffffff) | (parent_byte[key >> 24] << 24);
+
+	if (key > 0x0000ffff)
+		return (key & 0x0000ffff) | (parent_byte[key >> 16] << 16);
+
+	if (key > 0x000000ff)
+		return (key & 0x000000ff) | (parent_byte[key >> 8] << 8);
+	
+	return parent_byte[key];
+}
+
+
+static lrad_hash_entry_t *list_find(lrad_hash_table_t *ht,
+				    lrad_hash_entry_t *head,
+				    uint32_t reversed)
 {
 	lrad_hash_entry_t *cur;
 
-	for (cur = head; cur != NULL; cur = cur->next) {
-		if (cur->key > key) return NULL;
-		if (cur->key == key) return cur;
+	for (cur = head; cur != &ht->null; cur = cur->next) {
+		if (cur->reversed == reversed) return cur;
+		if (cur->reversed > reversed) return NULL;
 	}
 
 	return NULL;
 }
 
+
 /*
  *	Inserts a new entry into the list, in order.
  */
-static int list_insert(lrad_hash_entry_t **head, lrad_hash_entry_t *node)
+static int list_insert(lrad_hash_table_t *ht,
+		       lrad_hash_entry_t **head, lrad_hash_entry_t *node)
 {
 	lrad_hash_entry_t **last, *cur;
 
 	last = head;
 
-	for (cur = *head; cur != NULL; cur = cur->next) {
-		if (cur->key > node->key) break;
+	for (cur = *head; cur != &ht->null; cur = cur->next) {
+		if (cur->reversed > node->reversed) break;
 		last = &(cur->next);
+
+		if (cur->reversed == node->reversed) return 0;
 	}
 
 	node->next = *last;
@@ -146,13 +220,14 @@ static int list_insert(lrad_hash_entry_t **head, lrad_hash_entry_t *node)
 /*
  *	Delete an entry from the list.
  */
-static int list_delete(lrad_hash_entry_t **head, lrad_hash_entry_t *node)
+static int list_delete(lrad_hash_table_t *ht,
+		       lrad_hash_entry_t **head, lrad_hash_entry_t *node)
 {
 	lrad_hash_entry_t **last, *cur;
 
 	last = head;
-	
-	for (cur = *head; cur != NULL; cur = cur->next) {
+
+	for (cur = *head; cur != &ht->null; cur = cur->next) {
 		if (cur == node) break;
 		last = &(cur->next);
 	}
@@ -163,61 +238,134 @@ static int list_delete(lrad_hash_entry_t **head, lrad_hash_entry_t *node)
 
 
 /*
- *	Split a list.  Everything >= key is returned, and the returned
- *	list is removed from the input list.
+ *	Create the table.
+ *
+ *	Memory usage in bytes is (20/3) * number of entries.
  */
-static lrad_hash_entry_t *list_split(lrad_hash_entry_t **head, uint32_t key)
-{
-	lrad_hash_entry_t **last, *cur;
-
-	last = head;
-	
-	for (cur = *head; cur != NULL; cur = cur->next) {
-		if (cur->key >= key) break;
-		last = &(cur->next);
-	}
-
-	*last = NULL;
-
-	return cur;
-}
-
-
-/*
- *	Create the table.  Size is a power of two (i.e. 1..31)
- */
-lrad_hash_table_t *lrad_hash_table_create(int size, void (*freeNode)(void *),
-					  int replace_flag)
+lrad_hash_table_t *lrad_hash_table_create(lrad_hash_table_free_t freeNode)
 {
 	lrad_hash_table_t *ht;
-
-	if ((size <= 1) || (size > 31)) return NULL;
-
-	/*
-	 *	Get the nearest power of two.
-	 */
-	size = 1 << size;
 
 	ht = malloc(sizeof(*ht));
 	if (!ht) return NULL;
 
 	memset(ht, 0, sizeof(*ht));
 	ht->free = freeNode;
-	ht->num_buckets = size;
-	ht->replace_flag = replace_flag;
+	ht->num_buckets = LRAD_HASH_NUM_BUCKETS;
+	ht->mask = ht->num_buckets - 1;
+
+	/*
+	 *	Have a default load factor of 2.5.  In practice this
+	 *	means that the average load will hit 3 before the
+	 *	table grows.
+	 */
+	ht->next_grow = (ht->num_buckets << 1) + (ht->num_buckets >> 1);
 
 	ht->buckets = malloc(sizeof(*ht->buckets) * ht->num_buckets);
 	if (!ht->buckets) {
 		free(ht);
-		return NULL;		
+		return NULL;
 	}
 	memset(ht->buckets, 0, sizeof(*ht->buckets) * ht->num_buckets);
+
+	ht->null.reversed = ~0;
+	ht->null.key = ~0;
+	ht->null.next = &ht->null;
+
+	ht->buckets[0] = &ht->null;
 
 	return ht;
 }
 
+
 /*
- *	Insert data, OR copy it, if ht->data_size != 0
+ *	If the current bucket is uninitialized, initialize it
+ *	by recursively copying information from the parent.
+ *
+ *	We may have a situation where entry E is a parent to 2 other
+ *	entries E' and E".  If we split E into E and E', then the
+ *	nodes meant for E" end up in E or E', both of which are wrong.
+ *	To solve that problem, we walk down the whole chain, trying to
+ *	insert the elements into the correct place.
+ *
+ *	This slows down the growth a bit, but it works.
+ */
+static void lrad_hash_table_fixup(lrad_hash_table_t *ht, uint32_t entry)
+{
+	uint32_t parent_entry = parent_of(entry);
+	lrad_hash_entry_t **last, *cur;
+	uint32_t this;
+
+	parent_entry = parent_of(entry);
+
+	/* parent_entry == entry if and only if entry == 0 */
+
+	if (!ht->buckets[parent_entry]) {
+		lrad_hash_table_fixup(ht, parent_entry);
+	}	
+
+	/*
+	 *	Keep walking down cur, trying to find entries that
+	 *	don't belong here any more.  There may be multiple
+	 *	ones, so we can't have a naive algorithm...
+	 */
+	last = &ht->buckets[parent_entry];
+	this = parent_entry;
+	
+	for (cur = *last; cur != &ht->null; cur = cur->next) {
+		uint32_t real_entry;
+
+		real_entry = cur->key & ht->mask;
+		if (real_entry != this) { /* ht->buckets[real_entry] == NULL */
+			*last = &ht->null;
+			ht->buckets[real_entry] = cur;
+			this = real_entry;
+		}
+
+		last = &(cur->next);
+	}
+
+	/*
+	 *	We may NOT have initialized this bucket, so do it now.
+	 */
+	if (!ht->buckets[entry]) ht->buckets[entry] = &ht->null;
+}
+
+/*
+ *	This should be a power of two.  Changing it to 4 doesn't seem
+ *	to make any difference.
+ */
+#define GROW_FACTOR (2)
+
+/*
+ *	Grow the hash table.
+ */
+static void lrad_hash_table_grow(lrad_hash_table_t *ht)
+{
+	lrad_hash_entry_t **buckets;
+	
+	buckets = malloc(sizeof(*buckets) * GROW_FACTOR * ht->num_buckets);
+	if (!buckets) return;
+
+	memcpy(buckets, ht->buckets,
+	       sizeof(*buckets) * ht->num_buckets);
+	memset(&buckets[ht->num_buckets], 0,
+	       sizeof(*buckets) * ht->num_buckets);
+	
+	free(ht->buckets);
+	ht->buckets = buckets;
+	ht->num_buckets *= GROW_FACTOR; 
+	ht->next_grow *= GROW_FACTOR;
+	ht->mask = ht->num_buckets - 1;
+#ifdef TESTING
+	grow = 1;
+	fprintf(stderr, "GROW TO %d\n", ht->num_buckets);
+#endif
+}
+
+
+/*
+ *	Insert data.
  */
 int lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key, void *data)
 {
@@ -227,73 +375,37 @@ int lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key, void *data)
 
 	if (!ht || !data) return 0;
 
-	entry = key & (ht->num_buckets - 1);
+	entry = key & ht->mask;
 	reversed = reverse(key);
 
+	if (!ht->buckets[entry]) lrad_hash_table_fixup(ht, entry);
+
 	/*
-	 *	Already in the table.
+	 *	If we try to do our own memory allocation here, the
+	 *	speedup is only ~15% or so, which isn't worth it.
 	 */
-	node = list_find(ht->buckets[entry], reversed);
-	if (node) {
-		if (!ht->replace_flag) return 0;
+	node = malloc(sizeof(*node));
+	if (!node) return 0;
+	memset(node, 0, sizeof(*node));
 
-		list_delete(&ht->buckets[entry], node);
+	node->next = &ht->null;
+	node->reversed = reversed;
+	node->key = key;
+	node->data = data;
 
-		if (ht->free && node->data) ht->free(node->data);
-		/*
-		 *	Fall through to re-using the node.
-		 */
-	} else {
-		node = malloc(sizeof(*node) + ht->data_size);
-		if (!node) return 0;
-		ht->num_elements++;
+	/* already in the table, can't insert it */
+	if (!list_insert(ht, &ht->buckets[entry], node)) {
+		free(node);
+		return 0;
 	}
-	memset(node, 0, sizeof(*node) + ht->data_size);
-	
-	node->next = NULL;
-	node->key = reversed;
-	if (ht->data_size) {
-		node->data = &node[1]; /* point to the end of the node */
-		memcpy(node->data, data, ht->data_size);
-	} else {
-		node->data = data;
-	}
-
-	list_insert(&(ht->buckets[entry]), node);
 
 	/*
 	 *	Check the load factor, and grow the table if
 	 *	necessary.
 	 */
-	if (ht->num_elements >= (3 * ht->num_buckets)) {
-		int i;
-		lrad_hash_entry_t **buckets;
-
-		buckets = malloc(sizeof(*buckets) * 2 * ht->num_buckets);
-		if (!buckets) return 1;
-
-		memcpy(buckets, ht->buckets,
-		       sizeof(*buckets) * ht->num_buckets);
-
-		/*
-		 *	Split the hash entries.
-		 *
-		 *	When we double the size of the hash array, we
-		 *	do O(N/2) work.  Since this only happens after
-		 *	we've inserted N elements,  we're still amortized
-		 *	at O(1) inserts, deletes, and updates.
-		 */
-		for (i = 0; i < ht->num_buckets; i++) {
-			buckets[ht->num_buckets + i] = list_split(&buckets[i],
-								  reverse((uint32_t) i + ht->num_buckets));
-		}
-		free(ht->buckets);
-		ht->buckets = buckets;
-		ht->num_buckets *= 2;
-#ifdef TESTING
-		grow = 1;
-		fprintf(stderr, "GROW TO %d\n", ht->num_buckets);
-#endif
+	ht->num_elements++;
+	if (ht->num_elements >= ht->next_grow) {
+		lrad_hash_table_grow(ht);
 	}
 
 	return 1;
@@ -301,23 +413,86 @@ int lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key, void *data)
 
 
 /*
- *	Find data from a key.
+ *	Internal find a node routine.
  */
-void *lrad_hash_table_finddata(lrad_hash_table_t *ht, uint32_t key)
+static lrad_hash_entry_t *lrad_hash_table_find(lrad_hash_table_t *ht,
+					       uint32_t key)
 {
 	uint32_t entry;
 	uint32_t reversed;
-	lrad_hash_entry_t *node;
-
-	entry = key & (ht->num_buckets - 1);
-	reversed = reverse(key);
 
 	if (!ht) return NULL;
 
-	node = list_find(ht->buckets[entry], reversed);
+	entry = key & ht->mask;
+	reversed = reverse(key);
+
+	if (!ht->buckets[entry]) lrad_hash_table_fixup(ht, entry);
+
+	return list_find(ht, ht->buckets[entry], reversed);
+}
+
+
+/*
+ *	Replace old data with new data
+ */
+int lrad_hash_table_replace(lrad_hash_table_t *ht, uint32_t key, void *data)
+{
+	lrad_hash_entry_t *node;
+
+	if (!data) return 0;
+
+	node = lrad_hash_table_find(ht, key);
+	if (!node) return lrad_hash_table_insert(ht, key, data);
+
+	if (ht->free) ht->free(node->data);
+	node->data = data;
+
+	return 1;
+}
+
+
+/*
+ *	Find data from a template
+ */
+void *lrad_hash_table_finddata(lrad_hash_table_t *ht, uint32_t key)
+{
+	lrad_hash_entry_t *node;
+
+	node = lrad_hash_table_find(ht, key);
 	if (!node) return NULL;
 
-	return node->data;	/* may be NULL */
+	return node->data;
+}
+
+
+
+/*
+ *	Yank an entry from the hash table, without freeing the data.
+ */
+void *lrad_hash_table_yank(lrad_hash_table_t *ht, uint32_t key)
+{
+	uint32_t entry;
+	uint32_t reversed;
+	void *data;
+	lrad_hash_entry_t *node;
+
+	if (!ht) return 0;
+
+	entry = key & ht->mask;
+	reversed = reverse(key);
+
+	if (!ht->buckets[entry]) lrad_hash_table_fixup(ht, entry);
+
+	node = list_find(ht, ht->buckets[entry], reversed);
+	if (!node) return NULL;
+
+	list_delete(ht, &ht->buckets[entry], node);
+	ht->num_elements--;
+
+	data = node->data;
+	free(node);
+
+	return data;
 }
 
 
@@ -326,23 +501,13 @@ void *lrad_hash_table_finddata(lrad_hash_table_t *ht, uint32_t key)
  */
 int lrad_hash_table_delete(lrad_hash_table_t *ht, uint32_t key)
 {
-	uint32_t entry;
-	uint32_t reversed;
-	lrad_hash_entry_t *node;
+	void *data;
 
-	if (!ht) return 0;
+	data = lrad_hash_table_yank(ht, key);
+	if (!data) return 0;
 
-	entry = key & (ht->num_buckets - 1);
-	reversed = reverse(key);
+	if (ht->free) ht->free(data);
 
-	node = list_find(ht->buckets[entry], reversed);
-	if (!node) return 0;
-	
-	if (ht->free) ht->free(node->data);
-	list_delete(&ht->buckets[entry], node);
-	ht->num_elements--;
-
-	free(node);
 	return 1;
 }
 
@@ -359,7 +524,7 @@ void lrad_hash_table_free(lrad_hash_table_t *ht)
 	/*
 	 *	The entries MUST be all in one linked list.
 	 */
-	for (node = ht->buckets[0]; node != NULL; node = next) {
+	for (node = ht->buckets[0]; node != &ht->null; node = next) {
 		next = node->next;
 
 		if (!node->data) continue; /* dummy entry */
@@ -388,8 +553,7 @@ int lrad_hash_table_num_elements(lrad_hash_table_t *ht)
  *	Walk over the nodes, allowing deletes & inserts to happen.
  */
 int lrad_hash_table_walk(lrad_hash_table_t *ht,
-			 int (*callback)(void * /* ctx */,
-					 void * /* data */),
+			 lrad_hash_table_walk_t callback,
 			 void *context)
 {
 	int i, rcode;;
@@ -401,7 +565,7 @@ int lrad_hash_table_walk(lrad_hash_table_t *ht,
 
 		if (!ht->buckets[i]) continue;
 
-		for (node = ht->buckets[i]; node != NULL; node = next) {
+		for (node = ht->buckets[i]; node != &ht->null; node = next) {
 			next = node->next;
 
 			rcode = callback(context, node->data);
@@ -413,21 +577,79 @@ int lrad_hash_table_walk(lrad_hash_table_t *ht,
 }
 
 
+#ifdef TESTING
 /*
- *	For users that have a small amount of data, and wish to associate
- *	it directly with the hash entry, this saves a bit of memory &
- *	malloc/free stuff.
+ *	Show what the hash table is doing.
  */
-int lrad_hash_table_set_data_size(lrad_hash_table_t *ht, size_t data_size)
+int lrad_hash_table_info(lrad_hash_table_t *ht)
 {
-      if (!ht || ht->free) return 0;
+	int i, a, collisions, uninitialized;
+	int array[256];
 
-      if (ht->num_elements != 0) return 0;
+	if (!ht) return 0;
 
-      ht->data_size = data_size;
+	uninitialized = collisions = 0;
+	memset(array, 0, sizeof(array));
 
-      return 1;
+	for (i = 0; i < ht->num_buckets; i++) {
+		uint32_t key;
+		int load;
+		lrad_hash_entry_t *node, *next;
+
+		/*
+		 *	If we haven't inserted or looked up an entry
+		 *	in a bucket, it's uninitialized.
+		 */
+		if (!ht->buckets[i]) {
+			uninitialized++;
+			continue;
+		}
+
+		load = 0;
+		key = ~0;
+		for (node = ht->buckets[i]; node != &ht->null; node = next) {
+			if (node->reversed == key) {
+				collisions++;
+			} else {
+				key = node->reversed;
+			}
+			next = node->next;
+			load++;
+		}
+
+		if (load > 255) load = 255;
+		array[load]++;
+	}
+
+	printf("HASH TABLE %p\tbuckets: %d\t(%d uninitialized)\n", ht,
+		ht->num_buckets, uninitialized);
+	printf("\tnum entries %d\thash collisions %d\n",
+		ht->num_elements, collisions);
+
+	a = 0;
+	for (i = 1; i < 256; i++) {
+		if (!array[i]) continue;
+		printf("%d\t%d\n", i, array[i]);
+
+		/*
+		 *	Since the entries are ordered, the lookup cost
+		 *	for any one element in a chain is (on average)
+		 *	the cost of walking half of the chain.
+		 */
+		if (i > 1) {
+			a += array[i] * i;
+		}
+	}
+	a /= 2;
+	a += array[1];
+
+	printf("\texpected lookup cost = %d/%d or %f\n\n",
+	       ht->num_elements, a,
+	       (float) ht->num_elements / (float) a);
+
+	return 0;
 }
+#endif
 
 
 #define FNV_MAGIC_INIT (0x811c9dc5)
@@ -525,57 +747,74 @@ uint32_t lrad_hash_fold(uint32_t hash, int bits)
 #include <stdio.h>
 #include <stdlib.h>
 
-#define MAX 8000
+#define MAX 1024*64
 int main(int argc, char **argv)
 {
-	uint32_t i, *p, *q;
+	uint32_t hash;
+	int i, *p, *q, k;
 	lrad_hash_table_t *ht;
+	int *array;
 
-	ht = lrad_hash_table_create(10, free, 0);
+	ht = lrad_hash_table_create(NULL);
 	if (!ht) {
 		fprintf(stderr, "Hash create failed\n");
 		exit(1);
 	}
 
+	array = malloc(sizeof(int) * MAX);
+
 	for (i = 0; i < MAX; i++) {
-		p = malloc(sizeof(i));
+		p = array + i;
 		*p = i;
-		if (!lrad_hash_table_insert(ht, i, p)) {
+		hash = lrad_hash(&i, sizeof(i));
+
+		if (!lrad_hash_table_insert(ht, hash, p)) {
 			fprintf(stderr, "Failed insert %08x\n", i);
 			exit(1);
 		}
-
-		if (grow) {
-			uint32_t j;
-
-			for (j = 0; j < i; j++) {
-				q = lrad_hash_table_finddata(ht, j);
-				if (!q || (*q != j)) {
-					fprintf(stderr, "BAD DATA %d %p\n",
-						j, q);
-					exit(1);
-				}
-			}
-			grow = 0;
-		}
-
-		q = lrad_hash_table_finddata(ht, i);
+#ifdef TEST_INSERT
+		q = lrad_hash_table_finddata(ht, hash);
 		if (q != p) {
 			fprintf(stderr, "Bad data %d\n", i);
 			exit(1);
 		}
+#endif
 	}
 
-	for (i = 0; i < MAX; i++) {
-		lrad_hash_table_delete(ht, i);
-		q = lrad_hash_table_finddata(ht, i);
-		if (q) {
-			fprintf(stderr, "Failed to delete %08x\n", i);
-			exit(1);
+	lrad_hash_table_info(ht);
+
+	/*
+	 *	Build this to see how lookups result in shortening
+	 *	of the hash chains.
+	 */
+	if (0) {
+		for (i = 0; i < MAX ; i++) {
+			hash = lrad_hash(&i, sizeof(i));
+			
+			q = lrad_hash_table_finddata(ht, hash);
+			if (!q || *q != i) {
+				fprintf(stderr, "Failed finding %d\n", i);
+				exit(1);
+			}
+			
+#if 0
+			if (!lrad_hash_table_delete(ht, hash)) {
+				fprintf(stderr, "Failed deleting %d\n", i);
+				exit(1);
+			}
+			q = lrad_hash_table_finddata(ht, hash);
+			if (q) {
+				fprintf(stderr, "Failed to delete %08x\n", i);
+				exit(1);
+			}
+#endif
 		}
+
+		lrad_hash_table_info(ht);
 	}
 
 	lrad_hash_table_free(ht);
+	free(array);
 
 	exit(0);
 }

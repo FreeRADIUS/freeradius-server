@@ -35,14 +35,7 @@ static const char rcsid[] = "$Id$";
 
 struct request_list_t {
 	lrad_hash_table_t *ht;
-	int collisions;
 };
-
-typedef struct request_entry_t {
-	struct request_entry_t *next;
-	REQUEST		       *request;
-} request_entry_t;
-
 
 #ifdef HAVE_PTHREAD_H
 static pthread_mutex_t	proxy_mutex;
@@ -205,58 +198,6 @@ static void packet_hash(RADIUS_PACKET *packet)
 }
 
 
-static int packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b)
-{
-
-	if (a->id != b->id) return 0;
-
-	if (a->src_port != b->src_port) return 0;
-
-	switch (a->dst_ipaddr.af) {
-	case AF_INET:
-		if (memcmp(&a->dst_ipaddr.ipaddr.ip4addr,
-			   &b->dst_ipaddr.ipaddr.ip4addr,
-			   sizeof(a->dst_ipaddr.ipaddr.ip4addr)) != 0)
-			return 0;
-		if (memcmp(&a->src_ipaddr.ipaddr.ip4addr,
-			   &b->src_ipaddr.ipaddr.ip4addr,
-			   sizeof(a->src_ipaddr.ipaddr.ip4addr)) != 0)
-			return 0;
-		break;
-	case AF_INET6:
-		if (memcmp(&a->dst_ipaddr.ipaddr.ip6addr,
-			   &b->dst_ipaddr.ipaddr.ip6addr,
-			   sizeof(a->dst_ipaddr.ipaddr.ip6addr)) != 0)
-			return 0;
-		if (memcmp(&a->src_ipaddr.ipaddr.ip6addr,
-			   &b->src_ipaddr.ipaddr.ip6addr,
-			   sizeof(a->src_ipaddr.ipaddr.ip6addr)) != 0)
-			return 0;
-		break;
-	default:
-		return 0;
-		break;
-	}
-
-	/*
-	 *	These next comparisons should reall be assertions.
-	 */
-	if (a->src_ipaddr.af != b->src_ipaddr.af) return 0;
-
-	if (a->dst_ipaddr.af != b->dst_ipaddr.af) return 0;
-
-	if (a->sockfd != b->sockfd) return 0;
-
-	if (a->code != b->code) return 0;
-
-	if (a->dst_port != b->dst_port) return 0;
-
-	/*
-	 *	Everything's equal.  Say so.
-	 */
-	return 1;
-}
-
 /*
  *	Compare two REQUEST data structures, based on a number
  *	of criteria, for proxied packets.
@@ -334,11 +275,10 @@ request_list_t *rl_init(void)
 	 */
 	memset(rl, 0, sizeof(*rl));
 
-	rl->ht = lrad_hash_table_create(10, NULL, 0);
+	rl->ht = lrad_hash_table_create(NULL);
 	if (!rl->ht) {
 		rad_assert("FAIL" == NULL);
 	}
-	lrad_hash_table_set_data_size(rl->ht, sizeof(request_entry_t));
 
 	return rl;
 }
@@ -417,28 +357,21 @@ int rl_init_proxy(void)
 
 static int rl_free_entry(void *ctx, void *data)
 {
-	request_entry_t *next, *entry = data;
-	REQUEST *request;
-
+	REQUEST *request = data;
+	
 	ctx = ctx;		/* -Wunused */
 
-	for (entry = data; entry != NULL; entry = next) {
-		next = entry->next;
-		request = entry->request;
-
 #ifdef HAVE_PTHREAD_H 
-		/*
-		 *	If someone is processing this request, kill
-		 *	them, and mark the request as not being used.
-		 */
-		if (request->child_pid != NO_SUCH_CHILD_PID) {
-			pthread_kill(request->child_pid, SIGKILL);
-			request->child_pid = NO_SUCH_CHILD_PID;
-		}
-#endif
-		request_free(&request);
-		if (entry != data) free(entry);
+	/*
+	 *	If someone is processing this request, kill
+	 *	them, and mark the request as not being used.
+	 */
+	if (request->child_pid != NO_SUCH_CHILD_PID) {
+		pthread_kill(request->child_pid, SIGKILL);
+		request->child_pid = NO_SUCH_CHILD_PID;
 	}
+#endif
+	request_free(&request);
 
 	return 0;
 }
@@ -543,8 +476,6 @@ static void rl_delete_proxy(REQUEST *request, rbnode_t *node)
  */
 void rl_yank(request_list_t *rl, REQUEST *request)
 {
-	request_entry_t *entry;
-
 #ifdef WITH_SNMP
 	/*
 	 *	Update the SNMP statistics.
@@ -585,45 +516,7 @@ void rl_yank(request_list_t *rl, REQUEST *request)
 	/*
 	 *	Delete the request from the list.
 	 */
-	entry = lrad_hash_table_finddata(rl->ht, request->packet->hash);
-
-	/*
-	 *	The entry managed by the hash table is being deleted.
-	 */
-	if (entry->request == request) {
-		if (entry->next) {
-			request_entry_t *next = entry->next;
-			entry->next = next->next;
-			entry->request = next->request;
-			free(next);
-			
-			rad_assert(rl->collisions > 0);
-			rl->collisions--;
-		} else {
-			lrad_hash_table_delete(rl->ht, request->packet->hash);
-		}
-
-	} else {		/* a secondary entry is being deleted */
-		request_entry_t *this, *next, **last;
-
-		last = &entry->next;
-		for (this = entry->next; this != NULL; this = next) {
-			next = this->next;
-			
-			if (this->request != request) {
-				last = &this->next;
-				continue;
-			}
-
-			*last = this->next;
-			free(this);
-
-			rad_assert(rl->collisions > 0);
-			rl->collisions--;
-			break;
-		}
-	}
-
+	lrad_hash_table_delete(rl->ht, request->packet->hash);
 	
 	/*
 	 *	If there's a proxied packet, and we're still
@@ -656,28 +549,7 @@ void rl_delete(request_list_t *rl, REQUEST *request)
  */
 int rl_add(request_list_t *rl, REQUEST *request)
 {
-	request_entry_t *entry, myentry;
-
-	entry = lrad_hash_table_finddata(rl->ht, request->packet->hash);
-	if (!entry) {
-		myentry.next = NULL;
-		myentry.request = request;
-		return lrad_hash_table_insert(rl->ht, request->packet->hash,
-					      &myentry);
-	}
-
-	/*
-	 *	Collision: insert it into a linked list (yuck)
-	 */
-	entry->next = rad_malloc(sizeof(*entry));
-	entry->next->next = NULL;
-	entry->next->request = request;
-
-	DEBUG3(" FYI: hash collision...");
-
-	rl->collisions++;
-
-	return 1;
+	return lrad_hash_table_insert(rl->ht, request->packet->hash, request);
 }
 
 /*
@@ -692,23 +564,9 @@ int rl_add(request_list_t *rl, REQUEST *request)
  */
 REQUEST *rl_find(request_list_t *rl, RADIUS_PACKET *packet)
 {
-	request_entry_t *entry;
-
 	packet_hash(packet);
 
-	entry = lrad_hash_table_finddata(rl->ht, packet->hash);
-	if (!entry) return NULL;
-
-	/*
-	 *	Call a packet comparison function?
-	 */
-	while (entry && !packet_cmp(packet, entry->request->packet)) {
-		entry = entry->next;
-	}
-
-	if (!entry) return NULL;
-
-	return entry->request;
+	return lrad_hash_table_finddata(rl->ht, packet->hash);
 }
 
 /*
@@ -1041,7 +899,7 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
  */
 int rl_num_requests(request_list_t *rl)
 {
-	return lrad_hash_table_num_elements(rl->ht) + rl->collisions;
+	return lrad_hash_table_num_elements(rl->ht);
 }
 
 
@@ -1068,11 +926,7 @@ static int refresh_request(void *ctx, void *data)
 	rl_walk_t *info = (rl_walk_t *) ctx;
 	child_pid_t child_pid;
 	request_list_t *rl = info->rl;
-	request_entry_t *entry = data;
-	request_entry_t *next = entry->next;
-	REQUEST *request = entry->request;
-
-	if (next) refresh_request(ctx, next);
+	REQUEST *request = data;
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 

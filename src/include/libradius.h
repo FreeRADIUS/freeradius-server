@@ -439,30 +439,29 @@ int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order, int (*callback)(void *, void
 
 /* hash.c */
 typedef struct lrad_hash_table_t lrad_hash_table_t;
+typedef void (*lrad_hash_table_free_t)(void *);
+typedef int (*lrad_hash_table_walk_t)(void * /* ctx */, void * /* data */);
 
-lrad_hash_table_t *lrad_hash_table_create(int size, void (*freeNode)(void *),
-					  int replace_flag);
+lrad_hash_table_t *lrad_hash_table_create(lrad_hash_table_free_t freeNode);
 void		lrad_hash_table_free(lrad_hash_table_t *ht);
-int		lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key,
-				       void *data);
+int		lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key, void *data);
 int		lrad_hash_table_delete(lrad_hash_table_t *ht, uint32_t key);
+void		*lrad_hash_table_yank(lrad_hash_table_t *ht, uint32_t key);
+int		lrad_hash_table_replace(lrad_hash_table_t *ht, uint32_t key, void *data);
 void		*lrad_hash_table_finddata(lrad_hash_table_t *ht, uint32_t key);
 int		lrad_hash_table_num_elements(lrad_hash_table_t *ht);
 int		lrad_hash_table_walk(lrad_hash_table_t *ht,
-				     int (*callback)(void * /* ctx */,
-						     void * /* data */),
-				     void *context);
-int		lrad_hash_table_set_data_size(lrad_hash_table_t *ht,
-					      size_t data_size);
+				     lrad_hash_table_walk_t callback,
+				     void *ctx);
 
 /*
  *	FIFOs
  */
 typedef struct lrad_fifo_t lrad_fifo_t;
-lrad_fifo_t *lrad_fifo_create(int max_entries, void (*freeNode)(void *));
+typedef void (*lrad_fifo_free_t)(void *);
+lrad_fifo_t *lrad_fifo_create(int max_entries, lrad_fifo_free_t freeNode);
 void lrad_fifo_free(lrad_fifo_t *fi);
 int lrad_fifo_push(lrad_fifo_t *fi, void *data);
 void *lrad_fifo_pop(lrad_fifo_t *fi);
-void *lrad_fifo_peek(lrad_fifo_t *fi);
 
 #endif /*LIBRADIUS_H*/
