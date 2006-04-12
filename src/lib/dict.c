@@ -275,17 +275,12 @@ int dict_addvendor(const char *name, int value)
 	 *	Insert the SAME pointer (not free'd when this tree is
 	 *	deleted), into another tree.
 	 *
-	 *	If the newly inserted entry is a duplicate of an existing
-	 *	entry, then the old entry is tossed, and the new one
-	 *	replaces it.  This behaviour is configured in the
-	 *	lrad_hash_table_create() function.
-	 *
 	 *	We want this behaviour because we want OLD names for
 	 *	the attributes to be read from the configuration
 	 *	files, but when we're printing them, (and looking up
 	 *	by value) we want to use the NEW name.
 	 */
-	if (!lrad_hash_table_insert(vendors_byvalue,
+	if (!lrad_hash_table_replace(vendors_byvalue,
 				    lrad_hash(&dv->vendorpec,
 					      sizeof(dv->vendorpec)),
 				    dv)) {
@@ -413,20 +408,15 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	 *	Insert the SAME pointer (not free'd when this tree is
 	 *	deleted), into another tree.
 	 *
-	 *	If the newly inserted entry is a duplicate of an existing
-	 *	entry, then the old entry is tossed, and the new one
-	 *	replaces it.  This behaviour is configured in the
-	 *	lrad_hash_table_create() function.
-	 *
 	 *	We want this behaviour because we want OLD names for
 	 *	the attributes to be read from the configuration
 	 *	files, but when we're printing them, (and looking up
 	 *	by value) we want to use the NEW name.
 	 */
-	if (!lrad_hash_table_insert(attributes_byvalue,
+	if (!lrad_hash_table_replace(attributes_byvalue,
 				    lrad_hash(&attr->attr, sizeof(attr->attr)),
 				    attr)) {
-		librad_log("dict_addattr: Failed inserting attribute attribute name %s", name);
+		librad_log("dict_addattr: Failed inserting attribute name %s", name);
 		return -1;
 	}
 
@@ -519,7 +509,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	 */
 	hash = dval->attr;
 	hash = lrad_hash_update(&dval->value, sizeof(dval->value), hash);
-	if (!lrad_hash_table_insert(values_byvalue, hash, dval)) {	
+	if (!lrad_hash_table_replace(values_byvalue, hash, dval)) {	
 		librad_log("dict_addvalue: Failed inserting value %s",
 			   namestr);
 		return -1;
@@ -1157,8 +1147,8 @@ int dict_init(const char *dir, const char *fn)
 			hash = lrad_hash_update(&this->dval->attr,
 						sizeof(this->dval->attr),
 						this->hash);
-			if (!lrad_hash_table_insert(values_byname,
-						    hash, this->dval)) {
+			if (!lrad_hash_table_replace(values_byname,
+						     hash, this->dval)) {
 				librad_log("dict_addvalue: Duplicate value name %s for attribute %s", this->dval->name, a->name);
 				return -1;
 			}
@@ -1174,8 +1164,8 @@ int dict_init(const char *dir, const char *fn)
 						sizeof(this->dval->value),
 						hash);
 			if (!lrad_hash_table_finddata(values_byvalue, hash)) {
-				lrad_hash_table_insert(values_byvalue,
-						       hash, this->dval);
+				lrad_hash_table_replace(values_byvalue,
+							hash, this->dval);
 			}
 			free(this);
 

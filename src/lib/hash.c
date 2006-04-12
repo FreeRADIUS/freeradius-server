@@ -442,7 +442,7 @@ int lrad_hash_table_replace(lrad_hash_table_t *ht, uint32_t key, void *data)
 	if (!data) return 0;
 
 	node = lrad_hash_table_find(ht, key);
-	if (!node) return 0;
+	if (!node) return lrad_hash_table_insert(ht, key, data);
 
 	if (ht->free) ht->free(node->data);
 	node->data = data;
