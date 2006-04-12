@@ -155,7 +155,7 @@ static int filter_packet(RADIUS_PACKET *packet)
 	return 1;
 }
 
-static void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_char *packet)
+static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const uint8_t *packet)
 {
 	/* Just a counter of how many packets we've had */
 	static int count = 1;
@@ -163,7 +163,7 @@ static void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_c
 	const struct ethernet_header *ethernet;  /* The ethernet header */
 	const struct ip_header *ip;              /* The IP header */
 	const struct udp_header *udp;            /* The UDP header */
-	const char *payload;                     /* Packet payload */
+	const uint8_t *payload;                     /* Packet payload */
 	/* And define the size of the structures we're using */
 	int size_ethernet = sizeof(struct ethernet_header);
 	int size_ip = sizeof(struct ip_header);
@@ -171,11 +171,13 @@ static void got_packet(u_char *args, const struct pcap_pkthdr *header, const u_c
 	/* For FreeRADIUS */
 	RADIUS_PACKET *request;
 
+	args = args;		/* -Wunused */
+
 	/* Define our packet's attributes */
 	ethernet = (const struct ethernet_header*)(packet);
 	ip = (const struct ip_header*)(packet + size_ethernet);
 	udp = (const struct udp_header*)(packet + size_ethernet + size_ip);
-	payload = (const u_char *)(packet + size_ethernet + size_ip + size_udp);
+	payload = (const uint8_t *)(packet + size_ethernet + size_ip + size_udp);
 
 	/* Read the RADIUS packet structure */
 	request = init_packet(payload, header->len - size_ethernet - size_ip - size_udp);
@@ -222,7 +224,8 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "\t-f filter\tPCAP filter. (default is udp port 1812 or 1813 or 1814)\n");
 	fprintf(output, "\t-h\t\tPrint this help message.\n");
 	fprintf(output, "\t-i interface\tInterface to capture.\n");
-	fprintf(output, "\t-r filter\tRADIUS filter.\n");
+	fprintf(output, "\t-p port\tList for packets on port.\n");
+	fprintf(output, "\t-r filter\tRADIUS attribute filter.\n");
 	fprintf(output, "\t-s secret\tRADIUS secret.\n");
 	exit(status);
 }
@@ -235,18 +238,20 @@ int main(int argc, char *argv[])
 	struct bpf_program fp;          /* hold compiled program */
 	bpf_u_int32 maskp;              /* subnet mask */
 	bpf_u_int32 netp;               /* ip */
-	const char *pcap_filter = "udp port 1812 or 1813 or 1814";
+	char buffer[1024];
+	char *pcap_filter = NULL;
 	char *radius_filter = NULL;
 	int packet_count = -1;		/* how many packets to sniff */
 	int opt;
 	LRAD_TOKEN parsecode;
-	char *radius_dir = RADIUS_DIR;
+	const char *radius_dir = RADIUS_DIR;
+	int port = 1812;
 
 	/* Default device */
 	dev = pcap_lookupdev(errbuf);
 
 	/* Get options */
-	while ((opt = getopt(argc, argv, "c:d:f:hi:r:s:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:d:f:hi:p:r:s:")) != EOF) {
 		switch (opt)
 		{
 		case 'c':
@@ -268,6 +273,9 @@ int main(int argc, char *argv[])
 		case 'i':
 			dev = optarg;
 			break;
+		case 'p':
+			port = atoi(optarg);
+			break;
 		case 'r':
 			radius_filter = optarg;
 			parsecode = userparse(radius_filter, &filter_vps);
@@ -282,6 +290,12 @@ int main(int argc, char *argv[])
 		default:
 			usage(1);
 		}
+	}
+
+	if (!pcap_filter) {
+		pcap_filter = buffer;
+		snprintf(buffer, sizeof(buffer), "udp port %d or %d or %d",
+			 port, port + 1, port + 2);
 	}
 
         if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
