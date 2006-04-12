@@ -50,6 +50,9 @@
 #include <grp.h>
 #include <pwd.h>
 
+#ifdef HAVE_SYS_PRTCL_H
+#include <sys/prctl.h>
+#endif
 
 #ifdef HAVE_SYSLOG_H
 #	include <syslog.h>
@@ -494,6 +497,8 @@ static int radlogdir_iswritable(const char *effectiveuser)
  */
 static int switch_users(void)
 {
+	struct rlimit core_limits;
+
 	/*  Set GID.  */
 	if (mainconfig.gid_name != NULL) {
 		struct group *gr;
@@ -545,6 +550,52 @@ static int switch_users(void)
 		}
 	}
 
+	/*  Get the current maximum for core files.  */
+	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
+		radlog(L_ERR|L_CONS, "Failed to get current core limit:  %s", strerror(errno));
+		exit(1);
+	}
+
+	if (mainconfig.allow_core_dumps) {
+#ifdef HAVE_SYS_PRTCL_H
+#ifdef PR_SET_DUMPABLE
+		if (prctl(PR_SET_DUMPABLE, 1) < 0) {
+			radlog(L_ERR|L_CONS,"Cannot enable core dumps: prctl(PR_SET_DUMPABLE) failed: '%s'",
+			       strerror(errno));
+		}
+#endif
+#endif
+
+		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
+			radlog(L_ERR|L_CONS, "Cannot update core dump limit: %s",
+					strerror(errno));
+			exit(1);
+
+			/*
+			 *  If we're running as a daemon, and core
+			 *  dumps are enabled, log that information.
+			 */
+		} else if ((core_limits.rlim_cur != 0) && !debug_flag)
+			radlog(L_INFO|L_CONS, "Core dumps are enabled.");
+
+	} else if (!debug_flag) {
+		/*
+		 *  Not debugging.  Set the core size to zero, to
+		 *  prevent security breaches.  i.e. People
+		 *  reading passwords from the 'core' file.
+		 */
+		struct rlimit limits;
+
+		limits.rlim_cur = 0;
+		limits.rlim_max = core_limits.rlim_max;
+
+		if (setrlimit(RLIMIT_CORE, &limits) < 0) {
+			radlog(L_ERR|L_CONS, "Cannot disable core dumps: %s",
+					strerror(errno));
+			exit(1);
+		}
+	}
+
 	/*
 	 *	We've probably written to the log file already as
 	 *	root.root, so if we have switched users, we've got to
@@ -555,6 +606,7 @@ static int switch_users(void)
 	    (mainconfig.log_file != NULL)) {
 		chown(mainconfig.log_file, server_uid, server_gid);
 	}
+
 	return(0);
 }
 
@@ -820,7 +872,6 @@ static const LRAD_NAME_NUMBER str2dest[] = {
  */
 int read_mainconfig(int reload)
 {
-	struct rlimit core_limits;
 	static int old_debug_level = -1;
 	char buffer[1024];
 	CONF_SECTION *cs, *oldcs;
@@ -963,43 +1014,6 @@ int read_mainconfig(int reload)
 	 *  Go update our behaviour, based on the configuration
 	 *  changes.
 	 */
-
-	/*  Get the current maximum for core files.  */
-	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		radlog(L_ERR|L_CONS, "Failed to get current core limit:  %s", strerror(errno));
-		exit(1);
-	}
-
-	if (mainconfig.allow_core_dumps) {
-		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
-			radlog(L_ERR|L_CONS, "Cannot update core dump limit: %s",
-					strerror(errno));
-			exit(1);
-
-			/*
-			 *  If we're running as a daemon, and core
-			 *  dumps are enabled, log that information.
-			 */
-		} else if ((core_limits.rlim_cur != 0) && !debug_flag)
-			radlog(L_INFO|L_CONS, "Core dumps are enabled.");
-
-	} else if (!debug_flag) {
-		/*
-		 *  Not debugging.  Set the core size to zero, to
-		 *  prevent security breaches.  i.e. People
-		 *  reading passwords from the 'core' file.
-		 */
-		struct rlimit limits;
-
-		limits.rlim_cur = 0;
-		limits.rlim_max = core_limits.rlim_max;
-
-		if (setrlimit(RLIMIT_CORE, &limits) < 0) {
-			radlog(L_ERR|L_CONS, "Cannot disable core dumps: %s",
-					strerror(errno));
-			exit(1);
-		}
-	}
 
 	/*
 	 * 	The first time around, ensure that we can write to the
