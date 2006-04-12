@@ -384,20 +384,18 @@ uint32_t lrad_hash_update(const void *data, size_t size, uint32_t hash);
 uint32_t lrad_hash_fold(uint32_t hash, int bits);
 
 typedef struct lrad_hash_table_t lrad_hash_table_t;
+typedef void (*lrad_hash_table_free_t)(void *);
+typedef int (*lrad_hash_table_walk_t)(void * /* ctx */, void * /* data */);
 
-lrad_hash_table_t *lrad_hash_table_create(int size, void (*freeNode)(void *),
-					  int replace_flag);
+lrad_hash_table_t *lrad_hash_table_create(lrad_hash_table_free_t freeNode);
 void		lrad_hash_table_free(lrad_hash_table_t *ht);
-int		lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key,
-				       void *data);
+int		lrad_hash_table_insert(lrad_hash_table_t *ht, uint32_t key, void *data);
 int		lrad_hash_table_delete(lrad_hash_table_t *ht, uint32_t key);
 void		*lrad_hash_table_yank(lrad_hash_table_t *ht, uint32_t key);
+int		lrad_hash_table_replace(lrad_hash_table_t *ht, uint32_t key, void *data);
 void		*lrad_hash_table_finddata(lrad_hash_table_t *ht, uint32_t key);
 int		lrad_hash_table_num_elements(lrad_hash_table_t *ht);
 int		lrad_hash_table_walk(lrad_hash_table_t *ht,
-				     int (*callback)(void * /* ctx */,
-						     void * /* data */),
-				     void *context);
-int		lrad_hash_table_set_data_size(lrad_hash_table_t *ht,
-					      size_t data_size);
+				     lrad_hash_table_walk_t callback,
+				     void *ctx);
 #endif /*LIBRADIUS_H*/
