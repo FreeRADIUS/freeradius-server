@@ -21,7 +21,7 @@ CFLAGS		+= -D_LIBRADIUS -I../include
 # if you have problems with things that need SHA1-HMAC, this will
 # dump the key and the input to the hash so you can compare to what
 # the other end is doing.
-CFLAGS += -DHMAC_SHA1_DATA_PROBLEMS
+#CFLAGS += -DHMAC_SHA1_DATA_PROBLEMS
 
 ifeq ($(USE_SHARED_LIBS),yes)
 LINK_MODE	= -export-dynamic
