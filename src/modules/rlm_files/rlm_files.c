@@ -429,22 +429,21 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 	while (user_pl || default_pl) {
 		const PAIR_LIST *pl;
 
-		if (!default_pl) {
+		if (!default_pl && user_pl) {
 			pl = user_pl;
 			user_pl = user_pl->next;
 
-		} else if (!user_pl) {
+		} else if (!user_pl && default_pl) {
 			pl = default_pl;
 			default_pl = default_pl->next;
 
+		} else if (user_pl->order < default_pl->order) {
+			pl = user_pl;
+			user_pl = user_pl->next;
+
 		} else {
-			if (user_pl->order < default_pl->order) {
-				pl = user_pl;
-				user_pl = user_pl->next;
-			} else {
-				pl = default_pl;
-				default_pl = default_pl->next;
-			}
+			pl = default_pl;
+			default_pl = default_pl->next;
 		}
 
 		if (paircompare(request, request_pairs, pl->check, reply_pairs) == 0) {
