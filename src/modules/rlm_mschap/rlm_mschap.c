@@ -256,6 +256,7 @@ typedef struct rlm_mschap_t {
 	char *passwd_file;
 	char *xlat_name;
 	char *ntlm_auth;
+	char *auth_type;
 } rlm_mschap_t;
 
 
@@ -668,6 +669,13 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 	if (xlat_name)
 		inst->xlat_name = strdup(xlat_name);
 
+	/*
+	 *	For backwards compatibility
+	 */
+	if (!dict_valbyname(PW_AUTH_TYPE, inst->xlat_name)) {
+		inst->auth_type = "MS-CHAP";
+	}
+
 	return 0;
 }
 
@@ -981,8 +989,8 @@ static int mschap_authorize(void * instance, REQUEST *request)
 	 *	will take care of turning clear-text passwords into
 	 *	NT/LM passwords.
 	 */
-	vp = pairmake("Auth-Type", inst->xlat_name, T_OP_EQ);
-	rad_assert(vp != NULL);
+	vp = pairmake("Auth-Type", inst->auth_type, T_OP_EQ);
+	if (!vp) return RLM_MODULE_FAIL;
 	pairmove(&request->config_items, &vp);
 	pairfree(&vp);		/* may be NULL */
 
