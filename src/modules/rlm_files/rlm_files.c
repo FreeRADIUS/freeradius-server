@@ -42,28 +42,29 @@ struct file_instance {
 
 	/* autz */
 	char *usersfile;
-	PAIR_LIST *users;
+	lrad_hash_table_t *users;
 
 	/* preacct */
 	char *acctusersfile;
-	PAIR_LIST *acctusers;
+	lrad_hash_table_t *acctusers;
 
 	/* pre-proxy */
 	char *preproxy_usersfile;
-	PAIR_LIST *preproxy_users;
+	lrad_hash_table_t *preproxy_users;
 
 	/* authenticate */
 	char *auth_usersfile;
-	PAIR_LIST *auth_users;
+	lrad_hash_table_t *auth_users;
 
 	/* post-proxy */
 	char *postproxy_usersfile;
-	PAIR_LIST *postproxy_users;
+	lrad_hash_table_t *postproxy_users;
 
 	/* post-authenticate */
 	char *postauth_usersfile;
-	PAIR_LIST *postauth_users;
+	lrad_hash_table_t *postauth_users;
 };
+
 
 /*
  *     See if a VALUE_PAIR list contains Fall-Through = Yes
@@ -94,13 +95,26 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static int getusersfile(const char *filename, PAIR_LIST **pair_list, char *compat_mode_str)
+
+static void my_pairlist_free(void *data)
+{
+	PAIR_LIST *pl = data;
+
+	pairlist_free(&pl);
+}
+
+
+static int getusersfile(const char *filename, lrad_hash_table_t **pht,
+			char *compat_mode_str)
 {
 	int rcode;
 	PAIR_LIST *users = NULL;
+	PAIR_LIST *entry, *next;
+	lrad_hash_table_t *ht, *tailht;
+	int order = 0;
 
 	if (!filename) {
-		*pair_list = NULL;
+		*pht = NULL;
 		return 0;
 	}
 
@@ -115,7 +129,6 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list, char *compa
 	 */
 	if ((debug_flag) ||
 	    (strcmp(compat_mode_str, "cistron") == 0)) {
-		PAIR_LIST *entry;
 		VALUE_PAIR *vp;
 		int compat_mode = FALSE;
 
@@ -231,7 +244,63 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list, char *compa
 
 	}
 
-	*pair_list = users;
+	ht = lrad_hash_table_create(my_pairlist_free);
+	if (!ht) {
+		pairlist_free(&users);
+		return -1;
+	}
+
+	tailht = lrad_hash_table_create(NULL);
+	if (!tailht) {
+		lrad_hash_table_free(ht);
+		pairlist_free(&users);
+		return -1;
+	}
+
+	/*
+	 *	Now that we've read it in, put the entries into a hash
+	 *	for faster access.
+	 */
+	for (entry = users; entry != NULL; entry = next) {
+		uint32_t hash;
+		PAIR_LIST *tail;
+
+		next = entry->next;
+		entry->next = NULL;
+		entry->order = order++;
+
+		hash = lrad_hash_string(entry->name);
+
+		/*
+		 *	Insert it into the hash table, and remember
+		 *	the tail of the linked list.
+		 */
+		tail = lrad_hash_table_finddata(tailht, hash);
+		if (!tail) {
+			/*
+			 *	Insert it into the head & tail.
+			 */
+			if (!lrad_hash_table_insert(ht, hash, entry) ||
+			    !lrad_hash_table_insert(tailht, hash, entry)) {
+				pairlist_free(&next);
+				lrad_hash_table_free(ht);
+				lrad_hash_table_free(tailht);
+				return -1;
+			}
+		} else {
+			tail->next = entry;
+			if (!lrad_hash_table_replace(tailht, hash, entry)) {
+				pairlist_free(&next);
+				lrad_hash_table_free(ht);
+				lrad_hash_table_free(tailht);
+				return -1;
+			}
+		}
+	}
+
+	lrad_hash_table_free(tailht);
+	*pht = ht;
+
 	return 0;
 }
 
@@ -241,12 +310,12 @@ static int getusersfile(const char *filename, PAIR_LIST **pair_list, char *compa
 static int file_detach(void *instance)
 {
 	struct file_instance *inst = instance;
-	pairlist_free(&inst->users);
-	pairlist_free(&inst->acctusers);
-	pairlist_free(&inst->preproxy_users);
-	pairlist_free(&inst->auth_users);
-	pairlist_free(&inst->postproxy_users);
-	pairlist_free(&inst->postauth_users);
+	lrad_hash_table_free(inst->users);
+	lrad_hash_table_free(inst->acctusers);
+	lrad_hash_table_free(inst->preproxy_users);
+	lrad_hash_table_free(inst->auth_users);
+	lrad_hash_table_free(inst->postproxy_users);
+	lrad_hash_table_free(inst->postauth_users);
 	free(inst->usersfile);
 	free(inst->acctusersfile);
 	free(inst->preproxy_usersfile);
@@ -332,7 +401,7 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
  *	Common code called by everything below.
  */
 static int file_common(struct file_instance *inst, REQUEST *request,
-		       const char *filename, const PAIR_LIST *list,
+		       const char *filename, lrad_hash_table_t *ht,
 		       VALUE_PAIR *request_pairs, VALUE_PAIR **reply_pairs)
 {
 	VALUE_PAIR	*namepair;
@@ -340,7 +409,7 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 	VALUE_PAIR	**config_pairs;
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
-	const PAIR_LIST	*pl;
+	const PAIR_LIST	*user_pl, *default_pl;
 	int		found = 0;
 
 	inst = inst;		/* -Wunused fix later? */
@@ -349,14 +418,34 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 	name = namepair ? (char *) namepair->vp_strvalue : "NONE";
 	config_pairs = &request->config_items;
 
-	if (!list) return RLM_MODULE_NOOP;
+	if (!ht) return RLM_MODULE_NOOP;
+
+	user_pl = lrad_hash_table_finddata(ht, lrad_hash_string(name));
+	default_pl = lrad_hash_table_finddata(ht, lrad_hash_string("DEFAULT"));
 
 	/*
 	 *	Find the entry for the user.
 	 */
-	for (pl = list; pl; pl = pl->next) {
-		if (strcmp(name, pl->name) && strcmp(pl->name, "DEFAULT"))
-			continue;
+	while (user_pl || default_pl) {
+		const PAIR_LIST *pl;
+
+		if (!default_pl) {
+			pl = user_pl;
+			user_pl = user_pl->next;
+
+		} else if (!user_pl) {
+			pl = default_pl;
+			default_pl = default_pl->next;
+
+		} else {
+			if (user_pl->order < default_pl->order) {
+				pl = user_pl;
+				user_pl = user_pl->next;
+			} else {
+				pl = default_pl;
+				default_pl = default_pl->next;
+			}
+		}
 
 		if (paircompare(request, request_pairs, pl->check, reply_pairs) == 0) {
 			DEBUG2("    %s: Matched entry %s at line %d",
