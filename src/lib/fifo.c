@@ -114,6 +114,7 @@ int lrad_fifo_push(lrad_fifo_t *fi, void *data)
 
 	entry = lrad_fifo_alloc_entry(fi);
 	if (!entry) return 0;
+	entry->data = data;
 
 	if (!fi->head) {
 		fi->head = entry;
@@ -157,3 +158,42 @@ void *lrad_fifo_pop(lrad_fifo_t *fi)
 
 	return data;
 }
+
+#ifdef TESTING
+
+/*
+ *  cc -DTESTING -I .. fifo.c -o fifo
+ *
+ *  ./fifo
+ */
+
+#define MAX 1024
+int main(int argc, char **argv)
+{
+	int i, array[MAX];
+	lrad_fifo_t *fi;
+
+	fi = lrad_fifo_create(MAX, NULL);
+	if (!fi) exit(1);
+	
+	for (i = 0; i < MAX; i++) {
+		array[i] = i;
+
+		if (!lrad_fifo_push(fi, &array[i])) exit(2);
+	}
+
+	for (i = 0; i < MAX; i++) {
+		int *p;
+
+		p = lrad_fifo_pop(fi);
+		if (!p) {
+			fprintf(stderr, "No pop at %d\n", i);
+			exit(3);
+		}
+
+		if (*p != i) exit(4);
+	}
+
+	exit(0);
+}
+#endif
