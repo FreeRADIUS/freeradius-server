@@ -394,6 +394,7 @@ void lrad_rand_seed(const void *, size_t ); /* seed the random pool */
  */
 uint32_t lrad_hash(const void *, size_t);
 uint32_t lrad_hash_update(const void *data, size_t size, uint32_t hash);
+uint32_t lrad_hash_string(const char *p);
 
 /*
  *	If you need fewer than 32-bits of hash, use this macro to get

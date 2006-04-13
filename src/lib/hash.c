@@ -737,6 +737,22 @@ uint32_t lrad_hash_fold(uint32_t hash, int bits)
 }
 
 
+/*
+ *	Hash a C string, so we loop over it once.
+ */
+uint32_t lrad_hash_string(const char *p)
+{
+	uint32_t      hash = FNV_MAGIC_INIT;
+
+	while (*p) {
+		hash *= FNV_MAGIC_PRIME;
+		hash ^= (uint32_t) (*p++);
+	}
+
+	return hash;
+}
+
+
 #ifdef TESTING
 /*
  *  cc -DTESTING -I ../include/ hash.c -o hash
