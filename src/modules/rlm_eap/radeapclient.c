@@ -938,7 +938,9 @@ int main(int argc, char **argv)
 			break;
 
 		case 'X':
-		  sha1_data_problems = 1;
+#if 0
+		  sha1_data_problems = 1; /* for debugging only */
+#endif
 		  break;
 
 
