@@ -1062,7 +1062,12 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	found_tag = 0;
 	tag = 0;
 
-	ts = strrchr( attribute, ':' );
+	ts = strrchr(attribute, ':');
+	if (ts && !ts[1]) {
+		librad_log("Invalid tag for attribute %s", attribute);
+		return NULL;
+	}
+
 	if (ts && ts[1]) {
 	         /* Colon found with something behind it */
 	         if (ts[1] == '*' && ts[2] == 0) {
@@ -1193,7 +1198,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	}
 
 	/*
-	 *	FIXME: if (strcasecmp(attriobute, vp->name) != 0)
+	 *	FIXME: if (strcasecmp(attribute, vp->name) != 0)
 	 *	then the user MAY have typed in the attribute name
 	 *	as Vendor-%d-Attr-%d, and the value MAY be octets.
 	 *
@@ -1277,8 +1282,15 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 		return NULL;
 	}
 
-	attr[len] = '\0';
+	/*
+	 *	We may have Foo-Bar:= stuff, so back up.
+	 */
+	if (attr[len - 1] == ':') {
+		p--;
+		len--;
+	}
 
+	attr[len] = '\0';
 	*ptr = p;
 
 	/* Now we should have an operator here. */
@@ -1310,6 +1322,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 		*ptr = p;
 	}
 
+	vp = NULL;
 	switch (xlat) {
 		/*
 		 *	Make the full pair now.
@@ -1362,6 +1375,14 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 		strNcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
 		vp->length = 0;
 		break;
+	}
+
+	/*
+	 *	If we didn't make a pair, return an error.
+	 */
+	if (!vp) {
+		*eol = T_OP_INVALID;
+		return NULL;
 	}
 
 	return vp;
