@@ -1208,6 +1208,29 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	return vp;
 }
 
+
+/*
+ *	[a-zA-Z0-9_-:]+
+ */
+static const int valid_attr_name[256] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+	0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1,
+	0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
 /*
  *	Read a valuepair from a buffer, and advance pointer.
  *	Sets *eol to T_EOL if end of line was encountered.
@@ -1217,33 +1240,51 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 	char		buf[64];
 	char		attr[64];
 	char		value[512];
-	char		*p;
+	char		*p, *q;
 	LRAD_TOKEN	token, t, xlat;
 	VALUE_PAIR	*vp;
+	size_t		len;
 
 	*eol = T_OP_INVALID;
 
-	/* Get attribute. */
-	token = gettoken(ptr, attr, sizeof(attr));
+	p = *ptr;
+	while ((*p == ' ') || (*p == '\t')) p++;
 
-	/*  If it's a comment, then exit, as we haven't read a pair */
-	if (token == T_HASH) {
-		*eol = token;
-		librad_log("Read a comment instead of a token");
-		return NULL;
-	}
-
-	/*  It's not a comment, so it MUST be an attribute */
-	if ((token == T_EOL) ||
-	    (attr[0] == 0)) {
+	if (!*p) {
+		*eol = T_OP_INVALID;
 		librad_log("No token read where we expected an attribute name");
 		return NULL;
 	}
 
-	/* Now we should have an '=' here. */
+	if (*p == '#') {
+		*eol = T_HASH;
+		librad_log("Read a comment instead of a token");
+		return NULL;
+	}
+
+	q = attr;
+	for (len = 0; len < sizeof(attr); len++) {
+		if (valid_attr_name[(int)*p]) {
+			*q++ = *p++;
+			continue;
+		}
+		break;
+	}
+
+	if (len == sizeof(attr)) {
+		*eol = T_OP_INVALID;
+		librad_log("Attribute name is too long");
+		return NULL;
+	}
+
+	attr[len] = '\0';
+
+	*ptr = p;
+
+	/* Now we should have an operator here. */
 	token = gettoken(ptr, buf, sizeof(buf));
 	if (token < T_EQSTART || token > T_EQEND) {
-		librad_log("expecting '='");
+		librad_log("expecting operator");
 		return NULL;
 	}
 
