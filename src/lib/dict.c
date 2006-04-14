@@ -95,27 +95,29 @@ static const LRAD_NAME_NUMBER type_table[] = {
 	{ NULL, 0 }
 };
 
+
 /*
  *	Create the hash of the name.
+ *
+ *	We copy the hash function here because it's substantially faster.
  */
+#define FNV_MAGIC_INIT (0x811c9dc5)
+#define FNV_MAGIC_PRIME (0x01000193)
+
 static uint32_t dict_hashname(const char *name)
 {
-	const char *p;
-	char *q;
-	size_t len = 0;
-	char buffer[1024];
-	
-	p = name;
-	q = buffer;
-	while (*p && (len < sizeof(buffer))) {
-		if (isalpha(*p)) {
-			*(q++) = tolower((int) *(p++));
-		} else {
-			*(q++) = *(p++);
-		}
-		len++;
+	uint32_t hash = FNV_MAGIC_INIT;
+	const unsigned char *p;
+
+	for (p = name; *p != '\0'; p++) {
+		int c = *p;
+		if (isalpha(c)) c = tolower(c);
+
+		hash *= FNV_MAGIC_PRIME;
+		hash ^= (uint32_t ) (c & 0xff);
 	}
-	return lrad_hash(buffer, len);
+	
+	return hash;
 }
 
 
