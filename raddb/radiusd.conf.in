@@ -1009,6 +1009,11 @@ $INCLUDE ${confdir}/eap.conf
 	# Livingston-style 'users' file
 	#
 	files {
+		# The default key attribute to use for matches.  The content
+		# of this attribute is used to match the "name" of the
+		# entry.
+		#key = "%{Stripped-User-Name:-%{User-Name}}"
+
 		usersfile = ${confdir}/users
 		acctusersfile = ${confdir}/acct_users
 		preproxy_usersfile = ${confdir}/preproxy_users

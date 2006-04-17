@@ -40,6 +40,8 @@ static const char rcsid[] = "$Id$";
 struct file_instance {
 	char *compat_mode;
 
+	char *key;
+
 	/* autz */
 	char *usersfile;
 	lrad_hash_table_t *users;
@@ -92,6 +94,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(struct file_instance,postauth_usersfile), NULL, NULL },
 	{ "compat",	   PW_TYPE_STRING_PTR,
 	  offsetof(struct file_instance,compat_mode), NULL, "cistron" },
+	{ "key",	   PW_TYPE_STRING_PTR,
+	  offsetof(struct file_instance,key), NULL, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -316,6 +320,7 @@ static int file_detach(void *instance)
 	lrad_hash_table_free(inst->auth_users);
 	lrad_hash_table_free(inst->postproxy_users);
 	lrad_hash_table_free(inst->postauth_users);
+	free(inst->key);
 	free(inst->usersfile);
 	free(inst->acctusersfile);
 	free(inst->preproxy_usersfile);
@@ -404,7 +409,6 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 		       const char *filename, lrad_hash_table_t *ht,
 		       VALUE_PAIR *request_pairs, VALUE_PAIR **reply_pairs)
 {
-	VALUE_PAIR	*namepair;
 	const char	*name;
 	VALUE_PAIR	**config_pairs;
 	VALUE_PAIR	*check_tmp;
@@ -412,10 +416,21 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 	const PAIR_LIST	*user_pl, *default_pl;
 	int		found = 0;
 
-	inst = inst;		/* -Wunused fix later? */
+	if (!inst->key) {
+		VALUE_PAIR	*namepair;
 
-	namepair = request->username;
-	name = namepair ? (char *) namepair->vp_strvalue : "NONE";
+		namepair = request->username;
+		name = namepair ? (char *) namepair->vp_strvalue : "NONE";
+	} else {
+		int len;
+		char buffer[256];
+
+		len = radius_xlat(buffer, sizeof(buffer), inst->key,
+				  request, NULL);
+		if (len) name = buffer;
+		else name = "NONE";
+	}
+
 	config_pairs = &request->config_items;
 
 	if (!ht) return RLM_MODULE_NOOP;
