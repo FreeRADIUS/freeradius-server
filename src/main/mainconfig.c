@@ -49,6 +49,9 @@
 #include <grp.h>
 #include <pwd.h>
 
+#ifdef HAVE_SYS_PRCTL_H
+#include <sys/prctl.h>
+#endif
 
 #ifdef WITH_UDPFROMTO
 #include "udpfromto.h"
@@ -1414,6 +1417,17 @@ int read_mainconfig(int reload)
 		radlogdir_iswritable(mainconfig.uid_name);
 	}
 	switch_users();
+
+#ifdef HAVE_SYS_PRCTL_H
+#ifdef HAVE_PR_SET_DUMPABLE
+	if (mainconfig.allow_core_dumps) {
+		if (prctl(PR_SET_DUMPABLE, 1) < 0) {
+			radlog(L_ERR|L_CONS,"Cannot enable core dumps: prctl(PR_SET_DUMPABLE) failed: '%s'",
+			       strerror(errno));
+		}
+	}
+#endif
+#endif
 
 	/*
 	 *	Sanity check the configuration for internal

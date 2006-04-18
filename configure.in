@@ -534,6 +534,7 @@ AC_CHECK_HEADERS( \
 	fcntl.h \
 	sys/fcntl.h \
 	sys/stat.h \
+	sys/prctl.h \
 	prot.h \
 	sia.h \
 	siad.h
