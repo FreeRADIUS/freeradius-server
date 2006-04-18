@@ -61,6 +61,7 @@ ATTRIBUTE	Acc-Ace-Token-Ttl			45	integer
 ATTRIBUTE	Acc-Ip-Pool-Name			46	string
 ATTRIBUTE	Acc-Igmp-Admin-State			47	integer
 ATTRIBUTE	Acc-Igmp-Version			48	integer
+ATTRIBUTE	Acc-MN-HA-Secret			73	string
 ATTRIBUTE	Acc-Location-Id				98	string
 ATTRIBUTE	Acc-Calling-Station-Category		99	integer
 
