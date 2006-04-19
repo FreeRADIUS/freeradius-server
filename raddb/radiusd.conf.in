@@ -1071,6 +1071,18 @@ $INCLUDE ${confdir}/eap.conf
 		#
 		header = "%t"
 
+		#
+		# Certain attributes such as User-Password may be
+		# "sensitive", so they should not be printed in the
+		# detail file.  This section lists the attributes
+		# that should be suppressed.
+		#
+		# The attributes should be listed one to a line.
+		#
+		#suppress {
+			# User-Password
+		#}
+
 	}
 
 	#
