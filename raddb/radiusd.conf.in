@@ -670,19 +670,26 @@ $INCLUDE ${confdir}/eap.conf
 	#  See doc/rlm_ldap for description of configuration options 
 	#  and sample authorize{} and authenticate{} blocks 
 	#
-	#  This may be news to many people, but LDAP servers don't
-	#  understand EAP.  If you force "Auth-Type = LDAP", and then
-	#  send the server a request containing EAP authentication,
-	#  then it WILL NOT WORK.
+	#  However, LDAP can be used for authentication ONLY when the
+	#  Access-Request packet contains a clear-text User-Password
+	#  attribute.  LDAP authentication will NOT work for any other
+	#  authentication method.
 	#
-	#  The solution is to use the default configuration, which DOES
-	#  work.  In general, setting "Auth-Type = LDAP" is ALMOST ALWAYS
-	#  WRONG.  We really can't emphasize this enough.
+	#  This means that LDAP servers don't understand EAP.  If you
+	#  force "Auth-Type = LDAP", and then send the server a
+	#  request containing EAP authentication, then the
+	#  authentication WILL NOT WORK.
+	#
+	#  The solution is to use the default configuration, which does
+	#  work.
+	#
+	#  Setting "Auth-Type = LDAP" is ALMOST ALWAYS WRONG.  We
+	#  really can't emphasize this enough.
 	#
 	#  Note that Active Directory is *not* a real LDAP server.  In
 	#  order to authenticate users in Active Directory, you have
 	#  to use ntlm_auth.  See the "mschap" module, above, for details.
-	#
+	#	
 	ldap {
 		server = "ldap.your.domain"
 		#identity = "cn=admin,o=My Org,c=UA"
