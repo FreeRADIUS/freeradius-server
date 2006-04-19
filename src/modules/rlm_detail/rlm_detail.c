@@ -68,6 +68,8 @@ struct detail_instance {
 
 	/* if we want file locking */
 	int locking;
+
+	lrad_hash_table_t *ht;
 };
 
 static CONF_PARSER module_config[] = {
@@ -82,12 +84,31 @@ static CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
+
+/*
+ *	Clean up.
+ */
+static int detail_detach(void *instance)
+{
+        struct detail_instance *inst = instance;
+	free((char *) inst->detailfile);
+
+	free((char*) inst->last_made_directory);
+
+	if (inst->ht) lrad_hash_table_free(inst->ht);
+
+        free(inst);
+	return 0;
+}
+
+
 /*
  *	(Re-)read radiusd.conf into memory.
  */
 static int detail_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct detail_instance *inst;
+	CONF_SECTION	*cs;
 
 	inst = rad_malloc(sizeof(*inst));
 	if (!inst) {
@@ -96,11 +117,52 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 	memset(inst, 0, sizeof(*inst));
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
+		detail_detach(inst);
 		return -1;
 	}
 
 	inst->last_made_directory = NULL;
+
+	/*
+	 *	Suppress certain attributes.
+	 */
+	cs = cf_section_sub_find(conf, "suppress");
+	if (cs) {
+		CONF_ITEM	*ci;
+
+		inst->ht = lrad_hash_table_create(NULL);
+
+		for (ci = cf_item_find_next(cs, NULL);
+		     ci != NULL;
+		     ci = cf_item_find_next(cs, ci)) {
+			const char	*attr;
+			DICT_ATTR	*da;
+
+			if (!cf_item_is_pair(ci)) continue;
+						
+			attr = cf_pair_attr(cf_itemtopair(ci));
+			if (!attr) continue; /* pair-anoia */
+
+			da = dict_attrbyname(attr);
+			if (!da) {
+				radlog(L_INFO, "rlm_detail: WARNING: No such attribute %s: Cannot suppress printing it.", attr);
+				continue;
+			}
+
+			/*
+			 *	For better distribution we should really
+			 *	hash the attribute number or name.  But
+			 *	since the suppression list will usually
+			 *	be small, it doesn't matter.
+			 */
+			if (!lrad_hash_table_insert(inst->ht, da->attr, da)) {
+				radlog(L_ERR, "rlm_detail: Failed trying to remember %s", attr);
+				detail_detach(inst);
+				return -1;
+			}
+		}
+	}
+
 
 	*instance = inst;
 	return 0;
@@ -177,14 +239,19 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 				inst->last_made_directory = NULL;
 			}
 
-			/*
-			 *	Go create possibly multiple directories.
-			 */
-			if (rad_mkdir(buffer, inst->dirperm) < 0) {
-				radlog(L_ERR, "rlm_detail: Failed to create directory %s: %s", buffer, strerror(errno));
-				return RLM_MODULE_FAIL;
-			}
 			inst->last_made_directory = strdup(buffer);
+		}
+
+		/*
+		 *	stat the directory, and don't do anything if
+		 *	it exists.  If it doesn't exist, create it.
+		 *
+		 *	This also catches the case where some idiot
+		 *	deleted a directory that the server was using.
+		 */
+		if (rad_mkdir(inst->last_made_directory, inst->dirperm) < 0) {
+			radlog(L_ERR, "rlm_detail: Failed to create directory %s: %s", inst->last_made_directory, strerror(errno));
+			return RLM_MODULE_FAIL;
 		}
 
 		*p = '/';
@@ -272,14 +339,14 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	fputs(CTIME_R(&request->timestamp, buffer, DIRLEN), outfp);
 
 	/* Write each attribute/value to the log file */
-	while (pair) {
+	for (; pair != NULL; pair = pair->next) {
+		if (inst->ht &&
+		    lrad_hash_table_finddata(inst->ht, pair->attribute)) continue;
+
 		/*
 		 *	Don't print passwords in old format...
 		 */
-		if (compat && (pair->attribute == PW_PASSWORD)) {
-			pair = pair->next;
-			continue;
-		}
+		if (compat && (pair->attribute == PW_PASSWORD)) continue;
 
 		/*
 		 *	Print all of the attributes.
@@ -287,7 +354,6 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		fputs("\t", outfp);
 		vp_print(outfp, pair);
 		fputs("\n", outfp);
-		pair = pair->next;
 	}
 
 	/*
@@ -383,21 +449,6 @@ static int detail_post_proxy(void *instance, REQUEST *request)
 	}
 
 	return RLM_MODULE_NOOP;
-}
-
-
-/*
- *	Clean up.
- */
-static int detail_detach(void *instance)
-{
-        struct detail_instance *inst = instance;
-	free((char *) inst->detailfile);
-
-	if (inst->last_made_directory)
-		free((char*) inst->last_made_directory);
-        free(inst);
-	return 0;
 }
 
 

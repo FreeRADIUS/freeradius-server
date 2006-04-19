@@ -1085,6 +1085,18 @@ $INCLUDE ${confdir}/eap.conf
 		#  permissions restrictive, we can prevent unwanted
 		#  people from seeing that information.
 		detailperm = 0600
+
+		#
+		# Certain attributes such as User-Password may be
+		# "sensitive", so they should not be printed in the
+		# detail file.  This section lists the attributes
+		# that should be suppressed.
+		#
+		# The attributes should be listed one to a line.
+		#
+		#suppress {
+			# User-Password
+		#}
 	}
 
 	#
