@@ -1553,6 +1553,10 @@ int cf_item_is_section(CONF_ITEM *item)
 {
 	return item->type == CONF_ITEM_SECTION;
 }
+int cf_item_is_pair(CONF_ITEM *item)
+{
+	return item->type == CONF_ITEM_PAIR;
+}
 
 
 static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, const char *name,
