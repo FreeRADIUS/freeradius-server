@@ -69,6 +69,7 @@ int cf_section_lineno(CONF_SECTION *section);
 int cf_pair_lineno(CONF_PAIR *pair);
 CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item);
 int cf_item_is_section(CONF_ITEM *item);
+int cf_item_is_pair(CONF_ITEM *item);
 CONF_PAIR *cf_itemtopair(CONF_ITEM *item);
 CONF_SECTION *cf_itemtosection(CONF_ITEM *item);
 CONF_ITEM *cf_pairtoitem(CONF_PAIR *cp);

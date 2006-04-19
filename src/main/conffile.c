@@ -669,7 +669,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 
 			DEBUG2( "Config:   including file: %s", value );
 
-			if ((is = conf_read(cf, *lineno, value, parent)) == NULL) {
+			if ((is = conf_read(cf, *lineno, value, cs)) == NULL) {
 				cf_section_free(&cs);
 				return NULL;
 			}
@@ -1037,6 +1037,10 @@ int cf_pair_lineno(CONF_PAIR *pair)
 int cf_item_is_section(CONF_ITEM *item)
 {
 	return item->type == CONF_ITEM_SECTION;
+}
+int cf_item_is_pair(CONF_ITEM *item)
+{
+	return item->type == CONF_ITEM_PAIR;
 }
 
 
