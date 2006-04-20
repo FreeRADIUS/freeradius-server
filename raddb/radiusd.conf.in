@@ -677,18 +677,14 @@ $INCLUDE ${confdir}/eap.conf
 	#
 	#  This means that LDAP servers don't understand EAP.  If you
 	#  force "Auth-Type = LDAP", and then send the server a
-	#  request containing EAP authentication, then the
-	#  authentication WILL NOT WORK.
+	#  request containing EAP authentication, then authentication
+	#  WILL NOT WORK.
 	#
 	#  The solution is to use the default configuration, which does
 	#  work.
 	#
 	#  Setting "Auth-Type = LDAP" is ALMOST ALWAYS WRONG.  We
 	#  really can't emphasize this enough.
-	#
-	#  Note that Active Directory is *not* a real LDAP server.  In
-	#  order to authenticate users in Active Directory, you have
-	#  to use ntlm_auth.  See the "mschap" module, above, for details.
 	#	
 	ldap {
 		server = "ldap.your.domain"
