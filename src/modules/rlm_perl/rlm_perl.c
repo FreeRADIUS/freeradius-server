@@ -629,6 +629,14 @@ static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
 	char		params[1024], *ptr, *tmp;
 	int		count, ret=0;
 	STRLEN		n_a;
+
+	/*
+	 * Do an xlat on the provided string (nice recursive operation).
+	*/
+	if (!radius_xlat(params, sizeof(params), fmt, request, func)) {
+		radlog(L_ERR, "rlm_perl: xlat failed.");
+		return 0;
+	}
 #ifndef USE_ITHREADS
 	perl = inst->perl;
 #endif
@@ -651,13 +659,6 @@ static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
 	dSP;
 	ENTER;SAVETMPS;
 
-	/*
-	 * Do an xlat on the provided string (nice recursive operation).
-	*/
-	if (!radius_xlat(params, sizeof(params), fmt, request, func)) {
-		radlog(L_ERR, "rlm_perl: xlat failed.");
-		return 0;
-	}
 	ptr = strtok(params, " ");
 
 	PUSHMARK(SP);
@@ -675,22 +676,20 @@ static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
 	if (SvTRUE(ERRSV)) {
 		radlog(L_ERR, "rlm_perl: perl_xlat exit %s\n",
 		       SvPV(ERRSV,n_a));
-		return 0;
-	}
-
-	if (count > 0) {
+		POPs ;
+	} else if (count > 0) {
 		tmp = POPp;
 		ret = strlen(tmp);
 		strncpy(out,tmp,ret);
 
 		radlog(L_DBG,"rlm_perl: Len is %d , out is %s freespace is %d",
 		       ret, out,freespace);
-
-		PUTBACK ;
-		FREETMPS ;
-		LEAVE ;
-
 	}
+
+	PUTBACK ;
+	FREETMPS ;
+	LEAVE ;
+
 	}
 #ifdef USE_ITHREADS
 	pool_release(handle, instance);
@@ -1018,22 +1017,25 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 
 	SPAGAIN;
 
+	if (SvTRUE(ERRSV)) {
+		radlog(L_ERR, "rlm_perl: perl_embed:: module = %s , func = %s exit status= %s\n",
+		       inst->module,
+		       function_name, SvPV(ERRSV,n_a));
+		POPs;
+	}
+
 	if (count == 1) {
 		exitstatus = POPi;
 		if (exitstatus >= 100 || exitstatus < 0) {
 			exitstatus = RLM_MODULE_FAIL;
 		}
 	}
+	
 
 	PUTBACK;
 	FREETMPS;
 	LEAVE;
 
-	if (SvTRUE(ERRSV)) {
-		radlog(L_ERR, "rlm_perl: perl_embed:: module = %s , func = %s exit status= %s\n",
-		       inst->module,
-		       function_name, SvPV(ERRSV,n_a));
-	}
 
 	if ((get_hv_content(rad_reply_hv, &vp)) > 0 ) {
 		pairmove(&request->reply->vps, &vp);
