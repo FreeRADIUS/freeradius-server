@@ -255,7 +255,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	SSL_METHOD *meth;
 	SSL_CTX *ctx;
 	X509_STORE *certstore;
-	int verify_mode = 0;
+	int verify_mode = SSL_VERIFY_NONE;
 	int ctx_options = 0;
 	int type;
 
@@ -525,6 +525,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	eap_tls_t	*inst;
 	VALUE_PAIR	*vp;
 	int		client_cert = TRUE;
+	int		verify_mode = SSL_VERIFY_NONE;
 
 	inst = (eap_tls_t *)type_arg;
 
@@ -555,6 +556,17 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	if (!ssn) {
 		return 0;
 	}
+
+	/*
+	 *	Verify the peer certificate, if asked.
+	 */
+	if (client_cert) {
+		DEBUG2(" rlm_eap_tls: Requiring client certificate");
+		verify_mode = SSL_VERIFY_PEER;
+		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
+	}
+	SSL_set_verify(ssn->ssl, verify_mode, cbtls_verify);
 
 	/*
 	 *	Create a structure for all the items required to be

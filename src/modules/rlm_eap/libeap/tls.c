@@ -34,7 +34,8 @@ tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 {
 	tls_session_t *state = NULL;
 	SSL *new_tls = NULL;
-	int verify_mode = SSL_VERIFY_NONE;
+
+	client_cert = client_cert; /* -Wunused.  See bug #350 */
 
 	if ((new_tls = SSL_new(ssl_ctx)) == NULL) {
 		radlog(L_ERR, "rlm_eap_tls: Error creating new SSL");
@@ -79,17 +80,6 @@ tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 	SSL_set_msg_callback(new_tls, cbtls_msg);
 	SSL_set_msg_callback_arg(new_tls, state);
 	SSL_set_info_callback(new_tls, cbtls_info);
-
-	/*
-	 *	Verify the peer certificate, if asked.
-	 */
-	if (client_cert) {
-		DEBUG2(" rlm_eap_tls: Requiring client certificate");
-		verify_mode = SSL_VERIFY_PEER;
-		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
-	}
-	SSL_set_verify(state->ssl, verify_mode, cbtls_verify);
 
 	/*
 	 *	In Server mode we only accept.
