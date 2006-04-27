@@ -326,7 +326,7 @@ in the instantiate{} block in radiusd.conf
 USERDN Attribute:
 When rlm_ldap has found the DN corresponding to the username provided
 in the access-request (all this happens in the authorize section) it
-will add an Ldap-UserDN attribute in the check items list containing
+will add an Ldap-UserDN attribute in the request items list containing
 that DN. The attribute will be searched for in the authenticate
 section and if present will be used for authentication (ldap bind with
 the user DN/password). Otherwise a search will be performed to find
@@ -334,9 +334,11 @@ the user dn. If the administrator wishes to use rlm_ldap only for
 authentication or does not wish to populate the identity,password
 configuration attributes he can set this attribute by other means and
 avoid the ldap search completely. For instance it can be set through
-the users file in the authorize section:
+the hints file in the authorize section:
 
 DEFAULT	Ldap-UserDN := `uid=%{User-Name},ou=people,dc=company,dc=com`
+
+The "users" file won't work, because it can't add items to the request.
 
 
 DIRECTORY COMPATIBILITY NOTE: If you use LDAP only for authorization and
