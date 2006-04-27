@@ -113,6 +113,137 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
 
 
 /*
+ *	Before trusting a certificate, you must make sure that the
+ *	certificate is 'valid'. There are several steps that your
+ *	application can take in determining if a certificate is
+ *	valid. Commonly used steps are:
+ *
+ *	1.Verifying the certificate's signature, and verifying that
+ *	the certificate has been issued by a trusted Certificate
+ *	Authority.
+ *
+ *	2.Verifying that the certificate is valid for the present date
+ *	(i.e. it is being presented within its validity dates).
+ *
+ *	3.Verifying that the certificate has not been revoked by its
+ *	issuing Certificate Authority, by checking with respect to a
+ *	Certificate Revocation List (CRL).
+ *
+ *	4.Verifying that the credentials presented by the certificate
+ *	fulfill additional requirements specific to the application,
+ *	such as with respect to access control lists or with respect
+ *	to OCSP (Online Certificate Status Processing).
+ *
+ *	NOTE: This callback will be called multiple times based on the
+ *	depth of the root certificate chain
+ */
+static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
+{
+	char subject[256]; /* Used for the subject name */
+	char issuer[256]; /* Used for the issuer name */
+	char buf[256];
+	char cn_str[256];
+	EAP_HANDLER *handler = NULL;
+	X509 *client_cert;
+	SSL *ssl;
+	int err, depth;
+	EAP_TLS_CONF *conf;
+	int my_ok = ok;
+
+	client_cert = X509_STORE_CTX_get_current_cert(ctx);
+	err = X509_STORE_CTX_get_error(ctx);
+	depth = X509_STORE_CTX_get_error_depth(ctx);
+
+	if (!my_ok) {
+		radlog(L_ERR,"--> verify error:num=%d:%s\n",err,
+			X509_verify_cert_error_string(err));
+		return my_ok;
+	}
+	/*
+	 *	Catch too long Certificate chains
+	 */
+
+	/*
+	 * Retrieve the pointer to the SSL of the connection currently treated
+	 * and the application specific data stored into the SSL object.
+	 */
+	ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
+	handler = (EAP_HANDLER *)SSL_get_ex_data(ssl, 0);
+	conf = (EAP_TLS_CONF *)SSL_get_ex_data(ssl, 1);
+
+	/*
+	 *	Get the Subject & Issuer
+	 */
+	subject[0] = issuer[0] = '\0';
+	X509_NAME_oneline(X509_get_subject_name(client_cert), subject, 256);
+	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer, 256);
+
+	/*
+	 *	Get the Common Name
+	 */
+	X509_NAME_get_text_by_NID(X509_get_subject_name(client_cert),
+             NID_commonName, buf, 256);
+
+	switch (ctx->error) {
+
+	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
+		radlog(L_ERR, "issuer= %s\n", issuer);
+		break;
+	case X509_V_ERR_CERT_NOT_YET_VALID:
+	case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
+		radlog(L_ERR, "notBefore=");
+#if 0
+		ASN1_TIME_print(bio_err, X509_get_notBefore(ctx->current_cert));
+#endif
+		break;
+	case X509_V_ERR_CERT_HAS_EXPIRED:
+	case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
+		radlog(L_ERR, "notAfter=");
+#if 0
+		ASN1_TIME_print(bio_err, X509_get_notAfter(ctx->current_cert));
+#endif
+		break;
+	}
+
+	/*
+	 *	If we're at the actual client cert and the conf tells
+	 *	us to, check the CN in the cert against the xlat'ed
+	 *	value
+	 */
+	if (depth == 0 && conf->check_cert_cn != NULL) {
+		if (!radius_xlat(cn_str, sizeof(cn_str), conf->check_cert_cn, handler->request, NULL)) {
+			radlog(L_ERR, "rlm_eap_tls (%s): xlat failed.",
+                               conf->check_cert_cn);
+			/* if this fails, fail the verification */
+			my_ok = 0;
+		}
+		DEBUG2("    rlm_eap_tls: checking certificate CN (%s) with xlat'ed value (%s)", buf, cn_str);
+		if (strncmp(cn_str, buf, sizeof(buf)) != 0) {
+			my_ok = 0;
+			radlog(L_AUTH, "rlm_eap_tls: Certificate CN (%s) does not match specified value (%s)!", buf, cn_str);
+		}
+	}
+
+	if (debug_flag > 0) {
+		radlog(L_INFO, "chain-depth=%d, ", depth);
+		/*
+		  if (depth > 0) {
+		  return ok;
+		  }
+		*/
+		radlog(L_INFO, "error=%d", err);
+
+		radlog(L_INFO, "--> User-Name = %s", handler->identity);
+		radlog(L_INFO, "--> BUF-Name = %s", buf);
+		radlog(L_INFO, "--> subject = %s", subject);
+		radlog(L_INFO, "--> issuer  = %s", issuer);
+		radlog(L_INFO, "--> verify return:%d", my_ok);
+	}
+	return my_ok;
+}
+
+
+/*
  *	Create Global context SSL and use it in every new session
  *
  *	- Load the trusted CAs
