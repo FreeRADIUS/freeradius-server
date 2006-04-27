@@ -167,13 +167,13 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	if (type == SSL_FILETYPE_PEM) {
 		radlog(L_INFO, "rlm_eap_tls: Loading the certificate file as a chain");
 		if (!(SSL_CTX_use_certificate_chain_file(ctx, conf->certificate_file))) {
-			ERR_print_errors_fp(stderr);
+			radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
 			radlog(L_ERR, "rlm_eap_tls: Error reading certificate file");
 			return NULL;
 		}
 
 	} else if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
-		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
 		radlog(L_ERR, "rlm_eap_tls: Error reading certificate file");
 		return NULL;
 	}
@@ -181,14 +181,14 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 
 	/* Load the CAs we trust */
 	if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
-		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
 		radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list");
 		return NULL;
 	}
 	SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
 
 	if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
-		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
 		radlog(L_ERR, "rlm_eap_tls: Error reading private key file");
 		return NULL;
 	}
@@ -243,7 +243,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	if (conf->check_crl) {
 	  certstore = SSL_CTX_get_cert_store(ctx);
 	  if (certstore == NULL) {
-	    ERR_print_errors_fp(stderr);
+	    radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
 	    radlog(L_ERR, "rlm_eap_tls: Error reading Certificate Store");
 	    return NULL;
 	  }
@@ -266,7 +266,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 
 	/* Load randomness */
 	if (!(RAND_load_file(conf->random_file, 1024*1024))) {
-		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
 		radlog(L_ERR, "rlm_eap_tls: Error loading randomness");
 		return NULL;
 	}
