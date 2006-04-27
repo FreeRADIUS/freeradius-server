@@ -22,11 +22,12 @@
  */
 
 #include "autoconf.h"
-#include "eap_tls.h"
 
 #ifdef HAVE_OPENSSL_RAND_H
 #include <openssl/rand.h>
 #endif
+
+#include "rlm_eap_tls.h"
 
 static CONF_PARSER module_config[] = {
 	{ "rsa_key_exchange", PW_TYPE_BOOLEAN,
@@ -400,6 +401,16 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
 		radlog(L_ERR, "rlm_eap_tls: Error loading randomness");
 		return NULL;
+	}
+
+	/*
+	 * Set the cipher list if we were told to
+	 */
+	if (conf->cipher_list) {
+		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
+			radlog(L_ERR, "rlm_eap_tls: Error setting cipher list");
+			return NULL;
+		}
 	}
 
 	return ctx;
