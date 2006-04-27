@@ -338,41 +338,6 @@ typedef struct tls_packet {
 } EAPTLS_PACKET;
 
 
-/* configured values goes right here */
-typedef struct eap_tls_conf {
-	char		*private_key_password;
-	char		*private_key_file;
-	char		*certificate_file;
-	char		*random_file;
-	char		*ca_path;
-	char		*ca_file;
-	char		*dh_file;
-	char		*rsa_file;
-	int		rsa_key;
-	int		dh_key;
-	int		rsa_key_length;
-	int		dh_key_length;
-	int		verify_depth;
-	int		file_type;
-	int		include_length;
-
-	/*
-	 *	Always < 4096 (due to radius limit), 0 by default = 2048
-	 */
-	int		fragment_size;
-	int		check_crl;
-	char		*check_cert_cn;
-	char		*cipher_list;
-} EAP_TLS_CONF;
-
-
-/* This structure gets stored in arg */
-typedef struct _eap_tls_t {
-	EAP_TLS_CONF 	*conf;
-	SSL_CTX		*ctx;
-} eap_tls_t;
-
-
 /* EAP-TLS framework */
 EAPTLS_PACKET 	*eaptls_alloc(void);
 void 		eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr);

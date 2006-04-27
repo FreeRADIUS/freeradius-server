@@ -22,11 +22,12 @@
  */
 
 #include <freeradius-devel/autoconf.h>
-#include "eap_tls.h"
 
 #ifdef HAVE_OPENSSL_RAND_H
 #include <openssl/rand.h>
 #endif
+
+#include "rlm_eap_tls.h"
 
 static CONF_PARSER module_config[] = {
 	{ "rsa_key_exchange", PW_TYPE_BOOLEAN,
