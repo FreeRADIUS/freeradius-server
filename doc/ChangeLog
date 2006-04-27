@@ -1,12 +1,29 @@
 FreeRADIUS 1.1.2 ; $Date$, urgency=low
 
 	Bug fixes
+	* Escape more ldap strings, so configuration entries
+	  that have magic LDAP characters don't break LDAP.
+	  This closes bug #360.
+	* Added "suppress" configuration entry to rlm_detail,
+	  to suppress certain attributes (e.g. User-Password).
+	  This closes bug #359.
+	* Updated doc/rlm_ldap.  This closes bug #353.
+	* Moved rlm_eap_tls code from libeap to rlm_eap_tls.
+	  This closes bug #350.
+	* Write SSL errors to log file, rather than stderr.
+	  This closes bug #347.
+	* Updated redhat/freeradius.spec.  This closes bug #330.
 	* Don't forcibly over-write Auth-Type in the mschap module.
 	  This prevents an earlier module from forcing reject.
 	* Use the correct module reference in the authenticate section,
 	  where Auth-Type wasn't explicitely specified.
 	* If there are typos in a subsection in radiusd.conf, exit
 	  after printing an error, rather than continuing.
+
+	Feature improvements
+	* Added 'cipher_list' configuration to the tls module.
+	  See "eap.conf" and "man 1 cipher" for details.
+	* More dictionary updates
 
 FreeRADIUS 1.1.1 ; $Date$, urgency=low
 	Security fixes
