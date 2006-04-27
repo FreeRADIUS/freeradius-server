@@ -38,7 +38,7 @@ tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 
 	if ((new_tls = SSL_new(ssl_ctx)) == NULL) {
 		radlog(L_ERR, "rlm_eap_tls: Error creating new SSL");
-		ERR_print_errors_fp(stderr);
+		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
 		return NULL;
 	}
 
@@ -106,7 +106,7 @@ static void int_ssl_check(SSL *s, int ret, const char *text)
 {
 	int e;
 
-	ERR_print_errors_fp(stderr);
+	radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
 	e = SSL_get_error(s, ret);
 
 	switch(e) {
