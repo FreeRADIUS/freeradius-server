@@ -2954,6 +2954,7 @@ lt_dlopenext (filename)
   strcpy (tmp, filename);
   strcat (tmp, archive_ext);
   errors = try_dlopen (&handle, tmp);
+  if (errors) return 0;
 
   /* If we found FILENAME, stop searching -- whether we were able to
      load the file as a module or not.  If the file exists but loading
@@ -2984,6 +2985,7 @@ lt_dlopenext (filename)
 
   strcat(tmp, shlib_ext);
   errors = try_dlopen (&handle, tmp);
+  if (errors) return 0;
 
   /* As before, if the file was found but loading failed, return now
      with the current error message.  */
