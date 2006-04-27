@@ -382,7 +382,6 @@ int 		eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply);
 /* Callbacks */
 int 		cbtls_password(char *buf, int num, int rwflag, void *userdata);
 void 		cbtls_info(const SSL *s, int where, int ret);
-int 		cbtls_verify(int ok, X509_STORE_CTX *ctx);
 void 		cbtls_msg(int write_p, int msg_version, int content_type,
 	       		const void *buf, size_t len, SSL *ssl, void *arg);
 RSA		*cbtls_rsa(SSL *s, int is_export, int keylength);
