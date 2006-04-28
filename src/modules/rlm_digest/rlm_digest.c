@@ -106,7 +106,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		passwd = pairfind(request->config_items, PW_PASSWORD);
 	}
 	if (!passwd) {
-		radlog(L_AUTH, "rlm_digest: Configuration item \"User-Password\" or MD5-Password is required for authentication.");
+		radlog(L_AUTH, "rlm_digest: Configuration item \"User-Password\" or Digest-HA1 is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 
