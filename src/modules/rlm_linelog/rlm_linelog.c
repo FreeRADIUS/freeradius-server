@@ -214,7 +214,7 @@ static int do_linelog(void *instance, REQUEST *request)
  */
 module_t rlm_linelog = {
 	RLM_MODULE_INIT,
-	"example",
+	"linelog",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	linelog_instantiate,		/* instantiation */
 	linelog_detach,			/* detach */
