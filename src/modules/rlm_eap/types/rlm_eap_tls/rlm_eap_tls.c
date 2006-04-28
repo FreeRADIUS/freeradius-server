@@ -64,6 +64,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(EAP_TLS_CONF, check_crl), NULL, "no"},
 	{ "check_cert_cn", PW_TYPE_STRING_PTR,
 	  offsetof(EAP_TLS_CONF, check_cert_cn), NULL, NULL},
+	{ "cipher_list", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, cipher_list), NULL, NULL},
 	{ "check_cert_issuer", PW_TYPE_STRING_PTR,
 	  offsetof(EAP_TLS_CONF, check_cert_issuer), NULL, NULL},
 
