@@ -109,6 +109,68 @@ static int linelog_instantiate(CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
+
+/*
+ *	Escape unprintable characters.
+ */
+static int linelog_escape_func(char *out, int outlen, const char *in)
+{
+	int len = 0;
+
+	if (outlen == 0) return 0;
+	if (outlen == 1) {
+		*out = '\0';
+		return 0;
+	}
+
+	while (in[0]) {
+		if (in[0] >= ' ') {
+			if (in[0] == '\\') {
+				if (outlen <= 2) break;
+				outlen--;
+				*out++ = '\\';
+				len++;
+			}
+
+			outlen--;
+			if (outlen == 1) break;
+			*out++ = *in++;
+			len++;
+			continue;
+		}
+
+		switch (in[0]) {
+		case '\n':
+			if (outlen <= 2) break;
+			*out++ = '\\';
+			*out++ = 'n';
+			in++;
+			len += 2;
+			break;
+
+		case '\r':
+			if (outlen <= 2) break;
+			*out++ = '\\';
+			*out++ = 'r';
+			in++;
+			len += 2;
+			break;
+
+		default:
+			if (outlen <= 4) break;
+			snprintf(out, outlen,  "\\%03o", *in);
+			in++;
+			out += 4;
+			outlen -= 4;
+			len += 4;
+			break;
+		}
+	}
+
+	*out = '\0';
+	return len;
+}
+
 static int do_linelog(void *instance, REQUEST *request)
 {
 	int fd;
@@ -122,7 +184,8 @@ static int do_linelog(void *instance, REQUEST *request)
 	/*
 	 *	FIXME: Check length.
 	 */
-	radius_xlat(buffer, sizeof(buffer), inst->filename, request, NULL);
+	radius_xlat(buffer, sizeof(buffer), inst->filename, request,
+		linelog_escape_func);
 
 	fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, 0600);
 	if (fd == -1) {
