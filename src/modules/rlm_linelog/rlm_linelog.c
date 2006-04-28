@@ -75,8 +75,8 @@ static int linelog_detach(void *instance)
 {
 	rlm_linelog_t *inst = instance;
 
-	if (inst->filename) free(inst->filename);
-	if (inst->line) free(inst->line);
+	free(inst->filename);
+	free(inst->line);
 	
 	free(inst);
 	return 0;
@@ -174,7 +174,6 @@ static int linelog_escape_func(char *out, int outlen, const char *in)
 static int do_linelog(void *instance, REQUEST *request)
 {
 	int fd;
-	char *p;
 	char buffer[4096];
 	char line[1024];
 	rlm_linelog_t *inst;
@@ -184,8 +183,7 @@ static int do_linelog(void *instance, REQUEST *request)
 	/*
 	 *	FIXME: Check length.
 	 */
-	radius_xlat(buffer, sizeof(buffer), inst->filename, request,
-		linelog_escape_func);
+	radius_xlat(buffer, sizeof(buffer), inst->filename, request, NULL);
 
 	fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, 0600);
 	if (fd == -1) {
@@ -197,10 +195,9 @@ static int do_linelog(void *instance, REQUEST *request)
 	/*
 	 *	FIXME: Check length.
 	 */
-	radius_xlat(line, sizeof(line) - 1, inst->line, request, NULL);
-
-	p = strchr(line, '\n');
-	if (!p) strcat(line, "\n");
+	radius_xlat(line, sizeof(line) - 1, inst->line, request,
+		    linelog_escape_func);
+	strcat(line, "\n");
 	
 	write(fd, line, strlen(line));
 	close(fd);
@@ -223,7 +220,7 @@ module_t rlm_linelog = {
 		do_linelog,	/* authorization */
 		do_linelog,	/* preaccounting */
 		do_linelog,	/* accounting */
-		NULL,			/* checksimul */
+		NULL,		/* checksimul */
 		do_linelog, 	/* pre-proxy */
 		do_linelog,	/* post-proxy */
 		do_linelog	/* post-auth */
