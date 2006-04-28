@@ -53,6 +53,7 @@ typedef struct eap_tls_conf {
 	int		check_crl;
 	char		*check_cert_cn;
 	char		*cipher_list;
+	char		*check_cert_issuer;
 } EAP_TLS_CONF;
 
 /* This structure gets stored in arg */
