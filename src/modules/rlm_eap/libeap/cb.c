@@ -64,6 +64,12 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 {
 	tls_session_t *state = (tls_session_t *)arg;
 
+	/*
+	 *	Work around bug #298, where we may be called with a NULL
+	 *	argument.  We should really log a serious error
+	 */
+	if (!arg) return;
+
 	state->info.origin = (unsigned char)write_p;
 	state->info.content_type = (unsigned char)content_type;
 	state->info.record_len = len;
