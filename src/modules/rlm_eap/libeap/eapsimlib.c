@@ -227,7 +227,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 			roundedlen = 20;
 			memset(&attr[2], 0, 18);
 			macspace = &attr[4];
-			append = vp->vp_strvalue;
+			append = vp->vp_octets;
 			appendlen = vp->length;
 		}
 		else {
@@ -284,7 +284,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 
 		/* HMAC it! */
 		lrad_hmac_sha1(buffer, hmaclen,
-			       vp->vp_strvalue, vp->length,
+			       vp->vp_octets, vp->length,
 			       sha1digest);
 
 		/* done with the buffer, free it */
@@ -403,7 +403,7 @@ int unmap_eapsim_types(RADIUS_PACKET *r)
 		return 0;
 	}
 
-	return unmap_eapsim_basictypes(r, esvp->vp_strvalue, esvp->length);
+	return unmap_eapsim_basictypes(r, esvp->vp_octets, esvp->length);
 }
 
 /*

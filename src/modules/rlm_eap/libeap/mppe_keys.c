@@ -28,7 +28,7 @@
  * Add value pair to reply
  */
 static void add_reply(VALUE_PAIR** vp,
-		      const char* name, const char* value, int len)
+		      const char* name, const uint8_t * value, int len)
 {
 	VALUE_PAIR *reply_attr;
 	reply_attr = pairmake(name, "", T_OP_EQ);
@@ -39,7 +39,7 @@ static void add_reply(VALUE_PAIR** vp,
 		return;
 	}
 
-	memcpy(reply_attr->vp_strvalue, value, len);
+	memcpy(reply_attr->vp_octets, value, len);
 	reply_attr->length = len;
 	pairadd(vp, reply_attr);
 }
