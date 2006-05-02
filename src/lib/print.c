@@ -178,7 +178,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 		case PW_TYPE_ABINARY:
 #ifdef ASCEND_BINARY
 			a = buf;
-			print_abinary(vp, (unsigned char *)buf, sizeof(buf));
+			print_abinary(vp, buf, sizeof(buf));
 			break;
 #else
 		  /* FALL THROUGH */
@@ -188,12 +188,12 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 
 			strcpy(buf, "0x");
 			
-			lrad_bin2hex(vp->vp_strvalue, buf + 2, vp->length);
+			lrad_bin2hex(vp->vp_octets, buf + 2, vp->length);
 			a = buf;
 		  break;
 
 		case PW_TYPE_IFID:
-			a = ifid_ntoa(buf, sizeof(buf), vp->vp_strvalue);
+			a = ifid_ntoa(buf, sizeof(buf), vp->vp_octets);
 			break;
 
 		case PW_TYPE_IPV6ADDR:
