@@ -79,7 +79,7 @@ typedef struct radius_packet_t {
 } radius_packet_t;
 
 static lrad_randctx lrad_rand_pool;	/* across multiple calls */
-static volatile int lrad_rand_index = -1;
+static int lrad_rand_initialized = 0;
 static unsigned int salt_offset = 0;
 
 
@@ -2616,7 +2616,7 @@ void lrad_rand_seed(const void *data, size_t size)
 	/*
 	 *	Ensure that the pool is initialized.
 	 */
-	if (lrad_rand_index < 0) {
+	if (!lrad_rand_initialized) {
 		int fd;
 		
 		memset(&lrad_rand_pool, 0, sizeof(lrad_rand_pool));
@@ -2641,7 +2641,8 @@ void lrad_rand_seed(const void *data, size_t size)
 		}
 
 		lrad_randinit(&lrad_rand_pool, 1);
-		lrad_rand_index = 0;
+		lrad_rand_pool.randcnt = 0;
+		lrad_rand_initialized = 1;
 	}
 
 	if (!data) return;
@@ -2649,18 +2650,11 @@ void lrad_rand_seed(const void *data, size_t size)
 	/*
 	 *	Hash the user data
 	 */
-	hash = lrad_hash(data, size);
+	hash = lrad_rand();
+	if (!hash) hash = lrad_rand();
+	hash = lrad_hash_update(data, size, hash);
 	
-	lrad_rand_pool.randrsl[lrad_rand_index & 0xff] ^= hash;
-	lrad_rand_index++;
-	lrad_rand_index &= 0xff;
-
-	/*
-	 *	Churn the pool every so often after seeding it.
-	 */
-	if (((int) (hash & 0xff)) == lrad_rand_index) {
-		lrad_isaac(&lrad_rand_pool);
-	}
+	lrad_rand_pool.randmem[lrad_rand_pool.randcnt] ^= hash;
 }
 
 
@@ -2674,23 +2668,14 @@ uint32_t lrad_rand(void)
 	/*
 	 *	Ensure that the pool is initialized.
 	 */
-	if (lrad_rand_index < 0) {
+	if (!lrad_rand_initialized) {
 		lrad_rand_seed(NULL, 0);
 	}
 
-	/*
-	 *	We don't return data directly from the pool.
-	 *	Rather, we return a summary of the data.
-	 */
-	num = lrad_rand_pool.randrsl[lrad_rand_index & 0xff];
-	lrad_rand_index++;
-	lrad_rand_index &= 0xff;
-
-	/*
-	 *	Every so often, churn the pool.
-	 */
-	if (((int) (num & 0xff)) == lrad_rand_index) {
+	num = lrad_rand_pool.randrsl[lrad_rand_pool.randcnt++];
+	if (lrad_rand_pool.randcnt == 256) {
 		lrad_isaac(&lrad_rand_pool);
+		lrad_rand_pool.randcnt = 0;
 	}
 
 	return num;
