@@ -87,6 +87,7 @@ int log_stripped_names;
 int debug_flag = 0;
 int log_auth_detail = FALSE;
 int need_reload = FALSE;
+
 const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
 time_t time_now;
@@ -147,7 +148,7 @@ int main(int argc, char *argv[])
 	memset(&mainconfig, 0, sizeof(mainconfig));
 	mainconfig.myip.af = AF_UNSPEC;
 	mainconfig.port = -1;
-	mainconfig.radiusd_conf = "radiusd.conf";
+	mainconfig.radiusd_conf = strdup("radiusd.conf");
 
 #ifdef HAVE_SIGACTION
 	memset(&act, 0, sizeof(act));
