@@ -27,6 +27,14 @@
 #  heck out of most admins, who do everything right, but have the ERX
 #  do stupid things.
 #
+#  The ERX supports Ascend "abinary" format.  See:
+#
+#	http://www.juniper.net/techpubs/software/erx/junose71/swconfig-policy/html/policy-mgmt-apply5.html
+#
+#  For this to work in FreeRADIUS, you will have to specify the attribute
+#  in hex, as in:
+#
+#	Ascend-Data-Filter = 0x010203...
 #
 
 VENDOR		ERX				4874
