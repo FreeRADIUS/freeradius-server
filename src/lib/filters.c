@@ -1049,11 +1049,18 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	ascend_filter_t filter;
 
 	rcode = -1;
+	
+	/*
+	 *	Rather than printing specific error messages, we create
+	 *	a general one here, which won't be used if the function
+	 *	returns OK.
+	 */
+	librad_log("Text is not in proper format");
 
 	/*
 	 *	Tokenize the input string in the VP.
 	 *
-	 *	Once the filter is *completelty* parsed, then we will
+	 *	Once the filter is *completely* parsed, then we will
 	 *	over-write it with the final binary filter.
 	 */
 	argc = str2argv(pair->strvalue, argv, 32);
