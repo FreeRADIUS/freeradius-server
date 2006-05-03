@@ -1167,9 +1167,11 @@ void print_abinary(VALUE_PAIR *vp, char *buffer, int len)
   if (vp->length != sizeof(*filter)) {
 	  strcpy(p, "0x");
 	  p += 2;
+	  len -= 2;
 	  for (i = 0; i < vp->length; i++) {
-		  sprintf(p, " %02x", vp->vp_octets[i]);
-		  p += 3;
+		  snprintf(p, len, "%02x", vp->vp_octets[i]);
+		  p += 2;
+		  len -= 2;
 	  }
 	  return;
   }
