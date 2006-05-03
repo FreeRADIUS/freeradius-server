@@ -734,26 +734,32 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 		case PW_TYPE_ABINARY:
 #ifdef ASCEND_BINARY
+			if (strncasecmp(value, "0x", 2) == 0) goto do_octets;
+			
+
 			/*
 			 *	Special case to convert filter to binary
 			 */
 			strNcpy(vp->strvalue, value, sizeof(vp->strvalue));
 		  	if (ascend_parse_filter(vp) < 0 ) {
+			  fprintf(stderr, "FUCK %s\n", value);
 				librad_log("failed to parse Ascend binary attribute: %s",
 					   librad_errstr);
 				return NULL;
 			}
 			break;
+
 			/*
 			 *	If Ascend binary is NOT defined,
 			 *	then fall through to raw octets, so that
 			 *	the user can at least make them by hand...
 			 */
+	do_octets:
 #endif
 			/* raw octets: 0x01020304... */
 		case PW_TYPE_OCTETS:
 			if (strncasecmp(value, "0x", 2) == 0) {
-				u_char *us;
+				uint8_t *us;
 				cp = value + 2;
 				us = vp->strvalue;
 				vp->length = 0;
@@ -1252,6 +1258,14 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 		strNcpy(vp->strvalue, value, sizeof(vp->strvalue));
 		vp->length = 0;
 		break;
+	}
+
+	/*
+	 *      If we didn't make a pair, return an error.
+	 */
+	if (!vp) {
+		*eol = T_INVALID;
+		return NULL;
 	}
 
 	return vp;
