@@ -1594,6 +1594,7 @@ static VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET 
 	switch (vp->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
+	case PW_TYPE_ABINARY:
 		/* nothing more to do */
 		break;
 
