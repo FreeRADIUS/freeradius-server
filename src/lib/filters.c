@@ -1004,6 +1004,13 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	rcode = -1;
 
 	/*
+	 *	Rather than printing specific error messages, we create
+	 *	a general one here, which won't be used if the function
+	 *	returns OK.
+	 */
+	librad_log("Text is not in proper format");
+
+	/*
 	 *	Tokenize the input string in the VP.
 	 *
 	 *	Once the filter is *completelty* parsed, then we will
@@ -1157,7 +1164,7 @@ void print_abinary(VALUE_PAIR *vp, char *buffer, int len)
   /*
    *  Just for paranoia: wrong size filters get printed as octets
    */
-  if (vp->length != sizeof(filter)) {
+  if (vp->length != sizeof(*filter)) {
 	  strcpy(p, "0x");
 	  p += 2;
 	  for (i = 0; i < vp->length; i++) {
