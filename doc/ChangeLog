@@ -19,11 +19,17 @@ FreeRADIUS 1.1.2 ; $Date$, urgency=low
 	  where Auth-Type wasn't explicitely specified.
 	* If there are typos in a subsection in radiusd.conf, exit
 	  after printing an error, rather than continuing.
+	* Print Ascend "abinary" format as text rather than octets
+	  when we receive it.
 
 	Feature improvements
-	* Added 'cipher_list' configuration to the tls module.
+	* Added "cipher_list" configuration to the EAP-TLS module.
 	  See "eap.conf" and "man 1 cipher" for details.
+	* Added "check_cert_issuer" configuration to the EAP-TLS module.
+	  See "eap.conf" for details.
 	* More dictionary updates
+	* Allow Ascend "abinary" format to be specified as octets,
+	 (e.g. Ascend-Data-Filter = 0x010203...)
 
 FreeRADIUS 1.1.1 ; $Date$, urgency=low
 	Security fixes
