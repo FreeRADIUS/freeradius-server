@@ -548,8 +548,8 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 	if ((r = huntgroup_access(request, data->huntgroups,
 			     request->packet->vps)) != RLM_MODULE_OK) {
 		radlog(L_AUTH, "No huntgroup access: [%s] (%s)",
-		    request->username->strvalue,
-		    auth_name(buf, sizeof(buf), request, 1));
+		       request->username ? request->username->strvalue : "<No User-Name>",
+		       auth_name(buf, sizeof(buf), request, 1));
 		return r;
 	}
 
