@@ -44,9 +44,9 @@ CREATE TABLE radacct (
 -- CREATE UNIQUE INDEX radacct_whoson on radacct (AcctStartTime, nasipaddress);
 
 -- For use by onoff-, update-, stop- and simul_* queries
-CREATE INDEX radacct_active_user_idx ON radacct (userName) WHERE AcctStopTime IS NULL;
+CREATE INDEX radacct_active_user_idx ON radacct (UserName, NASIPAddress, AcctSessionId) WHERE AcctStopTime IS NULL;
 -- and for common statistic queries:
-CREATE INDEX radacct_start_user_idx ON radacct (acctStartTime, UserName);
+CREATE INDEX radacct_start_user_idx ON radacct (AcctStartTime, UserName);
 -- and, optionally
 -- CREATE INDEX radacct_stop_user_idx ON radacct (acctStopTime, UserName);
 
