@@ -419,6 +419,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 
 	DEBUG("rlm_ldap: Registering ldap_groupcmp for Ldap-Group");
 	paircompare_register(PW_LDAP_GROUP, PW_USER_NAME, ldap_groupcmp, inst);
+	memset(&flags, 0, sizeof(flags));
 
 	xlat_name = cf_section_name2(conf);
 	if (xlat_name != NULL){
