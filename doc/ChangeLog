@@ -1,6 +1,9 @@
 FreeRADIUS 1.1.2 ; $Date$, urgency=low
 
 	Bug fixes
+	* Corrected list of EAP handlers.
+	* Initialize variable in rlm_ldap.c.  This fixes RedHat
+	  bug #136468.
 	* Escape more ldap strings, so configuration entries
 	  that have magic LDAP characters don't break LDAP.
 	  This closes bug #360.
@@ -10,8 +13,6 @@ FreeRADIUS 1.1.2 ; $Date$, urgency=low
 	* Updated doc/rlm_ldap.  This closes bug #353.
 	* Moved rlm_eap_tls code from libeap to rlm_eap_tls.
 	  This closes bug #350.
-	* Write SSL errors to log file, rather than stderr.
-	  This closes bug #347.
 	* Updated redhat/freeradius.spec.  This closes bug #330.
 	* Don't forcibly over-write Auth-Type in the mschap module.
 	  This prevents an earlier module from forcing reject.
@@ -23,13 +24,15 @@ FreeRADIUS 1.1.2 ; $Date$, urgency=low
 	  when we receive it.
 
 	Feature improvements
+	* Allow Ascend "abinary" format to be specified as octets,
+	 (e.g. Ascend-Data-Filter = 0x010203...)
 	* Added "cipher_list" configuration to the EAP-TLS module.
 	  See "eap.conf" and "man 1 cipher" for details.
 	* Added "check_cert_issuer" configuration to the EAP-TLS module.
 	  See "eap.conf" for details.
 	* More dictionary updates
-	* Allow Ascend "abinary" format to be specified as octets,
-	 (e.g. Ascend-Data-Filter = 0x010203...)
+	* Write SSL errors to log file, rather than stderr.
+	  This closes bug #347.
 
 FreeRADIUS 1.1.1 ; $Date$, urgency=low
 	Security fixes
