@@ -74,7 +74,7 @@ typedef struct cardops_t {
   size_t prefix_len;	/* to avoid strlen(prefix) */
 
   int (*name2fm)(const char *, uint32_t *);
-  int (*keystring2keyblock)(const char *, unsigned char [OTP_MAX_KEY_LEN]);
+  int (*keystring2keyblock)(otp_card_info_t *);
   int (*nullstate)(const otp_option_t *, const otp_card_info_t *,
                    otp_user_state_t *, time_t, const char *);
   int (*challenge)(const otp_card_info_t *, otp_user_state_t *,

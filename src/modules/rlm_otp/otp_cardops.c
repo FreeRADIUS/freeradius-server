@@ -147,8 +147,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   }
 
   /* Convert keystring to a keyblock. */
-  if (card_info.cardops->keystring2keyblock(card_info.keystring,
-                                            card_info.keyblock) < 0) {
+  if (card_info.cardops->keystring2keyblock(&card_info) < 0) {
     otp_log(OTP_LOG_ERR, "%s: %s: invalid key '%s' for [%s]",
             log_prefix, __func__, card_info.keystring, username);
     rc = OTP_RC_SERVICE_ERR;
