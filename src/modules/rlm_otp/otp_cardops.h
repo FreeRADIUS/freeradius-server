@@ -14,7 +14,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2005,2006 TRI-D Systems, Inc.
  */
@@ -74,7 +74,7 @@ typedef struct cardops_t {
   size_t prefix_len;	/* to avoid strlen(prefix) */
 
   int (*name2fm)(const char *, uint32_t *);
-  int (*keystring2keyblock)(const char *, unsigned char [OTP_MAX_KEY_LEN]);
+  int (*keystring2keyblock)(otp_card_info_t *);
   int (*nullstate)(const otp_option_t *, const otp_card_info_t *,
                    otp_user_state_t *, time_t, const char *);
   int (*challenge)(const otp_card_info_t *, otp_user_state_t *,

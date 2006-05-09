@@ -14,7 +14,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2005,2006 TRI-D Systems, Inc.
  */
@@ -46,8 +46,7 @@
 #define CRYPTOCARD_DP_RS (CRYPTOCARD_DP_RC|CRYPTOCARD_DP_ES)
 
 static int cryptocard_name2fm(const char *, uint32_t *);
-static int cryptocard_keystring2keyblock(const char *,
-                                         unsigned char [OTP_MAX_KEY_LEN]);
+static int cryptocard_keystring2keyblock(otp_card_info_t *);
 static int cryptocard_nullstate(const otp_option_t *, const otp_card_info_t *,
                                 otp_user_state_t *, time_t, const char *);
 static int cryptocard_challenge(const otp_card_info_t *, otp_user_state_t *,

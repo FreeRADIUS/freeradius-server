@@ -16,7 +16,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  *
  * Copyright 2002-2005  Google, Inc.
@@ -147,8 +147,7 @@ otp_pw_valid(const char *username, char *challenge, const char *passcode,
   }
 
   /* Convert keystring to a keyblock. */
-  if (card_info.cardops->keystring2keyblock(card_info.keystring,
-                                            card_info.keyblock) < 0) {
+  if (card_info.cardops->keystring2keyblock(&card_info) < 0) {
     otp_log(OTP_LOG_ERR, "%s: %s: invalid key '%s' for [%s]",
             log_prefix, __func__, card_info.keystring, username);
     rc = OTP_RC_SERVICE_ERR;

@@ -14,7 +14,7 @@
  *
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2005,2006 TRI-D Systems, Inc.
  */
@@ -79,14 +79,13 @@ cryptocard_name2fm(const char *name, uint32_t *featuremask)
  * Returns keylen on success, -1 otherwise.
  */
 static int
-cryptocard_keystring2keyblock(const char *keystring,
-                              unsigned char keyblock[OTP_MAX_KEY_LEN])
+cryptocard_keystring2keyblock(otp_card_info_t *card_info)
 {
   /* 64-bit DES key with optional line ending */
-  if ((strlen(keystring) & ~1) != 16)
+  if ((strlen(card_info->keystring) & ~1) != 16)
     return 1;
 
-  return otp_keystring2keyblock(keystring, keyblock);
+  return otp_keystring2keyblock(card_info->keystring, card_info->keyblock);
 }
 
 
