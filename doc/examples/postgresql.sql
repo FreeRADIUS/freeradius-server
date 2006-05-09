@@ -184,12 +184,14 @@ create index nas_nasname on nas (nasname);
 --
 
 CREATE TABLE radpostauth (
-	id		BIGSERIAL PRIMARY KEY,
-	username	VARCHAR(253) NOT NULL,
-	pass		VARCHAR(128),
-	reply		VARCHAR(32),
-	authdate	TIMESTAMP with time zone NOT NULL default 'now'
-) ;
+	id			BIGSERIAL PRIMARY KEY,
+	username		VARCHAR(253) NOT NULL,
+	pass			VARCHAR(128),
+	reply			VARCHAR(32),
+	CalledStationId		VARCHAR(50),
+	CallingStationId	VARCHAR(50),
+	authdate		TIMESTAMP with time zone NOT NULL default 'now'
+);
 
 --
 -- Table structure for table 'dictionary'
