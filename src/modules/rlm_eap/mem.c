@@ -223,8 +223,11 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 		if (prev) {
 			prev->next = handler;
 			handler->prev = prev;
+			handler->next = NULL;
+			inst->session_tail = handler;
 		} else {
 			inst->session_head = inst->session_tail = handler;
+			handler->next = handler->prev = NULL;
 		}
 	}
 
@@ -331,12 +334,12 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 			if (handler->prev) {
 				handler->prev->next = handler->next;
 			} else {
-				inst->session_head = NULL;
+				inst->session_head = handler->next;
 			}
 			if (handler->next) {
 				handler->next->prev = handler->prev;
 			} else {
-				inst->session_tail = NULL;
+				inst->session_tail = handler->prev;
 			}
 			handler->prev = handler->next = NULL;
 		}
