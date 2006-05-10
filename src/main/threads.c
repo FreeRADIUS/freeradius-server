@@ -602,9 +602,11 @@ static void *request_handler_thread(void *arg)
 }
 
 /*
- *	Take a THREAD_HANDLE, and delete it from the thread pool.
+ *	Take a THREAD_HANDLE, delete it from the thread pool and
+ *	free its resources.
  *
- *	This function is called ONLY from the main server thread.
+ *	This function is called ONLY from the main server thread,
+ *	ONLY after the thread has exited.
  */
 static void delete_thread(THREAD_HANDLE *handle)
 {
@@ -612,6 +614,8 @@ static void delete_thread(THREAD_HANDLE *handle)
 	THREAD_HANDLE *next;
 
 	rad_assert(handle->request == NULL);
+
+	DEBUG2("Deleting thread %d", handle->thread_num);
 
 	prev = handle->prev;
 	next = handle->next;
@@ -635,16 +639,8 @@ static void delete_thread(THREAD_HANDLE *handle)
 		next->prev = prev;
 	}
 
-	DEBUG2("Deleting thread %d", handle->thread_num);
-
 	/*
-	 *	This thread has exited.  Delete any additional
-	 *	resources associated with it.
-	 */
-
-	/*
-	 *	Free the memory, now that we're sure the thread
-	 *	exited.
+	 *	Free the handle, now that it's no longer referencable.
 	 */
 	free(handle);
 }
