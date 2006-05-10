@@ -522,8 +522,8 @@ const char *ip_ntoh(const lrad_ipaddr_t *src, char *dst, size_t cnt)
                 return NULL;
         }
 
-	if ((error = getnameinfo(&ss, len, dst, cnt, NULL, 0,
-			 NI_NUMERICHOST | NI_NUMERICSERV)) != 0) {
+	if ((error = getnameinfo((struct sockaddr *)&ss, len, dst, cnt, NULL, 0,
+				 NI_NUMERICHOST | NI_NUMERICSERV)) != 0) {
 		librad_log("ip_ntoh: %s", gai_strerror(error));
 		return NULL;
 	}
