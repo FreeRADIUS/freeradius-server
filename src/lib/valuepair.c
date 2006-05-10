@@ -687,7 +687,7 @@ static int gettime(const char *valstr, time_t *lvalue)
 		if (f[2]) {
 		  *(f[2]++) = '\0';	/* nuke it, and point to SS */
 		} else {
-		  f[2] = '0';
+		  strcpy(f[2], "0");	/* assignment would discard const */
 		}
 
 		tm->tm_hour = atoi(f[0]);
