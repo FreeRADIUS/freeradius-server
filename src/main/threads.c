@@ -125,7 +125,7 @@ typedef struct THREAD_POOL {
 	THREAD_HANDLE *tail;
 
 	int total_threads;
-	int active_threads;
+	int active_threads;	/* protected by queue_mutex */
 	int max_thread_num;
 	int start_threads;
 	int max_threads;
@@ -742,15 +742,13 @@ static THREAD_HANDLE *spawn_thread(time_t now)
  */
 int total_active_threads(void)
 {
-        int rcode = 0;
-	THREAD_HANDLE *handle;
-
-	for (handle = thread_pool.head; handle != NULL; handle = handle->next){
-		if (handle->request != NULL) {
-			rcode ++;
-		}
-	}
-	return (rcode);
+	/*
+	 *	We don't acquire the mutex, so this is just an estimate.
+	 *	We can't return with the lock held, so there's no point
+	 *	in getting the guaranteed correct value; by the time
+	 *	the caller sees it, it can be wrong again.
+	 */
+	return thread_pool.active_threads;
 }
 
 
@@ -903,7 +901,13 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 
 	/*
 	 *	If the thread pool is busy handling requests, then
-	 *	try to spawn another one.
+	 *	try to spawn another one.  We don't acquire the mutex
+	 *	before reading active_threads, so our thread count is
+	 *	just an estimate.  It's fine to go ahead and spawn an
+	 *	extra thread in that case.
+	 *	NOTE: the log message may be in error since active_threads
+	 *	is an estimate, but it's only in error about the thread
+	 *	count, not about the fact that we can't create a new one.
 	 */
 	if (thread_pool.active_threads == thread_pool.total_threads) {
 		if (spawn_thread(request->timestamp) == NULL) {
@@ -948,7 +952,7 @@ int thread_pool_clean(time_t now)
 
 	/*
 	 *	We don't need a mutex lock here, as we're reading
-	 *	the location, and not modifying it.  We want a close
+	 *	active_threads, and not modifying it.  We want a close
 	 *	approximation of the number of active threads, and this
 	 *	is good enough.
 	 */
