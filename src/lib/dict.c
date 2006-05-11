@@ -203,7 +203,7 @@ static int dict_stat_check(const char *root_dir, const char *root_file)
 void dict_free(void)
 {
 	/*
-	 *	Free the trees
+	 *	Free the tables
 	 */
 	lrad_hash_table_free(vendors_byname);
 	lrad_hash_table_free(vendors_byvalue);
@@ -274,8 +274,8 @@ int dict_addvendor(const char *name, int value)
 	}
 
 	/*
-	 *	Insert the SAME pointer (not free'd when this tree is
-	 *	deleted), into another tree.
+	 *	Insert the SAME pointer (not free'd when this table is
+	 *	deleted), into another table.
 	 *
 	 *	We want this behaviour because we want OLD names for
 	 *	the attributes to be read from the configuration
@@ -379,7 +379,6 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	attr->flags = flags;
 	attr->vendor = vendor;
 
-
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
@@ -407,8 +406,8 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	}
 
 	/*
-	 *	Insert the SAME pointer (not free'd when this tree is
-	 *	deleted), into another tree.
+	 *	Insert the SAME pointer (not free'd when this entry is
+	 *	deleted), into another table.
 	 *
 	 *	We want this behaviour because we want OLD names for
 	 *	the attributes to be read from the configuration
@@ -1069,7 +1068,7 @@ int dict_init(const char *dir, const char *fn)
 	stat_root_file = strdup(fn);
 
 	/*
-	 *	Create the tree of vendor by name.   There MAY NOT
+	 *	Create the table of vendor by name.   There MAY NOT
 	 *	be multiple vendors of the same name.
 	 *
 	 *	Each vendor is malloc'd, so the free function is free.
@@ -1080,7 +1079,7 @@ int dict_init(const char *dir, const char *fn)
 	}
 
 	/*
-	 *	Create the tree of vendors by value.  There MAY
+	 *	Create the table of vendors by value.  There MAY
 	 *	be vendors of the same value.  If there are, we
 	 *	pick the latest one.
 	 */
@@ -1090,7 +1089,7 @@ int dict_init(const char *dir, const char *fn)
 	}
 
 	/*
-	 *	Create the tree of attributes by name.   There MAY NOT
+	 *	Create the table of attributes by name.   There MAY NOT
 	 *	be multiple attributes of the same name.
 	 *
 	 *	Each attribute is malloc'd, so the free function is free.
@@ -1101,7 +1100,7 @@ int dict_init(const char *dir, const char *fn)
 	}
 
 	/*
-	 *	Create the tree of attributes by value.  There MAY
+	 *	Create the table of attributes by value.  There MAY
 	 *	be attributes of the same value.  If there are, we
 	 *	pick the latest one.
 	 */
@@ -1207,10 +1206,26 @@ DICT_ATTR *dict_attrbyname(const char *name)
 DICT_VALUE *dict_valbyattr(int attr, int val)
 {
 	uint32_t hash = attr;
+	DICT_VALUE *dval;
 
 	hash = lrad_hash_update(&val, sizeof(val), hash);
 
-	return lrad_hash_table_finddata(values_byvalue, hash);
+	dval = lrad_hash_table_finddata(values_byvalue, hash);
+	if (!dval) return NULL;
+
+	/*
+	 *	We may have hash collisions, as the hash table doesn't
+	 *	have a "cmp" function.  So when we look up attributes
+	 *	which have 2^32 possible values, we WILL get a
+	 *	collision.
+	 *
+	 *	Avoid that here by doing a last sanity check before
+	 *	returning the pointer.
+	 */
+	if ((dval->attr != attr) ||
+	    (dval->value != val)) return NULL;
+
+	return dval;
 }
 
 /*
