@@ -1205,10 +1205,26 @@ DICT_ATTR *dict_attrbyname(const char *name)
 DICT_VALUE *dict_valbyattr(int attr, int val)
 {
 	uint32_t hash = attr;
+	DICT_VALUE *dval;
 
 	hash = lrad_hash_update(&val, sizeof(val), hash);
 
-	return lrad_hash_table_finddata(values_byvalue, hash);
+	dval = lrad_hash_table_finddata(values_byvalue, hash);
+	if (!dval) return NULL;
+
+	/*
+	 *	We may have hash collisions, as the hash table doesn't
+	 *	have a "cmp" function.  So when we look up attributes
+	 *	which have 2^32 possible values, we WILL get a
+	 *	collision.
+	 *
+	 *	Avoid that here by doing a last sanity check before
+	 *	returning the pointer.
+	 */
+	if ((dval->attr != attr) ||
+	    (dval->value != val)) return NULL;
+
+	return dval;
 }
 
 /*
