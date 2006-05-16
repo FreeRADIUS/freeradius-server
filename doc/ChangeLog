@@ -22,6 +22,7 @@ FreeRADIUS 1.1.2 ; $Date$, urgency=low
 	  after printing an error, rather than continuing.
 	* Print Ascend "abinary" format as text rather than octets
 	  when we receive it.
+	* Silently drop packets with bad Message-Authenticators, as per RFC3579
 
 	Feature improvements
 	* Allow Ascend "abinary" format to be specified as octets,
