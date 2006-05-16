@@ -1,6 +1,4 @@
 FreeRADIUS 2.0.0 ; $Date$, urgency=low
-	* Use certificate chains, to support n-tier certificates.
-	  Patch from Mohammed Petiwala, closes bug #112.
 	* Permit per-socket list of clients in "listen" directives
 	* Faster client lookups, to permit scaling to 10^6 or more clients.
 	* Removed radrelay and radsqlrelay.  See "man radrelay.conf" for
@@ -36,7 +34,6 @@ FreeRADIUS 2.0.0 ; $Date$, urgency=low
 	* Fix for log_dest = stdout/stderr.
 	* New "policy" module, which has none of the limitations of the
 	  "users" file.  See "man rlm_policy" for details.
-	* Added even more dictionaries.
 	* rlm_sql can now behave more like the "users" file.
 	* New rlm_caching module.
 	* Now uses autoconf 2.5x, and the various associated tools.
@@ -51,11 +48,7 @@ FreeRADIUS 2.0.0 ; $Date$, urgency=low
 	  certain attributes.
 	* Don't escape printed strings during xlat's, to avoid the
 	  infinite expansion of backslashes..
-	* rlm_eap now uses trees, rather than linked lists, to maintain
-	  it's list of active sessions.
-	* Silently drop packets with bad Message-Authenticators, as per RFC3579
 	* Add Message-Authenticator to rlm_digest sample.
-	* Fix MD4 calculation on big-endian machines.
 	* Correct handling of post-auth REJECT stanza to include externally and
 	  proxy-received rejections. (Bugzilla bug #149)
 	* Fix building SNMP support on Solaris 9, which needs -lkstat
