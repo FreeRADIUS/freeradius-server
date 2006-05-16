@@ -98,10 +98,10 @@
 typedef struct attr_flags {
 	char			addport;	/* Add port to IP address */
 	char			has_tag;	/* attribute allows tags */
-	signed char		tag;
-	uint8_t		        encrypt;	/* encryption method */
 	signed char		len_disp;	/* length displacement */
 	char			do_xlat;
+	signed char		tag;
+	uint8_t		        encrypt;	/* encryption method */
 } ATTR_FLAGS;
 
 /*
@@ -238,6 +238,7 @@ void lrad_hmac_sha1(const unsigned char *text, int text_len,
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, const RADIUS_PACKET *, const char *secret);
 RADIUS_PACKET	*rad_recv(int fd);
+int		rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret);
 int		rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret);
 RADIUS_PACKET	*rad_alloc(int newvector);
 void		rad_free(RADIUS_PACKET **);

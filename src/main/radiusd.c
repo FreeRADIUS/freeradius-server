@@ -1560,10 +1560,21 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *  wire) have ->data==NULL (data is the wire
 	 *  format) and don't need to be "decoded"
 	 */
-	if (packet->data && rad_decode(packet, original, secret) != 0) {
-		radlog(L_ERR, "%s", librad_errstr);
-		request_reject(request);
-		goto finished_request;
+	if (packet->data) {
+		if (rad_verify(packet, original, secret) < 0) {
+			radlog(L_ERR, "%s Dropping packet without response.", librad_errstr);
+			/* Since accounting packets get this set in
+			 * request_reject but no response is sent...
+			 */
+			request->options |= RAD_REQUEST_OPTION_REJECTED;
+			goto finished_request;
+		}
+
+		if (rad_decode(packet, original, secret) < 0) {
+			radlog(L_ERR, "%s", librad_errstr);
+			request_reject(request);
+			goto finished_request;
+		}
 	}
 
 	/*

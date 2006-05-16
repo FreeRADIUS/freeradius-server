@@ -190,14 +190,14 @@ static radclient_t *radclient_init(const char *filename)
 		 */
 		radclient = malloc(sizeof(*radclient));
 		if (!radclient) {
-			perror("radclient: ");
+			perror("radclient: X");
 			return NULL; /* memory leak "start" */
 		}
 		memset(radclient, 0, sizeof(*radclient));
 
 		radclient->request = rad_alloc(1);
 		if (!radclient->request) {
-			librad_perror("radclient: ");
+			librad_perror("radclient: X");
 			radclient_free(radclient);
 			return NULL; /* memory leak "start" */
 		}
@@ -209,7 +209,7 @@ static radclient_t *radclient_init(const char *filename)
 		/*
 		 *	Read the VP's.
 		 */
-		radclient->request->vps = readvp2(fp, &filedone, "radclient:");
+		radclient->request->vps = readvp2(fp, &filedone, "radclient: X");
 		if (!radclient->request->vps) {
 			radclient_free(radclient);
 			return start; /* done: return the list */
@@ -640,6 +640,12 @@ static int recv_one_packet(int wait_time)
 	/*
 	 *	FIXME: Do stuff to process the reply.
 	 */
+	if (rad_verify(reply, radclient->request, secret) != 0) {
+		librad_perror("rad_verify");
+		totallost++;
+		goto packet_done; /* shared secret is incorrect */
+	}
+
 	if (rad_decode(reply, radclient->request, secret) != 0) {
 		librad_perror("rad_decode");
 		totallost++;

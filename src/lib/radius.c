@@ -1356,7 +1356,7 @@ RADIUS_PACKET *rad_recv(int fd)
 /*
  *	Verify the signature of a packet.
  */
-static int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
+int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	       const char *secret)
 {
 	uint8_t			*ptr;
@@ -1715,8 +1715,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	radius_packet_t		*hdr;
 	int			vsa_tlen, vsa_llen;
 	DICT_VENDOR		*dv = NULL;
-
-	if (rad_verify(packet, original, secret) < 0) return -1;
 
 	/*
 	 *	Extract attribute-value pairs

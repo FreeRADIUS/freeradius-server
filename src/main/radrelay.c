@@ -402,6 +402,10 @@ int do_recv(struct relay_misc *r_args)
 	for (i = 0; i < NR_SLOTS; i++) {
 		r = slots + i;
 		if (r->state == STATE_FULL && r->req->id == rep->id) {
+			if (rad_verify(rep, r->req, r_args->secret) != 0) {
+				librad_perror("rad_verify");
+				return -1;
+			}
 			if (rad_decode(rep, r->req, r_args->secret) != 0) {
 				librad_perror("rad_decode");
 				return -1;
