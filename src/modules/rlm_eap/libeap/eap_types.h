@@ -39,8 +39,6 @@
 #include "radiusd.h"
 #include "modules.h"
 
-#include "rad_assert.h"
-
 #define PW_EAP_REQUEST		1
 #define PW_EAP_RESPONSE		2
 #define PW_EAP_SUCCESS		3
