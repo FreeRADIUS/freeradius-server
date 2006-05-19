@@ -1,4 +1,4 @@
-.TH rlm_realm 5 "14 March 2004" "" "FreeRADIUS Module"
+.TH rlm_realm 5 "19 May 2006" "" "FreeRADIUS Module"
 .SH NAME
 rlm_realm \- FreeRADIUS Module
 .SH DESCRIPTION
@@ -32,6 +32,12 @@ configuration of the Realm as matched in the file, the username may
 be rewritten in a 'stripped' format, or with the Realm portion
 removed.  In either case, a Realm attribute is created and added to
 the packet on a match, which can be used by other modules.
+.PP
+In order to force proxying for a request, set the
+.DS
+Proxy-To-Realm := "realm-name"
+.DE
+in the \fIusers\fP file, or in a database such as SQL.
 .SH CONFIGURATION
 .PP
 .DS
