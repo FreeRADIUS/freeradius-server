@@ -37,6 +37,8 @@
  *
  */
 
+#include <freeradius-devel/autoconf.h>
+#include <assert.h>
 #include "eap_tls.h"
 
 /*
@@ -458,7 +460,7 @@ static EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 	 *	MUST have TLS type octet, followed by flags, followed
 	 *	by data.
 	 */
-	rad_assert(eap_ds->response->length > 2);
+	assert(eap_ds->response->length > 2);
 
 	tlspacket = eaptls_alloc();
 	if (tlspacket == NULL) return NULL;

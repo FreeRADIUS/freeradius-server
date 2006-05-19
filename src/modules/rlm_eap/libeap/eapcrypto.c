@@ -34,8 +34,6 @@
 #include "eap_sim.h"
 #include <freeradius-devel/sha1.h>
 
-#include <freeradius-devel/rad_assert.h>
-
 void eapsim_calculate_keys(struct eapsim_keys *ek)
 {
 	SHA1_CTX context;

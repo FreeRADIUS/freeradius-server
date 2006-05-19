@@ -61,8 +61,6 @@
 #include <inttypes.h>
 #endif
 
-#include <freeradius-devel/rad_assert.h>
-
 #include <freeradius-devel/sha1.h>
 
 /*
