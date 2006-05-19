@@ -25,6 +25,7 @@ FreeRADIUS 1.1.2 ; $Date$, urgency=low
 	* Silently drop packets with bad Message-Authenticators, as per RFC3579
 
 	Feature improvements
+	* Allow tagged VSA's for Juniper.  Closes bugs #367 and #368
 	* Allow Ascend "abinary" format to be specified as octets,
 	 (e.g. Ascend-Data-Filter = 0x010203...)
 	* Added "cipher_list" configuration to the EAP-TLS module.

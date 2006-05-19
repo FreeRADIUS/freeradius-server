@@ -105,6 +105,11 @@ ATTRIBUTE	ERX-Med-Port-Number			61	integer	encrypt=2
 ATTRIBUTE	ERX-MLPPP-Bundle-Name			62	string
 ATTRIBUTE	ERX-Interface-Desc			63	string
 ATTRIBUTE	ERX-Tunnel-Group			64	string
+ATTRIBUTE	ERX-Service-Activate			65	string	has_tag
+ATTRIBUTE	ERX-Service-Deactivate			66	string
+ATTRIBUTE	ERX-Service-Volume			67	integer	has_tag
+ATTRIBUTE	ERX-Service-Timeout			68	integer	has_tag
+ATTRIBUTE	ERX-Service-Statistics			69	integer	has_tag
 
 ATTRIBUTE	ERX-DF-Bit				70	integer
 
@@ -120,6 +125,7 @@ ATTRIBUTE	ERX-IGMP-Version			78	integer
 ATTRIBUTE	ERX-IP-Mcast-Adm-Bw-Limit		79	integer
 ATTRIBUTE	ERX-IPv6-Mcast-Adm-Bw-Limit		80	integer
 ATTRIBUTE	ERX-Qos-Parameters			82	string
+ATTRIBUTE	ERX-Service-Session			83	string
 
 #
 #  Values	Attribute		Name			Number
@@ -183,5 +189,9 @@ VALUE	ERX-MLD-Version			v2			2
 VALUE	ERX-IGMP-Version		v1			1
 VALUE	ERX-IGMP-Version		v2			2
 VALUE	ERX-IGMP-Version		v3			3
+
+VALUE	ERX-Service-Statistics		disabled		0
+VALUE	ERX-Service-Statistics		time			1
+VALUE	ERX-Service-Statistics		time-volume		2
 
 END-VENDOR	ERX

@@ -613,15 +613,6 @@ static int process_attribute(const char* fn, const int line,
 	 */
 	if (flags.has_tag) {
 		/*
-		 *	VSA's can't be tagged.
-		 */
-		if (vendor) {
-			librad_log("dict_init: %s[%d]: Vendor attributes cannot be tagged.",
-				   fn, line);
-			return -1;
-		}
-
-		/*
 		 *	Only string, octets, and integer can be tagged.
 		 */
 		switch (type) {
