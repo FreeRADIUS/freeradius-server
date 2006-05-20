@@ -15,15 +15,6 @@ typedef struct sql_config {
 	char   *sql_login;
 	char   *sql_password;
 	char   *sql_db;
-	char   *sql_acct_table;
-	char   *sql_acct_table2;
-	char   *sql_authcheck_table;
-	char   *sql_authreply_table;
-	char   *sql_groupcheck_table;
-	char   *sql_groupreply_table;
-	char   *sql_usergroup_table;
-	char   *sql_nas_table;
-	char   *sql_dict_table;
 	char   *query_user;
 	char   *default_profile;
 	char   *nas_query;
@@ -49,7 +40,6 @@ typedef struct sql_config {
 	int     deletestalesessions;
 	int     num_sql_socks;
 	int     connect_failure_retry_delay;
-	char   *sql_postauth_table;
 	char   *postauth_query;
 	char   *allowed_chars;
 

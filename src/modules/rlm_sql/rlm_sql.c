@@ -62,26 +62,6 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,sql_password), NULL, ""},
 	{"radius_db", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,sql_db), NULL, "radius"},
-	{"acct_table", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_acct_table), NULL, "radacct"},
-	{"acct_table2", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_acct_table2), NULL, "radacct"},
-	{"authcheck_table", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_authcheck_table), NULL, "radcheck"},
-	{"authreply_table", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_authreply_table), NULL, "radreply"},
-	{"groupcheck_table", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_groupcheck_table), NULL, "radgroupcheck"},
-	{"groupreply_table", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_groupreply_table), NULL, "radgroupreply"},
-	{"usergroup_table", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_usergroup_table), NULL, "usergroup"},
-	{"read_groups", PW_TYPE_BOOLEAN,
-	 offsetof(SQL_CONFIG,read_groups), NULL, "yes"},
-	{"nas_table", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_nas_table), NULL, "nas"},
-	{"dict_table", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_dict_table), NULL, "dictionary"},
 	{"sqltrace", PW_TYPE_BOOLEAN,
 	 offsetof(SQL_CONFIG,sqltrace), NULL, "no"},
 	{"sqltracefile", PW_TYPE_STRING_PTR,
@@ -128,8 +108,6 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,simul_count_query), NULL, ""},
 	{"simul_verify_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,simul_verify_query), NULL, ""},
-	{"postauth_table", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_postauth_table), NULL, "radpostauth"},
 	{"postauth_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,postauth_query), NULL, ""},
 	{"safe-characters", PW_TYPE_STRING_PTR,
@@ -258,11 +236,6 @@ static int generate_sql_clients(SQL_INST *inst)
 
 	DEBUG("rlm_sql (%s): Processing generate_sql_clients",
 	      inst->config->xlat_name);
-
-	if (inst->config->sql_nas_table == NULL){
-		radlog(L_ERR, "rlm_sql (%s): sql_nas_table is NULL.",inst->config->xlat_name);
-		return -1;
-	}
 
 	/* NAS query isn't xlat'ed */
 	strNcpy(querystr, inst->config->nas_query, sizeof(querystr));
