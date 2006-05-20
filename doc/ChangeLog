@@ -1,5 +1,20 @@
 FreeRADIUS 1.1.2 ; $Date$, urgency=low
 
+	Feature improvements
+	* Allow tagged VSA's for Juniper.  Closes bugs #367 and #368.
+	* Allow Ascend "abinary" format to be specified as octets,
+	 (e.g. Ascend-Data-Filter = 0x010203...)
+	* Added "cipher_list" configuration to the EAP-TLS module.
+	  See "eap.conf" and "man 1 cipher" for details.
+	* Added "check_cert_issuer" configuration to the EAP-TLS module.
+	  See "eap.conf" for details. (closes: #346)
+	* Added "suppress" configuration entry to rlm_detail,
+	  to suppress certain attributes (e.g. User-Password).
+	  This closes bug #359.
+	* More dictionary updates
+	* Write SSL errors to log file, rather than stderr.
+	  This closes bug #347.
+
 	Bug fixes
 	* Corrected list of EAP handlers.
 	* Initialize variable in rlm_ldap.c.  This fixes RedHat
@@ -7,12 +22,7 @@ FreeRADIUS 1.1.2 ; $Date$, urgency=low
 	* Escape more ldap strings, so configuration entries
 	  that have magic LDAP characters don't break LDAP.
 	  This closes bug #360.
-	* Added "suppress" configuration entry to rlm_detail,
-	  to suppress certain attributes (e.g. User-Password).
-	  This closes bug #359.
 	* Updated doc/rlm_ldap.  This closes bug #353.
-	* Moved rlm_eap_tls code from libeap to rlm_eap_tls.
-	  This closes bug #350.
 	* Updated redhat/freeradius.spec.  This closes bug #330.
 	* Don't forcibly over-write Auth-Type in the mschap module.
 	  This prevents an earlier module from forcing reject.
@@ -23,20 +33,12 @@ FreeRADIUS 1.1.2 ; $Date$, urgency=low
 	* Print Ascend "abinary" format as text rather than octets
 	  when we receive it.
 	* Silently drop packets with bad Message-Authenticators, as per RFC3579
+	* Unbreak ./configure --disable-static (closes: #350)
+	* Unbreak ./configure --prefix (closes: #354)
+	* Allow a core dump on uid change on Linux (closes: #361)
 
-	Feature improvements
-	* Allow tagged VSA's for Juniper.  Closes bugs #367 and #368
-	* Allow Ascend "abinary" format to be specified as octets,
-	 (e.g. Ascend-Data-Filter = 0x010203...)
-	* Added "cipher_list" configuration to the EAP-TLS module.
-	  See "eap.conf" and "man 1 cipher" for details.
-	* Added "check_cert_issuer" configuration to the EAP-TLS module.
-	  See "eap.conf" for details.
-	* More dictionary updates
-	* Write SSL errors to log file, rather than stderr.
-	  This closes bug #347.
+FreeRADIUS 1.1.1 ; Date: 2006/03/17 19:50:34, urgency=low
 
-FreeRADIUS 1.1.1 ; $Date$, urgency=low
 	Security fixes
 	* Additional state checking in the EAP-MSCHAPv2 module.
 	  Bug found by Steffen Schuster.
@@ -69,6 +71,7 @@ FreeRADIUS 1.1.1 ; $Date$, urgency=low
 	* Fix net-snmp's ucd-snmp compatibility mode.
 
 FreeRADIUS 1.1.0 ; Date: 2006/01/04 05:55:19, urgency=low
+
 	Feature improvements
 	* rlm_ldap has "set_auth_type" configuration option, which should
 	  address some configuration problems when using it.
@@ -122,6 +125,7 @@ FreeRADIUS 1.1.0 ; Date: 2006/01/04 05:55:19, urgency=low
 	* Fix segfault and mem leak in rlm_pam.
 
 FreeRADIUS 1.0.5 ; Date: 2005/09/04 16:23:00, urgency=medium
+
 	Security Fixes
 	* SQL injection attack in the module "rlm_sqlcounter".
 	* Buffer overflows in the module "rlm_sqlcounter".
@@ -187,11 +191,13 @@ FreeRADIUS 1.0.5 ; Date: 2005/09/04 16:23:00, urgency=medium
 	* Don't copy VSA's to an Access-Reject packet.
 
 FreeRADIUS 1.0.4 ; Date: 2005/06/11 22:46:52, urgency=medium
+
 	* Fix installation problem.
 	* Increase a buffer size, so radrelay doesn't truncate values.
 	* Updates in the documentation. Patches from Thor Spruyt.
 
 FreeRADIUS 1.0.3 ; Date: 2005/06/03 17:15:11, urgency=high
+
 	Security Fixes
 	* Always escape the strings in the SQL module.
 	* Check buffer bound when input character needs escaping in
@@ -214,6 +220,7 @@ FreeRADIUS 1.0.3 ; Date: 2005/06/03 17:15:11, urgency=high
 	  is different from string.
 
 FreeRADIUS 1.0.2 ; Date: 2005/02/13 01:03:20, urgency=medium
+
 	* Novell eDirectoty support.  Patch from Novell.
 	* localweb & Trapeze dictionary updates.
 	* EAP-SIM fixes.
@@ -236,6 +243,7 @@ FreeRADIUS 1.0.2 ; Date: 2005/02/13 01:03:20, urgency=medium
 	* Fix building SNMP support on Solaris 9, which needs -lkstat
 
 FreeRADIUS 1.0.1 ; Date: 2004/09/02 10:52:03 , urgency=high
+
 	Denial-of-Service Security Fix
 	* Fix two remote crashes and a memory leak in RADIUS packet
 	  decoding.
@@ -248,6 +256,7 @@ FreeRADIUS 1.0.1 ; Date: 2004/09/02 10:52:03 , urgency=high
 	* Update dictionaries to deal with the above change.
 
 FreeRADIUS 1.0.0 ; Date: 2004/07/17 06:31:32, urgency=low
+
 	pre3 -> release
 	* Fix LDAP dictionary map loading.
 	* Check login time allowance to packet timestampe where available.
