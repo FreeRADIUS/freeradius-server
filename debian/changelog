@@ -1,3 +1,11 @@
+freeradius (1.1.2-0) unstable; urgency=low
+
+  * New upstream release.
+  * Update dpatch for 1.1.2:
+    - 13_a_libtool14_to_call_your_own
+
+ -- Nicolas Baradakis <nicolas.baradakis@cegetel.net>  Sun, 21 May 2006 19:20:03 +0200
+
 freeradius (1.1.1-0) unstable; urgency=low
 
   * New upstream release.
@@ -12,6 +20,25 @@ freeradius (1.1.1-0) unstable; urgency=low
     - lsb-init functions
 
  -- Nicolas Baradakis <nicolas.baradakis@cegetel.net>  Sun, 12 Feb 2006 16:29:20 +0100
+
+freeradius (1.1.0-1.2) unstable; urgency=high
+
+    * Non-maintainer upload.
+    * [ CVE-2006-1354 ]:
+      src/modules/rlm_eap/types/rlm_eap_mschapv2/rlm_eap_mschapv2.c:
+      Due to insufficient input validation it is possible for a remote
+      attacker to bypass authentication or cause a denial of service.
+      (closes: #359042)
+
+ -- Stpehen Gran <sgran@debian.org>  Wed, 17 May 2006 11:22:28 -0500
+
+freeradius (1.1.0-1.1) unstable; urgency=low
+
+    * Non-maintainer upload.
+    * Upstream patch to fix parsing config file (closes: #351732)
+      Fixes: fails to start on amd64 (error in dictionary parsing code)
+
+ -- Stephen Gran <sgran@debian.org>  Sat,  1 Apr 2006 11:07:55 +0100
 
 freeradius (1.1.0-1) unstable; urgency=low
   * ReDebianise upstream tarball:
