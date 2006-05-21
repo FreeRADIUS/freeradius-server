@@ -1035,7 +1035,11 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	PUTBACK;
 	FREETMPS;
 	LEAVE;
-
+	
+	if ((get_hv_content(rad_request_hv, &vp)) > 0 ) {
+		pairmove(&request->packet->vps, &vp);
+		pairfree(&vp);
+	}
 
 	if ((get_hv_content(rad_reply_hv, &vp)) > 0 ) {
 		pairmove(&request->reply->vps, &vp);
