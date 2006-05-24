@@ -42,6 +42,7 @@ typedef struct rlm_sql_unixodbc_sock {
 
 /* Forward declarations */
 static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+static int sql_state(long err_handle, SQLSOCK *sqlsocket, SQL_CONFIG *config);
 static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config);
@@ -69,23 +70,23 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
     /* 1. Allocate environment handle and register version */
     err_handle = SQLAllocHandle(SQL_HANDLE_ENV,SQL_NULL_HANDLE,&unixodbc_sock->env_handle);
-    if (!SQL_SUCCEEDED(err_handle))
+    if (sql_state(err_handle, sqlsocket, config))
     {
-	radlog(L_ERR, "rlm_sql_unixodbc: Can't allocate environment handle %s\n", sql_error(sqlsocket, config));
+	radlog(L_ERR, "rlm_sql_unixodbc: Can't allocate environment handle\n");
 	return -1;
     }
     err_handle = SQLSetEnvAttr(unixodbc_sock->env_handle, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
-    if (!SQL_SUCCEEDED(err_handle))
+    if (sql_state(err_handle, sqlsocket, config))
     {
-	radlog(L_ERR, "rlm_sql_unixodbc: Can't register ODBC version %s\n", sql_error(sqlsocket, config));
+	radlog(L_ERR, "rlm_sql_unixodbc: Can't register ODBC version\n");
 	SQLFreeHandle(SQL_HANDLE_ENV, unixodbc_sock->env_handle);
 	return -1;
     }
     /* 2. Allocate connection handle */
     err_handle = SQLAllocHandle(SQL_HANDLE_DBC, unixodbc_sock->env_handle, &unixodbc_sock->dbc_handle);
-    if (!SQL_SUCCEEDED(err_handle))
+    if (sql_state(err_handle, sqlsocket, config))
     {
-	radlog(L_ERR, "rlm_sql_unixodbc: Can't allocate connection handle %s\n", sql_error(sqlsocket, config));
+	radlog(L_ERR, "rlm_sql_unixodbc: Can't allocate connection handle\n");
 	SQLFreeHandle(SQL_HANDLE_ENV, unixodbc_sock->env_handle);
 	return -1;
     }
@@ -95,9 +96,9 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	(SQLCHAR*) config->sql_server, strlen(config->sql_server),
 	(SQLCHAR*) config->sql_login, strlen(config->sql_login),
 	(SQLCHAR*) config->sql_password, strlen(config->sql_password));
-    if (!SQL_SUCCEEDED(err_handle))
+    if (sql_state(err_handle, sqlsocket, config))
     {
-	radlog(L_ERR, "rlm_sql_unixodbc: Connection failed %s\n", sql_error(sqlsocket, config));
+	radlog(L_ERR, "rlm_sql_unixodbc: Connection failed\n");
 	SQLFreeHandle(SQL_HANDLE_DBC, unixodbc_sock->dbc_handle);
 	SQLFreeHandle(SQL_HANDLE_ENV, unixodbc_sock->env_handle);
 	return -1;
@@ -105,9 +106,9 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
     /* 4. Allocate the statement */
     err_handle = SQLAllocStmt(unixodbc_sock->dbc_handle, &unixodbc_sock->stmt_handle);
-    if (!SQL_SUCCEEDED(err_handle))
+    if (sql_state(err_handle, sqlsocket, config))
     {
-	radlog(L_ERR, "rlm_sql_unixodbc: Can't allocate the statement %s\n", sql_error(sqlsocket, config));
+	radlog(L_ERR, "rlm_sql_unixodbc: Can't allocate the statement\n");
 	return -1;
     }
 
@@ -141,16 +142,17 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
     long err_handle;
+    int state;
 
     if (config->sqltrace)
         radlog(L_DBG, "query:  %s", querystr);
 
     /* Executing query */
     err_handle = SQLExecDirect(unixodbc_sock->stmt_handle, (SQLCHAR *)querystr, strlen(querystr));
-    if (!SQL_SUCCEEDED(err_handle))
-    {
-	radlog(L_ERR, "rlm_sql_unixodbc: '%s'\n", sql_error(sqlsocket, config));
-	return -1;
+    if ((state = sql_state(err_handle, sqlsocket, config))) {
+	if(state == SQL_DOWN)
+	    radlog(L_INFO, "rlm_sql_unixodbc: rlm_sql will attempt to reconnect\n");
+	return state;
     }
     return 0;
 }
@@ -167,9 +169,11 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
     SQLINTEGER column, len;
     int numfields;
+    int state;
 
-    if(sql_query(sqlsocket, config, querystr) < 0)
-	return -1;
+    /* Only state = 0 means success */
+    if((state = sql_query(sqlsocket, config, querystr)))
+	return state;
 
     numfields=sql_num_fields(sqlsocket, config);
     if(numfields < 0)
@@ -216,11 +220,9 @@ static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     int num_fields = 0;
 
     err_handle = SQLNumResultCols(unixodbc_sock->stmt_handle,(SQLSMALLINT *)&num_fields);
-    if (!SQL_SUCCEEDED(err_handle))
-    {
-    	radlog(L_ERR, "rlm_sql_unixodbc: '%s'\n", sql_error(sqlsocket, config));
+    if (sql_state(err_handle, sqlsocket, config))
 	return -1;
-    }
+
     return num_fields;
 }
 
@@ -249,14 +251,19 @@ static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *************************************************************************/
 static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+    long err_handle;
+    int state;
 
     sqlsocket->row = NULL;
 
-    if(SQLFetch(unixodbc_sock->stmt_handle) == SQL_NO_DATA_FOUND)
-    	return 0;
-
-    /* XXX Check if return suggests we should return error or SQL_DOWN */
-
+    err_handle = SQLFetch(unixodbc_sock->stmt_handle);
+    if(err_handle == SQL_NO_DATA_FOUND)
+	return 0;
+    if ((state = sql_state(err_handle, sqlsocket, config))) {
+	if(state == SQL_DOWN)
+	    radlog(L_INFO, "rlm_sql_unixodbc: rlm_sql will attempt to reconnect\n");
+	return state;
+    }
     sqlsocket->row = unixodbc_sock->row;
     return 0;
 }
@@ -345,13 +352,52 @@ static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *
  *************************************************************************/
 static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    SQLCHAR state[256] = "";
-    SQLCHAR error[256] = "";
+    SQLCHAR state[256];
+    SQLCHAR error[256];
     SQLINTEGER errornum = 0;
     SQLSMALLINT length = 255;
     static char result[1024];	/* NOT thread-safe! */
+			   
+    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+
+    error[0] = state[0] = '\0';
+			       
+    SQLError(
+	unixodbc_sock->env_handle,
+	unixodbc_sock->dbc_handle,
+	unixodbc_sock->stmt_handle,
+	state,
+	&errornum,
+	error,
+	256,
+	&length);
+
+    sprintf(result, "%s %s", state, error);
+    result[sizeof(result) - 1] = '\0'; /* catch idiot thread issues */
+    return result;
+}
+
+/*************************************************************************
+ *
+ *	Function: sql_state
+ *
+ *	Purpose: Returns 0 for success, SQL_DOWN if the error was
+ *               connection related or -1 for other errors
+ *
+ *************************************************************************/
+static int sql_state(long err_handle, SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+    SQLCHAR state[256];
+    SQLCHAR error[256];
+    SQLINTEGER errornum = 0;
+    SQLSMALLINT length = 255;
+    int res = -1;
 
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+
+    if(SQL_SUCCEEDED(err_handle))	
+	return 0;		/* on success, just return 0 */
+
+    error[0] = state[0] = '\0';
 
     SQLError(
 	unixodbc_sock->env_handle,
@@ -363,9 +409,25 @@ static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     	256,
     	&length);
 
-    sprintf(result, "%s %s", state, error);
-    result[sizeof(result) - 1] = '\0'; /* catch idiot thread issues */
-    return result;
+    if(state[0] == '0') {
+	switch(state[1]) {
+	case '1':		/* SQLSTATE 01 class contains info and warning messages */
+	    radlog(L_INFO, "rlm_sql_unixodbc: %s %s\n", state, error);
+	case '0':		/* SQLSTATE 00 class means success */
+	    res = 0;
+	    break;
+	case '8':		/* SQLSTATE 08 class describes various connection errors */
+	    radlog(L_ERR, "rlm_sql_unixodbc: SQL down %s %s\n", state, error);
+	    res = SQL_DOWN;
+	    break;
+	default:		/* any other SQLSTATE means error */
+	    radlog(L_ERR, "rlm_sql_unixodbc: %s %s\n", state, error);
+	    res = -1;
+	    break;
+	}
+    }
+
+    return res;
 }
 
 /*************************************************************************
@@ -382,11 +444,9 @@ static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     int affected_rows;
 
     err_handle = SQLRowCount(unixodbc_sock->stmt_handle, (SQLINTEGER *)&affected_rows);
-    if (!SQL_SUCCEEDED(err_handle))
-    {
-    	radlog(L_ERR, "rlm_sql_unixodbc: '%s'\n", sql_error(sqlsocket, config));
+    if (sql_state(err_handle, sqlsocket, config))
 	return -1;
-    }
+
     return affected_rows;
 }
 
