@@ -14,8 +14,10 @@ FreeRADIUS 1.1.2 ; $Date$, urgency=low
 	* More dictionary updates
 	* Write SSL errors to log file, rather than stderr.
 	  This closes bug #347.
+	* Allow a core dump on uid change on Linux (closes: #361)
 
 	Bug fixes
+	* Return better error codes in SQL IODBC module.  Closes bug #341.
 	* Corrected list of EAP handlers.
 	* Initialize variable in rlm_ldap.c.  This fixes RedHat
 	  bug #136468.
@@ -35,7 +37,6 @@ FreeRADIUS 1.1.2 ; $Date$, urgency=low
 	* Silently drop packets with bad Message-Authenticators, as per RFC3579
 	* Unbreak ./configure --disable-static (closes: #350)
 	* Unbreak ./configure --prefix (closes: #354)
-	* Allow a core dump on uid change on Linux (closes: #361)
 
 FreeRADIUS 1.1.1 ; Date: 2006/03/17 19:50:34, urgency=low
 
