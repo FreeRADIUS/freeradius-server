@@ -22,6 +22,5 @@ install:
 common:
 	@for dir in $(SUBDIRS); do \
 		echo "Making $(WHAT_TO_MAKE) in $$dir..."; \
-		(cd $$dir && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit 1;\
+		$(MAKE) $(MFLAGS) -C $$dir $(WHAT_TO_MAKE) || exit $$?; \
 	done
-

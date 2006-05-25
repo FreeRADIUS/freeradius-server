@@ -41,5 +41,5 @@ $(LT_OBJS): $(HEADERS) $(CARDOPS_LTLIBS)
 $(CARDOPS_LTLIBS) common:
 	for dir in $(RLM_SUBDIRS); do \
 		echo "Making $(WHAT_TO_MAKE) in $$dir ..."; \
-		$(MAKE) $(MFLAGS) -C $$dir RLM_CFLAGS="$(RLM_CFLAGS)" $(WHAT_TO_MAKE) || exit $?; \
+		$(MAKE) $(MFLAGS) -C $$dir RLM_CFLAGS="$(RLM_CFLAGS)" $(WHAT_TO_MAKE) || exit $$?; \
 	done
