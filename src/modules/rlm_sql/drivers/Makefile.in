@@ -14,7 +14,6 @@ install:
 common:
 	@[ -d lib/ ] || mkdir lib
 	@for mod in $(SQL_MODULES); do \
-		what=$(WHAT_TO_MAKE); \
-		echo "Making $$what in $$mod..."; \
-		(cd $$mod && $(MAKE) $(MFLAGS) $$what) || exit $?;\
+		echo "Making $(WHAT_TO_MAKE) in $$mod..."; \
+		$(MAKE) $(MFLAGS) -C $$mod $(WHAT_TO_MAKE) || exit $$?; \
 	done

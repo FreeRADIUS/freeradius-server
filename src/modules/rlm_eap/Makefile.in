@@ -42,7 +42,7 @@ install-subdirs:
 common:
 	@for dir in $(RLM_SUBDIRS); do  \
 		echo "Making $(WHAT_TO_MAKE) in $$dir..."; \
-		(cd $$dir && $(MAKE) $(MFLAGS) $(WHAT_TO_MAKE)) || exit $?;\
+		$(MAKE) $(MFLAGS) -C $$dir $(WHAT_TO_MAKE) || exit $$?; \
 	done
 
 ## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.

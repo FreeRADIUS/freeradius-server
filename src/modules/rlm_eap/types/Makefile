@@ -17,6 +17,6 @@ common:
 	@for mod in rlm_eap*; do \
 		if [ -d $$mod ] && [ -f $$mod/Makefile ]; then \
 			echo "Making $(WHAT_TO_MAKE) in $$mod..."; \
-			$(MAKE) $(MFLAGS) -C $$mod $(WHAT_TO_MAKE) || exit $?; \
+			$(MAKE) $(MFLAGS) -C $$mod $(WHAT_TO_MAKE) || exit $$?; \
 		fi; \
 	done
