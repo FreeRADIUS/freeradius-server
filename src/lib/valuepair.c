@@ -773,15 +773,14 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 		case PW_TYPE_INTEGER:
 			/*
-			 * 	If it starts with a digit, it must
-			 * 	be a number (or a range).
-			 *
 			 *	Note that ALL integers are unsigned!
 			 */
-			if (isdigit((int) *value)) {
+			if (isdigit((int) value[0]) &&
+			    (strspn(value, "0123456789") == strlen(value))) {
 				vp->lvalue = (uint32_t) strtoul(value, NULL, 10);
 				vp->length = 4;
 			}
+
 			/*
 			 *	Look for the named value for the given
 			 *	attribute.
