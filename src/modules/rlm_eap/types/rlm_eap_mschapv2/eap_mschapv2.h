@@ -3,6 +3,23 @@
 
 #include "eap.h"
 
+/*
+ *	draft-kamath-pppext-eap-mschapv2-00.txt says:
+ *
+ *	Supplicant		FreeRADIUS
+ *			<--	challenge
+ *	response	-->
+ *			<--	success
+ *	success		-->
+ *
+ *	But what we often see is:
+ *
+ *	Supplicant		FreeRADIUS
+ *			<--	challenge
+ *	response	-->
+ *			<--	success
+ *	ack		-->
+ */
 #define PW_EAP_MSCHAPV2_ACK		0
 #define PW_EAP_MSCHAPV2_CHALLENGE	1
 #define PW_EAP_MSCHAPV2_RESPONSE	2
