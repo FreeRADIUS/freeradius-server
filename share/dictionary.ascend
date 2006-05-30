@@ -993,8 +993,13 @@ ATTRIBUTE	X-Ascend-Number-Sessions		202	string
 ATTRIBUTE	X-Ascend-Authen-Alias			203	string
 ATTRIBUTE	X-Ascend-Token-Expiry			204	integer
 ATTRIBUTE	X-Ascend-Menu-Selector			205	string
+
+#
+#  These next two attributes conflict with the Digest attributes!
+#
 ATTRIBUTE	X-Ascend-Menu-Item			206	string
 ATTRIBUTE	X-Ascend-PW-Warntime			207	integer
+
 ATTRIBUTE	X-Ascend-PW-Lifetime			208	integer
 ATTRIBUTE	X-Ascend-IP-Direct			209	ipaddr
 ATTRIBUTE	X-Ascend-PPP-VJ-Slot-Comp		210	integer
