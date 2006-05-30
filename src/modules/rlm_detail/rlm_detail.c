@@ -108,6 +108,18 @@ static int detail_detach(void *instance)
 }
 
 
+static uint32_t detail_hash(const void *data)
+{
+	const DICT_ATTR *da = data;
+	return lrad_hash(&(da->attr), sizeof(da->attr));
+}
+
+static int detail_cmp(const void *a, const void *b)
+{
+	return ((const DICT_ATTR *)a)->attr - ((const DICT_ATTR *)b)->attr;
+}
+
+
 /*
  *	(Re-)read radiusd.conf into memory.
  */
@@ -136,7 +148,8 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 	if (cs) {
 		CONF_ITEM	*ci;
 
-		inst->ht = lrad_hash_table_create(NULL);
+		inst->ht = lrad_hash_table_create(detail_hash, detail_cmp,
+						  NULL);
 
 		for (ci = cf_item_find_next(cs, NULL);
 		     ci != NULL;
@@ -161,7 +174,7 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 			 *	since the suppression list will usually
 			 *	be small, it doesn't matter.
 			 */
-			if (!lrad_hash_table_insert(inst->ht, da->attr, da)) {
+			if (!lrad_hash_table_insert(inst->ht, da)) {
 				radlog(L_ERR, "rlm_detail: Failed trying to remember %s", attr);
 				detail_detach(inst);
 				return -1;
@@ -360,8 +373,11 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 
 	/* Write each attribute/value to the log file */
 	for (; pair != NULL; pair = pair->next) {
+		DICT_ATTR da;
+		da.attr = pair->attribute;
+
 		if (inst->ht &&
-		    lrad_hash_table_finddata(inst->ht, pair->attribute)) continue;
+		    lrad_hash_table_finddata(inst->ht, &da)) continue;
 
 		/*
 		 *	Don't print passwords in old format...

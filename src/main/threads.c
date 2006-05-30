@@ -248,7 +248,7 @@ static int reap_callback(void *ctx, void *data)
 	 *	Else no child, or was already reaped
 	 */
 
-	lrad_hash_table_delete(ht, lrad_hash(&pid, sizeof(pid)));
+	lrad_hash_table_delete(ht, &pid);
 
 	return 0;
 }
@@ -752,6 +752,22 @@ int total_active_threads(void)
 }
 
 
+static uint32_t pid_hash(const void *data)
+{
+	return lrad_hash(data, sizeof(pid_t));
+}
+
+static int pid_cmp(const void *a, const void *b)
+{
+	const pid_t *one = a;
+	const pid_t *two = b;
+
+	if (*one < *two) return -1;
+	if (*one > *two) return +1;
+
+	return 0;
+}
+
 /*
  *	Allocate the thread pool, and seed it with an initial number
  *	of threads.
@@ -791,7 +807,9 @@ int thread_pool_init(int spawn_flag)
 		/*
 		 *	Create the hash table of child PID's
 		 */
-		thread_pool.waiters = lrad_hash_table_create(free);
+		thread_pool.waiters = lrad_hash_table_create(pid_hash,
+							     pid_cmp,
+							     free);
 		if (!thread_pool.waiters) {
 			radlog(L_ERR, "FATAL: Failed to set up wait hash");
 			exit(1);
@@ -1113,10 +1131,7 @@ pid_t rad_fork(int exec_wait)
 		 */
 		pthread_mutex_lock(&thread_pool.wait_mutex);
 
-		rcode = lrad_hash_table_insert(thread_pool.waiters,
-					       lrad_hash(&child_pid,
-							 sizeof(child_pid)),
-					       ptr);
+		rcode = lrad_hash_table_insert(thread_pool.waiters, ptr);
 		
 		/*
 		 *	Unlock the mutex.

@@ -395,11 +395,6 @@ static int common_checks(rad_listen_t *listener,
 	}
 	
 	/*
-	 *	ADD IN "server identifier" from "listen"
-	 *	directive!
-	 */
-	
-	/*
 	 *	The request passes many of our sanity checks.
 	 *	From here on in, if anything goes wrong, we
 	 *	send a reject message, instead of dropping the
@@ -679,6 +674,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 		
 	case PW_STATUS_SERVER:
 		if (!mainconfig.status_server) {
+			RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
 			rad_free(&packet);
 			return 0;
@@ -1545,8 +1541,6 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
  */
 static int listen_bind(rad_listen_t *this)
 {
-	struct sockaddr salocal;
-	socklen_t	salen;
 	rad_listen_t	**last;
 	listen_socket_t *sock = this->data;
 
@@ -1615,80 +1609,10 @@ static int listen_bind(rad_listen_t *this)
 		}
 	}
 
-	/*
-	 *	Create the socket.
-	 */
-	this->fd = socket(sock->ipaddr.af, SOCK_DGRAM, 0);
+	this->fd = lrad_socket(&sock->ipaddr, sock->port);
 	if (this->fd < 0) {
 		radlog(L_ERR|L_CONS, "ERROR: Failed to open socket: %s",
-		       strerror(errno));
-		return -1;
-	}
-	
-
-#ifdef WITH_UDPFROMTO
-	/*
-	 *	Initialize udpfromto for all sockets.
-	 */
-	if (udpfromto_init(this->fd) != 0) {
-		radlog(L_ERR|L_CONS, "ERROR: udpfromto init failed.");
-	}
-#endif
-
-	if (sock->ipaddr.af == AF_INET) {
-		struct sockaddr_in *sa;
-
-		sa = (struct sockaddr_in *) &salocal;
-		memset(sa, 0, sizeof(salocal));
-		sa->sin_family = AF_INET;
-		sa->sin_addr = sock->ipaddr.ipaddr.ip4addr;
-		sa->sin_port = htons(sock->port);
-		salen = sizeof(*sa);
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	} else if (sock->ipaddr.af == AF_INET6) {
-		struct sockaddr_in6 *sa;
-
-		sa = (struct sockaddr_in6 *) &salocal;
-		memset(sa, 0, sizeof(salocal));
-		sa->sin6_family = AF_INET6;
-		sa->sin6_addr = sock->ipaddr.ipaddr.ip6addr;
-		sa->sin6_port = htons(sock->port);
-		salen = sizeof(*sa);
-
-		/*
-		 *	Listening on '::' does NOT get you IPv4 to
-		 *	IPv6 mapping.  You've got to listen on an IPv4
-		 *	address, too.  This makes the rest of the server
-		 *	design a little simpler.
-		 */
-#ifdef IPV6_V6ONLY
-		if (IN6_IS_ADDR_UNSPECIFIED(&sock->ipaddr.ipaddr.ip6addr)) {
-			int on = 1;
-			
-			setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
-				   (char *)&on, sizeof(on));
-		}
-#endif /* IPV6_V6ONLY */
-#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
-	} else {
-		radlog(L_ERR|L_CONS, "ERROR: Unsupported protocol family %d",
-		       sock->ipaddr.af);
-		close(this->fd);
-		this->fd = -1;
-		return -1;
-	}
-
-	if (bind(this->fd, &salocal, salen) < 0) {
-		char buffer[128];
-
-		radlog(L_ERR|L_CONS, "ERROR: Bind to %s port %d failed: %s",
-		       inet_ntop(sock->ipaddr.af, &sock->ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-		       sock->port, strerror(errno));
-				 
-		close(this->fd);
-		this->fd = -1;
+		       librad_errstr);
 		return -1;
 	}
 

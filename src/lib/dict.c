@@ -71,7 +71,6 @@ static dict_stat_t *stat_tail = NULL;
 
 typedef struct value_fixup_t {
 	char		attrstr[40];
-	uint32_t	hash;
 	DICT_VALUE	*dval;
 	struct value_fixup_t *next;
 } value_fixup_t;
@@ -107,10 +106,10 @@ static const LRAD_NAME_NUMBER type_table[] = {
 static uint32_t dict_hashname(const char *name)
 {
 	uint32_t hash = FNV_MAGIC_INIT;
-	const unsigned char *p;
+	const char *p;
 
 	for (p = name; *p != '\0'; p++) {
-		int c = *p;
+		int c = *(const unsigned char *) p;
 		if (isalpha(c)) c = tolower(c);
 
 		hash *= FNV_MAGIC_PRIME;
@@ -118,6 +117,106 @@ static uint32_t dict_hashname(const char *name)
 	}
 	
 	return hash;
+}
+
+
+/*
+ *	Hash callback functions.
+ */
+static uint32_t dict_attr_name_hash(const void *data)
+{
+	return dict_hashname(((const DICT_ATTR *)data)->name);
+}
+
+static int dict_attr_name_cmp(const void *one, const void *two)
+{
+	const DICT_ATTR *a = one;
+	const DICT_ATTR *b = two;
+
+	return strcasecmp(a->name, b->name);
+}
+
+static uint32_t dict_attr_value_hash(const void *data)
+{
+	return lrad_hash(&((const DICT_ATTR *)data)->attr,
+			 sizeof(((const DICT_ATTR *)data)->attr));
+}
+
+static int dict_attr_value_cmp(const void *one, const void *two)
+{
+	const DICT_ATTR *a = one;
+	const DICT_ATTR *b = two;
+
+	return a->attr - b->attr;
+}
+
+static uint32_t dict_vendor_name_hash(const void *data)
+{
+	return dict_hashname(((const DICT_VENDOR *)data)->name);
+}
+
+static int dict_vendor_name_cmp(const void *one, const void *two)
+{
+	const DICT_VENDOR *a = one;
+	const DICT_VENDOR *b = two;
+
+	return strcasecmp(a->name, b->name);
+}
+
+static uint32_t dict_vendor_value_hash(const void *data)
+{
+	return lrad_hash(&(((const DICT_VENDOR *)data)->vendorpec),
+			 sizeof(((const DICT_VENDOR *)data)->vendorpec));
+}
+
+static int dict_vendor_value_cmp(const void *one, const void *two)
+{
+	const DICT_VENDOR *a = one;
+	const DICT_VENDOR *b = two;
+
+	return a->vendorpec - b->vendorpec;
+}
+
+static uint32_t dict_value_name_hash(const void *data)
+{
+	uint32_t hash;
+	const DICT_VALUE *dval = data;
+
+	hash = dict_hashname(dval->name);
+	return lrad_hash_update(&dval->attr, sizeof(dval->attr), hash);
+}
+
+static int dict_value_name_cmp(const void *one, const void *two)
+{
+	int rcode;
+	const DICT_VALUE *a = one;
+	const DICT_VALUE *b = two;
+
+	rcode = a->attr - b->attr;
+	if (rcode != 0) return rcode;
+
+	return strcasecmp(a->name, b->name);
+}
+
+static uint32_t dict_value_value_hash(const void *data)
+{
+	uint32_t hash;
+	const DICT_VALUE *dval = data;
+
+	hash = lrad_hash(&dval->attr, sizeof(dval->attr));
+	return lrad_hash_update(&dval->value, sizeof(dval->value), hash);
+}
+
+static int dict_value_value_cmp(const void *one, const void *two)
+{
+	int rcode;
+	const DICT_VALUE *a = one;
+	const DICT_VALUE *b = two;
+
+	rcode = a->attr - b->attr;
+	if (rcode != 0) return rcode;
+
+	return a->value - b->value;
 }
 
 
@@ -230,7 +329,6 @@ void dict_free(void)
 int dict_addvendor(const char *name, int value)
 {
 	size_t length;
-	uint32_t hash;
 	DICT_VENDOR *dv;
 
 	if (value >= (1 << 16)) {
@@ -248,15 +346,14 @@ int dict_addvendor(const char *name, int value)
 		return -1;
 	}
 
-	hash = dict_hashname(name);
 	strcpy(dv->name, name);
 	dv->vendorpec  = value;
 	dv->type = dv->length = 1; /* defaults */
 
-	if (!lrad_hash_table_insert(vendors_byname, hash, dv)) {
+	if (!lrad_hash_table_insert(vendors_byname, dv)) {
 		DICT_VENDOR *old_dv;
 
-		old_dv = lrad_hash_table_finddata(vendors_byname, hash);
+		old_dv = lrad_hash_table_finddata(vendors_byname, dv);
 		if (!old_dv) {
 			librad_log("dict_addvendor: Failed inserting vendor name %s", name);
 			return -1;
@@ -282,10 +379,7 @@ int dict_addvendor(const char *name, int value)
 	 *	files, but when we're printing them, (and looking up
 	 *	by value) we want to use the NEW name.
 	 */
-	if (!lrad_hash_table_replace(vendors_byvalue,
-				    lrad_hash(&dv->vendorpec,
-					      sizeof(dv->vendorpec)),
-				    dv)) {
+	if (!lrad_hash_table_replace(vendors_byvalue, dv)) {
 		librad_log("dict_addvendor: Failed inserting vendor %s",
 			   name);
 		return -1;
@@ -301,7 +395,6 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		 ATTR_FLAGS flags)
 {
 	static int      max_attr = 0;
-	uint32_t	hash;
 	DICT_ATTR	*attr;
 
 	if (strlen(name) > (sizeof(attr->name) -1)) {
@@ -371,7 +464,6 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		return -1;
 	}
 
-	hash = dict_hashname(name);
 	strcpy(attr->name, name);
 	attr->attr = value;
 	attr->attr |= (vendor << 16); /* FIXME: hack */
@@ -382,14 +474,14 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
-	if (!lrad_hash_table_insert(attributes_byname, hash, attr)) {
+	if (!lrad_hash_table_insert(attributes_byname, attr)) {
 		DICT_ATTR	*a;
 
 		/*
 		 *	If the attribute has identical number, then
 		 *	ignore the duplicate.
 		 */
-		a = lrad_hash_table_finddata(attributes_byname, hash);
+		a = lrad_hash_table_finddata(attributes_byname, attr);
 		if (a && (strcasecmp(a->name, attr->name) == 0)) {
 			if (a->attr != attr->attr) {
 				librad_log("dict_addattr: Duplicate attribute name %s", name);
@@ -414,9 +506,7 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	 *	files, but when we're printing them, (and looking up
 	 *	by value) we want to use the NEW name.
 	 */
-	if (!lrad_hash_table_replace(attributes_byvalue,
-				    lrad_hash(&attr->attr, sizeof(attr->attr)),
-				    attr)) {
+	if (!lrad_hash_table_replace(attributes_byvalue, attr)) {
 		librad_log("dict_addattr: Failed inserting attribute name %s", name);
 		return -1;
 	}
@@ -432,7 +522,6 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 {
 	size_t		length;
 	DICT_ATTR	*dattr;
-	uint32_t	hash;
 	DICT_VALUE	*dval;
 
 	if ((length = strlen(namestr)) >= DICT_VALUE_MAX_NAME_LEN) {
@@ -446,7 +535,6 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	}
 	memset(dval, 0, sizeof(*dval));
 
-	hash = dict_hashname(namestr);
 	strcpy(dval->name, namestr);
 	dval->value = value;
 
@@ -457,7 +545,6 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	dattr = dict_attrbyname(attrstr);
 	if (dattr) {
 		dval->attr = dattr->attr;
-		hash = lrad_hash_update(&dval->attr, sizeof(dval->attr), hash);
 	} else {
 		value_fixup_t *fixup;
 		
@@ -469,7 +556,6 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 		memset(fixup, 0, sizeof(*fixup));
 
 		strNcpy(fixup->attrstr, attrstr, sizeof(fixup->attrstr));
-		fixup->hash = hash;
 		fixup->dval = dval;
 		
 		/*
@@ -484,7 +570,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	/*
 	 *	Add the value into the dictionary.
 	 */
-	if (!lrad_hash_table_insert(values_byname, hash, dval)) {
+	if (!lrad_hash_table_insert(values_byname, dval)) {
 		if (dattr) {
 			DICT_VALUE *old;
 			
@@ -508,9 +594,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	 *	There are multiple VALUE's, keyed by attribute, so we
 	 *	take care of that here.
 	 */
-	hash = dval->attr;
-	hash = lrad_hash_update(&dval->value, sizeof(dval->value), hash);
-	if (!lrad_hash_table_replace(values_byvalue, hash, dval)) {	
+	if (!lrad_hash_table_replace(values_byvalue, dval)) {
 		librad_log("dict_addvalue: Failed inserting value %s",
 			   namestr);
 		return -1;
@@ -672,16 +756,6 @@ static int process_value(const char* fn, const int line, char **argv,
 	}
 	sscanf(argv[2], "%i", &value);
 
-	/*
-	 *	valuepair.c will get excited when creating attributes,
-	 *	if it sees values which look like integers, so we can't
-	 *	use them here.
-	 */
-	if (isdigit(argv[1][0])) {
-		librad_log("dict_init: %s[%d]: Names for VALUEs cannot start with a digit.",
-			   fn, line);
-	}
-	
 	if (dict_addvalue(argv[1], argv[0], value) < 0) {
 		librad_log("dict_init: %s[%d]: %s",
 			   fn, line, librad_errstr);
@@ -1064,7 +1138,9 @@ int dict_init(const char *dir, const char *fn)
 	 *
 	 *	Each vendor is malloc'd, so the free function is free.
 	 */
-	vendors_byname = lrad_hash_table_create(free);
+	vendors_byname = lrad_hash_table_create(dict_vendor_name_hash,
+						dict_vendor_name_cmp,
+						free);
 	if (!vendors_byname) {
 		return -1;
 	}
@@ -1074,7 +1150,9 @@ int dict_init(const char *dir, const char *fn)
 	 *	be vendors of the same value.  If there are, we
 	 *	pick the latest one.
 	 */
-	vendors_byvalue = lrad_hash_table_create(NULL);
+	vendors_byvalue = lrad_hash_table_create(dict_vendor_value_hash,
+						 dict_vendor_value_cmp,
+						 NULL);
 	if (!vendors_byvalue) {
 		return -1;
 	}
@@ -1085,7 +1163,9 @@ int dict_init(const char *dir, const char *fn)
 	 *
 	 *	Each attribute is malloc'd, so the free function is free.
 	 */
-	attributes_byname = lrad_hash_table_create(free);
+	attributes_byname = lrad_hash_table_create(dict_attr_name_hash,
+						   dict_attr_name_cmp,
+						   free);
 	if (!attributes_byname) {
 		return -1;
 	}
@@ -1095,17 +1175,23 @@ int dict_init(const char *dir, const char *fn)
 	 *	be attributes of the same value.  If there are, we
 	 *	pick the latest one.
 	 */
-	attributes_byvalue = lrad_hash_table_create(NULL);
+	attributes_byvalue = lrad_hash_table_create(dict_attr_value_hash,
+						    dict_attr_value_cmp,
+						    NULL);
 	if (!attributes_byvalue) {
 		return -1;
 	}
 
-	values_byname = lrad_hash_table_create(free);
+	values_byname = lrad_hash_table_create(dict_value_name_hash,
+					       dict_value_name_cmp,
+					       free);
 	if (!values_byname) {
 		return -1;
 	}
 
-	values_byvalue = lrad_hash_table_create(NULL);
+	values_byvalue = lrad_hash_table_create(dict_value_value_hash,
+						dict_value_value_cmp,
+						NULL);
 	if (!values_byvalue) {
 		return -1;
 	}
@@ -1116,7 +1202,6 @@ int dict_init(const char *dir, const char *fn)
 		return -1;
 
 	if (value_fixup) {
-		uint32_t hash;
 		DICT_ATTR *a;
 		value_fixup_t *this, *next;
 
@@ -1136,11 +1221,8 @@ int dict_init(const char *dir, const char *fn)
 			/*
 			 *	Add the value into the dictionary.
 			 */
-			hash = lrad_hash_update(&this->dval->attr,
-						sizeof(this->dval->attr),
-						this->hash);
 			if (!lrad_hash_table_replace(values_byname,
-						     hash, this->dval)) {
+						     this->dval)) {
 				librad_log("dict_addvalue: Duplicate value name %s for attribute %s", this->dval->name, a->name);
 				return -1;
 			}
@@ -1150,14 +1232,9 @@ int dict_init(const char *dir, const char *fn)
 			 *	prefer the new name when printing
 			 *	values.
 			 */
-			hash = lrad_hash(&this->dval->attr,
-					 sizeof(this->dval->attr));
-			hash = lrad_hash_update(&this->dval->value,
-						sizeof(this->dval->value),
-						hash);
-			if (!lrad_hash_table_finddata(values_byvalue, hash)) {
+			if (!lrad_hash_table_finddata(values_byvalue, this->dval)) {
 				lrad_hash_table_replace(values_byvalue,
-							hash, this->dval);
+							this->dval);
 			}
 			free(this);
 
@@ -1174,10 +1251,13 @@ int dict_init(const char *dir, const char *fn)
 /*
  *	Get an attribute by its numerical value.
  */
-DICT_ATTR *dict_attrbyvalue(int val)
+DICT_ATTR *dict_attrbyvalue(int attr)
 {
-	return lrad_hash_table_finddata(attributes_byvalue,
-					lrad_hash(&val, sizeof(val)));
+	DICT_ATTR dattr;
+
+	dattr.attr = attr;
+
+	return lrad_hash_table_finddata(attributes_byvalue, &dattr);
 }
 
 /*
@@ -1185,38 +1265,26 @@ DICT_ATTR *dict_attrbyvalue(int val)
  */
 DICT_ATTR *dict_attrbyname(const char *name)
 {
+	DICT_ATTR dattr;
+
 	if (!name) return NULL;
 
-	return lrad_hash_table_finddata(attributes_byname,
-					dict_hashname(name));
+	strNcpy(dattr.name, name, sizeof(dattr.name));
+
+	return lrad_hash_table_finddata(attributes_byname, &dattr);
 }
 
 /*
  *	Associate a value with an attribute and return it.
  */
-DICT_VALUE *dict_valbyattr(int attr, int val)
+DICT_VALUE *dict_valbyattr(int attr, int value)
 {
-	uint32_t hash = attr;
-	DICT_VALUE *dval;
+	DICT_VALUE dval;
 
-	hash = lrad_hash_update(&val, sizeof(val), hash);
-
-	dval = lrad_hash_table_finddata(values_byvalue, hash);
-	if (!dval) return NULL;
-
-	/*
-	 *	We may have hash collisions, as the hash table doesn't
-	 *	have a "cmp" function.  So when we look up attributes
-	 *	which have 2^32 possible values, we WILL get a
-	 *	collision.
-	 *
-	 *	Avoid that here by doing a last sanity check before
-	 *	returning the pointer.
-	 */
-	if ((dval->attr != attr) ||
-	    (dval->value != val)) return NULL;
-
-	return dval;
+	dval.attr = attr;
+	dval.value = value;
+	
+	return lrad_hash_table_finddata(values_byvalue, &dval);
 }
 
 /*
@@ -1224,14 +1292,16 @@ DICT_VALUE *dict_valbyattr(int attr, int val)
  */
 DICT_VALUE *dict_valbyname(int attr, const char *name)
 {
-	uint32_t hash;
+	DICT_VALUE *dv;
+	uint32_t buffer[(sizeof(*dv) + DICT_VALUE_MAX_NAME_LEN + 3)/4];
 
 	if (!name) return NULL;
 
-	hash = dict_hashname(name);
-	hash = lrad_hash_update(&attr, sizeof(attr), hash);
+	dv = (DICT_VALUE *) buffer;
+	dv->attr = attr;
+	strNcpy(dv->name, name, DICT_VALUE_MAX_NAME_LEN);
 
-	return lrad_hash_table_finddata(values_byname, hash);
+	return lrad_hash_table_finddata(values_byname, dv);
 }
 
 /*
@@ -1241,14 +1311,15 @@ DICT_VALUE *dict_valbyname(int attr, const char *name)
  */
 int dict_vendorbyname(const char *name)
 {
-	uint32_t hash;
-	DICT_VENDOR	*dv;
+	DICT_VENDOR *dv;
+	uint32_t buffer[(sizeof(*dv) + DICT_VENDOR_MAX_NAME_LEN + 3)/4];
 
 	if (!name) return 0;
 
-	hash = dict_hashname(name);
+	dv = (DICT_VENDOR *) buffer;
+	strNcpy(dv->name, name, DICT_VENDOR_MAX_NAME_LEN);
 	
-	dv = lrad_hash_table_finddata(vendors_byname, hash);
+	dv = lrad_hash_table_finddata(vendors_byname, dv);
 	if (!dv) return 0;
 
 	return dv->vendorpec;
@@ -1257,8 +1328,11 @@ int dict_vendorbyname(const char *name)
 /*
  *	Return the vendor struct based on the PEC.
  */
-DICT_VENDOR *dict_vendorbyvalue(int vendor)
+DICT_VENDOR *dict_vendorbyvalue(int vendorpec)
 {
-	return lrad_hash_table_finddata(vendors_byvalue,
-					lrad_hash(&vendor, sizeof(vendor)));
+	DICT_VENDOR dv;
+
+	dv.vendorpec = vendorpec;
+
+	return lrad_hash_table_finddata(vendors_byvalue, &dv);
 }

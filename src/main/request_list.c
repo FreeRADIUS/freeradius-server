@@ -137,131 +137,27 @@ static int proxy_id_cmp(const void *one, const void *two)
 }
 
 
-static void packet_hash(RADIUS_PACKET *packet)
-{
-	uint32_t hash;
-
-	hash = lrad_hash(&packet->src_port, sizeof(packet->src_port));
-
-	/*
-	 *	We shouldn't have to hash af, sockfd, code, or dst_port,
-	 *	as they're the same for one request_list_t
-	 */
-#if 0
-	hash = lrad_hash_update(&packet->src_ipaddr.af,
-				sizeof(packet->src_ipaddr.af), hash);
-	
-	hash = lrad_hash_update(&packet->code, sizeof(packet->code), hash);
-	hash = lrad_hash_update(&packet->sockfd, sizeof(packet->sockfd), hash);
-	hash = lrad_hash_update(&packet->dst_port,
-				sizeof(packet->dst_port), hash);
-#endif
-
-	/*
-	 *	The caller ensures that src & dst AF are the same.
-	 *
-	 *	We use dst IP in the hash, as the sockfd may be listening
-	 *	on "*", with udpfromto, to get multiple dst IP's.
-	 */
-	switch (packet->src_ipaddr.af) {
-	case AF_INET:
-		hash = lrad_hash_update(&packet->src_ipaddr.ipaddr.ip4addr,
-					sizeof(packet->src_ipaddr.ipaddr.ip4addr),
-					hash);
-		hash = lrad_hash_update(&packet->dst_ipaddr.ipaddr.ip4addr,
-					sizeof(packet->dst_ipaddr.ipaddr.ip4addr),
-					hash);
-		break;
-	case AF_INET6:
-		hash = lrad_hash_update(&packet->src_ipaddr.ipaddr.ip6addr,
-					sizeof(packet->src_ipaddr.ipaddr.ip6addr),
-					hash);
-		hash = lrad_hash_update(&packet->dst_ipaddr.ipaddr.ip6addr,
-					sizeof(packet->dst_ipaddr.ipaddr.ip6addr),
-					hash);
-		break;
-	default:
-		/* FIXME: die! */
-		break;
-	}
-
-	/*
-	 *	Put the packet Id into the high byte of the hash,
-	 *	to minimize the number of possible collisions.
-	 *
-	 *	The hash table indexing is done via the low bits,
-	 *	so we shouldn't use those.
-	 */
-	rad_assert((packet->id >= 0) && (packet->id < 256));
-	packet->hash = packet->id << 24;
-	packet->hash |= hash >> 8;
-}
-
-
 /*
  *	Compare two REQUEST data structures, based on a number
  *	of criteria, for proxied packets.
  */
 static int proxy_cmp(const void *one, const void *two)
 {
-	int rcode;
-	const REQUEST *a = one;
-	const REQUEST *b = two;
-
-	rad_assert(a->magic == REQUEST_MAGIC);
-	rad_assert(b->magic == REQUEST_MAGIC);
-
-	rad_assert(a->proxy != NULL);
-	rad_assert(b->proxy != NULL);
-
-	/*
-	 *	The following code looks unreasonable, but it's
-	 *	the only way to make the comparisons work.
-	 */
-	if (a->proxy->sockfd < b->proxy->sockfd) return -1;
-	if (a->proxy->sockfd > b->proxy->sockfd) return +1;
-
-	if (a->proxy->id < b->proxy->id) return -1;
-	if (a->proxy->id > b->proxy->id) return +1;
-
-	/*
-	 *	We've got to check packet codes, too.  But
-	 *	this should be done later, by someone else...
-	 */
-	if (a->proxy->dst_ipaddr.af < b->proxy->dst_ipaddr.af) return -1;
-	if (a->proxy->dst_ipaddr.af > b->proxy->dst_ipaddr.af) return +1;
-
-	if (a->proxy->dst_port < b->proxy->dst_port) return -1;
-	if (a->proxy->dst_port > b->proxy->dst_port) return +1;
-
-	switch (a->proxy->dst_ipaddr.af) {
-	case AF_INET:
-		rcode = memcmp(&a->proxy->dst_ipaddr.ipaddr.ip4addr,
-			       &b->proxy->dst_ipaddr.ipaddr.ip4addr,
-			       sizeof(a->proxy->dst_ipaddr.ipaddr.ip4addr));
-		break;
-	case AF_INET6:
-		rcode = memcmp(&a->proxy->dst_ipaddr.ipaddr.ip6addr,
-			       &b->proxy->dst_ipaddr.ipaddr.ip6addr,
-			       sizeof(a->proxy->dst_ipaddr.ipaddr.ip6addr));
-		break;
-	default:
-		return -1;	/* FIXME: die! */
-		break;
-	}
-	if (rcode != 0) return rcode;
-
-	/*
-	 *	FIXME: Check the Proxy-State attribute, too.
-	 *	This will help cut down on duplicates.
-	 */
-
-	/*
-	 *	Everything's equal.  Say so.
-	 */
-	return 0;
+	return lrad_packet_cmp(((const REQUEST *)one)->proxy,
+			       ((const REQUEST *)two)->proxy);
 }
 
+
+static uint32_t request_hash(const void *data)
+{
+	return lrad_request_packet_hash(((const REQUEST *) data)->packet);
+}
+
+static int request_cmp(const void *a, const void *b)
+{
+	return lrad_packet_cmp(((const REQUEST *) a)->packet,
+				       ((const REQUEST *) b)->packet);
+}
 
 /*
  *	Initialize the request list.
@@ -275,7 +171,7 @@ request_list_t *rl_init(void)
 	 */
 	memset(rl, 0, sizeof(*rl));
 
-	rl->ht = lrad_hash_table_create(NULL);
+	rl->ht = lrad_hash_table_create(request_hash, request_cmp, NULL);
 	if (!rl->ht) {
 		rad_assert("FAIL" == NULL);
 	}
@@ -516,7 +412,7 @@ void rl_yank(request_list_t *rl, REQUEST *request)
 	/*
 	 *	Delete the request from the list.
 	 */
-	lrad_hash_table_delete(rl->ht, request->packet->hash);
+	lrad_hash_table_delete(rl->ht, request);
 	
 	/*
 	 *	If there's a proxied packet, and we're still
@@ -549,7 +445,7 @@ void rl_delete(request_list_t *rl, REQUEST *request)
  */
 int rl_add(request_list_t *rl, REQUEST *request)
 {
-	return lrad_hash_table_insert(rl->ht, request->packet->hash, request);
+	return lrad_hash_table_insert(rl->ht, request);
 }
 
 /*
@@ -564,9 +460,11 @@ int rl_add(request_list_t *rl, REQUEST *request)
  */
 REQUEST *rl_find(request_list_t *rl, RADIUS_PACKET *packet)
 {
-	packet_hash(packet);
+	REQUEST request;
 
-	return lrad_hash_table_finddata(rl->ht, packet->hash);
+	request.packet = packet;
+
+	return lrad_hash_table_finddata(rl->ht, &request);
 }
 
 /*
@@ -850,27 +748,18 @@ int rl_add_proxy(REQUEST *request)
  *	We MUST NOT have two requests with identical (id/code/IP/port), and
  *	different vectors.  This is a serious error!
  */
-REQUEST *rl_find_proxy(RADIUS_PACKET *packet)
+REQUEST *rl_find_proxy(RADIUS_PACKET *reply)
 {
 	rbnode_t	*node;
 	REQUEST		myrequest, *maybe = NULL;
 	RADIUS_PACKET	myproxy;
 
-	/*
-	 *	If we use the socket FD as an indicator,
-	 *	then that implicitely contains information
-	 *	as to our src ipaddr/port, so we don't need
-	 *	to use that in the comparisons.
-	 */
-	myproxy.sockfd = packet->sockfd;
-	myproxy.id = packet->id;
-	myproxy.dst_ipaddr = packet->src_ipaddr;
-	myproxy.dst_port = packet->src_port;
-
 #ifndef NDEBUG
 	myrequest.magic = REQUEST_MAGIC;
 #endif
 	myrequest.proxy = &myproxy;
+
+	lrad_request_from_reply(&myproxy, reply);
 
 	pthread_mutex_lock(&proxy_mutex);
         node = rbtree_find(proxy_tree, &myrequest);

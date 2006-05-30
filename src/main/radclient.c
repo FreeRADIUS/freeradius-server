@@ -35,11 +35,6 @@ static const char rcsid[] = "$Id$";
 #include <string.h>
 #include <ctype.h>
 #include <netdb.h>
-#include <sys/socket.h>
-
-#ifdef HAVE_NETINET_IN_H
-#	include <netinet/in.h>
-#endif
 
 #ifdef HAVE_SYS_SELECT_H
 #	include <sys/select.h>
@@ -192,14 +187,14 @@ static radclient_t *radclient_init(const char *filename)
 		 */
 		radclient = malloc(sizeof(*radclient));
 		if (!radclient) {
-			perror("radclient: ");
+			perror("radclient: X");
 			return NULL; /* memory leak "start" */
 		}
 		memset(radclient, 0, sizeof(*radclient));
 
 		radclient->request = rad_alloc(1);
 		if (!radclient->request) {
-			librad_perror("radclient: ");
+			librad_perror("radclient: Y");
 			radclient_free(radclient);
 			return NULL; /* memory leak "start" */
 		}
@@ -836,9 +831,6 @@ int main(int argc, char **argv)
 	int parallel = 1;
 	radclient_t	*this;
 	int force_af = AF_UNSPEC;
-	int len = 0;
-        struct sockaddr_storage ss;
-        struct sockaddr_in *s4;
 
 	librad_debug = 0;
 
@@ -992,7 +984,7 @@ int main(int argc, char **argv)
 		}
 
 		if (ip_hton(hostname, force_af, &server_ipaddr) < 0) {
-			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", argv[1], strerror(errno));
+			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", hostname, strerror(errno));
 			exit(1);
 		}
 
@@ -1075,54 +1067,18 @@ int main(int argc, char **argv)
 	}
 
 	/*
-	 * Bind only if Packet-Src-IP(v6)Address Attribute is found
+	 *	Bind to the first specified IP address and port.
+	 *	This means we ignore later ones.
 	 */
-	switch (radclient_head->request->src_ipaddr.af) {
-	case AF_UNSPEC:
-	default:
-		/*
-		 *	Grab the socket.
-		 */
-		if ((sockfd = socket(server_ipaddr.af, SOCK_DGRAM, 0)) < 0) {
-			perror("radclient: socket: ");
-			exit(1);
-		}
-		break;
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	case AF_INET6:
-		{
-			struct sockaddr_in6 *s6;
-			s6 = (struct sockaddr_in6 *)&ss;
-			len = sizeof(struct sockaddr_in6);
-			s6->sin6_family = AF_INET6;
-			s6->sin6_flowinfo = 0;
-			s6->sin6_port = htons(radclient_head->request->src_port);
-			memcpy(&s6->sin6_addr, &radclient_head->request->src_ipaddr.ipaddr, 16);
-		}
-		goto sock_bind;
-#endif
-
-	case AF_INET:
-		s4 = (struct sockaddr_in *)&ss;
-		len = sizeof(struct sockaddr_in);
-		s4->sin_family = AF_INET;
-		s4->sin_port = htons(radclient_head->request->src_port);
-		memcpy(&s4->sin_addr, &radclient_head->request->src_ipaddr.ipaddr, 4);
-		goto sock_bind;
-
-	sock_bind:
-		if ((sockfd = socket(radclient_head->request->src_ipaddr.af,
-				 SOCK_DGRAM, 0)) < 0) {
-
-			perror("radclient: socket: ");
-			exit(1);
-		}
-		if (bind(sockfd, (struct sockaddr *)&ss, len) < 0) {
-			perror("radclient: bind: ");
-			exit(1);
-		}
-		break;
+	if (radclient_head->request->src_ipaddr.af == AF_UNSPEC) {
+		sockfd = lrad_socket(&server_ipaddr, 0);
+	} else {
+		sockfd = lrad_socket(&radclient_head->request->src_ipaddr,
+				     radclient_head->request->src_port);
+	}
+	if (sockfd < 0) {
+		fprintf(stderr, "radclient: socket: %s\n", librad_errstr);
+		exit(1);
 	}
 
 	/*

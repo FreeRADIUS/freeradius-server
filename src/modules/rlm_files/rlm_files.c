@@ -100,6 +100,17 @@ static const CONF_PARSER module_config[] = {
 };
 
 
+static uint32_t pairlist_hash(const void *data)
+{
+	return lrad_hash_string(((const PAIR_LIST *)data)->name);
+}
+
+static int pairlist_cmp(const void *a, const void *b)
+{
+	return strcmp(((const PAIR_LIST *)a)->name,
+		      ((const PAIR_LIST *)b)->name);
+}
+
 static void my_pairlist_free(void *data)
 {
 	PAIR_LIST *pl = data;
@@ -215,7 +226,6 @@ static int getusersfile(const char *filename, lrad_hash_table_t **pht,
 
 			} /* end of loop over check items */
 
-
 			/*
 			 *	Look for server configuration items
 			 *	in the reply list.
@@ -248,13 +258,15 @@ static int getusersfile(const char *filename, lrad_hash_table_t **pht,
 
 	}
 
-	ht = lrad_hash_table_create(my_pairlist_free);
+	ht = lrad_hash_table_create(pairlist_hash, pairlist_cmp,
+				    my_pairlist_free);
 	if (!ht) {
 		pairlist_free(&users);
 		return -1;
 	}
 
-	tailht = lrad_hash_table_create(NULL);
+	tailht = lrad_hash_table_create(pairlist_hash, pairlist_cmp,
+					NULL);
 	if (!tailht) {
 		lrad_hash_table_free(ht);
 		pairlist_free(&users);
@@ -266,26 +278,23 @@ static int getusersfile(const char *filename, lrad_hash_table_t **pht,
 	 *	for faster access.
 	 */
 	for (entry = users; entry != NULL; entry = next) {
-		uint32_t hash;
 		PAIR_LIST *tail;
 
 		next = entry->next;
 		entry->next = NULL;
 		entry->order = order++;
 
-		hash = lrad_hash_string(entry->name);
-
 		/*
 		 *	Insert it into the hash table, and remember
 		 *	the tail of the linked list.
 		 */
-		tail = lrad_hash_table_finddata(tailht, hash);
+		tail = lrad_hash_table_finddata(tailht, entry);
 		if (!tail) {
 			/*
 			 *	Insert it into the head & tail.
 			 */
-			if (!lrad_hash_table_insert(ht, hash, entry) ||
-			    !lrad_hash_table_insert(tailht, hash, entry)) {
+			if (!lrad_hash_table_insert(ht, entry) ||
+			    !lrad_hash_table_insert(tailht, entry)) {
 				pairlist_free(&next);
 				lrad_hash_table_free(ht);
 				lrad_hash_table_free(tailht);
@@ -293,7 +302,7 @@ static int getusersfile(const char *filename, lrad_hash_table_t **pht,
 			}
 		} else {
 			tail->next = entry;
-			if (!lrad_hash_table_replace(tailht, hash, entry)) {
+			if (!lrad_hash_table_replace(tailht, entry)) {
 				pairlist_free(&next);
 				lrad_hash_table_free(ht);
 				lrad_hash_table_free(tailht);
@@ -355,7 +364,7 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 
 	rcode = getusersfile(inst->usersfile, &inst->users, inst->compat_mode);
 	if (rcode != 0) {
-		radlog(L_ERR|L_CONS, "Errors reading %s", inst->usersfile);
+	  radlog(L_ERR|L_CONS, "Errors reading %s", inst->usersfile);
 		file_detach(inst);
 		return -1;
 	}
@@ -409,12 +418,13 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 		       const char *filename, lrad_hash_table_t *ht,
 		       VALUE_PAIR *request_pairs, VALUE_PAIR **reply_pairs)
 {
-	const char	*name;
+	const char	*name, *match;
 	VALUE_PAIR	**config_pairs;
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
 	const PAIR_LIST	*user_pl, *default_pl;
 	int		found = 0;
+	PAIR_LIST	my_pl;
 
 	if (!inst->key) {
 		VALUE_PAIR	*namepair;
@@ -435,8 +445,10 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 
 	if (!ht) return RLM_MODULE_NOOP;
 
-	user_pl = lrad_hash_table_finddata(ht, lrad_hash_string(name));
-	default_pl = lrad_hash_table_finddata(ht, lrad_hash_string("DEFAULT"));
+	my_pl.name = name;
+	user_pl = lrad_hash_table_finddata(ht, &my_pl);
+	my_pl.name = "DEFAULT";
+	default_pl = lrad_hash_table_finddata(ht, &my_pl);
 
 	/*
 	 *	Find the entry for the user.
@@ -446,24 +458,28 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 
 		if (!default_pl && user_pl) {
 			pl = user_pl;
+			match = name;
 			user_pl = user_pl->next;
 
 		} else if (!user_pl && default_pl) {
 			pl = default_pl;
+			match = "DEFAULT";
 			default_pl = default_pl->next;
 
 		} else if (user_pl->order < default_pl->order) {
 			pl = user_pl;
+			match = name;
 			user_pl = user_pl->next;
 
 		} else {
 			pl = default_pl;
+			match = "DEFAULT";
 			default_pl = default_pl->next;
 		}
 
 		if (paircompare(request, request_pairs, pl->check, reply_pairs) == 0) {
 			DEBUG2("    %s: Matched entry %s at line %d",
-			       filename, pl->name, pl->lineno);
+			       filename, match, pl->lineno);
 			found = 1;
 			check_tmp = paircopy(pl->check);
 			reply_tmp = paircopy(pl->reply);

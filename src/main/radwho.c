@@ -1,3 +1,4 @@
+/*@-skipposixheaders@*/
 /*
  * radwho.c	Show who is logged in on the terminal servers.
  *		Can also be installed as fingerd on the UNIX
@@ -34,9 +35,6 @@ static const char rcsid[] =
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <ctype.h>
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
 
 #include <freeradius-devel/sysutmp.h>
 #include <freeradius-devel/radutmp.h>
