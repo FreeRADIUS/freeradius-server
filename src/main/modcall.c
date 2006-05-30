@@ -1061,7 +1061,7 @@ static modcallable *do_compile_modsingle(int component, CONF_ITEM *ci,
 	}
 	if (!this) {
 		*modname = NULL;
-		radlog(L_ERR|L_CONS, "%s[%d] Unknown module \"%s\".", filename,
+		radlog(L_ERR|L_CONS, "%s[%d] Failed to find module \"%s\".", filename,
 		       lineno, modrefname);
 		return NULL;
 	}
