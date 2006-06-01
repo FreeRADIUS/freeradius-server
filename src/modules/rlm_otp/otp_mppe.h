@@ -1,5 +1,4 @@
 /*
- * otp_pwe.h
  * $Id$
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -17,11 +16,11 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2001,2002  Google, Inc.
- * Copyright 2005 TRI-D Systems, Inc.
+ * Copyright 2005,2006 TRI-D Systems, Inc.
  */
 
-#ifndef OTP_PWE_H
-#define OTP_PWE_H
+#ifndef OTP_MPPE_H
+#define OTP_MPPE_H
 
 /* Some hardcoding here ... because not all types have #defines */
 #define PW_MS_CHAP_CHALLENGE  ((311 << 16) | 11)
@@ -49,7 +48,4 @@ static const char *otp_mppe_types[3] = {
   MPPE_ENC_TYPES_RC4_128,
   MPPE_ENC_TYPES_RC4_40_128 };
 
-static void otp_key_from_hash(des_cblock *, const unsigned char [7]);
-
-#endif /* OTP_PWE_H */
-
+#endif /* OTP_MPPE_H */

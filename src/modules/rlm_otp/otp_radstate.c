@@ -1,5 +1,4 @@
 /*
- * otp_radstate.c
  * $Id$
  *
  *   This program is free software; you can redistribute it and/or modify
@@ -20,20 +19,18 @@
  * Copyright 2005,2006 TRI-D Systems, Inc.
  */
 
-#ifdef FREERADIUS
+static const char rcsid[] = "$Id$";
+
+/* avoid inclusion of these FR headers which conflict w/ OpenSSL */
 #define _LRAD_MD4_H
 #define _LRAD_SHA1_H
-#endif
-#include "otp.h"
+
+#include "extern.h"
 
 #include <string.h>
 #include <openssl/des.h> /* des_cblock */
 #include <openssl/md5.h>
 #include <openssl/hmac.h>
-
-
-static const char rcsid[] = "$Id$";
-
 
 /*
  * Generate the State attribute, suitable for passing to pairmake().
@@ -42,8 +39,7 @@ static const char rcsid[] = "$Id$";
  *
  * Returns 0 on success, non-zero otherwise.  For successful returns,
  * 'rad_state' (suitable for passing to pairmake()) and 'raw_state',
- * if non-NULL, will be pointing to allocated storage.  The caller is
- * responsible for freeing the storage.
+ * if non-NULL, will be filled in.
  *
  * In the simplest implementation, we would just use the challenge as state.
  * Unfortunately, the RADIUS secret protects only the User-Password
@@ -56,7 +52,7 @@ static const char rcsid[] = "$Id$";
  * data unique to this specific request.  A NAS would use the Request
  * Authenticator, but we don't know what that will be when the State is
  * returned to us, so we'll use the time.  So our replay prevention
- * is limited to a time interval (inst->chal_delay).  We could keep
+ * is limited to a time interval (inst->challenge_delay).  We could keep
  * track of all challenges issued over that time interval for
  * better protection.
  *
@@ -84,7 +80,8 @@ static const char rcsid[] = "$Id$";
  * So we must handle state as an ASCII string (0x00 -> 0x3030).
  */
 int
-otp_gen_state(char **rad_state, unsigned char **raw_state,
+otp_gen_state(char rad_state[OTP_MAX_RADSTATE_LEN],
+              unsigned char raw_state[OTP_MAX_RADSTATE_LEN],
               const unsigned char challenge[OTP_MAX_CHALLENGE_LEN],
               size_t clen,
               int32_t flags, int32_t when, const unsigned char key[16])
@@ -92,7 +89,7 @@ otp_gen_state(char **rad_state, unsigned char **raw_state,
   HMAC_CTX hmac_ctx;
   unsigned char hmac[MD5_DIGEST_LENGTH];
   char *p;
-  char *state;
+  char state[OTP_MAX_RADSTATE_LEN];
 
   /*
    * Generate the hmac.  We already have a dependency on openssl for
@@ -111,24 +108,30 @@ otp_gen_state(char **rad_state, unsigned char **raw_state,
    * value doesn't have to be ASCII encoded, as it is already
    * ASCII, but we do it anyway, for consistency.
    */
+#if 0
+  /*
+   * We used to malloc() state (here and in callers).  We leave this
+   * here to show how OTP_MAX_RADSTATE_LEN is composed.  Note that
+   * it has to be double all the values below to account for an
+   * extra ASCII expansion (see Cisco notes, below).
+   */
   state = rad_malloc(clen * 2 +			/* challenge */
                      8 +			/* flags     */
                      8 +			/* time      */
                      sizeof(hmac) * 2 +		/* hmac      */
                      1);			/* '\0'      */
+#endif
   p = state;
   /* Add the challenge. */
-  (void) otp_keyblock2keystring(p, challenge, clen, otp_hex_conversion);
+  otp_x2a(challenge, clen, p);
   p += clen * 2;
   /* Add the flags and time. */
-  (void) otp_keyblock2keystring(p, (unsigned char *) &flags, 4,
-                                otp_hex_conversion);
+  otp_x2a((unsigned char *) &flags, 4, p);
   p += 8;
-  (void) otp_keyblock2keystring(p, (unsigned char *) &when, 4,
-                                otp_hex_conversion);
+  otp_x2a((unsigned char *) &when, 4, p);
   p += 8;
   /* Add the hmac. */
-  (void) otp_keyblock2keystring(p, hmac, 16, otp_hex_conversion);
+  otp_x2a(hmac, 16, p);
 
   /*
    * Expand state (already ASCII) into ASCII again (0x31 -> 0x3331).
@@ -136,18 +139,13 @@ otp_gen_state(char **rad_state, unsigned char **raw_state,
    * and to include a leading "0x".
    */
   if (rad_state) {
-    *rad_state = rad_malloc(2 +			/* "0x" */
-                            strlen(state) * 2 +
-                            1);			/* '\0' */
-    (void) sprintf(*rad_state, "0x");
-    p = *rad_state + 2;
-    (void) otp_keyblock2keystring(p, state, strlen(state), otp_hex_conversion);
+    (void) sprintf(rad_state, "0x");
+    p = rad_state + 2;
+    otp_x2a(state, strlen(state), p);
   }
 
   if (raw_state)
-    *raw_state = state;
-  else
-    free(state);
+    (void) memcpy(raw_state, state, sizeof(state));
 
   return 0;
 }
