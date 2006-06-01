@@ -1,8 +1,9 @@
+AC_PREREQ([2.53])
 AC_INIT(otp_rlm.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_otp])
 
-otp_cflags=
+otp_cflags="-Wno-cast-qual"
 otp_ldflags=
 
 if test x$with_[]modname != xno; then
@@ -81,7 +82,6 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-otp_cflags="$otp_cflags -DOTP_MODULE_NAME=\\\"modname\\\" -DFREERADIUS"
 AC_SUBST(otp_cflags)
 AC_SUBST(otp_ldflags)
 

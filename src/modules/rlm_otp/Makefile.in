@@ -21,25 +21,13 @@
 #
 #######################################################################
 TARGET         = @targetname@
-SRCS           = otp_rlm.c otp_util.c otp_radstate.c otp_x99.c otp_state.c
-SRCS          += otp_site.c otp_pwe.c otp_log.c otp_cardops.c otp_hotp.c
-HEADERS        = otp.h otp_rad.h otp_pwe.h otp_cardops.h
+SRCS           = otp_rlm.c otp_radstate.c otp_pwe.c otp_pw_valid.c
+SRCS          += otp_util.c otp_mppe.c
+HEADERS        = extern.h otp_pw_valid.h otp_mppe.h
 RLM_CFLAGS     = @otp_cflags@ $(OPENSSL_INCLUDE)
-CARDOPS_LTLIBS = $(patsubst %.c,%.lo,$(wildcard cardops/*.c))
-RLM_LIBS       = @otp_ldflags@ $(OPENSSL_LIBS) $(CARDOPS_LTLIBS)
-RLM_SUBDIRS    = cardops
+RLM_LIBS       = @otp_ldflags@ $(OPENSSL_LIBS)
 
 ## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
 include ../rules.mak
 
-# Not part of RLM_CFLAGS to avoid propagation to subdirs
-CFLAGS     += -Wno-unused-label -Wno-cast-qual
-
 $(LT_OBJS): $(HEADERS) $(CARDOPS_LTLIBS)
-
-# Note: dynamic libs only
-$(CARDOPS_LTLIBS) common:
-	for dir in $(RLM_SUBDIRS); do \
-		echo "Making $(WHAT_TO_MAKE) in $$dir ..."; \
-		$(MAKE) $(MFLAGS) -C $$dir RLM_CFLAGS="$(RLM_CFLAGS)" $(WHAT_TO_MAKE) || exit $$?; \
-	done
