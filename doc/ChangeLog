@@ -1,3 +1,13 @@
+FreeRADIUS 1.1.3 ; $Date$, urgency=low
+
+	Feature improvements
+	* rlm_otp now talks to otpd for OTP verification, rather than
+	  doing the work itself; this improves portability and security
+	  (access to OTP token keys is now much more limited).
+
+	Bug fixes
+	* Fixed configure/make error for Solaris (set HAVE_CLOSEFROM).
+
 FreeRADIUS 1.1.2 ; $Date$, urgency=low
 
 	Feature improvements
