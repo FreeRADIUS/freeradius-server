@@ -11,6 +11,10 @@
 #
 # http://www.cisco.com/univercd/cc/td/doc/product/access/acs_serv/vapp_dev/vsaig3.htm
 #
+#  For general documentation on Cisco RADIUS configuration, see:
+#
+# http://www.cisco.com/en/US/partner/tech/tk583/tk547/tsd_technology_support_sub-protocol_home.html
+#
 
 VENDOR		Cisco				9
 
