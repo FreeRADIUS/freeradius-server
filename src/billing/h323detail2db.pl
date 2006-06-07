@@ -186,7 +186,7 @@ sub process_record {
 	$radius_record_timestamp = @record[0];
 	chomp $radius_record_timestamp;
 	if ($verbose > 1) { print "DEBUG: Processing new record with time: $radius_record_timestamp \n"; }
-	# Clear the variable we use so that we don't have rubbish from the last loop
+	# Clear the variables we use so that we don't have rubbish from the last loop
 	$UserName=""; $NasPort=""; $NasPortType="";
 	$NasIPAddress = ""; $AcctStatusType=""; $AcctSessionTime="";
 	$AcctInputOctets=""; $AcctOutputOctets=""; $AcctTerminateCause="";
