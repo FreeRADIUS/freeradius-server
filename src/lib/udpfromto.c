@@ -180,10 +180,21 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	struct in_pktinfo pktinfo, *pktinfo_ptr;
 	memset(&pktinfo, 0, sizeof(struct in_pktinfo));
 # endif
+	struct sockaddr_in	*s4;
 
 # ifdef HAVE_IP_SENDSRCADDR
 	char cmsgbuf[CMSG_SPACE(sizeof(struct in_addr))];
 # endif
+
+	s4 = (struct sockaddr_in *) from;
+
+	/*
+	 *	Source is unset, empty, or unspecified,
+	 *	fall back to sendto().
+	 */
+	if (!s4 || (fromlen == 0) || (s4->sin_family == AF_UNSPEC)) {
+		return sendto(s, buf, len, flags, to, tolen);
+	}
 
 	/* Set up iov and msgh structures. */
 	memset(&msgh, 0, sizeof(struct msghdr));
