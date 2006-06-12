@@ -7,7 +7,6 @@
  */
 
 #if 0
-#include "config.h"
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/libradius.h>
 

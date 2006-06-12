@@ -6,7 +6,6 @@
  * Copyright 2002  Globe.Net Communications Limited
  */
 
-#include "config.h"
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/libradius.h>
 
