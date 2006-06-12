@@ -409,18 +409,7 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
 	if (!this) {
 		if (idx != 0) DEBUG2("  ERROR: Unknown value specified for %s.  Cannot perform requested action.",
 				     section_type_value[comp].typename);
-		/* Return a default value appropriate for the component */
-		switch(comp) {
-			case RLM_COMPONENT_AUTZ:    return RLM_MODULE_NOTFOUND;
-			case RLM_COMPONENT_AUTH:    return RLM_MODULE_REJECT;
-			case RLM_COMPONENT_PREACCT: return RLM_MODULE_NOOP;
-			case RLM_COMPONENT_ACCT:    return RLM_MODULE_NOOP;
-			case RLM_COMPONENT_SESS:    return RLM_MODULE_FAIL;
-			case RLM_COMPONENT_PRE_PROXY:  return RLM_MODULE_NOOP;
-			case RLM_COMPONENT_POST_PROXY: return RLM_MODULE_NOOP;
-			case RLM_COMPONENT_POST_AUTH:  return RLM_MODULE_NOOP;
-			default:                    return RLM_MODULE_FAIL;
-		}
+		return modcall(comp, NULL, request); /* does default action */
 	}
 
 	DEBUG2("  Processing the %s section of %s",
@@ -432,7 +421,8 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
  *	Load a sub-module list, as found inside an Auth-Type foo {}
  *	block
  */
-static int load_subcomponent_section(CONF_SECTION *cs, int comp,
+static int load_subcomponent_section(modcallable *parent,
+				     CONF_SECTION *cs, int comp,
 				     const char *filename)
 {
 	indexed_modcallable *subcomp;
@@ -457,7 +447,7 @@ static int load_subcomponent_section(CONF_SECTION *cs, int comp,
 	/*
 	 *	Compile the group.
 	 */
-	ml = compile_modgroup(comp, cs, filename);
+	ml = compile_modgroup(parent, comp, cs, filename);
 	if (!ml) {
 		return 0;
 	}	
@@ -492,7 +482,8 @@ static int load_subcomponent_section(CONF_SECTION *cs, int comp,
 	return 1;		/* OK */
 }
 
-static int load_component_section(CONF_SECTION *cs, int comp,
+static int load_component_section(modcallable *parent,
+				  CONF_SECTION *cs, int comp,
 				  const char *filename)
 {
 	modcallable *this;
@@ -527,7 +518,8 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 
 			if (strcmp(sec_name,
 				   section_type_value[comp].typename) == 0) {
-				if (!load_subcomponent_section(scs, comp,
+				if (!load_subcomponent_section(parent, scs,
+							       comp,
 							       filename)) {
 					return -1; /* FIXME: memleak? */
 				}
@@ -539,7 +531,8 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 			 */
 			if (strcmp(sec_name,
 				   old_section_type_value[comp].typename) == 0) {
-				if (!load_subcomponent_section(scs, comp,
+				if (!load_subcomponent_section(parent, scs,
+							       comp,
 							       filename)) {
 					return -1; /* FIXME: memleak? */
 				}
@@ -553,7 +546,8 @@ static int load_component_section(CONF_SECTION *cs, int comp,
 		/*
 		 *	Try to compile one entry.
 		 */
-		this = compile_modsingle(comp, modref, filename, &modname);
+		this = compile_modsingle(parent, comp, modref, filename,
+					 &modname);
 		if (!this) {
 			radlog(L_ERR|L_CONS,
 			       "%s[%d] Failed to parse %s section.\n",
@@ -919,7 +913,7 @@ int setup_modules(int reload)
 			continue;
 		}
 
-		if (load_component_section(cs, comp, mainconfig.radiusd_conf) < 0) {
+		if (load_component_section(NULL, cs, comp, mainconfig.radiusd_conf) < 0) {
 			return -1;
 		}
 	}
