@@ -4,8 +4,8 @@ AC_DEFUN(modname,[rlm_sqlcounter])
 
 if test x$with_[]modname != xno; then
 
-	AC_PROG_CC
-	AC_PROG_CPP
+	dnl  This module doesn't need any autoconf test which is not already
+	dnl  in top-level configure.
 
 	targetname=modname
 else
@@ -13,20 +13,5 @@ else
 	echo \*\*\* module modname is disabled.
 fi
 
-if test x"$fail" != x""; then
-	if test x"${enable_strict_dependencies}" = x"yes"; then
-		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
-	else
-		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
-		targetname=""
-	fi
-fi
-
-sqlcounter_ldflags=$SMART_LIBS
-sqlcounter_cflags=$SMART_CFLAGS
-AC_SUBST(sqlcounter_ldflags)
-AC_SUBST(sqlcounter_cflags)
 AC_SUBST(targetname)
-AC_CONFIG_HEADER(config.h)
 AC_OUTPUT(Makefile)

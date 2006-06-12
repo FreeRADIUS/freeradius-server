@@ -24,7 +24,6 @@
 /* This module is based directly on the rlm_counter module */
 
 
-#include "config.h"
 #include "autoconf.h"
 #include "libradius.h"
 
