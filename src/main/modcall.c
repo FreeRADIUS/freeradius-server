@@ -482,6 +482,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 */
 		if (child->actions[myresult] == MOD_ACTION_RETURN) {
 			stack.children[stack.pointer] = NULL;
+			stack.result[stack.pointer] = myresult;
 		}
 	
 		/* If "reject", break out of the loop and return reject */
