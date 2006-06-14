@@ -62,8 +62,8 @@ server to process the second module if the first one fails.  Any
 number of modules can be listed in a "redundant" section.  The server
 will process each in turn, until one of the modules succeeds.  It willthen stop processing the "redundant" list.
 
-  Rewriting results for single modules
-  ------------------------------------
+1. Rewriting results for single modules
+   ------------------------------------
 
   Normally, when a module fails, the entire section ("authorize",
 "accounting", etc.) stops being processed.  In some cases, we may want
@@ -100,8 +100,8 @@ with priority "1".  The normal configuration is "fail = return", which
 means "if the detail module fails, stop processing the accounting
 section".
 
-  Fail-over configuration entries
-  -------------------------------
+2. Fail-over configuration entries
+   -------------------------------
 
   Modules normally return on of the following codes as their result:
 
@@ -146,8 +146,8 @@ modules will be "ok", because it has higher priority than "fail".
 to fail, so long as a later module succeeds.
 
 
-  More Complex Configurations
-  ---------------------------
+3. More Complex Configurations
+   ---------------------------
 
   The "authorize" section is normally a list of module names.  We can
 create sub-lists by using the section name "group".  The "redundant"
@@ -201,8 +201,120 @@ return code found by processing the list.
 "group" section.
 
 
-  The Gory Details
-  ----------------
+4. More Complex Configuration using "if" and "else"
+   ------------------------------------------------
+
+  As of version 2.0, the server allows "if"-style checking in the
+configuration sections.  The section is still processed as a list, so
+there is no looping or "goto" support.  But by using "if", the
+administrator can have branching paths of execution, where none was
+possible before.
+
+  For example, the following configuration says "run sql, if it
+returns notfound, run ldap1, else run ldap2".
+
+  authorize {
+	...
+	sql
+	if notfound {
+		ldap1
+	}
+	else {
+		ldap2
+	}
+
+  Note that the parser is easily confused.  The words "if" and "else"
+MUST be the first entry on the line.  Using statements like "} else {"
+is forbidden, and will prevent the server from starting.  Putting
+brackets around the condition like "if (notfound)" won't work, either.
+
+  If you want to specify multiple conditions, put them in double
+quotes, and separate the conditions by a single '|' character, as
+follows:
+
+	if "notfound | ok | fail" {
+		...
+	}
+
+  The reason for these limitations is that the "if" conditions are
+overloading module names, and therefore have to follow a similar
+syntax.  These limitations may be removed in a future release.
+
+  The conditions that can be checked are the names listed in section
+2, above.  Any other condition is not permitted.
+
+  
+  You can also use "elsif", as follows:
+
+	if notfound {
+		ldap1
+	}
+	elsif fail {
+		ldap2
+	}
+	else {
+		ldap3
+	}
+
+  Note that the condition being checked is the return code of the last
+module or group that was executed.  This may sometimes have odd
+side-effects:
+
+	sql
+	if notfound {
+		ldap1
+	}
+	if fail {
+		ldap2
+	}
+
+  In this case, the "ldap2" module will be executed if the "sql"
+modules returns "fail", OR if the "sql" module returns "notfound", and
+the "ldap2" module returns "fail".  For this reason, you should
+probably use "elsif" whenever you have two "if" statements right after
+one another.
+
+  The "if" checks can be nested to a depth of 30 or so, which should
+be sufficient for most configurations.
+
+
+5. Virtual Modules
+   ---------------
+
+  Some configurations may require using the same list of modules, in
+the same order, in multiple sections.  For those systems, the
+configuration can be simplified through the use of "virtual" modules.
+These modules are configured as named sub-sections of the
+"instantiate" section, as follows:
+
+	instantiate {
+		...
+
+		redundant sql1_or_2 {
+			sql1
+			sql2
+		}
+	}
+
+  The name "sql1_or_2" can then be used in any other section, such as
+"authorize" or "accounting".  The result will be *exactly* as if that
+section was placed at the location of the "sql1_or_2" reference.
+
+  These virtual modules are full-fledged objects in and of themselves.
+One virtual module can refer to another virtual module, and they can
+contain "if" conditions, or any other configuration permitted in a
+section.
+
+
+7. Redundancy and Load-Balancing
+   -----------------------------
+
+  See doc/load-balance.txt for information on simple redundancy
+(fail-over) and load balancing.
+
+
+6. The Gory Details
+   ----------------
 
 The fundamental object is called a MODCALLABLE, because it is something that
 can be passed a specific radius request and returns one of the RLM_MODULE_*

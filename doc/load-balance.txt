@@ -81,7 +81,7 @@ then log to the detail file"
 	==========================
 
   If you want to do redundancy and load-balancing among three
-modules, the configuration is complex:
+modules, the configuration is quite complex:
 
 ...
   load-balance {
@@ -146,6 +146,59 @@ then becomes:
 one picked for load-balancing is down, load-balance among the
 remaining two.  If that one is down, pick the one remaining 'live'
 server".
+
+  The "redundant-load-balance" section can contain any number of
+modules.
+
+
+  Interaction with "if" and "else"
+  --------------------------------
+
+  It's best to have "if" and "else" blocks contain "load-balance" or
+"redundant-load-balance" sections, rather than the other way around.
+The "else" and "elsif" sections cannot appear inside of a
+"load-balance" or "redundant-load-balance" section, because the "else"
+condition would be chose as one of the modules for load-balancing,
+which is not what you want.
+
+  It's OK to have a plain "if" block inside of a "load-balance" or
+"redundant-load-balance" section.  In that case, the "if" condition
+checks the return code of the module or group that executed just
+before the "load-balance" section.  It does *not* check the return
+code of the previous module in the section.
+
+  The following table illustrates which sections can be sub-sections
+of others.  If an entry for a row/column is empty, then that
+combination is not allowed.
+
+	    x = allowed
+	    i = allowed if immediately after an 'if or 'elsif'
+
+
+   Allowed:	group	redundant  l-b	r-l-b	if    else  elsif
+
+Container:
+
+  group          x        x        x      x     x     i     i
+
+  if             x        x        x      x     x     i     i
+
+  else           i        i        i      i     i     i     i
+
+  elsif          i        i        i      i     i     i     i
+
+  l-b            x        x        x      x     x
+
+  r-l-b          x        x        x      x     x
+
+  redundant      x        x        x      x
+
+
+  e.g. "redundant" can contain "load-balance", but not "if", "else",
+or "eslif".  "if" can contain any other section, but if it contains
+"else" or "elsif", they have to have be listed after a second "if"
+section, inside of the first "if".
+
 
 ----------------------------------------------------------------------
 $Id$
