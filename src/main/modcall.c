@@ -50,8 +50,9 @@ struct modcallable {
 	modcallable *parent;
 	struct modcallable *next;
 	const char *name;
+	int lineno;
 	int actions[RLM_MODULE_NUMCODES];
-	enum { MOD_SINGLE, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE } type;
+	enum { MOD_SINGLE, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE, MOD_IF, MOD_ELSE, MOD_ELSIF } type;
 };
 
 #define GROUPTYPE_SIMPLE	0
@@ -70,7 +71,6 @@ typedef struct {
 	module_instance_t *modinst;
 } modsingle;
 
-
 static const LRAD_NAME_NUMBER grouptype_table[] = {
 	{ "", GROUPTYPE_SIMPLE },
 	{ "redundant ", GROUPTYPE_REDUNDANT },
@@ -87,8 +87,11 @@ static modsingle *mod_callabletosingle(modcallable *p)
 }
 static modgroup *mod_callabletogroup(modcallable *p)
 {
-	rad_assert((p->type==MOD_GROUP) ||
+	rad_assert((p->type==MOD_GROUP) || /* this is getting silly... */
 		   (p->type==MOD_LOAD_BALANCE) ||
+		   (p->type==MOD_IF) ||
+		   (p->type==MOD_ELSE) ||
+		   (p->type==MOD_ELSIF) ||
 		   (p->type==MOD_REDUNDANT_LOAD_BALANCE));
 	return (modgroup *)p;
 }
@@ -282,8 +285,13 @@ static const char *group_name[] = {
 	"",
 	"group",
 	"load-balance group",
-	"redundant-load-balance group"
+	"redundant-load-balance group",
+	"if",
+	"else",
+	"elsif"
 };
+
+static const char *modcall_spaces = "                                ";
 
 #define MODCALL_STACK_MAX (8)
 
@@ -306,6 +314,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 	int myresult;
 	modcall_stack stack;
 	modcallable *parent, *child;
+	modsingle *sp;
+	int if_taken, was_if;
 
 	stack.pointer = 0;
 
@@ -320,6 +330,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 	stack.priority[0] = 0;
 	stack.children[0] = c;
 	myresult = stack.result[0] = default_component_results[component];
+	was_if = if_taken = FALSE;
 
 	while (1) {
 		/*
@@ -332,12 +343,47 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		}
 
 		child = stack.children[stack.pointer];
+		rad_assert(child != NULL);
 		parent = child->parent;
+
+		if ((child->type == MOD_ELSE) || (child->type == MOD_ELSIF)) {
+			if (!was_if) { /* error */
+				DEBUG2("modcall:%.*s skipping %s for request %d: No preceding \"if\"",
+				       stack.pointer, modcall_spaces,
+				       group_name[child->type],
+				       request->number);
+				goto unroll;
+			}
+			if (if_taken) {
+				DEBUG2("modcall:%.*s skipping %s for request %d: Preceding \"if\" was taken",
+				       stack.pointer, modcall_spaces,
+				       group_name[child->type],
+				       request->number);
+				goto unroll;
+			}
+		}
+
+		/*
+		 *	"if", and the requested action wasn't the
+		 *	proper return code, skip the group.
+		 */
+		if (((child->type == MOD_IF) || (child->type == MOD_ELSIF)) &&
+		    !child->actions[myresult]) {
+			DEBUG2("modcall:%.*s skipping %s \"%s\" for request %d, return code was %s",
+			       stack.pointer, modcall_spaces,
+			       group_name[child->type],
+  			       child->name, request->number,
+			       lrad_int2str(rcode_table, myresult, "??"));
+			stack.children[stack.pointer] = NULL;
+			was_if = TRUE;
+			if_taken = FALSE;
+			goto unroll;
+		} /* else process it, as a simple group */
 
 		/*
 		 *	Child is a group that has children of it's own.
 		 */
-		if (child && (child->type != MOD_SINGLE)) {
+		if (child->type != MOD_SINGLE) {
 			int count = 1;
 			modcallable *p, *q;
 			modgroup *g = mod_callabletogroup(child);
@@ -359,6 +405,9 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			stack.priority[stack.pointer] = 0;
 			stack.result[stack.pointer] = default_component_results[component];
 			switch (child->type) {
+			case MOD_IF:
+			case MOD_ELSE:
+			case MOD_ELSIF:
 			case MOD_GROUP:
 				stack.children[stack.pointer] = g->children;
 				break;
@@ -399,7 +448,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			
 			stack.start[stack.pointer] = stack.children[stack.pointer];
 
-			DEBUG2("modcall: entering %s %s for request %d",
+			DEBUG2("modcall:%.*s entering %s %s for request %d",
+			       stack.pointer, modcall_spaces,
 			       group_name[child->type],
 			       child->name, request->number);
 
@@ -416,23 +466,43 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						    stack.result[stack.pointer],
 						    "??"),
 				       request->number);
-				goto do_exit;
+				goto do_return;
 			}
 
-			continue; /* child MAY be a group! */
+			/*
+			 *	The child may be a group, so we want to
+			 *	recurse into it's children, rather than
+			 *	falling through to the code below.
+			 */
+			continue;
 		}
 
 		/*
 		 *	Process a stand-alone child, and fall through
 		 *	to dealing with it's parent.
 		 */
-		if (child && (child->type == MOD_SINGLE)) {
-			modsingle *sp = mod_callabletosingle(child);
+		sp = mod_callabletosingle(child);
+		
+		myresult = call_modsingle(component, sp, request,
+					  default_component_results[component]);
 
-			myresult = call_modsingle(component, sp, request,
-						  default_component_results[component]);
-			stack.result[stack.pointer] = myresult;
-		}
+		/*
+		 *	FIXME: Allow modules to push a modcallable
+		 *	onto this stack.  This should simplify
+		 *	configuration a LOT!
+		 *
+		 *	Once we do that, we can't do load-time
+		 *	checking of the maximum stack depth, and we've
+		 *	got to cache the stack pointer before storing
+		 *	myresult.
+		 *
+		 *	Also, if the stack changed, we need to set
+		 *	children[ptr] to NULL, and process the next
+		 *	entry on the stack, rather than falling
+		 *	through to finalize the processing of this
+		 *	entry.
+		 */
+		stack.result[stack.pointer] = myresult;
 
 		/*
 		 *	We roll back up the stack at this point.
@@ -453,6 +523,9 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 *	Go to the "next" child, whatever that is.
 		 */
 		switch (parent->type) {
+			case MOD_IF:
+			case MOD_ELSE:
+			case MOD_ELSIF:
 			case MOD_GROUP:
 				stack.children[stack.pointer] = child->next;
 				break;
@@ -481,38 +554,14 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 *	The child's action says return.  Do so.
 		 */
 		if (child->actions[myresult] == MOD_ACTION_RETURN) {
-			stack.children[stack.pointer] = NULL;
 			stack.result[stack.pointer] = myresult;
+			stack.children[stack.pointer] = NULL;
 		}
 	
 		/* If "reject", break out of the loop and return reject */
 		if (child->actions[myresult] == MOD_ACTION_REJECT) {
 			stack.children[stack.pointer] = NULL;
 			stack.result[stack.pointer] = RLM_MODULE_REJECT;
-		}
-
-		/*
-		 *	No child, we're done this group.
-		 */
-		if (!stack.children[stack.pointer]) {
-		do_exit:
-			rad_assert(stack.pointer > 0);
-			myresult = stack.result[stack.pointer];
-			stack.pointer--;
-
-			DEBUG2("modcall: %s %s returns %s for request %d",
-			       group_name[parent->type], parent->name,
-			       lrad_int2str(rcode_table, myresult, "??"),
-			       request->number);
-
-			if (stack.pointer == 0) break;
-
-			/*
-			 *	Unroll the stack.
-			 */
-			child = stack.children[stack.pointer];
-			parent = child->parent;
-			goto unroll;
 		}
 
 		/*
@@ -524,6 +573,41 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			stack.result[stack.pointer] = myresult;
 			stack.priority[stack.pointer] = child->actions[myresult];
 		}
+
+		/*
+		 *	No child, we're done this group, and we return
+		 *	"myresult" to the caller by pushing it back up
+		 *	the stack.
+		 */
+		if (!stack.children[stack.pointer]) {
+		do_return:
+			rad_assert(stack.pointer > 0);
+			myresult = stack.result[stack.pointer];
+			stack.pointer--;
+
+			DEBUG2("modcall:%.*s %s %s returns %s for request %d",
+			       stack.pointer, modcall_spaces,
+			       group_name[parent->type], parent->name,
+			       lrad_int2str(rcode_table, myresult, "??"),
+			       request->number);
+
+			if (stack.pointer == 0) break;
+
+			if ((parent->type == MOD_IF) ||
+			    (parent->type == MOD_ELSIF)) {
+				if_taken = was_if = TRUE;
+			} else {
+				if_taken = was_if = FALSE;
+			}
+
+			/*
+			 *	Unroll the stack.
+			 */
+			child = stack.children[stack.pointer];
+			parent = child->parent;
+			goto unroll;
+		}
+
 	} /* loop until done */
 
 	return myresult;
@@ -545,7 +629,8 @@ static void dump_mc(modcallable *c, int indent)
 	} else {
 		modgroup *g = mod_callabletogroup(c);
 		modcallable *p;
-		DEBUG("%.*sgroup {", indent, "\t\t\t\t\t\t\t\t\t\t\t");
+		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
+		      group_name[c->type]);
 		for(p = g->children;p;p = p->next)
 			dump_mc(p, indent+1);
 	}
@@ -565,10 +650,7 @@ static void dump_tree(int comp, modcallable *c)
 	dump_mc(c, 0);
 }
 #else
-static void dump_tree(int comp UNUSED, modcallable *c UNUSED)
-{
-	return;
-}
+#define dump_tree(a, b)
 #endif
 
 /* These are the default actions. For each component, the group{} block
@@ -892,6 +974,49 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 };
 
 
+static int condition2actions(modcallable *mc, const char *actions)
+{
+	char *p, *q;
+	char buffer[1024];
+
+	if (strlen(actions) >= sizeof(buffer)) {
+		return -1;
+	}
+
+	memset(mc->actions, 0, sizeof(mc->actions));
+
+	/*
+	 *	Copy, stripping space.
+	 */
+	p = buffer;
+	while (*actions) {
+		if (*actions != ' ') {
+			*(p++) = *actions;
+		}
+		actions++;
+	}
+	*p = '\0';
+
+	p = buffer;
+
+	while (*p) {
+		int rcode;
+
+		q = strchr(p, '|');
+		if (q) *q = '\0';
+
+		rcode = lrad_str2int(rcode_table, p, -1);
+		if (rcode < 0) return -1;
+		mc->actions[rcode] = 1;
+
+		if (!q) break;
+		p = q + 1;
+	}
+
+	return 0;
+}
+
+
 /*
  *	Compile one entry of a module call.
  */
@@ -956,7 +1081,74 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (!csingle) return NULL;
 			csingle->type = MOD_REDUNDANT_LOAD_BALANCE;
 			return csingle;
+		} else 	if (strcmp(modrefname, "if") == 0) {
+			if (!cf_section_name2(cs)) {
+				radlog(L_ERR|L_CONS,
+				       "%s[%d] 'if' without condition.\n",
+				       filename, lineno);
+				return NULL;
+			}
+
+			*modname = name2;
+			csingle= do_compile_modgroup(parent, component, cs,
+						     filename,
+						     GROUPTYPE_SIMPLE,
+						     grouptype);
+			if (!csingle) return NULL;
+			csingle->type = MOD_IF;
+
+			if (condition2actions(csingle, name2) < 0) {
+				modcallable_free(&csingle);
+				radlog(L_ERR|L_CONS,
+				       "%s[%d] Invalid module condition rcode '%s'.\n",
+				       filename, lineno, name2);
+				return NULL;
+			}
+
+			return csingle;
+		} else 	if (strcmp(modrefname, "elsif") == 0) {
+			if (!cf_section_name2(cs)) {
+				radlog(L_ERR|L_CONS,
+				       "%s[%d] 'elsif' without condition.\n",
+				       filename, lineno);
+				return NULL;
+			}
+
+			*modname = name2;
+			csingle= do_compile_modgroup(parent, component, cs,
+						     filename,
+						     GROUPTYPE_SIMPLE,
+						     grouptype);
+			if (!csingle) return NULL;
+			csingle->type = MOD_ELSIF;
+
+			if (condition2actions(csingle, name2) < 0) {
+				modcallable_free(&csingle);
+				radlog(L_ERR|L_CONS,
+				       "%s[%d] Invalid module condition rcode '%s'.\n",
+				       filename, lineno, name2);
+				return NULL;
+			}
+
+			return csingle;
+		} else 	if (strcmp(modrefname, "else") == 0) {
+			if (cf_section_name2(cs)) {
+				radlog(L_ERR|L_CONS,
+				       "%s[%d] Cannot have conditions on 'else'.\n",
+				       filename, lineno);
+				return NULL;
+			}
+
+			*modname = name2;
+			csingle= do_compile_modgroup(parent, component, cs,
+						     filename,
+						     GROUPTYPE_SIMPLE,
+						     grouptype);
+			if (!csingle) return NULL;
+			csingle->type = MOD_ELSE;
+			return csingle;
 		}
+
 		/*
 		 *	Else it's a module reference, with updated return
 		 *	codes.
@@ -1012,6 +1204,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	csingle = mod_singletocallable(single);
 	csingle->parent = parent;
 	csingle->next = NULL;
+	csingle->lineno = lineno;
 	memcpy(csingle->actions, defaultactions[component][grouptype],
 	       sizeof csingle->actions);
 	rad_assert(modrefname != NULL);
@@ -1106,6 +1299,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 	c = mod_grouptocallable(g);
 	c->parent = parent;
 	c->next = NULL;
+	c->lineno = cf_section_lineno(cs);
 	memset(c->actions, 0, sizeof(c->actions));
 
 	/*
