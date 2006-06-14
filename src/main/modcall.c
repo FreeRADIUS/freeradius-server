@@ -293,7 +293,7 @@ static const char *group_name[] = {
 
 static const char *modcall_spaces = "                                ";
 
-#define MODCALL_STACK_MAX (8)
+#define MODCALL_STACK_MAX (32)
 
 /*
  *	Don't call the modules recursively.  Instead, do them
