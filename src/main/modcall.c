@@ -1107,6 +1107,15 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			return csingle;
 		} else 	if (strcmp(modrefname, "elsif") == 0) {
+			if (parent &&
+			    ((parent->type == MOD_LOAD_BALANCE) ||
+			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
+				radlog(L_ERR|L_CONS,
+				       "%s[%d] 'elsif' cannot be used in this section section.\n",
+				       filename, lineno);
+				return NULL;
+			}
+
 			if (!cf_section_name2(cs)) {
 				radlog(L_ERR|L_CONS,
 				       "%s[%d] 'elsif' without condition.\n",
@@ -1132,6 +1141,15 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			return csingle;
 		} else 	if (strcmp(modrefname, "else") == 0) {
+			if (parent &&
+			    ((parent->type == MOD_LOAD_BALANCE) ||
+			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
+				radlog(L_ERR|L_CONS,
+				       "%s[%d] 'else' cannot be used in this section section.\n",
+				       filename, lineno);
+				return NULL;
+			}
+
 			if (cf_section_name2(cs)) {
 				radlog(L_ERR|L_CONS,
 				       "%s[%d] Cannot have conditions on 'else'.\n",
