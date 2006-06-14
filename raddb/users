@@ -198,6 +198,6 @@ DEFAULT	Hint == "SLIP"
 # # Last default: shell on the local terminal server.
 # #
 # DEFAULT
-# 	Service-Type = Shell-User
+# 	Service-Type = Administrative-User
 
 # On no match, the user is denied access.
