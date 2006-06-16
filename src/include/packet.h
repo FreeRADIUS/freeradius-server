@@ -31,4 +31,45 @@ void lrad_request_from_reply(RADIUS_PACKET *request,
 			     const RADIUS_PACKET *reply);
 int lrad_socket(lrad_ipaddr_t *ipaddr, int port);
 
+typedef struct lrad_packet_list_t lrad_packet_list_t;
+
+lrad_packet_list_t *lrad_packet_list_create(int sockfd, int alloc_id);
+void lrad_packet_list_free(lrad_packet_list_t *pl);
+int lrad_packet_list_insert(lrad_packet_list_t *pl,
+			    RADIUS_PACKET **request_p);
+
+RADIUS_PACKET **lrad_packet_list_find(lrad_packet_list_t *pl,
+				      RADIUS_PACKET *request);
+RADIUS_PACKET **lrad_packet_list_find_byreply(lrad_packet_list_t *pl,
+					      RADIUS_PACKET *reply);
+RADIUS_PACKET **lrad_packet_list_yank(lrad_packet_list_t *pl,
+				      RADIUS_PACKET *request);
+int lrad_packet_list_num_elements(lrad_packet_list_t *pl);
+int lrad_packet_list_id_alloc(lrad_packet_list_t *pl,
+			      RADIUS_PACKET *request);
+int lrad_packet_list_id_free(lrad_packet_list_t *pl,
+			     RADIUS_PACKET *request);
+int lrad_packet_list_socket_add(lrad_packet_list_t *pl, int sockfd);
+int lrad_packet_list_socket_remove(lrad_packet_list_t *pl, int sockfd);
+int lrad_packet_list_walk(lrad_packet_list_t *pl, void *ctx,
+			  lrad_hash_table_walk_t callback);
+int lrad_packet_list_fd_set(lrad_packet_list_t *pl, fd_set *set);
+RADIUS_PACKET *lrad_packet_list_recv(lrad_packet_list_t *pl, fd_set *set);
+
+int lrad_packet_list_num_incoming(lrad_packet_list_t *pl);
+int lrad_packet_list_num_outgoing(lrad_packet_list_t *pl);
+
+
+#ifndef offsetof
+# define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#endif
+
+/*
+ *	"find" returns a pointer to the RADIUS_PACKET* member in the
+ *	caller's structure.  In order to get the pointer to the *top*
+ *	of the caller's structure, you have to subtract the offset to
+ *	the member from the returned pointer, and cast it to the
+ *	required type.
+ */
+# define lrad_packet2myptr(TYPE, MEMBER, PTR) (TYPE *) (((char *)PTR) - offsetof(TYPE, MEMBER))
 #endif /* LRAD_PACKET_H */

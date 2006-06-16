@@ -65,12 +65,14 @@ static lrad_ipaddr_t server_ipaddr;
 static int resend_count = 1;
 static int done = 1;
 
+static lrad_ipaddr_t client_ipaddr;
+static int client_port = 0;
+
 static int sockfd;
-static int radius_id[256];
 static int last_used_id = -1;
 
 static rbtree_t *filename_tree = NULL;
-static rbtree_t *request_tree = NULL;
+static lrad_packet_list_t *pl = NULL;
 
 static int sleep_time = -1;
 
@@ -337,7 +339,7 @@ static int radclient_sane(radclient_t *radclient)
 
 		radclient->request->code = packet_code;
 	}
-	radclient->request->sockfd = sockfd;
+	radclient->request->sockfd = -1;
 
 	return 0;
 }
@@ -388,58 +390,10 @@ static int filename_walk(void *context, void *data)
 
 
 /*
- *	Compare two RADIUS_PACKET data structures, based on a number
- *	of criteria.
+ *	Deallocate packet ID, etc.
  */
-static int request_cmp(const void *one, const void *two)
+static void deallocate_id(radclient_t *radclient)
 {
-	int rcode;
-	const radclient_t *a = one;
-	const radclient_t *b = two;
-
-	/*
-	 *	The following code looks unreasonable, but it's
-	 *	the only way to make the comparisons work.
-	 */
-	if (a->request->id < b->request->id) return -1;
-	if (a->request->id > b->request->id) return +1;
-
-	if (a->request->dst_ipaddr.af < b->request->dst_ipaddr.af) return -1;
-	if (a->request->dst_ipaddr.af > b->request->dst_ipaddr.af) return +1;
-
-	switch (a->request->dst_ipaddr.af) {
-	case AF_INET:
-		rcode = memcmp(&a->request->dst_ipaddr.ipaddr.ip4addr,
-			       &b->request->dst_ipaddr.ipaddr.ip4addr,
-			       sizeof(a->request->dst_ipaddr.ipaddr.ip4addr));
-		break;
-	case AF_INET6:
-		rcode = memcmp(&a->request->dst_ipaddr.ipaddr.ip6addr,
-			       &b->request->dst_ipaddr.ipaddr.ip6addr,
-			       sizeof(a->request->dst_ipaddr.ipaddr.ip6addr));
-		break;
-	default:		/* FIXME: die! */
-		return -1;
-		break;
-	}
-	if (rcode != 0) return rcode;
-
-	if (a->request->dst_port < b->request->dst_port) return -1;
-	if (a->request->dst_port > b->request->dst_port) return +1;
-
-	/*
-	 *	Everything's equal.  Say so.
-	 */
-	return 0;
-}
-
-/*
- *	"Free" a request.
- */
-static void request_free(void *data)
-{
-	radclient_t *radclient = (radclient_t *) data;
-
 	if (!radclient || !radclient->request ||
 	    (radclient->request->id < 0)) {
 		return;
@@ -448,7 +402,7 @@ static void request_free(void *data)
 	/*
 	 *	One more unused RADIUS ID.
 	 */
-	radius_id[radclient->request->id] = 0;
+	lrad_packet_list_id_free(pl, radclient->request);
 	radclient->request->id = -1;
 
 	/*
@@ -531,8 +485,6 @@ static void print_hex(RADIUS_PACKET *packet)
  */
 static int send_one_packet(radclient_t *radclient)
 {
-	int i;
-
 	assert(radclient->done == 0);
 
 	/*
@@ -548,29 +500,33 @@ static int send_one_packet(radclient_t *radclient)
 	 *	Haven't sent the packet yet.  Initialize it.
 	 */
 	if (radclient->request->id == -1) {
-		int found = 0;
+		int i, rcode;
 
 		assert(radclient->reply == NULL);
-
-		/*
-		 *	Find a free packet Id
-		 */
-		for (i = 0; i < 256; i++) {
-			if (radius_id[(last_used_id + i) & 0xff] == 0) {
-				last_used_id = (last_used_id + i) & 0xff;
-				radius_id[last_used_id] = 1;
-				radclient->request->id = last_used_id++;
-				found = 1;
-				break;
-			}
-		}
 
 		/*
 		 *	Didn't find a free packet ID, we're not done,
 		 *	we don't sleep, and we stop trying to process
 		 *	this packet.
 		 */
-		if (!found) {
+	retry:
+		rcode = lrad_packet_list_id_alloc(pl, radclient->request);
+		if (rcode < 0) {
+			int mysockfd;
+
+			mysockfd = lrad_socket(&client_ipaddr, 0);
+			if (!mysockfd) {
+				fprintf(stderr, "radclient: Can't open new socket\n");
+				exit(1);
+			}
+			if (!lrad_packet_list_socket_add(pl, mysockfd)) {
+				fprintf(stderr, "radclient: Can't add new socket\n");
+				exit(1);
+			}
+			goto retry;
+		}
+
+		if (rcode == 0) {
 			done = 0;
 			sleep_time = 0;
 			return 0;
@@ -579,8 +535,9 @@ static int send_one_packet(radclient_t *radclient)
 		assert(radclient->request->id != -1);
 		assert(radclient->request->data == NULL);
 
-		librad_md5_calc(radclient->request->vector, radclient->request->vector,
-				sizeof(radclient->request->vector));
+		for (i = 0; i < 4; i++) {
+			*((uint32_t *) radclient->request->vector) = lrad_rand();
+		}
 
 		/*
 		 *	Update the password, so it can be encrypted with the
@@ -618,9 +575,10 @@ static int send_one_packet(radclient_t *radclient)
 		/*
 		 *	Duplicate found.  Serious error!
 		 */
-		if (rbtree_insert(request_tree, radclient) == 0) {
+		if (!lrad_packet_list_insert(pl, &radclient->request)) {
 			assert(0 == 1);
 		}
+		
 
 	} else {		/* radclient->request->id >= 0 */
 		time_t now = time(NULL);
@@ -652,18 +610,16 @@ static int send_one_packet(radclient_t *radclient)
 		 *	We're not trying later, maybe the packet is done.
 		 */
 		if (radclient->tries == retries) {
-			rbnode_t *node;
 			assert(radclient->request->id >= 0);
 			
 			/*
 			 *	Delete the request from the tree of
 			 *	outstanding requests.
 			 */
-			node = rbtree_find(request_tree, radclient);
-			assert(node != NULL);
-			
-			fprintf(stderr, "radclient: no response from server for ID %d\n", radclient->request->id);
-			rbtree_delete(request_tree, node);
+			lrad_packet_list_yank(pl, radclient->request);
+
+			fprintf(stderr, "radclient: no response from server for ID %d socket %d\n", radclient->request->id, radclient->request->sockfd);
+			deallocate_id(radclient);
 			
 			/*
 			 *	Normally we mark it "done" when we've received
@@ -704,14 +660,15 @@ static int recv_one_packet(int wait_time)
 {
 	fd_set		set;
 	struct timeval  tv;
-	radclient_t	myclient, *radclient;
-	RADIUS_PACKET	myrequest, *reply;
-	rbnode_t	*node;
-
+	radclient_t	*radclient;
+	RADIUS_PACKET	*reply, **request_p;
+	volatile int max_fd;
 
 	/* And wait for reply, timing out as necessary */
 	FD_ZERO(&set);
-	FD_SET(sockfd, &set);
+
+	max_fd = lrad_packet_list_fd_set(pl, &set);
+	if (max_fd < 0) exit(1); /* no sockets to listen on! */
 
 	if (wait_time <= 0) {
 		tv.tv_sec = 0;
@@ -723,14 +680,14 @@ static int recv_one_packet(int wait_time)
 	/*
 	 *	No packet was received.
 	 */
-	if (select(sockfd + 1, &set, NULL, NULL, &tv) != 1) {
+	if (select(max_fd, &set, NULL, NULL, &tv) <= 0) {
 		return 0;
 	}
 
 	/*
 	 *	Look for the packet.
 	 */
-	reply = rad_recv(sockfd);
+	reply = lrad_packet_list_recv(pl, &set);
 	if (!reply) {
 		fprintf(stderr, "radclient: received bad packet: %s\n",
 			librad_errstr);
@@ -739,25 +696,15 @@ static int recv_one_packet(int wait_time)
 
 	if (librad_debug > 2) print_hex(reply);
 
-	myclient.request = &myrequest;
-	myrequest.id = reply->id;
-	myrequest.dst_ipaddr = reply->src_ipaddr;
-	myrequest.dst_port = reply->src_port;
-
-	node = rbtree_find(request_tree, &myclient);
-	if (!node) {
-		fprintf(stderr, "radclient: received response to request we did not send. (%d)\n", myrequest.id);
+	request_p = lrad_packet_list_find_byreply(pl, reply);
+	if (!request_p) {
+		fprintf(stderr, "radclient: received response to request we did not send. (id=%d socket %d)\n", reply->id, reply->sockfd);
 		rad_free(&reply);
 		return -1;	/* got reply to packet we didn't send */
 	}
-
-	radclient = rbtree_node2data(request_tree, node);
-	assert(radclient != NULL);
-	rbtree_delete(request_tree, node);
-	assert(radclient->request->id == -1);
-	assert(radclient->request->data == NULL);
-
-	assert(radclient->reply == NULL);
+	radclient = lrad_packet2myptr(radclient_t, request, request_p);
+	lrad_packet_list_yank(pl, radclient->request);
+	deallocate_id(radclient);
 	radclient->reply = reply;
 
 	/*
@@ -799,7 +746,7 @@ packet_done:
 	 *	mark it done.
 	 */
 	if (radclient->resend == resend_count) {
-		assert((node = rbtree_find(request_tree, radclient)) == NULL);
+		assert(lrad_packet_list_find(pl, radclient->request) == NULL);
 		radclient->done = 1;
 	}
 
@@ -840,12 +787,6 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	request_tree = rbtree_create(request_cmp, request_free, 0);
-	if (!request_tree) {
-		fprintf(stderr, "radclient: Out of memory\n");
-		exit(1);
-	}
-
 	while ((c = getopt(argc, argv, "46c:d:f:hi:n:p:qr:sS:t:vx")) != EOF) switch(c) {
 		case '4':
 			force_af = AF_INET;
@@ -864,7 +805,7 @@ int main(int argc, char **argv)
 		case 'f':
 			rbtree_insert(filename_tree, optarg);
 			break;
-		case 'i':
+		case 'i':	/* currently broken */
 			if (!isdigit((int) *optarg))
 				usage();
 			last_used_id = atoi(optarg);
@@ -878,6 +819,13 @@ int main(int argc, char **argv)
 			if (persec <= 0) usage();
 			break;
 
+			/*
+			 *	Note that sending MANY requests in
+			 *	parallel can over-run the kernel
+			 *	queues, and Linux will happily discard
+			 *	packets.  So even if the server responds,
+			 *	the client may not see the response.
+			 */
 		case 'p':
 			parallel = atoi(optarg);
 			if (parallel <= 0) usage();
@@ -994,8 +942,6 @@ int main(int argc, char **argv)
 		if (portname) server_port = atoi(portname);
 	}
 
-	memset(radius_id, 0, sizeof(radius_id));
-
 	/*
 	 *	See what kind of request we want to send.
 	 */
@@ -1071,13 +1017,22 @@ int main(int argc, char **argv)
 	 *	This means we ignore later ones.
 	 */
 	if (radclient_head->request->src_ipaddr.af == AF_UNSPEC) {
-		sockfd = lrad_socket(&server_ipaddr, 0);
+		memset(&client_ipaddr, 0, sizeof(client_ipaddr));
+		client_ipaddr.af = server_ipaddr.af;
+		client_port = 0;
 	} else {
-		sockfd = lrad_socket(&radclient_head->request->src_ipaddr,
-				     radclient_head->request->src_port);
+		client_ipaddr = radclient_head->request->src_ipaddr;
+		client_port = radclient_head->request->src_port;
 	}
+	sockfd = lrad_socket(&client_ipaddr, client_port);
 	if (sockfd < 0) {
 		fprintf(stderr, "radclient: socket: %s\n", librad_errstr);
+		exit(1);
+	}
+
+	pl = lrad_packet_list_create(sockfd, 1);
+	if (!pl) {
+		fprintf(stderr, "radclient: Out of memory\n");
 		exit(1);
 	}
 
@@ -1086,12 +1041,12 @@ int main(int argc, char **argv)
 	 *	everything.
 	 */
 	for (this = radclient_head; this != NULL; this = this->next) {
+		this->request->src_ipaddr = client_ipaddr;
+		this->request->src_port = client_port;
 		if (radclient_sane(this) != 0) {
 			exit(1);
 		}
 	}
-
-	if (last_used_id < 0) last_used_id = getpid() & 0xff;
 
 	/*
 	 *	Walk over the packets to send, until
@@ -1204,7 +1159,7 @@ int main(int argc, char **argv)
 		/*
 		 *	Still have outstanding requests.
 		 */
-		if (rbtree_num_elements(request_tree) > 0) {
+		if (lrad_packet_list_num_elements(pl) > 0) {
 			done = 0;
 		} else {
 			sleep_time = 0;
@@ -1223,7 +1178,7 @@ int main(int argc, char **argv)
 	} while (!done);
 
 	rbtree_free(filename_tree);
-	rbtree_free(request_tree);
+	lrad_packet_list_free(pl);
 
 	if (do_summary) {
 		printf("\n\t   Total approved auths:  %d\n", totalapp);
