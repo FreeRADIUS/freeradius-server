@@ -479,16 +479,21 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 *	Call rad_waitpid (should map to waitpid on non-threaded
 	 *	or single-server systems).
 	 */
-	child_pid = rad_waitpid(pid, &status, 0);
-	if (child_pid == pid) {
-		if (WIFEXITED(status)) {
-			status = WEXITSTATUS(status);
-			radlog(L_DBG, "Exec-Program: returned: %d", status);
-			return status;
+	for (n = 0; n < 10; n++) {
+		child_pid = rad_waitpid(pid, &status, WNOHANG);
+		if (child_pid == pid) {
+			if (WIFEXITED(status)) {
+				status = WEXITSTATUS(status);
+				radlog(L_DBG, "Exec-Program: returned: %d", status);
+				return status;
+			}
+		}
+		if (child_pid < 0) {
+			radlog(L_ERR|L_CONS, "Exec-Program: Failed to catch child return code");
+			return 2;
 		}
 	}
 
-	radlog(L_ERR|L_CONS, "Exec-Program: Abnormal child exit: %s",
-	       strerror(errno));
+	radlog(L_ERR|L_CONS, "Exec-Program: Child execution is taking too long.  Giving up.");
 	return 2;
 }

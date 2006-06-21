@@ -114,6 +114,12 @@ typedef struct request_queue_t {
 	RAD_REQUEST_FUNP  fun;
 } request_queue_t;
 
+typedef struct thread_fork_t {
+	pid_t		pid;
+	int		status;
+	int		exited;
+} thread_fork_t;
+
 
 /*
  *	A data structure to manage the thread pool.  There's no real
@@ -232,29 +238,6 @@ static int setup_ssl_mutexes(void)
 
 
 /*
- *	Callback for reaping
- */
-static int reap_callback(void *ctx, void *data)
-{
-	pid_t pid = *(pid_t *) data;
-	lrad_hash_table_t *ht = ctx;
-
-	/*
-	 *	Child is still alive, do nothing.
-	 */
-	if (waitpid(pid, NULL, WNOHANG) == 0) return 0;
-
-	/*
-	 *	Else no child, or was already reaped
-	 */
-
-	lrad_hash_table_delete(ht, &pid);
-
-	return 0;
-}
-
-
-/*
  *	We don't want to catch SIGCHLD for a host of reasons.
  *
  *	- exec_wait means that someone, somewhere, somewhen, will
@@ -272,12 +255,25 @@ static int reap_callback(void *ctx, void *data)
  */
 static void reap_children(void)
 {
+	pid_t pid;
+	int status;
+	thread_fork_t mytf, *tf;
+
 	if (lrad_hash_table_num_elements(thread_pool.waiters) == 0) return;
 
 	pthread_mutex_lock(&thread_pool.wait_mutex);
 
-	lrad_hash_table_walk(thread_pool.waiters,
-			     reap_callback, thread_pool.waiters);
+	while (1) {
+		pid = waitpid(0, &status, WNOHANG);
+		if (pid <= 0) break;
+
+		mytf.pid = pid;
+		tf = lrad_hash_table_finddata(thread_pool.waiters, &mytf);
+		if (!tf) continue;
+		
+		tf->status = status;
+		tf->exited = 1;
+	}
 
 	pthread_mutex_unlock(&thread_pool.wait_mutex);
 }
@@ -754,18 +750,17 @@ int total_active_threads(void)
 
 static uint32_t pid_hash(const void *data)
 {
-	return lrad_hash(data, sizeof(pid_t));
+	const thread_fork_t *tf = data;
+
+	return lrad_hash(&tf->pid, sizeof(tf->pid));
 }
 
-static int pid_cmp(const void *a, const void *b)
+static int pid_cmp(const void *one, const void *two)
 {
-	const pid_t *one = a;
-	const pid_t *two = b;
+	const thread_fork_t *a = one;
+	const thread_fork_t *b = two;
 
-	if (*one < *two) return -1;
-	if (*one > *two) return +1;
-
-	return 0;
+	return (a->pid - b->pid);
 }
 
 /*
@@ -1122,17 +1117,20 @@ pid_t rad_fork(int exec_wait)
 	child_pid = fork();
 	if (child_pid > 0) {
 		int rcode;
-		pid_t *ptr = rad_malloc(sizeof(*ptr));
+		thread_fork_t *tf;
 
-		*ptr = child_pid;
+		tf = rad_malloc(sizeof(*tf));
+		memset(tf, 0, sizeof(*tf));
+		
+		tf->pid = child_pid;
 
 		/*
 		 *	Lock the mutex.
 		 */
 		pthread_mutex_lock(&thread_pool.wait_mutex);
 
-		rcode = lrad_hash_table_insert(thread_pool.waiters, ptr);
-		
+		rcode = lrad_hash_table_insert(thread_pool.waiters, tf);
+
 		/*
 		 *	Unlock the mutex.
 		 */
@@ -1155,9 +1153,36 @@ pid_t rad_fork(int exec_wait)
  */
 pid_t rad_waitpid(pid_t pid, int *status, int options)
 {
+	thread_fork_t mytf, *tf;
+
 	reap_children();	/* be nice to non-wait thingies */
-	return waitpid(pid, status, options);
+
+	if (pid <= 0) return -1;
+
+	if ((options & WNOHANG) == 0) return -1;
+
+	mytf.pid = pid;
+
+	pthread_mutex_lock(&thread_pool.wait_mutex);
+	tf = lrad_hash_table_finddata(thread_pool.waiters, &mytf);
+
+	if (!tf) {		/* not found.  It's a problem... */
+		pthread_mutex_unlock(&thread_pool.wait_mutex);
+		return waitpid(pid, status, options);
+	}
+
+	if (tf->exited) {
+		*status = tf->status;
+		lrad_hash_table_delete(thread_pool.waiters, &mytf);
+		pthread_mutex_unlock(&thread_pool.wait_mutex);
+		return pid;
+	}
 	
+	/*
+	 *	Don't wait, and it hasn't exited.  Return.
+	 */
+	pthread_mutex_unlock(&thread_pool.wait_mutex);
+	return 0;
 }
 
 #else /* HAVE_PTHREAD_H */
