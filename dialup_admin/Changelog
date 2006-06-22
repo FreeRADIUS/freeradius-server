@@ -1,3 +1,7 @@
+Ver 1.70.3:
+* Test for unset variable, rather than empty variable in clean_radacct,
+  monthly_tot_stats and truncate_radacct.
+
 Ver 1.70.2:
 * Fix redirects in dialup-admin pages on servers with register_globals
   turned off.
