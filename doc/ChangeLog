@@ -9,7 +9,7 @@ FreeRADIUS 1.1.3 ; $Date$, urgency=low
 	* Fixed configure/make error for Solaris (set HAVE_CLOSEFROM).
 	* Update libtool and ltdl to 1.5.22, to fix 'make install R=';
 	  also improve integration by importing unmodified original
-	  source
+	  source (except a small patch to ltdl)
 
 FreeRADIUS 1.1.2 ; $Date$, urgency=low
 
