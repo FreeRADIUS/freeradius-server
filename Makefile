@@ -11,7 +11,7 @@ include Make.inc
 
 .PHONY: all clean install
 
-SUBDIRS		= ${LIBLTDLPATH} src raddb scripts doc
+SUBDIRS		= $(LTDL_SUBDIRS) src raddb scripts doc
 WHAT_TO_MAKE	= all
 
 all:
@@ -35,6 +35,10 @@ clean:
 # Many of the platform-specific packaging tools use the $(R) variable
 # when creating their packages.
 #
+# For compatibility with typical GNU packages (e.g. as seen in libltdl),
+# we make sure DESTDIR is defined.
+#
+export DESTDIR := $(R)
 install:
 	$(INSTALL) -d -m 755	$(R)$(sbindir)
 	$(INSTALL) -d -m 755	$(R)$(bindir)

@@ -23,6 +23,7 @@ dnl #############################################################
 AC_INIT(src/main/radiusd.c)
 AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
+AC_PREREQ([2.50])
 
 dnl # The version of the software
 RADIUSD_MAJOR_VERSION=1
@@ -75,6 +76,12 @@ fi
 
 dnl libltdl is installable
 AC_LIBLTDL_INSTALLABLE
+
+dnl tell Makefile to build ltdl if needed
+if test x"$enable_ltdl_install" = x"yes"; then
+  LTDL_SUBDIRS=libltdl
+fi
+AC_SUBST(LTDL_SUBDIRS)
 
 dnl use system-wide libtool, if it exists
 AC_ARG_WITH(system-libtool, 
@@ -210,14 +217,6 @@ AC_ARG_WITH(large-files,
   esac ]
 )
 
-
-dnl AC_ARG_ENABLE(ltdl-install,
-dnl [  --disable-ltdl-install  do not install libltdl])
-dnl if test x"${enable_ltdl_install+set}" != xset; then
-dnl   enable_ltdl_install=yes
-dnl   ac_configure_args="$ac_configure_args --enable-ltdl-install"
-dnl fi
-dnl AC_CONFIG_SUBDIRS(libltdl)
 
 dnl #
 dnl #  Allow the user to specify a list of modules to be linked
@@ -1000,13 +999,6 @@ dnl # AC_SUBST(top_builddir)
 AC_SUBST(LIBLTDL)
 AC_SUBST(INCLTDL)
 
-dnl #
-dnl #  Work around stupid autoconf crap
-dnl #
-if test "x$INCLTDL" != "x";then
-  INCLTDL='-I${top_builddir}/''libltdl'
-fi
-
 dnl import libtool stuff
 
 dnl #############################################################
@@ -1051,7 +1043,7 @@ dnl #
 dnl #  Don't change the variable name here.  Autoconf goes bonkers
 dnl #  if you do.
 dnl #
-AC_CONFIG_SUBDIRS($mysubdirs)
+AC_CONFIG_SUBDIRS($LTDL_SUBDIRS $mysubdirs)
 AC_SUBST(MODULES)
 
 dnl #############################################################

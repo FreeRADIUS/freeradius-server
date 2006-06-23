@@ -19,7 +19,7 @@ logdir		= @logdir@
 raddbdir	= @raddbdir@
 radacctdir	= @radacctdir@
 top_builddir	= @abs_top_builddir@
-top_srcdir	= @top_srcdir@
+top_srcdir	= @abs_top_srcdir@
 
 MAKE		= @MAKE@
 CC		= @CC@
@@ -51,8 +51,8 @@ SBINDIR		= ${sbindir}
 RADIR		= ${radacctdir}
 
 LIBLTDL		= @LIBLTDL@
-LIBLTDLPATH	= @LIBLTDLPATH@
 INCLTDL		= @INCLTDL@
+LTDL_SUBDIRS	= @LTDL_SUBDIRS@
 
 USE_SHARED_LIBS	= @USE_SHARED_LIBS@
 USE_STATIC_LIBS = @USE_STATIC_LIBS@
