@@ -143,8 +143,11 @@ distclean: clean
 	@test -f Makefile.in && rm -f Makefile
 
 reconfig:
-	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in ] && $(AUTOCONF) -l $(top_builddir)
-	@[ "x$(AUTOHEADER)" != "x" ] && [ -f ./config.h.in ] && $(AUTOHEADER)
+	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in ] && $(AUTOCONF) -I $(top_builddir)
+	@if [ -f config.h.in ]; then \
+		[ "x$(AUTOHEADER)" != "x" ] && $(AUTOHEADER); \
+	fi
+		
 
 #
 #  Do any module-specific installation.
