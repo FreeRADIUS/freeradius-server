@@ -524,7 +524,7 @@ static int packet_dst2id_cmp(const void *one, const void *two)
 	return 0;
 }
 
-static void packet_ds2id_free(void *data)
+static void packet_dst2id_free(void *data)
 {
 	lrad_packet_dst2id_t *pd = data;
 
@@ -571,7 +571,7 @@ lrad_packet_list_t *lrad_packet_list_create(int alloc_id)
 
 		pl->dst2id_ht = lrad_hash_table_create(packet_dst2id_hash,
 						       packet_dst2id_cmp,
-						       packet_ds2id_free);
+						       packet_dst2id_free);
 		if (!pl->dst2id_ht) {
 			lrad_packet_list_free(pl);
 			return NULL;
