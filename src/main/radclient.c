@@ -1030,8 +1030,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	pl = lrad_packet_list_create(sockfd, 1);
+	pl = lrad_packet_list_create(1);
 	if (!pl) {
+		fprintf(stderr, "radclient: Out of memory\n");
+		exit(1);
+	}
+
+	if (!lrad_packet_list_socket_add(pl, sockfd)) {
 		fprintf(stderr, "radclient: Out of memory\n");
 		exit(1);
 	}

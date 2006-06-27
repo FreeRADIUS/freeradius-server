@@ -47,19 +47,7 @@ static pthread_mutex_t	proxy_mutex;
 #define pthread_mutex_unlock(_x)
 #endif
 
-/*
- *	We keep track of packets we're proxying, keyed by
- *	source socket, and destination ip/port, and Id.
- */
-static rbtree_t		*proxy_tree;
-
-/*
- *	We keep track of free/used Id's, by destination ip/port.
- *
- *	We need a different tree than above, because this one is NOT
- *	keyed by Id.  Instead, we use this one to allocate Id's.
- */
-static rbtree_t		*proxy_id_tree;
+static lrad_packet_list_t *proxy_list = NULL;
 
 /*
  *	We keep the proxy FD's here.  The RADIUS Id's are marked
@@ -67,86 +55,6 @@ static rbtree_t		*proxy_id_tree;
  */
 static int		proxy_fds[32];
 static rad_listen_t	*proxy_listeners[32];
-
-/*
- *	We can use 256 RADIUS Id's per dst ipaddr/port, per server
- *	socket.  So, to allocate them, we key off of dst ipaddr/port,
- *	and then search the RADIUS Id's, looking for an unused socket.
- *
- *	We do NOT key off of socket fd's, here, either.  Instead,
- *	we look for a free Id from a sockfd, any sockfd.
- */
-typedef struct proxy_id_t {
-	lrad_ipaddr_t	dst_ipaddr;
-	int		dst_port;
-
-	/*
-	 *	FIXME: Allocate more proxy sockets when this gets full.
-	 */
-	int		index;
-	uint32_t	mask;	/* of FD's we know about. */
-	uint32_t	id[1];	/* really id[256] */
-} proxy_id_t;
-
-
-/*
- *	Find a matching entry in the proxy ID tree.
- */
-static int proxy_id_cmp(const void *one, const void *two)
-{
-	int rcode;
-	const proxy_id_t *a = one;
-	const proxy_id_t *b = two;
-
-	/*
-	 *	The following comparisons look weird, but it's
-	 *	the only way to make the comparisons work.
-	 */
-	if (a->dst_port < b->dst_port) return -1;
-	if (a->dst_port > b->dst_port) return +1;
-	
-	if (a->dst_ipaddr.af < b->dst_ipaddr.af) return -1;
-	if (a->dst_ipaddr.af > b->dst_ipaddr.af) return +1;
-
-	switch (a->dst_ipaddr.af) {
-	case AF_INET:
-		rcode = memcmp(&a->dst_ipaddr.ipaddr.ip4addr,
-			       &b->dst_ipaddr.ipaddr.ip4addr,
-			       sizeof(a->dst_ipaddr.ipaddr.ip4addr));
-		break;
-	case AF_INET6:
-		rcode = memcmp(&a->dst_ipaddr.ipaddr.ip6addr,
-			       &b->dst_ipaddr.ipaddr.ip6addr,
-			       sizeof(a->dst_ipaddr.ipaddr.ip6addr));
-		break;
-	default:
-		return -1;	/* FIXME: die! */
-		break;
-	}
-	/*
-	 *	We could optimize this away, but the compiler should
-	 *	do that work for us, and this coding style helps us
-	 *	remember what to do if we add more checks later.
-	 */
-	if (rcode != 0) return rcode;
-
-	/*
-	 *	Everything's equal.  Say so.
-	 */
-	return 0;
-}
-
-
-/*
- *	Compare two REQUEST data structures, based on a number
- *	of criteria, for proxied packets.
- */
-static int proxy_cmp(const void *one, const void *two)
-{
-	return lrad_packet_cmp(((const REQUEST *)one)->proxy,
-			       ((const REQUEST *)two)->proxy);
-}
-
 
 static uint32_t request_hash(const void *data)
 {
@@ -187,22 +95,14 @@ int rl_init_proxy(void)
 	 *
 	 *	FIXME: Move proxy stuff to another struct entirely.
 	 */
-	if (proxy_tree) return 0;
+	if (proxy_list) return 0;
 
 	/*
 	 *	Create the tree for managing proxied requests and
 	 *	responses.
 	 */
-	proxy_tree = rbtree_create(proxy_cmp, NULL, 1);
-	if (!proxy_tree) {
-		rad_assert("FAIL" == NULL);
-	}
-
-	/*
-	 *	Create the tree for allocating proxy ID's.
-	 */
-	proxy_id_tree = rbtree_create(proxy_id_cmp, NULL, 0);
-	if (!proxy_id_tree) {
+	proxy_list = lrad_packet_list_create(1);
+	if (!proxy_list) {
 		rad_assert("FAIL" == NULL);
 	}
 
@@ -219,15 +119,6 @@ int rl_init_proxy(void)
 	}
 #endif
 
-	/*
-	 *	The Id allocation table is done by bits, so we have
-	 *	32 bits per Id.  These bits indicate which entry
-	 *	in the proxy_fds array is used for that Id.
-	 *
-	 *	This design allows 256*32 = 8k requests to be
-	 *	outstanding to a home server, before something goes
-	 *	wrong.
-	 */
 	{
 		int i;
 		rad_listen_t *listener;
@@ -241,8 +132,13 @@ int rl_init_proxy(void)
 		     listener != NULL;
 		     listener = listener->next) {
 			if (listener->type == RAD_LISTEN_PROXY) {
+				/*
+				 *	FIXME: This works only because we
+				 *	start off with one proxy socket.
+				 */
 				proxy_fds[listener->fd & 0x1f] = listener->fd;
 				proxy_listeners[listener->fd & 0x1f] = listener;
+				lrad_packet_list_socket_add(proxy_list, listener->fd);
 				break;
 			}
 		}
@@ -282,12 +178,9 @@ void rl_deinit(request_list_t *rl)
 {
 	if (!rl) return;
 
-	if (proxy_tree) {
-		rbtree_free(proxy_tree);
-		proxy_tree = NULL;
-		
-		rbtree_free(proxy_id_tree);
-		proxy_id_tree = NULL;
+	if (proxy_list) {
+		lrad_packet_list_free(proxy_list);
+		proxy_list = NULL;
 	}
 
 	/*
@@ -302,68 +195,6 @@ void rl_deinit(request_list_t *rl)
 	 *	Just to ensure no one is using the memory.
 	 */
 	memset(rl, 0, sizeof(*rl));
-}
-
-
-/*
- *	Delete a request from the proxy trees.
- */
-static void rl_delete_proxy(REQUEST *request, rbnode_t *node)
-{
-	proxy_id_t	myid, *entry;
-
-	rad_assert(node != NULL);
-
-	rbtree_delete(proxy_tree, node);
-	
-	myid.dst_ipaddr = request->proxy->dst_ipaddr;
-	myid.dst_port = request->proxy->dst_port;
-
-	/*
-	 *	Find the Id in the array of allocated Id's,
-	 *	and delete it.
-	 */
-	entry = rbtree_finddata(proxy_id_tree, &myid);
-	if (entry) {
-		int i;
-		char buf[128];
-		
-		DEBUG3(" proxy: de-allocating destination %s port %d - Id %d",
-		       inet_ntop(entry->dst_ipaddr.af,
-				 &entry->dst_ipaddr.ipaddr, buf, sizeof(buf)),
-		       entry->dst_port,
-		       request->proxy->id);
-
-		/*
-		 *	Find the proxy socket associated with this
-		 *	Id.  We loop over all 32 proxy fd's, but we
-		 *	partially index by proxy fd's, which means
-		 *	that we almost always break out of the loop
-		 *	quickly.
-		 */
-		for (i = 0; i < 32; i++) {
-			int offset;
-
-			offset = (request->proxy->sockfd + i) & 0x1f;
-		  
-			if (proxy_fds[offset] == request->proxy->sockfd) {
-				
-				entry->id[request->proxy->id] &= ~(1 << offset);
-				break;
-			}
-		} /* else die horribly? */
-	} else {
-		char buf[128];
-
-		/*
-		 *	Hmm... not sure what to do here.
-		 */
-		DEBUG3(" proxy: FAILED TO FIND destination %s port %d - Id %d",
-		       inet_ntop(myid.dst_ipaddr.af,
-				 &myid.dst_ipaddr.ipaddr, buf, sizeof(buf)),
-		       myid.dst_port,
-		       request->proxy->id);
-	}
 }
 
 
@@ -421,10 +252,9 @@ void rl_yank(request_list_t *rl, REQUEST *request)
 	 */
 	if (request->proxy &&
 	    (request->proxy_outstanding > 0)) {
-		rbnode_t *node;
 		pthread_mutex_lock(&proxy_mutex);
-		node = rbtree_find(proxy_tree, request);
-		rl_delete_proxy(request, node);
+		lrad_packet_list_id_free(proxy_list, request->proxy);
+		lrad_packet_list_yank(proxy_list, request->proxy);
 		pthread_mutex_unlock(&proxy_mutex);
 	}
 }
@@ -475,170 +305,18 @@ REQUEST *rl_find(request_list_t *rl, RADIUS_PACKET *packet)
  */
 int rl_add_proxy(REQUEST *request)
 {
-	int		i, found, proxy;
-	uint32_t	mask;
-	proxy_id_t	myid, *entry;
-	char   		buf[128];
+	int i, proxy;
+	char buf[128];
 
-	myid.dst_ipaddr = request->proxy->dst_ipaddr;
-	myid.dst_port = request->proxy->dst_port;
-
-	/*
-	 *	Proxied requests get sent out the proxy FD ONLY.
-	 *
-	 *	FIXME: Once we allocate multiple proxy FD's, move this
-	 *	code to below, so we can have more than 256 requests
-	 *	outstanding.
-	 */
 	request->proxy_outstanding = 1;
+	request->proxy->sockfd = -1;
 
 	pthread_mutex_lock(&proxy_mutex);
 
-	/*
-	 *	Assign a proxy ID.
-	 */
-	entry = rbtree_finddata(proxy_id_tree, &myid);
-	if (!entry) {	/* allocate it */
-		entry = rad_malloc(sizeof(*entry) + sizeof(entry->id) * 255);
-		
-		entry->dst_ipaddr = request->proxy->dst_ipaddr;
-		entry->dst_port = request->proxy->dst_port;
-		entry->index = 0;
-
-		DEBUG3(" proxy: creating destination %s port %d",
-		       inet_ntop(entry->dst_ipaddr.af,
-				 &entry->dst_ipaddr.ipaddr, buf, sizeof(buf)),
-		       entry->dst_port);
-		
-		/*
-		 *	Insert the new home server entry into
-		 *	the tree.
-		 *
-		 *	FIXME: We don't (currently) delete the
-		 *	entries, so this is technically a
-		 *	memory leak.
-		 */
-		if (rbtree_insert(proxy_id_tree, entry) == 0) {
-			pthread_mutex_unlock(&proxy_mutex);
-			DEBUG2("ERROR: Failed to insert entry into proxy Id tree");
-			free(entry);
-			return 0;
-		}
-
-		/*
-		 *	Clear out bits in the array which DO have
-		 *	proxy Fd's associated with them.  We do this
-		 *	by getting the mask of bits which have proxy
-		 *	fd's...  */
-		mask = 0;
-		for (i = 0; i < 32; i++) {
-			if (proxy_fds[i] != -1) {
-				mask |= (1 << i);
-			}
-		}
-		rad_assert(mask != 0);
-
-		/*
-		 *	Set bits here indicate that the Fd is in use.
-		 */
-		entry->mask = mask;
-
-		mask = ~mask;
-
-		/*
-		 *	Set the bits which are unused (and therefore
-		 *	allocated).  The clear bits indicate that the Id
-		 *	for that FD is unused.
-		 */
-		for (i = 0; i < 256; i++) {
-			entry->id[i] = mask;
-		}
-	} /* else the entry already existed in the proxy Id tree */
-	
- retry:
-	/*
-	 *	Try to find a free Id.
-	 */
-	found = -1;
-	for (i = 0; i < 256; i++) {
-		/*
-		 *	Some bits are still zero..
-		 */
-		if (entry->id[(i + entry->index) & 0xff] != (uint32_t) ~0) {
-			found = (i + entry->index) & 0xff;
-			break;
-		}
-
-		/*
-		 *	Hmm... do we want to re-use Id's, when we
-		 *	haven't seen all of the responses?
-		 */
-	}
-	
-	/*
-	 *	No free Id, try to get a new FD.
-	 */
-	if (found < 0) {
+	if (!lrad_packet_list_id_alloc(proxy_list, request->proxy)) {
+		int found;
 		rad_listen_t *proxy_listener;
 
-		/*
-		 *	First, see if there were FD's recently allocated,
-		 *	which we don't know about.
-		 */
-		mask = 0;
-		for (i = 0; i < 32; i++) {
-			if (proxy_fds[i] < 0) continue;
-
-			mask |= (1 << i);
-		}
-
-		/*
-		 *	There ARE more FD's than we know about.
-		 *	Update the masks for Id's, and re-try.
-		 */
-		if (entry->mask != mask) {
-			/*
-			 *	New mask always has more bits than
-			 *	the old one, but never fewer bits.
-			 */
-			rad_assert((entry->mask & mask) == entry->mask);
-
-			/*
-			 *	Clear the bits we already know about,
-			 *	and then or in those bits into the
-			 *	global mask.
-			 */
-			mask ^= entry->mask;
-			entry->mask |= mask;
-			mask = ~mask;
-			
-			/*
-			 *	Clear the bits in the Id's for the new
-			 *	FD's.
-			 */
-			for (i = 0; i < 256; i++) {
-				entry->id[i] &= mask;
-			}
-			
-			/*
-			 *	And try again to allocate an Id.
-			 */
-			goto retry;
-		} /* else no new Fd's were allocated. */
-
-		/*
-		 *	If all Fd's are allocated, die.
-		 */
-		if (~mask == 0) {
-			pthread_mutex_unlock(&proxy_mutex);
-			radlog(L_ERR|L_CONS, "ERROR: More than 8000 proxied requests outstanding for destination %s port %d",
-			       inet_ntop(entry->dst_ipaddr.af,
-					 &entry->dst_ipaddr.ipaddr,
-					 buf, sizeof(buf)),
-			       entry->dst_port);
-			return 0;
-		}
-		
 		/*
 		 *	Allocate a new proxy Fd.  This function adds it
 		 *	into the list of listeners.
@@ -651,7 +329,7 @@ int rl_add_proxy(REQUEST *request)
 		}
 
 		/*
-		 *
+		 *	Cache it locally.
 		 */
 		found = -1;
 		proxy = proxy_listener->fd;
@@ -661,79 +339,60 @@ int rl_add_proxy(REQUEST *request)
 			 *	and remember where we saved it.
 			 */
 			if (proxy_fds[(proxy + i) & 0x1f] == -1) {
-				proxy_fds[(proxy + i) & 0x1f] = proxy;
 				found = (proxy + i) & 0x1f;
+				proxy_fds[found] = proxy;
+				proxy_listeners[found] = proxy_listener;
 				break;
 			}
 		}
-		rad_assert(found >= 0);	/* i.e. the mask had free bits. */
+		rad_assert(found >= 0);
 
-		mask = 1 << found;
-		entry->mask |= mask;
-		mask = ~mask;
-
-		/*
-		 *	Clear the relevant bits in the mask.
-		 */
-		for (i = 0; i < 256; i++) {
-			entry->id[i] &= mask;
+		if (!lrad_packet_list_socket_add(proxy_list, proxy_listener->fd)) {
+			pthread_mutex_unlock(&proxy_mutex);
+			DEBUG2("ERROR: Failed to create a new socket for proxying requests.");
+			return 0; /* leak proxy_listener */
+			
 		}
-
-		/*
-		 *	Pick a random Id to start from, as we've
-		 *	just guaranteed that it's free.
-		 */
-		found = lrad_rand() & 0xff;
+		    
+		if (!lrad_packet_list_id_alloc(proxy_list, request->proxy)) {
+			pthread_mutex_unlock(&proxy_mutex);
+			DEBUG2("ERROR: Failed to create a new socket for proxying requests.");
+			return 0;
+		}
 	}
-	
+
+	DEBUG("SOCKFD %d\n", request->proxy->sockfd);
+
 	/*
-	 *	Mark next (hopefully unused) entry.
-	 */
-	entry->index = (found + 1) & 0xff;
-	
-	/*
-	 *	We now have to find WHICH proxy fd to use.
+	 *	FIXME: Hack until we get rid of rad_listen_t, and put
+	 *	the information into the packet_list.
 	 */
 	proxy = -1;
 	for (i = 0; i < 32; i++) {
-		/*
-		 *	FIXME: pick a random socket to use?
-		 */
-		if ((entry->id[found] & (1 << i)) == 0) {
+		if (proxy_fds[i] == request->proxy->sockfd) {
 			proxy = i;
 			break;
 		}
 	}
-
-	/*
-	 *	There was no bit clear, which we had just checked above...
-	 */
-	rad_assert(proxy != -1);
-
-	/*
-	 *	Mark the Id as allocated, for thei Fd.
-	 */
-	entry->id[found] |= (1 << proxy);
-	request->proxy->id = found;
+	rad_assert(proxy >= 0);
 
 	rad_assert(proxy_fds[proxy] != -1);
-	request->proxy->sockfd = proxy_fds[proxy];
 	request->proxy_listener = proxy_listeners[proxy];
 
-	DEBUG3(" proxy: allocating destination %s port %d - Id %d",
-	       inet_ntop(entry->dst_ipaddr.af,
-			 &entry->dst_ipaddr.ipaddr, buf, sizeof(buf)),
-	       entry->dst_port,
-	       request->proxy->id);
-	
-	if (!rbtree_insert(proxy_tree, request)) {
+	if (!lrad_packet_list_insert(proxy_list, &request->proxy)) {
 		pthread_mutex_unlock(&proxy_mutex);
-		DEBUG2("ERROR: Failed to insert entry into proxy tree");
+		DEBUG2("ERROR: Failed to insert entry into proxy list");
 		return 0;
 	}
 	
 	pthread_mutex_unlock(&proxy_mutex);
 
+	DEBUG3(" proxy: allocating destination %s port %d - Id %d",
+	       inet_ntop(request->proxy->dst_ipaddr.af,
+			 &request->proxy->dst_ipaddr.ipaddr, buf, sizeof(buf)),
+	       request->proxy->dst_port,
+	       request->proxy->id);
+	
 	return 1;
 }
 
@@ -750,36 +409,32 @@ int rl_add_proxy(REQUEST *request)
  */
 REQUEST *rl_find_proxy(RADIUS_PACKET *reply)
 {
-	rbnode_t	*node;
-	REQUEST		myrequest, *maybe = NULL;
-	RADIUS_PACKET	myproxy;
-
-#ifndef NDEBUG
-	myrequest.magic = REQUEST_MAGIC;
-#endif
-	myrequest.proxy = &myproxy;
-
-	lrad_request_from_reply(&myproxy, reply);
+	RADIUS_PACKET **proxy_p;
+	REQUEST *request;
 
 	pthread_mutex_lock(&proxy_mutex);
-        node = rbtree_find(proxy_tree, &myrequest);
+	proxy_p = lrad_packet_list_find_byreply(proxy_list, reply);
 
-	if (node) {
-		maybe = rbtree_node2data(proxy_tree, node);
-		rad_assert(maybe->proxy_outstanding > 0);
-		maybe->proxy_outstanding--;
+	if (!proxy_p) {
+		pthread_mutex_unlock(&proxy_mutex);
+		return NULL;
+	}
+
+	request = lrad_packet2myptr(REQUEST, proxy, proxy_p);
+	rad_assert(request->proxy_outstanding > 0);
+	request->proxy_outstanding--;
 		
-		/*
-		 *	Received all of the replies we expect.
-		 *	delete it from both trees.
-		 */
-		if (maybe->proxy_outstanding == 0) {
-			rl_delete_proxy(&myrequest, node);
-		}
+	/*
+	 *	Received all of the replies we expect.
+	 *	delete it from the managed list.
+	 */
+	if (request->proxy_outstanding == 0) {
+		lrad_packet_list_id_free(proxy_list, request->proxy);
+		lrad_packet_list_yank(proxy_list, request->proxy);
 	}
 	pthread_mutex_unlock(&proxy_mutex);
 
-	return maybe;
+	return request;
 }
 
 

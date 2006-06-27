@@ -545,7 +545,7 @@ void lrad_packet_list_free(lrad_packet_list_t *pl)
 /*
  *	Caller is responsible for managing the packet entries.
  */
-lrad_packet_list_t *lrad_packet_list_create(int sockfd, int alloc_id)
+lrad_packet_list_t *lrad_packet_list_create(int alloc_id)
 {
 	int i;
 	lrad_packet_list_t	*pl;
@@ -564,11 +564,6 @@ lrad_packet_list_t *lrad_packet_list_create(int sockfd, int alloc_id)
 
 	for (i = 0; i < MAX_SOCKETS; i++) {
 		pl->sockets[i].sockfd = -1;
-	}
-
-	if (!lrad_packet_list_socket_add(pl, sockfd)) {
-		lrad_packet_list_free(pl);
-		return NULL;
 	}
 
 	if (alloc_id) {
@@ -634,7 +629,11 @@ RADIUS_PACKET **lrad_packet_list_find_byreply(lrad_packet_list_t *pl,
 	my_request.sockfd = reply->sockfd;
 	my_request.id = reply->id;
 
-	if (ps->inaddr_any) my_request.src_ipaddr = ps->ipaddr;
+	if (ps->inaddr_any) {
+		my_request.src_ipaddr = ps->ipaddr;
+	} else {
+		my_request.src_ipaddr = reply->dst_ipaddr;
+	}
 	my_request.src_port = ps->port;;
 
 	my_request.dst_ipaddr = reply->src_ipaddr;

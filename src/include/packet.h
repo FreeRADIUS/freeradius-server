@@ -33,7 +33,7 @@ int lrad_socket(lrad_ipaddr_t *ipaddr, int port);
 
 typedef struct lrad_packet_list_t lrad_packet_list_t;
 
-lrad_packet_list_t *lrad_packet_list_create(int sockfd, int alloc_id);
+lrad_packet_list_t *lrad_packet_list_create(int alloc_id);
 void lrad_packet_list_free(lrad_packet_list_t *pl);
 int lrad_packet_list_insert(lrad_packet_list_t *pl,
 			    RADIUS_PACKET **request_p);
