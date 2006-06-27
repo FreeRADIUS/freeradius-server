@@ -34,7 +34,7 @@ static const char rcsid[] = "$Id$";
 #include <freeradius-devel/radius_snmp.h>
 
 struct request_list_t {
-	lrad_hash_table_t *ht;
+	lrad_packet_list_t *pl;
 };
 
 #ifdef HAVE_PTHREAD_H
@@ -56,17 +56,6 @@ static lrad_packet_list_t *proxy_list = NULL;
 static int		proxy_fds[32];
 static rad_listen_t	*proxy_listeners[32];
 
-static uint32_t request_hash(const void *data)
-{
-	return lrad_request_packet_hash(((const REQUEST *) data)->packet);
-}
-
-static int request_cmp(const void *a, const void *b)
-{
-	return lrad_packet_cmp(((const REQUEST *) a)->packet,
-				       ((const REQUEST *) b)->packet);
-}
-
 /*
  *	Initialize the request list.
  */
@@ -79,8 +68,8 @@ request_list_t *rl_init(void)
 	 */
 	memset(rl, 0, sizeof(*rl));
 
-	rl->ht = lrad_hash_table_create(request_hash, request_cmp, NULL);
-	if (!rl->ht) {
+	rl->pl = lrad_packet_list_create(0);
+	if (!rl->pl) {
 		rad_assert("FAIL" == NULL);
 	}
 
@@ -157,6 +146,9 @@ static int rl_free_entry(void *ctx, void *data)
 	/*
 	 *	If someone is processing this request, kill
 	 *	them, and mark the request as not being used.
+	 *
+	 *	FIXME: Move the request to the "dead pool",
+	 *	and don't kill the thread.
 	 */
 	if (request->child_pid != NO_SUCH_CHILD_PID) {
 		pthread_kill(request->child_pid, SIGKILL);
@@ -186,9 +178,9 @@ void rl_deinit(request_list_t *rl)
 	/*
 	 *	Delete everything in the table, too.
 	 */
-	lrad_hash_table_walk(rl->ht, rl_free_entry, NULL);
+	lrad_packet_list_walk(rl->pl, rl_free_entry, NULL);
 
-	lrad_hash_table_free(rl->ht);
+	lrad_packet_list_free(rl->pl);
 
 
 	/*
@@ -243,7 +235,7 @@ void rl_yank(request_list_t *rl, REQUEST *request)
 	/*
 	 *	Delete the request from the list.
 	 */
-	lrad_hash_table_delete(rl->ht, request);
+	lrad_packet_list_yank(rl->pl, request->packet);
 	
 	/*
 	 *	If there's a proxied packet, and we're still
@@ -253,8 +245,8 @@ void rl_yank(request_list_t *rl, REQUEST *request)
 	if (request->proxy &&
 	    (request->proxy_outstanding > 0)) {
 		pthread_mutex_lock(&proxy_mutex);
-		lrad_packet_list_id_free(proxy_list, request->proxy);
 		lrad_packet_list_yank(proxy_list, request->proxy);
+		lrad_packet_list_id_free(proxy_list, request->proxy);
 		pthread_mutex_unlock(&proxy_mutex);
 	}
 }
@@ -275,7 +267,7 @@ void rl_delete(request_list_t *rl, REQUEST *request)
  */
 int rl_add(request_list_t *rl, REQUEST *request)
 {
-	return lrad_hash_table_insert(rl->ht, request);
+	return lrad_packet_list_insert(rl->pl, &request->packet);
 }
 
 /*
@@ -290,11 +282,12 @@ int rl_add(request_list_t *rl, REQUEST *request)
  */
 REQUEST *rl_find(request_list_t *rl, RADIUS_PACKET *packet)
 {
-	REQUEST request;
+	RADIUS_PACKET **packet_p;
 
-	request.packet = packet;
+	packet_p = lrad_packet_list_find(rl->pl, packet);
+	if (!packet_p) return NULL;
 
-	return lrad_hash_table_finddata(rl->ht, &request);
+	return lrad_packet2myptr(REQUEST, packet, packet_p);
 }
 
 /*
@@ -429,8 +422,8 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *reply)
 	 *	delete it from the managed list.
 	 */
 	if (request->proxy_outstanding == 0) {
-		lrad_packet_list_id_free(proxy_list, request->proxy);
 		lrad_packet_list_yank(proxy_list, request->proxy);
+		lrad_packet_list_id_free(proxy_list, request->proxy);
 	}
 	pthread_mutex_unlock(&proxy_mutex);
 
@@ -443,7 +436,7 @@ REQUEST *rl_find_proxy(RADIUS_PACKET *reply)
  */
 int rl_num_requests(request_list_t *rl)
 {
-	return lrad_hash_table_num_elements(rl->ht);
+	return lrad_packet_list_num_elements(rl->pl);
 }
 
 
@@ -470,7 +463,7 @@ static int refresh_request(void *ctx, void *data)
 	rl_walk_t *info = (rl_walk_t *) ctx;
 	child_pid_t child_pid;
 	request_list_t *rl = info->rl;
-	REQUEST *request = data;
+	REQUEST *request = lrad_packet2myptr(REQUEST, packet, data);
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 
@@ -724,7 +717,7 @@ int rl_clean_list(request_list_t *rl, time_t now)
 	info.sleep_time = SLEEP_FOREVER;
 	info.rl = rl;
 
-	lrad_hash_table_walk(rl->ht, refresh_request, &info);
+	lrad_packet_list_walk(rl->pl, &info, refresh_request);
 
 	if (info.sleep_time < 0) info.sleep_time = 0;
 
