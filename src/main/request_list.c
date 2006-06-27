@@ -354,8 +354,6 @@ int rl_add_proxy(REQUEST *request)
 		}
 	}
 
-	DEBUG("SOCKFD %d\n", request->proxy->sockfd);
-
 	/*
 	 *	FIXME: Hack until we get rid of rad_listen_t, and put
 	 *	the information into the packet_list.
@@ -508,7 +506,6 @@ static int refresh_request(void *ctx, void *data)
 	     (time_passed >= mainconfig.cleanup_delay)) ||
 	    ((request->options & RAD_REQUEST_OPTION_DONT_CACHE) != 0)) {
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-	
 		/*
 		 *  Request completed, delete it, and unlink it
 		 *  from the currently 'alive' list of requests.
@@ -615,6 +612,20 @@ static int refresh_request(void *ctx, void *data)
 	}
 
 	/*
+	 *	Accounting request.  Don't re-send them, since the NAS
+	 *	will take care of doing that, and we're not a NAS.
+	 *	Instead, simply clean them up once we're pretty sure
+	 *	that the home server won't be responding.
+	 */
+	if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
+	    request->proxy && !request->proxy_reply &&
+	    (request->child_pid == NO_SUCH_CHILD_PID) &&
+	    ((info->now - request->proxy_start_time) > (mainconfig.proxy_retry_delay * 2))) {
+		goto cleanup;
+	}
+
+
+	/*
 	 *	Set reject delay, if appropriate.
 	 */
 	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
@@ -628,56 +639,6 @@ static int refresh_request(void *ctx, void *data)
 		if ((request->reply->code == PW_AUTHENTICATION_REJECT) &&
 		    (time_passed == 0)) goto reject_packet;
 		if (time_passed <= 0) time_passed = 1;
-		goto setup_timeout;
-	}
-
-	/*
-	 *	Accounting requests are always proxied
-	 *	asynchronously, authentication requests are
-	 *	always proxied synchronously.
-	 */
-	if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
-	    (request->proxy && !request->proxy_reply) &&
-	    (info->now != request->proxy_start_time)) {
-		/*
-		 *	We've tried to send it, but the home server
-		 *	hasn't responded.
-		 */
-		if (request->proxy_try_count == 0) {
-			request_reject(request, REQUEST_FAIL_HOME_SERVER2);
-			rad_assert(request->proxy->dst_ipaddr.af == AF_INET);
-			request->finished = TRUE;
-			goto cleanup; /* delete the request & continue */
-		}
-		
-		/*
-		 *	Figure out how long we have to wait before
-		 *	sending a re-transmit.
-		 */
-		time_passed = (info->now - request->proxy_start_time) % mainconfig.proxy_retry_delay;
-		if (time_passed == 0) {
-			VALUE_PAIR *vp;
-			vp = pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME);
-			if (!vp) {
-				vp = paircreate(PW_ACCT_DELAY_TIME,
-						PW_TYPE_INTEGER);
-				if (!vp) {
-					radlog(L_ERR|L_CONS, "no memory");
-					exit(1);
-				}
-				pairadd(&request->proxy->vps, vp);
-				vp->lvalue = info->now - request->proxy_start_time;
-			} else {
-				vp->lvalue += mainconfig.proxy_retry_delay;
-			}
-			
-			/*
-			 *	This function takes care of re-transmits.
-			 */
-			request->proxy_listener->send(request->proxy_listener, request);
-			request->proxy_try_count--;
-		}
-		time_passed = mainconfig.proxy_retry_delay - time_passed;
 		goto setup_timeout;
 	}
 
