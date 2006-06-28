@@ -268,19 +268,34 @@ static int common_checks(rad_listen_t *listener,
 		} /* else the authentication vectors were different */
 
 		/*
-		 *	The authentication vectors are different, so
-		 *	the NAS has given up on us, as we've taken too
-		 *	long to process the request.  This is a
-		 *	SERIOUS problem!
+		 *	We're waiting for a proxy reply, but no one is
+		 *	currently processing the request.  We can
+		 *	discard the old request, and ignore any reply
+		 *	from the home server, because the NAS will
+		 *	never care...
 		 */
-		RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
-
-		radlog(L_ERR, "Dropping conflicting packet from "
-		       "client %s port %d - ID: %d due to unfinished request %d",
-		       client->shortname,
-		       packet->src_port, packet->id,
-		       curreq->number);
-		return 0;
+		if (curreq->proxy && !curreq->proxy_reply &&
+		    (curreq->child_pid == NO_SUCH_CHILD_PID)) {
+			radlog(L_ERR, "Discarding old proxied request %d from "
+			       "client %s port %d - ID: %d due to new request from the client",
+			       curreq->number, client->shortname,
+			       packet->src_port, packet->id);
+		} else {
+			/*
+			 *	The authentication vectors are different, so
+			 *	the NAS has given up on us, as we've taken too
+			 *	long to process the request.  This is a
+			 *	SERIOUS problem!
+			 */
+			RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
+			
+			radlog(L_ERR, "Dropping conflicting packet from "
+			       "client %s port %d - ID: %d due to unfinished request %d",
+			       client->shortname,
+			       packet->src_port, packet->id,
+			       curreq->number);
+			return 0;
+		}
 		
 		/*
 		 *	The old request is finished.  We now check the
@@ -349,35 +364,18 @@ static int common_checks(rad_listen_t *listener,
 	 *	if the first reply got lost in the network.
 	 */
 	if (curreq) {
-		RADIUS_PACKET *reply = curreq->reply;
-
 		rl_yank(listener->rl, curreq);
-		rad_free(&curreq->packet);
+		request_free(&curreq);
+	}
 
-		if (curreq->reply) {
-			reply = curreq->reply;
-			pairfree(&reply->vps);
-			free(reply->data);
-			memset(reply, 0, sizeof(*reply));
-		}
-		memset(curreq, 0, sizeof(*curreq));
-#ifndef NDEBUG
-		curreq->magic = REQUEST_MAGIC;
-#endif
-		curreq->timestamp = time(NULL);
-		curreq->child_pid = NO_SUCH_CHILD_PID;
-		curreq->options = RAD_REQUEST_OPTION_NONE;
-		curreq->reply = reply;
-	} else {
-		/*
-		 *	A unique per-request counter.
-		 */
-		curreq = request_alloc(); /* never fails */
-
-		if ((curreq->reply = rad_alloc(0)) == NULL) {
-			radlog(L_ERR, "No memory");
-			exit(1);
-		}
+	/*
+	 *	A unique per-request counter.
+	 */
+	curreq = request_alloc(); /* never fails */
+	
+	if ((curreq->reply = rad_alloc(0)) == NULL) {
+		radlog(L_ERR, "No memory");
+		exit(1);
 	}
 	curreq->listener = listener;
 	curreq->packet = packet;
