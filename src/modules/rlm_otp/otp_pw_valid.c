@@ -94,8 +94,8 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
   otp_request.pwe.pwe = pwe;
 
   /* otp_pwe_present() (done by caller) guarantees that both of these exist */
-  rvp = pairfind(request->packet->vps, pwattr[pwe - 1]);
-  cvp = pairfind(request->packet->vps, pwattr[pwe]);
+  cvp = pairfind(request->packet->vps, pwattr[pwe - 1]);
+  rvp = pairfind(request->packet->vps, pwattr[pwe]);
 
   /*
    * Validate available vps based on pwe type.
