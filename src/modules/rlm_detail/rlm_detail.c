@@ -103,6 +103,24 @@ static int detail_detach(void *instance)
 
 
 /*
+ *	Hash callback functions.  Copied from src/lib/dict.c
+ */
+static uint32_t dict_attr_value_hash(const void *data)
+{
+	return lrad_hash(&((const DICT_ATTR *)data)->attr,
+			 sizeof(((const DICT_ATTR *)data)->attr));
+}
+
+static int dict_attr_value_cmp(const void *one, const void *two)
+{
+	const DICT_ATTR *a = one;
+	const DICT_ATTR *b = two;
+
+	return a->attr - b->attr;
+}
+
+
+/*
  *	(Re-)read radiusd.conf into memory.
  */
 static int detail_instantiate(CONF_SECTION *conf, void **instance)
@@ -130,7 +148,9 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 	if (cs) {
 		CONF_ITEM	*ci;
 
-		inst->ht = lrad_hash_table_create(NULL);
+		inst->ht = lrad_hash_table_create(dict_attr_value_hash,
+						  dict_attr_value_cmp,
+						  NULL);
 
 		for (ci = cf_item_find_next(cs, NULL);
 		     ci != NULL;
@@ -149,13 +169,7 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 				continue;
 			}
 
-			/*
-			 *	For better distribution we should really
-			 *	hash the attribute number or name.  But
-			 *	since the suppression list will usually
-			 *	be small, it doesn't matter.
-			 */
-			if (!lrad_hash_table_insert(inst->ht, da->attr, da)) {
+			if (!lrad_hash_table_insert(inst->ht, da)) {
 				radlog(L_ERR, "rlm_detail: Failed trying to remember %s", attr);
 				detail_detach(inst);
 				return -1;
@@ -341,7 +355,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	/* Write each attribute/value to the log file */
 	for (; pair != NULL; pair = pair->next) {
 		if (inst->ht &&
-		    lrad_hash_table_finddata(inst->ht, pair->attribute)) continue;
+		    lrad_hash_table_finddata(inst->ht, pair)) continue;
 
 		/*
 		 *	Don't print passwords in old format...
