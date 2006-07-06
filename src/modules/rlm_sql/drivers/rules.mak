@@ -128,7 +128,12 @@ distclean: clean
 	@rm -f config.h config.mak
 
 reconfig:
-	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in ] && $(AUTOCONF) -l $(RLM_DIR)../../..
+	@if [ -f configure.in ]; then \
+		[ "x$(AUTOCONF)" != "x" ] && $(AUTOCONF) -I $(top_builddir); \
+	fi
+	@if [ -f config.h.in ]; then \
+		[ "x$(AUTOHEADER)" != "x" ] && $(AUTOHEADER); \
+	fi
 
 #
 #  Do any module-specific installation.
