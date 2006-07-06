@@ -13,6 +13,9 @@ clean:
 install:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
+reconfig:
+	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+
 common:
 	@for mod in rlm_eap*; do \
 		if [ -d $$mod ] && [ -f $$mod/Makefile ]; then \
