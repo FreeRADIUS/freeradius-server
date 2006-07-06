@@ -1383,8 +1383,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	 *	Looks like too many sessions, so let's start verifying
 	 *	them, unless told to rely on count query only.
 	 */
-	if (inst->config->deletestalesessions == FALSE ||
-	    inst->config->simul_verify_query[0] == '\0') {
+	if (inst->config->simul_verify_query[0] == '\0') {
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_OK;
 	}
@@ -1434,23 +1433,25 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 			/*
 			 *	Stale record - zap it.
 			 */
-			uint32_t framed_addr = 0;
-			char proto = 0;
-			int sess_time = 0;
+			if (inst->config->deletestalesessions == TRUE) {
+				uint32_t framed_addr = 0;
+				char proto = 0;
+				int sess_time = 0;
 
-			if (row[5])
-				framed_addr = inet_addr(row[5]);
-			if (row[7]){
-				if (strcmp(row[7], "PPP") == 0)
-					proto = 'P';
-				else if (strcmp(row[7], "SLIP") == 0)
-					proto = 'S';
+				if (row[5])
+					framed_addr = inet_addr(row[5]);
+				if (row[7]){
+					if (strcmp(row[7], "PPP") == 0)
+						proto = 'P';
+					else if (strcmp(row[7], "SLIP") == 0)
+						proto = 'S';
+				}
+				if (row[8])
+					sess_time = atoi(row[8]);
+				session_zap(request, nas_addr, nas_port,
+					    row[2], row[1], framed_addr,
+					    proto, sess_time);
 			}
-			if (row[8])
-				sess_time = atoi(row[8]);
-
-			session_zap(request, nas_addr, nas_port, row[2],
-				    row[1], framed_addr, proto, sess_time);
 		}
 		else if (check == 1) {
 			/*
