@@ -22,8 +22,24 @@ clean:
 distclean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
+#
+#  Do NOT use "common", because some modules may not be built,
+#  and therefore their makefiles may be empty or non-existent.
+#
 reconfig:
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	@[ "x$(AUTOCONF)" != "x" ] || exit 0
+	@[ "x$(AUTOHEADER)" != "x" ] || exit 0
+	@for x in `find . -name "configure.in" -print`; do \
+		( \
+		 cd `dirname $$x` || exit $$?; \
+		 if [ -f configure.in ]; then \
+			$(AUTOCONF) -I $(top_builddir); \
+		 fi; \
+		 if grep AC_CONFIG_HEADERS configure.in >/dev/null; then\
+			$(AUTOHEADER); \
+		 fi; \
+		) || exit $$?; \
+	done
 
 common:
 	@[ -d lib/ ] || mkdir lib
