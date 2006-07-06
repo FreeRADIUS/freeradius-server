@@ -22,6 +22,9 @@ clean:
 distclean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
+reconfig:
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+
 common:
 	@[ -d lib/ ] || mkdir lib
 	@for mod in $(MODULES); do \

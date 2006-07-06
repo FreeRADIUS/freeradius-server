@@ -143,7 +143,9 @@ distclean: clean
 	@test -f Makefile.in && rm -f Makefile
 
 reconfig:
-	@[ "x$(AUTOCONF)" != "x" ] && [ -f ./configure.in ] && $(AUTOCONF) -I $(top_builddir)
+	@if [ -f configure.in ]; then \
+		[ "x$(AUTOCONF)" != "x" ] && $(AUTOCONF) -I $(top_builddir); \
+	fi
 	@if [ -f config.h.in ]; then \
 		[ "x$(AUTOHEADER)" != "x" ] && $(AUTOHEADER); \
 	fi
