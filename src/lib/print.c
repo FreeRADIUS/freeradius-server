@@ -270,11 +270,20 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 {
 	int		len;
 	const char	*token = NULL;
+	const char	*name;
 
 	out[0] = 0;
 	if (!vp) return 0;
+	name = vp->name;
 
-	if (strlen(vp->name) + 3 > (size_t)outlen) {
+	if (!*name) {
+		DICT_ATTR *da = dict_attrbyvalue(vp->attribute);
+		if (!da) return 0;
+
+		name = da->name;
+	}
+
+	if (strlen(name) + 3 > (size_t)outlen) {
 		return 0;
 	}
 
@@ -287,7 +296,7 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 
 	if( vp->flags.has_tag ) {
 
-		snprintf(out, outlen, "%s:%d %s ", vp->name, vp->flags.tag,
+		snprintf(out, outlen, "%s:%d %s ", name, vp->flags.tag,
 			 token);
 
 		len = strlen(out);
@@ -295,7 +304,7 @@ int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
 
 	} else {
 
-	        snprintf(out, outlen, "%s %s ", vp->name, token);
+	        snprintf(out, outlen, "%s %s ", name, token);
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);
 
