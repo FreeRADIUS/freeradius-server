@@ -306,8 +306,8 @@ static int xlat_packet(void *instance, REQUEST *request,
 				}
 				localvp.attribute = da->attr;
 				memcpy(localvp.vp_strvalue,
-				       &packet->src_ipaddr.ipaddr.ip4addr.s_addr,
-				       sizeof(packet->src_ipaddr.ipaddr.ip4addr.s_addr));
+				       &packet->src_ipaddr.ipaddr.ip6addr,
+				       sizeof(packet->src_ipaddr.ipaddr.ip6addr));
 				break;
 			
 			case PW_PACKET_DST_IPV6_ADDRESS:
@@ -316,8 +316,8 @@ static int xlat_packet(void *instance, REQUEST *request,
 				}
 				localvp.attribute = da->attr;
 				memcpy(localvp.vp_strvalue,
-				       &packet->dst_ipaddr.ipaddr.ip4addr.s_addr,
-				       sizeof(packet->dst_ipaddr.ipaddr.ip4addr.s_addr));
+				       &packet->dst_ipaddr.ipaddr.ip6addr,
+				       sizeof(packet->dst_ipaddr.ipaddr.ip6addr));
 				break;
 			
 			case PW_SERVER_IDENTITY:
