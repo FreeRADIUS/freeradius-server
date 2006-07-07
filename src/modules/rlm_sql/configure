@@ -2204,7 +2204,7 @@ fi;
 
 	mysubdirs=
 	if test "x$EXPERIMENTAL" = "xyes"; then
-	  for foo in `find ${srcdir}/src/modules/rlm_sql/drivers -name configure -print`; do
+	  for foo in `find ./drivers -name configure -print`; do
 	    bar=`echo $foo | sed 's%/configure$%%g'`
 	    mysubdirs="$mysubdirs $bar"
 	  done
@@ -2216,7 +2216,7 @@ fi;
 
 	SQL_MODULES=
 	if test "x$EXPERIMENTAL" = "xyes"; then
-	  for foo in `ls ${srcdir}/src/modules/rlm_sql/drivers | grep rlm`; do
+	  for foo in `ls ./drivers | grep rlm`; do
 	    SQL_MODULES="$SQL_MODULES $foo"
 	  done
 	else
@@ -2225,7 +2225,7 @@ fi;
 	  done
 	fi
 
-		ln -s ${srcdir}/install-sh install-sh
+		ln -s ../../../install-sh install-sh
 
 					ac_aux_dir=
 for ac_dir in $srcdir $srcdir/.. $srcdir/../..; do
