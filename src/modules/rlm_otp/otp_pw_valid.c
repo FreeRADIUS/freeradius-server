@@ -23,9 +23,9 @@
 
 static const char rcsid[] = "$Id$";
 
-#include <freeradius-devel/autoconf.h>
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
+#include "autoconf.h"
+#include "radiusd.h"
+#include "modules.h"
 
 #include "extern.h"
 #include "otp.h"
@@ -79,7 +79,7 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
   otp_request_t	otp_request;
   otp_reply_t	otp_reply;
   VALUE_PAIR	*cvp, *rvp;
-  char		*username = request->username->vp_strvalue;
+  char		*username = request->username->strvalue;
   int		rc;
 
   if (request->username->length > OTP_MAX_USERNAME_LEN) {
@@ -108,7 +108,7 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
                     username);
       return RLM_MODULE_REJECT;
     }
-    (void) strcpy(otp_request.pwe.passcode, rvp->vp_strvalue);
+    (void) strcpy(otp_request.pwe.passcode, rvp->strvalue);
     break;
 
   case PWE_CHAP:
@@ -122,9 +122,9 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
                     username);
       return RLM_MODULE_INVALID;
     }
-    (void) memcpy(otp_request.pwe.challenge, cvp->vp_strvalue, cvp->length);
+    (void) memcpy(otp_request.pwe.challenge, cvp->strvalue, cvp->length);
     otp_request.pwe.clen = cvp->length;
-    (void) memcpy(otp_request.pwe.response, rvp->vp_strvalue, rvp->length);
+    (void) memcpy(otp_request.pwe.response, rvp->strvalue, rvp->length);
     otp_request.pwe.rlen = rvp->length;
     break;
 
@@ -139,9 +139,9 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
                     username);
       return RLM_MODULE_INVALID;
     }
-    (void) memcpy(otp_request.pwe.challenge, cvp->vp_strvalue, cvp->length);
+    (void) memcpy(otp_request.pwe.challenge, cvp->strvalue, cvp->length);
     otp_request.pwe.clen = cvp->length;
-    (void) memcpy(otp_request.pwe.response, rvp->vp_strvalue, rvp->length);
+    (void) memcpy(otp_request.pwe.response, rvp->strvalue, rvp->length);
     otp_request.pwe.rlen = rvp->length;
     break;
 
@@ -156,9 +156,9 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
                     username);
       return RLM_MODULE_INVALID;
     }
-    (void) memcpy(otp_request.pwe.challenge, cvp->vp_strvalue, cvp->length);
+    (void) memcpy(otp_request.pwe.challenge, cvp->strvalue, cvp->length);
     otp_request.pwe.clen = cvp->length;
-    (void) memcpy(otp_request.pwe.response, rvp->vp_strvalue, rvp->length);
+    (void) memcpy(otp_request.pwe.response, rvp->strvalue, rvp->length);
     otp_request.pwe.rlen = rvp->length;
     break;
   } /* switch (otp_request.pwe.pwe) */
