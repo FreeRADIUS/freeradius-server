@@ -73,6 +73,9 @@ struct detail_instance {
 	/* if we want file locking */
 	int locking;
 
+	/* log src/dst information */
+	int log_srcdst;
+
 	lrad_hash_table_t *ht;
 };
 
@@ -87,6 +90,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(struct detail_instance,dirperm),    NULL, "0755" },
 	{ "locking",       PW_TYPE_BOOLEAN,
 	  offsetof(struct detail_instance,locking),    NULL, "no" },
+	{ "log_packet_header",       PW_TYPE_BOOLEAN,
+	  offsetof(struct detail_instance,log_srcdst),    NULL, "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -348,6 +353,13 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	}
 
 	/*
+	 *	Post a timestamp
+	 */
+	fseek(outfp, 0L, SEEK_END);
+	radius_xlat(timestamp, sizeof(timestamp), inst->header, request, NULL);
+	fprintf(outfp, "%s\n", timestamp);
+
+	/*
 	 *	Write the information to the file.
 	 */
 	if (!compat) {
@@ -357,19 +369,65 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		 */
 		if ((packet->code > 0) &&
 		    (packet->code <= PW_ACCESS_CHALLENGE)) {
-			fprintf(outfp, "Packet-Type = %s\n",
+			fprintf(outfp, "\tPacket-Type = %s\n",
 				packet_codes[packet->code]);
 		} else {
-			fprintf(outfp, "Packet-Type = %d\n", packet->code);
+			fprintf(outfp, "\tPacket-Type = %d\n", packet->code);
 		}
 	}
 
-	/*
-	 *	Post a timestamp
-	 */
-	fseek(outfp, 0L, SEEK_END);
-	radius_xlat(timestamp, sizeof(timestamp), inst->header, request, NULL);
-	fprintf(outfp, "%s\n", timestamp);
+	if (inst->log_srcdst) {
+		VALUE_PAIR src_vp, dst_vp;
+
+		src_vp.name[0] = dst_vp.name[0] = '\0';	/* for vp_prints() */
+		src_vp.operator = dst_vp.operator = T_OP_EQ;
+
+		switch (packet->src_ipaddr.af) {
+		case AF_INET:
+			src_vp.type = PW_TYPE_IPADDR;
+			src_vp.attribute = PW_PACKET_SRC_IP_ADDRESS;
+			src_vp.lvalue = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+			dst_vp.type = PW_TYPE_IPADDR;
+			dst_vp.attribute = PW_PACKET_DST_IP_ADDRESS;
+			dst_vp.lvalue = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
+			break;
+		case AF_INET6:
+			src_vp.type = PW_TYPE_IPV6ADDR;	
+			src_vp.attribute = PW_PACKET_SRC_IPV6_ADDRESS;
+			memcpy(src_vp.vp_strvalue,
+			       &packet->src_ipaddr.ipaddr.ip6addr,
+			       sizeof(packet->src_ipaddr.ipaddr.ip6addr));
+			dst_vp.type = PW_TYPE_IPV6ADDR;	
+			dst_vp.attribute = PW_PACKET_DST_IPV6_ADDRESS;
+			memcpy(dst_vp.vp_strvalue,
+			       &packet->dst_ipaddr.ipaddr.ip6addr,
+			       sizeof(packet->dst_ipaddr.ipaddr.ip6addr));
+			break;
+		default:
+			break;
+		}
+
+		fputs("\t", outfp);
+		vp_print(outfp, &src_vp);
+		fputs("\n", outfp);
+		fputs("\t", outfp);
+		vp_print(outfp, &dst_vp);
+		fputs("\n", outfp);
+
+		src_vp.attribute = PW_PACKET_SRC_PORT;
+		src_vp.type = PW_TYPE_INTEGER;
+		src_vp.lvalue = packet->src_port;
+		dst_vp.attribute = PW_PACKET_DST_PORT;
+		dst_vp.type = PW_TYPE_INTEGER;
+		dst_vp.lvalue = packet->dst_port;
+
+		fputs("\t", outfp);
+		vp_print(outfp, &src_vp);
+		fputs("\n", outfp);
+		fputs("\t", outfp);
+		vp_print(outfp, &dst_vp);
+		fputs("\n", outfp);
+	}
 
 	/* Write each attribute/value to the log file */
 	for (; pair != NULL; pair = pair->next) {
