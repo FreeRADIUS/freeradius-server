@@ -1364,6 +1364,32 @@ static int detail_recv(rad_listen_t *listener,
 		packet->src_ipaddr = data->client_ip;
 	}
 
+	vp = pairfind(packet->vps, PW_PACKET_SRC_IP_ADDRESS);
+	if (vp) {
+		packet->src_ipaddr.af = AF_INET;
+		packet->src_ipaddr.ipaddr.ip4addr.s_addr = vp->lvalue;
+	} else {
+		vp = pairfind(packet->vps, PW_PACKET_SRC_IPV6_ADDRESS);
+		if (vp) {
+			packet->src_ipaddr.af = AF_INET6;
+			memcpy(&packet->src_ipaddr.ipaddr.ip6addr,
+			       &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		}
+	}
+
+	vp = pairfind(packet->vps, PW_PACKET_DST_IP_ADDRESS);
+	if (vp) {
+		packet->dst_ipaddr.af = AF_INET;
+		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->lvalue;
+	} else {
+		vp = pairfind(packet->vps, PW_PACKET_DST_IPV6_ADDRESS);
+		if (vp) {
+			packet->dst_ipaddr.af = AF_INET6;
+			memcpy(&packet->dst_ipaddr.ipaddr.ip6addr,
+			       &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		}
+	}
+
 	/*
 	 *	We've got to give SOME value for Id & ports, so that
 	 *	the packets can be added to the request queue.
