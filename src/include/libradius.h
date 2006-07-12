@@ -126,6 +126,7 @@ typedef struct attr_flags {
 	unsigned int		has_tag : 1;  /* tagged attribute */
 	unsigned int		do_xlat : 1;  /* strvalue is dynamic */
 	unsigned int		caseless : 1; /* case insensitive compares */
+	unsigned int		diameter : 1; /* VP is a in diameter format */
 
 	int8_t			tag;	      /* tag for tunneled attributes */
 	uint8_t		        encrypt;      /* encryption method */
@@ -163,6 +164,7 @@ typedef struct dict_vendor {
 typedef struct value_pair {
 	char			name[40];
 	int			attribute;
+	int			vendor;
 	int			type;
 	int			length; /* of data */
 	LRAD_TOKEN		operator;

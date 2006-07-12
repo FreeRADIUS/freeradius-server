@@ -138,14 +138,20 @@ static int dict_attr_name_cmp(const void *one, const void *two)
 
 static uint32_t dict_attr_value_hash(const void *data)
 {
-	return lrad_hash(&((const DICT_ATTR *)data)->attr,
-			 sizeof(((const DICT_ATTR *)data)->attr));
+	uint32_t hash;
+	const DICT_ATTR *attr = data;
+
+	hash = lrad_hash(&attr->vendor, sizeof(attr->vendor));
+	return lrad_hash_update(&attr->attr, sizeof(attr->attr), hash);
 }
 
 static int dict_attr_value_cmp(const void *one, const void *two)
 {
 	const DICT_ATTR *a = one;
 	const DICT_ATTR *b = two;
+
+	if (a->vendor < b->vendor) return -1;
+	if (a->vendor > b->vendor) return +1;
 
 	return a->attr - b->attr;
 }
@@ -331,7 +337,7 @@ int dict_addvendor(const char *name, int value)
 	size_t length;
 	DICT_VENDOR *dv;
 
-	if (value >= (1 << 16)) {
+	if (value >= 32767) {
 	       	librad_log("dict_addvendor: Cannot handle vendor ID larger than 65535");
 		return -1;
 	}
@@ -446,9 +452,8 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		}
 
 		/*
-		 *	With a few exceptions, attributes can only be
-		 *	1..255.  The check above catches the less than
-		 *	zero case.
+		 *	FIXME: Switch over dv->type, and limit things
+		 *	properly.
 		 */
 		if ((dv->type == 1) && (value >= 256)) {
 			librad_log("dict_addattr: ATTRIBUTE has invalid number (larger than 255).");
@@ -467,9 +472,15 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	strcpy(attr->name, name);
 	attr->attr = value;
 	attr->attr |= (vendor << 16); /* FIXME: hack */
+	attr->vendor = vendor;
 	attr->type = type;
 	attr->flags = flags;
 	attr->vendor = vendor;
+
+	/*
+	 *	Yet another hack for Diameter-encoded attributes:
+	 */
+	if (attr->flags.diameter) attr->attr |= (1 << 31);
 
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
@@ -666,6 +677,9 @@ static int process_attribute(const char* fn, const int line,
 						    fn, line, s);
 					return -1;
 				}
+			} else if (strncmp(s, "diameter", 8) == 0) {
+				flags.diameter = 1;
+
 			} else {
 				/* Must be a vendor 'flag'... */
 				if (strncmp(s, "vendor=", 7) == 0) {
@@ -1256,6 +1270,7 @@ DICT_ATTR *dict_attrbyvalue(int attr)
 	DICT_ATTR dattr;
 
 	dattr.attr = attr;
+	dattr.vendor = VENDOR(attr) & 0x7fff;
 
 	return lrad_hash_table_finddata(attributes_byvalue, &dattr);
 }
