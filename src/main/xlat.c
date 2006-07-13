@@ -732,7 +732,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 
 		q += retlen;
 
-		while((*p != '\0') && (openbraces > 0)) {
+		while((*p != '\0') && (openbraces > *open)) {
 			/*
 			 *	Handle escapes outside of the loop.
 			 */
