@@ -48,6 +48,7 @@ typedef struct rlm_preprocess_t {
 	int		with_ntdomain_hack;
 	int		with_specialix_jetstream_hack;
 	int		with_cisco_vsa_hack;
+	int		with_alvarion_vsa_hack;
 } rlm_preprocess_t;
 
 static const CONF_PARSER module_config[] = {
@@ -69,6 +70,8 @@ static const CONF_PARSER module_config[] = {
 	  "no" },
 	{ "with_cisco_vsa_hack",        PW_TYPE_BOOLEAN,
 	  offsetof(rlm_preprocess_t,with_cisco_vsa_hack), NULL, "no" },
+	{ "with_alvarion_vsa_hack",        PW_TYPE_BOOLEAN,
+	  offsetof(rlm_preprocess_t,with_alvarion_vsa_hack), NULL, "no" },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -115,7 +118,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 	char		newattr[MAX_STRING_LEN];
 
 	for ( ; vp != NULL; vp = vp->next) {
-		vendorcode = (vp->attribute >> 16); /* HACK! */
+		vendorcode = VENDOR(vp->attribute);
 		if (!((vendorcode == 9) || (vendorcode == 6618))) continue; /* not a Cisco or Quintum VSA, continue */
 
 		if (vp->type != PW_TYPE_STRING) continue;
@@ -167,6 +170,26 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 				sizeof(vp->vp_strvalue));
 			vp->length = strlen((char *)vp->vp_strvalue);
 		}
+	}
+}
+
+
+/*
+ *	Don't even ask what this is doing...
+ */
+static void alvarion_vsa_hack(VALUE_PAIR *vp)
+{
+	int		vendorcode;
+	int		number = 1;
+
+	for ( ; vp != NULL; vp = vp->next) {
+		vendorcode = VENDOR(vp->attribute);
+		if (vendorcode != 12394) continue;
+		if (vp->type != PW_TYPE_STRING) continue;
+
+		vp->attribute = number | (12394 << 16);
+		snprintf(vp->name, sizeof(vp->name),
+			 "Breezecom-Attr%d", number++);
 	}
 }
 
@@ -516,6 +539,14 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 		 *	attribute should be used.
 		 */
 		cisco_vsa_hack(request->packet->vps);
+	}
+
+	if (data->with_alvarion_vsa_hack) {
+	 	/*
+		 *	We need to run this hack because the Alvarion
+		 *	people are crazy.
+		 */
+		alvarion_vsa_hack(request->packet->vps);
 	}
 
 	/*
