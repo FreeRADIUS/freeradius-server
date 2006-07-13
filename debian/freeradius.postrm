@@ -6,14 +6,12 @@ case "$1" in
 	remove)
 		;;
 	purge)
-		rm -f /etc/init.d/freeradius
 		update-rc.d -f freeradius remove >/dev/null
-
-		if [ -d /var/log/freeradius ] 
+		if [ -d /var/log/freeradius ]
 		then
 			rm -rf /var/log/freeradius
 		fi
-		rm -rf /etc/freeradius
+		rmdir --ignore-fail-on-non-empty /etc/freeradius
 		deluser freerad shadow || true
 		deluser freerad || true
 		delgroup freerad || true

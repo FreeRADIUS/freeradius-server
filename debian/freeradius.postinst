@@ -4,16 +4,15 @@ set -e
 
 case "$1" in
   configure)
+	if ! id freerad >/dev/null 2>&1; then
+		addgroup --system freerad || true
+		groups freerad 2>/dev/null || adduser --system --no-create-home --home /etc/freeradius --ingroup freerad --disabled-password freerad
 
-	addgroup --system freerad || true
-	groups freerad 2>/dev/null || adduser --system --no-create-home --home /etc/freeradius --ingroup freerad --disabled-password freerad
+		# make sure there is a user and group 'freerad'
+		groups freerad |grep freerad >/dev/null
 
-	# make sure there is a user and group 'freerad'
-	groups freerad |grep freerad >/dev/null
-
-	if [ "$2" = "" ] ; then
 		# put user freerad in group shadow, so the daemon can auth locally
-		usermod -G shadow freerad
+		adduser freerad shadow
 	fi
 
 	update-rc.d freeradius defaults 50 >/dev/null
@@ -34,29 +33,32 @@ case "$1" in
 		mkdir /var/run/freeradius
 	fi
 
-	chown freerad:freerad /var/run/freeradius
-
+	chown -R freerad:freerad /var/log/freeradius
+	chown -R freerad:freerad /var/run/freeradius
 	find /etc/freeradius -type f -exec chgrp freerad {} \; -exec chmod 640 {} \;
 	find /etc/freeradius -type d -exec chgrp freerad {} \; -exec chmod 2750 {} \;
-	find /var/log/freeradius \( ! -user freerad -o ! -group freerad \) -exec chown freerad:freerad {} \;
 
-	if [ "$2" = "" ] ; then
+	# Relax permissions on local dictionary - allows radclient to run
+	# and should not contain secrets.  At any rate, only do it on fresh
+	# install
+	if [ -z "$2" ]; then
+		chmod 0644 /etc/freeradius/dictionary
+		chmod 0751 /etc/freeradius/
 		action="start"
 	else
 		action="restart"
 	fi
 
-	if command -v invoke-rc.d >/dev/null 2>&1; then
+	if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
 		invoke-rc.d freeradius $action || true
 	else
 		/etc/init.d/freeradius $action
 	fi
-
 	;;
   abort-upgrade)
 	;;
   abort-remove)
-	if command -v invoke-rc.d >/dev/null 2>&1; then
+	if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
 		invoke-rc.d freeradius start || true
 	else
 		/etc/init.d/freeradius start

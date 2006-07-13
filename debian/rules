@@ -19,8 +19,11 @@ raddbdir	= /etc/$(package)
 
 # All supported modules, irrespective of licensing
 modulepackages = krb5 ldap mysql iodbc postgresql
+buildssl = --with-rlm_sql_postgresql_lib_dir=`pg_config --libdir` --with-rlm_sql_postgresql_include_dir=`pg_config --includedir`
+
 # Binary-distributable modules for the Debian archive.
 #modulepackages = krb5 ldap mysql iodbc
+#buildssl = --without-rlm_eap_peap --without-rlm_eap_tls --without-rlm_eap_ttls --without-rlm_otp --without-rlm_sql_postgresql --without-snmp
 
 export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
@@ -58,22 +61,9 @@ stamp-build: stamp-patch
 		--with-logdir=/var/log/$(package) \
 		--with-system-libtool --disable-ltdl-install \
 		--with-large-files --with-udpfromto --with-edir \
-		--with-rlm_sql_postgresql_lib_dir=`pg_config --libdir` \
-		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
 		--enable-strict-dependencies \
-		--enable-developer
-
-#		To make SSL-free, add this:
-#		--without-rlm_eap_peap \
-		--without-rlm_eap_tls \
-		--without-rlm_eap_ttls \
-		--without-rlm_otp \
-		--without-rlm_sql_postgresql \
-		--without-snmp \
-
-#		and remove these:
-#		--with-rlm_sql_postgresql_lib_dir=`pg_config --libdir` \
-		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
+		--enable-developer \
+		${buildssl}
 
 	# Modify Make.inc for Debian...
 	TEMPFILE=`mktemp /tmp/radmake-XXXXXX`; \
@@ -93,12 +83,12 @@ binary-indep: stamp-build
 	dh_clean -i -k
 	dh_installdirs -i
 	# Dialup-Admin
-	dh_installdocs -p freeradius-dialupadmin -XCVS dialup_admin/README dialup_admin/doc/*
+	dh_installdocs -p freeradius-dialupadmin -XCVS
 	dh_installchangelogs -p freeradius-dialupadmin dialup_admin/Changelog
-	dh_installexamples -p freeradius-dialupadmin dialup_admin/bin/dialup_admin.cron
+	dh_installexamples -p freeradius-dialupadmin
 	dh_install -p freeradius-dialupadmin -XCVS dialup_admin/conf/* etc/freeradius-dialupadmin/
 	dh_install -p freeradius-dialupadmin -XCVS -XChangelog -XREADME -Xconf/ -Xdoc/ -Xdialup_admin.cron dialup_admin/* usr/share/freeradius-dialupadmin/
-	dh_link -p freeradius-dialupadmin etc/freeradius-dialupadmin/ usr/share/freeradius-dialupadmin/conf
+	dh_link -p freeradius-dialupadmin
 	dh_perl -p freeradius-dialupadmin dialup_admin/bin/*
 # Fix the crontab example to point to the right directory
 	cat $(freeradius_dir)-dialupadmin/usr/share/doc/freeradius-dialupadmin/examples/dialup_admin.cron \
@@ -173,6 +163,7 @@ binary-arch: stamp-build
 	install -g root -m 644 CREDITS $(freeradius_dir)/$(pkgdocdir)/credits
 	dh_installexamples -XCVS -XMakefile -X\\.in src/modules/rlm_perl/example.pl
 	dh_installchangelogs doc/ChangeLog
+
 	#Rename manpage to go with binary
 	mv $(freeradius_dir)/$(mandir)/man8/radiusd.8 $(freeradius_dir)/$(mandir)/man8/$(package).8
 
@@ -218,6 +209,7 @@ clean-patched:
 	[ -f Make.inc ] && make distclean || true
 	dh_clean
 	rm -rf $(freeradius_dir)
+	rm -rf src/modules/lib/
 	for modname in $(modulepackages); do \
 		rm -rf $(debiandir)/$(package)-$${modname}{,.substvars}; \
 	done
@@ -236,17 +228,6 @@ autotools:
 	ln -s /usr/share/misc/config.sub config.sub
 	ln -s /usr/share/misc/config.guess config.guess
 
-# for the maintainer only
-sanitycheck:
-	@echo -n "sanity: checking for overzealous undocumented file... "
-	@find man/ -type f |grep \. |sed -e 's%man/man./%%' | { \
-		while read manpage; do \
-			grep $$manpage debian/$(package).undocumented | read filename && echo -n $$filename; \
-		done; \
-	} || true
-	@test -n $$filename
-	@echo good.
-
 patch: stamp-patch
 stamp-patch:
 	dpatch apply-all
@@ -257,4 +238,4 @@ unpatch:
 	dpatch deapply-all
 	rm -rf stamp-patch debian/patched
 
-.PHONY: binary binary-arch binary-indep clean clean-patched sanitycheck autotools build build-simple patch unpatch
+.PHONY: binary binary-arch binary-indep clean clean-patched autotools build build-simple patch unpatch
