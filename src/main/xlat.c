@@ -142,7 +142,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 	 */
 	da = dict_attrbyname(fmt);
 	if (!da) {
-		int index;
+		int count;
 		const char *p = strchr(fmt, '[');
 		char buffer[256];
 
@@ -151,7 +151,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 
 		strNcpy(buffer, fmt, p - fmt + 1);
 
-		index = atoi(p + 1);
+		count = atoi(p + 1);
 
 		/*
 		 *	Check the format of the index before looking
@@ -175,8 +175,8 @@ static int xlat_packet(void *instance, REQUEST *request,
 		for (vp = pairfind(vps, da->attr);
 		     vp != NULL;
 		     vp = pairfind(vp->next, da->attr)) {
-			if (index == 0) break;
-			index--;
+			if (count == 0) break;
+			count--;
 		}
 
 		/*
@@ -533,7 +533,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	 * useless if we found what we need
 	 */
 	if (found) {
-		while((*p != '\0') && (openbraces > 0)) {
+		while((*p != '\0') && (openbraces > *open)) {
 			/*
 			 *	Handle escapes outside of the loop.
 			 */
