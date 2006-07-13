@@ -80,6 +80,7 @@ $INCLUDE dictionary.acc
 $INCLUDE dictionary.airespace
 $INCLUDE dictionary.alcatel
 $INCLUDE dictionary.alteon
+$INCLUDE dictionary.alvarion
 $INCLUDE dictionary.aruba
 $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
