@@ -1,41 +1,50 @@
 #!/bin/sh
 # Start/stop the FreeRADIUS daemon.
 
-set -u
+PROG="freeradius"
+PROGRAM="/usr/sbin/freeradius"
+PIDFILE="/var/run/freeradius/freeradius.pid"
+DESCR="FreeRADIUS daemon"
 
-prog="freeradius"
-program="/usr/sbin/freeradius"
-pidfile="/var/run/freeradius/freeradius.pid"
-descr="FreeRADIUS daemon"
-
-test -f $program || exit 0
+test -f $PROGRAM || exit 0
 
 case "$1" in
-start)	echo -n "Starting $descr: "
-        start-stop-daemon --start --quiet --pidfile $pidfile --exec $program
-	if [ $? = 0 ]; then
-		echo "$prog."
-	else
-		echo "(failed!  run '$program -x' to find out why.)"
-		exit 1
-	fi
-	;;
-stop)	echo -n "Stopping $descr: "
-        start-stop-daemon --stop --quiet --pidfile $pidfile
-        echo "$prog."
-        ;;
-restart) echo -n "Restarting $descr: "
+	start)
+		echo -n "Starting $DESCR: "
+		start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $PROGRAM
+		if [ $? = 0 ]; then
+			echo "$PROG."
+		else
+			echo "(failed!  run '$PROGRAM -x' to find out why.)"
+			exit 1
+		fi
+		;;
+	stop)
+		echo -n "Stopping $DESCR: "
+		start-stop-daemon --stop --retry=TERM/30/KILL/5 --oknodo --quiet --pidfile $PIDFILE
+		echo "$PROG."
+		;;
+	restart)
+		echo "Restarting $DESCR..."
 		$0 stop
-		sleep 2
 		$0 start
-        ;;
-reload|force-reload) 
-		echo -n "Reloading configuration files for $descr"
-		start-stop-daemon --stop --signal 1 --quiet --pidfile $pidfile
-        echo "."
-        ;;
-*)	echo "Usage: /etc/init.d/freeradius start|stop|restart|reload|force-reload"
-        exit 1 
-        ;;
+		;;
+	reload | force-reload)
+		echo -n "Reloading configuration files for $DESCR"
+		start-stop-daemon --stop --signal 1 --oknodo --quiet --pidfile $PIDFILE
+		sleep 2
+		[ -r $PIDFILE ] && kill -0 $(cat $PIDFILE) > /dev/null 2>&1
+		if [ $? = 0 ]; then
+			echo "."
+		else
+			echo " failed! ($PROG has died)"
+			exit 1
+		fi
+		;;
+	*)
+		echo "Usage: $0 start|stop|restart|reload|force-reload"
+		exit 1
+		;;
 esac
+
 exit 0
