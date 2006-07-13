@@ -509,7 +509,7 @@ void *lrad_hash_table_yank(lrad_hash_table_t *ht, const void *data)
 	void *old;
 	lrad_hash_entry_t *node;
 
-	if (!ht) return 0;
+	if (!ht) return NULL;
 
 	key = ht->hash(data);
 	entry = key & ht->mask;
