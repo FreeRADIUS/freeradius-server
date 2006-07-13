@@ -1,8 +1,6 @@
 #!/bin/sh
 # Start/stop the FreeRADIUS daemon.
 
-set -e
-
 PROG="freeradius"
 PROGRAM="/usr/sbin/freeradius"
 PIDFILE="/var/run/freeradius/freeradius.pid"
@@ -23,25 +21,30 @@ case "$1" in
 		;;
 	stop)
 		echo -n "Stopping $DESCR: "
-		start-stop-daemon --stop --quiet --pidfile $PIDFILE
+		start-stop-daemon --stop --retry=TERM/30/KILL/5 --oknodo --quiet --pidfile $PIDFILE
 		echo "$PROG."
 		;;
 	restart)
-		echo -n "Restarting $DESCR: "
+		echo "Restarting $DESCR..."
 		$0 stop
-		sleep 2
 		$0 start
 		;;
-	reload | force-reload) 
+	reload | force-reload)
 		echo -n "Reloading configuration files for $DESCR"
-		start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE
+		start-stop-daemon --stop --signal 1 --oknodo --quiet --pidfile $PIDFILE
 		sleep 2
-		ps --pid $(cat $PIDFILE) > /dev/null || exit 1
-		echo "."
+		[ -r $PIDFILE ] && kill -0 $(cat $PIDFILE) > /dev/null 2>&1
+		if [ $? = 0 ]; then
+			echo "."
+		else
+			echo " failed! ($PROG has died)"
+			exit 1
+		fi
 		;;
 	*)
-		echo "Usage: /etc/init.d/freeradius start|stop|restart|reload|force-reload"
-		exit 1 
+		echo "Usage: $0 start|stop|restart|reload|force-reload"
+		exit 1
+		;;
 esac
 
 exit 0
