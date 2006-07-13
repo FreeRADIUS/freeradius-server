@@ -703,9 +703,6 @@ static int recv_one_packet(int wait_time)
 		return -1;	/* got reply to packet we didn't send */
 	}
 	radclient = lrad_packet2myptr(radclient_t, request, request_p);
-	lrad_packet_list_yank(pl, radclient->request);
-	deallocate_id(radclient);
-	radclient->reply = reply;
 
 	/*
 	 *	Fails the signature validation: not a real reply.
@@ -716,6 +713,10 @@ static int recv_one_packet(int wait_time)
 		totallost++;
 		goto packet_done; /* shared secret is incorrect */
 	}
+
+	lrad_packet_list_yank(pl, radclient->request);
+	deallocate_id(radclient);
+	radclient->reply = reply;
 
 	/*
 	 *	If this fails, we're out of memory.
