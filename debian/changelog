@@ -1,16 +1,254 @@
-freeradius (1.1.0~pre0~cvs20050804-0) unstable; urgency=low
+freeradius (2.0.0-pre0) unstable; urgency=low
 
-  * Current CVS version
-  * Update for Debian Policy 3.6.2.0
-   - No changes needed.
-  * FreeRADIUS 1.1.0 uses autoconf 2.5 and libtool 1.5
-     Closes: #279391
-  * rlm_eap_* link statically to libeap and rlm_eap_tls as
-    neccessary, since trying to do it dynamically fails
-    to build due to libtool being too clever.
+  * Current CVS version.
 
-  * The below changes were forward-ported from FreeRADIUS 1.0.x in
-    the Debian archive:
+ -- Nicolas Baradakis <nicolas.baradakis@cegetel.net>  Thu, 13 Jul 2006 16:41:06 +0200
+
+freeradius (1.1.3-0) unstable; urgency=low
+
+  * New upstream release.
+  * Delete dpatch merged in mainstream CVS:
+    - 01-actually_check_for_unset_password
+  * Remove irrelevant dpatch after autotools upgrade:
+    - 13_a_libtool_to_call_your_own
+  * Update debian/rules because of autotools upgrade, too.
+  * Fix errors in initscript when trying to reload even if the server
+    isn't running.
+
+ -- Nicolas Baradakis <nicolas.baradakis@cegetel.net>  Mon, 10 Jul 2006 14:06:04 +0200
+
+freeradius (1.1.2-2) unstable; urgency=low
+
+  [ Stephen Gran ]
+  * Acknowledge my previous NMU's (closes: #351732, #359042)
+  * Init scripts overhaul:
+    - now use reload on upgrade of modules
+    - replace sleep statements with --retry, as time based tests are
+      fragile
+    - no longer exit with an error if stop fails because the
+      daemon isn't running (closes: #374670, #351735)
+    - stop using command -v in /bin/sh scripts
+  * General maintainer script overhaul:
+    - Don't rm -rf something in /etc (ouch)
+    - Use chown -R instead of 'find .. -exec'
+    - should not need to manually remove the init script on purge (it's a dpkg
+      managed conffile)
+    - Only do user management stuff if user is missing.  No point rerunning it
+      every upgrade.
+    - Install /etc/freeradius/dictionary with relaxed permissions, but never
+      touch it again (closes: #334299)
+    - switch to debhelper files where possible.  I like an easy to read
+      Makefile.
+  * Arg.  Move README.rfc to the freeradius package where it belongs.
+
+  [ Mark Hymers ]
+  * Document building SSL/PostgreSQL modules in debian/rules, add
+    control.postgresql to make it more convenient.  Tested on AMD64 using
+    system libtool.
+
+ -- Stephen Gran <sgran@debian.org>  Sun, 25 Jun 2006 23:06:16 +0100
+
+freeradius (1.1.2-1) unstable; urgency=low
+
+  [ Mark Hymers ]
+  * New maintainers
+  * New upstream version.
+  * Remove previous patches merged upstream:
+    - 01_NET-SNMP_build_support.dpatch
+    - 02_document_actual_shared_secret_maximum_length.dpatch
+    - 12_more_dialup_admin_various_fixes.dpatch
+    - 14_broken_parse.dpatch
+    - 15_CVE-2006-1354.dpatch
+  * Use --with-system-libtool during configure.  Add B-D: on libtool
+    Removes obsolete dpatches:
+    - 06_libtool14_vs_rlm_eap_tls.dpatch
+    - 13_a_libtool_to_call_your_own.dpatch
+  * Remove freeradius.undocumented as we don't install links to
+    undocumented(7) anymore (not recommended since policy 3.5.8.0)
+
+  [ Stephen Gran ]
+  * Update to Standards Version 3.7.2 (no changes)
+  * Remove doc/rfc/ to make -legal happy (closes: #365192)
+    - this means repacked tarball.  See README.rfc for details
+  * Test for unset variable, rather than empty variable in clean_radacct,
+    monthly_tot_stats and truncate_radacct (closes: #374053)
+
+ -- Mark Hymers <mark@hymers.org.uk>  Sat, 17 Jun 2006 16:05:19 +0100
+
+freeradius (1.1.2-0) unstable; urgency=low
+
+  * New upstream release.
+  * Update dpatch for 1.1.2:
+    - 13_a_libtool14_to_call_your_own
+
+ -- Nicolas Baradakis <nicolas.baradakis@cegetel.net>  Sun, 21 May 2006 19:20:03 +0200
+
+freeradius (1.1.1-0) unstable; urgency=low
+
+  * New upstream release.
+  * Delete dpatches merged in mainstream CVS:
+    - 01_NET-SNMP_build_support
+    - 02_document_actual_shared_secret_maximum_length
+    - 12_more_dialup_admin_various_fixes
+  * Remove irrelevant dpatch after rlm_eap changes in CVS:
+    - 06_libtool14_vs_rlm_eap_tls
+  * Features that break compatibility with Sarge have not been merged:
+    - debhelper V5 support
+    - lsb-init functions
+
+ -- Nicolas Baradakis <nicolas.baradakis@cegetel.net>  Sun, 12 Feb 2006 16:29:20 +0100
+
+freeradius (1.1.0-1.2) unstable; urgency=high
+
+  * Non-maintainer upload.
+  * [ CVE-2006-1354 ]:
+    src/modules/rlm_eap/types/rlm_eap_mschapv2/rlm_eap_mschapv2.c:
+    Due to insufficient input validation it is possible for a remote
+    attacker to bypass authentication or cause a denial of service.
+    (closes: #359042)
+
+ -- Stephen Gran <sgran@debian.org>  Wed, 17 May 2006 11:22:28 -0500
+
+freeradius (1.1.0-1.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Upstream patch to fix parsing config file (closes: #351732)
+    Fixes: fails to start on amd64 (error in dictionary parsing code)
+
+ -- Stephen Gran <sgran@debian.org>  Sat,  1 Apr 2006 11:07:55 +0100
+
+freeradius (1.1.0-1) unstable; urgency=low
+  * ReDebianise upstream tarball:
+    - Deleted RFCs: 2243 2289 2433 2548 2618 2619 2620 2621 2716 2759 2809 2865
+                    2866 2867 2868 2869 2882 2924 3162 3575 3576 3579 3580
+                    draft-kamath-pppext-eap-mschapv2-00
+
+  * New FreeRADIUS modules marked stable by new upstream release
+    - rlm_perl
+    - rlm_sqlcounter
+    - rlm_sql_log + radsqlrelay
+    - rlm_otp (formerly rlm_x99_token, not built as it depends on OpenSSL)
+
+  * Remove upstream-integrated patches:
+    - 02_EAP-SIM_doesnt_need_openssl
+    - 03_X99_is_not_stable
+    - 07_manpage_fixups
+    - 09_use_crypth_if_we_have_it
+    - 10_escape_entire_ldap_string
+    - 11_dont_xlat_possibly_bad_usernames_in_bad_accounting_packets
+    - 12_dialup_admin_various_fixes
+
+  * More dialup-admin fixes from Arve Seljebu
+    - Fix redirects in dialup-admin pages on servers with
+      register_globals turned off.
+      Closes: #333704
+    - HTTP form fields will always fail is_int, use in_numeric instead
+      Closes: #335149
+    - Created 12_more_dialup_admin_various_fixes
+
+  * Update to Policy 3.6.2.0
+  * Upgrade Debhelper support to V5
+  * Don't install the .in files with the examples
+  * Prefer libmysqlclient15-dev
+    Closes: #343779
+  * Shared secrets can only be 31 characters long, note this in clients.conf
+    - Created 02_document_actual_shared_secret_maximum_length
+    Closes: 344606
+  * Added support for lsb-init functions
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 15 Jan 2006 13:34:13 +1100
+
+freeradius (1.1.0-0) unstable; urgency=low
+
+  * New upstream release.
+  * Update set of patches:
+    - 01_NET-SNMP_build_support.dpatch
+    - 06_libtool14_vs_rlm_eap_tls.dpatch
+    - 13_a_libtool14_to_call_your_own.dpatch
+
+ -- Nicolas Baradakis <nicolas.baradakis@cegetel.net>  Sun,  1 Jan 2006 18:15:47 +0100
+
+freeradius (1.0.5-2) unstable; urgency=low
+
+  * Stop dragging non-PIC code from libeap.a into rlm_eap_sim.so and
+    rlm_eap.so.
+    (Thanks to Peter Salinger)
+    Closes: #288547
+    - Rename 06_libtool14_vs_rlm_eap_tls to 06_libtool14_vs_rlm_eap
+      and modify with Peter's changes and some Makefile hackery to
+      get it all linking
+  * Don't rerun configure during the build.
+    (Thanks to Kurt Roeckx)
+  * A whole bunch of dialup-admin fixes from Arve Seljebu and Tobias
+    - Report correct data transfer statistics for users
+      Closes: #329672
+    - Lower-case sql column names to match creation scripts
+      Closes: #333709
+    - Fix creation of empty groups
+      Closes: #333739
+    - Put quote around usernames in HTML output
+      Closes: #333742
+    - Properly notice when we've got a blank password to SQL
+      Closes: #333744
+    - Created 12_dialup_admin_various_fixes
+  * Stop using libtool1.4 to build against, now that we can't have it and
+    libltdl3-dev installed at the same time
+    Closes: #279391
+    - Created 13_a_libtool14_to_call_your_own to get most recent ltmain.sh
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 16 Oct 2005 21:26:30 +1000
+
+freeradius (1.0.5-1) unstable; urgency=high
+
+  * Urgency high for security fixes below, all reported upstream
+  * ReDebianise upstream tarball:
+    - Deleted RFCs: 2243 2289 2433 2548 2618 2619 2620 2621 2716 2759 2809 2865
+                    2866 2867 2868 2869 2882 2924 3162 3575 3576 3579 3580
+                    draft-kamath-pppext-eap-mschapv2-00
+  * Add missed build-dependancy on dpatch (>=2)
+  * Update to Standards-Version 3.6.2.0
+    - No changes needed
+  * Repair some minorly broken manpages
+    - Created 07_manpage_fixups.dpatch
+  * Security fixes stolen from CVS release_1_0 branch:
+    - Be sure we use crypt.h if we have it, to avoid segfaulting on a
+      bad built-in crypt() definition, spotted by Konstantin Kubatkin
+      + Created 09_use_crypth_if_we_have_it
+    - Make sure we escape the entire LDAP string, instead of
+      aborting as soon as it becomes possible to be out of space
+      + Created 10_escape_entire_ldap_string
+    - Don't xlat the UserName attribute before we can be sure of meeting
+      any escape sequences it may contain, spotted by Primoz Bratanic
+      + Created 11_dont_xlat_possibly_bad_usernames_in_bad_accounting_packets
+  * Depend on adduser, so our postinst can create the freerad user
+  * Don't install the .in versions of the example scripts.
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Mon, 19 Sep 2005 15:10:40 +1000
+
+freeradius (1.0.5-0) unstable; urgency=low
+
+  * New Upstream release, from release_1_0 branch
+    - Remove 04_bonus_control_code_in_clients_conf_5
+    - Remove 05_unbreak_quoted_sql_results
+  * Fix my _name_ in the dpatches
+  * Remove patch to CVS ID header from 05_unbreak_quoted_sql_values
+    so as not to break things when comitting to FreeRADIUS CVS
+  * Take linking fix from FreeRADIUS bugzilla #75 to allow
+    rlm_eap_tls to be linked to by rlm_eap_ttls and rlm_eap_peap
+    even though we don't build them in the Debian archive.
+    (Thanks to Luca Landi for the patch)
+    - Created 06_libtool14_vs_rlm_eap_tls
+  * Fix ownership of files in /var/log/freeradius/ more efficiently
+    (Caught by Guido Trotter)
+    Closes: #326891
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed,  7 Sep 2005 01:08:07 +1000
+
+freeradius (1.0.4-2) unstable; urgency=low
+
+  * Fix my email address in the dpatches
+  * Remove extraneous ^g from man/man5/clients.conf.5
+    - Created 04_bonus_control_code_in_clients_conf_5
   * Correct handing of parameterless call of init script, and
     general init script neatening
     (Thanks to Derrick Karpo)
@@ -20,8 +258,23 @@ freeradius (1.1.0~pre0~cvs20050804-0) unstable; urgency=low
     into binary-arch and binary-indep.
     (Thanks to Kurt Roeckx for actually hitting the bug)
     Closes: #315770
+  * Steal fix from CVS release_1_0 tree for rlm_sql quoted values.
+    (Thanks to Nicolas Baradakis for the fix)
+    - Upstream bugzilla #242, src/modules/rlm_sql/sql.c 1.79.2.2
+    - Created 05_unbreak_quoted_sql_values
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Mon, 27 Jun 2005 03:13:48 +1000
+
+freeradius (1.0.4-1) unstable; urgency=low
+  * ReDeianise upstream tarball:
+    - Deleted RFCs: 2243 2289 2433 2548 2618 2619 2620 2621 2716 2759 2809 2865
+                    2866 2867 2868 2869 2882 2924 3162 3575 3576 3579 3580
+                    draft-kamath-pppext-eap-mschapv2-00
   * Convert to dpatch, dpatch-2-style interface.
-   - New build-dependancy on dpatch (>= 2)
+    - New build-dependancy on dpatch (>= 2)
+    - Created 01_NET-SNMP_build_support
+    - Created 02_EAP-SIM_doesnt_need_openssl
+    - Created 03_X99_is_not_stable
   * Assemble the freeradius-dialupadmin in the binary-indep make target
     Closes: #313173 (Thanks to Santiago Vila for spotting this)
   * Include the example scripts in /usr/share/doc/freeradius/examples/scripts
@@ -29,17 +282,80 @@ freeradius (1.1.0~pre0~cvs20050804-0) unstable; urgency=low
     Closes: #314253 (Thanks to Michael Langer for spotting this)
   * Suggest libdate-manip-perl for freeradius-dialupadmin
     Closes: #306007 (Thanks to Feng Sian)
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed, 22 Jun 2005 16:03:27 +1000
+
+freeradius (1.0.4-0) unstable; urgency=medium
+
+  * New upstream release, fixing build problems.
   * Prefer libpq-dev over postgresql-dev as a build-dependancy.
-   - This requires us to use pg_config to find the headers.
+   - This requires us to use pgconfig to find the headers.
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 16 Jun 2005 13:56:33 +1000
+
+freeradius (1.0.3-0) unstable; urgency=high
+
+  * New upstream release
+  * Urgency high for some denial-of-service fixes:
+    - SQL injection attacks and DoS (core dump) via buffer overflow.
+      Closes: #307720
+
+ -- Alan DeKok <aland@ox.org>  Fri,  3 Jun 2005 11:29:34 -0700
+
+freeradius (1.0.2-4) unstable; urgency=high
+
+  * Security fix stolen from CVS release_1_0 branch:
+   - Always use sql_escape_func when calling radius_xlat
+   - Add a test in sql_escape_func() to check buffer bound when
+     input character needs escaping.
+   - Urgency high as these are (theoretical) security issues.
+     Closes: #307720 (Thanks to Primoz Bratanic and Nicolas Baradakis)
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Mon, 23 May 2005 18:53:51 +1000
+
+freeradius (1.0.2-3) unstable; urgency=medium
+
+  * Fixes stolen from CVS release_1_0 branch:
+   - Fix missed SIGCHLD when waiting for external programs
+     when threaded. (Medium urgency as this can easily livelock
+     FreeRADIUS, which is an authentication server.)
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Mon, 18 Apr 2005 23:46:41 +1000
+
+freeradius (1.0.2-2) unstable; urgency=medium
+
   * Get rid of extraneous '%' at the start of every reference to
     /etc/freeradius-dialupadmin in freeradius-dialupadmin's configuration.
      Closes: #299749
+  * Fixes stolen from CVS release_1_0 branch:
+   - Fix checkrad call for NAS ports > 9999999. (sprintf integer overrun,
+     reason for urgency medium.)
+   - Fix inverted test causing crash with pthreads and crypt
+     Closes: #300219 (Thanks Manuel Menal)
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed,  6 Apr 2005 12:33:05 +1000
+
+freeradius (1.0.2-1) unstable; urgency=low
+
+  * ReDebianise upstream tarball:
+    - Deleted RFCs: 2243 2289 2433 2548 2618 2619 2620 2621 2716 2759 2809 2865
+                    2866 2867 2868 2869 2882 2924 3162 3575 3576 3579 3580
+  * Allow rlm_eap_sim to build without OpenSSL
+  * Make init script return 1 if reloading kills the server
+    (Thanks to Nicolas Baradakis)
+     Closes: #292170
   * Enable Novell eDirectory integration
   * Enable udpfromto code so that replies come from the same address as
     the request arrived at
   * Build-depend on libmysqlclient12-dev as libmysqlclient10 has problems
     accessing 4.0 series mySQL servers, and libmysqlclient12 can access
     4.1 series mySQL servers.
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Fri,  4 Mar 2005 09:30:40 +1100
+
+freeradius (1.0.2-0) unstable; urgency=low
+
+  * New upstream release
   * Update for Debian Policy 3.6.1.1
    - Change test if invoke-rc.d as per Policy 9.3.3.2
   * freeradius-dialupadmin Suggests php4-mysql | php4-pgsql
@@ -54,16 +370,74 @@ freeradius (1.1.0~pre0~cvs20050804-0) unstable; urgency=low
      Closes: #280942
   * FreeRADIUS-dialupadmin's help.php3 can now find README.
      Closes: #280941
-  * Support building with libsnmp5's UCD-SNMP compatiblity mode.
-   - Prefer libsnmp5-dev over libsnmp4.2-dev
-  * Update for Debian Policy 3.6.11
-   - Change test for invoke-rc.d as per Policy 9.3.3.2
-  * Finally, -v is documented in radius(8).
-   - Closes: #151266
-  * Reword a sentence in radwatch(8) by removing the personal pronoun.
-   - Closes: #264522
 
- -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu,  4 Aug 2005 00:58:02 +1000
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed, 29 Dec 2004 20:12:52 +1100
+
+freeradius (1.0.1-2) unstable; urgency=high
+
+  * freeradius-dialupadmin Suggests php4-mysql | php4-pgsql
+     Closes: #279419
+  * Added a two-second pause to restart in init.d script
+     Closes: #262635
+  * FreeRADIUS module packages now depend on the same source
+    version of the main FreeRADIUS package.
+     Closes: #284353
+  * FreeRADIUS-dialupadmin's default paths in admin.conf are
+    now correct.
+     Closes: #280942
+  * FreeRADIUS-dialupadmin's help.php3 can now find README.
+     Closes: #280941
+  * Fixes stolen from 1.0.2 CVS:
+    - Bug fix to make udpfromto code work
+    - radrelay shouldn't dump core if it can't read a VP from the
+      detail file.
+    - Only initialize the random pool once.
+    - In rlm_sql, don't escape characters twice.
+    - In rlm_ldap, only claim Auth-Type if a plain text password is present.
+    - Locking fixes in threading code
+    - Fix building on gcc-4.0 by not trying to access static auth_port from
+      other files.
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Wed, 29 Dec 2004 20:19:42 +1100
+
+freeradius (1.0.1-1) unstable; urgency=high
+
+  * ReDebianise upstream tarball:
+    - Deleted RFCs: 2243 2289 2433 2548 2618 2619 2620 2621 2716 2759 2809 2865
+                    2866 2867 2868 2869 2882 2924 3162 3575 3576 3579 3580
+    - Remove CVS directories.
+  * Urgency high for security fix from 1.0.1-0 (CAN-2004-0938,
+    closes: #275136).
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu, 23 Sep 2004 22:28:11 +1000
+
+freeradius (1.0.1-0) unstable; urgency=high
+
+  * New upstream release
+  * Urgency high for some denial-of-service fixes:
+   - Fix two remote crashes and a remote memory leak in
+     radius packet decoding.
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Thu,  2 Sep 2004 17:12:23 +1000
+
+freeradius (1.0.0-1) unstable; urgency=low
+
+  * ReDebianise upstream tarball:
+    - Deleted RFCs: 2243 2289 2433 2548 2618 2619 2620 2621 2716 2759 2809 2865
+                    2866 2867 2868 2869 2882 2924 3162 3575 3576 3579 3580
+  * Support building with libsnmp5's UCD-SNMP compatiblity mode.
+    - libsnmp{4.2,5} still depend on OpenSSL, so SNMP's still disabled.
+  * Update for Debian Policy 3.6.11
+    - Change test for invoke-rc.d as per Policy 9.3.3.2
+  * Disable rlm_eap types PEAP, TLS and TTLS as they depend on OpenSSL.
+  * Disable rlm_sql driver PostgreSQL as it depends on OpenSSL.
+  * Disable rlm_x99_token as it depends on OpenSSL.
+  * Finally, -v is documented in radius(8).
+    - Closes: #151266
+  * Reword a sentence in radwatch(8) by removing the personal pronoun.
+    - Closes: #264522
+
+ -- Paul Hampson <Paul.Hampson@anu.edu.au>  Tue, 17 Aug 2004 17:42:40 +1000
 
 freeradius (1.0.0-0) unstable; urgency=low
 
@@ -118,7 +492,7 @@ freeradius (0.9.2-2) unstable; urgency=low
     - No changes needed
 
  -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun,  9 Nov 2003 00:07:52 +1100
-  
+
 freeradius (0.9.2-1) unstable; urgency=low
 
   * Deleted RFCs: 2243 2289 2433 2548 2618 2616 2620 2621
@@ -169,12 +543,12 @@ freeradius (0.9.0-1) unstable; urgency=low
  -- Paul Hampson <Paul.Hampson@anu.edu.au>  Sun, 20 Jul 2003 06:56:28 +1000
 
 radiusd-freeradius (0.7+cvs20021113-1) unstable; urgency=low
- 
+
   * Explicitly excluding modules not in the "stable" list.
   * Updated policy version number.
   * Moved from non-US/main to main.
   * Put pidfile in package's own directory.
-  * Package not as buggy and unstable modules are easily identifiable. 
+  * Package not as buggy and unstable modules are easily identifiable.
     (closes: Bug#142217)
   * Init script handles failure better. (closes: Bug#151264)
   * New upstream release.  (closes: Bug#140536)
@@ -190,9 +564,9 @@ radiusd-freeradius (0.7+cvs20021113-1) unstable; urgency=low
 
 radiusd-freeradius (0.5+cvs20020408-1) unstable; urgency=high
 
-  * New build-dep on libssl-dev, which is implied by another dep, but making 
+  * New build-dep on libssl-dev, which is implied by another dep, but making
     explicit for builders on Potato.  (closes: Bug#131832)
-  * Built against new postgresql libraries, so automatic dep tracking has 
+  * Built against new postgresql libraries, so automatic dep tracking has
     the correct version, now.  (closes: Bug#139290)
   * Removed python example module.
   * Explicitly disabled beta ippool module.
@@ -213,7 +587,7 @@ radiusd-freeradius (0.3-2) unstable; urgency=low
   * Fixed permissions of log files. (closes: Bug#116242,#116243)
   * Close file descriptors of stdin, stdout, stderr, if not debugging.
     (closes: Bug#116768)
-  * Made package "non-native".  (An upload issue, not code.)  
+  * Made package "non-native".  (An upload issue, not code.)
     (closes: Bug#119161)
 
  -- Chad Miller <cmiller@debian.org>  Tue, 20 Nov 2001 10:50:20 -0500
@@ -243,7 +617,7 @@ radiusd-freeradius (0.2+20010912-1) unstable; urgency=low
   * Added user 'freerad' into the 'shadow' group.
   * Fixed UUCP-style of restricting time of log-in.
   * Changed debugging messages to give more info about execution flow.
-  * Better counter module.  
+  * Better counter module.
   * Inserted CHAP support for SQL modules.
   * Removed possible infinite loop.
 
