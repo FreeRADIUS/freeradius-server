@@ -613,6 +613,14 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 		cisco_vsa_hack(request->packet->vps);
 	}
 
+	if (data->with_alvarion_vsa_hack) {
+	 	/*
+		 *	We need to run this hack because the Alvarion
+		 *	people are crazy.
+		 */
+		alvarion_vsa_hack(request->packet->vps);
+	}
+
 	/*
 	 *  Ensure that we log the NAS IP Address in the packet.
 	 */
