@@ -30,6 +30,7 @@ CFLAGS="$RPM_OPT_FLAGS" \
 	--sysconfdir=%{_sysconfdir} \
 	--mandir=%{_mandir} \
 	--disable-ltdl-install \
+	--with-docdir=/usr/share/doc/freeradius-%{version} \
 	--with-ltdl-lib=/usr/lib \
 	--with-ltdl-include=/usr/include \
 	--with-large-files --with-udpfromto --with-edir \
