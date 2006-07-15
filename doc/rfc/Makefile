@@ -22,9 +22,9 @@ clean:
 	rm -f refs rfc*.html *~ .rewrite index.html
 
 install:
-	$(INSTALL) -d -m 755 $(R)$(datadir)/doc/freeradius/rfc
+	$(INSTALL) -d -m 755 $(R)$(docdir)/rfc
 	for file in `ls -1 *.txt *.html`; do \
-		$(INSTALL) -m 644 $$file $(R)$(datadir)/doc/freeradius/rfc; \
+		$(INSTALL) -m 644 $$file $(R)$(docdir)/rfc; \
 	done
 
 .PHONY: all clean install html
