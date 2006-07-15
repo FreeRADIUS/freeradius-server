@@ -12,6 +12,7 @@ localstatedir	= @localstatedir@
 libdir		= @libdir@
 bindir		= @bindir@
 sbindir		= @sbindir@
+docdir		= @docdir@
 mandir		= @mandir@
 datadir		= @datadir@
 dictdir		= $(datadir)/freeradius
