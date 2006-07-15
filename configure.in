@@ -100,6 +100,28 @@ dnl 	awk '{print "                            "$0}']))
 AC_ARG_ENABLE(strict-dependencies,
 [  --enable-strict-dependencies  Fail configure on lack of module dependancy.])
 
+dnl extra argument: --with-docdir
+docdir='${datadir}/doc/freeradius'
+AC_MSG_CHECKING(docdir)
+AC_ARG_WITH(docdir,
+[  --with-docdir=DIR       Directory for documentation [DATADIR/doc/freeradius] ],
+[ case "$withval" in
+    no)
+	AC_MSG_ERROR(Need docdir)
+	;;
+    yes)
+	;;
+    [[\\/$]]* | ?:[[\\/]]* )
+	docdir="$withval"
+	;;
+    *)
+	AC_MSG_ERROR([expected an absolute directory name for --with-docdir: $withval])
+	;;
+  esac ]
+)
+AC_SUBST(docdir)
+AC_MSG_RESULT($docdir)
+
 dnl extra argument: --with-logdir
 logdir='${localstatedir}/log/radius'
 AC_MSG_CHECKING(logdir)
@@ -111,8 +133,11 @@ AC_ARG_WITH(logdir,
 	;;
     yes)
 	;;
-    *)
+    [[\\/$]]* | ?:[[\\/]]* )
 	logdir="$withval"
+	;;
+    *)
+	AC_MSG_ERROR([expected an absolute directory name for --with-logdir: $withval])
 	;;
   esac ]
 )
@@ -123,15 +148,18 @@ dnl extra argument: --with-radacctdir
 radacctdir='${logdir}/radacct'
 AC_MSG_CHECKING(radacctdir)
 AC_ARG_WITH(radacctdir,
-[  --with-radacctdir=PATH  Directory for detail files [LOGDIR/radacct] ],
+[  --with-radacctdir=DIR   Directory for detail files [LOGDIR/radacct] ],
 [ case "$withval" in
     no)
 	AC_MSG_ERROR(Need radacctdir)
 	;;
     yes)
 	;;
-    *)
+    [[\\/$]]* | ?:[[\\/]]* )
 	radacctdir="$withval"
+	;;
+    *)
+	AC_MSG_ERROR([expected an absolute directory name for --with-radacctdir: $withval])
 	;;
   esac ]
 )
@@ -149,8 +177,11 @@ AC_ARG_WITH(raddbdir,
 	;;
     yes)
 	;;
-    *)
+    [[\\/$]]* | ?:[[\\/]]* )
 	raddbdir="$withval"
+	;;
+    *)
+	AC_MSG_ERROR([expected an absolute directory name for --with-raddbdir: $withval])
 	;;
   esac ]
 )
