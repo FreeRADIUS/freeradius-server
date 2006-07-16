@@ -258,14 +258,15 @@ static int generate_sql_clients(SQL_INST *inst)
 		row = sqlsocket->row;
 		if (row == NULL)
 			break;
-/*
- * Format:
- * Row1	Row2	Row3		Row4	Row5	Row6	Row7		Row8
- *
- * id	nasname	shortname	type	ports	secret	community	description
- *
- */
-
+	/*
+	 *  The return data for each row MUST be in the following order:
+	 *
+	 *  0. Row ID (currently unused)
+	 *  1. Name (or IP address)
+	 *  2. Shortname
+	 *  3. Type
+	 *  4. Secret
+	 */
 		if (!row[0]){
 			radlog(L_ERR, "rlm_sql (%s): No row id found on pass %d",inst->config->xlat_name,i);
 			continue;
