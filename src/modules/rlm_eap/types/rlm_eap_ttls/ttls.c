@@ -46,6 +46,11 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
 	unsigned int data_left = data_len;
 
 	while (data_left > 0) {
+		if (data_len < 12) {
+			DEBUG2("  rlm_eap_ttls:  Diameter attribute is too small to contain a Diameter header");
+			return 0;
+		}
+
 		rad_assert(data_left <= data_len);
 		memcpy(&attr, data, sizeof(attr));
 		data += 4;
