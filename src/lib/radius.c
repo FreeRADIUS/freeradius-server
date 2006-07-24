@@ -2192,12 +2192,14 @@ next_diameter:
 	header += length;
 	diameter_length -= length;
 
-	/*
-	 *	The checks for length above ensure that we always have
-	 *	diameter_length large enough to hold length + padding.
-	 */
 	if ((length & 0x03) != 0) {
 		attr_length = 4 - (length & 0x03); /* padding */
+
+		if (diameter_length < attr_length) {
+			*pvp = head;
+			return radius_length;
+		}
+
 		header += attr_length;
 		diameter_length -= attr_length;
 	}
