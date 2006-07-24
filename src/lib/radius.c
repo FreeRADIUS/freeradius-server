@@ -549,6 +549,9 @@ static void make_tunnel_passwd(uint8_t *output, int *outlen,
 
 /*
  *	Hack for IETF RADEXT.  Don't use in a production environment!
+ *
+ *	FIXME: Pack multiple diameter attributes into one
+ *	Extended-Attribute!
  */
 static int vp2diameter(const RADIUS_PACKET *packet,
 		       const RADIUS_PACKET *original, const char *secret,
@@ -623,9 +626,6 @@ static int vp2diameter(const RADIUS_PACKET *packet,
 		/*
 		 *	Length MAY be larger than can fit into the
 		 *	encapsulating attribute!
-		 *
-		 *	FIXME: Note that diameter2vp doesn't handle this
-		 *	splitting very well. (i.e. at all.)
 		 */
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
@@ -1899,37 +1899,125 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 /*
  *	Hack for IETF RADEXT.  Don't use in a production environment.
  *
- *	FIXME: If this does get deployed, return *multiple* VP's by
- *	decoding multiple diameter AVP's that can get packet into one
- *	or more Extended-Attribute's, and which may span across
- *	multiple EA's.  Also, fix the "tail" handling just after
- *	"create_pair:" to walk to the last VP.
- *
- *	Note that due to other architecture limitations, we can't
- *	handle AVP's with more than 253 bytes of data, but that should
- *	be enough for initial inter-operability.
+ *	Note that due to architecture limitations, we can't handle
+ *	AVP's with more than 253 bytes of data, but that should be
+ *	enough for initial inter-operability.
  */
-static VALUE_PAIR *diameter2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-			       const char *secret, int attribute, int attr_length,
-			       const uint8_t *data)
+static int diameter2vp(const RADIUS_PACKET *packet,
+		       const RADIUS_PACKET *original, const char *secret,
+		       const uint8_t *data, int total_length,
+		       VALUE_PAIR **pvp)
 {
-	int lookup;
+	int lookup, offset, radius_length, attr_length, diameter_length, raw;
 	uint32_t attr, length, vendor;
 	DICT_ATTR *da;
-	VALUE_PAIR *vp;
+	VALUE_PAIR *head, **tail, *vp;
+	uint8_t *header;	/* diameter header */
+	uint8_t	diameter[4096];
 
-	if ((vp = paircreate(attribute, PW_TYPE_OCTETS)) == NULL) {
-		return NULL;
+	diameter_length = radius_length = 0;
+	header = diameter;
+
+	*pvp = NULL;
+
+	/*
+	 *	Unpack all contiguous Extended-Attributes into a local
+	 *	buffer.  It's slow, but it's safe.
+	 */
+	while (total_length > 0) {
+		if (data[0] != PW_EXTENDED_ATTRIBUTE) break;
+
+		attr_length = data[1];
+		radius_length += attr_length;
+		total_length -= attr_length;
+		attr_length -= 2;
+
+		memcpy(header, data + 2, attr_length);
+		header += attr_length;
+		diameter_length += attr_length;
+
+		data += attr_length + 2;
 	}
 
-	memcpy(vp->vp_octets, data, attr_length);
-	vp->length = attr_length; /* updated later */
+	head = NULL;
+	tail = NULL;
+	header = diameter;
 
-	if (attr_length < 12) goto raw;
+next_diameter:
+	raw = 0;
 
-	memcpy(&attr, data, 4);
+	if ((vp = paircreate(PW_EXTENDED_ATTRIBUTE, PW_TYPE_OCTETS)) == NULL) {
+		pairfree(&head);
+		return radius_length;
+	}
+
+	/*
+	 *	Don't add it to the tail until we know it's OK.
+	 */
+
+	/*
+	 *	Too little data to contain a diameter header.
+	 */
+	if (diameter_length < 12) {
+	done:
+		vp->type = PW_TYPE_OCTETS;
+		memcpy(vp->vp_octets, header, diameter_length);
+		vp->length = diameter_length;
+		
+		/*
+		 *	Ensure there's no encryption or tag stuff,
+		 *	we just pass the attribute as-is.
+		 */
+		memset(&vp->flags, 0, sizeof(vp->flags));
+
+
+		if (!head) {	/* add vp to the list */
+			*pvp = vp;
+		} else {
+			*pvp = head;
+			*tail = vp;
+		}
+
+		return radius_length;
+	}
+
+	/*
+	 *	Sanity check the lengths, next.  If the length is too
+	 *	short, then the rest of the diameter buffer can't be
+	 *	parsed.
+	 */
+	length = (header[5] << 16) | (header[6] << 8) | header[7];
+
+	/*
+	 *	lies about the length (too short)
+	 *	or lies about the length (too long)
+	 *	or VSA
+	 *		with too little diameter data
+	 *		or with too little content
+	 */
+	if ((length < 9) ||
+	    (length > diameter_length) ||
+	    (((header[4] & 0x80) != 0) &&
+	     ((diameter_length < 16) || (length < 13)))) {
+		/*
+		 *	The rest of the data is small enough to fit
+		 *	into one VP.  Copy it over, and return it.
+		 */
+		if (diameter_length <= 253) goto done;
+
+		/*
+		 *	FIXME: make multiple VP's of the rest of the
+		 *	data, so that we don't lose anything!
+		 */
+		pairfree(&vp);
+
+		*pvp = head;
+		return radius_length;
+	}
+
+	memcpy(&attr, header, 4);
 	attr = ntohl(attr);
-	if (attr > 65535) goto raw; /* FreeRADIUS implementation limitations */
+	if (attr > 65535) raw = 1; /* implementation limitations */
 
 	/*
 	 *	1..255 are RADIUS, and shouldn't be encapsulated this way.
@@ -1938,30 +2026,38 @@ static VALUE_PAIR *diameter2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET 
 	 *	We've arbitrarily assigned 32768..65535 from the
 	 *	Diameter space to "extended RADIUS" attributes.
 	 */
-	if (attr < 32768) goto raw;
+	if (attr < 32768) raw = 1;
 
 	/*
 	 *	We don't like any non-vendor flag bits being set.
 	 */
-	if ((data[4] & 0x7f) != 0) goto raw;
-
-	length = (data[5] << 24) | (data[6] << 16) | data[7];
-	if (length > attr_length) goto raw;
-	if ((attr_length - length) > 3) goto raw; /* minimal padding */
+	if ((header[4] & 0x7f) != 0) raw = 1;
 
 	vendor = 0;
-	if ((data[4] & 0x80) != 0) {
-		if (attr_length < 16) goto raw;
-
-		memcpy(&vendor, data + 8 , 4);
+	if ((header[4] & 0x80) != 0) {
+		memcpy(&vendor, header + 8 , 4);
 		vendor = ntohl(vendor);
-		if (vendor > 32767) goto raw; /* implementation limitations */
+		if (vendor > 32767) raw = 1; /* implementation limitations */
 
-		data += 12;
-		length -= 12;
+		offset = 12;
 	} else {
-		data += 8;
-		length -= 8;
+		offset = 8;
+	}
+	length -= offset;
+	header += offset;
+	diameter_length -= offset;
+
+	/*
+	 *	FIXME: This is an implementation limitation.  We
+	 *	should really allow strings longer than 253 bytes...
+	 *
+	 *	And bailing out completely (i.e. throwing away the rest
+	 *	of the data) isn't an intelligent thing to do, either.
+	 */
+	if (length > 253) {
+		*pvp = head;
+		pairfree(&vp);
+		return radius_length;
 	}
 
 	lookup = attr;
@@ -1969,20 +2065,32 @@ static VALUE_PAIR *diameter2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET 
 	lookup |= (1 << 31);	/* see dict_addattr */
 
 	da = dict_attrbyvalue(lookup);
-	if (!da) goto raw;
+	if (!da) raw = 1;
+
+	if (!raw) {
+		/*
+		 *	Copied from paircreate.
+		 */
+		strcpy(vp->name, da->name);
+		vp->type = da->type;
+		vp->flags = da->flags;
+		vp->attribute = da->attr;
+	} else {
+		vp->type = PW_TYPE_OCTETS;
+	}
 
 	switch (vp->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_ABINARY:
-		memcpy(vp->vp_octets, data, length);
+		memcpy(vp->vp_octets, header, length);
 		vp->length = length;
 		break;
 
 	case PW_TYPE_INTEGER:
-		if (length != 4) goto raw;
+		if (length != 4) goto force_octets;
 
-		memcpy(&vp->lvalue, vp->vp_octets, 4);
+		memcpy(&vp->lvalue, header, 4);
 		vp->lvalue = ntohl(vp->lvalue);
 		vp->length = 4;
 
@@ -2002,18 +2110,18 @@ static VALUE_PAIR *diameter2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET 
 		break;
 
 	case PW_TYPE_DATE:
-		if (length != 4) goto raw;
+		if (length != 4) goto force_octets;
 
-		memcpy(&vp->lvalue, vp->vp_octets, 4);
+		memcpy(&vp->lvalue, header, 4);
 		vp->lvalue = ntohl(vp->lvalue);
 		vp->length = 4;
 		break;
 
 
 	case PW_TYPE_IPADDR:
-		if (length != 4) goto raw;
+		if (length != 4) goto force_octets;
 
-		memcpy(&vp->lvalue, vp->vp_octets, 4);
+		memcpy(&vp->lvalue, header, 4);
 		vp->length = 4;
 		break;
 
@@ -2021,8 +2129,8 @@ static VALUE_PAIR *diameter2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET 
 		 *	IPv6 interface ID is 8 octets long.
 		 */
 	case PW_TYPE_IFID:
-		if (length != 8) goto raw;
-		memcpy(vp->vp_ifid, data, 8);
+		if (length != 8) goto force_octets;
+		memcpy(vp->vp_ifid, header, 8);
 		vp->length = 8;
 		break;
 		
@@ -2030,8 +2138,8 @@ static VALUE_PAIR *diameter2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET 
 		 *	IPv6 addresses are 16 octets long
 		 */
 	case PW_TYPE_IPV6ADDR:
-		if (length != 16) goto raw;
-		memcpy(&vp->vp_ipv6addr, data, 16);
+		if (length != 16) goto force_octets;
+		memcpy(&vp->vp_ipv6addr, header, 16);
 		vp->length = 16;
 		break;
 		
@@ -2045,10 +2153,10 @@ static VALUE_PAIR *diameter2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET 
 		 *	The prefix length can have value 0 to 128.
 		 */
 	case PW_TYPE_IPV6PREFIX:
-		if (length < 2 || length > 18) goto raw;
-		if (data[1] > 128) goto raw;
+		if (length < 2 || length > 18) goto force_octets;
+		if (header[1] > 128) goto force_octets;
 
-		memcpy(vp->vp_octets, data, length);
+		memcpy(vp->vp_ipv6prefix, header, length);
 		vp->length = length;
 		
 
@@ -2063,26 +2171,40 @@ static VALUE_PAIR *diameter2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET 
 		break;
 
 	default:
-	raw:
+	force_octets:
 		vp->type = PW_TYPE_OCTETS;
-
+		
 		/*
 		 *	Ensure there's no encryption or tag stuff,
 		 *	we just pass the attribute as-is.
 		 */
 		memset(&vp->flags, 0, sizeof(vp->flags));
-		return vp;
+		break;
 	}
 
-	/*
-	 *	Copied from paircreate()
-	 */
-	strcpy(vp->name, da->name);
-	vp->type = da->type;
-	vp->attribute = da->attr;
-	vp->flags = da->flags;
+	if (!head) {
+		head = vp;
+	} else {
+		*tail = vp;
+	}
+	tail = &vp->next;
 
-	return vp;
+	header += length;
+	diameter_length -= length;
+
+	/*
+	 *	The checks for length above ensure that we always have
+	 *	diameter_length large enough to hold length + padding.
+	 */
+	if ((length & 0x03) != 0) {
+		attr_length = 4 - (length & 0x03); /* padding */
+		header += attr_length;
+		diameter_length -= attr_length;
+	}
+	if (diameter_length > 0) goto next_diameter;
+
+	*pvp = head;
+	return radius_length;
 }
 
 
@@ -2358,23 +2480,24 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			    (ptr[0] == 0) ||  (ptr[1] < 2) ||
 			    (ptr[1] > packet_length)) break;
 
-			attribute = *ptr++;
-			attrlen   = *ptr++;
-
-			attrlen -= 2;
-			packet_length  -= 2;
-
 			/*
 			 *	192 is "integer" for Ascend.  So if we
 			 *	get 12 or more bytes, it must be the
 			 *	new extended format.
 			 */
-			if ((attribute == PW_EXTENDED_ATTRIBUTE) &&
-			    (attrlen >= 12)) {
-				pair = diameter2vp(packet, original, secret,
-						   attribute, attrlen, ptr);
+			if ((ptr[0] == PW_EXTENDED_ATTRIBUTE) &&
+			    (ptr[1] >= 2 + 12)) {
+				pair = NULL;
+				attrlen = diameter2vp(packet, original, secret,
+						      ptr, packet_length, &pair);
 				goto check_pair;
 			}
+
+			attribute = *ptr++;
+			attrlen   = *ptr++;
+
+			attrlen -= 2;
+			packet_length  -= 2;
 
 			if (attribute != PW_VENDOR_SPECIFIC) goto create_pair;
 			
@@ -2571,9 +2694,12 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			return -1;
 		}
 
-		debug_pair(pair);
 		*tail = pair;
-		tail = &pair->next;
+		while (pair) {
+			debug_pair(pair);
+			tail = &pair->next;
+			pair = pair->next;
+		}
 
 		ptr += attrlen;
 		packet_length -= attrlen;
