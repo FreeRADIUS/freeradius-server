@@ -137,6 +137,7 @@ $INCLUDE dictionary.springtide
 $INCLUDE dictionary.starent
 $INCLUDE dictionary.telebit
 $INCLUDE dictionary.trapeze
+$INCLUDE dictionary.tropos
 $INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.valemount
