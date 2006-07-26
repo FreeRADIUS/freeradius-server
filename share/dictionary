@@ -80,6 +80,7 @@ $INCLUDE dictionary.acc
 $INCLUDE dictionary.airespace
 $INCLUDE dictionary.alcatel
 $INCLUDE dictionary.alteon
+$INCLUDE dictionary.alvarion
 $INCLUDE dictionary.aruba
 $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
@@ -127,6 +128,7 @@ $INCLUDE dictionary.propel
 $INCLUDE dictionary.quintum
 $INCLUDE dictionary.redback
 $INCLUDE dictionary.redcreek
+$INCLUDE dictionary.riverstone
 $INCLUDE dictionary.roaringpenguin
 $INCLUDE dictionary.shasta
 $INCLUDE dictionary.shiva
@@ -135,11 +137,13 @@ $INCLUDE dictionary.springtide
 $INCLUDE dictionary.starent
 $INCLUDE dictionary.telebit
 $INCLUDE dictionary.trapeze
+$INCLUDE dictionary.tropos
 $INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.valemount
 $INCLUDE dictionary.versanet
 $INCLUDE dictionary.waverider
+$INCLUDE dictionary.walabi
 $INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia
 $INCLUDE dictionary.xylan
