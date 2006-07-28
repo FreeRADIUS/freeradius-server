@@ -537,6 +537,11 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	DICT_ATTR	*dattr;
 	DICT_VALUE	*dval;
 
+	if (!*namestr) {
+		librad_log("dict_addvalue: empty names are not permitted");
+		return -1;
+	}
+
 	if ((length = strlen(namestr)) >= DICT_VALUE_MAX_NAME_LEN) {
 		librad_log("dict_addvalue: value name too long");
 		return -1;
@@ -846,7 +851,8 @@ static int process_value(const char* fn, const int line, char **argv,
 static int process_value_alias(const char* fn, const int line, char **argv,
 			       int argc)
 {
-	DICT_ATTR *da;
+	DICT_ATTR *my_da, *da;
+	DICT_VALUE *dval;
 
 	if (argc != 2) {
 		librad_log("dict_init: %s[%d]: invalid VALUE-ALIAS line",
@@ -854,20 +860,20 @@ static int process_value_alias(const char* fn, const int line, char **argv,
 		return -1;
 	}
 
-	da = dict_attrbyname(argv[0]);
-	if (!da) {
+	my_da = dict_attrbyname(argv[0]);
+	if (!my_da) {
 		librad_log("dict_init: %s[%d]: ATTRIBUTE \"%s\" does not exist",
 			   fn, line, argv[1]);
 		return -1;
 	}
 
-	if (da->flags.has_value) {
+	if (my_da->flags.has_value) {
 		librad_log("dict_init: %s[%d]: Cannot add VALUE-ALIAS to ATTRIBUTE \"%s\" with pre-existing VALUE",
 			   fn, line, argv[0]);
 		return -1;
 	}
 
-	if (da->flags.has_value_alias) {
+	if (my_da->flags.has_value_alias) {
 		librad_log("dict_init: %s[%d]: Cannot add VALUE-ALIAS to ATTRIBUTE \"%s\" with pre-existing VALUE-ALIAS",
 			   fn, line, argv[0]);
 		return -1;
@@ -892,9 +898,26 @@ static int process_value_alias(const char* fn, const int line, char **argv,
 		return -1;
 	}
 
-	if (dict_addvalue(argv[1], argv[0], -1) < 0) {
-		librad_log("dict_init: %s[%d]: %s",
-			   fn, line, librad_errstr);
+	if (my_da->type != da->type) {
+		librad_log("dict_init: %s[%d]: Cannot add VALUE-ALIAS between attributes of differing type",
+			   fn, line);
+		return -1;
+	}
+
+	if ((dval = malloc(sizeof(*dval))) == NULL) {
+		librad_log("dict_addvalue: out of memory");
+		return -1;
+	}
+	memset(dval, 0, sizeof(*dval));
+
+	dval->name[0] = '\0';	/* empty name */
+	dval->attr = my_da->attr;
+	dval->value = da->attr;
+
+	if (!lrad_hash_table_insert(values_byname, dval)) {
+		librad_log("dict_init: %s[%d]: Error create alias",
+			   fn, line);
+		free(dval);
 		return -1;
 	}
 
@@ -1431,21 +1454,15 @@ DICT_VALUE *dict_valbyattr(int attr, int value)
 	 *	First, look up aliases.
 	 */
 	dval.attr = attr;
-	dval.value = -1;
-
-retry:
-	dv = lrad_hash_table_finddata(values_byvalue, &dval);
-	if (dv) {
-		DICT_ATTR *da = dict_attrbyname(dv->name);
-		if (!da) return NULL;
-
-		dval.attr = da->attr;
-		goto retry;
-	}
+	dval.name[0] = '\0';
 
 	/*
-	 *	Nope.  Look it up by value.
+	 *	Look up the attribute alias target, and use
+	 *	the correct attribute number if found.
 	 */
+	dv = lrad_hash_table_finddata(values_byname, &dval);
+	if (dv)	dval.attr = dv->value;
+
 	dval.value = value;
 	
 	return lrad_hash_table_finddata(values_byvalue, &dval);
@@ -1463,26 +1480,15 @@ DICT_VALUE *dict_valbyname(int attr, const char *name)
 
 	my_dv = (DICT_VALUE *) buffer;
 	my_dv->attr = attr;
+	my_dv->name[0] = '\0';
 
 	/*
-	 *	First, look up aliases.
+	 *	Look up the attribute alias target, and use
+	 *	the correct attribute number if found.
 	 */
-	my_dv->value = -1;
+	dv = lrad_hash_table_finddata(values_byname, my_dv);
+	if (dv) my_dv->attr = dv->value;
 
-retry:
-	dv = lrad_hash_table_finddata(values_byvalue, my_dv);
-	if (dv) {
-		DICT_ATTR *da = dict_attrbyname(dv->name);
-		if (!da) return NULL;
-		
-		my_dv->attr = da->attr;
-		goto retry;
-	}
-
-	/*
-	 *	Now that we have the correct attribute number,
-	 *	look it up by name.
-	 */
 	strNcpy(my_dv->name, name, DICT_VALUE_MAX_NAME_LEN);
 
 	return lrad_hash_table_finddata(values_byname, my_dv);
