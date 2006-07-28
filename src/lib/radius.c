@@ -811,6 +811,22 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		/* nothing more to do */
 		break;
 			
+	case PW_TYPE_BYTE:
+		len = 1;	/* just in case */
+		array[0] = vp->lvalue & 0xff;
+		data = array;
+		offset = 0;
+		break;
+			
+
+	case PW_TYPE_SHORT:
+		len = 2;	/* just in case */
+		array[0] = (vp->lvalue >> 8) & 0xff;
+		array[1] = vp->lvalue & 0xff;
+		data = array;
+		offset = 0;
+		break;
+
 	case PW_TYPE_INTEGER:
 		len = 4;	/* just in case */
 		lvalue = htonl(vp->lvalue);
@@ -2322,6 +2338,19 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *origin
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_ABINARY:
 		/* nothing more to do */
+		break;
+
+	case PW_TYPE_BYTE:
+		if (vp->length != 1) goto raw;
+
+		vp->lvalue = vp->vp_octets[0];
+		break;
+
+
+	case PW_TYPE_SHORT:
+		if (vp->length != 2) goto raw;
+
+		vp->lvalue = (vp->vp_octets[0] << 8) | vp->vp_octets[1];
 		break;
 
 	case PW_TYPE_INTEGER:

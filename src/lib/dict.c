@@ -91,6 +91,8 @@ static const LRAD_NAME_NUMBER type_table[] = {
 	{ "ifid",	PW_TYPE_IFID },
 	{ "ipv6addr",	PW_TYPE_IPV6ADDR },
 	{ "ipv6prefix", PW_TYPE_IPV6PREFIX },
+	{ "byte", PW_TYPE_BYTE },
+	{ "short", PW_TYPE_SHORT },
 	{ NULL, 0 }
 };
 
@@ -555,7 +557,36 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	 */
 	dattr = dict_attrbyname(attrstr);
 	if (dattr) {
+		if (dattr->flags.has_value_alias) {
+			librad_log("dict_addvalue: Cannot add VALUE for ATTRIBUTE \"%s\": It already has a VALUE-ALIAS", attrstr);
+			return -1;
+		}
+
 		dval->attr = dattr->attr;
+
+		/*
+		 *	Enforce valid values
+		 *
+		 *	Don't worry about fixups...
+		 */
+		switch (dattr->type) {
+			case PW_TYPE_BYTE:
+				if (value > 255) {
+					librad_log("dict_addvalue: Value \"%d\" is larger than 255", value);
+					return -1;
+				}
+				break;
+			case PW_TYPE_SHORT:
+				if (value > 65535) {
+					librad_log("dict_addvalue: Value \"%d\" is larger than 65535", value);
+					return -1;
+				}
+				break;
+			default:
+				break;
+		}
+
+		dattr->flags.has_value = 1;
 	} else {
 		value_fixup_t *fixup;
 		
@@ -658,6 +689,9 @@ static int process_attribute(const char* fn, const int line,
 	 */
 	memset(&flags, 0, sizeof(flags));
 	if (argc == 4) {
+		/*
+		 *	FIXME: replace strtok with str2argv
+		 */
 		s = strtok(argv[3], ",");
 		while (s) {
 			if (strcmp(s, "has_tag") == 0 ||
@@ -677,8 +711,31 @@ static int process_attribute(const char* fn, const int line,
 						    fn, line, s);
 					return -1;
 				}
+
 			} else if (strncmp(s, "diameter", 8) == 0) {
 				flags.diameter = 1;
+
+			} else if (strncmp(s, "array", 8) == 0) {
+				flags.array = 1;
+
+				switch (type) {
+					case PW_TYPE_IPADDR:
+					case PW_TYPE_BYTE:
+					case PW_TYPE_SHORT:
+					case PW_TYPE_INTEGER:
+					case PW_TYPE_DATE:
+						break;
+					
+					default:
+						librad_log( "dict_init: %s[%d] Only IP addresses can have the \"array\" flag set.",
+							    fn, line);
+						return -1;
+				}
+
+			} else if (block_vendor) {
+				librad_log( "dict_init: %s[%d]: unknown option \"%s\"",
+					    fn, line, s);
+				return -1;
 
 			} else {
 				/* Must be a vendor 'flag'... */
@@ -689,7 +746,7 @@ static int process_attribute(const char* fn, const int line,
 				
 				vendor = dict_vendorbyname(s);
 				if (!vendor) {
-					librad_log( "dict_init: %s[%d]: unknown vendor %s",
+					librad_log( "dict_init: %s[%d]: unknown vendor \"%s\"",
 						    fn, line, s);
 					return -1;
 				}
@@ -771,6 +828,71 @@ static int process_value(const char* fn, const int line, char **argv,
 	sscanf(argv[2], "%i", &value);
 
 	if (dict_addvalue(argv[1], argv[0], value) < 0) {
+		librad_log("dict_init: %s[%d]: %s",
+			   fn, line, librad_errstr);
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/*
+ *	Process the VALUE-ALIAS command
+ *
+ *	This allows VALUE mappings to be shared among multiple
+ *	attributes.
+ */
+static int process_value_alias(const char* fn, const int line, char **argv,
+			       int argc)
+{
+	DICT_ATTR *da;
+
+	if (argc != 2) {
+		librad_log("dict_init: %s[%d]: invalid VALUE-ALIAS line",
+			fn, line);
+		return -1;
+	}
+
+	da = dict_attrbyname(argv[0]);
+	if (!da) {
+		librad_log("dict_init: %s[%d]: ATTRIBUTE \"%s\" does not exist",
+			   fn, line, argv[1]);
+		return -1;
+	}
+
+	if (da->flags.has_value) {
+		librad_log("dict_init: %s[%d]: Cannot add VALUE-ALIAS to ATTRIBUTE \"%s\" with pre-existing VALUE",
+			   fn, line, argv[0]);
+		return -1;
+	}
+
+	if (da->flags.has_value_alias) {
+		librad_log("dict_init: %s[%d]: Cannot add VALUE-ALIAS to ATTRIBUTE \"%s\" with pre-existing VALUE-ALIAS",
+			   fn, line, argv[0]);
+		return -1;
+	}
+
+	da = dict_attrbyname(argv[1]);
+	if (!da) {
+		librad_log("dict_init: %s[%d]: Cannot find ATTRIBUTE \"%s\" for alias",
+			   fn, line, argv[1]);
+		return -1;
+	}
+
+	if (!da->flags.has_value) {
+		librad_log("dict_init: %s[%d]: VALUE-ALIAS cannot refer to ATTRIBUTE %s: It has no values",
+			   fn, line, argv[1]);
+		return -1;
+	}
+
+	if (da->flags.has_value_alias) {
+		librad_log("dict_init: %s[%d]: Cannot add VALUE-ALIAS to ATTRIBUTE \"%s\" which itself has a VALUE-ALIAS",
+			   fn, line, argv[1]);
+		return -1;
+	}
+
+	if (dict_addvalue(argv[1], argv[0], -1) < 0) {
 		librad_log("dict_init: %s[%d]: %s",
 			   fn, line, librad_errstr);
 		return -1;
@@ -1050,6 +1172,15 @@ static int my_dict_init(const char *dir, const char *fn,
 			continue;
 		}
 
+		if (strcasecmp(argv[0], "VALUE-ALIAS") == 0) {
+			if (process_value_alias(fn, line,
+						argv + 1, argc - 1) == -1) {
+				fclose(fp);
+				return -1;
+			}
+			continue;
+		}
+
 		/*
 		 *	Process VENDOR lines.
 		 */
@@ -1294,9 +1425,27 @@ DICT_ATTR *dict_attrbyname(const char *name)
  */
 DICT_VALUE *dict_valbyattr(int attr, int value)
 {
-	DICT_VALUE dval;
+	DICT_VALUE dval, *dv;
 
+	/*
+	 *	First, look up aliases.
+	 */
 	dval.attr = attr;
+	dval.value = -1;
+
+retry:
+	dv = lrad_hash_table_finddata(values_byvalue, &dval);
+	if (dv) {
+		DICT_ATTR *da = dict_attrbyname(dv->name);
+		if (!da) return NULL;
+
+		dval.attr = da->attr;
+		goto retry;
+	}
+
+	/*
+	 *	Nope.  Look it up by value.
+	 */
 	dval.value = value;
 	
 	return lrad_hash_table_finddata(values_byvalue, &dval);
@@ -1307,16 +1456,36 @@ DICT_VALUE *dict_valbyattr(int attr, int value)
  */
 DICT_VALUE *dict_valbyname(int attr, const char *name)
 {
-	DICT_VALUE *dv;
-	uint32_t buffer[(sizeof(*dv) + DICT_VALUE_MAX_NAME_LEN + 3)/4];
+	DICT_VALUE *my_dv, *dv;
+	uint32_t buffer[(sizeof(*my_dv) + DICT_VALUE_MAX_NAME_LEN + 3)/4];
 
 	if (!name) return NULL;
 
-	dv = (DICT_VALUE *) buffer;
-	dv->attr = attr;
-	strNcpy(dv->name, name, DICT_VALUE_MAX_NAME_LEN);
+	my_dv = (DICT_VALUE *) buffer;
+	my_dv->attr = attr;
 
-	return lrad_hash_table_finddata(values_byname, dv);
+	/*
+	 *	First, look up aliases.
+	 */
+	my_dv->value = -1;
+
+retry:
+	dv = lrad_hash_table_finddata(values_byvalue, my_dv);
+	if (dv) {
+		DICT_ATTR *da = dict_attrbyname(dv->name);
+		if (!da) return NULL;
+		
+		my_dv->attr = da->attr;
+		goto retry;
+	}
+
+	/*
+	 *	Now that we have the correct attribute number,
+	 *	look it up by name.
+	 */
+	strNcpy(my_dv->name, name, DICT_VALUE_MAX_NAME_LEN);
+
+	return lrad_hash_table_finddata(values_byname, my_dv);
 }
 
 /*

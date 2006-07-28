@@ -150,6 +150,8 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 				        a = buf;
 				}
 			} else {
+			case PW_TYPE_BYTE:
+			case PW_TYPE_SHORT:
 			        /* Normal, non-tagged attribute */
 			        if ((v = dict_valbyattr(vp->attribute, vp->lvalue))
 				    != NULL)

@@ -86,6 +86,14 @@ VALUE_PAIR *paircreate(int attr, int type)
 		}
 	}
 	switch (vp->type) {
+		case PW_TYPE_BYTE:
+			vp->length = 1;
+			break;
+
+		case PW_TYPE_SHORT:
+			vp->length = 2;
+			break;
+
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_IPADDR:
 		case PW_TYPE_DATE:
@@ -771,6 +779,63 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			if (s) free(s);
 			vp->length = 4;
 			break;
+
+		case PW_TYPE_BYTE:
+			/*
+			 *	Note that ALL integers are unsigned!
+			 */
+			if (isdigit((int) value[0]) &&
+			    (strspn(value, "0123456789") == strlen(value))) {
+				vp->lvalue = (uint32_t) strtoul(value, NULL, 10);
+				if (vp->lvalue > 255) {
+					librad_log("Byte value \"%s\" is larger than 255", value);
+					return NULL;
+				}
+				vp->length = 1;
+			}
+
+			/*
+			 *	Look for the named value for the given
+			 *	attribute.
+			 */
+			else if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
+				librad_log("Unknown value %s for attribute %s",
+					   value, vp->name);
+				return NULL;
+			} else {
+				vp->lvalue = dval->value;
+				vp->length = 1;
+			}
+			break;
+
+		case PW_TYPE_SHORT:
+			/*
+			 *	Note that ALL integers are unsigned!
+			 */
+			if (isdigit((int) value[0]) &&
+			    (strspn(value, "0123456789") == strlen(value))) {
+				vp->lvalue = (uint32_t) strtoul(value, NULL, 10);
+				if (vp->lvalue > 65535) {
+					librad_log("Byte value \"%s\" is larger than 65535", value);
+					return NULL;
+				}
+				vp->length = 2;
+			}
+
+			/*
+			 *	Look for the named value for the given
+			 *	attribute.
+			 */
+			else if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
+				librad_log("Unknown value %s for attribute %s",
+					   value, vp->name);
+				return NULL;
+			} else {
+				vp->lvalue = dval->value;
+				vp->length = 2;
+			}
+			break;
+
 		case PW_TYPE_INTEGER:
 			/*
 			 *	Note that ALL integers are unsigned!
@@ -1594,6 +1659,8 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 		}
 		break;
 		
+	case PW_TYPE_BYTE:
+	case PW_TYPE_SHORT:
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
 		compare = two->lvalue - one->lvalue;
