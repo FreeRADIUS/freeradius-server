@@ -171,7 +171,7 @@ static int find_next_reset(rlm_sqlcounter_t *data, time_t timeval)
 		last = data->reset[len - 1];
 		if (!isalpha((int) last))
 			last = 'd';
-/*		num = atoi(data->reset); */
+		num = atoi(data->reset);
 		DEBUG("rlm_sqlcounter: num=%d, last=%c",num,last);
 	}
 	if (strcmp(data->reset, "hourly") == 0 || last == 'h') {
