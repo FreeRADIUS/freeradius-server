@@ -374,6 +374,15 @@ static int pap_authorize(void *instance, REQUEST *request)
 
 		case PW_AUTH_TYPE:
 			auth_type = TRUE;
+
+			/*
+			 *	Auth-Type := Accept
+			 *	Auth-Type := Reject
+			 */
+			if ((vp->lvalue == 254) ||
+			    (vp->lvalue == 4)) {
+			    found_pw = 1;
+			}
 			break;
 
 		default:
