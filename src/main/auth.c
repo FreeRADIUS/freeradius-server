@@ -198,8 +198,24 @@ static int rad_check_password(REQUEST *request)
 		return 0;
 	}
 
+	password_pair =  pairfind(request->config_items, PW_USER_PASSWORD);
+	if (password_pair) {
+		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		DEBUG("!!!    Replacing User-Password in config items with Cleartext-Password.     !!!");
+		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		DEBUG("!!! Please update your configuration so that the \"known good\"               !!!");
+		DEBUG("!!! clear text password is in Cleartext-Password, and not in User-Password. !!!");
+		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		password_pair->attribute = PW_CLEARTEXT_PASSWORD;
+		strNcpy(password_pair->name, "Cleatext-Password",
+			sizeof(password_pair->name));
+	}
+
 	/*
-	 *	Find the password from the users file.
+	 *	Find the "known good" password.
+	 *
+	 *	FIXME: We should get rid of these hacks, and replace
+	 *	them with a module.
 	 */
 	if ((password_pair = pairfind(request->config_items, PW_CRYPT_PASSWORD)) != NULL) {
 		/*
@@ -208,7 +224,7 @@ static int rad_check_password(REQUEST *request)
 		 */
 		if (auth_type == -1) auth_type = PW_AUTHTYPE_CRYPT;
 	} else {
-		password_pair = pairfind(request->config_items, PW_PASSWORD);
+		password_pair = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD);
 	}
 
 	if (auth_type < 0) {
@@ -285,7 +301,7 @@ static int rad_check_password(REQUEST *request)
 			/*
 			 *	Local password is just plain text.
 	 		 */
-			if (auth_item->attribute == PW_PASSWORD) {
+			if (auth_item->attribute == PW_USER_PASSWORD) {
 				if (strcmp((char *)password_pair->vp_strvalue,
 					   (char *)auth_item->vp_strvalue) != 0) {
 					DEBUG2("auth: user supplied User-Password does NOT match local User-Password");
@@ -514,7 +530,7 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if (!request->password) {
 		request->password = pairfind(request->packet->vps,
-					     PW_PASSWORD);
+					     PW_USER_PASSWORD);
 	}
 
 	/*
@@ -647,7 +663,7 @@ autz_redo:
 
 		/* double check: maybe the secret is wrong? */
 		if ((debug_flag > 1) && (auth_item != NULL) &&
-				(auth_item->attribute == PW_PASSWORD)) {
+				(auth_item->attribute == PW_USER_PASSWORD)) {
 			u_char *p;
 
 			p = auth_item->vp_strvalue;

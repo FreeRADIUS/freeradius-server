@@ -1187,8 +1187,8 @@ static int ldap_xlat(void *instance, REQUEST *request, char *fmt,
  *	For auto-header discovery.
  */
 static const LRAD_NAME_NUMBER header_names[] = {
-	{ "{clear}",	PW_USER_PASSWORD },
-	{ "{cleartext}", PW_USER_PASSWORD },
+	{ "{clear}",	PW_CLEARTEXT_PASSWORD },
+	{ "{cleartext}", PW_CLEARTEXT_PASSWORD },
 	{ "{md5}",	PW_MD5_PASSWORD },
 	{ "{smd5}",	PW_SMD5_PASSWORD },
 	{ "{crypt}",	PW_CRYPT_PASSWORD },
@@ -1508,7 +1508,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 			res = 0;
 
-			if ((passwd_item = pairfind(request->config_items, PW_USER_PASSWORD)) == NULL){
+			if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD)) == NULL){
 			
 				universal_password = rad_malloc(universal_password_len);
 				memset(universal_password, 0, universal_password_len);
@@ -1529,7 +1529,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					}
 
 					if (passwd_val){
-						if ((passwd_item = paircreate(PW_USER_PASSWORD,PW_TYPE_STRING)) == NULL){
+						if ((passwd_item = paircreate(PW_CLEARTEXT_PASSWORD,PW_TYPE_STRING)) == NULL){
 							radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
                                                 	ldap_msgfree(result);
 							ldap_release_conn(conn_id,inst->conns);
@@ -1731,7 +1731,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 		return RLM_MODULE_INVALID;
 	}
 
-	if(request->password->attribute != PW_PASSWORD) {
+	if(request->password->attribute != PW_USER_PASSWORD) {
 		radlog(L_AUTH, "rlm_ldap: Attribute \"User-Password\" is required for authentication. Cannot use \"%s\".", request->password->name);
 		return RLM_MODULE_INVALID;
 	}
@@ -1908,7 +1908,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 
 				if (request->reply->code == PW_AUTHENTICATION_REJECT) {
 				  /* Bind to eDirectory as the RADIUS user with a wrong password. */
-				  vp_pwd = pairfind(request->config_items, PW_PASSWORD);
+				  vp_pwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD);
 				  strcpy(password, vp_pwd->vp_strvalue);
 				  if (strlen(password) > 0) {
 					  if (password[0] != 'a') {
@@ -1922,7 +1922,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 				  res = RLM_MODULE_REJECT;
 				} else {
 					/* Bind to eDirectory as the RADIUS user using the user's UP */
-					vp_pwd = pairfind(request->config_items, PW_PASSWORD);
+					vp_pwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD);
 					if (vp_pwd == NULL) {
 						DEBUG("rlm_ldap: User's Universal Password not in config items list.");
 						return RLM_MODULE_FAIL;

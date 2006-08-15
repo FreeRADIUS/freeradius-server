@@ -99,8 +99,8 @@ static const LRAD_NAME_NUMBER schemes[] = {
  *	For auto-header discovery.
  */
 static const LRAD_NAME_NUMBER header_names[] = {
-	{ "{clear}",	PW_USER_PASSWORD },
-	{ "{cleartext}", PW_USER_PASSWORD },
+	{ "{clear}",	PW_CLEARTEXT_PASSWORD },
+	{ "{cleartext}", PW_CLEARTEXT_PASSWORD },
 	{ "{md5}",	PW_MD5_PASSWORD },
 	{ "{smd5}",	PW_SMD5_PASSWORD },
 	{ "{crypt}",	PW_CRYPT_PASSWORD },
@@ -287,55 +287,60 @@ static int pap_authorize(void *instance, REQUEST *request)
 	rlm_pap_t *inst = instance;
 	int auth_type = FALSE;
 	int found_pw = FALSE;
-	int fixed_auto = FALSE;
 	VALUE_PAIR *vp;
 
 	for (vp = request->config_items; vp != NULL; vp = vp->next) {
 		switch (vp->attribute) {
-		case PW_USER_PASSWORD:
+		case PW_USER_PASSWORD: /* deprecated */
 			found_pw = TRUE;
 
 			/*
 			 *	Look for '{foo}', and use them
 			 */
-			if (inst->auto_header && (vp->vp_strvalue[0] == '{')) {
-				int attr;
-				uint8_t *p, *q;
-				char buffer[64];
-
-				q = vp->vp_strvalue;
-				p = strchr(q + 1, '}');
-				if (!p) break;
-
-				if ((size_t) (p - q) > sizeof(buffer)) break;
-
-				memcpy(buffer, q, p - q + 1);
-				buffer[p - q + 1] = '\0';
-
-				attr = lrad_str2int(header_names, buffer, 0);
-				if (!attr) {
-					DEBUG2("rlm_pap: Using auto_header, and found unknown header {%s}: Not doing anything", buffer);
-					break;
-				}
-
-				/*
-				 *	Catch the case of cleartext.
-				 */
-				if (attr == PW_USER_PASSWORD) {
-					vp->length = strlen(p + 1);
-					memmove(vp->vp_strvalue, p + 1,
-						vp->length + 1);
-				} else {
-					VALUE_PAIR *new_vp;
-					new_vp = paircreate(attr, PW_TYPE_STRING);
-					if (!new_vp) break; /* OOM */
-					
-					strcpy(new_vp->vp_strvalue, p + 1);/* bounds OK */
-					new_vp->length = strlen(new_vp->vp_strvalue);
-					pairadd(&request->config_items, new_vp);
-					fixed_auto = TRUE;
-				}
+			if (!inst->auto_header ||
+			    (vp->vp_strvalue[0] != '{')) {
+				break;
 			}
+			/* FALL-THROUGH */
+
+		case PW_PASSWORD_WITH_HEADER: /* preferred */
+		{
+			int attr;
+			uint8_t *p, *q;
+			char buffer[64];
+			VALUE_PAIR *new_vp;
+			
+			found_pw = TRUE;
+			q = vp->vp_strvalue;
+			p = strchr(q + 1, '}');
+			if (!p) break;
+			
+			if ((size_t) (p - q) > sizeof(buffer)) break;
+			
+			memcpy(buffer, q, p - q + 1);
+			buffer[p - q + 1] = '\0';
+			
+			attr = lrad_str2int(header_names, buffer, 0);
+			if (!attr) {
+				DEBUG2("rlm_pap: Found unknown header {%s}: Not doing anything", buffer);
+				break;
+			}
+			
+			new_vp = paircreate(attr, PW_TYPE_STRING);
+			if (!new_vp) break; /* OOM */
+			
+			strcpy(new_vp->vp_strvalue, p + 1);/* bounds OK */
+			new_vp->length = strlen(new_vp->vp_strvalue);
+			pairadd(&request->config_items, new_vp);
+
+			/*
+			 *	May be old-style User-Password with header.
+			 *	We've found the header & created the proper
+			 *	attribute, so we should delete the old
+			 *	User-Password here.
+			 */
+			pairdelete(&request->config_items, PW_USER_PASSWORD);
+		}
 			break;
 
 		case PW_CRYPT_PASSWORD:
@@ -398,11 +403,6 @@ static int pap_authorize(void *instance, REQUEST *request)
 		DEBUG("rlm_pap: WARNING! No \"known good\" password found for the user.  Authentication may fail because of this.");
 		return RLM_MODULE_NOOP;
 	}
-
-	/*
-	 *	Don't leave the old User-Password laying around.
-	 */
-	if (fixed_auto) pairdelete(&request->config_items, PW_USER_PASSWORD);
 
 	/*
 	 *	Don't touch existing Auth-Types.
@@ -488,7 +488,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	if (inst->sch == PAP_ENC_AUTO) {
 		for (vp = request->config_items; vp != NULL; vp = vp->next) {
 			switch (vp->attribute) {
-			case PW_USER_PASSWORD:
+			case PW_USER_PASSWORD: /* deprecated */
+			case PW_CLEARTEXT_PASSWORD: /* preferred */
 				goto do_clear;
 				
 			case PW_CRYPT_PASSWORD:

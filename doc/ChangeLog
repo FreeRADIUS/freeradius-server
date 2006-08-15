@@ -1,4 +1,8 @@
 FreeRADIUS 2.0.0 ; $Date$, urgency=low
+	* Use Cleartext-Password for "known good" password in config items,
+	  rather than "User-Password".  This should solve a lot of problems.
+	* Define Password-With-Header for LDAP-style "{crypt}...." passwords,
+	  to avoid overloading User-Password.
 	* Permit per-socket list of clients in "listen" directives
 	* Faster client lookups, to permit scaling to 10^6 or more clients.
 	* Removed radrelay and radsqlrelay.  See "man radrelay.conf" for

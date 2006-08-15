@@ -440,7 +440,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		/*
 		 *	Don't print passwords in old format...
 		 */
-		if (compat && (pair->attribute == PW_PASSWORD)) continue;
+		if (compat && (pair->attribute == PW_USER_PASSWORD)) continue;
 
 		/*
 		 *	Print all of the attributes.

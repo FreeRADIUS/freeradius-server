@@ -103,10 +103,10 @@ static int digest_authenticate(void *instance, REQUEST *request)
 			return RLM_MODULE_INVALID;
 		}
 	} else {
-		passwd = pairfind(request->config_items, PW_PASSWORD);
+		passwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD);
 	}
 	if (!passwd) {
-		radlog(L_AUTH, "rlm_digest: Configuration item \"User-Password\" or \"Digest-HA1\" is required for authentication.");
+		radlog(L_AUTH, "rlm_digest: Cleartext-Password or Digest-HA1 is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -234,7 +234,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	a1[a1_len] = ':';
 	a1_len++;
 
-	if (passwd->attribute == PW_USER_PASSWORD) {
+	if (passwd->attribute == PW_CLEARTEXT_PASSWORD) {
 		memcpy(&a1[a1_len], &passwd->vp_octets[0], passwd->length);
 		a1_len += passwd->length;
 		a1[a1_len] = '\0';
@@ -266,7 +266,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		 *	If we find Digest-HA1, we assume it contains
 		 *	H(A1).
 		 */
-		if (passwd->attribute == PW_USER_PASSWORD) {
+		if (passwd->attribute == PW_CLEARTEXT_PASSWORD) {
 			librad_md5_calc(hash, &a1[0], a1_len);
 			lrad_bin2hex(hash, &a1[0], 16);
 		} else {	/* MUST be Digest-HA1 */
@@ -385,7 +385,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	 */
 	if (((algo != NULL) && 
 	     (strcasecmp(algo->vp_strvalue, "MD5-Sess") == 0)) ||
-	    (passwd->attribute == PW_USER_PASSWORD)) {
+	    (passwd->attribute == PW_CLEARTEXT_PASSWORD)) {
 		a1[a1_len] = '\0';
 		librad_md5_calc(&hash[0], &a1[0], a1_len);
 	} else {

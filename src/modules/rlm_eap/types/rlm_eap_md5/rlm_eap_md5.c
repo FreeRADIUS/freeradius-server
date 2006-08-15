@@ -111,14 +111,14 @@ static int md5_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
 	VALUE_PAIR	*password;
 
 	/*
-	 *	Get the User-Password for this user.
+	 *	Get the Cleartext-Password for this user.
 	 */
 	rad_assert(handler->request != NULL);
 	rad_assert(handler->stage == AUTHENTICATE);
 
-	password = pairfind(handler->request->config_items, PW_PASSWORD);
+	password = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD);
 	if (password == NULL) {
-		radlog(L_INFO, "rlm_eap_md5: User-Password is required for EAP-MD5 authentication");
+		radlog(L_INFO, "rlm_eap_md5: Cleartext-Password is required for EAP-MD5 authentication");
 		return 0;
 	}
 

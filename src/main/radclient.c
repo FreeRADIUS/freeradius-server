@@ -217,7 +217,7 @@ static radclient_t *radclient_init(const char *filename)
 		/*
 		 *	Keep a copy of the the User-Password attribute.
 		 */
-		if ((vp = pairfind(radclient->request->vps, PW_PASSWORD)) != NULL) {
+		if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD)) != NULL) {
 			strNcpy(radclient->password, vp->vp_strvalue,
 				sizeof(radclient->password));
 			/*
@@ -546,7 +546,7 @@ static int send_one_packet(radclient_t *radclient)
 		if (radclient->password[0] != '\0') {
 			VALUE_PAIR *vp;
 
-			if ((vp = pairfind(radclient->request->vps, PW_PASSWORD)) != NULL) {
+			if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD)) != NULL) {
 				strNcpy(vp->vp_strvalue, radclient->password,
 					sizeof(vp->vp_strvalue));
 				vp->length = strlen(vp->vp_strvalue);

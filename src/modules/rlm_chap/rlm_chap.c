@@ -109,8 +109,8 @@ static int chap_authenticate(void *instance, REQUEST *request)
 	DEBUG("  rlm_chap: login attempt by \"%s\" with CHAP password",
 		request->username->vp_strvalue);
 
-	if ((passwd_item = pairfind(request->config_items, PW_PASSWORD)) == NULL){
-		DEBUG("  rlm_chap: Could not find clear text password for user %s",request->username->vp_strvalue);
+	if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD)) == NULL){
+	  DEBUG("  rlm_chap: Cleartext-Password is required for authentication");
 		snprintf(module_fmsg, sizeof(module_fmsg),
 			 "rlm_chap: Clear text password not available");
 		module_fmsg_vp = pairmake("Module-Failure-Message",

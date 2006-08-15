@@ -796,7 +796,7 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD)) != NULL) {
 		strNcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 
-	} else 	if ((vp = pairfind(rep->vps, PW_PASSWORD)) != NULL) {
+	} else 	if ((vp = pairfind(rep->vps, PW_USER_PASSWORD)) != NULL) {
 		strNcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 		/*
 		 *	Otherwise keep a copy of the CHAP-Password attribute.
@@ -861,7 +861,11 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 			sizeof(rep->vector));
 
 	if (*password != '\0') {
-		if ((vp = pairfind(rep->vps, PW_PASSWORD)) != NULL) {
+		if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD)) != NULL) {
+			strNcpy((char *)vp->vp_strvalue, password, strlen(password) + 1);
+			vp->length = strlen(password);
+
+		} else if ((vp = pairfind(rep->vps, PW_USER_PASSWORD)) != NULL) {
 			strNcpy((char *)vp->vp_strvalue, password, strlen(password) + 1);
 			vp->length = strlen(password);
 

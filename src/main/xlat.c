@@ -1049,7 +1049,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 			case 'Z': /* Full request pairs except password */
 				tmp = request->packet->vps;
 				while (tmp && (freespace > 3)) {
-					if (tmp->attribute != PW_PASSWORD) {
+					if (tmp->attribute != PW_USER_PASSWORD) {
 						*q++ = '\t';
 						len = vp_prints(q, freespace - 2, tmp);
 						q += len;

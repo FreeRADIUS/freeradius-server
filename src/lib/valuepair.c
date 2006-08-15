@@ -310,7 +310,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 	 */
 	tailto = to;
 	for(i = *to; i; i = i->next) {
-		if (i->attribute == PW_PASSWORD ||
+		if (i->attribute == PW_USER_PASSWORD ||
 		    i->attribute == PW_CRYPT_PASSWORD)
 			has_password = 1;
 		tailto = &i->next;
@@ -327,7 +327,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	"from" to the "to" list.
 		 */
 		if (has_password &&
-		    (i->attribute == PW_PASSWORD ||
+		    (i->attribute == PW_USER_PASSWORD ||
 		     i->attribute == PW_CRYPT_PASSWORD)) {
 			tailfrom = i;
 			continue;

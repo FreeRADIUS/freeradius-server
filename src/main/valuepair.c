@@ -271,8 +271,8 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 			 *
 			 *	This hack makes CHAP-Password work..
 			 */
-			case PW_PASSWORD:
-				if (pairfind(request, PW_PASSWORD) == NULL) {
+			case PW_USER_PASSWORD:
+				if (pairfind(request, PW_USER_PASSWORD) == NULL) {
 					continue;
 				}
 				break;

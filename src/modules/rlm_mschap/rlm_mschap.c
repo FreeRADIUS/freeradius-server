@@ -1007,7 +1007,7 @@ static int mschap_authorize(void * instance, REQUEST *request)
  *
  *	If PW_SMB_ACCOUNT_CTRL is not set to ACB_PWNOTREQ we must have
  *	one of:
- *		PAP:      PW_PASSWORD or
+ *		PAP:      PW_USER_PASSWORD or
  *		MS-CHAP:  PW_MSCHAP_CHALLENGE and PW_MSCHAP_RESPONSE or
  *		MS-CHAP2: PW_MSCHAP_CHALLENGE and PW_MSCHAP2_RESPONSE
  *	In case of password mismatch or locked account we MAY return
@@ -1061,7 +1061,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	/*
 	 *	Decide how to get the passwords.
 	 */
-	password = pairfind(request->config_items, PW_PASSWORD);
+	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD);
 
 	/*
 	 *	We need an LM-Password.
@@ -1084,9 +1084,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		}
 
 	} else if (!password) {
-		DEBUG2("  rlm_mschap: No User-Password configured.  Cannot create LM-Password.");
+		DEBUG2("  rlm_mschap: No Cleartext-Password configured.  Cannot create LM-Password.");
 
-	} else {		/* there is a configured User-Password */
+	} else {		/* there is a configured Cleartext-Password */
 		lm_password = pairmake("LM-Password", "", T_OP_EQ);
 		if (!lm_password) {
 			radlog(L_ERR, "No memory");
@@ -1115,9 +1115,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			nt_password = NULL;
 		}
 	} else if (!password) {
-		DEBUG2("  rlm_mschap: No User-Password configured.  Cannot create NT-Password.");
+		DEBUG2("  rlm_mschap: No Cleartext-Password configured.  Cannot create NT-Password.");
 
-	} else {		/* there is a configured User-Password */
+	} else {		/* there is a configured Cleartext-Password */
 		nt_password = pairmake("NT-Password", "", T_OP_EQ);
 		if (!nt_password) {
 			radlog(L_ERR, "No memory");

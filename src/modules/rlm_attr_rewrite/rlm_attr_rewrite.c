@@ -235,7 +235,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 			case RLM_REGEX_INPACKET:
 				if (data->attr_num == PW_USER_NAME)
 					attr_vp = request->username;
-				else if (data->attr_num == PW_PASSWORD)
+				else if (data->attr_num == PW_USER_PASSWORD)
 					attr_vp = request->password;
 				else
 					tmp = request->packet->vps;

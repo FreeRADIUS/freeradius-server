@@ -245,7 +245,7 @@ static int krb5_auth(void *instance, REQUEST *request)
 	 *  Ensure that we're being passed a plain-text password,
 	 *  and not anything else.
 	 */
-	if (request->password->attribute != PW_PASSWORD) {
+	if (request->password->attribute != PW_USER_PASSWORD) {
 		radlog(L_AUTH, "rlm_krb5: Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
 		return RLM_MODULE_INVALID;
 	}
@@ -354,7 +354,7 @@ static int krb5_auth(void *instance, REQUEST *request)
 	 *  Ensure that we're being passed a plain-text password,
 	 *  and not anything else.
 	 */
-	if (request->password->attribute != PW_PASSWORD) {
+	if (request->password->attribute != PW_USER_PASSWORD) {
 		radlog(L_AUTH, "rlm_krb5: Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
 		return RLM_MODULE_INVALID;
 	}

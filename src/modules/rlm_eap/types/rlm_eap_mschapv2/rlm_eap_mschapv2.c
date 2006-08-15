@@ -359,9 +359,6 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	EAP_DS *eap_ds = handler->eap_ds;
 	VALUE_PAIR *challenge, *response;
 
-	/*
-	 *	Get the User-Password for this user.
-	 */
 	rad_assert(handler->request != NULL);
 	rad_assert(handler->stage == AUTHENTICATE);
 

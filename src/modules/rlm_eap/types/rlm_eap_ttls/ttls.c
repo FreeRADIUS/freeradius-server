@@ -988,7 +988,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	Update other items in the REQUEST data structure.
 	 */
 	fake->username = pairfind(fake->packet->vps, PW_USER_NAME);
-	fake->password = pairfind(fake->packet->vps, PW_PASSWORD);
+	fake->password = pairfind(fake->packet->vps, PW_USER_PASSWORD);
 
 	/*
 	 *	No User-Name, try to create one from stored data.
