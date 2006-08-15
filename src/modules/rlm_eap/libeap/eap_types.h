@@ -48,8 +48,7 @@
 /* base for dictionary values */
 #define ATTRIBUTE_EAP_ID        1020
 #define ATTRIBUTE_EAP_CODE      1021
-#define ATTRIBUTE_EAP_MD5_PASSWORD 1022
-#define ATTRIBUTE_EAP_BASE      (5*256)
+#define ATTRIBUTE_EAP_BASE      1280
 
 #define PW_EAP_IDENTITY		1
 #define PW_EAP_NOTIFICATION	2

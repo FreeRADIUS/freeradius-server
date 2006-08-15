@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ( echo 'User-Name = "eapsim"';
-  echo 'EAP-MD5-Password = "md5md5"';
+  echo 'Cleartext-Password = "md5md5"';
   echo 'NAS-IP-Address = marajade.sandelman.ottawa.on.ca';
   echo 'EAP-Code = Response';
   echo 'EAP-Id = 210';

@@ -793,7 +793,7 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	/*
 	 *	Keep a copy of the the User-Password attribute.
 	 */
-	if ((vp = pairfind(rep->vps, ATTRIBUTE_EAP_MD5_PASSWORD)) != NULL) {
+	if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD)) != NULL) {
 		strNcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 
 	} else 	if ((vp = pairfind(rep->vps, PW_PASSWORD)) != NULL) {
