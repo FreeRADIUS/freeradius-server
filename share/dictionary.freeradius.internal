@@ -126,6 +126,7 @@ ATTRIBUTE	SMD5-Password				1096	octets
 ATTRIBUTE	Packet-Src-IPv6-Address			1097	ipv6addr
 ATTRIBUTE	Packet-Dst-IPv6-Address			1098	ipv6addr
 ATTRIBUTE	Server-Identity				1099	string
+ATTRIBUTE	Cleartext-Password			1100	string
 
 #
 #	Range:	1200-1279
