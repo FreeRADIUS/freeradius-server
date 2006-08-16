@@ -195,12 +195,12 @@ CREATE TABLE radippool (
 	pool_name text NOT NULL,
 	ip_address inet,
 	nas_ip_address text NOT NULL,
-	nas_port integer NOT NULL,
 	calling_station_id text DEFAULT ''::text NOT NULL,
 	expiry_time timestamp(0) without time zone NOT NULL,
 	username text DEFAULT ''::text,
 	calledstationid character varying(64),
-	poolkey character varying(120)
+	groupname character varying(30),
+	pool_key character varying(30) NOT NULL
 );
 
 --
