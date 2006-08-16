@@ -1466,6 +1466,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			/* Verify the reply digest */
 		case PW_AUTHENTICATION_ACK:
 		case PW_AUTHENTICATION_REJECT:
+		case PW_ACCESS_CHALLENGE:
 		case PW_ACCOUNTING_RESPONSE:
 			rcode = calc_replydigest(packet, original, secret);
 			if (rcode > 1) {
