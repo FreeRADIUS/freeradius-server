@@ -40,6 +40,8 @@
 
 static const char rcsid[] = "$Id$";
 
+
+
 /*
  *	Define a structure for our module configuration.
  */
@@ -52,14 +54,11 @@ typedef struct rlm_sqlippool_t {
 
 	char *pool_name;
 
-				/* Initialization sequence */
-	char *init_begin;	/* SQL query to begin */
-	char *init_query;	/* SQL query to select records */
-	char *init_delete;	/* SQL query to delete records */
-	char *init_insert;	/* SQL query to insert records */
-	char *init_commit;	/* SQL query to commit */
-	char *init_rollback;	/* SQL query to rollback */
-
+	/* We ended up removing the init 
+	   queries so that its up to user
+	   to create the db structure and put the required
+	   information in there			
+	*/
 				/* Allocation sequence */
 	char *allocate_begin;	/* SQL query to begin */
 	char *allocate_clear;	/* SQL query to clear an IP */
@@ -97,7 +96,24 @@ typedef struct rlm_sqlippool_t {
 	char *off_clear;	/* SQL query to clear an entire NAS */
 	char *off_commit;	/* SQL query to commit */
 	char *off_rollback;	/* SQL query to rollback */
+	
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t dlock;
+	long owner;
+#endif	
+
 } rlm_sqlippool_t;
+
+#ifndef HAVE_PTHREAD_H
+/*
+ *  This is easier than ifdef's throughout the code.
+ */
+#define pthread_mutex_init(_x, _y)
+#define pthread_mutex_destroy(_x)
+#define pthread_mutex_lock(_x)
+#define pthread_mutex_unlock(_x)
+#endif
+
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -112,6 +128,8 @@ static CONF_PARSER module_config[] = {
   {"sql-instance-name",PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,sql_instance_name), NULL, "sql"},
 
   { "lease-duration", PW_TYPE_INTEGER, offsetof(rlm_sqlippool_t,lease_duration), NULL, "86400"},
+
+  { "pool-name"	    , PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, pool_name), NULL, ""},
 
   { "allocate-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,allocate_begin), NULL, "BEGIN" },
   { "allocate-clear", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,allocate_clear), NULL, "" },
@@ -279,14 +297,12 @@ static int sqlippool_command(const char * fmt, SQLSOCK * sqlsocket, void * insta
 #if 0
 	DEBUG2("sqlippool_command: '%s'", query);
 #endif
-
 	if (rlm_sql_query(sqlsocket, data->sql_inst, query)){
 		radlog(L_ERR, "sqlippool_command: database query error");
 		return 0;
 	}
 
 	(data->sql_inst->module->sql_finish_query)(sqlsocket, data->sql_inst->config);
-
 	return 0;
 }
 
@@ -320,7 +336,6 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt, SQLSOCK * 
 #if 0
 	DEBUG2("sqlippool_query1: '%s'", query);
 #endif
-
 	if (rlm_sql_select_query(sqlsocket, data->sql_inst, query)){
 		radlog(L_ERR, "sqlippool_query1: database query error");
 		out[0] = '\0';
@@ -480,7 +495,7 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 	}
 
 	sqlippool_initialize_sql(data);
-
+	pthread_mutex_init(&data->dlock, NULL);
 	*instance = data;
 	return 0;
 }
@@ -496,6 +511,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	uint32_t ip_allocation;
 	VALUE_PAIR * vp;
 	SQLSOCK * sqlsocket;
+	long self = (long) pthread_self();
 
 	/*
 	 * If there is a Framed-IP-Address attribute in the reply do nothing
@@ -506,7 +522,10 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	}
 
 	if ((vp = pairfind(request->config_items, PW_POOL_NAME)) != NULL) {
-		strcpy(data->pool_name, vp->strvalue);
+		DEBUG("Value Of the Pool-Name is [%s] and its [%i] Chars \n", vp->strvalue, vp->length);
+		pthread_mutex_lock(&data->dlock);
+		strNcpy(data->pool_name, vp->strvalue, (vp->length + 1));
+		pthread_mutex_unlock(&data->dlock);	
 	}
 	else {
 		DEBUG("rlm_sqlippool: missing pool_name");
@@ -547,7 +566,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	allocation_len = sqlippool_query1(allocation, sizeof(allocation),
 					  data->allocate_find, sqlsocket, instance, request,
 					  (char *) NULL, 0);
-	DEBUG("rlm_sqlippool: ip=[%s] len=%d", allocation, allocation_len);
+	radlog(L_INFO,"rlm_sqlippool: ip=[%s] len=%d", allocation, allocation_len);
 
 	if (allocation_len == 0)
 	{	
@@ -565,16 +584,6 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	ip_allocation = ip_addr(allocation);
 	if (ip_allocation == INADDR_NONE)
 	{
-		/*
-		 * Invalid IP number - run INIT-DELETE and complain
-		 */
-
-		/*
-		 * INIT_DELETE
-		 */
-		sqlippool_command(data->init_delete, sqlsocket, instance, NULL,
-				  allocation, allocation_len);
-
 		/*
 		 * COMMIT
 		 */
@@ -866,13 +875,6 @@ static int sqlippool_detach(void *instance)
 
 	free(data->sql_instance_name);
 	free(data->pool_name);
-
-	free(data->init_begin);
-	free(data->init_query);
-	free(data->init_delete);
-	free(data->init_insert);
-	free(data->init_commit);
-	free(data->init_rollback);
 
 	free(data->allocate_begin);
 	free(data->allocate_clear);
