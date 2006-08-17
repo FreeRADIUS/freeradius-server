@@ -190,17 +190,20 @@ CREATE TABLE radpostauth (
 	authdate	TIMESTAMP with time zone NOT NULL default 'now'
 ) ;
 
+--
+-- Table structure for table 'radippool'
+--
+
 CREATE TABLE radippool (
-	id serial NOT NULL,
-	pool_name text NOT NULL,
-	ip_address inet,
-	nas_ip_address text NOT NULL,
-	calling_station_id text DEFAULT ''::text NOT NULL,
-	expiry_time timestamp(0) without time zone NOT NULL,
-	username text DEFAULT ''::text,
-	CalledStationId character varying(64),
-	groupname character varying(30),
-	pool_key character varying(30) NOT NULL
+	id			BIGSERIAL PRIMARY KEY,
+	pool_name		text NOT NULL,
+	FramedIPAddress		INET,
+	NASIPAddress		text NOT NULL,
+	CalledStationId		VARCHAR(64),
+	CallingStationId	text DEFAULT ''::text NOT NULL,
+	expiry_time		TIMESTAMP(0) without time zone NOT NULL,
+	username		text DEFAULT ''::text,
+	pool_key		VARCHAR(30) NOT NULL
 );
 
 --
