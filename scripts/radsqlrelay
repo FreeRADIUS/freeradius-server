@@ -72,7 +72,7 @@ options:
 	-?		Print this help message.
 	-1		One-shot mode: push the file to database and exit.
 	-b database	Name of the database to use.
-	-d sql_driver	Driver to use: mysql, pg.
+	-d sql_driver	Driver to use: mysql, pg, oracle.
 	-h host		Connect to host.
 	-P port		Port number to use for connection.
 	-p passord	Password to use when connecting to server.
@@ -156,6 +156,8 @@ if (lc($args{d}) eq 'mysql') {
     $data_source = "DBI:mysql:database=$args{b};host=$args{h}";
 } elsif (lc($args{d}) eq 'pg') {
     $data_source = "DBI:Pg:dbname=$args{b};host=$args{h}";
+} elsif (lc($args{d}) eq 'oracle') {
+    $data_source = "DBI:Oracle:$args{b}";
 } else {
     print STDERR "error: SQL driver not supported yet: $args{d}\n";
     exit 1;
