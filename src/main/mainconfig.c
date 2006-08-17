@@ -888,7 +888,6 @@ int read_mainconfig(int reload)
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
 		radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
 				librad_errstr);
-		cf_section_free(&cs);
 		return -1;
 	}
 
