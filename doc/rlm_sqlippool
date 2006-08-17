@@ -1,0 +1,28 @@
+Welcome to the new SQL Based IP Pool module.
+
+To use the sqlipool module you simply need to have an IP-Pool Attribute
+(Keep in mind that its a **CHECK** item, not reply) in the required
+configuration file, which is either in files(users),sql or any other
+type of configuration schema.
+
+The initialization of the radippool table is left to the user instead of
+being handled inside the module. This allows pool management to be done
+from any sql capable programming language and pools can be created,
+resized, deleted at run time without radiusd needing to be restarted.
+
+The only required fields are, pool_name and ip_address. A pool consists
+of one or more rows in the table with the same pool_name and a different
+ip_address. The is no restriction on which ip addresses/ranges may be in
+the same pool, and addresses do not need to be concurrent.
+
+We are currently using the variable definitions of the xlat module, so
+before editing the sqlippool.conf file, please go and read the
+variables.txt in the freeradius/doc directory. It will help you alot!..
+
+On the other hand, there is a "key", which is really the key for the
+pool modules in freeradius. As you may noticed, there is a pool-key
+variable on the config file to have a unique connection identifier for
+the requests.So, it should be set to the unique attribute of the
+packages that we are receiving. Also this unique identifier must be
+received in accounting-stop packages so that we release the used ip,
+from the pool and put it to the free-ips list.
