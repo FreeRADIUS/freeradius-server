@@ -35,15 +35,15 @@ case "$1" in
 
 	chown -R freerad:freerad /var/log/freeradius
 	chown -R freerad:freerad /var/run/freeradius
-	find /etc/freeradius -type f -exec chgrp freerad {} \; -exec chmod 640 {} \;
-	find /etc/freeradius -type d -exec chgrp freerad {} \; -exec chmod 2750 {} \;
+	chgrp -R freerad /etc/freeradius
 
-	# Relax permissions on local dictionary - allows radclient to run
-	# and should not contain secrets.  At any rate, only do it on fresh
-	# install
+	# Leave the file /etc/freeradius/dictionary with the default
+	# permissions: it should not contain secrets, and this allows
+	# to run radclient with a non-privileged user.
+	find /etc/freeradius -type d -exec chmod 2751 {} \;
+	find /etc/freeradius -type f \! -name dictionary -exec chmod 640 {} \;
+
 	if [ -z "$2" ]; then
-		chmod 0644 /etc/freeradius/dictionary
-		chmod 0751 /etc/freeradius/
 		action="start"
 	else
 		action="restart"
