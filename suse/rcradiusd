@@ -13,7 +13,9 @@
 ### BEGIN INIT INFO
 # Provides:          radiusd
 # Required-Start:    $network $syslog $remotefs
+# Should-Start:      $time postgresql mysql ldap
 # Required-Stop:
+# Should-Stop:	     $time postgresql mysql ldap
 # Default-Start:     3 5
 # Default-Stop:      0 1 2 6
 # Short-Description: RADIUS-Server
