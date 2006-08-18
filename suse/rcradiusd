@@ -13,7 +13,7 @@
 ### BEGIN INIT INFO
 # Provides:          radiusd
 # Required-Start:    $network $syslog $remotefs
-# Should-Start:      $time postgresql mysql ldap
+# Should-Start:      $time postgresql mysql ldap samba krb5kdc
 # Required-Stop:
 # Should-Stop:	     $time postgresql mysql ldap
 # Default-Start:     3 5
