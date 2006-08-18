@@ -1,5 +1,13 @@
 #!/bin/sh
 # Start/stop the FreeRADIUS daemon.
+### BEGIN INIT INFO
+# Provides:          radiusd
+# Required-Start:    $network
+# Should-Start:      $time mysql ldap postgresql samba krb5-kdc
+# Required-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+### END INIT INFO
 
 PROG="freeradius"
 PROGRAM="/usr/sbin/freeradius"
