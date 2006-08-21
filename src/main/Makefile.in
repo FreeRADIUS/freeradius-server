@@ -146,8 +146,8 @@ radclient: radclient.lo ../lib/libradius.la
 radrelay.lo: radrelay.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radrelay.c
 
-radrelay: radrelay.lo mainconfig.lo util.lo nas.lo client.lo log.lo conffile.lo files.lo xlat.lo ../lib/libradius.la
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radrelay radrelay.lo mainconfig.lo util.lo nas.lo client.lo log.lo conffile.lo files.lo xlat.lo $(LIBS)
+radrelay: radrelay.lo util.lo nas.lo client.lo log.lo conffile.lo files.lo xlat.lo ../lib/libradius.la
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radrelay radrelay.lo util.lo nas.lo client.lo log.lo conffile.lo files.lo xlat.lo $(LIBS)
 
 radwho.lo: radwho.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radwho.c
