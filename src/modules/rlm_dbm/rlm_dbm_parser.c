@@ -155,7 +155,7 @@ static int storecontent (const char * username) {
 	 datum d,k;
 	 int res;
 
-	if ( pdb == NULL || concntr < 3 ) return 1;
+	if ( pdb == NULL || concntr < 2 ) return 1;
 
 	DOUT2("store:\n%s\ncontent:\n%s",username,content);
 
