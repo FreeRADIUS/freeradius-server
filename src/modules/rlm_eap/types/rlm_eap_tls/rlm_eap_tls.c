@@ -449,17 +449,20 @@ static int eaptls_detach(void *arg)
 	conf = inst->conf;
 
 	if (conf) {
-		if (conf->dh_file) free(conf->dh_file);
-		conf->dh_file = NULL;
-		if (conf->certificate_file) free(conf->certificate_file);
-		conf->certificate_file = NULL;
-		if (conf->private_key_file) free(conf->private_key_file);
-		conf->private_key_file = NULL;
-		if (conf->private_key_password) free(conf->private_key_password);
-		conf->private_key_password = NULL;
-		if (conf->random_file) free(conf->random_file);
-		conf->random_file = NULL;
+		free(conf->dh_file);
+		free(conf->ca_path);
+		free(conf->certificate_file);
+		free(conf->private_key_file);
+		free(conf->private_key_password);
+		free(conf->ca_file);
+		free(conf->random_file);
 
+		free(conf->check_cert_cn);
+		free(conf->check_cert_cn);
+		free(conf->cipher_list);
+		free(conf->check_cert_issuer);
+
+		memset(conf, 0, sizeof(*conf));
 		free(inst->conf);
 		inst->conf = NULL;
 	}
