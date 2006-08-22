@@ -594,10 +594,13 @@ int lrad_hash_table_walk(lrad_hash_table_t *ht,
 
 	if (!ht || !callback) return 0;
 
-	for (i = 0; i < ht->num_buckets; i++) {
+	for (i = ht->num_buckets - 1; i >= 0; i--) {
 		lrad_hash_entry_t *node, *next;
 
-		if (!ht->buckets[i]) continue;
+		/*
+		 *	Ensure that the current bucket is filled.
+		 */
+		if (!ht->buckets[i]) lrad_hash_table_fixup(ht, i);
 
 		for (node = ht->buckets[i]; node != &ht->null; node = next) {
 			next = node->next;
