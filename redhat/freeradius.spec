@@ -98,7 +98,12 @@ fi
 
 %files
 %defattr(-,root,root)
-%doc doc/ChangeLog doc/README* todo/ COPYRIGHT INSTALL
+%doc suse/README.SuSE
+%doc doc/* LICENSE COPYRIGHT CREDITS README
+%doc doc/examples/*
+%doc scripts/create-users.pl scripts/CA.* scripts/certs.sh
+%doc scripts/users2mysql.pl scripts/xpextensions
+%doc scripts/cryptpasswd scripts/exec-program-wait scripts/radiusd2ldif.pl
 %config /etc/pam.d/radius
 %config /etc/logrotate.d/radiusd
 %config /etc/rc.d/init.d/radiusd
