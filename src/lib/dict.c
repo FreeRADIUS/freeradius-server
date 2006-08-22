@@ -1279,6 +1279,19 @@ static int my_dict_init(const char *dir, const char *fn,
 	return 0;
 }
 
+
+/*
+ *	Empty callback for hash table initialization.
+ */
+static int null_callback(void *ctx, void *data)
+{
+	ctx = ctx;		/* -Wunused */
+	data = data;		/* -Wunused */
+
+	return 0;
+}
+
+
 /*
  *	Initialize the directory, then fix the attr member of
  *	all attributes.
@@ -1412,6 +1425,21 @@ int dict_init(const char *dir, const char *fn)
 			value_fixup = next;
 		}
 	}
+
+	/*
+	 *	Walk over all of the hash tables to ensure they're
+	 *	initialized.  We do this because the threads may perform
+	 *	lookups, and we don't want multi-threaded re-ordering
+	 *	of the table entries.  That would be bad.
+	 */
+	lrad_hash_table_walk(vendors_byname, null_callback, NULL);
+	lrad_hash_table_walk(vendors_byvalue, null_callback, NULL);
+
+	lrad_hash_table_walk(attributes_byname, null_callback, NULL);
+	lrad_hash_table_walk(attributes_byvalue, null_callback, NULL);
+	
+	lrad_hash_table_walk(values_byvalue, null_callback, NULL);
+	lrad_hash_table_walk(values_byname, null_callback, NULL);
 
 	return 0;
 }
