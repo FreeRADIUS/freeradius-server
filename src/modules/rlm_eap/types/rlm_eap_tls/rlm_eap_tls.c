@@ -614,13 +614,33 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	ssn->length_flag = inst->conf->include_length;
 
 	/*
-	 *	We set a default fragment size, unless the Framed-MTU
-	 *	tells us it's too big.
+	 *	We use default fragment size, unless the Framed-MTU
+	 *	tells us it's too big.  Note that we do NOT account
+	 *	for the EAP-TLS headers if conf->fragment_size is
+	 *	large, because that config item looks to be confusing.
+	 *
+	 *	i.e. it should REALLY be called MTU, and the code here
+	 *	should figure out what that means for TLS fragment size.
+	 *	asking the administrator to know the internal details
+	 *	of EAP-TLS in order to calculate fragment sizes is
+	 *	just too much.
 	 */
 	ssn->offset = inst->conf->fragment_size;
 	vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU);
-	if (vp && ((vp->lvalue - 4) < ssn->offset)) {
-		ssn->offset = vp->lvalue - 4;
+	if (vp && ((vp->lvalue - 14) < ssn->offset)) {
+		/*
+		 *	Discount the Framed-MTU by:
+		 *	 4 : EAPOL header
+		 *	 4 : EAP header (code + id + length)
+		 *	 1 : EAP type == EAP-TLS
+		 *	 1 : EAP-TLS Flags
+		 *	 4 : EAP-TLS Message length
+		 *	    (even if conf->include_length == 0,
+		 *	     just to be lazy).
+		 *	---
+		 *	14
+		 */
+		ssn->offset = vp->lvalue - 14;
 	}
 
 	handler->opaque = ((void *)ssn);
