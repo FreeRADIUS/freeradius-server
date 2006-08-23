@@ -60,10 +60,11 @@ static const LRAD_NAME_NUMBER levels[] = {
  */
 int vradlog(int lvl, const char *fmt, va_list ap)
 {
+	int fd = mainconfig.radlog_fd;
 	FILE *fp = NULL;
 	unsigned char *p;
 	char buffer[8192];
-	int len;
+	int len, print_timestamp = 0;
 
 	/*
 	 *	NOT debugging, and trying to log debug messages.
@@ -82,11 +83,23 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		return 0;
 	}
 	
+	/*
+	 *	Don't print timestamps to syslog, it does that for us.
+	 *	Don't print timestamps for low levels of debugging.
+	 *
+	 *	Print timestamps for non-debugging, and for high levels
+	 *	of debugging.
+	 */
+	if ((mainconfig.radlog_dest != RADLOG_SYSLOG) &&
+	    (debug_flag != 1) && (debug_flag != 2)) {
+		print_timestamp = 1;
+	}
+
 	*buffer = '\0';
 	len = 0;
-	if (mainconfig.radlog_fd != -1) {
+	if (fd != -1) {
 		/*
-		 *	Do nothing, but allow it.
+		 *	Use it, rather than anything else.
 		 */
 
 #ifdef HAVE_SYSLOG_H
@@ -102,9 +115,20 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 
 	} else if (!mainconfig.log_file) {
 		/*
-		 *	No log file set.  Discard it.
+		 *	Errors go to stderr, in the hope that they will
+		 *	be printed somewhere.
 		 */
-		return 0;
+		if (lvl & L_ERR) {
+			fd = STDERR_FILENO;
+			print_timestamp = 0;
+			snprintf(buffer, sizeof(buffer), "%s: ", progname);
+			len = strlen(buffer);
+		} else {
+			/*
+			 *	No log file set.  Discard it.
+			 */
+			return 0;
+		}
 
 	} else if ((fp = fopen(mainconfig.log_file, "a")) == NULL) {
 		fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
@@ -116,20 +140,12 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		return -1;
 	}
 
-	/*
-	 *	Don't print timestamps to syslog, it does that for us.
-	 *	Don't print timestamps for low levels of debugging.
-	 *
-	 *	Print timestamps for non-debugging, and for high levels
-	 *	of debugging.
-	 */
-	if ((mainconfig.radlog_dest != RADLOG_SYSLOG) &&
-	    (debug_flag != 1) && (debug_flag != 2)) {
+	if (print_timestamp) {
 		const char *s;
 		time_t timeval;
 
 		timeval = time(NULL);
-		CTIME_R(&timeval, buffer, 8192);
+		CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
 
 		s = lrad_int2str(levels, (lvl & ~L_CONS), ": ");
 
@@ -177,8 +193,8 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		fputs(buffer, fp);
 		fflush(fp);
 		fclose(fp);
-	} else {
-		write(mainconfig.radlog_fd, buffer, strlen(buffer));
+	} else if (fd >= 0) {
+		write(fd, buffer, strlen(buffer));
 	}
 
 	return 0;

@@ -877,20 +877,6 @@ int read_mainconfig(int reload)
 	CONF_SECTION *cs, *oldcs;
 	rad_listen_t *listener;
 
-	if (!reload) {
-		radlog(L_INFO, "Starting - reading configuration files ...");
-	} else {
-		radlog(L_INFO, "Reloading configuration files.");
-	}
-
-	/* Initialize the dictionary */
-	DEBUG2("read_config_files:  reading dictionary");
-	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
-		radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
-				librad_errstr);
-		return -1;
-	}
-
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
 		 radius_dir, mainconfig.radiusd_conf);
@@ -900,32 +886,12 @@ int read_mainconfig(int reload)
 	}
 
 	/*
-	 *	This allows us to figure out where, relative to
-	 *	radiusd.conf, the other configuration files exist.
-	 */
-	cf_section_parse(cs, NULL, server_config);
-
-#if 0
-	/*
-	 *	Merge the old with the new.
-	 */
-	if (reload) {
-		CONF_SECTION *newcs;
-
-		newcs = cf_section_sub_find(cs, "modules");
-		oldcs = cf_section_sub_find(mainconfig.config, "modules");
-		if (newcs && oldcs) {
-			if (!cf_section_migrate(newcs, oldcs)) {
-				radlog(L_ERR|L_CONS, "Fatal error migrating configuration data");
-				return -1;
-			}
-		}
-	}
-#endif
-
-	/*
 	 *	Debug flag 1 MAY go to files.
 	 *	Debug flag 2 ALWAYS goes to stdout
+	 *
+	 *	Parse the log_destination before printing anything else.
+	 *	All messages before this MUST be errors, which log.c
+	 *	will print to stderr, since log_file is NULL, too.
 	 */
 	if (debug_flag < 2) {
 		int rcode;
@@ -955,8 +921,56 @@ int read_mainconfig(int reload)
 				return -1;
 			}
 		}
+
+		if (mainconfig.radlog_dest == RADLOG_FILES) {
+			static const CONF_PARSER file_config[] = {
+				{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, "${logdir}/radius.log" },
+				{ NULL, -1, 0, NULL, NULL }
+			};
+
+			cf_section_parse(cs, NULL, file_config);
+		}
+
 		free(radlog_dest);
 	}
+
+	if (!reload) {
+		radlog(L_INFO, "Starting - reading configuration files ...");
+	} else {
+		radlog(L_INFO, "Reloading configuration files.");
+	}
+
+	/* Initialize the dictionary */
+	DEBUG2("read_config_files:  reading dictionary");
+	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
+		radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
+				librad_errstr);
+		return -1;
+	}
+
+	/*
+	 *	This allows us to figure out where, relative to
+	 *	radiusd.conf, the other configuration files exist.
+	 */
+	cf_section_parse(cs, NULL, server_config);
+
+#if 0
+	/*
+	 *	Merge the old with the new.
+	 */
+	if (reload) {
+		CONF_SECTION *newcs;
+
+		newcs = cf_section_sub_find(cs, "modules");
+		oldcs = cf_section_sub_find(mainconfig.config, "modules");
+		if (newcs && oldcs) {
+			if (!cf_section_migrate(newcs, oldcs)) {
+				radlog(L_ERR|L_CONS, "Fatal error migrating configuration data");
+				return -1;
+			}
+		}
+	}
+#endif
 
 	/*
 	 *	Free the old configuration items, and replace them

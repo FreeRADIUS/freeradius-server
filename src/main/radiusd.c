@@ -278,6 +278,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/*
+	 *	Don't put output anywhere.
+	 */
+	mainconfig.radlog_fd = -1;
+	mainconfig.log_file = NULL;
+
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (read_mainconfig(0) < 0) {
 		exit(1);
@@ -361,10 +367,7 @@ int main(int argc, char *argv[])
 	 *	If we're running as a daemon, close the default file
 	 *	descriptors, AFTER forking.
 	 */
-	mainconfig.radlog_fd = -1;
-	if (debug_flag) {
-		mainconfig.radlog_fd = STDOUT_FILENO;
-	} else {
+	if (!debug_flag) {
 		int devnull;
 
 		devnull = open("/dev/null", O_RDWR);
