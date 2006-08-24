@@ -199,6 +199,12 @@ static int rad_check_password(REQUEST *request)
 	}
 
 	password_pair =  pairfind(request->config_items, PW_USER_PASSWORD);
+	if (password_pair &&
+	    pairfind(request->config_items, PW_CLEARTEXT_PASSWORD)) {
+		pairdelete(&request->config_items, PW_USER_PASSWORD);
+		password_pair = NULL;
+	}
+
 	if (password_pair) {
 		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		DEBUG("!!!    Replacing User-Password in config items with Cleartext-Password.     !!!");
