@@ -298,12 +298,6 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 	VALUE_PAIR *found;
 	int has_password = 0;
 
-	if (*to == NULL) {
-		*to = *from;
-		*from = NULL;
-		return;
-	}
-
 	/*
 	 *	First, see if there are any passwords here, and
 	 *	point "tailto" to the end of the "to" list.
@@ -321,6 +315,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 	 */
 	for(i = *from; i; i = next) {
 		next = i->next;
+
 		/*
 		 *	If there was a password in the "to" list,
 		 *	do not move any other password from the
@@ -332,6 +327,28 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			tailfrom = i;
 			continue;
 		}
+
+		switch (i->operator) {
+			/*
+			 *	These are COMPARISON attributes
+			 *	from a check list, and are not
+			 *	supposed to be copied!
+			 */
+			case T_OP_NE:
+			case T_OP_GE:
+			case T_OP_GT:
+			case T_OP_LE:
+			case T_OP_LT:
+			case T_OP_CMP_TRUE:
+			case T_OP_CMP_FALSE:
+			case T_OP_CMP_EQ:
+				tailfrom = i;
+				continue;
+
+			default:
+				break;
+		}
+
 		/*
 		 *	If the attribute is already present in "to",
 		 *	do not move it from "from" to "to". We make
