@@ -932,12 +932,16 @@ int read_mainconfig(int reload)
 		}
 
 		free(radlog_dest);
+	} else {
+		mainconfig.radlog_dest = RADLOG_STDOUT;
+		mainconfig.radlog_fd = STDOUT_FILENO;
 	}
 
+	radlog(L_INFO, "%s", radiusd_version);
 	if (!reload) {
 		radlog(L_INFO, "Starting - reading configuration files ...");
 	} else {
-		radlog(L_INFO, "Reloading configuration files.");
+		radlog(L_INFO, "Reloading - reading configuration files...");
 	}
 
 	/* Initialize the dictionary */
