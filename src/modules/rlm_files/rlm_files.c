@@ -486,7 +486,7 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 			pairxlatmove(request, reply_pairs, &reply_tmp);
 			pairmove(config_pairs, &check_tmp);
 			pairfree(&reply_tmp);
-			pairfree(&check_tmp); /* should be NULL */
+			pairfree(&check_tmp);
 
 			/*
 			 *	Fallthrough?
