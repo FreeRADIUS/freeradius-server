@@ -1,4 +1,4 @@
-/*
+ /*
  * rlm_perl.c
  *
  * Version:    $Id$
@@ -913,6 +913,7 @@ static int get_hv_content(HV *my_hv, VALUE_PAIR **vp)
        I32		key_len, len, i, j;
        int		ret=0;
 
+       *vp = NULL;
        for (i = hv_iterinit(my_hv); i > 0; i--) {
                res_sv = hv_iternextsv(my_hv,&key,&key_len);
                if (SvROK(res_sv) && (SvTYPE(SvRV(res_sv)) == SVt_PVAV)) {
@@ -1001,9 +1002,6 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 		hv_undef(rad_request_proxy_reply_hv);
 	}	
 	
-	vp = NULL;
-
-
 	PUSHMARK(SP);
 	/*
 	* This way %RAD_xx can be pushed onto stack as sub parameters.
@@ -1036,26 +1034,39 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	FREETMPS;
 	LEAVE;
 	
+	vp = NULL;
 	if ((get_hv_content(rad_request_hv, &vp)) > 0 ) {
-		pairmove(&request->packet->vps, &vp);
-		pairfree(&vp);
+		pairfree(&request->packet->vps);
+		request->packet->vps = vp;
+		vp = NULL;
 	}
 
 	if ((get_hv_content(rad_reply_hv, &vp)) > 0 ) {
-		pairmove(&request->reply->vps, &vp);
-		pairfree(&vp);
+		pairfree(&request->reply->vps);
+		request->reply->vps = vp;
+		vp = NULL;
 	}
 
 	if ((get_hv_content(rad_check_hv, &vp)) > 0 ) {
-		pairmove(&request->config_items, &vp);
-		pairfree(&vp);
+		pairfree(&request->config_items);
+		request->config_items = vp;
+		vp = NULL;
 	}
 	
-	if ((get_hv_content(rad_request_proxy_reply_hv, &vp)) > 0 && request->proxy_reply != NULL) {
-		pairfree(&request->proxy_reply->vps);
-		pairmove(&request->proxy_reply->vps, &vp);
-		pairfree(&vp);
+	if (request->proxy &&
+	    (get_hv_content(rad_request_proxy_hv, &vp) > 0)) {
+		pairfree(&request->proxy->vps);
+		request->proxy->vps = vp;
+		vp = NULL;
 	}
+
+	if (request->proxy_reply &&
+	    (get_hv_content(rad_request_proxy_reply_hv, &vp) > 0)) {
+		pairfree(&request->proxy_reply->vps);
+		request->proxy_reply->vps = vp;
+		vp = NULL;
+	}
+
 	}
 #ifdef USE_ITHREADS
 	pool_release(handle,instance);
