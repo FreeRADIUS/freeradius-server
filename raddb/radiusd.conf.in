@@ -1225,17 +1225,11 @@ $INCLUDE ${confdir}/eap.conf
 	#  Include another file that has the SQL-related configuration.
 	#  This is another file only because it tends to be big.
 	#
-	#  The following configuration file is for use with MySQL.
-	#
-	#  For Postgresql, use:		${confdir}/postgresql.conf
-	#  For MS-SQL, use:	 	${confdir}/mssql.conf
-	#  For Oracle, use:	 	${confdir}/oraclesql.conf
-	#
 	$INCLUDE  ${confdir}/sql.conf
 
 
 	#  For Cisco VoIP specific accounting with Postgresql,
-	#  use:		${confdir}/pgsql-voip.conf
+	#  use:		${confdir}/sql/postgresql-voip-postpaid.conf
 	#
 	#  You will also need the sql schema from:
 	#  	 src/billing/cisco_h323_db_schema-postgres.sql
