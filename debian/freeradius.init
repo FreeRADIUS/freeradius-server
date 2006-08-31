@@ -1,12 +1,26 @@
 #!/bin/sh
 # Start/stop the FreeRADIUS daemon.
 
+### BEGIN INIT INFO
+# Provides:          radiusd
+# Required-Start:    $network
+# Should-Start:      $time mysql ldap postgresql samba krb5-kdc
+# Required-Stop:
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+### END INIT INFO
+
 PROG="freeradius"
 PROGRAM="/usr/sbin/freeradius"
 PIDFILE="/var/run/freeradius/freeradius.pid"
 DESCR="FreeRADIUS daemon"
 
 test -f $PROGRAM || exit 0
+
+# /var/run may be a tmpfs
+if [ ! -d /var/run/freeradius ]; then
+	install -o freerad -g freerad -m 0755 -d /var/run/freeradius
+fi
 
 case "$1" in
 	start)
