@@ -334,8 +334,7 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 {
 	CONF_SECTION	*cs;
 
-	if (name1 == NULL || !name1[0])
-		name1 = "main";
+	if (!name1) return NULL;
 
 	cs = rad_malloc(sizeof(*cs));
 	memset(cs, 0, sizeof(*cs));
@@ -598,7 +597,9 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 						if (!up) cp = cf_pair_find(parentcs, name);
 					}
 					if (cp == NULL) {
-						radlog(L_ERR, "config: No such entry %s for string %s", name, input);
+						radlog(L_ERR, "config: No such configuration item %s in section %s when expanding string \"%s\"", name,
+						       cf_section_name1(cs),
+						       input);
 						return NULL;
 					}
 				}
@@ -943,6 +944,8 @@ void cf_section_parse_free_strings(void *base, const CONF_PARSER *variables)
  */
 static void cf_fixup_children(CONF_SECTION *cs, CONF_SECTION *is)
 {
+	if (cs == is) return;
+
 	/*
 	 *	Add the included conf
 	 *	to our CONF_SECTION
@@ -983,7 +986,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				     const char *name1, const char *name2,
 				     CONF_SECTION *parent)
 {
-	CONF_SECTION *cs, *css;
+	CONF_SECTION *cs, *css, *freecs;
 	CONF_PAIR *cpn;
 	char *ptr;
 	const char *value;
@@ -1006,10 +1009,20 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	}
 
 	/*
-	 *	Allocate new section.
+	 *	We're not starting a new section, but $INCLUDE'ing
+	 *	more into the current section.
 	 */
-	cs = cf_section_alloc(name1, name2, parent);
-	cs->item.lineno = *lineno;
+	if (!name1 && !name2) {
+		cs = parent;
+		freecs = NULL;
+	} else {
+		/*
+		 *	Allocate new section.
+		 */
+		cs = cf_section_alloc(name1, name2, parent);
+		cs->item.lineno = *lineno;
+		freecs = cs;
+	}
 
 	/*
 	 *	Read, checking for line continuations ('\\' at EOL)
@@ -1033,7 +1046,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		    (cbuf[len - 1] != '\n')) {
 			radlog(L_ERR, "%s[%d]: Line too long",
 			       cf, *lineno);
-			cf_section_free(&cs);
+			cf_section_free(&freecs);
 			return NULL;
 		}
 
@@ -1082,7 +1095,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 
 			value = cf_expand_variables(cf, lineno, cs, buf, buf2);
 			if (value == NULL) {
-				cf_section_free(&cs);
+				cf_section_free(&freecs);
 				return NULL;
 			}
 
@@ -1104,7 +1117,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 					radlog(L_ERR, "%s[%d]: Error reading directory %s: %s",
 					       cf, *lineno, value,
 					       strerror(errno));
-					cf_section_free(&cs);
+					cf_section_free(&freecs);
 					return NULL;
 				}
 
@@ -1134,7 +1147,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 					    S_ISDIR(stat_buf.st_mode)) continue;
 					if ((is = conf_read(cf, *lineno, buf2, cs)) == NULL) {
 						closedir(dir);
-						cf_section_free(&cs);
+						cf_section_free(&freecs);
 						return NULL;
 					}
 					
@@ -1146,7 +1159,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			{ /* it was a normal file */
 				DEBUG2( "Config:   including file: %s", value );
 				if ((is = conf_read(cf, *lineno, value, cs)) == NULL) {
-					cf_section_free(&cs);
+					cf_section_free(&freecs);
 					return NULL;
 				}
 				cf_fixup_children(cs, is);
@@ -1172,7 +1185,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			if (name1 == NULL || buf2[0]) {
 				radlog(L_ERR, "%s[%d]: Unexpected end of section",
 						cf, *lineno);
-				cf_section_free(&cs);
+				cf_section_free(&freecs);
 				return NULL;
 			}
 			return cs;
@@ -1185,7 +1198,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			css = cf_section_read(cf, lineno, fp, buf1,
 					      t2==T_LCBRACE ? NULL : buf2, cs);
 			if (css == NULL) {
-				cf_section_free(&cs);
+				cf_section_free(&freecs);
 				return NULL;
 			}
 			cf_item_add(cs, cf_sectiontoitem(css));
@@ -1208,7 +1221,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 			   (t2 < T_EQSTART || t2 > T_EQEND)) {
 			radlog(L_ERR, "%s[%d]: Line is not in 'attribute = value' format",
 					cf, *lineno);
-			cf_section_free(&cs);
+			cf_section_free(&freecs);
 			return NULL;
 		}
 
@@ -1219,7 +1232,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		if (buf1[0] == '_') {
 			radlog(L_ERR, "%s[%d]: Illegal configuration pair name \"%s\"",
 					cf, *lineno, buf1);
-			cf_section_free(&cs);
+			cf_section_free(&freecs);
 			return NULL;
 		}
 
@@ -1228,7 +1241,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 */
 		value = cf_expand_variables(cf, lineno, cs, buf, buf3);
 		if (!value) {
-			cf_section_free(&cs);
+			cf_section_free(&freecs);
 			return NULL;
 		}
 
@@ -1236,7 +1249,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		/*
 		 *	Add this CONF_PAIR to our CONF_SECTION
 		 */
-		cpn = cf_pair_alloc(buf1, value, t2, parent);
+		cpn = cf_pair_alloc(buf1, value, t2, cs);
 		cpn->item.lineno = *lineno;
 		cf_item_add(cs, cf_pairtoitem(cpn));
 	}
@@ -1246,7 +1259,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	 */
 	if (name1 != NULL) {
 		radlog(L_ERR, "%s[%d]: Unexpected end of file", cf, *lineno);
-		cf_section_free(&cs);
+		cf_section_free(&freecs);
 		return NULL;
 	}
 
@@ -1262,6 +1275,15 @@ CONF_SECTION *conf_read(const char *fromfile, int fromline,
 	FILE		*fp;
 	int		lineno = 0;
 	CONF_SECTION	*cs;
+
+	/*
+	 *	This is really a hack that mainconfig.c needs
+	 *	a section to hold everything, but can't call
+	 *	cf_section_alloc(), because it's internal.
+	 *
+	 *	<sigh> No we leak memory if something goes wrong..
+	 */
+	if (!parent) parent = cf_section_alloc("main", NULL, NULL);
 
 	if ((fp = fopen(conffile, "r")) == NULL) {
 		if (fromfile) {
