@@ -39,7 +39,6 @@ static const char rcsid[] = "$Id$";
 #include <freeradius-devel/rad_assert.h>
 
 typedef struct indexed_modcallable {
-	struct indexed_modcallable *next;
 	int idx;
 	modcallable *modulelist;
 } indexed_modcallable;
@@ -47,7 +46,7 @@ typedef struct indexed_modcallable {
 /*
  *	For each component, keep an ordered list of ones to call.
  */
-static indexed_modcallable *components[RLM_COMPONENT_COUNT];
+static lrad_hash_table_t *components[RLM_COMPONENT_COUNT];
 
 static rbtree_t *module_tree = NULL;
 
@@ -87,19 +86,29 @@ static const section_type_value_t old_section_type_value[] = {
 };
 
 
-static void indexed_modcallable_free(indexed_modcallable **cf)
+static void indexed_modcallable_free(void *data)
 {
-	indexed_modcallable	*c, *next;
+	indexed_modcallable *c = data;
 
-	c = *cf;
-	while (c) {
-		next = c->next;
-		modcallable_free(&c->modulelist);
-		free(c);
-		c = next;
-	}
-	*cf = NULL;
+	modcallable_free(&c->modulelist);
+	free(c);
 }
+
+static uint32_t indexed_modcallable_hash(const void *data)
+{
+	const indexed_modcallable *c = data;
+
+	return lrad_hash(&c->idx, sizeof(c->idx));
+}
+
+static int indexed_modcallable_cmp(const void *one, const void *two)
+{
+	const indexed_modcallable *a = one;
+	const indexed_modcallable *b = two;
+
+	return a->idx - b->idx;
+}
+
 
 /*
  *	Free a module instance.
@@ -159,7 +168,8 @@ int detach_modules(void)
 	 *	Delete the internal component pointers.
 	 */
 	for (i = 0; i < RLM_COMPONENT_COUNT; i++) {
-		indexed_modcallable_free(&components[i]);
+		lrad_hash_table_free(components[i]);
+		components[i] = NULL;
 	}
 
 	return 0;
@@ -354,15 +364,12 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	return node;
 }
 
-static indexed_modcallable *lookup_by_index(indexed_modcallable *head, int idx)
+static indexed_modcallable *lookup_by_index(lrad_hash_table_t *ht, int idx)
 {
-	indexed_modcallable *p;
+	indexed_modcallable myc;
 
-	for (p = head; p != NULL; p = p->next) {
-		if( p->idx == idx)
-			return p;
-	}
-	return NULL;
+	myc.idx = idx;
+	return lrad_hash_table_finddata(ht, &myc);
 }
 
 /*
@@ -370,35 +377,45 @@ static indexed_modcallable *lookup_by_index(indexed_modcallable *head, int idx)
  */
 static indexed_modcallable *new_sublist(int comp, int idx)
 {
-	indexed_modcallable **head = &components[comp];
-	indexed_modcallable *node = *head;
-	indexed_modcallable **last = head;
+	indexed_modcallable *c;
 
-	while (node) {
-		/* It is an error to try to create a sublist that already
-		 * exists. It would almost certainly be caused by accidental
-		 * duplication in the config file.
-		 *
-		 * index 0 is the exception, because it is used when we want
-		 * to collect _all_ listed modules under a single index by
-		 * default, which is currently the case in all components
-		 * except authenticate. */
-		if (node->idx == idx) {
-			if (idx == 0)
-				return node;
-			else
-				return NULL;
+	if (!components[comp]) {
+		components[comp] = lrad_hash_table_create(indexed_modcallable_hash,
+							  indexed_modcallable_cmp,
+							  indexed_modcallable_free);
+		if (!components[comp]) {
+			radlog(L_ERR, "Failed to initialize module structure");
+			exit(1);
 		}
-		last = &node->next;
-		node = node->next;
 	}
 
-	node = rad_malloc(sizeof *node);
-	node->next = NULL;
-	node->modulelist = NULL;
-	node->idx = idx;
-	*last = node;
-	return node;
+	c = lookup_by_index(components[comp], idx);
+
+	/* It is an error to try to create a sublist that already
+	 * exists. It would almost certainly be caused by accidental
+	 * duplication in the config file.
+	 *
+	 * index 0 is the exception, because it is used when we want
+	 * to collect _all_ listed modules under a single index by
+	 * default, which is currently the case in all components
+	 * except authenticate. */
+	if (c) {
+		if (idx == 0) {
+			return c;
+		}
+		return NULL;
+	}
+
+	c = rad_malloc(sizeof(*c));
+	c->modulelist = NULL;
+	c->idx = idx;
+
+	if (!lrad_hash_table_insert(components[comp], c)) {
+		free(c);
+		return NULL;
+	}
+
+	return c;
 }
 
 static int indexed_modcall(int comp, int idx, REQUEST *request)
