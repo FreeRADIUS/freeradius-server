@@ -48,4 +48,9 @@ install:
 		cp certs/* $(R)$(raddbdir)/certs 2>/dev/null || true; \
 	fi
 
+	if [ ! -d $(R)$(raddbdir)/sql ]; then \
+		mkdir $(R)$(raddbdir)/sql; \
+		cp sql/* $(R)$(raddbdir)/sql 2>/dev/null || true; \
+	fi
+
 clean:
