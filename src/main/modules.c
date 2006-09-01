@@ -39,6 +39,7 @@ static const char rcsid[] = "$Id$";
 #include <freeradius-devel/rad_assert.h>
 
 typedef struct indexed_modcallable {
+	int comp;
 	int idx;
 	modcallable *modulelist;
 } indexed_modcallable;
@@ -46,7 +47,7 @@ typedef struct indexed_modcallable {
 /*
  *	For each component, keep an ordered list of ones to call.
  */
-static lrad_hash_table_t *components[RLM_COMPONENT_COUNT];
+static lrad_hash_table_t *components;
 
 static rbtree_t *module_tree = NULL;
 
@@ -96,15 +97,20 @@ static void indexed_modcallable_free(void *data)
 
 static uint32_t indexed_modcallable_hash(const void *data)
 {
+	uint32_t hash;
 	const indexed_modcallable *c = data;
 
-	return lrad_hash(&c->idx, sizeof(c->idx));
+	hash = lrad_hash(&c->comp, sizeof(c->comp));
+	return lrad_hash_update(&c->idx, sizeof(c->idx), hash);
 }
 
 static int indexed_modcallable_cmp(const void *one, const void *two)
 {
 	const indexed_modcallable *a = one;
 	const indexed_modcallable *b = two;
+
+	if (a->comp < b->comp) return -1;
+	if (a->comp >  b->comp) return +1;
 
 	return a->idx - b->idx;
 }
@@ -162,18 +168,11 @@ static void module_entry_free(void *data)
  */
 int detach_modules(void)
 {
-	int i;
-
-	/*
-	 *	Delete the internal component pointers.
-	 */
-	for (i = 0; i < RLM_COMPONENT_COUNT; i++) {
-		lrad_hash_table_free(components[i]);
-		components[i] = NULL;
-	}
+	lrad_hash_table_free(components);
 
 	return 0;
 }
+
 
 /*
  *	Find a module on disk or in memory, and link to it.
@@ -364,12 +363,14 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	return node;
 }
 
-static indexed_modcallable *lookup_by_index(lrad_hash_table_t *ht, int idx)
+static indexed_modcallable *lookup_by_index(int comp, int idx)
 {
 	indexed_modcallable myc;
 
+	myc.comp = comp;
 	myc.idx = idx;
-	return lrad_hash_table_finddata(ht, &myc);
+
+	return lrad_hash_table_finddata(components, &myc);
 }
 
 /*
@@ -379,17 +380,7 @@ static indexed_modcallable *new_sublist(int comp, int idx)
 {
 	indexed_modcallable *c;
 
-	if (!components[comp]) {
-		components[comp] = lrad_hash_table_create(indexed_modcallable_hash,
-							  indexed_modcallable_cmp,
-							  indexed_modcallable_free);
-		if (!components[comp]) {
-			radlog(L_ERR, "Failed to initialize module structure");
-			exit(1);
-		}
-	}
-
-	c = lookup_by_index(components[comp], idx);
+	c = lookup_by_index(comp, idx);
 
 	/* It is an error to try to create a sublist that already
 	 * exists. It would almost certainly be caused by accidental
@@ -408,9 +399,10 @@ static indexed_modcallable *new_sublist(int comp, int idx)
 
 	c = rad_malloc(sizeof(*c));
 	c->modulelist = NULL;
+	c->comp = comp;
 	c->idx = idx;
 
-	if (!lrad_hash_table_insert(components[comp], c)) {
+	if (!lrad_hash_table_insert(components, c)) {
 		free(c);
 		return NULL;
 	}
@@ -422,7 +414,7 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
 {
 	indexed_modcallable *this;
 
-	this = lookup_by_index(components[comp], idx);
+	this = lookup_by_index(comp, idx);
 	if (!this) {
 		if (idx != 0) DEBUG2("  ERROR: Unknown value specified for %s.  Cannot perform requested action.",
 				     section_type_value[comp].typename);
@@ -675,11 +667,6 @@ int setup_modules(int reload)
 				lt_dlgetsearchpath());
 
 		/*
-		 *	Initialize the components.
-		 */
-		memset(components, 0, sizeof(components));
-
-		/*
 		 *	Set up the internal module struct.
 		 */
 		module_tree = rbtree_create(module_entry_cmp,
@@ -688,10 +675,16 @@ int setup_modules(int reload)
 			radlog(L_ERR|L_CONS, "Failed to initialize modules\n");
 			return -1;
 		}
-		
-
 	} else {
-		detach_modules();
+		lrad_hash_table_free(components);
+	}
+
+	components = lrad_hash_table_create(indexed_modcallable_hash,
+					    indexed_modcallable_cmp,
+					    indexed_modcallable_free);
+	if (!components) {
+		radlog(L_ERR|L_CONS, "Failed to initialize components\n");
+		return -1;
 	}
 
 	/*
@@ -993,9 +986,6 @@ int module_accounting(int acct_type, REQUEST *request)
 int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
 {
 	int rcode;
-
-	if(!components[RLM_COMPONENT_SESS])
-		return 0;
 
 	if(!request->username)
 		return 0;
