@@ -1,8 +1,8 @@
 Summary: High-performance and highly configurable RADIUS server
 URL: http://www.freeradius.org/
 Name: freeradius
-Version: 1.1
-Release: 1
+Version: 2.0.0
+Release: 0
 License: GPL
 Group: Networking/Daemons
 Packager: FreeRADIUS.org
@@ -20,7 +20,7 @@ configurable GPL'd RADIUS server. It is somewhat similar to the
 Livingston 2.0 RADIUS server, but has many more features, and is much
 more configurable.
 
-%prep 
+%prep
 %setup
 
 %build
@@ -29,13 +29,12 @@ CFLAGS="$RPM_OPT_FLAGS" \
 	--localstatedir=%{_localstatedir} \
 	--sysconfdir=%{_sysconfdir} \
 	--mandir=%{_mandir} \
-	--with-threads \
-	--with-thread-pool \
+	--with-docdir=%{_datadir}/doc/%{name}-%{version} \
 	--with-system-libtool \
 	--disable-ltdl-install \
 	--with-ltdl-lib=/usr/lib \
 	--with-ltdl-include=/usr/include \
-	--with-gnu-ld \
+	--with-large-files --with-udpfromto --with-edir \
 	--with-rlm-sql_postgresql-include-dir=/usr/include/pgsql \
 	--with-rlm-krb5-include-dir=/usr/kerberos/include \
 	--with-rlm-krb5-lib-dir=/usr/kerberos/lib
@@ -58,6 +57,11 @@ perl -i -pe 's/#	shadow =/shadow =/' $RADDB/radiusd.conf
 # remove unneeded stuff
 rm -f $RPM_BUILD_ROOT%{_mandir}/man8/builddbm.8
 rm -f $RPM_BUILD_ROOT%{_prefix}/sbin/rc.radiusd
+
+# more files go to /usr/share/doc/freeradius-%{version}
+install -m 0644 CREDITS $RPM_BUILD_ROOT%{_datadir}/doc/%{name}-%{version}
+install -m 0644 COPYRIGHT $RPM_BUILD_ROOT%{_datadir}/doc/%{name}-%{version}
+install -m 0644 LICENSE $RPM_BUILD_ROOT%{_datadir}/doc/%{name}-%{version}
 
 cd redhat
 install -m 755 rc.radiusd-redhat $RPM_BUILD_ROOT/etc/rc.d/init.d/radiusd
@@ -100,7 +104,6 @@ fi
 
 %files
 %defattr(-,root,root)
-%doc doc/ChangeLog doc/README* todo/ COPYRIGHT INSTALL
 %config /etc/pam.d/radius
 %config /etc/logrotate.d/radiusd
 %config /etc/rc.d/init.d/radiusd
@@ -115,6 +118,12 @@ fi
 %attr(0700,radiusd,radiusd) %dir /var/run/radiusd
 
 %changelog
+* Thu Dec 15 2004 Alan DeKok
+- update for 1.1.0
+
+* Mon May 31 2004 Paul Hampson
+- update for 1.0.0 release
+
 * Fri May 23 2003 Marko Myllynen
 - update for 0.9
 
