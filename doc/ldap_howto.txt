@@ -3,7 +3,7 @@ Dusty Doris
 dusty at doris dot cc
 01-09-2003
 
-This document decribes how to setup Freeradius on a Freebsd machine
+This document describes how to setup Freeradius on a Freebsd machine
 using LDAP as a backend.  This is by no means complete and your
 mileage may vary.  If you are having any problems with the setup of
 your freeradius installation, please read the documentation that comes
@@ -1075,7 +1075,7 @@ The next module is files, which is commonly know as the users file.  The users
 file will start with either a username to determine how to authorize a specific 
 user, or a DEFAULT setting.  In each line it will define what items must be 
 present for there to be a match in the form of attribute == value.  If all the 
-required attributes are matched, then attributes specified with attribte := 
+required attributes are matched, then attributes specified with attribute := 
 value will be set for that user.  If no match is found the users file will 
 continue to be processed until there is a match.  The last DEFAULT setting will 
 be set as a catch-all, in case there is no previous match.  If a match is made, 

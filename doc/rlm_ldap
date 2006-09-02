@@ -350,7 +350,7 @@ The "users" file won't work, because it can't add items to the request.
 
 
 DIRECTORY COMPATIBILITY NOTE: If you use LDAP only for authorization and
-authentication (e.g. you can not afford schema extention), I propose to set
+authentication (e.g. you can not afford schema extension), we suggest you set
 all necessary attributes in raddb/users file with following authorize section
 of radiusd.conf :
 
