@@ -5,8 +5,8 @@
 INCLUDE += -I/usr/local/include/
 
 TARGET      = @targetname@
-SRCS        = rlm_sqlippool.c ip_set.c
-HEADERS     = $(top_builddir)/src/modules/rlm_sql/rlm_sql.h ip_set.h
+SRCS        = rlm_sqlippool.c
+HEADERS     = $(top_builddir)/src/modules/rlm_sql/rlm_sql.h
 RLM_CFLAGS  = -I$(top_builddir)/src/modules/rlm_sql
 RLM_LIBS    =
 RLM_INSTALL =
