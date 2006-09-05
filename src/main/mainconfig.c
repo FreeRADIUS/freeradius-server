@@ -880,7 +880,7 @@ int read_mainconfig(int reload)
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
 		 radius_dir, mainconfig.radiusd_conf);
-	if ((cs = conf_read(NULL, 0, buffer, NULL)) == NULL) {
+	if ((cs = cf_file_read(buffer)) == NULL) {
 		radlog(L_ERR|L_CONS, "Errors reading %s", buffer);
 		return -1;
 	}
@@ -1127,7 +1127,7 @@ int read_mainconfig(int reload)
 }
 
 /*
- *	Free the configuration.
+ *	Free the configuration.  Called only when the server is exiting.
  */
 int free_mainconfig(void)
 {

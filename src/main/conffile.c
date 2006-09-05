@@ -940,53 +940,13 @@ void cf_section_parse_free_strings(void *base, const CONF_PARSER *variables)
 
 
 /*
- *	Used in a few places, so in one function for clarity.
- */
-static void cf_fixup_children(CONF_SECTION *cs, CONF_SECTION *is)
-{
-	if (cs == is) return;
-
-	/*
-	 *	Add the included conf
-	 *	to our CONF_SECTION
-	 */
-	if (is->children != NULL) {
-		CONF_ITEM *ci;
-		
-		/*
-		 *	Re-write the parent of the
-		 *	moved children to be the
-		 *	upper-layer section.
-		 */
-		for (ci = is->children; ci; ci = ci->next) {
-			ci->parent = cs;
-		}
-		
-		/*
-		 *	If there are children, then
-		 *	move them up a layer.
-		 */
-		if (is->children) {
-			cf_item_add(cs, is->children);
-		}
-		is->children = NULL;
-	}
-	/*
-	 *	Always free the section for the
-	 *	$INCLUDEd file.
-	 */
-	cf_section_free(&is);
-}
-
-
-/*
  *	Read a part of the config file.
  */
-static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
-				     const char *name1, const char *name2,
-				     CONF_SECTION *parent)
+static int cf_section_read(const char *file, int *lineno, FILE *fp,
+			   CONF_SECTION *cs, int eof_ok)
+
 {
-	CONF_SECTION *cs, *css, *freecs;
+	CONF_SECTION *css;
 	CONF_PAIR *cpn;
 	char *ptr;
 	const char *value;
@@ -997,32 +957,6 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	int t1, t2, t3;
 	char *cbuf = buf;
 	int len;
-
-	/*
-	 *	Ensure that the user can't add CONF_SECTIONs
-	 *	with 'internal' names;
-	 */
-	if ((name1 != NULL) && (name1[0] == '_')) {
-		radlog(L_ERR, "%s[%d]: Illegal configuration section name",
-			cf, *lineno);
-		return NULL;
-	}
-
-	/*
-	 *	We're not starting a new section, but $INCLUDE'ing
-	 *	more into the current section.
-	 */
-	if (!name1 && !name2) {
-		cs = parent;
-		freecs = NULL;
-	} else {
-		/*
-		 *	Allocate new section.
-		 */
-		cs = cf_section_alloc(name1, name2, parent);
-		cs->item.lineno = *lineno;
-		freecs = cs;
-	}
 
 	/*
 	 *	Read, checking for line continuations ('\\' at EOL)
@@ -1045,9 +979,8 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		if ((len == (sizeof(buf) - 1)) &&
 		    (cbuf[len - 1] != '\n')) {
 			radlog(L_ERR, "%s[%d]: Line too long",
-			       cf, *lineno);
-			cf_section_free(&freecs);
-			return NULL;
+			       file, *lineno);
+			return -1;
 		}
 
 		/*
@@ -1089,15 +1022,10 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 *      I really really really hate this file.  -cparker
 		 */
 		if (strcasecmp(buf1, "$INCLUDE") == 0) {
-			CONF_SECTION	*is;
-
 			t2 = getword(&ptr, buf2, sizeof(buf2));
 
-			value = cf_expand_variables(cf, lineno, cs, buf, buf2);
-			if (value == NULL) {
-				cf_section_free(&freecs);
-				return NULL;
-			}
+			value = cf_expand_variables(file, lineno, cs, buf, buf2);
+			if (!value) return -1;
 
 #ifdef HAVE_DIRENT_H
 			/*
@@ -1115,10 +1043,9 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 				dir = opendir(value);
 				if (!dir) {
 					radlog(L_ERR, "%s[%d]: Error reading directory %s: %s",
-					       cf, *lineno, value,
+					       file, *lineno, value,
 					       strerror(errno));
-					cf_section_free(&freecs);
-					return NULL;
+					return -1;
 				}
 
 				/*
@@ -1145,24 +1072,23 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 						 value, dp->d_name);
 					if ((stat(buf2, &stat_buf) != 0) ||
 					    S_ISDIR(stat_buf.st_mode)) continue;
-					if ((is = conf_read(cf, *lineno, buf2, cs)) == NULL) {
+					/*
+					 *	Read the file into the current
+					 *	configuration sectoin.
+					 */
+					if (cf_file_include(buf2, cs) < 0) {
 						closedir(dir);
-						cf_section_free(&freecs);
-						return NULL;
+						return -1;
 					}
-					
-					cf_fixup_children(cs, is);
 				}
 				closedir(dir);
 			}  else
 #endif
 			{ /* it was a normal file */
 				DEBUG2( "Config:   including file: %s", value );
-				if ((is = conf_read(cf, *lineno, value, cs)) == NULL) {
-					cf_section_free(&freecs);
-					return NULL;
+				if (cf_file_include(value, cs) < 0) {
+					return -1;
 				}
-				cf_fixup_children(cs, is);
 			}
 			continue;
 		} /* we were in an include */
@@ -1179,30 +1105,30 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		}
 
 		/*
-		 *	See if it's the end of a section.
+		 *	The caller eats "name1 name2 {", and calls us
+		 *	for the data inside of the section.  So if we
+		 *	receive a closing brace, then it must mean the
+		 *	end of the section.
 		 */
-		if (t1 == T_RCBRACE) {
-			if (name1 == NULL || buf2[0]) {
-				radlog(L_ERR, "%s[%d]: Unexpected end of section",
-						cf, *lineno);
-				cf_section_free(&freecs);
-				return NULL;
-			}
-			return cs;
-		}
+		if (t1 == T_RCBRACE) return 0;
 
 		/*
 		 * Perhaps a subsection.
 		 */
 		if (t2 == T_LCBRACE || t3 == T_LCBRACE) {
-			css = cf_section_read(cf, lineno, fp, buf1,
-					      t2==T_LCBRACE ? NULL : buf2, cs);
-			if (css == NULL) {
-				cf_section_free(&freecs);
-				return NULL;
+			css = cf_section_alloc(buf1,
+					       t2 == T_LCBRACE ? NULL : buf2,
+					       cs);
+			if (!css) {
+				radlog(L_ERR, "%s[%d]: Failed allocating memory for section",
+						file, *lineno);
 			}
 			cf_item_add(cs, cf_sectiontoitem(css));
+			css->item.lineno = *lineno;
 
+			if (cf_section_read(file, lineno, fp, css, 0) < 0) {
+				return -1;
+			}
 			continue;
 		}
 
@@ -1220,9 +1146,8 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		} else if (buf1[0] == 0 || buf2[0] == 0 ||
 			   (t2 < T_EQSTART || t2 > T_EQEND)) {
 			radlog(L_ERR, "%s[%d]: Line is not in 'attribute = value' format",
-					cf, *lineno);
-			cf_section_free(&freecs);
-			return NULL;
+					file, *lineno);
+			return -1;
 		}
 
 		/*
@@ -1231,19 +1156,15 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 */
 		if (buf1[0] == '_') {
 			radlog(L_ERR, "%s[%d]: Illegal configuration pair name \"%s\"",
-					cf, *lineno, buf1);
-			cf_section_free(&freecs);
-			return NULL;
+					file, *lineno, buf1);
+			return -1;
 		}
 
 		/*
 		 *	Handle variable substitution via ${foo}
 		 */
-		value = cf_expand_variables(cf, lineno, cs, buf, buf3);
-		if (!value) {
-			cf_section_free(&freecs);
-			return NULL;
-		}
+		value = cf_expand_variables(file, lineno, cs, buf, buf3);
+		if (!value) return -1;
 
 
 		/*
@@ -1257,52 +1178,59 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	/*
 	 *	See if EOF was unexpected ..
 	 */
-	if (name1 != NULL) {
-		radlog(L_ERR, "%s[%d]: Unexpected end of file", cf, *lineno);
-		cf_section_free(&freecs);
-		return NULL;
+	if (!eof_ok) {
+		radlog(L_ERR, "%s[%d]: Unexpected end of file", file, *lineno);
+		return -1;
 	}
 
-	return cs;
+	return 0;
 }
 
 /*
- *	Read the config file.
+ *	Include one config file in another.
  */
-CONF_SECTION *conf_read(const char *fromfile, int fromline,
-			const char *conffile, CONF_SECTION *parent)
+int cf_file_include(const char *file, CONF_SECTION *cs)
 {
 	FILE		*fp;
 	int		lineno = 0;
-	CONF_SECTION	*cs;
+
+	fp = fopen(file, "r");
+	if (!fp) {
+		radlog(L_ERR|L_CONS, "Unable to open file \"%s\": %s",
+		       file, strerror(errno));
+		return -1;
+	}
 
 	/*
-	 *	This is really a hack that mainconfig.c needs
-	 *	a section to hold everything, but can't call
-	 *	cf_section_alloc(), because it's internal.
-	 *
-	 *	<sigh> No we leak memory if something goes wrong..
+	 *	Read the section.  It's OK to have EOF without a
+	 *	matching close brace.
 	 */
-	if (!parent) parent = cf_section_alloc("main", NULL, NULL);
+	if (cf_section_read(file, &lineno, fp, cs, 1) < 0) {
+		fclose(fp);
+		return -1;
+	}
 
-	if ((fp = fopen(conffile, "r")) == NULL) {
-		if (fromfile) {
-			radlog(L_ERR|L_CONS, "%s[%d]: Unable to open file \"%s\": %s",
-					fromfile, fromline, conffile, strerror(errno));
-		} else {
-			radlog(L_ERR|L_CONS, "Unable to open file \"%s\": %s",
-					conffile, strerror(errno));
-		}
+	fclose(fp);
+	return 0;
+}
+
+/*
+ *	Bootstrap a config file.
+ */
+CONF_SECTION *cf_file_read(const char *file)
+{
+	CONF_SECTION *cs;
+
+	cs = cf_section_alloc("main", NULL, NULL);
+	if (!cs) return NULL;
+
+	if (cf_file_include(file, cs) < 0) {
+		cf_section_free(&cs);
 		return NULL;
 	}
 
-	cs = cf_section_read(conffile, &lineno, fp, NULL, NULL, parent);
-
-	fclose(fp);
-
 	return cs;
 }
-
 
 /*
  * Return a CONF_PAIR within a CONF_SECTION.

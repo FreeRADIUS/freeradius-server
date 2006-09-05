@@ -1050,7 +1050,7 @@ static int parse_module(policy_lex_file_t *lexer, policy_item_t **tail)
 	 *	Include section calling a module.
 	 */
 	debug_tokens("including module section from file %s\n", buffer);
-	cs = conf_read(lexer->filename, lexer->lineno, buffer, NULL);
+	cs = cf_file_read(buffer);
 	if (!cs) {
 		return 0;	/* it prints out error messages */
 	}

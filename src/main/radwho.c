@@ -398,7 +398,7 @@ int main(int argc, char **argv)
 
         /* Read radiusd.conf */
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", radius_dir);
-	maincs = conf_read(NULL, 0, buffer, NULL);
+	maincs = cf_file_read(buffer);
 	if (!maincs) {
 		fprintf(stderr, "%s: Error reading radiusd.conf.\n", argv[0]);
 		exit(1);

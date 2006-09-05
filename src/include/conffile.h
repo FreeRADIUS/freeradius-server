@@ -56,10 +56,8 @@ int		cf_section_parse(const CONF_SECTION *, void *base,
  */
 void		cf_section_parse_free_strings(void *base,
 					      const CONF_PARSER *variables);
-
-CONF_SECTION *conf_read(const char *fromfile, int fromline,
-			const char *conffile, CONF_SECTION *parent);
-
+CONF_SECTION	*cf_file_read(const char *file);
+int		cf_file_include(const char *file, CONF_SECTION *cs);
 
 CONF_PAIR	*cf_pair_find(const CONF_SECTION *, const char *name);
 CONF_PAIR	*cf_pair_find_next(const CONF_SECTION *, const CONF_PAIR *, const char *name);
