@@ -784,7 +784,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		*q = value ? strdup(value) : NULL;
 
 		/*
-		 *	And now we "stat" the file.XXX
+		 *	And now we "stat" the file.
 		 */
 		if (*q) {
 			struct stat buf;
@@ -943,10 +943,10 @@ void cf_section_parse_free_strings(void *base, const CONF_PARSER *variables)
  *	Read a part of the config file.
  */
 static int cf_section_read(const char *file, int *lineno, FILE *fp,
-			   CONF_SECTION *cs, int eof_ok)
+			   CONF_SECTION *current)
 
 {
-	CONF_SECTION *css;
+	CONF_SECTION *this, *css;
 	CONF_PAIR *cpn;
 	char *ptr;
 	const char *value;
@@ -956,9 +956,9 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 	char buf3[8192];
 	int t1, t2, t3;
 	char *cbuf = buf;
-	int len, start_lineno;
+	int len;
 
-	start_lineno = *lineno;
+	this = current;		/* add items here */
 
 	/*
 	 *	Read, checking for line continuations ('\\' at EOL)
@@ -1021,12 +1021,14 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		 *	end of the section.
 		 */
 	       if (t1 == T_RCBRACE) {
-		       if (!feof(fp) && eof_ok) {
-			       radlog(L_ERR, "%s[%d]: Unbalanced closing brace",
+		       if (this == current) {
+			       radlog(L_ERR, "%s[%d]: Too many closing braces",
 				      file, *lineno);
 			       return -1;
-			}
-			break;
+			       
+		       }
+		       this = this->item.parent;
+		       continue;
 		}
 
 		/*
@@ -1038,7 +1040,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		if (strcasecmp(buf1, "$INCLUDE") == 0) {
 			t2 = getword(&ptr, buf2, sizeof(buf2));
 
-			value = cf_expand_variables(file, lineno, cs, buf, buf2);
+			value = cf_expand_variables(file, lineno, this, buf, buf2);
 			if (!value) return -1;
 
 #ifdef HAVE_DIRENT_H
@@ -1090,7 +1092,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 					 *	Read the file into the current
 					 *	configuration sectoin.
 					 */
-					if (cf_file_include(buf2, cs) < 0) {
+					if (cf_file_include(buf2, this) < 0) {
 						closedir(dir);
 						return -1;
 					}
@@ -1099,7 +1101,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 			}  else
 #endif
 			{ /* it was a normal file */
-				if (cf_file_include(value, cs) < 0) {
+				if (cf_file_include(value, this) < 0) {
 					return -1;
 				}
 			}
@@ -1123,17 +1125,18 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		if (t2 == T_LCBRACE || t3 == T_LCBRACE) {
 			css = cf_section_alloc(buf1,
 					       t2 == T_LCBRACE ? NULL : buf2,
-					       cs);
+					       this);
 			if (!css) {
 				radlog(L_ERR, "%s[%d]: Failed allocating memory for section",
 						file, *lineno);
 			}
-			cf_item_add(cs, cf_sectiontoitem(css));
+			cf_item_add(this, cf_sectiontoitem(css));
 			css->item.lineno = *lineno;
 
-			if (cf_section_read(file, lineno, fp, css, 0) < 0) {
-				return -1;
-			}
+			/*
+			 *	The current section is now the child section.
+			 */
+			this = css;
 			continue;
 		}
 
@@ -1168,24 +1171,25 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		/*
 		 *	Handle variable substitution via ${foo}
 		 */
-		value = cf_expand_variables(file, lineno, cs, buf, buf3);
+		value = cf_expand_variables(file, lineno, this, buf, buf3);
 		if (!value) return -1;
 
 
 		/*
 		 *	Add this CONF_PAIR to our CONF_SECTION
 		 */
-		cpn = cf_pair_alloc(buf1, value, t2, cs);
+		cpn = cf_pair_alloc(buf1, value, t2, this);
 		cpn->item.lineno = *lineno;
-		cf_item_add(cs, cf_pairtoitem(cpn));
+		cf_item_add(this, cf_pairtoitem(cpn));
 	}
 
 	/*
 	 *	See if EOF was unexpected ..
 	 */
-	if (feof(fp) && !eof_ok) {
-	  radlog(L_ERR, "%s[%d]: EOF reached without closing brace for section %s at line %d",
-		 file, *lineno, cf_section_name1(cs), start_lineno);
+	if (feof(fp) && (this != current)) {
+		radlog(L_ERR, "%s[%d]: EOF reached without closing brace for section %s starting at line %d",
+		       file, *lineno,
+		       cf_section_name1(this), cf_section_lineno(this));
 		return -1;
 	}
 
@@ -1199,6 +1203,7 @@ int cf_file_include(const char *file, CONF_SECTION *cs)
 {
 	FILE		*fp;
 	int		lineno = 0;
+	struct stat	buf;
 
 	DEBUG2( "Config:   including file: %s", file);
 
@@ -1213,9 +1218,22 @@ int cf_file_include(const char *file, CONF_SECTION *cs)
 	 *	Read the section.  It's OK to have EOF without a
 	 *	matching close brace.
 	 */
-	if (cf_section_read(file, &lineno, fp, cs, 1) < 0) {
+	if (cf_section_read(file, &lineno, fp, cs) < 0) {
 		fclose(fp);
 		return -1;
+	}
+
+	/*
+	 *	Add the filename to the section
+	 */
+	if (stat(file, &buf) == 0) {
+		time_t *mtime;
+		
+		mtime = rad_malloc(sizeof(*mtime));
+		*mtime = buf.st_mtime;
+		/* FIXME: error? */
+		cf_data_add_internal(cs, file, mtime, free,
+				     PW_TYPE_FILENAME);
 	}
 
 	fclose(fp);
