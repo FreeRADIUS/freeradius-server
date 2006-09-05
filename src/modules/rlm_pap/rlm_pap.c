@@ -313,7 +313,15 @@ static int pap_authorize(void *instance, REQUEST *request)
 			found_pw = TRUE;
 			q = vp->vp_strvalue;
 			p = strchr(q + 1, '}');
-			if (!p) break;
+			if (!p) {
+				/*
+				 *	FIXME: Turn it into a
+				 *	cleartext-password, unless it,
+				 *	or user-password already
+				 *	exists.
+				 */
+				break;
+			}
 			
 			if ((size_t) (p - q) > sizeof(buffer)) break;
 			
@@ -343,6 +351,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 		}
 			break;
 
+		case PW_CLEARTEXT_PASSWORD:
 		case PW_CRYPT_PASSWORD:
 		case PW_NS_MTA_MD5_PASSWORD:
 			found_pw = TRUE;
