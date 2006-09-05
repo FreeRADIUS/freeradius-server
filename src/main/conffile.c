@@ -956,7 +956,9 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 	char buf3[8192];
 	int t1, t2, t3;
 	char *cbuf = buf;
-	int len;
+	int len, start_lineno;
+
+	start_lineno = *lineno;
 
 	/*
 	 *	Read, checking for line continuations ('\\' at EOL)
@@ -1008,11 +1010,23 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		ptr = cbuf = buf;
 		t1 = gettoken(&ptr, buf1, sizeof(buf1));
 
+               if ((*buf1 == '#') || (*buf1 == '\0')) {
+                       continue;
+	       }
+
 		/*
-		 *	Skip comments and blank lines immediately.
+		 *	The caller eats "name1 name2 {", and calls us
+		 *	for the data inside of the section.  So if we
+		 *	receive a closing brace, then it must mean the
+		 *	end of the section.
 		 */
-		if ((*buf1 == '#') || (*buf1 == '\0')) {
-			continue;
+	       if (t1 == T_RCBRACE) {
+		       if (!feof(fp) && eof_ok) {
+			       radlog(L_ERR, "%s[%d]: Unbalanced closing brace",
+				      file, *lineno);
+			       return -1;
+			}
+			break;
 		}
 
 		/*
@@ -1085,7 +1099,6 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 			}  else
 #endif
 			{ /* it was a normal file */
-				DEBUG2( "Config:   including file: %s", value );
 				if (cf_file_include(value, cs) < 0) {
 					return -1;
 				}
@@ -1103,14 +1116,6 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 			t2 = gettoken(&ptr, buf2, sizeof(buf2));
 			t3 = getword(&ptr, buf3, sizeof(buf3));
 		}
-
-		/*
-		 *	The caller eats "name1 name2 {", and calls us
-		 *	for the data inside of the section.  So if we
-		 *	receive a closing brace, then it must mean the
-		 *	end of the section.
-		 */
-		if (t1 == T_RCBRACE) return 0;
 
 		/*
 		 * Perhaps a subsection.
@@ -1178,8 +1183,9 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 	/*
 	 *	See if EOF was unexpected ..
 	 */
-	if (!eof_ok) {
-		radlog(L_ERR, "%s[%d]: Unexpected end of file", file, *lineno);
+	if (feof(fp) && !eof_ok) {
+	  radlog(L_ERR, "%s[%d]: EOF reached without closing brace for section %s at line %d",
+		 file, *lineno, cf_section_name1(cs), start_lineno);
 		return -1;
 	}
 
@@ -1193,6 +1199,8 @@ int cf_file_include(const char *file, CONF_SECTION *cs)
 {
 	FILE		*fp;
 	int		lineno = 0;
+
+	DEBUG2( "Config:   including file: %s", file);
 
 	fp = fopen(file, "r");
 	if (!fp) {
