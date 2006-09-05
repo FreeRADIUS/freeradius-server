@@ -156,6 +156,13 @@ int main(int argc, char *argv[])
 	sigemptyset( &act.sa_mask ) ;
 #endif
 
+	/*
+	 *	Don't put output anywhere until we get told a little
+	 *	more.
+	 */
+	mainconfig.radlog_fd = -1;
+	mainconfig.log_file = NULL;
+
 	/*  Process the options.  */
 	while ((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:n:p:sSvxXyz")) != EOF) {
 
@@ -256,6 +263,7 @@ int main(int argc, char *argv[])
 				mainconfig.log_auth_badpass = TRUE;
 				mainconfig.log_auth_goodpass = TRUE;
 				mainconfig.radlog_dest = RADLOG_STDOUT;
+				mainconfig.radlog_fd = STDOUT_FILENO;
 				break;
 
 			case 'x':
@@ -277,12 +285,6 @@ int main(int argc, char *argv[])
 				break;
 		}
 	}
-
-	/*
-	 *	Don't put output anywhere.
-	 */
-	mainconfig.radlog_fd = -1;
-	mainconfig.log_file = NULL;
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (read_mainconfig(0) < 0) {
