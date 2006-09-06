@@ -1993,7 +1993,8 @@ int listen_init(const char *filename, rad_listen_t **head)
 				break;
 			}
 		}
-		rad_assert(port > 0); /* must have found at least one entry! */
+
+		if (port < 0) port = 1024 + (lrad_rand() & 0x1ff);
 
 		/*
 		 *	Address is still unspecified, use IPv4.
