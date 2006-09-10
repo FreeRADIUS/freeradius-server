@@ -124,6 +124,7 @@ $INCLUDE dictionary.ntua
 $INCLUDE dictionary.nomadix
 $INCLUDE dictionary.nortel
 $INCLUDE dictionary.packeteer
+$INCLUDE dictionary.patton
 $INCLUDE dictionary.propel
 $INCLUDE dictionary.quintum
 $INCLUDE dictionary.redback
