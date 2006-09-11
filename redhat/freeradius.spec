@@ -108,6 +108,7 @@ fi
 %config /etc/logrotate.d/radiusd
 %config /etc/rc.d/init.d/radiusd
 %config (noreplace) /etc/raddb/*
+%doc %{_datadir}/doc/%{name}-%{version}
 %{_bindir}/*
 %{_datadir}/%{name}
 %{_libdir}/*
