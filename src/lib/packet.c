@@ -125,6 +125,30 @@ uint32_t lrad_reply_packet_hash(const RADIUS_PACKET *packet)
 }
 
 
+static int lrad_ipaddr_cmp(const lrad_ipaddr_t *a, const lrad_ipaddr_t *b)
+{
+	if (a->af < b->af) return -1;
+	if (a->af > b->af) return +1;
+
+	switch (a->af) {
+	case AF_INET:
+		return memcmp(&a->ipaddr.ip4addr,
+			      &b->ipaddr.ip4addr,
+			      sizeof(a->ipaddr.ip4addr));
+		break;
+	case AF_INET6:
+		return memcmp(&a->ipaddr.ip6addr,
+			      &b->ipaddr.ip6addr,
+			      sizeof(a->ipaddr.ip6addr));
+		break;
+	default:
+		break;
+	}
+	
+	return -1;
+}
+
+
 /*
  *	See if two packets are identical.
  *
@@ -142,45 +166,15 @@ int lrad_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b)
 	if (a->id < b->id) return -1;
 	if (a->id > b->id) return +1;
 
-	if (a->src_ipaddr.af < b->dst_ipaddr.af) return -1;
-	if (a->src_ipaddr.af > b->dst_ipaddr.af) return +1;
-
 	if (a->src_port < b->src_port) return -1;
 	if (a->src_port > b->src_port) return +1;
 
 	if (a->dst_port < b->dst_port) return -1;
 	if (a->dst_port > b->dst_port) return +1;
 
-	switch (a->dst_ipaddr.af) {
-	case AF_INET:
-		rcode = memcmp(&a->dst_ipaddr.ipaddr.ip4addr,
-			       &b->dst_ipaddr.ipaddr.ip4addr,
-			       sizeof(a->dst_ipaddr.ipaddr.ip4addr));
-		if (rcode != 0) return rcode;
-		rcode = memcmp(&a->src_ipaddr.ipaddr.ip4addr,
-			       &b->src_ipaddr.ipaddr.ip4addr,
-			       sizeof(a->src_ipaddr.ipaddr.ip4addr));
-		if (rcode != 0) return rcode;
-		break;
-	case AF_INET6:
-		rcode = memcmp(&a->dst_ipaddr.ipaddr.ip6addr,
-			       &b->dst_ipaddr.ipaddr.ip6addr,
-			       sizeof(a->dst_ipaddr.ipaddr.ip6addr));
-		if (rcode != 0) return rcode;
-		rcode = memcmp(&a->src_ipaddr.ipaddr.ip6addr,
-			       &b->src_ipaddr.ipaddr.ip6addr,
-			       sizeof(a->src_ipaddr.ipaddr.ip6addr));
-		if (rcode != 0) return rcode;
-		break;
-	default:
-		return -1;
-		break;
-	}
-
-	/*
-	 *	Everything's equal.  Say so.
-	 */
-	return 0;
+	rcode = lrad_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
+	if (rcode != 0) return rcode;
+	return lrad_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
 }
 
 
@@ -437,7 +431,6 @@ int lrad_packet_list_socket_add(lrad_packet_list_t *pl, int sockfd)
 	return 1;
 }
 
-
 static uint32_t packet_entry_hash(const void *data)
 {
 	return lrad_request_packet_hash(*(const RADIUS_PACKET * const *) data);
@@ -506,22 +499,7 @@ static int packet_dst2id_cmp(const void *one, const void *two)
 	if (a->dst_port < b->dst_port) return -1;
 	if (a->dst_port > b->dst_port) return +1;
 
-	switch (a->dst_ipaddr.af) {
-	case AF_INET:
-		return memcmp(&a->dst_ipaddr.ipaddr.ip4addr,
-			      &b->dst_ipaddr.ipaddr.ip4addr,
-			      sizeof(a->dst_ipaddr.ipaddr.ip4addr));
-		break;
-	case AF_INET6:
-		return memcmp(&a->dst_ipaddr.ipaddr.ip6addr,
-			      &b->dst_ipaddr.ipaddr.ip6addr,
-			      sizeof(a->dst_ipaddr.ipaddr.ip6addr));
-		break;
-	default:
-		break;
-	}
-	
-	return 0;
+	return lrad_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
 }
 
 static void packet_dst2id_free(void *data)
