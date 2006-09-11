@@ -522,8 +522,19 @@ int proxy_send(REQUEST *request)
 				return RLM_MODULE_FAIL; /* caller doesn't reply */
 			}
 
-			request->proxy_listener->send(request->proxy_listener,
-						      request);
+			/*
+			 *	We're still running, encode & sign the
+			 *	packet outside of the critical section.
+			 */
+			if (request->child_pid != NO_SUCH_CHILD_PID) {
+				rad_encode(request->proxy, NULL,
+					   (char *)request->proxysecret);
+				rad_sign(request->proxy, NULL,
+					 (char *)request->proxysecret);
+			} else {
+				request->proxy_listener->send(request->proxy_listener,
+							      request);
+			}
 		}
 		rcode = RLM_MODULE_HANDLED; /* caller doesn't reply */
 		break;

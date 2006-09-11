@@ -641,17 +641,5 @@ next_request:
 	DEBUG2("Going to the next request");
 
 postpone_request:
-#ifdef HAVE_PTHREAD_H
-	/*
-	 *  We are finished with the child thread.  The thread is detached,
-	 *  so that when it exits, there's nothing more for the server
-	 *  to do.
-	 *
-	 *  If we're running with thread pools, then this frees up the
-	 *  thread in the pool for another request.
-	 */
-	request->child_pid = NO_SUCH_CHILD_PID;
-#endif
-	request->finished = finished; /* do as the LAST thing before exiting */
-	return 0;
+	return finished;
 }

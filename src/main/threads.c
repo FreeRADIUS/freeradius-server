@@ -413,79 +413,7 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
-	/*
-	 *	If the request is currently being processed, then that
-	 *	MAY be OK, if it's a proxy reply.  In that case,
-	 *	sending the packet may result in a reply being
-	 *	received before that thread clears the child_pid.
-	 *
-	 *	In that case, we busy-wait for the request to be free.
-	 *
-	 *	We COULD push it onto the queue and try to grab
-	 *	another request, but what if this is the only request?
-	 *	What if there are multiple such packets with race
-	 *	conditions?  We don't want to thrash the queue...
-	 *
-	 *	This busy-wait is less than optimal, but it's simple,
-	 *	fail-safe, and it works.
-	 */
-	if ((*request)->child_pid != NO_SUCH_CHILD_PID) {
-		int count, ok;
-		struct timeval tv;
-#ifdef HAVE_PTHREAD_SIGMASK
-		sigset_t set, old_set;
-
-		/*
-		 *	Block a large number of signals which could
-		 *	cause the select to return EINTR
-		 */
-		sigemptyset(&set);
-		sigaddset(&set, SIGPIPE);
-		sigaddset(&set, SIGCONT);
-		sigaddset(&set, SIGSTOP);
-		sigaddset(&set, SIGCHLD);
-		pthread_sigmask(SIG_BLOCK, &set, &old_set);
-#endif
-
-		rad_assert((*request)->proxy_reply != NULL);
-
-		ok = FALSE;
-
-		/*
-		 *	Sleep for 100 milliseconds.  If the other thread
-		 *	doesn't get serviced in this time, to clear
-		 *	the "child_pid" entry, then the server is too
-		 *	busy, so we die.
-		 */
-		for (count = 0; count < 10; count++) {
-			tv.tv_sec = 0;
-			tv.tv_usec = 10000; /* sleep for 10 milliseconds */
-
-			/*
-			 *	Portable sleep that's thread-safe.
-			 *
-			 *	Don't worry about interrupts, as they're
-			 *	blocked above.
-			 */
-			select(0, NULL, NULL, NULL, &tv);
-			if ((*request)->child_pid == NO_SUCH_CHILD_PID) {
-				ok = TRUE;
-				break;
-			}
-		}
-
-#ifdef HAVE_PTHREAD_SIGMASK
-		/*
-		 *	Restore the original thread signal mask.
-		 */
-		pthread_sigmask(SIG_SETMASK, &old_set, NULL);
-#endif
-
-		if (!ok) {
-			radlog(L_ERR, "FATAL!  Server is too busy to process requests");
-			exit(1);
-		}
-	}
+	rad_assert((*request)->child_pid == NO_SUCH_CHILD_PID);
 
 	return 1;
 }
@@ -525,6 +453,8 @@ static void *request_handler_thread(void *arg)
 	 *	Loop forever, until told to exit.
 	 */
 	do {
+		int finished;
+
 		/*
 		 *	Wait to be signalled.
 		 */
@@ -566,13 +496,35 @@ static void *request_handler_thread(void *arg)
 		/*
 		 *	Respond, and reset request->child_pid
 		 */
-		rad_respond(self->request, fun);
+		finished = rad_respond(self->request, fun);
 		self->request = NULL;
 
 		/*
 		 *	Update the active threads.
 		 */
 		pthread_mutex_lock(&thread_pool.queue_mutex);
+
+		/*
+		 *	We haven't replied to the client, but we HAVE
+		 *	sent a proxied packet, and we have NOT
+		 *	received a proxy response.  In that case, send
+		 *	the proxied packet now.  Doing this in the mutex
+		 *	avoids race conditions.
+		 *
+		 *	FIXME: this work should really depend on a
+		 *	"state", and "next handler", rather than
+		 *	horrid hacks like thise.
+		 */
+		if (!self->request->reply->data &&
+		    self->request->proxy && self->request->proxy->data
+		    && !self->request->proxy_reply)
+			self->request->proxy_listener->send(self->request->proxy_listener,
+							    (char *)self->request->proxysecret);
+
+		self->request->child_pid = NO_SUCH_CHILD_PID;
+		self->request->finished = finished;
+		self->request = NULL;
+		
 		rad_assert(thread_pool.active_threads > 0);
 		thread_pool.active_threads--;
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
@@ -903,7 +855,7 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	We've been told not to spawn threads, so don't.
 	 */
 	if (!thread_pool.spawn_flag) {
-		rad_respond(request, fun);
+		request->finished = rad_respond(request, fun);
 		return 1;
 	}
 

@@ -953,6 +953,8 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	uint16_t	total_length;
 	int		len;
 	VALUE_PAIR	*reply;
+	const char	*what;
+	char		ip_buffer[128];
 	
 	/*
 	 *	For simplicity in the following logic, we allow
@@ -962,6 +964,19 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *	It's uint32_t, for alignment purposes.
 	 */
 	uint32_t	data[(MAX_PACKET_LEN + 256) / 4];
+
+	if ((packet->code > 0) && (packet->code < MAX_PACKET_CODE)) {
+		what = packet_codes[packet->code];
+	} else {
+		what = "Reply";
+	}
+
+	DEBUG("Sending %s of id %d to %s port %d\n",
+	      what, packet->id,
+	      inet_ntop(packet->dst_ipaddr.af,
+			&packet->dst_ipaddr.ipaddr,
+			ip_buffer, sizeof(ip_buffer)),
+	      packet->dst_port);
 
 	/*
 	 *	Double-check some things based on packet code.
@@ -1263,13 +1278,6 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *  First time through, allocate room for the packet
 	 */
 	if (!packet->data) {
-		DEBUG("Sending %s of id %d to %s port %d\n",
-		      what, packet->id,
-		      inet_ntop(packet->dst_ipaddr.af,
-				&packet->dst_ipaddr.ipaddr,
-				ip_buffer, sizeof(ip_buffer)),
-			packet->dst_port);
-		
 		/*
 		 *	Encode the packet.
 		 */
