@@ -548,8 +548,10 @@ static int load_component_section(modcallable *parent,
 				continue;
 			}
 			cp = NULL;
-		} else {
+		} else if (cf_item_is_pair(modref)) {
 			cp = cf_itemtopair(modref);
+		} else {
+			continue; /* ignore it */
 		}
 
 		/*
