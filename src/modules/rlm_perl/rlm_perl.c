@@ -1073,34 +1073,29 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	
 	vp = NULL;
 	if ((get_hv_content(rad_request_hv, &vp)) > 0 ) {
-		pairfree(&request->packet->vps);
-		request->packet->vps = vp;
+		pairmove(&request->packet->vps, &vp);
 		vp = NULL;
 	}
 
 	if ((get_hv_content(rad_reply_hv, &vp)) > 0 ) {
-		pairfree(&request->reply->vps);
-		request->reply->vps = vp;
+		pairmove(&request->reply->vps, &vp);
 		vp = NULL;
 	}
 
 	if ((get_hv_content(rad_check_hv, &vp)) > 0 ) {
-		pairfree(&request->config_items);
-		request->config_items = vp;
+		pairmove(&request->config_items, &vp);
 		vp = NULL;
 	}
 	
 	if (request->proxy &&
 	    (get_hv_content(rad_request_proxy_hv, &vp) > 0)) {
-		pairfree(&request->proxy->vps);
-		request->proxy->vps = vp;
+		pairmove(&request->proxy->vps, &vp);
 		vp = NULL;
 	}
 
 	if (request->proxy_reply &&
 	    (get_hv_content(rad_request_proxy_reply_hv, &vp) > 0)) {
-		pairfree(&request->proxy_reply->vps);
-		request->proxy_reply->vps = vp;
+		pairmove(&request->proxy_reply->vps, &vp);
 		vp = NULL;
 	}
 
