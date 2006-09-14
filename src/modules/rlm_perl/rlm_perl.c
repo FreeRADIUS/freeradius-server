@@ -1076,6 +1076,14 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 		pairfree(&request->packet->vps);
 		request->packet->vps = vp;
 		vp = NULL;
+
+		/*
+		 *	Update cached copies
+		 */
+		request->username = pairfind(request->packet->vps,
+					     PW_USER_NAME);
+		request->password = pairfind(request->packet->vps,
+					     PW_USER_PASSWORD);
 	}
 
 	if ((get_hv_content(rad_reply_hv, &vp)) > 0 ) {
