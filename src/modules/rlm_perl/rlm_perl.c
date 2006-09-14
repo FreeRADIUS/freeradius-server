@@ -907,65 +907,28 @@ static int pairadd_sv(VALUE_PAIR **vp, char *key, SV *sv, int operator) {
   */
 static int get_hv_content(HV *my_hv, VALUE_PAIR **vp)
 {
-       SV		*res_sv, **av_sv, **operator_sv, **sv;
-       HV		*hv;
+       SV		*res_sv, **av_sv;
        AV		*av;
-       char		*key,*tmp,*ptr;
-       char 		buf[MAX_STRING_LEN];
+       char		*key;
        I32		key_len, len, i, j;
        int		ret=0;
-       LRAD_TOKEN token, operator = T_EOL;
 
+       *vp = NULL;
        for (i = hv_iterinit(my_hv); i > 0; i--) {
-               
-	       res_sv = hv_iternextsv(my_hv,&key,&key_len);
-               
-	       if (SvROK(res_sv) && (SvTYPE(SvRV(res_sv)) == SVt_PVHV)) {
-		       hv = (HV*)SvRV(res_sv);
-		       if (hv_exists(hv,key,key_len)) {
-			       sv = hv_fetch(hv,key,key_len,FALSE);
-			      /*
-			       * Check if there is hash Key Operator and if not 
-			       * use T_OP_EQ as default
-			       */
-			       if (hv_exists(hv,"Operator",strlen("Operator"))) {
-				       operator_sv = hv_fetch(hv,"Operator", strlen("Operator"), FALSE);
-
-				       if (SvOK(*operator_sv)) 
-					       ptr = SvPV_nolen(*operator_sv);
-
-				       operator = gettoken(&ptr, buf, sizeof(buf));
-				       /*
-					* Check Operator 
-					*
-					*/
-				       if (operator <= T_EOL ) {
-					       radlog(L_ERR,"rlm_perl: Invalid Operator for attribute %s", key);
-					       operator = T_OP_EQ;
-				       } 
-			       } else {
-				       radlog(L_ERR,"rlm_perl: Operator key doesn't exist. Setting Operator to = for key %s", key);
-				       operator = T_OP_EQ;
-			       }
-			       ret = pairadd_sv(vp,key, *sv, operator) + ret;
-		       } else {
-			       radlog(L_ERR,"rlm_perl: Wrong or missing key in hash ref for %s, Skipping", key );
-		       }
-	       } 
-	       else if (SvROK(res_sv) && (SvTYPE(SvRV(res_sv)) == SVt_PVAV)) {
+               res_sv = hv_iternextsv(my_hv,&key,&key_len);
+               if (SvROK(res_sv) && (SvTYPE(SvRV(res_sv)) == SVt_PVAV)) {
                        av = (AV*)SvRV(res_sv);
                        len = av_len(av);
                        for (j = 0; j <= len; j++) {
                                av_sv = av_fetch(av, j, 0);
                                ret = pairadd_sv(vp, key, *av_sv, T_OP_ADD) + ret;
                        }
-	       } else {
-		       ret = pairadd_sv(vp, key, res_sv, T_OP_EQ) + ret;
-	       }
+               } else ret = pairadd_sv(vp, key, res_sv, T_OP_EQ) + ret;
         }
 
         return ret;
 }
+
 /*
  * 	Call the function_name inside the module
  * 	Store all vps in hashes %RAD_CHECK %RAD_REPLY %RAD_REQUEST
