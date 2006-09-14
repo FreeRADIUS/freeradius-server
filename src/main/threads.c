@@ -497,7 +497,6 @@ static void *request_handler_thread(void *arg)
 		 *	Respond, and reset request->child_pid
 		 */
 		finished = rad_respond(self->request, fun);
-		self->request = NULL;
 
 		/*
 		 *	Update the active threads.
