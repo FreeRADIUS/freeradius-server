@@ -11,7 +11,7 @@
 # /usr/bin/rcradius-relayd
 #
 ### BEGIN INIT INFO
-# Provides:          radiusd
+# Provides:          radius-relayd
 # Required-Start:    $network $syslog $remotefs
 # Required-Stop:
 # Default-Start:     3 5
