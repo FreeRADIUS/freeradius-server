@@ -194,6 +194,22 @@ CREATE TABLE radpostauth (
 );
 
 --
+-- Table structure for table 'radippool'
+--
+
+CREATE TABLE radippool (
+	id			BIGSERIAL PRIMARY KEY,
+	pool_name		text NOT NULL,
+	FramedIPAddress		INET NOT NULL,
+	NASIPAddress		text NOT NULL,
+	CalledStationId		VARCHAR(64),
+	CallingStationId	text DEFAULT ''::text NOT NULL,
+	expiry_time		TIMESTAMP(0) without time zone NOT NULL,
+	username		text DEFAULT ''::text,
+	pool_key		VARCHAR(30) NOT NULL
+);
+
+--
 -- Table structure for table 'dictionary'
 -- This is not currently used by FreeRADIUS
 --
