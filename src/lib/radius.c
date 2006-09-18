@@ -1892,6 +1892,10 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		case PW_AUTHENTICATION_REJECT:
 		case PW_ACCESS_CHALLENGE:
 		case PW_ACCOUNTING_RESPONSE:
+		case PW_DISCONNECT_ACK:
+		case PW_DISCONNECT_NAK:
+		case PW_COA_ACK:
+		case PW_COA_NAK:
 			rcode = calc_replydigest(packet, original, secret);
 			if (rcode > 1) {
 				librad_log("Received %s packet "
