@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 #
 #   Read in the references, and put into an associative array
@@ -122,7 +122,7 @@ EOF
 #
 #  And finally, create the index.
 #
-open OUTPUT, ">index.html" || die "Error creating index.html: $!\n";
+open OUTPUT, ">attributes.html" || die "Error creating attributes.html: $!\n";
 
 #
 #  Print out the HTML header
@@ -144,12 +144,16 @@ $letter = "@";
 
 foreach $key (sort keys %refs) {
     if (substr($key,0,1) ne $letter) {
+	print OUTPUT "</UL>\n" if ($letter ne "@");
 	$letter = substr($key,0,1);
 	print OUTPUT "\n<H3>$letter</H3>\n\n";
+        print OUTPUT "<UL>\n";
     }
     
     print OUTPUT "<A HREF=\"$refs{$key}.html#$key\">$key</A><BR>\n";
 }
+
+print OUTPUT "</UL>\n";
 
 print OUTPUT "</BODY>\n";
 close OUTPUT;
