@@ -50,6 +50,7 @@
 
 #include        <libpq-fe.h>
 #include	"rlm_sql.h"
+#include	"sql_postgresql.h"
 
 typedef struct rlm_sql_postgres_sock {
    PGconn          *conn;
@@ -61,7 +62,6 @@ typedef struct rlm_sql_postgres_sock {
 } rlm_sql_postgres_sock;
 
 /* Prototypes */
-static int sql_store_result(SQLSOCK * sqlsocket, SQL_CONFIG *config);
 static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config);
 
 /* Internal function. Return true if the postgresql status value
@@ -100,41 +100,53 @@ free_result_row(rlm_sql_postgres_sock * pg_sock)
 	}
 }
 
-/*************************************************************************
- *
- *      Function: sql_check_error
- *
- *      Purpose: check the error to see if the server is down
- *
- *	Note: It is possible that something other than a connection error
- *	could cause PGRES_FATAL_ERROR. If that happens a reconnect will
- *	occur anyway. Not optimal, but I couldn't find a way to check it.
- *		 		Peter Nixon <codemonkey@peternixon.net>
- *
 
+/***********************************************************************
+* Check to see if we could try to reconnect after a query-server error
+* we are checking only first 2 characters according to the error code
+* class..time consuming...
+* if we don't have the error class/code 
+* in the header file, we reconnect
 ************************************************************************/
-static int sql_check_error(int error) {
-        switch(error) {
-        case PGRES_FATAL_ERROR:
-        case -1:
-                radlog(L_DBG, "rlm_sql_postgresql: Postgresql check_error: %s, returning SQL_DOWN", PQresStatus(error));
-                return SQL_DOWN;
-                break;
+static int sql_check_error(char *errcode)
+{
+	int x = 0;
 
-        case PGRES_COMMAND_OK:
-        case PGRES_TUPLES_OK:
-        case 0:
-                return 0;
-                break;
-
-        case PGRES_NONFATAL_ERROR:
-        case PGRES_BAD_RESPONSE:
-        default:
-                radlog(L_DBG, "rlm_sql_postgresql: Postgresql check_error: %s received", PQresStatus(error));
-                return -1;
-                break;
-        }
+	while(errorcodes[x].errorcode != NULL){
+		if (strcmp(errorcodes[x].errorcode, errcode) == 0){
+			radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s] Occured!!", errorcodes[x].meaning);
+			if (errorcodes[x].shouldreconnect == 1)
+				return SQL_DOWN;
+			else
+				return 0;
+		}	
+		x++;
+	}
+	
+	return SQL_DOWN;	
 }
+
+/*************************************************************************
+*	Function: check_fatal_error
+*	
+*	Purpose:  check and behave according to the error type we get 
+*			  from query.	
+*
+*	Note:     This will not cause reconnects because of errors other than
+*			  connection errors
+*			  Tuyan Ozipek  <tuyan@suntel.com.tr>		
+*************************************************************************/
+
+static int check_fatal_error (char *errorcode)
+{
+	/*	We have the error code in chars..
+		please have a look at table at the web page
+		http://www.postgresql.org/docs/8.1/interactive/errcodes-appendix.html
+	*/
+	radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s] Accured!!", errorcode);	
+	return sql_check_error(errorcode);
+}
+
 
 
 /*************************************************************************
@@ -182,7 +194,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	if (PQstatus(pg_sock->conn) == CONNECTION_BAD) {
 		radlog(L_ERR, "rlm_sql_postgresql: Couldn't connect socket to PostgreSQL server %s@%s:%s", config->sql_login, config->sql_server, config->sql_db);
-		radlog(L_ERR, "rlm_sql_postgresql: Postgresql error '%s'", PQerrorMessage(pg_sock->conn));
+		/*radlog(L_ERR, "rlm_sql_postgresql: Postgresql error '%s'", PQerrorMessage(pg_sock->conn));*/
 		PQfinish(pg_sock->conn);
 		return SQL_DOWN;
 	}
@@ -200,6 +212,12 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
+	int numfields = 0;
+	char *errorcode; 
+	char *errormsg;
+
+	errorcode = (char*) rad_malloc(sizeof(char) * 15); /*Ding ding ding!!*/
+	errormsg = (char*) rad_malloc(sizeof(char) * MAX_STRING_LEN); /*Ding ding ding!!*/
 
 	if (config->sqltrace)
 		radlog(L_DBG,"rlm_sql_postgresql: query:\n%s", querystr);
@@ -224,21 +242,68 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 		return  SQL_DOWN;
 	} else {
 		ExecStatusType status = PQresultStatus(pg_sock->result);
-
 		radlog(L_DBG, "rlm_sql_postgresql: Status: %s", PQresStatus(status));
 
-		radlog(L_DBG, "rlm_sql_postgresql: affected rows = %s",
-				PQcmdTuples(pg_sock->result));
+		switch (status){
 
-		if (!status_is_ok(status))
-			return sql_check_error(status);
+			case PGRES_COMMAND_OK: 
+				/*Successful completion of a command returning no data.*/
 
-		if (strncasecmp("select", querystr, 6) != 0) {
-			/* store the number of affected rows because the sql module
-			 * calls finish_query before it retrieves the number of affected
-			 * rows from the driver */
-			pg_sock->affected_rows = affected_rows(pg_sock->result);
-			return 0;
+				/*affected_rows function only returns 
+				the number of affected rows of a command 
+				returning no data...	
+				*/
+				pg_sock->affected_rows	= affected_rows(pg_sock->result); 
+				radlog(L_DBG, "rlm_sql_postgresql: query affected rows = %i", pg_sock->affected_rows);
+				return 0; /* Someone should tell me what does 0 and 1 means here..Also -1 !!!*/
+
+			break;
+
+			case PGRES_TUPLES_OK:
+				/*Successful completion of a command returning data (such as a SELECT or SHOW).*/
+
+				pg_sock->cur_row = 0;
+ 				pg_sock->affected_rows = PQntuples(pg_sock->result);
+				numfields = PQnfields(pg_sock->result); /*Check row storing functions..*/
+				radlog(L_DBG, "rlm_sql_postgresql: query affected rows = %i , fields = %i", pg_sock->affected_rows, numfields);
+				return 0;
+
+			break;
+
+			case PGRES_BAD_RESPONSE:
+				/*The server's response was not understood.*/
+				radlog(L_DBG, "rlm_sql_postgresql: Bad Response From Server!!");
+				return -1;
+
+			break;
+
+			case PGRES_NONFATAL_ERROR:
+				/*A nonfatal error (a notice or warning) occurred. Possibly never returns*/
+
+				return -1;
+
+			break;
+
+			case PGRES_FATAL_ERROR:
+				/*A fatal error occurred.*/
+
+				errorcode = PQresultErrorField(pg_sock->result, PG_DIAG_SQLSTATE);
+				errormsg  = PQresultErrorField(pg_sock->result, PG_DIAG_MESSAGE_PRIMARY);
+				radlog(L_DBG, "rlm_sql_postgresql: Error %s", errormsg);
+				return check_fatal_error(errorcode);
+
+			break;
+
+		}	
+	
+		/*
+			Note to self ... sql_store_result returns 0 anyway
+			after setting the sqlsocket->affected_rows.. 
+			sql_num_fields returns 0 at worst case which means the check below
+			has a really small chance to return false..
+			lets remove it then .. yuck!!
+		*/
+		/*
 		} else {
 			if ((sql_store_result(sqlsocket, config) == 0)
 					&& (sql_num_fields(sqlsocket, config) >= 0))
@@ -246,6 +311,7 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 			else
 				return -1;
 		}
+		*/
 	}
 }
 
@@ -264,23 +330,6 @@ static int sql_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *query
 
 /*************************************************************************
  *
- *	Function: sql_store_result
- *
- *	Purpose: database specific store_result function. Returns a result
- *               set for the query.
- *
- *************************************************************************/
-static int sql_store_result(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config) {
-	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
-
-	pg_sock->cur_row = 0;
-	pg_sock->affected_rows = PQntuples(pg_sock->result);
-	return 0;
-}
-
-
-/*************************************************************************
- *
  *      Function: sql_destroy_socket
  *
  *      Purpose: Free socket and private connection data
@@ -292,27 +341,6 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
 	sqlsocket->conn = NULL;
         return 0;
 }
-
-/*************************************************************************
- *
- *	Function: sql_num_fields
- *
- *	Purpose: database specific num_fields function. Returns number
- *               of columns from query
- *
- *************************************************************************/
-static int sql_num_fields(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config) {
-
-	int num = 0;
-	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
-
-	if (!(num = PQnfields(pg_sock->result))) {
-		radlog(L_ERR, "rlm_sql_postgresql: PostgreSQL Error: Cannot get result");
-		radlog(L_ERR, "rlm_sql_postgresql: PostgreSQL error: %s", PQerrorMessage(pg_sock->conn));
-	}
-	return num;
-}
-
 
 /*************************************************************************
  *
@@ -350,10 +378,9 @@ static int sql_fetch_row(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config) {
 		}
 		pg_sock->cur_row++;
 		sqlsocket->row = pg_sock->row;
-		return 0;
-	} else {
-		return 0;
 	}
+
+	return 0;
 }
 
 
