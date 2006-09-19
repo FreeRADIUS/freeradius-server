@@ -13,7 +13,7 @@ FILES = acct_users attrs attrs.pre-proxy clients.conf dictionary	\
 	eap.conf experimental.conf hints huntgroups ldap.attrmap	\
 	mssql.conf naspasswd oraclesql.conf otp.conf postgresql.conf	\
 	preproxy_users proxy.conf radiusd.conf radrelay.conf		\
-	realms snmp.conf sql.conf users
+	realms snmp.conf sql.conf sqlippool.conf users
 
 all:
 
