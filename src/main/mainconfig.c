@@ -912,11 +912,27 @@ int read_mainconfig(int reload)
 		}
 		
 		if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
+			static const CONF_PARSER syslog_config[] = {
+				{ "log", PW_TYPE_SUBSECTION, 0, NULL,  (const void *) log_config},
+				{ NULL, -1, 0, NULL, NULL }
+			};
+			cf_section_parse(cs, NULL, syslog_config);
+
+			/*
+			 *	Make sure syslog_facility isn't NULL before using it
+			 */
+			if (!syslog_facility) {
+				fprintf(stderr, "radiusd: Error: Unknown syslog chosen but no facility spedified\n");
+				free(radlog_dest);
+				cf_section_free(&cs);
+				return -1;
+			}
 			mainconfig.syslog_facility = lrad_str2int(str2fac, syslog_facility, -1);
 			if (mainconfig.syslog_facility < 0) {
 				fprintf(stderr, "radiusd: Error: Unknown syslog_facility %s\n",
 					syslog_facility);
 				free(radlog_dest);
+				free(syslog_facility);
 				cf_section_free(&cs);
 				return -1;
 			}
