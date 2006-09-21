@@ -95,23 +95,7 @@ typedef struct rlm_sqlippool_t {
 	char *off_commit;	/* SQL query to commit */
 	char *off_rollback;	/* SQL query to rollback */
 	
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_t dlock;
-	long owner;
-#endif	
-
 } rlm_sqlippool_t;
-
-#ifndef HAVE_PTHREAD_H
-/*
- *  This is easier than ifdef's throughout the code.
- */
-#define pthread_mutex_init(_x, _y)
-#define pthread_mutex_destroy(_x)
-#define pthread_mutex_lock(_x)
-#define pthread_mutex_unlock(_x)
-#endif
-
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -493,7 +477,6 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 	}
 
 	sqlippool_initialize_sql(data);
-	pthread_mutex_init(&data->dlock, NULL);
 	*instance = data;
 	return 0;
 }
@@ -511,6 +494,15 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	SQLSOCK * sqlsocket;
 	lrad_ipaddr_t ipaddr;
 
+	VALUE_PAIR *callingsid;
+	VALUE_PAIR *pair;
+
+	int do_callingsid = 0;
+	int do_calledsid = 0;
+
+	char    logstr[MAX_STRING_LEN];
+
+
 	/*
 	 * If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
@@ -519,14 +511,8 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		return RLM_MODULE_NOOP;
 	}
 
-	if ((vp = pairfind(request->config_items, PW_POOL_NAME)) != NULL) {
-	  	DEBUG("Value Of the Pool-Name is [%s] and its [%i] Chars \n", vp->vp_strvalue, vp->length);
-		pthread_mutex_lock(&data->dlock);
-		strNcpy(data->pool_name, vp->vp_strvalue, (vp->length + 1));
-		pthread_mutex_unlock(&data->dlock);	
-	}
-	else {
-		DEBUG("rlm_sqlippool: missing pool_name");
+	if (pairfind(request->config_items, PW_POOL_NAME) == NULL) {
+		DEBUG("rlm_sqlippool: We Dont have Pool-Name in check items.. Lets do nothing..");
 		return RLM_MODULE_NOOP;
 	}
 	
@@ -564,7 +550,19 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	allocation_len = sqlippool_query1(allocation, sizeof(allocation),
 					  data->allocate_find, sqlsocket, instance, request,
 					  (char *) NULL, 0);
-	radlog(L_INFO,"rlm_sqlippool: ip=[%s] len=%d", allocation, allocation_len);
+
+	if ((pair = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
+		do_callingsid = 1;
+
+	if ((pair = pairfind(request->packet->vps, PW_CALLED_STATION_ID)) != NULL)
+		do_calledsid = 1;
+
+	if (do_calledsid && do_callingsid){
+		radius_xlat(logstr, sizeof(logstr), "[(cli %{Calling-Station-Id} did %{Called-Station-Id})]", request, NULL);
+		radlog(L_INFO,"rlm_sqlippool: ip [%s] %s", allocation, logstr);
+	}else{
+		radlog(L_INFO,"rlm_sqlippool: ip=[%s] len=%d", allocation, allocation_len);
+	}
 
 	if (allocation_len == 0)
 	{	
