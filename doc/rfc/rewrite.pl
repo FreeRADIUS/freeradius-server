@@ -65,12 +65,10 @@ EOF
 	#  Attribute name header.
 	#
 	if (/^\d+\./) {
-	    split;
+	    ($digits, $attribute, $rest) = split / /, $_, 3;
 
-	    if ($refs{$_[1]} ne "") {
-		$attribute = $_[1];
-		
-		print OUTPUT "<A NAME=\"$attribute\"><H2>$_[0] $attribute</H2></a>\n";
+	    if ($refs{$attribute} ne "") {
+		print OUTPUT "<A NAME=\"$attribute\"><H2>$digits $attribute</H2></a> $rest\n";
 		
 	    } else {
 		print OUTPUT "<H2>$_</H2>\n";
