@@ -432,20 +432,18 @@ static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, con
 		return 0;
 	}
 
-	if (*tmpuser) {
-		strNcpy(sqlusername, tmpuser, MAX_STRING_LEN);
-		DEBUG2("rlm_sql (%s): sql_set_user escaped user --> '%s'",
+	strNcpy(sqlusername, tmpuser, MAX_STRING_LEN);
+	DEBUG2("rlm_sql (%s): sql_set_user escaped user --> '%s'",
 		       inst->config->xlat_name, sqlusername);
-		vp = pairmake("SQL-User-Name", sqlusername, 0);
-		if (vp == NULL) {
-			radlog(L_ERR, "%s", librad_errstr);
-			return -1;
-		}
-
-		pairadd(&request->packet->vps, vp);
-		return 0;
+	vp = pairmake("SQL-User-Name", sqlusername, 0);
+	if (vp == NULL) {
+		radlog(L_ERR, "%s", librad_errstr);
+		return -1;
 	}
-	return -1;
+
+	pairadd(&request->packet->vps, vp);
+	return 0;
+
 }
 
 
@@ -897,16 +895,6 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	 * sqlusername string
 	 */
 	char   profileusername[MAX_STRING_LEN];
-
-	/*
-	 *	They MUST have a user name to do SQL authorization.
-	 */
-	if ((request->username == NULL) ||
-	    (request->username->length == 0)) {
-		radlog(L_ERR, "rlm_sql (%s): zero length username not permitted\n", inst->config->xlat_name);
-		return RLM_MODULE_INVALID;
-	}
-
 
 	/*
 	 * Set, escape, and check the user attr here
