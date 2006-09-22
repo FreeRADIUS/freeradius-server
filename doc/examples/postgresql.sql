@@ -128,18 +128,18 @@ create index radreply_UserName on radreply (UserName,Attribute);
 -- create index radreply_UserName_lower on radreply (lower(UserName),Attribute);
 
 /*
- * Table structure for table 'usergroup'
+ * Table structure for table 'radusergroup'
  */
-CREATE TABLE usergroup (
+CREATE TABLE radusergroup (
 	UserName	VARCHAR(64) NOT NULL DEFAULT '',
 	GroupName	VARCHAR(64) NOT NULL DEFAULT '',
 	priority	INTEGER NOT NULL DEFAULT 0
 );
-create index usergroup_UserName on usergroup (UserName);
+create index radusergroup_UserName on radusergroup (UserName);
 /*
  * Use this index if you use case insensitive queries
  */
--- create index usergroup_UserName_lower on usergroup (lower(UserName));
+-- create index radusergroup_UserName_lower on radusergroup (lower(UserName));
 
 /*
  * Table structure for table 'realmgroup'

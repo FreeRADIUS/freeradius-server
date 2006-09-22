@@ -155,22 +155,22 @@ CREATE OR REPLACE TRIGGER radreply_serialnumber
 /
 
 /*
- * Table structure for table 'usergroup'
+ * Table structure for table 'radusergroup'
  */
-CREATE TABLE usergroup (
+CREATE TABLE radusergroup (
 	id		INT PRIMARY KEY,
 	UserName	VARCHAR(30) UNIQUE NOT NULL,
 	GroupName	VARCHAR(30)
 );
-CREATE SEQUENCE usergroup_seq START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE radusergroup_seq START WITH 1 INCREMENT BY 1;
 
 /* Trigger to emulate a serial # on the primary key */
-CREATE OR REPLACE TRIGGER usergroup_serialnumber
-	BEFORE INSERT OR UPDATE OF id ON usergroup
+CREATE OR REPLACE TRIGGER radusergroup_serialnumber
+	BEFORE INSERT OR UPDATE OF id ON radusergroup
 	FOR EACH ROW
 	BEGIN
 		if ( :new.id = 0 or :new.id is null ) then
-			SELECT usergroup_seq.nextval into :new.id from dual;
+			SELECT radusergroup_seq.nextval into :new.id from dual;
 		end if;
 	END;
 /

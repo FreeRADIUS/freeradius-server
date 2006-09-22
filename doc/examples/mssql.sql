@@ -84,8 +84,8 @@ CREATE TABLE [radreply] (
 ) ON [PRIMARY]
 GO
 
-/****** Object:  Table [usergroup]    Script Date: 26.03.02 16:55:18 ******/
-CREATE TABLE [usergroup] (
+/****** Object:  Table [radusergroup]    Script Date: 26.03.02 16:55:18 ******/
+CREATE TABLE [radusergroup] (
 	[id] [int] IDENTITY (1, 1) NOT NULL ,
 	[UserName] [varchar] (64) NOT NULL ,
 	[GroupName] [varchar] (64) NULL
@@ -167,10 +167,10 @@ ALTER TABLE [radreply] WITH NOCHECK ADD
 	)  ON [PRIMARY]
 GO
 
-ALTER TABLE [usergroup] WITH NOCHECK ADD
-	CONSTRAINT [DF_usergroup_UserName] DEFAULT ('') FOR [UserName],
-	CONSTRAINT [DF_usergroup_GroupName] DEFAULT ('') FOR [GroupName],
-	CONSTRAINT [PK_usergroup] PRIMARY KEY  NONCLUSTERED
+ALTER TABLE [radusergroup] WITH NOCHECK ADD
+	CONSTRAINT [DF_radusergroup_UserName] DEFAULT ('') FOR [UserName],
+	CONSTRAINT [DF_radusergroup_GroupName] DEFAULT ('') FOR [GroupName],
+	CONSTRAINT [PK_radusergroup] PRIMARY KEY  NONCLUSTERED
 	(
 		[id]
 	)  ON [PRIMARY]
@@ -209,5 +209,5 @@ GO
  CREATE  INDEX [UserName] ON [radreply]([UserName]) ON [PRIMARY]
 GO
 
- CREATE  INDEX [UserName] ON [usergroup]([UserName]) ON [PRIMARY]
+ CREATE  INDEX [UserName] ON [radusergroup]([UserName]) ON [PRIMARY]
 GO

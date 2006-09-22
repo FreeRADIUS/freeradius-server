@@ -4,7 +4,7 @@
  * OPTIONAL Postgresql trigger for FreeRADIUS
  *
  * This trigger updates fills in the groupname field (which doesnt come in Accounting packets)
- * by querying the usergroup table.
+ * by querying the radusergroup table.
  * This makes it easier to do group summary reports, however note that it does add some extra
  * database load to 50% of your SQL accounting queries. If you dont care about group summary 
  * reports then you dont need to install this.
@@ -18,7 +18,7 @@ DECLARE
         v_groupname varchar;
 
 BEGIN
-        SELECT INTO v_groupname groupname FROM usergroup WHERE calledstationid = NEW.calledstationid AND username = NEW.username;
+        SELECT INTO v_groupname groupname FROM radusergroup WHERE calledstationid = NEW.calledstationid AND username = NEW.username;
         IF FOUND THEN
                 UPDATE radacct SET groupname = v_groupname WHERE radacctid = NEW.radacctid;
         END IF;

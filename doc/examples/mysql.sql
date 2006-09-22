@@ -108,10 +108,10 @@ CREATE TABLE radreply (
 
 
 #
-# Table structure for table 'usergroup'
+# Table structure for table 'radusergroup'
 #
 
-CREATE TABLE usergroup (
+CREATE TABLE radusergroup (
   UserName varchar(64) NOT NULL default '',
   GroupName varchar(64) NOT NULL default '',
   priority int(11) NOT NULL default '1',
