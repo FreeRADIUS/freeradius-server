@@ -251,7 +251,7 @@ static int common_checks(rad_listen_t *listener,
 						 buffer, sizeof(buffer)),					       curreq->proxy->dst_port,
 				       
 				       curreq->proxy->id);
-				listener->send(curreq->proxy_listener, curreq);
+				curreq->proxy_listener->send(curreq->proxy_listener, curreq);
 				return 0;
 			} /* else the packet was not proxied */
 
