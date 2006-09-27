@@ -495,16 +495,16 @@ static int refresh_request(void *ctx, void *data)
 	}
 
 	/*
-	 *	If the request is finished, AND more than cleanup_delay
-	 *	seconds have passed since it was received, clean it up.
-	 *
+	 *	If the request is finished, THEN
+	 *	check that more than cleanup_delay seconds have passed
+	 *	since it was received
 	 *	OR, if this is a request which had the "don't cache"
-	 *	option set, then delete it immediately, as it CANNOT
-	 *	have a duplicate.
+	 *	option set, then it CANNOT have a duplicate
+	 *	SO, clean it up
 	 */
-	if ((request->finished &&
-	     (time_passed >= mainconfig.cleanup_delay)) ||
-	    ((request->options & RAD_REQUEST_OPTION_DONT_CACHE) != 0)) {
+	if (request->finished &&
+	    ((time_passed >= mainconfig.cleanup_delay) ||
+	    ((request->options & RAD_REQUEST_OPTION_DONT_CACHE) != 0))) {
 		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 		/*
 		 *  Request completed, delete it, and unlink it
