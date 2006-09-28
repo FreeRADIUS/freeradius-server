@@ -255,12 +255,11 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request,
 	 *	For logging unresponsive children.
 	 */
 	request->module = sp->modinst->name;
-	request->component = comp2str[component];
 
 	myresult = sp->modinst->entry->module->methods[component](
 			sp->modinst->insthandle, request);
 
-	request->module = NULL;
+	request->module = "<server-core>";
 	safe_unlock(sp->modinst);
 	DEBUG3("  modsingle[%s]: returned from %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,

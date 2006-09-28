@@ -412,18 +412,25 @@ static indexed_modcallable *new_sublist(int comp, int idx)
 
 static int indexed_modcall(int comp, int idx, REQUEST *request)
 {
+	int rcode;
 	indexed_modcallable *this;
 
 	this = lookup_by_index(comp, idx);
 	if (!this) {
 		if (idx != 0) DEBUG2("  ERROR: Unknown value specified for %s.  Cannot perform requested action.",
 				     section_type_value[comp].typename);
-		return modcall(comp, NULL, request); /* does default action */
+		request->component = section_type_value[comp].typename;
+		rcode = modcall(comp, NULL, request); /* does default action */
+	} else {
+		DEBUG2("  Processing the %s section of %s",
+		       section_type_value[comp].section,
+		       mainconfig.radiusd_conf);
+		request->component = section_type_value[comp].typename;
+		rcode = modcall(comp, this->modulelist, request);
 	}
-
-	DEBUG2("  Processing the %s section of %s",
-	       section_type_value[comp].section, mainconfig.radiusd_conf);
-	return modcall(comp, this->modulelist, request);
+	request->module = "<server-core>";
+	request->component = "<server-core>";
+	return rcode;
 }
 
 /*
