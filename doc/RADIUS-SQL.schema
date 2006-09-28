@@ -11,10 +11,10 @@ RADIUS-SQL.schema
  
   There isn't a generic SQL schema, but there is one for some databases:
 
-    src/modules/rlm_sql/drivers/rlm_sql_mysql/db_mysql.sql
-    src/modules/rlm_sql/drivers/rlm_sql_postgresql/db_postgresql.sql
-    src/modules/rlm_sql/drivers/rlm_sql_freetds/db_mssql.sql
-    src/modules/rlm_sql/drivers/rlm_sql_oracle/db_oracle.sql
+    doc/examples/mysql.sql
+    doc/examples/postgresql.sql
+    doc/examples/mssql.sql
+    doc/examples/oracle.sql
 
 2.MYSQL
 
