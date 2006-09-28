@@ -320,6 +320,8 @@ ATTRIBUTE	Lucent-User-Login-Level			307	integer
 ATTRIBUTE	Lucent-First-Level-User			308	string
 ATTRIBUTE	Lucent-IP-Source-If			309	string
 ATTRIBUTE	Lucent-Reverse-Path-Check		310	integer
+ATTRIBUTE	Lucent-LCP-Keepalive-Period		321	integer
+ATTRIBUTE	Lucent-LCP-Keepalive-Missed-Limit	322	integer
 ATTRIBUTE	Lucent-Dsl-Atuc-Chan-Uncorrect-Blks	10000	integer
 ATTRIBUTE	Lucent-Dsl-Atuc-Chan-Corrected-Blks	10001	integer
 ATTRIBUTE	Lucent-Dsl-Atuc-Chan-Xmit-Blks		10002	integer
