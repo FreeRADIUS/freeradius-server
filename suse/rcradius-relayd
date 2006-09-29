@@ -20,7 +20,7 @@
 # Description:       Remote Authentication Dialin User Server Relay Service
 ### END INIT INFO
 
-RADIUSD_BIN=/usr/sbin/radiusd
+RADIUSD_BIN=/usr/sbin/radrelayd
 test -x $RADIUSD_BIN || { echo "$RADIUSD_BIN not installed"; \
 	if [ "$1" = "stop" ]; then exit 0;
 	else exit 5; fi; }
