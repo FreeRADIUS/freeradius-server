@@ -252,7 +252,7 @@ otp_authorize(void *instance, REQUEST *request)
 
     if (otp_gen_state(state, NULL, challenge, inst->challenge_len, 0,
                       now, hmac_key) != 0) {
-      (void) radlog(L_ERR, "rlm_otp: %s: failed to generate state", __func__);
+      (void) radlog(L_ERR, "rlm_otp: %s: failed to generate radstate",__func__);
       return RLM_MODULE_FAIL;
     }
     pairadd(&request->reply->vps, pairmake("State", state, T_OP_EQ));
