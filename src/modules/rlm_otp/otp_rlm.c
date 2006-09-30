@@ -332,7 +332,7 @@ otp_authenticate(void *instance, REQUEST *request)
     e_length = inst->challenge_len * 2 + 8 + 8 + 32; /* see otp_gen_state() */
 
     if (vp->length != e_length) {
-      (void) radlog(L_AUTH, "rlm_otp: %s: bad state for [%s]: length",
+      (void) radlog(L_AUTH, "rlm_otp: %s: bad radstate for [%s]: length",
                     __func__, username);
       return RLM_MODULE_INVALID;
     }
@@ -345,7 +345,7 @@ otp_authenticate(void *instance, REQUEST *request)
     (void) memcpy(rad_state, vp->vp_strvalue, vp->length);
     rad_state[e_length] = '\0';
     if (otp_a2x(rad_state, raw_state) == -1) {
-      (void) radlog(L_AUTH, "rlm_otp: %s: bad state for [%s]: not hex",
+      (void) radlog(L_AUTH, "rlm_otp: %s: bad radstate for [%s]: not hex",
                     __func__, username);
       return RLM_MODULE_INVALID;
     }
@@ -358,13 +358,13 @@ otp_authenticate(void *instance, REQUEST *request)
     /* generate new state from returned input data */
     if (otp_gen_state(NULL, state, challenge, inst->challenge_len, 0,
                       then, hmac_key) != 0) {
-      (void) radlog(L_ERR, "rlm_otp: %s: failed to generate state",
+      (void) radlog(L_ERR, "rlm_otp: %s: failed to generate radstate",
                     __func__);
       return RLM_MODULE_FAIL;
     }
     /* compare generated state against returned state to verify hmac */
     if (memcmp(state, vp->vp_strvalue, vp->length)) {
-      (void) radlog(L_AUTH, "rlm_otp: %s: bad state for [%s]: hmac",
+      (void) radlog(L_AUTH, "rlm_otp: %s: bad radstate for [%s]: hmac",
                     __func__, username);
       return RLM_MODULE_REJECT;
     }
@@ -372,7 +372,7 @@ otp_authenticate(void *instance, REQUEST *request)
     /* State is valid, but check expiry. */
     then = ntohl(then);
     if (time(NULL) - then > inst->challenge_delay) {
-      (void) radlog(L_AUTH, "rlm_otp: %s: bad state for [%s]: expired",
+      (void) radlog(L_AUTH, "rlm_otp: %s: bad radstate for [%s]: expired",
                     __func__, username);
       return RLM_MODULE_REJECT;
     }
