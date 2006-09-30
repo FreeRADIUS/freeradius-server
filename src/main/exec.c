@@ -492,6 +492,11 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			radlog(L_ERR|L_CONS, "Exec-Program: Failed to catch child return code");
 			return 2;
 		}
+		/*
+		 *	If we haven't returned yet, the chile hasn't finished,
+		 *	so sleep for 1 second then try again.
+		 */
+		sleep(1);
 	}
 
 	radlog(L_ERR|L_CONS, "Exec-Program: Child execution is taking too long.  Giving up.");
