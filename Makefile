@@ -103,5 +103,9 @@ config.status: configure
 
 configure.in:
 
+.PHONY: check-includes
+check-includes:
+	scripts/min-includes.pl `find . -name "*.c" -print`
+
 TAGS:
 	etags `find src -type f -name '*.[ch]' -print`
