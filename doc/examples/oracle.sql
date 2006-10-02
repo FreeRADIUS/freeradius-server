@@ -43,7 +43,7 @@ CREATE TABLE radacct (
 	radacctid		INT PRIMARY KEY,
 	acctsessionid		VARCHAR(32) NOT NULL,
 	acctuniqueid		VARCHAR(32),
-	username		VARCHAR(32) NOT NULL,
+	username		VARCHAR(64) NOT NULL,
 	groupname		VARCHAR(32) NOT NULL,
 	realm			VARCHAR(30),
 	nasipaddress		VARCHAR(15) NOT NULL,
