@@ -29,28 +29,28 @@ typedef enum lrad_token_t {
   T_LCBRACE,			/* { */
   T_RCBRACE,			/* } */
   T_LBRACE,			/* ( */
-  T_RBRACE,			/* ) */
+  T_RBRACE,			/* ) 		 5 */
   T_COMMA,			/* , */
   T_SEMICOLON,			/* ; */
 
   T_OP_ADD,			/* += */
   T_OP_SUB,			/* -= */
-  T_OP_SET,			/* := */
+  T_OP_SET,			/* := 		10 */
   T_OP_EQ,			/* = */
   T_OP_NE,			/* != */
   T_OP_GE,			/* >= */
   T_OP_GT,			/* > */
-  T_OP_LE,			/* <= */
+  T_OP_LE,			/* <= 		15 */
   T_OP_LT,			/* < */
   T_OP_REG_EQ,			/* =~ */
   T_OP_REG_NE,			/* !~ */
   T_OP_CMP_TRUE,                /* =* */
-  T_OP_CMP_FALSE,               /* !* */
+  T_OP_CMP_FALSE,               /* !* 		20 */
   T_OP_CMP_EQ,			/* == */
   T_HASH,			/* # */
   T_BARE_WORD,			/* bare word */
   T_DOUBLE_QUOTED_STRING,	/* "foo" */
-  T_SINGLE_QUOTED_STRING,	/* 'foo' */
+  T_SINGLE_QUOTED_STRING,	/* 'foo' 	25 */
   T_BACK_QUOTED_STRING,		/* `foo` */
   T_TOKEN_LAST
 } LRAD_TOKEN;
