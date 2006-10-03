@@ -160,7 +160,7 @@ static CONF_PARSER module_config[] = {
   { "sqlippool_log_failed", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, log_failed), NULL, "" },
   { "sqlippool_log_nopool", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, log_nopool), NULL, "" },
 
-  { "defaultpoool", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,off_rollback), NULL, "mickeymouse" },
+  { "defaultpool", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, defaultpool), NULL, "main_pool" },
 
 
 
@@ -907,6 +907,8 @@ static int sqlippool_detach(void *instance)
 	free(data->sql_instance_name);
 	free(data->pool_name);
 
+	
+
 	free(data->allocate_begin);
 	free(data->allocate_clear);
 	free(data->allocate_find);
@@ -938,6 +940,14 @@ static int sqlippool_detach(void *instance)
 	free(data->off_clear);
 	free(data->off_commit);
 	free(data->off_rollback);
+	
+	free(data->log_exists);
+	free(data->log_failed);
+	free(data->log_nopool);
+	free(data->log_success);
+	free(data->defaultpool);
+	
+	
 
 	return 0;
 }
