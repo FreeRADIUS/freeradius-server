@@ -1,0 +1,11 @@
+TARGET      = @targetname@
+SRCS        = rlm_acctlog.c
+RLM_CFLAGS  = @acctlog_cflags@
+RLM_LIBS    = @acctlog_ldflags@
+
+include ../rules.mak
+
+$(LT_OBJS): $(HEADERS)
+
+install-example:
+	touch .
