@@ -95,6 +95,16 @@ typedef struct rlm_sqlippool_t {
 	char *off_commit;	/* SQL query to commit */
 	char *off_rollback;	/* SQL query to rollback */
 	
+				/* Logging Section */
+
+	char *log_exists;	/* There Was an ip address already asigned */
+	char *log_success;	/* We successfully allocated ip address from pool */
+	char *log_failed;	/* Failed to allocate ip from the pool */
+	char *log_nopool;	/* There was no Framed-IP-Address but also no Pool-Name */
+
+				/* Reserved to handle 255.255.255.254 Requests */
+	char *defaultpool;   /* Default Pool-Name if there is non in the check items */
+
 } rlm_sqlippool_t;
 
 /*
@@ -144,6 +154,15 @@ static CONF_PARSER module_config[] = {
   { "off-clear", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,off_clear), NULL, "" },
   { "off-commit", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,off_commit), NULL, "COMMIT" },
   { "off-rollback", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,off_rollback), NULL, "ROLLBACK" },
+
+  { "sqlippool_log_exists", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, log_exists), NULL, "" },
+  { "sqlippool_log_success", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, log_success), NULL, "" },
+  { "sqlippool_log_failed", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, log_failed), NULL, "" },
+  { "sqlippool_log_nopool", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, log_nopool), NULL, "" },
+
+  { "defaultpoool", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,off_rollback), NULL, "mickeymouse" },
+
+
 
   { NULL, -1, 0, NULL, NULL }
 };
@@ -481,6 +500,20 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 	return 0;
 }
 
+
+/* Do "hit and run!"
+ * if we have something to log, then we log it
+ * otherwise we return the retcode as soon as possible 
+ * </tuyan>
+ */
+static int do_logging(char *str, int retcode)
+{
+	if (strlen(str))
+		radlog(L_INFO,"%s", str);	
+	return retcode;
+}
+
+
 /*
  *	Allocate an IP number from the pool.
  */
@@ -502,18 +535,22 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 	char    logstr[MAX_STRING_LEN];
 
-
 	/*
 	 * If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
 	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS) != NULL) {
+		/* We already have a Framed-IP-Address */
+		radius_xlat(logstr, sizeof(logstr), data->log_exists, request, NULL);
 		DEBUG("rlm_sqlippool: Framed-IP-Address already exists");
-		return RLM_MODULE_NOOP;
+
+		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
 
 	if (pairfind(request->config_items, PW_POOL_NAME) == NULL) {
 		DEBUG("rlm_sqlippool: We Dont have Pool-Name in check items.. Lets do nothing..");
-		return RLM_MODULE_NOOP;
+		radius_xlat(logstr, sizeof(logstr), data->log_nopool, request, NULL);
+
+		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
 	
 	if (pairfind(request->packet->vps, PW_NAS_IP_ADDRESS) == NULL) {
@@ -551,19 +588,6 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 					  data->allocate_find, sqlsocket, instance, request,
 					  (char *) NULL, 0);
 
-	if ((pair = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
-		do_callingsid = 1;
-
-	if ((pair = pairfind(request->packet->vps, PW_CALLED_STATION_ID)) != NULL)
-		do_calledsid = 1;
-
-	if (do_calledsid && do_callingsid){
-		radius_xlat(logstr, sizeof(logstr), "[(cli %{Calling-Station-Id} did %{Called-Station-Id})]", request, NULL);
-		radlog(L_INFO,"rlm_sqlippool: ip [%s] %s", allocation, logstr);
-	}else{
-		radlog(L_INFO,"rlm_sqlippool: ip=[%s] len=%d", allocation, allocation_len);
-	}
-
 	if (allocation_len == 0)
 	{	
 		/*
@@ -574,10 +598,16 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 		DEBUG("rlm_sqlippool: IP number could not be allocated.");
 		sql_release_socket(data->sql_inst, sqlsocket);
-		return RLM_MODULE_NOOP;
+		radius_xlat(logstr, sizeof(logstr), data->log_failed, request, NULL);
+	
+		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
 
 	
+	/*  Reminder to self </tuyan>
+	 *  please make it work with the ipv6 address'
+	 *  before the freeradius v2 release 
+	 */
 	if ((ip_hton(allocation, AF_INET, &ipaddr) < 0) ||
 	    ((ip_allocation = ipaddr.ipaddr.ip4addr.s_addr) == INADDR_NONE))
 	{
@@ -589,7 +619,9 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 		DEBUG("rlm_sqlippool: Invalid IP number [%s] returned from database query.", allocation);
 		sql_release_socket(data->sql_inst, sqlsocket);
-		return RLM_MODULE_NOOP;
+		radius_xlat(logstr, sizeof(logstr), data->log_failed, request, NULL);	
+		
+		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
 
 	/*
@@ -615,7 +647,9 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 			  (char *) NULL, 0);
 
 	sql_release_socket(data->sql_inst, sqlsocket);
-	return RLM_MODULE_OK;
+	radius_xlat(logstr, sizeof(logstr), data->log_success, request, NULL);
+
+	return do_logging(logstr, RLM_MODULE_OK);
 }
 
 static int sqlippool_accounting_start(void * instance, REQUEST * request)
