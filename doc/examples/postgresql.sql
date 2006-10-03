@@ -209,6 +209,11 @@ CREATE TABLE radippool (
 	pool_key		VARCHAR(30) NOT NULL
 );
 
+CREATE INDEX radippool_poolname_ipaadr ON radippool USING btree (pool_name, framedipaddress);
+CREATE INDEX radippool_poolname_expire ON radippool USING btree (pool_name, expiry_time);
+CREATE INDEX radippool_nasipaddr_poolkey ON radippool USING btree (nasipaddress, pool_key);
+CREATE INDEX radippool_nasipaddr_calling ON radippool USING btree (nasipaddress, callingstationid);
+
 --
 -- Table structure for table 'dictionary'
 -- This is not currently used by FreeRADIUS
