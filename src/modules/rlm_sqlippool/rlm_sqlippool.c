@@ -496,49 +496,25 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 	VALUE_PAIR *callingsid;
 	VALUE_PAIR *pair;
-	VALUE_PAIR *framedip;
-	VALUE_PAIR *plname;
 
 	int do_callingsid = 0;
 	int do_calledsid = 0;
-	int do_username = 0;
 
 	char    logstr[MAX_STRING_LEN];
-	char	ip[MAX_STRING_LEN];
 
-
-
-    if ((pair = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
-        do_callingsid = 1;
-
-    if ((pair = pairfind(request->packet->vps, PW_CALLED_STATION_ID)) != NULL)
-        do_calledsid = 1;
-
-    if ((pair = pairfind(request->packet->vps, PW_USER_NAME)) != NULL)
-        do_username = 1;
-
-	if (do_calledsid && do_callingsid && do_username){
-		radius_xlat(logstr, sizeof(logstr), "[ [%{User-Name}] Pool %{check:Pool-Name} cli %{Calling-Station-Id} did %{Called-Station-Id})]", request, NULL);
-	}else{
-		memset(logstr, '\0', sizeof(logstr));
-	}
 
 	/*
 	 * If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
-	if ((framedip = pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS)) != NULL) {
-		ip_ntoa(ip, framedip->lvalue);
-		radlog(L_INFO,"rlm_sqlippool: Existing ip [%s] For %s", ip, logstr);
+	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS) != NULL) {
 		DEBUG("rlm_sqlippool: Framed-IP-Address already exists");
 		return RLM_MODULE_NOOP;
 	}
 
 	if (pairfind(request->config_items, PW_POOL_NAME) == NULL) {
 		DEBUG("rlm_sqlippool: We Dont have Pool-Name in check items.. Lets do nothing..");
-		radlog(L_INFO, "rlm_sqlippool: Missing Pool-Name for %s", logstr);
 		return RLM_MODULE_NOOP;
 	}
-	
 	
 	if (pairfind(request->packet->vps, PW_NAS_IP_ADDRESS) == NULL) {
 		DEBUG("rlm_sqlippool: unknown NAS-IP-Address");
@@ -575,9 +551,18 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 					  data->allocate_find, sqlsocket, instance, request,
 					  (char *) NULL, 0);
 
+	if ((pair = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
+		do_callingsid = 1;
 
-	
-	radlog(L_INFO,"rlm_sqlippool: ip [%s] %s", allocation, logstr);
+	if ((pair = pairfind(request->packet->vps, PW_CALLED_STATION_ID)) != NULL)
+		do_calledsid = 1;
+
+	if (do_calledsid && do_callingsid){
+		radius_xlat(logstr, sizeof(logstr), "[(cli %{Calling-Station-Id} did %{Called-Station-Id})]", request, NULL);
+		radlog(L_INFO,"rlm_sqlippool: ip [%s] %s", allocation, logstr);
+	}else{
+		radlog(L_INFO,"rlm_sqlippool: ip=[%s] len=%d", allocation, allocation_len);
+	}
 
 	if (allocation_len == 0)
 	{	
