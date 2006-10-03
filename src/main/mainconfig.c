@@ -36,15 +36,10 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/conffile.h>
-#include <freeradius-devel/token.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/request_list.h>
 
 #include <sys/resource.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <netdb.h>
 #include <sys/stat.h>
 #include <grp.h>

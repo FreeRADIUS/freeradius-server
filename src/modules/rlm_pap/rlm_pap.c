@@ -31,7 +31,6 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/conffile.h>
 #include "../../include/md5.h"
 #include "../../include/sha1.h"
 

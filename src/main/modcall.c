@@ -26,9 +26,7 @@
 #include <stdarg.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/conffile.h>
 #include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/modules.h>
 #include <freeradius-devel/modcall.h>
 
 /* mutually-recursive static functions need a prototype up front */

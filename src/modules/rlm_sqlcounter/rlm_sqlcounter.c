@@ -33,11 +33,9 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/conffile.h>
 
 #define MAX_QUERY_LEN 1024
 
-#include <time.h>
 
 
 /* 	Note: When your counter spans more than 1 period (ie 3 months or 2 weeks), this module

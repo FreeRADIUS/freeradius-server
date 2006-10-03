@@ -36,7 +36,6 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/conffile.h>
 
 
 static const char rcsid[] = "$Id$";

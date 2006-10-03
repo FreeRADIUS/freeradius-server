@@ -29,7 +29,6 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/conffile.h>
 
 #ifdef DEBUG
 #undef DEBUG

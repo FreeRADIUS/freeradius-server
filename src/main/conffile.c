@@ -47,8 +47,6 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/conffile.h>
-#include <freeradius-devel/token.h>
 #include <freeradius-devel/modules.h>
 
 static const char rcsid[] =

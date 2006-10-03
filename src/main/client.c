@@ -39,7 +39,6 @@ static const char rcsid[] = "$Id$";
 #include <fcntl.h>
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/conffile.h>
 #include <freeradius-devel/rad_assert.h>
 
 struct radclient_list {

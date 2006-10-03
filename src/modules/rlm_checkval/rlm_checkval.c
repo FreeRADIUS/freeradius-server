@@ -29,7 +29,6 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/conffile.h>
 #ifdef HAVE_REGEX_H
 #	include <regex.h>
 #endif

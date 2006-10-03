@@ -13,7 +13,6 @@
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/conffile.h>
 
-#include <stdarg.h>
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -29,7 +28,6 @@ typedef pid_t child_pid_t;
 #endif
 
 #ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
 #endif
 
 #define NO_SUCH_CHILD_PID (child_pid_t) (0)

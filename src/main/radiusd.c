@@ -68,7 +68,6 @@ static const char rcsid[] =
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/conffile.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/request_list.h>
 #include <freeradius-devel/radius_snmp.h>

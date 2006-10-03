@@ -39,7 +39,6 @@ static const char rcsid[] =
 #include <freeradius-devel/sysutmp.h>
 #include <freeradius-devel/radutmp.h>
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/conffile.h>
 
 /*
  *	FIXME: put in header file.

@@ -32,14 +32,12 @@ static const char rcsid[] = "$Id$";
 #endif
 
 #include	<fcntl.h>
-#include	<string.h>
 #include	<ctype.h>
 
 #ifdef WITH_UDPFROMTO
 #include	<freeradius-devel/udpfromto.h>
 #endif
 
-#include	<sys/socket.h>
 
 #ifdef HAVE_MALLOC_H
 #include	<malloc.h>

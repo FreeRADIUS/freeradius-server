@@ -51,9 +51,7 @@
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/modules.h>
 
-#include        <freeradius-devel/md4.h>
 #include        <freeradius-devel/md5.h>
-#include        <freeradius-devel/sha1.h>
 
 
 #define		SM_AUTHTYPE	((11406<<16)|101)

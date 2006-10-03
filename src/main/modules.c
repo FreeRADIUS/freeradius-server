@@ -32,10 +32,7 @@ static const char rcsid[] = "$Id$";
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/modules.h>
 #include <freeradius-devel/modcall.h>
-#include <freeradius-devel/conffile.h>
-#include "ltdl.h"
 #include <freeradius-devel/rad_assert.h>
 
 typedef struct indexed_modcallable {

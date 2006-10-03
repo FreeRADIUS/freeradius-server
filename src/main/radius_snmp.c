@@ -37,7 +37,6 @@ static const char rcsid[] =
 #include <freeradius-devel/smux.h>
 #include <freeradius-devel/radius_snmp.h>
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/conffile.h>
 
 extern int need_reload;
 

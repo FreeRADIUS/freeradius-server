@@ -32,10 +32,8 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/conffile.h>
 
 #include <gdbm.h>
-#include <time.h>
 
 #ifdef NEEDS_GDBM_SYNC
 #	define GDBM_SYNCOPT GDBM_SYNC

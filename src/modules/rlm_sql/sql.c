@@ -46,11 +46,9 @@
 #include	<sys/wait.h>
 
 #include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/conffile.h>
 #include	"rlm_sql.h"
 
 #ifdef HAVE_PTHREAD_H
-#include	<pthread.h>
 #endif
 
 

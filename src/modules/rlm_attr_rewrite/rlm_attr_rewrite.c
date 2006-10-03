@@ -32,7 +32,6 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/conffile.h>
 
 #define RLM_REGEX_INPACKET 0
 #define RLM_REGEX_INCONFIG 1
