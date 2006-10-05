@@ -209,7 +209,6 @@ int lrad_socket(lrad_ipaddr_t *ipaddr, int port)
 
 	sockfd = socket(ipaddr->af, SOCK_DGRAM, 0);
 	if (sockfd < 0) {
-		librad_log("Failed opening socket: %s", strerror(errno));
 		return sockfd;
 	}
 
@@ -264,7 +263,6 @@ int lrad_socket(lrad_ipaddr_t *ipaddr, int port)
 	}
 
 	if (bind(sockfd, &salocal, salen) < 0) {
-		librad_log("Bind to address failed: %s", strerror(errno));
 		close(sockfd);
 		return -1;
 	}
