@@ -199,7 +199,7 @@ void lrad_request_from_reply(RADIUS_PACKET *request,
 int lrad_socket(lrad_ipaddr_t *ipaddr, int port)
 {
 	int sockfd;
-	struct sockaddr salocal;
+	struct sockaddr_storage salocal;
 	socklen_t	salen;
 
 	if ((port < 0) || (port > 65535)) {
@@ -221,12 +221,12 @@ int lrad_socket(lrad_ipaddr_t *ipaddr, int port)
 		return -1;
 	}
 #endif
-	
+
+	memset(&salocal, 0, sizeof(salocal));
 	if (ipaddr->af == AF_INET) {
 		struct sockaddr_in *sa;
 		
 		sa = (struct sockaddr_in *) &salocal;
-		memset(sa, 0, sizeof(salocal));
 		sa->sin_family = AF_INET;
 		sa->sin_addr = ipaddr->ipaddr.ip4addr;
 		sa->sin_port = htons((uint16_t) port);
@@ -237,12 +237,12 @@ int lrad_socket(lrad_ipaddr_t *ipaddr, int port)
 		struct sockaddr_in6 *sa;
 		
 		sa = (struct sockaddr_in6 *) &salocal;
-		memset(sa, 0, sizeof(salocal));
 		sa->sin6_family = AF_INET6;
 		sa->sin6_addr = ipaddr->ipaddr.ip6addr;
 		sa->sin6_port = htons((uint16_t) port);
 		salen = sizeof(*sa);
-		
+
+#if 1
 		/*
 		 *	Listening on '::' does NOT get you IPv4 to
 		 *	IPv6 mapping.  You've got to listen on an IPv4
@@ -250,6 +250,7 @@ int lrad_socket(lrad_ipaddr_t *ipaddr, int port)
 		 *	design a little simpler.
 		 */
 #ifdef IPV6_V6ONLY
+
 		if (IN6_IS_ADDR_UNSPECIFIED(&ipaddr->ipaddr.ip6addr)) {
 			int on = 1;
 			
@@ -257,12 +258,13 @@ int lrad_socket(lrad_ipaddr_t *ipaddr, int port)
 				   (char *)&on, sizeof(on));
 		}
 #endif /* IPV6_V6ONLY */
+#endif
 #endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 	} else {
 		return sockfd;	/* don't bind it */
 	}
 
-	if (bind(sockfd, &salocal, salen) < 0) {
+	if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 		close(sockfd);
 		return -1;
 	}
