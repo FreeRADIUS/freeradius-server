@@ -47,6 +47,96 @@ static const char rcsid[] = "$Id$";
 #include "rad_assert.h"
 
 /*
+ *	Copy a quoted string.
+ */
+static int rad_copy_string(char *to, const char *from)
+{
+	int length = 0;
+	char quote = *from;
+
+	do {
+		if (*from == '\\') {
+			*(to++) = *(from++);
+			length++;
+		}
+		*(to++) = *(from++);
+		length++;
+	} while (*from && (*from != quote));
+
+	if (*from != quote) return -1; /* not properly quoted */
+
+	*(to++) = quote;
+	length++;
+	*to = '\0';
+
+	return length;
+}
+
+
+/*
+ *	Copy a %{} string.
+ */
+static int rad_copy_variable(char *to, const char *from)
+{
+	int length = 0;
+	int sublen;
+
+	*(to++) = *(from++);
+	length++;
+
+	while (*from) {
+		switch (*from) {
+		case '"':
+		case '\'':
+			sublen = rad_copy_string(to, from);
+			if (sublen < 0) return sublen;
+			from += sublen;
+			to += sublen;
+			break;
+
+		case '}':	/* end of variable expansion */
+			*(to++) = *(from++);
+			*to = '\0';
+			length++;
+			return length; /* proper end of variable */
+
+		case '\\':
+			*(to++) = *(from++);
+			*(to++) = *(from++);
+			length += 2;
+			break;
+
+		case '%':	/* start of variable expansion */
+			if (from[1] == '{') {
+				*(to++) = *(from++);
+				length++;
+				
+				sublen = rad_copy_variable(to, from);
+				if (sublen < 0) return sublen;
+				from += sublen;
+				to += sublen;
+				length += sublen;
+			} /* else FIXME: catch %%{ ?*/
+
+			/* FALL-THROUGH */
+			break;
+
+		default:
+			*(to++) = *(from++);
+			length++;
+			break;
+		}
+	} /* loop over the input string */
+
+	/*
+	 *	We ended the string before a trailing '}'
+	 */
+
+	return -1;
+}
+
+#define MAX_ARGV (256)
+/*
  *	Execute a program on successful authentication.
  *	Return 0 if exec_wait == 0.
  *	Return the exit code of the called program if exec_wait != 0.
@@ -59,18 +149,148 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			VALUE_PAIR **output_pairs)
 {
 	VALUE_PAIR *vp;
+	char mycmd[1024];
 	char answer[4096];
-	char *argv[256];
-	char *buf, *p;
+	char argv_buf[4096];
+	char *argv[MAX_ARGV];
+	const char *from;
+	char *p, *to;
 	int pd[2];
 	pid_t pid, child_pid;
 	int argc = -1;
 	int comma = 0;
 	int status;
+	int i;
 	int n, left, done;
 
 	if (user_msg) *user_msg = '\0';
 	if (output_pairs) *output_pairs = NULL;
+
+	if (strlen(cmd) > (sizeof(mycmd) - 1)) {
+		radlog(L_ERR|L_CONS, "Command line is too long");
+		return -1;
+	}
+
+	/*
+	 *	Check for bad escapes.
+	 */
+	if (cmd[strlen(cmd) - 1] == '\\') {
+		radlog(L_ERR|L_CONS, "Command line has final backslash, without a following character");
+		return -1;
+	}
+
+	strNcpy(mycmd, cmd, sizeof(mycmd));
+
+	/*
+	 *	Split the string into argv's BEFORE doing radius_xlat...
+	 */
+	from = cmd;
+	to = mycmd;
+	argc = 0;
+	while (*from) {
+		int length;
+
+		/*
+		 *	Skip spaces.
+		 */
+		if ((*from == ' ') || (*from == '\t')) {
+			from++;
+			continue;
+		}
+
+		argv[argc] = to;
+		argc++;
+
+		if (argc >= (MAX_ARGV - 1)) break;
+
+		/*
+		 *	Copy the argv over to our buffer.
+		 */
+		while (*from && (*from != ' ') && (*from != '\t')) {
+			if (to >= mycmd + sizeof(mycmd) - 1) {
+				return -1; /* ran out of space */
+			}
+
+			switch (*from) {
+			case '"':
+			case '\'':
+				length = rad_copy_string(to, from);
+				if (length < 0) {
+					radlog(L_ERR|L_CONS, "Invalid string passed as argument for external program");
+					return -1;
+				}
+				from += length;
+				to += length;
+				break;
+
+			case '%':
+				if (from[1] == '{') {
+					*(to++) = *(from++);
+
+					length = rad_copy_variable(to, from);
+					if (length < 0) {
+						radlog(L_ERR|L_CONS, "Invalid variable expansion passed as argument for external program");
+						return -1;
+					}
+					from += length;
+					to += length;
+				} else { /* FIXME: catch %%{ ? */
+					*(to++) = *(from++);
+				}
+				break;
+
+			default:
+				*(to++) = *(from++);
+			}
+		} /* end of string, or found a space */
+
+		*(to++) = '\0';	/* terminate the string */
+	}
+
+	/*
+	 *	We have to have SOMETHING, at least.
+	 */
+	if (argc <= 0) {
+		radlog(L_ERR, "Exec-Program: empty command line.");
+		return -1;
+	}
+
+	/*
+	 *	Expand each string, as appropriate.
+	 */
+	to = argv_buf;
+	left = sizeof(argv_buf);
+	for (i = 0; i < argc; i++) {
+		int sublen;
+
+		/*
+		 *	Don't touch argv's which won't be translated.
+		 */
+		if (strchr(argv[i], '%') == NULL) continue;
+
+		sublen = radius_xlat(to, left - 1, argv[i], request, NULL);
+		if (sublen <= 0) {
+			/*
+			 *	Fail to be backwards compatible.
+			 *
+			 *	It's yucky, but it won't break anything,
+			 *	and it won't cause security problems.
+			 */
+			sublen = 0;
+		}
+
+		argv[i] = to;
+		to += sublen;
+		*(to++) = '\0';
+		left -= sublen;
+		left--;
+
+		if (left <= 0) {
+			radlog(L_ERR, "Exec-Program: Ran out of space while expanding arguments.");
+			return -1;
+		}
+	}
+	argv[argc] = NULL;
 
 	/*
 	 *	Open a pipe for child/parent communication, if
@@ -89,42 +309,6 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 */
 		user_msg = NULL;
 		output_pairs = NULL;
-	}
-
-	/*
-	 *	Do the translation (as the parent) of the command to
-	 *	execute.  This MAY involve calling other modules, so
-	 *	we want to do it in the parent.
-	 */
-	radius_xlat(answer, sizeof(answer), cmd, request, NULL);
-	buf = answer;
-
-	/*
-	 *	Log the command if we are debugging something
-	 */
-	DEBUG("Exec-Program: %s", buf);
-
-	/*
-	 *	Build vector list of arguments and execute.
-	 *
-	 *	FIXME: This parsing gets excited over spaces in
-	 *	the translated strings, e.g. User-Name = "aa bb"
-	 *	is passed as two seperate arguments, instead of one.
-	 *
-	 *	What we SHOULD do instead is to split the exec program
-	 *	buffer first, and then do the translation on every
-	 *	subsequent string.
-	 */
-	p = strtok(buf, " \t");
-	if (p) do {
-		argv[++argc] = p;
-		p = strtok(NULL, " \t");
-	} while(p != NULL);
-
-	argv[++argc] = p;
-	if (argc == 0) {
-		radlog(L_ERR, "Exec-Program: empty command line.");
-		return -1;
 	}
 
 	if ((pid = rad_fork(exec_wait)) == 0) {
