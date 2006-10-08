@@ -6,7 +6,7 @@ currently is only tested by the developers on PostgreSQL (Version 8.1)
                          Use it at your own risk!
 If plan to attempt to use a DB other than PostgreSQL please expect to
 have to do extra work which is not for SQL newbies. 
-Have said that it works great for us in production and should (with
+Having said that it works great for us in production and should (with
 some work) function correctly with other SQL server types.
 **********************************************************************
 
