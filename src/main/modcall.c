@@ -482,6 +482,11 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		
 		myresult = call_modsingle(component, sp, request,
 					  default_component_results[component]);
+		DEBUG2("  modcall[%s]: module \"%s\" returns %s for request %d",
+		       comp2str[component], c->name,
+		       lrad_int2str(rcode_table, myresult, "??"),
+		       request->number);
+
 
 		/*
 		 *	FIXME: Allow modules to push a modcallable
