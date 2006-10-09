@@ -483,7 +483,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		myresult = call_modsingle(component, sp, request,
 					  default_component_results[component]);
 		DEBUG2("  modcall[%s]: module \"%s\" returns %s for request %d",
-		       comp2str[component], c->name,
+		       comp2str[component], child->name,
 		       lrad_int2str(rcode_table, myresult, "??"),
 		       request->number);
 
@@ -503,13 +503,43 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 *	entry on the stack, rather than falling
 		 *	through to finalize the processing of this
 		 *	entry.
+		 *
+		 *	Don't put "myresult" on the stack here,
+		 *	we have to do so with priority.
 		 */
-		stack.result[stack.pointer] = myresult;
 
 		/*
 		 *	We roll back up the stack at this point.
 		 */
 	unroll:
+		/*
+		 *	The child's action says return.  Do so.
+		 */
+		if (child->actions[myresult] == MOD_ACTION_RETURN) {
+			stack.result[stack.pointer] = myresult;
+			stack.children[stack.pointer] = NULL;
+		}
+	
+		/*
+		 *	If "reject", break out of the loop and return
+		 *	reject.
+		 */
+		if (child->actions[myresult] == MOD_ACTION_REJECT) {
+			stack.children[stack.pointer] = NULL;
+			stack.result[stack.pointer] = RLM_MODULE_REJECT;
+		}
+
+		/*
+		 *	Otherwise, the action is a number, the
+		 *	preference level of this return code. If no
+		 *	higher preference has been seen yet, remember
+		 *	this one.
+		 */
+		if (child->actions[myresult] >= stack.priority[stack.pointer]) {
+			stack.result[stack.pointer] = myresult;
+			stack.priority[stack.pointer] = child->actions[myresult];
+		}
+
 		/*
 		 *	No parent, we must be done.
 		 */
@@ -550,30 +580,6 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				break;
 			default:	
 				exit(1);
-		}
-
-		/*
-		 *	The child's action says return.  Do so.
-		 */
-		if (child->actions[myresult] == MOD_ACTION_RETURN) {
-			stack.result[stack.pointer] = myresult;
-			stack.children[stack.pointer] = NULL;
-		}
-	
-		/* If "reject", break out of the loop and return reject */
-		if (child->actions[myresult] == MOD_ACTION_REJECT) {
-			stack.children[stack.pointer] = NULL;
-			stack.result[stack.pointer] = RLM_MODULE_REJECT;
-		}
-
-		/*
-		 *	Otherwise, the action is a number, the
-		 *	preference level of this return code. If no
-		 *	higher preference has been seen yet, remember
-		 *	this one . */
-		if (child->actions[myresult] >= stack.priority[stack.pointer]) {
-			stack.result[stack.pointer] = myresult;
-			stack.priority[stack.pointer] = child->actions[myresult];
 		}
 
 		/*
