@@ -608,19 +608,9 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		vp = NULL;
 		pairmove2(&vp, &reply->vps, PW_MSCHAP2_SUCCESS);
 		if (vp) {
-#if 1
-			/*
-			 *	FIXME: Tunneling MS-CHAP2-Success causes
-			 *	the only client we have access to, to die.
-			 *
-			 *	We don't want that...
-			 */
-			pairfree(&vp);
-#else
 			DEBUG2("  TTLS: Got MS-CHAP2-Success, tunneling it to the client in a challenge.");
 			rcode = RLM_MODULE_HANDLED;
 			t->authenticated = TRUE;
-#endif
 		} else { /* no MS-CHAP2-Success */
 			/*
 			 *	Can only have EAP-Message if there's
