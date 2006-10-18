@@ -796,7 +796,22 @@ static int do_mschap(rlm_mschap_t *inst,
 					     buffer, sizeof(buffer),
 					     NULL, NULL);
 		if (result != 0) {
+			char *p;
+			
 			DEBUG2("  rlm_mschap: External script failed.");
+
+			vp = pairmake("Module-Failure-Message", "", T_OP_EQ);
+			if (!vp) {
+				radlog(L_ERR, "No memory");
+				return -1;
+			}
+
+			p = strchr(buffer, '\n');
+			if (p) *p = '\0';
+			snprintf(vp->strvalue, sizeof(vp->strvalue), 
+				 "rlm_mschap: %s", buffer);
+			vp->length = strlen(vp->strvalue);
+			pairadd(&request->packet->vps, vp);
 			return -1;
 		}
 
