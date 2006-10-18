@@ -172,6 +172,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 	eaptls_status_t	status;
 	rlm_eap_ttls_t *inst = (rlm_eap_ttls_t *) arg;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
+	ttls_tunnel_t *t = (ttls_tunnel_t *) tls_session->opaque;
 
 	DEBUG2("  rlm_eap_ttls: Authenticate");
 
@@ -189,7 +190,14 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	an EAP-TLS-Success packet here.
 		 */
 	case EAPTLS_SUCCESS:
+		if (t->authenticated) {
+			eaptls_success(handler->eap_ds, 0);
+			eaptls_gen_mppe_keys(&handler->request->reply->vps,
+					     tls_session->ssl,
+					     "ttls keying material");
+		} else {
 		eaptls_request(handler->eap_ds, tls_session);
+		}
 		return 1;
 
 		/*
