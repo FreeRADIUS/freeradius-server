@@ -199,14 +199,14 @@ CREATE TABLE radpostauth (
 
 CREATE TABLE radippool (
 	id			BIGSERIAL PRIMARY KEY,
-	pool_name		text NOT NULL,
+	pool_name		varchar(64) NOT NULL,
 	FramedIPAddress		INET NOT NULL,
-	NASIPAddress		text NOT NULL,
+	NASIPAddress		VARCHAR(16) NOT NULL default '',
+	pool_key		VARCHAR(64) NOT NULL,
 	CalledStationId		VARCHAR(64),
-	CallingStationId	text DEFAULT ''::text NOT NULL,
-	expiry_time		TIMESTAMP(0) without time zone NOT NULL,
-	username		text DEFAULT ''::text,
-	pool_key		VARCHAR(30) NOT NULL
+	CallingStationId	text DEFAULT ''::text NOT NULL default '',
+	expiry_time		TIMESTAMP(0) without time zone NOT NULL default 'now'::timestamp(0),
+	username		text DEFAULT ''::text
 );
 
 CREATE INDEX radippool_poolname_ipaadr ON radippool USING btree (pool_name, framedipaddress);
