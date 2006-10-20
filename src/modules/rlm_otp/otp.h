@@ -21,9 +21,8 @@
 #ifndef OTP_H
 #define OTP_H
 
-#ifdef __SUNPRO_C
-#pragma sun ident "$Id$"
-#endif
+#include "ident.h"
+RCSIDH(otp_h, "$Id$")
 
 #include <sys/types.h>
 

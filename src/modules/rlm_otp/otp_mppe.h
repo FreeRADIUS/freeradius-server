@@ -22,6 +22,9 @@
 #ifndef OTP_MPPE_H
 #define OTP_MPPE_H
 
+#include "ident.h"
+RCSIDH(otp_mppe_h, "$Id$")
+
 /* Some hardcoding here ... because not all types have #defines */
 #define PW_MS_CHAP_CHALLENGE  ((311 << 16) | 11)
 #define PW_MS_CHAP_RESPONSE   ((311 << 16) | 1)

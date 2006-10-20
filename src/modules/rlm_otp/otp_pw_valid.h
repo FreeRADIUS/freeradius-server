@@ -21,6 +21,9 @@
 #ifndef OTP_PW_VALID_H
 #define OTP_PW_VALID_H
 
+#include "ident.h"
+RCSIDH(otp_pw_valid_h, "$Id$")
+
 #include <pthread.h>
 #include <sys/types.h>
 #include "extern.h"	/* otp_option_t */

@@ -21,7 +21,8 @@
  * Copyright 2006 TRI-D Systems, Inc.
  */
 
-static const char rcsid[] = "$Id$";
+#include "ident.h"
+RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/radiusd.h>
