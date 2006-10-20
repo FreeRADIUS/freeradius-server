@@ -23,7 +23,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/modpriv.h>

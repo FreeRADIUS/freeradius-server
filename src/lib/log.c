@@ -27,7 +27,6 @@ static const char rcsid[] = "$Id$";
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <string.h>
 
 #include <freeradius-devel/missing.h>

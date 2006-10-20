@@ -53,6 +53,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdarg.h>
 
 /*
  *  Check for inclusion of <time.h>, versus <sys/time.h>
