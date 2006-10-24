@@ -218,15 +218,18 @@ retry:
     (void) radlog(L_AUTH, "rlm_otp: otpd reply for [%s] invalid "
                           "(version %d != 1)",
                   request->username, reply->version);
+    otp_putfd(fdp, 1);
     return -1;
   }
 
   if (reply->passcode[OTP_MAX_PASSCODE_LEN] != '\0') {
     (void) radlog(L_AUTH, "rlm_otp: otpd reply for [%s] invalid (passcode)",
                   request->username);
+    otp_putfd(fdp, 1);
     return -1;
   }
 
+  otp_putfd(fdp, 0);
   return reply->rc;
 }
 
@@ -247,13 +250,13 @@ otp_read(otp_fd_t *fdp, char *buf, size_t len)
       } else {
         (void) radlog(L_ERR, "rlm_otp: %s: read from otpd: %s",
                       __func__, strerror(errno));
-        otp_putfd(fdp);
+        otp_putfd(fdp, 1);
         return -1;
       }
     }
     if (!n) {
       (void) radlog(L_ERR, "rlm_otp: %s: otpd disconnect", __func__);
-      otp_putfd(fdp);
+      otp_putfd(fdp, 1);
       return 0;
     }
     nread += n;
@@ -279,7 +282,7 @@ otp_write(otp_fd_t *fdp, const char *buf, size_t len)
       } else {
         (void) radlog(L_ERR, "rlm_otp: %s: write to otpd: %s",
                       __func__, strerror(errno));
-        otp_putfd(fdp);
+        otp_putfd(fdp, 1);
         return errno;
       }
     }
@@ -366,12 +369,15 @@ otp_getfd(const otp_option_t *opt)
   return fdp;
 }
 
-/* disconnect from otpd */
+/* release fd, and optionally disconnect from otpd */
 static void
-otp_putfd(otp_fd_t *fdp)
+otp_putfd(otp_fd_t *fdp, int disconnect)
 {
-  (void) close(fdp->fd);
-  fdp->fd = -1;
+  if (disconnect) {
+    (void) close(fdp->fd);
+    fdp->fd = -1;
+  }
+
   /* make connection available to another thread */
   otp_pthread_mutex_unlock(&fdp->mutex);
 }

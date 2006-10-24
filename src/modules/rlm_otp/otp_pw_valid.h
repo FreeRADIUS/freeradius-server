@@ -40,6 +40,6 @@ static int otp_read(otp_fd_t *, char *, size_t);
 static int otp_write(otp_fd_t *, const char *, size_t);
 static int otp_connect(const char *);
 static otp_fd_t *otp_getfd(const otp_option_t *);
-static void otp_putfd(otp_fd_t *);
+static void otp_putfd(otp_fd_t *, int);
 
 #endif /* OTP_PW_VALID_H */
