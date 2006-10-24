@@ -25,7 +25,8 @@
  * is not sufficient for X9.9 use.
  */
 
-static const char rcsid[] = "$Id$";
+#include "ident.h"
+RCSID("$Id$")
 
 /* avoid inclusion of these FR headers which conflict w/ OpenSSL */
 #define _LRAD_MD4_H

@@ -19,7 +19,8 @@
  * Copyright 2005,2006 TRI-D Systems, Inc.
  */
 
-static const char rcsid[] = "$Id$";
+#include "ident.h"
+RCSID("$Id$")
 
 /* avoid inclusion of these FR headers which conflict w/ OpenSSL */
 #define _LRAD_MD4_H
