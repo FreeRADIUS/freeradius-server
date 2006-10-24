@@ -84,7 +84,7 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
   int		rc;
 
   if (request->username->length > OTP_MAX_USERNAME_LEN) {
-    (void) radlog(L_AUTH, "rlm_otp: username [%s] too long\n", username);
+    (void) radlog(L_AUTH, "rlm_otp: username [%s] too long", username);
     return RLM_MODULE_REJECT;
   }
   /* we already know challenge is short enough */
@@ -105,8 +105,7 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
   switch (otp_request.pwe.pwe) {
   case PWE_PAP:
     if (rvp->length > OTP_MAX_PASSCODE_LEN) {
-      (void) radlog(L_AUTH, "rlm_otp: passcode for [%s] too long\n",
-                    username);
+      (void) radlog(L_AUTH, "rlm_otp: passcode for [%s] too long", username);
       return RLM_MODULE_REJECT;
     }
     (void) strcpy(otp_request.pwe.passcode, rvp->vp_strvalue);
@@ -114,12 +113,12 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
 
   case PWE_CHAP:
     if (cvp->length > 16) {
-      (void) radlog(L_AUTH, "rlm_otp: CHAP challenge for [%s] too long\n",
+      (void) radlog(L_AUTH, "rlm_otp: CHAP challenge for [%s] too long",
                     username);
       return RLM_MODULE_INVALID;
     }
     if (rvp->length != 17) {
-      (void) radlog(L_AUTH, "rlm_otp: CHAP response for [%s] wrong size\n",
+      (void) radlog(L_AUTH, "rlm_otp: CHAP response for [%s] wrong size",
                     username);
       return RLM_MODULE_INVALID;
     }
@@ -131,12 +130,12 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
 
   case PWE_MSCHAP:
     if (cvp->length != 8) {
-      (void) radlog(L_AUTH, "rlm_otp: MS-CHAP challenge for [%s] wrong size\n",
+      (void) radlog(L_AUTH, "rlm_otp: MS-CHAP challenge for [%s] wrong size",
                     username);
       return RLM_MODULE_INVALID;
     }
     if (rvp->length != 50) {
-      (void) radlog(L_AUTH, "rlm_otp: MS-CHAP response for [%s] wrong size\n",
+      (void) radlog(L_AUTH, "rlm_otp: MS-CHAP response for [%s] wrong size",
                     username);
       return RLM_MODULE_INVALID;
     }
@@ -148,12 +147,12 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
 
   case PWE_MSCHAP2:
     if (cvp->length != 16) {
-      (void) radlog(L_AUTH, "rlm_otp: MS-CHAP2 challenge for [%s] wrong size\n",
+      (void) radlog(L_AUTH, "rlm_otp: MS-CHAP2 challenge for [%s] wrong size",
                     username);
       return RLM_MODULE_INVALID;
     }
     if (rvp->length != 50) {
-      (void) radlog(L_AUTH, "rlm_otp: MS-CHAP2 response for [%s] wrong size\n",
+      (void) radlog(L_AUTH, "rlm_otp: MS-CHAP2 response for [%s] wrong size",
                     username);
       return RLM_MODULE_INVALID;
     }
