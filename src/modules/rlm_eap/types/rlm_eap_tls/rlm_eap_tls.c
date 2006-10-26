@@ -458,7 +458,6 @@ static int eaptls_detach(void *arg)
 		free(conf->random_file);
 
 		free(conf->check_cert_cn);
-		free(conf->check_cert_cn);
 		free(conf->cipher_list);
 		free(conf->check_cert_issuer);
 
