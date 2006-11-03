@@ -202,7 +202,7 @@ CREATE TABLE radippool (
 	pool_name		varchar(64) NOT NULL,
 	FramedIPAddress		INET NOT NULL,
 	NASIPAddress		VARCHAR(16) NOT NULL default '',
-	pool_key		VARCHAR(64) NOT NULL,
+	pool_key		VARCHAR(64) NOT NULL default 0,
 	CalledStationId		VARCHAR(64),
 	CallingStationId	text DEFAULT ''::text NOT NULL default '',
 	expiry_time		TIMESTAMP(0) without time zone NOT NULL default 'now'::timestamp(0),
