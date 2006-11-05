@@ -64,6 +64,7 @@ static const char rcsid[] = "$Id$";
 typedef struct rlm_sqlcounter_t {
 	char *counter_name;  	/* Daily-Session-Time */
 	char *check_name;  	/* Max-Daily-Session */
+	char *reply_name;  	/* Session-Timeout */
 	char *key_name;  	/* User-Name */
 	char *sqlmod_inst;	/* instance of SQL module to use, usually just 'sql' */
 	char *query;		/* SQL query to retrieve current session time */
@@ -73,6 +74,7 @@ typedef struct rlm_sqlcounter_t {
 	time_t last_reset;
 	int  key_attr;		/* attribute number for key field */
 	int  dict_attr;		/* attribute number for the counter. */
+	int  reply_attr;	/* attribute number for the reply */
 } rlm_sqlcounter_t;
 
 /*
@@ -87,6 +89,7 @@ typedef struct rlm_sqlcounter_t {
 static const CONF_PARSER module_config[] = {
   { "counter-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,counter_name), NULL,  NULL },
   { "check-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,check_name), NULL, NULL },
+  { "reply-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,reply_name), NULL, NULL },
   { "key", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,key_name), NULL, NULL },
   { "sqlmod-inst", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,sqlmod_inst), NULL, NULL },
   { "query", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,query), NULL, NULL },
@@ -481,6 +484,27 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	data->key_attr = dattr->attr;
 
 	/*
+	 *	Discover the attribute number of the reply.
+	 *	If not set, set it to Session-Timeout
+	 *	for backward compatibility.
+	 */
+	if (data->reply_name == NULL) {
+		DEBUG2("rlm_sqlcounter: Reply attribute set to Session-Timeout.");
+		data->reply_attr = PW_SESSION_TIMEOUT;
+	}
+	else {
+		dattr = dict_attrbyname(data->reply_name);
+		if (dattr == NULL) {
+			radlog(L_ERR, "rlm_sqlcounter: No such attribute %s",
+			       data->reply_name);
+			return -1;
+		}
+		data->reply_attr = dattr->attr;
+		DEBUG2("rlm_sqlcounter: Reply attribute %s is number %d",
+		       data->reply_name, dattr->attr);
+	}
+
+	/*
 	 *	Check the "sqlmod-inst" option.
 	 */
 	if (data->sqlmod_inst == NULL) {
@@ -667,11 +691,11 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 			res += check_vp->lvalue;
 		}
 
-		if ((reply_item = pairfind(request->reply->vps, PW_SESSION_TIMEOUT)) != NULL) {
+		if ((reply_item = pairfind(request->reply->vps, data->reply_attr)) != NULL) {
 			if (reply_item->lvalue > res)
 				reply_item->lvalue = res;
 		} else {
-			if ((reply_item = paircreate(PW_SESSION_TIMEOUT, PW_TYPE_INTEGER)) == NULL) {
+			if ((reply_item = paircreate(data->reply_attr, PW_TYPE_INTEGER)) == NULL) {
 				radlog(L_ERR|L_CONS, "no memory");
 				return RLM_MODULE_NOOP;
 			}
@@ -683,8 +707,8 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 
 		DEBUG2("rlm_sqlcounter: Authorized user %s, check_item=%d, counter=%d",
 				key_vp->vp_strvalue,check_vp->lvalue,counter);
-		DEBUG2("rlm_sqlcounter: Sent Reply-Item for user %s, Type=Session-Timeout, value=%d",
-				key_vp->vp_strvalue,reply_item->lvalue);
+		DEBUG2("rlm_sqlcounter: Sent Reply-Item for user %s, Type=%s, value=%d",
+				key_vp->vp_strvalue,data->reply_name,reply_item->lvalue);
 	}
 	else{
 		char module_fmsg[MAX_STRING_LEN];
@@ -720,6 +744,7 @@ static int sqlcounter_detach(void *instance)
 	free(data->reset);
 	free(data->query);
 	free(data->check_name);
+	if (data->reply_name) free(data->reply_name);
 	free(data->sqlmod_inst);
 	free(data->counter_name);
 	free(data->allowed_chars);
