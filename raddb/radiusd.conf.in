@@ -1319,8 +1319,8 @@ $INCLUDE ${confdir}/eap.conf
 	#  key.  The count is incremented when accounting packets are
 	#  received by the server.  The value of the increment depends
 	#  on the attribute type.
-	#  If the attribute is Acct-Session-Time or of an integer type we add the
-	#  value of the attribute. If it is anything else we increase the
+	#  If the attribute is Acct-Session-Time or of an integer type we add
+	#  the value of the attribute. If it is anything else we increase the
 	#  counter by one.
 	#
 	#  The 'reset' parameter defines when the counters are all reset to
@@ -1357,8 +1357,8 @@ $INCLUDE ${confdir}/eap.conf
 	#  the radius.log
 	#  If the count attribute is Acct-Session-Time then on each login
 	#  we send back the remaining online time as a Session-Timeout attribute
-	#  ELSE and if the return-attribute is set, we send back that attribute.
-	#  The return-attribute is set MUST be of an integer type
+	#  ELSE and if the reply-name is set, we send back that attribute.
+	#  The reply-name attribute MUST be of an integer type.
 	#
 	#  The counter-name can also be used instead of using the check-name
 	#  like below:
@@ -1384,8 +1384,8 @@ $INCLUDE ${confdir}/eap.conf
 		reset = daily
 		counter-name = Daily-Session-Time
 		check-name = Max-Daily-Session
+		reply-name = Session-Timeout
 		allowed-servicetype = Framed-User
-		#return-attribute = Session-Timeout
 		cache-size = 5000
 	}
 
@@ -1436,6 +1436,7 @@ $INCLUDE ${confdir}/eap.conf
 	sqlcounter dailycounter {
 		counter-name = Daily-Session-Time
 		check-name = Max-Daily-Session
+		reply-name = Session-Timeout
 		sqlmod-inst = sql
 		key = User-Name
 		reset = daily
@@ -1484,6 +1485,7 @@ $INCLUDE ${confdir}/eap.conf
 	sqlcounter monthlycounter {
 		counter-name = Monthly-Session-Time
 		check-name = Max-Monthly-Session
+		reply-name = Session-Timeout
 		sqlmod-inst = sql
 		key = User-Name
 		reset = monthly

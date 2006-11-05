@@ -44,6 +44,10 @@ syntax in the Users file to set a cap of 3600 seconds ( 8 hours ):
 DEFAULT Max-Daily-Session := 3600
 .DE
 .PP
+.IP reply-name
+This is the name of the attribute which will contain the remaining value for
+the counter in the reply packet when the user is successfully authorized. The
+default attribute name is "Session-Timeout".
 .IP allowed-servicetype
 This can be used to only apply the limitations to specific service types of
 sessions.  For example, setting this to Framed-User will only apply the counter
