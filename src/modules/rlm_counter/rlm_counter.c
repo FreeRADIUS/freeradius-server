@@ -67,16 +67,16 @@ typedef struct rlm_counter_t {
 	char *reset;		/* daily, weekly, monthly, never or user defined */
 	char *key_name;		/* User-Name */
 	char *count_attribute;	/* Acct-Session-Time */
-	char *return_attribute; /* Session-Timeout */
 	char *counter_name;	/* Daily-Session-Time */
 	char *check_name;	/* Daily-Max-Session */
+	char *reply_name;	/* Session-Timeout */
 	char *service_type;	/* Service-Type to search for */
 	int cache_size;
 	int service_val;
 	int key_attr;
 	int count_attr;
-	int return_attr;
 	int check_attr;
+	int reply_attr;
 	time_t reset_time;	/* The time of the next reset. */
 	time_t last_reset;	/* The time of the last reset. */
 	int dict_attr;		/* attribute number for the counter. */
@@ -116,9 +116,9 @@ static const CONF_PARSER module_config[] = {
   { "key", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,key_name), NULL, NULL },
   { "reset", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,reset), NULL,  NULL },
   { "count-attribute", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,count_attribute), NULL, NULL },
-  { "return-attribute", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,return_attribute), NULL, NULL },
   { "counter-name", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,counter_name), NULL,  NULL },
   { "check-name", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,check_name), NULL, NULL },
+  { "reply-name", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,reply_name), NULL, NULL },
   { "allowed-servicetype", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,service_type),NULL, NULL },
   { "cache-size", PW_TYPE_INTEGER, offsetof(rlm_counter_t,cache_size), NULL, "1000" },
   { NULL, -1, 0, NULL, NULL }
@@ -386,23 +386,23 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	data->count_attr = dattr->attr;
 
 	/*
-	 * Discover the attribute number of the return attribute.
+	 * Discover the attribute number of the reply attribute.
 	 */
-	if (data->return_attribute != NULL) {
-		dattr = dict_attrbyname(data->return_attribute);
+	if (data->reply_name != NULL) {
+		dattr = dict_attrbyname(data->reply_name);
 		if (dattr == NULL) {
 			radlog(L_ERR, "rlm_counter: No such attribute %s",
-					data->return_attribute);
+					data->reply_name);
 			counter_detach(data);
 			return -1;
 		}
 		if (dattr->type != PW_TYPE_INTEGER) {
-			radlog(L_ERR, "rlm_counter: Return attribute %s is not of type integer",
-				data->return_attribute);
+			radlog(L_ERR, "rlm_counter: Reply attribute %s is not of type integer",
+				data->reply_name);
 			counter_detach(data);
 			return -1;
 		}
-		data->return_attr = dattr->attr;
+		data->reply_attr = dattr->attr;
 	}
 	
 
@@ -861,13 +861,13 @@ static int counter_authorize(void *instance, REQUEST *request)
 				pairadd(&request->reply->vps, reply_item);
 			}
 		}
-		else if (data->return_attr) {
-			if ((reply_item = pairfind(request->reply->vps, data->return_attr)) != NULL) {
+		else if (data->reply_attr) {
+			if ((reply_item = pairfind(request->reply->vps, data->reply_attr)) != NULL) {
 				if (reply_item->lvalue > res)
 					reply_item->lvalue = res;
 			}
 			else {
-				if ((reply_item = paircreate(data->return_attr, PW_TYPE_INTEGER)) == NULL) {
+				if ((reply_item = paircreate(data->reply_attr, PW_TYPE_INTEGER)) == NULL) {
 					radlog(L_ERR|L_CONS, "no memory");
 					return RLM_MODULE_NOOP;
 				}
@@ -921,6 +921,7 @@ static int counter_detach(void *instance)
 	free(data->count_attribute);
 	free(data->counter_name);
 	free(data->check_name);
+	if (data->reply_name) free(data->reply_name);
 	free(data->service_type);
 	pthread_mutex_destroy(&data->mutex);
 
