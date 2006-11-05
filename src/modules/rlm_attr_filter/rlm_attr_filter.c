@@ -310,11 +310,6 @@ static int attr_filter_common(void *instance, REQUEST *request,
 	return RLM_MODULE_UPDATED;
 }
 
-static int attr_filter_authorize(void *instance, REQUEST *request)
-{
-	return attr_filter_common(instance, request,  &request->packet->vps);
-}
-
 static int attr_filter_accounting(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, &request->packet->vps);
@@ -345,7 +340,7 @@ module_t rlm_attr_filter = {
 	attr_filter_detach,		/* detach */
 	{
 		NULL,			/* authentication */
-		attr_filter_authorize,	/* authorization */
+		NULL,			/* authorization */
 		NULL,			/* preaccounting */
 		attr_filter_accounting,	/* accounting */
 		NULL,			/* checksimul */
