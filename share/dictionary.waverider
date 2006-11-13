@@ -14,7 +14,7 @@ ATTRIBUTE	Waverider-New-Password			6	string
 ATTRIBUTE	Waverider-Radio-Frequency		7	integer
 ATTRIBUTE	WaveRider-SNMP-Read-Community		8	string
 ATTRIBUTE	WaveRider-SNMP-Write-Community		9	string
-ATTRIBUTE	WaveRider-SNMP-Trap-Community		10	string
+ATTRIBUTE	WaveRider-SNMP-Trap-Server		10	string
 ATTRIBUTE	WaveRider-SNMP-Contact			11	string
 ATTRIBUTE	WaveRider-SNMP-Location			12	string
 ATTRIBUTE	WaveRider-SNMP-Name			13	string
