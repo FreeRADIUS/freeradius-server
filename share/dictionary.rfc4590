@@ -1,4 +1,11 @@
-#  As defined in draft-sterman-aaa-sip-00.txt
+# -*- text -*-
+#
+#       Attributes and values defined in RFC 4590.
+#       http://www.ietf.org/rfc/rfc4590.txt
+#       Previously defined in draft-sterman-aaa-sip-00.txt
+#
+#       $Id$
+#
 ATTRIBUTE	Digest-Response				206	string
 ATTRIBUTE	Digest-Attributes			207	octets	# stupid format
 
