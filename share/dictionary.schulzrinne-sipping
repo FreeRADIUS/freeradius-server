@@ -1,0 +1,31 @@
+# http://www.freeradius.org/rfc/draft-schulzrinne-sipping-radius-accounting-00.txt
+#
+# $Id$
+#
+
+
+ATTRIBUTE Sip-Method                   101  integer
+ATTRIBUTE Sip-Response-Code            102  integer
+ATTRIBUTE Sip-Cseq                     103  string
+ATTRIBUTE Sip-To-Tag                   104  string
+ATTRIBUTE Sip-From-Tag                 105  string
+ATTRIBUTE Sip-Branch-ID                106  string
+ATTRIBUTE Sip-Translated-Request-ID    107  string
+ATTRIBUTE Sip-Source-IP-Address        108  ipaddr
+ATTRIBUTE Sip-Source-Port              109  integer
+
+
+### Service-Type Values ###
+VALUE Service-Type       Sip-Session      15
+
+
+### Sip-Method Values ###
+VALUE Sip-Method         INVITE         0
+VALUE Sip-Method         BYE            1
+VALUE Sip-Method         REGISTER       2
+VALUE Sip-Method         CANCEL         3
+VALUE Sip-Method         OPTIONS        4
+VALUE Sip-Method         ACK            5
+VALUE Sip-Method         SUBSCRIBE      6
+VALUE Sip-Method         NOTIFY         7
+
