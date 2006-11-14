@@ -20,6 +20,9 @@
 #ifndef _SMUX_H
 #define _SMUX_H
 
+#include <freeradius-devel/ident.h>
+RCSIDH(smux_h, "$Id$")
+
 #ifdef HAVE_ASN1_SNMP_SNMPIMPL_H
 #include <asn1.h>
 #include <snmp.h>

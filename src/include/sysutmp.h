@@ -7,6 +7,9 @@
 #ifndef SYSUTMP_H_INCLUDED
 #define SYSUTMP_H_INCLUDED
 
+#include <freeradius-devel/ident.h>
+RCSIDH(sysutmp_h, "$Id$")
+
 /*
  *  If we have BOTH utmp.h and utmpx.h, then
  *  we prefer to use utmp.h, but only on systems other than Solaris.

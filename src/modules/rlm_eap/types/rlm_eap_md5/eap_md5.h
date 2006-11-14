@@ -1,6 +1,9 @@
 #ifndef _EAP_MD5_H
 #define _EAP_MD5_H
 
+#include <freeradius-devel/ident.h>
+RCSIDH(eap_md5_h, "$Id$")
+
 #include "eap.h"
 
 #define PW_MD5_CHALLENGE	1

@@ -17,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2001  The FreeRADIUS server project
+ * Copyright 2001,2006  The FreeRADIUS server project
  * Copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>
  *
  * March 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
@@ -54,6 +54,9 @@
  * Mar 2005, Kostas Kalevras <kkalev@noc.ntua.gr>
  * - Make the key an MD5 of a configurable xlated string. This closes Bug #42
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include "config.h"
 #include <freeradius-devel/autoconf.h>
@@ -100,8 +103,6 @@
 #endif
 
 #define MAX_NAS_NAME_SIZE 64
-
-static const char rcsid[] = "$Id$";
 
 /*
  *	Define a structure for our module configuration.

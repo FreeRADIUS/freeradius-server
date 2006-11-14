@@ -24,6 +24,9 @@
  * Copyright 2001,2002,2003,2004,2005,2006  The FreeRADIUS server project
  */
 
+#include <freeradius-devel/ident.h>
+RCSIDH(packet_h, "$Id$")
+
 uint32_t lrad_request_packet_hash(const RADIUS_PACKET *packet);
 uint32_t lrad_reply_packet_hash(const RADIUS_PACKET *packet);
 int lrad_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b);

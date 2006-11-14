@@ -8,6 +8,9 @@
 *                                     Mike Machado <mike@innercite.com>    *
 ***************************************************************************/
 
+#include <freeradius-devel/ident.h>
+RCSIDH(conf_h, "$Id$")
+
 typedef struct sql_config {
 	char   *sql_driver;
 	char   *sql_server;

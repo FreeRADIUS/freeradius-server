@@ -4,6 +4,7 @@
    RFCNB Standard Includes
 
    Copyright (C) 1996, Richard Sharpe
+   Copyright 2006 The FreeRADIUS server project
 
    One day we will conditionalize these on OS types ...
 
@@ -21,6 +22,9 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
+
+#include <freeradius-devel/ident.h>
+RCSIDH(std_includes_h, "$Id$")
 
 #include "config.h"
 

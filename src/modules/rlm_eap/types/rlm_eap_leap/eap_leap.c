@@ -18,6 +18,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2003 Alan DeKok <aland@freeradius.org>
+ * Copyright 2006 The FreeRADIUS server project
  */
 
 /*
@@ -42,6 +43,9 @@
  *
  *  The LEAP type (0x11) is *not* included in the type data...
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <stdio.h>
 #include <stdlib.h>

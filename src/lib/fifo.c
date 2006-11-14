@@ -18,11 +18,12 @@
  *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- *  Copyright 2005  The FreeRADIUS server project
+ *  Copyright 2005,2006  The FreeRADIUS server project
  *  Copyright 2005  Alan DeKok <aland@ox.org>
  */
 
-static const char rcsid[] = "$Id$";
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 

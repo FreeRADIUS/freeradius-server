@@ -35,6 +35,11 @@ Return values:
 Alain Magloire: alainm@rcsm.ee.mcgill.ca
 */
 
+#ifndef HAVE_VSNPRINTF
+
+#include <freeradius-devel/ident.h>
+RCSIDH(snprintf_h, "$Id$")
+
 #if __STDC__
 #include <stdarg.h>
 #else
@@ -46,8 +51,6 @@ Alain Magloire: alainm@rcsm.ee.mcgill.ca
 
 #define PRIVATE static
 #define PUBLIC
-
-#ifndef HAVE_VSNPRINTF
 
 /*
  * For the FLOATING POINT FORMAT :

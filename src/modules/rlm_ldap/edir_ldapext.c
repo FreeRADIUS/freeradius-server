@@ -17,7 +17,12 @@
  *
  * To contact Novell about this file by physical or electronic mail, you may
  * find current contact  information at www.novell.com.
+ *
+ * Copyright 2006 The FreeRADIUS Server Project.
  */ 
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <ldap.h>
 #include <stdio.h>

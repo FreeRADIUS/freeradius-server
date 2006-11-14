@@ -21,9 +21,13 @@
  *
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  * Copyright 2003  Alan DeKok <aland@freeradius.org>
+ * Copyright 2006  The FreeRADIUS server project
  */
 #ifndef _EAP_TYPES_H
 #define _EAP_TYPES_H
+
+#include <freeradius-devel/ident.h>
+RCSIDH(eap_types_h, "$Id$")
 
 #if HAVE_SYS_TYPES_H
 #include <sys/types.h>

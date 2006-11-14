@@ -19,8 +19,11 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2001  The FreeRADIUS server project
+ * Copyright 2000,2001,2006  The FreeRADIUS server project
  */
+
+#include <freeradius-devel/ident.h>
+RCSIDH(rad_assert_h, "$Id$")
 
 extern void rad_assert_fail (const char *file, unsigned int line);
 

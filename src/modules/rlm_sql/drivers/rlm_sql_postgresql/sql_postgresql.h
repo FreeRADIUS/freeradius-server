@@ -1,6 +1,10 @@
+/* Copyright 2006 The FreeRADIUS server project */
 
 #ifndef _SQL_POSTGRESQL_H_
 #define _SQL_POSTGRESQL_H_
+
+#include <freeradius-devel/ident.h>
+RCSIDH(sql_postgresql_h, "$Id$")
 
 /************************************************** 
 * Error Codes and required information Lookup table

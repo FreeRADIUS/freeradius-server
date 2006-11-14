@@ -8,6 +8,9 @@
 #ifndef _RLM_SQL_H
 #define _RLM_SQL_H
 
+#include <freeradius-devel/ident.h>
+RCSIDH(rlm_sql_h, "$Id$")
+
 #ifdef HAVE_PTHREAD_H
 #include        <pthread.h>
 #endif

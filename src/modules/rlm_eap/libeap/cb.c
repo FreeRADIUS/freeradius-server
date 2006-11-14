@@ -18,7 +18,12 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
+ * Copyright 2006  The FreeRADIUS server project
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
 #include "eap_tls.h"
 
 #ifndef NO_OPENSSL

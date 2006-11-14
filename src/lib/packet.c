@@ -20,7 +20,8 @@
  * Copyright 2000-2006  The FreeRADIUS server project
  */
 
-static const char rcsid[] = "$Id$";
+#include	<freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include	<freeradius-devel/autoconf.h>
 #include	<freeradius-devel/libradius.h>

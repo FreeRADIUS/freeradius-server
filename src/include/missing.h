@@ -9,6 +9,9 @@
  *
  */
 
+#include <freeradius-devel/ident.h>
+RCSIDH(missing_h, "$Id$")
+
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif

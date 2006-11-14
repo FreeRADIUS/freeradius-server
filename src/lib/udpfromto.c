@@ -34,10 +34,12 @@
  * Version: $Id$
  */
 
-#include <freeradius-devel/autoconf.h>
-
 #ifdef WITH_UDPFROMTO
-static const char rcsid[] = "$Id$";
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
+#include <freeradius-devel/autoconf.h>
 
 #include <sys/types.h>
 

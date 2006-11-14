@@ -18,9 +18,13 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2004  Alan DeKok <aland@freeradius.org>
+ * Copyright 2006  The FreeRADIUS server project
  */
 #ifndef _RLM_POLICY_H
 #define _RLM_POLICY_H
+
+#include <freeradius-devel/ident.h>
+RCSIDH(rlm_policy_h, "$Id$")
 
 #include <freeradius-devel/autoconf.h>
 

@@ -7,6 +7,7 @@
  *  Author:     Nicolas Baradakis <nicolas.baradakis@cegetel.net>
  *
  *  Copyright (C) 2005 Cegetel
+ *  Copyright 2006 The FreeRADIUS server project
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -23,6 +24,9 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
 #include <freeradius-devel/autoconf.h>
 
 #include <fcntl.h>
@@ -33,8 +37,6 @@
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-
-static const char rcsid[] = "$Id$";
 
 static int sql_log_instantiate(CONF_SECTION *conf, void **instance);
 static int sql_log_detach(void *instance);

@@ -21,6 +21,9 @@
  *  Copyright 2006  Nicolas Baradakis <nicolas.baradakis@cegetel.net>
  */
 
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
 #include <freeradius-devel/autoconf.h>
 
 #include <pcap.h>

@@ -17,13 +17,16 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2001  The FreeRADIUS server project
+ * Copyright 2001,2006  The FreeRADIUS server project
  * Copyright 2001  Kostas Kalevras <kkalev@noc.ntua.gr>
  *
  * Nov 03 2001, Kostas Kalevras <kkalev@noc.ntua.gr>
  * - Added authorize() function to set Auth-Type if Chap-Password exists
  * - Added module messages when rejecting user
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 
@@ -33,8 +36,6 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-
-static const char rcsid[] = "$Id$";
 
 static int chap_authorize(void *instance, REQUEST *request)
 {

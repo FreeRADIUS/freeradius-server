@@ -25,6 +25,9 @@
 #ifndef __OMAC_H
 #define __OMAC_H
 
+#include <freeradius-devel/ident.h>
+RCSIDH(OMAC_h, "$Id$")
+
 #include "BlockCipher.h"
 
 #ifndef USUAL_TYPES

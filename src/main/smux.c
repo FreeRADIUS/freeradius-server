@@ -17,17 +17,18 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000  The FreeRADIUS server project
+ * Copyright 2000,2006  The FreeRADIUS server project
  * Copyright 1999  Jochen Friedrich <jochen@scram.de>
  * Copyright 1999  Kunihiro Ishiguro <kunihiro@zebra.org>
  */
 
-static const char rcsid[] =
-"$Id$";
+#ifdef WITH_SNMP
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 
-#ifdef WITH_SNMP
 
 #include <sys/socket.h>
 #include <sys/file.h>

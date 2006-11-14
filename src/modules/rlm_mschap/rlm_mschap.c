@@ -17,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2001  The FreeRADIUS server project
+ * Copyright 2000,2001,2006  The FreeRADIUS server project
  */
 
 
@@ -42,6 +42,9 @@
 
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
 
+#include	<freeradius-devel/ident.h>
+RCSID("$Id$")
+
 #include	<freeradius-devel/autoconf.h>
 
 #include	<stdio.h>
@@ -56,9 +59,6 @@
 #include	<freeradius-devel/rad_assert.h>
 
 #include	"smbdes.h"
-
-static const char rcsid[] = "$Id$";
-
 
 /* Allowable account control bits */
 #define ACB_DISABLED   0x0001  /* 1 = User account disabled */

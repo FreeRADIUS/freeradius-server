@@ -20,8 +20,11 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2001  The FreeRADIUS server project
+ * Copyright 2001,2006  The FreeRADIUS server project
  */
+
+#include <freeradius-devel/ident.h>
+RCSIDH(token_h, "$Id$")
 
 typedef enum lrad_token_t {
   T_OP_INVALID = 0,		/* invalid token */

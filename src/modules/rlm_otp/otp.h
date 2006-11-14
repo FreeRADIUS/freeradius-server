@@ -21,7 +21,7 @@
 #ifndef OTP_H
 #define OTP_H
 
-#include "ident.h"
+#include <freeradius-devel/ident.h>
 RCSIDH(otp_h, "$Id$")
 
 #include <sys/types.h>

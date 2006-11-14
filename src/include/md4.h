@@ -9,6 +9,9 @@
 #ifndef _LRAD_MD4_H
 #define _LRAD_MD4_H
 
+#include <freeradius-devel/ident.h>
+RCSIDH(md4_h, "$Id$")
+
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
 #endif

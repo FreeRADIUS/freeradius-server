@@ -17,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000-2003  The FreeRADIUS server project
+ * Copyright 2000-2003,2006  The FreeRADIUS server project
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  * Copyright 2003  Alan DeKok <aland@freeradius.org>
  */
@@ -54,9 +54,10 @@
  *
  */
 
-#include "rlm_eap.h"
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
-static const char rcsid[] = "$Id$";
+#include "rlm_eap.h"
 
 static const char *eap_codes[] = {
   "",				/* 0 is invalid */

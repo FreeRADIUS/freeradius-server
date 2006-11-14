@@ -17,9 +17,12 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2004  The FreeRADIUS server project
+ * Copyright 2004,2006  The FreeRADIUS server project
  * Copyright 2004  Alan DeKok <aland@cladju.com>
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 
@@ -29,8 +32,6 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/conffile.h>
-
-static const char rcsid[] = "$Id$";
 
 /*
  *	Define a structure for our module configuration.

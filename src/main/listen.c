@@ -17,9 +17,12 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2005  The FreeRADIUS server project
+ * Copyright 2005,2006  The FreeRADIUS server project
  * Copyright 2005  Alan DeKok <aland@ox.org>
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 

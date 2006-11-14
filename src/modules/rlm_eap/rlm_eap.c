@@ -17,16 +17,17 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000-2003  The FreeRADIUS server project
+ * Copyright 2000-2003,2006  The FreeRADIUS server project
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  * Copyright 2003  Alan DeKok <aland@freeradius.org>
  */
 
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
 #include <freeradius-devel/autoconf.h>
 #include "rlm_eap.h"
 #include <freeradius-devel/modules.h>
-
-static const char rcsid[] = "$Id$";
 
 static const CONF_PARSER module_config[] = {
 	{ "default_eap_type", PW_TYPE_STRING_PTR,

@@ -23,7 +23,7 @@
 TARGET         = @targetname@
 SRCS           = otp_rlm.c otp_radstate.c otp_pwe.c otp_pw_valid.c
 SRCS          += otp_util.c otp_mppe.c
-HEADERS        = extern.h otp_pw_valid.h otp_mppe.h ident.h
+HEADERS        = extern.h otp_pw_valid.h otp_mppe.h
 RLM_CFLAGS     = @otp_cflags@ $(OPENSSL_INCLUDE)
 RLM_LIBS       = @otp_ldflags@ $(OPENSSL_LIBS)
 

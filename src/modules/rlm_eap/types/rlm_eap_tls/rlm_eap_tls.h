@@ -19,9 +19,13 @@
  *
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  * Copyright 2003  Alan DeKok <aland@freeradius.org>
+ * Copyright 2006  The FreeRADIUS server project
  */
 #ifndef _RLM_EAP_TLS_H
 #define _RLM_EAP_TLS_H
+
+#include <freeradius-devel/ident.h>
+RCSIDH(rlm_eap_tls_h, "$Id$")
 
 #include "eap_tls.h"
 

@@ -21,7 +21,7 @@
  * Copyright 2006 TRI-D Systems, Inc.
  */
 
-#include "ident.h"
+#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>

@@ -4,6 +4,7 @@
    SMB parameters and setup
    Copyright (C) Andrew Tridgell 1992-1997
    Modified by Jeremy Allison 1995.
+   Copyright 2006 The FreeRADIUS server project
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -19,6 +20,9 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include "smblib-priv.h"
 #define uchar unsigned char

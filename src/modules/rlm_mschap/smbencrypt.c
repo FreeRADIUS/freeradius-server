@@ -17,7 +17,11 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2002  3APA3A for FreeRADIUS project
+   Copyright 2006  The FreeRADIUS server project
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include	<freeradius-devel/autoconf.h>
 #include        <stdio.h>

@@ -18,9 +18,13 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2003 Alan DeKok <aland@freeradius.org>
+ * Copyright 2006 The FreeRADIUS server project
  */
 #ifndef _EAP_TTLS_H
 #define _EAP_TTLS_H
+
+#include <freeradius-devel/ident.h>
+RCSIDH(eap_ttls_h, "$Id$")
 
 #include "eap_tls.h"
 

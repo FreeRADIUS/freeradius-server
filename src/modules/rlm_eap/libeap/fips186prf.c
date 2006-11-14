@@ -40,8 +40,12 @@
  *    from this software without specific prior written permission.
  *
  * Copyright 2003  Michael Richardson <mcr@sandelman.ottawa.on.ca>
+ * Copyright 2006  The FreeRADIUS server project
  *
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 

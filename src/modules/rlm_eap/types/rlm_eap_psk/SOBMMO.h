@@ -2,10 +2,15 @@
  *@memo 	Implementation of the modified counter mode
  *@doc  	 
  *@author 	A. MAGNIEZ (FT R&D - DTL/SSR) 
+ *
+ * Copyright 2006 The FreeRADIUS server project
  */
 
 #ifndef _SOBMMO_H_
 #define _SOBMMO_H_
+
+#include <freeradius-devel/ident.h>
+RCSIDH(SOBMMO_h, "$Id$")
 
 #include "BlockCipher.h"
 

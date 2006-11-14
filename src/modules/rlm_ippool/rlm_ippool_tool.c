@@ -17,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2003  FreeRADIUS Project, http://www.freeradius.org/
+ * Copyright 2003,2006  FreeRADIUS Project, http://www.freeradius.org/
  * Copyright 2003  Edwin Groothuis, edwin@mavetju.org
  * Permission from Edwin Groothuis for release under GPL is archived here:
  * http://lists.cistron.nl/archives/freeradius-devel/2003/09/frm00247.html
@@ -52,6 +52,9 @@
  OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  SUCH DAMAGE.
 */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 #include <sys/types.h>

@@ -19,7 +19,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000-2003  The FreeRADIUS server project
+ * Copyright 2000-2003,2006  The FreeRADIUS server project
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  * Copyright 2003  Alan DeKok <aland@freeradius.org>
  * Copyright 2003  Michael Richardson <mcr@sandelman.ottawa.on.ca>
@@ -57,12 +57,13 @@
  *
  */
 
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/libradius.h>
 #include "eap_types.h"
-
-static const char rcsid[] = "$Id$";
 
 static const char *eap_types[] = {
   "",

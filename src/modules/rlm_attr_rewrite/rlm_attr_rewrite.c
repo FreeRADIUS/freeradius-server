@@ -17,9 +17,12 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2002  The FreeRADIUS server project
+ * Copyright 2002,2006  The FreeRADIUS server project
  * Copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 
@@ -38,8 +41,6 @@
 #define RLM_REGEX_INREPLY  2
 #define RLM_REGEX_INPROXY 3
 #define RLM_REGEX_INPROXYREPLY 4
-
-static const char rcsid[] = "$Id$";
 
 typedef struct rlm_attr_rewrite_t {
 	char *attribute;	/* The attribute to search for */

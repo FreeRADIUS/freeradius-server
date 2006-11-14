@@ -25,6 +25,9 @@
 #ifndef __EAX_H
 #define __EAX_H
 
+#include <freeradius-devel/ident.h>
+RCSIDH(EAX_h, "$Id$")
+
 #include "BlockCipher.h"
 #include "OMAC.h"
 #include "CTR.h"

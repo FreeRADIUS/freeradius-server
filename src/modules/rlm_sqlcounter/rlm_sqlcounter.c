@@ -17,12 +17,15 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2001  The FreeRADIUS server project
+ * Copyright 2001,2006  The FreeRADIUS server project
  * Copyright 2001  Alan DeKok <aland@ox.org>
  */
 
 /* This module is based directly on the rlm_counter module */
 
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 
@@ -51,8 +54,6 @@
  *	To fix this behavior, we need to add some way of storing the Next Reset Time
  */
 
-
-static const char rcsid[] = "$Id$";
 
 /*
  *	Define a structure for our module configuration.

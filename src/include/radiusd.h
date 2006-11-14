@@ -7,6 +7,10 @@
  * Version:	$Id$
  *
  */
+
+#include <freeradius-devel/ident.h>
+RCSIDH(radiusd_h, "$Id$")
+
 #include <freeradius-devel/missing.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/radpaths.h>

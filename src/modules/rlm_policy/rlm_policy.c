@@ -18,15 +18,16 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2004  Alan DeKok <aland@ox.org>
+ * Copyright 2006  The FreeRADIUS server project
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include "rlm_policy.h"
 
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/conffile.h>
-
-static const char rcsid[] = "$Id$";
-
 
 /*
  *	A mapping of configuration file names to internal variables.

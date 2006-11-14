@@ -23,6 +23,9 @@
 #ifndef __AES_H
 #define __AES_H
 
+#include <freeradius-devel/ident.h>
+RCSIDH(AES_H, "$Id$")
+
 #include "BlockCipher.h"
 
 #ifndef USUAL_TYPES

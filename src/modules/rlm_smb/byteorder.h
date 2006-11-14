@@ -3,6 +3,7 @@
    Version 1.9.
    SMB Byte handling
    Copyright (C) Andrew Tridgell 1992-1995
+   Copyright 2006 The FreeRADIUS server project
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -23,6 +24,9 @@
    This file implements macros for machine independent short and
    int manipulation
 */
+
+#include <freeradius-devel/ident.h>
+RCSIDH(byteorder_h, "$Id$")
 
 #undef CAREFUL_ALIGNMENT
 

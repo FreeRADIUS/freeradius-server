@@ -21,9 +21,12 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2003  Michael Richardson <mcr@sandelman.ottawa.on.ca>
- * Copyright 2003  The FreeRADIUS server project
+ * Copyright 2003,2006  The FreeRADIUS server project
  *
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 

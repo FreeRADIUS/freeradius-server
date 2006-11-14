@@ -22,6 +22,9 @@
  * Copyright 2006  Suntel Communications
  */
 
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/libradius.h>
 
@@ -33,8 +36,6 @@
 #include <freeradius-devel/modpriv.h>
 
 #include <rlm_sql.h>
-
-static const char rcsid[] = "$Id$";
 
 /*
  *	Define a structure for our module configuration.

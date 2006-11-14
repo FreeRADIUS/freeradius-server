@@ -24,6 +24,9 @@
 #ifndef __BLOCKCIPHER_H
 #define __BLOCKCIPHER_H
 
+#include <freeradius-devel/ident.h>
+RCSIDH(BlockCipher_h, "$Id$")
+
 #include "/usr/include/sys/types.h"
 
 #ifndef USUAL_TYPES

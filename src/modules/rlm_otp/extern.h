@@ -22,7 +22,7 @@
 #ifndef EXTERN_H
 #define EXTERN_H
 
-#include "ident.h"
+#include <freeradius-devel/ident.h>
 RCSIDH(extern_h, "$Id$")
 
 #include <freeradius-devel/autoconf.h>

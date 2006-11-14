@@ -5,6 +5,9 @@
  *
  */
 
+#include <freeradius-devel/ident.h>
+RCSIDH(udpfromtoh, "$Id$")
+
 #include <sys/socket.h>
 
 int udpfromto_init(int s);

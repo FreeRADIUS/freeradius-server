@@ -14,7 +14,7 @@ SERVER_OBJS	+= $(SERVER_SRCS:.c=.lo)
 
 INCLUDES	= ../include/autoconf.h ../include/conf.h    \
 		  ../include/libradius.h ../include/radius.h \
-		  ../include/radiusd.h
+		  ../include/radiusd.h ../include/ident.h
 
 CFLAGS		+= -I$(top_builddir)/src
 CFLAGS		+= -DHOSTINFO=\"${HOSTINFO}\"

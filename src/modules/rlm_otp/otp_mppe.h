@@ -22,7 +22,7 @@
 #ifndef OTP_MPPE_H
 #define OTP_MPPE_H
 
-#include "ident.h"
+#include <freeradius-devel/ident.h>
 RCSIDH(otp_mppe_h, "$Id$")
 
 /* Some hardcoding here ... because not all types have #defines */

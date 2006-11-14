@@ -22,6 +22,9 @@
 #ifndef __CTR_H
 #define __CTR_H
 
+#include <freeradius-devel/ident.h>
+RCSIDH(CTR_h, "$Id$")
+
 #include "BlockCipher.h"
 
 #ifndef USUAL_TYPES

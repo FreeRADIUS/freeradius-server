@@ -2,7 +2,12 @@
  *@memo 	Implementation of the modified counter mode
  *@doc  	 
  *@author 	A. MAGNIEZ (FT R&D - DTL/SSR) 
+ *
+ * Copyright 2006 The FreeRADIUS server project
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include "SOBMMO.h"
 #include <stdlib.h>

@@ -18,10 +18,14 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2003  Michael Richardson <mcr@sandelman.ottawa.on.ca>
+ * Copyright 2006  The FreeRADIUS server project
  *
  */
 #ifndef _EAP_SIM_H
 #define _EAP_SIM_H
+
+#include <freeradius-devel/ident.h>
+RCSIDH(eap_sim_h, "$Id$")
 
 #include "eap_types.h"
 

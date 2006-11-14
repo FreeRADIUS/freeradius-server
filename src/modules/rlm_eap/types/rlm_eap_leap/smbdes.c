@@ -5,6 +5,7 @@
    SMB authentication protocol
 
    Copyright (C) Andrew Tridgell 1998
+   Copyright 2006 The FreeRADIUS server project
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -43,6 +44,10 @@
    should confirm it for yourself (and maybe let me know if you come
    up with a different answer to the one above)
 */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
 #include <string.h>
 #include <ctype.h>
 

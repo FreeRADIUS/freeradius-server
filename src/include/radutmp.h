@@ -7,6 +7,9 @@
 #ifndef _RADUTMP_H
 #define _RADUTMP_H
 
+#include <freeradius-devel/ident.h>
+RCSIDH(radutmp_h, "$Id$")
+
 /*
  *      Types of connection.
  */

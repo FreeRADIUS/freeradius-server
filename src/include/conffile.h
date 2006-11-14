@@ -8,6 +8,9 @@
  *
  */
 
+#include <freeradius-devel/ident.h>
+RCSIDH(conffile_h, "$Id$")
+
 #include <stddef.h>
 #include <freeradius-devel/token.h>
 

@@ -2,7 +2,7 @@
 #define LRAD_HASH_H
 
 /*
- * hasht.h	Structures and prototypes
+ * hash.h	Structures and prototypes
  *		for fast hashing.
  *
  * Version:	$Id$
@@ -23,6 +23,9 @@
  *
  * Copyright 2005,2006  The FreeRADIUS server project
  */
+
+#include <freeradius-devel/ident.h>
+RCSIDH(hash_h, "$Id$")
 
 /*
  *	Fast hash, which isn't too bad.  Don't use for cryptography,

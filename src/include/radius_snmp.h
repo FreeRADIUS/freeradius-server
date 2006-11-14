@@ -3,6 +3,10 @@
 /*
  * Version:	$Id$
  */
+
+#include <freeradius-devel/ident.h>
+RCSIDH(radius_snmp_h, "$Id$")
+
 #ifdef WITH_SNMP
 
 typedef enum smux_event_t {

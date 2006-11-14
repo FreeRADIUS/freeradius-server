@@ -19,6 +19,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2004  Michael Richardson <mcr@sandelman.ottawa.on.ca>
+ * Copyright 2006  The FreeRADIUS server project
  *
  * (Adapted from rlm_files/rlm_files.c )
  */
@@ -53,7 +54,8 @@
  */
 
 
-static const char rcsid[] = "$Id$";
+#include	<freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include	<freeradius-devel/autoconf.h>
 

@@ -15,8 +15,11 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000  The FreeRADIUS server project
+ * Copyright 2000,2006  The FreeRADIUS server project
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 
@@ -32,8 +35,6 @@
  *  Room for at least 16 attributes.
  */
 #define  BUFFERLEN  4096
-
-static const char rcsid[] = "$Id$";
 
 typedef struct rlm_acct_unique_list_t {
 	DICT_ATTR		      *dattr;

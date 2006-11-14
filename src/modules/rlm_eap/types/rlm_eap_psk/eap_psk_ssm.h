@@ -22,10 +22,15 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
+ * Copyright 2006 The FreeRADIUS server project
+ *
  */
 
 #ifndef _EAP_PSK_SSM_H
 #define _EAP_PSK_SSM_H
+
+#include <freeradius-devel/ident.h>
+RCSIDH(eap_psk_ssm_h, "$Id$")
 
 #include "eap_psk.h"
 #include "eap.h"

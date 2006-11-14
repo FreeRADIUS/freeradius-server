@@ -19,6 +19,8 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ 
+   Copyright 2006 The FreeRADIUS server project
 */
 
 
@@ -43,6 +45,10 @@
    should confirm it for yourself (and maybe let me know if you come
    up with a different answer to the one above)
 */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
 #include <string.h>
 #include <ctype.h>
 

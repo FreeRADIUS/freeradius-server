@@ -6,6 +6,9 @@
  *  Version:	$Id$
  */
 
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
 #include <freeradius-devel/autoconf.h>
 
 #include <string.h>

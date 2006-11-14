@@ -8,6 +8,9 @@
 ** Function: hmac_sha1
 */
 
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
 #include <freeradius-devel/autoconf.h>
 
 #include <string.h>

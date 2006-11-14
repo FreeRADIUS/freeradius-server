@@ -18,8 +18,12 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2002  Axis Communications AB
+ * Copyright 2006  The FreeRADIUS server project
  * Authors: Henrik Eriksson <henriken@axis.com> & Lars Viklund <larsv@axis.com>
  */
+
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <openssl/hmac.h>
 #include "eap_tls.h"

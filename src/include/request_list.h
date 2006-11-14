@@ -8,6 +8,9 @@
  *
  */
 
+#include <freeradius-devel/ident.h>
+RCSIDH(request_list_h, "$Id$")
+
 extern request_list_t *rl_init(void);
 extern void rl_deinit(request_list_t *);
 extern void rl_yank(request_list_t *, REQUEST *);

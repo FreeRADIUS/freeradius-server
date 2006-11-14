@@ -4,6 +4,7 @@
    RFCNB Common Structures etc Defines
 
    Copyright (C) Richard Sharpe 1996
+   Copyright 2006 The FreeRADIUS server project
 
 */
 
@@ -22,6 +23,9 @@
    along with this program; if not, write to the Free Software
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
+
+#include <freeradius-devel/ident.h>
+RCSIDH(rfcnb_common_h, "$Id$")
 
 /* A data structure we need */
 

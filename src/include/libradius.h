@@ -24,6 +24,9 @@
  * Copyright 2001,2002,2003,2004,2005,2006  The FreeRADIUS server project
  */
 
+#include <freeradius-devel/ident.h>
+RCSIDH(libradius_h, "$Id$")
+
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
