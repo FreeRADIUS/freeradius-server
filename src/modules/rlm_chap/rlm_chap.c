@@ -119,7 +119,7 @@ static int chap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	DEBUG("  rlm_chap: Using clear text password %s for user %s authentication.",
+	DEBUG("  rlm_chap: Using clear text password \"%s\" for user %s authentication.",
 	      passwd_item->vp_strvalue, request->username->vp_strvalue);
 
 	rad_chap_encode(request->packet,pass_str,
@@ -127,7 +127,7 @@ static int chap_authenticate(void *instance, REQUEST *request)
 
 	if (memcmp(pass_str + 1, request->password->vp_octets + 1,
 		   CHAP_VALUE_LENGTH) != 0){
-		DEBUG("  rlm_chap: Pasword check failed");
+		DEBUG("  rlm_chap: Password check failed");
 		snprintf(module_fmsg, sizeof(module_fmsg),
 			 "rlm_chap: Wrong user password");
 		module_fmsg_vp = pairmake("Module-Failure-Message",
