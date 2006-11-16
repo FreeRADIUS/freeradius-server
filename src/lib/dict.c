@@ -264,6 +264,7 @@ static void dict_stat_add(const char *name, const struct stat *stat_buf)
 	dict_stat_t *this;
 
 	this = malloc(sizeof(*this));
+	if (!this) return;
 	memset(this, 0, sizeof(*this));
 
 	this->name = strdup(name);
