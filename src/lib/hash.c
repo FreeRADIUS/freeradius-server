@@ -820,6 +820,7 @@ int main(int argc, char **argv)
 	}
 
 	array = malloc(sizeof(int) * MAX);
+	if (!array) exit(1);
 
 	for (i = 0; i < MAX; i++) {
 		p = array + i;
