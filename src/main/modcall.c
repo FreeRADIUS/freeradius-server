@@ -191,19 +191,6 @@ static int compile_action(modcallable *c, const char *attr, const char *value,
 	return 1;
 }
 
-#if 0
-static const char *action2str(int action)
-{
-	static char buf[32];
-	if(action==MOD_ACTION_RETURN)
-		return "return";
-	if(action==MOD_ACTION_REJECT)
-		return "reject";
-	snprintf(buf, sizeof buf, "%d", action);
-	return buf;
-}
-#endif
-
 /* Some short names for debugging output */
 static const char * const comp2str[] = {
 	"authenticate",
@@ -309,6 +296,10 @@ typedef struct modcall_stack {
 } modcall_stack;
 
 
+/*
+ *	Call a module, iteratively, with a local stack, rather than
+ *	recursively.  What did Paul Graham say about Lisp...?
+ */
 int modcall(int component, modcallable *c, REQUEST *request)
 {
 	int myresult;
@@ -521,6 +512,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		if (child->actions[myresult] == MOD_ACTION_RETURN) {
 			stack.result[stack.pointer] = myresult;
 			stack.children[stack.pointer] = NULL;
+			goto do_return;
 		}
 	
 		/*
@@ -530,6 +522,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		if (child->actions[myresult] == MOD_ACTION_REJECT) {
 			stack.children[stack.pointer] = NULL;
 			stack.result[stack.pointer] = RLM_MODULE_REJECT;
+			goto do_return;
 		}
 
 		/*
@@ -626,6 +619,17 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 
 #if 0
+static const char *action2str(int action)
+{
+	static char buf[32];
+	if(action==MOD_ACTION_RETURN)
+		return "return";
+	if(action==MOD_ACTION_REJECT)
+		return "reject";
+	snprintf(buf, sizeof buf, "%d", action);
+	return buf;
+}
+
 /* If you suspect a bug in the parser, you'll want to use these dump
  * functions. dump_tree should reproduce a whole tree exactly as it was found
  * in radiusd.conf, but in long form (all actions explicitly defined) */
