@@ -39,21 +39,25 @@ RCSID("$Id$")
 
 #define MAX_QUERY_LEN 1024
 
+static int sqlcounter_detach(void *instance);
 
-
-/* 	Note: When your counter spans more than 1 period (ie 3 months or 2 weeks), this module
- *	probably does NOT do what you want!  It calculates the range of dates to count across
- *	by first calculating the End of the Current period and then subtracting the number of
- *	periods you specify from that to determine the beginning of the range.
+/*
+ *	Note: When your counter spans more than 1 period (ie 3 months
+ *	or 2 weeks), this module probably does NOT do what you want! It
+ *	calculates the range of dates to count across by first calculating
+ *	the End of the Current period and then subtracting the number of
+ *	periods you specify from that to determine the beginning of the
+ *	range.
  *
- *	For example, if you specify a 3 month counter and today is June 15th, the end of the current
- *	period is June 30. Subtracting 3 months from that gives April 1st.  So, the counter will
- *	sum radacct entries from April 1st to June 30. Then, next month, it will sum entries
- *	from May 1st to July 31st.
+ *	For example, if you specify a 3 month counter and today is June 15th,
+ *	the end of the current period is June 30. Subtracting 3 months from
+ *	that gives April 1st. So, the counter will sum radacct entries from
+ *	April 1st to June 30. Then, next month, it will sum entries from
+ *	May 1st to July 31st.
  *
- *	To fix this behavior, we need to add some way of storing the Next Reset Time
+ *	To fix this behavior, we need to add some way of storing the Next
+ *	Reset Time.
  */
-
 
 /*
  *	Define a structure for our module configuration.
@@ -437,6 +441,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	data = rad_malloc(sizeof(*data));
 	if (!data) {
+		radlog(L_ERR, "rlm_sqlcounter: Not enough memory.");
 		return -1;
 	}
 	memset(data, 0, sizeof(*data));
@@ -446,7 +451,8 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, data, module_config) < 0) {
-		free(data);
+		radlog(L_ERR, "rlm_sqlcounter: Unable to parse parameters.");
+		sqlcounter_detach(data);
 		return -1;
 	}
 
@@ -455,6 +461,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->query == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: 'query' must be set.");
+		sqlcounter_detach(data);
 		return -1;
 	}
 
@@ -469,17 +476,20 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->key_name == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: 'key' must be set.");
+		sqlcounter_detach(data);
 		return -1;
 	}
 	sql_escape_func(buffer, sizeof(buffer), data->key_name);
 	if (strcmp(buffer, data->key_name) != 0) {
 		radlog(L_ERR, "rlm_sqlcounter: The value for option 'key' is too long or contains unsafe characters.");
+		sqlcounter_detach(data);
 		return -1;
 	}
 	dattr = dict_attrbyname(data->key_name);
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: No such attribute %s",
 				data->key_name);
+		sqlcounter_detach(data);
 		return -1;
 	}
 	data->key_attr = dattr->attr;
@@ -492,12 +502,14 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	if (data->reply_name == NULL) {
 		DEBUG2("rlm_sqlcounter: Reply attribute set to Session-Timeout.");
 		data->reply_attr = PW_SESSION_TIMEOUT;
+		data->reply_name = strdup("Session-Timeout");
 	}
 	else {
 		dattr = dict_attrbyname(data->reply_name);
 		if (dattr == NULL) {
 			radlog(L_ERR, "rlm_sqlcounter: No such attribute %s",
 			       data->reply_name);
+			sqlcounter_detach(data);
 			return -1;
 		}
 		data->reply_attr = dattr->attr;
@@ -510,11 +522,13 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->sqlmod_inst == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: 'sqlmod-inst' must be set.");
+		sqlcounter_detach(data);
 		return -1;
 	}
 	sql_escape_func(buffer, sizeof(buffer), data->sqlmod_inst);
 	if (strcmp(buffer, data->sqlmod_inst) != 0) {
 		radlog(L_ERR, "rlm_sqlcounter: The value for option 'sqlmod-inst' is too long or contains unsafe characters.");
+		sqlcounter_detach(data);
 		return -1;
 	}
 
@@ -523,6 +537,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->counter_name == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: 'counter-name' must be set.");
+		sqlcounter_detach(data);
 		return -1;
 	}
 
@@ -532,6 +547,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: Failed to create counter attribute %s",
 				data->counter_name);
+		sqlcounter_detach(data);
 		return -1;
 	}
 	data->dict_attr = dattr->attr;
@@ -543,6 +559,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->check_name == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: 'check-name' must be set.");
+		sqlcounter_detach(data);
 		return -1;
 	}
 	dict_addattr(data->check_name, 0, PW_TYPE_INTEGER, -1, flags);
@@ -550,6 +567,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: Failed to create check attribute %s",
 				data->counter_name);
+		sqlcounter_detach(data);
 		return -1;
 	}
 	DEBUG2("rlm_sqlcounter: Check attribute %s is number %d",
@@ -560,22 +578,28 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->reset == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: 'reset' must be set.");
+		sqlcounter_detach(data);
 		return -1;
 	}
 	now = time(NULL);
 	data->reset_time = 0;
 
-	if (find_next_reset(data,now) == -1)
+	if (find_next_reset(data,now) == -1) {
+		radlog(L_ERR, "rlm_sqlcounter: Failed to find the next reset time.");
+		sqlcounter_detach(data);
 		return -1;
+	}
 
 	/*
 	 *  Discover the beginning of the current time period.
 	 */
 	data->last_reset = 0;
 
-	if (find_prev_reset(data,now) == -1)
+	if (find_prev_reset(data,now) == -1) {
+		radlog(L_ERR, "rlm_sqlcounter: Failed to find the previous reset time.");
+		sqlcounter_detach(data);
 		return -1;
-
+	}
 
 	/*
 	 *	Register the counter comparison operation.
@@ -739,19 +763,35 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 
 static int sqlcounter_detach(void *instance)
 {
-	rlm_sqlcounter_t *data = (rlm_sqlcounter_t *) instance;
+	int i;
+	char **p;
+	rlm_sqlcounter_t *inst = (rlm_sqlcounter_t *)instance;
 
-	paircompare_unregister(data->dict_attr, sqlcounter_cmp);
-	free(data->reset);
-	free(data->query);
-	free(data->check_name);
-	if (data->reply_name) free(data->reply_name);
-	free(data->sqlmod_inst);
-	free(data->counter_name);
-	free(data->allowed_chars);
 	allowed_chars = NULL;
+	paircompare_unregister(inst->dict_attr, sqlcounter_cmp);
 
-	free(instance);
+	/*
+	 *	Free up dynamically allocated string pointers.
+	 */
+	for (i = 0; module_config[i].name != NULL; i++) {
+		if (module_config[i].type != PW_TYPE_STRING_PTR) {
+			continue;
+		}
+
+		/*
+		 *	Treat 'config' as an opaque array of bytes,
+		 *	and take the offset into it.  There's a
+		 *      (char*) pointer at that offset, and we want
+		 *	to point to it.
+		 */
+		p = (char **) (((char *)inst) + module_config[i].offset);
+		if (!*p) { /* nothing allocated */
+			continue;
+		}
+		free(*p);
+		*p = NULL;
+	}
+	free(inst);
 	return 0;
 }
 
