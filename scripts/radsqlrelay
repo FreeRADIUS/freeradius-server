@@ -73,6 +73,7 @@ options:
 	-1		One-shot mode: push the file to database and exit.
 	-b database	Name of the database to use.
 	-d sql_driver	Driver to use: mysql, pg, oracle.
+	-f file		Read password from file, instead of command line.
 	-h host		Connect to host.
 	-P port		Port number to use for connection.
 	-p passord	Password to use when connecting to server.
@@ -141,7 +142,7 @@ my %args = (
 	    p => 'radius',
 	    u => 'radius',
 );
-my $ret = getopts("b:d:fh:P:p:u:x1?", \%args);
+my $ret = getopts("b:d:f:h:P:p:u:x1?", \%args);
 if (!$ret or @ARGV != 1) {
     usage();
     exit 1;
@@ -164,13 +165,24 @@ if (lc($args{d}) eq 'mysql') {
 }
 $data_source .= ";port=$args{P}" if $args{'P'};
 
+my $pw;
+if($args{f}) {
+    open(FILE, "< $args{f}") or die "error: Couldn't open $args{f}: $!\n";
+    $pw = <FILE>;
+    chomp($pw);
+    close(FILE);
+} else {
+    # args{p} is always defined.
+    $pw = $args{p};
+}
+
 $SIG{INT} = \&got_signal;
 $SIG{TERM} = \&got_signal;
 
 my %dbinfo = (
 	      base => $data_source,
 	      user => $args{u},
-	      pass => $args{p},
+	      pass => $pw,
 );
 connect_wait(\%dbinfo);
 
