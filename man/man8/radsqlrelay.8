@@ -9,6 +9,8 @@ radsqlrelay - relay SQL queries to a central database server
 .IR sql_driver ]
 .RB [ \-b
 .IR database ]
+.RB [ \-f
+.IR file ]
 .RB [ \-h
 .IR host ]
 .RB [ \-u
@@ -32,6 +34,8 @@ must be configured in the \fBradiusd\fP server before you can use
 Driver to use: mysql, pg, oracle.
 .IP "\-b \fIdatabase\fP"
 Name of the database to use.
+.IP "\-f \fIfile\fP"
+Read password from file, instead of command line.
 .IP "\-h \fIhost\fP"
 Connect to host.
 .IP "\-u \fIuser\fP"
