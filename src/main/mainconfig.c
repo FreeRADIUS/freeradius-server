@@ -381,13 +381,13 @@ static int generate_realms(const char *filename)
 		 */
 		if ((authhost = cf_section_value_find(cs, "authhost")) == NULL) {
 			c->ipaddr = htonl(INADDR_NONE);
-			c->auth_port = auth_port;
+			c->auth_port = 0;
 		} else {
 			if ((s = strchr(authhost, ':')) != NULL) {
 				*s++ = 0;
 				c->auth_port = atoi(s);
 			} else {
-				c->auth_port = auth_port;
+				c->auth_port = PW_AUTH_UDP_PORT;
 			}
 			if (strcmp(authhost, "LOCAL") == 0) {
 				/*
@@ -395,7 +395,7 @@ static int generate_realms(const char *filename)
 				 *	secret, or port.
 				 */
 				c->ipaddr = htonl(INADDR_NONE);
-				c->auth_port = auth_port;
+				c->auth_port = 0;
 			} else {
 				c->ipaddr = ip_getaddr(authhost);
 				if (c->ipaddr == htonl(INADDR_NONE)) {
@@ -429,7 +429,7 @@ static int generate_realms(const char *filename)
 				*s++ = 0;
 				c->acct_port = atoi(s);
 			} else {
-				c->acct_port = auth_port + 1;
+				c->acct_port = PW_ACCT_UDP_PORT;
 			}
 			if (strcmp(accthost, "LOCAL") == 0) {
 				/*
