@@ -1,7 +1,7 @@
 Summary: High-performance and highly configurable RADIUS server
 URL: http://www.freeradius.org/
 Name: freeradius
-Version: 1.1.3
+Version: 1.1.4
 Release: 0
 License: GPL
 Group: Networking/Daemons
@@ -29,8 +29,9 @@ CFLAGS="$RPM_OPT_FLAGS" \
 	--localstatedir=%{_localstatedir} \
 	--sysconfdir=%{_sysconfdir} \
 	--mandir=%{_mandir} \
+	--with-docdir=%{_datadir}/doc/%{name}-%{version} \
+	--with-system-libtool \
 	--disable-ltdl-install \
-	--with-docdir=/usr/share/doc/freeradius-%{version} \
 	--with-ltdl-lib=/usr/lib \
 	--with-ltdl-include=/usr/include \
 	--with-large-files --with-udpfromto --with-edir \
@@ -56,6 +57,11 @@ perl -i -pe 's/#	shadow =/shadow =/' $RADDB/radiusd.conf
 # remove unneeded stuff
 rm -f $RPM_BUILD_ROOT%{_mandir}/man8/builddbm.8
 rm -f $RPM_BUILD_ROOT%{_prefix}/sbin/rc.radiusd
+
+# more files go to /usr/share/doc/freeradius-%{version}
+install -m 0644 CREDITS $RPM_BUILD_ROOT%{_datadir}/doc/%{name}-%{version}
+install -m 0644 COPYRIGHT $RPM_BUILD_ROOT%{_datadir}/doc/%{name}-%{version}
+install -m 0644 LICENSE $RPM_BUILD_ROOT%{_datadir}/doc/%{name}-%{version}
 
 cd redhat
 install -m 755 rc.radiusd-redhat $RPM_BUILD_ROOT/etc/rc.d/init.d/radiusd
@@ -98,16 +104,11 @@ fi
 
 %files
 %defattr(-,root,root)
-%doc suse/README.SuSE
-%doc doc/* LICENSE COPYRIGHT CREDITS README
-%doc doc/examples/*
-%doc scripts/create-users.pl scripts/CA.* scripts/certs.sh
-%doc scripts/users2mysql.pl scripts/xpextensions
-%doc scripts/cryptpasswd scripts/exec-program-wait scripts/radiusd2ldif.pl
 %config /etc/pam.d/radius
 %config /etc/logrotate.d/radiusd
 %config /etc/rc.d/init.d/radiusd
 %config (noreplace) /etc/raddb/*
+%doc %{_datadir}/doc/%{name}-%{version}
 %{_bindir}/*
 %{_datadir}/%{name}
 %{_libdir}/*
