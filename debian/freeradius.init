@@ -1,5 +1,6 @@
 #!/bin/sh
 # Start/stop the FreeRADIUS daemon.
+
 ### BEGIN INIT INFO
 # Provides:          radiusd
 # Required-Start:    $network
@@ -7,6 +8,8 @@
 # Required-Stop:
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
+# Short-Description: Radius Daemon 
+# Description:       Extensible, configurable radius daemon
 ### END INIT INFO
 
 PROG="freeradius"
@@ -16,11 +19,20 @@ DESCR="FreeRADIUS daemon"
 
 test -f $PROGRAM || exit 0
 
+# /var/run may be a tmpfs
+if [ ! -d /var/run/freeradius ]; then
+	install -o freerad -g freerad -m 0755 -d /var/run/freeradius
+	if [ $? -ne 0 ]; then
+		echo "Error creating the /var/run/freeradius directory."
+		exit 1
+	fi
+fi
+
 case "$1" in
 	start)
 		echo -n "Starting $DESCR: "
 		start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $PROGRAM
-		if [ $? = 0 ]; then
+		if [ $? -eq 0 ]; then
 			echo "$PROG."
 		else
 			echo "(failed!  run '$PROGRAM -x' to find out why.)"
@@ -42,7 +54,7 @@ case "$1" in
 		start-stop-daemon --stop --signal 1 --oknodo --quiet --pidfile $PIDFILE
 		sleep 2
 		[ -r $PIDFILE ] && kill -0 $(cat $PIDFILE) > /dev/null 2>&1
-		if [ $? = 0 ]; then
+		if [ $? -eq 0 ]; then
 			echo "."
 		else
 			echo " failed! ($PROG has died)"
