@@ -41,8 +41,8 @@ SIMTRIPLETS.DAT:
 
 	imsi		- just a string
 	challenge	- 16-byte value in hex.
-	kc		- 4-byte value in hex, the client key (Kc)
-	sres		- 8-byte value in hex, the secure response
+	sres		- 4-byte value in hex, the secure response
+	kc		- 8-byte value in hex, the client key (Kc)
 
   Note that EAP-SIM requires *three* sets of triplets, so there must be
 three challenges found in the file. The first three challenges are used.
