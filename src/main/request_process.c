@@ -78,11 +78,6 @@ static int process_post_proxy_fail(REQUEST *request)
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		
 		/*
-		 *  Perform RFC limitations on outgoing replies.
-		 */
-		rfc_clean(request->reply);
-		
-		/*
 		 *  Need to copy Proxy-State from request->packet->vps
 		 */
 		vps = paircopy2(request->packet->vps, PW_PROXY_STATE);
@@ -99,66 +94,6 @@ static int process_post_proxy_fail(REQUEST *request)
 
 	return 0;		/* ignored for now */
 }
-
-
-/*
- *  Perform any RFC specified cleaning of outgoing replies
- */
-void rfc_clean(RADIUS_PACKET *packet)
-{
-	VALUE_PAIR *vps = NULL;
-
-	switch (packet->code) {
-		/*
-		 *	In the default case, we just move all of the
-		 *	attributes over.
-		 */
-	default:
-		vps = packet->vps;
-		packet->vps = NULL;
-		break;
-
-		/*
-		 *	Accounting responses can only contain
-		 *	Proxy-State and VSA's.  Note that we do NOT
-		 *	move the Proxy-State attributes over, as the
-		 *	Proxy-State attributes in this packet are NOT
-		 *	the right ones to use.  The reply function
-		 *	takes care of copying those attributes from
-		 *	the original request, which ARE the right ones
-		 *	to use.
-		 */
-	case PW_ACCOUNTING_RESPONSE:
-		pairmove2(&vps, &(packet->vps), PW_VENDOR_SPECIFIC);
-		break;
-
-		/*
-		 *	Authentication REJECT's can have only
-		 *	EAP-Message, Message-Authenticator
-		 *	Reply-Message and Proxy-State.
-		 *
-		 *	We delete everything other than these.
-		 *	Proxy-State is added below, just before the
-		 *	reply is sent.
-		 */
-	case PW_AUTHENTICATION_REJECT:
-		pairmove2(&vps, &(packet->vps), PW_EAP_MESSAGE);
-		pairmove2(&vps, &(packet->vps), PW_MESSAGE_AUTHENTICATOR);
-		pairmove2(&vps, &(packet->vps), PW_REPLY_MESSAGE);
-		break;
-	}
-
-	/*
-	 *	Move the newly cleaned attributes over.
-	 */
-	pairfree(&packet->vps);
-	packet->vps = vps;
-
-	/*
-	 *	FIXME: Perform other, more generic sanity checks.
-	 */
-}
-
 
 /*
  *	For debugging
@@ -296,11 +231,6 @@ static const LRAD_NAME_NUMBER request_fail_reason[] = {
 		 */
 		case PW_AUTHENTICATION_REQUEST:
 			request->reply->code = PW_AUTHENTICATION_REJECT;
-
-			/*
-			 *  Perform RFC limitations on outgoing replies.
-			 */
-			rfc_clean(request->reply);
 
 			/*
 			 *  Need to copy Proxy-State from request->packet->vps
@@ -549,11 +479,6 @@ int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun)
 	rad_assert(request->magic == REQUEST_MAGIC);
 	if (request->reply->code != 0) {
 		VALUE_PAIR *vp = NULL;
-
-		/*
-		 *	Perform RFC limitations on outgoing replies.
-		 */
-		rfc_clean(request->reply);
 
 		/*
 		 *	Need to copy Proxy-State from request->packet->vps

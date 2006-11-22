@@ -359,7 +359,6 @@ int		rad_copy_variable(char *dst, const char *from);
 /* request_process.c */
 int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun);
 void		request_reject(REQUEST *request, request_fail_t reason);
-void		rfc_clean(RADIUS_PACKET *packet);
 
 /* client.c */
 RADCLIENT_LIST	*clients_init(void);
