@@ -46,12 +46,15 @@ RCSID("$Id$")
  */
 struct attr_filter_instance {
         char *attrsfile;
+	char *key;
         PAIR_LIST *attrs;
 };
 
 static const CONF_PARSER module_config[] = {
 	{ "attrsfile",     PW_TYPE_FILENAME,
 	  offsetof(struct attr_filter_instance,attrsfile), NULL, "${raddbdir}/attrs" },
+	{ "key",     PW_TYPE_STRING_PTR,
+	  offsetof(struct attr_filter_instance,key), NULL, "%{Realm}" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -150,6 +153,7 @@ static int attr_filter_detach(void *instance)
 	struct attr_filter_instance *inst = instance;
 	pairlist_free(&inst->attrs);
 	free(inst->attrsfile);
+	free(inst->key);
 	free(inst);
 	return 0;
 }
@@ -199,25 +203,32 @@ static int attr_filter_common(void *instance, REQUEST *request,
 	PAIR_LIST	*pl;
 	int		found = 0;
 	int		pass, fail = 0;
-	VALUE_PAIR	*realmpair;
-	char		*realmname = NULL;
+	char		*keyname = NULL;
+	char		buffer[256];
 
-	/*
-	 *	Get the realm.  Can't use request->config_items as
-	 *	that gets freed by rad_authenticate....  use the one
-	 *	set in the original request vps
-	 */
-	realmpair = pairfind(request->packet->vps, PW_REALM);
-	if (!realmpair) {
-		/* If there is no realm...NOOP */
-		return (RLM_MODULE_NOOP);
+	if (!inst->key) {
+		VALUE_PAIR	*namepair;
+
+		namepair = pairfind(request->packet->vps, PW_REALM);
+		if (!namepair) {
+			return (RLM_MODULE_NOOP);
+		}
+		keyname = namepair->vp_strvalue;
+	} else {
+		int len;
+
+		len = radius_xlat(buffer, sizeof(buffer), inst->key,
+				  request, NULL);
+		if (!len) {
+			return RLM_MODULE_NOOP;
+		}
+		keyname = buffer;
 	}
-	realmname = realmpair->vp_strvalue;
 
 	output_tail = &output;
 
 	/*
-	 *      Find the attr_filter profile entry for the realm.
+	 *      Find the attr_filter profile entry for the entry.
 	 */
 	for (pl = inst->attrs; pl; pl = pl->next) {
 		int fall_through = 0;
@@ -228,7 +239,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 		 *  then skip to the next entry.
 		 */
 		if ((strcmp(pl->name, "DEFAULT") != 0) &&
-		    (strcmp(realmname, pl->name) != 0))  {
+		    (strcmp(keyname, pl->name) != 0))  {
 		    continue;
 		}
 
@@ -276,6 +287,18 @@ static int attr_filter_common(void *instance, REQUEST *request,
 			for (check_item = pl->check;
 			     check_item != NULL;
 			     check_item = check_item->next) {
+				/*
+				 *	Vendor-Specific is special, and
+				 *	matches any VSA if the comparison
+				 *	is always true.
+				 */
+				if ((check_item->attribute == PW_VENDOR_SPECIFIC) &&
+				    (VENDOR(vp->attribute) != 0) &&
+				    (check_item->operator == T_OP_CMP_TRUE)) {
+					pass++;
+					continue;
+				}
+
 				if (vp->attribute == check_item->attribute) {
 					check_pair(check_item, vp,
 						   &pass, &fail);
