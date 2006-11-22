@@ -116,6 +116,8 @@ DEFAULT
 	Framed-Filter-ID =* ANY,
 	Reply-Message =* ANY,
 	Proxy-State =* ANY,
+	EAP-Message =* ANY,
+	State =* ANY,
 	Session-Timeout <= 28800,
 	Idle-Timeout <= 600,
 	Port-Limit <= 2
