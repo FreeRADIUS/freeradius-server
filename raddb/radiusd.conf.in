@@ -1313,6 +1313,24 @@ $INCLUDE ${confdir}/eap.conf
 		attrsfile = ${confdir}/attrs.pre-proxy
 	}
 
+	# Enforce RFC requirements on the contents of Access-Reject
+	# packets.  See the comments at the top of the file for
+	# more details.
+	#
+	attr_filter attr_filter.access_reject {
+		key = %{User-Name}
+		attrsfile = ${confdir}/attrs.access_reject
+	}
+
+	#  Enforce RFC requirements on the contents of the
+	#  Accounting-Response packets.  See the comments at the
+	#  top of the file for more details.
+	#
+	attr_filter attr_filter.accounting_response {
+		key = %{User-Name}
+		attrsfile = ${confdir}/attrs.accounting_response
+	}
+
 	#  counter module:
 	#  This module takes an attribute (count-attribute).
 	#  It also takes a key, and creates a counter for each unique
@@ -2138,6 +2156,8 @@ accounting {
 	#  Cisco VoIP specific bulk accounting
 #	pgsql-voip
 
+	#  Filter attributes from the accounting response.
+	attr_filter.accounting_response
 }
 
 
@@ -2184,17 +2204,17 @@ post-auth {
 	#  the 'modules' section.
 	#
 #	ldap
+
 	#
 	#  Access-Reject packets are sent through the REJECT sub-section of the
 	#  post-auth section.
-	#  Uncomment the following and set the module name to the ldap instance
-	#  name if you have set 'edir_account_policy_check = yes' in the ldap
-	#  module sub-section of the 'modules' section.
 	#
-#	Post-Auth-Type REJECT {
-#		insert-module-name-here
-#	}
-
+	#  Add the ldap module name (or instance) if you have set 
+	#  'edir_account_policy_check = yes' in the ldap module configuration
+	#
+	Post-Auth-Type REJECT {
+		attr_filter.access_reject
+	}
 }
 
 #
