@@ -426,6 +426,7 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 	const PAIR_LIST	*user_pl, *default_pl;
 	int		found = 0;
 	PAIR_LIST	my_pl;
+	char		buffer[256];
 
 	if (!inst->key) {
 		VALUE_PAIR	*namepair;
@@ -434,7 +435,6 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 		name = namepair ? (char *) namepair->vp_strvalue : "NONE";
 	} else {
 		int len;
-		char buffer[256];
 
 		len = radius_xlat(buffer, sizeof(buffer), inst->key,
 				  request, NULL);
