@@ -52,8 +52,8 @@ ATTRIBUTE	ERX-Tunnel-Virtual-Router		8	string
 ATTRIBUTE	ERX-Tunnel-Password			9	string
 ATTRIBUTE	ERX-Ingress-Policy-Name			10	string
 ATTRIBUTE	ERX-Egress-Policy-Name			11	string
-ATTRIBUTE	ERX-Ingress-Statistics			12	string
-ATTRIBUTE	ERX-Egress-Statistics			13	string
+ATTRIBUTE	ERX-Ingress-Statistics			12	integer
+ATTRIBUTE	ERX-Egress-Statistics			13	integer
 ATTRIBUTE	ERX-Atm-Service-Category		14	integer
 ATTRIBUTE	ERX-Atm-PCR				15	integer
 ATTRIBUTE	ERX-Atm-SCR				16	integer
