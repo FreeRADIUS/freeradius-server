@@ -546,6 +546,17 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	dattr = dict_attrbyname(attrstr);
 	if (dattr) {
 		dval->attr = dattr->attr;
+
+		/*
+		 *	Octets is allowed as a work-around for the
+		 *	fact that branch_1_1 doesn't have BYTE or SHORT
+		 */
+		if ((dattr->type != PW_TYPE_INTEGER) &&
+		    (dattr->type != PW_TYPE_OCTETS)) {
+			librad_log("dict_addvalue: VALUEs can only be defined for'integer' types");
+			return -1;
+		}
+
 	} else {
 		value_fixup_t *fixup;
 		
