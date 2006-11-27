@@ -92,8 +92,8 @@ static const LRAD_NAME_NUMBER type_table[] = {
 	{ "ifid",	PW_TYPE_IFID },
 	{ "ipv6addr",	PW_TYPE_IPV6ADDR },
 	{ "ipv6prefix", PW_TYPE_IPV6PREFIX },
-	{ "byte", PW_TYPE_BYTE },
-	{ "short", PW_TYPE_SHORT },
+	{ "byte",	PW_TYPE_BYTE },
+	{ "short",	PW_TYPE_SHORT },
 	{ NULL, 0 }
 };
 
@@ -579,18 +579,30 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 		switch (dattr->type) {
 			case PW_TYPE_BYTE:
 				if (value > 255) {
-					librad_log("dict_addvalue: Value \"%d\" is larger than 255", value);
+					librad_log("dict_addvalue: ATTRIBUTEs of type 'byte' cannot have VALUEs larger than 255");
 					return -1;
 				}
 				break;
 			case PW_TYPE_SHORT:
 				if (value > 65535) {
-					librad_log("dict_addvalue: Value \"%d\" is larger than 65535", value);
+					librad_log("dict_addvalue: ATTRIBUTEs of type 'short' cannot have VALUEs larger than 65535");
 					return -1;
 				}
 				break;
-			default:
+
+				/*
+				 *	Allow octets for now, because
+				 *	of dictionary.cablelabs
+				 */
+			case PW_TYPE_OCTETS:
+
+			case PW_TYPE_INTEGER:
 				break;
+
+			default:
+				librad_log("dict_addvalue: VALUEs cannot be defined for attributes of type '%s'",
+					   lrad_int2str(type_table, dattr->type, "?Unknown?"));
+				return -1;
 		}
 
 		dattr->flags.has_value = 1;
