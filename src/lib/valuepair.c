@@ -802,80 +802,77 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
-			if (isdigit((int) value[0]) &&
-			    (strspn(value, "0123456789") == strlen(value))) {
-				vp->lvalue = (uint32_t) strtoul(value, NULL, 10);
+			vp->lvalue = (uint32_t) strtoul(value, &p, 10);
+			if (!*p) {
 				if (vp->lvalue > 255) {
 					librad_log("Byte value \"%s\" is larger than 255", value);
 					return NULL;
 				}
 				vp->length = 1;
+				break;
 			}
 
 			/*
 			 *	Look for the named value for the given
 			 *	attribute.
 			 */
-			else if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
+			if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
 				librad_log("Unknown value %s for attribute %s",
 					   value, vp->name);
 				return NULL;
-			} else {
-				vp->lvalue = dval->value;
-				vp->length = 1;
 			}
+			vp->lvalue = dval->value;
+			vp->length = 1;
 			break;
 
 		case PW_TYPE_SHORT:
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
-			if (isdigit((int) value[0]) &&
-			    (strspn(value, "0123456789") == strlen(value))) {
-				vp->lvalue = (uint32_t) strtoul(value, NULL, 10);
+			vp->lvalue = (uint32_t) strtoul(value, &p, 10);
+			if (!*p) {
 				if (vp->lvalue > 65535) {
 					librad_log("Byte value \"%s\" is larger than 65535", value);
 					return NULL;
 				}
 				vp->length = 2;
+				break;
 			}
 
 			/*
 			 *	Look for the named value for the given
 			 *	attribute.
 			 */
-			else if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
+			if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
 				librad_log("Unknown value %s for attribute %s",
 					   value, vp->name);
 				return NULL;
-			} else {
-				vp->lvalue = dval->value;
-				vp->length = 2;
 			}
+			vp->lvalue = dval->value;
+			vp->length = 2;
 			break;
 
 		case PW_TYPE_INTEGER:
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
-			if (isdigit((int) value[0]) &&
-			    (strspn(value, "0123456789") == strlen(value))) {
-				vp->lvalue = (uint32_t) strtoul(value, NULL, 10);
+			vp->lvalue = (uint32_t) strtoul(value, &p, 10);
+			if (!*p) {
 				vp->length = 4;
+				break;
 			}
 
 			/*
 			 *	Look for the named value for the given
 			 *	attribute.
 			 */
-			else if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
+			if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
 				librad_log("Unknown value %s for attribute %s",
 					   value, vp->name);
 				return NULL;
-			} else {
-				vp->lvalue = dval->value;
-				vp->length = 4;
 			}
+			vp->lvalue = dval->value;
+			vp->length = 4;
 			break;
 
 		case PW_TYPE_DATE:
@@ -912,7 +909,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			if (strncasecmp(value, "0x", 2) == 0) {
 				uint8_t *us;
 				cp = value + 2;
-				us = vp->vp_strvalue;
+				us = vp->vp_octets;
 				vp->length = 0;
 
 
@@ -926,7 +923,8 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				}
 				
 				
-				while (*cp && vp->length < MAX_STRING_LEN) {
+				while (*cp &&
+				       (vp->length < MAX_STRING_LEN)) {
 					unsigned int tmp;
 
 					if (sscanf(cp, "%02x", &tmp) != 1) {
@@ -938,7 +936,6 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 					*(us++) = tmp;
 					vp->length++;
 				}
-				*us = '\0';
 			}
 			break;
 
