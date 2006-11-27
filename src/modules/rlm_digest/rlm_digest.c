@@ -256,7 +256,10 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		 *	Set A1 to Digest-HA1 if no User-Password found
 		 */
 		if (passwd->attribute == PW_DIGEST_HA1) {
-			lrad_hex2bin(passwd->strvalue, &a1[0], 16);
+			if (lrad_hex2bin(passwd->strvalue, &a1[0], 16) != 16) {
+				DEBUG2("rlm_digest: Invalid text in Digest-HA1");
+				return RLM_MODULE_INVALID;
+			}
 		}
 
 	} else if (strcasecmp(algo->strvalue, "MD5-sess") == 0) {
@@ -492,7 +495,10 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	lrad_hex2bin(&vp->strvalue[0], &hash[0], vp->length >> 1);
+	if (lrad_hex2bin(&vp->strvalue[0], &hash[0], vp->length >> 1) != (vp->length >> 1)) {
+		DEBUG2("rlm_digest: Invalid text in Digest-Response");
+		return RLM_MODULE_INVALID;
+	}
 
 #ifndef NDEBUG
 	if (debug_flag) {
