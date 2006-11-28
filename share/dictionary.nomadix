@@ -20,7 +20,7 @@ ATTRIBUTE	Nomadix-Net-VLAN			11	integer
 ATTRIBUTE	Nomadix-Config-URL			12	string
 ATTRIBUTE	Nomadix-Goodbye-URL			13	string
 
-VALUE	Nomadix-Ip-Upsell		PrivatePool		0
-VALUE	Nomadix-Ip-Upsell		PublicPool		1
+VALUE	Nomadix-IP-Upsell		PrivatePool		0
+VALUE	Nomadix-IP-Upsell		PublicPool		1
 
 END-VENDOR	Nomadix

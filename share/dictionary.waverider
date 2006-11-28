@@ -12,44 +12,44 @@ ATTRIBUTE	Waverider-Priority-Enabled		2	integer
 ATTRIBUTE	Waverider-Current-Password		5	string
 ATTRIBUTE	Waverider-New-Password			6	string
 ATTRIBUTE	Waverider-Radio-Frequency		7	integer
-ATTRIBUTE	WaveRider-SNMP-Read-Community		8	string
-ATTRIBUTE	WaveRider-SNMP-Write-Community		9	string
-ATTRIBUTE	WaveRider-SNMP-Trap-Server		10	string
-ATTRIBUTE	WaveRider-SNMP-Contact			11	string
-ATTRIBUTE	WaveRider-SNMP-Location			12	string
-ATTRIBUTE	WaveRider-SNMP-Name			13	string
-ATTRIBUTE	WaveRider-Max-Customers			14	integer
-ATTRIBUTE	WaveRider-Rf-Power			15	integer
+ATTRIBUTE	Waverider-SNMP-Read-Community		8	string
+ATTRIBUTE	Waverider-SNMP-Write-Community		9	string
+ATTRIBUTE	Waverider-SNMP-Trap-Server		10	string
+ATTRIBUTE	Waverider-SNMP-Contact			11	string
+ATTRIBUTE	Waverider-SNMP-Location			12	string
+ATTRIBUTE	Waverider-SNMP-Name			13	string
+ATTRIBUTE	Waverider-Max-Customers			14	integer
+ATTRIBUTE	Waverider-Rf-Power			15	integer
 
 VALUE	Waverider-Grade-Of-Service	be			1
 VALUE	Waverider-Grade-Of-Service	bronze			2
 VALUE	Waverider-Grade-Of-Service	silver			3
 VALUE	Waverider-Grade-Of-Service	gold			4
 
-VALUE	WaveRider-Priority-Enabled	disabled		0
-VALUE	WaveRider-Priority-Enabled	enabled			1
+VALUE	Waverider-Priority-Enabled	disabled		0
+VALUE	Waverider-Priority-Enabled	enabled			1
 
-VALUE	WaveRider-Radio-Frequency	auto			1
-VALUE	WaveRider-Radio-Frequency	nomadic			2
-VALUE	WaveRider-Radio-Frequency	f_9050			3
-VALUE	WaveRider-Radio-Frequency	f_9116			4
-VALUE	WaveRider-Radio-Frequency	f_9184			5
-VALUE	WaveRider-Radio-Frequency	f_9250			6
-VALUE	WaveRider-Radio-Frequency	f_9084			7
-VALUE	WaveRider-Radio-Frequency	f_9150			8
-VALUE	WaveRider-Radio-Frequency	f_9216			9
+VALUE	Waverider-Radio-Frequency	auto			1
+VALUE	Waverider-Radio-Frequency	nomadic			2
+VALUE	Waverider-Radio-Frequency	f_9050			3
+VALUE	Waverider-Radio-Frequency	f_9116			4
+VALUE	Waverider-Radio-Frequency	f_9184			5
+VALUE	Waverider-Radio-Frequency	f_9250			6
+VALUE	Waverider-Radio-Frequency	f_9084			7
+VALUE	Waverider-Radio-Frequency	f_9150			8
+VALUE	Waverider-Radio-Frequency	f_9216			9
 
-VALUE	WaveRider-Rf-Power		p_15			1
-VALUE	WaveRider-Rf-Power		p_16			2
-VALUE	WaveRider-Rf-Power		p_17			3
-VALUE	WaveRider-Rf-Power		p_18			4
-VALUE	WaveRider-Rf-Power		p_19			5
-VALUE	WaveRider-Rf-Power		p_20			6
-VALUE	WaveRider-Rf-Power		p_21			7
-VALUE	WaveRider-Rf-Power		p_22			8
-VALUE	WaveRider-Rf-Power		p_23			9
-VALUE	WaveRider-Rf-Power		p_24			10
-VALUE	WaveRider-Rf-Power		p_25			11
-VALUE	WaveRider-Rf-Power		p_26			12
+VALUE	Waverider-Rf-Power		p_15			1
+VALUE	Waverider-Rf-Power		p_16			2
+VALUE	Waverider-Rf-Power		p_17			3
+VALUE	Waverider-Rf-Power		p_18			4
+VALUE	Waverider-Rf-Power		p_19			5
+VALUE	Waverider-Rf-Power		p_20			6
+VALUE	Waverider-Rf-Power		p_21			7
+VALUE	Waverider-Rf-Power		p_22			8
+VALUE	Waverider-Rf-Power		p_23			9
+VALUE	Waverider-Rf-Power		p_24			10
+VALUE	Waverider-Rf-Power		p_25			11
+VALUE	Waverider-Rf-Power		p_26			12
 
 END-VENDOR Waverider

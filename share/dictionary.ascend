@@ -798,8 +798,8 @@ VALUE	Ascend-Dsl-Upstream-Limit	sdsl-272000		1
 VALUE	Ascend-Dsl-Upstream-Limit	sdsl-400000		2
 VALUE	Ascend-Dsl-Upstream-Limit	sdsl-528000		3
 VALUE	Ascend-Dsl-Upstream-Limit	sdsl-784000		4
-VALUE	Ascend-FR-Link-Status-Dlci	Ascend-FR-LMI-Dlci-0	0
-VALUE	Ascend-FR-Link-Status-Dlci	Ascend-FR-LMI-Dlci-1023	1023
+VALUE	Ascend-FR-Link-Status-DLCI	Ascend-FR-LMI-Dlci-0	0
+VALUE	Ascend-FR-Link-Status-DLCI	Ascend-FR-LMI-Dlci-1023	1023
 VALUE	Ascend-Filter-Required		Required-No		0
 VALUE	Ascend-Filter-Required		Required-Yes		1
 VALUE	Ascend-IP-Pool-Chaining		IP-Pool-Chaining-No	0

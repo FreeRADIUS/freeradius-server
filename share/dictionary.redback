@@ -172,9 +172,9 @@ VALUE	Bind_Auth_Protocol		AAA_PPP_CHAP_WAIT_PAP	5
 VALUE	Tunnel_Function			LAC-Only		1
 VALUE	Tunnel_Function			LNS-Only		2
 VALUE	Tunnel_Function			LAC-LNS			3
-VALUE	Tunnel_Session_auth		CHAP			1
-VALUE	Tunnel_Session_auth		PAP			2
-VALUE	Tunnel_Session_auth		CHAP-PAP		3
+VALUE	Tunnel_Session_Auth		CHAP			1
+VALUE	Tunnel_Session_Auth		PAP			2
+VALUE	Tunnel_Session_Auth		CHAP-PAP		3
 VALUE	Mcast_Send			NO-SEND			1
 VALUE	Mcast_Send			SEND			2
 VALUE	Mcast_Send			UNSOLICITED-SEND	3
@@ -388,9 +388,9 @@ VALUE	Bind-Auth-Protocol		AAA-PPP-CHAP-WAIT-PAP	5
 VALUE	Tunnel-Function			LAC-Only		1
 VALUE	Tunnel-Function			LNS-Only		2
 VALUE	Tunnel-Function			LAC-LNS			3
-VALUE	Tunnel-Session-auth		CHAP			1
-VALUE	Tunnel-Session-auth		PAP			2
-VALUE	Tunnel-Session-auth		CHAP-PAP		3
+VALUE	Tunnel-Session-Auth		CHAP			1
+VALUE	Tunnel-Session-Auth		PAP			2
+VALUE	Tunnel-Session-Auth		CHAP-PAP		3
 VALUE	Mcast-Send			NO-SEND			1
 VALUE	Mcast-Send			SEND			2
 VALUE	Mcast-Send			UNSOLICITED-SEND	3
