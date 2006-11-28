@@ -612,7 +612,8 @@ static int recv_one_packet(int wait_time)
 	 */
 	reply = rad_recv(sockfd);
 	if (!reply) {
-		fprintf(stderr, "radclient: received bad packet\n");
+		fprintf(stderr, "radclient: received bad packet: %s\n",
+			librad_errstr);
 		return -1;	/* bad packet */
 	}
 
