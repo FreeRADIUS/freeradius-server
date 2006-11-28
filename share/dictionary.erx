@@ -141,8 +141,8 @@ VALUE	ERX-Atm-Service-Category	UBRPCR			2
 VALUE	ERX-Atm-Service-Category	nrtVBR			3
 VALUE	ERX-Atm-Service-Category	CBR			4
 
-VALUE	ERX-CLI-Allow-All-VR-Access	disable			0
-VALUE	ERX-CLI-Allow-All-VR-Access	enable			1
+VALUE	ERX-Cli-Allow-All-VR-Access	disable			0
+VALUE	ERX-Cli-Allow-All-VR-Access	enable			1
 
 VALUE	ERX-Sa-Validate			disable			0
 VALUE	ERX-Sa-Validate			enable			1
