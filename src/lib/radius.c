@@ -271,10 +271,13 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	if (data_len < 0) return -1;
 
 	/*
-	 *	Too little data is available, round it up to 4 bytes.
+	 *	Too little data is available, discard the packet.
 	 */
 	if (data_len < 4) {
-		len = 4;
+		recvfrom(sockfd, header, sizeof(header), flags, 
+			 (struct sockaddr *)&src, &sizeof_src);
+		return 0;
+
 	} else {		/* we got 4 bytes of data. */
 		/*
 		 *	See how long the packet says it is.
@@ -282,17 +285,22 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 		len = (header[2] * 256) + header[3];
 
 		/*
-		 *	Too short: read 4 bytes, and discard the rest.
+		 *	The length in the packet says it's less than
+		 *	a RADIUS header length: discard it.
 		 */
-		if (len < 4) {
-			len = 4;
+		if (len < AUTH_HDR_LEN) {
+			recvfrom(sockfd, header, sizeof(header), flags, 
+				 (struct sockaddr *)&src, &sizeof_src);
+			return 0;
 
 			/*
 			 *	Enforce RFC requirements, for sanity.
 			 *	Anything after 4k will be discarded.
 			 */
 		} else if (len > MAX_PACKET_LEN) {
-			len = MAX_PACKET_LEN;
+			recvfrom(sockfd, header, sizeof(header), flags, 
+				 (struct sockaddr *)&src, &sizeof_src);
+			return len;
 		}
 	}
 
@@ -1703,6 +1711,30 @@ RADIUS_PACKET *rad_recv(int fd)
 	if (packet->data_len < 0) {
 		librad_log("Error receiving packet: %s", strerror(errno));
 		/* packet->data is NULL */
+		free(packet);
+		return NULL;
+	}
+
+	/*
+	 *	If the packet is too big, then rad_recvfrom did NOT
+	 *	allocate memory.  Instead, it just discarded the
+	 *	packet.
+	 */
+	if (packet->data_len > MAX_PACKET_LEN) {
+		librad_log("Discarding packet: Larger than RFC limitation of 4096 bytes.");
+		/* packet->data is NULL */
+		free(packet);
+		return NULL;
+	}
+
+	/*
+	 *	Read no data.  Continue.
+	 *	This check is AFTER the MAX_PACKET_LEN check above, because
+	 *	if the packet is larger than MAX_PACKET_LEN, we also have
+	 *	packet->data == NULL
+	 */
+	if ((packet->data_len == 0) || !packet->data) {
+		librad_log("No data.");
 		free(packet);
 		return NULL;
 	}
