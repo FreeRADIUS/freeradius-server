@@ -372,6 +372,15 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	 *	large.
 	 */
    	ctx_options |= SSL_OP_SINGLE_DH_USE;
+
+	/*	 
+	 *	SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS to work around issues
+	 *	in Windows Vista client.
+	 *	http://www.openssl.org/~bodo/tls-cbc.txt
+	 *	http://www.nabble.com/(RADIATOR)-Radiator-Version-3.16-released-t2600070.html
+	 */
+   	ctx_options |= SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS;
+
 	SSL_CTX_set_options(ctx, ctx_options);
 
 	/*
