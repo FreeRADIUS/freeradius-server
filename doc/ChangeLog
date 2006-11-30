@@ -1,19 +1,30 @@
-FreeRADIUS 1.1.4 ; $Date$, urgency=low
+FreeRADIUS 1.1.4 ; $Date$, urgency=medium
 
 	Feature improvements
+	* Added SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS flag to use
+	  work-arounds that enable Windows Vista clients to work.
 	* Added preliminary code to support Firebird. (closes: #378)
-	* Send MS-CHAP2-Success, which makes EAP-TTLS/MSCHAP work.
-	  (closes: #402)
+	  Use at your own risk!
+	* Send MS-CHAP2-Success, which makes EAP-TTLS/MSCHAP work on more
+	  platforms.  (closes: #402)
 	* Add a new "reply-name" directive in rlm_sqlcounter to define the
 	  name of the reply attribute. (closes: #403)
-
-	Bug fixes
-	* Fix a double free() in rlm_eap_tls.c (closes: #404)
-	* Check return code of malloc() during initialization. (closes: #407)
+	* Added more dictionaries and attributes (closes: #408, among others)
 	* Print ntlm_auth failure reason in Module-Failure-Message
 	  (closes: #398)
 	* radsqlrelay is able to get the DB password from a file instead
 	  of command line. (closes: #395)
+
+	Bug fixes
+	* Fix a parse error in the digest module, where malformed
+	  digest requests would result in the user being accepted.  Oops...
+	* VALUEs can only be defined for 'integer', to catch mistakes
+	  with setting VALUEs for type 'string'.
+	* Better parsing of VALUE names, so that values starting with
+	  a digit work correctly.
+	* Check return from malloc (closes: #407)
+	* Fix a double free() in rlm_eap_tls.c (closes: #404)
+	* Check return code of malloc() during initialization. (closes: #407)
 	* Fix a corner case where the proxy port isn't set either in
 	  radiusd.conf or in proxy.conf.
 
