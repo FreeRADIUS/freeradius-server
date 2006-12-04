@@ -716,6 +716,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	PERL_INST       *inst = (PERL_INST *) instance;
 	HV		*rad_reply_hv;
 	HV		*rad_check_hv;
+	HV		*rad_config_hv;
 	HV		*rad_request_hv;
 	HV		*rad_request_proxy_hv;
 	HV		*rad_request_proxy_reply_hv;
@@ -799,12 +800,14 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 
 	rad_reply_hv = newHV();
 	rad_check_hv = newHV();
+	rad_config_hv = newHV();
 	rad_request_hv = newHV();
 	rad_request_proxy_hv = newHV();
 	rad_request_proxy_reply_hv = newHV();
 
 	rad_reply_hv = get_hv("RAD_REPLY",1);
         rad_check_hv = get_hv("RAD_CHECK",1);
+	rad_config_hv = get_hv("RAD_CONFIG",1);
         rad_request_hv = get_hv("RAD_REQUEST",1);
 	rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
 	rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
@@ -944,6 +947,7 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 
 	HV		*rad_reply_hv;
 	HV		*rad_check_hv;
+	HV		*rad_config_hv;
 	HV		*rad_request_hv;
 	HV		*rad_request_proxy_hv;
 	HV		*rad_request_proxy_reply_hv;
@@ -981,6 +985,7 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 
 	rad_reply_hv = get_hv("RAD_REPLY",1);
 	rad_check_hv = get_hv("RAD_CHECK",1);
+	rad_config_hv = get_hv("RAD_CONFIG",1);
 	rad_request_hv = get_hv("RAD_REQUEST",1);
 	rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
 	rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
@@ -989,6 +994,7 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	perl_store_vps(request->reply->vps, rad_reply_hv);
 	perl_store_vps(request->config_items, rad_check_hv);
 	perl_store_vps(request->packet->vps, rad_request_hv);
+	perl_store_vps(request->config_items, rad_config_hv);
 	
 	if (request->proxy != NULL) {
 		perl_store_vps(request->proxy->vps, rad_request_proxy_hv);
