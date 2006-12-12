@@ -37,8 +37,6 @@
  * Bernhard Herzog <bh@intevation.de>
  */
 
-/* Modification of rlm_sql_mysql to handle postgres */
-
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
@@ -51,16 +49,16 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 
-#include        <libpq-fe.h>
-#include	"rlm_sql.h"
-#include	"sql_postgresql.h"
+#include <libpq-fe.h>
+#include "rlm_sql.h"
+#include "sql_postgresql.h"
 
 typedef struct rlm_sql_postgres_sock {
    PGconn          *conn;
    PGresult        *result;
    int             cur_row;
    int             num_fields;
-    int		   affected_rows;
+   int		   affected_rows;
    char            **row;
 } rlm_sql_postgres_sock;
 
