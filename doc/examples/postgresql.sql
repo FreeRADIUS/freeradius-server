@@ -204,7 +204,7 @@ CREATE TABLE radippool (
 	NASIPAddress		VARCHAR(16) NOT NULL default '',
 	pool_key		VARCHAR(64) NOT NULL default 0,
 	CalledStationId		VARCHAR(64),
-	CallingStationId	text DEFAULT ''::text NOT NULL default '',
+	CallingStationId	text NOT NULL default ''::text,
 	expiry_time		TIMESTAMP(0) without time zone NOT NULL default 'now'::timestamp(0),
 	username		text DEFAULT ''::text
 );
