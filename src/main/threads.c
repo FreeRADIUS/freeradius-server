@@ -517,7 +517,7 @@ static void *request_handler_thread(void *arg)
 		    self->request->proxy && self->request->proxy->data
 		    && !self->request->proxy_reply)
 			self->request->proxy_listener->send(self->request->proxy_listener,
-							    (char *)self->request->proxysecret);
+							    self->request);
 
 		self->request->child_pid = NO_SUCH_CHILD_PID;
 		self->request->finished = finished;
