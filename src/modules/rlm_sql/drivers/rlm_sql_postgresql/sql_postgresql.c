@@ -219,9 +219,6 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 	char *errorcode; 
 	char *errormsg;
 
-	errorcode = (char*) rad_malloc(sizeof(char) * 15); /*Ding ding ding!!*/
-	errormsg = (char*) rad_malloc(sizeof(char) * MAX_STRING_LEN); /*Ding ding ding!!*/
-
 	if (config->sqltrace)
 		radlog(L_DBG,"rlm_sql_postgresql: query:\n%s", querystr);
 
