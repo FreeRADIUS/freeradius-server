@@ -195,7 +195,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	pg_sock->result=NULL;
 	pg_sock->conn=PQconnectdb(connstring);
 
-	if (PQstatus(pg_sock->conn) == CONNECTION_BAD) {
+	if (PQstatus(pg_sock->conn) != CONNECTION_OK) {
 		radlog(L_ERR, "rlm_sql_postgresql: Couldn't connect socket to PostgreSQL server %s@%s:%s", config->sql_login, config->sql_server, config->sql_db);
 		/*radlog(L_ERR, "rlm_sql_postgresql: Postgresql error '%s'", PQerrorMessage(pg_sock->conn));*/
 		PQfinish(pg_sock->conn);
@@ -255,7 +255,7 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 				*/
 				pg_sock->affected_rows	= affected_rows(pg_sock->result); 
 				radlog(L_DBG, "rlm_sql_postgresql: query affected rows = %i", pg_sock->affected_rows);
-				return 0; /* Someone should tell me what does 0 and 1 means here..Also -1 !!!*/
+				return 0;
 
 			break;
 
