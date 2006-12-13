@@ -68,7 +68,7 @@ SECTION 1 - CREATING AND SENDING YOUR CHANGE
    4. Select e-mail destination. 
 
       If you are on the developers mailing list, send the patch there.
-      freeradius-devel@info.cistron.nl
+      freeradius-devel@lists.freeradius.org
 
       Otherwise, send the patch to 'patches@freeradius.org'
 
