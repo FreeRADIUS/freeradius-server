@@ -34,12 +34,12 @@
  * Version: $Id$
  */
 
-#ifdef WITH_UDPFROMTO
-
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
+
+#ifdef WITH_UDPFROMTO
 
 #include <sys/types.h>
 
