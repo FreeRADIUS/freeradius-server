@@ -22,13 +22,12 @@
  * Copyright 1999  Kunihiro Ishiguro <kunihiro@zebra.org>
  */
 
-#ifdef WITH_SNMP
-
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
 
+#ifdef WITH_SNMP
 
 #include <sys/socket.h>
 #include <sys/file.h>
