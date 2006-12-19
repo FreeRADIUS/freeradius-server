@@ -1,6 +1,8 @@
 FreeRADIUS 1.1.4 ; $Date$, urgency=medium
 
 	Feature improvements
+	* Major enhancements to rlm_pap, that make "encryption_scheme"
+	  a think of the past.  See "man rlm_pap" for details.
 	* Added SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS flag to use
 	  work-arounds that enable Windows Vista clients to work.
 	* Added preliminary code to support Firebird. (closes: #378)
