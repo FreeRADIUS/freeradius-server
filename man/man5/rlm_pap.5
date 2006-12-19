@@ -2,25 +2,133 @@
 .SH NAME
 rlm_pap \- FreeRADIUS Module
 .SH DESCRIPTION
-The \fIrlm_pap\fP module provides PAP functionality.
+The \fIrlm_pap\fP module performs PAP authentication.
 .PP
-PAP authentication works with passwords stored in clear-text
-format or in an encrypted ( via crypt() ) format.
+This module performs authentication when the Access-Request contains a
+User-Password attribute AND when a "known good" password has been
+configured for the user.  In addition, it takes care of decoding the
+"known good" password from hex or Base64 encoding to a form it can use
+for authentication.
+.PP
+As a result, as of 1.1.4, the "encryption_scheme" configuration item
+SHOULD NOT BE USED, and the rlm_ldap configuration
+item "password_header" SHOULD NOT BE USED.  Those items will continue to work
+in 1.1.4, and existing systems will work un-changed after upgrading to
+1.1.4.  We recommend, though, that sites using multiple instances of
+rlm_pap see if they can replace those multiple instances with one instance,
+using the new "auto_header" configuration, and remove the "password_header"
+configuration from rlm_ldap.
 .PP
 The configuration item(s):
+.IP auto_header
+Automatically discover password headers.  Permitted values are "yes"
+and "no".  For backwards compatibility, the default is "no".
+.IP
+The recommended value is "yes".
 .IP encryption_scheme
-The method used to encrypt the password.  Valid values are:
+No longer used, and therefore no longer documented.
+.PP
+When "auto_header" is set to "yes", the module will look in the
+configuration list for the User-Password attribute or the new
+Password-With-Header attribute.  If found, it will then look at the
+string value of those attributes, for one of the following headers:
+.PP
 .DS
 .br	
-	clear
+	{clear}
 .br
-	crypt (DEFAULT)
+	{cleartext}
 .br
-	md5
+	{crypt}
 .br
-	sha1
+	{md5}
+.br
+	{smd5}
+.br
+	{sha1}
+.br
+	{ssha1}
+.br
+	{nt}
+.br
+	{x-nthash}
+.br
+	{ns-mta-md5}
 .DE
+.PP
+The text following the header is taken as the "known good" password,
+either cleartext, crypted, hashed, or hashed with a salt.  If the text
+is hex or Base64 encoded, it will be decoded to obtain the correct
+form of the "known good" password.  The User-Password in the
+Access-Request will then be crypted, or hashed as appropriate, and
+compared to the "known good" password.  If they match, the user is
+authenticated, otherwise the module returns reject.
+.SH CAVEATS
+In order for the "auto_header = yes" functionality to work, the
+\fIpap\fP module MUST be listed LAST in the \fIauthorize\fP section of
+\fIradiusd.conf\fP.  This lets other modules such as LDAP blindly add
+a "known good" password to the configuration items, and the PAP module
+will just figure it out.  In most cases, multiple instances of the PAP
+module, along with complex logic to determine which one to call when,
+can be replaced with one instance of the module, with it listed last
+in the \fIauthorize\fP section.
+.PP
+Note that the \fIns_mta_md5\fP module is no longer necessary, and can
+be removed.
+.PP
+Also, setting "Auth-Type = Local" or "Auth-Type = Crypt-Local" is no
+longer necessary.  Any such settings SHOULD BE DELETED.  Simply list
+\fIpap\fP LAST in the \fIauthorize\fP section, and the module will
+take care of figuring out what to do.  (Have we emphasized that enough?)
+.PP
+Another reason to list the module last is that it will take care of
+normalizing any crypt'd or hashed password retrieved from a database.
+So it is now safe to have clear-text passwords as "{clear}...",
+because the PAP module will take care of removing the "{clear}" prefix
+from the password.  Any other modules that need access to the
+cleartext password will
+.PP
+The module uses a number of new attributes.
+.IP Password-With-Header
+This attribute should contain a "known good" password, with a header
+such as "{crypt}, or "{md5}", etc.  It should be used when the
+passwords retrieved from a DB may have different headers.  When
+\fIpap\fP is listed in the \fIauthorize\fP section, the module will
+examine this attribute, and use it to create one of the other
+attributes listed below.  That other attribute is then used for
+authentication.
+.IP
+If the passwords in a DB do not have a header, and are always in one
+particular form, then the attributes listed below can be used
+directly.  In that case, the PAP module will do hex or Base64 decoding
+of the attribute contents, if necessary.  So \fIpap\fP should still be
+listed in the \fIauthorize\fP section, because it will enable the
+maximum flexibility for the server, and minimize configuration for the
+administrator.
+.IP Cleartext-Password
+This attribute should contain the cleartext for a "known good"
+password.  Previously, the User-Password attribute was overloaded to
+contain this, both in the FAQ and in databases in many sites.  Any
+configuration that sets a cleartext form of the password using
+User-Password SHOULD UPDATE to using Cleartext-Password.  Doing so
+will simplify a number of debugging issues.
+.IP Crypt-Password
+This attribute has been around for a while, but is documented here for
+completeness.  It contains the crypt'd form of the password.
+.IP MD5-Password
+This attribute contains the MD5 hashed form of the password.
+.IP SMD5-Password
+This attribute contains the MD5 hashed form of the password, with a salt.
+.IP SHA1-Password
+This attribute contains the SHA1 hashed form of the password.
+.IP SSHA1-Password
+This attribute contains the SHA1 hashed form of the password, with a salt.
+.IP NT-Password
+This attribute has been around for a while, but is documented here for
+completeness.  It contains the NT hash form of the password, as used
+by Active Directory and Samba.
 .SH SECTIONS
+.BR authorize
 .BR authenticate
 .PP
 .SH FILES
@@ -30,5 +138,4 @@ The method used to encrypt the password.  Valid values are:
 .BR radiusd (8),
 .BR radiusd.conf (5)
 .SH AUTHOR
-Chris Parker, cparker@segv.org
-
+Alan DeKok <aland@freeradius.org>

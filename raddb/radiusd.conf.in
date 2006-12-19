@@ -559,14 +559,22 @@ modules {
 
 	# PAP module to authenticate users based on their stored password
 	#
-	#  Supports multiple encryption schemes
-	#  clear: Clear text
-	#  crypt: Unix crypt
-	#    md5: MD5 ecnryption
-	#   sha1: SHA1 encryption.
-	#  DEFAULT: crypt
+	#  As of 1.1.4, the "encryption_scheme" configuration should
+	#  no longer be used.  For backwards compatibility, it will still
+	#  work as before, but we recommend that it is not used.
+	# 
+	#  The replacement is "auto_header = yes".
+	#  For backwards compatibility, the default is "auto_header = no",
+	#  but we recommend reviewing your use of the PAP module, based
+	#  on the documentation in "man rlm_pap".
+	#
+	#  The new capability in this module makes it MUCH easier to
+	#  configure the server for multiple crypt/hash schemes, AND
+	#  it supports more methods than before.  Please read "man rlm_pap"
+	#  for more detailed documentation.
+ 	#
 	pap {
-		encryption_scheme = crypt
+		auto_header = yes
 	}
 
 	# CHAP module
@@ -1863,6 +1871,11 @@ authorize {
 	#
 	# Use the checkval module
 #	checkval
+
+	#
+	# As of 1.1.4, you should list "pap" last in this section.
+	# See "man rlm_pap" for more information.
+	pap
 }
 
 
