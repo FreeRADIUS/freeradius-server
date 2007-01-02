@@ -115,7 +115,7 @@ static int sql_check_error(char *errcode)
 
 	while(errorcodes[x].errorcode != NULL){
 		if (strcmp(errorcodes[x].errorcode, errcode) == 0){
-			radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s] Occured!!", errorcodes[x].meaning);
+			radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s] Occurred!!", errorcodes[x].meaning);
 			if (errorcodes[x].shouldreconnect == 1)
 				return SQL_DOWN;
 			else
@@ -144,7 +144,7 @@ static int check_fatal_error (char *errorcode)
 		please have a look at table at the web page
 		http://www.postgresql.org/docs/8.1/interactive/errcodes-appendix.html
 	*/
-	radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s] Accured!!", errorcode);	
+	radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s] Occurred!!", errorcode);	
 	return sql_check_error(errorcode);
 }
 
