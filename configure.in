@@ -27,7 +27,7 @@ AC_PREREQ([2.50])
 
 dnl # The version of the software
 RADIUSD_MAJOR_VERSION=1
-RADIUSD_MINOR_VERSION=1.3
+RADIUSD_MINOR_VERSION=1.4
 RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
 
 dnl #############################################################
