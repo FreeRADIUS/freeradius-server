@@ -29,6 +29,11 @@ improved functionality in rlm_pap.  The module is MUCH smarter, which
 means that many previous complicated configurations are now almost
 trivial to do.  Please read "man rlm_pap" for details.
 
+  Existing deployments of FreeRADIUS will NOT be affected by this
+change to rlm_pap.  Existing configurations will work as before.
+However, we do recommend reading the rlm_pap "man" page, to see how
+your configuration may be made simpler by using the new functionality.
+
   The differences between 1.0.x and 1.1.0 are documented in the file
 doc/ChangeLog.  What these differences mean for an administrator
 upgrading from 1.0.x are as follows:
