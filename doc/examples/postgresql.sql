@@ -34,6 +34,7 @@ CREATE TABLE radacct (
 	CallingStationId	VARCHAR(50),
 	AcctTerminateCause	VARCHAR(32),
 	ServiceType		VARCHAR(32),
+	XAscendSessionSvrKey	VARCHAR(10),
 	FramedProtocol		VARCHAR(32),
 	FramedIPAddress		INET,
 	AcctStartDelay		BIGINT,
