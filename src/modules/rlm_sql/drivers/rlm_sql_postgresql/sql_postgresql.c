@@ -106,8 +106,6 @@ free_result_row(rlm_sql_postgres_sock * pg_sock)
 * Check to see if we could try to reconnect after a query-server error
 * we are checking only first 2 characters according to the error code
 * class..time consuming...
-* if we don't have the error class/code 
-* in the header file, we reconnect
 ************************************************************************/
 static int sql_check_error(char *errcode)
 {
@@ -119,7 +117,7 @@ static int sql_check_error(char *errcode)
 			if (errorcodes[x].shouldreconnect == 1)
 				return SQL_DOWN;
 			else
-				return 0;
+				return -1;
 		}	
 		x++;
 	}
