@@ -9,7 +9,8 @@ include ../Make.inc
 #
 #  The list of files to install.
 #
-FILES = acct_users attrs attrs.pre-proxy clients.conf dictionary	\
+FILES = acct_users attrs attrs.access_reject attrs.accounting_response \
+	attrs.pre-proxy clients.conf dictionary	\
 	eap.conf experimental.conf hints huntgroups ldap.attrmap	\
 	mssql.conf naspasswd oraclesql.conf otp.conf postgresql.conf	\
 	preproxy_users proxy.conf radiusd.conf radrelay.conf		\
