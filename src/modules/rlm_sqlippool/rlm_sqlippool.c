@@ -313,7 +313,7 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt, SQLSOCK * 
 	char expansion[MAX_STRING_LEN * 4];
 	char query[MAX_STRING_LEN * 4];
 	SQL_ROW row;
-	int r;
+	int rlen, retval = 0;
 
 	sqlippool_expand(expansion, sizeof(expansion), fmt, instance, param, param_len);
 
@@ -340,39 +340,21 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt, SQLSOCK * 
 		return 0;
 	}
 
-	r = rlm_sql_fetch_row(sqlsocket, data->sql_inst);
+	out[0] = '\0';
+
+	if (!rlm_sql_fetch_row(sqlsocket, data->sql_inst)) {
+		if (sqlsocket->row) {
+			if (sqlsocket->row[0]) {
+				if ((rlen = strlen(sqlsocket->row[0])) < outlen) {
+					strcpy(out, sqlsocket->row[0]);
+					retval = rlen;
+				} else DEBUG("sqlippool_query1: insufficient string space");
+			} else DEBUG("sqlippool_query1: row[0] returned NULL");
+		} else DEBUG("sqlippool_query1: SQL query did not return any results");
+	} else DEBUG("sqlippool_query1: SQL query did not succeed");
+
 	(data->sql_inst->module->sql_finish_select_query)(sqlsocket, data->sql_inst->config);
-
-	if (r) {
-		DEBUG("sqlippool_query1: SQL query did not succeed");
-		out[0] = '\0';
-		return 0;
-	}
-
-	row = sqlsocket->row;
-	if (row == NULL) {
-		DEBUG("sqlippool_query1: SQL query did not return any results");
-		out[0] = '\0';
-		return 0;
-	}
-
-	if (row[0] == NULL){
-		DEBUG("sqlippool_query1: row[0] returned NULL");
-		out[0] = '\0';
-		return 0;
-	}
-
-	r = strlen(row[0]);
-	if (r >= outlen){
-		DEBUG("sqlippool_query1: insufficient string space");
-		out[0] = '\0';
-		return 0;
-	}
-
-	strncpy(out, row[0], r);
-	out[r] = '\0';
-
-	return r;
+	return retval;
 }
 
 static int sqlippool_initialize_sql(void * instance)
@@ -601,9 +583,8 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	}
 
 	
-	/*  Reminder to self </tuyan>
-	 *  please make it work with the ipv6 address'
-	 *  before the freeradius v2 release 
+	/*
+	 *  FIXME: Make it work with the ipv6 addresses
 	 */
 	if ((ip_hton(allocation, AF_INET, &ipaddr) < 0) ||
 	    ((ip_allocation = ipaddr.ipaddr.ip4addr.s_addr) == INADDR_NONE))

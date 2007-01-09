@@ -63,16 +63,19 @@ typedef struct rlm_sql_postgres_sock {
 } rlm_sql_postgres_sock;
 
 /* Prototypes */
+
+/*
 static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config);
+*/
 
 /* Internal function. Return true if the postgresql status value
  * indicates successful completion of the query. Return false otherwise
- */
 static int
 status_is_ok(ExecStatusType status)
 {
 	return status == PGRES_COMMAND_OK || status == PGRES_TUPLES_OK;
 }
+*/
 
 
 /* Internal function. Return the number of affected rows of the result
@@ -102,18 +105,26 @@ free_result_row(rlm_sql_postgres_sock * pg_sock)
 }
 
 
-/***********************************************************************
-* Check to see if we could try to reconnect after a query-server error
-* we are checking only first 2 characters according to the error code
-* class..time consuming...
-************************************************************************/
-static int sql_check_error(char *errcode)
+/*************************************************************************
+*	Function: check_fatal_error
+*	
+*	Purpose:  Check error type and behave accordingly
+*
+*************************************************************************/
+
+static int check_fatal_error (char *errorcode)
 {
 	int x = 0;
 
+	/*	
+	Check the error code to see if we should reconnect or not
+	Error Code table taken from
+	http://www.postgresql.org/docs/8.1/interactive/errcodes-appendix.html
+	*/
+
 	while(errorcodes[x].errorcode != NULL){
-		if (strcmp(errorcodes[x].errorcode, errcode) == 0){
-			radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s] Occurred!!", errorcodes[x].meaning);
+		if (strcmp(errorcodes[x].errorcode, errorcode) == 0){
+			radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s: %s] Occurred!!", errorcode, errorcodes[x].meaning);
 			if (errorcodes[x].shouldreconnect == 1)
 				return SQL_DOWN;
 			else
@@ -121,29 +132,10 @@ static int sql_check_error(char *errcode)
 		}	
 		x++;
 	}
-	
-	return SQL_DOWN;	
-}
 
-/*************************************************************************
-*	Function: check_fatal_error
-*	
-*	Purpose:  check and behave according to the error type we get 
-*			  from query.	
-*
-*	Note:     This will not cause reconnects because of errors other than
-*			  connection errors
-*			  Tuyan Ozipek  <tuyan@suntel.com.tr>		
-*************************************************************************/
-
-static int check_fatal_error (char *errorcode)
-{
-	/*	We have the error code in chars..
-		please have a look at table at the web page
-		http://www.postgresql.org/docs/8.1/interactive/errcodes-appendix.html
-	*/
 	radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s] Occurred!!", errorcode);	
-	return sql_check_error(errorcode);
+	/*	We don't seem to have a matching error class/code */
+	return -1;
 }
 
 
@@ -224,17 +216,22 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 	}
 
 	pg_sock->result = PQexec(pg_sock->conn, querystr);
-		/* Returns a result pointer or possibly a NULL pointer.
-		 * A non-NULL pointer will generally be returned except in
+		/*
+		 * Returns a PGresult pointer or possibly a null pointer.
+		 * A non-null pointer will generally be returned except in
 		 * out-of-memory conditions or serious errors such as inability
-		 * to send the command to the backend. If a NULL is returned,
-		 *  it should be treated like a PGRES_FATAL_ERROR result.
-		 * Use PQerrorMessage to get more information about the error.
+		 * to send the command to the server. If a null pointer is
+		 * returned, it should be treated like a PGRES_FATAL_ERROR
+		 * result.
 		 */
 	if (!pg_sock->result)
 	{
 		radlog(L_ERR, "rlm_sql_postgresql: PostgreSQL Query failed Error: %s",
 				PQerrorMessage(pg_sock->conn));
+		/* As this error COULD be a connection error OR an out-of-memory
+		 * condition return value WILL be wrong SOME of the time regardless!
+		 * Pick your poison....
+		 */
 		return  SQL_DOWN;
 	} else {
 		ExecStatusType status = PQresultStatus(pg_sock->result);
@@ -290,6 +287,16 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 			break;
 
+			default:
+				/* FIXME: An unhandled error occurred.*/
+
+				/* PGRES_EMPTY_QUERY PGRES_COPY_OUT PGRES_COPY_IN */
+
+				return -1;
+
+			break;
+
+
 		}	
 	
 		/*
@@ -343,8 +350,8 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
  *	Function: sql_fetch_row
  *
  *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query in 'sqlsocket->row'. Returns
- *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'.
+ *	with all the data for the query in 'sqlsocket->row'. Returns
+ *	0 on success, -1 on failure, SQL_DOWN if 'database is down'.
  *
  *************************************************************************/
 static int sql_fetch_row(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config) {
@@ -397,12 +404,8 @@ static int sql_free_result(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config) {
 		PQclear(pg_sock->result);
 		pg_sock->result = NULL;
 	}
-#if 0
-	/*
-	 *  Commented out because it appears to free memory too early.
-	 */
+
 	free_result_row(pg_sock);
-#endif
 
 	return 0;
 }
