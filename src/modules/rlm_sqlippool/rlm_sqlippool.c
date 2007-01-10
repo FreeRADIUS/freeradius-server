@@ -579,7 +579,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		sql_release_socket(data->sql_inst, sqlsocket);
 		radius_xlat(logstr, sizeof(logstr), data->log_failed, request, NULL);
 	
-		return do_logging(logstr, RLM_MODULE_NOOP);
+		return do_logging(logstr, RLM_MODULE_NOTFOUND);
 	}
 
 	
