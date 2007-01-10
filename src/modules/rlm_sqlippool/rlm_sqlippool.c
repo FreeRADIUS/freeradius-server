@@ -578,7 +578,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 		DEBUG("rlm_sqlippool: IP number could not be allocated.");
 		sql_release_socket(data->sql_inst, sqlsocket);
-		return RLM_MODULE_NOOP;
+		return RLM_MODULE_NOTFOUND;
 	}
 
 	ip_allocation = ip_addr(allocation);
