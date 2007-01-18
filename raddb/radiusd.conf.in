@@ -1449,6 +1449,11 @@ $INCLUDE ${confdir}/eap.conf
 	#  attribute to use to access the counter in the 'users' file
 	#  or SQL radcheck or radcheckgroup tables.
 	#
+	#  The 'reply-name' parameter is the name the the attribute
+	#  which holds the time remaining for the user.  This is normally
+	#  Session-Timeout, which makes the NAS disconnect the user
+	#  once the session time is up.
+	#
 	#  DEFAULT  Max-Daily-Session > 3600, Auth-Type = Reject
 	#      Reply-Message = "You've used up more than one hour today"
 	#

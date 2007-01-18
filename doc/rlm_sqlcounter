@@ -2,26 +2,17 @@ rlm_sqlcounter installation and running guide
 by Ram Narula ram@princess1.net
 Internet for Education (Thailand)
 
-*) Pre-requisites:
-Make sure to have configured radiusd with rlm_sqlcounter
-installed
-
-> make clean
-> ./configure --with-experimental-modules
-> make
-> make install
-
 Make sure to have radiusd running properly under sql
 and there must be a "sql" entry under accounting{ } section
 of radiusd.conf
 
 *) Configuration:
 
-[1] Create a text file called sqlcounter.conf in the same
-directory where radiusd.conf resides (usually /usr/local/etc/raddb)
-with the following content (for mysql):
+The server has an example "dailycounter" in radiusd.conf.  It can be
+used for initial testing.  Other examples are given below.
 
-#-----#
+---------------------------------------------------------------------
+# Never reset
 sqlcounter noresetcounter {
                 counter-name = Max-All-Session-Time
                 check-name = Max-All-Session
@@ -34,13 +25,13 @@ sqlcounter noresetcounter {
 
         }
 
-
+# Reset daily
+# This is used to limit users per day, e.g. 3 hours/day
 sqlcounter dailycounter {
-                driver = "rlm_sqlcounter"
                 counter-name = Daily-Session-Time
                 check-name = Max-Daily-Session
-                reply-name = Session-Timeout
-                sqlmod-inst = sqlcca3
+		reply-name = Session-Timeout
+                sqlmod-inst = sql
                 key = User-Name
                 reset = daily
 
@@ -48,21 +39,22 @@ sqlcounter dailycounter {
 
         }
 
+# Reset monthly
+# This is used to limit users per month, e.g. 10 hours/month
 sqlcounter monthlycounter {
                 counter-name = Monthly-Session-Time
                 check-name = Max-Monthly-Session
-                reply-name = Session-Timeout
-                sqlmod-inst = sqlcca3
+		reply-name = Session-Timeout
+                sqlmod-inst = sql
                 key = User-Name
                 reset = monthly
 
                 query = "SELECT SUM(AcctSessionTime - GREATEST((%b - UNIX_TIMESTAMP(AcctStartTime)), 0)) FROM radacct WHERE UserName='%{%k}' AND UNIX_TIMESTAMP(AcctStartTime) + AcctSessionTime > '%b'"
 
 	}
+----------------------------------------------------------------------
 
-#-----#
-
-The respective lines for postgresql are:
+The respective queries for postgresql are:
 
 query = "SELECT SUM(AcctSessionTime) FROM radacct WHERE UserName='%{%k}'"
 query = "SELECT SUM(AcctSessionTime - GREATER((%b - AcctStartTime::ABSTIME::INT4), 0)) FROM radacct WHERE UserName='%{%k}' AND AcctStartTime::ABSTIME::INT4 + AcctSessionTime > '%b'"
@@ -95,14 +87,8 @@ BEGIN
 END;
 ' LANGUAGE 'plpgsql';
 
-[2] Include the above file to radiusd.conf by adding a line in
-modules{ } section
-
-modules {
-
-$INCLUDE  ${confdir}/sqlcounter.conf
-
-...some other entries here...
+[2] Add the appropriate module configuration (as above) to radiusd.conf,
+in the "modules" section.
 
 [3] Make sure to have the sqlcounter names under authorize section
 like the followings:
@@ -113,24 +99,16 @@ authorize {
 ...some entries here...
 ...some entries here...
 
-noresetcounter
-dailycounter
-monthlycounter
+# You probably only want only one of these
+	noresetcounter
+	dailycounter
+	monthlycounter
+... other entries here ...
 }
-
-noresetcounter: the counter that never resets, can be used
-for real session-time cumulation 
-
-dailycounter: the counter that resets everyday, can be used
-for limiting daily access time (eg. 3 hours a day)
-
-monthlycounter: the counter that resets monthly, can be used for
-limiting monthly access time (eg. 50 hours per month)
 
 You can make your own names and directives for resetting the counter
 by reading the sample sqlcounter configuration in
-raddb/experimental.conf
-
+raddb/radiusd.conf
 
 
 *) Implementation:
@@ -176,7 +154,7 @@ in sql:
 
 
 Note that Max-All-Session, Max-Daily-Session and Max-Monthly-Session are
-definied in sqlcounter.conf
+defined in sqlcounter.conf
 
 VERY IMPORTANT:
 Accounting must be done via sql or this will not work. 
