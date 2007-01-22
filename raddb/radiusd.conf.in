@@ -1078,7 +1078,7 @@ $INCLUDE ${confdir}/eap.conf
 		detailperm = 0600
 
 		#
-		#  Every entry in th edetail file has a header which
+		#  Every entry in the detail file has a header which
 		#  is a timestamp.  By default, we use the ctime
 		#  format (see "man ctime" for details).
 		#
@@ -2168,7 +2168,7 @@ session {
 	radutmp
 
 	#
-	#  See "Simultaneous Use Checking Querie" in sql.conf
+	#  See "Simultaneous Use Checking Queries" in sql.conf
 #	sql
 }
 
