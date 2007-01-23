@@ -1118,6 +1118,11 @@ $INCLUDE ${confdir}/eap.conf
 		#  This MUST be 0600, otherwise anyone can read
 		#  the users passwords!
 		# detailperm = 0600
+
+		# You may also strip out passwords completely
+		#suppress {
+			# User-Password
+		#}
 	# }
 
 	#
@@ -1131,9 +1136,6 @@ $INCLUDE ${confdir}/eap.conf
 	# detail reply_log {
 		# detailfile = ${radacctdir}/%{Client-IP-Address}/reply-detail-%Y%m%d
 
-		#
-		#  This MUST be 0600, otherwise anyone can read
-		#  the users passwords!
 		# detailperm = 0600
 	# }
 
@@ -1150,6 +1152,11 @@ $INCLUDE ${confdir}/eap.conf
 		#  This MUST be 0600, otherwise anyone can read
 		#  the users passwords!
 		# detailperm = 0600
+
+		# You may also strip out passwords completely
+		#suppress {
+			# User-Password
+		#}
 	# }
 
 	#
@@ -1161,9 +1168,6 @@ $INCLUDE ${confdir}/eap.conf
 	# detail post_proxy_log {
 		# detailfile = ${radacctdir}/%{Client-IP-Address}/post-proxy-detail-%Y%m%d
 
-		#
-		#  This MUST be 0600, otherwise anyone can read
-		#  the users passwords!
 		# detailperm = 0600
 	# }
 
