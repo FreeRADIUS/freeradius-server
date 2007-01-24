@@ -97,7 +97,7 @@ tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 /*
  *	Print out some text describing the error.
  */
-static void int_ssl_check(SSL *s, int ret, const char *text)
+static int int_ssl_check(SSL *s, int ret, const char *text)
 {
 	int e;
 
@@ -122,7 +122,7 @@ static void int_ssl_check(SSL *s, int ret, const char *text)
 	case SSL_ERROR_WANT_WRITE:
 	case SSL_ERROR_WANT_X509_LOOKUP:
 	case SSL_ERROR_ZERO_RETURN:
-		return;
+		break;
 
 		/*
 		 *	These seem to be indications of a genuine
@@ -132,14 +132,12 @@ static void int_ssl_check(SSL *s, int ret, const char *text)
 	case SSL_ERROR_SYSCALL:
 		radlog(L_ERR, "rlm_eap_tls: %s failed in a system call (%d), TLS session fails.",
 		       text, ret);
-		SSL_set_app_data(s, (char *)1);
-		return;
+		return 0;
 
 	case SSL_ERROR_SSL:
 		radlog(L_ERR, "rlm_eap_tls: %s failed inside of TLS (%d), TLS session fails.",
 		       text, ret);
-		SSL_set_app_data(s, (char *)1);
-		return;
+		return 0;
 
 	default:
 		/*
@@ -149,8 +147,10 @@ static void int_ssl_check(SSL *s, int ret, const char *text)
 		 *	the code needs updating here.
 		 */
 		radlog(L_ERR, "rlm_eap_tls: FATAL SSL error ..... %d\n", e);
-		break;
+		return 0;
 	}
+
+	return 1;
 }
 
 /*
@@ -175,8 +175,8 @@ int tls_handshake_recv(tls_session_t *ssn)
 		       sizeof(ssn->clean_out.data));
 	if (err > 0) {
 		ssn->clean_out.used = err;
-	} else {
-		int_ssl_check(ssn->ssl, err, "SSL_read");
+	} else if (!int_ssl_check(ssn->ssl, err, "SSL_read")) {
+		return 0;
 	}
 
 	/* Some Extra STATE information for easy debugging */
