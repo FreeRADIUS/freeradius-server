@@ -693,8 +693,8 @@ static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
 		POPs ;
 	} else if (count > 0) {
 		tmp = POPp;
-		ret = strlen(tmp);
-		strncpy(out,tmp,ret);
+		strNcpy(out,tmp,freespace);
+		ret = strlen(out);
 
 		radlog(L_DBG,"rlm_perl: Len is %d , out is %s freespace is %d",
 		       ret, out,freespace);
