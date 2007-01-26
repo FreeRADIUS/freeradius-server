@@ -258,11 +258,10 @@ static void reap_children(void)
 	int status;
 	thread_fork_t mytf, *tf;
 
-	if (lrad_hash_table_num_elements(thread_pool.waiters) == 0) return;
 
 	pthread_mutex_lock(&thread_pool.wait_mutex);
 
-	while (1) {
+	do {
 		pid = waitpid(0, &status, WNOHANG);
 		if (pid <= 0) break;
 
@@ -272,7 +271,7 @@ static void reap_children(void)
 		
 		tf->status = status;
 		tf->exited = 1;
-	}
+	} while (lrad_hash_table_num_elements(thread_pool.waiters));
 
 	pthread_mutex_unlock(&thread_pool.wait_mutex);
 }
@@ -1049,11 +1048,10 @@ int thread_pool_clean(time_t now)
 /*
  *	Thread wrapper for fork().
  */
-pid_t rad_fork(int exec_wait)
+pid_t rad_fork(void)
 {
 	pid_t child_pid;
 
-	if (exec_wait) return fork();
 
 	reap_children();	/* be nice to non-wait thingies */
 

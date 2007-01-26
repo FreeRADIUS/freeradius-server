@@ -226,7 +226,13 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		output_pairs = NULL;
 	}
 
-	if ((pid = rad_fork(exec_wait)) == 0) {
+	if (exec_wait) {
+		pid = rad_fork();	/* remember PID */
+	} else {
+		pid = fork();		/* don't wait */
+	}
+
+	if (pid == 0) {
 #define MAX_ENVP 1024
 		int devnull;
 		char *envp[MAX_ENVP];

@@ -168,7 +168,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	/*
 	 *	Fork.
 	 */
-	if ((pid = rad_fork(1)) < 0) { /* do wait for the fork'd result */
+	if ((pid = rad_fork()) < 0) { /* do wait for the fork'd result */
 		radlog(L_ERR, "Accounting: Failed in fork(): Cannot run checkrad\n");
 		return 2;
 	}
