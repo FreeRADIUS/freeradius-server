@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 #
 # Definitions for RADIUS programs
 #
@@ -6,6 +7,8 @@
 # This should only be used when testing modules.
 # Inside freeradius, the 'radiusd' Python module is created by the C module
 # and the definitions are automatically created.
+#
+# $Id$
 
 # from modules.h
 

@@ -1,6 +1,9 @@
+#! /usr/bin/env python
 #
 # Python module test
 # Miguel A.L. Paraz <mparaz@mparaz.com>
+#
+# $Id$
 
 import radiusd
 
