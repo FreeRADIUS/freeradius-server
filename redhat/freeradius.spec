@@ -114,6 +114,7 @@ fi
 %{_libdir}/*
 %{_mandir}/*/*
 %{_sbindir}/*
+%{_incdir}/freeradius/*
 %attr(0700,radiusd,radiusd) %dir /var/log/radius
 %attr(0700,radiusd,radiusd) %dir /var/log/radius/radacct
 %attr(0700,radiusd,radiusd) %dir /var/run/radiusd
