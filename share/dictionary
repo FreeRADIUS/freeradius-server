@@ -83,6 +83,7 @@ $INCLUDE dictionary.alteon
 $INCLUDE dictionary.alvarion
 $INCLUDE dictionary.aruba
 $INCLUDE dictionary.ascend
+$INCLUDE dictionary.asn
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.cablelabs
