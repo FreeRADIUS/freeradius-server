@@ -36,6 +36,10 @@
 #	include <netinet/in.h>
 #endif
 
+#ifdef HAVE_SYS_STAT_H
+#include	<sys/stat.h>
+#endif
+
 #include "radiusd.h"
 #include "rad_assert.h"
 #include "conffile.h"
@@ -144,7 +148,7 @@ void cf_pair_free(CONF_PAIR **cp)
  *	Allocate a CONF_SECTION
  */
 static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
-		CONF_SECTION *parent)
+				      CONF_SECTION *parent, const char *cf)
 {
 	CONF_SECTION	*cs;
 
@@ -588,7 +592,7 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 	/*
 	 *	Allocate new section.
 	 */
-	cs = cf_section_alloc(name1, name2, parent);
+	cs = cf_section_alloc(name1, name2, parent, cf);
 	cs->item.lineno = *lineno;
 
 	/*
@@ -817,23 +821,35 @@ CONF_SECTION *conf_read(const char *fromfile, int fromline,
 	FILE		*fp;
 	int		lineno = 0;
 	CONF_SECTION	*cs;
+	struct stat	statbuf;
+	char		buf[8192];
+
+	buf[0] = '\0';
+	if (fromfile) {
+		snprintf(buf, sizeof(buf), "%s[%d]: ", fromfile, fromline);
+	}
+
+	if (stat(conffile, &statbuf) == 0) {
+		if ((statbuf.st_mode & S_IWOTH) != 0) {
+			radlog(L_ERR|L_CONS, "%sConfiguration file %s is globally writable.  Refusing to start due to insecure configuration.",
+			       buf[0] ? buf : "", conffile);
+			return NULL;
+		}
+
+		if ((statbuf.st_mode & S_IROTH) != 0) {
+			radlog(L_ERR|L_CONS, "%sConfiguration file %s is globally readable.  Refusing to start due to insecure configuration.",
+			       buf[0] ? buf : "", conffile);
+			return NULL;
+		}
+	}
 
 	if ((fp = fopen(conffile, "r")) == NULL) {
-		if (fromfile) {
-			radlog(L_ERR|L_CONS, "%s[%d]: Unable to open file \"%s\": %s",
-					fromfile, fromline, conffile, strerror(errno));
-		} else {
-			radlog(L_ERR|L_CONS, "Unable to open file \"%s\": %s",
-					conffile, strerror(errno));
-		}
+		radlog(L_ERR|L_CONS, "%sUnable to open file \"%s\": %s",
+		       buf[0] ? buf : "", conffile, strerror(errno));
 		return NULL;
 	}
 
-	if(parent) {
-	    cs = cf_section_read(conffile, &lineno, fp, NULL, NULL, parent);
-	} else {
-	    cs = cf_section_read(conffile, &lineno, fp, NULL, NULL, NULL);
-	}
+	cs = cf_section_read(conffile, &lineno, fp, NULL, NULL, parent);
 
 	fclose(fp);
 
