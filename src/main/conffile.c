@@ -1201,9 +1201,24 @@ int cf_file_include(const char *file, CONF_SECTION *cs)
 {
 	FILE		*fp;
 	int		lineno = 0;
-	struct stat	buf;
+	struct stat	statbuf;
+	time_t		*mtime;
 
 	DEBUG2( "Config:   including file: %s", file);
+
+	if (stat(file, &statbuf) == 0) {
+		if ((statbuf.st_mode & S_IWOTH) != 0) {
+			radlog(L_ERR|L_CONS, "Configuration file %s is globally writable.  Refusing to start due to insecure configuration.",
+			       file);
+			return -1;
+		}
+
+		if ((statbuf.st_mode & S_IROTH) != 0) {
+			radlog(L_ERR|L_CONS, "Configuration file %s is globally readable.  Refusing to start due to insecure configuration.",
+			       file);
+			return NULL;
+		}
+	}
 
 	fp = fopen(file, "r");
 	if (!fp) {
@@ -1224,15 +1239,11 @@ int cf_file_include(const char *file, CONF_SECTION *cs)
 	/*
 	 *	Add the filename to the section
 	 */
-	if (stat(file, &buf) == 0) {
-		time_t *mtime;
-		
-		mtime = rad_malloc(sizeof(*mtime));
-		*mtime = buf.st_mtime;
-		/* FIXME: error? */
-		cf_data_add_internal(cs, file, mtime, free,
-				     PW_TYPE_FILENAME);
-	}
+	mtime = rad_malloc(sizeof(*mtime));
+	*mtime = statbuf.st_mtime;
+	/* FIXME: error? */
+	cf_data_add_internal(cs, file, mtime, free,
+			     PW_TYPE_FILENAME);
 
 	fclose(fp);
 	return 0;
