@@ -1164,7 +1164,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 {
 	char		buf[64];
 	char		attr[64];
-	char		value[256];
+	char		value[520];
 	char		*p;
 	LRAD_TOKEN	token, t, xlat;
 	VALUE_PAIR	*vp;
