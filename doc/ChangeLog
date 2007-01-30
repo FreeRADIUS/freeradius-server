@@ -1,8 +1,21 @@
-FreeRADIUS 1.1.4 ; $Date$, urgency=medium
+FreeRADIUS 1.1.5 ; $Date$ , urgency=low
+	Feature improvements
+	* Added more dictionaries
+	* Dictionary files now MUST NOT be globally writable.
+	* Configuration files now MUST NOT be globally readable,
+	  or globally writable.
+
+	Bug fixes
+	* Terminate SSL sessions in EAP on error, rather than continuing
+	  in some cases.
+	* Increase buffer size to allow parsing of long octet strings
+	* Fix string termination on xlat in rlm_perl
+
+FreeRADIUS 1.1.4 ; Date: 2007/01/14 00:37:15 , urgency=medium
 
 	Feature improvements
 	* Major enhancements to rlm_pap, that make "encryption_scheme"
-	  a think of the past.  See "man rlm_pap" for details.
+	  a thing of the past.  See "man rlm_pap" for details.
 	* Added SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS flag to use
 	  work-arounds that enable Windows Vista clients to work.
 	* Added preliminary code to support Firebird. (closes: #378)
