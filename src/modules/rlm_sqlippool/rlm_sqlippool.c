@@ -545,7 +545,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	sqlsocket = sql_get_socket(data->sql_inst);
 	if (sqlsocket == NULL) {
 		DEBUG("rlm_sqlippool: cannot allocate sql connection");
-		return RLM_MODULE_NOOP;
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
