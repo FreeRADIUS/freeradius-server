@@ -50,6 +50,7 @@ static const LRAD_NAME_NUMBER levels[] = {
 	{ ": Auth: ",           L_AUTH  },
 	{ ": Proxy: ",          L_PROXY },
 	{ ": Info: ",           L_INFO  },
+	{ ": Acct: ",           L_ACCT  },
 	{ ": Error: ",          L_ERR   },
 	{ NULL, 0 }
 };
@@ -177,6 +178,9 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 				lvl = LOG_NOTICE;
 				break;
 			case L_PROXY:
+				lvl = LOG_NOTICE;
+				break;
+			case L_ACCT:
 				lvl = LOG_NOTICE;
 				break;
 			case L_INFO:

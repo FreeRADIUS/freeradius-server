@@ -269,6 +269,7 @@ typedef struct main_config_t {
 #define L_INFO			3
 #define L_ERR			4
 #define L_PROXY			5
+#define L_ACCT			6
 #define L_CONS			128
 
 #ifndef FALSE
