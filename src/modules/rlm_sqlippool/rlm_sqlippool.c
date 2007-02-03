@@ -94,7 +94,7 @@ typedef struct rlm_sqlippool_t {
 	
 				/* Logging Section */
 
-	char *log_exists;	/* There Was an ip address already asigned */
+	char *log_exists;	/* There was an ip address already assigned */
 	char *log_success;	/* We successfully allocated ip address from pool */
 	char *log_failed;	/* Failed to allocate ip from the pool */
 	char *log_nopool;	/* There was no Framed-IP-Address but also no Pool-Name */
