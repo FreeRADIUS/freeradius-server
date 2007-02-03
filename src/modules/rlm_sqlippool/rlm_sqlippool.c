@@ -514,6 +514,13 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 	char    logstr[MAX_STRING_LEN];
 
+	if (pairfind(request->config_items, PW_POOL_NAME) == NULL) {
+		DEBUG("rlm_sqlippool: We Dont have Pool-Name in check items.. Lets do nothing..");
+		radius_xlat(logstr, sizeof(logstr), data->log_nopool, request, NULL);
+
+		return do_logging(logstr, RLM_MODULE_NOOP);
+	}
+	
 	/*
 	 * If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
@@ -525,13 +532,6 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
 
-	if (pairfind(request->config_items, PW_POOL_NAME) == NULL) {
-		DEBUG("rlm_sqlippool: We Dont have Pool-Name in check items.. Lets do nothing..");
-		radius_xlat(logstr, sizeof(logstr), data->log_nopool, request, NULL);
-
-		return do_logging(logstr, RLM_MODULE_NOOP);
-	}
-	
 	if (pairfind(request->packet->vps, PW_NAS_IP_ADDRESS) == NULL) {
 		DEBUG("rlm_sqlippool: unknown NAS-IP-Address");
 		return RLM_MODULE_NOOP;
