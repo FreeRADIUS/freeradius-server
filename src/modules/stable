@@ -1,3 +1,4 @@
+rlm_acctlog
 rlm_acct_unique
 rlm_always
 rlm_attr_filter
@@ -30,6 +31,7 @@ rlm_preprocess
 rlm_radutmp
 rlm_realm
 rlm_sql
-rlm_sql_log
 rlm_sqlcounter
+rlm_sqlippool
+rlm_sql_log
 rlm_unix
