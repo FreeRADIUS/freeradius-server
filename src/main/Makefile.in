@@ -67,7 +67,7 @@ $(SERVER_OBJS): $(INCLUDES)
 
 radiusd: $(SERVER_OBJS) $(MODULE_OBJS) ../lib/libradius.la
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
-		$(LDFLAGS) $(LINK_MODE) -o $@ $(SERVER_OBJS)      \
+		$(LDFLAGS) -pie $(LINK_MODE) -o $@ $(SERVER_OBJS)      \
 		$(MODULE_LIBS) $(LIBS) $(SNMP_LIBS) $(LCRYPT)     \
 		$(PTHREADLIB) $(LIBLTDL) $(OPENSSL_LIBS)
 
