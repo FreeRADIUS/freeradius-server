@@ -782,7 +782,7 @@ $INCLUDE ${confdir}/eap.conf
 		#  detection. This will work *only if* FreeRADIUS is
 		#  configured to build with --with-edir option.
 		#
-		#edir_account_policy_check = no
+		edir_account_policy_check = no
 
 		#
 		#  Group membership checking.  Disabled by default.
