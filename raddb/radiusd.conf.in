@@ -803,7 +803,7 @@ $INCLUDE ${confdir}/eap.conf
 		# policy check and intruder detection. This will work *only if*
 		# FreeRADIUS is configured to build with --with-edir option.
 		#
-		# edir_account_policy_check=no
+		edir_account_policy_check=no
 		#
 		# groupname_attribute = cn
 		# groupmembership_filter = "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"
