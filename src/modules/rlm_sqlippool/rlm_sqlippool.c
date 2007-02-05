@@ -296,7 +296,7 @@ static int sqlippool_command(const char * fmt, SQLSOCK * sqlsocket, void * insta
 	DEBUG2("sqlippool_command: '%s'", query);
 #endif
 	if (rlm_sql_query(sqlsocket, data->sql_inst, query)){
-		radlog(L_ERR, "sqlippool_command: database query error");
+		radlog(L_ERR, "sqlippool_command: database query error in: '%s'", query);
 		return 0;
 	}
 
