@@ -96,6 +96,7 @@ typedef struct rlm_sqlippool_t {
 
 	char *log_exists;	/* There was an ip address already assigned */
 	char *log_success;	/* We successfully allocated ip address from pool */
+	char *log_clear;	/* We successfully deallocated ip address from pool */
 	char *log_failed;	/* Failed to allocate ip from the pool */
 	char *log_nopool;	/* There was no Framed-IP-Address but also no Pool-Name */
 
@@ -154,6 +155,7 @@ static CONF_PARSER module_config[] = {
 
   { "sqlippool_log_exists", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, log_exists), NULL, "" },
   { "sqlippool_log_success", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, log_success), NULL, "" },
+  { "sqlippool_log_clear", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, log_clear), NULL, "" },
   { "sqlippool_log_failed", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, log_failed), NULL, "" },
   { "sqlippool_log_nopool", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, log_nopool), NULL, "" },
 
@@ -284,7 +286,7 @@ static int sqlippool_command(const char * fmt, SQLSOCK * sqlsocket, void * insta
 	 */
 	if (request) {
 		if (!radius_xlat(query, sizeof(query), expansion, request, NULL)) {
-			radlog(L_ERR, "sqlippool_command: xlat failed.");
+			radlog(L_ERR, "sqlippool_command: xlat failed on: '%s'", query);
 			return 0;
 		}
 	}
@@ -720,6 +722,8 @@ static int sqlippool_accounting_alive(void * instance, REQUEST * request)
 
 static int sqlippool_accounting_stop(void * instance, REQUEST * request)
 {
+	char    logstr[MAX_STRING_LEN];
+
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	SQLSOCK * sqlsocket;
 
@@ -758,8 +762,9 @@ static int sqlippool_accounting_stop(void * instance, REQUEST * request)
 			  (char *) NULL, 0);
 
 	sql_release_socket(data->sql_inst, sqlsocket);
+	radius_xlat(logstr, sizeof(logstr), data->log_clear, request, NULL);
 
-	return RLM_MODULE_OK;
+	return do_logging(logstr, RLM_MODULE_OK);
 }
 
 static int sqlippool_accounting_on(void * instance, REQUEST * request)
@@ -923,6 +928,7 @@ static int sqlippool_detach(void *instance)
 	free(data->log_failed);
 	free(data->log_nopool);
 	free(data->log_success);
+	free(data->log_clear);
 	free(data->defaultpool);
 	
 	
