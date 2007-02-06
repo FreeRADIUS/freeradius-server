@@ -672,9 +672,8 @@ int lrad_packet_list_id_alloc(lrad_packet_list_t *pl,
 	if (!pd) {
 		pd = malloc(sizeof(*pd) + 255 * sizeof(pd->id[0]));
 		if (!pd) return 0;
-		
-		memcpy(pd, &my_pd, sizeof(*pd) + 255 * sizeof(pd->id[0]));
-		memset(pd->id, 0, 256 * sizeof(pd->id[0]));
+
+		memset(pd, 0, sizeof(*pd) + 255 * sizeof(pd->id[0]));
 
 		if (!lrad_hash_table_insert(pl->dst2id_ht, pd)) {
 			free(pd);
