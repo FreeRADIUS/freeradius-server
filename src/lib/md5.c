@@ -11,6 +11,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/missing.h>
 #include <freeradius-devel/libradius.h>
 
 /*
