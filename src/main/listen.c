@@ -142,22 +142,42 @@ static int listen_bind(rad_listen_t *this);
  */
 static int rad_status_server(REQUEST *request)
 {
-	char		reply_msg[64];
-	time_t		t;
-	VALUE_PAIR	*vp;
+	switch (request->listener->type) {
+	case RAD_LISTEN_AUTH:
+		request->reply->code = PW_AUTHENTICATION_ACK;
 
-	/*
-	 *	Reply with an ACK. We might want to add some more
-	 *	interesting reply attributes, such as server uptime.
-	 */
-	t = request->timestamp - start_time;
-	sprintf(reply_msg, "FreeRADIUS up %d day%s, %02d:%02d",
-		(int)(t / 86400), (t / 86400) == 1 ? "" : "s",
-		(int)((t / 3600) % 24), (int)(t / 60) % 60);
-	request->reply->code = PW_AUTHENTICATION_ACK;
+		/*
+		 *	Commented out for now.
+		 */
+#if 0
+ { 
+		char		reply_msg[64];
+		time_t		t;
+		VALUE_PAIR	*vp;
+		
+		/*
+		 *	Reply with an ACK. We might want to add some more
+		 *	interesting reply attributes, such as server uptime.
+		 */
+		t = request->timestamp - start_time;
+		sprintf(reply_msg, "FreeRADIUS STUFF %d day%s, %02d:%02d",
+			(int)(t / 86400), (t / 86400) == 1 ? "" : "s",
+			(int)((t / 3600) % 24), (int)(t / 60) % 60);
+		
+		vp = pairmake("Reply-Message", reply_msg, T_OP_SET);
+		pairadd(&request->reply->vps, vp); /* don't need to check if !vp */
+ }
+#endif
+		break;
 
-	vp = pairmake("Reply-Message", reply_msg, T_OP_SET);
-	pairadd(&request->reply->vps, vp); /* don't need to check if !vp */
+	case RAD_LISTEN_ACCT:
+		request->reply->code = PW_ACCOUNTING_RESPONSE;
+		break;
+
+	default:
+		return 0;
+	}
+	
 
 	return 0;
 }
@@ -740,6 +760,16 @@ static int acct_socket_recv(rad_listen_t *listener,
 		fun = rad_accounting;
 		break;
 		
+	case PW_STATUS_SERVER:
+		if (!mainconfig.status_server) {
+			RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
+			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
+			rad_free(&packet);
+			return 0;
+		}
+		fun = rad_status_server;
+		break;
+
 	default:
 		/*
 		 *	FIXME: Update MIB for packet types?
