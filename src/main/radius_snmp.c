@@ -354,7 +354,7 @@ radAccEntry(struct variable *vp, oid *name, size_t *length, int exact,
 			return (unsigned char *)&(c->ipaddr);
 
 		case RADIUSACCCLIENTID:
-			if (strlen(c->shortname)) {
+			if (c->shortname && c->shortname[0]) {
 				*var_len = strlen(c->shortname);
 				return c->shortname;
 			}
@@ -489,11 +489,11 @@ radAuthEntry(struct variable *vp, oid	 *name, size_t *length, int exact,
 			return (unsigned char *)&(c->ipaddr);
 
 		case RADIUSAUTHCLIENTID:
-			if (strlen(c->shortname)) {
+			if (c->shortname && c->shortname[0]) {
 				*var_len = strlen(c->shortname);
-					return c->shortname;
+				return c->shortname;
 			}
-		*var_len = strlen(c->longname);
+			*var_len = strlen(c->longname);
 			return c->longname;
 
 		case RADIUSAUTHSERVACCESSREQUESTS:
