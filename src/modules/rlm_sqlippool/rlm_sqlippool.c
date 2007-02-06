@@ -122,7 +122,7 @@ static CONF_PARSER module_config[] = {
 
   { "pool-name"	    , PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, pool_name), NULL, ""},
 
-  { "allocate-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,allocate_begin), NULL, "BEGIN" },
+  { "allocate-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,allocate_begin), NULL, "START TRANSACTION" },
   { "allocate-clear", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,allocate_clear), NULL, "" },
   { "allocate-find", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,allocate_find), NULL, "" },
   { "allocate-update", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,allocate_update), NULL, "" },
@@ -131,27 +131,27 @@ static CONF_PARSER module_config[] = {
 
   { "pool-check", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,pool_check), NULL, "" },
 
-  { "start-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,start_begin), NULL, "BEGIN" },
+  { "start-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,start_begin), NULL, "START TRANSACTION" },
   { "start-update", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,start_update), NULL, "" },
   { "start-commit", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,start_commit), NULL, "COMMIT" },
   { "start-rollback", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,start_rollback), NULL, "ROLLBACK" },
 
-  { "alive-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,alive_begin), NULL, "BEGIN" },
+  { "alive-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,alive_begin), NULL, "START TRANSACTION" },
   { "alive-update", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,alive_update), NULL, "" },
   { "alive-commit", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,alive_commit), NULL, "COMMIT" },
   { "alive-rollback", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,alive_rollback), NULL, "ROLLBACK" },
 
-  { "stop-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,stop_begin), NULL, "BEGIN" },
+  { "stop-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,stop_begin), NULL, "START TRANSACTION" },
   { "stop-clear", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,stop_clear), NULL, "" },
   { "stop-commit", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,stop_commit), NULL, "COMMIT" },
   { "stop-rollback", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,stop_rollback), NULL, "ROLLBACK" },
 
-  { "on-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,on_begin), NULL, "BEGIN" },
+  { "on-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,on_begin), NULL, "START TRANSACTION" },
   { "on-clear", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,on_clear), NULL, "" },
   { "on-commit", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,on_commit), NULL, "COMMIT" },
   { "on-rollback", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,on_rollback), NULL, "ROLLBACK" },
 
-  { "off-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,off_begin), NULL, "BEGIN" },
+  { "off-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,off_begin), NULL, "START TRANSACTION" },
   { "off-clear", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,off_clear), NULL, "" },
   { "off-commit", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,off_commit), NULL, "COMMIT" },
   { "off-rollback", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,off_rollback), NULL, "ROLLBACK" },
