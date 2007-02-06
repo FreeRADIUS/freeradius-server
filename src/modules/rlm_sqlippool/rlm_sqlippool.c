@@ -62,6 +62,8 @@ typedef struct rlm_sqlippool_t {
 	char *allocate_commit;	/* SQL query to commit */
 	char *allocate_rollback; /* SQL query to rollback */
 
+	char *pool_check;	/* Query to check for the existence of the pool */
+
 				/* Start sequence */
 	char *start_begin;	/* SQL query to begin */
 	char *start_update;	/* SQL query to update an IP entry */
@@ -93,7 +95,6 @@ typedef struct rlm_sqlippool_t {
 	char *off_rollback;	/* SQL query to rollback */
 	
 				/* Logging Section */
-
 	char *log_exists;	/* There was an ip address already assigned */
 	char *log_success;	/* We successfully allocated ip address from pool */
 	char *log_clear;	/* We successfully deallocated ip address from pool */
@@ -101,7 +102,7 @@ typedef struct rlm_sqlippool_t {
 	char *log_nopool;	/* There was no Framed-IP-Address but also no Pool-Name */
 
 				/* Reserved to handle 255.255.255.254 Requests */
-	char *defaultpool;   /* Default Pool-Name if there is non in the check items */
+	char *defaultpool;	/* Default Pool-Name if there is non in the check items */
 
 } rlm_sqlippool_t;
 
@@ -127,6 +128,8 @@ static CONF_PARSER module_config[] = {
   { "allocate-update", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,allocate_update), NULL, "" },
   { "allocate-commit", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,allocate_commit), NULL, "COMMIT" },
   { "allocate-rollback", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,allocate_rollback), NULL, "ROLLBACK" },
+
+  { "pool-check", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,pool_check), NULL, "" },
 
   { "start-begin", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,start_begin), NULL, "BEGIN" },
   { "start-update", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t,start_update), NULL, "" },
@@ -160,8 +163,6 @@ static CONF_PARSER module_config[] = {
   { "sqlippool_log_nopool", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, log_nopool), NULL, "" },
 
   { "defaultpool", PW_TYPE_STRING_PTR, offsetof(rlm_sqlippool_t, defaultpool), NULL, "main_pool" },
-
-
 
   { NULL, -1, 0, NULL, NULL }
 };
@@ -482,10 +483,9 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 }
 
 
-/* Do "hit and run!"
+/*
  * if we have something to log, then we log it
  * otherwise we return the retcode as soon as possible 
- * </tuyan>
  */
 static int do_logging(char *str, int retcode)
 {
@@ -577,11 +577,49 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		sqlippool_command(data->allocate_commit, sqlsocket, instance, request,
 				  (char *) NULL, 0);
 
-		DEBUG("rlm_sqlippool: IP number could not be allocated.");
+		/*
+		 * Should we perform pool-check ?
+		 */ 
+		if (data->pool_check && *data->pool_check) {
+
+			/*
+			 * Ok, so the allocate-find query found nothing ...
+			 * Let's check if the pool exists at all
+			 */
+			allocation_len = sqlippool_query1(allocation, sizeof(allocation),
+						 data->pool_check, sqlsocket, instance, request,
+						(char *) NULL, 0);
+
+			sql_release_socket(data->sql_inst, sqlsocket);
+
+			if (allocation_len) {
+
+				/*
+				 * Pool exists after all... So, the failure to allocate
+				 * the IP address was most likely due to the depletion 
+				 * of the pool. In that case, we should return NOTFOUND
+				 */
+				DEBUG("rlm_sqlippool: IP address could not be allocated.");
+				radius_xlat(logstr, sizeof(logstr), data->log_failed, request, NULL);
+				return do_logging(logstr, RLM_MODULE_NOTFOUND);
+
+			}
+			/*
+			 * Pool doesn't exist in the table. It may be handled by some 
+			 * other instance of sqlippool, so we should just ignore
+			 * this allocation failure and return NOOP
+			 */
+			DEBUG("rlm_sqlippool: IP address could not be allocated as not pool exists with that name.");
+			return RLM_MODULE_NOOP;
+		
+		}
+		
 		sql_release_socket(data->sql_inst, sqlsocket);
+
+		DEBUG("rlm_sqlippool: IP address could not be allocated.");
 		radius_xlat(logstr, sizeof(logstr), data->log_failed, request, NULL);
-	
-		return do_logging(logstr, RLM_MODULE_NOTFOUND);
+
+		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
 
 	
@@ -890,14 +928,14 @@ static int sqlippool_detach(void *instance)
 	free(data->sql_instance_name);
 	free(data->pool_name);
 
-	
-
 	free(data->allocate_begin);
 	free(data->allocate_clear);
 	free(data->allocate_find);
 	free(data->allocate_update);
 	free(data->allocate_commit);
 	free(data->allocate_rollback);
+
+	free(data->pool_check);
 
 	free(data->start_begin);
 	free(data->start_update);
@@ -930,8 +968,6 @@ static int sqlippool_detach(void *instance)
 	free(data->log_success);
 	free(data->log_clear);
 	free(data->defaultpool);
-	
-	
 
 	return 0;
 }
