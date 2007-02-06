@@ -1216,7 +1216,7 @@ int cf_file_include(const char *file, CONF_SECTION *cs)
 		if ((statbuf.st_mode & S_IROTH) != 0) {
 			radlog(L_ERR|L_CONS, "Configuration file %s is globally readable.  Refusing to start due to insecure configuration.",
 			       file);
-			return NULL;
+			return -1;
 		}
 	}
 
