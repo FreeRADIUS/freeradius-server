@@ -635,8 +635,8 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 			     request->packet->vps)) != RLM_MODULE_OK) {
 		char buf[1024];
 		radlog(L_INFO, "No huntgroup access: [%s] (%s)",
-		    request->username->vp_strvalue,
-		    auth_name(buf, sizeof(buf), request, 1));
+		       request->username ? request->username->vp_strvalue : "<NO User-Name>",
+		       auth_name(buf, sizeof(buf), request, 1));
 		return r;
 	}
 
