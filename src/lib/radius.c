@@ -1056,18 +1056,6 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		}
 		
 		/*
-		 *	Check that the packet is no more than 4k in
-		 *	size, AFTER over-flowing the 4k boundary.
-		 *	Note that the 'data' buffer, above, is one
-		 *	attribute longer than necessary, in order to
-		 *	permit this overflow.
-		 */
-		if (total_length > MAX_PACKET_LEN) {
-			librad_log("ERROR: Too many attributes for packet, result is larger than RFC maximum of 4k");
-			return -1;
-		}
-		
-		/*
 		 *	Set the Message-Authenticator to the correct
 		 *	length and initial value.
 		 */
@@ -1114,6 +1102,19 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		}
 
 		if (len < 0) return -1;
+
+		/*
+		 *	Check that the packet is no more than 4k in
+		 *	size, AFTER writing the attribute past the 4k
+		 *	boundary, but BEFORE deciding to increase the
+		 *	size of the packet. Note that the 'data'
+		 *	buffer, above, is one attribute longer than
+		 *	necessary, in order to permit this overflow.
+		 */
+		if ((total_length + len) > MAX_PACKET_LEN) {
+			break;
+		}
+
 		ptr += len;
 		total_length += len;
 	} /* done looping over all attributes */
