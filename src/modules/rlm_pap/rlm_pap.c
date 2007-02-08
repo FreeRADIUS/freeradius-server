@@ -287,9 +287,11 @@ static int pap_authorize(void *instance, REQUEST *request)
 	rlm_pap_t *inst = instance;
 	int auth_type = FALSE;
 	int found_pw = FALSE;
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp, *next;
 
-	for (vp = request->config_items; vp != NULL; vp = vp->next) {
+	for (vp = request->config_items; vp != NULL; vp = next) {
+		next = vp->next;
+
 		switch (vp->attribute) {
 		case PW_USER_PASSWORD: /* deprecated */
 			found_pw = TRUE;
