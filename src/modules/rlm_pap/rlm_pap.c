@@ -289,10 +289,12 @@ static int pap_authorize(void *instance, REQUEST *request)
 	int auth_type = FALSE;
 	int found_pw = FALSE;
 	int user_pw = FALSE;
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp, *next;
 	VALUE_PAIR *cleartext_pw = NULL;
 
-	for (vp = request->config_items; vp != NULL; vp = vp->next) {
+	for (vp = request->config_items; vp != NULL; vp = next) {
+		next = vp->next;
+
 		switch (vp->attribute) {
 		case PW_USER_PASSWORD: /* deprecated */
 			user_pw = TRUE;
