@@ -486,6 +486,7 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		if (a && (strcasecmp(a->name, attr->name) == 0)) {
 			if (a->attr != attr->attr) {
 				librad_log("dict_addattr: Duplicate attribute name %s", name);
+				free(attr);
 				return -1;
 			}
 
@@ -495,6 +496,13 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 			 *	different.  Let the new value
 			 *	over-ride the old one.
 			 */
+		}
+
+
+		if (!lrad_hash_table_replace(attributes_byname, attr)) {
+			librad_log("dict_addattr: Internal error storing attribute %s", name);
+			free(attr);
+			return -1;
 		}
 	}
 
