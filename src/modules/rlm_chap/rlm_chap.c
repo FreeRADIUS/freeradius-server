@@ -44,8 +44,7 @@ static int chap_authorize(void *instance, REQUEST *request)
 	instance = instance;
 	request = request;
 
-	if (!request->password ||
-	    request->password->attribute != PW_CHAP_PASSWORD) {
+	if (!pairfind(request->packet->vps, PW_CHAP_PASSWORD)) {
 		return RLM_MODULE_NOOP;
 	}
 
@@ -69,7 +68,7 @@ static int chap_authorize(void *instance, REQUEST *request)
  */
 static int chap_authenticate(void *instance, REQUEST *request)
 {
-	VALUE_PAIR *passwd_item;
+	VALUE_PAIR *passwd_item, *chap;
 	uint8_t pass_str[MAX_STRING_LEN];
 	VALUE_PAIR *module_fmsg_vp;
 	char module_fmsg[MAX_STRING_LEN];
@@ -83,13 +82,9 @@ static int chap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	if (!request->password) {
+	chap = pairfind(request->packet->vps, PW_CHAP_PASSWORD);
+	if (!chap) {
 		radlog(L_AUTH, "rlm_chap: Attribute \"CHAP-Password\" is required for authentication.");
-		return RLM_MODULE_INVALID;
-	}
-
-	if (request->password->attribute != PW_CHAP_PASSWORD) {
-		radlog(L_AUTH, "rlm_chap: Attribute \"CHAP-Password\" is required for authentication. Cannot use \"%s\".", request->password->name);
 		return RLM_MODULE_INVALID;
 	}
 
