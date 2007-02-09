@@ -575,15 +575,18 @@ static int load_component_section(modcallable *parent,
 		if (comp == RLM_COMPONENT_AUTH) {
 			DICT_VALUE *dval;
 			const char *modrefname = NULL;
+			int lineno = 0;
 
 			if (cp) {
 				modrefname = cf_pair_attr(cp);
+				lineno = cf_pair_lineno(cp);
 			} else {
 				modrefname = cf_section_name2(scs);
+				lineno = cf_section_lineno(scs);
 				if (!modrefname) {
 					radlog(L_ERR|L_CONS,
 					       "%s[%d] Failed to parse %s sub-section.\n",
-					       filename, cf_section_lineno(scs),
+					       filename, lineno,
 					       cf_section_name1(scs));
 					return -1;
 				}
@@ -596,7 +599,7 @@ static int load_component_section(modcallable *parent,
 				 *	recognize.  Die!
 				 */
 				radlog(L_ERR|L_CONS, "%s[%d] Unknown Auth-Type \"%s\" in %s sub-section.",
-				       filename, cf_section_lineno(scs),
+				       filename, lineno,
 				       modrefname, section_type_value[comp].section);
 				return -1;
 			}
