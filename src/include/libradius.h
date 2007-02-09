@@ -188,6 +188,7 @@ int		dict_addvendor(const char *name, int value);
 int		dict_addattr(const char *name, int vendor, int type, int value, ATTR_FLAGS flags);
 int		dict_addvalue(const char *namestr, const char *attrstr, int value);
 int		dict_init(const char *dir, const char *fn);
+void		dict_free(void);
 DICT_ATTR	*dict_attrbyvalue(int attr);
 DICT_ATTR	*dict_attrbyname(const char *attr);
 DICT_VALUE	*dict_valbyattr(int attr, int val);
