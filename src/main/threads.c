@@ -27,7 +27,26 @@
 
 #include <stdlib.h>
 #include <string.h>
+
+/*
+ *	Other OS's have sem_init, OS X doesn't.
+ */
+#ifndef DARWIN
 #include <semaphore.h>
+#else
+#include <mach/task.h>
+#include <mach/semaphore.h>
+
+#undef sem_t
+#define sem_t semaphore_t
+#undef sem_init
+#define sem_init(s,p,c) semaphore_create(mach_task_self(),s,SYNC_POLICY_FIFO,c)
+#undef sem_wait
+#define sem_wait(s) semaphore_wait(*s)
+#undef sem_post
+#define sem_post(s) semaphore_signal(*s)
+#endif
+
 #include <signal.h>
 
 #ifdef HAVE_SYS_WAIT_H
@@ -79,6 +98,13 @@ typedef struct request_queue_t {
 } request_queue_t;
 
 
+typedef struct thread_fork_t {
+	pid_t		pid;
+	int		status;
+	int		exited;
+} thread_fork_t;
+
+
 /*
  *	A data structure to manage the thread pool.  There's no real
  *	need for a data structure, but it makes things conceptually
@@ -98,6 +124,13 @@ typedef struct THREAD_POOL {
 	unsigned long request_count;
 	time_t time_last_spawned;
 	int cleanup_delay;
+
+	/*
+	 *	If threaded, we have to pay more attention to
+	 *	child PID's when we fork...
+	 */
+	pthread_mutex_t	wait_mutex;
+	lrad_hash_table_t *waiters;
 
 	/*
 	 *	All threads wait on this semaphore, for requests
@@ -120,34 +153,6 @@ typedef struct THREAD_POOL {
 static THREAD_POOL thread_pool;
 static int pool_initialized = FALSE;
 
-/*
- *	Data structure to keep track of which child forked which
- *	request.  If we cared, we'd keep a list of "free" and "active"
- *	entries.
- *
- *	FIXME: Have a time out, so we clean up entries which haven't
- *	been picked up!
- */
-typedef struct rad_fork_t {
-	pthread_t	thread_id;
-	pid_t		child_pid;
-	sem_t	 	child_done;
-	int		status;	/* exit status of the child */
-	time_t		time_forked;
-} rad_fork_t;
-
-/*
- *  This MUST be a power of 2 for it to work properly!
- */
-#define NUM_FORKERS (8192)
-static rad_fork_t forkers[NUM_FORKERS];
-
-/*
- *	This mutex ensures that only one thread is doing certain
- *	kinds of magic to the previous array.
- */
-static pthread_mutex_t fork_mutex;
-
 
 /*
  *	A mapping of configuration file names to internal integers
@@ -164,12 +169,52 @@ static const CONF_PARSER thread_config[] = {
 
 
 /*
+ *	We don't want to catch SIGCHLD for a host of reasons.
+ *
+ *	- exec_wait means that someone, somewhere, somewhen, will
+ *	call waitpid(), and catch the child.
+ *
+ *	- SIGCHLD is delivered to a random thread, not the one that
+ *	forked.
+ *
+ *	- if another thread catches the child, we have to coordinate
+ *	with the thread doing the waiting.
+ *
+ *	- if we don't waitpid() for non-wait children, they'll be zombies,
+ *	and will hang around forever.
+ *
+ */
+static void reap_children(void)
+{
+	pid_t pid;
+	int status;
+	thread_fork_t mytf, *tf;
+
+	pthread_mutex_lock(&thread_pool.wait_mutex);
+
+	do {
+		pid = waitpid(0, &status, WNOHANG);
+		if (pid <= 0) break;
+
+		mytf.pid = pid;
+		tf = lrad_hash_table_finddata(thread_pool.waiters, &mytf);
+		if (!tf) continue;
+		
+		tf->status = status;
+		tf->exited = 1;
+	} while (lrad_hash_table_num_elements(thread_pool.waiters) > 0);
+
+	pthread_mutex_unlock(&thread_pool.wait_mutex);
+}
+
+
+/*
  *	Add a request to the list of waiting requests.
  *	This function gets called ONLY from the main handler thread...
  *
  *	This function should never fail.
  */
-static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
+static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	int num_entries;
 
@@ -195,6 +240,7 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	num_entries = ((thread_pool.queue_tail + thread_pool.queue_size) -
 		       thread_pool.queue_head) % thread_pool.queue_size;
 	if (num_entries == (thread_pool.queue_size - 1)) {
+		int i;
 		request_queue_t *new_queue;
 
 		/*
@@ -209,7 +255,7 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 			 */
 			radlog(L_ERR|L_CONS, "!!! ERROR !!! The server is blocked: discarding new request %d", request->number);
 			request->finished = TRUE;
-			return;
+			return 0;
 		}
 
 		/*
@@ -220,13 +266,19 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 *	new one.
 		 */
 		new_queue = rad_malloc(sizeof(*new_queue) * thread_pool.queue_size * 2);
-		memcpy(new_queue, thread_pool.queue,
-		       sizeof(*new_queue) * thread_pool.queue_size);
-		memset(new_queue + sizeof(*new_queue) * thread_pool.queue_size,
+		/*
+		 *	Copy the queue element by element
+		 */
+		for (i = 0; i < thread_pool.queue_size; i++) {
+			new_queue[i] = thread_pool.queue[(i + thread_pool.queue_head) % thread_pool.queue_size];
+		}
+		memset(new_queue + thread_pool.queue_size,
 		       0, sizeof(*new_queue) * thread_pool.queue_size);
 
 		free(thread_pool.queue);
 		thread_pool.queue = new_queue;
+		thread_pool.queue_tail = ((thread_pool.queue_tail + thread_pool.queue_size) - thread_pool.queue_head) % thread_pool.queue_size;
+		thread_pool.queue_head = 0;
 		thread_pool.queue_size *= 2;
 	}
 
@@ -254,7 +306,7 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 
 	sem_post(&thread_pool.semaphore);
 
-	return;
+	return 1;
 }
 
 /*
@@ -262,6 +314,8 @@ static void request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
  */
 static void request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 {
+	reap_children();
+
 	pthread_mutex_lock(&thread_pool.mutex);
 
 	/*
@@ -633,6 +687,22 @@ int total_active_threads(void)
 	return (rcode);
 }
 
+
+static uint32_t pid_hash(const void *data)
+{
+	const thread_fork_t *tf = data;
+
+	return lrad_hash(&tf->pid, sizeof(tf->pid));
+}
+
+static int pid_cmp(const void *one, const void *two)
+{
+	const thread_fork_t *a = one;
+	const thread_fork_t *b = two;
+
+	return (a->pid - b->pid);
+}
+
 /*
  *	Allocate the thread pool, and seed it with an initial number
  *	of threads.
@@ -661,23 +731,29 @@ int thread_pool_init(void)
 		thread_pool.total_threads = 0;
 		thread_pool.max_thread_num = 1;
 		thread_pool.cleanup_delay = 5;
+
+		if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
+			radlog(L_ERR, "FATAL: Failed to initialize mutex: %s",
+			       strerror(errno));
+			exit(1);
+		}		
+
+		/*
+		 *	Create the hash table of child PID's
+		 */
+		thread_pool.waiters = lrad_hash_table_create(pid_hash,
+							     pid_cmp,
+							     free);
+		if (!thread_pool.waiters) {
+			radlog(L_ERR, "FATAL: Failed to set up wait hash");
+			exit(1);
+		}
 	}
 
 	pool_cf = cf_section_find("thread");
 	if (pool_cf != NULL) {
 		cf_section_parse(pool_cf, NULL, thread_config);
 	}
-
-	/*
-	 *	Limit the maximum number of threads to the maximum
-	 *	number of forks we can do.
-	 *
-	 *	FIXME: Make this code better...
-	 */
-	if (thread_pool.max_threads >= NUM_FORKERS) {
-		thread_pool.max_threads = NUM_FORKERS;
-	}
-
 
 	/*
 	 *	The pool has already been initialized.  Don't spawn
@@ -742,6 +818,11 @@ int thread_pool_init(void)
 int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	/*
+	 *	Add the new request to the queue.
+	 */
+	if (!request_enqueue(request, fun)) return 0;
+
+	/*
 	 *	If the thread pool is busy handling requests, then
 	 *	try to spawn another one.
 	 */
@@ -750,14 +831,9 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 			radlog(L_INFO,
 			       "The maximum number of threads (%d) are active, cannot spawn new thread to handle request",
 			       thread_pool.max_threads);
-			return 0;
+			return 1;
 		}
 	}
-
-	/*
-	 *	Add the new request to the queue.
-	 */
-	request_enqueue(request, fun);
 
 	return 1;
 }
@@ -923,159 +999,44 @@ int thread_pool_clean(time_t now)
 	return 0;
 }
 
-static int exec_initialized = FALSE;
-
-/*
- *	Initialize the stuff for keeping track of child processes.
- */
-void rad_exec_init(void)
-{
-	int i;
-
-	/*
-	 *	Initialize the mutex used to remember calls to fork.
-	 */
-	pthread_mutex_init(&fork_mutex, NULL);
-
-	/*
-	 *	Initialize the data structure where we remember the
-	 *	mappings of thread ID && child PID to exit status.
-	 */
-	for (i = 0; i < NUM_FORKERS; i++) {
-		forkers[i].thread_id = NO_SUCH_CHILD_PID;
-		forkers[i].child_pid = -1;
-		forkers[i].status = 0;
-	}
-
-	exec_initialized = TRUE;
-}
-
-/*
- *	We use the PID number as a base for the array index, so that
- *	we can quickly turn the PID into a free array entry, instead
- *	of rooting blindly through the entire array.
- */
-#define PID_2_ARRAY(pid) (((int) pid ) & (NUM_FORKERS - 1))
 
 /*
  *	Thread wrapper for fork().
  */
-pid_t rad_fork(int exec_wait)
+pid_t rad_fork(void)
 {
-	sigset_t set;
 	pid_t child_pid;
 
-	/*
-	 *	The thread is NOT interested in waiting for the exit
-	 *	status of the child process, so we don't bother
-	 *	updating our kludgy array.
-	 *
-	 *	Or, there no NO threads, so we can just do the fork
-	 *	thing.
-	 */
-	if (!exec_wait || !exec_initialized) {
-		return fork();
+	if (!pool_initialized) return fork();
+
+	reap_children();	/* be nice to non-wait thingies */
+
+	if (lrad_hash_table_num_elements(thread_pool.waiters) >= 1024) {
+		return -1;
 	}
 
 	/*
-	 *	Block SIGCLHD until such time as we've saved the PID.
-	 *
-	 *	Note that we block SIGCHLD for ALL threads associated
-	 *	with this process!  This is to prevent race conditions!
-	 */
-	sigemptyset(&set);
-	sigaddset(&set, SIGCHLD);
-	sigprocmask(SIG_BLOCK, &set, NULL);
-
-	/*
-	 *	Do the fork.
+	 *	Fork & save the PID for later reaping.
 	 */
 	child_pid = fork();
+	if (child_pid > 0) {
+		int rcode;
+		thread_fork_t *tf;
 
-	/*
-	 *	We managed to fork.  Let's see if we have a free
-	 *	array entry.
-	 */
-	if (child_pid > 0) { /* parent */
-		int i;
-		int found;
-		time_t now = time(NULL);
+		tf = rad_malloc(sizeof(*tf));
+		memset(tf, 0, sizeof(*tf));
+		
+		tf->pid = child_pid;
 
-		/*
-		 *	We store the information in the array
-		 *	indexed by PID.  This means that we have
-		 *	on average an O(1) lookup to find the element,
-		 *	instead of rooting through the entire array.
-		 */
-		i = PID_2_ARRAY(child_pid);
-		found = -1;
+		pthread_mutex_lock(&thread_pool.wait_mutex);
+		rcode = lrad_hash_table_insert(thread_pool.waiters, tf);
+		pthread_mutex_unlock(&thread_pool.wait_mutex);
 
-		/*
-		 *	We may have multiple threads trying to find an
-		 *	empty position, so we lock the array until
-		 *	we've found an entry.
-		 */
-		pthread_mutex_lock(&fork_mutex);
-		do {
-			if (forkers[i].thread_id == NO_SUCH_CHILD_PID) {
-				found = i;
-				break;
-			}
-
-			/*
-			 *	Clean up any stale forked sessions.
-			 *
-			 *	This sometimes happens, for crazy reasons.
-			 */
-			if ((now - forkers[i].time_forked) > 30) {
-				forkers[i].thread_id = NO_SUCH_CHILD_PID;
-
-				/*
-				 *	Grab the child's exit condition,
-				 *	just in case...
-				 */
-				waitpid(forkers[i].child_pid,
-					&forkers[i].status,
-					WNOHANG);
-				sem_destroy(&forkers[i].child_done);
-				found = i;
-				break;
-			}
-
-			/*
-			 *  Increment it, within the array.
-			 */
-			i++;
-			i &= (NUM_FORKERS - 1);
-		} while (i != PID_2_ARRAY(child_pid));
-
-		/*
-		 *	Arg.  We did a fork, and there was nowhere to
-		 *	put the answer.
-		 */
-		if (found < 0) {
-			sigprocmask(SIG_UNBLOCK, &set, NULL);
-			pthread_mutex_unlock(&fork_mutex);
-			return (pid_t) -1;
+		if (!rcode) {
+			radlog(L_ERR, "Failed to store PID, creating what will be a zombie process %d",
+			       (int) child_pid);
 		}
-
-		/*
-		 *	In the parent, set the status, and create the
-		 *	semaphore.
-		 */
-		forkers[found].status = -1;
-		forkers[found].child_pid = child_pid;
-		forkers[found].thread_id = pthread_self();
-		forkers[found].time_forked = now;
-		sem_init(&forkers[found].child_done, 0, SEMAPHORE_LOCKED);
-		pthread_mutex_unlock(&fork_mutex);
 	}
-
-	/*
-	 *	Unblock SIGCHLD, now that there's no chance of bad entries
-	 *	in the array.
-	 */
-	sigprocmask(SIG_UNBLOCK, &set, NULL);
 
 	/*
 	 *	Return whatever we were told.
@@ -1084,137 +1045,47 @@ pid_t rad_fork(int exec_wait)
 }
 
 /*
- *	Thread wrapper for waitpid(), so threads can wait for
- *	the PID they forked.
+ *	Wait 10 seconds at most for a child to exit, then give up.
  */
-pid_t rad_waitpid(pid_t pid, int *status, int options)
-{
-	int i, rcode;
-	int found;
-	pthread_t self = pthread_self();
-
-	/*
-	 *	We're only allowed to wait for a SPECIFIC pid.
-	 */
-	if (pid <= 0) {
-		return -1;
-	}
-
-	/*
-	 *	Find the PID to wait for, starting at an index within
-	 *	the array.  This makes the lookups O(1) on average,
-	 *	instead of O(n), when the array is filling up.
-	 */
-	found = -1;
-	i = PID_2_ARRAY(pid);
-	do {
-		/*
-		 *	We were the ones who forked this specific
-		 *	child.
-		 */
-		if ((forkers[i].thread_id == self) &&
-		    (forkers[i].child_pid == pid)) {
-			found = i;
-			break;
-		}
-
-		i++;
-		i &= (NUM_FORKERS - 1);
-	} while (i != PID_2_ARRAY(pid));
-
-	/*
-	 *	No thread ID found: we're trying to wait for a child
-	 *	we've never forked!
-	 */
-	if (found < 0) {
-		return -1;
-	}
-
-	/*
-	 *	Wait for the signal that the child's status has been
-	 *	returned.
-	 */
-	if (options == WNOHANG) {
-		rcode = sem_trywait(&forkers[found].child_done);
-		if (rcode != 0) {
-			return 0; /* no child available */
-		}
-	} else {		/* wait forever */
-	re_wait:
-		rcode = sem_wait(&forkers[found].child_done);
-		if ((rcode != 0) && (errno == EINTR)) {
-			goto re_wait;
-		}
-	}
-
-	/*
-	 *	We've got the semaphore.  Now destroy it.
-	 *
-	 *	FIXME: Maybe we want to set up the semaphores in advance,
-	 *	to prevent the creation && deletion of lots of them,
-	 *	if creating and deleting them is expensive.
-	 */
-	sem_destroy(&forkers[found].child_done);
-
-	/*
-	 *	Save the status BEFORE we re-set the thread ID.
-	 */
-	*status = forkers[found].status;
-
-	/*
-	 *	This next line taints the other array entries,
-	 *	due to other threads re-using the data structure.
-	 */
-	forkers[found].thread_id = NO_SUCH_CHILD_PID;
-
-	return pid;
-}
-
-/*
- *	Called by the main signal handler, to save the status of the child
- */
-int rad_savepid(pid_t pid, int status)
+pid_t rad_waitpid(pid_t pid, int *status)
 {
 	int i;
+	thread_fork_t mytf, *tf;
 
-	/*
-	 *	Find the PID to wait for, starting at an index within
-	 *	the array.  This makes the lookups O(1) on average,
-	 *	instead of O(n), when the array is filling up.
-	 */
-	i = PID_2_ARRAY(pid);
+	if (!pool_initialized) return waitpid(pid, status, 0);
 
-	/*
-	 *	Do NOT lock the array, as nothing else sets the
-	 *	status and posts the semaphore.
-	 */
-	do {
-		/*
-		 *	Any thread can get the sigchild...
-		 */
-		if ((forkers[i].thread_id != NO_SUCH_CHILD_PID) &&
-		    (forkers[i].child_pid == pid)) {
-			/*
-			 *	Save the status, THEN post the
-			 *	semaphore.
-			 */
-			forkers[i].status = status;
-			sem_post(&forkers[i].child_done);
+	if (pid <= 0) return -1;
 
-			/*
-			 *	FIXME: If the child is more than 60
-			 *	seconds out of date, then delete it.
-			 *
-			 *	That is, we've forked, and the forker
-			 *	is waiting nearly forever
-			 */
-			return 0;
+	mytf.pid = pid;
+
+	pthread_mutex_lock(&thread_pool.wait_mutex);
+	tf = lrad_hash_table_finddata(thread_pool.waiters, &mytf);
+	pthread_mutex_unlock(&thread_pool.wait_mutex);
+
+	if (!tf) return -1;
+	
+	for (i = 0; i < 100; i++) {
+		reap_children();
+		
+		if (tf->exited) {
+			*status = tf->status;
+
+			pthread_mutex_lock(&thread_pool.wait_mutex);
+			lrad_hash_table_delete(thread_pool.waiters, &mytf);
+			pthread_mutex_unlock(&thread_pool.wait_mutex);
+			return pid;
 		}
+		usleep(100000);
+	}
+	
+	/*
+	 *	10 seconds have passed, give up on the child.
+	 */
+	pthread_mutex_lock(&thread_pool.wait_mutex);
+	lrad_hash_table_delete(thread_pool.waiters, &mytf);
+	pthread_mutex_unlock(&thread_pool.wait_mutex);
 
-		i++;
-		i &= (NUM_FORKERS - 1);
-	} while (i != PID_2_ARRAY(pid));
-
-	return -1;
+	return 0;
 }
+
 #endif

@@ -311,7 +311,13 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		output_pairs = NULL;
 	}
 
-	if ((pid = rad_fork(exec_wait)) == 0) {
+	if (exec_wait) {
+		pid = rad_fork();	/* remember PID */
+	} else {
+		pid = fork();		/* don't wait */
+	}
+
+	if (pid == 0) {
 #define MAX_ENVP 1024
 		int devnull;
 		char *envp[MAX_ENVP];
@@ -564,7 +570,12 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 *	Call rad_waitpid (should map to waitpid on non-threaded
 	 *	or single-server systems).
 	 */
-	child_pid = rad_waitpid(pid, &status, 0);
+	child_pid = rad_waitpid(pid, &status);
+	if (child_pid == 0) {
+		radlog(L_DBG, "Exec-Program: Timeout waiting for child");
+		return 2;
+	}
+
 	if (child_pid == pid) {
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);

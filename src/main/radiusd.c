@@ -1424,7 +1424,17 @@ int main(int argc, char *argv[])
 				}
 			} else
 #endif
-				rad_respond(request, fun);
+			  {
+				  rad_respond(request, fun);
+
+				  /*
+				   *	Requests that care about child
+				   *	process exit codes have already
+				   *	either called rad_waitpid(), or
+				   *	they've given up.
+				   */
+				  wait(NULL);
+			  }
 		} /* loop over listening sockets*/
 
 #ifdef WITH_SNMP
