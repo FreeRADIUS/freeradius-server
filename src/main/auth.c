@@ -113,7 +113,7 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 			} else {
 				strcpy(clean_password, "<no User-Password attribute>");
 			}
-		} else if (request->password->attribute == PW_CHAP_PASSWORD) {
+		} else if (pairfind(request->packet->vps, PW_CHAP_PASSWORD)) {
 			strcpy(clean_password, "<CHAP-Password>");
 		} else {
 			librad_safeprint((char *)request->password->vp_strvalue,
@@ -290,7 +290,10 @@ static int rad_check_password(REQUEST *request)
 			 *	authentication fails.
 			 */
 			auth_item = request->password;
-			if (auth_item == NULL) {
+			if (!auth_item) 
+				auth_item = pairfind(request->packet->vps,
+						     PW_CHAP_PASSWORD);
+			if (!auth_item) {
 				DEBUG2("auth: No User-Password or CHAP-Password attribute in the request");
 				return -1;
 			}
@@ -552,7 +555,7 @@ int rad_authenticate(REQUEST *request)
 		 *	Maybe there's a CHAP-Password?
 		 */
 		if ((auth_item = pairfind(request->packet->vps,
-				PW_CHAP_PASSWORD)) != NULL) {
+					  PW_CHAP_PASSWORD)) != NULL) {
 			password = "<CHAP-PASSWORD>";
 
 		} else {
