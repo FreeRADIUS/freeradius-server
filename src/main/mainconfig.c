@@ -1496,6 +1496,9 @@ int free_mainconfig(void)
 	cf_section_free(&mainconfig.config);
 	realm_free(mainconfig.realms);
 	clients_free(mainconfig.clients);
+	read_naslist_file(NULL);
+
+	dict_free();
 
 	return 0;
 }
