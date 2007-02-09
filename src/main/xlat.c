@@ -418,7 +418,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			     int *open, REQUEST *request,
 			     RADIUS_ESCAPE_STRING func)
 {
-	char attrname[256];
+	char attrname[4096];
 	const char *p;
 	char *q, *pa;
 	int stop=0, found=0, retlen=0;
