@@ -174,21 +174,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	}
 
 	if (pid > 0) {
-		int found = 0;
-
-		/*
-		 *	Parent - Wait for checkrad to terminate.
-		 *	We timeout in 10 seconds.
-		 */
-		child_pid = -1;
-		for (n = 0; n < 10; n++) {
-			sleep(1);
-			child_pid = rad_waitpid(pid, &status, WNOHANG);
-			if ((child_pid < 0) || (child_pid == pid)) {
-				found = 1;
-				break;
-			}
-		}
+		child_pid = rad_waitpid(pid, &status);
 
 		/*
 		 *	It's taking too long.  Stop waiting for it.
@@ -196,7 +182,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 		 *	Don't bother to kill it, as we don't care what
 		 *	happens to it now.
 		 */
-		if (!found) {
+		if (child_pid == 0) {
 			radlog(L_ERR, "Check-TS: timeout waiting for checkrad");
 			return 2;
 		}

@@ -271,7 +271,7 @@ static void reap_children(void)
 		
 		tf->status = status;
 		tf->exited = 1;
-	} while (lrad_hash_table_num_elements(thread_pool.waiters));
+	} while (lrad_hash_table_num_elements(thread_pool.waiters) > 0);
 
 	pthread_mutex_unlock(&thread_pool.wait_mutex);
 }
@@ -853,6 +853,13 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	if (!thread_pool.spawn_flag) {
 		request->finished = rad_respond(request, fun);
+		
+		/*
+		 *	Requests that care about child process exit
+		 *	codes have already either called
+		 *	rad_waitpid(), or they've given up.
+		 */
+		wait(NULL);
 		return 1;
 	}
 
@@ -1052,6 +1059,7 @@ pid_t rad_fork(void)
 {
 	pid_t child_pid;
 
+	if (!pool_initialized) return fork();
 
 	reap_children();	/* be nice to non-wait thingies */
 
@@ -1072,16 +1080,8 @@ pid_t rad_fork(void)
 		
 		tf->pid = child_pid;
 
-		/*
-		 *	Lock the mutex.
-		 */
 		pthread_mutex_lock(&thread_pool.wait_mutex);
-
 		rcode = lrad_hash_table_insert(thread_pool.waiters, tf);
-
-		/*
-		 *	Unlock the mutex.
-		 */
 		pthread_mutex_unlock(&thread_pool.wait_mutex);
 
 		if (!rcode) {
@@ -1096,40 +1096,48 @@ pid_t rad_fork(void)
 	return child_pid;
 }
 
+
 /*
- *	We may not need this any more...
+ *	Wait 10 seconds at most for a child to exit, then give up.
  */
-pid_t rad_waitpid(pid_t pid, int *status, int options)
+pid_t rad_waitpid(pid_t pid, int *status)
 {
+	int i;
 	thread_fork_t mytf, *tf;
 
-	reap_children();	/* be nice to non-wait thingies */
+	if (!pool_initialized) return waitpid(pid, status, 0);
 
 	if (pid <= 0) return -1;
-
-	if ((options & WNOHANG) == 0) return -1;
 
 	mytf.pid = pid;
 
 	pthread_mutex_lock(&thread_pool.wait_mutex);
 	tf = lrad_hash_table_finddata(thread_pool.waiters, &mytf);
+	pthread_mutex_unlock(&thread_pool.wait_mutex);
 
-	if (!tf) {		/* not found.  It's a problem... */
-		pthread_mutex_unlock(&thread_pool.wait_mutex);
-		return waitpid(pid, status, options);
-	}
+	if (!tf) return -1;
+	
+	for (i = 0; i < 100; i++) {
+		reap_children();
+		
+		if (tf->exited) {
+			*status = tf->status;
 
-	if (tf->exited) {
-		*status = tf->status;
-		lrad_hash_table_delete(thread_pool.waiters, &mytf);
-		pthread_mutex_unlock(&thread_pool.wait_mutex);
-		return pid;
+			pthread_mutex_lock(&thread_pool.wait_mutex);
+			lrad_hash_table_delete(thread_pool.waiters, &mytf);
+			pthread_mutex_unlock(&thread_pool.wait_mutex);
+			return pid;
+		}
+		usleep(100000);	/* sleep for 1/10 of a second */
 	}
 	
 	/*
-	 *	Don't wait, and it hasn't exited.  Return.
+	 *	10 seconds have passed, give up on the child.
 	 */
+	pthread_mutex_lock(&thread_pool.wait_mutex);
+	lrad_hash_table_delete(thread_pool.waiters, &mytf);
 	pthread_mutex_unlock(&thread_pool.wait_mutex);
+
 	return 0;
 }
 

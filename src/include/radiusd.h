@@ -449,12 +449,12 @@ extern		int thread_pool_init(int spawn_flag);
 extern		int thread_pool_clean(time_t now);
 extern		int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
 extern		pid_t rad_fork(void);
-extern		pid_t rad_waitpid(pid_t pid, int *status, int options);
+extern		pid_t rad_waitpid(pid_t pid, int *status);
 extern          int total_active_threads(void);
 
 #ifndef HAVE_PTHREAD_H
 #define rad_fork(n) fork()
-#define rad_waitpid waitpid
+#define rad_waitpid(a,b) waitpid(a,b, 0)
 #endif
 
 /* mainconfig.c */
