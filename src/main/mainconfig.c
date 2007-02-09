@@ -1498,7 +1498,12 @@ int free_mainconfig(void)
 	clients_free(mainconfig.clients);
 	read_naslist_file(NULL);
 
+	rl_free();
+	listen_free(mainconfig.listen);
+	paircompare_builtin_free();
+	xlat_free();
 	dict_free();
+	lt_dlexit();
 
 	return 0;
 }

@@ -250,6 +250,12 @@ static int proxy_cmp(const void *one, const void *two)
 	return 0;
 }
 
+void rl_free(void)
+{
+	rbtree_free(request_tree);
+	rbtree_free(proxy_tree);
+}
+
 
 /*
  *	Initialize the request list.

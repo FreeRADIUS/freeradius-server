@@ -69,6 +69,8 @@ int read_naslist_file(char *file)
 	nas_free(naslist);
 	naslist = NULL;
 
+	if (!file) return 0;
+
 	if ((fp = fopen(file, "r")) == NULL) {
 		/* The naslist file is no longer required.  All configuration
 		   information comes from radiusd.conf.  If naslist exists it

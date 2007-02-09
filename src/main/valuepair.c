@@ -736,6 +736,18 @@ void pair_builtincompare_init(void)
 	paircompare_register(PW_RESPONSE_PACKET_TYPE, 0, responsecmp, NULL);
 }
 
+void paircompare_builtin_free(void)
+{
+	struct cmp *c, *next;
+	
+	for (c = cmp; c != NULL; c = next) {
+		next = c->next;
+		free(c);
+	}
+}
+
+
+
 /*
  *	Move pairs, replacing/over-writing them, and doing xlat.
  */
