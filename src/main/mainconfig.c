@@ -1224,6 +1224,26 @@ CONF_SECTION *read_radius_conf_file(void)
 {
 	char buffer[256];
 	CONF_SECTION *cs;
+	struct stat statbuf;
+
+	if (stat(radius_dir, &statbuf) < 0) {
+		radlog(L_ERR|L_CONS, "Errors reading %s: %s",
+		       radius_dir, strerror(errno));
+		return NULL;
+	}
+
+	if ((statbuf.st_mode & S_IWOTH) != 0) {
+		radlog(L_ERR|L_CONS, "Configuration directory %s is globally writable.  Refusing to start due to insecure configuration.",
+		       radius_dir);
+	  return NULL;
+	}
+
+
+	if (0 && (statbuf.st_mode & S_IROTH) != 0) {
+		radlog(L_ERR|L_CONS, "Configuration directory %s is globally readable.  Refusing to start due to insecure configuration.",
+		       radius_dir);
+		return NULL;
+	}
 
 	/* Lets go look for the new configuration files */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_CONFIG);

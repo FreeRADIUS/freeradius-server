@@ -836,7 +836,7 @@ CONF_SECTION *conf_read(const char *fromfile, int fromline,
 			return NULL;
 		}
 
-		if ((statbuf.st_mode & S_IROTH) != 0) {
+		if (0 && (statbuf.st_mode & S_IROTH) != 0) {
 			radlog(L_ERR|L_CONS, "%sConfiguration file %s is globally readable.  Refusing to start due to insecure configuration.",
 			       buf[0] ? buf : "", conffile);
 			return NULL;
