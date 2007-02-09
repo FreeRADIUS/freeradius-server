@@ -1053,6 +1053,9 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 					     PW_USER_NAME);
 		request->password = pairfind(request->packet->vps,
 					     PW_USER_PASSWORD);
+		if (!request->password)
+			request->password = pairfind(request->packet->vps,
+						     PW_CHAP_PASSWORD);
 	}
 
 	if ((get_hv_content(rad_reply_hv, &vp)) > 0 ) {
