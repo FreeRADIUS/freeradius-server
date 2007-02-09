@@ -551,20 +551,25 @@ int lrad_hash_table_delete(lrad_hash_table_t *ht, const void *data)
  */
 void lrad_hash_table_free(lrad_hash_table_t *ht)
 {
+	int i;
 	lrad_hash_entry_t *node, *next;
 
 	if (!ht) return;
 
 	/*
-	 *	The entries MUST be all in one linked list.
+	 *	Walk over the buckets, freeing them all.
 	 */
-	for (node = ht->buckets[0]; node != &ht->null; node = next) {
-		next = node->next;
-
-		if (!node->data) continue; /* dummy entry */
-
-		if (ht->free) ht->free(node->data);
-		free(node);
+	for (i = 0; i < ht->num_buckets; i++) {
+		if (ht->buckets[i]) for (node = ht->buckets[i];
+					 node != &ht->null;
+					 node = next) {
+			next = node->next;
+			
+			if (!node->data) continue; /* dummy entry */
+			
+			if (ht->free) ht->free(node->data);
+			free(node);
+		}
 	}
 
 	free(ht->buckets);
@@ -792,7 +797,7 @@ uint32_t lrad_hash_string(const char *p)
 
 #ifdef TESTING
 /*
- *  cc -DTESTING -I .. hash.c -o hash
+ *  cc -g -DTESTING -I ../include hash.c -o hash
  *
  *  ./hash
  */
