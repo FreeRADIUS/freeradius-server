@@ -184,11 +184,11 @@ void rl_deinit(request_list_t *rl)
 
 	lrad_packet_list_free(rl->pl);
 
-
 	/*
 	 *	Just to ensure no one is using the memory.
 	 */
 	memset(rl, 0, sizeof(*rl));
+	free(rl);
 }
 
 

@@ -167,6 +167,7 @@ static void module_entry_free(void *data)
 int detach_modules(void)
 {
 	lrad_hash_table_free(components);
+	rbtree_free(module_tree);
 
 	return 0;
 }

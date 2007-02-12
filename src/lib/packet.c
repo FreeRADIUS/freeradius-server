@@ -519,6 +519,7 @@ void lrad_packet_list_free(lrad_packet_list_t *pl)
 
 	if (pl->ht) lrad_hash_table_free(pl->ht);
 	if (pl->dst2id_ht) lrad_hash_table_free(pl->dst2id_ht);
+	free(pl);
 }
 
 

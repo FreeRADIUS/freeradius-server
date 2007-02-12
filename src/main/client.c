@@ -133,6 +133,7 @@ void clients_free(RADCLIENT_LIST *clients)
 #ifdef WITH_SNMP
 	if (clients->num) rbtree_free(clients->num);
 #endif
+	free(clients);
 }
 
 /*
