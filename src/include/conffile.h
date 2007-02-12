@@ -52,13 +52,8 @@ void		cf_pair_free(CONF_PAIR **cp);
 void		cf_section_free(CONF_SECTION **cp);
 int		cf_item_parse(CONF_SECTION *cs, const char *name,
 			      int type, void *data, const char *dflt);
-int		cf_section_parse(const CONF_SECTION *, void *base,
+int		cf_section_parse(CONF_SECTION *, void *base,
 				 const CONF_PARSER *variables);
-/*
- *	Free strings we've parsed into a structure.
- */
-void		cf_section_parse_free_strings(void *base,
-					      const CONF_PARSER *variables);
 CONF_SECTION	*cf_file_read(const char *file);
 int		cf_file_include(const char *file, CONF_SECTION *cs);
 

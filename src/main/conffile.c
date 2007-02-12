@@ -81,6 +81,8 @@ struct conf_part {
 	rbtree_t	*section_tree; /* no jokes here */
 	rbtree_t	*name2_tree; /* for sections of the same name2 */
 	rbtree_t	*data_tree;
+	void *base;
+	const CONF_PARSER *variables;
 };
 
 
@@ -262,6 +264,50 @@ static int data_cmp(const void *a, const void *b)
 	return strcmp(one->name, two->name);
 }
 
+
+/*
+ *	Free strings we've parsed into data structures.
+ */
+static void cf_section_parse_free(void *base, const CONF_PARSER *variables)
+{
+	int i;
+
+	/*
+	 *	Don't automatically free the strings if we're being
+	 *	called from a module.
+	 */
+	if (base || !variables) return;
+	
+	/*
+	 *	Free up dynamically allocated string pointers.
+	 */
+	for (i = 0; variables[i].name != NULL; i++) {
+		char **p;
+
+		if (variables[i].type != PW_TYPE_STRING_PTR) {
+			continue;
+		}
+
+		/*
+		 *	Prefer the data, if it's there.
+		 *	Else use the base + offset.
+		 */
+		if (!variables[i].data) {
+			continue;
+		}
+
+		/*
+		 *	FIXME: Add base
+		 */
+		p = (char **) (variables[i].data);
+
+
+		free(*p);
+		*p = NULL;
+	}
+}
+
+
 /*
  *	Free a CONF_SECTION
  */
@@ -270,6 +316,10 @@ void cf_section_free(CONF_SECTION **cs)
 	CONF_ITEM	*ci, *next;
 
 	if (!cs || !*cs) return;
+
+	if ((*cs)->variables) {
+		cf_section_parse_free((*cs)->base, (*cs)->variables);
+	}
 
 	for (ci = (*cs)->children; ci; ci = next) {
 		next = ci->next;
@@ -842,7 +892,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 /*
  *	Parse a configuration section into user-supplied variables.
  */
-int cf_section_parse(const CONF_SECTION *cs, void *base,
+int cf_section_parse(CONF_SECTION *cs, void *base,
 		     const CONF_PARSER *variables)
 {
 	int i;
@@ -870,11 +920,13 @@ int cf_section_parse(const CONF_SECTION *cs, void *base,
 
 			if (!variables[i].dflt) {
 				DEBUG2("Internal sanity check 1 failed in cf_section_parse");
+				cf_section_parse_free(base, variables);
 				return -1;
 			}
 			
 			if (cf_section_parse(subcs, base,
 					     (const CONF_PARSER *) variables[i].dflt) < 0) {
+				cf_section_parse_free(base, variables);
 				return -1;
 			}
 			continue;
@@ -886,6 +938,7 @@ int cf_section_parse(const CONF_SECTION *cs, void *base,
 			data = ((char *)base) + variables[i].offset;
 		} else {
 			DEBUG2("Internal sanity check 2 failed in cf_section_parse");
+			cf_section_parse_free(base, variables);
 			return -1;
 		}
 
@@ -894,46 +947,15 @@ int cf_section_parse(const CONF_SECTION *cs, void *base,
 		 */
 		if (cf_item_parse(cs, variables[i].name, variables[i].type,
 				  data, variables[i].dflt) < 0) {
+			cf_section_parse_free(base, variables);
 			return -1;
 		}
 	} /* for all variables in the configuration section */
 
+	cs->base = base;
+	cs->variables = variables;
+
 	return 0;
-}
-
-
-/*
- *	Free strings we've parsed into data structures.
- */
-void cf_section_parse_free_strings(void *base, const CONF_PARSER *variables)
-{
-	int i;
-
-	if (!variables) return;
-	
-	/*
-	 *	Free up dynamically allocated string pointers.
-	 */
-	for (i = 0; variables[i].name != NULL; i++) {
-		char **p;
-
-		if ((variables[i].type != PW_TYPE_STRING_PTR) &&
-		    (variables[i].type != PW_TYPE_FILENAME)) {
-			continue;
-		}
-		
-		/*
-		 *	Prefer the data, if it's there.
-		 *	Else use the base + offset.
-		 */
-		if (variables[i].data) {
-			p = (char **) &(variables[i].data);
-		} else {
-			p = (char **) (((char *)base) + variables[i].offset);
-		}
-		free(*p);
-		*p = NULL;
-	}
 }
 
 
