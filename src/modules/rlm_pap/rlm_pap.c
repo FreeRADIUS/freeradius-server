@@ -212,8 +212,6 @@ static int base64_decode (const char *src, uint8_t *dst)
 	length = equals = 0;
 	while (src[length] && src[length] != '=') length++;
 
-	if (src[length] != '=') return 0; /* no trailing '=' */
-
 	while (src[length + equals] == '=') equals++;
 
 	num = (length + equals) / 4;
