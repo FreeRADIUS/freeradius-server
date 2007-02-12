@@ -72,6 +72,8 @@ struct conf_part {
 	CONF_ITEM item;
 	char *name1;
 	char *name2;
+	void *base;
+	const CONF_PARSER *variables;
 	struct conf_item *children;
 };
 
@@ -145,6 +147,49 @@ void cf_pair_free(CONF_PAIR **cp)
 }
 
 /*
+ *	Free strings we've parsed into data structures.
+ */
+static void cf_section_parse_free(void *base, const CONF_PARSER *variables)
+{
+	int i;
+
+	/*
+	 *	Don't automatically free the strings if we're being
+	 *	called from a module.
+	 */
+	if (base || !variables) return;
+	
+	/*
+	 *	Free up dynamically allocated string pointers.
+	 */
+	for (i = 0; variables[i].name != NULL; i++) {
+		char **p;
+
+		if (variables[i].type != PW_TYPE_STRING_PTR) {
+			continue;
+		}
+
+		/*
+		 *	Prefer the data, if it's there.
+		 *	Else use the base + offset.
+		 */
+		if (!variables[i].data) {
+			continue;
+		}
+
+		/*
+		 *	FIXME: Add base
+		 */
+		p = (char **) (variables[i].data);
+
+
+		free(*p);
+		*p = NULL;
+	}
+}
+
+
+/*
  *	Allocate a CONF_SECTION
  */
 static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
@@ -173,6 +218,10 @@ void cf_section_free(CONF_SECTION **cs)
 	CONF_ITEM	*ci, *next;
 
 	if (!cs || !*cs) return;
+
+	if ((*cs)->variables) {
+		cf_section_parse_free((*cs)->base, (*cs)->variables);
+	}
 
 	for (ci = (*cs)->children; ci; ci = next) {
 		next = ci->next;
@@ -417,6 +466,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 	return output;
 }
 
+
 /*
  *	Parse a configuration section into user-supplied variables.
  */
@@ -468,8 +518,9 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			}
 
 			rcode = cf_section_parse(subsection, base,
-					(CONF_PARSER *) data);
+						 (CONF_PARSER *) data);
 			if (rcode < 0) {
+				cf_section_parse_free(base, variables);
 				return -1;
 			}
 			break;
@@ -487,6 +538,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			} else {
 				*(int *)data = 0;
 				radlog(L_ERR, "Bad value \"%s\" for boolean variable %s", value, variables[i].name);
+				cf_section_parse_free(base, variables);
 				return -1;
 			}
 			DEBUG2(" %s: %s = %s",
@@ -519,6 +571,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 							    &cs->item.lineno,
 							    cs, buffer, value);
 				if (!value) {
+					cf_section_parse_free(base, variables);
 					return -1;
 				}
 			}
@@ -541,6 +594,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			ipaddr = ip_getaddr(value);
 			if (ipaddr == 0) {
 				radlog(L_ERR, "Can't find IP address for host %s", value);
+				cf_section_parse_free(base, variables);
 				return -1;
 			}
 			DEBUG2(" %s: %s = %s IP address [%s]",
@@ -552,13 +606,18 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 
 		default:
 			radlog(L_ERR, "type %d not supported yet", variables[i].type);
+			cf_section_parse_free(base, variables);
 			return -1;
 			break;
 		} /* switch over variable type */
 	} /* for all variables in the configuration section */
 
+	cs->base = base;
+	cs->variables = variables;
+
 	return 0;
 }
+
 
 /*
  *	Read a part of the config file.
