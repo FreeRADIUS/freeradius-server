@@ -1147,6 +1147,7 @@ int read_mainconfig(int reload)
 		 */
 		old_clients = mainconfig.clients;
 		mainconfig.clients = clients;
+		clients_free(old_clients);
 	}
 
 	rl_init_proxy();
@@ -1172,6 +1173,9 @@ int free_mainconfig(void)
 	cf_section_free(&mainconfig.config);
 	realm_free(mainconfig.realms);
 	listen_free(&mainconfig.listen);
+	xlat_free();
+	dict_free();
+	lt_dlexit();
 
 	return 0;
 }
