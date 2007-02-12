@@ -277,14 +277,14 @@ static void cf_section_parse_free(void *base, const CONF_PARSER *variables)
 	 *	called from a module.
 	 */
 	if (base || !variables) return;
-	
+
 	/*
 	 *	Free up dynamically allocated string pointers.
 	 */
 	for (i = 0; variables[i].name != NULL; i++) {
 		char **p;
 
-		if ((variables[i].type != PW_TYPE_STRING_PTR) ||
+		if ((variables[i].type != PW_TYPE_STRING_PTR) &&
 		    (variables[i].type != PW_TYPE_FILENAME)) {
 			continue;
 		}
