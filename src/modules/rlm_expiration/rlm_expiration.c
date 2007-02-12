@@ -149,7 +149,7 @@ static int expiration_detach(void *instance)
 {
 	rlm_expiration_t *data = (rlm_expiration_t *) instance;
 
-	paircompare_unregister(PW_CURRENT_TIME, expirecmp);
+	paircompare_unregister(PW_EXPIRATION, expirecmp);
 	if (data->msg)
 		free(data->msg);
 	free(instance);
