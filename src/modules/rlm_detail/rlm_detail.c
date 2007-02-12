@@ -107,6 +107,8 @@ static int detail_detach(void *instance)
 
 	free((char*) inst->last_made_directory);
 
+	free((char*) inst->header);
+
 	if (inst->ht) lrad_hash_table_free(inst->ht);
 
         free(inst);
