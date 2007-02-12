@@ -253,6 +253,7 @@ static int proxy_cmp(const void *one, const void *two)
 void rl_free(void)
 {
 	rbtree_free(request_tree);
+	rbtree_free(proxy_id_tree);
 	rbtree_free(proxy_tree);
 }
 
