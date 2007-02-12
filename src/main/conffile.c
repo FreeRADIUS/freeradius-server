@@ -279,7 +279,7 @@ static void cf_section_parse_free(void *base, const CONF_PARSER *variables)
 	 *	client structure.  If we moved everything to key off
 	 *	of the config files, we might solve some problems...
 	 */
-	if (base || !variables) return;
+	if (!variables) return;
 
 	/*
 	 *	Free up dynamically allocated string pointers.
@@ -302,9 +302,9 @@ static void cf_section_parse_free(void *base, const CONF_PARSER *variables)
 				continue;
 			}
 
-			p = (char **) (variables[i].data);
+			p = (char **) variables[i].data;;
 		} else {
-			p = (char **) ((char *)base) + variables[i].offset;
+			p = (char **) (((char *)base) + variables[i].offset);
 		}
 
 		free(*p);
