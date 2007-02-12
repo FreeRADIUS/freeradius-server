@@ -103,12 +103,7 @@ static const CONF_PARSER module_config[] = {
 static int detail_detach(void *instance)
 {
         struct detail_instance *inst = instance;
-	free((char *) inst->detailfile);
-
 	free((char*) inst->last_made_directory);
-
-	free((char*) inst->header);
-
 	if (inst->ht) lrad_hash_table_free(inst->ht);
 
         free(inst);

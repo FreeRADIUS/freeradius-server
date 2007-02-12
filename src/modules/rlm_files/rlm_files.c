@@ -330,14 +330,6 @@ static int file_detach(void *instance)
 	lrad_hash_table_free(inst->auth_users);
 	lrad_hash_table_free(inst->postproxy_users);
 	lrad_hash_table_free(inst->postauth_users);
-	free(inst->key);
-	free(inst->usersfile);
-	free(inst->acctusersfile);
-	free(inst->preproxy_usersfile);
-	free(inst->auth_usersfile);
-	free(inst->postproxy_usersfile);
-	free(inst->postauth_usersfile);
-	free(inst->compat_mode);
 	free(inst);
 	return 0;
 }

@@ -433,8 +433,6 @@ static int realm_preacct(void *instance, REQUEST *request)
 static int realm_detach(void *instance)
 {
 	struct realm_config_t *inst = instance;
-	free(inst->formatstring);
-	free(inst->delim);
 	free(instance);
 	return 0;
 }

@@ -200,9 +200,13 @@ static int example_checksimul(void *instance, REQUEST *request)
   return RLM_MODULE_OK;
 }
 
+
+/*
+ *	Only free memory we allocated.  The strings allocated via
+ *	cf_section_parse() do not need to be freed.
+ */
 static int example_detach(void *instance)
 {
-	free(((struct rlm_example_t *)instance)->string);
 	free(instance);
 	return 0;
 }
