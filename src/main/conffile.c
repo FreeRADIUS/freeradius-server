@@ -274,7 +274,10 @@ static void cf_section_parse_free(void *base, const CONF_PARSER *variables)
 
 	/*
 	 *	Don't automatically free the strings if we're being
-	 *	called from a module.
+	 *	called from a module.  This is also for clients.c,
+	 *	where client_free() expects to be able to free the
+	 *	client structure.  If we moved everything to key off
+	 *	of the config files, we might solve some problems...
 	 */
 	if (base || !variables) return;
 
@@ -290,18 +293,19 @@ static void cf_section_parse_free(void *base, const CONF_PARSER *variables)
 		}
 
 		/*
-		 *	Prefer the data, if it's there.
-		 *	Else use the base + offset.
+		 *	No base struct offset, data must be the pointer.
+		 *	If data doesn't exist, ignore the entry, there
+		 *	must be something wrong.
 		 */
-		if (!variables[i].data) {
-			continue;
+		if (!base) {
+			if (!variables[i].data) {
+				continue;
+			}
+
+			p = (char **) (variables[i].data);
+		} else {
+			p = (char **) ((char *)base) + variables[i].offset;
 		}
-
-		/*
-		 *	FIXME: Add base
-		 */
-		p = (char **) (variables[i].data);
-
 
 		free(*p);
 		*p = NULL;
