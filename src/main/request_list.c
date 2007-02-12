@@ -140,9 +140,8 @@ int rl_init_proxy(void)
 
 static int rl_free_entry(void *ctx, void *data)
 {
-	REQUEST *request = data;
-	
 	ctx = ctx;		/* -Wunused */
+	REQUEST *request = lrad_packet2myptr(REQUEST, packet, data);
 
 #ifdef HAVE_PTHREAD_H 
 	/*
@@ -180,7 +179,7 @@ void rl_deinit(request_list_t *rl)
 	/*
 	 *	Delete everything in the table, too.
 	 */
-	lrad_packet_list_walk(rl->pl, rl_free_entry, NULL);
+	lrad_packet_list_walk(rl->pl, NULL, rl_free_entry);
 
 	lrad_packet_list_free(rl->pl);
 
