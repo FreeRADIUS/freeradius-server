@@ -2346,6 +2346,8 @@ lt_dlexit ()
 	  LT_DLMEM_REASSIGN (loader, next);
 	}
       loaders = 0;
+
+      LT_DLFREE (user_search_path);
     }
 
  done:
@@ -3042,6 +3044,7 @@ try_dlopen (phandle, filename)
   char *	dir		= 0;
   char *	name		= 0;
   int		errors		= 0;
+  int		free_base_name  = 0;
   lt_dlhandle	newhandle;
 
   assert (phandle);
@@ -3100,8 +3103,10 @@ try_dlopen (phandle, filename)
 
       ++base_name;
     }
-  else
+  else {
     LT_DLMEM_REASSIGN (base_name, canonical);
+    free_base_name = 1;
+  }
 
   assert (base_name && *base_name);
 
@@ -3402,6 +3407,7 @@ try_dlopen (phandle, filename)
   LT_DLFREE (dir);
   LT_DLFREE (name);
   LT_DLFREE (canonical);
+  if (free_base_name) LT_DLFREE (base_name);
 
   return errors;
 }
