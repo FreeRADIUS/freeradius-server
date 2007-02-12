@@ -346,7 +346,6 @@ static int realm_instantiate(CONF_SECTION *conf, void **instance)
 	     free(inst);
 	     return -1;
 	}
-	free(inst->formatstring);
 	if(strlen(inst->delim) != 1) {
 	     radlog(L_ERR, "Bad value \"%s\" for realm delimiter value", inst->delim);
 	     free(inst);
@@ -434,6 +433,7 @@ static int realm_preacct(void *instance, REQUEST *request)
 static int realm_detach(void *instance)
 {
 	struct realm_config_t *inst = instance;
+	free(inst->formatstring);
 	free(inst->delim);
 	free(instance);
 	return 0;
