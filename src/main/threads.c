@@ -728,6 +728,12 @@ int thread_pool_init(int spawn_flag)
 	now = time(NULL);
 
 	/*
+	 *	We're not spawning new threads, don't do
+	 *	anything.
+	 */
+	if (!spawn_flag) return 0;
+
+	/*
 	 *	After a SIGHUP, we don't over-write the previous values.
 	 */
 	if (!pool_initialized) {
@@ -759,12 +765,6 @@ int thread_pool_init(int spawn_flag)
 			exit(1);
 		}
 	}
-
-	/*
-	 *	We're not spawning new threads, don't do
-	 *	anything.
-	 */
-	if (!spawn_flag) return 0;
 
 	pool_cf = cf_section_find("thread");
 	if (pool_cf != NULL) {
