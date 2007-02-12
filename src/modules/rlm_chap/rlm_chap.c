@@ -88,12 +88,12 @@ static int chap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	if (request->password->length == 0) {
+	if (chap->length == 0) {
 		radlog(L_ERR, "rlm_chap: empty password supplied");
 		return RLM_MODULE_INVALID;
 	}
 
-	if (request->password->length != CHAP_VALUE_LENGTH + 1) {
+	if (chap->length != CHAP_VALUE_LENGTH + 1) {
 		radlog(L_ERR, "rlm_chap: password supplied has wrong length");
 		return RLM_MODULE_INVALID;
 	}
@@ -118,9 +118,9 @@ static int chap_authenticate(void *instance, REQUEST *request)
 	      passwd_item->vp_strvalue, request->username->vp_strvalue);
 
 	rad_chap_encode(request->packet,pass_str,
-			request->password->vp_octets[0],passwd_item);
+			chap->vp_octets[0],passwd_item);
 
-	if (memcmp(pass_str + 1, request->password->vp_octets + 1,
+	if (memcmp(pass_str + 1, chap->vp_octets + 1,
 		   CHAP_VALUE_LENGTH) != 0){
 		DEBUG("  rlm_chap: Password check failed");
 		snprintf(module_fmsg, sizeof(module_fmsg),
