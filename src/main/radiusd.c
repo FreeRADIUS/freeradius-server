@@ -105,6 +105,7 @@ static int dont_fork = FALSE;
 static time_t start_time = 0;
 static int spawn_flag = TRUE;
 static int do_exit = 0;
+static int debug_memory = 0;
 
 /*
  *	Static functions.
@@ -826,7 +827,7 @@ int main(int argc, char *argv[])
 #endif
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:p:sSvxXyz")) != EOF) {
+	while ((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:mp:sSvxXyz")) != EOF) {
 
 		switch(argval) {
 
@@ -874,6 +875,10 @@ int main(int argc, char *argv[])
 				 */
 			case 'g':
 				syslog_facility = str2fac(optarg);
+				break;
+
+			case 'm':
+				debug_memory = 1;
 				break;
 
 			case 'S':
@@ -1137,7 +1142,7 @@ int main(int argc, char *argv[])
 	 *	server to die immediately.  Use SIGTERM to shut down
 	 *	the server cleanly in that case.
 	 */
-	if (debug_flag == 0) {
+	if ((debug_memory == 1) || (debug_flag == 0)) {
 #ifdef HAVE_SIGACTION
 	        act.sa_handler = sig_fatal;
 		sigaction(SIGINT, &act, NULL);
@@ -1203,6 +1208,7 @@ int main(int argc, char *argv[])
 			 *	Free the configuration items.
 			 */
 			free_mainconfig();
+			free(radius_dir);
 
 			/*
 			 *	SIGTERM gets do_exit=0,
@@ -1948,6 +1954,13 @@ static void sig_fatal(int sig)
 		case SIGTERM:
 			do_exit = 1;
 			break;
+		case SIGINT:
+		case SIGQUIT:
+			if (debug_memory) {
+				do_exit = 1;
+				break;
+			}
+
 		default:
 			do_exit = 2;
 			break;
