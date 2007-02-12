@@ -311,6 +311,7 @@ static int logintime_detach(void *instance)
 	rlm_logintime_t *data = (rlm_logintime_t *) instance;
 
 	paircompare_unregister(PW_CURRENT_TIME, timecmp);
+	paircompare_unregister(PW_TIME_OF_DAY, time_of_day);
 	if (data->msg)
 		free(data->msg);
 	free(instance);
