@@ -90,6 +90,7 @@ const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host 
 
 time_t time_now;
 static pid_t radius_pid;
+static int debug_memory = 0;
 
 /*
  *  Configuration items.
@@ -162,7 +163,7 @@ int main(int argc, char *argv[])
 	mainconfig.log_file = NULL;
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:n:p:sSvxXyz")) != EOF) {
+	while ((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:mn:p:sSvxXyz")) != EOF) {
 
 		switch(argval) {
 
@@ -213,6 +214,10 @@ int main(int argc, char *argv[])
 			case 'g':
 				fprintf(stderr, "radiusd: -g is unsupported.  Use log_destination in radiusd.conf.\n");
 				exit(1);
+				break;
+
+			case 'm':
+				debug_memory = 1;
 				break;
 
 			case 'n':
@@ -450,7 +455,7 @@ int main(int argc, char *argv[])
 	 *	server to die immediately.  Use SIGTERM to shut down
 	 *	the server cleanly in that case.
 	 */
-	if (debug_flag == 0) {
+	if ((debug_memory == 1) || (debug_flag == 0)) {
 #ifdef HAVE_SIGACTION
 	        act.sa_handler = sig_fatal;
 		sigaction(SIGINT, &act, NULL);
@@ -493,11 +498,6 @@ int main(int argc, char *argv[])
 			 */
 
 			/*
-			 *	Detach any modules.
-			 */
-			detach_modules();
-
-			/*
 			 *	FIXME: clean up any active REQUEST
 			 *	handles.
 			 */
@@ -515,6 +515,13 @@ int main(int argc, char *argv[])
 			 *	Free the configuration items.
 			 */
 			free_mainconfig();
+
+			/*
+			 *	Detach any modules.
+			 */
+			detach_modules();
+
+			free(radius_dir);
 
 			/*
 			 *	SIGTERM gets do_exit=0,
@@ -613,8 +620,6 @@ int main(int argc, char *argv[])
 				 */
 				detach_modules();
 				free_mainconfig();
-				xlat_free();
-				dict_free();
 				exit(1);
 #endif
 				continue;
@@ -782,6 +787,13 @@ static void sig_fatal(int sig)
 		case SIGTERM:
 			do_exit = 1;
 			break;
+		case SIGINT:
+		case SIGQUIT:
+			if (debug_memory) {
+				do_exit = 1;
+				break;
+			}
+
 		default:
 			do_exit = 2;
 			break;
