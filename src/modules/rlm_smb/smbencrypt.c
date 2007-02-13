@@ -37,7 +37,6 @@ extern int DEBUGLEVEL;
 
 #include "byteorder.h"
 
-char *StrnCpy(char *dest,char *src,int n);
 void strupper(char *s);
 
 /*
@@ -50,7 +49,7 @@ void SMBencrypt(uchar *passwd, uchar *c8, uchar *p24)
 
   memset(p21,'\0',21);
   memset(p14,'\0',14);
-  StrnCpy((char *)p14,(char *)passwd,14);
+  strlcpy((char *)p14,(char *)passwd,14);
 
   strupper((char *)p14);
   E_P16(p14, p21);
@@ -128,7 +127,7 @@ void SMBNTencrypt(uchar *passwd, uchar *c8, uchar *p24)
 void nt_lm_owf_gen(char *pwd, char *nt_p16, char *p16)
 {
 	char passwd[130];
-	StrnCpy(passwd, pwd, sizeof(passwd)-1);
+	strlcpy(passwd, pwd, sizeof(passwd));
 
 	/* Calculate the MD4 hash (NT compatible) of the password */
 	memset(nt_p16, '\0', 16);
@@ -145,22 +144,6 @@ void nt_lm_owf_gen(char *pwd, char *nt_p16, char *p16)
 
 	/* clear out local copy of user's password (just being paranoid). */
 	bzero(passwd, sizeof(passwd));
-}
-
-/****************************************************************************
-line strncpy but always null terminates. Make sure there is room!
-****************************************************************************/
-char *StrnCpy(char *dest,char *src,int n)
-{
-  char *d = dest;
-  if (!dest) return(NULL);
-  if (!src) {
-    *dest = 0;
-    return(dest);
-  }
-  while (n-- && (*d++ = *src++)) ;
-  *d = 0;
-  return(dest);
 }
 
 void strupper(char *s)
