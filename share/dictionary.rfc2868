@@ -37,9 +37,10 @@ VALUE	Tunnel-Type			IP-in-IP		12
 #	Tunnel Medium Type
 
 VALUE	Tunnel-Medium-Type		IP			1
-VALUE	Tunnel-Medium-Type		X25			2
-VALUE	Tunnel-Medium-Type		ATM			3
-VALUE	Tunnel-Medium-Type		Frame-Relay		4
+VALUE	Tunnel-Medium-Type		IPv4			1
+VALUE	Tunnel-Medium-Type		IPv6			2
+VALUE	Tunnel-Medium-Type		NSAP			3
+VALUE	Tunnel-Medium-Type		HDLC			4
 VALUE	Tunnel-Medium-Type		BBN-1822		5
 VALUE	Tunnel-Medium-Type		IEEE-802		6
 VALUE	Tunnel-Medium-Type		E.163			7
