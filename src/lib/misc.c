@@ -64,22 +64,6 @@ const char *ip_ntoa(char *buffer, uint32_t ipaddr)
 }
 
 
-/*
- *	Like strncpy, but always adds \0
- */
-char *strNcpy(char *dest, const char *src, int n)
-{
-	char *p = dest;
-
-	while ((n > 1) && (*src)) {
-		*(p++) = *(src++);
-
-		n--;
-	}
-	*p = '\0';
-
-	return dest;
-}
 
 /*
  *	Internal wrapper for locking, to minimize the number of ifdef's
