@@ -597,7 +597,7 @@ static char *mystrtok(char **ptr, const char *sep)
  *	Turn printable string into time_t
  *	Returns -1 on error, 0 on OK.
  */
-static int gettime(const char *valstr, time_t *lvalue)
+static int gettime(const char *valstr, uint32_t *lvalue)
 {
 	int		i;
 	time_t		t;
@@ -876,7 +876,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 
 		case PW_TYPE_DATE:
-			if (gettime(value, (time_t *)&vp->lvalue) < 0) {
+			if (gettime(value, &vp->lvalue) < 0) {
 				librad_log("failed to parse time string "
 					   "\"%s\"", value);
 				return NULL;
@@ -940,7 +940,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 
 		case PW_TYPE_IFID:
-			if (ifid_aton(value, vp->vp_strvalue) == NULL) {
+			if (ifid_aton(value, (unsigned char *) vp->vp_strvalue) == NULL) {
 				librad_log("failed to parse interface-id "
 					   "string \"%s\"", value);
 				return NULL;
