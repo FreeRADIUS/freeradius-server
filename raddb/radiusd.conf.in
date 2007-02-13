@@ -380,17 +380,19 @@ security {
 	#  status_server: Whether or not the server will respond
 	#  to Status-Server requests.
 	#
-	#  Normally this should be set to "no", because they're useless.
-	#  See: http://www.freeradius.org/rfc/rfc2865.html#Keep-Alives
-	#
-	#  However, certain NAS boxes may require them.	
-	#
 	#  When sent a Status-Server message, the server responds with
-	#  an Access-Accept packet, containing a Reply-Message attribute,
-	#  which is a string describing how long the server has been
-	#  running.
+	#  an Access-Accept or Accounting-Response packet.
 	#
-	status_server = no
+	#  This is mainly useful for administrators who want to "ping"
+	#  the server, without adding test users, or creating fake
+	#  accounting packets.
+	#
+	#  It's also useful when a NAS marks a RADIUS server "dead".
+	#  The NAS can periodically "ping" the server with a Status-Server
+	#  packet.  If the server responds, it must be alive, and the
+	#  NAS can start using it for real requests.
+	#
+	status_server = yes
 }
 
 # PROXY CONFIGURATION
