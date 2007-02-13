@@ -4,8 +4,19 @@ FreeRADIUS 1.1.5 ; $Date$ , urgency=low
 	* Dictionary files now MUST NOT be globally writable.
 	* Configuration files now MUST NOT be globally readable,
 	  or globally writable.
+	* Be more aggressive about freeing memory on clean exit.
+	  This helps track down run-time leaks.
 
 	Bug fixes
+	* Require Message-Authenticator in Status-Server packets
+	* Correct Tunnel-Medium-Type VALUEs in dictionary.rfc2868
+	* Be more aggressibe about freeing memory on clean exit.
+	  This isn't strictly a bug fix, but it makes it easier to
+	  find memory leaks
+	* Increase buffer size for dynamic expansion, which allows
+	  longer SQL qeuries.  (close: #405)
+	* Use correct line number when there's a parse error in one
+	  of the configuration sections. (close #421)
 	* Terminate SSL sessions in EAP on error, rather than continuing
 	  in some cases.
 	* Increase buffer size to allow parsing of long octet strings
