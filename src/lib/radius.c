@@ -1428,7 +1428,8 @@ int rad_packet_ok(RADIUS_PACKET *packet)
 	int			count;
 	radius_packet_t		*hdr;
 	char			host_ipaddr[128];
-	int			seen_eap;
+	int			require_ma = 0;
+	int			seen_ma = 0;
 	int			num_attributes;
 
 	/*
@@ -1482,6 +1483,12 @@ int rad_packet_ok(RADIUS_PACKET *packet)
 			   hdr->code);
 		return 0;
 	}
+
+	/*
+	 *	Message-Authenticator is required in Status-Server
+	 *	packets, otherwise they can be trivially forged.
+	 */
+	if (hdr->code == PW_STATUS_SERVER) require_ma = 1;
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
@@ -1565,7 +1572,6 @@ int rad_packet_ok(RADIUS_PACKET *packet)
 	 */
 	attr = hdr->data;
 	count = totallen - AUTH_HDR_LEN;
-	seen_eap = 0;
 	num_attributes = 0;
 
 	while (count > 0) {
@@ -1600,8 +1606,13 @@ int rad_packet_ok(RADIUS_PACKET *packet)
 		default:	/* don't do anything by default */
 			break;
 
+
+			/*
+			 *	If there's an EAP-Message, we require
+			 *	a Message-Authenticator.
+			 */
 		case PW_EAP_MESSAGE:
-			seen_eap |= PW_EAP_MESSAGE;
+			require_ma = 1;
 			break;
 
 		case PW_MESSAGE_AUTHENTICATOR:
@@ -1613,7 +1624,7 @@ int rad_packet_ok(RADIUS_PACKET *packet)
 					   attr[1] - 2);
 				return 0;
 			}
-			seen_eap |= PW_MESSAGE_AUTHENTICATOR;
+			seen_ma = 1;
 			break;
 		}
 
@@ -1663,11 +1674,12 @@ int rad_packet_ok(RADIUS_PACKET *packet)
 	 *	a Message-Authenticator attribute.
 	 *
 	 *	A Message-Authenticator all by itself is OK, though.
+	 *
+	 *	Similarly, Status-Server packets MUST contain
+	 *	Message-Authenticator attributes.
 	 */
-	if (seen_eap &&
-	    (seen_eap != PW_MESSAGE_AUTHENTICATOR) &&
-	    (seen_eap != (PW_EAP_MESSAGE | PW_MESSAGE_AUTHENTICATOR))) {
-		librad_log("WARNING: Insecure packet from host %s:  Received EAP-Message with no Message-Authenticator.",
+	if (require_ma && ! seen_ma) {
+		librad_log("WARNING: Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
