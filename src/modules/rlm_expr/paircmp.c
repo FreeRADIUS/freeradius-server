@@ -258,3 +258,14 @@ void pair_builtincompare_init(void)
 	paircompare_register(PW_PACKET_TYPE, 0, packetcmp, NULL);
 	paircompare_register(PW_RESPONSE_PACKET_TYPE, 0, responsecmp, NULL);
 }
+
+void pair_builtincompare_detach(void)
+{
+	paircompare_unregister(PW_NAS_PORT, portcmp);
+	paircompare_unregister(PW_PREFIX, presufcmp);
+	paircompare_unregister(PW_SUFFIX, presufcmp);
+	paircompare_unregister(PW_CONNECT_RATE, connectcmp);
+	paircompare_unregister(PW_NO_SUCH_ATTRIBUTE, attrcmp);
+	paircompare_unregister(PW_PACKET_TYPE, packetcmp);
+	paircompare_unregister(PW_RESPONSE_PACKET_TYPE, responsecmp);
+}
