@@ -757,7 +757,7 @@ static int generate_realms(const char *filename)
 				       strlen(s), sizeof(c->secret) - 1);
 				return -1;
 			}
-			strNcpy((char *)c->secret, s, sizeof(c->secret));
+			strlcpy((char *)c->secret, s, sizeof(c->secret));
 		}
 
 		c->striprealm = 1;

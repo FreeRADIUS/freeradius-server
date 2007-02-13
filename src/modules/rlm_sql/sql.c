@@ -408,7 +408,7 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row)
 	}
 	if (do_xlat) {
 		pair->flags.do_xlat = 1;
-		strNcpy(pair->vp_strvalue, buf, sizeof(pair->vp_strvalue));
+		strlcpy(pair->vp_strvalue, buf, sizeof(pair->vp_strvalue));
 		pair->length = 0;
 	}
 

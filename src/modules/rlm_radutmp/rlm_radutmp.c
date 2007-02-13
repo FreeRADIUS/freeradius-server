@@ -317,7 +317,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 				break;
 			case PW_CALLING_STATION_ID:
 				if(inst->callerid_ok)
-					strNcpy(ut.caller_id,
+					strlcpy(ut.caller_id,
 						(char *)vp->vp_strvalue,
 						sizeof(ut.caller_id));
 				break;
@@ -685,7 +685,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 			char session_id[sizeof(u.session_id) + 1];
 			char utmp_login[sizeof(u.login) + 1];
 
-			strNcpy(session_id, u.session_id, sizeof(session_id));
+			strlcpy(session_id, u.session_id, sizeof(session_id));
 
 			/*
 			 *	The login name MAY fill the whole field,
@@ -703,7 +703,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 			 *	and the NAS says "no", because "BOB"
 			 *	is using the port.
 			 */
-			strNcpy(utmp_login, u.login, sizeof(u.login));
+			strlcpy(utmp_login, u.login, sizeof(u.login));
 
 			/*
 			 *	rad_check_ts may take seconds

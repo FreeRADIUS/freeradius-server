@@ -186,7 +186,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	char *p;
 	const void *module;
 
-	strNcpy(myentry.name, module_name, sizeof(myentry.name));
+	strlcpy(myentry.name, module_name, sizeof(myentry.name));
 	node = rbtree_finddata(module_tree, &myentry);
 	if (node) return node;
 
@@ -239,7 +239,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	/* make room for the module type */
 	node = rad_malloc(sizeof(*node));
 	memset(node, 0, sizeof(*node));
-	strNcpy(node->name, module_name, sizeof(node->name));
+	strlcpy(node->name, module_name, sizeof(node->name));
 	node->module = module;
 	node->handle = handle;
 
@@ -333,7 +333,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 *	We're done.  Fill in the rest of the data structure,
 	 *	and link it to the module instance list.
 	 */
-	strNcpy(node->name, instname, sizeof(node->name));
+	strlcpy(node->name, instname, sizeof(node->name));
 
 #ifdef HAVE_PTHREAD_H
 	/*

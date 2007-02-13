@@ -231,7 +231,7 @@ static int sql_set_user(rlm_sql_log_t *inst, REQUEST *request, char *sqlusername
 	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 
 	if (username != NULL) {
-		strNcpy(tmpuser, username, MAX_STRING_LEN);
+		strlcpy(tmpuser, username, MAX_STRING_LEN);
 	} else if (inst->sql_user_name[0] != '\0') {
 		radius_xlat(tmpuser, sizeof(tmpuser), inst->sql_user_name,
 			    request, NULL);
@@ -240,7 +240,7 @@ static int sql_set_user(rlm_sql_log_t *inst, REQUEST *request, char *sqlusername
 	}
 
 	if (tmpuser[0] != '\0') {
-		strNcpy(sqlusername, tmpuser, sizeof(tmpuser));
+		strlcpy(sqlusername, tmpuser, sizeof(tmpuser));
 		DEBUG2("rlm_sql_log (%s): sql_set_user escaped user --> '%s'",
 		       inst->name, sqlusername);
 		vp = pairmake("SQL-User-Name", sqlusername, 0);

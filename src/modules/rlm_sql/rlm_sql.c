@@ -238,7 +238,7 @@ static int generate_sql_clients(SQL_INST *inst)
 	      inst->config->xlat_name);
 
 	/* NAS query isn't xlat'ed */
-	strNcpy(querystr, inst->config->nas_query, sizeof(querystr));
+	strlcpy(querystr, inst->config->nas_query, sizeof(querystr));
 	DEBUG("rlm_sql (%s) in generate_sql_clients: query is %s",
 	      inst->config->xlat_name, querystr);
 
@@ -425,14 +425,14 @@ static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, con
 	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 
 	if (username != NULL) {
-		strNcpy(tmpuser, username, MAX_STRING_LEN);
+		strlcpy(tmpuser, username, MAX_STRING_LEN);
 	} else if (strlen(inst->config->query_user)) {
 		radius_xlat(tmpuser, sizeof(tmpuser), inst->config->query_user, request, NULL);
 	} else {
 		return 0;
 	}
 
-	strNcpy(sqlusername, tmpuser, MAX_STRING_LEN);
+	strlcpy(sqlusername, tmpuser, MAX_STRING_LEN);
 	DEBUG2("rlm_sql (%s): sql_set_user escaped user --> '%s'",
 		       inst->config->xlat_name, sqlusername);
 	vp = pairmake("SQL-User-Name", sqlusername, 0);
@@ -504,7 +504,7 @@ static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *reque
 			group_list_tmp = group_list_tmp->next;
 		}
 		group_list_tmp->next = NULL;
-		strNcpy(group_list_tmp->groupname, row[0], MAX_STRING_LEN);
+		strlcpy(group_list_tmp->groupname, row[0], MAX_STRING_LEN);
 	}
 
 	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);

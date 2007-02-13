@@ -166,8 +166,8 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 			 *	value field, we use only the value on
 			 *	the right side of the '=' character.
 			 */
-			strNcpy(newattr, ptr + 1, sizeof(newattr));
-			strNcpy((char *)vp->vp_strvalue, newattr,
+			strlcpy(newattr, ptr + 1, sizeof(newattr));
+			strlcpy((char *)vp->vp_strvalue, newattr,
 				sizeof(vp->vp_strvalue));
 			vp->length = strlen((char *)vp->vp_strvalue);
 		}
@@ -225,7 +225,7 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 		 *	FIXME: should we handle this as a REALM ?
 		 */
 		if ((ptr = strchr(namepair->vp_strvalue, '\\')) != NULL) {
-			strNcpy(newname, ptr + 1, sizeof(newname));
+			strlcpy(newname, ptr + 1, sizeof(newname));
 			/* Same size */
 			strcpy(namepair->vp_strvalue, newname);
 			namepair->length = strlen(newname);
@@ -395,7 +395,7 @@ static int huntgroup_access(REQUEST *request,
 					r = RLM_MODULE_FAIL;
 				}
 
-				strNcpy(vp->vp_strvalue, i->name,
+				strlcpy(vp->vp_strvalue, i->name,
 					sizeof(vp->vp_strvalue));
 				vp->length = strlen(vp->vp_strvalue);
 

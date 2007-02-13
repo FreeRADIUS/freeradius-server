@@ -619,7 +619,7 @@ static int gettime(const char *valstr, time_t *lvalue)
 	memset(tm, 0, sizeof(*tm));
 	tm->tm_isdst = -1;	/* don't know, and don't care about DST */
 
-	strNcpy(buf, valstr, sizeof(buf));
+	strlcpy(buf, valstr, sizeof(buf));
 
 	p = buf;
 	f[0] = mystrtok(&p, " \t");
@@ -751,7 +751,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 	 *	Even for integers, dates and ip addresses we
 	 *	keep the original string in vp->vp_strvalue.
 	 */
-	strNcpy((char *)vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
+	strlcpy((char *)vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
 	vp->length = strlen(vp->vp_strvalue);
 
 	switch(vp->type) {
@@ -1429,7 +1429,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 				return NULL;
 			}
 
-			strNcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
+			strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
 			vp->flags.do_xlat = 1;
 			vp->length = 0;
 		} else {
@@ -1454,7 +1454,7 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
 		}
 
 		vp->flags.do_xlat = 1;
-		strNcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
+		strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
 		vp->length = 0;
 		break;
 	}

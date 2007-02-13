@@ -95,7 +95,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		return -1;
 	}
 
-	strNcpy(mycmd, cmd, sizeof(mycmd));
+	strlcpy(mycmd, cmd, sizeof(mycmd));
 
 	/*
 	 *	Split the string into argv's BEFORE doing radius_xlat...
@@ -444,7 +444,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		if (n == T_OP_INVALID) {
 			DEBUG("Exec-Program-Wait: plaintext: %s", answer);
 			if (user_msg) {
-				strNcpy(user_msg, answer, msg_len);
+				strlcpy(user_msg, answer, msg_len);
 			}
 		} else {
 			/*

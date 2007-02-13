@@ -402,7 +402,7 @@ static int common_checks(rad_listen_t *listener,
 	curreq->packet = packet;
 	curreq->packet->timestamp = curreq->timestamp;
 	curreq->number = request_num_counter++;
-	strNcpy(curreq->secret, client->secret, sizeof(curreq->secret));
+	strlcpy(curreq->secret, client->secret, sizeof(curreq->secret));
 	
 	/*
 	 *	Remember the request in the list.

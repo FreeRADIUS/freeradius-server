@@ -1041,10 +1041,10 @@ static int parse_module(policy_lex_file_t *lexer, policy_item_t **tail)
 	/*
 	 *	See if we're including all of the files in a subdirectory.
 	 */
-	strNcpy(buffer, lexer->filename, sizeof(buffer));
+	strlcpy(buffer, lexer->filename, sizeof(buffer));
 	p = strrchr(buffer, '/');
 	if (p) {
-		strNcpy(p + 1, filename, sizeof(buffer) - 1 - (p - buffer));
+		strlcpy(p + 1, filename, sizeof(buffer) - 1 - (p - buffer));
 	} else {
 		snprintf(buffer, sizeof(buffer), "%s/%s",
 			 radius_dir, filename);
@@ -1474,10 +1474,10 @@ static int parse_include(policy_lex_file_t *lexer)
 	/*
 	 *	See if we're including all of the files in a subdirectory.
 	 */
-	strNcpy(buffer, lexer->filename, sizeof(buffer));
+	strlcpy(buffer, lexer->filename, sizeof(buffer));
 	p = strrchr(buffer, '/');
 	if (p) {
-		strNcpy(p + 1, filename, sizeof(buffer) - 1 - (p - buffer));
+		strlcpy(p + 1, filename, sizeof(buffer) - 1 - (p - buffer));
 
 #ifdef HAVE_DIRENT_H	
 		p = strrchr(p + 1, '/');
@@ -1504,7 +1504,7 @@ static int parse_include(policy_lex_file_t *lexer)
 				if (dp->d_name[0] == '.') continue;
 				if (strchr(dp->d_name, '~') != NULL) continue;
 
-				strNcpy(p, dp->d_name,
+				strlcpy(p, dp->d_name,
 					sizeof(buffer) - (p - buffer));
 
 				if ((stat(buffer, &buf) != 0) ||

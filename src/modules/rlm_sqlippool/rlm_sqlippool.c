@@ -235,13 +235,13 @@ static int sqlippool_expand(char * out, int outlen, const char * fmt, void * ins
 				*q++ = *p;
 				break;
 			case 'P': /* pool name */
-				strNcpy(q, data->pool_name, freespace); 
+				strlcpy(q, data->pool_name, freespace); 
 				q += strlen(q);
 				break;
 			case 'I': /* IP address */
 				if (param && param_len > 0) {
 					if (param_len > freespace) {
-						strNcpy(q, param, freespace);
+						strlcpy(q, param, freespace);
 						q += strlen(q);
 					}
 					else {
@@ -252,7 +252,7 @@ static int sqlippool_expand(char * out, int outlen, const char * fmt, void * ins
 				break;
 			case 'J': /* lease duration */
 				sprintf(tmp, "%d", data->lease_duration);
-				strNcpy(q, tmp, freespace); 
+				strlcpy(q, tmp, freespace); 
 				q += strlen(q);
 				break;
 			default:

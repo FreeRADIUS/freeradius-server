@@ -161,7 +161,7 @@ parse_again:
 				 *	file.
 				 */
 				if (*s != '/') {
-					strNcpy(newfile, file,
+					strlcpy(newfile, file,
 						sizeof(newfile));
 					ptr = strrchr(newfile, '/');
 					strcpy(ptr + 1, s);

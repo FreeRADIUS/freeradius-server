@@ -441,7 +441,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			p = strchr(user_name->vp_strvalue, '.');
 			if (!p) {
 				DEBUG2("  rlm_mschap: setting NT-Domain to same as machine name");
-				strNcpy(out, user_name->vp_strvalue + 5, outlen);
+				strlcpy(out, user_name->vp_strvalue + 5, outlen);
 			} else {
 				p++;	/* skip the period */
 				q = strchr(p, '.');
@@ -450,7 +450,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 				 * only if another period was found
 				 */
 				if (q) *q = '\0';
-				strNcpy(out, p, outlen);
+				strlcpy(out, p, outlen);
 				if (q) *q = '.';
 			}
 		} else {
@@ -464,7 +464,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			 *	Hack.  This is simpler than the alternatives.
 			 */
 			*p = '\0';
-			strNcpy(out, user_name->vp_strvalue, outlen);
+			strlcpy(out, user_name->vp_strvalue, outlen);
 			*p = '\\';
 		}
 
@@ -512,7 +512,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			} else {
 				p = user_name->vp_strvalue; /* use the whole User-Name */
 			}
-			strNcpy(out, p, outlen);
+			strlcpy(out, p, outlen);
 		}
 
 		return strlen(out);

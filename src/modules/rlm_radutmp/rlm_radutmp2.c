@@ -415,7 +415,7 @@ static int offset_walk(void *context, void *data)
 
 	write(walk->fd, &utmp, sizeof(utmp));
 
-	strNcpy(myUser.login, utmp.login, sizeof(myUser.login));
+	strlcpy(myUser.login, utmp.login, sizeof(myUser.login));
 	user = rbtree_finddata(walk->inst->user_tree, &myUser);
 	rad_assert(user != NULL);
 	rad_assert(user->simul_count > 0);
@@ -671,7 +671,7 @@ static int cache_file(rlm_radutmp_t *inst, radutmp_cache_t *cache)
 			 *	Adds a trailing \0, so myUser.login has
 			 *	an extra char allocated..
 			 */
-			strNcpy(myUser.login, utmp.login, sizeof(myUser.login));
+			strlcpy(myUser.login, utmp.login, sizeof(myUser.login));
 			user = rbtree_finddata(inst->user_tree, &myUser);
 			if (user) {
 				user->simul_count++;
@@ -681,7 +681,7 @@ static int cache_file(rlm_radutmp_t *inst, radutmp_cache_t *cache)
 				 *	to the tree.
 				 */
 				user = rad_malloc(sizeof(user));
-				strNcpy(user->login, utmp.login,
+				strlcpy(user->login, utmp.login,
 					sizeof(user->login));
 				user->simul_count = 1;
 
@@ -849,7 +849,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 				break;
 			case PW_CALLING_STATION_ID:
 				if(inst->callerid_ok)
-					strNcpy(utmp.caller_id,
+					strlcpy(utmp.caller_id,
 						(char *)vp->vp_strvalue,
 						sizeof(utmp.caller_id));
 				break;
@@ -1008,7 +1008,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 
 		return RLM_MODULE_NOOP;
 	}
-	strNcpy(utmp.login, buffer, RUT_NAMESIZE);
+	strlcpy(utmp.login, buffer, RUT_NAMESIZE);
 
 	/*
 	 *	First, try to open the file.  If it doesn't exist,
@@ -1131,7 +1131,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		 *	to the tree.
 		 */
 		user = rad_malloc(sizeof(user));
-		strNcpy(user->login, utmp.login,
+		strlcpy(user->login, utmp.login,
 			sizeof(user->login));
 		user->simul_count = 1;
 		
@@ -1233,7 +1233,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 					rbtree_deletebydata(cache->nas_ports,
 							    nas_port);
 
-					strNcpy(myUser.login,
+					strlcpy(myUser.login,
 						u.login, sizeof(myUser.login));
 					user = rbtree_finddata(inst->user_tree,
 							       &myUser);
@@ -1365,7 +1365,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	 */
 	request->simul_count = 0;
 
-	strNcpy(myUser.login, login, sizeof(myUser.login));
+	strlcpy(myUser.login, login, sizeof(myUser.login));
 	pthread_mutex_lock(&inst->cache.mutex);
 	user = rbtree_finddata(inst->user_tree, &myUser);
 	if (user) request->simul_count = user->simul_count;
@@ -1433,7 +1433,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 			char session_id[sizeof(u.session_id) + 1];
 			char utmp_login[sizeof(u.login) + 1];
 
-			strNcpy(session_id, u.session_id, sizeof(session_id));
+			strlcpy(session_id, u.session_id, sizeof(session_id));
 
 			/*
 			 *	The login name MAY fill the whole field,
@@ -1451,7 +1451,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 			 *	and the NAS says "no", because "BOB"
 			 *	is using the port.
 			 */
-			strNcpy(utmp_login, u.login, sizeof(u.login));
+			strlcpy(utmp_login, u.login, sizeof(u.login));
 
 			/*
 			 *	rad_check_ts may take seconds

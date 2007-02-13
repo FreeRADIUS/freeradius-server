@@ -119,7 +119,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	We will be modifing this later, so we want our own copy
 	 *	of it.
 	 */
-	strNcpy(namebuf, (char *)request->username->vp_strvalue, sizeof(namebuf));
+	strlcpy(namebuf, (char *)request->username->vp_strvalue, sizeof(namebuf));
 	username = namebuf;
 
 	switch(inst->format)

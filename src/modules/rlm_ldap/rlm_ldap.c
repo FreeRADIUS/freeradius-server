@@ -1347,7 +1347,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	if (inst->default_profile || user_profile){
 		char *profile = inst->default_profile;
 
-		strNcpy(filter,inst->base_filter,sizeof(filter));
+		strlcpy(filter,inst->base_filter,sizeof(filter));
 		if (user_profile)
 			profile = user_profile->vp_strvalue;
 		if (profile && strlen(profile)){
@@ -1388,7 +1388,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	if (inst->profile_attr){
 		if ((vals = ldap_get_values(conn->ld, msg, inst->profile_attr)) != NULL) {
 			unsigned int i=0;
-			strNcpy(filter,inst->base_filter,sizeof(filter));
+			strlcpy(filter,inst->base_filter,sizeof(filter));
 			while(vals[i] != NULL && strlen(vals[i])){
 				if ((res = perform_search(instance, conn,
 					vals[i], LDAP_SCOPE_BASE,
@@ -1486,7 +1486,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					ldap_release_conn(conn_id,inst->conns);
 					return RLM_MODULE_FAIL;
 				}
-				strNcpy(passwd_item->vp_strvalue, value,
+				strlcpy(passwd_item->vp_strvalue, value,
 					sizeof(passwd_item->vp_strvalue));
 				passwd_item->length = strlen(passwd_item->vp_strvalue);
 				pairadd(&request->config_items,passwd_item);
@@ -2531,7 +2531,7 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 				}
 				if (do_xlat) {
 					newpair->flags.do_xlat = 1;
-					strNcpy(newpair->vp_strvalue, buf,
+					strlcpy(newpair->vp_strvalue, buf,
 						sizeof(newpair->vp_strvalue));
 					newpair->length = 0;
 				}

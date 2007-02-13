@@ -354,20 +354,20 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, void *insta
 				*q++ = *p;
 			case 'b': /* last_reset */
 				snprintf(tmpdt, sizeof(tmpdt), "%lu", data->last_reset);
-				strNcpy(q, tmpdt, freespace);
+				strlcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				break;
 			case 'e': /* reset_time */
 				snprintf(tmpdt, sizeof(tmpdt), "%lu", data->reset_time);
-				strNcpy(q, tmpdt, freespace);
+				strlcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				break;
 			case 'k': /* Key Name */
-				strNcpy(q, data->key_name, freespace);
+				strlcpy(q, data->key_name, freespace);
 				q += strlen(q);
 				break;
 			case 'S': /* SQL module instance */
-				strNcpy(q, data->sqlmod_inst, freespace);
+				strlcpy(q, data->sqlmod_inst, freespace);
 				q += strlen(q);
 				break;
 			default:

@@ -624,7 +624,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 		}
 		memset(fixup, 0, sizeof(*fixup));
 
-		strNcpy(fixup->attrstr, attrstr, sizeof(fixup->attrstr));
+		strlcpy(fixup->attrstr, attrstr, sizeof(fixup->attrstr));
 		fixup->dval = dval;
 		
 		/*
@@ -1500,7 +1500,7 @@ DICT_ATTR *dict_attrbyname(const char *name)
 
 	if (!name) return NULL;
 
-	strNcpy(dattr.name, name, sizeof(dattr.name));
+	strlcpy(dattr.name, name, sizeof(dattr.name));
 
 	return lrad_hash_table_finddata(attributes_byname, &dattr);
 }
@@ -1551,7 +1551,7 @@ DICT_VALUE *dict_valbyname(int attr, const char *name)
 	dv = lrad_hash_table_finddata(values_byname, my_dv);
 	if (dv) my_dv->attr = dv->value;
 
-	strNcpy(my_dv->name, name, DICT_VALUE_MAX_NAME_LEN);
+	strlcpy(my_dv->name, name, DICT_VALUE_MAX_NAME_LEN);
 
 	return lrad_hash_table_finddata(values_byname, my_dv);
 }
@@ -1569,7 +1569,7 @@ int dict_vendorbyname(const char *name)
 	if (!name) return 0;
 
 	dv = (DICT_VENDOR *) buffer;
-	strNcpy(dv->name, name, DICT_VENDOR_MAX_NAME_LEN);
+	strlcpy(dv->name, name, DICT_VENDOR_MAX_NAME_LEN);
 	
 	dv = lrad_hash_table_finddata(vendors_byname, dv);
 	if (!dv) return 0;

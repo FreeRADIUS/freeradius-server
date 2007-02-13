@@ -137,7 +137,7 @@ static int presufcmp(void *instance,
 			ret = strcmp(name + namelen - len,
 					(char *)check->vp_strvalue);
 			if (ret == 0 && rest) {
-				strNcpy(rest, name, namelen - len + 1);
+				strlcpy(rest, name, namelen - len + 1);
 			}
 			break;
 	}

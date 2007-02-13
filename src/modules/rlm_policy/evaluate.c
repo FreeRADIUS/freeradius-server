@@ -520,7 +520,7 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 			 */
 			rcode = policy_evaluate_name(state, this->lhs);
 			data = lrad_int2str(policy_return_codes, rcode, "???");
-			strNcpy(lhs_buffer, data, sizeof(lhs_buffer)); /* FIXME: yuck */
+			strlcpy(lhs_buffer, data, sizeof(lhs_buffer)); /* FIXME: yuck */
 		} else if (this->lhs_type == POLICY_LEX_DOUBLE_QUOTED_STRING) {
 			if (radius_xlat(lhs_buffer, sizeof(lhs_buffer), this->lhs,
 					state->request, NULL) > 0) {

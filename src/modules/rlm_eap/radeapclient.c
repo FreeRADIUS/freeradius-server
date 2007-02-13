@@ -796,15 +796,15 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	 *	Keep a copy of the the User-Password attribute.
 	 */
 	if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD)) != NULL) {
-		strNcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
+		strlcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 
 	} else 	if ((vp = pairfind(rep->vps, PW_USER_PASSWORD)) != NULL) {
-		strNcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
+		strlcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 		/*
 		 *	Otherwise keep a copy of the CHAP-Password attribute.
 		 */
 	} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD)) != NULL) {
-		strNcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
+		strlcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 	} else {
 		*password = '\0';
 	}
@@ -864,15 +864,15 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 
 	if (*password != '\0') {
 		if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD)) != NULL) {
-			strNcpy((char *)vp->vp_strvalue, password, strlen(password) + 1);
+			strlcpy((char *)vp->vp_strvalue, password, strlen(password) + 1);
 			vp->length = strlen(password);
 
 		} else if ((vp = pairfind(rep->vps, PW_USER_PASSWORD)) != NULL) {
-			strNcpy((char *)vp->vp_strvalue, password, strlen(password) + 1);
+			strlcpy((char *)vp->vp_strvalue, password, strlen(password) + 1);
 			vp->length = strlen(password);
 
 		} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD)) != NULL) {
-			strNcpy((char *)vp->vp_strvalue, password, strlen(password) + 1);
+			strlcpy((char *)vp->vp_strvalue, password, strlen(password) + 1);
 			vp->length = strlen(password);
 
 			rad_chap_encode(rep, (char *) vp->vp_strvalue, rep->id, vp);

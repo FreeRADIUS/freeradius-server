@@ -2175,7 +2175,7 @@ next_diameter:
 			dval = dict_valbyattr(vp->attribute,
 					      vp->lvalue);
 			if (dval) {
-				strNcpy(vp->vp_strvalue,
+				strlcpy(vp->vp_strvalue,
 					dval->name,
 					sizeof(vp->vp_strvalue));
 			}
@@ -2426,7 +2426,7 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *origin
 			dval = dict_valbyattr(vp->attribute,
 					      vp->lvalue);
 			if (dval) {
-				strNcpy(vp->vp_strvalue,
+				strlcpy(vp->vp_strvalue,
 					dval->name,
 					sizeof(vp->vp_strvalue));
 			}

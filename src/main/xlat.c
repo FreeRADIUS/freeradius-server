@@ -77,22 +77,22 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 
 	switch (type) {
 	case PW_TYPE_STRING :
-		strNcpy(out,"_",outlen);
+		strlcpy(out,"_",outlen);
 		break;
 	case PW_TYPE_INTEGER :
-		strNcpy(out,"0",outlen);
+		strlcpy(out,"0",outlen);
 		break;
 	case PW_TYPE_IPADDR :
-		strNcpy(out,"?.?.?.?",outlen);
+		strlcpy(out,"?.?.?.?",outlen);
 		break;
 	case PW_TYPE_IPV6ADDR :
-		strNcpy(out,":?:",outlen);
+		strlcpy(out,":?:",outlen);
 		break;
 	case PW_TYPE_DATE :
-		strNcpy(out,"0",outlen);
+		strlcpy(out,"0",outlen);
 		break;
 	default :
-		strNcpy(out,"unknown_type",outlen);
+		strlcpy(out,"unknown_type",outlen);
 	}
 	return strlen(out);
 }
@@ -151,7 +151,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 		if (!p) return 0;
 		if (strlen(fmt) > sizeof(buffer)) return 0;
 
-		strNcpy(buffer, fmt, p - fmt + 1);
+		strlcpy(buffer, fmt, p - fmt + 1);
 
 		da = dict_attrbyname(buffer);
 		if (!da) return 0;
@@ -294,9 +294,9 @@ static int xlat_packet(void *instance, REQUEST *request,
 				 */
 			case PW_REQUEST_PROCESSING_STAGE:
 				if (request->component) {
-					strNcpy(out, request->component, outlen);
+					strlcpy(out, request->component, outlen);
 				} else {
-					strNcpy(out, "server_core", outlen);
+					strlcpy(out, "server_core", outlen);
 				}
 				return strlen(out);
 			
@@ -376,7 +376,7 @@ static int xlat_regex(void *instance, REQUEST *request,
 	 *	Copy UP TO "freespace" bytes, including
 	 *	a zero byte.
 	 */
-	strNcpy(out, regex, outlen);
+	strlcpy(out, regex, outlen);
 	return strlen(out);
 }
 #endif				/* HAVE_REGEX_H */
@@ -419,7 +419,7 @@ static const xlat_t *xlat_find(const char *module)
 		return &dict_xlat;
 	}
 
-	strNcpy(my_xlat.module, module, sizeof(my_xlat.module));
+	strlcpy(my_xlat.module, module, sizeof(my_xlat.module));
 	my_xlat.length = strlen(my_xlat.module);
 
 	return rbtree_finddata(xlat_root, &my_xlat);
@@ -485,7 +485,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 	/*
 	 *	If it already exists, replace the instance.
 	 */
-	strNcpy(my_xlat.module, module, sizeof(my_xlat.module));
+	strlcpy(my_xlat.module, module, sizeof(my_xlat.module));
 	my_xlat.length = strlen(my_xlat.module);
 	c = rbtree_finddata(xlat_root, &my_xlat);
 	if (c) {
@@ -506,7 +506,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 	memset(c, 0, sizeof(*c));
 
 	c->do_xlat = func;
-	strNcpy(c->module, module, sizeof(c->module));
+	strlcpy(c->module, module, sizeof(c->module));
 	c->length = strlen(c->module);
 	c->instance = instance;
 
@@ -530,7 +530,7 @@ void xlat_unregister(const char *module, RAD_XLAT_FUNC func)
 
 	if (!module) return;
 
-	strNcpy(my_xlat.module, module, sizeof(my_xlat.module));
+	strlcpy(my_xlat.module, module, sizeof(my_xlat.module));
 	my_xlat.length = strlen(my_xlat.module);
 
 	node = rbtree_find(xlat_root, &my_xlat);
@@ -912,7 +912,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%d", TM);
 				if (len > 0) {
-					strNcpy(q, tmpdt, freespace);
+					strlcpy(q, tmpdt, freespace);
 					q += strlen(q);
 				}
 				p++;
@@ -928,7 +928,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 			case 'l': /* request timestamp */
 				snprintf(tmpdt, sizeof(tmpdt), "%lu",
 					 (unsigned long) request->timestamp);
-				strNcpy(q,tmpdt,freespace);
+				strlcpy(q,tmpdt,freespace);
 				q += strlen(q);
 				p++;
 				break;
@@ -936,7 +936,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%m", TM);
 				if (len > 0) {
-					strNcpy(q, tmpdt, freespace);
+					strlcpy(q, tmpdt, freespace);
 					q += strlen(q);
 				}
 				p++;
@@ -957,7 +957,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				CTIME_R(&request->timestamp, tmpdt, sizeof(tmpdt));
 				nl = strchr(tmpdt, '\n');
 				if (nl) *nl = '\0';
-				strNcpy(q, tmpdt, freespace);
+				strlcpy(q, tmpdt, freespace);
 				q += strlen(q);
 				p++;
 				break;
@@ -966,12 +966,12 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'A': /* radacct_dir */
-				strNcpy(q,radacct_dir,freespace-1);
+				strlcpy(q,radacct_dir,freespace-1);
 				q += strlen(q);
 				p++;
 				break;
 			case 'C': /* ClientName */
-				strNcpy(q,client_name_old(&request->packet->src_ipaddr),freespace-1);
+				strlcpy(q,client_name_old(&request->packet->src_ipaddr),freespace-1);
 				q += strlen(q);
 				p++;
 				break;
@@ -979,7 +979,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%Y%m%d", TM);
 				if (len > 0) {
-					strNcpy(q, tmpdt, freespace);
+					strlcpy(q, tmpdt, freespace);
 					q += strlen(q);
 				}
 				p++;
@@ -988,13 +988,13 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%H", TM);
 				if (len > 0) {
-					strNcpy(q, tmpdt, freespace);
+					strlcpy(q, tmpdt, freespace);
 					q += strlen(q);
 				}
 				p++;
 				break;
 			case 'L': /* radlog_dir */
-				strNcpy(q,radlog_dir,freespace-1);
+				strlcpy(q,radlog_dir,freespace-1);
 				q += strlen(q);
 				p++;
 				break;
@@ -1003,7 +1003,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'R': /* radius_dir */
-				strNcpy(q,radius_dir,freespace-1);
+				strlcpy(q,radius_dir,freespace-1);
 				q += strlen(q);
 				p++;
 				break;
@@ -1011,7 +1011,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%Y-%m-%d %H:%M:%S", TM);
 				if (len > 0) {
-					strNcpy(q, tmpdt, freespace);
+					strlcpy(q, tmpdt, freespace);
 					q += strlen(q);
 				}
 				p++;
@@ -1020,7 +1020,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%Y-%m-%d-%H.%M.%S.000000", TM);
 				if (len > 0) {
-					strNcpy(q, tmpdt, freespace);
+					strlcpy(q, tmpdt, freespace);
 					q += strlen(q);
 				}
 				p++;
@@ -1031,9 +1031,9 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'V': /* Request-Authenticator */
 				if (request->packet->verified)
-					strNcpy(q,"Verified",freespace-1);
+					strlcpy(q,"Verified",freespace-1);
 				else
-					strNcpy(q,"None",freespace-1);
+					strlcpy(q,"None",freespace-1);
 				q += strlen(q);
 				p++;
 				break;
@@ -1041,7 +1041,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%Y", TM);
 				if (len > 0) {
-					strNcpy(q, tmpdt, freespace);
+					strlcpy(q, tmpdt, freespace);
 					q += strlen(q);
 				}
 				p++;

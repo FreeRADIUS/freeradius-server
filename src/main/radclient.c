@@ -220,13 +220,13 @@ static radclient_t *radclient_init(const char *filename)
 		 *	Keep a copy of the the User-Password attribute.
 		 */
 		if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD)) != NULL) {
-			strNcpy(radclient->password, vp->vp_strvalue,
+			strlcpy(radclient->password, vp->vp_strvalue,
 				sizeof(radclient->password));
 			/*
 			 *	Otherwise keep a copy of the CHAP-Password attribute.
 			 */
 		} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD)) != NULL) {
-			strNcpy(radclient->password, vp->vp_strvalue,
+			strlcpy(radclient->password, vp->vp_strvalue,
 				sizeof(radclient->password));
 		} else {
 			radclient->password[0] = '\0';
@@ -549,7 +549,7 @@ static int send_one_packet(radclient_t *radclient)
 			VALUE_PAIR *vp;
 
 			if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD)) != NULL) {
-				strNcpy(vp->vp_strvalue, radclient->password,
+				strlcpy(vp->vp_strvalue, radclient->password,
 					sizeof(vp->vp_strvalue));
 				vp->length = strlen(vp->vp_strvalue);
 
@@ -559,7 +559,7 @@ static int send_one_packet(radclient_t *radclient)
 			   *	       AND vp->length != 17
 			   *	       AND rad_chap_encode() != vp->vp_octets
 			   */
-				strNcpy(vp->vp_strvalue, radclient->password,
+				strlcpy(vp->vp_strvalue, radclient->password,
 					sizeof(vp->vp_strvalue));
 				vp->length = strlen(vp->vp_strvalue);
 

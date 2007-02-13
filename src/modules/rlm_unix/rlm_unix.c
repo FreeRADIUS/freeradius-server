@@ -480,7 +480,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 				if (vp->length >= sizeof(ut.ut_name)) {
 					memcpy(ut.ut_name, (char *)vp->vp_strvalue, sizeof(ut.ut_name));
 				} else {
-					strNcpy(ut.ut_name, (char *)vp->vp_strvalue, sizeof(ut.ut_name));
+					strlcpy(ut.ut_name, (char *)vp->vp_strvalue, sizeof(ut.ut_name));
 				}
 				break;
 			case PW_LOGIN_IP_HOST:
@@ -539,7 +539,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	and address so that the tty field is unique.
 	 */
 	sprintf(buf, "%03d:%s", nas_port, s);
-	strNcpy(ut.ut_line, buf, sizeof(ut.ut_line));
+	strlcpy(ut.ut_line, buf, sizeof(ut.ut_line));
 
 	/*
 	 *	We store the dynamic IP address in the hostname field.

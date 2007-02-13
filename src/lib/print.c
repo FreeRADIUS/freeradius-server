@@ -130,7 +130,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 				strcat(buf, "\"");
 
 			} else if (delimitst < 0) {
-				strNcpy(out, vp->vp_strvalue, outlen);
+				strlcpy(out, vp->vp_strvalue, outlen);
 				return strlen(out);
 
 			} else {
