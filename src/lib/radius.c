@@ -1024,7 +1024,8 @@ RADIUS_PACKET *rad_recv(int fd)
 	int			count;
 	radius_packet_t		*hdr;
 	char			host_ipaddr[16];
-	int			seen_eap;
+	int			require_ma = 0;
+	int			seen_ma = 0;
 	uint8_t			data[MAX_PACKET_LEN];
 	int			num_attributes;
 
@@ -1137,6 +1138,12 @@ RADIUS_PACKET *rad_recv(int fd)
 	}
 
 	/*
+	 *	Message-Authenticator is required in Status-Server
+	 *	packets, otherwise they can be trivially forged.
+	 */
+	if (hdr->code == PW_STATUS_SERVER) require_ma = 1;
+
+	/*
 	 *	Repeat the length checks.  This time, instead of
 	 *	looking at the data we received, look at the value
 	 *	of the 'length' field inside of the packet.
@@ -1215,7 +1222,6 @@ RADIUS_PACKET *rad_recv(int fd)
 	 */
 	attr = hdr->data;
 	count = totallen - AUTH_HDR_LEN;
-	seen_eap = 0;
 	num_attributes = 0;
 
 	while (count > 0) {
@@ -1248,8 +1254,13 @@ RADIUS_PACKET *rad_recv(int fd)
 		default:	/* don't do anything by default */
 			break;
 
+
+			/*
+			 *	If there's an EAP-Message, we require
+			 *	a Message-Authenticator.
+			 */
 		case PW_EAP_MESSAGE:
-			seen_eap |= PW_EAP_MESSAGE;
+			require_ma = 1;
 			break;
 
 		case PW_MESSAGE_AUTHENTICATOR:
@@ -1260,7 +1271,7 @@ RADIUS_PACKET *rad_recv(int fd)
 				free(packet);
 				return NULL;
 			}
-			seen_eap |= PW_MESSAGE_AUTHENTICATOR;
+			seen_ma = 1;
 			break;
 		}
 
@@ -1308,11 +1319,12 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	a Message-Authenticator attribute.
 	 *
 	 *	A Message-Authenticator all by itself is OK, though.
+	 *
+	 *	Similarly, Status-Server packets MUST contain
+	 *	Message-Authenticator attributes.
 	 */
-	if (seen_eap &&
-	    (seen_eap != PW_MESSAGE_AUTHENTICATOR) &&
-	    (seen_eap != (PW_EAP_MESSAGE | PW_MESSAGE_AUTHENTICATOR))) {
-		librad_log("WARNING: Insecure packet from host %s:  Received EAP-Message with no Message-Authenticator.",
+	if (require_ma && ! seen_ma) {
+		librad_log("WARNING: Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
 			   ip_ntoa(host_ipaddr, packet->src_ipaddr));
 		free(packet);
 		return NULL;
