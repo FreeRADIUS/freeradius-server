@@ -1171,6 +1171,7 @@ int free_mainconfig(void)
 	 *	structures.
 	 */
 	cf_section_free(&mainconfig.config);
+	free(mainconfig.radiusd_conf);
 	realm_free(mainconfig.realms);
 	listen_free(&mainconfig.listen);
 	xlat_free();
