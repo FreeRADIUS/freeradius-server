@@ -131,7 +131,6 @@ typedef struct attr_flags {
 	unsigned int		has_tag : 1;  /* tagged attribute */
 	unsigned int		do_xlat : 1;  /* strvalue is dynamic */
 	unsigned int		caseless : 1; /* case insensitive compares */
-	unsigned int		diameter : 1; /* VP is a in diameter format */
 	unsigned int		array : 1; /* pack multiples into 1 attr */
 	unsigned int		has_value : 1; /* has a value */
 	unsigned int		has_value_alias : 1; /* has a value alias */

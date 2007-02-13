@@ -482,11 +482,6 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	attr->vendor = vendor;
 
 	/*
-	 *	Yet another hack for Diameter-encoded attributes:
-	 */
-	if (attr->flags.diameter) attr->attr |= (1 << 31);
-
-	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
 	if (!lrad_hash_table_insert(attributes_byname, attr)) {
@@ -738,9 +733,6 @@ static int process_attribute(const char* fn, const int line,
 						    fn, line, s);
 					return -1;
 				}
-
-			} else if (strncmp(s, "diameter", 8) == 0) {
-				flags.diameter = 1;
 
 			} else if (strncmp(s, "array", 8) == 0) {
 				flags.array = 1;
