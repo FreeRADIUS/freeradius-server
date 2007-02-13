@@ -250,8 +250,17 @@ static int proxy_cmp(const void *one, const void *two)
 	return 0;
 }
 
+
 void rl_free(void)
 {
+	int i;
+
+	for (i = 0; i < 256; i++) {
+		while (request_list[i].first_request) {
+			rl_delete(request_list[i].first_request->req);
+		}
+	}
+
 	rbtree_free(request_tree);
 	rbtree_free(proxy_id_tree);
 	rbtree_free(proxy_tree);
@@ -497,7 +506,6 @@ void rl_delete(REQUEST *request)
 
 	request_free(&request);
 	request_list[id].request_count--;
-
 }
 
 /*
