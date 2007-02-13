@@ -154,7 +154,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 
 	if (old){
 		memset(old_key.nas,0,MAX_NAS_NAME_SIZE);
-		strncpy(old_key.nas,NASname,MAX_NAS_NAME_SIZE -1 );
+		strlcpy(old_key.nas,NASname,MAX_NAS_NAME_SIZE -1 );
 		old_key.port = port;
 		key_datum.dptr = (char *) &old_key;
 		key_datum.dsize = sizeof(old_ippool_key);
@@ -299,7 +299,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 			ippool_key key_tmp;
 			if (old){
 				memset(old_key_tmp.nas,0,MAX_NAS_NAME_SIZE);
-				strncpy(old_key_tmp.nas,NASname,MAX_NAS_NAME_SIZE - 1);
+				strlcpy(old_key_tmp.nas,NASname,MAX_NAS_NAME_SIZE - 1);
 				old_key_tmp.port=port;
 				key_datum_tmp.dptr = (char *) &old_key_tmp;
 				key_datum_tmp.dsize = sizeof(old_ippool_key);
@@ -342,7 +342,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 
 		if (old){
 			memset(old_key.nas,0,MAX_NAS_NAME_SIZE);
-			strncpy(old_key.nas,NASname,MAX_NAS_NAME_SIZE -1 );
+			strlcpy(old_key.nas,NASname,MAX_NAS_NAME_SIZE -1 );
 			old_key.port = port;
 			key_datum.dptr = (char *) &old_key;
 			key_datum.dsize = sizeof(old_ippool_key);

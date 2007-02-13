@@ -414,7 +414,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	/*
 	 *  Copy the previous translated user name.
 	 */
-	strncpy(ut.login, buffer, RUT_NAMESIZE);
+	strlcpy(ut.login, buffer, RUT_NAMESIZE);
 
 	/*
 	 *	Perhaps we don't want to store this record into

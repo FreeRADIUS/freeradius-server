@@ -183,7 +183,7 @@ static int week_fill(char *bitmap, char *tm)
 	char *s;
 	char tmp[128];
 
-	strncpy(tmp, tm, 128);
+	strlcpy(tmp, tm, 128);
 	tmp[127] = 0;
 	for (s = tmp; *s; s++)
 		if (isupper(*s)) *s = tolower(*s);

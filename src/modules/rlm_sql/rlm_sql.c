@@ -215,7 +215,7 @@ static int sql_xlat(void *instance, REQUEST *request,
 		return 0;
 	}
 
-	strncpy(out,row[0],ret);
+	strlcpy(out,row[0],ret);
 
 	DEBUG("rlm_sql (%s): - sql_xlat finished",
 	      inst->config->xlat_name);

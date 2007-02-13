@@ -547,7 +547,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 #ifdef UT_HOSTSIZE
 	if (framed_address) {
 		ip_ntoa(buf, framed_address);
-		strncpy(ut.ut_host, buf, sizeof(ut.ut_host));
+		strlcpy(ut.ut_host, buf, sizeof(ut.ut_host));
 	}
 #endif
 #ifdef HAVE_UTMPX_H

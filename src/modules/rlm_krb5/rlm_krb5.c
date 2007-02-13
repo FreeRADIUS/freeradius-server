@@ -74,7 +74,7 @@ static int verify_krb5_tgt(krb5_context context, rlm_krb5_t *instance,
 			*servername = '\0';
 		}
 
-		strncpy(service,instance->service_princ,sizeof(service));
+		strlcpy(service,instance->service_princ,sizeof(service));
 		service[sizeof(service)-1] = '\0';
 
 		if (servername != NULL) {
@@ -92,7 +92,7 @@ static int verify_krb5_tgt(krb5_context context, rlm_krb5_t *instance,
 		return RLM_MODULE_REJECT;
 	}
 
-	strncpy(phost, krb5_princ_component(c, princ, 1)->data, BUFSIZ);
+	strlcpy(phost, krb5_princ_component(c, princ, 1)->data, BUFSIZ);
 	phost[BUFSIZ - 1] = '\0';
 
 	/*

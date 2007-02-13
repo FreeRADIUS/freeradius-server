@@ -1169,7 +1169,7 @@ static int ldap_xlat(void *instance, REQUEST *request, char *fmt,
 			return 0;
 		}
 		DEBUG("rlm_ldap: Adding attribute %s, value: %s",ldap_url->lud_attrs[0],vals[0]);
-		strncpy(out,vals[0],ret);
+		strlcpy(out,vals[0],ret);
 		ldap_value_free(vals);
 	}
 	else
@@ -1541,7 +1541,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 						}
 
 						passwd_len = strlen(passwd_val);
-						strncpy(passwd_item->vp_strvalue,passwd_val,MAX_STRING_LEN - 1);
+						strlcpy(passwd_item->vp_strvalue,passwd_val,MAX_STRING_LEN - 1);
 						passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
 						pairadd(&request->config_items,passwd_item);
 

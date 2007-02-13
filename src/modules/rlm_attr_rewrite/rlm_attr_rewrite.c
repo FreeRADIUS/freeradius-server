@@ -330,7 +330,7 @@ do_again:
 				return ret;
 			}
 
-			strncpy(ptr, ptr2,len);
+			strlcpy(ptr, ptr2,len);
 			ptr += len;
 			ptr2 += pmatch[0].rm_eo;
 
@@ -385,7 +385,7 @@ do_again:
 				return ret;
 			}
 			if (replace_len){
-				strncpy(ptr, replace_STR, replace_len);
+				strlcpy(ptr, replace_STR, replace_len);
 				ptr += replace_len;
 			}
 		}
@@ -397,7 +397,7 @@ do_again:
 					data->attribute, attr_vp->vp_strvalue);
 			return ret;
 		}
-		strncpy(ptr, ptr2, len);
+		strlcpy(ptr, ptr2, len);
 
 		DEBUG2("rlm_attr_rewrite: Changed value for attribute %s from '%s' to '%s'",
 				data->attribute, attr_vp->vp_strvalue, new_str);

@@ -99,7 +99,7 @@ static FILE *safe_popen(const char *cmd, const char *mode)
 	/*
 	 *	Change all suspect characters into a space.
 	 */
-	strncpy(buf, cmd, sizeof(buf));
+	strlcpy(buf, cmd, sizeof(buf));
 	buf[sizeof(buf) - 1] = 0;
 	for (p = buf; *p; p++) {
 		if (isalnum((int) *p))
@@ -220,10 +220,10 @@ static char *dotime(time_t t)
 	char *s = ctime(&t);
 
 	if (showname) {
-		strncpy(s + 4, s + 11, 5);
+		strlcpy(s + 4, s + 11, 5);
 		s[9] = 0;
 	} else {
-		strncpy(s + 4, s + 8, 8);
+		strlcpy(s + 4, s + 8, 8);
 		s[12] = 0;
 	}
 
