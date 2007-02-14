@@ -19,6 +19,7 @@ CFLAGS		+= -I../include
 CFLAGS		+= -DHOSTINFO=\"${HOSTINFO}\"
 CFLAGS		+= -DRADIUSD_VERSION=\"${RADIUSD_VERSION}\"
 CFLAGS		+= $(SNMP_INCLUDE)
+CFLAGS		+= $(OPENSSL_INCLUDE)
 VFLAGS		= -DRADIUSD_MAJOR_VERSION=$(RADIUSD_MAJOR_VERSION)
 VFLAGS		+= -DRADIUSD_MINOR_VERSION=$(RADIUSD_MINOR_VERSION)
 MODULE_LIBS	= $(STATIC_MODULES)
@@ -62,7 +63,7 @@ radiusd: $(SERVER_OBJS) $(MODULE_OBJS) ../lib/libradius.la
 	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
 		$(LDFLAGS) -pie $(LINK_MODE) -o $@ $(SERVER_OBJS)      \
 		$(MODULE_LIBS) $(LIBS) $(SNMP_LIBS) $(PTHREADLIB) \
-		$(LIBLTDL)
+		$(LIBLTDL) $(OPENSSL_LIBS)
 
 radiusd.lo: radiusd.c ../include/request_list.h ../include/modules.h ../include/modcall.h ../include/modpriv.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radiusd.c
