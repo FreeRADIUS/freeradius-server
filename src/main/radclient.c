@@ -1187,6 +1187,7 @@ int main(int argc, char **argv)
 
 	rbtree_free(filename_tree);
 	lrad_packet_list_free(pl);
+	dict_free();
 
 	if (do_summary) {
 		printf("\n\t   Total approved auths:  %d\n", totalapp);
