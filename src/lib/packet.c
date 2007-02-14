@@ -506,9 +506,6 @@ static int packet_dst2id_cmp(const void *one, const void *two)
 
 static void packet_dst2id_free(void *data)
 {
-	lrad_packet_dst2id_t *pd = data;
-
-	free(pd->id);
 	free(data);
 }
 
