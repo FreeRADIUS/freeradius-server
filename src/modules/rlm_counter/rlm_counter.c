@@ -916,14 +916,6 @@ static int counter_detach(void *instance)
 	paircompare_unregister(data->dict_attr, counter_cmp);
 	if (data->gdbm)
 		gdbm_close(data->gdbm);
-	free(data->filename);
-	free(data->reset);
-	free(data->key_name);
-	free(data->count_attribute);
-	free(data->counter_name);
-	free(data->check_name);
-	if (data->reply_name) free(data->reply_name);
-	free(data->service_type);
 	pthread_mutex_destroy(&data->mutex);
 
 	free(instance);

@@ -168,9 +168,6 @@ static int smb_detach(void *instance)
 {
 	rlm_smb_t *data = (rlm_smb_t *) instance;
 
-	if (data->server) free(data->server);
-	if (data->backup) free(data->backup);
-	if (data->domain) free(data->domain);
 
 	free(instance);
 	return 0;

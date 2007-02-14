@@ -152,8 +152,6 @@ static int attr_filter_detach(void *instance)
 {
 	struct attr_filter_instance *inst = instance;
 	pairlist_free(&inst->attrs);
-	free(inst->attrsfile);
-	free(inst->key);
 	free(inst);
 	return 0;
 }

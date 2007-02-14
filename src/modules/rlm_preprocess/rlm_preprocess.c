@@ -653,8 +653,6 @@ static int preprocess_detach(void *instance)
 	pairlist_free(&(data->huntgroups));
 	pairlist_free(&(data->hints));
 
-	free(data->huntgroup_file);
-	free(data->hints_file);
 	free(data);
 
 	return 0;

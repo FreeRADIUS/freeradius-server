@@ -485,9 +485,6 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 static int passwd_detach (void *instance) {
 #define inst ((struct passwd_instance *)instance)
 	if(inst->ht) release_ht(inst->ht);
-        if (inst->filename != NULL) 	free(inst->filename);
-        if (inst->format != NULL) 	free(inst->format);
-        if (inst->delimiter != NULL)	free(inst->delimiter);
 	free(instance);
 	return 0;
 #undef inst

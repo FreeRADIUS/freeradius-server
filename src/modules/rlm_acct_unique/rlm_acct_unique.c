@@ -129,7 +129,6 @@ static int unique_detach(void *instance)
 	rlm_acct_unique_t *inst = instance;
 	rlm_acct_unique_list_t *this, *next;
 
-	free(inst->key);
 	for (this = inst->head; this != NULL; this = next) {
 		next = this->next;
 		free(this);

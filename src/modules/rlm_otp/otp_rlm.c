@@ -396,8 +396,6 @@ otp_detach(void *instance)
 {
   otp_option_t *inst = (otp_option_t *) instance;
 
-  free(inst->otpd_rp);
-  free(inst->chal_prompt);
   free(instance);
   /*
    * Only the main thread instantiates and detaches instances,

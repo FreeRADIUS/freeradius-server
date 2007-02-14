@@ -63,7 +63,6 @@ static int packet_detach(void *instance)
 {
 	rlm_packet_t	*inst = instance;
 
-	if (inst->string) free(inst->string);
 	free(instance);
 	return 0;
 }

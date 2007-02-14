@@ -81,13 +81,6 @@ static int checkval_detach(void *instance)
 {
 	rlm_checkval_t *data = (rlm_checkval_t *) instance;
 
-	if (data->item_name)
-		free((char *)data->item_name);
-	if (data->check_name)
-		free((char *)data->check_name);
-	if (data->data_type)
-		free((char *)data->data_type);
-
 	free(instance);
 	return 0;
 }

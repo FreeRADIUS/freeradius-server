@@ -61,8 +61,6 @@ static int gtc_detach(void *arg)
 {
 	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) arg;
 
-	if (inst->challenge) free(inst->challenge);
-	if (inst->auth_type_name) free(inst->auth_type_name);
 
 	free(inst);
 

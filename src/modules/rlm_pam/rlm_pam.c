@@ -94,7 +94,6 @@ static int pam_detach(void *instance)
 {
 	rlm_pam_t *data = (rlm_pam_t *) instance;
 
-	free((char *) data->pam_auth_name);
         free((char *) data);
 	return 0;
 }

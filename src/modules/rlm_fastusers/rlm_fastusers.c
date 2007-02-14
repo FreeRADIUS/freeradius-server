@@ -768,13 +768,9 @@ static int fastuser_detach(void *instance)
 		}
 	}
 
-	free(inst->compat_mode);
 	free(inst->hashtable);
 	pairlist_free(&inst->defaults);
 	pairlist_free(&inst->acctusers);
-	free(inst->usersfile);
-	free(inst->acctusersfile);
-	free(inst);
 	return 0;
 }
 

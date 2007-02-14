@@ -114,8 +114,6 @@ static int always_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Convert the rcode string to an int, and get rid of it
 	 */
 	data->rcode = str2rcode(data->rcode_str);
-	free(data->rcode_str);
-	data->rcode_str = NULL;
 	if (data->rcode == -1) {
 		free(data);
 		return -1;

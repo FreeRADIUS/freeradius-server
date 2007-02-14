@@ -611,8 +611,6 @@ static const CONF_PARSER module_config[] = {
  */
 static int mschap_detach(void *instance){
 #define inst ((rlm_mschap_t *)instance)
-	free(inst->passwd_file);
-	free(inst->ntlm_auth);
 	if (inst->xlat_name) {
 		xlat_unregister(inst->xlat_name, mschap_xlat);
 		free(inst->xlat_name);

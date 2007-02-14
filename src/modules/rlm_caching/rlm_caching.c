@@ -481,10 +481,6 @@ static int caching_detach(void *instance)
 
 	if (data->gdbm)
 		gdbm_close(data->gdbm);
-	free(data->filename);
-	free(data->key);
-	free(data->post_auth);
-	free(data->cache_ttl_str);
 	pthread_mutex_destroy(&data->mutex);
 
 	free(instance);

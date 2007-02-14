@@ -2249,35 +2249,6 @@ ldap_detach(void *instance)
 	ldap_instance  *inst = instance;
 	TLDAP_RADIUS *pair, *nextpair;
 
-	if (inst->server)
-		free((char *) inst->server);
-	if (inst->login)
-		free((char *) inst->login);
-	if (inst->password)
-		free((char *) inst->password);
-	if (inst->basedn)
-		free((char *) inst->basedn);
-	if (inst->dictionary_mapping)
-		free(inst->dictionary_mapping);
-	if (inst->filter)
-		free((char *) inst->filter);
-	if (inst->base_filter)
-		free((char *) inst->base_filter);
-	if (inst->passwd_hdr)
-		free((char *) inst->passwd_hdr);
-	if (inst->passwd_attr)
-		free((char *) inst->passwd_attr);
-	if (inst->groupname_attr)
-		free((char *) inst->groupname_attr);
-	if (inst->groupmemb_filt)
-		free((char *) inst->groupmemb_filt);
-	if (inst->groupmemb_attr)
-		free((char *) inst->groupmemb_attr);
-	if (inst->access_attr)
-		free((char *) inst->access_attr);
-	if (inst->profile_attr)
-		free((char *) inst->profile_attr);
-
 	if (inst->conns) {
 		int i;
 		

@@ -363,7 +363,6 @@ static int rlm_dbm_authorize(void *instance, REQUEST *request)
 static int rlm_dbm_detach(void *instance)
 {
 	struct rlm_dbm_t *inst = instance;
-	free(inst -> userfile);
 	free(inst);
 	return 0;
 }

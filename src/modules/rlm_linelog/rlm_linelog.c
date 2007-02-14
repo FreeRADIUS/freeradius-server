@@ -75,8 +75,6 @@ static int linelog_detach(void *instance)
 {
 	rlm_linelog_t *inst = instance;
 
-	free(inst->filename);
-	free(inst->line);
 	
 	free(inst);
 	return 0;

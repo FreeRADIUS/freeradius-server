@@ -206,8 +206,6 @@ static int radutmp_detach(void *instance)
 
 	pthread_mutex_destroy(&(inst->cache.mutex));
 
-	if (inst->filename) free(inst->filename);
-	if (inst->username) free(inst->username);
 
 	rbtree_free(inst->user_tree);
 

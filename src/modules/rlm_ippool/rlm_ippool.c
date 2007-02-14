@@ -835,9 +835,6 @@ static int ippool_detach(void *instance)
 
 	gdbm_close(data->gdbm);
 	gdbm_close(data->ip);
-	free(data->session_db);
-	free(data->key);
-	free(data->ip_index);
 	pthread_mutex_destroy(&data->op_mutex);
 
 	free(instance);

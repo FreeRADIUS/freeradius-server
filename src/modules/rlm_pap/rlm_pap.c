@@ -117,7 +117,6 @@ static int pap_detach(void *instance)
 {
 	rlm_pap_t *inst = (rlm_pap_t *) instance;
 
-	free((char *)inst->scheme);
 	free(inst);
 
 	return 0;

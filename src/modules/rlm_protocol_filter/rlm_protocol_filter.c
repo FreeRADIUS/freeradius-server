@@ -68,8 +68,6 @@ static int filter_detach(void *instance)
 {
 	rlm_protocol_filter_t *inst = instance;
 
-	if (inst->filename) free(inst->filename);
-	if (inst->key) free(inst->key);
 	if (inst->cs) cf_section_free(&(inst->cs));
 
 	free(instance);

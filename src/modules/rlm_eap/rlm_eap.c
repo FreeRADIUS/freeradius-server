@@ -63,7 +63,6 @@ static int eap_detach(void *instance)
 
 	pthread_mutex_destroy(&(inst->session_mutex));
 
-	if (inst->default_eap_type_name) free(inst->default_eap_type_name);
 	free(inst);
 
 	return 0;

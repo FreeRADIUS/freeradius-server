@@ -63,7 +63,6 @@ static int policy_detach(void *instance)
 {
 	rlm_policy_t *inst = instance;
 
-	if (inst->filename) free(inst->filename);
 	if (inst->policies) rbtree_free(inst->policies);
 	free(instance);
 	return 0;

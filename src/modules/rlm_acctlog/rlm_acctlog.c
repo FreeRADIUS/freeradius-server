@@ -57,11 +57,6 @@ static int acctlog_detach(void *instance)
 {   
     rlm_acctlog_t *inst = instance;
 	
-	free(inst->acctupdate);
-	free(inst->acctstart);
-	free(inst->acctstop);
-	free(inst->accton);
-	free(inst->acctoff);
 	
     free(inst);
     return 0;

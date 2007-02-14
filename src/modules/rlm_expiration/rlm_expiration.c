@@ -84,7 +84,7 @@ static int expiration_authorize(void *instance, REQUEST *request)
 
 			DEBUG("rlm_expiration: Account has expired");
 
-			if (data->msg){
+			if (data->msg && data->msg[0]){
 				if (!radius_xlat(msg, sizeof(msg), data->msg, request, NULL)) {
 					radlog(L_ERR, "rlm_expiration: xlat failed.");
 					return RLM_MODULE_FAIL;
@@ -150,8 +150,6 @@ static int expiration_detach(void *instance)
 	rlm_expiration_t *data = (rlm_expiration_t *) instance;
 
 	paircompare_unregister(PW_EXPIRATION, expirecmp);
-	if (data->msg)
-		free(data->msg);
 	free(instance);
 	return 0;
 }
@@ -188,14 +186,6 @@ static int expiration_instantiate(CONF_SECTION *conf, void **instance)
 		free(data);
 		radlog(L_ERR, "rlm_expiration: Configuration parsing failed.");
 		return -1;
-	}
-
-	/*
-	 * If we are passed an empty reply-message don't use it
-	 */
-	if (!strlen(data->msg)){
-		free(data->msg);
-		data->msg = NULL;
 	}
 
 	/*

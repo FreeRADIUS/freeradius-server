@@ -463,12 +463,6 @@ static int attr_rewrite_detach(void *instance)
 {
 	rlm_attr_rewrite_t *data = (rlm_attr_rewrite_t *) instance;
 
-	if (data->attribute)
-		free(data->attribute);
-	if (data->search)
-		free(data->search);
-	if (data->replace)
-		free(data->replace);
 	if (data->name)
 		free(data->name);
 

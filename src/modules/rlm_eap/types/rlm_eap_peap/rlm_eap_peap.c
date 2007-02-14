@@ -77,7 +77,6 @@ static int eappeap_detach(void *arg)
 {
 	rlm_eap_peap_t *inst = (rlm_eap_peap_t *) arg;
 
-	if (inst->default_eap_type_name) free(inst->default_eap_type_name);
 
 	free(inst);
 

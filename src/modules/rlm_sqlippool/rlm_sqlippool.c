@@ -925,50 +925,6 @@ static int sqlippool_detach(void *instance)
 {
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 
-	free(data->sql_instance_name);
-	free(data->pool_name);
-
-	free(data->allocate_begin);
-	free(data->allocate_clear);
-	free(data->allocate_find);
-	free(data->allocate_update);
-	free(data->allocate_commit);
-	free(data->allocate_rollback);
-
-	free(data->pool_check);
-
-	free(data->start_begin);
-	free(data->start_update);
-	free(data->start_commit);
-	free(data->start_rollback);
-
-	free(data->alive_begin);
-	free(data->alive_update);
-	free(data->alive_commit);
-	free(data->alive_rollback);
-
-	free(data->stop_begin);
-	free(data->stop_clear);
-	free(data->stop_commit);
-	free(data->stop_rollback);
-
-	free(data->on_begin);
-	free(data->on_clear);
-	free(data->on_commit);
-	free(data->on_rollback);
-
-	free(data->off_begin);
-	free(data->off_clear);
-	free(data->off_commit);
-	free(data->off_rollback);
-	
-	free(data->log_exists);
-	free(data->log_failed);
-	free(data->log_nopool);
-	free(data->log_success);
-	free(data->log_clear);
-	free(data->defaultpool);
-
 	return 0;
 }
 

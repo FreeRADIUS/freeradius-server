@@ -198,7 +198,7 @@ static int logintime_authorize(void *instance, REQUEST *request)
 		 	 */
 		
 			DEBUG("rlm_logintime: timestr returned reject");
-			if (data->msg){
+			if (data->msg && data->msg[0]){
 				char msg[MAX_STRING_LEN];
 				VALUE_PAIR *tmp;
 
@@ -280,17 +280,8 @@ static int logintime_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	/*
-	 * If we are passed an empty reply-message don't use it
-	 */
-	if (!strlen(data->msg)){
-		free(data->msg);
-		data->msg = NULL;
-	}
-
 	if (data->min_time == 0){
 		radlog(L_ERR, "rlm_logintime: Minimum timeout should be non zero.");
-		free(data->msg);
 		free(data);
 		return -1;
 	}
@@ -312,8 +303,6 @@ static int logintime_detach(void *instance)
 
 	paircompare_unregister(PW_CURRENT_TIME, timecmp);
 	paircompare_unregister(PW_TIME_OF_DAY, time_of_day);
-	if (data->msg)
-		free(data->msg);
 	free(instance);
 	return 0;
 }

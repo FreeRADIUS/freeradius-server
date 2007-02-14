@@ -121,7 +121,7 @@ static VALUE_PAIR **decode_string(REQUEST *request, const char *string)
  *	Do xlat of strings.
  */
 static int exec_xlat(void *instance, REQUEST *request,
-		     char *fmt, char *out, int outlen,
+		     char *fmt, char *out, size_t outlen,
 		     UNUSED RADIUS_ESCAPE_STRING func)
 {
 	int		result;
@@ -163,14 +163,6 @@ static int exec_detach(void *instance)
 		xlat_unregister(inst->xlat_name, exec_xlat);
 		free(inst->xlat_name);
 	}
-
-	/*
-	 *  Free the strings.
-	 */
-	if (inst->program) free(inst->program);
-	if (inst->input) free(inst->input);
-	if (inst->output) free(inst->output);
-	if (inst->packet_type) free(inst->packet_type);
 
 	free(inst);
 	return 0;

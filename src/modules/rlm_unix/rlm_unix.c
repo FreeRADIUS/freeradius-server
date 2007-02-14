@@ -127,8 +127,6 @@ static int groupcmp(void *instance, UNUSED REQUEST *req, VALUE_PAIR *request,
 static int unix_detach(void *instance)
 {
 #define inst ((struct unix_instance *)instance)
-	if (inst->radwtmp)
-		free(inst->radwtmp);
 
 	paircompare_unregister(PW_GROUP, groupcmp);
 #ifdef PW_GROUP_NAME

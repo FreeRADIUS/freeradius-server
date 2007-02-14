@@ -1289,15 +1289,6 @@ static int perl_detach(void *instance)
 	xlat_unregister(inst->xlat_name, perl_xlat);
 	free(inst->xlat_name);
 
-	if (inst->func_authorize) free(inst->func_authorize);
-	if (inst->func_authenticate) free(inst->func_authenticate);
-	if (inst->func_accounting) free(inst->func_accounting);
-	if (inst->func_preacct) free(inst->func_preacct);
-	if (inst->func_checksimul) free(inst->func_checksimul);
-	if (inst->func_pre_proxy) free(inst->func_pre_proxy);
-	if (inst->func_post_proxy) free(inst->func_post_proxy);
-	if (inst->func_post_auth) free(inst->func_post_auth);
-	if (inst->func_detach) free(inst->func_detach);
 
 #ifdef USE_ITHREADS
 	free(inst->perl_pool->head);
