@@ -557,6 +557,7 @@ static int common_socket_parse(const char *filename, int lineno,
 	if (rcode > 0) return 0; /* non-existent is OK. */
 
 	client_cs = cf_section_find(section_name);
+	free(section_name);
 	if (!client_cs) {
 		radlog(L_CONS|L_ERR, "%s[%d]: Failed to find client section %s",
 		       filename, cf_section_lineno(cs), section_name);
