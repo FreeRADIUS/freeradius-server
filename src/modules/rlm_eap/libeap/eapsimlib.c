@@ -343,6 +343,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 	}
 
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, PW_TYPE_INTEGER);
+	if (!newvp) return 0;
 	newvp->lvalue = attr[0];
 	newvp->length = 1;
 	pairadd(&(r->vps), newvp);
@@ -529,6 +530,7 @@ const char *subtypes[]={ "subtype0", "subtype1", "subtype2", "subtype3",
 			 "challenge",
 			 "notification",
 			 "reauth",
+			 "client-error",
 			 NULL };
 
 const char *sim_subtype2name(enum eapsim_subtype subtype,

@@ -557,6 +557,13 @@ static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
 	}
 	subtype = vp->lvalue;
 
+	/*
+	 *	Client error supersedes anything else.
+	 */
+	if (subtype == eapsim_client_error) {
+		return 0;
+	}
+
 	switch(ess->state) {
 	case eapsim_server_start:
 		switch(subtype) {
@@ -600,7 +607,7 @@ static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
 		 * is a coding error!
 		 */
 		DEBUG2("  illegal-unknown state reached in eap_sim_authenticate\n");
-		abort();
+		rad_assert(0 == 1);
  	}
 
 	return 0;
@@ -621,7 +628,13 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.12  2004-03-19 02:20:35  mcr
+ * Revision 1.12.4.1  2007-02-15 12:51:38  aland
+ * 	Handle Client-Error code.  If the client sends us one, we stop
+ * 	talking EAP-SIM.
+ *
+ * 	This closes #419
+ *
+ * Revision 1.12  2004/03/19 02:20:35  mcr
  * 	increment the EAP-id on each stage of the transaction.
  *
  * Revision 1.11  2004/02/26 19:04:31  aland
