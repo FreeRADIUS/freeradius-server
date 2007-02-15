@@ -560,6 +560,13 @@ static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
 	}
 	subtype = vp->lvalue;
 
+	/*
+	 *	Client error supersedes anything else.
+	 */
+	if (subtype == eapsim_client_error) {
+		return 0;
+	}
+
 	switch(ess->state) {
 	case eapsim_server_start:
 		switch(subtype) {
@@ -603,7 +610,7 @@ static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
 		 * is a coding error!
 		 */
 		DEBUG2("  illegal-unknown state reached in eap_sim_authenticate\n");
-		abort();
+		rad_assert(0 == 1);
  	}
 
 	return 0;

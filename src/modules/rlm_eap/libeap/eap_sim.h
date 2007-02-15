@@ -58,7 +58,8 @@ enum eapsim_subtype {
   eapsim_challenge   = 11,
   eapsim_notification= 12,
   eapsim_reauth      = 13,
-  eapsim_max_subtype = 14
+  eapsim_client_error = 14,
+  eapsim_max_subtype = 15
 };
 
 enum eapsim_clientstates {
