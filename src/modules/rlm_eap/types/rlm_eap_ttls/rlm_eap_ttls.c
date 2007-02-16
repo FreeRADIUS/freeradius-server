@@ -145,12 +145,13 @@ static void ttls_free(void *p)
 
 	pairfree(&t->username);
 	pairfree(&t->state);
+	pairfree(&t->reply);
 	free(t);
 }
 
 
 /*
- *	Free the TTLS per-session data
+ *	Allocate the TTLS per-session data
  */
 static ttls_tunnel_t *ttls_alloc(rlm_eap_ttls_t *inst)
 {
@@ -194,12 +195,16 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		 */
 	case EAPTLS_SUCCESS:
 		if (t->authenticated) {
+			if (t->reply) {
+				pairadd(&handler->request->reply->vps, t->reply);
+				t->reply = NULL;
+			}
 			eaptls_success(handler->eap_ds, 0);
 			eaptls_gen_mppe_keys(&handler->request->reply->vps,
 					     tls_session->ssl,
 					     "ttls keying material");
 		} else {
-		eaptls_request(handler->eap_ds, tls_session);
+			eaptls_request(handler->eap_ds, tls_session);
 		}
 		return 1;
 
