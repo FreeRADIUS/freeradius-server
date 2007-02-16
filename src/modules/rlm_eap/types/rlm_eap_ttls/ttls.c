@@ -611,6 +611,24 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			DEBUG2("  TTLS: Got MS-CHAP2-Success, tunneling it to the client in a challenge.");
 			rcode = RLM_MODULE_HANDLED;
 			t->authenticated = TRUE;
+			
+			/*
+			 *	Delete MPPE keys & encryption policy.  We don't
+			 *	want these here.
+			 */
+			pairdelete(&reply->vps, ((311 << 16) | 7));
+			pairdelete(&reply->vps, ((311 << 16) | 8));
+			pairdelete(&reply->vps, ((311 << 16) | 16));
+			pairdelete(&reply->vps, ((311 << 16) | 17));
+			
+			/*
+			 *	Use the tunneled reply, but not now.
+			 */
+			if (t->use_tunneled_reply) {
+				t->reply = reply->vps;
+				reply->vps = NULL;
+			}
+
 		} else { /* no MS-CHAP2-Success */
 			/*
 			 *	Can only have EAP-Message if there's
