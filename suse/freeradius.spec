@@ -15,7 +15,7 @@ License:      GPL, LGPL
 Group:        Productivity/Networking/Radius/Servers
 Provides:     radiusd
 Conflicts:    radiusd-livingston radiusd-cistron icradius
-Version:      1.1.3
+Version:      1.1.5
 Release:      0.%{distroversion}
 URL:          http://www.freeradius.org/
 Summary:      Very highly Configurable Radius-Server
@@ -333,7 +333,6 @@ rm -rf $RPM_BUILD_ROOT
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql.conf
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/users
 %config(noreplace) /etc/raddb/otp.conf
-%attr(640,-,radiusd) /etc/raddb/otppasswd.sample
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/certs
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/eap.conf
 %attr(640,-,radiusd) /etc/raddb/example.pl
