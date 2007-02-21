@@ -2,6 +2,12 @@
 #	Please read the documentation file ../doc/processing_users_file,
 #	or 'man 5 users' (after installing the server) for more information.
 #
+#	As of 1.1.4, you SHOULD NOT use Auth-Type.  See "man rlm_pap"
+#	for a much better way of dealing with differing passwords.
+#	If you set Auth-Type, SOME AUTHENTICATION METHODS WILL NOT WORK.
+#	If you don't set Auth-Type, the server will figure out what to do,
+#	and will almost always do the right thing.
+#
 #	This file contains authentication security and configuration
 #	information for each user.  Accounting requests are NOT processed
 #	through this file.  Instead, see 'acct_users', in this directory.
@@ -12,6 +18,12 @@
 #	include password, comm server name, comm server port number, protocol
 #	type (perhaps set by the "hints" file), and huntgroup name (set by
 #	the "huntgroups" file).
+#
+#	Indented (with the tab character) lines following the first
+#	line indicate the configuration values to be passed back to
+#	the comm server to allow the initiation of a user session.
+#	This can include things like the PPP configuration values
+#	or the host to log the user onto.
 #
 #	If you are not sure why a particular reply is being sent by the
 #	server, then run the server in debugging mode (radiusd -X), and
@@ -26,20 +38,6 @@
 #	in the order they appear in this file. The first entry that
 #	matches the login-request will stop processing unless you use
 #	the Fall-Through variable.
-#
-#	If you use the database support to turn this file into a .db or .dbm
-#	file, the DEFAULT entries _have_ to be at the end of this file and
-#	you can't have multiple entries for one username.
-#
-#	You don't need to specify a password if you set Auth-Type += System
-#	on the list of authentication requirements. The RADIUS server
-#	will then check the system password file.
-#
-#	Indented (with the tab character) lines following the first
-#	line indicate the configuration values to be passed back to
-#	the comm server to allow the initiation of a user session.
-#	This can include things like the PPP configuration values
-#	or the host to log the user onto.
 #
 #	You can include another `users' file with `$INCLUDE users.other'
 #
@@ -77,7 +75,7 @@
 # entry so that no DEFAULT entry will be used, and the user will NOT
 # get any attributes in addition to the ones listed here.
 #
-#steve	Auth-Type := Local, User-Password == "testing"
+#steve	Cleartext-Password := "testing"
 #	Service-Type = Framed-User,
 #	Framed-Protocol = PPP,
 #	Framed-IP-Address = 172.16.3.33,
@@ -91,13 +89,13 @@
 # This is an entry for a user with a space in their name.
 # Note the double quotes surrounding the name.
 #
-#"John Doe"	Auth-Type := Local, User-Password == "hello"
+#"John Doe"	Cleartext-Password := "hello"
 #		Reply-Message = "Hello, %u"
 
 #
 # Dial user back and telnet to the default host for that port
 #
-#Deg	Auth-Type := Local, User-Password == "ge55ged"
+#Deg	Cleartext-Password := "ge55ged"
 #	Service-Type = Callback-Login-User,
 #	Login-IP-Host = 0.0.0.0,
 #	Callback-Number = "9,5551212",
@@ -109,7 +107,7 @@
 # connection will be broken and the user will be dialed back after which
 # he will get a connection to the host "timeshare1".
 #
-#dialbk	Auth-Type := Local, User-Password == "callme"
+#dialbk	Cleartext-Password := "callme"
 #	Service-Type = Callback-Login-User,
 #	Login-IP-Host = timeshare1,
 #	Login-Service = PortMaster,
@@ -130,6 +128,9 @@
 # If the user logs in as 'username.shell', then authenticate them
 # against the system database, give them shell access, and stop processing
 # the rest of the file.
+#
+# Note that authenticating against an /etc/passwd file works ONLY for PAP,
+# and not for CHAP, MS-CHAP, or EAP.
 #
 #DEFAULT	Suffix == ".shell", Auth-Type := System
 #		Service-Type = Login-User,
