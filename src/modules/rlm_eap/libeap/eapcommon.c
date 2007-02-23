@@ -388,7 +388,8 @@ void map_eap_types(RADIUS_PACKET *req)
 		ep.id   = id;
 		ep.type.type = eap_type;
 		ep.type.length = vp->length;
-		ep.type.data = vp->vp_octets;
+		ep.type.data = malloc(vp->length);
+		memcpy(ep.type.data,vp->vp_octets, vp->length);
 		eap_basic_compose(req, &ep);
 	}
 }
