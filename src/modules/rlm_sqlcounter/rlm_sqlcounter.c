@@ -566,7 +566,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	dattr = dict_attrbyname(data->check_name);
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: Failed to create check attribute %s",
-				data->counter_name);
+				data->check_name);
 		sqlcounter_detach(data);
 		return -1;
 	}
