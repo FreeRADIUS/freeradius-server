@@ -1,0 +1,12 @@
+TARGET      = @targetname@
+SRCS        = rlm_sqlhpwippool.c
+HEADERS     =
+RLM_CFLAGS  = $(INCLTDL) @sqlhpwippool_cflags@ -I$(top_builddir)/src/modules/rlm_sql
+RLM_LIBS    = $(LIBLTDL) @sqlhpwippool_ldflags@
+RLM_INSTALL =
+
+include ../rules.mak
+
+$(STATIC_OBJS): $(HEADERS)
+
+$(DYNAMIC_OBJS): $(HEADERS)
