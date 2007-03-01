@@ -508,6 +508,8 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		}
 
 
+		lrad_hash_table_delete(attributes_byvalue, a);
+
 		if (!lrad_hash_table_replace(attributes_byname, attr)) {
 			librad_log("dict_addattr: Internal error storing attribute %s", name);
 			free(attr);
