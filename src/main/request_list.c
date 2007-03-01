@@ -1216,25 +1216,13 @@ static int refresh_request(REQUEST *request, void *data)
 	request->proxy_try_count--;
 	request->proxy_next_try = info->now + mainconfig.proxy_retry_delay;
 
-	/* Fix up Acct-Delay-Time */
+	/*
+	 *	Don't restransmit accounting requests.
+	 *	Only the originating NAS should do this.
+	 */
 	if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
-		VALUE_PAIR *delaypair;
-		delaypair = pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME);
-
-		if (!delaypair) {
-			delaypair = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
-			if (!delaypair) {
-				radlog(L_ERR|L_CONS, "no memory");
-				exit(1);
-			}
-			pairadd(&request->proxy->vps, delaypair);
-		}
-		delaypair->lvalue = info->now - request->proxy->timestamp;
-
-		/* Must recompile the valuepairs to wire format */
-		free(request->proxy->data);
-		request->proxy->data = NULL;
-	} /* proxy accounting request */
+		goto setup_timeout;
+	}
 
 	/*
 	 *  Assert that we have NOT seen the proxy reply yet.
