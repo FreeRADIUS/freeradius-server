@@ -802,7 +802,10 @@ int rl_add_proxy(REQUEST *request)
 	/*
 	 *	There was no bit clear, which we had just checked above...
 	 */
-	rad_assert(proxy != -1);
+	if (proxy < 0) {
+		pthread_mutex_unlock(&proxy_mutex);
+		return 0;
+	}
 
 	/*
 	 *	Mark the Id as allocated, for thei Fd.
