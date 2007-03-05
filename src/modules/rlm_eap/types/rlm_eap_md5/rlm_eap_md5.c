@@ -133,6 +133,7 @@ static int md5_authenticate(void *arg, EAP_HANDLER *handler)
 	 */
 	reply = eapmd5_alloc();
 	if (!reply) {
+		eapmd5_free(&packet);
 		return 0;
 	}
 	reply->id = handler->eap_ds->request->id;
@@ -145,6 +146,7 @@ static int md5_authenticate(void *arg, EAP_HANDLER *handler)
 	if (eapmd5_verify(packet, password, handler->opaque)) {
 		reply->code = PW_MD5_SUCCESS;
 	} else {
+		DEBUG2("  rlm_eap_md5: Passwords do not match");
 		reply->code = PW_MD5_FAILURE;
 	}
 
