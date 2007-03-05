@@ -438,7 +438,7 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	/* look for the AT_MAC and the challenge data */
 	mac   = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC);
 	randvp= pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_RAND);
-	if(mac == NULL || rand == NULL) {
+	if(mac == NULL || randvp == NULL) {
 		fprintf(stderr, "radeapclient: challenge message needs to contain RAND and MAC\n");
 		return 0;
 	}
