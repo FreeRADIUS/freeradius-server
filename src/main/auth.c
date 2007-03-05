@@ -889,6 +889,7 @@ autz_redo:
 		pairdelete(&request->reply->vps, PW_EXEC_PROGRAM);
 	}
 	if ((auth_item = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT)) != NULL) {
+		free(exec_program);
 		exec_wait = 1;
 		exec_program = strdup((char *)auth_item->strvalue);
 		pairdelete(&request->reply->vps, PW_EXEC_PROGRAM_WAIT);
