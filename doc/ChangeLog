@@ -8,6 +8,7 @@ FreeRADIUS 1.1.5 ; $Date$ , urgency=low
 	  This helps track down run-time leaks.
 
 	Bug fixes
+	* Corrected base64 decoding in rlm_pap
 	* Don't retransmit accounting packets.  The NAS should do this.
 	* Handle Client-Error in EAP-SIM.  This closes #419
 	* Port OpenSSL locking fixes from CVS head.  This makes PEAP
