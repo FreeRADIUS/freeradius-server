@@ -1,0 +1,8 @@
+include ../../../../../Make.inc
+
+TARGET		= @targetname@
+SRCS		= sql_firebird.c
+RLM_SQL_CFLAGS	= @sql_firebird_cflags@ $(INCLTDL)
+RLM_SQL_LIBS	= @sql_firebird_ldflags@
+
+include ../rules.mak
