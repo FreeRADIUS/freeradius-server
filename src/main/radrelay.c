@@ -390,6 +390,7 @@ int do_recv(struct relay_misc *r_args)
 	 *	FIXME: check if this is the right server!
 	 */
 	if (rep->code != PW_ACCOUNTING_RESPONSE)
+		rad_free(&rep);
 		return -1;
 
 	/*
@@ -404,10 +405,12 @@ int do_recv(struct relay_misc *r_args)
 		if (r->state == STATE_FULL && r->req->id == rep->id) {
 			if (rad_verify(rep, r->req, r_args->secret) != 0) {
 				librad_perror("rad_verify");
+				rad_free(&rep);
 				return -1;
 			}
 			if (rad_decode(rep, r->req, r_args->secret) != 0) {
 				librad_perror("rad_decode");
+				rad_free(&rep);
 				return -1;
 			}
 			/*
