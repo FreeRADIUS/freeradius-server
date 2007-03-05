@@ -1,4 +1,4 @@
-FreeRADIUS 1.1.5 ; $Date$ , urgency=low
+FreeRADIUS 1.1.5 ; Date: 2007/03/05 13:13:43  , urgency=low
 	Feature improvements
 	* Added more dictionaries
 	* Dictionary files now MUST NOT be globally writable.
