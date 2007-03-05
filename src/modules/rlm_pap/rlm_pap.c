@@ -213,8 +213,6 @@ static int base64_decode (const char *src, uint8_t *dst)
 	length = equals = 0;
 	while (src[length] && src[length] != '=') length++;
 
-	if (src[length] != '=') return 0; /* no trailing '=' */
-
 	while (src[length + equals] == '=') equals++;
 
 	num = (length + equals) / 4;
@@ -578,7 +576,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	switch (scheme) {
 	case PAP_ENC_CLEAR:
 	do_clear:
-		DEBUG("rlm_pap: Using clear text password.");
+		DEBUG("rlm_pap: Using clear text password \"%s\".", vp->strvalue);
 		if (strcmp((char *) vp->strvalue,
 			   (char *) request->password->strvalue) != 0){
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CLEAR TEXT password check failed");
