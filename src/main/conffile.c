@@ -672,8 +672,9 @@ static CONF_SECTION *cf_section_read(const char *cf, int *lineno, FILE *fp,
 		 *	We've filled the buffer, and there isn't
 		 *	a CR in it.  Die!
 		 */
-		if ((len == sizeof(buf)) &&
-		    (cbuf[len - 1] != '\n')) {
+		if ((len >= (sizeof(buf) - 1)) &&
+		    (((cbuf[len - 1] != '\n')) ||
+		     (cbuf[len - 1] == '\\'))) {
 			radlog(L_ERR, "%s[%d]: Line too long",
 			       cf, *lineno);
 			cf_section_free(&cs);
