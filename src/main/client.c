@@ -174,6 +174,7 @@ int read_clients_file(const char *file)
 
 		c->ipaddr = ip_getaddr(hostnm);
 		if (c->ipaddr == INADDR_NONE) {
+			clients_free(c);
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
 					file, lineno, hostnm);
 			return -1;
