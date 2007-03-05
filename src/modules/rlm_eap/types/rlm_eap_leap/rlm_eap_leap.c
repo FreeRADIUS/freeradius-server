@@ -130,6 +130,7 @@ static int leap_authenticate(void *instance, EAP_HANDLER *handler)
 	case 4:			/* Verify NtChallengeResponse */
 		DEBUG2("  rlm_eap_leap: Stage 4");
 		rcode = eapleap_stage4(packet, password, session);
+		eapleap_free(&packet);
 		session->stage = 6;
 
 		/*
@@ -138,7 +139,6 @@ static int leap_authenticate(void *instance, EAP_HANDLER *handler)
 		 */
 		if (!rcode) {
 			handler->eap_ds->request->code = PW_EAP_FAILURE;
-			eapleap_free(&packet);
 			return 0;
 		}
 
