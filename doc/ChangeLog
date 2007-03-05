@@ -6,6 +6,8 @@ FreeRADIUS 1.1.5 ; Date: 2007/03/05 13:13:43  , urgency=low
 	  or globally writable.
 	* Be more aggressive about freeing memory on clean exit.
 	  This helps track down run-time leaks.
+	* Updated rlm_python to something usable
+	* Added experimental sql "HPW" IPPools.
 
 	Bug fixes
 	* Corrected base64 decoding in rlm_pap
