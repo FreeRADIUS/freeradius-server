@@ -198,7 +198,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	struct timeval	tv;
 	REALM		*proxy_realm;
 	char		proxy_buffer[16];
-	VALUE_PAIR	*pair = packet->vps;
+	VALUE_PAIR	*pair;
 
 	struct detail_instance *inst = instance;
 
@@ -353,7 +353,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	fputs(CTIME_R(&request->timestamp, buffer, DIRLEN), outfp);
 
 	/* Write each attribute/value to the log file */
-	for (; pair != NULL; pair = pair->next) {
+	for (pair = packet->vps; pair != NULL; pair = pair->next) {
 		if (inst->ht &&
 		    lrad_hash_table_finddata(inst->ht, pair)) continue;
 
