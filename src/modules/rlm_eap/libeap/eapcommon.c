@@ -530,6 +530,7 @@ void unmap_eap_types(RADIUS_PACKET *rep)
 		/* verify the length is big enough to hold type */
 		if(len < 5)
 		{
+			free(e);
 			return;
 		}
 
@@ -549,6 +550,7 @@ void unmap_eap_types(RADIUS_PACKET *rep)
 		break;
 	}
 
+	free(e);
 	return;
 }
 
