@@ -332,7 +332,8 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 	    ((eap_ds->response->length == EAP_HEADER_LEN + 2) &&
 	     ((eaptls_packet->flags & 0xc0) == 0x00))) {
 
-		if (prev_eap_ds->request->id == eap_ds->response->id) {
+		if (prev_eap_ds &&
+		    (prev_eap_ds->request->id == eap_ds->response->id)) {
 			/*
 			 *	Run the ACK handler directly from here.
 			 */
