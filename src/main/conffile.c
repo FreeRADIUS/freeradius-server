@@ -303,6 +303,10 @@ static void cf_section_parse_free(void *base, const CONF_PARSER *variables)
 			}
 
 			p = (char **) variables[i].data;;
+
+		} else if (variables[i].data) {
+			p = (char **) variables[i].data;;
+
 		} else {
 			p = (char **) (((char *)base) + variables[i].offset);
 		}
@@ -760,14 +764,24 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			radlog(L_ERR, "Bad value \"%s\" for boolean variable %s", value, name);
 			return -1;
 		}
-		DEBUG2(" %s: %s = %s", cs->name1, name, value);
+		if (cs->name2) {
+			DEBUG2(" %s %s: %s = %s", cs->name1, cs->name2, name, value);
+		} else {
+			DEBUG2(" %s: %s = %s", cs->name1, name, value);
+		}
 		break;
 		
 	case PW_TYPE_INTEGER:
 		*(int *)data = strtol(value, 0, 0);
-		DEBUG2(" %s: %s = %d",
-		       cs->name1, name,
-		       *(int *)data);
+		if (cs->name2) {
+			DEBUG2(" %s %s: %s = %d",
+			       cs->name1, cs->name2, name,
+			       *(int *)data);
+		} else {
+			DEBUG2(" %s: %s = %d",
+			       cs->name1, name,
+			       *(int *)data);
+		}
 		break;
 		
 	case PW_TYPE_STRING_PTR:
@@ -795,9 +809,15 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			if (!value) return -1;
 		}
 		
-		DEBUG2(" %s: %s = \"%s\"",
-		       cs->name1, name,
-		       value ? value : "(null)");
+		if (cs->name2) {
+			DEBUG2(" %s %s: %s = \"%s\"",
+			       cs->name1, cs->name2, name,
+			       value ? value : "(null)");
+		} else {
+			DEBUG2(" %s: %s = \"%s\"",
+			       cs->name1, name,
+			       value ? value : "(null)");
+		}
 		*q = value ? strdup(value) : NULL;
 		break;
 		
@@ -831,9 +851,15 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			if (!value) return -1;
 		}
 		
-		DEBUG2(" %s: %s = \"%s\"",
-		       cs->name1, name,
-		       value ? value : "(null)");
+		if (cs->name2) {
+			DEBUG2(" %s %s: %s = \"%s\"",
+			       cs->name1, cs->name2, name,
+			       value ? value : "(null)");
+		} else {
+			DEBUG2(" %s: %s = \"%s\"",
+			       cs->name1, name,
+			       value ? value : "(null)");
+		}
 		*q = value ? strdup(value) : NULL;
 
 		/*
@@ -867,9 +893,15 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			radlog(L_ERR, "Can't find IP address for host %s", value);
 			return -1;
 		}
-		DEBUG2(" %s: %s = %s IP address [%s]",
-		       cs->name1, name, value,
-		       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
+		if (cs->name2) {
+			DEBUG2(" %s %s: %s = %s IP address [%s]",
+			       cs->name1, cs->name2, name, value,
+			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
+		} else {
+			DEBUG2(" %s: %s = %s IP address [%s]",
+			       cs->name1, name, value,
+			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
+		}
 		*(uint32_t *) data = ipaddr.ipaddr.ip4addr.s_addr;
 		break;
 		
@@ -878,9 +910,15 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			radlog(L_ERR, "Can't find IPv6 address for host %s", value);
 			return -1;
 		}
-		DEBUG2(" %s: %s = %s IPv6 address [%s]",
-		       cs->name1, name, value,
-		       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
+		if (cs->name2) {
+			DEBUG2(" %s %s: %s = %s IPv6 address [%s]",
+			       cs->name1, cs->name2, name, value,
+			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
+		} else {
+			DEBUG2(" %s: %s = %s IPv6 address [%s]",
+			       cs->name1, name, value,
+			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
+		}
 		memcpy(data, &ipaddr.ipaddr.ip6addr,
 		       sizeof(ipaddr.ipaddr.ip6addr));
 		break;
