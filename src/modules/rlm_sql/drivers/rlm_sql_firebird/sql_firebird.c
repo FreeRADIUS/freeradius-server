@@ -1,11 +1,27 @@
 /*
- * sql_firebird.c  Part of Firebird rlm_sql driver
+ * sql_firebird.c Part of Firebird rlm_sql driver
  *
- * Copyright 2006  Vitaly Bodzhgua <vitaly@easteara.net>
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation; either version 2 of the License, or
+ *   (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
+ * Copyright 2006  The FreeRADIUS server project
+ * Copyright 2006  Vitaly Bodzhgua <vitaly@eastera.net>
  */
 
 
 #include "sql_fbapi.h"
+
 
 /* Forward declarations */
 static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config);
@@ -35,12 +51,12 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
     res=fb_init_socket(firebird_sock);
     if (res)  return -1;
-    
+
     if (fb_connect(firebird_sock,config)) {
      radlog(L_ERR, "rlm_sql_firebird: Connection failed %s\n", firebird_sock->lasterror);
-     return -1;
+     return SQL_DOWN;
     }
-    
+
     return 0;
 }
 
@@ -68,29 +84,50 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
  *               the database.
  *
  *************************************************************************/
- 
+
 static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
     rlm_sql_firebird_sock *firebird_sock = sqlsocket->conn;
- int deadlock_trys=1;     
+    int deadlock=0;
  if (config->sqltrace)
-        radlog(L_DBG, "query:  %s", querystr);
+        radlog(L_DBG, "sock_id %i: query:  %s", sqlsocket->id,querystr);
 
-TryAgainIfDeadlock:    
-    /* Executing query */
+#ifdef _PTHREAD_H
+ pthread_mutex_lock(&firebird_sock->mut);
+#endif
+
+TryAgain:
  if (fb_sql_query(firebird_sock,querystr)) {
-   if (firebird_sock->sql_code==DEADLOCK_SQL_CODE) {
-    deadlock_trys++;
-    if (deadlock_trys<=DEADLOCK_TRYS) {
-     radlog(L_INFO, "rlm_sql_firebird,sql_query: deadlock, try again query '%s'\n",querystr);
-     goto TryAgainIfDeadlock;
-    }
+//Try again query when deadlock, beacuse in any case it will be retried.
+// but may be lost for short sessions
+   if ((firebird_sock->sql_code==DEADLOCK_SQL_CODE) && !deadlock) {
+      radlog(L_DBG,"sock_id %i: deadlock. Retry query %s\n",sqlsocket->id,querystr);
+//For non READ_COMMITED transactions put rollback here
+// fb_rollback(sock);
+      deadlock=1;
+      goto TryAgain;
    }
-   radlog(L_ERR, "rlm_sql_firebird,sql_query error:sql_code=%i, error='%s'\n", 
+   radlog(L_ERR, "sock_id %i: rlm_sql_firebird,sql_query error:sql_code=%i, error='%s', query=%s\n",
+     sqlsocket->id,
      firebird_sock->sql_code,
-     firebird_sock->lasterror);
-   radlog(L_ERR, "rlm_sql_firebird, Problem with query: '%s'\n", querystr);
+     firebird_sock->lasterror,
+     querystr);
+
+   if ((firebird_sock->sql_code==DOWN_SQL_CODE)) return SQL_DOWN;
+//free problem query
+   if (fb_rollback(firebird_sock)) {
+    //assume the network is down if rollback had failed
+    radlog(L_ERR,"Fail to rollback transaction after previous error. Error: %s\n",
+       firebird_sock->lasterror);
+    return SQL_DOWN;
+   }
+//   firebird_sock->in_use=0;
    return -1;
  }
+
+ if (firebird_sock->statement_type!=isc_info_sql_stmt_select) {
+    if (fb_commit(firebird_sock)) return -1;
+ }
+
  return 0;
 }
 
@@ -103,10 +140,9 @@ TryAgainIfDeadlock:
  *
  *************************************************************************/
 static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
-    rlm_sql_firebird_sock *firebird_sock = sqlsocket->conn;
-    if (sql_query(sqlsocket, config, querystr)) return -1;
-    return 0;
-    
+//    rlm_sql_firebird_sock *firebird_sock = sqlsocket->conn;
+    return (sql_query(sqlsocket, config, querystr));
+
 }
 
 
@@ -146,7 +182,9 @@ static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *
  *************************************************************************/
 static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    return -1;
+    int res=sql_affected_rows(sqlsocket, config);
+    radlog(L_DBG,"sock_id %i: sql_num_rows: %i\n",sqlsocket->id,res);
+    return res;
 }
 
 
@@ -170,7 +208,7 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
      if (res) {
        radlog(L_ERR, "rlm_sql_firebird. Fetch problem:'%s'\n", firebird_sock->lasterror);
        return -1;
-     }  
+     }
     } else firebird_sock->statement_type=0;
     fb_store_row(firebird_sock);
 
@@ -187,7 +225,9 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *
  *************************************************************************/
 static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
-    sql_finish_query(sqlsocket,config);    
+    rlm_sql_firebird_sock *sock=(rlm_sql_firebird_sock *) sqlsocket->conn;
+    fb_commit(sock);
+    fb_close_cursor(sock);
     return 0;
 }
 
@@ -199,7 +239,7 @@ static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *
  *************************************************************************/
 static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    sql_free_result(sqlsocket,config);
+//    sql_free_result(sqlsocket,config);
     return 0;
 }
 
@@ -212,10 +252,8 @@ static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *
  *************************************************************************/
 static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    fb_free_result((rlm_sql_firebird_sock *) sqlsocket->conn); 
     return 0;
 }
-
 
 /*************************************************************************
  *
@@ -226,7 +264,8 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *
  *************************************************************************/
 static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    fb_destroy_socket((rlm_sql_firebird_sock *) sqlsocket->conn); 
+//    radlog(L_INFO,"Closing sql\n");
+    fb_destroy_socket((rlm_sql_firebird_sock *) sqlsocket->conn);
     return 0;
 }
 
@@ -241,7 +280,6 @@ static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_firebird_sock *firebird_sock = sqlsocket->conn;
     return firebird_sock->lasterror;
-    
 }
 /*************************************************************************
  *
@@ -252,9 +290,12 @@ static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *
  *************************************************************************/
 static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    return -1;
+ int affected_rows=fb_affected_rows(sqlsocket->conn);
+ if (affected_rows<0)
+   radlog(L_ERR, "sql_affected_rows, rlm_sql_firebird. error:%s\n", sql_error(sqlsocket,config));
+ radlog(L_DBG,"sock_id %i: affected_rows: %i\n",sqlsocket->id,affected_rows);
+ return affected_rows;
 }
-
 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_firebird = {
