@@ -1541,7 +1541,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 						}
 
 						passwd_len = strlen(passwd_val);
-						strlcpy(passwd_item->vp_strvalue,passwd_val,MAX_STRING_LEN - 1);
+						strlcpy(passwd_item->vp_strvalue,passwd_val,sizeof(passwd_item->vp_strvalue));
 						passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
 						pairadd(&request->config_items,passwd_item);
 

@@ -664,7 +664,8 @@ static int counter_accounting(void *instance, REQUEST *request)
 		DEBUG("rlm_counter: Could not find the requested key in the database.");
 		counter.user_counter = 0;
 		if (uniqueid_vp != NULL)
-			strlcpy(counter.uniqueid,uniqueid_vp->vp_strvalue,UNIQUEID_MAX_LEN - 1);
+			strlcpy(counter.uniqueid,uniqueid_vp->vp_strvalue,
+				sizeof(counter.uniqueid));
 		else
 			memset((char *)counter.uniqueid,0,UNIQUEID_MAX_LEN);
 	}
@@ -680,7 +681,8 @@ static int counter_accounting(void *instance, REQUEST *request)
 				DEBUG("rlm_counter: Unique IDs for user match. Droping the request.");
 				return RLM_MODULE_NOOP;
 			}
-			strlcpy(counter.uniqueid,uniqueid_vp->vp_strvalue,UNIQUEID_MAX_LEN - 1);
+			strlcpy(counter.uniqueid,uniqueid_vp->vp_strvalue,
+				sizeof(counter.uniqueid));
 		}
 		DEBUG("rlm_counter: User=%s, Counter=%d.",request->username->vp_strvalue,counter.user_counter);
 	}

@@ -966,12 +966,12 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'A': /* radacct_dir */
-				strlcpy(q,radacct_dir,freespace-1);
+				strlcpy(q,radacct_dir,freespace);
 				q += strlen(q);
 				p++;
 				break;
 			case 'C': /* ClientName */
-				strlcpy(q,client_name_old(&request->packet->src_ipaddr),freespace-1);
+				strlcpy(q,client_name_old(&request->packet->src_ipaddr),freespace);
 				q += strlen(q);
 				p++;
 				break;
@@ -994,7 +994,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'L': /* radlog_dir */
-				strlcpy(q,radlog_dir,freespace-1);
+				strlcpy(q,radlog_dir,freespace);
 				q += strlen(q);
 				p++;
 				break;
@@ -1003,7 +1003,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'R': /* radius_dir */
-				strlcpy(q,radius_dir,freespace-1);
+				strlcpy(q,radius_dir,freespace);
 				q += strlen(q);
 				p++;
 				break;
@@ -1031,9 +1031,9 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'V': /* Request-Authenticator */
 				if (request->packet->verified)
-					strlcpy(q,"Verified",freespace-1);
+					strlcpy(q,"Verified",freespace);
 				else
-					strlcpy(q,"None",freespace-1);
+					strlcpy(q,"None",freespace);
 				q += strlen(q);
 				p++;
 				break;
