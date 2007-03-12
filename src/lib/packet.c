@@ -514,8 +514,8 @@ void lrad_packet_list_free(lrad_packet_list_t *pl)
 {
 	if (!pl) return;
 
-	if (pl->ht) lrad_hash_table_free(pl->ht);
-	if (pl->dst2id_ht) lrad_hash_table_free(pl->dst2id_ht);
+	lrad_hash_table_free(pl->ht);
+	lrad_hash_table_free(pl->dst2id_ht);
 	free(pl);
 }
 
@@ -673,6 +673,9 @@ int lrad_packet_list_id_alloc(lrad_packet_list_t *pl,
 
 		memset(pd, 0, sizeof(*pd) + 255 * sizeof(pd->id[0]));
 
+		pd->dst_ipaddr = request->dst_ipaddr;
+		pd->dst_port = request->dst_port;
+
 		if (!lrad_hash_table_insert(pl->dst2id_ht, pd)) {
 			free(pd);
 			return 0;
@@ -685,13 +688,17 @@ int lrad_packet_list_id_alloc(lrad_packet_list_t *pl,
 	 *	approach is that it requires us to populate the
 	 *	LRU/FIFO when we add a new socket, or a new destination,
 	 *	which can be expensive.
+	 *
+	 *	The LRU can be avoided if the caller takes care to free
+	 *	Id's only when all responses have been received, OR after
+	 *	a timeout.
 	 */
 	id = start = (int) lrad_rand() & 0xff;
-	
+
 	while (pd->id[id] == pl->mask) { /* all sockets are using this ID */
 		id++;
 		id &= 0xff;
-		if (id == start) return -1;
+		if (id == start) return 0;
 	}
 
 	free_mask = ~((~pd->id[id]) & pl->mask);
@@ -718,6 +725,7 @@ int lrad_packet_list_id_alloc(lrad_packet_list_t *pl,
 	 *	Set the ID, source IP, and source port.
 	 */
 	request->id = id;
+
 	request->sockfd = ps->sockfd;
 	request->src_ipaddr = ps->ipaddr;
 	request->src_port = ps->port;
