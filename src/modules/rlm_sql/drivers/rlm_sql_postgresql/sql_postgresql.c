@@ -377,7 +377,7 @@ static int sql_fetch_row(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config) {
 			len = PQgetlength(pg_sock->result, pg_sock->cur_row, i);
 			pg_sock->row[i] = (char *)rad_malloc(len+1);
 			memset(pg_sock->row[i], '\0', len+1);
-			strlcpy(pg_sock->row[i], PQgetvalue(pg_sock->result, pg_sock->cur_row,i),len);
+			strlcpy(pg_sock->row[i], PQgetvalue(pg_sock->result, pg_sock->cur_row,i),len + 1);
 		}
 		pg_sock->cur_row++;
 		sqlsocket->row = pg_sock->row;
