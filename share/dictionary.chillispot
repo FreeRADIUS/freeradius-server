@@ -1,0 +1,19 @@
+# -*- text -*-
+##############################################################################
+#
+#	ChilliSpot captive portal
+#	http://www.chillispot.org
+#
+#	$Id$
+#
+##############################################################################
+
+VENDOR		ChilliSpot			14559
+
+BEGIN-VENDOR	ChilliSpot
+
+ATTRIBUTE	ChilliSpot-Max-Input-Octets		1	integer
+ATTRIBUTE	ChilliSpot-Max-Output-Octets		2	integer
+ATTRIBUTE	ChilliSpot-Max-Total-Octets		3	integer
+
+END-VENDOR	ChilliSpot
