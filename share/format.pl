@@ -71,6 +71,12 @@ while (@ARGV) {
 	#
 	if (/^BEGIN-VENDOR\s+([\w-]+)/) {
 	    $begin_vendor = 1;
+	    if (!defined $vendor) {
+		$vendor = $1;
+	    } elsif ($vendor ne $1) {
+		# do something smart
+	    }
+
 	    push @output, "BEGIN-VENDOR\t$vendor\n";
 	    next;
 	}
