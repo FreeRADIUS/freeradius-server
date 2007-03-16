@@ -389,9 +389,10 @@ int do_recv(struct relay_misc *r_args)
 	 *	Must be an accounting response.
 	 *	FIXME: check if this is the right server!
 	 */
-	if (rep->code != PW_ACCOUNTING_RESPONSE)
+	if (rep->code != PW_ACCOUNTING_RESPONSE) {
 		rad_free(&rep);
 		return -1;
+	}
 
 	/*
 	 *	Decode packet into radius attributes.
