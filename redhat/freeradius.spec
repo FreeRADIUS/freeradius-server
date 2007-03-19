@@ -8,7 +8,7 @@ Group: Networking/Daemons
 Packager: FreeRADIUS.org
 Source0: %{name}-%{version}.tar.gz
 Prereq: /sbin/chkconfig
-BuildPreReq: libtool
+BuildPreReq: libtool libtool-ltdl-devel
 # FIXME: snmpwalk, snmpget and rusers POSSIBLY needed by checkrad
 Provides: radiusd
 Conflicts: cistron-radius
