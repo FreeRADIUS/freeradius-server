@@ -561,6 +561,18 @@ static int refresh_request(void *ctx, void *data)
 			return 0;
 		}
 
+#ifdef DELETE_BLOCKED_REQUESTS
+	/*
+	 * Calling pthread_cancel() without a cancel handler is an
+	 * exceedingly bad idea.  This code is left here in case
+	 * we implement per-module cancel handlers later.
+	 * See freeradius-devel archives,
+	 * "cancelling requests due to max_request_time"
+	 *
+	 * If implemented, just remove the #ifdef's for DELETE_BLOCKED_REQUESTS
+	 * scattered throughout the code (this file and others), and
+	 * add the option back to radiusd.conf.in.
+	 */
 		if (mainconfig.kill_unresponsive_children) {
 			if (child_pid != NO_SUCH_CHILD_PID) {
 				/*
@@ -578,8 +590,10 @@ static int refresh_request(void *ctx, void *data)
 			 *	Maybe we haven't killed it.  In that
 			 *	case, print a warning.
 			 */
-		} else if ((child_pid != NO_SUCH_CHILD_PID) &&
-			   ((request->options & RAD_REQUEST_OPTION_LOGGED_CHILD) == 0)) {
+		} else
+#endif
+		if ((child_pid != NO_SUCH_CHILD_PID) &&
+			((request->options & RAD_REQUEST_OPTION_LOGGED_CHILD) == 0)) {
 			radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d",
 			       (unsigned long)child_pid, number);
 
@@ -599,8 +613,10 @@ static int refresh_request(void *ctx, void *data)
 		
 		request->child_pid = NO_SUCH_CHILD_PID;
 
+#ifdef DELETE_BLOCKED_REQUESTS
 		if (mainconfig.kill_unresponsive_children)
 			request->finished = TRUE;
+#endif
 		return 0;
 	} /* else the request is still allowed to be in the queue */
 

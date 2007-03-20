@@ -131,15 +131,6 @@ pidfile = ${run_dir}/radiusd.pid
 #
 max_request_time = 30
 
-#  delete_blocked_requests: If the request takes MORE THAN 'max_request_time'
-#  to be handled, then maybe the server should delete it.
-#
-#  If you're running in threaded, or thread pool mode, this setting
-#  should probably be 'no'.  Setting it to 'yes' when using a threaded
-#  server MAY cause the server to crash!
-#
-delete_blocked_requests = no
-
 #  cleanup_delay: The time to wait (in seconds) before cleaning up
 #  a reply which was sent to the NAS.
 #

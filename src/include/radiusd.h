@@ -236,7 +236,9 @@ typedef struct main_config_t {
 	int		max_request_time;
 	int		cleanup_delay;
 	int		max_requests;
+#ifdef DELETE_BLOCKED_REQUESTS
 	int		kill_unresponsive_children;
+#endif
 	char		*log_file;
 	char		*checkrad;
 	const char      *pid_file;
