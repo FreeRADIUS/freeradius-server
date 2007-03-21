@@ -329,8 +329,7 @@ LT_SCOPE	int		lt_dlloader_remove  LT_PARAMS((
     LT_ERROR(SHUTDOWN,		    "library already shutdown")		\
     LT_ERROR(CLOSE_RESIDENT_MODULE, "can't close resident module")	\
     LT_ERROR(INVALID_MUTEX_ARGS,    "invalid mutex handler registration") \
-    LT_ERROR(INVALID_POSITION,	    "invalid search path insert position") \
-    LT_ERROR(FR_DEPLIB,		    "dep lib loading bug, please report to freeradius-devel@lists.freeradius.org")
+    LT_ERROR(INVALID_POSITION,	    "invalid search path insert position")
 
 /* Enumerate the symbolic error names. */
 enum {
