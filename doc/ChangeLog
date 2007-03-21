@@ -1,4 +1,5 @@
 FreeRADIUS 2.0.0 ; $Date$, urgency=low
+	* Remove 'delete_blocked_requests' option.
 	* Fix fd leak in rlm_otp.
 	* Use Cleartext-Password for "known good" password in config items,
 	  rather than "User-Password".  This should solve a lot of problems.
