@@ -63,10 +63,7 @@ typedef struct rlm_sql_postgres_sock {
 } rlm_sql_postgres_sock;
 
 /* Prototypes */
-
-/*
-static int sql_num_fields(SQLSOCK * sqlsocket, SQL_CONFIG *config);
-*/
+static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 
 /* Internal function. Return true if the postgresql status value
  * indicates successful completion of the query. Return false otherwise
@@ -186,7 +183,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	if (PQstatus(pg_sock->conn) != CONNECTION_OK) {
 		radlog(L_ERR, "rlm_sql_postgresql: Couldn't connect socket to PostgreSQL server %s@%s:%s", config->sql_login, config->sql_server, config->sql_db);
 		/*radlog(L_ERR, "rlm_sql_postgresql: Postgresql error '%s'", PQerrorMessage(pg_sock->conn));*/
-		PQfinish(pg_sock->conn);
+		sql_close(sqlsocket, config);
 		return SQL_DOWN;
 	}
 
@@ -442,6 +439,7 @@ static int sql_close(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config) {
 
 	if (!pg_sock->conn) return 0;
 
+	/* PQfinish also frees the memory used by the PGconn structure */
 	PQfinish(pg_sock->conn);
 	pg_sock->conn = NULL;
 
