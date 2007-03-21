@@ -2361,6 +2361,8 @@ lt_dlexit ()
 	  LT_DLMEM_REASSIGN (loader, next);
 	}
       loaders = 0;
+
+      LT_DLFREE (user_search_path);
     }
 
  done:
