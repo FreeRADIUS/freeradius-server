@@ -1,7 +1,7 @@
 include ../../../../../Make.inc
 
 TARGET		= @targetname@
-SRCS		= sql_firebird.c
+SRCS		= sql_firebird.c sql_fbapi.c
 RLM_SQL_CFLAGS	= @sql_firebird_cflags@ $(INCLTDL)
 RLM_SQL_LIBS	= @sql_firebird_ldflags@
 
