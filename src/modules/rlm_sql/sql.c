@@ -496,7 +496,7 @@ int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
 
 	if (ret == SQL_DOWN) {
 	        /* close the socket that failed */
-		if (sqlsocket->state == sockunconnected) {
+		if (sqlsocket->state == sockconnected) {
 			(inst->module->sql_close)(sqlsocket, inst->config);
 		}
 
@@ -541,7 +541,7 @@ int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
 
 	if (ret == SQL_DOWN) {
 	        /* close the socket that failed */
-		if (sqlsocket->state == sockunconnected) {
+		if (sqlsocket->state == sockconnected) {
 			(inst->module->sql_close)(sqlsocket, inst->config);
 		}
 
