@@ -484,7 +484,9 @@ int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
 
 	if (ret == SQL_DOWN) {
 	        /* close the socket that failed */
-	        (inst->module->sql_close)(sqlsocket, inst->config);
+		if (sqlsocket->state == sockconnected) {
+			(inst->module->sql_close)(sqlsocket, inst->config);
+		}
 
 		/* reconnect the socket */
 		if (connect_single_socket(sqlsocket, inst) < 0) {
@@ -527,7 +529,9 @@ int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
 
 	if (ret == SQL_DOWN) {
 	        /* close the socket that failed */
-	        (inst->module->sql_close)(sqlsocket, inst->config);
+		if (sqlsocket->state == sockconnected) {
+			(inst->module->sql_close)(sqlsocket, inst->config);
+		}
 
 		/* reconnect the socket */
 		if (connect_single_socket(sqlsocket, inst) < 0) {
