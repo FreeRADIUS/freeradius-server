@@ -105,10 +105,11 @@ int sql_init_socketpool(SQL_INST * inst)
 		radlog(L_DBG, "rlm_sql (%s): starting %d",
 		       inst->config->xlat_name, i);
 
-		sqlsocket = rad_malloc(sizeof(SQLSOCK));
+		sqlsocket = rad_malloc(sizeof(*sqlsocket));
 		if (sqlsocket == NULL) {
 			return -1;
 		}
+		memset(sqlsocket, 0, sizeof(*sqlsocket));
 		sqlsocket->conn = NULL;
 		sqlsocket->id = i;
 		sqlsocket->state = sockunconnected;
@@ -326,86 +327,107 @@ int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket)
  *************************************************************************/
 int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row, int querymode)
 {
-	DICT_ATTR *attr;
 	VALUE_PAIR *pair, *check;
-	char *ptr;
-	char buf[128];
-	char value[256];
-	LRAD_TOKEN xlat, pairmode = T_EOL;
+	char *ptr, *value;
+	char buf[MAX_STRING_LEN];
+	char do_xlat = 0;
+	LRAD_TOKEN token, operator = T_EOL;
 
-	if ((attr = dict_attrbyname(row[2])) == (DICT_ATTR *) NULL) {
-		radlog(L_ERR | L_CONS, "rlm_sql: unknown attribute %s",
-		       row[2]);
-		return (-1);
+	/*
+	 *	Verify the 'Attribute' field
+	 */
+	if (row[2] == NULL || row[2][0] == '\0') {
+		radlog(L_ERR, "rlm_sql: The 'Attribute' field is empty or NULL, skipping the entire row.");
+		return -1;
 	}
 
-	if (row[4] != NULL && strlen(row[4]) > 0) {
+	/*
+	 *	Verify the 'op' field
+	 */
+	if (row[4] != NULL && row[4][0] != '\0') {
 		ptr = row[4];
-		pairmode = gettoken(&ptr, buf, sizeof(buf));
-	} else {
+		operator = gettoken(&ptr, buf, sizeof(buf));
+	}
+	if (operator <= T_EOL) {
 		/*
-		 *  'op' fields of NULL are a plague, and a bane on the
-		 *  existence of mankind.
+		 *  Complain about empty or invalid 'op' field
 		 */
+		operator = T_OP_CMP_EQ;
 		radlog(L_ERR, "rlm_sql: The 'op' field for attribute '%s = %s' is NULL, or non-existent.", row[2], row[3]);
 		radlog(L_ERR, "rlm_sql: You MUST FIX THIS if you want the configuration to behave as you expect.");
 	}
-	if (pairmode <= T_EOL) pairmode = T_OP_CMP_EQ;
 
 	/*
-	 * If attribute is already there, skip it because we checked usercheck first
-	 * and we want user settings to over ride group settings
+	 *	The 'Value' field may be empty or NULL
 	 */
-	if (pairmode != T_OP_ADD && (check = pairfind(*first_pair, attr->attr)) != NULL &&
-#ifdef ASCEND_BINARY
-			attr->type != PW_TYPE_ABINARY &&
-#endif
-			querymode == PW_VP_GROUPDATA)
-		return 0;
-
+	value = row[3];
 	/*
 	 *	If we have a new-style quoted string, where the
 	 *	*entire* string is quoted, do xlat's.
 	 */
-	if (((row[3][0] == '\'') ||
-	     (row[3][0] == '`') ||
-	     (row[3][0] == '"')) &&
-	    (row[3][0] == row[3][strlen(row[3])-1])) {
+	if (row[3] != NULL &&
+	   ((row[3][0] == '\'') || (row[3][0] == '`') || (row[3][0] == '"')) &&
+	   (row[3][0] == row[3][strlen(row[3])-1])) {
 
-		ptr = row[3];
-		xlat = gettoken(&ptr, value, sizeof(value));
-		switch (xlat) {
+		token = gettoken(&value, buf, sizeof(buf));
+		switch (token) {
 			/*
-			 *	Make the full pair now.
+			 *	Take the unquoted string.
 			 */
-		default:
-			pair = pairmake(row[2], row[3], pairmode);
-			break;
-
 		case T_SINGLE_QUOTED_STRING:
 		case T_DOUBLE_QUOTED_STRING:
-			pair = pairmake(row[2], value, pairmode);
+			value = buf;
 			break;
 
 			/*
 			 *	Mark the pair to be allocated later.
 			 */
 		case T_BACK_QUOTED_STRING:
-			pair = pairmake(row[2], NULL, pairmode);
-			if (pair) {
-				pair->flags.do_xlat = 1;
-				strNcpy(pair->strvalue, value, sizeof(pair->strvalue));
-				pair->length = 0;
-			}
-		}
-	} else {
-		/*
-		 * String starts and ends differently. Take it literally
-		 * */
-		pair = pairmake(row[2], row[3], pairmode);
-	}
-	pairadd(first_pair, pair);
+			value = NULL;
+			do_xlat = 1;
+			break;
 
+			/*
+			 *	Keep the original string.
+			 */
+		default:
+			value = row[3];
+			break;
+		}
+	}
+
+	/*
+	 *	Create the pair
+	 */
+	pair = pairmake(row[2], value, operator);
+	if (pair == NULL) {
+		radlog(L_ERR, "rlm_sql: Failed to create the pair: %s", librad_errstr);
+		return -1;
+	}
+	if (do_xlat) {
+		pair->flags.do_xlat = 1;
+		strNcpy(pair->strvalue, buf, sizeof(pair->strvalue));
+		pair->length = 0;
+	}
+
+	/*
+	 *	If attribute is already there, skip it because we
+	 *	checked usercheck first and we want user settings to
+	 *	override group settings
+	 */
+	if (operator != T_OP_ADD && (check = pairfind(*first_pair, pair->attribute)) != NULL &&
+#ifdef ASCEND_BINARY
+	    pair->type != PW_TYPE_ABINARY &&
+#endif
+	    querymode == PW_VP_GROUPDATA) {
+		pairbasicfree(pair);
+		return 0;
+	}
+
+	/*
+	 *	Add the pair into the packet
+	 */
+	pairadd(first_pair, pair);
 	return 0;
 }
 
@@ -474,7 +496,9 @@ int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
 
 	if (ret == SQL_DOWN) {
 	        /* close the socket that failed */
-	        (inst->module->sql_close)(sqlsocket, inst->config);
+		if (sqlsocket->state == sockunconnected) {
+			(inst->module->sql_close)(sqlsocket, inst->config);
+		}
 
 		/* reconnect the socket */
 		if (connect_single_socket(sqlsocket, inst) < 0) {
@@ -517,7 +541,9 @@ int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
 
 	if (ret == SQL_DOWN) {
 	        /* close the socket that failed */
-	        (inst->module->sql_close)(sqlsocket, inst->config);
+		if (sqlsocket->state == sockunconnected) {
+			(inst->module->sql_close)(sqlsocket, inst->config);
+		}
 
 		/* reconnect the socket */
 		if (connect_single_socket(sqlsocket, inst) < 0) {
