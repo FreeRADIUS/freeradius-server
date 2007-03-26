@@ -1,5 +1,17 @@
+FreeRADIUS 1.1.6 ; $Date$, urgency = low
+	Feature improvements
+
+	Bug fixes
+	* Corrected a few double free's
+	* Corrected typo in radrelay, which prevented it from working
+	* Made Firebird module build
+	* Fixed bug in PostgreSQL module that caused server crash.
+	* Fixed bug in SQL module that could cause server to crash.
+	
 FreeRADIUS 1.1.5 ; Date: 2007/03/05 13:13:43  , urgency=low
 	Feature improvements
+	* Updated rlm_python to something usable
+	* Added experimental sql "HPW" IPPools.
 	* Added more dictionaries
 	* Dictionary files now MUST NOT be globally writable.
 	* Configuration files now MUST NOT be globally readable,
