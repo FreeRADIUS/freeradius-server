@@ -425,7 +425,7 @@ static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, con
 	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 
 	if (username != NULL) {
-		strlcpy(tmpuser, username, MAX_STRING_LEN);
+		strlcpy(tmpuser, username, sizeof(tmpuser));
 	} else if (strlen(inst->config->query_user)) {
 		radius_xlat(tmpuser, sizeof(tmpuser), inst->config->query_user, request, NULL);
 	} else {
