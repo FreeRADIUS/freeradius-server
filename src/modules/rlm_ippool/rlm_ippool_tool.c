@@ -153,8 +153,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 	/* Basically from rlm_ippool.c */
 
 	if (old){
-		memset(old_key.nas,0,MAX_NAS_NAME_SIZE);
-		strlcpy(old_key.nas,NASname,MAX_NAS_NAME_SIZE -1 );
+		strlcpy(old_key.nas,NASname,sizeof(old_key.nas));
 		old_key.port = port;
 		key_datum.dptr = (char *) &old_key;
 		key_datum.dsize = sizeof(old_ippool_key);
@@ -298,8 +297,8 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 			old_ippool_key old_key_tmp;
 			ippool_key key_tmp;
 			if (old){
-				memset(old_key_tmp.nas,0,MAX_NAS_NAME_SIZE);
-				strlcpy(old_key_tmp.nas,NASname,MAX_NAS_NAME_SIZE - 1);
+				strlcpy(old_key_tmp.nas,NASname,
+					sizeof(old_key_tmp.nas));
 				old_key_tmp.port=port;
 				key_datum_tmp.dptr = (char *) &old_key_tmp;
 				key_datum_tmp.dsize = sizeof(old_ippool_key);
@@ -341,8 +340,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 		data_datum.dsize = sizeof(ippool_info);
 
 		if (old){
-			memset(old_key.nas,0,MAX_NAS_NAME_SIZE);
-			strlcpy(old_key.nas,NASname,MAX_NAS_NAME_SIZE -1 );
+			strlcpy(old_key.nas,NASname,sizeof(old_key.nas));
 			old_key.port = port;
 			key_datum.dptr = (char *) &old_key;
 			key_datum.dsize = sizeof(old_ippool_key);
