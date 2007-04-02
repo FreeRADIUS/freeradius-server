@@ -32,8 +32,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-static const char rcsid[] = "$Id$";
-
 /*
  *	Define a structure for our module configuration.
  *
