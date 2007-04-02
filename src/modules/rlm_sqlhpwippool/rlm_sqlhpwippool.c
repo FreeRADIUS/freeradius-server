@@ -388,7 +388,7 @@ static int sqlhpwippool_postauth(void *instance, REQUEST *request)
 	/* if no pool name, we don't need to do anything */
 	vp = pairfind(request->reply->vps, PW_ASN_IP_POOL_NAME);
 	if (vp) {
-		pname = vp->strvalue;
+		pname = vp->vp_strvalue;
 		nvp_log(__LINE__, data, L_DBG,
 		        "sqlhpwippool_postauth(): pool name = '%s'",
 		        pname);
@@ -703,7 +703,7 @@ static int sqlhpwippool_accounting(void *instance, REQUEST *request)
 	/* if no unique session ID, don't even try */
 	vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID);
 	if (vp) {
-		sessid = vp->strvalue;
+		sessid = vp->vp_strvalue;
 	}
 	else {
 		nvp_log(__LINE__, data, L_ERR,
@@ -812,20 +812,19 @@ static int sqlhpwippool_accounting(void *instance, REQUEST *request)
 }
 
 module_t rlm_sqlhpwippool = {
-	"sqlhpwippool",             /* name */
-	RLM_TYPE_THREAD_SAFE,      /* type */
-	NULL,
-	sqlhpwippool_instantiate,   /* instantiation */
+	RLM_MODULE_INIT,
+	"sqlhpwippool",			/* name */
+	RLM_TYPE_THREAD_SAFE,		/* type */
+	sqlhpwippool_instantiate,	/* instantiation */
+	sqlhpwippool_detach,		/* detach */
 	{
-		NULL,                    /* authentication */
-		NULL,                    /* authorization */
-		NULL,                    /* preaccounting */
-		sqlhpwippool_accounting,  /* accounting */
-		NULL,                    /* checksimul */
-		NULL,                    /* pre-proxy */
-		NULL,                    /* post-proxy */
-		sqlhpwippool_postauth     /* post-auth */
+		NULL,			/* authentication */
+		NULL,			/* authorization */
+		NULL,			/* preaccounting */
+		sqlhpwippool_accounting,/* accounting */
+		NULL,			/* checksimul */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		sqlhpwippool_postauth	/* post-auth */
 	},
-	sqlhpwippool_detach,        /* detach */
-	NULL
 };
