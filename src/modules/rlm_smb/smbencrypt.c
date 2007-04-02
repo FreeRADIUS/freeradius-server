@@ -24,18 +24,14 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include "smblib-priv.h"
-#define uchar unsigned char
-extern int DEBUGLEVEL;
-
-#include <string.h>
-
 #include <string.h>
 #ifdef HAVE_SYS_VFS_H
 #include <sys/vfs.h>
 #endif
 
-#include "byteorder.h"
+#include "smblib-priv.h"
+#define uchar unsigned char
+extern int DEBUGLEVEL;
 
 void strupper(char *s);
 
