@@ -194,7 +194,7 @@ typedef struct value_pair {
 #define vp_octets     data.octets
 #define vp_ipaddr     lvalue
 #define vp_ipv6addr   data.ipv6addr
-#define vp_data       lvalue
+#define vp_date       lvalue
 #define vp_integer    lvalue
 #define vp_ifid       data.ifid
 #define vp_ipv6prefix data.ipv6prefix
