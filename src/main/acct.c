@@ -122,11 +122,9 @@ int rad_accounting(REQUEST *request)
 			 *	Check whether Proxy-To-Realm is
 			 *	a LOCAL realm.
 			 */
-			realm = realm_find(vp->vp_strvalue, TRUE);
-			if (realm != NULL &&
-			    realm->acct_ipaddr.af == AF_INET &&
-			    realm->acct_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE)) {
-				DEBUG("rad_accounting: Cancelling proxy to realm %s, as it is a LOCAL realm.", realm->realm);
+			realm = realm_find(vp->vp_strvalue);
+			if (realm && !realm->acct_pool) {
+				DEBUG("rad_accounting: Cancelling proxy to realm %s, as it is a LOCAL realm.", realm->name);
 				pairdelete(&request->config_items, PW_PROXY_TO_REALM);
 			} else {
 				/*

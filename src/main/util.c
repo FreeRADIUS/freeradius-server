@@ -245,7 +245,6 @@ void request_free(REQUEST **request_ptr)
 #ifndef NDEBUG
 	request->magic = 0x01020304;	/* set the request to be nonsense */
 	strcpy(request->secret, "REQUEST-DELETED");
-	strcpy(request->proxysecret, "REQUEST-DELETED");
 #endif
 	free(request);
 
@@ -369,7 +368,6 @@ REQUEST *request_alloc(void)
 	request->password = NULL;
 	request->timestamp = time(NULL);
 	request->child_pid = NO_SUCH_CHILD_PID;
-	request->container = NULL;
 	request->options = RAD_REQUEST_OPTION_NONE;
 
 	return request;
@@ -390,7 +388,6 @@ REQUEST *request_alloc_fake(REQUEST *oldreq)
 
   request->number = oldreq->number;
   request->child_pid = NO_SUCH_CHILD_PID;
-  request->options = RAD_REQUEST_OPTION_FAKE_REQUEST;
 
   request->packet = rad_alloc(0);
   rad_assert(request->packet != NULL);
@@ -406,6 +403,11 @@ REQUEST *request_alloc_fake(REQUEST *oldreq)
   request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);
   request->packet->dst_ipaddr = request->packet->src_ipaddr;
   request->packet->src_port = request->number >> 8;
+
+  /*
+   *	This field is used by the rest of the code to notice that the
+   *	request is "internal", and not from a real client.
+   */
   request->packet->dst_port = 0;
 
   /*

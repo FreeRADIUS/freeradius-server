@@ -621,10 +621,9 @@ autz_redo:
 		 *	Catch users who set Proxy-To-Realm to a LOCAL
 		 *	realm (sigh).
 		 */
-		realm = realm_find(tmp->vp_strvalue, 0);
-		rad_assert((realm == NULL) || (realm->ipaddr.af == AF_INET));
-		if (realm && (realm->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE))) {
-			DEBUG2("  WARNING: You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling invalid proxy request.", realm->realm);
+		realm = realm_find(tmp->vp_strvalue);
+		if (realm && !realm->auth_pool) {
+			DEBUG2("  WARNING: You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling invalid proxy request.", realm->name);
 		} else {
 			/*
 			 *	Don't authenticate, as the request is

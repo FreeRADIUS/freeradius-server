@@ -174,20 +174,20 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	/*
 	 *	Allow DEFAULT realms unless told not to.
 	 */
-	realm = realm_find(realmname, (request->packet->code == PW_ACCOUNTING_REQUEST));
+	realm = realm_find(realmname);
 	if (!realm) {
 		DEBUG2("    rlm_realm: No such realm \"%s\"",
 		       (realmname == NULL) ? "NULL" : realmname);
 		return 0;
 	}
 	if( inst->ignore_default &&
-	    (strcmp(realm->realm, "DEFAULT")) == 0) {
+	    (strcmp(realm->name, "DEFAULT")) == 0) {
 		DEBUG2("    rlm_realm: Found DEFAULT, but skipping due to config.");
 		return 0;
 	}
 
 
-	DEBUG2("    rlm_realm: Found realm \"%s\"", realm->realm);
+	DEBUG2("    rlm_realm: Found realm \"%s\"", realm->name);
 
 	/*
 	 *	If we've been told to strip the realm off, then do so.
@@ -217,14 +217,14 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	}
 
 	DEBUG2("    rlm_realm: Proxying request from user %s to realm %s",
-	       username, realm->realm);
+	       username, realm->name);
 
 	/*
 	 *	Add the realm name to the request.
 	 */
-	pairadd(&request->packet->vps, pairmake("Realm", realm->realm,
+	pairadd(&request->packet->vps, pairmake("Realm", realm->name,
 						T_OP_EQ));
-	DEBUG2("    rlm_realm: Adding Realm = \"%s\"", realm->realm);
+	DEBUG2("    rlm_realm: Adding Realm = \"%s\"", realm->name);
 
 	/*
 	 *	Figure out what to do with the request.
@@ -239,13 +239,8 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *	Perhaps accounting proxying was turned off.
 		 */
 	case PW_ACCOUNTING_REQUEST:
-		if (realm->acct_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE)) {
+		if (!realm->acct_pool) {
 			DEBUG2("    rlm_realm: Accounting realm is LOCAL.");
-			return 0;
-		}
-
-		if (realm->acct_port == 0) {
-			DEBUG2("    rlm_realm: acct_port is not set.  Proxy cancelled.");
 			return 0;
 		}
 		break;
@@ -254,13 +249,8 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *	Perhaps authentication proxying was turned off.
 		 */
 	case PW_AUTHENTICATION_REQUEST:
-		if (realm->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE)) {
+		if (!realm->auth_pool) {
 			DEBUG2("    rlm_realm: Authentication realm is LOCAL.");
-			return 0;
-		}
-
-		if (realm->auth_port == 0) {
-			DEBUG2("    rlm_realm: auth_port is not set.  Proxy cancelled.");
 			return 0;
 		}
 		break;
@@ -271,19 +261,26 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *      that has already proxied the request, we don't need to do
 	 *      it again.
 	 */
-	for (vp = request->packet->vps; vp; vp = vp->next) {
-		if (vp->attribute == PW_FREERADIUS_PROXIED_TO) {
-			if (request->packet->code == PW_AUTHENTICATION_REQUEST &&
-			    vp->lvalue == realm->ipaddr.ipaddr.ip4addr.s_addr) {
-				DEBUG2("    rlm_realm: Request not proxied due to Freeradius-Proxied-To");
-				return 0;
-			}
-			if (request->packet->code == PW_ACCOUNTING_REQUEST &&
-			    vp->lvalue == realm->acct_ipaddr.ipaddr.ip4addr.s_addr) {
-				DEBUG2("    rlm_realm: Request not proxied due to Freeradius-Proxied-To");
-				return 0;
-			}
+	vp = pairfind(request->packet->vps, PW_FREERADIUS_PROXIED_TO);
+	if (vp) {
+#if 0
+		/*
+		 *	FIXME: HOME SERVER
+		 *
+		 *	What the heck is this code doing, and why?
+		 */
+
+		if (request->packet->code == PW_AUTHENTICATION_REQUEST &&
+		    vp->lvalue == realm->home_auth->ipaddr.ipaddr.ip4addr.s_addr) {
+			DEBUG2("    rlm_realm: Request not proxied due to Freeradius-Proxied-To");
+			return 0;
 		}
+		if (request->packet->code == PW_ACCOUNTING_REQUEST &&
+		    vp->lvalue == realm->home_acct->ipaddr.ipaddr.ip4addr.s_addr) {
+			DEBUG2("    rlm_realm: Request not proxied due to Freeradius-Proxied-To");
+			return 0;
+		}
+#endif
         }
 
 	/*
@@ -304,7 +301,7 @@ static void add_proxy_to_realm(VALUE_PAIR **vps, REALM *realm)
 	 *	Tell the server to proxy this request to another
 	 *	realm.
 	 */
-	vp = pairmake("Proxy-To-Realm", realm->realm, T_OP_EQ);
+	vp = pairmake("Proxy-To-Realm", realm->name, T_OP_EQ);
 	if (!vp) {
 		radlog(L_ERR|L_CONS, "no memory");
 		exit(1);
@@ -388,7 +385,7 @@ static int realm_authorize(void *instance, REQUEST *request)
 	 *	Maybe add a Proxy-To-Realm attribute to the request.
 	 */
 	DEBUG2("    rlm_realm: Preparing to proxy authentication request to realm \"%s\"\n",
-	       realm->realm);
+	       realm->name);
 	add_proxy_to_realm(&request->config_items, realm);
 
 	return RLM_MODULE_UPDATED; /* try the next module */
@@ -424,7 +421,7 @@ static int realm_preacct(void *instance, REQUEST *request)
 	 *	Maybe add a Proxy-To-Realm attribute to the request.
 	 */
 	DEBUG2("    rlm_realm: Preparing to proxy accounting request to realm \"%s\"\n",
-	       realm->realm);
+	       realm->name);
 	add_proxy_to_realm(&request->config_items, realm);
 
 	return RLM_MODULE_UPDATED; /* try the next module */

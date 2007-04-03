@@ -376,10 +376,8 @@ static int pap_authorize(void *instance, REQUEST *request)
 			 */
 		case PW_PROXY_TO_REALM:
 		{
-			REALM *realm = realm_find(vp->vp_strvalue, 0);
-			if (realm &&
-			    (realm->ipaddr.af == AF_INET) &&
-			    (realm->ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_NONE))) {
+			REALM *realm = realm_find(vp->vp_strvalue);
+			if (realm && !realm->auth_pool) {
 				return RLM_MODULE_NOOP;
 			}
 			break;
@@ -408,6 +406,14 @@ static int pap_authorize(void *instance, REQUEST *request)
 	 *	Print helpful warnings if there was no password.
 	 */
 	if (!found_pw) {
+		/*
+		 *	Likely going to be proxied.  Avoid printing
+		 *	warning message.
+		 */
+		if (pairfind(request->config_items, PW_REALM) ||
+		    (pairfind(request->config_items, PW_PROXY_TO_REALM))) {
+			return RLM_MODULE_NOOP;
+		}
 		DEBUG("rlm_pap: WARNING! No \"known good\" password found for the user.  Authentication may fail because of this.");
 		return RLM_MODULE_NOOP;
 	}

@@ -328,7 +328,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 *	A module has taken too long to process the request,
 		 *	and we've been told to stop processing it.
 		 */
-		if (request->options & RAD_REQUEST_OPTION_STOP_NOW) {
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
 			myresult = RLM_MODULE_FAIL;
 			break;
 		}

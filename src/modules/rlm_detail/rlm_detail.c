@@ -205,9 +205,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	int		locked;
 	int		lock_count;
 	struct timeval	tv;
-	REALM		*proxy_realm;
-	char		proxy_buffer[16];
-	VALUE_PAIR	*pair = packet->vps;
+	VALUE_PAIR	*pair;
 
 	struct detail_instance *inst = instance;
 
@@ -428,7 +426,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	}
 
 	/* Write each attribute/value to the log file */
-	for (; pair != NULL; pair = pair->next) {
+	for (pair = packet->vps; pair != NULL; pair = pair->next) {
 		DICT_ATTR da;
 		da.attr = pair->attribute;
 
@@ -452,23 +450,18 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 *	Add non-protocol attibutes.
 	 */
 	if (compat) {
-		if ((pair = pairfind(request->config_items,
-				     PW_PROXY_TO_REALM)) != NULL) {
-			proxy_realm = realm_find(pair->vp_strvalue, TRUE);
-			if (proxy_realm) {
-				memset((char *) proxy_buffer, 0, 16);
+		if (request->proxy) {
+			char proxy_buffer[128];
 
-				rad_assert(proxy_realm->acct_ipaddr.af == AF_INET);
-
-				inet_ntop(proxy_realm->acct_ipaddr.af,
-					  &proxy_realm->acct_ipaddr.ipaddr,
-					  proxy_buffer, sizeof(proxy_buffer));
-				fprintf(outfp, "\tFreeradius-Proxied-To = %s\n",
+			inet_ntop(request->proxy->dst_ipaddr.af,
+				  &request->proxy->dst_ipaddr.ipaddr,
+				  proxy_buffer, sizeof(proxy_buffer));
+			fprintf(outfp, "\tFreeradius-Proxied-To = %s\n",
 					proxy_buffer);
-				DEBUG("rlm_detail: Freeradius-Proxied-To set to %s",
+				DEBUG("rlm_detail: Freeradius-Proxied-To = %s",
 				      proxy_buffer);
-			}
 		}
+
 		fprintf(outfp, "\tTimestamp = %ld\n",
 			(unsigned long) request->timestamp);
 

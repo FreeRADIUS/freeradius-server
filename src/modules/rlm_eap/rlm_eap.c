@@ -261,7 +261,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	 *	If it's a recursive request, then disallow
 	 *	TLS, TTLS, and PEAP, inside of the TLS tunnel.
 	 */
-	if ((request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) != 0) {
+	if (request->packet->dst_port == 0) {
 		switch(handler->eap_ds->response->type.type) {
 		case PW_EAP_TLS:
 		case PW_EAP_TTLS:
@@ -625,7 +625,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 	 */
 	i = 34;			/* starts off with 34 octets */
 	len = rad_tunnel_pwdecode(vp->vp_strvalue + 17, &i,
-				  request->proxysecret,
+				  request->home_server->secret,
 				  request->proxy->vector);
 
 	/*

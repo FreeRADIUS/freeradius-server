@@ -16,6 +16,7 @@ RCSIDH(radiusd_h, "$Id$")
 #include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/conffile.h>
+#include <freeradius-devel/realms.h>
 
 
 #ifdef HAVE_UNISTD_H
@@ -29,9 +30,6 @@ typedef pthread_t child_pid_t;
 #else
 typedef pid_t child_pid_t;
 #define child_kill kill
-#endif
-
-#ifdef HAVE_NETINET_IN_H
 #endif
 
 #define NO_SUCH_CHILD_PID (child_pid_t) (0)
@@ -49,11 +47,6 @@ typedef struct request_data_t request_data_t;
  *	For listening on multiple IP's and ports.
  */
 typedef struct rad_listen_t rad_listen_t;
-
-/*
- *	For request lists.
- */
-typedef struct request_list_t request_list_t;
 
 #define REQUEST_DATA_REGEX (0xadbeef00)
 #define REQUEST_MAX_REGEX (8)
@@ -79,37 +72,47 @@ typedef struct auth_req {
 	rad_listen_t		*listener;
 	rad_listen_t		*proxy_listener;
 
-	/*
-	 *	We could almost keep a const char here instead of a
-	 *	_copy_ of the secret... but what if the RADCLIENT
-	 *	structure is freed because it was taken out of the
-	 *	config file and SIGHUPed?
-	 */
-	char			proxysecret[32];
-	int			proxy_try_count;
-	int			proxy_outstanding;
-	time_t			proxy_start_time;
-
 	int                     simul_max;
 	int                     simul_count;
 	int                     simul_mpp; /* WEIRD: 1 is false, 2 is true */
 
-	int			finished;
 	int			options; /* miscellanous options */
 	const char		*module; /* for debugging unresponsive children */
 	const char		*component; /* ditto */
-	void			*container;
+
+	struct timeval		received;
+	struct timeval		when; 		/* to wake up */
+	int			delay;
+
+	int			master_state;
+	int			child_state;
+
+	struct timeval		next_when;
+	void			*next_callback;
+
+	int			in_request_hash;
+	int			in_proxy_hash;
+
+	home_server	       	*home_server;
+
+	struct timeval		proxy_when;
+
+	int			num_proxied_requests;
+	int			num_proxied_responses;
+
 } REQUEST;
 
 #define RAD_REQUEST_OPTION_NONE            (0)
-#define RAD_REQUEST_OPTION_LOGGED_CHILD    (1 << 0)
-#define RAD_REQUEST_OPTION_DELAYED_REJECT  (1 << 1)
-#define RAD_REQUEST_OPTION_DONT_CACHE      (1 << 2)
-#define RAD_REQUEST_OPTION_FAKE_REQUEST    (1 << 3)
-#define RAD_REQUEST_OPTION_REJECTED        (1 << 4)
-#define RAD_REQUEST_OPTION_PROXIED         (1 << 5)
-#define RAD_REQUEST_OPTION_STOP_NOW        (1 << 6)
-#define RAD_REQUEST_OPTION_REPROCESS       (1 << 7)
+
+#define REQUEST_ACTIVE 		(1)
+#define REQUEST_STOP_PROCESSING (2)
+
+#define REQUEST_QUEUED		(1)
+#define REQUEST_RUNNING		(2)
+#define REQUEST_PROXIED		(3)
+#define REQUEST_REJECT_DELAY	(4)
+#define REQUEST_CLEANUP_DELAY	(5)
+#define REQUEST_DONE		(6)
 
 /*
  *  Function handler for requests.
@@ -129,27 +132,6 @@ typedef struct radclient {
 } RADCLIENT;
 
 typedef struct radclient_list RADCLIENT_LIST;
-
-typedef struct _realm {
-	char			realm[64];
-	char			server[64];
-	char			acct_server[64];
-	lrad_ipaddr_t		ipaddr;	/* authentication */
-	lrad_ipaddr_t		acct_ipaddr;
-	char			secret[32];
-	time_t			last_reply; /* last time we saw a packet */
-	int			auth_port;
-	int			acct_port;
-	int			striprealm;
-	int			trusted; /* old */
-	int			notrealm;
-	int			active;	/* is it dead? */
-	time_t			wakeup;	/* when we should try it again */
-	int			acct_active;
-	time_t			acct_wakeup;
-	int			ldflag;
-	struct _realm		*next;
-} REALM;
 
 typedef struct pair_list {
 	char			*name;
@@ -178,8 +160,9 @@ typedef enum RAD_LISTEN_TYPE {
 
 typedef int (*rad_listen_recv_t)(rad_listen_t *, RAD_REQUEST_FUNP *, REQUEST **);
 typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
-typedef int (*rad_listen_update_t)(rad_listen_t *, time_t);
 typedef int (*rad_listen_print_t)(rad_listen_t *, char *, size_t);
+typedef int (*rad_listen_encode_t)(rad_listen_t *, REQUEST *);
+typedef int (*rad_listen_decode_t)(rad_listen_t *, REQUEST *);
 
 struct rad_listen_t {
 	struct rad_listen_t *next; /* should be rbtree stuff */
@@ -190,11 +173,11 @@ struct rad_listen_t {
 	RAD_LISTEN_TYPE	type;
 	int		fd;
 	const char	*identity;
-	request_list_t	*rl;
 
 	rad_listen_recv_t recv;
 	rad_listen_send_t send;
-	rad_listen_update_t update;
+	rad_listen_encode_t encode;
+	rad_listen_decode_t decode;
 	rad_listen_print_t print;
 
 	void		*data;
@@ -250,7 +233,6 @@ typedef struct main_config_t {
 	radlog_dest_t	radlog_dest;
 	CONF_SECTION	*config;
 	RADCLIENT_LIST	*clients;
-	REALM		*realms;
 	const char	*radiusd_conf;
 } MAIN_CONFIG_T;
 
@@ -380,14 +362,9 @@ RADCLIENT	*client_find_old(const lrad_ipaddr_t *ipaddr);
 const char	*client_name_old(const lrad_ipaddr_t *ipaddr);
 
 /* files.c */
-REALM		*realm_find(const char *, int);
-REALM		*realm_findbyaddr(uint32_t ipno, int port);
-void		realm_free(REALM *cl);
-void		realm_disable(REQUEST *);
 int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 int		read_config_files(void);
-int		read_realms_file(const char *file);
 
 /* version.c */
 void		version(void);
@@ -433,7 +410,6 @@ void		paircompare_unregister(int attr, RAD_COMPARE_FUNC func);
 int		paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 			    VALUE_PAIR **reply);
 int		simplepaircmp(REQUEST *, VALUE_PAIR *, VALUE_PAIR *);
-void		pair_builtincompare_init(void);
 void		pairxlatmove(REQUEST *, VALUE_PAIR **to, VALUE_PAIR **from);
 
 /* xlat.c */
@@ -470,5 +446,15 @@ int free_mainconfig(void);
 void listen_free(rad_listen_t **head);
 int listen_init(const char *filename, rad_listen_t **head);
 rad_listen_t *proxy_new_listener(void);
+
+/* event.c */
+int radius_event_init(int spawn_flag);
+void radius_event_free(void);
+int radius_event_process(struct timeval **pptv);
+void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun);
+int received_request(rad_listen_t *listener,
+		     RADIUS_PACKET *packet, REQUEST **prequest,
+		     const RADCLIENT *client);
+REQUEST *received_proxy_response(RADIUS_PACKET *packet);
 
 #endif /*RADIUSD_H*/

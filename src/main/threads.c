@@ -301,7 +301,7 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		 *	Mark the request as done.
 		 */
 		radlog(L_ERR|L_CONS, "!!! ERROR !!! The server is blocked: discarding new request %d", request->number);
-		request->finished = TRUE;
+		request->child_state = REQUEST_DONE;
 		return 0;
 	}
 
@@ -327,7 +327,7 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if (!lrad_fifo_push(thread_pool.fifo[fifo], entry)) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		radlog(L_ERR, "!!! ERROR !!! Failed inserting request %d into the queue", request->number);
-		request->finished = TRUE;
+		request->child_state = REQUEST_DONE;
 		return 0;
 	}
 
@@ -398,8 +398,8 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	The main clean-up code won't delete the request from
 	 *	the request list, until it's marked "finished"
 	 */
-	if ((*request)->options & RAD_REQUEST_OPTION_STOP_NOW) {
-		(*request)->finished = 1;
+	if ((*request)->master_state == REQUEST_STOP_PROCESSING) {
+		(*request)->child_state = REQUEST_DONE;
 		goto retry;
 	}
 
@@ -451,8 +451,6 @@ static void *request_handler_thread(void *arg)
 	 *	Loop forever, until told to exit.
 	 */
 	do {
-		int finished;
-
 		/*
 		 *	Wait to be signalled.
 		 */
@@ -491,37 +489,12 @@ static void *request_handler_thread(void *arg)
 		       self->thread_num, self->request->number,
 		       self->request_count);
 
-		/*
-		 *	Respond, and reset request->child_pid
-		 */
-		finished = rad_respond(self->request, fun);
+		radius_handle_request(self->request, fun);
 
 		/*
 		 *	Update the active threads.
 		 */
 		pthread_mutex_lock(&thread_pool.queue_mutex);
-
-		/*
-		 *	We haven't replied to the client, but we HAVE
-		 *	sent a proxied packet, and we have NOT
-		 *	received a proxy response.  In that case, send
-		 *	the proxied packet now.  Doing this in the mutex
-		 *	avoids race conditions.
-		 *
-		 *	FIXME: this work should really depend on a
-		 *	"state", and "next handler", rather than
-		 *	horrid hacks like thise.
-		 */
-		if (!self->request->reply->data &&
-		    self->request->proxy && self->request->proxy->data
-		    && !self->request->proxy_reply)
-			self->request->proxy_listener->send(self->request->proxy_listener,
-							    self->request);
-
-		self->request->child_pid = NO_SUCH_CHILD_PID;
-		self->request->finished = finished;
-		self->request = NULL;
-		
 		rad_assert(thread_pool.active_threads > 0);
 		thread_pool.active_threads--;
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
@@ -852,7 +825,7 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 *	We've been told not to spawn threads, so don't.
 	 */
 	if (!thread_pool.spawn_flag) {
-		request->finished = rad_respond(request, fun);
+		radius_handle_request(request, fun);
 		
 		/*
 		 *	Requests that care about child process exit

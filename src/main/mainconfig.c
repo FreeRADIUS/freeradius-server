@@ -40,7 +40,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/request_list.h>
 
 #include <sys/resource.h>
 #include <netdb.h>
@@ -611,250 +610,6 @@ static int switch_users(void)
 }
 
 
-/*
- * Create the linked list of realms from the new configuration type
- * This way we don't have to change to much in the other source-files
- */
-static int generate_realms(const char *filename)
-{
-	CONF_SECTION *cs;
-	REALM *my_realms = NULL;
-	REALM *c, **tail;
-	char *s, *t, *authhost, *accthost;
-	const char *name2;
-
-	tail = &my_realms;
-	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "realm");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(mainconfig.config, cs, "realm")) {
-		name2 = cf_section_name2(cs);
-		if (!name2) {
-			radlog(L_CONS|L_ERR, "%s[%d]: Missing realm name",
-			       filename, cf_section_lineno(cs));
-			return -1;
-		}
-		/*
-		 * We've found a realm, allocate space for it
-		 */
-		c = rad_malloc(sizeof(REALM));
-		memset(c, 0, sizeof(REALM));
-
-		c->secret[0] = '\0';
-
-		/*
-		 *	No authhost means LOCAL.
-		 */
-		if ((authhost = cf_section_value_find(cs, "authhost")) == NULL) {
-			c->ipaddr.af = AF_INET;
-			c->ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-			c->auth_port = 0;
-		} else {
-			if ((s = strchr(authhost, ':')) != NULL) {
-				*s++ = 0;
-				c->auth_port = atoi(s);
-			} else {
-				c->auth_port = PW_AUTH_UDP_PORT;
-			}
-			if (strcmp(authhost, "LOCAL") == 0) {
-				/*
-				 *	Local realms don't have an IP address,
-				 *	secret, or port.
-				 */
-				c->ipaddr.af = AF_INET;
-				c->ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-				c->auth_port = 0;
-			} else {
-				if (ip_hton(authhost, AF_INET,
-					    &c->ipaddr) < 0) {
-					radlog(L_ERR, "%s[%d]: Host %s not found",
-					       filename, cf_section_lineno(cs),
-					       authhost);
-					return -1;
-				}
-			}
-
-			/*
-			 * Double check length, just to be sure!
-			 */
-			if (strlen(authhost) >= sizeof(c->server)) {
-				radlog(L_ERR, "%s[%d]: Server name of length %u is greater than allowed: %u",
-				       filename, cf_section_lineno(cs),
-				       strlen(authhost),
-				       sizeof(c->server) - 1);
-				return -1;
-			}
-		}
-
-		/*
-		 *	No accthost means LOCAL
-		 */
-		if ((accthost = cf_section_value_find(cs, "accthost")) == NULL) {
-			c->acct_ipaddr.af = AF_INET;
-			c->acct_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-			c->acct_port = 0;
-		} else {
-			if ((s = strchr(accthost, ':')) != NULL) {
-				*s++ = 0;
-				c->acct_port = atoi(s);
-			} else {
-				c->acct_port = PW_ACCT_UDP_PORT;
-			}
-			if (strcmp(accthost, "LOCAL") == 0) {
-				/*
-				 *	Local realms don't have an IP address,
-				 *	secret, or port.
-				 */
-				c->acct_ipaddr.af = AF_INET;
-				c->acct_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-				c->acct_port = 0;
-			} else {
-				if (ip_hton(accthost, AF_INET,
-					    &c->acct_ipaddr) < 0) {
-					radlog(L_ERR, "%s[%d]: Host %s not found",
-					       filename, cf_section_lineno(cs),
-					       accthost);
-					return -1;
-				}
-			}
-
-			if (strlen(accthost) >= sizeof(c->acct_server)) {
-				radlog(L_ERR, "%s[%d]: Server name of length %u is greater than allowed: %u",
-				       filename, cf_section_lineno(cs),
-				       strlen(accthost),
-				       sizeof(c->acct_server) - 1);
-				return -1;
-			}
-		}
-
-		if (strlen(name2) >= sizeof(c->realm)) {
-			radlog(L_ERR, "%s[%d]: Realm name of length %u is greater than allowed %u",
-			       filename, cf_section_lineno(cs),
-			       strlen(name2),
-			       sizeof(c->server) - 1);
-			return -1;
-		}
-
-		strcpy(c->realm, name2);
-                if (authhost) strcpy(c->server, authhost);
-		if (accthost) strcpy(c->acct_server, accthost);
-
-		/*
-		 *	If one or the other of authentication/accounting
-		 *	servers is set to LOCALHOST, then don't require
-		 *	a shared secret.
-		 */
-		rad_assert(c->ipaddr.af == AF_INET);
-		rad_assert(c->acct_ipaddr.af == AF_INET);
-		if ((c->ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_NONE)) ||
-		    (c->acct_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_NONE))) {
-			if ((s = cf_section_value_find(cs, "secret")) == NULL ) {
-				radlog(L_ERR, "%s[%d]: No shared secret supplied for realm: %s",
-				       filename, cf_section_lineno(cs), name2);
-				return -1;
-			}
-
-			if (strlen(s) >= sizeof(c->secret)) {
-				radlog(L_ERR, "%s[%d]: Secret of length %u is greater than the allowed maximum of %u.",
-				       filename, cf_section_lineno(cs),
-				       strlen(s), sizeof(c->secret) - 1);
-				return -1;
-			}
-			strlcpy((char *)c->secret, s, sizeof(c->secret));
-		}
-
-		c->striprealm = 1;
-
-		if ((cf_section_value_find(cs, "nostrip")) != NULL)
-			c->striprealm = 0;
-		if ((cf_section_value_find(cs, "noacct")) != NULL)
-			c->acct_port = 0;
-		if ((cf_section_value_find(cs, "trusted")) != NULL)
-			c->trusted = 1;
-		if ((cf_section_value_find(cs, "notrealm")) != NULL)
-			c->notrealm = 1;
-		if ((cf_section_value_find(cs, "notsuffix")) != NULL)
-			c->notrealm = 1;
-		if ((t = cf_section_value_find(cs,"ldflag")) != NULL) {
-			static const LRAD_NAME_NUMBER ldflags[] = {
-				{ "fail_over",   0 },
-				{ "round_robin", 1 },
-				{ NULL, 0 }
-			};
-
-			c->ldflag = lrad_str2int(ldflags, t, -1);
-			if (c->ldflag == -1) {
-				radlog(L_ERR, "%s[%d]: Unknown value \"%s\" for ldflag",
-				       filename, cf_section_lineno(cs),
-				       t);
-				return -1;
-			}
-
-		} else {
-			c->ldflag = 0; /* non, make it fail-over */
-		}
-		c->active = TRUE;
-		c->acct_active = TRUE;
-
-		c->next = NULL;
-		*tail = c;
-		tail = &c->next;
-	}
-
-	/*
-	 *	And make these realms preferred over the ones
-	 *	in the 'realms' file.
-	 */
-	*tail = mainconfig.realms;
-	mainconfig.realms = my_realms;
-
-	/*
-	 *  Ensure that all of the flags agree for the realms.
-	 *
-	 *	Yeah, it's O(N^2), but it's only once, and the
-	 *	maximum number of realms is small.
-	 */
-	for(c = mainconfig.realms; c != NULL; c = c->next) {
-		REALM *this;
-
-		/*
-		 *	Check that we cannot load balance to LOCAL
-		 *	realms, as that doesn't make any sense.
-		 */
-		rad_assert(c->ipaddr.af == AF_INET);
-		rad_assert(c->acct_ipaddr.af == AF_INET);
-		if ((c->ldflag == 1) &&
-		    ((c->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE)) ||
-		     (c->acct_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE)))) {
-			radlog(L_ERR | L_CONS, "ERROR: Realm %s cannot be load balanced to LOCAL",
-			       c->realm);
-			exit(1);
-		}
-
-		/*
-		 *	Compare this realm to all others, to ensure
-		 *	that the configuration is consistent.
-		 */
-		for (this = c->next; this != NULL; this = this->next) {
-			if (strcasecmp(c->realm, this->realm) != 0) {
-				continue;
-			}
-
-			/*
-			 *	Same realm: Different load balancing
-			 *	flag: die.
-			 */
-			if (c->ldflag != this->ldflag) {
-				radlog(L_ERR | L_CONS, "ERROR: Inconsistent value in realm %s for load balancing 'ldflag' attribute",
-				       c->realm);
-				exit(1);
-			}
-		}
-	}
-
-	return 0;
-}
-
-
 static const LRAD_NAME_NUMBER str2dest[] = {
 	{ "null", RADLOG_NULL },
 	{ "files", RADLOG_FILES },
@@ -1023,22 +778,9 @@ int read_mainconfig(int reload)
 	mainconfig.config = cs;
 	cf_section_free(&oldcs);
 
-	/*
-	 *	Old-style realms file.
-	 */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s", radius_dir, RADIUS_REALMS);
-	DEBUG2("read_config_files:  reading realms");
-	if (read_realms_file(buffer) < 0) {
-		radlog(L_ERR|L_CONS, "Errors reading realms");
-		return -1;
-	}
-
-	/*
-	 *	If there isn't any realms it isn't fatal..
-	 */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
 		 radius_dir, mainconfig.radiusd_conf);
-	if (generate_realms(buffer) < 0) {
+	if (!realms_init(buffer)) {
 		return -1;
 	}
 
@@ -1152,8 +894,6 @@ int read_mainconfig(int reload)
 		clients_free(old_clients);
 	}
 
-	rl_init_proxy();
-
 	/*  Reload the modules.  */
 	DEBUG2("radiusd:  entering modules setup");
 	if (setup_modules(reload) < 0) {
@@ -1174,7 +914,7 @@ int free_mainconfig(void)
 	 */
 	cf_section_free(&mainconfig.config);
 	free(mainconfig.radiusd_conf);
-	realm_free(mainconfig.realms);
+	realms_free();
 	listen_free(&mainconfig.listen);
 	xlat_free();
 	dict_free();

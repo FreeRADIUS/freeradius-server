@@ -68,10 +68,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/request_list.h>
 #include <freeradius-devel/radius_snmp.h>
-
-#define SLEEP_FOREVER (65536)
 
 /*
  *  Global variables.
@@ -117,11 +114,10 @@ int main(int argc, char *argv[])
 	int pid;
 	int max_fd;
 	int status;
-	int sleep_time = SLEEP_FOREVER;
 	int spawn_flag = TRUE;
 	int dont_fork = FALSE;
 	int sig_hup_block = FALSE;
-	time_t last_cleaned_lists = 0;
+	struct timeval tv, *ptv = NULL;
 
 #ifdef HAVE_SIGACTION
 	struct sigaction act;
@@ -397,7 +393,7 @@ int main(int argc, char *argv[])
 	 *	It's called the thread pool, but it does a little
 	 *	more than that.
 	 */
-	thread_pool_init(spawn_flag);
+	radius_event_init(spawn_flag);
 
 	/*
 	 *  Use linebuffered or unbuffered stdout if
@@ -521,6 +517,8 @@ int main(int argc, char *argv[])
 			 */
 			detach_modules();
 
+			radius_event_free();
+
 			free(radius_dir);
 
 			/*
@@ -588,18 +586,18 @@ int main(int argc, char *argv[])
 		}
 #endif
 
-		if (sleep_time == SLEEP_FOREVER) {
+		if (!ptv) {
 			DEBUG2("Nothing to do.  Sleeping until we see a request.");
-			status = select(max_fd + 1, &readfds, NULL, NULL, NULL);
-		} else {
-			struct timeval tv;
-
-			DEBUG2("Waking up in %d seconds...", sleep_time);
-
-			tv.tv_sec = sleep_time;
-			tv.tv_usec = 0;
-			status = select(max_fd + 1, &readfds, NULL, NULL, &tv);
+		} else if (tv.tv_sec) {
+#if 0
+				DEBUG2("Waking up in %d.%06d seconds...",
+				       (int) tv.tv_sec, (int) tv.tv_usec);
+#else
+				DEBUG2("Waking up in %d seconds...",
+				       (int) tv.tv_sec);
+#endif
 		}
+		status = select(max_fd + 1, &readfds, NULL, NULL, ptv);
 		if (status == -1) {
 			/*
 			 *	On interrupts, we clean up the request
@@ -662,25 +660,25 @@ int main(int argc, char *argv[])
 			}
 
 			/*
-			 *	Do per-socket receive processing of the
-			 *	packet.
+			 *	Do per-socket receive processing of
+			 *	the packet.  This also takes care of
+			 *	inserting the request into the event
+			 *	tree, and adding it to the queue for
+			 *	threads.
 			 */
 			if (!listener->recv(listener, &fun, &request)) {
 				continue;
 			}
 			
+			// EVENT FIX FIXME! Nuke this!
+
 			/*
 			 *	Drop the request into the thread pool,
 			 *	and let the thread pool take care of
 			 *	doing something with it.
 			 */
 			if (!thread_pool_addrequest(request, fun)) {
-				/*
-				 *	FIXME: Maybe just drop
-				 *	the packet on the floor?
-				 */
-				request_reject(request, REQUEST_FAIL_NO_THREADS);
-				request->finished = TRUE;
+				request->child_state = REQUEST_DONE;
 			}
 		} /* loop over listening sockets*/
 
@@ -711,26 +709,8 @@ int main(int argc, char *argv[])
 		}
 #endif
 
-		/*
-		 *	Loop through the request lists once per
-		 *	second, to clean up old requests.
-		 */
-		if (last_cleaned_lists != time_now) {
-			last_cleaned_lists = time_now;
-
-			DEBUG2("--- Walking the entire request list ---");
-			sleep_time = SLEEP_FOREVER;
-			for (listener = mainconfig.listen;
-			     listener != NULL;
-			     listener = listener->next) {
-				int next;
-				
-				next = listener->update(listener, time_now);
-				if (next < sleep_time) {
-					sleep_time = next;
-				}
-			}
-		}
+		ptv = &tv;
+		radius_event_process(&ptv);
 
 #ifdef HAVE_PTHREAD_H
 

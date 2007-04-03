@@ -252,7 +252,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 *	We don't do TLS inside of TLS, as it's a bad
 		 *	idea...
 		 */
-		if (((handler->request->options & RAD_REQUEST_OPTION_FAKE_REQUEST) != 0) &&
+		if ((handler->request->packet->dst_port == 0) &&
 		    (default_eap_type == PW_EAP_TLS)) {
 			DEBUG2(" rlm_eap: Unable to tunnel TLS inside of TLS");
 			return EAP_INVALID;
@@ -645,9 +645,8 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		 *	If it's a LOCAL realm, then we're not proxying
 		 *	to it.
 		 */
-		realm = realm_find(proxy->vp_strvalue, 0);
-		rad_assert(realm->ipaddr.af == AF_INET);
-		if (realm && (realm->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_NONE))) {
+		realm = realm_find(proxy->vp_strvalue);
+		if (realm && (realm->auth_pool == NULL)) {
 			proxy = NULL;
 		}
 	}

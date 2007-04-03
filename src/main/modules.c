@@ -724,6 +724,7 @@ int setup_modules(int reload)
 			do_component[RLM_COMPONENT_POST_PROXY] = 1;
 			break;
 
+
 		default:
 			rad_assert(0 == 1);
 			break;
@@ -948,20 +949,6 @@ int setup_modules(int reload)
  */
 int module_authorize(int autz_type, REQUEST *request)
 {
-	/*
-	 *	Older versions of the server would pass proxy requests
-	 *	through the 'authorize' sections twice; once when the
-	 *	packet was received from the NAS, and again after the
-	 *	reply was received from the home server.  Now that we
-	 *	have a 'post_proxy' section, the replies from the home
-	 *	server should be sent through that, instead of through
-	 *	the 'authorize' section again.
-	 */
-	if (request->proxy != NULL) {
-		DEBUG2(" authorize: Skipping authorize in post-proxy stage");
-		return RLM_MODULE_NOOP;
-	}
-
 	return indexed_modcall(RLM_COMPONENT_AUTZ, autz_type, request);
 }
 
