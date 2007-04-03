@@ -1147,7 +1147,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 *	the VP list again only for debugging.
 		 */
 	} else if (librad_debug) {
-	  	DEBUG("Re-sending %s of id %d to %s port %d\n", what, packet->id,
+	  	DEBUG("Sending %s of id %d to %s port %d\n", what, packet->id,
 		      inet_ntop(packet->dst_ipaddr.af,
 				&packet->dst_ipaddr.ipaddr,
 				ip_buffer, sizeof(ip_buffer)),
@@ -2816,7 +2816,7 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 {
 	RADIUS_PACKET *radius_packet;
 
-	if (!radius_packet_ptr) return;
+	if (!radius_packet_ptr || !*radius_packet_ptr) return;
 	radius_packet = *radius_packet_ptr;
 
 	free(radius_packet->data);
