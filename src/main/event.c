@@ -34,6 +34,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/event.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/radius_snmp.h>
 
 #define USEC (1000000)
 
