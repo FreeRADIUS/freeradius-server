@@ -66,6 +66,7 @@ static int packet_code = 0;
 static lrad_ipaddr_t server_ipaddr;
 static int resend_count = 1;
 static int done = 1;
+static int print_filename = 0;
 
 static lrad_ipaddr_t client_ipaddr;
 static int client_port = 0;
@@ -717,6 +718,10 @@ static int recv_one_packet(int wait_time)
 	}
 
 	lrad_packet_list_yank(pl, radclient->request);
+	if (print_filename) printf("%s:%d %d\n",
+				   radclient->filename,
+				   radclient->packet_number,
+				   reply->code);
 	deallocate_id(radclient);
 	radclient->reply = reply;
 
@@ -742,15 +747,14 @@ static int recv_one_packet(int wait_time)
 	}
 
 packet_done:
-	rad_free(&radclient->reply);
-
 	/*
 	 *	Once we've sent the packet as many times as requested,
 	 *	mark it done.
 	 */
-	if (radclient->resend == resend_count) {
+	if ((radclient->resend == resend_count) && radclient->reply) {
 		assert(lrad_packet_list_find(pl, radclient->request) == NULL);
 		radclient->done = 1;
+		rad_free(&radclient->reply);
 	}
 
 	return 0;
@@ -790,7 +794,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((c = getopt(argc, argv, "46c:d:f:hi:n:p:qr:sS:t:vx")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "46c:d:f:Fhi:n:p:qr:sS:t:vx")) != EOF) switch(c) {
 		case '4':
 			force_af = AF_INET;
 			break;
@@ -807,6 +811,9 @@ int main(int argc, char **argv)
 			break;
 		case 'f':
 			rbtree_insert(filename_tree, optarg);
+			break;
+		case 'F':
+			print_filename = 1;
 			break;
 		case 'i':	/* currently broken */
 			if (!isdigit((int) *optarg))
