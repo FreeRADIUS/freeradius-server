@@ -115,7 +115,7 @@ AC_ARG_WITH(docdir,
 [  --with-docdir=DIR       Directory for documentation [DATADIR/doc/freeradius] ],
 [ case "$withval" in
     no)
-	AC_MSG_ERROR(Need docdir)
+	docdir=no
 	;;
     yes)
 	;;
@@ -129,6 +129,9 @@ AC_ARG_WITH(docdir,
 )
 AC_SUBST(docdir)
 AC_MSG_RESULT($docdir)
+if test "x$docdir" = xno; then
+	AC_MSG_WARN(Documentation files will NOT be installed.)
+fi
 
 dnl extra argument: --with-logdir
 logdir='${localstatedir}/log/radius'
