@@ -31,8 +31,8 @@ extern void rad_assert_fail (const char *file, unsigned int line);
 	#define rad_assert(expr) ((void) (0))
 #else
 	#define rad_assert(expr) \
-		((void) ((expr) ? 0 : \
-			rad_assert_fail (__FILE__, __LINE__)))
+		((void) ((expr) ? (void) 0 : \
+			(void) rad_assert_fail (__FILE__, __LINE__)))
 #endif
 
 #endif
