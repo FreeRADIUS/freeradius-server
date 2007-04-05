@@ -7,6 +7,9 @@
 #       bob		User-Password := "zanzibar"
 #  Or	bob	    	Digest-HA1 := "12af60467a33e8518da5c68bbff12b11"
 #
+#
+#	TESTS	1 2
+#
 User-Name = "bob",
 Digest-Response = "91984da2d8663716e91554859c22ca70",
 Digest-Realm = "biloxi.com",
@@ -19,5 +22,3 @@ Digest-Algorithm = "MD5-Sess",
 Digest-Nonce-Count = "00000001",
 Digest-CNonce = "0a4f113b",
 Digest-Body-Digest = "c1ed018b8ec4a3b170c0921f5b564e48",
-
-

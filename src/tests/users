@@ -1,0 +1,17 @@
+#
+#	A bunch of stock configurations for the tests
+#
+bob	Cleartext-Password := "bob", Test-Name == "user_password"
+
+bob	Cleartext-Password := "bob", Test-Name == "chap"
+
+bob	Cleartext-Password := "bob", Test-Name == "mschapv1"
+
+bob	Cleartext-Password := "bob", Test-Name == "stripped.example.com"
+
+bob	Cleartext-Password := "zanzibar", Test-Number == 1
+
+bob	Digest-HA1 := "12af60467a33e8518da5c68bbff12b11", Test-Number == 2
+
+bob@example.com	Cleartext-Password := "bob", Test-Name == "example.com"
+

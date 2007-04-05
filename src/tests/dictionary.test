@@ -1,0 +1,9 @@
+#
+#  Used for internal testing
+#
+VENDOR TEST 32000
+
+BEGIN-VENDOR TEST
+ATTRIBUTE	Test-Name	1 string
+ATTRIBUTE	Test-Number	2 integer
+END-VENDOR TEST

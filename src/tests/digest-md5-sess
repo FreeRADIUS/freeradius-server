@@ -4,7 +4,9 @@
 #  ??
 #
 #
-#  In the "users" file: bob	User-Password := "zanzibar"
+#  In the "users" file: bob	Cleartext-Password := "zanzibar"
+#
+#	TESTS	1
 #
 User-name = "bob",
 Digest-Response = "e4e4ea61d186d07a92c9e1f6919902e9",

@@ -1,9 +1,14 @@
-  This is a preliminary test repository, to ensure that we have
-a collection of tests which work, and which may be used to debug/verify
-the functionality of the server.
-
-  There is no test harness yet, but the tests should be of the format:
-
-#U  -- entry to go in 'users' file'
-attributes...
-#R  -- data received in the 'reply'
+#
+#  Preliminary test harness.
+#
+#  1. Test packets go into a local file.
+#  2. Simple configuration goes into the "users" file.
+#      using attributes Test-Name && Test-Number, where appropriate
+#  3. Realms go into "proxy.conf"
+#  4. We use the default "radiusd.conf" file for some simple tests.
+#
+#  Type "make tests" for a series of tests that exercise (some)
+#  of the server functionality.
+#
+#  See "runtests.sh" for more details.
+#
