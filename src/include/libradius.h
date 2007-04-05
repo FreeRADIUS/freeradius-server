@@ -27,32 +27,10 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(libradius_h, "$Id$")
 
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
-
-#ifdef HAVE_INTTYPES_H
-#include <inttypes.h>
-#endif
+#include <freeradius-devel/missing.h>
 
 #ifdef HAVE_ERRNO_H
 #include <errno.h>
-#endif
-
-#ifdef HAVE_NETINET_IN_H
-#include	<netinet/in.h>
-#endif
-
-#ifdef HAVE_ARPA_INET_H
-#include	<arpa/inet.h>
-#endif
-
-#ifdef HAVE_SYS_SOCKET_H
-#include	<sys/socket.h>
 #endif
 
 #include <stdio.h>

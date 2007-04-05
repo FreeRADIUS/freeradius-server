@@ -20,6 +20,30 @@ RCSIDH(missing_h, "$Id$")
 #include <sys/types.h>
 #endif
 
+#ifdef HAVE_INTTYPES_H
+#include <inttypes.h>
+#endif
+
+#ifdef HAVE_STRINGS_H
+#include <strings.h>
+#endif
+
+#ifdef HAVE_NETINET_IN_H
+#include	<netinet/in.h>
+#endif
+
+#ifdef HAVE_ARPA_INET_H
+#include	<arpa/inet.h>
+#endif
+
+#ifdef HAVE_SYS_SELECT_H
+#include <sys/select.h>
+#endif
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 /*
  *	Functions from missing.c
  */
