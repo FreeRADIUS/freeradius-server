@@ -26,14 +26,6 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <errno.h>
-
 #include <freeradius-devel/radiusd.h>
 
 #ifdef HAVE_SYSLOG_H

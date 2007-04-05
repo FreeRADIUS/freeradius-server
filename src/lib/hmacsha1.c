@@ -11,19 +11,9 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <string.h>
-#include <sys/types.h>
-
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
-
+#include <freeradius-devel/libradius.h>
 #include <freeradius-devel/sha1.h>
 
-#include <freeradius-devel/missing.h>
-#include <freeradius-devel/libradius.h>
 
 /*
 uint8_t*  text;                pointer to data stream

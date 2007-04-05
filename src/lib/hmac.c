@@ -28,12 +28,8 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <string.h>
-#include <freeradius-devel/md5.h>
-#include <freeradius-devel/missing.h>
 #include <freeradius-devel/libradius.h>
+#include <freeradius-devel/md5.h>
 
 /*
 unsigned char*  text;                pointer to data stream

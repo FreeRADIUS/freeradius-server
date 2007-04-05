@@ -22,15 +22,9 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
 
-#include <stdio.h>
 #include <sys/stat.h>
-#include <sys/time.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include 	<freeradius-devel/radiusd.h>
 
 #include <oci.h>
 #include "rlm_sql.h"

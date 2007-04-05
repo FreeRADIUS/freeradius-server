@@ -23,26 +23,11 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
-
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<string.h>
-
-#ifdef HAVE_UNISTD_H
-#include	<unistd.h>
-#endif
-
-#include	<signal.h>
-#include	<errno.h>
-#include	<sys/wait.h>
-
-#ifdef HAVE_NETINET_IN_H
-#include	<netinet/in.h>
-#endif
-
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/rad_assert.h>
+
+#include	<signal.h>
+#include	<sys/wait.h>
 
 /*
  *	End a session by faking a Stop packet to all accounting modules.

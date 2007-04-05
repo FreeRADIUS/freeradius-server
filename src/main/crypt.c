@@ -21,13 +21,10 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-#include <string.h>
+#include <freeradius-devel/libradius.h>
 
 #ifdef HAVE_CRYPT_H
 #include <crypt.h>
-#else
-#include <unistd.h>
 #endif
 
 #ifdef HAVE_PTHREAD_H
@@ -40,8 +37,6 @@ static int lrad_crypt_init = 0;
 static pthread_mutex_t lrad_crypt_mutex;
 #endif
 
-#include <freeradius-devel/missing.h>
-#include <freeradius-devel/libradius.h>
 
 /*
  * performs a crypt password check in an thread-safe way.

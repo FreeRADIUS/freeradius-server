@@ -29,14 +29,8 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <stdlib.h>
-#include <string.h>
-
-#ifdef HAVE_NETINET_IN_H
-#	include <netinet/in.h>
-#endif
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_DIRENT_H
 #include <dirent.h>
@@ -47,10 +41,6 @@ RCSID("$Id$")
 #endif
 
 #include <ctype.h>
-
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/modules.h>
 
 typedef enum conf_type {
 	CONF_ITEM_INVALID = 0,

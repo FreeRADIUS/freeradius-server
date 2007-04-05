@@ -37,23 +37,16 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/udpfromto.h>
 
 #ifdef WITH_UDPFROMTO
-
-#include <sys/types.h>
 
 #ifdef HAVE_SYS_UIO_H
 #include <sys/uio.h>
 #endif
 
-#include <netinet/in.h>
-#include <errno.h>
-#include <unistd.h>
 #include <fcntl.h>
-#include <string.h>
 
-#include <freeradius-devel/udpfromto.h>
 
 int udpfromto_init(int s)
 {

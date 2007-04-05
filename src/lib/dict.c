@@ -23,11 +23,9 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
+#include	<freeradius-devel/libradius.h>
 
-#include	<stdlib.h>
 #include	<ctype.h>
-#include	<string.h>
 
 #ifdef HAVE_MALLOC_H
 #include	<malloc.h>
@@ -36,11 +34,6 @@ RCSID("$Id$")
 #ifdef HAVE_SYS_STAT_H
 #include	<sys/stat.h>
 #endif
-
-#include	<unistd.h>
-
-#include	<freeradius-devel/missing.h>
-#include	<freeradius-devel/libradius.h>
 
 #define DICT_VALUE_MAX_NAME_LEN (128)
 #define DICT_VENDOR_MAX_NAME_LEN (128)

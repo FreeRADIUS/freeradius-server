@@ -28,31 +28,19 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/radius_snmp.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <sys/file.h>
 
-#ifdef HAVE_NETINET_IN_H
-#	include <netinet/in.h>
-#endif
-
-#include <stdlib.h>
-#include <string.h>
 #include <fcntl.h>
 #include <ctype.h>
-
-#ifdef HAVE_UNISTD_H
-#	include <unistd.h>
-#endif
 
 #include <signal.h>
 
 #ifdef HAVE_GETOPT_H
 #	include <getopt.h>
-#endif
-
-#ifdef HAVE_SYS_SELECT_H
-#	include <sys/select.h>
 #endif
 
 #ifdef HAVE_SYS_WAIT_H
@@ -64,11 +52,6 @@ RCSID("$Id$")
 #ifndef WIFEXITED
 #	define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
-
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/modules.h>
-#include <freeradius-devel/radius_snmp.h>
 
 /*
  *  Global variables.

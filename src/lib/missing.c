@@ -24,18 +24,9 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
-
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<sys/types.h>
-#include	<sys/socket.h>
-#include	<netinet/in.h>
-#include	<arpa/inet.h>
-#include	<ctype.h>
-
-#include	<freeradius-devel/missing.h>
 #include	<freeradius-devel/libradius.h>
+
+#include	<ctype.h>
 
 #ifndef HAVE_CRYPT
 char *crypt(char *key, char *salt)

@@ -10,20 +10,10 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
+#include	<freeradius-devel/libradius.h>
 
-#include	<stdio.h>
-#include 	<string.h>
-#include	<stdlib.h>
-#include 	<netdb.h>
-#include	<sys/types.h>
-#include	<sys/socket.h>
-#include	<netinet/in.h>
-#include	<arpa/inet.h>
 #include	<ctype.h>
 #include 	<sys/param.h>
-
-#include	<freeradius-devel/missing.h>
 
 #ifdef HAVE_PTHREAD_H
 #include	<pthread.h>

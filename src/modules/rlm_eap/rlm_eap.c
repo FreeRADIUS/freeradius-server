@@ -25,9 +25,10 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-#include "rlm_eap.h"
+#include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+
+#include "rlm_eap.h"
 
 static const CONF_PARSER module_config[] = {
 	{ "default_eap_type", PW_TYPE_STRING_PTR,

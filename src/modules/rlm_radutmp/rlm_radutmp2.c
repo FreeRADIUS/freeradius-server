@@ -23,24 +23,15 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
-
-#include	<sys/types.h>
-#include	<stdio.h>
-#include	<string.h>
-#include	<stdlib.h>
-#include	<unistd.h>
-#include	<fcntl.h>
-#include	<time.h>
-#include	<errno.h>
-#include        <limits.h>
-
-#include "config.h"
-
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/radutmp.h>
 #include	<freeradius-devel/modules.h>
 #include	<freeradius-devel/rad_assert.h>
+
+#include	<fcntl.h>
+#include        <limits.h>
+
+#include "config.h"
 
 #define LOCK_LEN sizeof(struct radutmp)
 

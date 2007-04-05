@@ -23,13 +23,8 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
+#include	<freeradius-devel/libradius.h>
 
-#include	<sys/types.h>
-
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<string.h>
 #include	<ctype.h>
 
 #ifdef HAVE_MALLOC_H
@@ -39,9 +34,6 @@ RCSID("$Id$")
 #ifdef HAVE_REGEX_H
 #  include	<regex.h>
 #endif
-
-#include	<freeradius-devel/missing.h>
-#include	<freeradius-devel/libradius.h>
 
 static const char *months[] = {
         "jan", "feb", "mar", "apr", "may", "jun",

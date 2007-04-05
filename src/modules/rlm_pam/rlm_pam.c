@@ -31,13 +31,10 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/modules.h>
 
 #include	"config.h"
-
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<string.h>
 
 #ifdef HAVE_SECURITY_PAM_APPL_H
 #include	<security/pam_appl.h>
@@ -51,9 +48,6 @@ RCSID("$Id$")
 #ifdef HAVE_SYSLOG_H
 #include	<syslog.h>
 #endif
-
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
 
 typedef struct rlm_pam_t {
 	const char *pam_auth_name;

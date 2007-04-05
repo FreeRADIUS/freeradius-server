@@ -23,13 +23,10 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
-#include        <stdio.h>
-#include        <stdlib.h>
-#include        <string.h>
+#include	<freeradius-devel/libradius.h>
+#include        <freeradius-devel/md4.h>
 #include        <ctype.h>
 
-#include        <freeradius-devel/md4.h>
 
 #include	"smbdes.h"
 

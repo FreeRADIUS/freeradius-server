@@ -23,14 +23,10 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <stdlib.h>
-#include <string.h>
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/modcall.h>
+#include <freeradius-devel/rad_assert.h>
 
 /* mutually-recursive static functions need a prototype up front */
 static modcallable *do_compile_modgroup(modcallable *,

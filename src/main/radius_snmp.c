@@ -24,19 +24,12 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
 
 #ifdef WITH_SNMP
 
-#ifdef HAVE_NETINET_IN_H
-#	include <netinet/in.h>
-#endif
-
-#include <string.h>
-
 #include <freeradius-devel/smux.h>
 #include <freeradius-devel/radius_snmp.h>
-#include <freeradius-devel/radiusd.h>
 
 extern int need_reload;
 

@@ -24,20 +24,13 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#define _LIBRADIUS 1
+#include <freeradius-devel/libradius.h>
 
 #include <pcap.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
 
-#define _LIBRADIUS 1
 #include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/conf.h>
-#include <freeradius-devel/libradius.h>
 #include <freeradius-devel/radsniff.h>
 
 static const char *radius_secret = "testing123";

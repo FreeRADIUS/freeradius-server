@@ -20,11 +20,8 @@
  * Copyright 2001 Koulik Andrei, Sandy Service
  */
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/libradius.h>
 #include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 #ifdef HAVE_NDBM_H
 #include <ndbm.h>
@@ -38,7 +35,6 @@
 #include <gdbm-ndbm.h>
 #endif
 
-#include <unistd.h>
 #include <ctype.h>
 
 #define LOTSTUP	20

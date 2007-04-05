@@ -23,14 +23,8 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
+#include	<freeradius-devel/libradius.h>
 #include	<freeradius-devel/md5.h>
-
-#include	<stdlib.h>
-
-#ifdef HAVE_UNISTD_H
-#include	<unistd.h>
-#endif
 
 #include	<fcntl.h>
 #include	<ctype.h>
@@ -39,17 +33,9 @@ RCSID("$Id$")
 #include	<freeradius-devel/udpfromto.h>
 #endif
 
-
 #ifdef HAVE_MALLOC_H
 #include	<malloc.h>
 #endif
-
-#ifdef WIN32
-#include	<process.h>
-#endif
-
-#include	<freeradius-devel/missing.h>
-#include	<freeradius-devel/libradius.h>
 
 /*
  *  The RFC says 4096 octets max, and most packets are less than 256.

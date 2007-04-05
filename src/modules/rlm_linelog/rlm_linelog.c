@@ -24,22 +24,12 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
-
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
-
 
 /*
  *	Define a structure for our module configuration.

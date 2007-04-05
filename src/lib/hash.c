@@ -33,12 +33,7 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <stdlib.h>
-#include <string.h>
-
-#include <freeradius-devel/missing.h>
+#include <freeradius-devel/libradius.h>
 #include <freeradius-devel/hash.h>
 
 /*

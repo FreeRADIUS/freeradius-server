@@ -25,22 +25,13 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <sys/stat.h>
 
-#ifdef HAVE_NETINET_IN_H
-#	include <netinet/in.h>
-#endif
-
-#include <stdlib.h>
-#include <string.h>
-#include <netdb.h>
 #include <ctype.h>
 #include <fcntl.h>
-
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
 
 struct radclient_list {
 	/*

@@ -24,7 +24,6 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
@@ -32,14 +31,10 @@ RCSID("$Id$")
 #include "otp.h"
 #include "otp_pw_valid.h"
 
-#include <errno.h>
+#ifdef HAVE_PTHREAD_H
 #include <pthread.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
+#endif
 #include <sys/un.h>
-#include <unistd.h>
 
 
 /* transform otpd return codes into rlm return codes */

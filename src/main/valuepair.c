@@ -25,15 +25,7 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-#ifdef HAVE_NETINET_IN_H
-#	include <netinet/in.h>
-#endif
+#include <freeradius-devel/radiusd.h>
 
 #ifdef HAVE_REGEX_H
 #	include <regex.h>
@@ -51,8 +43,6 @@ RCSID("$Id$")
 #define REG_NOSUB (0)
 #endif
 #endif
-
-#include <freeradius-devel/radiusd.h>
 
 struct cmp {
 	int attribute;

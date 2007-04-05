@@ -25,33 +25,17 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/conf.h>
+#include <freeradius-devel/radpaths.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-
-#ifdef HAVE_UNISTD_H
-#	include <unistd.h>
-#endif
-
-#include <string.h>
 #include <ctype.h>
-#include <netdb.h>
-
-#ifdef HAVE_SYS_SELECT_H
-#	include <sys/select.h>
-#endif
 
 #ifdef HAVE_GETOPT_H
 #	include <getopt.h>
 #endif
 
 #include <assert.h>
-
-#include <freeradius-devel/conf.h>
-#include <freeradius-devel/radpaths.h>
-#include <freeradius-devel/missing.h>
-#include <freeradius-devel/libradius.h>
 
 static int retries = 10;
 static float timeout = 3;

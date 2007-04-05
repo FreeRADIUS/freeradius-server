@@ -25,22 +25,19 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <stdio.h>
-#include <sys/stat.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include <freeradius-devel/radiusd.h>
+
+#include <sys/stat.h>
 
 #include "config.h"
 
 #ifdef HAVE_MYSQL_MYSQL_H
+#include <mysql/mysql_version.h>
 #include <mysql/errmsg.h>
 #include <mysql/mysql.h>
 #else
 #ifdef HAVE_MYSQL_H
+#include <mysql_version.h>
 #include <errmsg.h>
 #include <mysql.h>
 #endif

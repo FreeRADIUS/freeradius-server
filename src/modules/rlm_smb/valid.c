@@ -21,8 +21,8 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <sys/types.h>
-#include <unistd.h>
+#include <freeradius-devel/radiusd.h>
+
 #include <syslog.h>
 #include "smblib-priv.h"
 #include "valid.h"

@@ -25,27 +25,9 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/libradius.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-
-#if HAVE_UNISTD_H
-#	include <unistd.h>
-#endif
-
-#include <string.h>
 #include <ctype.h>
-#include <netdb.h>
-#include <sys/socket.h>
-
-#if HAVE_NETINET_IN_H
-#	include <netinet/in.h>
-#endif
-
-#if HAVE_SYS_SELECT_H
-#	include <sys/select.h>
-#endif
 
 #if HAVE_GETOPT_H
 #	include <getopt.h>
@@ -53,7 +35,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/radpaths.h>
-#include <freeradius-devel/missing.h>
 #include <freeradius-devel/md5.h>
 
 #include "eap_types.h"

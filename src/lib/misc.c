@@ -23,24 +23,11 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
+#include	<freeradius-devel/libradius.h>
 
-#include	<stdio.h>
-#include	<sys/types.h>
-#include	<sys/socket.h>
-#include	<netinet/in.h>
-#include	<arpa/inet.h>
-
-#include	<stdlib.h>
-#include	<string.h>
-#include	<netdb.h>
 #include	<ctype.h>
 #include	<sys/file.h>
 #include	<fcntl.h>
-#include	<unistd.h>
-
-#include	<freeradius-devel/missing.h>
-#include	<freeradius-devel/libradius.h>
 
 int		librad_dodns = 0;
 int		librad_debug = 0;

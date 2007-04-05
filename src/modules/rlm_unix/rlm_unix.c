@@ -27,13 +27,10 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
+#include	<freeradius-devel/radiusd.h>
 
-#include	<stdlib.h>
-#include	<string.h>
 #include	<grp.h>
 #include	<pwd.h>
-#include	<sys/types.h>
 #include	<sys/stat.h>
 
 #include "config.h"
@@ -52,7 +49,6 @@ RCSID("$Id$")
 #  include	<siad.h>
 #endif
 
-#include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/modules.h>
 #include	<freeradius-devel/sysutmp.h>
 

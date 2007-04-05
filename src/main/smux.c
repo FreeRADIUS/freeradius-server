@@ -25,27 +25,17 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
 
 #ifdef WITH_SNMP
 
-#include <sys/socket.h>
-#include <sys/file.h>
-
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <netdb.h>
-#include <fcntl.h>
-#include <ctype.h>
-
-#include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/radius_snmp.h>
 #include <freeradius-devel/smux.h>
+
+#include <sys/file.h>
+
+#include <fcntl.h>
+#include <ctype.h>
 
 #define min(A,B) ((A) < (B) ? (A) : (B))
 

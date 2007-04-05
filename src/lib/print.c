@@ -23,16 +23,9 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
-
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<sys/types.h>
-#include	<ctype.h>
-#include	<string.h>
-
-#include	<freeradius-devel/missing.h>
 #include	<freeradius-devel/libradius.h>
+
+#include	<ctype.h>
 
 /*
  *	Convert a string to something printable.

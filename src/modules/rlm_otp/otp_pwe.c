@@ -31,9 +31,8 @@ RCSID("$Id$")
 /* avoid inclusion of these FR headers which conflict w/ OpenSSL */
 #define _LRAD_MD4_H
 #define _LRAD_SHA1_H
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include "extern.h"
 

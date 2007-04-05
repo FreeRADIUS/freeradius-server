@@ -13,8 +13,6 @@ MODIFIED:
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-#include <freeradius-devel/missing.h>
 #include <freeradius-devel/libradius.h>
 
 #define RANDSIZL   (8)  /* I recommend 8 for crypto, 4 for simulations */

@@ -24,11 +24,10 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
+#include <freeradius-devel/libradius.h>
 #include <freeradius-devel/token.h>
+
+#include <ctype.h>
 
 static const LRAD_NAME_NUMBER tokens[] = {
 	{ "=~", T_OP_REG_EQ,	}, /* order is important! */

@@ -26,19 +26,9 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(rlm_policy_h, "$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-
-#include <string.h>
-#include <stdlib.h>
-
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/modcall.h>
-
 #include <freeradius-devel/rad_assert.h>
 
 /*

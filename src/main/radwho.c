@@ -27,18 +27,14 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/sysutmp.h>
+#include <freeradius-devel/radutmp.h>
 
-#include <stdlib.h>
-#include <string.h>
 #include <pwd.h>
 #include <sys/stat.h>
 #include <sys/utsname.h>
 #include <ctype.h>
-
-#include <freeradius-devel/sysutmp.h>
-#include <freeradius-devel/radutmp.h>
-#include <freeradius-devel/radiusd.h>
 
 /*
  *	FIXME: put in header file.

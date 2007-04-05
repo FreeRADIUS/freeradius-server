@@ -57,19 +57,14 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/modules.h>
 
 #include	<sys/stat.h>
-
-#include	<stdlib.h>
-#include	<string.h>
-#include	<netdb.h>
 #include	<ctype.h>
 #include	<fcntl.h>
 #include	<limits.h>
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
 #include        "../rlm_eap/libeap/eap_sim.h"
 
 struct sim_file_instance {

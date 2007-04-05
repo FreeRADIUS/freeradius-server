@@ -25,18 +25,13 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <sys/stat.h>
 
-#include <stdlib.h>
-#include <string.h>
-#include <netdb.h>
 #include <ctype.h>
 #include <fcntl.h>
-
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
 
 static rbtree_t *realms_byname = NULL;
 

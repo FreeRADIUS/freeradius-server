@@ -23,19 +23,14 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <sys/file.h>
 
-#include <stdlib.h>
-#include <string.h>
 #include <fcntl.h>
 #include <ctype.h>
 #include <signal.h>
-
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
 
 #ifdef HAVE_SYS_WAIT_H
 #	include <sys/wait.h>
@@ -46,9 +41,6 @@ RCSID("$Id$")
 #ifndef WIFEXITED
 #	define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
-
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
 
 #define MAX_ARGV (256)
 /*

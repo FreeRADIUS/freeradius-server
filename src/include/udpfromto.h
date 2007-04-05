@@ -8,8 +8,10 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(udpfromtoh, "$Id$")
 
-#include <sys/socket.h>
+#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/libradius.h>
 
+#ifdef WITH_UDPFROMTO
 int udpfromto_init(int s);
 int recvfromto(int s, void *buf, size_t len, int flags,
 	       struct sockaddr *from, socklen_t *fromlen,
@@ -17,5 +19,6 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 int sendfromto(int s, void *buf, size_t len, int flags,
 	       struct sockaddr *from, socklen_t fromlen,
 	       struct sockaddr *to, socklen_t tolen);
+#endif
 
 #endif

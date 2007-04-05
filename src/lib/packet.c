@@ -23,12 +23,7 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
-#include	<freeradius-devel/missing.h>
 #include	<freeradius-devel/libradius.h>
-
-#include <unistd.h>
-#include <stdlib.h>
 
 /*
  *	Take the key fields of a request packet, and convert it to a

@@ -24,16 +24,10 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <Python.h>
-
-#include <freeradius-devel/autoconf.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/conffile.h>
+
+#include <Python.h>
 
 /*
  *	Define a structure for our module configuration.

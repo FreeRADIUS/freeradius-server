@@ -24,10 +24,8 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <string.h>
-#include <stdlib.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 
 #ifdef HAVE_NDBM_H
 #include <ndbm.h>
@@ -42,9 +40,6 @@ RCSID("$Id$")
 #endif
 
 #include <fcntl.h>
-
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
 
 #ifdef SANDY_MOD
 #	include "sandymod.h"

@@ -23,19 +23,9 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <string.h>
-#include <ctype.h>
-#include <stdlib.h>
-
-
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
-
-#include <freeradius-devel/missing.h>
 #include <freeradius-devel/libradius.h>
+
+#include <ctype.h>
 
 /*
  * Two types of filters are supported, GENERIC and IP.  The identifiers

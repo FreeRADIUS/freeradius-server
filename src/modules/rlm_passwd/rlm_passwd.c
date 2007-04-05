@@ -21,13 +21,8 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-
 
 struct mypasswd {
 	struct mypasswd *next;

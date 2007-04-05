@@ -26,18 +26,11 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
-
-#include	<sys/stat.h>
-
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<string.h>
-#include	<ctype.h>
-
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/modules.h>
 #include	<freeradius-devel/rad_assert.h>
+
+#include	<ctype.h>
 
 typedef struct rlm_preprocess_t {
 	char		*huntgroup_file;

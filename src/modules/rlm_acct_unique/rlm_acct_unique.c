@@ -21,15 +21,10 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+
+#include <ctype.h>
 
 /*
  *  Room for at least 16 attributes.

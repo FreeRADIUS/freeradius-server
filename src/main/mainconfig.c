@@ -24,25 +24,11 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <stdlib.h>
-#include <string.h>
-
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
-
-#ifdef HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif
-
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <sys/resource.h>
-#include <netdb.h>
 #include <sys/stat.h>
 #include <grp.h>
 #include <pwd.h>

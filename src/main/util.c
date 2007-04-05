@@ -23,27 +23,14 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <ctype.h>
 #include <signal.h>
 
 #include <sys/stat.h>
 #include <fcntl.h>
-
-#ifdef HAVE_UNISTD_H
-#	include <unistd.h>
-#endif
-
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
-
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
 
 /*
  *	The signal() function in Solaris 2.5.1 sets SA_NODEFER in

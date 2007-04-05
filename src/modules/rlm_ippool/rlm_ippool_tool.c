@@ -56,20 +56,10 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <stdio.h>
+#include <freeradius-devel/libradius.h>
 #include <fcntl.h>
 #include <gdbm.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <string.h>
 #include "../../include/md5.h"
-#include <freeradius-devel/missing.h>
-#include <freeradius-devel/libradius.h>
 
 int active=0;
 

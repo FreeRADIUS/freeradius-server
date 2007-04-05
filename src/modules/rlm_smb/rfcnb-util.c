@@ -29,7 +29,6 @@ RCSID("$Id$")
 
 #include <string.h>
 
-#include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/libradius.h>
 #include "std-includes.h"
 #include "rfcnb-priv.h"

@@ -40,14 +40,9 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <stdio.h>
-#include <sys/stat.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include <freeradius-devel/radiusd.h>
+
+#include <sys/stat.h>
 
 #include <libpq-fe.h>
 #include "rlm_sql.h"

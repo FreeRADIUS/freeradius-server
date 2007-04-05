@@ -24,24 +24,11 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <stdlib.h>
-#include <string.h>
-
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
-
-#ifdef HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/radius_snmp.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <sys/resource.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
 
 #ifdef HAVE_NET_IF_H
 #include <net/if.h>
@@ -51,16 +38,7 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #endif
 
-#ifdef WITH_UDPFROMTO
-#include <freeradius-devel/udpfromto.h>
-#endif
-
 #include <fcntl.h>
-
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
-
-#include <freeradius-devel/radius_snmp.h>
 
 static time_t start_time = 0;
 

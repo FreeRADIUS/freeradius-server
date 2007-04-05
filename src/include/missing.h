@@ -12,6 +12,8 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(missing_h, "$Id$")
 
+#include <freeradius-devel/autoconf.h>
+
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
@@ -32,6 +34,10 @@ RCSIDH(missing_h, "$Id$")
 #include <string.h>
 #endif
 
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif
+
 #ifdef HAVE_NETINET_IN_H
 #include	<netinet/in.h>
 #endif
@@ -46,6 +52,21 @@ RCSIDH(missing_h, "$Id$")
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+
+/*
+ *  Check for inclusion of <time.h>, versus <sys/time.h>
+ *  Taken verbatim from the autoconf manual.
+ */
+#if TIME_WITH_SYS_TIME
+# include <sys/time.h>
+# include <time.h>
+#else
+# ifdef HAVE_SYS_TIME_H
+#  include <sys/time.h>
+# else
+#  include <time.h>
+# endif
 #endif
 
 /*

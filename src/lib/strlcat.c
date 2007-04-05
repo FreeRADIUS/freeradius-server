@@ -30,8 +30,6 @@ RCSID("$Id$")
 
 #ifndef HAVE_STRLCAT
 
-#include <sys/types.h>
-#include <string.h>
 #include <freeradius-devel/missing.h>
 
 /*

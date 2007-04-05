@@ -24,17 +24,17 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
-#include <stdlib.h>
-#include <string.h>
-#include <signal.h>
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/event.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/event.h>
 #include <freeradius-devel/radius_snmp.h>
+
+#include <freeradius-devel/rad_assert.h>
+
+#ifdef HAVE_SIGNAL_H
+#include <signal.h>
+#endif
 
 #define USEC (1000000)
 

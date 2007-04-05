@@ -17,11 +17,6 @@ RCSIDH(radiusd_h, "$Id$")
 #include <freeradius-devel/conffile.h>
 #include <freeradius-devel/realms.h>
 
-
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
 #ifdef HAVE_PTHREAD_H
 #include	<pthread.h>
 typedef pthread_t child_pid_t;

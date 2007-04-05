@@ -34,22 +34,8 @@ RCSIDH(libradius_h, "$Id$")
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
-
-/*
- *  Check for inclusion of <time.h>, versus <sys/time.h>
- *  Taken verbatim from the autoconf manual.
- */
-#if TIME_WITH_SYS_TIME
-# include <sys/time.h>
-# include <time.h>
-#else
-# ifdef HAVE_SYS_TIME_H
-#  include <sys/time.h>
-# else
-#  include <time.h>
-# endif
-#endif
 
 #include <freeradius-devel/radius.h>
 #include <freeradius-devel/token.h>

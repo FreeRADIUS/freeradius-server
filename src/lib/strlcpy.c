@@ -30,7 +30,6 @@ RCSID("$Id$")
 
 #ifndef HAVE_STRLCPY
 
-#include <sys/types.h>
 #include <freeradius-devel/missing.h>
 
 /*

@@ -27,28 +27,16 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/autoconf.h>
+#include	<freeradius-devel/radiusd.h>
 
-#include	<sys/types.h>
-#include	<sys/socket.h>
-#include	<sys/time.h>
 #include	<sys/file.h>
-#include	<string.h>
 #include	<sys/stat.h>
-#include	<netinet/in.h>
 
-#include	<stdio.h>
-#include	<stdlib.h>
-#include	<netdb.h>
 #include	<pwd.h>
-#include	<time.h>
 #include	<ctype.h>
-#include	<unistd.h>
 #include	<signal.h>
-#include	<errno.h>
 #include	<sys/wait.h>
 
-#include	<freeradius-devel/radiusd.h>
 #include	"rlm_sql.h"
 
 #ifdef HAVE_PTHREAD_H

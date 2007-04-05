@@ -58,37 +58,15 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include "config.h"
-#include <freeradius-devel/autoconf.h>
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <ctype.h>
-
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
-
-#ifdef HAVE_INTTYPES_H
-#include <inttypes.h>
-#endif
-
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
-
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/conffile.h>
+
+#include "config.h"
+#include <ctype.h>
+
 #include "../../include/md5.h"
 
 #include <gdbm.h>
-#include <time.h>
 
 #ifdef NEEDS_GDBM_SYNC
 #	define GDBM_SYNCOPT GDBM_SYNC

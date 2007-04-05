@@ -24,17 +24,12 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #ifdef HAVE_REGEX_H
 #	include <regex.h>
 #endif
-
-#include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/modules.h>
 
 #define RLM_REGEX_INPACKET 0
 #define RLM_REGEX_INCONFIG 1
