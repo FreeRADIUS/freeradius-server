@@ -28,6 +28,10 @@ RCSIDH(missing_h, "$Id$")
 #include <strings.h>
 #endif
 
+#ifdef HAVE_STRING_H
+#include <string.h>
+#endif
+
 #ifdef HAVE_NETINET_IN_H
 #include	<netinet/in.h>
 #endif
