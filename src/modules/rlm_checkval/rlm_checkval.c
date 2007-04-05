@@ -74,8 +74,6 @@ static const CONF_PARSER module_config[] = {
 
 static int checkval_detach(void *instance)
 {
-	rlm_checkval_t *data = (rlm_checkval_t *) instance;
-
 	free(instance);
 	return 0;
 }

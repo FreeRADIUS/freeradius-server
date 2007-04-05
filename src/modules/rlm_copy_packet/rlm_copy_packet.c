@@ -55,8 +55,6 @@ static const CONF_PARSER module_config[] = {
 
 static int packet_detach(void *instance)
 {
-	rlm_packet_t	*inst = instance;
-
 	free(instance);
 	return 0;
 }

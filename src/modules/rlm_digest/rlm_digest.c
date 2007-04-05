@@ -265,7 +265,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		 */
 		if (passwd->attribute == PW_CLEARTEXT_PASSWORD) {
 			librad_md5_calc(hash, &a1[0], a1_len);
-			lrad_bin2hex(hash, &a1[0], 16);
+			lrad_bin2hex(hash, (char *) &a1[0], 16);
 		} else {	/* MUST be Digest-HA1 */
 			memcpy(&a1[0], passwd->vp_strvalue, 32);
 		}
@@ -388,7 +388,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	} else {
 		memcpy(&hash[0], &a1[0], a1_len);
 	}
-	lrad_bin2hex(hash, kd, sizeof(hash));
+	lrad_bin2hex(hash, (char *) kd, sizeof(hash));
 
 #ifndef NDEBUG
 	if (debug_flag) {
@@ -457,7 +457,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 
 	librad_md5_calc(&hash[0], &a2[0], a2_len);
 
-	lrad_bin2hex(hash, kd + kd_len, sizeof(hash));
+	lrad_bin2hex(hash, (char *) kd + kd_len, sizeof(hash));
 
 #ifndef NDEBUG
 	if (debug_flag) {
@@ -489,7 +489,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	if (lrad_hex2bin(&vp->vp_octets[0], &hash[0], vp->length >> 1) != (vp->length >> 1)) {
+	if (lrad_hex2bin(&vp->vp_strvalue[0], &hash[0], vp->length >> 1) != (vp->length >> 1)) {
 		DEBUG2("rlm_digest: Invalid text in Digest-Response");
 		return RLM_MODULE_INVALID;
 	}

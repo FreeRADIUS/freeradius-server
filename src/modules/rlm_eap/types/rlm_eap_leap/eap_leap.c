@@ -225,7 +225,7 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 	} else {		/* MUST be NT-Password */
 		if (password->length == 32) {
 			password->length = lrad_hex2bin(password->vp_strvalue,
-							password->vp_strvalue,
+							password->vp_octets,
 							16);
 		}
 		if (password->length != 16) {
@@ -285,7 +285,7 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 	unsigned char ntpwdhash[16], ntpwdhashhash[16];
 	unsigned char buffer[256];
 	LEAP_PACKET *reply;
-	char *p;
+	unsigned char *p;
 	VALUE_PAIR *vp;
 
 	/*

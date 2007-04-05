@@ -75,7 +75,7 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 	char	*s, *p;
 	int	quote;
 	int	escape;
-	int	x;
+	unsigned int	x;
 	const LRAD_NAME_NUMBER*t;
 	LRAD_TOKEN rcode;
 

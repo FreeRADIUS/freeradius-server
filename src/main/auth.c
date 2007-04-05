@@ -149,7 +149,7 @@ static int rad_check_password(REQUEST *request)
 	VALUE_PAIR *cur_config_item;
 	VALUE_PAIR *password_pair;
 	VALUE_PAIR *auth_item;
-	char string[MAX_STRING_LEN];
+	uint8_t my_chap[MAX_STRING_LEN];
 	int auth_type = -1;
 	int result;
 	int auth_type_count = 0;
@@ -319,13 +319,13 @@ static int rad_check_password(REQUEST *request)
 				return -1;
 			}
 
-			rad_chap_encode(request->packet, string,
-					auth_item->vp_strvalue[0], password_pair);
+			rad_chap_encode(request->packet, my_chap,
+					auth_item->vp_octets[0], password_pair);
 
 			/*
 			 *	Compare them
 			 */
-			if (memcmp(string + 1, auth_item->vp_strvalue + 1,
+			if (memcmp(my_chap + 1, auth_item->vp_strvalue + 1,
 				   CHAP_VALUE_LENGTH) != 0) {
 				DEBUG2("auth: user supplied CHAP-Password does NOT match local User-Password");
 				return -1;
@@ -665,7 +665,7 @@ autz_redo:
 		/* double check: maybe the secret is wrong? */
 		if ((debug_flag > 1) && (auth_item != NULL) &&
 				(auth_item->attribute == PW_USER_PASSWORD)) {
-			u_char *p;
+			char *p;
 
 			p = auth_item->vp_strvalue;
 			while (*p != '\0') {

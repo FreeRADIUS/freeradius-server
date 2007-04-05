@@ -50,7 +50,7 @@ RCSID("$Id$")
 
 #include <string.h>
 #include <ctype.h>
-
+#include "eap_leap.h"
 
 #define uchar unsigned char
 
