@@ -1,0 +1,103 @@
+AC_INIT(sql_firebird.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_sql_firebird])
+
+AC_PROG_CC
+AC_PROG_CPP
+
+AC_ARG_WITH(firebird-include-dir,
+[  --with-firebird-include-dir=DIR       Directory where the firebird includes may be found ],
+[ firebird_include_dir="$withval" ]
+)
+
+AC_ARG_WITH(firebird-lib-dir,
+[  --with-firebird-lib-dir=DIR       Directory where the firebird libraries may be found ],
+[ firebird_lib_dir="$withval" ]
+)
+
+AC_ARG_WITH(firebird-dir,
+[  --with-firebird-dir=DIR       Base directory where firebird is installed ],
+[ firebird_lib_dir="$withval/lib"
+  firebird_include_dir="$withval/include"
+]
+)
+
+if test x$with_[]modname != xno; then
+
+	targetname=modname   # we might change this later.
+
+	AC_MSG_CHECKING([for ibase.h])
+
+	AC_TRY_COMPILE([#include <ibase.h>], [int a = 1;],
+		FIREBIRD_INCLUDE=" ",
+		FIREBIRD_INCLUDE=
+	)
+
+	if test "x$FIREBIRD_INCLUDE" = "x"; then
+		old_CFLAGS="$CFLAGS"
+
+		for try in /usr/local/include $firebird_include_dir; do
+			CFLAGS="$old_CFLAGS -I$try"
+			AC_TRY_COMPILE([#include <ibase.h>], [int a = 1;],
+				FIREBIRD_INCLUDE="-I$try",
+				FIREBIRD_INCLUDE=
+			)
+			if test "x$FIREBIRD_INCLUDE" != "x"; then
+				break;
+			fi
+		done
+		CFLAGS="$old_CFLAGS"
+	fi
+
+	if test "x$FIREBIRD_INCLUDE" = "x"; then
+		AC_MSG_RESULT(no)
+		AC_MSG_WARN([firebird headers not found.  Use --with-firebird-include-dir=<path>.])
+		targetname=   # disabled module
+	else
+		sql_firebird_cflags="${sql_firebird_cflags} ${FIREBIRD_INCLUDE}"
+		AC_MSG_RESULT(yes)
+  
+		AC_MSG_CHECKING([for isc_attach_database -l$GDS])
+
+		old_LIBS="$LIBS"
+
+		for try in /usr/lib $firebird_lib_dir; do
+			LIBS="$old_LIBS -L$try -lfbclient"
+			AC_TRY_LINK([extern char isc_attach_database();], [isc_attach_database()],
+				FIREBIRD_LIBS="-L$try -lfbclient",
+				FIREBIRD_LIBS=
+			)
+			if test "x$FIREBIRD_LIBS" != "x"; then
+				break;
+			fi
+		done
+		LIBS="$old_LIBS"
+
+		dnl #  If one or the other isn't found, disable them both..
+		dnl #  If both are found, enable them both.
+		if test "x$FIREBIRD_LIBS" = "x"; then
+			AC_MSG_RESULT(no)
+			FIREBIRD_INCLUDE=
+			AC_MSG_WARN([firebird libraries not found.  Use --with-firebird-lib-dir=<path>.])
+			targetname=   # disabled module
+		else
+			AC_MSG_RESULT(yes) 
+			sql_firebird_ldflags="$sql_firebird_ldflags $FIREBIRD_LIBS"
+		fi
+	fi
+
+	sql_firebird_ldflags="$sql_firebird_ldflags $LIBS"
+
+	if test "x$targetname" = "x"; then
+		AC_MSG_WARN([sql submodule 'firebird' disabled])
+	fi
+
+else
+	targetname=
+	echo \*\*\* module modname is disabled.
+fi
+
+AC_SUBST(sql_firebird_ldflags)
+AC_SUBST(sql_firebird_cflags)
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)
