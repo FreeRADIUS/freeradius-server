@@ -223,7 +223,7 @@ static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 	}
 	username = (char *)vp->strvalue;
 
-	if (group_inst->cache_passwd &&
+	if (group_inst->cache &&
 	    (retval = H_groupcmp(group_inst->cache, check, username)) != -2)
 		return retval;
 
@@ -474,7 +474,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	name = (char *)request->username->strvalue;
 	passwd = (char *)request->password->strvalue;
 
-	if (inst->cache_passwd &&
+	if (inst->cache &&
 	    (ret = H_unix_pass(inst->cache, name, passwd, &request->reply->vps)) != -2)
 		return (ret == 0) ? RLM_MODULE_OK : RLM_MODULE_REJECT;
 
