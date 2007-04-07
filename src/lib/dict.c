@@ -947,8 +947,13 @@ static int my_dict_init(const char *dir, const char *fn,
 	char	*argv[MAX_ARGV];
 	int	argc;
 
-	if (strlen(fn) >= sizeof(dirtmp) / 2 ||
-	    strlen(dir) >= sizeof(dirtmp) / 2) {
+	if (!dir) {
+		librad_log("dict_init: No directory specified");
+		return -1;
+	}
+
+	if ((strlen(fn) >= sizeof(dirtmp) / 2) ||
+	    (strlen(dir) >= sizeof(dirtmp) / 2)) {
 		librad_log("dict_init: filename name too long");
 		return -1;
 	}
@@ -961,7 +966,8 @@ static int my_dict_init(const char *dir, const char *fn,
 		strcpy(dirtmp, fn);
 		dirtmp[p - fn] = 0;
 		dir = dirtmp;
-	} else if (dir && dir[0] && strcmp(dir, ".") != 0) {
+
+	} else if (dir[0] && strcmp(dir, ".") != 0) {
 		snprintf(dirtmp, sizeof(dirtmp), "%s/%s", dir, fn);
 		fn = dirtmp;
 	}
@@ -1166,6 +1172,8 @@ static int null_callback(void *ctx, void *data)
  */
 int dict_init(const char *dir, const char *fn)
 {
+	if (!dir) return -1;
+
 	/*
 	 *	Check if we need to change anything.  If not, don't do
 	 *	anything.
