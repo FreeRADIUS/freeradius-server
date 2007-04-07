@@ -374,7 +374,8 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 			 * 2. If EAP-response received, then its M bit not set.
 			 * 	(It is because Last fragment will not have M bit set)
 			 */
-			if ((prev_eap_ds->response == NULL) ||
+			if (!prev_eap_ds ||
+			    (prev_eap_ds->response == NULL) ||
 			    (eaptls_prev == NULL) ||
 			    !TLS_MORE_FRAGMENTS(eaptls_prev->flags)) {
 
