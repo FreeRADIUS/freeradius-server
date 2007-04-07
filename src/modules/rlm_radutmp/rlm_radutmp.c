@@ -589,6 +589,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	rlm_radutmp_t	*inst = instance;
 	char		login[256];
 	char		filename[1024];
+	ssize_t		read_size;
 
 	/*
 	 *	Get the filename, via xlat.
@@ -629,13 +630,20 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	/*
 	 *	Loop over utmp, counting how many people MAY be logged in.
 	 */
-	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
+	while ((read_size = read(fd, &u, sizeof(u))) == sizeof(u)) {
 		if (((strncmp(login, u.login, RUT_NAMESIZE) == 0) ||
 		     (!inst->case_sensitive &&
 		      (strncasecmp(login, u.login, RUT_NAMESIZE) == 0))) &&
 		    (u.type == P_LOGIN)) {
 			++request->simul_count;
 		}
+	}
+
+	if (read_size < 0) {
+		radlog(L_ERR, "rlm_radutmp: Error reading %s: %s",
+		       filename, strerror(errno));
+		close(fd);
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
@@ -669,7 +677,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	 *	static IP's like DSL.
 	 */
 	request->simul_count = 0;
-	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
+	while ((read_size = read(fd, &u, sizeof(u))) == sizeof(u)) {
 		if (((strncmp(login, u.login, RUT_NAMESIZE) == 0) ||
 		     (!inst->case_sensitive &&
 		      (strncasecmp(login, u.login, RUT_NAMESIZE) == 0))) &&
@@ -740,6 +748,14 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 			}
 		}
 	}
+
+	if (read_size < 0) {
+		radlog(L_ERR, "rlm_radutmp: Error reading %s: %s",
+		       filename, strerror(errno));
+		close(fd);
+		return RLM_MODULE_FAIL;
+	}
+
 	close(fd);		/* and implicitely release the locks */
 
 	return RLM_MODULE_OK;
