@@ -33,4 +33,5 @@ raddb/.raddb:
 	@touch raddb/.raddb
 
 tests: raddb/.raddb
+	@chmod a+x runtests.sh
 	./runtests.sh $(TESTS)
