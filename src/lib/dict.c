@@ -562,6 +562,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 		 */
 		if ((dattr->type != PW_TYPE_INTEGER) &&
 		    (dattr->type != PW_TYPE_OCTETS)) {
+			free(dval);
 			librad_log("dict_addvalue: VALUEs can only be defined for'integer' types");
 			return -1;
 		}
@@ -571,6 +572,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 		
 		fixup = (value_fixup_t *) malloc(sizeof(*fixup));
 		if (!fixup) {
+			free(dval);
 			librad_log("dict_addvalue: out of memory");
 			return -1;
 		}
@@ -607,6 +609,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 			}
 		}
 
+		free(dval);
 		librad_log("dict_addvalue: Duplicate value name %s for attribute %s", namestr, attrstr);
 		return -1;
 	}
