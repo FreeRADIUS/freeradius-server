@@ -45,7 +45,8 @@ RCSID("$Id$")
 #include <string.h>
 
 /* Attribute IDs for supported password encodings. */
-int pwattr[8];
+#define SIZEOF_PWATTR (4 * 2)
+int pwattr[SIZEOF_PWATTR];
 
 
 /* Initialize the pwattr array for supported password encodings. */
@@ -109,7 +110,7 @@ otp_pwe_present(const REQUEST *request)
 {
   unsigned i;
 
-  for (i = 0; i < sizeof(pwattr); i += 2) {
+  for (i = 0; i < SIZEOF_PWATTR; i += 2) {
     if (pairfind(request->packet->vps, pwattr[i]) &&
         pairfind(request->packet->vps, pwattr[i + 1])) {
       DEBUG("rlm_otp: %s: password attributes %d, %d", __func__,
