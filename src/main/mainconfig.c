@@ -902,7 +902,10 @@ int proxy_new_listener(void)
 	/*
 	 *	Proxying was not previously defined: die.
 	 */
-	if (last_proxy_port == 0) return -1;
+	if (last_proxy_port == 0) {
+		free(this);
+		return -1;
+	}
 
 	/*
 	 *	Keep going until we find an unused port.
@@ -929,6 +932,7 @@ int proxy_new_listener(void)
 		}
 	}
 
+	free(this);
 	return -1;
 }
 
