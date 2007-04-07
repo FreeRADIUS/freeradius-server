@@ -615,7 +615,7 @@ int read_mainconfig(int reload)
 {
 	static int old_debug_level = -1;
 	char buffer[1024];
-	CONF_SECTION *cs, *oldcs;
+	CONF_SECTION *cs, *oldcs, *templates;
 	rad_listen_t *listener;
 	struct stat statbuf;
 
@@ -644,6 +644,50 @@ int read_mainconfig(int reload)
 	if ((cs = cf_file_read(buffer)) == NULL) {
 		radlog(L_ERR|L_CONS, "Errors reading %s", buffer);
 		return -1;
+	}
+
+	/*
+	 *	Add templates to each kind of subsection.
+	 */
+	templates = cf_section_sub_find(cs, "templates");
+	if (templates) {
+		CONF_SECTION *ts, *mycs;
+
+		/*
+		 *	Loop over the templates, adding them to the
+		 *	sections in the main configuration file.
+		 */
+		for (ts = cf_subsection_find_next(templates, NULL, NULL);
+		     ts != NULL;
+		     ts = cf_subsection_find_next(templates, ts, NULL)) {
+			const char *name1 = cf_section_name1(ts);
+
+			/*
+			 *	Loop over sections in the main config
+			 *	file, adding templats.
+			 */
+			for (mycs = cf_subsection_find_next(cs, NULL, name1);
+			     mycs != NULL;
+			     mycs = cf_subsection_find_next(cs, mycs, name1)) {
+				const char *value;
+
+				value = cf_section_value_find(mycs, "template");
+				if (value) {
+					CONF_SECTION *tts;
+
+					tts = cf_section_sub_find_name2(templates,
+									name1,
+									value);
+					if (!tts) {
+						radlog(L_ERR|L_CONS, "%s[%d]: Section refers to non-existent template \"%s\"", buffer, cf_section_lineno(mycs), value);
+						return -1;
+					}
+					cf_section_template(mycs, tts);
+				} else {
+					cf_section_template(mycs, ts);
+				}
+			}
+		}
 	}
 
 	/*

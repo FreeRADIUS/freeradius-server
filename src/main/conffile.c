@@ -67,11 +67,12 @@ struct conf_part {
 	const char *name2;
 	struct conf_item *children;
 	struct conf_item *tail;	/* for speed */
+	CONF_SECTION	*template;
 	rbtree_t	*pair_tree; /* and a partridge.. */
 	rbtree_t	*section_tree; /* no jokes here */
 	rbtree_t	*name2_tree; /* for sections of the same name2 */
 	rbtree_t	*data_tree;
-	void *base;
+	void		*base;
 	const CONF_PARSER *variables;
 };
 
@@ -1328,6 +1329,7 @@ CONF_SECTION *cf_file_read(const char *file)
 CONF_PAIR *cf_pair_find(const CONF_SECTION *cs, const char *name)
 {
 	CONF_ITEM	*ci;
+	CONF_PAIR	*cp = NULL;
 
 	if (!cs) cs = mainconfig.config;
 
@@ -1338,18 +1340,21 @@ CONF_PAIR *cf_pair_find(const CONF_SECTION *cs, const char *name)
 		CONF_PAIR mycp;
 
 		mycp.attr = name;
-		return rbtree_finddata(cs->pair_tree, &mycp);
+		cp = rbtree_finddata(cs->pair_tree, &mycp);
+	} else {
+		/*
+		 *	Else find the first one that matches
+		 */
+		for (ci = cs->children; ci; ci = ci->next) {
+			if (ci->type == CONF_ITEM_PAIR) {
+				return cf_itemtopair(ci);
+			}
+		}
 	}
 
-	/*
-	 *	Else find the first one
-	 */
-	for (ci = cs->children; ci; ci = ci->next) {
-		if (ci->type == CONF_ITEM_PAIR)
-			return cf_itemtopair(ci);
-	}
-	
-	return NULL;
+	if (cp || !cs->template) return cp;
+
+	return cf_pair_find(cs->template, name);
 }
 
 /*
@@ -1851,8 +1856,6 @@ static int cf_section_cmp(CONF_SECTION *a, CONF_SECTION *b)
 }
 
 
-
-
 /*
  *	Migrate CONF_DATA from one section to another.
  */
@@ -1883,6 +1886,14 @@ int cf_section_migrate(CONF_SECTION *dst, CONF_SECTION *src)
 	return 1;		/* rcode means anything? */
 }
 
+int cf_section_template(CONF_SECTION *cs, CONF_SECTION *template)
+{
+	if (!cs || !template || cs->template || template->template) return -1;
+
+	cs->template = template;
+
+	return 0;
+}
 
 #if 0
 /*

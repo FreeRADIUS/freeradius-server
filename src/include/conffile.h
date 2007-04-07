@@ -84,6 +84,7 @@ CONF_PAIR *cf_itemtopair(CONF_ITEM *item);
 CONF_SECTION *cf_itemtosection(CONF_ITEM *item);
 CONF_ITEM *cf_pairtoitem(CONF_PAIR *cp);
 CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs);
+int cf_section_template(CONF_SECTION *cs, CONF_SECTION *template);
 
 /*
  *	Big magic.
