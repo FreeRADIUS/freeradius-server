@@ -191,6 +191,7 @@ static radclient_t *radclient_init(const char *filename)
 		radclient = malloc(sizeof(*radclient));
 		if (!radclient) {
 			perror("radclient: X");
+			if (fp != stdin) fclose(fp);
 			return NULL; /* memory leak "start" */
 		}
 		memset(radclient, 0, sizeof(*radclient));
@@ -199,6 +200,7 @@ static radclient_t *radclient_init(const char *filename)
 		if (!radclient->request) {
 			librad_perror("radclient: X");
 			radclient_free(radclient);
+			if (fp != stdin) fclose(fp);
 			return NULL; /* memory leak "start" */
 		}
 
@@ -212,6 +214,7 @@ static radclient_t *radclient_init(const char *filename)
 		radclient->request->vps = readvp2(fp, &filedone, "radclient: X");
 		if (!radclient->request->vps) {
 			radclient_free(radclient);
+			if (fp != stdin) fclose(fp);
 			return start; /* done: return the list */
 		}
 
