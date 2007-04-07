@@ -1,3 +1,7 @@
+DEFAULT
+	Test-Server-Port = "%{Packet-Dst-Port}",
+	Fall-Through = Yes
+
 #
 #	A bunch of stock configurations for the tests
 #
