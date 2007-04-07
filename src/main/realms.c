@@ -444,6 +444,15 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 
 	cp = cf_pair_find(cs, "type");
 	if (cp) {
+		static LRAD_NAME_NUMBER pool_types[] = {
+			{ "load-balance", HOME_POOL_LOAD_BALANCE },
+			{ "fail-over", HOME_POOL_FAIL_OVER },
+			{ "round_robin", HOME_POOL_LOAD_BALANCE },
+			{ "fail_over", HOME_POOL_FAIL_OVER },
+			{ "client-balance", HOME_POOL_CLIENT_BALANCE },
+			{ NULL, 0 }
+		};
+
 		value = cf_pair_value(cp);
 		if (!value) {
 			radlog(L_ERR, "%s[%d]: No value given for type.",
@@ -452,13 +461,8 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 			return 0;
 		}
 
-		if (strcmp(value, "load-balance") == 0) {
-			pool->type = HOME_POOL_LOAD_BALANCE;
-
-		} else if (strcmp(value, "fail-over") == 0) {
-			pool->type = HOME_POOL_FAIL_OVER;
-
-		} else {
+		pool->type = lrad_str2int(pool_types, value, 0);
+		if (!pool->type) {
 			radlog(L_ERR, "%s[%d]: Unknown type \"%s\".",
 			       filename, cf_pair_lineno(cp), value);
 			free(pool);
@@ -995,16 +999,16 @@ REALM *realm_find(const char *name)
 }
 
 
-home_server *home_server_ldb(REALM *r, int code)
+home_server *home_server_ldb(REALM *r, REQUEST *request)
 {
-	uint32_t	count;
-	home_server	*lb;
+	int		start;
+	int		count;
 	home_pool_t	*pool;
 
-	if (code == PW_AUTHENTICATION_REQUEST) {
+	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		pool = r->auth_pool;
 
-	} else if (code == PW_ACCOUNTING_REQUEST) {
+	} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
 		pool = r->acct_pool;
 
 	} else {
@@ -1017,10 +1021,61 @@ home_server *home_server_ldb(REALM *r, int code)
 		return NULL;
 	}
 
-	lb = NULL;
+	start = 0;
 
+	/*
+	 *	Determine how to pick choose the home server.
+	 */
+	switch (pool->type) {
+		uint32_t hash;
+
+		/*
+		 *	Load balancing.  Pick one at random.
+		 */
+	case HOME_POOL_LOAD_BALANCE:
+		hash = lrad_rand();
+		start = hash % pool->num_home_servers;
+		break;
+
+		/*
+		 *	For load-balancing by client IP address, we
+		 *	pick a home server by hashing the client IP.
+		 *
+		 *	This isn't as even a load distribution as
+		 *	tracking the State attribute, but it's better
+		 *	than nothing.
+		 */
+	case HOME_POOL_CLIENT_BALANCE:
+		switch (request->packet->src_ipaddr.af) {
+		case AF_INET:
+			hash = lrad_hash(&request->packet->src_ipaddr.ipaddr.ip4addr,
+					 sizeof(request->packet->src_ipaddr.ipaddr.ip4addr));
+			break;
+		case AF_INET6:
+			hash = lrad_hash(&request->packet->src_ipaddr.ipaddr.ip6addr,
+					 sizeof(request->packet->src_ipaddr.ipaddr.ip6addr));
+			break;
+		default:
+			hash = 0;
+			break;
+		}
+		start = hash % pool->num_home_servers;
+		break;
+
+	default:
+		start = 0;
+		break;
+	}
+
+	/*
+	 *	Starting with the home server we chose, loop through
+	 *	all home servers.  If the current one is dead, skip
+	 *	it.  If it is too busy, skip it.
+	 *
+	 *	Otherwise, use it.
+	 */
 	for (count = 0; count < pool->num_home_servers; count++) {
-		home_server *home = pool->servers[count];
+		home_server *home = pool->servers[(start + count) % pool->num_home_servers];
 
 		if (home->state == HOME_STATE_IS_DEAD) {
 			continue;
@@ -1032,42 +1087,9 @@ home_server *home_server_ldb(REALM *r, int code)
 		if (home->currently_outstanding >= home->max_outstanding) {
 			continue;
 		}
-		
-		/*
-		 *	Fail-over, pick the first one that matches.
-		 */
-		if (pool->type == HOME_POOL_FAIL_OVER) {
-			return home;
-		}
 
-		/*
-		 *	FUTURE: If we're well into "zombie_period",
-		 *	then we probably want to think about
-		 *	load-balancing the packet somewhere else, as
-		 *	the home server is probably dead.
-		 */
-
-		/*
-		 *	We're doing load-balancing.  Pick a random
-		 *	number, which will be used to determine which
-		 *	home server is chosen.
-		 */
-		if (!lb) {
-			lb = home;
-			continue;
-		}
-
-		/*
-		 *	See the "camel book" for why this works.
-		 *
-		 *	If (rand(0..n) < 1), pick the current server.
-		 *	We add a scale factor of 65536, to avoid
-		 *	floating point.
-		 */
-		if (((count + 1) * (lrad_rand() & 0xffff)) < (uint32_t) 0x10000) {
-			lb = home;
-		}
-	} /* loop over the realms */
+		return home;
+	} /* loop over the home servers */
 
 	/*
 	 *	No live match found, and no fallback to the "DEFAULT"
@@ -1076,9 +1098,10 @@ home_server *home_server_ldb(REALM *r, int code)
 	 *	"pings", as they will be marked live when they
 	 *	actually are live.
 	 */
-	if (!lb &&
-	    !mainconfig.proxy_fallback &&
+	if (!mainconfig.proxy_fallback &&
 	    mainconfig.wake_all_if_all_dead) {
+		home_server *lb = NULL;
+
 		for (count = 0; count < pool->num_home_servers; count++) {
 			home_server *home = pool->servers[count];
 
@@ -1088,28 +1111,29 @@ home_server *home_server_ldb(REALM *r, int code)
 				if (!lb) lb = home;
 			}
 		}
+
+		if (lb) return lb;
 	}
 
 	/*
 	 *	Still nothing.  Look up the DEFAULT realm, but only
 	 *	if we weren't looking up the NULL or DEFAULT realms.
 	 */
-	if (!lb &&
-	    mainconfig.proxy_fallback &&
+	if (mainconfig.proxy_fallback &&
 	    (strcmp(r->name, "NULL") != 0) &&
 	    (strcmp(r->name, "DEFAULT") != 0)) {
 		REALM *rd = realm_find("DEFAULT");
 
 		if (rd) {
 			DEBUG2("  Realm %s has no live home servers.  Falling back to the DEFAULT realm.", r->name);
-			return home_server_ldb(rd, code);
+			return home_server_ldb(rd, request);
 		}
 	}
 
 	/*
-	 *	Return the appropriate home server.
+	 *	Still haven't found anything.  Oh well.
 	 */
-	return lb;
+	return NULL;
 }
 
 

@@ -15,6 +15,10 @@ RCSIDH(radiusd_h, "$Id$")
 #include <freeradius-devel/radpaths.h>
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/conffile.h>
+#include <freeradius-devel/event.h>
+
+typedef struct auth_req REQUEST;
+
 #include <freeradius-devel/realms.h>
 
 #ifdef HAVE_PTHREAD_H
@@ -45,7 +49,7 @@ typedef struct rad_listen_t rad_listen_t;
 #define REQUEST_DATA_REGEX (0xadbeef00)
 #define REQUEST_MAX_REGEX (8)
 
-typedef struct auth_req {
+struct auth_req {
 #ifndef NDEBUG
 	uint32_t		magic; /* for debugging only */
 #endif
@@ -82,7 +86,7 @@ typedef struct auth_req {
 	int			child_state;
 
 	struct timeval		next_when;
-	void			*next_callback;
+	lrad_event_callback_t	next_callback;
 
 	int			in_request_hash;
 	int			in_proxy_hash;
@@ -94,7 +98,7 @@ typedef struct auth_req {
 	int			num_proxied_requests;
 	int			num_proxied_responses;
 
-} REQUEST;
+};				/* REQUEST typedef */
 
 #define RAD_REQUEST_OPTION_NONE            (0)
 

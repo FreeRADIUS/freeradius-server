@@ -372,7 +372,8 @@ static void wait_for_child_to_die(void *ctx)
 	remove_from_request_hash(request);
 
 	if (request->proxy) {
-		return wait_for_proxy_id_to_expire(request);
+		wait_for_proxy_id_to_expire(request);
+		return;
 	}
 
 	request_free(&request);
@@ -389,7 +390,8 @@ static void cleanup_delay(void *ctx)
 	remove_from_request_hash(request);
 
 	if (request->proxy) {
-		return wait_for_proxy_id_to_expire(request);
+		wait_for_proxy_id_to_expire(request);
+		return;
 	}
 
 	DEBUG2("Cleaning up request %d ID %d with timestamp +%d",
@@ -744,7 +746,8 @@ static void wait_a_bit(void *ctx)
 	case REQUEST_DONE:
 		request->child_pid = NO_SUCH_CHILD_PID;
 		if (request->proxy) {
-			return wait_for_proxy_id_to_expire(request);
+			wait_for_proxy_id_to_expire(request);
+			return;
 		}
 		return;
 
@@ -939,7 +942,7 @@ static int successfully_proxied_request(REQUEST *request)
 		return 0;
 	}
 	
-	home = home_server_ldb(realm, request->packet->code);
+	home = home_server_ldb(realm, request);
 	if (!home) {
 		DEBUG2("ERROR: Failed to find live home server for realm %s",
 		       realmname);

@@ -66,7 +66,8 @@ typedef struct home_server {
 typedef enum home_pool_type_t {
 	HOME_POOL_INVALID = 0,
 	HOME_POOL_LOAD_BALANCE,
-	HOME_POOL_FAIL_OVER
+	HOME_POOL_FAIL_OVER,
+	HOME_POOL_CLIENT_BALANCE
 } home_pool_type_t;
 
 
@@ -95,7 +96,7 @@ void realms_free(void);
 int realm_add(const char *filename, CONF_SECTION *cs);
 REALM *realm_find(const char *name);
 
-home_server *home_server_ldb(REALM *realm, int code);
+home_server *home_server_ldb(REALM *realm, REQUEST *request);
 home_server *home_server_find(lrad_ipaddr_t *ipaddr, int port);
 
 #endif /* REALMS_H */
