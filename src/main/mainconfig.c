@@ -399,6 +399,7 @@ static int generate_realms(const char *filename)
 			} else {
 				c->ipaddr = ip_getaddr(authhost);
 				if (c->ipaddr == htonl(INADDR_NONE)) {
+					free(c);
 					radlog(L_ERR, "%s[%d]: Host %s not found",
 					       filename, cf_section_lineno(cs),
 					       authhost);
@@ -410,6 +411,7 @@ static int generate_realms(const char *filename)
 			 * Double check length, just to be sure!
 			 */
 			if (strlen(authhost) >= sizeof(c->server)) {
+				free(c);
 				radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
 				       filename, cf_section_lineno(cs),
 				       (int) strlen(authhost),
@@ -441,6 +443,7 @@ static int generate_realms(const char *filename)
 			} else {
 				c->acct_ipaddr = ip_getaddr(accthost);
 				if (c->acct_ipaddr == htonl(INADDR_NONE)) {
+					free(c);
 					radlog(L_ERR, "%s[%d]: Host %s not found",
 					       filename, cf_section_lineno(cs),
 					       accthost);
@@ -449,6 +452,7 @@ static int generate_realms(const char *filename)
 			}
 
 			if (strlen(accthost) >= sizeof(c->acct_server)) {
+				free(c);
 				radlog(L_ERR, "%s[%d]: Server name of length %d is greater than allowed: %d",
 				       filename, cf_section_lineno(cs),
 				       (int) strlen(accthost),
@@ -458,6 +462,7 @@ static int generate_realms(const char *filename)
 		}
 
 		if (strlen(name2) >= sizeof(c->realm)) {
+			free(c);
 			radlog(L_ERR, "%s[%d]: Realm name of length %d is greater than allowed %d",
 			       filename, cf_section_lineno(cs),
 			       (int) strlen(name2),
@@ -477,12 +482,14 @@ static int generate_realms(const char *filename)
 		if ((c->ipaddr != htonl(INADDR_NONE)) ||
 		    (c->acct_ipaddr != htonl(INADDR_NONE))) {
 			if ((s = cf_section_value_find(cs, "secret")) == NULL ) {
+				free(c);
 				radlog(L_ERR, "%s[%d]: No shared secret supplied for realm: %s",
 				       filename, cf_section_lineno(cs), name2);
 				return -1;
 			}
 
 			if (strlen(s) >= sizeof(c->secret)) {
+				free(c);
 				radlog(L_ERR, "%s[%d]: Secret of length %u is greater than the allowed maximum of %u.",
 				       filename, cf_section_lineno(cs),
 				       strlen(s), sizeof(c->secret) - 1);
@@ -512,6 +519,7 @@ static int generate_realms(const char *filename)
 
 			c->ldflag = lrad_str2int(ldflags, t, -1);
 			if (c->ldflag == -1) {
+				free(c);
 				radlog(L_ERR, "%s[%d]: Unknown value \"%s\" for ldflag",
 				       filename, cf_section_lineno(cs),
 				       t);
