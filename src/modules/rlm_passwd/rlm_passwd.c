@@ -185,7 +185,11 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 	if (delimiter && *delimiter) ht->delimiter = delimiter;
 	else ht->delimiter = ":";
 	if(!tablesize) return ht;
-	if(!(ht->fp = fopen(file,"r"))) return NULL;
+	if(!(ht->fp = fopen(file,"r"))) {
+		free(ht->filename);
+		free(ht);
+		return NULL;
+	}
 	memset(ht->buffer, 0, 1024);
 	ht->table = (struct mypasswd **) rad_malloc (tablesize * sizeof(struct mypasswd *));
 	if (!ht->table) {
