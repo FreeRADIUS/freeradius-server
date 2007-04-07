@@ -392,6 +392,7 @@ static int huntgroup_access(REQUEST *request,
 				if (!vp) {
 					radlog(L_ERR, "No memory");
 					r = RLM_MODULE_FAIL;
+					break;
 				}
 
 				strNcpy(vp->strvalue, i->name,
