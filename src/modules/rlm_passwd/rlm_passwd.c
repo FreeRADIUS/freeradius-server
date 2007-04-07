@@ -132,12 +132,19 @@ static unsigned int hash(const unsigned char * username, unsigned int tablesize)
 static void release_hash_table(struct hashtable * ht){
 	int i;
 
-	if (!ht) return;
-	for (i=0; i<ht->tablesize; i++)
+	if (ht == NULL) return;
+	for (i = 0; i < ht->tablesize; i++)
  		if (ht->table[i])
  			destroy_password(ht->table[i]);
-	if (ht->table) free(ht->table);
-	if (ht->fp) fclose(ht->fp);
+	if (ht->table) {
+		free(ht->table);
+		ht->table = NULL;
+	}
+	if (ht->fp) {
+		fclose(ht->fp);
+		ht->fp = NULL;
+	}
+	ht->tablesize = 0;
 }
 
 static void release_ht(struct hashtable * ht){
@@ -194,7 +201,6 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 		if(*buffer && *buffer!='\n' && (!ignorenis || (*buffer != '+' && *buffer != '-')) ){
 			if(!(hashentry = mypasswd_malloc(buffer, nfields, &len))){
 				release_hash_table(ht);
-				ht->tablesize = 0;
 				return ht;
 			}
 			len = string_to_entry(buffer, nfields, *ht->delimiter, hashentry, len);
@@ -219,7 +225,6 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 					else nextlist = 0;
 					if(!(hashentry1 = mypasswd_malloc("", nfields, &len))){
 						release_hash_table(ht);
-						ht->tablesize = 0;
 						return ht;
 					}
 					for (i=0; i<nfields; i++) hashentry1->field[i] = hashentry->field[i];
@@ -429,26 +434,30 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 	}while(*s);
 	if(keyfield < 0) {
 		radlog(L_ERR, "rlm_passwd: no field market as key in format: %s", inst->format);
+		free(lf);
 		return -1;
 	}
 	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hashsize, inst->ignorenislike, inst->delimiter)) ){
 		radlog(L_ERR, "rlm_passwd: can't build hashtable from passwd file");
+		free(lf);
 		return -1;
 	}
 	if (! (inst->pwdfmt = mypasswd_malloc(inst->format, nfields, &len)) ){
 		radlog(L_ERR, "rlm_passwd: memory allocation failed");
 		release_ht(inst->ht);
+		free(lf);
 		return -1;
 	}
 	if (!string_to_entry(inst->format, nfields, ':', inst->pwdfmt , len)) {
 		radlog(L_ERR, "rlm_passwd: unable to convert format entry");
 		release_ht(inst->ht);
+		free(lf);
 		return -1;
 	}
 
 	memcpy(inst->pwdfmt->listflag, lf, nfields);
-
 	free(lf);
+
 	for (i=0; i<nfields; i++) {
 		if (*inst->pwdfmt->field[i] == '*') inst->pwdfmt->field[i]++;
 		if (*inst->pwdfmt->field[i] == ',') inst->pwdfmt->field[i]++;
