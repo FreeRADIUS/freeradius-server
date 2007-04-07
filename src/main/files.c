@@ -392,6 +392,7 @@ int read_realms_file(const char *file)
 			if (c->ipaddr == htonl(INADDR_NONE)) {
 				radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
 				       file, lineno, hostnm);
+				free(c);
 				return -1;
 			}
 
@@ -401,9 +402,10 @@ int read_realms_file(const char *file)
 			 */
 			client = client_find(c->ipaddr);
 			if (client == NULL) {
-			  radlog(L_CONS|L_ERR, "%s[%d]: Cannot find 'clients' file entry of remote server %s for realm \"%s\"",
-				 file, lineno, hostnm, realm);
-			  return -1;
+				radlog(L_CONS|L_ERR, "%s[%d]: Cannot find 'clients' file entry of remote server %s for realm \"%s\"",
+				       file, lineno, hostnm, realm);
+				free(c);
+				return -1;
 			}
 			memcpy(c->secret, client->secret, sizeof(c->secret));
 		}
@@ -416,6 +418,7 @@ int read_realms_file(const char *file)
 			       file, lineno,
 			       (int) strlen(hostnm),
 			       (int) sizeof(c->server) - 1);
+			free(c);
 			return -1;
 		}
 		if (strlen(realm) > sizeof(c->realm)) {
@@ -423,6 +426,7 @@ int read_realms_file(const char *file)
 			       file, lineno,
 			       (int) strlen(realm),
 			       (int) sizeof(c->realm) - 1);
+			free(c);
 			return -1;
 		}
 
