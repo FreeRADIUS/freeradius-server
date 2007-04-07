@@ -700,6 +700,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 				radlog(L_ERR, "%s[%d]: Invalid value '%s' for IP network mask.",
 						filename, cf_section_lineno(cs), netmask + 1);
 				clients_free(list);
+				free(c);
 				return NULL;
 			}
 
@@ -718,6 +719,7 @@ static RADCLIENT *generate_clients(const char *filename, CONF_SECTION *section)
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s",
 					filename, cf_section_lineno(cs), hostnm);
 			clients_free(list);
+			free(c);
 			return NULL;
 		}
 
