@@ -1090,6 +1090,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
                                radlog(L_ERR, "rlm_eap: out of memory");
                                free(*eap_packet_p);
                                *eap_packet_p = NULL;
+			       eap_handler_free(handler);
                                return NULL;
                        }
                        vp->next = request->packet->vps;
