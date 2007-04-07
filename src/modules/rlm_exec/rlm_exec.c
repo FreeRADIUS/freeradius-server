@@ -276,7 +276,7 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 static int exec_dispatch(void *instance, REQUEST *request)
 {
 	int result;
-	VALUE_PAIR **input_pairs, **output_pairs;
+	VALUE_PAIR **input_pairs, **output_pairs, *in;
 	VALUE_PAIR *answer;
 	rlm_exec_t *inst = (rlm_exec_t *) instance;
 
@@ -314,8 +314,11 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	 *	It points to the attribute list, but the attribute
 	 *	list is empty.
 	 */
-	if (input_pairs && !*input_pairs) {
+	if (!input_pairs || (input_pairs && !*input_pairs)) {
 		DEBUG2("rlm_exec (%s): WARNING! Input pairs are empty.  No attributes will be passed to the script", inst->xlat_name);
+		in = NULL;
+	} else {
+		in = *input_pairs;
 	}
 
 	/*
@@ -331,7 +334,7 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	 */
 	result = radius_exec_program(inst->program, request,
 				     inst->wait, NULL, 0,
-				     *input_pairs, &answer);
+				     in, &answer);
 	if (result != 0) {
 		radlog(L_ERR, "rlm_exec (%s): External script failed",
 		       inst->xlat_name);
