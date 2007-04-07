@@ -501,6 +501,7 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 	 */
 	conf = (EAP_TLS_CONF *)malloc(sizeof(*conf));
 	if (conf == NULL) {
+		free(inst);
 		radlog(L_ERR, "rlm_eap_tls: out of memory");
 		return -1;
 	}
