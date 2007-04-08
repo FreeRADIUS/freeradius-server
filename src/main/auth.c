@@ -206,7 +206,7 @@ static int rad_check_password(REQUEST *request)
 		DEBUG("!!! clear text password is in Cleartext-Password, and not in User-Password. !!!");
 		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		password_pair->attribute = PW_CLEARTEXT_PASSWORD;
-		strlcpy(password_pair->name, "Cleatext-Password",
+		strlcpy(password_pair->name, "Cleartext-Password",
 			sizeof(password_pair->name));
 	}
 
