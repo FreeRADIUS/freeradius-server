@@ -100,6 +100,7 @@ static int int_ssl_check(SSL *s, int ret, const char *text)
 	if ((l = ERR_get_error()) != 0) {
 		radlog(L_ERR, "rlm_eap: SSL error %s",
 		       ERR_error_string(l, NULL));
+	}
 	e = SSL_get_error(s, ret);
 
 	switch(e) {
