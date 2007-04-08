@@ -830,7 +830,9 @@ static int ldap_escape_func(char *out, int outlen, const char *in)
 		/*
 		 *	Encode unsafe characters.
 		 */
-		if (strchr("*=\\,()", *in)) {
+		if (((len == 0) &&
+		    ((in[0] == ' ') || (in[0] == '#'))) ||
+		    (strchr(",+\"\\<>;*=()", *in))) {
 			static const char hex[] = "0123456789abcdef";
 
 			/*
