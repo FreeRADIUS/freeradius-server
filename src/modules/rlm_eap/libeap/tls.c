@@ -100,8 +100,12 @@ tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 static int int_ssl_check(SSL *s, int ret, const char *text)
 {
 	int e;
+	unsigned long l;
 
-	radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
+	if ((l = ERR_get_error()) != 0) {
+		radlog(L_ERR, "rlm_eap: SSL error %s",
+		       ERR_error_string(l, NULL));
+	}
 	e = SSL_get_error(s, ret);
 
 	switch(e) {
