@@ -1,7 +1,14 @@
 FreeRADIUS 1.1.6 ; $Date$, urgency = low
 	Feature improvements
+	* Added dictionary.rfc4372 (Chargeable User Identity)
+	* Added dictionary.rfc4675 (VLAN and Priority)
 
 	Bug fixes
+	* Corrected typo in rlm_pap.c (closes #440)
+	* Corrected typo in src/main/auth.c (closes #437)
+	* Suppress SSL error messages if error is zero.  (closes #436)
+	* Corrected nearly 30 bugs found by Coverity
+	  See also http://scan.coverity.com
 	* Corrected a few double free's
 	* Corrected typo in radrelay, which prevented it from working
 	* Made Firebird module build
