@@ -48,10 +48,16 @@ void cbtls_info(const SSL *s, int where, int ret)
 			SSL_alert_type_string_long(ret),
 			SSL_alert_desc_string_long(ret));
 	} else if (where & SSL_CB_EXIT) {
-		if (ret == 0)
+		if (ret == 0) {
 			radlog(L_ERR, "%s:failed in %s\n", str, state);
-		else if (ret < 0)
-			radlog(L_ERR, "%s:error in %s\n", str, state);
+		} else if (ret < 0) {
+			if (SSL_want_read(s)) {
+				DEBUG2("%s: Need to read more data: %s",
+				       str, state);
+			} else {
+				radlog(L_ERR, "%s:error in %s\n", str, state);
+			}
+		}
 	}
 }
 
