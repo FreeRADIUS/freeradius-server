@@ -2,13 +2,22 @@ FreeRADIUS 1.1.6 ; $Date$, urgency = low
 	Feature improvements
 	* Added dictionary.rfc4372 (Chargeable User Identity)
 	* Added dictionary.rfc4675 (VLAN and Priority)
+	* Added dictionary.rfc4679 (ADSL Forum)
+	  NOTE some name differences from the RFC, due to dictionary.redback
 
 	Bug fixes
 	* Corrected typo in rlm_pap.c (closes #440)
 	* Corrected typo in src/main/auth.c (closes #437)
 	* Suppress SSL error messages if error is zero.  (closes #436)
+	* Don't complain about "Error in read client certificate A"
+	  if we expect to read it in the next packet.  Fix based on patch
+	  by Dan Lukes.
 	* Corrected nearly 30 bugs found by Coverity
 	  See also http://scan.coverity.com
+	* Don't die on HUP.  Instead leak memory (sorry).  After a few
+	  hundred HUP's, the server will have leaked a few megabytes of
+	  memory, and you should probably re-start it.  It's ugly, but
+	  better than dying.  (Closes #426)
 	* Corrected a few double free's
 	* Corrected typo in radrelay, which prevented it from working
 	* Made Firebird module build
