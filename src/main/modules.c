@@ -730,9 +730,14 @@ int setup_modules(void)
 		for (comp = 0; comp < RLM_COMPONENT_COUNT; comp++) {
 			components[comp] = NULL;
 		}
-
 	} else {
-		detach_modules();
+		/*
+		 *	Else do NOT detach modules.  Instead, just
+		 *	forget about any module instances we may have
+		 *	previously loaded.  While this leaks memory,
+		 *	it's better than the server crashing.
+		 */
+		module_instance_list = NULL;
 	}
 
 	/*
