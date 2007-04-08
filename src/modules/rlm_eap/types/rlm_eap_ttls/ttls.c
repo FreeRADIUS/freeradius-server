@@ -350,19 +350,17 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 				return NULL;
 
 			} else {
-				int i;
 				uint8_t	challenge[16];
 
 				eapttls_gen_challenge(ssl, challenge,
 						      sizeof(challenge));
 
-				for (i = 0; i < vp->length; i++) {
-					if (challenge[i] != vp->strvalue[i]) {
-						DEBUG2("  TTLS: Tunneled challenge is incorrect");
-						pairfree(&first);
-						pairfree(&vp);
-						return NULL;
-					}
+				if (memcmp(challenge, vp->strvalue,
+					   vp->length) != 0) {
+					DEBUG2("  TTLS: Tunneled challenge is incorrect");
+					pairfree(&first);
+					pairfree(&vp);
+					return NULL;
 				}
 			}
 			break;
