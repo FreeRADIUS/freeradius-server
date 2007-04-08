@@ -564,7 +564,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 	done:
-		DEBUG("rlm_pap: User authenticated succesfully");
+		DEBUG("rlm_pap: User authenticated successfully");
 		return RLM_MODULE_OK;
 		break;
 		
