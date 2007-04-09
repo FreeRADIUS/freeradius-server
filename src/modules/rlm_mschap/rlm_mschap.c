@@ -243,7 +243,7 @@ static void auth_response(const char *username,
 	/*
 	 *	The hexadecimal digits [A-F] MUST be uppercase.
 	 */
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < sizeof(digest); i++) {
 		response[2 + (i * 2)] = hex[(digest[i] >> 4) & 0x0f];
 		response[3 + (i * 2)] = hex[digest[i] & 0x0f];
 	}
