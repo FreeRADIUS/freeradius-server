@@ -771,9 +771,11 @@ static void wait_a_bit(void *ctx)
 		request->delay += request->delay >> 1;
 		break;
 
-	case REQUEST_PROXIED:
 	case REQUEST_REJECT_DELAY:
 	case REQUEST_CLEANUP_DELAY:
+		request->child_pid = NO_SUCH_CHILD_PID;
+
+	case REQUEST_PROXIED:
 		rad_assert(request->next_callback != NULL);
 
 		request->when = request->next_when;
