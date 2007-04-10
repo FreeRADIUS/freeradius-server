@@ -559,6 +559,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	int found=0, retlen=0;
 	int openbraces = *open;
 	const xlat_t *c;
+	int spaces = FALSE;
 
 	p = *from;
 	q = *to;
@@ -644,6 +645,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		 */
 		while (*p && !stop) {
 			switch(*p) {
+
 				/*
 				 *	What the heck is this supposed
 				 *	to be doing?
@@ -652,6 +654,13 @@ static void decode_attribute(const char **from, char **to, int freespace,
 				p++; /* skip it */
 				*pa++ = *p++;
 				break;
+
+			case ':':
+				if (!spaces && p[1] == '-') {
+					p += 2;
+					stop = 1;
+					break;
+				}
 
 				/*
 				 *	This is pretty hokey...  we
@@ -673,6 +682,11 @@ static void decode_attribute(const char **from, char **to, int freespace,
 				}
 				break;
 				
+			case ' ':
+			case '\t':
+				spaces = TRUE;
+				/* FALL-THROUGH */
+
 			default:
 				*pa++ = *p++;
 				break;
