@@ -547,7 +547,7 @@ static int proxy_socket_recv(rad_listen_t *listener,
 }
 
 
-static int client_socket_encode(rad_listen_t *listener, REQUEST *request)
+static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	if (!request->reply->code) return 0;
 
@@ -558,7 +558,7 @@ static int client_socket_encode(rad_listen_t *listener, REQUEST *request)
 }
 
 
-static int client_socket_decode(rad_listen_t *listener, REQUEST *request)
+static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	if (rad_verify(request->packet, NULL, request->secret) < 0) {
 		return -1;
@@ -567,7 +567,7 @@ static int client_socket_decode(rad_listen_t *listener, REQUEST *request)
 	return rad_decode(request->packet, NULL, request->secret);
 }
 
-static int proxy_socket_encode(rad_listen_t *listener, REQUEST *request)
+static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	rad_encode(request->proxy, NULL, request->home_server->secret);
 	rad_sign(request->proxy, NULL, request->home_server->secret);
@@ -576,7 +576,7 @@ static int proxy_socket_encode(rad_listen_t *listener, REQUEST *request)
 }
 
 
-static int proxy_socket_decode(rad_listen_t *listener, REQUEST *request)
+static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	if (rad_verify(request->proxy_reply, request->proxy,
 		       request->home_server->secret) < 0) {
@@ -1106,7 +1106,7 @@ static int detail_print(rad_listen_t *this, char *buffer, size_t bufsize)
 			((listen_detail_t *)(this->data))->detail);
 }
 
-static int detail_encode(rad_listen_t *this, REQUEST *request)
+static int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 {
 	/*
 	 *	We never encode responses "sent to" the detail file.
@@ -1114,7 +1114,7 @@ static int detail_encode(rad_listen_t *this, REQUEST *request)
 	return 0;
 }
 
-static int detail_decode(rad_listen_t *this, REQUEST *request)
+static int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 {
 	/*
 	 *	We never decode responses read from the detail file.
@@ -1172,6 +1172,44 @@ static int detail_parse(const char *filename, int lineno,
 	return 0;
 }
 
+
+#ifdef WITH_SNMP
+static int radius_snmp_recv(rad_listen_t *listener,
+			    UNUSED RAD_REQUEST_FUNP *pfun,
+			    UNUSED REQUEST **prequest)
+{
+	if (!mainconfig.do_snmp) return 0;
+
+	if ((rad_snmp.smux_fd >= 0) &&
+	    (rad_snmp.smux_event == SMUX_READ)) {
+		smux_read();
+	}
+	
+	/*
+	 *  If we've got to re-connect, then do so now,
+	 *  before calling select again.
+	 */
+	if (rad_snmp.smux_event == SMUX_CONNECT) {
+		smux_connect();
+	}
+
+	/*
+	 *	Reset this every time, as the smux connect may have
+	 *	opened a new socket.
+	 */
+	listener->fd = rad_snmp.smux_fd;
+
+	return 0;
+}
+
+
+static int radius_snmp_print(rad_listen_t *this, char *buffer, size_t bufsize)
+{
+	return snprintf(buffer, bufsize, "SMUX with OID .1.3.6.1.4.1.3317.1.3.1");
+}
+
+#endif
+
 static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
 
@@ -1193,7 +1231,9 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	/* detail */
 	{ detail_parse, detail_free,
 	  detail_recv, detail_send,
-	  detail_print, detail_encode, detail_decode }
+	  detail_print, detail_encode, detail_decode },
+
+	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_SNMP */
 };
 
 
@@ -1684,6 +1724,24 @@ int listen_init(const char *filename, rad_listen_t **head)
 			return -1;
 		}
 	}
+
+#ifdef WITH_SNMP
+	if (mainconfig.do_snmp) {
+		radius_snmp_init();
+
+		this = rad_malloc(sizeof(*this));
+		memset(this, 0, sizeof(*this));
+		
+		this->type = RAD_LISTEN_SNMP;
+		this->fd = rad_snmp.smux_fd;
+		
+		this->recv = radius_snmp_recv;
+		this->print = radius_snmp_print;
+
+		*last = this;
+		last = &(this->next);
+	}
+#endif
 
 	/*
 	 *	Sanity check the configuration.

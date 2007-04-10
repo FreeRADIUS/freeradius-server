@@ -312,10 +312,6 @@ int main(int argc, char *argv[])
 #endif
 	}
 
-#ifdef WITH_SNMP
-	if (mainconfig.do_snmp) radius_snmp_init();
-#endif
-
 	/*
 	 *  Ensure that we're using the CORRECT pid after forking,
 	 *  NOT the one we started with.
@@ -407,6 +403,10 @@ int main(int argc, char *argv[])
 
 		case RAD_LISTEN_DETAIL:
 			DEBUG("Listening on detail file %s", buffer);
+			break;
+
+		case RAD_LISTEN_SNMP:
+			DEBUG("Listening on SNMP %s", buffer);
 			break;
 
 		default:
@@ -561,14 +561,6 @@ int main(int argc, char *argv[])
 			if (listener->fd > max_fd) max_fd = listener->fd;
 		}
 
-#ifdef WITH_SNMP
-		if (mainconfig.do_snmp &&
-		    (rad_snmp.smux_fd >= 0)) {
-			FD_SET(rad_snmp.smux_fd, &readfds);
-			if (rad_snmp.smux_fd > max_fd) max_fd = rad_snmp.smux_fd;
-		}
-#endif
-
 		if (!ptv) {
 			DEBUG2("Nothing to do.  Sleeping until we see a request.");
 		} else if (tv.tv_sec) {
@@ -653,8 +645,6 @@ int main(int argc, char *argv[])
 				continue;
 			}
 			
-			// EVENT FIX FIXME! Nuke this!
-
 			/*
 			 *	Drop the request into the thread pool,
 			 *	and let the thread pool take care of
@@ -664,33 +654,6 @@ int main(int argc, char *argv[])
 				request->child_state = REQUEST_DONE;
 			}
 		} /* loop over listening sockets*/
-
-#ifdef WITH_SNMP
-		if (mainconfig.do_snmp) {
-			/*
-			 *  After handling all authentication/accounting
-			 *  requests, THEN process any pending SMUX/SNMP
-			 *  queries.
-			 *
-			 *  Note that the handling is done in the main server,
-			 *  which probably isn't a Good Thing.  It really
-			 *  should be wrapped, and handled in a thread pool.
-			 */
-			if ((rad_snmp.smux_fd >= 0) &&
-			    FD_ISSET(rad_snmp.smux_fd, &readfds) &&
-			    (rad_snmp.smux_event == SMUX_READ)) {
-				smux_read();
-			}
-
-			/*
-			 *  If we've got to re-connect, then do so now,
-			 *  before calling select again.
-			 */
-			if (rad_snmp.smux_event == SMUX_CONNECT) {
-				smux_connect();
-			}
-		}
-#endif
 
 		ptv = &tv;
 		radius_event_process(&ptv);
