@@ -71,7 +71,8 @@ static int		proxy_fds[32];
 static rad_listen_t	*proxy_listeners[32];
 
 
-static void _rad_panic(const char *file, unsigned int line, const char *msg)
+static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
+				    const char *msg)
 {
 	radlog(L_ERR, "]%s:%d] %s", file, line, msg);
 	_exit(1);
@@ -400,6 +401,8 @@ static void cleanup_delay(void *ctx)
 	       request->number, request->packet->id,
 	       (unsigned int) (request->timestamp - start_time));
 
+	lrad_event_delete(el, request);
+
 	request_free(&request);	
 }
 
@@ -608,12 +611,58 @@ static void ping_home_server(void *ctx)
 }
 
 
+static void check_for_zombie_home_server(REQUEST *request)
+{
+	home_server *home;
+	struct timeval when;
+	char buffer[128];
+
+	home = request->home_server;
+
+	if (home->state != HOME_STATE_ZOMBIE) return;
+
+	when = home->zombie_period_start;
+	when.tv_sec += home->zombie_period;
+
+	if (timercmp(&now, &when, <)) {
+		return;
+	}
+
+	/*
+	 *	It's been a zombie for too long, mark it as
+	 *	dead.
+	 */
+	DEBUG2("FAILURE: Home server %s port %d is dead.",
+	       inet_ntop(request->proxy->dst_ipaddr.af,
+			 &request->proxy->dst_ipaddr.ipaddr,
+			 buffer, sizeof(buffer)),
+	       request->proxy->dst_port);
+	home->state = HOME_STATE_IS_DEAD;
+	home->num_received_pings = 0;
+	home->when = request->when;
+	
+	if (home->ping_check != HOME_PING_CHECK_NONE) {
+		rad_assert((home->ping_check == HOME_PING_CHECK_STATUS_SERVER) ||
+			   (home->ping_user_name != NULL));
+		home->when.tv_sec += home->ping_interval;
+		if (!lrad_event_insert(el, ping_home_server,
+					       home, &home->when)) {
+			rad_panic("Failed to insert event");
+		}
+	} else {
+		home->when.tv_sec += home->revive_interval;
+		if (!lrad_event_insert(el, revive_home_server,
+				       home, &home->when)) {
+			rad_panic("Failed to insert event");
+		}
+	}
+}
+
 /* maybe check this against wait_for_proxy_id_to_expire? */
 static void no_response_to_proxied_request(void *ctx)
 {
 	REQUEST *request = ctx;
 	home_server *home;
-	struct timeval when;
 	char buffer[128];
 	
 	rad_assert(request->magic == REQUEST_MAGIC);
@@ -673,36 +722,7 @@ static void no_response_to_proxied_request(void *ctx)
 		return;
 	}
 
-	when = home->zombie_period_start;
-	when.tv_sec += home->zombie_period;
-
-	if (timercmp(&now, &when, <)) {
-		return;
-	}
-
-	/*
-	 *	It's been a zombie for too long, mark it as
-	 *	dead.
-	 */
-	home->state = HOME_STATE_IS_DEAD;
-	home->num_received_pings = 0;
-	home->when = request->when;
-	
-	if (home->ping_check != HOME_PING_CHECK_NONE) {
-		rad_assert((home->ping_check == HOME_PING_CHECK_STATUS_SERVER) ||
-			   (home->ping_user_name != NULL));
-		home->when.tv_sec += home->ping_interval;
-		if (!lrad_event_insert(el, ping_home_server,
-					       home, &home->when)) {
-			rad_panic("Failed to insert event");
-		}
-	} else {
-		home->when.tv_sec += home->revive_interval;
-		if (!lrad_event_insert(el, revive_home_server,
-				       home, &home->when)) {
-			rad_panic("Failed to insert event");
-		}
-	}
+	check_for_zombie_home_server(request);
 }
 
 
@@ -907,6 +927,7 @@ static int successfully_proxied_request(REQUEST *request)
 	home_server *home;
 	struct timeval when;
 	REALM *realm = NULL;
+	home_pool_t *pool;
 	char buffer[128];
 
 	realmpair = pairfind(request->config_items, PW_PROXY_TO_REALM);
@@ -938,21 +959,32 @@ static int successfully_proxied_request(REQUEST *request)
 		return 0;
 	}
 
-	if (((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-	     !realm->auth_pool) ||
-	    ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
-	     !realm->acct_pool)) {
+	/*
+	 *	Figure out which pool to use.
+	 */
+	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
+		pool = realm->auth_pool;
+
+	} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+		pool = realm->acct_pool;
+
+	} else {
+		rad_panic("Internal sanity check failed");
+	}
+
+	if (!pool) {
 		DEBUG2(" WARNING: Cancelling proxy to Realm %s, as the realm is local.",
 		       realmname);
 		return 0;
 	}
-	
-	home = home_server_ldb(realm, request);
+
+	home = home_server_ldb(realmname, pool, request);
 	if (!home) {
 		DEBUG2("ERROR: Failed to find live home server for realm %s",
 		       realmname);
 		goto reject_request;
 	}
+	request->home_pool = pool;
 
 	/*
 	 *	Remember that we sent the request to a Realm.
@@ -1123,6 +1155,8 @@ static int successfully_proxied_request(REQUEST *request)
 	 *	If it's a fake request, don't send the proxy
 	 *	packet.  The outer tunnel session will take
 	 *	care of doing that.
+	 *
+	 *	FIXME: Update the home_server to be NULL?
 	 */
 	if (request->packet->dst_port == 0) {
 		return 1;
@@ -1321,17 +1355,61 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		break;
 
 	case REQUEST_PROXIED:
+		check_for_zombie_home_server(request);
+
 		/*
-		 *	FIMXE: If the home server is dead, switch the
-		 *	request to another home server.
-		 *
-		 *	remove from proxy hash
-		 *	find new home server
-		 *	(probably cache request->server_pool)
-		 *	along with offset of this home server
-		 *	insert into new proxy hash
-		 *	update num_proxied_requests, etc.
+		 *	FIXME: check if we're in the zombie period
 		 */
+		if ((request->packet->dst_port != 0) &&
+		    (request->home_server->state == HOME_STATE_IS_DEAD)) {
+			home_server *home;
+
+			remove_from_proxy_hash(request);
+
+			home = home_server_ldb(NULL, request->home_pool, request);
+			if (!home) {
+				DEBUG2("Failed to find live home server for request %d", request->number);
+			reject_request:
+				request->child_state = REQUEST_RUNNING;
+				request_post_handler(request);
+				
+				/*
+				 *	wait_a_bit will pick up the
+				 *	request and do the right thing.
+				 */
+				return;
+			}
+			
+			request->proxy->code = request->packet->code;
+			request->proxy->dst_ipaddr = home->ipaddr;
+			request->proxy->dst_port = home->port;
+
+			if (!insert_into_proxy_hash(request)) {
+				DEBUG("ERROR: Failed to re-proxy request %d", request->number);
+				goto reject_request;
+			}
+
+			/*
+			 *	Free the old packet, to force re-encoding
+			 */
+			free(request->proxy->data);
+			request->proxy->data_len = 0;
+			request->proxy_listener->encode(request->proxy_listener, request);
+			
+			DEBUG2("Re-Proxying request %d to home server %s port %d",
+			       request->number,
+			       inet_ntop(request->proxy->dst_ipaddr.af,
+					 &request->proxy->dst_ipaddr.ipaddr,
+					 buffer, sizeof(buffer)),
+			       request->proxy->dst_port);
+			
+			request->num_proxied_requests = 1;
+			request->num_proxied_responses = 0;
+			request->child_state = REQUEST_PROXIED;
+			request->proxy_listener->send(request->proxy_listener,
+						      request);
+			return;
+		}
 
 
 		DEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",

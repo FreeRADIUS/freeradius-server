@@ -92,6 +92,7 @@ struct auth_req {
 	int			in_proxy_hash;
 
 	home_server	       	*home_server;
+	home_pool_t		*home_pool; /* for dynamic failover */
 
 	struct timeval		proxy_when;
 

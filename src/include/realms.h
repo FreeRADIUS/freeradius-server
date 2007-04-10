@@ -96,7 +96,7 @@ void realms_free(void);
 int realm_add(const char *filename, CONF_SECTION *cs);
 REALM *realm_find(const char *name);
 
-home_server *home_server_ldb(REALM *realm, REQUEST *request);
+home_server *home_server_ldb(const char *realmname, home_pool_t *pool, REQUEST *request);
 home_server *home_server_find(lrad_ipaddr_t *ipaddr, int port);
 
 #endif /* REALMS_H */

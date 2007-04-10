@@ -999,27 +999,11 @@ REALM *realm_find(const char *name)
 }
 
 
-home_server *home_server_ldb(REALM *r, REQUEST *request)
+home_server *home_server_ldb(const char *realmname,
+			     home_pool_t *pool, REQUEST *request)
 {
 	int		start;
 	int		count;
-	home_pool_t	*pool;
-
-	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
-		pool = r->auth_pool;
-
-	} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
-		pool = r->acct_pool;
-
-	} else {
-		rad_assert("Internal sanity check failed");
-		return NULL;
-	}
-
-	if (!pool) {
-		rad_assert("Internal sanity check failed");
-		return NULL;
-	}
 
 	start = 0;
 
@@ -1120,14 +1104,24 @@ home_server *home_server_ldb(REALM *r, REQUEST *request)
 	 *	if we weren't looking up the NULL or DEFAULT realms.
 	 */
 	if (mainconfig.proxy_fallback &&
-	    (strcmp(r->name, "NULL") != 0) &&
-	    (strcmp(r->name, "DEFAULT") != 0)) {
+	    realmname &&
+	    (strcmp(realmname, "NULL") != 0) &&
+	    (strcmp(realmname, "DEFAULT") != 0)) {
 		REALM *rd = realm_find("DEFAULT");
 
-		if (rd) {
-			DEBUG2("  Realm %s has no live home servers.  Falling back to the DEFAULT realm.", r->name);
-			return home_server_ldb(rd, request);
+		if (!rd) return NULL;
+
+		pool = NULL;
+		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
+			pool = rd->auth_pool;
+			
+		} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+			pool = rd->acct_pool;
 		}
+		if (!pool) return NULL;
+
+		DEBUG2("  Realm %s has no live home servers.  Falling back to the DEFAULT realm.", realmname);
+		return home_server_ldb(rd->name, pool, request);
 	}
 
 	/*
