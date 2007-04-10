@@ -193,7 +193,9 @@ static void remove_from_proxy_hash(REQUEST *request)
 	if (!request->in_proxy_hash) return;
 
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-	request->home_server->currently_outstanding--;
+	if (request->home_server->currently_outstanding) {
+		request->home_server->currently_outstanding--;
+	}
 	lrad_packet_list_yank(proxy_list, request->proxy);
 	lrad_packet_list_id_free(proxy_list, request->proxy);
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
@@ -429,6 +431,7 @@ static void revive_home_server(void *ctx)
 
 	home->state = HOME_STATE_ALIVE;
 	DEBUG2("Marking home server alive again... we have no idea if it really is alive or not.");
+	home->currently_outstanding = 0;
 }
 
 
@@ -483,6 +486,7 @@ static void received_response_to_ping(REQUEST *request)
 	wait_for_proxy_id_to_expire(request);
 
 	home->state = HOME_STATE_ALIVE;
+	home->currently_outstanding = 0;
 }
 
 
@@ -622,14 +626,15 @@ static void no_response_to_proxied_request(void *ctx)
 			 buffer, sizeof(buffer)),
 	       request->proxy->dst_port);
 
+	/*
+	 *	FIXME: Run packets through post-proxy-type "Fail"
+	 */
 	if ((request->proxy->code == PW_ACCOUNTING_REQUEST) ||
 	    (request->proxy->code == PW_STATUS_SERVER)) {
 		remove_from_request_hash(request);
 		wait_for_proxy_id_to_expire(request);
 
 	} else {
-		/* FIXME: run it through post-auth reject section? */
-
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 
 		request->listener->send(request->listener, request);
@@ -1074,6 +1079,10 @@ static int successfully_proxied_request(REQUEST *request)
 
 	pairadd(&request->proxy->vps, vp);
 
+	/*
+	 *	Should be done BEFORE inserting into proxy hash, as
+	 *	pre-proxy may use this information, or change it.
+	 */
 	request->proxy->code = request->packet->code;
 	request->proxy->dst_ipaddr = home->ipaddr;
 	request->proxy->dst_port = home->port;
@@ -1312,6 +1321,19 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		break;
 
 	case REQUEST_PROXIED:
+		/*
+		 *	FIMXE: If the home server is dead, switch the
+		 *	request to another home server.
+		 *
+		 *	remove from proxy hash
+		 *	find new home server
+		 *	(probably cache request->server_pool)
+		 *	along with offset of this home server
+		 *	insert into new proxy hash
+		 *	update num_proxied_requests, etc.
+		 */
+
+
 		DEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
 		       inet_ntop(request->proxy->dst_ipaddr.af,
 				 &request->proxy->dst_ipaddr.ipaddr,
