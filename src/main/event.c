@@ -1384,6 +1384,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			request->proxy->code = request->packet->code;
 			request->proxy->dst_ipaddr = home->ipaddr;
 			request->proxy->dst_port = home->port;
+			request->home_server = home;
 
 			if (!insert_into_proxy_hash(request)) {
 				DEBUG("ERROR: Failed to re-proxy request %d", request->number);
@@ -1394,8 +1395,8 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			 *	Free the old packet, to force re-encoding
 			 */
 			free(request->proxy->data);
+			request->proxy->data = NULL;
 			request->proxy->data_len = 0;
-
 
 			DEBUG2("RETRY: Proxying request %d to different home server %s port %d",
 			       request->number,
