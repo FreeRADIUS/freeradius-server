@@ -1358,7 +1358,8 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		check_for_zombie_home_server(request);
 
 		/*
-		 *	FIXME: check if we're in the zombie period
+		 *	If we've just discovered that the home server is
+		 *	dead, send the packet to another one.
 		 */
 		if ((request->packet->dst_port != 0) &&
 		    (request->home_server->state == HOME_STATE_IS_DEAD)) {
@@ -1394,9 +1395,9 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			 */
 			free(request->proxy->data);
 			request->proxy->data_len = 0;
-			request->proxy_listener->encode(request->proxy_listener, request);
-			
-			DEBUG2("Re-Proxying request %d to home server %s port %d",
+
+
+			DEBUG2("RETRY: Proxying request %d to different home server %s port %d",
 			       request->number,
 			       inet_ntop(request->proxy->dst_ipaddr.af,
 					 &request->proxy->dst_ipaddr.ipaddr,
