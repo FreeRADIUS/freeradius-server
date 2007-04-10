@@ -39,9 +39,9 @@ extern int need_reload;
 rad_snmp_t		rad_snmp;
 
 
-#define RADACCOID 1,3,6,1,2,1,67,2,1,1,1
+#define RADACCOID  1,3,6,1,2,1,67,2,1,1,1
 #define RADAUTHOID 1,3,6,1,2,1,67,1,1,1,1
-#define RADIUSOID 1,3,6,1,4,1,3317,1,3,1
+#define RADIUSOID  1,3,6,1,4,1,3317,1,3,1
 
 static const oid radacc_oid [] = { RADACCOID };
 static const oid radauth_oid [] = { RADAUTHOID };
@@ -355,29 +355,35 @@ radAccEntry(struct variable *vp, oid *name, size_t *length, int exact,
 			return c->longname;
 
 		case RADIUSACCSERVPACKETSDROPPED:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->acct->packets_dropped;
 
 		case RADIUSACCSERVREQUESTS:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->acct->requests;
 
 		case RADIUSACCSERVDUPREQUESTS:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->acct->dup_requests;
 
 		case RADIUSACCSERVRESPONSES:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->acct->responses;
 
 		case RADIUSACCSERVBADAUTHENTICATORS:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->acct->bad_authenticators;
 
 		case RADIUSACCSERVMALFORMEDREQUESTS:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->acct->malformed_requests;
 
 		case RADIUSACCSERVNORECORDS:
 			return (unsigned char *) NULL;
 
 		case RADIUSACCSERVUNKNOWNTYPES:
-			return (unsigned char *) NULL;
-
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->acct->unknown_types;
 	}
 	return NULL;
 }
@@ -490,31 +496,40 @@ radAuthEntry(struct variable *vp, oid	 *name, size_t *length, int exact,
 			return c->longname;
 
 		case RADIUSAUTHSERVACCESSREQUESTS:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->auth->requests;
 
 		case RADIUSAUTHSERVDUPACCESSREQUESTS:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->auth->dup_requests;
 
 		case RADIUSAUTHSERVACCESSACCEPTS:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->auth->accepts;
 
 		case RADIUSAUTHSERVACCESSREJECTS:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->auth->rejects;
 
 		case RADIUSAUTHSERVACCESSCHALLENGES:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->auth->challenges;
 
 		case RADIUSAUTHSERVMALFORMEDACCESSREQUESTS:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->auth->malformed_requests;
 
 		case RADIUSAUTHSERVBADAUTHENTICATORS:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->auth->bad_authenticators;
 
 		case RADIUSAUTHSERVPACKETSDROPPED:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->auth->packets_dropped;
 
 		case RADIUSAUTHSERVUNKNOWNTYPES:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &c->auth->unknown_types;
 
 	}
 	return NULL;

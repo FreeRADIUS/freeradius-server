@@ -56,28 +56,21 @@ typedef struct rad_snmp_t {
 /*
  *  Taken from RFC 2619 and RFC 2621
  */
-typedef struct rad_snmp_client_entry_t {
+struct rad_snmp_client_entry_t {
 	int		index;
 	/* IP address */
 	/* Client ID (string ) */
-	int		access_requests;
-	int		dup_access_requests;
-	int		access_accepts;
-	int		access_rejects;
-	int		access_challenges;
-	int		auth_malformed_requests;
-	int		auth_bad_authenticators;
-	int		auth_packets_dropped;
-	int		auth_unknown_types;
-	int		acct_packets_dropped;
-	int		acct_requests;
-	int		acct_dup_requests;
-	int		acct_responses;
-	int		acct_bad_authenticators;
-	int		acct_malformed_requests;
-	int		acct_no_records;
-	int		acct_unknown_types;
-} rad_snmp_client_entry_t;
+	uint32_t       	requests;
+	uint32_t	dup_requests;
+	uint32_t	responses;
+	uint32_t	accepts;
+	uint32_t	rejects;
+	uint32_t	challenges;
+	uint32_t	malformed_requests;
+	uint32_t	bad_authenticators;
+	uint32_t	packets_dropped;
+	uint32_t	unknown_types;
+};
 
 extern rad_snmp_t	rad_snmp;
 
@@ -86,12 +79,19 @@ extern rad_snmp_t	rad_snmp;
                                      if (_listener->type == RAD_LISTEN_AUTH) { \
                                        rad_snmp.auth._x++; \
 				     } else { if (_listener->type == RAD_LISTEN_ACCT) \
-                                       rad_snmp.acct._x++; } } \
+                                       rad_snmp.acct._x++; } }
+
+#define RAD_SNMP_CLIENT_INC(_listener, _client, _x) if (mainconfig.do_snmp) { \
+                                     if (_listener->type == RAD_LISTEN_AUTH) { \
+                                       _client->auth->_x++; \
+				     } else { if (_listener->type == RAD_LISTEN_ACCT) \
+                                       _client->acct->_x++; } }
 
 
 #else
 #define  RAD_SNMP_INC(_x)
 #define RAD_SNMP_TYPE_INC(_listener, _x)
+#define RAD_SNMP_CLIENT_INC(_listener, _client, _x)
 
 #endif /* WITH_SNMP */
 

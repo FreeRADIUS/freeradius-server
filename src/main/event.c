@@ -105,7 +105,21 @@ static void tv_add(struct timeval *tv, int usec_delay)
 
 static void remove_from_request_hash(REQUEST *request)
 {
+	RADCLIENT *client;
+
+	if (!request->in_request_hash) return;
+
+	lrad_packet_list_yank(pl, request->packet);
+	request->in_request_hash = FALSE;
+
 #ifdef WITH_SNMP
+	if (!mainconfig.do_snmp) return;
+
+	client = client_listener_find(request->listener,
+				      &request->packet->src_ipaddr);
+	if (!client) return;
+
+
 	/*
 	 *	Update the SNMP statistics.
 	 *
@@ -114,37 +128,36 @@ static void remove_from_request_hash(REQUEST *request)
 	 *	deleted, because only the main server thread calls
 	 *	this function...
 	 */
-	if (mainconfig.do_snmp) {
-		switch (request->reply->code) {
-		case PW_AUTHENTICATION_ACK:
-		  rad_snmp.auth.total_responses++;
-		  rad_snmp.auth.total_access_accepts++;
-		  break;
+	switch (request->reply->code) {
+	case PW_AUTHENTICATION_ACK:
+		rad_snmp.auth.total_responses++;
+		rad_snmp.auth.total_access_accepts++;
+		client->auth->accepts++;
+		break;
 
-		case PW_AUTHENTICATION_REJECT:
-		  rad_snmp.auth.total_responses++;
-		  rad_snmp.auth.total_access_rejects++;
-		  break;
-
-		case PW_ACCESS_CHALLENGE:
-		  rad_snmp.auth.total_responses++;
-		  rad_snmp.auth.total_access_challenges++;
-		  break;
-
-		case PW_ACCOUNTING_RESPONSE:
-		  rad_snmp.acct.total_responses++;
-		  break;
-
-		default:
-			break;
-		}
+	case PW_AUTHENTICATION_REJECT:
+		rad_snmp.auth.total_responses++;
+		rad_snmp.auth.total_access_rejects++;
+		client->auth->rejects++;
+		break;
+		
+	case PW_ACCESS_CHALLENGE:
+		rad_snmp.auth.total_responses++;
+		rad_snmp.auth.total_access_challenges++;
+		client->auth->challenges++;
+		break;
+		
+	case PW_ACCOUNTING_RESPONSE:
+		rad_snmp.acct.total_responses++;
+		client->auth->responses++;
+		break;
+		
+	default:
+		break;
 	}
+#else
+	client = client;	/* -Wunused */
 #endif
-
-	if (!request->in_request_hash) return;
-
-	lrad_packet_list_yank(pl, request->packet);
-	request->in_request_hash = FALSE;
 }
 
 
@@ -1343,6 +1356,9 @@ static void request_post_handler(REQUEST *request)
 static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 {
 	char buffer[128];
+
+	RAD_SNMP_TYPE_INC(request->listener, total_dup_requests);
+	RAD_SNMP_CLIENT_INC(request->listener, client, dup_requests);
 
 	switch (request->child_state) {
 	case REQUEST_QUEUED:

@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/radius_snmp.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <sys/stat.h>
@@ -56,6 +57,11 @@ void client_free(RADCLIENT *client)
 	free(client->nastype);
 	free(client->login);
 	free(client->password);
+
+#ifdef WITH_SNMP
+	free(client->auth);
+	free(client->acct);
+#endif
 	
 	free(client);
 }
@@ -417,8 +423,16 @@ RADCLIENT_LIST *clients_parse_section(const char *filename,
 		/*
 		 * The size is fine.. Let's create the buffer
 		 */
-		c = rad_malloc(sizeof(RADCLIENT));
-		memset(c, 0, sizeof(RADCLIENT));
+		c = rad_malloc(sizeof(*c));
+		memset(c, 0, sizeof(*c));
+
+#ifdef WITH_SNMP
+		c->auth = rad_malloc(sizeof(*c->auth));
+		memset(c->auth, 0, sizeof(*c->auth));
+
+		c->acct = rad_malloc(sizeof(*c->acct));
+		memset(c->acct, 0, sizeof(*c->acct));
+#endif
 
 		if (cf_section_parse(cs, c, client_config) < 0) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Error parsing client section.",

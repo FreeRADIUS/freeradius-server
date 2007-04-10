@@ -117,6 +117,7 @@ struct auth_req {
  *  Function handler for requests.
  */
 typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
+typedef struct rad_snmp_client_entry_t rad_snmp_client_entry_t;
 
 typedef struct radclient {
 	lrad_ipaddr_t		ipaddr;
@@ -128,6 +129,9 @@ typedef struct radclient {
 	char			*login;
 	char			*password;
 	int			number;	/* internal use only */
+#ifdef WITH_SNMP
+	rad_snmp_client_entry_t *auth, *acct;
+#endif
 } RADCLIENT;
 
 typedef struct radclient_list RADCLIENT_LIST;
@@ -446,6 +450,8 @@ int free_mainconfig(void);
 void listen_free(rad_listen_t **head);
 int listen_init(const char *filename, rad_listen_t **head);
 rad_listen_t *proxy_new_listener(void);
+RADCLIENT *client_listener_find(const rad_listen_t *listener,
+				const lrad_ipaddr_t *ipaddr);
 
 /* event.c */
 int radius_event_init(int spawn_flag);

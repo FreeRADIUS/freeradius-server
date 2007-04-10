@@ -718,6 +718,11 @@ int setup_modules(int reload)
 			do_component[RLM_COMPONENT_POST_PROXY] = 1;
 			break;
 
+			/*
+			 *	Ignore this.
+			 */
+		case RAD_LISTEN_SNMP:
+			break;
 
 		default:
 			rad_assert(0 == 1);
