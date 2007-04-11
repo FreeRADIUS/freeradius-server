@@ -358,10 +358,12 @@ static int auth_socket_recv(rad_listen_t *listener,
 
 	packet = rad_recv(listener->fd);
 	if (!packet) {
+		RAD_SNMP_TYPE_INC(listener, total_requests);
+		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
 		radlog(L_ERR, "%s", librad_errstr);
 		return 0;
 	}
-
+	
 	RAD_SNMP_TYPE_INC(listener, total_requests);
 
 	if ((client = client_listener_find(listener,
@@ -435,6 +437,8 @@ static int acct_socket_recv(rad_listen_t *listener,
 	
 	packet = rad_recv(listener->fd);
 	if (!packet) {
+		RAD_SNMP_TYPE_INC(listener, total_requests);
+		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
 		radlog(L_ERR, "%s", librad_errstr);
 		return 0;
 	}
@@ -464,6 +468,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 		if (!mainconfig.status_server) {
 			RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
 			RAD_SNMP_CLIENT_INC(listener, client, unknown_types);
+
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
 			rad_free(&packet);
 			return 0;
@@ -477,6 +482,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 		 */
 		RAD_SNMP_TYPE_INC(listener, total_unknown_types);
 		RAD_SNMP_CLIENT_INC(listener, client, unknown_types);
+
 		radlog(L_ERR, "Invalid packet code %d sent to a accounting port "
 		       "from client %s port %d - ID %d : IGNORED",
 		       packet->code, client->shortname,

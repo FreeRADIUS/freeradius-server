@@ -77,13 +77,6 @@ static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
 #define rad_panic(x) _rad_panic(__FILE__, __LINE__, x)
 
 
-/*
- *	FIXME FIXME: Do SNMP, but smarter...  have an array[code].foo,
- *	so we increment counters by just using code as an offset.  The
- *	array should be the union of the server && client SNMP
- *	variables, which should simplify it a lot.
- */
-
 static void tv_add(struct timeval *tv, int usec_delay)
 {
 	if (usec_delay > USEC) {
@@ -98,23 +91,13 @@ static void tv_add(struct timeval *tv, int usec_delay)
 	}
 }
 
-
-static void remove_from_request_hash(REQUEST *request)
-{
-	RADCLIENT *client;
-
-	if (!request->in_request_hash) return;
-
-	lrad_packet_list_yank(pl, request->packet);
-	request->in_request_hash = FALSE;
-
 #ifdef WITH_SNMP
+static void snmp_inc_client_responses(RADCLIENT *client,
+				      REQUEST *request)
+{
 	if (!mainconfig.do_snmp) return;
 
-	client = client_listener_find(request->listener,
-				      &request->packet->src_ipaddr);
 	if (!client) return;
-
 
 	/*
 	 *	Update the SNMP statistics.
@@ -122,7 +105,7 @@ static void remove_from_request_hash(REQUEST *request)
 	 *	Note that we do NOT do this in a child thread.
 	 *	Instead, we update the stats when a request is
 	 *	deleted, because only the main server thread calls
-	 *	this function...
+	 *	this function, which makes it thread-safe.
 	 */
 	switch (request->reply->code) {
 	case PW_AUTHENTICATION_ACK:
@@ -147,13 +130,37 @@ static void remove_from_request_hash(REQUEST *request)
 		rad_snmp.acct.total_responses++;
 		client->auth->responses++;
 		break;
+
+		/*
+		 *	No response, it must have been a bad
+		 *	authenticator.
+		 */
+	case 0:
+		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
+			rad_snmp.auth.total_bad_authenticators++;
+			client->auth->bad_authenticators++;
+		}
+		break;
 		
 	default:
 		break;
 	}
+}
 #else
-	client = client;	/* -Wunused */
+#define snmp_inc_client_responses(_x, _y)
 #endif
+
+
+static void remove_from_request_hash(REQUEST *request)
+{
+	if (!request->in_request_hash) return;
+
+	lrad_packet_list_yank(pl, request->packet);
+	request->in_request_hash = FALSE;
+
+	snmp_inc_client_responses(client_listener_find(request->listener,
+						       &request->packet->src_ipaddr),
+				  request);
 }
 
 
@@ -794,16 +801,6 @@ static void wait_a_bit(void *ctx)
 		return;
 	}
 
-#if 0
-	/*
-	 *	FIXME: Print time as "+%d.%06d", as that's more
-	 *	understandable than 32-bit numbers.
-	 */
-	DEBUG2("Inserting event for request %d at time %d.%06d",
-	       request->number,
-	       (int) request->when.tv_sec, (int) request->when.tv_usec);
-#endif
-
 	if (!lrad_event_insert(el, callback,
 			       request, &request->when)) {
 		rad_panic("Failed to insert event");
@@ -891,19 +888,6 @@ static int request_pre_handler(REQUEST *request)
 		 *	Free proxy request pairs.
 		 */
 		pairfree(&request->proxy->vps);
-		
-		/*
-		 *	FIXME: If the packet is an Access-Challenge,
-		 *	THEN add it to a cache, which does:
-		 *
-		 *	(src IP, State) -> (home server ip/port)
-		 *
-		 *	This allows the load-balancing code to
-		 *	work for EAP...
-		 *
-		 *	Alternately, we can delete the State from the home
-		 *	server, and use our own..  that might be better.
-		 */
 		
 		switch (rcode) {
                 default:  /* Don't Do Anything */
@@ -993,6 +977,9 @@ static int successfully_proxied_request(REQUEST *request)
 
 	home = home_server_ldb(realmname, pool, request);
 	if (!home) {
+		/*
+		 *	FIXME: Run the request through Post-Proxy-Type = Fail
+		 */
 		DEBUG2("ERROR: Failed to find live home server for realm %s",
 		       realmname);
 		goto reject_request;
@@ -1237,14 +1224,11 @@ static void request_post_handler(REQUEST *request)
 		rad_panic("Internal sanity check failed");
 	}
 
-	/*
-	 *	FIXME: check for Auth-Type = Reject, and reject it if so?
-	 *	this means don't proxy it.
-	 *
-	 *	FIXME: check if we can't proxy it because all of the
-	 *	home servers are dead or busy, and set post-auth-type
-	 *	"proxy fail", or something like that.
-	 */
+	if ((request->reply->code == 0) &&
+	    ((vp = pairfind(request->config_items, PW_AUTH_TYPE)) != NULL) &&
+	    (vp->lvalue == PW_AUTHTYPE_REJECT)) {
+		request->reply->code = PW_AUTHENTICATION_REJECT;
+	}
 
 	if (mainconfig.proxy_requests &&
 	    (request->packet->code != PW_STATUS_SERVER) &&
@@ -1402,6 +1386,9 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 				DEBUG2("Failed to find live home server for request %d", request->number);
 			no_home_servers:
 				/*
+				 *	FIXME: Run the request through
+				 *	Post-Proxy-Type = Fail
+				 *
 				 *	Do post-request processing,
 				 *	and any insertion of necessary
 				 *	events.
