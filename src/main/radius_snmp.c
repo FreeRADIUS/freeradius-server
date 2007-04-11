@@ -214,7 +214,7 @@ get_client(struct variable *v, oid objid[], size_t *objid_len, int exact)
 	*objid_len = v->namelen + 1;
 	if (!len || (objid[v->namelen] == 0)) {
 		objid[v->namelen]=1;
-		return mainconfig.clients;
+		return client_findbynumber(mainconfig.clients, 0);;
 	}
 
 	c = client_findbynumber(mainconfig.clients, i);
@@ -333,6 +333,7 @@ radAccEntry(struct variable *vp, oid *name, size_t *length, int exact,
 		size_t *var_len, WriteMethod **write_method) {
 
 	RADCLIENT *c;
+	static const uint32_t zero = 0;
 
 	*write_method = NULL; /* table is read only */
 	c = get_client(vp, name, length, exact);
@@ -343,8 +344,10 @@ radAccEntry(struct variable *vp, oid *name, size_t *length, int exact,
 
 	switch (vp->magic) {
 		case RADIUSACCCLIENTADDRESS:
-			*var_len = sizeof(c->ipaddr);
-			return (unsigned char *)&(c->ipaddr);
+			if (c->ipaddr.af != AF_INET) return NULL;
+
+			*var_len = sizeof(c->ipaddr.ipaddr.ip4addr);
+			return (unsigned char *)&(c->ipaddr.ipaddr.ip4addr);
 
 		case RADIUSACCCLIENTID:
 			if (c->shortname && c->shortname[0]) {
@@ -378,8 +381,14 @@ radAccEntry(struct variable *vp, oid *name, size_t *length, int exact,
 			*var_len = sizeof(int32_t);
 			return (unsigned char *) &c->acct->malformed_requests;
 
+			/*
+			 *	Received && responded to, but not
+			 *	recorded anywhere.  This is always
+			 *	zero.
+			 */
 		case RADIUSACCSERVNORECORDS:
-			return (unsigned char *) NULL;
+			*var_len = sizeof(int32_t);
+			return (unsigned char *) &zero;
 
 		case RADIUSACCSERVUNKNOWNTYPES:
 			*var_len = sizeof(int32_t);
@@ -484,8 +493,10 @@ radAuthEntry(struct variable *vp, oid	 *name, size_t *length, int exact,
 	switch (vp->magic) {
 
 		case RADIUSAUTHCLIENTADDRESS:
-			*var_len = sizeof(c->ipaddr);
-			return (unsigned char *)&(c->ipaddr);
+			if (c->ipaddr.af != AF_INET) return NULL;
+
+			*var_len = sizeof(c->ipaddr.ipaddr.ip4addr);
+			return (unsigned char *)&(c->ipaddr.ipaddr.ip4addr);
 
 		case RADIUSAUTHCLIENTID:
 			if (c->shortname && c->shortname[0]) {
