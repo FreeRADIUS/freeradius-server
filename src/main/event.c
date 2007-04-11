@@ -32,10 +32,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
 
-#ifdef HAVE_SIGNAL_H
-#include <signal.h>
-#endif
-
 #define USEC (1000000)
 
 /*
@@ -401,11 +397,13 @@ static void cleanup_delay(void *ctx)
 	REQUEST *request = ctx;
 
 	rad_assert(request->magic == REQUEST_MAGIC);
-	rad_assert(request->child_state == REQUEST_CLEANUP_DELAY);
+	rad_assert((request->child_state == REQUEST_CLEANUP_DELAY) ||
+		   (request->child_state == REQUEST_DONE));
 
 	remove_from_request_hash(request);
 
-	if (request->proxy) {
+	if (request->proxy &&
+	    request->in_proxy_hash) {
 		wait_for_proxy_id_to_expire(request);
 		return;
 	}
@@ -415,7 +413,6 @@ static void cleanup_delay(void *ctx)
 	       (unsigned int) (request->timestamp - start_time));
 
 	lrad_event_delete(el, request);
-
 	request_free(&request);	
 }
 
@@ -783,12 +780,13 @@ static void wait_a_bit(void *ctx)
 		request->next_callback = NULL;
 		break;
 
+		/*
+		 *	Mark the request as no longer running,
+		 *	and clean it up.
+		 */
 	case REQUEST_DONE:
 		request->child_pid = NO_SUCH_CHILD_PID;
-		if (request->proxy) {
-			wait_for_proxy_id_to_expire(request);
-			return;
-		}
+		cleanup_delay(request);
 		return;
 
 	default:
@@ -1389,13 +1387,14 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			if (!home) {
 				DEBUG2("Failed to find live home server for request %d", request->number);
 			reject_request:
+				/*
+				 *	Do post-request processing,
+				 *	and any insertion of necessary
+				 *	events.
+				 */
 				request->child_state = REQUEST_RUNNING;
 				request_post_handler(request);
-				
-				/*
-				 *	wait_a_bit will pick up the
-				 *	request and do the right thing.
-				 */
+				wait_a_bit(request);
 				return;
 			}
 			
