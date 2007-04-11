@@ -1284,10 +1284,24 @@ static void request_post_handler(REQUEST *request)
 		}
 		
 		/*
-		 *	If configured, delay Access-Reject packets.
+		 *	Run rejected packets through
+		 *
+		 *	Post-Auth-Type = Reject
 		 */
-		if ((request->reply->code == PW_AUTHENTICATION_REJECT) &&
-		    (mainconfig.reject_delay > 0)) {
+		if (request->reply->code == PW_AUTHENTICATION_REJECT) {
+			vp = pairmake("Post-Auth-Type", "Reject", T_OP_SET);
+			if (!vp) rad_panic("Out of memory");
+
+			pairdelete(&request->config_items, PW_POST_AUTH_TYPE);
+			pairadd(&request->config_items, vp);
+			rad_postauth(request);
+
+			/*
+			 *	If configured, delay Access-Reject packets.
+			 *
+			 *	If mainconfig.reject_delay = 0, we discover
+			 *	that we have to send the packet now.
+			 */
 			when = request->received;
 			when.tv_sec += mainconfig.reject_delay;
 			
@@ -1386,7 +1400,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			home = home_server_ldb(NULL, request->home_pool, request);
 			if (!home) {
 				DEBUG2("Failed to find live home server for request %d", request->number);
-			reject_request:
+			no_home_servers:
 				/*
 				 *	Do post-request processing,
 				 *	and any insertion of necessary
@@ -1405,7 +1419,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 
 			if (!insert_into_proxy_hash(request)) {
 				DEBUG("ERROR: Failed to re-proxy request %d", request->number);
-				goto reject_request;
+				goto no_home_servers;
 			}
 
 			/*

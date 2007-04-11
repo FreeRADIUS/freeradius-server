@@ -429,31 +429,6 @@ int rad_postauth(REQUEST *request)
 }
 
 /*
- *	Before sending an Access-Reject, call the modules in the
- *	Post-Auth-Type REJECT stanza.
- */
-static int rad_postauth_reject(REQUEST *request)
-{
-	int		result;
-	VALUE_PAIR	*tmp;
-	DICT_VALUE	*dval;
-
-	dval = dict_valbyname(PW_POST_AUTH_TYPE, "REJECT");
-	if (dval) {
-		/* Overwrite the Post-Auth-Type with the value REJECT */
-		pairdelete(&request->config_items, PW_POST_AUTH_TYPE);
-		tmp = paircreate(PW_POST_AUTH_TYPE, PW_TYPE_INTEGER);
-		tmp->lvalue = dval->value;
-		pairadd(&request->config_items, tmp);
-		result = rad_postauth(request);
-	} else {
-		/* No REJECT stanza */
-		result = RLM_MODULE_OK;
-	}
-	return result;
-}
-
-/*
  *	Process and reply to an authentication request
  *
  *	The return value of this function isn't actually used right now, so
@@ -514,7 +489,6 @@ int rad_authenticate(REQUEST *request)
 			rad_authlog("Login incorrect (Home Server says so)",
 				    request, 0);
 			request->reply->code = PW_AUTHENTICATION_REJECT;
-			rad_postauth_reject(request);
 			return RLM_MODULE_REJECT;
 		}
 	}
@@ -741,7 +715,6 @@ autz_redo:
 	 *	is rejected, so we just process post-auth and return.
 	 */
 	if (result < 0) {
-		rad_postauth_reject(request);
 		return RLM_MODULE_REJECT;
 	}
 
