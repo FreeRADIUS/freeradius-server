@@ -1,0 +1,30 @@
+In 2.0, the RFC 2619 and RFC 2621 MIBs are more fully supported
+than in 1.x.
+
+Note that re-transmitted responses to duplicate
+requests do not increment these counters.
+
+ total responses = Access-Accepts
+		   + Access-Challenges
+		   + Access-Rejects
+
+Pending requests mean "live" requests that the server is currently
+processing.
+ 
+ pending requests = total requests
+		    - duplicate requests
+		    - bad authenticators
+		    - malformed requests
+		    - unknown types
+		    - packets dropped
+		    - total responses
+
+The IPv6-aware MIBS, (RFC 4669 and RFC 4671) are not currently
+supported.  Perhaps in 2.1.
+
+The client table for the server is also more fully supported than in
+1.x.
+
+However, the RADIUS client MIBs (RFC 2618, RFC 2620, RFC 4668, and RFC
+2670) are not supported.  Perhaps in 2.1.
+
