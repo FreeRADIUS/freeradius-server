@@ -864,6 +864,7 @@ int read_mainconfig(int reload)
 	if (mainconfig.reject_delay > mainconfig.cleanup_delay) {
 		mainconfig.reject_delay = mainconfig.cleanup_delay;
 	}
+	if (mainconfig.reject_delay < 0) mainconfig.reject_delay = 0;
 
 	/*
 	 *	Initialize the old "bind_address" and "port", first.
