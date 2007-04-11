@@ -264,6 +264,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 				DEBUG2("  rlm_eap_ttls: Invalid length attribute %d",
 				       attr);
 				pairfree(&first);
+				pairfree(&vp);
 				return NULL;
 			}
 			memcpy(&vp->lvalue, data, vp->length);
@@ -279,6 +280,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 				DEBUG2("  rlm_eap_ttls: Invalid length attribute %d",
 				       attr);
 				pairfree(&first);
+				pairfree(&vp);
 				return NULL;
 			}
 		  memcpy(&vp->lvalue, data, vp->length);
@@ -349,6 +351,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 			    (vp->length > 16)) {
 				DEBUG2("  TTLS: Tunneled challenge has invalid length");
 				pairfree(&first);
+				pairfree(&vp);
 				return NULL;
 
 			} else {
@@ -361,6 +364,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 					   vp->length) != 0) {
 					DEBUG2("  TTLS: Tunneled challenge is incorrect");
 					pairfree(&first);
+					pairfree(&vp);
 					return NULL;
 				}
 			}
