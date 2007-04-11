@@ -62,28 +62,10 @@ static int home_server_addr_cmp(const void *one, const void *two)
 	const home_server *a = one;
 	const home_server *b = two;
 
-	if (a->ipaddr.af < b->ipaddr.af) return -1;
-	if (a->ipaddr.af > b->ipaddr.af) return +1;
-
 	if (a->port < b->port) return -1;
 	if (a->port > b->port) return +1;
 
-	switch (a->ipaddr.af) {
-	case AF_INET:
-		return memcmp(&a->ipaddr.ipaddr.ip4addr,
-			      &b->ipaddr.ipaddr.ip4addr,
-			      sizeof(a->ipaddr.ipaddr.ip4addr));
-		break;
-	case AF_INET6:
-		return memcmp(&a->ipaddr.ipaddr.ip6addr,
-			      &b->ipaddr.ipaddr.ip6addr,
-			      sizeof(a->ipaddr.ipaddr.ip6addr));
-		break;
-	default:
-		break;
-	}
-	
-	return -1;
+	return lrad_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
 }
 
 

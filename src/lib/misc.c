@@ -575,3 +575,28 @@ int closefrom(int fd)
 	return 0;
 }
 #endif
+
+int lrad_ipaddr_cmp(const lrad_ipaddr_t *a, const lrad_ipaddr_t *b)
+{
+	if (a->af < b->af) return -1;
+	if (a->af > b->af) return +1;
+
+	switch (a->af) {
+	case AF_INET:
+		return memcmp(&a->ipaddr.ip4addr,
+			      &b->ipaddr.ip4addr,
+			      sizeof(a->ipaddr.ip4addr));
+		break;
+
+	case AF_INET6:
+		return memcmp(&a->ipaddr.ip6addr,
+			      &b->ipaddr.ip6addr,
+			      sizeof(a->ipaddr.ip6addr));
+		break;
+
+	default:
+		break;
+	}
+
+	return -1;
+}

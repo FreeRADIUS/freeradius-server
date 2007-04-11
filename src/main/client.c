@@ -75,33 +75,7 @@ static int client_ipaddr_cmp(const void *one, const void *two)
 	const RADCLIENT *a = one;
 	const RADCLIENT *b = two;
 
-	if (a->ipaddr.af < b->ipaddr.af) return -1;
-	if (a->ipaddr.af > b->ipaddr.af) return +1;
-
-	rad_assert(a->prefix == b->prefix);
-
-	switch (a->ipaddr.af) {
-	case AF_INET:
-		return memcmp(&a->ipaddr.ipaddr.ip4addr,
-			      &b->ipaddr.ipaddr.ip4addr,
-			      sizeof(a->ipaddr.ipaddr.ip4addr));
-		break;
-
-	case AF_INET6:
-		return memcmp(&a->ipaddr.ipaddr.ip6addr,
-			      &b->ipaddr.ipaddr.ip6addr,
-			      sizeof(a->ipaddr.ipaddr.ip6addr));
-		break;
-
-	default:
-		break;
-	}
-
-	/*
-	 *	Something bad happened...
-	 */
-	rad_assert("Internal sanity check failed");
-	return -1;
+	return lrad_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
 }
 
 #ifdef WITH_SNMP

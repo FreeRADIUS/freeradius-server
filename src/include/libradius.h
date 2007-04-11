@@ -349,9 +349,11 @@ const char	*inet_ntop(int af, const void *src, char *dst, size_t cnt);
 #ifndef HAVE_CLOSEFROM
 int		closefrom(int fd);
 #endif
+int lrad_ipaddr_cmp(const lrad_ipaddr_t *a, const lrad_ipaddr_t *b);
 
 int		ip_hton(const char *src, int af, lrad_ipaddr_t *dst);
 const char	*ip_ntoh(const lrad_ipaddr_t *src, char *dst, size_t cnt);
+
 
 
 #ifdef ASCEND_BINARY
