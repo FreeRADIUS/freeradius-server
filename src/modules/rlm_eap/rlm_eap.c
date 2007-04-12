@@ -80,32 +80,10 @@ static int eap_handler_cmp(const void *a, const void *b)
 	const EAP_HANDLER *two = b;
 
 
-	if (one->src_ipaddr.af < two->src_ipaddr.af) return -1;
-	if (one->src_ipaddr.af > two->src_ipaddr.af) return +1;
-
 	if (one->eap_id < two->eap_id) return -1;
 	if (one->eap_id > two->eap_id) return +1;
 
-	switch (one->src_ipaddr.af) {
-	case AF_INET:
-		rcode = memcmp(&one->src_ipaddr.ipaddr.ip4addr,
-			       &two->src_ipaddr.ipaddr.ip4addr,
-			       sizeof(one->src_ipaddr.ipaddr.ip4addr));
-		break;
-	case AF_INET6:
-		rcode = memcmp(&one->src_ipaddr.ipaddr.ip6addr,
-			       &two->src_ipaddr.ipaddr.ip6addr,
-			       sizeof(one->src_ipaddr.ipaddr.ip6addr));
-		break;
-	default:
-		return -1;	/* FIXME: die! */
-		break;
-	}
-	/*
-	 *	We could optimize this away, but the compiler should
-	 *	do that work for us, and this coding style helps us
-	 *	remember what to do if we add more checks later.
-	 */
+	rcode = lrad_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr);
 	if (rcode != 0) return rcode;
 
 	return memcmp(one->state, two->state, sizeof(one->state));
@@ -138,7 +116,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		scs != NULL;
 		scs=cf_subsection_find_next(cs, scs, NULL)) {
 
-		char	*auth_type;
+		const char	*auth_type;
 
 		auth_type = cf_section_name1(scs);
 
