@@ -1274,11 +1274,11 @@ static void request_post_handler(REQUEST *request)
 		 */
 		if (request->reply->code == PW_AUTHENTICATION_REJECT) {
 			vp = pairmake("Post-Auth-Type", "Reject", T_OP_SET);
-			if (!vp) rad_panic("Out of memory");
-
-			pairdelete(&request->config_items, PW_POST_AUTH_TYPE);
-			pairadd(&request->config_items, vp);
-			rad_postauth(request);
+			if (vp) {
+				pairdelete(&request->config_items, PW_POST_AUTH_TYPE);
+				pairadd(&request->config_items, vp);
+				rad_postauth(request);
+			} /* else no Reject section defined */
 
 			/*
 			 *	If configured, delay Access-Reject packets.
