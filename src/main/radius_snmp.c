@@ -559,6 +559,12 @@ radius_snmp_init (void) {
 
 	CONF_SECTION *cs;
 
+	static int initialized = FALSE;
+
+	if (initialized) return;
+
+	initialized = TRUE;
+
 	/*
 	 *  Initialize the RADIUS SNMP data structure.
 	 */
