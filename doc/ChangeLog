@@ -1,4 +1,4 @@
-FreeRADIUS 1.1.6 ; $Date$, urgency = low
+FreeRADIUS 1.1.6 ; $Date$, urgency = high
 	Feature improvements
 	* Added dictionary.rfc4372 (Chargeable User Identity)
 	* Added dictionary.rfc4675 (VLAN and Priority)
