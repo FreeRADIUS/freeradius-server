@@ -69,6 +69,10 @@ RCSIDH(missing_h, "$Id$")
 # endif
 #endif
 
+#ifdef HAVE_WINSOCK_H
+#include <winsock.h>
+#endif
+
 /*
  *	Functions from missing.c
  */
@@ -161,6 +165,7 @@ void endusershell(void);
 
 #ifndef AF_INET6
 #define AF_INET6 10
+#endif
 
 #ifndef HAVE_STRUCT_IN6_ADDR
 struct in6_addr
@@ -247,7 +252,6 @@ struct in6_addr
 #endif
 
 #endif /* HAVE_STRUCT_IN6_ADDR */
-#endif
 
 /*
  *	Functions from getaddrinfo.c
