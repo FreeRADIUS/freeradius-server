@@ -29,17 +29,6 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(eap_types_h, "$Id$")
 
-#if HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-
-#if HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
-
-#include <string.h>
-#include <stdlib.h>
-
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
