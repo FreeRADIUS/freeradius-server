@@ -1124,7 +1124,7 @@ int thread_pool_init(int spawn_flag)
  */
 int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
-	rad_respond(request, fun);
+	radius_handle_request(request, fun);
 	return 1;
 }
 
