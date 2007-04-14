@@ -6,11 +6,17 @@
 /* Define to 1 if you have the `getusershell' function. */
 #undef HAVE_GETUSERSHELL
 
+/* Define to 1 if you have the <grp.h> header file. */
+#undef HAVE_GRP_H
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the <pwd.h> header file. */
+#undef HAVE_PWD_H
 
 /* Define to 1 if you have the <shadow.h> header file. */
 #undef HAVE_SHADOW_H
