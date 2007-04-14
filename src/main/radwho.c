@@ -31,9 +31,12 @@ RCSID("$Id$")
 #include <freeradius-devel/sysutmp.h>
 #include <freeradius-devel/radutmp.h>
 
+#ifdef HAVE_PWD_H
 #include <pwd.h>
+#endif
+
 #include <sys/stat.h>
-#include <sys/utsname.h>
+
 #include <ctype.h>
 
 /*
@@ -175,6 +178,7 @@ static void sys_finger(const char *l)
  */
 static char *fullname(char *username)
 {
+#ifdef HAVE_PWD_Hx
 	struct passwd *pwd;
 	char *s;
 
@@ -182,6 +186,8 @@ static char *fullname(char *username)
 		if ((s = strchr(pwd->pw_gecos, ',')) != NULL) *s = 0;
 		return pwd->pw_gecos;
 	}
+#endif
+
 	return username;
 }
 
