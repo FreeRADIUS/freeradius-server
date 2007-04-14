@@ -28,10 +28,19 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
-#include <sys/resource.h>
 #include <sys/stat.h>
-#include <grp.h>
+
+#ifdef HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
+#endif
+
+#ifdef HAVE_PWD_H
 #include <pwd.h>
+#endif
+
+#ifdef HAVE_GRP_H
+#include <grp.h>
+#endif
 
 #ifdef HAVE_SYS_PRTCL_H
 #include <sys/prctl.h>
@@ -431,7 +440,12 @@ static int r_mkdir(const char *part)
 	if (r_mkdir(parentdir) != 0)
 		return(1);
 
-	if (mkdir(part, 0770) != 0) {
+#ifndef WIN32
+#define MKDIR mkdir
+#else
+#define MKDIR(_f, _p) mkdir(_f)
+#endif
+	if (MKDIR(part, 0770) != 0) {
 		radlog(L_ERR, "mkdir(%s) error: %s\n", part, strerror(errno));
 		return(1);
 	}
@@ -465,6 +479,7 @@ static int radlogdir_iswritable(const char *effectiveuser)
 		return 1;
 	}
 
+#ifdef HAVE_GETPWNAM
 	pwent = getpwnam(effectiveuser);
 
 	if (pwent == NULL) /* uh oh! */
@@ -472,6 +487,7 @@ static int radlogdir_iswritable(const char *effectiveuser)
 
 	if (chown(radlog_dir, pwent->pw_uid, -1) != 0)
 		return(1);
+#endif
 
 	return(0);
 }
@@ -482,8 +498,11 @@ static int radlogdir_iswritable(const char *effectiveuser)
  */
 static int switch_users(void)
 {
+#ifdef HAVE_SYS_RESOURCE_H
 	struct rlimit core_limits;
+#endif
 
+#ifdef HAVE_GRP_H
 	/*  Set GID.  */
 	if (mainconfig.gid_name != NULL) {
 		struct group *gr;
@@ -506,7 +525,9 @@ static int switch_users(void)
 	} else {
 		server_gid = getgid();
 	}
+#endif
 
+#ifdef HAVE_PWD_H
 	/*  Set UID.  */
 	if (mainconfig.uid_name != NULL) {
 		struct passwd *pw;
@@ -534,12 +555,15 @@ static int switch_users(void)
 			exit(1);
 		}
 	}
+#endif
 
+#ifdef HAVE_SYS_RESOURCE_H
 	/*  Get the current maximum for core files.  */
 	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
 		radlog(L_ERR|L_CONS, "Failed to get current core limit:  %s", strerror(errno));
 		exit(1);
 	}
+#endif
 
 	if (mainconfig.allow_core_dumps) {
 #ifdef HAVE_SYS_PRTCL_H
@@ -551,6 +575,7 @@ static int switch_users(void)
 #endif
 #endif
 
+#ifdef HAVE_SYS_RESOURCE_H
 		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
 			radlog(L_ERR|L_CONS, "Cannot update core dump limit: %s",
 					strerror(errno));
@@ -562,8 +587,10 @@ static int switch_users(void)
 			 */
 		} else if ((core_limits.rlim_cur != 0) && !debug_flag)
 			radlog(L_INFO|L_CONS, "Core dumps are enabled.");
+#endif
 
 	} else if (!debug_flag) {
+#ifdef HAVE_SYS_RESOURCE_H
 		/*
 		 *  Not debugging.  Set the core size to zero, to
 		 *  prevent security breaches.  i.e. People
@@ -579,8 +606,10 @@ static int switch_users(void)
 					strerror(errno));
 			exit(1);
 		}
+#endif
 	}
 
+#if defined(HAVE_PWD_H) && defined(HAVE_GRP_H)
 	/*
 	 *	We've probably written to the log file already as
 	 *	root.root, so if we have switched users, we've got to
@@ -591,7 +620,7 @@ static int switch_users(void)
 	    (mainconfig.log_file != NULL)) {
 		chown(mainconfig.log_file, server_uid, server_gid);
 	}
-
+#endif
 	return(0);
 }
 
@@ -625,18 +654,21 @@ int read_mainconfig(int reload)
 		return -1;
 	}
 
+#ifdef S_IWOTH
 	if ((statbuf.st_mode & S_IWOTH) != 0) {
 		radlog(L_ERR|L_CONS, "Configuration directory %s is globally writable.  Refusing to start due to insecure configuration.",
 		       radius_dir);
 	  return -1;
 	}
+#endif
 
-
+#ifdef S_IROTH
 	if (0 && (statbuf.st_mode & S_IROTH) != 0) {
 		radlog(L_ERR|L_CONS, "Configuration directory %s is globally readable.  Refusing to start due to insecure configuration.",
 		       radius_dir);
 		return -1;
 	}
+#endif
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",

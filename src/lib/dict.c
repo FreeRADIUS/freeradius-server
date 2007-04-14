@@ -1133,12 +1133,14 @@ static int my_dict_init(const char *dir, const char *fn,
 	 *	Globally writable dictionaries means that users can control
 	 *	the server configuration with little difficulty.
 	 */
+#ifdef S_IWOTH
 	if ((statbuf.st_mode & S_IWOTH) != 0) {
 		fclose(fp);
 		librad_log("dict_init: Dictionary \"%s\" is globally writable.  Refusing to start due to insecure configuration.",
 			   fn);
 		return -1;
 	}
+#endif
 
 	dict_stat_add(fn, &statbuf);
 
