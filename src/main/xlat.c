@@ -547,7 +547,7 @@ void xlat_free(void)
  *	Decode an attribute name into a string.
  */
 static void decode_attribute(const char **from, char **to, int freespace,
-			     int *open, REQUEST *request,
+			     int *open_p, REQUEST *request,
 			     RADIUS_ESCAPE_STRING func)
 {
 	int	do_length = 0;
@@ -557,7 +557,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	const char *p;
 	char *q, *pa;
 	int found=0, retlen=0;
-	int openbraces = *open;
+	int openbraces = *open_p;
 	const xlat_t *c;
 	int spaces = FALSE;
 
@@ -606,7 +606,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		 */
 	} else if (*p == '}') {
 		openbraces--;
-		rad_assert(openbraces == *open);
+		rad_assert(openbraces == *open_p);
 
 		p++;
 		xlat_string = xlat_name;
@@ -619,7 +619,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		
 	} else {      /* module name, followed by per-module string */
 		int stop = 0;
-		int delimitbrace = *open;
+		int delimitbrace = *open_p;
 
 		rad_assert(*p == ':');
 		p++;			/* skip the ':' */
@@ -740,7 +740,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 
 		q += retlen;
 
-		while((*p != '\0') && (openbraces > *open)) {
+		while((*p != '\0') && (openbraces > *open_p)) {
 			/*
 			 *	Handle escapes outside of the loop.
 			 */
@@ -773,7 +773,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	done:
 	if (free_xlat_string) free(xlat_string);
 
-	*open = openbraces;
+	*open_p = openbraces;
 	*from = p;
 	*to = q;
 }
