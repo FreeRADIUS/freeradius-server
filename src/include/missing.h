@@ -348,4 +348,12 @@ extern size_t strlcat(char *dst, const char *src, size_t siz);
 #define INT16SZ (2)
 #endif
 
+#ifndef HAVE_GMTIME_R
+struct tm *gmtime_r(const time_t *l_clock, struct tm *result);
+#endif
+
+#ifndef HAVE_GETTIMEOFDAY
+int gettimeofday (struct timeval *tv, void *tz);
+#endif
+
 #endif /* _FR_MISSING_H */
