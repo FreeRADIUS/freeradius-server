@@ -43,6 +43,7 @@ RCSID("$Id$")
  *	Using sigaction() to reset the signal handler fixes the problem,
  *	so where available, we prefer that solution.
  */
+
 void (*reset_signal(int signo, void (*func)(int)))(int)
 {
 #ifdef HAVE_SIGACTION
@@ -68,6 +69,8 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
 	 *	so we don't have a choice.
 	 */
 	signal(signo, func);
+
+	return NULL;
 #endif
 }
 
