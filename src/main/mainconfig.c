@@ -440,12 +440,7 @@ static int r_mkdir(const char *part)
 	if (r_mkdir(parentdir) != 0)
 		return(1);
 
-#ifndef WIN32
-#define MKDIR mkdir
-#else
-#define MKDIR(_f, _p) mkdir(_f)
-#endif
-	if (MKDIR(part, 0770) != 0) {
+	if (mkdir(part, 0770) != 0) {
 		radlog(L_ERR, "mkdir(%s) error: %s\n", part, strerror(errno));
 		return(1);
 	}
