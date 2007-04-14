@@ -29,12 +29,14 @@ static pthread_mutex_t lrad_hostbyname_mutex;
 static pthread_mutex_t lrad_hodtbyaddr_mutex;
 #endif
 
+#undef LOCAL_GETHOSTBYNAMERSTYLE
 #ifndef GETHOSTBYNAMERSTYLE 
 #define LOCAL_GETHOSTBYNAMERSTYLE 1
 #elif (GETHOSTBYNAMERSTYLE != SYSVSTYLE) && (GETHOSTBYNAMERSTYLE != GNUSTYLE)
 #define LOCAL_GETHOSTBYNAMERSTYLE 1
 #endif /* GETHOSTBYNAMERSTYLE */
 
+#undef LOCAL_GETHOSTBYADDRR
 #ifndef GETHOSTBYADDRRSTYLE
 #define LOCAL_GETHOSTBYADDRR 1
 #elif (GETHOSTBYADDRRSTYLE != SYSVSTYLE) && (GETHOSTBYADDRRSTYLE != GNUSTYLE)
@@ -60,7 +62,7 @@ static pthread_mutex_t lrad_hodtbyaddr_mutex;
  * | h_name\0alias_array\0h_aliases\0..\0addr_array\0h_addr_list\0 |
  *  ---------------------------------------------------------------
  */
-#if (LOCAL_GETHOSTBYNAMER == 1) || (LOCAL_GETHOSTBYADDRR == 1)
+#if defined(LOCAL_GETHOSTBYNAMER) || defined(LOCAL_GETHOSTBYADDRR)
 #define BUFFER_OVERFLOW 255
 int copy_hostent(struct hostent *from, struct hostent *to,
            char *buffer, int buflen, int *error)
@@ -132,7 +134,7 @@ gethostbyname_r(const char *hostname, struct hostent *result,
     pthread_mutex_lock(&lrad_hostbyname_mutex);
 #endif
 
-    hp = gethostbyname(name);
+    hp = gethostbyname(hostname);
     if ((!hp) || (hp->h_addrtype != AF_INET) || (hp->h_length != 4)) {
 	 *error = h_errno;
          hp = NULL;
@@ -150,10 +152,10 @@ gethostbyname_r(const char *hostname, struct hostent *result,
 #endif /* GETHOSTBYNAMERSTYLE */
 
 
-#ifdef LOCAL_GETHOSTBYADDRRSTYLE
+#ifdef LOCAL_GETHOSTBYADDRR
 static struct hostent *
 gethostbyaddr_r(const char *addr, int len, int type, struct hostent *result,
-           char *buffer, int buflen, int *error)
+		char *buffer, int buflen, int *error)
 {
     struct hostent *hp;
 
