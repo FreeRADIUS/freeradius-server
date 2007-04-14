@@ -356,4 +356,9 @@ struct tm *gmtime_r(const time_t *l_clock, struct tm *result);
 int gettimeofday (struct timeval *tv, void *tz);
 #endif
 
+#ifdef WIN32
+#undef mkdir
+#define mkdir(_d, _p) mkdir(_d)
+#endif
+
 #endif /* _FR_MISSING_H */
