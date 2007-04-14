@@ -30,8 +30,6 @@ RCSID("$Id$")
 
 #include	<sys/stat.h>
 
-#include	<pwd.h>
-#include	<grp.h>
 #include	<ctype.h>
 #include	<fcntl.h>
 #include	<limits.h>
