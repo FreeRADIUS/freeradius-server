@@ -340,6 +340,12 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 	rad_assert(request->magic == REQUEST_MAGIC);
 	rad_assert(request->proxy != NULL);
 
+	/*
+	 *	FIXME: handle the case of RETRY from one home server
+	 *	to another!
+	 *
+	 *	Do we even have to do anything?
+	 */
 	request->when = request->proxy_when;
 	request->when.tv_sec += home->response_window;
 
@@ -1423,6 +1429,13 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 					 buffer, sizeof(buffer)),
 			       request->proxy->dst_port);
 			
+			/*
+			 *	Restart timers.  Note that we leave
+			 *	the old timeout in place, as that is a
+			 *	place-holder for when the request
+			 *	times out.
+			 */
+			gettimeofday(&request->proxy_when, NULL);
 			request->num_proxied_requests = 1;
 			request->num_proxied_responses = 0;
 			request->child_state = REQUEST_PROXIED;
@@ -1734,6 +1747,45 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	}
 
 	request->proxy_reply = packet;
+
+#if 0
+	/*
+	 *	Perform RTT calculations, as per RFC 2988 (for TCP).
+	 *	Note that we do so only if we sent one request, and
+	 *	received one response.  If we sent two requests, we
+	 *	have no idea if the response is for the first, or for
+	 *	the second request/
+	 */
+	if (request->num_proxied_requests == 1) {
+		int rtt;
+		home_server *home = request->home_server;
+
+		rtt = now.tv_sec - request->proxy_when.tv_sec;
+		rtt *= USEC;
+		rtt += now.tv_usec;
+		rtt -= request->proxy_when.tv_usec;
+
+		if (!home->has_rtt) {
+			home->has_rtt = TRUE;
+
+			home->srtt = rtt;
+			home->rttvar = rtt / 2;
+
+		} else {
+			home->rttvar -= home->rttvar >> 2;
+			home->rttvar += (home->srtt - rtt);
+			home->srtt -= home->srtt >> 3;
+			home->srtt += rtt >> 3;
+		}
+
+		home->rto = home->srtt;
+		if (home->rttvar > (USEC / 4)) {
+			home->rto += home->rttvar * 4;
+		} else {
+			home->rto += USEC;
+		}
+	}
+#endif
 
 	/*
 	 *	There's no incoming request, so it's a proxied packet
