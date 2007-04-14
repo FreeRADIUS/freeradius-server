@@ -30,9 +30,11 @@ RCSID("$Id$")
 /*
  *	Other OS's have sem_init, OS X doesn't.
  */
-#ifndef DARWIN
+#ifdef HAVE_SEMAPHORE_H
 #include <semaphore.h>
-#else
+#endif
+
+#ifdef DARWIN
 #include <mach/task.h>
 #include <mach/semaphore.h>
 
