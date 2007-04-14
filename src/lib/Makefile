@@ -9,7 +9,7 @@ include ../../Make.inc
 SRCS		= dict.c filters.c hash.c hmac.c hmacsha1.c isaac.c log.c \
 		  misc.c missing.c md4.c md5.c print.c radius.c rbtree.c \
 		  sha1.c snprintf.c strlcat.c strlcpy.c token.c udpfromto.c \
-		  valuepair.c fifo.c packet.c event.c
+		  valuepair.c fifo.c packet.c event.c getaddrinfo.c
 
 LT_OBJS		= $(SRCS:.c=.lo)
 
