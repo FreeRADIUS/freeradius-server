@@ -2274,7 +2274,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	create_pair:
 		pair = rad_attr2vp(packet, original, secret,
 				   attribute, attrlen, ptr);
-	check_pair:
 		if (!pair) {
 			pairfree(&packet->vps);
 			librad_log("out of memory");
