@@ -115,10 +115,6 @@ struct in_addr;
 int inet_aton(char *cp, struct in_addr *inp);
 #endif
 
-#ifdef NEED_DECLARATION_GETHOSTNAME
-int gethostname(char *name, int len);
-#endif
-
 #ifndef HAVE_SETLINEBUF
 #ifdef HAVE_SETVBUF
 #define setlinebuf(x) setvbuf(x, NULL, _IOLBF, 0)
@@ -319,8 +315,8 @@ extern char *gai_strerror (int __ecode);
 #ifndef HAVE_GETNAMEINFO
 extern int getnameinfo (const struct sockaddr *__sa,
 			socklen_t __salen, char *__host,
-			socklen_t __hostlen, char *__serv,
-			socklen_t __servlen, unsigned int __flags);
+			size_t __hostlen, char *__serv,
+			size_t __servlen, unsigned int __flags);
 #endif
 
 /*
@@ -346,6 +342,10 @@ extern size_t strlcpy(char *dst, const char *src, size_t siz);
 
 #ifndef HAVE_STRLCAT
 extern size_t strlcat(char *dst, const char *src, size_t siz);
+#endif
+
+#ifndef INT16SZ
+#define INT16SZ (2)
 #endif
 
 #endif /* _FR_MISSING_H */

@@ -495,6 +495,8 @@ AC_CHECK_LIB(crypto, DH_new,
     ], [])
 LIBS=$old_LIBS
 
+AC_CHECK_LIB(ws2_32, htonl)
+
 dnl Check the pcap library for the RADIUS sniffer.
 PCAP_LIBS=
 AC_CHECK_LIB(pcap, pcap_open_live,
@@ -534,6 +536,7 @@ AC_CHECK_HEADERS( \
 	crypt.h \
 	errno.h \
 	resource.h \
+	sys/resource.h \
 	getopt.h \
 	malloc.h \
 	utmp.h \
@@ -550,6 +553,7 @@ AC_CHECK_HEADERS( \
 	netinet/in.h \
 	sys/types.h \
 	sys/socket.h \
+	winsock.h \
 	sys/time.h \
 	sys/wait.h \
 	sys/security.h \
@@ -557,6 +561,8 @@ AC_CHECK_HEADERS( \
 	sys/fcntl.h \
 	net/if.h \
 	prot.h \
+	pwd.h \
+	grp.h \
 	sia.h \
 	siad.h
 )
@@ -758,7 +764,6 @@ AC_CHECK_FUNCS( \
 	inet_aton \
 	inet_pton \
 	inet_ntop \
-	gethostname \
 	setlinebuf \
 	setvbuf \
 	getusershell \
@@ -774,7 +779,6 @@ RADIUSD_NEED_DECLARATIONS( \
 	strncasecmp \
 	strcasecmp \
 	inet_aton \
-	gethostname \
 	setlinebuf \
 	getusershell \
 	endusershell

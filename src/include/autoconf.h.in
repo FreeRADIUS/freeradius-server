@@ -52,9 +52,6 @@
 /* Define to 1 if you have the `getaddrinfo' function. */
 #undef HAVE_GETADDRINFO
 
-/* Define to 1 if you have the `gethostname' function. */
-#undef HAVE_GETHOSTNAME
-
 /* Define to 1 if you have the `getnameinfo' function. */
 #undef HAVE_GETNAMEINFO
 
@@ -69,6 +66,9 @@
 
 /* Define to 1 if you have the `gmtime_r' function. */
 #undef HAVE_GMTIME_R
+
+/* Define to 1 if you have the <grp.h> header file. */
+#undef HAVE_GRP_H
 
 /* define if you have IN6_PKTINFO (Linux) */
 #undef HAVE_IN6_PKTINFO
@@ -111,6 +111,9 @@
 
 /* Define to 1 if you have the `ssl' library (-lssl). */
 #undef HAVE_LIBSSL
+
+/* Define to 1 if you have the `ws2_32' library (-lws2_32). */
+#undef HAVE_LIBWS2_32
 
 /* Define to 1 if you have the `localtime_r' function. */
 #undef HAVE_LOCALTIME_R
@@ -159,6 +162,9 @@
 
 /* Define to 1 if you have the `pthread_sigmask' function. */
 #undef HAVE_PTHREAD_SIGMASK
+
+/* Define to 1 if you have the <pwd.h> header file. */
+#undef HAVE_PWD_H
 
 /* define this if we have the <regex.h> header file */
 #undef HAVE_REGEX_H
@@ -258,6 +264,9 @@
    */
 #undef HAVE_SYS_NDIR_H
 
+/* Define to 1 if you have the <sys/resource.h> header file. */
+#undef HAVE_SYS_RESOURCE_H
+
 /* Define to 1 if you have the <sys/security.h> header file. */
 #undef HAVE_SYS_SECURITY_H
 
@@ -294,6 +303,9 @@
 
 /* Define to 1 if you have the `vsnprintf' function. */
 #undef HAVE_VSNPRINTF
+
+/* Define to 1 if you have the <winsock.h> header file. */
+#undef HAVE_WINSOCK_H
 
 /* define if you have OSFC2 authentication */
 #undef OSFC2
@@ -363,13 +375,13 @@
 /* Define to `int' if <sys/types.h> doesn't define. */
 #undef gid_t
 
-/* Define to `long' if <sys/types.h> does not define. */
+/* Define to `long int' if <sys/types.h> does not define. */
 #undef off_t
 
 /* Define to `int' if <sys/types.h> does not define. */
 #undef pid_t
 
-/* Define to `unsigned' if <sys/types.h> does not define. */
+/* Define to `unsigned int' if <sys/types.h> does not define. */
 #undef size_t
 
 /* socklen_t is generally 'int' on systems which don't use it */

@@ -92,19 +92,6 @@ int inet_aton(char *cp, struct in_addr *inp)
 }
 #endif
 
-#ifndef HAVE_GETHOSTNAME
-int gethostname(char *name, int len)
-{
-	char		*h;
-
-	h = getenv("HOSTNAME");
-	if (!h || (strlen(h) + 1 > len))
-		return -1;
-	strcpy(name, h);
-	return 0;
-}
-#endif
-
 #ifndef HAVE_STRSEP
 /*
  *	Get next token from string *stringp, where tokens are
