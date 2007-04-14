@@ -196,7 +196,7 @@ static int sql_xlat(void *instance, REQUEST *request,
 		return 0;
 	}
 	ret = strlen(row[0]);
-	if (ret > freespace){
+	if (ret >= freespace){
 		DEBUG("rlm_sql (%s): sql_xlat:: Insufficient string space",
 		      inst->config->xlat_name);
 		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
@@ -204,7 +204,7 @@ static int sql_xlat(void *instance, REQUEST *request,
 		return 0;
 	}
 
-	strlcpy(out,row[0],ret);
+	strlcpy(out,row[0],freespace);
 
 	DEBUG("rlm_sql (%s): - sql_xlat finished",
 	      inst->config->xlat_name);
