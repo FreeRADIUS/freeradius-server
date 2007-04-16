@@ -158,9 +158,12 @@ static void remove_from_request_hash(REQUEST *request)
 	lrad_packet_list_yank(pl, request->packet);
 	request->in_request_hash = FALSE;
 
-	snmp_inc_client_responses(client_listener_find(request->listener,
-						       &request->packet->src_ipaddr),
-				  request);
+	if ((request->listener->type == RAD_LISTEN_AUTH) ||
+	    (request->listener->type == RAD_LISTEN_ACCT)) {
+		snmp_inc_client_responses(client_listener_find(request->listener,
+							       &request->packet->src_ipaddr),
+					  request);
+	}
 }
 
 
