@@ -248,20 +248,28 @@ static int genericcmp(void *instance UNUSED,
 		      VALUE_PAIR *check_pairs UNUSED,
 		      VALUE_PAIR **reply_pairs UNUSED)
 {
-	int rcode;
-	char name[1024];
-	char value[1024];
-	VALUE_PAIR *vp;
+	if ((check->operator != T_OP_REG_EQ) &&
+	    (check->operator != T_OP_REG_EQ)) {
+		int rcode;
+		char name[1024];
+		char value[1024];
+		VALUE_PAIR *vp;
+		
+		snprintf(name, sizeof(name), "%%{%s}", check->name);
+		
+		rcode = radius_xlat(value, sizeof(value), name, req, NULL);
+		vp = pairmake(check->name, value, T_OP_EQ);
 
-	snprintf(name, sizeof(name), "%%{%s}", check->name);
+		rcode = radius_compare_vps(req, check, vp);
+		pairfree(&vp);
 
-	rcode = radius_xlat(value, sizeof(value), name, req, NULL);
-	vp = pairmake(check->name, value, T_OP_EQ);
+		return rcode;
+	}
 
-	rcode = radius_compare_vps(req, check, vp);
-	pairfree(&vp);
-
-	return rcode;
+	/*
+	 *	Will do the xlat for us
+	 */
+	return radius_compare_vps(req, check, NULL);
 }
 
 static int generic_attrs[] = {
