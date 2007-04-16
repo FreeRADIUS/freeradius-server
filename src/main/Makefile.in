@@ -151,7 +151,7 @@ radsniff.lo: radsniff.c $(INCLUDES) ../include/radsniff.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radsniff.c
 
 radsniff: radsniff.lo ../lib/libradius.la
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radsniff radsniff.lo $(LIBS) $(PCAP_LIBS)
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radsniff radsniff.lo ../lib/libradius.la $(LIBS) $(PCAP_LIBS)
 
 radwho.lo: radwho.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radwho.c
