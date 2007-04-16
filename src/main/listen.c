@@ -1741,9 +1741,19 @@ int listen_init(const char *filename, rad_listen_t **head)
 			return -1;
 		}
 	}
-
+	
 #ifdef WITH_SNMP
 	if (mainconfig.do_snmp) {
+		/*
+		 *      Forget about the old one.
+		 */
+		for (this = mainconfig.listen;
+		     this != NULL;
+		     this = this->next) {
+			if (this->type != RAD_LISTEN_SNMP) continue;
+			this->fd = -1;
+		}
+
 		radius_snmp_init();
 
 		this = rad_malloc(sizeof(*this));

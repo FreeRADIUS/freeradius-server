@@ -561,33 +561,31 @@ radius_snmp_init (void) {
 
 	static int initialized = FALSE;
 
-	if (initialized) return;
+	if (!initialized) {
+		/*
+		 *  Initialize the RADIUS SNMP data structure.
+		 */
+		memset(&rad_snmp, 0, sizeof(rad_snmp));
+		
+		rad_snmp.auth.ident = radiusd_version;
+		rad_snmp.acct.ident = radiusd_version;
+		
+		rad_snmp.smux_event = SMUX_NONE;
+		rad_snmp.smux_password = NULL;
+		rad_snmp.snmp_write_access = FALSE;
+		rad_snmp.smux_fd = -1;
+		rad_snmp.smux_max_failures = 3; /* FIXME! get from config */
+		rad_snmp.smux_failures = 0;
 
-	initialized = TRUE;
+		rad_snmp.auth.start_time = time(NULL);
+		rad_snmp.auth.last_reset_time = rad_snmp.auth.start_time;
 
-	/*
-	 *  Initialize the RADIUS SNMP data structure.
-	 */
-	memset(&rad_snmp, 0, sizeof(rad_snmp));
-
-	rad_snmp.auth.ident = radiusd_version;
-	rad_snmp.acct.ident = radiusd_version;
-
-	rad_snmp.smux_event = SMUX_NONE;
-	rad_snmp.smux_password = NULL;
-	rad_snmp.snmp_write_access = FALSE;
-	rad_snmp.smux_fd = -1;
-	rad_snmp.smux_max_failures = 3; /* FIXME! get from config */
-	rad_snmp.smux_failures = 0;
-
-	/*
-	 *  We really should get better clock resolution..
-	 */
-	rad_snmp.auth.start_time = time(NULL);
-	rad_snmp.auth.last_reset_time = rad_snmp.auth.start_time;
-
-	rad_snmp.acct.start_time = rad_snmp.auth.start_time;
-	rad_snmp.acct.last_reset_time = rad_snmp.auth.start_time;
+		rad_snmp.acct.start_time = rad_snmp.auth.start_time;
+		rad_snmp.acct.last_reset_time = rad_snmp.auth.start_time;
+	} else {
+		rad_snmp.auth.last_reset_time = time(NULL);
+		rad_snmp.acct.last_reset_time = rad_snmp.auth.last_reset_time;
+	}
 
 	/*
 	 *  Parse the SNMP configuration information.
@@ -596,13 +594,23 @@ radius_snmp_init (void) {
 	if (cs != NULL)
 		cf_section_parse(cs, NULL, snmp_config);
 
+	smux_stop();
+
+	if (!mainconfig.do_snmp) return;
+
 	/*
 	 *  Do SMUX initialization.
 	 */
 	smux_init (radius_oid, sizeof (radius_oid) / sizeof (oid));
-	REGISTER_MIB("mibII/radius-acc-server", radiusacc_variables, variable, radacc_oid);
-	REGISTER_MIB("mibII/radius-auth-server", radiusauth_variables, variable, radauth_oid);
+
+	if (!initialized) {
+		REGISTER_MIB("mibII/radius-acc-server", radiusacc_variables, variable, radacc_oid);
+		REGISTER_MIB("mibII/radius-auth-server", radiusauth_variables, variable, radauth_oid);
+	}
+
 	smux_start ();
+
+	initialized = TRUE;
 }
 
 #endif /* WITH_SNMP */
