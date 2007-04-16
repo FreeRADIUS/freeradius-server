@@ -605,8 +605,8 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 			 *	error codes than "comparison is less
 			 *	than, equal to, or greater than zero".
 			 */
-			compare = simplepaircmp(state->request,
-						vp, myvp);
+			compare = radius_callback_compare(state->request,
+							  vp, myvp, NULL, NULL);
 			pairfree(&myvp);
 			
 		} else {

@@ -239,21 +239,68 @@ static int responsecmp(void *instance UNUSED,
 }
 
 /*
+ *	Generic comparisons, via xlat.
+ */
+static int genericcmp(void *instance UNUSED,
+		      REQUEST *req,
+		      VALUE_PAIR *request UNUSED,
+		      VALUE_PAIR *check,
+		      VALUE_PAIR *check_pairs UNUSED,
+		      VALUE_PAIR **reply_pairs UNUSED)
+{
+	int rcode;
+	char name[1024];
+	char value[1024];
+	VALUE_PAIR *vp;
+
+	snprintf(name, sizeof(name), "%%{%s}", check->name);
+
+	rcode = radius_xlat(value, sizeof(value), name, req, NULL);
+	vp = pairmake(check->name, value, T_OP_EQ);
+
+	rcode = radius_compare_vps(req, check, vp);
+	pairfree(&vp);
+
+	return rcode;
+}
+
+static int generic_attrs[] = {
+	PW_CLIENT_IP_ADDRESS,
+	PW_PACKET_SRC_IP_ADDRESS,
+	PW_PACKET_DST_IP_ADDRESS,
+	PW_PACKET_SRC_PORT,
+	PW_PACKET_DST_PORT,
+	PW_REQUEST_PROCESSING_STAGE,
+	PW_PACKET_SRC_IPV6_ADDRESS,
+	PW_PACKET_DST_IPV6_ADDRESS,
+	PW_SERVER_IDENTITY,
+	0
+};
+
+/*
  *	Register server-builtin special attributes.
  */
 void pair_builtincompare_init(void)
 {
-	paircompare_register(PW_NAS_PORT, -1, portcmp, NULL);
+	int i;
+
+	paircompare_register(PW_NAS_PORT, PW_NAS_PORT, portcmp, NULL);
 	paircompare_register(PW_PREFIX, PW_USER_NAME, presufcmp, NULL);
 	paircompare_register(PW_SUFFIX, PW_USER_NAME, presufcmp, NULL);
 	paircompare_register(PW_CONNECT_RATE, PW_CONNECT_INFO, connectcmp, NULL);
 	paircompare_register(PW_NO_SUCH_ATTRIBUTE, 0, attrcmp, NULL);
 	paircompare_register(PW_PACKET_TYPE, 0, packetcmp, NULL);
 	paircompare_register(PW_RESPONSE_PACKET_TYPE, 0, responsecmp, NULL);
+
+	for (i = 0; generic_attrs[i] != 0; i++) {
+		paircompare_register(generic_attrs[i], -1, genericcmp, NULL);
+	}
 }
 
 void pair_builtincompare_detach(void)
 {
+	int i;
+
 	paircompare_unregister(PW_NAS_PORT, portcmp);
 	paircompare_unregister(PW_PREFIX, presufcmp);
 	paircompare_unregister(PW_SUFFIX, presufcmp);
@@ -261,4 +308,9 @@ void pair_builtincompare_detach(void)
 	paircompare_unregister(PW_NO_SUCH_ATTRIBUTE, attrcmp);
 	paircompare_unregister(PW_PACKET_TYPE, packetcmp);
 	paircompare_unregister(PW_RESPONSE_PACKET_TYPE, responsecmp);
+
+	for (i = 0; generic_attrs[i] != 0; i++) {
+		paircompare_unregister(generic_attrs[i], genericcmp);
+	}
+
 }

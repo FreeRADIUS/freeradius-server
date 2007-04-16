@@ -53,14 +53,179 @@ struct cmp {
 };
 static struct cmp *cmp;
 
+int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
+{
+	int ret = -2;
+
+	/*
+	 *      Check for =* and !* and return appropriately
+	 */
+	if( check->operator == T_OP_CMP_TRUE )
+	         return 0;
+	if( check->operator == T_OP_CMP_FALSE )
+	         return 1;
+
+#ifdef HAVE_REGEX_H
+	if (check->operator == T_OP_REG_EQ) {
+		int i, compare;
+		regex_t reg;
+		char name[1024];
+		char value[1024];
+		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
+
+		snprintf(name, sizeof(name), "%%{%s}", check->name);
+		radius_xlat(value, sizeof(value), name, request, NULL);
+
+		/*
+		 *	Include substring matches.
+		 */
+		regcomp(&reg, (char *)check->vp_strvalue,
+			REG_EXTENDED);
+		compare = regexec(&reg, value,  REQUEST_MAX_REGEX + 1,
+				  rxmatch, 0);
+		regfree(&reg);
+		
+		/*
+		 *	Add %{0}, %{1}, etc.
+		 */
+		for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
+			char *p;
+			char buffer[sizeof(check->vp_strvalue)];
+
+			/*
+			 *	Didn't match: delete old
+			 *	match, if it existed.
+			 */
+			if ((compare != 0) ||
+			    (rxmatch[i].rm_so == -1)) {
+				p = request_data_get(request, request,
+						     REQUEST_DATA_REGEX | i);
+				if (p) {
+					free(p);
+					continue;
+				}
+				
+				/*
+				 *	No previous match
+				 *	to delete, stop.
+				 */
+				break;
+			}
+			
+			/*
+			 *	Copy substring into buffer.
+			 */
+			memcpy(buffer, value + rxmatch[i].rm_so,
+			       rxmatch[i].rm_eo - rxmatch[i].rm_so);
+			buffer[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
+			
+			/*
+			 *	Copy substring, and add it to
+			 *	the request.
+			 *
+			 *	Note that we don't check
+			 *	for out of memory, which is
+			 *	the only error we can get...
+			 */
+			p = strdup(buffer);
+			request_data_add(request, request,
+					 REQUEST_DATA_REGEX | i,
+					 p, free);
+		}
+		if (compare == 0) return 0;
+		return -1;
+	}
+
+	if (check->operator == T_OP_REG_NE) {
+		int i, compare;
+		regex_t reg;
+		char name[1024];
+		char value[1024];
+		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
+
+		snprintf(name, sizeof(name), "%%{%s}", check->name);
+		radius_xlat(value, sizeof(value), name, request, NULL);
+
+		/*
+		 *	Include substring matches.
+		 */
+		regcomp(&reg, (char *)check->vp_strvalue,
+			REG_EXTENDED);
+		compare = regexec(&reg, value,  REQUEST_MAX_REGEX + 1,
+				  rxmatch, 0);
+		regfree(&reg);
+		
+		if (compare != 0) return 0;
+		return -1;
+
+	}
+#endif
+
+	/*
+	 *	Not a regular expression, compare the types.
+	 */
+	switch(check->type) {
+#ifdef ASCEND_BINARY
+		/*
+		 *	Ascend binary attributes can be treated
+		 *	as opaque objects, I guess...
+		 */
+		case PW_TYPE_ABINARY:
+#endif
+		case PW_TYPE_OCTETS:
+			if (vp->length != check->length) {
+				ret = 1; /* NOT equal */
+				break;
+			}
+			ret = memcmp(vp->vp_strvalue, check->vp_strvalue,
+				     vp->length);
+			break;
+		case PW_TYPE_STRING:
+			if (check->flags.caseless) {
+				ret = strcasecmp((char *)vp->vp_strvalue,
+						 (char *)check->vp_strvalue);
+			} else {
+				ret = strcmp((char *)vp->vp_strvalue,
+					     (char *)check->vp_strvalue);
+			}
+			break;
+		case PW_TYPE_INTEGER:
+		case PW_TYPE_DATE:
+			ret = vp->lvalue - check->lvalue;
+			break;
+		case PW_TYPE_IPADDR:
+			ret = ntohl(vp->vp_ipaddr) - ntohl(check->vp_ipaddr);
+			break;
+		case PW_TYPE_IPV6ADDR:
+			ret = memcmp(&vp->vp_ipv6addr, &check->vp_ipv6addr,
+				     sizeof(vp->vp_ipv6addr));
+			break;
+			
+		case PW_TYPE_IPV6PREFIX:
+			ret = memcmp(&vp->vp_ipv6prefix, &check->vp_ipv6prefix,
+				     sizeof(vp->vp_ipv6prefix));
+			break;
+		
+		case PW_TYPE_IFID:
+			ret = memcmp(&vp->vp_ifid, &check->vp_ifid,
+				     sizeof(vp->vp_ifid));
+			break;
+
+		default:
+			break;
+	}
+
+	return ret;
+}
+
 
 /*
  *	Compare 2 attributes. May call the attribute compare function.
  */
-static int compare_pair(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
-		       VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
+			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
+			    VALUE_PAIR **reply_pairs)
 {
-	int ret = -2;
 	struct cmp *c;
 
 	/*
@@ -83,58 +248,7 @@ static int compare_pair(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 
 	if (!request) return -1; /* doesn't exist, don't compare it */
 
-	switch(check->type) {
-#ifdef ASCEND_BINARY
-		/*
-		 *	Ascend binary attributes can be treated
-		 *	as opaque objects, I guess...
-		 */
-		case PW_TYPE_ABINARY:
-#endif
-		case PW_TYPE_OCTETS:
-			if (request->length != check->length) {
-				ret = 1; /* NOT equal */
-				break;
-			}
-			ret = memcmp(request->vp_strvalue, check->vp_strvalue,
-					request->length);
-			break;
-		case PW_TYPE_STRING:
-			if (check->flags.caseless) {
-				ret = strcasecmp((char *)request->vp_strvalue,
-						 (char *)check->vp_strvalue);
-			} else {
-				ret = strcmp((char *)request->vp_strvalue,
-					     (char *)check->vp_strvalue);
-			}
-			break;
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_DATE:
-			ret = request->lvalue - check->lvalue;
-			break;
-		case PW_TYPE_IPADDR:
-			ret = ntohl(request->vp_ipaddr) - ntohl(check->vp_ipaddr);
-			break;
-		case PW_TYPE_IPV6ADDR:
-			ret = memcmp(&request->vp_ipv6addr, &check->vp_ipv6addr,
-				     sizeof(request->vp_ipv6addr));
-			break;
-			
-		case PW_TYPE_IPV6PREFIX:
-			ret = memcmp(&request->vp_ipv6prefix, &check->vp_ipv6prefix,
-				     sizeof(request->vp_ipv6prefix));
-			break;
-		
-		case PW_TYPE_IFID:
-			ret = memcmp(&request->vp_ifid, &check->vp_ifid,
-				     sizeof(request->vp_ifid));
-			break;
-
-		default:
-			break;
-	}
-
-	return ret;
+	return radius_compare_vps(req, check, request);
 }
 
 
@@ -174,8 +288,6 @@ int paircompare_register(int attr, int compare_attr, RAD_COMPARE_FUNC fun, void 
 
 	c = rad_malloc(sizeof(struct cmp));
 
-	if (compare_attr < 0)
-		compare_attr = attr;
 	c->compare = fun;
 	c->attribute = attr;
 	c->otherattr = compare_attr;
@@ -224,9 +336,6 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 	int result = 0;
 	int compare;
 	int other;
-#ifdef HAVE_REGEX_H
-	regex_t reg;
-#endif
 
 	for (check_item = check; check_item != NULL; check_item = check_item->next) {
 		/*
@@ -276,9 +385,11 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 
 		auth_item = request;
 	try_again:
-		for (; auth_item != NULL; auth_item = auth_item->next) {
-			if (auth_item->attribute == other || other == 0)
-				break;
+		if (other >= 0) {
+			for (; auth_item != NULL; auth_item = auth_item->next) {
+				if (auth_item->attribute == other || other == 0)
+					break;
+			}
 		}
 
 		/*
@@ -325,7 +436,8 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 		/*
 		 *	OK it is present now compare them.
 		 */
-		compare = compare_pair(req, auth_item, check_item, check, reply);
+		compare = radius_callback_compare(req, auth_item, check_item,
+						  check, reply);
 
 		switch (check_item->operator) {
 			case T_OP_EQ:
@@ -361,104 +473,17 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 
 #ifdef HAVE_REGEX_H
 			case T_OP_REG_EQ:
-			{
-				int i;
-				regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
-
-				if ((auth_item->type == PW_TYPE_IPADDR) &&
-				    (auth_item->vp_strvalue[0] == '\0')) {
-				  inet_ntop(AF_INET, &(auth_item->lvalue),
-					    auth_item->vp_strvalue,
-					    sizeof(auth_item->vp_strvalue));
-				}
-
-				/*
-				 *	Include substring matches.
-				 */
-				regcomp(&reg, (char *)check_item->vp_strvalue,
-					REG_EXTENDED);
-				compare = regexec(&reg,
-						  (char *)auth_item->vp_strvalue,
-						  REQUEST_MAX_REGEX + 1,
-						  rxmatch, 0);
-				regfree(&reg);
-
-				/*
-				 *	Add %{0}, %{1}, etc.
-				 */
-				for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
-					char *p;
-					char buffer[sizeof(check_item->vp_strvalue)];
-
-					/*
-					 *	Didn't match: delete old
-					 *	match, if it existed.
-					 */
-					if ((compare != 0) ||
-					    (rxmatch[i].rm_so == -1)) {
-						p = request_data_get(req, req,
-								     REQUEST_DATA_REGEX | i);
-						if (p) {
-							free(p);
-							continue;
-						}
-
-						/*
-						 *	No previous match
-						 *	to delete, stop.
-						 */
-						break;
-					}
-					
-					/*
-					 *	Copy substring into buffer.
-					 */
-					memcpy(buffer,
-					       auth_item->vp_strvalue + rxmatch[i].rm_so,
-					       rxmatch[i].rm_eo - rxmatch[i].rm_so);
-					buffer[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
-
-					/*
-					 *	Copy substring, and add it to
-					 *	the request.
-					 *
-					 *	Note that we don't check
-					 *	for out of memory, which is
-					 *	the only error we can get...
-					 */
-					p = strdup(buffer);
-					request_data_add(req,
-							 req,
-							 REQUEST_DATA_REGEX | i,
-							 p, free);
-				}
-			}				
-				if (compare != 0) result = -1;
-				break;
-
 			case T_OP_REG_NE:
-				if ((auth_item->type == PW_TYPE_IPADDR) &&
-				    (auth_item->vp_strvalue[0] == '\0')) {
-				  inet_ntop(AF_INET, &(auth_item->lvalue),
-					    auth_item->vp_strvalue,
-					    sizeof(auth_item->vp_strvalue));
-				}
-
-				regcomp(&reg, (char *)check_item->vp_strvalue, REG_EXTENDED|REG_NOSUB);
-				compare = regexec(&reg, (char *)auth_item->vp_strvalue,
-						0, NULL, 0);
-				regfree(&reg);
-				if (compare == 0) result = -1;
+				result = compare;
 				break;
 #endif
-
 		} /* switch over the operator of the check item */
 
 		/*
 		 *	This attribute didn't match, but maybe there's
 		 *	another of the same attribute, which DOES match.
 		 */
-		if (result != 0) {
+		if ((result != 0) && (other >= 0)) {
 			auth_item = auth_item->next;
 			result = 0;
 			goto try_again;
@@ -468,16 +493,6 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 
 	return 0;		/* it matched */
 }
-
-/*
- *      Compare two attributes simply.  Calls compare_pair.
- */
-
-int simplepaircmp(REQUEST *req, VALUE_PAIR *first, VALUE_PAIR *second)
-{
-	return compare_pair( req, first, second, NULL, NULL );
-}
-
 
 /*
  *	Move pairs, replacing/over-writing them, and doing xlat.
