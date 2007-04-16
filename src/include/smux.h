@@ -59,7 +59,7 @@ RCSIDH(smux_h, "$Id$")
 
 struct variable;
 
-#define REGISTER_MIB(descr, var, vartype, theoid)		\
+#define SMUX_REGISTER_MIB(descr, var, vartype, theoid)		\
     smux_register_mib(descr, (struct variable *)var, sizeof(struct vartype), \
     sizeof(var)/sizeof(struct vartype),			\
     theoid, sizeof(theoid)/sizeof(oid))

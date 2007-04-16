@@ -585,6 +585,7 @@ radius_snmp_init (void) {
 	} else {
 		rad_snmp.auth.last_reset_time = time(NULL);
 		rad_snmp.acct.last_reset_time = rad_snmp.auth.last_reset_time;
+		rad_snmp.smux_failures = 0;
 	}
 
 	/*
@@ -604,8 +605,8 @@ radius_snmp_init (void) {
 	smux_init (radius_oid, sizeof (radius_oid) / sizeof (oid));
 
 	if (!initialized) {
-		REGISTER_MIB("mibII/radius-acc-server", radiusacc_variables, variable, radacc_oid);
-		REGISTER_MIB("mibII/radius-auth-server", radiusauth_variables, variable, radauth_oid);
+		SMUX_REGISTER_MIB("mibII/radius-acc-server", radiusacc_variables, variable, radacc_oid);
+		SMUX_REGISTER_MIB("mibII/radius-auth-server", radiusauth_variables, variable, radauth_oid);
 	}
 
 	smux_start ();

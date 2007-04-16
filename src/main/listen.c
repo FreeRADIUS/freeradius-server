@@ -1685,7 +1685,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 				last = &(old->next);
 			}
 
-			goto done;
+			goto do_snmp;
 		}
 
 		/*
@@ -1742,8 +1742,11 @@ int listen_init(const char *filename, rad_listen_t **head)
 		}
 	}
 	
+ do_snmp:
 #ifdef WITH_SNMP
 	if (mainconfig.do_snmp) {
+		radius_snmp_init();
+
 		/*
 		 *      Forget about the old one.
 		 */
@@ -1753,8 +1756,6 @@ int listen_init(const char *filename, rad_listen_t **head)
 			if (this->type != RAD_LISTEN_SNMP) continue;
 			this->fd = -1;
 		}
-
-		radius_snmp_init();
 
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));
@@ -1774,7 +1775,9 @@ int listen_init(const char *filename, rad_listen_t **head)
 	 *	Sanity check the configuration.
 	 */
 	rcode = 0;
-	for (this = *head; this != NULL; this = this->next) {
+	if (mainconfig.listen != NULL) for (this = *head;
+					    this != NULL;
+					    this = this->next) {
 		if (((this->type == RAD_LISTEN_ACCT) &&
 		     (rcode == RAD_LISTEN_DETAIL)) ||
 		    ((this->type == RAD_LISTEN_DETAIL) &&
