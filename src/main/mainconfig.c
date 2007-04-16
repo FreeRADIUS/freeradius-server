@@ -52,6 +52,10 @@ RCSID("$Id$")
 
 struct main_config_t mainconfig;
 
+#define MAX_OLD_CONFIGS (32)
+static int max_old_config = 0;
+static CONF_SECTION *old_configs[MAX_OLD_CONFIGS];
+
 /*
  *	Temporary local variables for parsing the configuration
  *	file.
@@ -831,9 +835,13 @@ int read_mainconfig(int reload)
 	 *	Note that where possible, we do atomic switch-overs,
 	 *	to ensure that the pointers are always valid.
 	 */
-	oldcs = mainconfig.config;
+	if (max_old_config == MAX_OLD_CONFIGS) {
+		max_old_config--;
+		cf_section_free(&old_configs[max_old_config]);
+	}
+	old_configs[max_old_config++] = mainconfig.config;
+
 	mainconfig.config = cs;
-	cf_section_free(&oldcs);
 
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
 		 radius_dir, mainconfig.radiusd_conf);
@@ -847,16 +855,21 @@ int read_mainconfig(int reload)
 	xlat_register("config", xlat_config, NULL);
 
 	/*
-	 *	Set the libraries debugging flag to whatever the main
-	 *	flag is.  Note that on a SIGHUP, to turn the debugging
-	 *	off, we do other magic.
-	 *
-	 *	Increase the debug level, if the configuration file
-	 *	says to, OR, if we're decreasing the debug from what it
-	 *	was before, allow that, too.
+	 *	Reload: change debug flag if it's changed in the
+	 *	configuration file.
 	 */
-	if ((mainconfig.debug_level > debug_flag) ||
-	    (mainconfig.debug_level <= old_debug_level)) {
+	if (reload) {
+		if (mainconfig.debug_level != old_debug_level) {
+			debug_flag = mainconfig.debug_level;
+		}
+
+	} else if (debug_flag == 0) {
+		
+		/*
+		 *	Starting the server, WITHOUT "-x" on the
+		 *	command-line: use whatever's in the config
+		 *	file.
+		 */
 		debug_flag = mainconfig.debug_level;
 	}
 	librad_debug = debug_flag;
@@ -966,6 +979,12 @@ int read_mainconfig(int reload)
  */
 int free_mainconfig(void)
 {
+	int i;
+
+	for (i = 0; i < max_old_config; i++) {
+		cf_section_free(&old_configs[i]);
+	}
+
 	/*
 	 *	Clean up the configuration data
 	 *	structures.
