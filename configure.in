@@ -771,6 +771,7 @@ AC_CHECK_FUNCS( \
 	getaddrinfo \
 	getnameinfo \
 	closefrom \
+	gettimeofday \
 	strlcat \
 	strlcpy
 )
