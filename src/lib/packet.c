@@ -25,6 +25,10 @@ RCSID("$Id$")
 
 #include	<freeradius-devel/libradius.h>
 
+#ifdef WITH_UDPFROMTO
+#include	<freeradius-devel/udpfromto.h>
+#endif
+
 /*
  *	Take the key fields of a request packet, and convert it to a
  *	hash.
