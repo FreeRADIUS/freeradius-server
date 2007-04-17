@@ -491,7 +491,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 
 	} /* for every entry in the check item list */
 
-	return 0;		/* it matched */
+	return result;
 }
 
 /*
