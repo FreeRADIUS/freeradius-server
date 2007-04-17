@@ -138,7 +138,7 @@ smux_oid_dump(const char *prefix, oid *my_oid, size_t oid_len)
 			sprintf (buf + strlen (buf), "%s%d", first ? "" : ".", (int) my_oid[i]);
 			first = 0;
 	}
-	DEBUG2 ("%s: %s", prefix, buf);
+	DEBUG2 ("SMUX %s: %s", prefix, buf);
 }
 
 static int
@@ -237,8 +237,8 @@ smux_getresp_send (oid objid[], size_t objid_len, long reqid, long errstat,
 	len = BUFSIZ;
 	length = len;
 
-	DEBUG2("SMUX GETRSP send");
-	DEBUG2("SMUX GETRSP reqid: %ld", reqid);
+	DEBUG3("SMUX GETRSP send");
+	DEBUG3("SMUX GETRSP reqid: %ld", reqid);
 
 	h1 = ptr;
 	/* Place holder h1 for complete sequence */
@@ -249,12 +249,12 @@ smux_getresp_send (oid objid[], size_t objid_len, long reqid, long errstat,
 			(u_char) (ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_INTEGER),
 			&reqid, sizeof (reqid));
 
-	DEBUG2("SMUX GETRSP errstat: %ld", errstat);
+	DEBUG3("SMUX GETRSP errstat: %ld", errstat);
 
 	ptr = asn_build_int (ptr, &len,
 			(u_char) (ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_INTEGER),
 			&errstat, sizeof (errstat));
-	DEBUG2("SMUX GETRSP errindex: %ld", errindex);
+	DEBUG3("SMUX GETRSP errindex: %ld", errindex);
 
 	ptr = asn_build_int (ptr, &len,
 			(u_char) (ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_INTEGER),
@@ -292,13 +292,13 @@ smux_var (char *ptr, int len, oid objid[], size_t *objid_len,
 	size_t val_len;
 	u_char *val;
 
-	DEBUG2("SMUX var parse: len %d", len);
+	DEBUG3("SMUX var parse: len %d", len);
 
 	/* Parse header. */
 	ptr = asn_parse_header (ptr, &len, &type);
 
-	DEBUG2("SMUX var parse: type %d len %d", type, len);
-	DEBUG2("SMUX var parse: type must be %d", (ASN_SEQUENCE | ASN_CONSTRUCTOR));
+	DEBUG3("SMUX var parse: type %d len %d", type, len);
+	DEBUG3("SMUX var parse: type must be %d", (ASN_SEQUENCE | ASN_CONSTRUCTOR));
 
 	/* Parse var option. */
 	*objid_len = MAX_OID_LEN;
@@ -317,53 +317,53 @@ smux_var (char *ptr, int len, oid objid[], size_t *objid_len,
 	/* Requested object id length is objid_len. */
 	smux_oid_dump ("Request OID", objid, *objid_len);
 
-	DEBUG2 ("SMUX val_type: %d", val_type);
+	DEBUG3 ("SMUX val_type: %d", val_type);
 
 	/* Check request value type. */
 	switch (val_type) {
 		case ASN_NULL:
 			/* In case of SMUX_GET or SMUX_GET_NEXT val_type is set to
 				 ASN_NULL. */
-			DEBUG2 ("ASN_NULL");
+			DEBUG3 ("ASN_NULL");
 			break;
 
 		case ASN_INTEGER:
-			DEBUG2 ("ASN_INTEGER");
+			DEBUG3 ("ASN_INTEGER");
 			break;
 		case ASN_COUNTER:
 		case ASN_GAUGE:
 		case ASN_TIMETICKS:
 		case ASN_UINTEGER:
-			DEBUG2 ("ASN_COUNTER");
+			DEBUG3 ("ASN_COUNTER");
 			break;
 		case ASN_COUNTER64:
-			DEBUG2 ("ASN_COUNTER64");
+			DEBUG3 ("ASN_COUNTER64");
 			break;
 		case ASN_IPADDRESS:
-			DEBUG2 ("ASN_IPADDRESS");
+			DEBUG3 ("ASN_IPADDRESS");
 			break;
 		case ASN_OCTET_STR:
-			DEBUG2 ("ASN_OCTET_STR");
+			DEBUG3 ("ASN_OCTET_STR");
 			break;
 		case ASN_OPAQUE:
 		case ASN_NSAP:
 		case ASN_OBJECT_ID:
-			DEBUG2 ("ASN_OPAQUE");
+			DEBUG3 ("ASN_OPAQUE");
 			break;
 		case SNMP_NOSUCHOBJECT:
-			DEBUG2 ("SNMP_NOSUCHOBJECT");
+			DEBUG3 ("SNMP_NOSUCHOBJECT");
 			break;
 		case SNMP_NOSUCHINSTANCE:
-			DEBUG2 ("SNMP_NOSUCHINSTANCE");
+			DEBUG3 ("SNMP_NOSUCHINSTANCE");
 			break;
 		case SNMP_ENDOFMIBVIEW:
-			DEBUG2 ("SNMP_ENDOFMIBVIEW");
+			DEBUG3 ("SNMP_ENDOFMIBVIEW");
 			break;
 		case ASN_BIT_STR:
-			DEBUG2 ("ASN_BIT_STR");
+			DEBUG3 ("ASN_BIT_STR");
 			break;
 		default:
-			DEBUG2 ("Unknown type");
+			DEBUG3 ("Unknown type");
 			break;
 	}
 	return ptr;
@@ -414,7 +414,7 @@ smux_set (oid *reqid, size_t *reqid_len,
 
 				/* This is exact match so result must be zero. */
 				if (result == 0) {
-					DEBUG2 ("SMUX function call index is %d", v->magic);
+					DEBUG3 ("SMUX function call index is %d", v->magic);
 
 					statP = (*v->findVar) (v, suffix, &suffix_len, 1,
 					&val_len, &write_method);
@@ -474,11 +474,10 @@ smux_get (oid *reqid, size_t *reqid_len, int exact,
 
 				/* This is exact match so result must be zero. */
 				if (result == 0) {
-					DEBUG2 ("SMUX function call index is %d", v->magic);
+					DEBUG3 ("SMUX function call index is %d", v->magic);
 
 					*val = (*v->findVar) (v, suffix, &suffix_len, exact,
 							val_len, &write_method);
-
 					/* There is no instance. */
 					if (*val == NULL)
 						return SNMP_ERR_NOSUCHNAME;
@@ -556,7 +555,7 @@ smux_getnext (oid *reqid, size_t *reqid_len, int exact,
 							v->name, v->namelen);
 
 				if (result <= 0) {
-					DEBUG2 ("SMUX function call index is %d", v->magic);
+					DEBUG3 ("SMUX function call index is %d", v->magic);
 					if(result<0) {
 						oid_copy(suffix, v->name, v->namelen);
 						suffix_len = v->namelen;
@@ -589,17 +588,17 @@ smux_parse_get_header (char *ptr, size_t *len, long *reqid)
 	/* Request ID. */
 	ptr = asn_parse_int (ptr, len, &type, reqid, sizeof (*reqid));
 
-	DEBUG2 ("SMUX GET reqid: %ld len: %d", *reqid, (int) *len);
+	DEBUG3 ("SMUX GET reqid: %ld len: %d", *reqid, (int) *len);
 
 	/* Error status. */
 	ptr = asn_parse_int (ptr, len, &type, &errstat, sizeof (errstat));
 
-	DEBUG2 ("SMUX GET errstat %ld len: %d", errstat, *len);
+	DEBUG3 ("SMUX GET errstat %ld len: %d", errstat, *len);
 
 	/* Error index. */
 	ptr = asn_parse_int (ptr, len, &type, &errindex, sizeof (errindex));
 
-	DEBUG2 ("SMUX GET errindex %ld len: %d", errindex, *len);
+	DEBUG3 ("SMUX GET errindex %ld len: %d", errindex, *len);
 
 	return ptr;
 }
@@ -615,7 +614,7 @@ smux_parse_set (char *ptr, size_t len, int action)
 	size_t val_len;
 	int ret;
 
-	DEBUG2 ("SMUX SET(%s) message parse: len %d",
+	DEBUG3 ("SMUX SET(%s) message parse: len %d",
 			(RESERVE1 == action) ? "RESERVE1" : ((FREE == action) ? "FREE" : "COMMIT"),
 			len);
 
@@ -644,7 +643,7 @@ smux_parse_get (char *ptr, size_t len, int exact)
 	size_t val_len;
 	int ret;
 
-	DEBUG2 ("SMUX GET message parse: len %d", len);
+	DEBUG3 ("SMUX GET message parse: len %d", len);
 
 	/* Parse GET message header. */
 	ptr = smux_parse_get_header (ptr, &len, &reqid);
@@ -687,7 +686,7 @@ smux_parse_rrsp (char *ptr, int len)
 
 	ptr = asn_parse_int (ptr, &len, &val, &errstat, sizeof (errstat));
 
-	DEBUG2 ("SMUX_RRSP value: %d errstat: %ld", val, errstat);
+	DEBUG3 ("SMUX_RRSP value: %d errstat: %ld", val, errstat);
 }
 
 /* Parse SMUX message. */
@@ -756,35 +755,35 @@ process_rest: /* see note below: YYY */
 			break;
 		case SMUX_CLOSE:
 			/* Close SMUX connection. */
-			DEBUG2 ("SMUX_CLOSE");
+			DEBUG3 ("SMUX_CLOSE");
 			smux_parse_close (ptr, len);
 			return -1;
 			break;
 		case SMUX_RRSP:
 			/* This is response for register message. */
-			DEBUG2 ("SMUX_RRSP");
+			DEBUG3 ("SMUX_RRSP");
 			smux_parse_rrsp (ptr, len);
 			break;
 		case SMUX_GET:
 			/* Exact request for object id. */
-			DEBUG2 ("SMUX_GET");
+			DEBUG3 ("SMUX_GET");
 			smux_parse_get (ptr, len, 1);
 			break;
 		case SMUX_GETNEXT:
 			/* Next request for object id. */
-			DEBUG2 ("SMUX_GETNEXT");
+			DEBUG3 ("SMUX_GETNEXT");
 			smux_parse_get (ptr, len, 0);
 			break;
 		case SMUX_SET:
 			/* SMUX_SET is supported with some limitations. */
-			DEBUG2 ("SMUX_SET");
+			DEBUG3 ("SMUX_SET");
 			/* save the data for future SMUX_SOUT */
 			memcpy (sout_save_buff, ptr, len);
 			sout_save_len = len;
 			smux_parse_set (ptr, len, RESERVE1);
 			break;
 		default:
-			DEBUG ("Unknown type: %d", type);
+			DEBUG ("SMUX Unknown type: %d", type);
 			break;
 	}
 	return 0;
@@ -799,7 +798,7 @@ smux_read ()
 	int ret;
 
 	rad_snmp.smux_event=SMUX_NONE;
-	DEBUG2 ("SMUX read start");
+	DEBUG3 ("SMUX read start");
 
 	/* Read message from SMUX socket. */
 	len = recv (rad_snmp.smux_fd, buf, SMUXMAXPKTSIZE, 0);
@@ -820,7 +819,7 @@ smux_read ()
 		return -1;
 	}
 
-	DEBUG2 ("SMUX read len: %d", len);
+	DEBUG3 ("SMUX read len: %d", len);
 
 	/* Parse the message. */
 	ret = smux_parse (buf, len);
@@ -935,6 +934,7 @@ smux_register(void)
 		asn_build_header (buf, &len, (u_char) SMUX_RREQ, (ptr - buf) - 2);
 		ret = send (rad_snmp.smux_fd, buf, (ptr - buf), 0);
 		if (ret < 0)
+			fprintf(stderr, "REGISTER OID FAILED!\n");
 			return ret;
 		}
 	return ret;
