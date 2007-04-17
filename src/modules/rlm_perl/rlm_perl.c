@@ -1124,7 +1124,7 @@ static int perl_accounting(void *instance, REQUEST *request)
 	int 		acctstatustype=0;
 
 	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL) {
-                acctstatustype = pair->vp_integer
+		acctstatustype = pair->vp_integer;
         } else {
                 radlog(L_ERR, "Invalid Accounting Packet");
                 return RLM_MODULE_INVALID;
