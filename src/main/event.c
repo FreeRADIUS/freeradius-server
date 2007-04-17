@@ -361,15 +361,17 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 			       request->number,
 			       (unsigned int) (request->timestamp - start_time));
 		}
-		lrad_event_delete(el, request);
+		lrad_event_delete(el, &request->ev);
 		remove_from_proxy_hash(request);
 		remove_from_request_hash(request);
 		request_free(&request);
 		return;
 	}
 
-	if (!lrad_event_insert(el, wait_for_proxy_id_to_expire,
-			       request, &request->when)) {
+	lrad_event_delete(el, &request->ev);
+	request->ev = lrad_event_insert(el, wait_for_proxy_id_to_expire,
+					request, &request->when);
+	if (!request->ev) {
 		rad_panic("Failed to insert event");
 	}
 }
@@ -387,8 +389,11 @@ static void wait_for_child_to_die(void *ctx)
 		tv_add(&request->when, request->delay);
 		
 		DEBUG2("Child is still stuck for request %d", request->number);
-		if (!lrad_event_insert(el, wait_for_child_to_die,
-				       request, &request->when)) {
+
+		lrad_event_delete(el, &request->ev);
+		request->ev = lrad_event_insert(el, wait_for_child_to_die,
+						request, &request->when);
+		if (!request->ev) {
 			rad_panic("Failed to insert event");
 		}
 		return;
@@ -426,7 +431,7 @@ static void cleanup_delay(void *ctx)
 	       request->number, request->packet->id,
 	       (unsigned int) (request->timestamp - start_time));
 
-	lrad_event_delete(el, request);
+	lrad_event_delete(el, &request->ev);
 	request_free(&request);	
 }
 
@@ -445,8 +450,10 @@ static void reject_delay(void *ctx)
 	request->when.tv_sec += mainconfig.cleanup_delay;
 	request->child_state = REQUEST_CLEANUP_DELAY;
 
-	if (!lrad_event_insert(el, cleanup_delay,
-			       request, &request->when)) {
+	lrad_event_delete(el, &request->ev);
+	request->ev = lrad_event_insert(el, cleanup_delay,
+					request, &request->when);
+	if (!request->ev) {
 		rad_panic("Failed to insert event");
 	}
 }
@@ -502,11 +509,11 @@ static void received_response_to_ping(REQUEST *request)
 			 buffer, sizeof(buffer)),
 	       request->proxy->dst_port);
 
-	if (!lrad_event_delete(el, home)) {
+	if (!lrad_event_delete(el, &home->ev)) {
 		DEBUG2("Hmm... no event for home server, WTF?");
 	}
 
-	if (!lrad_event_delete(el, request)) {
+	if (!lrad_event_delete(el, &request->ev)) {
 		DEBUG2("Hmm... no event for request, WTF?");
 	}
 
@@ -611,8 +618,10 @@ static void ping_home_server(void *ctx)
 	request->child_state = REQUEST_PROXIED;
 	request->when.tv_sec += mainconfig.cleanup_delay;
 
-	if (!lrad_event_insert(el, no_response_to_ping,
-			       request, &request->when)) {
+	lrad_event_delete(el, &request->ev);
+	request->ev = lrad_event_insert(el, no_response_to_ping,
+					request, &request->when);
+	if (!request->ev) {
 		rad_panic("Failed to insert event");
 	}
 
@@ -628,8 +637,10 @@ static void ping_home_server(void *ctx)
 
 	tv_add(&home->when, jitter);
 
-	if (!lrad_event_insert(el, ping_home_server,
-			       home, &home->when)) {
+	lrad_event_delete(el, &home->ev);
+	home->ev = lrad_event_insert(el, ping_home_server, 
+				     home, &home->when);
+	if (!home->ev) {
 		rad_panic("Failed to insert event");
 	}
 }
@@ -669,14 +680,19 @@ static void check_for_zombie_home_server(REQUEST *request)
 		rad_assert((home->ping_check == HOME_PING_CHECK_STATUS_SERVER) ||
 			   (home->ping_user_name != NULL));
 		home->when.tv_sec += home->ping_interval;
-		if (!lrad_event_insert(el, ping_home_server,
-					       home, &home->when)) {
+
+		lrad_event_delete(el, &home->ev);
+		home->ev = lrad_event_insert(el, ping_home_server,
+					     home, &home->when);
+		if (!home->ev) {
 			rad_panic("Failed to insert event");
 		}
 	} else {
 		home->when.tv_sec += home->revive_interval;
-		if (!lrad_event_insert(el, revive_home_server,
-				       home, &home->when)) {
+		lrad_event_delete(el, &home->ev);
+		home->ev = lrad_event_insert(el, revive_home_server,
+					     home, &home->when);
+		if (!home->ev) {
 			rad_panic("Failed to insert event");
 		}
 	}
@@ -716,8 +732,11 @@ static void no_response_to_proxied_request(void *ctx)
 		request->when.tv_sec += mainconfig.cleanup_delay;
 			
 		/* cleanup_delay calls wait_for_proxy_id_to_expire */
-		if (!lrad_event_insert(el, cleanup_delay,
-				       request, &request->when)) {
+
+		lrad_event_delete(el, &request->ev);
+		request->ev = lrad_event_insert(el, cleanup_delay,
+						request, &request->when);
+		if (!request->ev) {
 			rad_panic("Failed to insert event");
 		}
 	}
@@ -808,8 +827,9 @@ static void wait_a_bit(void *ctx)
 		return;
 	}
 
-	if (!lrad_event_insert(el, callback,
-			       request, &request->when)) {
+	lrad_event_delete(el, &request->ev);
+	request->ev = lrad_event_insert(el, callback, request, &request->when);
+	if (!request->ev) {
 		rad_panic("Failed to insert event");
 	}
 }
@@ -1493,9 +1513,10 @@ static void received_conflicting_request(REQUEST *request,
 
 		tv_add(&request->when, request->delay);
 
-		if (!lrad_event_insert(el,
-				       wait_for_child_to_die,
-				       request, &request->when)) {
+		lrad_event_delete(el, &request->ev);
+		request->ev = lrad_event_insert(el, wait_for_child_to_die,
+						request, &request->when);
+		if (!request->ev) {
 			rad_panic("Failed to insert event");
 		}
 		return;
@@ -1663,8 +1684,10 @@ int received_request(rad_listen_t *listener,
 
 	tv_add(&request->when, request->delay);
 
-	if (!lrad_event_insert(el, wait_a_bit,
-			       request, &request->when)) {
+	lrad_event_delete(el, &request->ev);
+	request->ev = lrad_event_insert(el, wait_a_bit,
+					request, &request->when);
+	if (!request->ev) {
 		rad_panic("Failed to insert event");
 	}
 
@@ -1824,8 +1847,10 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	/*
 	 *	Wait a bit will take care of max_request_time
 	 */
-	if (!lrad_event_insert(el, wait_a_bit,
-			       request, &request->when)) {
+	lrad_event_delete(el, &request->ev);
+	request->ev = lrad_event_insert(el, wait_a_bit,
+					request, &request->when);
+	if (!request->ev) {
 		rad_panic("Failed to insert event");
 	}
 
@@ -1919,7 +1944,7 @@ static int request_hash_cb(void *ctx, void *data)
 
 	rad_assert(request->in_proxy_hash == FALSE);
 
-	lrad_event_delete(el, request);
+	lrad_event_delete(el, &request->ev);
 	remove_from_request_hash(request);
 	request_free(&request);
 
@@ -1936,7 +1961,7 @@ static int proxy_hash_cb(void *ctx, void *data)
 	request->in_proxy_hash = FALSE;
 
 	if (!request->in_request_hash) {
-		lrad_event_delete(el, request);
+		lrad_event_delete(el, &request->ev);
 		request_free(&request);
 	}
 
@@ -2001,7 +2026,7 @@ int radius_event_process(struct timeval **pptv)
 		rad_panic("Internal sanity check failed");
 		
 	} else if (timercmp(&now, &when, >)) {
-		DEBUG2("WTF?");
+		DEBUG3("Event in the past... compensating");
 		when.tv_sec = 0;
 		when.tv_usec = 1;
 

@@ -40,6 +40,7 @@ typedef struct home_server {
 
 	const char	*secret;
 
+	lrad_event_t	*ev;
 	struct timeval	when;
 	
 	int		response_window;

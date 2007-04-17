@@ -38,7 +38,6 @@ typedef struct lrad_event_fd_t {
 
 struct lrad_event_list_t {
 	rbtree_t	*times;
-	rbtree_t	*contexts;
 
 	lrad_event_fd_t *fds;
 	int		maxfd;
@@ -53,11 +52,11 @@ struct lrad_event_list_t {
 /*
  *	Internal structure for managing events.
  */
-typedef struct lrad_event_t {
+struct lrad_event_t {
 	lrad_event_callback_t	callback;
 	void			*ctx;
 	struct timeval		when;
-} lrad_event_t;
+};
 
 
 static int lrad_event_list_time_cmp(const void *one, const void *two)
@@ -74,24 +73,12 @@ static int lrad_event_list_time_cmp(const void *one, const void *two)
 	return 0;
 }
 
-static int lrad_event_list_ctx_cmp(const void *one, const void *two)
-{
-	const lrad_event_t *a = one;
-	const lrad_event_t *b = two;
-
-	if (a->ctx < b->ctx) return -1;
-	if (a->ctx > b->ctx) return +1;
-
-	return 0;
-}
-
 
 void lrad_event_list_free(lrad_event_list_t *el)
 {
 	if (!el) return;
 
 	rbtree_free(el->times);
-	rbtree_free(el->contexts);
 	free(el);
 }
 
@@ -111,13 +98,6 @@ lrad_event_list_t *lrad_event_list_create(void)
 		return NULL;
 	}
 
-	el->contexts = rbtree_create(lrad_event_list_ctx_cmp,
-				     NULL, 0);
-	if (!el->contexts) {
-		lrad_event_list_free(el);
-		return NULL;
-	}
-
 	return el;
 }
 
@@ -129,44 +109,32 @@ int lrad_event_list_num_elements(lrad_event_list_t *el)
 }
 
 
-int lrad_event_delete(lrad_event_list_t *el, void *ctx)
+int lrad_event_delete(lrad_event_list_t *el, lrad_event_t **ev_p)
 {
-	lrad_event_t my_ev, *ev;
+	if (!el || !ev_p || !*ev_p) return 0;
 
-	if (!el || !ctx) return 0;
-
-	my_ev.ctx = ctx;
-	ev = rbtree_finddata(el->contexts, &my_ev);
-	if (!ev) return 0;
-
-	rbtree_deletebydata(el->contexts, ev);
-	rbtree_deletebydata(el->times, ev);
+	rbtree_deletebydata(el->times, *ev_p);
+	*ev_p = NULL;
 
 	return 1;
 }
 
 		      
-int lrad_event_insert(lrad_event_list_t *el, lrad_event_callback_t callback,
-		      void *ctx, struct timeval *when)
+lrad_event_t *lrad_event_insert(lrad_event_list_t *el,
+				lrad_event_callback_t callback,
+				void *ctx, struct timeval *when)
 {
 	lrad_event_t *ev;
 
 	if (!el || !callback | !when) return 0;
 
-	lrad_event_delete(el, ctx); /* can only be 1 event per ctx */
-
 	ev = malloc(sizeof(*ev));
-	if (!ev) return 0;
+	if (!ev) return NULL;
 	memset(ev, 0, sizeof(*ev));
 
 	ev->callback = callback;
 	ev->ctx = ctx;
 	ev->when = *when;
-
-	if (!rbtree_insert(el->contexts, ev)) {
-		free(ev);
-		return 0;
-	}
 
 	/*
 	 *	There's a tiny chance that two events will be
@@ -193,48 +161,16 @@ int lrad_event_insert(lrad_event_list_t *el, lrad_event_callback_t callback,
 					break;
 				}
 
-				return 1;
+				return ev;
 			}
 				
 		}
-		rbtree_deletebydata(el->contexts, ev);
 		free(ev);
-		return 0;
+		return NULL;
 	}
 
-	return 1;
+	return ev;
 }
-
-int lrad_event_callback(lrad_event_list_t *el, void *ctx,
-			lrad_event_callback_t *pcallback)
-{
-	lrad_event_t my_ev, *ev;
-
-	if (!el || !ctx || !pcallback) return 0;
-
-	my_ev.ctx = ctx;
-	ev = rbtree_finddata(el->contexts, &my_ev);
-	if (!ev) return 0;
-
-	*pcallback = ev->callback;
-	return 1;
-}
-
-
-int lrad_event_when(lrad_event_list_t *el, void *ctx, struct timeval *when)
-{
-	lrad_event_t my_ev, *ev;
-
-	if (!el || !ctx) return 0;
-
-	my_ev.ctx = ctx;
-	ev = rbtree_finddata(el->contexts, &my_ev);
-	if (!ev) return 0;
-
-	*when = ev->when;
-	return 1;
-}
-
 
 typedef struct lrad_event_walk_t {
 	lrad_event_t *ev;
@@ -292,77 +228,12 @@ int lrad_event_run(lrad_event_list_t *el, struct timeval *when)
 	/*
 	 *	Delete the event before calling it.
 	 */
-	rbtree_deletebydata(el->contexts, w.ev);
 	rbtree_deletebydata(el->times, w.ev);
 
 	callback(ctx);
 	return 1;
 }
 
-
-static int lrad_event_insert_fd(lrad_event_list_t *el, int fd, int priority,
-			 lrad_event_callback_t callback, void *ctx)
-{
-	lrad_event_fd_t **last, *ef;
-
-	if (!fd || (fd < 0) || (priority < 0) || !callback || !ctx) return 0;
-
-	ef = malloc(sizeof(*ef));
-	if (!ef) return 0;
-	memset(ef, 0, sizeof(*ef));
-
-	ef->fd = fd;
-	ef->priority = priority;
-	ef->callback = callback;
-	ef->ctx = ctx;
-
-	if (!el->fds) {
-		el->fds = ef;
-		el->maxfd = fd + 1;
-		FD_ZERO(&el->readfds);
-		FD_SET(fd, &el->readfds);
-		return 1;
-	}
-
-	for (last = &(el->fds);
-	     *last != NULL;
-	     last = &((*last)->next)) {
-		if ((*last)->priority < priority) {
-			ef->next = *last;
-			*last = ef;
-
-			if (fd >= el->maxfd) {
-				el->maxfd = fd + 1;
-			}
-			FD_SET(fd, &el->readfds);
-			
-			return 1;
-		}
-	}
-
-	return 0;
-}
-
-
-static int lrad_event_delete_fd(lrad_event_list_t *el, int fd)
-{
-	lrad_event_fd_t **last;
-
-	if (!el || (fd < 0)) return 0;
-
-	for (last = &el->fds;
-	     *last != NULL;
-	     last = &((*last)->next)) {
-		if ((*last)->fd == fd) {
-			lrad_event_fd_t *ef = *last;
-			*last = (*last)->next;
-			free(ef);
-			return 1;
-		}
-	}
-
-	return 0;
-}
 
 int lrad_event_now(lrad_event_list_t *el, struct timeval *when)
 {
@@ -371,96 +242,6 @@ int lrad_event_now(lrad_event_list_t *el, struct timeval *when)
 	*when = el->now;
 	return 1;
 }
-
-static void lrad_event_exit_loop_cb(void *data)
-{
-	lrad_event_list_t *el = data;
-
-	el->exit = 1;
-}
-
-static int lrad_event_exit_loop(lrad_event_list_t *el, struct timeval *when)
-{
-	if (!el || !when) return 0;
-
-	return lrad_event_insert(el, lrad_event_exit_loop_cb, el, when);
-}
-
-
-static int lrad_event_dispatch(lrad_event_list_t *el)
-{
-	if (!el || !el->fds) return 0;
-
-	el->dispatch = 1;
-
-	while (!el->exit) {
-		int rcode;
-		fd_set readfds;
-		struct timeval when, *timeout;
-		lrad_event_fd_t *ef;
-
-		gettimeofday(&el->now, NULL);
-		while (1) {
-			when = el->now;
-			
-			if (!lrad_event_run(el, &when)) {
-				break;
-			}
-		}
-		gettimeofday(&el->now, NULL);
-		
-		if (rbtree_num_elements(el->times) == 0) {
-			timeout = NULL;
-			
-		} else if ((el->now.tv_sec >= when.tv_sec) ||
-			   ((el->now.tv_sec == when.tv_sec) &&
-			    (el->now.tv_usec >= when.tv_usec))) {
-			timeout = &when;
-			when.tv_sec = 0;
-			when.tv_usec = 0;
-			
-		} else {
-			timeout = &when;
-			
-			when.tv_sec -= el->now.tv_sec;
-			if (when.tv_sec == 0) {
-				when.tv_usec -= el->now.tv_usec;
-			} else if (when.tv_usec > el->now.tv_usec) {
-				when.tv_usec -= el->now.tv_usec;
-			} else {
-				when.tv_sec--;
-				when.tv_usec += 1000000;
-				when.tv_usec -= el->now.tv_usec;
-			}
-		}
-		
-		readfds = el->readfds;
-		
-		rcode = select(el->maxfd, &readfds, NULL, NULL, timeout);
-		if (rcode == 0) {
-			continue;
-		}
-
-		if (rcode < 0) {
-			el->dispatch = 0;
-			el->exit = 0;
-			return -1;
-		}
-		
-		for (ef = el->fds; ef != NULL; ef = ef->next) {
-			if (FD_ISSET(ef->fd, &readfds)) {
-				ef->callback(ef->ctx);
-				continue; /* starve lower priority FD's! */
-			}
-		}
-	}
-
-	el->exit = 0;
-	el->dispatch = 0;
-
-	return 1;
-}
-
 
 #ifdef TESTING
 

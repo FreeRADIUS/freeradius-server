@@ -28,6 +28,8 @@
 RCSIDH(event_h, "$Id$")
 
 typedef struct lrad_event_list_t lrad_event_list_t;
+typedef struct lrad_event_t lrad_event_t;
+
 typedef	void (*lrad_event_callback_t)(void *);
 
 lrad_event_list_t *lrad_event_list_create(void);
@@ -35,13 +37,10 @@ void lrad_event_list_free(lrad_event_list_t *el);
 
 int lrad_event_list_num_elements(lrad_event_list_t *el);
 
-int lrad_event_insert(lrad_event_list_t *el, lrad_event_callback_t callback,
-		      void *ctx, struct timeval *when);
-int lrad_event_delete(lrad_event_list_t *el, void *ctx);
-
-int lrad_event_callback(lrad_event_list_t *el, void *ctx,
-			lrad_event_callback_t *pcallback);
-int lrad_event_when(lrad_event_list_t *el, void *ctx, struct timeval *when);
+lrad_event_t *lrad_event_insert(lrad_event_list_t *el,
+				lrad_event_callback_t callback,
+				void *ctx, struct timeval *when);
+int lrad_event_delete(lrad_event_list_t *el, lrad_event_t **ev_p);
 
 int lrad_event_run(lrad_event_list_t *el, struct timeval *when);
 

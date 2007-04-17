@@ -85,6 +85,7 @@ struct auth_req {
 	int			master_state;
 	int			child_state;
 
+	lrad_event_t		*ev;
 	struct timeval		next_when;
 	lrad_event_callback_t	next_callback;
 
