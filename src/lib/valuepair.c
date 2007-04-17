@@ -39,45 +39,24 @@ static const char *months[] = {
         "jan", "feb", "mar", "apr", "may", "jun",
         "jul", "aug", "sep", "oct", "nov", "dec" };
 
-
-/*
- *	Create a new valuepair.
- */
-VALUE_PAIR *paircreate(int attr, int type)
+static VALUE_PAIR *pairalloc(DICT_ATTR *da)
 {
-	VALUE_PAIR	*vp;
-	DICT_ATTR	*da;
+	VALUE_PAIR *vp;
 
-	if ((vp = malloc(sizeof(VALUE_PAIR))) == NULL) {
-		librad_log("out of memory");
-		return NULL;
-	}
-	memset(vp, 0, sizeof(VALUE_PAIR));
-	vp->attribute = attr;
-	vp->operator = T_OP_EQ;
-	vp->type = type;
+	vp = malloc(sizeof(*vp));
+	if (!vp) return NULL;
+	memset(vp, 0, sizeof(*vp));
 
-	/*
-	 *	Dictionary type over-rides what the caller says.
-	 */
-	if ((da = dict_attrbyvalue(attr)) != NULL) {
-		strcpy(vp->name, da->name);
+	if (da) {
+		vp->attribute = da->attr;
+		vp->vendor = da->vendor;
 		vp->type = da->type;
+		strlcpy(vp->name, da->name, sizeof(vp->name));
 		vp->flags = da->flags;
-	} else if (VENDOR(attr) == 0) {
-		sprintf(vp->name, "Attr-%u", attr);
 	} else {
-		DICT_VENDOR *v;
-
-		v = dict_vendorbyvalue(VENDOR(attr));
-		if (v) {
-			sprintf(vp->name, "%s-Attr-%u",
-				v->name, attr & 0xffff);
-		} else {
-			sprintf(vp->name, "Vendor-%u-Attr-%u",
-				VENDOR(attr), attr & 0xffff);
-		}
+		vp->type = PW_TYPE_OCTETS;
 	}
+
 	switch (vp->type) {
 		case PW_TYPE_BYTE:
 			vp->length = 1;
@@ -108,6 +87,46 @@ VALUE_PAIR *paircreate(int attr, int type)
 		default:
 			vp->length = 0;
 			break;
+	}
+
+	return vp;
+}
+
+
+/*
+ *	Create a new valuepair.
+ */
+VALUE_PAIR *paircreate(int attr, int type)
+{
+	VALUE_PAIR	*vp;
+	DICT_ATTR	*da;
+
+	da = dict_attrbyvalue(attr);
+	if ((vp = pairalloc(da)) == NULL) {
+		librad_log("out of memory");
+		return NULL;
+	}
+	vp->operator = T_OP_EQ;
+
+	/*
+	 *	Update the name...
+	 */
+	if (!da) {
+		if (VENDOR(attr) == 0) {
+			sprintf(vp->name, "Attr-%u", attr);
+
+		} else {
+			DICT_VENDOR *v;
+			
+			v = dict_vendorbyvalue(VENDOR(attr));
+			if (v) {
+				sprintf(vp->name, "%s-Attr-%u",
+					v->name, attr & 0xffff);
+			} else {
+				sprintf(vp->name, "Vendor-%u-Attr-%u",
+					VENDOR(attr), attr & 0xffff);
+			}
+		}
 	}
 
 	return vp;
@@ -257,7 +276,7 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr)
 			vp = vp->next;
 			continue;
 		}
-		if ((n = (VALUE_PAIR *)malloc(sizeof(VALUE_PAIR))) == NULL) {
+		if ((n = malloc(sizeof(*n))) == NULL) {
 			librad_log("out of memory");
 			return first;
 		}
@@ -1082,34 +1101,20 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	}
 
 	/*
-	 *	We've now parsed the attribute properly, and verified
-	 *	it to have value 'octets'.  Let's create it.
+	 *	We've now parsed the attribute properly, Let's create
+	 *	it.  This next stop also looks the attribute up in the
+	 *	dictionary, and creates the appropriate type for it.
 	 */
-	if ((vp = (VALUE_PAIR *)malloc(sizeof(VALUE_PAIR))) == NULL) {
+	if ((vp = paircreate(attr, PW_TYPE_OCTETS)) == NULL) {
 		librad_log("out of memory");
 		return NULL;
 	}
-	memset(vp, 0, sizeof(VALUE_PAIR));
-	vp->type = PW_TYPE_OCTETS;
 
-	/*
-	 *	It may not be valid hex characters.  If not, die.
-	 */
 	if (pairparsevalue(vp, value) == NULL) {
 		pairfree(&vp);
 		return NULL;
 	}
-
-	if (VENDOR(attr) == 0) {
-		sprintf(vp->name, "Attr-%u", attr);
-	} else {
-		sprintf(vp->name, "Vendor-%u-Attr-%u",
-			VENDOR(attr), attr & 0xffff);
-	}
-
-	vp->attribute = attr;
 	vp->operator = (operator == 0) ? T_OP_EQ : operator;
-	vp->next = NULL;
 
 	return vp;
 }
@@ -1169,18 +1174,11 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		return pairmake_any(attribute, value, operator);
 	}
 
-	if ((vp = (VALUE_PAIR *)malloc(sizeof(VALUE_PAIR))) == NULL) {
+	if ((vp = pairalloc(da)) == NULL) {
 		librad_log("out of memory");
 		return NULL;
 	}
-
-	memset(vp, 0, sizeof(VALUE_PAIR));
-	vp->attribute = da->attr;
-	vp->type = da->type;
 	vp->operator = (operator == 0) ? T_OP_EQ : operator;
-	strcpy(vp->name, da->name);
-	vp->flags = da->flags;
-	vp->next = NULL;
 
 	/*      Check for a tag in the 'Merit' format of:
 	 *      :Tag:Value.  Print an error if we already found
