@@ -136,28 +136,28 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 		case PW_TYPE_INTEGER:
 		        if ( vp->flags.has_tag ) {
 			        /* Attribute value has a tag, need to ignore it */
-			        if ((v = dict_valbyattr(vp->attribute, (vp->lvalue & 0xffffff)))
+			        if ((v = dict_valbyattr(vp->attribute, (vp->vp_integer & 0xffffff)))
 				    != NULL)
 				        a = v->name;
 				else {
-				        snprintf(buf, sizeof(buf), "%u", (vp->lvalue & 0xffffff));
+				        snprintf(buf, sizeof(buf), "%u", (vp->vp_integer & 0xffffff));
 				        a = buf;
 				}
 			} else {
 			case PW_TYPE_BYTE:
 			case PW_TYPE_SHORT:
 			        /* Normal, non-tagged attribute */
-			        if ((v = dict_valbyattr(vp->attribute, vp->lvalue))
+			        if ((v = dict_valbyattr(vp->attribute, vp->vp_integer))
 				    != NULL)
 				        a = v->name;
 				else {
-				        snprintf(buf, sizeof(buf), "%u", vp->lvalue);
+				        snprintf(buf, sizeof(buf), "%u", vp->vp_integer);
 					a = buf;
 				}
 			}
 			break;
 		case PW_TYPE_DATE:
-			t = vp->lvalue;
+			t = vp->vp_date;
 			if (delimitst) {
 			  len = strftime(buf, sizeof(buf), "\"%b %e %Y %H:%M:%S %Z\"",
 					 localtime_r(&t, &s_tm));
@@ -168,7 +168,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			if (len > 0) a = buf;
 			break;
 		case PW_TYPE_IPADDR:
-			a = inet_ntop(AF_INET, &(vp->lvalue),
+			a = inet_ntop(AF_INET, &(vp->vp_ipaddr),
 				      buf, sizeof(buf));
 			break;
 		case PW_TYPE_ABINARY:

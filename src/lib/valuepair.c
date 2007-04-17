@@ -784,7 +784,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 					return NULL;
 				}
 
-				vp->lvalue = ipaddr.ipaddr.ip4addr.s_addr;
+				vp->vp_ipaddr = ipaddr.ipaddr.ip4addr.s_addr;
 			}
 			if (s) free(s);
 			vp->length = 4;
@@ -794,9 +794,9 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
-			vp->lvalue = (uint32_t) strtoul(value, &p, 10);
+			vp->vp_integer = (uint32_t) strtoul(value, &p, 10);
 			if (!*p) {
-				if (vp->lvalue > 255) {
+				if (vp->vp_integer > 255) {
 					librad_log("Byte value \"%s\" is larger than 255", value);
 					return NULL;
 				}
@@ -813,7 +813,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 					   value, vp->name);
 				return NULL;
 			}
-			vp->lvalue = dval->value;
+			vp->vp_integer = dval->value;
 			vp->length = 1;
 			break;
 
@@ -821,9 +821,9 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
-			vp->lvalue = (uint32_t) strtoul(value, &p, 10);
+			vp->vp_integer = (uint32_t) strtoul(value, &p, 10);
 			if (!*p) {
-				if (vp->lvalue > 65535) {
+				if (vp->vp_integer > 65535) {
 					librad_log("Byte value \"%s\" is larger than 65535", value);
 					return NULL;
 				}
@@ -840,7 +840,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 					   value, vp->name);
 				return NULL;
 			}
-			vp->lvalue = dval->value;
+			vp->vp_integer = dval->value;
 			vp->length = 2;
 			break;
 
@@ -848,7 +848,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
-			vp->lvalue = (uint32_t) strtoul(value, &p, 10);
+			vp->vp_integer = (uint32_t) strtoul(value, &p, 10);
 			if (!*p) {
 				vp->length = 4;
 				break;
@@ -863,12 +863,12 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 					   value, vp->name);
 				return NULL;
 			}
-			vp->lvalue = dval->value;
+			vp->vp_integer = dval->value;
 			vp->length = 4;
 			break;
 
 		case PW_TYPE_DATE:
-			if (gettime(value, &vp->lvalue) < 0) {
+			if (gettime(value, &vp->vp_date) < 0) {
 				librad_log("failed to parse time string "
 					   "\"%s\"", value);
 				return NULL;
@@ -1670,7 +1670,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 	case PW_TYPE_SHORT:
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
-		compare = two->lvalue - one->lvalue;
+		compare = two->vp_integer - one->vp_integer;
 		break;
 
 	case PW_TYPE_IPADDR:

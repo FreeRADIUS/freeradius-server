@@ -675,7 +675,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			
 	case PW_TYPE_BYTE:
 		len = 1;	/* just in case */
-		array[0] = vp->lvalue & 0xff;
+		array[0] = vp->vp_integer & 0xff;
 		data = array;
 		offset = 0;
 		break;
@@ -683,15 +683,15 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 
 	case PW_TYPE_SHORT:
 		len = 2;	/* just in case */
-		array[0] = (vp->lvalue >> 8) & 0xff;
-		array[1] = vp->lvalue & 0xff;
+		array[0] = (vp->vp_integer >> 8) & 0xff;
+		array[1] = vp->vp_integer & 0xff;
 		data = array;
 		offset = 0;
 		break;
 
 	case PW_TYPE_INTEGER:
 		len = 4;	/* just in case */
-		lvalue = htonl(vp->lvalue);
+		lvalue = htonl(vp->vp_integer);
 		memcpy(array, &lvalue, sizeof(lvalue));
 
 		/*
@@ -702,7 +702,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		break;
 			
 	case PW_TYPE_IPADDR:
-		data = (const uint8_t *) &vp->lvalue;
+		data = (const uint8_t *) &vp->vp_ipaddr;
 		len = 4;	/* just in case */
 		break;
 
@@ -710,7 +710,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 *  There are no tagged date attributes.
 		 */
 	case PW_TYPE_DATE:
-		lvalue = htonl(vp->lvalue);
+		lvalue = htonl(vp->vp_date);
 		data = (const uint8_t *) &lvalue;
 		len = 4;	/* just in case */
 		break;
@@ -1912,23 +1912,23 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *origin
 	case PW_TYPE_BYTE:
 		if (vp->length != 1) goto raw;
 
-		vp->lvalue = vp->vp_octets[0];
+		vp->vp_integer = vp->vp_octets[0];
 		break;
 
 
 	case PW_TYPE_SHORT:
 		if (vp->length != 2) goto raw;
 
-		vp->lvalue = (vp->vp_octets[0] << 8) | vp->vp_octets[1];
+		vp->vp_integer = (vp->vp_octets[0] << 8) | vp->vp_octets[1];
 		break;
 
 	case PW_TYPE_INTEGER:
 		if (vp->length != 4) goto raw;
 
-		memcpy(&vp->lvalue, vp->vp_octets, 4);
-		vp->lvalue = ntohl(vp->lvalue);
+		memcpy(&vp->vp_integer, vp->vp_octets, 4);
+		vp->vp_integer = ntohl(vp->vp_integer);
 
-		if (vp->flags.has_tag) vp->lvalue &= 0x00ffffff;
+		if (vp->flags.has_tag) vp->vp_integer &= 0x00ffffff;
 
 		/*
 		 *	Try to get named VALUEs
@@ -1936,7 +1936,7 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *origin
 		{
 			DICT_VALUE *dval;
 			dval = dict_valbyattr(vp->attribute,
-					      vp->lvalue);
+					      vp->vp_integer);
 			if (dval) {
 				strlcpy(vp->vp_strvalue,
 					dval->name,
@@ -1948,15 +1948,15 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *origin
 	case PW_TYPE_DATE:
 		if (vp->length != 4) goto raw;
 
-		memcpy(&vp->lvalue, vp->vp_octets, 4);
-		vp->lvalue = ntohl(vp->lvalue);
+		memcpy(&vp->vp_date, vp->vp_octets, 4);
+		vp->vp_date = ntohl(vp->vp_date);
 		break;
 
 
 	case PW_TYPE_IPADDR:
 		if (vp->length != 4) goto raw;
 
-		memcpy(&vp->lvalue, vp->vp_octets, 4);
+		memcpy(&vp->vp_ipaddr, vp->vp_octets, 4);
 		break;
 
 		/*
