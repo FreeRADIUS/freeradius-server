@@ -161,7 +161,7 @@ static int counter_cmp(void *instance,
 	memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
 	free(count_datum.dptr);
 
-	return counter.user_counter - check->lvalue;
+	return counter.user_counter - check->vp_integer;
 }
 
 
@@ -573,7 +573,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	time_t diff;
 
 	if ((key_vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL)
-		acctstatustype = key_vp->lvalue;
+		acctstatustype = key_vp->vp_integer;
 	else {
 		DEBUG("rlm_counter: Could not find account status type in packet.");
 		return RLM_MODULE_NOOP;
@@ -610,7 +610,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 			DEBUG("rlm_counter: Could not find Service-Type attribute in the request. Returning NOOP.");
 			return RLM_MODULE_NOOP;
 		}
-		if ((unsigned)proto_vp->lvalue != data->service_val){
+		if ((unsigned)proto_vp->vp_integer != data->service_val){
 			DEBUG("rlm_counter: This Service-Type is not allowed. Returning NOOP.");
 			return RLM_MODULE_NOOP;
 		}
@@ -621,8 +621,8 @@ static int counter_accounting(void *instance, REQUEST *request)
 	 */
 	key_vp = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME);
 	if (key_vp != NULL){
-		if (key_vp->lvalue != 0 &&
-		    (request->timestamp - key_vp->lvalue) < data->last_reset){
+		if (key_vp->vp_integer != 0 &&
+		    (request->timestamp - key_vp->vp_integer) < data->last_reset){
 			DEBUG("rlm_counter: This packet is too old. Returning NOOP.");
 			return RLM_MODULE_NOOP;
 		}
@@ -695,14 +695,14 @@ static int counter_accounting(void *instance, REQUEST *request)
 		 *	day). That is the right thing
 		 */
 		diff = request->timestamp - data->last_reset;
-		counter.user_counter += (count_vp->lvalue < diff) ? count_vp->lvalue : diff;
+		counter.user_counter += (count_vp->vp_integer < diff) ? count_vp->vp_integer : diff;
 
 	} else if (count_vp->type == PW_TYPE_INTEGER) {
 		/*
 		 *	Integers get counted, without worrying about
 		 *	reset dates.
 		 */
-		counter.user_counter += count_vp->lvalue;
+		counter.user_counter += count_vp->vp_integer;
 
 	} else {
 		/*
@@ -813,8 +813,8 @@ static int counter_authorize(void *instance, REQUEST *request)
 	/*
 	 * Check if check item > counter
 	 */
-	DEBUG("rlm_counter: Check item = %d, Count = %d",check_vp->lvalue,counter.user_counter);
-	res=check_vp->lvalue - counter.user_counter;
+	DEBUG("rlm_counter: Check item = %d, Count = %d",check_vp->vp_integer,counter.user_counter);
+	res=check_vp->vp_integer - counter.user_counter;
 	if (res > 0) {
 		DEBUG("rlm_counter: res is greater than zero");
 		if (data->count_attr == PW_ACCT_SESSION_TIME) {
@@ -845,32 +845,32 @@ static int counter_authorize(void *instance, REQUEST *request)
 			if (data->reset_time && (
 				res >= (data->reset_time - request->timestamp))) {
 				res = data->reset_time - request->timestamp;
-				res += check_vp->lvalue;
+				res += check_vp->vp_integer;
 			}
 
 			if ((reply_item = pairfind(request->reply->vps, PW_SESSION_TIMEOUT)) != NULL) {
-				if (reply_item->lvalue > res)
-					reply_item->lvalue = res;
+				if (reply_item->vp_integer > res)
+					reply_item->vp_integer = res;
 			} else {
 				if ((reply_item = paircreate(PW_SESSION_TIMEOUT, PW_TYPE_INTEGER)) == NULL) {
 					radlog(L_ERR|L_CONS, "no memory");
 					return RLM_MODULE_NOOP;
 				}
-				reply_item->lvalue = res;
+				reply_item->vp_integer = res;
 				pairadd(&request->reply->vps, reply_item);
 			}
 		}
 		else if (data->reply_attr) {
 			if ((reply_item = pairfind(request->reply->vps, data->reply_attr)) != NULL) {
-				if (reply_item->lvalue > res)
-					reply_item->lvalue = res;
+				if (reply_item->vp_integer > res)
+					reply_item->vp_integer = res;
 			}
 			else {
 				if ((reply_item = paircreate(data->reply_attr, PW_TYPE_INTEGER)) == NULL) {
 					radlog(L_ERR|L_CONS, "no memory");
 					return RLM_MODULE_NOOP;
 				}
-				reply_item->lvalue = res;
+				reply_item->vp_integer = res;
 				pairadd(&request->reply->vps, reply_item);
 			}
 		}
@@ -879,7 +879,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 
 		DEBUG2("rlm_counter: (Check item - counter) is greater than zero");
 		DEBUG2("rlm_counter: Authorized user %s, check_item=%d, counter=%d",
-				key_vp->vp_strvalue,check_vp->lvalue,counter.user_counter);
+				key_vp->vp_strvalue,check_vp->vp_integer,counter.user_counter);
 		DEBUG2("rlm_counter: Sent Reply-Item for user %s, Type=Session-Timeout, value=%d",
 				key_vp->vp_strvalue,res);
 	}
@@ -901,7 +901,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 		ret=RLM_MODULE_REJECT;
 
 		DEBUG2("rlm_counter: Rejected user %s, check_item=%d, counter=%d",
-				key_vp->vp_strvalue,check_vp->lvalue,counter.user_counter);
+				key_vp->vp_strvalue,check_vp->vp_integer,counter.user_counter);
 	}
 
 	return ret;

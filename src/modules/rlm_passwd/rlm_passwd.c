@@ -521,7 +521,7 @@ static int passwd_authorize(void *instance, REQUEST *request)
 	  key = key->next ){
 		switch (inst->keyattrtype) {
 			case PW_TYPE_INTEGER:
-				snprintf(buffer, 1024, "%u", key->lvalue);
+				snprintf(buffer, 1024, "%u", key->vp_integer);
 				name = buffer;
 				break;
 			default:

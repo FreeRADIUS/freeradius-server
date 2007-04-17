@@ -72,14 +72,13 @@ unsigned long 	st_errors = 0,
 
 /*  test
 
-int dumplist(VALUE_PAIR *vp) {
-
+int dumplist(VALUE_PAIR *vp)
+{
+	char buffer[1024];
 	while (vp != NULL) {
-
-		printf("VP: name: %s\nattribute: %d\ntype: %d\nlvalue: %lu"
-			"\noperator %d\naddport: %d\nValue: %s\n",
-		   	vp -> name, vp -> attribute, vp -> type, vp -> lvalue,
-		   	vp -> operator, vp -> addport, (char*)vp -> strvalue);
+		vp_prints(buffer, sizeof(buffer), vp);
+	
+		printf("\t%s\n", buffer);
 		vp = vp -> next;
 	}
 	return 0;

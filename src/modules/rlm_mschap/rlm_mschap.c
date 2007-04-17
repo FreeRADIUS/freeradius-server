@@ -746,7 +746,7 @@ static int do_mschap(rlm_mschap_t *inst,
 	 */
 	vp = pairfind(request->config_items,
 		      PW_MS_CHAP_USE_NTLM_AUTH);
-	if (vp) do_ntlm_auth = vp->lvalue;
+	if (vp) do_ntlm_auth = vp->vp_integer;
 
 	/*
 	 *	No ntlm_auth configured, attribute to tell us to
@@ -1040,7 +1040,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		if (password) {
 			smb_ctrl = pairmake("SMB-Account-CTRL", "0", T_OP_SET);
 			pairadd(&request->config_items, smb_ctrl);
-			smb_ctrl->lvalue = pdb_decode_acct_ctrl(password->vp_strvalue);
+			smb_ctrl->vp_integer = pdb_decode_acct_ctrl(password->vp_strvalue);
 		}
 	}
 
@@ -1052,7 +1052,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		/*
 		 *	Password is not required.
 		 */
-		if ((smb_ctrl->lvalue & ACB_PWNOTREQ) != 0) {
+		if ((smb_ctrl->vp_integer & ACB_PWNOTREQ) != 0) {
 			DEBUG2("  rlm_mschap: SMB-Account-Ctrl says no password is required.");
 			return RLM_MODULE_OK;
 		}
@@ -1289,8 +1289,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	They're found, but they don't exist, so we
 		 *	return 'not found'.
 		 */
-		if (((smb_ctrl->lvalue & ACB_DISABLED) != 0) ||
-		    ((smb_ctrl->lvalue & ACB_NORMAL) == 0)) {
+		if (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
+		    ((smb_ctrl->vp_integer & ACB_NORMAL) == 0)) {
 			DEBUG2("  rlm_mschap: SMB-Account-Ctrl says that the account is disabled, or is not a normal account.");
 			add_reply( &request->reply->vps, *response->vp_octets,
 				   "MS-CHAP-Error", "E=691 R=1", 9);
@@ -1300,7 +1300,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		/*
 		 *	User is locked out.
 		 */
-		if ((smb_ctrl->lvalue & ACB_AUTOLOCK) != 0) {
+		if ((smb_ctrl->vp_integer & ACB_AUTOLOCK) != 0) {
 			DEBUG2("  rlm_mschap: SMB-Account-Ctrl says that the account is locked out.");
 			add_reply( &request->reply->vps, *response->vp_octets,
 				   "MS-CHAP-Error", "E=647 R=0", 9);

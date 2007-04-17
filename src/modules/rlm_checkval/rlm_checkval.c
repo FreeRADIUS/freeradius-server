@@ -230,6 +230,8 @@ static int do_checkval(void *instance, REQUEST *request)
 
 		/*
 	 	* Check if item != check
+		*
+		*	FIXME:  !!! Call normal API functions!
 	 	*/
 		found = 1;
 		if (data->dat_type == PW_TYPE_STRING ||
@@ -244,10 +246,13 @@ static int do_checkval(void *instance, REQUEST *request)
 				else
 					ret = RLM_MODULE_REJECT;
 			}
-		}
-		else{	/* Integer or Date */
-
-			if (item_vp->lvalue == chk_vp->lvalue)
+		} else if (data->dat_type == PW_TYPE_DATE) {
+			if (item_vp->vp_date == chk_vp->vp_date)
+				ret = RLM_MODULE_OK;
+			else
+				ret = RLM_MODULE_REJECT;
+		} else if (data->dat_type == PW_TYPE_INTEGER) {
+			if (item_vp->vp_integer == chk_vp->vp_integer)
 				ret = RLM_MODULE_OK;
 			else
 				ret = RLM_MODULE_REJECT;

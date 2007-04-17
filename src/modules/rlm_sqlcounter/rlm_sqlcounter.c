@@ -409,7 +409,7 @@ static int sqlcounter_cmp(void *instance, REQUEST *req,
 
 	counter = atoi(querystr);
 
-	return counter - check->lvalue;
+	return counter - check->vp_integer;
 }
 
 
@@ -685,7 +685,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	/*
 	 * Check if check item > counter
 	 */
-	res=check_vp->lvalue - counter;
+	res=check_vp->vp_integer - counter;
 	if (res > 0) {
 		DEBUG2("rlm_sqlcounter: (Check item - counter) is greater than zero");
 		/*
@@ -708,27 +708,27 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		if (data->reset_time && (
 			res >= (data->reset_time - request->timestamp))) {
 			res = data->reset_time - request->timestamp;
-			res += check_vp->lvalue;
+			res += check_vp->vp_integer;
 		}
 
 		if ((reply_item = pairfind(request->reply->vps, data->reply_attr)) != NULL) {
-			if (reply_item->lvalue > res)
-				reply_item->lvalue = res;
+			if (reply_item->vp_integer > res)
+				reply_item->vp_integer = res;
 		} else {
 			if ((reply_item = paircreate(data->reply_attr, PW_TYPE_INTEGER)) == NULL) {
 				radlog(L_ERR|L_CONS, "no memory");
 				return RLM_MODULE_NOOP;
 			}
-			reply_item->lvalue = res;
+			reply_item->vp_integer = res;
 			pairadd(&request->reply->vps, reply_item);
 		}
 
 		ret=RLM_MODULE_OK;
 
 		DEBUG2("rlm_sqlcounter: Authorized user %s, check_item=%d, counter=%d",
-				key_vp->vp_strvalue,check_vp->lvalue,counter);
+				key_vp->vp_strvalue,check_vp->vp_integer,counter);
 		DEBUG2("rlm_sqlcounter: Sent Reply-Item for user %s, Type=%s, value=%d",
-				key_vp->vp_strvalue,data->reply_name,reply_item->lvalue);
+				key_vp->vp_strvalue,data->reply_name,reply_item->vp_integer);
 	}
 	else{
 		char module_fmsg[MAX_STRING_LEN];
@@ -750,7 +750,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		ret=RLM_MODULE_REJECT;
 
 		DEBUG2("rlm_sqlcounter: Rejected user %s, check_item=%d, counter=%d",
-				key_vp->vp_strvalue,check_vp->lvalue,counter);
+				key_vp->vp_strvalue,check_vp->vp_integer,counter);
 	}
 
 	return ret;

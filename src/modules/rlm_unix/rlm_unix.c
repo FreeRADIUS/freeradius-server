@@ -446,7 +446,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 		radlog(L_ERR, "rlm_unix: no Accounting-Status-Type attribute in request.");
 		return RLM_MODULE_NOOP;
 	}
-	status = vp->lvalue;
+	status = vp->vp_integer;
 
 	/*
 	 *	FIXME: handle PW_STATUS_ALIVE like 1.5.4.3 did.
@@ -479,23 +479,23 @@ static int unix_accounting(void *instance, REQUEST *request)
 				break;
 			case PW_LOGIN_IP_HOST:
 			case PW_FRAMED_IP_ADDRESS:
-				framed_address = vp->lvalue;
+				framed_address = vp->vp_ipaddr;
 				break;
 			case PW_FRAMED_PROTOCOL:
-				protocol = vp->lvalue;
+				protocol = vp->vp_integer;
 				break;
 			case PW_NAS_IP_ADDRESS:
-				nas_address = vp->lvalue;
+				nas_address = vp->vp_ipaddr;
 				break;
 			case PW_NAS_PORT:
-				nas_port = vp->lvalue;
+				nas_port = vp->vp_integer;
 				port_seen = 1;
 				break;
 			case PW_ACCT_DELAY_TIME:
-				delay = vp->lvalue;
+				delay = vp->vp_ipaddr;
 				break;
 			case PW_NAS_PORT_TYPE:
-				nas_port_type = vp->lvalue;
+				nas_port_type = vp->vp_ipaddr;
 				break;
 		}
 	}

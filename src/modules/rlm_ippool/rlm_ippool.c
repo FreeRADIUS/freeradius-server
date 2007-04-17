@@ -327,7 +327,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 
 
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL)
-		acctstatustype = vp->lvalue;
+		acctstatustype = vp->vp_integer;
 	else {
 		DEBUG("rlm_ippool: Could not find account status type in packet. Return NOOP.");
 		return RLM_MODULE_NOOP;
@@ -731,7 +731,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		entry.active = 1;
 		entry.timestamp = request->timestamp;
 		if ((vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT)) != NULL)	
-			entry.timeout = (time_t) vp->lvalue;
+			entry.timeout = (time_t) vp->vp_integer;
 		else
 			entry.timeout = 0;
 		if (extra)
@@ -779,8 +779,8 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			radlog(L_ERR|L_CONS, "no memory");
 			return RLM_MODULE_FAIL;
 		}
-		vp->lvalue = entry.ipaddr;
-		ip_ntoa(vp->vp_strvalue, vp->lvalue);
+		vp->vp_ipaddr = entry.ipaddr;
+		ip_ntoa(vp->vp_strvalue, vp->vp_ipaddr);
 		pairadd(&request->reply->vps, vp);
 
 		/*
@@ -791,8 +791,8 @@ static int ippool_postauth(void *instance, REQUEST *request)
 			if ((vp = paircreate(PW_FRAMED_IP_NETMASK, PW_TYPE_IPADDR)) == NULL)
 				radlog(L_ERR|L_CONS, "no memory");
 			else {
-				vp->lvalue = ntohl(data->netmask);
-				ip_ntoa(vp->vp_strvalue, vp->lvalue);
+				vp->vp_integer = ntohl(data->netmask);
+				ip_ntoa(vp->vp_strvalue, vp->vp_integer);
 				pairadd(&request->reply->vps, vp);
 			}
 		}

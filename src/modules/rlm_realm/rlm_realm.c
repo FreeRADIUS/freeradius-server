@@ -257,12 +257,12 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 */
 
 		if (request->packet->code == PW_AUTHENTICATION_REQUEST &&
-		    vp->lvalue == realm->home_auth->ipaddr.ipaddr.ip4addr.s_addr) {
+		    vp->vp_ipaddr == realm->home_auth->ipaddr.ipaddr.ip4addr.s_addr) {
 			DEBUG2("    rlm_realm: Request not proxied due to Freeradius-Proxied-To");
 			return 0;
 		}
 		if (request->packet->code == PW_ACCOUNTING_REQUEST &&
-		    vp->lvalue == realm->home_acct->ipaddr.ipaddr.ip4addr.s_addr) {
+		    vp->vp_ipaddr == realm->home_acct->ipaddr.ipaddr.ip4addr.s_addr) {
 			DEBUG2("    rlm_realm: Request not proxied due to Freeradius-Proxied-To");
 			return 0;
 		}

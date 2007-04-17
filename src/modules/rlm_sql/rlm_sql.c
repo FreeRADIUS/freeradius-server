@@ -114,7 +114,7 @@ static int fallthrough(VALUE_PAIR *vp)
 	VALUE_PAIR *tmp;
 	tmp = pairfind(vp, PW_FALL_THROUGH);
 
-	return tmp ? tmp->lvalue : 0;
+	return tmp ? tmp->vp_integer : 0;
 }
 
 
@@ -276,8 +276,8 @@ static int generate_sql_clients(SQL_INST *inst)
 		DEBUG("rlm_sql (%s): Read entry nasname=%s,shortname=%s,secret=%s",inst->config->xlat_name,
 			row[1],row[2],row[4]);
 
-		c = rad_malloc(sizeof(RADCLIENT));
-		memset(c, 0, sizeof(RADCLIENT));
+		c = rad_malloc(sizeof(*c));
+		memset(c, 0, sizeof(*c));
 
 		/*
 		 *	Look for prefixes
@@ -1072,7 +1072,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	 * Find the Acct Status Type
 	 */
 	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL) {
-		acctstatustype = pair->lvalue;
+		acctstatustype = pair->vp_integer;
 	} else {
 		radius_xlat(logstr, sizeof(logstr), "packet has no accounting status type. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
 		radlog(L_ERR, "rlm_sql (%s) in sql_accounting: %s",
@@ -1240,7 +1240,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				        	 * table with bogus crap
 					         */
 					        if ((pair = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME)) != NULL)
-					                acctsessiontime = pair->lvalue;
+					                acctsessiontime = pair->vp_integer;
 
 						if (acctsessiontime <= 0) {
 							radius_xlat(logstr, sizeof(logstr), "stop packet with zero session length. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
@@ -1379,7 +1379,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	request->simul_count = 0;
 
         if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS)) != NULL)
-                ipno = vp->lvalue;
+                ipno = vp->vp_ipaddr;
         if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
                 call_num = vp->vp_strvalue;
 

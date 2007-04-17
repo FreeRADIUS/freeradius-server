@@ -43,7 +43,7 @@ static int connectcmp(void *instance,
 	reply_pairs = reply_pairs;
 
 	rate = atoi((char *)request->vp_strvalue);
-	return rate - check->lvalue;
+	return rate - check->vp_integer;
 }
 
 
@@ -57,7 +57,7 @@ static int portcmp(void *instance,
 	char buf[MAX_STRING_LEN];
 	char *s, *p;
 	uint32_t lo, hi;
-	uint32_t port = request->lvalue;
+	uint32_t port = request->vp_integer;
 
 	instance = instance;
 	check_pairs = check_pairs; /* shut the compiler up */
@@ -65,7 +65,7 @@ static int portcmp(void *instance,
 
 	if ((strchr((char *)check->vp_strvalue, ',') == NULL) &&
 			(strchr((char *)check->vp_strvalue, '-') == NULL)) {
-		return (request->lvalue - check->lvalue);
+		return (request->vp_integer - check->vp_integer);
 	}
 
 	/* Same size */
@@ -141,7 +141,7 @@ static int presufcmp(void *instance,
 	 *	If Strip-User-Name == No, then don't do any more.
 	 */
 	vp = pairfind(check_pairs, PW_STRIP_USER_NAME);
-	if (vp && !vp->lvalue) return ret;
+	if (vp && !vp->vp_integer) return ret;
 
 	/*
 	 *	See where to put the stripped user name.
@@ -162,50 +162,6 @@ static int presufcmp(void *instance,
 
 
 /*
- *	Matches if there is NO SUCH ATTRIBUTE as the one named
- *	in check->vp_strvalue.  If there IS such an attribute, it
- *	doesn't match.
- *
- *	This is ugly, and definitely non-optimal.  We should be
- *	doing the lookup only ONCE, and storing the result
- *	in check->lvalue...
- */
-static int attrcmp(void *instance,
-		   REQUEST *req UNUSED,
-		   VALUE_PAIR *request, VALUE_PAIR *check,
-		   VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
-{
-	VALUE_PAIR *pair;
-	DICT_ATTR  *dict;
-	int attr;
-
-	instance = instance;
-	check_pairs = check_pairs; /* shut the compiler up */
-	reply_pairs = reply_pairs;
-
-	if (check->lvalue == 0) {
-		dict = dict_attrbyname((char *)check->vp_strvalue);
-		if (dict == NULL) {
-			return -1;
-		}
-		attr = dict->attr;
-	} else {
-		attr = check->lvalue;
-	}
-
-	/*
-	 *	If there's no such attribute, then return MATCH,
-	 *	else FAILURE.
-	 */
-	pair = pairfind(request, attr);
-	if (pair == NULL) {
-		return 0;
-	}
-
-	return -1;
-}
-
-/*
  *	Compare the request packet type.
  */
 static int packetcmp(void *instance UNUSED, REQUEST *req,
@@ -214,7 +170,7 @@ static int packetcmp(void *instance UNUSED, REQUEST *req,
 		     VALUE_PAIR *check_pairs UNUSED,
 		     VALUE_PAIR **reply_pairs UNUSED)
 {
-	if (req->packet->code == check->lvalue) {
+	if (req->packet->code == check->vp_integer) {
 		return 0;
 	}
 
@@ -231,7 +187,7 @@ static int responsecmp(void *instance UNUSED,
 		       VALUE_PAIR *check_pairs UNUSED,
 		       VALUE_PAIR **reply_pairs UNUSED)
 {
-	if (req->reply->code == check->lvalue) {
+	if (req->reply->code == check->vp_integer) {
 		return 0;
 	}
 
@@ -296,7 +252,6 @@ void pair_builtincompare_init(void)
 	paircompare_register(PW_PREFIX, PW_USER_NAME, presufcmp, NULL);
 	paircompare_register(PW_SUFFIX, PW_USER_NAME, presufcmp, NULL);
 	paircompare_register(PW_CONNECT_RATE, PW_CONNECT_INFO, connectcmp, NULL);
-	paircompare_register(PW_NO_SUCH_ATTRIBUTE, 0, attrcmp, NULL);
 	paircompare_register(PW_PACKET_TYPE, 0, packetcmp, NULL);
 	paircompare_register(PW_RESPONSE_PACKET_TYPE, 0, responsecmp, NULL);
 
@@ -313,7 +268,6 @@ void pair_builtincompare_detach(void)
 	paircompare_unregister(PW_PREFIX, presufcmp);
 	paircompare_unregister(PW_SUFFIX, presufcmp);
 	paircompare_unregister(PW_CONNECT_RATE, connectcmp);
-	paircompare_unregister(PW_NO_SUCH_ATTRIBUTE, attrcmp);
 	paircompare_unregister(PW_PACKET_TYPE, packetcmp);
 	paircompare_unregister(PW_RESPONSE_PACKET_TYPE, responsecmp);
 

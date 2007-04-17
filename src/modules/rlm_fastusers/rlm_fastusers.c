@@ -87,7 +87,7 @@ static int fallthrough(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
 	tmp = pairfind(vp, PW_FALL_THROUGH);
-	return tmp ? tmp->lvalue : 0;
+	return tmp ? tmp->vp_integer : 0;
 }
 
 /*
@@ -103,7 +103,7 @@ static int rad_check_return(VALUE_PAIR *list)
        */
 
       authtype = pairfind(list, PW_AUTHTYPE);
-      if((authtype) && authtype->lvalue == PW_AUTHTYPE_REJECT)  {
+      if((authtype) && authtype->vp_integer == PW_AUTHTYPE_REJECT)  {
               DEBUG2("rad_check_return:  Auth-Type is Reject");
               return RLM_MODULE_REJECT;
       }

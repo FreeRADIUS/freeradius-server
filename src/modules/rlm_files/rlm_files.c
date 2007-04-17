@@ -70,7 +70,7 @@ static int fallthrough(VALUE_PAIR *vp)
 	VALUE_PAIR *tmp;
 	tmp = pairfind(vp, PW_FALL_THROUGH);
 
-	return tmp ? tmp->lvalue : 0;
+	return tmp ? tmp->vp_integer : 0;
 }
 
 static const CONF_PARSER module_config[] = {

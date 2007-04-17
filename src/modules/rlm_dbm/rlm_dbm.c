@@ -132,7 +132,7 @@ static int isfallthrough(VALUE_PAIR *vp) {
   VALUE_PAIR * tmp;
 
   tmp = pairfind(vp, PW_FALL_THROUGH);
-  return tmp ? tmp -> lvalue : 1; /* if no  FALL_THROUGH - keep looking */
+  return tmp ? tmp -> vp_integer : 1; /* if no  FALL_THROUGH - keep looking */
 }
 
 /* sm_parse_user

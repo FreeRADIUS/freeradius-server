@@ -87,11 +87,11 @@ static void ascend_nasport_hack(VALUE_PAIR *nas_port, int channels_per_line)
 		return;
 	}
 
-	if (nas_port->lvalue > 9999) {
-		service = nas_port->lvalue/10000; /* 1=digital 2=analog */
-		line = (nas_port->lvalue - (10000 * service)) / 100;
-		channel = nas_port->lvalue-((10000 * service)+(100 * line));
-		nas_port->lvalue =
+	if (nas_port->vp_integer > 9999) {
+		service = nas_port->vp_integer/10000; /* 1=digital 2=analog */
+		line = (nas_port->vp_integer - (10000 * service)) / 100;
+		channel = nas_port->vp_integer-((10000 * service)+(100 * line));
+		nas_port->vp_integer =
 			(channel - 1) + (line - 1) * channels_per_line;
 	}
 }
@@ -253,7 +253,7 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 	    pairfind(request_pairs, PW_SERVICE_TYPE) == NULL) {
 		tmp = paircreate(PW_SERVICE_TYPE, PW_TYPE_INTEGER);
 		if (tmp) {
-			tmp->lvalue = PW_FRAMED_USER;
+			tmp->vp_integer = PW_FRAMED_USER;
 			pairmove(&request_pairs, &tmp);
 		}
 	}
@@ -419,7 +419,7 @@ static int add_nas_attr(REQUEST *request)
 				radlog(L_ERR, "No memory");
 				return -1;
 			}
-			nas->lvalue = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+			nas->vp_ipaddr = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 			pairadd(&request->packet->vps, nas);
 		}
 		break;

@@ -393,7 +393,7 @@ static int sqlhpwippool_postauth(void *instance, REQUEST *request)
 	/* if no NAS IP address, assign 0 */
 	vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS);
 	if (vp) {
-		nasip = ntohl(vp->lvalue);
+		nasip = ntohl(vp->vp_ipaddr);
 	}
 	else {
 		nasip = 0;
@@ -671,7 +671,7 @@ end_gid:
 		return RLM_MODULE_FAIL;
 	}
 
-	vp->lvalue = ip.s_addr;
+	vp->vp_ipaddr = ip.s_addr;
 	pairadd(&request->reply->vps, vp);
 
 	nvp_log(__LINE__, data, L_DBG, "sqlhpwippool_postauth(): returning %s",
@@ -704,7 +704,7 @@ static int sqlhpwippool_accounting(void *instance, REQUEST *request)
 
 	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE);
 	if (vp) {
-		acct_type = vp->lvalue;
+		acct_type = vp->vp_integer;
 	}
 	else {
 		nvp_log(__LINE__, data, L_ERR, "sqlhpwippool_accounting(): "
@@ -739,7 +739,7 @@ static int sqlhpwippool_accounting(void *instance, REQUEST *request)
 				return RLM_MODULE_FAIL;
 			}
 
-			framedip = ntohl(vp->lvalue);
+			framedip = ntohl(vp->vp_ipaddr);
 
 			if (!nvp_query(__LINE__, data, sqlsock,
 			    "UPDATE `%s`.`ips` "
@@ -779,7 +779,7 @@ static int sqlhpwippool_accounting(void *instance, REQUEST *request)
 				return RLM_MODULE_FAIL;
 			}
 
-			nasip.s_addr = vp->lvalue;
+			nasip.s_addr = vp->vp_ipaddr;
 			strncpy(nasipstr, inet_ntoa(nasip), sizeof(nasipstr) - 1);
 			nasipstr[sizeof(nasipstr)] = 0;
 

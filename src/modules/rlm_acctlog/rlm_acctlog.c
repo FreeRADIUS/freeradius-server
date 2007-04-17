@@ -86,7 +86,7 @@ static int do_acctlog_acct(void *instance, REQUEST *request)
 	inst = (rlm_acctlog_t*) instance;
 
     if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL) {
-        acctstatustype = pair->lvalue;
+        acctstatustype = pair->vp_integer;
     } else {
         radius_xlat(logstr, sizeof(logstr), "packet has no accounting status type. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
         radlog(L_ERR, "rlm_acctlog (%s)", logstr);

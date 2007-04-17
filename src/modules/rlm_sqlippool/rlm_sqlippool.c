@@ -652,7 +652,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		sql_release_socket(data->sql_inst, sqlsocket);
 		return RLM_MODULE_NOOP;
 	}
-	vp->lvalue = ip_allocation;
+	vp->vp_ipaddr = ip_allocation;
 	pairadd(&request->reply->vps, vp);
 
 	/*
@@ -894,7 +894,7 @@ static int sqlippool_accounting(void * instance, REQUEST * request)
 		DEBUG("rlm_sqlippool: Could not find account status type in packet.");
 		return RLM_MODULE_NOOP;
 	}
-	acct_status_type = vp->lvalue;
+	acct_status_type = vp->vp_integer;
 
 	switch (acct_status_type) {
 	case PW_STATUS_START:
@@ -918,9 +918,8 @@ static int sqlippool_accounting(void * instance, REQUEST * request)
 	}
 }
 
-static int sqlippool_detach(void *instance)
+static int sqlippool_detach(UNUSED void *instance)
 {
-	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 
 	return 0;
 }

@@ -212,7 +212,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		radlog(L_ERR, "rlm_radutmp: No Accounting-Status-Type record.");
 		return RLM_MODULE_NOOP;
 	}
-	status = vp->lvalue;
+	status = vp->vp_integer;
 
 	/*
 	 *	Look for weird reboot packets.
@@ -232,7 +232,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		int check2 = 0;
 
 		if ((vp = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME))
-		     == NULL || vp->lvalue == 0)
+		     == NULL || vp->vp_date == 0)
 			check1 = 1;
 		if ((vp = pairfind(request->packet->vps, PW_ACCT_SESSION_ID))
 		     != NULL && vp->length == 8 &&
@@ -264,22 +264,22 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		switch (vp->attribute) {
 			case PW_LOGIN_IP_HOST:
 			case PW_FRAMED_IP_ADDRESS:
-				framed_address = vp->lvalue;
-				ut.framed_address = vp->lvalue;
+				framed_address = vp->vp_ipaddr;
+				ut.framed_address = vp->vp_ipaddr;
 				break;
 			case PW_FRAMED_PROTOCOL:
-				protocol = vp->lvalue;
+				protocol = vp->vp_integer;
 				break;
 			case PW_NAS_IP_ADDRESS:
-				nas_address = vp->lvalue;
-				ut.nas_address = vp->lvalue;
+				nas_address = vp->vp_ipaddr;
+				ut.nas_address = vp->vp_ipaddr;
 				break;
 			case PW_NAS_PORT:
-				ut.nas_port = vp->lvalue;
+				ut.nas_port = vp->vp_integer;
 				port_seen = 1;
 				break;
 			case PW_ACCT_DELAY_TIME:
-				ut.delay = vp->lvalue;
+				ut.delay = vp->vp_integer;
 				break;
 			case PW_ACCT_SESSION_ID:
 				/*
@@ -300,9 +300,9 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 					sizeof(ut.session_id));
 				break;
 			case PW_NAS_PORT_TYPE:
-				if (vp->lvalue <= 4)
-					ut.porttype = porttypes[vp->lvalue];
-				nas_port_type = vp->lvalue;
+				if (vp->vp_integer <= 4)
+					ut.porttype = porttypes[vp->vp_integer];
+				nas_port_type = vp->vp_integer;
 				break;
 			case PW_CALLING_STATION_ID:
 				if(inst->callerid_ok)
@@ -650,7 +650,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	 *	Setup some stuff, like for MPP detection.
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS)) != NULL)
-		ipno = vp->lvalue;
+		ipno = vp->vp_ipaddr;
 	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
 		call_num = vp->vp_strvalue;
 

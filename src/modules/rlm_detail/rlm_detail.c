@@ -376,10 +376,10 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		case AF_INET:
 			src_vp.type = PW_TYPE_IPADDR;
 			src_vp.attribute = PW_PACKET_SRC_IP_ADDRESS;
-			src_vp.lvalue = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+			src_vp.vp_ipaddr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 			dst_vp.type = PW_TYPE_IPADDR;
 			dst_vp.attribute = PW_PACKET_DST_IP_ADDRESS;
-			dst_vp.lvalue = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
+			dst_vp.vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 			break;
 		case AF_INET6:
 			src_vp.type = PW_TYPE_IPV6ADDR;	
@@ -406,10 +406,10 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 
 		src_vp.attribute = PW_PACKET_SRC_PORT;
 		src_vp.type = PW_TYPE_INTEGER;
-		src_vp.lvalue = packet->src_port;
+		src_vp.vp_integer = packet->src_port;
 		dst_vp.attribute = PW_PACKET_DST_PORT;
 		dst_vp.type = PW_TYPE_INTEGER;
-		dst_vp.lvalue = packet->dst_port;
+		dst_vp.vp_integer = packet->dst_port;
 
 		fputs("\t", outfp);
 		vp_print(outfp, &src_vp);

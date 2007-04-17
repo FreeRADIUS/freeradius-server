@@ -73,7 +73,7 @@ static int expiration_authorize(void *instance, REQUEST *request)
 		*      why they're being rejected.
 		*/
 		DEBUG("rlm_expiration: Checking Expiration time: '%s'",check_item->vp_strvalue);
-		if (((time_t) check_item->lvalue) <= request->timestamp) {
+		if (((time_t) check_item->vp_date) <= request->timestamp) {
 			char logstr[MAX_STRING_LEN];
 			VALUE_PAIR *module_fmsg_vp;
 
@@ -107,10 +107,10 @@ static int expiration_authorize(void *instance, REQUEST *request)
 				return RLM_MODULE_FAIL;
 			}
 			pairadd(&request->reply->vps, vp);
-			vp->lvalue = (uint32_t) (((time_t) check_item->lvalue) - request->timestamp);
+			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
 
-		} else if (vp->lvalue > ((uint32_t) (((time_t) check_item->lvalue) - request->timestamp))) {
-			vp->lvalue = (uint32_t) (((time_t) check_item->lvalue) - request->timestamp);
+		} else if (vp->vp_date > ((uint32_t) (((time_t) check_item->vp_date) - request->timestamp))) {
+			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
 		}
 	}
 	else
@@ -134,7 +134,7 @@ static int expirecmp(void *instance, REQUEST *req,
 
 	now = (req) ? req->timestamp : time(NULL);
   
-	if (now <= ((time_t) check->lvalue))
+	if (now <= ((time_t) check->vp_date))
 		return 0;
 	return +1;
 }
@@ -142,8 +142,6 @@ static int expirecmp(void *instance, REQUEST *req,
 
 static int expiration_detach(void *instance)
 {
-	rlm_expiration_t *data = (rlm_expiration_t *) instance;
-
 	paircompare_unregister(PW_EXPIRATION, expirecmp);
 	free(instance);
 	return 0;

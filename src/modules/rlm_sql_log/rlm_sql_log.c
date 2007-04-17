@@ -372,9 +372,9 @@ static int sql_log_accounting(void *instance, REQUEST *request)
 	}
 
 	/* Search the query in conf section of the module */
-	if ((dval = dict_valbyattr(PW_ACCT_STATUS_TYPE, pair->lvalue)) == NULL) {
+	if ((dval = dict_valbyattr(PW_ACCT_STATUS_TYPE, pair->vp_integer)) == NULL) {
 		radlog(L_ERR, "rlm_sql_log (%s): Unsupported Acct-Status-Type = %d",
-		       inst->name, pair->lvalue);
+		       inst->name, pair->vp_integer);
 		return RLM_MODULE_NOOP;
 	}
 	if ((cp = cf_pair_find(inst->conf_section, dval->name)) == NULL) {

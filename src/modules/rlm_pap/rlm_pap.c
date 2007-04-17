@@ -385,8 +385,8 @@ static int pap_authorize(void *instance, REQUEST *request)
 			 *	Auth-Type := Accept
 			 *	Auth-Type := Reject
 			 */
-			if ((vp->lvalue == 254) ||
-			    (vp->lvalue == 4)) {
+			if ((vp->vp_integer == 254) ||
+			    (vp->vp_integer == 4)) {
 			    found_pw = 1;
 			}
 			break;

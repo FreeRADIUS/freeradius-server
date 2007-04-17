@@ -285,7 +285,7 @@ do_again:
 		
 		if ((attr_vp->type == PW_TYPE_IPADDR) &&
 		    (attr_vp->vp_strvalue[0] == '\0')) {
-		  inet_ntop(AF_INET, &(attr_vp->lvalue),
+		  inet_ntop(AF_INET, &(attr_vp->vp_ipaddr),
 			    attr_vp->vp_strvalue,
 			    sizeof(attr_vp->vp_strvalue));
 		}
