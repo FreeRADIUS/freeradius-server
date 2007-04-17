@@ -62,7 +62,7 @@ void client_free(RADCLIENT *client)
 	free(client->auth);
 	free(client->acct);
 #endif
-	
+
 	free(client);
 }
 
@@ -203,7 +203,9 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	}
 
 #ifdef WITH_SNMP
-	if (!clients->num) rbtree_create(client_num_cmp, NULL, 0);
+	if (!clients->num) {
+		clients->num = rbtree_create(client_num_cmp, NULL, 0);
+	}
 
 	client->number = clients->max;
 	clients->max++;
