@@ -52,7 +52,8 @@ CFLAGS		+= -I$(top_builddir)/src -I$(top_builddir)/libltdl
 #######################################################################
 SERVER_HEADERS	= $(top_builddir)/src/include/radius.h  \
 		  $(top_builddir)/src/include/radiusd.h \
-		  $(top_builddir)/src/include/modules.h
+		  $(top_builddir)/src/include/modules.h \
+		  $(top_builddir)/src/include/libradius.h
 
 $(LT_OBJS): $(SERVER_HEADERS)
 
