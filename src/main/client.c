@@ -40,11 +40,13 @@ struct radclient_list {
 	 */
 	rbtree_t	*trees[129]; /* for 0..128, inclusive. */
 	int		min_prefix;
-#ifdef WITH_SNMP
-	rbtree_t	*num;	/* client numbers 0..N */
-	int		max;
-#endif
 };
+
+
+#ifdef WITH_SNMP
+static rbtree_t		*tree_num;	/* client numbers 0..N */
+static int		tree_num_max;
+#endif
 
 /*
  *	Callback for freeing a client.
@@ -102,7 +104,10 @@ void clients_free(RADCLIENT_LIST *clients)
 		clients->trees[i] = NULL;
 	}
 #ifdef WITH_SNMP
-	if (clients->num) rbtree_free(clients->num);
+	if (clients == mainconfig.clients) {
+		if (tree_num) rbtree_free(tree_num);
+		tree_num_max = 0;
+	}
 #endif
 	free(clients);
 }
@@ -203,13 +208,13 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	}
 
 #ifdef WITH_SNMP
-	if (!clients->num) {
-		clients->num = rbtree_create(client_num_cmp, NULL, 0);
+	if (!tree_num) {
+		tree_num = rbtree_create(client_num_cmp, NULL, 0);
 	}
 
-	client->number = clients->max;
-	clients->max++;
-	if (clients->num) rbtree_insert(clients->num, client);
+	client->number = tree_num_max;
+	tree_num_max++;
+	if (tree_num) rbtree_insert(tree_num, client);
 #endif
 
 	if (client->prefix < clients->min_prefix) {
@@ -230,12 +235,14 @@ RADCLIENT *client_findbynumber(const RADCLIENT_LIST *clients,
 #ifdef WITH_SNMP
 	if (!clients) return NULL;
 
-	if (clients->num) {
+	if (number >= tree_num_max) return NULL;
+
+	if (tree_num) {
 		RADCLIENT myclient;
 		
 		myclient.number = number;
 		
-		return rbtree_finddata(clients->num, &myclient);
+		return rbtree_finddata(tree_num, &myclient);
 	}
 #endif
 	return NULL;
