@@ -935,7 +935,7 @@ int read_mainconfig(int reload)
 	}
 
 	if (listener != NULL) {
-		RADCLIENT_LIST *clients, *old_clients;
+		RADCLIENT_LIST *clients;
 
 		/*
 		 *	Create the new clients first, and add them
