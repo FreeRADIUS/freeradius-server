@@ -1577,8 +1577,27 @@ int received_request(rad_listen_t *listener,
 			received_retransmit(request, client);
 			return 0;
 		}
-		received_conflicting_request(request, client);
-		request = NULL;
+
+		/*
+		 *	The new request is different from the old one,
+		 *	but maybe the old is finished.  If so, delete
+		 *	the old one.
+		 */
+		switch (request->child_state) {
+		default:
+			received_conflicting_request(request, client);
+			request = NULL;
+			break;
+
+		case REQUEST_REJECT_DELAY:
+		case REQUEST_CLEANUP_DELAY:
+			request->child_state = REQUEST_DONE;
+		case REQUEST_DONE:
+			cleanup_delay(request);
+			request = NULL;
+			break;
+		}
+
 
 	} else if (!can_handle_new_request(packet, client)) {
 		return 0;
