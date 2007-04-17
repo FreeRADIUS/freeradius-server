@@ -255,7 +255,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 					return 0;
 				}
 				localvp.attribute = da->attr;
-				localvp.lvalue = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+				localvp.vp_ipaddr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 				break;
 			
 			case PW_PACKET_DST_IP_ADDRESS:
@@ -263,17 +263,17 @@ static int xlat_packet(void *instance, REQUEST *request,
 					return 0;
 				}
 				localvp.attribute = da->attr;
-				localvp.lvalue = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
+				localvp.vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 				break;
 			
 			case PW_PACKET_SRC_PORT:
 				localvp.attribute = da->attr;
-				localvp.lvalue = packet->src_port;
+				localvp.vp_integer = packet->src_port;
 				break;
 			
 			case PW_PACKET_DST_PORT:
 				localvp.attribute = da->attr;
-				localvp.lvalue = packet->dst_port;
+				localvp.vp_integer = packet->dst_port;
 				break;
 
 			case PW_PACKET_AUTHENTICATION_VECTOR:

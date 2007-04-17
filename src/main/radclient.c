@@ -230,16 +230,16 @@ static radclient_t *radclient_init(const char *filename)
 				 *	the attributes read from the file.
 				 */
 			case PW_PACKET_TYPE:
-				radclient->request->code = vp->lvalue;
+				radclient->request->code = vp->vp_integer;
 				break;
 
 			case PW_PACKET_DST_PORT:
-				radclient->request->dst_port = (vp->lvalue & 0xffff);
+				radclient->request->dst_port = (vp->vp_integer & 0xffff);
 				break;
 
 			case PW_PACKET_DST_IP_ADDRESS:
 				radclient->request->dst_ipaddr.af = AF_INET;
-				radclient->request->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->lvalue;
+				radclient->request->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 				break;
 
 			case PW_PACKET_DST_IPV6_ADDRESS:
@@ -248,12 +248,12 @@ static radclient_t *radclient_init(const char *filename)
 				break;
 
 			case PW_PACKET_SRC_PORT:
-				radclient->request->src_port = (vp->lvalue & 0xffff);
+				radclient->request->src_port = (vp->vp_integer & 0xffff);
 				break;
 
 			case PW_PACKET_SRC_IP_ADDRESS:
 				radclient->request->src_ipaddr.af = AF_INET;
-				radclient->request->src_ipaddr.ipaddr.ip4addr.s_addr = vp->lvalue;
+				radclient->request->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 				break;
 
 			case PW_PACKET_SRC_IPV6_ADDRESS:

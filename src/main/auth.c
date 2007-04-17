@@ -43,7 +43,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli) {
 	if ((cli = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) == NULL)
 		do_cli = 0;
 	if ((pair = pairfind(request->packet->vps, PW_NAS_PORT)) != NULL)
-		port = pair->lvalue;
+		port = pair->vp_integer;
 
 	snprintf(buf, buflen, "from client %.128s port %u%s%.128s",
 			client_name_old(&request->packet->src_ipaddr), port,
@@ -162,7 +162,7 @@ static int rad_check_password(REQUEST *request)
 	 */
 	cur_config_item = request->config_items;
 	while(((auth_type_pair = pairfind(cur_config_item, PW_AUTH_TYPE))) != NULL) {
-		auth_type = auth_type_pair->lvalue;
+		auth_type = auth_type_pair->vp_integer;
 		auth_type_count++;
 
 		DEBUG2("  rad_check_password:  Found Auth-Type %s",
@@ -394,7 +394,7 @@ int rad_postauth(REQUEST *request)
 	vp = pairfind(request->config_items, PW_POST_AUTH_TYPE);
 	if (vp) {
 		DEBUG2("  Found Post-Auth-Type %s", vp->vp_strvalue);
-		postauth_type = vp->lvalue;
+		postauth_type = vp->vp_integer;
 	}
 	result = module_post_auth(postauth_type, request);
 	switch (result) {
@@ -467,7 +467,7 @@ int rad_authenticate(REQUEST *request)
 				radlog(L_ERR|L_CONS, "Not enough memory");
 				exit(1);
 			}
-			tmp->lvalue = PW_AUTHTYPE_ACCEPT;
+			tmp->vp_integer = PW_AUTHTYPE_ACCEPT;
 			pairadd(&request->config_items, tmp);
 			break;
 		/*
@@ -567,7 +567,7 @@ autz_redo:
 		tmp = pairfind(request->config_items, PW_AUTZ_TYPE);
 		if (tmp) {
 			DEBUG2("  Found Autz-Type %s", tmp->vp_strvalue);
-			autz_type = tmp->lvalue;
+			autz_type = tmp->vp_integer;
 			autz_retry = 1;
 			goto autz_redo;
 		}
@@ -659,7 +659,7 @@ autz_redo:
 		tmp = pairfind(request->config_items, PW_SESSION_TYPE);
 		if (tmp) {
 			DEBUG2("  Found Session-Type %s", tmp->vp_strvalue);
-			session_type = tmp->lvalue;
+			session_type = tmp->vp_integer;
 		}
 
 		/*
@@ -667,7 +667,7 @@ autz_redo:
 		 *	for the Simultaneous-Use parameter.
 		 */
 		if (namepair &&
-		    (r = module_checksimul(session_type, request, check_item->lvalue)) != 0) {
+		    (r = module_checksimul(session_type, request, check_item->vp_integer)) != 0) {
 			char mpp_ok = 0;
 
 			if (r == 2){
@@ -675,16 +675,16 @@ autz_redo:
 				VALUE_PAIR *port_limit;
 
 				if ((port_limit = pairfind(request->reply->vps, PW_PORT_LIMIT)) != NULL &&
-					port_limit->lvalue > check_item->lvalue){
+					port_limit->vp_integer > check_item->vp_integer){
 					DEBUG2("main auth: MPP is OK");
 					mpp_ok = 1;
 				}
 			}
 			if (!mpp_ok){
-				if (check_item->lvalue > 1) {
+				if (check_item->vp_integer > 1) {
 		  		snprintf(umsg, sizeof(umsg),
 							"\r\nYou are already logged in %d times  - access denied\r\n\n",
-							(int)check_item->lvalue);
+							(int)check_item->vp_integer);
 					user_msg = umsg;
 				} else {
 					user_msg = "\r\nYou are already logged in - access denied\r\n\n";
@@ -701,7 +701,7 @@ autz_redo:
 				request->reply->vps = tmp;
 
 				snprintf(logstr, sizeof(logstr), "Multiple logins (max %d) %s",
-					check_item->lvalue,
+					check_item->vp_integer,
 					r == 2 ? "[MPP attempt]" : "");
 				rad_authlog(logstr, request, 1);
 
@@ -741,10 +741,10 @@ autz_redo:
 		 */
 		if ((vpPortId = pairfind(request->packet->vps,
 					 PW_NAS_PORT)) != NULL) {
-		  unsigned long tvalue = ntohl(tmp->lvalue);
-		  tmp->lvalue = htonl(tvalue + vpPortId->lvalue);
+		  unsigned long tvalue = ntohl(tmp->vp_integer);
+		  tmp->vp_integer = htonl(tvalue + vpPortId->vp_integer);
 		  tmp->flags.addport = 0;
-		  ip_ntoa(tmp->vp_strvalue, tmp->lvalue);
+		  ip_ntoa(tmp->vp_strvalue, tmp->vp_integer);
 		} else {
 			DEBUG2("WARNING: No NAS-Port attribute in request.  CANNOT return a Framed-IP-Address + NAS-Port.\n");
 			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS);

@@ -97,8 +97,6 @@ static void snmp_inc_client_responses(RADCLIENT *client,
 {
 	if (!mainconfig.do_snmp) return;
 
-	if (!client) return;
-
 	/*
 	 *	Update the SNMP statistics.
 	 *
@@ -111,24 +109,24 @@ static void snmp_inc_client_responses(RADCLIENT *client,
 	case PW_AUTHENTICATION_ACK:
 		rad_snmp.auth.total_responses++;
 		rad_snmp.auth.total_access_accepts++;
-		client->auth->accepts++;
+		if (client) client->auth->accepts++;
 		break;
 
 	case PW_AUTHENTICATION_REJECT:
 		rad_snmp.auth.total_responses++;
 		rad_snmp.auth.total_access_rejects++;
-		client->auth->rejects++;
+		if (client) client->auth->rejects++;
 		break;
 		
 	case PW_ACCESS_CHALLENGE:
 		rad_snmp.auth.total_responses++;
 		rad_snmp.auth.total_access_challenges++;
-		client->auth->challenges++;
+		if (client) client->auth->challenges++;
 		break;
 		
 	case PW_ACCOUNTING_RESPONSE:
 		rad_snmp.acct.total_responses++;
-		client->auth->responses++;
+		if (client) client->auth->responses++;
 		break;
 
 		/*
@@ -138,7 +136,7 @@ static void snmp_inc_client_responses(RADCLIENT *client,
 	case 0:
 		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 			rad_snmp.auth.total_bad_authenticators++;
-			client->auth->bad_authenticators++;
+			if (client) client->auth->bad_authenticators++;
 		}
 		break;
 		
@@ -875,7 +873,7 @@ static int request_pre_handler(REQUEST *request)
 		vp = pairfind(request->config_items, PW_POST_PROXY_TYPE);
 		if (vp) {
 			DEBUG2("  Found Post-Proxy-Type %s", vp->vp_strvalue);
-			post_proxy_type = vp->lvalue;
+			post_proxy_type = vp->vp_integer;
 		}
 		rcode = module_post_proxy(post_proxy_type, request);
 		
@@ -1135,7 +1133,7 @@ static int successfully_proxied_request(REQUEST *request)
 	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE);
 	if (vp) {
 		DEBUG2("  Found Pre-Proxy-Type %s", vp->vp_strvalue);
-		pre_proxy_type = vp->lvalue;
+		pre_proxy_type = vp->vp_integer;
 	}
 	rcode = module_pre_proxy(pre_proxy_type, request);
 	switch (rcode) {
@@ -1235,7 +1233,7 @@ static void request_post_handler(REQUEST *request)
 
 	if ((request->reply->code == 0) &&
 	    ((vp = pairfind(request->config_items, PW_AUTH_TYPE)) != NULL) &&
-	    (vp->lvalue == PW_AUTHTYPE_REJECT)) {
+	    (vp->vp_integer == PW_AUTHTYPE_REJECT)) {
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 	}
 

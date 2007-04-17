@@ -1008,7 +1008,7 @@ static int detail_recv(rad_listen_t *listener,
 		rad_assert(vp != NULL);
 	}
 	if (data->timestamp != 0) {
-		vp->lvalue += time(NULL) - data->timestamp;
+		vp->vp_integer += time(NULL) - data->timestamp;
 	}
 
 	/*
@@ -1022,7 +1022,7 @@ static int detail_recv(rad_listen_t *listener,
 	vp = pairfind(packet->vps, PW_PACKET_SRC_IP_ADDRESS);
 	if (vp) {
 		packet->src_ipaddr.af = AF_INET;
-		packet->src_ipaddr.ipaddr.ip4addr.s_addr = vp->lvalue;
+		packet->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 	} else {
 		vp = pairfind(packet->vps, PW_PACKET_SRC_IPV6_ADDRESS);
 		if (vp) {
@@ -1035,7 +1035,7 @@ static int detail_recv(rad_listen_t *listener,
 	vp = pairfind(packet->vps, PW_PACKET_DST_IP_ADDRESS);
 	if (vp) {
 		packet->dst_ipaddr.af = AF_INET;
-		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->lvalue;
+		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 	} else {
 		vp = pairfind(packet->vps, PW_PACKET_DST_IPV6_ADDRESS);
 		if (vp) {

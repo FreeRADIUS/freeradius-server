@@ -189,9 +189,13 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 					     (char *)check->vp_strvalue);
 			}
 			break;
+		case PW_TYPE_BYTE:
+		case PW_TYPE_SHORT:
 		case PW_TYPE_INTEGER:
+			ret = vp->vp_integer - check->vp_integer;
+			break;
 		case PW_TYPE_DATE:
-			ret = vp->lvalue - check->lvalue;
+			ret = vp->vp_date - check->vp_date;
 			break;
 		case PW_TYPE_IPADDR:
 			ret = ntohl(vp->vp_ipaddr) - ntohl(check->vp_ipaddr);

@@ -26,8 +26,9 @@ RCSID("$Id$")
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/rad_assert.h>
 
-#include	<signal.h>
+#ifdef HAVE_SYS_WAIT_H
 #include	<sys/wait.h>
+#endif
 
 /*
  *	End a session by faking a Stop packet to all accounting modules.
@@ -55,8 +56,8 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 		vp->e = v; \
 		pairadd(&(stopreq->packet->vps), vp); \
 	} while(0)
-#define INTPAIR(n,v) PAIR(n,v,PW_TYPE_INTEGER,lvalue)
-#define IPPAIR(n,v) PAIR(n,v,PW_TYPE_IPADDR,lvalue)
+#define INTPAIR(n,v) PAIR(n,v,PW_TYPE_INTEGER,vp_integer)
+#define IPPAIR(n,v) PAIR(n,v,PW_TYPE_IPADDR,vp_ipaddr)
 #define STRINGPAIR(n,v) do { \
 	if(!(vp = paircreate(n, PW_TYPE_STRING))) { \
 		radlog(L_ERR|L_CONS, "no memory"); \
