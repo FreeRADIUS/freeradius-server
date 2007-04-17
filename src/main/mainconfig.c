@@ -52,10 +52,6 @@ RCSID("$Id$")
 
 struct main_config_t mainconfig;
 
-#define MAX_OLD_CONFIGS (32)
-static int max_old_config = 0;
-static CONF_SECTION *old_configs[MAX_OLD_CONFIGS];
-
 /*
  *	Temporary local variables for parsing the configuration
  *	file.
@@ -457,7 +453,9 @@ static int r_mkdir(const char *part)
  */
 static int radlogdir_iswritable(const char *effectiveuser)
 {
+#ifdef HAVE_GETPWNAM
 	struct passwd *pwent;
+#endif
 
 	if (!radlog_dir || radlog_dir[0] != '/')
 		return(0);
@@ -643,7 +641,7 @@ int read_mainconfig(int reload)
 {
 	static int old_debug_level = -1;
 	char buffer[1024];
-	CONF_SECTION *cs, *oldcs, *templates;
+	CONF_SECTION *cs, *templates;
 	rad_listen_t *listener;
 	struct stat statbuf;
 
@@ -835,12 +833,7 @@ int read_mainconfig(int reload)
 	 *	Note that where possible, we do atomic switch-overs,
 	 *	to ensure that the pointers are always valid.
 	 */
-	if (max_old_config == MAX_OLD_CONFIGS) {
-		max_old_config--;
-		cf_section_free(&old_configs[max_old_config]);
-	}
-	old_configs[max_old_config++] = mainconfig.config;
-
+	cf_section_free(&mainconfig.config);
 	mainconfig.config = cs;
 
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
@@ -957,12 +950,17 @@ int read_mainconfig(int reload)
 		}
 
 		/*
-		 *	Free the old trees AFTER replacing them with
-		 *	the new ones...
+		 *	The old clients are already NULL, because they
+		 *	are in a configuration section, and the client
+		 *	"free" function was added by clients parse
+		 *	section, above.
+		 *
+		 *	Note that because we require at least one
+		 *	client in the main configuration file, any
+		 *	clients added by SQL will be inserted into
+		 *	that, and automatically freed.
 		 */
-		old_clients = mainconfig.clients;
 		mainconfig.clients = clients;
-		clients_free(old_clients);
 	}
 
 	/*  Reload the modules.  */
@@ -979,12 +977,6 @@ int read_mainconfig(int reload)
  */
 int free_mainconfig(void)
 {
-	int i;
-
-	for (i = 0; i < max_old_config; i++) {
-		cf_section_free(&old_configs[i]);
-	}
-
 	/*
 	 *	Clean up the configuration data
 	 *	structures.
