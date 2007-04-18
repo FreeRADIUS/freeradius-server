@@ -622,3 +622,18 @@ void *rbtree_node2data(rbtree_t *tree, rbnode_t *node)
 
 	return node->Data;
 }
+
+/*
+ *	Return left-most child.
+ */
+void *rbtree_min(rbtree_t *tree)
+{
+	rbnode_t *Current;
+
+	if (!tree || !tree->Root) return NULL;
+
+	Current = tree->Root;
+	while (Current->Left != NIL) Current = Current->Left;
+
+	return Current->Data;
+}

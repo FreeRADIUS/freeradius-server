@@ -399,6 +399,7 @@ int		rbtree_deletebydata(rbtree_t *tree, const void *data);
 rbnode_t       *rbtree_find(rbtree_t *tree, const void *Data);
 void	       *rbtree_finddata(rbtree_t *tree, const void *Data);
 int		rbtree_num_elements(rbtree_t *tree);
+void	       *rbtree_min(rbtree_t *tree);
 void	       *rbtree_node2data(rbtree_t *tree, rbnode_t *node);
 
 /* callback order for walking  */

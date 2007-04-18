@@ -217,12 +217,9 @@ int lrad_event_run(lrad_event_list_t *el, struct timeval *when)
 {
 	lrad_event_callback_t callback;
 	void *ctx;
-	lrad_event_walk_t w;
+	lrad_event_t *ev;
 
 	if (!el) return 0;
-
-	w.ev = NULL;
-	w.when = *when;
 
 	if (rbtree_num_elements(el->times) == 0) {
 		when->tv_sec = 0;
@@ -230,19 +227,31 @@ int lrad_event_run(lrad_event_list_t *el, struct timeval *when)
 		return 0;
 	}
 
-	rbtree_walk(el->times, InOrder, lrad_event_find_earliest, &w);
-	if (!w.ev) {
-		*when = w.when;
+	ev = rbtree_min(el->times);
+	if (!ev) {
+		when->tv_sec = 0;
+		when->tv_usec = 0;
+		fprintf(stderr, "FATAL ERROR!\n");
 		return 0;
 	}
 
-	callback = w.ev->callback;
-	ctx = w.ev->ctx;
+	/*
+	 *	See if it's time to do this one.
+	 */
+	if ((ev->when.tv_sec > when->tv_sec) ||
+	    ((ev->when.tv_sec == when->tv_sec) &&
+	     (ev->when.tv_usec > when->tv_usec))) {
+		*when = ev->when;
+		return 0;
+	}
+
+	callback = ev->callback;
+	ctx = ev->ctx;
 
 	/*
 	 *	Delete the event before calling it.
 	 */
-	lrad_event_delete(el, w.ev->ev_p);
+	lrad_event_delete(el, ev->ev_p);
 
 	callback(ctx);
 	return 1;
