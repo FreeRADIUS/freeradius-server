@@ -59,6 +59,7 @@ typedef struct rlm_pap_t {
 	int sch;
 	char norm_passwd;
 	int auto_header;
+	int auth_type;
 } rlm_pap_t;
 
 /*
@@ -121,6 +122,7 @@ static int pap_detach(void *instance)
 static int pap_instantiate(CONF_SECTION *conf, void **instance)
 {
         rlm_pap_t *inst;
+	DICT_VALUE *dval;
 
         /*
          *      Set up a storage area for instance data
@@ -152,11 +154,19 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-        *instance = inst;
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
 		inst->name = cf_section_name1(conf);
 	}
+
+	dval = dict_valbyname(PW_AUTH_TYPE, inst->name);
+	if (dval) {
+		inst->auth_type = dval->value;
+	} else {
+		inst->auth_type = 0;
+	}
+
+        *instance = inst;
 
         return 0;
 }
@@ -438,11 +448,13 @@ static int pap_authorize(void *instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-	vp = paircreate(PW_AUTH_TYPE, PW_TYPE_INTEGER);
-	if (!vp) return RLM_MODULE_FAIL;
-	pairparsevalue(vp, inst->name);
-
-	pairadd(&request->config_items, vp);
+	if (inst->auth_type) {
+		vp = paircreate(PW_AUTH_TYPE, PW_TYPE_INTEGER);
+		if (!vp) return RLM_MODULE_FAIL;	
+		vp->vp_integer = inst->auth_type;
+		
+		pairadd(&request->config_items, vp);
+	}
 
 	return RLM_MODULE_UPDATED;
 }
