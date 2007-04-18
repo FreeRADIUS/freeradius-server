@@ -39,7 +39,7 @@ typedef struct indexed_modcallable {
 /*
  *	For each component, keep an ordered list of ones to call.
  */
-static lrad_hash_table_t *components;
+static rbtree_t *components;
 
 static rbtree_t *module_tree = NULL;
 
@@ -85,15 +85,6 @@ static void indexed_modcallable_free(void *data)
 
 	modcallable_free(&c->modulelist);
 	free(c);
-}
-
-static uint32_t indexed_modcallable_hash(const void *data)
-{
-	uint32_t hash;
-	const indexed_modcallable *c = data;
-
-	hash = lrad_hash(&c->comp, sizeof(c->comp));
-	return lrad_hash_update(&c->idx, sizeof(c->idx), hash);
 }
 
 static int indexed_modcallable_cmp(const void *one, const void *two)
@@ -160,7 +151,7 @@ static void module_entry_free(void *data)
  */
 int detach_modules(void)
 {
-	lrad_hash_table_free(components);
+	rbtree_free(components);
 	rbtree_free(module_tree);
 
 	return 0;
@@ -363,7 +354,7 @@ static indexed_modcallable *lookup_by_index(int comp, int idx)
 	myc.comp = comp;
 	myc.idx = idx;
 
-	return lrad_hash_table_finddata(components, &myc);
+	return rbtree_finddata(components, &myc);
 }
 
 /*
@@ -395,7 +386,7 @@ static indexed_modcallable *new_sublist(int comp, int idx)
 	c->comp = comp;
 	c->idx = idx;
 
-	if (!lrad_hash_table_insert(components, c)) {
+	if (!rbtree_insert(components, c)) {
 		free(c);
 		return NULL;
 	}
@@ -681,12 +672,11 @@ int setup_modules(int reload)
 			return -1;
 		}
 	} else {
-		lrad_hash_table_free(components);
+		rbtree_free(components);
 	}
 
-	components = lrad_hash_table_create(indexed_modcallable_hash,
-					    indexed_modcallable_cmp,
-					    indexed_modcallable_free);
+	components = rbtree_create(indexed_modcallable_cmp,
+				   indexed_modcallable_free, 0);
 	if (!components) {
 		radlog(L_ERR|L_CONS, "Failed to initialize components\n");
 		return -1;
