@@ -37,9 +37,9 @@ void lrad_event_list_free(lrad_event_list_t *el);
 
 int lrad_event_list_num_elements(lrad_event_list_t *el);
 
-lrad_event_t *lrad_event_insert(lrad_event_list_t *el,
-				lrad_event_callback_t callback,
-				void *ctx, struct timeval *when);
+int lrad_event_insert(lrad_event_list_t *el,
+		      lrad_event_callback_t callback,
+		      void *ctx, struct timeval *when, lrad_event_t **ev_p);
 int lrad_event_delete(lrad_event_list_t *el, lrad_event_t **ev_p);
 
 int lrad_event_run(lrad_event_list_t *el, struct timeval *when);

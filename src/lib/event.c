@@ -56,6 +56,7 @@ struct lrad_event_t {
 	lrad_event_callback_t	callback;
 	void			*ctx;
 	struct timeval		when;
+	lrad_event_t		**ev_p;
 };
 
 
@@ -111,30 +112,38 @@ int lrad_event_list_num_elements(lrad_event_list_t *el)
 
 int lrad_event_delete(lrad_event_list_t *el, lrad_event_t **ev_p)
 {
+	lrad_event_t *ev;
+
 	if (!el || !ev_p || !*ev_p) return 0;
 
-	rbtree_deletebydata(el->times, *ev_p);
-	*ev_p = NULL;
+	ev = *ev_p;
+	*(ev->ev_p) = NULL;
+
+	rbtree_deletebydata(el->times, ev);
 
 	return 1;
 }
 
 		      
-lrad_event_t *lrad_event_insert(lrad_event_list_t *el,
-				lrad_event_callback_t callback,
-				void *ctx, struct timeval *when)
+int lrad_event_insert(lrad_event_list_t *el,
+		      lrad_event_callback_t callback,
+		      void *ctx, struct timeval *when,
+		      lrad_event_t **ev_p)
 {
 	lrad_event_t *ev;
 
-	if (!el || !callback | !when) return 0;
+	if (!el || !callback | !when || !ev_p) return 0;
+
+	if (*ev_p) lrad_event_delete(el, ev_p);
 
 	ev = malloc(sizeof(*ev));
-	if (!ev) return NULL;
+	if (!ev) return 0;
 	memset(ev, 0, sizeof(*ev));
 
 	ev->callback = callback;
 	ev->ctx = ctx;
 	ev->when = *when;
+	ev->ev_p = ev_p;
 
 	/*
 	 *	There's a tiny chance that two events will be
@@ -161,15 +170,17 @@ lrad_event_t *lrad_event_insert(lrad_event_list_t *el,
 					break;
 				}
 
-				return ev;
+				*ev_p = ev;
+				return 1;
 			}
 				
 		}
 		free(ev);
-		return NULL;
+		return 0;
 	}
 
-	return ev;
+	*ev_p = ev;
+	return 1;
 }
 
 typedef struct lrad_event_walk_t {
@@ -228,7 +239,7 @@ int lrad_event_run(lrad_event_list_t *el, struct timeval *when)
 	/*
 	 *	Delete the event before calling it.
 	 */
-	rbtree_deletebydata(el->times, w.ev);
+	lrad_event_delete(el, w.ev->ev_p);
 
 	callback(ctx);
 	return 1;
