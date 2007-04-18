@@ -212,6 +212,21 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		tree_num = rbtree_create(client_num_cmp, NULL, 0);
 	}
 
+
+	/*
+	 *	Catch clients added by rlm_sql.
+	 */
+	if (!client->auth) {
+		client->auth = rad_malloc(sizeof(*client->auth));
+		memset(client->auth, 0, sizeof(*client->auth));
+	}
+
+	if (!client->acct) {
+		client->acct = rad_malloc(sizeof(*client->acct));
+		memset(client->acct, 0, sizeof(*client->acct));
+	}
+
+
 	client->number = tree_num_max;
 	tree_num_max++;
 	if (tree_num) rbtree_insert(tree_num, client);
