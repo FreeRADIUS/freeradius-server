@@ -152,7 +152,7 @@ static int cram_authenticate(UNUSED void * instance, REQUEST *request)
 		radlog(L_AUTH, "rlm_cram: Required attribute Sandy-Mail-Response missed");
 		return RLM_MODULE_INVALID;
 	}
-	switch(authtype->lvalue){
+	switch(authtype->vp_integer){
 		case 2:				/*	CRAM-MD5	*/
 			if(challenge->length < 5 || response->length != 16) {
 				radlog(L_AUTH, "rlm_cram: invalid MD5 challenge/response length");
