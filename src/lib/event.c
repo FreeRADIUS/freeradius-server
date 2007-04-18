@@ -57,6 +57,7 @@ struct lrad_event_t {
 	void			*ctx;
 	struct timeval		when;
 	lrad_event_t		**ev_p;
+	rbnode_t		*node;
 };
 
 
@@ -119,7 +120,7 @@ int lrad_event_delete(lrad_event_list_t *el, lrad_event_t **ev_p)
 	ev = *ev_p;
 	*(ev->ev_p) = NULL;
 
-	rbtree_deletebydata(el->times, ev);
+	rbtree_delete(el->times, ev->node);
 
 	return 1;
 }
@@ -151,7 +152,8 @@ int lrad_event_insert(lrad_event_list_t *el,
 	 *	increase the usec counter by 1, in order to avoid the
 	 *	duplicate.  If we can't insert it after 10 tries, die.
 	 */
-	if (!rbtree_insert(el->times, ev)) {
+	ev->node = rbtree_insertnode(el->times, ev);
+	if (!ev->node) {
 		if (rbtree_finddata(el->times, ev)) {
 			int i;
 
@@ -166,7 +168,8 @@ int lrad_event_insert(lrad_event_list_t *el,
 					continue;
 				}
 
-				if (!rbtree_insert(el->times, ev)) {
+				ev->node = rbtree_insertnode(el->times, ev);
+				if (!ev->node) { /* error */
 					break;
 				}
 

@@ -132,6 +132,18 @@ typedef struct dict_vendor {
 	char			name[1];
 } DICT_VENDOR;
 
+typedef union value_pair_data {
+	char			strvalue[MAX_STRING_LEN];
+	uint8_t			octets[MAX_STRING_LEN];
+	struct in_addr		ipaddr;
+	struct in6_addr		ipv6addr;
+	uint32_t		date;
+	uint32_t		integer;
+	uint8_t			filter[32];
+	uint8_t			ifid[8]; /* struct? */
+	uint8_t			ipv6prefix[18]; /* struct? */
+} VALUE_PAIR_DATA;
+
 typedef struct value_pair {
 	char			name[40];
 	int			attribute;
@@ -142,17 +154,7 @@ typedef struct value_pair {
 	uint32_t		lvalue;	/* DELETE ME ASAP */
         ATTR_FLAGS              flags;
 	struct value_pair	*next;
-	union {
-		char			strvalue[MAX_STRING_LEN];
-		uint8_t			octets[MAX_STRING_LEN];
-		struct in_addr		ipaddr;
-		struct in6_addr		ipv6addr;
-		uint32_t		date;
-		uint32_t		integer;
-		uint8_t			filter[32];
-		uint8_t			ifid[8]; /* struct? */
-		uint8_t			ipv6prefix[18]; /* struct? */
-	} data;
+	VALUE_PAIR_DATA		data;
 } VALUE_PAIR;
 #define vp_strvalue   data.strvalue
 #define vp_octets     data.octets
@@ -391,6 +393,7 @@ rbtree_t       *rbtree_create(int (*Compare)(const void *, const void *),
 			       int replace_flag);
 void		rbtree_free(rbtree_t *tree);
 int		rbtree_insert(rbtree_t *tree, void *Data);
+rbnode_t	*rbtree_insertnode(rbtree_t *tree, void *Data);
 void		rbtree_delete(rbtree_t *tree, rbnode_t *Z);
 int		rbtree_deletebydata(rbtree_t *tree, const void *data);
 rbnode_t       *rbtree_find(rbtree_t *tree, const void *Data);
