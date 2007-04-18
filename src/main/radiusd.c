@@ -318,7 +318,6 @@ int main(int argc, char *argv[])
 	 */
 	radius_pid = getpid();
 
-
 	/*
 	 *  Only write the PID file if we're running as a daemon.
 	 *
@@ -490,6 +489,8 @@ int main(int argc, char *argv[])
 				unlink(mainconfig.pid_file);
 			}
 
+			radius_event_free();
+
 			/*
 			 *	Free the configuration items.
 			 */
@@ -499,8 +500,6 @@ int main(int argc, char *argv[])
 			 *	Detach any modules.
 			 */
 			detach_modules();
-
-			radius_event_free();
 
 			free(radius_dir);
 
