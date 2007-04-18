@@ -47,6 +47,8 @@ static lrad_hash_table_t *attributes_byvalue = NULL;
 static lrad_hash_table_t *values_byvalue = NULL;
 static lrad_hash_table_t *values_byname = NULL;
 
+static DICT_ATTR *dict_base_attrs[256];
+
 /*
  *	For faster HUP's, we cache the stat information for
  *	files we've $INCLUDEd
@@ -322,6 +324,8 @@ void dict_free(void)
 	values_byname = NULL;
 	values_byvalue = NULL;
 
+	memset(dict_base_attrs, 0, sizeof(dict_base_attrs));
+
 	dict_stat_free();
 }
 
@@ -522,6 +526,10 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	if (!lrad_hash_table_replace(attributes_byvalue, attr)) {
 		librad_log("dict_addattr: Failed inserting attribute name %s", name);
 		return -1;
+	}
+
+	if (!vendor && (value > 0) && (value < 256)) {
+	 	 dict_base_attrs[value] = attr;
 	}
 
 	return 0;
@@ -1473,6 +1481,8 @@ int dict_init(const char *dir, const char *fn)
 DICT_ATTR *dict_attrbyvalue(int attr)
 {
 	DICT_ATTR dattr;
+
+	if ((attr > 0) && (attr < 256)) return dict_base_attrs[attr];
 
 	dattr.attr = attr;
 	dattr.vendor = VENDOR(attr) & 0x7fff;
