@@ -107,6 +107,7 @@ void clients_free(RADCLIENT_LIST *clients)
 	if (clients == mainconfig.clients) {
 #ifdef WITH_SNMP
 		if (tree_num) rbtree_free(tree_num);
+		tree_num = NULL;
 		tree_num_max = 0;
 #endif
 		mainconfig.clients = NULL;
