@@ -933,10 +933,10 @@ smux_register(void)
 		len = BUFSIZ;
 		asn_build_header (buf, &len, (u_char) SMUX_RREQ, (ptr - buf) - 2);
 		ret = send (rad_snmp.smux_fd, buf, (ptr - buf), 0);
-		if (ret < 0)
-			fprintf(stderr, "REGISTER OID FAILED!\n");
+		if (ret < 0) {
 			return ret;
 		}
+	}
 	return ret;
 }
 
