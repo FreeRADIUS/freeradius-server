@@ -267,12 +267,12 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 				pairfree(&vp);
 				return NULL;
 			}
-			memcpy(&vp->lvalue, data, vp->length);
+			memcpy(&vp->vp_integer, data, vp->length);
 			
 			/*
 			 *	Stored in host byte order: change it.
 			 */
-			vp->lvalue = ntohl(vp->lvalue);
+			vp->vp_integer = ntohl(vp->vp_integer);
 			break;
 			
 		case PW_TYPE_IPADDR:
@@ -283,7 +283,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 				pairfree(&vp);
 				return NULL;
 			}
-		  memcpy(&vp->lvalue, data, vp->length);
+		  memcpy(&vp->vp_ipaddr, data, vp->length);
 		  
 		  /*
 		   *	Stored in network byte order: don't change it.
@@ -492,14 +492,13 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 		switch (vp->type) {
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
-			attr = ntohl(vp->lvalue); /* stored in host order */
+			attr = ntohl(vp->vp_integer); /* stored in host order */
 			memcpy(p, &attr, sizeof(attr));
 			length = 4;
 			break;
 
 		case PW_TYPE_IPADDR:
-			attr = vp->lvalue; /* stored in network order */
-			memcpy(p, &attr, sizeof(attr));
+			memcpy(p, &vp->vp_ipaddr, 4); /* network order */
 			length = 4;
 			break;
 
@@ -1043,7 +1042,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 					vp = paircreate(PW_EAP_TYPE,
 							PW_TYPE_INTEGER);
 					rad_assert(vp != NULL);
-					vp->lvalue = t->default_eap_type;
+					vp->vp_integer = t->default_eap_type;
 					pairadd(&fake->config_items, vp);
 				}
 

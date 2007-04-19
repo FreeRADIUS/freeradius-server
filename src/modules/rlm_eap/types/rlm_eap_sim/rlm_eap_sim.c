@@ -118,7 +118,7 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 
 	/* set the EAP_ID - new value */
 	newvp = paircreate(ATTRIBUTE_EAP_ID, PW_TYPE_INTEGER);
-	newvp->lvalue = ess->sim_id++;
+	newvp->vp_integer = ess->sim_id++;
 	pairreplace(vps, newvp);
 
 	/* record it in the ess */
@@ -135,7 +135,7 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 
 	/* the SUBTYPE, set to start. */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, PW_TYPE_INTEGER);
-	newvp->lvalue = eapsim_start;
+	newvp->vp_integer = eapsim_start;
 	pairreplace(vps, newvp);
 
 	return 1;
@@ -241,7 +241,7 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 
 	/* set the EAP_ID - new value */
 	newvp = paircreate(ATTRIBUTE_EAP_ID, PW_TYPE_INTEGER);
-	newvp->lvalue = ess->sim_id++;
+	newvp->vp_integer = ess->sim_id++;
 	pairreplace(outvps, newvp);
 
 	/* make a copy of the identity */
@@ -275,7 +275,7 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 
 	/* the SUBTYPE, set to challenge. */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, PW_TYPE_INTEGER);
-	newvp->lvalue = eapsim_challenge;
+	newvp->vp_integer = eapsim_challenge;
 	pairreplace(outvps, newvp);
 
 	return 1;
@@ -305,7 +305,7 @@ static int eap_sim_sendsuccess(EAP_HANDLER *handler)
 
 	/* set the EAP_ID - new value */
 	newvp = paircreate(ATTRIBUTE_EAP_ID, PW_TYPE_INTEGER);
-	newvp->lvalue = ess->sim_id++;
+	newvp->vp_integer = ess->sim_id++;
 	pairreplace(outvps, newvp);
 
 	p = ess->keys.msk;
@@ -558,7 +558,7 @@ static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
 		DEBUG2("   no subtype attribute was created, message dropped");
 		return 0;
 	}
-	subtype = vp->lvalue;
+	subtype = vp->vp_integer;
 
 	/*
 	 *	Client error supersedes anything else.

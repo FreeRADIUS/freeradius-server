@@ -688,7 +688,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			if (t->default_eap_type != 0) {
 				DEBUG2("  PEAP: Setting default EAP type for tunneled EAP session.");
 				vp = pairmake("EAP-Type", "0", T_OP_EQ);
-				vp->lvalue = t->default_eap_type;
+				vp->vp_integer = t->default_eap_type;
 				pairadd(&fake->config_items, vp);
 			}
 		}

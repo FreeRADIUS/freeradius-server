@@ -574,7 +574,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 		if (!vp) {
 			client_cert = FALSE;
 		} else {
-			client_cert = vp->lvalue;
+			client_cert = vp->vp_integer;
 		}
 	}
 
@@ -628,7 +628,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 */
 	ssn->offset = inst->conf->fragment_size;
 	vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU);
-	if (vp && ((vp->lvalue - 14) < ssn->offset)) {
+	if (vp && ((vp->vp_integer - 14) < ssn->offset)) {
 		/*
 		 *	Discount the Framed-MTU by:
 		 *	 4 : EAPOL header
@@ -641,7 +641,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 		 *	---
 		 *	14
 		 */
-		ssn->offset = vp->lvalue - 14;
+		ssn->offset = vp->vp_integer - 14;
 	}
 
 	handler->opaque = ((void *)ssn);
