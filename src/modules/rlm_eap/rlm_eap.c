@@ -461,7 +461,7 @@ static int eap_authorize(void *instance, REQUEST *request)
 
 	vp = pairfind(request->config_items, PW_AUTH_TYPE);
 	if ((!vp) ||
-	    (vp->lvalue != PW_AUTHTYPE_REJECT)) {
+	    (vp->vp_integer != PW_AUTHTYPE_REJECT)) {
 		vp = pairmake("Auth-Type", "EAP", T_OP_EQ);
 		if (!vp) {
 			return RLM_MODULE_FAIL;

@@ -336,7 +336,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 
 	/* mark the subtype as being EAP-SIM/Response/Start */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, PW_TYPE_INTEGER);
-	newvp->lvalue = eapsim_start;
+	newvp->vp_integer = eapsim_start;
 	pairreplace(&(rep->vps), newvp);
 
 	/* insert selected version into response. */
@@ -558,7 +558,7 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 
 	/* mark the subtype as being EAP-SIM/Response/Start */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, PW_TYPE_INTEGER);
-	newvp->lvalue = eapsim_challenge;
+	newvp->vp_integer = eapsim_challenge;
 	pairreplace(&(rep->vps), newvp);
 
 	/*
@@ -613,10 +613,10 @@ static int respond_eap_sim(RADIUS_PACKET *req,
 	{
 		/* must be initial request */
 		statevp = paircreate(ATTRIBUTE_EAP_SIM_STATE, PW_TYPE_INTEGER);
-		statevp->lvalue = eapsim_client_init;
+		statevp->vp_integer = eapsim_client_init;
 		pairreplace(&(resp->vps), statevp);
 	}
-	state = statevp->lvalue;
+	state = statevp->vp_integer;
 
 	/*
 	 * map the attributes, and authenticate them.
@@ -630,7 +630,7 @@ static int respond_eap_sim(RADIUS_PACKET *req,
 	{
 		return 0;
 	}
-	subtype = vp->lvalue;
+	subtype = vp->vp_integer;
 
 	/*
 	 * look for the appropriate state, and process incoming message
@@ -690,7 +690,7 @@ static int respond_eap_sim(RADIUS_PACKET *req,
 	/* copy the radius state object in */
 	pairreplace(&(resp->vps), radstate);
 
-	statevp->lvalue = newstate;
+	statevp->vp_integer = newstate;
 	return 1;
 }
 
@@ -718,7 +718,7 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 		fprintf(stderr, "radeapclient: no EAP-ID attribute found\n");
 		return 0;
 	}
-	identifier = id->lvalue;
+	identifier = id->vp_integer;
 
 	if ((vp = pairfind(req->vps, ATTRIBUTE_EAP_BASE+PW_EAP_MD5)) == NULL)
 	{

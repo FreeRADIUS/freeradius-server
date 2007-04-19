@@ -216,7 +216,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 */
 		vp = pairfind(handler->request->config_items,
 			      PW_EAP_TYPE);
-		if (vp) default_eap_type = vp->lvalue;
+		if (vp) default_eap_type = vp->vp_integer;
 
 	do_initiate:
 		/*
@@ -327,11 +327,11 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 */
 		vp = pairfind(handler->request->config_items,
 			      PW_EAP_TYPE);
-		if (vp && (vp->lvalue != default_eap_type)) {
+		if (vp && (vp->vp_integer != default_eap_type)) {
 			char	mynamebuf[64];
 			DEBUG2("  rlm_eap: Client wants %s, while we require %s, rejecting the user.",
 			       eaptype_name,
-			       eaptype_type2name(vp->lvalue,
+			       eaptype_type2name(vp->vp_integer,
 						 mynamebuf,
 						 sizeof(mynamebuf)));
 			return EAP_INVALID;
@@ -622,7 +622,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	this allows you to NOT do EAP for some users.
 	 */
 	vp = pairfind(request->packet->vps, PW_EAP_TYPE);
-	if (vp && vp->lvalue == 0) {
+	if (vp && vp->vp_integer == 0) {
 		DEBUG2("  rlm_eap: Found EAP-Message, but EAP-Type = None, so we're not doing EAP.");
 		return EAP_NOOP;
 	}
@@ -723,7 +723,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 */
 	vp = paircreate(PW_EAP_TYPE, PW_TYPE_INTEGER);
 	if (vp) {
-		vp->lvalue = eap_msg->vp_octets[4];
+		vp->vp_integer = eap_msg->vp_octets[4];
 		pairadd(&(request->packet->vps), vp);
 	}
 
