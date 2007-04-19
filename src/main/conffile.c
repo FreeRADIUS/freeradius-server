@@ -184,7 +184,7 @@ static void cf_data_free(CONF_DATA **cd)
 {
 	if (!cd || !*cd) return;
 
-	free((*cd)->name);
+	if ((*cd)->flag != 0) free((*cd)->name);
 	if (!(*cd)->free) {
 		free((*cd)->data);
 	} else {
