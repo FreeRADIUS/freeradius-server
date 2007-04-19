@@ -89,7 +89,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	}
 	else
 	{
-		subtype = vp->lvalue;
+		subtype = vp->vp_integer;
 	}
 
 	vp = pairfind(r->vps, ATTRIBUTE_EAP_ID);
@@ -99,7 +99,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	}
 	else
 	{
-		id = vp->lvalue;
+		id = vp->vp_integer;
 	}
 
 	vp = pairfind(r->vps, ATTRIBUTE_EAP_CODE);
@@ -109,7 +109,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	}
 	else
 	{
-		eapcode = vp->lvalue;
+		eapcode = vp->vp_integer;
 	}
 
 
@@ -347,7 +347,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, PW_TYPE_INTEGER);
 	if (!newvp) return 0;
-	newvp->lvalue = attr[0];
+	newvp->vp_integer = attr[0];
 	newvp->length = 1;
 	pairadd(&(r->vps), newvp);
 

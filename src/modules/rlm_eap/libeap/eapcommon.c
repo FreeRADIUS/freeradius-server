@@ -336,14 +336,14 @@ void map_eap_types(RADIUS_PACKET *req)
 	if(vp == NULL) {
 		id = ((int)getpid() & 0xff);
 	} else {
-		id = vp->lvalue;
+		id = vp->vp_integer;
 	}
 
 	vp = pairfind(req->vps, ATTRIBUTE_EAP_CODE);
 	if(vp == NULL) {
 		eapcode = PW_EAP_REQUEST;
 	} else {
-		eapcode = vp->lvalue;
+		eapcode = vp->vp_integer;
 	}
 
 
@@ -504,11 +504,11 @@ void unmap_eap_types(RADIUS_PACKET *rep)
 
 	/* create EAP-ID and EAP-CODE attributes to start */
 	eap1 = paircreate(ATTRIBUTE_EAP_ID, PW_TYPE_INTEGER);
-	eap1->lvalue = e->id;
+	eap1->vp_integer = e->id;
 	pairadd(&(rep->vps), eap1);
 
 	eap1 = paircreate(ATTRIBUTE_EAP_CODE, PW_TYPE_INTEGER);
-	eap1->lvalue = e->code;
+	eap1->vp_integer = e->code;
 	pairadd(&(rep->vps), eap1);
 
 	switch(e->code)
