@@ -103,12 +103,15 @@ void clients_free(RADCLIENT_LIST *clients)
 		if (clients->trees[i]) rbtree_free(clients->trees[i]);
 		clients->trees[i] = NULL;
 	}
-#ifdef WITH_SNMP
+
 	if (clients == mainconfig.clients) {
+#ifdef WITH_SNMP
 		if (tree_num) rbtree_free(tree_num);
 		tree_num_max = 0;
-	}
 #endif
+		mainconfig.clients = NULL;
+	}
+
 	free(clients);
 }
 
@@ -179,8 +182,19 @@ static int client_sane(RADCLIENT *client)
  */
 int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
-	if (!clients || !client) {
+	/*
+	 *	Allow clients to be NULL if mainconfig.clients is NULL.
+	 */
+	 
+	if (!client || (!clients && (mainconfig.clients != NULL))) {
 		return 0;
+	}
+	
+	if (!clients) {
+		clients = clients_init();
+		if (!clients) return 0;
+		rad_assert(mainconfig.clients == NULL);
+		mainconfig.clients = clients;
 	}
 
 	if (client->prefix < 0) {
