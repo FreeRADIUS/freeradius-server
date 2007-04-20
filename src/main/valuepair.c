@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_REGEX_H
 #	include <regex.h>
@@ -640,4 +641,29 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 			tailto = &i->next;
 		}
 	} /* loop over the 'from' list */
+}
+
+/*
+ *	Create a pair, and add it to a particular list of VPs
+ *
+ *	Note that this function ALWAYS returns.  If we're OOM, then
+ *	it causes the server to exit!
+ */
+VALUE_PAIR *radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
+			      int attribute, int type)
+{
+	VALUE_PAIR *vp;
+
+	request = request;	/* -Wunused */
+
+	vp = paircreate(attribute, type);
+	if (!vp) {
+		radlog(L_ERR, "No memory!");
+		rad_assert("No memory" == NULL);
+		_exit(1);
+	}
+
+	pairadd(vps, vp);
+
+	return vp;
 }

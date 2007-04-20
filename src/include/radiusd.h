@@ -419,6 +419,8 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp);
 int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
 			    VALUE_PAIR **reply_pairs);
+VALUE_PAIR	*radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
+				  int attribute, int type);
 
 /* xlat.c */
 typedef int (*RADIUS_ESCAPE_STRING)(char *out, int outlen, const char *in);
