@@ -1329,9 +1329,10 @@ static void request_post_handler(REQUEST *request)
 
 	if (request->proxy) {
 		pairfree(&request->proxy->vps);
-	}
-	if (request->proxy_reply) {
-		pairfree(&request->proxy_reply->vps);
+
+		if (request->proxy_reply) {
+			pairfree(&request->proxy_reply->vps);
+		}
 	}
 
 	DEBUG2("Finished request %d state %d", request->number, child_state);
@@ -1558,7 +1559,7 @@ static int can_handle_new_request(RADIUS_PACKET *packet,
 
 int received_request(rad_listen_t *listener,
 		     RADIUS_PACKET *packet, REQUEST **prequest,
-		     const RADCLIENT *client)
+		     RADCLIENT *client)
 {
 	RADIUS_PACKET **packet_p;
 	REQUEST *request = NULL;

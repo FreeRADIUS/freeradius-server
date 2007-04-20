@@ -464,7 +464,7 @@ int radius_event_process(struct timeval **pptv);
 void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun);
 int received_request(rad_listen_t *listener,
 		     RADIUS_PACKET *packet, REQUEST **prequest,
-		     const RADCLIENT *client);
+		     RADCLIENT *client);
 REQUEST *received_proxy_response(RADIUS_PACKET *packet);
 
 #endif /*RADIUSD_H*/
