@@ -251,11 +251,9 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 	 */
 	if (pairfind(request_pairs, PW_FRAMED_PROTOCOL) != NULL &&
 	    pairfind(request_pairs, PW_SERVICE_TYPE) == NULL) {
-		tmp = paircreate(PW_SERVICE_TYPE, PW_TYPE_INTEGER);
-		if (tmp) {
-			tmp->vp_integer = PW_FRAMED_USER;
-			pairmove(&request_pairs, &tmp);
-		}
+		tmp = radius_paircreate(request, &request->packet->vps,
+					PW_SERVICE_TYPE, PW_TYPE_INTEGER);
+		tmp->vp_integer = PW_FRAMED_USER;
 	}
 }
 
@@ -348,11 +346,11 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 /*
  *	See if we have access to the huntgroup.
  */
-static int huntgroup_access(REQUEST *request,
-			    PAIR_LIST *huntgroups, VALUE_PAIR *request_pairs)
+static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 {
 	PAIR_LIST	*i;
 	int		r = RLM_MODULE_OK;
+	VALUE_PAIR	*request_pairs = request->packet->vps;
 
 	/*
 	 *	We're not controlling access by huntgroups:
@@ -381,18 +379,13 @@ static int huntgroup_access(REQUEST *request,
 			 */
 			vp = pairfind(request_pairs, PW_HUNTGROUP_NAME);
 			if (!vp) {
-				vp = paircreate(PW_HUNTGROUP_NAME,
-						PW_TYPE_STRING);
-				if (!vp) {
-					radlog(L_ERR, "No memory");
-					r = RLM_MODULE_FAIL;
-				}
-
+				vp = radius_paircreate(request,
+						       &request->packet->vps,
+						       PW_HUNTGROUP_NAME,
+						       PW_TYPE_STRING);
 				strlcpy(vp->vp_strvalue, i->name,
 					sizeof(vp->vp_strvalue));
 				vp->length = strlen(vp->vp_strvalue);
-
-				pairadd(&request_pairs, vp);
 			}
 			r = RLM_MODULE_OK;
 		}
@@ -414,29 +407,22 @@ static int add_nas_attr(REQUEST *request)
 	case AF_INET:
 		nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS);
 		if (!nas) {
-			nas = paircreate(PW_NAS_IP_ADDRESS, PW_TYPE_IPADDR);
-			if (!nas) {
-				radlog(L_ERR, "No memory");
-				return -1;
-			}
+			nas = radius_paircreate(request, &request->packet->vps,
+						PW_NAS_IP_ADDRESS,
+						PW_TYPE_IPADDR);
 			nas->vp_ipaddr = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
-			pairadd(&request->packet->vps, nas);
 		}
 		break;
 
 	case AF_INET6:
 		nas = pairfind(request->packet->vps, PW_NAS_IPV6_ADDRESS);
 		if (!nas) {
-			nas = paircreate(PW_NAS_IPV6_ADDRESS, PW_TYPE_IPV6ADDR);
-			if (!nas) {
-				radlog(L_ERR, "No memory");
-				return -1;
-			}
-			
+			nas = radius_paircreate(request, &request->packet->vps,
+						PW_NAS_IPV6_ADDRESS,
+						PW_TYPE_IPV6ADDR);
 			memcpy(nas->vp_strvalue,
 			       &request->packet->src_ipaddr.ipaddr,
 			       sizeof(request->packet->src_ipaddr.ipaddr));
-			pairadd(&request->packet->vps, nas);
 		}
 		break;
 
@@ -563,18 +549,15 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 	if (pairfind(request->packet->vps, PW_CHAP_PASSWORD) &&
 	    pairfind(request->packet->vps, PW_CHAP_CHALLENGE) == NULL) {
 		VALUE_PAIR *vp;
-		vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_OCTETS);
-		if (!vp) {
-			radlog(L_ERR|L_CONS, "no memory");
-			return RLM_MODULE_FAIL;
-		}
+
+		vp = radius_paircreate(request, &request->packet->vps,
+				       PW_CHAP_CHALLENGE, PW_TYPE_OCTETS);
 		vp->length = AUTH_VECTOR_LEN;
 		memcpy(vp->vp_strvalue, request->packet->vector, AUTH_VECTOR_LEN);
-		pairadd(&request->packet->vps, vp);
 	}
 
-	if ((r = huntgroup_access(request, data->huntgroups,
-			     request->packet->vps)) != RLM_MODULE_OK) {
+	if ((r = huntgroup_access(request,
+				  data->huntgroups)) != RLM_MODULE_OK) {
 		char buf[1024];
 		radlog(L_AUTH, "No huntgroup access: [%s] (%s)",
 		       request->username ? request->username->vp_strvalue : "<NO User-Name>",
@@ -624,8 +607,8 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 
 	r = hints_setup(data->hints, request);
 
-	if ((r = huntgroup_access(request, data->huntgroups,
-			     request->packet->vps)) != RLM_MODULE_OK) {
+	if ((r = huntgroup_access(request,
+				  data->huntgroups)) != RLM_MODULE_OK) {
 		char buf[1024];
 		radlog(L_INFO, "No huntgroup access: [%s] (%s)",
 		       request->username ? request->username->vp_strvalue : "<NO User-Name>",

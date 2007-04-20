@@ -74,14 +74,10 @@ static void check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 /*
  *	Copy the specified attribute to the specified list
  */
-static int mypairappend(VALUE_PAIR *item, VALUE_PAIR **to)
+static int mypairappend(REQUEST *request, VALUE_PAIR *item, VALUE_PAIR **to)
 {
 	VALUE_PAIR *tmp;
-	tmp = paircreate(item->attribute, item->type);
-	if (!tmp) {
-		radlog(L_ERR|L_CONS, "no memory");
-		return -1;
-	}
+	tmp = radius_paircreate(request, to, item->attribute, item->type);
 	
 	/*
 	 *	Copy EVERYTHING.
@@ -254,7 +250,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 			 *    the output list without checking it.
 			 */
 			if (check_item->operator == T_OP_SET ) {
-				if (mypairappend(check_item, output_tail) < 0) {
+				if (mypairappend(request, check_item, output_tail) < 0) {
 					pairfree(&output);
 					return RLM_MODULE_FAIL;
 				}
@@ -301,7 +297,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 			
 			/* only move attribute if it passed all rules */
 			if (fail == 0 && pass > 0) {
-				if (mypairappend(vp, output_tail) < 0) {
+				if (mypairappend(request, vp, output_tail) < 0) {
 					pairfree(&output);
 					return RLM_MODULE_FAIL;
 				}

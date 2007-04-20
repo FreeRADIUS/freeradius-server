@@ -338,12 +338,11 @@ static int pap_authorize(void *instance, REQUEST *request)
 				break;
 			}
 			
-			new_vp = paircreate(attr, PW_TYPE_STRING);
-			if (!new_vp) break; /* OOM */
-			
+			new_vp = radius_paircreate(request,
+						   &request->config_items,
+						   attr, PW_TYPE_STRING);
 			strcpy(new_vp->vp_strvalue, p + 1);/* bounds OK */
 			new_vp->length = strlen(new_vp->vp_strvalue);
-			pairadd(&request->config_items, new_vp);
 
 			/*
 			 *	May be old-style User-Password with header.
@@ -449,11 +448,9 @@ static int pap_authorize(void *instance, REQUEST *request)
 	}
 
 	if (inst->auth_type) {
-		vp = paircreate(PW_AUTH_TYPE, PW_TYPE_INTEGER);
-		if (!vp) return RLM_MODULE_FAIL;	
+		vp = radius_paircreate(request, &request->config_items,
+				       PW_AUTH_TYPE, PW_TYPE_INTEGER);
 		vp->vp_integer = inst->auth_type;
-		
-		pairadd(&request->config_items, vp);
 	}
 
 	return RLM_MODULE_UPDATED;

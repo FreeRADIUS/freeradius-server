@@ -852,12 +852,8 @@ static int counter_authorize(void *instance, REQUEST *request)
 				if (reply_item->vp_integer > res)
 					reply_item->vp_integer = res;
 			} else {
-				if ((reply_item = paircreate(PW_SESSION_TIMEOUT, PW_TYPE_INTEGER)) == NULL) {
-					radlog(L_ERR|L_CONS, "no memory");
-					return RLM_MODULE_NOOP;
-				}
+				reply_item = radius_paircreate(request, &request->reply->vps, PW_SESSION_TIMEOUT, PW_TYPE_INTEGER);
 				reply_item->vp_integer = res;
-				pairadd(&request->reply->vps, reply_item);
 			}
 		}
 		else if (data->reply_attr) {
@@ -866,12 +862,8 @@ static int counter_authorize(void *instance, REQUEST *request)
 					reply_item->vp_integer = res;
 			}
 			else {
-				if ((reply_item = paircreate(data->reply_attr, PW_TYPE_INTEGER)) == NULL) {
-					radlog(L_ERR|L_CONS, "no memory");
-					return RLM_MODULE_NOOP;
-				}
+				reply_item = radius_paircreate(request, &request->reply->vps, data->reply_attr, PW_TYPE_INTEGER);
 				reply_item->vp_integer = res;
-				pairadd(&request->reply->vps, reply_item);
 			}
 		}
 

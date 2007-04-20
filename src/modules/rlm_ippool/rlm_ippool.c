@@ -775,26 +775,19 @@ static int ippool_postauth(void *instance, REQUEST *request)
 
 
 		DEBUG("rlm_ippool: Allocated ip %s to client key: %s",ip_ntoa(str,entry.ipaddr),hex_str);
-		if ((vp = paircreate(PW_FRAMED_IP_ADDRESS, PW_TYPE_IPADDR)) == NULL) {
-			radlog(L_ERR|L_CONS, "no memory");
-			return RLM_MODULE_FAIL;
-		}
+		vp = radius_paircreate(request, &request->reply->vps,
+				       PW_FRAMED_IP_ADDRESS, PW_TYPE_IPADDR);
 		vp->vp_ipaddr = entry.ipaddr;
-		ip_ntoa(vp->vp_strvalue, vp->vp_ipaddr);
-		pairadd(&request->reply->vps, vp);
 
 		/*
 		 *	If there is no Framed-Netmask attribute in the
 		 *	reply, add one
 		 */
 		if (pairfind(request->reply->vps, PW_FRAMED_IP_NETMASK) == NULL) {
-			if ((vp = paircreate(PW_FRAMED_IP_NETMASK, PW_TYPE_IPADDR)) == NULL)
-				radlog(L_ERR|L_CONS, "no memory");
-			else {
-				vp->vp_integer = ntohl(data->netmask);
-				ip_ntoa(vp->vp_strvalue, vp->vp_integer);
-				pairadd(&request->reply->vps, vp);
-			}
+			vp = radius_paircreate(request, &request->reply->vps,
+					       PW_FRAMED_IP_NETMASK,
+					       PW_TYPE_IPADDR);
+			vp->vp_ipaddr = ntohl(data->netmask);
 		}
 
 	}

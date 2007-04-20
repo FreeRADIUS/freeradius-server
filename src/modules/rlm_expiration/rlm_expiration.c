@@ -101,12 +101,9 @@ static int expiration_authorize(void *instance, REQUEST *request)
 		 */
 		vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT);
 		if (!vp) {
-			vp = paircreate(PW_SESSION_TIMEOUT, PW_TYPE_INTEGER);
-			if (!vp) {
-				radlog(L_ERR|L_CONS, "No memory!");
-				return RLM_MODULE_FAIL;
-			}
-			pairadd(&request->reply->vps, vp);
+			vp = radius_paircreate(request, &request->reply->vps,
+					       PW_SESSION_TIMEOUT,
+					       PW_TYPE_INTEGER);
 			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
 
 		} else if (vp->vp_date > ((uint32_t) (((time_t) check_item->vp_date) - request->timestamp))) {

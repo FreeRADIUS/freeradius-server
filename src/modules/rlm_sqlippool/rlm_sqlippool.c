@@ -647,13 +647,9 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 	DEBUG("rlm_sqlippool: Allocated IP %s [%08x]", allocation, ip_allocation);
 
-	if ((vp = paircreate(PW_FRAMED_IP_ADDRESS, PW_TYPE_IPADDR)) == NULL) {
-		radlog(L_ERR|L_CONS, "no memory");
-		sql_release_socket(data->sql_inst, sqlsocket);
-		return RLM_MODULE_NOOP;
-	}
+	vp = radius_paircreate(request, &request->reply->vps,
+			       PW_FRAMED_IP_ADDRESS, PW_TYPE_IPADDR);
 	vp->vp_ipaddr = ip_allocation;
-	pairadd(&request->reply->vps, vp);
 
 	/*
 	 * COMMIT

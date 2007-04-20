@@ -224,12 +224,11 @@ static int logintime_authorize(void *instance, REQUEST *request)
 				if (reply_item->vp_integer > (unsigned) r)
 					reply_item->vp_integer = r;
 			} else {
-				if ((reply_item = paircreate( PW_SESSION_TIMEOUT, PW_TYPE_INTEGER)) == NULL) {
-					radlog(L_ERR|L_CONS, "no memory");
-					return RLM_MODULE_FAIL;
-				}
+				reply_item = radius_paircreate(request,
+							       &request->reply->vps,
+							       PW_SESSION_TIMEOUT,
+							       PW_TYPE_INTEGER);
 				reply_item->vp_integer = r;
-				pairadd(&request->reply->vps, reply_item);
 			}
 			DEBUG("rlm_logintime: Session-Timeout set to: %d",r);
 		}

@@ -660,19 +660,9 @@ end_gid:
 	}
 
 	/* add IP address to reply packet */
-	vp = paircreate(PW_FRAMED_IP_ADDRESS, PW_TYPE_IPADDR);
-	if (!vp) {
-		nvp_log(__LINE__, data, L_ERR,
-		        "sqlhpwippool_postauth(): couldn't save chosen IP - no memory - "
-		        "exiting with error");
-
-		/* don't free chosen IP, because we have no memory (now adress will need to
-		 * wait for timeout, what's not so bad, BTW) */
-		return RLM_MODULE_FAIL;
-	}
-
+	vp = radius_paircreate(request, &request->reply->vps,
+			       PW_FRAMED_IP_ADDRESS, PW_TYPE_IPADDR);
 	vp->vp_ipaddr = ip.s_addr;
-	pairadd(&request->reply->vps, vp);
 
 	nvp_log(__LINE__, data, L_DBG, "sqlhpwippool_postauth(): returning %s",
 	        inet_ntoa(ip));

@@ -159,11 +159,9 @@ static int digest_authenticate(void *instance, REQUEST *request)
 			 *
 			 *	Didn't they know that VSA's exist?
 			 */
-			sub = paircreate(PW_DIGEST_REALM - 1 + p[0],
-					 PW_TYPE_STRING);
-			if (!sub) {
-				return RLM_MODULE_FAIL; /* out of memory */
-			}
+			sub = radius_paircreate(request, &request->packet->vps,
+						PW_DIGEST_REALM - 1 + p[0],
+						PW_TYPE_STRING);
 			memcpy(&sub->vp_octets[0], &p[2], attrlen - 2);
 			sub->vp_octets[attrlen - 2] = '\0';
 			sub->length = attrlen - 2;
@@ -173,11 +171,6 @@ static int digest_authenticate(void *instance, REQUEST *request)
 			  vp_print(stdout, sub);
 			  putchar('\n');
 			}
-
-			/*
-			 *	And add it to the request pairs.
-			 */
-			pairadd(&request->packet->vps, sub);
 
 			/*
 			 *	FIXME: Check for the existence

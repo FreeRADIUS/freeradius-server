@@ -98,7 +98,7 @@ static int portcmp(void *instance,
  *	  add a PW_STRIPPED_USER_NAME to the request.
  */
 static int presufcmp(void *instance,
-		     REQUEST *req UNUSED,
+		     REQUEST *req,
 		     VALUE_PAIR *request, VALUE_PAIR *check,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
@@ -148,14 +148,16 @@ static int presufcmp(void *instance,
 	 */
 	vp = pairfind(check_pairs, PW_STRIPPED_USER_NAME);
 	if (!vp) {
-		vp = paircreate(PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
-		if (!vp) return ret; /* no memory, do anything? */
-
-		pairadd(&request, vp);
+		/*
+		 *	If "request" is NULL, then the memory will be
+		 *	lost!
+		 */
+		vp = radius_paircreate(req, &request,
+				       PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
 	}
 
-	strcpy((char *)vp->vp_strvalue, rest);
-	vp->length = strlen(rest);
+	strlcpy((char *)vp->vp_strvalue, rest, sizeof(vp->vp_strvalue));
+	vp->length = strlen(vp->vp_strvalue);
 
 	return ret;
 }
