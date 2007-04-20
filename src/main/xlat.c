@@ -1038,10 +1038,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'V': /* Request-Authenticator */
-				if (request->packet->verified)
-					strlcpy(q,"Verified",freespace);
-				else
-					strlcpy(q,"None",freespace);
+				strlcpy(q,"Verified",freespace);
 				q += strlen(q);
 				p++;
 				break;

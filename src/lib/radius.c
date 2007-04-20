@@ -961,12 +961,12 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	memcpy(hdr->vector, packet->vector, sizeof(hdr->vector));
 
 	total_length = AUTH_HDR_LEN;
-	packet->verified = 0;
 	
 	/*
 	 *	Load up the configuration values for the user
 	 */
 	ptr = hdr->data;
+	packet->offset = 0;
 
 	/*
 	 *	FIXME: Loop twice over the reply list.  The first time,
@@ -996,7 +996,12 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		if (reply->attribute == PW_MESSAGE_AUTHENTICATOR) {
 			reply->length = AUTH_VECTOR_LEN;
 			memset(reply->vp_strvalue, 0, AUTH_VECTOR_LEN);
-			packet->verified = total_length; /* HACK! */
+
+			/*
+			 *	Cache the offset to the
+			 *	Message-Authenticator
+			 */
+			packet->offset = total_length;
 		}
 
 		/*
@@ -1068,7 +1073,7 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	}
 
 	if (!packet->data || (packet->data_len < AUTH_HDR_LEN) ||
-	    (packet->verified < 0)) {
+	    (packet->offset < 0)) {
 		librad_log("ERROR: You must call rad_encode() before rad_sign()");
 		return -1;
 	}
@@ -1076,10 +1081,8 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	/*
 	 *	If there's a Message-Authenticator, update it
 	 *	now, BEFORE updating the authentication vector.
-	 *
-	 *	This is a hack...
 	 */
-	if (packet->verified > 0) {
+	if (packet->offset > 0) {
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 		
 		switch (packet->code) {
@@ -1119,7 +1122,7 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		lrad_hmac_md5(packet->data, packet->data_len,
 			      secret, strlen(secret),
 			      calc_auth_vector);
-		memcpy(packet->data + packet->verified + 2,
+		memcpy(packet->data + packet->offset + 2,
 		       calc_auth_vector, AUTH_VECTOR_LEN);
 		
 		/*
@@ -1244,16 +1247,6 @@ static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
 	MD5_CTX		context;
 
 	/*
-	 *	Older clients have the authentication vector set to
-	 *	all zeros. Return `1' in that case.
-	 */
-	memset(digest, 0, sizeof(digest));
-	if (memcmp(packet->vector, digest, AUTH_VECTOR_LEN) == 0) {
-		packet->verified = 1;
-		return 1;
-	}
-
-	/*
 	 *	Zero out the auth_vector in the received packet.
 	 *	Then append the shared secret to the received packet,
 	 *	and calculate the MD5 sum. This must be the same
@@ -1272,11 +1265,10 @@ static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
 	/*
 	 *	Return 0 if OK, 2 if not OK.
 	 */
-	packet->verified =
-	memcmp(digest, packet->vector, AUTH_VECTOR_LEN) ? 2 : 0;
-
-	return packet->verified;
+	if (memcmp(digest, packet->vector, AUTH_VECTOR_LEN) != 0) return 2;
+	return 0;
 }
+
 
 /*
  *	Validates the requesting client NAS.  Calculates the
@@ -1316,9 +1308,8 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	/*
 	 *	Return 0 if OK, 2 if not OK.
 	 */
-	packet->verified =
-		memcmp(packet->vector, calc_digest, AUTH_VECTOR_LEN) ? 2 : 0;
-	return packet->verified;
+	if (memcmp(packet->vector, calc_digest, AUTH_VECTOR_LEN) != 0) return 2;
+	return 0;
 }
 
 
@@ -1512,7 +1503,6 @@ int rad_packet_ok(RADIUS_PACKET *packet)
 		switch (attr[0]) {
 		default:	/* don't do anything by default */
 			break;
-
 
 			/*
 			 *	If there's an EAP-Message, we require
@@ -2853,7 +2843,7 @@ RADIUS_PACKET *rad_alloc(int newvector)
 	}
 	memset(rp, 0, sizeof(*rp));
 	rp->id = -1;
-	rp->verified = -1;
+	rp->offset = -1;
 
 	if (newvector) {
 		int i;

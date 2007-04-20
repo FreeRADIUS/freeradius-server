@@ -174,7 +174,6 @@ typedef struct lrad_ipaddr_t {
 	} ipaddr;
 } lrad_ipaddr_t;
 
-
 /*
  *	vector:		Request authenticator from access-request packet
  *			Put in there by rad_decode, and must be put in the
@@ -194,11 +193,11 @@ typedef struct radius_packet {
 	unsigned int		code;
 	uint8_t			vector[AUTH_VECTOR_LEN];
 	time_t			timestamp;
-	int			verified;
 	uint8_t			*data;
 	int			data_len;
 	VALUE_PAIR		*vps;
 	uint32_t		hash;
+	ssize_t			offset;
 } RADIUS_PACKET;
 
 /*

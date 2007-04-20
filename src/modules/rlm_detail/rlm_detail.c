@@ -459,10 +459,11 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		fprintf(outfp, "\tTimestamp = %ld\n",
 			(unsigned long) request->timestamp);
 
-		if (request->packet->verified == 2)
-			fputs("\tRequest-Authenticator = Verified\n", outfp);
-		else if (request->packet->verified == 1)
-			fputs("\tRequest-Authenticator = None\n", outfp);
+		/*
+		 *	We no longer permit Accounting-Request packets
+		 *	with an authenticator of zero.
+		 */
+		fputs("\tRequest-Authenticator = Verified\n", outfp);
 	}
 
 	fputs("\n", outfp);
