@@ -1350,6 +1350,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 	switch (request->child_state) {
 	case REQUEST_QUEUED:
 	case REQUEST_RUNNING:
+	discard:
 		radlog(L_ERR, "Discarding duplicate request from "
 		       "client %s port %d - ID: %d due to unfinished request %d",
 		       client->shortname,
@@ -1358,6 +1359,23 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		break;
 
 	case REQUEST_PROXIED:
+		/*
+		 *	We're not supposed to have duplicate
+		 *	accounting packets.  The other states handle
+		 *	duplicates fine (discard, or send duplicate
+		 *	reply).  But we do NOT want to retransmit an
+		 *	accounting request here, because that would
+		 *	involve updating the Acct-Delay-Time, and
+		 *	therefore changing the packet Id, etc.
+		 *
+		 *	Instead, we just discard the packet.  We may
+		 *	eventually respond, or the client will send a
+		 *	new accounting packet.
+		 */
+		if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+			goto discard;
+		}
+
 		check_for_zombie_home_server(request);
 
 		/*
@@ -1425,8 +1443,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			request->proxy_listener->send(request->proxy_listener,
 						      request);
 			return;
-		}
-
+		} /* else the home server is still alive */
 
 		DEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
 		       inet_ntop(request->proxy->dst_ipaddr.af,
@@ -1492,7 +1509,7 @@ static void received_conflicting_request(REQUEST *request,
 
 
 static int can_handle_new_request(RADIUS_PACKET *packet,
-				  const RADCLIENT *client)
+				  RADCLIENT *client)
 {
 	/*
 	 *	Count the total number of requests, to see if
@@ -1577,7 +1594,12 @@ int received_request(rad_listen_t *listener,
 		}
 
 
-	} else if (!can_handle_new_request(packet, client)) {
+	}
+
+	/*
+	 *	We may want to quench the new request.
+	 */
+	if (!can_handle_new_request(packet, client)) {
 		return 0;
 	}
 
