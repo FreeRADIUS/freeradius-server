@@ -217,8 +217,88 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 }
 
 
+ssize_t rad_recv_header(int sockfd, lrad_ipaddr_t *src_ipaddr, int *src_port,
+			int *code)
+{
+	ssize_t			data_len, packet_len;
+	uint8_t			header[4];
+	struct sockaddr_storage	src;
+	socklen_t		sizeof_src = sizeof(src);
+
+	data_len = recvfrom(sockfd, header, sizeof(header), MSG_PEEK,
+			    (struct sockaddr *)&src, &sizeof_src);
+	if (data_len < 0) return -1;
+
+	/*
+	 *	Too little data is available, discard the packet.
+	 */
+	if (data_len < 4) {
+		recvfrom(sockfd, header, sizeof(header), 0,
+			 (struct sockaddr *)&src, &sizeof_src);
+		return 1;
+
+	} else {		/* we got 4 bytes of data. */
+		/*
+		 *	See how long the packet says it is.
+		 */
+		packet_len = (header[2] * 256) + header[3];
+
+		/*
+		 *	The length in the packet says it's less than
+		 *	a RADIUS header length: discard it.
+		 */
+		if (packet_len < AUTH_HDR_LEN) {
+			recvfrom(sockfd, header, sizeof(header), 0,
+				 (struct sockaddr *)&src, &sizeof_src);
+			return 1;
+
+			/*
+			 *	Enforce RFC requirements, for sanity.
+			 *	Anything after 4k will be discarded.
+			 */
+		} else if (packet_len > MAX_PACKET_LEN) {
+			recvfrom(sockfd, header, sizeof(header), 0, 
+				 (struct sockaddr *)&src, &sizeof_src);
+			return 1;
+		}
+	}
+
+	if (src.ss_family == AF_INET) {
+		struct sockaddr_in	*s4;
+
+		s4 = (struct sockaddr_in *)&src;
+		src_ipaddr->af = AF_INET;
+		src_ipaddr->ipaddr.ip4addr = s4->sin_addr;
+		*src_port = ntohs(s4->sin_port);
+
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+	} else if (src.ss_family == AF_INET6) {
+		struct sockaddr_in6	*s6;
+
+		s6 = (struct sockaddr_in6 *)&src;
+		src_ipaddr->af = AF_INET6;
+		src_ipaddr->ipaddr.ip6addr = s6->sin6_addr;
+		*src_port = ntohs(s6->sin6_port);
+
+#endif
+	} else {
+		recvfrom(sockfd, header, sizeof(header), 0, 
+			 (struct sockaddr *)&src, &sizeof_src);
+		return 1;
+	}
+
+	*code = header[0];
+
+	/*
+	 *	The packet says it's this long, but the actual UDP
+	 *	size could still be smaller.
+	 */
+	return packet_len;
+}
+
+
 /*
- *	Wrapper for recvfrom, which handles recvfromto, IPv6, and all
+ *	wrapper for recvfrom, which handles recvfromto, IPv6, and all
  *	possible combinations.
  */
 static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
@@ -2414,12 +2494,12 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret,
 			lrad_MD5Final(digest, &context);
 
 			context = old;
-			lrad_MD5Update(&context, passwd, AUTH_PASS_LEN);
+			if (pwlen > AUTH_PASS_LEN) lrad_MD5Update(&context, passwd, AUTH_PASS_LEN);
 		} else {
 			lrad_MD5Final(digest, &context);
 
 			context = old;
-			lrad_MD5Update(&context, passwd + n, AUTH_PASS_LEN);
+			if (pwlen > (n + AUTH_PASS_LEN)) lrad_MD5Update(&context, passwd + n, AUTH_PASS_LEN);
 		}
 		
 		for (i = 0; i < AUTH_PASS_LEN; i++) {
@@ -2805,6 +2885,7 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 	radius_packet = *radius_packet_ptr;
 
 	free(radius_packet->data);
+
 	pairfree(&radius_packet->vps);
 
 	free(radius_packet);

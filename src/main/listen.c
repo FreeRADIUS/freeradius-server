@@ -351,38 +351,42 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 static int auth_socket_recv(rad_listen_t *listener,
 			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
 {
+	ssize_t		rcode;
+	int		code, src_port;
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
 	char		buffer[128];
 	RADCLIENT	*client;
+	lrad_ipaddr_t	src_ipaddr;
 
-	packet = rad_recv(listener->fd);
-	if (!packet) {
-		RAD_SNMP_TYPE_INC(listener, total_requests);
-		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
-		radlog(L_ERR, "%s", librad_errstr);
-		return 0;
-	}
-	
+	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
+	if (rcode < 0) return 0;
+
 	RAD_SNMP_TYPE_INC(listener, total_requests);
 
+	if (rcode < 20) {	/* AUTH_HDR_LEN */
+		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
+		return 0;
+	}
+
 	if ((client = client_listener_find(listener,
-					   &packet->src_ipaddr)) == NULL) {
+					   &src_ipaddr)) == NULL) {
 		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
 		
-		radlog(L_ERR, "Ignoring request from unknown client %s port %d",
-		       inet_ntop(packet->src_ipaddr.af,
-				 &packet->src_ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-		       packet->src_port);
-		rad_free(&packet);
+		/*
+		 *	This is debugging rather than logging, so that
+		 *	DoS attacks don't affect us.
+		 */
+		DEBUG("Ignoring request from unknown client %s port %d",
+		      inet_ntop(src_ipaddr.af, &src_ipaddr.ipaddr,
+				buffer, sizeof(buffer)), src_port);
 		return 0;
 	}
 
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
-	switch(packet->code) {
+	switch(code) {
 	case PW_AUTHENTICATION_REQUEST:
 		RAD_SNMP_CLIENT_INC(listener, client, requests);
 		fun = rad_authenticate;
@@ -393,7 +397,6 @@ static int auth_socket_recv(rad_listen_t *listener,
 			RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
 			RAD_SNMP_CLIENT_INC(listener, client, packets_dropped);
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
-			rad_free(&packet);
 			return 0;
 		}
 		fun = rad_status_server;
@@ -403,14 +406,22 @@ static int auth_socket_recv(rad_listen_t *listener,
 		RAD_SNMP_INC(rad_snmp.auth.total_unknown_types);
 		RAD_SNMP_CLIENT_INC(listener, client, unknown_types);
 		
-		radlog(L_ERR, "Invalid packet code %d sent to authentication port from client %s port %d "
-		       "- ID %d : IGNORED",
-		       packet->code, client->shortname,
-		       packet->src_port, packet->id);
-		rad_free(&packet);
+		DEBUG("Invalid packet code %d sent to authentication port from client %s port %d : IGNORED",
+		      code, client->shortname, src_port);
 		return 0;
 		break;
 	} /* switch over packet types */
+	
+	/*
+	 *	Now that we've sanity checked everything, receive the
+	 *	packet.
+	 */
+	packet = rad_recv(listener->fd);
+	if (!packet) {
+		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
+		radlog(L_ERR, "%s", librad_errstr);
+		return 0;
+	}
 	
 	if (!received_request(listener, packet, prequest, client)) {
 		RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
@@ -428,36 +439,43 @@ static int auth_socket_recv(rad_listen_t *listener,
  *	Receive packets from an accounting socket
  */
 static int acct_socket_recv(rad_listen_t *listener,
-	RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
 {
+	ssize_t		rcode;
+	int		code, src_port;
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
 	char		buffer[128];
 	RADCLIENT	*client;
+	lrad_ipaddr_t	src_ipaddr;
 	
-	packet = rad_recv(listener->fd);
-	if (!packet) {
-		RAD_SNMP_TYPE_INC(listener, total_requests);
-		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
-		radlog(L_ERR, "%s", librad_errstr);
-		return 0;
-	}
-	
+	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
+	if (rcode < 0) return 0;
+
 	RAD_SNMP_TYPE_INC(listener, total_requests);
 
-	if ((client = client_listener_find(listener,
-					   &packet->src_ipaddr)) == NULL) {
-		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
-		
-		radlog(L_ERR, "Ignoring request from unknown client %s port %d",
-		       inet_ntop(packet->src_ipaddr.af,
-				 &packet->src_ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-		       packet->src_port);
-		rad_free(&packet);
+	if (rcode < 20) {	/* AUTH_HDR_LEN */
+		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
 		return 0;
 	}
 
+	if ((client = client_listener_find(listener,
+					   &src_ipaddr)) == NULL) {
+		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
+		
+		/*
+		 *	This is debugging rather than logging, so that
+		 *	DoS attacks don't affect us.
+		 */
+		DEBUG("Ignoring request from unknown client %s port %d",
+		      inet_ntop(src_ipaddr.af, &src_ipaddr.ipaddr,
+				buffer, sizeof(buffer)), src_port);
+		return 0;
+	}
+
+	/*
+	 *	Some sanity checks, based on the packet code.
+	 */
 	switch(packet->code) {
 	case PW_ACCOUNTING_REQUEST:
 		RAD_SNMP_CLIENT_INC(listener, client, requests);
@@ -470,7 +488,6 @@ static int acct_socket_recv(rad_listen_t *listener,
 			RAD_SNMP_CLIENT_INC(listener, client, unknown_types);
 
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
-			rad_free(&packet);
 			return 0;
 		}
 		fun = rad_status_server;
@@ -483,17 +500,24 @@ static int acct_socket_recv(rad_listen_t *listener,
 		RAD_SNMP_TYPE_INC(listener, total_unknown_types);
 		RAD_SNMP_CLIENT_INC(listener, client, unknown_types);
 
-		radlog(L_ERR, "Invalid packet code %d sent to a accounting port "
-		       "from client %s port %d - ID %d : IGNORED",
-		       packet->code, client->shortname,
-		       packet->src_port, packet->id);
-		rad_free(&packet);
+		DEBUG("Invalid packet code %d sent to a accounting port from client %s port %d : IGNORED",
+		      code, client->shortname, src_port);
 		return 0;
-	}
+	} /* switch over packet types */
 
 	/*
-	 *	FIXME: Accounting duplicates should be handled
-	 *	differently than authentication duplicates.
+	 *	Now that we've sanity checked everything, receive the
+	 *	packet.
+	 */
+	packet = rad_recv(listener->fd);
+	if (!packet) {
+		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
+		radlog(L_ERR, "%s", librad_errstr);
+		return 0;
+	}
+	
+	/*
+	 *	There can be no duplicate accounting packets.
 	 */
 	if (!received_request(listener, packet, prequest, client)) {
 		RAD_SNMP_TYPE_INC(listener, total_packets_dropped);

@@ -264,6 +264,8 @@ void lrad_hmac_sha1(const uint8_t *text, int text_len,
 int		rad_send(RADIUS_PACKET *, const RADIUS_PACKET *, const char *secret);
 int		rad_packet_ok(RADIUS_PACKET *packet);
 RADIUS_PACKET	*rad_recv(int fd);
+ssize_t rad_recv_header(int sockfd, lrad_ipaddr_t *src_ipaddr, int *src_port,
+			int *code);
 int		rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			   const char *secret);
 int		rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret);
