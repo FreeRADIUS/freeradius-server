@@ -153,17 +153,29 @@ typedef struct value_pair {
 	LRAD_TOKEN		operator;
         ATTR_FLAGS              flags;
 	struct value_pair	*next;
+	uint32_t		lvalue;
 	VALUE_PAIR_DATA		data;
 } VALUE_PAIR;
 #define vp_strvalue   data.strvalue
 #define vp_octets     data.octets
-#define vp_ipaddr     data.ipaddr.s_addr
 #define vp_ipv6addr   data.ipv6addr
-#define vp_date       data.date
-#define vp_integer    data.integer
 #define vp_ifid       data.ifid
 #define vp_ipv6prefix data.ipv6prefix
 #define vp_filter     data.filter
+
+#if 0
+#define vp_ipaddr     data.ipaddr.s_addr
+#define vp_date       data.date
+#define vp_integer    data.integer
+#else
+/*
+ *	These are left as lvalue until we audit the source for code
+ *	that prints to vp_strvalue for integer/ipaddr/date types.
+ */
+#define vp_ipaddr     lvalue
+#define vp_date       lvalue
+#define vp_integer    lvalue
+#endif
 
 
 typedef struct lrad_ipaddr_t {
