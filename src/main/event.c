@@ -68,6 +68,7 @@ static lrad_packet_list_t *proxy_list = NULL;
 static int		proxy_fds[32];
 static rad_listen_t	*proxy_listeners[32];
 
+static void request_post_handler(REQUEST *request);
 static void wait_a_bit(void *ctx);
 
 static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
@@ -701,7 +702,25 @@ static int null_handler(REQUEST *request)
 
 static void post_proxy_fail_handler(REQUEST *request)
 {
-	if (setup_post_proxy_fail(request)) {
+	/*
+	 *	Not set up to run Post-Proxy-Type = Fail.
+	 *
+	 *	Mark the request as still running, and figure out what
+	 *	to do next.
+	 */
+	if (!setup_post_proxy_fail(request)) {
+		request->child_state = REQUEST_RUNNING;
+		request_post_handler(request);
+		wait_a_bit(request);
+
+	} else {
+		/*
+		 *	Re-queue the request.
+		 */
+		request->child_state = REQUEST_QUEUED;
+				
+		wait_a_bit(request);
+
 		/*
 		 *	There is a post-proxy-type of fail.  We run
 		 *	the request through the pre/post proxy
@@ -709,23 +728,11 @@ static void post_proxy_fail_handler(REQUEST *request)
 		 *	request.  However, we set the per-request
 		 *	handler to NULL, as we don't want to do
 		 *	anything else.
-		 *
-		 *	FIXME: We've been called from the main thread,
-		 *	so we should really insert the request into
-		 *	the queue with a high priority.  That lets a
-		 *	child thread take the CPU penalty of DB
-		 *	accesses, etc.
 		 */
+		request->priority = 0;
 		rad_assert(request->proxy != NULL);
-		radius_handle_request(request, null_handler);
+		thread_pool_addrequest(request, null_handler);
 	}
-	
-	/*
-	 *	Wait for the child to be done.
-	 *
-	 *	FIXME: Reset the default timeouts?
-	 */
-	wait_a_bit(request);
 }
 
 
