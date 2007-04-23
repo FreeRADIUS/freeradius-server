@@ -59,6 +59,22 @@ typedef struct radclient {
 } RADCLIENT;
 
 /*
+ *	Types of listeners.
+ *
+ *	Ordered by priority!
+ */
+typedef enum RAD_LISTEN_TYPE {
+	RAD_LISTEN_NONE = 0,
+	RAD_LISTEN_PROXY,
+	RAD_LISTEN_AUTH,
+	RAD_LISTEN_ACCT,
+	RAD_LISTEN_DETAIL,
+	RAD_LISTEN_SNMP,
+	RAD_LISTEN_MAX
+} RAD_LISTEN_TYPE;
+
+
+/*
  *	For listening on multiple IP's and ports.
  */
 typedef struct rad_listen_t rad_listen_t;
@@ -101,6 +117,7 @@ struct auth_req {
 
 	int			master_state;
 	int			child_state;
+	RAD_LISTEN_TYPE		priority;
 
 	lrad_event_t		*ev;
 	struct timeval		next_when;
@@ -149,21 +166,6 @@ typedef struct pair_list {
 	struct pair_list	*lastdefault;
 } PAIR_LIST;
 
-
-/*
- *	Types of listeners.
- *
- *	FIXME: Separate ports for proxy auth/acct?
- */
-typedef enum RAD_LISTEN_TYPE {
-	RAD_LISTEN_NONE = 0,
-	RAD_LISTEN_AUTH,
-	RAD_LISTEN_ACCT,
-	RAD_LISTEN_PROXY,
-	RAD_LISTEN_DETAIL,
-	RAD_LISTEN_SNMP,
-	RAD_LISTEN_MAX
-} RAD_LISTEN_TYPE;
 
 typedef int (*rad_listen_recv_t)(rad_listen_t *, RAD_REQUEST_FUNP *, REQUEST **);
 typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);

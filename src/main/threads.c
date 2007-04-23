@@ -48,8 +48,6 @@ RCSID("$Id$")
 #define sem_post(s) semaphore_signal(*s)
 #endif
 
-#include <signal.h>
-
 #ifdef HAVE_SYS_WAIT_H
 #include <sys/wait.h>
 #endif
@@ -70,14 +68,8 @@ RCSID("$Id$")
 #define THREAD_CANCELLED	(2)
 #define THREAD_EXITED		(3)
 
-#define NUM_FIFOS               (2)
+#define NUM_FIFOS               RAD_LISTEN_MAX
 
-/*
- *     Ordered this way because we prefer proxy, then ongoing, then
- *     start.
- */
-#define FIFO_START   (1)
-#define FIFO_PROXY   (0)
 
 /*
  *  A data structure which contains the information about
@@ -154,7 +146,6 @@ typedef struct THREAD_POOL {
 
 	int		max_queue_size;
 	int		num_queued;
-	int		fifo_state;
 	lrad_fifo_t	*fifo[NUM_FIFOS];
 } THREAD_POOL;
 
@@ -280,7 +271,7 @@ static void reap_children(void)
  */
 static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
-	int fifo = FIFO_START;
+	int fifo;
 	request_queue_t *entry;
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
@@ -301,26 +292,15 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		return 0;
 	}
 
-	/*
-	 *	Requests get handled in priority.  First, we handle
-	 *	replies from a home server, to finish ongoing requests.
-	 *
-	 *	Then, we handle requests with State, to finish
-	 *	multi-packet transactions.
-	 *
-	 *	Finally, we handle new requests.
-	 */
-	if (request->proxy_reply) {
-		fifo = FIFO_PROXY;
-	} else {
-		fifo = FIFO_START;
-	}
-
 	entry = rad_malloc(sizeof(*entry));
 	entry->request = request;
 	entry->fun = fun;
 
-	if (!lrad_fifo_push(thread_pool.fifo[fifo], entry)) {
+	/*
+	 *	Push the request onto the appropriate fifo for that
+	 */
+	if (!lrad_fifo_push(thread_pool.fifo[request->priority],
+			    entry)) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		radlog(L_ERR, "!!! ERROR !!! Failed inserting request %d into the queue", request->number);
 		request->child_state = REQUEST_DONE;
@@ -350,25 +330,25 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
  */
 static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 {
-	int fifo_state;
+	RAD_LISTEN_TYPE i, start;
 	request_queue_t *entry;
 
 	reap_children();
+	start = 0;
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
-	fifo_state = thread_pool.fifo_state;
-
  retry:
-	do {
-		/*
-		 *	Pop an entry from the current queue, and go to
-		 *	the next queue.
-		 */
-		entry = lrad_fifo_pop(thread_pool.fifo[fifo_state]);
-		fifo_state++;
-		if (fifo_state >= NUM_FIFOS) fifo_state = 0;
-	} while ((fifo_state != thread_pool.fifo_state) && !entry);
+	/*
+	 *	Pop results from the top of the queue
+	 */
+	for (i = start; i < RAD_LISTEN_MAX; i++) {
+		entry = lrad_fifo_pop(thread_pool.fifo[i]);
+		if (entry) {
+			start = i;
+			break;
+		}
+	}
 
 	if (!entry) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
@@ -391,8 +371,9 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	If the request has sat in the queue for too long,
 	 *	kill it.
 	 *
-	 *	The main clean-up code won't delete the request from
-	 *	the request list, until it's marked "finished"
+	 *	The main clean-up code can't delete the request from
+	 *	the queue, and therefore won't clean it up until we
+	 *	have acknowledged it as "done".
 	 */
 	if ((*request)->master_state == REQUEST_STOP_PROCESSING) {
 		(*request)->child_state = REQUEST_DONE;
@@ -403,7 +384,6 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	The thread is currently processing a request.
 	 */
 	thread_pool.active_threads++;
-	thread_pool.fifo_state = fifo_state;
 
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
@@ -422,18 +402,19 @@ static void *request_handler_thread(void *arg)
 {
 	RAD_REQUEST_FUNP  fun;
 	THREAD_HANDLE	  *self = (THREAD_HANDLE *) arg;
+
 #ifdef HAVE_PTHREAD_SIGMASK
 	sigset_t set;
 
 	/*
-	 *	Block SIGHUP handling for the child threads.
+	 *      Block SIGHUP handling for the child threads.
 	 *
-	 *	This ensures that only the main server thread will
-	 *	process HUP signals.
+	 *      This ensures that only the main server thread will
+	 *      process HUP signals.
 	 *
-	 *	If we don't have sigprocmask, then it shouldn't be
-	 *	a problem, either, as the sig_hup handler should check
-	 *	for this condition.
+	 *      If we don't have sigprocmask, then it shouldn't be
+	 *      a problem, either, as the sig_hup handler should check
+	 *      for this condition.
 	 */
 	sigemptyset(&set);
 	sigaddset(&set, SIGHUP);
@@ -772,7 +753,7 @@ int thread_pool_init(int spawn_flag)
 	/*
 	 *	Allocate multiple fifos.
 	 */
-	for (i = 0; i < NUM_FIFOS; i++) {
+	for (i = 0; i < RAD_LISTEN_MAX; i++) {
 		thread_pool.fifo[i] = lrad_fifo_create(65536, NULL);
 		if (!thread_pool.fifo[i]) {
 			radlog(L_ERR, "FATAL: Failed to set up request fifo");

@@ -1681,6 +1681,7 @@ int received_request(rad_listen_t *listener,
 	request->packet = packet;
 	request->packet->timestamp = request->timestamp;
 	request->number = request_num_counter++;
+	request->priority = listener->type;
 	
 	/*
 	 *	Remember the request in the list.
@@ -1879,6 +1880,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	request->child_state = REQUEST_QUEUED;
 	request->when = now;
 	request->delay = USEC / 10;
+	request->priority = RAD_LISTEN_PROXY;
 	tv_add(&request->when, request->delay);
 
 	/*
