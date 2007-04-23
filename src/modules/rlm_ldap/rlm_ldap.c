@@ -471,7 +471,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	 *	('eDir-APC', '3') in config items list
 	 *	eDirectory APC has been completed
 	 */
-	dict_addattr("eDir-APC", 0, PW_TYPE_INTEGER, -1, flags);
+	dict_addattr("eDir-APC", 0, PW_TYPE_STRING, -1, flags);
 #endif
 
 	if (inst->num_conns <= 0){
@@ -1218,6 +1218,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	char            module_fmsg[MAX_STRING_LEN];
 	LDAP_CONN	*conn;
 	int		conn_id = -1;
+	int		added_known_password = 0;
 
 	DEBUG("rlm_ldap: - authorize");
 
@@ -1465,21 +1466,17 @@ static int ldap_authorize(void *instance, REQUEST * request)
 				if (!value) continue;
 				
 			create_attr:
-				passwd_item = paircreate(attr, PW_TYPE_STRING);
-				if (!passwd_item) {
-					radlog(L_ERR|L_CONS, "no memory");
-					ldap_value_free(passwd_vals);
-					ldap_msgfree(result);
-					ldap_release_conn(conn_id,inst->conns);
-					return RLM_MODULE_FAIL;
-				}
+				passwd_item = radius_paircreate(request,
+								&request->config_items,
+								attr,
+								PW_TYPE_STRING);
 				strlcpy(passwd_item->vp_strvalue, value,
 					sizeof(passwd_item->vp_strvalue));
 				passwd_item->length = strlen(passwd_item->vp_strvalue);
-				pairadd(&request->config_items,passwd_item);
 				DEBUG("rlm_ldap: Added %s = %s in check items",
 				      passwd_item->name,
 				      passwd_item->vp_strvalue);
+				added_known_password = 1;
 			}
 			ldap_value_free(passwd_vals);
 #ifdef NOVELL_UNIVERSAL_PASSWORD
@@ -1518,19 +1515,10 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					}
 
 					if (passwd_val){
-						if ((passwd_item = paircreate(PW_CLEARTEXT_PASSWORD,PW_TYPE_STRING)) == NULL){
-							radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
-                                                	ldap_msgfree(result);
-							ldap_release_conn(conn_id,inst->conns);
- 							memset(universal_password, 0, universal_password_len);
-							free(universal_password);
-							return RLM_MODULE_FAIL;
-						}
-
-						passwd_len = strlen(passwd_val);
+						passwd_item = radius_paircreate(request, &request->config_items, PW_CLEARTEXT_PASSWORD, PW_TYPE_STRING);
 						strlcpy(passwd_item->vp_strvalue,passwd_val,sizeof(passwd_item->vp_strvalue));
-						passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
-						pairadd(&request->config_items,passwd_item);
+						passwd_item->length = strlen(passwd_item->vp_strvalue);
+						added_known_password = 1;
 
 #ifdef NOVELL
 						{
@@ -1549,32 +1537,16 @@ static int ldap_authorize(void *instance, REQUEST * request)
 								 * The authorize method of no other LDAP module instance has
 								 * processed this request.
 								 */
-								if ((vp_inst = paircreate(inst_attr, PW_TYPE_STRING)) == NULL){
-									radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
-									ldap_msgfree(result);
-									ldap_release_conn(conn_id, inst->conns);
-									memset(universal_password, 0, universal_password_len);
-									free(universal_password);
-									return RLM_MODULE_FAIL;
-								}
-								strcpy(vp_inst->vp_strvalue, inst->xlat_name);
+								vp_inset = radius_paircreate(request, &request->config_items, inst_attr, PW_TYPE_STRING);
+								strlcpy(vp_inst->vp_strvalue, inst->xlat_name, sizeof(vp_inst->vp_strvalue));
 								vp_inst->length = strlen(vp_inst->vp_strvalue);
-								pairadd(&request->config_items, vp_inst);
 
 								/*
 								 * Inform the authenticate / post-auth method about the presence
 								 * of UP in the config items list and whether eDirectory account
 								 * policy check is to be performed or not.
 								 */
-								if ((vp_apc = paircreate(apc_attr, PW_TYPE_INTEGER)) == NULL){
-									radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
-									ldap_msgfree(result);
-									ldap_release_conn(conn_id, inst->conns);
-									memset(universal_password, 0, universal_password_len);
-									free(universal_password);
-									return RLM_MODULE_FAIL;
-								}
-
+								vp_apc = radius_paircreate(request, &request->config_items, apc_attr, PW_TYPE_STRING);
 								if(!inst->edir_account_policy_check){
 									/* Do nothing */
 									strcpy(vp_apc->vp_strvalue, "1");
@@ -1583,7 +1555,6 @@ static int ldap_authorize(void *instance, REQUEST * request)
 									strcpy(vp_apc->vp_strvalue, "2");
 								}
 								vp_apc->length = 1;
-								pairadd(&request->config_items, vp_apc);
 							}
 						}
 #endif
@@ -1662,7 +1633,8 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	if (inst->set_auth_type &&
 	    (pairfind(*check_pairs, PW_AUTH_TYPE) == NULL) &&
 	    request->password &&
-	    (request->password->attribute == PW_USER_PASSWORD)) {
+	    (request->password->attribute == PW_USER_PASSWORD) &&
+	    !added_known_password) {
 		pairadd(check_pairs, pairmake("Auth-Type", inst->xlat_name, T_OP_EQ));
 		DEBUG("rlm_ldap: Setting Auth-Type = %s", inst->xlat_name);
 	}
