@@ -94,9 +94,14 @@ static void tv_add(struct timeval *tv, int usec_delay)
 }
 
 #ifdef WITH_SNMP
-static void snmp_inc_client_responses(REQUEST *request)
+static void snmp_inc_counters(REQUEST *request)
 {
 	if (!mainconfig.do_snmp) return;
+
+	if (request->master_state == REQUEST_COUNTED) return;
+
+	if ((request->listener->type != RAD_LISTEN_AUTH) &&
+	    (request->listener->type != RAD_LISTEN_ACCT)) return;
 
 	/*
 	 *	Update the SNMP statistics.
@@ -144,9 +149,11 @@ static void snmp_inc_client_responses(REQUEST *request)
 	default:
 		break;
 	}
+
+	request->master_state = REQUEST_COUNTED;
 }
 #else
-#define snmp_inc_client_responses(_x, _y)
+#define snmp_inc_counters(_x)
 #endif
 
 
@@ -157,12 +164,7 @@ static void remove_from_request_hash(REQUEST *request)
 	lrad_packet_list_yank(pl, request->packet);
 	request->in_request_hash = FALSE;
 
-#ifdef WITH_SNMP
-	if ((request->listener->type == RAD_LISTEN_AUTH) ||
-	    (request->listener->type == RAD_LISTEN_ACCT)) {
-		snmp_inc_client_responses(request);
-	}
-#endif
+	snmp_inc_counters(request);
 }
 
 
@@ -761,6 +763,7 @@ static void wait_a_bit(void *ctx)
 	case REQUEST_REJECT_DELAY:
 	case REQUEST_CLEANUP_DELAY:
 		request->child_pid = NO_SUCH_CHILD_PID;
+		snmp_inc_counters(request);
 
 	case REQUEST_PROXIED:
 		rad_assert(request->next_callback != NULL);
@@ -776,6 +779,7 @@ static void wait_a_bit(void *ctx)
 		 */
 	case REQUEST_DONE:
 		request->child_pid = NO_SUCH_CHILD_PID;
+		snmp_inc_counters(request);
 		cleanup_delay(request);
 		return;
 
