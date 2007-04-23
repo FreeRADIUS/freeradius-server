@@ -669,16 +669,16 @@ static int setup_post_proxy_fail(REQUEST *request)
 	VALUE_PAIR *vp;
 
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
-		dval = dict_valbyname(PW_POST_PROXY_TYPE, "Failed-Authentication");
+		dval = dict_valbyname(PW_POST_PROXY_TYPE, "Fail-Authentication");
 
 	} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
-		dval = dict_valbyname(PW_POST_PROXY_TYPE, "Failed-Accounting");
+		dval = dict_valbyname(PW_POST_PROXY_TYPE, "Fail-Accounting");
 
 	} else {
 		return 0;
 	}
 
-	if (!dval) dval = dict_valbyname(PW_POST_PROXY_TYPE, "Failed");
+	if (!dval) dval = dict_valbyname(PW_POST_PROXY_TYPE, "Fail");
 
 	if (!dval) {
 		pairdelete(&request->config_items, PW_POST_PROXY_TYPE);
