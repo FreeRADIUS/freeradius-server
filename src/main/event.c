@@ -68,7 +68,6 @@ static lrad_packet_list_t *proxy_list = NULL;
 static int		proxy_fds[32];
 static rad_listen_t	*proxy_listeners[32];
 
-static void request_post_handler(REQUEST *request);
 static void wait_a_bit(void *ctx);
 
 static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
@@ -664,9 +663,10 @@ static void check_for_zombie_home_server(REQUEST *request)
 }
 
 
-static void post_proxy_fail(REQUEST *request)
+static int setup_post_proxy_fail(REQUEST *request)
 {
 	DICT_VALUE *dval = NULL;
+	VALUE_PAIR *vp;
 
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, "Failed-Authentication");
@@ -675,37 +675,49 @@ static void post_proxy_fail(REQUEST *request)
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, "Failed-Accounting");
 
 	} else {
-		return;
+		return 0;
 	}
 
 	if (!dval) dval = dict_valbyname(PW_POST_PROXY_TYPE, "Failed");
 
-	if (!dval) return;
+	if (!dval) {
+		pairdelete(&request->config_items, PW_POST_PROXY_TYPE);
+		return 0;
+	}
 
-	/*
-	 *	Run it, and ignore the return code.
-	 *
-	 *	FIXME: This may do a fair amount of work... we should
-	 *	really be pushing this onto the queue of things for
-	 *	the child threads to do, which would help speed up the
-	 *	server core.
-	 */
-	module_post_proxy(dval->value, request);
+	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE);
+	if (!vp) vp = radius_paircreate(request, &request->config_items,
+					PW_POST_PROXY_TYPE, PW_TYPE_INTEGER);
+	vp->vp_integer = dval->value;
+
+	return 1;
 }
 
 
+static int null_handler(REQUEST *request)
+{
+	return 0;
+}
+
 static void post_proxy_fail_handler(REQUEST *request)
 {
-	/*
-	 *	FIXME: Insert the request into the HEAD of the queue for child
-	 *	threads, and then set child state to QUEUED
-	 */
-	{
-		request->child_state = REQUEST_RUNNING;
-		post_proxy_fail(request);
-	
+	if (setup_post_proxy_fail(request)) {
+		/*
+		 *	There is a post-proxy-type of fail.  We run
+		 *	the request through the pre/post proxy
+		 *	handlers, just like it was a real proxied
+		 *	request.  However, we set the per-request
+		 *	handler to NULL, as we don't want to do
+		 *	anything else.
+		 *
+		 *	FIXME: We've been called from the main thread,
+		 *	so we should really insert the request into
+		 *	the queue with a high priority.  That lets a
+		 *	child thread take the CPU penalty of DB
+		 *	accesses, etc.
+		 */
 		rad_assert(request->proxy != NULL);
-		request_post_handler(request);
+		radius_handle_request(request, null_handler);
 	}
 	
 	/*
@@ -860,8 +872,11 @@ static int request_pre_handler(REQUEST *request)
 	if (request->proxy_reply != NULL) {
 		rcode = request->proxy_listener->decode(request->proxy_listener,
 							request);
-	} else {
+	} else if (request->packet->vps == NULL) {
 		rcode = request->listener->decode(request->listener, request);
+
+	} else {
+		rcode = 0;
 	}
 
 	if (rcode < 0) {
@@ -873,6 +888,7 @@ static int request_pre_handler(REQUEST *request)
 	if (!request->proxy) {
 		request->username = pairfind(request->packet->vps,
 					     PW_USER_NAME);
+
 	} else {
 		int post_proxy_type = 0;
 		VALUE_PAIR *vp;
@@ -894,26 +910,32 @@ static int request_pre_handler(REQUEST *request)
 		rcode = module_post_proxy(post_proxy_type, request);
 		
 		/*
-		 *	Delete the Proxy-State Attributes from the reply.
-		 *	These include Proxy-State attributes from us and
-		 *	remote server.
+		 *	There may NOT be a proxy reply, as we may be
+		 *	running Post-Proxy-Type = Fail.
 		 */
-		pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE);
+		if (request->proxy_reply) {
+			/*
+			 *	Delete the Proxy-State Attributes from
+			 *	the reply.  These include Proxy-State
+			 *	attributes from us and remote server.
+			 */
+			pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE);
 		
-		/*
-		 *	Add the attributes left in the proxy reply to
-		 *	the reply list.
-		 */
-		pairadd(&request->reply->vps, request->proxy_reply->vps);
-		request->proxy_reply->vps = NULL;
+			/*
+			 *	Add the attributes left in the proxy
+			 *	reply to the reply list.
+			 */
+			pairadd(&request->reply->vps, request->proxy_reply->vps);
+			request->proxy_reply->vps = NULL;
 		
-		/*
-		 *	Free proxy request pairs.
-		 */
-		pairfree(&request->proxy->vps);
-		
+			/*
+			 *	Free proxy request pairs.
+			 */
+			pairfree(&request->proxy->vps);
+		}
+
 		switch (rcode) {
-                default:  /* Don't Do Anything */
+                default:  /* Don't do anything */
 			break;
                 case RLM_MODULE_FAIL:
 			/* FIXME: debug print stuff */
@@ -1245,8 +1267,16 @@ static void request_post_handler(REQUEST *request)
 		 *	Failed proxying it (dead home servers, etc.)
 		 *	Run it through Post-Proxy-Type = Fail, and
 		 *	respond to the request.
+		 *
+		 *	Note that we're in a child thread here, so we
+		 *	do NOT re-schedule the request.  Instead, we
+		 *	do what we would have done, which is run the
+		 *	pre-handler, a NULL request handler, and then
+		 *	the post handler.
 		 */
-		if (rcode < 0) post_proxy_fail(request);
+		if ((rcode < 0) && setup_post_proxy_fail(request)) {
+			request_pre_handler(request);
+		}
 
 		/*
 		 *	Else we weren't supposed to proxy it.
@@ -2048,7 +2078,7 @@ int radius_event_process(struct timeval **pptv)
 void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	if (!request_pre_handler(request)) {
-		DEBUG2("Going to the next request at X");
+		DEBUG2("Going to the next request");
 		return;
 	}
 	
