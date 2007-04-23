@@ -40,7 +40,6 @@ uint32_t lrad_request_packet_hash(const RADIUS_PACKET *packet)
 	if (packet->hash) return packet->hash;
 
 	hash = lrad_hash(&packet->sockfd, sizeof(packet->sockfd));
-	hash = lrad_hash_update(&packet->id, sizeof(packet->id), hash);
 	hash = lrad_hash_update(&packet->src_port, sizeof(packet->src_port),
 				hash);
 	hash = lrad_hash_update(&packet->dst_port,
