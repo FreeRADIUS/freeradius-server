@@ -387,8 +387,6 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
-	rad_assert((*request)->child_pid == NO_SUCH_CHILD_PID);
-
 	return 1;
 }
 
