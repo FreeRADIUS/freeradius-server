@@ -68,6 +68,8 @@ static lrad_packet_list_t *proxy_list = NULL;
 static int		proxy_fds[32];
 static rad_listen_t	*proxy_listeners[32];
 
+static void request_post_handler(REQUEST *request);
+static void wait_a_bit(void *ctx);
 
 static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
 				    const char *msg)
@@ -408,8 +410,7 @@ static void cleanup_delay(void *ctx)
 
 	remove_from_request_hash(request);
 
-	if (request->proxy &&
-	    request->in_proxy_hash) {
+	if (request->proxy && request->in_proxy_hash) {
 		wait_for_proxy_id_to_expire(request);
 		return;
 	}
@@ -662,6 +663,60 @@ static void check_for_zombie_home_server(REQUEST *request)
 	}
 }
 
+
+static void post_proxy_fail(REQUEST *request)
+{
+	DICT_VALUE *dval = NULL;
+
+	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
+		dval = dict_valbyname(PW_POST_PROXY_TYPE, "Failed-Authentication");
+
+	} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+		dval = dict_valbyname(PW_POST_PROXY_TYPE, "Failed-Accounting");
+
+	} else {
+		return;
+	}
+
+	if (!dval) dval = dict_valbyname(PW_POST_PROXY_TYPE, "Failed");
+
+	if (!dval) return;
+
+	/*
+	 *	Run it, and ignore the return code.
+	 *
+	 *	FIXME: This may do a fair amount of work... we should
+	 *	really be pushing this onto the queue of things for
+	 *	the child threads to do, which would help speed up the
+	 *	server core.
+	 */
+	module_post_proxy(dval->value, request);
+}
+
+
+static void post_proxy_fail_handler(REQUEST *request)
+{
+	/*
+	 *	FIXME: Insert the request into the HEAD of the queue for child
+	 *	threads, and then set child state to QUEUED
+	 */
+	{
+		request->child_state = REQUEST_RUNNING;
+		post_proxy_fail(request);
+	
+		rad_assert(request->proxy != NULL);
+		request_post_handler(request);
+	}
+	
+	/*
+	 *	Wait for the child to be done.
+	 *
+	 *	FIXME: Reset the default timeouts?
+	 */
+	wait_a_bit(request);
+}
+
+
 /* maybe check this against wait_for_proxy_id_to_expire? */
 static void no_response_to_proxied_request(void *ctx)
 {
@@ -679,30 +734,17 @@ static void no_response_to_proxied_request(void *ctx)
 			 buffer, sizeof(buffer)),
 	       request->proxy->dst_port);
 
-	/*
-	 *	FIXME: Run packets through post-proxy-type "Fail"
-	 */
-	if ((request->proxy->code == PW_ACCOUNTING_REQUEST) ||
-	    (request->proxy->code == PW_STATUS_SERVER)) {
-		remove_from_request_hash(request);
-		wait_for_proxy_id_to_expire(request);
+	check_for_zombie_home_server(request);
 
-	} else {
-		request->reply->code = PW_AUTHENTICATION_REJECT;
-
-		request->listener->send(request->listener, request);
-
-		request->child_state = REQUEST_CLEANUP_DELAY;
-		request->when.tv_sec += mainconfig.cleanup_delay;
-			
-		/* cleanup_delay calls wait_for_proxy_id_to_expire */
-
-		INSERT_EVENT(cleanup_delay, request);
-	}
-		
 	home = request->home_server;
+
+	post_proxy_fail_handler(request);
+
+	/*
+	 *	Don't touch request due to race conditions
+	 */
 	if (home->state == HOME_STATE_IS_DEAD) {
-		/* FIXME: assert that some event is set for the home server */
+		rad_assert(home->ev != NULL); /* or it will never wake up */
 		return;
 	}
 
@@ -714,17 +756,14 @@ static void no_response_to_proxied_request(void *ctx)
 	 */
 	if (home->state == HOME_STATE_ALIVE) {
 		DEBUG2("WARNING: Home server %s port %d may be dead.",
-		       inet_ntop(request->proxy->dst_ipaddr.af,
-				 &request->proxy->dst_ipaddr.ipaddr,
+		       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
-		       request->proxy->dst_port);
+		       home->port);
 		home->state = HOME_STATE_ZOMBIE;
 		home->zombie_period_start = now;
 		home->zombie_period_start.tv_sec -= home->response_window;
 		return;
 	}
-
-	check_for_zombie_home_server(request);
 }
 
 
@@ -912,8 +951,7 @@ static int successfully_proxied_request(REQUEST *request)
 	char buffer[128];
 
 	realmpair = pairfind(request->config_items, PW_PROXY_TO_REALM);
-	if (!realmpair ||
-	    (realmpair->length == 0)) {
+	if (!realmpair || (realmpair->length == 0)) {
 		return 0;
 	}
 
@@ -921,22 +959,7 @@ static int successfully_proxied_request(REQUEST *request)
 
 	realm = realm_find(realmname);
 	if (!realm) {
-		DEBUG2("ERROR: Cannot proxy to unknown realm %s",
-		       realmname);
-	reject_request:
-		/*
-		 *	Failed proxying means silently discard
-		 *	accounting responses.
-		 */
-		if (request->packet->code == PW_ACCOUNTING_REQUEST) {
-			request->child_state = REQUEST_DONE;
-			return 1;
-		}
-		
-		rad_assert(request->packet->code == PW_AUTHENTICATION_REQUEST);
-		
-		request->reply->code = PW_AUTHENTICATION_REJECT;
-
+		DEBUG2("ERROR: Cannot proxy to unknown realm %s", realmname);
 		return 0;
 	}
 
@@ -961,12 +984,9 @@ static int successfully_proxied_request(REQUEST *request)
 
 	home = home_server_ldb(realmname, pool, request);
 	if (!home) {
-		/*
-		 *	FIXME: Run the request through Post-Proxy-Type = Fail
-		 */
 		DEBUG2("ERROR: Failed to find live home server for realm %s",
 		       realmname);
-		goto reject_request;
+		return -1;
 	}
 	request->home_pool = pool;
 
@@ -1117,12 +1137,12 @@ static int successfully_proxied_request(REQUEST *request)
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_NOTFOUND:
-	case RLM_MODULE_REJECT:
 	case RLM_MODULE_USERLOCK:
 	default:
 		/* FIXME: debug print failed stuff */
-		goto reject_request;
+		return -1;
 
+	case RLM_MODULE_REJECT:
 	case RLM_MODULE_HANDLED:
 		return 0;
 
@@ -1139,16 +1159,15 @@ static int successfully_proxied_request(REQUEST *request)
 	 *	If it's a fake request, don't send the proxy
 	 *	packet.  The outer tunnel session will take
 	 *	care of doing that.
-	 *
-	 *	FIXME: Update the home_server to be NULL?
 	 */
 	if (request->packet->dst_port == 0) {
+		request->home_server = NULL;
 		return 1;
 	}
 	
 	if (!insert_into_proxy_hash(request)) {
 		DEBUG("ERROR: Failed to proxy request %d", request->number);
-		goto reject_request;
+		return -1;
 	}
 
 	request->proxy_listener->encode(request->proxy_listener, request);
@@ -1215,11 +1234,23 @@ static void request_post_handler(REQUEST *request)
 	}
 
 	if (mainconfig.proxy_requests &&
-	    (request->packet->code != PW_STATUS_SERVER) &&
-	    (request->reply->code == 0) &&
 	    !request->proxy &&
-	    successfully_proxied_request(request)) {
-		return;
+	    (request->reply->code == 0) &&
+	    (request->packet->code != PW_STATUS_SERVER)) {
+		int rcode = successfully_proxied_request(request);
+
+		if (rcode == 1) return;
+
+		/*
+		 *	Failed proxying it (dead home servers, etc.)
+		 *	Run it through Post-Proxy-Type = Fail, and
+		 *	respond to the request.
+		 */
+		if (rcode < 0) post_proxy_fail(request);
+
+		/*
+		 *	Else we weren't supposed to proxy it.
+		 */
 	}
 
 	/*
@@ -1400,16 +1431,11 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 				DEBUG2("Failed to find live home server for request %d", request->number);
 			no_home_servers:
 				/*
-				 *	FIXME: Run the request through
-				 *	Post-Proxy-Type = Fail
-				 *
 				 *	Do post-request processing,
 				 *	and any insertion of necessary
 				 *	events.
 				 */
-				request->child_state = REQUEST_RUNNING;
-				request_post_handler(request);
-				wait_a_bit(request);
+				post_proxy_fail_handler(request);
 				return;
 			}
 			
