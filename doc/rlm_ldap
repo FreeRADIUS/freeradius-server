@@ -9,6 +9,7 @@ See also: http://www.tldp.org/HOWTO/LDAP-Implementation-HOWTO/radius.html
 It's not up to date, though.  For example, you do NOT have to edit
 the "dictionary" file.
 
+
 2. LDAP ATTRIBUTES
 
 The mapping between radius and ldap attributes is in raddb/ldap.attrmap. You
@@ -26,8 +27,167 @@ ie radiusReplyItem: Cisco-AVPair := "ip:addr-pool=dialin_pool"
 
 3. CONFIGURATION
 
-Add following subsection to the modules{} section of radiusd.conf to control
-the rlm_ldap module:
+See the "modules" section of "radiusd.conf", and look for the "ldap"
+section.  It lists and documents the common configuration items.
+
+Note that LDAP is a database, NOT an authentication server.
+FreeRADIUS is an authentication server, NOT a database.  What this
+means is that LDAP "bind as user" is almost always a bad idea.  Using
+"Auth-Type = LDAP" is almost always a bad idea.  We STRONGLY recommend
+that you do NOT list "ldap" in the "authenticate" section of
+radiusd.conf.  Doing so can cause all sorts of problems for people who
+are unfamiliar with RADIUS and LDAP.
+
+The normal configuration is to configure the "ldap" section in
+radiusd.conf, and list "ldap" in the "authorize" section.  FreeRADIUS
+should then be able to use LDAP to find the "known good" password for
+the user.  FreeRADIUS will then use this password to perform PAP,
+CHAP, MS-CHAP, or any other kind of authentication that the user has
+requested.
+
+If you use "Auth-Type := LDAP", then the ONLY authentication protocol
+that will work is PAP.  EAP will not work (i.e. all wireless
+authentication).  CHAP will not work, and MS-CHAP will not work.
+
+
+4. USAGE
+
+MODULE MESSAGES: On user rejection rlm_ldap will return the following module
+messages:
+
+"rlm_ldap: User not found" "rlm_ldap: Access Attribute denies access"
+"rlm_ldap: Bind as user failed"
+
+These messages will be visible in radius.log as aditional information in
+"Login incorrect" and "Invalid user" log messages.
+
+LDAP XLAT: The ldap module now supports LDAP URLs in xlat strings. That is you
+can now add LDAP URLs in the configuration options and hopefully shortly also
+in the users file. The strings will be of the following form:
+
+%{ldap:ldap:///dc=company,dc=com?uid?sub?uid=%u}
+
+The requested attributes list MUST contain only ONE attribute. In case this
+attribute is multi valued which value is returned is considered UNDEFINED.
+Also, adding the host:port information SHOULD be avoided unless there are more
+than one ldap module instances in which case the host,port information can be
+used to distinguish which module will actually return the information (the
+xlat function will return NULL if the host,port information does not
+correspond to the configured attributes).  If there are more than one
+instances the module instance name can be used instead of the string 'ldap'
+before the ldap url to decide which instance will return the information.
+That is the xlat string will be of the form:
+
+%{$instance_name:ldap:///dc=comapny,dc=com?uid?sub?uid=%u}
+
+i.e.: ${ldap_company1:ldap:///dc=company1,dc=com?uid?sub?uid=%u}
+
+
+USER PROFILE ATTRIBUTE: The module can use the User-Profile attribute. If it
+is set, it will assume that it contains the DN of a profile entry containing
+radius attributes. This entry will _replace_ the default profile directive.
+That way we can use different profiles based on checks on the radius
+attributes contained in the Access-Request packets. For example (users file):
+
+DEFAULT	Service-Type == Outbound-User, User-Profile := "uid=outbound-dialup,dc=company,dc=com"
+ 
+
+GROUP SUPPORT: The module supports searching for ldap groups by use of the
+Ldap-Group attribute. As long as the module has been instanciated it can be
+used to do group membership checks through other modules. For example in the
+users file:
+
+DEFAULT	Ldap-Group == "disabled", Auth-Type := Reject 
+	Reply-Message = "Sorry, you are not allowed to have dialup access"
+
+DNs are also accepted as Ldap-Group values, i.e.:
+
+DEFAULT	Ldap-Group == "cn=disabled,dc=company,dc=com", Auth-Type := Reject
+	Reply-Message = "Sorry, you are not allowed to have dialup access"
+
+
+
+Also if you are using multiple ldap module instances a per instance
+Ldap-Group attribute is registered and can be used. It is of the form
+<instance_name>-Ldap-Group. In other words if in radiusd.conf we
+configure an ldap module instance like:
+
+ldap myname { [...] }
+
+we can then use the myname-Ldap-Group attribute to match user
+groups. Make sure though that the ldap module is instantiated *before*
+the files module so that it will have time to register the
+corresponding attribute. One solution would be to add the ldap module
+in the instantiate{} block in radiusd.conf
+
+
+USERDN Attribute:
+When rlm_ldap has found the DN corresponding to the username provided
+in the access-request (all this happens in the authorize section) it
+will add an Ldap-UserDN attribute in the request items list containing
+that DN. The attribute will be searched for in the authenticate
+section and if present will be used for authentication (ldap bind with
+the user DN/password). Otherwise a search will be performed to find
+the user dn. If the administrator wishes to use rlm_ldap only for
+authentication or does not wish to populate the identity,password
+configuration attributes he can set this attribute by other means and
+avoid the ldap search completely. For instance it can be set through
+the hints file in the authorize section:
+
+DEFAULT	Ldap-UserDN := `uid=%{User-Name},ou=people,dc=company,dc=com`
+
+The "users" file won't work, because it can't add items to the request.
+
+
+DIRECTORY COMPATIBILITY NOTE: If you use LDAP only for authorization and
+authentication (e.g. you can not afford schema extension), we suggest you set
+all necessary attributes in raddb/users file with following authorize section
+of radiusd.conf :
+
+authorize { ldap { notfound = return } files  }
+
+
+5. LDAP and Active Directory
+
+Active directory does not return anything in the userPassword
+attribute, unlike other LDAP servers.  As a result, you cannot use
+Active Directory as an LDAP server to perform CHAP, MS-CHAP, or
+EAP-MD5 authentication.  You can only use PAP, and then only if you
+list "ldap" in the "authenticate" section.  As noted above, we do not
+recommend this unless you have no other choice.
+
+To do MS-CHAP against an Active Directory domain, see the comments in
+radiusd.conf, in the "mschap" section, about "ntlm_auth".  You will
+need to install Samba.  The MS-CHAP module will then run ntlm_auth
+when it receives an MS-CHAP request.  The ntlm_auth program will
+communicate with winbindd, which will then talk to Active Directory.
+
+This will only work for one Active Directory domain.  If you need to
+authenticate against two or more domains, the solution becomes
+extremely difficult.
+
+
+If you see "Operations error" returned from an LDAP query, you may
+need to set dsHeuristics to 0000002 in Active Directory.  This allows
+searches to function similar to how they did in Active Directory
+2k2. You can update dsHeuristics by launching ldp.exe, going to
+'connection' and create a new connection. Then goto bind and bind to
+your ldap server. Next select the 'Browse' menu and choose
+'modify'. The DN *might* look like this:
+
+CN=Directory Service,CN=Windows
+NT,CN=Services,CN=Configuration,DC=mycompany,DC=com
+
+Attribute is: dsHeuristics
+Value is: 0000002
+
+Set the operation to replace and you should be set.  This should solve
+the 'Operations error' error that happens when attempting to search
+without specifying an OU.
+
+
+
+6. Detailed documentation for the module configuration
 
   modules { ...
 	
@@ -192,6 +352,14 @@ the rlm_ldap module:
 #
 #	password_attribute = "userPassword"
 
+#	password_radius_attribute: Defined the RADIUS attribute where the extracted
+#	user password will be stored to. Can be used to set it to NT-Password or any
+#	other similar attribute instead of the default
+#
+#	default: User-Password
+#
+#	password_radius_attribute = "NT-Password"
+
 #	edir_account_policy_check: Specifies if the module has to enforce
 #	Novell eDirectory account policy check and intruder detection for
 #	RADIUS users.  This will work only if FreeRADIUS is configured to build
@@ -254,127 +422,3 @@ yes" and "lower_time = before" in main section of radiusd.conf, to get limits
 on simultaneous logins working correctly. Otherwise, users will be able get
 large number of sessions, capitalizing parts of their login names.
 
-MODULE MESSAGES: On user rejection rlm_ldap will return the following module
-messages:
-
-"rlm_ldap: User not found" "rlm_ldap: Access Attribute denies access"
-"rlm_ldap: Bind as user failed"
-
-These messages will be visible in radius.log as aditional information in
-"Login incorrect" and "Invalid user" log messages.
-
-LDAP XLAT: The ldap module now supports LDAP URLs in xlat strings. That is you
-can now add LDAP URLs in the configuration options and hopefully shortly also
-in the users file. The strings will be of the following form:
-
-%{ldap:ldap:///dc=company,dc=com?uid?sub?uid=%u}
-
-The requested attributes list MUST contain only ONE attribute. In case this
-attribute is multi valued which value is returned is considered UNDEFINED.
-Also, adding the host:port information SHOULD be avoided unless there are more
-than one ldap module instances in which case the host,port information can be
-used to distinguish which module will actually return the information (the
-xlat function will return NULL if the host,port information does not
-correspond to the configured attributes).  If there are more than one
-instances the module instance name can be used instead of the string 'ldap'
-before the ldap url to decide which instance will return the information.
-That is the xlat string will be of the form:
-
-%{$instance_name:ldap:///dc=comapny,dc=com?uid?sub?uid=%u}
-
-i.e.: ${ldap_company1:ldap:///dc=company1,dc=com?uid?sub?uid=%u}
-
-
-USER PROFILE ATTRIBUTE: The module can use the User-Profile attribute. If it
-is set, it will assume that it contains the DN of a profile entry containing
-radius attributes. This entry will _replace_ the default profile directive.
-That way we can use different profiles based on checks on the radius
-attributes contained in the Access-Request packets. For example (users file):
-
-DEFAULT	Service-Type == Outbound-User, User-Profile := "uid=outbound-dialup,dc=company,dc=com"
- 
-
-GROUP SUPPORT: The module supports searching for ldap groups by use of the
-Ldap-Group attribute. As long as the module has been instanciated it can be
-used to do group membership checks through other modules. For example in the
-users file:
-
-DEFAULT	Ldap-Group == "disabled", Auth-Type := Reject 
-	Reply-Message = "Sorry, you are not allowed to have dialup access"
-
-DNs are also accepted as Ldap-Group values, i.e.:
-
-DEFAULT	Ldap-Group == "cn=disabled,dc=company,dc=com", Auth-Type := Reject
-	Reply-Message = "Sorry, you are not allowed to have dialup access"
-
-
-
-Also if you are using multiple ldap module instances a per instance
-Ldap-Group attribute is registered and can be used. It is of the form
-<instance_name>-Ldap-Group. In other words if in radiusd.conf we
-configure an ldap module instance like:
-
-ldap myname { [...] }
-
-we can then use the myname-Ldap-Group attribute to match user
-groups. Make sure though that the ldap module is instantiated *before*
-the files module so that it will have time to register the
-corresponding attribute. One solution would be to add the ldap module
-in the instantiate{} block in radiusd.conf
-
-
-USERDN Attribute:
-When rlm_ldap has found the DN corresponding to the username provided
-in the access-request (all this happens in the authorize section) it
-will add an Ldap-UserDN attribute in the request items list containing
-that DN. The attribute will be searched for in the authenticate
-section and if present will be used for authentication (ldap bind with
-the user DN/password). Otherwise a search will be performed to find
-the user dn. If the administrator wishes to use rlm_ldap only for
-authentication or does not wish to populate the identity,password
-configuration attributes he can set this attribute by other means and
-avoid the ldap search completely. For instance it can be set through
-the hints file in the authorize section:
-
-DEFAULT	Ldap-UserDN := `uid=%{User-Name},ou=people,dc=company,dc=com`
-
-The "users" file won't work, because it can't add items to the request.
-
-
-DIRECTORY COMPATIBILITY NOTE: If you use LDAP only for authorization and
-authentication (e.g. you can not afford schema extention), I propose to set
-all necessary attributes in raddb/users file with following authorize section
-of radiusd.conf :
-
-authorize { ldap { notfound = return } files  }
-
-LDAP and Active Directory
--------------------------
-
-Active directory does not return anything in the userPassword
-attribute, unlike other LDAP servers.  As a result, you cannot use
-Active Directory to perform CHAP, MS-CHAP, or EAP-MD5 authentication.
-You can only use PAP, and then only if you list "ldap" in the
-"authenticate" section.
-
-To do MS-CHAP against an Active Directory domain, see the comments in
-radiusd.conf, about "ntlm_auth".  You will need to install Samba.
-
-
-If you see "Operations error" returned from an LDAp query, you may
-need to set dsHeuristics to 0000002 in Active Directory.  This allows
-searches to function similar to how they did in Active Directory
-2k2. You can update dsHeuristics by launching ldp.exe, going to
-'connection' and create a new connection. Then goto bind and bind to
-your ldap server. Next select the 'Browse' menu and choose
-'modify'. The DN *might* look like this:
-
-CN=Directory Service,CN=Windows
-NT,CN=Services,CN=Configuration,DC=mycompany,DC=com
-
-Attribute is: dsHeuristics
-Value is: 0000002
-
-Set the operation to replace and you should be set.  This should solve
-the 'Operations error' error that happens when attempting to search
-without specifying an OU.
