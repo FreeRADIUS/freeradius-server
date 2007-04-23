@@ -377,7 +377,7 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 
 	i = 16;
 	rad_tunnel_pwencode(vp->vp_strvalue + vp->length, &i,
-			    request->secret, request->packet->vector);
+			    request->client->secret, request->packet->vector);
 	vp->length += i;
 	pairadd(reply_vps, vp);
 

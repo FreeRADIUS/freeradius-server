@@ -234,8 +234,9 @@ void request_free(REQUEST **request_ptr)
 
 #ifndef NDEBUG
 	request->magic = 0x01020304;	/* set the request to be nonsense */
-	strcpy(request->secret, "REQUEST-DELETED");
 #endif
+	request->client = NULL;
+	request->home_server = NULL;
 	free(request);
 
 	*request_ptr = NULL;

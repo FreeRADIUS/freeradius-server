@@ -94,8 +94,7 @@ static void tv_add(struct timeval *tv, int usec_delay)
 }
 
 #ifdef WITH_SNMP
-static void snmp_inc_client_responses(RADCLIENT *client,
-				      REQUEST *request)
+static void snmp_inc_client_responses(REQUEST *request)
 {
 	if (!mainconfig.do_snmp) return;
 
@@ -111,24 +110,24 @@ static void snmp_inc_client_responses(RADCLIENT *client,
 	case PW_AUTHENTICATION_ACK:
 		rad_snmp.auth.total_responses++;
 		rad_snmp.auth.total_access_accepts++;
-		if (client) client->auth->accepts++;
+		if (request->client) request->client->auth->accepts++;
 		break;
 
 	case PW_AUTHENTICATION_REJECT:
 		rad_snmp.auth.total_responses++;
 		rad_snmp.auth.total_access_rejects++;
-		if (client) client->auth->rejects++;
+		if (request->client) request->client->auth->rejects++;
 		break;
 		
 	case PW_ACCESS_CHALLENGE:
 		rad_snmp.auth.total_responses++;
 		rad_snmp.auth.total_access_challenges++;
-		if (client) client->auth->challenges++;
+		if (request->client) request->client->auth->challenges++;
 		break;
 		
 	case PW_ACCOUNTING_RESPONSE:
 		rad_snmp.acct.total_responses++;
-		if (client) client->auth->responses++;
+		if (request->client) request->client->auth->responses++;
 		break;
 
 		/*
@@ -138,7 +137,7 @@ static void snmp_inc_client_responses(RADCLIENT *client,
 	case 0:
 		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 			rad_snmp.auth.total_bad_authenticators++;
-			if (client) client->auth->bad_authenticators++;
+			if (request->client) request->client->auth->bad_authenticators++;
 		}
 		break;
 		
@@ -161,9 +160,7 @@ static void remove_from_request_hash(REQUEST *request)
 #ifdef WITH_SNMP
 	if ((request->listener->type == RAD_LISTEN_AUTH) ||
 	    (request->listener->type == RAD_LISTEN_ACCT)) {
-		snmp_inc_client_responses(client_listener_find(request->listener,
-							       &request->packet->src_ipaddr),
-					  request);
+		snmp_inc_client_responses(request);
 	}
 #endif
 }
@@ -345,12 +342,6 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 	rad_assert(request->magic == REQUEST_MAGIC);
 	rad_assert(request->proxy != NULL);
 
-	/*
-	 *	FIXME: handle the case of RETRY from one home server
-	 *	to another!
-	 *
-	 *	Do we even have to do anything?
-	 */
 	request->when = request->proxy_when;
 	request->when.tv_sec += home->response_window;
 
@@ -1333,6 +1324,17 @@ static void request_post_handler(REQUEST *request)
 		if (request->proxy_reply) {
 			pairfree(&request->proxy_reply->vps);
 		}
+
+		/*
+		 *	We're not tracking responses from the home
+		 *	server, we can therefore free this memory in
+		 *	the child thread.
+		 */
+		if (!request->in_proxy_hash) {
+			rad_free(&request->proxy);
+			rad_free(&request->proxy_reply);
+			request->home_server = NULL;
+		}
 	}
 
 	DEBUG2("Finished request %d state %d", request->number, child_state);
@@ -1615,10 +1617,10 @@ int received_request(rad_listen_t *listener,
 	}
 
 	request->listener = listener;
+	request->client = client;
 	request->packet = packet;
 	request->packet->timestamp = request->timestamp;
 	request->number = request_num_counter++;
-	strlcpy(request->secret, client->secret, sizeof(request->secret));
 	
 	/*
 	 *	Remember the request in the list.

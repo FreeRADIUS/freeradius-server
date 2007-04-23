@@ -615,7 +615,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 	 *	Encrypt the session key again, using the request data.
 	 */
 	rad_tunnel_pwencode(vp->vp_strvalue + 17, &len,
-			    request->secret,
+			    request->client->secret,
 			    request->packet->vector);
 
 	return RLM_MODULE_UPDATED;

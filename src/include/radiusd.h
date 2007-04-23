@@ -41,6 +41,23 @@ typedef pid_t child_pid_t;
  */
 typedef struct request_data_t request_data_t;
 
+typedef struct rad_snmp_client_entry_t rad_snmp_client_entry_t;
+
+typedef struct radclient {
+	lrad_ipaddr_t		ipaddr;
+	int			prefix;
+	char			*longname;
+	char			*secret;
+	char			*shortname;
+	char			*nastype;
+	char			*login;
+	char			*password;
+	int			number;	/* internal use only */
+#ifdef WITH_SNMP
+	rad_snmp_client_entry_t *auth, *acct;
+#endif
+} RADCLIENT;
+
 /*
  *	For listening on multiple IP's and ports.
  */
@@ -62,7 +79,7 @@ struct auth_req {
 	VALUE_PAIR		*password;
 
 	request_data_t		*data;
-	char			secret[32];
+	RADCLIENT		*client;
 	child_pid_t    		child_pid;
 	time_t			timestamp;
 	int			number; /* internal server number */
@@ -106,6 +123,7 @@ struct auth_req {
 
 #define REQUEST_ACTIVE 		(1)
 #define REQUEST_STOP_PROCESSING (2)
+#define REQUEST_COUNTED	        (3)
 
 #define REQUEST_QUEUED		(1)
 #define REQUEST_RUNNING		(2)
@@ -118,22 +136,6 @@ struct auth_req {
  *  Function handler for requests.
  */
 typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
-typedef struct rad_snmp_client_entry_t rad_snmp_client_entry_t;
-
-typedef struct radclient {
-	lrad_ipaddr_t		ipaddr;
-	int			prefix;
-	char			*longname;
-	char			*secret;
-	char			*shortname;
-	char			*nastype;
-	char			*login;
-	char			*password;
-	int			number;	/* internal use only */
-#ifdef WITH_SNMP
-	rad_snmp_client_entry_t *auth, *acct;
-#endif
-} RADCLIENT;
 
 typedef struct radclient_list RADCLIENT_LIST;
 
@@ -456,8 +458,6 @@ int free_mainconfig(void);
 void listen_free(rad_listen_t **head);
 int listen_init(const char *filename, rad_listen_t **head);
 rad_listen_t *proxy_new_listener(void);
-RADCLIENT *client_listener_find(const rad_listen_t *listener,
-				const lrad_ipaddr_t *ipaddr);
 
 /* event.c */
 int radius_event_init(int spawn_flag);

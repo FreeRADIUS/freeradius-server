@@ -87,8 +87,8 @@ typedef struct listen_detail_t {
 /*
  *	Find a per-socket client.
  */
-RADCLIENT *client_listener_find(const rad_listen_t *listener,
-				const lrad_ipaddr_t *ipaddr)
+static RADCLIENT *client_listener_find(const rad_listen_t *listener,
+				       const lrad_ipaddr_t *ipaddr)
 {
 	const RADCLIENT_LIST *clients;
 
@@ -298,7 +298,8 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == auth_socket_send);
 
-	return rad_send(request->reply, request->packet, request->secret);
+	return rad_send(request->reply, request->packet,
+			request->client->secret);
 }
 
 
@@ -318,7 +319,8 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (request->reply->code == 0) return 0;
 
-	return rad_send(request->reply, request->packet, request->secret);
+	return rad_send(request->reply, request->packet,
+			request->client->secret);
 }
 
 
@@ -592,8 +594,10 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	if (!request->reply->code) return 0;
 
-	rad_encode(request->reply, request->packet, request->secret);
-	rad_sign(request->reply, request->packet, request->secret);
+	rad_encode(request->reply, request->packet,
+		   request->client->secret);
+	rad_sign(request->reply, request->packet,
+		 request->client->secret);
 
 	return 0;
 }
@@ -601,11 +605,13 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
-	if (rad_verify(request->packet, NULL, request->secret) < 0) {
+	if (rad_verify(request->packet, NULL,
+		       request->client->secret) < 0) {
 		return -1;
 	}
 
-	return rad_decode(request->packet, NULL, request->secret);
+	return rad_decode(request->packet, NULL,
+			  request->client->secret);
 }
 
 static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
