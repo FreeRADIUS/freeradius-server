@@ -195,12 +195,6 @@ void request_free(REQUEST **request_ptr)
 
 	request = *request_ptr;
 
-	/*
-	 *	If there's a thread currently active on this request,
-	 *	blow up!
-	 */
-	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-
 	if (request->packet)
 		rad_free(&request->packet);
 
