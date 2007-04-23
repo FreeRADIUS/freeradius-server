@@ -1260,6 +1260,11 @@ static int radius_snmp_print(rad_listen_t *this, char *buffer, size_t bufsize)
 static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
 
+	/* proxying */
+	{ NULL, NULL,
+	  proxy_socket_recv, proxy_socket_send,
+	  socket_print, proxy_socket_encode, proxy_socket_decode },
+
 	/* authentication */
 	{ common_socket_parse, NULL,
 	  auth_socket_recv, auth_socket_send,
@@ -1269,11 +1274,6 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ common_socket_parse, NULL,
 	  acct_socket_recv, acct_socket_send,
 	  socket_print, client_socket_encode, client_socket_decode},
-
-	/* proxying */
-	{ NULL, NULL,
-	  proxy_socket_recv, proxy_socket_send,
-	  socket_print, proxy_socket_encode, proxy_socket_decode },
 
 	/* detail */
 	{ detail_parse, detail_free,
