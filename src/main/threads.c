@@ -334,10 +334,32 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	request_queue_t *entry;
 
 	reap_children();
-	start = 0;
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
+	/*
+	 *	Clear old requests from all queues.
+	 *
+	 *	We only do one pass over the queue, in order to
+	 *	amortize the work across the child threads.  Since we
+	 *	do N checks for one request de-queued, the old
+	 *	requests will be quickly cleared.
+	 */
+	for (i = 0; i < RAD_LISTEN_MAX; i++) {
+		entry = lrad_fifo_peek(thread_pool.fifo[i]);
+		if (!entry ||
+		    (entry->request->master_state != REQUEST_STOP_PROCESSING)) {
+			continue;
+}
+		/*
+		 *	This entry was marked to be stopped.  Acknowledge it.
+		 */
+		entry = lrad_fifo_pop(thread_pool.fifo[i]);
+		rad_assert(entry != NULL);
+		entry->request->child_state = REQUEST_DONE;
+	}
+
+	start = 0;
  retry:
 	/*
 	 *	Pop results from the top of the queue
