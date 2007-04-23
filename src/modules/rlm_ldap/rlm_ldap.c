@@ -522,7 +522,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	 * ('eDir-APC', '2') in config items list => Perform eDirectory APC
 	 * ('eDir-APC', '3') in config items list => eDirectory APC has been completed
 	 */
-	dict_addattr("eDir-APC", 0, PW_TYPE_INTEGER, -1, flags);
+	dict_addattr("eDir-APC", 0, PW_TYPE_STRING, -1, flags);
 #endif
 
 	if (inst->num_conns <= 0){
@@ -1211,6 +1211,7 @@ ldap_authorize(void *instance, REQUEST * request)
 	char            module_fmsg[MAX_STRING_LEN];
 	LDAP_CONN	*conn;
 	int		conn_id = -1;
+	int		added_known_password = 0;
 
 	DEBUG("rlm_ldap: - authorize");
 
@@ -1431,6 +1432,7 @@ ldap_authorize(void *instance, REQUEST * request)
 								ldap_release_conn(conn_id,inst->conns);
 								return RLM_MODULE_FAIL;
 							}
+							added_known_password = 1;
 							passwd_len = strlen(passwd_val);
 							strncpy(passwd_item->strvalue,passwd_val,MAX_STRING_LEN - 1);
 							passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
@@ -1488,6 +1490,7 @@ ldap_authorize(void *instance, REQUEST * request)
 							return RLM_MODULE_FAIL;
 						}
 
+						added_known_password = 1;
 						passwd_len = strlen(passwd_val);
 						strncpy(passwd_item->strvalue,passwd_val,MAX_STRING_LEN - 1);
 						passwd_item->length = (passwd_len > (MAX_STRING_LEN - 1)) ? (MAX_STRING_LEN - 1) : passwd_len;
@@ -1527,7 +1530,7 @@ ldap_authorize(void *instance, REQUEST * request)
 								 * of UP in the config items list and whether eDirectory account
 								 * policy check is to be performed or not.
 								 */
-								if ((vp_apc = paircreate(apc_attr, PW_TYPE_INTEGER)) == NULL){
+								if ((vp_apc = paircreate(apc_attr, PW_TYPE_STRING)) == NULL){
 									radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
 									ldap_msgfree(result);
 									ldap_release_conn(conn_id, inst->conns);
@@ -1624,7 +1627,8 @@ ldap_authorize(void *instance, REQUEST * request)
 	if (inst->set_auth_type &&
 	    (pairfind(*check_pairs, PW_AUTH_TYPE) == NULL) &&
 	    request->password &&
-	    (request->password->attribute == PW_USER_PASSWORD)) {
+	    (request->password->attribute == PW_USER_PASSWORD) &&
+	    !added_known_password) {
 		pairadd(check_pairs, pairmake("Auth-Type", inst->xlat_name, T_OP_EQ));
 		DEBUG("rlm_ldap: Setting Auth-Type = %s", inst->xlat_name);
 	}
