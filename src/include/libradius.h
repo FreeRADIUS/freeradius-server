@@ -203,12 +203,12 @@ typedef struct radius_packet {
 	uint16_t		dst_port;
 	int			id;
 	unsigned int		code;
+	uint32_t		hash;
 	uint8_t			vector[AUTH_VECTOR_LEN];
 	time_t			timestamp;
 	uint8_t			*data;
 	int			data_len;
 	VALUE_PAIR		*vps;
-	uint32_t		hash;
 	ssize_t			offset;
 } RADIUS_PACKET;
 
