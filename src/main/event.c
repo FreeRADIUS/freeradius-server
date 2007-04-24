@@ -592,11 +592,8 @@ static void ping_home_server(void *ctx)
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 
-	/*
-	 *	FIXME: add a separate timeout for ping packets!
-	 */
 	request->child_state = REQUEST_PROXIED;
-	request->when.tv_sec += mainconfig.cleanup_delay;
+	request->when.tv_sec += home->ping_timeout;;
 
 	INSERT_EVENT(no_response_to_ping, request);
 

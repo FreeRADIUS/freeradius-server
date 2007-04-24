@@ -167,13 +167,21 @@ static CONF_PARSER home_server_config[] = {
 	  offsetof(home_server,zombie_period), NULL,   "40" },
 	{ "status_check", PW_TYPE_STRING_PTR,
 	  0, &hs_check,   "none" },
+	{ "ping_check", PW_TYPE_STRING_PTR,
+	  0, &hs_check,   "none" },
 
+	{ "ping_interval", PW_TYPE_INTEGER,
+	  offsetof(home_server,ping_interval), NULL,   "30" },
 	{ "check_interval", PW_TYPE_INTEGER,
 	  offsetof(home_server,ping_interval), NULL,   "30" },
 	{ "num_answers_to_alive", PW_TYPE_INTEGER,
 	  offsetof(home_server,num_pings_to_alive), NULL,   "3" },
+	{ "num_pings_to_alive", PW_TYPE_INTEGER,
+	  offsetof(home_server,num_pings_to_alive), NULL,   "3" },
 	{ "revive_interval", PW_TYPE_INTEGER,
 	  offsetof(home_server,revive_interval), NULL,   "300" },
+	{ "status_check_timeout", PW_TYPE_INTEGER,
+	  offsetof(home_server,ping_timeout), NULL,   "4" },
 
 	{ "username",  PW_TYPE_STRING_PTR,
 	  offsetof(home_server,ping_user_name), NULL,  NULL},
@@ -375,6 +383,9 @@ static int home_server_add(const char *filename, CONF_SECTION *cs)
 
 	if (home->num_pings_to_alive < 3) home->num_pings_to_alive = 3;
 	if (home->num_pings_to_alive > 10) home->num_pings_to_alive = 10;
+
+	if (home->ping_timeout < 3) home->ping_timeout = 3;
+	if (home->ping_timeout > 10) home->ping_timeout = 10;
 
 	if (home->revive_interval < 60) home->revive_interval = 60;
 	if (home->revive_interval > 3600) home->revive_interval = 3600;
