@@ -197,9 +197,6 @@ static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 	 *	correctly.
 	 */
 	if (request->num_proxied_requests == request->num_proxied_responses) {
-		/*
-		 *	FIXME: remove from the event list, too?
-		 */
 		lrad_packet_list_yank(proxy_list, request->proxy);
 		lrad_packet_list_id_free(proxy_list, request->proxy);
 		request->in_proxy_hash = FALSE;
@@ -315,7 +312,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	request->proxy_listener = proxy_listeners[proxy];
 
 	if (!lrad_packet_list_insert(proxy_list, &request->proxy)) {
-		/* FIXME: free id? */
+		lrad_packet_list_id_free(proxy_list, request->proxy);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		DEBUG2("ERROR: Failed to insert entry into proxy list");
 		return 0;
@@ -460,7 +457,7 @@ static void no_response_to_ping(void *ctx)
 
 	home->num_received_pings = 0;
 
-	DEBUG2("No response to ping %d from home server %s port %d",
+	DEBUG2("No response to status check %d from home server %s port %d",
 	       request->number,
 	       inet_ntop(request->proxy->dst_ipaddr.af,
 			 &request->proxy->dst_ipaddr.ipaddr,
@@ -478,7 +475,7 @@ static void received_response_to_ping(REQUEST *request)
 
 	home->num_received_pings++;
 
-	DEBUG2("Received response to ping %d (%d in current sequence)",
+	DEBUG2("Received response to status check %d (%d in current sequence)",
 	       request->number, home->num_received_pings);
 
 	if (home->num_received_pings < home->num_pings_to_alive) {
@@ -575,7 +572,7 @@ static void ping_home_server(void *ctx)
 		pairadd(&request->proxy->vps, vp);
 	}
 
-	vp = pairmake("NAS-Identifier", "Ping! Are you alive?", T_OP_SET);
+	vp = pairmake("NAS-Identifier", "Status Check. Are you alive?", T_OP_SET);
 	if (!vp) rad_panic("Out of memory");
 	pairadd(&request->proxy->vps, vp);
 
@@ -586,7 +583,7 @@ static void ping_home_server(void *ctx)
 	rad_assert(request->proxy_listener == NULL);
 
 	if (!insert_into_proxy_hash(request)) {
-		DEBUG2("Failed inserting ping %d into proxy hash.  Discarding it.",
+		DEBUG2("Failed inserting status check %d into proxy hash.  Discarding it.",
 		       request->number);
 		request_free(&request);
 		return;
@@ -1224,8 +1221,7 @@ static int successfully_proxied_request(REQUEST *request)
 	       request->proxy->dst_port);
 	
 	/*
-	 *	Note that we set proxied AFTER creating the packet,
-	 *	but BEFORE actually sending it.
+	 *	Note that we set proxied BEFORE sending the packet.
 	 *
 	 *	Once we send it, the request is tainted, as
 	 *	another thread may have picked it up.  Don't
@@ -1233,6 +1229,7 @@ static int successfully_proxied_request(REQUEST *request)
 	 */
 	request->num_proxied_requests = 1;
 	request->num_proxied_responses = 0;
+	request->child_pid = NO_SUCH_CHILD_PID;
 	request->child_state = REQUEST_PROXIED;
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
@@ -1248,6 +1245,7 @@ static void request_post_handler(REQUEST *request)
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
 		DEBUG2("Request %d was cancelled.", request->number);
+		request->child_pid = NO_SUCH_CHILD_PID;
 		request->child_state = REQUEST_DONE;
 		return;
 	}
@@ -1297,6 +1295,7 @@ static void request_post_handler(REQUEST *request)
 	 */
 	if (request->packet->dst_port == 0) {
 		/* FIXME: DEBUG going to the next request */
+		request->child_pid = NO_SUCH_CHILD_PID;
 		request->child_state = REQUEST_DONE;
 		return;
 	}
@@ -1347,6 +1346,7 @@ static void request_post_handler(REQUEST *request)
 				       mainconfig.reject_delay);
 				request->next_when = when;
 				request->next_callback = reject_delay;
+				request->child_pid = NO_SUCH_CHILD_PID;
 				request->child_state = REQUEST_REJECT_DELAY;
 				return;
 			}
@@ -1509,6 +1509,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			gettimeofday(&request->proxy_when, NULL);
 			request->num_proxied_requests = 1;
 			request->num_proxied_responses = 0;
+			request->child_pid = NO_SUCH_CHILD_PID;
 			request->child_state = REQUEST_PROXIED;
 			request->proxy_listener->send(request->proxy_listener,
 						      request);
@@ -2100,4 +2101,3 @@ void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun)
 	DEBUG2("Going to the next request");
 	return;
 }
-

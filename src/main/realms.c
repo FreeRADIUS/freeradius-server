@@ -165,12 +165,12 @@ static CONF_PARSER home_server_config[] = {
 
 	{ "zombie_period", PW_TYPE_INTEGER,
 	  offsetof(home_server,zombie_period), NULL,   "40" },
-	{ "ping_check", PW_TYPE_STRING_PTR,
+	{ "status_check", PW_TYPE_STRING_PTR,
 	  0, &hs_check,   "none" },
 
-	{ "ping_interval", PW_TYPE_INTEGER,
+	{ "check_interval", PW_TYPE_INTEGER,
 	  offsetof(home_server,ping_interval), NULL,   "30" },
-	{ "num_pings_to_alive", PW_TYPE_INTEGER,
+	{ "num_answers_to_alive", PW_TYPE_INTEGER,
 	  offsetof(home_server,num_pings_to_alive), NULL,   "3" },
 	{ "revive_interval", PW_TYPE_INTEGER,
 	  offsetof(home_server,revive_interval), NULL,   "300" },
