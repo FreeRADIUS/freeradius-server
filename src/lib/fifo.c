@@ -136,7 +136,7 @@ void *lrad_fifo_pop(lrad_fifo_t *fi)
 	void *data;
 	lrad_fifo_entry_t *entry;
 
-	if (!fi || !fi->head) return 0;
+	if (!fi || !fi->head) return NULL;
 
 	entry = fi->head;
 	fi->head = entry->next;
@@ -152,6 +152,23 @@ void *lrad_fifo_pop(lrad_fifo_t *fi)
 	}
 
 	return data;
+}
+
+void *lrad_fifo_peek(lrad_fifo_t *fi)
+{
+	void *data;
+	lrad_fifo_entry_t *entry;
+
+	if (!fi || !fi->head) return NULL;
+
+	return fi->head->data;
+}
+
+int lrad_fifo_num_elements(lrad_fifo_t *fi)
+{
+	if (!fi) return 0;
+
+	return fi->num_elements;
 }
 
 #ifdef TESTING

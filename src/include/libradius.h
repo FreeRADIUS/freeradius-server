@@ -439,6 +439,8 @@ lrad_fifo_t *lrad_fifo_create(int max_entries, lrad_fifo_free_t freeNode);
 void lrad_fifo_free(lrad_fifo_t *fi);
 int lrad_fifo_push(lrad_fifo_t *fi, void *data);
 void *lrad_fifo_pop(lrad_fifo_t *fi);
+void *lrad_fifo_peek(lrad_fifo_t *fi);
+int lrad_fifo_num_elements(lrad_fifo_t *fi);
 
 #include <freeradius-devel/packet.h>
 
