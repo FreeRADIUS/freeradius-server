@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/radius_snmp.h>
+#include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <sys/resource.h>
@@ -120,45 +121,63 @@ static int listen_bind(rad_listen_t *this);
  */
 static int rad_status_server(REQUEST *request)
 {
+	int rcode = RLM_MODULE_OK;
+	DICT_VALUE *dval;
+
 	switch (request->listener->type) {
 	case RAD_LISTEN_AUTH:
-		request->reply->code = PW_AUTHENTICATION_ACK;
+		dval = dict_valbyname(PW_AUTZ_TYPE, "Status-Server");
+		if (dval) {
+			rcode = module_authorize(dval->value, request);
+		} else {
+			rcode = RLM_MODULE_OK;
+		}
 
-		/*
-		 *	Commented out for now.
-		 */
-#if 0
- { 
-		char		reply_msg[64];
-		time_t		t;
-		VALUE_PAIR	*vp;
-		
-		/*
-		 *	Reply with an ACK. We might want to add some more
-		 *	interesting reply attributes, such as server uptime.
-		 */
-		t = request->timestamp - start_time;
-		sprintf(reply_msg, "FreeRADIUS STUFF %d day%s, %02d:%02d",
-			(int)(t / 86400), (t / 86400) == 1 ? "" : "s",
-			(int)((t / 3600) % 24), (int)(t / 60) % 60);
-		
-		vp = pairmake("Reply-Message", reply_msg, T_OP_SET);
-		pairadd(&request->reply->vps, vp); /* don't need to check if !vp */
- }
-#endif
+		switch (rcode) {
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			request->reply->code = PW_AUTHENTICATION_ACK;
+			break;
+
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_HANDLED:
+			request->reply->code = 0; /* don't reply */
+			break;
+
+		default:
+		case RLM_MODULE_REJECT:
+			request->reply->code = PW_AUTHENTICATION_REJECT;
+			break;
+		}
 		break;
 
 	case RAD_LISTEN_ACCT:
-		request->reply->code = PW_ACCOUNTING_RESPONSE;
+		dval = dict_valbyname(PW_ACCT_TYPE, "Status-Server");
+		if (dval) {
+			rcode = module_accounting(dval->value, request);
+		} else {
+			rcode = RLM_MODULE_OK;
+		}
+
+		switch (rcode) {
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			request->reply->code = PW_ACCOUNTING_RESPONSE;
+			break;
+
+		default:
+			request->reply->code = 0; /* don't reply */
+			break;
+		}
 		break;
 
 	default:
 		return 0;
 	}
-	
 
 	return 0;
 }
+
 
 static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 {
