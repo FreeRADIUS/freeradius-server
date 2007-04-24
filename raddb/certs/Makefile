@@ -1,3 +1,14 @@
+######################################################################
+#
+#	Make file to be installed in /etc/raddb/certs to enable
+#	the easy creation of certificates.
+#
+#	See the README file in this directory for more information.
+#	
+#	$Id$
+#
+######################################################################
+
 DH_KEY_SIZE	= 1024
 
 #
@@ -102,7 +113,13 @@ print:
 clean:
 	@rm -f *~ *old client.req client.key client.crt client.p12 client.pem
 
+#
+#  Run distclean ONLY if there's a CVS directory, AND it points to
+#  cvs.freeradius.org.  Otherwise, it would be easy for administrators
+#  to type "make distclean", and destroy their CA and server certificates.
+#
 distclean:
-	@rm -f *~ dh *req *.crt *.p12 *.der *.pem *.key index.txt* \
-		serial* random
-
+	@if [ -d CVS -a `grep -i 'cvs\.freeradius\.org' CVS/Root` ] ; then \
+		rm -f *~ dh *req *.crt *.p12 *.der *.pem *.key index.txt* \
+			serial* random; \
+	fi
