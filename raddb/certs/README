@@ -1,12 +1,78 @@
-This directory contains a number of sample certificates for
-use by the rlm_eap_tls module.  These certificates should be used
-ONLY for testing purposes.
+  This directory contains scripts to create the server certificates.
+To make a set of default (i.e. test) certificates, simply type:
 
-If you're not using EAP-TLS, EAP-TTLS, or EAP-PEAP, then you may delete
-this entire directory.
+$ make
 
-If you are using one or more of those authentication protocols, then
-the certificates included here should be replaced with ones signed
-by a real Certificate Authority.
+  The "openssl" command will be run against the sample configuration
+files included here, and will make certificates for a certificate
+authority (i.e. root CA), and a server certificate.
 
-2004-01-25
+  The Microsoft "XP Extensions" will be automatically included in the
+server certificate.  Without those extensions Windows clients will
+refuse to authenticate to FreeRADIUS.
+
+  When deploying the server in a real environment (i.e. NOT a test
+environment), perform the following steps in this directory
+
+$ make distclean
+
+  This command removes all of the "test" certificates.
+
+
+		MAKING A ROOT CERTIFICATE
+
+
+$ vi ca.cnf
+
+  Edit the "input_password" and "output_password" fields to be the
+  password for the CA certificate.
+
+  Edit the [certificate_authority] section to have the correct values
+  for your country, state, etc.
+
+$ make ca.pem
+
+  This step creates the CA certificate.
+
+
+		MAKING A SERVER CERTIFICATE
+
+
+$ vi server.cnf
+
+  Edit the "input_password" and "output_password" fields to be the
+  password for the server certificate.
+
+  Edit the [server] section to have the correct values for your
+  country, state, etc.  Be sure that the commonName field here is
+  different from the commonName for the CA certificate.
+
+$ make server.pem
+
+  This step creates the server certificate.
+
+  If you want to create client certificates, such as for EAP-TLS,
+  perform the following steps.
+
+
+		MAKING A CLIENT CERTIFICATE
+
+
+$ vi client.cnf
+
+  Edit the "input_password" and "output_password" fields to be the
+  password for the client certificate.  You will have to give these
+  passwords to the end user who will be using the certificates.
+
+  Edit the [client] section to have the correct values for your
+  country, state, etc.  Be sure that the commonName field here is
+  the User-Name that will be used for logins!
+
+$ make clean client.pem
+
+  The users certificate will be in "commonName.pem",
+  i.e. "user@example.com.pem".
+
+  To create another client certificate, just repeat the steps for
+  making a client certificate, being sure to enter a different login
+  name for "commonName"
