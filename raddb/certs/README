@@ -35,6 +35,7 @@ $ make ca.pem
   This step creates the CA certificate.
 
 
+
 		MAKING A SERVER CERTIFICATE
 
 
@@ -51,11 +52,24 @@ $ make server.pem
 
   This step creates the server certificate.
 
-  If you want to create client certificates, such as for EAP-TLS,
-  perform the following steps.
+  If you have an existing certificate authority, and wish to create a
+  certificate signing request for the server certificate, edit
+  server.cnf as above, and type the following command.
+
+$ make server.csr
+
+  You will have to ensure that the certificate contains the XP
+  extensions needed by Microsoft clients.
 
 
 		MAKING A CLIENT CERTIFICATE
+
+
+  Client certificates are used by EAP-TLS, and optionally by EAP-TTLS
+and PEAP.  The following steps outline how to create a client
+certificate that is signed by the server certificate created above.
+You will have to have the password for the server certificate in the
+"input_password" and "output_password" fields of the server.cnf file.
 
 
 $ vi client.cnf

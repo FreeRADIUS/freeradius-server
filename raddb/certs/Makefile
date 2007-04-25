@@ -58,11 +58,11 @@ ca.key ca.pem:
 #  Create a new server certificate, signed by the above CA.
 #
 ######################################################################
-server.req server.key: 
-	openssl req -new  -out server.req -keyout server.key -config ./server.cnf
+server.csr server.key: 
+	openssl req -new  -out server.csr -keyout server.key -config ./server.cnf
 
-server.crt: server.req ca.key ca.pem index.txt serial
-	openssl ca -batch -keyfile ca.key -cert ca.pem -in server.req  -key $(PASSWORD_CA) -out server.crt -extensions xpserver_ext -extfile xpextensions -config ./server.cnf
+server.crt: server.csr ca.key ca.pem index.txt serial
+	openssl ca -batch -keyfile ca.key -cert ca.pem -in server.csr  -key $(PASSWORD_CA) -out server.crt -extensions xpserver_ext -extfile xpextensions -config ./server.cnf
 
 server.p12: server.crt
 	openssl pkcs12 -export -in server.crt -inkey server.key -out server.p12  -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
@@ -76,11 +76,11 @@ server.pem: server.p12
 #  certificate.
 #
 ######################################################################
-client.req client.key: client.cnf
-	openssl req -new  -out client.req -keyout client.key -config ./client.cnf
+client.csr client.key: client.cnf
+	openssl req -new  -out client.csr -keyout client.key -config ./client.cnf
 
-client.crt: client.req server.crt server.key index.txt serial
-	openssl ca -batch -keyfile server.key -cert server.crt -in client.req  -key $(PASSWORD_SERVER) -out client.crt -extensions xpclient_ext -extfile xpextensions -config ./client.cnf
+client.crt: client.csr server.crt server.key index.txt serial
+	openssl ca -batch -keyfile server.key -cert server.crt -in client.csr  -key $(PASSWORD_SERVER) -out client.crt -extensions xpclient_ext -extfile xpextensions -config ./client.cnf
 
 client.p12: client.crt
 	openssl pkcs12 -export -in client.crt -inkey client.key -out client.p12  -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
@@ -111,7 +111,7 @@ print:
 	openssl x509 -text -in server.crt
 
 clean:
-	@rm -f *~ *old client.req client.key client.crt client.p12 client.pem
+	@rm -f *~ *old client.csr client.key client.crt client.p12 client.pem
 
 #
 #  Run distclean ONLY if there's a CVS directory, AND it points to
@@ -120,6 +120,6 @@ clean:
 #
 distclean:
 	@if [ -d CVS -a `grep -i 'cvs\.freeradius\.org' CVS/Root` ] ; then \
-		rm -f *~ dh *req *.crt *.p12 *.der *.pem *.key index.txt* \
+		rm -f *~ dh *.csr *.crt *.p12 *.der *.pem *.key index.txt* \
 			serial* random; \
 	fi
