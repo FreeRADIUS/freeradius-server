@@ -76,7 +76,7 @@ server.pem: server.p12
 #  certificate.
 #
 ######################################################################
-client.req client.key:
+client.req client.key: client.cnf
 	openssl req -new  -out client.req -keyout client.key -config ./client.cnf
 
 client.crt: client.req server.crt server.key index.txt serial

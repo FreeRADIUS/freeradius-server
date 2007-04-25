@@ -68,11 +68,11 @@ $ vi client.cnf
   country, state, etc.  Be sure that the commonName field here is
   the User-Name that will be used for logins!
 
-$ make clean client.pem
+$ make client.pem
 
   The users certificate will be in "commonName.pem",
   i.e. "user@example.com.pem".
 
   To create another client certificate, just repeat the steps for
   making a client certificate, being sure to enter a different login
-  name for "commonName"
+  name for "commonName", and a different password.
