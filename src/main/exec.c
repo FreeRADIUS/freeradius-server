@@ -176,6 +176,8 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 */
 		if (strchr(argv[i], '%') == NULL) continue;
 
+		if (!request) continue;
+
 		sublen = radius_xlat(to, left - 1, argv[i], request, NULL);
 		if (sublen <= 0) {
 			/*
