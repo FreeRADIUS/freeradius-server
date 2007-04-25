@@ -43,8 +43,8 @@ install:
 	fi
 	chmod 640 $(R)$(raddbdir)/naspasswd $(R)$(raddbdir)/clients.conf
 	if [ ! -d $(R)$(raddbdir)/certs ]; then \
-		$(INSTALL) -d -m 750	$(R)$(raddbdir)/certs \
-		for x in Makefile README xpextensions ca.cnf server.cnf client.cnf; do \
+		$(INSTALL) -d -m 750	$(R)$(raddbdir)/certs; \
+		for i in Makefile README xpextensions ca.cnf server.cnf client.cnf; do \
 			$(INSTALL) -m 640 certs/$$i $(R)$(raddbdir)/certs; \
 		done; \
 	fi
