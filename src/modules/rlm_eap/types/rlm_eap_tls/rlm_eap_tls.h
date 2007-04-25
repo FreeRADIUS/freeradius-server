@@ -42,6 +42,7 @@ typedef struct eap_tls_conf {
 	char		*ca_file;
 	char		*dh_file;
 	char		*rsa_file;
+	char		*make_cert_command;
 	int		rsa_key;
 	int		dh_key;
 	int		rsa_key_length;
