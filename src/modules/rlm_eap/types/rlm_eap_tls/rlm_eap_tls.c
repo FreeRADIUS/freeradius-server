@@ -34,6 +34,10 @@ RCSID("$Id$")
 
 #include "rlm_eap_tls.h"
 
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+
 static CONF_PARSER module_config[] = {
 	{ "rsa_key_exchange", PW_TYPE_BOOLEAN,
 	  offsetof(EAP_TLS_CONF, rsa_key), NULL, "no" },
@@ -73,6 +77,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(EAP_TLS_CONF, cipher_list), NULL, NULL},
 	{ "check_cert_issuer", PW_TYPE_STRING_PTR,
 	  offsetof(EAP_TLS_CONF, check_cert_issuer), NULL, NULL},
+	{ "make_cert_command", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, make_cert_command), NULL, NULL},
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -331,26 +337,26 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 		radlog(L_INFO, "rlm_eap_tls: Loading the certificate file as a chain");
 		if (!(SSL_CTX_use_certificate_chain_file(ctx, conf->certificate_file))) {
 			radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-			radlog(L_ERR, "rlm_eap_tls: Error reading certificate file");
+			radlog(L_ERR, "rlm_eap_tls: Error reading certificate file %s", conf->certificate_file);
 			return NULL;
 		}
 
 	} else if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
 		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-		radlog(L_ERR, "rlm_eap_tls: Error reading certificate file");
+		radlog(L_ERR, "rlm_eap_tls: Error reading certificate file %s", conf->certificate_file);
 		return NULL;
 	}
 
 	/* Load the CAs we trust */
 	if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
 		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-		radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list");
+		radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list %s",conf->ca_file );
 		return NULL;
 	}
 	SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
 	if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
 		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-		radlog(L_ERR, "rlm_eap_tls: Error reading private key file");
+		radlog(L_ERR, "rlm_eap_tls: Error reading private key file %s", conf->private_key_file);
 		return NULL;
 	}
 
@@ -511,6 +517,27 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 	if (cf_section_parse(cs, conf, module_config) < 0) {
 		eaptls_detach(inst);
 		return -1;
+	}
+
+	/*
+	 *	This magic makes the administrators life HUGELY easier
+	 *	on initial deployments.
+	 *
+	 *	If the server starts up in debugging mode, AND the
+	 *	bootstrap command is configured, AND it exists, AND
+	 *	there is no server certificate
+	 */
+	if ((conf->make_cert_command && (debug_flag >= 2)) {
+		struct stat buf;
+		
+		if ((stat(conf->make_cert_command, &buf) == 0) &&
+		    (stat(conf->certificate_file, &buf) < 0) &&
+		    (errno == ENOENT) &&
+		    (radius_exec_program(conf->make_cert_command, NULL, 1,
+					 NULL, 0, NULL, NULL, 0) != 0)) {
+			eaptls_detach(inst);
+			return -1;
+		}
 	}
 
 
