@@ -130,6 +130,27 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 			return -1;
 		}
 
+#ifdef NO_OPENSSL
+		/*
+		 *	This allows the default configuration to be
+		 *	shipped with EAP-TLS, etc. enabled.  If the
+		 *	system doesn't have OpenSSL, they will be
+		 *	ignored.
+		 *
+		 *	If the system does have OpenSSL, then this
+		 *	code will not be used.  The administrator will
+		 *	then have to delete the tls,
+		 *	etc. configurations from eap.conf in order to
+		 *	have EAP without the TLS types.
+		 */
+		if ((eap_type == PW_EAP_TLS) ||
+		    (eap_type == PW_EAP_TTLS) ||
+		    (eap_type == PW_EAP_PEAP)) {
+			DEBUG2("rlm_eap: Ignoring EAP-Type/%s because we do not have OpenSSL support.", auth_type);
+			continue;
+		}
+#endif
+
 		/*
 		 *	If we're asked to load TTLS or PEAP, ensure
 		 *	that we've first loaded TLS.
