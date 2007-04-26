@@ -497,7 +497,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
-	switch(packet->code) {
+	switch(code) {
 	case PW_ACCOUNTING_REQUEST:
 		RAD_SNMP_CLIENT_INC(listener, client, requests);
 		fun = rad_accounting;
