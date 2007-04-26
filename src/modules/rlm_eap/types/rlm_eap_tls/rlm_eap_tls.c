@@ -527,7 +527,7 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 	 *	bootstrap command is configured, AND it exists, AND
 	 *	there is no server certificate
 	 */
-	if ((conf->make_cert_command && (debug_flag >= 2)) {
+	if (conf->make_cert_command && (debug_flag >= 2)) {
 		struct stat buf;
 		
 		if ((stat(conf->make_cert_command, &buf) == 0) &&
