@@ -277,6 +277,7 @@ int		rad_packet_ok(RADIUS_PACKET *packet);
 RADIUS_PACKET	*rad_recv(int fd);
 ssize_t rad_recv_header(int sockfd, lrad_ipaddr_t *src_ipaddr, int *src_port,
 			int *code);
+void		rad_recv_discard(int sockfd);
 int		rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			   const char *secret);
 int		rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret);

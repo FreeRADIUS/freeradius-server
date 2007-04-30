@@ -217,6 +217,17 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 }
 
 
+void rad_recv_discard(int sockfd)
+{
+	uint8_t			header[4];
+	struct sockaddr_storage	src;
+	socklen_t		sizeof_src = sizeof(src);
+
+	recvfrom(sockfd, header, sizeof(header), 0,
+		 (struct sockaddr *)&src, &sizeof_src);
+}
+
+
 ssize_t rad_recv_header(int sockfd, lrad_ipaddr_t *src_ipaddr, int *src_port,
 			int *code)
 {
@@ -1521,7 +1532,7 @@ int rad_packet_ok(RADIUS_PACKET *packet)
 					   attr[1] - 2);
 				return 0;
 			}
-			seen_ma = 1;
+			seen_ma = 1;			
 			break;
 		}
 
@@ -2107,6 +2118,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	radius_packet_t		*hdr;
 	int			vsa_tlen, vsa_llen;
 	DICT_VENDOR		*dv = NULL;
+	int			num_attributes = 0;
 
 	/*
 	 *	Extract attribute-value pairs
@@ -2352,9 +2364,29 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 		*tail = pair;
 		while (pair) {
+			num_attributes++;
 			debug_pair(pair);
 			tail = &pair->next;
 			pair = pair->next;
+		}
+
+		/*
+		 *	VSA's may not have been counted properly in
+		 *	rad_packet_ok() above, as it is hard to count
+		 *	then without using the dictionary.  We
+		 *	therefore enforce the limits here, too.
+		 */
+		if ((librad_max_attributes > 0) &&
+		    (num_attributes > librad_max_attributes)) {
+			char host_ipaddr[128];
+
+			pairfree(&packet->vps);
+			librad_log("WARNING: Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
+				   inet_ntop(packet->src_ipaddr.af,
+					     &packet->src_ipaddr.ipaddr,
+					     host_ipaddr, sizeof(host_ipaddr)),
+				   num_attributes, librad_max_attributes);
+			return -1;
 		}
 
 		ptr += attrlen;
