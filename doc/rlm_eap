@@ -89,6 +89,8 @@ EAP CODE ORGANIZATION
   rlm_eap/types -- contains all the supported EAP-Types
   rlm_eap/types/rlm_eap_md5  -- EAP-MD5 authentication.
   rlm_eap/types/rlm_eap_tls  -- EAP-TLS based authentication.
+  rlm_eap/types/rlm_eap_ttls -- TTLS based authentication.
+  rlm_eap/types/rlm_eap_peap -- Windows PEAP based authentication.
   rlm_eap/types/rlm_eap_leap -- Cisco LEAP authentication.
   rlm_eap/types/rlm_eap_sim  -- EAP-SIM (GSM) based authentication
    
@@ -124,9 +126,8 @@ CONFIGURATION
   to determine which EAP type to choose for authentication.
 
   NOTE: EAP cannot authorize a user. It can only authenticate.
-  Other Freeradius modules authorize the user and lets EAP to authenticate.
+  Other Freeradius modules authorize the user.
 
-  NOTE: There can only be one instance of the EAP module.
 
 EAP SIM server
 
@@ -230,13 +231,17 @@ HOW DO I USE IT (FAQ/Examples)
 	# ldap gets the Configured password.
 	# eap sets the authenticate type as EAP
 	authorize {
+		...
 		ldap
 		eap
+		...
 	}
 
 	# eap authentication takes place.
 	authenticate {
+		...
 		eap
+		...
 	}
 
   3. How can I Proxy EAP messages, with/without User-Name attribute
@@ -276,7 +281,7 @@ HOW DO I USE IT (FAQ/Examples)
    With the above configuration, RADIUS server immediately responds with
    EAP-Identity request.
 	
-   NOTE: EAP doesnot check for any Identity or maintains any state in case
+   NOTE: EAP does not check for any Identity or maintains any state in case
    of EAP-START. It blindly responds with EAP-Identity request.
    Proxying is handled only after EAP-Identity response is received.
 
@@ -320,16 +325,12 @@ INSTALLATION
   EAP, EAP-MD5, and Cisco LEAP do not require any additional packages.
   Freeradius contains all the required packages.
 
-  For EAP-TLS, OPENSSL, <http://www.openssl.org/>, is required to be installed.
+  For EAP-TLS, EAP-TTLS, and PEAP, OPENSSL, <http://www.openssl.org/>,
+  is required to be installed.
   Any version from 0.9.7, should fairly work with this module.
 
   EAP-SIM should not require any additional packages.
 
-
-CAVEATS
-    It probably still has bugs.  Most notably, there is a small memory
-    leak somewhere in the eap_tls code.  I suspect it's because of my 
-    misuse of OPENSSL libraries, but I have no proof yet.
 
 IMPLEMENTATION (For Developers)
 
