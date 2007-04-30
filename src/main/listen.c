@@ -392,6 +392,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 
 	if ((client = client_listener_find(listener,
 					   &src_ipaddr)) == NULL) {
+		rad_recv_discard(listener->fd);
 		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
 		
 		/*
@@ -415,6 +416,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 		
 	case PW_STATUS_SERVER:
 		if (!mainconfig.status_server) {
+			rad_recv_discard(listener->fd);
 			RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
 			RAD_SNMP_CLIENT_INC(listener, client, packets_dropped);
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
@@ -424,6 +426,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 		break;
 
 	default:
+		rad_recv_discard(listener->fd);
 		RAD_SNMP_INC(rad_snmp.auth.total_unknown_types);
 		RAD_SNMP_CLIENT_INC(listener, client, unknown_types);
 		
@@ -482,6 +485,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 
 	if ((client = client_listener_find(listener,
 					   &src_ipaddr)) == NULL) {
+		rad_recv_discard(listener->fd);
 		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
 		
 		/*
@@ -505,6 +509,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 		
 	case PW_STATUS_SERVER:
 		if (!mainconfig.status_server) {
+			rad_recv_discard(listener->fd);
 			RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
 			RAD_SNMP_CLIENT_INC(listener, client, unknown_types);
 
@@ -515,9 +520,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 		break;
 
 	default:
-		/*
-		 *	FIXME: Update MIB for packet types?
-		 */
+		rad_recv_discard(listener->fd);
 		RAD_SNMP_TYPE_INC(listener, total_unknown_types);
 		RAD_SNMP_CLIENT_INC(listener, client, unknown_types);
 
@@ -800,6 +803,12 @@ static int detail_recv(rad_listen_t *listener,
 
 	if (data->state == STATE_UNOPENED) {
 		rad_assert(listener->fd < 0);
+
+		/*
+		 *	FIXME: 'stat' the detail file.  If it doesn't
+		 *	exist, then return "sleep for 1s", to avoid
+		 *	busy looping.
+		 */
 		if (!detail_open(listener)) return 0;
 	}
 	rad_assert(listener->fd >= 0);
