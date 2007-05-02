@@ -692,8 +692,20 @@ $INCLUDE ${confdir}/eap.conf
 		#  every authentication request.
 		ldap_connections_number = 5
 
+		# seconds to wait for LDAP query to finish. default: 20
 		timeout = 4
+
+		#  seconds LDAP server has to process the query (server-side
+		#  time limit). default: 20
+		#
+		#  LDAP_OPT_TIMELIMIT is set to this value.
 		timelimit = 3
+
+		#
+		#  seconds to wait for response of the server. (network
+		#   failures) default: 10
+		#
+		#  LDAP_OPT_NETWORK_TIMEOUT is set to this value.
 		net_timeout = 1
 
 		#
@@ -719,6 +731,14 @@ $INCLUDE ${confdir}/eap.conf
 			# certfile		= /path/to/radius.crt
 			# keyfile		= /path/to/radius.key
 			# randfile		= /path/to/rnd
+
+			#  Certificate Verification requirements.  Can be:
+			#    "never" (don't even bother trying)
+			#    "allow" (try, but don't fail if the cerificate
+			#		can't be verified)
+			#    "demand" (fail if the certificate doesn't verify.)
+			#
+			#	The default is "allow"
 			# require_cert	= "demand"
 		}
 
@@ -794,11 +814,24 @@ $INCLUDE ${confdir}/eap.conf
 		#  authentication, the LDAP module sets itself to do
 		#  LDAP bind for authentication.
 		#
+		#  THIS WILL ONLY WORK FOR PAP AUTHENTICATION.
+		#
+		#  THIS WILL NOT WORK FOR CHAP, MS-CHAP, or 802.1x (EAP). 
+		#
 		#  You can disable this behavior by setting the following
 		#  configuration entry to "no".
 		#
 		#  allowed values: {no, yes}
 		# set_auth_type = yes
+
+		#  ldap_debug: debug flag for LDAP SDK
+		#  (see OpenLDAP documentation).  Set this to enable
+		#  huge amounts of LDAP debugging on the screen.
+		#  You should only use this if you are an LDAP expert.
+		#
+		#	default: 0x0000 (no debugging messages)
+		#	Example:(LDAP_DEBUG_FILTER+LDAP_DEBUG_CONNS)
+		#ldap_debug = 0x0028 
 	}
 
 	# passwd module allows to do authorization via any passwd-like
@@ -1958,7 +1991,20 @@ authorize {
 	#
 	#  It also sets the EAP-Type attribute in the request
 	#  attribute list to the EAP type from the packet.
-	eap
+	#
+	#  As of 2.0, the EAP module returns "ok" in the authorize stage
+	#  for TTLS and PEAP.  In 1.x, it never returned "ok" here, so
+	#  this change is compatible with older configurations.
+	#
+	#  The example below uses module failover to avoid querying all
+	#  of the following modules if the EAP module returns "ok".
+	#  Therefore, your LDAP and/or SQL servers will not be queried
+	#  for the many packets that go back and forth to set up TTLS
+	#  or PEAP.  The load on those servers will therefore be reduced.
+	#
+	eap {
+		ok = return
+	}
 
 	#
 	#  Read the 'users' file
