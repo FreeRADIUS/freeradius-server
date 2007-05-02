@@ -418,6 +418,18 @@ static int pap_authorize(void *instance, REQUEST *request)
 		    (pairfind(request->config_items, PW_PROXY_TO_REALM))) {
 			return RLM_MODULE_NOOP;
 		}
+
+		/*
+		 *	The TLS types don't need passwords.
+		 */
+		vp = pairfind(request->packet->vps, PW_EAP_TYPE);
+		if (vp && 
+		    ((vp->vp_integer == 13) || /* EAP-TLS */
+		     (vp->vp_integer == 21) || /* EAP-TTLS */
+		     (vp->vp_integer == 25))) {	/* PEAP */
+			return RLM_MODULE_NOOP;
+		}
+
 		DEBUG("rlm_pap: WARNING! No \"known good\" password found for the user.  Authentication may fail because of this.");
 		return RLM_MODULE_NOOP;
 	}
