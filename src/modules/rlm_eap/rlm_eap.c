@@ -466,6 +466,7 @@ static int eap_authorize(void *instance, REQUEST *request)
 		return RLM_MODULE_FAIL;
 	case EAP_FOUND:
 		return RLM_MODULE_HANDLED;
+	case EAP_OK:
 	case EAP_NOTFOUND:
 	default:
 		break;
@@ -489,6 +490,8 @@ static int eap_authorize(void *instance, REQUEST *request)
 		}
 		pairadd(&request->config_items, vp);
 	}
+
+	if (status == EAP_OK) return RLM_MODULE_OK;
 
 	return RLM_MODULE_UPDATED;
 }

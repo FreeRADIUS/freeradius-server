@@ -809,6 +809,12 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		return EAP_NOOP;
 	}
 
+	if ((eap_msg->vp_octets[4] == PW_EAP_TTLS) ||
+	    (eap_msg->vp_octets[4] == PW_EAP_PEAP)) {
+		DEBUG2("  rlm_eap: Continuing tunnel setup.");
+		return EAP_OK;
+	}
+
 	/*
 	 *	Later EAP messages are longer than the 'start'
 	 *	message, so if everything is OK, this function returns
