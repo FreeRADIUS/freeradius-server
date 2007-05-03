@@ -1651,6 +1651,8 @@ int listen_init(const char *filename, rad_listen_t **head)
 
 		listen_type = identity = NULL;
 		
+		DEBUG2(" listen {");
+
 		rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
 				      &listen_type, "");
 		if (rcode < 0) return -1;
@@ -1699,6 +1701,8 @@ int listen_init(const char *filename, rad_listen_t **head)
 			listen_free(head);
 			return -1;
 		}
+
+		DEBUG2(" }");
 
 		*last = this;
 		last = &(this->next);	
