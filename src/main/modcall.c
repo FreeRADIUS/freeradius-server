@@ -274,7 +274,7 @@ static const char *group_name[] = {
 	"elsif"
 };
 
-static const char *modcall_spaces = "                                ";
+static const char *modcall_spaces = "++++++++++++++++++++++++++++++++";
 
 #define MODCALL_STACK_MAX (32)
 
@@ -335,15 +335,15 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 		if ((child->type == MOD_ELSE) || (child->type == MOD_ELSIF)) {
 			if (!was_if) { /* error */
-				DEBUG2("modcall:%.*s skipping %s for request %d: No preceding \"if\"",
-				       stack.pointer, modcall_spaces,
+				DEBUG2("%.*s ... skipping %s for request %d: No preceding \"if\"",
+				       stack.pointer + 1, modcall_spaces,
 				       group_name[child->type],
 				       request->number);
 				goto unroll;
 			}
 			if (if_taken) {
-				DEBUG2("modcall:%.*s skipping %s for request %d: Preceding \"if\" was taken",
-				       stack.pointer, modcall_spaces,
+				DEBUG2("%.*s ... skipping %s for request %d: Preceding \"if\" was taken",
+				       stack.pointer + 1, modcall_spaces,
 				       group_name[child->type],
 				       request->number);
 				goto unroll;
@@ -356,8 +356,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 */
 		if (((child->type == MOD_IF) || (child->type == MOD_ELSIF)) &&
 		    !child->actions[myresult]) {
-			DEBUG2("modcall:%.*s skipping %s \"%s\" for request %d, return code was %s",
-			       stack.pointer, modcall_spaces,
+			DEBUG2("%.*s ... skipping %s \"%s\" for request %d, return code was %s",
+			       stack.pointer + 1, modcall_spaces,
 			       group_name[child->type],
   			       child->name, request->number,
 			       lrad_int2str(rcode_table, myresult, "??"));
@@ -435,10 +435,9 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			
 			stack.start[stack.pointer] = stack.children[stack.pointer];
 
-			DEBUG2("modcall:%.*s entering %s %s for request %d",
+			DEBUG2("%.*s- entering %s %s",
 			       stack.pointer, modcall_spaces,
-			       group_name[child->type],
-			       child->name, request->number);
+			       group_name[child->type], child->name);
 
 			/*
 			 *	Catch the special case of a NULL group.
@@ -447,12 +446,12 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				/*
 				 *	Print message for NULL group
 				 */
-				DEBUG2("modcall[%s]: NULL object returns %s for request %d",
+				DEBUG2("%.*s- %s returns %s",
+				       stack.pointer + 1, modcall_spaces,
 				       comp2str[component],
 				       lrad_int2str(rcode_table,
 						    stack.result[stack.pointer],
-						    "??"),
-				       request->number);
+						    "??"));
 				goto do_return;
 			}
 
@@ -472,10 +471,10 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		
 		myresult = call_modsingle(component, sp, request,
 					  default_component_results[component]);
-		DEBUG2("  modcall[%s]: module \"%s\" returns %s for request %d",
-		       comp2str[component], child->name,
-		       lrad_int2str(rcode_table, myresult, "??"),
-		       request->number);
+		DEBUG2("%.*s[%s] returns %s",
+		       stack.pointer + 1, modcall_spaces,
+		       child->name,
+		       lrad_int2str(rcode_table, myresult, "??"));
 
 
 		/*
@@ -585,11 +584,10 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			myresult = stack.result[stack.pointer];
 			stack.pointer--;
 
-			DEBUG2("modcall:%.*s %s %s returns %s for request %d",
-			       stack.pointer, modcall_spaces,
+			DEBUG2("%.*s- %s %s returns %s",
+			       stack.pointer + 1, modcall_spaces,
 			       group_name[parent->type], parent->name,
-			       lrad_int2str(rcode_table, myresult, "??"),
-			       request->number);
+			       lrad_int2str(rcode_table, myresult, "??"));
 
 			if (stack.pointer == 0) break;
 
