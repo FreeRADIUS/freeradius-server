@@ -416,13 +416,47 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 		return 0;
 	}
 
-	DEBUG2(" server_pool %s {", name2);
-
+	/*
+	 *	Count the home servers and initalize them.
+	 */
 	num_home_servers = 0;
 	for (cp = cf_pair_find(cs, "home_server");
 	     cp != NULL;
 	     cp = cf_pair_find_next(cs, cp, "home_server")) {
+		home_server myhome, *home;
+		CONF_SECTION *server_cs;
+
 		num_home_servers++;
+
+		value = cf_pair_value(cp);
+		if (!value) {
+			radlog(L_ERR, "%s[%d]: No value given for home_server.",
+			       filename, cf_pair_lineno(cp));
+			return 0;;
+		}
+
+		myhome.name = value;
+		home = rbtree_finddata(home_servers_byname, &myhome);
+		if (home) continue;
+
+		server_cs = cf_section_sub_find_name2(NULL,
+						      "home_server",
+						      value);
+		if (!server_cs) {
+			radlog(L_ERR, "%s[%d]: Unknown home_server \"%s\".",
+			       filename, cf_pair_lineno(cp), value);
+			return 0;
+		}
+			
+		if (!home_server_add(filename, server_cs)) {
+			return 0;
+		}
+
+		home = rbtree_finddata(home_servers_byname, &myhome);
+		if (!home) {
+			rad_assert("Internal sanity check failed");
+			return 0;
+		}
 	}
 
 	if (num_home_servers == 0) {
@@ -436,6 +470,8 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 
 	pool->type = HOME_POOL_FAIL_OVER;
 	pool->name = name2;
+
+	DEBUG2(" server_pool %s {", name2);
 
 	cp = cf_pair_find(cs, "type");
 	if (cp) {
@@ -481,29 +517,8 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 
 		home = rbtree_finddata(home_servers_byname, &myhome);
 		if (!home) {
-			CONF_SECTION *server_cs;
-
-			server_cs = cf_section_sub_find_name2(NULL,
-							      "home_server",
-							      value);
-			if (!server_cs) {
-				radlog(L_ERR, "%s[%d]: Unknown home_server \"%s\".",
-				       filename, cf_pair_lineno(cp), value);
-				goto error;
-			}
-			
-			DEBUG2(" server_pool %s: Adding home_server %s",
-			       name2, value);
-
-			if (!home_server_add(filename, server_cs)) {
-				goto error;
-			}
-
-			home = rbtree_finddata(home_servers_byname, &myhome);
-			if (!home) {
-				rad_assert("Internal sanity check failed");
-				goto error;
-			}
+			DEBUG2("Internal sanity check failed");
+			goto error;
 		}
 
 		if (!pool->server_type) {
@@ -521,10 +536,9 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 			continue;
 		}
 
-		DEBUG2("\thome_server = %s", name2, home->name);
+		DEBUG2("\thome_server = %s", home->name);
 		pool->servers[pool->num_home_servers] = home;
 		pool->num_home_servers++;
-
 	} /* loop over home_server's */
 
 	if (!rbtree_insert(home_pools_byname, pool)) {
@@ -532,14 +546,14 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 		goto error;
 	}
 
-	DEBUG2(" } # server_pool %s", name2);
+	DEBUG2(" }");
 
 	rad_assert(pool->server_type != 0);
 	
 	return 1;
 
  error:
-	DEBUG2(" } # server_pool %s", name2);
+	DEBUG2(" }");
 	free(pool);
 	return 0;
 }
@@ -876,9 +890,10 @@ static int add_pool_to_realm(const char *filename, int lineno,
 int realm_add(const char *filename, CONF_SECTION *cs)
 {
 	const char *name2;
-	char *pool = NULL;
 	REALM *r = NULL;
 	CONF_PAIR *cp;
+	home_pool_t *auth_pool, *acct_pool;
+	const char *auth_pool_name, *acct_pool_name;
 
 	name2 = cf_section_name1(cs);
 	if (!name2 || (strcasecmp(name2, "realm") != 0)) {
@@ -892,6 +907,32 @@ int realm_add(const char *filename, CONF_SECTION *cs)
 		radlog(L_ERR, "%s[%d]: Realm section is missing the realm name.",
 		       filename, cf_section_lineno(cs));
 		return 0;
+	}
+
+	auth_pool = acct_pool = NULL;
+	auth_pool_name = acct_pool_name = NULL;
+
+	/*
+	 *	Prefer new configuration to old one.
+	 */
+	cp = cf_pair_find(cs, "auth_pool");
+	if (cp) auth_pool_name = cf_pair_value(cp);
+	if (cp && auth_pool_name) {
+		if (!add_pool_to_realm(filename, cf_pair_lineno(cp),
+				       auth_pool_name, &auth_pool,
+				       HOME_TYPE_AUTH)) {
+			return 0;
+		}
+	}
+
+	cp = cf_pair_find(cs, "acct_pool");
+	if (cp) acct_pool_name = cf_pair_value(cp);
+	if (cp && acct_pool_name) {
+		if (!add_pool_to_realm(filename, cf_pair_lineno(cp),
+				       acct_pool_name, &acct_pool,
+				       HOME_TYPE_ACCT)) {
+			return 0;
+		}
 	}
 
 	DEBUG2(" realm %s {", name2);
@@ -921,35 +962,12 @@ int realm_add(const char *filename, CONF_SECTION *cs)
 	memset(r, 0, sizeof(*r));
 
 	r->name = name2;
-
-	/*
-	 *	Prefer new configuration to old one.
-	 */
-	cp = cf_pair_find(cs, "auth_pool");
-	if (cp) pool = cf_pair_value(cp);
-	if (cp && pool) {
-		DEBUG2(" realm %s: Adding server_pool %s",
-		       name2, pool);
-		if (!add_pool_to_realm(filename, cf_pair_lineno(cp),
-				       pool, &r->auth_pool, HOME_TYPE_AUTH)) {
-			goto error;
-		}
-		DEBUG2("\tauth_pool = %s", name2, pool);
-	}
-
-	cp = cf_pair_find(cs, "acct_pool");
-	if (cp) pool = cf_pair_value(cp);
-	if (cp && pool) {
-		DEBUG2(" realm %s: Adding server_pool %s",
-		       name2, pool);
-		if (!add_pool_to_realm(filename, cf_pair_lineno(cp),
-				       pool, &r->acct_pool, HOME_TYPE_ACCT)) {
-			goto error;
-		}
-		DEBUG2("\tacct_pool = %s", name2, pool);
-	}
-
+	r->auth_pool = auth_pool;
+	r->acct_pool = acct_pool;
 	r->striprealm = 1;
+
+	if (auth_pool_name) DEBUG2("\tauth_pool = %s", auth_pool_name);
+	if (acct_pool_name) DEBUG2("\tacct_pool = %s", acct_pool_name);
 	
 	if ((cf_section_value_find(cs, "nostrip")) != NULL) {
 		r->striprealm = 0;
@@ -983,7 +1001,7 @@ int realm_add(const char *filename, CONF_SECTION *cs)
 		goto error;
 	}
 
-	DEBUG2(" } # realm %s", name2);
+	DEBUG2(" }");
 
 	return 1;
 
