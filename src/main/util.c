@@ -365,55 +365,57 @@ REQUEST *request_alloc(void)
  *	This function allows modules to inject fake requests
  *	into the server, for tunneled protocols like TTLS & PEAP.
  */
-REQUEST *request_alloc_fake(REQUEST *oldreq)
+REQUEST *request_alloc_fake(REQUEST *request)
 {
-  REQUEST *request;
+  REQUEST *fake;
 
-  request = request_alloc();
+  fake = request_alloc();
 
-  request->number = oldreq->number;
-  request->child_pid = NO_SUCH_CHILD_PID;
+  fake->number = request->number;
+  fake->child_pid = NO_SUCH_CHILD_PID;
 
-  request->packet = rad_alloc(0);
-  rad_assert(request->packet != NULL);
+  fake->packet = rad_alloc(0);
+  if (!fake->packet) {
+	  request_free(&fake);
+	  return NULL;
+  }
 
-  request->reply = rad_alloc(0);
-  rad_assert(request->reply != NULL);
+  fake->reply = rad_alloc(0);
+  if (!fake->reply) {
+	  request_free(&fake);
+	  return NULL;
+  }
 
   /*
-   *	Fill in the fake request packet.
+   *	Fill in the fake request.
    */
-  request->packet->sockfd = -1;
-  request->packet->src_ipaddr.af = AF_INET;
-  request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_LOOPBACK);
-  request->packet->dst_ipaddr = request->packet->src_ipaddr;
-  request->packet->src_port = request->number >> 8;
+  fake->packet->sockfd = -1;
+  fake->packet->src_ipaddr = request->packet->src_ipaddr;
+  fake->packet->src_port = request->packet->src_port;
+  fake->packet->dst_ipaddr = request->packet->dst_ipaddr;
+  fake->packet->dst_port = 0;
 
   /*
-   *	This field is used by the rest of the code to notice that the
-   *	request is "internal", and not from a real client.
-   */
-  request->packet->dst_port = 0;
-
-  /*
-   *	This isn't STRICTLY required, as the fake request SHOULD NEVER
+   *	This isn't STRICTLY required, as the fake request MUST NEVER
    *	be put into the request list.  However, it's still reasonable
    *	practice.
    */
-  request->packet->id = request->number & 0xff;
-  request->packet->code = oldreq->packet->code;
-  request->timestamp = oldreq->timestamp;
+  fake->packet->id = fake->number & 0xff;
+  fake->packet->code = request->packet->code;
+  fake->timestamp = request->timestamp;
 
   /*
    *	Fill in the fake reply, based on the fake request.
    */
-  request->reply->sockfd = request->packet->sockfd;
-  request->reply->dst_ipaddr = request->packet->src_ipaddr;
-  request->reply->dst_port = request->packet->src_port;
-  request->reply->id = request->packet->id;
-  request->reply->code = 0; /* UNKNOWN code */
+  fake->reply->sockfd = fake->packet->sockfd;
+  fake->reply->src_ipaddr = fake->packet->dst_ipaddr;
+  fake->reply->src_port = fake->packet->dst_port;
+  fake->reply->dst_ipaddr = fake->packet->src_ipaddr;
+  fake->reply->dst_port = fake->packet->src_port;
+  fake->reply->id = fake->packet->id;
+  fake->reply->code = 0; /* UNKNOWN code */
 
-  return request;
+  return fake;
 }
 
 
