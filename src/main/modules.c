@@ -228,7 +228,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	node->module = module;
 	node->handle = handle;
 
-	DEBUG("Module: Linked to module %s", module_name);
+	DEBUG(" Module: Linked to module %s", module_name);
 
 	/*
 	 *	Add the module as "rlm_foo-version" to the configuration
@@ -301,7 +301,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 		return NULL;
 	}
 
-	DEBUG2("Module: Instantiating %s", instname);
+	DEBUG2(" Module: Instantiating %s", instname);
 
 	/*
 	 *	Call the module's instantiation routine.
@@ -659,8 +659,8 @@ int setup_modules(int reload)
 		 */
 		lt_dlsetsearchpath(radlib_dir);
 
-		DEBUG2("Module: Library search path is %s",
-				lt_dlgetsearchpath());
+		DEBUG2("radiusd: Library search path is %s",
+		       lt_dlgetsearchpath());
 
 		/*
 		 *	Set up the internal module struct.
@@ -887,6 +887,8 @@ int setup_modules(int reload)
 		module_instance_t *module;
 		const char *name;
 
+		DEBUG2(" instantiate {");
+
 		/*
 		 *  Loop over the items in the 'instantiate' section.
 		 */
@@ -909,7 +911,11 @@ int setup_modules(int reload)
 				return -1;
 			}
 		} /* loop over items in the subsection */
+
+		DEBUG2(" }");
 	} /* if there's an 'instantiate' section. */
+
+	DEBUG2(" modules {");
 
 	/*
 	 *	Loop over all of the known components, finding their
@@ -924,10 +930,18 @@ int setup_modules(int reload)
 			continue;
 		}
 
+		if (cf_item_find_next(cs, NULL) == NULL) {
+			continue; /* section is empty */
+		}
+		
+		DEBUG2(" Module: Instantiating section %s", section_type_value[comp].section);
+
 		if (load_component_section(NULL, cs, comp, mainconfig.radiusd_conf) < 0) {
 			return -1;
 		}
 	}
+
+	DEBUG2(" }");
 
 	return 0;
 }

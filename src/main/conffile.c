@@ -73,6 +73,7 @@ struct conf_part {
 	rbtree_t	*name2_tree; /* for sections of the same name2 */
 	rbtree_t	*data_tree;
 	void		*base;
+	int depth;
 	const CONF_PARSER *variables;
 };
 
@@ -415,6 +416,9 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 	 *	Don't create the section tree here, it may not
 	 *	be needed.
 	 */
+
+	if (parent) cs->depth = parent->depth + 1;
+
 	return cs;
 }
 
@@ -881,6 +885,8 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 	return rcode;
 }
 
+static const char *parse_spaces = "                                                                                                                                                                                                                                                                ";
+
 /*
  *	Parse a configuration section into user-supplied variables.
  */
@@ -891,9 +897,11 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 	void *data;
 
 	if (!cs->name2) {
-		DEBUG2(" %s {", cs->name1);
+		DEBUG2("%.*s%s {", cs->depth, parse_spaces,
+		       cs->name1);
 	} else {
-		DEBUG2(" %s %s {", cs->name1, cs->name2);
+		DEBUG2("%.*s%s %s {", cs->depth, parse_spaces,
+		       cs->name1, cs->name2);
 	}
 
 	/*
@@ -918,16 +926,12 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 
 			if (!variables[i].dflt) {
 				DEBUG2("Internal sanity check 1 failed in cf_section_parse");
-				cf_section_parse_free(base, variables);
-				DEBUG2(" }");
-				return -1;
+				goto error;
 			}
 			
 			if (cf_section_parse(subcs, base,
 					     (const CONF_PARSER *) variables[i].dflt) < 0) {
-				cf_section_parse_free(base, variables);
-				DEBUG2(" }");
-				return -1;
+				goto error;
 			}
 			continue;
 		} /* else it's a CONF_PAIR */
@@ -938,9 +942,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			data = ((char *)base) + variables[i].offset;
 		} else {
 			DEBUG2("Internal sanity check 2 failed in cf_section_parse");
-			cf_section_parse_free(base, variables);
-			DEBUG2(" }");
-			return -1;
+			goto error;
 		}
 
 		/*
@@ -948,18 +950,21 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 		 */
 		if (cf_item_parse(cs, variables[i].name, variables[i].type,
 				  data, variables[i].dflt) < 0) {
-			cf_section_parse_free(base, variables);
-			DEBUG2(" }");
-			return -1;
+			goto error;
 		}
 	} /* for all variables in the configuration section */
 
-	DEBUG2(" }");
+	DEBUG2("%.*s}", cs->depth, parse_spaces);
 
 	cs->base = base;
 	cs->variables = variables;
 
 	return 0;
+
+ error:
+	DEBUG2("%.*s}", cs->depth, parse_spaces);
+	cf_section_parse_free(base, variables);
+	return -1;
 }
 
 
