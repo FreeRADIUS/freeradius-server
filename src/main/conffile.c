@@ -890,6 +890,12 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 	int i;
 	void *data;
 
+	if (!cs->name2) {
+		DEBUG2(" %s {", cs->name1);
+	} else {
+		DEBUG2(" %s %s {", cs->name1, cs->name2);
+	}
+
 	/*
 	 *	Handle the known configuration parameters.
 	 */
@@ -913,12 +919,14 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			if (!variables[i].dflt) {
 				DEBUG2("Internal sanity check 1 failed in cf_section_parse");
 				cf_section_parse_free(base, variables);
+				DEBUG2(" }");
 				return -1;
 			}
 			
 			if (cf_section_parse(subcs, base,
 					     (const CONF_PARSER *) variables[i].dflt) < 0) {
 				cf_section_parse_free(base, variables);
+				DEBUG2(" }");
 				return -1;
 			}
 			continue;
@@ -931,6 +939,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 		} else {
 			DEBUG2("Internal sanity check 2 failed in cf_section_parse");
 			cf_section_parse_free(base, variables);
+			DEBUG2(" }");
 			return -1;
 		}
 
@@ -940,9 +949,12 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 		if (cf_item_parse(cs, variables[i].name, variables[i].type,
 				  data, variables[i].dflt) < 0) {
 			cf_section_parse_free(base, variables);
+			DEBUG2(" }");
 			return -1;
 		}
 	} /* for all variables in the configuration section */
+
+	DEBUG2(" }");
 
 	cs->base = base;
 	cs->variables = variables;

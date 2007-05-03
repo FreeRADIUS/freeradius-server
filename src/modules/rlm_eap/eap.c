@@ -120,6 +120,10 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 		free(node);
 		return -1;
 	}
+	DEBUG("eap: Linked to sub-module %s", buffer);
+
+	DEBUG("eap: Instantiating eap-%s", eaptype_name);
+
 	if ((node->type->attach) &&
 	    ((node->type->attach)(node->cs, &(node->type_data)) < 0)) {
 
@@ -130,7 +134,6 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 		return -1;
 	}
 
-	DEBUG("rlm_eap: Loaded and initialized type %s", eaptype_name);
 	*type = node;
 	return 0;
 }

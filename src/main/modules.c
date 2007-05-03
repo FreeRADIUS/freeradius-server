@@ -302,11 +302,6 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	}
 
 	DEBUG2("Module: Instantiating %s", instname);
-	if (name2) {
-		DEBUG(" %s %s {", name1, name2);
-	} else {
-		DEBUG(" %s {", name1);
-	}
 
 	/*
 	 *	Call the module's instantiation routine.
@@ -348,8 +343,6 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 
 #endif
 	cf_data_add(cs, "instance", node, module_instance_free);
-
-	DEBUG2(" }");
 
 	return node;
 }
