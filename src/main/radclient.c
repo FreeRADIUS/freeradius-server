@@ -735,11 +735,12 @@ packet_done:
 	 *	Once we've sent the packet as many times as requested,
 	 *	mark it done.
 	 */
-	if ((radclient->resend == resend_count) && radclient->reply) {
+	if ((radclient->done) ||
+	    (radclient->resend == resend_count)) {
 		assert(lrad_packet_list_find(pl, radclient->request) == NULL);
 		radclient->done = 1;
-		rad_free(&radclient->reply);
 	}
+	rad_free(&radclient->reply);
 
 	return 0;
 }
