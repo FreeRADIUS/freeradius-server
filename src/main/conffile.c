@@ -755,24 +755,12 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			radlog(L_ERR, "Bad value \"%s\" for boolean variable %s", value, name);
 			return -1;
 		}
-		if (cs->name2) {
-			DEBUG2(" %s %s: %s = %s", cs->name1, cs->name2, name, value);
-		} else {
-			DEBUG2(" %s: %s = %s", cs->name1, name, value);
-		}
+		DEBUG2("\t%s = %s", name, value);
 		break;
 		
 	case PW_TYPE_INTEGER:
 		*(int *)data = strtol(value, 0, 0);
-		if (cs->name2) {
-			DEBUG2(" %s %s: %s = %d",
-			       cs->name1, cs->name2, name,
-			       *(int *)data);
-		} else {
-			DEBUG2(" %s: %s = %d",
-			       cs->name1, name,
-			       *(int *)data);
-		}
+		DEBUG2("\t%s = %d", name, *(int *)data);
 		break;
 		
 	case PW_TYPE_STRING_PTR:
@@ -800,15 +788,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			if (!value) return -1;
 		}
 		
-		if (cs->name2) {
-			DEBUG2(" %s %s: %s = \"%s\"",
-			       cs->name1, cs->name2, name,
-			       value ? value : "(null)");
-		} else {
-			DEBUG2(" %s: %s = \"%s\"",
-			       cs->name1, name,
-			       value ? value : "(null)");
-		}
+		DEBUG2("\t%s = \"%s\"", name, value ? value : "(null)");
 		*q = value ? strdup(value) : NULL;
 		break;
 		
@@ -842,15 +822,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			if (!value) return -1;
 		}
 		
-		if (cs->name2) {
-			DEBUG2(" %s %s: %s = \"%s\"",
-			       cs->name1, cs->name2, name,
-			       value ? value : "(null)");
-		} else {
-			DEBUG2(" %s: %s = \"%s\"",
-			       cs->name1, name,
-			       value ? value : "(null)");
-		}
+		DEBUG2("\t%s = \"%s\"", name, value ? value : "(null)");
 		*q = value ? strdup(value) : NULL;
 
 		/*
@@ -877,22 +849,15 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		 */
 		if (strcmp(value, "*") == 0) {
 			*(uint32_t *) data = htonl(INADDR_ANY);
-			DEBUG2(" %s: %s = *", cs->name1, name);
+			DEBUG2("\t%s = *", name);
 			break;
 		}
 		if (ip_hton(value, AF_INET, &ipaddr) < 0) {
 			radlog(L_ERR, "Can't find IP address for host %s", value);
 			return -1;
 		}
-		if (cs->name2) {
-			DEBUG2(" %s %s: %s = %s IP address [%s]",
-			       cs->name1, cs->name2, name, value,
+		DEBUG2("\t%s = %s IP address [%s]", name, value,
 			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
-		} else {
-			DEBUG2(" %s: %s = %s IP address [%s]",
-			       cs->name1, name, value,
-			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
-		}
 		*(uint32_t *) data = ipaddr.ipaddr.ip4addr.s_addr;
 		break;
 		
@@ -901,15 +866,8 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			radlog(L_ERR, "Can't find IPv6 address for host %s", value);
 			return -1;
 		}
-		if (cs->name2) {
-			DEBUG2(" %s %s: %s = %s IPv6 address [%s]",
-			       cs->name1, cs->name2, name, value,
+		DEBUG2("\t%s = %s IPv6 address [%s]", name, value,
 			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
-		} else {
-			DEBUG2(" %s: %s = %s IPv6 address [%s]",
-			       cs->name1, name, value,
-			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
-		}
 		memcpy(data, &ipaddr.ipaddr.ip6addr,
 		       sizeof(ipaddr.ipaddr.ip6addr));
 		break;

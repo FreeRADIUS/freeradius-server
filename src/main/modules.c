@@ -228,7 +228,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	node->module = module;
 	node->handle = handle;
 
-	DEBUG("Module: Loaded %s ", node->module->name);
+	DEBUG("Module: Linked to module %s", module_name);
 
 	/*
 	 *	Add the module as "rlm_foo-version" to the configuration
@@ -301,6 +301,13 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 		return NULL;
 	}
 
+	DEBUG2("Module: Instantiating %s", instname);
+	if (name2) {
+		DEBUG(" %s %s {", name1, name2);
+	} else {
+		DEBUG(" %s {", name1);
+	}
+
 	/*
 	 *	Call the module's instantiation routine.
 	 */
@@ -342,7 +349,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 #endif
 	cf_data_add(cs, "instance", node, module_instance_free);
 
-	DEBUG("Module: Instantiated %s (%s) ", name1, node->name);
+	DEBUG2(" }");
 
 	return node;
 }
