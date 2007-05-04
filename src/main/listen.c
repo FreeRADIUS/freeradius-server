@@ -844,19 +844,15 @@ static int detail_recv(rad_listen_t *listener,
 	if (data->state == STATE_DONE) goto alloc_packet;
 
 	/*
-	 *	If we're in another state, then it means that we read
-	 *	a partial packet, which is bad.
-	 */
-	rad_assert(data->state == STATE_HEADER);
-	rad_assert(data->vps == NULL);
-
-	/*
 	 *	We read the last packet, and returned it for
 	 *	processing.  We later come back here to shut
 	 *	everything down, and unlink the file.
 	 */
 	if (feof(data->fp)) {
-		rad_assert(data->state == STATE_HEADER);
+		if (data->state == STATE_READING) {
+			data->state = STATE_DONE;
+			goto alloc_packet;
+		}
 
 		/*
 		 *	Don't unlink the file until we've received
