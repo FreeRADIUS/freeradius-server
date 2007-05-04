@@ -1363,24 +1363,21 @@ static int listen_bind(rad_listen_t *this)
 	for (last = &mainconfig.listen;
 	     *last != NULL;
 	     last = &((*last)->next)) {
-		if ((this->type == (*last)->type) &&
-		    (sock->port == ((listen_socket_t *)((*last)->data))->port) &&
-		    (sock->ipaddr.af == ((listen_socket_t *)((*last)->data))->ipaddr.af)) {
-			int equal;
+		listen_socket_t *other;
 
-			if (sock->ipaddr.af == AF_INET) {
-				equal = (sock->ipaddr.ipaddr.ip4addr.s_addr == ((listen_socket_t *)((*last)->data))->ipaddr.ipaddr.ip4addr.s_addr);
-			} else if (sock->ipaddr.af == AF_INET6) {
-				equal = IN6_ARE_ADDR_EQUAL(&(sock->ipaddr.ipaddr.ip6addr), &(((listen_socket_t *)((*last)->data))->ipaddr.ipaddr.ip6addr));
-			} else {
-				equal = 0;
-			}
-			
-			if (equal) {
-				this->fd = (*last)->fd;
-				(*last)->fd = -1;
-				return 0;
-			}
+		if (this->type != (*last)->type) continue;
+
+		if ((this->type == RAD_LISTEN_DETAIL) ||
+		    (this->type == RAD_LISTEN_SNMP)) continue;
+
+		other = (listen_socket_t *)((*last)->data);
+
+		if ((sock->port == other->port) &&
+		    (sock->ipaddr.af == other->ipaddr.af) &&
+		    (lrad_ipaddr_cmp(&sock->ipaddr, &other->ipaddr) == 0)) {
+			this->fd = (*last)->fd;
+			(*last)->fd = -1;
+			return 0;
 		}
 	}
 
