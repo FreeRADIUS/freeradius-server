@@ -133,7 +133,6 @@ struct auth_req {
 
 	int			num_proxied_requests;
 	int			num_proxied_responses;
-
 };				/* REQUEST typedef */
 
 #define RAD_REQUEST_OPTION_NONE            (0)
@@ -310,6 +309,14 @@ extern uint32_t		expiration_seconds;
 extern int		log_stripped_names;
 extern int		log_auth_detail;
 extern const char      *radiusd_version;
+void			radius_signal_self(int flag);
+
+#define RADIUS_SIGNAL_SELF_NONE		(0)
+#define RADIUS_SIGNAL_SELF_HUP		(1 << 0)
+#define RADIUS_SIGNAL_SELF_TERM		(1 << 1)
+#define RADIUS_SIGNAL_SELF_EXIT		(1 << 2)
+#define RADIUS_SIGNAL_SELF_DETAIL	(1 << 3)
+
 
 /*
  *	Function prototypes.
@@ -391,6 +398,7 @@ int		log_debug(const char *, ...)
 #endif
 ;
 void 		vp_listdebug(VALUE_PAIR *vp);
+
 
 /* proxy.c */
 int proxy_receive(REQUEST *request);
