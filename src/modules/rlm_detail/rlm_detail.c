@@ -320,7 +320,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 
 	if (inst->locking && !locked) {
 		close(outfd);
-		radlog(L_ERR, "rlm_detail: Failed to aquire filelock for %s, giving up",
+		radlog(L_ERR, "rlm_detail: Failed to acquire filelock for %s, giving up",
 		       buffer);
 		return RLM_MODULE_FAIL;
 	}
@@ -488,6 +488,10 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
  */
 static int detail_accounting(void *instance, REQUEST *request)
 {
+	if (request->listener->type == RAD_LISTEN_DETAIL) {
+		DEBUG2("  rlm_detail: Suppressing writes to detail file as the request was just read from a detail file.");
+		return RLM_MODULE_NOOP;
+	}
 
 	return do_detail(instance,request,request->packet, TRUE);
 }
@@ -531,6 +535,17 @@ static int detail_post_proxy(void *instance, REQUEST *request)
 	if (request->proxy_reply &&
 	    request->proxy_reply->vps) {
 		return do_detail(instance,request,request->proxy_reply, FALSE);
+	}
+
+	/*
+	 *	No reply: we must be doing Post-Proxy-Type = Fail.
+	 *
+	 *	Note that we just call the normal accounting function,
+	 *	to minimize the amount of code, and to highlight that
+	 *	it's doing normal accounting.
+	 */
+	if (!request->proxy_reply) {
+		return detail_accounting(instance, request);
 	}
 
 	return RLM_MODULE_NOOP;
