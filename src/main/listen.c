@@ -74,7 +74,7 @@ typedef struct listen_socket_t {
 } listen_socket_t;
 
 typedef struct listen_detail_t {
-	const char	*detail;
+	const char	*filename;
 	VALUE_PAIR	*vps;
 	FILE		*fp;
 	int		state;
@@ -699,7 +699,7 @@ static int detail_open(rad_listen_t *this)
 	listen_detail_t *data = this->data;
 
 	rad_assert(data->state == STATE_UNOPENED);
-	snprintf(buffer, sizeof(buffer), "%s.work", data->detail);
+	snprintf(buffer, sizeof(buffer), "%s.work", data->filename);
 	
 	/*
 	 *	FIXME: Have "one-shot" configuration, where it
@@ -730,7 +730,7 @@ static int detail_open(rad_listen_t *this)
 		 *	exists, even if we don't have permissions
 		 *	to read it.
 		 */
-		if (stat(data->detail, &st) < 0) {
+		if (stat(data->filename, &st) < 0) {
 			return 0;
 		}
 		
@@ -738,17 +738,17 @@ static int detail_open(rad_listen_t *this)
 		 *	Open it BEFORE we rename it, just to
 		 *	be safe...
 		 */
-		this->fd = open(data->detail, O_RDWR);
+		this->fd = open(data->filename, O_RDWR);
 		if (this->fd < 0) {
 			radlog(L_ERR, "Failed to open %s: %s",
-			       data->detail, strerror(errno));
+			       data->filename, strerror(errno));
 			return 0;
 		}
 		
 		/*
 		 *	Rename detail to detail.work
 		 */
-		if (rename(data->detail, buffer) < 0) {
+		if (rename(data->filename, buffer) < 0) {
 			close(this->fd);
 			this->fd = -1;
 			return 0;
@@ -761,7 +761,7 @@ static int detail_open(rad_listen_t *this)
 	data->fp = fdopen(this->fd, "r");
 	if (!data->fp) {
 		radlog(L_ERR, "Failed to re-open %s: %s",
-		       data->detail, strerror(errno));
+		       data->filename, strerror(errno));
 		return 0;
 	}
 
@@ -879,7 +879,7 @@ static int detail_recv(rad_listen_t *listener,
 	cleanup:
 		rad_assert(data->vps == NULL);
 
-		snprintf(buffer, sizeof(buffer), "%s.work", data->detail);
+		snprintf(buffer, sizeof(buffer), "%s.work", data->filename);
 		unlink(buffer);
 		fclose(data->fp); /* closes listener->fd */
 		data->fp = NULL;
@@ -989,12 +989,13 @@ static int detail_recv(rad_listen_t *listener,
 	 *	and start over from scratch,
 	 */
 	if (feof(data->fp)) {
+		/*
+		 *	Send the packet.
+		 */
+		if (data->state == STATE_READING) goto alloc_packet;
+		pairfree(&data->vps);
 		goto cleanup;
 	}
-
-	/*
-	 *	FIXME: Do load management.
-	 */
 
 	/*
 	 *	If we're not done, then there's a problem.  The checks
@@ -1057,19 +1058,6 @@ static int detail_recv(rad_listen_t *listener,
 	packet->timestamp = time(NULL);
 
 	/*
-	 *	Look for Acct-Delay-Time, and update
-	 *	based on Acct-Delay-Time += (time(NULL) - timestamp)
-	 */
-	vp = pairfind(packet->vps, PW_ACCT_DELAY_TIME);
-	if (!vp) {
-		vp = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
-		rad_assert(vp != NULL);
-	}
-	if (data->timestamp != 0) {
-		vp->vp_integer += time(NULL) - data->timestamp;
-	}
-
-	/*
 	 *	Remember where it came from, so that we don't
 	 *	proxy it to the place it came from...
 	 */
@@ -1130,6 +1118,20 @@ static int detail_recv(rad_listen_t *listener,
 	data->state = STATE_HEADER;
 
 	/*
+	 *	Look for Acct-Delay-Time, and update
+	 *	based on Acct-Delay-Time += (time(NULL) - timestamp)
+	 */
+	vp = pairfind(packet->vps, PW_ACCT_DELAY_TIME);
+	if (!vp) {
+		vp = paircreate(PW_ACCT_DELAY_TIME, PW_TYPE_INTEGER);
+		rad_assert(vp != NULL);
+		pairadd(&packet->vps, vp);
+	}
+	if (data->timestamp != 0) {
+		vp->vp_integer += time(NULL) - data->timestamp;
+	}
+
+	/*
 	 *	Keep track of free slots, as a hack, in an otherwise
 	 *	unused 'int'
 	 */
@@ -1139,7 +1141,7 @@ static int detail_recv(rad_listen_t *listener,
 	*pfun = rad_accounting;
 
 	if (debug_flag) {
-		printf("detail_recv: Read packet from %s\n", data->detail);
+		printf("detail_recv: Read packet from %s\n", data->filename);
 		for (vp = packet->vps; vp; vp = vp->next) {
 			putchar('\t');
 			vp_print(stdout, vp);
@@ -1167,7 +1169,7 @@ static void detail_free(rad_listen_t *this)
 {
 	listen_detail_t *data = this->data;
 
-	free(data->detail);
+	free(data->filename);
 	pairfree(&data->vps);
 	free(data->outstanding);
 
@@ -1178,7 +1180,7 @@ static void detail_free(rad_listen_t *this)
 static int detail_print(rad_listen_t *this, char *buffer, size_t bufsize)
 {
 	return snprintf(buffer, bufsize, "%s",
-			((listen_detail_t *)(this->data))->detail);
+			((listen_detail_t *)(this->data))->filename);
 }
 
 static int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
@@ -1199,8 +1201,8 @@ static int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 
 
 static const CONF_PARSER detail_config[] = {
-	{ "detail",   PW_TYPE_STRING_PTR,
-	  offsetof(listen_detail_t, detail), NULL,  NULL },
+	{ "filename",   PW_TYPE_STRING_PTR,
+	  offsetof(listen_detail_t, filename), NULL,  NULL },
 	{ "max_outstanding",  PW_TYPE_INTEGER,
 	   offsetof(listen_detail_t, max_outstanding), NULL, "100" },
 
@@ -1226,7 +1228,7 @@ static int detail_parse(const char *filename, int lineno,
 		return -1;
 	}
 
-	if (!data->detail) {
+	if (!data->filename) {
 		radlog(L_ERR, "%s[%d]: No detail file specified in listen section",
 		       filename, lineno);
 		return -1;
