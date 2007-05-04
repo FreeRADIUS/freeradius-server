@@ -54,7 +54,11 @@ static VALUE_PAIR *pairalloc(DICT_ATTR *da)
 		strlcpy(vp->name, da->name, sizeof(vp->name));
 		vp->flags = da->flags;
 	} else {
+		vp->attribute = 0;
+		vp->vendor = 0;	
 		vp->type = PW_TYPE_OCTETS;
+		vp->name[0] = '\0';
+		memset(&vp->flags, 0, sizeof(vp->flags));
 	}
 
 	switch (vp->type) {
