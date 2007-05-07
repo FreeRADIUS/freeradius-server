@@ -31,8 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/smux.h>
 #include <freeradius-devel/radius_snmp.h>
 
-extern int need_reload;
-
 /*
  *	More globals (sigh);
  */
@@ -210,13 +208,13 @@ get_client(struct variable *v, oid objid[], size_t *objid_len, int exact)
 
 		return client_findbynumber(mainconfig.clients, i);
 	}
-	i = objid[v->namelen]-1;
 	*objid_len = v->namelen + 1;
 	if (!len || (objid[v->namelen] == 0)) {
 		objid[v->namelen]=1;
-		return client_findbynumber(mainconfig.clients, 0);;
+		return client_findbynumber(mainconfig.clients, 0);
 	}
 
+	i = objid[v->namelen]-1;
 	c = client_findbynumber(mainconfig.clients, i);
 	if (c) {
 		objid[v->namelen]++;
@@ -244,7 +242,7 @@ radServReset(int action, u_char *var_val, u_char var_val_type,
 				return SNMP_ERR_WRONGVALUE;
 			break;
 		case COMMIT:
-			need_reload = TRUE;
+			radius_signal_self(RADIUS_SIGNAL_SELF_HUP);
 			break;
 		case FREE:
 			break;
@@ -412,7 +410,6 @@ radAuthServ(struct variable *vp, oid *name, size_t *length, int exact,
 	/* return the current value of the variable */
 
 	switch (vp->magic) {
-
 		case RADIUSAUTHSERVIDENT:
 			*var_len = strlen(rad_snmp.auth.ident);
 			return (const unsigned char *) rad_snmp.auth.ident;
