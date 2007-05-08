@@ -285,9 +285,9 @@ do_again:
 		
 		if ((attr_vp->type == PW_TYPE_IPADDR) &&
 		    (attr_vp->vp_strvalue[0] == '\0')) {
-		  inet_ntop(AF_INET, &(attr_vp->vp_ipaddr),
-			    attr_vp->vp_strvalue,
-			    sizeof(attr_vp->vp_strvalue));
+			inet_ntop(AF_INET, &(attr_vp->vp_ipaddr),
+				  attr_vp->vp_strvalue,
+				  sizeof(attr_vp->vp_strvalue));
 		}
 
 		ptr = new_str;
@@ -325,8 +325,9 @@ do_again:
 				return ret;
 			}
 
-			strlcpy(ptr, ptr2,len);
+			memcpy(ptr, ptr2,len);
 			ptr += len;
+			*ptr = '\0';
 			ptr2 += pmatch[0].rm_eo;
 
 			if (i == 0){
@@ -380,8 +381,9 @@ do_again:
 				return ret;
 			}
 			if (replace_len){
-				strlcpy(ptr, replace_STR, replace_len);
+				memcpy(ptr, replace_STR, replace_len);
 				ptr += replace_len;
+				*ptr = '\0';
 			}
 		}
 		regfree(&preg);
@@ -392,7 +394,8 @@ do_again:
 					data->attribute, attr_vp->vp_strvalue);
 			return ret;
 		}
-		strlcpy(ptr, ptr2, len);
+		memcpy(ptr, ptr2, len);
+		ptr[len] = '\0';
 
 		DEBUG2("rlm_attr_rewrite: Changed value for attribute %s from '%s' to '%s'",
 				data->attribute, attr_vp->vp_strvalue, new_str);
