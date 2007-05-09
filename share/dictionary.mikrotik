@@ -18,7 +18,7 @@ ATTRIBUTE	Mikrotik-Group				3	string
 ATTRIBUTE	Mikrotik-Wireless-Forward		4	integer
 ATTRIBUTE	Mikrotik-Wireless-Skip-Dot1x		5	integer
 ATTRIBUTE	Mikrotik-Wireless-Enc-Algo		6	integer
-ATTRIBUTE	WMikrotik-ireless-Enc-Key		7	string
+ATTRIBUTE	Mikrotik-Wireless-Enc-Key		7	string
 ATTRIBUTE	Mikrotik-Rate-Limit			8	string
 ATTRIBUTE	Mikrotik-Realm				9	string
 
