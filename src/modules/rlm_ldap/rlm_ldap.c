@@ -2347,6 +2347,7 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 	VALUE_PAIR     *pairlist = NULL;
 	VALUE_PAIR     *newpair = NULL;
 	char		do_xlat = FALSE;
+	char		print_buffer[2048];
 
 	/*
 	 *	check if there is a mapping from this LDAP attribute
@@ -2444,11 +2445,6 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 					continue;
 				}
 
-				DEBUG("rlm_ldap: Adding LDAP attribute %s as RADIUS attribute %s %s %s",
-				      element->attr, element->radius_attr,
-				      lrad_int2str(tokens, operator, "?"),
-				      value);
-
 				/*
 				 *	Create the pair.
 				 */
@@ -2459,12 +2455,18 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 					radlog(L_ERR, "rlm_ldap: Failed to create the pair: %s", librad_errstr);
 					continue;
 				}
+
 				if (do_xlat) {
 					newpair->flags.do_xlat = 1;
 					strlcpy(newpair->vp_strvalue, buf,
 						sizeof(newpair->vp_strvalue));
 					newpair->length = 0;
 				}
+				vp_prints(print_buffer, sizeof(print_buffer),
+					  newpair);
+				DEBUG("rlm_ldap: LDAP attribute %s as RADIUS attribute %s",
+				      element->attr, print_buffer);
+
 
 				/*
 				 *	Add the pair into the packet.
