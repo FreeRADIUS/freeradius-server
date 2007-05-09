@@ -12,7 +12,7 @@ include ../Make.inc
 FILES = acct_users attrs attrs.access_reject attrs.accounting_response \
 	attrs.pre-proxy clients.conf dictionary	\
 	eap.conf experimental.conf hints huntgroups ldap.attrmap	\
-	mssql.conf naspasswd oraclesql.conf otp.conf postgresql.conf	\
+	 naspasswd otp.conf 	\
 	preproxy_users proxy.conf radiusd.conf radrelay.conf		\
 	realms snmp.conf sql.conf sqlippool.conf users
 
@@ -51,7 +51,7 @@ install:
 	fi
 	if [ ! -d $(R)$(raddbdir)/sql ]; then \
 		mkdir $(R)$(raddbdir)/sql; \
-		cp sql/* $(R)$(raddbdir)/sql 2>/dev/null || true; \
+		cp sql/*conf $(R)$(raddbdir)/sql 2>/dev/null || true; \
 	fi
 
 clean:
