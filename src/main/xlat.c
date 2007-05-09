@@ -375,6 +375,7 @@ static int xlat_regex(void *instance, REQUEST *request,
 }
 #endif				/* HAVE_REGEX_H */
 
+
 /*
  *	Compare two xlat_t structs, based ONLY on the module name.
  */
@@ -917,7 +918,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'd': /* request day */
-				TM = localtime_r(&request->received.tv_sec, &s_TM);
+				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%d", TM);
 				if (len > 0) {
 					strlcpy(q, tmpdt, freespace);
@@ -941,7 +942,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'm': /* request month */
-				TM = localtime_r(&request->received.tv_sec, &s_TM);
+				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%m", TM);
 				if (len > 0) {
 					strlcpy(q, tmpdt, freespace);
@@ -962,7 +963,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 't': /* request timestamp */
-				CTIME_R(&request->received.tv_sec, tmpdt, sizeof(tmpdt));
+				CTIME_R(&request->timestamp, tmpdt, sizeof(tmpdt));
 				nl = strchr(tmpdt, '\n');
 				if (nl) *nl = '\0';
 				strlcpy(q, tmpdt, freespace);
@@ -984,7 +985,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'D': /* request date */
-				TM = localtime_r(&request->received.tv_sec, &s_TM);
+				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%Y%m%d", TM);
 				if (len > 0) {
 					strlcpy(q, tmpdt, freespace);
@@ -993,7 +994,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'H': /* request hour */
-				TM = localtime_r(&request->received.tv_sec, &s_TM);
+				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%H", TM);
 				if (len > 0) {
 					strlcpy(q, tmpdt, freespace);
@@ -1016,7 +1017,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'S': /* request timestamp in SQL format*/
-				TM = localtime_r(&request->received.tv_sec, &s_TM);
+				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%Y-%m-%d %H:%M:%S", TM);
 				if (len > 0) {
 					strlcpy(q, tmpdt, freespace);
@@ -1025,7 +1026,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'T': /* request timestamp */
-				TM = localtime_r(&request->received.tv_sec, &s_TM);
+				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%Y-%m-%d-%H.%M.%S.000000", TM);
 				if (len > 0) {
 					strlcpy(q, tmpdt, freespace);
@@ -1043,7 +1044,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'Y': /* request year */
-				TM = localtime_r(&request->received.tv_sec, &s_TM);
+				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%Y", TM);
 				if (len > 0) {
 					strlcpy(q, tmpdt, freespace);
