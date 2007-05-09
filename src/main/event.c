@@ -685,6 +685,8 @@ static int setup_post_proxy_fail(REQUEST *request)
 					PW_POST_PROXY_TYPE, PW_TYPE_INTEGER);
 	vp->vp_integer = dval->value;
 
+	rad_assert(request->proxy_reply == NULL);
+
 	return 1;
 }
 
@@ -1729,6 +1731,7 @@ int received_request(rad_listen_t *listener,
 	request->next_callback = NULL;
 
 	gettimeofday(&request->received, NULL);
+	request->timestamp = request->received.tv_sec;
 	request->when = request->received;
 	request->delay = USEC / 10;
 
