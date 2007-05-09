@@ -39,7 +39,7 @@ rad_snmp_t		rad_snmp;
 
 #define RADACCOID  1,3,6,1,2,1,67,2,1,1,1
 #define RADAUTHOID 1,3,6,1,2,1,67,1,1,1,1
-#define RADIUSOID  1,3,6,1,4,1,3317,1,3,1
+#define RADIUSOID  1,3,6,1,4,1,11344,1,1,1
 
 static const oid radacc_oid [] = { RADACCOID };
 static const oid radauth_oid [] = { RADAUTHOID };

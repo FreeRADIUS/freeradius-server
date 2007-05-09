@@ -1278,7 +1278,7 @@ static int radius_snmp_recv(rad_listen_t *listener,
 
 static int radius_snmp_print(rad_listen_t *this, char *buffer, size_t bufsize)
 {
-	return snprintf(buffer, bufsize, "SMUX with OID .1.3.6.1.4.1.3317.1.3.1");
+	return snprintf(buffer, bufsize, "SMUX with OID .1.3.6.1.4.1.11344.1.1.1");
 }
 
 #endif
