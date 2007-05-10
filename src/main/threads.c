@@ -430,27 +430,6 @@ static void *request_handler_thread(void *arg)
 	RAD_REQUEST_FUNP  fun;
 	THREAD_HANDLE	  *self = (THREAD_HANDLE *) arg;
 
-#ifdef HAVE_PTHREAD_SIGMASK
-	sigset_t set;
-
-	/*
-	 *      Block SIGHUP handling for the child threads.
-	 *
-	 *      This ensures that only the main server thread will
-	 *      process HUP signals.
-	 *
-	 *      If we don't have sigprocmask, then it shouldn't be
-	 *      a problem, either, as the sig_hup handler should check
-	 *      for this condition.
-	 */
-	sigemptyset(&set);
-	sigaddset(&set, SIGHUP);
-	sigaddset(&set, SIGINT);
-	sigaddset(&set, SIGQUIT);
-	sigaddset(&set, SIGTERM);
-	pthread_sigmask(SIG_BLOCK, &set, NULL);
-#endif
-
 	/*
 	 *	Loop forever, until told to exit.
 	 */
