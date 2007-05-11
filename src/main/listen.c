@@ -41,12 +41,7 @@ RCSID("$Id$")
 
 #include <fcntl.h>
 
-static time_t start_time = 0;
-
-/*
- *	FIXME: Delete this crap!
- */
-extern time_t time_now;
+#define USEC (1000000)
 
 /*
  *	We'll use this below.
@@ -80,8 +75,14 @@ typedef struct listen_detail_t {
 	int		state;
 	time_t		timestamp;
 	lrad_ipaddr_t	client_ip;
-	int		max_outstanding;
-	int		*outstanding;
+	REQUEST		*request; /* can only be one at a time! */
+	int		load_factor; /* 1..100 */
+
+	int		has_rtt;
+	int		srtt;
+	int		rttvar;
+	int		delay_time;
+	struct timeval  last_packet;
 } listen_detail_t;
 			       
 
@@ -108,11 +109,6 @@ static RADCLIENT *client_listener_find(const rad_listen_t *listener,
 }
 
 static int listen_bind(rad_listen_t *this);
-
-/*
- *	FIXME: have the detail reader use another config "exit when done",
- *	so that it can be used as a one-off tool to update stuff.
- */
 
 /*
  *	Process and reply to a server-status request.
@@ -670,17 +666,112 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
  */
 static int detail_send(rad_listen_t *listener, REQUEST *request)
 {
+	int rtt;
+	struct timeval now;
 	listen_detail_t *data = listener->data;
 
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == detail_send);
 
-	if (request->simul_max >= 0) {
-		rad_assert(data->outstanding != NULL);
-		rad_assert(request->simul_max < data->max_outstanding);
-
-		data->outstanding[request->simul_max] = 0;
+	/*
+	 *	This request timed out.  We should probably re-send it
+	 *	again... forever.
+	 */
+	if (request->reply->code == 0) {
+		/*
+		 *	FIXME: do something sane!
+		 */
 	}
+
+	/*
+	 *	We call gettimeofday a lot.  But here it should be OK,
+	 *	because there's nothing else to do.
+	 */
+	gettimeofday(&now, NULL);
+
+	/*
+	 *	If we haven't sent a packet in the last second, reset
+	 *	the RTT.
+	 */
+	now.tv_sec -= 1;
+	if (timercmp(&data->last_packet, &now, <)) {
+		data->has_rtt = FALSE;
+	}
+	now.tv_sec += 1;
+
+	/*
+	 *	Only one detail packet may be outstanding at a time,
+	 *	so it's safe to update some entries in the detail
+	 *	structure.
+	 *
+	 *	We keep smoothed round trip time (SRTT), but not round
+	 *	trip timeout (RTO).  We use SRTT to calculate a rough
+	 *	load factor.
+	 */
+	rtt = now.tv_sec - request->received.tv_sec;
+	rtt *= USEC;
+	rtt += now.tv_usec;
+	rtt -= request->received.tv_usec;
+
+	/*
+	 *	If we're proxying, the RTT is our processing time,
+	 *	plus the network delay there and back, plus the time
+	 *	on the other end to process the packet.  Ideally, we
+	 *	should remove the network delays from the RTT, but we
+	 *	don't know what they are.
+	 *
+	 *	So, to be safe, we over-estimate the total cost of
+	 *	processing the packet.
+	 */
+	if (!data->has_rtt) {
+		data->has_rtt = TRUE;
+		data->srtt = rtt;
+		data->rttvar = rtt / 2;
+		
+	} else {
+		data->rttvar -= data->rttvar >> 2;
+		data->rttvar += (data->srtt - rtt);
+		data->srtt -= data->srtt >> 3;
+		data->srtt += rtt >> 3;
+	}
+	
+	/*
+	 *	Calculate the time we wait before sending the next
+	 *	packet.
+	 *
+	 *	rtt / (rtt + delay) = load_factor / 100
+	 */
+	data->delay_time = (data->srtt * (100 - data->load_factor)) / (data->load_factor);	
+
+	/*
+	 *	FIXME: Push this delay to the event handler!
+	 */
+	DEBUG2("RTT %d\tdelay %d", data->srtt, data->delay_time);
+
+	usleep(data->delay_time);
+
+	data->last_packet = now;
+
+	/*
+	 *	FIXME: Cache the LAST offset in the file where we
+	 *	successfully read a packet, and got a response.  Then
+	 *	when we re-open the file (say after a restart), we
+	 *	start reading from that offset, rather than from the
+	 *	beginning of the file again.
+	 *
+	 *	OR, put the offset into a comment in the first line of
+	 *	"detail.work" ?
+	 */
+	data->request = NULL;
+
+	/*
+	 *	Code in threads.c will take care performing self
+	 *	signalling that we can read from the detail file.
+	 *
+	 *	Even though this request is now done, there may be
+	 *	auth/acct requests pending that mean we shouldn't read
+	 *	the detail file.
+	 */
 
 	return 0;
 }
@@ -701,15 +792,6 @@ static int detail_open(rad_listen_t *this)
 	rad_assert(data->state == STATE_UNOPENED);
 	snprintf(buffer, sizeof(buffer), "%s.work", data->filename);
 	
-	/*
-	 *	FIXME: Have "one-shot" configuration, where it
-	 *	will read the detail file, and exit once it's
-	 *	done.
-	 *
-	 *	FIXME: Try harder to open the detail file.
-	 *	Maybe sleep for X usecs if it doesn't exist?
-	 */
-
 	/*
 	 *	Open detail.work first, so we don't lose
 	 *	accounting packets.  It's probably better to
@@ -774,7 +856,7 @@ static int detail_open(rad_listen_t *this)
 }
 
 /*
- *	This is a bad hack, just so complaints have meaningful text.
+ *	FIXME: this should be dynamically allocated.
  */
 static const RADCLIENT detail_client = {
 	{		/* ipaddr */
@@ -789,7 +871,15 @@ static const RADCLIENT detail_client = {
 	"",
 	"",
 	-1
+#ifdef WITH_SNMP
+	, NULL, NULL
+#endif
 };
+
+/*
+ *	FIXME: add a configuration "exit when done" so that the detail
+ *	file reader can be used as a one-off tool to update stuff.
+ */
 
 static int detail_recv(rad_listen_t *listener,
 		       RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
@@ -800,14 +890,14 @@ static int detail_recv(rad_listen_t *listener,
 	RADIUS_PACKET	*packet;
 	char		buffer[2048];
 	listen_detail_t *data = listener->data;
+	REQUEST		*old_request;
 
 	if (data->state == STATE_UNOPENED) {
 		rad_assert(listener->fd < 0);
 
 		/*
-		 *	FIXME: 'stat' the detail file.  If it doesn't
-		 *	exist, then return "sleep for 1s", to avoid
-		 *	busy looping.
+		 *	FIXME: If the file doesn't exist, then return
+		 *	"sleep for 1s", to avoid busy looping.
 		 */
 		if (!detail_open(listener)) return 0;
 	}
@@ -837,11 +927,26 @@ static int detail_recv(rad_listen_t *listener,
 		data->state = STATE_HEADER;
 	}
 
+
 	/*
 	 *	Catch an out of memory condition which will most likely
 	 *	never be met.
 	 */
 	if (data->state == STATE_DONE) goto alloc_packet;
+
+	/*
+	 *	We still have an outstanding packet.  Don't read any
+	 *	more.
+	 */
+	old_request = data->request; /* threading issues */
+	if (old_request && old_request->reply->code == 0) {
+		/*
+		 *	FIXME: return "don't do anything until the
+		 *	request is done, AND we receive another signal
+		 *	saying it's OK to read the detail file.
+		 */
+		return 0;
+	}
 
 	/*
 	 *	We read the last packet, and returned it for
@@ -855,21 +960,12 @@ static int detail_recv(rad_listen_t *listener,
 		}
 
 		/*
-		 *	Don't unlink the file until we've received
-		 *	all of the responses.
+		 *	If there's a pending request, don't delete the
+		 *	file.
 		 */
-		if (data->max_outstanding > 0) {
-			int i;
-
-			for (i = 0; i < data->max_outstanding; i++) {
-				/*
-				 *	FIXME: close the file?
-				 */
-				if (data->outstanding[i]) {
-					data->state = STATE_WAITING;
-					return 0;
-				}
-			}
+		if (data->request) {
+			data->state = STATE_WAITING;
+			return 0;
 		}
 
 	cleanup:
@@ -1013,33 +1109,7 @@ static int detail_recv(rad_listen_t *listener,
 	 *	problem.
 	 */
  alloc_packet:
-	/*
-	 *	If we keep track of the outstanding requests, do so
-	 *	here.  Note that to minimize potential work, we do
-	 *	so only once the file is opened & locked.
-	 */
-	if (data->max_outstanding) {
-		int i;
-
-		for (i = 0; i < data->max_outstanding; i++) {
-			if (!data->outstanding[i]) {
-				free_slot = i;
-				break;
-			}
-		}
-
-		/*
-		 *	All of the slots are full.  Put the LF back,
-		 *	so select will say that data is ready, and set
-		 *	the state back to reading.  Then, return so
-		 *	that we don't overload the server.
-		 */
-		if (free_slot < 0) {
-			ungetc('\n', data->fp);
-			data->state = STATE_READING;
-			return 0;
-		}
-	}
+	rad_assert(data->request == NULL);
 
 	packet = rad_alloc(1);
 	if (!packet) {
@@ -1127,13 +1197,6 @@ static int detail_recv(rad_listen_t *listener,
 		vp->vp_integer += time(NULL) - data->timestamp;
 	}
 
-	/*
-	 *	Keep track of free slots, as a hack, in an otherwise
-	 *	unused 'int'
-	 */
-	(*prequest)->simul_max = free_slot;
-	data->outstanding[free_slot] = 1;
-
 	*pfun = rad_accounting;
 
 	if (debug_flag) {
@@ -1167,7 +1230,6 @@ static void detail_free(rad_listen_t *this)
 
 	free(data->filename);
 	pairfree(&data->vps);
-	free(data->outstanding);
 
 	if (data->fp != NULL) fclose(data->fp);
 }
@@ -1199,8 +1261,8 @@ static int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 static const CONF_PARSER detail_config[] = {
 	{ "filename",   PW_TYPE_STRING_PTR,
 	  offsetof(listen_detail_t, filename), NULL,  NULL },
-	{ "max_outstanding",  PW_TYPE_INTEGER,
-	   offsetof(listen_detail_t, max_outstanding), NULL, "100" },
+	{ "load_factor",   PW_TYPE_INTEGER,
+	  offsetof(listen_detail_t, load_factor), NULL, Stringify(10)},
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -1230,16 +1292,15 @@ static int detail_parse(const char *filename, int lineno,
 		return -1;
 	}
 	
+	if ((data->load_factor < 1) || (data->load_factor > 100)) {
+		radlog(L_ERR, "%s[%d]: Load factor must be between 1 and 100",
+		       filename, lineno);
+		return -1;
+	}
+	
 	data->vps = NULL;
 	data->fp = NULL;
 	data->state = STATE_UNOPENED;
-
-	if (data->max_outstanding > 32768) data->max_outstanding = 32768;
-
-	if (data->max_outstanding > 0) {
-		data->outstanding = rad_malloc(sizeof(int) * data->max_outstanding);
-	}
-	
 	detail_open(this);
 
 	return 0;
@@ -1482,6 +1543,9 @@ rad_listen_t *proxy_new_listener()
 
 	/*
 	 *	FIXME: find a new IP address to listen on?
+	 *
+	 *	This could likely be done in the "home server"
+	 *	configuration, to have per-home-server source IP's.
 	 */
 	sock = this->data;
 	memcpy(&sock->ipaddr, &old->ipaddr, sizeof(sock->ipaddr));
@@ -1531,8 +1595,6 @@ int listen_init(const char *filename, rad_listen_t **head)
 	 */
 	rad_assert(head && (*head == NULL));
 	
-	if (start_time != 0) start_time = time(NULL);
-
 	last = head;
 	server_ipaddr.af = AF_UNSPEC;
 
@@ -1827,28 +1889,6 @@ int listen_init(const char *filename, rad_listen_t **head)
 		last = &(this->next);
 	}
 #endif
-
-	/*
-	 *	Sanity check the configuration.
-	 */
-	rcode = 0;
-	if (mainconfig.listen != NULL) for (this = *head;
-					    this != NULL;
-					    this = this->next) {
-		if (((this->type == RAD_LISTEN_ACCT) &&
-		     (rcode == RAD_LISTEN_DETAIL)) ||
-		    ((this->type == RAD_LISTEN_DETAIL) &&
-		     (rcode == RAD_LISTEN_ACCT))) {
-			rad_assert(0 == 1); /* FIXME: configuration error */
-		}
-
-		if (rcode != 0) continue;
-
-		if ((this->type == RAD_LISTEN_ACCT) ||
-		    (this->type == RAD_LISTEN_DETAIL)) {
-			rcode = this->type;
-		}
-	}
 
  done:
 	return 0;
