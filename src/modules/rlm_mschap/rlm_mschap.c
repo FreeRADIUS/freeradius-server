@@ -305,7 +305,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 {
 	int		i, data_len;
 	uint8_t		*data = NULL;
-	uint8_t		buffer[8];
+	uint8_t		buffer[32];
 	VALUE_PAIR	*user_name;
 	VALUE_PAIR	*chap_challenge, *response;
 	rlm_mschap_t	*inst = instance;
@@ -551,6 +551,39 @@ static int mschap_xlat(void *instance, REQUEST *request,
 
 		return strlen(out);
 
+		/*
+		 * Return the NT-Hash of the passed string
+		 */
+	} else if (strncasecmp(fmt, "NT-Hash ", 8) == 0) {
+		char *p;
+
+		p = fmt + 8;	/* 7 is the length of 'NT-Hash' */
+		if ((p == '\0')	 || (outlen <= 32))
+			return 0;
+		DEBUG("rlm_mschap: NT-Hash: %s",p);
+		ntpwdhash(buffer,p);
+
+		lrad_bin2hex(buffer, out, 16);
+		out[32] = '\0';
+		DEBUG("rlm_mschap: NT-Hash: Result: %s",out);
+		return 32;
+
+		/*
+		 * Return the LM-Hash of the passed string
+		 */
+	} else if (strncasecmp(fmt, "LM-Hash ", 8) == 0) {
+		char *p;
+
+		p = fmt + 8;	/* 7 is the length of 'LM-Hash' */
+		if ((p == '\0') || (outlen <= 32))
+			return 0;
+			
+		DEBUG("rlm_mschap: LM-Hash: %s",p);
+		smbdes_lmpwdhash(p,buffer);
+		lrad_bin2hex(buffer, out, 16);
+		out[32] = '\0';
+		DEBUG("rlm_mschap: LM-Hash: Result: %s",out);
+		return 32;
 	} else {
 		DEBUG2("  rlm_mschap: Unknown expansion string \"%s\"",
 		       fmt);
