@@ -559,7 +559,7 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 }
 
 
-static int old_server_add(const char *filename, int lineno,
+static int old_server_add(const char *filename, int lineno, const char *realm,
 			  const char *name, const char *secret,
 			  home_pool_type_t ldflag, home_pool_t **pool_p,
 			  int type)
@@ -580,7 +580,7 @@ static int old_server_add(const char *filename, int lineno,
 		return 1;
 	}
 
-	mypool.name = name;
+	mypool.name = realm;
 	pool = rbtree_finddata(home_pools_byname, &mypool);
 	if (pool) {
 		if (pool->type != ldflag) {
@@ -751,16 +751,16 @@ static int old_server_add(const char *filename, int lineno,
 	 *	Count the old-style realms of this name.
 	 */
 	num_home_servers = 0;
-	for (cs = cf_section_sub_find_name2(mainconfig.config, "realm", name);
+	for (cs = cf_section_sub_find_name2(mainconfig.config, "realm", realm);
 	     cs != NULL;
-	     cs = cf_section_sub_find_name2(cs, "realm", name)) {
+	     cs = cf_section_sub_find_name2(cs, "realm", realm)) {
 		num_home_servers++;
 	}
 
 	pool = rad_malloc(sizeof(*pool) + num_home_servers * sizeof(pool->servers[0]));
 	memset(pool, 0, sizeof(*pool) + num_home_servers * sizeof(pool->servers[0]));
 
-	pool->name = name;
+	pool->name = realm;
 	pool->type = ldflag;
 	pool->server_type = type;
 	pool->num_home_servers = num_home_servers;
@@ -815,7 +815,7 @@ static int old_realm_config(const char *filename, CONF_SECTION *cs, REALM *r)
 		DEBUG2("\tauthhost = %s",  host);
 
 		if (!old_server_add(filename, cf_section_lineno(cs),
-				    host, secret, ldflag,
+				    r->name, host, secret, ldflag,
 				    &r->auth_pool, HOME_TYPE_AUTH)) {
 			return 0;
 		}
@@ -832,7 +832,7 @@ static int old_realm_config(const char *filename, CONF_SECTION *cs, REALM *r)
 		DEBUG2("\taccthost = %s", host);
 
 		if (!old_server_add(filename, cf_section_lineno(cs),
-				    host, secret, ldflag,
+				    r->name, host, secret, ldflag,
 				    &r->acct_pool, HOME_TYPE_ACCT)) {
 			return 0;
 		}
