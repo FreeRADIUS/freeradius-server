@@ -287,7 +287,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 	 *	Challenge means MS-CHAPv1 challenge, or
 	 *	hash of MS-CHAPv2 challenge, and peer challenge.
 	 */
-	if (strcasecmp(fmt, "Challenge") == 0) {
+	if (strncasecmp(fmt, "Challenge", 9) == 0) {
 		chap_challenge = pairfind(request->packet->vps,
 					  PW_MSCHAP_CHALLENGE);
 		if (!chap_challenge) {
@@ -368,7 +368,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		 *	Get the MS-CHAPv1 response, or the MS-CHAPv2
 		 *	response.
 		 */
-	} else if (strcasecmp(fmt, "NT-Response") == 0) {
+	} else if (strncasecmp(fmt, "NT-Response", 11) == 0) {
 		response = pairfind(request->packet->vps,
 				    PW_MSCHAP_RESPONSE);
 		if (!response) response = pairfind(request->packet->vps,
@@ -400,7 +400,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		 *	LM-Response is deprecated, and exists only
 		 *	in MS-CHAPv1, and not often there.
 		 */
-	} else if (strcasecmp(fmt, "LM-Response") == 0) {
+	} else if (strncasecmp(fmt, "LM-Response", 11) == 0) {
 		response = pairfind(request->packet->vps,
 				    PW_MSCHAP_RESPONSE);
 		if (!response) {
@@ -422,7 +422,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		/*
 		 *	Pull the NT-Domain out of the User-Name, if it exists.
 		 */
-	} else if (strcasecmp(fmt, "NT-Domain") == 0) {
+	} else if (strncasecmp(fmt, "NT-Domain", 9) == 0) {
 		char *p, *q;
 
 		user_name = pairfind(request->packet->vps, PW_USER_NAME);
@@ -477,7 +477,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		/*
 		 *	Pull the User-Name out of the User-Name...
 		 */
-	} else if (strcasecmp(fmt, "User-Name") == 0) {
+	} else if (strncasecmp(fmt, "User-Name", 9) == 0) {
 		char *p;
 
 		user_name = pairfind(request->packet->vps, PW_USER_NAME);
