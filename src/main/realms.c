@@ -757,7 +757,6 @@ static int old_server_add(const char *filename, int lineno,
 		num_home_servers++;
 	}
 
-
 	pool = rad_malloc(sizeof(*pool) + num_home_servers * sizeof(pool->servers[0]));
 	memset(pool, 0, sizeof(*pool) + num_home_servers * sizeof(pool->servers[0]));
 
@@ -789,11 +788,11 @@ static int old_realm_config(const char *filename, CONF_SECTION *cs, REALM *r)
 	if (!host ||
 	    (strcasecmp(host, "fail_over") == 0)) {
 		ldflag = HOME_POOL_FAIL_OVER;
-		DEBUG2("\tldflag = fail_over", r->name);
+		DEBUG2("\tldflag = fail_over");
 
 	} else if (strcasecmp(host, "round_robin") == 0) {
 		ldflag = HOME_POOL_LOAD_BALANCE;
-		DEBUG2("\tldflag = round_robin", r->name);
+		DEBUG2("\tldflag = round_robin");
 
 	} else {
 		radlog(L_ERR, "%s[%d]: Unknown value \"%s\" for ldflag",
@@ -813,7 +812,7 @@ static int old_realm_config(const char *filename, CONF_SECTION *cs, REALM *r)
 			return 0;
 		}
 
-		DEBUG2("\tauthhost = %s",  r->name, host);
+		DEBUG2("\tauthhost = %s",  host);
 
 		if (!old_server_add(filename, cf_section_lineno(cs),
 				    host, secret, ldflag,
@@ -830,16 +829,16 @@ static int old_realm_config(const char *filename, CONF_SECTION *cs, REALM *r)
 			return 0;
 		}
 
-		DEBUG2("\taccthost = %s", r->name, host);
+		DEBUG2("\taccthost = %s", host);
 
 		if (!old_server_add(filename, cf_section_lineno(cs),
 				    host, secret, ldflag,
-				    &r->auth_pool, HOME_TYPE_ACCT)) {
+				    &r->acct_pool, HOME_TYPE_ACCT)) {
 			return 0;
 		}
 	}
 
-	if (secret) DEBUG2("\tsecret = %s", r->name, secret);
+	if (secret) DEBUG2("\tsecret = %s", secret);
 
 	return 1;
 	
