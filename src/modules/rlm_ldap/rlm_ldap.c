@@ -90,6 +90,18 @@ int nmasldap_get_password(
 	char     *pwd );
 
 #endif
+
+#ifdef NOVELL
+                                                                                                                             
+#define REQUEST_ACCEPTED   0
+#define REQUEST_CHALLENGED 1
+#define REQUEST_REJECTED   2
+#define MAX_CHALLENGE_LEN  128
+
+int radLdapXtnNMASAuth( LDAP *, char *, char *, char *, char *, size_t *, char *, int * );
+                                                                                                                             
+#endif
+
 /* linked list of mappings between RADIUS attributes and LDAP attributes */
 struct TLDAP_RADIUS {
 	char*                 attr;
@@ -472,6 +484,10 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	 *	eDirectory APC has been completed
 	 */
 	dict_addattr("eDir-APC", 0, PW_TYPE_STRING, -1, flags);
+	/*
+	 *	eDir-Auth-Option allows for a different NMAS Authentication method to be used instead of password
+	 */
+	dict_addattr("eDir-Auth-Option", 0, PW_TYPE_STRING, -1, flags);
 #endif
 
 	if (inst->num_conns <= 0){
@@ -548,6 +564,9 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		atts_num++;
 	if (inst->access_attr)
 		atts_num++;
+#ifdef NOVELL
+		atts_num++;	/* eDirectory Authentication Option attribute */
+#endif
 	inst->atts = (char **)malloc(sizeof(char *)*(atts_num + 1));
 	if (inst->atts == NULL){
 		radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
@@ -557,7 +576,11 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	pair = inst->check_item_map;
 	if (pair == NULL)
 		pair = inst->reply_item_map;
-	for(i=0;i<atts_num;i++){
+#ifdef NOVELL
+	for(i=0;i<atts_num - 1;i++){
+#else
+ 	for(i=0;i<atts_num;i++){
+#endif
 		if (i <= check_map_num ){
 			inst->atts[i] = pair->attr;
 			if (i == check_map_num)
@@ -584,6 +607,9 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 			}
 		}
 	}
+#ifdef NOVELL
+	inst->atts[atts_num - 1] = "sasdefaultloginsequence";
+#endif
 	inst->atts[atts_num] = NULL;
 
 	DEBUG("conns: %p",inst->conns);
@@ -1573,7 +1599,31 @@ static int ldap_authorize(void *instance, REQUEST * request)
 #endif
 	}
 
+#ifdef NOVELL
+	{
+		VALUE_PAIR      *vp_auth_opt;
+		DICT_ATTR       *dattr;
+		char            **auth_option;
+		int             auth_opt_attr;
 
+		dattr = dict_attrbyname("eDir-Auth-Option");
+		auth_opt_attr = dattr->attr;
+		if(pairfind(*check_pairs, auth_opt_attr) == NULL){
+			if ((auth_option = ldap_get_values(conn->ld, msg, "sasDefaultLoginSequence")) != NULL) {
+				if ((vp_auth_opt = paircreate(auth_opt_attr, PW_TYPE_STRING)) == NULL){
+					radlog(L_ERR, "rlm_ldap: Could not allocate memory. Aborting.");
+					ldap_msgfree(result);
+					ldap_release_conn(conn_id, inst->conns);
+				}
+				strcpy(vp_auth_opt->strvalue, auth_option[0]);
+				vp_auth_opt->length = strlen(auth_option[0]);
+				pairadd(&request->config_items, vp_auth_opt);
+			}else{
+				DEBUG("rlm_ldap: No default NMAS login sequence");
+			}
+		}
+	}
+#endif
 
 	DEBUG("rlm_ldap: looking for check items in directory...");
 
@@ -1771,8 +1821,148 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 	ld_user = ldap_connect(instance, user_dn, request->password->vp_strvalue,
 			       1, &res, NULL);
 #else
-	
-	ld_user = ldap_connect(instance, user_dn, request->password->vp_strvalue,
+	/* Don't perform eDirectory APC again after attempting to bind here. */
+	{
+		int apc_attr;
+		DICT_ATTR *dattr;
+		VALUE_PAIR *vp_apc;
+		VALUE_PAIR      *vp_auth_opt, *vp_state;
+		int auth_opt_attr;
+		char seq[256];
+		char host_ipaddr[32];
+		LDAP_CONN       *conn1;
+		int auth_state = -1;
+		char            *challenge = NULL;
+		int             challenge_len = MAX_CHALLENGE_LEN;
+		char            *state = NULL;
+
+		dattr = dict_attrbyname("eDir-APC");
+		apc_attr = dattr->attr;
+		vp_apc = pairfind(request->config_items, apc_attr);
+		if(vp_apc && vp_apc->vp_strvalue[0] == '2')
+			vp_apc->vp_strvalue[0] = '3';
+
+		res = 0;
+
+		dattr = dict_attrbyname("eDir-Auth-Option");
+		auth_opt_attr = dattr->attr;
+
+		vp_auth_opt = pairfind(request->config_items, auth_opt_attr);
+
+		if(vp_auth_opt )
+		{
+			DEBUG("rlm_ldap: ldap auth option = %s", vp_auth_opt->strvalue);
+			strncpy(seq, vp_auth_opt->strvalue, vp_auth_opt->length);
+			seq[vp_auth_opt->length] = '\0';
+			if( strcmp(seq, "<No Default>") ){
+
+				/* Get the client IP address to check for packet validity */
+				inet_ntop(AF_INET, &request->packet->src_ipaddr, host_ipaddr, sizeof(host_ipaddr));
+
+				/* challenge variable is used to receive the challenge from the
+				 * Token method (if any) and also to send the state attribute
+				 * in case the request packet is a reply to a challenge
+				 */
+				challenge = rad_malloc(MAX_CHALLENGE_LEN);
+
+				/*  If state attribute present in request it is a reply to challenge. */
+				if((vp_state = pairfind(request->packet->vps, PW_STATE))!= NULL ){
+					DEBUG("rlm_ldap: Response to Access-Challenge");
+					strncpy(challenge, vp_state->strvalue, sizeof(challenge));
+					challenge_len = vp_state->length;
+					challenge[challenge_len] = 0;
+					auth_state = -2;
+				}
+
+				if ((conn_id = ldap_get_conn(inst->conns, &conn1, inst)) == -1){
+					radlog(L_ERR, "rlm_ldap: All ldap connections are in use");
+					res =  RLM_MODULE_FAIL;
+				}
+
+				if(!conn1){
+					radlog(L_ERR, "rlm_ldap: NULL connection handle passed");
+					return RLM_MODULE_FAIL;
+				}
+
+				if (conn1->failed_conns > MAX_FAILED_CONNS_START){
+					conn1->failed_conns++;
+					if (conn1->failed_conns >= MAX_FAILED_CONNS_END){
+						conn1->failed_conns = MAX_FAILED_CONNS_RESTART;
+						conn1->bound = 0;
+					}
+				}
+retry:
+				if (!conn1->bound || conn1->ld == NULL) {
+					DEBUG2("rlm_ldap: attempting LDAP reconnection");
+					if (conn1->ld){
+						DEBUG2("rlm_ldap: closing existing LDAP connection");
+						ldap_unbind_s(conn1->ld);
+					}
+					if ((conn1->ld = ldap_connect(instance, inst->login,inst->password, 0, &res, NULL)) == NULL) {
+						radlog(L_ERR, "rlm_ldap: (re)connection attempt failed");
+						conn1->failed_conns++;
+						return (RLM_MODULE_FAIL);
+					}
+					conn1->bound = 1;
+					conn1->failed_conns = 0;
+				}
+				DEBUG("rlm_ldap: Performing NMAS Authentication for user: %s, seq: %s \n", user_dn,seq);
+
+				res = radLdapXtnNMASAuth(conn1->ld, user_dn, request->password->strvalue, seq, host_ipaddr, &challenge_len, challenge, &auth_state );
+
+				switch(res){
+					case LDAP_SUCCESS:
+						ldap_release_conn(conn_id,inst->conns);
+						if ( auth_state == -1)
+							res = RLM_MODULE_FAIL;
+						if ( auth_state != REQUEST_CHALLENGED){
+							if (auth_state == REQUEST_ACCEPTED){
+								DEBUG("rlm_ldap: user %s authenticated succesfully",request->username->strvalue);
+								res = RLM_MODULE_OK;
+							}else if(auth_state == REQUEST_REJECTED){
+								DEBUG("rlm_ldap: user %s authentication failed",request->username->strvalue);
+								res = RLM_MODULE_REJECT;
+							}
+						}else{
+							/* Request challenged. Generate Reply-Message attribute with challenge data */
+							pairadd(&request->reply->vps,pairmake("Reply-Message", challenge, T_OP_EQ));
+							/* Generate state attribute */
+							state = rad_malloc(MAX_CHALLENGE_LEN);
+							(void) sprintf(state, "%s%s", challenge, challenge);
+							vp_state = paircreate(PW_STATE, PW_TYPE_OCTETS);
+							memcpy(vp_state->strvalue, state, strlen(state));
+							vp_state->length = strlen(state);
+							pairadd(&request->reply->vps, vp_state);
+							free(state);
+							/* Mark the packet as a Acceess-Challenge Packet */
+							request->reply->code = PW_ACCESS_CHALLENGE;
+							DEBUG("rlm_ldap: Sending Access-Challenge.");
+							res = RLM_MODULE_HANDLED;
+						}
+						if(challenge)
+							free(challenge);
+						return res;
+					case LDAP_SERVER_DOWN:
+						radlog(L_ERR, "rlm_ldap: nmas authentication failed: LDAP connection lost.");                                                conn->failed_conns++;
+						if (conn->failed_conns <= MAX_FAILED_CONNS_START){
+							radlog(L_INFO, "rlm_ldap: Attempting reconnect");
+							conn->bound = 0;
+							goto retry;
+						}
+						if(challenge)
+							free(challenge);
+						return RLM_MODULE_FAIL;
+					default:
+						ldap_release_conn(conn_id,inst->conns);
+						if(challenge)
+							free(challenge);
+						return RLM_MODULE_FAIL;
+				}
+			}
+		}
+ 	}
+
+	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
 			1, &res, &err);
 
 	if(err != NULL){
@@ -1780,19 +1970,6 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 		DEBUG("rlm_ldap: %s", err);
 		pairadd(&request->reply->vps, pairmake("Reply-Message", err, T_OP_EQ));
 		ldap_memfree((void *)err);
-	}
-
-	/* Don't perform eDirectory APC again after attempting to bind here. */
-	{
-		int apc_attr;
-		DICT_ATTR *dattr;
-		VALUE_PAIR *vp_apc;
-
-		dattr = dict_attrbyname("eDir-APC");
-		apc_attr = dattr->attr;
-		vp_apc = pairfind(request->config_items, apc_attr);
-		if(vp_apc && vp_apc->vp_strvalue[0] == '2')
-			vp_apc->vp_strvalue[0] = '3';
 	}
 #endif
 
