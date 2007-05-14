@@ -202,6 +202,17 @@ static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 		request->in_proxy_hash = FALSE;
 	}
 
+	/*
+	 *	On the FIRST reply, decrement the count of outstanding
+	 *	requests.  Note that this is NOT the count of sent
+	 *	packets, but whether or not the home server has
+	 *	responded at all.
+	 */
+	if (!request->proxy_reply &&
+	    request->home_server->currently_outstanding) {
+		request->home_server->currently_outstanding--;
+	}
+
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 	return request;
@@ -213,12 +224,20 @@ static void remove_from_proxy_hash(REQUEST *request)
 	if (!request->in_proxy_hash) return;
 
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-	if (request->home_server->currently_outstanding) {
-		request->home_server->currently_outstanding--;
-	}
 	lrad_packet_list_yank(proxy_list, request->proxy);
 	lrad_packet_list_id_free(proxy_list, request->proxy);
-	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+
+	/*
+	 *	The home server hasn't replied, but we've given up on
+	 *	this request.  Don't count this request against the
+	 *	home server.
+	 */
+	if (!request->proxy_reply &&
+	    request->home_server->currently_outstanding) {
+		request->home_server->currently_outstanding--;
+	}
+
+  	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 	request->in_proxy_hash = FALSE;
 }
@@ -635,7 +654,7 @@ static void check_for_zombie_home_server(REQUEST *request)
 	 *	It's been a zombie for too long, mark it as
 	 *	dead.
 	 */
-	DEBUG2("FAILURE: Home server %s port %d is dead.",
+	DEBUG2("FAILURE: Marking home server %s port %d as dead.",
 	       inet_ntop(request->proxy->dst_ipaddr.af,
 			 &request->proxy->dst_ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
@@ -770,7 +789,7 @@ static void no_response_to_proxied_request(void *ctx)
 	 *	sent.
 	 */
 	if (home->state == HOME_STATE_ALIVE) {
-		DEBUG2("WARNING: Home server %s port %d may be dead.",
+		DEBUG2("WARNING: Marking home server %s port %d as zombie (it looks like it is dead).",
 		       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
 		       home->port);
@@ -1311,7 +1330,7 @@ static void request_post_handler(REQUEST *request)
 	 */
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		gettimeofday(&request->next_when, NULL);
-
+	  
 		if (request->reply->code == 0) {
 			DEBUG2("There was no response configured: rejecting request %d",
 			       request->number);
