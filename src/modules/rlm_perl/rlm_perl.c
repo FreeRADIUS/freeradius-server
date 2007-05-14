@@ -750,12 +750,12 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 
 #ifdef USE_ITHREADS
 	inst->perl = interp;
-	
+
 	if ((inst->perl = perl_alloc()) == NULL) {
 		radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
 		return (-1);
 	}
-		
+
 	perl_construct(inst->perl);
 	PL_perl_destruct_level = 2;
 
@@ -989,7 +989,7 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	perl_store_vps(request->config_items, rad_check_hv);
 	perl_store_vps(request->packet->vps, rad_request_hv);
 	perl_store_vps(request->config_items, rad_config_hv);
-	
+
 	if (request->proxy != NULL) {
 		perl_store_vps(request->proxy->vps, rad_request_proxy_hv);
 	} else {
@@ -1000,8 +1000,8 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 		perl_store_vps(request->proxy_reply->vps, rad_request_proxy_reply_hv);
 	} else {
 		hv_undef(rad_request_proxy_reply_hv);
-	}	
-	
+	}
+
 	PUSHMARK(SP);
 	/*
 	* This way %RAD_xx can be pushed onto stack as sub parameters.
@@ -1028,12 +1028,12 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 			exitstatus = RLM_MODULE_FAIL;
 		}
 	}
-	
+
 
 	PUTBACK;
 	FREETMPS;
 	LEAVE;
-	
+
 	vp = NULL;
 	if ((get_hv_content(rad_request_hv, &vp)) > 0 ) {
 		pairfree(&request->packet->vps);
@@ -1063,7 +1063,7 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 		request->config_items = vp;
 		vp = NULL;
 	}
-	
+
 	if (request->proxy &&
 	    (get_hv_content(rad_request_proxy_hv, &vp) > 0)) {
 		pairfree(&request->proxy->vps);

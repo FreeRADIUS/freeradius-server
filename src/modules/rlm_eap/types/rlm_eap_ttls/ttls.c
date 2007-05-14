@@ -128,7 +128,7 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
 			DEBUG2("  rlm_eap_ttls: Tunneled attribute %d is too long (%d) to pack into a RADIUS attribute.", attr, length);
 			return 0;
 		}
-		    
+
 		if (length > data_left) {
 			DEBUG2("  rlm_eap_ttls: Tunneled attribute %d is longer than room left in the packet (%d > %d).", attr, length, data_left);
 			return 0;
@@ -159,7 +159,7 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
 			DEBUG2("  rlm_eap_ttls: ERROR! Diameter attribute overflows packet!");
 			return 0;
 		}
-	
+
 		/*
 		 *	Check again for equality, now that we're padded
 		 *	length to a multiple of 4 octets.
@@ -268,13 +268,13 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 				return NULL;
 			}
 			memcpy(&vp->vp_integer, data, vp->length);
-			
+
 			/*
 			 *	Stored in host byte order: change it.
 			 */
 			vp->vp_integer = ntohl(vp->vp_integer);
 			break;
-			
+
 		case PW_TYPE_IPADDR:
 			if (size != vp->length) {
 				DEBUG2("  rlm_eap_ttls: Invalid length attribute %d",
@@ -284,7 +284,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 				return NULL;
 			}
 		  memcpy(&vp->vp_ipaddr, data, vp->length);
-		  
+
 		  /*
 		   *	Stored in network byte order: don't change it.
 		   */
@@ -617,7 +617,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			DEBUG2("  TTLS: Got MS-CHAP2-Success, tunneling it to the client in a challenge.");
 			rcode = RLM_MODULE_HANDLED;
 			t->authenticated = TRUE;
-			
+
 			/*
 			 *	Delete MPPE keys & encryption policy.  We don't
 			 *	want these here.
@@ -626,7 +626,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			pairdelete(&reply->vps, ((311 << 16) | 8));
 			pairdelete(&reply->vps, ((311 << 16) | 16));
 			pairdelete(&reply->vps, ((311 << 16) | 17));
-			
+
 			/*
 			 *	Use the tunneled reply, but not now.
 			 */
@@ -754,7 +754,7 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 	fake = (REQUEST *) request_data_get(handler->request,
 					    handler->request->proxy,
 					    REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK);
-	
+
 	/*
 	 *	Do the callback, if it exists, and if it was a success.
 	 */
@@ -785,7 +785,7 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 		if (debug_flag > 0) {
 			printf("  TTLS: Final reply from tunneled session code %d\n",
 			       fake->reply->code);
-			
+
 			for (vp = fake->reply->vps; vp != NULL; vp = vp->next) {
 				putchar('\t');vp_print(stdout, vp);putchar('\n');
 			}
@@ -810,12 +810,12 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 			eaptls_fail(handler->eap_ds, 0);
 			return 0;
 			break;
-			
+
                 default:  /* Don't Do Anything */
 			DEBUG2(" TTLS: Got reply %d",
 			       request->proxy_reply->code);
 			break;
-		}	
+		}
 	}
 	request_free(&fake);	/* robust if fake == NULL */
 
@@ -991,7 +991,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 #ifndef NDEBUG
 	if (debug_flag > 0) {
 		printf("  TTLS: Got tunneled request\n");
-		
+
 		for (vp = fake->packet->vps; vp != NULL; vp = vp->next) {
 			putchar('\t');vp_print(stdout, vp);putchar('\n');
 		}
@@ -1218,7 +1218,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 						 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
 						 tunnel, free);
 			rad_assert(rcode == 0);
-			
+
 			/*
 			 *	rlm_eap.c has taken care of associating
 			 *	the handler with the fake request.
@@ -1257,15 +1257,15 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		case RLM_MODULE_REJECT:
 			rcode = PW_AUTHENTICATION_REJECT;
 			break;
-			
+
 		case RLM_MODULE_HANDLED:
 			rcode = PW_ACCESS_CHALLENGE;
 			break;
-			
+
 		case RLM_MODULE_OK:
 			rcode = PW_AUTHENTICATION_ACK;
 			break;
-			
+
 		default:
 			rcode = PW_AUTHENTICATION_REJECT;
 			break;

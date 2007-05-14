@@ -24,7 +24,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include	<freeradius-devel/rad_assert.h>
-     
+
 #include	<pwd.h>
 #include	<ctype.h>
 
@@ -92,14 +92,14 @@ int nmasldap_get_password(
 #endif
 
 #ifdef NOVELL
-                                                                                                                             
+
 #define REQUEST_ACCEPTED   0
 #define REQUEST_CHALLENGED 1
 #define REQUEST_REJECTED   2
 #define MAX_CHALLENGE_LEN  128
 
 int radLdapXtnNMASAuth( LDAP *, char *, char *, char *, char *, size_t *, char *, int * );
-                                                                                                                             
+
 #endif
 
 /* linked list of mappings between RADIUS attributes and LDAP attributes */
@@ -476,7 +476,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	/*
 	 *	('eDir-APC', '1') in config items list
 	 *	Do not perform eDirectory account policy check (APC)
-	 *                                           
+	 *
 	 *	('eDir-APC', '2') in config items list
 	 *	Perform eDirectory APC
 	 *
@@ -695,7 +695,7 @@ read_mappings(ldap_instance* inst)
 			operator = T_OP_INVALID; /* use defaults */
 		} else {
 			char *ptr;
-			
+
 			ptr = opstring;
 			operator = gettoken(&ptr, buf, sizeof(buf));
 			if ((operator < T_OP_ADD) || (operator > T_OP_CMP_EQ)) {
@@ -1441,7 +1441,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 			char **passwd_vals;
 			char *value = NULL;
 			int i;
-			
+
 			/*
 			 *	Read the password from the DB, and
 			 *	add it to the request.
@@ -1456,10 +1456,10 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					      passwd_vals[i] != NULL;
 					      i++) {
 				int attr = PW_USER_PASSWORD;
-				
+
 				if (strlen(passwd_vals[i]) == 0)
 					continue;
-				
+
 				value = passwd_vals[i];
 
 				if (inst->auto_header) {
@@ -1472,7 +1472,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 						continue; /* paranoia */
 					memcpy(autobuf, value, p - value + 1);
 					autobuf[p - value + 1] = '\0';
-				
+
 					attr = lrad_str2int(header_names,
 							    autobuf, 0);
 					if (!attr) continue;
@@ -1490,7 +1490,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					}
 				}
 				if (!value) continue;
-				
+
 			create_attr:
 				passwd_item = radius_paircreate(request,
 								&request->config_items,
@@ -1521,7 +1521,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 			res = 0;
 
 			if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD)) == NULL){
-			
+
 				universal_password = rad_malloc(universal_password_len);
 				memset(universal_password, 0, universal_password_len);
 
@@ -1595,7 +1595,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 				memset(universal_password, 0, universal_password_len);
 				free(universal_password);
 			}
-		}			
+		}
 #endif
 	}
 
@@ -2072,13 +2072,13 @@ static int ldap_postauth(void *instance, REQUEST * request)
 					DEBUG("rlm_ldap: Attribute for user FDN not found in dictionary. Unable to proceed");
 					return RLM_MODULE_FAIL;
 				}
-				
+
 				vp_fdn = pairfind(request->packet->vps, da->attr);
 				if (vp_fdn == NULL) {
 					DEBUG("rlm_ldap: User's FQDN not in config items list.");
 					return RLM_MODULE_FAIL;
 				}
-				
+
 				if ((conn_id = ldap_get_conn(inst->apc_conns, &conn, inst)) == -1){
 					radlog(L_ERR, "rlm_ldap: All ldap connections are in use");
 					return RLM_MODULE_FAIL;
@@ -2099,13 +2099,13 @@ static int ldap_postauth(void *instance, REQUEST * request)
 					}
 					if ((conn->ld = ldap_connect(instance, (char *)vp_fdn->vp_strvalue, password, 0, &res, &error_msg)) == NULL) {
 						radlog(L_ERR, "rlm_ldap: eDirectory account policy check failed.");
-						
+
 						if (error_msg != NULL) {
 							DEBUG("rlm_ldap: %s", error_msg);
 							pairadd(&request->reply->vps, pairmake("Reply-Message", error_msg, T_OP_EQ));
 							ldap_memfree((void *)error_msg);
 						}
-						
+
 						vp_apc->vp_strvalue[0] = '3';
 						ldap_release_conn(conn_id, inst->apc_conns);
 						return RLM_MODULE_REJECT;
@@ -2202,10 +2202,10 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			       "LDAP_OPT_X_TLS_CACERTFILE option to %s", inst->tls_cacertfile);
 		}
 	}
-	
+
 	if (inst->tls_cacertdir != NULL) {
 		DEBUG("rlm_ldap: setting TLS CACert Directory to %s", inst->tls_cacertdir);
-		
+
 		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_CACERTDIR,
 				      (void *) inst->tls_cacertdir )
 		     != LDAP_OPT_SUCCESS) {
@@ -2240,11 +2240,11 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			       inst->tls_certfile);
 		}
 	}
-	
+
 	if (inst->tls_keyfile != NULL) {
 		DEBUG("rlm_ldap: setting TLS Key File to %s",
 		      inst->tls_keyfile);
-		
+
 		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_KEYFILE,
 				      (void *) inst->tls_keyfile )
 		     != LDAP_OPT_SUCCESS) {
@@ -2253,11 +2253,11 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			       inst->tls_keyfile);
 		}
 	}
-	
+
 	if (inst->tls_randfile != NULL) {
 		DEBUG("rlm_ldap: setting TLS Key File to %s",
 		      inst->tls_randfile);
-		
+
 		if (ldap_set_option(NULL, LDAP_OPT_X_TLS_RANDOM_FILE,
 				    (void *) inst->tls_randfile)
 		    != LDAP_OPT_SUCCESS) {
@@ -2387,7 +2387,7 @@ ldap_detach(void *instance)
 
 	if (inst->conns) {
 		int i;
-		
+
 		for (i = 0;i < inst->num_conns; i++) {
 			if (inst->conns[i].ld){
 				ldap_unbind_s(inst->conns[i].ld);
@@ -2398,7 +2398,7 @@ ldap_detach(void *instance)
 	}
 
 #ifdef NOVELL
-	if (inst->apc_conns){ 
+	if (inst->apc_conns){
 		int i;
 
 		for (i = 0; i < inst->num_conns; i++) {

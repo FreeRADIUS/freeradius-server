@@ -24,7 +24,7 @@ if test x$with_[]modname != xno; then
 	not found.  this version must use sync by default.
 #endif
 			], [
-			AC_DEFINE(NEED_GDBM_SYNC, yes, [do we need GDBM_SYNC]) 
+			AC_DEFINE(NEED_GDBM_SYNC, yes, [do we need GDBM_SYNC])
 			AC_MSG_RESULT(needs it.)
 			], [
 			AC_MSG_RESULT(SYNCs by default.)
@@ -52,7 +52,7 @@ if test x"$fail" != x""; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
 		targetname=""
 	fi
 fi

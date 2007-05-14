@@ -1,9 +1,9 @@
 /*
- * These functions are defined and used only if the configure 
+ * These functions are defined and used only if the configure
  * cannot detect the standard getaddrinfo(), freeaddrinfo(),
  * gai_strerror() and getnameinfo(). This avoids sprinkling of ifdefs.
  *
- * FIXME: getaddrinfo() & getnameinfo() should 
+ * FIXME: getaddrinfo() & getnameinfo() should
  *        return all IPv4 addresses provided by DNS lookup.
  */
 
@@ -30,7 +30,7 @@ static pthread_mutex_t lrad_hodtbyaddr_mutex;
 #endif
 
 #undef LOCAL_GETHOSTBYNAMERSTYLE
-#ifndef GETHOSTBYNAMERSTYLE 
+#ifndef GETHOSTBYNAMERSTYLE
 #define LOCAL_GETHOSTBYNAMERSTYLE 1
 #elif (GETHOSTBYNAMERSTYLE != SYSVSTYLE) && (GETHOSTBYNAMERSTYLE != GNUSTYLE)
 #define LOCAL_GETHOSTBYNAMERSTYLE 1
@@ -69,7 +69,7 @@ int copy_hostent(struct hostent *from, struct hostent *to,
 {
     int i, len;
     char *ptr = buffer;
-    
+
     *error = 0;
     to->h_addrtype = from->h_addrtype;
     to->h_length = from->h_length;
@@ -102,7 +102,7 @@ int copy_hostent(struct hostent *from, struct hostent *to,
     to->h_addr_list = (char**)ptr;
     for(i = 0; (int *)from->h_addr_list[i] != 0; i++);
     ptr += (i+1) * sizeof(int *);
-     
+
     for(i = 0; (int *)from->h_addr_list[i] != 0; i++) {
        len = sizeof(int);
        if ((ptr-buffer)+len < buflen) {
@@ -121,7 +121,7 @@ int copy_hostent(struct hostent *from, struct hostent *to,
 
 #ifdef LOCAL_GETHOSTBYNAMERSTYLE
 static struct hostent *
-gethostbyname_r(const char *hostname, struct hostent *result, 
+gethostbyname_r(const char *hostname, struct hostent *result,
            char *buffer, int buflen, int *error)
 {
     struct hostent *hp;
@@ -328,7 +328,7 @@ getaddrinfo(const char *hostname, const char *servname,
 #if GETHOSTBYNAMERSTYLE == SYSVSTYLE
     hp = gethostbyname_r(hostname, &result, buffer, sizeof(buffer), &error);
 #elif GETHOSTBYNAMERSTYLE == GNUSTYLE
-    if (gethostbyname_r(hostname, &result, buffer, 
+    if (gethostbyname_r(hostname, &result, buffer,
          sizeof(buffer), &hp, &error) != 0) {
 		hp = NULL;
 	}
@@ -368,9 +368,9 @@ getaddrinfo(const char *hostname, const char *servname,
 
 #ifndef HAVE_GETNAMEINFO
 int
-getnameinfo(const struct sockaddr *sa, socklen_t salen, 
-		char *host, size_t hostlen, 
-		char *serv, size_t servlen, 
+getnameinfo(const struct sockaddr *sa, socklen_t salen,
+		char *host, size_t hostlen,
+		char *serv, size_t servlen,
 		unsigned int flags)
 {
     struct sockaddr_in *sin = (struct sockaddr_in *)sa;
@@ -379,7 +379,7 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen,
     char tmpserv[16];
     char buffer[2048];
     int error;
-  
+
     if (serv) {
         snprintf(tmpserv, sizeof(tmpserv), "%d", ntohs(sin->sin_port));
         if (strlen(tmpserv) > servlen)
@@ -414,7 +414,7 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen,
 	     }
 #else
             hp = gethostbyaddr_r((char *)&sin->sin_addr,
-                               sizeof(struct in_addr), AF_INET, 
+                               sizeof(struct in_addr), AF_INET,
 			       &result, buffer, sizeof(buffer), &error);
 #endif
 #else

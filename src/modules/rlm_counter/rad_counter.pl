@@ -68,7 +68,7 @@ if ($user ne '') {
             print $user, "\t\t", "Counter reset to ", $reset * $divisor, "\n";
         }
     }else{
-        print $user, "\t\t", "Not found\n"; 
+        print $user, "\t\t", "Not found\n";
     }
 
     undef $db;

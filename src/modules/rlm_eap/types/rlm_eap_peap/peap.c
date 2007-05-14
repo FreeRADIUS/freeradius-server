@@ -55,7 +55,7 @@ static int eappeap_failure(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	FIXME: Check the return code.
 	 */
 	tls_handshake_send(tls_session);
-	
+
 	return 1;
 }
 
@@ -269,7 +269,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 	if (debug_flag > 0) {
 		printf("  PEAP: Processing from tunneled session code %p %d\n",
 		       reply, reply->code);
-		
+
 		for (vp = reply->vps; vp != NULL; vp = vp->next) {
 			putchar('\t');vp_print(stdout, vp);putchar('\n');
 		}
@@ -346,7 +346,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			 */
 			pairdelete(&reply->vps, PW_PROXY_STATE);
 			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR);
-			
+
 			t->accept_vps = reply->vps;
 			reply->vps = NULL;
 		}
@@ -391,7 +391,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 	fake = (REQUEST *) request_data_get(handler->request,
 					    handler->request->proxy,
 					    REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK);
-	
+
 	/*
 	 *	Do the callback, if it exists, and if it was a success.
 	 */
@@ -434,7 +434,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		if (debug_flag > 0) {
 			printf("  PEAP: Final reply from tunneled session code %d\n",
 			       fake->reply->code);
-			
+
 			for (vp = fake->reply->vps; vp != NULL; vp = vp->next) {
 				putchar('\t');vp_print(stdout, vp);putchar('\n');
 			}
@@ -459,12 +459,12 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 			eaptls_fail(handler->eap_ds, 0);
 			return 0;
 			break;
-			
+
                 default:  /* Don't Do Anything */
 			DEBUG2(" PEAP: Got reply %d",
 			       request->proxy_reply->code);
 			break;
-		}	
+		}
 	}
 	request_free(&fake);	/* robust if fake == NULL */
 
@@ -942,7 +942,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 							 REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
 							 fake, my_request_free);
 				rad_assert(rcode == 0);
-				
+
 				/*
 				 *	Do NOT free the fake request!
 				 */

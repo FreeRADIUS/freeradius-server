@@ -15,7 +15,7 @@ if ($link){
 		$max = 10;
 	if ($max > 500)
 		$max = 10;
-	if (($search_IN == 'name' || $search_IN == 'department' || $search_IN == 'username') && 
+	if (($search_IN == 'name' || $search_IN == 'department' || $search_IN == 'username') &&
 			$config[sql_use_user_info_table] == 'true'){
 		$res = @da_sql_query($link,$config,
 		"SELECT " . da_sql_limit($max,0,$config) . " username FROM $config[sql_user_info_table] WHERE

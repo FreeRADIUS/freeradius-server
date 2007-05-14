@@ -390,7 +390,7 @@ int main(int argc, char **argv)
 		printf("Acct-Delay-Time = 0\n");
 		exit(0);	/* don't bother printing anything else */
 	}
-	
+
 	/*
 	 *	Initialize mainconfig
 	 */
@@ -503,10 +503,10 @@ int main(int argc, char **argv)
 		if (nas_ip_address != INADDR_NONE) {
 			if (rt.nas_address != nas_ip_address) continue;
 		}
-		
+
 		memcpy(session_id, rt.session_id, sizeof(rt.session_id));
 		session_id[sizeof(rt.session_id)] = 0;
-		
+
 		if (!rawoutput && rt.nas_port > (showname ? 999 : 99999)) {
 			portind = ">";
 			portno = (showname ? 999 : 99999);
@@ -555,7 +555,7 @@ int main(int argc, char **argv)
 				       hostname(buffer, sizeof(buffer),
 						rt.framed_address));
 			}
-			
+
 			/*
 			 *	Some sanity checks on the time
 			 */
@@ -569,7 +569,7 @@ int main(int argc, char **argv)
 				memcpy(nasname, rt.caller_id,
 				       sizeof(rt.caller_id));
 				nasname[sizeof(rt.caller_id)] = '\0';
-				
+
 				librad_safeprint(nasname, -1, buffer,
 						 sizeof(buffer));
 				printf("Calling-Station-Id = \"%s\"\n", buffer);

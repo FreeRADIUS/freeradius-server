@@ -24,7 +24,7 @@ function get_user_info($link,$user,$config)
 			$row = @da_sql_fetch_array($res,$config);
 			if ($row)
 				return $row[name];
-		}	
+		}
 	}
 }
 

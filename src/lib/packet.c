@@ -87,7 +87,7 @@ uint32_t lrad_request_packet_hash(const RADIUS_PACKET *packet)
 uint32_t lrad_reply_packet_hash(const RADIUS_PACKET *packet)
 {
 	uint32_t hash;
-	
+
 	hash = lrad_hash(&packet->sockfd, sizeof(packet->sockfd));
 	hash = lrad_hash_update(&packet->id, sizeof(packet->id), hash);
 	hash = lrad_hash_update(&packet->src_port, sizeof(packet->src_port),
@@ -201,17 +201,17 @@ int lrad_socket(lrad_ipaddr_t *ipaddr, int port)
 	memset(&salocal, 0, sizeof(salocal));
 	if (ipaddr->af == AF_INET) {
 		struct sockaddr_in *sa;
-		
+
 		sa = (struct sockaddr_in *) &salocal;
 		sa->sin_family = AF_INET;
 		sa->sin_addr = ipaddr->ipaddr.ip4addr;
 		sa->sin_port = htons((uint16_t) port);
 		salen = sizeof(*sa);
-		
+
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (ipaddr->af == AF_INET6) {
 		struct sockaddr_in6 *sa;
-		
+
 		sa = (struct sockaddr_in6 *) &salocal;
 		sa->sin6_family = AF_INET6;
 		sa->sin6_addr = ipaddr->ipaddr.ip6addr;
@@ -229,7 +229,7 @@ int lrad_socket(lrad_ipaddr_t *ipaddr, int port)
 
 		if (IN6_IS_ADDR_UNSPECIFIED(&ipaddr->ipaddr.ip6addr)) {
 			int on = 1;
-			
+
 			setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
 				   (char *)&on, sizeof(on));
 		}
@@ -448,7 +448,7 @@ static uint32_t packet_dst2id_hash(const void *data)
 	const lrad_packet_dst2id_t *pd = data;
 
 	hash = lrad_hash(&pd->dst_port, sizeof(pd->dst_port));
-	
+
 	switch (pd->dst_ipaddr.af) {
 	case AF_INET:
 		hash = lrad_hash_update(&pd->dst_ipaddr.ipaddr.ip4addr,
@@ -591,7 +591,7 @@ RADIUS_PACKET **lrad_packet_list_find_byreply(lrad_packet_list_t *pl,
 	my_request.dst_ipaddr = reply->src_ipaddr;
 	my_request.dst_port = reply->src_port;
 	my_request.hash = 0;
-	
+
 	request = &my_request;
 
 	return lrad_hash_table_finddata(pl->ht, &request);
@@ -634,12 +634,12 @@ int lrad_packet_list_id_alloc(lrad_packet_list_t *pl,
 	uint32_t free_mask;
 	lrad_packet_dst2id_t my_pd, *pd;
 	lrad_packet_socket_t *ps;
-	
+
 	if (!pl || !pl->alloc_id || !request) return 0;
 
 	my_pd.dst_ipaddr = request->dst_ipaddr;
 	my_pd.dst_port = request->dst_port;
-	
+
 	pd = lrad_hash_table_finddata(pl->dst2id_ht, &my_pd);
 	if (!pd) {
 		pd = malloc(sizeof(*pd) + 255 * sizeof(pd->id[0]));
@@ -655,7 +655,7 @@ int lrad_packet_list_id_alloc(lrad_packet_list_t *pl,
 			return 0;
 		}
 	}
-	
+
 	/*
 	 *	FIXME: Go to an LRU system.  This prevents ID re-use
 	 *	for as long as possible.  The main problem with that
@@ -724,7 +724,7 @@ int lrad_packet_list_id_free(lrad_packet_list_t *pl,
 
 	my_pd.dst_ipaddr = request->dst_ipaddr;
 	my_pd.dst_port = request->dst_port;
-	
+
 	pd = lrad_hash_table_finddata(pl->dst2id_ht, &my_pd);
 	if (!pd) return 0;
 

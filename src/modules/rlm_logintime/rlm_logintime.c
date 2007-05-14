@@ -37,7 +37,7 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_logintime_t {
-	char *msg;		/* The Reply-Message passed back to the user 
+	char *msg;		/* The Reply-Message passed back to the user
 				 * if the account is outside allowed timestamp */
 	int min_time;
 } rlm_logintime_t;
@@ -52,7 +52,7 @@ typedef struct rlm_logintime_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-  { "reply-message", PW_TYPE_STRING_PTR, offsetof(rlm_logintime_t,msg), NULL, 
+  { "reply-message", PW_TYPE_STRING_PTR, offsetof(rlm_logintime_t,msg), NULL,
 	"You are calling outside your allowed timespan\r\n"},
   { "minimum-timeout", PW_TYPE_INTEGER, offsetof(rlm_logintime_t,min_time), NULL, "60" },
   { NULL, -1, 0, NULL, NULL }
@@ -67,14 +67,14 @@ static int timecmp(void *instance,
 		REQUEST *req,
 		VALUE_PAIR *request, VALUE_PAIR *check,
 		VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
-{ 
+{
 	instance = instance;
 	request = request;      /* shut the compiler up */
 	check_pairs = check_pairs;
 	reply_pairs = reply_pairs;
-  
+
 	/*
-	 *      If there's a request, use that timestamp.       
+	 *      If there's a request, use that timestamp.
 	 */
 	if (timestr_match((char *)check->vp_strvalue,
 	req ? req->timestamp : time(NULL)) >= 0)
@@ -106,7 +106,7 @@ static int time_of_day(void *instance,
 	 *	Must be called with a request pointer.
 	 */
 	if (!req) return -1;
-  
+
 	if (strspn(check->vp_strvalue, "0123456789: ") != strlen(check->vp_strvalue)) {
 		DEBUG("rlm_logintime: Bad Time-Of-Day value \"%s\"",
 		      check->vp_strvalue);
@@ -151,13 +151,13 @@ static int time_of_day(void *instance,
 
 	fprintf(stderr, "returning %d - %d\n",
 		hhmmss, when);
-	
+
 	return hhmmss - when;
 }
 
-/*              
+/*
  *      Check if account has expired, and if user may login now.
- */		  
+ */
 static int logintime_authorize(void *instance, REQUEST *request)
 {
 	rlm_logintime_t *data = (rlm_logintime_t *)instance;
@@ -165,7 +165,7 @@ static int logintime_authorize(void *instance, REQUEST *request)
 	int r;
 
 	if ((check_item = pairfind(request->config_items, PW_LOGIN_TIME)) != NULL) {
- 
+
 		/*
 	 	 *      Authentication is OK. Now see if this
 	 	 *      user may login at this time of the day.
@@ -191,7 +191,7 @@ static int logintime_authorize(void *instance, REQUEST *request)
 			/*
 		 	 *      User called outside allowed time interval.
 		 	 */
-		
+
 			DEBUG("rlm_logintime: timestr returned reject");
 			if (data->msg && data->msg[0]){
 				char msg[MAX_STRING_LEN];

@@ -152,7 +152,7 @@ static int compile_action(modcallable *c, const char *attr, const char *value,
 
 	else if (strspn(value, "0123456789")==strlen(value)) {
 		action = atoi(value);
-		
+
 		/*
 		 *	Don't allow priority zero, for future use.
 		 */
@@ -374,7 +374,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			int count = 1;
 			modcallable *p, *q;
 			modgroup *g = mod_callabletogroup(child);
-			
+
 			stack.pointer++;
 
 			/*
@@ -398,7 +398,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			case MOD_GROUP:
 				stack.children[stack.pointer] = g->children;
 				break;
-				
+
 				/*
 				 *	See the "camel book" for why
 				 *	this works.
@@ -417,22 +417,22 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						count = 1;
 						continue;
 					}
-					
+
 					count++;
-					
+
 					if ((count * (lrad_rand() & 0xffff)) < (uint32_t) 0x10000) {
 						q = p;
 					}
 				}
 				stack.children[stack.pointer] = q;
 				break;
-				
+
 			default:
 				exit(1); /* internal sanity check failure */
 				break;
 			}
-			
-			
+
+
 			stack.start[stack.pointer] = stack.children[stack.pointer];
 
 			DEBUG2("%.*s- entering %s %s",
@@ -468,7 +468,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 *	to dealing with it's parent.
 		 */
 		sp = mod_callabletosingle(child);
-		
+
 		myresult = call_modsingle(component, sp, request,
 					  default_component_results[component]);
 		DEBUG2("%.*s[%s] returns %s",
@@ -509,7 +509,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			stack.children[stack.pointer] = NULL;
 			goto do_return;
 		}
-	
+
 		/*
 		 *	If "reject", break out of the loop and return
 		 *	reject.
@@ -562,14 +562,14 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					stack.children[stack.pointer] = child->next;
 				} else {
 					modgroup *g = mod_callabletogroup(parent);
-					
+
 					stack.children[stack.pointer] = g->children;
 				}
 				if (stack.children[stack.pointer] == stack.start[stack.pointer]) {
 					stack.children[stack.pointer] = NULL;
 				}
 				break;
-			default:	
+			default:
 				exit(1);
 		}
 
@@ -1204,7 +1204,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 				/*
 				 *	As it's sole configuration, the
 				 *	virtual module takes a section which
-				 *	contains the 
+				 *	contains the
 				 */
 				return do_compile_modsingle(parent,
 							    component,
@@ -1447,7 +1447,7 @@ void add_to_modcallable(modcallable **parent, modcallable *this,
 			int component, const char *name)
 {
 	modgroup *g;
-	
+
 	rad_assert(this != NULL);
 
 	if (*parent == NULL) {

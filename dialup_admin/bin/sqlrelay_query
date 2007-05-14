@@ -8,7 +8,7 @@ $passwd=shift;
 while(<>){
 	chomp;
 	`$sqlrelay '$host' '$port' '$socket' '$user' '$passwd' '$_'`;
-	$exit = $? >> 8;       
+	$exit = $? >> 8;
 	if ($exit != 0){
 		exit $exit;
 	}

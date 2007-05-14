@@ -6,7 +6,7 @@
  * This trigger updates fills in the groupname field (which doesnt come in Accounting packets)
  * by querying the radusergroup table.
  * This makes it easier to do group summary reports, however note that it does add some extra
- * database load to 50% of your SQL accounting queries. If you dont care about group summary 
+ * database load to 50% of your SQL accounting queries. If you dont care about group summary
  * reports then you dont need to install this.
  *
  */

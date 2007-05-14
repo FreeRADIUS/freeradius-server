@@ -123,7 +123,7 @@ function check_user_passwd($dn,$passwd,$config)
 		return FALSE;
 
 	return FALSE;
-}      
+}
 
 function closedb($ds,$config)
 {

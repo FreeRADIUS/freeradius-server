@@ -78,7 +78,7 @@ static int mypairappend(REQUEST *request, VALUE_PAIR *item, VALUE_PAIR **to)
 {
 	VALUE_PAIR *tmp;
 	tmp = radius_paircreate(request, to, item->attribute, item->type);
-	
+
 	/*
 	 *	Copy EVERYTHING.
 	 */
@@ -269,7 +269,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 		for (vp = *input; vp != NULL; vp = vp->next ) {
 			/* reset the pass,fail vars for each reply item */
 			pass = fail = 0;
-			
+
 			/*
 			 *	reset the check_item pointer to
 			 *	beginning of the list
@@ -294,7 +294,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 						   &pass, &fail);
 				}
 			}
-			
+
 			/* only move attribute if it passed all rules */
 			if (fail == 0 && pass > 0) {
 				if (mypairappend(request, vp, output_tail) < 0) {
@@ -304,7 +304,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 				output_tail = &((*output_tail)->next);
 			}
 		}
-		
+
 		/* If we shouldn't fall through, break */
 		if (!fall_through)
 			break;

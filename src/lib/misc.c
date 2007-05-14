@@ -188,7 +188,7 @@ static int inet_pton4(const char *src, struct in_addr *dst)
 	const char *p, *off;
 	uint8_t tmp[4];
 	static const char digits[] = "0123456789";
-	
+
 	octet = 0;
 	p = src;
 	while (1) {
@@ -196,13 +196,13 @@ static int inet_pton4(const char *src, struct in_addr *dst)
 		while (*p && ((off = strchr(digits, *p)) != NULL)) {
 			num *= 10;
 			num += (off - digits);
-			
+
 			if (num > 255) return 0;
-			
+
 			p++;
 		}
 		if (!*p) break;
-		
+
 		/*
 		 *	Not a digit, MUST be a dot, else we
 		 *	die.
@@ -214,7 +214,7 @@ static int inet_pton4(const char *src, struct in_addr *dst)
 		tmp[octet++] = num;
 		p++;
 	}
-	
+
 	/*
 	 *	End of the string.  At the fourth
 	 *	octet is OK, anything else is an
@@ -224,7 +224,7 @@ static int inet_pton4(const char *src, struct in_addr *dst)
 		return 0;
 	}
 	tmp[3] = num;
-	
+
 	memcpy(dst, &tmp, sizeof(tmp));
 	return 1;
 }
@@ -357,7 +357,7 @@ const char *inet_ntop(int af, const void *src, char *dst, size_t cnt)
 		const uint8_t *ipaddr = src;
 
 		if (cnt <= INET_ADDRSTRLEN) return NULL;
-		
+
 		snprintf(dst, cnt, "%d.%d.%d.%d",
 			 ipaddr[0], ipaddr[1],
 			 ipaddr[2], ipaddr[3]);
@@ -370,7 +370,7 @@ const char *inet_ntop(int af, const void *src, char *dst, size_t cnt)
 	 */
 	if (af == AF_INET6) {
 		const struct in6_addr *ipaddr = src;
-		
+
 		if (cnt <= INET6_ADDRSTRLEN) return NULL;
 
 		snprintf(dst, cnt, "%x:%x:%x:%x:%x:%x:%x:%x",
@@ -423,18 +423,18 @@ int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
 	switch (ai->ai_family) {
 	case AF_INET :
 		dst->af = AF_INET;
-		memcpy(&dst->ipaddr, 
-		       &((struct sockaddr_in*)ai->ai_addr)->sin_addr, 
+		memcpy(&dst->ipaddr,
+		       &((struct sockaddr_in*)ai->ai_addr)->sin_addr,
 		       sizeof(struct in_addr));
 		break;
-		
+
 	case AF_INET6 :
 		dst->af = AF_INET6;
-		memcpy(&dst->ipaddr, 
-		       &((struct sockaddr_in6*)ai->ai_addr)->sin6_addr, 
+		memcpy(&dst->ipaddr,
+		       &((struct sockaddr_in6*)ai->ai_addr)->sin6_addr,
 		       sizeof(struct in6_addr));
 		break;
-		
+
 		/* Flow should never reach here */
 	case AF_UNSPEC :
 	default :
@@ -442,7 +442,7 @@ int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
 		freeaddrinfo(ai);
 		return -1;
 	}
-	
+
 	freeaddrinfo(ai);
 	return 0;
 }

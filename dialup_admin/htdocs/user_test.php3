@@ -70,7 +70,7 @@ if ($test_user == 1){
 	$req=file($config[general_auth_request_file]);
 	if ($config[general_ld_library_path] != '')
 		putenv("LD_LIBRARY_PATH=$config[general_ld_library_path]");
-	$comm = $config[general_radclient_bin] . " $server:$port" . ' auth ' . $config[general_radius_server_secret] 
+	$comm = $config[general_radclient_bin] . " $server:$port" . ' auth ' . $config[general_radius_server_secret]
 		. ' >' . $tmp_file;
 	$fp = popen("$comm","w");
 	if ($fp){

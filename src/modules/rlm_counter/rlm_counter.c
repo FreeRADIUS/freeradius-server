@@ -401,7 +401,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		}
 		data->reply_attr = dattr->attr;
 	}
-	
+
 
 	/*
 	 *  Create a new attribute for the counter.

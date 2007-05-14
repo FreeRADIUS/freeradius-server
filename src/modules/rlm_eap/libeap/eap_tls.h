@@ -155,7 +155,7 @@ typedef struct _tls_session_t {
 				       unsigned int size);
 	unsigned int 	(*record_minus)(record_t *buf, void *ptr,
 					unsigned int size);
-	
+
 
 	/*
 	 * Framed-MTU attribute in RADIUS,

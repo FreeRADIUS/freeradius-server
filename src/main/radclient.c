@@ -421,7 +421,7 @@ static void print_hex(RADIUS_PACKET *packet)
 		printf("%02x", packet->data[i]);
 	}
 	printf("\n");
-	
+
 	if (packet->data_len > 20) {
 		int total;
 		const uint8_t *ptr;
@@ -565,7 +565,7 @@ static int send_one_packet(radclient_t *radclient)
 		if (!lrad_packet_list_insert(pl, &radclient->request)) {
 			assert(0 == 1);
 		}
-		
+
 
 	} else {		/* radclient->request->id >= 0 */
 		time_t now = time(NULL);
@@ -598,7 +598,7 @@ static int send_one_packet(radclient_t *radclient)
 		 */
 		if (radclient->tries == retries) {
 			assert(radclient->request->id >= 0);
-			
+
 			/*
 			 *	Delete the request from the tree of
 			 *	outstanding requests.
@@ -607,7 +607,7 @@ static int send_one_packet(radclient_t *radclient)
 
 			fprintf(stderr, "radclient: no response from server for ID %d socket %d\n", radclient->request->id, radclient->request->sockfd);
 			deallocate_id(radclient);
-			
+
 			/*
 			 *	Normally we mark it "done" when we've received
 			 *	the response, but this is a special case.
@@ -910,7 +910,7 @@ int main(int argc, char **argv)
 			if ((p - argv[1]) >= sizeof(buffer)) {
 				usage();
 			}
-			
+
 			memcpy(buffer, argv[1] + 1, p - argv[1] - 1);
 			buffer[p - argv[1] - 1] = '\0';
 
@@ -1128,7 +1128,7 @@ int main(int argc, char **argv)
 						tv.tv_sec = 0;
 						tv.tv_usec = 1000000/persec;
 					}
-					
+
 					/*
 					 *	Sleep for milliseconds,
 					 *	portably.

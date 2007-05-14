@@ -26,9 +26,9 @@ if test x$with_[]modname != xno; then
 	AC_CONFIG_SUBDIRS($eapsubdirs)
 	rm install-sh
 
-	dnl # 
+	dnl #
 	dnl # Don't bother looking for errors in the child directories
-	dnl # 
+	dnl #
 
 	targetname=modname
 else
@@ -43,10 +43,10 @@ if test x"$fail" != x""; then
 		AC_MSG_WARN([silently not building ]modname[.])
 		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.])
 		if test x"$headersuggestion" != x; then
-			AC_MSG_WARN([$headersuggestion]) 
+			AC_MSG_WARN([$headersuggestion])
 		fi
 		if test x"$libsuggestion" != x; then
-			AC_MSG_WARN([$libsuggestion]) 
+			AC_MSG_WARN([$libsuggestion])
 		fi
 		targetname=""
 	    eapsubdirs=""

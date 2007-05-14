@@ -183,7 +183,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			if (outlen <= (2 * (vp->length + 1))) return 0;
 
 			strcpy(buf, "0x");
-			
+
 			lrad_bin2hex(vp->vp_octets, buf + 2, vp->length);
 			a = buf;
 		  break;

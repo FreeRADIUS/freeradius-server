@@ -37,7 +37,7 @@ if ($link){
 					$Fou = da_sql_escape_string($Fou);
 					$Fhomephone = da_sql_escape_string($Fhomephone);
 					$Fworkphone = da_sql_escape_string($Fworkphone);
-					$Fmobile = da_sql_escape_string($Fmobile);	
+					$Fmobile = da_sql_escape_string($Fmobile);
 					$res = @da_sql_query($link,$config,
 					"INSERT INTO $config[sql_user_info_table]
 					(username,name,mail,department,homephone,workphone,mobile) VALUES

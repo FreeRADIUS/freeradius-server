@@ -144,7 +144,7 @@ foreach ($rules as $rule){
 		$rulestr = "$rule";
 	else
 		$rulestr .= ",$rule";
-} 
+}
 if ($update == 1 && $val != '')
 	echo <<<EOM
 <script language="JavaScript1.1" type="text/javascript">
@@ -247,7 +247,7 @@ if (!empty($rules)){
 	echo "</select>\n";
 }
 else
-	echo "<i>No rules available</i><br>\n";	
+	echo "<i>No rules available</i><br>\n";
 ?>
 </td></tr>
 <tr><td colspan=5 align=center><?php echo $err_msg ?></td></tr>

@@ -77,7 +77,7 @@ int dumplist(VALUE_PAIR *vp)
 	char buffer[1024];
 	while (vp != NULL) {
 		vp_prints(buffer, sizeof(buffer), vp);
-	
+
 		printf("\t%s\n", buffer);
 		vp = vp -> next;
 	}

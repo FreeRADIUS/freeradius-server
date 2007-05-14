@@ -38,17 +38,17 @@ RCSIDH(eap_sim_h, "$Id$")
 #define ATTRIBUTE_EAP_SIM_RAND1         1201
 #define ATTRIBUTE_EAP_SIM_RAND2         1202
 #define ATTRIBUTE_EAP_SIM_RAND3         1203
-					
+
 #define ATTRIBUTE_EAP_SIM_SRES1         1204
 #define ATTRIBUTE_EAP_SIM_SRES2         1205
 #define ATTRIBUTE_EAP_SIM_SRES3         1206
-					
+
 #define ATTRIBUTE_EAP_SIM_STATE         1207
 #define ATTRIBUTE_EAP_SIM_IMSI          1208
 #define ATTRIBUTE_EAP_SIM_HMAC          1209
 #define ATTRIBUTE_EAP_SIM_KEY           1210
 #define ATTRIBUTE_EAP_SIM_EXTRA         1211
-					
+
 #define ATTRIBUTE_EAP_SIM_KC1           1212
 #define ATTRIBUTE_EAP_SIM_KC2           1213
 #define ATTRIBUTE_EAP_SIM_KC3           1214

@@ -173,7 +173,7 @@ static uint32_t parent_of(uint32_t key)
 
 	if (key > 0x000000ff)
 		return (key & 0x000000ff) | (parent_byte[key >> 8] << 8);
-	
+
 	return parent_byte[key];
 }
 
@@ -328,7 +328,7 @@ static void lrad_hash_table_fixup(lrad_hash_table_t *ht, uint32_t entry)
 
 	if (!ht->buckets[parent_entry]) {
 		lrad_hash_table_fixup(ht, parent_entry);
-	}	
+	}
 
 	/*
 	 *	Keep walking down cur, trying to find entries that
@@ -337,7 +337,7 @@ static void lrad_hash_table_fixup(lrad_hash_table_t *ht, uint32_t entry)
 	 */
 	last = &ht->buckets[parent_entry];
 	this = parent_entry;
-	
+
 	for (cur = *last; cur != &ht->null; cur = cur->next) {
 		uint32_t real_entry;
 
@@ -369,7 +369,7 @@ static void lrad_hash_table_fixup(lrad_hash_table_t *ht, uint32_t entry)
 static void lrad_hash_table_grow(lrad_hash_table_t *ht)
 {
 	lrad_hash_entry_t **buckets;
-	
+
 	buckets = malloc(sizeof(*buckets) * GROW_FACTOR * ht->num_buckets);
 	if (!buckets) return;
 
@@ -377,10 +377,10 @@ static void lrad_hash_table_grow(lrad_hash_table_t *ht)
 	       sizeof(*buckets) * ht->num_buckets);
 	memset(&buckets[ht->num_buckets], 0,
 	       sizeof(*buckets) * ht->num_buckets);
-	
+
 	free(ht->buckets);
 	ht->buckets = buckets;
-	ht->num_buckets *= GROW_FACTOR; 
+	ht->num_buckets *= GROW_FACTOR;
 	ht->next_grow *= GROW_FACTOR;
 	ht->mask = ht->num_buckets - 1;
 #ifdef TESTING
@@ -562,9 +562,9 @@ void lrad_hash_table_free(lrad_hash_table_t *ht)
 					 node != &ht->null;
 					 node = next) {
 			next = node->next;
-			
+
 			if (!node->data) continue; /* dummy entry */
-			
+
 			if (ht->free) ht->free(node->data);
 			free(node);
 		}
@@ -854,7 +854,7 @@ int main(int argc, char **argv)
 				fprintf(stderr, "Failed finding %d\n", i);
 				exit(1);
 			}
-			
+
 #if 0
 			if (!lrad_hash_table_delete(ht, &i)) {
 				fprintf(stderr, "Failed deleting %d\n", i);

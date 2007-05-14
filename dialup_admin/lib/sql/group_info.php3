@@ -81,7 +81,7 @@ if ($link){
 					$member = $row[username];
 					$group_members[] = "$member";
 				}
-			}	
+			}
 			else
 				echo "<b>Database query failed partially: " . da_sql_error($link,$config) . "</b><br>\n";
 			if (isset($tmp)){

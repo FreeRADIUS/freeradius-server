@@ -9,7 +9,7 @@
 #
 # Defaults:
 # radius.log: none
-# admin.conf: /usr/local/dialup_admin/conf/admin.conf 
+# admin.conf: /usr/local/dialup_admin/conf/admin.conf
 # all:        no. Go to the end of the file. Don't read it all.
 
 use Date::Manip qw(ParseDate UnixDate);
@@ -120,7 +120,7 @@ seek LOG, 0, 2 if ($all_file eq 'no');
 for(;;){
 	while(<LOG>){
 		if ($verbose > 1) { print STDOUT "DEBUG: Reading $file\n" }
-		$do=0;	
+		$do=0;
 		chomp;
 		next if ($regexp ne '' && !/$regexp/);
 		if ($_ ne ''){

@@ -75,8 +75,8 @@ VALUE	ASN-Webfilter-Mode		Allow			2
 #         query string of %u, but note for convenience
 #         without the leading "/".
 #    %t - matched destination group or "unknown"
-#    %u - requested URL                  
-#    %% - single '%'                          
+#    %u - requested URL
+#    %% - single '%'
 #
 ATTRIBUTE	ASN-Webfilter-Redirect			114	string
 

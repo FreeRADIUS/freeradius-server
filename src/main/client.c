@@ -186,11 +186,11 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	/*
 	 *	Allow clients to be NULL if mainconfig.clients is NULL.
 	 */
-	 
+
 	if (!client || (!clients && (mainconfig.clients != NULL))) {
 		return 0;
 	}
-	
+
 	if (!clients) {
 		clients = clients_init();
 		if (!clients) return 0;
@@ -269,9 +269,9 @@ RADCLIENT *client_findbynumber(const RADCLIENT_LIST *clients,
 
 	if (tree_num) {
 		RADCLIENT myclient;
-		
+
 		myclient.number = number;
-		
+
 		return rbtree_finddata(tree_num, &myclient);
 	}
 #endif
@@ -311,7 +311,7 @@ RADCLIENT *client_find(const RADCLIENT_LIST *clients,
 		client_sane(&myclient);	/* clean up the ipaddress */
 
 		if (!clients->trees[i]) continue;
-		
+
 		data = rbtree_finddata(clients->trees[i], &myclient);
 		if (data) {
 			return data;
@@ -367,15 +367,15 @@ const char *client_name_old(const lrad_ipaddr_t *ipaddr)
 }
 
 static const CONF_PARSER client_config[] = {
-	{ "secret",  PW_TYPE_STRING_PTR, 
+	{ "secret",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, secret), 0, NULL },
-	{ "shortname",  PW_TYPE_STRING_PTR, 
+	{ "shortname",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, shortname), 0, NULL },
-	{ "nastype",  PW_TYPE_STRING_PTR, 
+	{ "nastype",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, nastype), 0, NULL },
-	{ "login",  PW_TYPE_STRING_PTR, 
+	{ "login",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, login), 0, NULL },
-	{ "password",  PW_TYPE_STRING_PTR, 
+	{ "password",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, password), 0, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }

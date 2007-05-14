@@ -65,7 +65,7 @@ static int linelog_detach(void *instance)
 {
 	rlm_linelog_t *inst = instance;
 
-	
+
 	free(inst);
 	return 0;
 }
@@ -186,7 +186,7 @@ static int do_linelog(void *instance, REQUEST *request)
 	radius_xlat(line, sizeof(line) - 1, inst->line, request,
 		    linelog_escape_func);
 	strcat(line, "\n");
-	
+
 	write(fd, line, strlen(line));
 	close(fd);
 

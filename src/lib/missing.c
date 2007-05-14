@@ -209,7 +209,7 @@ struct tm *gmtime_r(const time_t *l_clock, struct tm *result)
 static uint64_t filetime_to_unix_epoch (const FILETIME *ft)
 {
 	uint64_t res = (uint64_t) ft->dwHighDateTime << 32;
-	
+
 	res |= ft->dwLowDateTime;
 	res /= 10;                   /* from 100 nano-sec periods to usec */
 	res -= DELTA_EPOCH_IN_USEC;  /* from Win epoch to Unix epoch */
@@ -220,7 +220,7 @@ int gettimeofday (struct timeval *tv, UNUSED void *tz)
 {
 	FILETIME  ft;
 	uint64_t tim;
-	
+
 	if (!tv) {
 		errno = EINVAL;
 		return (-1);

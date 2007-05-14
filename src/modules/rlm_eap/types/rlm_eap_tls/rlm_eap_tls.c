@@ -240,7 +240,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		 *	against the specified value and fail
 		 *	verification if they don't match.
 		 */
-		if (conf->check_cert_issuer && 
+		if (conf->check_cert_issuer &&
 		    (strcmp(issuer, conf->check_cert_issuer) != 0)) {
 			radlog(L_AUTH, "rlm_eap_tls: Certificate issuer (%s) does not match specified value (%s)!", issuer, conf->check_cert_issuer);
  			my_ok = 0;
@@ -385,7 +385,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	 */
    	ctx_options |= SSL_OP_SINGLE_DH_USE;
 
-	/*	 
+	/*
 	 *	SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS to work around issues
 	 *	in Windows Vista client.
 	 *	http://www.openssl.org/~bodo/tls-cbc.txt
@@ -529,7 +529,7 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 	 */
 	if (conf->make_cert_command && (debug_flag >= 2)) {
 		struct stat buf;
-		
+
 		if ((stat(conf->make_cert_command, &buf) == 0) &&
 		    (stat(conf->certificate_file, &buf) < 0) &&
 		    (errno == ENOENT) &&

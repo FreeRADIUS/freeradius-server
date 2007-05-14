@@ -175,7 +175,7 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
 	int		status;
 	VALUE_PAIR	*state;
-	
+
 	rad_assert(handler != NULL);
 	rad_assert(handler->request != NULL);
 
@@ -301,7 +301,7 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 			node = rbtree_find(inst->session_tree, handler);
 			rad_assert(node != NULL);
 			rbtree_delete(inst->session_tree, node);
-			
+
 			inst->session_head = handler->next;
 			if (handler->next) handler->next->prev = NULL;
 			eap_handler_free(handler);
@@ -374,6 +374,6 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 	eap_ds_free(&(handler->prev_eapds));
 	handler->prev_eapds = handler->eap_ds;
 	handler->eap_ds = NULL;
-	
+
 	return handler;
 }

@@ -50,13 +50,13 @@ sub process($) {
     $processed{$file}++;
 
     open FILE, "<$file" or die "Failed to open $file: $!\n";
-    
+
     $line = 0;
     while (<FILE>) {
 	$line++;
-	
+
 	next if (!/^\s*\#\s*include\s+/);
-	
+
 	if (/^\s*\#\s*include\s+"(.+?)"/) {
 	    $refs{$file}{$1} = $line;
 
@@ -70,14 +70,14 @@ sub process($) {
 	    $include{$1}++;
 	}
     }
-    
+
     close FILE;
 }
 
 #
 #  Where include files are located.
 #
-#  FIXME: 
+#  FIXME:
 #
 @directories = ("src/lib", "src");
 $do_it = 0;
@@ -203,7 +203,7 @@ if ($debug > 0) {
 if (!$do_it) {
     foreach $file (sort keys %duplicate) {
 	print $file, "\n";
-	
+
 	foreach $inc (sort keys %{$duplicate{$file}}) {
 	    print "\t[", $refs{$file}{$inc}, "] ", $inc, " (", $duplicate{$file}{$inc}, " at ", $refs{$file}{$duplicate{$file}{$inc}}, ")\n";
 	}
@@ -212,7 +212,7 @@ if (!$do_it) {
     foreach $file (sort keys %duplicate) {
 	open FILE, "<$file" or die "Failed to open $file: $!\n";
 	open OUTPUT, ">$file.tmp" or die "Failed to create $file.tmp: $!\n";
-	
+
 	$line = 0;
 	while (<FILE>) {
 	    $line++;

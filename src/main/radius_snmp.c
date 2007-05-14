@@ -563,10 +563,10 @@ radius_snmp_init (void) {
 		 *  Initialize the RADIUS SNMP data structure.
 		 */
 		memset(&rad_snmp, 0, sizeof(rad_snmp));
-		
+
 		rad_snmp.auth.ident = radiusd_version;
 		rad_snmp.acct.ident = radiusd_version;
-		
+
 		rad_snmp.smux_event = SMUX_NONE;
 		rad_snmp.smux_password = NULL;
 		rad_snmp.snmp_write_access = FALSE;

@@ -363,7 +363,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			DEBUG2("  rlm_mschap: Invalid MS-CHAP challenge length");
 			return 0;
 		}
-		
+
 		/*
 		 *	Get the MS-CHAPv1 response, or the MS-CHAPv2
 		 *	response.
@@ -395,7 +395,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		 */
 		data = response->vp_octets + 26;
 		data_len = 24;
-		
+
 		/*
 		 *	LM-Response is deprecated, and exists only
 		 *	in MS-CHAPv1, and not often there.
@@ -430,7 +430,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			DEBUG2("  rlm_mschap: No User-Name was found in the request.");
 			return 0;
 		}
-		
+
 		/*
 		 *	First check to see if this is a host/ style User-Name
 		 *	(a la Kerberos host principal)
@@ -485,7 +485,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			DEBUG2("  rlm_mschap: No User-Name was found in the request.");
 			return 0;
 		}
-		
+
 		/*
 		 *	First check to see if this is a host/ style User-Name
 		 *	(a la Kerberos host principal)
@@ -547,7 +547,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		p = fmt + 8;	/* 7 is the length of 'LM-Hash' */
 		if ((p == '\0') || (outlen <= 32))
 			return 0;
-			
+
 		DEBUG("rlm_mschap: LM-Hash: %s",p);
 		smbdes_lmpwdhash(p,buffer);
 		lrad_bin2hex(buffer, out, 16);
@@ -578,13 +578,13 @@ static int mschap_xlat(void *instance, REQUEST *request,
 	}
 
 	/*
-	 *	
+	 *
 	 */
 	for (i = 0; i < data_len; i++) {
 		sprintf(out + (2 * i), "%02x", data[i]);
 	}
 	out[data_len * 2] = '\0';
-	
+
 	return data_len * 2;
 }
 
@@ -769,12 +769,12 @@ static int do_mschap(rlm_mschap_t *inst,
 			DEBUG2("  rlm_mschap: FAILED: No NT/LM-Password.  Cannot perform authentication.");
 			return -1;
 		}
-		
+
 		smbdes_mschap(password->vp_strvalue, challenge, calculated);
 		if (memcmp(response, calculated, 24) != 0) {
 			return -1;
 		}
-		
+
 		/*
 		 *	If the password exists, and is an NT-Password,
 		 *	then calculate the hash of the NT hash.  Doing this
@@ -792,7 +792,7 @@ static int do_mschap(rlm_mschap_t *inst,
 		memset(nthashhash, 0, 16);
 
 		/*
-		 *	Run the program, and expect that we get 16 
+		 *	Run the program, and expect that we get 16
 		 */
 		result = radius_exec_program(inst->ntlm_auth, request,
 					     TRUE, /* wait */
@@ -1244,7 +1244,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			       challenge->vp_octets, /* our challenge */
 			       username_string,	/* user name */
 			       mschapv1_challenge); /* resulting challenge */
-		
+
 		DEBUG2("  rlm_mschap: Told to do MS-CHAPv2 for %s with NT-Password",
 		       username_string);
 
@@ -1342,7 +1342,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			mppe_chap2_gen_keys128(nthashhash,
 					       response->vp_octets + 26,
 					       mppe_sendkey, mppe_recvkey);
-			
+
 			mppe_add_reply(&request->reply->vps,
 				       "MS-MPPE-Recv-Key",
 				       mppe_recvkey, 16);

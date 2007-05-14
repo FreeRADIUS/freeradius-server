@@ -162,7 +162,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 		key_datum.dptr = (char *) &key;
 		key_datum.dsize = sizeof(ippool_key);
 	}
-		
+
 
 	data_datum = gdbm_fetch(sessiondb, key_datum);
 	if (data_datum.dptr != NULL){

@@ -84,7 +84,7 @@ typedef struct listen_detail_t {
 	int		delay_time;
 	struct timeval  last_packet;
 } listen_detail_t;
-			       
+
 
 /*
  *	Find a per-socket client.
@@ -104,7 +104,7 @@ static RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	if (!clients) clients = mainconfig.clients;
 
 	rad_assert(clients != NULL);
-	
+
 	return client_find(clients, ipaddr);
 }
 
@@ -214,15 +214,15 @@ static int common_socket_parse(const char *filename, int lineno,
 	rcode = cf_item_parse(cs, "ipaddr", PW_TYPE_IPADDR,
 			      &ipaddr.ipaddr.ip4addr, NULL);
 	if (rcode < 0) return -1;
-	
+
 	if (rcode == 0) { /* successfully parsed IPv4 */
 		ipaddr.af = AF_INET;
-		
+
 	} else {	/* maybe IPv6? */
 		rcode = cf_item_parse(cs, "ipv6addr", PW_TYPE_IPV6ADDR,
 				      &ipaddr.ipaddr.ip6addr, NULL);
 		if (rcode < 0) return -1;
-		
+
 		if (rcode == 1) {
 			radlog(L_ERR, "%s[%d]: No address specified in listen section",
 			       filename, lineno);
@@ -230,11 +230,11 @@ static int common_socket_parse(const char *filename, int lineno,
 		}
 		ipaddr.af = AF_INET6;
 	}
-	
+
 	rcode = cf_item_parse(cs, "port", PW_TYPE_INTEGER,
 			      &listen_port, "0");
 	if (rcode < 0) return -1;
-	
+
 	sock->ipaddr = ipaddr;
 	sock->port = listen_port;
 
@@ -267,9 +267,9 @@ static int common_socket_parse(const char *filename, int lineno,
 		rad_assert(cp != NULL);
 		value = cf_pair_value(cp);
 		rad_assert(value != NULL);
-		
+
 		strcpy(ifreq.ifr_name, value);
-	
+
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE,
 			       (char *)&ifreq, sizeof(ifreq)) < 0) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed binding to interface %s: %s",
@@ -390,7 +390,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 					   &src_ipaddr)) == NULL) {
 		rad_recv_discard(listener->fd);
 		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
-		
+
 		/*
 		 *	This is debugging rather than logging, so that
 		 *	DoS attacks don't affect us.
@@ -409,7 +409,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 		RAD_SNMP_CLIENT_INC(listener, client, requests);
 		fun = rad_authenticate;
 		break;
-		
+
 	case PW_STATUS_SERVER:
 		if (!mainconfig.status_server) {
 			rad_recv_discard(listener->fd);
@@ -425,13 +425,13 @@ static int auth_socket_recv(rad_listen_t *listener,
 		rad_recv_discard(listener->fd);
 		RAD_SNMP_INC(rad_snmp.auth.total_unknown_types);
 		RAD_SNMP_CLIENT_INC(listener, client, unknown_types);
-		
+
 		DEBUG("Invalid packet code %d sent to authentication port from client %s port %d : IGNORED",
 		      code, client->shortname, src_port);
 		return 0;
 		break;
 	} /* switch over packet types */
-	
+
 	/*
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
@@ -442,7 +442,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 		radlog(L_ERR, "%s", librad_errstr);
 		return 0;
 	}
-	
+
 	if (!received_request(listener, packet, prequest, client)) {
 		RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
 		RAD_SNMP_CLIENT_INC(listener, client, packets_dropped);
@@ -468,7 +468,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 	char		buffer[128];
 	RADCLIENT	*client;
 	lrad_ipaddr_t	src_ipaddr;
-	
+
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
@@ -483,7 +483,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 					   &src_ipaddr)) == NULL) {
 		rad_recv_discard(listener->fd);
 		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
-		
+
 		/*
 		 *	This is debugging rather than logging, so that
 		 *	DoS attacks don't affect us.
@@ -502,7 +502,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 		RAD_SNMP_CLIENT_INC(listener, client, requests);
 		fun = rad_accounting;
 		break;
-		
+
 	case PW_STATUS_SERVER:
 		if (!mainconfig.status_server) {
 			rad_recv_discard(listener->fd);
@@ -535,7 +535,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 		radlog(L_ERR, "%s", librad_errstr);
 		return 0;
 	}
-	
+
 	/*
 	 *	There can be no duplicate accounting packets.
 	 */
@@ -561,7 +561,7 @@ static int proxy_socket_recv(rad_listen_t *listener,
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
 	char		buffer[128];
-	
+
 	packet = rad_recv(listener->fd);
 	if (!packet) {
 		radlog(L_ERR, "%s", librad_errstr);
@@ -577,11 +577,11 @@ static int proxy_socket_recv(rad_listen_t *listener,
 	case PW_AUTHENTICATION_REJECT:
 		fun = rad_authenticate;
 		break;
-		
+
 	case PW_ACCOUNTING_RESPONSE:
 		fun = rad_accounting;
 		break;
-		
+
 	default:
 		/*
 		 *	FIXME: Update MIB for packet types?
@@ -727,21 +727,21 @@ static int detail_send(rad_listen_t *listener, REQUEST *request)
 		data->has_rtt = TRUE;
 		data->srtt = rtt;
 		data->rttvar = rtt / 2;
-		
+
 	} else {
 		data->rttvar -= data->rttvar >> 2;
 		data->rttvar += (data->srtt - rtt);
 		data->srtt -= data->srtt >> 3;
 		data->srtt += rtt >> 3;
 	}
-	
+
 	/*
 	 *	Calculate the time we wait before sending the next
 	 *	packet.
 	 *
 	 *	rtt / (rtt + delay) = load_factor / 100
 	 */
-	data->delay_time = (data->srtt * (100 - data->load_factor)) / (data->load_factor);	
+	data->delay_time = (data->srtt * (100 - data->load_factor)) / (data->load_factor);
 
 	/*
 	 *	FIXME: Push this delay to the event handler!
@@ -791,7 +791,7 @@ static int detail_open(rad_listen_t *this)
 
 	rad_assert(data->state == STATE_UNOPENED);
 	snprintf(buffer, sizeof(buffer), "%s.work", data->filename);
-	
+
 	/*
 	 *	Open detail.work first, so we don't lose
 	 *	accounting packets.  It's probably better to
@@ -815,7 +815,7 @@ static int detail_open(rad_listen_t *this)
 		if (stat(data->filename, &st) < 0) {
 			return 0;
 		}
-		
+
 		/*
 		 *	Open it BEFORE we rename it, just to
 		 *	be safe...
@@ -826,7 +826,7 @@ static int detail_open(rad_listen_t *this)
 			       data->filename, strerror(errno));
 			return 0;
 		}
-		
+
 		/*
 		 *	Rename detail to detail.work
 		 */
@@ -836,9 +836,9 @@ static int detail_open(rad_listen_t *this)
 			return 0;
 		}
 	} /* else detail.work existed, and we opened it */
-	
+
 	rad_assert(data->vps == NULL);
-	
+
 	rad_assert(data->fp == NULL);
 	data->fp = fdopen(this->fd, "r");
 	if (!data->fp) {
@@ -851,7 +851,7 @@ static int detail_open(rad_listen_t *this)
 
 	data->client_ip.af = AF_UNSPEC;
 	data->timestamp = 0;
-	
+
 	return 1;
 }
 
@@ -1018,7 +1018,7 @@ static int detail_recv(rad_listen_t *listener,
 		 */
 		if (data->state == STATE_HEADER) {
 			int y;
-			
+
 			if (sscanf(buffer, "%*s %*s %*d %*d:%*d:%*d %d", &y)) {
 				data->state = STATE_READING;
 			}
@@ -1072,7 +1072,7 @@ static int detail_recv(rad_listen_t *listener,
 		    (vp != NULL)) {
 			*tail = vp;
 			tail = &(vp->next);
-		}		
+		}
 	}
 
 	/*
@@ -1291,13 +1291,13 @@ static int detail_parse(const char *filename, int lineno,
 		       filename, lineno);
 		return -1;
 	}
-	
+
 	if ((data->load_factor < 1) || (data->load_factor > 100)) {
 		radlog(L_ERR, "%s[%d]: Load factor must be between 1 and 100",
 		       filename, lineno);
 		return -1;
 	}
-	
+
 	data->vps = NULL;
 	data->fp = NULL;
 	data->state = STATE_UNOPENED;
@@ -1318,7 +1318,7 @@ static int radius_snmp_recv(rad_listen_t *listener,
 	    (rad_snmp.smux_event == SMUX_READ)) {
 		smux_read();
 	}
-	
+
 	/*
 	 *  If we've got to re-connect, then do so now,
 	 *  before calling select again.
@@ -1449,14 +1449,14 @@ static int listen_bind(rad_listen_t *this)
 
 #if 0
 #ifdef O_NONBLOCK
-	if ((flags = fcntl(this->fd, F_GETFL, NULL)) < 0)  { 
-		radlog(L_ERR, "Failure in fcntl: %s)\n", strerror(errno)); 
+	if ((flags = fcntl(this->fd, F_GETFL, NULL)) < 0)  {
+		radlog(L_ERR, "Failure in fcntl: %s)\n", strerror(errno));
 		return -1;
 	}
 
-	flags |= O_NONBLOCK; 
-	if( fcntl(this->fd, F_SETFL, flags) < 0) { 
-		radlog(L_ERR, "Failure in fcntl: %s)\n", strerror(errno)); 
+	flags |= O_NONBLOCK;
+	if( fcntl(this->fd, F_SETFL, flags) < 0) {
+		radlog(L_ERR, "Failure in fcntl: %s)\n", strerror(errno));
 		return -1;
 	}
 #endif
@@ -1494,7 +1494,7 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 	case RAD_LISTEN_DETAIL:
 		this->data = rad_malloc(sizeof(listen_detail_t));
 		memset(this->data, 0, sizeof(listen_detail_t));
-		
+
 	default:
 		break;
 	}
@@ -1594,7 +1594,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 	 *	We shouldn't be called with a pre-existing list.
 	 */
 	rad_assert(head && (*head == NULL));
-	
+
 	last = head;
 	server_ipaddr.af = AF_UNSPEC;
 
@@ -1632,7 +1632,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 			      PW_TYPE_IPADDR,
 			      &server_ipaddr.ipaddr.ip4addr, NULL);
 	if (rcode < 0) return -1; /* error parsing it */
-	
+
 	if (rcode == 0) { /* successfully parsed IPv4 */
 		listen_socket_t *sock;
 		server_ipaddr.af = AF_INET;
@@ -1645,7 +1645,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 
 		sock->ipaddr = server_ipaddr;
 		sock->port = auth_port;
-		
+
 		if (listen_bind(this) < 0) {
 			listen_free(&this);
 			listen_free(head);
@@ -1655,7 +1655,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		auth_port = sock->port;	/* may have been updated in listen_bind */
 		*last = this;
 		last = &(this->next);
-		
+
 		/*
 		 *	Open Accounting Socket.
 		 *
@@ -1664,7 +1664,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		 */
 		this = listen_alloc(RAD_LISTEN_ACCT);
 		sock = this->data;
-		
+
 		/*
 		 *	Create the accounting socket.
 		 *
@@ -1673,7 +1673,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		 */
 		sock->ipaddr = server_ipaddr;
 		sock->port = auth_port + 1;
-		
+
 		if (listen_bind(this) < 0) {
 			listen_free(&this);
 			listen_free(head);
@@ -1707,7 +1707,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		int		lineno = cf_section_lineno(cs);
 
 		listen_type = identity = NULL;
-		
+
 		DEBUG2(" listen {");
 
 		rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
@@ -1748,7 +1748,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		this = listen_alloc(type);
 		this->identity = identity;
 		this->fd = -1;
-		
+
 		/*
 		 *	Call per-type parser.
 		 */
@@ -1762,7 +1762,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		DEBUG2(" }");
 
 		*last = this;
-		last = &(this->next);	
+		last = &(this->next);
 	}
 
 	/*
@@ -1860,7 +1860,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 			return -1;
 		}
 	}
-	
+
  do_snmp:
 #ifdef WITH_SNMP
 	if (mainconfig.do_snmp) {
@@ -1878,10 +1878,10 @@ int listen_init(const char *filename, rad_listen_t **head)
 
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));
-		
+
 		this->type = RAD_LISTEN_SNMP;
 		this->fd = rad_snmp.smux_fd;
-		
+
 		this->recv = radius_snmp_recv;
 		this->print = radius_snmp_print;
 
@@ -1906,7 +1906,7 @@ void listen_free(rad_listen_t **head)
 	this = *head;
 	while (this) {
 		rad_listen_t *next = this->next;
-		
+
 		free(this->identity);
 
 		/*
@@ -1919,7 +1919,7 @@ void listen_free(rad_listen_t **head)
 		}
 		free(this->data);
 		free(this);
-		
+
 		this = next;
 	}
 

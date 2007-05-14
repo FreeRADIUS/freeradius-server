@@ -416,7 +416,7 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 
 		if (Y->Color == Black && X != NIL)
 			DeleteFixup(tree, X, Parent);
-		
+
 		/*
 		 *	The user structure in Y->Data MAY include a
 		 *	pointer to Y.  In that case, we CANNOT delete
@@ -434,15 +434,15 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 		}
 		if (Y->Left->Parent == Z) Y->Left->Parent = Y;
 		if (Y->Right->Parent == Z) Y->Right->Parent = Y;
-		
+
 		free(Z);
 
 	} else {
 		if (tree->freeNode) tree->freeNode(Y->Data);
-		
+
 		if (Y->Color == Black && X != NIL)
 			DeleteFixup(tree, X, Parent);
-		
+
 		free(Y);
 	}
 
@@ -456,7 +456,7 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 int rbtree_deletebydata(rbtree_t *tree, const void *data)
 {
 	rbnode_t *node = rbtree_find(tree, data);
-	
+
 	if (!node) return 0;	/* false */
 
 	rbtree_delete(tree, node);

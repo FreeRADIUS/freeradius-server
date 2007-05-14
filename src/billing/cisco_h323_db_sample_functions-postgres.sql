@@ -130,7 +130,7 @@ SELECT RadAcctId AS ID, NASIPAddress AS GWIP, AcctSessionTime AS Call_Seconds, c
 FROM StopTelephony;
 
 CREATE OR REPLACE VIEW calls AS
-SELECT Date, Time, Length, Number, cust_ip, gw_ip 
+SELECT Date, Time, Length, Number, cust_ip, gw_ip
 FROM call_history
 WHERE Length > 0
 ORDER BY Date, Time, Number, Length, cust_ip ASC;
@@ -174,7 +174,7 @@ END;
 CREATE OR REPLACE FUNCTION TelephonyInsertRecord(StopTelephony.UserName%TYPE, StopTelephony.NASIPAddress%TYPE, StopTelephony.AcctSessionTime%TYPE,
     StopTelephony.AcctInputOctets%TYPE, StopTelephony.AcctOutputOctets%TYPE, StopTelephony.CalledStationId%TYPE, StopTelephony.CallingStationId%TYPE,
     StopTelephony.AcctDelayTime%TYPE, StopTelephony.CiscoNASPort%TYPE, StopTelephony.h323CallOrigin%TYPE, StopTelephony.h323SetupTime%TYPE,
-    StopTelephony.h323ConnectTime%TYPE, StopTelephony.h323DisconnectTime%TYPE, StopTelephony.h323DisconnectCause%TYPE, 
+    StopTelephony.h323ConnectTime%TYPE, StopTelephony.h323DisconnectTime%TYPE, StopTelephony.h323DisconnectCause%TYPE,
     StopTelephony.H323VoiceQuality%TYPE, StopTelephony.CallID%TYPE) RETURNS BOOLEAN AS '
 DECLARE
 BEGIN

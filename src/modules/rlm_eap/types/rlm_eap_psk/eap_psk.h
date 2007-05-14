@@ -5,7 +5,7 @@
  *
  * Implementation of the EAP-PSK packet management
  *
- * 
+ *
  * Copyright (C) France Télécom R&D (DR&D/MAPS/NSS)
  *
  * This program is free software; you can redistribute it and/or
@@ -17,7 +17,7 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
@@ -81,7 +81,7 @@ typedef struct eap_psk_conf {
   unsigned int   maxDelay;	     	   // the maximum interval in seconds between two correct responses
 } PSK_CONF;
 
-  
+
 // data format of the first EAP-PSK message
 typedef struct psk_message_1 {
   unsigned char rand_s[PSK_RANDOM_NUMBER_SIZE];
@@ -114,7 +114,7 @@ typedef struct psk_message_4 {
 }psk_message_4;
 
 
-/** 
+/**
  *@memo		this function converts a string into hexa
  *@param    inbytes, pointer to a string
  *@param    outstr, pointer to the hexa conversion
@@ -134,14 +134,14 @@ int pskConvertHex(char *inbytes, char *outstr, int numbytes);
 int pskHex2Bin(const char *hex, unsigned char *bin, int numbytes);
 
 
-/** 
+/**
  *@memo		this function delivers random bytes
  *@param    buf, pointer to the buffer to fill
  *@param    nbytes, number of bytes to generate
  *@return   0 if an error has occured
  */
 int pskGetRandomBytes(void *buf, int nbytes);
-  
+
 
 #if defined(__cplusplus)
 }

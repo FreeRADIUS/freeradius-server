@@ -99,7 +99,7 @@ free_result_row(rlm_sql_postgres_sock * pg_sock)
 
 /*************************************************************************
 *	Function: check_fatal_error
-*	
+*
 *	Purpose:  Check error type and behave accordingly
 *
 *************************************************************************/
@@ -108,7 +108,7 @@ static int check_fatal_error (char *errorcode)
 {
 	int x = 0;
 
-	/*	
+	/*
 	Check the error code to see if we should reconnect or not
 	Error Code table taken from
 	http://www.postgresql.org/docs/8.1/interactive/errcodes-appendix.html
@@ -121,11 +121,11 @@ static int check_fatal_error (char *errorcode)
 				return SQL_DOWN;
 			else
 				return -1;
-		}	
+		}
 		x++;
 	}
 
-	radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s] Occurred!!", errorcode);	
+	radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s] Occurred!!", errorcode);
 	/*	We don't seem to have a matching error class/code */
 	return -1;
 }
@@ -196,7 +196,7 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 	int numfields = 0;
-	char *errorcode; 
+	char *errorcode;
 	char *errormsg;
 
 	if (config->sqltrace)
@@ -231,14 +231,14 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 		switch (status){
 
-			case PGRES_COMMAND_OK: 
+			case PGRES_COMMAND_OK:
 				/*Successful completion of a command returning no data.*/
 
-				/*affected_rows function only returns 
-				the number of affected rows of a command 
-				returning no data...	
+				/*affected_rows function only returns
+				the number of affected rows of a command
+				returning no data...
 				*/
-				pg_sock->affected_rows	= affected_rows(pg_sock->result); 
+				pg_sock->affected_rows	= affected_rows(pg_sock->result);
 				radlog(L_DBG, "rlm_sql_postgresql: query affected rows = %i", pg_sock->affected_rows);
 				return 0;
 
@@ -289,11 +289,11 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 			break;
 
 
-		}	
-	
+		}
+
 		/*
 			Note to self ... sql_store_result returns 0 anyway
-			after setting the sqlsocket->affected_rows.. 
+			after setting the sqlsocket->affected_rows..
 			sql_num_fields returns 0 at worst case which means the check below
 			has a really small chance to return false..
 			lets remove it then .. yuck!!

@@ -53,7 +53,7 @@ if ($snmp_type = 'net') {
 	"v90",
 	"v27ter",
 );
-		  
+
 @Protocol = (
 	"error",
 	"normal",
@@ -66,7 +66,7 @@ if ($snmp_type = 'net') {
 	"ara20",
 	"unknown",
 );
-#DEBUG#print "$snmpwalkcmd enterprises.9.2.9.2.1.18 | grep $user\n";		 
+#DEBUG#print "$snmpwalkcmd enterprises.9.2.9.2.1.18 | grep $user\n";
 $modem=`$snmpwalkcmd enterprises.9.2.9.2.1.18 | grep $user`;
 if($modem=~/enterprises\.9\.2\.9\.2\.1\.18\.(\d+) =/){
   $modem=$1;
@@ -74,32 +74,32 @@ if($modem=~/enterprises\.9\.2\.9\.2\.1\.18\.(\d+) =/){
   $port=$modem%120-1;
   $modem="$slot.$port";
 
-#DEBUG#print "$snmpgetcmd enterprises.9.9.47.1.3.1.1.9.$modem\n";		 
+#DEBUG#print "$snmpgetcmd enterprises.9.9.47.1.3.1.1.9.$modem\n";
   $duration=`$snmpgetcmd enterprises.9.9.47.1.3.1.1.9.$modem` or die "No MIB\n";
   $duration=~/\) (.*)\./;
   $duration=$1;
 
-#DEBUG#print "$snmpgetcmd enterprises.9.9.47.1.3.1.1.12.$modem\n";		 
+#DEBUG#print "$snmpgetcmd enterprises.9.9.47.1.3.1.1.12.$modem\n";
   $modulation=`$snmpgetcmd enterprises.9.9.47.1.3.1.1.12.$modem` or die "No MIB\n";
   $modulation=~/ \= (\d+)/;
   $modulation=$ModulationScheme[$1];
 
-#DEBUG#print "$snmpgetcmd enterprises.9.9.47.1.3.1.1.13.$modem\n";		 
+#DEBUG#print "$snmpgetcmd enterprises.9.9.47.1.3.1.1.13.$modem\n";
   $protocol=`$snmpgetcmd enterprises.9.9.47.1.3.1.1.13.$modem` or die "No MIB\n";
   $protocol=~/ \= (\d+)/;
   $protocol=$Protocol[$1];
 
-#DEBUG#print "$snmpgetcmd enterprises.9.9.47.1.3.1.1.14.$modem\n";		 
+#DEBUG#print "$snmpgetcmd enterprises.9.9.47.1.3.1.1.14.$modem\n";
   $txrate=`$snmpgetcmd enterprises.9.9.47.1.3.1.1.14.$modem` or die "No MIB\n";
   $txrate=~/Gauge32\: (\d+)/;
   $txrate=$1;
 
-#DEBUG#print "$snmpgetcmd enterprises.9.9.47.1.3.1.1.15.$modem\n";		 
+#DEBUG#print "$snmpgetcmd enterprises.9.9.47.1.3.1.1.15.$modem\n";
   $rxrate=`$snmpgetcmd enterprises.9.9.47.1.3.1.1.15.$modem` or die "No MIB\n";
   $rxrate=~/Gauge32\: (\d+)/;
   $rxrate=$1;
 
-#DEBUG#print "$snmpgetcmd enterprises.9.9.47.1.3.1.1.17.$modem\n";		 
+#DEBUG#print "$snmpgetcmd enterprises.9.9.47.1.3.1.1.17.$modem\n";
   $rxsignal=`$snmpgetcmd enterprises.9.9.47.1.3.1.1.17.$modem` or die "No MIB\n";
 #  $rxsignal=~ s/INTEGER\://;
   $rxsignal=~/ \= (.*)\n/;

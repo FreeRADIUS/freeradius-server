@@ -202,21 +202,21 @@ void rlm_policy_free_item(policy_item_t *item)
 		default:
 		case POLICY_TYPE_BAD:
 			break;
-			
+
 		case POLICY_TYPE_ASSIGNMENT:
 			{
 				policy_assignment_t *this;
-				
+
 				this = (policy_assignment_t *) item;
 				if (this->lhs) free(this->lhs);
 				if (this->rhs) free(this->rhs);
 			}
 			break;
-			
+
 		case POLICY_TYPE_CONDITIONAL:
 			{
 				policy_condition_t *this;
-				
+
 				this = (policy_condition_t *) item;
 				if (this->lhs) free(this->lhs);
 				if (this->rhs) free(this->rhs);
@@ -227,11 +227,11 @@ void rlm_policy_free_item(policy_item_t *item)
 				}
 			}
 			break;
-			
+
 		case POLICY_TYPE_IF:
 			{
 				policy_if_t *this;
-				
+
 				this = (policy_if_t *) item;
 				if (this->condition) {
 					rlm_policy_free_item(this->condition);
@@ -251,7 +251,7 @@ void rlm_policy_free_item(policy_item_t *item)
 		case POLICY_TYPE_ATTRIBUTE_LIST:
 			{
 				policy_attributes_t *this;
-				
+
 				this = (policy_attributes_t *) item;
 				rlm_policy_free_item(this->attributes);
 			}
@@ -260,7 +260,7 @@ void rlm_policy_free_item(policy_item_t *item)
 		case POLICY_TYPE_NAMED_POLICY:
 			{
 				policy_named_t *this;
-				
+
 				this = (policy_named_t *) item;
 				rad_assert(this->name != NULL);
 				free(this->name);
@@ -271,19 +271,19 @@ void rlm_policy_free_item(policy_item_t *item)
 		case POLICY_TYPE_CALL:
 			{
 				policy_call_t *this;
-				
+
 				this = (policy_call_t *) item;
 				if (this->name) free(this->name);
 			}
 			break;
-			
+
 		case POLICY_TYPE_RETURN:
 			break;	/* do nothing */
 
 		case POLICY_TYPE_MODULE:
 			{
 				policy_module_t *this;
-				
+
 				this = (policy_module_t *) item;
 				if (this->cs) cf_section_free(&this->cs);
 				if (this->mc) modcallable_free(&this->mc);

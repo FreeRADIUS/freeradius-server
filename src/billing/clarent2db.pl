@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #
-# syslog2db - Extract Clarent VoIP CDRs from billing_record files and 
-# insert them into a Postgresql database. 
+# syslog2db - Extract Clarent VoIP CDRs from billing_record files and
+# insert them into a Postgresql database.
 #
 # Author:       Peter Nixon <codemonkey@peternixon.net>
 # Date:         2003-05-07
@@ -56,7 +56,7 @@ my $password    = "";
 # Defaults
 my $defaulttimezone = "UTC";
 my $defaultyear = 2003;
-my $dbh; 
+my $dbh;
 
 my %working_record = ();
 
@@ -170,7 +170,7 @@ sub record_match($) {
         	if ($verbose > 1) { print "DEBUG: Clean Record: @callrecord\n"; }
 		$recordno++; %working_record = ();
 		$working_record{local_setuptime} = clarent2normaltime($callrecord[0]);
-                $working_record{start_time} = $callrecord[3];	# This is in Unix timetamp format, relative to the originating gateway. 
+                $working_record{start_time} = $callrecord[3];	# This is in Unix timetamp format, relative to the originating gateway.
 								# It is therefore useless unless ALL gateways are set with the same timezone,
 								# so I don't bother to convert it to datetime format.
                 $working_record{duration} = $callrecord[4];
@@ -287,14 +287,14 @@ sub main {
 			$file = @ARGV[0];
                        	&file_read($file);
 		}
-	        if ($verbose >= 0) { 
+	        if ($verbose >= 0) {
 		        my $runtime = (time() - $starttime);
 		        if ($runtime < 1) { $runtime = 0.5; }		# Prevent divide-by-zero errors
 		        my $speed = ($recordno / $runtime);
-			if ($fileno > 1) { 
-				print "\n$recordno records from $lineno lines in $fileno files were processed in ~$runtime seconds (~$speed records/sec)\n"; 
+			if ($fileno > 1) {
+				print "\n$recordno records from $lineno lines in $fileno files were processed in ~$runtime seconds (~$speed records/sec)\n";
 			} else {
-				print "\n$recordno records from $lineno lines in $file were processed in ~$runtime seconds (~$speed records/sec)\n"; 
+				print "\n$recordno records from $lineno lines in $file were processed in ~$runtime seconds (~$speed records/sec)\n";
 			}
 		}
 

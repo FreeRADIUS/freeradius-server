@@ -141,7 +141,7 @@ function da_sql_num_fields($fields,$config)
 function da_sql_field_name($fields,$num,$config)
 {
 	if ($fields){
-		$row = @pg_fetch_row($fields[res],$num);	
+		$row = @pg_fetch_row($fields[res],$num);
 		if ($row)
 			return $row[0];
 	}

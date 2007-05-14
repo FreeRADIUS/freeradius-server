@@ -135,12 +135,12 @@ static const char *policy_lex_string(const char *input,
 	rad_assert(input != NULL);
 
 	if (buffer) *buffer = '\0';
-	
+
 	switch (*input) {
 	case '\0':
 		*token = POLICY_LEX_EOL;
 		return NULL;	/* nothing more to do */
-		
+
 	case ' ':
 	case '\t':
 	case '\r':
@@ -152,7 +152,7 @@ static const char *policy_lex_string(const char *input,
 		while ((*input == ' ') || (*input == '\t') ||
 		       (*input == '\r') || (*input == '\n')) input++;
 		return input;	/* point to next non-whitespace character */
-		
+
 	case '#':		/* ignore everything to the end of the line */
 		*token = POLICY_LEX_EOL;
 		return NULL;
@@ -160,19 +160,19 @@ static const char *policy_lex_string(const char *input,
 	case '(':
 		*token = POLICY_LEX_L_BRACKET;
 		return input + 1;
-		
+
 	case ')':
 		*token = POLICY_LEX_R_BRACKET;
 		return input + 1;
-		
+
 	case '{':
 		*token = POLICY_LEX_LC_BRACKET;
 		return input + 1;
-		
+
 	case '}':
 		*token = POLICY_LEX_RC_BRACKET;
 		return input + 1;
-		
+
 	case ',':
 		*token = POLICY_LEX_COMMA;
 		return input + 1;
@@ -235,7 +235,7 @@ static const char *policy_lex_string(const char *input,
 			*token = POLICY_LEX_AND;
 		}
 		return input + 1;
-		
+
 	case '|':
 		switch (input[1]) {
 		case '|':
@@ -252,7 +252,7 @@ static const char *policy_lex_string(const char *input,
 			*token = POLICY_LEX_OR;
 		}
 		return input + 1;
-		
+
 	case '!':
 		switch (input[1]) {
 		case '=':
@@ -274,7 +274,7 @@ static const char *policy_lex_string(const char *input,
 			*token = POLICY_LEX_L_NOT;
 		}
 		return input + 1;
-		
+
 	case '=':
 		switch (input[1]) {
 		case '=':
@@ -296,7 +296,7 @@ static const char *policy_lex_string(const char *input,
 			*token = POLICY_LEX_ASSIGN;
 		}
 		return input + 1;
-		
+
 	case '<':
 		if (input[1] == '=') {
 			input++;
@@ -305,7 +305,7 @@ static const char *policy_lex_string(const char *input,
 			*token = POLICY_LEX_LT;
 		}
 		return input + 1;
-		
+
 	case '>':
 		if (input[1] == '=') {
 			input++;
@@ -320,7 +320,7 @@ static const char *policy_lex_string(const char *input,
 			*token = POLICY_LEX_BAD;
 			return input + 1;
 		}
-		
+
 		input++;
 		while (*input != '"') {
 			/*
@@ -335,7 +335,7 @@ static const char *policy_lex_string(const char *input,
 			 */
 			*(buffer++) = *(input++);
 			buflen--;
-			
+
 			/*
 			 *	FIXME: Print more warnings?
 			 */
@@ -344,7 +344,7 @@ static const char *policy_lex_string(const char *input,
 			}
 		}
 		*buffer = '\0';
-		
+
 		*token = POLICY_LEX_DOUBLE_QUOTED_STRING;
 		return input + 1; /* skip trailing '"' */
 
@@ -359,7 +359,7 @@ static const char *policy_lex_string(const char *input,
 		*token = POLICY_LEX_BAD;
 		return input + 1;
 	}
-	
+
 	/*
 	 *	Getting one character is stupid.
 	 */
@@ -367,7 +367,7 @@ static const char *policy_lex_string(const char *input,
 		*token = POLICY_LEX_BAD;
 		return input + 1;
 	}
-	
+
 	/*
 	 *	Bare words are [-a-zA-Z0-9.]+
 	 */
@@ -381,7 +381,7 @@ static const char *policy_lex_string(const char *input,
 		}
 		*(buffer++) = *(input++);
 		buflen--;
-		
+
 		/*
 		 *	FIXME: Print more warnings?
 		 */
@@ -390,7 +390,7 @@ static const char *policy_lex_string(const char *input,
 		}
 	}
 	*buffer = '\0';
-	
+
 	*token = POLICY_LEX_BARE_WORD;
 	return input;
 }
@@ -444,7 +444,7 @@ static policy_lex_t policy_lex_file(policy_lex_file_t *lexer,
 		lexer->parse = fgets(lexer->buffer,
 				     sizeof(lexer->buffer),
 				     lexer->fp);
-		
+
 		if (!lexer->parse) {
 			return POLICY_LEX_EOF;
 		}
@@ -601,7 +601,7 @@ static int parse_print(policy_lex_file_t *lexer, policy_item_t **tail)
 	this->rhs = strdup(mystring);
 
 	*tail = (policy_item_t *) this;
-	
+
 	return 1;
 }
 
@@ -637,7 +637,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 			rlm_policy_free_item((policy_item_t *) this);
 			return 0;
 		}
-		
+
 		this->compare = POLICY_LEX_L_BRACKET;
 		this->child_condition = POLICY_LEX_L_BRACKET;
 		rcode = parse_condition(lexer, &(this->child));
@@ -679,9 +679,9 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 					lhs);
 				rlm_policy_free_item((policy_item_t *) this);
 				return 0;
-				
+
 			}
-			
+
 			/*
 			 *	this->lhs set up below, after "check"
 			 */
@@ -697,7 +697,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 					lrad_int2str(rlm_policy_tokens, token, "?"));
 				return 0;
 			}
-			
+
 			token = policy_lex_file(lexer, 0, NULL, 0);
 			if (token != POLICY_LEX_R_BRACKET) {
 				fprintf(stderr, "%s[%d]: Expected right bracket, got \"%s\"\n",
@@ -870,7 +870,7 @@ static int parse_if(policy_lex_file_t *lexer, policy_item_t **tail)
 	}
 
 	*tail = (policy_item_t *) this;
-	
+
 	return 1;
 }
 
@@ -926,7 +926,7 @@ static int parse_attribute_block(policy_lex_file_t *lexer,
 	policy_lex_t token;
 	policy_attributes_t *this;
 	char buffer[32];
-	
+
 	token = policy_lex_file(lexer, 0, buffer, sizeof(buffer));
 	switch (token) {
 	case POLICY_LEX_ASSIGN:
@@ -940,7 +940,7 @@ static int parse_attribute_block(policy_lex_file_t *lexer,
 			lrad_int2str(rlm_policy_tokens, token, "?"));
 		return 0;	/* unknown */
 	}
-	
+
 	this = rad_malloc(sizeof(*this));
 	memset(this, 0, sizeof(*this));
 
@@ -1049,7 +1049,7 @@ static int parse_module(policy_lex_file_t *lexer, policy_item_t **tail)
 		snprintf(buffer, sizeof(buffer), "%s/%s",
 			 radius_dir, filename);
 	}
-	
+
 	/*
 	 *	Include section calling a module.
 	 */
@@ -1141,7 +1141,7 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 			}
 			return 0;
 			break;
-			
+
 		case POLICY_RESERVED_CONTROL:
 		case POLICY_RESERVED_REQUEST:
 		case POLICY_RESERVED_REPLY:
@@ -1152,21 +1152,21 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 				return 1;
 			return 0;
 			break;
-			
+
 		case POLICY_RESERVED_PRINT:
 			if (parse_print(lexer, tail)) {
 				return 1;
 			}
 			return 0;
 			break;
-			
+
 		case POLICY_RESERVED_RETURN:
 			if (parse_return(lexer, tail)) {
 				return 1;
 			}
 			return 0;
 			break;
-			
+
 		case POLICY_RESERVED_MODULE:
 			if (parse_module(lexer, tail)) {
 				return 1;
@@ -1187,11 +1187,11 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 
 			{
 				const DICT_ATTR *dattr;
-				
+
 				/*
 				 *	Bare words MUST be dictionary attributes
 				 */
-				
+
 				dattr = dict_attrbyname(lhs);
 				if (!dattr) {
 					fprintf(stderr, "%s[%d]: Expected attribute name, got \"%s\"\n",
@@ -1203,14 +1203,14 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 					     lhs);
 			}
 			break;
-			
+
 		default:
 			fprintf(stderr, "%s[%d]: Unexpected reserved word \"%s\"\n",
 				lexer->filename, lexer->lineno, lhs);
 			return 0;
 		} /* switch over reserved words */
 		break;
-		
+
 		/*
 		 *	Return from nested blocks.
 		 */
@@ -1479,12 +1479,12 @@ static int parse_include(policy_lex_file_t *lexer)
 	if (p) {
 		strlcpy(p + 1, filename, sizeof(buffer) - 1 - (p - buffer));
 
-#ifdef HAVE_DIRENT_H	
+#ifdef HAVE_DIRENT_H
 		p = strrchr(p + 1, '/');
 		if (p && !p[1]) {
 			DIR		*dir;
 			struct dirent	*dp;
-			
+
 			p++;
 
 			dir = opendir(buffer);
@@ -1494,7 +1494,7 @@ static int parse_include(policy_lex_file_t *lexer)
 					buffer, strerror(errno));
 				return 0;
 			}
-			
+
 			/*
 			 *	Read the directory, ignoring "." files.
 			 */
@@ -1524,7 +1524,7 @@ static int parse_include(policy_lex_file_t *lexer)
 		snprintf(buffer, sizeof(buffer), "%s/%s",
 			 radius_dir, filename);
 	}
-	
+
 	/*
 	 *	Handle one include file.
 	 */
@@ -1577,19 +1577,19 @@ int rlm_policy_parse(rbtree_t *policies, const char *filename)
 					return 0;
 				}
 				break;
-				
+
 			case POLICY_RESERVED_INCLUDE:
 				if (!parse_include(lexer)) {
 					return 0;
 				}
 				break;
-				
+
 			case POLICY_RESERVED_DEBUG:
 				if (!parse_debug(lexer)) {
 					return 0;
 				}
 				break;
-			
+
 			default:
 				fprintf(stderr, "%s[%d]: Unexpected word \"%s\"\n",
 					lexer->filename, lexer->lineno,

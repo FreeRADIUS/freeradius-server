@@ -48,10 +48,10 @@ static const CONF_PARSER module_config[] = {
 
 
 static int acctlog_detach(void *instance)
-{   
+{
     rlm_acctlog_t *inst = instance;
-	
-	
+
+
     free(inst);
     return 0;
 }
@@ -109,7 +109,7 @@ static int do_acctlog_acct(void *instance, REQUEST *request)
 		case PW_STATUS_ACCOUNTING_OFF:
 			radius_xlat(logstr, sizeof(logstr), inst->acctoff, request, NULL);
 		break;
-		
+
 	}
 
 	if (strlen(logstr))

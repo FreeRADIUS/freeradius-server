@@ -22,10 +22,10 @@ if ($config[sql_nas_table] != ''){
 			$NAS_ARR = split(',',$mappings[$auth_user][nasdb]);
 			$extra = 'WHERE nasname IN (';
 			foreach ($NAS_ARR as $nas)
-				$extra .= "'$nasname',";	
+				$extra .= "'$nasname',";
 			unset($NAS_ARR);
 			$extra = rtrim($extra,",");
-			$extra .= ')';	
+			$extra .= ')';
 		}
 		$search = @da_sql_query($link,$config,
 		"SELECT * FROM $config[sql_nas_table] $extra;");

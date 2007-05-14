@@ -187,7 +187,7 @@ int main(int argc, char **argv)
 
 	fi = lrad_fifo_create(MAX, NULL);
 	if (!fi) exit(1);
-	
+
 	for (i = 0; i < MAX; i++) {
 		array[i] = i;
 

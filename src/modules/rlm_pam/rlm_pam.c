@@ -289,7 +289,7 @@ module_t rlm_pam = {
 	RLM_MODULE_INIT,
 	"pam",
 	RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
-	pam_instantiate,		/* instantiation */	
+	pam_instantiate,		/* instantiation */
 	pam_detach,			/* detach */
 	{
 		pam_auth,		/* authenticate */

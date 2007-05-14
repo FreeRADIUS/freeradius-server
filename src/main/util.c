@@ -483,7 +483,7 @@ int rad_copy_variable(char *to, const char *from)
 			if (from[1] == '{') {
 				*(to++) = *(from++);
 				length++;
-				
+
 				sublen = rad_copy_variable(to, from);
 				if (sublen < 0) return sublen;
 				from += sublen;

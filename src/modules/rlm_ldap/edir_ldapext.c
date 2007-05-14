@@ -1,8 +1,8 @@
-/* 
+/*
  * Copyright (C) 2002-2004 Novell, Inc.
  *
  * edir_ldapext.c  LDAP extension for reading eDirectory universal password
- * 
+ *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as published
  * by the Free Software Foundation.
@@ -19,7 +19,7 @@
  * find current contact  information at www.novell.com.
  *
  * Copyright 2006 The FreeRADIUS Server Project.
- */ 
+ */
 
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
@@ -54,9 +54,9 @@ RCSID("$Id$")
 /* OID of LDAP extension call to perform NMAS authentication */
 #define RADAUTH_OID_NMAS_AUTH_REQUEST         "2.16.840.1.113719.1.510.100.1"
 #define RADAUTH_OID_NMAS_AUTH_REPLY           "2.16.840.1.113719.1.510.100.2"
-                                                                                                                             
+
 #define RADAUTH_LDAP_EXT_VERSION 1
-                                                                                                                             
+
 #define REQUEST_CHALLENGED 1
 
 
@@ -139,8 +139,8 @@ int berEncodePasswordData(
 		err = 0;
 	}
 
-	/* 
-	 * Convert the BER we just built to a berval that we'll send with the extended request. 
+	/*
+	 * Convert the BER we just built to a berval that we'll send with the extended request.
 	 */
 	if(ber_flatten(requestBer, requestBV) == LBER_ERROR)
 	{
@@ -206,7 +206,7 @@ int berDecodeLoginData(
 				memcpy(retData, retOctStr, retOctStrLen);
 			}
 			else if (!err)
-			{	
+			{
 				err = NMAS_E_BUFFER_OVERFLOW;
 			}
 
@@ -317,7 +317,7 @@ int nmasldap_get_password(
 	/* Do we have a good returned berval? */
 	if(!replyBV)
 	{
-		/* 
+		/*
 		 * No; returned berval means we experienced a rather drastic error.
 		 * Return operations error.
 		 */
@@ -401,7 +401,7 @@ int berEncodeAuthData(
 {
         int err = 0, rc=0;
         BerElement *requestBer = NULL;
-                                                                                                                             
+
         char    * utf8ObjPtr = NULL;
         int     utf8ObjSize = 0;
         char    * utf8PwdPtr = NULL;
@@ -413,29 +413,29 @@ int berEncodeAuthData(
         char    * utf8SeqPtr = NULL;
         int     utf8SeqSize = 0;
         int state_present = 0;
-                                                                                                                             
+
         utf8ObjSize = strlen(objectDN)+1;
         utf8ObjPtr = objectDN;
-                                                                                                                             
+
         utf8PwdSize = strlen(pwd);
         utf8PwdPtr = pwd;
-                                                                                                                             
+
         utf8SeqSize = strlen(sequence)+1;
         utf8SeqPtr = sequence;
-                                                                                                                             
+
         utf8NasIPSize = strlen(NasIP)+1;
         utf8NasIPPtr = NasIP;
-                                                                                                                             
+
         /* Allocate a BerElement for the request parameters.*/
         if((requestBer = ber_alloc()) == NULL)
         {
                 err = NMAS_E_FRAG_FAILURE;
                 goto Cleanup;
         }
-                                                                                                                             
+
         /* BER encode the NMAS Version, the objectDN, and the password */
         rc = ber_printf(requestBer, "{ioooo", RADAUTH_LDAP_EXT_VERSION, utf8ObjPtr, utf8ObjSize, utf8PwdPtr, utf8PwdSize, utf8SeqPtr, utf8SeqSize, utf8NasIPPtr, utf8NasIPSize);
-                                                                                                                             
+
         if( *auth_state == -2)
         {
                 utf8StateSize = strlen(state)+1;
@@ -447,7 +447,7 @@ int berEncodeAuthData(
         {
                 rc = ber_printf(requestBer, "i}", state_present);
         }
-                                                                                                                             
+
         if (rc < 0)
         {
                 err = NMAS_E_FRAG_FAILURE;
@@ -465,14 +465,14 @@ int berEncodeAuthData(
                 err = NMAS_E_FRAG_FAILURE;
                 goto Cleanup;
         }
-                                                                                                                             
+
 Cleanup:
-                                                                                                                             
+
         if(requestBer)
         {
                 ber_free(requestBer, 1);
         }
-                                                                                                                             
+
         return err;
 } /* End of berEncodeAuthData */
 
@@ -500,7 +500,7 @@ int berDecodeAuthData(
         int rc=0, err = 0;
         BerElement *replyBer = NULL;
         struct berval   challenge = {0};
-                                                                                                                             
+
         if((replyBer = ber_init(replyBV)) == NULL)
         {
                 err = NMAS_E_SYSTEM_RESOURCES; // fix err code
@@ -525,16 +525,16 @@ int berDecodeAuthData(
                         }
                 }
         }
-                                                                                                                             
+
 Cleanup:
         if(replyBer)
         {
                 ber_free(replyBer, 1);
         }
-                                                                                                                             
+
         return err;
 }/* End of berDecodeLoginData */
-                                                                                                                             
+
 /* -----------------------------------------------------------------------
  *      radLdapXtnNMASAuth()
  *      ==============================
@@ -555,34 +555,34 @@ int radLdapXtnNMASAuth(
 )
 {
         int err = 0;
-                                                                                                                             
+
         struct berval *requestBV = NULL;
         char *replyOID = NULL;
         struct berval *replyBV = NULL;
         int errCode;
         char *challenge;
         size_t challengesize;
-                                                                                                                             
+
         challengesize = *statesize;
         challenge = (char *)malloc(challengesize+2);
                 if(challenge == NULL)
                         {
                                 return NMAS_E_INSUFFICIENT_MEMORY;
                         }
-                                                                                                                             
+
          /* Validate char    parameters. */
         if(objectDN == NULL || (strlen(objectDN) == 0) || statesize == NULL || NasIPaddr == NULL || ld == NULL)
         {
                 return NMAS_E_INVALID_PARAMETER;
         }
-                                                                                                                             
+
         err = berEncodeAuthData(&requestBV, objectDN, pwd, sequence, NasIPaddr, state, auth_state);
-                                                                                                                             
+
         if(err)
         {
                 goto Cleanup;
         }
-                                                                                                                             
+
         /* Call the ldap_extended_operation (synchronously) */
         if((err = ldap_extended_operation_s(ld, RADAUTH_OID_NMAS_AUTH_REQUEST, requestBV, NULL, NULL, &replyOID, &replyBV))!=0)
         {
@@ -594,14 +594,14 @@ int radLdapXtnNMASAuth(
                 err = NMAS_E_NOT_SUPPORTED; // change error values
                 goto Cleanup;
         }
-                                                                                                                             
+
         /* Is this what we were expecting to get back. */
         if(strcmp(replyOID, RADAUTH_OID_NMAS_AUTH_REPLY))
         {
                 err = NMAS_E_NOT_SUPPORTED; // change return value
                 goto Cleanup;
         }
-                                                                                                                             
+
         /* Do we have a good returned berval? */
         if(!replyBV)
         {
@@ -613,7 +613,7 @@ int radLdapXtnNMASAuth(
                 goto Cleanup;
         }
         err = berDecodeAuthData(replyBV, &errCode, &challengesize, challenge, auth_state);
-                                                                                                                             
+
 /* errCode return error in case of AUTH-REJECT */
         if (!err && challengesize!= 0)
         {
@@ -624,35 +624,35 @@ int radLdapXtnNMASAuth(
                 }
                 *statesize = challengesize; /* does not include null termination */
         }
-                                                                                                                             
+
 Cleanup:
         /* Free memory allocated for challenge  */
         if(challenge)
         {
                 free(challenge);
         }
-                                                                                                                             
+
         if(replyBV)
         {
                 ber_bvfree(replyBV);
         }
-                                                                                                                             
+
         /* Free the return OID string if one was returned. */
         if(replyOID)
         {
                 ldap_memfree(replyOID);
         }
-                                                                                                                             
+
         /* Free memory allocated while building the request ber and berval. */
         if(requestBV)
         {
                 ber_bvfree(requestBV);
         }
-                                                                                                                             
+
 #ifdef  NOT_N_PLAT_NLM
         SetThreadGroupID(currentThreadGroupID);
 #endif
-                                                                                                                             
+
         /* Return the appropriate error/success code. */
         return err;
 }/* End of radLdapXtnNMASAuth */

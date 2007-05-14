@@ -56,7 +56,7 @@ if test x$with_[]modname != xno; then
 	else
 		sql_unixodbc_cflags="${sql_unixodbc_cflags} ${UNIXODBC_INCLUDE}"
 		AC_MSG_RESULT(yes)
-  
+
 		AC_MSG_CHECKING([for SQLConnect in -lodbc])
 
 		old_LIBS="$LIBS"
@@ -81,7 +81,7 @@ if test x$with_[]modname != xno; then
 			AC_MSG_WARN([unixODBC libraries not found.  Use --with-unixODBC-lib-dir=<path>.])
 			targetname=   # disabled module
 		else
-			AC_MSG_RESULT(yes) 
+			AC_MSG_RESULT(yes)
 			sql_unixodbc_ldflags="$sql_unixodbc_ldflags $UNIXODBC_LIBS"
 		fi
 	fi

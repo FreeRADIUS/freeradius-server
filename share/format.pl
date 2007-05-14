@@ -19,11 +19,11 @@ $blank = 0;
 
 while (@ARGV) {
     $filename = shift;
-    
+
     open FILE, "<$filename" or die "Failed to open $filename: $!\n";
-    
+
     @output = ();
-    
+
     while (<FILE>) {
 	#
 	#  Clear out trailing whitespace
@@ -66,7 +66,7 @@ while (@ARGV) {
 	    next;
 	}
 
-	#  
+	#
 	#  Remember if we did begin-vendor.
 	#
 	if (/^BEGIN-VENDOR\s+([\w-]+)/) {

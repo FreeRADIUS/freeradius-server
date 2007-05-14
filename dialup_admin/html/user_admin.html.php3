@@ -13,8 +13,8 @@ if ($logged_now)
 <!--
 	var start;
 	var our_time;
-	
-	function startcounter() 
+
+	function startcounter()
 	{
 		var start_date = new Date();
 		start = start_date.getTime();
@@ -26,21 +26,21 @@ if ($logged_now)
 	{
 		var now_date = new Date();
 		var diff = now_date.getTime() - start + our_time;
-			
+
 		var hours = parseInt(diff / 3600000);
 		if(isNaN(hours)) hours = 0;
-			
+
 		var minutes = parseInt((diff % 3600000) / 60000);
 		if(isNaN(minutes)) minutes = 0;
-			
+
 		var seconds = parseInt(((diff % 3600000) % 60000) / 1000);
 		if(isNaN(seconds)) seconds = 0;
-			
+
 		var timeValue = " " ;
 		timeValue += ((hours < 10) ? "0" : "") + hours;
 		timeValue += ((minutes < 10) ? ":0" : ":") + minutes;
 		timeValue += ((seconds < 10) ? ":0" : ":") + seconds;
-		
+
 		document.online.status.value = timeValue;
 		setTimeout("showcounter()", 1000);
 	}
@@ -92,7 +92,7 @@ if ($logged_now){
 	</td></tr>
 	<tr><td align=center bgcolor="#d0ddb0">
 	Connection Duration
-	</td><td>	
+	</td><td>
 	<input type="text" name="status" size=10 value="$lastlog_session_time">
 	</form>
 	</td></tr>
@@ -207,7 +207,7 @@ lign=top>
 	<tr><td align=center bgcolor="#d0ddb0">Average Upload</td><td>
 	$avg_input</td></tr></td></tr>
 	<tr><td align=center bgcolor="#d0ddb0">Average Download</td><td>
-	$avg_output</td></tr></td></tr>	
+	$avg_output</td></tr></td></tr>
 	</table>
 	</table>
 </table>

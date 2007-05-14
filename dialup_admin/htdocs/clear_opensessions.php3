@@ -64,7 +64,7 @@ print <<<EOM
 	<table border=0 width=100% cellpadding=12 cellspacing=0 bgcolor="#ffffd0" valign=top>
 	<tr><td>
 EOM;
- 
+
 if ($drop_conns == 1){
 	$method = 'snmp';
 	$nastype = 'cisco';

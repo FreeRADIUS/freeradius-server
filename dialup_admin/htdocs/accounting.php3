@@ -59,7 +59,7 @@ class Qi {
 				$this->item=$item;
 				$this->operator=$operator;
 	}
-						
+
 	function show() {	global $operators;
 				global $items;
 		$nam = $this->item;
@@ -87,7 +87,7 @@ EOM;
 	</td></tr>
 EOM;
 	}
-	
+
 	function get($designator) {  	global ${"item_of_$designator"};
 			global ${"value_of_$designator"};
 			global ${"operator_of_$designator"};
@@ -96,7 +96,7 @@ EOM;
 				$this->operator=${"operator_of_$designator"};
 				$this->item=${"item_of_$designator"};
 			}
-		}			
+		}
 	function query(){
 		global $operators;
 		global $items;
@@ -175,14 +175,14 @@ $offset=0;
 while (${"item_of_w$number"}) {
 	if(${"delete_w$number"}==1) {$offset=1;$number++;}
 		else {
-		$designator=$number-$offset;			
+		$designator=$number-$offset;
 		${"w$designator"} = new Qi("w$designator","","");
 		${"w$designator"}->get("w$number");
 		${"w$designator"}->show();
 		$number++;
 		}
 	}
-if($add==1) {	
+if($add==1) {
 	${"w$number"} = new Qi("w$number","$item_name","$operators[0]");
 	${"w$number"}->show();
 	}

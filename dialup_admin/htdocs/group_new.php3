@@ -62,7 +62,7 @@ if ($config[general_lib_type] == 'sql' && $config[sql_use_operators] == 'true'){
 <tr bgcolor="black" valign=top><td colspan=2>
 	<table border=0 width=100% cellpadding=12 cellspacing=0 bgcolor="#ffffd0" valign=top>
 	<tr><td>
-   
+
 <?php
 if (is_file("../lib/$config[general_lib_type]/group_info.php3"))
 	include("../lib/$config[general_lib_type]/group_info.php3");
@@ -94,7 +94,7 @@ EOM;
 		if (!isset($existing_groups))
 			echo "<b>No groups available</b>\n";
 		else{
-			echo "<select name=\"existing_groups\">\n";	
+			echo "<select name=\"existing_groups\">\n";
 			foreach ($existing_groups as $group => $count)
 				echo "<option value=\"$group\">$group\n";
 			echo "</select>\n";
@@ -116,7 +116,7 @@ EOM;
 		<textarea name=members cols="15" wrap="PHYSICAL" rows=5></textarea>
 		</td>
 	</tr>
-		
+
 EOM;
 	foreach($show_attrs as $key => $desc){
 		$name = $attrmap["$key"];

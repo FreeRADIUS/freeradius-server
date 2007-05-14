@@ -282,7 +282,7 @@ static int rad_check_password(REQUEST *request)
 			 *	authentication fails.
 			 */
 			auth_item = request->password;
-			if (!auth_item) 
+			if (!auth_item)
 				auth_item = pairfind(request->packet->vps,
 						     PW_CHAP_PASSWORD);
 			if (!auth_item) {

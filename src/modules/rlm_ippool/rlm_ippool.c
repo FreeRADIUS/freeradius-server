@@ -621,7 +621,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 				 * Find an entry with active == 0
 				 * or an entry that has expired
 				 */
-				if (entry.active == 0 || (entry.timestamp && ((entry.timeout && 
+				if (entry.active == 0 || (entry.timestamp && ((entry.timeout &&
 				request->timestamp >= (entry.timestamp + entry.timeout)) ||
 				(data->max_timeout && request->timestamp >= (entry.timestamp + data->max_timeout))))){
 					datum tmp;
@@ -730,7 +730,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		free(key_datum.dptr);
 		entry.active = 1;
 		entry.timestamp = request->timestamp;
-		if ((vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT)) != NULL)	
+		if ((vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT)) != NULL)
 			entry.timeout = (time_t) vp->vp_integer;
 		else
 			entry.timeout = 0;

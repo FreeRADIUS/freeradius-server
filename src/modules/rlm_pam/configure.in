@@ -12,22 +12,22 @@ if test x$with_[]modname != xno; then
 		[ pam_ldflags="-ldl" ]
 	)
 
-	AC_CHECK_LIB(pam, pam_start, 
+	AC_CHECK_LIB(pam, pam_start,
 		[ pam_ldflags="-lpam $pam_ldflags" ],
 		[ fail=$fail" libpam" ],
 		[ $pam_ldflags ]
 	)
 
-dnl #	
+dnl #
 dnl #	Yes, these DO have to be on seperate lines,
 dnl #	otherwise autoheader won't pick them up.
-dnl #	
+dnl #
 	AC_CHECK_HEADERS( \
 			security/pam_appl.h \
 			pam/pam_appl.h \
 			)
 	pam_cflags="-I."
-	
+
 	targetname=modname
 else
 	targetname=
@@ -39,7 +39,7 @@ if test x"$fail" != x""; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
 		targetname=""
 	fi
 fi

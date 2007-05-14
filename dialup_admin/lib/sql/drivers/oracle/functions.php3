@@ -84,13 +84,13 @@ function da_sql_query($link,$config,$query)
 function da_sql_num_rows($statement,$config)
 {
 	// Unfortunately we need to fetch the statement as ocirowcount doesn't work on SELECTs
-	$rows = OCIFetchStatement($statement,$res); 
+	$rows = OCIFetchStatement($statement,$res);
 
         if ($config[sql_debug] == 'true'){
                 print "<b>DEBUG(SQL,OCI DRIVER): Query Result: Num rows:: " . $rows . "</b><br>\n";
         }
 	// Unfortunately we need to re-execute because the statement cursor is reset after OCIFetchStatement :-(
-	OCIExecute($statement); 
+	OCIExecute($statement);
         return $rows;
 }
 

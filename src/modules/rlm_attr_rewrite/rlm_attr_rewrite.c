@@ -282,7 +282,7 @@ do_again:
 			DEBUG2("rlm_attr_rewrite: regcomp() returned error: %s",err_msg);
 			return ret;
 		}
-		
+
 		if ((attr_vp->type == PW_TYPE_IPADDR) &&
 		    (attr_vp->vp_strvalue[0] == '\0')) {
 			inet_ntop(AF_INET, &(attr_vp->vp_ipaddr),

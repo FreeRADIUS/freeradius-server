@@ -3,7 +3,7 @@
 #  Check the RADIUS server configuration files.
 #
 #  If everything is OK, this script exits without an error.
-#  
+#
 #  If there was an error parsing the configuration files, this script
 #  prints the errors to the screen, and exits with an error.
 #

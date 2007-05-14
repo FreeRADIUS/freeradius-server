@@ -191,7 +191,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 
 			(tls_session->record_plus)(&tls_session->clean_in,
 						  &eap_packet, sizeof(eap_packet));
-			
+
 			tls_handshake_send(tls_session);
 			(tls_session->record_init)(&tls_session->clean_in);
 		}

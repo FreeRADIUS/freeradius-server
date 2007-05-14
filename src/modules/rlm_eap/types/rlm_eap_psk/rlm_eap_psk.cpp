@@ -3,10 +3,10 @@
 /*
  * rlm_eap_psk.cpp
  *
- * Implementation of the interface between the radius server and 
+ * Implementation of the interface between the radius server and
  * the eap-psk protocol
  *
- * 
+ *
  * Copyright (C) France Télécom R&D (DR&D/MAPS/NSS)
  *
  * This program is free software; you can redistribute it and/or
@@ -18,7 +18,7 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
@@ -60,17 +60,17 @@ static CONF_PARSER moduleConfig[] = {
 };
 
 
-/** 
+/**
  *@memo		this function add value pair to reply
  */
-static void addReply(VALUE_PAIR** vp, 
+static void addReply(VALUE_PAIR** vp,
 		      const char* name, unsigned char* value, int len)
 {
 	VALUE_PAIR *reply_attr;
 	reply_attr = pairmake(name, "", T_OP_EQ);
 	if (!reply_attr) {
 		DEBUG("rlm_eap_psk: "
-		      "add_reply failed to create attribute %s: %s\n", 
+		      "add_reply failed to create attribute %s: %s\n",
 		      name, librad_errstr);
 		return;
 	}
@@ -118,14 +118,14 @@ static int pskAttach(CONF_SECTION *cs, void **instance)
 	  pskDetach(inst);
 	  return -1;
 	}
-	
+
 	*instance = inst;
 	return 0;
 }
 
 
 
-/** 
+/**
  *@memo		this function begins the conversation when the EAP-Identity response is received
  *              send an initial eap-psk request, ie IDREQ
  *@param        handler, pointer to specific information about the eap-psk protocol
@@ -161,18 +161,18 @@ static int pskInitiate(void *type_arg, EAP_HANDLER *handler)
   // initializing session information
   memset(session,0,sizeof(PSK_SESSION));
   session->state=INIT;
-   
+
   handler->stage=AUTHENTICATE;
 
   // initiate the eap-psk protocol
   return pskProcess(conf,session,NULL,handler->eap_ds->request);
-  
+
 }
 
 
 
 
-/** 
+/**
  *@memo		this function uses specific EAP-Type authentication mechanism to authenticate the user
  *              may be called many times
  *@param        handler, pointer to specific information about the eap-psk protocol
@@ -182,31 +182,31 @@ static int pskAuthenticate(void *arg, EAP_HANDLER *handler)
   PSK_SESSION *session;
   PSK_CONF *conf=(PSK_CONF*)arg;
   int resul;
-  
+
   if(conf==NULL)
     {
       radlog(L_ERR,"rlm_eap_psk: Cannot authenticate without having EAP-PSK configuration");
       return 0;
     }
-  
+
   if(!handler->opaque) {
     radlog(L_ERR,"rlm_eap_psk: Cannot authenticate without EAP-PSK session information");
     return 0;
   }
-  
+
   // find the session information
   session=(PSK_SESSION *)handler->opaque;
 
   resul=pskProcess(conf,session,handler->eap_ds->response,handler->eap_ds->request);
-  
+
   if(handler->eap_ds->request->code==PW_EAP_SUCCESS) {
     // sending keys
     addReply(&handler->request->reply->vps,"MS-MPPE-Recv-Key",session->msk,32);
     addReply(&handler->request->reply->vps,"MS-MPPE-Send-Key",&session->msk[32],32);
   }
-  
+
   return resul;
-  
+
 }
 
 

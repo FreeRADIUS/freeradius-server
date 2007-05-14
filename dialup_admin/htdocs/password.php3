@@ -16,7 +16,7 @@
 	<table border=0 width=100% cellpadding=12 cellspacing=0 bgcolor="#ffffd0" valign=top>
 	<tr><td>
 	<table border=1 bordercolordark=#ffffe0 bordercolorlight=#000000 width=100% cellpadding=2 cellspacing=0 bgcolor="#ffffe0" valign=top>
-	<tr><td align=center bgcolor="#d0ddb0">Password</td><td><input type="password" name="passwd" value="">&nbsp;<input type="submit" class=button value="check"></td></tr>	
+	<tr><td align=center bgcolor="#d0ddb0">Password</td><td><input type="password" name="passwd" value="">&nbsp;<input type="submit" class=button value="check"></td></tr>
 	</table>
 	</table>
 </table>

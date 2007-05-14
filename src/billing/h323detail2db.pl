@@ -27,7 +27,7 @@ require DBI;
 require Getopt::Long;
 
 ## Program and File locations
-# gzcat - 'cat for .gz / gzip files' 
+# gzcat - 'cat for .gz / gzip files'
 # If you don't have gzcat and do have gzip then use: ln gzip gzcat
 $GZCAT = "/usr/bin/zcat";
 # zcat - 'cat for .Z / compressed files'
@@ -87,7 +87,7 @@ sub process_duplicates {
 
 sub procedure_insert {		# FIXME: Does not work with current SQL schema. Use standard method
 	if ($verbose > 0) { print "Record: $passno) Conf ID: $h323_conf_id   Setup Time: $h323_setup_time  Call Length: $AcctSessionTime   "; }
-	if ($h323_call_type eq 'VoIP') { 
+	if ($h323_call_type eq 'VoIP') {
         $sth2 = $dbh->prepare("SELECT VoIPInsertRecord('$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
 		'$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime', '$h323_call_origin', '$h323_setup_time',
 		'$h323_connect_time','$h323_disconnect_time', '$h323_disconnect_cause', (NULLIF('$h323_remote_address', '')::inet), '$h323_voice_quality', '$h323_conf_id')");
@@ -104,7 +104,7 @@ sub procedure_insert {		# FIXME: Does not work with current SQL schema. Use stan
 }
 
 sub db_insert {
-	if ($h323_call_type eq 'VoIP') { 
+	if ($h323_call_type eq 'VoIP') {
         $sth2 = $dbh->prepare("INSERT into StopVoIP (
 		AcctTime, UserName, NASIPAddress, AcctSessionTime, AcctInputOctets, AcctOutputOctets,
 		CalledStationId, CallingStationId, AcctDelayTime, H323RemoteAddress, h323gwid, h323callorigin,
@@ -125,7 +125,7 @@ sub db_insert {
                 values(($Timestamp)::abstime, '$UserName', '$NasIPAddress', '$AcctSessionTime', '$AcctInputOctets', '$AcctOutputOctets',
                 '$Called_Station_Id', '$Calling_Station_Id', '$AcctDelayTime', '$Cisco_NAS_Port', '$h323_call_origin', '$h323_conf_id',
 		'$h323_connect_time', '$h323_disconnect_cause', '$h323_disconnect_time', '$h323_setup_time', '$h323_voice_quality')");
-	} else { 
+	} else {
 		if ($h323_call_type) { print "ERROR: Unsupported h323calltype: \"$h323_call_type\"\n"; }
 		else { print "ERROR: Missing \"h323calltype\". This doesn't appear to be a VoIP record."; }
 		return;		# Not a VoIP record. Bailout
@@ -138,7 +138,7 @@ sub db_insert {
 
 ## This sub can be used to update data in an existing database if you have some fields not in the Database.
 sub db_update {
-	my $sth2= $dbh->prepare("UPDATE radacct SET CalledStationId = '$Called_Station_Id', 
+	my $sth2= $dbh->prepare("UPDATE radacct SET CalledStationId = '$Called_Station_Id',
 		AcctTerminateCause = '$AcctTerminateCause', H323RemoteAddress = '$h323_remote_address',
 		AcctStatusType = '$AcctStatusType', callid = '$h323_conf_id', h323calltype = '$h323_call_type',
 		CiscoNASPort = '$Cisco_NAS_Port', h323disconnectcause = '$h323_disconnect_cause',
@@ -305,7 +305,7 @@ sub process_record {
 
 	# If its a valid record continue onto the database functions
 	# FIXME: More checks needed here.
-	if ($h323_call_type) { 
+	if ($h323_call_type) {
 		$passno++;
 		#@duplicate_records{$passno} += @record;
 		if (&procedure_get()) { &procedure_insert; }
@@ -354,7 +354,7 @@ sub read_detailfile {
 	}
 	my $file_runtime = (time() - $file_starttime);
 	if ($file_runtime < 1) { $file_runtime = 1; }
-	my $file_speed = ($record_no / $file_runtime); 
+	my $file_speed = ($record_no / $file_runtime);
         if ($verbose >= 0) { print "\n $record_no total records read from $filename were processed in $file_runtime seconds ($file_speed records/sec) \n"; }
 }
 
@@ -420,12 +420,12 @@ sub main {
 	        exit(SUCCESS);
 	}
 
-	if ($opt_x) { 
-		print "DEBUG: Debug mode is enabled.\n"; 
+	if ($opt_x) {
+		print "DEBUG: Debug mode is enabled.\n";
 		$verbose = 2;
 	} elsif ($quiet) { $verbose -= $quiet; }
 	&procedure_set($opt_p);
-	if ($opt_d) { 
+	if ($opt_d) {
 		if ($verbose > 0) { print "Using database \"$opt_d\" instead of default database \"$database\"\n"; }
 		$database = $opt_d;
 	}
@@ -445,7 +445,7 @@ sub main {
 
 		my $runtime = (time() - $starttime);
 		if ($runtime < 1) { $runtime = 1; }
-		my $speed = ($passno / $runtime); 
+		my $speed = ($passno / $runtime);
 	        if ($verbose >= 0) { print "\n $passno valid records were processed in $runtime seconds ($speed records/sec) \n"; }
 	} else {
 		print "ERROR: Please specify one or more detail file(s) to import.\n";

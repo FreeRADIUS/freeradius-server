@@ -42,15 +42,15 @@ sub check_attribs {
 		print "undefined parameter!\n";
 		return undef;
 	};
-	
+
 	$attr = $_[0];
 	$val  =  $_[1];
-	
+
 	if ($attr !~ /Password|Framed-IP-Address|Framed-IP-Netmask|Framed-IP-Routing|Framed-Routing|Framed-IP-Route|Password|Simultaneous-Use|Idle-Timeout|Auth-Type|Service-Type|Netmask|Framed-Protocol/ ) {
 		print "unrecognized attribute: $attr\n" if $debug>1;
 		return undef;
 	};
-	
+
 	return undef if ( 	(! defined($val) ) or
 		( ($attr =~ /Simultaneous\-Use/i) && ( $val !~ /^[0-9]*$/ ) )
 		);
@@ -75,10 +75,10 @@ sub user_attribute {
 	$duser=$_[1];
 	$dattrib=$_[2];
 	$dval=$_[3];
-	
+
 	print "inserting \"$dattrib\", \"$dval\" for \"$duser\" in rad$dtable\n" if ( $dtable !~ /group/ and $debug>2);
 	print "inserting \"$duser\" into usergroup table as member of \"$dattrib\"\n" if ( $dtable =~ /group/ and $debug>2);
-	
+
 	if ( $dtable =~ /group/ ) {
 		$table = "usergroup";
 	} elsif ( $dtable =~ /check/ ) {
@@ -88,7 +88,7 @@ sub user_attribute {
 	} else {
 		die "argh! what table is $dtable?\n";
 	};
-	
+
 
 	if ( $table =~ /usergroup/ ) {
 		if ( $dattrib =~ /static/ ) {
@@ -96,7 +96,7 @@ sub user_attribute {
 			$return = $database->do ("DELETE FROM `$table` WHERE `UserName`='$duser' LIMIT 1");
 		};
 		$return = $database->do ("INSERT INTO `$table` SET `UserName`='$duser',`GroupName`='$dattrib'");
-		
+
 	} else {
 		$return = $database->do ("INSERT INTO `$table` SET `UserName`='$duser',`Attribute`='$dattrib',`Value`='$dval', `op`=':='");
 	};
@@ -111,7 +111,7 @@ while (<USERS>) {
 	next if ( /^\#/ );
 	next if ( /^$/ );
 	next if ( /^\s*$/ );
-	
+
 	if ( /^[a-zA-Z0-9]+/ ) {
 		print "located a user entry: $_\n" if $debug>6;
 		($user,$rest) = split /\s/, $_, 2;
@@ -123,7 +123,7 @@ while (<USERS>) {
 		# Already found the user, now finding attributes...
 		@attribs = $_;
 	};
-	
+
 	foreach $attr (@attribs) {
 		($attrib,$value) = split /=/, $attr, 2;
 		#TODO: insert sanity checks here!
@@ -134,13 +134,13 @@ while (<USERS>) {
 			next;
 		};
 		print "attrib: $attrib has value: $value\n" if $debug>8;
-	
+
 		if ( $attrib =~ /Framed-IP-Address/ ) {
 			#user is a static IP user...
 			$static{$user} = 1;
 			user_attribute("group",$user,"static","");
 		};
-	
+
 		if ( $attrib =~ /Password|Simultaneous-Use/ ) {
 			#This is an individual check attribute, so we'll pass it along...
 			user_attribute("check",$user,$attrib,$value);
@@ -150,7 +150,7 @@ while (<USERS>) {
 			user_attribute("reply",$user,$attrib,$value);
 		};
 	};
-	
+
 };
 
 close USERS;

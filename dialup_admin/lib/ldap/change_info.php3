@@ -23,7 +23,7 @@ require_once('../lib/ldap/functions.php3');
 			$mod['givenname'] = ($decode_normal) ? encode_string($mod['givenname'],$k) : $mod['givenname'];
 				$mod['sn'] = $sn;
 				$mod['sn'] = ($decode_normal) ? encode_string($mod['sn'],$k) : $mod['sn'];
-				
+
 			}
 			if ($Fmail != '' && $Fmail != '-' && $Fmail != $mail)
 				$mod['mail'] = $Fmail;

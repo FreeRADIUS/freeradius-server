@@ -125,13 +125,13 @@ static void snmp_inc_counters(REQUEST *request)
 		rad_snmp.auth.total_access_rejects++;
 		if (request->client) request->client->auth->rejects++;
 		break;
-		
+
 	case PW_ACCESS_CHALLENGE:
 		rad_snmp.auth.total_responses++;
 		rad_snmp.auth.total_access_challenges++;
 		if (request->client) request->client->auth->challenges++;
 		break;
-		
+
 	case PW_ACCOUNTING_RESPONSE:
 		rad_snmp.acct.total_responses++;
 		if (request->client) request->client->auth->responses++;
@@ -147,7 +147,7 @@ static void snmp_inc_counters(REQUEST *request)
 			if (request->client) request->client->auth->bad_authenticators++;
 		}
 		break;
-		
+
 	default:
 		break;
 	}
@@ -184,7 +184,7 @@ static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 	}
 
 	request = lrad_packet2myptr(REQUEST, proxy, proxy_p);
-		
+
 	if (!request) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		return NULL;
@@ -297,9 +297,9 @@ static int insert_into_proxy_hash(REQUEST *request)
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 			DEBUG2("ERROR: Failed to create a new socket for proxying requests.");
 			return 0; /* leak proxy_listener */
-			
+
 		}
-		    
+
 		if (!lrad_packet_list_id_alloc(proxy_list, request->proxy)) {
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 			DEBUG2("ERROR: Failed to create a new socket for proxying requests.");
@@ -336,7 +336,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		DEBUG2("ERROR: Failed to insert entry into proxy list");
 		return 0;
 	}
-	
+
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 	DEBUG3(" proxy: allocating destination %s port %d - Id %d",
@@ -344,7 +344,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 			 &request->proxy->dst_ipaddr.ipaddr, buf, sizeof(buf)),
 	       request->proxy->dst_port,
 	       request->proxy->id);
-	
+
 	request->in_proxy_hash = TRUE;
 
 	return 1;
@@ -397,13 +397,13 @@ static void wait_for_child_to_die(void *ctx)
 	    (request->child_state == REQUEST_RUNNING)) {
 		request->delay += (request->delay >> 1);
 		tv_add(&request->when, request->delay);
-		
+
 		DEBUG2("Child is still stuck for request %d", request->number);
 
 		INSERT_EVENT(wait_for_child_to_die, request);
 		return;
 	}
-	
+
 	DEBUG2("Child is finally responsive for request %d", request->number);
 	remove_from_request_hash(request);
 
@@ -436,7 +436,7 @@ static void cleanup_delay(void *ctx)
 	       (unsigned int) (request->timestamp - start_time));
 
 	lrad_event_delete(el, &request->ev);
-	request_free(&request);	
+	request_free(&request);
 }
 
 
@@ -483,7 +483,7 @@ static void no_response_to_ping(void *ctx)
 			 buffer, sizeof(buffer)),
 	       request->proxy->dst_port);
 
-	wait_for_proxy_id_to_expire(request);	
+	wait_for_proxy_id_to_expire(request);
 }
 
 
@@ -662,7 +662,7 @@ static void check_for_zombie_home_server(REQUEST *request)
 	home->state = HOME_STATE_IS_DEAD;
 	home->num_received_pings = 0;
 	home->when = request->when;
-	
+
 	if (home->ping_check != HOME_PING_CHECK_NONE) {
 		rad_assert((home->ping_check == HOME_PING_CHECK_STATUS_SERVER) ||
 			   (home->ping_user_name != NULL));
@@ -733,7 +733,7 @@ static void post_proxy_fail_handler(REQUEST *request)
 		 *	Re-queue the request.
 		 */
 		request->child_state = REQUEST_QUEUED;
-				
+
 		wait_a_bit(request);
 
 		/*
@@ -757,7 +757,7 @@ static void no_response_to_proxied_request(void *ctx)
 	REQUEST *request = ctx;
 	home_server *home;
 	char buffer[128];
-	
+
 	rad_assert(request->magic == REQUEST_MAGIC);
 	rad_assert(request->child_state == REQUEST_PROXIED);
 
@@ -822,7 +822,7 @@ static void wait_a_bit(void *ctx)
 			radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d, in module %s component %s",
 			       (unsigned long)request->child_pid, request->number,
 			       request->module ? request->module : "<server core>",
-			       request->component ? request->component : "<server core>");	       
+			       request->component ? request->component : "<server core>");
 
 			request->master_state = REQUEST_STOP_PROCESSING;
 
@@ -919,7 +919,7 @@ static int request_pre_handler(REQUEST *request)
 		 *	Delete any reply we had accumulated until now.
 		 */
 		pairfree(&request->reply->vps);
-		
+
 		/*
 		 *	Run the packet through the post-proxy stage,
 		 *	BEFORE playing games with the attributes.
@@ -930,7 +930,7 @@ static int request_pre_handler(REQUEST *request)
 			post_proxy_type = vp->vp_integer;
 		}
 		rcode = module_post_proxy(post_proxy_type, request);
-		
+
 		/*
 		 *	There may NOT be a proxy reply, as we may be
 		 *	running Post-Proxy-Type = Fail.
@@ -942,14 +942,14 @@ static int request_pre_handler(REQUEST *request)
 			 *	attributes from us and remote server.
 			 */
 			pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE);
-		
+
 			/*
 			 *	Add the attributes left in the proxy
 			 *	reply to the reply list.
 			 */
 			pairadd(&request->reply->vps, request->proxy_reply->vps);
 			request->proxy_reply->vps = NULL;
-		
+
 			/*
 			 *	Free proxy request pairs.
 			 */
@@ -1126,7 +1126,7 @@ static int successfully_proxied_request(REQUEST *request)
 		 *	Do NOT delete Stripped-User-Name.
 		 */
 	}
-	
+
 	/*
 	 *	If there is no PW_CHAP_CHALLENGE attribute but
 	 *	there is a PW_CHAP_PASSWORD we need to add it
@@ -1208,7 +1208,7 @@ static int successfully_proxied_request(REQUEST *request)
 		request->home_server = NULL;
 		return 1;
 	}
-	
+
 	if (!insert_into_proxy_hash(request)) {
 		DEBUG("ERROR: Failed to proxy request %d", request->number);
 		return -1;
@@ -1218,14 +1218,14 @@ static int successfully_proxied_request(REQUEST *request)
 
 	when = request->received;
 	when.tv_sec += mainconfig.max_request_time;
-	
+
 	gettimeofday(&request->proxy_when, NULL);
 
 	request->next_when = request->proxy_when;
 	request->next_when.tv_sec += home->response_window;
 
 	rad_assert(home->response_window > 0);
-	
+
 	if (timercmp(&when, &request->next_when, <)) {
 		request->next_when = when;
 	}
@@ -1237,7 +1237,7 @@ static int successfully_proxied_request(REQUEST *request)
 			 &request->proxy->dst_ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
 	       request->proxy->dst_port);
-	
+
 	/*
 	 *	Note that we set proxied BEFORE sending the packet.
 	 *
@@ -1330,13 +1330,13 @@ static void request_post_handler(REQUEST *request)
 	 */
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		gettimeofday(&request->next_when, NULL);
-	  
+
 		if (request->reply->code == 0) {
 			DEBUG2("There was no response configured: rejecting request %d",
 			       request->number);
 			request->reply->code = PW_AUTHENTICATION_REJECT;
 		}
-		
+
 		/*
 		 *	Run rejected packets through
 		 *
@@ -1358,7 +1358,7 @@ static void request_post_handler(REQUEST *request)
 			 */
 			when = request->received;
 			when.tv_sec += mainconfig.reject_delay;
-			
+
 			if (timercmp(&when, &request->next_when, >)) {
 				DEBUG2("Delaying reject of request %d for %d seconds",
 				       request->number,
@@ -1495,7 +1495,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 				post_proxy_fail_handler(request);
 				return;
 			}
-			
+
 			request->proxy->code = request->packet->code;
 			request->proxy->dst_ipaddr = home->ipaddr;
 			request->proxy->dst_port = home->port;
@@ -1519,7 +1519,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 					 &request->proxy->dst_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
 			       request->proxy->dst_port);
-			
+
 			/*
 			 *	Restart timers.  Note that we leave
 			 *	the old timeout in place, as that is a
@@ -1609,7 +1609,7 @@ static int can_handle_new_request(RADIUS_PACKET *packet,
 	 */
 	if (mainconfig.max_requests) {
 		int request_count = lrad_packet_list_num_elements(pl);
-		
+
 		/*
 		 *	This is a new request.  Let's see if
 		 *	it makes us go over our configured
@@ -1633,7 +1633,7 @@ static int can_handle_new_request(RADIUS_PACKET *packet,
 	 *	We increment the counters here, and decrement them
 	 *	when the response is sent... somewhere in this file.
 	 */
-	
+
 	/*
 	 *	FUTURE: Add checks for system load.  If the system is
 	 *	busy, start dropping requests...
@@ -1642,7 +1642,7 @@ static int can_handle_new_request(RADIUS_PACKET *packet,
 	 *	there are more requests coming in than we can handle,
 	 *	start dropping some.
 	 */
-	
+
 	return 1;
 }
 
@@ -1698,7 +1698,7 @@ int received_request(rad_listen_t *listener,
 	 *	Create and initialize the new request.
 	 */
 	request = request_alloc(); /* never fails */
-	
+
 	if ((request->reply = rad_alloc(0)) == NULL) {
 		radlog(L_ERR, "No memory");
 		exit(1);
@@ -1710,7 +1710,7 @@ int received_request(rad_listen_t *listener,
 	request->packet->timestamp = request->timestamp;
 	request->number = request_num_counter++;
 	request->priority = listener->type;
-	
+
 	/*
 	 *	Remember the request in the list.
 	 */
@@ -1720,7 +1720,7 @@ int received_request(rad_listen_t *listener,
 		return 0;
 	}
 	request->in_request_hash = TRUE;
-	
+
 	/*
 	 *	The request passes many of our sanity checks.
 	 *	From here on in, if anything goes wrong, we
@@ -1851,7 +1851,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		/* assert that there's an event queued for request? */
 		rad_free(&packet);
 		return NULL;
-		
+
 	case REQUEST_PROXIED:
 		break;
 	}
@@ -1948,14 +1948,14 @@ int radius_event_init(int spawn_flag)
 	if (mainconfig.proxy_requests) {
 		int i;
 		rad_listen_t *listener;
-			
+
 		/*
 		 *	Create the tree for managing proxied requests and
 		 *	responses.
 		 */
 		proxy_list = lrad_packet_list_create(1);
 		if (!proxy_list) return 0;
-		
+
 #ifdef HAVE_PTHREAD_H
 		if (pthread_mutex_init(&proxy_mutex, NULL) != 0) {
 			radlog(L_ERR, "FATAL: Failed to initialize proxy mutex: %s",
@@ -1968,7 +1968,7 @@ int radius_event_init(int spawn_flag)
 		 *	Mark the Fd's as unused.
 		 */
 		for (i = 0; i < 32; i++) proxy_fds[i] = -1;
-		
+
 		i = -1;
 
 		for (listener = mainconfig.listen;
@@ -2087,7 +2087,7 @@ int radius_event_process(struct timeval **pptv)
 			return 1;
 		}
 		rad_panic("Internal sanity check failed");
-		
+
 	} else if (timercmp(&now, &when, >)) {
 		DEBUG3("Event in the past... compensating");
 		when.tv_sec = 0;
@@ -2112,12 +2112,12 @@ void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun)
 		DEBUG2("Going to the next request");
 		return;
 	}
-	
+
 	rad_assert(fun != NULL);
 	rad_assert(request != NULL);
-	
+
 	fun(request);
-	
+
 	request_post_handler(request);
 	DEBUG2("Going to the next request");
 	return;

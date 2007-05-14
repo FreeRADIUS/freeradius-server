@@ -71,7 +71,7 @@ if test x$with_[]modname != xno; then
 
 	FR_SMART_CHECK_LIB(com_err, set_com_err_hook)
 	if test "x$ac_cv_lib_com_err_set_com_err_hook" != "xyes"; then
-		AC_MSG_WARN([the comm_err library isn't found!]) 
+		AC_MSG_WARN([the comm_err library isn't found!])
 	fi
 
 	FR_SMART_CHECK_LIB(krb5, krb5_init_context)
@@ -90,7 +90,7 @@ if test x"$fail" != x""; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
 		targetname=""
 	fi
 fi

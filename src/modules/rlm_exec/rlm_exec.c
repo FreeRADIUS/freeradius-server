@@ -383,7 +383,7 @@ static int exec_postauth(void *instance, REQUEST *request)
 		 */
 		tmp = pairmake("Reply-Message", "Access denied (external check failed)", T_OP_SET);
 		pairadd(&request->reply->vps, tmp);
-		
+
 		DEBUG2("Login incorrect (external check failed)");
 
 		request->reply->code = PW_AUTHENTICATION_REJECT;

@@ -22,7 +22,7 @@ $op_nexst = '!*';
 function check_operator($op,$type)
 {
 	switch($op){
-		case '=': 
+		case '=':
 		case ':=':
 		case '+=':
 			return 0;

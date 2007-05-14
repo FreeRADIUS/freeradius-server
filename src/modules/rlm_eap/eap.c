@@ -677,13 +677,13 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 			DEBUG2("  rlm_eap: Request is supposed to be proxied to Realm %s.  Not doing EAP.", proxy->vp_strvalue);
 			return EAP_NOOP;
 		}
-		
+
 		DEBUG2("  rlm_eap: Got EAP_START message");
 		if ((eap_ds = eap_ds_alloc()) == NULL) {
 			DEBUG2("  rlm_eap: EAP Start failed in allocation");
 			return EAP_FAIL;
 		}
-		
+
 		/*
 		 *	It's an EAP-Start packet.  Tell them to stop wasting
 		 *	our time, and give us an EAP-Identity packet.
@@ -693,7 +693,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		 */
 		eap_ds->request->code = PW_EAP_REQUEST;
 		eap_ds->request->type.type = PW_EAP_IDENTITY;
-		
+
 		/*
 		 *	We don't have a handler, but eap_compose needs one,
 		 *	(for various reasons), so we fake it out here.
@@ -701,9 +701,9 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		memset(&handler, 0, sizeof(handler));
 		handler.request = request;
 		handler.eap_ds = eap_ds;
-		
+
 		eap_compose(&handler);
-		
+
 		eap_ds_free(&eap_ds);
 		return EAP_FOUND;
 	} /* end of handling EAP-Start */
@@ -786,7 +786,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		DEBUG2("  rlm_eap:  Ignoring Unknown EAP type");
 		return EAP_NOOP;
 	}
-		
+
 	/*
 	 *	They're NAKing the EAP type we wanted to use, and
 	 *	asking for one which we don't support.

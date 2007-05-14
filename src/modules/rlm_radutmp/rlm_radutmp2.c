@@ -255,7 +255,7 @@ static int radutmp_instantiate(CONF_SECTION *conf, void **instance)
 static int cache_reset(rlm_radutmp_t *inst, radutmp_cache_t *cache)
 {
 	NAS_PORT *this, *next;
-	
+
 	/*
 	 *	Cache is already reset, do nothing.
 	 */
@@ -271,7 +271,7 @@ static int cache_reset(rlm_radutmp_t *inst, radutmp_cache_t *cache)
 	rbtree_free(inst->user_tree);
 
 	rbtree_free(cache->nas_ports);
-	
+
 	for (this = cache->free_offsets;
 	     this != NULL;
 	     this = next) {
@@ -289,9 +289,9 @@ static int cache_reset(rlm_radutmp_t *inst, radutmp_cache_t *cache)
 		radlog(L_ERR, "rlm_radutmp: No memory");
 		return 0;
 	}
-	
+
 	cache->max_offset = 0;
-	
+
 	cache->cached_file = 1;
 
 	if (inst->case_sensitive) {
@@ -384,7 +384,7 @@ static int offset_walk(void *context, void *data)
 	if (read(walk->fd, &utmp, sizeof(utmp)) != sizeof(utmp)) {
 		rad_assert(0 == 1);
 	}
-	
+
 	/*
 	 *	If the entry in the file is NEWER than the reboot
 	 *	packet, don't re-write it, and don't delete it.
@@ -463,7 +463,7 @@ static int radutmp_zap(rlm_radutmp_t *inst,
 		radlog(L_ERR, "rlm_radutmp: Out of memory");
 		return 0;
 	}
-	
+
 	pthread_mutex_lock(&cache->mutex);
 
 	/*
@@ -544,20 +544,20 @@ static int radutmp_zap(rlm_radutmp_t *inst,
 	 */
 	if (rbtree_num_elements(cache->nas_ports) == 0) {
 		NAS_PORT	*this, *next; /* too many copies of code */
-		
+
 		for (this = inst->cache.free_offsets;
 		     this != NULL;
 		     this = next) {
 			next = this->next;
 			free(this);
 		}
-		
+
 		truncate(cache->filename, 0);
 		rad_assert(rbtree_num_elements(inst->user_tree) == 0);
 	}
 
 	pthread_mutex_unlock(&cache->mutex);
-	
+
 	return 1;
 }
 
@@ -647,7 +647,7 @@ static int cache_file(rlm_radutmp_t *inst, radutmp_cache_t *cache)
 			}
 
 			/*
-			 *	It's a login record, 
+			 *	It's a login record,
 			 */
 			nas_port->nas_address = utmp.nas_address;
 			nas_port->nas_port = utmp.nas_port;
@@ -680,7 +680,7 @@ static int cache_file(rlm_radutmp_t *inst, radutmp_cache_t *cache)
 			}
 			continue;
 		}
-		
+
 		/*
 		 *	We've read a partial record.  WTF?
 		 */
@@ -1011,7 +1011,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		if (errno == ENOENT) {
 			DEBUG2("  rlm_radutmp: File %s doesn't exist, creating it.", cache->filename);
 			if (!cache_reset(inst, cache)) return RLM_MODULE_FAIL;
-			
+
 			/*
 			 *	Try to create the file.
 			 */
@@ -1123,7 +1123,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		strlcpy(user->login, utmp.login,
 			sizeof(user->login));
 		user->simul_count = 1;
-		
+
 		if (!rbtree_insert(inst->user_tree, user)) {
 			rad_assert(0 == 1);
 		}
@@ -1131,7 +1131,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		pthread_mutex_unlock(&cache->mutex);
 
 	}
-		
+
 	/*
 	 *	Entry was found, or newly created in the cache.
 	 *	Seek to the place in the file.
@@ -1187,7 +1187,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			rad_assert(u.type == P_LOGIN);
 			rad_assert(u.nas_address == utmp.nas_address);
 			rad_assert(u.nas_port == utmp.nas_port);
-			
+
 			/*
 			 *	An update for the same session.
 			 */

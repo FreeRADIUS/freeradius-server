@@ -125,7 +125,7 @@ int lrad_event_delete(lrad_event_list_t *el, lrad_event_t **ev_p)
 	return 1;
 }
 
-		      
+
 int lrad_event_insert(lrad_event_list_t *el,
 		      lrad_event_callback_t callback,
 		      void *ctx, struct timeval *when,
@@ -176,7 +176,7 @@ int lrad_event_insert(lrad_event_list_t *el,
 				*ev_p = ev;
 				return 1;
 			}
-				
+
 		}
 		free(ev);
 		return 0;
@@ -209,7 +209,7 @@ static int lrad_event_find_earliest(void *ctx, void *data)
 	}
 
 	w->ev = ev;
-	return 1;	
+	return 1;
 }
 
 
@@ -317,10 +317,10 @@ int main(int argc, char **argv)
 
 	el = lrad_event_list_create();
 	if (!el) exit(1);
-	
+
 	memset(&rand_pool, 0, sizeof(rand_pool));
 	rand_pool.randrsl[1] = time(NULL);
-	
+
 	lrad_randinit(&rand_pool, 1);
 	rand_pool.randcnt = 0;
 
@@ -335,7 +335,7 @@ int main(int argc, char **argv)
 		}
 		lrad_event_insert(el, print_time, &array[i], &array[i]);
 	}
-	
+
 	while (lrad_event_list_num_elements(el)) {
 		gettimeofday(&now, NULL);
 		when = now;

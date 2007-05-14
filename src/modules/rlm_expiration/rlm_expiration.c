@@ -55,9 +55,9 @@ static const CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }
 };
 
-/*              
+/*
  *      Check if account has expired, and if user may login now.
- */		  
+ */
 static int expiration_authorize(void *instance, REQUEST *request)
 {
 	rlm_expiration_t *data = (rlm_expiration_t *)instance;
@@ -130,7 +130,7 @@ static int expirecmp(void *instance, REQUEST *req,
 	reply_pairs = reply_pairs;
 
 	now = (req) ? req->timestamp : time(NULL);
-  
+
 	if (now <= ((time_t) check->vp_date))
 		return 0;
 	return +1;

@@ -55,7 +55,7 @@ static VALUE_PAIR *pairalloc(DICT_ATTR *da)
 		vp->flags = da->flags;
 	} else {
 		vp->attribute = 0;
-		vp->vendor = 0;	
+		vp->vendor = 0;
 		vp->type = PW_TYPE_OCTETS;
 		vp->name[0] = '\0';
 		memset(&vp->flags, 0, sizeof(vp->flags));
@@ -121,7 +121,7 @@ VALUE_PAIR *paircreate(int attr, int type)
 
 		} else {
 			DICT_VENDOR *v;
-			
+
 			v = dict_vendorbyvalue(VENDOR(attr));
 			if (v) {
 				sprintf(vp->name, "%s-Attr-%u",
@@ -798,7 +798,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				p = NULL;
 				cs = value;
 			}
-			
+
 			{
 				lrad_ipaddr_t ipaddr;
 
@@ -936,8 +936,8 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 					librad_log("Hex string is not an even length string.");
 					return NULL;
 				}
-				
-				
+
+
 				while (*cp &&
 				       (vp->length < MAX_STRING_LEN)) {
 					unsigned int tmp;
@@ -985,16 +985,16 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			} else {
 				unsigned int prefix;
 				char buffer[256], *eptr;
-				
+
 				memcpy(buffer, value, p - value);
 				buffer[p - value] = '\0';
-				
+
 				if (inet_pton(AF_INET6, buffer, vp->vp_strvalue + 2) <= 0) {
 					librad_log("failed to parse IPv6 address "
 						   "string \"%s\"", value);
 					return NULL;
 				}
-				
+
 				prefix = strtoul(p + 1, &eptr, 10);
 				if ((prefix > 128) || *eptr) {
 					librad_log("failed to parse IPv6 address "
@@ -1596,7 +1596,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 		{
 			regex_t reg;
 			char buffer[MAX_STRING_LEN * 4 + 1];
-			
+
 			compare = regcomp(&reg, one->vp_strvalue,
 					  REG_EXTENDED);
 			if (compare != 0) {
@@ -1623,7 +1623,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 	default:		/* we're OK */
 		break;
 	}
-		
+
 	/*
 	 *	After doing the previous check for special comparisons,
 	 *	do the per-type comparison here.
@@ -1640,7 +1640,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 		} else {
 			length = two->length;
 		}
-		
+
 		p = two->vp_octets;
 		q = one->vp_octets;
 		while (length) {
@@ -1667,7 +1667,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 					 one->vp_strvalue);
 		}
 		break;
-		
+
 	case PW_TYPE_BYTE:
 	case PW_TYPE_SHORT:
 	case PW_TYPE_INTEGER:
@@ -1683,7 +1683,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 		compare = memcmp(&two->vp_ipv6addr, &one->vp_ipv6addr,
 				 sizeof(two->vp_ipv6addr));
 		break;
-		
+
 	case PW_TYPE_IPV6PREFIX:
 		compare = memcmp(&two->vp_ipv6prefix, &one->vp_ipv6prefix,
 				 sizeof(two->vp_ipv6prefix));
@@ -1705,13 +1705,13 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 	switch (one->operator) {
 	case T_OP_CMP_EQ:
 		return (compare == 0);
-		
+
 	case T_OP_NE:
 		return (compare != 0);
-		
+
 	case T_OP_LT:
 		return (compare < 0);
-		
+
 	case T_OP_GT:
 		return (compare > 0);
 

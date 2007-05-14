@@ -185,7 +185,7 @@ else
 NAS List
 </td>
 <td>
-<select name=selected_nas size=5 OnChange="this.form.select_nas.value=1;this.form.submit()"> 
+<select name=selected_nas size=5 OnChange="this.form.select_nas.value=1;this.form.submit()">
 <?php
 foreach ($my_nas_list as $member){
 	$name = $member[name];
@@ -200,7 +200,7 @@ $array = $my_nas_list[$selected_nas];
 echo <<<EOM
 <tr>
 <td align=right bgcolor="#d0ddb0">
-NAS Name 
+NAS Name
 </td>
 <td>
 <input type=text name=nasname size=40 value="$array[name]" $readonly>

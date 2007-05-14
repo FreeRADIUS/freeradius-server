@@ -333,7 +333,7 @@ void cf_section_free(CONF_SECTION **cs)
 			break;
 
 		case CONF_ITEM_SECTION: {
-				
+
 				CONF_SECTION *section = cf_itemtosection(ci);
 				cf_section_free(&section);
 			}
@@ -394,7 +394,7 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 		cf_section_free(&cs);
 		return NULL;
 	}
-	
+
 	if (name2 && *name2) {
 		cs->name2 = strdup(name2);
 		if (!cs->name2) {
@@ -450,24 +450,24 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 			case CONF_ITEM_PAIR:
 				rbtree_insert(cs->pair_tree, ci);
 				break;
-				
+
 			case CONF_ITEM_SECTION: {
 				const CONF_SECTION *cs_new = cf_itemtosection(ci);
-				
+
 				if (!cs->section_tree) {
 					cs->section_tree = rbtree_create(section_cmp, NULL, 0);
 					/* ignore any errors */
 				}
-				
+
 				if (cs->section_tree) {
 					rbtree_insert(cs->section_tree, cs_new);				}
-				
+
 				/*
 				 *	Two names: find the named instance.
 				 */
 				if (cs_new->name2) {
 					CONF_SECTION *old_cs;
-					
+
 					/*
 					 *	Find the FIRST
 					 *	CONF_SECTION having
@@ -477,7 +477,7 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 					 */
 					old_cs = rbtree_finddata(cs->section_tree, cs_new);
 					if (!old_cs) return; /* this is a bad error! */
-					
+
 					if (!old_cs->name2_tree) {
 						old_cs->name2_tree = rbtree_create(name2_cmp,
 										   NULL, 0);
@@ -761,18 +761,18 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		}
 		DEBUG2("\t%s = %s", name, value);
 		break;
-		
+
 	case PW_TYPE_INTEGER:
 		*(int *)data = strtol(value, 0, 0);
 		DEBUG2("\t%s = %d", name, *(int *)data);
 		break;
-		
+
 	case PW_TYPE_STRING_PTR:
 		q = (char **) data;
 		if (*q != NULL) {
 			free(*q);
 		}
-		
+
 		/*
 		 *	Expand variables which haven't already been
 		 *	expanded automagically when the configuration
@@ -791,11 +791,11 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 						    cs, buffer, value);
 			if (!value) return -1;
 		}
-		
+
 		DEBUG2("\t%s = \"%s\"", name, value ? value : "(null)");
 		*q = value ? strdup(value) : NULL;
 		break;
-		
+
 		/*
 		 *	This is the same as PW_TYPE_STRING_PTR,
 		 *	except that we also "stat" the file, and
@@ -806,7 +806,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		if (*q != NULL) {
 			free(*q);
 		}
-		
+
 		/*
 		 *	Expand variables which haven't already been
 		 *	expanded automagically when the configuration
@@ -825,7 +825,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 						    cs, buffer, value);
 			if (!value) return -1;
 		}
-		
+
 		DEBUG2("\t%s = \"%s\"", name, value ? value : "(null)");
 		*q = value ? strdup(value) : NULL;
 
@@ -864,7 +864,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
 		*(uint32_t *) data = ipaddr.ipaddr.ip4addr.s_addr;
 		break;
-		
+
 	case PW_TYPE_IPV6ADDR:
 		if (ip_hton(value, AF_INET6, &ipaddr) < 0) {
 			radlog(L_ERR, "Can't find IPv6 address for host %s", value);
@@ -875,13 +875,13 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		memcpy(data, &ipaddr.ipaddr.ip6addr,
 		       sizeof(ipaddr.ipaddr.ip6addr));
 		break;
-		
+
 	default:
 		radlog(L_ERR, "type %d not supported yet", type);
 		return -1;
 		break;
 	} /* switch over variable type */
-	
+
 	return rcode;
 }
 
@@ -914,7 +914,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 		if (variables[i].type == PW_TYPE_SUBSECTION) {
 			const CONF_SECTION *subcs;
 			subcs = cf_section_sub_find(cs, variables[i].name);
-			
+
 			/*
 			 *	If the configuration section is NOT there,
 			 *	then ignore it.
@@ -928,14 +928,14 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 				DEBUG2("Internal sanity check 1 failed in cf_section_parse");
 				goto error;
 			}
-			
+
 			if (cf_section_parse(subcs, base,
 					     (const CONF_PARSER *) variables[i].dflt) < 0) {
 				goto error;
 			}
 			continue;
 		} /* else it's a CONF_PAIR */
-		
+
 		if (variables[i].data) {
 			data = variables[i].data; /* prefer this. */
 		} else if (base) {
@@ -1054,7 +1054,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 			       radlog(L_ERR, "%s[%d]: Too many closing braces",
 				      file, *lineno);
 			       return -1;
-			       
+
 		       }
 		       this = this->item.parent;
 		       continue;
@@ -1473,10 +1473,10 @@ CONF_SECTION *cf_section_sub_find_name2(const CONF_SECTION *cs,
 
 	if (name1 && (cs->section_tree)) {
 		CONF_SECTION mycs, *master_cs;
-		
+
 		mycs.name1 = name1;
 		mycs.name2 = name2;
-		
+
 		master_cs = rbtree_finddata(cs->section_tree, &mycs);
 		if (master_cs) {
 			return rbtree_finddata(master_cs->name2_tree, &mycs);
@@ -1605,7 +1605,7 @@ static void *cf_data_find_internal(CONF_SECTION *cs, const char *name,
 				   int flag)
 {
 	if (!cs || !name) return NULL;
-	
+
 	/*
 	 *	Find the name in the tree, for speed.
 	 */
@@ -1670,7 +1670,7 @@ int cf_data_add(CONF_SECTION *cs, const char *name,
  */
 static void cf_section_copy_data(CONF_SECTION *s, CONF_SECTION *d)
 {
-	
+
 	CONF_ITEM *cd, *next, **last;
 
 	/*
@@ -1681,7 +1681,7 @@ static void cf_section_copy_data(CONF_SECTION *s, CONF_SECTION *d)
 	rad_assert(d->data_tree == NULL);
 	d->data_tree = s->data_tree;
 	s->data_tree = NULL;
-	
+
 	/*
 	 *	Walk through src, moving CONF_ITEM_DATA
 	 *	to dst, by hand.
@@ -1689,13 +1689,13 @@ static void cf_section_copy_data(CONF_SECTION *s, CONF_SECTION *d)
 	last = &(s->children);
 	for (cd = s->children; cd != NULL; cd = next) {
 		next = cd->next;
-		
+
 		/*
 		 *	Recursively copy data from child sections.
 		 */
 		if (cd->type == CONF_ITEM_SECTION) {
 			CONF_SECTION *s1, *d1;
-			
+
 			s1 = cf_itemtosection(cd);
 			d1 = cf_section_sub_find_name2(d, s1->name1, s1->name2);
 			if (d1) {
@@ -1712,13 +1712,13 @@ static void cf_section_copy_data(CONF_SECTION *s, CONF_SECTION *d)
 			last = &(cd->next);
 			continue;
 		}
-		
+
 		/*
 		 *	Remove it from the src list
 		 */
 		*last = cd->next;
 		cd->next = NULL;
-		
+
 		/*
 		 *	Add it to the dst list
 		 */
@@ -1810,7 +1810,7 @@ static int cf_section_cmp(CONF_SECTION *a, CONF_SECTION *b)
 		 */
 		if ((strcmp(pa->attr, pb->attr) != 0) ||
 		    (strcmp(pa->value, pb->value) != 0)) return 0;
-		
+
 
 		/*
 		 *	And go to the next element.

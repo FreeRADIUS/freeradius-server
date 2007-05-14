@@ -212,9 +212,9 @@ static int genericcmp(void *instance UNUSED,
 		char name[1024];
 		char value[1024];
 		VALUE_PAIR *vp;
-		
+
 		snprintf(name, sizeof(name), "%%{%s}", check->name);
-		
+
 		rcode = radius_xlat(value, sizeof(value), name, req, NULL);
 		vp = pairmake(check->name, value, T_OP_EQ);
 

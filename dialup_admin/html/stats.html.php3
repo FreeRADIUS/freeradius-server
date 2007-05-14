@@ -61,7 +61,7 @@ EOM;
 	<tr>
 		<td colspan=2>
 		<center>
-		statistics for 
+		statistics for
 <?php
 if ($login == '')
 	echo <<<EOM
@@ -84,7 +84,7 @@ EOM;
 	<tr>	<td colspan=2><hr size=1 noshade>
 		</td>
 		</tr>
-		
+
 	</table>
 	</td>
 	</tr>

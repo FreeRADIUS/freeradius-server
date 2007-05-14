@@ -229,11 +229,11 @@ if ($link){
 				$remaining = $remaining - $lastlog_session_time;
 				if ($remaining < 0)
 					$remaining = 0;
-				$log_color = ($remaining) ? 'green' : 'red'; 
+				$log_color = ($remaining) ? 'green' : 'red';
 			}
 			$lastlog_session_time_jvs = 1000 * $lastlog_session_time;
 			$lastlog_session_time = time2strclock($lastlog_session_time);
-			$lastlog_client_ip = $row['framedipaddress'];	
+			$lastlog_client_ip = $row['framedipaddress'];
 			$lastlog_server_name = @gethostbyaddr($lastlog_server_ip);
 			$lastlog_client_name = @gethostbyaddr($lastlog_client_ip);
 			$lastlog_callerid = $row['callingstationid'];
@@ -265,7 +265,7 @@ if ($link){
 				$lastlog_server_ip = $row['nasipaddress'];
 				$lastlog_server_port = $row['nasportid'];
 				$lastlog_session_time = time2str($row['acctsessiontime']);
-				$lastlog_client_ip = $row['framedipaddress'];	
+				$lastlog_client_ip = $row['framedipaddress'];
 		$lastlog_server_name = ($lastlog_server_ip != '') ? @gethostbyaddr($lastlog_server_ip) : '-';
 		$lastlog_client_name = ($lastlog_client_ip != '') ? @gethostbyaddr($lastlog_client_ip) : '-';
 				$lastlog_callerid = $row['callingstationid'];

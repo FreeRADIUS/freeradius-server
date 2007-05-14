@@ -30,7 +30,7 @@ typedef struct home_server {
 
 	lrad_ipaddr_t	ipaddr;
 
-	
+
 	int		port;
 	int		type;		/* auth/acct */
 
@@ -42,11 +42,11 @@ typedef struct home_server {
 
 	lrad_event_t	*ev;
 	struct timeval	when;
-	
+
 	int		response_window;
 	int		max_outstanding; /* don't overload it */
 	int		currently_outstanding;
-	
+
 	struct timeval	zombie_period_start;
 	int		zombie_period; /* unresponsive for T, mark it dead */
 

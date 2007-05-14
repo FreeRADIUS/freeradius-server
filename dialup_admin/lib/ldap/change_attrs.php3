@@ -15,7 +15,7 @@ require_once('../lib/ldap/functions.php3');
 				$i = 0;
 				$j = -1;
 				$name = $attrmap["$key"] . $i;
-		
+
 				while (isset($$name)){
 					$val = $$name;
 					$i++;
@@ -36,7 +36,7 @@ require_once('../lib/ldap/functions.php3');
 //	if values is the same as the default or if the value is null and the ldap attribute exists
 //	then delete them
 //
-					if ((check_defaults($val,'',$default_vals["$key"]) || $val == '') && 
+					if ((check_defaults($val,'',$default_vals["$key"]) || $val == '') &&
 						isset($item_vals["$key"][$j]))
 						$del[$attrmap["$key"]][] = $item_vals["$key"][$j];
 //

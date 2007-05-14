@@ -185,7 +185,7 @@ static int decode_it(const char *src, uint8_t *dst)
 			x = (x << 6) + (unsigned int)(src[i] - 'A' + 0);
 		else if (src[i] >= 'a' && src[i] <= 'z')
 			 x = (x << 6) + (unsigned int)(src[i] - 'a' + 26);
-		else if(src[i] >= '0' && src[i] <= '9') 
+		else if(src[i] >= '0' && src[i] <= '9')
 			 x = (x << 6) + (unsigned int)(src[i] - '0' + 52);
 		else if(src[i] == '+')
 			x = (x << 6) + 62;
@@ -195,11 +195,11 @@ static int decode_it(const char *src, uint8_t *dst)
 			x = (x << 6);
 		else return 0;
 	}
-	
+
 	dst[2] = (unsigned char)(x & 255); x >>= 8;
 	dst[1] = (unsigned char)(x & 255); x >>= 8;
 	dst[0] = (unsigned char)(x & 255); x >>= 8;
-	
+
 	return 1;
 }
 
@@ -219,7 +219,7 @@ static int base64_decode (const char *src, uint8_t *dst)
 	while (src[length + equals] == '=') equals++;
 
 	num = (length + equals) / 4;
-	
+
 	for (i = 0; i < num - 1; i++) {
 		if (!decode_it(src, dst)) return 0;
 		src += 4;
@@ -242,7 +242,7 @@ static void normify(VALUE_PAIR *vp, int min_length)
 {
 	int decoded;
 	char buffer[64];
-	
+
 	if ((size_t) min_length >= sizeof(buffer)) return; /* paranoia */
 
 	/*
@@ -313,7 +313,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 			uint8_t *p, *q;
 			char buffer[64];
 			VALUE_PAIR *new_vp;
-			
+
 			found_pw = TRUE;
 			q = vp->vp_strvalue;
 			p = strchr(q + 1, '}');
@@ -326,18 +326,18 @@ static int pap_authorize(void *instance, REQUEST *request)
 				 */
 				break;
 			}
-			
+
 			if ((size_t) (p - q) > sizeof(buffer)) break;
-			
+
 			memcpy(buffer, q, p - q + 1);
 			buffer[p - q + 1] = '\0';
-			
+
 			attr = lrad_str2int(header_names, buffer, 0);
 			if (!attr) {
 				DEBUG2("rlm_pap: Found unknown header {%s}: Not doing anything", buffer);
 				break;
 			}
-			
+
 			new_vp = radius_paircreate(request,
 						   &request->config_items,
 						   attr, PW_TYPE_STRING);
@@ -402,7 +402,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 
 		default:
 			break;	/* ignore it */
-			
+
 		}
 	}
 
@@ -423,7 +423,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 		 *	The TLS types don't need passwords.
 		 */
 		vp = pairfind(request->packet->vps, PW_EAP_TYPE);
-		if (vp && 
+		if (vp &&
 		    ((vp->vp_integer == 13) || /* EAP-TLS */
 		     (vp->vp_integer == 21) || /* EAP-TTLS */
 		     (vp->vp_integer == 25))) {	/* PEAP */
@@ -440,7 +440,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 	if (auth_type) {
 		DEBUG2("rlm_pap: Found existing Auth-Type, not changing it.");
 		return RLM_MODULE_NOOP;
-	}	
+	}
 
 	/*
 	 *	Can't do PAP if there's no password.
@@ -521,16 +521,16 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			case PW_USER_PASSWORD: /* deprecated */
 			case PW_CLEARTEXT_PASSWORD: /* preferred */
 				goto do_clear;
-				
+
 			case PW_CRYPT_PASSWORD:
 				goto do_crypt;
-				
+
 			case PW_MD5_PASSWORD:
 				goto do_md5;
-				
+
 			case PW_SHA_PASSWORD:
 				goto do_sha;
-				
+
 			case PW_NT_PASSWORD:
 				goto do_nt;
 
@@ -548,7 +548,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 			default:
 				break;	/* ignore it */
-				
+
 			}
 		}
 
@@ -558,7 +558,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 	} else {
 		vp = NULL;
-		
+
 		if (inst->sch == PAP_ENC_CRYPT) {
 			vp = pairfind(request->config_items, PW_CRYPT_PASSWORD);
 		}
@@ -588,7 +588,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		DEBUG("rlm_pap: User authenticated successfully");
 		return RLM_MODULE_OK;
 		break;
-		
+
 	case PAP_ENC_CRYPT:
 	do_crypt:
 		DEBUG("rlm_pap: Using CRYPT encryption.");
@@ -599,7 +599,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 		goto done;
 		break;
-		
+
 	case PW_MD5_PASSWORD:
 	do_md5:
 		DEBUG("rlm_pap: Using MD5 encryption.");
@@ -610,7 +610,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured MD5 password has incorrect length");
 			goto make_msg;
 		}
-		
+
 		MD5Init(&md5_context);
 		MD5Update(&md5_context, request->password->vp_strvalue,
 			  request->password->length);
@@ -621,7 +621,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 		goto done;
 		break;
-		
+
 	case PW_SMD5_PASSWORD:
 	do_smd5:
 		DEBUG("rlm_pap: Using SMD5 encryption.");
@@ -632,7 +632,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured SMD5 password has incorrect length");
 			goto make_msg;
 		}
-		
+
 		MD5Init(&md5_context);
 		MD5Update(&md5_context, request->password->vp_strvalue,
 			  request->password->length);
@@ -648,18 +648,18 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 		goto done;
 		break;
-		
+
 	case PW_SHA_PASSWORD:
 	do_sha:
 		DEBUG("rlm_pap: Using SHA1 encryption.");
-		
+
 		normify(vp, 20);
 		if (vp->length != 20) {
 			DEBUG("rlm_pap: Configured SHA1 password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured SHA1 password has incorrect length");
 			goto make_msg;
 		}
-		
+
 		SHA1Init(&sha1_context);
 		SHA1Update(&sha1_context, request->password->vp_strvalue,
 			   request->password->length);
@@ -670,11 +670,11 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 		goto done;
 		break;
-		
+
 	case PW_SSHA_PASSWORD:
 	do_ssha:
 		DEBUG("rlm_pap: Using SSHA encryption.");
-		
+
 		normify(vp, 20);
 		if (vp->length <= 20) {
 			DEBUG("rlm_pap: Configured SSHA password has incorrect length");
@@ -682,7 +682,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 
-		
+
 		SHA1Init(&sha1_context);
 		SHA1Update(&sha1_context, request->password->vp_strvalue,
 			   request->password->length);
@@ -694,7 +694,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 		goto done;
 		break;
-		
+
 	case PW_NT_PASSWORD:
 	do_nt:
 		DEBUG("rlm_pap: Using NT encryption.");
@@ -705,7 +705,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NT-Password has incorrect length");
 			goto make_msg;
 		}
-		
+
 		sprintf(buff2,"%%{mschap:NT-Hash %s}",
 			request->password->vp_strvalue);
 		if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
@@ -720,11 +720,11 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 		goto done;
 		break;
-		
+
 	case PW_LM_PASSWORD:
 	do_lm:
 		DEBUG("rlm_pap: Using LM encryption.");
-		
+
 		normify(vp, 16);
 		if (vp->length != 16) {
 			DEBUG("rlm_pap: Configured LM-Password has incorrect length");

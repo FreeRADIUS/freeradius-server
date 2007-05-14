@@ -58,7 +58,7 @@ print <<<EOM
 	<table border=0 width=100% cellpadding=12 cellspacing=0 bgcolor="#ffffd0" valign=top>
 	<tr><td>
 EOM;
-   
+
 if ($delete_user == 1){
 	if ($user_type != 'group'){
 		if (is_file("../lib/$config[general_lib_type]/delete_user.php3"))

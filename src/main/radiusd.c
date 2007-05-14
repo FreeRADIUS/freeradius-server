@@ -532,7 +532,7 @@ int main(int argc, char *argv[])
 			/* do nothing */
 		}
 #endif
-		
+
 		/*
 		 *	Before doing anything else, check the self pipe.
 		 */
@@ -543,16 +543,16 @@ int main(int argc, char *argv[])
 			for (i = 1; i < rcode; i++) {
 				buffer[0] |= buffer[i];
 			}
-			
+
 			if ((buffer[0] & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
 				DEBUG("Exiting...");
-				
+
 				/*
 				 *	Ignore the TERM signal: we're
 				 *	about to die.
 				 */
 				signal(SIGTERM, SIG_IGN);
-					
+
 				/*
 				 *	Send a TERM signal to all
 				 *	associated processes
@@ -560,17 +560,17 @@ int main(int argc, char *argv[])
 				 *	ignored.)
 				 */
 				kill(-radius_pid, SIGTERM);
-				
+
 				/*
 				 *	FIXME: Kill child threads, and
 				 *	clean up?
 				 */
-				
+
 				/*
 				 *	FIXME: clean up any active REQUEST
 				 *	handles.
 				 */
-				
+
 				/*
 				 *	We're exiting, so we can delete the PID
 				 *	file.  (If it doesn't exist, we can ignore
@@ -579,21 +579,21 @@ int main(int argc, char *argv[])
 				if (dont_fork == FALSE) {
 					unlink(mainconfig.pid_file);
 				}
-				
+
 				radius_event_free();
-				
+
 				/*
 				 *	Free the configuration items.
 				 */
 				free_mainconfig();
-				
+
 				/*
 				 *	Detach any modules.
 				 */
 				detach_modules();
-				
+
 				free(radius_dir);
-				
+
 				/*
 				 *	SIGTERM gets do_exit=0,
 				 *	and we want to exit cleanly.
@@ -691,7 +691,7 @@ int main(int argc, char *argv[])
 			if (!listener->recv(listener, &fun, &request)) {
 				continue;
 			}
-			
+
 			/*
 			 *	Drop the request into the thread pool,
 			 *	and let the thread pool take care of
@@ -724,7 +724,7 @@ int main(int argc, char *argv[])
 
 		/*
 		 *	Only clean the thread pool if we're spawning
-		 *	child threads. 
+		 *	child threads.
 		 *
 		 *	FIXME: Move this to the event handler!
 		 */

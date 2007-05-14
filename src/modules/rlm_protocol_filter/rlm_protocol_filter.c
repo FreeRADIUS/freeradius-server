@@ -53,7 +53,7 @@ static const CONF_PARSER module_config[] = {
 
 	{ "key",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_protocol_filter_t,key), NULL, "%{Realm:-DEFAULT}"},
-	
+
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -135,16 +135,16 @@ static int apply_subsection(rlm_protocol_filter_t *inst, REQUEST *request,
 	CONF_PAIR *cp;
 	const char *value;
 	char keybuf[256];
-	
+
 	DEBUG2("  rlm_protocol_filter: Found subsection %s", name);
-	
+
 	cp = cf_pair_find(cs, "key");
 	if (!cp) {
 		radlog(L_ERR, "rlm_protocol_filter: %s[%d]: No key defined in subsection %s",
 		       inst->filename, cf_section_lineno(cs), name);
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	radius_xlat(keybuf, sizeof(keybuf),
 		    cf_pair_value(cp), request, NULL);
 	if (!*keybuf) {
@@ -155,7 +155,7 @@ static int apply_subsection(rlm_protocol_filter_t *inst, REQUEST *request,
 
 	DEBUG2("  rlm_protocol_filter: %s[%d]: subsection %s, using key %s",
 	       inst->filename, cf_section_lineno(cs), name, keybuf);
-			
+
 	/*
 	 *	And repeat some of the above code.
 	 */
@@ -177,7 +177,7 @@ static int apply_subsection(rlm_protocol_filter_t *inst, REQUEST *request,
 		       inst->filename, cf_section_lineno(cs), name);
 		return RLM_MODULE_NOOP;
 	}
-	
+
 	value = cf_pair_value(cp);
 	sense = str2sense(value);
 	if (sense < 0) {
@@ -185,7 +185,7 @@ static int apply_subsection(rlm_protocol_filter_t *inst, REQUEST *request,
 		       inst->filename, cf_pair_lineno(cp), value);
 		return RLM_MODULE_FAIL;
 	}
-	
+
 	if (!sense) return RLM_MODULE_REJECT;
 
 	return RLM_MODULE_OK;

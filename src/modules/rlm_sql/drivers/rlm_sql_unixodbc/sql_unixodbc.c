@@ -356,11 +356,11 @@ static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     SQLINTEGER errornum = 0;
     SQLSMALLINT length = 255;
     static char result[1024];	/* NOT thread-safe! */
-			   
+
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
 
     error[0] = state[0] = '\0';
-			       
+
     SQLError(
 	unixodbc_sock->env_handle,
 	unixodbc_sock->dbc_handle,
@@ -393,7 +393,7 @@ static int sql_state(long err_handle, SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
 
-    if(SQL_SUCCEEDED(err_handle))	
+    if(SQL_SUCCEEDED(err_handle))
 	return 0;		/* on success, just return 0 */
 
     error[0] = state[0] = '\0';

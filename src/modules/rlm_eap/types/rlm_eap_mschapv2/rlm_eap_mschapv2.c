@@ -439,10 +439,10 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	The MS-Length field is 5 + value_size + length
 		 *	of name, which is put after the response.
 		 */
-		if (((eap_ds->response->type.data[2] << 8) | 
+		if (((eap_ds->response->type.data[2] << 8) |
 		     eap_ds->response->type.data[3]) < (5 + 49)) {
 			radlog(L_ERR, "rlm_eap_mschapv2: Response contains contradictory length %d %d",
-			      (eap_ds->response->type.data[2] << 8) | 
+			      (eap_ds->response->type.data[2] << 8) |
 			       eap_ds->response->type.data[3], 5 + 49);
 			return 0;
 		}
@@ -522,16 +522,16 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		char *username = NULL;
 		eap_tunnel_data_t *tunnel;
 		rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
-		
+
 		/*
 		 *	Set up the callbacks for the tunnel
 		 */
 		tunnel = rad_malloc(sizeof(*tunnel));
 		memset(tunnel, 0, sizeof(*tunnel));
-		
+
 		tunnel->tls_session = arg;
 		tunnel->callback = mschap_postproxy;
-		
+
 		/*
 		 *	Associate the callback with the request.
 		 */

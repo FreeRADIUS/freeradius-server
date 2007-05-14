@@ -50,7 +50,7 @@ if ($link){
 	}
 	else
 		echo "<b>Cannot use the user info table. Check the sql_use_user_info_table directive in admin.conf</b><br>\n";
-	
+
 }
 else
 	echo "<b>Could not connect to SQL database</b><br>\n";

@@ -42,7 +42,7 @@ if (defined $naslist) {
     while (<OLD>) {
 	next if (/^\s*\#/);
 	next if (/^\s*$/);
-	
+
 	split;
 
 	if (!defined $clients{$_[0]}) {

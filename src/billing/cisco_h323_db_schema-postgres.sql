@@ -136,7 +136,7 @@ CREATE TABLE gateways (
 
 /*
  * Table structure for 'customers'
- * 
+ *
  * This table should list your Customers names and company
  * This can be used to make more useful reports.
  */
@@ -149,7 +149,7 @@ CREATE TABLE customers (
 
 /*
  * Table structure for 'cust_gw'
- * 
+ *
  * This table should list the IP addresses and Customer IDs of all your Customers gateways
  * This can be used to make more useful reports.
  */

@@ -63,7 +63,7 @@ RCSID("$Id$")
 typedef struct rlm_caching_t {
 	char *filename;		/* name of the database file */
 	char *key;		/* An xlated string to use as key for the records */
-	char *post_auth;	/* If set and we find a cached entry, set Post-Auth to this value */	
+	char *post_auth;	/* If set and we find a cached entry, set Post-Auth to this value */
 	char *cache_ttl_str;	/* The string represantation of the TTL */
 	int cache_ttl;		/* The cache TTL */
 	int hit_ratio;		/* Show cache hit ratio every so many queries */
@@ -259,7 +259,7 @@ static int caching_postauth(void *instance, REQUEST *request)
 	VALUE_PAIR *auth_type;
 	rlm_caching_data cache_data;
 	int count = 0;
-	int ret = 0;	
+	int ret = 0;
 	int size = 0;
 	int rcode = 0;
 
@@ -403,7 +403,7 @@ static int caching_authorize(void *instance, REQUEST *request)
 		}
 		if (delete_cache){
 			DEBUG("rlm_caching: Deleting record");
-			
+
 			pthread_mutex_lock(&data->mutex);
 			gdbm_delete(data->gdbm, key_datum);
 			pthread_mutex_unlock(&data->mutex);
@@ -426,7 +426,7 @@ static int caching_authorize(void *instance, REQUEST *request)
 		else{
 			DEBUG("rlm_caching: No reply items found. Returning NOOP");
 			return RLM_MODULE_NOOP;
-		}		
+		}
 		if (cache_data.auth_type){
 			DEBUG("rlm_caching: Adding Auth-Type '%s'",cache_data.auth_type);
 

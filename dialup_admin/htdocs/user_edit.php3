@@ -57,7 +57,7 @@ else
 if ($user_type != 'group')
 	include("../html/user_toolbar.html.php3");
 else
-	include("../html/group_toolbar.html.php3");	
+	include("../html/group_toolbar.html.php3");
 
 print <<<EOM
 </table>
@@ -77,12 +77,12 @@ print <<<EOM
 	<table border=0 width=100% cellpadding=12 cellspacing=0 bgcolor="#ffffd0" valign=top>
 	<tr><td>
 EOM;
-   
+
 if ($change == 1){
 	if (is_file("../lib/$config[general_lib_type]/change_attrs.php3"))
 		include("../lib/$config[general_lib_type]/change_attrs.php3");
 	if ($user_type != 'group'){
-		if ($config[general_show_user_password] != 'no' && $passwd != '' 
+		if ($config[general_show_user_password] != 'no' && $passwd != ''
 			&& is_file("../lib/$config[general_lib_type]/change_passwd.php3"))
 			include("../lib/$config[general_lib_type]/change_passwd.php3");
 		if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
@@ -101,7 +101,7 @@ else if ($badusers == 1){
 	if (is_file("../lib/add_badusers.php3"))
 		include("../lib/add_badusers.php3");
 }
-	
+
 ?>
    <form name="edituser" method=post>
       <input type=hidden name=login value=<?php print $login ?>>
@@ -171,7 +171,7 @@ EOM;
 				$vals[] = $default_vals["$key"][$i];
 				$ops[] = $default_vals["$key"][operator][$i];
 			}
-		}	
+		}
 		if ($add && $name == $add_attr){
 			$vals[] = $default_vals["$key"][0];
 			$ops[] = ($default_vals["$key"][operator][0] != '') ? $default_vals["$key"][operator][0] : '=';

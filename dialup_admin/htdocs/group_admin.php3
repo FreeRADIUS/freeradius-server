@@ -86,8 +86,8 @@ if ($do_changes == 1){
 		include("../lib/$config[general_lib_type]/group_info.php3");
 }
 ?>
-	
-   
+
+
    <form method=post>
       <input type=hidden name=login value=<?php echo $login ?>>
       <input type=hidden name=do_changes value=0>
@@ -98,7 +98,7 @@ if ($do_changes == 1){
 Group Members (Check to Delete)
 </td>
 <td>
-<select name=del_members[] multiple size=5> 
+<select name=del_members[] multiple size=5>
 <?php
 foreach ($group_members as $member){
 	echo "<option value=\"$member\">$member\n";

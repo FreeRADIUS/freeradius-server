@@ -113,7 +113,7 @@ static uint32_t dict_hashname(const char *name)
 		hash *= FNV_MAGIC_PRIME;
 		hash ^= (uint32_t ) (c & 0xff);
 	}
-	
+
 	return hash;
 }
 
@@ -347,7 +347,7 @@ int dict_addvendor(const char *name, int value)
 		librad_log("dict_addvendor: vendor name too long");
 		return -1;
 	}
-	
+
 	if ((dv = malloc(sizeof(*dv) + length)) == NULL) {
 		librad_log("dict_addvendor: out of memory");
 		return -1;
@@ -614,7 +614,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 		dattr->flags.has_value = 1;
 	} else {
 		value_fixup_t *fixup;
-		
+
 		fixup = (value_fixup_t *) malloc(sizeof(*fixup));
 		if (!fixup) {
 			librad_log("dict_addvalue: out of memory");
@@ -624,7 +624,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 
 		strlcpy(fixup->attrstr, attrstr, sizeof(fixup->attrstr));
 		fixup->dval = dval;
-		
+
 		/*
 		 *	Insert to the head of the list.
 		 */
@@ -640,7 +640,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	if (!lrad_hash_table_insert(values_byname, dval)) {
 		if (dattr) {
 			DICT_VALUE *old;
-			
+
 			/*
 			 *	Suppress duplicates with the same
 			 *	name and value.  There are lots in
@@ -724,7 +724,7 @@ static int process_attribute(const char* fn, const int line,
 				/* Boolean flag, means this is a
 				   tagged attribute */
 				flags.has_tag = 1;
-				
+
 			} else if (strncmp(s, "encrypt=", 8) == 0) {
 				/* Encryption method, defaults to 0 (none).
 				   Currently valid is just type 2,
@@ -747,7 +747,7 @@ static int process_attribute(const char* fn, const int line,
 					case PW_TYPE_INTEGER:
 					case PW_TYPE_DATE:
 						break;
-					
+
 					default:
 						librad_log( "dict_init: %s[%d] Only IP addresses can have the \"array\" flag set.",
 							    fn, line);
@@ -765,7 +765,7 @@ static int process_attribute(const char* fn, const int line,
 					/* New format */
 					s += 7;
 				}
-				
+
 				vendor = dict_vendorbyname(s);
 				if (!vendor) {
 					librad_log( "dict_init: %s[%d]: unknown vendor \"%s\"",
@@ -803,7 +803,7 @@ static int process_attribute(const char* fn, const int line,
 				   fn, line,
 				   lrad_int2str(type_table, type, "?Unknown?"));
 			return -1;
-			
+
 		}
 	}
 
@@ -1003,7 +1003,7 @@ static int process_vendor(const char* fn, const int line, char **argv,
 		}
 
 		p = format + 7;
-		if ((strlen(p) != 3) || 
+		if ((strlen(p) != 3) ||
 		    !isdigit((int) p[0]) ||
 		    (p[1] != ',') ||
 		    !isdigit((int) p[2])) {
@@ -1134,7 +1134,7 @@ static int my_dict_init(const char *dir, const char *fn,
 		fclose(fp);
 		librad_log("dict_init: Dictionary \"%s\" is not a regular file",
 			   fn);
-		return -1;	  
+		return -1;
 	}
 
 	/*
@@ -1438,7 +1438,7 @@ int dict_init(const char *dir, const char *fn)
 				librad_log("dict_addvalue: Duplicate value name %s for attribute %s", this->dval->name, a->name);
 				return -1;
 			}
-			
+
 			/*
 			 *	Allow them to use the old name, but
 			 *	prefer the new name when printing
@@ -1468,7 +1468,7 @@ int dict_init(const char *dir, const char *fn)
 
 	lrad_hash_table_walk(attributes_byname, null_callback, NULL);
 	lrad_hash_table_walk(attributes_byvalue, null_callback, NULL);
-	
+
 	lrad_hash_table_walk(values_byvalue, null_callback, NULL);
 	lrad_hash_table_walk(values_byname, null_callback, NULL);
 
@@ -1525,7 +1525,7 @@ DICT_VALUE *dict_valbyattr(int attr, int value)
 	if (dv)	dval.attr = dv->value;
 
 	dval.value = value;
-	
+
 	return lrad_hash_table_finddata(values_byvalue, &dval);
 }
 
@@ -1569,7 +1569,7 @@ int dict_vendorbyname(const char *name)
 
 	dv = (DICT_VENDOR *) buffer;
 	strlcpy(dv->name, name, DICT_VENDOR_MAX_NAME_LEN);
-	
+
 	dv = lrad_hash_table_finddata(vendors_byname, dv);
 	if (!dv) return 0;
 

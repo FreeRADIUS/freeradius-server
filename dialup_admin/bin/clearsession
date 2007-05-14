@@ -32,7 +32,7 @@ if ($nastype eq 'cisco' && $type eq 'telnet'){
 		my $session = Net::Telnet::Cisco->new(Host => $host);
 		$session->login($login, $passwd);
 
-		if ($port >= 20000){  
+		if ($port >= 20000){
 			my @output = $session->cmd("sh caller user $username");
 			foreach $line (@output){
 				if ($line =~ /User: $username, line (Vi\d+),/){

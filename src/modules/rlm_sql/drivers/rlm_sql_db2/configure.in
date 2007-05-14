@@ -56,7 +56,7 @@ if test x$with_[]modname != xno; then
 	else
 		sql_ibmdb2_cflags="${sql_ibmdb2_cflags} ${IBMDB2_INCLUDE}"
 		AC_MSG_RESULT(yes)
-  
+
 		AC_MSG_CHECKING([for SQLConnect in -ldb2])
 
 		old_LIBS="$LIBS"
@@ -81,7 +81,7 @@ if test x$with_[]modname != xno; then
 			AC_MSG_WARN([ibmdb2 libraries not found.  Use --with-ibmdb2-lib-dir=<path>.])
 			targetname=   # disabled module
 		else
-			AC_MSG_RESULT(yes) 
+			AC_MSG_RESULT(yes)
 			sql_ibmdb2_ldflags="$sql_ibmdb2_ldflags $IBMDB2_LIBS"
 		fi
 	fi

@@ -100,7 +100,7 @@ RADIUS Attribute
 <select name="radius_attr" editable>
 EOM;
 	foreach($show_attrs as $key => $desc)
-		echo "<option $selected[$key] value=\"$key\">$desc\n";		
+		echo "<option $selected[$key] value=\"$key\">$desc\n";
 	echo <<<EOM
 </select>
 </td>

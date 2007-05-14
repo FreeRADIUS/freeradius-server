@@ -712,7 +712,7 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
 #define DONE_FLAGS	(IP_SRC_ADDR_FLAG | IP_DEST_ADDR_FLAG | \
 			IP_SRC_PORT_FLAG | IP_DEST_PORT_FLAG | \
 			IP_PROTO_FLAG | IP_EST_FLAG)
-	
+
 /*
  *	ascend_parse_ip:
  *

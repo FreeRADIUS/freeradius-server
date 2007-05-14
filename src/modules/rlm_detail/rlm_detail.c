@@ -155,7 +155,7 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 			DICT_ATTR	*da;
 
 			if (!cf_item_is_pair(ci)) continue;
-						
+
 			attr = cf_pair_attr(cf_itemtopair(ci));
 			if (!attr) continue; /* pair-anoia */
 
@@ -382,12 +382,12 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			dst_vp.vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 			break;
 		case AF_INET6:
-			src_vp.type = PW_TYPE_IPV6ADDR;	
+			src_vp.type = PW_TYPE_IPV6ADDR;
 			src_vp.attribute = PW_PACKET_SRC_IPV6_ADDRESS;
 			memcpy(src_vp.vp_strvalue,
 			       &packet->src_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->src_ipaddr.ipaddr.ip6addr));
-			dst_vp.type = PW_TYPE_IPV6ADDR;	
+			dst_vp.type = PW_TYPE_IPV6ADDR;
 			dst_vp.attribute = PW_PACKET_DST_IPV6_ADDRESS;
 			memcpy(dst_vp.vp_strvalue,
 			       &packet->dst_ipaddr.ipaddr.ip6addr,

@@ -39,7 +39,7 @@ if ($login != '' && $user_type != 'group'){
 				foreach ($member_groups as $group)
 					$in .= "'$group',";
 				$in = substr($in,0,-1);
-				$in .= ')';	
+				$in .= ')';
 				$res = @da_sql_query($link,$config,
 				"SELECT attribute,value $op FROM $config[sql_groupcheck_table]
 				WHERE groupname IN $in;");

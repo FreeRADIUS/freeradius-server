@@ -76,7 +76,7 @@ if ($link){
 				if (!$res || !@da_sql_affected_rows($link,$res,$config))
 					echo "<b>Delete failed for attribute $key: " . da_sql_error($link,$config) . "</b><br>\n";
 			}
-	//	if value is null or equals the default value then don't add it 
+	//	if value is null or equals the default value then don't add it
 			else if ($val == '' || check_defaults($val,$op_val,$default_vals["$key"]))
 				continue;
 	//	if value differs from the sql value then update

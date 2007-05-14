@@ -169,7 +169,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 		/*
 		 *	%{Attribute-Name[*]} returns ALL of the
 		 *	the attributes, separated by a newline.
-		 */		
+		 */
 		if ((p[1] == '*') && (p[2] == ']')) {
 			int total = 0;
 
@@ -181,7 +181,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 				total += count + 1;
 				outlen -= (count + 1);
 				out += count;
-				
+
 				*(out++) = '\n';
 
 				if (outlen == 0) break;
@@ -189,7 +189,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 
 			return total;
 		}
-		
+
 		count = atoi(p + 1);
 
 		/*
@@ -238,7 +238,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 			case PW_PACKET_TYPE:
 			{
 				DICT_VALUE *dval;
-				
+
 				dval = dict_valbyattr(da->attr, packet->code);
 				if (dval) {
 					snprintf(out, outlen, "%s", dval->name);
@@ -257,7 +257,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 				localvp.attribute = da->attr;
 				localvp.vp_ipaddr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 				break;
-			
+
 			case PW_PACKET_DST_IP_ADDRESS:
 				if (packet->dst_ipaddr.af != AF_INET) {
 					return 0;
@@ -265,12 +265,12 @@ static int xlat_packet(void *instance, REQUEST *request,
 				localvp.attribute = da->attr;
 				localvp.vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 				break;
-			
+
 			case PW_PACKET_SRC_PORT:
 				localvp.attribute = da->attr;
 				localvp.vp_integer = packet->src_port;
 				break;
-			
+
 			case PW_PACKET_DST_PORT:
 				localvp.attribute = da->attr;
 				localvp.vp_integer = packet->dst_port;
@@ -293,7 +293,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 					strlcpy(out, "server_core", outlen);
 				}
 				return strlen(out);
-			
+
 			case PW_PACKET_SRC_IPV6_ADDRESS:
 				if (packet->src_ipaddr.af != AF_INET6) {
 					return 0;
@@ -303,7 +303,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 				       &packet->src_ipaddr.ipaddr.ip6addr,
 				       sizeof(packet->src_ipaddr.ipaddr.ip6addr));
 				break;
-			
+
 			case PW_PACKET_DST_IPV6_ADDRESS:
 				if (packet->dst_ipaddr.af != AF_INET6) {
 					return 0;
@@ -313,14 +313,14 @@ static int xlat_packet(void *instance, REQUEST *request,
 				       &packet->dst_ipaddr.ipaddr.ip6addr,
 				       sizeof(packet->dst_ipaddr.ipaddr.ip6addr));
 				break;
-			
+
 			case PW_SERVER_IDENTITY:
 				if (!request->listener || !request->listener->identity) return 0;
 
 				snprintf(out, outlen, "%s", request->listener->identity);
 				return strlen(out);
 				break;
-			
+
 			default:
 				return 0; /* not found */
 				break;
@@ -361,7 +361,7 @@ static int xlat_regex(void *instance, REQUEST *request,
 	 */
 	fmt = fmt;		/* -Wunused */
 	func = func;		/* -Wunused FIXME: do escaping? */
-	
+
 	regex = request_data_reference(request, request,
 				 REQUEST_DATA_REGEX | *(int *)instance);
 	if (!regex) return 0;
@@ -617,7 +617,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		p += 2;
 		xlat_string = xlat_name;
 		goto do_xlat;
-		
+
 	} else {      /* module name, followed by per-module string */
 		int stop = 0;
 		int delimitbrace = *open_p;
@@ -635,11 +635,11 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			openbraces++;
 			p++;
 		}
-		
+
 		xlat_string = rad_malloc(strlen(p) + 1); /* always returns */
 		free_xlat_string = TRUE;
 		pa = xlat_string;
-		
+
 		/*
 		 *  Copy over the rest of the string, which is per-module
 		 *  data.
@@ -682,7 +682,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 					*pa++ = *p++;
 				}
 				break;
-				
+
 			case ' ':
 			case '\t':
 				spaces = TRUE;
@@ -705,7 +705,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 				p += 2;
 			}
 		}
-		
+
 		/*
 		 *	Look up almost everything in the new tree of xlat
 		 *	functions.  This makes it a little quicker...
@@ -770,7 +770,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			p++;	/* skip the character */
 		}
 	}
-	
+
 	done:
 	if (free_xlat_string) free(xlat_string);
 

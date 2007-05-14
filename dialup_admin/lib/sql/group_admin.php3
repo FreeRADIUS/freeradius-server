@@ -27,7 +27,7 @@ if ($link){
 				if ($res){
 					if (@da_sql_num_rows($res,$config))
 						echo "<b>User $new_member already is a member of the group</b><br>\n";
-					else{	
+					else{
 						$res = @da_sql_query($link,$config,
 						"INSERT INTO $config[sql_usergroup_table] (groupname,username)
 						VALUES ('$login','$new_member');");

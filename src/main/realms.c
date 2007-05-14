@@ -186,7 +186,7 @@ static CONF_PARSER home_server_config[] = {
 	  offsetof(home_server,ping_user_name), NULL,  NULL},
 	{ "password",  PW_TYPE_STRING_PTR,
 	  offsetof(home_server,ping_user_password), NULL,  NULL},
-	
+
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 
 };
@@ -215,7 +215,7 @@ static int home_server_add(const char *filename, CONF_SECTION *cs)
 	memset(home, 0, sizeof(*home));
 
 	home->name = name2;
-	
+
 	memset(&hs_ip4addr, 0, sizeof(hs_ip4addr));
 	memset(&hs_ip6addr, 0, sizeof(hs_ip6addr));
 	cf_section_parse(cs, home, home_server_config);
@@ -334,8 +334,8 @@ static int home_server_add(const char *filename, CONF_SECTION *cs)
 			return 0;
 		}
 
-		if ((home->type == HOME_TYPE_AUTH) && 
-		    !home->ping_user_password) {	
+		if ((home->type == HOME_TYPE_AUTH) &&
+		    !home->ping_user_password) {
 			radlog(L_INFO, "%s[%d]: You must supply a password to enable ping checks",
 			       filename, cf_section_lineno(cs));
 			free(home);
@@ -446,7 +446,7 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 			       filename, cf_pair_lineno(cp), value);
 			return 0;
 		}
-			
+
 		if (!home_server_add(filename, server_cs)) {
 			return 0;
 		}
@@ -549,7 +549,7 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 	DEBUG2(" }");
 
 	rad_assert(pool->server_type != 0);
-	
+
 	return 1;
 
  error:
@@ -606,7 +606,7 @@ static int old_server_add(const char *filename, int lineno, const char *realm,
 			radlog(L_ERR, "%s[%d]: Inconsistent type for home server \"%s\"", filename, lineno, name);
 			return 0;
 		}
-		
+
 		/*
 		 *	See if the home server is already listed
 		 *	in the pool.  If so, do nothing else.
@@ -646,7 +646,7 @@ static int old_server_add(const char *filename, int lineno, const char *realm,
 	/*
 	 *	No home server, allocate one.
 	 */
-	if (!home) {	     
+	if (!home) {
 		const char *p;
 		char *q;
 
@@ -724,7 +724,7 @@ static int old_server_add(const char *filename, int lineno, const char *realm,
 			free(home);
 			return 0;
 		}
-		
+
 		if (!rbtree_insert(home_servers_byaddr, home)) {
 			rbtree_deletebydata(home_servers_byname, home);
 			radlog(L_ERR, "%s[%d]: Internal error adding home server %s.",
@@ -841,7 +841,7 @@ static int old_realm_config(const char *filename, CONF_SECTION *cs, REALM *r)
 	if (secret) DEBUG2("\tsecret = %s", secret);
 
 	return 1;
-	
+
 }
 
 
@@ -867,7 +867,7 @@ static int add_pool_to_realm(const char *filename, int lineno,
 		if (!server_pool_add(filename, pool_cs)) {
 			return 0;
 		}
-		
+
 		pool = rbtree_finddata(home_pools_byname, &mypool);
 		if (!pool) {
 			rad_assert("Internal sanity check failed");
@@ -967,7 +967,7 @@ int realm_add(const char *filename, CONF_SECTION *cs)
 
 	if (auth_pool_name) DEBUG2("\tauth_pool = %s", auth_pool_name);
 	if (acct_pool_name) DEBUG2("\tacct_pool = %s", acct_pool_name);
-	
+
 	if ((cf_section_value_find(cs, "nostrip")) != NULL) {
 		r->striprealm = 0;
 		DEBUG2("\tnostrip", name2);
@@ -1193,7 +1193,7 @@ home_server *home_server_ldb(const char *realmname,
 		pool = NULL;
 		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 			pool = rd->auth_pool;
-			
+
 		} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
 			pool = rd->acct_pool;
 		}

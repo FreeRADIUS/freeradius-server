@@ -114,7 +114,7 @@ function da_sql_affected_rows($link,$result,$config)
 
 function da_sql_list_fields($table,$link,$config)
 {
-	$res = @dbx_query($link,"SELECT * FROM ".$table." LIMIT 1 ;"); 
+	$res = @dbx_query($link,"SELECT * FROM ".$table." LIMIT 1 ;");
 	if ($res){
 		$fields[num] = $res->cols;
 	}

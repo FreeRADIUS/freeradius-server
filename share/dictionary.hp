@@ -7,7 +7,7 @@
 #
 ##############################################################################
 
-VENDOR		HP				11 
+VENDOR		HP				11
 
 # Management authorization
 BEGIN-VENDOR	HP

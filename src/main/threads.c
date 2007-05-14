@@ -256,7 +256,7 @@ static void reap_children(void)
 		mytf.pid = pid;
 		tf = lrad_hash_table_finddata(thread_pool.waiters, &mytf);
 		if (!tf) continue;
-		
+
 		tf->status = status;
 		tf->exited = 1;
 	} while (lrad_hash_table_num_elements(thread_pool.waiters) > 0);
@@ -281,7 +281,7 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 
 	if (thread_pool.num_queued >= thread_pool.max_queue_size) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
-		
+
 		/*
 		 *	Mark the request as done.
 		 */
@@ -732,8 +732,8 @@ int thread_pool_init(int spawn_flag)
 			radlog(L_ERR, "FATAL: Failed to initialize wait mutex: %s",
 			       strerror(errno));
 			exit(1);
-		}		
-		
+		}
+
 		/*
 		 *	Create the hash table of child PID's
 		 */
@@ -833,7 +833,7 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 	 */
 	if (!thread_pool.spawn_flag) {
 		radius_handle_request(request, fun);
-		
+
 		/*
 		 *	Requests that care about child process exit
 		 *	codes have already either called
@@ -1057,7 +1057,7 @@ pid_t rad_fork(void)
 
 		tf = rad_malloc(sizeof(*tf));
 		memset(tf, 0, sizeof(*tf));
-		
+
 		tf->pid = child_pid;
 
 		pthread_mutex_lock(&thread_pool.wait_mutex);
@@ -1096,10 +1096,10 @@ pid_t rad_waitpid(pid_t pid, int *status)
 	pthread_mutex_unlock(&thread_pool.wait_mutex);
 
 	if (!tf) return -1;
-	
+
 	for (i = 0; i < 100; i++) {
 		reap_children();
-		
+
 		if (tf->exited) {
 			*status = tf->status;
 
@@ -1110,7 +1110,7 @@ pid_t rad_waitpid(pid_t pid, int *status)
 		}
 		usleep(100000);	/* sleep for 1/10 of a second */
 	}
-	
+
 	/*
 	 *	10 seconds have passed, give up on the child.
 	 */

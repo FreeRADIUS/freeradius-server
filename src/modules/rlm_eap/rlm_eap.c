@@ -346,7 +346,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 				pairadd(&(request->proxy->vps), vp);
 			}
 		}
-			
+
 		/*
 		 *	Delete the "proxied to" attribute, as it's
 		 *	set to 127.0.0.1 for tunneled requests, and

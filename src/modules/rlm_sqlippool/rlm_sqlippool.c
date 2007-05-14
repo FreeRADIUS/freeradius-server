@@ -46,10 +46,10 @@ typedef struct rlm_sqlippool_t {
 
 	char *pool_name;
 
-	/* We ended up removing the init 
+	/* We ended up removing the init
 	   queries so that its up to user
 	   to create the db structure and put the required
-	   information in there			
+	   information in there
 	*/
 				/* Allocation sequence */
 	char *allocate_begin;	/* SQL query to begin */
@@ -90,7 +90,7 @@ typedef struct rlm_sqlippool_t {
 	char *off_clear;	/* SQL query to clear an entire NAS */
 	char *off_commit;	/* SQL query to commit */
 	char *off_rollback;	/* SQL query to rollback */
-	
+
 				/* Logging Section */
 	char *log_exists;	/* There was an ip address already assigned */
 	char *log_success;	/* We successfully allocated ip address from pool */
@@ -196,7 +196,7 @@ static int sqlippool_expand(char * out, int outlen, const char * fmt, void * ins
 			/*
 			 * We check if we're inside an open brace.  If we are
 			 * then we assume this brace is NOT literal, but is
-			 * a closing brace and apply it 
+			 * a closing brace and apply it
 			 */
 			if((c == '}') && openbraces) {
 				openbraces--;
@@ -232,7 +232,7 @@ static int sqlippool_expand(char * out, int outlen, const char * fmt, void * ins
 				*q++ = *p;
 				break;
 			case 'P': /* pool name */
-				strlcpy(q, data->pool_name, freespace); 
+				strlcpy(q, data->pool_name, freespace);
 				q += strlen(q);
 				break;
 			case 'I': /* IP address */
@@ -249,7 +249,7 @@ static int sqlippool_expand(char * out, int outlen, const char * fmt, void * ins
 				break;
 			case 'J': /* lease duration */
 				sprintf(tmp, "%d", data->lease_duration);
-				strlcpy(q, tmp, freespace); 
+				strlcpy(q, tmp, freespace);
 				q += strlen(q);
 				break;
 			default:
@@ -482,12 +482,12 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 
 /*
  * if we have something to log, then we log it
- * otherwise we return the retcode as soon as possible 
+ * otherwise we return the retcode as soon as possible
  */
 static int do_logging(char *str, int retcode)
 {
 	if (strlen(str))
-		radlog(L_INFO,"%s", str);	
+		radlog(L_INFO,"%s", str);
 	return retcode;
 }
 
@@ -530,7 +530,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
-	
+
 	if (pairfind(request->packet->vps, PW_NAS_IP_ADDRESS) == NULL) {
 		DEBUG("rlm_sqlippool: unknown NAS-IP-Address");
 		return RLM_MODULE_NOOP;
@@ -567,7 +567,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 					  (char *) NULL, 0);
 
 	if (allocation_len == 0)
-	{	
+	{
 		/*
 		 * COMMIT
 		 */
@@ -576,7 +576,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 		/*
 		 * Should we perform pool-check ?
-		 */ 
+		 */
 		if (data->pool_check && *data->pool_check) {
 
 			/*
@@ -593,7 +593,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 				/*
 				 * Pool exists after all... So, the failure to allocate
-				 * the IP address was most likely due to the depletion 
+				 * the IP address was most likely due to the depletion
 				 * of the pool. In that case, we should return NOTFOUND
 				 */
 				DEBUG("rlm_sqlippool: IP address could not be allocated.");
@@ -602,15 +602,15 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 			}
 			/*
-			 * Pool doesn't exist in the table. It may be handled by some 
+			 * Pool doesn't exist in the table. It may be handled by some
 			 * other instance of sqlippool, so we should just ignore
 			 * this allocation failure and return NOOP
 			 */
 			DEBUG("rlm_sqlippool: IP address could not be allocated as not pool exists with that name.");
 			return RLM_MODULE_NOOP;
-		
+
 		}
-		
+
 		sql_release_socket(data->sql_inst, sqlsocket);
 
 		DEBUG("rlm_sqlippool: IP address could not be allocated.");
@@ -619,7 +619,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
 
-	
+
 	/*
 	 *  FIXME: Make it work with the ipv6 addresses
 	 */
@@ -634,8 +634,8 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 		DEBUG("rlm_sqlippool: Invalid IP number [%s] returned from database query.", allocation);
 		sql_release_socket(data->sql_inst, sqlsocket);
-		radius_xlat(logstr, sizeof(logstr), data->log_failed, request, NULL);	
-		
+		radius_xlat(logstr, sizeof(logstr), data->log_failed, request, NULL);
+
 		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
 
@@ -878,7 +878,7 @@ static int sqlippool_accounting_off(void * instance, REQUEST * request)
 
 /*
  *	Check for an Accounting-Stop
- *	If we find one and we have allocated an IP to this nas/port combination, deallocate it.	
+ *	If we find one and we have allocated an IP to this nas/port combination, deallocate it.
  */
 static int sqlippool_accounting(void * instance, REQUEST * request)
 {
@@ -931,7 +931,7 @@ static int sqlippool_detach(UNUSED void *instance)
  */
 module_t rlm_sqlippool = {
 	RLM_MODULE_INIT,
-	"SQL IP Pool",	
+	"SQL IP Pool",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	sqlippool_instantiate,		/* instantiation */
 	sqlippool_detach,		/* detach */

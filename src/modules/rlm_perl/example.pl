@@ -3,19 +3,19 @@
 #  it under the terms of the GNU General Public License as published by
 #  the Free Software Foundation; either version 2 of the License, or
 #  (at your option) any later version.
-# 
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-# 
+#
 #  You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
-#  
+#
 #  Copyright 2002  The FreeRADIUS server project
 #  Copyright 2002  Boian Jordanov <bjordanov@orbitel.bg>
-#  
+#
 
 #
 # Example code for use with rlm_perl
@@ -37,7 +37,7 @@ use Data::Dumper;
 #my %RAD_CHECK;
 
 #
-# This the remapping of return values 
+# This the remapping of return values
 #
 	use constant    RLM_MODULE_REJECT=>    0;#  /* immediately reject the request */
 	use constant	RLM_MODULE_FAIL=>      1;#  /* module failed, don't reply */
@@ -82,7 +82,7 @@ sub authenticate {
 sub preacct {
 	# For debugging purposes only
 #	&log_request_attributes;
-	
+
 	return RLM_MODULE_OK;
 }
 
@@ -91,9 +91,9 @@ sub accounting {
 	# For debugging purposes only
 #	&log_request_attributes;
 
-	# You can call another subroutine from here 
+	# You can call another subroutine from here
 	&test_call;
-	
+
 	return RLM_MODULE_OK;
 }
 
@@ -162,7 +162,7 @@ sub detach {
 #
 
 sub test_call {
-	# Some code goes here 
+	# Some code goes here
 }
 
 sub log_request_attributes {

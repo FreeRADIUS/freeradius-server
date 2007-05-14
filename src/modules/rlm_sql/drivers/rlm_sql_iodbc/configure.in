@@ -60,7 +60,7 @@ dnl		FR_LOCATE_DIR(iodbc_include_dir,[isql.h])
 		AC_MSG_RESULT(yes)
 		AC_DEFINE(HAVE_IODBC_H)
 
-  
+
 		AC_MSG_CHECKING([for SQLConnect in -liodbc])
 
 		old_LIBS="$LIBS"
@@ -88,7 +88,7 @@ dnl		FR_LOCATE_DIR(iodbc_lib_dir,[libodbc.a])
 			AC_MSG_WARN([iodbc libraries not found.  Use --with-iodbc-lib-dir=<path>.])
 			targetname=   # disabled module
 		else
-			AC_MSG_RESULT(yes) 
+			AC_MSG_RESULT(yes)
 			sql_iodbc_ldflags="$sql_iodbc_ldflags $IODBC_LIBS"
 		fi
 	fi

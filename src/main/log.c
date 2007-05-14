@@ -75,7 +75,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	if (mainconfig.radlog_dest == RADLOG_NULL) {
 		return 0;
 	}
-	
+
 	/*
 	 *	Don't print timestamps to syslog, it does that for us.
 	 *	Don't print timestamps for low levels of debugging.
@@ -126,7 +126,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	} else if ((fp = fopen(mainconfig.log_file, "a")) == NULL) {
 		fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
 			progname, mainconfig.log_file, strerror(errno));
-		
+
 		fprintf(stderr, "  (");
 		vfprintf(stderr, fmt, ap);  /* the message that caused the log */
 		fprintf(stderr, ")\n");

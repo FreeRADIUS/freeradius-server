@@ -6,9 +6,9 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(sql_postgresql_h, "$Id$")
 
-/************************************************** 
+/**************************************************
 * Error Codes and required information Lookup table
-* Does this shite ever needed? Lets c.. 
+* Does this shite ever needed? Lets c..
 ***************************************************/
 typedef struct pgsql_error{
 	char *errorcode;
@@ -29,7 +29,7 @@ pgerror errorcodes[]=
 
 	"2000", "NO DATA", 0,
 	"2001", "NO ADDITIONAL DYNAMIC RESULT SETS RETURNED", 0,
-	
+
 	"3000", "SQL STATEMENT NOT YET COMPLETE", 0,
 
 	"8000", "CONNECTION EXCEPTION", 0,
@@ -123,9 +123,9 @@ pgerror errorcodes[]=
 
 	"2B000", "DEPENDENT PRIVILEGE DESCRIPTORS STILL EXIST", 0,
 	"2BP01", "DEPENDENT OBJECTS STILL EXIST", 0,
-	
+
 	"2D000", "INVALID TRANSACTION TERMINATION", 0,
-	
+
 	"2F000", "SQL ROUTINE EXCEPTION", 0,
 	"2F005", "FUNCTION EXECUTED NO RETURN STATEMENT", 0,
 	"2F002", "MODIFYING SQL DATA NOT PERMITTED", 0,
@@ -133,7 +133,7 @@ pgerror errorcodes[]=
 	"2F004", "READING SQL DATA NOT PERMITTED", 0,
 
 	"34000", "INVALID CURSOR NAME", 0,
-	
+
 	"38000", "EXTERNAL ROUTINE EXCEPTION", 0,
 	"38001", "CONTAINING SQL NOT PERMITTED", 0,
 	"38002", "MODIFYING SQL DATA NOT PERMITTED", 0,
@@ -164,7 +164,7 @@ pgerror errorcodes[]=
 	"53100", "DISK FULL", 0,
 	"53200", "OUT OF MEMORY", 0,
 	"53300", "TOO MANY CONNECTIONS", 0,
-	
+
 	"54000", "PROGRAM LIMIT EXCEEDED", 0,
 	"54001", "STATEMENT TOO COMPLEX", 0,
 	"54011", "TOO MANY COLUMNS", 0,
@@ -172,9 +172,9 @@ pgerror errorcodes[]=
 
 	"55000", "OBJECT NOT IN PREREQUISITE STATE", 0,
 	"55006", "OBJECT IN USE", 0,
-	"55P02", "CANT CHANGE RUNTIME PARAM", 0,	
+	"55P02", "CANT CHANGE RUNTIME PARAM", 0,
 	"55P03", "LOCK NOT AVAILABLE", 0,
-	
+
 	"57000", "OPERATOR INTERVENTION", 1,
 	"57014", "QUERY CANCELED", 1,
 	"57P01", "ADMIN SHUTDOWN", 1,
@@ -208,7 +208,7 @@ pgerror errorcodes[]=
 	"42P01", "UNDEFINED TABLE", 0,
 	"42P02", "UNDEFINED PARAMETER", 0,
 	"42704", "UNDEFINED OBJECT", 0,
-	"42701", "DUPLICATE COLUMN", 0,	
+	"42701", "DUPLICATE COLUMN", 0,
 	"42P03", "DUPLICATE CURSOR", 0,
 	"42P04", "DUPLICATE DATABASE", 0,
 	"42723", "DUPLICATE FUNCTION", 0,

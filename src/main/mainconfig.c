@@ -68,7 +68,7 @@ static char *syslog_facility = NULL;
 static const LRAD_NAME_NUMBER str2fac[] = {
 #ifdef LOG_KERN
 	{ "kern", LOG_KERN },
-#endif	
+#endif
 #ifdef LOG_USER
 	{ "user", LOG_USER },
 #endif
@@ -237,17 +237,17 @@ static int xlat_config(void *instance, REQUEST *request,
 	 *	Copied from exec.c
 	 */
 	from = fmt;
-	to = myfmt; 
+	to = myfmt;
 	argc = 0;
 	while (*from) {
 		int flag, length;
-		
+
 		flag = 0;
 		argv[argc] = to;
 		argc++;
-		
+
 		if (argc >= (MAX_ARGV - 1)) break;
-		
+
 		/*
 		 *	Copy the argv over to our buffer.
 		 */
@@ -260,7 +260,7 @@ static int xlat_config(void *instance, REQUEST *request,
 			case '%':
 				if (from[1] == '{') {
 					*(to++) = *(from++);
-					
+
 					length = rad_copy_variable(to, from);
 					if (length < 0) {
 						return -1;
@@ -341,7 +341,7 @@ static int xlat_config(void *instance, REQUEST *request,
 			 */
 			sublen = 0;
 		}
-		
+
 		argv[i] = to;
 		to += sublen;
 		*(to++) = '\0';
@@ -735,7 +735,7 @@ int read_mainconfig(int reload)
 				      PW_TYPE_STRING_PTR, &radlog_dest,
 				      "files");
 		if (rcode < 0) return -1;
-	
+
 		mainconfig.radlog_dest = lrad_str2int(str2dest, radlog_dest, RADLOG_NUM_DEST);
 		if (mainconfig.radlog_dest == RADLOG_NUM_DEST) {
 			fprintf(stderr, "radiusd: Error: Unknown log_destination %s\n",
@@ -744,7 +744,7 @@ int read_mainconfig(int reload)
 			cf_section_free(&cs);
 			return -1;
 		}
-		
+
 		if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
 			static const CONF_PARSER syslog_config[] = {
 				{ "log", PW_TYPE_SUBSECTION, 0, NULL,  (const void *) log_config},
@@ -857,7 +857,7 @@ int read_mainconfig(int reload)
 		}
 
 	} else if (debug_flag == 0) {
-		
+
 		/*
 		 *	Starting the server, WITHOUT "-x" on the
 		 *	command-line: use whatever's in the config

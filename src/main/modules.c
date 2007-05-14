@@ -218,7 +218,7 @@ static module_entry_t *linkto_module(const char *module_name,
 		radlog(L_ERR|L_CONS, "%s[%d] Invalid version in module '%s'",
 		       cffilename, cflineno, module_name);
 		return NULL;
-		
+
 	}
 
 	/* make room for the module type */
@@ -450,7 +450,7 @@ static int load_subcomponent_section(modcallable *parent,
 	ml = compile_modgroup(parent, comp, cs, filename);
 	if (!ml) {
 		return 0;
-	}	
+	}
 
 	/*
 	 *	We must assign a numeric index to this subcomponent.
@@ -933,7 +933,7 @@ int setup_modules(int reload)
 		if (cf_item_find_next(cs, NULL) == NULL) {
 			continue; /* section is empty */
 		}
-		
+
 		DEBUG2(" Module: Instantiating section %s", section_type_value[comp].section);
 
 		if (load_component_section(NULL, cs, comp, mainconfig.radiusd_conf) < 0) {

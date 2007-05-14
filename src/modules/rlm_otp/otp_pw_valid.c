@@ -304,7 +304,7 @@ otp_connect(const char *path)
   }
   sa.sun_family = AF_UNIX;
   (void) strcpy(sa.sun_path, path);
-    
+
   /* connect to otpd */
   if ((fd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1) {
     (void) radlog(L_ERR, "rlm_otp: %s: socket: %s", __func__, strerror(errno));

@@ -8,7 +8,7 @@ if ($auth_user){
 			include("../html/buttons/default/buttons.html.php3");
 	}
 }
-else{	
+else{
 	if (is_file("../html/buttons/default/buttons.html.php3"))
 		include("../html/buttons/default/buttons.html.php3");
 }

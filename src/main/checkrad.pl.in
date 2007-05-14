@@ -60,7 +60,7 @@ $snmp_version	= "2c";
 $rusers		= "@RUSERS@";
 $naspass	= "$raddbdir/naspasswd";
 
-# Community string. Change this if yours isn't "public". 
+# Community string. Change this if yours isn't "public".
 $cmmty_string	= "public";
 # path to finger command
 $finger = "/usr/bin/finger";
@@ -121,10 +121,10 @@ sub naspasswd {
 	close NFD;
 	if ($password eq "" && !$emptyok) {
 		print LOG "checkrad: password for $ARGV[1] is null; " .
-			"possible match for $ARGV[3] on " . 
+			"possible match for $ARGV[3] on " .
 			"port $ARGV[2]\n" if ($debug);
 		print STDERR "checkrad: password for $ARGV[1] is null; " .
-			"possible match for $ARGV[3] on port $ARGV[2]\n"; 
+			"possible match for $ARGV[3] on port $ARGV[2]\n";
 	}
 	($login, $password);
 }
@@ -262,7 +262,7 @@ sub snmpget {
 
 #
 #	Strip domains, prefixes and suffixes from username
-#	
+#
 #	Known prefixes: (P)PP, (S)LIP e (C)SLIP
 #	Known suffixes: .ppp, .slip e .cslip
 #
@@ -603,7 +603,7 @@ sub portslave_finger {
 #	(this routine by Alexis C. Villalon <alexisv@compass.com.ph>).
 #	You must have the Net::Telnet module from CPAN for this to work.
 #	You must also have your /etc/raddb/naspasswd made up.
-# 
+#
 sub tc_tccheck {
 	#
 	#	Localize all variables first.
@@ -680,7 +680,7 @@ sub tc_tccheck {
 		$user =~ s/^[PSC]//;
 		$user =~ s/\.(ppp|slip|cslip)$//;
 		$port =~ s/^S//;
-		#		
+		#
 		#	HACK: because "show sessions" shows max. 15 characters
 		#	we only compare up to the length of $user if the
 		#	unstripped name had 15 chars.
@@ -718,7 +718,7 @@ sub cyclades_telnet {
 	#
 	my ($pr, $pr_login, $pr_passwd, $pr_prompt, $endlist, @list, $port, $user);
 	#
-	#	This variable must match PathRAS' command prompt 
+	#	This variable must match PathRAS' command prompt
 	#	string as entered in menu option 6.2.
 	#	The value below matches the default command prompt.
 	#
@@ -735,7 +735,7 @@ sub cyclades_telnet {
 	return 2 unless (check_net_telnet());
 
 	#
-	#	Get login name and password for NAS 
+	#	Get login name and password for NAS
 	#	from $naspass file.
 	#
 	($pr_login, $pr_passwd) = naspasswd($ARGV[1], 1);
@@ -761,18 +761,18 @@ sub cyclades_telnet {
 	#
 	if ($pr->waitfor(Match => '/login : $/i') == 1) {
 		$pr->print($pr_login);
-	} else { 
+	} else {
 		print LOG " Error: sending login name to PathRAS\n" if ($debug);
 		$pr->close;
-		return 2;	
+		return 2;
 	}
 
 	if ($pr->waitfor(Match => '/password : $/i') == 1) {
 		$pr->print($pr_passwd);
-	} else { 
+	} else {
 		print LOG " Error: sending password to PathRAS.\n" if ($debug);
 		$pr->close;
-		return 2;	
+		return 2;
 	}
 
 	$pr->print();
@@ -782,7 +782,7 @@ sub cyclades_telnet {
 	#
 	if ($pr->waitfor(Match => $pr_prompt) == 1) {
 		$pr->print('6');
-	} else { 
+	} else {
 		print LOG "  Error: acessing menu option '6'.\n" if ($debug);
 		$pr->close;
 		return 2;
@@ -792,13 +792,13 @@ sub cyclades_telnet {
 	#
 	if ($pr->waitfor(Match => $pr_prompt) == 1) {
 		@list = $pr->cmd(String => '8', Prompt => $endlist);
-	} else { 
+	} else {
 		print LOG "  Error: acessing menu option '8'.\n" if ($debug);
 		$pr->close;
 		return 2;
 	}
 	#
-	#	Since we got the info we want, let's close 
+	#	Since we got the info we want, let's close
 	#	the telnet session
 	#
 	$pr->close;
@@ -843,9 +843,9 @@ sub patton_snmp {
    $oid = '.1.3.6.1.4.1.1768.5.100.1.56.' . hex $ARGV[4];
    #
    # Check if the session still active
-   # 
+   #
    if (snmpget($ARGV[1], "monitor", "$oid") == 0) {
-      print LOG "  Session $ARGV[4] still active on NAS " . 
+      print LOG "  Session $ARGV[4] still active on NAS " .
       	"$ARGV[1], port $ARGV[2], for user $ARGV[3].\n" if ($debug);
       return 1;
    }
@@ -886,7 +886,7 @@ sub digitro_rusers {
 sub cyclades_snmp {
    my ($oid, $ret);
    local $_;
-   
+
    $oid = ".1.3.6.1.4.1.2925.3.3.6.1.1.2";
 
    $_ = snmpwalk($ARGV[1],"$cmmty_string",$oid);
@@ -898,7 +898,7 @@ sub cyclades_snmp {
 #	3Com/USR HiPer Arc Total Control.
 #	This works with HiPer Arc 4.0.30
 #	(this routine by Igor Brezac <igor@ipass.net>)
-# 
+#
 
 #       This routine modified by Dan Halverson <danh@tbc.net>
 #       to suport additional versions of Hiper Arc
@@ -920,7 +920,7 @@ sub usrhiper_snmp {
 # If password is defined in naspasswd file, use it as community, otherwise use $cmmty_string
 		if ($password eq '') {
 		    $password = "$cmmty_string";
-		}	
+		}
 	}
 	my ($ver) = get_hiper_ver(usrm=>$usrm, target=>$ARGV[1], community=>$password);
 	$oidext = get_oidext(ver=>$ver, tty=>$ARGV[2]);
@@ -948,7 +948,7 @@ sub get_hiper_ver {
     return($ver);
 }
 
-#     
+#
 #   Add additional OID checks below before the else.
 #   Else is for 4.0.30
 #
@@ -990,8 +990,8 @@ sub usrnet_telnet {
 
 	#
 	#	Communicate with Netserver using Net::Telnet, then access
-	#	list connectionsto see who are logged in. 
-	# 
+	#	list connectionsto see who are logged in.
+	#
 	$telnet = new Net::Telnet (Timeout => 5,
 				   Prompt => '/\>/');
 	$telnet->open($terminalserver);
@@ -1022,7 +1022,7 @@ sub usrnet_telnet {
 		if ( /mod\:/ ) {
 			($port, $user, $dummy) = split;
 			#
-			# Strip out any prefixes and suffixes 
+			# Strip out any prefixes and suffixes
 			# from the username
 			#
 			# uncomment this if you use the standard
@@ -1039,7 +1039,7 @@ sub usrnet_telnet {
 			};
 		};
 	};
-	print LOG 
+	print LOG
 	"  $ARGV[3] not found on Netserver logged users list " if ($debug);
 	0;
 }
@@ -1049,16 +1049,16 @@ sub usrnet_telnet {
 #
 #	___ versanet_snmp 1.0 by support@versanetcomm.com ___ July 1999
 #	Versanet Enterprise MIB Base: 1.3.6.1.4.1.2180
-#   
+#
 #	VN2001/2002 use slot/port number to locate modems. To use snmp get we
 #	have to translate the original port number into a slot/port pair.
 #
 $vsm     = '.iso.org.dod.internet.private.enterprises.2180';
 sub versanet_snmp {
-        
+
 	print LOG "argv[2] = $ARGV[2] " if ($debug);
 	$port = $ARGV[2]%8;
-	$port = 8 if ($port eq 0);	  
+	$port = 8 if ($port eq 0);
 	print LOG "port = $port " if ($debug);
 	$slot = (($ARGV[2]-$port)/8)+1;
 	print LOG "slot = $slot" if ($debug);
@@ -1067,12 +1067,12 @@ sub versanet_snmp {
 #	Note: the "$cmmty_string" string above could be replaced by the public
 #	      community string defined in Versanet VN2001/VN2002.
 #
-	  print LOG "  user at slot $slot port $port: $loginname\n" if ($debug);	  ($loginname eq $ARGV[3]) ? 1 : 0;	
+	  print LOG "  user at slot $slot port $port: $loginname\n" if ($debug);	  ($loginname eq $ARGV[3]) ? 1 : 0;
 }
 
 
 # 1999/08/24 Chris Shenton <chris@shenton.org>
-# Check Bay8000 NAS (aka: Annex) using finger. 
+# Check Bay8000 NAS (aka: Annex) using finger.
 # Returns from "finger @bay" like:
 #   Port  What User         Location         When          Idle  Address
 #   asy2  PPP  bill         ---              9:33am         :08  192.168.1.194
@@ -1160,7 +1160,7 @@ sub mikrotik_snmp {
   # Set SNMP version
   # MikroTik only supports version 1
   $snmp_version = "1";
- 
+
   # Look up community string in naspasswd file.
   ($login, $password) = naspasswd($ARGV[1], 1);
   if ($login && $login ne 'SNMP') {
@@ -1168,14 +1168,14 @@ sub mikrotik_snmp {
       print LOG "Error: Need SNMP community string for $ARGV[1]\n";
     }
     return 2;
-  } else { 
+  } else {
   # If password is defined in naspasswd file, use it as community,
   # otherwise use $cmmty_string
     if ($password eq '') {
       $password = "$cmmty_string";
     }
   }
- 
+
   # We want interface descriptions
   $oid = "ifDescr";
 
@@ -1224,7 +1224,7 @@ sub mikrotik_telnet {
 
   # Dont just exit when there is error
   $t->errmode('return');
-                       
+
   # Telnet to terminal server
   $t->open($terminalserver) or return 2;
 
@@ -1286,7 +1286,7 @@ sub mikrotik_telnet {
 
   if( $output =~ /name="$user"/ ) {
     $username_seen++;
-  } 
+  }
 
   #lets return something
   if ($username_seen > 0) {
@@ -1311,30 +1311,30 @@ sub redback_telnet {
 	print LOG " Error: No context defined\n" if ($debug);
 	return 2;
     }
-    
+
     # Get loggin information
     ($root, $password) = naspasswd($terminalserver, 1);
     return 2 if ($password eq "");
-    
+
     $operprompt = '/\[.*\].*>$/';
     $adminprompt = '/\[.*\].*#$/';
-    
+
     # Logging to the RedBack NAS
     $t = new Net::Telnet (Timeout => 5, Prompt => $operprompt);
     $t->input_log("./debug");
     $t->open($terminalserver);
     $t->login($root, $password);
-    
+
     #Enable us
     $t->print('ena');
     $t->waitfor('/Password/');
     $t->print($password);
     $t->waitfor($adminprompt);
     $t->prompt($adminprompt);
-    
+
     #Switch context
     $t->cmd(String => "context $context");
-    
+
     #Ask the question
     @lines = $t->cmd(String => "show subscribers active
 $user\@$context");

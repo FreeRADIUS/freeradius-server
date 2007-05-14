@@ -2,7 +2,7 @@
 echo <<<EOM
 	<tr><td align=center bgcolor="#d0ddb0">
 	Server
-	</td><td>	
+	</td><td>
 	<b>$lastlog_server_name</b> ($lastlog_server_ip)
 	</td></tr>
 	<tr><td align=center bgcolor="#d0ddb0">

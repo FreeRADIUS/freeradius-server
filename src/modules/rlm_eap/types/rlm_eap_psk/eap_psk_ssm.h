@@ -5,7 +5,7 @@
  *
  * Implementation of the Server State Machine (SSM)
  *
- * 
+ *
  * Copyright (C) France Télécom R&D (DR&D/MAPS/NSS)
  *
  * This program is free software; you can redistribute it and/or
@@ -17,7 +17,7 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
@@ -45,7 +45,7 @@ extern "C"
 typedef enum {
   INIT,       // the server state machine starts in the INIT state
   RANDSENT,
-  PCHANNEL	  	
+  PCHANNEL
 }PSK_STATE;
 
 
@@ -67,7 +67,7 @@ typedef struct psk_session_t {
 }PSK_SESSION;
 
 
-/** 
+/**
  *@memo		this function is the entry point of the server state machine
  *@param        conf, pointer to the current configuration of EAP-PSK
  *@param        session, pointer to a structure which contains information session
@@ -78,7 +78,7 @@ typedef struct psk_session_t {
   int pskProcess(PSK_CONF *conf, PSK_SESSION *session, EAP_PACKET *recvPacket, EAP_PACKET *sentPacket);
 
 
-/** 
+/**
  *@memo		this function corresponds to the first state of the server state machine
  *@param        conf, pointer to the current configuration of EAP-PSK
  *@param        session, pointer to a structure which contains information session
@@ -88,7 +88,7 @@ typedef struct psk_session_t {
   int pskInit(PSK_CONF *conf, PSK_SESSION *session, EAP_PACKET *sentPacket);
 
 
-/** 
+/**
  *@memo		this function corresponds to the second state of the server state machine
  *@param        conf, pointer to the current configuration of EAP-PSK
  *@param        session, pointer to a structure which contains information session
@@ -99,7 +99,7 @@ typedef struct psk_session_t {
   int pskRandSent(PSK_CONF *conf, PSK_SESSION *session, EAP_PACKET *recvPacket, EAP_PACKET *sentPacket);
 
 
-/** 
+/**
  *@memo		this function corresponds to the third state of the server state machine
  *@param        conf, pointer to the current configuration of EAP-PSK
  *@param        session, pointer to a structure which contains information session
@@ -107,10 +107,10 @@ typedef struct psk_session_t {
  *@param        sentPacket, pointer to the EAP_PACKET to send
  *@return       0 if no error has occured
  */
-  int pskPChannel(PSK_CONF *conf, PSK_SESSION *session, EAP_PACKET *recvPacket, EAP_PACKET *sentPacket);			
+  int pskPChannel(PSK_CONF *conf, PSK_SESSION *session, EAP_PACKET *recvPacket, EAP_PACKET *sentPacket);
 
 
-/** 
+/**
  *@memo		this function contains the extension to EAP-PSK
  *@param        conf, pointer to the current configuration of EAP-PSK
  *@param        session, pointer to a structure which contains information session
@@ -124,12 +124,12 @@ typedef struct psk_session_t {
   int pskExtension(PSK_CONF *conf, PSK_SESSION *session, unsigned short receivedStatus, void *dataIn, int sizeDataIn, void **dataOut, int *sizeDataOut);
 
 
-/** 
+/**
  *@memo		this function frees an existing session from memory
  *@param        opaque, pointer to a structure which contains information session
  */
   void pskFreeSession(void *opaque);
-  
+
 
 
 #if defined(__cplusplus)

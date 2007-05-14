@@ -1,7 +1,7 @@
 AC_PREREQ([2.53])
 AC_INIT(rlm_acctlog.c)
 AC_REVISION(0.1)
-AC_DEFUN(modname,[rlm_acctlog]) 
+AC_DEFUN(modname,[rlm_acctlog])
 
 if test x$with_[]modname != xno; then
 
@@ -13,10 +13,10 @@ if test x$with_[]modname != xno; then
 		[ fail=$fail" stdio.h" ]
 	)
 
-	targetname=modname     
+	targetname=modname
 else
-	targetname=            
-	echo \*\*\* module modname is disabled.  
+	targetname=
+	echo \*\*\* module modname is disabled.
 fi
 
 dnl  Don't change this section.
@@ -25,15 +25,15 @@ if test x"$fail" != x""; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
 		targetname=""
 	fi
 fi
 
 
-AC_SUBST(acctlog_cflags)  
+AC_SUBST(acctlog_cflags)
 AC_SUBST(acctlog_ldflags)
 
 
-AC_SUBST(targetname) 
-AC_OUTPUT(Makefile) 
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)

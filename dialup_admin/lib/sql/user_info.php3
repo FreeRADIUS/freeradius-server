@@ -78,7 +78,7 @@ if ($link){
 						$user_exists = 'yes';
 						$user_info = 1;
 					}
-					if (($row = @da_sql_fetch_array($res,$config))){	
+					if (($row = @da_sql_fetch_array($res,$config))){
 						$cn = ($row[name] != '') ? $row[name] : '-';
 						$telephonenumber = ($row[workphone] != '') ? $row[workphone] : '-';
 						$homephone = ($row[homephone] != '') ? $row[homephone] : '-';
@@ -86,7 +86,7 @@ if ($link){
 						$mail = ($row[mail] != '') ? $row[mail] : '-';
 						$mobile = ($row[mobile] != '') ? $row[mobile] : '-';
 					}
-				}			
+				}
 				else
 					echo "<b>Database query failed partially: " . da_sql_error($link,$config) . "</b><br>\n";
 			}

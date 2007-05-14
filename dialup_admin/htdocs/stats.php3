@@ -40,7 +40,7 @@ $days[0] = $after;
 $counter = $after_time + 86400;
 $i = 1;
 while($counter < $before_time){
-	$days[$i++] = date($config[sql_date_format],$counter);	
+	$days[$i++] = date($config[sql_date_format],$counter);
 	$counter += 86400;
 }
 $days[$i] = $before;
@@ -109,7 +109,7 @@ if ($link){
 		else
 			$search = @da_sql_query($link,$config,
 			"SELECT $res[1],$res[2],$res[3] FROM $config[sql_accounting_table]
-			$sql_val[user] AND acctstoptime >= '$day 00:00:00' 
+			$sql_val[user] AND acctstoptime >= '$day 00:00:00'
 			AND acctstoptime <= '$day 23:59:59' $s $sql_extra_query;");
 		if ($search){
 			$row = @da_sql_fetch_array($search,$config);

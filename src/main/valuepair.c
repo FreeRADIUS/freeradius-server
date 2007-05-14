@@ -85,7 +85,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 		compare = regexec(&reg, value,  REQUEST_MAX_REGEX + 1,
 				  rxmatch, 0);
 		regfree(&reg);
-		
+
 		/*
 		 *	Add %{0}, %{1}, etc.
 		 */
@@ -105,21 +105,21 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 					free(p);
 					continue;
 				}
-				
+
 				/*
 				 *	No previous match
 				 *	to delete, stop.
 				 */
 				break;
 			}
-			
+
 			/*
 			 *	Copy substring into buffer.
 			 */
 			memcpy(buffer, value + rxmatch[i].rm_so,
 			       rxmatch[i].rm_eo - rxmatch[i].rm_so);
 			buffer[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
-			
+
 			/*
 			 *	Copy substring, and add it to
 			 *	the request.
@@ -155,7 +155,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 		compare = regexec(&reg, value,  REQUEST_MAX_REGEX + 1,
 				  rxmatch, 0);
 		regfree(&reg);
-		
+
 		if (compare != 0) return 0;
 		return -1;
 
@@ -205,12 +205,12 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 			ret = memcmp(&vp->vp_ipv6addr, &check->vp_ipv6addr,
 				     sizeof(vp->vp_ipv6addr));
 			break;
-			
+
 		case PW_TYPE_IPV6PREFIX:
 			ret = memcmp(&vp->vp_ipv6prefix, &check->vp_ipv6prefix,
 				     sizeof(vp->vp_ipv6prefix));
 			break;
-		
+
 		case PW_TYPE_IFID:
 			ret = memcmp(&vp->vp_ifid, &check->vp_ifid,
 				     sizeof(vp->vp_ifid));

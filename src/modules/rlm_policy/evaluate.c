@@ -42,21 +42,21 @@ static void policy_print(const policy_item_t *item, int indent)
 		printf("[NULL]\n");
 		return;
 	}
-	
+
 	while (item) {
 		switch (item->type) {
 		case POLICY_TYPE_BAD:
 			if (indent) printf("%*s", indent, " ");
 			printf("[BAD STATEMENT]");
 			break;
-			
+
 		case POLICY_TYPE_PRINT:
 			if (indent) printf("%*s", indent, " ");
 			{
 				const policy_print_t *this;
 
 				this = (const policy_print_t *) item;
-				
+
 				if (this->rhs_type == POLICY_LEX_BARE_WORD) {
 					printf("print %s\n", this->rhs);
 				} else {
@@ -64,11 +64,11 @@ static void policy_print(const policy_item_t *item, int indent)
 				}
 			}
 			break;
-			
+
 		case POLICY_TYPE_ASSIGNMENT:
 			{
 				const policy_assignment_t *assign;
-				
+
 				assign = (const policy_assignment_t *) item;
 				if (indent) printf("%*s", indent, " ");
 
@@ -143,7 +143,7 @@ static void policy_print(const policy_item_t *item, int indent)
 					printf("\"%s\"", condition->rhs);
 				}
 				printf(")");
-				
+
 				if ((condition->child_condition != POLICY_LEX_BAD) &&
 				    (condition->child_condition != POLICY_LEX_BARE_WORD)) {
 					printf(" %s ", lrad_int2str(rlm_policy_tokens, condition->child_condition, "?"));
@@ -249,7 +249,7 @@ static void policy_print(const policy_item_t *item, int indent)
 			if (indent) printf("%*s", indent, " ");
 			printf("[HUH?]\n");
 			break;
-			
+
 		}
 
 		item = item->next;
@@ -528,7 +528,7 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 			}
 		}
 	}
-	
+
 	switch (this->compare) {
 	case POLICY_LEX_L_BRACKET: /* nested brackets are a special case */
 		rcode = evaluate_condition(state, this->child);
@@ -608,7 +608,7 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 			compare = radius_callback_compare(state->request,
 							  vp, myvp, NULL, NULL);
 			pairfree(&myvp);
-			
+
 		} else {
 			/*
 			 *	FIXME: Do something for RHS type?
@@ -618,38 +618,38 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 		}
 
 		debug_evaluate("CONDITION COMPARE %d\n", compare);
-		
+
 		switch (this->compare) {
 		case POLICY_LEX_CMP_EQUALS:
 			rcode = (compare == 0);
 			break;
-			
+
 		case POLICY_LEX_CMP_NOT_EQUALS:
 			rcode = (compare != 0);
 			break;
-			
+
 		case POLICY_LEX_LT:
 			rcode = (compare < 0);
 			break;
-			
+
 		case POLICY_LEX_GT:
 			rcode = (compare > 0);
 			break;
-			
+
 		case POLICY_LEX_LE:
 			rcode =(compare <= 0);
 			break;
-			
+
 		case POLICY_LEX_GE:
 			rcode = (compare >= 0);
 			break;
-			
+
 #ifdef HAVE_REGEX_H
 		case POLICY_LEX_RX_EQUALS:
 		{ /* FIXME: copied from src/main/valuepair.c */
 			int i;
 			regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
-			
+
 			/*
 			 *	Include substring matches.
 			 */
@@ -663,14 +663,14 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 					rxmatch, 0);
 			rcode = (rcode == 0);
 			regfree(&reg);
-			
+
 			/*
 			 *	Add %{0}, %{1}, etc.
 			 */
 			for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
 				char *p;
 				char rxbuffer[256];
-				
+
 				/*
 				 *	Didn't match: delete old
 				 *	match, if it existed.
@@ -683,14 +683,14 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 						free(p);
 						continue;
 					}
-						
+
 					/*
 					 *	No previous match
 					 *	to delete, stop.
 					 */
 					break;
 				}
-				
+
 				/*
 				 *	Copy substring into buffer.
 				 */
@@ -698,7 +698,7 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 				       data + rxmatch[i].rm_so,
 				       rxmatch[i].rm_eo - rxmatch[i].rm_so);
 				rxbuffer[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
-				
+
 				/*
 				 *	Copy substring, and add it to
 				 *	the request.
@@ -713,10 +713,10 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 						 REQUEST_DATA_REGEX | i,
 						 p, free);
 			}
-			
+
 		}
 		break;
-		
+
 		case POLICY_LEX_RX_NOT_EQUALS:
 			regcomp(&reg, this->rhs, REG_EXTENDED|REG_NOSUB);
 			rad_assert(data != NULL);
@@ -822,11 +822,11 @@ static VALUE_PAIR *assign2vp(REQUEST *request,
 	case POLICY_LEX_SET_EQUALS:
 		operator = T_OP_SET;
 		break;
-	
+
 	case POLICY_LEX_PLUS_EQUALS:
 		operator = T_OP_ADD;
 		break;
-	
+
 	default:
 		fprintf(stderr, "Expected '=' for operator, not '%s' at line %d\n",
 			lrad_int2str(rlm_policy_tokens,
@@ -834,7 +834,7 @@ static VALUE_PAIR *assign2vp(REQUEST *request,
 			assign->item.lineno);
 		return NULL;
 	}
-	
+
 	vp = pairmake(assign->lhs, value, operator);
 	if (!vp) {
 		fprintf(stderr, "SHIT: %s %s\n", value, librad_errstr);
@@ -943,9 +943,9 @@ static int evaluate_call(policy_state_t *state, const policy_item_t *item)
 
 	policy = rlm_policy_find(state->inst->policies, this->name);
 	if (!policy) return 0;	/* not found... */
-	
+
 	DEBUG2("rlm_policy: Evaluating policy %s", this->name);
-	
+
 	rad_assert(policy->policy->type != POLICY_TYPE_BAD);
 	rad_assert(policy->policy->type < POLICY_TYPE_NUM_TYPES);
 
@@ -982,7 +982,7 @@ static int evaluate_return(policy_state_t *state, const policy_item_t *item)
 
 	this = (const policy_return_t *) item;
 	state->rcode = this->rcode;
-	
+
 	return 1;		/* we succeeded */
 }
 
@@ -1008,7 +1008,7 @@ static int evaluate_module(policy_state_t *state, const policy_item_t *item)
 	DEBUG2("rlm_policy: begin nested call");
 	state->rcode = modcall(this->component, this->mc, state->request);
 	DEBUG2("rlm_policy: end nested call");
-	
+
 	return 1;		/* we succeeded */
 }
 
@@ -1044,16 +1044,16 @@ static int policy_evaluate_name(policy_state_t *state, const char *name)
 	int rcode;
 	const policy_item_t *this;
 	policy_named_t mypolicy, *policy;
-	
+
 	mypolicy.name = name;
 	policy = rbtree_finddata(state->inst->policies, &mypolicy);
 	if (!policy) return RLM_MODULE_FAIL;
-	
+
 	DEBUG2("rlm_policy: Evaluating policy %s", name);
-	
+
 	rad_assert(policy->item.type != POLICY_TYPE_BAD);
 	rad_assert(policy->item.type < POLICY_TYPE_NUM_TYPES);
-	
+
 	rcode = policy_stack_push(state, policy->policy);
 	if (!rcode) {
 		return RLM_MODULE_FAIL;
@@ -1067,7 +1067,7 @@ static int policy_evaluate_name(policy_state_t *state, const char *name)
 		rad_assert(this != NULL);
 		rad_assert(this->type != POLICY_TYPE_BAD);
 		rad_assert(this->type < POLICY_TYPE_NUM_TYPES);
-		
+
 		debug_evaluate("Evaluating at line %d\n",
 			       this->lineno);
 		rcode = (*evaluate_functions[this->type])(state,

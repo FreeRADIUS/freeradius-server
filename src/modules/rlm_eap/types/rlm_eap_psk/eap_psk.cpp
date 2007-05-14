@@ -5,7 +5,7 @@
  *
  * Implementation of the EAP-PSK packet management
  *
- * 
+ *
  * Copyright (C) France Télécom R&D (DR&D/MAPS/NSS)
  *
  * This program is free software; you can redistribute it and/or
@@ -17,7 +17,7 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
@@ -37,7 +37,7 @@ RCSID("$Id$")
 
 /*
  *
- *  PSK Packet Format in EAP 
+ *  PSK Packet Format in EAP
  *  --- ------ ------ -- ---
  * 0                   1                   2                   3
  * 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -106,18 +106,18 @@ int pskHex2Bin(const char *hex, unsigned char *bin, int numbytes) {
 int pskGetRandomBytes(void *buf, int nbytes){
   FILE *fptr=NULL;
   int written=0;
-  
+
   if((fptr = fopen("/dev/urandom","r")) == NULL) {
     radlog(L_ERR,"pskGetRandomBytes: urandom device not accessible");
     return 0;
   }
-  
+
   if((written = fread(buf,1,nbytes,fptr)) != nbytes) {
     radlog(L_ERR,"pskGetRandomBytes: number not generated");
     return 0;
-  }	 
-  
+  }
+
   fclose(fptr);
-  
+
   return 1;
 }

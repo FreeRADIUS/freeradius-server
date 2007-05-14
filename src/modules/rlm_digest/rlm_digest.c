@@ -237,7 +237,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	 *	Assume MD5 if no Digest-Algorithm attribute received
 	 */
 	algo = pairfind(request->packet->vps, PW_DIGEST_ALGORITHM);
-	if ((algo == NULL) || 
+	if ((algo == NULL) ||
 	    (strcasecmp(algo->vp_strvalue, "MD5") == 0)) {
 		/*
 		 *	Set A1 to Digest-HA1 if no User-Password found
@@ -373,7 +373,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	 *     Compute MD5 if Digest-Algorithm == "MD5-Sess",
 	 *     or if we found a User-Password.
 	 */
-	if (((algo != NULL) && 
+	if (((algo != NULL) &&
 	     (strcasecmp(algo->vp_strvalue, "MD5-Sess") == 0)) ||
 	    (passwd->attribute == PW_CLEARTEXT_PASSWORD)) {
 		a1[a1_len] = '\0';

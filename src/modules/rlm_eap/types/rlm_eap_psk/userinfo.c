@@ -6,7 +6,7 @@
  *
  * Implementation of the user management
  *
- * 
+ *
  * Copyright (C) France Télécom R&D (DR&D/MAPS/NSS)
  *
  * This program is free software; you can redistribute it and/or
@@ -18,7 +18,7 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
@@ -45,7 +45,7 @@ RCSID("$Id$")
 userinfo_t*   pskGetUserInfo(char* path, char* peerID)
 {
     FILE*       fp;
-    char        buff[1024]; //FIXME: give the buffer a proper size 
+    char        buff[1024]; //FIXME: give the buffer a proper size
                             //when we know more about ID length
     userinfo_t* uinfo = NULL;
     int         found = 0;
@@ -59,8 +59,8 @@ userinfo_t*   pskGetUserInfo(char* path, char* peerID)
 	    radlog(L_ERR, "pskGetUserInfo: failed to open PSK users file");
 	    return NULL;
 	}
-    
-    while (!found && fgets(buff, sizeof(buff), fp)) 
+
+    while (!found && fgets(buff, sizeof(buff), fp))
 	{
 	  unsigned int     i = 0;
 
@@ -71,18 +71,18 @@ userinfo_t*   pskGetUserInfo(char* path, char* peerID)
 	    // read this login name
 	    while (! isspace(buff[i]))
 		i++;
-	    
+
 	    // is it the one we looking for?
-	    if ((i != strlen(peerID)) 
+	    if ((i != strlen(peerID))
 		|| (strncmp(peerID, buff, i) != 0))
 		continue;
 	    else
 		found = 1;
-	    
-	    // skip spaces 
+
+	    // skip spaces
 	    while (isspace(buff[i]))
 		i++;
-	    
+
 	    // prepare to store user info
 	    uinfo = (userinfo_t*) malloc(sizeof(userinfo_t));
 	    if (uinfo == NULL)
@@ -91,7 +91,7 @@ userinfo_t*   pskGetUserInfo(char* path, char* peerID)
 		    return NULL;
 		}
 
-	    //get AK  
+	    //get AK
 	    AK = strndup(buff + i, PSK_AK_STRLEN);
             if (AK == NULL) {
                 radlog(L_ERR, "pskGetUserInfo: out of memory");
@@ -114,7 +114,7 @@ userinfo_t*   pskGetUserInfo(char* path, char* peerID)
 			free(AK);
 			return NULL;
 		}
-	   	   
+
 	    //get KDK
 	    KDK = strndup(buff + i + PSK_AK_STRLEN, PSK_KDK_STRLEN);
 	    if (KDK == NULL) {
@@ -125,10 +125,10 @@ userinfo_t*   pskGetUserInfo(char* path, char* peerID)
 	    }
 	    //FIXME: shouldnt we check the key size?
 	    /*
-	      else if (strlen(KDK) != 32) { 
+	      else if (strlen(KDK) != 32) {
 	      log();
 	      return NULL;
-	      }             
+	      }
 	    */
 	    res=pskHex2Bin(KDK, &(uinfo->KDK),PSK_KDK_SIZE);
 
@@ -140,12 +140,12 @@ userinfo_t*   pskGetUserInfo(char* path, char* peerID)
 			free(KDK);
 			return NULL;
 		}
-	   
+
 	    free(AK);
 	    free(KDK);
 	}
-   
-    
+
+
     // if user was not found, NULL is returned
     fclose(fp);
     return uinfo;

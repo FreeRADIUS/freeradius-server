@@ -37,8 +37,8 @@ for ($num=0; $num<$numusers; $num++) {
 		$num--;
 		next;
 	}
-	$userlist{$username} = 1;	
-	
+	$userlist{$username} = 1;
+
 	# generate password
 	$password = "";
 	for($i=0; $i<rand($passlen)+2; $i++) {
@@ -51,8 +51,8 @@ for ($num=0; $num<$numusers; $num++) {
 	printf RAD  "User-Name=$username, User-Password=$password,NAS-IP-Address=127.0.0.1,NAS-Port-Id=0\n\n";
 	print NOCRYPT "$username:$password\n";
 	print USERS "$username  Auth-Type:=Local, User-Password==\"$password\"\n\tClass=\"0x$num\"\n\n";
-} 
-	
+}
+
 close(PASS);
 close(SHAD);
 close(RAD);

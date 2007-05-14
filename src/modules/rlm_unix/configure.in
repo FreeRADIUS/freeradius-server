@@ -35,12 +35,12 @@ if test x$with_[]modname != xno; then
 	if test "$ac_cv_header_pwd_h" != "yes"; then
 		AC_MSG_RESULT(no pwd.h)
 		[ fail=$fail" pwd.h" ]
-	fi	
+	fi
 
-	AC_CHECK_LIB(shadow, getspnam, 
-		[ 
+	AC_CHECK_LIB(shadow, getspnam,
+		[
 			unix_ldflags="${unix_ldflags} -lshadow"
-			AC_DEFINE(HAVE_GETSPNAM) 
+			AC_DEFINE(HAVE_GETSPNAM)
 		]
 	)
 
@@ -56,7 +56,7 @@ if test x"$fail" != x""; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
 		targetname=""
 	fi
 fi
