@@ -17,9 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  Miquel van Smoorenburg <miquels@cistron.nl>
- * Copyright 2000  Alan DeKok <aland@ox.org>
+ * Copyright 2007  The FreeRADIUS server project
+ * Copyright 2007  Alan DeKok <aland@deployingradius.com>
  */
 
 #include <freeradius-devel/ident.h>
