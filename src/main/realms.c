@@ -480,6 +480,7 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 			{ "round_robin", HOME_POOL_LOAD_BALANCE },
 			{ "fail_over", HOME_POOL_FAIL_OVER },
 			{ "client-balance", HOME_POOL_CLIENT_BALANCE },
+			{ "client-port-balance", HOME_POOL_CLIENT_PORT_BALANCE },
 			{ NULL, 0 }
 		};
 
@@ -1061,6 +1062,25 @@ home_server *home_server_ldb(const char *realmname,
 			hash = 0;
 			break;
 		}
+		start = hash % pool->num_home_servers;
+		break;
+
+	case HOME_POOL_CLIENT_PORT_BALANCE:
+		switch (request->packet->src_ipaddr.af) {
+		case AF_INET:
+			hash = lrad_hash(&request->packet->src_ipaddr.ipaddr.ip4addr,
+					 sizeof(request->packet->src_ipaddr.ipaddr.ip4addr));
+			break;
+		case AF_INET6:
+			hash = lrad_hash(&request->packet->src_ipaddr.ipaddr.ip6addr,
+					 sizeof(request->packet->src_ipaddr.ipaddr.ip6addr));
+			break;
+		default:
+			hash = 0;
+			break;
+		}
+		lrad_hash_update(&request->packet->src_port,
+				 sizeof(request->packet->src_port), hash);
 		start = hash % pool->num_home_servers;
 		break;
 
