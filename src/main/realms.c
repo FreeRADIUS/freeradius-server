@@ -1030,6 +1030,7 @@ home_server *home_server_ldb(const char *realmname,
 {
 	int		start;
 	int		count;
+	home_server	*found = NULL;
 
 	start = 0;
 
@@ -1038,14 +1039,6 @@ home_server *home_server_ldb(const char *realmname,
 	 */
 	switch (pool->type) {
 		uint32_t hash;
-
-		/*
-		 *	Load balancing.  Pick one at random.
-		 */
-	case HOME_POOL_LOAD_BALANCE:
-		hash = lrad_rand();
-		start = hash % pool->num_home_servers;
-		break;
 
 		/*
 		 *	For load-balancing by client IP address, we
@@ -1071,6 +1064,9 @@ home_server *home_server_ldb(const char *realmname,
 		}
 		start = hash % pool->num_home_servers;
 		break;
+
+	case HOME_POOL_LOAD_BALANCE:
+		found = pool->servers[0];
 
 	default:
 		start = 0;
@@ -1098,8 +1094,46 @@ home_server *home_server_ldb(const char *realmname,
 			continue;
 		}
 
-		return home;
+		if (pool->type != HOME_POOL_LOAD_BALANCE) {
+			return home;
+		}
+
+		DEBUG3("PROXY %s %d\t%s %d",
+		       found->name, found->currently_outstanding,
+		       home->name, home->currently_outstanding);
+
+		/*
+		 *	Prefer this server if it's less busy than the
+		 *	one we previously found.
+		 */
+		if (home->currently_outstanding < found->currently_outstanding) {
+			DEBUG3("Choosing %s: It's less busy than %s",
+			       home->name, found->name);
+			found = home;
+			continue;
+		}
+
+		/*
+		 *	Ignore servers which are busier than the one
+		 *	we found.
+		 */
+		if (home->currently_outstanding > found->currently_outstanding) {
+			DEBUG3("Skipping %s: It's busier than %s",
+			       home->name, found->name);
+			continue;
+		}
+
+		/*
+		 *	From the list of servers which have the same
+		 *	load, choose one at random.
+		 */
+		if (((count + 1) * (lrad_rand() & 0xffff)) < (uint32_t) 0x10000) {
+			found = home;
+		}
+
 	} /* loop over the home servers */
+
+	if (found) return found;
 
 	/*
 	 *	No live match found, and no fallback to the "DEFAULT"
