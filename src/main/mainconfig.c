@@ -787,7 +787,6 @@ int read_mainconfig(int reload)
 		mainconfig.radlog_fd = STDOUT_FILENO;
 	}
 
-	radlog(L_INFO, "%s", radiusd_version);
 	if (!reload) {
 		radlog(L_INFO, "Starting - reading configuration files ...");
 	} else {

@@ -272,6 +272,16 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (debug_flag) {
+		radlog(L_INFO, "%s", radiusd_version);
+		radlog(L_INFO, "Copyright (C) 2000-2007 The FreeRADIUS server project.\n");
+		radlog(L_INFO, "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
+		radlog(L_INFO, "PARTICULAR PURPOSE.\n");
+		radlog(L_INFO, "You may redistribute copies of FreeRADIUS under the terms of the\n");
+		radlog(L_INFO, "GNU General Public License.\n");
+		fflush(NULL);
+	}
+
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (read_mainconfig(0) < 0) {
 		exit(1);
@@ -712,7 +722,8 @@ int main(int argc, char *argv[])
 			 *	all queues are empty, it will signal
 			 *	us to read the detail file again.
 			 */
-			if (listener->type != RAD_LISTEN_DETAIL) {
+			if (spawn_flag &&
+			    (listener->type != RAD_LISTEN_DETAIL)) {
 				read_from_detail = FALSE;
 			}
 		} /* loop over listening sockets*/
@@ -840,7 +851,12 @@ void radius_signal_self(int flag)
 		}
 	}
 
+#ifndef NDEBUG
+	memset(buffer + 1, 0, sizeof(buffer) - 1);
+#endif
+
 	buffer[0] |= flag;
+
 
 	write(radius_self_pipe[1], buffer, 1);
 }
