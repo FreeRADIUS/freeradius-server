@@ -585,12 +585,14 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 		switch (dattr->type) {
 			case PW_TYPE_BYTE:
 				if (value > 255) {
+					free(dval);
 					librad_log("dict_addvalue: ATTRIBUTEs of type 'byte' cannot have VALUEs larger than 255");
 					return -1;
 				}
 				break;
 			case PW_TYPE_SHORT:
 				if (value > 65535) {
+					free(dval);
 					librad_log("dict_addvalue: ATTRIBUTEs of type 'short' cannot have VALUEs larger than 65535");
 					return -1;
 				}
@@ -606,6 +608,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 				break;
 
 			default:
+				free(dval);
 				librad_log("dict_addvalue: VALUEs cannot be defined for attributes of type '%s'",
 					   lrad_int2str(type_table, dattr->type, "?Unknown?"));
 				return -1;
@@ -617,6 +620,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 
 		fixup = (value_fixup_t *) malloc(sizeof(*fixup));
 		if (!fixup) {
+			free(dval);
 			librad_log("dict_addvalue: out of memory");
 			return -1;
 		}
@@ -653,6 +657,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 			}
 		}
 
+		free(dval);
 		librad_log("dict_addvalue: Duplicate value name %s for attribute %s", namestr, attrstr);
 		return -1;
 	}
