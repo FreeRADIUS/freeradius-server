@@ -448,6 +448,7 @@ RADCLIENT_LIST *clients_parse_section(const char *filename,
 #endif
 
 		if (cf_section_parse(cs, c, client_config) < 0) {
+			client_free(c);
 			radlog(L_CONS|L_ERR, "%s[%d]: Error parsing client section.",
 			       filename, cf_section_lineno(cs));
 			return NULL;
@@ -460,6 +461,7 @@ RADCLIENT_LIST *clients_parse_section(const char *filename,
 		if (prefix_ptr) {
 			c->prefix = atoi(prefix_ptr + 1);
 			if ((c->prefix < 0) || (c->prefix > 128)) {
+				client_free(c);
 				radlog(L_ERR, "%s[%d]: Invalid Prefix value '%s' for IP.",
 						filename, cf_section_lineno(cs), prefix_ptr + 1);
 				return NULL;
@@ -472,6 +474,7 @@ RADCLIENT_LIST *clients_parse_section(const char *filename,
 		 * Always get the numeric representation of IP
 		 */
 		if (ip_hton(hostnm, AF_UNSPEC, &c->ipaddr) < 0) {
+			client_free(c);
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s: %s",
 			       filename, cf_section_lineno(cs),
 			       hostnm, librad_errstr);
