@@ -358,9 +358,9 @@ dnl AC_SUBST(INCLUDE)
 dnl AC_SUBST(IQUOTE)
 
 dnl extra argument: --with-udpfromto
-WITH_UDPFROMTO=no
+WITH_UDPFROMTO=yes
 AC_ARG_WITH(udpfromto,
-[  --with-udpfromto        Compile in UDPFROMTO support. (default=no)],
+[  --with-udpfromto        Compile in UDPFROMTO support. (default=yes)],
 [ case "$withval" in
     yes)
 	WITH_UDPFROMTO=yes
