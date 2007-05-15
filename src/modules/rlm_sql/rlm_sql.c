@@ -723,15 +723,15 @@ static int rlm_sql_detach(void *instance)
 		sql_poolfree(inst);
 	}
 
-	if (inst->config->xlat_name) {
-		xlat_unregister(inst->config->xlat_name,(RAD_XLAT_FUNC)sql_xlat);
-		free(inst->config->xlat_name);
-	}
-
 	paircompare_unregister(PW_SQL_GROUP, sql_groupcmp);
 
 	if (inst->config) {
 		int i;
+
+		if (inst->config->xlat_name) {
+			xlat_unregister(inst->config->xlat_name,(RAD_XLAT_FUNC)sql_xlat);
+			free(inst->config->xlat_name);
+		}
 
 		/*
 		 *	Free up dynamically allocated string pointers.
