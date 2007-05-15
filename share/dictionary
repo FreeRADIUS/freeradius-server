@@ -85,6 +85,7 @@ $INCLUDE dictionary.alcatel
 $INCLUDE dictionary.alteon
 $INCLUDE dictionary.alvarion
 $INCLUDE dictionary.aruba
+$INCLUDE dictionary.azaire
 $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
