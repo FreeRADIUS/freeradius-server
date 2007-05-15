@@ -491,6 +491,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 
 	response = pairmake("MS-CHAP2-Response", "0x00", T_OP_EQ);
 	if (!response) {
+		pairfree(&challenge);
 		radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 		return 0;
 	}
