@@ -641,6 +641,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 	fake->packet->vps = eap2vp(eap_ds, data, data_len);
 	if (!fake->packet->vps) {
+		request_free(&fake);
 		DEBUG2("  rlm_eap_peap: Unable to convert tunneled EAP packet to internal server data structures");
 		return PW_AUTHENTICATION_REJECT;
 	}
