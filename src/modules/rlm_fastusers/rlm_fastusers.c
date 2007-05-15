@@ -143,6 +143,7 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 	rcode = fastuser_getfile(inst, inst->acctusersfile, NULL, &newacctusers, 1);
 
 	if (rcode != 0) {
+		free(newhash);
 		radlog(L_ERR|L_CONS, "rlm_fastusers:  Errors reading %s", inst->usersfile);
 		return -1;
 	}
@@ -156,12 +157,14 @@ static int fastuser_buildhash(struct fastuser_instance *inst) {
 		rcode = 0;
 		/* This was allocated earlier but will remain unused */
 		free(newhash);
+		newhash = NULL;
 	}
 	else
 	/* Read users */
 	rcode = fastuser_getfile(inst, inst->usersfile, &newdefaults, newhash, 0);
 
 	if (rcode != 0) {
+		free(newhash);
 		radlog(L_ERR|L_CONS, "rlm_fastusers:  Errors reading %s", inst->usersfile);
 		return -1;
 	}
