@@ -430,20 +430,24 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 	}while(*s);
 	if(keyfield < 0) {
 		radlog(L_ERR, "rlm_passwd: no field market as key in format: %s", inst->format);
+		free(lf);
 		return -1;
 	}
 	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hashsize, inst->ignorenislike, *inst->delimiter)) ){
 		radlog(L_ERR, "rlm_passwd: can't build hashtable from passwd file");
+		free(lf);
 		return -1;
 	}
 	if (! (inst->pwdfmt = mypasswd_malloc(inst->format, nfields, &len)) ){
 		radlog(L_ERR, "rlm_passwd: memory allocation failed");
 		release_ht(inst->ht);
+		free(lf);
 		return -1;
 	}
 	if (!string_to_entry(inst->format, nfields, ':', inst->pwdfmt , len)) {
 		radlog(L_ERR, "rlm_passwd: unable to convert format entry");
 		release_ht(inst->ht);
+		free(lf);
 		return -1;
 	}
 
