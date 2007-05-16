@@ -114,7 +114,7 @@ static int check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 		    break;
 #ifdef HAVE_REGEX_H
 		case T_OP_REG_EQ:
-		    regcomp(&reg, (char *)check_item->strvalue, 0);
+		    regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED);
 		    comp = regexec(&reg, (char *)reply_item->strvalue,
 				      0, NULL, 0);
 		    regfree(&reg);
@@ -126,7 +126,7 @@ static int check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 		    break;
 
 		case T_OP_REG_NE:
-		    regcomp(&reg, (char *)check_item->strvalue, 0);
+		    regcomp(&reg, (char *)check_item->strvalue, REG_EXTENDED);
 		    comp = regexec(&reg, (char *)reply_item->strvalue,
 				      0, NULL, 0);
 		    regfree(&reg);
@@ -272,7 +272,6 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 	int             compare;
 	int             pass, fail;
 	VALUE_PAIR      *realmpair;
-	REALM           *realm;
 	char            *realmname;
 
 	/*
@@ -301,7 +300,6 @@ static int attr_filter_authorize(void *instance, REQUEST *request)
 	}
 
 	realmname = (char *) realmpair->strvalue;
-	realm = realm_find(realmname, FALSE);
 
 	/*
 	 *      Find the attr_filter profile entry for the realm.
@@ -417,7 +415,6 @@ static int attr_filter_accounting(void *instance, REQUEST *request)
 	int		compare;
 	int		pass, fail;
 	VALUE_PAIR	*realmpair;
-	REALM		*realm;
 	char		*realmname;
 	/*
 	 * Accounting is similar to pre-proxy.
@@ -441,7 +438,6 @@ static int attr_filter_accounting(void *instance, REQUEST *request)
 	}
 
 	realmname = (char *) realmpair->strvalue;
-	realm = realm_find (realmname, FALSE);
 
 	/*
 	 * Find the attr_filter profile entry for the realm
@@ -544,7 +540,6 @@ static int attr_filter_preproxy (void *instance, REQUEST *request)
 	int		compare;
 	int		pass, fail;
 	VALUE_PAIR	*realmpair;
-	REALM		*realm;
 	char		*realmname;
 
 	/*
@@ -564,7 +559,6 @@ static int attr_filter_preproxy (void *instance, REQUEST *request)
 	}
 
 	realmname = (char *)realmpair->strvalue;
-	realm = realm_find(realmname, FALSE);
 
 	for (pl = inst->attrs; pl; pl = pl->next) {
 		if ( (strcmp(pl->name, "DEFAULT") != 0) &&
@@ -655,7 +649,6 @@ static int attr_filter_postproxy(void *instance, REQUEST *request)
 	int		compare;
 	int		pass, fail = 0;
 	VALUE_PAIR	*realmpair;
-	REALM		*realm;
 	char		*realmname;
 	/*
 	 *	It's not a proxy reply, so return NOOP
@@ -683,8 +676,6 @@ static int attr_filter_postproxy(void *instance, REQUEST *request)
 	}
 
 	realmname = (char *) realmpair->strvalue;
-
-	realm = realm_find(realmname, FALSE);
 
 	/*
 	 *      Find the attr_filter profile entry for the realm.
