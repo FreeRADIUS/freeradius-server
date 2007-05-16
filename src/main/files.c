@@ -130,9 +130,12 @@ parse_again:
 
 			ptr = buffer;
 			token = getword(&ptr, entry, sizeof(entry));
-			if (token == T_EOL) break;
 
-			if ((token != T_BARE_WORD) &&
+			/*
+			 *	?
+			 */
+			if ((token != T_EOL) &&
+			    (token != T_BARE_WORD) &&
 			    (token != T_DOUBLE_QUOTED_STRING) &&
 			    (token != T_SINGLE_QUOTED_STRING)) {
 				radlog(L_ERR, "%s[%d]: Unexpected text at start of entry",
