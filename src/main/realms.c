@@ -53,6 +53,9 @@ static int home_server_name_cmp(const void *one, const void *two)
 	const home_server *a = one;
 	const home_server *b = two;
 
+	if (a->type < b->type) return -1;
+	if (a->type > b->type) return +1;
+
 	return strcasecmp(a->name, b->name);
 }
 
@@ -72,6 +75,9 @@ static int home_pool_name_cmp(const void *one, const void *two)
 {
 	const home_pool_t *a = one;
 	const home_pool_t *b = two;
+
+	if (a->server_type < b->server_type) return -1;
+	if (a->server_type > b->server_type) return +1;
 
 	return strcasecmp(a->name, b->name);
 }
@@ -393,7 +399,7 @@ static int home_server_add(const char *filename, CONF_SECTION *cs)
 }
 
 
-static int server_pool_add(const char *filename, CONF_SECTION *cs)
+static int server_pool_add(const char *filename, CONF_SECTION *cs, int type)
 {
 	const char *name2;
 	home_pool_t *pool = NULL;
@@ -435,6 +441,7 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 		}
 
 		myhome.name = value;
+		myhome.type = type;
 		home = rbtree_finddata(home_servers_byname, &myhome);
 		if (home) continue;
 
@@ -453,7 +460,8 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 
 		home = rbtree_finddata(home_servers_byname, &myhome);
 		if (!home) {
-			rad_assert("Internal sanity check failed");
+			radlog(L_ERR, "Internal sanity check failed %d",
+			       __LINE__);
 			return 0;
 		}
 	}
@@ -514,6 +522,7 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs)
 		}
 
 		myhome.name = value;
+		myhome.type = type;
 
 		home = rbtree_finddata(home_servers_byname, &myhome);
 		if (!home) {
@@ -581,6 +590,7 @@ static int old_server_add(const char *filename, int lineno, const char *realm,
 	}
 
 	mypool.name = realm;
+	mypool.server_type = type;
 	pool = rbtree_finddata(home_pools_byname, &mypool);
 	if (pool) {
 		if (pool->type != ldflag) {
@@ -852,6 +862,7 @@ static int add_pool_to_realm(const char *filename, int lineno,
 	home_pool_t mypool, *pool;
 
 	mypool.name = name;
+	mypool.server_type = server_type;
 	pool = rbtree_finddata(home_pools_byname, &mypool);
 	if (!pool) {
 		CONF_SECTION *pool_cs;
@@ -864,13 +875,13 @@ static int add_pool_to_realm(const char *filename, int lineno,
 			return 0;
 		}
 
-		if (!server_pool_add(filename, pool_cs)) {
+		if (!server_pool_add(filename, pool_cs, server_type)) {
 			return 0;
 		}
 
 		pool = rbtree_finddata(home_pools_byname, &mypool);
 		if (!pool) {
-			rad_assert("Internal sanity check failed");
+			radlog(L_ERR, "Internal sanity check failed in add_pool_to_realm");
 			return 0;
 		}
 	}
