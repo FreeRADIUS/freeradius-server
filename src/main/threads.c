@@ -747,11 +747,13 @@ int thread_pool_init(int spawn_flag)
 	}
 
 	pool_cf = cf_section_find("thread");
-	if (pool_cf != NULL) {
-		/*
-		 *	FIXME: Check for errors?
-		 */
-		cf_section_parse(pool_cf, NULL, thread_config);
+	if (!pool_cf) {
+		radlog(L_ERR, "FATAL: Attempting to start in multi-threaded mode with no thread configuration in radiusd.conf");
+		exit(1);
+	}
+
+	if (cf_section_parse(pool_cf, NULL, thread_config) < 0) {
+		exit(1);
 	}
 
 	/*
