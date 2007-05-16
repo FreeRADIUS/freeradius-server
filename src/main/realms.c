@@ -198,10 +198,11 @@ static CONF_PARSER home_server_config[] = {
 };
 
 
-static int home_server_add(const char *filename, CONF_SECTION *cs)
+static int home_server_add(const char *filename, CONF_SECTION *cs, int type)
 {
 	const char *name2;
 	home_server *home;
+	int dual = FALSE;
 
 	name2 = cf_section_name1(cs);
 	if (!name2 || (strcasecmp(name2, "home_server") != 0)) {
@@ -287,9 +288,25 @@ static int home_server_add(const char *filename, CONF_SECTION *cs)
 
 	if (strcasecmp(hs_type, "auth") == 0) {
 		home->type = HOME_TYPE_AUTH;
+		if (type != home->type) {
+			radlog(L_ERR, "%s[%d]: Server pool of \"acct\" servers cannot include home server %s of type \"auth\"",
+			       filename, cf_section_lineno(cs), name2);
+			free(home);
+			return 0;
+		}
 
 	} else if (strcasecmp(hs_type, "acct") == 0) {
 		home->type = HOME_TYPE_ACCT;
+		if (type != home->type) {
+			radlog(L_ERR, "%s[%d]: Server pool of \"auth\" servers cannot include home server %s of type \"acct\"",
+			       filename, cf_section_lineno(cs), name2);
+			free(home);
+			return 0;
+		}
+
+	} else if (strcasecmp(hs_type, "auth+acct") == 0) {
+		home->type = HOME_TYPE_AUTH;
+		dual = TRUE;
 
 	} else {
 		radlog(L_ERR, "%s[%d]: Invalid type \"%s\" for home server %s.",
@@ -395,11 +412,37 @@ static int home_server_add(const char *filename, CONF_SECTION *cs)
 	if (home->revive_interval < 60) home->revive_interval = 60;
 	if (home->revive_interval > 3600) home->revive_interval = 3600;
 
+	if (dual) {
+		home_server *home2 = rad_malloc(sizeof(*home2));
+
+		memcpy(home2, home, sizeof(*home2));
+
+		home2->type = HOME_TYPE_ACCT;
+		home2->port++;
+		home2->ping_user_password = NULL;
+
+		if (!rbtree_insert(home_servers_byname, home2)) {
+			radlog(L_ERR, "%s[%d]: Internal error adding home server %s.",
+			       filename, cf_section_lineno(cs), name2);
+			free(home2);
+			return 0;
+		}
+		
+		if (!rbtree_insert(home_servers_byaddr, home2)) {
+			rbtree_deletebydata(home_servers_byname, home2);
+			radlog(L_ERR, "%s[%d]: Internal error adding home server %s.",
+			       filename, cf_section_lineno(cs), name2);
+			free(home2);
+			return 0;
+		}
+	}
+
 	return 1;
 }
 
 
-static int server_pool_add(const char *filename, CONF_SECTION *cs, int type)
+static int server_pool_add(const char *filename, CONF_SECTION *cs,
+			   int server_type)
 {
 	const char *name2;
 	home_pool_t *pool = NULL;
@@ -441,7 +484,7 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs, int type)
 		}
 
 		myhome.name = value;
-		myhome.type = type;
+		myhome.type = server_type;
 		home = rbtree_finddata(home_servers_byname, &myhome);
 		if (home) continue;
 
@@ -454,7 +497,7 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs, int type)
 			return 0;
 		}
 
-		if (!home_server_add(filename, server_cs)) {
+		if (!home_server_add(filename, server_cs, server_type)) {
 			return 0;
 		}
 
@@ -477,6 +520,7 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs, int type)
 
 	pool->type = HOME_POOL_FAIL_OVER;
 	pool->name = name2;
+	pool->server_type = server_type;
 
 	DEBUG2(" server_pool %s {", name2);
 
@@ -522,21 +566,11 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs, int type)
 		}
 
 		myhome.name = value;
-		myhome.type = type;
+		myhome.type = server_type;
 
 		home = rbtree_finddata(home_servers_byname, &myhome);
 		if (!home) {
 			DEBUG2("Internal sanity check failed");
-			goto error;
-		}
-
-		if (!pool->server_type) {
-			rad_assert(home->type != 0);
-			pool->server_type = home->type;
-
-		} else if (pool->server_type != home->type) {
-			radlog(L_ERR, "%s[%d]: Home server \"%s\" is not of the same type as previous servers in server pool %s",
-			       filename, cf_pair_lineno(cp), value, pool->name);
 			goto error;
 		}
 
@@ -864,6 +898,7 @@ static int add_pool_to_realm(const char *filename, int lineno,
 
 	mypool.name = name;
 	mypool.server_type = server_type;
+
 	pool = rbtree_finddata(home_pools_byname, &mypool);
 	if (!pool) {
 		CONF_SECTION *pool_cs;
