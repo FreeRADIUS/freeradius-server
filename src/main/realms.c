@@ -605,6 +605,7 @@ static int old_server_add(const char *filename, int lineno, const char *realm,
 	}
 
 	myhome.name = name;
+	myhome.type = type;
 	home = rbtree_finddata(home_servers_byname, &myhome);
 	if (home) {
 		if (strcmp(home->secret, secret) != 0) {
