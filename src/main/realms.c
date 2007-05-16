@@ -961,9 +961,30 @@ int realm_add(const char *filename, CONF_SECTION *cs)
 	/*
 	 *	Prefer new configuration to old one.
 	 */
+	cp = cf_pair_find(cs, "pool");
+	if (cp) auth_pool_name = cf_pair_value(cp);
+	if (cp && auth_pool_name) {
+		acct_pool_name = auth_pool_name;
+		if (!add_pool_to_realm(filename, cf_pair_lineno(cp),
+				       auth_pool_name, &auth_pool,
+				       HOME_TYPE_AUTH)) {
+			return 0;
+		}
+		if (!add_pool_to_realm(filename, cf_pair_lineno(cp),
+				       auth_pool_name, &acct_pool,
+				       HOME_TYPE_ACCT)) {
+			return 0;
+		}
+	}
+
 	cp = cf_pair_find(cs, "auth_pool");
 	if (cp) auth_pool_name = cf_pair_value(cp);
 	if (cp && auth_pool_name) {
+		if (auth_pool) {
+			radlog(L_ERR, "%s[%d]: Cannot use \"pool\" and \"auth_pool\" at the same time.",
+			       filename, cf_section_lineno(cs));
+			return 0;
+		}
 		if (!add_pool_to_realm(filename, cf_pair_lineno(cp),
 				       auth_pool_name, &auth_pool,
 				       HOME_TYPE_AUTH)) {
@@ -974,6 +995,11 @@ int realm_add(const char *filename, CONF_SECTION *cs)
 	cp = cf_pair_find(cs, "acct_pool");
 	if (cp) acct_pool_name = cf_pair_value(cp);
 	if (cp && acct_pool_name) {
+		if (acct_pool) {
+			radlog(L_ERR, "%s[%d]: Cannot use \"pool\" and \"acct_pool\" at the same time.",
+			       filename, cf_section_lineno(cs));
+			return 0;
+		}
 		if (!add_pool_to_realm(filename, cf_pair_lineno(cp),
 				       acct_pool_name, &acct_pool,
 				       HOME_TYPE_ACCT)) {
@@ -1012,8 +1038,12 @@ int realm_add(const char *filename, CONF_SECTION *cs)
 	r->acct_pool = acct_pool;
 	r->striprealm = 1;
 
-	if (auth_pool_name) DEBUG2("\tauth_pool = %s", auth_pool_name);
-	if (acct_pool_name) DEBUG2("\tacct_pool = %s", acct_pool_name);
+	if (auth_pool_name == acct_pool_name) {	/* yes, ptr comparison */
+		DEBUG2("\tpool = %s", auth_pool_name);
+	} else {
+		if (auth_pool_name) DEBUG2("\tauth_pool = %s", auth_pool_name);
+		if (acct_pool_name) DEBUG2("\tacct_pool = %s", acct_pool_name);
+	}
 
 	if ((cf_section_value_find(cs, "nostrip")) != NULL) {
 		r->striprealm = 0;
