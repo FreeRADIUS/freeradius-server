@@ -1026,7 +1026,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 			if (len >= (sizeof(buf) - 5)) {
 				radlog(L_ERR, "%s[%d]: Line too long",
 				       file, *lineno);
-				return NULL;
+				return -1;
 			}
 
 			cbuf[len - 1] = '\0';
@@ -1044,9 +1044,9 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		ptr = cbuf = buf;
 		t1 = gettoken(&ptr, buf1, sizeof(buf1));
 
-               if ((*buf1 == '#') || (*buf1 == '\0')) {
-                       continue;
-	       }
+		if ((*buf1 == '#') || (*buf1 == '\0')) {
+			continue;
+		}
 
 		/*
 		 *	The caller eats "name1 name2 {", and calls us
@@ -1143,56 +1143,6 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		} /* we were in an include */
 
 		/*
-		 *	No '=': must be a section or sub-section.
-		 */
-		if (strchr(ptr, '=') == NULL) {
-			t2 = gettoken(&ptr, buf2, sizeof(buf2));
-			t3 = gettoken(&ptr, buf3, sizeof(buf3));
-		} else {
-			t2 = gettoken(&ptr, buf2, sizeof(buf2));
-			t3 = getword(&ptr, buf3, sizeof(buf3));
-		}
-
-		/*
-		 * Perhaps a subsection.
-		 */
-		if (t2 == T_LCBRACE || t3 == T_LCBRACE) {
-			css = cf_section_alloc(buf1,
-					       t2 == T_LCBRACE ? NULL : buf2,
-					       this);
-			if (!css) {
-				radlog(L_ERR, "%s[%d]: Failed allocating memory for section",
-						file, *lineno);
-			}
-			cf_item_add(this, cf_sectiontoitem(css));
-			css->item.lineno = *lineno;
-
-			/*
-			 *	The current section is now the child section.
-			 */
-			this = css;
-			continue;
-		}
-
-		/*
-		 *	Ignore semi-colons.
-		 */
-		if (*buf2 == ';')
-			*buf2 = '\0';
-
-		/*
-		 *	Must be a normal attr = value line.
-		 */
-		if (buf1[0] != 0 && buf2[0] == 0 && buf3[0] == 0) {
-			t2 = T_OP_EQ;
-		} else if (buf1[0] == 0 || buf2[0] == 0 ||
-			   (t2 < T_EQSTART || t2 > T_EQEND)) {
-			radlog(L_ERR, "%s[%d]: Line is not in 'attribute = value' format",
-					file, *lineno);
-			return -1;
-		}
-
-		/*
 		 *	Ensure that the user can't add CONF_PAIRs
 		 *	with 'internal' names;
 		 */
@@ -1203,18 +1153,69 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		}
 
 		/*
-		 *	Handle variable substitution via ${foo}
+		 *	Grab the next token.
 		 */
-		value = cf_expand_variables(file, lineno, this, buf, buf3);
-		if (!value) return -1;
+		t2 = gettoken(&ptr, buf2, sizeof(buf2));
+		switch (t2) {
+		case T_EOL:
+		case T_HASH:
+		case T_OP_EQ:
+		case T_OP_SET:
+			t3 = getword(&ptr, buf3, sizeof(buf3));
+			t2 = T_OP_EQ;
 
+			/*
+			 *	Handle variable substitution via ${foo}
+			 */
+			value = cf_expand_variables(file, lineno, this,
+						    buf, buf3);
+			if (!value) return -1;
+			
+			
+			/*
+			 *	Add this CONF_PAIR to our CONF_SECTION
+			 */
+			cpn = cf_pair_alloc(buf1, value, t2, this);
+			cpn->item.lineno = *lineno;
+			cf_item_add(this, cf_pairtoitem(cpn));
+			continue;
 
-		/*
-		 *	Add this CONF_PAIR to our CONF_SECTION
-		 */
-		cpn = cf_pair_alloc(buf1, value, t2, this);
-		cpn->item.lineno = *lineno;
-		cf_item_add(this, cf_pairtoitem(cpn));
+			/*
+			 *	No '=', must be a section or sub-section.
+			 */
+		case T_BARE_WORD:
+		case T_DOUBLE_QUOTED_STRING:
+		case T_SINGLE_QUOTED_STRING:
+			t3 = gettoken(&ptr, buf3, sizeof(buf3));
+			if (t3 != T_LCBRACE) {
+				radlog(L_ERR, "%s[%d]: Expecting section start brace '{' after \"%s %s\"",
+				       file, *lineno, buf1, buf2);
+				return -1;
+			}
+
+		case T_LCBRACE:
+			css = cf_section_alloc(buf1,
+					       t2 == T_LCBRACE ? NULL : buf2,
+					       this);
+			if (!css) {
+				radlog(L_ERR, "%s[%d]: Failed allocating memory for section",
+						file, *lineno);
+				return -1;
+			}
+			cf_item_add(this, cf_sectiontoitem(css));
+			css->item.lineno = *lineno;
+
+			/*
+			 *	The current section is now the child section.
+			 */
+			this = css;
+			continue;
+
+		default:
+			radlog(L_ERR, "%s[%d]: Parse error after \"%s\"",
+			       file, *lineno, buf1);
+			return -1;
+		}
 	}
 
 	/*
