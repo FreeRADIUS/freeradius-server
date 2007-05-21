@@ -934,7 +934,8 @@ int setup_modules(int reload)
 			continue; /* section is empty */
 		}
 
-		DEBUG2(" Module: Instantiating section %s", section_type_value[comp].section);
+		DEBUG2(" Module: Checking %s {...} for more modules to load",
+		       section_type_value[comp].section);
 
 		if (load_component_section(NULL, cs, comp, mainconfig.radiusd_conf) < 0) {
 			return -1;
