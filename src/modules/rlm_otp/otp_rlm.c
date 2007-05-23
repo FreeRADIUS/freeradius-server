@@ -386,8 +386,6 @@ otp_authenticate(void *instance, REQUEST *request)
 static int
 otp_detach(void *instance)
 {
-  otp_option_t *inst = (otp_option_t *) instance;
-
   free(instance);
   /*
    * Only the main thread instantiates and detaches instances,
