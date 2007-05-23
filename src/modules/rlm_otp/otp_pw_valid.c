@@ -84,7 +84,7 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
   }
   /* we already know challenge is short enough */
 
-  otp_request.version = 1;
+  otp_request.version = 2;
   (void) strcpy(otp_request.username, username);
   (void) strcpy(otp_request.challenge, challenge);
   otp_request.pwe.pwe = pwe;
@@ -103,7 +103,7 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
       (void) radlog(L_AUTH, "rlm_otp: passcode for [%s] too long", username);
       return RLM_MODULE_REJECT;
     }
-    (void) strcpy(otp_request.pwe.passcode, rvp->vp_strvalue);
+    (void) strcpy(otp_request.pwe.u.pap.passcode, rvp->vp_strvalue);
     break;
 
   case PWE_CHAP:
@@ -117,10 +117,12 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
                     username);
       return RLM_MODULE_INVALID;
     }
-    (void) memcpy(otp_request.pwe.challenge, cvp->vp_strvalue, cvp->length);
-    otp_request.pwe.clen = cvp->length;
-    (void) memcpy(otp_request.pwe.response, rvp->vp_strvalue, rvp->length);
-    otp_request.pwe.rlen = rvp->length;
+    (void) memcpy(otp_request.pwe.u.chap.challenge, cvp->vp_strvalue,
+                  cvp->length);
+    otp_request.pwe.u.chap.clen = cvp->length;
+    (void) memcpy(otp_request.pwe.u.chap.response, rvp->vp_strvalue,
+                  rvp->length);
+    otp_request.pwe.u.chap.rlen = rvp->length;
     break;
 
   case PWE_MSCHAP:
@@ -134,10 +136,12 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
                     username);
       return RLM_MODULE_INVALID;
     }
-    (void) memcpy(otp_request.pwe.challenge, cvp->vp_strvalue, cvp->length);
-    otp_request.pwe.clen = cvp->length;
-    (void) memcpy(otp_request.pwe.response, rvp->vp_strvalue, rvp->length);
-    otp_request.pwe.rlen = rvp->length;
+    (void) memcpy(otp_request.pwe.u.chap.challenge, cvp->vp_strvalue,
+                  cvp->length);
+    otp_request.pwe.u.chap.clen = cvp->length;
+    (void) memcpy(otp_request.pwe.u.chap.response, rvp->vp_strvalue,
+                  rvp->length);
+    otp_request.pwe.u.chap.rlen = rvp->length;
     break;
 
   case PWE_MSCHAP2:
@@ -151,17 +155,20 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
                     username);
       return RLM_MODULE_INVALID;
     }
-    (void) memcpy(otp_request.pwe.challenge, cvp->vp_strvalue, cvp->length);
-    otp_request.pwe.clen = cvp->length;
-    (void) memcpy(otp_request.pwe.response, rvp->vp_strvalue, rvp->length);
-    otp_request.pwe.rlen = rvp->length;
+    (void) memcpy(otp_request.pwe.u.chap.challenge, cvp->vp_strvalue,
+                  cvp->length);
+    otp_request.pwe.u.chap.clen = cvp->length;
+    (void) memcpy(otp_request.pwe.u.chap.response, rvp->vp_strvalue,
+                  rvp->length);
+    otp_request.pwe.u.chap.rlen = rvp->length;
     break;
   } /* switch (otp_request.pwe.pwe) */
 
   /* last byte must also be a terminator so otpd can verify length easily */
   otp_request.username[OTP_MAX_USERNAME_LEN] = '\0';
   otp_request.challenge[OTP_MAX_CHALLENGE_LEN] = '\0';
-  otp_request.pwe.passcode[OTP_MAX_PASSCODE_LEN] = '\0';
+  if (otp_request.pwe.pwe == PWE_PAP)
+    otp_request.pwe.u.pap.passcode[OTP_MAX_PASSCODE_LEN] = '\0';
 
   otp_request.allow_sync = opt->allow_sync;
   otp_request.allow_async = opt->allow_async;
