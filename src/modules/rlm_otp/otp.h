@@ -17,7 +17,7 @@
  *
  *  For alternative licensing terms, contact licensing@tri-dsystems.com.
  *
- * Copyright 2005,2006 TRI-D Systems, Inc.
+ * Copyright 2005-2007 TRI-D Systems, Inc.
  */
 
 #ifndef OTP_H

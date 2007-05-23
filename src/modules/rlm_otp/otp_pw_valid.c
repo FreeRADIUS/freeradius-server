@@ -18,7 +18,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  *
- * Copyright 2006 TRI-D Systems, Inc.
+ * Copyright 2006,2007 TRI-D Systems, Inc.
  */
 
 #include <freeradius-devel/ident.h>
