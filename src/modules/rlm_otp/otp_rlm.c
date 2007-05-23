@@ -17,7 +17,7 @@
  *
  * Copyright 2000,2001,2002  The FreeRADIUS server project
  * Copyright 2001,2002  Google, Inc.
- * Copyright 2005,2006 TRI-D Systems, Inc.
+ * Copyright 2005-2007 TRI-D Systems, Inc.
  */
 
 #include <freeradius-devel/ident.h>
