@@ -92,6 +92,9 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
   /* otp_pwe_present() (done by caller) guarantees that both of these exist */
   cvp = pairfind(request->packet->vps, pwattr[pwe - 1]);
   rvp = pairfind(request->packet->vps, pwattr[pwe]);
+  /* this is just to quiet Coverity */
+  if (!rvp || !cvp)
+    return RLM_MODULE_REJECT;
 
   /*
    * Validate available vps based on pwe type.
