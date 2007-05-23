@@ -1,19 +1,21 @@
 /*
  * $Id$
  *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
  *
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ *
+ *  For alternative licensing terms, contact licensing@tri-dsystems.com.
  *
  * Copyright 2005,2006 TRI-D Systems, Inc.
  */
@@ -21,13 +23,13 @@
 #ifndef OTP_H
 #define OTP_H
 
-#include "ident.h"
-RCSIDH(otp_h, "$Id$");
+#include <freeradius-devel/ident.h>
+RCSIDH(otp_h, "$Id$")
 
 #include <sys/types.h>
 
 /*
- * NOTE: This file must be synced between plugins and otpd.
+ * NOTE: This file must be synced between plugins/otpd/lsmd/gsmd/changepin.
  */
 
 #ifndef OTP_MAX_CHALLENGE_LEN
@@ -44,6 +46,7 @@ RCSIDH(otp_h, "$Id$");
 #define OTP_RC_SERVICE_ERR	5
 
 #define OTP_MAX_USERNAME_LEN		31
+/* only needs to be MAX_PIN_LEN (16) + MAX_RESPONSE_LEN (16) */
 #define OTP_MAX_PASSCODE_LEN		47
 #define OTP_MAX_CHAP_CHALLENGE_LEN	16
 #define OTP_MAX_CHAP_RESPONSE_LEN	50
@@ -56,16 +59,22 @@ typedef enum otp_pwe_t {
 } otp_pwe_t;
 
 typedef struct otp_request_t {
-  int	version;					/* 1 */
+  int	version;					/* 2 */
   char	username[OTP_MAX_USERNAME_LEN + 1];
   char	challenge[OTP_MAX_CHALLENGE_LEN + 1];		/* USER challenge */
   struct {
     otp_pwe_t	  pwe;
-    char	  passcode[OTP_MAX_PASSCODE_LEN + 1];
-    unsigned char challenge[OTP_MAX_CHAP_CHALLENGE_LEN]; /* CHAP challenge */
-    size_t	  clen;
-    unsigned char response[OTP_MAX_CHAP_RESPONSE_LEN];
-    size_t	  rlen;
+    union {
+      struct {
+        char	  passcode[OTP_MAX_PASSCODE_LEN + 1];
+      } pap;
+      struct {
+        unsigned char challenge[OTP_MAX_CHAP_CHALLENGE_LEN]; /* CHAP chal */
+        size_t	  clen;
+        unsigned char response[OTP_MAX_CHAP_RESPONSE_LEN];
+        size_t	  rlen;
+      } chap;
+    } u;
   } pwe;
   int		allow_async;		/* async auth allowed?           */
   int		allow_sync;		/* sync auth allowed?            */
