@@ -3,7 +3,7 @@ AC_INIT(otp_rlm.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_otp])
 
-otp_cflags="-Wno-cast-qual"
+otp_cflags=
 otp_ldflags=
 
 if test x$with_[]modname != xno; then
