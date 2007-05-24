@@ -44,6 +44,7 @@ RCSIDH(otp_h, "$Id$")
 #define OTP_RC_AUTH_ERR		3
 #define OTP_RC_MAXTRIES		4
 #define OTP_RC_SERVICE_ERR	5
+#define OTP_RC_NEXTPASSCODE	6
 
 #define OTP_MAX_USERNAME_LEN		31
 /* only needs to be MAX_PIN_LEN (16) + MAX_RESPONSE_LEN (16) */

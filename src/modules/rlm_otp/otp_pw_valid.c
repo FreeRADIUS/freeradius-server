@@ -42,13 +42,14 @@ static int
 otprc2rlmrc(int rc)
 {
   switch (rc) {
-    case OTP_RC_OK:                     return RLM_MODULE_OK;
-    case OTP_RC_USER_UNKNOWN:           return RLM_MODULE_REJECT;
-    case OTP_RC_AUTHINFO_UNAVAIL:       return RLM_MODULE_REJECT;
-    case OTP_RC_AUTH_ERR:               return RLM_MODULE_REJECT;
-    case OTP_RC_MAXTRIES:               return RLM_MODULE_USERLOCK;
-    case OTP_RC_SERVICE_ERR:            return RLM_MODULE_FAIL;
-    default:                            return RLM_MODULE_FAIL;
+    case OTP_RC_OK:			return RLM_MODULE_OK;
+    case OTP_RC_USER_UNKNOWN:		return RLM_MODULE_REJECT;
+    case OTP_RC_AUTHINFO_UNAVAIL:	return RLM_MODULE_REJECT;
+    case OTP_RC_AUTH_ERR:		return RLM_MODULE_REJECT;
+    case OTP_RC_MAXTRIES:		return RLM_MODULE_USERLOCK;
+    case OTP_RC_NEXTPASSCODE:		return RLM_MODULE_USERLOCK;
+    case OTP_RC_SERVICE_ERR:		return RLM_MODULE_FAIL;
+    default:				return RLM_MODULE_FAIL;
   }
 }
 
