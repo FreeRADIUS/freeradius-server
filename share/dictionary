@@ -124,6 +124,7 @@ $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.mikrotik
 $INCLUDE dictionary.navini
 $INCLUDE dictionary.netscreen
+$INCLUDE dictionary.nexans
 $INCLUDE dictionary.ntua
 $INCLUDE dictionary.nomadix
 $INCLUDE dictionary.nortel
