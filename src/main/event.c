@@ -1658,8 +1658,9 @@ int received_request(rad_listen_t *listener,
 	if (packet_p) {
 		request = lrad_packet2myptr(REQUEST, packet, packet_p);
 
-		if (memcmp(request->packet->vector, packet->vector,
-			   sizeof(packet->vector)) == 0) {
+		if ((request->packet->data_len == packet->data_len) &&
+		    (memcmp(request->packet->vector, packet->vector,
+			    sizeof(packet->vector)) == 0)) {
 			received_retransmit(request, client);
 			return 0;
 		}
