@@ -50,7 +50,7 @@ RCSID("$Id$")
 
 int udpfromto_init(int s)
 {
-	int err = -1, opt = 1;
+	int err = 0, opt = 1;
 	errno = ENOSYS;
 #ifdef HAVE_IP_PKTINFO
 	/* Set the IP_PKTINFO option (Linux). */
