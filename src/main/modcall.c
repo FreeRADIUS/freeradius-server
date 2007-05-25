@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modcall.h>
 #include <freeradius-devel/rad_assert.h>
 
+
 /* mutually-recursive static functions need a prototype up front */
 static modcallable *do_compile_modgroup(modcallable *,
 					int, CONF_SECTION *, const char *,
@@ -252,7 +253,6 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request,
 	return myresult;
 }
 
-
 static int default_component_results[RLM_COMPONENT_COUNT] = {
 	RLM_MODULE_REJECT,	/* AUTH */
 	RLM_MODULE_NOTFOUND,	/* AUTZ */
@@ -263,6 +263,7 @@ static int default_component_results[RLM_COMPONENT_COUNT] = {
 	RLM_MODULE_NOOP,	/* POST_PROXY */
 	RLM_MODULE_NOOP		/* POST_AUTH */
 };
+
 
 static const char *group_name[] = {
 	"",
@@ -351,21 +352,39 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		}
 
 		/*
-		 *	"if", and the requested action wasn't the
-		 *	proper return code, skip the group.
+		 *	"if" or "elsif".  Evaluate the condition.
 		 */
-		if (((child->type == MOD_IF) || (child->type == MOD_ELSIF)) &&
-		    !child->actions[myresult]) {
-			DEBUG2("%.*s ... skipping %s \"%s\" for request %d, return code was %s",
+		if ((child->type == MOD_IF) || (child->type == MOD_ELSIF)) {
+			int condition = TRUE;
+			const char *p = child->name;
+
+			DEBUG2("%.*s? %s %s",
 			       stack.pointer + 1, modcall_spaces,
-			       group_name[child->type],
-  			       child->name, request->number,
-			       lrad_int2str(rcode_table, myresult, "??"));
-			stack.children[stack.pointer] = NULL;
-			was_if = TRUE;
-			if_taken = FALSE;
-			goto unroll;
-		} /* else process it, as a simple group */
+			       (child->type == MOD_IF) ? "if" : "elsif",
+			       child->name);
+
+			if (radius_evaluate_condition(request, 0, &p,
+						       TRUE, &condition)) {
+				DEBUG2("%.*s? %s %s -> %s",
+				       stack.pointer + 1, modcall_spaces,
+				       (child->type == MOD_IF) ? "if" : "elsif",
+				       child->name, (condition != FALSE) ? "TRUE" : "FALSE");
+			} else {
+				/*
+				 *	This should never happen, the
+				 *	condition is checked when the
+				 *	module section is loaded.
+				 */
+				condition = FALSE;
+			}
+
+			if (!condition) {
+				stack.children[stack.pointer] = NULL;
+				was_if = TRUE;
+				if_taken = FALSE;
+				goto unroll;
+			} /* else process it as a simple group */
+		}
 
 		/*
 		 *	Child is a group that has children of it's own.
@@ -983,49 +1002,6 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 };
 
 
-static int condition2actions(modcallable *mc, const char *actions)
-{
-	char *p, *q;
-	char buffer[1024];
-
-	if (strlen(actions) >= sizeof(buffer)) {
-		return -1;
-	}
-
-	memset(mc->actions, 0, sizeof(mc->actions));
-
-	/*
-	 *	Copy, stripping space.
-	 */
-	p = buffer;
-	while (*actions) {
-		if (*actions != ' ') {
-			*(p++) = *actions;
-		}
-		actions++;
-	}
-	*p = '\0';
-
-	p = buffer;
-
-	while (*p) {
-		int rcode;
-
-		q = strchr(p, '|');
-		if (q) *q = '\0';
-
-		rcode = lrad_str2int(rcode_table, p, -1);
-		if (rcode < 0) return -1;
-		mc->actions[rcode] = 1;
-
-		if (!q) break;
-		p = q + 1;
-	}
-
-	return 0;
-}
-
-
 /*
  *	Compile one entry of a module call.
  */
@@ -1034,11 +1010,12 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 					 const char *filename, int grouptype,
 					 const char **modname)
 {
-	int lineno;
+	int lineno, result;
 	const char *modrefname;
 	modsingle *single;
 	modcallable *csingle;
 	module_instance_t *this;
+	CONF_SECTION *cs, *subcs;
 
 	if (cf_item_is_section(ci)) {
 		CONF_SECTION *cs = cf_itemtosection(ci);
@@ -1106,13 +1083,12 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (!csingle) return NULL;
 			csingle->type = MOD_IF;
 
-			if (condition2actions(csingle, name2) < 0) {
+			if (!radius_evaluate_condition(NULL, 0, modname,
+						       FALSE, &result)) {
 				modcallable_free(&csingle);
-				radlog(L_ERR|L_CONS,
-				       "%s[%d] Invalid module condition rcode '%s'.\n",
-				       filename, lineno, name2);
 				return NULL;
 			}
+			*modname = name2;
 
 			return csingle;
 		} else 	if (strcmp(modrefname, "elsif") == 0) {
@@ -1140,13 +1116,12 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (!csingle) return NULL;
 			csingle->type = MOD_ELSIF;
 
-			if (condition2actions(csingle, name2) < 0) {
+			if (!radius_evaluate_condition(NULL, 0, modname,
+						       FALSE, &result)) {
 				modcallable_free(&csingle);
-				radlog(L_ERR|L_CONS,
-				       "%s[%d] Invalid module condition rcode '%s'.\n",
-				       filename, lineno, name2);
 				return NULL;
 			}
+			*modname = name2;
 
 			return csingle;
 		} else 	if (strcmp(modrefname, "else") == 0) {
@@ -1187,35 +1162,36 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	}
 
 	/*
+	 *	FIXME: If module name is "update", or stuff... add it
+	 *	to the if/then/else parent for parsing at run time?
+	 */
+
+	/*
 	 *	See if the module is a virtual one.  If so, return that,
 	 *	rather than doing anything here.
 	 */
-	this = find_module_instance(cf_section_find("modules"), modrefname);
-	if (!this) {
-		CONF_SECTION *cs, *subcs;
+	if (((cs = cf_section_find("instantiate")) != NULL) &&
+	    (subcs = cf_section_sub_find_name2(cs, NULL, modrefname)) != NULL) {
+		DEBUG2(" Module: Loading virtual module %s", modrefname);
 
 		/*
-		 *	Then, look for it in the "instantiate" section.
+		 *	As it's sole configuration, the
+		 *	virtual module takes a section which
+		 *	contains the
 		 */
-		if (((subcs = cf_section_find(NULL)) != NULL) &&
-		    ((cs = cf_section_sub_find_name2(subcs, "instantiate", NULL)) != NULL)) {
-			subcs = cf_section_sub_find_name2(cs, NULL, modrefname);
-			if (subcs) {
-				/*
-				 *	As it's sole configuration, the
-				 *	virtual module takes a section which
-				 *	contains the
-				 */
-				return do_compile_modsingle(parent,
-							    component,
-							    cf_sectiontoitem(subcs),
-							    filename,
-							    grouptype,
-							    modname);
-			}
-		}
+		return do_compile_modsingle(parent,
+					    component,
+					    cf_sectiontoitem(subcs),
+					    filename,
+					    grouptype,
+					    modname);
 	}
-	if (!this) {
+
+	/*
+	 *	Not a virtual module.  It must be a real module.
+	 */
+	this = find_module_instance(cf_section_find("modules"), modrefname);
+       	if (!this) {
 		*modname = NULL;
 		radlog(L_ERR|L_CONS, "%s[%d] Failed to find module \"%s\".", filename,
 		       lineno, modrefname);

@@ -69,6 +69,7 @@ typedef enum RAD_LISTEN_TYPE {
 	RAD_LISTEN_AUTH,
 	RAD_LISTEN_ACCT,
 	RAD_LISTEN_DETAIL,
+	RAD_LISTEN_VQP,
 	RAD_LISTEN_SNMP,
 	RAD_LISTEN_MAX
 } RAD_LISTEN_TYPE;
@@ -479,4 +480,7 @@ int received_request(rad_listen_t *listener,
 		     RADCLIENT *client);
 REQUEST *received_proxy_response(RADIUS_PACKET *packet);
 
+/* evaluate.c */
+int radius_evaluate_condition(REQUEST *request, int depth,
+			      const char **ptr, int evaluate_it, int *presult);
 #endif /*RADIUSD_H*/
