@@ -69,8 +69,10 @@ RCSIDH(missing_h, "$Id$")
 # endif
 #endif
 
+#ifndef CYGWIN
 #ifdef HAVE_WINSOCK_H
 #include <winsock.h>
+#endif
 #endif
 
 /*
