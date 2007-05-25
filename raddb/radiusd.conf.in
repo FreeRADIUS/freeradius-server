@@ -680,6 +680,9 @@ $INCLUDE ${confdir}/eap.conf
 	#  really can't emphasize this enough.
 	#	
 	ldap {
+		#
+		#  Note that this needs to match the name in the LDAP
+		#  server certificate, if you're using ldaps.
 		server = "ldap.your.domain"
 		#identity = "cn=admin,o=My Org,c=UA"
 		#password = mypass
