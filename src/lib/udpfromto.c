@@ -27,6 +27,7 @@
  *		modify it under the terms of the GNU Lesser General Public
  *		License as published by the Free Software Foundation; either
  *		version 2 of the License, or (at your option) any later version.
+ *	Copyright (C) 2007 Alan DeKok <aland@deployingradius.com>
  *
  * sendfromto	added 18/08/2003, Jan Berkel <jan@sitadelle.com>
  *		Works on Linux and FreeBSD (5.x)
@@ -47,63 +48,146 @@ RCSID("$Id$")
 
 #include <fcntl.h>
 
-
 int udpfromto_init(int s)
 {
-	int err = 0, opt = 1;
+	int err = 0, proto, flag, opt = 1;
+	struct sockaddr_storage si;
+	socklen_t si_len = sizeof(si);
+
 	errno = ENOSYS;
+
+	proto = -1;
+
+	if (getsockname(s, (struct sockaddr *) &si, &si_len) < 0) {
+		return -1;
+	}
+
+	if (si.ss_family == AF_INET) {
 #ifdef HAVE_IP_PKTINFO
-	/* Set the IP_PKTINFO option (Linux). */
-	err = setsockopt(s, SOL_IP, IP_PKTINFO, &opt, sizeof(opt));
+		/*
+		 *	Linux
+		 */
+		proto = IPPROTO_IP;
+		flag = IP_PKTINFO;
+#endif
+		
+#ifdef HAVE_IP_RECVDSTADDR
+		/*
+		 *	Set the IP_RECVDSTADDR option (BSD).  Note:
+		 *	IP_RECVDSTADDR == IP_SENDSRCADDR
+		 */
+		proto = IPPROTO_IP;
+		flag = IP_RECVDSTADDR;
 #endif
 
-#ifdef HAVE_IP_RECVDSTADDR
-	/*
-	 * Set the IP_RECVDSTADDR option (BSD).
-	 * Note: IP_RECVDSTADDR == IP_SENDSRCADDR
-	 */
-	err = setsockopt(s, IPPROTO_IP, IP_RECVDSTADDR, &opt, sizeof(opt));
+#ifdef HAVE_AF_INET6
+	} else if (si.ss_family == AF_INET6) {
+#ifdef HAVE_IN6_PKTINFO
+		/*
+		 *	This should actually be standard IPv6
+		 */
+		proto = IPPROTO_IPV6;
+		flag = IPV6_PKTINFO;
 #endif
-	return err;
+#endif
+	} else {
+		/*
+		 *	Unknown AF.
+		 */
+		return -1;
+	}
+		
+	/*
+	 *	Unsupported.  Don't worry about it.
+	 */
+	if (proto < 0) return 0;
+
+	return setsockopt(s, proto, flag, &opt, sizeof(opt));
 }
 
 int recvfromto(int s, void *buf, size_t len, int flags,
-	struct sockaddr *from, socklen_t *fromlen,
-	struct sockaddr *to, socklen_t *tolen)
+	       struct sockaddr *from, socklen_t *fromlen,
+	       struct sockaddr *to, socklen_t *tolen)
 {
-#if defined(HAVE_IP_PKTINFO) || defined(HAVE_IP_RECVDSTADDR)
 	struct msghdr msgh;
 	struct cmsghdr *cmsg;
 	struct iovec iov;
 	char cbuf[256];
 	int err;
+	struct sockaddr_storage si;
+	socklen_t si_len = sizeof(si);
+
+#if !defined(HAVE_IP_PKTINFO) && !defined(HAVE_IP_RECVDSTADDR) && !defined (HAVE_IN6_PKTINFO)
+	/*
+	 *	If the recvmsg() flags aren't defined, fall back to
+	 *	using recvfrom().
+	 */
+	to = NULL;
+#endif
 
 	/*
-	 *	If from or to are set, they must be big enough
-	 *	to store a struct sockaddr_in.
+	 *	Catch the case where the caller passes invalid arguments.
 	 */
-	if ((from && (!fromlen || *fromlen < sizeof(struct sockaddr_in))) ||
-	    (to   && (!tolen   || *tolen   < sizeof(struct sockaddr_in)))) {
-		errno = EINVAL;
+	if (!to || !tolen) return recvfrom(s, buf, len, flags, from, fromlen);
+
+
+	/*
+	 *	recvmsg doesn't provide sin_port so we have to
+	 *	retrieve it using getsockname().
+	 */
+	if (getsockname(s, (struct sockaddr *)&si, &si_len) < 0) {
 		return -1;
 	}
 
 	/*
-	 *	IP_PKTINFO / IP_RECVDSTADDR don't provide sin_port so we have to
-	 *	retrieve it using getsockname().
+	 *	Initialize the 'to' address.  It may be INADDR_ANY here,
+	 *	with a more specific address given by recvmsg(), below.
 	 */
-	if (to) {
-		struct sockaddr_in si;
-		socklen_t l = sizeof(si);
-
-		((struct sockaddr_in *)to)->sin_family = AF_INET;
-		((struct sockaddr_in *)to)->sin_port = 0;
-		l = sizeof(si);
-		if (getsockname(s, (struct sockaddr *)&si, &l) == 0) {
-			((struct sockaddr_in *)to)->sin_port = si.sin_port;
-			((struct sockaddr_in *)to)->sin_addr = si.sin_addr;
+	if (si.ss_family == AF_INET) {
+		struct sockaddr_in *dst = (struct sockaddr_in *) to;
+		struct sockaddr_in *src = (struct sockaddr_in *) &si;
+		
+		if (*tolen < sizeof(*dst)) {
+			errno = EINVAL;
+			return -1;
 		}
-		if (tolen) *tolen = sizeof(struct sockaddr_in);
+		*tolen = sizeof(*dst);
+		*dst = *src;
+
+#if !defined(HAVE_IP_PKTINFO) && !defined(HAVE_IP_RECVDSTADDR)
+		/*
+		 *	recvmsg() flags aren't defined.  Use recvfrom()
+		 */
+		return recvfrom(s, buf, len, flags, from, fromlen);
+#endif
+	}
+
+#ifdef AF_INET6
+	else if (si.ss_family == AF_INET6) {
+		struct sockaddr_in6 *dst = (struct sockaddr_in6 *) to;
+		struct sockaddr_in6 *src = (struct sockaddr_in6 *) &si;
+		
+		if (*tolen < sizeof(*dst)) {
+			errno = EINVAL;
+			return -1;
+		}
+		*tolen = sizeof(*dst);
+		*dst = *src;
+
+#if !defined(HAVE_IN6_PKTINFO)
+		/*
+		 *	recvmsg() flags aren't defined.  Use recvfrom()
+		 */
+		return recvfrom(s, buf, len, flags, from, fromlen);
+#endif
+	}
+#endif
+	/*
+	 *	Unknown address family.
+	 */		
+	else {
+		errno = EINVAL;
+		return -1;
 	}
 
 	/* Set up iov and msgh structures. */
@@ -122,6 +206,7 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	if ((err = recvmsg(s, &msgh, flags)) < 0) {
 		return err;
 	}
+
 	if (fromlen) *fromlen = msgh.msg_namelen;
 
 	/* Process auxiliary received data in msgh */
@@ -129,65 +214,63 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	     cmsg != NULL;
 	     cmsg = CMSG_NXTHDR(&msgh,cmsg)) {
 
-# ifdef HAVE_IP_PKTINFO
-		if (cmsg->cmsg_level == SOL_IP
-		    && cmsg->cmsg_type == IP_PKTINFO) {
+#ifdef HAVE_IP_PKTINFO
+		if ((cmsg->cmsg_level == SOL_IP) &&
+		    (cmsg->cmsg_type == IP_PKTINFO)) {
 			struct in_pktinfo *i =
-				(struct in_pktinfo *)CMSG_DATA(cmsg);
-			if (to) {
-				((struct sockaddr_in *)to)->sin_addr =
-					i->ipi_addr;
-				if (tolen) *tolen = sizeof(struct sockaddr_in);
-			}
+				(struct in_pktinfo *) CMSG_DATA(cmsg);
+			((struct sockaddr_in *)to)->sin_addr = i->ipi_addr;
+			*tolen = sizeof(struct sockaddr_in);
 			break;
 		}
-# endif
+#endif
 
-# ifdef HAVE_IP_RECVDSTADDR
-		if (cmsg->cmsg_level == IPPROTO_IP
-		    && cmsg->cmsg_type == IP_RECVDSTADDR) {
-			struct in_addr *i = (struct in_addr *)CMSG_DATA(cmsg);
-			if (to) {
-				((struct sockaddr_in *)to)->sin_addr = *i;
-				if (tolen) *tolen = sizeof(struct sockaddr_in);
-			}
+#ifdef HAVE_IP_RECVDSTADDR
+		if ((cmsg->cmsg_level == IPPROTO_IP)
+		    (cmsg->cmsg_type == IP_RECVDSTADDR)) {
+			struct in_addr *i = (struct in_addr *) CMSG_DATA(cmsg);
+			((struct sockaddr_in *)to)->sin_addr = *i;
+			*tolen = sizeof(struct sockaddr_in);
 			break;
 		}
-# endif
+#endif
+
+#ifdef HAVE_IN6_PKTINFO
+		if ((cmsg->cmsg_level == IPPROTO_IPV6) &&
+		    (cmsg->cmsg_type == IPV6_PKTINFO)) {
+			struct in6_pktinfo *i =
+				(struct in6_pktinfo *) CMSG_DATA(cmsg);
+			((struct sockaddr_in6 *)to)->sin6_addr = i->ipi6_addr;
+			*tolen = sizeof(struct sockaddr_in6);
+			break;
+		}
+#endif
 	}
+
 	return err;
-#else
-	/* fallback: call recvfrom */
-	return recvfrom(s, buf, len, flags, from, fromlen);
-#endif /* defined(HAVE_IP_PKTINFO) || defined(HAVE_IP_RECVDSTADDR) */
 }
 
 int sendfromto(int s, void *buf, size_t len, int flags,
-			  struct sockaddr *from, socklen_t fromlen,
-			  struct sockaddr *to, socklen_t tolen)
+	       struct sockaddr *from, socklen_t fromlen,
+	       struct sockaddr *to, socklen_t tolen)
 {
-#if defined(HAVE_IP_PKTINFO) || defined(HAVE_IP_SENDSRCADDR)
 	struct msghdr msgh;
 	struct cmsghdr *cmsg;
 	struct iovec iov;
-# ifdef HAVE_IP_PKTINFO
-	char cmsgbuf[CMSG_SPACE(sizeof(struct in_pktinfo))];
-	struct in_pktinfo pktinfo, *pktinfo_ptr;
-	memset(&pktinfo, 0, sizeof(struct in_pktinfo));
-# endif
-	struct sockaddr_in	*s4;
+	char cbuf[256];
 
-# ifdef HAVE_IP_SENDSRCADDR
-	char cmsgbuf[CMSG_SPACE(sizeof(struct in_addr))];
-# endif
-
-	s4 = (struct sockaddr_in *) from;
+#if !defined(HAVE_IP_PKTINFO) && defined(HAVE_IP_SENDSRCADDR) && !defined(HAVE_IN6_PKTINFO)
+	/*
+	 *	If the sendmsg() flags aren't defined, fall back to
+	 *	using sendto().
+	 */
+	from = NULL;
+#endif
 
 	/*
-	 *	Source is unset, empty, or unspecified,
-	 *	fall back to sendto().
+	 *	Catch the case where the caller passes invalid arguments.
 	 */
-	if (!s4 || (fromlen == 0) || (s4->sin_family == AF_UNSPEC)) {
+	if (!from || (fromlen == 0) || (from->sa_family == AF_UNSPEC)) {
 		return sendto(s, buf, len, flags, to, tolen);
 	}
 
@@ -197,34 +280,66 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	iov.iov_len = len;
 	msgh.msg_iov = &iov;
 	msgh.msg_iovlen = 1;
-	msgh.msg_control = cmsgbuf;
-	msgh.msg_controllen = sizeof(cmsgbuf);
+	msgh.msg_control = cbuf;
+	msgh.msg_controllen = sizeof(cbuf);
 	msgh.msg_name = to;
 	msgh.msg_namelen = tolen;
 
 	cmsg = CMSG_FIRSTHDR(&msgh);
 
-# ifdef HAVE_IP_PKTINFO
-	cmsg->cmsg_level = SOL_IP;
-	cmsg->cmsg_type = IP_PKTINFO;
-	cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
-	pktinfo.ipi_spec_dst = ((struct sockaddr_in *)from)->sin_addr;
-	pktinfo_ptr = (struct in_pktinfo *)CMSG_DATA(cmsg);
-	memcpy(pktinfo_ptr, &pktinfo, sizeof(struct in_pktinfo));
-# endif
-# ifdef HAVE_IP_SENDSRCADDR
-	cmsg->cmsg_level = IPPROTO_IP;
-	cmsg->cmsg_type = IP_SENDSRCADDR;
-	cmsg->cmsg_len = CMSG_LEN(sizeof(struct in_addr));
-	memcpy((struct in_addr *)CMSG_DATA(cmsg),
-	       &((struct sockaddr_in *)from)->sin_addr, sizeof(struct in_addr));
-# endif
+	if (from->sa_family == AF_INET) {
+		struct sockaddr_in *s4 = (struct sockaddr_in *) from;
+
+#ifdef HAVE_IP_PKTINFO
+		struct in_pktinfo *pkt = (struct in_pktinfo *) CMSG_DATA(cmsg);
+
+		cmsg->cmsg_level = SOL_IP;
+		cmsg->cmsg_type = IP_PKTINFO;
+		cmsg->cmsg_len = CMSG_LEN(sizeof(*pkt));
+
+		memset(pkt, 0, sizeof(*pkt));
+
+		pkt->ipi_spec_dst = s4->sin_addr;
+#endif
+
+#ifdef HAVE_IP_SENDSRCADDR
+		struct in_addr *in = (struct in_addr *) CMSG_DATA(cmsg);
+
+		cmsg->cmsg_level = IPPROTO_IP;
+		cmsg->cmsg_type = IP_SENDSRCADDR;
+		cmsg->cmsg_len = CMSG_LEN(sizeof(*in));
+
+		*in = s4->sin_addr;
+#endif
+	}
+
+#ifdef AF_INET6
+	else if (from->sa_family == AF_INET6) {
+#ifdef HAVE_IN6_PKTINFO
+		struct sockaddr_in6 *s6 = (struct sockaddr_in6 *) from;
+
+		struct in6_pktinfo *pkt = (struct in6_pktinfo *) CMSG_DATA(cmsg);
+
+		cmsg->cmsg_level = IPPROTO_IPV6;
+		cmsg->cmsg_type = IPV6_PKTINFO;
+		cmsg->cmsg_len = CMSG_LEN(sizeof(*pkt));
+
+		memset(pkt, 0, sizeof(*pkt));
+
+		pkt->ipi6_addr = s6->sin6_addr;
+#endif
+	}
+#endif
+
+	/*
+	 *	Unknown address family.
+	 */		
+	else {
+		errno = EINVAL;
+		return -1;
+	}
 
 	return sendmsg(s, &msgh, flags);
-#else
-	/* fallback: call sendto() */
-	return sendto(s, buf, len, flags, to, tolen);
-#endif	/* defined(HAVE_IP_PKTINFO) || defined (HAVE_IP_SENDSRCADDR) */
 }
 
 
