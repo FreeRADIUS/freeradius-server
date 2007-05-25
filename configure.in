@@ -897,7 +897,7 @@ dnl We need #stdio.h to define NULL on FreeBSD (at least)
 gethostbyaddrrstyle=""
 AC_MSG_CHECKING([gethostbyaddr_r() syntax])
 case "$host" in
-*-freebsd*)
+*-freebsd[45].*|*-freebsd6.[01])
 	AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE, [style of gethostbyaddr_r functions ])
 	gethostbyaddrrstyle=BSD
 	AC_MSG_WARN([FreeBSD overridden to BSD-style])
