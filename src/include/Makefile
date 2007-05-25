@@ -30,4 +30,4 @@ install:
 	$(INSTALL) -m 644 sha1.h $(R)$(includedir)/freeradius
 	$(INSTALL) -m 644 token.h $(R)$(includedir)/freeradius
 	$(INSTALL) -m 644 udpfromto.h $(R)$(includedir)/freeradius
-	sed -i 's/^#include <freeradius-devel/#include <freeradius/' $(R)$(includedir)/freeradius/libradius.h
+	sed -i .bak 's/^#include <freeradius-devel/#include <freeradius/' $(R)$(includedir)/freeradius/libradius.h
