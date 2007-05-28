@@ -7,7 +7,6 @@ radiusd - Authentication, Authorization and Accounting server
 .RB [ \-S ]
 .RB [ \-a
 .IR accounting_directory ]
-.RB [ \-b ]
 .RB [ \-c ]
 .RB [ \-d
 .IR config_directory ]
@@ -127,13 +126,6 @@ receiving packets.
 
 If this command-line option is given, then the "bind_address" and all
 "listen{}" entries in \fIradiusd.conf\fP are ignored.
-
-.IP \-b
-If the \fBradius\fP server binary was compiled with \fIdbm\fP support,
-this flag tells it to actually \fIuse\fP the database files instead of the
-flat \fIusers\fP file.
-
-This command line option is deprecated, and does not do anything.
 
 .IP \-c
 This is still an \fIexperimental\fP feature.
