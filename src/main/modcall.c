@@ -1031,6 +1031,8 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		"config", NULL
 	};
 
+	component = component;	/* -Wunused */
+
 	for (i = 0; attrlist_names[i] != NULL; i++) {
 		if (strcmp(name2, attrlist_names[i]) == 0) {
 			ok = TRUE;
@@ -1039,7 +1041,8 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	}
 
 	if (!ok) {
-		radlog(L_ERR, "%s[%d]: Unknown attribute list \"%s\"", name2);
+		radlog(L_ERR, "%s[%d]: Unknown attribute list \"%s\"",
+		       filename, lineno, name2);
 		return NULL;
 	}
 
@@ -1067,7 +1070,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		if (!dict_attrbyname(attr)) {
 			radlog(L_ERR|L_CONS,
 			       "%s[%d]: Unknown attribute \"%s\"",
-			       filename, cf_pair_lineno(cp));
+			       filename, cf_pair_lineno(cp), attr);
 			return NULL;
 		}
 
@@ -1113,7 +1116,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	CONF_SECTION *cs, *subcs;
 
 	if (cf_item_is_section(ci)) {
-		CONF_SECTION *cs = cf_itemtosection(ci);
+		cs = cf_itemtosection(ci);
 		const char *name2 = cf_section_name2(cs);
 
 		lineno = cf_section_lineno(cs);
@@ -1253,8 +1256,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			return csingle;
 
 		} else 	if (strcmp(modrefname, "update") == 0) {
-			modgroup *g;
-
 			if (!cf_section_name2(cs)) {
 				radlog(L_ERR|L_CONS,
 				       "%s[%d] Require list name for 'update'.\n",
