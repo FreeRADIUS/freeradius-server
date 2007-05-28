@@ -127,20 +127,6 @@ receiving packets.
 If this command-line option is given, then the "bind_address" and all
 "listen{}" entries in \fIradiusd.conf\fP are ignored.
 
-.IP \-c
-This is still an \fIexperimental\fP feature.
-Cache the password, group and shadow files in a hash-table in memory.
-This makes the radius process use a bit more memory, but username
-lookups in the password file are \fImuch\fP faster.
-.IP
-After every change in the real password file (user added, password changed)
-you need to send a \fBSIGHUP\fP to the radius server to let it re-read
-its configuration and the password/group/shadow files !
-
-This command line option is deprecated.  See the \fIcache\fP
-configuration item for the \fIunix\fP module in the \fIradiusd.conf\fP
-file.
-
 .IP \-f
 Do not fork, stay running as a foreground process.
 
