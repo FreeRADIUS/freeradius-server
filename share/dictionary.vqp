@@ -51,10 +51,10 @@ ATTRIBUTE	VQP-Cookie				0x2c08	octets # 6-byte MAC address
 #	VQP integer mappings
 #
 
-VALUE	VQP-Packet-Type			VPQ-Join-Request	1
-VALUE	VQP-Packet-Type			VPQ-Join-Response	2
-VALUE	VQP-Packet-Type			VPQ-Reconfirm-Request	3
-VALUE	VQP-Packet-Type			VPQ-Reconfirm-Response	4
+VALUE	VQP-Packet-Type			VQP-Join-Request	1
+VALUE	VQP-Packet-Type			VQP-Join-Response	2
+VALUE	VQP-Packet-Type			VQP-Reconfirm-Request	3
+VALUE	VQP-Packet-Type			VQP-Reconfirm-Response	4
 
 VALUE	VQP-Error-Code			VQP-No-Error		0
 VALUE	VQP-Error-Code			VQP-Wrong-Version	1
