@@ -12,8 +12,9 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(realms_h, "$Id$")
 
-#define HOME_TYPE_AUTH (1)
-#define HOME_TYPE_ACCT (2)
+#define HOME_TYPE_INVALID (0)
+#define HOME_TYPE_AUTH    (1)
+#define HOME_TYPE_ACCT    (2)
 
 #define HOME_PING_CHECK_NONE		(0)
 #define HOME_PING_CHECK_STATUS_SERVER	(1)
