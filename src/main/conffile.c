@@ -60,6 +60,7 @@ struct conf_pair {
 	char *attr;
 	char *value;
 	LRAD_TOKEN operator;
+	LRAD_TOKEN value_type;
 };
 struct conf_part {
 	CONF_ITEM item;
@@ -145,7 +146,8 @@ static CONF_ITEM *cf_datatoitem(CONF_DATA *cd)
  *	Create a new CONF_PAIR
  */
 static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
-				LRAD_TOKEN operator, CONF_SECTION *parent)
+				LRAD_TOKEN operator, LRAD_TOKEN value_type,
+				CONF_SECTION *parent)
 {
 	CONF_PAIR *cp;
 
@@ -155,6 +157,7 @@ static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
 	cp->item.parent = parent;
 	cp->attr = strdup(attr);
 	cp->value = strdup(value);
+	cp->value_type = value_type;
 	cp->operator = operator;
 
 	return cp;
@@ -1244,23 +1247,29 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		switch (t2) {
 		case T_EOL:
 		case T_HASH:
-		case T_OP_EQ:
-		case T_OP_SET:
-			t3 = getword(&ptr, buf3, sizeof(buf3));
 			t2 = T_OP_EQ;
+
+		case T_OP_EQ:
+		case T_OP_ADD:
+		case T_OP_SUB:
+		case T_OP_SET:
+			t3 = getstring(&ptr, buf3, sizeof(buf3));
 
 			/*
 			 *	Handle variable substitution via ${foo}
 			 */
-			value = cf_expand_variables(file, lineno, this,
-						    buf, buf3);
-			if (!value) return -1;
-			
+			if (t3 == T_BARE_WORD) {
+				value = cf_expand_variables(file, lineno, this,
+							    buf, buf3);
+				if (!value) return -1;
+			} else {
+				value = buf3;
+			}
 			
 			/*
 			 *	Add this CONF_PAIR to our CONF_SECTION
 			 */
-			cpn = cf_pair_alloc(buf1, value, t2, this);
+			cpn = cf_pair_alloc(buf1, value, t2, t3, this);
 			cpn->item.lineno = *lineno;
 			cf_item_add(this, cf_pairtoitem(cpn));
 			continue;
