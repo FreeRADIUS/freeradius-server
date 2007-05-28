@@ -30,10 +30,13 @@ RCSID("$Id$")
 #include <freeradius-devel/modcall.h>
 #include <freeradius-devel/rad_assert.h>
 
+#define VMPS_SPACE (1)
+
 typedef struct indexed_modcallable {
-	int comp;
-	int idx;
-	modcallable *modulelist;
+	int		space;
+	int		comp;
+	int		idx;
+	modcallable	*modulelist;
 } indexed_modcallable;
 
 /*
@@ -64,21 +67,6 @@ static const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 	{ "post-auth",    "Post-Auth-Type",  PW_POST_AUTH_TYPE },
 };
 
-/*
- *	Delete ASAP.
- */
-static const section_type_value_t old_section_type_value[] = {
-	{ "authenticate", "authtype", PW_AUTH_TYPE },
-	{ "authorize",    "autztype", PW_AUTZ_TYPE },
-	{ "preacct",      "Pre-Acct-Type",   PW_PRE_ACCT_TYPE },/* unused */
-	{ "accounting",   "acctype", PW_ACCT_TYPE },
-	{ "session",      "sesstype", PW_SESSION_TYPE },
-	{ "pre-proxy",    "Pre-Proxy-Type",  PW_PRE_PROXY_TYPE }, /* unused */
-	{ "post-proxy",   "Post-Proxy-Type", PW_POST_PROXY_TYPE }, /* unused */
-	{ "post-auth",	  "post-authtype", PW_POST_AUTH_TYPE }
-};
-
-
 static void indexed_modcallable_free(void *data)
 {
 	indexed_modcallable *c = data;
@@ -91,6 +79,9 @@ static int indexed_modcallable_cmp(const void *one, const void *two)
 {
 	const indexed_modcallable *a = one;
 	const indexed_modcallable *b = two;
+
+	if (a->space < b->space) return -1;
+	if (a->space > b->space) return +1;
 
 	if (a->comp < b->comp) return -1;
 	if (a->comp >  b->comp) return +1;
@@ -347,12 +338,13 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	return node;
 }
 
-static indexed_modcallable *lookup_by_index(int comp, int idx)
+static indexed_modcallable *lookup_by_index(int space, int comp, int idx)
 {
 	indexed_modcallable myc;
 
 	myc.comp = comp;
 	myc.idx = idx;
+	myc.space = space;
 
 	return rbtree_finddata(components, &myc);
 }
@@ -360,11 +352,11 @@ static indexed_modcallable *lookup_by_index(int comp, int idx)
 /*
  *	Create a new sublist.
  */
-static indexed_modcallable *new_sublist(int comp, int idx)
+static indexed_modcallable *new_sublist(int space, int comp, int idx)
 {
 	indexed_modcallable *c;
 
-	c = lookup_by_index(comp, idx);
+	c = lookup_by_index(space, comp, idx);
 
 	/* It is an error to try to create a sublist that already
 	 * exists. It would almost certainly be caused by accidental
@@ -383,6 +375,7 @@ static indexed_modcallable *new_sublist(int comp, int idx)
 
 	c = rad_malloc(sizeof(*c));
 	c->modulelist = NULL;
+	c->space = space;
 	c->comp = comp;
 	c->idx = idx;
 
@@ -394,12 +387,12 @@ static indexed_modcallable *new_sublist(int comp, int idx)
 	return c;
 }
 
-static int indexed_modcall(int comp, int idx, REQUEST *request)
+static int indexed_modcall(int space, int comp, int idx, REQUEST *request)
 {
 	int rcode;
 	indexed_modcallable *this;
 
-	this = lookup_by_index(comp, idx);
+	this = lookup_by_index(space, comp, idx);
 	if (!this) {
 		if (idx != 0) DEBUG2("  ERROR: Unknown value specified for %s.  Cannot perform requested action.",
 				     section_type_value[comp].typename);
@@ -407,7 +400,7 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
 		rcode = modcall(comp, NULL, request); /* does default action */
 	} else {
 		DEBUG2("  Processing the %s section of %s",
-		       section_type_value[comp].section,
+		       (space == 0) ? section_type_value[comp].section : "vmps",
 		       mainconfig.radiusd_conf);
 		request->component = section_type_value[comp].typename;
 		rcode = modcall(comp, this->modulelist, request);
@@ -422,7 +415,7 @@ static int indexed_modcall(int comp, int idx, REQUEST *request)
  *	block
  */
 static int load_subcomponent_section(modcallable *parent,
-				     CONF_SECTION *cs, int comp,
+				     CONF_SECTION *cs, int space, int comp,
 				     const char *filename)
 {
 	indexed_modcallable *subcomp;
@@ -468,7 +461,7 @@ static int load_subcomponent_section(modcallable *parent,
 		return 0;
 	}
 
-	subcomp = new_sublist(comp, dval->value);
+	subcomp = new_sublist(space, comp, dval->value);
 	if (!subcomp) {
 		radlog(L_ERR|L_CONS,
 		       "%s[%d] %s %s already configured - skipping",
@@ -483,7 +476,7 @@ static int load_subcomponent_section(modcallable *parent,
 }
 
 static int load_component_section(modcallable *parent,
-				  CONF_SECTION *cs, int comp,
+				  CONF_SECTION *cs, int space, int comp,
 				  const char *filename)
 {
 	modcallable *this;
@@ -519,25 +512,13 @@ static int load_component_section(modcallable *parent,
 			if (strcmp(sec_name,
 				   section_type_value[comp].typename) == 0) {
 				if (!load_subcomponent_section(parent, scs,
-							       comp,
+							       space, comp,
 							       filename)) {
 					return -1; /* FIXME: memleak? */
 				}
 				continue;
 			}
 
-			/*
-			 *	Allow old names, too.
-			 */
-			if (strcmp(sec_name,
-				   old_section_type_value[comp].typename) == 0) {
-				if (!load_subcomponent_section(parent, scs,
-							       comp,
-							       filename)) {
-					return -1; /* FIXME: memleak? */
-				}
-				continue;
-			}
 			cp = NULL;
 		} else if (cf_item_is_pair(modref)) {
 			cp = cf_itemtopair(modref);
@@ -596,7 +577,7 @@ static int load_component_section(modcallable *parent,
 			idx = 0;
 		}
 
-		subcomp = new_sublist(comp, idx);
+		subcomp = new_sublist(space, comp, idx);
 		if (subcomp == NULL) {
 			radlog(L_INFO|L_CONS,
 					"%s %s %s already configured - skipping",
@@ -766,14 +747,6 @@ int setup_modules(int reload)
 			 */
 			next = cf_subsection_find_next(cs, sub,
 						       section_type_value[comp].typename);
-
-			/*
-			 *	Allow some old names, too.
-			 */
-			if (!next && (comp <= 4)) {
-				next = cf_subsection_find_next(cs, sub,
-							       old_section_type_value[comp].typename);
-			}
 			sub = next;
 
 			/*
@@ -940,7 +913,39 @@ int setup_modules(int reload)
 		DEBUG2(" Module: Checking %s {...} for more modules to load",
 		       section_type_value[comp].section);
 
-		if (load_component_section(NULL, cs, comp, mainconfig.radiusd_conf) < 0) {
+		if (load_component_section(NULL, cs, 0, comp, mainconfig.radiusd_conf) < 0) {
+			return -1;
+		}
+	}
+
+	/*
+	 *	Load the VMPS section, if necessary.
+	 */
+	for (listener = mainconfig.listen;
+	     listener != NULL;
+	     listener = listener->next) {
+		if (listener->type == RAD_LISTEN_VQP) {
+			break;
+		}
+	}
+
+	if (listener) {
+		cs = cf_section_find("vmps");
+		if (!cs) {
+			radlog(L_ERR, "Listening on vmps socket, but no vmps section");
+			return -1;
+		}
+
+		if (cf_item_find_next(cs, NULL) == NULL) {
+			radlog(L_ERR, "Listening on vmps socket, vmps section is empty");
+			return -1;
+		}
+
+		DEBUG2(" Module: Checking vmps {...} for more modules to load");
+
+		if (load_component_section(NULL, cs, VMPS_SPACE,
+					   RLM_COMPONENT_POST_AUTH,
+					   mainconfig.radiusd_conf) < 0) {
 			return -1;
 		}
 	}
@@ -956,7 +961,7 @@ int setup_modules(int reload)
  */
 int module_authorize(int autz_type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_AUTZ, autz_type, request);
+	return indexed_modcall(0, RLM_COMPONENT_AUTZ, autz_type, request);
 }
 
 /*
@@ -964,7 +969,7 @@ int module_authorize(int autz_type, REQUEST *request)
  */
 int module_authenticate(int auth_type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_AUTH, auth_type, request);
+	return indexed_modcall(0, RLM_COMPONENT_AUTH, auth_type, request);
 }
 
 /*
@@ -972,7 +977,7 @@ int module_authenticate(int auth_type, REQUEST *request)
  */
 int module_preacct(REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_PREACCT, 0, request);
+	return indexed_modcall(0, RLM_COMPONENT_PREACCT, 0, request);
 }
 
 /*
@@ -980,7 +985,7 @@ int module_preacct(REQUEST *request)
  */
 int module_accounting(int acct_type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_ACCT, acct_type, request);
+	return indexed_modcall(0, RLM_COMPONENT_ACCT, acct_type, request);
 }
 
 /*
@@ -999,7 +1004,7 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
 	request->simul_max = maxsimul;
 	request->simul_mpp = 1;
 
-	rcode = indexed_modcall(RLM_COMPONENT_SESS, sess_type, request);
+	rcode = indexed_modcall(0, RLM_COMPONENT_SESS, sess_type, request);
 
 	if (rcode != RLM_MODULE_OK) {
 		/* FIXME: Good spot for a *rate-limited* warning to the log */
@@ -1014,7 +1019,7 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
  */
 int module_pre_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_PRE_PROXY, type, request);
+	return indexed_modcall(0, RLM_COMPONENT_PRE_PROXY, type, request);
 }
 
 /*
@@ -1022,7 +1027,7 @@ int module_pre_proxy(int type, REQUEST *request)
  */
 int module_post_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_POST_PROXY, type, request);
+	return indexed_modcall(0, RLM_COMPONENT_POST_PROXY, type, request);
 }
 
 /*
@@ -1030,6 +1035,15 @@ int module_post_proxy(int type, REQUEST *request)
  */
 int module_post_auth(int postauth_type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_POST_AUTH, postauth_type, request);
+	return indexed_modcall(0, RLM_COMPONENT_POST_AUTH, postauth_type, request);
+}
+
+/*
+ *	Do VMPS
+ */
+int module_vmps(REQUEST *request)
+{
+	return indexed_modcall(VMPS_SPACE, RLM_COMPONENT_POST_AUTH, 0,
+			       request);
 }
 
