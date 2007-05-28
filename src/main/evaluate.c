@@ -28,6 +28,24 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
+#ifdef HAVE_REGEX_H
+#include <regex.h>
+
+/*
+ *  For POSIX Regular expressions.
+ *  (0) Means no extended regular expressions.
+ *  REG_EXTENDED means use extended regular expressions.
+ */
+#ifndef REG_EXTENDED
+#define REG_EXTENDED (0)
+#endif
+
+#ifndef REG_NOSUB
+#define REG_NOSUB (0)
+#endif
+#endif
+
+
 static int all_digits(const char *string)
 {
 	const char *p = string;
@@ -88,6 +106,72 @@ static const char *expand_string(char *buffer, size_t sizeof_buffer,
 	return NULL;
 }
 
+static LRAD_TOKEN getregex(char **ptr, char *buffer, size_t buflen)
+{
+	char *p = *ptr;
+	char *q = buffer;
+
+	if (*p != '/') return T_OP_INVALID;
+
+	p++;
+	while (*p) {
+		if (buflen <= 1) break;
+
+		if (*p == '/') {
+			p++;
+			break;
+		}
+
+		if (*p == '\\') {
+			int x;
+			
+			switch (p[1]) {
+			case 'r':
+				*q++ = '\r';
+				break;
+			case 'n':
+				*q++ = '\n';
+				break;
+			case 't':
+				*q++ = '\t';
+				break;
+			case '"':
+				*q++ = '"';
+				break;
+			case '\'':
+				*q++ = '\'';
+				break;
+			case '`':
+				*q++ = '`';
+				break;
+				
+				/*
+				 *	FIXME: add 'x' and 'u'
+				 */
+
+			default:
+				if ((p[1] >= '0') && (p[1] <= '9') &&
+				    (sscanf(p, "%3o", &x) == 1)) {
+					*q++ = x;
+					p += 2;
+				} else
+				*q++ = p[1];
+				break;
+			}
+			p += 2;
+			buflen--;
+			continue;
+		}
+
+		*(q++) = *(p++);
+		buflen--;
+	}
+	*q = '\0';
+	*ptr = p;
+
+	return T_BARE_WORD;
+}
+
 int radius_evaluate_condition(REQUEST *request, int depth,
 			      const char **ptr, int evaluate_it, int *presult)
 {
@@ -96,10 +180,10 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 	int invert = FALSE;
 	int evaluate_next_condition = evaluate_it;
 	const char *p = *ptr;
-	const char *q;
+	const char *q, *start;
 	LRAD_TOKEN token, lt, rt;
 	char left[1024], right[1024], comp[4];
-	char *pleft, *pright;
+	const char *pleft, *pright;
 	char  xleft[1024], xright[1024];
 	int lint, rint;
 
@@ -153,11 +237,14 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 			p = end;
 			DEBUG4(">>> EVALUATE RETURNED ::%s::", end);
 			
-			if (*p != ')') {
+			if (!((*p == ')') ||
+			      ((p[0] == '&') && (p[1] == '&')) ||
+			      ((p[0] == '|') && (p[1] == '|')))) {
+
 				radlog(L_ERR, "Parse error in condition at: %s", p);
 				return FALSE;
 			}
-			p++;	/* skip it */
+			if (*p == ')') p++;	/* skip it */
 			found_condition = TRUE;
 			
 			while ((*p == ' ') || (*p == '\t')) p++;
@@ -219,6 +306,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		    ((p[0] == '!') && (p[1] == '('))) continue;
 
 		DEBUG4(">>> LOOKING AT %s", p);
+		start = p;
 
 		/*
 		 *	Look for common errors.
@@ -236,7 +324,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		    (lt != T_DOUBLE_QUOTED_STRING) &&
 		    (lt != T_SINGLE_QUOTED_STRING) &&
 		    (lt != T_BACK_QUOTED_STRING)) {
-			radlog(L_ERR, "Expected string or numbers at: %s", left);
+			radlog(L_ERR, "Expected string or numbers at: %s", p);
 			return FALSE;
 		}
 
@@ -252,11 +340,6 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		}
 
 		/*
-		 *	FIXME: lt = word, double-quoted string, or
-		 *	single-quoted-string
-		 */
-
-		/*
 		 *	Peek ahead.  Maybe it's just a check for
 		 *	existence.  If so, there shouldn't be anything
 		 *	else.
@@ -267,7 +350,9 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		/*
 		 *	End of condition, 
 		 */
-		if (!*q || (*q == ')')) {
+		if (!*q || (*q == ')') ||
+		    ((q[0] == '&') && (q[1] == '&')) ||
+		    ((q[0] == '|') && (q[1] == '|'))) {
 			/*
 			 *	Check for truth or falsehood.
 			 */
@@ -316,20 +401,29 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		
 		/*
 		 *	Validate strings.
+		 *
+		 *	FIXME: If token == T_OP_REG_EQ or T_OP_REG_NE,
+		 *	quote strings by '/', rather than anything
+		 *	else!
 		 */
-		rt = gettoken(&p, right, sizeof(right));
+		if ((token == T_OP_REG_EQ) ||
+		    (token == T_OP_REG_NE)) {
+			rt = getregex(&p, right, sizeof(right));
+		} else {
+			rt = gettoken(&p, right, sizeof(right));
+		}
 		if ((rt != T_BARE_WORD) &&
 		    (rt != T_DOUBLE_QUOTED_STRING) &&
 		    (rt != T_SINGLE_QUOTED_STRING) &&
 		    (rt != T_BACK_QUOTED_STRING)) {
-			radlog(L_ERR, "Expected string or numbers at: %s", right);
+			radlog(L_ERR, "Expected string or numbers at 2 %d: %s", rt, p);
 			return FALSE;
 		}
 		
 		pright = right;
 		if (evaluate_next_condition) {
 			pright = expand_string(xright, sizeof(xright), request,
-					      rt, right);
+					       rt, right);
 			if (!pright) {
 				radlog(L_ERR, "Failed expanding string at: %s",
 				       right);
@@ -392,14 +486,101 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 				result = (lint < rint);
 				break;
 
+#ifdef HAVE_REGEX_H
+			case T_OP_REG_EQ: {
+				int i, compare;
+				regex_t reg;
+				regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
+				
+				/*
+				 *	Include substring matches.
+				 */
+				regcomp(&reg, pright, REG_EXTENDED);
+				compare = regexec(&reg, pleft,
+						  REQUEST_MAX_REGEX + 1,
+						  rxmatch, 0);
+				regfree(&reg);
+				
+				/*
+				 *	Add %{0}, %{1}, etc.
+				 */
+				for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
+					char *p;
+					char buffer[1024];
+					
+					/*
+					 *	Didn't match: delete old
+					 *	match, if it existed.
+					 */
+					if ((compare != 0) ||
+					    (rxmatch[i].rm_so == -1)) {
+						p = request_data_get(request,
+								     request,
+								     REQUEST_DATA_REGEX | i);
+						if (p) {
+							free(p);
+							continue;
+						}
+						
+						/*
+						 *	No previous match
+						 *	to delete, stop.
+						 */
+						break;
+					}
+					
+					/*
+					 *	Copy substring into buffer.
+					 */
+					memcpy(buffer, pleft + rxmatch[i].rm_so,
+					       rxmatch[i].rm_eo - rxmatch[i].rm_so);
+					buffer[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
+					
+					/*
+					 *	Copy substring, and add it to
+					 *	the request.
+					 *
+					 *	Note that we don't check
+					 *	for out of memory, which is
+					 *	the only error we can get...
+					 */
+					p = strdup(buffer);
+					request_data_add(request, request,
+							 REQUEST_DATA_REGEX | i,
+							 p, free);
+				}
+				result = (compare == 0);
+			}
+				break;
+
+			case T_OP_REG_NE: {
+				int i, compare;
+				regex_t reg;
+				regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
+				
+				/*
+				 *	Include substring matches.
+				 */
+				regcomp(&reg, pright,
+					REG_EXTENDED);
+				compare = regexec(&reg, pleft,
+						  REQUEST_MAX_REGEX + 1,
+						  rxmatch, 0);
+				regfree(&reg);
+				
+				result = (compare != 0);
+			}
+				break;
+#endif
+
 			default:
 				DEBUG4(">>> NOT IMPLEMENTED %d", token);
 				break;
 			}
 
-			DEBUG2("%.*s Evaluating %s(\"%s\" %s \"%s\") -> %s",
+			DEBUG2("%.*s Evaluating %s(%.*s) -> %s",
 			       depth, filler,
-			       invert ? "!" : "", pleft, comp, pright,
+			       invert ? "!" : "", p - start, start,
 			       (result != FALSE) ? "TRUE" : "FALSE");
 
 			DEBUG4(">>> GOT result %d", result);
@@ -432,7 +613,9 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		/*
 		 *	Closing brace or EOL, return.
 		 */
-		if ((*p == ')') || !*p) {
+		if (!*p || (*p == ')') ||
+		    ((p[0] == '&') && (p[1] == '&')) ||
+		    ((p[0] == '|') && (p[1] == '|'))) {
 			DEBUG4(">>> AT EOL2a");
 			*ptr = p;
 			*presult = result;
