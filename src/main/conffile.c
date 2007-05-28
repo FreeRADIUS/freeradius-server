@@ -1042,6 +1042,7 @@ static int condition_looks_ok(const char **ptr)
 
 		case '"':
 		case '\'':
+		case '/':
 		case '`':
 			quote = *p;
 			/* FALL-THROUGH */
