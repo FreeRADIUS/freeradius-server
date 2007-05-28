@@ -559,13 +559,19 @@ AC_CHECK_HEADERS( \
 	sys/security.h \
 	fcntl.h \
 	sys/fcntl.h \
-	net/if.h \
 	prot.h \
 	pwd.h \
 	grp.h \
 	sia.h \
 	siad.h
 )
+
+dnl FreeBSD requires sys/socket.h before net/if.h
+AC_CHECK_HEADERS(net/if.h, [], [],
+[#if HAVE_SYS_SOCKET_H
+# include <sys/socket.h>
+# endif
+])
 
 REGEX=no
 AC_CHECK_HEADER(regex.h, AC_DEFINE(HAVE_REGEX_H, [], [define this if we have the <regex.h> header file]))
