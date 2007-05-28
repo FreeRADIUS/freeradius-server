@@ -1,0 +1,117 @@
+.TH vmpsd.conf 5 "28 May 2007" "" "FreeRADIUS VMPSd configuration file"
+.SH NAME
+vmpsd.conf \- configuration file for the VMPSd server
+.SH DESCRIPTION
+The \fBvmpsd.conf\fP file resides in the \fB/etc/raddb\fP directory.
+It defines the global configuration for the VMPSd server.
+
+.SH INTRODUCTION
+
+The file is very similar in form to that of the \fBradiusd.conf\fP,
+and in fact shares many of the configuration items as that file.
+
+The main difference is that only one module section is allowed:
+.PP
+.DS
+	vmps {
+.br
+		...
+.br
+	}
+.DE
+
+Where the \fBradiusd.conf\fP file has authorize, authenticate, and
+post-auth.  Proxying of requests is supported, and also the pre-proxy
+and post-proxy sections.  However, the requests will be proxied as
+RADIUS packets, and not VMPS packets.  This is because the server is
+still, at heart, a RADIUS server.
+
+.SH "FILE FORMAT"
+The file consists of attribute-value pairs, sections, and comments.
+
+Attribute-value pairs are of the form \fBname = value\fP.
+
+A section begins with a section name, followed on the same line by an
+open bracket \fB{\fP.  The section may contain other
+sections, or attribute-value pairs.  The section ends with a close
+bracket \fB}\fP, on a line by itself.
+
+Any line beginning with a (\fB#\fP) is deemed to be a comment, and is
+ignored.  Lines containing only whitespace are also ignored.
+
+The file is line-based.  That is, each newline-terminated line
+represents either a comment, a section name, or an attribute-value
+pair.  It is not possible to specify multiple items on the same line,
+and there are no continuation lines.
+
+The value for a particular attribute may reference a previously
+defined attribute by name. The standard shell reference format
+\fB${name}\fP is used.  When the variable is in a section or
+subsection, it may be referenced as \fB${section.subsection.name}\fP.
+Forward references are not allowed.  Relative references are allowed,
+via pre-pending the name with one or more of '.'.
+
+The individidual configuration directives are too numerous to list
+here, so this manual page only documents the file format.  Please read
+the sample configuration file distributed with the server for comments
+describing each of the allowed configuration directives.
+
+.SH EXAMPLES
+.PP
+.DS
+	foo = bar
+
+.DE
+Sets variable \fBfoo\fP to have text value \fBbar\fP.
+
+.DS
+	blogs = ${foo}
+
+.DE
+Sets variable \fBblogs\fP to the value of variable \fBfoo\fP from the
+current section.  If there is no variable \fBfoo\fP in the current
+section, then it looks for that variable in the body of the main
+configuration file, e.g. \f${Blogdir}\fP
+
+.DS
+	my_section {
+.br
+		baz = bud
+.br
+	}
+
+.DE
+Defines a section named \fBmy_section\fP, containing variable
+\fBbaz\fP.
+
+.DS
+	blogs = ${.foo}
+
+.DE
+Sets variable \fBblogs\fP to the value of variable \fBfoo\fP,
+from the current section.
+
+.DS
+	blogs = ${..foo}
+
+.DE
+Sets variable \fBblogs\fP to the value of variable \fBfoo\fP, from the
+section which contains the current section.
+
+.DS
+	blogs = ${modules.detail.detailfile}
+
+.DE
+Sets variable \fBblogs\fP to the value of variable \fBdetailfile\fP,
+of the \fBdetail\fP module, which is in the \fBmodules\fP section of
+the configuration file.
+
+.PP
+.SH FILES
+/etc/raddb/vmpsd.conf
+.SH "SEE ALSO"
+.BR vmpsd (8),
+.BR clients (5)
+
+.SH AUTHOR
+Alan DeKok <aland@deployingradius.com>
