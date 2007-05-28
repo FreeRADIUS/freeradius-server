@@ -237,7 +237,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 			p = end;
 			DEBUG4(">>> EVALUATE RETURNED ::%s::", end);
 			
-			if (!((*p == ')') ||
+			if (!((*p == ')') || (*p == '!') ||
 			      ((p[0] == '&') && (p[1] == '&')) ||
 			      ((p[0] == '|') && (p[1] == '|')))) {
 
@@ -302,8 +302,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		/*
 		 *	More conditions, keep going.
 		 */
-		if ((*p == '(') ||
-		    ((p[0] == '!') && (p[1] == '('))) continue;
+		if ((*p == '(') || (p[0] == '!')) continue;
 
 		DEBUG4(">>> LOOKING AT %s", p);
 		start = p;
@@ -350,7 +349,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		/*
 		 *	End of condition, 
 		 */
-		if (!*q || (*q == ')') ||
+		if (!*q || (*q == ')') || (*q == '!') ||
 		    ((q[0] == '&') && (q[1] == '&')) ||
 		    ((q[0] == '|') && (q[1] == '|'))) {
 			/*
@@ -361,6 +360,12 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 				result = (lint != 0);
 			} else {
 				result = (*pleft != '\0');
+			}
+
+			if (invert) {
+				DEBUG4(">>> INVERTING result");
+				result = (result == FALSE);
+				invert = FALSE;
 			}
 
 			if (evaluate_next_condition) {
@@ -613,7 +618,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		/*
 		 *	Closing brace or EOL, return.
 		 */
-		if (!*p || (*p == ')') ||
+		if (!*p || (*p == ')') || (*p == '!') ||
 		    ((p[0] == '&') && (p[1] == '&')) ||
 		    ((p[0] == '|') && (p[1] == '|'))) {
 			DEBUG4(">>> AT EOL2a");
