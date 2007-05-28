@@ -483,4 +483,6 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet);
 /* evaluate.c */
 int radius_evaluate_condition(REQUEST *request, int depth,
 			      const char **ptr, int evaluate_it, int *presult);
+int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
+			   const char *name);
 #endif /*RADIUSD_H*/

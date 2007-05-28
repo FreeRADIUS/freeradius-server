@@ -50,7 +50,7 @@ struct modcallable {
 	const char *name;
 	int lineno;
 	int actions[RLM_MODULE_NUMCODES];
-	enum { MOD_SINGLE, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE, MOD_IF, MOD_ELSE, MOD_ELSIF } type;
+	enum { MOD_SINGLE, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE, MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE } type;
 };
 
 #define GROUPTYPE_SIMPLE	0
@@ -62,6 +62,7 @@ typedef struct {
 	modcallable mc;		/* self */
 	int grouptype;	/* after mc */
 	modcallable *children;
+	CONF_SECTION *cs;
 } modgroup;
 
 typedef struct {
@@ -90,6 +91,7 @@ static modgroup *mod_callabletogroup(modcallable *p)
 		   (p->type==MOD_IF) ||
 		   (p->type==MOD_ELSE) ||
 		   (p->type==MOD_ELSIF) ||
+		   (p->type==MOD_UPDATE) ||
 		   (p->type==MOD_REDUNDANT_LOAD_BALANCE));
 	return (modgroup *)p;
 }
@@ -160,7 +162,7 @@ static int compile_action(modcallable *c, const char *attr, const char *value,
 		if (action == 0) return 0;
 	} else {
 		radlog(L_ERR|L_CONS,
-		       "%s[%d] Unknown action '%s'.\n",
+		       "%s[%d]: Unknown action '%s'.\n",
 		       filename, lineno, value);
 		return 0;
 	}
@@ -171,7 +173,7 @@ static int compile_action(modcallable *c, const char *attr, const char *value,
 		rcode = lrad_str2int(rcode_table, attr, -1);
 		if (rcode < 0) {
 			radlog(L_ERR|L_CONS,
-			       "%s[%d] Unknown module rcode '%s'.\n",
+			       "%s[%d]: Unknown module rcode '%s'.\n",
 			       filename, lineno, attr);
 			return 0;
 		}
@@ -253,6 +255,7 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request,
 	return myresult;
 }
 
+
 static int default_component_results[RLM_COMPONENT_COUNT] = {
 	RLM_MODULE_REJECT,	/* AUTH */
 	RLM_MODULE_NOTFOUND,	/* AUTZ */
@@ -272,7 +275,8 @@ static const char *group_name[] = {
 	"redundant-load-balance group",
 	"if",
 	"else",
-	"elsif"
+	"elsif",
+	"update"
 };
 
 static const char *modcall_spaces = "++++++++++++++++++++++++++++++++";
@@ -386,6 +390,14 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			} /* else process it as a simple group */
 		}
 
+		if (child->type == MOD_UPDATE) {
+			CONF_SECTION *cs = mod_callabletogroup(child)->cs;
+
+			myresult = radius_update_attrlist(request, cs,
+							  child->name);
+			goto handle_result;
+		}
+
 		/*
 		 *	Child is a group that has children of it's own.
 		 */
@@ -490,6 +502,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 		myresult = call_modsingle(component, sp, request,
 					  default_component_results[component]);
+	handle_result:
 		DEBUG2("%.*s[%s] returns %s",
 		       stack.pointer + 1, modcall_spaces,
 		       child->name,
@@ -550,6 +563,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			stack.priority[stack.pointer] = child->actions[myresult];
 		}
 
+		next_child:
 		/*
 		 *	No parent, we must be done.
 		 */
@@ -1002,6 +1016,87 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 };
 
 
+static modcallable *do_compile_modupdate(modcallable *parent,
+					 int component, CONF_SECTION *cs,
+					 const char *filename, int lineno,
+					 const char *name2)
+{
+	int i, ok = FALSE;
+	modgroup *g;
+	modcallable *csingle;
+	CONF_ITEM *ci;
+
+	static const char *attrlist_names[] = {
+		"request", "reply", "proxy-request", "proxy-reply",
+		"config", NULL
+	};
+
+	for (i = 0; attrlist_names[i] != NULL; i++) {
+		if (strcmp(name2, attrlist_names[i]) == 0) {
+			ok = TRUE;
+			break;
+		}
+	}
+
+	if (!ok) {
+		radlog(L_ERR, "%s[%d]: Unknown attribute list \"%s\"", name2);
+		return NULL;
+	}
+
+	/*
+	 *	Walk through the children of the update section,
+	 *	ensuring that they're all known attributes.
+	 */
+	for (ci=cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci=cf_item_find_next(cs, ci)) {
+		const char *attr;
+		CONF_PAIR *cp;
+
+		if (cf_item_is_section(ci)) {
+			radlog(L_ERR|L_CONS,
+			       "%s[%d]: \"update\" sections cannot have subsections",
+			       filename,
+			       cf_section_lineno(cf_itemtosection(ci)));
+			return NULL;
+		}
+
+		cp = cf_itemtopair(ci);
+		attr = cf_pair_attr(cp);
+		
+		if (!dict_attrbyname(attr)) {
+			radlog(L_ERR|L_CONS,
+			       "%s[%d]: Unknown attribute \"%s\"",
+			       filename, cf_pair_lineno(cp));
+			return NULL;
+		}
+
+		if (!cf_pair_value(cp)) {
+			radlog(L_ERR|L_CONS,
+			       "%s[%d]: No value specified",
+			       filename, cf_pair_lineno(cp));
+			return NULL;
+		}
+	}
+
+	g = rad_malloc(sizeof(*g));
+	if (!g) return NULL;
+	memset(g, 0, sizeof(*g));
+	csingle = mod_grouptocallable(g);
+	
+	csingle->parent = parent;
+	csingle->next = NULL;
+	csingle->name = name2;
+	csingle->lineno = lineno;
+	csingle->type = MOD_UPDATE;
+	
+	g->grouptype = GROUPTYPE_SIMPLE;
+	g->children = NULL;
+	g->cs = cs;
+
+	return csingle;
+}
+
 /*
  *	Compile one entry of a module call.
  */
@@ -1037,18 +1132,21 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 						   filename,
 						   GROUPTYPE_SIMPLE,
 						   grouptype);
+
 		} else if (strcmp(modrefname, "redundant") == 0) {
 			*modname = name2;
 			return do_compile_modgroup(parent, component, cs,
 						   filename,
 						   GROUPTYPE_REDUNDANT,
 						   grouptype);
+
 		} else if (strcmp(modrefname, "append") == 0) {
 			*modname = name2;
 			return do_compile_modgroup(parent, component, cs,
 						   filename,
 						   GROUPTYPE_APPEND,
 						   grouptype);
+
 		} else if (strcmp(modrefname, "load-balance") == 0) {
 			*modname = name2;
 			csingle= do_compile_modgroup(parent, component, cs,
@@ -1058,6 +1156,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (!csingle) return NULL;
 			csingle->type = MOD_LOAD_BALANCE;
 			return csingle;
+
 		} else if (strcmp(modrefname, "redundant-load-balance") == 0) {
 			*modname = name2;
 			csingle= do_compile_modgroup(parent, component, cs,
@@ -1067,10 +1166,11 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (!csingle) return NULL;
 			csingle->type = MOD_REDUNDANT_LOAD_BALANCE;
 			return csingle;
+
 		} else 	if (strcmp(modrefname, "if") == 0) {
 			if (!cf_section_name2(cs)) {
 				radlog(L_ERR|L_CONS,
-				       "%s[%d] 'if' without condition.\n",
+				       "%s[%d]: 'if' without condition.\n",
 				       filename, lineno);
 				return NULL;
 			}
@@ -1091,6 +1191,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			*modname = name2;
 
 			return csingle;
+
 		} else 	if (strcmp(modrefname, "elsif") == 0) {
 			if (parent &&
 			    ((parent->type == MOD_LOAD_BALANCE) ||
@@ -1124,6 +1225,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			*modname = name2;
 
 			return csingle;
+
 		} else 	if (strcmp(modrefname, "else") == 0) {
 			if (parent &&
 			    ((parent->type == MOD_LOAD_BALANCE) ||
@@ -1149,6 +1251,26 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (!csingle) return NULL;
 			csingle->type = MOD_ELSE;
 			return csingle;
+
+		} else 	if (strcmp(modrefname, "update") == 0) {
+			modgroup *g;
+
+			if (!cf_section_name2(cs)) {
+				radlog(L_ERR|L_CONS,
+				       "%s[%d] Require list name for 'update'.\n",
+				       filename, lineno);
+				return NULL;
+			}
+
+			*modname = name2;
+
+			csingle = do_compile_modupdate(parent, component, cs,
+						       filename, lineno,
+						       name2);
+			if (!csingle) return NULL;
+
+			return csingle;
+
 		}
 
 		/*
@@ -1160,11 +1282,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		lineno = cf_pair_lineno(cp);
 		modrefname = cf_pair_attr(cp);
 	}
-
-	/*
-	 *	FIXME: If module name is "update", or stuff... add it
-	 *	to the if/then/else parent for parsing at run time?
-	 */
 
 	/*
 	 *	See if the module is a virtual one.  If so, return that,

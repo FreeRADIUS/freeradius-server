@@ -24,8 +24,8 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
 static int all_digits(const char *string)
@@ -44,6 +44,49 @@ static int all_digits(const char *string)
 #endif
 
 static const char *filler = "????????????????????????????????????????????????????????????????";
+
+static const char *expand_string(char *buffer, size_t sizeof_buffer,
+				 REQUEST *request,
+				 LRAD_TOKEN value_type, const char *value)
+{
+	int result;
+	char *p;
+
+	switch (value_type) {
+	default:
+	case T_BARE_WORD:
+	case T_SINGLE_QUOTED_STRING:
+		return value;
+
+	case T_BACK_QUOTED_STRING:
+		result = radius_exec_program(value, request, 1,
+					     buffer, sizeof_buffer, NULL,
+					     NULL, 0);
+		if (result != 0) {
+			return NULL;
+		}
+
+		/*
+		 *	The result should be ASCII.
+		 */
+		for (p = buffer; *p != '\0'; p++) {
+			if (*p < ' ' ) {
+				*p = '\0';
+				return buffer;
+			}
+		}
+		return buffer;
+
+
+	case T_DOUBLE_QUOTED_STRING:
+		if (!strchr(value, '%')) return value;
+
+		radius_xlat(buffer, sizeof_buffer, value, request, NULL);
+		return buffer;
+	}
+
+	return NULL;
+}
 
 int radius_evaluate_condition(REQUEST *request, int depth,
 			      const char **ptr, int evaluate_it, int *presult)
@@ -198,10 +241,14 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		}
 
 		pleft = left;
-		if (evaluate_next_condition && (lt == T_DOUBLE_QUOTED_STRING)) {
-			pleft = xleft;
-			
-			radius_xlat(xleft, sizeof(xleft), left, request, NULL);
+		if (evaluate_next_condition) {
+			pleft = expand_string(xleft, sizeof(xleft), request,
+					      lt, left);
+			if (!pleft) {
+				radlog(L_ERR, "Failed expanding string at: %s",
+				       left);
+				return FALSE;
+			}
 		}
 
 		/*
@@ -280,11 +327,14 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		}
 		
 		pright = right;
-		if (evaluate_next_condition && (rt == T_DOUBLE_QUOTED_STRING)) {
-			pright = xright;
-			
-			radius_xlat(xright, sizeof(xright), right,
-				    request, NULL);
+		if (evaluate_next_condition) {
+			pright = expand_string(xright, sizeof(xright), request,
+					      rt, right);
+			if (!pright) {
+				radlog(L_ERR, "Failed expanding string at: %s",
+				       right);
+				return FALSE;
+			}
 		}
 		
 		DEBUG4(">>> %d:%s %d %d:%s",
@@ -395,3 +445,107 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 	*presult = result;
 	return TRUE;
 }
+
+/*
+ *	Copied shamelessly from conffile.c, to simplify the API for
+ *	now...
+ */
+typedef enum conf_type {
+	CONF_ITEM_INVALID = 0,
+	CONF_ITEM_PAIR,
+	CONF_ITEM_SECTION,
+	CONF_ITEM_DATA
+} CONF_ITEM_TYPE;
+
+struct conf_item {
+	struct conf_item *next;
+	struct conf_part *parent;
+	int lineno;
+	CONF_ITEM_TYPE type;
+};
+struct conf_pair {
+	CONF_ITEM item;
+	char *attr;
+	char *value;
+	LRAD_TOKEN operator;
+	LRAD_TOKEN value_type;
+};
+
+
+/*
+ *	Add attributes to a list.
+ */
+int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
+			   const char *name)
+{
+	CONF_ITEM *ci;
+	VALUE_PAIR *head, **tail;
+	VALUE_PAIR **vps = NULL;
+
+	if (!request || !cs) return RLM_MODULE_INVALID;
+
+	if (strcmp(name, "request") == 0) {
+		vps = &request->packet->vps;
+
+	} else if (strcmp(name, "reply") == 0) {
+		vps = &request->reply->vps;
+
+	} else if (strcmp(name, "proxy-request") == 0) {
+		if (request->proxy) vps = &request->proxy->vps;
+
+	} else if (strcmp(name, "proxy-reply") == 0) {
+		if (request->proxy_reply) vps = &request->proxy_reply->vps;
+
+	} else if (strcmp(name, "config") == 0) {
+		vps = &request->config_items;
+
+	} else {
+		return RLM_MODULE_INVALID;
+	}
+
+	if (!vps) return RLM_MODULE_NOOP; /* didn't update the list */
+
+	head = NULL;
+	tail = &head;
+
+	for (ci=cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci=cf_item_find_next(cs, ci)) {
+		const char *value;
+		CONF_PAIR *cp;
+		VALUE_PAIR *vp;
+		char buffer[2048];
+
+		if (cf_item_is_section(ci)) {
+			pairfree(&head);
+			return RLM_MODULE_INVALID;
+		}
+
+		cp = cf_itemtopair(ci);
+
+		value = expand_string(buffer, sizeof(buffer), request,
+				      cp->value_type, cp->value);
+		if (!value) {
+			pairfree(&head);
+			return RLM_MODULE_INVALID;
+		}
+
+		vp = pairmake(cp->attr, value, cp->operator);
+		if (!vp) {
+			pairfree(&head);
+			return RLM_MODULE_FAIL;
+		}
+
+		*tail = vp;
+		tail = &vp->next;
+	}
+
+	if (!head) return RLM_MODULE_NOOP;
+
+	pairmove(vps, &head);
+	pairfree(&head);
+
+	return RLM_MODULE_UPDATED;
+}
+
+
