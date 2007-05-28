@@ -272,12 +272,38 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 */
 		for (i = 0; i < realm->acct_pool->num_home_servers; i++) {
 			if (lrad_ipaddr_cmp(&realm->acct_pool->servers[i]->ipaddr,
-					    &my_ipaddr)) {
+					    &my_ipaddr) == 0) {
 				DEBUG2("Suppressing proxy due to FreeRADIUS-Proxied-To");
 				return 0;
 			}
 		}
-        }
+
+		/*
+		 *	See detail_recv() in src/main/listen.c for the
+		 *	additional checks.
+		 */
+	} else if ((request->listener->type == RAD_LISTEN_DETAIL) &&
+		   ((request->packet->src_ipaddr.af == AF_INET6) ||
+		    (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_NONE)))) {
+		int i;
+
+		/*
+		 *	Loop over the home accounting servers for this
+		 *	realm.  If one of them has the same IP as the
+		 *	FreeRADIUS-Proxied-To attribute, then the
+		 *	packet has already been sent there.  Don't
+		 *	send it there again.
+		 */
+		for (i = 0; i < realm->acct_pool->num_home_servers; i++) {
+			if ((lrad_ipaddr_cmp(&realm->acct_pool->servers[i]->ipaddr,
+					     &request->packet->src_ipaddr) == 0) &&
+			    (realm->acct_pool->servers[i]->port == request->packet->src_port)) {
+				DEBUG2("Suppressing proxy because packet was already sent to a server in that realm");
+				return 0;
+			}
+		}
+
+	}
 
 	/*
 	 *	We got this far, which means we have a realm, set returnrealm
@@ -425,7 +451,6 @@ static int realm_preacct(void *instance, REQUEST *request)
 
 static int realm_detach(void *instance)
 {
-	struct realm_config_t *inst = instance;
 	free(instance);
 	return 0;
 }
