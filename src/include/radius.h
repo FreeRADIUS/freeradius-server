@@ -308,3 +308,19 @@
 #define PW_ACCTTYPE			1012
 #define PW_SESSTYPE			1013
 #define PW_POSTAUTHTYPE			1014
+
+/*
+ *	Cisco's VLAN Query Protocol.
+ */
+#define PW_VQP_PACKET_TYPE		0x2b00
+#define PW_VQP_ERROR_CODE		0x2b01
+#define PW_VQP_SEQUENCE_NUMBER		0x2b02
+
+#define PW_VQP_CLIENT_IP_ADDRESS        0x2c01
+#define PW_VQP_PORT_NAME		0x2c02
+#define PW_VQP_VLAN_NAME		0x2c03
+#define PW_VQP_DOMAIN_NAME		0x2c04
+#define PW_VQP_ETHERNET_FRAME		0x2c05
+#define PW_VQP_MAC			0x2c06
+#define PW_VQP_UNKNOWN			0x2c07
+#define PW_VQP_COOKIE			0x2c08
