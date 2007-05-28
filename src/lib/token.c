@@ -150,7 +150,7 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 			p++;
 			continue;
 		}
-		if (*p == '\\') {
+		if (!quote && (*p == '\\')) {
 			p++;
 			escape = 1;
 			continue;
@@ -232,6 +232,24 @@ int getbareword(char **ptr, char *buf, int buflen)
 LRAD_TOKEN gettoken(char **ptr, char *buf, int buflen)
 {
 	return getthing(ptr, buf, buflen, 1, tokens);
+}
+
+/*
+ *	Expect a string.
+ */
+LRAD_TOKEN getstring(char **ptr, char *buf, int buflen)
+{
+	char *p = *ptr;
+
+	while (p && (isspace((int)*p))) p++;
+
+	*ptr = p;
+
+	if ((*p == '"') || (*p == '\'') || (*p == '`')) {
+		return gettoken(ptr, buf, buflen);
+	}
+
+	return getthing(ptr, buf, buflen, 0, tokens);
 }
 
 /*

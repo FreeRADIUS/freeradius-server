@@ -74,5 +74,6 @@ const char *lrad_int2str(const LRAD_NAME_NUMBER *table, int number,
 int		getword (char **ptr, char *buf, int buflen);
 int		getbareword (char **ptr, char *buf, int buflen);
 LRAD_TOKEN	gettoken(char **ptr, char *buf, int buflen);
+LRAD_TOKEN	getstring(char **ptr, char *buf, int buflen);
 
 #endif /* LRAD_TOKEN_H */
