@@ -1413,7 +1413,7 @@ static int vqp_socket_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(listener->send == vqp_socket_send);
 
 	if (vqp_encode(request->reply, request->packet) < 0) {
-		fprintf(stderr, "Failed encoding packet: %s\n", librad_errstr);
+		DEBUG2("Failed encoding packet: %s\n", librad_errstr);
 		return -1;
 	}
 
@@ -1698,18 +1698,10 @@ int listen_init(const char *filename, rad_listen_t **head)
 	/*
 	 *	If the port is specified on the command-line,
 	 *	it over-rides the configuration file.
+	 *
+	 *	FIXME: If argv[0] == "vmpsd", then don't listen on auth/acct!
 	 */
-	if (mainconfig.port >= 0) {
-		auth_port = mainconfig.port;
-	} else {
-		rcode = cf_item_parse(mainconfig.config, "port",
-				      PW_TYPE_INTEGER, &auth_port,
-				      Stringify(PW_AUTH_UDP_PORT));
-		if (rcode < 0) return -1; /* error parsing it */
-
-		if (rcode == 0)
-			radlog(L_INFO, "WARNING: The directive 'port' is deprecated, and will be removed in future versions of FreeRADIUS. Please edit the configuration files to use the directive 'listen'.");
-	}
+	if (mainconfig.port >= 0) auth_port = mainconfig.port;
 
 	/*
 	 *	If the IP address was configured on the command-line,
@@ -1737,7 +1729,12 @@ int listen_init(const char *filename, rad_listen_t **head)
 		radlog(L_INFO, "WARNING: The directive 'bind_adress' is deprecated, and will be removed in future versions of FreeRADIUS. Please edit the configuration files to use the directive 'listen'.");
 
 	bind_it:
-		this = listen_alloc(RAD_LISTEN_AUTH);
+		if (strcmp(progname, "vmpsd") != 0) {
+			this = listen_alloc(RAD_LISTEN_AUTH);
+		} else {
+			this = listen_alloc(RAD_LISTEN_VQP);
+			if (!auth_port) auth_port = 1589;
+		}
 		sock = this->data;
 
 		sock->ipaddr = server_ipaddr;
@@ -1752,6 +1749,11 @@ int listen_init(const char *filename, rad_listen_t **head)
 		auth_port = sock->port;	/* may have been updated in listen_bind */
 		*last = this;
 		last = &(this->next);
+
+		/*
+		 *	No acct for vmpsd
+		 */
+		if (strcmp(progname, "vmpsd") == 0) goto do_proxy;
 
 		/*
 		 *	Open Accounting Socket.
@@ -1915,6 +1917,14 @@ int listen_init(const char *filename, rad_listen_t **head)
 					server_ipaddr = sock->ipaddr;
 				}
 				port = sock->port + 2; /* skip acct port */
+				break;
+			}
+			if (this->type == RAD_LISTEN_VQP) {
+				sock = this->data;
+				if (server_ipaddr.af == AF_UNSPEC) {
+					server_ipaddr = sock->ipaddr;
+				}
+				port = sock->port + 1;
 				break;
 			}
 		}
