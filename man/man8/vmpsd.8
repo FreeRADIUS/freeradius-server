@@ -1,0 +1,100 @@
+.TH VMPSD 8 "23 June 2004" "" "FreeRADIUS VMPS Daemon"
+.SH NAME
+vmpsd - VLAN Membership Policy Server for Cisco Switches
+.SH SYNOPSIS
+.B radiusd
+.RB [ \-d
+.IR config_directory ]
+.RB [ \-f ]
+.RB [ \-i
+.IR ip-address ]
+.RB [ \-l
+.IR log_directory ]
+.RB [ \-g
+.IR facility ]
+.RB [ \-p
+.IR port ]
+.RB [ \-s ]
+.RB [ \-v ]
+.RB [ \-x ]
+.RB [ \-X ]
+.SH DESCRIPTION
+VMPSd is a high-performance and highly configurable VMPS server based
+on the existing FreeRADIUS framework. 
+
+.SH BACKGROUND
+\fVMPS\fP is used to dynamically update the configuration of ports on
+a switch.  When a new device connects to a port, the switch sends a
+VMPS query to the server, informing the server of the new devices MAC
+address.  The server then responds with the VLAN to which the device
+should be assigned.
+
+.SH OPTIONS
+
+.IP "\-l \fIlogging directory\fP"
+This defaults to \fI/var/log\fP. \fBvmpsd\fP writes a logfile here
+called \fIvmpsd.log\fP. It contains informational and error messages,
+and optionally a record of every login attempt (for aiding an ISP's
+helpdesk). The special arguments \fIstdout\fP and \fIstderr\fP cause
+the information to get written to the standard output, or standard
+error instead. The special argument \fIsyslog\fP sends the information
+with \fBsyslog\fP(3).
+
+This command line option is deprecated.  See the \fIlog_dir\fP
+configuration item in the \fIvmpsd.conf\fP file.
+
+.IP "\-g \fIfacility\fP"
+Specifies the syslog facility to be used with \fB-l syslog\fP. Default is
+\fIdaemon\fP. Another reasonable choice would be \fIauthpriv\fP.
+
+.IP "\-d \fIconfig directory\fP"
+Defaults to \fI/etc/raddb\fP. \fBvmpsd\fP looks here for its configuration
+files such as the \fIdictionary\fP and the \fIvmpsd.conf\fP files.
+
+.IP "\-i \fIip-address\fP"
+Defines which IP address that the server uses for sending and
+receiving packets.
+
+If this command-line option is given, then the "bind_address" and all
+"listen{}" entries in \fIvmpsd.conf\fP are ignored.
+
+.IP \-f
+Do not fork, stay running as a foreground process.
+
+.IP "\-p \fIport\fP"
+Normally vmpsd listens on the ports specified in the configuration
+file. When this option is given, it listens on the specified port
+for vmps requests.
+
+If this command-line option is given, then the "port" directive in
+\fIvmpsd.conf\fP is ignored.
+
+.IP \-s
+Run in "single server" mode.  The server normally runs with multiple
+threads and/or processes, which can lower its response time to
+requests.  Some systems have issues with threading, however, so
+running in "single server" mode may help to address those issues.  In
+single server mode, the server will also not "daemonize"
+(auto-background) itself.
+
+.IP \-v
+Print server version information and exit.
+
+.IP \-X
+Debugging mode.  Equivalent to -sfxx.
+
+.IP \-x
+Finer-grained debug mode. In this mode the server will print details
+of every request on it's \fBstdout\fP output. You can specify this
+option multiple times (-x -x or -xx) to get more detailed output.
+
+.SH CONFIGURATION
+\fBvmpsd\fP uses a number of configuration files. Each file has it's
+own manpage describing the format of the file. These files are:
+.IP vmpsd.conf
+The main configuration file, which sets the administrator-controlled
+items.
+.SH SEE ALSO
+vmpsd.conf(5)
+.SH AUTHOR
+The FreeRADIUS Server Project (http://www.freeradius.org)
