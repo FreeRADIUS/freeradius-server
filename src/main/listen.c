@@ -1360,7 +1360,7 @@ static int radius_snmp_print(rad_listen_t *this, char *buffer, size_t bufsize)
  *
  *	It takes packets, not requests.  It sees if the packet looks
  *	OK.  If so, it does a number of sanity checks on it.
-  */
+ */
 static int vqp_socket_recv(rad_listen_t *listener,
 			   RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
 {
@@ -1389,9 +1389,9 @@ static int vqp_socket_recv(rad_listen_t *listener,
 	}
 
 	/*
-	 *	FIXME: New function to do stuff!
+	 *	Do new stuff.
 	 */
-	fun = rad_authenticate;
+	fun = vmps_process;
 
 	if (!received_request(listener, packet, prequest, client)) {
 		rad_free(&packet);
