@@ -25,7 +25,14 @@
 #
 #	FIXME: to make this work: prefix, etc.  See radiusd.conf...
 #
-$INCLUDE foo
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+sysconfdir = @sysconfdir@
+localstatedir = @localstatedir@
+sbindir = @sbindir@
+logdir = @logdir@
+raddbdir = @raddbdir@
+radacctdir = @radacctdir@
 
 #
 #  The logging messages for the server are appended to the
@@ -78,7 +85,7 @@ log_destination = files
 #	make
 #	make install
 #
-libdir = /home/aland/freeradius/cvs-radiusd/src/modules/lib
+libdir = @libdir@
 
 #  pidfile: Where to place the PID of the RADIUS server.
 #
