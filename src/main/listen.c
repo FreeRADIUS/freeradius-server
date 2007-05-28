@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radius_snmp.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/vqp.h>
 
 #include <sys/resource.h>
 
@@ -98,7 +99,8 @@ static RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	rad_assert(ipaddr != NULL);
 
 	rad_assert((listener->type == RAD_LISTEN_AUTH) ||
-		   (listener->type == RAD_LISTEN_ACCT));
+		   (listener->type == RAD_LISTEN_ACCT) ||
+		   (listener->type == RAD_LISTEN_VQP));
 
 	clients = ((listen_socket_t *)listener->data)->clients;
 	if (!clients) clients = mainconfig.clients;
@@ -279,7 +281,7 @@ static int common_socket_parse(const char *filename, int lineno,
 		} /* else it worked. */
 #endif
 	}
-
+	
 	/*
 	 *	Look for the name of a section that holds a list
 	 *	of clients.
@@ -879,12 +881,21 @@ static const RADCLIENT detail_client = {
 /*
  *	FIXME: add a configuration "exit when done" so that the detail
  *	file reader can be used as a one-off tool to update stuff.
+ *
+ *	The time sequence for reading from the detail file is:
+ *
+ *	t_0		signalled that the server is idle, and we
+ *			can read from the detail file.
+ *
+ *	t_rtt		the packet has been processed successfully,
+ *			wait for t_delay to enforce load factor.
+ *			
+ *	t_rtt + t_delay wait for signal that the server is idle.
+ *	
  */
-
 static int detail_recv(rad_listen_t *listener,
 		       RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
 {
-	int		free_slot = -1;
 	char		key[256], value[1024];
 	VALUE_PAIR	*vp, **tail;
 	RADIUS_PACKET	*packet;
@@ -1344,6 +1355,84 @@ static int radius_snmp_print(rad_listen_t *this, char *buffer, size_t bufsize)
 
 #endif
 
+/*
+ *	Check if an incoming request is "ok"
+ *
+ *	It takes packets, not requests.  It sees if the packet looks
+ *	OK.  If so, it does a number of sanity checks on it.
+  */
+static int vqp_socket_recv(rad_listen_t *listener,
+			   RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+{
+	RADIUS_PACKET	*packet;
+	RAD_REQUEST_FUNP fun = NULL;
+	char		buffer[128];
+	RADCLIENT	*client;
+
+	packet = vqp_recv(listener->fd);
+	if (!packet) {
+		radlog(L_ERR, "%s", librad_errstr);
+		return 0;
+	}
+
+	if ((client = client_listener_find(listener,
+					   &packet->src_ipaddr)) == NULL) {
+		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
+		
+		radlog(L_ERR, "Ignoring request from unknown client %s port %d",
+		       inet_ntop(packet->src_ipaddr.af,
+				 &packet->src_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+		       packet->src_port);
+		rad_free(&packet);
+		return 0;
+	}
+
+	/*
+	 *	FIXME: New function to do stuff!
+	 */
+	fun = rad_authenticate;
+
+	if (!received_request(listener, packet, prequest, client)) {
+		rad_free(&packet);
+		return 0;
+	}
+
+	*pfun = fun;
+
+	return 1;
+}
+
+
+/*
+ *	Send an authentication response packet
+ */
+static int vqp_socket_send(rad_listen_t *listener, REQUEST *request)
+{
+	rad_assert(request->listener == listener);
+	rad_assert(listener->send == vqp_socket_send);
+
+	if (vqp_encode(request->reply, request->packet) < 0) {
+		fprintf(stderr, "Failed encoding packet: %s\n", librad_errstr);
+		return -1;
+	}
+
+	return vqp_send(request->reply);
+}
+
+
+static int vqp_socket_encode(rad_listen_t *listener, REQUEST *request)
+{
+	return vqp_encode(request->reply, request->packet);
+}
+
+
+static int vqp_socket_decode(rad_listen_t *listener, REQUEST *request)
+{
+	return vqp_decode(request->packet);
+}
+
+
 static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
 
@@ -1367,7 +1456,12 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	  detail_recv, detail_send,
 	  detail_print, detail_encode, detail_decode },
 
-	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_SNMP */
+	/* vlan query protocol */
+	{ common_socket_parse, NULL,
+	  vqp_socket_recv, vqp_socket_send,
+	  socket_print, vqp_socket_encode, vqp_socket_decode },
+
+	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL}	/* RAD_LISTEN_SNMP */
 };
 
 
@@ -1487,6 +1581,7 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 	case RAD_LISTEN_AUTH:
 	case RAD_LISTEN_ACCT:
 	case RAD_LISTEN_PROXY:
+	case RAD_LISTEN_VQP:
 		this->data = rad_malloc(sizeof(listen_socket_t));
 		memset(this->data, 0, sizeof(listen_socket_t));
 		break;
@@ -1496,6 +1591,7 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 		memset(this->data, 0, sizeof(listen_detail_t));
 
 	default:
+		rad_assert("Unsupported option!" == NULL);
 		break;
 	}
 
@@ -1573,6 +1669,7 @@ static const LRAD_NAME_NUMBER listen_compare[] = {
 	{ "auth",	RAD_LISTEN_AUTH },
 	{ "acct",	RAD_LISTEN_ACCT },
 	{ "detail",	RAD_LISTEN_DETAIL },
+	{ "vmps",	RAD_LISTEN_VQP },
 	{ NULL, 0 },
 };
 

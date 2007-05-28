@@ -708,6 +708,9 @@ int setup_modules(int reload)
 			do_component[RLM_COMPONENT_POST_PROXY] = 1;
 			break;
 
+		case RAD_LISTEN_VQP:
+			do_component[RLM_COMPONENT_POST_AUTH] = 1;
+			break;
 			/*
 			 *	Ignore this.
 			 */

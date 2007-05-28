@@ -148,6 +148,7 @@ $INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.valemount
 $INCLUDE dictionary.versanet
+$INCLUDE dictionary.vqp
 $INCLUDE dictionary.waverider
 $INCLUDE dictionary.walabi
 $INCLUDE dictionary.wispr

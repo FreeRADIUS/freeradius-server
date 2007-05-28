@@ -1,0 +1,64 @@
+# -*- text -*-
+##############################################################################
+#
+#	Cisco's VLAN Query Protocol
+#
+#	This dictionary is NOT a RADIUS dictionary, but is used for a
+#	similar purpose.
+#
+#	The default destination port is 1589.
+#
+#	$Id$
+#
+##############################################################################
+
+#
+#	We've allocated "fake" attribute 0x2b00 ... 0x2cff for VQP.
+#
+#
+#	0x2b00..0x2bff are for the VQP packet headers.
+#	0x2c00..0x2cff are for the VQP attributes.
+#
+#	Note that the VQP protocol specifies 0x0c01..0x0c08 as the
+#	real numbers for the VQP attributes.  We've added '0x2000'
+#	to them to separate them from RADIUS attributes...
+#
+
+#
+#  VQP Op codes
+#
+ATTRIBUTE	VQP-Packet-Type				0x2b00	integer
+ATTRIBUTE	VQP-Error-Code				0x2b01	integer
+ATTRIBUTE	VQP-Sequence-Number			0x2b02	integer
+
+#
+#  VQP Attributes
+#
+ATTRIBUTE	VQP-Client-IP-Address			0x2c01	ipaddr
+ATTRIBUTE	VQP-Port-Name				0x2c02	string
+ATTRIBUTE	VQP-VLAN-Name				0x2c03	string
+
+# VTP domain
+ATTRIBUTE	VQP-Domain-Name				0x2c04	string
+
+# Encapsulates an Ethernet frame...
+ATTRIBUTE	VQP-Ethernet-Frame			0x2c05	octets
+ATTRIBUTE	VQP-MAC					0x2c06	octets # 6-byte MAC address
+ATTRIBUTE	VQP-Unknown				0x2c07	octets
+ATTRIBUTE	VQP-Cookie				0x2c08	octets # 6-byte MAC address
+
+#
+#	VQP integer mappings
+#
+
+VALUE	VQP-Packet-Type			VPQ-Join-Request	1
+VALUE	VQP-Packet-Type			VPQ-Join-Response	2
+VALUE	VQP-Packet-Type			VPQ-Reconfirm-Request	3
+VALUE	VQP-Packet-Type			VPQ-Reconfirm-Response	4
+
+VALUE	VQP-Error-Code			VQP-No-Error		0
+VALUE	VQP-Error-Code			VQP-Wrong-Version	1
+VALUE	VQP-Error-Code			VQP-Insufficient-Resources 2
+VALUE	VQP-Error-Code			VQP-Deny		3
+VALUE	VQP-Error-Code			VQP-Shutdown		4
+VALUE	VQP-Error-Code			VQP-Wrong-Mgmt-Domain	5
