@@ -14,7 +14,7 @@ FILES = acct_users attrs attrs.access_reject attrs.accounting_response \
 	eap.conf experimental.conf hints huntgroups ldap.attrmap	\
 	 naspasswd otp.conf 	\
 	preproxy_users proxy.conf radiusd.conf radrelay.conf		\
-	realms snmp.conf sql.conf sqlippool.conf users
+	realms snmp.conf sql.conf sqlippool.conf users vmpsd.conf
 
 all:
 
