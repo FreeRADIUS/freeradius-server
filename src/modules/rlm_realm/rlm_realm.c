@@ -167,7 +167,6 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		return 0;
 	}
 
-
 	DEBUG2("    rlm_realm: Found realm \"%s\"", realm->name);
 
 	/*
@@ -235,30 +234,49 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	}
 
 	/*
+	 *	Skip additional checks if it's not an accounting
+	 *	request.
+	 */
+	if (request->packet->code != PW_ACCOUNTING_REQUEST) {
+		*returnrealm = realm;
+		return 0;
+	}
+
+	/*
+	 *	FIXME: Each server should have a unique server key,
+	 *	and put it in the accounting packet.  Every server
+	 *	should know about the keys, and NOT proxy requests to
+	 *	a server with key X if the packet already contains key
+	 *	X.
+	 */
+
+	/*
 	 *      If this request has arrived from another freeradius server
 	 *      that has already proxied the request, we don't need to do
 	 *      it again.
 	 */
 	vp = pairfind(request->packet->vps, PW_FREERADIUS_PROXIED_TO);
-	if (vp) {
-#if 0
-		/*
-		 *	FIXME: HOME SERVER
-		 *
-		 *	What the heck is this code doing, and why?
-		 */
+	if (vp && (request->packet->src_ipaddr.af == AF_INET)) {
+		int i;
+		lrad_ipaddr_t my_ipaddr;
 
-		if (request->packet->code == PW_AUTHENTICATION_REQUEST &&
-		    vp->vp_ipaddr == realm->home_auth->ipaddr.ipaddr.ip4addr.s_addr) {
-			DEBUG2("    rlm_realm: Request not proxied due to Freeradius-Proxied-To");
-			return 0;
+		my_ipaddr.af = AF_INET;
+		my_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+
+		/*
+		 *	Loop over the home accounting servers for this
+		 *	realm.  If one of them has the same IP as the
+		 *	FreeRADIUS-Proxied-To attribute, then the
+		 *	packet has already been sent there.  Don't
+		 *	send it there again.
+		 */
+		for (i = 0; i < realm->acct_pool->num_home_servers; i++) {
+			if (lrad_ipaddr_cmp(&realm->acct_pool->servers[i]->ipaddr,
+					    &my_ipaddr)) {
+				DEBUG2("Suppressing proxy due to FreeRADIUS-Proxied-To");
+				return 0;
+			}
 		}
-		if (request->packet->code == PW_ACCOUNTING_REQUEST &&
-		    vp->vp_ipaddr == realm->home_acct->ipaddr.ipaddr.ip4addr.s_addr) {
-			DEBUG2("    rlm_realm: Request not proxied due to Freeradius-Proxied-To");
-			return 0;
-		}
-#endif
         }
 
 	/*
