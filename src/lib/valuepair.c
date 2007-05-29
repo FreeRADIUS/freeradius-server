@@ -88,6 +88,10 @@ static VALUE_PAIR *pairalloc(DICT_ATTR *da)
 			vp->length = sizeof(vp->vp_ipv6prefix);
 			break;
 
+		case PW_TYPE_ETHERNET:
+			vp->length = sizeof(vp->vp_ether);
+			break;
+
 		default:
 			vp->length = 0;
 			break;
@@ -111,6 +115,7 @@ VALUE_PAIR *paircreate(int attr, int type)
 		return NULL;
 	}
 	vp->operator = T_OP_EQ;
+	vp->type = type;
 
 	/*
 	 *	Update the name...
@@ -747,6 +752,7 @@ static int gettime(const char *valstr, uint32_t *lvalue)
 	return 0;
 }
 
+static const char *hextab = "0123456789abcdef";
 
 /*
  *  Parse a string value into a given VALUE_PAIR
@@ -760,6 +766,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 {
 	char		*p, *s=0;
 	const char	*cp, *cs;
+	int		length, x;
 	DICT_VALUE	*dval;
 
 	/*
@@ -772,8 +779,61 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 	switch(vp->type) {
 		case PW_TYPE_STRING:
 			/*
-			 *	Already handled above.
+			 *	Do escaping here
 			 */
+			p = vp->vp_strvalue;
+			cp = value;
+			length = 0;
+
+			while (*cp && (length < sizeof(vp->vp_strvalue))) {
+				char c = *cp++;
+
+				if (c == '\\') {
+					switch (*cp) {
+					case 'r':
+						c = '\r';
+						cp++;
+						break;
+					case 'n':
+						c = '\n';
+						cp++;
+						break;
+					case 't':
+						c = '\t';
+						cp++;
+						break;
+					case '"':
+						c = '"';
+						cp++;
+						break;
+					case '\'':
+						c = '\'';
+						cp++;
+						break;
+					case '`':
+						c = '`';
+						cp++;
+						break;
+					case '\0':
+						c = '\\'; /* no cp++ */
+						break;
+					default:
+						if ((cp[0] >= '0') &&
+						    (cp[0] <= '9') &&
+						    (cp[1] >= '0') &&
+						    (cp[1] <= '9') &&
+						    (cp[2] >= '0') &&
+						    (cp[2] <= '9') &&
+						    (sscanf(cp, "%3o", &x) == 1)) {
+							c = x;
+							cp += 3;
+						} /* else just do '\\' */
+					}
+				}
+				*p++ = c;
+				length++;
+			}
+			vp->length = length;
 			break;
 
 		case PW_TYPE_IPADDR:
@@ -973,9 +1033,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			vp->length = 16; /* length of IPv6 address */
 			vp->vp_strvalue[vp->length] = '\0';
 			break;
-			/*
-			 *  Anything else.
-			 */
+
 		case PW_TYPE_IPV6PREFIX:
 			p = strchr(value, '/');
 			if (!p || ((p - value) >= 256)) {
@@ -1007,6 +1065,40 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			vp->length = 16 + 2;
 			break;
 
+		case PW_TYPE_ETHERNET:
+			{
+				int i = 0;
+				const char *c1, *c2;
+
+				cp = value;
+				while (*cp) {
+					if (cp[1] == ':') {
+						c1 = hextab;
+						c2 = memchr(hextab, tolower((int) cp[0]), 16);
+						cp += 2;
+					} else if ((cp[1] != '\0') &&
+						   ((cp[2] == ':') ||
+						    (cp[2] == '\0'))) {
+						   c1 = memchr(hextab, tolower((int) cp[0]), 16);
+						   c2 = memchr(hextab, tolower((int) cp[1]), 16);
+						   cp += 3;
+					} else {
+						c1 = c2 = NULL;
+					}
+					if (!c1 || !c2 || (i >= sizeof(vp->vp_ether))) {
+						librad_log("failed to parse Ethernet address \"%s\"", value);
+						return NULL;
+					}
+					vp->vp_ether[i] = ((c1-hextab)<<4) + (c2-hextab);
+					i++;
+				}
+			}
+			vp->length = 6;
+			break;
+
+			/*
+			 *  Anything else.
+			 */
 		default:
 			librad_log("unknown attribute type %d", vp->type);
 			return NULL;

@@ -89,6 +89,7 @@ static const LRAD_NAME_NUMBER type_table[] = {
 	{ "ipv6prefix", PW_TYPE_IPV6PREFIX },
 	{ "byte",	PW_TYPE_BYTE },
 	{ "short",	PW_TYPE_SHORT },
+	{ "ether",	PW_TYPE_ETHERNET },
 	{ NULL, 0 }
 };
 

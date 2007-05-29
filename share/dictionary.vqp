@@ -43,9 +43,9 @@ ATTRIBUTE	VQP-Domain-Name				0x2c04	string
 
 # Encapsulates an Ethernet frame...
 ATTRIBUTE	VQP-Ethernet-Frame			0x2c05	octets
-ATTRIBUTE	VQP-MAC					0x2c06	octets # 6-byte MAC address
+ATTRIBUTE	VQP-MAC					0x2c06	ether
 ATTRIBUTE	VQP-Unknown				0x2c07	octets
-ATTRIBUTE	VQP-Cookie				0x2c08	octets # 6-byte MAC address
+ATTRIBUTE	VQP-Cookie				0x2c08	ether
 
 #
 #	VQP integer mappings
@@ -88,9 +88,9 @@ ATTRIBUTE	VMPS-Domain-Name			0x2c04	string
 
 # Encapsulates an Ethernet frame...
 ATTRIBUTE	VMPS-Ethernet-Frame			0x2c05	octets
-ATTRIBUTE	VMPS-MAC				0x2c06	octets # 6-byte MAC address
+ATTRIBUTE	VMPS-MAC				0x2c06	ether
 ATTRIBUTE	VMPS-Unknown				0x2c07	octets
-ATTRIBUTE	VMPS-Cookie				0x2c08	octets # 6-byte MAC address
+ATTRIBUTE	VMPS-Cookie				0x2c08	ether
 
 #
 #	VMPS integer mappings

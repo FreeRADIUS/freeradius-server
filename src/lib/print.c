@@ -215,6 +215,14 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 		}
 			break;
 
+		case PW_TYPE_ETHERNET:
+			snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x",
+				 vp->vp_ether[0], vp->vp_ether[1],
+				 vp->vp_ether[2], vp->vp_ether[3],
+				 vp->vp_ether[4], vp->vp_ether[5]);
+			a = buf;
+			break;
+
 		default:
 			a = "UNKNOWN-TYPE";
 			break;
