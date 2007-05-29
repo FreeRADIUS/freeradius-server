@@ -115,7 +115,6 @@ VALUE_PAIR *paircreate(int attr, int type)
 		return NULL;
 	}
 	vp->operator = T_OP_EQ;
-	vp->type = type;
 
 	/*
 	 *	Update the name...
@@ -136,6 +135,10 @@ VALUE_PAIR *paircreate(int attr, int type)
 					VENDOR(attr), attr & 0xffff);
 			}
 		}
+		vp->type = type;
+
+	} else {
+		vp->type = da->type;
 	}
 
 	return vp;
@@ -1081,7 +1084,8 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 						    (cp[2] == '\0'))) {
 						   c1 = memchr(hextab, tolower((int) cp[0]), 16);
 						   c2 = memchr(hextab, tolower((int) cp[1]), 16);
-						   cp += 3;
+						   cp += 2;
+						   if (*cp == ':') cp++;
 					} else {
 						c1 = c2 = NULL;
 					}
