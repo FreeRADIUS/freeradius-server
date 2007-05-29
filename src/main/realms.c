@@ -550,7 +550,7 @@ static int server_pool_add(const char *filename, CONF_SECTION *cs,
 			goto error;
 		}
 
-		DEBUG2("\ttype = %s", name2, value);
+		DEBUG2("\ttype = %s", value);
 	}
 
 	for (cp = cf_pair_find(cs, "home_server");
@@ -1047,7 +1047,7 @@ int realm_add(const char *filename, CONF_SECTION *cs)
 
 	if ((cf_section_value_find(cs, "nostrip")) != NULL) {
 		r->striprealm = 0;
-		DEBUG2("\tnostrip", name2);
+		DEBUG2("\tnostrip");
 	}
 
 	/*
