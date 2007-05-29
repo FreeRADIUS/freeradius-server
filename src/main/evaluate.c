@@ -28,6 +28,8 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
+#include <ctype.h>
+
 #ifdef HAVE_REGEX_H
 #include <regex.h>
 
@@ -510,7 +512,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 				 *	Add %{0}, %{1}, etc.
 				 */
 				for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
-					char *p;
+					char *r;
 					char buffer[1024];
 					
 					/*
@@ -519,11 +521,11 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 					 */
 					if ((compare != 0) ||
 					    (rxmatch[i].rm_so == -1)) {
-						p = request_data_get(request,
+						r = request_data_get(request,
 								     request,
 								     REQUEST_DATA_REGEX | i);
-						if (p) {
-							free(p);
+						if (r) {
+							free(r);
 							continue;
 						}
 						
@@ -549,17 +551,17 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 					 *	for out of memory, which is
 					 *	the only error we can get...
 					 */
-					p = strdup(buffer);
+					r = strdup(buffer);
 					request_data_add(request, request,
 							 REQUEST_DATA_REGEX | i,
-							 p, free);
+							 r, free);
 				}
 				result = (compare == 0);
 			}
 				break;
 
 			case T_OP_REG_NE: {
-				int i, compare;
+				int compare;
 				regex_t reg;
 				regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 				
