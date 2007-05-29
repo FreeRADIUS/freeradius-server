@@ -138,7 +138,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	}
 
 	if (check->operator == T_OP_REG_NE) {
-		int i, compare;
+		int compare;
 		regex_t reg;
 		char name[1024];
 		char value[1024];
