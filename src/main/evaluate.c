@@ -156,8 +156,9 @@ static LRAD_TOKEN getregex(char **ptr, char *buffer, size_t buflen)
 				    (sscanf(p, "%3o", &x) == 1)) {
 					*q++ = x;
 					p += 2;
-				} else
-				*q++ = p[1];
+				} else {
+					*q++ = p[1];
+				}
 				break;
 			}
 			p += 2;
@@ -408,10 +409,6 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		
 		/*
 		 *	Validate strings.
-		 *
-		 *	FIXME: If token == T_OP_REG_EQ or T_OP_REG_NE,
-		 *	quote strings by '/', rather than anything
-		 *	else!
 		 */
 		if ((token == T_OP_REG_EQ) ||
 		    (token == T_OP_REG_NE)) {
@@ -423,7 +420,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		    (rt != T_DOUBLE_QUOTED_STRING) &&
 		    (rt != T_SINGLE_QUOTED_STRING) &&
 		    (rt != T_BACK_QUOTED_STRING)) {
-			radlog(L_ERR, "Expected string or numbers at 2 %d: %s", rt, p);
+			radlog(L_ERR, "Expected string or numbers at: %s", p);
 			return FALSE;
 		}
 		
@@ -722,6 +719,8 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 
 		vp = pairmake(cp->attr, value, cp->operator);
 		if (!vp) {
+			DEBUG2("Failed to create attribute %s value %s",
+			       cp->attr, value);
 			pairfree(&head);
 			return RLM_MODULE_FAIL;
 		}
