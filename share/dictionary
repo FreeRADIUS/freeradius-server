@@ -27,6 +27,8 @@
 #	ifid       - 8 octets in network byte order
 #	ipv6addr   - 16 octets in network byte order
 #	ipv6prefix - 18 octets in network byte order
+#	ether      - 6 octets of hh:hh:hh:hh:hh:hh
+#		     where 'h' is hex digits, upper or lowercase.
 #
 #	FreeRADIUS includes extended data types which are not defined
 #	in the RFC's.  These data types are:
