@@ -1259,7 +1259,8 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 			/*
 			 *	Handle variable substitution via ${foo}
 			 */
-			if (t3 == T_BARE_WORD) {
+			if ((t3 == T_BARE_WORD) ||
+			    (t3 == T_DOUBLE_QUOTED_STRING)) {
 				value = cf_expand_variables(file, lineno, this,
 							    buf, buf3);
 				if (!value) return -1;
