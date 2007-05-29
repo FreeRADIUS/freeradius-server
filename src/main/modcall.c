@@ -563,7 +563,6 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			stack.priority[stack.pointer] = child->actions[myresult];
 		}
 
-		next_child:
 		/*
 		 *	No parent, we must be done.
 		 */
@@ -1049,6 +1048,10 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	/*
 	 *	Walk through the children of the update section,
 	 *	ensuring that they're all known attributes.
+	 *
+	 *	FIXME: Create blank VP's here, pointing to the value's,
+	 *	so that we don't have to do the dict_attrbyname lookup
+	 *	at run time.
 	 */
 	for (ci=cf_item_find_next(cs, NULL);
 	     ci != NULL;
@@ -1339,9 +1342,10 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	 *	maybe a csingle as a ref?
 	 */
 	if (cf_item_is_section(ci)) {
-		CONF_SECTION *cs = cf_itemtosection(ci);
 		CONF_PAIR *cp;
 		const char *attr, *value;
+
+		cs = cf_itemtosection(ci);
 
 		for (ci=cf_item_find_next(cs, NULL);
 		     ci != NULL;
