@@ -710,7 +710,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 }
 
 
-static int null_handler(REQUEST *request)
+static int null_handler(UNUSED REQUEST *request)
 {
 	return 0;
 }
@@ -826,7 +826,7 @@ static void wait_a_bit(void *ctx)
 
 			request->master_state = REQUEST_STOP_PROCESSING;
 
-			request->delay = 500000;
+			request->delay = USEC / 2;
 			tv_add(&request->when, request->delay);
 			callback = wait_for_child_to_die;
 		}
@@ -1753,6 +1753,7 @@ int received_request(rad_listen_t *listener,
 	gettimeofday(&request->received, NULL);
 	request->timestamp = request->received.tv_sec;
 	request->when = request->received;
+
 	request->delay = USEC / 10;
 
 	tv_add(&request->when, request->delay);
