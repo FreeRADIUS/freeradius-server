@@ -484,7 +484,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet);
 int radius_evaluate_condition(REQUEST *request, int depth,
 			      const char **ptr, int evaluate_it, int *presult);
 int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
-			   const char *name);
+			   VALUE_PAIR *input_vps, const char *name);
 
 /* vmps.c */
 int vmps_process(REQUEST *);

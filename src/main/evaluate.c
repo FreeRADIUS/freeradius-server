@@ -633,9 +633,10 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 	return TRUE;
 }
 
+
 /*
- *	Copied shamelessly from conffile.c, to simplify the API for
- *	now...
+ *     Copied shamelessly from conffile.c, to simplify the API for
+ *     now...
  */
 typedef enum conf_type {
 	CONF_ITEM_INVALID = 0,
@@ -658,53 +659,58 @@ struct conf_pair {
 	LRAD_TOKEN value_type;
 };
 
-
 /*
  *	Add attributes to a list.
  */
 int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
-			   const char *name)
+			   VALUE_PAIR *input_vps, const char *name)
 {
 	CONF_ITEM *ci;
-	VALUE_PAIR *head, **tail;
-	VALUE_PAIR **vps = NULL;
+	VALUE_PAIR *newlist, *vp;
+	VALUE_PAIR **output_vps = NULL;
 
 	if (!request || !cs) return RLM_MODULE_INVALID;
 
 	if (strcmp(name, "request") == 0) {
-		vps = &request->packet->vps;
+		output_vps = &request->packet->vps;
 
 	} else if (strcmp(name, "reply") == 0) {
-		vps = &request->reply->vps;
+		output_vps = &request->reply->vps;
 
 	} else if (strcmp(name, "proxy-request") == 0) {
-		if (request->proxy) vps = &request->proxy->vps;
+		if (request->proxy) output_vps = &request->proxy->vps;
 
 	} else if (strcmp(name, "proxy-reply") == 0) {
-		if (request->proxy_reply) vps = &request->proxy_reply->vps;
+		if (request->proxy_reply) output_vps = &request->proxy_reply->vps;
 
 	} else if (strcmp(name, "config") == 0) {
-		vps = &request->config_items;
+		output_vps = &request->config_items;
 
 	} else {
 		return RLM_MODULE_INVALID;
 	}
 
-	if (!vps) return RLM_MODULE_NOOP; /* didn't update the list */
+	if (!output_vps) return RLM_MODULE_NOOP; /* didn't update the list */
 
-	head = NULL;
-	tail = &head;
+	newlist = paircopy(input_vps);
+	if (!newlist) {
+		DEBUG2("Out of memory");
+		return RLM_MODULE_FAIL;
+	}
 
+	vp = newlist;
 	for (ci=cf_item_find_next(cs, NULL);
 	     ci != NULL;
 	     ci=cf_item_find_next(cs, ci)) {
 		const char *value;
 		CONF_PAIR *cp;
-		VALUE_PAIR *vp;
 		char buffer[2048];
 
+		/*
+		 *	This should never happen.
+		 */
 		if (cf_item_is_section(ci)) {
-			pairfree(&head);
+			pairfree(&newlist);
 			return RLM_MODULE_INVALID;
 		}
 
@@ -713,26 +719,26 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 		value = expand_string(buffer, sizeof(buffer), request,
 				      cp->value_type, cp->value);
 		if (!value) {
-			pairfree(&head);
+			pairfree(&newlist);
 			return RLM_MODULE_INVALID;
 		}
 
-		vp = pairmake(cp->attr, value, cp->operator);
-		if (!vp) {
-			DEBUG2("Failed to create attribute %s value %s",
-			       cp->attr, value);
-			pairfree(&head);
+		/*
+		 *	The VP && CF lists should be in sync.  If they're
+		 *	not, panic.
+		 */
+		if (vp->flags.do_xlat && !pairparsevalue(vp, value)) {
+			DEBUG2("ERROR: Failed parsing value \"%s\" for attribute %s: %s",
+			       value, vp->name, librad_errstr);
+			pairfree(&newlist);
 			return RLM_MODULE_FAIL;
 		}
-
-		*tail = vp;
-		tail = &vp->next;
+		vp->flags.do_xlat = 0;
+		vp = vp->next;
 	}
 
-	if (!head) return RLM_MODULE_NOOP;
-
-	pairmove(vps, &head);
-	pairfree(&head);
+	pairmove(output_vps, &newlist);
+	pairfree(&newlist);
 
 	return RLM_MODULE_UPDATED;
 }

@@ -63,6 +63,7 @@ typedef struct {
 	int grouptype;	/* after mc */
 	modcallable *children;
 	CONF_SECTION *cs;
+	VALUE_PAIR *vps;
 } modgroup;
 
 typedef struct {
@@ -391,10 +392,10 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		}
 
 		if (child->type == MOD_UPDATE) {
-			CONF_SECTION *cs = mod_callabletogroup(child)->cs;
+			modgroup *g = mod_callabletogroup(child);
 
-			myresult = radius_update_attrlist(request, cs,
-							  child->name);
+			myresult = radius_update_attrlist(request, g->cs,
+							  g->vps, child->name);
 			goto handle_result;
 		}
 
@@ -1024,6 +1025,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	modgroup *g;
 	modcallable *csingle;
 	CONF_ITEM *ci;
+	VALUE_PAIR *head, **tail;
 
 	static const char *attrlist_names[] = {
 		"request", "reply", "proxy-request", "proxy-reply",
@@ -1045,6 +1047,9 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		return NULL;
 	}
 
+	head = NULL;
+	tail = &head;
+
 	/*
 	 *	Walk through the children of the update section,
 	 *	ensuring that they're all known attributes.
@@ -1056,8 +1061,8 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	for (ci=cf_item_find_next(cs, NULL);
 	     ci != NULL;
 	     ci=cf_item_find_next(cs, ci)) {
-		const char *attr;
 		CONF_PAIR *cp;
+		VALUE_PAIR *vp;
 
 		if (cf_item_is_section(ci)) {
 			radlog(L_ERR|L_CONS,
@@ -1067,26 +1072,28 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 			return NULL;
 		}
 
-		cp = cf_itemtopair(ci);
-		attr = cf_pair_attr(cp);
-		
-		if (!dict_attrbyname(attr)) {
-			radlog(L_ERR|L_CONS,
-			       "%s[%d]: Unknown attribute \"%s\"",
-			       filename, cf_pair_lineno(cp), attr);
+		cp = cf_itemtopair(ci);	/* can't return NULL */
+		vp = cf_pairtovp(cp);
+		if (!vp) {
+			pairfree(&head);
+			radlog(L_ERR|L_CONS, "%s[%d]: ERROR: %s",
+			       filename, cf_pair_lineno(cp), librad_errstr);
 			return NULL;
+
 		}
 
-		if (!cf_pair_value(cp)) {
-			radlog(L_ERR|L_CONS,
-			       "%s[%d]: No value specified",
-			       filename, cf_pair_lineno(cp));
-			return NULL;
-		}
+		*tail = vp;
+		tail = &(vp->next);
 	}
 
-	g = rad_malloc(sizeof(*g));
-	if (!g) return NULL;
+	if (!head) {
+		radlog(L_ERR|L_CONS,
+		       "%s[%d]: ERROR: update %s section cannot be empty",
+		       filename, lineno, name2);
+		return NULL;
+	}
+
+	g = rad_malloc(sizeof(*g)); /* never fails */
 	memset(g, 0, sizeof(*g));
 	csingle = mod_grouptocallable(g);
 	
@@ -1099,6 +1106,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	g->grouptype = GROUPTYPE_SIMPLE;
 	g->children = NULL;
 	g->cs = cs;
+	g->vps = head;
 
 	return csingle;
 }
