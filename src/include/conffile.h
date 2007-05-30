@@ -69,6 +69,7 @@ int cf_data_add(CONF_SECTION *, const char *, void *, void (*)(void *));
 
 char *cf_pair_attr(CONF_PAIR *pair);
 char *cf_pair_value(CONF_PAIR *pair);
+VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair);
 const char *cf_section_name1(const CONF_SECTION *);
 const char *cf_section_name2(const CONF_SECTION *);
 int dump_config(void);

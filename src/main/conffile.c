@@ -1494,6 +1494,26 @@ char *cf_pair_value(CONF_PAIR *pair)
 }
 
 /*
+ * Turn a CONF_PAIR into a VALUE_PAIR
+ * For now, ignore the "value_type" field...
+ */
+VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
+{
+	DICT_ATTR *da;
+	VALUE_PAIR *vp;
+
+	da = dict_attrbyname(pair->attr);
+	if (!da) return NULL;
+
+	vp = pairalloc(da);
+	if (!vp) return NULL;
+
+	vp->operator = pair->operator;
+
+	return vp;
+}
+
+/*
  * Return the first label of a CONF_SECTION
  */
 
