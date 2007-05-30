@@ -1494,6 +1494,11 @@ char *cf_pair_value(CONF_PAIR *pair)
 }
 
 /*
+ *	Copied here for error reporting.
+ */
+extern void librad_log(const char *, ...);
+
+/*
  * Turn a CONF_PAIR into a VALUE_PAIR
  * For now, ignore the "value_type" field...
  */
@@ -1502,13 +1507,40 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 	DICT_ATTR *da;
 	VALUE_PAIR *vp;
 
+	if (!pair) {
+		librad_log("Internal error");
+		return NULL;
+	}
+
 	da = dict_attrbyname(pair->attr);
-	if (!da) return NULL;
+	if (!da) {
+		librad_log("Unknown attribute %s", pair->attr);
+		return NULL;
+	}
+
+	if (!pair->value) {
+		librad_log("No value given for attribute %s", pair->attr);
+		return NULL;
+	}
 
 	vp = pairalloc(da);
-	if (!vp) return NULL;
+	if (!vp) {
+		librad_log("Out of memory");
+		return NULL;
+	}
 
 	vp->operator = pair->operator;
+
+	if ((pair->value_type == T_BARE_WORD) ||
+	    (pair->value_type == T_SINGLE_QUOTED_STRING)) {
+		if (!pairparsevalue(vp, pair->value)) {
+			pairfree(&vp);
+			return NULL;
+		}
+		vp->flags.do_xlat = 0;
+	} else {
+		vp->flags.do_xlat = 1;
+	}
 
 	return vp;
 }
