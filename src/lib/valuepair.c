@@ -39,7 +39,7 @@ static const char *months[] = {
         "jan", "feb", "mar", "apr", "may", "jun",
         "jul", "aug", "sep", "oct", "nov", "dec" };
 
-static VALUE_PAIR *pairalloc(DICT_ATTR *da)
+VALUE_PAIR *pairalloc(DICT_ATTR *da)
 {
 	VALUE_PAIR *vp;
 
