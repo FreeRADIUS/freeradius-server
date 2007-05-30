@@ -5,6 +5,25 @@
 ##	$Id$
 ##
 
+#
+#	This configuration file is for a stand-alone VMPS server that
+#	does not do RADIUS.  For an integrated radius + vmps server,
+#	edit "radiusd.conf", and add two sections to it:
+#
+#		listen {
+#			type = vmps
+#			...
+#		}
+#
+#		vmps {
+#			...
+#		}
+#
+#
+#	See the text below for additional documentation on those two
+#	sections.
+#
+
 #  	The location of other config files and
 #  	logfiles are declared in this file
 #
