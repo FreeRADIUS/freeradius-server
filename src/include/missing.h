@@ -73,7 +73,10 @@ RCSIDH(missing_h, "$Id$")
 # endif
 #endif
 
-#ifndef CYGWIN
+/*
+ *	Don't look for winsock.h if we're on cygwin.
+ */
+#ifndef __CYGWIN__
 #ifdef HAVE_WINSOCK_H
 #include <winsock.h>
 #endif
