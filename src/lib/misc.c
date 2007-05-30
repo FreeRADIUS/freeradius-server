@@ -428,12 +428,14 @@ int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
 		       sizeof(struct in_addr));
 		break;
 
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
 	case AF_INET6 :
 		dst->af = AF_INET6;
 		memcpy(&dst->ipaddr,
 		       &((struct sockaddr_in6*)ai->ai_addr)->sin6_addr,
 		       sizeof(struct in6_addr));
 		break;
+#endif
 
 		/* Flow should never reach here */
 	case AF_UNSPEC :
