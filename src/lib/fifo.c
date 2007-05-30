@@ -156,9 +156,6 @@ void *lrad_fifo_pop(lrad_fifo_t *fi)
 
 void *lrad_fifo_peek(lrad_fifo_t *fi)
 {
-	void *data;
-	lrad_fifo_entry_t *entry;
-
 	if (!fi || !fi->head) return NULL;
 
 	return fi->head->data;
