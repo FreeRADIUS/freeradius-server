@@ -272,7 +272,6 @@ static void reap_children(void)
  */
 static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
-	int fifo;
 	request_queue_t *entry;
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
