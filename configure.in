@@ -568,7 +568,7 @@ AC_CHECK_HEADERS( \
 
 dnl FreeBSD requires sys/socket.h before net/if.h
 AC_CHECK_HEADERS(net/if.h, [], [],
-[#if HAVE_SYS_SOCKET_H
+[#ifdef HAVE_SYS_SOCKET_H
 # include <sys/socket.h>
 # endif
 ])
@@ -903,10 +903,21 @@ dnl We need #stdio.h to define NULL on FreeBSD (at least)
 gethostbyaddrrstyle=""
 AC_MSG_CHECKING([gethostbyaddr_r() syntax])
 case "$host" in
-*-freebsd[45].*|*-freebsd6.[01])
-	AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE, [style of gethostbyaddr_r functions ])
-	gethostbyaddrrstyle=BSD
-	AC_MSG_WARN([FreeBSD overridden to BSD-style])
+*-freebsd*)
+dnl With FreeBSD, check if there's a prototype for gethostbyaddr_r.
+dnl Some versions (FreeBSD 5.1?) have a symbol but no prototype - so we
+dnl override this test to BSDSTYLE. FreeBSD 6.2 and up have proper GNU
+dnl style support.
+	AC_CHECK_DECLS([gethostbyaddr_r], [], [
+		AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE,
+			[style of gethostbyaddr_r functions ])
+		gethostbyaddrrstyle=BSD
+		AC_MSG_WARN([FreeBSD overridden to BSD-style])
+	], [
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif
+])
 	;;
 esac
 if test "x$gethostbyaddrrstyle" = "x"; then
