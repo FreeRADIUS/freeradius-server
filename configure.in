@@ -845,9 +845,20 @@ gethostbyaddrrstyle=""
 AC_MSG_CHECKING([gethostbyaddr_r() syntax])
 case "$host" in
 *-freebsd*)
-	AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE)
-	gethostbyaddrrstyle=BSD
-	AC_MSG_WARN([FreeBSD overridden to BSD-style])
+dnl With FreeBSD, check if there's a prototype for gethostbyaddr_r.
+dnl Some versions (FreeBSD 5.1?) have a symbol but no prototype - so we
+dnl override this test to BSDSTYLE. FreeBSD 6.2 and up have proper GNU
+dnl style support.
+	AC_CHECK_DECLS([gethostbyaddr_r], [], [
+		AC_DEFINE(GETHOSTBYADDRRSTYLE, BSDSTYLE,
+			[style of gethostbyaddr_r functions ])
+		gethostbyaddrrstyle=BSD
+		AC_MSG_WARN([FreeBSD overridden to BSD-style])
+	], [
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif
+])
 	;;
 esac
 if test "x$gethostbyaddrrstyle" = "x"; then
