@@ -50,7 +50,7 @@ RCSID("$Id$")
 
 int udpfromto_init(int s)
 {
-	int err = 0, proto, flag, opt = 1;
+	int proto, flag, opt = 1;
 	struct sockaddr_storage si;
 	socklen_t si_len = sizeof(si);
 
@@ -67,7 +67,7 @@ int udpfromto_init(int s)
 		/*
 		 *	Linux
 		 */
-		proto = IPPROTO_IP;
+		proto = SOL_IP;
 		flag = IP_PKTINFO;
 #endif
 		
@@ -259,7 +259,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	struct iovec iov;
 	char cbuf[256];
 
-#if !defined(HAVE_IP_PKTINFO) && defined(HAVE_IP_SENDSRCADDR) && !defined(HAVE_IN6_PKTINFO)
+#if !defined(HAVE_IP_PKTINFO) && !defined(HAVE_IP_SENDSRCADDR) && !defined(HAVE_IN6_PKTINFO)
 	/*
 	 *	If the sendmsg() flags aren't defined, fall back to
 	 *	using sendto().
@@ -280,35 +280,40 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	iov.iov_len = len;
 	msgh.msg_iov = &iov;
 	msgh.msg_iovlen = 1;
-	msgh.msg_control = cbuf;
-	msgh.msg_controllen = sizeof(cbuf);
 	msgh.msg_name = to;
 	msgh.msg_namelen = tolen;
-
-	cmsg = CMSG_FIRSTHDR(&msgh);
 
 	if (from->sa_family == AF_INET) {
 		struct sockaddr_in *s4 = (struct sockaddr_in *) from;
 
 #ifdef HAVE_IP_PKTINFO
-		struct in_pktinfo *pkt = (struct in_pktinfo *) CMSG_DATA(cmsg);
+		struct in_pktinfo *pkt;
 
+		msgh.msg_control = cbuf;
+		msgh.msg_controllen = CMSG_SPACE(sizeof(*pkt));
+
+		cmsg = CMSG_FIRSTHDR(&msgh);
 		cmsg->cmsg_level = SOL_IP;
 		cmsg->cmsg_type = IP_PKTINFO;
 		cmsg->cmsg_len = CMSG_LEN(sizeof(*pkt));
 
+		pkt = (struct in_pktinfo *) CMSG_DATA(cmsg);
 		memset(pkt, 0, sizeof(*pkt));
-
 		pkt->ipi_spec_dst = s4->sin_addr;
 #endif
 
 #ifdef HAVE_IP_SENDSRCADDR
-		struct in_addr *in = (struct in_addr *) CMSG_DATA(cmsg);
+		struct in_addr *in;
 
+		msgh.msg_control = cbuf;
+		msgh.msg_controllen = CMSG_SPACE(sizeof(*in));
+
+		cmsg = CMSG_FIRSTHDR(&msgh);
 		cmsg->cmsg_level = IPPROTO_IP;
 		cmsg->cmsg_type = IP_SENDSRCADDR;
 		cmsg->cmsg_len = CMSG_LEN(sizeof(*in));
 
+		in = (struct in_addr *) CMSG_DATA(cmsg);
 		*in = s4->sin_addr;
 #endif
 	}
@@ -318,14 +323,18 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 #ifdef HAVE_IN6_PKTINFO
 		struct sockaddr_in6 *s6 = (struct sockaddr_in6 *) from;
 
-		struct in6_pktinfo *pkt = (struct in6_pktinfo *) CMSG_DATA(cmsg);
+		struct in6_pktinfo *pkt;
 
+		msgh.msg_control = cbuf;
+		msgh.msg_controllen = CMSG_SPACE(sizeof(*pkt));
+
+		cmsg = CMSG_FIRSTHDR(&msgh);
 		cmsg->cmsg_level = IPPROTO_IPV6;
 		cmsg->cmsg_type = IPV6_PKTINFO;
 		cmsg->cmsg_len = CMSG_LEN(sizeof(*pkt));
 
+		pkt = (struct in6_pktinfo *) CMSG_DATA(cmsg);
 		memset(pkt, 0, sizeof(*pkt));
-
 		pkt->ipi6_addr = s6->sin6_addr;
 #endif
 	}
