@@ -1584,13 +1584,23 @@ void modcallable_free(modcallable **pc)
 {
 	modcallable *c, *loop, *next;
 	c = *pc;
-	if(c->type==MOD_GROUP) {
-		for(loop = mod_callabletogroup(c)->children;
+	if ((c->type == MOD_GROUP) ||
+	    (c->type == MOD_LOAD_BALANCE) ||
+	    (c->type == MOD_REDUNDANT_LOAD_BALANCE) ||
+	    (c->type == MOD_IF) ||
+	    (c->type == MOD_ELSE) ||
+	    (c->type == MOD_ELSIF) ||
+	    (c->type == MOD_UPDATE)) {
+	    
+		modgroup *g = mod_callabletogroup(c);
+
+		for(loop = g->children;
 		    loop ;
 		    loop = next) {
 			next = loop->next;
 			modcallable_free(&loop);
 		}
+		pairfree(&g->vps);
 	}
 	free(c);
 	*pc = NULL;
