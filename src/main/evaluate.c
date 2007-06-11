@@ -439,17 +439,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		       lt, pleft, token, rt, pright);
 		
 		if (evaluate_next_condition) {
-			/*
-			 *	Mangle operator && conditions to
-			 *	simplify the following code.
-			 */
 			switch (token) {
-			case T_OP_NE:
-				invert = (invert == FALSE);
-				token = T_OP_CMP_EQ;
-				break;
-				
-			case T_OP_GE:
 			case T_OP_GT:
 			case T_OP_LE:
 			case T_OP_LT:
@@ -472,6 +462,10 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 			switch (token) {
 			case T_OP_CMP_EQ:
 				result = (strcmp(pleft, pright) == 0);
+				break;
+
+			case T_OP_NE:
+				result = (strcmp(pleft, pright) != 0);
 				break;
 
 			case T_OP_GE:
