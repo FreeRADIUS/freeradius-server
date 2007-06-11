@@ -617,12 +617,12 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			myresult = stack.result[stack.pointer];
 			stack.pointer--;
 
+			if (stack.pointer == 0) break;
+
 			DEBUG2("%.*s- %s %s returns %s",
 			       stack.pointer + 1, modcall_spaces,
 			       group_name[parent->type], parent->name,
 			       lrad_int2str(rcode_table, myresult, "??"));
-
-			if (stack.pointer == 0) break;
 
 			if ((parent->type == MOD_IF) ||
 			    (parent->type == MOD_ELSIF)) {
