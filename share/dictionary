@@ -133,6 +133,7 @@ $INCLUDE dictionary.nortel
 $INCLUDE dictionary.packeteer
 $INCLUDE dictionary.patton
 $INCLUDE dictionary.propel
+$INCLUDE dictionary.quiconnect
 $INCLUDE dictionary.quintum
 $INCLUDE dictionary.redback
 $INCLUDE dictionary.redcreek
