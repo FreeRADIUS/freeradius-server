@@ -616,14 +616,14 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		    ((p[0] == '|') && (p[1] == '|'))) {
 			DEBUG4(">>> AT EOL2a");
 			*ptr = p;
-			*presult = result;
+			if (evaluate_next_condition) *presult = result;
 			return TRUE;
 		}
 	} /* loop over the input condition */
 
 	DEBUG4(">>> AT EOL2b");
 	*ptr = p;
-	*presult = result;
+	if (evaluate_next_condition) *presult = result;
 	return TRUE;
 }
 
