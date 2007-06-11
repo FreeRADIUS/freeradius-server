@@ -232,7 +232,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 		if (packet) {
 			VALUE_PAIR localvp;
 
-			localvp.vp_strvalue[0] = 0;
+			memset(&localvp, 0, sizeof(localvp));
 
 			switch (da->attr) {
 			case PW_PACKET_TYPE:
@@ -497,7 +497,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 	/*
 	 *	Doesn't exist.  Create it.
 	 */
-	c = rad_malloc(sizeof(xlat_t));
+	c = rad_malloc(sizeof(*c));
 	memset(c, 0, sizeof(*c));
 
 	c->do_xlat = func;
