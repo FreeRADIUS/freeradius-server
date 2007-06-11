@@ -108,12 +108,15 @@ static const char *expand_string(char *buffer, size_t sizeof_buffer,
 	return NULL;
 }
 
-static LRAD_TOKEN getregex(char **ptr, char *buffer, size_t buflen)
+#ifdef HAVE_REGEX_H
+static LRAD_TOKEN getregex(char **ptr, char *buffer, size_t buflen, int *pcflags)
 {
 	char *p = *ptr;
 	char *q = buffer;
 
 	if (*p != '/') return T_OP_INVALID;
+
+	*pcflags = REG_EXTENDED;
 
 	p++;
 	while (*p) {
@@ -121,6 +124,15 @@ static LRAD_TOKEN getregex(char **ptr, char *buffer, size_t buflen)
 
 		if (*p == '/') {
 			p++;
+
+			/*
+			 *	Check for case insensitivity
+			 */
+			if (*p == 'i') {
+				p++;
+				*pcflags |= REG_ICASE;
+			}
+
 			break;
 		}
 
@@ -174,6 +186,7 @@ static LRAD_TOKEN getregex(char **ptr, char *buffer, size_t buflen)
 
 	return T_BARE_WORD;
 }
+#endif
 
 int radius_evaluate_condition(REQUEST *request, int depth,
 			      const char **ptr, int evaluate_it, int *presult)
@@ -189,6 +202,9 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 	const char *pleft, *pright;
 	char  xleft[1024], xright[1024];
 	int lint, rint;
+#ifdef HAVE_REGEX_H
+	int cflags = 0;
+#endif
 
 	if (!ptr || !*ptr || (depth >= 64)) {
 		radlog(L_ERR, "Internal sanity check failed in evaluate condition");
@@ -410,12 +426,14 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		/*
 		 *	Validate strings.
 		 */
+#ifdef HAVE_REGEX_H
 		if ((token == T_OP_REG_EQ) ||
 		    (token == T_OP_REG_NE)) {
-			rt = getregex(&p, right, sizeof(right));
-		} else {
+			rt = getregex(&p, right, sizeof(right), &cflags);
+		} else
+#endif
 			rt = gettoken(&p, right, sizeof(right));
-		}
+
 		if ((rt != T_BARE_WORD) &&
 		    (rt != T_DOUBLE_QUOTED_STRING) &&
 		    (rt != T_SINGLE_QUOTED_STRING) &&
@@ -493,7 +511,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 				/*
 				 *	Include substring matches.
 				 */
-				regcomp(&reg, pright, REG_EXTENDED);
+				regcomp(&reg, pright, cflags);
 				compare = regexec(&reg, pleft,
 						  REQUEST_MAX_REGEX + 1,
 						  rxmatch, 0);
@@ -559,8 +577,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 				/*
 				 *	Include substring matches.
 				 */
-				regcomp(&reg, pright,
-					REG_EXTENDED);
+				regcomp(&reg, pright, cflags);
 				compare = regexec(&reg, pleft,
 						  REQUEST_MAX_REGEX + 1,
 						  rxmatch, 0);
