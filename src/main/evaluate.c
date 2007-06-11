@@ -352,7 +352,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		/*
 		 *	End of condition, 
 		 */
-		if (!*q || (*q == ')') || (*q == '!') ||
+		if (!*q || (*q == ')') || ((*q == '!') && (q[1] != '=')) ||
 		    ((q[0] == '&') && (q[1] == '&')) ||
 		    ((q[0] == '|') && (q[1] == '|'))) {
 			/*
@@ -617,7 +617,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 		/*
 		 *	Closing brace or EOL, return.
 		 */
-		if (!*p || (*p == ')') || (*p == '!') ||
+		if (!*p || (*p == ')') || ((*p == '!') && (p[1] != '=')) ||
 		    ((p[0] == '&') && (p[1] == '&')) ||
 		    ((p[0] == '|') && (p[1] == '|'))) {
 			DEBUG4(">>> AT EOL2a");
