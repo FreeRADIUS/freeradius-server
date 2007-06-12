@@ -28,6 +28,10 @@ a "vmps" section.  In RADIUS, requests are processed through
 	}
 .DE
 
+Note that although the section is called "vmps", each module listed in
+that section will have its "post-auth" section called.  This is again
+due the limitations of the server.
+
 Proxying of requests is supported, as are the "pre-proxy" and
 "post-proxy" sections.  However, any VMPS requests will be proxied as
 RADIUS packets, and not VMPS packets.  This is because the server is
