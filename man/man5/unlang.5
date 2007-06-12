@@ -1,0 +1,278 @@
+.TH unlang 5 "12 Jun 2007" "" "FreeRADIUS Processing un-language"
+.SH NAME
+unlang \- FreeRADIUS Processing un\-language
+.SH DESCRIPTION
+FreeRADIUS supports a simple processing language in its configuration
+files.  We call it an "un-language" because the intention is NOT to
+create yet another programming language.  If you need something more
+complicated than what is described here, we suggest using the Perl or
+Python modules rlm_perl, or rlm_python.
+
+The language is similar to C in some respects, and is also similar to
+Unix shell scripts in other respects.  The keywords for the language
+are "if", "else", "elsif", "switch", "case", and "update".  Subject to some
+limitations below on "switch" and "case", any keyword can appear in
+any context.
+.SH KEYWORDS
+.IP if
+.br
+Checks for a particular condition.  If true, the block after the
+condition is processed.  Otherwise, the block is ignored.
+
+.DS
+	if (condition) {
+.br
+		...
+.br
+	}
+.DE
+.IP else
+.br
+Define a block to be executed only if the previous "if" condition
+returned false.
+
+.DS
+	else {
+.br
+		...
+.br
+	}
+.DE
+.IP elsif
+.br
+Define a block to be executed only if the previous "if" condition
+returned false, and if the specified condition evaluates to true.
+
+.DS
+	elsif (condition) {
+.br
+		...
+.br
+	}
+.DE
+.IP switch
+.br
+Evaluate the given string, and choose the first matching "case"
+statement inside of the current block.  No statement other than "case"
+can appear in a "switch" block.
+
+.DS
+	switch "string" {
+.br
+		...
+.br
+	}
+.DE
+.IP case
+.br
+Define a static string to match a parent "switch" statement.  A "case"
+statement cannot appear outside of a "switch" block.
+
+.DS
+	case string {
+.br
+		...
+.br
+	}
+.DE
+.IP update
+.br
+Update a particular attribute list, based on the attributes given in
+the current block.
+
+.DS
+	update <list> {
+.br
+		attribute = value
+.br
+		...
+.br
+	}
+.DE
+
+The <list> can be one of "request", "reply", "proxy-request",
+"proxy-reply", or "control".  The "control" list is the list of
+attributes maintainted internally by the server that controls how the
+server processes the request.  Any attribute that does not go in a
+packet on the network will generally be placed in the "control" list.
+
+For a detailed description of the contents of the "update" section,
+see the ATTRIBUTES section below.
+.SH CONDITIONS
+The conditions are similar to C conditions in syntax, though
+quoted strings are supported, as with the Unix shell.
+.IP Simple
+conditions
+.br
+.DS
+	(foo)
+.DE
+
+Evalutes to true if 'foo' is a non-empty string, or if 'foo' is a
+non-zero number.
+.IP Negation
+.DS
+	(!foo)
+.DE
+
+Evalutes to true if 'foo' evaluates to false, and vice-versa.
+.IP Short
+circuit operators
+.br
+.DS
+	(foo || bar)
+.br
+	(foo && bar)
+.DE
+
+"&&" and "||" are short-circuit operators.  "&&" evaluates the first
+condition, and evaluates the second condition if and only if the
+result of the first condition is true.  "||" is similar, but executes
+the second command if and only if the result of the first condition is
+false.
+.IP Comparisons
+.DS
+	(foo == bar)
+.DE
+
+Compares 'foo' to 'bar', and evaluates to true if the comparison holds
+true.  Valid comparison operators are "==", "!=", "<", "<=", ">",
+">=", "=~", and "!~", all with their usual meanings.  Invalid
+comparison operators are ":=" and "=".
+.SH STRINGS AND NUMBERS
+Strings and numbers can appear as stand-alone conditions, in which
+case they are evaluated as described in "Simple conditions", above.
+They can also appear (with some exceptions noted below) on the
+left-hand or on the right-hand side of a comparison.
+.IP Numbers
+Numbers are composed of decimal digits.  Floating point, hex, and
+octal numbers are not supported.  The maximum value for a number is
+machine-dependent, but is usually 32-bits, including one bit for a
+sign value.
+.PP
+"strings"
+.RS
+Double-quoted strings are expanded by inserting the value of any
+variables (see VARIABLES, below) before being evaluated.  If
+the result is a number it can be evaluated in a numerical context.
+.RE
+.IP 'strings'
+Single-quoted strings are evaluated as-is.
+.IP `strings`
+Back-quoted strings are evaluated by executing the command given
+inside of the string in a sub-shell, and taking the output as a
+string.  This behavior is much the same as that of Unix shells.
+.IP /regex/i
+These strings are valid only on the right-hand side of a comparison,
+and then only when the comparison operator is "=~" or "!~".  They are
+regular expressions, as implemented by the local regular expression
+library on the system.  This is usually Posix regular expressions.
+
+The trailing 'i' is optional, and indicates that the regular
+expression match should be done in a case-insensitive fashion.
+
+If the comparison operator is "=~", then parantheses in the regular
+expression will define variables containing the matching text, as
+described below in the VARIABLES section.
+.SH VARIABLES
+Run-time variables are referenced using the following syntax
+
+.DS
+	%{Variable-Name}
+.DE
+.PP
+Referencing attribute lists
+.RS
+Attribute lists may be referenced via the following syntax
+.DS
+	%{<list>:Attribute-Name}
+.DE
+
+Where <list> is one of "request", "reply", "proxy-request",
+"proxy-reply", or "control", as described above in the documentation
+for the "update" section.  The "<list>:" prefix is optional, and if
+omitted, is assumed to refer to the "request" list.
+
+When a variable is encountered, the given list is examined for an
+attribute of the given name.  If found, the variable reference in the
+string is replaced with the value of that attribute.  Some examples are:
+
+.DS
+	%{User-Name}
+.br
+	%{request:User-Name} # same as above
+.br
+	%{reply:User-Name}
+.DE
+.RE
+.PP
+Results of regular expression matches
+.RS
+If a regular expression match has previously been performed, then the
+special variable %{0} will contain a copy of the input string.  The
+variables %{1} through %{8} will contain the substring matches,
+starting from the left-most parantheses, and onwards.  If there are
+more than 8 parantheses, the additional results will not be placed
+into any variables.
+.RE
+.PP
+Conditional Syntax
+.RS
+Conditional syntax similar to that used in Unix shells may also be
+used.
+.IP %{Foo:-bar}
+When attribute Foo is set, returns value of Foo
+When attribute Foo is unset, returns literal string 'bar'
+
+.IP %{Foo:-%{Bar}}
+When attribute Foo is set, returns value of attribute Foo
+When attribute Foo is unset, returns value of attribute Bar (if any)
+
+.IP %{Foo:-%{Bar:-baz}}
+When attribute Foo is set, returns value of attribute Foo
+When attribute Foo is unset, returns value of attribute Bar (if any)
+When attribute Bar is unset, returns literal string 'baz'
+.RE
+.PP
+String lengths and arrays
+.RS
+Similar to a Unix shell, there are ways to reference string lenths,
+and the second or more instance of an attribute in a list.
+Realistically, if you need this functionality, we recommend using a
+real language.
+.IP %{#string}
+The number of characters in %{string}.  If %{string} is not
+set, then the length is not set.  This will NOT work for the
+one-character variables defined below.
+
+e.g. %{#Junk-junk:-foo} will yeild the string "foo".
+.IP %{Attribute-Name[index]}
+Reference the N'th occurance of the given attribute.  The syntax
+%{<list>:Attribute-Name[index]} may also be used.  The indexes start
+at zero.  This feature is NOT available for non-attribute dynamic
+translations, like %{sql:...}.
+
+For example, %{User-Name[0]} is the same as %{User-Name}
+
+The variable %{Cisco-AVPair[2]} will reference the value of the
+THIRD Cisco-AVPair attribute (if it exists) in the request packet,
+.IP %{Attribute-Name[#]}
+Returns the total number of attributes of that name in the relevant
+attribute list.  The number will usually be between 0 and 200.
+
+For most requests, %{request:User-Name[#]} == 1
+.IP %{Attribute-Name[*]}
+Expands to a single string, with the value of each array
+member separated by a newline.
+.IP %{#Attribute-Name[index]}
+Expands to the length of the string %{Attribute-Name[index]}.
+.SH ATTRIBUTES
+TBD
+.SH FILES
+/etc/raddb/vmpsd.conf,
+/etc/raddb/radiusd.conf
+.SH "SEE ALSO"
+.BR radiusd.conf (5),
+.BR vmps.conf (5)
+.SH AUTHOR
+Alan DeKok <aland@deployingradius.com>
