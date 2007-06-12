@@ -697,6 +697,9 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	} else if (strcmp(name, "config") == 0) {
 		output_vps = &request->config_items;
 
+	} else if (strcmp(name, "control") == 0) {
+		output_vps = &request->config_items;
+
 	} else {
 		return RLM_MODULE_INVALID;
 	}
