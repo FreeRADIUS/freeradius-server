@@ -4,114 +4,179 @@ vmpsd.conf \- configuration file for the VMPSd server
 .SH DESCRIPTION
 The \fBvmpsd.conf\fP file resides in the \fB/etc/raddb\fP directory.
 It defines the global configuration for the VMPSd server.
-
 .SH INTRODUCTION
+The file is very similar in form to that of the \fBradiusd.conf\fP, as
+the vmps server is really a RADIUS server that also handles VMPS.
 
-The file is very similar in form to that of the \fBradiusd.conf\fP,
-and in fact shares many of the configuration items as that file.
+This documentation page explains the VMPS-specific portions of the
+configuration file, and how those portions differ from a
+\fBradiusd.conf\fP file.
+.SH VMPS CONFIGURATION
+When a VMPS request is received by the server, it is processed through
+a "vmps" section.  In RADIUS, requests are processed through
+"authorize", "authenticate", etc.
 
-The main difference is that only one module section is allowed:
-.PP
 .DS
 	vmps {
+.br
+		module1
+.br
+		module2
 .br
 		...
 .br
 	}
 .DE
 
-Where the \fBradiusd.conf\fP file has authorize, authenticate, and
-post-auth.  Proxying of requests is supported, and also the pre-proxy
-and post-proxy sections.  However, the requests will be proxied as
+Proxying of requests is supported, as are the "pre-proxy" and
+"post-proxy" sections.  However, any VMPS requests will be proxied as
 RADIUS packets, and not VMPS packets.  This is because the server is
 still, at heart, a RADIUS server.
+.SH "CONTENTS"
+There are a large number of configuration parameters for the server.
+Most are documented in the file itself as comments.  This page
+documents only the format of the file.  Please read the
+\fBvmpsd.conf\fP file itself for more information.
 
+The configuration file parser is independent of the server
+configuration.  This means that you can put almost anything into the
+configuration file.  So long as it is properly formatted, the server
+will start.
+
+When the server parses the configuration file, it looks only for those
+configurations it understands.  Extra configuration items are ignored.
+This "feature" can be (ab)used in certain interesting ways.
 .SH "FILE FORMAT"
-The file consists of attribute-value pairs, sections, and comments.
+The file format is line-based, like many other Unix configuration
+files.  Each entry in the file must be placed on a line by itself,
+although continuations are supported.
 
-Attribute-value pairs are of the form \fBname = value\fP.
-
-A section begins with a section name, followed on the same line by an
-open bracket \fB{\fP.  The section may contain other
-sections, or attribute-value pairs.  The section ends with a close
-bracket \fB}\fP, on a line by itself.
-
-Any line beginning with a (\fB#\fP) is deemed to be a comment, and is
-ignored.  Lines containing only whitespace are also ignored.
-
-The file is line-based.  That is, each newline-terminated line
-represents either a comment, a section name, or an attribute-value
-pair.  It is not possible to specify multiple items on the same line,
-and there are no continuation lines.
-
-The value for a particular attribute may reference a previously
-defined attribute by name. The standard shell reference format
-\fB${name}\fP is used.  When the variable is in a section or
-subsection, it may be referenced as \fB${section.subsection.name}\fP.
-Forward references are not allowed.  Relative references are allowed,
-via pre-pending the name with one or more of '.'.
-
-The individidual configuration directives are too numerous to list
-here, so this manual page only documents the file format.  Please read
-the sample configuration file distributed with the server for comments
-describing each of the allowed configuration directives.
-
-.SH EXAMPLES
-.PP
-.DS
-	foo = bar
-
-.DE
-Sets variable \fBfoo\fP to have text value \fBbar\fP.
+The file consists of configuration items (variable = value pairs),
+sections, and comments.
+.IP Variables
+Variables can be set via:
 
 .DS
-	blogs = ${foo}
-
-.DE
-Sets variable \fBblogs\fP to the value of variable \fBfoo\fP from the
-current section.  If there is no variable \fBfoo\fP in the current
-section, then it looks for that variable in the body of the main
-configuration file, e.g. \f${Blogdir}\fP
-
-.DS
-	my_section {
 .br
-		baz = bud
+	name = value
+.DE
+
+Single and double-quoted strings are permitted:
+
+.DS
+.br
+	string1 = "hello world"
+.br
+	string2 = 'hello mom'
+.DE
+.IP Sections
+A section begins with a section name, followed on the same line by an
+open bracket '\fB{\fP'.  Section may contain other sections, comments, or
+variables.  Sections may be nested to any depth, limited
+only by available memory.  A section ends with a close bracket
+'\fB}\fP', on a line by itself.
+
+.DS
+.br
+	section {
+.br
+		...
 .br
 	}
-
 .DE
-Defines a section named \fBmy_section\fP, containing variable
-\fBbaz\fP.
+
+Sections can sometimes have a second name following the first one.
+The situations where this is legal depend on the context.  See the
+examples and comments in the \fBvmpsd.conf\fP file for more
+information.
+
+.DS
+.br
+	section foo {
+.br
+		...
+.br
+	}
+.DE
+.IP Comments
+Any line beginning with a (\fB#\fP) is deemed to be a comment, and is
+ignored.  Comments can appear after a variable or section definitions.
+
+.DS
+.br
+	# comment
+.br
+	foo = bar # set variable 'foo' to value 'bar'
+.br
+	section {	# start of section
+.br
+	...
+.br
+	}		# end of section
+.DE
+.IP Continuations
+Long lines can be broken up via continuations, using '\\' as the last
+character of the line.  For example, the following entry:
+
+.DS
+.br
+	foo = "blah \\
+.br
+	blah \\
+.br
+	blah"
+.DE
+
+will set the value of the variable "foo" to "blah blah blah".  Any CR
+or LF is not turned into a space, but all other whitespace is
+preserved in the final value.
+.SH "REFERENCES"
+The value of a variable can reference another variable.  These
+references are evaluated when the configuration file is loaded, which
+means that there is no run-time cost associated with them.  This
+feature is most useful for turning long, repeated pieces of text into
+short ones.
+
+Variables are referenced by ${variable_name}, as in the following examples.
+
+.DS
+	foo = bar       # set variable 'foo' to value 'bar'
+.br
+	who = ${foo}    # sets variable 'who' to value of variable 'foo'
+.br
+	my = "${foo} a" # sets variable 'my' to "bar a"
+.DE
+
+If the variable exists in a section or subsection, it can be
+referenced as ${section.subsection.variable}.  Forward references are
+not allowed.  Relative references are allowed, by pre-pending the name
+with one or more period.
 
 .DS
 	blogs = ${.foo}
 
 .DE
-Sets variable \fBblogs\fP to the value of variable \fBfoo\fP,
+Will set variable \fBblogs\fP to the value of variable \fBfoo\fP,
 from the current section.
 
 .DS
 	blogs = ${..foo}
 
 .DE
-Sets variable \fBblogs\fP to the value of variable \fBfoo\fP, from the
+Will set variable \fBblogs\fP to the value of variable \fBfoo\fP, from the
 section which contains the current section.
 
 .DS
 	blogs = ${modules.detail.detailfile}
 
 .DE
-Sets variable \fBblogs\fP to the value of variable \fBdetailfile\fP,
+Will set variable \fBblogs\fP to the value of variable \fBdetailfile\fP,
 of the \fBdetail\fP module, which is in the \fBmodules\fP section of
 the configuration file.
-
-.PP
 .SH FILES
 /etc/raddb/vmpsd.conf
 .SH "SEE ALSO"
 .BR vmpsd (8),
-.BR clients (5)
-
+.BR radiusd.conf (5)
 .SH AUTHOR
 Alan DeKok <aland@deployingradius.com>
