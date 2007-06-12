@@ -232,10 +232,13 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request,
 	DEBUG3("  modsingle[%s]: calling %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
+	request->component = comp2str[component];
+	request->module = sp->modinst->entry->name;
 	safe_lock(sp->modinst);
 	myresult = sp->modinst->entry->module->methods[component](
 			sp->modinst->insthandle, request);
 	safe_unlock(sp->modinst);
+	request->module = "<server core>";
 	DEBUG3("  modsingle[%s]: returned from %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);

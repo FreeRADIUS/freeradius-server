@@ -354,6 +354,8 @@ REQUEST *request_alloc(void)
 	request->child_pid = NO_SUCH_CHILD_PID;
 	request->container = NULL;
 	request->options = RAD_REQUEST_OPTION_NONE;
+	request->component = "<server core>";
+	request->module = "<server core>";
 
 	return request;
 }
