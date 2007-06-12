@@ -50,7 +50,7 @@ struct modcallable {
 	const char *name;
 	int lineno;
 	int actions[RLM_MODULE_NUMCODES];
-	enum { MOD_SINGLE, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE, MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE } type;
+	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE, MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE } type;
 };
 
 #define GROUPTYPE_SIMPLE	0
@@ -87,13 +87,8 @@ static modsingle *mod_callabletosingle(modcallable *p)
 }
 static modgroup *mod_callabletogroup(modcallable *p)
 {
-	rad_assert((p->type==MOD_GROUP) || /* this is getting silly... */
-		   (p->type==MOD_LOAD_BALANCE) ||
-		   (p->type==MOD_IF) ||
-		   (p->type==MOD_ELSE) ||
-		   (p->type==MOD_ELSIF) ||
-		   (p->type==MOD_UPDATE) ||
-		   (p->type==MOD_REDUNDANT_LOAD_BALANCE));
+	rad_assert((p->type > MOD_SINGLE) && (p->type <= MOD_CASE));
+
 	return (modgroup *)p;
 }
 static modcallable *mod_singletocallable(modsingle *p)
@@ -271,13 +266,16 @@ static int default_component_results[RLM_COMPONENT_COUNT] = {
 
 static const char *group_name[] = {
 	"",
+	"single",
 	"group",
 	"load-balance group",
 	"redundant-load-balance group",
 	"if",
 	"else",
 	"elsif",
-	"update"
+	"update",
+	"switch",
+	"case"
 };
 
 static const char *modcall_spaces = "++++++++++++++++++++++++++++++++";
@@ -427,6 +425,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			case MOD_IF:
 			case MOD_ELSE:
 			case MOD_ELSIF:
+			case MOD_CASE:
 			case MOD_GROUP:
 				stack.children[stack.pointer] = g->children;
 				break;
@@ -459,7 +458,19 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				stack.children[stack.pointer] = q;
 				break;
 
+			case MOD_SWITCH:
+				q = NULL;
+				for(p = g->children; p; p = p->next) {
+					if (strcmp(child->name, p->name) == 0) {
+						q = p;
+						break;
+					}
+				}
+				stack.children[stack.pointer] = q;
+				break;
+
 			default:
+				DEBUG2("Internal sanity check failed in modcall %d", child->type);
 				exit(1); /* internal sanity check failure */
 				break;
 			}
@@ -582,10 +593,12 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			case MOD_IF:
 			case MOD_ELSE:
 			case MOD_ELSIF:
+			case MOD_CASE:
 			case MOD_GROUP:
 				stack.children[stack.pointer] = child->next;
 				break;
 
+			case MOD_SWITCH:
 			case MOD_LOAD_BALANCE:
 				stack.children[stack.pointer] = NULL;
 				break;
@@ -603,6 +616,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				}
 				break;
 			default:
+				DEBUG2("Internal sanity check failed in modcall  next %d", child->type);
 				exit(1);
 		}
 
@@ -1034,6 +1048,13 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 
 	component = component;	/* -Wunused */
 
+	if (!cf_section_name2(cs)) {
+		radlog(L_ERR|L_CONS,
+		       "%s[%d] Require list name for 'update'.\n",
+		       filename, lineno);
+		return NULL;
+	}
+
 	for (i = 0; attrlist_names[i] != NULL; i++) {
 		if (strcmp(name2, attrlist_names[i]) == 0) {
 			ok = TRUE;
@@ -1053,10 +1074,6 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	/*
 	 *	Walk through the children of the update section,
 	 *	ensuring that they're all known attributes.
-	 *
-	 *	FIXME: Create blank VP's here, pointing to the value's,
-	 *	so that we don't have to do the dict_attrbyname lookup
-	 *	at run time.
 	 */
 	for (ci=cf_item_find_next(cs, NULL);
 	     ci != NULL;
@@ -1110,6 +1127,70 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 
 	return csingle;
 }
+
+
+static modcallable *do_compile_modswitch(modcallable *parent,
+					 int component, CONF_SECTION *cs,
+					 const char *filename, int lineno)
+{
+		modcallable *csingle;
+	CONF_ITEM *ci;
+
+	component = component;	/* -Wunused */
+
+	if (!cf_section_name2(cs)) {
+		radlog(L_ERR|L_CONS,
+		       "%s[%d] Require variable to switch over for 'switch'.\n",
+		       filename, lineno);
+		return NULL;
+	}
+
+	/*
+	 *	Walk through the children of the switch section,
+	 *	ensuring that they're all 'case' statements
+	 */
+	for (ci=cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci=cf_item_find_next(cs, ci)) {
+		CONF_SECTION *subcs;
+		const char *name1, *name2;
+
+		if (!cf_item_is_section(ci)) {
+			radlog(L_ERR|L_CONS,
+			       "%s[%d]: \"switch\" sections can only have \"case\" subsections",
+			       filename,
+			       cf_pair_lineno(cf_itemtopair(ci)));
+			return NULL;
+		}
+
+		subcs = cf_itemtosection(ci);	/* can't return NULL */
+		name1 = cf_section_name1(subcs);
+
+		if (strcmp(name1, "case") != 0) {
+			radlog(L_ERR|L_CONS,
+			       "%s[%d]: \"switch\" sections can only have \"case\" subsections",
+			       filename,
+			       cf_section_lineno(cf_itemtosection(ci)));
+			return NULL;
+		}
+
+		name2 = cf_section_name2(subcs);
+		if (!name2) {
+			radlog(L_ERR|L_CONS,
+			       "%s[%d]: \"case\" sections must have a name",
+			       filename,
+			       cf_section_lineno(cf_itemtosection(ci)));
+			return NULL;
+		}
+	}
+
+	csingle= do_compile_modgroup(parent, component, cs, filename,
+				     GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
+	if (!csingle) return NULL;
+	csingle->type = MOD_SWITCH;
+	return csingle;
+}
+
 
 /*
  *	Compile one entry of a module call.
@@ -1267,13 +1348,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			return csingle;
 
 		} else 	if (strcmp(modrefname, "update") == 0) {
-			if (!cf_section_name2(cs)) {
-				radlog(L_ERR|L_CONS,
-				       "%s[%d] Require list name for 'update'.\n",
-				       filename, lineno);
-				return NULL;
-			}
-
 			*modname = name2;
 
 			csingle = do_compile_modupdate(parent, component, cs,
@@ -1283,6 +1357,47 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			return csingle;
 
+		} else 	if (strcmp(modrefname, "switch") == 0) {
+			*modname = name2;
+
+			csingle = do_compile_modswitch(parent, component, cs,
+						       filename, lineno);
+			if (!csingle) return NULL;
+
+			return csingle;
+
+		} else 	if (strcmp(modrefname, "case") == 0) {
+			int i;
+
+			*modname = name2;
+
+			/*
+			 *	FIXME: How to tell that the parent can only
+			 *	be a "switch" statement?
+			 */
+			if (!parent) {
+				radlog(L_ERR, "%s[%d]: \"case\" statements may only appear within a \"switch\" section",
+				       filename, lineno);
+				return NULL;
+			}
+
+			csingle= do_compile_modgroup(parent, component, cs,
+						     filename,
+						     GROUPTYPE_SIMPLE,
+						     grouptype);
+			if (!csingle) return NULL;
+			csingle->type = MOD_CASE;
+
+			/*
+			 *	Set all of it's codes to return, so that
+			 *	when we pick a 'case' statement, we don't
+			 *	fall through to processing the next one.
+			 */
+			for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
+				csingle->actions[i] = MOD_ACTION_RETURN;
+			}
+
+			return csingle;
 		}
 
 		/*
@@ -1584,14 +1699,7 @@ void modcallable_free(modcallable **pc)
 {
 	modcallable *c, *loop, *next;
 	c = *pc;
-	if ((c->type == MOD_GROUP) ||
-	    (c->type == MOD_LOAD_BALANCE) ||
-	    (c->type == MOD_REDUNDANT_LOAD_BALANCE) ||
-	    (c->type == MOD_IF) ||
-	    (c->type == MOD_ELSE) ||
-	    (c->type == MOD_ELSIF) ||
-	    (c->type == MOD_UPDATE)) {
-	    
+	if (c->type != MOD_SINGLE) {
 		modgroup *g = mod_callabletogroup(c);
 
 		for(loop = g->children;
