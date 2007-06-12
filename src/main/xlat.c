@@ -462,6 +462,14 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 			c->internal = TRUE;
 		}
 
+		/*
+		 *	New name: "control"
+		 */
+		xlat_register("control", xlat_packet, &xlat_inst[0]);
+		c = xlat_find("control");
+		rad_assert(c != NULL);
+		c->internal = TRUE;
+
 #ifdef HAVE_REGEX_H
 		/*
 		 *	Register xlat's for regexes.
