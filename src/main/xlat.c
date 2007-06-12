@@ -712,7 +712,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		 */
 	do_xlat:
 		if ((c = xlat_find(xlat_name)) != NULL) {
-			if (!c->internal) DEBUG("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
+			if (!c->internal) DEBUG3("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
 						c->module, xlat_string);
 			retlen = c->do_xlat(c->instance, request, xlat_string,
 					    q, freespace, func);
@@ -1062,7 +1062,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 	}
 	*q = '\0';
 
-	DEBUG2("radius_xlat:  '%s'", out);
+	DEBUG2("\texpand: %s -> %s", fmt, out);
 
 	return strlen(out);
 }
