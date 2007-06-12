@@ -33,8 +33,8 @@ only be queried, and cannot be assigned.
 	Packet-Dst-Port		UDP port to which the packet was sent.
 
 	 
-     %{check:Attribute-Name}         Corresponding value for Attribute-Name
-                                     in check items for request
+     %{control:Attribute-Name}         Corresponding value for Attribute-Name
+                                     in the control items for request
 	
 
      %{config:section.subsection.item} Corresponding value in 'radiusd.conf'
