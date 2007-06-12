@@ -422,6 +422,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			stack.priority[stack.pointer] = 0;
 			stack.result[stack.pointer] = default_component_results[component];
 			switch (child->type) {
+				char buffer[1024];
+
 			case MOD_IF:
 			case MOD_ELSE:
 			case MOD_ELSIF:
@@ -459,9 +461,12 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				break;
 
 			case MOD_SWITCH:
+				radius_xlat(buffer, sizeof(buffer),
+					    child->name, request, NULL);
+
 				q = NULL;
 				for(p = g->children; p; p = p->next) {
-					if (strcmp(child->name, p->name) == 0) {
+					if (strcmp(buffer, p->name) == 0) {
 						q = p;
 						break;
 					}
