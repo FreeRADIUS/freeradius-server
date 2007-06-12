@@ -1355,6 +1355,7 @@ static int radius_snmp_print(rad_listen_t *this, char *buffer, size_t bufsize)
 
 #endif
 
+#ifdef WITH_VMPS
 /*
  *	Check if an incoming request is "ok"
  *
@@ -1431,6 +1432,7 @@ static int vqp_socket_decode(rad_listen_t *listener, REQUEST *request)
 {
 	return vqp_decode(request->packet);
 }
+#endif /* WITH_VMPS */
 
 
 static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
@@ -1456,10 +1458,14 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	  detail_recv, detail_send,
 	  detail_print, detail_encode, detail_decode },
 
+#ifdef WITH_VMPS
 	/* vlan query protocol */
 	{ common_socket_parse, NULL,
 	  vqp_socket_recv, vqp_socket_send,
 	  socket_print, vqp_socket_encode, vqp_socket_decode },
+#else
+	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+#endif
 
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL}	/* RAD_LISTEN_SNMP */
 };
@@ -1669,7 +1675,9 @@ static const LRAD_NAME_NUMBER listen_compare[] = {
 	{ "auth",	RAD_LISTEN_AUTH },
 	{ "acct",	RAD_LISTEN_ACCT },
 	{ "detail",	RAD_LISTEN_DETAIL },
+#ifdef WITH_VMPS
 	{ "vmps",	RAD_LISTEN_VQP },
+#endif
 	{ NULL, 0 },
 };
 
@@ -1729,12 +1737,14 @@ int listen_init(const char *filename, rad_listen_t **head)
 		radlog(L_INFO, "WARNING: The directive 'bind_adress' is deprecated, and will be removed in future versions of FreeRADIUS. Please edit the configuration files to use the directive 'listen'.");
 
 	bind_it:
-		if (strcmp(progname, "vmpsd") != 0) {
-			this = listen_alloc(RAD_LISTEN_AUTH);
-		} else {
+#ifdef WITH_VMPS
+		if (strcmp(progname, "vmpsd") == 0) {
 			this = listen_alloc(RAD_LISTEN_VQP);
 			if (!auth_port) auth_port = 1589;
-		}
+		} else
+#endif
+			this = listen_alloc(RAD_LISTEN_AUTH);
+
 		sock = this->data;
 
 		sock->ipaddr = server_ipaddr;
@@ -1750,10 +1760,12 @@ int listen_init(const char *filename, rad_listen_t **head)
 		*last = this;
 		last = &(this->next);
 
+#ifdef WITH_VMPS
 		/*
 		 *	No acct for vmpsd
 		 */
 		if (strcmp(progname, "vmpsd") == 0) goto do_proxy;
+#endif
 
 		/*
 		 *	Open Accounting Socket.

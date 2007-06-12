@@ -444,9 +444,11 @@ int main(int argc, char *argv[])
 			DEBUG("Listening on SNMP %s", buffer);
 			break;
 
+#ifdef WITH_VMPS
 		case RAD_LISTEN_VQP:
 			DEBUG("Listening on vmps %s", buffer);
 			break;
+#endif
 
 		default:
 			break;

@@ -236,6 +236,22 @@ AC_ARG_WITH(snmp,
   esac ]
 )
 
+dnl extra argument: --with-vmps
+WITH_VMPS=yes
+AC_ARG_WITH(vmps,
+[  --with-vmps             Compile in VMPS support. (default=yes)],
+[ case "$withval" in
+    yes)
+        ;;
+    *)
+	WITH_VMPS=no
+  esac ]
+)
+if test "x$WITH_VMPS" = "xyes"; then
+	AC_DEFINE(WITH_VMPS, [], [define if you want VMPS support])
+fi
+
+
 dnl #
 dnl #  Allow the user to specify a list of modules to be linked
 dnl #  statically to the server.

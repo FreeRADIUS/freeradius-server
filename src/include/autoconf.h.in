@@ -36,6 +36,10 @@
 /* Define to 1 if you have the `ctime_r' function. */
 #undef HAVE_CTIME_R
 
+/* Define to 1 if you have the declaration of `gethostbyaddr_r', and to 0 if
+   you don't. */
+#undef HAVE_DECL_GETHOSTBYADDR_R
+
 /* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
    */
 #undef HAVE_DIRENT_H
@@ -354,6 +358,9 @@
 
 /* define if you want udpfromto */
 #undef WITH_UDPFROMTO
+
+/* define if you want VMPS support */
+#undef WITH_VMPS
 
 /* Define to 1 if your processor stores words with the most significant byte
    first (like Motorola and SPARC, unlike Intel and VAX). */

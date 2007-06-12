@@ -26,6 +26,8 @@ RCSID("$Id$");
 #include	<freeradius-devel/libradius.h>
 #include	<freeradius-devel/vqp.h>
 
+#ifdef WITH_VMPS
+
 /*
  *  http://www.openbsd.org/cgi-bin/cvsweb/src/usr.sbin/tcpdump/print-vqp.c
  *
@@ -450,6 +452,12 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	memcpy(&id, packet->data + 4, 4);
 	packet->id = ntohl(id);
 
+	/*
+	 *	FIXME: Create a fake "request authenticator", to
+	 *	avoid duplicates?  Or is the VQP sequence number
+	 *	adequate for this purpose?
+	 */
+
 	return packet;
 }
 
@@ -740,3 +748,4 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	return 0;
 }
+#endif

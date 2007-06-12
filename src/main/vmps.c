@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
+#ifdef WITH_VMPS
 int vmps_process(REQUEST *request)
 {
 	DEBUG2("Doing VMPS");
@@ -36,3 +37,4 @@ int vmps_process(REQUEST *request)
 
 	request->reply->code = PW_AUTHENTICATION_ACK;
 }
+#endif
