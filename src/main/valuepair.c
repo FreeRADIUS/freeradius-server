@@ -163,6 +163,15 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 #endif
 
 	/*
+	 *	Tagged attributes are equal if and only if both the
+	 *	tag AND value match.
+	 */
+	if ((ret == 0) && check->flags.has_tag) {
+		ret = ((int) vp->flags.tag) - ((int) check->flags.tag);
+		if (ret != 0) return ret;
+	}
+
+	/*
 	 *	Not a regular expression, compare the types.
 	 */
 	switch(check->type) {
@@ -182,13 +191,8 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 				     vp->length);
 			break;
 		case PW_TYPE_STRING:
-			if (check->flags.caseless) {
-				ret = strcasecmp((char *)vp->vp_strvalue,
-						 (char *)check->vp_strvalue);
-			} else {
-				ret = strcmp((char *)vp->vp_strvalue,
-					     (char *)check->vp_strvalue);
-			}
+			ret = strcmp((char *)vp->vp_strvalue,
+				     (char *)check->vp_strvalue);
 			break;
 		case PW_TYPE_BYTE:
 		case PW_TYPE_SHORT:
