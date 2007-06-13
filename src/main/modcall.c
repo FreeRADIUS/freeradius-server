@@ -402,7 +402,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 */
 		if (child->type != MOD_SINGLE) {
 			int count = 1;
-			modcallable *p, *q;
+			modcallable *p, *q, *null_case;
 			modgroup *g = mod_callabletogroup(child);
 
 			stack.pointer++;
@@ -464,13 +464,20 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				radius_xlat(buffer, sizeof(buffer),
 					    child->name, request, NULL);
 
-				q = NULL;
+				null_case = q = NULL;
 				for(p = g->children; p; p = p->next) {
+					if (!p->name) {
+						if (!null_case) null_case = p;
+						continue;
+					}
 					if (strcmp(buffer, p->name) == 0) {
 						q = p;
 						break;
 					}
 				}
+
+				if (!q) q = null_case;
+
 				stack.children[stack.pointer] = q;
 				break;
 
@@ -485,7 +492,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 			DEBUG2("%.*s- entering %s %s",
 			       stack.pointer, modcall_spaces,
-			       group_name[child->type], child->name);
+			       group_name[child->type],
+			       child->name ? child->name : "");
 
 			/*
 			 *	Catch the special case of a NULL group.
@@ -522,7 +530,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 	handle_result:
 		DEBUG2("%.*s[%s] returns %s",
 		       stack.pointer + 1, modcall_spaces,
-		       child->name,
+		       child->name ? child->name : "",
 		       lrad_int2str(rcode_table, myresult, "??"));
 
 
@@ -640,7 +648,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 			DEBUG2("%.*s- %s %s returns %s",
 			       stack.pointer + 1, modcall_spaces,
-			       group_name[parent->type], parent->name,
+			       group_name[parent->type],
+			       parent->name ? parent->name : "",
 			       lrad_int2str(rcode_table, myresult, "??"));
 
 			if ((parent->type == MOD_IF) ||
@@ -1148,8 +1157,9 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 					 int component, CONF_SECTION *cs,
 					 const char *filename, int lineno)
 {
-		modcallable *csingle;
+	modcallable *csingle;
 	CONF_ITEM *ci;
+	int had_seen_default = FALSE;
 
 	component = component;	/* -Wunused */
 
@@ -1190,7 +1200,12 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 		}
 
 		name2 = cf_section_name2(subcs);
-		if (!name2) {
+		if (!name2 && !had_seen_default) {
+			had_seen_default = TRUE;
+			continue;
+		}
+
+		if (!name2 || (name2[0] == '\0')) {
 			radlog(L_ERR|L_CONS,
 			       "%s[%d]: \"case\" sections must have a name",
 			       filename,
@@ -1402,6 +1417,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 						     grouptype);
 			if (!csingle) return NULL;
 			csingle->type = MOD_CASE;
+			csingle->name = cf_section_name2(cs); /* may be NULL */
 
 			/*
 			 *	Set all of it's codes to return, so that

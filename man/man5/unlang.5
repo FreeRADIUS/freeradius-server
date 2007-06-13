@@ -75,6 +75,18 @@ statement cannot appear outside of a "switch" block.
 .br
 	}
 .DE
+
+A "default" entry can be defined by not specifying a static string.
+This entry will be used if no other "case" entry matches.  Only one
+"default" entry can exist in a "switch" section.
+
+.DS
+	case {
+.br
+		...
+.br
+	}
+.DE
 .IP update
 .br
 Update a particular attribute list, based on the attributes given in
@@ -96,8 +108,9 @@ attributes maintainted internally by the server that controls how the
 server processes the request.  Any attribute that does not go in a
 packet on the network will generally be placed in the "control" list.
 
-For a detailed description of the contents of the "update" section,
-see the ATTRIBUTES section below.
+The only contents permitted in an "update" section are attributes and
+values.  For a detailed description of the contents of the "update"
+section, see the ATTRIBUTES section below.
 .SH CONDITIONS
 The conditions are similar to C conditions in syntax, though
 quoted strings are supported, as with the Unix shell.
