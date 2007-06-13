@@ -656,7 +656,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
  *	only paircopy() those attributes that we're really going to
  *	use.
  */
-static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
+static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 {
 	int i, j, count, from_count, to_count, tailto;
 	VALUE_PAIR *vp, *next, **last;
@@ -684,7 +684,7 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 	 *	the matching attributes are deleted.
 	 */
 	count = 0;
-	for (vp = *from; vp != NULL; vp = vp->next) count++;
+	for (vp = from; vp != NULL; vp = vp->next) count++;
 	from_list = rad_malloc(sizeof(*from_list) * count);
 
 	for (vp = *to; vp != NULL; vp = vp->next) count++;
@@ -695,7 +695,7 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 	 *	chains.
 	 */
 	from_count = 0;
-	for (vp = *from; vp != NULL; vp = next) {
+	for (vp = from; vp != NULL; vp = next) {
 		next = vp->next;
 		from_list[from_count++] = vp;
 		vp->next = NULL;
@@ -822,15 +822,12 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 	}
 
 	/*
-	 *	Re-chain the "from" list.
+	 *	Delete attributes in the "from" list.
 	 */
-	*from = NULL;
-	last = from;
 	for (i = 0; i < from_count; i++) {
 		if (!from_list[i]) continue;
 
-		*last = from_list[i];
-		last = &(*last)->next;
+		pairfree(&from_list[i]);
 	}
 	free(from_list);
 
@@ -924,9 +921,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	for (ci=cf_item_find_next(cs, NULL);
 	     ci != NULL;
 	     ci=cf_item_find_next(cs, ci)) {
-		const char *value;
 		CONF_PAIR *cp;
-		char buffer[2048];
 
 		/*
 		 *	This should never happen.
@@ -938,29 +933,33 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 
 		cp = cf_itemtopair(ci);
 
-		value = expand_string(buffer, sizeof(buffer), request,
-				      cp->value_type, cp->value);
-		if (!value) {
-			pairfree(&newlist);
-			return RLM_MODULE_INVALID;
-		}
-
 		/*
 		 *	The VP && CF lists should be in sync.  If they're
 		 *	not, panic.
 		 */
-		if (vp->flags.do_xlat && !pairparsevalue(vp, value)) {
-			DEBUG2("ERROR: Failed parsing value \"%s\" for attribute %s: %s",
-			       value, vp->name, librad_errstr);
-			pairfree(&newlist);
-			return RLM_MODULE_FAIL;
+		if (vp->flags.do_xlat) {
+			const char *value;
+			char buffer[2048];
+
+			value = expand_string(buffer, sizeof(buffer), request,
+					      cp->value_type, cp->value);
+			if (!value) {
+				pairfree(&newlist);
+				return RLM_MODULE_INVALID;
+			}
+
+			if (!pairparsevalue(vp, value)) {
+				DEBUG2("ERROR: Failed parsing value \"%s\" for attribute %s: %s",
+				       value, vp->name, librad_errstr);
+				pairfree(&newlist);
+				return RLM_MODULE_FAIL;
+			}
+			vp->flags.do_xlat = 0;
 		}
-		vp->flags.do_xlat = 0;
 		vp = vp->next;
 	}
 
-	my_pairmove(output_vps, &newlist);
-	pairfree(&newlist);
+	my_pairmove(output_vps, newlist);
 
 	return RLM_MODULE_UPDATED;
 }
