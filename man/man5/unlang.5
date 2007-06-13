@@ -116,8 +116,9 @@ non-zero number.
 .DE
 
 Evalutes to true if 'foo' evaluates to false, and vice-versa.
-.IP Short
-circuit operators
+.PP
+Short-circuit operators
+.RS
 .br
 .DS
 	(foo || bar)
@@ -130,6 +131,7 @@ condition, and evaluates the second condition if and only if the
 result of the first condition is true.  "||" is similar, but executes
 the second command if and only if the result of the first condition is
 false.
+.RE
 .IP Comparisons
 .DS
 	(foo == bar)
@@ -159,9 +161,22 @@ the result is a number it can be evaluated in a numerical context.
 .IP 'strings'
 Single-quoted strings are evaluated as-is.
 .IP `strings`
-Back-quoted strings are evaluated by executing the command given
-inside of the string in a sub-shell, and taking the output as a
-string.  This behavior is much the same as that of Unix shells.
+Back-quoted strings are evaluated by expanding the contents of the
+string, as described above for double-quoted strings.  The resulting
+command given inside of the string in a sub-shell, and taking the
+output as a string.  This behavior is much the same as that of Unix
+shells.
+
+Note that for security reasons, the input string is split into command
+and arguments before variable expansion is done.
+
+For performance reasons, we suggest that the use of back-quoted
+strings be kept to a minimum.  Executing external programs is
+relatively expensive, and executing a large number of programs for
+every request can quickly use all of the CPU time in a server.  If you
+believe that you need to execute many programs, we suggest finding
+alternative ways to achieve the same result.  In some cases, using a
+real language may be sufficient.
 .IP /regex/i
 These strings are valid only on the right-hand side of a comparison,
 and then only when the comparison operator is "=~" or "!~".  They are
@@ -180,10 +195,31 @@ Run-time variables are referenced using the following syntax
 .DS
 	%{Variable-Name}
 .DE
+
+Note that unlike C, there is no way to declare variables, or to refer
+to them outside of a string context.  All references to variables MUST
+be contained inside of a double-quoted or back-quoted string.
+
+Many potential variables are defined in the dictionaries that
+accompany the server.  These definitions define only the name and
+type, and do not define the value of the variable.  When the server
+receives a packet, it uses the packet contents to look up entries in
+the dictionary, and instantiates variables with a name taken from the
+dictionaries, and a value taken from the packet contents.  This
+process means that if a variable does not exist, it is usually because
+it was not mentioned in a packet that the server received.
+
+Once the variable is instantiated, it is added to an appropriate
+attribute list, as described below.  In many cases, attributes and
+variables are inter-changeble, and are often talked about that way.
+However, variables can also refer to run-time calls to modules, which
+may perform operations like SQL SELECTs, and which may return the
+result as the value of the variable.
 .PP
 Referencing attribute lists
 .RS
 Attribute lists may be referenced via the following syntax
+
 .DS
 	%{<list>:Attribute-Name}
 .DE
@@ -216,6 +252,21 @@ more than 8 parantheses, the additional results will not be placed
 into any variables.
 .RE
 .PP
+Obtaining results from databases
+.RS
+It is useful to query a database for some information, and to use the
+result in a condition.  The following syntax will call a module, pass
+it the given string, and replace the variable reference with the
+resulting string returned from the module.
+
+.DS
+	%{module: string ...}
+.DE
+
+The syntax of the string is module-specific.  Please read the module
+documentation for additional details.
+.RE
+.PP
 Conditional Syntax
 .RS
 Conditional syntax similar to that used in Unix shells may also be
@@ -237,13 +288,11 @@ When attribute Bar is unset, returns literal string 'baz'
 String lengths and arrays
 .RS
 Similar to a Unix shell, there are ways to reference string lenths,
-and the second or more instance of an attribute in a list.
-Realistically, if you need this functionality, we recommend using a
-real language.
+and the second or more instance of an attribute in a list.  If you
+need this functionality, we recommend using a real language.
 .IP %{#string}
 The number of characters in %{string}.  If %{string} is not
-set, then the length is not set.  This will NOT work for the
-one-character variables defined below.
+set, then the length is not set.
 
 e.g. %{#Junk-junk:-foo} will yeild the string "foo".
 .IP %{Attribute-Name[index]}
@@ -267,12 +316,60 @@ member separated by a newline.
 .IP %{#Attribute-Name[index]}
 Expands to the length of the string %{Attribute-Name[index]}.
 .SH ATTRIBUTES
-TBD
+The attribute lists described above may be edited by listing one or
+more attributes in an "update" section.  Once the attributes have been
+defined, they may be referenced as described above in the VARIABLES
+section.
+
+The following syntax defines attributes in an "update" section.  Each
+attribute and value has to be all on one line in the configuration
+file.  There is no need for commas or semi-colons after the value.
+
+.DS
+	Attribute-Name = value
+.DE
+.PP
+Attribute names
+.RS
+The Attribute-Name must be a name previously defined in a dictionary.
+If an undefined name is used, the server will return an error, and
+will not start.
+.RE
+.IP Operators
+The operator used to assign the value of the attribute may be one of
+the following, with the given meaning.
+.RS
+.IP =
+Add the attribute to the list, if and only if an attribute of the same
+name is already present in that list.
+.IP := 
+Add the attribute to the list.  If any attribute of the same name is
+already present in that list, its value is replaced with the value of
+the current attribute.
+.IP +=
+Add the attribute to the tail of the list, even if attributes of the
+same name are already present in the list.
+.IP -=
+Remove all matching attributes from the list.  Both the attribute name
+and value have to match in order for the attribute to be removed from
+the list.
+.RE
+.IP Values
+.br
+The format of the value is attribute-specific, and is usually a
+string, integer, IP address, etc.  Prior to the attribute being
+instantiated, the value is handled as described above in the STRINGS
+AND NUMBERS section.  This flexibility means that, for example, you
+can assign an IP address value to an attribute by specifying the IP
+address directly, or by having the address returned from a database
+query, or by having the address returned as the output of a program
+that is executed.
 .SH FILES
 /etc/raddb/vmpsd.conf,
 /etc/raddb/radiusd.conf
 .SH "SEE ALSO"
 .BR radiusd.conf (5),
-.BR vmps.conf (5)
+.BR vmpsd.conf (5),
+.BR dictionary (5)
 .SH AUTHOR
 Alan DeKok <aland@deployingradius.com>
