@@ -793,6 +793,7 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 
 					DEBUG4("DELETING %s FROM %d TO %d",
 					       from_list[i]->name, i, j);
+					pairfree(&to_list[j]);
 					to_list[j] = NULL;
 				}
 
