@@ -1101,6 +1101,15 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 			radlog(L_ERR|L_CONS, "%s[%d]: ERROR: %s",
 			       filename, cf_pair_lineno(cp), librad_errstr);
 			return NULL;
+		}
+
+		if ((vp->operator != T_OP_EQ) &&
+		    (vp->operator != T_OP_ADD) &&
+		    (vp->operator != T_OP_SET)) {
+			pairfree(&head);
+			radlog(L_ERR|L_CONS, "%s[%d]: Invalid operator for attribute",
+			       filename, cf_pair_lineno(cp));
+			return NULL;
 
 		}
 
