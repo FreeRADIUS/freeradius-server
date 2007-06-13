@@ -59,8 +59,12 @@ static int all_digits(const char *string)
 	return (*p == '\0');
 }
 
+#ifndef NDEBUG
 #ifndef DEBUG4
 #define DEBUG4  if (debug_flag > 4)log_debug
+#endif
+#else
+#define DEBUG4 if (0) log_debug
 #endif
 
 static const char *filler = "????????????????????????????????????????????????????????????????";
@@ -644,6 +648,209 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 	return TRUE;
 }
 
+/*
+ *	The pairmove() function in src/lib/valuepair.c does all sorts of
+ *	extra magic that we don't want here.
+ *
+ *	FIXME: integrate this with the code calling it, so that we
+ *	only paircopy() those attributes that we're really going to
+ *	use.
+ */
+static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
+{
+	int i, j, count, from_count, to_count, tailto;
+	VALUE_PAIR *vp, *next, **last;
+	VALUE_PAIR **from_list, **to_list;
+
+	/*
+	 *	Set up arrays for editing, to remove some of the
+	 *	O(N^2) dependencies.  This also makes it easier to
+	 *	insert and remove attributes.
+	 *
+	 *	It also means that the operators apply ONLY to the
+	 *	attributes in the original list.  With the previous
+	 *	implementation of pairmove(), adding two attributes
+	 *	via "+=" and then "=" would mean that the second one
+	 *	wasn't added, because of the existence of the first
+	 *	one in the "to" list.  This implementation doesn't
+	 *	have that bug.
+	 *
+	 *	Also, the previous implementation did NOT implement
+	 *	"-=" correctly.  If two of the same attributes existed
+	 *	in the "to" list, and you tried to subtract something
+	 *	matching the *second* value, then the pairdelete()
+	 *	function was called, and the *all* attributes of that
+	 *	number were deleted.  With this implementation, only
+	 *	the matching attributes are deleted.
+	 */
+	count = 0;
+	for (vp = *from; vp != NULL; vp = vp->next) count++;
+	from_list = rad_malloc(sizeof(*from_list) * count);
+
+	for (vp = *to; vp != NULL; vp = vp->next) count++;
+	to_list = rad_malloc(sizeof(*to_list) * count);
+
+	/*
+	 *	Move the lists to the arrays, and break the list
+	 *	chains.
+	 */
+	from_count = 0;
+	for (vp = *from; vp != NULL; vp = next) {
+		next = vp->next;
+		from_list[from_count++] = vp;
+		vp->next = NULL;
+	}
+
+	to_count = 0;
+	for (vp = *to; vp != NULL; vp = next) {
+		next = vp->next;
+		to_list[to_count++] = vp;
+		vp->next = NULL;
+	}
+	tailto = to_count;
+
+	DEBUG4("FROM %d TO %d MAX %d", from_count, to_count, count);
+
+	/*
+	 *	Now that we have the lists initialized, start working
+	 *	over them.
+	 */
+	for (i = 0; i < from_count; i++) {
+		int found;
+
+		/*
+		 *	Attribute should be appended, OR the "to" list
+		 *	is empty, and we're supposed to replace or
+		 *	"add if not existing".
+		 */
+		if ((from_list[i]->operator == T_OP_ADD) ||
+		    ((to_count == 0) &&
+		     ((from_list[i]->operator == T_OP_SET) ||
+		      (from_list[i]->operator == T_OP_EQ)))) {
+			DEBUG4("APPENDING %s FROM %d TO %d",
+			       from_list[i]->name, i, tailto);
+			to_list[tailto++] = from_list[i];
+			from_list[i] = NULL;
+			continue;
+		}
+
+		found = FALSE;
+		for (j = 0; j < to_count; j++) {
+			/*
+			 *	Attributes aren't the same, skip them.
+			 */
+			if (from_list[i]->attribute != to_list[j]->attribute) {
+				continue;
+			}
+
+			/*
+			 *	We don't use a "switch" statement here
+			 *	because we want to break out of the
+			 *	"for" loop over 'j' in most cases.
+			 */
+
+			/*
+			 *	Over-write the FIRST instance of the
+			 *	matching attribute name.  We free the
+			 *	one in the "to" list, and move over
+			 *	the one in the "from" list.
+			 */
+			if (from_list[i]->operator == T_OP_SET) {
+				DEBUG4("OVERWRITING %s FROM %d TO %d",
+				       to_list[j]->name, i, j);
+				pairfree(&to_list[j]);
+				to_list[j] = from_list[i];
+				from_list[i] = NULL;
+				break;
+			}
+
+			/*
+			 *	Add the attribute only if it does not
+			 *	exist... but it exists, so we stop
+			 *	looking.
+			 */
+			if (from_list[i]->operator == T_OP_EQ) {
+				found = TRUE;
+				break;
+			}
+
+			/*
+			 *	Delete all matching attributes from
+			 *	"to"
+			 */
+			if (from_list[i]->operator == T_OP_SUB) {
+				/*
+				 *	Check for equality.
+				 */
+				from_list[i]->operator = T_OP_CMP_EQ;
+
+				/*
+				 *	If equal, delete the one in
+				 *	the "to" list.
+				 */
+				if (radius_compare_vps(NULL, from_list[i],
+						       to_list[j]) == 0) {
+
+					DEBUG4("DELETING %s FROM %d TO %d",
+					       from_list[i]->name, i, j);
+					to_list[j] = NULL;
+				}
+
+				/*
+				 *	We may want to do more
+				 *	subtractions, so we re-set the
+				 *	operator back to it's original
+				 *	value.
+				 */
+				from_list[i]->operator = T_OP_SUB;
+				continue;
+			}
+
+			rad_assert(0 == 1); /* panic! */
+		}
+
+		/*
+		 *	We were asked to add it if it didn't exist,
+		 *	and it doesn't exist.  Move it over to the tail
+		 *	of the "to" list.
+		 */
+		if ((from_list[i]->operator == T_OP_EQ) && !found) {
+			to_list[tailto++] = from_list[i];
+			from_list[i] = NULL;
+		}
+	}
+
+	/*
+	 *	Re-chain the "from" list.
+	 */
+	*from = NULL;
+	last = from;
+	for (i = 0; i < from_count; i++) {
+		if (!from_list[i]) continue;
+
+		*last = from_list[i];
+		last = &(*last)->next;
+	}
+	free(from_list);
+
+	DEBUG4("TO %d %d", to_count, tailto);
+
+	/*
+	 *	Re-chain the "to" list.
+	 */
+	*to = NULL;
+	last = to;
+	for (i = 0; i < tailto; i++) {
+		if (!to_list[i]) continue;
+		
+		DEBUG4("to[%d] = %s", i, to_list[i]->name);
+
+		*last = to_list[i];
+		last = &(*last)->next;
+	}
+	free(to_list);
+}
+
 
 /*
  *     Copied shamelessly from conffile.c, to simplify the API for
@@ -751,7 +958,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 		vp = vp->next;
 	}
 
-	pairmove(output_vps, &newlist);
+	my_pairmove(output_vps, &newlist);
 	pairfree(&newlist);
 
 	return RLM_MODULE_UPDATED;

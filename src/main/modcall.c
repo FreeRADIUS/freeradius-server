@@ -1105,6 +1105,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 
 		if ((vp->operator != T_OP_EQ) &&
 		    (vp->operator != T_OP_ADD) &&
+		    (vp->operator != T_OP_SUB) &&
 		    (vp->operator != T_OP_SET)) {
 			pairfree(&head);
 			radlog(L_ERR|L_CONS, "%s[%d]: Invalid operator for attribute",
