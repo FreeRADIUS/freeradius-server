@@ -502,9 +502,10 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				/*
 				 *	Print message for NULL group
 				 */
-				DEBUG2("%.*s- %s returns %s",
+				DEBUG2("%.*s- %s %s returns %s",
 				       stack.pointer + 1, modcall_spaces,
-				       comp2str[component],
+				       group_name[child->type],
+				       child->name ? child->name : "",
 				       lrad_int2str(rcode_table,
 						    stack.result[stack.pointer],
 						    "??"));
