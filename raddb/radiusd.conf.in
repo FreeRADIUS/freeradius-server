@@ -12,13 +12,15 @@
 #  	in this file, it is exported through the API to
 #  	modules that ask for it.
 #
-#	The configuration variables defined here are of the form ${foo}
-#	They are local to this file, and do not change from request to
-#	request.
+#	See "man radiusd.conf" for documentation on the format of this
+#	file.  Note that the individual configuration items are NOT
+#	documented in that "man" page.  They are only documented here,
+#	in the comments.
 #
-#	The per-request variables are of the form %{Attribute-Name}, and
-#	are taken from the values of the attribute in the incoming
-#	request.  See 'doc/variables.txt' for more information.
+#	As of 2.0.0, FreeRADIUS supports a simple processing language
+#	in the "authorize", "authenticate", "accounting", etc. sections.
+#	See "man unlang" for details.
+#
 
 prefix = @prefix@
 exec_prefix = @exec_prefix@
@@ -2054,6 +2056,17 @@ authorize {
 	#  get a chance to set Auth-Type for themselves.
 	#
 	pap
+
+
+	#
+	#  If "status_server = yes", then Status-Server messages are passed
+	#  through the following section, and ONLY the following section.
+	#  This permits you to do DB queries, for example.  If the modules
+	#  listed here return "fail", then NO response is sent.
+	#
+#	Autz-Type Status-Server {
+#
+#	}
 }
 
 
@@ -2216,6 +2229,13 @@ session {
 	#
 	#  See "Simultaneous Use Checking Queries" in sql.conf
 #	sql
+
+	#
+	#  See "Autz-Type Status-Server" for how this works.
+	#
+#	Acct-Type Status-Server {
+#
+#	}
 }
 
 
