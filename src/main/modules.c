@@ -394,20 +394,20 @@ static int indexed_modcall(const char *space, int comp, int idx,
 {
 	int rcode;
 	indexed_modcallable *this;
+	modcallable *list = NULL;
 
 	this = lookup_by_index(space, comp, idx);
 	if (!this) {
 		if (idx != 0) DEBUG2("  ERROR: Unknown value specified for %s.  Cannot perform requested action.",
 				     section_type_value[comp].typename);
-		request->component = section_type_value[comp].typename;
-		rcode = modcall(comp, NULL, request); /* does default action */
 	} else {
-		if (!space) space = section_type_value[comp].section;
-		DEBUG2("  Processing the %s section of %s",
-		       space, mainconfig.radiusd_conf);
-		request->component = section_type_value[comp].typename;
-		rcode = modcall(comp, this->modulelist, request);
+		list = this->modulelist;
 	}
+
+	request->component = section_type_value[comp].section;
+
+	rcode = modcall(comp, list, request);
+
 	request->module = "<server-core>";
 	request->component = "<server-core>";
 	return rcode;
@@ -466,10 +466,6 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 
 	subcomp = new_sublist(space, comp, dval->value);
 	if (!subcomp) {
-		radlog(L_ERR|L_CONS,
-		       "%s[%d] %s %s already configured - skipping",
-		       filename, cf_section_lineno(cs),
-		       section_type_value[comp].typename, name2);
 		modcallable_free(&ml);
 		return 1;
 	}
@@ -582,10 +578,6 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 
 		subcomp = new_sublist(space, comp, idx);
 		if (subcomp == NULL) {
-			radlog(L_INFO|L_CONS,
-					"%s %s %s already configured - skipping",
-					filename, section_type_value[comp].typename,
-					modname);
 			modcallable_free(&this);
 			continue;
 		}
@@ -602,6 +594,42 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 	return 0;
 }
 
+static int load_byspace(CONF_SECTION *cs, const char *space,
+			int *do_component)
+{
+	int comp;
+
+	DEBUG2(" modules {");
+	
+	/*
+	 *	Loop over all of the known components, finding their
+	 *	configuration section, and loading it.
+	 */
+	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
+		CONF_SECTION *subcs;
+
+		if (!do_component[comp]) continue;
+
+		subcs = cf_section_sub_find(cs,
+					    section_type_value[comp].section);
+		if (!subcs) continue;
+			
+		if (cf_item_find_next(subcs, NULL) == NULL) continue;
+			
+		DEBUG2(" Module: Checking %s {...} for more modules to load",
+		       section_type_value[comp].section);
+
+		if (load_component_section(NULL, subcs, space, comp,
+					   mainconfig.radiusd_conf) < 0) {
+			DEBUG2(" }");
+			return -1;
+		}
+	} /* loop over components */
+
+	DEBUG2(" }");
+
+	return 0;
+}
 
 /*
  *	Parse the module config sections, and load
@@ -894,62 +922,55 @@ int setup_modules(int reload)
 		DEBUG2(" }");
 	} /* if there's an 'instantiate' section. */
 
-	DEBUG2(" modules {");
+	if (load_byspace(mainconfig.config, NULL, do_component) < 0) {
+		return -1;
+	}
 
 	/*
-	 *	Loop over all of the known components, finding their
-	 *	configuration section, and loading it.
-	 */
-	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
-		if (!do_component[comp]) continue;
-
-		cs = cf_section_find(section_type_value[comp].section);
-		if (!cs) continue;
-			
-		if (cf_item_find_next(cs, NULL) == NULL) continue;
-			
-		DEBUG2(" Module: Checking %s {...} for more modules to load",
-		       section_type_value[comp].section);
-
-		if (load_component_section(NULL, cs, NULL, comp,
-					   mainconfig.radiusd_conf) < 0) {
-			return -1;
-		}
-	} /* loop over components */
-
-	/*
-	 *	Load the VMPS section, if necessary.
+	 *	Load by identities, and by vmps.
 	 */
 	for (listener = mainconfig.listen;
 	     listener != NULL;
 	     listener = listener->next) {
 		if (listener->type == RAD_LISTEN_VQP) {
-			break;
+			cs = cf_section_find("vmps");
+			if (!cs) {
+				radlog(L_ERR, "Listening on vmps socket, but no vmps section");
+				return -1;
+			}
+			
+			if (cf_item_find_next(cs, NULL) == NULL) {
+				radlog(L_ERR, "Listening on vmps socket, vmps section is empty");
+				return -1;
+			}
+			
+			DEBUG2(" Module: Checking vmps {...} for more modules to load");
+			
+			if (load_component_section(NULL, cs, VMPS_SPACE,
+						   RLM_COMPONENT_POST_AUTH,
+						   mainconfig.radiusd_conf) < 0) {
+				return -1;
+			}
+			
+			continue;
 		}
+
+		if (!listener->identity) continue;
+
+		/*
+		 *	Load by identity
+		 */
+		cs = cf_section_sub_find_name2(mainconfig.config,
+					       "identity", listener->identity);
+		if (!cs) continue;
+
+		DEBUG2("identity %s {", listener->identity);
+		if (load_byspace(cs, listener->identity, do_component) < 0) {
+			DEBUG2("}");
+			return -1;
+		}
+		DEBUG2("}");
 	}
-
-	if (listener) {
-		cs = cf_section_find("vmps");
-		if (!cs) {
-			radlog(L_ERR, "Listening on vmps socket, but no vmps section");
-			return -1;
-		}
-
-		if (cf_item_find_next(cs, NULL) == NULL) {
-			radlog(L_ERR, "Listening on vmps socket, vmps section is empty");
-			return -1;
-		}
-
-		DEBUG2(" Module: Checking vmps {...} for more modules to load");
-
-		if (load_component_section(NULL, cs, VMPS_SPACE,
-					   RLM_COMPONENT_POST_AUTH,
-					   mainconfig.radiusd_conf) < 0) {
-			return -1;
-		}
-	}
-
-	DEBUG2(" }");
 
 	return 0;
 }
@@ -960,7 +981,8 @@ int setup_modules(int reload)
  */
 int module_authorize(int autz_type, REQUEST *request)
 {
-	return indexed_modcall(NULL, RLM_COMPONENT_AUTZ, autz_type, request);
+	return indexed_modcall(request->listener->identity,
+			       RLM_COMPONENT_AUTZ, autz_type, request);
 }
 
 /*
@@ -968,7 +990,8 @@ int module_authorize(int autz_type, REQUEST *request)
  */
 int module_authenticate(int auth_type, REQUEST *request)
 {
-	return indexed_modcall(NULL, RLM_COMPONENT_AUTH, auth_type, request);
+	return indexed_modcall(request->listener->identity,
+			       RLM_COMPONENT_AUTH, auth_type, request);
 }
 
 /*
@@ -976,7 +999,8 @@ int module_authenticate(int auth_type, REQUEST *request)
  */
 int module_preacct(REQUEST *request)
 {
-	return indexed_modcall(NULL, RLM_COMPONENT_PREACCT, 0, request);
+	return indexed_modcall(request->listener->identity,
+			       RLM_COMPONENT_PREACCT, 0, request);
 }
 
 /*
@@ -984,7 +1008,8 @@ int module_preacct(REQUEST *request)
  */
 int module_accounting(int acct_type, REQUEST *request)
 {
-	return indexed_modcall(NULL, RLM_COMPONENT_ACCT, acct_type, request);
+	return indexed_modcall(request->listener->identity,
+			       RLM_COMPONENT_ACCT, acct_type, request);
 }
 
 /*
@@ -1003,7 +1028,8 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
 	request->simul_max = maxsimul;
 	request->simul_mpp = 1;
 
-	rcode = indexed_modcall(NULL, RLM_COMPONENT_SESS, sess_type, request);
+	rcode = indexed_modcall(request->listener->identity,
+				RLM_COMPONENT_SESS, sess_type, request);
 
 	if (rcode != RLM_MODULE_OK) {
 		/* FIXME: Good spot for a *rate-limited* warning to the log */
@@ -1018,7 +1044,8 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
  */
 int module_pre_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(NULL, RLM_COMPONENT_PRE_PROXY, type, request);
+	return indexed_modcall(request->listener->identity,
+			       RLM_COMPONENT_PRE_PROXY, type, request);
 }
 
 /*
@@ -1026,7 +1053,8 @@ int module_pre_proxy(int type, REQUEST *request)
  */
 int module_post_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(NULL, RLM_COMPONENT_POST_PROXY, type, request);
+	return indexed_modcall(request->listener->identity,
+			       RLM_COMPONENT_POST_PROXY, type, request);
 }
 
 /*
@@ -1034,7 +1062,8 @@ int module_post_proxy(int type, REQUEST *request)
  */
 int module_post_auth(int postauth_type, REQUEST *request)
 {
-	return indexed_modcall(NULL, RLM_COMPONENT_POST_AUTH, postauth_type, request);
+	return indexed_modcall(request->listener->identity,
+			       RLM_COMPONENT_POST_AUTH, postauth_type, request);
 }
 
 /*
@@ -1045,4 +1074,3 @@ int module_vmps(REQUEST *request)
 	return indexed_modcall(VMPS_SPACE, RLM_COMPONENT_POST_AUTH, 0,
 			       request);
 }
-
