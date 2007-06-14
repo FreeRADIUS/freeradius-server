@@ -366,6 +366,26 @@ same name are already present in the list.
 Remove all matching attributes from the list.  Both the attribute name
 and value have to match in order for the attribute to be removed from
 the list.
+.IP <=
+Enforce that the integer value of the attribute is less than or equal
+to the value given here.  If there is no attribute of the same name in
+the list, the attribute is added with the given value, is with "+=".
+If an attribute in the list exists, and has value less than given
+here, it's value is unchanged.  If an attribute in the exists, and has
+value greater than given here, it's value is replaced with the value
+given here.
+
+This operator is valid only for attributes of integer type.
+.IP >=
+Enforce that the integer value of the attribute is greater than or
+equal to the value given here.  If there is no attribute of the same
+name in the list, the attribute is added with the given value, is with
+"+=".  If an attribute in the list exists, and has value greater than
+given here, it's value is unchanged.  If an attribute in the exists,
+and has value less than given here, it's value is replaced with the
+value given here.
+
+This operator is valid only for attributes of integer type.
 .RE
 .IP Values
 .br

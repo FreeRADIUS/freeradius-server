@@ -1115,12 +1115,30 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		if ((vp->operator != T_OP_EQ) &&
 		    (vp->operator != T_OP_ADD) &&
 		    (vp->operator != T_OP_SUB) &&
+		    (vp->operator != T_OP_LE) &&
+		    (vp->operator != T_OP_GE) &&
 		    (vp->operator != T_OP_SET)) {
 			pairfree(&head);
 			radlog(L_ERR|L_CONS, "%s[%d]: Invalid operator for attribute",
 			       filename, cf_pair_lineno(cp));
 			return NULL;
+		}
 
+		/*
+		 *	A few more sanity checks.  The enforcement of
+		 *	<= or >= can only happen for integer
+		 *	attributes.
+		 */
+		if ((vp->operator == T_OP_LE) ||
+		    (vp->operator == T_OP_GE)) {
+			if ((vp->type != PW_TYPE_BYTE) &&
+			    (vp->type != PW_TYPE_SHORT) &&
+			    (vp->type != PW_TYPE_INTEGER)) {
+				pairfree(&head);
+				radlog(L_ERR|L_CONS, "%s[%d]: Enforcment of <= or >= is possible only for integer attributes",
+				       filename, cf_pair_lineno(cp));
+				return NULL;
+			}
 		}
 
 		*tail = vp;
@@ -1165,7 +1183,14 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 
 	if (!cf_section_name2(cs)) {
 		radlog(L_ERR|L_CONS,
-		       "%s[%d] Require variable to switch over for 'switch'.\n",
+		       "%s[%d] Require variable to switch over for 'switch'.",
+		       filename, lineno);
+		return NULL;
+	}
+
+	if (!cf_item_find_next(cs, NULL)) {
+		radlog(L_ERR|L_CONS,
+		       "%s[%d] 'switch' statments cannot be empty.",
 		       filename, lineno);
 		return NULL;
 	}
@@ -1295,7 +1320,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		} else 	if (strcmp(modrefname, "if") == 0) {
 			if (!cf_section_name2(cs)) {
 				radlog(L_ERR|L_CONS,
-				       "%s[%d]: 'if' without condition.\n",
+				       "%s[%d]: 'if' without condition.",
 				       filename, lineno);
 				return NULL;
 			}
@@ -1322,14 +1347,14 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			    ((parent->type == MOD_LOAD_BALANCE) ||
 			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
 				radlog(L_ERR|L_CONS,
-				       "%s[%d] 'elsif' cannot be used in this section section.\n",
+				       "%s[%d] 'elsif' cannot be used in this section section.",
 				       filename, lineno);
 				return NULL;
 			}
 
 			if (!cf_section_name2(cs)) {
 				radlog(L_ERR|L_CONS,
-				       "%s[%d] 'elsif' without condition.\n",
+				       "%s[%d] 'elsif' without condition.",
 				       filename, lineno);
 				return NULL;
 			}
@@ -1356,14 +1381,14 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			    ((parent->type == MOD_LOAD_BALANCE) ||
 			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
 				radlog(L_ERR|L_CONS,
-				       "%s[%d] 'else' cannot be used in this section section.\n",
+				       "%s[%d] 'else' cannot be used in this section section.",
 				       filename, lineno);
 				return NULL;
 			}
 
 			if (cf_section_name2(cs)) {
 				radlog(L_ERR|L_CONS,
-				       "%s[%d] Cannot have conditions on 'else'.\n",
+				       "%s[%d] Cannot have conditions on 'else'.",
 				       filename, lineno);
 				return NULL;
 			}
@@ -1508,7 +1533,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (cf_item_is_section(ci)) {
 				radlog(L_ERR|L_CONS,
 				       "%s[%d] Subsection of module instance call "
-				       "not allowed\n", filename,
+				       "not allowed", filename,
 				       cf_section_lineno(cf_itemtosection(ci)));
 				modcallable_free(&csingle);
 				return NULL;
@@ -1616,7 +1641,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 						      grouptype, &junk);
 			if (!single) {
 				radlog(L_ERR|L_CONS,
-				       "%s[%d] Failed to parse \"%s\" subsection.\n",
+				       "%s[%d] Failed to parse \"%s\" subsection.",
 				       filename, lineno,
 				       cf_section_name1(subcs));
 				modcallable_free(&c);
@@ -1650,7 +1675,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 							      &junk);
 				if (!single) {
 					radlog(L_ERR|L_CONS,
-					       "%s[%d] Failed to parse \"%s\" entry.\n",
+					       "%s[%d] Failed to parse \"%s\" entry.",
 					       filename, lineno, attr);
 					modcallable_free(&c);
 					return NULL;

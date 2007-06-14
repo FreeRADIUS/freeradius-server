@@ -771,7 +771,12 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 			 *	Delete all matching attributes from
 			 *	"to"
 			 */
-			if (from_list[i]->operator == T_OP_SUB) {
+			if ((from_list[i]->operator == T_OP_SUB) ||
+			    (from_list[i]->operator == T_OP_LE) ||
+			    (from_list[i]->operator == T_OP_GE)) {
+				int rcode;
+				int old_op = from_list[i]->operator;
+
 				/*
 				 *	Check for equality.
 				 */
@@ -781,22 +786,51 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 				 *	If equal, delete the one in
 				 *	the "to" list.
 				 */
-				if (radius_compare_vps(NULL, from_list[i],
-						       to_list[j]) == 0) {
-
-					DEBUG4("::: DELETING %s FROM %d TO %d",
-					       from_list[i]->name, i, j);
-					pairfree(&to_list[j]);
-					to_list[j] = NULL;
-				}
-
+				rcode = radius_compare_vps(NULL, from_list[i],
+							   to_list[j]);
 				/*
 				 *	We may want to do more
 				 *	subtractions, so we re-set the
 				 *	operator back to it's original
 				 *	value.
 				 */
-				from_list[i]->operator = T_OP_SUB;
+				from_list[i]->operator = old_op;
+
+				switch (old_op) {
+				case T_OP_SUB:
+					if (rcode == 0) {
+						DEBUG4("::: DELETING %s FROM %d TO %d",
+						       from_list[i]->name, i, j);
+						pairfree(&to_list[j]);
+						to_list[j] = NULL;
+					}
+					break;
+
+					/*
+					 *	Enforce <=.  If it's
+					 *	>, replace it.
+					 */
+				case T_OP_LE:
+					if (rcode > 0) {
+						DEBUG4("::: REPLACING %s FROM %d TO %d",
+						       from_list[i]->name, i, j);
+						pairfree(&to_list[j]);
+						to_list[j] = from_list[i];
+						from_list[i] = NULL;
+					}
+					break;
+
+				case T_OP_GE:
+					if (rcode < 0) {
+						DEBUG4("::: REPLACING %s FROM %d TO %d",
+						       from_list[i]->name, i, j);
+						pairfree(&to_list[j]);
+						to_list[j] = from_list[i];
+						from_list[i] = NULL;
+					}
+					break;
+				}
+
 				continue;
 			}
 
@@ -810,6 +844,8 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 		 */
 		if (!found) {
 			if ((from_list[i]->operator == T_OP_EQ) ||
+			    (from_list[i]->operator == T_OP_LE) ||
+			    (from_list[i]->operator == T_OP_GE) ||
 			    (from_list[i]->operator == T_OP_SET)) {
 			append:
 				DEBUG4("::: APPENDING %s FROM %d TO %d",

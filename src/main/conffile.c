@@ -336,7 +336,6 @@ void cf_section_free(CONF_SECTION **cs)
 			break;
 
 		case CONF_ITEM_SECTION: {
-
 				CONF_SECTION *section = cf_itemtosection(ci);
 				cf_section_free(&section);
 			}
@@ -1249,11 +1248,21 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		case T_EOL:
 		case T_HASH:
 			t2 = T_OP_EQ;
+			goto do_set;
 
-		case T_OP_EQ:
 		case T_OP_ADD:
 		case T_OP_SUB:
+		case T_OP_LE:
+		case T_OP_GE:
+			if (!this || (strcmp(this->name1, "update") != 0)) {
+				radlog(L_ERR, "%s[%d]: Invalid operator in assignment",
+				       file, *lineno);
+				return -1;
+			}
+
+		case T_OP_EQ:
 		case T_OP_SET:
+		do_set:
 			t3 = getstring(&ptr, buf3, sizeof(buf3));
 
 			/*
