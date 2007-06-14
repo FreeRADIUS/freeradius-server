@@ -381,6 +381,11 @@ VALUE	Response-Packet-Type		Status-Server		12
 VALUE	Response-Packet-Type		Status-Client		13
 
 #
+#  Special value
+#
+VALUE	Response-Packet-Type		Do-Not-Respond		256
+
+#
 #	EAP Sub-types, inside of Request and Response packets
 #
 #	http://www.iana.org/assignments/ppp-numbers

@@ -1258,7 +1258,6 @@ static int successfully_proxied_request(REQUEST *request)
 static void request_post_handler(REQUEST *request)
 {
 	int child_state = -1;
-	int send_reply = TRUE;
 	struct timeval when;
 	VALUE_PAIR *vp;
 
@@ -1332,9 +1331,19 @@ static void request_post_handler(REQUEST *request)
 		gettimeofday(&request->next_when, NULL);
 
 		if (request->reply->code == 0) {
-			DEBUG2("There was no response configured: rejecting request %d",
-			       request->number);
-			request->reply->code = PW_AUTHENTICATION_REJECT;
+			/*
+			 *	Check if the lack of response is intentional.
+			 */
+			vp = pairfind(request->config_items,
+				      PW_RESPONSE_PACKET_TYPE);
+			if (!vp || (vp->vp_integer != 256)) {
+				DEBUG2("There was no response configured: rejecting request %d",
+				       request->number);
+				request->reply->code = PW_AUTHENTICATION_REJECT;
+			} else {
+				DEBUG2("Not responding to request %d",
+				       request->number);
+			}
 		}
 
 		/*
@@ -1386,18 +1395,17 @@ static void request_post_handler(REQUEST *request)
 	} else if (request->packet->code == PW_STATUS_SERVER) {
 		request->next_callback = NULL;
 		child_state = REQUEST_DONE;
-		if (request->reply->code == 0) send_reply = FALSE;
 
 	} else {
 		rad_panic("Unknown packet type");
 	}
 
 	/*
-	 *	Encode, sign, and send.  The accounting request
-	 *	handler takes care of suppressing responses when
-	 *	request->reply->code == 0.
+	 *	If configured, encode, sign, and send.
 	 */
-	if (send_reply) request->listener->send(request->listener, request);
+	if (request->reply->code != 0) {
+		request->listener->send(request->listener, request);
+	}
 
 	/*
 	 *	Clean up.  These are no longer needed.
