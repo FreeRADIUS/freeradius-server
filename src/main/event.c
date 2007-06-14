@@ -2118,17 +2118,20 @@ int radius_event_process(struct timeval **pptv)
 
 void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
-	if (!request_pre_handler(request)) {
-		DEBUG2("Going to the next request");
-		return;
+	if (request_pre_handler(request)) {
+		rad_assert(fun != NULL);
+		rad_assert(request != NULL);
+		
+		if (request->listener->identity) DEBUG("identity %s {",
+						       request->listener->identity); 
+		fun(request);
+
+		if (request->listener->identity) DEBUG("} # identity %s",
+						       request->listener->identity);
+
+		request_post_handler(request);
 	}
 
-	rad_assert(fun != NULL);
-	rad_assert(request != NULL);
-
-	fun(request);
-
-	request_post_handler(request);
 	DEBUG2("Going to the next request");
 	return;
 }
