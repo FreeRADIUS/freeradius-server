@@ -30,10 +30,10 @@ RCSID("$Id$")
 #include <freeradius-devel/modcall.h>
 #include <freeradius-devel/rad_assert.h>
 
-#define VMPS_SPACE (1)
+#define VMPS_SPACE "vmps"
 
 typedef struct indexed_modcallable {
-	int		space;
+	const		char *space;
 	int		comp;
 	int		idx;
 	modcallable	*modulelist;
@@ -77,11 +77,12 @@ static void indexed_modcallable_free(void *data)
 
 static int indexed_modcallable_cmp(const void *one, const void *two)
 {
+	int rcode;
 	const indexed_modcallable *a = one;
 	const indexed_modcallable *b = two;
 
-	if (a->space < b->space) return -1;
-	if (a->space > b->space) return +1;
+	rcode = strcmp(a->space, b->space);
+	if (rcode != 0) return rcode;
 
 	if (a->comp < b->comp) return -1;
 	if (a->comp >  b->comp) return +1;
@@ -338,7 +339,8 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	return node;
 }
 
-static indexed_modcallable *lookup_by_index(int space, int comp, int idx)
+static indexed_modcallable *lookup_by_index(const char *space, int comp,
+					    int idx)
 {
 	indexed_modcallable myc;
 
@@ -352,7 +354,7 @@ static indexed_modcallable *lookup_by_index(int space, int comp, int idx)
 /*
  *	Create a new sublist.
  */
-static indexed_modcallable *new_sublist(int space, int comp, int idx)
+static indexed_modcallable *new_sublist(const char *space, int comp, int idx)
 {
 	indexed_modcallable *c;
 
@@ -387,7 +389,8 @@ static indexed_modcallable *new_sublist(int space, int comp, int idx)
 	return c;
 }
 
-static int indexed_modcall(int space, int comp, int idx, REQUEST *request)
+static int indexed_modcall(const char *space, int comp, int idx,
+			   REQUEST *request)
 {
 	int rcode;
 	indexed_modcallable *this;
@@ -399,9 +402,9 @@ static int indexed_modcall(int space, int comp, int idx, REQUEST *request)
 		request->component = section_type_value[comp].typename;
 		rcode = modcall(comp, NULL, request); /* does default action */
 	} else {
+		if (!space) space = section_type_value[comp].section;
 		DEBUG2("  Processing the %s section of %s",
-		       (space == 0) ? section_type_value[comp].section : "vmps",
-		       mainconfig.radiusd_conf);
+		       space, mainconfig.radiusd_conf);
 		request->component = section_type_value[comp].typename;
 		rcode = modcall(comp, this->modulelist, request);
 	}
@@ -414,9 +417,9 @@ static int indexed_modcall(int space, int comp, int idx, REQUEST *request)
  *	Load a sub-module list, as found inside an Auth-Type foo {}
  *	block
  */
-static int load_subcomponent_section(modcallable *parent,
-				     CONF_SECTION *cs, int space, int comp,
-				     const char *filename)
+static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
+				     const char *space, 
+				     int comp, const char *filename)
 {
 	indexed_modcallable *subcomp;
 	modcallable *ml;
@@ -475,8 +478,8 @@ static int load_subcomponent_section(modcallable *parent,
 	return 1;		/* OK */
 }
 
-static int load_component_section(modcallable *parent,
-				  CONF_SECTION *cs, int space, int comp,
+static int load_component_section(modcallable *parent, CONF_SECTION *cs,
+				  const char *space, int comp,
 				  const char *filename)
 {
 	modcallable *this;
@@ -898,25 +901,21 @@ int setup_modules(int reload)
 	 *	configuration section, and loading it.
 	 */
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
+		if (!do_component[comp]) continue;
+
 		cs = cf_section_find(section_type_value[comp].section);
-		if (cs == NULL)
-			continue;
-
-		if (!do_component[comp]) {
-			continue;
-		}
-
-		if (cf_item_find_next(cs, NULL) == NULL) {
-			continue; /* section is empty */
-		}
-
+		if (!cs) continue;
+			
+		if (cf_item_find_next(cs, NULL) == NULL) continue;
+			
 		DEBUG2(" Module: Checking %s {...} for more modules to load",
 		       section_type_value[comp].section);
 
-		if (load_component_section(NULL, cs, 0, comp, mainconfig.radiusd_conf) < 0) {
+		if (load_component_section(NULL, cs, NULL, comp,
+					   mainconfig.radiusd_conf) < 0) {
 			return -1;
 		}
-	}
+	} /* loop over components */
 
 	/*
 	 *	Load the VMPS section, if necessary.
@@ -961,7 +960,7 @@ int setup_modules(int reload)
  */
 int module_authorize(int autz_type, REQUEST *request)
 {
-	return indexed_modcall(0, RLM_COMPONENT_AUTZ, autz_type, request);
+	return indexed_modcall(NULL, RLM_COMPONENT_AUTZ, autz_type, request);
 }
 
 /*
@@ -969,7 +968,7 @@ int module_authorize(int autz_type, REQUEST *request)
  */
 int module_authenticate(int auth_type, REQUEST *request)
 {
-	return indexed_modcall(0, RLM_COMPONENT_AUTH, auth_type, request);
+	return indexed_modcall(NULL, RLM_COMPONENT_AUTH, auth_type, request);
 }
 
 /*
@@ -977,7 +976,7 @@ int module_authenticate(int auth_type, REQUEST *request)
  */
 int module_preacct(REQUEST *request)
 {
-	return indexed_modcall(0, RLM_COMPONENT_PREACCT, 0, request);
+	return indexed_modcall(NULL, RLM_COMPONENT_PREACCT, 0, request);
 }
 
 /*
@@ -985,7 +984,7 @@ int module_preacct(REQUEST *request)
  */
 int module_accounting(int acct_type, REQUEST *request)
 {
-	return indexed_modcall(0, RLM_COMPONENT_ACCT, acct_type, request);
+	return indexed_modcall(NULL, RLM_COMPONENT_ACCT, acct_type, request);
 }
 
 /*
@@ -1004,7 +1003,7 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
 	request->simul_max = maxsimul;
 	request->simul_mpp = 1;
 
-	rcode = indexed_modcall(0, RLM_COMPONENT_SESS, sess_type, request);
+	rcode = indexed_modcall(NULL, RLM_COMPONENT_SESS, sess_type, request);
 
 	if (rcode != RLM_MODULE_OK) {
 		/* FIXME: Good spot for a *rate-limited* warning to the log */
@@ -1019,7 +1018,7 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
  */
 int module_pre_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(0, RLM_COMPONENT_PRE_PROXY, type, request);
+	return indexed_modcall(NULL, RLM_COMPONENT_PRE_PROXY, type, request);
 }
 
 /*
@@ -1027,7 +1026,7 @@ int module_pre_proxy(int type, REQUEST *request)
  */
 int module_post_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(0, RLM_COMPONENT_POST_PROXY, type, request);
+	return indexed_modcall(NULL, RLM_COMPONENT_POST_PROXY, type, request);
 }
 
 /*
@@ -1035,7 +1034,7 @@ int module_post_proxy(int type, REQUEST *request)
  */
 int module_post_auth(int postauth_type, REQUEST *request)
 {
-	return indexed_modcall(0, RLM_COMPONENT_POST_AUTH, postauth_type, request);
+	return indexed_modcall(NULL, RLM_COMPONENT_POST_AUTH, postauth_type, request);
 }
 
 /*
