@@ -709,7 +709,7 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 	}
 	tailto = to_count;
 
-	DEBUG4("FROM %d TO %d MAX %d", from_count, to_count, count);
+	DEBUG4("::: FROM %d TO %d MAX %d", from_count, to_count, count);
 
 	/*
 	 *	Now that we have the lists initialized, start working
@@ -718,21 +718,14 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 	for (i = 0; i < from_count; i++) {
 		int found;
 
+		DEBUG4("::: Examining %s", from_list[i]->name);
+
 		/*
 		 *	Attribute should be appended, OR the "to" list
 		 *	is empty, and we're supposed to replace or
 		 *	"add if not existing".
 		 */
-		if ((from_list[i]->operator == T_OP_ADD) ||
-		    ((to_count == 0) &&
-		     ((from_list[i]->operator == T_OP_SET) ||
-		      (from_list[i]->operator == T_OP_EQ)))) {
-			DEBUG4("APPENDING %s FROM %d TO %d",
-			       from_list[i]->name, i, tailto);
-			to_list[tailto++] = from_list[i];
-			from_list[i] = NULL;
-			continue;
-		}
+		if (from_list[i]->operator == T_OP_ADD) goto append;
 
 		found = FALSE;
 		for (j = 0; j < to_count; j++) {
@@ -756,7 +749,7 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 			 *	the one in the "from" list.
 			 */
 			if (from_list[i]->operator == T_OP_SET) {
-				DEBUG4("OVERWRITING %s FROM %d TO %d",
+				DEBUG4("::: OVERWRITING %s FROM %d TO %d",
 				       to_list[j]->name, i, j);
 				pairfree(&to_list[j]);
 				to_list[j] = from_list[i];
@@ -791,7 +784,7 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 				if (radius_compare_vps(NULL, from_list[i],
 						       to_list[j]) == 0) {
 
-					DEBUG4("DELETING %s FROM %d TO %d",
+					DEBUG4("::: DELETING %s FROM %d TO %d",
 					       from_list[i]->name, i, j);
 					pairfree(&to_list[j]);
 					to_list[j] = NULL;
@@ -815,9 +808,15 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 		 *	and it doesn't exist.  Move it over to the tail
 		 *	of the "to" list.
 		 */
-		if ((from_list[i]->operator == T_OP_EQ) && !found) {
-			to_list[tailto++] = from_list[i];
-			from_list[i] = NULL;
+		if (!found) {
+			if ((from_list[i]->operator == T_OP_EQ) ||
+			    (from_list[i]->operator == T_OP_SET)) {
+			append:
+				DEBUG4("::: APPENDING %s FROM %d TO %d",
+				       from_list[i]->name, i, tailto);
+				to_list[tailto++] = from_list[i];
+				from_list[i] = NULL;
+			}
 		}
 	}
 
@@ -831,7 +830,7 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 	}
 	free(from_list);
 
-	DEBUG4("TO %d %d", to_count, tailto);
+	DEBUG4("::: TO in %d out %d", to_count, tailto);
 
 	/*
 	 *	Re-chain the "to" list.
@@ -841,7 +840,7 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 	for (i = 0; i < tailto; i++) {
 		if (!to_list[i]) continue;
 		
-		DEBUG4("to[%d] = %s", i, to_list[i]->name);
+		DEBUG4("::: to[%d] = %s", i, to_list[i]->name);
 
 		*last = to_list[i];
 		last = &(*last)->next;
