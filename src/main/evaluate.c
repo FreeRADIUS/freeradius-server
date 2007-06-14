@@ -661,6 +661,7 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 	int i, j, count, from_count, to_count, tailto;
 	VALUE_PAIR *vp, *next, **last;
 	VALUE_PAIR **from_list, **to_list;
+	int *edited;
 
 	/*
 	 *	Set up arrays for editing, to remove some of the
@@ -708,6 +709,8 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 		vp->next = NULL;
 	}
 	tailto = to_count;
+	edited = rad_malloc(sizeof(*edited) * to_count);
+	memset(edited, 0, sizeof(*edited) * to_count);
 
 	DEBUG4("::: FROM %d TO %d MAX %d", from_count, to_count, count);
 
@@ -729,6 +732,8 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 
 		found = FALSE;
 		for (j = 0; j < to_count; j++) {
+			if (edited[j]) continue;
+
 			/*
 			 *	Attributes aren't the same, skip them.
 			 */
@@ -754,6 +759,7 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 				pairfree(&to_list[j]);
 				to_list[j] = from_list[i];
 				from_list[i] = NULL;
+				edited[j] = TRUE;
 				break;
 			}
 
@@ -817,6 +823,7 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 						pairfree(&to_list[j]);
 						to_list[j] = from_list[i];
 						from_list[i] = NULL;
+						edited[j] = TRUE;
 					}
 					break;
 
@@ -827,6 +834,7 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 						pairfree(&to_list[j]);
 						to_list[j] = from_list[i];
 						from_list[i] = NULL;
+						edited[j] = TRUE;
 					}
 					break;
 				}
