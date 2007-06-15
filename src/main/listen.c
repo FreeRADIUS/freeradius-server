@@ -47,7 +47,7 @@ RCSID("$Id$")
 /*
  *	We'll use this below.
  */
-typedef int (*rad_listen_parse_t)(const char *, int, const CONF_SECTION *, rad_listen_t *);
+typedef int (*rad_listen_parse_t)(const char *, int, CONF_SECTION *, rad_listen_t *);
 typedef void (*rad_listen_free_t)(rad_listen_t *);
 
 typedef struct rad_listen_master_t {
@@ -200,7 +200,7 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
  *	Parse an authentication or accounting socket.
  */
 static int common_socket_parse(const char *filename, int lineno,
-			     const CONF_SECTION *cs, rad_listen_t *this)
+			     CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
 	int		listen_port;
@@ -263,7 +263,7 @@ static int common_socket_parse(const char *filename, int lineno,
 		return -1;
 #else
 		const char *value;
-		const CONF_PAIR *cp = cf_pair_find(cs, "interface");
+		CONF_PAIR *cp = cf_pair_find(cs, "interface");
 		struct ifreq ifreq;
 
 		rad_assert(cp != NULL);
@@ -1298,7 +1298,7 @@ static const CONF_PARSER detail_config[] = {
  *	Parse a detail section.
  */
 static int detail_parse(const char *filename, int lineno,
-			const CONF_SECTION *cs, rad_listen_t *this)
+			CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
 	listen_detail_t *data;
@@ -1363,7 +1363,7 @@ static int radius_snmp_recv(rad_listen_t *listener,
 }
 
 
-static int radius_snmp_print(rad_listen_t *this, char *buffer, size_t bufsize)
+static int radius_snmp_print(UNUSED rad_listen_t *this, char *buffer, size_t bufsize)
 {
 	return snprintf(buffer, bufsize, "SMUX with OID .1.3.6.1.4.1.11344.1.1.1");
 }
@@ -1437,13 +1437,13 @@ static int vqp_socket_send(rad_listen_t *listener, REQUEST *request)
 }
 
 
-static int vqp_socket_encode(rad_listen_t *listener, REQUEST *request)
+static int vqp_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	return vqp_encode(request->reply, request->packet);
 }
 
 
-static int vqp_socket_decode(rad_listen_t *listener, REQUEST *request)
+static int vqp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	return vqp_decode(request->packet);
 }
@@ -2024,7 +2024,6 @@ int listen_init(const char *filename, rad_listen_t **head)
 	}
 #endif
 
- done:
 	return 0;
 }
 
