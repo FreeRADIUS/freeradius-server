@@ -5,4 +5,4 @@
 #
 #	$Id$
 #
-ATTRIBUTE	NAS-Filter-Rule				string	92
+ATTRIBUTE	NAS-Filter-Rule				92	string
