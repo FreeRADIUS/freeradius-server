@@ -289,14 +289,29 @@ static int common_socket_parse(const char *filename, int lineno,
 	rcode = cf_item_parse(cs, "clients", PW_TYPE_STRING_PTR,
 			      &section_name, NULL);
 	if (rcode < 0) return -1; /* bad string */
-	if (rcode > 0) return 0; /* non-existent is OK. */
+	if (rcode == 0) {
+		/*
+		 *	Explicit list given: use it.
+		 */
+		client_cs = cf_section_find(section_name);
+		free(section_name);
+		if (!client_cs) {
+			radlog(L_CONS|L_ERR, "%s[%d]: Failed to find client section %s",
+			       filename, cf_section_lineno(cs), section_name);
+			return -1;
+		}
 
-	client_cs = cf_section_find(section_name);
-	free(section_name);
-	if (!client_cs) {
-		radlog(L_CONS|L_ERR, "%s[%d]: Failed to find client section %s",
-		       filename, cf_section_lineno(cs), section_name);
-		return -1;
+	} else if (this->identity) { /* no "clients = ", try using identity */
+		/*
+		 *	Else base it off of the identity.
+		 */
+		client_cs = cf_section_sub_find_name2(mainconfig.config,
+						      "identity",
+						      this->identity);
+		if (!client_cs) client_cs = mainconfig.config;
+
+	} else {
+		client_cs = mainconfig.config;
 	}
 
 	sock->clients = clients_parse_section(filename, client_cs);
