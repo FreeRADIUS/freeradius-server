@@ -656,7 +656,7 @@ int radius_evaluate_condition(REQUEST *request, int depth,
  *	only paircopy() those attributes that we're really going to
  *	use.
  */
-static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
+static void my_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 {
 	int i, j, count, from_count, to_count, tailto;
 	VALUE_PAIR *vp, *next, **last;
@@ -888,6 +888,18 @@ static void my_pairmove(VALUE_PAIR **to, VALUE_PAIR *from)
 
 		*last = to_list[i];
 		last = &(*last)->next;
+
+		/*
+		 *	Fix dumb cache issues
+		 */
+		if ((i >= to_count) || edited[i]) {
+			if (to_list[i]->attribute == PW_USER_NAME) {
+				request->username = to_list[i];
+				
+			} else if (to_list[i]->attribute == PW_USER_PASSWORD) {
+				request->password = to_list[i];
+			}
+		}
 	}
 	free(to_list);
 }
@@ -1002,7 +1014,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 		vp = vp->next;
 	}
 
-	my_pairmove(output_vps, newlist);
+	my_pairmove(request, output_vps, newlist);
 
 	return RLM_MODULE_UPDATED;
 }
