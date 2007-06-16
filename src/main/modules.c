@@ -81,8 +81,12 @@ static int indexed_modcallable_cmp(const void *one, const void *two)
 	const indexed_modcallable *a = one;
 	const indexed_modcallable *b = two;
 
-	rcode = strcmp(a->space, b->space);
-	if (rcode != 0) return rcode;
+	if (a->space && !b->space) return -1;
+	if (!a->space && b->space) return +1;
+	if (a->space && b->space) {
+		rcode = strcmp(a->space, b->space);
+		if (rcode != 0) return rcode;
+	}
 
 	if (a->comp < b->comp) return -1;
 	if (a->comp >  b->comp) return +1;
@@ -343,7 +347,7 @@ static indexed_modcallable *lookup_by_index(const char *space, int comp,
 					    int idx)
 {
 	indexed_modcallable myc;
-
+	
 	myc.comp = comp;
 	myc.idx = idx;
 	myc.space = space;
