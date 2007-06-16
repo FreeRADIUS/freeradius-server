@@ -130,7 +130,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 			return -1;
 		}
 
-#ifdef NO_OPENSSL
+#ifndef HAVE_OPENSSL_SSL_H
 		/*
 		 *	This allows the default configuration to be
 		 *	shipped with EAP-TLS, etc. enabled.  If the
