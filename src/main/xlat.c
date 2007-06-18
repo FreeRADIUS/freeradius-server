@@ -670,6 +670,8 @@ static void decode_attribute(const char **from, char **to, int freespace,
 					stop = 1;
 					break;
 				}
+				*pa++ = *p++;
+				break;
 
 				/*
 				 *	This is pretty hokey...  we
