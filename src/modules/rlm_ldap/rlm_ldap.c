@@ -2601,8 +2601,6 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 					continue;
 				}
 
-				DEBUG("rlm_ldap: Adding %s as %s, value %s & op=%d", element->attr, element->radius_attr, value, operator);
-
 				/*
 				 *	Create the pair.
 				 */
@@ -2613,6 +2611,15 @@ ldap_pairget(LDAP * ld, LDAPMessage * entry,
 					radlog(L_ERR, "rlm_ldap: Failed to create the pair: %s", librad_errstr);
 					continue;
 				}
+
+				if (debug_flag) {
+					char dbuf[1024];
+
+					vp_prints(dbuf, sizeof(dbuf), newpair);
+
+					DEBUG("rlm_ldap: Adding %s as %s", element->attr, dbuf);
+				}
+
 				if (do_xlat) {
 					newpair->flags.do_xlat = 1;
 					strNcpy(newpair->strvalue, buf,
