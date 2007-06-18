@@ -121,6 +121,7 @@ static int exec_xlat(void *instance, REQUEST *request,
 	int		result;
 	rlm_exec_t	*inst = instance;
 	VALUE_PAIR	**input_pairs;
+	char *p;
 
 	input_pairs = decode_string(request, inst->input);
 	if (!input_pairs) {
@@ -140,6 +141,10 @@ static int exec_xlat(void *instance, REQUEST *request,
 	if (result != 0) {
 		out[0] = '\0';
 		return 0;
+	}
+
+	for (p = out; *p != '\0'; p++) {
+		if (*p < ' ') *p = ' ';
 	}
 
 	return strlen(out);
