@@ -76,7 +76,6 @@ typedef struct listen_detail_t {
 	int		state;
 	time_t		timestamp;
 	lrad_ipaddr_t	client_ip;
-	REQUEST		*request; /* can only be one at a time! */
 	int		load_factor; /* 1..100 */
 
 	int		has_rtt;
@@ -308,7 +307,10 @@ static int common_socket_parse(const char *filename, int lineno,
 		client_cs = cf_section_sub_find_name2(mainconfig.config,
 						      "identity",
 						      this->identity);
-		if (!client_cs) client_cs = mainconfig.config;
+		if (!client_cs ||
+		    (cf_section_sub_find(client_cs, "client") == NULL)) {
+			client_cs = mainconfig.config;
+		}
 
 	} else {
 		client_cs = mainconfig.config;
@@ -674,8 +676,10 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 #define STATE_UNLOCKED	(1)
 #define STATE_HEADER	(2)
 #define STATE_READING	(3)
-#define STATE_DONE	(4)
-#define STATE_WAITING	(5)
+#define STATE_QUEUED	(4)
+#define STATE_RUNNING	(5)
+#define STATE_NO_REPLY	(6)
+#define STATE_REPLIED	(7)
 
 /*
  *	If we're limiting outstanding packets, then mark the response
@@ -691,13 +695,13 @@ static int detail_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(listener->send == detail_send);
 
 	/*
-	 *	This request timed out.  We should probably re-send it
-	 *	again... forever.
+	 *	This request timed out.  Remember that, and tell the
+	 *	caller it's OK to read more "detail" file stuff.
 	 */
 	if (request->reply->code == 0) {
-		/*
-		 *	FIXME: do something sane!
-		 */
+		radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
+		data->state = STATE_NO_REPLY;
+		return 0;
 	}
 
 	/*
@@ -766,29 +770,8 @@ static int detail_send(rad_listen_t *listener, REQUEST *request)
 	DEBUG2("RTT %d\tdelay %d", data->srtt, data->delay_time);
 
 	usleep(data->delay_time);
-
 	data->last_packet = now;
-
-	/*
-	 *	FIXME: Cache the LAST offset in the file where we
-	 *	successfully read a packet, and got a response.  Then
-	 *	when we re-open the file (say after a restart), we
-	 *	start reading from that offset, rather than from the
-	 *	beginning of the file again.
-	 *
-	 *	OR, put the offset into a comment in the first line of
-	 *	"detail.work" ?
-	 */
-	data->request = NULL;
-
-	/*
-	 *	Code in threads.c will take care performing self
-	 *	signalling that we can read from the detail file.
-	 *
-	 *	Even though this request is now done, there may be
-	 *	auth/acct requests pending that mean we shouldn't read
-	 *	the detail file.
-	 */
+	data->state = STATE_REPLIED;
 
 	return 0;
 }
@@ -916,111 +899,127 @@ static int detail_recv(rad_listen_t *listener,
 	RADIUS_PACKET	*packet;
 	char		buffer[2048];
 	listen_detail_t *data = listener->data;
-	REQUEST		*old_request;
 
-	if (data->state == STATE_UNOPENED) {
-		rad_assert(listener->fd < 0);
+	switch (data->state) {
+		case STATE_UNOPENED:
+			rad_assert(listener->fd < 0);
+			
+			/*
+			 *	FIXME: If the file doesn't exist, then
+			 *	return "sleep for 1s", to avoid busy
+			 *	looping.
+			 */
+			if (!detail_open(listener)) return 0;
 
-		/*
-		 *	FIXME: If the file doesn't exist, then return
-		 *	"sleep for 1s", to avoid busy looping.
-		 */
-		if (!detail_open(listener)) return 0;
-	}
-	rad_assert(listener->fd >= 0);
+			rad_assert(data->state == STATE_UNLOCKED);
+			rad_assert(listener->fd >= 0);
 
-	/*
-	 *	Try to lock fd.  If we can't, return.  If we can,
-	 *	continue.  This means that the server doesn't block
-	 *	while waiting for the lock to open...
-	 */
-	if (data->state == STATE_UNLOCKED) {
-		/*
-		 *	Note that we do NOT block waiting for the
-		 *	lock.  We've re-named the file above, so we've
-		 *	already guaranteed that any *new* detail
-		 *	writer will not be opening this file.  The
-		 *	only purpose of the lock is to catch a race
-		 *	condition where the execution "ping-pongs"
-		 *	between radiusd & radrelay.
-		 */
-		if (rad_lockfd_nonblock(listener->fd, 0) < 0) {
-			return 0;
-		}
-		/*
-		 *	Look for the header
-		 */
-		data->state = STATE_HEADER;
-	}
+			/* FALL-THROUGH */
 
+			/*
+			 *	Try to lock fd.  If we can't, return.
+			 *	If we can, continue.  This means that
+			 *	the server doesn't block while waiting
+			 *	for the lock to open...
+			 */
+		case STATE_UNLOCKED:
+			/*
+			 *	Note that we do NOT block waiting for
+			 *	the lock.  We've re-named the file
+			 *	above, so we've already guaranteed
+			 *	that any *new* detail writer will not
+			 *	be opening this file.  The only
+			 *	purpose of the lock is to catch a race
+			 *	condition where the execution
+			 *	"ping-pongs" between radiusd &
+			 *	radrelay.
+			 */
+			if (rad_lockfd_nonblock(listener->fd, 0) < 0) {
+				return 0;
+			}
+			/*
+			 *	Look for the header
+			 */
+			data->state = STATE_HEADER;
+			data->vps = NULL;
 
-	/*
-	 *	Catch an out of memory condition which will most likely
-	 *	never be met.
-	 */
-	if (data->state == STATE_DONE) goto alloc_packet;
+			/* FALL-THROUGH */
 
-	/*
-	 *	We still have an outstanding packet.  Don't read any
-	 *	more.
-	 */
-	old_request = data->request; /* threading issues */
-	if (old_request && old_request->reply->code == 0) {
-		/*
-		 *	FIXME: return "don't do anything until the
-		 *	request is done, AND we receive another signal
-		 *	saying it's OK to read the detail file.
-		 */
-		return 0;
-	}
+		case STATE_HEADER:
+		do_header:
+			/*
+			 *	End of file.  Delete it, and re-set
+			 *	everything.
+			 */
+			if (feof(data->fp)) {
+			cleanup:
+				snprintf(buffer, sizeof(buffer),
+					 "%s.work", data->filename);
+				unlink(buffer);
+				fclose(data->fp); /* closes listener->fd */
+				data->fp = NULL;
+				listener->fd = -1;
+				data->state = STATE_UNOPENED;
+				rad_assert(data->vps == NULL);
+				return 0;
+			}
 
-	/*
-	 *	We read the last packet, and returned it for
-	 *	processing.  We later come back here to shut
-	 *	everything down, and unlink the file.
-	 */
-	if (feof(data->fp)) {
-		if (data->state == STATE_READING) {
-			data->state = STATE_DONE;
+			/*
+			 *	Else go read something.
+			 */
+			break;
+
+			/*
+			 *	Read more value-pair's, unless we're
+			 *	at EOF.  In that case, queue whatever
+			 *	we have.
+			 */
+		case STATE_READING:
+			if (!feof(data->fp)) break;
+			data->state = STATE_QUEUED;
+
+			/* FALL-THROUGH */
+
+		case STATE_QUEUED:
 			goto alloc_packet;
-		}
 
-		/*
-		 *	If there's a pending request, don't delete the
-		 *	file.
-		 */
-		if (data->request) {
-			data->state = STATE_WAITING;
+			/*
+			 *	We still have an outstanding packet.
+			 *	Don't read any more.
+			 */
+		case STATE_RUNNING:
 			return 0;
-		}
 
-	cleanup:
-		rad_assert(data->vps == NULL);
-
-		snprintf(buffer, sizeof(buffer), "%s.work", data->filename);
-		unlink(buffer);
-		fclose(data->fp); /* closes listener->fd */
-		data->fp = NULL;
-		listener->fd = -1;
-		data->state = STATE_UNOPENED;
-
-		/*
-		 *	Try to open "detail" again.  If we're on a
-		 *	busy RADIUS server, odds are that it will
-		 *	now exist.
-		 */
-		detail_open(listener);
-		return 0;
+			/*
+			 *	If there's no reply, keep
+			 *	retransmitting the current packet
+			 *	forever.
+			 */
+		case STATE_NO_REPLY:
+			data->state = STATE_QUEUED;
+			goto alloc_packet;
+				
+			/*
+			 *	We have a reply.  Clean up the old
+			 *	request, and go read another one.
+			 */
+		case STATE_REPLIED:
+			pairfree(&data->vps);
+			data->state = STATE_HEADER;
+			goto do_header;
 	}
-
+	
 	tail = &data->vps;
+	while (*tail) tail = &(*tail)->next;
 
 	/*
-	 *	Fill the buffer...
+	 *	Read a header, OR a value-pair.
 	 */
 	while (fgets(buffer, sizeof(buffer), data->fp)) {
 		/*
-		 *	No CR, die.
+		 *	Badly formatted file: delete it.
+		 *
+		 *	FIXME: Maybe flag an error?
 		 */
 		if (!strchr(buffer, '\n')) {
 			pairfree(&data->vps);
@@ -1028,12 +1027,12 @@ static int detail_recv(rad_listen_t *listener,
 		}
 
 		/*
-		 *	We've read a header, possibly packet contents,
-		 *	and are now at the end of the packet.
+		 *	We're reading VP's, and got a blank line.
+		 *	Queue the packet.
 		 */
 		if ((data->state == STATE_READING) &&
 		    (buffer[0] == '\n')) {
-			data->state = STATE_DONE;
+			data->state = STATE_QUEUED;
 			break;
 		}
 
@@ -1054,6 +1053,8 @@ static int detail_recv(rad_listen_t *listener,
 		/*
 		 *	We have a full "attribute = value" line.
 		 *	If it doesn't look reasonable, skip it.
+		 *
+		 *	FIXME: print an error for badly formatted attributes?
 		 */
 		if (sscanf(buffer, "%255s = %1023s", key, value) != 2) {
 			continue;
@@ -1102,28 +1103,22 @@ static int detail_recv(rad_listen_t *listener,
 	}
 
 	/*
-	 *	We got to EOF,  If we're in STATE_HEADER, it's OK.
-	 *	Otherwise it's a problem.  In any case, nuke the file
-	 *	and start over from scratch,
+	 *	Some kind of error.
+	 *
+	 *	FIXME: Leave the file in-place, and warn the
+	 *	administrator?
 	 */
-	if (feof(data->fp)) {
-		/*
-		 *	Send the packet.
-		 */
-		if (data->state == STATE_READING) goto alloc_packet;
-		pairfree(&data->vps);
-		goto cleanup;
-	}
+	if (ferror(data->fp)) goto cleanup;
 
 	/*
-	 *	If we're not done, then there's a problem.  The checks
-	 *	above for EOF
+	 *	Process the packet.
 	 */
-	rad_assert(data->state == STATE_DONE);
+ alloc_packet:
+	rad_assert(data->state == STATE_QUEUED);
 
 	/*
-	 *	The packet we read was empty, re-set the state to look
-	 *	for a header, and don't return anything.
+	 *	We're done reading the file, but we didn't read
+	 *	anything.  Clean up, and don't return anything.
 	 */
 	if (!data->vps) {
 		data->state = STATE_HEADER;
@@ -1134,11 +1129,9 @@ static int detail_recv(rad_listen_t *listener,
 	 *	Allocate the packet.  If we fail, it's a serious
 	 *	problem.
 	 */
- alloc_packet:
-	rad_assert(data->request == NULL);
-
 	packet = rad_alloc(1);
 	if (!packet) {
+		data->state = STATE_NO_REPLY;	/* try again later */
 		return 0;	/* maybe memory will magically free up... */
 	}
 
@@ -1201,13 +1194,12 @@ static int detail_recv(rad_listen_t *listener,
 	packet->dst_ipaddr.af = AF_INET;
 	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl((INADDR_LOOPBACK & ~0xffffff) | (lrad_rand() & 0xffffff));
 
-	packet->vps = data->vps;
-
 	/*
-	 *	Re-set the state.
+	 *	If everything's OK, this is a waste of memory.
+	 *	Otherwise, it lets us re-send the original packet
+	 *	contents, unmolested.
 	 */
-	data->vps = NULL;
-	data->state = STATE_HEADER;
+	packet->vps = paircopy(data->vps);
 
 	/*
 	 *	Look for Acct-Delay-Time, and update
@@ -1237,11 +1229,16 @@ static int detail_recv(rad_listen_t *listener,
 	/*
 	 *	FIXME: many of these checks may not be necessary when
 	 *	reading from the detail file.
+	 *
+	 *	Try again later...
 	 */
 	if (!received_request(listener, packet, prequest, &detail_client)) {
 		rad_free(&packet);
+		data->state = STATE_NO_REPLY;	/* try again later */
 		return 0;
 	}
+
+	data->state = STATE_RUNNING;
 
 	return 1;
 }
