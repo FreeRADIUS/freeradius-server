@@ -1588,7 +1588,17 @@ static void received_conflicting_request(REQUEST *request,
 	       request->packet->src_port, request->packet->id,
 	       request->number);
 
+	/*
+	 *	Nuke it from the request hash, so we can receive new
+	 *	packets.
+	 */
+	remove_from_request_hash(request);
+
 	switch (request->child_state) {
+		/*
+		 *	It's queued or running.  Tell it to stop, and
+		 *	wait for it to do so.
+		 */
 	case REQUEST_QUEUED:
 	case REQUEST_RUNNING:
 		request->master_state = REQUEST_STOP_PROCESSING;
@@ -1599,16 +1609,15 @@ static void received_conflicting_request(REQUEST *request,
 		INSERT_EVENT(wait_for_child_to_die, request);
 		return;
 
+		/*
+		 *	It's in some other state, and therefore also
+		 *	in the event queue.  At some point, the
+		 *	child will notice, and we can then delete it.
+		 */
 	default:
+		rad_assert(request->ev != NULL);
 		break;
 	}
-
-	remove_from_request_hash(request);
-
-	/*
-	 *	The request stays in the event queue.  At some point,
-	 *	the child will notice, and we can then delete it.
-	 */
 }
 
 
@@ -1670,6 +1679,7 @@ int received_request(rad_listen_t *listener,
 	packet_p = lrad_packet_list_find(pl, packet);
 	if (packet_p) {
 		request = lrad_packet2myptr(REQUEST, packet, packet_p);
+		rad_assert(request->in_request_hash);
 
 		if ((request->packet->data_len == packet->data_len) &&
 		    (memcmp(request->packet->vector, packet->vector,
@@ -1684,7 +1694,30 @@ int received_request(rad_listen_t *listener,
 		 *	the old one.
 		 */
 		switch (request->child_state) {
+			struct timeval when;
+
 		default:
+			gettimeofday(&when, NULL);
+			when.tv_sec -= 1;
+
+			/*
+			 *	If the cached request was received
+			 *	within the last second, then we
+			 *	discard the NEW request instead of the
+			 *	old one.  This will happen ONLY when
+			 *	the client is severely broken, and is
+			 *	sending conflicting packets very
+			 *	quickly.
+			 */
+			if (timercmp(&when, &request->received, <)) {
+				radlog(L_ERR, "Discarding conflicting packet from "
+				       "client %s port %d - ID: %d due to recent request %d.",
+				       client->shortname,
+				       packet->src_port, packet->id,
+				       request->number);
+				return 0;
+			}
+
 			received_conflicting_request(request, client);
 			request = NULL;
 			break;
