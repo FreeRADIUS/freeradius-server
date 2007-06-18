@@ -374,6 +374,14 @@ REQUEST *request_alloc_fake(REQUEST *request)
   fake->number = request->number;
   fake->child_pid = NO_SUCH_CHILD_PID;
 
+  /*
+   *	For new identity support.
+   *
+   *	FIXME: Key instead off of an "identity" or "virtual server"
+   *	data structure.
+   */
+  fake->listener = request->listener;
+
   fake->packet = rad_alloc(0);
   if (!fake->packet) {
 	  request_free(&fake);
