@@ -1401,9 +1401,14 @@ static void request_post_handler(REQUEST *request)
 	}
 
 	/*
+	 *      Suppress "no reply" packets here, unless we're reading
+	 *      from the "detail" file.  In that case, we've got to
+	 *      tell the detail file handler that the request is dead,
+	 *      and it should re-send it.
 	 *	If configured, encode, sign, and send.
 	 */
-	if (request->reply->code != 0) {
+	if ((request->reply->code != 0) ||
+	    (request->listener->type == RAD_LISTEN_DETAIL)) {
 		request->listener->send(request->listener, request);
 	}
 
