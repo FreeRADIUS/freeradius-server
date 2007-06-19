@@ -15,7 +15,7 @@ FILES = acct_users attrs attrs.access_reject attrs.accounting_response \
 	 naspasswd otp.conf 	\
 	preproxy_users proxy.conf radiusd.conf radrelay.conf		\
 	realms snmp.conf sql.conf sqlippool.conf users vmpsd.conf \
-	sites-available/default.conf
+	sites-available/default
 
 #
 #	This target is here for local debugging
@@ -24,7 +24,7 @@ all:
 	@if [ ! -d sites-enabled ]; then \
 		mkdir sites-enabled; \
 	fi
-	@ln -s sites-available/default.conf sites-enabled/default.conf 
+	@ln -s sites-available/default sites-enabled/default
 
 install:
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)
@@ -63,9 +63,9 @@ install:
 		mkdir $(R)$(raddbdir)/sql; \
 		cp sql/*conf $(R)$(raddbdir)/sql 2>/dev/null || true; \
 	fi
-	if [ ! -f $(R)$(raddbdir)/sites-enabled/default.conf ]; then \
+	if [ ! -f $(R)$(raddbdir)/sites-enabled/default ]; then \
 		cd $(R)$(raddbdir)/sites-enabled/; \
-		ln -s ../sites-available/default.conf; \
+		ln -s ../sites-available/default; \
 	fi
 
 clean:
