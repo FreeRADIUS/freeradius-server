@@ -422,8 +422,7 @@ static int indexed_modcall(const char *space, int comp, int idx,
  *	block
  */
 static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
-				     const char *space, 
-				     int comp, const char *filename)
+				     const char *space, int comp)
 {
 	indexed_modcallable *subcomp;
 	modcallable *ml;
@@ -439,7 +438,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	if (!name2) {
 		radlog(L_ERR|L_CONS,
 		       "%s[%d]: No name specified for %s block",
-		       filename, cf_section_lineno(cs),
+		       cf_section_filename(cs), cf_section_lineno(cs),
 		       section_type_value[comp].typename);
 		return 1;
 	}
@@ -447,7 +446,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	/*
 	 *	Compile the group.
 	 */
-	ml = compile_modgroup(parent, comp, cs, filename);
+	ml = compile_modgroup(parent, comp, cs);
 	if (!ml) {
 		return 0;
 	}
@@ -462,7 +461,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	if (!dval) {
 		radlog(L_ERR|L_CONS,
 		       "%s[%d]: %s %s Not previously configured",
-		       filename, cf_section_lineno(cs),
+		       cf_section_filename(cs), cf_section_lineno(cs),
 		       section_type_value[comp].typename, name2);
 		modcallable_free(&ml);
 		return 0;
@@ -479,8 +478,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 }
 
 static int load_component_section(modcallable *parent, CONF_SECTION *cs,
-				  const char *space, int comp,
-				  const char *filename)
+				  const char *space, int comp)
 {
 	modcallable *this;
 	CONF_ITEM *modref;
@@ -515,8 +513,7 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 			if (strcmp(sec_name,
 				   section_type_value[comp].typename) == 0) {
 				if (!load_subcomponent_section(parent, scs,
-							       space, comp,
-							       filename)) {
+							       space, comp)) {
 					return -1; /* FIXME: memleak? */
 				}
 				continue;
@@ -532,12 +529,11 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 		/*
 		 *	Try to compile one entry.
 		 */
-		this = compile_modsingle(parent, comp, modref, filename,
-					 &modname);
+		this = compile_modsingle(parent, comp, modref, &modname);
 		if (!this) {
 			radlog(L_ERR|L_CONS,
 			       "%s[%d]: Failed to parse %s section.\n",
-			       filename, cf_section_lineno(cs),
+			       cf_section_filename(cs), cf_section_lineno(cs),
 			       cf_section_name1(cs));
 			return -1;
 		}
@@ -545,18 +541,15 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 		if (comp == RLM_COMPONENT_AUTH) {
 			DICT_VALUE *dval;
 			const char *modrefname = NULL;
-			int lineno = 0;
-
 			if (cp) {
 				modrefname = cf_pair_attr(cp);
-				lineno = cf_pair_lineno(cp);
 			} else {
 				modrefname = cf_section_name2(scs);
-				lineno = cf_section_lineno(scs);
 				if (!modrefname) {
 					radlog(L_ERR|L_CONS,
 					       "%s[%d]: Failed to parse %s sub-section.\n",
-					       filename, lineno,
+					       cf_section_filename(cs),
+					       cf_section_lineno(cs),
 					       cf_section_name1(scs));
 					return -1;
 				}
@@ -569,7 +562,7 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 				 *	recognize.  Die!
 				 */
 				radlog(L_ERR|L_CONS, "%s[%d]: Unknown Auth-Type \"%s\" in %s sub-section.",
-				       filename, lineno,
+				       cf_section_filename(cs), cf_section_lineno(cs),
 				       modrefname, section_type_value[comp].section);
 				return -1;
 			}
@@ -725,8 +718,7 @@ static int load_byspace(CONF_SECTION *cs, const char *space,
 		DEBUG2(" Module: Checking %s {...} for more modules to load",
 		       section_type_value[comp].section);
 
-		if (load_component_section(NULL, subcs, space, comp,
-					   mainconfig.radiusd_conf) < 0) {
+		if (load_component_section(NULL, subcs, space, comp) < 0) {
 			DEBUG2(" }");
 			return -1;
 		}
@@ -926,25 +918,24 @@ int setup_modules(int reload)
 			DEBUG2(" Module: Checking vmps {...} for more modules to load");
 			
 			if (load_component_section(NULL, cs, VMPS_SPACE,
-						   RLM_COMPONENT_POST_AUTH,
-						   mainconfig.radiusd_conf) < 0) {
+						   RLM_COMPONENT_POST_AUTH) < 0) {
 				return -1;
 			}
 			
 			continue;
 		}
 
-		if (!listener->identity) continue;
+		if (!listener->server) continue;
 
 		/*
-		 *	Load by identity
+		 *	Load by server
 		 */
 		cs = cf_section_sub_find_name2(mainconfig.config,
-					       "identity", listener->identity);
+					       "server", listener->server);
 		if (!cs) continue;
 
-		DEBUG2("identity %s {", listener->identity);
-		if (load_byspace(cs, listener->identity, do_component) < 0) {
+		DEBUG2("server %s {", listener->server);
+		if (load_byspace(cs, listener->server, do_component) < 0) {
 			DEBUG2("}");
 			return -1;
 		}
@@ -960,7 +951,7 @@ int setup_modules(int reload)
  */
 int module_authorize(int autz_type, REQUEST *request)
 {
-	return indexed_modcall(request->identity,
+	return indexed_modcall(request->server,
 			       RLM_COMPONENT_AUTZ, autz_type, request);
 }
 
@@ -969,7 +960,7 @@ int module_authorize(int autz_type, REQUEST *request)
  */
 int module_authenticate(int auth_type, REQUEST *request)
 {
-	return indexed_modcall(request->identity,
+	return indexed_modcall(request->server,
 			       RLM_COMPONENT_AUTH, auth_type, request);
 }
 
@@ -978,7 +969,7 @@ int module_authenticate(int auth_type, REQUEST *request)
  */
 int module_preacct(REQUEST *request)
 {
-	return indexed_modcall(request->identity,
+	return indexed_modcall(request->server,
 			       RLM_COMPONENT_PREACCT, 0, request);
 }
 
@@ -987,7 +978,7 @@ int module_preacct(REQUEST *request)
  */
 int module_accounting(int acct_type, REQUEST *request)
 {
-	return indexed_modcall(request->identity,
+	return indexed_modcall(request->server,
 			       RLM_COMPONENT_ACCT, acct_type, request);
 }
 
@@ -1007,7 +998,7 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
 	request->simul_max = maxsimul;
 	request->simul_mpp = 1;
 
-	rcode = indexed_modcall(request->identity,
+	rcode = indexed_modcall(request->server,
 				RLM_COMPONENT_SESS, sess_type, request);
 
 	if (rcode != RLM_MODULE_OK) {
@@ -1023,7 +1014,7 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
  */
 int module_pre_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(request->identity,
+	return indexed_modcall(request->server,
 			       RLM_COMPONENT_PRE_PROXY, type, request);
 }
 
@@ -1032,7 +1023,7 @@ int module_pre_proxy(int type, REQUEST *request)
  */
 int module_post_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(request->identity,
+	return indexed_modcall(request->server,
 			       RLM_COMPONENT_POST_PROXY, type, request);
 }
 
@@ -1041,7 +1032,7 @@ int module_post_proxy(int type, REQUEST *request)
  */
 int module_post_auth(int postauth_type, REQUEST *request)
 {
-	return indexed_modcall(request->identity,
+	return indexed_modcall(request->server,
 			       RLM_COMPONENT_POST_AUTH, postauth_type, request);
 }
 

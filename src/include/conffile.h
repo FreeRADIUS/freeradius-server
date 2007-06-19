@@ -78,6 +78,8 @@ CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 				      const char *name1);
 int cf_section_lineno(CONF_SECTION *section);
 int cf_pair_lineno(CONF_PAIR *pair);
+const char *cf_pair_filename(CONF_PAIR *pair);
+const char *cf_section_filename(CONF_SECTION *section);
 CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item);
 int cf_item_is_section(CONF_ITEM *item);
 int cf_item_is_pair(CONF_ITEM *item);

@@ -53,6 +53,7 @@ struct conf_item {
 	struct conf_item *next;
 	struct conf_part *parent;
 	int lineno;
+	const char *filename;
 	CONF_ITEM_TYPE type;
 };
 struct conf_pair {
@@ -1059,7 +1060,7 @@ static int condition_looks_ok(const char **ptr)
 /*
  *	Read a part of the config file.
  */
-static int cf_section_read(const char *file, int *lineno, FILE *fp,
+static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			   CONF_SECTION *current)
 
 {
@@ -1097,7 +1098,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		 */
 		if ((cbuf[len - 1] != '\n') && !feof(fp)) {
 			radlog(L_ERR, "%s[%d]: Line too long",
-			       file, *lineno);
+			       filename, *lineno);
 			return -1;
 		}
 
@@ -1113,7 +1114,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		if ((len > 0) && (cbuf[len - 1] == '\\')) {
 			if (len >= (sizeof(buf) - 5)) {
 				radlog(L_ERR, "%s[%d]: Line too long",
-				       file, *lineno);
+				       filename, *lineno);
 				return -1;
 			}
 
@@ -1145,7 +1146,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 	       if (t1 == T_RCBRACE) {
 		       if (this == current) {
 			       radlog(L_ERR, "%s[%d]: Too many closing braces",
-				      file, *lineno);
+				      filename, *lineno);
 			       return -1;
 
 		       }
@@ -1162,7 +1163,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		if (strcasecmp(buf1, "$INCLUDE") == 0) {
 			t2 = getword(&ptr, buf2, sizeof(buf2));
 
-			value = cf_expand_variables(file, lineno, this, buf, buf2);
+			value = cf_expand_variables(filename, lineno, this, buf, buf2);
 			if (!value) return -1;
 
 #ifdef HAVE_DIRENT_H
@@ -1181,7 +1182,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 				dir = opendir(value);
 				if (!dir) {
 					radlog(L_ERR, "%s[%d]: Error reading directory %s: %s",
-					       file, *lineno, value,
+					       filename, *lineno, value,
 					       strerror(errno));
 					return -1;
 				}
@@ -1236,7 +1237,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		 */
 		if (buf1[0] == '_') {
 			radlog(L_ERR, "%s[%d]: Illegal configuration pair name \"%s\"",
-					file, *lineno, buf1);
+					filename, *lineno, buf1);
 			return -1;
 		}
 
@@ -1256,7 +1257,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 		case T_OP_GE:
 			if (!this || (strcmp(this->name1, "update") != 0)) {
 				radlog(L_ERR, "%s[%d]: Invalid operator in assignment",
-				       file, *lineno);
+				       filename, *lineno);
 				return -1;
 			}
 
@@ -1270,7 +1271,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 			 */
 			if ((t3 == T_BARE_WORD) ||
 			    (t3 == T_DOUBLE_QUOTED_STRING)) {
-				value = cf_expand_variables(file, lineno, this,
+				value = cf_expand_variables(filename, lineno, this,
 							    buf, buf3);
 				if (!value) return -1;
 			} else {
@@ -1281,6 +1282,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 			 *	Add this CONF_PAIR to our CONF_SECTION
 			 */
 			cpn = cf_pair_alloc(buf1, value, t2, t3, this);
+			cpn->item.filename = filename;
 			cpn->item.lineno = *lineno;
 			cf_item_add(this, cf_pairtoitem(cpn));
 			continue;
@@ -1298,13 +1300,13 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 
 				if (!condition_looks_ok(&end)) {
 					radlog(L_ERR, "%s[%d]: Parse error in condition at: %s",
-					       file, *lineno, ptr);
+					       filename, *lineno, ptr);
 					return -1;
 				}
 
 				if ((end - ptr) >= (sizeof(buf2) - 1)) {
 					radlog(L_ERR, "%s[%d]: Statement too complicated after \"%s\"",
-					       file, *lineno, buf1);
+					       filename, *lineno, buf1);
 					return -1;
 				}
 				buf2[0] = '(';
@@ -1316,7 +1318,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 
 			} else {
 				radlog(L_ERR, "%s[%d]: Parse error after \"%s\"",
-				       file, *lineno, buf1);
+				       filename, *lineno, buf1);
 				return -1;
 			}
 			/* FALL-THROUGH */
@@ -1330,7 +1332,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 			t3 = gettoken(&ptr, buf3, sizeof(buf3));
 			if (t3 != T_LCBRACE) {
 				radlog(L_ERR, "%s[%d]: Expecting section start brace '{' after \"%s %s\"",
-				       file, *lineno, buf1, buf2);
+				       filename, *lineno, buf1, buf2);
 				return -1;
 			}
 
@@ -1341,10 +1343,11 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 					       this);
 			if (!css) {
 				radlog(L_ERR, "%s[%d]: Failed allocating memory for section",
-						file, *lineno);
+						filename, *lineno);
 				return -1;
 			}
 			cf_item_add(this, cf_sectiontoitem(css));
+			css->item.filename = filename;
 			css->item.lineno = *lineno;
 
 			/*
@@ -1355,7 +1358,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 
 		default:
 			radlog(L_ERR, "%s[%d]: Parse error after \"%s\"",
-			       file, *lineno, buf1);
+			       filename, *lineno, buf1);
 			return -1;
 		}
 	}
@@ -1365,7 +1368,7 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 	 */
 	if (feof(fp) && (this != current)) {
 		radlog(L_ERR, "%s[%d]: EOF reached without closing brace for section %s starting at line %d",
-		       file, *lineno,
+		       filename, *lineno,
 		       cf_section_name1(this), cf_section_lineno(this));
 		return -1;
 	}
@@ -1376,20 +1379,21 @@ static int cf_section_read(const char *file, int *lineno, FILE *fp,
 /*
  *	Include one config file in another.
  */
-int cf_file_include(const char *file, CONF_SECTION *cs)
+int cf_file_include(const char *filename, CONF_SECTION *cs)
 {
 	FILE		*fp;
 	int		lineno = 0;
 	struct stat	statbuf;
 	time_t		*mtime;
+	CONF_DATA	*cd;
 
-	DEBUG2( "Config:   including file: %s", file);
+	DEBUG2( "Config:   including file: %s", filename);
 
-	if (stat(file, &statbuf) == 0) {
+	if (stat(filename, &statbuf) == 0) {
 #ifdef S_IWOTH
 		if ((statbuf.st_mode & S_IWOTH) != 0) {
 			radlog(L_ERR|L_CONS, "Configuration file %s is globally writable.  Refusing to start due to insecure configuration.",
-			       file);
+			       filename);
 			return -1;
 		}
 #endif
@@ -1397,25 +1401,16 @@ int cf_file_include(const char *file, CONF_SECTION *cs)
 #ifdef S_IROTH
 		if (0 && (statbuf.st_mode & S_IROTH) != 0) {
 			radlog(L_ERR|L_CONS, "Configuration file %s is globally readable.  Refusing to start due to insecure configuration.",
-			       file);
+			       filename);
 			return -1;
 		}
 #endif
 	}
 
-	fp = fopen(file, "r");
+	fp = fopen(filename, "r");
 	if (!fp) {
 		radlog(L_ERR|L_CONS, "Unable to open file \"%s\": %s",
-		       file, strerror(errno));
-		return -1;
-	}
-
-	/*
-	 *	Read the section.  It's OK to have EOF without a
-	 *	matching close brace.
-	 */
-	if (cf_section_read(file, &lineno, fp, cs) < 0) {
-		fclose(fp);
+		       filename, strerror(errno));
 		return -1;
 	}
 
@@ -1424,9 +1419,29 @@ int cf_file_include(const char *file, CONF_SECTION *cs)
 	 */
 	mtime = rad_malloc(sizeof(*mtime));
 	*mtime = statbuf.st_mtime;
-	/* FIXME: error? */
-	cf_data_add_internal(cs, file, mtime, free,
-			     PW_TYPE_FILENAME);
+
+	if (cf_data_add_internal(cs, filename, mtime, free,
+				 PW_TYPE_FILENAME) < 0) {
+		radlog(L_ERR|L_CONS, "Internal error open file \"%s\"",
+		       filename);
+		return -1;
+	}
+
+	cd = cf_data_find_internal(cs, filename, PW_TYPE_FILENAME);
+	if (!cd) {
+		radlog(L_ERR|L_CONS, "Internal error open file \"%s\"",
+		       filename);
+		return -1;
+	}
+
+	/*
+	 *	Read the section.  It's OK to have EOF without a
+	 *	matching close brace.
+	 */
+	if (cf_section_read(cd->name, &lineno, fp, cs) < 0) {
+		fclose(fp);
+		return -1;
+	}
 
 	fclose(fp);
 	return 0;
@@ -1435,14 +1450,14 @@ int cf_file_include(const char *file, CONF_SECTION *cs)
 /*
  *	Bootstrap a config file.
  */
-CONF_SECTION *cf_file_read(const char *file)
+CONF_SECTION *cf_file_read(const char *filename)
 {
 	CONF_SECTION *cs;
 
 	cs = cf_section_alloc("main", NULL, NULL);
 	if (!cs) return NULL;
 
-	if (cf_file_include(file, cs) < 0) {
+	if (cf_file_include(filename, cs) < 0) {
 		cf_section_free(&cs);
 		return NULL;
 	}
@@ -1768,6 +1783,16 @@ int cf_section_lineno(CONF_SECTION *section)
 	return cf_sectiontoitem(section)->lineno;
 }
 
+const char *cf_pair_filename(CONF_PAIR *pair)
+{
+	return cf_pairtoitem(pair)->filename;
+}
+
+const char *cf_section_filename(CONF_SECTION *section)
+{
+	return cf_sectiontoitem(section)->filename;
+}
+
 int cf_pair_lineno(CONF_PAIR *pair)
 {
 	return cf_pairtoitem(pair)->lineno;
@@ -1814,8 +1839,7 @@ static void *cf_data_find_internal(CONF_SECTION *cs, const char *name,
 
 		mycd.name = name;
 		mycd.flag = flag;
-		cd = rbtree_finddata(cs->data_tree, &mycd);
-		if (cd) return cd->data;
+		return rbtree_finddata(cs->data_tree, &mycd);
 	}
 
 	return NULL;
@@ -1826,7 +1850,10 @@ static void *cf_data_find_internal(CONF_SECTION *cs, const char *name,
  */
 void *cf_data_find(CONF_SECTION *cs, const char *name)
 {
-	return cf_data_find_internal(cs, name, 0);
+	CONF_DATA *cd = cf_data_find_internal(cs, name, 0);
+
+	if (cd) return cd->data;
+	return NULL;
 }
 
 

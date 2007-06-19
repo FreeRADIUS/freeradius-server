@@ -31,7 +31,7 @@ RCSID("$Id$")
 
 /* mutually-recursive static functions need a prototype up front */
 static modcallable *do_compile_modgroup(modcallable *,
-					int, CONF_SECTION *, const char *,
+					int, CONF_SECTION *,
 					int, int);
 
 /* Actions may be a positive integer (the highest one returned in the group
@@ -138,10 +138,13 @@ static const LRAD_NAME_NUMBER rcode_table[] = {
 /*
  *	Compile action && rcode for later use.
  */
-static int compile_action(modcallable *c, const char *attr, const char *value,
-			  const char *filename, int lineno)
+static int compile_action(modcallable *c, CONF_PAIR *cp)
 {
 	int action;
+	const char *attr, *value;
+
+	attr = cf_pair_attr(cp);
+	value = cf_pair_value(cp);
 
 	if (!strcasecmp(value, "return"))
 		action = MOD_ACTION_RETURN;
@@ -159,7 +162,7 @@ static int compile_action(modcallable *c, const char *attr, const char *value,
 	} else {
 		radlog(L_ERR|L_CONS,
 		       "%s[%d]: Unknown action '%s'.\n",
-		       filename, lineno, value);
+		       cf_pair_filename(cp), cf_pair_lineno(cp), value);
 		return 0;
 	}
 
@@ -170,7 +173,7 @@ static int compile_action(modcallable *c, const char *attr, const char *value,
 		if (rcode < 0) {
 			radlog(L_ERR|L_CONS,
 			       "%s[%d]: Unknown module rcode '%s'.\n",
-			       filename, lineno, attr);
+			       cf_pair_filename(cp), cf_pair_lineno(cp), attr);
 			return 0;
 		}
 		c->actions[rcode] = action;
@@ -1047,7 +1050,6 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 
 static modcallable *do_compile_modupdate(modcallable *parent,
 					 int component, CONF_SECTION *cs,
-					 const char *filename, int lineno,
 					 const char *name2)
 {
 	int i, ok = FALSE;
@@ -1066,7 +1068,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	if (!cf_section_name2(cs)) {
 		radlog(L_ERR|L_CONS,
 		       "%s[%d] Require list name for 'update'.\n",
-		       filename, lineno);
+		       cf_section_filename(cs), cf_section_lineno(cs));
 		return NULL;
 	}
 
@@ -1079,7 +1081,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 
 	if (!ok) {
 		radlog(L_ERR, "%s[%d]: Unknown attribute list \"%s\"",
-		       filename, lineno, name2);
+		       cf_section_filename(cs), cf_section_lineno(cs), name2);
 		return NULL;
 	}
 
@@ -1099,7 +1101,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		if (cf_item_is_section(ci)) {
 			radlog(L_ERR|L_CONS,
 			       "%s[%d]: \"update\" sections cannot have subsections",
-			       filename,
+			       cf_section_filename(cf_itemtosection(ci)),
 			       cf_section_lineno(cf_itemtosection(ci)));
 			return NULL;
 		}
@@ -1109,7 +1111,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		if (!vp) {
 			pairfree(&head);
 			radlog(L_ERR|L_CONS, "%s[%d]: ERROR: %s",
-			       filename, cf_pair_lineno(cp), librad_errstr);
+			       cf_pair_filename(cp), cf_pair_lineno(cp), librad_errstr);
 			return NULL;
 		}
 
@@ -1121,7 +1123,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		    (vp->operator != T_OP_SET)) {
 			pairfree(&head);
 			radlog(L_ERR|L_CONS, "%s[%d]: Invalid operator for attribute",
-			       filename, cf_pair_lineno(cp));
+			       cf_pair_filename(cp), cf_pair_lineno(cp));
 			return NULL;
 		}
 
@@ -1137,7 +1139,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 			    (vp->type != PW_TYPE_INTEGER)) {
 				pairfree(&head);
 				radlog(L_ERR|L_CONS, "%s[%d]: Enforcment of <= or >= is possible only for integer attributes",
-				       filename, cf_pair_lineno(cp));
+				       cf_pair_filename(cp), cf_pair_lineno(cp));
 				return NULL;
 			}
 		}
@@ -1149,7 +1151,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	if (!head) {
 		radlog(L_ERR|L_CONS,
 		       "%s[%d]: ERROR: update %s section cannot be empty",
-		       filename, lineno, name2);
+		       cf_section_filename(cs), cf_section_lineno(cs), name2);
 		return NULL;
 	}
 
@@ -1160,7 +1162,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	csingle->parent = parent;
 	csingle->next = NULL;
 	csingle->name = name2;
-	csingle->lineno = lineno;
+	csingle->lineno = cf_section_lineno(cs);
 	csingle->type = MOD_UPDATE;
 	
 	g->grouptype = GROUPTYPE_SIMPLE;
@@ -1173,8 +1175,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 
 
 static modcallable *do_compile_modswitch(modcallable *parent,
-					 int component, CONF_SECTION *cs,
-					 const char *filename, int lineno)
+	int component, CONF_SECTION *cs)
 {
 	modcallable *csingle;
 	CONF_ITEM *ci;
@@ -1185,14 +1186,14 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 	if (!cf_section_name2(cs)) {
 		radlog(L_ERR|L_CONS,
 		       "%s[%d] Require variable to switch over for 'switch'.",
-		       filename, lineno);
+		       cf_section_filename(cs), cf_section_lineno(cs));
 		return NULL;
 	}
 
 	if (!cf_item_find_next(cs, NULL)) {
 		radlog(L_ERR|L_CONS,
 		       "%s[%d] 'switch' statments cannot be empty.",
-		       filename, lineno);
+		       cf_section_filename(cs), cf_section_lineno(cs));
 		return NULL;
 	}
 
@@ -1209,7 +1210,7 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 		if (!cf_item_is_section(ci)) {
 			radlog(L_ERR|L_CONS,
 			       "%s[%d]: \"switch\" sections can only have \"case\" subsections",
-			       filename,
+			       cf_pair_filename(cf_itemtopair(ci)),
 			       cf_pair_lineno(cf_itemtopair(ci)));
 			return NULL;
 		}
@@ -1220,7 +1221,7 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 		if (strcmp(name1, "case") != 0) {
 			radlog(L_ERR|L_CONS,
 			       "%s[%d]: \"switch\" sections can only have \"case\" subsections",
-			       filename,
+			       cf_section_filename(cf_itemtosection(ci)),
 			       cf_section_lineno(cf_itemtosection(ci)));
 			return NULL;
 		}
@@ -1234,13 +1235,13 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 		if (!name2 || (name2[0] == '\0')) {
 			radlog(L_ERR|L_CONS,
 			       "%s[%d]: \"case\" sections must have a name",
-			       filename,
+			       cf_section_filename(cf_itemtosection(ci)),
 			       cf_section_lineno(cf_itemtosection(ci)));
 			return NULL;
 		}
 	}
 
-	csingle= do_compile_modgroup(parent, component, cs, filename,
+	csingle= do_compile_modgroup(parent, component, cs,
 				     GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
 	if (!csingle) return NULL;
 	csingle->type = MOD_SWITCH;
@@ -1253,11 +1254,11 @@ static modcallable *do_compile_modswitch(modcallable *parent,
  */
 static modcallable *do_compile_modsingle(modcallable *parent,
 					 int component, CONF_ITEM *ci,
-					 const char *filename, int grouptype,
+					 int grouptype,
 					 const char **modname)
 {
 	int lineno, result;
-	const char *modrefname;
+	const char *modrefname, *filename;
 	modsingle *single;
 	modcallable *csingle;
 	module_instance_t *this;
@@ -1267,6 +1268,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		cs = cf_itemtosection(ci);
 		const char *name2 = cf_section_name2(cs);
 
+		filename = cf_section_filename(cs);
 		lineno = cf_section_lineno(cs);
 		modrefname = cf_section_name1(cs);
 		if (!name2) name2 = "_UnNamedGroup";
@@ -1280,28 +1282,24 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		if (strcmp(modrefname, "group") == 0) {
 			*modname = name2;
 			return do_compile_modgroup(parent, component, cs,
-						   filename,
 						   GROUPTYPE_SIMPLE,
 						   grouptype);
 
 		} else if (strcmp(modrefname, "redundant") == 0) {
 			*modname = name2;
 			return do_compile_modgroup(parent, component, cs,
-						   filename,
 						   GROUPTYPE_REDUNDANT,
 						   grouptype);
 
 		} else if (strcmp(modrefname, "append") == 0) {
 			*modname = name2;
 			return do_compile_modgroup(parent, component, cs,
-						   filename,
 						   GROUPTYPE_APPEND,
 						   grouptype);
 
 		} else if (strcmp(modrefname, "load-balance") == 0) {
 			*modname = name2;
 			csingle= do_compile_modgroup(parent, component, cs,
-						     filename,
 						     GROUPTYPE_SIMPLE,
 						     grouptype);
 			if (!csingle) return NULL;
@@ -1311,7 +1309,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		} else if (strcmp(modrefname, "redundant-load-balance") == 0) {
 			*modname = name2;
 			csingle= do_compile_modgroup(parent, component, cs,
-						     filename,
 						     GROUPTYPE_REDUNDANT,
 						     grouptype);
 			if (!csingle) return NULL;
@@ -1328,7 +1325,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			*modname = name2;
 			csingle= do_compile_modgroup(parent, component, cs,
-						     filename,
 						     GROUPTYPE_SIMPLE,
 						     grouptype);
 			if (!csingle) return NULL;
@@ -1362,7 +1358,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			*modname = name2;
 			csingle= do_compile_modgroup(parent, component, cs,
-						     filename,
 						     GROUPTYPE_SIMPLE,
 						     grouptype);
 			if (!csingle) return NULL;
@@ -1396,7 +1391,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			*modname = name2;
 			csingle= do_compile_modgroup(parent, component, cs,
-						     filename,
 						     GROUPTYPE_SIMPLE,
 						     grouptype);
 			if (!csingle) return NULL;
@@ -1407,7 +1401,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			*modname = name2;
 
 			csingle = do_compile_modupdate(parent, component, cs,
-						       filename, lineno,
 						       name2);
 			if (!csingle) return NULL;
 
@@ -1416,8 +1409,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		} else 	if (strcmp(modrefname, "switch") == 0) {
 			*modname = name2;
 
-			csingle = do_compile_modswitch(parent, component, cs,
-						       filename, lineno);
+			csingle = do_compile_modswitch(parent, component, cs);
 			if (!csingle) return NULL;
 
 			return csingle;
@@ -1438,7 +1430,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			}
 
 			csingle= do_compile_modgroup(parent, component, cs,
-						     filename,
 						     GROUPTYPE_SIMPLE,
 						     grouptype);
 			if (!csingle) return NULL;
@@ -1463,6 +1454,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		 */
 	} else {
 		CONF_PAIR *cp = cf_itemtopair(ci);
+		filename = cf_pair_filename(cp);
 		lineno = cf_pair_lineno(cp);
 		modrefname = cf_pair_attr(cp);
 	}
@@ -1483,7 +1475,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		return do_compile_modsingle(parent,
 					    component,
 					    cf_sectiontoitem(subcs),
-					    filename,
 					    grouptype,
 					    modname);
 	}
@@ -1494,8 +1485,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	this = find_module_instance(cf_section_find("modules"), modrefname);
        	if (!this) {
 		*modname = NULL;
-		radlog(L_ERR|L_CONS, "%s[%d] Failed to find module \"%s\".", filename,
-		       lineno, modrefname);
+		radlog(L_ERR|L_CONS, "%s[%d] Failed to find module \"%s\".",
+		       filename, lineno, modrefname);
 		return NULL;
 	}
 
@@ -1522,9 +1513,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	 *	maybe a csingle as a ref?
 	 */
 	if (cf_item_is_section(ci)) {
-		CONF_PAIR *cp;
-		const char *attr, *value;
-
 		cs = cf_itemtosection(ci);
 
 		for (ci=cf_item_find_next(cs, NULL);
@@ -1534,19 +1522,14 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (cf_item_is_section(ci)) {
 				radlog(L_ERR|L_CONS,
 				       "%s[%d] Subsection of module instance call "
-				       "not allowed", filename,
+				       "not allowed",
+				       cf_section_filename(cf_itemtosection(ci)),
 				       cf_section_lineno(cf_itemtosection(ci)));
 				modcallable_free(&csingle);
 				return NULL;
 			}
 
-			cp = cf_itemtopair(ci);
-			attr = cf_pair_attr(cp);
-			value = cf_pair_value(cp);
-			lineno = cf_pair_lineno(cp);
-
-			if (!compile_action(csingle, attr, value, filename,
-					    lineno)) {
+			if (!compile_action(csingle, cf_itemtopair(ci))) {
 				modcallable_free(&csingle);
 				return NULL;
 			}
@@ -1573,10 +1556,9 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 modcallable *compile_modsingle(modcallable *parent,
 			       int component, CONF_ITEM *ci,
-			       const char *filename, const char **modname)
+			       const char **modname)
 {
 	modcallable *ret = do_compile_modsingle(parent, component, ci,
-						filename,
 						GROUPTYPE_SIMPLE,
 						modname);
 	dump_tree(component, ret);
@@ -1589,8 +1571,7 @@ modcallable *compile_modsingle(modcallable *parent,
  */
 static modcallable *do_compile_modgroup(modcallable *parent,
 					int component, CONF_SECTION *cs,
-					const char *filename, int grouptype,
-					int parentgrouptype)
+					int grouptype, int parentgrouptype)
 {
 	int i;
 	modgroup *g;
@@ -1638,12 +1619,12 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 			lineno = cf_section_lineno(subcs);
 
 			single = do_compile_modsingle(c, component, ci,
-						      filename,
 						      grouptype, &junk);
 			if (!single) {
 				radlog(L_ERR|L_CONS,
 				       "%s[%d] Failed to parse \"%s\" subsection.",
-				       filename, lineno,
+				       cf_section_filename(subcs),
+				       cf_section_lineno(subcs),
 				       cf_section_name1(subcs));
 				modcallable_free(&c);
 				return NULL;
@@ -1653,11 +1634,9 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 		} else {
 			const char *attr, *value;
 			CONF_PAIR *cp = cf_itemtopair(ci);
-			int lineno;
 
 			attr = cf_pair_attr(cp);
 			value = cf_pair_value(cp);
-			lineno = cf_pair_lineno(cp);
 
 			/*
 			 *	A CONF_PAIR is either a module
@@ -1670,14 +1649,14 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 
 				single = do_compile_modsingle(c,
 							      component,
-							      cf_pairtoitem(cp),
-							      filename,
+							      ci,
 							      grouptype,
 							      &junk);
 				if (!single) {
 					radlog(L_ERR|L_CONS,
 					       "%s[%d] Failed to parse \"%s\" entry.",
-					       filename, lineno, attr);
+					       cf_pair_filename(cp),
+					       cf_pair_lineno(cp), attr);
 					modcallable_free(&c);
 					return NULL;
 				}
@@ -1686,8 +1665,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 				/*
 				 *	Or a module instance with action.
 				 */
-			} else if (!compile_action(c, attr, value, filename,
-						   lineno)) {
+			} else if (!compile_action(c, cp)) {
 				modcallable_free(&c);
 				return NULL;
 			} /* else it worked */
@@ -1711,10 +1689,9 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 }
 
 modcallable *compile_modgroup(modcallable *parent,
-			      int component, CONF_SECTION *cs,
-			      const char *filename)
+			      int component, CONF_SECTION *cs)
 {
-	modcallable *ret = do_compile_modgroup(parent, component, cs, filename,
+	modcallable *ret = do_compile_modgroup(parent, component, cs,
 					       GROUPTYPE_SIMPLE,
 					       GROUPTYPE_SIMPLE);
 	dump_tree(component, ret);
