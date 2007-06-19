@@ -1715,7 +1715,7 @@ static rad_listen_t *listen_parse(const char *filename, CONF_SECTION *cs, const 
 	listen_type = NULL;
 	
 	DEBUG2(" listen {");
-	
+
 	rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
 			      &listen_type, "");
 	if (rcode < 0) return NULL;
@@ -1735,6 +1735,16 @@ static rad_listen_t *listen_parse(const char *filename, CONF_SECTION *cs, const 
 		return NULL;
 	}
 	
+	/*
+	 *	Allow listen sections in the default config to
+	 *	refer to a server.
+	 */
+	if (!server) {
+		rcode = cf_item_parse(cs, "server", PW_TYPE_STRING_PTR,
+				      &server, NULL);
+		if (rcode < 0) return NULL;
+	}
+
 	/*
 	 *	Set up cross-type data.
 	 */
