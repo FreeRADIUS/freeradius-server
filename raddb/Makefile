@@ -24,7 +24,9 @@ all:
 	@if [ ! -d sites-enabled ]; then \
 		mkdir sites-enabled; \
 	fi
-	@cd sites-enabled && ln -s ../sites-available/default
+	@if [ ! -f sites-enabled/default ]; then \
+		cd sites-enabled && ln -s ../sites-available/default; \
+	fi
 
 install:
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)
