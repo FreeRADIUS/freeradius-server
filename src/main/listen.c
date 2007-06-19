@@ -286,39 +286,43 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 	
 	/*
-	 *	Look for the name of a section that holds a list
-	 *	of clients.
+	 *	If we have a server, prefer to use clients defined
+	 *	in that server, and ignore any "clients = "
+	 *	directive, UNLESS there are no clients in the server.
 	 */
-	rcode = cf_item_parse(cs, "clients", PW_TYPE_STRING_PTR,
-			      &section_name, NULL);
-	if (rcode < 0) return -1; /* bad string */
-	if (rcode == 0) {
-		/*
-		 *	Explicit list given: use it.
-		 */
-		client_cs = cf_section_find(section_name);
-		free(section_name);
-		if (!client_cs) {
-			radlog(L_CONS|L_ERR, "%s[%d]: Failed to find client section %s",
-			       cf_section_filename(cs), cf_section_lineno(cs), section_name);
-			return -1;
-		}
-
-	} else if (this->server) {
-		/*
-		 *	Else base it off of the server.
-		 */
+	client_cs = NULL;
+	if (this->server) {
 		client_cs = cf_section_sub_find_name2(mainconfig.config,
 						      "server",
 						      this->server);
-		if (!client_cs ||
-		    (cf_section_sub_find(client_cs, "client") == NULL)) {
-			client_cs = mainconfig.config;
-		}
-
-	} else {
-		client_cs = mainconfig.config;
 	}
+
+	/*
+	 *	No clients, look for the name of a section that holds
+	 *	a list of clients.
+	 */
+	if (!client_cs) {
+		rcode = cf_item_parse(cs, "clients", PW_TYPE_STRING_PTR,
+				      &section_name, NULL);
+		if (rcode < 0) return -1; /* bad string */
+		if (rcode == 0) {
+			/*
+			 *	Explicit list given: use it.
+			 */
+			client_cs = cf_section_find(section_name);
+			free(section_name);
+			if (!client_cs) {
+				radlog(L_CONS|L_ERR, "%s[%d]: Failed to find client section %s",
+				       cf_section_filename(cs), cf_section_lineno(cs), section_name);
+				return -1;
+			}
+		} /* else there was no "clients = " entry. */
+	}
+
+	/*
+	 *	Still nothing.  Make it global.
+	 */
+	if (!client_cs) client_cs = mainconfig.config;
 
 	sock->clients = clients_parse_section(client_cs);
 	if (!sock->clients) {
