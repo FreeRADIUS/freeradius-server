@@ -1759,6 +1759,15 @@ int received_request(rad_listen_t *listener,
 	request->priority = listener->type;
 
 	/*
+	 *	Set identities.
+	 */
+	if (listener->identity) {
+		request->identity = listener->identity;
+	} else {
+		request->identity = client->identity;
+	}
+
+	/*
 	 *	Remember the request in the list.
 	 */
 	if (!lrad_packet_list_insert(pl, &request->packet)) {
@@ -2160,12 +2169,12 @@ void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun)
 		rad_assert(fun != NULL);
 		rad_assert(request != NULL);
 		
-		if (request->listener->identity) DEBUG("identity %s {",
-						       request->listener->identity); 
+		if (request->identity) DEBUG("identity %s {",
+					     request->identity); 
 		fun(request);
 
-		if (request->listener->identity) DEBUG("} # identity %s",
-						       request->listener->identity);
+		if (request->identity) DEBUG("} # identity %s",
+					     request->identity);
 
 		request_post_handler(request);
 	}

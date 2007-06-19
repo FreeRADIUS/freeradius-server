@@ -960,7 +960,7 @@ int setup_modules(int reload)
  */
 int module_authorize(int autz_type, REQUEST *request)
 {
-	return indexed_modcall(request->listener->identity,
+	return indexed_modcall(request->identity,
 			       RLM_COMPONENT_AUTZ, autz_type, request);
 }
 
@@ -969,7 +969,7 @@ int module_authorize(int autz_type, REQUEST *request)
  */
 int module_authenticate(int auth_type, REQUEST *request)
 {
-	return indexed_modcall(request->listener->identity,
+	return indexed_modcall(request->identity,
 			       RLM_COMPONENT_AUTH, auth_type, request);
 }
 
@@ -978,7 +978,7 @@ int module_authenticate(int auth_type, REQUEST *request)
  */
 int module_preacct(REQUEST *request)
 {
-	return indexed_modcall(request->listener->identity,
+	return indexed_modcall(request->identity,
 			       RLM_COMPONENT_PREACCT, 0, request);
 }
 
@@ -987,7 +987,7 @@ int module_preacct(REQUEST *request)
  */
 int module_accounting(int acct_type, REQUEST *request)
 {
-	return indexed_modcall(request->listener->identity,
+	return indexed_modcall(request->identity,
 			       RLM_COMPONENT_ACCT, acct_type, request);
 }
 
@@ -1007,7 +1007,7 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
 	request->simul_max = maxsimul;
 	request->simul_mpp = 1;
 
-	rcode = indexed_modcall(request->listener->identity,
+	rcode = indexed_modcall(request->identity,
 				RLM_COMPONENT_SESS, sess_type, request);
 
 	if (rcode != RLM_MODULE_OK) {
@@ -1023,7 +1023,7 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
  */
 int module_pre_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(request->listener->identity,
+	return indexed_modcall(request->identity,
 			       RLM_COMPONENT_PRE_PROXY, type, request);
 }
 
@@ -1032,7 +1032,7 @@ int module_pre_proxy(int type, REQUEST *request)
  */
 int module_post_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(request->listener->identity,
+	return indexed_modcall(request->identity,
 			       RLM_COMPONENT_POST_PROXY, type, request);
 }
 
@@ -1041,7 +1041,7 @@ int module_post_proxy(int type, REQUEST *request)
  */
 int module_post_auth(int postauth_type, REQUEST *request)
 {
-	return indexed_modcall(request->listener->identity,
+	return indexed_modcall(request->identity,
 			       RLM_COMPONENT_POST_AUTH, postauth_type, request);
 }
 

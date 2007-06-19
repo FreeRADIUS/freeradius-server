@@ -379,8 +379,10 @@ REQUEST *request_alloc_fake(REQUEST *request)
    *
    *	FIXME: Key instead off of an "identity" or "virtual server"
    *	data structure.
+   *
+   *	FIXME: Permit different identities for inner && outer sessions?
    */
-  fake->listener = request->listener;
+  fake->identity = request->identity;
 
   fake->packet = rad_alloc(0);
   if (!fake->packet) {

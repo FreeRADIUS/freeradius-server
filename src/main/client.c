@@ -274,6 +274,9 @@ RADCLIENT *client_findbynumber(const RADCLIENT_LIST *clients,
 
 		return rbtree_finddata(tree_num, &myclient);
 	}
+#else
+	clients = clients;	/* -Wunused */
+	number = number;	/* -Wunused */
 #endif
 	return NULL;
 }
@@ -377,6 +380,8 @@ static const CONF_PARSER client_config[] = {
 	  offsetof(RADCLIENT, login), 0, NULL },
 	{ "password",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, password), 0, NULL },
+	{ "identity",  PW_TYPE_STRING_PTR,
+	  offsetof(RADCLIENT, identity), 0, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -454,6 +459,17 @@ RADCLIENT_LIST *clients_parse_section(const char *filename,
 			return NULL;
 		}
 
+		/*
+		 *	Global clients can set identities,
+		 *	per-identity clients cannot.
+		 */
+		if ((section != mainconfig.config) && c->identity) {
+			client_free(c);
+			radlog(L_CONS|L_ERR, "%s[%d]: Clients inside of an identity section cannot set identity.",
+			       filename, cf_section_lineno(cs));
+			return NULL;
+		}
+		
 		/*
 		 * Look for prefixes.
 		 */
