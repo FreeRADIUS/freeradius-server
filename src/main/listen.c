@@ -1705,6 +1705,57 @@ static const LRAD_NAME_NUMBER listen_compare[] = {
 };
 
 
+static rad_listen_t *listen_parse(const char *filename, CONF_SECTION *cs, const char *server)
+{
+	int		type, rcode;
+	char		*listen_type;
+	int		lineno = cf_section_lineno(cs);
+	rad_listen_t	*this;
+
+	listen_type = NULL;
+	
+	DEBUG2(" listen {");
+	
+	rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
+			      &listen_type, "");
+	if (rcode < 0) return NULL;
+	if (rcode == 1) {
+		free(listen_type);
+		radlog(L_ERR, "%s[%d]: No type specified in listen section",
+		       filename, lineno);
+		return NULL;
+	}
+
+	type = lrad_str2int(listen_compare, listen_type,
+			    RAD_LISTEN_NONE);
+	free(listen_type);
+	if (type == RAD_LISTEN_NONE) {
+		radlog(L_CONS|L_ERR, "%s[%d]: Invalid type in listen section.",
+		       filename, lineno);
+		return NULL;
+	}
+	
+	/*
+	 *	Set up cross-type data.
+	 */
+	this = listen_alloc(type);
+	this->server = server;
+	this->fd = -1;
+
+	/*
+	 *	Call per-type parser.
+	 */
+	if (master_listen[type].parse(filename, lineno,
+				      cs, this) < 0) {
+		listen_free(&this);
+		return NULL;
+	}
+
+	DEBUG2(" }");
+
+	return this;
+}
+
 /*
  *	Generate a list of listeners.  Takes an input list of
  *	listeners, too, so we don't close sockets with waiting packets.
@@ -1836,71 +1887,47 @@ int listen_init(const char *filename, rad_listen_t **head)
 	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "listen");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(mainconfig.config, cs, "listen")) {
-		int		type;
-		char		*listen_type, *server;
-		int		lineno = cf_section_lineno(cs);
-
-		listen_type = server = NULL;
-
-		DEBUG2(" listen {");
-
-		rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
-				      &listen_type, "");
-		if (rcode < 0) return -1;
-		if (rcode == 1) {
-			listen_free(head);
-			free(listen_type);
-			radlog(L_ERR, "%s[%d]: No type specified in listen section",
-			       filename, lineno);
-			return -1;
-		}
-
-		/*
-		 *	See if there's a server configuration.
-		 *
-		 *	FIXME: Also allow "listen" sections in
-		 *	"server" sections.
-		 */
-		rcode = cf_item_parse(cs, "server", PW_TYPE_STRING_PTR,
-				      &server, NULL);
-		if (rcode < 0) {
-			listen_free(head);
-			free(server);
-			return -1;
-		}
-
-		type = lrad_str2int(listen_compare, listen_type,
-				    RAD_LISTEN_NONE);
-		free(listen_type);
-		if (type == RAD_LISTEN_NONE) {
-			listen_free(head);
-			radlog(L_CONS|L_ERR, "%s[%d]: Invalid type in listen section.",
-			       filename, lineno);
-			return -1;
-		}
-
-		/*
-		 *	Set up cross-type data.
-		 */
-		this = listen_alloc(type);
-		this->server = server;
-		this->fd = -1;
-
-		/*
-		 *	Call per-type parser.
-		 */
-		if (master_listen[type].parse(filename, lineno,
-					      cs, this) < 0) {
-			listen_free(&this);
+		this = listen_parse(filename, cs, NULL);
+		if (!this) {
 			listen_free(head);
 			return -1;
 		}
-
-		DEBUG2(" }");
 
 		*last = this;
 		last = &(this->next);
 	}
+
+	/*
+	 *	Check virtual servers for "listen" sections, too.
+	 *
+	 *	FIXME: Move to virtual server init?
+	 */
+	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "server");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(mainconfig.config, cs, "server")) {
+		CONF_SECTION *subcs;
+		const char *name2 = cf_section_name2(cs);
+		
+		if (!name2) {
+			radlog(L_ERR, "%s[%d]: \"server\" sections require a server name",
+			       filename, cf_section_lineno(cs));
+			listen_free(head);
+			return -1;
+		}
+
+		for (subcs = cf_subsection_find_next(cs, NULL, "listen");
+		     subcs != NULL;
+		     subcs = cf_subsection_find_next(cs, subcs, "listen")) {
+			this = listen_parse(filename, subcs, name2);
+			if (!this) {
+				listen_free(head);
+				return -1;
+			}
+			
+			*last = this;
+			last = &(this->next);
+		} /* loop over "listen" directives in virtual servers */
+	} /* loop over virtual servers */
 
 	/*
 	 *	If we're proxying requests, open the proxy FD.
