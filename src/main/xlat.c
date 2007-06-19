@@ -314,10 +314,10 @@ static int xlat_packet(void *instance, REQUEST *request,
 				       sizeof(packet->dst_ipaddr.ipaddr.ip6addr));
 				break;
 
-			case PW_SERVER_IDENTITY:
-				if (!request->listener || !request->listener->identity) return 0;
+			case PW_VIRTUAL_SERVER:
+				if (!request->listener || !request->server) return 0;
 
-				snprintf(out, outlen, "%s", request->listener->identity);
+				snprintf(out, outlen, "%s", request->server);
 				return strlen(out);
 				break;
 

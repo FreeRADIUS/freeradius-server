@@ -1759,12 +1759,12 @@ int received_request(rad_listen_t *listener,
 	request->priority = listener->type;
 
 	/*
-	 *	Set identities.
+	 *	Set virtual server identity
 	 */
-	if (listener->identity) {
-		request->identity = listener->identity;
+	if (listener->server) {
+		request->server = listener->server;
 	} else {
-		request->identity = client->identity;
+		request->server = client->server;
 	}
 
 	/*
@@ -2169,12 +2169,12 @@ void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun)
 		rad_assert(fun != NULL);
 		rad_assert(request != NULL);
 		
-		if (request->identity) DEBUG("identity %s {",
-					     request->identity); 
+		if (request->server) DEBUG("server %s {",
+					     request->server); 
 		fun(request);
 
-		if (request->identity) DEBUG("} # identity %s",
-					     request->identity);
+		if (request->server) DEBUG("} # server %s",
+					     request->server);
 
 		request_post_handler(request);
 	}

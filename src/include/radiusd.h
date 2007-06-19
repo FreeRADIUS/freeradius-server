@@ -52,7 +52,7 @@ typedef struct radclient {
 	char			*nastype;
 	char			*login;
 	char			*password;
-	char			*identity;
+	char			*server;
 	int			number;	/* internal use only */
 #ifdef WITH_SNMP
 	rad_snmp_client_entry_t *auth, *acct;
@@ -136,7 +136,7 @@ struct auth_req {
 	int			num_proxied_requests;
 	int			num_proxied_responses;
 
-	const char		*identity;
+	const char		*server;
 };				/* REQUEST typedef */
 
 #define RAD_REQUEST_OPTION_NONE            (0)
@@ -184,7 +184,7 @@ struct rad_listen_t {
 	 */
 	RAD_LISTEN_TYPE	type;
 	int		fd;
-	const char	*identity;
+	const char	*server;
 
 	rad_listen_recv_t recv;
 	rad_listen_send_t send;

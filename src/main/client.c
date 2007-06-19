@@ -380,8 +380,8 @@ static const CONF_PARSER client_config[] = {
 	  offsetof(RADCLIENT, login), 0, NULL },
 	{ "password",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, password), 0, NULL },
-	{ "identity",  PW_TYPE_STRING_PTR,
-	  offsetof(RADCLIENT, identity), 0, NULL },
+	{ "server",  PW_TYPE_STRING_PTR,
+	  offsetof(RADCLIENT, server), 0, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -460,12 +460,12 @@ RADCLIENT_LIST *clients_parse_section(const char *filename,
 		}
 
 		/*
-		 *	Global clients can set identities,
-		 *	per-identity clients cannot.
+		 *	Global clients can set servers to use,
+		 *	per-server clients cannot.
 		 */
-		if ((section != mainconfig.config) && c->identity) {
+		if ((section != mainconfig.config) && c->server) {
 			client_free(c);
-			radlog(L_CONS|L_ERR, "%s[%d]: Clients inside of an identity section cannot set identity.",
+			radlog(L_CONS|L_ERR, "%s[%d]: Clients inside of an server section cannot point to another server.",
 			       filename, cf_section_lineno(cs));
 			return NULL;
 		}

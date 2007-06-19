@@ -375,14 +375,13 @@ REQUEST *request_alloc_fake(REQUEST *request)
   fake->child_pid = NO_SUCH_CHILD_PID;
 
   /*
-   *	For new identity support.
+   *	For new server support.
    *
-   *	FIXME: Key instead off of an "identity" or "virtual server"
-   *	data structure.
+   *	FIXME: Key instead off of a "virtual server" data structure.
    *
-   *	FIXME: Permit different identities for inner && outer sessions?
+   *	FIXME: Permit different servers for inner && outer sessions?
    */
-  fake->identity = request->identity;
+  fake->server = request->server;
 
   fake->packet = rad_alloc(0);
   if (!fake->packet) {

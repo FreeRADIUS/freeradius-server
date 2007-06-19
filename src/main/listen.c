@@ -190,13 +190,13 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 
 	len = strlen(buffer);
 
-	if (!this->identity) {
+	if (!this->server) {
 		return len + snprintf(buffer + len, bufsize - len, " port %d",
 				      sock->port);
 	}
 
-	return len + snprintf(buffer + len, bufsize - len, " port %d using identity %s",
-			      sock->port, this->identity);
+	return len + snprintf(buffer + len, bufsize - len, " port %d as server %s",
+			      sock->port, this->server);
 }
 
 
@@ -305,13 +305,13 @@ static int common_socket_parse(const char *filename, int lineno,
 			return -1;
 		}
 
-	} else if (this->identity) { /* no "clients = ", try using identity */
+	} else if (this->server) {
 		/*
-		 *	Else base it off of the identity.
+		 *	Else base it off of the server.
 		 */
 		client_cs = cf_section_sub_find_name2(mainconfig.config,
-						      "identity",
-						      this->identity);
+						      "server",
+						      this->server);
 		if (!client_cs ||
 		    (cf_section_sub_find(client_cs, "client") == NULL)) {
 			client_cs = mainconfig.config;
@@ -1265,14 +1265,14 @@ static void detail_free(rad_listen_t *this)
 
 static int detail_print(rad_listen_t *this, char *buffer, size_t bufsize)
 {
-	if (!this->identity) {
+	if (!this->server) {
 		return snprintf(buffer, bufsize, "%s",
 				((listen_detail_t *)(this->data))->filename);
 	}
 
-	return snprintf(buffer, bufsize, "%s using identity %s",
+	return snprintf(buffer, bufsize, "%s as server %s",
 			((listen_detail_t *)(this->data))->filename,
-			this->identity);
+			this->server);
 }
 
 static int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
@@ -1837,10 +1837,10 @@ int listen_init(const char *filename, rad_listen_t **head)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(mainconfig.config, cs, "listen")) {
 		int		type;
-		char		*listen_type, *identity;
+		char		*listen_type, *server;
 		int		lineno = cf_section_lineno(cs);
 
-		listen_type = identity = NULL;
+		listen_type = server = NULL;
 
 		DEBUG2(" listen {");
 
@@ -1856,13 +1856,16 @@ int listen_init(const char *filename, rad_listen_t **head)
 		}
 
 		/*
-		 *	See if there's an identity.
+		 *	See if there's a server configuration.
+		 *
+		 *	FIXME: Also allow "listen" sections in
+		 *	"server" sections.
 		 */
-		rcode = cf_item_parse(cs, "identity", PW_TYPE_STRING_PTR,
-				      &identity, NULL);
+		rcode = cf_item_parse(cs, "server", PW_TYPE_STRING_PTR,
+				      &server, NULL);
 		if (rcode < 0) {
 			listen_free(head);
-			free(identity);
+			free(server);
 			return -1;
 		}
 
@@ -1880,7 +1883,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		 *	Set up cross-type data.
 		 */
 		this = listen_alloc(type);
-		this->identity = identity;
+		this->server = server;
 		this->fd = -1;
 
 		/*
@@ -2048,7 +2051,7 @@ void listen_free(rad_listen_t **head)
 	while (this) {
 		rad_listen_t *next = this->next;
 
-		free(this->identity);
+		free(this->server);
 
 		/*
 		 *	Other code may have eaten the FD.
