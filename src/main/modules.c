@@ -176,7 +176,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	 */
 	handle = lt_dlopenext(module_name);
 	if (handle == NULL) {
-		radlog(L_ERR|L_CONS, "%s[%d] Failed to link to module '%s':"
+		radlog(L_ERR|L_CONS, "%s[%d]: Failed to link to module '%s':"
 		       " %s\n", cffilename, cflineno, module_name, lt_dlerror());
 		return NULL;
 	}
@@ -199,7 +199,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	 */
 	module = lt_dlsym(handle, module_struct);
 	if (!module) {
-		radlog(L_ERR|L_CONS, "%s[%d] Failed linking to "
+		radlog(L_ERR|L_CONS, "%s[%d]: Failed linking to "
 				"%s structure in %s: %s\n",
 				cffilename, cflineno,
 				module_name, cffilename, lt_dlerror());
@@ -211,7 +211,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	 */
 	if ((*(const uint32_t *) module) != RLM_MODULE_MAGIC_NUMBER) {
 		lt_dlclose(handle);
-		radlog(L_ERR|L_CONS, "%s[%d] Invalid version in module '%s'",
+		radlog(L_ERR|L_CONS, "%s[%d]: Invalid version in module '%s'",
 		       cffilename, cflineno, module_name);
 		return NULL;
 
@@ -402,7 +402,7 @@ static int indexed_modcall(const char *space, int comp, int idx,
 
 	this = lookup_by_index(space, comp, idx);
 	if (!this) {
-		if (idx != 0) DEBUG2("  ERROR: Unknown value specified for %s.  Cannot perform requested action.",
+		if (idx != 0) DEBUG2("  WARNING: Unknown value specified for %s.  Cannot perform requested action.",
 				     section_type_value[comp].typename);
 	} else {
 		list = this->modulelist;
@@ -461,7 +461,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	dval = dict_valbyname(section_type_value[comp].attr, name2);
 	if (!dval) {
 		radlog(L_ERR|L_CONS,
-		       "%s[%d] %s %s Not previously configured",
+		       "%s[%d]: %s %s Not previously configured",
 		       filename, cf_section_lineno(cs),
 		       section_type_value[comp].typename, name2);
 		modcallable_free(&ml);
@@ -536,7 +536,7 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 					 &modname);
 		if (!this) {
 			radlog(L_ERR|L_CONS,
-			       "%s[%d] Failed to parse %s section.\n",
+			       "%s[%d]: Failed to parse %s section.\n",
 			       filename, cf_section_lineno(cs),
 			       cf_section_name1(cs));
 			return -1;
@@ -555,7 +555,7 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 				lineno = cf_section_lineno(scs);
 				if (!modrefname) {
 					radlog(L_ERR|L_CONS,
-					       "%s[%d] Failed to parse %s sub-section.\n",
+					       "%s[%d]: Failed to parse %s sub-section.\n",
 					       filename, lineno,
 					       cf_section_name1(scs));
 					return -1;
@@ -568,7 +568,7 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 				 *	It's a section, but nothing we
 				 *	recognize.  Die!
 				 */
-				radlog(L_ERR|L_CONS, "%s[%d] Unknown Auth-Type \"%s\" in %s sub-section.",
+				radlog(L_ERR|L_CONS, "%s[%d]: Unknown Auth-Type \"%s\" in %s sub-section.",
 				       filename, lineno,
 				       modrefname, section_type_value[comp].section);
 				return -1;
@@ -602,6 +602,108 @@ static int load_byspace(CONF_SECTION *cs, const char *space,
 			int *do_component)
 {
 	int comp;
+
+	/*
+	 *	Create any DICT_VALUE's for the types.  See
+	 *	'doc/configurable_failover' for examples of 'authtype'
+	 *	used to create new Auth-Type values.  In order to
+	 *	let the user create new names, we've got to look for
+	 *	those names, and create DICT_VALUE's for them.
+	 */
+	for (comp = RLM_COMPONENT_AUTH; comp < RLM_COMPONENT_COUNT; comp++) {
+		int		value;
+		const char	*name2;
+		DICT_ATTR	*dattr;
+		DICT_VALUE	*dval;
+		CONF_SECTION	*subcs;
+		CONF_ITEM	*ci;
+
+		/*
+		 *	Not needed, don't load it.
+		 */
+		if (!do_component[comp]) {
+			continue;
+		}
+		subcs = cf_section_sub_find(cs,
+					    section_type_value[comp].section);
+
+		/*
+		 *	FIXME: This is probably an error.
+		 */
+		if (!subcs) continue;
+
+		for (ci = cf_item_find_next(subcs, NULL);
+		     ci != NULL;
+		     ci = cf_item_find_next(subcs, ci)) {
+			if (cf_item_is_section(ci)) {
+				const char *name1;
+				CONF_SECTION *type;
+
+				type = cf_itemtosection(ci);
+				name1 = cf_section_name1(type);
+
+				/*
+				 *	Not Autz-Type, Auth-Type, etc.
+				 */
+				if (strcmp(name1, section_type_value[comp].typename) != 0) {
+					continue;
+				}
+
+				name2 = cf_section_name2(cf_itemtosection(ci));
+
+				/*
+				 *	FIXME: This is probably an error.
+				 */
+				if (!name2) continue;
+
+			} else if (section_type_value[comp].attr != PW_AUTH_TYPE) {
+				/*
+				 *	Create types for names only when
+				 *	parsing the authenticate section.
+				 */
+				continue;
+
+			} else {
+				name2 = cf_pair_attr(cf_itemtopair(ci));
+			}
+
+			/*
+			 *	If the value already exists, don't
+			 *	create it again.
+			 */
+			dval = dict_valbyname(section_type_value[comp].attr,
+					      name2);
+			if (dval) continue;
+
+			/*
+       			 *	Find the attribute for the value.
+			 */
+			dattr = dict_attrbyvalue(section_type_value[comp].attr);
+			if (!dattr) {
+				radlog(L_ERR, "%s[%d]: No such attribute %s",
+				       mainconfig.radiusd_conf,
+				       cf_section_lineno(subcs),
+				       section_type_value[comp].typename);
+				continue;
+			}
+
+			/*
+			 *	Create a new unique value with a
+			 *	meaningless number.  You can't look at
+			 *	it from outside of this code, so it
+			 *	doesn't matter.  The only requirement
+			 *	is that it's unique.
+			 */
+			do {
+				value = lrad_rand() & 0x00ffffff;
+			} while (dict_valbyattr(dattr->attr, value));
+
+			if (dict_addvalue(name2, dattr->name, value) < 0) {
+				radlog(L_ERR, "%s", librad_errstr);
+				return -1;
+			}
+		}
+	} /* over the sections which can have redundent sub-sections */
 
 	DEBUG2(" modules {");
 	
@@ -748,133 +850,6 @@ int setup_modules(int reload)
 			       section_type_value[comp].section);
 		}
 	}
-
-	/*
-	 *	Create any DICT_VALUE's for the types.  See
-	 *	'doc/configurable_failover' for examples of 'authtype'
-	 *	used to create new Auth-Type values.  In order to
-	 *	let the user create new names, we've got to look for
-	 *	those names, and create DICT_VALUE's for them.
-	 */
-	for (comp = RLM_COMPONENT_AUTH; comp < RLM_COMPONENT_COUNT; comp++) {
-		int		value;
-		const char	*name2;
-		DICT_ATTR	*dattr;
-		DICT_VALUE	*dval;
-		CONF_SECTION	*sub, *next;
-		CONF_PAIR	*cp;
-
-		/*
-		 *	Not needed, don't load it.
-		 */
-		if (!do_component[comp]) {
-			continue;
-		}
-		cs = cf_section_find(section_type_value[comp].section);
-
-		if (!cs) continue;
-
-		sub = NULL;
-		do {
-			/*
-			 *	See if there's a sub-section by that
-			 *	name.
-			 */
-			next = cf_subsection_find_next(cs, sub,
-						       section_type_value[comp].typename);
-			sub = next;
-
-			/*
-			 *	If so, look for it to define a new
-			 *	value.
-			 */
-			name2 = cf_section_name2(sub);
-			if (!name2) continue;
-
-
-			/*
-			 *	If the value already exists, don't
-			 *	create it again.
-			 */
-			dval = dict_valbyname(section_type_value[comp].attr,
-					      name2);
-			if (dval) continue;
-
-			/*
-       			 *	Find the attribute for the value.
-			 */
-			dattr = dict_attrbyvalue(section_type_value[comp].attr);
-			if (!dattr) {
-				radlog(L_ERR, "%s[%d]: No such attribute %s",
-				       mainconfig.radiusd_conf,
-				       cf_section_lineno(sub),
-				       section_type_value[comp].typename);
-				continue;
-			}
-
-			/*
-			 *	Create a new unique value with a
-			 *	meaningless number.  You can't look at
-			 *	it from outside of this code, so it
-			 *	doesn't matter.  The only requirement
-			 *	is that it's unique.
-			 */
-			do {
-				value = lrad_rand() & 0x00ffffff;
-			} while (dict_valbyattr(dattr->attr, value));
-
-			if (dict_addvalue(name2, dattr->name, value) < 0) {
-				radlog(L_ERR, "%s", librad_errstr);
-				return -1;
-			}
-		} while (sub != NULL);
-
-		/*
-		 *	Loop over the non-sub-sections, too.
-		 */
-		cp = NULL;
-		do {
-			/*
-			 *	See if there's a conf-pair by that
-			 *	name.
-			 */
-			cp = cf_pair_find_next(cs, cp, NULL);
-			if (!cp) break;
-
-
-			/*
-			 *	If the value already exists, don't
-			 *	create it again.
-			 */
-			name2 = cf_pair_attr(cp);
-			dval = dict_valbyname(section_type_value[comp].attr,
-					      name2);
-			if (dval) continue;
-
-			/*
-       			 *	Find the attribute for the value.
-			 */
-			dattr = dict_attrbyvalue(section_type_value[comp].attr);
-			if (!dattr) {
-				radlog(L_ERR, "%s[%d]: No such attribute %s",
-				       mainconfig.radiusd_conf,
-				       cf_section_lineno(sub),
-				       section_type_value[comp].typename);
-				continue;
-			}
-
-			/*
-			 *	Finally, create the new attribute.
-			 */
-			do {
-				value = lrad_rand() & 0x00ffffff;
-			} while (dict_valbyattr(dattr->attr, value));
-			if (dict_addvalue(name2, dattr->name, value) < 0) {
-				radlog(L_ERR, "%s", librad_errstr);
-				return -1;
-			}
-		} while (cp != NULL);
-	} /* over the sections which can have redundent sub-sections */
 
 	/*
 	 *	Remember where the modules were stored.
