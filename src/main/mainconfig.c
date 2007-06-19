@@ -708,7 +708,8 @@ int read_mainconfig(int reload)
 									name1,
 									value);
 					if (!tts) {
-						radlog(L_ERR|L_CONS, "%s[%d]: Section refers to non-existent template \"%s\"", buffer, cf_section_lineno(mycs), value);
+						radlog(L_ERR|L_CONS, "%s[%d]: Section refers to non-existent template \"%s\"",
+						       cf_section_filename(mycs), cf_section_lineno(mycs), value);
 						return -1;
 					}
 					cf_section_template(mycs, tts);
@@ -835,9 +836,7 @@ int read_mainconfig(int reload)
 	cf_section_free(&mainconfig.config);
 	mainconfig.config = cs;
 
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
-		 radius_dir, mainconfig.radiusd_conf);
-	if (!realms_init(buffer)) {
+	if (!realms_init()) {
 		return -1;
 	}
 

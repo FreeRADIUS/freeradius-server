@@ -920,6 +920,7 @@ struct conf_item {
 	struct conf_item *next;
 	struct conf_part *parent;
 	int lineno;
+	const char *filename;
 	CONF_ITEM_TYPE type;
 };
 struct conf_pair {
