@@ -47,7 +47,7 @@ RCSID("$Id$")
 /*
  *	We'll use this below.
  */
-typedef int (*rad_listen_parse_t)(const char *, int, CONF_SECTION *, rad_listen_t *);
+typedef int (*rad_listen_parse_t)(CONF_SECTION *, rad_listen_t *);
 typedef void (*rad_listen_free_t)(rad_listen_t *);
 
 typedef struct rad_listen_master_t {
@@ -203,8 +203,7 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 /*
  *	Parse an authentication or accounting socket.
  */
-static int common_socket_parse(const char *filename, int lineno,
-			     CONF_SECTION *cs, rad_listen_t *this)
+static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
 	int		listen_port;
@@ -231,7 +230,7 @@ static int common_socket_parse(const char *filename, int lineno,
 
 		if (rcode == 1) {
 			radlog(L_ERR, "%s[%d]: No address specified in listen section",
-			       filename, lineno);
+			       cf_section_filename(cs), cf_section_lineno(cs));
 			return -1;
 		}
 		ipaddr.af = AF_INET6;
@@ -250,7 +249,7 @@ static int common_socket_parse(const char *filename, int lineno,
 	if (listen_bind(this) < 0) {
 		char buffer[128];
 		radlog(L_CONS|L_ERR, "%s[%d]: Error binding to port for %s port %d",
-		       filename, cf_section_lineno(cs),
+		       cf_section_filename(cs), cf_section_lineno(cs),
 		       ip_ntoh(&sock->ipaddr, buffer, sizeof(buffer)),
 		       sock->port);
 		return -1;
@@ -263,7 +262,7 @@ static int common_socket_parse(const char *filename, int lineno,
 	if (cf_pair_find(cs, "interface")) {
 #ifndef SO_BINDTODEVICE
 		radlog(L_CONS|L_ERR, "%s[%d]: System does not support binding to interfaces, delete this line from the configuration file.",
-		       filename, cf_section_lineno(cs));
+		       cf_section_filename(cs), cf_section_lineno(cs));
 		return -1;
 #else
 		const char *value;
@@ -279,7 +278,7 @@ static int common_socket_parse(const char *filename, int lineno,
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE,
 			       (char *)&ifreq, sizeof(ifreq)) < 0) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed binding to interface %s: %s",
-			       filename, cf_section_lineno(cs),
+			       cf_section_filename(cs), cf_section_lineno(cs),
 			       value, strerror(errno));
 			return -1;
 		} /* else it worked. */
@@ -301,7 +300,7 @@ static int common_socket_parse(const char *filename, int lineno,
 		free(section_name);
 		if (!client_cs) {
 			radlog(L_CONS|L_ERR, "%s[%d]: Failed to find client section %s",
-			       filename, cf_section_lineno(cs), section_name);
+			       cf_section_filename(cs), cf_section_lineno(cs), section_name);
 			return -1;
 		}
 
@@ -321,7 +320,7 @@ static int common_socket_parse(const char *filename, int lineno,
 		client_cs = mainconfig.config;
 	}
 
-	sock->clients = clients_parse_section(filename, client_cs);
+	sock->clients = clients_parse_section(client_cs);
 	if (!sock->clients) {
 		return -1;
 	}
@@ -1305,8 +1304,7 @@ static const CONF_PARSER detail_config[] = {
 /*
  *	Parse a detail section.
  */
-static int detail_parse(const char *filename, int lineno,
-			CONF_SECTION *cs, rad_listen_t *this)
+static int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
 	listen_detail_t *data;
@@ -1316,19 +1314,19 @@ static int detail_parse(const char *filename, int lineno,
 	rcode = cf_section_parse(cs, data, detail_config);
 	if (rcode < 0) {
 		radlog(L_ERR, "%s[%d]: Failed parsing listen section",
-		       filename, lineno);
+		       cf_section_filename(cs), cf_section_lineno(cs));
 		return -1;
 	}
 
 	if (!data->filename) {
 		radlog(L_ERR, "%s[%d]: No detail file specified in listen section",
-		       filename, lineno);
+		       cf_section_filename(cs), cf_section_lineno(cs));
 		return -1;
 	}
 
 	if ((data->load_factor < 1) || (data->load_factor > 100)) {
 		radlog(L_ERR, "%s[%d]: Load factor must be between 1 and 100",
-		       filename, lineno);
+		       cf_section_filename(cs), cf_section_lineno(cs));
 		return -1;
 	}
 
@@ -1705,11 +1703,10 @@ static const LRAD_NAME_NUMBER listen_compare[] = {
 };
 
 
-static rad_listen_t *listen_parse(const char *filename, CONF_SECTION *cs, const char *server)
+static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 {
 	int		type, rcode;
 	char		*listen_type;
-	int		lineno = cf_section_lineno(cs);
 	rad_listen_t	*this;
 
 	listen_type = NULL;
@@ -1722,7 +1719,7 @@ static rad_listen_t *listen_parse(const char *filename, CONF_SECTION *cs, const 
 	if (rcode == 1) {
 		free(listen_type);
 		radlog(L_ERR, "%s[%d]: No type specified in listen section",
-		       filename, lineno);
+		       cf_section_filename(cs), cf_section_lineno(cs));
 		return NULL;
 	}
 
@@ -1731,7 +1728,7 @@ static rad_listen_t *listen_parse(const char *filename, CONF_SECTION *cs, const 
 	free(listen_type);
 	if (type == RAD_LISTEN_NONE) {
 		radlog(L_CONS|L_ERR, "%s[%d]: Invalid type in listen section.",
-		       filename, lineno);
+		       cf_section_filename(cs), cf_section_lineno(cs));
 		return NULL;
 	}
 	
@@ -1755,8 +1752,7 @@ static rad_listen_t *listen_parse(const char *filename, CONF_SECTION *cs, const 
 	/*
 	 *	Call per-type parser.
 	 */
-	if (master_listen[type].parse(filename, lineno,
-				      cs, this) < 0) {
+	if (master_listen[type].parse(cs, this) < 0) {
 		listen_free(&this);
 		return NULL;
 	}
@@ -1897,7 +1893,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "listen");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(mainconfig.config, cs, "listen")) {
-		this = listen_parse(filename, cs, NULL);
+		this = listen_parse(cs, NULL);
 		if (!this) {
 			listen_free(head);
 			return -1;
@@ -1928,7 +1924,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 		for (subcs = cf_subsection_find_next(cs, NULL, "listen");
 		     subcs != NULL;
 		     subcs = cf_subsection_find_next(cs, subcs, "listen")) {
-			this = listen_parse(filename, subcs, name2);
+			this = listen_parse(subcs, name2);
 			if (!this) {
 				listen_free(head);
 				return -1;

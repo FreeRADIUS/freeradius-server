@@ -368,8 +368,7 @@ void		request_reject(REQUEST *request, request_fail_t reason);
 /* client.c */
 RADCLIENT_LIST	*clients_init(void);
 void		clients_free(RADCLIENT_LIST *clients);
-RADCLIENT_LIST	*clients_parse_section(const char *filename,
-				       CONF_SECTION *section);
+RADCLIENT_LIST	*clients_parse_section(CONF_SECTION *section);
 void		client_free(RADCLIENT *client);
 int		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 RADCLIENT	*client_find(const RADCLIENT_LIST *clients,

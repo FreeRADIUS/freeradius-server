@@ -392,14 +392,14 @@ static const CONF_PARSER client_config[] = {
  *	type.  This way we don't have to change too much in the other
  *	source-files.
  */
-RADCLIENT_LIST *clients_parse_section(const char *filename,
-				      CONF_SECTION *section)
+RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 {
 	CONF_SECTION	*cs;
 	RADCLIENT	*c;
 	char		*hostnm, *prefix_ptr = NULL;
 	const char	*name2;
 	RADCLIENT_LIST	*clients;
+	const char *filename = cf_section_filename(section);
 
 	/*
 	 *	Be forgiving.  If there's already a clients, return

@@ -940,9 +940,7 @@ int read_mainconfig(int reload)
 		 *	to the CONF_SECTION, where they're automagically
 		 *	freed if anything goes wrong.
 		 */
-		snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
-			 radius_dir, mainconfig.radiusd_conf);
-		clients = clients_parse_section(buffer, mainconfig.config);
+		clients = clients_parse_section(mainconfig.config);
 		if (!clients) {
 			return -1;
 		}
