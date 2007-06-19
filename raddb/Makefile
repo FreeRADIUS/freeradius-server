@@ -14,15 +14,25 @@ FILES = acct_users attrs attrs.access_reject attrs.accounting_response \
 	eap.conf experimental.conf hints huntgroups ldap.attrmap	\
 	 naspasswd otp.conf 	\
 	preproxy_users proxy.conf radiusd.conf radrelay.conf		\
-	realms snmp.conf sql.conf sqlippool.conf users vmpsd.conf
+	realms snmp.conf sql.conf sqlippool.conf users vmpsd.conf \
+	sites-available/default.conf
 
+#
+#	This target is here for local debugging
+#
 all:
+	@if [ ! -d sites-enabled ]; then \
+		mkdir sites-enabled; \
+	fi
+	@ln -s sites-available/default.conf sites-enabled/default.conf 
 
 install:
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)
+	$(INSTALL) -d -m 750	$(R)$(raddbdir)/sites-evailable
+	$(INSTALL) -d -m 750	$(R)$(raddbdir)/sites-enabled
 	@echo "Creating/updating files in $(R)$(raddbdir)"; \
 	for i in $(FILES); do \
-		[ ! -f $(R)$(raddbdir)/$$i ] && $(INSTALL) -m 640 $$i $(R)$(raddbdir); \
+		[ ! -f $(R)$(raddbdir)/$$i ] && $(INSTALL) -m 640 $$i $(R)$(raddbdir)/$$i; \
 		if [ "`find $$i -newer $(R)$(raddbdir)/$$i`" ]; then \
 			echo "** $(R)$(raddbdir)/$$i"; \
 			nt=1; \
@@ -52,6 +62,10 @@ install:
 	if [ ! -d $(R)$(raddbdir)/sql ]; then \
 		mkdir $(R)$(raddbdir)/sql; \
 		cp sql/*conf $(R)$(raddbdir)/sql 2>/dev/null || true; \
+	fi
+	if [ ! -f $(R)$(raddbdir)/sites-enabled/default.conf ]; then \
+		cd $(R)$(raddbdir)/sites-enabled/; \
+		ln -s ../sites-available/default.conf; \
 	fi
 
 clean:
