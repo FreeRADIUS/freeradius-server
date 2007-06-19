@@ -5,9 +5,13 @@ TESTS	= user_password chap mschapv1 digest-auth-MD5 digest-auth-int \
 	digest-auth_int-MD5 digest-auth_int-MD5_Sess digest-auth_int-noalgo \
 	example.com stripped.example.com
 
-EAPTESTS = eapmd5.conf
+EAPOL_TEST = eapol_test
 
-.PHONY: all
+EAP_TLS_TESTS = eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
+
+SECRET	= testing123
+
+.PHONY: all eap
 
 #
 #	Build the directory for testing the server
@@ -35,3 +39,6 @@ raddb/.raddb:
 tests: raddb/.raddb
 	@chmod a+x runtests.sh
 	./runtests.sh $(TESTS)
+
+eap: $(EAP_TLS_TESTS)
+	$(EAPOL_TEST) -c $< -s $(SECRET)
