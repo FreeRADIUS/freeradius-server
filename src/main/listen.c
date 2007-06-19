@@ -190,8 +190,13 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 
 	len = strlen(buffer);
 
-	return len + snprintf(buffer + len, bufsize - len, " port %d",
-			      sock->port);
+	if (!this->identity) {
+		return len + snprintf(buffer + len, bufsize - len, " port %d",
+				      sock->port);
+	}
+
+	return len + snprintf(buffer + len, bufsize - len, " port %d using identity %s",
+			      sock->port, this->identity);
 }
 
 
@@ -1260,8 +1265,14 @@ static void detail_free(rad_listen_t *this)
 
 static int detail_print(rad_listen_t *this, char *buffer, size_t bufsize)
 {
-	return snprintf(buffer, bufsize, "%s",
-			((listen_detail_t *)(this->data))->filename);
+	if (!this->identity) {
+		return snprintf(buffer, bufsize, "%s",
+				((listen_detail_t *)(this->data))->filename);
+	}
+
+	return snprintf(buffer, bufsize, "%s using identity %s",
+			((listen_detail_t *)(this->data))->filename,
+			this->identity);
 }
 
 static int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
