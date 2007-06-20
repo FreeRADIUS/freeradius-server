@@ -201,64 +201,7 @@ return code found by processing the list.
 "group" section.
 
 
-4. More Complex Configuration using "if" and "else"
-   ------------------------------------------------
-
-  As of version 2.0.0-pre2, the server allows "if" and "eslif"
-checking in the configuration sections, using complex conditions.  The
-section is still processed as a list, so there is no looping or "goto"
-support.  But by using "if", the administrator can have branching
-paths of execution, where none was possible before.
-
-  Note that these conditions are NOT the same as in 2.0.0-pre0 or 2.0.0-pre1!
-
-
-	authorize {
-		...
-		if (condition) {
-			...
-		}
-		elsif (condition) {
-			...
-		}
-		...	
-	}
-
-  The conditions MUST be surrounded by braces.  Negatation (!) can be
-used.  Short-circuit "||" and "&&" can be used.
-
-  Some examples:
-
-	(5 > 3)
-	(!(5 > 3))
-	((5 > 3) || (4 > 2))		(4 > 2) isn't evaluated
-	((5 > 3) && (4 > 2))		(4 > 2) is evaluated.
-
-  Normal strings can be used, double-quoted, single-quoted, escaped, etc.
-
-	("%{User-Name}" == "bob")	==> expands User-Name
-					    see "variables.txt"
-	('%{User-Name}' == ...)		==> compares string to %{User-Name}
-					    doesn't do expansion
-
-  Some rules:
-
-  - "if" and "elsif" have to be the first word on the line.
-    You CANNOT do "} elsif {"
-
-  - When looking at attributes, you MUST put double-quotes around the
-    attribute name.
-	if (User-Name == "bob") { 	==> ILLEGAL
-	if (%{User-Name} == "bob") {	==> ILLEGAL
-	if ("%{User-Name}" == "bob") {  == LEGAL
-
-  - you can put complex statements on BOTH sides of the condition!
-
-	if (("%{User-Name}" == "%{ldap:...}") {
-
-
-
-5. Virtual Modules
+4. Virtual Modules
    ---------------
 
   Some configurations may require using the same list of modules, in
@@ -286,11 +229,11 @@ contain "if" conditions, or any other configuration permitted in a
 section.
 
 
-7. Redundancy and Load-Balancing
+5. Redundancy and Load-Balancing
    -----------------------------
 
-  See doc/load-balance.txt for information on simple redundancy
-(fail-over) and load balancing.
+  See "man unlang" or doc/load-balance.txt for information on simple
+redundancy (fail-over) and load balancing.
 
 
 6. The Gory Details

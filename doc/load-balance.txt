@@ -1,3 +1,7 @@
+  As of version 2.0.0, the load balance documentation is in the
+available in the "unlang" man page.  The text below may not be up to
+date, and is here only for historical purposes.
+
   As of version 1.1.0, FreeRADIUS supports load balancing in module
 sections.  Please see the "configurable_failover" file in this
 directory for a more complete description of module sections.
@@ -166,39 +170,6 @@ which is not what you want.
 checks the return code of the module or group that executed just
 before the "load-balance" section.  It does *not* check the return
 code of the previous module in the section.
-
-  The following table illustrates which sections can be sub-sections
-of others.  If an entry for a row/column is empty, then that
-combination is not allowed.
-
-	    x = allowed
-	    i = allowed if immediately after an 'if or 'elsif'
-
-
-   Allowed:	group	redundant  l-b	r-l-b	if    else  elsif
-
-Container:
-
-  group          x        x        x      x     x     i     i
-
-  if             x        x        x      x     x     i     i
-
-  else           i        i        i      i     i     i     i
-
-  elsif          i        i        i      i     i     i     i
-
-  l-b            x        x        x      x     x
-
-  r-l-b          x        x        x      x     x
-
-  redundant      x        x        x      x
-
-
-  e.g. "redundant" can contain "load-balance", but not "if", "else",
-or "eslif".  "if" can contain any other section, but if it contains
-"else" or "elsif", they have to have be listed after a second "if"
-section, inside of the first "if".
-
 
 ----------------------------------------------------------------------
 $Id$

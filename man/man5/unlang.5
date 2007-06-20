@@ -9,11 +9,25 @@ complicated than what is described here, we suggest using the Perl or
 Python modules rlm_perl, or rlm_python.
 
 The language is similar to C in some respects, and is also similar to
-Unix shell scripts in other respects.  The keywords for the language
-are "if", "else", "elsif", "switch", "case", and "update".  Subject to some
-limitations below on "switch" and "case", any keyword can appear in
-any context.
+Unix shell scripts in other respects.
 .SH KEYWORDS
+The keywords for the language are a combination of pre-defined
+keywords, and references to loadable module names.  We document only
+the pre-defined keywords here.
+
+Subject to a few limitations described below, any keyword can appear
+in any context.
+
+.IP module-name
+A simple reference to call the module named here.
+
+.DS
+	chap  # call the CHAP module
+.br
+	sql   # call the SQL module
+.br
+	...
+.DE
 .IP if
 .br
 Checks for a particular condition.  If true, the block after the
@@ -111,6 +125,81 @@ packet on the network will generally be placed in the "control" list.
 The only contents permitted in an "update" section are attributes and
 values.  For a detailed description of the contents of the "update"
 section, see the ATTRIBUTES section below.
+.IP redundant
+This section contains a simple list of modules.  The first module is
+called when the section is being processed.  If the first module
+succeeds in its operation, then the server stops processing the
+section, and returns to the parent section.
+
+If, however, the module fails, then the next module in the list is
+tried, as described above.  The processing continues until one module
+succeeds, or until the list has been exhausted.
+
+Redundant sections can contain only a list of modules, and cannot
+contain keywords that perform conditional operations (if, else, etc)
+or update an attribute list.
+
+.DS
+	redundant {
+.br
+		sql1	# try this
+.br
+		sql2	# try this only if sql1 fails.
+.br
+		...
+.br
+	}
+.DE
+.IP load-balance
+This section contains a simple list of modules.  When the section is
+entered, one module is chosen at random to process the request.  All
+of the modules in the list should be the same type (e.g. ldap or sql).
+All of the modules in the list should behave identically, otherwise
+the load-balance section will return different results for the same
+request.
+
+Load-balance sections can contain only a list of modules, and cannot
+contain keywords that perform conditional operations (if, else, etc)
+or update an attribute list.
+
+.DS
+	load-balance {
+.br
+		ldap1	# 50% of requests go here
+.br
+		ldap2	# 50% of requests go here
+.br
+	}
+.DE
+
+In general, we recommend using "redundant-load-balance" instead of
+"load-balance".
+.IP redundant-load-balance
+This section contains a simple list of modules.  When the section is
+entered, one module is chosen at random to process the request.  If
+that module succeeds, then the server stops processing the section.
+If, however, the module fails, then one of the remaining modules is
+chosen at random to process the request.  This process repeats until
+one module succeeds, or until the list has been exhausted.
+
+All of the modules in the list should be the same type (e.g. ldap or
+sql).  All of the modules in the list should behave identically,
+otherwise the load-balance section will return different results for
+the same request.
+
+Load-balance sections can contain only a list of modules, and cannot
+contain keywords that perform conditional operations (if, else, etc)
+or update an attribute list.
+
+.DS
+	redundant load-balance {
+.br
+		ldap1	# 50%, unless ldap2 is down, then 100%
+.br
+		ldap2	# 50%, unless ldap1 is down, then 100%
+.br
+	}
+.DE
 .SH CONDITIONS
 The conditions are similar to C conditions in syntax, though
 quoted strings are supported, as with the Unix shell.
@@ -397,6 +486,32 @@ can assign an IP address value to an attribute by specifying the IP
 address directly, or by having the address returned from a database
 query, or by having the address returned as the output of a program
 that is executed.
+.SH OTHER KEYWORDS
+Other keywords in the language are taken from the names of modules
+loaded by the server.  These keywords are dependent on both the
+modules, and the local configuration.
+
+Some use keywords that are defined in the default configuration file
+are:
+
+.IP fail
+Cause the request to be treated as if a database failure had occured.
+
+.IP noop
+Do nothing.  This also serves as an instruction to the configurable
+failover tracking that nothing was done in the current section.
+
+.IP ok
+Instructs the server that the request was processed properly.  This
+keyword can be used to over-ride earlier failures, if the local
+administrator determines that the faiures are not catastrophic.
+
+.IP reject
+Causes the request to be immediately rejected
+
+.IP return
+Stops processsing of the current section, and returns to process the
+next keyword in the parent section.
 .SH FILES
 /etc/raddb/vmpsd.conf,
 /etc/raddb/radiusd.conf
