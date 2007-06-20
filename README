@@ -22,7 +22,7 @@ read "man rlm_pap" for more details.
 User-Password.  That is, if the documentation or a web page says to
 configure User-Password in a database or server configuration file,
 the documentation is likely out of date, and you should use
-User-Password instead.
+Cleartext-Password instead.
 
   The main differences between 1.1.3 and 1.1.4 are significantly
 improved functionality in rlm_pap.  The module is MUCH smarter, which
