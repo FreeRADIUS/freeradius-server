@@ -1248,6 +1248,57 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 	return csingle;
 }
 
+/*
+ *	redundant, etc. can refer to modules or groups, but not much else.
+ */
+static int all_children_are_modules(CONF_SECTION *cs, const char *name)
+{
+	CONF_ITEM *ci;
+
+	for (ci=cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci=cf_item_find_next(cs, ci)) {
+		CONF_PAIR *cp;
+
+		/*
+		 *	If we're a redundant, etc. group, then the
+		 *	intention is to call modules, rather than
+		 *	processing logic.  These checks aren't
+		 *	*strictly* necessary, but they keep the users
+		 *	from doing crazy things.
+		 */
+		if (cf_item_is_section(ci)) {
+			CONF_SECTION *subcs = cf_itemtosection(ci);
+			const char *name1 = cf_section_name1(cs);
+
+			if ((strcmp(name1, "if") == 0) ||
+			    (strcmp(name1, "else") == 0) ||
+			    (strcmp(name1, "elsif") == 0) ||
+			    (strcmp(name1, "update") == 0) ||
+			    (strcmp(name1, "switch") == 0) ||
+			    (strcmp(name1, "case") == 0)) {
+				radlog(L_ERR, "%s[%d]: %s sections cannot contain a \"%s\" statement",
+				       cf_section_filename(subcs),
+				       cf_section_lineno(subcs),
+				       name, name1);
+				return NULL;
+			}
+			continue;
+		}
+
+		if (cf_item_is_pair(ci)) {
+			CONF_PAIR *cp = cf_itemtopair(ci);
+			if (cf_pair_value(cp) != NULL) {
+				radlog(L_ERR, "%s[%d]: Invalid entry in %s section",
+				       cf_pair_filename(cp), cf_pair_lineno(cp), name);
+				return 0;
+			}
+		}
+	}
+
+	return 1;
+}
+
 
 /*
  *	Compile one entry of a module call.
@@ -1287,6 +1338,11 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 		} else if (strcmp(modrefname, "redundant") == 0) {
 			*modname = name2;
+
+			if (!all_children_are_modules(cs, modrefname)) {
+				return NULL;
+			}
+
 			return do_compile_modgroup(parent, component, cs,
 						   GROUPTYPE_REDUNDANT,
 						   grouptype);
@@ -1299,6 +1355,11 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 		} else if (strcmp(modrefname, "load-balance") == 0) {
 			*modname = name2;
+
+			if (!all_children_are_modules(cs, modrefname)) {
+				return NULL;
+			}
+
 			csingle= do_compile_modgroup(parent, component, cs,
 						     GROUPTYPE_SIMPLE,
 						     grouptype);
@@ -1308,6 +1369,11 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 		} else if (strcmp(modrefname, "redundant-load-balance") == 0) {
 			*modname = name2;
+
+			if (!all_children_are_modules(cs, modrefname)) {
+				return NULL;
+			}
+
 			csingle= do_compile_modgroup(parent, component, cs,
 						     GROUPTYPE_REDUNDANT,
 						     grouptype);
