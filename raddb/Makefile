@@ -30,7 +30,7 @@ all:
 
 install:
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)
-	$(INSTALL) -d -m 750	$(R)$(raddbdir)/sites-evailable
+	$(INSTALL) -d -m 750	$(R)$(raddbdir)/sites-available
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)/sites-enabled
 	@echo "Creating/updating files in $(R)$(raddbdir)"; \
 	for i in $(FILES); do \
