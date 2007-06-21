@@ -311,16 +311,13 @@ int modcall(int component, modcallable *c, REQUEST *request)
 	modsingle *sp;
 	int if_taken, was_if;
 
-	stack.pointer = 0;
-
 	if ((component < 0) || (component >= RLM_COMPONENT_COUNT)) {
 		return RLM_MODULE_FAIL;
 	}
 
-	if (!c) {
-		return default_component_results[component];
-	}
+	if (!c) return default_component_results[component];
 
+	stack.pointer = 0;
 	stack.priority[0] = 0;
 	stack.children[0] = c;
 	myresult = stack.result[0] = default_component_results[component];
@@ -1258,8 +1255,6 @@ static int all_children_are_modules(CONF_SECTION *cs, const char *name)
 	for (ci=cf_item_find_next(cs, NULL);
 	     ci != NULL;
 	     ci=cf_item_find_next(cs, ci)) {
-		CONF_PAIR *cp;
-
 		/*
 		 *	If we're a redundant, etc. group, then the
 		 *	intention is to call modules, rather than
@@ -1281,7 +1276,7 @@ static int all_children_are_modules(CONF_SECTION *cs, const char *name)
 				       cf_section_filename(subcs),
 				       cf_section_lineno(subcs),
 				       name, name1);
-				return NULL;
+				return 0;
 			}
 			continue;
 		}
