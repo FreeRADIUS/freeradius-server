@@ -157,7 +157,7 @@ static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
 	cp->item.type = CONF_ITEM_PAIR;
 	cp->item.parent = parent;
 	cp->attr = strdup(attr);
-	cp->value = strdup(value);
+	if (value) cp->value = strdup(value);
 	cp->value_type = value_type;
 	cp->operator = operator;
 
@@ -1249,6 +1249,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		case T_EOL:
 		case T_HASH:
 			t2 = T_OP_EQ;
+			value = NULL;
 			goto do_set;
 
 		case T_OP_ADD:
@@ -1274,6 +1275,9 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				value = cf_expand_variables(filename, lineno, this,
 							    buf, buf3);
 				if (!value) return -1;
+			} else if ((t3 == T_EOL) ||
+				   (t3 == T_HASH)) {
+				value = NULL;
 			} else {
 				value = buf3;
 			}
@@ -1835,7 +1839,7 @@ static void *cf_data_find_internal(CONF_SECTION *cs, const char *name,
 	 *	Find the name in the tree, for speed.
 	 */
 	if (cs->data_tree) {
-		CONF_DATA mycd, *cd;
+		CONF_DATA mycd;
 
 		mycd.name = name;
 		mycd.flag = flag;

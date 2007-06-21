@@ -145,6 +145,7 @@ static int compile_action(modcallable *c, CONF_PAIR *cp)
 
 	attr = cf_pair_attr(cp);
 	value = cf_pair_value(cp);
+	if (!value) return 0;
 
 	if (!strcasecmp(value, "return"))
 		action = MOD_ACTION_RETURN;
@@ -1704,7 +1705,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 			 *	instance with no actions
 			 *	specified ...
 			 */
-			if (value[0] == 0) {
+			if (!value) {
 				modcallable *single;
 				const char *junk = NULL;
 
