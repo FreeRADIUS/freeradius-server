@@ -651,7 +651,8 @@ read_mappings(ldap_instance* inst)
 	mapfile = fopen(filename, "r");
 
 	if (mapfile == NULL) {
-		radlog(L_ERR, "rlm_ldap: Opening file %s failed", filename);
+		radlog(L_ERR, "rlm_ldap: Opening file %s failed: %s",
+		       filename, strerror(errno));
 		return -1; /* error */
 	}
 
