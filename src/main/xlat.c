@@ -315,7 +315,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 				break;
 
 			case PW_VIRTUAL_SERVER:
-				if (!request->listener || !request->server) return 0;
+				if (!request->server) return 0;
 
 				snprintf(out, outlen, "%s", request->server);
 				return strlen(out);
