@@ -286,6 +286,7 @@ VALUE	Auth-Type			CHAP			1025
 # ldap module.
 VALUE	Auth-Type			PAM			1027
 VALUE	Auth-Type			MS-CHAP			1028
+VALUE	Auth-Type			MSCHAP			1028
 VALUE	Auth-Type			Kerberos		1029
 VALUE	Auth-Type			CRAM			1030
 VALUE	Auth-Type			NS-MTA-MD5		1031
