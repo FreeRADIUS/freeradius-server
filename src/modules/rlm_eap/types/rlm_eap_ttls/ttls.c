@@ -1143,13 +1143,19 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		}
 	}
 
+	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER)) != NULL) {
+		fake->server = vp->vp_strvalue;
+	}
+
 #ifndef NDEBUG
 	if (debug_flag > 0) {
-	  printf("  TTLS: Sending tunneled request\n");
+		printf("  TTLS: Sending tunneled request\n");
 
-	  for (vp = fake->packet->vps; vp != NULL; vp = vp->next) {
-	    putchar('\t');vp_print(stdout, vp);putchar('\n');
-	  }
+		for (vp = fake->packet->vps; vp != NULL; vp = vp->next) {
+			putchar('\t');vp_print(stdout, vp);putchar('\n');
+		}
+
+		printf("server %s {\n", fake->server);
 	}
 #endif
 
@@ -1165,12 +1171,14 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 */
 #ifndef NDEBUG
 	if (debug_flag > 0) {
-	  printf("  TTLS: Got tunneled reply RADIUS code %d\n",
-		 fake->reply->code);
+		printf("} # server %s\n", fake->server);
 
-	  for (vp = fake->reply->vps; vp != NULL; vp = vp->next) {
-	    putchar('\t');vp_print(stdout, vp);putchar('\n');
-	  }
+		printf("  TTLS: Got tunneled reply RADIUS code %d\n",
+		       fake->reply->code);
+		
+		for (vp = fake->reply->vps; vp != NULL; vp = vp->next) {
+			putchar('\t');vp_print(stdout, vp);putchar('\n');
+		}
 	}
 #endif
 
