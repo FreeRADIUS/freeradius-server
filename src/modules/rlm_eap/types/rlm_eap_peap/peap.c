@@ -784,6 +784,10 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		}
 	}
 
+	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER)) != NULL) {
+		fake->server = vp->vp_strvalue;
+	}
+
 #ifndef NDEBUG
 	if (debug_flag > 0) {
 		printf("  PEAP: Sending tunneled request\n");
@@ -791,6 +795,8 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		for (vp = fake->packet->vps; vp != NULL; vp = vp->next) {
 			putchar('\t');vp_print(stdout, vp);putchar('\n');
 		}
+
+		printf("server %s {\n", fake->server);
 	}
 #endif
 
@@ -806,6 +812,8 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 */
 #ifndef NDEBUG
 	if (debug_flag > 0) {
+		printf("} # server %s\n", fake->server);
+
 		printf("  PEAP: Got tunneled reply RADIUS code %d\n",
 		 fake->reply->code);
 
