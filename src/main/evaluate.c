@@ -847,10 +847,11 @@ static void my_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 
 		/*
 		 *	We were asked to add it if it didn't exist,
-		 *	and it doesn't exist.  Move it over to the tail
-		 *	of the "to" list.
+		 *	and it doesn't exist.  Move it over to the
+		 *	tail of the "to" list, UNLESS it was already
+		 *	moved by another operator.
 		 */
-		if (!found) {
+		if (!found && from_list[i]) {
 			if ((from_list[i]->operator == T_OP_EQ) ||
 			    (from_list[i]->operator == T_OP_LE) ||
 			    (from_list[i]->operator == T_OP_GE) ||
