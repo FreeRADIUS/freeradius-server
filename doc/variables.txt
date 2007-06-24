@@ -116,7 +116,7 @@ defined in 'sh'.  For example:
 	set, then the length is not set.  This will NOT work for the
 	one-character variables defined below.
 
-	e.g. %{#Junk-junk:-foo} will yeild the string "foo".
+	e.g. %{#Junk-junk:-foo} will yield the string "foo".
 
 
      %{Attribute-Name[index]}
