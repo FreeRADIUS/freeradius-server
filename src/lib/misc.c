@@ -336,10 +336,12 @@ int inet_pton(int af, const char *src, void *dst)
 	if (af == AF_INET) {
 		return inet_pton4(src, dst);
 	}
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
 
 	if (af == AF_INET6) {
 		return inet_pton6(src, dst);
 	}
+#endif
 
 	return -1;
 }
@@ -590,11 +592,13 @@ int lrad_ipaddr_cmp(const lrad_ipaddr_t *a, const lrad_ipaddr_t *b)
 			      sizeof(a->ipaddr.ip4addr));
 		break;
 
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
 	case AF_INET6:
 		return memcmp(&a->ipaddr.ip6addr,
 			      &b->ipaddr.ip6addr,
 			      sizeof(a->ipaddr.ip6addr));
 		break;
+#endif
 
 	default:
 		break;
