@@ -38,7 +38,7 @@ described below for IOS versions 11.x
 your inbound 'telnet' connections.  You will need to create an entry
 in your users file similar to the following to allow access:
 
-   !root   User-Password == "somepass"
+   !root   Cleartext-Password := "somepass"
            Service-Type = NAS-Prompt-User
 
 This will let a user in for the first level of access to your Cisco.  You
