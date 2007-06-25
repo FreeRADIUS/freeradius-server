@@ -73,7 +73,7 @@
 # entry so that no DEFAULT entry will be used, and the user will NOT
 # get any attributes in addition to the ones listed here.
 #
-#steve	User-Password := "testing"
+#steve	Cleartext-Password := "testing"
 #	Service-Type = Framed-User,
 #	Framed-Protocol = PPP,
 #	Framed-IP-Address = 172.16.3.33,
@@ -87,13 +87,13 @@
 # This is an entry for a user with a space in their name.
 # Note the double quotes surrounding the name.
 #
-#"John Doe"	User-Password := "hello"
+#"John Doe"	Cleartext-Password := "hello"
 #		Reply-Message = "Hello, %{User-Name}"
 
 #
 # Dial user back and telnet to the default host for that port
 #
-#Deg	User-Password := "ge55ged"
+#Deg	Cleartext-Password := "ge55ged"
 #	Service-Type = Callback-Login-User,
 #	Login-IP-Host = 0.0.0.0,
 #	Callback-Number = "9,5551212",
@@ -105,7 +105,7 @@
 # connection will be broken and the user will be dialed back after which
 # he will get a connection to the host "timeshare1".
 #
-#dialbk	User-Password := "callme"
+#dialbk	Cleartext-Password := "callme"
 #	Service-Type = Callback-Login-User,
 #	Login-IP-Host = timeshare1,
 #	Login-Service = PortMaster,
