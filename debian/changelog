@@ -1,3 +1,9 @@
+freeradius (1.1.7-0) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Alan DeKok <aland@freeradius.org>  Tue Jun 26 2007 09:52:41 +0100
+
 freeradius (1.1.6-0) unstable; urgency=low
 
   * New upstream release.
