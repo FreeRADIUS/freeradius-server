@@ -117,8 +117,9 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 	escape = 0;
 
 	while (*p && buflen-- > 1) {
-		if (escape) {
-			escape = 0;
+		if (quote && (*p == '\\')) {
+			p++;
+
 			switch(*p) {
 				case 'r':
 					*s++ = '\r';
@@ -129,14 +130,9 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 				case 't':
 					*s++ = '\t';
 					break;
-				case '"':
-					*s++ = '"';
-					break;
-				case '\'':
-					*s++ = '\'';
-					break;
-				case '`':
-					*s++ = '`';
+				case '\0':
+					*s++ = '\\';
+					p--; /* force EOS */
 					break;
 				default:
 					if (*p >= '0' && *p <= '9' &&
@@ -148,11 +144,6 @@ static LRAD_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
 					break;
 			}
 			p++;
-			continue;
-		}
-		if (!quote && (*p == '\\')) {
-			p++;
-			escape = 1;
 			continue;
 		}
 		if (quote && (*p == quote)) {
