@@ -1,19 +1,9 @@
   Run-time variables
   ------------------
 
-  The run-time variables defined by the server are:
+  See "man unlang" for more complete documentation on the run-time
+variables.  This file is here only for historical purposes.
 
-     %{Attribute-Name}               The value of the given Attribute-Name
-                                     in the request packet
-
-     %{request:Attribute-Name}       The value of value the given
-                                     Attribute-Name in the request packet
-     %{reply:Attribute-Name}         The value of the given Attribute-Name
-                                     in the reply packet
-     %{proxy-request:Attribute-Name} The value of the given Attribute-Name
-                                     in the proxy request packet (if it exists)
-     %{proxy-reply:Attribute-Name}   The value of the given Attribute-Name
-                                     in the proxy reply packet (if it exists)
 
   The above variable expansions also support the following
 meta-attributes.  These are not normal RADIUS attributes, but are
@@ -32,11 +22,6 @@ only be queried, and cannot be assigned.
 
 	Packet-Dst-Port		UDP port to which the packet was sent.
 
-	 
-     %{control:Attribute-Name}         Corresponding value for Attribute-Name
-                                     in the control items for request
-	
-
      %{config:section.subsection.item} Corresponding value in 'radiusd.conf'
                                        for the string value of that item.
 
@@ -44,28 +29,6 @@ only be queried, and cannot be assigned.
 may leak secret information from your RADIUS server, if you use them
 in reply attributes to the NAS!
 
-  If your system supports regular expressions, then regular expression
-matching defines other special variables, just like in Perl.
-
-     %{0}	What the regular expression matched
-     %{1}	The first group which matched
-     %{2}	The second group which matched
-     ...
-     %{8}	The eight group which matched.
-
-  These variables are defined during a regular expression match =~,
-and only when the expression matches.  They are NOT defined for the
-operator !~, or when =~ doesn't match.  Any use of =~ destroys all
-previous values of %{0}..%{8}, but the variables.
-
-  Some examples.
-
-  %{User-Name}			 The string value of the User-Name attribute.
-  %{proxy-reply:Framed-Protocol} The string value of the Framed-Protocol
-				 attribute, from the proxy reply.
-  %{config:modules.unix.passwd}  The string value of the 'passwd' configuration
-				 item in the 'unix' module, in the 'modules'
-				 section of radiusd.conf.
 
 DEFAULT  User-Name =~ "^([^@]+)@(.*)"
 	 All-That-Matched = `%{0}`
@@ -84,64 +47,6 @@ you must put the string into an back-quoted string:
   To do the dynamic translation in the 'radiusd.conf' (or some other
 configuration files), just use the variable as-is.  See 'radiusd.conf'
 for examples.
-
-
-  Conditional syntax
-  --------------------
-
-  Additionally, you can use conditional syntax similar to ${foo:-bar} as
-defined in 'sh'.  For example:
-
-  1.  %{Foo:-bar}
-    When attribute Foo is set:    returns value of Foo
-    When attribute Foo is unset:  returns literal string 'bar'
-
-  2.  %{Foo:-%{Bar}}
-    When attribute Foo is set:    returns value of attribute Foo
-    When attribute Foo is unset:  returns value of attribute Bar (if any)
-
-  3.  %{Foo:-%{Bar:-baz}}
-    When attribute Foo is set:    returns value of attribute Foo
-    When attribute Foo is unset:  returns value of attribute Bar (if any)
-    When attribute Bar is unset:  returns literal string 'baz'
-
-
-  String Lengths
-  --------------
-
-  The dynamic translations support a few additional operatons, too.
-
-     %{#string}
-	The number of characters in %{string}.  If %{string} is not
-	set, then the length is not set.  This will NOT work for the
-	one-character variables defined below.
-
-	e.g. %{#Junk-junk:-foo} will yield the string "foo".
-
-
-     %{Attribute-Name[index]}
-	Reference the N'th occurance of the given attribute.  The
-	indexes start at zero.  This feature is NOT available for
-	non-attribute dynamic translations, like %{sql:...}.
-
- 	e.g. %{User-Name[0]} is the same as %{User-Name}
-	e.g. %{Cisco-AVPair[2]} references the value of the *third*
-	     Cisco-AVPair attribute (if it exists) in the request
-	     packet,
-
-     %{Attribute-Name[#]}
-	Returns the total number of attributes of that name in
-	the relevant attribute list.  The number will usually
-	be between 0 and 200.
-
-	e.g. For most requests, %{request:User-Name[#]} == 1
-
-     %{Attribute-Name[*]}
-	Expands to a single string, with the value of each array
-	member separated by a newline.
-
-     %{#Attribute-Name[index]}
-	Expands to the length of the string %{Attribute-Name[index]}.
 
 
   Attributes as environment variables in executed programs
