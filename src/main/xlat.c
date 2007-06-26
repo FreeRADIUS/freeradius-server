@@ -249,6 +249,14 @@ static int xlat_packet(void *instance, REQUEST *request,
 			}
 			break;
 
+			case PW_CLIENT_SHORTNAME:
+				if (request->client && request->client->shortname) {
+					strlcpy(out, request->client->shortname, outlen);
+				} else {
+					strlcpy(out, "<UNKNOWN-CLIENT>", outlen);
+				}
+				return strlen(out);
+
 			case PW_CLIENT_IP_ADDRESS: /* the same as below */
 			case PW_PACKET_SRC_IP_ADDRESS:
 				if (packet->src_ipaddr.af != AF_INET) {

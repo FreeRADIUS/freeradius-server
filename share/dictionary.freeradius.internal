@@ -59,9 +59,10 @@ ATTRIBUTE	EAP-Code				1021	integer
 # Attribute 1022 unused, was EAP-MD5-Password, which was
 # used only be radeapclient.  It's been replaced by Cleartext-Password
 ATTRIBUTE	PEAP-Version				1023	integer
+ATTRIBUTE	Client-Shortname			1024	string
 
 #
-#	Range:	1023-1028
+#	Range:	1025-1028
 #		unused
 #
 ATTRIBUTE	User-Category				1029	string
