@@ -1,4 +1,23 @@
-FreeRADIUS 1.1.6 ; $Date$, urgency = high
+FreeRADIUS 1.1.7 ; $Date$, urgency = medium
+	Feature improvements
+	* Updated LDAP documentation
+	* Added note on DH parameters in eap.conf, and debugging messages
+	  which complain if DH is used, but not configured properly.
+	* Updated the Mikrotik dictionary.  Added a note that the sample
+	  dictionary they supply is broken.
+	* Output more information on blocked threads, which should help
+	  narrow down which modules is causing the problem.
+	* Added more eDirectory support.
+	* rlm_ldap now prints out attributes in the standard format
+	* Enabled server-side handling of procedures in MySQL
+
+	Bug fixes
+	* Added NT-Hash support for mschap_xlat
+	* Corrected documentation to point to correct location of files
+	* Checks for more recent FreeBSD versions
+	* use -DLDAP_DEPRECATED to avoid OpenLDAP crashes
+	
+FreeRADIUS 1.1.6 ; Date: 2007/04/12 12:54:19 , urgency = high
 	Feature improvements
 	* Added dictionary.rfc4372 (Chargeable User Identity)
 	* Added dictionary.rfc4675 (VLAN and Priority)
