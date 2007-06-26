@@ -316,8 +316,6 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		return RLM_MODULE_FAIL;
 	}
 
-	if (!c) return default_component_results[component];
-
 	stack.pointer = 0;
 	stack.priority[0] = 0;
 	stack.children[0] = c;
@@ -335,7 +333,10 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		}
 
 		child = stack.children[stack.pointer];
-		rad_assert(child != NULL);
+		if (!child) {
+			myresult = stack.result[stack.pointer];
+			break;
+		}
 		parent = child->parent;
 
 		if ((child->type == MOD_ELSE) || (child->type == MOD_ELSIF)) {
@@ -1104,6 +1105,8 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 			return NULL;
 		}
 
+		if (!cf_item_is_pair(ci)) continue;
+
 		cp = cf_itemtopair(ci);	/* can't return NULL */
 		vp = cf_pairtovp(cp);
 		if (!vp) {
@@ -1206,6 +1209,8 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 		const char *name1, *name2;
 
 		if (!cf_item_is_section(ci)) {
+			if (!cf_item_is_pair(ci)) continue;
+
 			radlog(L_ERR|L_CONS,
 			       "%s[%d]: \"switch\" sections can only have \"case\" subsections",
 			       cf_pair_filename(cf_itemtopair(ci)),
@@ -1510,6 +1515,9 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			return csingle;
 		}
 
+	} else if (!cf_item_is_pair(ci)) { /* CONF_DATA or some such */
+		return NULL;
+
 		/*
 		 *	Else it's a module reference, with updated return
 		 *	codes.
@@ -1590,6 +1598,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 				modcallable_free(&csingle);
 				return NULL;
 			}
+
+			if (!cf_item_is_pair(ci)) continue;
 
 			if (!compile_action(csingle, cf_itemtopair(ci))) {
 				modcallable_free(&csingle);
@@ -1692,6 +1702,9 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 				return NULL;
 			}
 			add_child(g, single);
+
+		} else if (!cf_item_is_pair(ci)) { /* CONF_DATA */
+			continue;
 
 		} else {
 			const char *attr, *value;
