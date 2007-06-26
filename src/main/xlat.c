@@ -589,6 +589,90 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	}
 
 	/*
+	 *	Handle %{%{foo}:-%{bar}}, which is useful, too.
+	 *
+	 *	Did I mention that this parser is garbage?
+	 */
+	if ((p[0] == '%') && (p[1] == '{')) {
+		/*
+		 *	This is really bad, but it works.
+		 */
+		size_t len1, len2;
+		size_t mylen = strlen(p);
+		char *first = rad_malloc(mylen);
+		char *second = rad_malloc(mylen);
+		int expand2 = FALSE;
+
+		len1 = rad_copy_variable(first, p);
+		if (len1 < 0) {
+			DEBUG2("Badly formatted variable: %s", p);
+			goto done;
+		}
+
+		if ((p[len1] != ':') || (p[len1 + 1] != '-')) {
+			DEBUG2("No trailing :- after variable at %s", p);
+			goto done;
+		}
+
+		p += len1 + 2;
+
+		if ((p[0] == '%') && (p[1] == '{')) {
+			len2 = rad_copy_variable(second, p);
+
+			expand2 = TRUE;
+			if (len2 < 0) {
+				DEBUG2("Invalid text after :- at %s", p);
+				goto done;
+			}
+			p += len2;
+
+		} else if ((p[0] == '"') || p[0] == '\'') {
+			getstring(&p, second, mylen);
+
+		} else {
+			char *s = second;
+
+			while (*p && (*p != '}')) {
+				*(s++) = *(p++);
+			}
+			*s = '\0';
+		}
+
+		if (*p != '}') {
+			DEBUG2("Failed to find trailing '}' in string");
+			goto done;
+		}
+
+		mylen = radius_xlat(q, freespace, first, request, func);
+		free(first);
+		if (mylen) {
+			free(second);
+
+			q += mylen;
+			goto done;
+		}
+
+		if (!expand2) {
+			strlcpy(q, second, freespace);
+			q += strlen(q);
+		} else {
+			mylen = radius_xlat(q, freespace, second,
+					    request, func);
+			free(second);
+			if (mylen) {
+				q += mylen;
+				goto done;
+			}
+		}
+
+		/*
+		 *	Else the output is an empty string.
+		 */
+		goto done;
+	}
+
+
+	/*
 	 *	First, copy the xlat key name to one buffer
 	 */
 	while (*p && (*p != '}') && (*p != ':')) {
@@ -621,7 +705,8 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		xlat_string = xlat_name;
 		goto do_xlat;
 
-	} else if (p[1] == '-') { /* handle ':- */
+	} else if ((p[0] == ':') && (p[1] == '-')) { /* handle ':- */
+		DEBUG2("WARNING: Deprecated conditional expansion \":-\".  See \"man unlang\" for details");
 		p += 2;
 		xlat_string = xlat_name;
 		goto do_xlat;
@@ -728,6 +813,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 					    q, freespace, func);
 			/* If retlen is 0, treat it as not found */
 			if (retlen > 0) found = 1;
+
 #ifndef NDEBUG
 		} else {
 			/*

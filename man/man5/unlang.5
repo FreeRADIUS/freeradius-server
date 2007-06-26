@@ -8,18 +8,22 @@ create yet another programming language.  If you need something more
 complicated than what is described here, we suggest using the Perl or
 Python modules rlm_perl, or rlm_python.
 
-The language is similar to C in some respects, and is also similar to
-Unix shell scripts in other respects.
+The goal of the language is to allow simple policies to be written
+with minimal effort.
 .SH KEYWORDS
 The keywords for the language are a combination of pre-defined
 keywords, and references to loadable module names.  We document only
 the pre-defined keywords here.
 
 Subject to a few limitations described below, any keyword can appear
-in any context.
-
+in any context.  The language consists of a series of entries, each
+one one line.  Each entry begins with a keyword.  Entries are
+organized into lists.  Processing of the language is line by line,
+from the start of the list to the end.  Actions are executed
+per-keyword.
 .IP module-name
-A simple reference to call the module named here.
+A reference to the named module.  When processing reaches this point,
+the pre-compiled module is called.
 
 .DS
 	chap  # call the CHAP module
@@ -31,7 +35,8 @@ A simple reference to call the module named here.
 .IP if
 .br
 Checks for a particular condition.  If true, the block after the
-condition is processed.  Otherwise, the block is ignored.
+condition is processed.  Otherwise, the block is ignored.  See
+CONDITIONS, below, for documentation on the format of the conditions.
 
 .DS
 	if (condition) {
@@ -67,8 +72,11 @@ returned false, and if the specified condition evaluates to true.
 .IP switch
 .br
 Evaluate the given string, and choose the first matching "case"
-statement inside of the current block.  No statement other than "case"
-can appear in a "switch" block.
+statement inside of the current block.  If the string is surrounded by
+double quotes, it is expanded as described below in the STRINGS AND
+VARIABLES section.
+
+No statement other than "case" can appear in a "switch" block.
 
 .DS
 	switch "string" {
@@ -79,8 +87,11 @@ can appear in a "switch" block.
 .DE
 .IP case
 .br
-Define a static string to match a parent "switch" statement.  A "case"
-statement cannot appear outside of a "switch" block.
+Define a static string to match a parent "switch" statement.  The
+strings given here are not expanded as is done with the parent
+"switch" statement.
+
+A "case" statement cannot appear outside of a "switch" block.
 
 .DS
 	case string {
@@ -90,9 +101,9 @@ statement cannot appear outside of a "switch" block.
 	}
 .DE
 
-A "default" entry can be defined by not specifying a static string.
-This entry will be used if no other "case" entry matches.  Only one
-"default" entry can exist in a "switch" section.
+A default entry can be defined by omitting the static string.  This
+entry will be used if no other "case" entry matches.  Only one default
+entry can exist in a "switch" section.
 
 .DS
 	case {
@@ -123,8 +134,8 @@ server processes the request.  Any attribute that does not go in a
 packet on the network will generally be placed in the "control" list.
 
 The only contents permitted in an "update" section are attributes and
-values.  For a detailed description of the contents of the "update"
-section, see the ATTRIBUTES section below.
+values.  The contents of the "update" section are described in the
+ATTRIBUTES section below.
 .IP redundant
 This section contains a simple list of modules.  The first module is
 called when the section is being processed.  If the first module
@@ -211,7 +222,10 @@ conditions
 .DE
 
 Evalutes to true if 'foo' is a non-empty string, or if 'foo' is a
-non-zero number.
+non-zero number.  Note that the language is not typed, so the string
+"0000" can be interpreted as a numerical zero.  This issue can be
+avoided by comparings strings to an empty string, rather than by
+evaluating the string by itself.
 .IP Negation
 .DS
 	(!foo)
@@ -243,6 +257,9 @@ Compares 'foo' to 'bar', and evaluates to true if the comparison holds
 true.  Valid comparison operators are "==", "!=", "<", "<=", ">",
 ">=", "=~", and "!~", all with their usual meanings.  Invalid
 comparison operators are ":=" and "=".
+.PP
+Conditions may be nested to any depth, subject only to line length
+limitations (8192 bytes).
 .SH STRINGS AND NUMBERS
 Strings and numbers can appear as stand-alone conditions, in which
 case they are evaluated as described in "Simple conditions", above.
@@ -258,7 +275,9 @@ sign value.
 .RS
 Double-quoted strings are expanded by inserting the value of any
 variables (see VARIABLES, below) before being evaluated.  If
-the result is a number it can be evaluated in a numerical context.
+the result is a number it is evaluated in a numerical context.
+
+String length is limited by line-length, usually about 8000 characters.
 .RE
 .IP 'strings'
 Single-quoted strings are evaluated as-is.
@@ -373,18 +392,17 @@ Conditional Syntax
 .RS
 Conditional syntax similar to that used in Unix shells may also be
 used.
-.IP %{Foo:-bar}
-When attribute Foo is set, returns value of Foo
-When attribute Foo is unset, returns literal string 'bar'
+.IP %{%{Foo}:-bar}
+If %{Foo} has a value, returns that value.
+.br
+Otherwise, returns literal string "bar".
+.IP %{%{Foo}:-%{Bar}}
+If %{Foo} has a value, returns that value.
+.br
+Otherwise, returns the expansion of %{Bar}.
 
-.IP %{Foo:-%{Bar}}
-When attribute Foo is set, returns value of attribute Foo
-When attribute Foo is unset, returns value of attribute Bar (if any)
-
-.IP %{Foo:-%{Bar:-baz}}
-When attribute Foo is set, returns value of attribute Foo
-When attribute Foo is unset, returns value of attribute Bar (if any)
-When attribute Bar is unset, returns literal string 'baz'
+These conditional expansions can be nested to almost any depth, such
+as with %{%{One}:-%{%{Two}:-%{Three}}}
 .RE
 .PP
 String lengths and arrays
@@ -486,6 +504,13 @@ can assign an IP address value to an attribute by specifying the IP
 address directly, or by having the address returned from a database
 query, or by having the address returned as the output of a program
 that is executed.
+
+When string values are finally assigned to a variable, they can have a
+maximum length of 253 characters.  This limit is due in part to both
+protocol and internal server requirements.  That is, the strings in
+the language can be nearly 8k in length, say for a long SQL query.
+However, the output of that SQL query should be no more than 253
+characters in length.
 .SH OTHER KEYWORDS
 Other keywords in the language are taken from the names of modules
 loaded by the server.  These keywords are dependent on both the
@@ -493,22 +518,17 @@ modules, and the local configuration.
 
 Some use keywords that are defined in the default configuration file
 are:
-
 .IP fail
 Cause the request to be treated as if a database failure had occured.
-
 .IP noop
 Do nothing.  This also serves as an instruction to the configurable
 failover tracking that nothing was done in the current section.
-
 .IP ok
 Instructs the server that the request was processed properly.  This
 keyword can be used to over-ride earlier failures, if the local
 administrator determines that the faiures are not catastrophic.
-
 .IP reject
 Causes the request to be immediately rejected
-
 .IP return
 Stops processsing of the current section, and returns to process the
 next keyword in the parent section.
