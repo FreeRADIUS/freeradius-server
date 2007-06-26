@@ -569,7 +569,6 @@ static int send_one_packet(radclient_t *radclient)
 			assert(0 == 1);
 		}
 
-
 	} else {		/* radclient->request->id >= 0 */
 		time_t now = time(NULL);
 
@@ -683,6 +682,13 @@ static int recv_one_packet(int wait_time)
 			librad_errstr);
 		return -1;	/* bad packet */
 	}
+
+	/*
+	 *	udpfromto issues.  We may have bound to "*",
+	 *	and we want to find the replies that are sent to
+	 *	(say) 127.0.0.1.
+	 */
+	reply->dst_ipaddr = client_ipaddr;
 
 	if (librad_debug > 2) print_hex(reply);
 
