@@ -133,6 +133,10 @@ attributes maintainted internally by the server that controls how the
 server processes the request.  Any attribute that does not go in a
 packet on the network will generally be placed in the "control" list.
 
+For backwards compatibility with older versions, "check" is accepted
+as a synonym for "control".  The use of "check" is deprecated, and
+will be removed in a future release.
+
 The only contents permitted in an "update" section are attributes and
 values.  The contents of the "update" section are described in the
 ATTRIBUTES section below.
