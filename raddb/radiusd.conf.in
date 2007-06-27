@@ -1657,7 +1657,7 @@ $INCLUDE ${confdir}/eap.conf
 		# timespan. Dynamic substitution is supported.
 		#
 		reply-message = "You are calling outside your allowed timespan\r\n"
-#		reply-message = "Outside allowed timespan (%{check:Login-Time}), %{User-Name}\r\n"
+#		reply-message = "Outside allowed timespan (%{control:Login-Time}), %{User-Name}\r\n"
 
 		# The minimum timeout (in seconds) a user is allowed
 		# to have. If the calculated timeout is lower we don't
