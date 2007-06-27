@@ -201,7 +201,8 @@ LEAP_PACKET *eapleap_extract(EAP_DS *eap_ds)
  */
 static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 {
-	if (password->attribute == PW_PASSWORD) {
+	if ((password->attribute == PW_USER_PASSWORD) ||
+	    (password->attribute == PW_CLEARTEXT_PASSWORD)) {
 		int i;
 		unsigned char unicode[512];
 
