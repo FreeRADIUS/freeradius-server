@@ -251,9 +251,10 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 	 *	FIXME: use new RB-Tree code.
 	 */
 	for (c = cmp; c; c = c->next)
-		if (c->attribute == check->attribute)
+		if (c->attribute == check->attribute) {
 			return (c->compare)(c->instance, req, request, check,
 				check_pairs, reply_pairs);
+		}
 
 	if (!request) return -1; /* doesn't exist, don't compare it */
 
@@ -381,6 +382,11 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 			 *	This hack makes CHAP-Password work..
 			 */
 			case PW_USER_PASSWORD:
+				if (check_item->operator == T_OP_CMP_EQ) {
+					DEBUG("WARNING: Found User-Password == \"...\".");
+					DEBUG("WARNING: Are you sure you don't mean Cleartext-Password?");
+					DEBUG("WARNING: See \"man rlm_pap\" for more information.");
+				}
 				if (pairfind(request, PW_USER_PASSWORD) == NULL) {
 					continue;
 				}
