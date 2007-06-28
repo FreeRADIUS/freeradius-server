@@ -142,4 +142,9 @@ reconfig:
 #  Otherwise, install the libraries into $(libdir)
 #
 install:
-	[ "x$(TARGET)" = "x" ] || $(LIBTOOL) --mode=install $(INSTALL) -c $(TARGET).la $(R)$(libdir)/$(TARGET).la
+	if [ "x$(TARGET)" != "x" ]; then \
+	    $(LIBTOOL) --mode=install $(INSTALL) -c \
+		$(TARGET).la $(R)$(libdir)/$(TARGET).la || exit $$?; \
+	    rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la; \
+	    ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la || exit $$?; \
+	fi
