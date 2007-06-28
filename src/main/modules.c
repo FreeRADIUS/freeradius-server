@@ -736,7 +736,7 @@ static int load_byspace(CONF_SECTION *cs, const char *space,
  *	Libtool makes your life a LOT easier, especially with libltdl.
  *	see: http://www.gnu.org/software/libtool/
  */
-int setup_modules(int reload)
+int setup_modules(int reload, CONF_SECTION *config)
 {
 	int		comp;
 	CONF_SECTION	*cs, *modules;
@@ -846,7 +846,7 @@ int setup_modules(int reload)
 	/*
 	 *	Remember where the modules were stored.
 	 */
-	modules = cf_section_find("modules");
+	modules = cf_section_sub_find(config, "modules");
 	if (!modules) {
 		radlog(L_ERR, "Cannot find a \"modules\" section in the configuration file!");
 		return -1;
@@ -858,7 +858,7 @@ int setup_modules(int reload)
 	 *  us to load modules with no authorize/authenticate/etc.
 	 *  sections.
 	 */
-	cs = cf_section_find("instantiate");
+	cs = cf_section_sub_find(config, "instantiate");
 	if (cs != NULL) {
 		CONF_ITEM *ci;
 		CONF_PAIR *cp;
@@ -893,54 +893,54 @@ int setup_modules(int reload)
 		DEBUG2(" }");
 	} /* if there's an 'instantiate' section. */
 
-	if (load_byspace(mainconfig.config, NULL, do_component) < 0) {
-		return -1;
-	}
-
 	/*
-	 *	Load by identities, and by vmps.
+	 *	Load *all*.  If you don't want one loaded, don't list
+	 *	it in sites-enabled/
 	 */
 	for (listener = mainconfig.listen;
 	     listener != NULL;
 	     listener = listener->next) {
-		if (listener->type == RAD_LISTEN_VQP) {
-			cs = cf_section_find("vmps");
-			if (!cs) {
-				radlog(L_ERR, "Listening on vmps socket, but no vmps section");
-				return -1;
-			}
-			
-			if (cf_item_find_next(cs, NULL) == NULL) {
-				radlog(L_ERR, "Listening on vmps socket, vmps section is empty");
-				return -1;
-			}
-			
-			DEBUG2(" Module: Checking vmps {...} for more modules to load");
-			
-			if (load_component_section(NULL, cs, VMPS_SPACE,
-						   RLM_COMPONENT_POST_AUTH) < 0) {
-				return -1;
-			}
-			
-			continue;
+		if (listener->type != RAD_LISTEN_VQP) continue;
+
+		cs = cf_section_sub_find(config, "vmps");
+		if (!cs) {
+			radlog(L_ERR, "Listening on vmps socket, but no vmps section");
+			return -1;
 		}
+		
+		if (cf_item_find_next(cs, NULL) == NULL) {
+			radlog(L_ERR, "Listening on vmps socket, vmps section is empty");
+			return -1;
+		}
+			
+		DEBUG2(" Module: Checking vmps {...} for more modules to load");
+		
+		if (load_component_section(NULL, cs, VMPS_SPACE,
+					   RLM_COMPONENT_POST_AUTH) < 0) {
+			return -1;
+		}
+	}
 
-		if (!listener->server) continue;
+	/*
+	 *	Load all of the virtual servers.
+	 */
+	for (cs = cf_subsection_find_next(config, NULL, "server");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(config, cs, "server")) {
+		const char *name2 = cf_section_name2(cs);
 
-		/*
-		 *	Load by server
-		 */
-		cs = cf_section_sub_find_name2(mainconfig.config,
-					       "server", listener->server);
-		if (!cs) continue;
-
-		DEBUG2("server %s {", listener->server);
-		if (load_byspace(cs, listener->server, do_component) < 0) {
+		DEBUG2("server %s {", name2);
+		if (load_byspace(cs, name2, do_component) < 0) {
 			DEBUG2("}");
 			return -1;
 		}
 		DEBUG2("}");
 	}
+		
+	if (load_byspace(config, NULL, do_component) < 0) {
+		return -1;
+	}
+
 
 	return 0;
 }
