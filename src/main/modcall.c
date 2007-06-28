@@ -48,7 +48,6 @@ struct modcallable {
 	modcallable *parent;
 	struct modcallable *next;
 	const char *name;
-	int lineno;
 	int actions[RLM_MODULE_NUMCODES];
 	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE, MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE } type;
 };
@@ -161,9 +160,8 @@ static int compile_action(modcallable *c, CONF_PAIR *cp)
 		 */
 		if (action == 0) return 0;
 	} else {
-		radlog(L_ERR|L_CONS,
-		       "%s[%d]: Unknown action '%s'.\n",
-		       cf_pair_filename(cp), cf_pair_lineno(cp), value);
+		cf_log_err(cf_pairtoitem(cp), "Unknown action '%s'.\n",
+			   value);
 		return 0;
 	}
 
@@ -172,9 +170,9 @@ static int compile_action(modcallable *c, CONF_PAIR *cp)
 
 		rcode = lrad_str2int(rcode_table, attr, -1);
 		if (rcode < 0) {
-			radlog(L_ERR|L_CONS,
-			       "%s[%d]: Unknown module rcode '%s'.\n",
-			       cf_pair_filename(cp), cf_pair_lineno(cp), attr);
+			cf_log_err(cf_pairtoitem(cp),
+				   "Unknown module rcode '%s'.\n",
+				   attr);
 			return 0;
 		}
 		c->actions[rcode] = action;
@@ -327,7 +325,9 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 *	A module has taken too long to process the request,
 		 *	and we've been told to stop processing it.
 		 */
-		if (request->master_state == REQUEST_STOP_PROCESSING) {
+		if ((request->master_state == REQUEST_STOP_PROCESSING) ||
+		    (request->parent &&
+		     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
 			myresult = RLM_MODULE_FAIL;
 			break;
 		}
@@ -1065,9 +1065,8 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	component = component;	/* -Wunused */
 
 	if (!cf_section_name2(cs)) {
-		radlog(L_ERR|L_CONS,
-		       "%s[%d] Require list name for 'update'.\n",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Require list name for 'update'.\n");
 		return NULL;
 	}
 
@@ -1079,8 +1078,9 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	}
 
 	if (!ok) {
-		radlog(L_ERR, "%s[%d]: Unknown attribute list \"%s\"",
-		       cf_section_filename(cs), cf_section_lineno(cs), name2);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Unknown attribute list \"%s\"",
+			   name2);
 		return NULL;
 	}
 
@@ -1098,10 +1098,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		VALUE_PAIR *vp;
 
 		if (cf_item_is_section(ci)) {
-			radlog(L_ERR|L_CONS,
-			       "%s[%d]: \"update\" sections cannot have subsections",
-			       cf_section_filename(cf_itemtosection(ci)),
-			       cf_section_lineno(cf_itemtosection(ci)));
+			cf_log_err(ci, "\"update\" sections cannot have subsections");
 			return NULL;
 		}
 
@@ -1111,8 +1108,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		vp = cf_pairtovp(cp);
 		if (!vp) {
 			pairfree(&head);
-			radlog(L_ERR|L_CONS, "%s[%d]: ERROR: %s",
-			       cf_pair_filename(cp), cf_pair_lineno(cp), librad_errstr);
+			cf_log_err(ci, "ERROR: %s", librad_errstr);
 			return NULL;
 		}
 
@@ -1123,8 +1119,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		    (vp->operator != T_OP_GE) &&
 		    (vp->operator != T_OP_SET)) {
 			pairfree(&head);
-			radlog(L_ERR|L_CONS, "%s[%d]: Invalid operator for attribute",
-			       cf_pair_filename(cp), cf_pair_lineno(cp));
+			cf_log_err(ci, "Invalid operator for attribute");
 			return NULL;
 		}
 
@@ -1139,8 +1134,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 			    (vp->type != PW_TYPE_SHORT) &&
 			    (vp->type != PW_TYPE_INTEGER)) {
 				pairfree(&head);
-				radlog(L_ERR|L_CONS, "%s[%d]: Enforcment of <= or >= is possible only for integer attributes",
-				       cf_pair_filename(cp), cf_pair_lineno(cp));
+				cf_log_err(ci, "Enforcment of <= or >= is possible only for integer attributes");
 				return NULL;
 			}
 		}
@@ -1150,9 +1144,9 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	}
 
 	if (!head) {
-		radlog(L_ERR|L_CONS,
-		       "%s[%d]: ERROR: update %s section cannot be empty",
-		       cf_section_filename(cs), cf_section_lineno(cs), name2);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "ERROR: update %s section cannot be empty",
+			   name2);
 		return NULL;
 	}
 
@@ -1163,7 +1157,6 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	csingle->parent = parent;
 	csingle->next = NULL;
 	csingle->name = name2;
-	csingle->lineno = cf_section_lineno(cs);
 	csingle->type = MOD_UPDATE;
 	
 	g->grouptype = GROUPTYPE_SIMPLE;
@@ -1185,16 +1178,13 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 	component = component;	/* -Wunused */
 
 	if (!cf_section_name2(cs)) {
-		radlog(L_ERR|L_CONS,
-		       "%s[%d] Require variable to switch over for 'switch'.",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs),
+			   "You must specify a variable to switch over for 'switch'.");
 		return NULL;
 	}
 
 	if (!cf_item_find_next(cs, NULL)) {
-		radlog(L_ERR|L_CONS,
-		       "%s[%d] 'switch' statments cannot be empty.",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs), "'switch' statments cannot be empty.");
 		return NULL;
 	}
 
@@ -1211,10 +1201,7 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 		if (!cf_item_is_section(ci)) {
 			if (!cf_item_is_pair(ci)) continue;
 
-			radlog(L_ERR|L_CONS,
-			       "%s[%d]: \"switch\" sections can only have \"case\" subsections",
-			       cf_pair_filename(cf_itemtopair(ci)),
-			       cf_pair_lineno(cf_itemtopair(ci)));
+			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
 			return NULL;
 		}
 
@@ -1222,10 +1209,7 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 		name1 = cf_section_name1(subcs);
 
 		if (strcmp(name1, "case") != 0) {
-			radlog(L_ERR|L_CONS,
-			       "%s[%d]: \"switch\" sections can only have \"case\" subsections",
-			       cf_section_filename(cf_itemtosection(ci)),
-			       cf_section_lineno(cf_itemtosection(ci)));
+			cf_log_err(ci, "\"switch\" sections can only have \"case\" subsections");
 			return NULL;
 		}
 
@@ -1236,10 +1220,7 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 		}
 
 		if (!name2 || (name2[0] == '\0')) {
-			radlog(L_ERR|L_CONS,
-			       "%s[%d]: \"case\" sections must have a name",
-			       cf_section_filename(cf_itemtosection(ci)),
-			       cf_section_lineno(cf_itemtosection(ci)));
+			cf_log_err(ci, "\"case\" sections must have a name");
 			return NULL;
 		}
 	}
@@ -1270,7 +1251,7 @@ static int all_children_are_modules(CONF_SECTION *cs, const char *name)
 		 */
 		if (cf_item_is_section(ci)) {
 			CONF_SECTION *subcs = cf_itemtosection(ci);
-			const char *name1 = cf_section_name1(cs);
+			const char *name1 = cf_section_name1(subcs);
 
 			if ((strcmp(name1, "if") == 0) ||
 			    (strcmp(name1, "else") == 0) ||
@@ -1278,9 +1259,7 @@ static int all_children_are_modules(CONF_SECTION *cs, const char *name)
 			    (strcmp(name1, "update") == 0) ||
 			    (strcmp(name1, "switch") == 0) ||
 			    (strcmp(name1, "case") == 0)) {
-				radlog(L_ERR, "%s[%d]: %s sections cannot contain a \"%s\" statement",
-				       cf_section_filename(subcs),
-				       cf_section_lineno(subcs),
+				cf_log_err(ci, "%s sections cannot contain a \"%s\" statement",
 				       name, name1);
 				return 0;
 			}
@@ -1290,8 +1269,7 @@ static int all_children_are_modules(CONF_SECTION *cs, const char *name)
 		if (cf_item_is_pair(ci)) {
 			CONF_PAIR *cp = cf_itemtopair(ci);
 			if (cf_pair_value(cp) != NULL) {
-				radlog(L_ERR, "%s[%d]: Invalid entry in %s section",
-				       cf_pair_filename(cp), cf_pair_lineno(cp), name);
+				cf_log_err(ci, "Invalid entry in %s section");
 				return 0;
 			}
 		}
@@ -1309,8 +1287,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 					 int grouptype,
 					 const char **modname)
 {
-	int lineno, result;
-	const char *modrefname, *filename;
+	int result;
+	const char *modrefname;
 	modsingle *single;
 	modcallable *csingle;
 	module_instance_t *this;
@@ -1320,8 +1298,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		cs = cf_itemtosection(ci);
 		const char *name2 = cf_section_name2(cs);
 
-		filename = cf_section_filename(cs);
-		lineno = cf_section_lineno(cs);
 		modrefname = cf_section_name1(cs);
 		if (!name2) name2 = "_UnNamedGroup";
 
@@ -1384,9 +1360,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 		} else 	if (strcmp(modrefname, "if") == 0) {
 			if (!cf_section_name2(cs)) {
-				radlog(L_ERR|L_CONS,
-				       "%s[%d]: 'if' without condition.",
-				       filename, lineno);
+				cf_log_err(ci, "'if' without condition.");
 				return NULL;
 			}
 
@@ -1410,16 +1384,12 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (parent &&
 			    ((parent->type == MOD_LOAD_BALANCE) ||
 			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
-				radlog(L_ERR|L_CONS,
-				       "%s[%d] 'elsif' cannot be used in this section section.",
-				       filename, lineno);
+				cf_log_err(ci, "'elsif' cannot be used in this section section.");
 				return NULL;
 			}
 
 			if (!cf_section_name2(cs)) {
-				radlog(L_ERR|L_CONS,
-				       "%s[%d] 'elsif' without condition.",
-				       filename, lineno);
+				cf_log_err(ci, "'elsif' without condition.");
 				return NULL;
 			}
 
@@ -1443,16 +1413,12 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (parent &&
 			    ((parent->type == MOD_LOAD_BALANCE) ||
 			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
-				radlog(L_ERR|L_CONS,
-				       "%s[%d] 'else' cannot be used in this section section.",
-				       filename, lineno);
+				cf_log_err(ci, "'else' cannot be used in this section section.");
 				return NULL;
 			}
 
 			if (cf_section_name2(cs)) {
-				radlog(L_ERR|L_CONS,
-				       "%s[%d] Cannot have conditions on 'else'.",
-				       filename, lineno);
+				cf_log_err(ci, "Cannot have conditions on 'else'.");
 				return NULL;
 			}
 
@@ -1491,8 +1457,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			 *	be a "switch" statement?
 			 */
 			if (!parent) {
-				radlog(L_ERR, "%s[%d]: \"case\" statements may only appear within a \"switch\" section",
-				       filename, lineno);
+				cf_log_err(ci, "\"case\" statements may only appear within a \"switch\" section");
 				return NULL;
 			}
 
@@ -1524,8 +1489,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		 */
 	} else {
 		CONF_PAIR *cp = cf_itemtopair(ci);
-		filename = cf_pair_filename(cp);
-		lineno = cf_pair_lineno(cp);
 		modrefname = cf_pair_attr(cp);
 	}
 
@@ -1555,8 +1518,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	this = find_module_instance(cf_section_find("modules"), modrefname);
        	if (!this) {
 		*modname = NULL;
-		radlog(L_ERR|L_CONS, "%s[%d] Failed to find module \"%s\".",
-		       filename, lineno, modrefname);
+		cf_log_err(ci, "Failed to find module \"%s\".", modrefname);
 		return NULL;
 	}
 
@@ -1569,7 +1531,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	csingle = mod_singletocallable(single);
 	csingle->parent = parent;
 	csingle->next = NULL;
-	csingle->lineno = lineno;
 	memcpy(csingle->actions, defaultactions[component][grouptype],
 	       sizeof csingle->actions);
 	rad_assert(modrefname != NULL);
@@ -1590,11 +1551,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		     ci=cf_item_find_next(cs, ci)) {
 
 			if (cf_item_is_section(ci)) {
-				radlog(L_ERR|L_CONS,
-				       "%s[%d] Subsection of module instance call "
-				       "not allowed",
-				       cf_section_filename(cf_itemtosection(ci)),
-				       cf_section_lineno(cf_itemtosection(ci)));
+				cf_log_err(ci, "Subsection of module instance call not allowed");
 				modcallable_free(&csingle);
 				return NULL;
 			}
@@ -1613,9 +1570,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	 *	wanted component
 	 */
 	if (!this->entry->module->methods[component]) {
-		radlog(L_ERR|L_CONS,
-		       "%s[%d]: \"%s\" modules aren't allowed in '%s' sections -- they have no such method.",
-		       filename, lineno, this->entry->module->name,
+		cf_log_err(ci, "\"%s\" modules aren't allowed in '%s' sections -- they have no such method.", this->entry->module->name,
 		       comp2str[component]);
 		modcallable_free(&csingle);
 		return NULL;
@@ -1657,7 +1612,6 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 	c = mod_grouptocallable(g);
 	c->parent = parent;
 	c->next = NULL;
-	c->lineno = cf_section_lineno(cs);
 	memset(c->actions, 0, sizeof(c->actions));
 
 	/*
@@ -1685,18 +1639,12 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 		if (cf_item_is_section(ci)) {
 			const char *junk = NULL;
 			modcallable *single;
-			int lineno;
 			CONF_SECTION *subcs = cf_itemtosection(ci);
-
-			lineno = cf_section_lineno(subcs);
 
 			single = do_compile_modsingle(c, component, ci,
 						      grouptype, &junk);
 			if (!single) {
-				radlog(L_ERR|L_CONS,
-				       "%s[%d] Failed to parse \"%s\" subsection.",
-				       cf_section_filename(subcs),
-				       cf_section_lineno(subcs),
+				cf_log_err(ci, "Failed to parse \"%s\" subsection.",
 				       cf_section_name1(subcs));
 				modcallable_free(&c);
 				return NULL;
@@ -1728,10 +1676,9 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 							      grouptype,
 							      &junk);
 				if (!single) {
-					radlog(L_ERR|L_CONS,
-					       "%s[%d] Failed to parse \"%s\" entry.",
-					       cf_pair_filename(cp),
-					       cf_pair_lineno(cp), attr);
+					cf_log_err(ci,
+						   "Failed to parse \"%s\" entry.",
+						   attr);
 					modcallable_free(&c);
 					return NULL;
 				}
