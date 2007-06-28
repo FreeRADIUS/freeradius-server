@@ -99,7 +99,7 @@ void realms_free(void)
 }
 
 
-int realms_init(void)
+int realms_init(CONF_SECTION *config)
 {
 	CONF_SECTION *cs;
 
@@ -129,9 +129,9 @@ int realms_init(void)
 		return 0;
 	}
 
-	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "realm");
+	for (cs = cf_subsection_find_next(config, NULL, "realm");
 	     cs != NULL;
-	     cs = cf_subsection_find_next(mainconfig.config, cs, "realm")) {
+	     cs = cf_subsection_find_next(config, cs, "realm")) {
 		if (!realm_add(cs)) {
 			realms_free();
 			return 0;
@@ -206,15 +206,15 @@ static int home_server_add(CONF_SECTION *cs, int type)
 
 	name2 = cf_section_name1(cs);
 	if (!name2 || (strcasecmp(name2, "home_server") != 0)) {
-		radlog(L_ERR, "%s[%d]: Section is not a home_server.",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Section is not a home_server.");
 		return 0;
 	}
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		radlog(L_ERR, "%s[%d]: Home server section is missing a name.",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Home server section is missing a name.");
 		return 0;
 	}
 
@@ -229,8 +229,9 @@ static int home_server_add(CONF_SECTION *cs, int type)
 
 	if (!home->hostname && (htonl(hs_ip4addr.s_addr) == INADDR_NONE) &&
 	    IN6_IS_ADDR_UNSPECIFIED(&hs_ip6addr)) {
-		radlog(L_ERR, "%s[%d]: No hostname, IPv4 address, or IPv6 address defined for home server %s.",
-		       cf_section_filename(cs), cf_section_lineno(cs), name2);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "No hostname, IPv4 address, or IPv6 address defined for home server %s.",
+			   name2);
 		free(home);
 		free(hs_type);
 		hs_type = NULL;
@@ -254,8 +255,9 @@ static int home_server_add(CONF_SECTION *cs, int type)
 		home->ipaddr.ipaddr.ip6addr = hs_ip6addr;
 
 	} else {
-		radlog(L_ERR, "%s[%d]: FIXME: parse hostname for home server %s.",
-		       cf_section_filename(cs), cf_section_lineno(cs), name2);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "FIXME: parse hostname for home server %s.",
+			   name2);
 		free(home);
 		free(hs_type);
 		hs_type = NULL;
@@ -265,8 +267,9 @@ static int home_server_add(CONF_SECTION *cs, int type)
 	}
 
 	if (!home->port || (home->port > 65535)) {
-		radlog(L_ERR, "%s[%d]: No port, or invalid port defined for home server %s.",
-		       cf_section_filename(cs), cf_section_lineno(cs), name2);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "No port, or invalid port defined for home server %s.",
+			   name2);
 		free(home);
 		free(hs_type);
 		hs_type = NULL;
@@ -276,8 +279,9 @@ static int home_server_add(CONF_SECTION *cs, int type)
 	}
 
 	if (0) {
-		radlog(L_ERR, "%s[%d]: Fatal error!  Home server %s is ourselves!",
-		       cf_section_filename(cs), cf_section_lineno(cs), name2);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Fatal error!  Home server %s is ourselves!",
+			   name2);
 		free(home);
 		free(hs_type);
 		hs_type = NULL;
@@ -289,8 +293,9 @@ static int home_server_add(CONF_SECTION *cs, int type)
 	if (strcasecmp(hs_type, "auth") == 0) {
 		home->type = HOME_TYPE_AUTH;
 		if (type != home->type) {
-			radlog(L_ERR, "%s[%d]: Server pool of \"acct\" servers cannot include home server %s of type \"auth\"",
-			       cf_section_filename(cs), cf_section_lineno(cs), name2);
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Server pool of \"acct\" servers cannot include home server %s of type \"auth\"",
+				   name2);
 			free(home);
 			return 0;
 		}
@@ -298,8 +303,9 @@ static int home_server_add(CONF_SECTION *cs, int type)
 	} else if (strcasecmp(hs_type, "acct") == 0) {
 		home->type = HOME_TYPE_ACCT;
 		if (type != home->type) {
-			radlog(L_ERR, "%s[%d]: Server pool of \"auth\" servers cannot include home server %s of type \"acct\"",
-			       cf_section_filename(cs), cf_section_lineno(cs), name2);
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Server pool of \"auth\" servers cannot include home server %s of type \"acct\"",
+				   name2);
 			free(home);
 			return 0;
 		}
@@ -309,8 +315,9 @@ static int home_server_add(CONF_SECTION *cs, int type)
 		dual = TRUE;
 
 	} else {
-		radlog(L_ERR, "%s[%d]: Invalid type \"%s\" for home server %s.",
-		       cf_section_filename(cs), cf_section_lineno(cs), hs_type, name2);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Invalid type \"%s\" for home server %s.",
+			   hs_type, name2);
 		free(home);
 		free(hs_type);
 		hs_type = NULL;
@@ -322,8 +329,9 @@ static int home_server_add(CONF_SECTION *cs, int type)
 	hs_type = NULL;
 
 	if (!home->secret) {
-		radlog(L_ERR, "%s[%d]: No shared secret defined for home server %s.",
-		       cf_section_filename(cs), cf_section_lineno(cs), name2);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "No shared secret defined for home server %s.",
+			   name2);
 		free(home);
 		return 0;
 	}
@@ -338,8 +346,9 @@ static int home_server_add(CONF_SECTION *cs, int type)
 		home->ping_check = HOME_PING_CHECK_REQUEST;
 
 	} else {
-		radlog(L_ERR, "%s[%d]: Invalid ping_check \"%s\" for home server %s.",
-		       cf_section_filename(cs), cf_section_lineno(cs), hs_check, name2);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Invalid ping_check \"%s\" for home server %s.",
+			   hs_check, name2);
 		free(home);
 		free(hs_check);
 		hs_check = NULL;
@@ -351,38 +360,37 @@ static int home_server_add(CONF_SECTION *cs, int type)
 	if ((home->ping_check != HOME_PING_CHECK_NONE) &&
 	    (home->ping_check != HOME_PING_CHECK_STATUS_SERVER)) {
 		if (!home->ping_user_name) {
-			radlog(L_INFO, "%s[%d]: You must supply a user name to enable ping checks",
-			       cf_section_filename(cs), cf_section_lineno(cs));
+			cf_log_err(cf_sectiontoitem(cs), "You must supply a user name to enable ping checks");
 			free(home);
 			return 0;
 		}
 
 		if ((home->type == HOME_TYPE_AUTH) &&
 		    !home->ping_user_password) {
-			radlog(L_INFO, "%s[%d]: You must supply a password to enable ping checks",
-			       cf_section_filename(cs), cf_section_lineno(cs));
+			cf_log_err(cf_sectiontoitem(cs), "You must supply a password to enable ping checks");
 			free(home);
 			return 0;
 		}
 	}
 
 	if (rbtree_finddata(home_servers_byaddr, home)) {
-		radlog(L_INFO, "%s[%d]: Ignoring duplicate home server %s.",
-		       cf_section_filename(cs), cf_section_lineno(cs), name2);
+		DEBUG2("Ignoring duplicate home server %s.", name2);
 		return 1;
 	}
 
 	if (!rbtree_insert(home_servers_byname, home)) {
-		radlog(L_ERR, "%s[%d]: Internal error adding home server %s.",
-		       cf_section_filename(cs), cf_section_lineno(cs), name2);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Internal error adding home server %s.",
+			   name2);
 		free(home);
 		return 0;
 	}
 
 	if (!rbtree_insert(home_servers_byaddr, home)) {
 		rbtree_deletebydata(home_servers_byname, home);
-		radlog(L_ERR, "%s[%d]: Internal error adding home server %s.",
-		       cf_section_filename(cs), cf_section_lineno(cs), name2);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Internal error adding home server %s.",
+			   name2);
 		free(home);
 		return 0;
 	}
@@ -422,16 +430,18 @@ static int home_server_add(CONF_SECTION *cs, int type)
 		home2->ping_user_password = NULL;
 
 		if (!rbtree_insert(home_servers_byname, home2)) {
-			radlog(L_ERR, "%s[%d]: Internal error adding home server %s.",
-			       cf_section_filename(cs), cf_section_lineno(cs), name2);
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Internal error adding home server %s.",
+				   name2);
 			free(home2);
 			return 0;
 		}
 		
 		if (!rbtree_insert(home_servers_byaddr, home2)) {
 			rbtree_deletebydata(home_servers_byname, home2);
-			radlog(L_ERR, "%s[%d]: Internal error adding home server %s.",
-			       cf_section_filename(cs), cf_section_lineno(cs), name2);
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Internal error adding home server %s.",
+				   name2);
 			free(home2);
 			return 0;
 		}
@@ -451,15 +461,15 @@ static int server_pool_add(CONF_SECTION *cs, int server_type)
 
 	name2 = cf_section_name1(cs);
 	if (!name2 || (strcasecmp(name2, "server_pool") != 0)) {
-		radlog(L_ERR, "%s[%d]: Section is not a server_pool.",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Section is not a server_pool.");
 		return 0;
 	}
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		radlog(L_ERR, "%s[%d]: Server pool section is missing a name.",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Server pool section is missing a name.");
 		return 0;
 	}
 
@@ -477,8 +487,8 @@ static int server_pool_add(CONF_SECTION *cs, int server_type)
 
 		value = cf_pair_value(cp);
 		if (!value) {
-			radlog(L_ERR, "%s[%d]: No value given for home_server.",
-			       cf_section_filename(cs), cf_pair_lineno(cp));
+			cf_log_err(cf_pairtoitem(cp),
+				   "No value given for home_server.");
 			return 0;;
 		}
 
@@ -487,12 +497,13 @@ static int server_pool_add(CONF_SECTION *cs, int server_type)
 		home = rbtree_finddata(home_servers_byname, &myhome);
 		if (home) continue;
 
-		server_cs = cf_section_sub_find_name2(NULL,
+		server_cs = cf_section_sub_find_name2(cf_section_parent(cs),
 						      "home_server",
 						      value);
 		if (!server_cs) {
-			radlog(L_ERR, "%s[%d]: Unknown home_server \"%s\".",
-			       cf_section_filename(cs), cf_pair_lineno(cp), value);
+			cf_log_err(cf_pairtoitem(cp),
+				   "Unknown home_server \"%s\".",
+				   value);
 			return 0;
 		}
 
@@ -509,8 +520,9 @@ static int server_pool_add(CONF_SECTION *cs, int server_type)
 	}
 
 	if (num_home_servers == 0) {
-		radlog(L_ERR, "%s[%d]: No home servers defined in pool %s",
-		       cf_section_filename(cs), cf_section_lineno(cs), name2);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "No home servers defined in pool %s",
+			   name2);
 		goto error;
 	}
 
@@ -537,15 +549,16 @@ static int server_pool_add(CONF_SECTION *cs, int server_type)
 
 		value = cf_pair_value(cp);
 		if (!value) {
-			radlog(L_ERR, "%s[%d]: No value given for type.",
-			       cf_section_filename(cs), cf_pair_lineno(cp));
+			cf_log_err(cf_pairtoitem(cp),
+				   "No value given for type.");
 			goto error;
 		}
 
 		pool->type = lrad_str2int(pool_types, value, 0);
 		if (!pool->type) {
-			radlog(L_ERR, "%s[%d]: Unknown type \"%s\".",
-			       cf_section_filename(cs), cf_pair_lineno(cp), value);
+			cf_log_err(cf_pairtoitem(cp),
+				   "Unknown type \"%s\".",
+				   value);
 			goto error;
 		}
 
@@ -559,8 +572,8 @@ static int server_pool_add(CONF_SECTION *cs, int server_type)
 
 		value = cf_pair_value(cp);
 		if (!value) {
-			radlog(L_ERR, "%s[%d]: No value given for home_server.",
-			       cf_section_filename(cs), cf_pair_lineno(cp));
+			cf_log_err(cf_pairtoitem(cp),
+				   "No value given for home_server.");
 			goto error;
 		}
 
@@ -601,7 +614,7 @@ static int server_pool_add(CONF_SECTION *cs, int server_type)
 }
 
 
-static int old_server_add(const char *filename, int lineno, const char *realm,
+static int old_server_add(CONF_SECTION *cs, const char *realm,
 			  const char *name, const char *secret,
 			  home_pool_type_t ldflag, home_pool_t **pool_p,
 			  int type)
@@ -609,14 +622,14 @@ static int old_server_add(const char *filename, int lineno, const char *realm,
 	int i, insert_point, num_home_servers;
 	home_server myhome, *home;
 	home_pool_t mypool, *pool;
-	CONF_SECTION *cs;
+	CONF_SECTION *subcs;
 
 	/*
 	 *	LOCAL realms get sanity checked, and nothing else happens.
 	 */
 	if (strcmp(name, "LOCAL") == 0) {
 		if (*pool_p) {
-			radlog(L_ERR, "%s[%d]: Realm \"%s\" cannot be both LOCAL and remote", filename, lineno, name);
+			cf_log_err(cf_sectiontoitem(cs), "Realm \"%s\" cannot be both LOCAL and remote", name);
 			return 0;
 		}
 		return 1;
@@ -627,12 +640,12 @@ static int old_server_add(const char *filename, int lineno, const char *realm,
 	pool = rbtree_finddata(home_pools_byname, &mypool);
 	if (pool) {
 		if (pool->type != ldflag) {
-			radlog(L_ERR, "%s[%d]: Inconsistent ldflag for server pool \"%s\"", filename, lineno, name);
+			cf_log_err(cf_sectiontoitem(cs), "Inconsistent ldflag for server pool \"%s\"", name);
 			return 0;
 		}
 
 		if (pool->server_type != type) {
-			radlog(L_ERR, "%s[%d]: Inconsistent home server type for server pool \"%s\"", filename, lineno, name);
+			cf_log_err(cf_sectiontoitem(cs), "Inconsistent home server type for server pool \"%s\"", name);
 			return 0;
 		}
 	}
@@ -642,12 +655,12 @@ static int old_server_add(const char *filename, int lineno, const char *realm,
 	home = rbtree_finddata(home_servers_byname, &myhome);
 	if (home) {
 		if (strcmp(home->secret, secret) != 0) {
-			radlog(L_ERR, "%s[%d]: Inconsistent shared secret for home server \"%s\"", filename, lineno, name);
+			cf_log_err(cf_sectiontoitem(cs), "Inconsistent shared secret for home server \"%s\"", name);
 			return 0;
 		}
 
 		if (home->type != type) {
-			radlog(L_ERR, "%s[%d]: Inconsistent type for home server \"%s\"", filename, lineno, name);
+			cf_log_err(cf_sectiontoitem(cs), "Inconsistent type for home server \"%s\"", name);
 			return 0;
 		}
 
@@ -682,7 +695,7 @@ static int old_server_add(const char *filename, int lineno, const char *realm,
 		}
 
 		if (insert_point < 0) {
-			radlog(L_ERR, "%s[%d]: No room in pool to add home server \"%s\".  Please update the realm configuration to use the new-style home servers and server pools.", filename, lineno, name);
+			cf_log_err(cf_sectiontoitem(cs), "No room in pool to add home server \"%s\".  Please update the realm configuration to use the new-style home servers and server pools.", name);
 			return 0;
 		}
 	}
@@ -714,16 +727,18 @@ static int old_server_add(const char *filename, int lineno, const char *realm,
 			q = NULL;
 
 		} else if (p == name) {
-				radlog(L_ERR, "%s[%d]: Invalid hostname %s.",
-				       filename, lineno, name);
+				cf_log_err(cf_sectiontoitem(cs),
+					   "Invalid hostname %s.",
+					   name);
 				free(home);
 				return 0;
 
 		} else {
 			home->port = atoi(p + 1);
 			if ((home->port == 0) || (home->port > 65535)) {
-				radlog(L_ERR, "%s[%d]: Invalid port %s.",
-				       filename, lineno, p + 1);
+				cf_log_err(cf_sectiontoitem(cs),
+					   "Invalid port %s.",
+					   p + 1);
 				free(home);
 				return 0;
 			}
@@ -735,8 +750,9 @@ static int old_server_add(const char *filename, int lineno, const char *realm,
 		}
 
 		if (ip_hton(p, AF_UNSPEC, &home->ipaddr) < 0) {
-			radlog(L_ERR, "%s[%d]: Failed looking up hostname %s.",
-			       filename, lineno, p);
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Failed looking up hostname %s.",
+				   p);
 			free(home);
 			free(q);
 			return 0;
@@ -756,23 +772,20 @@ static int old_server_add(const char *filename, int lineno, const char *realm,
 		home->revive_interval = mainconfig.proxy_dead_time;
 
 		if (rbtree_finddata(home_servers_byaddr, home)) {
-			radlog(L_ERR, "%s[%d]: Home server %s has the same IP address as another home server.",
-			       filename, lineno, name);
+			cf_log_err(cf_sectiontoitem(cs), "Home server %s has the same IP address as another home server.", name);
 			free(home);
 			return 0;
 		}
 
 		if (!rbtree_insert(home_servers_byname, home)) {
-			radlog(L_ERR, "%s[%d]: Internal error adding home server %s.",
-			       filename, lineno, name);
+			cf_log_err(cf_sectiontoitem(cs), "Internal error adding home server %s.", name);
 			free(home);
 			return 0;
 		}
 
 		if (!rbtree_insert(home_servers_byaddr, home)) {
 			rbtree_deletebydata(home_servers_byname, home);
-			radlog(L_ERR, "%s[%d]: Internal error adding home server %s.",
-			       filename, lineno, name);
+			cf_log_err(cf_sectiontoitem(cs), "Internal error adding home server %s.", name);
 			free(home);
 			return 0;
 		}
@@ -795,9 +808,12 @@ static int old_server_add(const char *filename, int lineno, const char *realm,
 	 *	Count the old-style realms of this name.
 	 */
 	num_home_servers = 0;
-	for (cs = cf_section_sub_find_name2(mainconfig.config, "realm", realm);
-	     cs != NULL;
-	     cs = cf_section_sub_find_name2(cs, "realm", realm)) {
+	for (subcs = cf_subsection_find_next(cs, NULL, "realm");
+	     subcs != NULL;
+	     subcs = cf_subsection_find_next(cs, subcs, "realm")) {
+		const char *this = cf_section_name2(subcs);
+
+		if (!this || (strcmp(this, realm) != 0)) continue;
 		num_home_servers++;
 	}
 
@@ -839,8 +855,7 @@ static int old_realm_config(CONF_SECTION *cs, REALM *r)
 		DEBUG2("\tldflag = round_robin");
 
 	} else {
-		radlog(L_ERR, "%s[%d]: Unknown value \"%s\" for ldflag",
-		       cf_section_filename(cs), cf_section_lineno(cs), host);
+		cf_log_err(cf_sectiontoitem(cs), "Unknown value \"%s\" for ldflag", host);
 		return 0;
 	}
 
@@ -851,15 +866,13 @@ static int old_realm_config(CONF_SECTION *cs, REALM *r)
 	if (((host = cf_section_value_find(cs, "authhost")) != NULL) &&
 	    (strcmp(host, "LOCAL") != 0)) {
 		if (!secret) {
-			radlog(L_ERR, "%s[%d]: No shared secret supplied for realm: %s",
-			       cf_section_filename(cs), cf_section_lineno(cs), r->name);
+			cf_log_err(cf_sectiontoitem(cs), "No shared secret supplied for realm: %s", r->name);
 			return 0;
 		}
 
 		DEBUG2("\tauthhost = %s",  host);
 
-		if (!old_server_add(cf_section_filename(cs), cf_section_lineno(cs),
-				    r->name, host, secret, ldflag,
+		if (!old_server_add(cs, r->name, host, secret, ldflag,
 				    &r->auth_pool, HOME_TYPE_AUTH)) {
 			return 0;
 		}
@@ -868,15 +881,13 @@ static int old_realm_config(CONF_SECTION *cs, REALM *r)
 	if (((host = cf_section_value_find(cs, "accthost")) != NULL) &&
 	    (strcmp(host, "LOCAL") != 0)) {
 		if (!secret) {
-			radlog(L_ERR, "%s[%d]: No shared secret supplied for realm: %s",
-			       cf_section_filename(cs), cf_section_lineno(cs), r->name);
+			cf_log_err(cf_sectiontoitem(cs), "No shared secret supplied for realm: %s", r->name);
 			return 0;
 		}
 
 		DEBUG2("\taccthost = %s", host);
 
-		if (!old_server_add(cf_section_filename(cs), cf_section_lineno(cs),
-				    r->name, host, secret, ldflag,
+		if (!old_server_add(cs, r->name, host, secret, ldflag,
 				    &r->acct_pool, HOME_TYPE_ACCT)) {
 			return 0;
 		}
@@ -889,7 +900,7 @@ static int old_realm_config(CONF_SECTION *cs, REALM *r)
 }
 
 
-static int add_pool_to_realm(const char *filename, int lineno,
+static int add_pool_to_realm(CONF_SECTION *cs,
 			     const char *name, home_pool_t **dest,
 			     int server_type)
 {
@@ -902,11 +913,11 @@ static int add_pool_to_realm(const char *filename, int lineno,
 	if (!pool) {
 		CONF_SECTION *pool_cs;
 
-		pool_cs = cf_section_sub_find_name2(NULL, "server_pool",
+		pool_cs = cf_section_sub_find_name2(cf_section_parent(cs),
+						    "server_pool",
 						    name);
 		if (!pool_cs) {
-			radlog(L_ERR, "%s[%d]: Failed to find server_pool \"%s\"",
-			       filename, lineno, name);
+			cf_log_err(cf_sectiontoitem(cs), "Failed to find server_pool \"%s\"", name);
 			return 0;
 		}
 
@@ -922,8 +933,7 @@ static int add_pool_to_realm(const char *filename, int lineno,
 	}
 
 	if (pool->server_type != server_type) {
-		radlog(L_ERR, "%s[%d]: Incompatible server_pool \"%s\" (mixed auth_pool / acct_pool)",
-		       filename, lineno, name);
+		cf_log_err(cf_sectiontoitem(cs), "Incompatible server_pool \"%s\" (mixed auth_pool / acct_pool)", name);
 		return 0;
 	}
 
@@ -942,15 +952,13 @@ int realm_add(CONF_SECTION *cs)
 
 	name2 = cf_section_name1(cs);
 	if (!name2 || (strcasecmp(name2, "realm") != 0)) {
-		radlog(L_ERR, "%s[%d]: Section is not a realm.",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs), "Section is not a realm.");
 		return 0;
 	}
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		radlog(L_ERR, "%s[%d]: Realm section is missing the realm name.",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs), "Realm section is missing the realm name.");
 		return 0;
 	}
 
@@ -964,12 +972,12 @@ int realm_add(CONF_SECTION *cs)
 	if (cp) auth_pool_name = cf_pair_value(cp);
 	if (cp && auth_pool_name) {
 		acct_pool_name = auth_pool_name;
-		if (!add_pool_to_realm(cf_section_filename(cs), cf_pair_lineno(cp),
+		if (!add_pool_to_realm(cs,
 				       auth_pool_name, &auth_pool,
 				       HOME_TYPE_AUTH)) {
 			return 0;
 		}
-		if (!add_pool_to_realm(cf_section_filename(cs), cf_pair_lineno(cp),
+		if (!add_pool_to_realm(cs,
 				       auth_pool_name, &acct_pool,
 				       HOME_TYPE_ACCT)) {
 			return 0;
@@ -980,11 +988,10 @@ int realm_add(CONF_SECTION *cs)
 	if (cp) auth_pool_name = cf_pair_value(cp);
 	if (cp && auth_pool_name) {
 		if (auth_pool) {
-			radlog(L_ERR, "%s[%d]: Cannot use \"pool\" and \"auth_pool\" at the same time.",
-			       cf_section_filename(cs), cf_section_lineno(cs));
+			cf_log_err(cf_sectiontoitem(cs), "Cannot use \"pool\" and \"auth_pool\" at the same time.");
 			return 0;
 		}
-		if (!add_pool_to_realm(cf_section_filename(cs), cf_pair_lineno(cp),
+		if (!add_pool_to_realm(cs,
 				       auth_pool_name, &auth_pool,
 				       HOME_TYPE_AUTH)) {
 			return 0;
@@ -995,11 +1002,10 @@ int realm_add(CONF_SECTION *cs)
 	if (cp) acct_pool_name = cf_pair_value(cp);
 	if (cp && acct_pool_name) {
 		if (acct_pool) {
-			radlog(L_ERR, "%s[%d]: Cannot use \"pool\" and \"acct_pool\" at the same time.",
-			       cf_section_filename(cs), cf_section_lineno(cs));
+			cf_log_err(cf_sectiontoitem(cs), "Cannot use \"pool\" and \"acct_pool\" at the same time.");
 			return 0;
 		}
-		if (!add_pool_to_realm(cf_section_filename(cs), cf_pair_lineno(cp),
+		if (!add_pool_to_realm(cs,
 				       acct_pool_name, &acct_pool,
 				       HOME_TYPE_ACCT)) {
 			return 0;
@@ -1016,8 +1022,7 @@ int realm_add(CONF_SECTION *cs)
 	if (r) {
 		if (cf_pair_find(cs, "auth_pool") ||
 		    cf_pair_find(cs, "acct_pool")) {
-			radlog(L_ERR, "%s[%d]: Duplicate realm \"%s\"",
-			       cf_section_filename(cs), cf_section_lineno(cs), name2);
+			cf_log_err(cf_sectiontoitem(cs), "Duplicate realm \"%s\"", name2);
 			goto error;
 		}
 

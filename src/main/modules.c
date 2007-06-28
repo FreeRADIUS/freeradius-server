@@ -158,7 +158,7 @@ int detach_modules(void)
  *	Find a module on disk or in memory, and link to it.
  */
 static module_entry_t *linkto_module(const char *module_name,
-				     const char *cffilename, int cflineno)
+				     CONF_SECTION *cs)
 {
 	module_entry_t myentry;
 	module_entry_t *node;
@@ -176,8 +176,9 @@ static module_entry_t *linkto_module(const char *module_name,
 	 */
 	handle = lt_dlopenext(module_name);
 	if (handle == NULL) {
-		radlog(L_ERR|L_CONS, "%s[%d]: Failed to link to module '%s':"
-		       " %s\n", cffilename, cflineno, module_name, lt_dlerror());
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Failed to link to module '%s': %s\n",
+			   module_name, lt_dlerror());
 		return NULL;
 	}
 
@@ -199,10 +200,9 @@ static module_entry_t *linkto_module(const char *module_name,
 	 */
 	module = lt_dlsym(handle, module_struct);
 	if (!module) {
-		radlog(L_ERR|L_CONS, "%s[%d]: Failed linking to "
-				"%s structure in %s: %s\n",
-				cffilename, cflineno,
-				module_name, cffilename, lt_dlerror());
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Failed linking to %s structure: %s\n",
+			   module_name, lt_dlerror());
 		lt_dlclose(handle);
 		return NULL;
 	}
@@ -211,8 +211,9 @@ static module_entry_t *linkto_module(const char *module_name,
 	 */
 	if ((*(const uint32_t *) module) != RLM_MODULE_MAGIC_NUMBER) {
 		lt_dlclose(handle);
-		radlog(L_ERR|L_CONS, "%s[%d]: Invalid version in module '%s'",
-		       cffilename, cflineno, module_name);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Invalid version in module '%s'",
+			   module_name);
 		return NULL;
 
 	}
@@ -261,7 +262,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 */
 	cs = cf_section_sub_find_name2(modules, NULL, instname);
 	if (cs == NULL) {
-		radlog(L_ERR|L_CONS, "ERROR: Cannot find a configuration entry for module \"%s\".\n", instname);
+		radlog(L_ERR, "ERROR: Cannot find a configuration entry for module \"%s\".\n", instname);
 		return NULL;
 	}
 
@@ -288,9 +289,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 */
 	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
 
-	node->entry = linkto_module(module_name,
-				    mainconfig.radiusd_conf,
-				    cf_section_lineno(cs));
+	node->entry = linkto_module(module_name, cs);
 	if (!node->entry) {
 		free(node);
 		/* linkto_module logs any errors */
@@ -304,10 +303,9 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 */
 	if ((node->entry->module->instantiate) &&
 	    ((node->entry->module->instantiate)(cs, &node->insthandle) < 0)) {
-		radlog(L_ERR|L_CONS,
-				"%s[%d]: %s: Module instantiation failed.\n",
-		       mainconfig.radiusd_conf, cf_section_lineno(cs),
-		       instname);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Instantiation failed for module \"%s\"",
+			   instname);
 		free(node);
 		return NULL;
 	}
@@ -436,10 +434,9 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 *	Sanity check.
 	 */
 	if (!name2) {
-		radlog(L_ERR|L_CONS,
-		       "%s[%d]: No name specified for %s block",
-		       cf_section_filename(cs), cf_section_lineno(cs),
-		       section_type_value[comp].typename);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "No name specified for %s block",
+			   section_type_value[comp].typename);
 		return 1;
 	}
 
@@ -459,10 +456,9 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 */
 	dval = dict_valbyname(section_type_value[comp].attr, name2);
 	if (!dval) {
-		radlog(L_ERR|L_CONS,
-		       "%s[%d]: %s %s Not previously configured",
-		       cf_section_filename(cs), cf_section_lineno(cs),
-		       section_type_value[comp].typename, name2);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "%s %s Not previously configured",
+			   section_type_value[comp].typename, name2);
 		modcallable_free(&ml);
 		return 0;
 	}
@@ -531,10 +527,9 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 		 */
 		this = compile_modsingle(parent, comp, modref, &modname);
 		if (!this) {
-			radlog(L_ERR|L_CONS,
-			       "%s[%d]: Failed to parse %s section.\n",
-			       cf_section_filename(cs), cf_section_lineno(cs),
-			       cf_section_name1(cs));
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Failed to parse %s section.\n",
+				   cf_section_name1(cs));
 			return -1;
 		}
 
@@ -546,11 +541,9 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 			} else {
 				modrefname = cf_section_name2(scs);
 				if (!modrefname) {
-					radlog(L_ERR|L_CONS,
-					       "%s[%d]: Failed to parse %s sub-section.\n",
-					       cf_section_filename(cs),
-					       cf_section_lineno(cs),
-					       cf_section_name1(scs));
+					cf_log_err(cf_sectiontoitem(cs),
+						   "Failed to parse %s sub-section.\n",
+						   cf_section_name1(scs));
 					return -1;
 				}
 			}
@@ -561,9 +554,9 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 				 *	It's a section, but nothing we
 				 *	recognize.  Die!
 				 */
-				radlog(L_ERR|L_CONS, "%s[%d]: Unknown Auth-Type \"%s\" in %s sub-section.",
-				       cf_section_filename(cs), cf_section_lineno(cs),
-				       modrefname, section_type_value[comp].section);
+				cf_log_err(cf_sectiontoitem(cs),
+					   "Unknown Auth-Type \"%s\" in %s sub-section.",
+					   modrefname, section_type_value[comp].section);
 				return -1;
 			}
 			idx = dval->value;
@@ -673,10 +666,9 @@ static int load_byspace(CONF_SECTION *cs, const char *space,
 			 */
 			dattr = dict_attrbyvalue(section_type_value[comp].attr);
 			if (!dattr) {
-				radlog(L_ERR, "%s[%d]: No such attribute %s",
-				       mainconfig.radiusd_conf,
-				       cf_section_lineno(subcs),
-				       section_type_value[comp].typename);
+				cf_log_err(cf_sectiontoitem(subcs),
+					   "No such attribute %s",
+					   section_type_value[comp].typename);
 				continue;
 			}
 
@@ -757,7 +749,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		LTDL_SET_PRELOADED_SYMBOLS();
 
 		if (lt_dlinit() != 0) {
-			radlog(L_ERR|L_CONS, "Failed to initialize libraries: %s\n",
+			radlog(L_ERR, "Failed to initialize libraries: %s\n",
 					lt_dlerror());
 			return -1;
 		}
@@ -778,7 +770,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		module_tree = rbtree_create(module_entry_cmp,
 					    module_entry_free, 0);
 		if (!module_tree) {
-			radlog(L_ERR|L_CONS, "Failed to initialize modules\n");
+			radlog(L_ERR, "Failed to initialize modules\n");
 			return -1;
 		}
 	} else {
@@ -788,7 +780,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 	components = rbtree_create(indexed_modcallable_cmp,
 				   indexed_modcallable_free, 0);
 	if (!components) {
-		radlog(L_ERR|L_CONS, "Failed to initialize components\n");
+		radlog(L_ERR, "Failed to initialize components\n");
 		return -1;
 	}
 

@@ -95,7 +95,7 @@ typedef struct _realm {
 	home_pool_t		*acct_pool;
 } REALM;
 
-int realms_init(void);
+int realms_init(CONF_SECTION *config);
 void realms_free(void);
 int realm_add(CONF_SECTION *cs);
 REALM *realm_find(const char *name);

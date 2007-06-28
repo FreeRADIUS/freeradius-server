@@ -2105,6 +2105,25 @@ int cf_section_template(CONF_SECTION *cs, CONF_SECTION *template)
 	return 0;
 }
 
+
+/*
+ *	This is here to make the rest of the code easier to read.  It
+ *	ties conffile.c to log.c, but it means we don't have to
+ *	pollute the 
+ */
+void cf_log_err(CONF_ITEM *ci, const char *fmt, ...)
+{
+	va_list ap;
+	char buffer[256];
+
+	va_start(ap, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	va_end(ap);
+
+	radlog(L_ERR, "%s[%d]: %s", ci->filename, ci->lineno, buffer);
+}
+
+
 #if 0
 /*
  * JMG dump_config tries to dump the config structure in a readable format
