@@ -836,7 +836,7 @@ int read_mainconfig(int reload)
 	cf_section_free(&mainconfig.config);
 	mainconfig.config = cs;
 
-	if (!realms_init()) {
+	if (!realms_init(cs)) {
 		return -1;
 	}
 
