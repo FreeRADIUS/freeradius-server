@@ -1787,7 +1787,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
  *	Generate a list of listeners.  Takes an input list of
  *	listeners, too, so we don't close sockets with waiting packets.
  */
-int listen_init(const char *filename, rad_listen_t **head)
+int listen_init(CONF_SECTION *config, rad_listen_t **head)
 {
 	int		rcode;
 	CONF_SECTION	*cs;
@@ -1826,7 +1826,7 @@ int listen_init(const char *filename, rad_listen_t **head)
 	 *	Else look for bind_address and/or listen sections.
 	 */
 	server_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-	rcode = cf_item_parse(mainconfig.config, "bind_address",
+	rcode = cf_item_parse(config, "bind_address",
 			      PW_TYPE_IPADDR,
 			      &server_ipaddr.ipaddr.ip4addr, NULL);
 	if (rcode < 0) return -1; /* error parsing it */
@@ -1911,9 +1911,9 @@ int listen_init(const char *filename, rad_listen_t **head)
 	/*
 	 *	Walk through the "listen" sections, if they exist.
 	 */
-	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "listen");
+	for (cs = cf_subsection_find_next(config, NULL, "listen");
 	     cs != NULL;
-	     cs = cf_subsection_find_next(mainconfig.config, cs, "listen")) {
+	     cs = cf_subsection_find_next(config, cs, "listen")) {
 		this = listen_parse(cs, NULL);
 		if (!this) {
 			listen_free(head);
@@ -1929,9 +1929,9 @@ int listen_init(const char *filename, rad_listen_t **head)
 	 *
 	 *	FIXME: Move to virtual server init?
 	 */
-	for (cs = cf_subsection_find_next(mainconfig.config, NULL, "server");
+	for (cs = cf_subsection_find_next(config, NULL, "server");
 	     cs != NULL;
-	     cs = cf_subsection_find_next(mainconfig.config, cs, "server")) {
+	     cs = cf_subsection_find_next(config, cs, "server")) {
 		CONF_SECTION *subcs;
 		const char *name2 = cf_section_name2(cs);
 		

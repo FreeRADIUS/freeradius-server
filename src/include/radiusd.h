@@ -470,7 +470,7 @@ int free_mainconfig(void);
 
 /* listen.c */
 void listen_free(rad_listen_t **head);
-int listen_init(const char *filename, rad_listen_t **head);
+int listen_init(CONF_SECTION *cs, rad_listen_t **head);
 rad_listen_t *proxy_new_listener(void);
 
 /* event.c */
