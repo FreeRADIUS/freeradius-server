@@ -229,8 +229,8 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		if (rcode < 0) return -1;
 
 		if (rcode == 1) {
-			radlog(L_ERR, "%s[%d]: No address specified in listen section",
-			       cf_section_filename(cs), cf_section_lineno(cs));
+			cf_log_err(cf_sectiontoitem(cs),
+				   "No address specified in listen section");
 			return -1;
 		}
 		ipaddr.af = AF_INET6;
@@ -248,10 +248,10 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	if (listen_bind(this) < 0) {
 		char buffer[128];
-		radlog(L_CONS|L_ERR, "%s[%d]: Error binding to port for %s port %d",
-		       cf_section_filename(cs), cf_section_lineno(cs),
-		       ip_ntoh(&sock->ipaddr, buffer, sizeof(buffer)),
-		       sock->port);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Error binding to port for %s port %d",
+			   ip_ntoh(&sock->ipaddr, buffer, sizeof(buffer)),
+			   sock->port);
 		return -1;
 	}
 
@@ -261,8 +261,8 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	if (cf_pair_find(cs, "interface")) {
 #ifndef SO_BINDTODEVICE
-		radlog(L_CONS|L_ERR, "%s[%d]: System does not support binding to interfaces, delete this line from the configuration file.",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs),
+			   "System does not support binding to interfaces.  Delete this line from the configuration file.");
 		return -1;
 #else
 		const char *value;
@@ -272,8 +272,8 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		rad_assert(cp != NULL);
 		value = cf_pair_value(cp);
 		if (!value) {
-			radlog(L_CONS|L_ERR, "%s[%d]: No interface name given",
-			       cf_section_filename(cs), cf_section_lineno(cs));
+			cf_log_err(cf_sectiontoitem(cs),
+				   "No interface name given");
 			return -1;
 		}
 
@@ -281,9 +281,9 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE,
 			       (char *)&ifreq, sizeof(ifreq)) < 0) {
-			radlog(L_CONS|L_ERR, "%s[%d]: Failed binding to interface %s: %s",
-			       cf_section_filename(cs), cf_section_lineno(cs),
-			       value, strerror(errno));
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Failed binding to interface %s: %s",
+				   value, strerror(errno));
 			return -1;
 		} /* else it worked. */
 #endif
@@ -323,8 +323,9 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			client_cs = cf_section_find(section_name);
 			free(section_name);
 			if (!client_cs) {
-				radlog(L_CONS|L_ERR, "%s[%d]: Failed to find client section %s",
-				       cf_section_filename(cs), cf_section_lineno(cs), section_name);
+				cf_log_err(cf_sectiontoitem(cs),
+					   "Failed to find clients %s {...}",
+					   section_name);
 				return -1;
 			}
 		} /* else there was no "clients = " entry. */
@@ -1328,20 +1329,17 @@ static int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	rcode = cf_section_parse(cs, data, detail_config);
 	if (rcode < 0) {
-		radlog(L_ERR, "%s[%d]: Failed parsing listen section",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs), "Failed parsing listen section");
 		return -1;
 	}
 
 	if (!data->filename) {
-		radlog(L_ERR, "%s[%d]: No detail file specified in listen section",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs), "No detail file specified in listen section");
 		return -1;
 	}
 
 	if ((data->load_factor < 1) || (data->load_factor > 100)) {
-		radlog(L_ERR, "%s[%d]: Load factor must be between 1 and 100",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs), "Load factor must be between 1 and 100");
 		return -1;
 	}
 
@@ -1549,7 +1547,7 @@ static int listen_bind(rad_listen_t *this)
 #endif
 
 		default:
-			radlog(L_ERR|L_CONS, "ERROR: Non-fatal internal sanity check failed in bind.");
+			radlog(L_ERR, "ERROR: Non-fatal internal sanity check failed in bind.");
 			return -1;
 		}
 	}
@@ -1584,7 +1582,7 @@ static int listen_bind(rad_listen_t *this)
 
 	this->fd = lrad_socket(&sock->ipaddr, sock->port);
 	if (this->fd < 0) {
-		radlog(L_ERR|L_CONS, "ERROR: Failed to open socket: %s",
+		radlog(L_ERR, "ERROR: Failed to open socket: %s",
 		       librad_errstr);
 		return -1;
 	}
@@ -1739,8 +1737,8 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 	if (rcode < 0) return NULL;
 	if (rcode == 1) {
 		free(listen_type);
-		radlog(L_ERR, "%s[%d]: No type specified in listen section",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs),
+			   "No type specified in listen section");
 		return NULL;
 	}
 
@@ -1748,8 +1746,9 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 			    RAD_LISTEN_NONE);
 	free(listen_type);
 	if (type == RAD_LISTEN_NONE) {
-		radlog(L_CONS|L_ERR, "%s[%d]: Invalid type in listen section.",
-		       cf_section_filename(cs), cf_section_lineno(cs));
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Invalid type \"%s\" in listen section.",
+			   listen_type);
 		return NULL;
 	}
 	
@@ -1854,7 +1853,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		if (listen_bind(this) < 0) {
 			listen_free(&this);
 			listen_free(head);
-			radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the authentication port %d", sock->port);
+			radlog(L_ERR, "There appears to be another RADIUS server running on the authentication port %d", sock->port);
 			return -1;
 		}
 		auth_port = sock->port;	/* may have been updated in listen_bind */
@@ -1889,7 +1888,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		if (listen_bind(this) < 0) {
 			listen_free(&this);
 			listen_free(head);
-			radlog(L_CONS|L_ERR, "There appears to be another RADIUS server running on the accounting port %d", sock->port);
+			radlog(L_ERR, "There appears to be another RADIUS server running on the accounting port %d", sock->port);
 			return -1;
 		}
 
@@ -1897,7 +1896,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		last = &(this->next);
 
 	} else if (mainconfig.port > 0) { /* no bind address, but a port */
-		radlog(L_CONS|L_ERR, "The command-line says \"-p %d\", but there is no associated IP address to use",
+		radlog(L_ERR, "The command-line says \"-p %d\", but there is no associated IP address to use",
 		       mainconfig.port);
 		return -1;
 	}
@@ -2048,7 +2047,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		if (sock->port >= 64000) {
 			listen_free(head);
 			listen_free(&this);
-			radlog(L_ERR|L_CONS, "Failed to open socket for proxying");
+			radlog(L_ERR, "Failed to open socket for proxying");
 			return -1;
 		}
 	}
