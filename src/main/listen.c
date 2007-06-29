@@ -1542,6 +1542,12 @@ static int listen_bind(rad_listen_t *this)
 			}
 			break;
 
+#ifdef WITH_VMPS
+		case RAD_LISTEN_VQP:
+			sock->port = 1589;
+			break;
+#endif
+
 		default:
 			radlog(L_ERR|L_CONS, "ERROR: Non-fatal internal sanity check failed in bind.");
 			return -1;
