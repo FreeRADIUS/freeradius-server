@@ -295,19 +295,17 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	directive, UNLESS there are no clients in the server.
 	 */
 	client_cs = NULL;
-	if (this->server) {
-		client_cs = cf_section_sub_find_name2(mainconfig.config,
-						      "server",
-						      this->server);
-
-		/*
-		 *	Found a "server foo" section, but there are no
-		 *	clients in it.  Don't use this section.
-		 */
-		if (client_cs &&
-		    (cf_section_sub_find(client_cs, "client") == NULL)) {
-			client_cs = NULL;
-		}
+	client_cs = cf_section_sub_find_name2(mainconfig.config,
+					      "server",
+					      this->server);
+	
+	/*
+	 *	Found a "server foo" section, but there are no
+	 *	clients in it.  Don't use this section.
+	 */
+	if (client_cs &&
+	    (cf_section_sub_find(client_cs, "client") == NULL)) {
+		client_cs = NULL;
 	}
 
 	/*

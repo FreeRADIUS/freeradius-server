@@ -12,6 +12,18 @@
 #
 ######################################################################
 
+#
+#	In 1.x, the "authorize", etc. sections were global in
+#	radiusd.conf.  As of 2.0, they MUST be in a server section.
+#
+#	The server section with no virtual server name is the "default"
+#	section.  It is used when no server name is specified.
+#
+#	We don't indent the rest of this file, because doing so
+#	would make it harder to read.
+#
+server {
+
 #  Authorization. First preprocess (hints and huntgroups files),
 #  then realms, and finally look in the "users" file.
 #
@@ -146,7 +158,6 @@ authorize {
 	#  get a chance to set Auth-Type for themselves.
 	#
 	pap
-
 
 	#
 	#  If "status_server = yes", then Status-Server messages are passed
@@ -452,3 +463,5 @@ post-proxy {
 #	}
 
 }
+
+} # default server block

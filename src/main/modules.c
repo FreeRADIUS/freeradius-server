@@ -931,16 +931,16 @@ int setup_modules(int reload, CONF_SECTION *config)
 	     cs = cf_subsection_find_next(config, cs, "server")) {
 		const char *name2 = cf_section_name2(cs);
 
-		DEBUG2("server %s {", name2);
+		if (name2) {
+			DEBUG2("server %s {", name2);
+		} else {
+			DEBUG2("server {");
+		}
 		if (load_byspace(cs, name2, do_component) < 0) {
 			DEBUG2("}");
 			return -1;
 		}
 		DEBUG2("}");
-	}
-		
-	if (load_byspace(config, NULL, do_component) < 0) {
-		return -1;
 	}
 
 	return 0;
