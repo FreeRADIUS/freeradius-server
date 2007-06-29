@@ -373,6 +373,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
 
   fake->number = request->number;
   fake->child_pid = NO_SUCH_CHILD_PID;
+  fake->parent = request;
 
   /*
    *	For new server support.
@@ -394,6 +395,9 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	  request_free(&fake);
 	  return NULL;
   }
+
+  fake->master_state = REQUEST_ACTIVE;
+  fake->child_state = REQUEST_RUNNING;
 
   /*
    *	Fill in the fake request.

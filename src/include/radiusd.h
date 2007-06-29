@@ -137,6 +137,7 @@ struct auth_req {
 	int			num_proxied_responses;
 
 	const char		*server;
+	REQUEST			*parent;
 };				/* REQUEST typedef */
 
 #define RAD_REQUEST_OPTION_NONE            (0)

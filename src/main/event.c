@@ -1261,7 +1261,9 @@ static void request_post_handler(REQUEST *request)
 	struct timeval when;
 	VALUE_PAIR *vp;
 
-	if (request->master_state == REQUEST_STOP_PROCESSING) {
+	if ((request->master_state == REQUEST_STOP_PROCESSING) ||
+	    (request->parent &&
+	     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
 		DEBUG2("Request %d was cancelled.", request->number);
 		request->child_pid = NO_SUCH_CHILD_PID;
 		request->child_state = REQUEST_DONE;
