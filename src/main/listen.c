@@ -2099,8 +2099,6 @@ void listen_free(rad_listen_t **head)
 	while (this) {
 		rad_listen_t *next = this->next;
 
-		free(this->server);
-
 		/*
 		 *	Other code may have eaten the FD.
 		 */
