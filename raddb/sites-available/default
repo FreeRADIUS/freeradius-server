@@ -318,6 +318,13 @@ accounting {
 
 	#  Filter attributes from the accounting response.
 	attr_filter.accounting_response
+
+	#
+	#  See "Autz-Type Status-Server" for how this works.
+	#
+#	Acct-Type Status-Server {
+#
+#	}
 }
 
 
@@ -330,13 +337,6 @@ session {
 	#
 	#  See "Simultaneous Use Checking Queries" in sql.conf
 #	sql
-
-	#
-	#  See "Autz-Type Status-Server" for how this works.
-	#
-#	Acct-Type Status-Server {
-#
-#	}
 }
 
 
