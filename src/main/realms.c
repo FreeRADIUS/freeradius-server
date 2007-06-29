@@ -497,7 +497,7 @@ static int server_pool_add(CONF_SECTION *cs, int server_type)
 		home = rbtree_finddata(home_servers_byname, &myhome);
 		if (home) continue;
 
-		server_cs = cf_section_sub_find_name2(cf_section_parent(cs),
+		server_cs = cf_section_sub_find_name2(mainconfig.config,
 						      "home_server",
 						      value);
 		if (!server_cs) {
@@ -913,7 +913,7 @@ static int add_pool_to_realm(CONF_SECTION *cs,
 	if (!pool) {
 		CONF_SECTION *pool_cs;
 
-		pool_cs = cf_section_sub_find_name2(cf_section_parent(cs),
+		pool_cs = cf_section_sub_find_name2(mainconfig.config,
 						    "server_pool",
 						    name);
 		if (!pool_cs) {
