@@ -468,7 +468,7 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 				/*
 				 *	Two names: find the named instance.
 				 */
-				if (cs_new->name2) {
+				{
 					CONF_SECTION *old_cs;
 
 					/*
