@@ -894,7 +894,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 	     listener = listener->next) {
 		cs = cf_section_sub_find_name2(config,
 					       "server", listener->server);
-		if (!cs && listener->server) {
+		if (!cs) {
 			char buffer[256];
 
 			listener->print(listener, buffer, sizeof(buffer));
