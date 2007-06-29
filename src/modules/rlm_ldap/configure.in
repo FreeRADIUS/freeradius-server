@@ -164,7 +164,7 @@ AC_ARG_WITH(edir,
 )
 
 ldap_ldflags=$SMART_LIBS
-ldap_cflags=$SMART_CFLAGS
+ldap_cflags="$SMART_CFLAGS -DLDAP_DEPRECATED"
 AC_SUBST(edir)
 AC_SUBST(ldap_ldflags)
 AC_SUBST(ldap_cflags)
