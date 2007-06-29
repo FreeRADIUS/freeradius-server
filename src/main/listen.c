@@ -1929,13 +1929,6 @@ int listen_init(const char *filename, rad_listen_t **head)
 		CONF_SECTION *subcs;
 		const char *name2 = cf_section_name2(cs);
 		
-		if (!name2) {
-			radlog(L_ERR, "%s[%d]: \"server\" sections require a server name",
-			       filename, cf_section_lineno(cs));
-			listen_free(head);
-			return -1;
-		}
-
 		for (subcs = cf_subsection_find_next(cs, NULL, "listen");
 		     subcs != NULL;
 		     subcs = cf_subsection_find_next(cs, subcs, "listen")) {
