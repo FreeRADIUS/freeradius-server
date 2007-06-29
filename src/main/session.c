@@ -122,7 +122,6 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 {
 	pid_t	pid, child_pid;
 	int	status;
-	int	n;
 	char	address[16];
 	char	port[11];
 	RADCLIENT *cl;
