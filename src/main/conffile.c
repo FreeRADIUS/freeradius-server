@@ -1686,8 +1686,6 @@ CONF_SECTION *cf_section_sub_find_name2(const CONF_SECTION *cs,
 {
 	CONF_ITEM    *ci;
 
-	if (!name2) return cf_section_sub_find(cs, name1);
-
 	if (!cs) cs = mainconfig.config;
 
 	if (name1 && (cs->section_tree)) {
