@@ -892,6 +892,17 @@ int setup_modules(int reload, CONF_SECTION *config)
 	for (listener = mainconfig.listen;
 	     listener != NULL;
 	     listener = listener->next) {
+		cs = cf_section_sub_find_name2(config,
+					       "server", listener->server);
+		if (!cs && listener->server) {
+			char buffer[256];
+
+			listener->print(listener, buffer, sizeof(buffer));
+
+			radlog(L_ERR, "Listening on IP %s but no server has been defined to process the requests", buffer);
+			return -1;
+		}
+
 		if (listener->type != RAD_LISTEN_VQP) continue;
 
 		cs = cf_section_sub_find(config, "vmps");
@@ -905,8 +916,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 			return -1;
 		}
 			
-		DEBUG2(" Module: Checking vmps {...} for more modules to load");
-		
+		DEBUG2(" Module: Checking vmps {...} for more modules to load");		
 		if (load_component_section(NULL, cs, VMPS_SPACE,
 					   RLM_COMPONENT_POST_AUTH) < 0) {
 			return -1;
@@ -932,7 +942,6 @@ int setup_modules(int reload, CONF_SECTION *config)
 	if (load_byspace(config, NULL, do_component) < 0) {
 		return -1;
 	}
-
 
 	return 0;
 }
