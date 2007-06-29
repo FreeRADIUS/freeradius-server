@@ -271,7 +271,11 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		rad_assert(cp != NULL);
 		value = cf_pair_value(cp);
-		rad_assert(value != NULL);
+		if (!value) {
+			radlog(L_CONS|L_ERR, "%s[%d]: No interface name given",
+			       cf_section_filename(cs), cf_section_lineno(cs));
+			return -1;
+		}
 
 		strcpy(ifreq.ifr_name, value);
 
