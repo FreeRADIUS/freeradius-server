@@ -892,6 +892,8 @@ int setup_modules(int reload, CONF_SECTION *config)
 	for (listener = mainconfig.listen;
 	     listener != NULL;
 	     listener = listener->next) {
+		if (listener->type == RAD_LISTEN_PROXY) continue;
+
 		cs = cf_section_sub_find_name2(config,
 					       "server", listener->server);
 		if (!cs) {
@@ -899,7 +901,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 
 			listener->print(listener, buffer, sizeof(buffer));
 
-			radlog(L_ERR, "Listening on IP %s but no server has been defined to process the requests", buffer);
+			radlog(L_ERR, "Listening on IP %s but no server has been defined", buffer);
 			return -1;
 		}
 
