@@ -1201,6 +1201,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 					for (p = dp->d_name; *p != '\0'; p++) {
 						if (isalpha((int)*p) ||
 						    isdigit((int)*p) ||
+						    (*p == '-') ||
 						    (*p == '_') ||
 						    (*p == '.')) continue;
 						break;
