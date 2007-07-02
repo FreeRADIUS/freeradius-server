@@ -109,15 +109,4 @@ int cbtls_password(char *buf,
 	return(strlen((char *)userdata));
 }
 
-RSA *cbtls_rsa(SSL *s UNUSED, int is_export UNUSED, int keylength)
-{
-	static RSA *rsa_tmp=NULL;
-
-	if (rsa_tmp == NULL) {
-		radlog(L_INFO, "Generating temp (%d bit) RSA key...", keylength);
-		rsa_tmp=RSA_generate_key(keylength, RSA_F4, NULL, NULL);
-	}
-	return(rsa_tmp);
-}
-
 #endif /* !defined(NO_OPENSSL) */

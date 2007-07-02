@@ -353,7 +353,6 @@ int 		cbtls_password(char *buf, int num, int rwflag, void *userdata);
 void 		cbtls_info(const SSL *s, int where, int ret);
 void 		cbtls_msg(int write_p, int msg_version, int content_type,
 	       		const void *buf, size_t len, SSL *ssl, void *arg);
-RSA		*cbtls_rsa(SSL *s, int is_export, int keylength);
 
 /* TLS */
 tls_session_t 	*eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert);
