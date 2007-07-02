@@ -192,7 +192,20 @@ static LRAD_TOKEN getregex(char **ptr, char *buffer, size_t buflen, int *pcflags
 }
 #endif
 
-int radius_evaluate_condition(REQUEST *request, int depth,
+static const LRAD_NAME_NUMBER modreturn_table[] = {
+	{ "reject",     RLM_MODULE_REJECT       },
+	{ "fail",       RLM_MODULE_FAIL         },
+	{ "ok",         RLM_MODULE_OK           },
+	{ "handled",    RLM_MODULE_HANDLED      },
+	{ "invalid",    RLM_MODULE_INVALID      },
+	{ "userlock",   RLM_MODULE_USERLOCK     },
+	{ "notfound",   RLM_MODULE_NOTFOUND     },
+	{ "noop",       RLM_MODULE_NOOP         },
+	{ "updated",    RLM_MODULE_UPDATED      },
+	{ NULL, 0 }
+};
+
+int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			      const char **ptr, int evaluate_it, int *presult)
 {
 	int found_condition = FALSE;
@@ -235,8 +248,8 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 			 *	parse error.
 			 */
 			DEBUG4(">>> CALLING EVALUATE %s", end);
-			if (!radius_evaluate_condition(request, depth + 1,
-						       &end,
+			if (!radius_evaluate_condition(request, modreturn,
+						       depth + 1, &end,
 						       evaluate_next_condition,
 						       &result)) {
 				return FALSE;
@@ -381,6 +394,9 @@ int radius_evaluate_condition(REQUEST *request, int depth,
 			if (all_digits(pleft)) {
 				lint = atoi(pleft);
 				result = (lint != 0);
+
+			} else if (lt == T_BARE_WORD) {
+				result = (modreturn == lrad_str2int(modreturn_table, pleft, -1));
 			} else {
 				result = (*pleft != '\0');
 			}

@@ -225,11 +225,38 @@ conditions
 	(foo)
 .DE
 
-Evalutes to true if 'foo' is a non-empty string, or if 'foo' is a
+Evalutes to true if 'foo' is a non-empty string (single quotes, double
+quotes, or back-quoted).  Also evaluates to true if 'foo' is a
 non-zero number.  Note that the language is not typed, so the string
 "0000" can be interpreted as a numerical zero.  This issue can be
 avoided by comparings strings to an empty string, rather than by
 evaluating the string by itself.
+
+If the text is not quoted, then it is parsed as one of the module
+return codes.  The condition evaluates to true if the most recent
+module return code matches the name given here.  Valid module return
+codes are:
+
+.br
+.DS
+	notfound        informatation was not found
+.br
+	noop            the module did nothing
+.br
+	ok              the module succeeded
+.br
+	updated         the module updated the request
+.br
+	fail            the module failed
+.br
+	reject          the module rejected the request
+.br
+	userlock        the user was locked out
+.br
+	invalid         the configuration was invalid
+.br
+	handled         the module has handled the request itself
+.DE
 .IP Negation
 .DS
 	(!foo)
@@ -533,9 +560,6 @@ keyword can be used to over-ride earlier failures, if the local
 administrator determines that the faiures are not catastrophic.
 .IP reject
 Causes the request to be immediately rejected
-.IP return
-Stops processsing of the current section, and returns to process the
-next keyword in the parent section.
 .SH FILES
 /etc/raddb/vmpsd.conf,
 /etc/raddb/radiusd.conf

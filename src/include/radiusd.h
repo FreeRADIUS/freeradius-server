@@ -484,7 +484,7 @@ int received_request(rad_listen_t *listener,
 REQUEST *received_proxy_response(RADIUS_PACKET *packet);
 
 /* evaluate.c */
-int radius_evaluate_condition(REQUEST *request, int depth,
+int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			      const char **ptr, int evaluate_it, int *presult);
 int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			   VALUE_PAIR *input_vps, const char *name);

@@ -368,8 +368,9 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			       (child->type == MOD_IF) ? "if" : "elsif",
 			       child->name);
 
-			if (radius_evaluate_condition(request, 0, &p,
-						       TRUE, &condition)) {
+			if (radius_evaluate_condition(request,
+						      stack.result[stack.pointer],
+						      0, &p, TRUE, &condition)) {
 				DEBUG2("%.*s? %s %s -> %s",
 				       stack.pointer + 1, modcall_spaces,
 				       (child->type == MOD_IF) ? "if" : "elsif",
@@ -1371,7 +1372,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (!csingle) return NULL;
 			csingle->type = MOD_IF;
 
-			if (!radius_evaluate_condition(NULL, 0, modname,
+			if (!radius_evaluate_condition(NULL, 0, 0, modname,
 						       FALSE, &result)) {
 				modcallable_free(&csingle);
 				return NULL;
@@ -1400,7 +1401,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (!csingle) return NULL;
 			csingle->type = MOD_ELSIF;
 
-			if (!radius_evaluate_condition(NULL, 0, modname,
+			if (!radius_evaluate_condition(NULL, 0, 0, modname,
 						       FALSE, &result)) {
 				modcallable_free(&csingle);
 				return NULL;
