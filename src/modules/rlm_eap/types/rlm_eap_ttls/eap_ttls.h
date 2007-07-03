@@ -36,6 +36,7 @@ typedef struct ttls_tunnel_t {
 	int		default_eap_type;
 	int		copy_request_to_tunnel;
 	int		use_tunneled_reply;
+	const char	*virtual_server;
 } ttls_tunnel_t;
 
 /*

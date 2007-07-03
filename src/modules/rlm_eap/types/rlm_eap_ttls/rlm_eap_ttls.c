@@ -46,6 +46,11 @@ typedef struct rlm_eap_ttls_t {
 	 *	tunneled session in the tunneled request
 	 */
 	int	copy_request_to_tunnel;
+
+	/*
+	 *	Virtual server for inner tunnel session.
+	 */
+	char	*virtual_server;
 } rlm_eap_ttls_t;
 
 
@@ -58,6 +63,9 @@ static CONF_PARSER module_config[] = {
 
 	{ "use_tunneled_reply", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_ttls_t, use_tunneled_reply), NULL, "no" },
+
+	{ "virtual_server", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_ttls_t, virtual_server), NULL, NULL },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -163,6 +171,7 @@ static ttls_tunnel_t *ttls_alloc(rlm_eap_ttls_t *inst)
 	t->default_eap_type = inst->default_eap_type;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
 	t->use_tunneled_reply = inst->use_tunneled_reply;
+	t->virtual_server = inst->virtual_server;
 	return t;
 }
 

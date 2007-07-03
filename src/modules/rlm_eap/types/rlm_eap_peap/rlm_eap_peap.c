@@ -51,6 +51,11 @@ typedef struct rlm_eap_peap_t {
 	 *	protocol.
 	 */
 	int	proxy_tunneled_request_as_eap;
+
+	/*
+	 *	Virtual server for inner tunnel session.
+	 */
+  	char	*virtual_server;
 } rlm_eap_peap_t;
 
 
@@ -66,6 +71,9 @@ static CONF_PARSER module_config[] = {
 
 	{ "proxy_tunneled_request_as_eap", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_peap_t, proxy_tunneled_request_as_eap), NULL, "yes" },
+
+	{ "virtual_server", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_peap_t, virtual_server), NULL, NULL },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -153,6 +161,7 @@ static peap_tunnel_t *peap_alloc(rlm_eap_peap_t *inst)
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
 	t->use_tunneled_reply = inst->use_tunneled_reply;
 	t->proxy_tunneled_request_as_eap = inst->proxy_tunneled_request_as_eap;
+	t->virtual_server = inst->virtual_server;
 
 	return t;
 }

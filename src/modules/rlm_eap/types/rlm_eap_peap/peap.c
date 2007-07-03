@@ -786,7 +786,11 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER)) != NULL) {
 		fake->server = vp->vp_strvalue;
-	}
+
+	} else if (t->virtual_server) {
+		fake->server = t->virtual_server;
+
+	} /* else fake->server == request->server */
 
 #ifndef NDEBUG
 	if (debug_flag > 0) {
