@@ -649,7 +649,6 @@ static int mschap_detach(void *instance){
 	free(inst->ntlm_auth);
 	if (inst->xlat_name) {
 		xlat_unregister(inst->xlat_name, mschap_xlat);
-		free(inst->xlat_name);
 	}
 	free(instance);
 	return 0;
@@ -662,7 +661,6 @@ static int mschap_detach(void *instance){
  */
 static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 {
-	const char *xlat_name;
 	rlm_mschap_t *inst;
 
 	inst = *instance = rad_malloc(sizeof(*inst));
@@ -691,19 +689,17 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Create the dynamic translation.
 	 */
-	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL)
-		xlat_name = cf_section_name1(conf);
-	if (xlat_name){
-		inst->xlat_name = strdup(xlat_name);
-		xlat_register(xlat_name, mschap_xlat, inst);
-	}
+	inst->xlat_name = cf_section_name2(conf);
+	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+	xlat_register(inst->xlat_name, mschap_xlat, inst);
 
 	/*
 	 *	For backwards compatibility
 	 */
 	if (!dict_valbyname(PW_AUTH_TYPE, inst->xlat_name)) {
 		inst->auth_type = "MS-CHAP";
+	} else {
+		inst->auth_type = inst->xlat_name;
 	}
 
 	return 0;
