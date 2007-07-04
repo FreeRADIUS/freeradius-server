@@ -1160,7 +1160,8 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		 *      This *SHOULD* work for any level include.
 		 *      I really really really hate this file.  -cparker
 		 */
-		if (strcasecmp(buf1, "$INCLUDE") == 0) {
+	       if ((strcasecmp(buf1, "$INCLUDE") == 0) ||
+		   (strcasecmp(buf1, "$-INCLUDE") == 0)) {
 			t2 = getword(&ptr, buf2, sizeof(buf2));
 
 			value = cf_expand_variables(filename, lineno, this, buf, buf2);
@@ -1225,6 +1226,15 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			}  else
 #endif
 			{ /* it was a normal file */
+				if (buf1[1] == '-') {
+					struct stat statbuf;
+
+					if (stat(value, &statbuf) < 0) {
+						DEBUG("WARNING: Not including file %s: %s", value, strerror(errno));
+						continue;
+					}
+				}
+
 				if (cf_file_include(value, this) < 0) {
 					return -1;
 				}
