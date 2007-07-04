@@ -1302,6 +1302,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			if ((strcmp(buf1, "if") == 0) ||
 			    (strcmp(buf1, "elsif") == 0)) {
 				const char *end = ptr;
+				CONF_SECTION *server;
 
 				if (!condition_looks_ok(&end)) {
 					radlog(L_ERR, "%s[%d]: Parse error in condition at: %s",
@@ -1314,6 +1315,23 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 					       filename, *lineno, buf1);
 					return -1;
 				}
+
+				/*
+				 *	More sanity checking.  This is
+				 *	getting to be a horrible hack.
+				 */
+				server = this;
+				while (server) {
+					if (strcmp(server->name1, "server") == 0) break;
+					server = server->item.parent;
+				}
+				
+				if (!server) {
+					radlog(L_ERR, "%s[%d]: Processing directives such as \"%s\" cannot be used here.",
+					       filename, *lineno, buf1);
+					return -1;
+				}
+
 				buf2[0] = '(';
 				memcpy(buf2 + 1, ptr, end - ptr);
 				buf2[end - ptr + 1] = '\0';
@@ -1326,6 +1344,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				       filename, *lineno, buf1);
 				return -1;
 			}
+
 			/* FALL-THROUGH */
 
 			/*
