@@ -839,37 +839,58 @@ static int old_server_add(CONF_SECTION *cs, const char *realm,
 static int old_realm_config(CONF_SECTION *cs, REALM *r)
 {
 	char *host;
-	const char *secret;
+	const char *secret = NULL;
 	home_pool_type_t ldflag;
+	CONF_PAIR *cp;
 
-	secret = cf_section_value_find(cs, "secret");
+	cp = cf_pair_find(cs, "ldflag");
+	ldflag = HOME_POOL_FAIL_OVER;
+	if (cp) {
+		host = cf_pair_value(cp);
+		if (!host) {
+			cf_log_err(cf_pairtoitem(cp), "No value specified for ldflag");
+			return 0;
+		}
 
-	host = cf_section_value_find(cs, "ldflag");
-	if (!host ||
-	    (strcasecmp(host, "fail_over") == 0)) {
-		ldflag = HOME_POOL_FAIL_OVER;
-		DEBUG2("\tldflag = fail_over");
-
-	} else if (strcasecmp(host, "round_robin") == 0) {
-		ldflag = HOME_POOL_LOAD_BALANCE;
-		DEBUG2("\tldflag = round_robin");
-
-	} else {
-		cf_log_err(cf_sectiontoitem(cs), "Unknown value \"%s\" for ldflag", host);
-		return 0;
-	}
+		if (strcasecmp(host, "fail_over") == 0) {
+			DEBUG2("\tldflag = fail_over");
+			
+		} else if (strcasecmp(host, "round_robin") == 0) {
+			ldflag = HOME_POOL_LOAD_BALANCE;
+			DEBUG2("\tldflag = round_robin");
+			
+		} else {
+			cf_log_err(cf_sectiontoitem(cs), "Unknown value \"%s\" for ldflag", host);
+			return 0;
+		}
+	} /* else don't print it. */
 
 	/*
 	 *	Allow old-style if it doesn't exist, or if it exists and
 	 *	it's LOCAL.
 	 */
-	if (((host = cf_section_value_find(cs, "authhost")) != NULL) &&
-	    (strcmp(host, "LOCAL") != 0)) {
-		if (!secret) {
-			cf_log_err(cf_sectiontoitem(cs), "No shared secret supplied for realm: %s", r->name);
+	cp = cf_pair_find(cs, "authhost");
+	if (cp) {
+		host = cf_pair_value(cp);
+		if (!host) {
+			cf_log_err(cf_pairtoitem(cp), "No value specified for authhost");
 			return 0;
 		}
 
+		if (strcmp(host, "LOCAL") != 0) {
+			cp = cf_pair_find(cs, "secret");
+			if (!cp) {
+				cf_log_err(cf_sectiontoitem(cs), "No shared secret supplied for realm: %s", r->name);
+				return 0;
+			}
+
+			secret = cf_pair_value(cp);
+			if (!secret) {
+				cf_log_err(cf_pairtoitem(cp), "No value specified for secret");
+				return 0;
+			}
+		}
+			
 		DEBUG2("\tauthhost = %s",  host);
 
 		if (!old_server_add(cs, r->name, host, secret, ldflag,
@@ -878,13 +899,32 @@ static int old_realm_config(CONF_SECTION *cs, REALM *r)
 		}
 	}
 
-	if (((host = cf_section_value_find(cs, "accthost")) != NULL) &&
-	    (strcmp(host, "LOCAL") != 0)) {
-		if (!secret) {
-			cf_log_err(cf_sectiontoitem(cs), "No shared secret supplied for realm: %s", r->name);
+	cp = cf_pair_find(cs, "accthost");
+	if (cp) {
+		host = cf_pair_value(cp);
+		if (!host) {
+			cf_log_err(cf_pairtoitem(cp), "No value specified for accthost");
 			return 0;
 		}
 
+		/*
+		 *	Don't look for a secret again if it was found
+		 *	above.
+		 */
+		if ((strcmp(host, "LOCAL") != 0) && !secret) {
+			cp = cf_pair_find(cs, "secret");
+			if (!cp) {
+				cf_log_err(cf_sectiontoitem(cs), "No shared secret supplied for realm: %s", r->name);
+				return 0;
+			}
+			
+			secret = cf_pair_value(cp);
+			if (!secret) {
+				cf_log_err(cf_pairtoitem(cp), "No value specified for secret");
+				return 0;
+			}
+		}
+		
 		DEBUG2("\taccthost = %s", host);
 
 		if (!old_server_add(cs, r->name, host, secret, ldflag,
@@ -1042,14 +1082,16 @@ int realm_add(CONF_SECTION *cs)
 	r->acct_pool = acct_pool;
 	r->striprealm = 1;
 
-	if (auth_pool_name == acct_pool_name) {	/* yes, ptr comparison */
+	if (auth_pool_name &&
+	    (auth_pool_name == acct_pool_name)) { /* yes, ptr comparison */
 		DEBUG2("\tpool = %s", auth_pool_name);
 	} else {
 		if (auth_pool_name) DEBUG2("\tauth_pool = %s", auth_pool_name);
 		if (acct_pool_name) DEBUG2("\tacct_pool = %s", acct_pool_name);
 	}
 
-	if ((cf_section_value_find(cs, "nostrip")) != NULL) {
+	cp = cf_pair_find(cs, "nostrip");
+	if (cp && (cf_pair_value(cp) == NULL)) {
 		r->striprealm = 0;
 		DEBUG2("\tnostrip");
 	}
