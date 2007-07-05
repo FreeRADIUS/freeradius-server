@@ -399,7 +399,6 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 	char		*hostnm, *prefix_ptr = NULL;
 	const char	*name2;
 	RADCLIENT_LIST	*clients;
-	const char *filename = cf_section_filename(section);
 
 	/*
 	 *	Be forgiving.  If there's already a clients, return
@@ -416,8 +415,8 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 	 *	it will be freed once the section is freed.
 	 */
 	if (cf_data_add(section, "clients", clients, clients_free) < 0) {
-		radlog(L_ERR, "%s[%d]: Failed to associate clients with section %s",
-		       filename, cf_section_lineno(section),
+		cf_log_err(cf_sectiontoitem(section),
+			   "Failed to associate clients with section %s",
 		       cf_section_name1(section));
 		clients_free(clients);
 		return NULL;
@@ -428,8 +427,8 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 	     cs = cf_subsection_find_next(section, cs, "client")) {
 		name2 = cf_section_name2(cs);
 		if (!name2) {
-			radlog(L_CONS|L_ERR, "%s[%d]: Missing client name",
-			       filename, cf_section_lineno(cs));
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Missing client name");
 			return NULL;
 		}
 		/*
@@ -454,8 +453,8 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 
 		if (cf_section_parse(cs, c, client_config) < 0) {
 			client_free(c);
-			radlog(L_CONS|L_ERR, "%s[%d]: Error parsing client section.",
-			       filename, cf_section_lineno(cs));
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Error parsing client section.");
 			return NULL;
 		}
 
@@ -465,8 +464,8 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 		 */
 		if ((section != mainconfig.config) && c->server) {
 			client_free(c);
-			radlog(L_CONS|L_ERR, "%s[%d]: Clients inside of an server section cannot point to another server.",
-			       filename, cf_section_lineno(cs));
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Clients inside of an server section cannot point to another server.");
 			return NULL;
 		}
 		
@@ -478,8 +477,9 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 			c->prefix = atoi(prefix_ptr + 1);
 			if ((c->prefix < 0) || (c->prefix > 128)) {
 				client_free(c);
-				radlog(L_ERR, "%s[%d]: Invalid Prefix value '%s' for IP.",
-						filename, cf_section_lineno(cs), prefix_ptr + 1);
+				cf_log_err(cf_sectiontoitem(cs),
+					   "Invalid Prefix value '%s' for IP.",
+					   prefix_ptr + 1);
 				return NULL;
 			}
 			/* Replace '/' with '\0' */
@@ -491,9 +491,9 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 		 */
 		if (ip_hton(hostnm, AF_UNSPEC, &c->ipaddr) < 0) {
 			client_free(c);
-			radlog(L_CONS|L_ERR, "%s[%d]: Failed to look up hostname %s: %s",
-			       filename, cf_section_lineno(cs),
-			       hostnm, librad_errstr);
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Failed to look up hostname %s: %s",
+				   hostnm, librad_errstr);
 			return NULL;
 		} else {
 			char buffer[256];
@@ -523,8 +523,8 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 		 */
 
 		if (!client_add(clients, c)) {
-			radlog(L_CONS|L_ERR, "%s[%d]: Failed to add client %s",
-			       filename, cf_section_lineno(cs), hostnm);
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Failed to add client %s", hostnm);
 			client_free(c);
 			return NULL;
 		}
