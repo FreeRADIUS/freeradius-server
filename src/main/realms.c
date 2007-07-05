@@ -451,7 +451,7 @@ static int home_server_add(CONF_SECTION *cs, int type)
 }
 
 
-static int server_pool_add(CONF_SECTION *cs, int server_type)
+static int server_pool_add(CONF_SECTION *cs, int server_type, int do_print)
 {
 	const char *name2;
 	home_pool_t *pool = NULL;
@@ -533,7 +533,7 @@ static int server_pool_add(CONF_SECTION *cs, int server_type)
 	pool->name = name2;
 	pool->server_type = server_type;
 
-	DEBUG2(" server_pool %s {", name2);
+	if (do_print) DEBUG2(" server_pool %s {", name2);
 
 	cp = cf_pair_find(cs, "type");
 	if (cp) {
@@ -562,7 +562,7 @@ static int server_pool_add(CONF_SECTION *cs, int server_type)
 			goto error;
 		}
 
-		DEBUG2("\ttype = %s", value);
+		if (do_print) DEBUG2("\ttype = %s", value);
 	}
 
 	for (cp = cf_pair_find(cs, "home_server");
@@ -591,7 +591,7 @@ static int server_pool_add(CONF_SECTION *cs, int server_type)
 			continue;
 		}
 
-		DEBUG2("\thome_server = %s", home->name);
+		if (do_print) DEBUG2("\thome_server = %s", home->name);
 		pool->servers[pool->num_home_servers] = home;
 		pool->num_home_servers++;
 	} /* loop over home_server's */
@@ -601,14 +601,14 @@ static int server_pool_add(CONF_SECTION *cs, int server_type)
 		goto error;
 	}
 
-	DEBUG2(" }");
+	if (do_print) DEBUG2(" }");
 
 	rad_assert(pool->server_type != 0);
 
 	return 1;
 
  error:
-	DEBUG2(" }");
+	if (do_print) DEBUG2(" }");
 	free(pool);
 	return 0;
 }
@@ -942,7 +942,7 @@ static int old_realm_config(CONF_SECTION *cs, REALM *r)
 
 static int add_pool_to_realm(CONF_SECTION *cs,
 			     const char *name, home_pool_t **dest,
-			     int server_type)
+			     int server_type, int do_print)
 {
 	home_pool_t mypool, *pool;
 
@@ -961,7 +961,7 @@ static int add_pool_to_realm(CONF_SECTION *cs,
 			return 0;
 		}
 
-		if (!server_pool_add(pool_cs, server_type)) {
+		if (!server_pool_add(pool_cs, server_type, do_print)) {
 			return 0;
 		}
 
@@ -1014,12 +1014,12 @@ int realm_add(CONF_SECTION *cs)
 		acct_pool_name = auth_pool_name;
 		if (!add_pool_to_realm(cs,
 				       auth_pool_name, &auth_pool,
-				       HOME_TYPE_AUTH)) {
+				       HOME_TYPE_AUTH, 1)) {
 			return 0;
 		}
 		if (!add_pool_to_realm(cs,
 				       auth_pool_name, &acct_pool,
-				       HOME_TYPE_ACCT)) {
+				       HOME_TYPE_ACCT, 0)) {
 			return 0;
 		}
 	}
@@ -1033,7 +1033,7 @@ int realm_add(CONF_SECTION *cs)
 		}
 		if (!add_pool_to_realm(cs,
 				       auth_pool_name, &auth_pool,
-				       HOME_TYPE_AUTH)) {
+				       HOME_TYPE_AUTH, 1)) {
 			return 0;
 		}
 	}
@@ -1041,13 +1041,21 @@ int realm_add(CONF_SECTION *cs)
 	cp = cf_pair_find(cs, "acct_pool");
 	if (cp) acct_pool_name = cf_pair_value(cp);
 	if (cp && acct_pool_name) {
+		int do_print = TRUE;
+
 		if (acct_pool) {
 			cf_log_err(cf_sectiontoitem(cs), "Cannot use \"pool\" and \"acct_pool\" at the same time.");
 			return 0;
 		}
+
+		if (!auth_pool ||
+		    (strcmp(auth_pool_name, acct_pool_name) != 0)) {
+			do_print = TRUE;
+		}
+
 		if (!add_pool_to_realm(cs,
 				       acct_pool_name, &acct_pool,
-				       HOME_TYPE_ACCT)) {
+				       HOME_TYPE_ACCT, do_print)) {
 			return 0;
 		}
 	}
