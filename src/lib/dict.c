@@ -686,7 +686,6 @@ static int process_attribute(const char* fn, const int line,
 	int		vendor = 0;
 	int		value;
 	int		type;
-	char		*s, *c;
 	ATTR_FLAGS	flags;
 
 	if ((argc < 3) || (argc > 4)) {
@@ -720,32 +719,34 @@ static int process_attribute(const char* fn, const int line,
 	 */
 	memset(&flags, 0, sizeof(flags));
 	if (argc == 4) {
-		/*
-		 *	FIXME: replace strtok with str2argv
-		 */
-		s = strtok(argv[3], ",");
-		while (s) {
-			if (strcmp(s, "has_tag") == 0 ||
-			    strcmp(s, "has_tag=1") == 0) {
+		char *key, *next, *last;
+
+		key = argv[3];
+		do {
+			next = strchr(key, ',');
+			if (next) *(next++) = '\0';
+
+			if (strcmp(key, "has_tag") == 0 ||
+			    strcmp(key, "has_tag=1") == 0) {
 				/* Boolean flag, means this is a
 				   tagged attribute */
 				flags.has_tag = 1;
-
-			} else if (strncmp(s, "encrypt=", 8) == 0) {
+				
+			} else if (strncmp(key, "encrypt=", 8) == 0) {
 				/* Encryption method, defaults to 0 (none).
 				   Currently valid is just type 2,
 				   Tunnel-Password style, which can only
 				   be applied to strings. */
-				flags.encrypt = strtol(s + 8, &c, 0);
-				if (*c) {
+				flags.encrypt = strtol(key + 8, &last, 0);
+				if (*last) {
 					librad_log( "dict_init: %s[%d] invalid option %s",
-						    fn, line, s);
+						    fn, line, key);
 					return -1;
 				}
-
-			} else if (strncmp(s, "array", 8) == 0) {
+				
+			} else if (strncmp(key, "array", 8) == 0) {
 				flags.array = 1;
-
+				
 				switch (type) {
 					case PW_TYPE_IPADDR:
 					case PW_TYPE_BYTE:
@@ -759,23 +760,23 @@ static int process_attribute(const char* fn, const int line,
 							    fn, line);
 						return -1;
 				}
-
+				
 			} else if (block_vendor) {
 				librad_log( "dict_init: %s[%d]: unknown option \"%s\"",
-					    fn, line, s);
+					    fn, line, key);
 				return -1;
 
 			} else {
 				/* Must be a vendor 'flag'... */
-				if (strncmp(s, "vendor=", 7) == 0) {
+				if (strncmp(key, "vendor=", 7) == 0) {
 					/* New format */
-					s += 7;
+					key += 7;
 				}
 
-				vendor = dict_vendorbyname(s);
+				vendor = dict_vendorbyname(key);
 				if (!vendor) {
 					librad_log( "dict_init: %s[%d]: unknown vendor \"%s\"",
-						    fn, line, s);
+						    fn, line, key);
 					return -1;
 				}
 				if (block_vendor && argv[3][0] &&
@@ -785,8 +786,10 @@ static int process_attribute(const char* fn, const int line,
 					return -1;
 				}
 			}
-			s = strtok(NULL, ",");
-		}
+
+			key = next;
+			if (key && !*key) break;
+		} while (key);
 	}
 
 	if (block_vendor) vendor = block_vendor;
