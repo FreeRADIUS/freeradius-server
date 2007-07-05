@@ -1494,6 +1494,15 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	} else {
 		CONF_PAIR *cp = cf_itemtopair(ci);
 		modrefname = cf_pair_attr(cp);
+
+		/*
+		 *	Actions (ok = 1), etc. are orthoganal to just
+		 *	about everything else.
+		 */
+		if (cf_pair_value(cp) != NULL) {
+			cf_log_err(ci, "Entry is not a reference to a module");
+			return NULL;
+		}
 	}
 
 	/*
