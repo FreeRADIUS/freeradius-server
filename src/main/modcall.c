@@ -340,6 +340,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		parent = child->parent;
 
 		if ((child->type == MOD_ELSE) || (child->type == MOD_ELSIF)) {
+			myresult = stack.result[stack.pointer];
+
 			if (!was_if) { /* error */
 				DEBUG2("%.*s ... skipping %s for request %d: No preceding \"if\"",
 				       stack.pointer + 1, modcall_spaces,
@@ -368,8 +370,9 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			       (child->type == MOD_IF) ? "if" : "elsif",
 			       child->name);
 
-			if (radius_evaluate_condition(request,
-						      stack.result[stack.pointer],
+			myresult = stack.result[stack.pointer];
+
+			if (radius_evaluate_condition(request, myresult,
 						      0, &p, TRUE, &condition)) {
 				DEBUG2("%.*s? %s %s -> %s",
 				       stack.pointer + 1, modcall_spaces,
