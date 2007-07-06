@@ -188,7 +188,14 @@ authorize {
 #  others will not.
 #
 #  The common reasons to set the Auth-Type attribute by hand
-#  is to either forcibly reject the user, or forcibly accept him.
+#  is to either forcibly reject the user (Auth-Type := Reject),
+#  or to or forcibly accept the user (Auth-Type := Accept).
+#
+#  Note that Auth-Type := Accept will NOT work with EAP.
+#
+#  Please do not put "unlang" configurations into the "authenticate"
+#  section.  Put them in the "post-auth" section instead.  That's what
+#  the post-auth section is for.
 #
 authenticate {
 	#
