@@ -370,8 +370,6 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			       (child->type == MOD_IF) ? "if" : "elsif",
 			       child->name);
 
-			myresult = stack.result[stack.pointer];
-
 			if (radius_evaluate_condition(request, myresult,
 						      0, &p, TRUE, &condition)) {
 				DEBUG2("%.*s? %s %s -> %s",
@@ -388,18 +386,23 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			}
 
 			if (!condition) {
+				stack.result[stack.pointer] = myresult;
 				stack.children[stack.pointer] = NULL;
 				was_if = TRUE;
 				if_taken = FALSE;
-				goto unroll;
+				goto next_section;
 			} /* else process it as a simple group */
 		}
 
 		if (child->type == MOD_UPDATE) {
+			int rcode;
 			modgroup *g = mod_callabletogroup(child);
 
-			myresult = radius_update_attrlist(request, g->cs,
-							  g->vps, child->name);
+			rcode = radius_update_attrlist(request, g->cs,
+						       g->vps, child->name);
+			if (rcode != RLM_MODULE_UPDATED) {
+				myresult = rcode;
+			}
 			goto handle_result;
 		}
 
@@ -595,6 +598,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			stack.priority[stack.pointer] = child->actions[myresult];
 		}
 
+
+	next_section:
 		/*
 		 *	No parent, we must be done.
 		 */
