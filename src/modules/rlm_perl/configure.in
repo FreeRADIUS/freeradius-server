@@ -36,7 +36,19 @@ if test x$with_[]modname != xno; then
 		targetname=
 	  fi
 
-          perl_ldflags='`perl -MExtUtils::Embed -e ldopts`'
+	  old_LIBS="$LIBS"
+	  LIBS="$old_LIBS `perl -MExtUtils::Embed -e ldopts`"
+	  AC_TRY_LINK([extern char boot_DynaLoader();],
+		      [ boot_DynaLoader()],
+		      BROKEN=,
+		      BROKEN="yes")
+
+	  if test "x$BROKEN" = "x"; then
+        	perl_ldflags='`perl -MExtUtils::Embed -e ldopts`'
+	  else
+		fail="$fail libperl.so"
+		targetname=
+          fi
 
           CFLAGS=$old_CFLAGS
         fi
