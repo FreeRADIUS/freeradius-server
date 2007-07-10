@@ -38,8 +38,8 @@ CREATE TABLE radacct (
 	XAscendSessionSvrKey	VARCHAR(10),
 	FramedProtocol		VARCHAR(32),
 	FramedIPAddress		INET,
-	AcctStartDelay		BIGINT,
-	AcctStopDelay		BIGINT
+	AcctStartDelay		INTEGER,
+	AcctStopDelay		INTEGER	
 );
 -- This index may be usefull..
 -- CREATE UNIQUE INDEX radacct_whoson on radacct (AcctStartTime, nasipaddress);
