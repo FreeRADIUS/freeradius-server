@@ -99,7 +99,7 @@ typedef struct rlm_sqlippool_t {
 	char *log_nopool;	/* There was no Framed-IP-Address but also no Pool-Name */
 
 				/* Reserved to handle 255.255.255.254 Requests */
-	char *defaultpool;	/* Default Pool-Name if there is non in the check items */
+	char *defaultpool;	/* Default Pool-Name if there is none in the check items */
 
 } rlm_sqlippool_t;
 
