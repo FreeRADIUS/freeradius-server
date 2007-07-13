@@ -163,6 +163,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 	eaptls_status_t status;
 	rlm_eap_peap_t *inst = (rlm_eap_peap_t *) arg;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
+	peap_tunnel_t *peap = NULL;
 
 	DEBUG2("  rlm_eap_peap: Authenticate");
 
@@ -256,12 +257,12 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	Move the saved VP's from the Access-Accept to
 		 *	our Access-Accept.
 		 */
-		if (((peap_tunnel_t *) tls_session->opaque)->accept_vps) {
+		peap = tls_session->opaque;
+		if (peap->accept_vps) {
 			DEBUG2("  Using saved attributes from the original Access-Accept");
 		}
-		pairadd(&handler->request->reply->vps,
-			((peap_tunnel_t *) tls_session->opaque)->accept_vps);
-		((peap_tunnel_t *) tls_session->opaque)->accept_vps = NULL;
+		pairmove(&handler->request->reply->vps, &peap->accept_vps);
+		pairfree(&peap->accept_vps);
 
 		eaptls_gen_mppe_keys(&handler->request->reply->vps,
 				     tls_session->ssl,
