@@ -193,8 +193,9 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 	case EAPTLS_SUCCESS:
 		if (t->authenticated) {
 			if (t->reply) {
-				pairadd(&handler->request->reply->vps, t->reply);
-				t->reply = NULL;
+				pairmove(&handler->request->reply->vps,
+					 &t->reply);
+				pairfree(&t->reply);
 			}
 			eaptls_success(handler->eap_ds, 0);
 			eaptls_gen_mppe_keys(&handler->request->reply->vps,
