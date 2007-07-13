@@ -194,3 +194,16 @@ CREATE TABLE realms (
 	options		VARCHAR(128)
 );
 CREATE SEQUENCE realms_seq START WITH 1 INCREMENT BY 1;
+
+CREATE TABLE radippool (
+	id			INT PRIMARY KEY,
+	pool_name		VARCHAR(30) NOT NULL,
+	framedipaddress		VARCHAR(30) NOT NULL,
+	nasipaddress		VARCHAR(30) NOT NULL,
+	pool_key		INT NOT NULL,
+        CalledStationId		VARCHAR(64),
+        CallingStationId        VARCHAR(64) NOT NULL,
+	expiry_time		timestamp(0) NOT NULL,
+	username		VARCHAR(100)
+);
+
