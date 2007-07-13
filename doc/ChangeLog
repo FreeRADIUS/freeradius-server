@@ -16,6 +16,8 @@ FreeRADIUS 1.1.7 ; $Date$, urgency = medium
 	* Corrected documentation to point to correct location of files
 	* Checks for more recent FreeBSD versions
 	* use -DLDAP_DEPRECATED to avoid OpenLDAP crashes
+	* Use correct value for authentication name in rlm_mschap
+	* Fix over-ride for usernames when use_tunneled_reply = yes
 	
 FreeRADIUS 1.1.6 ; Date: 2007/04/12 12:54:19 , urgency = high
 	Feature improvements
