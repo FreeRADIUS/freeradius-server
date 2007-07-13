@@ -40,6 +40,7 @@ CREATE TABLE radacct (
   FramedIPAddress varchar(15) NOT NULL default '',
   AcctStartDelay int(12) default NULL,
   AcctStopDelay int(12) default NULL,
+  XAscendSessionSvrKey varchar(10) default NULL,
   PRIMARY KEY  (RadAcctId),
   KEY UserName (UserName),
   KEY FramedIPAddress (FramedIPAddress),

@@ -64,7 +64,8 @@ CREATE TABLE radacct (
 	framedprotocol		VARCHAR(32),
 	framedipaddress		VARCHAR(15),
 	acctstartdelay		NUMERIC(12),
-	acctstopdelay		NUMERIC(12)
+	acctstopdelay		NUMERIC(12),
+	XAscendSessionSvrKey	VARCHAR(10)
 );
 CREATE UNIQUE INDEX radacct_idx1
        ON radacct(acctsessionid,username,acctstarttime,

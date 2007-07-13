@@ -38,6 +38,7 @@ CREATE TABLE [radacct] (
 	[ServiceType] [varchar] (32) NULL ,
 	[FramedProtocol] [varchar] (32) NULL ,
 	[FramedIPAddress] [varchar] (15) NOT NULL ,
+	[XAscendSessionSvrKey] [varchar] (10) NOT NULL ,
 	[AcctStartDelay] [int] NULL ,
 	[AcctStopDelay] [int] NULL
 ) ON [PRIMARY]
