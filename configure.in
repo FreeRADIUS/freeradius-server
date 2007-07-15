@@ -236,6 +236,17 @@ AC_ARG_WITH(snmp,
   esac ]
 )
 
+dnl #
+dnl # extra argument: --with-snmp-include-dir
+dnl #
+AC_ARG_WITH(snmp-include-dir,
+[  --with-snmp-include-dir=DIR  Directory to look for include files used by SNMP],
+[ case "$withval" in
+    *)
+	;;
+  esac ]
+)
+
 dnl extra argument: --with-vmps
 WITH_VMPS=yes
 AC_ARG_WITH(vmps,
