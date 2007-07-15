@@ -238,6 +238,17 @@ AC_ARG_WITH(snmp,
   esac ]
 )
 
+dnl #
+dnl # extra argument: --with-snmp-include-dir
+dnl #
+AC_ARG_WITH(snmp-include-dir,
+[  --with-snmp-include-dir=DIR  Directory to look for include files used by SNMP],
+[ case "$withval" in
+    *)
+	;;
+  esac ]
+)
+
 dnl extra argument: --with-large-files
 rad_enable_largefiles=no
 AC_ARG_WITH(large-files,
