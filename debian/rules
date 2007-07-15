@@ -49,7 +49,6 @@ stamp-build: stamp-patch
 	# dh_testroot
 	./configure \
 		$(confflags) \
-		--config-cache \
 		--prefix=/usr \
 		--exec-prefix=/usr \
 		--mandir=$(mandir) \
