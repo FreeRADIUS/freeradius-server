@@ -60,6 +60,7 @@ ATTRIBUTE	EAP-Code				1021	integer
 # used only be radeapclient.  It's been replaced by Cleartext-Password
 ATTRIBUTE	PEAP-Version				1023	integer
 ATTRIBUTE	Client-Shortname			1024	string
+ATTRIBUTE	Load-Balance-Key			1025	string
 
 #
 #	Range:	1025-1028

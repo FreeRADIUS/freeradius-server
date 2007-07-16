@@ -544,6 +544,7 @@ static int server_pool_add(CONF_SECTION *cs, int server_type, int do_print)
 			{ "fail_over", HOME_POOL_FAIL_OVER },
 			{ "client-balance", HOME_POOL_CLIENT_BALANCE },
 			{ "client-port-balance", HOME_POOL_CLIENT_PORT_BALANCE },
+			{ "keyed-balance", HOME_POOL_KEYED_BALANCE },
 			{ NULL, 0 }
 		};
 
@@ -1162,6 +1163,7 @@ home_server *home_server_ldb(const char *realmname,
 	int		start;
 	int		count;
 	home_server	*found = NULL;
+	VALUE_PAIR	*vp;
 
 	start = 0;
 
@@ -1215,6 +1217,14 @@ home_server *home_server_ldb(const char *realmname,
 		start = hash % pool->num_home_servers;
 		break;
 
+	case HOME_POOL_KEYED_BALANCE:
+		if ((vp = pairfind(request->config_items, PW_LOAD_BALANCE_KEY)) != NULL) {
+			hash = lrad_hash(vp->vp_strvalue, vp->length);
+			start = hash % pool->num_home_servers;
+			break;
+		}
+		/* FALL-THROUGH */
+				
 	case HOME_POOL_LOAD_BALANCE:
 		found = pool->servers[0];
 
