@@ -20,7 +20,7 @@ Release:      0.%{distroversion}
 URL:          http://www.freeradius.org/
 Summary:      Very highly Configurable Radius-Server
 Conflicts:    freeradius-snapshot
-Source:      %{name}-%{version}.tar.gz
+Source:      %{name}-%{version}.tar.bz2
 
 %if 0%{?suse_version} > 800
 PreReq:       /usr/sbin/useradd /usr/sbin/groupadd
