@@ -29,7 +29,7 @@ PreReq:       perl
 %endif
 BuildRoot:    %{_tmppath}/%{name}-%{version}-build
 Autoreqprov:  off
-%define apxs2 apxs2-prefork
+%define apxs2 /usr/sbin/apxs2-prefork
 %define apache2_sysconfdir %(%{apxs2} -q SYSCONFDIR)
 Requires: python
 %if %{?suse_version:1}0
