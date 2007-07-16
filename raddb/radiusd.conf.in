@@ -1727,6 +1727,7 @@ $INCLUDE ${confdir}/eap.conf
 	}
 
 	# $INCLUDE  ${confdir}/sqlippool.conf
+	# $INCLUDE  ${confdir}/postgresqlippool.conf
 
 	# OTP token support.  Not included by default.
 	# $INCLUDE  ${confdir}/otp.conf
