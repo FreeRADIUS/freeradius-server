@@ -71,7 +71,7 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	PAIR_LIST **last = &pl;
 	int lineno = 0;
 	int old_lineno = 0;
-	LRAD_TOKEN parsecode, token;
+	LRAD_TOKEN parsecode;
 	char newfile[8192];
 
 	/*
@@ -129,21 +129,7 @@ parse_again:
 			}
 
 			ptr = buffer;
-			token = getword(&ptr, entry, sizeof(entry));
-
-			/*
-			 *	?
-			 */
-			if ((token != T_EOL) &&
-			    (token != T_BARE_WORD) &&
-			    (token != T_DOUBLE_QUOTED_STRING) &&
-			    (token != T_SINGLE_QUOTED_STRING)) {
-				radlog(L_ERR, "%s[%d]: Unexpected text at start of entry",
-				       file, lineno);
-				fclose(fp);
-				return -1;
-			}
-
+			getword(&ptr, entry, sizeof(entry));
 
 			/*
 			 *	Include another file if we see
