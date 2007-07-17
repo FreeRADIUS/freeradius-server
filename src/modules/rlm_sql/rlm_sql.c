@@ -138,7 +138,6 @@ static int rlm_sql_init(void) {
 /*
  *	Yucky prototype.
  */
-static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username);
 static int generate_sql_clients(SQL_INST *inst);
 static int sql_escape_func(char *out, int outlen, const char *in);
 
@@ -440,7 +439,7 @@ static int sql_escape_func(char *out, int outlen, const char *in)
  *	escape it twice. (it will make things wrong if we have an
  *	escape candidate character in the username)
  */
-static int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username)
+int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username)
 {
 	VALUE_PAIR *vp=NULL;
 	char tmpuser[MAX_STRING_LEN];

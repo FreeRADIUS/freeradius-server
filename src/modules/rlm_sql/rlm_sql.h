@@ -85,4 +85,5 @@ void    query_log(REQUEST *request, SQL_INST * inst, char *querystr);
 int	rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
 int	rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
 int	rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst);
+int	sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username);
 #endif
