@@ -314,6 +314,20 @@ AC_ARG_WITH(experimental-modules,
   esac ]
 )
 
+dnl extra argument: --with-openssl
+WITH_OPENSSL=yes
+AC_ARG_WITH(openssl,
+[  --with-openssl                   Use OpenSSL. (default=yes)],
+[ case "$withval" in
+    no)
+	WITH_OPENSSL=no
+	;;
+    *)
+	WITH_OPENSSL=yes
+	;;
+  esac ]
+)
+
 dnl #
 dnl # extra argument: --with-openssl-includes=dir
 dnl #
@@ -502,11 +516,12 @@ AC_CHECK_LIB(nsl, inet_ntoa)
 
 dnl Check for OpenSSL libraries.
 OPENSSL_LIBS=
-old_LIBS=$LIBS
-if test "x$OPENSSL_LIB_DIR" != "x"; then
+if test "x$WITH_OPENSSL" = xyes; then
+  old_LIBS=$LIBS
+  if test "x$OPENSSL_LIB_DIR" != "x"; then
     LIBS="-L$OPENSSL_LIB_DIR $LIBS"
-fi
-AC_CHECK_LIB(crypto, DH_new,
+  fi
+  AC_CHECK_LIB(crypto, DH_new,
     [
 	AC_DEFINE(HAVE_LIBCRYPTO, 1,
 	    [Define to 1 if you have the `crypto' library (-lcrypto).])
@@ -520,7 +535,8 @@ AC_CHECK_LIB(crypto, DH_new,
 		OPENSSL_LIBS="$OPENSSL_LIBS -lcrypto -lssl -lcrypto"
 	    ], [])
     ], [])
-LIBS=$old_LIBS
+  LIBS=$old_LIBS
+fi
 
 AC_CHECK_LIB(ws2_32, htonl)
 
@@ -630,9 +646,10 @@ fi
 
 dnl Check for OpenSSL includes.
 OPENSSL_INCLUDE="-DNO_OPENSSL"
-if test "x$OPENSSL_LIBS" = "x"; then
+if test "x$WITH_OPENSSL" = xyes; then
+  if test "x$OPENSSL_LIBS" = "x"; then
     AC_MSG_NOTICE([skipping test for openssl/ssl.h])
-else
+  else
     old_CPPFLAGS=$CPPFLAGS
     if test "x$OPENSSL_INCLUDE_DIR" != "x"; then
 	CPPFLAGS="$CPPFLAGS -I$OPENSSL_INCLUDE_DIR"
@@ -668,6 +685,7 @@ else
 	fi
     fi
     CPPFLAGS=$old_CPPFLAGS
+  fi
 fi
 AC_SUBST(OPENSSL_INCLUDE)
 AC_SUBST(OPENSSL_LIBS)
