@@ -283,6 +283,12 @@ static int sqlippool_command(const char * fmt, SQLSOCK * sqlsocket, void * insta
 	 * Do an xlat on the provided string
 	 */
 	if (request) {
+		char sqlusername[MAX_STRING_LEN];
+
+		if(sql_set_user(data->sql_inst, request, sqlusername, NULL) < 0) {
+			return RLM_MODULE_FAIL;
+		}
+
 		if (!radius_xlat(query, sizeof(query), expansion, request, NULL)) {
 			radlog(L_ERR, "sqlippool_command: xlat failed on: '%s'", query);
 			return 0;
