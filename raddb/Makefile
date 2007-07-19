@@ -63,7 +63,7 @@ install:
 	fi
 	if [ ! -d $(R)$(raddbdir)/sql ]; then \
 		mkdir $(R)$(raddbdir)/sql; \
-		cp sql/*conf $(R)$(raddbdir)/sql 2>/dev/null || true; \
+		cp -R sql/* $(R)$(raddbdir)/sql 2>/dev/null || true; \
 	fi
 	if [ ! -f $(R)$(raddbdir)/sites-enabled/default ]; then \
 		cd $(R)$(raddbdir)/sites-enabled/; \

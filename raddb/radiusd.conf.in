@@ -1452,8 +1452,8 @@ $INCLUDE ${confdir}/eap.conf
 	#  totally dependent on the SQL module to process Accounting
 	#  packets.
 	#
-	$INCLUDE  ${confdir}/sql/mysql-sqlcounter.conf
-	#$INCLUDE  ${confdir}/sql/postgresql-sqlcounter.conf
+	$INCLUDE  ${confdir}/sql/mysql/counter.conf
+	#$INCLUDE  ${confdir}/sql/postgresql/counter.conf
 
 	#
 	# The "always" module is here for debugging purposes. Each
