@@ -8,19 +8,6 @@
  */
 
 /*
- * Table structure for table 'dictionary'
- */
-CREATE TABLE dictionary (
-	id		INT PRIMARY KEY,
-	type		VARCHAR(30),
-	attribute	VARCHAR(32),
-	value		VARCHAR(32),
-	format		VARCHAR(20),
-	vendor		VARCHAR(32)
-);
-CREATE SEQUENCE dictionary_seq START WITH 1 INCREMENT BY 1;
-
-/*
  * Table structure for table 'nas'
  */
 

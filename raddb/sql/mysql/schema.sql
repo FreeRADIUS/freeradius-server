@@ -132,25 +132,6 @@ CREATE TABLE radpostauth (
   PRIMARY KEY  (id)
 ) ;
 
-######################################################################
-#
-#  The next table is commented out because it is not
-#  currently used in the server.
-#
-
-#
-# Table structure for table 'dictionary'
-#
-#CREATE TABLE dictionary (
-#  id int(10) DEFAULT '0' NOT NULL auto_increment,
-#  Type varchar(30),
-#  Attribute varchar(64),
-#  Value varchar(64),
-#  Format varchar(20),
-#  Vendor varchar(32),
-#  PRIMARY KEY (id)
-#);
-
 #
 # Table structure for table 'nas'
 #

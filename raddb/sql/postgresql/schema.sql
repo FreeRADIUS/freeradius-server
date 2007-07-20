@@ -194,19 +194,6 @@ CREATE TABLE radpostauth (
 	authdate		TIMESTAMP with time zone NOT NULL default 'now'
 );
 
---
--- Table structure for table 'dictionary'
--- This is not currently used by FreeRADIUS
---
--- CREATE TABLE dictionary (
---     id              SERIAL PRIMARY KEY,
---     Type            VARCHAR(30),
---     Attribute       VARCHAR(64),
---     Value           VARCHAR(64),
---     Format          VARCHAR(20),
---     Vendor          VARCHAR(32)
--- );
-
 /*
  * Note: (pnixon: 2003-12-10) The following function should not be required
  * if you use the PG specific queries in raddb/postgresql.conf
