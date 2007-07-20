@@ -455,8 +455,23 @@ skip_next_result:
  *************************************************************************/
 static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
+#if (MYSQL_VERSION_ID >= 40100)
+	int status;
+	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
+#endif
 	sql_free_result(sqlsocket, config);
-
+#if (MYSQL_VERSION_ID >= 40100)
+	status = mysql_next_result(mysql_sock->sock);
+	if (status == 0) {
+		/* there are more results */
+		sql_finish_query(sqlsocket, config);
+	}  else if (status > 0) {
+		radlog(L_ERR, "rlm_sql_mysql: Cannot get next result");
+		radlog(L_ERR, "rlm_sql_mysql: MySQL error '%s'",
+		       mysql_error(mysql_sock->sock));
+		return sql_check_error(status);
+	}
+#endif
 	return 0;
 }
 
