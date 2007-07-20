@@ -1264,7 +1264,7 @@ $INCLUDE ${confdir}/eap.conf
 
 
 	#  For Cisco VoIP specific accounting with Postgresql,
-	#  use:		${confdir}/sql/postgresql-voip-postpaid.conf
+	#  use:		${confdir}/sql/postgresql/voip-postpaid.conf
 	#
 	#  You will also need the sql schema from:
 	#  	 src/billing/cisco_h323_db_schema-postgres.sql
