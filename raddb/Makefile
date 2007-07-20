@@ -63,6 +63,9 @@ install:
 	fi
 	if [ ! -d $(R)$(raddbdir)/sql ]; then \
 		mkdir $(R)$(raddbdir)/sql; \
+		for db in mysql mssql oracle postgresql; do \
+			$(INSTALL) -d -m 750 $(R)$(raddbdir)/sql/$$db; \
+		done; \
 		cp -R sql/* $(R)$(raddbdir)/sql 2>/dev/null || true; \
 	fi
 	if [ ! -f $(R)$(raddbdir)/sites-enabled/default ]; then \
