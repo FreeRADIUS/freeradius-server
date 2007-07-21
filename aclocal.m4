@@ -616,3 +616,13 @@ $1
     eval "ac_cv_type_${ac_safe_type}_has_$3="
  fi
 ])
+
+dnl Autoconf 2.61 breaks the support for chained configure scripts
+dnl in combination with config.cache
+m4_pushdef([AC_OUTPUT],
+[
+  unset ac_cv_env_LIBS_set
+  unset ac_cv_env_LIBS_value
+  m4_popdef([AC_OUTPUT])
+  AC_OUTPUT([$1],[$2],[$3])
+])
