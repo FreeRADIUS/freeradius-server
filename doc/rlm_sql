@@ -81,13 +81,6 @@
   joeuser      WLANgroup    1(this is the priority)
   joeuser      PPPgroup     2
 
-  A web page with some helpful documentation is:
-
-	http://www.frontios.com/freeradius.html
-
-  NOTE: this page may be slightly out of date when dealing with the database
-        schema
-
 
 2. What NOT to do.
 
