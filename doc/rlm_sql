@@ -57,13 +57,6 @@
      Profile option is set in the sql.conf, then steps 4-6 are repeated for
      the groups that the profile is a member of.
 
-  A web page with some helpful documentation is:
-
-	http://www.frontios.com/freeradius.html
-
-  NOTE: this page may be slightly out of date when dealing with the database
-        schema
-
 
 2. What NOT to do.
 
