@@ -14,8 +14,6 @@ CREATE TABLE radippool (
 	username		text DEFAULT ''::text
 );
 
-CREATE INDEX radippool_poolname_ipaadr ON radippool USING btree (pool_name, framedipaddress);
 CREATE INDEX radippool_poolname_expire ON radippool USING btree (pool_name, expiry_time);
-CREATE INDEX radippool_nasipaddr_poolkey ON radippool USING btree (nasipaddress, pool_key);
-CREATE INDEX radippool_nasipaddr_calling ON radippool USING btree (nasipaddress, callingstationid);
-
+CREATE INDEX radippool_framedipaddress ON radippool USING btree (framedipaddress);
+CREATE INDEX radippool_nasip_poolkey_ipaddress ON radippool USING btree (nasipaddress, pool_key, framedipaddress);
