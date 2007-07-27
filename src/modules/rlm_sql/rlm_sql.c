@@ -51,6 +51,8 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,sql_password), NULL, ""},
 	{"radius_db", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,sql_db), NULL, "radius"},
+	{"read_groups", PW_TYPE_BOOLEAN,
+	 offsetof(SQL_CONFIG,read_groups), NULL, "yes"},
 	{"sqltrace", PW_TYPE_BOOLEAN,
 	 offsetof(SQL_CONFIG,sqltrace), NULL, "no"},
 	{"sqltracefile", PW_TYPE_STRING_PTR,
