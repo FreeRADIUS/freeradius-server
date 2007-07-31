@@ -385,7 +385,8 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		/*
 		 *	End of condition, 
 		 */
-		if (!*q || (*q == ')') || ((*q == '!') && (q[1] != '=')) ||
+		if (!*q || (*q == ')') ||
+		    ((*q == '!') && (q[1] != '=') && (q[1] != '~')) ||
 		    ((q[0] == '&') && (q[1] == '&')) ||
 		    ((q[0] == '|') && (q[1] == '|'))) {
 			/*
@@ -648,7 +649,8 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		/*
 		 *	Closing brace or EOL, return.
 		 */
-		if (!*p || (*p == ')') || ((*p == '!') && (p[1] != '=')) ||
+		if (!*p || (*p == ')') ||
+		    ((*p == '!') && (p[1] != '=') && (p[1] != '~')) ||
 		    ((p[0] == '&') && (p[1] == '&')) ||
 		    ((p[0] == '|') && (p[1] == '|'))) {
 			DEBUG4(">>> AT EOL2a");
@@ -1036,5 +1038,3 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 
 	return RLM_MODULE_UPDATED;
 }
-
-
