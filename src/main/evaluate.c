@@ -905,6 +905,15 @@ static void my_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		
 		DEBUG4("::: to[%d] = %s", i, to_list[i]->name);
 
+		/*
+		 *	Mash the operator to a simple '='.  The
+		 *	operators in the "to" list aren't used for
+		 *	anything.  BUT they're used in the "detail"
+		 *	file and debug output, where we don't want to
+		 *	see the operators.
+		 */
+		to_list[j]->operator = T_OP_EQ;
+
 		*last = to_list[i];
 		last = &(*last)->next;
 
