@@ -756,6 +756,16 @@ int thread_pool_init(int spawn_flag)
 	}
 
 	/*
+	 *	Catch corner cases.
+	 */
+	if (thread_pool.min_spare_threads < 1)
+		thread_pool.min_spare_threads = 1;
+	if (thread_pool.max_spare_threads < 1)
+		thread_pool.max_spare_threads = 1;
+	if (thread_pool.max_spare_threads < thread_pool.min_spare_threads)
+		thread_pool.max_spare_threads = thread_pool.min_spare_threads;
+
+	/*
 	 *	The pool has already been initialized.  Don't spawn
 	 *	new threads, and don't forget about forked children,
 	 */
