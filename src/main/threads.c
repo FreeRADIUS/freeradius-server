@@ -520,6 +520,7 @@ static void *request_handler_thread(void *arg)
 	/*
 	 *  Do this as the LAST thing before exiting.
 	 */
+	self->request = NULL;
 	self->status = THREAD_EXITED;
 
 	return NULL;
