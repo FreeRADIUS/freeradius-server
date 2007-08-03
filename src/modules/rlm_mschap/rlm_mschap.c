@@ -55,7 +55,7 @@ RCSID("$Id$")
 #include	"smbdes.h"
 
 #ifdef __APPLE__
-extern int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair)
+extern int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair);
 #endif
 
 /* Allowable account control bits */
