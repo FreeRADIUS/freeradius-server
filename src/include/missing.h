@@ -82,6 +82,11 @@ RCSIDH(missing_h, "$Id$")
 #endif
 #endif
 
+#ifdef __APPLE__
+#undef DARWIN
+#define DARWIN (1)
+#endif
+
 /*
  *	Functions from missing.c
  */
