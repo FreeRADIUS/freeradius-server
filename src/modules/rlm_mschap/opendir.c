@@ -210,7 +210,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 	if (username_string == NULL)
 		return RLM_MODULE_FAIL;
 	
-	strlcpy(username_string, (char *)usernamepair->strvalue, usernamepair->length + 1);
+	strlcpy(username_string, (char *)usernamepair->vp_strvalue, usernamepair->length + 1);
 	
 	status = dsOpenDirService(&dsRef);
 	if (status != eDSNoErr) {
@@ -244,9 +244,9 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 							4, "User");									// must match the username that was used for the hash
 		
 		inName		= 	username_string
-		schal		=   challenge->strvalue
-		peerchal	=   response->strvalue + 2 (16 octets)
-		p24			=   response->strvalue + 26 (24 octets)
+		schal		=   challenge->vp_strvalue
+		peerchal	=   response->vp_strvalue + 2 (16 octets)
+		p24			=   response->vp_strvalue + 26 (24 octets)
 	*/
 
 	pStepBuff = dsDataBufferAllocate(dsRef, 4096);
@@ -266,7 +266,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 	int t;
 	DEBUG2("	rlm_mschap: stepbuf server challenge:\t");
 	for (t = 0; t < challenge->length; t++) {
-		fprintf(stderr, "%02x", challenge->strvalue[t]);
+		fprintf(stderr, "%02x", challenge->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
 	fflush(stderr);
@@ -276,13 +276,13 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 	uiLen = 16;
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
 	uiCurr += sizeof(size_t);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(challenge->strvalue[0]), uiLen);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(challenge->vp_strvalue[0]), uiLen);
 	uiCurr += uiLen;
 	
 #ifndef NDEBUG
 	DEBUG2("	rlm_mschap: stepbuf peer challenge:\t\t");
 	for (t = 2; t < 18; t++) {
-		fprintf(stderr, "%02x", response->strvalue[t]);
+		fprintf(stderr, "%02x", response->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
 	fflush(stderr);
@@ -292,23 +292,23 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 	uiLen = 16;
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
 	uiCurr += sizeof(size_t);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->strvalue[2]), uiLen);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[2]), uiLen);
 	uiCurr += uiLen;	
 	
 #ifndef NDEBUG
 	DEBUG2("	rlm_mschap stepbuf p24:\t\t");
 	for (t = 26; t < 50; t++) {
-		fprintf(stderr, "%02x", response->strvalue[t]);
+		fprintf(stderr, "%02x", response->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
 	fflush(stderr);
 #endif
 	
 	// p24 (ie. second part of client-generated response)
-	uiLen =  24; //strlen(&(response->strvalue[26])); may contain NULL byte in the middle.
+	uiLen =  24; //strlen(&(response->vp_strvalue[26])); may contain NULL byte in the middle.
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
 	uiCurr += sizeof(size_t);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->strvalue[26]) , uiLen);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[26]) , uiLen);
 	uiCurr += uiLen;
 	
 	// Client generated use name (short name?)
@@ -336,7 +336,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 				mschap_reply[0] = 'S';
 				mschap_reply[1] = '=';
 				memcpy(&(mschap_reply[2]), &(pStepBuff->fBufferData[4]), len);
-				add_reply(&request->reply->vps, *response->strvalue,
+				add_reply(&request->reply->vps, *response->vp_strvalue,
 					"MS-CHAP2-Success", mschap_reply, len+2);
 				DEBUG2("rlm_mschap: dsDoDirNodeAuth returns stepbuff: %s (len=%ld)\n", mschap_reply, len);
 			}
