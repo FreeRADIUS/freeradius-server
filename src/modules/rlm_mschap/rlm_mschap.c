@@ -54,6 +54,10 @@ RCSID("$Id$")
 
 #include	"smbdes.h"
 
+#ifdef __APPLE__
+extern int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair)
+#endif
+
 /* Allowable account control bits */
 #define ACB_DISABLED   0x0001  /* 1 = User account disabled */
 #define ACB_HOMDIRREQ  0x0002  /* 1 = Home directory required */
@@ -259,6 +263,9 @@ typedef struct rlm_mschap_t {
 	char *xlat_name;
 	char *ntlm_auth;
 	char *auth_type;
+#if __APPLE__
+	int  open_directory;
+#endif  
 } rlm_mschap_t;
 
 
@@ -605,6 +612,10 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_mschap_t, passwd_file), NULL,  NULL },
 	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, ntlm_auth), NULL,  NULL },
+#ifdef __APPLE__
+	{ "use_open_directory",    PW_TYPE_BOOLEAN,
+	  offsetof(rlm_mschap_t,open_directory), NULL, "yes" },
+#endif
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -1227,6 +1238,16 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		        username_string = username->vp_strvalue;
 		}
 
+#if __APPLE__
+		/*
+		 *	No "known good" NT-Password attribute.  Try to do
+		 *	OpenDirectory authentication.
+		 */
+		if (!nt_password && inst->open_directory) {
+			DEBUG2("  rlm_mschap: No NT-Password configured. Trying DirectoryService Authentication.");
+			return od_mschap_auth(request, challenge, username);
+		}
+#endif
 		/*
 		 *	The old "mschapv2" function has been moved to
 		 *	here.

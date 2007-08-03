@@ -5,7 +5,7 @@
 #
 
 TARGET		= rlm_mschap
-SRCS		= rlm_mschap.c smbdes.c
+SRCS		= rlm_mschap.c smbdes.c opendir.c
 HEADERS		=
 RLM_CFLAGS	=
 RLM_LDFLAGS	=
