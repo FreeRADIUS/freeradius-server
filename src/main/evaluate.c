@@ -912,7 +912,7 @@ static void my_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		 *	file and debug output, where we don't want to
 		 *	see the operators.
 		 */
-		to_list[j]->operator = T_OP_EQ;
+		to_list[i]->operator = T_OP_EQ;
 
 		*last = to_list[i];
 		last = &(*last)->next;
