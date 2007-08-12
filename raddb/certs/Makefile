@@ -70,6 +70,10 @@ server.p12: server.crt
 server.pem: server.p12
 	openssl pkcs12 -in server.p12 -out server.pem -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_SERVER)
 
+.PHONY: server.vrfy
+server.vrfy: ca.pem
+	openssl verify -CAfile ca.pem server.pem
+
 ######################################################################
 #
 #  Create a new client certificate, signed by the the above server
@@ -88,6 +92,11 @@ client.p12: client.crt
 client.pem: client.p12
 	openssl pkcs12 -in client.p12 -out client.pem -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_CLIENT)
 	cp client.pem $(USER_NAME).pem
+
+.PHONY: server.vrfy
+client.vrfy: server.pem client.pem 
+	c_rehash .
+	openssl verify -CApath . client.pem
 
 ######################################################################
 #
@@ -121,5 +130,5 @@ clean:
 distclean:
 	@if [ -d CVS -a `grep -i 'cvs\.freeradius\.org' CVS/Root` ] ; then \
 		rm -f *~ dh *.csr *.crt *.p12 *.der *.pem *.key index.txt* \
-			serial* random; \
+			serial* random *\.0 *\.1; \
 	fi
