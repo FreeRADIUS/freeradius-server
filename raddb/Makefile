@@ -62,11 +62,14 @@ install:
 		done; \
 	fi
 	if [ ! -d $(R)$(raddbdir)/sql ]; then \
-		mkdir $(R)$(raddbdir)/sql; \
-		for db in mysql mssql oracle postgresql; do \
-			$(INSTALL) -d -m 750 $(R)$(raddbdir)/sql/$$db; \
-		done; \
-		cp -R sql/* $(R)$(raddbdir)/sql 2>/dev/null || true; \
+		find sql -name CVS -prune -o -print | \
+		  while read file; do \
+		    if [ -d "$$file" ]; then \
+		      $(INSTALL) -d -m 750 "$(R)$(raddbdir)/$$file"; \
+		    else \
+		      $(INSTALL) -m 640 "$$file" "$(R)$(raddbdir)/$$file"; \
+		    fi; \
+		  done; \
 	fi
 	if [ ! -f $(R)$(raddbdir)/sites-enabled/default ]; then \
 		cd $(R)$(raddbdir)/sites-enabled/; \
