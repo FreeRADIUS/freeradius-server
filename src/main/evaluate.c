@@ -539,33 +539,26 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 				regfree(&reg);
 				
 				/*
-				 *	Add %{0}, %{1}, etc.
+				 *	Free old %{0}, etc.
+				 */
+				for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
+					free(request_data_get(request, request,
+							      REQUEST_DATA_REGEX | i));
+				}
+
+				/*
+				 *	Add new %{0}, %{1}, etc.
 				 */
 				for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
 					char *r;
 					char buffer[1024];
 					
 					/*
-					 *	Didn't match: delete old
-					 *	match, if it existed.
+					 *	No %{i}, skip it.
+					 *	We MAY have %{2} without %{1}.
 					 */
-					if ((compare != 0) ||
-					    (rxmatch[i].rm_so == -1)) {
-						r = request_data_get(request,
-								     request,
-								     REQUEST_DATA_REGEX | i);
-						if (r) {
-							free(r);
-							continue;
-						}
-						
-						/*
-						 *	No previous match
-						 *	to delete, stop.
-						 */
-						break;
-					}
-					
+					if (rxmatch[i].rm_so == -1) continue;
+
 					/*
 					 *	Copy substring into buffer.
 					 */
