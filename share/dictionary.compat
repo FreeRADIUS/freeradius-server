@@ -37,14 +37,3 @@ VALUE	Service-Type			Framed			2
 VALUE	Service-Type			Callback-Login		3
 VALUE	Service-Type			Callback-Framed		4
 VALUE	Service-Type			Exec-User		7
-
-#
-#	For compatibility with ESVA RADIUS, Old Cistron RADIUS
-#
-ATTRIBUTE	Session					1034	integer
-ATTRIBUTE	User-Name-Is-Star			1035	integer
-VALUE	User-Name-Is-Star		No			0
-VALUE	User-Name-Is-Star		Yes			1
-VALUE	Auth-Type			None			254
-ATTRIBUTE	PostAuth-Type				1014	integer
-VALUE	PostAuth-Type			Local			0

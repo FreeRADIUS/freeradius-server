@@ -320,8 +320,8 @@ VALUE	Post-Auth-Type			Local			0
 VALUE	Fall-Through			No			0
 VALUE	Fall-Through			Yes			1
 
-#VALUE		Strip-User-Name		No			0
-#VALUE		Strip-User-Name		Yes			1
+VALUE		Strip-User-Name		No			0
+VALUE		Strip-User-Name		Yes			1
 
 VALUE	Packet-Type			Access-Request		1
 VALUE	Packet-Type			Access-Accept		2
