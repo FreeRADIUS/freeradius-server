@@ -416,7 +416,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 			 *	to not find it, then we succeeded.
 			 */
 			if (check_item->operator == T_OP_CMP_FALSE)
-				return 0;
+				continue;
 			else
 				return -1;
 		}
