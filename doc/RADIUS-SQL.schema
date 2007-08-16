@@ -11,16 +11,13 @@ RADIUS-SQL.schema
  
   There isn't a generic SQL schema, but there is one for some databases:
 
-    doc/examples/mysql.sql
-    doc/examples/postgresql.sql
-    doc/examples/mssql.sql
-    doc/examples/oracle.sql
+    raddb/sql/mysql/schema.sql
+    raddb/sql/postgresql/schema.sql
+    raddb/sql/oracle/schema.sql
+    raddb/sql/mssql/schema.sql
 
 2.MYSQL
 
-  For further information, this web page seems to be good:
-
-    http://www.frontios.com/freeradius.html
 
   More information about tips for configuring MySQL can be found at:
 
