@@ -153,7 +153,16 @@ static int getUserNodeRef(char* inUserName, char** outUserName, tDirNodeReferenc
 		}
 		
 		pUserNode = dsBuildFromPath(dsRef, pUserLocation, "/");
+		if (pUserNode == NULL) {
+			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsBuildFromPath() returned NULL");  
+			result = RLM_MODULE_FAIL;
+			break;
+		}
+		
 		status = dsOpenDirNode(dsRef, pUserNode, userNodeRef);
+		dsDataListDeallocate(dsRef, pUserNode);
+		free(pUserNode);
+
 		if (status != eDSNoErr) {
 			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);  
 			result = RLM_MODULE_FAIL;
@@ -336,8 +345,10 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 				mschap_reply[0] = 'S';
 				mschap_reply[1] = '=';
 				memcpy(&(mschap_reply[2]), &(pStepBuff->fBufferData[4]), len);
-				add_reply(&request->reply->vps, *response->vp_strvalue,
-					"MS-CHAP2-Success", mschap_reply, len+2);
+				add_reply(&request->reply->vps,
+					  *response->vp_strvalue,
+					  "MS-CHAP2-Success",
+					  mschap_reply, len+2);
 				DEBUG2("rlm_mschap: dsDoDirNodeAuth returns stepbuff: %s (len=%ld)\n", mschap_reply, len);
 			}
 		}
