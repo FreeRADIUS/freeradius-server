@@ -1564,7 +1564,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 								 * The authorize method of no other LDAP module instance has
 								 * processed this request.
 								 */
-								vp_inset = radius_paircreate(request, &request->config_items, inst_attr, PW_TYPE_STRING);
+								vp_inst = radius_paircreate(request, &request->config_items, inst_attr, PW_TYPE_STRING);
 								strlcpy(vp_inst->vp_strvalue, inst->xlat_name, sizeof(vp_inst->vp_strvalue));
 								vp_inst->length = strlen(vp_inst->vp_strvalue);
 
@@ -1616,7 +1616,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					ldap_msgfree(result);
 					ldap_release_conn(conn_id, inst->conns);
 				}
-				strcpy(vp_auth_opt->strvalue, auth_option[0]);
+				strcpy(vp_auth_opt->vp_strvalue, auth_option[0]);
 				vp_auth_opt->length = strlen(auth_option[0]);
 				pairadd(&request->config_items, vp_auth_opt);
 			}else{
@@ -1852,8 +1852,8 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 
 		if(vp_auth_opt )
 		{
-			DEBUG("rlm_ldap: ldap auth option = %s", vp_auth_opt->strvalue);
-			strncpy(seq, vp_auth_opt->strvalue, vp_auth_opt->length);
+			DEBUG("rlm_ldap: ldap auth option = %s", vp_auth_opt->vp_strvalue);
+			strncpy(seq, vp_auth_opt->vp_strvalue, vp_auth_opt->length);
 			seq[vp_auth_opt->length] = '\0';
 			if( strcmp(seq, "<No Default>") ){
 
@@ -1869,7 +1869,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 				/*  If state attribute present in request it is a reply to challenge. */
 				if((vp_state = pairfind(request->packet->vps, PW_STATE))!= NULL ){
 					DEBUG("rlm_ldap: Response to Access-Challenge");
-					strncpy(challenge, vp_state->strvalue, sizeof(challenge));
+					strncpy(challenge, vp_state->vp_strvalue, sizeof(challenge));
 					challenge_len = vp_state->length;
 					challenge[challenge_len] = 0;
 					auth_state = -2;
@@ -1909,7 +1909,7 @@ retry:
 				}
 				DEBUG("rlm_ldap: Performing NMAS Authentication for user: %s, seq: %s \n", user_dn,seq);
 
-				res = radLdapXtnNMASAuth(conn1->ld, user_dn, request->password->strvalue, seq, host_ipaddr, &challenge_len, challenge, &auth_state );
+				res = radLdapXtnNMASAuth(conn1->ld, user_dn, request->password->vp_strvalue, seq, host_ipaddr, &challenge_len, challenge, &auth_state );
 
 				switch(res){
 					case LDAP_SUCCESS:
@@ -1918,10 +1918,10 @@ retry:
 							res = RLM_MODULE_FAIL;
 						if ( auth_state != REQUEST_CHALLENGED){
 							if (auth_state == REQUEST_ACCEPTED){
-								DEBUG("rlm_ldap: user %s authenticated succesfully",request->username->strvalue);
+								DEBUG("rlm_ldap: user %s authenticated succesfully",request->username->vp_strvalue);
 								res = RLM_MODULE_OK;
 							}else if(auth_state == REQUEST_REJECTED){
-								DEBUG("rlm_ldap: user %s authentication failed",request->username->strvalue);
+								DEBUG("rlm_ldap: user %s authentication failed",request->username->vp_strvalue);
 								res = RLM_MODULE_REJECT;
 							}
 						}else{
@@ -1931,7 +1931,7 @@ retry:
 							state = rad_malloc(MAX_CHALLENGE_LEN);
 							(void) sprintf(state, "%s%s", challenge, challenge);
 							vp_state = paircreate(PW_STATE, PW_TYPE_OCTETS);
-							memcpy(vp_state->strvalue, state, strlen(state));
+							memcpy(vp_state->vp_strvalue, state, strlen(state));
 							vp_state->length = strlen(state);
 							pairadd(&request->reply->vps, vp_state);
 							free(state);
@@ -1963,7 +1963,7 @@ retry:
 		}
  	}
 
-	ld_user = ldap_connect(instance, user_dn, request->password->strvalue,
+	ld_user = ldap_connect(instance, user_dn, request->password->vp_strvalue,
 			1, &res, &err);
 
 	if(err != NULL){
