@@ -103,6 +103,7 @@ $INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.colubris
 $INCLUDE dictionary.cosine
+$INCLUDE dictionary.dhcp
 $INCLUDE dictionary.digium
 $INCLUDE dictionary.epygi
 $INCLUDE dictionary.erx
@@ -128,6 +129,8 @@ $INCLUDE dictionary.navini
 $INCLUDE dictionary.netscreen
 $INCLUDE dictionary.nexans
 $INCLUDE dictionary.ntua
+$INCLUDE dictionary.nokia
+#$INCLUDE dictionary.nokia.conflict
 $INCLUDE dictionary.nomadix
 $INCLUDE dictionary.nortel
 $INCLUDE dictionary.packeteer
