@@ -33,7 +33,7 @@ case "$1" in
 		if [ $? -eq 0 ]; then
 			echo "$PROG."
 		else
-			echo "(failed!  run '$PROGRAM -x' to find out why.)"
+			echo "(failed!  run '$PROGRAM -X' to find out why.)"
 			exit 1
 		fi
 		;;
