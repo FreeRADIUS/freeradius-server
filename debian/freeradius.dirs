@@ -18,5 +18,6 @@ usr/sbin
 var/
 var/log
 var/log/freeradius
+var/log/freeradius/radacct
 var/run
 var/run/freeradius
