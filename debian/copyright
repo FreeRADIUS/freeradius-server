@@ -5,7 +5,7 @@ Sun,  4 May 2003 03:51:20 +1000
 
 It was downloaded from http://www.freeradius.org/
 
-Copyright (C) 2000-2003 The FreeRADIUS Server Project
+Copyright (C) 2000-2007 The FreeRADIUS Server Project
 Copyright (C) 1997-1999 Cistron Internet Services B.V.
 
 --
@@ -18,7 +18,7 @@ Foundation; either version 2 of the License, or (at your option) any later
 version.
 
 On Debian systems, the complete text of the GNU General Public License can be
-found in /usr/share/common-licenses/GPL file.
+found in /usr/share/common-licenses/GPL-2 file.
 
 --
 /usr/lib/freeradius/libradius* is under the GNU LGPL version 2.
@@ -39,10 +39,4 @@ modules cannot be enabled as they directly depend on OpenSSL:
 rlm_eap_peap
 rlm_eap_tls
 rlm_eap_ttls
-rlm_x99_token
-
-Also, the FreeRADIUS core's SNMP support and the rlm_sql_postgresql
-module transitively depend on OpenSSL via libsnmp{4.2,5} and libpq3
-so they cannot be enabled currently, but this is subject to changes
-in the relevant packages within Debian, or having usable alternate
-libraries in Debian.
+rlm_otp
