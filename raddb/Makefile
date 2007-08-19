@@ -9,13 +9,12 @@ include ../Make.inc
 #
 #  The list of files to install.
 #
-FILES = acct_users attrs attrs.access_reject attrs.accounting_response \
-	attrs.pre-proxy clients.conf dictionary	\
-	eap.conf experimental.conf hints huntgroups ldap.attrmap	\
-	 naspasswd otp.conf 	\
-	preproxy_users proxy.conf radiusd.conf radrelay.conf		\
-	realms snmp.conf sql.conf sqlippool.conf users vmpsd.conf \
-	sites-available/default	sites-available/example
+FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
+	attrs.pre-proxy clients.conf dictionary eap.conf		\
+	experimental.conf hints huntgroups ldap.attrmap otp.conf	\
+	policy.txt preproxy_users proxy.conf radiusd.conf		\
+	radrelay.conf snmp.conf sql.conf sqlippool.conf users		\
+	vmpsd.conf sites-available/default sites-available/example
 
 #
 #	This target is here for local debugging
@@ -53,7 +52,7 @@ install:
 		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
 		echo "** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING ** WARNING **";\
 	fi
-	chmod 640 $(R)$(raddbdir)/naspasswd $(R)$(raddbdir)/clients.conf
+	chmod 640 $(R)$(raddbdir)/clients.conf
 	if [ ! -d $(R)$(raddbdir)/certs ]; then \
 		$(INSTALL) -d -m 750	$(R)$(raddbdir)/certs; \
 		$(INSTALL) -m 750 certs/bootstrap $(R)$(raddbdir)/certs; \
