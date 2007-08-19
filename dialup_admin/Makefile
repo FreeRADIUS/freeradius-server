@@ -26,7 +26,7 @@ install:
 	    if [ -d "$$file" ]; then \
 	      install -d -m 0755 "$(R)/$(DIALUP_PREFIX)/$$file"; \
 	    else \
-	      install -m 0644 $$file "$(R)/$(DIALUP_PREFIX)/$$file"; \
+	      install -m 0644 "$$file" "$(R)/$(DIALUP_PREFIX)/$$file"; \
 	    fi; \
 	  done
 	sed -e 's#/usr/local/dialup_admin#$(DIALUP_PREFIX)#' \
@@ -38,7 +38,7 @@ install:
 	    conf/admin.conf > $(R)/$(DIALUP_CONFDIR)/admin.conf
 	sed -e 's#../../README#$(DIALUP_DOCDIR)/README#' \
 	    htdocs/help/help.php3 > $(R)/$(DIALUP_PREFIX)/htdocs/help/help.php3
-	for binfile in monthly_tot_stats snmpfinger truncate_radacct clean_radacct log_badlogins showmodem tot_stats; do \
+	for binfile in backup_radacct clean_radacct clearsession log_badlogins monthly_tot_stats showmodem snmpfinger sqlrelay_query tot_stats truncate_radacct; do \
 	  sed -e 's#/usr/local/bin/#${bindir}#' \
 	      -e 's#/usr/local/dialup_admin/conf/#$(DIALUP_CONFDIR)/#' \
 	      bin/$$binfile > $(R)/$(DIALUP_PREFIX)/bin/$$binfile ; \
