@@ -49,6 +49,13 @@ new_install()
 	# user. At any rate, only do it on fresh install.
 	chmod 2751 /etc/freeradius
 	chmod 0644 /etc/freeradius/dictionary
+
+	# Create default certificates to enable the EAP modules (tls, ttls,
+	# and peap) when the server starts for the first time.
+	# Comment the last line when building a package without OpenSSL for
+	# the Debian archive.
+	chmod 0750 /etc/freeradius/certs/bootstrap
+	/etc/freeradius/certs/bootstrap
 }
 
 case "$1" in
