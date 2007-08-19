@@ -14,3 +14,13 @@ it is incorrect, or not writeable by user freerad or group freerad, then
 FreeRADIUS will fail to start. The initscript supplied expects this to
 be /var/run/freeradius/freeradius.pid, and /var/run/freeradius/ is
 created by the maintainer scripts.
+
+Runlevel Changes
+================
+In freeradius 1.1.5-1, we changed our update-rc.d call so that we start
+at S50 and stop at K19 in order to fix dependency issues with various
+databases.  This only takes effect for new installs however.  If you
+want to update your existing install to do the same, a quick method is:
+
+update-rc.d -f freeradius remove
+update-rc.d freeradius start 50 2 3 4 5 . stop 19 0 1 6 .
