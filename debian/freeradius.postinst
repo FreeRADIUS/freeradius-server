@@ -2,21 +2,26 @@
 
 set -e
 
-case "$1" in
-  configure)
+new_install()
+{
+	# On a fresh install, add the necessary user and group.
 	if ! id freerad >/dev/null 2>&1; then
 		addgroup --system freerad || true
 		groups freerad 2>/dev/null || adduser --system --no-create-home --home /etc/freeradius --ingroup freerad --disabled-password freerad
 
-		# make sure there is a user and group 'freerad'
-		groups freerad |grep freerad >/dev/null
-
-		# put user freerad in group shadow, so the daemon can auth locally
+		# Put user freerad in group shadow, so the daemon can auth
+		# locally. Only do this on fresh install as the admin may not
+		# want freerad in shadow group if authenticating by another
+		# mechanism.
 		adduser freerad shadow
 	fi
 
-	update-rc.d freeradius defaults 50 >/dev/null
+	# Changed in 1.1.5-1 for new installs (we used to start at S50
+	# and stop at K50)  We now start at S50 and stop at K19 so we
+	# start after services which may be used and stop before them.
+	update-rc.d freeradius start 50 2 3 4 5 . stop 19 0 1 6 . >/dev/null
 
+	# Set up initial permissions on all the FreeRADIUS directories.
 	if [ ! -d /var/log/freeradius ]; then
 		mkdir -p /var/log/freeradius
 	fi
@@ -36,14 +41,20 @@ case "$1" in
 	chown -R freerad:freerad /var/log/freeradius
 	chown -R freerad:freerad /var/run/freeradius
 	chgrp -R freerad /etc/freeradius
+	find /etc/freeradius -type d -print0 | xargs -0 chmod 2750
+	find /etc/freeradius -type f -print0 | xargs -0 chmod 0640
 
-	# Leave the file /etc/freeradius/dictionary with the default
-	# permissions: it should not contain secrets, and this allows
-	# to run radclient with a non-privileged user.
-	find /etc/freeradius -type d -exec chmod 2751 {} \;
-	find /etc/freeradius -type f \! -name dictionary -exec chmod 640 {} \;
+	# Relax permissions on local dictionary: it should not contain
+	# secrets, and this allows to run radclient with a non-privileged
+	# user. At any rate, only do it on fresh install.
+	chmod 2751 /etc/freeradius
+	chmod 0644 /etc/freeradius/dictionary
+}
 
+case "$1" in
+  configure)
 	if [ -z "$2" ]; then
+		new_install
 		action="start"
 	else
 		action="restart"
