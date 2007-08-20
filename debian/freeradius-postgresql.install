@@ -1,0 +1,2 @@
+usr/lib/freeradius/rlm_sql_postgresql*.la
+usr/lib/freeradius/rlm_sql_postgresql*.so

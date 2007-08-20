@@ -1,0 +1,8 @@
+etc/freeradius
+usr/bin
+usr/include/freeradius
+usr/lib/freeradius/*.la
+usr/lib/freeradius/*.so
+usr/sbin
+usr/share/snmp/mibs
+usr/share/freeradius
