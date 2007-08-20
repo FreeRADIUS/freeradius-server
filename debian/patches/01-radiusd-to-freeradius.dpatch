@@ -1,0 +1,53 @@
+#! /bin/sh /usr/share/dpatch/dpatch-run
+## 01-radiusd-to-freeradius.dpatch by Mark Hymers <mark@hymers.org.uk>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: change debian binary name from radiusd -> freeradius
+
+@DPATCH@
+
+--- old/Make.inc.in	(revision 1496)
++++ new/Make.inc.in	(working copy)
+@@ -48,7 +48,7 @@
+ 
+ LOGDIR		= ${logdir}
+ RADDBDIR	= ${raddbdir}
+-RUNDIR		= ${localstatedir}/run/radiusd
++RUNDIR		= ${localstatedir}/run/freeradius
+ SBINDIR		= ${sbindir}
+ RADIR		= ${radacctdir}
+ 
+--- old/raddb/radiusd.conf.in	(revision 1519)
++++ new/raddb/radiusd.conf.in	(working copy)
+@@ -33,7 +33,7 @@
+ 
+ #  Location of config and logfiles.
+ confdir = ${raddbdir}
+-run_dir = ${localstatedir}/run/radiusd
++run_dir = ${localstatedir}/run/freeradius
+ 
+ #
+ #  The logging messages for the server are appended to the
+@@ -95,9 +95,9 @@
+ #
+ #  This file is written when ONLY running in daemon mode.
+ #
+-#  e.g.:  kill -HUP `cat /var/run/radiusd/radiusd.pid`
++#  e.g.:  kill -HUP `cat /var/run/freeradius/freeradius.pid`
+ #
+-pidfile = ${run_dir}/radiusd.pid
++pidfile = ${run_dir}/freeradius.pid
+
+
+ # user/group: The name (or #number) of the user/group to run radiusd as.
+@@ -121,8 +121,8 @@
+ #  that the debugging mode server is running as a user that can read the
+ #  shadow info, and the user listed below can not.
+ #
+-#user = nobody
+-#group = nobody
++user = freerad
++group = freerad
+ 
+ #  max_request_time: The maximum time (in seconds) to handle a request.
+ #
