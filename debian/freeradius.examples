@@ -1,2 +1,11 @@
 src/billing/
-scripts/
+scripts/clients.pl
+scripts/create-users.pl
+scripts/cryptpasswd
+scripts/exec-program-wait
+scripts/radiusd2ldif.pl
+scripts/radiusd.cron.daily
+scripts/radiusd.cron.monthly
+scripts/radiusd.sh
+scripts/users2mysql.pl
+src/modules/rlm_perl/example.pl
