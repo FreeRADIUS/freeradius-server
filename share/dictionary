@@ -103,7 +103,6 @@ $INCLUDE dictionary.cisco.vpn5000
 $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.colubris
 $INCLUDE dictionary.cosine
-$INCLUDE dictionary.dhcp
 $INCLUDE dictionary.digium
 $INCLUDE dictionary.epygi
 $INCLUDE dictionary.erx
