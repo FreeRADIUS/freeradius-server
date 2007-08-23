@@ -10,8 +10,8 @@ REQUIRES:
 Python - tested with 2.2
 
 BUILDING:
-Build with: './configure --with-static-modules=python' since Python does not
-supply a dynamic library by default.
+./configure --with-experimental-modules
+
 
 USAGE:
 Make your module available to the Python interpreter by either putting it
