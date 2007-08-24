@@ -1,22 +1,29 @@
 1. INTRODUCTION
 
   The FreeRADIUS Server Project is a high performance and highly
-configurable GPL'd free RADIUS server. The server is similar in some
-respects to Livingston's 2.0 server.  While FreeRADIUS started as a
-variant of the Cistron RADIUS server, they don't share a lot in common
-any more.  It now has many more features than Cistron or Livingston,
-and is much more configurable.
+configurable RADIUS server that is available under the terms of the
+GNU GPLv2.  Using RADIUS allows authentication and authorization for a
+network to be centralized, and minimizes the amount of
+re-configuration which has to be done when adding or deleting new
+users.
 
-  FreeRADIUS is an Internet authentication daemon, which implements
-the RADIUS protocol, as defined in RFC 2865 (and others).  It allows
-Network Access Servers (NAS boxes) to perform authentication for
-dial-up users.  There are also RADIUS clients available for Web
-servers, firewalls, Unix logins, and more.  Using RADIUS allows
-authentication and authorization for a network to be centralized, and
-minimizes the amount of re-configuration which has to be done when
-adding or deleting new users.
+  FreeRADIUS can authenticate users on systems such as 802.1x (WiFi),
+dialup, PPPoE, VPN's, VoIP, and many others.  It supports back-end
+databases such as MySQL, PostgreSQL, Microsoft Active Directory,
+OpenLDAP, and many more.  It is used daily to authenticate the
+Internet access for hundreds of millions of people, in sites ranging
+from 10 users, to 10 million and more users.
 
-  Please see the main web page (http://www.freeradius.org) for more
+  Version 2.0 of the server is similar in many respects to previous
+versions.  It also contains many new features, such as "virtual
+server" support, and a simple policy language ("man unlang").
+Administrators upgrading from a previous version should install this
+version in a different location from their existing systems.  They
+should then migrate their current configuration to the new server,
+being careful to take advantage of the new features which can greatly
+simply the servers configuration.
+  
+  Please see the web page http://www.freeradius.org for more
 information.
 
 2. INSTALLATION
@@ -27,9 +34,14 @@ directory.
 3. DEBUGGING THE SERVER
 
   Run the server in debugging mode, (radiusd -X) and READ the output.
-We really can't emphasize this enough.
+We really can't emphasize this enough.  The vast majority of problems
+can be solved by carefully reading the debugging output, which
+includes WARNINGs about common issues, and suggestions for how they
+may be fixed.
 
-  Read the FAQ.  Many questions are answered there.
+  Read the FAQ.  Many questions are answered there.  See the Wiki
+
+	http://wiki.freeradius.org
 
   Read the configuration files.  Many parts of the server have NO
 documentation, other than comments in the configuration file.
@@ -47,13 +59,11 @@ discussions about common problems and solution.
 
   See 'doc/README' for more information about FreeRADIUS.
 
-  There is now an O'Reilly book available, which we recommend highly:
+  There is an O'Reilly book available, which we recommend for people
+new to RADIUS.  It is almost 5 years old, however, and does not serve
+as much more than a basic introduction to the subject matter.
 
 http://www.amazon.com/exec/obidos/ASIN/0596003226/freeradiusorg-20/
-
-  It contains information about RADIUS in general, and FreeRADIUS in
-particular.
-
 
   For other RADIUS information, the Livington internet site had a lot
 of information on radius online.  Unfortunately Livingston, and the
