@@ -101,7 +101,6 @@ static const char *expand_string(char *buffer, size_t sizeof_buffer,
 		}
 		return buffer;
 
-
 	case T_DOUBLE_QUOTED_STRING:
 		if (!strchr(value, '%')) return value;
 
@@ -188,7 +187,7 @@ static LRAD_TOKEN getregex(char **ptr, char *buffer, size_t buflen, int *pcflags
 	*q = '\0';
 	*ptr = p;
 
-	return T_BARE_WORD;
+	return T_DOUBLE_QUOTED_STRING;
 }
 #endif
 
