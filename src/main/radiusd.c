@@ -422,37 +422,20 @@ int main(int argc, char *argv[])
 	     listener = listener->next) {
 		listener->print(listener, buffer, sizeof(buffer));
 		switch (listener->type) {
-		case RAD_LISTEN_AUTH:
-			DEBUG("Listening on authentication address %s", buffer);
-			break;
-
-		case RAD_LISTEN_ACCT:
-			DEBUG("Listening on accounting address %s", buffer);
-			break;
-
-		case RAD_LISTEN_PROXY:
-			DEBUG("Listening on proxy address %s", buffer);
-			break;
-
 		case RAD_LISTEN_DETAIL:
 			has_detail_listener = TRUE;
 			read_from_detail = TRUE;
-			DEBUG("Listening on detail file %s", buffer);
 			break;
 
 		case RAD_LISTEN_SNMP:
 			DEBUG("Listening on SNMP %s", buffer);
 			break;
 
-#ifdef WITH_VMPS
-		case RAD_LISTEN_VQP:
-			DEBUG("Listening on vmps %s", buffer);
-			break;
-#endif
-
 		default:
 			break;
 		}
+
+		DEBUG("Listening on %s", buffer);
 	}
 
 	/*

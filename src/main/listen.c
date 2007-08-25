@@ -30,6 +30,8 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/vqp.h>
 
+#include <freeradius-devel/vmps.h>
+
 #include <sys/resource.h>
 
 #ifdef HAVE_NET_IF_H
@@ -89,7 +91,7 @@ typedef struct listen_detail_t {
 /*
  *	Find a per-socket client.
  */
-static RADCLIENT *client_listener_find(const rad_listen_t *listener,
+RADCLIENT *client_listener_find(const rad_listen_t *listener,
 				       const lrad_ipaddr_t *ipaddr)
 {
 	const RADCLIENT_LIST *clients;
@@ -180,23 +182,47 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 {
 	size_t len;
 	listen_socket_t *sock = this->data;
+	const char *name;
+	char ip_buf[256];
 
 	if ((sock->ipaddr.af == AF_INET) &&
 	    (sock->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
-		strcpy(buffer, "*");
+		strcpy(ip_buf, "*");
 	} else {
-		ip_ntoh(&sock->ipaddr, buffer, bufsize);
+		ip_ntoh(&sock->ipaddr, ip_buf, sizeof(ip_buf));
 	}
 
-	len = strlen(buffer);
+	switch (this->type) {
+	case RAD_LISTEN_AUTH:
+		name = "authentication";
+		break;
+
+	case RAD_LISTEN_ACCT:
+		name = "accounting";
+		break;
+
+	case RAD_LISTEN_PROXY:
+		name = "proxy";
+		break;
+
+#ifdef WITH_VMPS
+	case RAD_LISTEN_VQP:
+		name = "vmps";
+		break;
+#endif
+
+	default:
+		name = "??";
+		break;
+	}
 
 	if (!this->server) {
-		return len + snprintf(buffer + len, bufsize - len, " port %d",
-				      sock->port);
+		return snprintf(buffer, bufsize, "%s address %s port %d",
+				name, ip_buf, sock->port);
 	}
 
-	return len + snprintf(buffer + len, bufsize - len, " port %d as server %s",
-			      sock->port, this->server);
+	return snprintf(buffer, bufsize, "%s address %s port %d as server %s",
+			name, ip_buf, sock->port, this->server);
 }
 
 
@@ -1285,7 +1311,7 @@ static int detail_print(rad_listen_t *this, char *buffer, size_t bufsize)
 				((listen_detail_t *)(this->data))->filename);
 	}
 
-	return snprintf(buffer, bufsize, "%s as server %s",
+	return snprintf(buffer, bufsize, "detail file %s as server %s",
 			((listen_detail_t *)(this->data))->filename,
 			this->server);
 }
@@ -1388,86 +1414,6 @@ static int radius_snmp_print(UNUSED rad_listen_t *this, char *buffer, size_t buf
 }
 
 #endif
-
-#ifdef WITH_VMPS
-/*
- *	Check if an incoming request is "ok"
- *
- *	It takes packets, not requests.  It sees if the packet looks
- *	OK.  If so, it does a number of sanity checks on it.
- */
-static int vqp_socket_recv(rad_listen_t *listener,
-			   RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
-{
-	RADIUS_PACKET	*packet;
-	RAD_REQUEST_FUNP fun = NULL;
-	char		buffer[128];
-	RADCLIENT	*client;
-
-	packet = vqp_recv(listener->fd);
-	if (!packet) {
-		radlog(L_ERR, "%s", librad_errstr);
-		return 0;
-	}
-
-	if ((client = client_listener_find(listener,
-					   &packet->src_ipaddr)) == NULL) {
-		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
-		
-		radlog(L_ERR, "Ignoring request from unknown client %s port %d",
-		       inet_ntop(packet->src_ipaddr.af,
-				 &packet->src_ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-		       packet->src_port);
-		rad_free(&packet);
-		return 0;
-	}
-
-	/*
-	 *	Do new stuff.
-	 */
-	fun = vmps_process;
-
-	if (!received_request(listener, packet, prequest, client)) {
-		rad_free(&packet);
-		return 0;
-	}
-
-	*pfun = fun;
-
-	return 1;
-}
-
-
-/*
- *	Send an authentication response packet
- */
-static int vqp_socket_send(rad_listen_t *listener, REQUEST *request)
-{
-	rad_assert(request->listener == listener);
-	rad_assert(listener->send == vqp_socket_send);
-
-	if (vqp_encode(request->reply, request->packet) < 0) {
-		DEBUG2("Failed encoding packet: %s\n", librad_errstr);
-		return -1;
-	}
-
-	return vqp_send(request->reply);
-}
-
-
-static int vqp_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
-{
-	return vqp_encode(request->reply, request->packet);
-}
-
-
-static int vqp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
-{
-	return vqp_decode(request->packet);
-}
-#endif /* WITH_VMPS */
-
 
 static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
