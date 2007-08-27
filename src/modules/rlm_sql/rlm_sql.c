@@ -335,6 +335,9 @@ static int generate_sql_clients(SQL_INST *inst)
 		      inst->config->xlat_name,
 		      c->longname,c->shortname);
 		if (!client_add(mainconfig.clients, c)) {
+			DEBUG("rlm_sql (%s): Failed to add client %s (%s) to clients list.  Maybe there's a duplicate?",
+			      inst->config->xlat_name,
+			      c->longname,c->shortname);
 			client_free(c);
 			return -1;
 		}
