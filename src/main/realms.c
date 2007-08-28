@@ -770,7 +770,7 @@ static int old_server_add(CONF_SECTION *cs, const char *realm,
 		home->revive_interval = mainconfig.proxy_dead_time;
 
 		if (rbtree_finddata(home_servers_byaddr, home)) {
-			cf_log_err(cf_sectiontoitem(cs), "Home server %s has the same IP address as another home server.", name);
+			cf_log_err(cf_sectiontoitem(cs), "Home server %s has the same IP address and/or port as another home server.", name);
 			free(home);
 			return 0;
 		}
