@@ -227,6 +227,10 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 						 vp->length, buf + 1, sizeof(buf) - 2);
 				strcat(buf, "\"");
 
+			} else if (delimitst < 0) { /* xlat.c */
+				strlcpy(out, vp->vp_strvalue, outlen);
+				return strlen(out);
+
 			} else {
 				/* Non-tagged attribute: no delimiter */
 				librad_safeprint((char *)vp->vp_strvalue,
