@@ -52,6 +52,9 @@ if test x$with_[]modname != xno; then
 
 	smart_try_dir=$rlm_krb5_include_dir
 	FR_SMART_CHECK_INCLUDE(krb5.h)
+	if test "$ac_cv_header_krb5_h" != "yes"; then
+	  fail="$fail krb5.h"
+	fi
 
 	krb5libcrypto=
 	smart_try_dir=$rlm_krb5_lib_dir

@@ -3052,6 +3052,9 @@ else
 echo "${ECHO_T}no" >&6; }
 fi
 
+	if test "$ac_cv_header_krb5_h" != "yes"; then
+	  fail="$fail krb5.h"
+	fi
 
 	krb5libcrypto=
 	smart_try_dir=$rlm_krb5_lib_dir
