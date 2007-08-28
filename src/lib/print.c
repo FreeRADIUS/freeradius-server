@@ -28,28 +28,123 @@ RCSID("$Id$")
 #include	<ctype.h>
 
 /*
- *	Convert a string to something printable.
- *	The output string has to be _at least_ 4x the size
- *	of the input string!
+ *	Checks for utf-8, taken from:
+ *
+ *  http://www.w3.org/International/questions/qa-forms-utf-8
+ *
+ *	Note that we don't care about the length of the input string,
+ *	because '\0' is an invalid UTF-8 character.
+ */
+static int utf8_char(uint8_t *str)
+{
+	if (*str < 0x20) return 0;
+
+	if (*str <= 0x7e) return 1; /* 1 */
+
+	if (*str <= 0xc1) return 0;
+
+	if ((str[0] >= 0xc2) &&	/* 2 */
+	    (str[0] <= 0xdf) &&
+	    (str[1] >= 0x80) &&
+	    (str[1] <= 0xbf)) {
+		return 2;
+	}
+
+	if ((str[0] == 0xe0) &&	/* 3 */
+	    (str[1] >= 0xa0) &&
+	    (str[1] <= 0xbf) &&
+	    (str[2] >= 0x80) &&
+	    (str[2] <= 0xbf)) {
+		return 3;
+	}
+
+	if ((str[0] >= 0xe1) &&	/* 4a */
+	    (str[0] <= 0xec) &&
+	    (str[1] >= 0x80) &&
+	    (str[1] <= 0xbf) &&
+	    (str[2] >= 0x80) &&
+	    (str[2] <= 0xbf)) {
+		return 3;
+	}
+
+	if ((str[0] >= 0xee) &&	/* 4b */
+	    (str[0] <= 0xef) &&
+	    (str[1] >= 0x80) &&
+	    (str[1] <= 0xbf) &&
+	    (str[2] >= 0x80) &&
+	    (str[2] <= 0xbf)) {
+		return 3;
+	}
+
+	if ((str[0] == 0xed) &&	/* 5 */
+	    (str[1] >= 0x80) &&
+	    (str[1] <= 0x9f) &&
+	    (str[2] >= 0x80) &&
+	    (str[2] <= 0xbf)) {
+		return 3;
+	}
+
+	if ((str[0] == 0xf0) &&	/* 6 */
+	    (str[1] >= 0x90) &&
+	    (str[1] <= 0xbf) &&
+	    (str[2] >= 0x80) &&
+	    (str[2] <= 0xbf) &&
+	    (str[3] >= 0x80) &&
+	    (str[3] <= 0xbf)) {
+		return 4;
+	}
+
+	if ((str[0] >= 0xf1) &&	/* 6 */
+	    (str[1] <= 0xf3) &&
+	    (str[1] >= 0x80) &&
+	    (str[1] <= 0xbf) &&
+	    (str[2] >= 0x80) &&
+	    (str[2] <= 0xbf) &&
+	    (str[3] >= 0x80) &&
+	    (str[3] <= 0xbf)) {
+		return 4;
+	}
+
+
+	if ((str[0] == 0xf4) &&	/* 7 */
+	    (str[1] >= 0x80) &&
+	    (str[1] <= 0x8f) &&
+	    (str[2] >= 0x80) &&
+	    (str[2] <= 0xbf) &&
+	    (str[3] >= 0x80) &&
+	    (str[3] <= 0xbf)) {
+		return 4;
+	}
+
+	/*
+	 *	Invalid UTF-8 Character
+	 */
+	return 0;
+}
+
+/*
+ *	Convert a string to something printable.  The output string
+ *	has to be larger than the input string by at least 5 bytes.
+ *	If not, the output is silently truncated...
  */
 void librad_safeprint(char *in, int inlen, char *out, int outlen)
 {
 	unsigned char	*str = (unsigned char *)in;
-	int		done = 0;
 	int		sp = 0;
+	int		utf8 = 0;
 
 	if (inlen < 0) inlen = strlen(in);
 
-	while (inlen-- > 0 && (done + 3) < outlen) {
+	/*
+	 *	
+	 */
+	while ((inlen > 0) && (outlen > 4)) {
 		/*
 		 *	Hack: never print trailing zero.
 		 *	Some clients send strings with an off-by-one
 		 *	length (confused with strings in C).
 		 */
-		if (inlen == 0 && *str == 0)
-			break;
-
-		sp = 0;
+		if ((inlen == 0) && (*str == 0)) break;
 
 		switch (*str) {
 			case '\\':
@@ -68,24 +163,34 @@ void librad_safeprint(char *in, int inlen, char *out, int outlen)
 				sp = '"';
 				break;
 			default:
-			  if (*str < 32 || (*str >= 128)){
-					snprintf(out, outlen, "\\%03o", *str);
-					done += 4;
-					out  += 4;
-					outlen -= 4;
-				} else {
-					*out++ = *str;
-					outlen--;
-					done++;
-				}
+				sp = 0;
+				break;
 		}
+
 		if (sp) {
 			*out++ = '\\';
 			*out++ = sp;
 			outlen -= 2;
-			done += 2;
+			str++;
+			inlen--;
+			continue;
 		}
-		str++;
+
+		utf8 = utf8_char((uint8_t *)str);
+		if (!utf8) {
+			snprintf(out, outlen, "\\%03o", *str);
+			out  += 4;
+			outlen -= 4;
+			str++;
+			inlen--;
+			continue;
+		}
+
+		do {
+			*out++ = *str++;
+			outlen--;
+			inlen--;
+		} while (--utf8 > 0);
 	}
 	*out = 0;
 }
@@ -122,10 +227,6 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 						 vp->length, buf + 1, sizeof(buf) - 2);
 				strcat(buf, "\"");
 
-			} else if (delimitst < 0) {
-				strlcpy(out, vp->vp_strvalue, outlen);
-				return strlen(out);
-
 			} else {
 				/* Non-tagged attribute: no delimiter */
 				librad_safeprint((char *)vp->vp_strvalue,
@@ -144,8 +245,8 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 				        a = buf;
 				}
 			} else {
-			case PW_TYPE_BYTE:
-			case PW_TYPE_SHORT:
+		case PW_TYPE_BYTE:
+		case PW_TYPE_SHORT:
 			        /* Normal, non-tagged attribute */
 			        if ((v = dict_valbyattr(vp->attribute, vp->vp_integer))
 				    != NULL)
