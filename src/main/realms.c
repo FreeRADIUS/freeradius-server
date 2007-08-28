@@ -152,8 +152,6 @@ static CONF_PARSER home_server_config[] = {
 	{ "ipv6addr",  PW_TYPE_IPV6ADDR,
 	  0, &hs_ip6addr, NULL },
 
-	{ "hostname",  PW_TYPE_STRING_PTR,
-	  offsetof(home_server,hostname), NULL,  NULL},
 	{ "port", PW_TYPE_INTEGER,
 	  offsetof(home_server,port), NULL,   "0" },
 
@@ -227,10 +225,10 @@ static int home_server_add(CONF_SECTION *cs, int type)
 	memset(&hs_ip6addr, 0, sizeof(hs_ip6addr));
 	cf_section_parse(cs, home, home_server_config);
 
-	if (!home->hostname && (htonl(hs_ip4addr.s_addr) == INADDR_NONE) &&
+	if ((htonl(hs_ip4addr.s_addr) == INADDR_NONE) &&
 	    IN6_IS_ADDR_UNSPECIFIED(&hs_ip6addr)) {
 		cf_log_err(cf_sectiontoitem(cs),
-			   "No hostname, IPv4 address, or IPv6 address defined for home server %s.",
+			   "No IPv4 or IPv6 address defined for home server %s.",
 			   name2);
 		free(home);
 		free(hs_type);
@@ -241,10 +239,9 @@ static int home_server_add(CONF_SECTION *cs, int type)
 	}
 
 	/*
-	 *	FIXME: Parse home->hostname!
+	 *	Figure out which one to use.
 	 *
-	 *	Right now, only ipaddr && ip6addr are used.
-	 *	The old-style parsing still allows hostnames.
+	 *	FIXME: Set hostname to something?
 	 */
 	if (htonl(hs_ip4addr.s_addr) != INADDR_NONE) {
 		home->ipaddr.af = AF_INET;
@@ -256,7 +253,7 @@ static int home_server_add(CONF_SECTION *cs, int type)
 
 	} else {
 		cf_log_err(cf_sectiontoitem(cs),
-			   "FIXME: parse hostname for home server %s.",
+			   "Internal sanity check failed for home server %s.",
 			   name2);
 		free(home);
 		free(hs_type);
