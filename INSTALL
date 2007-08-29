@@ -3,7 +3,7 @@
   Ignore this file if you have a pre-installed binary package.
 
 
-1a. SIMPLE INSTALLATION
+2. SIMPLE INSTALLATION
 
   If you do not need to modify the default configuration, then take
 the following steps to build and install the server:
@@ -23,7 +23,52 @@ needs for EAP.
 account.
 
 
-1b. CUSTOM INSTALLATION
+3. UPGRADING
+
+  The installation process will not over-write your existing
+configuration files.  It will, however, warn you about the files it
+did not install.
+
+  For users upgrading from 1.x to 2.0, we STRONGLY recommend that 2.0
+be installed in a different location than the existing 1.x
+installation.  Any local policies can then be migrated gradually to
+the new 2.0 configuration.  While we have put a lot of time into
+ensuring that 2.0 is mostly backwards compatible with 1.x, it is not
+COMPLETELY backwards compatible.  There are differences that mean it
+is simpler and safer to migrate your configurations.
+
+  If you are upgrading an existing installation, please be aware that
+at least one default virtual server MUST be used.  If you are
+upgrading from a previous version of FreeRADIUS, this change can be
+done by editing radiusd.conf, and wrapping all of the authorize,
+authenticate, etc. sections in one server block, as follows:
+
+...
+  server {	# line to add
+	authorize {
+		...
+	}
+	authenticate {
+		...
+	}
+	accounting {
+		...
+	}
+	...
+	post-proxy {
+		...
+	}
+  }  		# matching line to add
+...
+
+  If this change is not made, the server WILL NOT START.  It will
+instead complain about "no server defined".
+
+  See "raddb/sites-available/default" for an example of how this
+should be done.
+
+
+4. CUSTOM INSTALLATION
 
   FreeRADIUS has autoconf support. This means you have to run
 ./configure, and then run make.  To see which configuration options
