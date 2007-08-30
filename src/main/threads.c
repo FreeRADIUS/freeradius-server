@@ -624,9 +624,9 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	rcode = pthread_create(&handle->pthread_id, &attr,
 			request_handler_thread, handle);
 	if (rcode != 0) {
-		radlog(L_ERR, "FATAL: Thread create failed: %s",
+		radlog(L_ERR, "Thread create failed: %s",
 		       strerror(rcode));
-		exit(1);
+		return NULL;
 	}
 	pthread_attr_destroy(&attr);
 
