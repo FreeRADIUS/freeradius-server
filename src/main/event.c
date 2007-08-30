@@ -95,6 +95,25 @@ static void tv_add(struct timeval *tv, int usec_delay)
 	}
 }
 
+static VALUE_PAIR * radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
+				   const char *attribute, const char *value)
+{
+	VALUE_PAIR *vp;
+
+	request = request;	/* -Wunused */
+
+	vp = pairmake(attribute, value, T_OP_SET);
+	if (!vp) {
+		radlog(L_ERR, "No memory!");
+		rad_assert("No memory" == NULL);
+		_exit(1);
+	}
+
+	pairadd(vps, vp);
+
+	return vp;
+}
+
 #ifdef WITH_SNMP
 static void snmp_inc_counters(REQUEST *request)
 {
@@ -547,53 +566,37 @@ static void ping_home_server(void *ctx)
 	if (home->ping_check == HOME_PING_CHECK_STATUS_SERVER) {
 		request->proxy->code = PW_STATUS_SERVER;
 
-		vp = pairmake("Message-Authenticator", "0x00", T_OP_SET);
-		if (!vp) rad_panic("Out of memory");
-		pairadd(&request->proxy->vps, vp);
+		radius_pairmake(request, &request->proxy->vps,
+				"Message-Authenticator", "0x00");
 
 	} else if (home->type == HOME_TYPE_AUTH) {
 		request->proxy->code = PW_AUTHENTICATION_REQUEST;
 
-		vp = pairmake("User-Name", home->ping_user_name, T_OP_SET);
-		if (!vp) rad_panic("Out of memory");
-		pairadd(&request->proxy->vps, vp);
-
-		vp = pairmake("User-Password", home->ping_user_password, T_OP_SET);
-		if (!vp) rad_panic("Out of memory");
-		pairadd(&request->proxy->vps, vp);
-
-		vp = pairmake("Service-Type", "Authenticate-Only", T_OP_SET);
-		if (!vp) rad_panic("Out of memory");
-		pairadd(&request->proxy->vps, vp);
-
-		vp = pairmake("Message-Authenticator", "0x00", T_OP_SET);
-		if (!vp) rad_panic("Out of memory");
-		pairadd(&request->proxy->vps, vp);
+		radius_pairmake(request, &request->proxy->vps,
+				"User-Name", home->ping_user_name);
+		radius_pairmake(request, &request->proxy->vps,
+				"User-Password", home->ping_user_password);
+		radius_pairmake(request, &request->proxy->vps,
+				"Service-Type", "Authenticate-Only");
+		radius_pairmake(request, &request->proxy->vps,
+				"Message-Authenticator", "0x00");
 
 	} else {
 		request->proxy->code = PW_ACCOUNTING_REQUEST;
-
-		vp = pairmake("User-Name", home->ping_user_name, T_OP_SET);
-		if (!vp) rad_panic("Out of memory");
-		pairadd(&request->proxy->vps, vp);
-
-		vp = pairmake("Acct-Status-Type", "Stop", T_OP_SET);
-		if (!vp) rad_panic("Out of memory");
-		pairadd(&request->proxy->vps, vp);
-
-		vp = pairmake("Acct-Session-Id", "00000000", T_OP_SET);
-		if (!vp) rad_panic("Out of memory");
-		pairadd(&request->proxy->vps, vp);
-
-		vp = pairmake("Event-Timestamp", "0", T_OP_SET);
-		if (!vp) rad_panic("Out of memory");
+		
+		radius_pairmake(request, &request->proxy->vps,
+				"User-Name", home->ping_user_name);
+		radius_pairmake(request, &request->proxy->vps,
+				"Acct-Status-Type", "Stop");
+		radius_pairmake(request, &request->proxy->vps,
+				"Acct-Session-Id", "00000000");
+		vp = radius_pairmake(request, &request->proxy->vps,
+				     "Event-Timestamp", "0");
 		vp->vp_date = now.tv_sec;
-		pairadd(&request->proxy->vps, vp);
 	}
 
-	vp = pairmake("NAS-Identifier", "Status Check. Are you alive?", T_OP_SET);
-	if (!vp) rad_panic("Out of memory");
-	pairadd(&request->proxy->vps, vp);
+	radius_pairmake(request, &request->proxy->vps,
+			"NAS-Identifier", "Status Check. Are you alive?");
 
 	request->proxy->dst_ipaddr = home->ipaddr;
 	request->proxy->dst_port = home->port;
