@@ -507,17 +507,17 @@ static int switch_users(void)
 		gr = getgrnam(mainconfig.gid_name);
 		if (gr == NULL) {
 			if (errno == ENOMEM) {
-				radlog(L_ERR|L_CONS, "Cannot switch to Group %s: out of memory", mainconfig.gid_name);
+				radlog(L_ERR, "Cannot switch to Group %s: out of memory", mainconfig.gid_name);
 			} else {
-				radlog(L_ERR|L_CONS, "Cannot switch group; %s doesn't exist", mainconfig.gid_name);
+				radlog(L_ERR, "Cannot switch group; %s doesn't exist", mainconfig.gid_name);
 			}
-			exit(1);
+			return 0;
 		}
 		server_gid = gr->gr_gid;
 		if (setgid(server_gid) < 0) {
-			radlog(L_ERR|L_CONS, "Failed setting Group to %s: %s",
+			radlog(L_ERR, "Failed setting Group to %s: %s",
 			       mainconfig.gid_name, strerror(errno));
-			exit(1);
+			return 0;
 		}
 	} else {
 		server_gid = getgid();
@@ -532,24 +532,24 @@ static int switch_users(void)
 		pw = getpwnam(mainconfig.uid_name);
 		if (pw == NULL) {
 			if (errno == ENOMEM) {
-				radlog(L_ERR|L_CONS, "Cannot switch to User %s: out of memory", mainconfig.uid_name);
+				radlog(L_ERR, "Cannot switch to User %s: out of memory", mainconfig.uid_name);
 			} else {
-				radlog(L_ERR|L_CONS, "Cannot switch user; %s doesn't exist", mainconfig.uid_name);
+				radlog(L_ERR, "Cannot switch user; %s doesn't exist", mainconfig.uid_name);
 			}
-			exit(1);
+			return 0;
 		}
 		server_uid = pw->pw_uid;
 #ifdef HAVE_INITGROUPS
 		if (initgroups(mainconfig.uid_name, server_gid) < 0) {
 			if (errno != EPERM) {
-				radlog(L_ERR|L_CONS, "Failed setting supplementary groups for User %s: %s", mainconfig.uid_name, strerror(errno));
-				exit(1);
+				radlog(L_ERR, "Failed setting supplementary groups for User %s: %s", mainconfig.uid_name, strerror(errno));
+				return 0;
 			}
 		}
 #endif
 		if (setuid(server_uid) < 0) {
-			radlog(L_ERR|L_CONS, "Failed setting User to %s: %s", mainconfig.uid_name, strerror(errno));
-			exit(1);
+			radlog(L_ERR, "Failed setting User to %s: %s", mainconfig.uid_name, strerror(errno));
+			return 0;
 		}
 	}
 #endif
@@ -557,8 +557,8 @@ static int switch_users(void)
 #ifdef HAVE_SYS_RESOURCE_H
 	/*  Get the current maximum for core files.  */
 	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		radlog(L_ERR|L_CONS, "Failed to get current core limit:  %s", strerror(errno));
-		exit(1);
+		radlog(L_ERR, "Failed to get current core limit:  %s", strerror(errno));
+		return 0;
 	}
 #endif
 
@@ -566,7 +566,7 @@ static int switch_users(void)
 #ifdef HAVE_SYS_PRTCL_H
 #ifdef PR_SET_DUMPABLE
 		if (prctl(PR_SET_DUMPABLE, 1) < 0) {
-			radlog(L_ERR|L_CONS,"Cannot enable core dumps: prctl(PR_SET_DUMPABLE) failed: '%s'",
+			radlog(L_ERR,"Cannot enable core dumps: prctl(PR_SET_DUMPABLE) failed: '%s'",
 			       strerror(errno));
 		}
 #endif
@@ -574,16 +574,16 @@ static int switch_users(void)
 
 #ifdef HAVE_SYS_RESOURCE_H
 		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
-			radlog(L_ERR|L_CONS, "Cannot update core dump limit: %s",
+			radlog(L_ERR, "Cannot update core dump limit: %s",
 					strerror(errno));
-			exit(1);
+			return 0;
 
 			/*
 			 *  If we're running as a daemon, and core
 			 *  dumps are enabled, log that information.
 			 */
 		} else if ((core_limits.rlim_cur != 0) && !debug_flag)
-			radlog(L_INFO|L_CONS, "Core dumps are enabled.");
+			radlog(L_INFO, "Core dumps are enabled.");
 #endif
 
 	} else if (!debug_flag) {
@@ -599,9 +599,9 @@ static int switch_users(void)
 		limits.rlim_max = core_limits.rlim_max;
 
 		if (setrlimit(RLIMIT_CORE, &limits) < 0) {
-			radlog(L_ERR|L_CONS, "Cannot disable core dumps: %s",
+			radlog(L_ERR, "Cannot disable core dumps: %s",
 					strerror(errno));
-			exit(1);
+			return 0;
 		}
 #endif
 	}
@@ -618,7 +618,7 @@ static int switch_users(void)
 		chown(mainconfig.log_file, server_uid, server_gid);
 	}
 #endif
-	return(0);
+	return 1;
 }
 
 
@@ -646,14 +646,14 @@ int read_mainconfig(int reload)
 	struct stat statbuf;
 
 	if (stat(radius_dir, &statbuf) < 0) {
-		radlog(L_ERR|L_CONS, "Errors reading %s: %s",
+		radlog(L_ERR, "Errors reading %s: %s",
 		       radius_dir, strerror(errno));
 		return -1;
 	}
 
 #ifdef S_IWOTH
 	if ((statbuf.st_mode & S_IWOTH) != 0) {
-		radlog(L_ERR|L_CONS, "Configuration directory %s is globally writable.  Refusing to start due to insecure configuration.",
+		radlog(L_ERR, "Configuration directory %s is globally writable.  Refusing to start due to insecure configuration.",
 		       radius_dir);
 	  return -1;
 	}
@@ -661,7 +661,7 @@ int read_mainconfig(int reload)
 
 #ifdef S_IROTH
 	if (0 && (statbuf.st_mode & S_IROTH) != 0) {
-		radlog(L_ERR|L_CONS, "Configuration directory %s is globally readable.  Refusing to start due to insecure configuration.",
+		radlog(L_ERR, "Configuration directory %s is globally readable.  Refusing to start due to insecure configuration.",
 		       radius_dir);
 		return -1;
 	}
@@ -671,7 +671,7 @@ int read_mainconfig(int reload)
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
 		 radius_dir, mainconfig.radiusd_conf);
 	if ((cs = cf_file_read(buffer)) == NULL) {
-		radlog(L_ERR|L_CONS, "Errors reading %s", buffer);
+		radlog(L_ERR, "Errors reading %s", buffer);
 		return -1;
 	}
 
@@ -708,7 +708,7 @@ int read_mainconfig(int reload)
 									name1,
 									value);
 					if (!tts) {
-						radlog(L_ERR|L_CONS, "%s[%d]: Section refers to non-existent template \"%s\"",
+						radlog(L_ERR, "%s[%d]: Section refers to non-existent template \"%s\"",
 						       cf_section_filename(mycs), cf_section_lineno(mycs), value);
 						return -1;
 					}
@@ -797,7 +797,7 @@ int read_mainconfig(int reload)
 	/* Initialize the dictionary */
 	DEBUG2("read_config_files:  reading dictionary");
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
-		radlog(L_ERR|L_CONS, "Errors reading dictionary: %s",
+		radlog(L_ERR, "Errors reading dictionary: %s",
 				librad_errstr);
 		return -1;
 	}
@@ -819,7 +819,7 @@ int read_mainconfig(int reload)
 		oldcs = cf_section_sub_find(mainconfig.config, "modules");
 		if (newcs && oldcs) {
 			if (!cf_section_migrate(newcs, oldcs)) {
-				radlog(L_ERR|L_CONS, "Fatal error migrating configuration data");
+				radlog(L_ERR, "Fatal error migrating configuration data");
 				return -1;
 			}
 		}
@@ -886,7 +886,7 @@ int read_mainconfig(int reload)
 	/*
 	 *	We should really switch users earlier in the process.
 	 */
-	switch_users();
+	if (!switch_users()) exit(1);
 
 	/*
 	 *	Sanity check the configuration for internal
@@ -910,7 +910,7 @@ int read_mainconfig(int reload)
 	}
 
 	if (!listener) {
-		radlog(L_ERR|L_CONS, "Server is not configured to listen on any ports.  Exiting.");
+		radlog(L_ERR, "Server is not configured to listen on any ports.  Exiting.");
 		exit(1);
 	}
 
@@ -960,7 +960,7 @@ int read_mainconfig(int reload)
 	/*  Reload the modules.  */
 	DEBUG2("radiusd:  entering modules setup");
 	if (setup_modules(reload, mainconfig.config) < 0) {
-		radlog(L_ERR|L_CONS, "Errors setting up modules");
+		radlog(L_ERR, "Errors setting up modules");
 		return -1;
 	}
 	return 0;
