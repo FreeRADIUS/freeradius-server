@@ -1674,6 +1674,17 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 		return RLM_MODULE_REJECT;
 	}
+       
+       /*
+	*	More warning messages for people who can't be bothered
+	*	to read the documentation.
+	*/
+       if (debug_flag > 1) {
+	       if (!pairfind(request->config_items, PW_CLEARTEXT_PASSWORD) &&
+		   !pairfind(request->config_items, PW_USER_PASSWORD)) {
+		       DEBUG("WARNING: No \"known good\" password was found in LDAP.  Are you sure that the user is configured correctly?");
+	       }
+       }
 
 	/*
  	 * Module should default to LDAP authentication if no Auth-Type
