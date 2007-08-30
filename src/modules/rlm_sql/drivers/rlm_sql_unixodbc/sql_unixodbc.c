@@ -215,9 +215,9 @@ static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
     long err_handle;
-    int num_fields = 0;
+    SQLSMALLINT num_fields = 0;
 
-    err_handle = SQLNumResultCols(unixodbc_sock->stmt_handle,(SQLSMALLINT *)&num_fields);
+    err_handle = SQLNumResultCols(unixodbc_sock->stmt_handle,&num_fields);
     if (sql_state(err_handle, sqlsocket, config))
 	return -1;
 
