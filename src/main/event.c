@@ -1115,6 +1115,7 @@ static int successfully_proxied_request(REQUEST *request)
 				radlog(L_ERR|L_CONS, "no memory");
 				exit(1);
 			}
+			/* Insert at the START of the list */
 			vp->next = request->proxy->vps;
 			request->proxy->vps = vp;
 		}
@@ -1135,29 +1136,20 @@ static int successfully_proxied_request(REQUEST *request)
 	 */
 	if (pairfind(request->proxy->vps, PW_CHAP_PASSWORD) &&
 	    pairfind(request->proxy->vps, PW_CHAP_CHALLENGE) == NULL) {
-		vp = paircreate(PW_CHAP_CHALLENGE, PW_TYPE_STRING);
-		if (!vp) {
-			radlog(L_ERR|L_CONS, "no memory");
-			exit(1);
-		}
+		vp = radius_paircreate(request, &request->proxy->vps,
+				       PW_CHAP_CHALLENGE, PW_TYPE_OCTETS);
 		vp->length = AUTH_VECTOR_LEN;
 		memcpy(vp->vp_strvalue, request->packet->vector, AUTH_VECTOR_LEN);
-		pairadd(&(request->proxy->vps), vp);
 	}
 
 	/*
 	 *	The RFC's say we have to do this, but FreeRADIUS
 	 *	doesn't need it.
 	 */
-	vp = paircreate(PW_PROXY_STATE, PW_TYPE_STRING);
-	if (!vp) {
-		radlog(L_ERR|L_CONS, "no memory");
-		exit(1);
-	}
+	vp = radius_paircreate(request, &request->proxy->vps,
+			       PW_PROXY_STATE, PW_TYPE_OCTETS);
 	sprintf(vp->vp_strvalue, "%d", request->packet->id);
 	vp->length = strlen(vp->vp_strvalue);
-
-	pairadd(&request->proxy->vps, vp);
 
 	/*
 	 *	Should be done BEFORE inserting into proxy hash, as
