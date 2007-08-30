@@ -549,12 +549,14 @@ static int gettime(const char *valstr, time_t *lvalue)
 	char		*p;
 	char		*f[4];
 	char            *tail = '\0';
+	unsigned long int now;
 
 	/*
 	 * Test for unix timestamp date
 	 */
-	*lvalue = strtoul(valstr, &tail, 10);
+	now = strtoul(valstr, &tail, 10);
 	if (*tail == '\0') {
+		*lvalue = now;
 		return 0;
 	}
 
@@ -725,13 +727,25 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 
 		case PW_TYPE_DATE:
-			if (gettime(value, (time_t *)&vp->lvalue) < 0) {
-				librad_log("failed to parse time string "
-					   "\"%s\"", value);
-				return NULL;
+		  	{
+				/*
+				 *	time_t may be 64 bits, while lvalue
+				 *	MUST be 32-bits.  We need an
+				 *	intermediary variable to handle
+				 *	the conversions.
+				 */
+				time_t date;
+
+				if (gettime(value, &date) < 0) {
+					librad_log("failed to parse time string "
+						   "\"%s\"", value);
+					return NULL;
+				}
+
+				vp->lvalue = date;
 			}
-			vp->length = 4;
 			break;
+
 		case PW_TYPE_ABINARY:
 #ifdef ASCEND_BINARY
 			if (strncasecmp(value, "0x", 2) == 0) {
