@@ -284,7 +284,7 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		/*
 		 *	Mark the request as done.
 		 */
-		radlog(L_ERR|L_CONS, "!!! ERROR !!! The server is blocked: discarding new request %d", request->number);
+		radlog(L_ERR, "!!! ERROR !!! The server is blocked: discarding new request %d", request->number);
 		request->child_state = REQUEST_DONE;
 		return 0;
 	}
@@ -624,7 +624,7 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	rcode = pthread_create(&handle->pthread_id, &attr,
 			request_handler_thread, handle);
 	if (rcode != 0) {
-		radlog(L_ERR|L_CONS, "FATAL: Thread create failed: %s",
+		radlog(L_ERR, "FATAL: Thread create failed: %s",
 		       strerror(rcode));
 		exit(1);
 	}
@@ -731,7 +731,7 @@ int thread_pool_init(int spawn_flag)
 		if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
 			radlog(L_ERR, "FATAL: Failed to initialize wait mutex: %s",
 			       strerror(errno));
-			exit(1);
+			return -1;
 		}
 
 		/*
@@ -742,18 +742,18 @@ int thread_pool_init(int spawn_flag)
 							     free);
 		if (!thread_pool.waiters) {
 			radlog(L_ERR, "FATAL: Failed to set up wait hash");
-			exit(1);
+			return -1;
 		}
 	}
 
 	pool_cf = cf_section_find("thread");
 	if (!pool_cf) {
 		radlog(L_ERR, "FATAL: Attempting to start in multi-threaded mode with no thread configuration in radiusd.conf");
-		exit(1);
+		return -1;
 	}
 
 	if (cf_section_parse(pool_cf, NULL, thread_config) < 0) {
-		exit(1);
+		return -1;
 	}
 
 	/*
@@ -780,16 +780,16 @@ int thread_pool_init(int spawn_flag)
 	memset(&thread_pool.semaphore, 0, sizeof(thread_pool.semaphore));
 	rcode = sem_init(&thread_pool.semaphore, 0, SEMAPHORE_LOCKED);
 	if (rcode != 0) {
-		radlog(L_ERR|L_CONS, "FATAL: Failed to initialize semaphore: %s",
+		radlog(L_ERR, "FATAL: Failed to initialize semaphore: %s",
 		       strerror(errno));
-		exit(1);
+		return -1;
 	}
 
 	rcode = pthread_mutex_init(&thread_pool.queue_mutex,NULL);
 	if (rcode != 0) {
 		radlog(L_ERR, "FATAL: Failed to initialize queue mutex: %s",
 		       strerror(errno));
-		exit(1);
+		return -1;
 	}
 
 	/*
@@ -799,7 +799,7 @@ int thread_pool_init(int spawn_flag)
 		thread_pool.fifo[i] = lrad_fifo_create(65536, NULL);
 		if (!thread_pool.fifo[i]) {
 			radlog(L_ERR, "FATAL: Failed to set up request fifo");
-			exit(1);
+			return -1;
 		}
 	}
 
@@ -810,7 +810,7 @@ int thread_pool_init(int spawn_flag)
 	 */
 	if (!setup_ssl_mutexes()) {
 		radlog(L_ERR, "FATAL: Failed to set up SSL mutexes");
-		exit(1);
+		return -1;
 	}
 #endif
 
