@@ -877,6 +877,10 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 
 		case PW_TYPE_BYTE:
+			if ((value[0] == '0') && (value[1] == 'x')) {
+				goto do_octets;
+			}
+
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
@@ -954,13 +958,26 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 
 		case PW_TYPE_DATE:
-			if (gettime(value, &vp->vp_date) < 0) {
-				librad_log("failed to parse time string "
-					   "\"%s\"", value);
-				return NULL;
+		  	{
+				/*
+				 *	time_t may be 64 bits, whule vp_date
+				 *	MUST be 32-bits.  We need an
+				 *	intermediary variable to handle
+				 *	the conversions.
+				 */
+				time_t date;
+
+				if (gettime(value, &date) < 0) {
+					librad_log("failed to parse time string "
+						   "\"%s\"", value);
+					return NULL;
+				}
+
+				vp->vp_date = date;
 			}
 			vp->length = 4;
 			break;
+
 		case PW_TYPE_ABINARY:
 #ifdef ASCEND_BINARY
 			if (strncasecmp(value, "0x", 2) == 0) {
@@ -980,8 +997,8 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			 *	then fall through to raw octets, so that
 			 *	the user can at least make them by hand...
 			 */
-	do_octets:
 #endif
+	do_octets:
 			/* raw octets: 0x01020304... */
 		case PW_TYPE_OCTETS:
 			if (strncasecmp(value, "0x", 2) == 0) {
