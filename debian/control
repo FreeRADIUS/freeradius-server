@@ -1,5 +1,5 @@
 Source: freeradius
-Build-Depends: debhelper (>= 5), dpatch (>= 2), dpkg-dev (>= 1.13.25), autotools-dev, libtool (>= 1.5), libltdl3-dev, libpam0g-dev, libmysqlclient15-dev | libmysqlclient-dev, libgdbm-dev, libldap2-dev, libsasl2-dev, libiodbc2-dev, libkrb5-dev, libperl-dev, libpcap-dev, snmp, libsnmp9-dev | libsnmp-dev, libpq-dev, libssl-dev
+Build-Depends: debhelper (>= 5), dpatch (>= 2), dpkg-dev (>= 1.13.19), autotools-dev, libtool (>= 1.5), libltdl3-dev, libpam0g-dev, libmysqlclient15-dev | libmysqlclient-dev, libgdbm-dev, libldap2-dev, libsasl2-dev, libiodbc2-dev, libkrb5-dev, libperl-dev, libpcap-dev, snmp, libsnmp9-dev | libsnmp-dev, libpq-dev, libssl-dev
 Section: net
 Priority: optional
 Maintainer: Nicolas Baradakis <nbk@sitadelle.com>
@@ -20,35 +20,35 @@ Description: a high-performance and highly configurable RADIUS server
 
 Package: freeradius-krb5
 Architecture: any
-Depends: freeradius (= ${Source-Version}), ${shlibs:Depends}
+Depends: freeradius (= ${source:Version}), ${shlibs:Depends}
 Description: kerberos module for FreeRADIUS server
  The FreeRADIUS server can use Kerberos to authenticate users, and this module
  is necessary for that.
 
 Package: freeradius-ldap
 Architecture: any
-Depends: freeradius (= ${Source-Version}), ${shlibs:Depends}
+Depends: freeradius (= ${source:Version}), ${shlibs:Depends}
 Description: LDAP module for FreeRADIUS server
  The FreeRADIUS server can use LDAP to authenticate users, and this module
  is necessary for that.
 
 Package: freeradius-postgresql
 Architecture: any
-Depends: freeradius (= ${Source-Version}), ${shlibs:Depends}
+Depends: freeradius (= ${source:Version}), ${shlibs:Depends}
 Description: PostgreSQL module for FreeRADIUS server
  The FreeRADIUS server can use PostgreSQL to authenticate users and do
  accounting, and this module is necessary for that.
 
 Package: freeradius-mysql
 Architecture: any
-Depends: freeradius (= ${Source-Version}), ${shlibs:Depends}
+Depends: freeradius (= ${source:Version}), ${shlibs:Depends}
 Description: MySQL module for FreeRADIUS server
  The FreeRADIUS server can use MySQL to authenticate users and do accounting,
  and this module is necessary for that.
 
 Package: freeradius-iodbc
 Architecture: any
-Depends: freeradius (= ${Source-Version}), ${shlibs:Depends}
+Depends: freeradius (= ${source:Version}), ${shlibs:Depends}
 Description: iODBC module for FreeRADIUS server
  The FreeRADIUS server can use iODBC to access databases to authenticate users
  and do accounting, and this module is necessary for that.
