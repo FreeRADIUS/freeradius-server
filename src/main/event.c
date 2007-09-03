@@ -275,6 +275,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 
 	request->home_server->currently_outstanding++;
+	request->home_server->total_requests_sent++;
 
 	if (!lrad_packet_list_id_alloc(proxy_list, request->proxy)) {
 		int found;

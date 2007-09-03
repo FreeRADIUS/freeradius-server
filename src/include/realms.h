@@ -47,6 +47,7 @@ typedef struct home_server {
 	int		response_window;
 	int		max_outstanding; /* don't overload it */
 	int		currently_outstanding;
+	int		total_requests_sent;
 
 	struct timeval	zombie_period_start;
 	int		zombie_period; /* unresponsive for T, mark it dead */
