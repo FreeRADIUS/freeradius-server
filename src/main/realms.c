@@ -287,6 +287,18 @@ static int home_server_add(CONF_SECTION *cs, int type)
 		return 0;
 	}
 
+	if (!hs_type) {
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Fatal error!  Home server %s has no type defined!",
+			   name2);
+		free(home);
+		free(hs_type);
+		hs_type = NULL;
+		free(hs_check);
+		hs_check = NULL;
+		return 0;
+	}
+
 	if (strcasecmp(hs_type, "auth") == 0) {
 		home->type = HOME_TYPE_AUTH;
 		if (type != home->type) {
@@ -333,7 +345,7 @@ static int home_server_add(CONF_SECTION *cs, int type)
 		return 0;
 	}
 
-	if (strcasecmp(hs_check, "none") == 0) {
+	if (!hs_check || (strcasecmp(hs_check, "none") == 0)) {
 		home->ping_check = HOME_PING_CHECK_NONE;
 
 	} else if (strcasecmp(hs_check, "status-server") == 0) {
