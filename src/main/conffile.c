@@ -1336,7 +1336,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 					server = server->item.parent;
 				}
 				
-				if (!server) {
+				if (0 && !server) {
 					radlog(L_ERR, "%s[%d]: Processing directives such as \"%s\" cannot be used here.",
 					       filename, *lineno, buf1);
 					return -1;
@@ -1790,6 +1790,22 @@ CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 	}
 
 	return cf_itemtosection(ci);
+}
+
+
+/*
+ * Return the next section after a CONF_SECTION
+ * with a certain name1 (char *name1). If the requested
+ * name1 is NULL, any name1 matches.
+ */
+
+CONF_SECTION *cf_section_find_next(CONF_SECTION *section,
+				   CONF_SECTION *subsection,
+				   const char *name1)
+{
+	if (!section->item.parent) return NULL;
+
+	return cf_subsection_find_next(section->item.parent, subsection, name1);
 }
 
 /*

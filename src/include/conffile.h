@@ -76,6 +76,9 @@ int dump_config(void);
 CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 				      CONF_SECTION *subsection,
 				      const char *name1);
+CONF_SECTION *cf_section_find_next(CONF_SECTION *section,
+				   CONF_SECTION *subsection,
+				   const char *name1);
 int cf_section_lineno(CONF_SECTION *section);
 int cf_pair_lineno(CONF_PAIR *pair);
 const char *cf_pair_filename(CONF_PAIR *pair);

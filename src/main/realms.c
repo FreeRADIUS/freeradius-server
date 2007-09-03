@@ -806,13 +806,19 @@ static int old_server_add(CONF_SECTION *cs, const char *realm,
 	 *	Count the old-style realms of this name.
 	 */
 	num_home_servers = 0;
-	for (subcs = cf_subsection_find_next(cs, NULL, "realm");
+	for (subcs = cf_section_find_next(cs, NULL, "realm");
 	     subcs != NULL;
-	     subcs = cf_subsection_find_next(cs, subcs, "realm")) {
+	     subcs = cf_section_find_next(cs, subcs, "realm")) {
 		const char *this = cf_section_name2(subcs);
 
 		if (!this || (strcmp(this, realm) != 0)) continue;
 		num_home_servers++;
+	}
+
+	if (num_home_servers == 0) {
+		cf_log_err(cf_sectiontoitem(cs), "Internal error counting pools for home server %s.", name);
+		free(home);
+		return 0;
 	}
 
 	pool = rad_malloc(sizeof(*pool) + num_home_servers * sizeof(pool->servers[0]));
