@@ -277,6 +277,13 @@ static int insert_into_proxy_hash(REQUEST *request)
 	request->home_server->currently_outstanding++;
 	request->home_server->total_requests_sent++;
 
+	/*
+	 *	On overflow, back up to ~0.
+	 */
+	if (!request->home_server->total_requests_sent) {
+		request->home_server->total_requests_sent--;
+	}
+
 	if (!lrad_packet_list_id_alloc(proxy_list, request->proxy)) {
 		int found;
 		rad_listen_t *proxy_listener;
