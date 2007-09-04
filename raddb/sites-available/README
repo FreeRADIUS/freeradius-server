@@ -1,0 +1,171 @@
+1.  Virtual Servers.
+
+  FreeRADIUS 2.0 supports virtual servers.  This is probably the
+single largest change that is NOT backwards compatible with 1.x.
+
+  The virtual servers do NOT have to be set up with the
+"sites-available" and "sites-enabled" directories.  You can still have
+one "radiusd.conf" file, and put the server configuration there:
+
+	...
+	server {
+		authorize {
+			...
+		}
+		authenticate {
+			...
+		}
+		...
+	}
+	...
+
+  The power of virtual servers lies in their ability to separate
+policies.  A policy can be placed into a virtual server, where it is
+guaranteed to affect only the requests that are passed through that
+virtual server.  In 1.x, the policies were global, and it sometimes
+took much effort to write a policy so that it only applied in certain
+limited situations.
+
+
+2.  What do we mean by "virtual server"?
+
+
+  A virtual server is a (nearly complete) RADIUS server, just like a
+configuration for FreeRADIUS 1.x.  However, FreeRADIUS can now run
+multiple virtual servers at the same time.  The virtual servers can
+even proxy requests to each other!
+
+  The simplest way to create a virtual server is to take the all of
+the request processing sections from radius.conf, ("authorize" ,
+"authenticate", etc.) and wrap them in a "server {}" block, as above.
+
+  You can create another virtual server by:
+
+    1) defining a new "server foo {...}" section in radiusd.conf
+    2) Putting the normal "authorize", etc. sections inside of it
+    3) Adding a "listen" section *inside* of the "server" section.
+
+  e.g.
+
+	...
+	server foo {
+		listen {
+			ipaddr = 127.0.0.1
+			port = 2000
+			type = auth
+		}
+
+		authorize {
+			update control {
+				Cleartext-Password := "bob"
+			}
+			pap
+		}
+
+		authenticate {
+			pap
+		}
+	}
+	...
+
+  With that text added to "radiusd.conf", run the server in debugging
+mode (radiusd -X), and in another terminal window, type:
+
+$ radtest bob bob localhost:2000 0 testing123
+
+  You should see the server return an Access-Accept.
+
+
+3. Capabilities and limitations
+
+
+  All of the modules are global.  i.e. There is still only one
+"modules" section.
+
+  The only sub-sections that can appear in a virtual server are:
+
+	listen
+	client
+	authorize
+	authenticate
+	post-auth
+	pre-proxy
+	post-proxy
+	preacct
+	accounting
+	session
+
+  The authorize, etc. sections have their normal meaning, and can
+contain anything that an authorize section could contain in 1.x.
+
+  When a "listen" section is inside of a virtual server definition, it
+means that all requests sent to that IP/port will be processed through
+the virtual server.
+
+  When a "client" section is inside of a virtual server definition, it
+means that that client is known only to the "listen" sections that are
+also inside of that virtual server.  Not only is this client
+definition available only to this virtual server, but the client
+configuration is also available to this virtual server.
+
+  i.e. Each virtual server can list a client IP address 127.0.0.1, and
+each virtual server can have a different shared secret for that client.
+
+  If you do specify one or more "client" sections in a virtual server,
+it means that only those clients are available to that server.  Any
+other clients are treated as unknown by that virtual server.
+
+
+4. More complex capabilities
+
+  The "listen" sections have a few additional configuration items that
+were not in 1.x, and were not mentioned above.  These configuration
+items enable almost any mapping of IP / port to clients to virtual
+servers.
+
+  The configuration items are:
+
+	server = <name>
+
+		If set, all requests sent to this IP / port are processed
+		through the named virtual server.
+
+		This directive can be used only for "listen" sections
+		that are standing on their own.  i.e. It CANNOT be
+		used if the "listen" section is inside of a virtual
+		server.
+
+	clients = <name>
+
+		If set, the "listen" section looks for a "clients" section:
+
+			clients <name> {
+				...
+			}
+
+		It looks inside of that named "clients" section for
+		"client" subsections, at least one of which must
+		exist.  Each client in that section is added to the
+		list of known clients for this IP / port.  No other
+		clients are known.
+
+		If it is set, it over-rides the list of clients (if
+		any) in the same virtual server.  Note that the
+		clients are NOT additive!
+
+		If it is not set, then the clients from the current
+		virtual server (if any) are used.  If there are no
+		clients in this virtual server, then the global
+		clients are used.
+
+		i.e. The most specific directive is used:
+			* configuration in this "listen" section
+			* clients in the same virtual server
+			* global clients
+
+		The directives are also *exclusive*, not *additive*.
+		If you have one client in a virtual server, and
+		another client referenced from a "listen" section,
+		then that "listen" section will ONLY use the second
+		client.  It will NOT use both clients.
+
