@@ -225,8 +225,8 @@ static int home_server_add(CONF_SECTION *cs, int type)
 	memset(&hs_ip6addr, 0, sizeof(hs_ip6addr));
 	cf_section_parse(cs, home, home_server_config);
 
-	if ((htonl(hs_ip4addr.s_addr) == INADDR_NONE) &&
-	    IN6_IS_ADDR_UNSPECIFIED(&hs_ip6addr)) {
+	if (!cf_pair_find(cs, "ipaddr") &&
+	    !cf_pair_find(cs, "ipv6addr")) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "No IPv4 or IPv6 address defined for home server %s.",
 			   name2);
@@ -240,14 +240,12 @@ static int home_server_add(CONF_SECTION *cs, int type)
 
 	/*
 	 *	Figure out which one to use.
-	 *
-	 *	FIXME: Set hostname to something?
 	 */
-	if (htonl(hs_ip4addr.s_addr) != INADDR_NONE) {
+	if (cf_pair_find(cs, "ipaddr")) {
 		home->ipaddr.af = AF_INET;
 		home->ipaddr.ipaddr.ip4addr = hs_ip4addr;
 
-	} else if (!IN6_IS_ADDR_UNSPECIFIED(&hs_ip6addr)) {
+	} else if (cf_pair_find(cs, "ipv6addr")) {
 		home->ipaddr.af = AF_INET6;
 		home->ipaddr.ipaddr.ip6addr = hs_ip6addr;
 
