@@ -291,54 +291,52 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 	
 	/*
-	 *	If we have a server, prefer to use clients defined
-	 *	in that server, and ignore any "clients = "
-	 *	directive, UNLESS there are no clients in the server.
+	 *	The more specific configurations are preferred to more
+	 *	generic ones.
 	 */
 	client_cs = NULL;
-	client_cs = cf_section_sub_find_name2(mainconfig.config,
-					      "server",
-					      this->server);
-	
-	/*
-	 *	Found a "server foo" section, but there are no
-	 *	clients in it.  Don't use this section.
-	 */
-	if (client_cs &&
-	    (cf_section_sub_find(client_cs, "client") == NULL)) {
-		client_cs = NULL;
-	}
+	rcode = cf_item_parse(cs, "clients", PW_TYPE_STRING_PTR,
+			      &section_name, NULL);
+	if (rcode < 0) return -1; /* bad string */
+	if (rcode == 0) {
+		/*
+		 *	Explicit list given: use it.
+		 */
+		client_cs = cf_section_find(section_name);
+		free(section_name);
+		if (!client_cs) {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Failed to find clients %s {...}",
+				   section_name);
+			return -1;
+		}
+	} /* else there was no "clients = " entry. */
 
-	/*
-	 *	No clients, look for the name of a section that holds
-	 *	a list of clients.
-	 */
 	if (!client_cs) {
-		rcode = cf_item_parse(cs, "clients", PW_TYPE_STRING_PTR,
-				      &section_name, NULL);
-		if (rcode < 0) return -1; /* bad string */
-		if (rcode == 0) {
-			/*
-			 *	Explicit list given: use it.
-			 */
-			client_cs = cf_section_find(section_name);
-			free(section_name);
-			if (!client_cs) {
-				cf_log_err(cf_sectiontoitem(cs),
-					   "Failed to find clients %s {...}",
-					   section_name);
-				return -1;
-			}
-		} /* else there was no "clients = " entry. */
+		CONF_SECTION *server_cs;
+
+		server_cs = cf_section_sub_find_name2(mainconfig.config,
+						      "server",
+						      this->server);
+		/*
+		 *	Found a "server foo" section.  If there are clients
+		 *	in it, use them.
+		 */
+		if (server_cs &&
+		    (cf_section_sub_find(server_cs, "client") != NULL)) {
+			client_cs = server_cs;
+		}
 	}
 
 	/*
-	 *	Still nothing.  Make it global.
+	 *	Still nothing.  Look for global clients.
 	 */
 	if (!client_cs) client_cs = mainconfig.config;
 
 	sock->clients = clients_parse_section(client_cs);
 	if (!sock->clients) {
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Failed to find any clients for this listen section");
 		return -1;
 	}
 
