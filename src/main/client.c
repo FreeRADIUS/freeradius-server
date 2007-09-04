@@ -369,7 +369,17 @@ const char *client_name_old(const lrad_ipaddr_t *ipaddr)
 	return client_name(mainconfig.clients, ipaddr);
 }
 
+static struct in_addr cl_ip4addr;
+static struct in6_addr cl_ip6addr;
+
 static const CONF_PARSER client_config[] = {
+	{ "ipaddr",  PW_TYPE_IPADDR,
+	  0, &cl_ip4addr,  NULL },
+	{ "ipv6addr",  PW_TYPE_IPV6ADDR,
+	  0, &cl_ip6addr, NULL },
+	{ "prefix",  PW_TYPE_INTEGER,
+	  offsetof(RADCLIENT, prefix), 0, NULL },
+
 	{ "secret",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, secret), 0, NULL },
 	{ "shortname",  PW_TYPE_STRING_PTR,
@@ -396,7 +406,6 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 {
 	CONF_SECTION	*cs;
 	RADCLIENT	*c;
-	char		*hostnm, *prefix_ptr = NULL;
 	const char	*name2;
 	RADCLIENT_LIST	*clients;
 
@@ -425,17 +434,13 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 	for (cs = cf_subsection_find_next(section, NULL, "client");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(section, cs, "client")) {
+
 		name2 = cf_section_name2(cs);
 		if (!name2) {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Missing client name");
 			return NULL;
 		}
-		/*
-		 * Check the lengths, we don't want any core dumps
-		 */
-		hostnm = name2;
-		prefix_ptr = strchr(hostnm, '/');
 
 		/*
 		 * The size is fine.. Let's create the buffer
@@ -450,6 +455,10 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 		c->acct = rad_malloc(sizeof(*c->acct));
 		memset(c->acct, 0, sizeof(*c->acct));
 #endif
+
+		memset(&cl_ip4addr, 0, sizeof(cl_ip4addr));
+		memset(&cl_ip6addr, 0, sizeof(cl_ip6addr));
+		c->prefix = -1;
 
 		if (cf_section_parse(cs, c, client_config) < 0) {
 			client_free(c);
@@ -470,41 +479,87 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 		}
 		
 		/*
-		 * Look for prefixes.
+		 *	No "ipaddr" or "ipv6addr", use old-style
+		 *	"client <ipaddr> {" syntax.
 		 */
-		c->prefix = -1;
-		if (prefix_ptr) {
-			c->prefix = atoi(prefix_ptr + 1);
-			if ((c->prefix < 0) || (c->prefix > 128)) {
+		if (!cf_pair_find(cs, "ipaddr") &&
+		    !cf_pair_find(cs, "ipv6addr")) {
+			char *prefix_ptr;
+
+			prefix_ptr = strchr(name2, '/');
+
+			/*
+			 *	Look for prefixes.
+			 */
+			if (prefix_ptr) {
+				c->prefix = atoi(prefix_ptr + 1);
+				if ((c->prefix < 0) || (c->prefix > 128)) {
+					client_free(c);
+					cf_log_err(cf_sectiontoitem(cs),
+						   "Invalid Prefix value '%s' for IP.",
+						   prefix_ptr + 1);
+					return NULL;
+				}
+				/* Replace '/' with '\0' */
+				*prefix_ptr = '\0';
+			}
+			
+			/*
+			 *	Always get the numeric representation of IP
+			 */
+			if (ip_hton(name2, AF_UNSPEC, &c->ipaddr) < 0) {
 				client_free(c);
 				cf_log_err(cf_sectiontoitem(cs),
-					   "Invalid Prefix value '%s' for IP.",
-					   prefix_ptr + 1);
+					   "Failed to look up hostname %s: %s",
+					   name2, librad_errstr);
 				return NULL;
 			}
-			/* Replace '/' with '\0' */
-			*prefix_ptr = '\0';
-		}
 
-		/*
-		 * Always get the numeric representation of IP
-		 */
-		if (ip_hton(hostnm, AF_UNSPEC, &c->ipaddr) < 0) {
-			client_free(c);
-			cf_log_err(cf_sectiontoitem(cs),
-				   "Failed to look up hostname %s: %s",
-				   hostnm, librad_errstr);
-			return NULL;
+			if (prefix_ptr) *prefix_ptr = '/';
+			c->longname = strdup(name2);
+
+			if (!c->shortname) c->shortname = strdup(c->longname);
+
 		} else {
-			char buffer[256];
+			char buffer[1024];
+
+			/*
+			 *	Figure out which one to use.
+			 */
+			if (cf_pair_find(cs, "ipaddr")) {
+				c->ipaddr.af = AF_INET;
+				c->ipaddr.ipaddr.ip4addr = cl_ip4addr;
+
+				if ((c->prefix < -1) || (c->prefix > 32)) {
+					client_free(c);
+					cf_log_err(cf_sectiontoitem(cs),
+						   "Prefix must be between 0 and 32");
+					return NULL;
+				}
+				
+			} else if (cf_pair_find(cs, "ipv6addr")) {
+				c->ipaddr.af = AF_INET6;
+				c->ipaddr.ipaddr.ip6addr = cl_ip6addr;
+				
+				if ((c->prefix < -1) || (c->prefix > 128)) {
+					client_free(c);
+					cf_log_err(cf_sectiontoitem(cs),
+						   "Prefix must be between 0 and 128");
+					return NULL;
+				}
+			} else {
+				client_free(c);	/* a fairly bad error */
+				return NULL;
+			}
+
 			ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
 			c->longname = strdup(buffer);
-		}
 
-		/*
-		 *	This makes later life easier.
-		 */
-		if (!c->shortname) c->shortname = strdup(c->longname);
+			/*
+			 *	Set the short name to the name2
+			 */
+			if (!c->shortname) c->shortname = strdup(name2);
+		}
 
 		if (c->prefix < 0) switch (c->ipaddr.af) {
 		case AF_INET:
@@ -524,7 +579,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 
 		if (!client_add(clients, c)) {
 			cf_log_err(cf_sectiontoitem(cs),
-				   "Failed to add client %s", hostnm);
+				   "Failed to add client %s", name2);
 			client_free(c);
 			return NULL;
 		}
