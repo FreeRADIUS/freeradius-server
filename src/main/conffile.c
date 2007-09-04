@@ -508,6 +508,81 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 	} /* loop over ci */
 }
 
+
+static const CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
+					  const CONF_SECTION *outercs,
+					  const char *ptr)
+{
+	CONF_PAIR *cp;
+	const CONF_SECTION *cs = outercs, *next;
+	char name[8192];
+	char *p;
+
+	strlcpy(name, ptr, sizeof(name));
+	p = name;
+
+	/*
+	 *	".foo" means "foo from the current section"
+	 */
+	if (*p == '.') {
+		p++;
+		
+		/*
+		 *	..foo means "foo from the section
+		 *	enclosing this section" (etc.)
+		 */
+		while (*p == '.') {
+			if (cs->item.parent)
+				cs = cs->item.parent;
+			p++;
+		}
+
+		/*
+		 *	"foo.bar.baz" means "from the root"
+		 */
+	} else if (strchr(p, '.') != NULL) {
+		cs = parentcs;
+	}
+
+	while (*p) {
+		char *q = strchr(p, '.');
+
+		if (!q) break;
+
+		*q = '\0';
+		next = cf_section_sub_find(cs, p);
+		*q = '.';
+
+		if (!next) break; /* it MAY be a pair in this section! */
+
+		cs = next;
+		p = q + 1;
+	}
+
+	if (!*p) return NULL;
+
+ retry:
+	/*
+	 *	Find it in the current referenced
+	 *	section.
+	 */
+	cp = cf_pair_find(cs, p);
+	if (cp) return cf_pairtoitem(cp);
+
+	next = cf_section_sub_find(cs, p);
+	if (next) return cf_sectiontoitem(next);
+	
+	/*
+	 *	"foo" is "in the current section, OR in main".
+	 */
+	if ((p == name) && (cs != parentcs)) {
+		cs = parentcs;
+		goto retry;
+	}
+
+	return NULL;
+}
+
 /*
  *	Expand the variables in an input string.
  */
@@ -517,8 +592,8 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 {
 	char *p;
 	const char *end, *ptr;
-	char name[8192];
 	const CONF_SECTION *parentcs;
+	char name[8192];
 
 	/*
 	 *	Find the master parent conf section.
@@ -538,9 +613,8 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 		 *	Ignore anything other than "${"
 		 */
 		if ((*ptr == '$') && (ptr[1] == '{')) {
-			int up;
+			CONF_ITEM *ci;
 			CONF_PAIR *cp;
-			const CONF_SECTION *cs;
 
 			/*
 			 *	FIXME: Add support for ${foo:-bar},
@@ -562,107 +636,30 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 
 			ptr += 2;
 
-			cp = NULL;
-			up = 0;
-
 			/*
-			 *	${.foo} means "foo from the current section"
+			 *	Can't really happen because input lines are
+			 *	capped at 8k, which is sizeof(name)
 			 */
-			if (*ptr == '.') {
-				up = 1;
-				cs = outercs;
-				ptr++;
-
-				/*
-				 *	${..foo} means "foo from the section
-				 *	enclosing this section" (etc.)
-				 */
-				while (*ptr == '.') {
-					if (cs->item.parent)
-						cs = cs->item.parent;
-					ptr++;
-				}
-
-			} else {
-				const char *q;
-				/*
-				 *	${foo} is local, with
-				 *	main as lower priority
-				 */
-				cs = outercs;
-
-				/*
-				 *	${foo.bar.baz} is always rooted
-				 *	from the top.
-				 */
-				for (q = ptr; *q && q != end; q++) {
-					if (*q == '.') {
-						cs = parentcs;
-						up = 1;
-						break;
-					}
-				}
+			if ((end - ptr) >= sizeof(name)) {
+				radlog(L_ERR, "%s[%d]: Reference string is too large",
+				       cf, *lineno);
+				return NULL;
 			}
 
-			while (cp == NULL) {
-				char *q;
-				/*
-				 *	Find the next section.
-				 */
-				for (q = name;
-				     (*ptr != 0) && (*ptr != '.') &&
-					     (ptr != end);
-				     q++, ptr++) {
-					*q = *ptr;
-				}
-				*q = '\0';
+			memcpy(name, ptr, end - ptr);
+			name[end - ptr] = '\0';
 
-				/*
-				 *	The character is a '.', find a
-				 *	section (as the user has given
-				 *	us a subsection to find)
-				 */
-				if (*ptr == '.') {
-					CONF_SECTION *next;
-
-					ptr++;	/* skip the period */
-
-					/*
-					 *	Find the sub-section.
-					 */
-					next = cf_section_sub_find(cs, name);
-					if (next == NULL) {
-						radlog(L_ERR, "config: No such section %s in variable %s", name, input);
-						return NULL;
-					}
-					cs = next;
-
-				} else { /* no period, must be a conf-part */
-					/*
-					 *	Find in the current referenced
-					 *	section.
-					 */
-					cp = cf_pair_find(cs, name);
-					if (cp == NULL) {
-						/*
-						 *	It it was NOT ${..foo}
-						 *	then look in the
-						 *	top-level config items.
-						 */
-						if (!up) cp = cf_pair_find(parentcs, name);
-					}
-					if (cp == NULL) {
-						radlog(L_ERR, "config: No such configuration item %s in section %s when expanding string \"%s\"", name,
-						       cf_section_name1(cs),
-						       input);
-						return NULL;
-					}
-				}
-			} /* until cp is non-NULL */
+			ci = cf_reference_item(parentcs, outercs, name);
+			if (!ci || (ci->type != CONF_ITEM_PAIR)) {
+				radlog(L_ERR, "%s[%d]: Reference \"%s\" not found",
+				       cf, *lineno, input);
+				return NULL;
+			}
 
 			/*
 			 *  Substitute the value of the variable.
 			 */
+			cp = cf_itemtopair(ci);
 			strcpy(p, cp->value);
 			p += strlen(p);
 			ptr = end + 1;
@@ -681,6 +678,16 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			if (end == NULL) {
 				*p = '\0';
 				radlog(L_INFO, "%s[%d]: Environment variable expansion missing }",
+				       cf, *lineno);
+				return NULL;
+			}
+
+			/*
+			 *	Can't really happen because input lines are
+			 *	capped at 8k, which is sizeof(name)
+			 */
+			if ((end - ptr) >= sizeof(name)) {
+				radlog(L_ERR, "%s[%d]: Environment variable name is too large",
 				       cf, *lineno);
 				return NULL;
 			}
@@ -1241,6 +1248,34 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			}
 			continue;
 		} /* we were in an include */
+
+	       if (strcasecmp(buf1, "$template") == 0) {
+		       CONF_ITEM *ci;
+		       CONF_SECTION *parentcs;
+		       t2 = getword(&ptr, buf2, sizeof(buf2));
+
+		       for (parentcs = current;
+			    parentcs->item.parent != NULL;
+			    parentcs = parentcs->item.parent) {
+			       /* do nothing */
+		       }
+
+		       ci = cf_reference_item(parentcs, this, buf2);
+		       if (!ci || (ci->type != CONF_ITEM_SECTION)) {
+				radlog(L_ERR, "%s[%d]: Reference \"%s\" not found",
+				       filename, *lineno, buf2);
+				return -1;
+		       }
+		       
+		       if (this->template) {
+				radlog(L_ERR, "%s[%d]: Section already has a template",
+				       filename, *lineno);
+				return -1;
+		       }
+
+		       this->template = cf_itemtosection(ci);
+		       continue;
+	       }
 
 		/*
 		 *	Ensure that the user can't add CONF_PAIRs
