@@ -429,13 +429,21 @@ static int auth_socket_recv(rad_listen_t *listener,
 		rad_recv_discard(listener->fd);
 		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
 
-		/*
-		 *	This is debugging rather than logging, so that
-		 *	DoS attacks don't affect us.
-		 */
-		DEBUG("Ignoring request from unknown client %s port %d",
-		      inet_ntop(src_ipaddr.af, &src_ipaddr.ipaddr,
-				buffer, sizeof(buffer)), src_port);
+		if (debug_flag > 0) {
+			char name[1024];
+
+			listener->print(listener, name, sizeof(name));
+
+			/*
+			 *	This is debugging rather than logging, so that
+			 *	DoS attacks don't affect us.
+			 */
+			DEBUG("Ignoring request to %s from unknown client %s port %d",
+			      name,
+			      inet_ntop(src_ipaddr.af, &src_ipaddr.ipaddr,
+					buffer, sizeof(buffer)), src_port);
+		}
+
 		return 0;
 	}
 
@@ -526,9 +534,17 @@ static int acct_socket_recv(rad_listen_t *listener,
 		 *	This is debugging rather than logging, so that
 		 *	DoS attacks don't affect us.
 		 */
-		DEBUG("Ignoring request from unknown client %s port %d",
-		      inet_ntop(src_ipaddr.af, &src_ipaddr.ipaddr,
-				buffer, sizeof(buffer)), src_port);
+		if (debug_flag > 0) {
+			char name[1024];
+
+			listener->print(listener, name, sizeof(name));
+
+			DEBUG("Ignoring request to %s from unknown client %s port %d",
+			      name,
+			      inet_ntop(src_ipaddr.af, &src_ipaddr.ipaddr,
+					buffer, sizeof(buffer)), src_port);
+		}
+
 		return 0;
 	}
 
