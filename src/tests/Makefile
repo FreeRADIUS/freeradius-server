@@ -41,4 +41,6 @@ tests: raddb/.raddb
 	./runtests.sh $(TESTS)
 
 eap: $(EAP_TLS_TESTS)
-	$(EAPOL_TEST) -c $< -s $(SECRET)
+	$(EAPOL_TEST) -c eap-ttls-pap.conf -s $(SECRET) 
+	$(EAPOL_TEST) -c peap-mschapv2.conf -s $(SECRET)
+	$(EAPOL_TEST) -c eap-ttls-mschapv2.conf -s $(SECRET)
