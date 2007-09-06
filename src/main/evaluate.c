@@ -450,6 +450,10 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		if ((token == T_OP_REG_EQ) ||
 		    (token == T_OP_REG_NE)) {
 			rt = getregex(&p, right, sizeof(right), &cflags);
+			if (rt != T_DOUBLE_QUOTED_STRING) {
+				radlog(L_ERR, "Expected regular expression at: %s", p);
+				return FALSE;
+			}
 		} else
 #endif
 			rt = gettoken(&p, right, sizeof(right));
