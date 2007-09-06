@@ -458,6 +458,27 @@ static int home_server_add(CONF_SECTION *cs, int type)
 }
 
 
+static home_pool_t *server_pool_alloc(const char *name, home_pool_type_t type,
+				      int server_type, int num_home_servers)
+{
+	home_pool_t *pool;
+
+	pool = rad_malloc(sizeof(*pool) + (sizeof(pool->servers[0]) *
+					   num_home_servers));
+	if (!pool) return NULL;	/* just for pairanoia */
+	
+	memset(pool, 0, sizeof(*pool) + (sizeof(pool->servers[0]) *
+					 num_home_servers));
+
+	pool->name = name;
+	pool->type = type;
+	pool->server_type = server_type;
+	pool->num_home_servers = num_home_servers;
+
+	return pool;
+}
+
+
 static int server_pool_add(CONF_SECTION *cs, int server_type, int do_print)
 {
 	const char *name2;
@@ -533,12 +554,8 @@ static int server_pool_add(CONF_SECTION *cs, int server_type, int do_print)
 		goto error;
 	}
 
-	pool = rad_malloc(sizeof(*pool) + num_home_servers * sizeof(pool->servers[0]));
-	memset(pool, 0, sizeof(*pool) + num_home_servers * sizeof(pool->servers[0]));
-
-	pool->type = HOME_POOL_FAIL_OVER;
-	pool->name = name2;
-	pool->server_type = server_type;
+	pool = server_pool_alloc(name2, HOME_POOL_FAIL_OVER, server_type,
+				 num_home_servers);
 
 	if (do_print) DEBUG2(" server_pool %s {", name2);
 
@@ -573,6 +590,7 @@ static int server_pool_add(CONF_SECTION *cs, int server_type, int do_print)
 		if (do_print) DEBUG2("\ttype = %s", value);
 	}
 
+	num_home_servers = 0;
 	for (cp = cf_pair_find(cs, "home_server");
 	     cp != NULL;
 	     cp = cf_pair_find_next(cs, cp, "home_server")) {
@@ -600,8 +618,7 @@ static int server_pool_add(CONF_SECTION *cs, int server_type, int do_print)
 		}
 
 		if (do_print) DEBUG2("\thome_server = %s", home->name);
-		pool->servers[pool->num_home_servers] = home;
-		pool->num_home_servers++;
+		pool->servers[num_home_servers++] = home;
 	} /* loop over home_server's */
 
 	if (!rbtree_insert(home_pools_byname, pool)) {
@@ -831,13 +848,8 @@ static int old_server_add(CONF_SECTION *cs, const char *realm,
 		return 0;
 	}
 
-	pool = rad_malloc(sizeof(*pool) + num_home_servers * sizeof(pool->servers[0]));
-	memset(pool, 0, sizeof(*pool) + num_home_servers * sizeof(pool->servers[0]));
+	pool = server_pool_alloc(realm, ldflag, type, num_home_servers);
 
-	pool->name = realm;
-	pool->type = ldflag;
-	pool->server_type = type;
-	pool->num_home_servers = num_home_servers;
 	pool->servers[0] = home;
 
 	if (!rbtree_insert(home_pools_byname, pool)) {
