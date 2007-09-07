@@ -1744,15 +1744,6 @@ $INCLUDE ${confdir}/eap.conf
 	# $INCLUDE  ${confdir}/otp.conf
 
 	#
-	#  Implements Login-Time, Current-Time, and Time-Of-Day
-	#
-	logintime {
-		#
-		#  Don't worry about anything here for now..
-		#
-	}
-
-	#
 	#  Kerberos.  See doc/rlm_krb5 for minimal docs.
 	#
 #	krb5 {
