@@ -22,27 +22,24 @@ for more details.
 Each RADIUS client entry has the following basic form:
 .IP
 .nf
-client <hostname|ip-address|ip-network> {
+client <short-name> {
        <attribute> = <value>
  }
 .fi
-.LP
-ip-network is used to specify a network of clients. Networks are
-specified in CIDR notation. If multiple overlapping networks are
-defined, the best match (smallest possible network) will be chosen for
-a packet.
 .SH ATTRIBUTES
 The attributes that can appear in a 
 .B client
 section are listed below. Required attributes are labelled as
 such. All other attributes are optional.
-.PP
+.TP 0.5i
+.B ipaddr [Required]
+The IP address of the client.  For IPv6, use "ipv6addr"
 .TP 0.5i
 .B secret [Required]
 The RADIUS shared secret used for communication between the client/NAS
 and the RADIUS server.
 .TP 0.5i
-.B shortname [Required]
+.B shortname [optional]
 A short alias that can be used in place of the IP address or fully
 qualified hostname provided in the first line of the section.
 .TP 0.5i
@@ -76,7 +73,8 @@ Reserved for future use.
 .SH EXAMPLES
 .IP
 .nf
-client 127.0.0.1 {
+client localhost {
+        ipaddr          = 127.0.0.1
         secret          = testing123
         shortname       = localhost
         nastype         = other     
@@ -89,13 +87,18 @@ server locally, for example with
 .BR radclient (1).
 .IP
 .nf
-client 192.168.0.0/24 {
-       secret          = testing123-1
-       shortname       = private-network-1
+client private-network-1 {
+        ipaddr          = 192.168.0.0
+        netmask         = 24
+        secret          = testing123-1
+        shortname       = private-network-1
 }
 .fi
 .LP
 This entry represents any client from the 192.168.0.0/24 network. 
+
+The old-style format from 1.x is still accepted by the server, but
+that form is deprecated.
 .SH FILES
 .I /etc/raddb/clients.conf
 
@@ -107,7 +110,5 @@ This entry represents any client from the 192.168.0.0/24 network.
 .BR naslist (5)
 
 .SH AUTHOR
-This manual page was authored by Shawn K. O'Shea <shawn@eth0.net>.
-
 FreeRADIUS is authored by the FreeRADIUS team. 
 http://freeradius.org/
