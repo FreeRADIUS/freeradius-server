@@ -377,7 +377,7 @@ static const CONF_PARSER client_config[] = {
 	  0, &cl_ip4addr,  NULL },
 	{ "ipv6addr",  PW_TYPE_IPV6ADDR,
 	  0, &cl_ip6addr, NULL },
-	{ "prefix",  PW_TYPE_INTEGER,
+	{ "netmask",  PW_TYPE_INTEGER,
 	  offsetof(RADCLIENT, prefix), 0, NULL },
 
 	{ "secret",  PW_TYPE_STRING_PTR,
@@ -533,7 +533,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 				if ((c->prefix < -1) || (c->prefix > 32)) {
 					client_free(c);
 					cf_log_err(cf_sectiontoitem(cs),
-						   "Prefix must be between 0 and 32");
+						   "Netmask must be between 0 and 32");
 					return NULL;
 				}
 				
@@ -544,7 +544,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 				if ((c->prefix < -1) || (c->prefix > 128)) {
 					client_free(c);
 					cf_log_err(cf_sectiontoitem(cs),
-						   "Prefix must be between 0 and 128");
+						   "Netmask must be between 0 and 128");
 					return NULL;
 				}
 			} else {
