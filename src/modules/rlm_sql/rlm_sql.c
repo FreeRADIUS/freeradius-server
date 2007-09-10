@@ -465,7 +465,7 @@ static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *reque
 
 	if (!inst->config->groupmemb_query ||
 	    (inst->config->groupmemb_query[0] == 0))
-		return 1;
+		return 0;
 
 	if (!radius_xlat(querystr, sizeof(querystr), inst->config->groupmemb_query, request, sql_escape_func)) {
 		radlog(L_ERR, "rlm_sql (%s): xlat failed.",
@@ -556,7 +556,7 @@ static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
-	if (sql_get_grouplist(inst, sqlsocket, req, &group_list)) {
+	if (sql_get_grouplist(inst, sqlsocket, req, &group_list) < 0) {
 		radlog(L_ERR, "rlm_sql (%s): Error getting group membership",
 		       inst->config->xlat_name);
 		/* Remove the username we (maybe) added above */
@@ -606,7 +606,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
-	if (sql_get_grouplist(inst, sqlsocket, request, &group_list)) {
+	if (sql_get_grouplist(inst, sqlsocket, request, &group_list) < 0) {
 		radlog(L_ERR, "rlm_sql (%s): Error retrieving group list",
 		       inst->config->xlat_name);
 		return -1;
