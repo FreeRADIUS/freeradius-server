@@ -92,7 +92,7 @@ static const CONF_PARSER module_config[] = {
 	{"accounting_stop_query_alt", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,accounting_stop_query_alt), NULL, ""},
 	{"group_membership_query", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,groupmemb_query), NULL, ""},
+	 offsetof(SQL_CONFIG,groupmemb_query), NULL, NULL},
 	{"connect_failure_retry_delay", PW_TYPE_INTEGER,
 	 offsetof(SQL_CONFIG,connect_failure_retry_delay), NULL, "60"},
 	{"simul_count_query", PW_TYPE_STRING_PTR,
@@ -463,7 +463,8 @@ static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *reque
 
 	group_list_tmp = *group_list = NULL;
 
-	if (inst->config->groupmemb_query[0] == 0)
+	if (!inst->config->groupmemb_query ||
+	    (inst->config->groupmemb_query[0] == 0))
 		return 1;
 
 	if (!radius_xlat(querystr, sizeof(querystr), inst->config->groupmemb_query, request, sql_escape_func)) {
@@ -1312,7 +1313,8 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	int		nas_port = 0;
 
 	/* If simul_count_query is not defined, we don't do any checking */
-	if (inst->config->simul_count_query[0] == 0) {
+	if (!inst->config->simul_count_query ||
+	    (inst->config->simul_count_query[0] == 0)) {
 		return RLM_MODULE_NOOP;
 	}
 
@@ -1365,7 +1367,8 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	 *	Looks like too many sessions, so let's start verifying
 	 *	them, unless told to rely on count query only.
 	 */
-	if (inst->config->simul_verify_query[0] == '\0') {
+	if (!inst->config->simul_verify_query ||
+	    (inst->config->simul_verify_query[0] == '\0')) {
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_OK;
 	}
@@ -1488,7 +1491,8 @@ static int rlm_sql_postauth(void *instance, REQUEST *request) {
 		return RLM_MODULE_FAIL;
 
 	/* If postauth_query is not defined, we stop here */
-	if (inst->config->postauth_query[0] == '\0')
+	if (!inst->config->postauth_query ||
+	    (inst->config->postauth_query[0] == '\0'))
 		return RLM_MODULE_NOOP;
 
 	/* Expand variables in the query */
