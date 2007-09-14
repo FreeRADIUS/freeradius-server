@@ -85,7 +85,7 @@ CREATE TABLE radgroupcheck (
 	id 		INT PRIMARY KEY,
 	groupname	VARCHAR(20) UNIQUE NOT NULL,
 	attribute	VARCHAR(40),
-	op		VARCHAR(2) NOT NULL,
+	op		CHAR(2) NOT NULL,
 	value		VARCHAR(40)
 );
 CREATE SEQUENCE radgroupcheck_seq START WITH 1 INCREMENT BY 1;
@@ -97,7 +97,7 @@ CREATE TABLE radgroupreply (
 	id		INT PRIMARY KEY,
 	GroupName	VARCHAR(20) UNIQUE NOT NULL,
 	Attribute	VARCHAR(40),
-	op		VARCHAR(2) NOT NULL,
+	op		CHAR(2) NOT NULL,
 	Value		VARCHAR(40)
 );
 CREATE SEQUENCE radgroupreply_seq START WITH 1 INCREMENT BY 1;
@@ -109,7 +109,7 @@ CREATE TABLE radreply (
 	id		INT PRIMARY KEY,
 	UserName	VARCHAR(30) NOT NULL,
 	Attribute	VARCHAR(30),
-	op		VARCHAR(2) NOT NULL,
+	op		CHAR(2) NOT NULL,
 	Value		VARCHAR(40)
 );
 CREATE INDEX radreply_idx1 ON radreply(UserName);
