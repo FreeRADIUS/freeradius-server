@@ -734,6 +734,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 	CONF_SECTION	*cs, *modules;
 	int		do_component[RLM_COMPONENT_COUNT];
 	rad_listen_t	*listener;
+	int		null_server = FALSE;
 
 	/*
 	 *	If necessary, initialize libltdl.
@@ -896,7 +897,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 
 		cs = cf_section_sub_find_name2(config,
 					       "server", listener->server);
-		if (!cs) {
+		if (!cs && (listener->server != NULL)) {
 			char buffer[256];
 
 			listener->print(listener, buffer, sizeof(buffer));
@@ -937,6 +938,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 			DEBUG2("server %s {", name2);
 		} else {
 			DEBUG2("server {");
+			null_server = TRUE;
 		}
 		if (load_byserver(cs, name2, do_component) < 0) {
 			DEBUG2("}");
@@ -945,6 +947,21 @@ int setup_modules(int reload, CONF_SECTION *config)
 		DEBUG2("}");
 	}
 
+	/*
+	 *	No empty server defined.  Try to load an old-style
+	 *	one for backwards compatibility.
+	 */
+	if (!null_server) {
+		DEBUG2("WARNING: Please update your configuration to use virtual servers!");
+		DEBUG2("server {");
+		if (load_byserver(config, NULL, do_component) < 0) {
+			DEBUG2("}");
+			return -1;
+		}
+		DEBUG2("}");
+	}
+	
+	
 	return 0;
 }
 
