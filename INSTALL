@@ -38,9 +38,11 @@ COMPLETELY backwards compatible.  There are differences that mean it
 is simpler and safer to migrate your configurations.
 
   If you are upgrading an existing installation, please be aware that
-at least one default virtual server MUST be used.  If you are
-upgrading from a previous version of FreeRADIUS, this change can be
-done by editing radiusd.conf, and wrapping all of the authorize,
+at least one default virtual server SHOULD be used.  If you don't need
+virtual servers, your configuration can remain mostly unchanged.
+
+  If you do need virtual servers, we recommend creating a default one
+by editing radiusd.conf, and wrapping all of the authorize,
 authenticate, etc. sections in one server block, as follows:
 
 ...
@@ -60,12 +62,6 @@ authenticate, etc. sections in one server block, as follows:
 	}
   }  		# matching line to add
 ...
-
-  If this change is not made, the server WILL NOT START.  It will
-instead complain about "no server defined".
-
-  See "raddb/sites-available/default" for an example of how this
-should be done.
 
 
 4. CUSTOM INSTALLATION
@@ -94,8 +90,11 @@ following list is a selection from the available flags:
 and MAY install the configuration files.  If you have not installed a
 RADIUS server before, then the configuration files for FreeRADIUS will
 be installed.  If you already have a RADIUS server installed, then
-FreeRADIUS WILL NOT over-write your current configuration.  The "make
-install" process will warn you about the files it could not install.
+
+	** FreeRADIUS WILL NOT over-write your current configuration. **
+
+  The "make install" process will warn you about the files it could
+not install.
 
   If you DO see a warning message about files that could not be
 installed, the it is YOUR RESPONSIBILITY to ensure that the new server
