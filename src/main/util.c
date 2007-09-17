@@ -326,9 +326,10 @@ void *rad_malloc(size_t size)
  *
  */
 
-void NEVER_RETURNS rad_assert_fail (const char *file, unsigned int line)
+void NEVER_RETURNS rad_assert_fail (const char *file, unsigned int line,
+				    const char *expr)
 {
-	radlog(L_ERR|L_CONS, "Assertion failed in %s, line %u", file, line);
+	radlog(L_ERR, "ASSERT FAILED %s[%u]: %s", file, line, expr);
 	abort();
 }
 
@@ -416,6 +417,11 @@ REQUEST *request_alloc_fake(REQUEST *request)
   fake->packet->id = fake->number & 0xff;
   fake->packet->code = request->packet->code;
   fake->timestamp = request->timestamp;
+ 
+  /*
+   *	Required for new identity support
+   */
+  fake->listener = request->listener;
 
   /*
    *	Fill in the fake reply, based on the fake request.

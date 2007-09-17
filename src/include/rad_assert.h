@@ -25,14 +25,14 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(rad_assert_h, "$Id$")
 
-extern void rad_assert_fail (const char *file, unsigned int line);
+extern void rad_assert_fail (const char *file, unsigned int line, const char *expr);
 
 #ifdef NDEBUG
 	#define rad_assert(expr) ((void) (0))
 #else
 	#define rad_assert(expr) \
 		((void) ((expr) ? (void) 0 : \
-			(void) rad_assert_fail (__FILE__, __LINE__)))
+			(void) rad_assert_fail (__FILE__, __LINE__, #expr)))
 #endif
 
 #endif
