@@ -1766,10 +1766,12 @@ int received_request(rad_listen_t *listener,
 	/*
 	 *	Set virtual server identity
 	 */
-	if (listener->server) {
+	if (client->server) {
+		request->server = client->server;
+	} else if (listener->server) {
 		request->server = listener->server;
 	} else {
-		request->server = client->server;
+		request->server = NULL;
 	}
 
 	/*
