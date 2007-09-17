@@ -33,7 +33,7 @@ RCSID("$Id$")
 #define VMPS_SPACE "vmps"
 
 typedef struct indexed_modcallable {
-	const		char *space;
+	const		char *server;
 	int		comp;
 	int		idx;
 	modcallable	*modulelist;
@@ -81,10 +81,10 @@ static int indexed_modcallable_cmp(const void *one, const void *two)
 	const indexed_modcallable *a = one;
 	const indexed_modcallable *b = two;
 
-	if (a->space && !b->space) return -1;
-	if (!a->space && b->space) return +1;
-	if (a->space && b->space) {
-		rcode = strcmp(a->space, b->space);
+	if (a->server && !b->server) return -1;
+	if (!a->server && b->server) return +1;
+	if (a->server && b->server) {
+		rcode = strcmp(a->server, b->server);
 		if (rcode != 0) return rcode;
 	}
 
@@ -341,14 +341,14 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	return node;
 }
 
-static indexed_modcallable *lookup_by_index(const char *space, int comp,
+static indexed_modcallable *lookup_by_index(const char *server, int comp,
 					    int idx)
 {
 	indexed_modcallable myc;
 	
 	myc.comp = comp;
 	myc.idx = idx;
-	myc.space = space;
+	myc.server = server;
 
 	return rbtree_finddata(components, &myc);
 }
@@ -356,11 +356,11 @@ static indexed_modcallable *lookup_by_index(const char *space, int comp,
 /*
  *	Create a new sublist.
  */
-static indexed_modcallable *new_sublist(const char *space, int comp, int idx)
+static indexed_modcallable *new_sublist(const char *server, int comp, int idx)
 {
 	indexed_modcallable *c;
 
-	c = lookup_by_index(space, comp, idx);
+	c = lookup_by_index(server, comp, idx);
 
 	/* It is an error to try to create a sublist that already
 	 * exists. It would almost certainly be caused by accidental
@@ -379,7 +379,7 @@ static indexed_modcallable *new_sublist(const char *space, int comp, int idx)
 
 	c = rad_malloc(sizeof(*c));
 	c->modulelist = NULL;
-	c->space = space;
+	c->server = server;
 	c->comp = comp;
 	c->idx = idx;
 
@@ -391,14 +391,14 @@ static indexed_modcallable *new_sublist(const char *space, int comp, int idx)
 	return c;
 }
 
-static int indexed_modcall(const char *space, int comp, int idx,
+static int indexed_modcall(const char *server, int comp, int idx,
 			   REQUEST *request)
 {
 	int rcode;
 	indexed_modcallable *this;
 	modcallable *list = NULL;
 
-	this = lookup_by_index(space, comp, idx);
+	this = lookup_by_index(server, comp, idx);
 	if (!this) {
 		if (idx != 0) DEBUG2("  WARNING: Unknown value specified for %s.  Cannot perform requested action.",
 				     section_type_value[comp].typename);
@@ -420,7 +420,7 @@ static int indexed_modcall(const char *space, int comp, int idx,
  *	block
  */
 static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
-				     const char *space, int comp)
+				     const char *server, int comp)
 {
 	indexed_modcallable *subcomp;
 	modcallable *ml;
@@ -463,7 +463,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 		return 0;
 	}
 
-	subcomp = new_sublist(space, comp, dval->value);
+	subcomp = new_sublist(server, comp, dval->value);
 	if (!subcomp) {
 		modcallable_free(&ml);
 		return 1;
@@ -474,7 +474,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 }
 
 static int load_component_section(modcallable *parent, CONF_SECTION *cs,
-				  const char *space, int comp)
+				  const char *server, int comp)
 {
 	modcallable *this;
 	CONF_ITEM *modref;
@@ -509,7 +509,7 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 			if (strcmp(sec_name,
 				   section_type_value[comp].typename) == 0) {
 				if (!load_subcomponent_section(parent, scs,
-							       space, comp)) {
+							       server, comp)) {
 					return -1; /* FIXME: memleak? */
 				}
 				continue;
@@ -566,7 +566,7 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 			idx = 0;
 		}
 
-		subcomp = new_sublist(space, comp, idx);
+		subcomp = new_sublist(server, comp, idx);
 		if (subcomp == NULL) {
 			modcallable_free(&this);
 			continue;
@@ -584,8 +584,8 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 	return 0;
 }
 
-static int load_byspace(CONF_SECTION *cs, const char *space,
-			int *do_component)
+static int load_byserver(CONF_SECTION *cs, const char *server,
+			 int *do_component)
 {
 	int comp;
 
@@ -710,7 +710,7 @@ static int load_byspace(CONF_SECTION *cs, const char *space,
 		DEBUG2(" Module: Checking %s {...} for more modules to load",
 		       section_type_value[comp].section);
 
-		if (load_component_section(NULL, subcs, space, comp) < 0) {
+		if (load_component_section(NULL, subcs, server, comp) < 0) {
 			DEBUG2(" }");
 			return -1;
 		}
@@ -938,7 +938,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		} else {
 			DEBUG2("server {");
 		}
-		if (load_byspace(cs, name2, do_component) < 0) {
+		if (load_byserver(cs, name2, do_component) < 0) {
 			DEBUG2("}");
 			return -1;
 		}
