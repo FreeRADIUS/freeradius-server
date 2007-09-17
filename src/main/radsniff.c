@@ -207,6 +207,7 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 		vp_printlist(stdout, request->vps);
 		pairfree(&request->vps);
 	}
+	fflush(stdout);
 	free(request);
 }
 
@@ -338,5 +339,6 @@ int main(int argc, char *argv[])
 	pcap_close(descr);
 
 	printf("Done sniffing\n");
+	fflush(stdout);
 	return 0;
 }
