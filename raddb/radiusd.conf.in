@@ -1237,7 +1237,7 @@ $INCLUDE ${confdir}/eap.conf
 #		 '%{Framed-IP-Address}', '0', '0', '%{Acct-Session-Time}','');"
 #
 #		Post-Auth = "INSERT INTO ${postauth_table}                   \
-#		 (user, pass, reply, date) VALUES                            \
+#		 (username, pass, reply, authdate) VALUES                            \
 #		 ('%{User-Name}', '%{User-Password:-Chap-Password}',         \
 #		 '%{reply:Packet-Type}', '%S');"
 #	}
