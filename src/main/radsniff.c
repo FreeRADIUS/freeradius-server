@@ -94,39 +94,6 @@ static const char *packet_codes[] = {
   "IP-Address-Release"
 };
 
-/*
- *	Stolen from rad_recv() in ../lib/radius.c
- */
-static RADIUS_PACKET *init_packet(const uint8_t *data, size_t data_len)
-{
-	RADIUS_PACKET		*packet;
-
-	/*
-	 *	Allocate the new request data structure
-	 */
-	if ((packet = malloc(sizeof(*packet))) == NULL) {
-		librad_log("out of memory");
-		return NULL;
-	}
-	memset(packet, 0, sizeof(*packet));
-
-	packet->data = data;
-	packet->data_len = data_len;
-
-	if (!rad_packet_ok(packet)) {
-		packet->data = NULL; /* wasn't allocated by us! */
-		rad_free(&packet);
-		return NULL;
-	}
-
-	/*
-	 *	Explicitely set the VP list to empty.
-	 */
-	packet->vps = NULL;
-
-	return packet;
-}
-
 static int filter_packet(RADIUS_PACKET *packet)
 {
 	VALUE_PAIR *check_item;
@@ -155,7 +122,7 @@ static int filter_packet(RADIUS_PACKET *packet)
 	return 1;
 }
 
-static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const uint8_t *packet)
+static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const uint8_t *data)
 {
 	/* Just a counter of how many packets we've had */
 	static int count = 1;
@@ -169,35 +136,49 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 	int size_ip = sizeof(struct ip_header);
 	int size_udp = sizeof(struct udp_header);
 	/* For FreeRADIUS */
-	RADIUS_PACKET *request;
+	RADIUS_PACKET *packet;
 
 	args = args;		/* -Wunused */
 
 	/* Define our packet's attributes */
-	ethernet = (const struct ethernet_header*)(packet);
-	ip = (const struct ip_header*)(packet + size_ethernet);
-	udp = (const struct udp_header*)(packet + size_ethernet + size_ip);
-	payload = (const uint8_t *)(packet + size_ethernet + size_ip + size_udp);
+	ethernet = (const struct ethernet_header*)(data);
+	ip = (const struct ip_header*)(data + size_ethernet);
+	udp = (const struct udp_header*)(data + size_ethernet + size_ip);
+	payload = (const uint8_t *)(data + size_ethernet + size_ip + size_udp);
 
-	/* Read the RADIUS packet structure */
-	request = init_packet(payload, header->len - size_ethernet - size_ip - size_udp);
-	if (request == NULL) {
-		librad_perror("check");
+	packet = malloc(sizeof(*packet));
+	if (!packet) {
+		fprintf(stderr, "Out of memory\n");
 		return;
 	}
-	request->src_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_src.s_addr;
-	request->src_port = ntohs(udp->udp_sport);
-	request->dst_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_dst.s_addr;
-	request->dst_port = ntohs(udp->udp_dport);
+
+	memset(packet, 0, sizeof(*packet));
+	packet->src_ipaddr.af = AF_INET;
+	packet->src_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_src.s_addr;
+	packet->src_port = ntohs(udp->udp_sport);
+	packet->dst_ipaddr.af = AF_INET;
+	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_dst.s_addr;
+	packet->dst_port = ntohs(udp->udp_dport);
+
+	packet->data = payload;
+	packet->data_len = header->len - size_ethernet - size_ip - size_udp;
+
+	if (!rad_packet_ok(packet)) {
+		librad_perror("Packet");
+		free(packet);
+		return;
+	}
 
 	/*
 	 *	Decode the data without bothering to check the signatures.
 	 */
-	if (rad_decode(request, NULL, radius_secret) != 0) {
+	if (rad_decode(packet, NULL, radius_secret) != 0) {
+		free(packet);
 		librad_perror("decode");
 		return;
 	}
-	if (filter_vps && filter_packet(request)) {
+	if (filter_vps && filter_packet(packet)) {
+		free(packet);
 		DEBUG("Packet number %d doesn't match\n", count++);
 		return;
 	}
@@ -206,13 +187,13 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 	printf("Packet number %d has just been sniffed\n", count++);
 	printf("\tFrom:    %s:%d\n", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
 	printf("\tTo:      %s:%d\n", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
-	printf("\tType:    %s\n", packet_codes[request->code]);
-	if (request->vps != NULL) {
-		vp_printlist(stdout, request->vps);
-		pairfree(&request->vps);
+	printf("\tType:    %s\n", packet_codes[packet->code]);
+	if (packet->vps != NULL) {
+		vp_printlist(stdout, packet->vps);
+		pairfree(&packet->vps);
 	}
 	fflush(stdout);
-	free(request);
+	free(packet);
 }
 
 static void NEVER_RETURNS usage(int status)
