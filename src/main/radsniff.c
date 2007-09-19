@@ -261,11 +261,6 @@ int main(int argc, char *argv[])
 			break;
 		case 'r':
 			radius_filter = optarg;
-			parsecode = userparse(radius_filter, &filter_vps);
-			if (parsecode == T_OP_INVALID || filter_vps == NULL) {
-				fprintf(stderr, "radsniff: Invalid RADIUS filter \"%s\"\n", optarg);
-				exit(1);
-			}
 			break;
 		case 's':
 			radius_secret = optarg;
@@ -288,6 +283,19 @@ int main(int argc, char *argv[])
                 librad_perror("radsniff");
                 return 1;
         }
+
+	if (radius_filter) {
+		parsecode = userparse(radius_filter, &filter_vps);
+		if (parsecode == T_OP_INVALID) {
+			fprintf(stderr, "radsniff: Invalid RADIUS filter \"%s\": %s\n", optarg, librad_errstr);
+			exit(1);
+		}
+		if (!filter_vps) {
+			fprintf(stderr, "radsniff: Empty RADIUS filter \"%s\"\n", optarg);
+			exit(1);
+		}
+	}
+
 	/* Set our device */
 	pcap_lookupnet(dev, &netp, &maskp, errbuf);
 
