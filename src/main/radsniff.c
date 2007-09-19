@@ -35,6 +35,9 @@ RCSID("$Id$")
 
 static const char *radius_secret = "testing123";
 static VALUE_PAIR *filter_vps = NULL;
+static int debug_flag = 0;
+#undef DEBUG
+#define DEBUG if (debug_flag) printf
 
 static const char *packet_codes[] = {
   "",
@@ -111,6 +114,7 @@ static RADIUS_PACKET *init_packet(const uint8_t *data, size_t data_len)
 	packet->data_len = data_len;
 
 	if (!rad_packet_ok(packet)) {
+		packet->data = NULL; /* wasn't allocated by us! */
 		rad_free(&packet);
 		return NULL;
 	}
@@ -194,7 +198,7 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 		return;
 	}
 	if (filter_vps && filter_packet(request)) {
-		/* printf("Packet number %d doesn't match\n", count++); */
+		DEBUG("Packet number %d doesn't match\n", count++);
 		return;
 	}
 
@@ -224,6 +228,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "\t-p port\tList for packets on port.\n");
 	fprintf(output, "\t-r filter\tRADIUS attribute filter.\n");
 	fprintf(output, "\t-s secret\tRADIUS secret.\n");
+	fprintf(output, "\t-X\t\tPrint out debugging information.\n");
 	exit(status);
 }
 
@@ -248,7 +253,7 @@ int main(int argc, char *argv[])
 	dev = pcap_lookupdev(errbuf);
 
 	/* Get options */
-	while ((opt = getopt(argc, argv, "c:d:f:hi:p:r:s:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:d:f:hi:p:r:s:X")) != EOF) {
 		switch (opt)
 		{
 		case 'c':
@@ -283,6 +288,9 @@ int main(int argc, char *argv[])
 			break;
 		case 's':
 			radius_secret = optarg;
+			break;
+		case 'X':
+		  	debug_flag = 1;
 			break;
 		default:
 			usage(1);
