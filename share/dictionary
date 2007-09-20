@@ -115,6 +115,7 @@ $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.gemtek
 $INCLUDE dictionary.h3c
 $INCLUDE dictionary.hp
+$INCLUDE dictionary.huawei
 $INCLUDE dictionary.issanni
 $INCLUDE dictionary.itk
 $INCLUDE dictionary.ipunplugged
