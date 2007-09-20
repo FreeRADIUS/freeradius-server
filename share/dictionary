@@ -113,6 +113,8 @@ $INCLUDE dictionary.fortinet
 $INCLUDE dictionary.foundry
 $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.gemtek
+$INCLUDE dictionary.h3c
+$INCLUDE dictionary.hp
 $INCLUDE dictionary.issanni
 $INCLUDE dictionary.itk
 $INCLUDE dictionary.ipunplugged
@@ -121,7 +123,6 @@ $INCLUDE dictionary.karlnet
 $INCLUDE dictionary.livingston
 $INCLUDE dictionary.localweb
 $INCLUDE dictionary.lucent
-$INCLUDE dictionary.hp
 $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.mikrotik
 $INCLUDE dictionary.navini
