@@ -116,7 +116,7 @@ int vqp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 int vmps_process(REQUEST *request)
 {
 	DEBUG2("Doing VMPS");
-	module_vmps(request);
+	module_post_auth(0, request);
 	DEBUG2("Done VMPS");
 
 	request->reply->code = PW_AUTHENTICATION_ACK;

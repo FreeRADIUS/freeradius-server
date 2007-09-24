@@ -30,8 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/modcall.h>
 #include <freeradius-devel/rad_assert.h>
 
-#define VMPS_SPACE "vmps"
-
 typedef struct indexed_modcallable {
 	const		char *server;
 	int		comp;
@@ -391,14 +389,13 @@ static indexed_modcallable *new_sublist(const char *server, int comp, int idx)
 	return c;
 }
 
-static int indexed_modcall(const char *server, int comp, int idx,
-			   REQUEST *request)
+static int indexed_modcall(int comp, int idx, REQUEST *request)
 {
 	int rcode;
 	indexed_modcallable *this;
 	modcallable *list = NULL;
 
-	this = lookup_by_index(server, comp, idx);
+	this = lookup_by_index(request->server, comp, idx);
 	if (!this) {
 		if (idx != 0) DEBUG2("  WARNING: Unknown value specified for %s.  Cannot perform requested action.",
 				     section_type_value[comp].typename);
@@ -646,7 +643,7 @@ static int load_component_section(CONF_SECTION *cs,
 
 static int load_byserver(CONF_SECTION *cs, int *do_component)
 {
-	int comp;
+	int comp, flag;
 	const char *server = cf_section_name2(cs);
 
 	DEBUG2(" modules {");
@@ -655,6 +652,7 @@ static int load_byserver(CONF_SECTION *cs, int *do_component)
 	 *	Loop over all of the known components, finding their
 	 *	configuration section, and loading it.
 	 */
+	flag = 0;
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 
@@ -673,9 +671,35 @@ static int load_byserver(CONF_SECTION *cs, int *do_component)
 			DEBUG2(" }");
 			return -1;
 		}
+		flag = 1;
 	} /* loop over components */
 
+	/*
+	 *	We haven't loaded any of the normal sections.  Maybe we're
+	 *	supposed to load the vmps section.
+	 *
+	 *	This is a bit of a hack...
+	 */
+	if (!flag && do_component[RLM_COMPONENT_POST_AUTH]) {
+		CONF_SECTION *subcs;
+
+		subcs = cf_section_sub_find(cs, "vmps");
+		if (subcs) {
+			DEBUG2(" Module: Checking vmps {...} for more modules to load");		
+			if (load_component_section(subcs, server,
+						   RLM_COMPONENT_POST_AUTH) < 0) {
+				return -1;
+			}
+			flag = 1;
+		}
+	}
+
 	DEBUG2(" }");
+
+	if (!flag) {
+		DEBUG("WARNING: Server %s is empty, and will do nothing!",
+		      server);
+	}
 
 	return 0;
 }
@@ -846,41 +870,23 @@ int setup_modules(int reload, CONF_SECTION *config)
 	} /* if there's an 'instantiate' section. */
 
 	/*
-	 *	Load *all*.  If you don't want one loaded, don't list
-	 *	it in sites-enabled/
+	 *	Loop over the listeners, figuring out which sections
+	 *	to load.
 	 */
 	for (listener = mainconfig.listen;
 	     listener != NULL;
 	     listener = listener->next) {
+		const char *name = NULL;
+		char buffer[256];
+
 		if (listener->type == RAD_LISTEN_PROXY) continue;
 
 		cs = cf_section_sub_find_name2(config,
 					       "server", listener->server);
 		if (!cs && (listener->server != NULL)) {
-			char buffer[256];
-
 			listener->print(listener, buffer, sizeof(buffer));
 
-			radlog(L_ERR, "Listening on IP %s but no server has been defined", buffer);
-			return -1;
-		}
-
-		if (listener->type != RAD_LISTEN_VQP) continue;
-
-		cs = cf_section_sub_find(config, "vmps");
-		if (!cs) {
-			radlog(L_ERR, "Listening on vmps socket, but no vmps section");
-			return -1;
-		}
-		
-		if (cf_item_find_next(cs, NULL) == NULL) {
-			radlog(L_ERR, "Listening on vmps socket, vmps section is empty");
-			return -1;
-		}
-			
-		DEBUG2(" Module: Checking vmps {...} for more modules to load");		
-		if (load_component_section(cs, VMPS_SPACE,
-					   RLM_COMPONENT_POST_AUTH) < 0) {
+			radlog(L_ERR, "No server has been defined for %s", buffer);
 			return -1;
 		}
 	}
@@ -919,8 +925,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		}
 		DEBUG2("}");
 	}
-	
-	
+
 	return 0;
 }
 
@@ -930,8 +935,7 @@ int setup_modules(int reload, CONF_SECTION *config)
  */
 int module_authorize(int autz_type, REQUEST *request)
 {
-	return indexed_modcall(request->server,
-			       RLM_COMPONENT_AUTZ, autz_type, request);
+	return indexed_modcall(RLM_COMPONENT_AUTZ, autz_type, request);
 }
 
 /*
@@ -939,8 +943,7 @@ int module_authorize(int autz_type, REQUEST *request)
  */
 int module_authenticate(int auth_type, REQUEST *request)
 {
-	return indexed_modcall(request->server,
-			       RLM_COMPONENT_AUTH, auth_type, request);
+	return indexed_modcall(RLM_COMPONENT_AUTH, auth_type, request);
 }
 
 /*
@@ -948,8 +951,7 @@ int module_authenticate(int auth_type, REQUEST *request)
  */
 int module_preacct(REQUEST *request)
 {
-	return indexed_modcall(request->server,
-			       RLM_COMPONENT_PREACCT, 0, request);
+	return indexed_modcall(RLM_COMPONENT_PREACCT, 0, request);
 }
 
 /*
@@ -957,8 +959,7 @@ int module_preacct(REQUEST *request)
  */
 int module_accounting(int acct_type, REQUEST *request)
 {
-	return indexed_modcall(request->server,
-			       RLM_COMPONENT_ACCT, acct_type, request);
+	return indexed_modcall(RLM_COMPONENT_ACCT, acct_type, request);
 }
 
 /*
@@ -977,8 +978,7 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
 	request->simul_max = maxsimul;
 	request->simul_mpp = 1;
 
-	rcode = indexed_modcall(request->server,
-				RLM_COMPONENT_SESS, sess_type, request);
+	rcode = indexed_modcall(RLM_COMPONENT_SESS, sess_type, request);
 
 	if (rcode != RLM_MODULE_OK) {
 		/* FIXME: Good spot for a *rate-limited* warning to the log */
@@ -993,8 +993,7 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
  */
 int module_pre_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(request->server,
-			       RLM_COMPONENT_PRE_PROXY, type, request);
+	return indexed_modcall(RLM_COMPONENT_PRE_PROXY, type, request);
 }
 
 /*
@@ -1002,8 +1001,7 @@ int module_pre_proxy(int type, REQUEST *request)
  */
 int module_post_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(request->server,
-			       RLM_COMPONENT_POST_PROXY, type, request);
+	return indexed_modcall(RLM_COMPONENT_POST_PROXY, type, request);
 }
 
 /*
@@ -1011,15 +1009,5 @@ int module_post_proxy(int type, REQUEST *request)
  */
 int module_post_auth(int postauth_type, REQUEST *request)
 {
-	return indexed_modcall(request->server,
-			       RLM_COMPONENT_POST_AUTH, postauth_type, request);
-}
-
-/*
- *	Do VMPS
- */
-int module_vmps(REQUEST *request)
-{
-	return indexed_modcall(VMPS_SPACE, RLM_COMPONENT_POST_AUTH, 0,
-			       request);
+	return indexed_modcall(RLM_COMPONENT_POST_AUTH, postauth_type, request);
 }
