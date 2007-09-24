@@ -450,9 +450,9 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 
 	/*
 	 *	We must assign a numeric index to this subcomponent.
-	 *	It is generated and placed in the dictionary by
-	 *	setup_modules(), when it loads the sections.  If it
-	 *	isn't found, it's a serious error.
+	 *	It is generated and placed in the dictionary
+	 *	automatically.  If it isn't found, it's a serious
+	 *	error.
 	 */
 	dval = dict_valbyname(section_type_value[comp].attr, name2);
 	if (!dval) {
@@ -504,7 +504,7 @@ static int define_type(const DICT_ATTR *dattr, const char *name)
 	return 1;
 }
 
-static int load_component_section(modcallable *parent, CONF_SECTION *cs,
+static int load_component_section(CONF_SECTION *cs,
 				  const char *server, int comp)
 {
 	modcallable *this;
@@ -548,7 +548,7 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 					return -1;
 				}
 
-				if (!load_subcomponent_section(parent, scs,
+				if (!load_subcomponent_section(NULL, scs,
 							       server, comp)) {
 					return -1; /* FIXME: memleak? */
 				}
@@ -577,7 +577,7 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 		/*
 		 *	Try to compile one entry.
 		 */
-		this = compile_modsingle(parent, comp, modref, &modname);
+		this = compile_modsingle(NULL, comp, modref, &modname);
 		if (!this) {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Failed to parse %s section.\n",
@@ -644,10 +644,10 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 	return 0;
 }
 
-static int load_byserver(CONF_SECTION *cs, const char *server,
-			 int *do_component)
+static int load_byserver(CONF_SECTION *cs, int *do_component)
 {
 	int comp;
+	const char *server = cf_section_name2(cs);
 
 	DEBUG2(" modules {");
 	
@@ -669,7 +669,7 @@ static int load_byserver(CONF_SECTION *cs, const char *server,
 		DEBUG2(" Module: Checking %s {...} for more modules to load",
 		       section_type_value[comp].section);
 
-		if (load_component_section(NULL, subcs, server, comp) < 0) {
+		if (load_component_section(subcs, server, comp) < 0) {
 			DEBUG2(" }");
 			return -1;
 		}
@@ -879,7 +879,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		}
 			
 		DEBUG2(" Module: Checking vmps {...} for more modules to load");		
-		if (load_component_section(NULL, cs, VMPS_SPACE,
+		if (load_component_section(cs, VMPS_SPACE,
 					   RLM_COMPONENT_POST_AUTH) < 0) {
 			return -1;
 		}
@@ -899,7 +899,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 			DEBUG2("server {");
 			null_server = TRUE;
 		}
-		if (load_byserver(cs, name2, do_component) < 0) {
+		if (load_byserver(cs, do_component) < 0) {
 			DEBUG2("}");
 			return -1;
 		}
@@ -913,7 +913,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 	if (!null_server) {
 		DEBUG2("WARNING: Please update your configuration to use virtual servers!");
 		DEBUG2("server {");
-		if (load_byserver(config, NULL, do_component) < 0) {
+		if (load_byserver(config, do_component) < 0) {
 			DEBUG2("}");
 			return -1;
 		}
