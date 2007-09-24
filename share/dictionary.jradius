@@ -1,0 +1,4 @@
+VENDOR		JRadius			19211
+ATTRIBUTE	JRadius-Request-Id	1	string	JRadius
+ATTRIBUTE	JRadius-Session-Id	2	string	JRadius
+ATTRIBUTE	JRadius-Proxy-Client	3	octets	JRadius
