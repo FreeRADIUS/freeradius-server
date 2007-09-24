@@ -473,6 +473,37 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	return 1;		/* OK */
 }
 
+static int define_type(const DICT_ATTR *dattr, const char *name)
+{
+	uint32_t value;
+	DICT_VALUE *dval;
+
+	/*
+	 *	If the value already exists, don't
+	 *	create it again.
+	 */
+	dval = dict_valbyname(dattr->attr, name);
+	if (dval) return 1;
+
+	/*
+	 *	Create a new unique value with a
+	 *	meaningless number.  You can't look at
+	 *	it from outside of this code, so it
+	 *	doesn't matter.  The only requirement
+	 *	is that it's unique.
+	 */
+	do {
+		value = lrad_rand() & 0x00ffffff;
+	} while (dict_valbyattr(dattr->attr, value));
+
+	if (dict_addvalue(name, dattr->name, value) < 0) {
+		radlog(L_ERR, "%s", librad_errstr);
+		return 0;
+	}
+
+	return 1;
+}
+
 static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 				  const char *server, int comp)
 {
@@ -482,6 +513,18 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 	indexed_modcallable *subcomp;
 	const char *modname;
 	const char *visiblename;
+	const DICT_ATTR *dattr;
+
+	/*
+	 *	Find the attribute used to store VALUEs for this section.
+	 */
+	dattr = dict_attrbyvalue(section_type_value[comp].attr);
+	if (!dattr) {
+		cf_log_err(cf_sectiontoitem(cs),
+			   "No such attribute %s",
+			   section_type_value[comp].typename);
+		return -1;
+	}
 
 	/*
 	 *	Loop over the entries in the named section.
@@ -492,22 +535,19 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 		CONF_PAIR *cp = NULL;
 		CONF_SECTION *scs = NULL;
 
-		/*
-		 *	Look for Auth-Type foo {}, which are special
-		 *	cases of named sections, and allowable ONLY
-		 *	at the top-level.
-		 *
-		 *	i.e. They're not allowed in a "group" or "redundant"
-		 *	subsection.
-		 */
 		if (cf_item_is_section(modref)) {
-			const char *sec_name;
+			const char *name1;
 			scs = cf_itemtosection(modref);
 
-			sec_name = cf_section_name1(scs);
+			name1 = cf_section_name1(scs);
 
-			if (strcmp(sec_name,
+			if (strcmp(name1,
 				   section_type_value[comp].typename) == 0) {
+
+				if (!define_type(dattr, cf_section_name2(scs))) {
+					return -1;
+				}
+
 				if (!load_subcomponent_section(parent, scs,
 							       server, comp)) {
 					return -1; /* FIXME: memleak? */
@@ -518,6 +558,18 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 			cp = NULL;
 		} else if (cf_item_is_pair(modref)) {
 			cp = cf_itemtopair(modref);
+
+			/*
+			 *	Create types for simple references
+			 *	only when parsing the authenticate
+			 *	section.
+			 */
+			if (section_type_value[comp].attr == PW_AUTH_TYPE) {
+				if (!define_type(dattr, cf_pair_attr(cp))) {
+					return -1;
+				}
+			}
+
 		} else {
 			continue; /* ignore it */
 		}
@@ -533,6 +585,14 @@ static int load_component_section(modcallable *parent, CONF_SECTION *cs,
 			return -1;
 		}
 
+		/*
+		 *	Look for Auth-Type foo {}, which are special
+		 *	cases of named sections, and allowable ONLY
+		 *	at the top-level.
+		 *
+		 *	i.e. They're not allowed in a "group" or "redundant"
+		 *	subsection.
+		 */
 		if (comp == RLM_COMPONENT_AUTH) {
 			DICT_VALUE *dval;
 			const char *modrefname = NULL;
@@ -588,107 +648,6 @@ static int load_byserver(CONF_SECTION *cs, const char *server,
 			 int *do_component)
 {
 	int comp;
-
-	/*
-	 *	Create any DICT_VALUE's for the types.  See
-	 *	'doc/configurable_failover' for examples of 'authtype'
-	 *	used to create new Auth-Type values.  In order to
-	 *	let the user create new names, we've got to look for
-	 *	those names, and create DICT_VALUE's for them.
-	 */
-	for (comp = RLM_COMPONENT_AUTH; comp < RLM_COMPONENT_COUNT; comp++) {
-		int		value;
-		const char	*name2;
-		DICT_ATTR	*dattr;
-		DICT_VALUE	*dval;
-		CONF_SECTION	*subcs;
-		CONF_ITEM	*ci;
-
-		/*
-		 *	Not needed, don't load it.
-		 */
-		if (!do_component[comp]) {
-			continue;
-		}
-		subcs = cf_section_sub_find(cs,
-					    section_type_value[comp].section);
-
-		/*
-		 *	FIXME: This is probably an error.
-		 */
-		if (!subcs) continue;
-
-		for (ci = cf_item_find_next(subcs, NULL);
-		     ci != NULL;
-		     ci = cf_item_find_next(subcs, ci)) {
-			if (cf_item_is_section(ci)) {
-				const char *name1;
-				CONF_SECTION *type;
-
-				type = cf_itemtosection(ci);
-				name1 = cf_section_name1(type);
-
-				/*
-				 *	Not Autz-Type, Auth-Type, etc.
-				 */
-				if (strcmp(name1, section_type_value[comp].typename) != 0) {
-					continue;
-				}
-
-				name2 = cf_section_name2(cf_itemtosection(ci));
-
-				/*
-				 *	FIXME: This is probably an error.
-				 */
-				if (!name2) continue;
-
-			} else if (section_type_value[comp].attr != PW_AUTH_TYPE) {
-				/*
-				 *	Create types for names only when
-				 *	parsing the authenticate section.
-				 */
-				continue;
-
-			} else {
-				name2 = cf_pair_attr(cf_itemtopair(ci));
-			}
-
-			/*
-			 *	If the value already exists, don't
-			 *	create it again.
-			 */
-			dval = dict_valbyname(section_type_value[comp].attr,
-					      name2);
-			if (dval) continue;
-
-			/*
-       			 *	Find the attribute for the value.
-			 */
-			dattr = dict_attrbyvalue(section_type_value[comp].attr);
-			if (!dattr) {
-				cf_log_err(cf_sectiontoitem(subcs),
-					   "No such attribute %s",
-					   section_type_value[comp].typename);
-				continue;
-			}
-
-			/*
-			 *	Create a new unique value with a
-			 *	meaningless number.  You can't look at
-			 *	it from outside of this code, so it
-			 *	doesn't matter.  The only requirement
-			 *	is that it's unique.
-			 */
-			do {
-				value = lrad_rand() & 0x00ffffff;
-			} while (dict_valbyattr(dattr->attr, value));
-
-			if (dict_addvalue(name2, dattr->name, value) < 0) {
-				radlog(L_ERR, "%s", librad_errstr);
-				return -1;
-			}
-		}
-	} /* over the sections which can have redundent sub-sections */
 
 	DEBUG2(" modules {");
 	
