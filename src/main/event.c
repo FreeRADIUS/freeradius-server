@@ -622,6 +622,7 @@ static void ping_home_server(void *ctx)
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 
+	request->next_callback = NULL;
 	request->child_state = REQUEST_PROXIED;
 	request->when.tv_sec += home->ping_timeout;;
 
@@ -851,6 +852,7 @@ static void wait_a_bit(void *ctx)
 
 	case REQUEST_PROXIED:
 		rad_assert(request->next_callback != NULL);
+		rad_assert(request->next_callback != wait_a_bit);
 
 		request->when = request->next_when;
 		callback = request->next_callback;
@@ -987,6 +989,59 @@ static int request_pre_handler(REQUEST *request)
 
 
 /*
+ *	Do state handling when we proxy a request.
+ */
+static int proxy_request(REQUEST *request)
+{
+	struct timeval when;
+	char buffer[128];
+
+	if (!insert_into_proxy_hash(request)) {
+		DEBUG("Error: Failed inserting request into proxy hash.");
+		return 0;
+	}
+
+	request->proxy_listener->encode(request->proxy_listener, request);
+
+	when = request->received;
+	when.tv_sec += mainconfig.max_request_time;
+
+	gettimeofday(&request->proxy_when, NULL);
+
+	request->next_when = request->proxy_when;
+	request->next_when.tv_sec += request->home_server->response_window;
+
+	rad_assert(request->home_server->response_window > 0);
+
+	if (timercmp(&when, &request->next_when, <)) {
+		request->next_when = when;
+	}
+	request->next_callback = no_response_to_proxied_request;
+
+	DEBUG2("Proxying request %d to home server %s port %d",
+	       request->number,
+	       inet_ntop(request->proxy->dst_ipaddr.af,
+			 &request->proxy->dst_ipaddr.ipaddr,
+			 buffer, sizeof(buffer)),
+	       request->proxy->dst_port);
+
+	/*
+	 *	Note that we set proxied BEFORE sending the packet.
+	 *
+	 *	Once we send it, the request is tainted, as
+	 *	another thread may have picked it up.  Don't
+	 *	touch it!
+	 */
+	request->num_proxied_requests = 1;
+	request->num_proxied_responses = 0;
+	request->child_pid = NO_SUCH_CHILD_PID;
+	request->child_state = REQUEST_PROXIED;
+	request->proxy_listener->send(request->proxy_listener,
+				      request);
+	return 1;
+}
+
+/*
  *	Return 1 if we did proxy it, or the proxy attempt failed
  *	completely.  Either way, the caller doesn't touch the request
  *	any more if we return 1.
@@ -1000,10 +1055,8 @@ static int successfully_proxied_request(REQUEST *request)
 	VALUE_PAIR *vp;
 	char *realmname;
 	home_server *home;
-	struct timeval when;
 	REALM *realm = NULL;
 	home_pool_t *pool;
-	char buffer[128];
 
 	realmpair = pairfind(request->config_items, PW_PROXY_TO_REALM);
 	if (!realmpair || (realmpair->length == 0)) {
@@ -1212,48 +1265,11 @@ static int successfully_proxied_request(REQUEST *request)
 		return 1;
 	}
 
-	if (!insert_into_proxy_hash(request)) {
+	if (!proxy_request(request)) {
 		DEBUG("ERROR: Failed to proxy request %d", request->number);
 		return -1;
 	}
-
-	request->proxy_listener->encode(request->proxy_listener, request);
-
-	when = request->received;
-	when.tv_sec += mainconfig.max_request_time;
-
-	gettimeofday(&request->proxy_when, NULL);
-
-	request->next_when = request->proxy_when;
-	request->next_when.tv_sec += home->response_window;
-
-	rad_assert(home->response_window > 0);
-
-	if (timercmp(&when, &request->next_when, <)) {
-		request->next_when = when;
-	}
-	request->next_callback = no_response_to_proxied_request;
-
-	DEBUG2("Proxying request %d to realm %s, home server %s port %d",
-	       request->number, realmname,
-	       inet_ntop(request->proxy->dst_ipaddr.af,
-			 &request->proxy->dst_ipaddr.ipaddr,
-			 buffer, sizeof(buffer)),
-	       request->proxy->dst_port);
-
-	/*
-	 *	Note that we set proxied BEFORE sending the packet.
-	 *
-	 *	Once we send it, the request is tainted, as
-	 *	another thread may have picked it up.  Don't
-	 *	touch it!
-	 */
-	request->num_proxied_requests = 1;
-	request->num_proxied_responses = 0;
-	request->child_pid = NO_SUCH_CHILD_PID;
-	request->child_state = REQUEST_PROXIED;
-	request->proxy_listener->send(request->proxy_listener,
-				      request);
+	
 	return 1;
 }
 
@@ -1519,11 +1535,6 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			request->proxy->dst_port = home->port;
 			request->home_server = home;
 
-			if (!insert_into_proxy_hash(request)) {
-				DEBUG("ERROR: Failed to re-proxy request %d", request->number);
-				goto no_home_servers;
-			}
-
 			/*
 			 *	Free the old packet, to force re-encoding
 			 */
@@ -1531,26 +1542,21 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			request->proxy->data = NULL;
 			request->proxy->data_len = 0;
 
-			DEBUG2("RETRY: Proxying request %d to different home server %s port %d",
-			       request->number,
-			       inet_ntop(request->proxy->dst_ipaddr.af,
-					 &request->proxy->dst_ipaddr.ipaddr,
-					 buffer, sizeof(buffer)),
-			       request->proxy->dst_port);
+			/*
+			 *	Try to proxy the request.
+			 */
+			if (!proxy_request(request)) {
+				DEBUG("ERROR: Failed to re-proxy request %d", request->number);
+				goto no_home_servers;
+			}
 
 			/*
-			 *	Restart timers.  Note that we leave
-			 *	the old timeout in place, as that is a
-			 *	place-holder for when the request
-			 *	times out.
+			 *	This code executes in the main server
+			 *	thread, so there's no need for locking.
 			 */
-			gettimeofday(&request->proxy_when, NULL);
-			request->num_proxied_requests = 1;
-			request->num_proxied_responses = 0;
-			request->child_pid = NO_SUCH_CHILD_PID;
-			request->child_state = REQUEST_PROXIED;
-			request->proxy_listener->send(request->proxy_listener,
-						      request);
+			rad_assert(request->next_callback != NULL);
+			INSERT_EVENT(request->next_callback, request);
+			request->next_callback = NULL;
 			return;
 		} /* else the home server is still alive */
 
