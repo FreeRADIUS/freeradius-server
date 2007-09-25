@@ -130,8 +130,8 @@ static const char *packet_codes[] = {
  *	possible combinations.
  */
 static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
-		      lrad_ipaddr_t *src_ipaddr, lrad_ipaddr_t *dst_ipaddr,
-		      int dst_port)
+		      lrad_ipaddr_t *src_ipaddr, int src_port,
+		      lrad_ipaddr_t *dst_ipaddr, int dst_port)
 {
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_dst = sizeof(dst);
@@ -163,6 +163,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 
 		s4->sin_family = AF_INET;
 		s4->sin_addr = src_ipaddr->ipaddr.ip4addr;
+		s4->sin_port = htons(src_port);
 #endif
 
 	/*
@@ -1243,8 +1244,8 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *	And send it on it's way.
 	 */
 	return rad_sendto(packet->sockfd, packet->data, packet->data_len, 0,
-			  &packet->src_ipaddr, &packet->dst_ipaddr,
-			  packet->dst_port);
+			  &packet->src_ipaddr, packet->src_port,
+			  &packet->dst_ipaddr, packet->dst_port);
 }
 
 
@@ -2854,8 +2855,8 @@ uint32_t lrad_rand(void)
 
 	num = lrad_rand_pool.randrsl[lrad_rand_pool.randcnt++];
 	if (lrad_rand_pool.randcnt == 256) {
-		lrad_isaac(&lrad_rand_pool);
 		lrad_rand_pool.randcnt = 0;
+		lrad_isaac(&lrad_rand_pool);
 	}
 
 	return num;
