@@ -59,7 +59,6 @@ const char *progname = "radeapclient";
 radlog_dest_t radlog_dest = RADLOG_STDERR;
 const char *radlog_dir = NULL;
 int debug_flag = 0;
-struct main_config_t mainconfig;
 char password[256];
 
 struct eapsim_keys eapsim_mk;
@@ -1077,11 +1076,6 @@ int main(int argc, char **argv)
 	} else {
 		usage();
 	}
-
-	/*
-	 *	Ensure that the configuration is initialized.
-	 */
-	memset(&mainconfig, 0, sizeof(mainconfig));
 
 	/*
 	 *	Resolve hostname.
