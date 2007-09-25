@@ -273,12 +273,6 @@ static int pam_auth(void *instance, REQUEST *request)
 		     (char *)request->password->vp_strvalue,
 		     pam_auth_string);
 
-#ifdef HAVE_SYSLOG_H
-	if (!strcmp(radlog_dir, "syslog")) {
-		openlog(progname, LOG_PID, mainconfig.syslog_facility);
-	}
-#endif
-
 	if (r == 0) {
 		return RLM_MODULE_OK;
 	}
