@@ -1,4 +1,18 @@
-VENDOR		JRadius			19211
-ATTRIBUTE	JRadius-Request-Id	1	string	JRadius
-ATTRIBUTE	JRadius-Session-Id	2	string	JRadius
-ATTRIBUTE	JRadius-Proxy-Client	3	octets	JRadius
+# -*- text -*-
+##############################################################################
+#
+#	jradius VSAs.  See http://jradius.org
+#
+#	$Id$
+#
+##############################################################################
+
+VENDOR		JRadius				19211
+
+BEGIN-VENDOR	JRadius
+
+ATTRIBUTE	JRadius-Request-Id			1	string
+ATTRIBUTE	JRadius-Session-Id			2	string
+ATTRIBUTE	JRadius-Proxy-Client			3	octets
+
+END-VENDOR	JRadius
