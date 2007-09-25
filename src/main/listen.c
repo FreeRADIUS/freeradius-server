@@ -862,6 +862,34 @@ static int listen_bind(rad_listen_t *this)
 		return -1;
 	}
 
+	{
+		struct sockaddr_storage	src;
+		socklen_t	        sizeof_src = sizeof(src);
+
+		memset(&src, 0, sizeof_src);
+		if (getsockname(this->fd, (struct sockaddr *) &src,
+				&sizeof_src) < 0) {
+			return -1;
+		}
+
+		if (src.ss_family == AF_INET) {
+			struct sockaddr_in	*s4;
+			
+			s4 = (struct sockaddr_in *)&src;
+			sock->ipaddr.ipaddr.ip4addr = s4->sin_addr;
+			
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+		} else if (src.ss_family == AF_INET6) {
+			struct sockaddr_in6	*s6;
+			
+			s6 = (struct sockaddr_in6 *)&src;
+			sock->ipaddr.ipaddr.ip6addr = s6->sin6_addr;
+#endif
+		} else {
+			return -1;
+		}
+	}
+
 #if 0
 #ifdef O_NONBLOCK
 	if ((flags = fcntl(this->fd, F_GETFL, NULL)) < 0)  {
@@ -1019,13 +1047,14 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 
 	type = lrad_str2int(listen_compare, listen_type,
 			    RAD_LISTEN_NONE);
-	free(listen_type);
 	if (type == RAD_LISTEN_NONE) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Invalid type \"%s\" in listen section.",
 			   listen_type);
+		free(listen_type);
 		return NULL;
 	}
+	free(listen_type);
 	
 	/*
 	 *	Allow listen sections in the default config to
