@@ -42,7 +42,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/conffile.h>
-#define STR_VALUE(p) ((p)->data.strvalue)
 
 #ifdef HAVE_PTHREAD_H
 #include <pthread.h>
@@ -246,7 +245,8 @@ static int connect_socket(JRSOCK *jrsock, JRADIUS *inst)
   return 0;
 }
 
-static void close_socket(JRADIUS * inst, JRSOCK *jrsock) {
+static void close_socket(UNUSED JRADIUS * inst, JRSOCK *jrsock)
+{
   radlog(L_INFO, "rlm_jradius: Closing JRadius connection %d", jrsock->id);
   if (jrsock->con.sock > 0) { 
     shutdown(jrsock->con.sock, 2); 
@@ -379,7 +379,7 @@ static JRSOCK * get_socket(JRADIUS * inst)
   return NULL;
 }
 
-static int release_socket(JRADIUS * inst, JRSOCK * jrsock)
+static int release_socket(UNUSED JRADIUS * inst, JRSOCK * jrsock)
 {
 #ifdef HAVE_PTHREAD_H
   pthread_mutex_unlock(&jrsock->mutex);
@@ -491,7 +491,7 @@ static int pack_bytes(byte_array * ba, unsigned char *d, unsigned int dlen)
 /*
  *     Pack an integer into a byte array buffer (adjusting for byte-order)
  */
-static int pack_int(byte_array * ba, unsigned int i)
+static int pack_uint32(byte_array * ba, uint32_t i)
 {
   if (ba->left < 4) return -1;
 
@@ -523,6 +523,7 @@ static int pack_array(byte_array * ba, byte_array * a)
  */
 static int pack_vps(byte_array * ba, VALUE_PAIR * vps)
 {
+  uint32_t i;
   VALUE_PAIR * vp;
 
   for (vp = vps; vp != NULL; vp = vp->next) {
@@ -530,20 +531,23 @@ static int pack_vps(byte_array * ba, VALUE_PAIR * vps)
     radlog(L_DBG, LOG_PREFIX "packing attribute %s (type: %d; len: %d)", 
 	   vp->name, vp->attribute, vp->length);
 
-    if (pack_int(ba, vp->attribute) == -1) return -1;
-    if (pack_int(ba, vp->length)    == -1) return -1;
-    if (pack_int(ba, vp->operator)  == -1) return -1;
+    i = vp->attribute;		/* element is int, not uint32_t */
+    if (pack_uint32(ba, i) == -1) return -1;
+    i = vp->length;
+    if (pack_uint32(ba, i) == -1) return -1;
+    i = vp->operator;
+    if (pack_uint32(ba, i) == -1) return -1;
 
     switch (vp->type) {
       case PW_TYPE_INTEGER:
       case PW_TYPE_DATE:
-	if (pack_int(ba, vp->lvalue) == -1) return -1;
+	if (pack_uint32(ba, vp->lvalue) == -1) return -1;
 	break;
       case PW_TYPE_IPADDR:
-	if (pack_bytes(ba, (void *)&vp->lvalue, vp->length) == -1) return -1;
+	if (pack_bytes(ba, (void *)&vp->vp_ipaddr, vp->length) == -1) return -1;
 	break;
       default:
-	if (pack_bytes(ba, (void *)STR_VALUE(vp), vp->length) == -1) return -1;
+	if (pack_bytes(ba, (void *)vp->vp_octets, vp->length) == -1) return -1;
 	break;
     }
   }
@@ -568,7 +572,7 @@ static int pack_packet(byte_array * ba, RADIUS_PACKET * p)
 
   if (pack_byte  (ba, p->code)  == -1) return -1;
   if (pack_byte  (ba, p->id)    == -1) return -1;
-  if (pack_int   (ba, pba.pos)  == -1) return -1;
+  if (pack_uint32   (ba, pba.pos)  == -1) return -1;
   if (pba.pos == 0) return 0;
   if (pack_array (ba, &pba)     == -1) return -1;
 
@@ -583,7 +587,7 @@ static int pack_request(byte_array * ba, REQUEST *r)
   init_byte_array(&pba, buff, sizeof(buff));
 
   if (pack_vps   (&pba, r->config_items) == -1) return -1;
-  if (pack_int   (ba, pba.pos)  == -1) return -1;
+  if (pack_uint32   (ba, pba.pos)  == -1) return -1;
   if (pba.pos == 0) return 0;
   if (pack_array (ba, &pba)     == -1) return -1;
       
@@ -598,9 +602,9 @@ static int read_byte(JRSOCK *jrsock, unsigned char *b)
   return (read(jrsock->con.sock, b, 1) == 1) ? 0 : -1;
 }
 
-static void unpack_int(unsigned char *c, unsigned int *i)
+static void unpack_uint32(unsigned char *c, uint32_t *i)
 {
-  unsigned int ii;
+  uint32_t ii;
   memcpy((void *)&ii, c, 4);
   *i = ntohl(ii);
 }
@@ -608,12 +612,12 @@ static void unpack_int(unsigned char *c, unsigned int *i)
 /*
  *     Read an integer from the socket (adjusting for byte-order)
  */
-static int read_int(JRSOCK *jrsock, unsigned int *i)
+static int read_uint32(JRSOCK *jrsock, uint32_t *i)
 {
-  unsigned char c[4];
+  uint32_t ii;
 
-  if (read(jrsock->con.sock, c, 4) != 4) return -1;
-  unpack_int(c, i);
+  if (read(jrsock->con.sock, &ii, 4) != 4) return -1;
+  *i = ntohl(ii);
 
   return 0;
 }
@@ -625,13 +629,13 @@ static int read_vps(JRSOCK *jrsock, VALUE_PAIR **pl, int plen)
 {
   VALUE_PAIR *vp;
   unsigned char buff[MESSAGE_LEN];
-  unsigned int alen, atype, aop;
+  uint32_t alen, atype, aop;
   int rlen = 0;
   
   while (rlen < plen) {
-    if (read_int (jrsock, &atype) == -1) return -1; rlen += 4;
-    if (read_int (jrsock, &alen)  == -1) return -1; rlen += 4;
-    if (read_int (jrsock, &aop)   == -1) return -1; rlen += 4; 
+    if (read_uint32 (jrsock, &atype) == -1) return -1; rlen += 4;
+    if (read_uint32 (jrsock, &alen)  == -1) return -1; rlen += 4;
+    if (read_uint32 (jrsock, &aop)   == -1) return -1; rlen += 4; 
 
     radlog(L_DBG, LOG_PREFIX "reading attribute: type=%d; len=%d", atype, alen);
 
@@ -665,21 +669,20 @@ static int read_vps(JRSOCK *jrsock, VALUE_PAIR **pl, int plen)
       case PW_TYPE_INTEGER:
       case PW_TYPE_DATE:
 	{
-          unpack_int(buff, &vp->lvalue);
+          unpack_uint32(buff, &vp->lvalue);
 	  vp->length = 4;
 	}
 	break;
 
       case PW_TYPE_IPADDR:
-	memcpy((void *)&vp->lvalue, buff, 4);
+	memcpy((void *)&vp->vp_ipaddr, buff, 4);
 	vp->length = 4;
 	break;
 
       default:
-        if (alen < sizeof(STR_VALUE(vp))) {
-	  memcpy((void *)STR_VALUE(vp), buff, alen);
-	    vp->length = alen;
-	}
+        if (alen >= sizeof(vp->vp_octets)) alen = sizeof(vp->vp_octets) - 1;
+	memcpy((void *)vp->vp_octets, buff, alen);
+	vp->length = alen;
 	break;
     }
 
@@ -703,7 +706,7 @@ static int read_packet(JRADIUS * inst, JRSOCK *jrsock, RADIUS_PACKET *p)
 
   if (read_byte (jrsock, &code) == -1) return -1;
   if (read_byte (jrsock, &id)   == -1) return -1;
-  if (read_int  (jrsock, &plen) == -1) return -1;
+  if (read_uint32  (jrsock, &plen) == -1) return -1;
 
   radlog(L_DBG, LOG_PREFIX "reading packet: code=%d len=%d", (int)code, plen);
 
@@ -735,7 +738,7 @@ static int read_request(JRSOCK *jrsock, REQUEST *p)
 {
   unsigned int plen;
 
-  if (read_int(jrsock, &plen) == -1) return -1;
+  if (read_uint32(jrsock, &plen) == -1) return -1;
 
   radlog(L_DBG, LOG_PREFIX "reading request: config_item: len=%d", plen);
 
@@ -791,7 +794,7 @@ static int rlm_jradius_call(char func, void *instance, REQUEST *req, int isproxy
   /*
    *     Create byte array to send to jradius
    */
-  if ((rc = pack_int    (&ba, nlen))                  == -1)  W_ERR("pack_int(nlen)");
+  if ((rc = pack_uint32    (&ba, nlen))                  == -1)  W_ERR("pack_uint32(nlen)");
   if ((rc = pack_bytes  (&ba, (void *)n, nlen))       == -1)  W_ERR("pack_bytes(name)");
   if ((rc = pack_byte   (&ba, func))                  == -1)  W_ERR("pack_byte(fun)");
   if ((rc = pack_byte   (&ba, pcount))                == -1)  W_ERR("pack_byte(pcnt)");
