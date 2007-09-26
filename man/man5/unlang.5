@@ -483,6 +483,13 @@ the current attribute.
 .IP +=
 Add the attribute to the tail of the list, even if attributes of the
 same name are already present in the list.
+.RE
+.PP
+Enforcement and Filtering Operators
+.RS
+The following operators may also be used in addition to the ones
+listed above.  Their function is to perform enforcement or filtering
+on attributes in a list.
 .IP -=
 Remove all matching attributes from the list.  Both the attribute name
 and value have to match in order for the attribute to be removed from
@@ -491,6 +498,9 @@ the list.
 Remove all non-matching attributes from the list.  Both the attribute
 name and value have to match in order for the attribute to remain in
 the list.
+
+Note that this operator is very different than the '=' operator listed
+above!
 .IP <=
 Enforce that the integer value of the attribute is less than or equal
 to the value given here.  If there is no attribute of the same name in
