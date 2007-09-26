@@ -72,7 +72,7 @@ char *cf_pair_value(CONF_PAIR *pair);
 VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair);
 const char *cf_section_name1(const CONF_SECTION *);
 const char *cf_section_name2(const CONF_SECTION *);
-int dump_config(void);
+int dump_config(CONF_SECTION *cs);
 CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 				      CONF_SECTION *subsection,
 				      const char *name1);

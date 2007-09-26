@@ -786,6 +786,7 @@ static void my_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 			 *	"to"
 			 */
 			if ((from_list[i]->operator == T_OP_SUB) ||
+			    (from_list[i]->operator == T_OP_CMP_EQ) ||
 			    (from_list[i]->operator == T_OP_LE) ||
 			    (from_list[i]->operator == T_OP_GE)) {
 				int rcode;
@@ -811,8 +812,13 @@ static void my_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 				from_list[i]->operator = old_op;
 
 				switch (old_op) {
+				case T_OP_CMP_EQ:
+					if (rcode != 0) goto delete;
+					break;
+
 				case T_OP_SUB:
 					if (rcode == 0) {
+					delete:
 						DEBUG4("::: DELETING %s FROM %d TO %d",
 						       from_list[i]->name, i, j);
 						pairfree(&to_list[j]);

@@ -1122,6 +1122,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		}
 
 		if ((vp->operator != T_OP_EQ) &&
+		    (vp->operator != T_OP_CMP_EQ) &&
 		    (vp->operator != T_OP_ADD) &&
 		    (vp->operator != T_OP_SUB) &&
 		    (vp->operator != T_OP_LE) &&

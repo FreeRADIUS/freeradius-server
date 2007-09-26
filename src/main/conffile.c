@@ -1299,6 +1299,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			goto do_set;
 
 		case T_OP_ADD:
+		case T_OP_CMP_EQ:
 		case T_OP_SUB:
 		case T_OP_LE:
 		case T_OP_GE:
@@ -2248,8 +2249,8 @@ static int dump_config_section(CONF_SECTION *cs, int indent)
 	return 0;
 }
 
-int dump_config(void)
+int dump_config(CONF_SECTION *cs)
 {
-	return dump_config_section(mainconfig.config, 0);
+	return dump_config_section(cs, 0);
 }
 #endif
