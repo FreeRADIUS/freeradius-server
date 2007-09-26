@@ -336,7 +336,7 @@ static int xlat_config(void *instance, REQUEST *request,
 	}
 	argv[argc] = NULL;
 
-	cs = cf_section_find(NULL); /* get top-level section */
+	cs = request->root->config;
 
 	/*
 	 *	Root through section & subsection references.
