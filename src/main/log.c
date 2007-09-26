@@ -53,7 +53,8 @@ static const LRAD_NAME_NUMBER levels[] = {
  */
 int vradlog(int lvl, const char *fmt, va_list ap)
 {
-	int fd = mainconfig.radlog_fd;
+	struct main_config_t *myconfig = &mainconfig;
+	int fd = myconfig->radlog_fd;
 	FILE *fp = NULL;
 	unsigned char *p;
 	char buffer[8192];
@@ -72,7 +73,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	 *	If we don't want any messages, then
 	 *	throw them away.
 	 */
-	if (mainconfig.radlog_dest == RADLOG_NULL) {
+	if (myconfig->radlog_dest == RADLOG_NULL) {
 		return 0;
 	}
 
@@ -83,7 +84,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	 *	Print timestamps for non-debugging, and for high levels
 	 *	of debugging.
 	 */
-	if ((mainconfig.radlog_dest != RADLOG_SYSLOG) &&
+	if ((myconfig->radlog_dest != RADLOG_SYSLOG) &&
 	    (debug_flag != 1) && (debug_flag != 2)) {
 		print_timestamp = 1;
 	}
@@ -96,17 +97,17 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		 */
 
 #ifdef HAVE_SYSLOG_H
-	} else if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
+	} else if (myconfig->radlog_dest == RADLOG_SYSLOG) {
 		/*
 		 *	Open run openlog() on the first log message
 		 */
 		if(!openlog_run) {
-			openlog(progname, LOG_PID, mainconfig.syslog_facility);
+			openlog(progname, LOG_PID, myconfig->syslog_facility);
 			openlog_run = 1;
 		}
 #endif
 
-	} else if (!mainconfig.log_file) {
+	} else if (!myconfig->log_file) {
 		/*
 		 *	Errors go to stderr, in the hope that they will
 		 *	be printed somewhere.
@@ -123,9 +124,9 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 			return 0;
 		}
 
-	} else if ((fp = fopen(mainconfig.log_file, "a")) == NULL) {
+	} else if ((fp = fopen(myconfig->log_file, "a")) == NULL) {
 		fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
-			progname, mainconfig.log_file, strerror(errno));
+			progname, myconfig->log_file, strerror(errno));
 
 		fprintf(stderr, "  (");
 		vfprintf(stderr, fmt, ap);  /* the message that caused the log */
@@ -161,7 +162,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	strcat(buffer, "\n");
 
 #ifdef HAVE_SYSLOG_H
-	if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
+	if (myconfig->radlog_dest == RADLOG_SYSLOG) {
 		switch(lvl & ~L_CONS) {
 			case L_DBG:
 				lvl = LOG_DEBUG;
