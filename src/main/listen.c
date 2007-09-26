@@ -712,8 +712,6 @@ static int radius_snmp_recv(rad_listen_t *listener,
 			    UNUSED RAD_REQUEST_FUNP *pfun,
 			    UNUSED REQUEST **prequest)
 {
-	if (!mainconfig.do_snmp) return 0;
-
 	if ((rad_snmp.smux_fd >= 0) &&
 	    (rad_snmp.smux_event == SMUX_READ)) {
 		smux_read();
@@ -1358,9 +1356,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 
  do_snmp:
 #ifdef WITH_SNMP
-	if (mainconfig.do_snmp) {
-		radius_snmp_init();
-
+	if (radius_snmp_init(config)) {
 		/*
 		 *      Forget about the old one.
 		 */

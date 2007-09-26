@@ -543,19 +543,23 @@ radAuthEntry(struct variable *vp, oid	 *name, size_t *length, int exact,
 	return NULL;
 }
 
+static int do_snmp = 0;
+
 static const CONF_PARSER snmp_config[] = {
-	{ "smux_password", PW_TYPE_STRING_PTR, 0, &rad_snmp.smux_password, "" },
-	{ "snmp_write_access",  PW_TYPE_BOOLEAN, 0, &rad_snmp.snmp_write_access, "no" },
+	{ "snmp",              PW_TYPE_BOOLEAN,
+	  0, &do_snmp,      "no" },
+	{ "smux_password",     PW_TYPE_STRING_PTR,
+	  0, &rad_snmp.smux_password, "" },
+	{ "snmp_write_access", PW_TYPE_BOOLEAN,
+	  0, &rad_snmp.snmp_write_access, "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 
 /* Register RADIUS MIBs. */
 void
-radius_snmp_init (void) {
-
-	CONF_SECTION *cs;
-
+radius_snmp_init (CONF_SECTION *cs)
+{
 	static int initialized = FALSE;
 
 	if (!initialized) {
@@ -588,13 +592,11 @@ radius_snmp_init (void) {
 	/*
 	 *  Parse the SNMP configuration information.
 	 */
-	cs = cf_section_find(NULL);
-	if (cs != NULL)
-		cf_section_parse(cs, NULL, snmp_config);
+	cf_section_parse(cs, NULL, snmp_config);
 
 	smux_stop();
 
-	if (!mainconfig.do_snmp) return;
+	if (!do_snmp) return 0;
 
 	/*
 	 *  Do SMUX initialization.
@@ -609,6 +611,8 @@ radius_snmp_init (void) {
 	smux_start ();
 
 	initialized = TRUE;
+
+	return 1;
 }
 
 #endif /* WITH_SNMP */

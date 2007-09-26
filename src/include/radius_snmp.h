@@ -13,7 +13,7 @@ typedef enum smux_event_t {
   SMUX_NONE, SMUX_CONNECT, SMUX_READ
 } smux_event_t;
 
-extern void radius_snmp_init(void);
+extern int radius_snmp_init(CONF_SECTION *);
 extern int smux_connect(void);
 extern int smux_read(void);
 
