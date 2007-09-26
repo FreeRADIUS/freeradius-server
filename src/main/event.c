@@ -117,7 +117,7 @@ static VALUE_PAIR * radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 #ifdef WITH_SNMP
 static void snmp_inc_counters(REQUEST *request)
 {
-	if (!mainconfig.do_snmp) return;
+	if (!request->root->do_snmp) return;
 
 	if (request->master_state == REQUEST_COUNTED) return;
 
@@ -478,7 +478,7 @@ static void reject_delay(void *ctx)
 
 	request->listener->send(request->listener, request);
 
-	request->when.tv_sec += mainconfig.cleanup_delay;
+	request->when.tv_sec += request->root->cleanup_delay;
 	request->child_state = REQUEST_CLEANUP_DELAY;
 
 	INSERT_EVENT(cleanup_delay, request);
@@ -825,7 +825,7 @@ static void wait_a_bit(void *ctx)
 	case REQUEST_QUEUED:
 	case REQUEST_RUNNING:
 		when = request->received;
-		when.tv_sec += mainconfig.max_request_time;
+		when.tv_sec += request->root->max_request_time;
 
 		if (timercmp(&now, &when, <)) {
 			callback = wait_a_bit;
@@ -1004,7 +1004,7 @@ static int proxy_request(REQUEST *request)
 	request->proxy_listener->encode(request->proxy_listener, request);
 
 	when = request->received;
-	when.tv_sec += mainconfig.max_request_time;
+	when.tv_sec += request->root->max_request_time;
 
 	gettimeofday(&request->proxy_when, NULL);
 
@@ -1299,7 +1299,7 @@ static void request_post_handler(REQUEST *request)
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 	}
 
-	if (mainconfig.proxy_requests &&
+	if (request->root->proxy_requests &&
 	    !request->proxy &&
 	    (request->reply->code == 0) &&
 	    (request->packet->code != PW_STATUS_SERVER)) {
@@ -1383,16 +1383,16 @@ static void request_post_handler(REQUEST *request)
 			/*
 			 *	If configured, delay Access-Reject packets.
 			 *
-			 *	If mainconfig.reject_delay = 0, we discover
+			 *	If request->root->reject_delay = 0, we discover
 			 *	that we have to send the packet now.
 			 */
 			when = request->received;
-			when.tv_sec += mainconfig.reject_delay;
+			when.tv_sec += request->root->reject_delay;
 
 			if (timercmp(&when, &request->next_when, >)) {
 				DEBUG2("Delaying reject of request %d for %d seconds",
 				       request->number,
-				       mainconfig.reject_delay);
+				       request->root->reject_delay);
 				request->next_when = when;
 				request->next_callback = reject_delay;
 				request->child_pid = NO_SUCH_CHILD_PID;
@@ -1401,7 +1401,7 @@ static void request_post_handler(REQUEST *request)
 			}
 		}
 
-		request->next_when.tv_sec += mainconfig.cleanup_delay;
+		request->next_when.tv_sec += request->root->cleanup_delay;
 		request->next_callback = cleanup_delay;
 		child_state = REQUEST_CLEANUP_DELAY;
 
@@ -1633,14 +1633,15 @@ static void received_conflicting_request(REQUEST *request,
 
 
 static int can_handle_new_request(RADIUS_PACKET *packet,
-				  RADCLIENT *client)
+				  RADCLIENT *client,
+				  struct main_config_t *root)
 {
 	/*
 	 *	Count the total number of requests, to see if
 	 *	there are too many.  If so, return with an
 	 *	error.
 	 */
-	if (mainconfig.max_requests) {
+	if (root->max_requests) {
 		int request_count = lrad_packet_list_num_elements(pl);
 
 		/*
@@ -1648,13 +1649,13 @@ static int can_handle_new_request(RADIUS_PACKET *packet,
 		 *	it makes us go over our configured
 		 *	bounds.
 		 */
-		if (request_count > mainconfig.max_requests) {
+		if (request_count > root->max_requests) {
 			radlog(L_ERR, "Dropping request (%d is too many): "
 			       "from client %s port %d - ID: %d", request_count,
 			       client->shortname,
 			       packet->src_port, packet->id);
 			radlog(L_INFO, "WARNING: Please check the %s file.\n"
-			       "\tThe value for 'max_requests' is probably set too low.\n", mainconfig.radiusd_conf);
+			       "\tThe value for 'max_requests' is probably set too low.\n", root->radiusd_conf);
 			return 0;
 		} /* else there were a small number of requests */
 	} /* else there was no configured limit for requests */
@@ -1686,6 +1687,7 @@ int received_request(rad_listen_t *listener,
 {
 	RADIUS_PACKET **packet_p;
 	REQUEST *request = NULL;
+	struct main_config_t *root = &mainconfig;
 
 	packet_p = lrad_packet_list_find(pl, packet);
 	if (packet_p) {
@@ -1748,7 +1750,7 @@ int received_request(rad_listen_t *listener,
 	/*
 	 *	We may want to quench the new request.
 	 */
-	if (!can_handle_new_request(packet, client)) {
+	if (!can_handle_new_request(packet, client, root)) {
 		return 0;
 	}
 
@@ -1768,6 +1770,7 @@ int received_request(rad_listen_t *listener,
 	request->packet->timestamp = request->timestamp;
 	request->number = request_num_counter++;
 	request->priority = listener->type;
+	request->root = root;
 
 	/*
 	 *	Set virtual server identity

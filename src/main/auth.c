@@ -65,7 +65,7 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 	char buf[1024];
 	VALUE_PAIR *username = NULL;
 
-	if (!mainconfig.log_auth) {
+	if (!request->root->log_auth) {
 		return 0;
 	}
 
@@ -92,7 +92,7 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 	/*
 	 *	Clean up the password
 	 */
-	if (mainconfig.log_auth_badpass || mainconfig.log_auth_goodpass) {
+	if (request->root->log_auth_badpass || request->root->log_auth_goodpass) {
 		if (!request->password) {
 			VALUE_PAIR *auth_type;
 
@@ -118,15 +118,15 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
 				msg,
 				clean_username,
-				mainconfig.log_auth_goodpass ? "/" : "",
-				mainconfig.log_auth_goodpass ? clean_password : "",
+				request->root->log_auth_goodpass ? "/" : "",
+				request->root->log_auth_goodpass ? clean_password : "",
 				auth_name(buf, sizeof(buf), request, 1));
 	} else {
 		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
 				msg,
 				clean_username,
-				mainconfig.log_auth_badpass ? "/" : "",
-				mainconfig.log_auth_badpass ? clean_password : "",
+				request->root->log_auth_badpass ? "/" : "",
+				request->root->log_auth_badpass ? clean_password : "",
 				auth_name(buf, sizeof(buf), request, 1));
 	}
 
