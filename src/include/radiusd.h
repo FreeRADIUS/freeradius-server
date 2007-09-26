@@ -96,6 +96,8 @@ struct auth_req {
 	VALUE_PAIR		*username;
 	VALUE_PAIR		*password;
 
+	struct main_config_t	*root;
+
 	request_data_t		*data;
 	RADCLIENT		*client;
 	child_pid_t    		child_pid;
