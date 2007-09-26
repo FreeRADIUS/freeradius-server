@@ -876,7 +876,6 @@ int setup_modules(int reload, CONF_SECTION *config)
 	for (listener = mainconfig.listen;
 	     listener != NULL;
 	     listener = listener->next) {
-		const char *name = NULL;
 		char buffer[256];
 
 		if (listener->type == RAD_LISTEN_PROXY) continue;
