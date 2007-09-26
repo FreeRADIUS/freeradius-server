@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
 	 *	It's called the thread pool, but it does a little
 	 *	more than that.
 	 */
-	radius_event_init(spawn_flag);
+	radius_event_init(mainconfig.config, spawn_flag);
 
 	/*
 	 *  Use linebuffered or unbuffered stdout if

@@ -698,7 +698,7 @@ static int pid_cmp(const void *one, const void *two)
  *
  *	FIXME: What to do on a SIGHUP???
  */
-int thread_pool_init(int spawn_flag)
+int thread_pool_init(CONF_SECTION *cs, int spawn_flag)
 {
 	int		i, rcode;
 	CONF_SECTION	*pool_cf;
@@ -746,7 +746,7 @@ int thread_pool_init(int spawn_flag)
 		}
 	}
 
-	pool_cf = cf_section_find("thread");
+	pool_cf = cf_subsection_find_next(cs, NULL, "thread");
 	if (!pool_cf) {
 		radlog(L_ERR, "FATAL: Attempting to start in multi-threaded mode with no thread configuration in radiusd.conf");
 		return -1;

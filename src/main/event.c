@@ -1997,7 +1997,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 /*
  *	Externally-visibly functions.
  */
-int radius_event_init(int spawn_flag)
+int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 {
 	if (el) return 0;
 
@@ -2067,7 +2067,7 @@ int radius_event_init(int spawn_flag)
 		if (mainconfig.proxy_requests) rad_assert(i >= 0);
 	}
 
-	if (thread_pool_init(spawn_flag) < 0) {
+	if (thread_pool_init(cs, spawn_flag) < 0) {
 		exit(1);
 	}
 
