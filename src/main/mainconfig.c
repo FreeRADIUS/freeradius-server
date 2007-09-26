@@ -127,20 +127,6 @@ static const LRAD_NAME_NUMBER str2fac[] = {
 };
 
 /*
- *  Map the proxy server configuration parameters to variables.
- */
-static const CONF_PARSER proxy_config[] = {
-	{ "retry_delay",  PW_TYPE_INTEGER, 0, &mainconfig.proxy_retry_delay, Stringify(RETRY_DELAY) },
-	{ "retry_count",  PW_TYPE_INTEGER, 0, &mainconfig.proxy_retry_count, Stringify(RETRY_COUNT) },
-	{ "default_fallback", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_fallback, "no" },
-	{ "dead_time",    PW_TYPE_INTEGER, 0, &mainconfig.proxy_dead_time, Stringify(DEAD_TIME) },
-	{ "wake_all_if_all_dead", PW_TYPE_BOOLEAN, 0, &mainconfig.wake_all_if_all_dead, "no" },
-	{ "proxy_fail_type", PW_TYPE_STRING_PTR, 0, &mainconfig.proxy_fail_type, NULL},
-	{ NULL, -1, 0, NULL, NULL }
-};
-
-
-/*
  *  Security configuration for the server.
  */
 static const CONF_PARSER security_config[] = {
@@ -202,7 +188,6 @@ static const CONF_PARSER server_config[] = {
 
 	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_requests, "yes" },
 	{ "log", PW_TYPE_SUBSECTION, 0, NULL,  (const void *) log_config},
-	{ "proxy", PW_TYPE_SUBSECTION, 0, NULL, (const void *) proxy_config },
 	{ "security", PW_TYPE_SUBSECTION, 0, NULL, (const void *) security_config },
 	{ NULL, -1, 0, NULL, NULL }
 };

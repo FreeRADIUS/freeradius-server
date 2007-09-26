@@ -220,13 +220,6 @@ typedef struct main_config_t {
 	int		allow_core_dumps;
 	int		debug_level;
 	int		proxy_requests;
-	int		wake_all_if_all_dead;
-	int		proxy_synchronous;
-	int		proxy_dead_time;
-	int		proxy_retry_count;
-	int		proxy_retry_delay;
-	int		proxy_fallback;
-	const char      *proxy_fail_type;
 	int		reject_delay;
 	int		status_server;
 	int		max_request_time;

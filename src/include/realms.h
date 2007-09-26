@@ -99,7 +99,6 @@ typedef struct _realm {
 
 int realms_init(CONF_SECTION *config);
 void realms_free(void);
-int realm_add(CONF_SECTION *cs);
 REALM *realm_find(const char *name);
 
 home_server *home_server_ldb(const char *realmname, home_pool_t *pool, REQUEST *request);

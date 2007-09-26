@@ -39,6 +39,44 @@ static rbtree_t	*home_servers_byname = NULL;
 
 static rbtree_t	*home_pools_byname = NULL;
 
+typedef struct realm_config_t {
+	CONF_SECTION	*cs;
+	int		dead_time;
+	int		retry_count;
+	int		retry_delay;
+	int		fallback;
+	int		wake_all_if_all_dead;
+} realm_config_t;
+
+static realm_config_t *realm_config = NULL;
+
+/*
+ *  Map the proxy server configuration parameters to variables.
+ */
+static const CONF_PARSER proxy_config[] = {
+	{ "retry_delay",  PW_TYPE_INTEGER,
+	  offsetof(realm_config_t, retry_delay),
+	  NULL, Stringify(RETRY_DELAY) },
+
+	{ "retry_count",  PW_TYPE_INTEGER,
+	  offsetof(realm_config_t, retry_count),
+	  NULL, Stringify(RETRY_COUNT) },
+
+	{ "default_fallback", PW_TYPE_BOOLEAN,
+	  offsetof(realm_config_t, fallback),
+	  NULL, "no" },
+
+	{ "dead_time",    PW_TYPE_INTEGER, 
+	  offsetof(realm_config_t, dead_time),
+	  NULL, Stringify(DEAD_TIME) },
+
+	{ "wake_all_if_all_dead", PW_TYPE_BOOLEAN,
+	  offsetof(realm_config_t, wake_all_if_all_dead),
+	  NULL, "no" },
+
+	{ NULL, -1, 0, NULL, NULL }
+};
+
 static int realm_name_cmp(const void *one, const void *two)
 {
 	const REALM *a = one;
@@ -98,48 +136,6 @@ void realms_free(void)
 	realms_byname = NULL;
 }
 
-
-int realms_init(CONF_SECTION *config)
-{
-	CONF_SECTION *cs;
-
-	if (realms_byname) return 1;
-
-	realms_byname = rbtree_create(realm_name_cmp, free, 0);
-	if (!realms_byname) {
-		realms_free();
-		return 0;
-	}
-
-	home_servers_byaddr = rbtree_create(home_server_addr_cmp, free, 0);
-	if (!home_servers_byaddr) {
-		realms_free();
-		return 0;
-	}
-
-	home_servers_byname = rbtree_create(home_server_name_cmp, NULL, 0);
-	if (!home_servers_byname) {
-		realms_free();
-		return 0;
-	}
-
-	home_pools_byname = rbtree_create(home_pool_name_cmp, free, 0);
-	if (!home_pools_byname) {
-		realms_free();
-		return 0;
-	}
-
-	for (cs = cf_subsection_find_next(config, NULL, "realm");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "realm")) {
-		if (!realm_add(cs)) {
-			realms_free();
-			return 0;
-		}
-	}
-
-	return 1;
-}
 
 static struct in_addr hs_ip4addr;
 static struct in6_addr hs_ip6addr;
@@ -479,7 +475,8 @@ static home_pool_t *server_pool_alloc(const char *name, home_pool_type_t type,
 }
 
 
-static int server_pool_add(CONF_SECTION *cs, int server_type, int do_print)
+static int server_pool_add(realm_config_t *rc,
+			   CONF_SECTION *cs, int server_type, int do_print)
 {
 	const char *name2;
 	home_pool_t *pool = NULL;
@@ -525,7 +522,7 @@ static int server_pool_add(CONF_SECTION *cs, int server_type, int do_print)
 		home = rbtree_finddata(home_servers_byname, &myhome);
 		if (home) continue;
 
-		server_cs = cf_section_sub_find_name2(mainconfig.config,
+		server_cs = cf_section_sub_find_name2(rc->cs,
 						      "home_server",
 						      value);
 		if (!server_cs) {
@@ -639,7 +636,8 @@ static int server_pool_add(CONF_SECTION *cs, int server_type, int do_print)
 }
 
 
-static int old_server_add(CONF_SECTION *cs, const char *realm,
+static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
+			  const char *realm,
 			  const char *name, const char *secret,
 			  home_pool_type_t ldflag, home_pool_t **pool_p,
 			  int type)
@@ -788,13 +786,13 @@ static int old_server_add(CONF_SECTION *cs, const char *realm,
 		 *	Use the old-style configuration.
 		 */
 		home->max_outstanding = 65535*16;
-		home->zombie_period = mainconfig.proxy_retry_delay * mainconfig.proxy_retry_count;
+		home->zombie_period = rc->retry_delay * rc->retry_count;
 		if (home->zombie_period == 0) home->zombie_period =30;
 		home->response_window = home->zombie_period - 1;
 
 		home->ping_check = HOME_PING_CHECK_NONE;
 
-		home->revive_interval = mainconfig.proxy_dead_time;
+		home->revive_interval = rc->dead_time;
 
 		if (rbtree_finddata(home_servers_byaddr, home)) {
 			cf_log_err(cf_sectiontoitem(cs), "Home server %s has the same IP address and/or port as another home server.", name);
@@ -862,7 +860,7 @@ static int old_server_add(CONF_SECTION *cs, const char *realm,
 	return 1;
 }
 
-static int old_realm_config(CONF_SECTION *cs, REALM *r)
+static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 {
 	char *host;
 	const char *secret = NULL;
@@ -919,7 +917,7 @@ static int old_realm_config(CONF_SECTION *cs, REALM *r)
 			
 		DEBUG2("\tauthhost = %s",  host);
 
-		if (!old_server_add(cs, r->name, host, secret, ldflag,
+		if (!old_server_add(rc, cs, r->name, host, secret, ldflag,
 				    &r->auth_pool, HOME_TYPE_AUTH)) {
 			return 0;
 		}
@@ -953,7 +951,7 @@ static int old_realm_config(CONF_SECTION *cs, REALM *r)
 		
 		DEBUG2("\taccthost = %s", host);
 
-		if (!old_server_add(cs, r->name, host, secret, ldflag,
+		if (!old_server_add(rc, cs, r->name, host, secret, ldflag,
 				    &r->acct_pool, HOME_TYPE_ACCT)) {
 			return 0;
 		}
@@ -966,7 +964,7 @@ static int old_realm_config(CONF_SECTION *cs, REALM *r)
 }
 
 
-static int add_pool_to_realm(CONF_SECTION *cs,
+static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
 			     const char *name, home_pool_t **dest,
 			     int server_type, int do_print)
 {
@@ -979,7 +977,7 @@ static int add_pool_to_realm(CONF_SECTION *cs,
 	if (!pool) {
 		CONF_SECTION *pool_cs;
 
-		pool_cs = cf_section_sub_find_name2(mainconfig.config,
+		pool_cs = cf_section_sub_find_name2(rc->cs,
 						    "server_pool",
 						    name);
 		if (!pool_cs) {
@@ -987,7 +985,7 @@ static int add_pool_to_realm(CONF_SECTION *cs,
 			return 0;
 		}
 
-		if (!server_pool_add(pool_cs, server_type, do_print)) {
+		if (!server_pool_add(rc, pool_cs, server_type, do_print)) {
 			return 0;
 		}
 
@@ -1008,7 +1006,7 @@ static int add_pool_to_realm(CONF_SECTION *cs,
 	return 1;
 }
 
-int realm_add(CONF_SECTION *cs)
+static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 {
 	const char *name2;
 	REALM *r = NULL;
@@ -1038,12 +1036,12 @@ int realm_add(CONF_SECTION *cs)
 	if (cp) auth_pool_name = cf_pair_value(cp);
 	if (cp && auth_pool_name) {
 		acct_pool_name = auth_pool_name;
-		if (!add_pool_to_realm(cs,
+		if (!add_pool_to_realm(rc, cs,
 				       auth_pool_name, &auth_pool,
 				       HOME_TYPE_AUTH, 1)) {
 			return 0;
 		}
-		if (!add_pool_to_realm(cs,
+		if (!add_pool_to_realm(rc, cs,
 				       auth_pool_name, &acct_pool,
 				       HOME_TYPE_ACCT, 0)) {
 			return 0;
@@ -1057,7 +1055,7 @@ int realm_add(CONF_SECTION *cs)
 			cf_log_err(cf_sectiontoitem(cs), "Cannot use \"pool\" and \"auth_pool\" at the same time.");
 			return 0;
 		}
-		if (!add_pool_to_realm(cs,
+		if (!add_pool_to_realm(rc, cs,
 				       auth_pool_name, &auth_pool,
 				       HOME_TYPE_AUTH, 1)) {
 			return 0;
@@ -1079,7 +1077,7 @@ int realm_add(CONF_SECTION *cs)
 			do_print = TRUE;
 		}
 
-		if (!add_pool_to_realm(cs,
+		if (!add_pool_to_realm(rc, cs,
 				       acct_pool_name, &acct_pool,
 				       HOME_TYPE_ACCT, do_print)) {
 			return 0;
@@ -1100,7 +1098,7 @@ int realm_add(CONF_SECTION *cs)
 			goto error;
 		}
 
-		if (!old_realm_config(cs, r)) {
+		if (!old_realm_config(rc, cs, r)) {
 			goto error;
 		}
 
@@ -1148,7 +1146,7 @@ int realm_add(CONF_SECTION *cs)
 		 *	was no auth_pool or acct_pool.  Double-check
 		 *	it, just to be safe.
 		 */
-	} else if (!old_realm_config(cs, r)) {
+	} else if (!old_realm_config(rc, cs, r)) {
 		goto error;
 	}
 
@@ -1165,6 +1163,70 @@ int realm_add(CONF_SECTION *cs)
 	DEBUG2(" } # realm %s", name2);
 	free(r);
 	return 0;
+}
+
+
+int realms_init(CONF_SECTION *config)
+{
+	CONF_SECTION *cs;
+	realm_config_t *rc, *old_rc;
+
+	if (realms_byname) return 1;
+
+	realms_byname = rbtree_create(realm_name_cmp, free, 0);
+	if (!realms_byname) {
+		realms_free();
+		return 0;
+	}
+
+	home_servers_byaddr = rbtree_create(home_server_addr_cmp, free, 0);
+	if (!home_servers_byaddr) {
+		realms_free();
+		return 0;
+	}
+
+	home_servers_byname = rbtree_create(home_server_name_cmp, NULL, 0);
+	if (!home_servers_byname) {
+		realms_free();
+		return 0;
+	}
+
+	home_pools_byname = rbtree_create(home_pool_name_cmp, free, 0);
+	if (!home_pools_byname) {
+		realms_free();
+		return 0;
+	}
+
+	cs = cf_subsection_find_next(config, NULL, "proxy");
+	if (!cs) {
+		radlog(L_ERR, "No proxy section defined");
+		realms_free();
+		return 0;
+	}
+
+	rc = rad_malloc(sizeof(*rc));
+	memset(rc, 0, sizeof(*rc));
+	rc->cs = config;
+
+	cf_section_parse(cs, rc, proxy_config);
+
+	for (cs = cf_subsection_find_next(config, NULL, "realm");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(config, cs, "realm")) {
+		if (!realm_add(rc, cs)) {
+			realms_free();
+			return 0;
+		}
+	}
+
+	/*
+	 *	Swap pointers atomically.
+	 */
+	old_rc = realm_config;
+	realm_config = rc;
+	free(old_rc);
+
+	return 1;
 }
 
 
@@ -1340,8 +1402,8 @@ home_server *home_server_ldb(const char *realmname,
 	 *	"pings", as they will be marked live when they
 	 *	actually are live.
 	 */
-	if (!mainconfig.proxy_fallback &&
-	    mainconfig.wake_all_if_all_dead) {
+	if (!realm_config->fallback &&
+	    realm_config->wake_all_if_all_dead) {
 		home_server *lb = NULL;
 
 		for (count = 0; count < pool->num_home_servers; count++) {
@@ -1361,7 +1423,7 @@ home_server *home_server_ldb(const char *realmname,
 	 *	Still nothing.  Look up the DEFAULT realm, but only
 	 *	if we weren't looking up the NULL or DEFAULT realms.
 	 */
-	if (mainconfig.proxy_fallback &&
+	if (realm_config->fallback &&
 	    realmname &&
 	    (strcmp(realmname, "NULL") != 0) &&
 	    (strcmp(realmname, "DEFAULT") != 0)) {
