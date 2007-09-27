@@ -31,6 +31,7 @@ typedef struct lrad_event_list_t lrad_event_list_t;
 typedef struct lrad_event_t lrad_event_t;
 
 typedef	void (*lrad_event_callback_t)(void *);
+typedef void (*lrad_event_fd_handler_t)(lrad_event_list_t *el, int sock, void *ctx);
 
 lrad_event_list_t *lrad_event_list_create(void);
 void lrad_event_list_free(lrad_event_list_t *el);
@@ -45,5 +46,11 @@ int lrad_event_delete(lrad_event_list_t *el, lrad_event_t **ev_p);
 int lrad_event_run(lrad_event_list_t *el, struct timeval *when);
 
 int lrad_event_now(lrad_event_list_t *el, struct timeval *when);
+
+int lrad_event_fd_insert(lrad_event_list_t *el, int type, int fd,
+			 lrad_event_fd_handler_t handler, void *ctx);
+int lrad_event_fd_delete(lrad_event_list_t *el, int type, int fd);
+int lrad_event_loop(lrad_event_list_t *el);
+void lrad_event_loop_exit(lrad_event_list_t *el);
 
 #endif /* LRAD_HASH_H */

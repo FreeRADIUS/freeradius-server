@@ -30,18 +30,16 @@ RCSID("$Id$")
 
 typedef struct lrad_event_fd_t {
 	int			fd;
-	int			priority;
-	lrad_event_callback_t	callback;
+	lrad_event_fd_handler_t	handler;
 	void			*ctx;
-	struct lrad_event_fd_t	*next;
 } lrad_event_fd_t;
+
 
 struct lrad_event_list_t {
 	rbtree_t	*times;
 
-	lrad_event_fd_t *fds;
+	rbtree_t	*readers;
 	int		maxfd;
-	fd_set		readfds;
 
 	int		exit;
 
@@ -76,11 +74,21 @@ static int lrad_event_list_time_cmp(const void *one, const void *two)
 }
 
 
+static int lrad_event_list_fd_cmp(const void *one, const void *two)
+{
+	const lrad_event_fd_t *a = one;
+	const lrad_event_fd_t *b = two;
+
+	return a->fd - b->fd;
+}
+
+
 void lrad_event_list_free(lrad_event_list_t *el)
 {
 	if (!el) return;
 
 	rbtree_free(el->times);
+	rbtree_free(el->readers);
 	free(el);
 }
 
@@ -96,6 +104,13 @@ lrad_event_list_t *lrad_event_list_create(void)
 	el->times = rbtree_create(lrad_event_list_time_cmp,
 				  free, 0);
 	if (!el->times) {
+		lrad_event_list_free(el);
+		return NULL;
+	}
+
+	el->readers = rbtree_create(lrad_event_list_fd_cmp,
+				  free, 0);
+	if (!el->readers) {
 		lrad_event_list_free(el);
 		return NULL;
 	}
@@ -186,32 +201,6 @@ int lrad_event_insert(lrad_event_list_t *el,
 	return 1;
 }
 
-typedef struct lrad_event_walk_t {
-	lrad_event_t *ev;
-	struct timeval when;
-} lrad_event_walk_t;
-
-
-static int lrad_event_find_earliest(void *ctx, void *data)
-{
-	lrad_event_t *ev = data;
-	lrad_event_walk_t *w = ctx;
-
-	if (ev->when.tv_sec > w->when.tv_sec) {
-		w->when = ev->when;
-		return 1;
-	}
-
-	if ((ev->when.tv_sec == w->when.tv_sec) &&
-	    (ev->when.tv_usec > w->when.tv_usec)) {
-		w->when = ev->when;
-		return 1;
-	}
-
-	w->ev = ev;
-	return 1;
-}
-
 
 int lrad_event_run(lrad_event_list_t *el, struct timeval *when)
 {
@@ -265,6 +254,167 @@ int lrad_event_now(lrad_event_list_t *el, struct timeval *when)
 	*when = el->now;
 	return 1;
 }
+
+
+int lrad_event_fd_insert(lrad_event_list_t *el, int type, int fd,
+			 lrad_event_fd_handler_t handler, void *ctx)
+{
+	lrad_event_fd_t *ef;
+
+	if (!el || (fd < 0) || !handler || !ctx) return 0;
+
+	if (type != 0) return 0;
+
+	ef = malloc(sizeof(*ef));
+	if (!ef) return 0;
+
+	ef->fd = fd;
+	ef->handler = handler;
+	ef->ctx = ctx;
+
+	if (!rbtree_insert(el->readers, ef)) {
+		free(ef);
+		return 0;
+	}
+
+	if (fd > el->maxfd) el->maxfd = fd;
+
+	return 1;
+}
+
+int lrad_event_fd_delete(lrad_event_list_t *el, int type, int fd)
+{
+	lrad_event_fd_t my_ef;
+
+	if (!el || (fd < 0)) return 0;
+
+	if (type != 0) return 0;
+
+	my_ef.fd = fd;
+
+	if (fd == el->maxfd) el->maxfd--;
+
+	return rbtree_deletebydata(el->readers, &my_ef);
+}			 
+
+
+void lrad_event_loop_exit(lrad_event_list_t *el)
+{
+	if (!el) return;
+
+	el->exit = 1;
+}
+
+
+static int lrad_event_fd_set(void *ctx, void *data)
+{
+	fd_set *fds = ctx;
+	lrad_event_fd_t *ef = data;
+
+	if (ef->fd < 0) return 0; /* ignore it */
+
+	FD_SET(ef->fd, fds);
+
+	return 0;		/* continue walking */
+}
+
+typedef struct lrad_fd_walk_t {
+	lrad_event_list_t *el;
+	fd_set		  *fds;
+} lrad_fd_walk_t;
+
+static int lrad_event_fd_dispatch(void *ctx, void *data)
+{
+	lrad_fd_walk_t *ew = ctx;
+	lrad_event_fd_t *ef = data;
+
+	if (ef->fd < 0) return 0;
+
+	if (!FD_ISSET(ef->fd, ew->fds)) return 0;
+
+	ef->handler(ew->el, ef->fd, ef->ctx);
+
+	return 0;		/* continue walking */
+}
+
+
+int lrad_event_loop(lrad_event_list_t *el)
+{
+	int rcode;
+	fd_set read_fds;
+	struct timeval now, when, *wake;
+	lrad_fd_walk_t ew;
+
+	while (!el->exit) {
+		FD_ZERO(&read_fds);
+
+		/*
+		 *	Find the first event.  If there's none, we wait
+		 *	on the socket forever.
+		 */
+		when.tv_sec = 0;
+		when.tv_usec = 0;
+
+		if (rbtree_num_elements(el->times) > 0) {
+			lrad_event_t *ev;
+
+			ev = rbtree_min(el->times);
+			if (!ev) _exit(42);
+
+			gettimeofday(&now, NULL);
+
+			if (timercmp(&now, &ev->when, <)) {
+				when = ev->when;
+				when.tv_sec -= now.tv_sec;
+				when.tv_usec -= now.tv_usec;
+				if (when.tv_usec < 0) {
+					when.tv_sec--;
+					when.tv_usec += 1000000;
+				}
+			} else { /* we've passed the event time */
+				when.tv_sec = 0;
+				when.tv_usec = 0;
+			}
+
+			wake = &when;
+		} else {
+			wake = NULL;
+		}
+
+		rbtree_walk(el->readers, InOrder, lrad_event_fd_set, &read_fds);
+
+		if (!wake) {
+		  fprintf(stderr, "Nothing to do!\n");
+		} else {
+		  fprintf(stderr, "Waking in %d.%02d seconds\n",
+			  wake->tv_sec, wake->tv_usec / 10000);
+		}
+
+		rcode = select(el->maxfd + 1, &read_fds, NULL, NULL, wake);
+		if ((rcode < 0) && (errno != EINTR)) {
+			return 0;
+		}
+
+		if (rbtree_num_elements(el->times) > 0) {
+			gettimeofday(&now, NULL);
+			when = now;
+
+			while (lrad_event_run(el, &when) == 1) {
+				/* nothing */
+			}
+		}
+		
+		if (rcode <= 0) continue;
+
+		ew.fds = &read_fds;
+		ew.el = el;
+
+		rbtree_walk(el->readers, InOrder, lrad_event_fd_dispatch, &ew);
+	}
+
+	return 1;
+}
+
 
 #ifdef TESTING
 
