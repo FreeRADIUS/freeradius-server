@@ -557,7 +557,7 @@ static const CONF_PARSER snmp_config[] = {
 
 
 /* Register RADIUS MIBs. */
-void
+int
 radius_snmp_init (CONF_SECTION *cs)
 {
 	static int initialized = FALSE;
