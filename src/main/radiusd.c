@@ -637,13 +637,6 @@ int main(int argc, char *argv[])
 					max_wait++;
 				}
 #endif
-
-#ifdef WITH_SNMP
-				if (mainconfig.do_snmp) {
-					rad_snmp.smux_failures = 0;
-					rad_snmp.smux_event = SMUX_CONNECT;
-				}
-#endif
 				if (read_mainconfig(TRUE) < 0) {
 					exit(1);
 				}
