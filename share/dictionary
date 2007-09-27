@@ -132,9 +132,16 @@ $INCLUDE dictionary.netscreen
 $INCLUDE dictionary.nexans
 $INCLUDE dictionary.ntua
 $INCLUDE dictionary.nokia
+#
+#  Commented out because of attribute conflicts.
+#
 #$INCLUDE dictionary.nokia.conflict
 $INCLUDE dictionary.nomadix
 $INCLUDE dictionary.nortel
+#
+#  Commented out because of attribute conflicts.
+#
+#$INCLUDE dictionary.openser
 $INCLUDE dictionary.packeteer
 $INCLUDE dictionary.patton
 $INCLUDE dictionary.propel
