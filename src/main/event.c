@@ -1488,7 +1488,7 @@ static void request_post_handler(REQUEST *request)
 		}
 	}
 
-	DEBUG2("Finished request %d state %d", request->number, child_state);
+	DEBUG2("Finished request %d.", request->number);
 
 	request->child_state = child_state;
 }
@@ -2373,6 +2373,7 @@ static void event_status(struct timeval *wake)
  */
 int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 {
+	int i;
 	rad_listen_t *this;
 
 	if (el) return 0;
@@ -2395,8 +2396,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	have_children = spawn_flag;
 
 	if (mainconfig.proxy_requests) {
-		int i;
-
 		/*
 		 *	Create the tree for managing proxied requests and
 		 *	responses.
@@ -2411,35 +2410,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 			exit(1);
 		}
 #endif
-
-		/*
-		 *	Mark the Fd's as unused.
-		 */
-		for (i = 0; i < 32; i++) proxy_fds[i] = -1;
-
-		i = -1;
-
-		for (this = mainconfig.listen;
-		     this != NULL;
-		     this = this->next) {
-			if (this->type == RAD_LISTEN_PROXY) {
-				/*
-				 *	FIXME: This works only because we
-				 *	start off with one proxy socket.
-				 */
-				rad_assert(proxy_fds[this->fd & 0x1f] == -1);
-				rad_assert(proxy_listeners[this->fd & 0x1f] == NULL);
-
-				proxy_fds[this->fd & 0x1f] = this->fd;
-				proxy_listeners[this->fd & 0x1f] = this;
-				if (!lrad_packet_list_socket_add(proxy_list, this->fd)) {
-					rad_assert(0 == 1);
-				}
-				i = this->fd;
-			}
-		}
-
-		if (mainconfig.proxy_requests) rad_assert(i >= 0);
 	}
 
 	if (thread_pool_init(cs, spawn_flag) < 0) {
@@ -2472,6 +2442,12 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		exit(1);
 	}
 
+
+	/*
+	 *	Mark the proxy Fd's as unused.
+	 */
+	for (i = 0; i < 32; i++) proxy_fds[i] = -1;
+	
 	/*
 	 *	Add all of the sockets to the event loop.
 	 *
@@ -2483,8 +2459,25 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	for (this = mainconfig.listen;
 	     this != NULL;
 	     this = this->next) {
-		if (this->type == RAD_LISTEN_DETAIL) {
+		switch (this->type) {
+		case RAD_LISTEN_DETAIL:
 			has_detail_listener = TRUE;
+			break;
+
+		case RAD_LISTEN_PROXY:
+			rad_assert(proxy_fds[this->fd & 0x1f] == -1);
+			rad_assert(proxy_listeners[this->fd & 0x1f] == NULL);
+			
+			proxy_fds[this->fd & 0x1f] = this->fd;
+			proxy_listeners[this->fd & 0x1f] = this;
+			if (!lrad_packet_list_socket_add(proxy_list,
+							 this->fd)) {
+				rad_assert(0 == 1);
+			}
+			break;
+
+		default:
+			break;
 		}
 
 		/*
