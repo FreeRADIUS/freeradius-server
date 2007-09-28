@@ -886,6 +886,8 @@ int read_mainconfig(int reload)
 
 	/*
 	 *	Read the list of listeners.
+	 *
+	 *	This also takes care of initializing the clients.
 	 */
 	if (listen_init(cs, &listener) < 0) {
 		exit(1);
@@ -898,46 +900,6 @@ int read_mainconfig(int reload)
 
 	listen_free(&mainconfig.listen);
 	mainconfig.listen = listener;
-
-	/*
-	 *	Walk through the listeners.  If we're listening on acct
-	 *	or auth, read in the clients files, else ignore them.
-	 */
-	for (listener = mainconfig.listen;
-	     listener != NULL;
-	     listener = listener->next) {
-		if ((listener->type == RAD_LISTEN_AUTH) ||
-		    (listener->type == RAD_LISTEN_ACCT)) {
-			break;
-		}
-	}
-
-	if (listener != NULL) {
-		RADCLIENT_LIST *clients;
-
-		/*
-		 *	Create the new clients first, and add them
-		 *	to the CONF_SECTION, where they're automagically
-		 *	freed if anything goes wrong.
-		 */
-		clients = clients_parse_section(mainconfig.config);
-		if (!clients) {
-			return -1;
-		}
-
-		/*
-		 *	The old clients are already NULL, because they
-		 *	are in a configuration section, and the client
-		 *	"free" function was added by clients parse
-		 *	section, above.
-		 *
-		 *	Note that because we require at least one
-		 *	client in the main configuration file, any
-		 *	clients added by SQL will be inserted into
-		 *	that, and automatically freed.
-		 */
-		mainconfig.clients = clients;
-	}
 
 	/*  Reload the modules.  */
 	DEBUG2("radiusd:  entering modules setup");
