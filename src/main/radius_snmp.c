@@ -194,9 +194,6 @@ get_client(struct variable *v, oid objid[], size_t *objid_len, int exact)
 
 	len = *objid_len - v->namelen;
 
-	if (!mainconfig.clients)
-		return NULL;
-
 	if (exact) {
 		/* Check the length. */
 		if (len != 1)
@@ -206,16 +203,16 @@ get_client(struct variable *v, oid objid[], size_t *objid_len, int exact)
 
 		i = objid[v->namelen]-1;
 
-		return client_findbynumber(mainconfig.clients, i);
+		return client_findbynumber(NULL, i);
 	}
 	*objid_len = v->namelen + 1;
 	if (!len || (objid[v->namelen] == 0)) {
 		objid[v->namelen]=1;
-		return client_findbynumber(mainconfig.clients, 0);
+		return client_findbynumber(NULL, 0);
 	}
 
 	i = objid[v->namelen]-1;
-	c = client_findbynumber(mainconfig.clients, i);
+	c = client_findbynumber(NULL, i);
 	if (c) {
 		objid[v->namelen]++;
 	}

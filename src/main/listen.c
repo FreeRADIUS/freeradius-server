@@ -80,14 +80,17 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 		   (listener->type == RAD_LISTEN_VQP));
 
 	clients = ((listen_socket_t *)listener->data)->clients;
-	if (!clients) clients = mainconfig.clients;
 
+	/*
+	 *	This HAS to have been initialized previously.
+	 */
 	rad_assert(clients != NULL);
 
 	return client_find(clients, ipaddr);
 }
 
 static int listen_bind(rad_listen_t *this);
+
 
 /*
  *	Process and reply to a server-status request.

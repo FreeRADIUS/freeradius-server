@@ -47,6 +47,7 @@ struct radclient_list {
 static rbtree_t		*tree_num;	/* client numbers 0..N */
 static int		tree_num_max;
 #endif
+static RADCLIENT_LIST	*root_clients;
 
 /*
  *	Callback for freeing a client.
@@ -104,13 +105,13 @@ void clients_free(RADCLIENT_LIST *clients)
 		clients->trees[i] = NULL;
 	}
 
-	if (clients == mainconfig.clients) {
+	if (clients == root_clients) {
 #ifdef WITH_SNMP
 		if (tree_num) rbtree_free(tree_num);
 		tree_num = NULL;
 		tree_num_max = 0;
 #endif
-		mainconfig.clients = NULL;
+		root_clients = NULL;
 	}
 
 	free(clients);
@@ -183,19 +184,23 @@ static int client_sane(RADCLIENT *client)
  */
 int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
-	/*
-	 *	Allow clients to be NULL if mainconfig.clients is NULL.
-	 */
-
-	if (!client || (!clients && (mainconfig.clients != NULL))) {
+	if (!client) {
 		return 0;
 	}
 
+	/*
+	 *	If "clients" is NULL, it means add to the global list.
+	 */
 	if (!clients) {
-		clients = clients_init();
-		if (!clients) return 0;
-		rad_assert(mainconfig.clients == NULL);
-		mainconfig.clients = clients;
+		/*
+		 *	Initialize it, if not done already.
+		 */
+		if (!root_clients) {
+			clients = clients_init();
+			if (!clients) return 0;
+			rad_assert(root_clients == NULL);
+		}
+		root_clients = clients;
 	}
 
 	if (client->prefix < 0) {
@@ -263,6 +268,8 @@ RADCLIENT *client_findbynumber(const RADCLIENT_LIST *clients,
 			       int number)
 {
 #ifdef WITH_SNMP
+	if (!clients) clients = root_clients;
+
 	if (!clients) return NULL;
 
 	if (number >= tree_num_max) return NULL;
@@ -330,7 +337,7 @@ RADCLIENT *client_find(const RADCLIENT_LIST *clients,
  */
 RADCLIENT *client_find_old(const lrad_ipaddr_t *ipaddr)
 {
-	return client_find(mainconfig.clients, ipaddr);
+	return client_find(root_clients, ipaddr);
 }
 
 
@@ -366,7 +373,7 @@ const char *client_name(const RADCLIENT_LIST *clients,
 
 const char *client_name_old(const lrad_ipaddr_t *ipaddr)
 {
-	return client_name(mainconfig.clients, ipaddr);
+	return client_name(root_clients, ipaddr);
 }
 
 static struct in_addr cl_ip4addr;
@@ -404,7 +411,7 @@ static const CONF_PARSER client_config[] = {
  */
 RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 {
-	CONF_SECTION	*cs;
+	CONF_SECTION	*cs, *parentcs;
 	RADCLIENT	*c;
 	const char	*name2;
 	RADCLIENT_LIST	*clients;
@@ -418,6 +425,8 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 
 	clients = clients_init();
 	if (!clients) return NULL;
+
+	parentcs = cf_top_section(section);
 
 	/*
 	 *	Associate the clients structure with the section, where
@@ -471,7 +480,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 		 *	Global clients can set servers to use,
 		 *	per-server clients cannot.
 		 */
-		if ((section != mainconfig.config) && c->server) {
+		if ((section != parentcs) && c->server) {
 			client_free(c);
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Clients inside of an server section cannot point to another server.");
@@ -583,6 +592,15 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 			client_free(c);
 			return NULL;
 		}
+	}
+
+	/*
+	 *	Replace the global list of clients with the new one.
+	 *	The old one is still referenced from the original
+	 *	configuration, and will be freed when that is freed.
+	 */
+	if (section == parentcs) {
+		root_clients = clients;
 	}
 
 	return clients;
