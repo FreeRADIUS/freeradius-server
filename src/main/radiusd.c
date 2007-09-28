@@ -65,15 +65,12 @@ int log_stripped_names;
 int debug_flag = 0;
 int log_auth_detail = FALSE;
 
-
 const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
 time_t time_now;
-static pid_t radius_pid;
-static int debug_memory = 0;
-static int has_detail_listener = FALSE;
+pid_t radius_pid;
 
-static int radius_self_pipe[2];
+static int debug_memory = 0;
 
 /*
  *  Configuration items.
@@ -92,19 +89,11 @@ static void sig_hup (int);
  */
 int main(int argc, char *argv[])
 {
-	REQUEST *request;
 	unsigned char buffer[4096];
-	fd_set readfds;
 	int argval;
-	int pid;
-	int max_fd;
-	int status;
-	int dont_fork = FALSE;
+	pid_t pid;
 	int spawn_flag = TRUE;
-	int sig_hup_block = FALSE;
-	struct timeval tv, *ptv = NULL;
-	int read_from_detail = FALSE;
-	int fd_flags;
+	int dont_fork = FALSE;
 
 #ifdef HAVE_SIGACTION
 	struct sigaction act;
@@ -357,26 +346,6 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Child threads need a pipe to signal us, as do the
-	 *	signal handlers.
-	 */
-	if (pipe(radius_self_pipe) < 0) {
-		radlog(L_ERR, "radiusd: Error opening internal pipe: %s",
-		       strerror(errno));
-		exit(1);
-	}
-	if (fcntl(radius_self_pipe[0], F_SETFL, O_NONBLOCK | FD_CLOEXEC) < 0) {
-		radlog(L_ERR, "radiusd: Error setting internal flags: %s",
-		       strerror(errno));
-		exit(1);
-	}
-	if (fcntl(radius_self_pipe[1], F_SETFL, O_NONBLOCK | FD_CLOEXEC) < 0) {
-		radlog(L_ERR, "radiusd: Error setting internal flags: %s",
-		       strerror(errno));
-		exit(1);
-	}
-
-	/*
 	 *	If we're running as a daemon, close the default file
 	 *	descriptors, AFTER forking.
 	 */
@@ -423,8 +392,6 @@ int main(int argc, char *argv[])
 		listener->print(listener, buffer, sizeof(buffer));
 		switch (listener->type) {
 		case RAD_LISTEN_DETAIL:
-			has_detail_listener = TRUE;
-			read_from_detail = TRUE;
 			break;
 
 		case RAD_LISTEN_SNMP:
@@ -469,263 +436,34 @@ int main(int argc, char *argv[])
 #endif
 	}
 
- restart:
-	radlog(L_INFO, "Ready to process requests.");
-
+	radius_event_process();
+	
 	/*
-	 *  Receive user requests
+	 *	We're exiting, so we can delete the PID
+	 *	file.  (If it doesn't exist, we can ignore
+	 *	the error returned by unlink)
 	 */
-	for (;;) {
-		ssize_t rcode;
+	if (dont_fork == FALSE) {
+		unlink(mainconfig.pid_file);
+	}
+		
+	radius_event_free();
+	
+	/*
+	 *	Free the configuration items.
+	 */
+	free_mainconfig();
+	
+	/*
+	 *	Detach any modules.
+	 */
+	detach_modules();
+	
+	free(radius_dir);
+		
+	if (radius_pid < 0) return 1;
 
-		FD_ZERO(&readfds);
-		max_fd = 0;
-
-		/*
-		 *	Loop over all the listening FD's.
-		 */
-		for (listener = mainconfig.listen;
-		     listener != NULL;
-		     listener = listener->next) {
-			if (listener->fd < 0) continue;
-
-			if (!read_from_detail &&
-			    (listener->type == RAD_LISTEN_DETAIL)) continue;
-
-			FD_SET(listener->fd, &readfds);
-			if (listener->fd > max_fd) max_fd = listener->fd;
-		}
-
-		/*
-		 *	Add in the self pipe FD, for signals or
-		 *	notices from the child threads.
-		 */
-		FD_SET(radius_self_pipe[0], &readfds);
-		if (radius_self_pipe[0] > max_fd) {
-			max_fd = radius_self_pipe[0];
-		}
-
-		if (!ptv) {
-			DEBUG2("Nothing to do.  Sleeping until we see a request.");
-		} else if (tv.tv_sec) {
-				DEBUG2("Waking up in %d seconds...",
-				       (int) tv.tv_sec);
-		}
-
-		status = select(max_fd + 1, &readfds, NULL, NULL, ptv);
-		if ((status < 0) && (errno != EINTR)) {
-			radlog(L_ERR, "Unexpected error in select(): %s",
-			       strerror(errno));
-				exit(1);
-		}
-		time_now = time(NULL);
-
-#ifndef HAVE_PTHREAD_H
-		/*
-		 *	If there are no child threads, then there may
-		 *	be child processes.  In that case, wait for
-		 *	their exit status, and throw that exit status
-		 *	away.  This helps get rid of zxombie children.
-		 */
-		while (waitpid(-1, &argval, WNOHANG) > 0) {
-			/* do nothing */
-		}
-#endif
-
-		/*
-		 *	Before doing anything else, check the self pipe.
-		 */
-		if (FD_ISSET(radius_self_pipe[0], &readfds) &&
-		    (rcode = read(radius_self_pipe[0], buffer, sizeof(buffer))) > 0) {
-			ssize_t i;
-
-			for (i = 1; i < rcode; i++) {
-				buffer[0] |= buffer[i];
-			}
-
-			if ((buffer[0] & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
-				DEBUG("Exiting...");
-
-				/*
-				 *	Ignore the TERM signal: we're
-				 *	about to die.
-				 */
-				signal(SIGTERM, SIG_IGN);
-
-				/*
-				 *	Send a TERM signal to all
-				 *	associated processes
-				 *	(including us, which gets
-				 *	ignored.)
-				 */
-				kill(-radius_pid, SIGTERM);
-
-				/*
-				 *	FIXME: Kill child threads, and
-				 *	clean up?
-				 */
-
-				/*
-				 *	FIXME: clean up any active REQUEST
-				 *	handles.
-				 */
-
-				/*
-				 *	We're exiting, so we can delete the PID
-				 *	file.  (If it doesn't exist, we can ignore
-				 *	the error returned by unlink)
-				 */
-				if (dont_fork == FALSE) {
-					unlink(mainconfig.pid_file);
-				}
-
-				radius_event_free();
-
-				/*
-				 *	Free the configuration items.
-				 */
-				free_mainconfig();
-
-				/*
-				 *	Detach any modules.
-				 */
-				detach_modules();
-
-				free(radius_dir);
-
-				/*
-				 *	SIGTERM gets do_exit=0,
-				 *	and we want to exit cleanly.
-				 *
-				 *	Other signals make us exit
-				 *	with an error status.
-				 */
-				if ((buffer[0] & RADIUS_SIGNAL_SELF_EXIT) != 0) {
-					exit(1);
-				}
-				exit(0);
-			} /* else exit/term flags weren't set */
-
-			if ((buffer[0] & RADIUS_SIGNAL_SELF_HUP) != 0) {
-				DEBUG("Received HUP signal");
-#ifdef HAVE_PTHREAD_H
-				/*
-				 *	Threads: wait for all threads to stop
-				 *	processing before re-loading the
-				 *	config, so we don't pull the rug out
-				 *	from under them.
-				 */
-				int max_wait = 0;
-				if (spawn_flag) for(;;) {
-					/*
-					 *	Block until there are
-					 *	zero threads with a
-					 *	REQUEST handle.
-					 *
-					 *	FIXME: Wait for
-					 *	threads to send us a
-					 *	signal in the pipe?
-					 */
-					sig_hup_block = TRUE;
-
-					if( (total_active_threads() == 0) ||
-					    (max_wait >= 5) ) {
-						sig_hup_block = FALSE;
-						break;
-					}
-					sleep(1);
-					max_wait++;
-				}
-#endif
-				if (read_mainconfig(TRUE) < 0) {
-					exit(1);
-				}
-
-				goto restart;
-			}
-
-			/*
-			 *	Check if we can read from the detail file
-			 */
-			if (has_detail_listener &&
-			    (buffer[0] & RADIUS_SIGNAL_SELF_DETAIL) != 0) {
-				DEBUG3("Can now read from detail file(s)");
-				read_from_detail = TRUE;
-			}
-		} /* else the self pipe didn't have data ready */
-
-		/*
-		 *	Loop over the open socket FD's, reading any data.
-		 */
-		for (listener = mainconfig.listen;
-		     listener != NULL;
-		     listener = listener->next) {
-			RAD_REQUEST_FUNP fun;
-
-			if ((listener->fd >= 0) &&
-			    !FD_ISSET(listener->fd, &readfds))
-				continue;
-
-			/*
-			 *  Receive the packet.
-			 */
-			if (sig_hup_block != FALSE) {
-				continue;
-			}
-
-			/*
-			 *	Do per-socket receive processing of
-			 *	the packet.  This also takes care of
-			 *	inserting the request into the event
-			 *	tree, and adding it to the queue for
-			 *	threads.
-			 */
-			if (!listener->recv(listener, &fun, &request)) {
-				continue;
-			}
-
-			/*
-			 *	Drop the request into the thread pool,
-			 *	and let the thread pool take care of
-			 *	doing something with it.
-			 */
-			if (!thread_pool_addrequest(request, fun)) {
-				request->child_state = REQUEST_DONE;
-			}
-
-			/*
-			 *	If we've read a packet from a socket
-			 *	OTHER than the detail file, we start
-			 *	ignoring the detail file.
-			 *
-			 *	When the child thread pulls the
-			 *	request off of the queues, it will
-			 *	check if the queues are empty.  Once
-			 *	all queues are empty, it will signal
-			 *	us to read the detail file again.
-			 */
-			if (spawn_flag &&
-			    (listener->type != RAD_LISTEN_DETAIL)) {
-				read_from_detail = FALSE;
-			}
-		} /* loop over listening sockets*/
-
-		ptv = &tv;
-		radius_event_process(&ptv);
-
-#ifdef HAVE_PTHREAD_H
-
-		/*
-		 *	Only clean the thread pool if we're spawning
-		 *	child threads.
-		 *
-		 *	FIXME: Move this to the event handler!
-		 */
-		if (spawn_flag) {
-			thread_pool_clean(time_now);
-		}
-#endif
-	} /* loop forever */
+	return 0;
 }
 
 
@@ -803,42 +541,4 @@ static void sig_hup(int sig)
 	write(STDOUT_FILENO, "STUFF\n", 6);
 
 	radius_signal_self(RADIUS_SIGNAL_SELF_HUP);
-}
-
-void radius_signal_self(int flag)
-{
-	ssize_t rcode;
-	uint8_t buffer[16];
-
-	/*
-	 *	The caller is telling us it's OK to read from the
-	 *	detail files.  However, we're not even listening on
-	 *	the detail files.  Therefore, suppress the flag to
-	 *	avoid bothering the mail worker thread.
-	 */
-	if ((flag == RADIUS_SIGNAL_SELF_DETAIL) &&
-	    !has_detail_listener) {
-		return;
-	}
-
-	/*
-	 *	The read MUST be non-blocking for this to work.
-	 */
-	rcode = read(radius_self_pipe[0], buffer, sizeof(buffer));
-	if (rcode > 0) {
-		ssize_t i;
-
-		for (i = 1; i < rcode; i++) {
-			buffer[0] |= buffer[i];
-		}
-	}
-
-#ifndef NDEBUG
-	memset(buffer + 1, 0, sizeof(buffer) - 1);
-#endif
-
-	buffer[0] |= flag;
-
-
-	write(radius_self_pipe[1], buffer, 1);
 }

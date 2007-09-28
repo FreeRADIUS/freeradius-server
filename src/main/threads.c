@@ -152,7 +152,9 @@ typedef struct THREAD_POOL {
 
 static THREAD_POOL thread_pool;
 static int pool_initialized = FALSE;
+static time_t last_cleaned = 0;
 
+static void thread_pool_manage(time_t now);
 
 /*
  *	A mapping of configuration file names to internal integers
@@ -840,6 +842,8 @@ int thread_pool_init(CONF_SECTION *cs, int spawn_flag)
  */
 int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
+	time_t now = request->timestamp;
+
 	/*
 	 *	We've been told not to spawn threads, so don't.
 	 */
@@ -861,22 +865,13 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if (!request_enqueue(request, fun)) return 0;
 
 	/*
-	 *	If the thread pool is busy handling requests, then
-	 *	try to spawn another one.  We don't acquire the mutex
-	 *	before reading active_threads, so our thread count is
-	 *	just an estimate.  It's fine to go ahead and spawn an
-	 *	extra thread in that case.
-	 *	NOTE: the log message may be in error since active_threads
-	 *	is an estimate, but it's only in error about the thread
-	 *	count, not about the fact that we can't create a new one.
+	 *	If we haven't checked the number of child threads
+	 *	in a while, OR if the thread pool appears to be full,
+	 *	go manage it.
 	 */
-	if (thread_pool.active_threads == thread_pool.total_threads) {
-		if (spawn_thread(request->timestamp) == NULL) {
-			radlog(L_INFO,
-			       "The maximum number of threads (%d) are active, cannot spawn new thread to handle request",
-			       thread_pool.max_threads);
-			return 1;
-		}
+	if ((last_cleaned < now) ||
+	    (thread_pool.active_threads == thread_pool.total_threads)) {
+		thread_pool_manage(now);
 	}
 
 	return 1;
@@ -888,28 +883,12 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
  *	If there are too many or too few threads waiting, then we
  *	either create some more, or delete some.
  */
-int thread_pool_clean(time_t now)
+static void thread_pool_manage(time_t now)
 {
 	int spare;
 	int i, total;
 	THREAD_HANDLE *handle, *next;
 	int active_threads;
-	static time_t last_cleaned = 0;
-
-	/*
-	 *	Loop over the thread pool deleting exited threads.
-	 */
-	for (handle = thread_pool.head; handle; handle = next) {
-		next = handle->next;
-
-		/*
-		 *	Maybe we've asked the thread to exit, and it
-		 *	has agreed.
-		 */
-		if (handle->status == THREAD_EXITED) {
-			delete_thread(handle);
-		}
-	}
 
 	/*
 	 *	We don't need a mutex lock here, as we're reading
@@ -933,7 +912,7 @@ int thread_pool_clean(time_t now)
 	}
 
 	/*
-	 *	If there are too few spare threads, create some more.
+	 *	If there are too few spare threads.  Go create some more.
 	 */
 	if (spare < thread_pool.min_spare_threads) {
 		total = thread_pool.min_spare_threads - spare;
@@ -945,14 +924,11 @@ int thread_pool_clean(time_t now)
 		for (i = 0; i < total; i++) {
 			handle = spawn_thread(now);
 			if (handle == NULL) {
-				return -1;
+				return;
 			}
 		}
 
-		/*
-		 *	And exit, as there can't be too many spare threads.
-		 */
-		return 0;
+		return;		/* there aren't too many spare threads */
 	}
 
 	/*
@@ -960,9 +936,24 @@ int thread_pool_clean(time_t now)
 	 *	so this second.
 	 */
 	if (now == last_cleaned) {
-		return 0;
+		return;
 	}
 	last_cleaned = now;
+
+	/*
+	 *	Loop over the thread pool, deleting exited threads.
+	 */
+	for (handle = thread_pool.head; handle; handle = next) {
+		next = handle->next;
+
+		/*
+		 *	Maybe we've asked the thread to exit, and it
+		 *	has agreed.
+		 */
+		if (handle->status == THREAD_EXITED) {
+			delete_thread(handle);
+		}
+	}
 
 	/*
 	 *	Only delete the spare threads if sufficient time has
@@ -970,7 +961,7 @@ int thread_pool_clean(time_t now)
 	 *	the amount of create/delete cycles.
 	 */
 	if ((now - thread_pool.time_last_spawned) < thread_pool.cleanup_delay) {
-		return 0;
+		return;
 	}
 
 	/*
@@ -1040,7 +1031,7 @@ int thread_pool_clean(time_t now)
 	 *	Otherwise everything's kosher.  There are not too few,
 	 *	or too many spare threads.  Exit happily.
 	 */
-	return 0;
+	return;
 }
 
 

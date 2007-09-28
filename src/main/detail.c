@@ -38,6 +38,7 @@ RCSID("$Id$")
 #define USEC (1000000)
 
 typedef struct listen_detail_t {
+	int		delay_time; /* should be first entry */
 	const char	*filename;
 	VALUE_PAIR	*vps;
 	FILE		*fp;
@@ -49,7 +50,6 @@ typedef struct listen_detail_t {
 	int		has_rtt;
 	int		srtt;
 	int		rttvar;
-	int		delay_time;
 	struct timeval  last_packet;
 } listen_detail_t;
 
@@ -146,12 +146,8 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	data->delay_time = (data->srtt * (100 - data->load_factor)) / (data->load_factor);
 
-	/*
-	 *	FIXME: Push this delay to the event handler!
-	 */
 	DEBUG2("RTT %d\tdelay %d", data->srtt, data->delay_time);
 
-	usleep(data->delay_time);
 	data->last_packet = now;
 	data->state = STATE_REPLIED;
 
@@ -160,7 +156,7 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 
 
 /*
- *	Open the detail file..
+ *	Open the detail file, if we can.
  *
  *	FIXME: create it, if it's not already there, so that the main
  *	server select() will wake us up if there's anything to read.
@@ -713,7 +709,6 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	data->vps = NULL;
 	data->fp = NULL;
 	data->state = STATE_UNOPENED;
-	detail_open(this);
 
 	return 0;
 }

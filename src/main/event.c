@@ -24,7 +24,6 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/event.h>
@@ -32,7 +31,18 @@ RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
 
+#include <signal.h>
+#include <fcntl.h>
+
+#ifdef HAVE_SYS_WAIT_H
+#	include <sys/wait.h>
+#endif
+
 #define USEC (1000000)
+
+extern pid_t radius_pid;
+extern int dont_fork;
+
 
 /*
  *	Ridiculous amounts of local state.
@@ -43,6 +53,10 @@ static int			request_num_counter = 0;
 static struct timeval		now;
 static time_t			start_time;
 static int			have_children;
+static int			has_detail_listener = FALSE;
+static int			read_from_detail = TRUE;
+
+static int self_pipe[2];
 
 #ifdef HAVE_PTHREAD_H
 static pthread_mutex_t	proxy_mutex;
@@ -70,6 +84,7 @@ static rad_listen_t	*proxy_listeners[32];
 
 static void request_post_handler(REQUEST *request);
 static void wait_a_bit(void *ctx);
+static void event_poll_fd(void *ctx);
 
 static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
 				    const char *msg)
@@ -291,6 +306,16 @@ static int insert_into_proxy_hash(REQUEST *request)
 		/*
 		 *	Allocate a new proxy fd.  This function adds it
 		 *	into the list of listeners.
+		 *
+		 *	FIXME!: Call event_fd_insert()!  Otherwise this
+		 *	FD will never be used in select()!
+		 *
+		 *	We probably want to add RADIUS_SIGNAL_SELF_FD,
+		 *	which tells us to walk over the listeners,
+		 *	adding a new FD.
+		 *
+		 *	Hmm... maybe do this for the detail file, too.
+		 *	that will simplify some of the rest of the code.
 		 */
 		proxy_listener = proxy_new_listener();
 		if (!proxy_listener) {
@@ -1995,15 +2020,366 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 
 
 /*
+ *	Inform ourselves that we received a signal.
+ */
+void radius_signal_self(int flag)
+{
+	ssize_t rcode;
+	uint8_t buffer[16];
+
+	/*
+	 *	The caller is telling us it's OK to read from the
+	 *	detail files.  However, we're not even listening on
+	 *	the detail files.  Therefore, suppress the flag to
+	 *	avoid bothering the main worker thread.
+	 */
+	if ((flag == RADIUS_SIGNAL_SELF_DETAIL) &&
+	    !has_detail_listener) {
+		return;
+	}
+
+	/*
+	 *	The read MUST be non-blocking for this to work.
+	 */
+	rcode = read(self_pipe[0], buffer, sizeof(buffer));
+	if (rcode > 0) {
+		ssize_t i;
+
+		for (i = 1; i < rcode; i++) {
+			buffer[0] |= buffer[i];
+		}
+	}
+
+#ifndef NDEBUG
+	memset(buffer + 1, 0, sizeof(buffer) - 1);
+#endif
+
+	buffer[0] |= flag;
+
+	write(self_pipe[1], buffer, 1);
+}
+
+
+static void event_signal_handler(lrad_event_list_t *xel, int fd, void *ctx)
+{
+	size_t i, rcode;
+	char buffer[32];
+
+	xel = xel;
+	fd = fd;
+	ctx = ctx;
+
+	rcode = read(self_pipe[0], buffer, sizeof(buffer));
+	if (rcode <= 0) return;
+
+	/*
+	 *	Merge pending signals.
+	 */
+	for (i = 1; i < rcode; i++) {
+		buffer[0] |= buffer[i];
+	}
+	
+	/*
+	 *	The thread pool has nothing more to do.  Start reading
+	 *	from the detail file.
+	 */
+	if ((buffer[0] & (RADIUS_SIGNAL_SELF_DETAIL)) != 0) {
+		read_from_detail = TRUE;
+	}
+
+	if ((buffer[0] & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
+		DEBUG("Exiting...");
+		
+		/*
+		 *	Ignore the TERM signal: we're
+		 *	about to die.
+		 */
+		signal(SIGTERM, SIG_IGN);
+		
+		/*
+		 *	Send a TERM signal to all
+		 *	associated processes
+		 *	(including us, which gets
+		 *	ignored.)
+		 */
+		kill(-radius_pid, SIGTERM);
+		
+		lrad_event_loop_exit(el);
+		
+		/*
+		 *	SIGTERM gets do_exit=0,
+		 *	and we want to exit cleanly.
+		 *
+		 *	Other signals make us exit
+		 *	with an error status.
+		 */
+		radius_pid = 0;
+		if ((buffer[0] & RADIUS_SIGNAL_SELF_EXIT) != 0) {
+			radius_pid = -1;
+		}
+		return;
+	} /* else exit/term flags weren't set */
+	
+	if ((buffer[0] & RADIUS_SIGNAL_SELF_HUP) != 0) {
+		DEBUG("Received HUP signal");
+
+#if 1
+		/*
+		 *	Re-read the configuration.  As of 2.0, this is
+		 *	thread-safe, etc.
+		 */
+		if (read_mainconfig(TRUE) < 0) {
+			exit(1);
+		}
+#endif
+
+		radlog(L_INFO, "Ready to process requests.");
+	}
+}
+
+
+/*
+ *	The given FD is closed.  Delete it from the list of FD's to poll,
+ *	and set a timer to periodically look for an FD again.
+ */
+static void event_reset_fd(rad_listen_t *listener, int fd, int usec)
+{
+	struct timeval when;
+	gettimeofday(&when, NULL);
+
+	tv_add(&when, usec);	
+
+	if (!lrad_event_fd_delete(el, 0, fd)) {
+		rad_panic("Failed deleting fd");
+	}
+	
+	if (!lrad_event_insert(el, event_poll_fd, listener,
+			       &when, NULL)) {
+		rad_panic("Failed inserting event");
+	}
+}
+
+
+/*
+ *	Reads from the detail file if possible, OR sets up a timeout
+ *	to see if the detail file is ready for reading.
+ *
+ *	FIXME: On Linux, use inotify to watch the detail file.  This
+ *	
+ */
+static void event_detail_handler(lrad_event_list_t *xel, int fd, void *ctx)
+{
+	rad_listen_t *listener = ctx;
+	RAD_REQUEST_FUNP fun;
+	REQUEST *request;
+
+	rad_assert(xel == el);
+	rad_assert(fd == listener->fd);
+
+	xel = xel;
+
+	/*
+	 *	We're too busy to read from the detail file.  Stop
+	 *	watching the file, and instead go back to polling.
+	 */
+	if (!read_from_detail) {
+		event_reset_fd(listener, fd, USEC);
+		return;
+	}
+	
+	/*
+	 *	FIXME: Put this somewhere else, where it isn't called
+	 *	all of the time...
+	 */
+#ifndef HAVE_PTHREAD_H
+	/*
+	 *	If there are no child threads, then there may
+	 *	be child processes.  In that case, wait for
+	 *	their exit status, and throw that exit status
+	 *	away.  This helps get rid of zxombie children.
+	 */
+	while (waitpid(-1, &argval, WNOHANG) > 0) {
+		/* do nothing */
+	}
+#endif
+
+	/*
+	 *	Didn't read anything from the detail file.
+	 *	Wake up in one second to check it again.
+	 */
+	if (!listener->recv(listener, &fun, &request)) {
+		event_reset_fd(listener, fd, USEC);
+		return;
+	}
+
+	/*
+	 *	Drop the request into the thread pool,
+	 *	and let the thread pool take care of
+	 *	doing something with it.
+	 */
+	if (!thread_pool_addrequest(request, fun)) {
+		request->child_state = REQUEST_DONE;
+	}
+
+	/*
+	 *	Reset based on the fd we were given, as detail_recv()
+	 *	may have read all of the file, and closed it.  It then
+	 *	sets listener->fd = -1.
+	 */
+	event_reset_fd(listener, fd, *(int *) listener->data);
+}
+
+
+static void event_socket_handler(lrad_event_list_t *xel, int fd, void *ctx)
+{
+	rad_listen_t *listener = ctx;
+	RAD_REQUEST_FUNP fun;
+	REQUEST *request;
+
+	rad_assert(xel == el);
+
+	xel = xel;
+	fd = fd;
+
+	if (listener->fd < 0) rad_panic("Socket was closed on us!");
+	
+	/*
+	 *	FIXME: Put this somewhere else, where it isn't called
+	 *	all of the time...
+	 */
+#ifndef HAVE_PTHREAD_H
+	/*
+	 *	If there are no child threads, then there may
+	 *	be child processes.  In that case, wait for
+	 *	their exit status, and throw that exit status
+	 *	away.  This helps get rid of zxombie children.
+	 */
+	while (waitpid(-1, &argval, WNOHANG) > 0) {
+		/* do nothing */
+	}
+#endif
+
+	if (!listener->recv(listener, &fun, &request)) return;
+
+	if (!thread_pool_addrequest(request, fun)) {
+		request->child_state = REQUEST_DONE;
+	}
+
+	/*
+	 *	If we've read a packet from a socket OTHER than the
+	 *	detail file, we start ignoring the detail file.
+	 *
+	 *	When the child thread pulls the request off of the
+	 *	queues, it will check if the queues are empty.  Once
+	 *	all queues are empty, it will signal us to read the
+	 *	detail file again.
+	 */
+	read_from_detail = FALSE;
+}
+
+
+/*
+ *	This function is called periodically to see if a file
+ *	descriptor is available for reading.
+ */
+static void event_poll_fd(void *ctx)
+{
+	int rcode;
+	RAD_REQUEST_FUNP fun;
+	REQUEST *request;
+	rad_listen_t *listener = ctx;
+	lrad_event_fd_handler_t handler;
+
+	/*
+	 *	Ignore the detail file if we're busy with other work.
+	 */
+	if ((listener->type == RAD_LISTEN_DETAIL) && !read_from_detail) {
+		goto reset;
+	}
+
+	/*
+	 *	Try to read a RADIUS packet.  This also opens the FD.
+	 *
+	 *	FIXME: This does poll AND receive.
+	 */
+	rcode = listener->recv(listener, &fun, &request);
+
+	/*
+	 *	We read a request.  Add it to the list for processing.
+	 */
+	if (rcode == 1) {
+		rad_assert(fun != NULL);
+		rad_assert(request != NULL);
+
+		if (!thread_pool_addrequest(request, fun)) {
+			request->child_state = REQUEST_DONE;
+		}
+	}
+
+	/*
+	 *	Still no FD, OR the fd was read completely, and then
+	 *	closed.  Re-set the polling timer and return.
+	 */
+	if (listener->fd < 0) {
+		struct timeval when;
+
+	reset:
+		gettimeofday(&when, NULL);
+		when.tv_sec += 1;
+		
+		if (!lrad_event_insert(el, event_poll_fd, listener,
+				       &when, NULL)) {
+			rad_panic("Failed inserting event");
+		}
+
+		return;
+	}
+
+	if (listener->type == RAD_LISTEN_DETAIL) {
+		handler = event_detail_handler;
+	} else {
+		handler = event_socket_handler;
+	}
+
+	/*
+	 *	We have an FD.  Start watching it.
+	 */
+	if (!lrad_event_fd_insert(el, 0, listener->fd,
+				  handler, listener)) {
+		char buffer[256];
+		
+		listener->print(listener, buffer, sizeof(buffer));
+		rad_panic("Failed creating handler for socket");
+	}
+}
+
+
+static void event_status(struct timeval *wake)
+{
+	if (debug_flag == 0) return;
+
+	if (!wake) {
+		DEBUG("Waiting for the next request.");
+	} else if ((wake->tv_sec != 0) ||
+		   (wake->tv_usec >= 100000)) {
+		DEBUG("Waking up in %d.%01d seconds.\n",
+		      (int) wake->tv_sec, (int) wake->tv_usec / 100000);
+	}
+}
+
+
+/*
  *	Externally-visibly functions.
  */
 int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 {
+	rad_listen_t *this;
+
 	if (el) return 0;
 
 	time(&start_time);
 
-	el = lrad_event_list_create();
+	el = lrad_event_list_create(event_status);
 	if (!el) return 0;
 
 	pl = lrad_packet_list_create(0);
@@ -2020,7 +2396,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 	if (mainconfig.proxy_requests) {
 		int i;
-		rad_listen_t *listener;
 
 		/*
 		 *	Create the tree for managing proxied requests and
@@ -2044,23 +2419,23 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 		i = -1;
 
-		for (listener = mainconfig.listen;
-		     listener != NULL;
-		     listener = listener->next) {
-			if (listener->type == RAD_LISTEN_PROXY) {
+		for (this = mainconfig.listen;
+		     this != NULL;
+		     this = this->next) {
+			if (this->type == RAD_LISTEN_PROXY) {
 				/*
 				 *	FIXME: This works only because we
 				 *	start off with one proxy socket.
 				 */
-				rad_assert(proxy_fds[listener->fd & 0x1f] == -1);
-				rad_assert(proxy_listeners[listener->fd & 0x1f] == NULL);
+				rad_assert(proxy_fds[this->fd & 0x1f] == -1);
+				rad_assert(proxy_listeners[this->fd & 0x1f] == NULL);
 
-				proxy_fds[listener->fd & 0x1f] = listener->fd;
-				proxy_listeners[listener->fd & 0x1f] = listener;
-				if (!lrad_packet_list_socket_add(proxy_list, listener->fd)) {
+				proxy_fds[this->fd & 0x1f] = this->fd;
+				proxy_listeners[this->fd & 0x1f] = this;
+				if (!lrad_packet_list_socket_add(proxy_list, this->fd)) {
 					rad_assert(0 == 1);
 				}
-				i = listener->fd;
+				i = this->fd;
 			}
 		}
 
@@ -2069,6 +2444,84 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 	if (thread_pool_init(cs, spawn_flag) < 0) {
 		exit(1);
+	}
+
+	/*
+	 *	Child threads need a pipe to signal us, as do the
+	 *	signal handlers.
+	 */
+	if (pipe(self_pipe) < 0) {
+		radlog(L_ERR, "radiusd: Error opening internal pipe: %s",
+		       strerror(errno));
+		exit(1);
+	}
+	if (fcntl(self_pipe[0], F_SETFL, O_NONBLOCK | FD_CLOEXEC) < 0) {
+		radlog(L_ERR, "radiusd: Error setting internal flags: %s",
+		       strerror(errno));
+		exit(1);
+	}
+	if (fcntl(self_pipe[1], F_SETFL, O_NONBLOCK | FD_CLOEXEC) < 0) {
+		radlog(L_ERR, "radiusd: Error setting internal flags: %s",
+		       strerror(errno));
+		exit(1);
+	}
+
+	if (!lrad_event_fd_insert(el, 0, self_pipe[0],
+				  event_signal_handler, el)) {
+		radlog(L_ERR, "Failed creating handler for signals");
+		exit(1);
+	}
+
+	/*
+	 *	Add all of the sockets to the event loop.
+	 *
+	 *	FIXME: New proxy sockets aren't currently added to the
+	 *	event loop.  They're allocated in a child thread, and
+	 *	we don't have (or want) a mutex around the event
+	 *	handling code.
+	 */
+	for (this = mainconfig.listen;
+	     this != NULL;
+	     this = this->next) {
+		if (this->type == RAD_LISTEN_DETAIL) {
+			has_detail_listener = TRUE;
+		}
+
+		/*
+		 *	The file descriptor isn't ready.  Poll for
+		 *	when it will become ready.  This is for SNMP
+		 *	and detail file fd's.
+		 */
+		if (this->fd < 0) {
+			struct timeval when;
+
+			gettimeofday(&when, NULL);
+			when.tv_sec += 1;
+
+			if (!lrad_event_insert(el, event_poll_fd, this,
+					       &when, NULL)) {
+				radlog(L_ERR, "Failed creating handler");
+				exit(1);
+			}
+			continue;
+		}
+
+		/*
+		 *	The socket is open.  It MUST be a socket,
+		 *	as we don't pre-open the detail files (yet).
+		 *
+		 *	FIXME: if we DO open the detail files automatically,
+		 *	then much of this code becomes simpler.
+		 */
+		if (!lrad_event_fd_insert(el, 0, this->fd,
+					  event_socket_handler, this)) {
+			char buffer[256];
+
+			this->print(this, buffer, sizeof(buffer));
+			radlog(L_ERR, "Failed creating handler for socket %s",
+			       buffer);
+			exit(1);
+		}
 	}
 
 	return 1;
@@ -2135,49 +2588,22 @@ void radius_event_free(void)
 	lrad_event_list_free(el);
 }
 
-int radius_event_process(struct timeval **pptv)
+int radius_event_process(void)
 {
-	int rcode;
-	struct timeval when;
-
 	if (!el) return 0;
 
-	if (lrad_event_list_num_elements(el) == 0) {
-		*pptv = NULL;
-		return 1;
-	}
+	radlog(L_INFO, "Ready to process requests.");
 
-	gettimeofday(&now, NULL);
-	when = now;
+	lrad_event_loop(el);
 
-	do {
-		rcode = lrad_event_run(el, &when);
-	} while (rcode == 1);
-
-	gettimeofday(&now, NULL);
-
-	if ((when.tv_sec == 0) && (when.tv_usec == 0)) {
-		if (lrad_event_list_num_elements(el) == 0) {
-			*pptv = NULL;
-			return 1;
-		}
-		rad_panic("Internal sanity check failed");
-
-	} else if (timercmp(&now, &when, >)) {
-		DEBUG3("Event in the past... compensating");
-		when.tv_sec = 0;
-		when.tv_usec = 1;
-
-	} else {
-		when.tv_sec -= now.tv_sec;
-		when.tv_usec -= now.tv_usec;
-		if (when.tv_usec < 0) {
-			when.tv_sec--;
-			when.tv_usec += USEC;
-		}
-	}
-	**pptv = when;
-
+	/*
+	 *	FIXME: Wait for child threads, kill them, and clean
+	 *	up?
+	 */
+	
+	/*
+	 *	FIXME: clean up any active REQUEST handles.
+	 */
 	return 1;
 }
 

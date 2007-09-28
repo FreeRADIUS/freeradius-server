@@ -442,7 +442,6 @@ void		xlat_free(void);
 
 /* threads.c */
 extern		int thread_pool_init(CONF_SECTION *cs, int spawn_flag);
-extern		int thread_pool_clean(time_t now);
 extern		int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
 extern		pid_t rad_fork(void);
 extern		pid_t rad_waitpid(pid_t pid, int *status);
@@ -468,7 +467,7 @@ rad_listen_t *proxy_new_listener(void);
 /* event.c */
 int radius_event_init(CONF_SECTION *cs, int spawn_flag);
 void radius_event_free(void);
-int radius_event_process(struct timeval **pptv);
+int radius_event_process(void);
 void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun);
 int received_request(rad_listen_t *listener,
 		     RADIUS_PACKET *packet, REQUEST **prequest,
