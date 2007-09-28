@@ -31,9 +31,10 @@ typedef struct lrad_event_list_t lrad_event_list_t;
 typedef struct lrad_event_t lrad_event_t;
 
 typedef	void (*lrad_event_callback_t)(void *);
+typedef	void (*lrad_event_status_t)(struct timeval *);
 typedef void (*lrad_event_fd_handler_t)(lrad_event_list_t *el, int sock, void *ctx);
 
-lrad_event_list_t *lrad_event_list_create(void);
+lrad_event_list_t *lrad_event_list_create(lrad_event_status_t status);
 void lrad_event_list_free(lrad_event_list_t *el);
 
 int lrad_event_list_num_elements(lrad_event_list_t *el);

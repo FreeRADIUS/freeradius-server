@@ -39,9 +39,12 @@ struct lrad_event_list_t {
 	rbtree_t	*times;
 
 	rbtree_t	*readers;
+	int		changed;
 	int		maxfd;
 
 	int		exit;
+
+	lrad_event_status_t status;
 
 	struct timeval  now;
 	int		dispatch;
@@ -93,7 +96,7 @@ void lrad_event_list_free(lrad_event_list_t *el)
 }
 
 
-lrad_event_list_t *lrad_event_list_create(void)
+lrad_event_list_t *lrad_event_list_create(lrad_event_status_t status)
 {
 	lrad_event_list_t *el;
 
@@ -115,6 +118,8 @@ lrad_event_list_t *lrad_event_list_create(void)
 		return NULL;
 	}
 
+	el->status = status;
+
 	return el;
 }
 
@@ -133,7 +138,7 @@ int lrad_event_delete(lrad_event_list_t *el, lrad_event_t **ev_p)
 	if (!el || !ev_p || !*ev_p) return 0;
 
 	ev = *ev_p;
-	*(ev->ev_p) = NULL;
+	if (ev->ev_p) *(ev->ev_p) = NULL;
 
 	rbtree_delete(el->times, ev->node);
 
@@ -148,9 +153,9 @@ int lrad_event_insert(lrad_event_list_t *el,
 {
 	lrad_event_t *ev;
 
-	if (!el || !callback | !when || !ev_p) return 0;
+	if (!el || !callback | !when) return 0;
 
-	if (*ev_p) lrad_event_delete(el, ev_p);
+	if (ev_p && *ev_p) lrad_event_delete(el, ev_p);
 
 	ev = malloc(sizeof(*ev));
 	if (!ev) return 0;
@@ -220,7 +225,6 @@ int lrad_event_run(lrad_event_list_t *el, struct timeval *when)
 	if (!ev) {
 		when->tv_sec = 0;
 		when->tv_usec = 0;
-		fprintf(stderr, "FATAL ERROR!\n");
 		return 0;
 	}
 
@@ -240,7 +244,7 @@ int lrad_event_run(lrad_event_list_t *el, struct timeval *when)
 	/*
 	 *	Delete the event before calling it.
 	 */
-	lrad_event_delete(el, ev->ev_p);
+	lrad_event_delete(el, &ev);
 
 	callback(ctx);
 	return 1;
@@ -278,6 +282,7 @@ int lrad_event_fd_insert(lrad_event_list_t *el, int type, int fd,
 	}
 
 	if (fd > el->maxfd) el->maxfd = fd;
+	el->changed = 1;
 
 	return 1;
 }
@@ -293,6 +298,7 @@ int lrad_event_fd_delete(lrad_event_list_t *el, int type, int fd)
 	my_ef.fd = fd;
 
 	if (fd == el->maxfd) el->maxfd--;
+	el->changed = 1;
 
 	return rbtree_deletebydata(el->readers, &my_ef);
 }			 
@@ -333,6 +339,8 @@ static int lrad_event_fd_dispatch(void *ctx, void *data)
 	if (!FD_ISSET(ef->fd, ew->fds)) return 0;
 
 	ef->handler(ew->el, ef->fd, ef->ctx);
+
+	if (ew->el->changed) return 1;
 
 	return 0;		/* continue walking */
 }
@@ -383,12 +391,10 @@ int lrad_event_loop(lrad_event_list_t *el)
 
 		rbtree_walk(el->readers, InOrder, lrad_event_fd_set, &read_fds);
 
-		if (!wake) {
-		  fprintf(stderr, "Nothing to do!\n");
-		} else {
-		  fprintf(stderr, "Waking in %d.%02d seconds\n",
-			  wake->tv_sec, wake->tv_usec / 10000);
-		}
+		/*
+		 *	Tell someone what the status is.
+		 */
+		if (el->status) el->status(wake);
 
 		rcode = select(el->maxfd + 1, &read_fds, NULL, NULL, wake);
 		if ((rcode < 0) && (errno != EINTR)) {
@@ -409,6 +415,7 @@ int lrad_event_loop(lrad_event_list_t *el)
 		ew.fds = &read_fds;
 		ew.el = el;
 
+		el->changed = 0;
 		rbtree_walk(el->readers, InOrder, lrad_event_fd_dispatch, &ew);
 	}
 
