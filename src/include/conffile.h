@@ -63,6 +63,7 @@ CONF_SECTION	*cf_section_find(const char *name);
 CONF_SECTION	*cf_section_sub_find(const CONF_SECTION *, const char *name);
 CONF_SECTION	*cf_section_sub_find_name2(const CONF_SECTION *, const char *name1, const char *name2);
 char 		*cf_section_value_find(const CONF_SECTION *, const char *attr);
+CONF_SECTION	*cf_top_section(const CONF_SECTION *cs);
 
 void *cf_data_find(CONF_SECTION *, const char *);
 int cf_data_add(CONF_SECTION *, const char *, void *, void (*)(void *));

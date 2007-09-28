@@ -583,6 +583,17 @@ static const CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
 	return NULL;
 }
 
+
+CONF_SECTION *cf_top_section(const CONF_SECTION *cs)
+{
+	while (cs->item.parent != NULL) {
+		cs = cs->item.parent;
+	}
+
+	return cs;
+}
+
+
 /*
  *	Expand the variables in an input string.
  */
@@ -600,11 +611,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 	 *	We can't use mainconfig.config, because we're in the
 	 *	process of re-building it, and it isn't set up yet...
 	 */
-	for (parentcs = outercs;
-	     parentcs->item.parent != NULL;
-	     parentcs = parentcs->item.parent) {
-		/* do nothing */
-	}
+	parentcs = cf_top_section(outercs);
 
 	p = output;
 	ptr = input;
@@ -1254,11 +1261,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		       CONF_SECTION *parentcs;
 		       t2 = getword(&ptr, buf2, sizeof(buf2));
 
-		       for (parentcs = current;
-			    parentcs->item.parent != NULL;
-			    parentcs = parentcs->item.parent) {
-			       /* do nothing */
-		       }
+		       parentcs = cf_top_section(current);
 
 		       ci = cf_reference_item(parentcs, this, buf2);
 		       if (!ci || (ci->type != CONF_ITEM_SECTION)) {
