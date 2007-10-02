@@ -52,7 +52,7 @@ otprc2rlmrc(int rc)
     case OTP_RC_AUTHINFO_UNAVAIL:	return RLM_MODULE_REJECT;
     case OTP_RC_AUTH_ERR:		return RLM_MODULE_REJECT;
     case OTP_RC_MAXTRIES:		return RLM_MODULE_USERLOCK;
-    case OTP_RC_NEXT_PASSCODE:		return RLM_MODULE_USERLOCK;
+    case OTP_RC_NEXTPASSCODE:		return RLM_MODULE_USERLOCK;
     case OTP_RC_IPIN:			return RLM_MODULE_REJECT;
     case OTP_RC_SERVICE_ERR:		return RLM_MODULE_FAIL;
     default:				return RLM_MODULE_FAIL;
