@@ -397,6 +397,7 @@ static int sqlippool_initialize_sql(void * instance)
  */
 static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 {
+	module_instance_t *modinst;
 	rlm_sqlippool_t * data;
 	char * pool_name = NULL;
 
@@ -479,12 +480,22 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 	else
 		data->pool_name = strdup("ippool");
 
-	if ( !(data->sql_inst = (SQL_INST *) (find_module_instance(cf_section_find("modules"), data->sql_instance_name))->insthandle) )
-	{
+	modinst = find_module_instance(cf_section_find("modules"), data->sql_instance_name);
+	if (!modinst) {
 		radlog(L_ERR, "sqlippool_instantiate: failed to find sql instance named %s", data->sql_instance_name);
 		free(data);
 		exit(0);
 	}
+
+	if (strcmp(modinst->entry->name, "rlm_sql") != 0) {
+		radlog(L_ERR, "sqlippool_instantiate: Module \"%s\""
+		       " is not an instance of the rlm_sql module",
+		       data->sql_instance_name);
+		free(data);
+		exit(0);
+	}
+
+	data->sql_inst = (SQL_INST *) modinst->insthandle;
 
 	sqlippool_initialize_sql(data);
 	*instance = data;
