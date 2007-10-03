@@ -1193,7 +1193,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				struct dirent	*dp;
 				struct stat stat_buf;
 
-				DEBUG2( "Config:   including files in directory: %s", value );
+				DEBUG2("including files in directory %s", value );
 				dir = opendir(value);
 				if (!dir) {
 					radlog(L_ERR, "%s[%d]: Error reading directory %s: %s",
@@ -1460,7 +1460,7 @@ int cf_file_include(const char *filename, CONF_SECTION *cs)
 	time_t		*mtime;
 	CONF_DATA	*cd;
 
-	DEBUG2( "Config:   including file: %s", filename);
+	DEBUG2( "including configuration file %s", filename);
 
 	if (stat(filename, &statbuf) == 0) {
 #ifdef S_IWOTH

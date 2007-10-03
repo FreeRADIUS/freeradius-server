@@ -624,7 +624,6 @@ int read_mainconfig(int reload)
 	static int old_debug_level = -1;
 	char buffer[1024];
 	CONF_SECTION *cs, *templates;
-	rad_listen_t *listener;
 	struct stat statbuf;
 
 	if (stat(radius_dir, &statbuf) < 0) {
@@ -648,6 +647,12 @@ int read_mainconfig(int reload)
 		return -1;
 	}
 #endif
+
+	if (!reload) {
+		radlog(L_INFO, "Starting - reading configuration files ...");
+	} else {
+		radlog(L_INFO, "Reloading - reading configuration files...");
+	}
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
@@ -770,14 +775,8 @@ int read_mainconfig(int reload)
 		mainconfig.radlog_fd = STDOUT_FILENO;
 	}
 
-	if (!reload) {
-		radlog(L_INFO, "Starting - reading configuration files ...");
-	} else {
-		radlog(L_INFO, "Reloading - reading configuration files...");
-	}
-
 	/* Initialize the dictionary */
-	DEBUG2("read_config_files:  reading dictionary");
+	DEBUG2("including dictionary file %s/%s", radius_dir, RADIUS_DICTIONARY);
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
 		radlog(L_ERR, "Errors reading dictionary: %s",
 				librad_errstr);
@@ -817,6 +816,8 @@ int read_mainconfig(int reload)
 	 */
 	cf_section_free(&mainconfig.config);
 	mainconfig.config = cs;
+
+	DEBUG2("radiusd: #### Loading Realms and Home Servers ####");
 
 	if (!realms_init(cs)) {
 		return -1;
@@ -879,30 +880,7 @@ int read_mainconfig(int reload)
 	}
 	if (mainconfig.reject_delay < 0) mainconfig.reject_delay = 0;
 
-	/*
-	 *	Initialize the old "bind_address" and "port", first.
-	 */
-	listener = NULL;
-
-	/*
-	 *	Read the list of listeners.
-	 *
-	 *	This also takes care of initializing the clients.
-	 */
-	if (listen_init(cs, &listener) < 0) {
-		exit(1);
-	}
-
-	if (!listener) {
-		radlog(L_ERR, "Server is not configured to listen on any ports.  Exiting.");
-		exit(1);
-	}
-
-	listen_free(&mainconfig.listen);
-	mainconfig.listen = listener;
-
 	/*  Reload the modules.  */
-	DEBUG2("radiusd:  entering modules setup");
 	if (setup_modules(reload, mainconfig.config) < 0) {
 		radlog(L_ERR, "Errors setting up modules");
 		return -1;

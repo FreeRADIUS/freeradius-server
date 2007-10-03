@@ -641,7 +641,7 @@ static int load_component_section(CONF_SECTION *cs,
 	return 0;
 }
 
-static int load_byserver(CONF_SECTION *cs, int *do_component)
+static int load_byserver(CONF_SECTION *cs)
 {
 	int comp, flag;
 	const char *server = cf_section_name2(cs);
@@ -655,8 +655,6 @@ static int load_byserver(CONF_SECTION *cs, int *do_component)
 	flag = 0;
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
 		CONF_SECTION *subcs;
-
-		if (!do_component[comp]) continue;
 
 		subcs = cf_section_sub_find(cs,
 					    section_type_value[comp].section);
@@ -680,7 +678,7 @@ static int load_byserver(CONF_SECTION *cs, int *do_component)
 	 *
 	 *	This is a bit of a hack...
 	 */
-	if (!flag && do_component[RLM_COMPONENT_POST_AUTH]) {
+	if (!flag) {
 		CONF_SECTION *subcs;
 
 		subcs = cf_section_sub_find(cs, "vmps");
@@ -713,9 +711,7 @@ static int load_byserver(CONF_SECTION *cs, int *do_component)
  */
 int setup_modules(int reload, CONF_SECTION *config)
 {
-	int		comp;
 	CONF_SECTION	*cs, *modules;
-	int		do_component[RLM_COMPONENT_COUNT];
 	rad_listen_t	*listener;
 	int		null_server = FALSE;
 
@@ -745,9 +741,6 @@ int setup_modules(int reload, CONF_SECTION *config)
 		 */
 		lt_dlsetsearchpath(radlib_dir);
 
-		DEBUG2("radiusd: Library search path is %s",
-		       lt_dlgetsearchpath());
-
 		/*
 		 *	Set up the internal module struct.
 		 */
@@ -769,57 +762,6 @@ int setup_modules(int reload, CONF_SECTION *config)
 	}
 
 	/*
-	 *	Figure out which sections to load.
-	 */
-	memset(do_component, 0, sizeof(do_component));
-	for (listener = mainconfig.listen;
-	     listener != NULL;
-	     listener = listener->next) {
-		switch (listener->type) {
-		case RAD_LISTEN_AUTH:
-			do_component[RLM_COMPONENT_AUTZ] = 1;
-			do_component[RLM_COMPONENT_AUTH] = 1;
-			do_component[RLM_COMPONENT_POST_AUTH] = 1;
-			do_component[RLM_COMPONENT_SESS] = 1;
-			break;
-
-		case RAD_LISTEN_DETAIL:	/* just like acct */
-		case RAD_LISTEN_ACCT:
-			do_component[RLM_COMPONENT_PREACCT] = 1;
-			do_component[RLM_COMPONENT_ACCT] = 1;
-			break;
-
-		case RAD_LISTEN_PROXY:
-			do_component[RLM_COMPONENT_PRE_PROXY] = 1;
-			do_component[RLM_COMPONENT_POST_PROXY] = 1;
-			break;
-
-		case RAD_LISTEN_VQP:
-			do_component[RLM_COMPONENT_POST_AUTH] = 1;
-			break;
-			/*
-			 *	Ignore this.
-			 */
-		case RAD_LISTEN_SNMP:
-			break;
-
-		default:
-			rad_assert(0 == 1);
-			break;
-		}
-	}
-
-	for (comp = RLM_COMPONENT_AUTH; comp < RLM_COMPONENT_COUNT; comp++) {
-		/*
-		 *	Have the debugging messages all in one place.
-		 */
-		if (!do_component[comp]) {
-			DEBUG2("modules: Not loading %s{} section",
-			       section_type_value[comp].section);
-		}
-	}
-
-	/*
 	 *	Remember where the modules were stored.
 	 */
 	modules = cf_section_sub_find(config, "modules");
@@ -827,6 +769,8 @@ int setup_modules(int reload, CONF_SECTION *config)
 		radlog(L_ERR, "Cannot find a \"modules\" section in the configuration file!");
 		return -1;
 	}
+
+	DEBUG2("radiusd: #### Instantiating modules ####");
 
 	/*
 	 *  Look for the 'instantiate' section, which tells us
@@ -890,6 +834,8 @@ int setup_modules(int reload, CONF_SECTION *config)
 		}
 	}
 
+	DEBUG2("radiusd: #### Loading Virtual Servers ####");
+
 	/*
 	 *	Load all of the virtual servers.
 	 */
@@ -904,7 +850,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 			DEBUG2("server {");
 			null_server = TRUE;
 		}
-		if (load_byserver(cs, do_component) < 0) {
+		if (load_byserver(cs) < 0) {
 			DEBUG2("}");
 			return -1;
 		}
@@ -918,7 +864,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 	if (!null_server) {
 		DEBUG2("WARNING: Please update your configuration to use virtual servers!");
 		DEBUG2("server {");
-		if (load_byserver(config, do_component) < 0) {
+		if (load_byserver(config) < 0) {
 			DEBUG2("}");
 			return -1;
 		}

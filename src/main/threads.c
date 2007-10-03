@@ -706,7 +706,6 @@ int thread_pool_init(CONF_SECTION *cs, int spawn_flag)
 	CONF_SECTION	*pool_cf;
 	time_t		now;
 
-	DEBUG("Initializing the thread pool...");
 	now = time(NULL);
 
 	/*

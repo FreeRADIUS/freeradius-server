@@ -214,7 +214,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	lrad_ipaddr_t	ipaddr;
 	listen_socket_t *sock = this->data;
 	const char	*section_name = NULL;
-	CONF_SECTION	*client_cs;
+	CONF_SECTION	*client_cs, *parentcs;
 
 	/*
 	 *	Try IPv4 first
@@ -315,10 +315,11 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 	} /* else there was no "clients = " entry. */
 
+	parentcs = cf_top_section(cs);
 	if (!client_cs) {
 		CONF_SECTION *server_cs;
 
-		server_cs = cf_section_sub_find_name2(mainconfig.config,
+		server_cs = cf_section_sub_find_name2(parentcs,
 						      "server",
 						      this->server);
 		/*
@@ -334,7 +335,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	/*
 	 *	Still nothing.  Look for global clients.
 	 */
-	if (!client_cs) client_cs = mainconfig.config;
+	if (!client_cs) client_cs = parentcs;
 
 	sock->clients = clients_parse_section(client_cs);
 	if (!sock->clients) {
@@ -1034,7 +1035,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 
 	listen_type = NULL;
 	
-	DEBUG2(" listen {");
+	DEBUG2("listen {");
 
 	rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
 			      &listen_type, "");
@@ -1082,7 +1083,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 		return NULL;
 	}
 
-	DEBUG2(" }");
+	DEBUG2("}");
 
 	return this;
 }

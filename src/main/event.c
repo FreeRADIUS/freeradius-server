@@ -2088,52 +2088,22 @@ static void event_signal_handler(lrad_event_list_t *xel, int fd, void *ctx)
 	}
 
 	if ((buffer[0] & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
-		DEBUG("Exiting...");
-		
-		/*
-		 *	Ignore the TERM signal: we're
-		 *	about to die.
-		 */
-		signal(SIGTERM, SIG_IGN);
-		
-		/*
-		 *	Send a TERM signal to all
-		 *	associated processes
-		 *	(including us, which gets
-		 *	ignored.)
-		 */
-		kill(-radius_pid, SIGTERM);
-		
-		lrad_event_loop_exit(el);
-		
-		/*
-		 *	SIGTERM gets do_exit=0,
-		 *	and we want to exit cleanly.
-		 *
-		 *	Other signals make us exit
-		 *	with an error status.
-		 */
-		radius_pid = 0;
 		if ((buffer[0] & RADIUS_SIGNAL_SELF_EXIT) != 0) {
-			radius_pid = -1;
+			lrad_event_loop_exit(el, 1);
+		} else {
+			lrad_event_loop_exit(el, 2);
 		}
+			
 		return;
 	} /* else exit/term flags weren't set */
-	
+
+	/*
+	 *	Tell the even loop to stop processing.
+	 */
 	if ((buffer[0] & RADIUS_SIGNAL_SELF_HUP) != 0) {
-		DEBUG("Received HUP signal");
+		DEBUG("Received HUP signal.");
 
-#if 1
-		/*
-		 *	Re-read the configuration.  As of 2.0, this is
-		 *	thread-safe, etc.
-		 */
-		if (read_mainconfig(TRUE) < 0) {
-			exit(1);
-		}
-#endif
-
-		radlog(L_INFO, "Ready to process requests.");
+		lrad_event_loop_exit(el, 0x80);
 	}
 }
 
@@ -2374,7 +2344,7 @@ static void event_status(struct timeval *wake)
 int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 {
 	int i;
-	rad_listen_t *this;
+	rad_listen_t *this, *head = NULL;
 
 	if (el) return 0;
 
@@ -2447,6 +2417,12 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	 *	Mark the proxy Fd's as unused.
 	 */
 	for (i = 0; i < 32; i++) proxy_fds[i] = -1;
+
+	DEBUG2("radiusd: #### Opening IP addresses and Ports ####");
+
+	if (listen_init(cs, &head) < 0) {
+		_exit(1);
+	}
 	
 	/*
 	 *	Add all of the sockets to the event loop.
@@ -2456,11 +2432,16 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	 *	we don't have (or want) a mutex around the event
 	 *	handling code.
 	 */
-	for (this = mainconfig.listen;
+	for (this = head;
 	     this != NULL;
 	     this = this->next) {
+		char buffer[256];
+
+		this->print(this, buffer, sizeof(buffer));
+
 		switch (this->type) {
 		case RAD_LISTEN_DETAIL:
+			DEBUG("Listening on %s", buffer);
 			has_detail_listener = TRUE;
 			break;
 
@@ -2476,7 +2457,12 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 			}
 			break;
 
+		case RAD_LISTEN_SNMP:
+			DEBUG("Listening on SNMP %s", buffer);
+			break;
+
 		default:
+			DEBUG("Listening on %s", buffer);
 			break;
 		}
 
@@ -2508,8 +2494,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		 */
 		if (!lrad_event_fd_insert(el, 0, this->fd,
 					  event_socket_handler, this)) {
-			char buffer[256];
-
 			this->print(this, buffer, sizeof(buffer));
 			radlog(L_ERR, "Failed creating handler for socket %s",
 			       buffer);
@@ -2587,17 +2571,7 @@ int radius_event_process(void)
 
 	radlog(L_INFO, "Ready to process requests.");
 
-	lrad_event_loop(el);
-
-	/*
-	 *	FIXME: Wait for child threads, kill them, and clean
-	 *	up?
-	 */
-	
-	/*
-	 *	FIXME: clean up any active REQUEST handles.
-	 */
-	return 1;
+	return lrad_event_loop(el);
 }
 
 void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun)

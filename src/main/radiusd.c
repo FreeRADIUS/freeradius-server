@@ -89,6 +89,7 @@ static void sig_hup (int);
  */
 int main(int argc, char *argv[])
 {
+	int rcode;
 	unsigned char buffer[4096];
 	int argval;
 	pid_t pid;
@@ -98,7 +99,6 @@ int main(int argc, char *argv[])
 #ifdef HAVE_SIGACTION
 	struct sigaction act;
 #endif
-	rad_listen_t *listener;
 
 #ifdef OSFC2
 	set_auth_parameters(argc,argv);
@@ -384,28 +384,6 @@ int main(int argc, char *argv[])
 		setlinebuf(stdout);
 
 	/*
-	 *	Print out which ports we're listening on.
-	 */
-	for (listener = mainconfig.listen;
-	     listener != NULL;
-	     listener = listener->next) {
-		listener->print(listener, buffer, sizeof(buffer));
-		switch (listener->type) {
-		case RAD_LISTEN_DETAIL:
-			break;
-
-		case RAD_LISTEN_SNMP:
-			DEBUG("Listening on SNMP %s", buffer);
-			break;
-
-		default:
-			break;
-		}
-
-		DEBUG("Listening on %s", buffer);
-	}
-
-	/*
 	 *	Now that we've set everything up, we can install the signal
 	 *	handlers.  Before this, if we get any signal, we don't know
 	 *	what to do, so we might as well do the default, and die.
@@ -436,7 +414,30 @@ int main(int argc, char *argv[])
 #endif
 	}
 
-	radius_event_process();
+	/*
+	 *	Loop while doing stuff.
+	 */
+	while ((rcode = radius_event_process()) == 0x80) {
+		/*
+		 *	HUP handler.
+		 */
+	}
+	
+	DEBUG("Exiting...");
+	
+	/*
+	 *	Ignore the TERM signal: we're
+	 *	about to die.
+	 */
+	signal(SIGTERM, SIG_IGN);
+	
+	/*
+	 *	Send a TERM signal to all
+	 *	associated processes
+	 *	(including us, which gets
+	 *	ignored.)
+	 */
+	kill(-radius_pid, SIGTERM);
 	
 	/*
 	 *	We're exiting, so we can delete the PID
@@ -461,9 +462,7 @@ int main(int argc, char *argv[])
 	
 	free(radius_dir);
 		
-	if (radius_pid < 0) return 1;
-
-	return 0;
+	return (rcode - 1);
 }
 
 
