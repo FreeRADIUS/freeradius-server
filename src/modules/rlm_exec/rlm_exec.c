@@ -223,15 +223,6 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	/*
-	 *	Sanity check the config.  If we're told to wait,
-	 *	then the output pairs should be defined.
-	 */
-	if (inst->wait &&
-	    (inst->output == NULL)) {
-		radlog(L_INFO, "rlm_exec: wait=yes but no output defined. Did you mean output=none?");
-	}
-
-	/*
 	 *	Get the packet type on which to execute
 	 */
 	if (!inst->packet_type) {
