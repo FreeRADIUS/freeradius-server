@@ -318,7 +318,6 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt, SQLSOCK * 
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	char expansion[MAX_STRING_LEN * 4];
 	char query[MAX_STRING_LEN * 4];
-	SQL_ROW row;
 	int rlen, retval = 0;
 
 	sqlippool_expand(expansion, sizeof(expansion), fmt, instance, param, param_len);
@@ -385,6 +384,12 @@ static int sqlippool_initialize_sql(void * instance)
 	return 1;
 }
 
+static int sqlippool_detach(void *instance)
+{
+	free(instance);
+	return 0;
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -399,7 +404,7 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 {
 	module_instance_t *modinst;
 	rlm_sqlippool_t * data;
-	char * pool_name = NULL;
+	const char * pool_name = NULL;
 
 	/*
 	 *	Set up a storage area for instance data
@@ -418,8 +423,8 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 
 	if (data->sql_instance_name == NULL || strlen(data->sql_instance_name) == 0) {
 		radlog(L_ERR, "rlm_sqlippool: the 'sql-instance-name' variable must be set.");
-		free(data);
-		exit(0);
+		sqlippool_detach(data);
+		return -1;
 	}
 
 	/*
@@ -428,50 +433,50 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 
 	if (data->allocate_clear == NULL || strlen(data->allocate_clear) == 0) {
 		radlog(L_ERR, "rlm_sqlippool: the 'allocate-clear' statement must be set.");
-		free(data);
-		exit(0);
+		sqlippool_detach(data);
+		return -1;
 	}
 
 	if (data->allocate_find == NULL || strlen(data->allocate_find) == 0) {
 		radlog(L_ERR, "rlm_sqlippool: the 'allocate_find' statement must be set.");
-		free(data);
-		exit(0);
+		sqlippool_detach(data);
+		return -1;
 	}
 
 	if (data->allocate_update == NULL || strlen(data->allocate_update) == 0) {
 		radlog(L_ERR, "rlm_sqlippool: the 'allocate_update' statement must be set.");
-		free(data);
-		exit(0);
+		sqlippool_detach(data);
+		return -1;
 	}
 
 	if (data->start_update == NULL || strlen(data->start_update) == 0) {
 		radlog(L_ERR, "rlm_sqlippool: the 'start-update' statement must be set.");
-		free(data);
-		exit(0);
+		sqlippool_detach(data);
+		return -1;
 	}
 
 	if (data->alive_update == NULL || strlen(data->alive_update) == 0) {
 		radlog(L_ERR, "rlm_sqlippool: the 'alive-update' statement must be set.");
-		free(data);
-		exit(0);
+		sqlippool_detach(data);
+		return -1;
 	}
 
 	if (data->stop_clear == NULL || strlen(data->stop_clear) == 0) {
 		radlog(L_ERR, "rlm_sqlippool: the 'stop-clear' statement must be set.");
-		free(data);
-		exit(0);
+		sqlippool_detach(data);
+		return -1;
 	}
 
 	if (data->on_clear == NULL || strlen(data->on_clear) == 0) {
 		radlog(L_ERR, "rlm_sqlippool: the 'on-clear' statement must be set.");
-		free(data);
-		exit(0);
+		sqlippool_detach(data);
+		return -1;
 	}
 
 	if (data->off_clear == NULL || strlen(data->off_clear) == 0) {
 		radlog(L_ERR, "rlm_sqlippool: the 'off-clear' statement must be set.");
-		free(data);
-		exit(0);
+		sqlippool_detach(data);
+		return -1;
 	}
 
 	pool_name = cf_section_name2(conf);
@@ -483,16 +488,16 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 	modinst = find_module_instance(cf_section_find("modules"), data->sql_instance_name);
 	if (!modinst) {
 		radlog(L_ERR, "sqlippool_instantiate: failed to find sql instance named %s", data->sql_instance_name);
-		free(data);
-		exit(0);
+		sqlippool_detach(data);
+		return -1;
 	}
 
 	if (strcmp(modinst->entry->name, "rlm_sql") != 0) {
 		radlog(L_ERR, "sqlippool_instantiate: Module \"%s\""
 		       " is not an instance of the rlm_sql module",
 		       data->sql_instance_name);
-		free(data);
-		exit(0);
+		sqlippool_detach(data);
+		return -1;
 	}
 
 	data->sql_inst = (SQL_INST *) modinst->insthandle;
@@ -527,13 +532,6 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	VALUE_PAIR * vp;
 	SQLSOCK * sqlsocket;
 	lrad_ipaddr_t ipaddr;
-
-	VALUE_PAIR *callingsid;
-	VALUE_PAIR *pair;
-
-	int do_callingsid = 0;
-	int do_calledsid = 0;
-
 	char    logstr[MAX_STRING_LEN];
 
 	/*
@@ -935,12 +933,6 @@ static int sqlippool_accounting(void * instance, REQUEST * request)
 		/* We don't care about any other accounting packet */
 		return RLM_MODULE_NOOP;
 	}
-}
-
-static int sqlippool_detach(UNUSED void *instance)
-{
-
-	return 0;
 }
 
 /*
