@@ -967,7 +967,20 @@ static int request_pre_handler(REQUEST *request)
 			DEBUG2("  Found Post-Proxy-Type %s", vp->vp_strvalue);
 			post_proxy_type = vp->vp_integer;
 		}
-		rcode = module_post_proxy(post_proxy_type, request);
+
+		rad_assert(request->home_pool != NULL);
+
+		if (request->home_pool->virtual_server) {
+			const char *old_server = request->server;
+
+			request->server = request->home_pool->virtual_server;
+			DEBUG2(" server %s {", request->server);
+			rcode = module_post_proxy(post_proxy_type, request);
+			DEBUG2(" }");
+			request->server = old_server;
+		} else {
+			rcode = module_post_proxy(post_proxy_type, request);
+		}
 
 		/*
 		 *	There may NOT be a proxy reply, as we may be
@@ -1257,7 +1270,20 @@ static int successfully_proxied_request(REQUEST *request)
 		DEBUG2("  Found Pre-Proxy-Type %s", vp->vp_strvalue);
 		pre_proxy_type = vp->vp_integer;
 	}
-	rcode = module_pre_proxy(pre_proxy_type, request);
+
+	rad_assert(request->home_pool != NULL);
+
+	if (request->home_pool->virtual_server) {
+		const char *old_server = request->server;
+		
+		request->server = request->home_pool->virtual_server;
+		DEBUG2(" server %s {", request->server);
+		rcode = module_pre_proxy(pre_proxy_type, request);
+		DEBUG2(" }");
+			request->server = old_server;
+	} else {
+		rcode = module_pre_proxy(pre_proxy_type, request);
+	}
 	switch (rcode) {
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:

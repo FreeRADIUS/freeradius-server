@@ -649,6 +649,22 @@ static int server_pool_add(realm_config_t *rc,
 		if (do_print) DEBUG2("\ttype = %s", value);
 	}
 
+	cp = cf_pair_find(cs, "virtual_server");
+	if (cp) {
+		pool->virtual_server = cf_pair_value(cp);
+		if (do_print && pool->virtual_server) {
+			DEBUG2("\tvirtual_server = %s", pool->virtual_server);
+		}
+
+		if (!cf_section_sub_find_name2(rc->cs, "server",
+					       pool->virtual_server)) {
+			cf_log_err(cf_pairtoitem(cp), "No such server %s",
+				   pool->virtual_server);
+			goto error;
+		}
+
+	}
+
 	num_home_servers = 0;
 	for (cp = cf_pair_find(cs, "home_server");
 	     cp != NULL;
