@@ -231,8 +231,6 @@ typedef struct main_config_t {
 	char		*log_file;
 	char		*checkrad;
 	const char      *pid_file;
-	const char	*uid_name;
-	const char	*gid_name;
 	rad_listen_t	*listen;
 	int		syslog_facility;
 	int		radlog_fd;

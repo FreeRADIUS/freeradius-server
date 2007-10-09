@@ -58,6 +58,9 @@ struct main_config_t mainconfig;
  */
 static uid_t server_uid;
 static gid_t server_gid;
+static const char *uid_name = NULL;
+static const char *gid_name = NULL;
+static int allow_core_dumps = 0;
 
 /*
  *	These are not used anywhere else..
@@ -177,8 +180,8 @@ static const CONF_PARSER server_config[] = {
 	{ "log_auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
 	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
 	{ "pidfile", PW_TYPE_STRING_PTR, 0, &mainconfig.pid_file, "${run_dir}/radiusd.pid"},
-	{ "user", PW_TYPE_STRING_PTR, 0, &mainconfig.uid_name, NULL},
-	{ "group", PW_TYPE_STRING_PTR, 0, &mainconfig.gid_name, NULL},
+	{ "user", PW_TYPE_STRING_PTR, 0, &uid_name, NULL},
+	{ "group", PW_TYPE_STRING_PTR, 0, &gid_name, NULL},
 	{ "checkrad", PW_TYPE_STRING_PTR, 0, &mainconfig.checkrad, "${sbindir}/checkrad" },
 
 	{ "debug_level", PW_TYPE_INTEGER, 0, &mainconfig.debug_level, "0"},
@@ -512,22 +515,22 @@ static int switch_users(void)
 
 #ifdef HAVE_GRP_H
 	/*  Set GID.  */
-	if (mainconfig.gid_name != NULL) {
+	if (gid_name != NULL) {
 		struct group *gr;
 
-		gr = getgrnam(mainconfig.gid_name);
+		gr = getgrnam(gid_name);
 		if (gr == NULL) {
 			if (errno == ENOMEM) {
-				radlog(L_ERR, "Cannot switch to Group %s: out of memory", mainconfig.gid_name);
+				radlog(L_ERR, "Cannot switch to Group %s: out of memory", gid_name);
 			} else {
-				radlog(L_ERR, "Cannot switch group; %s doesn't exist", mainconfig.gid_name);
+				radlog(L_ERR, "Cannot switch group; %s doesn't exist", gid_name);
 			}
 			return 0;
 		}
 		server_gid = gr->gr_gid;
 		if (setgid(server_gid) < 0) {
 			radlog(L_ERR, "Failed setting Group to %s: %s",
-			       mainconfig.gid_name, strerror(errno));
+			       gid_name, strerror(errno));
 			return 0;
 		}
 	} else {
@@ -537,29 +540,29 @@ static int switch_users(void)
 
 #ifdef HAVE_PWD_H
 	/*  Set UID.  */
-	if (mainconfig.uid_name != NULL) {
+	if (uid_name != NULL) {
 		struct passwd *pw;
 
-		pw = getpwnam(mainconfig.uid_name);
+		pw = getpwnam(uid_name);
 		if (pw == NULL) {
 			if (errno == ENOMEM) {
-				radlog(L_ERR, "Cannot switch to User %s: out of memory", mainconfig.uid_name);
+				radlog(L_ERR, "Cannot switch to User %s: out of memory", uid_name);
 			} else {
-				radlog(L_ERR, "Cannot switch user; %s doesn't exist", mainconfig.uid_name);
+				radlog(L_ERR, "Cannot switch user; %s doesn't exist", uid_name);
 			}
 			return 0;
 		}
 		server_uid = pw->pw_uid;
 #ifdef HAVE_INITGROUPS
-		if (initgroups(mainconfig.uid_name, server_gid) < 0) {
+		if (initgroups(uid_name, server_gid) < 0) {
 			if (errno != EPERM) {
-				radlog(L_ERR, "Failed setting supplementary groups for User %s: %s", mainconfig.uid_name, strerror(errno));
+				radlog(L_ERR, "Failed setting supplementary groups for User %s: %s", uid_name, strerror(errno));
 				return 0;
 			}
 		}
 #endif
 		if (setuid(server_uid) < 0) {
-			radlog(L_ERR, "Failed setting User to %s: %s", mainconfig.uid_name, strerror(errno));
+			radlog(L_ERR, "Failed setting User to %s: %s", uid_name, strerror(errno));
 			return 0;
 		}
 	}
@@ -573,7 +576,7 @@ static int switch_users(void)
 	}
 #endif
 
-	if (mainconfig.allow_core_dumps) {
+	if (allow_core_dumps) {
 #ifdef HAVE_SYS_PRTCL_H
 #ifdef PR_SET_DUMPABLE
 		if (prctl(PR_SET_DUMPABLE, 1) < 0) {
@@ -893,7 +896,7 @@ int read_mainconfig(int reload)
 		 *	We need root to do mkdir() and chown(), so we
 		 *	do this before giving up root.
 		 */
-		radlogdir_iswritable(mainconfig.uid_name);
+		radlogdir_iswritable(uid_name);
 	}
 
 	/*
