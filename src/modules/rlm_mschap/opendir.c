@@ -32,27 +32,28 @@ RCSID("$Id$")
 
 #include <DirectoryService/DirectoryService.h>
 
-static int getUserNodeRef(char* inUserName, char** outUserName, tDirNodeReference* userNodeRef, tDirReference dsRef)
+static int getUserNodeRef(char* inUserName, char **outUserName,
+			  tDirNodeReference* userNodeRef, tDirReference dsRef)
 {
-	tDataBuffer					*tDataBuff			= NULL;
-	tDirNodeReference			nodeRef				= 0;
-	long						status				= eDSNoErr;
-	tContextData				context				= NULL;
-	unsigned long				nodeCount			= 0;
-	unsigned long				attrIndex			= 0;
-	tDataList				   *nodeName			= NULL;
-	tAttributeEntryPtr			pAttrEntry			= NULL;
-	tDataList				   *pRecName			= NULL;
-	tDataList				   *pRecType			= NULL;
-	tDataList				   *pAttrType			= NULL;
-	unsigned long				recCount			= 0;
-	tRecordEntry		  	 	*pRecEntry			= NULL;
-	tAttributeListRef			attrListRef			= 0;
-	char					   *pUserLocation		= NULL;
-	tAttributeValueListRef		valueRef			= 0;
-	tAttributeValueEntry		*pValueEntry		= NULL;
-	tDataList					*pUserNode			= NULL;
-	int							result				= RLM_MODULE_FAIL;
+	tDataBuffer		*tDataBuff	= NULL;
+	tDirNodeReference	nodeRef		= 0;
+	long			status		= eDSNoErr;
+	tContextData		context		= NULL;
+	unsigned long		nodeCount	= 0;
+	unsigned long		attrIndex	= 0;
+	tDataList		*nodeName	= NULL;
+	tAttributeEntryPtr	pAttrEntry	= NULL;
+	tDataList		*pRecName	= NULL;
+	tDataList		*pRecType	= NULL;
+	tDataList		*pAttrType	= NULL;
+	unsigned long		recCount	= 0;
+	tRecordEntry		*pRecEntry	= NULL;
+	tAttributeListRef	attrListRef	= 0;
+	char			*pUserLocation	= NULL;
+	tAttributeValueListRef	valueRef	= 0;
+	tAttributeValueEntry	*pValueEntry	= NULL;
+	tDataList		*pUserNode	= NULL;
+	int			result		= RLM_MODULE_FAIL;
 	
 	if (inUserName == NULL) {
 		radlog(L_ERR, "rlm_mschap: getUserNodeRef(): no username");
@@ -67,7 +68,9 @@ static int getUserNodeRef(char* inUserName, char** outUserName, tDirNodeReferenc
 	
 	do {
 		/* find on search node */
-		status = dsFindDirNodes(dsRef, tDataBuff, NULL, eDSAuthenticationSearchNodeName, &nodeCount, &context);
+		status = dsFindDirNodes(dsRef, tDataBuff, NULL,
+					eDSAuthenticationSearchNodeName,
+					&nodeCount, &context);
 		if (status != eDSNoErr) {
 			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): no node found? status = %ld", status);  
 			result = RLM_MODULE_FAIL;
@@ -98,42 +101,42 @@ static int getUserNodeRef(char* inUserName, char** outUserName, tDirNodeReferenc
 		}
 		
 		pRecName = dsBuildListFromStrings(dsRef, inUserName, NULL);
-		pRecType = dsBuildListFromStrings(dsRef, kDSStdRecordTypeUsers, NULL);
-		pAttrType = dsBuildListFromStrings(dsRef, kDSNAttrMetaNodeLocation, kDSNAttrRecordName, NULL);
+		pRecType = dsBuildListFromStrings(dsRef, kDSStdRecordTypeUsers,
+						  NULL);
+		pAttrType = dsBuildListFromStrings(dsRef,
+						   kDSNAttrMetaNodeLocation,
+						   kDSNAttrRecordName, NULL);
 		
 		recCount = 1;
-		status = dsGetRecordList(nodeRef, tDataBuff, pRecName, eDSExact, pRecType,
-								  pAttrType , 0, &recCount, &context);
+		status = dsGetRecordList(nodeRef, tDataBuff, pRecName,
+					 eDSExact, pRecType, pAttrType, 0,
+					 &recCount, &context);
 		if (status != eDSNoErr || recCount == 0) {
 			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetRecordList() status = %ld, recCount=%lu", status, recCount);  
 			result = RLM_MODULE_FAIL;
 			break;
 		}
 		
-		status = dsGetRecordEntry(nodeRef, tDataBuff, 1, &attrListRef, &pRecEntry);
+		status = dsGetRecordEntry(nodeRef, tDataBuff, 1,
+					  &attrListRef, &pRecEntry);
 		if (status != eDSNoErr) {
 			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetRecordEntry() status = %ld", status);  
 			result = RLM_MODULE_FAIL;
 			break;	
 		}
 		
-		for (attrIndex = 1; (attrIndex <= pRecEntry->fRecordAttributeCount) && (status == eDSNoErr); attrIndex++)
-		{
+		for (attrIndex = 1; (attrIndex <= pRecEntry->fRecordAttributeCount) && (status == eDSNoErr); attrIndex++) {
 			status = dsGetAttributeEntry(nodeRef, tDataBuff, attrListRef, attrIndex, &valueRef, &pAttrEntry);
-			if (status == eDSNoErr && pAttrEntry != NULL)
-			{
+			if (status == eDSNoErr && pAttrEntry != NULL) {
 				if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrMetaNodeLocation) == 0) {
 					status = dsGetAttributeValue(nodeRef, tDataBuff, 1, valueRef, &pValueEntry);
-					if (status == eDSNoErr && pValueEntry != NULL)
-					{
+					if (status == eDSNoErr && pValueEntry != NULL) {
 						pUserLocation = (char *) calloc(pValueEntry->fAttributeValueData.fBufferLength + 1, sizeof(char));
 						memcpy(pUserLocation, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength);
 					}
-				}
-				else if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrRecordName) == 0) {
+				} else if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrRecordName) == 0) {
 					status = dsGetAttributeValue(nodeRef, tDataBuff, 1, valueRef, &pValueEntry);
-					if (status == eDSNoErr && pValueEntry != NULL)
-					{
+					if (status == eDSNoErr && pValueEntry != NULL) {
 						*outUserName = (char *) malloc(pValueEntry->fAttributeValueData.fBufferLength + 1);
 						bzero(*outUserName,pValueEntry->fAttributeValueData.fBufferLength + 1);
 						memcpy(*outUserName, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength);
@@ -201,19 +204,20 @@ static int getUserNodeRef(char* inUserName, char** outUserName, tDirNodeReferenc
 }
 
 
-int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair)
+int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
+		   VALUE_PAIR * usernamepair)
 {
-	tDirStatus			status				= eDSNoErr;
-	tDirReference		dsRef				= 0;
-	tDirNodeReference   userNodeRef			= 0;
-	tDataBuffer			*tDataBuff			= NULL;
-	tDataBuffer			*pStepBuff			= NULL;
-	tDataNode			*pAuthType			= NULL;
-	unsigned long		uiCurr				= 0;
-	unsigned long		uiLen				= 0;
-	char				*username_string	= NULL;
-	char				*shortUserName		= NULL;
-	VALUE_PAIR			*response			= pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE);
+	tDirStatus		status		 = eDSNoErr;
+	tDirReference		dsRef		 = 0;
+	tDirNodeReference	userNodeRef	 = 0;
+	tDataBuffer		*tDataBuff	 = NULL;
+	tDataBuffer		*pStepBuff	 = NULL;
+	tDataNode		*pAuthType	 = NULL;
+	unsigned long		uiCurr		 = 0;
+	unsigned long		uiLen		 = 0;
+	char			*username_string = NULL;
+	char			*shortUserName	 = NULL;
+	VALUE_PAIR		*response	 = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE);
 #ifndef NDEBUG
 	int t;
 #endif
@@ -222,7 +226,8 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 	if (username_string == NULL)
 		return RLM_MODULE_FAIL;
 	
-	strlcpy(username_string, (char *)usernamepair->vp_strvalue, usernamepair->length + 1);
+	strlcpy(username_string, (char *)usernamepair->vp_strvalue,
+		usernamepair->length + 1);
 	
 	status = dsOpenDirService(&dsRef);
 	if (status != eDSNoErr) {
@@ -240,25 +245,25 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 	}
 	
 	/* We got a node; fill the stepBuffer 
-		kDSStdAuthMSCHAP2
-			MS-CHAPv2 authentication method. The Open Directory plug-in generates the reply data for the client. 
-			The input buffer format consists of 
-				a four byte length specifying the length of the user name that follows, the user name, 
-				a four byte value specifying the length of the server challenge that follows, the server challenge, 
-				a four byte value specifying the length of the peer challenge that follows, the peer challenge, 
-				a four byte value specifying the length of the client's digest that follows, and the client's digest. 
-				The output buffer consists of a four byte value specifying the length of the return digest for the client's challenge.
-		r = FillAuthBuff(pAuthBuff, 5,
-							strlen(inName), inName,						// Directory Services long or short name
-							strlen(schal), schal,						// server challenge
-							strlen(peerchal), peerchal,					// client challenge
-							strlen(p24), p24,							// P24 NT-Response
-							4, "User");									// must match the username that was used for the hash
+	   kDSStdAuthMSCHAP2
+	   MS-CHAPv2 authentication method. The Open Directory plug-in generates the reply data for the client. 
+	   The input buffer format consists of 
+	   a four byte length specifying the length of the user name that follows, the user name, 
+	   a four byte value specifying the length of the server challenge that follows, the server challenge, 
+	   a four byte value specifying the length of the peer challenge that follows, the peer challenge, 
+	   a four byte value specifying the length of the client's digest that follows, and the client's digest. 
+	   The output buffer consists of a four byte value specifying the length of the return digest for the client's challenge.
+	   r = FillAuthBuff(pAuthBuff, 5,
+	   strlen(inName), inName,						// Directory Services long or short name
+	   strlen(schal), schal,						// server challenge
+	   strlen(peerchal), peerchal,					// client challenge
+	   strlen(p24), p24,							// P24 NT-Response
+	   4, "User");									// must match the username that was used for the hash
 		
-		inName		= 	username_string
-		schal		=   challenge->vp_strvalue
-		peerchal	=   response->vp_strvalue + 2 (16 octets)
-		p24			=   response->vp_strvalue + 26 (24 octets)
+	   inName		= 	username_string
+	   schal		=   challenge->vp_strvalue
+	   peerchal	=   response->vp_strvalue + 2 (16 octets)
+	   p24			=   response->vp_strvalue + 26 (24 octets)
 	*/
 
 	pStepBuff = dsDataBufferAllocate(dsRef, 4096);
@@ -286,7 +291,8 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 	uiLen = 16;
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
 	uiCurr += sizeof(size_t);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(challenge->vp_strvalue[0]), uiLen);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(challenge->vp_strvalue[0]),
+	       uiLen);
 	uiCurr += uiLen;
 	
 #ifndef NDEBUG
@@ -301,7 +307,8 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 	uiLen = 16;
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
 	uiCurr += sizeof(size_t);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[2]), uiLen);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[2]),
+	       uiLen);
 	uiCurr += uiLen;	
 	
 #ifndef NDEBUG
@@ -316,7 +323,8 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 	uiLen =  24; /* strlen(&(response->vp_strvalue[26])); may contain NULL byte in the middle. */
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
 	uiCurr += sizeof(size_t);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[26]) , uiLen);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[26]),
+	       uiLen);
 	uiCurr += uiLen;
 	
 	/* Client generated use name (short name?) */
@@ -328,11 +336,10 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 
 	tDataBuff->fBufferLength = uiCurr;
 	
-	status = dsDoDirNodeAuth(userNodeRef, pAuthType, 1, tDataBuff, pStepBuff, NULL);
-	if (status == eDSNoErr)
-	{
-		if (pStepBuff->fBufferLength > 4)
-		{
+	status = dsDoDirNodeAuth(userNodeRef, pAuthType, 1, tDataBuff,
+				 pStepBuff, NULL);
+	if (status == eDSNoErr) {
+		if (pStepBuff->fBufferLength > 4) {
 			unsigned long len;
 			
 			memcpy(&len, pStepBuff->fBufferData, 4);
@@ -372,7 +379,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 		errno = EACCES;
 		radlog(L_ERR, "rlm_mschap: authentication failed %d", status); /* <-- returns -14091 (eDSAuthMethodNotSupported) -14090 */
 		return RLM_MODULE_REJECT;
-    }
+	}
 	
 	return RLM_MODULE_OK;
 }
