@@ -54,6 +54,7 @@ typedef struct radclient {
 	char			*password;
 	char			*server;
 	int			number;	/* internal use only */
+	const CONF_SECTION	*cs;
 #ifdef WITH_SNMP
 	rad_snmp_client_entry_t *auth, *acct;
 #endif

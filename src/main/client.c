@@ -456,6 +456,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 		 */
 		c = rad_malloc(sizeof(*c));
 		memset(c, 0, sizeof(*c));
+		c->cs = cs;
 
 #ifdef WITH_SNMP
 		c->auth = rad_malloc(sizeof(*c->auth));

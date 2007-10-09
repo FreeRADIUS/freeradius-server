@@ -402,6 +402,35 @@ static int xlat_config(void *instance, REQUEST *request,
 
 
 /*
+ *	Xlat for %{client:foo}
+ */
+static int xlat_client(UNUSED void *instance, REQUEST *request,
+		       char *fmt, char *out,
+		       size_t outlen,
+		       UNUSED RADIUS_ESCAPE_STRING func)
+{
+	const char *value = NULL;
+	CONF_PAIR *cp;
+
+	if (!fmt || !out || (outlen < 1)) return 0;
+
+	if (!request || !request->client) {
+		*out = '\0';
+		return 0;
+	}
+
+	cp = cf_pair_find(request->client->cs, fmt);
+	if (!cp || !(value = cf_pair_value(cp))) {
+		*out = '\0';
+		return 0;
+	}
+	
+	strlcpy(out, value, outlen);
+
+	return strlen(out);
+}
+
+/*
  *	Recursively make directories.
  */
 static int r_mkdir(const char *part)
@@ -827,6 +856,7 @@ int read_mainconfig(int reload)
 	 *  Register the %{config:section.subsection} xlat function.
 	 */
 	xlat_register("config", xlat_config, NULL);
+	xlat_register("client", xlat_client, NULL);
 
 	/*
 	 *	Reload: change debug flag if it's changed in the
