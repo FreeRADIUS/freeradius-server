@@ -66,7 +66,7 @@ static int getUserNodeRef(char* inUserName, char** outUserName, tDirNodeReferenc
 	}
 	
 	do {
-		// find on search node
+		/* find on search node */
 		status = dsFindDirNodes(dsRef, tDataBuff, NULL, eDSAuthenticationSearchNodeName, &nodeCount, &context);
 		if (status != eDSNoErr) {
 			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): no node found? status = %ld", status);  
@@ -214,6 +214,9 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 	char				*username_string	= NULL;
 	char				*shortUserName		= NULL;
 	VALUE_PAIR			*response			= pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE);
+#ifndef NDEBUG
+	int t;
+#endif
 	
 	username_string = (char *) malloc(usernamepair->length + 1);
 	if (username_string == NULL)
@@ -265,23 +268,21 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 	
 	DEBUG2("	rlm_mschap:username_string = %s, shortUserName=%s (length = %lu)\n", username_string, shortUserName, strlen(shortUserName));
 	
-	// User name length + username
+	/* User name length + username */
 	uiLen = strlen(shortUserName);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
 	uiCurr += sizeof(size_t);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), shortUserName, uiLen);
 	uiCurr += uiLen;
 #ifndef NDEBUG
-	int t;
 	DEBUG2("	rlm_mschap: stepbuf server challenge:\t");
 	for (t = 0; t < challenge->length; t++) {
 		fprintf(stderr, "%02x", challenge->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
-	fflush(stderr);
 #endif
 	
-	// server challenge (ie. my (freeRADIUS) challenge)
+	/* server challenge (ie. my (freeRADIUS) challenge) */
 	uiLen = 16;
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
 	uiCurr += sizeof(size_t);
@@ -294,10 +295,9 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 		fprintf(stderr, "%02x", response->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
-	fflush(stderr);
 #endif
 	
-	// peer challenge (ie. the client-generated response)
+	/* peer challenge (ie. the client-generated response) */
 	uiLen = 16;
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
 	uiCurr += sizeof(size_t);
@@ -310,25 +310,22 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 		fprintf(stderr, "%02x", response->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");
-	fflush(stderr);
 #endif
 	
-	// p24 (ie. second part of client-generated response)
-	uiLen =  24; //strlen(&(response->vp_strvalue[26])); may contain NULL byte in the middle.
+	/* p24 (ie. second part of client-generated response) */
+	uiLen =  24; /* strlen(&(response->vp_strvalue[26])); may contain NULL byte in the middle. */
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
 	uiCurr += sizeof(size_t);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[26]) , uiLen);
 	uiCurr += uiLen;
 	
-	// Client generated use name (short name?)
+	/* Client generated use name (short name?) */
 	uiLen =  strlen(username_string);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
 	uiCurr += sizeof(size_t);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), username_string, uiLen);
 	uiCurr += uiLen;
 
-	fflush(stdout);	
-		
 	tDataBuff->fBufferLength = uiCurr;
 	
 	status = dsDoDirNodeAuth(userNodeRef, pAuthType, 1, tDataBuff, pStepBuff, NULL);
@@ -373,7 +370,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 	
 	if (status != eDSNoErr) {
 		errno = EACCES;
-		radlog(L_ERR, "rlm_mschap: authentication failed %d", status); // <-- returns -14091 (eDSAuthMethodNotSupported) -14090
+		radlog(L_ERR, "rlm_mschap: authentication failed %d", status); /* <-- returns -14091 (eDSAuthMethodNotSupported) -14090 */
 		return RLM_MODULE_REJECT;
     }
 	
