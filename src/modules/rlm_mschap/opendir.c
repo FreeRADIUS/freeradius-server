@@ -345,10 +345,10 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernam
 				mschap_reply[0] = 'S';
 				mschap_reply[1] = '=';
 				memcpy(&(mschap_reply[2]), &(pStepBuff->fBufferData[4]), len);
-				add_reply(&request->reply->vps,
-					  *response->vp_strvalue,
-					  "MS-CHAP2-Success",
-					  mschap_reply, len+2);
+				mschap_add_reply(&request->reply->vps,
+						 *response->vp_strvalue,
+						 "MS-CHAP2-Success",
+						 mschap_reply, len+2);
 				DEBUG2("rlm_mschap: dsDoDirNodeAuth returns stepbuff: %s (len=%ld)\n", mschap_reply, len);
 			}
 		}

@@ -260,9 +260,9 @@ typedef struct rlm_mschap_t {
         int require_strong;
         int with_ntdomain_hack;	/* this should be in another module */
 	char *passwd_file;
-	char *xlat_name;
+	const char *xlat_name;
 	char *ntlm_auth;
-	char *auth_type;
+	const char *auth_type;
 #if __APPLE__
 	int  open_directory;
 #endif  
@@ -688,7 +688,7 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
  *	add_reply() adds either MS-CHAP2-Success or MS-CHAP-Error
  *	attribute to reply packet
  */
-static void add_reply(VALUE_PAIR** vp, unsigned char ident,
+void mschap_add_reply(VALUE_PAIR** vp, unsigned char ident,
 		      const char* name, const char* value, int len)
 {
 	VALUE_PAIR *reply_attr;
@@ -1188,8 +1188,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		if (do_mschap(inst, request, password, challenge->vp_octets,
 			      response->vp_octets + offset, nthashhash) < 0) {
 			DEBUG2("  rlm_mschap: MS-CHAP-Response is incorrect.");
-			add_reply(&request->reply->vps, *response->vp_octets,
-				  "MS-CHAP-Error", "E=691 R=1", 9);
+			mschap_add_reply(&request->reply->vps,
+					 *response->vp_octets,
+					 "MS-CHAP-Error", "E=691 R=1", 9);
 			return RLM_MODULE_REJECT;
 		}
 
@@ -1266,8 +1267,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		if (do_mschap(inst, request, nt_password, mschapv1_challenge,
 			      response->vp_octets + 26, nthashhash) < 0) {
 			DEBUG2("  rlm_mschap: FAILED: MS-CHAP2-Response is incorrect");
-			add_reply(&request->reply->vps, *response->vp_octets,
-				  "MS-CHAP-Error", "E=691 R=1", 9);
+			mschap_add_reply(&request->reply->vps,
+					 *response->vp_octets,
+					 "MS-CHAP-Error", "E=691 R=1", 9);
 			return RLM_MODULE_REJECT;
 		}
 
@@ -1283,8 +1285,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			      response->vp_octets + 2, /* peer challenge */
 			      challenge->vp_octets, /* our challenge */
 			      msch2resp); /* calculated MPPE key */
-		add_reply( &request->reply->vps, *response->vp_octets,
-			   "MS-CHAP2-Success", msch2resp, 42);
+		mschap_add_reply(&request->reply->vps, *response->vp_octets,
+				 "MS-CHAP2-Success", msch2resp, 42);
 		chap = 2;
 
 	} else {		/* Neither CHAPv1 or CHAPv2 response: die */
@@ -1307,8 +1309,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		if (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
 		    ((smb_ctrl->vp_integer & ACB_NORMAL) == 0)) {
 			DEBUG2("  rlm_mschap: SMB-Account-Ctrl says that the account is disabled, or is not a normal account.");
-			add_reply( &request->reply->vps, *response->vp_octets,
-				   "MS-CHAP-Error", "E=691 R=1", 9);
+			mschap_add_reply( &request->reply->vps,
+					  *response->vp_octets,
+					  "MS-CHAP-Error", "E=691 R=1", 9);
 			return RLM_MODULE_NOTFOUND;
 		}
 
@@ -1317,8 +1320,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 */
 		if ((smb_ctrl->vp_integer & ACB_AUTOLOCK) != 0) {
 			DEBUG2("  rlm_mschap: SMB-Account-Ctrl says that the account is locked out.");
-			add_reply( &request->reply->vps, *response->vp_octets,
-				   "MS-CHAP-Error", "E=647 R=0", 9);
+			mschap_add_reply( &request->reply->vps,
+					  *response->vp_octets,
+					  "MS-CHAP-Error", "E=647 R=0", 9);
 			return RLM_MODULE_USERLOCK;
 		}
 	}
