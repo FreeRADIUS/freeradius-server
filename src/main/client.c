@@ -397,7 +397,9 @@ static const CONF_PARSER client_config[] = {
 	  offsetof(RADCLIENT, login), 0, NULL },
 	{ "password",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, password), 0, NULL },
-	{ "server",  PW_TYPE_STRING_PTR,
+	{ "virtual_server",  PW_TYPE_STRING_PTR,
+	  offsetof(RADCLIENT, server), 0, NULL },
+	{ "server",  PW_TYPE_STRING_PTR, /* compatability with 2.0-pre */
 	  offsetof(RADCLIENT, server), 0, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }

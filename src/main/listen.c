@@ -1063,8 +1063,12 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 	 *	refer to a server.
 	 */
 	if (!server) {
-		rcode = cf_item_parse(cs, "server", PW_TYPE_STRING_PTR,
+		rcode = cf_item_parse(cs, "virtual_server", PW_TYPE_STRING_PTR,
 				      &server, NULL);
+		if (rcode == 1) { /* compatiblity with 2.0-pre */
+			rcode = cf_item_parse(cs, "server", PW_TYPE_STRING_PTR,
+					      &server, NULL);
+		}
 		if (rcode < 0) return NULL;
 	}
 

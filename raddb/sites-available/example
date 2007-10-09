@@ -41,7 +41,7 @@
 client 192.0.2.10 {
 	shortname	= example-client
 	secret		= testing123
-	server		= example
+	virtual_server  = example
 }
 
 ######################################################################
@@ -79,7 +79,7 @@ server example {
 	#	defined in a global "listen" section.  It CANNOT send
 	#	packets to the listen section defined above, though.
 	#
-	#	Note that you don't have to have a "server = example"
+	#	Note that you don't have to have a "virtual_server = example"
 	#	line here, as the client is encapsulated within
 	#	the "server" section.
 	#

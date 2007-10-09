@@ -126,7 +126,7 @@ servers.
 
   The configuration items are:
 
-	server = <name>
+	virtual_server = <name>
 
 		If set, all requests sent to this IP / port are processed
 		through the named virtual server.
@@ -179,7 +179,7 @@ servers.
 
   The configuration items are:
 
-	server = <name>
+	virtual_server = <name>
 
 		If set, all requests from this client are processed
 		through the named virtual server.
@@ -204,11 +204,11 @@ two different servers.
 	}
 	client one {
 		...
-		server = server_one
+		virtual_server = server_one
 	}
 	client two {
 		...
-		server = server_two
+		virtual_server = server_two
 	}
 	server server_one {
 		authorize {
@@ -228,14 +228,14 @@ two different servers.
 
 	listen {
 		...
-		server = server_one
+		virtual_server = server_one
 	}
 	client one {
 		...
 	}
 	client two {
 		...
-		server = server_two
+		virtual_server = server_two
 	}
 	server server_one {
 		authorize {
@@ -259,7 +259,7 @@ setting for the socket.
 
 	listen {
 		...
-		server = server_one
+		virtual_server = server_one
 	}
 	client one {
 		...
@@ -294,7 +294,7 @@ server, where the "listen" section cannot find it.
   one server per client
 	- define multiple servers
 	- have a global "listen" section
-	- have multiple global "clients", each with "server = X"
+	- have multiple global "clients", each with "virtual_server = X"
 
   two servers, each with their own sockets
 	- define multiple servers
@@ -306,7 +306,7 @@ server, where the "listen" section cannot find it.
 
   two sockets, sharing a list of clients, but pointing to different servers
 	- define global "listen" sections
-	- in each, set "server = X"
+	- in each, set "virtual_server = X"
 	- in each, set "clients = Y"
 	- define "clients Y" section, containing multiple clients.
 
@@ -330,5 +330,6 @@ it works, then add the second virtual server.
 
   If you want to re-use the previously defined sockets with the second
 virtual server, then you will need one or more global "client"
-sections.  Those clients will contain a "server = ..." entry that will
-direct requests from those clients to the appropriate virtual server.
+sections.  Those clients will contain a "virtual_server = ..." entry
+that will direct requests from those clients to the appropriate
+virtual server.
