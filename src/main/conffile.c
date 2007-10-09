@@ -877,8 +877,13 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			radlog(L_ERR, "Can't find IP address for host %s", value);
 			return -1;
 		}
-		DEBUG2("\t%s = %s IP address [%s]", name, value,
+		
+		if (strspn(value, "0123456789.") == strlen(value)) {
+			DEBUG2("\t%s = %s", name, value);
+		} else {
+			DEBUG2("\t%s = %s IP address [%s]", name, value,
 			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
+		}
 		*(uint32_t *) data = ipaddr.ipaddr.ip4addr.s_addr;
 		break;
 
@@ -1546,7 +1551,7 @@ CONF_PAIR *cf_pair_find(const CONF_SECTION *cs, const char *name)
 	CONF_ITEM	*ci;
 	CONF_PAIR	*cp = NULL;
 
-	if (!cs) cs = mainconfig.config;
+	if (!cs) return NULL;
 
 	/*
 	 *	Find the name in the tree, for speed.
