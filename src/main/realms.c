@@ -545,9 +545,10 @@ static int server_pool_add(realm_config_t *rc,
 	int num_home_servers;
 
 	name2 = cf_section_name1(cs);
-	if (!name2 || (strcasecmp(name2, "server_pool") != 0)) {
+	if (!name2 || ((strcasecmp(name2, "server_pool") != 0) &&
+		       (strcasecmp(name2, "home_server_pool") != 0))) {
 		cf_log_err(cf_sectiontoitem(cs),
-			   "Section is not a server_pool.");
+			   "Section is not a home_server_pool.");
 		return 0;
 	}
 
@@ -615,7 +616,7 @@ static int server_pool_add(realm_config_t *rc,
 				 num_home_servers);
 	pool->cs = cs;
 
-	if (do_print) DEBUG2(" server_pool %s {", name2);
+	if (do_print) DEBUG2(" home_server_pool %s {", name2);
 
 	cp = cf_pair_find(cs, "type");
 	if (cp) {
@@ -1041,10 +1042,15 @@ static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
 		CONF_SECTION *pool_cs;
 
 		pool_cs = cf_section_sub_find_name2(rc->cs,
-						    "server_pool",
+						    "home_server_pool",
 						    name);
 		if (!pool_cs) {
-			cf_log_err(cf_sectiontoitem(cs), "Failed to find server_pool \"%s\"", name);
+			pool_cs = cf_section_sub_find_name2(rc->cs,
+							    "server_pool",
+							    name);
+		}
+		if (!pool_cs) {
+			cf_log_err(cf_sectiontoitem(cs), "Failed to find home_server_pool \"%s\"", name);
 			return 0;
 		}
 
@@ -1060,7 +1066,7 @@ static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
 	}
 
 	if (pool->server_type != server_type) {
-		cf_log_err(cf_sectiontoitem(cs), "Incompatible server_pool \"%s\" (mixed auth_pool / acct_pool)", name);
+		cf_log_err(cf_sectiontoitem(cs), "Incompatible home_server_pool \"%s\" (mixed auth_pool / acct_pool)", name);
 		return 0;
 	}
 
