@@ -39,6 +39,7 @@ struct lrad_event_list_t {
 	rbtree_t	*times;
 
 	rbtree_t	*readers;
+	fd_set		read_fds;
 	int		changed;
 	int		maxfd;
 
@@ -304,11 +305,11 @@ int lrad_event_fd_delete(lrad_event_list_t *el, int type, int fd)
 }			 
 
 
-void lrad_event_loop_exit(lrad_event_list_t *el)
+void lrad_event_loop_exit(lrad_event_list_t *el, int code)
 {
 	if (!el) return;
 
-	el->exit = 1;
+	el->exit = code;
 }
 
 
@@ -353,8 +354,20 @@ int lrad_event_loop(lrad_event_list_t *el)
 	struct timeval now, when, *wake;
 	lrad_fd_walk_t ew;
 
+	/*
+	 *	Cache the list of FD's to watch.
+	 */
+	if (el->changed) {
+		FD_ZERO(&el->read_fds);
+
+		rbtree_walk(el->readers, InOrder, lrad_event_fd_set,
+			    &el->read_fds);
+		el->changed = 0;
+	}
+
+	el->exit = 0;
+
 	while (!el->exit) {
-		FD_ZERO(&read_fds);
 
 		/*
 		 *	Find the first event.  If there's none, we wait
@@ -389,7 +402,7 @@ int lrad_event_loop(lrad_event_list_t *el)
 			wake = NULL;
 		}
 
-		rbtree_walk(el->readers, InOrder, lrad_event_fd_set, &read_fds);
+		read_fds = el->read_fds;
 
 		/*
 		 *	Tell someone what the status is.
@@ -419,7 +432,7 @@ int lrad_event_loop(lrad_event_list_t *el)
 		rbtree_walk(el->readers, InOrder, lrad_event_fd_dispatch, &ew);
 	}
 
-	return 1;
+	return el->exit;
 }
 
 
