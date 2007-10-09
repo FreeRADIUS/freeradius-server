@@ -69,6 +69,7 @@ static pthread_mutex_t	proxy_mutex;
  */
 #define PTHREAD_MUTEX_LOCK(_x)
 #define PTHREAD_MUTEX_UNLOCK(_x)
+#define thread_addrequest radius_handle_request
 #endif
 
 #define INSERT_EVENT(_function, _ctx) if (!lrad_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
@@ -2356,7 +2357,7 @@ static void event_status(struct timeval *wake)
 	if (debug_flag == 0) return;
 
 	if (!wake) {
-		DEBUG("Waiting for the next request.");
+		DEBUG("Ready to process requests.");
 	} else if ((wake->tv_sec != 0) ||
 		   (wake->tv_usec >= 100000)) {
 		DEBUG("Waking up in %d.%01d seconds.\n",
@@ -2409,9 +2410,11 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 #endif
 	}
 
+#ifdef HAVE_PTHREAD_H
 	if (thread_pool_init(cs, spawn_flag) < 0) {
 		exit(1);
 	}
+#endif
 
 	/*
 	 *	Child threads need a pipe to signal us, as do the
@@ -2595,8 +2598,6 @@ void radius_event_free(void)
 int radius_event_process(void)
 {
 	if (!el) return 0;
-
-	radlog(L_INFO, "Ready to process requests.");
 
 	return lrad_event_loop(el);
 }
