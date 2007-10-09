@@ -1,7 +1,15 @@
 #
-#	Sample of a policy language.
+#	Sample of a policy language for rlm_policy.
+#
+#	As of 2.0.0, the new configuration "un-language" supports
+#	significantly more features than rlm_policy.  It has also
+#	been more thoroughly tested.  rlm_policy is deprecated,
+#	and will be removed in a future release.
+#
+#
 #	There's no documentation other than this file.
-#	The syntax is odd, but it works.
+#
+#	The syntax is odd, but it sort of works.
 #	It's not intended for production use.
 #	Use it if you want obscure error messages and possibly server crashes.
 #
