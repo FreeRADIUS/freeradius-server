@@ -1123,22 +1123,13 @@ pid_t rad_waitpid(pid_t pid, int *status)
 	return 0;
 }
 
-#else /* HAVE_PTHREAD_H */
-/*
- *	"thread" code when we don't have threads.
- */
-int thread_pool_init(int spawn_flag)
+void thread_pool_lock(void)
 {
-	return 0;
+	pthread_mutex_lock(&thread_pool.queue_mutex);
 }
 
-/*
- *	call "radrespond".
- */
-int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
+void thread_pool_unlock(void)
 {
-	radius_handle_request(request, fun);
-	return 1;
+	pthread_mutex_unlock(&thread_pool.queue_mutex);
 }
-
 #endif /* HAVE_PTHREAD_H */

@@ -53,6 +53,11 @@ RCSID("$Id$")
 #	define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
 
+#ifndef HAVE_PTHREAD_H
+#define thread_pool_lock(_x)
+#define thread_pool_unlock(_x)
+#endif
+
 /*
  *  Global variables.
  */
@@ -415,12 +420,16 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	Loop while doing stuff.
+	 *	Process requests until HUP or exit.
 	 */
 	while ((rcode = radius_event_process()) == 0x80) {
+		thread_pool_lock();
 		/*
-		 *	HUP handler.
+		 *	Reload anything that can safely be reloaded.
 		 */
+		DEBUG("HUP support not available.");
+
+		thread_pool_unlock();
 	}
 	
 	DEBUG("Exiting...");
@@ -536,8 +545,6 @@ static void sig_hup(int sig)
 	sig = sig; /* -Wunused */
 
 	reset_signal(SIGHUP, sig_hup);
-
-	write(STDOUT_FILENO, "STUFF\n", 6);
 
 	radius_signal_self(RADIUS_SIGNAL_SELF_HUP);
 }

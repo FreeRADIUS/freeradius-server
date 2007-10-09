@@ -444,6 +444,8 @@ extern		int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
 extern		pid_t rad_fork(void);
 extern		pid_t rad_waitpid(pid_t pid, int *status);
 extern          int total_active_threads(void);
+extern          void thread_pool_lock(void);
+extern          void thread_pool_unlock(void);
 
 #ifndef HAVE_PTHREAD_H
 #define rad_fork(n) fork()
