@@ -263,7 +263,7 @@ typedef struct rlm_mschap_t {
 	const char *xlat_name;
 	char *ntlm_auth;
 	const char *auth_type;
-#if __APPLE__
+#ifdef __APPLE__
 	int  open_directory;
 #endif  
 } rlm_mschap_t;

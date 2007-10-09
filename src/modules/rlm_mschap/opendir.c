@@ -1,4 +1,4 @@
-#if __APPLE__
+#ifdef __APPLE__
 /*
  * Open Directory support from Apple Inc.
  *
