@@ -211,7 +211,7 @@ typedef enum radlog_dest_t {
 
 typedef struct main_config_t {
 	struct main_config *next;
-	time_t		config_dead_time;
+	int		refcount;
 	lrad_ipaddr_t	myip;	/* from the command-line only */
 	int		port;	/* from the command-line only */
 	int		log_auth;

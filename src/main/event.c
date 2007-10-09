@@ -1821,7 +1821,6 @@ int received_request(rad_listen_t *listener,
 	request->packet->timestamp = request->timestamp;
 	request->number = request_num_counter++;
 	request->priority = listener->type;
-	request->root = root;
 
 	/*
 	 *	Set virtual server identity
@@ -1843,6 +1842,8 @@ int received_request(rad_listen_t *listener,
 		return 0;
 	}
 	request->in_request_hash = TRUE;
+	request->root = root;
+	root->refcount++;
 
 	/*
 	 *	The request passes many of our sanity checks.

@@ -226,6 +226,12 @@ void request_free(REQUEST **request_ptr)
 		request->data = NULL;
 	}
 
+	if (request->root &&
+	    (request->root->refcount > 0)) {
+		request->root->refcount--;
+		request->root = NULL;
+	}
+
 #ifndef NDEBUG
 	request->magic = 0x01020304;	/* set the request to be nonsense */
 #endif
