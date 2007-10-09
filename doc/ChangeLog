@@ -1,29 +1,17 @@
-FreeRADIUS 2.0.0-pre0 ; $Date$, urgency=low
-	Feature improvements
-	* Initial pre-release of 2.0.
+FreeRADIUS 2.0.0 ; $Date$, urgency=low
+	Feature improvements over v1.x.y
 	* Debugging mode is much clearer and easier to read.
 	* EAP-TLS and OpenSSL certificates "just work".
 	  See raddb/certs/README for details.
-	* Proxying works much better than in 1.x.  We mean *MUCH* better.
-	  See proxy.conf for details.
-	* rlm_unix no longer has an "authenticate" section.
-	  See "man rlm_unix" for details.
-	* The server has full support for IPv6.
-	* The server has much more complete support for SNMP MIBs.
-	* radiusd.conf has limited support for "if/then/else".
-	  See doc/configurable_failover for details.
-	* "listen" sections can have per-socket clients.
-	* Replaced "radrelay" and "radsqlrelay".
-	  See "man radrelay.conf" for details.
-	* Post-Proxy-Type "Fail" section is executed when a home server
-	  fails to respond to a request.  See "radiusd.conf" for details.
-	* Many internal data structures have been updated to use trees
-	  rather than linked lists for performance.
-	* "virtual" modules can now be used.
-	  See "virtual" in the "instantiate" section of "radiusd.conf".
-	* The server header files have been cleaned up.
-	* Configuration files can now "$INCLUDE directory/", to automatically
-	  load all files in that directory.  Use with caution!
+	* Proxying works much better than in 1.x.y.
+	  See proxy.conf for documentation on pools, and new config items.
+	* Full support for IPv6.
+	* Much more complete support for the RADIUS SNMP MIBs.
+        * A new policy language makes many configurations trivial.
+	  See "man unlang" for a complete description.
+	* Virtual servers are now supported.  This permits clear separation
+	  of policies.  See raddb/sites-available/README
+	* VMPS support.  It is minimal, but functional.
 	
 	Bug fixes
-	* 
+	* Many.
