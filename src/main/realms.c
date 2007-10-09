@@ -121,6 +121,64 @@ static int home_pool_name_cmp(const void *one, const void *two)
 }
 
 
+/*
+ *	Xlat for %{home_server:foo}
+ */
+static int xlat_home_server(UNUSED void *instance, REQUEST *request,
+			    char *fmt, char *out, size_t outlen,
+			    UNUSED RADIUS_ESCAPE_STRING func)
+{
+	const char *value = NULL;
+	CONF_PAIR *cp;
+
+	if (!fmt || !out || (outlen < 1)) return 0;
+
+	if (!request || !request->home_server) {
+		*out = '\0';
+		return 0;
+	}
+
+	cp = cf_pair_find(request->home_server->cs, fmt);
+	if (!cp || !(value = cf_pair_value(cp))) {
+		*out = '\0';
+		return 0;
+	}
+	
+	strlcpy(out, value, outlen);
+
+	return strlen(out);
+}
+
+
+/*
+ *	Xlat for %{home_server_pool:foo}
+ */
+static int xlat_server_pool(UNUSED void *instance, REQUEST *request,
+			    char *fmt, char *out, size_t outlen,
+			    UNUSED RADIUS_ESCAPE_STRING func)
+{
+	const char *value = NULL;
+	CONF_PAIR *cp;
+
+	if (!fmt || !out || (outlen < 1)) return 0;
+
+	if (!request || !request->home_pool) {
+		*out = '\0';
+		return 0;
+	}
+
+	cp = cf_pair_find(request->home_pool->cs, fmt);
+	if (!cp || !(value = cf_pair_value(cp))) {
+		*out = '\0';
+		return 0;
+	}
+	
+	strlcpy(out, value, outlen);
+
+	return strlen(out);
+}
+
+
 void realms_free(void)
 {
 	rbtree_free(home_servers_byname);
@@ -216,6 +274,7 @@ static int home_server_add(CONF_SECTION *cs, int type)
 	memset(home, 0, sizeof(*home));
 
 	home->name = name2;
+	home->cs = cs;
 
 	memset(&hs_ip4addr, 0, sizeof(hs_ip4addr));
 	memset(&hs_ip6addr, 0, sizeof(hs_ip6addr));
@@ -431,6 +490,7 @@ static int home_server_add(CONF_SECTION *cs, int type)
 		home2->type = HOME_TYPE_ACCT;
 		home2->port++;
 		home2->ping_user_password = NULL;
+		home2->cs = cs;
 
 		if (!rbtree_insert(home_servers_byname, home2)) {
 			cf_log_err(cf_sectiontoitem(cs),
@@ -553,6 +613,7 @@ static int server_pool_add(realm_config_t *rc,
 
 	pool = server_pool_alloc(name2, HOME_POOL_FAIL_OVER, server_type,
 				 num_home_servers);
+	pool->cs = cs;
 
 	if (do_print) DEBUG2(" server_pool %s {", name2);
 
@@ -737,6 +798,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		home->hostname = name;
 		home->type = type;
 		home->secret = secret;
+		home->cs = cs;
 
 		p = strchr(name, ':');
 		if (!p) {
@@ -847,6 +909,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	}
 
 	pool = server_pool_alloc(realm, ldflag, type, num_home_servers);
+	pool->cs = cs;
 
 	pool->servers[0] = home;
 
@@ -1218,6 +1281,9 @@ int realms_init(CONF_SECTION *config)
 			return 0;
 		}
 	}
+
+	xlat_register("home_server", xlat_home_server, NULL);
+	xlat_register("home_server_pool", xlat_server_pool, NULL);
 
 	/*
 	 *	Swap pointers atomically.

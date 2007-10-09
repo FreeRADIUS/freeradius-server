@@ -64,6 +64,7 @@ typedef struct home_server {
 	int		ping_timeout;
 
 	int		revive_interval; /* if it doesn't support pings */
+	CONF_SECTION	*cs;
 } home_server;
 
 
@@ -82,6 +83,9 @@ typedef struct home_pool_t {
 	home_pool_type_t	type;
 
 	int			server_type;
+	CONF_SECTION		*cs;
+
+	const char		*virtual_server;
 
 	int			num_home_servers;
 	home_server		*servers[1];
