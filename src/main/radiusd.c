@@ -97,9 +97,9 @@ int main(int argc, char *argv[])
 	int rcode;
 	unsigned char buffer[4096];
 	int argval;
-	pid_t pid;
 	int spawn_flag = TRUE;
 	int dont_fork = FALSE;
+	int flag = 0;
 
 #ifdef HAVE_SIGACTION
 	struct sigaction act;
@@ -175,6 +175,7 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "radiusd: Invalid IP Address or hostname \"%s\"\n", optarg);
 					exit(1);
 				}
+				flag |= 1;
 				break;
 
 			case 'l':
@@ -220,6 +221,7 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "radiusd: Invalid port number %s\n", optarg);
 					exit(1);
 				}
+				flag |= 2;
 				break;
 
 			case 's':	/* Single process mode */
@@ -266,6 +268,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (flag && (flag != 0x03)) {
+		fprintf(stderr, "radiusd: The options -i and -p cannot be used individually.\n");
+		exit(1);
+	}
+
 	if (debug_flag) {
 		radlog(L_INFO, "%s", radiusd_version);
 		radlog(L_INFO, "Copyright (C) 2000-2007 The FreeRADIUS server project.\n");
@@ -285,9 +292,10 @@ int main(int argc, char *argv[])
 	 *  Disconnect from session
 	 */
 	if (debug_flag == 0 && dont_fork == FALSE) {
-		pid = fork();
-		if(pid < 0) {
-			radlog(L_ERR|L_CONS, "Couldn't fork");
+		pid_t pid = fork();
+
+		if (pid < 0) {
+			radlog(L_ERR, "Couldn't fork: %s", strerror(errno));
 			exit(1);
 		}
 
