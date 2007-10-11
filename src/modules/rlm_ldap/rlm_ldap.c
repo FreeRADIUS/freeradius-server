@@ -1174,7 +1174,7 @@ static int ldap_xlat(void *instance, REQUEST *request, char *fmt,
 	}
 	if ((vals = ldap_get_values(conn->ld, msg, ldap_url->lud_attrs[0])) != NULL) {
 		ret = strlen(vals[0]);
-		if (ret > freespace){
+		if (ret >= freespace){
 			DEBUG("rlm_ldap: Insufficient string space");
 			ldap_free_urldesc(ldap_url);
 			ldap_value_free(vals);
@@ -1183,7 +1183,7 @@ static int ldap_xlat(void *instance, REQUEST *request, char *fmt,
 			return 0;
 		}
 		DEBUG("rlm_ldap: Adding attribute %s, value: %s",ldap_url->lud_attrs[0],vals[0]);
-		strlcpy(out,vals[0],ret);
+		strlcpy(out,vals[0],freespace);
 		ldap_value_free(vals);
 	}
 	else
