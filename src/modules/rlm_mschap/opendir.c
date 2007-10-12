@@ -241,6 +241,8 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 		DEBUG2("rlm_osx_od: ds_mschap_auth: getUserNodeRef failed");
 		if (username_string != NULL)
 			free(username_string);
+		if (dsRef != 0)
+			dsCloseDirService(dsRef);
 		return status;
 	}
 	
