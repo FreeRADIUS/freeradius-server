@@ -1282,18 +1282,20 @@ int realms_init(CONF_SECTION *config)
 		return 0;
 	}
 
-	cs = cf_subsection_find_next(config, NULL, "proxy");
-	if (!cs) {
-		radlog(L_ERR, "No proxy section defined");
-		realms_free();
-		return 0;
-	}
-
 	rc = rad_malloc(sizeof(*rc));
 	memset(rc, 0, sizeof(*rc));
 	rc->cs = config;
 
-	cf_section_parse(cs, rc, proxy_config);
+	cs = cf_subsection_find_next(config, NULL, "proxy");
+	if (cs) {
+		cf_section_parse(cs, rc, proxy_config);
+	} else {
+		rc->dead_time = DEAD_TIME;
+		rc->retry_count = RETRY_COUNT;
+		rc->retry_delay = RETRY_DELAY;
+		rc->fallback = 0;
+		rc->wake_all_if_all_dead= 0;
+	}
 
 	for (cs = cf_subsection_find_next(config, NULL, "realm");
 	     cs != NULL;
