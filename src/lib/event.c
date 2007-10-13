@@ -194,7 +194,7 @@ int lrad_event_insert(lrad_event_list_t *el,
 					break;
 				}
 
-				if (*ev_p) *ev_p = ev;
+				if (ev_p) *ev_p = ev;
 				return 1;
 			}
 
@@ -203,7 +203,7 @@ int lrad_event_insert(lrad_event_list_t *el,
 		return 0;
 	}
 
-	if (*ev_p) *ev_p = ev;
+	if (ev_p) *ev_p = ev;
 	return 1;
 }
 
