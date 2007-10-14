@@ -1352,8 +1352,8 @@ static void request_post_handler(REQUEST *request)
 	}
 
 	if (request->root->proxy_requests &&
-	    !request->proxy &&
 	    (request->reply->code == 0) &&
+	    (request->packet->dst_port != 0) &&
 	    (request->packet->code != PW_STATUS_SERVER)) {
 		int rcode = successfully_proxied_request(request);
 
@@ -1842,6 +1842,7 @@ int received_request(rad_listen_t *listener,
 		request_free(&request);
 		return 0;
 	}
+
 	request->in_request_hash = TRUE;
 	request->root = root;
 	root->refcount++;
