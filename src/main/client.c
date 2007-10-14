@@ -196,14 +196,14 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		 *	Initialize it, if not done already.
 		 */
 		if (!root_clients) {
-			clients = clients_init();
-			if (!clients) return 0;
+			root_clients = clients_init();
+			if (!root_clients) return 0;
 			rad_assert(root_clients == NULL);
 		}
-		root_clients = clients;
+		clients = root_clients;
 	}
 
-	if (client->prefix < 0) {
+	if ((client->prefix < 0) || (client->prefix > 128)) {
 		return 0;
 	}
 
@@ -297,6 +297,8 @@ RADCLIENT *client_find(const RADCLIENT_LIST *clients,
 {
 	int i, max_prefix;
 	RADCLIENT myclient;
+
+	if (!clients) clients = root_clients;
 
 	if (!clients || !ipaddr) return NULL;
 
