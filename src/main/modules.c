@@ -577,7 +577,7 @@ static int load_component_section(CONF_SECTION *cs,
 		this = compile_modsingle(NULL, comp, modref, &modname);
 		if (!this) {
 			cf_log_err(cf_sectiontoitem(cs),
-				   "Failed to parse %s section.\n",
+				   "Errors parsing %s section.\n",
 				   cf_section_name1(cs));
 			return -1;
 		}
@@ -599,7 +599,7 @@ static int load_component_section(CONF_SECTION *cs,
 				modrefname = cf_section_name2(scs);
 				if (!modrefname) {
 					cf_log_err(cf_sectiontoitem(cs),
-						   "Failed to parse %s sub-section.\n",
+						   "Errors parsing %s sub-section.\n",
 						   cf_section_name1(scs));
 					return -1;
 				}
@@ -694,7 +694,7 @@ static int load_byserver(CONF_SECTION *cs)
 
 	DEBUG2(" }");
 
-	if (!flag) {
+	if (!flag && server) {
 		DEBUG("WARNING: Server %s is empty, and will do nothing!",
 		      server);
 	}
@@ -862,7 +862,6 @@ int setup_modules(int reload, CONF_SECTION *config)
 	 *	one for backwards compatibility.
 	 */
 	if (!null_server) {
-		DEBUG2("WARNING: Please update your configuration to use virtual servers!");
 		DEBUG2("server {");
 		if (load_byserver(config) < 0) {
 			DEBUG2("}");
