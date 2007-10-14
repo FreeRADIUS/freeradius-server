@@ -48,8 +48,9 @@ struct modcallable {
 	modcallable *parent;
 	struct modcallable *next;
 	const char *name;
-	int actions[RLM_MODULE_NUMCODES];
 	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE, MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE } type;
+	int method;
+	int actions[RLM_MODULE_NUMCODES];
 };
 
 #define GROUPTYPE_SIMPLE	0
@@ -535,7 +536,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 */
 		sp = mod_callabletosingle(child);
 
-		myresult = call_modsingle(component, sp, request,
+		myresult = call_modsingle(child->method, sp, request,
 					  default_component_results[component]);
 	handle_result:
 		DEBUG2("%.*s[%s] returns %s",
@@ -1168,6 +1169,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	csingle->next = NULL;
 	csingle->name = name2;
 	csingle->type = MOD_UPDATE;
+	csingle->method = component;
 	
 	g->grouptype = GROUPTYPE_SIMPLE;
 	g->children = NULL;
@@ -1302,7 +1304,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	modsingle *single;
 	modcallable *csingle;
 	module_instance_t *this;
-	CONF_SECTION *cs, *subcs;
+	CONF_SECTION *cs, *subcs, *modules;
 
 	if (cf_item_is_section(ci)) {
 		cs = cf_itemtosection(ci);
@@ -1534,11 +1536,47 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	/*
 	 *	Not a virtual module.  It must be a real module.
 	 */
-	this = find_module_instance(cf_section_find("modules"), modrefname);
+	modules = cf_section_find("modules");
+	this = NULL;
+
+	if (modules && cf_section_sub_find_name2(modules, NULL, modrefname)) {
+		this = find_module_instance(modules, modrefname);
+	}
+
        	if (!this) {
-		*modname = NULL;
-		cf_log_err(ci, "Failed to find module \"%s\".", modrefname);
-		return NULL;
+		int i;
+		char *p;
+
+		/*
+		 *	Maybe it's module.method
+		 */
+		p = strchr(modrefname, '.');
+		if (p) for (i = RLM_COMPONENT_AUTH;
+			    i < RLM_COMPONENT_COUNT;
+			    i++) {
+			if (strcmp(p + 1, comp2str[i]) == 0) {
+				char buffer[256];
+
+				strlcpy(buffer, modrefname, sizeof(buffer));
+				buffer[p - modrefname] = '\0';
+				component = i;
+				
+				this = find_module_instance(cf_section_find("modules"), buffer);
+				if (this &&
+				    !this->entry->module->methods[i]) {
+					*modname = NULL;
+					cf_log_err(ci, "Module %s has no such method %s", buffer, comp2str[i]);
+					return NULL;
+				}
+				break;
+			}
+		}
+
+		if (!this) {
+			*modname = NULL;
+			cf_log_err(ci, "Failed to find module \"%s\".", modrefname);
+			return NULL;
+		}
 	}
 
 	/*
@@ -1555,6 +1593,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	rad_assert(modrefname != NULL);
 	csingle->name = modrefname;
 	csingle->type = MOD_SINGLE;
+	csingle->method = component;
 
 	/*
 	 *	Singles can override the actions, virtual modules cannot.
@@ -1760,6 +1799,7 @@ void add_to_modcallable(modcallable **parent, modcallable *this,
 		rad_assert(name != NULL);
 		c->name = name;
 		c->type = MOD_GROUP;
+		c->method = component;
 		g->children = NULL;
 
 		*parent = mod_grouptocallable(g);
