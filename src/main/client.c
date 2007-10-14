@@ -198,7 +198,6 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		if (!root_clients) {
 			root_clients = clients_init();
 			if (!root_clients) return 0;
-			rad_assert(root_clients == NULL);
 		}
 		clients = root_clients;
 	}
