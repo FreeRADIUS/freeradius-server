@@ -508,11 +508,9 @@ static int load_component_section(CONF_SECTION *cs,
 	CONF_ITEM *modref;
 	int idx;
 	indexed_modcallable *subcomp;
-	const char *modname, *name1;
+	const char *modname;
 	const char *visiblename;
 	const DICT_ATTR *dattr;
-	CONF_PAIR *cp;
-	CONF_SECTION *scs;
 
 	/*
 	 *	Find the attribute used to store VALUEs for this section.
@@ -526,34 +524,15 @@ static int load_component_section(CONF_SECTION *cs,
 	}
 
 	/*
-	 *	Define dynamic types, so that others can reference
-	 *	them.
-	 */
-	for (modref = cf_item_find_next(cs, NULL);
-	     modref != NULL;
-	     modref = cf_item_find_next(cs, modref)) {
-		if (!cf_item_is_section(modref)) continue;
-
-		scs = cf_itemtosection(modref);
-		name1 = cf_section_name1(scs);
-		
-		if (strcmp(name1, section_type_value[comp].typename) == 0) {
-			if (!define_type(dattr, cf_section_name2(scs))) {
-				return -1;
-			}
-		}
-	}
-
-
-	/*
 	 *	Loop over the entries in the named section, loading
 	 *	the sections this time.
 	 */
 	for (modref = cf_item_find_next(cs, NULL);
 	     modref != NULL;
 	     modref = cf_item_find_next(cs, modref)) {
-		cp = NULL;
-		scs = NULL;
+		const char *name1;
+		CONF_PAIR *cp = NULL;
+		CONF_SECTION *scs = NULL;
 
 		if (cf_item_is_section(modref)) {
 			scs = cf_itemtosection(modref);
@@ -570,19 +549,9 @@ static int load_component_section(CONF_SECTION *cs,
 			}
 
 			cp = NULL;
+
 		} else if (cf_item_is_pair(modref)) {
 			cp = cf_itemtopair(modref);
-
-			/*
-			 *	Create types for simple references
-			 *	only when parsing the authenticate
-			 *	section.
-			 */
-			if (section_type_value[comp].attr == PW_AUTH_TYPE) {
-				if (!define_type(dattr, cf_pair_attr(cp))) {
-					return -1;
-				}
-			}
 
 		} else {
 			continue; /* ignore it */
@@ -664,7 +633,73 @@ static int load_byserver(CONF_SECTION *cs)
 	const char *server = cf_section_name2(cs);
 
 	DEBUG2(" modules {");
-	
+
+	/*
+	 *	Define types first.
+	 */
+	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
+		CONF_SECTION *subcs;
+		CONF_ITEM *modref;
+		DICT_ATTR *dattr;
+
+		subcs = cf_section_sub_find(cs,
+					    section_type_value[comp].section);
+		if (!subcs) continue;
+			
+		if (cf_item_find_next(subcs, NULL) == NULL) continue;
+
+		/*
+		 *	Find the attribute used to store VALUEs for this section.
+		 */
+		dattr = dict_attrbyvalue(section_type_value[comp].attr);
+		if (!dattr) {
+			cf_log_err(cf_sectiontoitem(subcs),
+				   "No such attribute %s",
+				   section_type_value[comp].typename);
+			DEBUG2(" }");
+			return -1;
+		}
+
+		/*
+		 *	Define dynamic types, so that others can reference
+		 *	them.
+		 */
+		for (modref = cf_item_find_next(subcs, NULL);
+		     modref != NULL;
+		     modref = cf_item_find_next(subcs, modref)) {
+			const char *name1;
+			CONF_SECTION *subsubcs;
+
+			/*
+			 *	Create types for simple references
+			 *	only when parsing the authenticate
+			 *	section.
+			 */
+			if ((section_type_value[comp].attr == PW_AUTH_TYPE) &&
+			    cf_item_is_pair(modref)) {
+				CONF_PAIR *cp = cf_itemtopair(modref);
+				if (!define_type(dattr, cf_pair_attr(cp))) {
+					return -1;
+				}
+
+				continue;
+			}
+
+			if (!cf_item_is_section(modref)) continue;
+			
+			subsubcs = cf_itemtosection(modref);
+			name1 = cf_section_name1(subsubcs);
+		
+			if (strcmp(name1, section_type_value[comp].typename) == 0) {
+				if (!define_type(dattr,
+						 cf_section_name2(subsubcs))) {
+					DEBUG2(" }");
+					return -1;
+				}
+			}
+		}
+	} /* loop over components */
+
 	/*
 	 *	Loop over all of the known components, finding their
 	 *	configuration section, and loading it.
