@@ -42,7 +42,7 @@ RCSID("$Id$")
 #include <grp.h>
 #endif
 
-#ifdef HAVE_SYS_PRTCL_H
+#ifdef HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
 
@@ -172,7 +172,7 @@ static const CONF_PARSER server_config[] = {
 #ifdef DELETE_BLOCKED_REQUESTS
 	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &mainconfig.kill_unresponsive_children, Stringify(FALSE) },
 #endif
-	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &mainconfig.allow_core_dumps, "no" },
+	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, "no" },
 	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
 
 	{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, "${logdir}/radius.log" },
@@ -509,6 +509,8 @@ static int radlogdir_iswritable(const char *effectiveuser)
  */
 static int switch_users(void)
 {
+	int did_setuid = FALSE;
+
 #ifdef HAVE_SYS_RESOURCE_H
 	struct rlimit core_limits;
 #endif
@@ -565,6 +567,11 @@ static int switch_users(void)
 			radlog(L_ERR, "Failed setting User to %s: %s", uid_name, strerror(errno));
 			return 0;
 		}
+
+		/*
+		 *	Now core dumps are disabled on most secure systems.
+		 */
+		did_setuid = TRUE;
 	}
 #endif
 
@@ -576,8 +583,38 @@ static int switch_users(void)
 	}
 #endif
 
-	if (allow_core_dumps) {
-#ifdef HAVE_SYS_PRTCL_H
+	/*
+	 *	Core dumps are allowed if we're in debug mode, OR
+	 *	we've allowed them, OR we did a setuid (which turns
+	 *	core dumps off).
+	 *
+	 *	Otherwise, disable core dumps for security.
+	 *	
+	 */
+	if (!(debug_flag || allow_core_dumps || did_setuid)) {
+#ifdef HAVE_SYS_RESOURCE_H
+		struct rlimit no_core;
+
+		no_core.rlim_cur = 0;
+		no_core.rlim_max = 0;
+
+		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
+			radlog(L_ERR, "Failed disabling core dumps: %s",
+			       strerror(errno));
+			return 0;
+		}
+#endif
+
+		/*
+		 *	Otherwise, re-enable core dumps if we're
+		 *	running as a daemon, AND core dumps are
+		 *	allowed, AND we changed UID's.
+		 */
+	} else if ((debug_flag == 0) && allow_core_dumps && did_setuid) {
+		/*
+		 *	Set the dumpable flag.
+		 */
+#ifdef HAVE_SYS_PRCTL_H
 #ifdef PR_SET_DUMPABLE
 		if (prctl(PR_SET_DUMPABLE, 1) < 0) {
 			radlog(L_ERR,"Cannot enable core dumps: prctl(PR_SET_DUMPABLE) failed: '%s'",
@@ -586,39 +623,25 @@ static int switch_users(void)
 #endif
 #endif
 
+		/*
+		 *	Reset the core dump limits again, just to
+		 *	double check that they haven't changed.
+		 */
 #ifdef HAVE_SYS_RESOURCE_H
 		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
 			radlog(L_ERR, "Cannot update core dump limit: %s",
 					strerror(errno));
 			return 0;
-
-			/*
-			 *  If we're running as a daemon, and core
-			 *  dumps are enabled, log that information.
-			 */
-		} else if ((core_limits.rlim_cur != 0) && !debug_flag)
-			radlog(L_INFO, "Core dumps are enabled.");
-#endif
-
-	} else if (!debug_flag) {
-#ifdef HAVE_SYS_RESOURCE_H
-		/*
-		 *  Not debugging.  Set the core size to zero, to
-		 *  prevent security breaches.  i.e. People
-		 *  reading passwords from the 'core' file.
-		 */
-		struct rlimit limits;
-
-		limits.rlim_cur = 0;
-		limits.rlim_max = core_limits.rlim_max;
-
-		if (setrlimit(RLIMIT_CORE, &limits) < 0) {
-			radlog(L_ERR, "Cannot disable core dumps: %s",
-					strerror(errno));
-			return 0;
 		}
 #endif
 	}
+	/*
+	 *	Else we're debugging (so core dumps are enabled)
+	 *	OR we're not debugging, AND "allow_core_dumps == FALSE",
+	 *	OR we're not debugging, AND core dumps are allowed,
+	 *	   BUT we didn't call setuid, so we haven't changed the
+	 *	   core dump capabilities inherited from the parent shell.
+	 */
 
 #if defined(HAVE_PWD_H) && defined(HAVE_GRP_H)
 	/*
@@ -915,7 +938,7 @@ int read_mainconfig(int reload)
 
 	/*  Reload the modules.  */
 	if (setup_modules(reload, mainconfig.config) < 0) {
-		radlog(L_ERR, "Errors setting up modules");
+		radlog(L_ERR, "Errors initializing modules");
 		return -1;
 	}
 	return 0;
