@@ -603,6 +603,7 @@ AC_CHECK_HEADERS( \
 	sys/security.h \
 	fcntl.h \
 	sys/fcntl.h \
+	sys/prctl.h \
 	prot.h \
 	pwd.h \
 	grp.h \
