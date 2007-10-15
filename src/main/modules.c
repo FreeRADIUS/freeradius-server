@@ -508,9 +508,11 @@ static int load_component_section(CONF_SECTION *cs,
 	CONF_ITEM *modref;
 	int idx;
 	indexed_modcallable *subcomp;
-	const char *modname;
+	const char *modname, *name1;
 	const char *visiblename;
 	const DICT_ATTR *dattr;
+	CONF_PAIR *cp;
+	CONF_SECTION *scs;
 
 	/*
 	 *	Find the attribute used to store VALUEs for this section.
@@ -524,27 +526,42 @@ static int load_component_section(CONF_SECTION *cs,
 	}
 
 	/*
-	 *	Loop over the entries in the named section.
+	 *	Define dynamic types, so that others can reference
+	 *	them.
 	 */
 	for (modref = cf_item_find_next(cs, NULL);
 	     modref != NULL;
 	     modref = cf_item_find_next(cs, modref)) {
-		CONF_PAIR *cp = NULL;
-		CONF_SECTION *scs = NULL;
+		if (!cf_item_is_section(modref)) continue;
+
+		scs = cf_itemtosection(modref);
+		name1 = cf_section_name1(scs);
+		
+		if (strcmp(name1, section_type_value[comp].typename) == 0) {
+			if (!define_type(dattr, cf_section_name2(scs))) {
+				return -1;
+			}
+		}
+	}
+
+
+	/*
+	 *	Loop over the entries in the named section, loading
+	 *	the sections this time.
+	 */
+	for (modref = cf_item_find_next(cs, NULL);
+	     modref != NULL;
+	     modref = cf_item_find_next(cs, modref)) {
+		cp = NULL;
+		scs = NULL;
 
 		if (cf_item_is_section(modref)) {
-			const char *name1;
 			scs = cf_itemtosection(modref);
 
 			name1 = cf_section_name1(scs);
 
 			if (strcmp(name1,
 				   section_type_value[comp].typename) == 0) {
-
-				if (!define_type(dattr, cf_section_name2(scs))) {
-					return -1;
-				}
-
 				if (!load_subcomponent_section(NULL, scs,
 							       server, comp)) {
 					return -1; /* FIXME: memleak? */
