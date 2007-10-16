@@ -591,7 +591,7 @@ radius_snmp_init (CONF_SECTION *cs)
 
 	smux_stop();
 
-	if (!do_snmp) return 0;
+	if (!mainconfig.do_snmp) return 0;
 
 	/*
 	 *  Do SMUX initialization.
