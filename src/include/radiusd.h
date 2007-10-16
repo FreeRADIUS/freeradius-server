@@ -237,6 +237,7 @@ typedef struct main_config_t {
 	radlog_dest_t	radlog_dest;
 	CONF_SECTION	*config;
 	const char	*radiusd_conf;
+	int		do_snmp;
 } MAIN_CONFIG_T;
 
 #define DEBUG	if(debug_flag)log_debug

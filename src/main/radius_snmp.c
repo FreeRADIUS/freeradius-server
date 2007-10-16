@@ -540,11 +540,9 @@ radAuthEntry(struct variable *vp, oid	 *name, size_t *length, int exact,
 	return NULL;
 }
 
-static int do_snmp = 0;
-
 static const CONF_PARSER snmp_config[] = {
 	{ "snmp",              PW_TYPE_BOOLEAN,
-	  0, &do_snmp,      "no" },
+	  0, &mainconfig.do_snmp,      "no" },
 	{ "smux_password",     PW_TYPE_STRING_PTR,
 	  0, &rad_snmp.smux_password, "" },
 	{ "snmp_write_access", PW_TYPE_BOOLEAN,
