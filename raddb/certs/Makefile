@@ -14,7 +14,7 @@ DH_KEY_SIZE	= 1024
 #
 #  Set the passwords
 #
-PASSWORD_SERVER	= `grep output_password server.cnf | sed 's/.*=//;s/^ *//')`
+PASSWORD_SERVER	= `grep output_password server.cnf | sed 's/.*=//;s/^ *//'`
 PASSWORD_CA	= `grep output_password ca.cnf | sed 's/.*=//;s/^ *//'`
 PASSWORD_CLIENT	= `grep output_password client.cnf | sed 's/.*=//;s/^ *//'`
 
