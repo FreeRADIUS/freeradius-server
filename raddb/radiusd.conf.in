@@ -1,3 +1,4 @@
+# -*- text -*-
 ##
 ## radiusd.conf	-- FreeRADIUS server configuration file.
 ##
@@ -762,39 +763,6 @@ $INCLUDE ${confdir}/eap.conf
 		#
 		# password_attribute = userPassword
 
-		#  As of 1.1.0, the LDAP module will auto-discover
-		#  the password headers (which are non-standard).
-		#  It will use the following table to map passwords
-		#  to RADIUS attributes.  The PAP module (see above)
-		#  can then automatically determine the hashing
-		#  method to use to authenticate the user.
-		#
-		#	Header		Attribute
-		#	------		---------
-		#	{clear}		User-Password
-		#	{cleartext}	User-Password
-		#	{md5}		MD5-Password
-		#	{smd5}		SMD5-Password
-		#	{crypt}		Crypt-Password
-		#	{sha}		SHA-Password
-		#	{ssha}		SSHA-Password
-		#	{nt}		NT-Password
-		#	{ns-mta-md5}	NS-MTA-MD5-Password
-		#		
-		#
-		#  The headers are compared in a case-insensitive manner.
-		#  The format of the password in LDAP (base 64-encoded, hex,
-		#  clear-text, whatever) is not that important.  The PAP
-		#  module will figure it out.
-		#
-		#  The default for "auto_header" is "no", to enable backwards
-		#  compatibility with the "password_header" directive,
-		#  which is now deprecated.  If this is set to "yes",
-		#  then the above table will be used, and the
-		#  "password_header" directive will be ignored.
-
-		#auto_header = yes
-
 		#  Un-comment the following to disable Novell
 		#  eDirectory account policy check and intruder
 		#  detection. This will work *only if* FreeRADIUS is
@@ -976,14 +944,18 @@ $INCLUDE ${confdir}/eap.conf
 	#
 	#  Also if new_attribute is set to yes then a new attribute
 	#  will be created containing the value replacewith and it
-	#  will be added to searchin (packet, reply, proxy, proxy_reply or config).
+	#  will be added to searchin (packet, reply, proxy,
+	#  proxy_reply or config).
+	#
 	# searchfor,ignore_case and max_matches will be ignored in that case.
 	#
-	# Backreferences are supported: %{0} will contain the string the whole match
-	# and %{1} to %{8} will contain the contents of the 1st to the 8th parentheses
+	# Backreferences are supported.
+	#	%{0} will contain the string the whole match
+	#	%{1} to %{8} will contain the contents of the 1st to
+	#	the 8th parentheses
 	#
-	# If max_matches is greater than one the backreferences will correspond to the
-	# first match
+	# If max_matches is greater than one, the backreferences will
+	# correspond to the first attributed that matched.
 
 	#
 	#attr_rewrite sanecallerid {
@@ -995,7 +967,9 @@ $INCLUDE ${confdir}/eap.conf
 	#	ignore_case = no
 	#	new_attribute = no
 	#	max_matches = 10
-	#	## If set to yes then the replace string will be appended to the original string
+	#
+	#	## If set to yes then the replace string will be
+	#	## appended to the original string
 	#	append = no
 	#}
 
@@ -1408,10 +1382,12 @@ $INCLUDE ${confdir}/eap.conf
 	#  If check-name is set and the user is to be rejected then we
 	#  send back a Reply-Message and we log a Failure-Message in
 	#  the radius.log
-	#  If the count attribute is Acct-Session-Time then on each login
-	#  we send back the remaining online time as a Session-Timeout attribute
-	#  ELSE and if the reply-name is set, we send back that attribute.
-	#  The reply-name attribute MUST be of an integer type.
+	#
+	#  If the count attribute is Acct-Session-Time then on each
+	#  login we send back the remaining online time as a
+	#  Session-Timeout attribute ELSE and if the reply-name is
+	#  set, we send back that attribute.  The reply-name attribute
+	#  MUST be of an integer type.
 	#
 	#  The counter-name can also be used instead of using the check-name
 	#  like below:
@@ -1684,16 +1660,18 @@ $INCLUDE ${confdir}/eap.conf
 
 	}
 
-	#  Do server side ip pool management. Should be added in post-auth and
-	#  accounting sections.
+	#  Do server side ip pool management. Should be added in
+	#  post-auth and accounting sections.
 	#
 	#  The module also requires the existance of the Pool-Name
 	#  attribute. That way the administrator can add the Pool-Name
-	#  attribute in the user profiles and use different pools
-	#  for different users. The Pool-Name attribute is a *check* item not
-	#  a reply item.
-	#  The Pool-Name should be set to the ippool module instance name or to
-	#  DEFAULT to match any module.
+	#  attribute in the user profiles and use different pools for
+	#  different users. The Pool-Name attribute is a *check* item
+	#  not a reply item.
+	#
+	#  The Pool-Name should be set to the ippool module instance
+	#  name or to DEFAULT to match any module.
+
 	#
 	# Example:
 	# radiusd.conf: ippool students { [...] }
@@ -1707,34 +1685,50 @@ $INCLUDE ${confdir}/eap.conf
 	#
 	ippool main_pool {
 
-		#  range-start,range-stop: The start and end ip
-		#  addresses for the ip pool
+		#  range-start,range-stop:
+		#	The start and end ip addresses for this pool.
 		range-start = 192.168.1.1
 		range-stop = 192.168.3.254
 
-		#  netmask: The network mask used for the ip's
+		#  netmask:
+		#	The network mask used for this pool.
 		netmask = 255.255.255.0
 
-		#  cache-size: The gdbm cache size for the db
-		#  files. Should be equal to the number of ip's
-		#  available in the ip pool
+		#  cache-size:
+		#	The gdbm cache size for the db files. Should
+		#	be equal to the number of ip's available in
+		#	the ip pool
 		cache-size = 800
 
-		# session-db: The main db file used to allocate ip's to clients
+		# session-db:
+		#	The main db file used to allocate addresses.
 		session-db = ${raddbdir}/db.ippool
 
-		# ip-index: Helper db index file used in multilink
+		# ip-index:
+		#	Helper db index file used in multilink
 		ip-index = ${raddbdir}/db.ipindex
 
-		# override: Will this ippool override a Framed-IP-Address already set
+		# override:
+		#	If set, the Framed-IP-Address already in the
+		#	reply (if any) will be discarded, and replaced
+		#	with a Framed-IP-Address assigned here.
 		override = no
 
-		# maximum-timeout: If not zero specifies the maximum time in seconds an
-		# entry may be active. Default: 0
+		# maximum-timeout:
+		#	Specifies the maximum time in seconds that an
+		#	entry may be active.  If set to zero, means
+		#	"no timeout".  The default value is 0
 		maximum-timeout = 0
 
-		# The key to use for the session database (which holds the allocated ip's)
-		# normally it should just be the nas  ip/port (which is the default)
+		# key:
+		#	The key to use for the session database (which
+		#	holds the allocated ip's) normally it should
+		#	just be the nas ip/port (which is the default).
+		#
+		#	If your NAS sends the same value of NAS-Port
+		#	all requests, the key should be based on some
+		#	other attribute that is in ALL requests, AND
+		#	is unique to each machine needing an IP address.
 		#key = "%{NAS-IP-Address} %{NAS-Port}"
 	}
 
