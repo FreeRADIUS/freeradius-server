@@ -55,6 +55,7 @@ static time_t			start_time;
 static int			have_children;
 static int			has_detail_listener = FALSE;
 static int			read_from_detail = TRUE;
+static int			just_started = FALSE;
 
 static int self_pipe[2];
 
@@ -2355,7 +2356,13 @@ static void event_poll_fd(void *ctx)
 
 static void event_status(struct timeval *wake)
 {
-	if (debug_flag == 0) return;
+	if (debug_flag == 0) {
+		if (just_started) {
+			radlog(L_INFO, "Ready to process requests.");
+			just_started = FALSE;
+		}
+		return;
+	}
 
 	if (!wake) {
 		DEBUG("Ready to process requests.");
@@ -2599,6 +2606,8 @@ void radius_event_free(void)
 int radius_event_process(void)
 {
 	if (!el) return 0;
+
+	just_started = TRUE;
 
 	return lrad_event_loop(el);
 }
