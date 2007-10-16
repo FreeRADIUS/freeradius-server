@@ -634,6 +634,8 @@ static int switch_users(void)
 			return 0;
 		}
 #endif
+
+		radlog(L_INFO, "Core dumps are enabled.");
 	}
 	/*
 	 *	Else we're debugging (so core dumps are enabled)
@@ -941,6 +943,7 @@ int read_mainconfig(int reload)
 		radlog(L_ERR, "Errors initializing modules");
 		return -1;
 	}
+
 	return 0;
 }
 
