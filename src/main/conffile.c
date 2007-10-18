@@ -760,6 +760,10 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		value = dflt;
 	}
 
+	if (!value) {
+		return 0;
+	}
+
 	switch (type) {
 	case PW_TYPE_BOOLEAN:
 		/*
