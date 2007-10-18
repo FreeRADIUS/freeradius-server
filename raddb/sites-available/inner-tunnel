@@ -1,3 +1,4 @@
+# -*- text -*-
 ######################################################################
 #
 #	This is a virtual server that handles *only* inner tunnel
@@ -251,6 +252,40 @@ post-auth {
 	Post-Auth-Type REJECT {
 		attr_filter.access_reject
 	}
+
+	#
+	#  The example policy below updates the outer tunnel reply
+	#  (usually Access-Accept) with the User-Name from the inner
+	#  tunnel User-Name.  Since this section is processed in the
+	#  context of the inner tunnel, "request" here means "inner
+	#  tunnel request", and "outer.reply" means "outer tunnel
+	#  reply attributes".
+	#
+	#  This example is most useful when the outer session contains
+	#  a User-Name of "anonymous@....", or a MAC address.  If it
+	#  is enabled, the NAS SHOULD use the inner tunnel User-Name
+	#  in subsequent accounting packets.  This makes it easier to
+	#  track user sessions, as they will all be based on the real
+	#  name, and not on "anonymous".
+	#
+	#  The problem with doing this is that it ALSO exposes the
+	#  real user name to any intermediate proxies.  People use
+	#  "anonymous" identifiers outside of the tunnel for a very
+	#  good reason: it gives them more privacy.  Setting the reply
+	#  to contain the real user name removes ALL privacy from
+	#  their session.
+	#
+	#  If you want privacy to remain, see the
+	#  Chargeable-User-Identity attribute from RFC 4372.  In order
+	#  to use that attribute, you will have to allocate a
+	#  per-session identifier for the user, and store it in a
+	#  long-term database (e.g. SQL).  You should also use that
+	#  attribute INSTEAD of the configuration below.
+	#
+	#update outer.reply {
+	#	User-Name = "%{request.User-Name}"
+	#}
+
 }
 
 #

@@ -141,6 +141,11 @@ For backwards compatibility with older versions, "check" is accepted
 as a synonym for "control".  The use of "check" is deprecated, and
 will be removed in a future release.
 
+For EAP methods with tunneled authentication sessions (i.e. PEAP and
+EAP-TTLS), the inner tunnel session can also reference
+"outer.request", "outer.reply", and "outer.control".  Those references
+will update the relevant list in the outer tunnel session.
+
 The only contents permitted in an "update" section are attributes and
 values.  The contents of the "update" section are described in the
 ATTRIBUTES section below.
@@ -360,9 +365,10 @@ Attribute lists may be referenced via the following syntax
 .DE
 
 Where <list> is one of "request", "reply", "proxy-request",
-"proxy-reply", or "control", as described above in the documentation
-for the "update" section.  The "<list>:" prefix is optional, and if
-omitted, is assumed to refer to the "request" list.
+"proxy-reply", "control", "outer.request", "outer.reply", or
+"outer.control", as described above in the documentation for the
+"update" section.  The "<list>:" prefix is optional, and if omitted,
+is assumed to refer to the "request" list.
 
 When a variable is encountered, the given list is examined for an
 attribute of the given name.  If found, the variable reference in the
