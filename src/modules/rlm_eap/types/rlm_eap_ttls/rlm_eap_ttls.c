@@ -203,7 +203,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	an EAP-TLS-Success packet here.
 		 */
 	case EAPTLS_SUCCESS:
-		if (t->authenticated) {
+		if (t && t->authenticated) {
 			if (t->reply) {
 				pairmove(&handler->request->reply->vps,
 					 &t->reply);
