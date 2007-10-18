@@ -51,6 +51,7 @@ typedef struct listen_detail_t {
 	int		srtt;
 	int		rttvar;
 	struct timeval  last_packet;
+	RADCLIENT	detail_client;
 } listen_detail_t;
 
 
@@ -233,26 +234,6 @@ static int detail_open(rad_listen_t *this)
 	return 1;
 }
 
-/*
- *	FIXME: this should be dynamically allocated.
- */
-static const RADCLIENT detail_client = {
-	{		/* ipaddr */
-		AF_INET,
-		{{ INADDR_NONE }}
-	},
-	32,
-	"<detail-file>",
-	"secret",
-	"UNKNOWN-CLIENT",
-	"other",
-	"",
-	"",
-	-1
-#ifdef WITH_SNMP
-	, NULL, NULL
-#endif
-};
 
 /*
  *	FIXME: add a configuration "exit when done" so that the detail
@@ -610,7 +591,8 @@ int detail_recv(rad_listen_t *listener,
 	 *
 	 *	Try again later...
 	 */
-	if (!received_request(listener, packet, prequest, &detail_client)) {
+	if (!received_request(listener, packet, prequest,
+			      &data->detail_client)) {
 		rad_free(&packet);
 		data->state = STATE_NO_REPLY;	/* try again later */
 		return 0;
@@ -682,6 +664,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
 	listen_detail_t *data;
+	RADCLIENT	*client;
 
 	if (!this->data) {
 		this->data = rad_malloc(sizeof(listen_detail_t));
@@ -709,6 +692,17 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	data->vps = NULL;
 	data->fp = NULL;
 	data->state = STATE_UNOPENED;
+
+	/*
+	 *	Initialize the fake client.
+	 */
+	client = &data->detail_client;
+	client->ipaddr.af = AF_INET;
+	client->ipaddr.ipaddr.ip4addr.s_addr = INADDR_NONE;
+	client->prefix = 0;
+	client->longname = client->shortname = data->filename;
+	client->secret = "testing123";
+	client->nastype = "none";
 
 	return 0;
 }
