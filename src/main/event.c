@@ -153,24 +153,32 @@ static void snmp_inc_counters(REQUEST *request)
 	case PW_AUTHENTICATION_ACK:
 		rad_snmp.auth.total_responses++;
 		rad_snmp.auth.total_access_accepts++;
-		if (request->client) request->client->auth->accepts++;
+		if (request->client && request->client->auth) {
+			request->client->auth->accepts++;
+		}
 		break;
 
 	case PW_AUTHENTICATION_REJECT:
 		rad_snmp.auth.total_responses++;
 		rad_snmp.auth.total_access_rejects++;
-		if (request->client) request->client->auth->rejects++;
+		if (request->client && request->client->auth) {
+			request->client->auth->rejects++;
+		}
 		break;
 
 	case PW_ACCESS_CHALLENGE:
 		rad_snmp.auth.total_responses++;
 		rad_snmp.auth.total_access_challenges++;
-		if (request->client) request->client->auth->challenges++;
+		if (request->client && request->client->auth) {
+			request->client->auth->challenges++;
+		}
 		break;
 
 	case PW_ACCOUNTING_RESPONSE:
 		rad_snmp.acct.total_responses++;
-		if (request->client) request->client->auth->responses++;
+		if (request->client && request->client->acct) {
+			request->client->acct->responses++;
+		}
 		break;
 
 		/*
@@ -180,7 +188,9 @@ static void snmp_inc_counters(REQUEST *request)
 	case 0:
 		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 			rad_snmp.auth.total_bad_authenticators++;
-			if (request->client) request->client->auth->bad_authenticators++;
+			if (request->client && request->client->auth-) {
+				request->client->auth->bad_authenticators++;
+			}
 		}
 		break;
 
