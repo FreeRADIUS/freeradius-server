@@ -964,26 +964,38 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	CONF_ITEM *ci;
 	VALUE_PAIR *newlist, *vp;
 	VALUE_PAIR **output_vps = NULL;
+	REQUEST *request_vps = request;
 
 	if (!request || !cs) return RLM_MODULE_INVALID;
 
+	/*
+	 *	If we are an inner tunnel session, permit the
+	 *	policy to update the outer lists directly.
+	 */
+	if (memcmp(name, "outer.", 6) == 0) {
+		if (!request->parent) return RLM_MODULE_NOOP;
+
+		request_vps = request->parent;
+		name += 6;
+	}
+
 	if (strcmp(name, "request") == 0) {
-		output_vps = &request->packet->vps;
+		output_vps = &request_vps->packet->vps;
 
 	} else if (strcmp(name, "reply") == 0) {
-		output_vps = &request->reply->vps;
+		output_vps = &request_vps->reply->vps;
 
 	} else if (strcmp(name, "proxy-request") == 0) {
-		if (request->proxy) output_vps = &request->proxy->vps;
+		if (request->proxy) output_vps = &request_vps->proxy->vps;
 
 	} else if (strcmp(name, "proxy-reply") == 0) {
 		if (request->proxy_reply) output_vps = &request->proxy_reply->vps;
 
 	} else if (strcmp(name, "config") == 0) {
-		output_vps = &request->config_items;
+		output_vps = &request_vps->config_items;
 
 	} else if (strcmp(name, "control") == 0) {
-		output_vps = &request->config_items;
+		output_vps = &request_vps->config_items;
 
 	} else {
 		return RLM_MODULE_INVALID;

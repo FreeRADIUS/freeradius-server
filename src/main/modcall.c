@@ -1069,7 +1069,10 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 
 	static const char *attrlist_names[] = {
 		"request", "reply", "proxy-request", "proxy-reply",
-		"config", "control", NULL
+		"config", "control",
+		"outer.request", "outer.reply",
+		"outer.config", "outer.control",
+		NULL
 	};
 
 	component = component;	/* -Wunused */
