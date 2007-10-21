@@ -107,31 +107,33 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		}
 #endif
 
-	} else if (!myconfig->log_file) {
-		/*
-		 *	Errors go to stderr, in the hope that they will
-		 *	be printed somewhere.
-		 */
-		if (lvl & L_ERR) {
-			fd = STDERR_FILENO;
-			print_timestamp = 0;
-			snprintf(buffer, sizeof(buffer), "%s: ", progname);
-			len = strlen(buffer);
-		} else {
+	} else if (myconfig->radlog_dest == RADLOG_FILES) {
+		if (!myconfig->log_file) {
 			/*
-			 *	No log file set.  Discard it.
+			 *	Errors go to stderr, in the hope that
+			 *	they will be printed somewhere.
 			 */
-			return 0;
+			if (lvl & L_ERR) {
+				fd = STDERR_FILENO;
+				print_timestamp = 0;
+				snprintf(buffer, sizeof(buffer), "%s: ", progname);
+				len = strlen(buffer);
+			} else {
+				/*
+				 *	No log file set.  Discard it.
+				 */
+				return 0;
+			}
+			
+		} else if ((fp = fopen(myconfig->log_file, "a")) == NULL) {
+			fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
+				progname, myconfig->log_file, strerror(errno));
+			
+			fprintf(stderr, "  (");
+			vfprintf(stderr, fmt, ap);  /* the message that caused the log */
+			fprintf(stderr, ")\n");
+			return -1;
 		}
-
-	} else if ((fp = fopen(myconfig->log_file, "a")) == NULL) {
-		fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
-			progname, myconfig->log_file, strerror(errno));
-
-		fprintf(stderr, "  (");
-		vfprintf(stderr, fmt, ap);  /* the message that caused the log */
-		fprintf(stderr, ")\n");
-		return -1;
 	}
 
 	if (print_timestamp) {
