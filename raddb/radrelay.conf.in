@@ -112,7 +112,7 @@ listen {
 	type = detail
 
 	# where the detail file is located
-	filename = ${confdir}/detail
+	filename = ${radacctdir}/detail
 
 	#
 	#  The server can read accounting packets from the detail file
