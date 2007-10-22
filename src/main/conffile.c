@@ -1080,6 +1080,29 @@ static int condition_looks_ok(const char **ptr)
 }
 
 
+static const char *cf_local_file(CONF_SECTION *cs, const char *local,
+				 char *buffer, size_t bufsize)
+{
+	size_t dirsize;
+	const char *p;
+	CONF_SECTION *parentcs = cf_top_section(cs);
+
+	p = strrchr(parentcs->item.filename, '/');
+	if (!p) return local;
+
+	dirsize = (p - parentcs->item.filename);
+
+	if ((dirsize + strlen(local)) >= bufsize) {
+		return NULL;
+	}
+
+	memcpy(buffer, parentcs->item.filename, dirsize);
+	strlcpy(buffer + dirsize, local, bufsize - dirsize);
+
+	return buffer;
+}
+
+
 /*
  *	Read a part of the config file.
  */
@@ -1189,6 +1212,17 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 
 			value = cf_expand_variables(filename, lineno, this, buf, buf2);
 			if (!value) return -1;
+
+			if (value[0] != '/') {
+				value = cf_local_file(current, value, buf3,
+						      sizeof(buf3));
+				if (!value) {
+					radlog(L_ERR, "%s[%d]: Directories too deep.",
+					       filename, *lineno);
+					return -1;
+				}
+			}
+
 
 #ifdef HAVE_DIRENT_H
 			/*
@@ -1515,6 +1549,8 @@ int cf_file_include(const char *filename, CONF_SECTION *cs)
 		       filename);
 		return -1;
 	}
+
+	if (!cs->item.filename) cs->item.filename = filename;
 
 	/*
 	 *	Read the section.  It's OK to have EOF without a
