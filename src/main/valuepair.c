@@ -673,7 +673,30 @@ VALUE_PAIR *radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
 		_exit(1);
 	}
 
-	pairadd(vps, vp);
+	if (vps) pairadd(vps, vp);
 
 	return vp;
 }
+
+/*
+ *	Create a pair, and add it to a particular list of VPs
+ *
+ *	Note that this function ALWAYS returns.  If we're OOM, then
+ *	it causes the server to exit!
+ */
+VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
+			    const char *attribute, const char *value,
+			    int operator)
+{
+	VALUE_PAIR *vp;
+
+	request = request;	/* -Wunused */
+
+	vp = pairmake(attribute, value, operator);
+	if (!vp) return NULL;
+
+	if (vps) pairadd(vps, vp);
+
+	return vp;
+}
+

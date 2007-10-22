@@ -112,25 +112,6 @@ static void tv_add(struct timeval *tv, int usec_delay)
 	}
 }
 
-static VALUE_PAIR * radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
-				   const char *attribute, const char *value)
-{
-	VALUE_PAIR *vp;
-
-	request = request;	/* -Wunused */
-
-	vp = pairmake(attribute, value, T_OP_SET);
-	if (!vp) {
-		radlog(L_ERR, "No memory!");
-		rad_assert("No memory" == NULL);
-		_exit(1);
-	}
-
-	pairadd(vps, vp);
-
-	return vp;
-}
-
 #ifdef WITH_SNMP
 static void snmp_inc_counters(REQUEST *request)
 {
@@ -1224,11 +1205,9 @@ static int successfully_proxied_request(REQUEST *request)
 		 */
 		vp = pairfind(request->proxy->vps, PW_USER_NAME);
 		if (!vp) {
-			vp = paircreate(PW_USER_NAME, PW_TYPE_STRING);
-			if (!vp) {
-				radlog(L_ERR|L_CONS, "no memory");
-				exit(1);
-			}
+			vp = radius_paircreate(request, NULL,
+					       PW_USER_NAME, PW_TYPE_STRING);
+			rad_assert(vp != NULL);	/* handled by above function */
 			/* Insert at the START of the list */
 			vp->next = request->proxy->vps;
 			request->proxy->vps = vp;
@@ -1436,12 +1415,11 @@ static void request_post_handler(REQUEST *request)
 		 *	Post-Auth-Type = Reject
 		 */
 		if (request->reply->code == PW_AUTHENTICATION_REJECT) {
-			vp = pairmake("Post-Auth-Type", "Reject", T_OP_SET);
-			if (vp) {
-				pairdelete(&request->config_items, PW_POST_AUTH_TYPE);
-				pairadd(&request->config_items, vp);
-				rad_postauth(request);
-			} /* else no Reject section defined */
+			pairdelete(&request->config_items, PW_POST_AUTH_TYPE);
+			vp = radius_pairmake(request, &request->config_items,
+					     "Post-Auth-Type", "Reject",
+					     T_OP_SET);
+			if (vp) rad_postauth(request);
 
 			/*
 			 *	If configured, delay Access-Reject packets.
@@ -1806,8 +1784,6 @@ int received_request(rad_listen_t *listener,
 			request = NULL;
 			break;
 		}
-
-
 	}
 
 	/*

@@ -428,6 +428,9 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 			    VALUE_PAIR **reply_pairs);
 VALUE_PAIR	*radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
 				  int attribute, int type);
+VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
+			    const char *attribute, const char *value,
+			    int operator);
 
 /* xlat.c */
 typedef int (*RADIUS_ESCAPE_STRING)(char *out, int outlen, const char *in);
@@ -480,8 +483,4 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			      const char **ptr, int evaluate_it, int *presult);
 int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			   VALUE_PAIR *input_vps, const char *name);
-
-/* vmps.c */
-int vmps_process(REQUEST *);
-
 #endif /*RADIUSD_H*/

@@ -464,13 +464,10 @@ int rad_authenticate(REQUEST *request)
 		 *	accordingly.
 		 */
 		case PW_AUTHENTICATION_ACK:
-			tmp = paircreate(PW_AUTH_TYPE, PW_TYPE_INTEGER);
-			if (tmp == NULL) {
-				radlog(L_ERR|L_CONS, "Not enough memory");
-				exit(1);
-			}
-			tmp->vp_integer = PW_AUTHTYPE_ACCEPT;
-			pairadd(&request->config_items, tmp);
+			tmp = radius_paircreate(request,
+						&request->config_items,
+						PW_AUTH_TYPE, PW_TYPE_INTEGER);
+			if (tmp) tmp->vp_integer = PW_AUTHTYPE_ACCEPT;
 			break;
 		/*
 		 *	Challenges are punted back to the NAS without any
@@ -699,8 +696,9 @@ autz_redo:
 				 *	Remove ALL reply attributes.
 				 */
 				pairfree(&request->reply->vps);
-				tmp = pairmake("Reply-Message", user_msg, T_OP_SET);
-				request->reply->vps = tmp;
+				radius_pairmake(request, &request->reply->vps,
+						"Reply-Message",
+						user_msg, T_OP_SET);
 
 				snprintf(logstr, sizeof(logstr), "Multiple logins (max %d) %s",
 					check_item->vp_integer,
