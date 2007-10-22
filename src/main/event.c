@@ -593,36 +593,37 @@ static void ping_home_server(void *ctx)
 		request->proxy->code = PW_STATUS_SERVER;
 
 		radius_pairmake(request, &request->proxy->vps,
-				"Message-Authenticator", "0x00");
+				"Message-Authenticator", "0x00", T_OP_SET);
 
 	} else if (home->type == HOME_TYPE_AUTH) {
 		request->proxy->code = PW_AUTHENTICATION_REQUEST;
 
 		radius_pairmake(request, &request->proxy->vps,
-				"User-Name", home->ping_user_name);
+				"User-Name", home->ping_user_name, T_OP_SET);
 		radius_pairmake(request, &request->proxy->vps,
-				"User-Password", home->ping_user_password);
+				"User-Password", home->ping_user_password, T_OP_SET);
 		radius_pairmake(request, &request->proxy->vps,
-				"Service-Type", "Authenticate-Only");
+				"Service-Type", "Authenticate-Only", T_OP_SET);
 		radius_pairmake(request, &request->proxy->vps,
-				"Message-Authenticator", "0x00");
+				"Message-Authenticator", "0x00", T_OP_SET);
 
 	} else {
 		request->proxy->code = PW_ACCOUNTING_REQUEST;
 		
 		radius_pairmake(request, &request->proxy->vps,
-				"User-Name", home->ping_user_name);
+				"User-Name", home->ping_user_name, T_OP_SET);
 		radius_pairmake(request, &request->proxy->vps,
-				"Acct-Status-Type", "Stop");
+				"Acct-Status-Type", "Stop", T_OP_SET);
 		radius_pairmake(request, &request->proxy->vps,
-				"Acct-Session-Id", "00000000");
+				"Acct-Session-Id", "00000000", T_OP_SET);
 		vp = radius_pairmake(request, &request->proxy->vps,
-				     "Event-Timestamp", "0");
+				     "Event-Timestamp", "0", T_OP_SET);
 		vp->vp_date = now.tv_sec;
 	}
 
 	radius_pairmake(request, &request->proxy->vps,
-			"NAS-Identifier", "Status Check. Are you alive?");
+			"NAS-Identifier", "Status Check. Are you alive?",
+			T_OP_SET);
 
 	request->proxy->dst_ipaddr = home->ipaddr;
 	request->proxy->dst_port = home->port;
