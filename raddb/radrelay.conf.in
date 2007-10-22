@@ -172,7 +172,7 @@ log {
 #  allowed values: {no, yes}
 #
 proxy_requests  = yes
-$INCLUDE  ${confdir}/proxy.conf
+$INCLUDE  proxy.conf
 
 
 # CLIENTS CONFIGURATION
@@ -421,7 +421,7 @@ modules {
 	#  For MS-SQL, use:	 	${confdir}/mssql.conf
 	#  For Oracle, use:	 	${confdir}/oraclesql.conf
 	#
-#	$INCLUDE  ${confdir}/sql.conf
+#	$INCLUDE sql.conf
 
 
 	#  For Cisco VoIP specific accounting with Postgresql,

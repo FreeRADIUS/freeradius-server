@@ -406,7 +406,7 @@ security {
 #  allowed values: {no, yes}
 #
 proxy_requests  = yes
-$INCLUDE  ${confdir}/proxy.conf
+$INCLUDE proxy.conf
 
 
 # CLIENTS CONFIGURATION
@@ -422,7 +422,7 @@ $INCLUDE  ${confdir}/proxy.conf
 #  Anything listed in 'clients.conf' will take precedence over the
 #  information from the old-style configuration files.
 #
-$INCLUDE  ${confdir}/clients.conf
+$INCLUDE clients.conf
 
 
 # SNMP CONFIGURATION
@@ -434,7 +434,7 @@ $INCLUDE  ${confdir}/clients.conf
 #  'snmp' attribute to 'yes'
 #
 snmp	= no
-$INCLUDE  ${confdir}/snmp.conf
+$INCLUDE snmp.conf
 
 
 # THREAD POOL CONFIGURATION
@@ -606,7 +606,7 @@ modules {
 	#  For all EAP related authentications.
 	#  Now in another file, because it is very large.
 	#
-$INCLUDE ${confdir}/eap.conf
+$INCLUDE eap.conf
 
 	# Microsoft CHAP authentication
 	#
@@ -1234,7 +1234,7 @@ $INCLUDE ${confdir}/eap.conf
 	#  Include another file that has the SQL-related configuration.
 	#  This is another file only because it tends to be big.
 	#
-	$INCLUDE  ${confdir}/sql.conf
+	$INCLUDE sql.conf
 
 
 	#  For Cisco VoIP specific accounting with Postgresql,
@@ -1428,8 +1428,8 @@ $INCLUDE ${confdir}/eap.conf
 	#  totally dependent on the SQL module to process Accounting
 	#  packets.
 	#
-	$INCLUDE  ${confdir}/sql/mysql/counter.conf
-	#$INCLUDE  ${confdir}/sql/postgresql/counter.conf
+	$INCLUDE sql/mysql/counter.conf
+	#$INCLUDE sql/postgresql/counter.conf
 
 	#
 	# The "always" module is here for debugging purposes. Each
@@ -1732,10 +1732,10 @@ $INCLUDE ${confdir}/eap.conf
 		#key = "%{NAS-IP-Address} %{NAS-Port}"
 	}
 
-	# $INCLUDE  ${confdir}/sqlippool.conf
+	# $INCLUDE sqlippool.conf
 
 	# OTP token support.  Not included by default.
-	# $INCLUDE  ${confdir}/otp.conf
+	# $INCLUDE otp.conf
 
 	#
 	#  Kerberos.  See doc/rlm_krb5 for minimal docs.
@@ -1827,4 +1827,4 @@ instantiate {
 #
 #	See "sites-enabled/default" for some additional documentation.
 #
-$INCLUDE ${confdir}/sites-enabled/
+$INCLUDE sites-enabled/
