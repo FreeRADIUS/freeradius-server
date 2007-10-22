@@ -35,7 +35,8 @@ RCSID("$Id$")
  *	Return a short string showing the terminal server, port
  *	and calling station ID.
  */
-char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli) {
+char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
+{
 	VALUE_PAIR	*cli;
 	VALUE_PAIR	*pair;
 	int		port = 0;
@@ -45,9 +46,10 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli) {
 	if ((pair = pairfind(request->packet->vps, PW_NAS_PORT)) != NULL)
 		port = pair->vp_integer;
 
-	snprintf(buf, buflen, "from client %.128s port %u%s%.128s",
+	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
 			client_name_old(&request->packet->src_ipaddr), port,
-			(do_cli ? " cli " : ""), (do_cli ? (char *)cli->vp_strvalue : ""));
+		 (do_cli ? " cli " : ""), (do_cli ? (char *)cli->vp_strvalue : ""),
+		 (request->packet->src_port == 0) ? " via TLS tunnel" : "");
 
 	return buf;
 }
