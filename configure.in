@@ -1182,6 +1182,5 @@ AC_OUTPUT(\
 	./scripts/cryptpasswd \
 	./raddb/dictionary \
 	./raddb/radiusd.conf \
-	./raddb/vmpsd.conf \
-	./raddb/radrelay.conf
+	./raddb/vmpsd.conf
 )
