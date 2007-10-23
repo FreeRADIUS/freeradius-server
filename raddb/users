@@ -124,10 +124,10 @@
 
 #
 # If the user logs in as 'username.shell', then authenticate them
-# against the system database, give them shell access, and stop processing
+# using the default method, give them shell access, and stop processing
 # the rest of the file.
 #
-#DEFAULT	Suffix == ".shell", Auth-Type := System
+#DEFAULT	Suffix == ".shell"
 #		Service-Type = Login-User,
 #		Login-Service = Telnet,
 #		Login-IP-Host = your.shell.machine
