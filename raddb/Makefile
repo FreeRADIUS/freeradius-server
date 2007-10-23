@@ -14,7 +14,7 @@ FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
 	experimental.conf hints huntgroups ldap.attrmap otp.conf	\
 	policy.txt preproxy_users proxy.conf radiusd.conf		\
 	snmp.conf sql.conf sqlippool.conf users		\
-	vmpsd.conf sites-available/default sites-available/example \
+	sites-available/default sites-available/example \
 	sites-available/README
 
 #
