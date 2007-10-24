@@ -169,7 +169,7 @@ static void snmp_inc_counters(REQUEST *request)
 	case 0:
 		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 			rad_snmp.auth.total_bad_authenticators++;
-			if (request->client && request->client->auth-) {
+			if (request->client && request->client->auth) {
 				request->client->auth->bad_authenticators++;
 			}
 		}
