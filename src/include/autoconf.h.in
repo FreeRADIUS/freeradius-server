@@ -155,6 +155,9 @@
 /* Define to 1 if you have the <openssl/err.h> header file. */
 #undef HAVE_OPENSSL_ERR_H
 
+/* Define to 1 if you have the <openssl/evp.h> header file. */
+#undef HAVE_OPENSSL_EVP_H
+
 /* Define to 1 if you have the <openssl/ssl.h> header file. */
 #undef HAVE_OPENSSL_SSL_H
 
