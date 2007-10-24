@@ -125,14 +125,14 @@
 #		Fall-Through = Yes
 
 #
-# If the user logs in as 'username.shell', then authenticate them
-# against the system database, give them shell access, and stop processing
-# the rest of the file.
+# If the user logs in as 'username.shell', then give them shell access,
+# and stop processing the rest of the file.  We rely on some other method
+# to authenticate the user.
 #
 # Note that authenticating against an /etc/passwd file works ONLY for PAP,
 # and not for CHAP, MS-CHAP, or EAP.
 #
-#DEFAULT	Suffix == ".shell", Auth-Type := System
+#DEFAULT	Suffix == ".shell"
 #		Service-Type = Login-User,
 #		Login-Service = Telnet,
 #		Login-IP-Host = your.shell.machine
@@ -145,13 +145,6 @@
 # A name-value pair from a DEFAULT entry will _NEVER_ override
 # an already existing name-value pair.
 #
-
-#
-# First setup all accounts to be checked against the UNIX /etc/passwd.
-# (Unless a password was already given earlier in this file).
-#
-DEFAULT	Auth-Type = System
-	Fall-Through = 1
 
 #
 # Set up different IP address pools for the terminal servers.
