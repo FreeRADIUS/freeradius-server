@@ -33,7 +33,9 @@ RCSID("$Id$")
 #include <freeradius-devel/vmps.h>
 #include <freeradius-devel/detail.h>
 
+#ifdef HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
+#endif
 
 #ifdef HAVE_NET_IF_H
 #include <net/if.h>
