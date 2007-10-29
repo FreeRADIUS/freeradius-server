@@ -57,7 +57,9 @@ static int			has_detail_listener = FALSE;
 static int			read_from_detail = TRUE;
 static int			just_started = FALSE;
 
+#ifndef __MINGW32__
 static int self_pipe[2];
+#endif
 
 #ifdef HAVE_PTHREAD_H
 static pthread_mutex_t	proxy_mutex;
@@ -2035,6 +2037,38 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 }
 
 
+static void handle_signal_self(int flag)
+{
+	if ((flag & RADIUS_SIGNAL_SELF_DETAIL) != 0) {
+		read_from_detail = TRUE;
+	}
+
+	if ((flag & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
+		if ((flag & RADIUS_SIGNAL_SELF_EXIT) != 0) {
+			lrad_event_loop_exit(el, 1);
+		} else {
+			lrad_event_loop_exit(el, 2);
+		}
+
+		return;
+	} /* else exit/term flags weren't set */
+
+	/*
+	 *	Tell the even loop to stop processing.
+	 */
+	if ((flag & RADIUS_SIGNAL_SELF_HUP) != 0) {
+		DEBUG("Received HUP signal.");
+
+		lrad_event_loop_exit(el, 0x80);
+	}
+}
+
+#ifdef __MINGW32__
+void radius_signal_self(int flag)
+{
+	handle_signal_self(flag);
+}
+#else
 /*
  *	Inform ourselves that we received a signal.
  */
@@ -2094,35 +2128,10 @@ static void event_signal_handler(lrad_event_list_t *xel, int fd, void *ctx)
 	for (i = 1; i < rcode; i++) {
 		buffer[0] |= buffer[i];
 	}
-	
-	/*
-	 *	The thread pool has nothing more to do.  Start reading
-	 *	from the detail file.
-	 */
-	if ((buffer[0] & (RADIUS_SIGNAL_SELF_DETAIL)) != 0) {
-		read_from_detail = TRUE;
-	}
 
-	if ((buffer[0] & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
-		if ((buffer[0] & RADIUS_SIGNAL_SELF_EXIT) != 0) {
-			lrad_event_loop_exit(el, 1);
-		} else {
-			lrad_event_loop_exit(el, 2);
-		}
-			
-		return;
-	} /* else exit/term flags weren't set */
-
-	/*
-	 *	Tell the even loop to stop processing.
-	 */
-	if ((buffer[0] & RADIUS_SIGNAL_SELF_HUP) != 0) {
-		DEBUG("Received HUP signal.");
-
-		lrad_event_loop_exit(el, 0x80);
-	}
+	handle_signal_self(buffer[0]);
 }
-
+#endif
 
 /*
  *	The given FD is closed.  Delete it from the list of FD's to poll,
@@ -2436,8 +2445,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		radlog(L_ERR, "Failed creating handler for signals");
 		exit(1);
 	}
-#else
-	self_pipe[0] = self_pipe[1] = -1;
 #endif
 
 	/*
