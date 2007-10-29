@@ -375,4 +375,15 @@ int gettimeofday (struct timeval *tv, void *tz);
 #define mkdir(_d, _p) mkdir(_d)
 #endif
 
+#ifdef HAVE_SYS_LOCKING_H
+#include <sys/locking.h>
+
+#define lockf _locking
+
+#define F_ULOCK _LK_UNLCK /* Unlock locked sections. */
+#define F_LOCK  _LK_LOCK  /* Lock a section for exclusive use. */
+#define F_TLOCK _LK_NBLCK /* Test and lock a section for exclusive use */
+#define F_TEST  _LK_RLCK  /* Test section for locks by other processes. */
+#endif
+
 #endif /* _FR_MISSING_H */
