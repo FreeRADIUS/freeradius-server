@@ -43,6 +43,7 @@ RCSID("$Id$")
 #endif
 
 #define MAX_ARGV (256)
+
 /*
  *	Execute a program on successful authentication.
  *	Return 0 if exec_wait == 0.
@@ -58,9 +59,6 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 {
 	VALUE_PAIR *vp;
 	char mycmd[1024];
-	char answer[4096];
-	char argv_buf[4096];
-	char *argv[MAX_ARGV];
 	const char *from;
 	char *p, *to;
 	int pd[2];
@@ -70,6 +68,9 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	int status;
 	int i;
 	int n, left, done;
+	char *argv[MAX_ARGV];
+	char answer[4096];
+	char argv_buf[4096];
 
 	if (user_msg) *user_msg = '\0';
 	if (output_pairs) *output_pairs = NULL;
@@ -202,6 +203,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	}
 	argv[argc] = NULL;
 
+#ifndef __MINGW32__
 	/*
 	 *	Open a pipe for child/parent communication, if necessary.
 	 */
@@ -498,4 +500,97 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	radlog(L_ERR|L_CONS, "Exec-Program: Abnormal child exit: %s",
 	       strerror(errno));
 	return 1;
+#else
+	msg_len = msg_len;	/* -Wunused */
+
+	if (exec_wait) {
+		radlog(L_ERR, "Exec-Program-Wait is not supported");
+		return -1;
+	}
+	
+	/*
+	 *	We're not waiting, so we don't look for a
+	 *	message, or VP's.
+	 */
+	user_msg = NULL;
+	output_pairs = NULL;
+
+	/*
+	 *	FIXME: Move to a common routine.
+	 */
+	{
+#define MAX_ENVP 1024
+		char *envp[MAX_ENVP];
+		int envlen;
+		char buffer[1024];
+
+		/*
+		 *	Set up the environment variables.
+		 */
+		envlen = 0;
+
+		for (vp = input_pairs; vp != NULL; vp = vp->next) {
+			/*
+			 *	Hmm... maybe we shouldn't pass the
+			 *	user's password in an environment
+			 *	variable...
+			 */
+			snprintf(buffer, sizeof(buffer), "%s=", vp->name);
+			if (shell_escape) {
+				for (p = buffer; *p != '='; p++) {
+					if (*p == '-') {
+						*p = '_';
+					} else if (isalpha((int) *p)) {
+						*p = toupper(*p);
+					}
+				}
+			}
+
+			n = strlen(buffer);
+			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, shell_escape);
+
+			envp[envlen++] = strdup(buffer);
+
+			/*
+			 *	Don't add too many attributes.
+			 */
+			if (envlen == (MAX_ENVP - 1)) break;
+		}
+		envp[envlen] = NULL;
+
+		/*
+		 *	The _spawn and _exec families of functions are
+		 *	found in Windows compiler libraries for
+		 *	portability from UNIX. There is a variety of
+		 *	functions, including the ability to pass
+		 *	either a list or array of parameters, to
+		 *	search in the PATH or otherwise, and whether
+		 *	or not to pass an environment (a set of
+		 *	environment variables). Using _spawn, you can
+		 *	also specify whether you want the new process
+		 *	to close your program (_P_OVERLAY), to wait
+		 *	until the new process is finished (_P_WAIT) or
+		 *	for the two to run concurrently (_P_NOWAIT).
+		 
+		 *	_spawn and _exec are useful for instances in
+		 *	which you have simple requirements for running
+		 *	the program, don't want the overhead of the
+		 *	Windows header file, or are interested
+		 *	primarily in portability.
+		 */
+
+		/*
+		 *	FIXME: check return code... what is it?
+		 */
+		_spawnv(_P_NOWAIT, argv[0], argv);
+
+		for (i = 0; i < MAX_ENVP; i++) {
+			if (!envp[i]) break;
+			free(envp[i]);
+		}
+
+	}
+
+	return 0;
+#endif
 }

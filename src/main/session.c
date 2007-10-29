@@ -109,6 +109,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 	return ret;
 }
 
+#ifndef __MINGW32__
 
 /*
  *	Check one terminal server to see if a user is logged in.
@@ -214,3 +215,11 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	exit(2);
 	return 2;
 }
+#else
+int rad_check_ts(UNUSED uint32_t nasaddr, UNUSED unsigned int portnum,
+		 UNUSED const char *user, UNUSED const char *session_id)
+{
+	radlog(L_ERR, "Simultaneous-Use is not supported");
+	return 2;
+}
+#endif
