@@ -87,7 +87,9 @@ static int debug_memory = 0;
 static void usage(int);
 
 static void sig_fatal (int);
+#ifdef SIGHUP
 static void sig_hup (int);
+#endif
 
 /*
  *	The main guy.
@@ -288,6 +290,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+#ifndef __MINGW32__
 	/*
 	 *  Disconnect from session
 	 */
@@ -309,6 +312,7 @@ int main(int argc, char *argv[])
 		setsid();
 #endif
 	}
+#endif
 
 	/*
 	 *	If we're NOT debugging, trap fatal signals, so we can
@@ -401,14 +405,18 @@ int main(int argc, char *argv[])
 	 *	handlers.  Before this, if we get any signal, we don't know
 	 *	what to do, so we might as well do the default, and die.
 	 */
+#ifdef SIGPIPE
 	signal(SIGPIPE, SIG_IGN);
+#endif
 #ifdef HAVE_SIGACTION
 	act.sa_handler = sig_hup;
 	sigaction(SIGHUP, &act, NULL);
 	act.sa_handler = sig_fatal;
 	sigaction(SIGTERM, &act, NULL);
 #else
+#ifdef SIGHUP
 	signal(SIGHUP, sig_hup);
+#endif
 	signal(SIGTERM, sig_fatal);
 #endif
 	/*
@@ -423,7 +431,9 @@ int main(int argc, char *argv[])
 		sigaction(SIGQUIT, &act, NULL);
 #else
 		signal(SIGINT, sig_fatal);
+#ifdef SIGQUIT
 		signal(SIGQUIT, sig_fatal);
+#endif
 #endif
 	}
 
@@ -454,7 +464,9 @@ int main(int argc, char *argv[])
 	 *	(including us, which gets
 	 *	ignored.)
 	 */
+#ifndef __MINGW32__
 	kill(-radius_pid, SIGTERM);
+#endif
 	
 	/*
 	 *	We're exiting, so we can delete the PID
@@ -530,7 +542,9 @@ static void sig_fatal(int sig)
 			break;
 
 		case SIGINT:
+#ifdef SIGQUIT
 		case SIGQUIT:
+#endif
 			if (debug_memory) {
 				radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 				break;
@@ -543,7 +557,7 @@ static void sig_fatal(int sig)
 	}
 }
 
-
+#ifdef SIGHUP
 /*
  *  We got the hangup signal.
  *  Re-read the configuration files.
@@ -556,3 +570,4 @@ static void sig_hup(int sig)
 
 	radius_signal_self(RADIUS_SIGNAL_SELF_HUP);
 }
+#endif
