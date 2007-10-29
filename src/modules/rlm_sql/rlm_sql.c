@@ -32,8 +32,6 @@ RCSID("$Id$")
 
 #include <sys/stat.h>
 
-#include <sys/wait.h>
-
 #include "rlm_sql.h"
 
 static char *allowed_chars = NULL;

@@ -32,10 +32,7 @@ RCSID("$Id$")
 #include	<sys/file.h>
 #include	<sys/stat.h>
 
-#include	<pwd.h>
 #include	<ctype.h>
-#include	<signal.h>
-#include	<sys/wait.h>
 
 #include	"rlm_sql.h"
 
