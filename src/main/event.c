@@ -70,7 +70,6 @@ static pthread_mutex_t	proxy_mutex;
  */
 #define PTHREAD_MUTEX_LOCK(_x)
 #define PTHREAD_MUTEX_UNLOCK(_x)
-#define thread_addrequest radius_handle_request
 #endif
 
 #define INSERT_EVENT(_function, _ctx) if (!lrad_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
@@ -2178,7 +2177,7 @@ static void event_detail_handler(lrad_event_list_t *xel, int fd, void *ctx)
 	 *	FIXME: Put this somewhere else, where it isn't called
 	 *	all of the time...
 	 */
-#ifndef HAVE_PTHREAD_H
+#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
 	/*
 	 *	If there are no child threads, then there may
 	 *	be child processes.  In that case, wait for
@@ -2234,7 +2233,7 @@ static void event_socket_handler(lrad_event_list_t *xel, int fd, void *ctx)
 	 *	FIXME: Put this somewhere else, where it isn't called
 	 *	all of the time...
 	 */
-#ifndef HAVE_PTHREAD_H
+#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
 	/*
 	 *	If there are no child threads, then there may
 	 *	be child processes.  In that case, wait for
@@ -2411,6 +2410,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	}
 #endif
 
+#ifndef __MINGW32__
 	/*
 	 *	Child threads need a pipe to signal us, as do the
 	 *	signal handlers.
@@ -2436,7 +2436,9 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		radlog(L_ERR, "Failed creating handler for signals");
 		exit(1);
 	}
-
+#else
+	self_pipe[0] = self_pipe[1] = -1;
+#endif
 
 	/*
 	 *	Mark the proxy Fd's as unused.

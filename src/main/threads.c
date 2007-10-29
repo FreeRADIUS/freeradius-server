@@ -1143,4 +1143,10 @@ void thread_pool_unlock(void)
 {
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 }
+#else
+int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
+{
+	radius_handle_request(request, fun);
+	return 1;
+}
 #endif /* HAVE_PTHREAD_H */
