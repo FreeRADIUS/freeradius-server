@@ -582,7 +582,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		/*
 		 *	FIXME: check return code... what is it?
 		 */
-		_spawnv(_P_NOWAIT, argv[0], argv);
+		_spawnve(_P_NOWAIT, argv[0], argv, envp);
 
 		for (i = 0; i < MAX_ENVP; i++) {
 			if (!envp[i]) break;
