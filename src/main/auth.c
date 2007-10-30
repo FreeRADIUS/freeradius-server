@@ -543,9 +543,9 @@ autz_redo:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
 			break;
-		case RLM_MODULE_FAIL:
 		case RLM_MODULE_HANDLED:
 			return result;
+		case RLM_MODULE_FAIL:
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
