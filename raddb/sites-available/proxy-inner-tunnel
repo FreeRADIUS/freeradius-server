@@ -1,0 +1,37 @@
+# -*- text -*-
+######################################################################
+#
+#	This is a virtual server that handles *only* inner tunnel
+#	requests for EAP-TTLS and PEAP types.
+#
+#	$Id$
+#
+######################################################################
+
+server proxy-inner-tunnel {
+
+#
+#  This example is very simple.  All inner tunnel requests get
+#  proxied to another RADIUS server.
+#
+authorize {
+	#
+	#  Do other things here, as necessary.
+	#
+	#  e.g. run the "realms" module, to decide how to proxy
+	#  the inner tunnel request.
+	#
+
+	update control {
+		#  You should update this to be one of your realms.
+		Proxy-To-Realm := "example.com".
+	}
+}
+
+#
+#  Note that we do NOT have pre/post-proxy sections here.  For various
+#  reasons, the pre/post-proxy stages are run in the context of the
+#  OUTER tunnel session, and not the INNER tunnel session.
+#
+
+}
