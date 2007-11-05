@@ -418,12 +418,10 @@ int lrad_event_loop(lrad_event_list_t *el)
 		}
 
 		if (rbtree_num_elements(el->times) > 0) {
-			gettimeofday(&el->now, NULL);
-			when = el->now;
-
-			while (lrad_event_run(el, &when) == 1) {
-				/* nothing */
-			}
+			do {
+				gettimeofday(&el->now, NULL);
+				when = el->now;
+			} while (lrad_event_run(el, &when) == 1);
 		}
 		
 		if (rcode <= 0) continue;
