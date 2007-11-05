@@ -587,7 +587,7 @@ static void ping_home_server(void *ctx)
 	request->proxy = rad_alloc(1);
 	rad_assert(request->proxy != NULL);
 
-	gettimeofday(&request->when, NULL);
+	lrad_event_now(el, &request->when);
 	home->when = request->when;
 
 	if (home->ping_check == HOME_PING_CHECK_STATUS_SERVER) {
@@ -750,6 +750,12 @@ static int null_handler(UNUSED REQUEST *request)
 static void post_proxy_fail_handler(REQUEST *request)
 {
 	/*
+	 *	A proper time is required for wait_a_bit.
+	 */
+	request->delay = USEC / 10;
+	gettimeofday(&now, NULL);
+
+	/*
 	 *	Not set up to run Post-Proxy-Type = Fail.
 	 *
 	 *	Mark the request as still running, and figure out what
@@ -765,7 +771,6 @@ static void post_proxy_fail_handler(REQUEST *request)
 		 *	Re-queue the request.
 		 */
 		request->child_state = REQUEST_QUEUED;
-
 		wait_a_bit(request);
 
 		/*
@@ -847,8 +852,24 @@ static void wait_a_bit(void *ctx)
 		when = request->received;
 		when.tv_sec += request->root->max_request_time;
 
+		/*
+		 *	Normally called from the event loop with the
+		 *	proper event loop time.  Otherwise, called from
+		 *	post proxy fail handler, which sets "now", and
+		 *	this call won't re-set it, because we're not
+		 *	in the event loop.
+		 */
+		lrad_event_now(el, &now);
+
 		if (timercmp(&now, &when, <)) {
+			if (request->delay < (USEC / 10)) {
+				request->delay = USEC / 10;
+			}
+			request->delay += request->delay >> 1;
+			request->when = now;
+			tv_add(&request->when, request->delay);
 			callback = wait_a_bit;
+
 		} else {
 			/* FIXME: kill unresponsive children? */
 			radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d, in module %s component %s",
@@ -858,11 +879,10 @@ static void wait_a_bit(void *ctx)
 
 			request->master_state = REQUEST_STOP_PROCESSING;
 
-			request->delay = USEC / 2;
+			request->delay = USEC / 4;
 			tv_add(&request->when, request->delay);
 			callback = wait_for_child_to_die;
 		}
-		request->delay += request->delay >> 1;
 		break;
 
 	case REQUEST_REJECT_DELAY:
