@@ -330,6 +330,7 @@ typedef struct lrad_fd_walk_t {
 	fd_set		  *fds;
 } lrad_fd_walk_t;
 
+
 static int lrad_event_fd_dispatch(void *ctx, void *data)
 {
 	lrad_fd_walk_t *ew = ctx;
@@ -351,7 +352,7 @@ int lrad_event_loop(lrad_event_list_t *el)
 {
 	int rcode;
 	fd_set read_fds;
-	struct timeval now, when, *wake;
+	struct timeval when, *wake;
 	lrad_fd_walk_t ew;
 
 	/*
@@ -366,6 +367,7 @@ int lrad_event_loop(lrad_event_list_t *el)
 	}
 
 	el->exit = 0;
+	el->dispatch = 1;
 
 	while (!el->exit) {
 
@@ -382,12 +384,12 @@ int lrad_event_loop(lrad_event_list_t *el)
 			ev = rbtree_min(el->times);
 			if (!ev) _exit(42);
 
-			gettimeofday(&now, NULL);
+			gettimeofday(&el->now, NULL);
 
-			if (timercmp(&now, &ev->when, <)) {
+			if (timercmp(&el->now, &ev->when, <)) {
 				when = ev->when;
-				when.tv_sec -= now.tv_sec;
-				when.tv_usec -= now.tv_usec;
+				when.tv_sec -= el->now.tv_sec;
+				when.tv_usec -= el->now.tv_usec;
 				if (when.tv_usec < 0) {
 					when.tv_sec--;
 					when.tv_usec += 1000000;
@@ -411,12 +413,13 @@ int lrad_event_loop(lrad_event_list_t *el)
 
 		rcode = select(el->maxfd + 1, &read_fds, NULL, NULL, wake);
 		if ((rcode < 0) && (errno != EINTR)) {
+			el->dispatch = 0;
 			return 0;
 		}
 
 		if (rbtree_num_elements(el->times) > 0) {
-			gettimeofday(&now, NULL);
-			when = now;
+			gettimeofday(&el->now, NULL);
+			when = el->now;
 
 			while (lrad_event_run(el, &when) == 1) {
 				/* nothing */
@@ -432,6 +435,7 @@ int lrad_event_loop(lrad_event_list_t *el)
 		rbtree_walk(el->readers, InOrder, lrad_event_fd_dispatch, &ew);
 	}
 
+	el->dispatch = 0;
 	return el->exit;
 }
 
