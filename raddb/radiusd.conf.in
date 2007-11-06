@@ -389,8 +389,11 @@ security {
 	#  rejects will be sent at 'cleanup_delay' time, when the request
 	#  is deleted from the internal cache of requests.
 	#
-	#  Useful ranges: 1 to 5
-	reject_delay = 1
+	#  Due to an unresolved issue in 1.1.x, this SHOULD be set to
+	#  zero.  This issue is fixed in 2.0.
+	#
+	#  Useful ranges: 0
+	reject_delay = 0
 
 	#
 	#  status_server: Whether or not the server will respond
