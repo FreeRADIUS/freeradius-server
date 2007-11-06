@@ -1250,8 +1250,8 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	DEBUG("rlm_ldap: - authorize");
 
 	if (!request->username){
-		radlog(L_AUTH, "rlm_ldap: Attribute \"User-Name\" is required for authentication.\n");
-		return RLM_MODULE_INVALID;
+		DEBUG2("rlm_ldap: Attribute \"User-Name\" is required for authorization.\n");
+		return RLM_MODULE_NOOP;
 	}
 
 	check_pairs = &request->config_items;
