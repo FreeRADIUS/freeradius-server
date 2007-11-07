@@ -26,15 +26,6 @@ RCSIDH(md4_h, "$Id$")
 
 #include <string.h>
 
-/*
- *  FreeRADIUS defines to ensure globally unique MD4 function names,
- *  so that we don't pick up other MD4 libraries.
- */
-#define MD4_CTX		librad_MD4_CTX
-#define MD4Init		librad_MD4Init
-#define MD4Update	librad_MD4Update
-#define MD4Final       	librad_MD4Final
-
 void md4_calc (unsigned char *, const unsigned char *, unsigned int);
 
 /*  The below was retrieved from
