@@ -35,7 +35,7 @@ fi
 #  Note that you might have to add a '-d raddb' to the command line
 #  options, if your database is somewhere other than /etc/raddb
 #
-$sbindir/radiusd -X -p 32768 > startup.log 2>&1 &
+$sbindir/radiusd -X -i 127.0.0.1 -p 32768 > startup.log 2>&1 &
 
 #
 #  Remember what it's process ID was.
