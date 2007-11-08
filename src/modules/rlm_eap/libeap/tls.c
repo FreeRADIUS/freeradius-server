@@ -239,7 +239,11 @@ int tls_handshake_send(tls_session_t *ssn)
 	 *	contain the data to send to the client.
 	 */
 	if (ssn->clean_in.used > 0) {
-		SSL_write(ssn->ssl, ssn->clean_in.data, ssn->clean_in.used);
+		int written;
+
+		written = SSL_write(ssn->ssl, ssn->clean_in.data, ssn->clean_in.used);
+		record_minus(&ssn->clean_in, NULL, written);
+
 
 		/* Get the dirty data from Bio to send it */
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
@@ -251,7 +255,6 @@ int tls_handshake_send(tls_session_t *ssn)
 		}
 	}
 
-	record_init(&ssn->clean_in);
 	return 1;
 }
 
