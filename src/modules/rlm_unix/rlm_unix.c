@@ -532,7 +532,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	We use the tty field to store the terminal servers' port
 	 *	and address so that the tty field is unique.
 	 */
-	sprintf(buf, "%03d:%s", nas_port, s);
+	snprintf(buf, sizeof(buf), "%03d:%s", nas_port, s);
 	strlcpy(ut.ut_line, buf, sizeof(ut.ut_line));
 
 	/*
