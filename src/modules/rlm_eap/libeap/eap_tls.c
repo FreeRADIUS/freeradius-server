@@ -763,7 +763,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	 *
 	 *	The TLS data will be in the tls_session structure.
 	 */
-	if (SSL_is_init_finished(tls_session->ssl)) {
+	if (SSL_is_init_finished(tls_session->ssl) && (status == EAPTLS_OK)) {
 		eaptls_free(&tlspacket);
 		return EAPTLS_OK;
 	}
