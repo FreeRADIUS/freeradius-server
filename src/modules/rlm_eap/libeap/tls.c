@@ -550,8 +550,11 @@ void tls_session_information(tls_session_t *tls_session)
 		}
 	}
 
-	sprintf(tls_session->info.info_description, "%s %s%s [length %04lx]%s%s\n",
-		str_write_p, str_version, str_content_type,
-		(unsigned long)tls_session->info.record_len, str_details1, str_details2);
+	snprintf(tls_session->info.info_description, 
+		 sizeof(tls_session->info.info_description),
+		 "%s %s%s [length %04lx]%s%s\n",
+		 str_write_p, str_version, str_content_type,
+		 (unsigned long)tls_session->info.record_len,
+		 str_details1, str_details2);
 	DEBUG2("  rlm_eap_tls: %s\n", tls_session->info.info_description);
 }

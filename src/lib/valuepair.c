@@ -121,18 +121,20 @@ VALUE_PAIR *paircreate(int attr, int type)
 	 */
 	if (!da) {
 		if (VENDOR(attr) == 0) {
-			sprintf(vp->name, "Attr-%u", attr);
+			snprintf(vp->name, sizeof(vp->name), "Attr-%u", attr);
 
 		} else {
 			DICT_VENDOR *v;
 
 			v = dict_vendorbyvalue(VENDOR(attr));
 			if (v) {
-				sprintf(vp->name, "%s-Attr-%u",
-					v->name, attr & 0xffff);
+				snprintf(vp->name, sizeof(vp->name),
+					 "%s-Attr-%u",
+					 v->name, attr & 0xffff);
 			} else {
-				sprintf(vp->name, "Vendor-%u-Attr-%u",
-					VENDOR(attr), attr & 0xffff);
+				snprintf(vp->name, sizeof(vp->name),
+					 "Vendor-%u-Attr-%u",
+					 VENDOR(attr), attr & 0xffff);
 			}
 		}
 		vp->type = type;

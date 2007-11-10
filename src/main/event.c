@@ -1263,7 +1263,8 @@ static int successfully_proxied_request(REQUEST *request)
 	 */
 	vp = radius_paircreate(request, &request->proxy->vps,
 			       PW_PROXY_STATE, PW_TYPE_OCTETS);
-	sprintf(vp->vp_strvalue, "%d", request->packet->id);
+	snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%d",
+		 request->packet->id);
 	vp->length = strlen(vp->vp_strvalue);
 
 	/*

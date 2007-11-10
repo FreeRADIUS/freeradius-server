@@ -706,7 +706,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 
-		sprintf(buff2,"%%{mschap:NT-Hash %s}",
+		snprintf(buff2, sizeof(buff2), "%%{mschap:NT-Hash %s}",
 			request->password->vp_strvalue);
 		if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
 			DEBUG("rlm_pap: mschap xlat failed");
@@ -731,7 +731,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured LM-Password has incorrect length");
 			goto make_msg;
 		}
-		sprintf(buff2,"%%{mschap:LM-Hash %s}",
+		snprintf(buff2, sizeof(buff2), "%%{mschap:LM-Hash %s}",
 			request->password->vp_strvalue);
 		if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
 			DEBUG("rlm_pap: mschap xlat failed");
