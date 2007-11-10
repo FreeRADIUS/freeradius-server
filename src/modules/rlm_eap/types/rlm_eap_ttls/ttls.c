@@ -209,12 +209,6 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		length = ntohl(length);
 
 		/*
-		 *	FIXME: Handle the M bit!
-		 *
-		 *	Ignore the M bit.  We support all RADIUS attributes...
-		 */
-
-		/*
 		 *	A "vendor" flag, with a vendor ID of zero,
 		 *	is equivalent to no vendor.  This is stupid.
 		 */
@@ -225,12 +219,40 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 			memcpy(&vendor, data, sizeof(vendor));
 			vendor = ntohl(vendor);
 
+			if (attr > 65535) {
+				DEBUG2("  rlm_eap_ttls: Cannot handle vendor attributes greater than 65535");
+				pairfree(&first);
+				return NULL;
+			}
+
+			if (vendor > 32767) {
+				DEBUG2("  rlm_eap_ttls: Cannot handle vendor Id greater than 32767");
+				pairfree(&first);
+				return NULL;
+			}
+
 			attr |= (vendor << 16);
 
 			data += 4; /* skip the vendor field, it's zero */
 			offset += 4; /* offset to value field */
 		}
 
+		/*
+		 *	Vendor attributes can be larger than 255.
+		 *	Normal attributes cannot be.
+		 */
+		if ((attr > 255) && (VENDOR(attr) == 0)) {
+			DEBUG2("  rlm_eap_ttls: Cannot handle Diameter attributes");
+			pairfree(&first);
+			return NULL;
+		}
+
+		/*
+		 *	FIXME: Handle the M bit.  For now, we assume that
+		 *	some other module takes care of any attribute
+		 *	with the M bit set.
+		 */
+		
 		/*
 		 *	Get the length.
 		 */
