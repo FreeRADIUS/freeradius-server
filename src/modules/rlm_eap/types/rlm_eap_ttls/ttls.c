@@ -116,15 +116,18 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
 
 		/*
 		 *	Too short or too long is bad.
-		 *
-		 *	FIXME: EAP-Message
 		 */
 		if (length < offset) {
 			DEBUG2("  rlm_eap_ttls: Tunneled attribute %d is too short (%d)to contain anything useful.", attr, length);
 			return 0;
 		}
 
-		if (length > (MAX_STRING_LEN + 8)) {
+		/*
+		 *	EAP Messages cane be longer than MAX_STRING_LEN.
+		 *	Other attributes cannot be.
+		 */
+		if ((attr != PW_EAP_MESSAGE) &&
+		    (length > (MAX_STRING_LEN + 8))) {
 			DEBUG2("  rlm_eap_ttls: Tunneled attribute %d is too long (%d) to pack into a RADIUS attribute.", attr, length);
 			return 0;
 		}
@@ -206,6 +209,8 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		length = ntohl(length);
 
 		/*
+		 *	FIXME: Handle the M bit!
+		 *
 		 *	Ignore the M bit.  We support all RADIUS attributes...
 		 */
 
@@ -230,12 +235,6 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		 *	Get the length.
 		 */
 		length &= 0x00ffffff;
-
-		/*
-		 *	diameter code + length, and it must fit in
-		 *	a VALUE_PAIR.
-		 */
-		rad_assert(length <= (offset + MAX_STRING_LEN));
 
 		/*
 		 *	Get the size of the value portion of the
@@ -297,6 +296,39 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		   *	FIXME: Ipv6 attributes ?
 		   *
 		   */
+		case PW_TYPE_OCTETS:
+			if (attr == PW_EAP_MESSAGE) {
+				const uint8_t *eap_message = data;
+
+				/*
+				 *	vp exists the first time around.
+				 */
+				while (1) {
+					vp->length = size;
+					if (vp->length > 253) vp->length = 253;
+					memcpy(vp->vp_octets, eap_message,
+					       vp->length);
+
+					size -= vp->length;
+					eap_message += vp->length;
+
+					*last = vp;
+					last = &(vp->next);
+
+					if (size == 0) break;
+
+					vp = paircreate(attr, PW_TYPE_OCTETS);
+					if (!vp) {
+						DEBUG2("  rlm_eap_ttls: Failure in creating VP");
+						pairfree(&first);
+						return NULL;
+					}
+				}
+
+				goto next_attr;
+			} /* else it's another kind of attribute */
+			/* FALL-THROUGH */
+
 		default:
 			vp->length = size;
 			memcpy(vp->vp_strvalue, data, vp->length);
@@ -313,8 +345,6 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		 */
 		switch (vp->attribute) {
 		case PW_USER_PASSWORD:
-			rad_assert(vp->length <= 128); /* RFC requirements */
-
 			/*
 			 *	If the password is exactly 16 octets,
 			 *	it won't be zero-terminated.
@@ -380,6 +410,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		*last = vp;
 		last = &(vp->next);
 
+	next_attr:
 		/*
 		 *	Catch non-aligned attributes.
 		 */
