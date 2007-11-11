@@ -754,7 +754,7 @@ $INCLUDE eap.conf
 
 		# Mapping of RADIUS dictionary attributes to LDAP
 		# directory attributes.
-		dictionary_mapping = ${raddbdir}/ldap.attrmap
+		dictionary_mapping = ${confdir}/ldap.attrmap
 
 		#  Set password_attribute = nspmPassword to get the
 		#  user's password from a Novell eDirectory
@@ -1407,7 +1407,7 @@ $INCLUDE eap.conf
 	#  'check-name' attribute.
 	#
 	counter daily {
-		filename = ${raddbdir}/db.daily
+		filename = ${confdir}/db.daily
 		key = User-Name
 		count-attribute = Acct-Session-Time
 		reset = daily
@@ -1702,11 +1702,11 @@ $INCLUDE eap.conf
 
 		# session-db:
 		#	The main db file used to allocate addresses.
-		session-db = ${raddbdir}/db.ippool
+		session-db = ${confdir}/db.ippool
 
 		# ip-index:
 		#	Helper db index file used in multilink
-		ip-index = ${raddbdir}/db.ipindex
+		ip-index = ${confdir}/db.ipindex
 
 		# override:
 		#	If set, the Framed-IP-Address already in the
