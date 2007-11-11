@@ -310,7 +310,7 @@ static int expr_detach(void *instance)
 module_t rlm_expr = {
 	RLM_MODULE_INIT,
 	"expr",				/* Name */
-	RLM_TYPE_THREAD_SAFE,		/* type */
+	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
 	expr_instantiate,		/* instantiation */
 	expr_detach,			/* detach */
 	{

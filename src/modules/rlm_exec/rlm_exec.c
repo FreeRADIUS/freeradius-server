@@ -414,7 +414,7 @@ static int exec_postauth(void *instance, REQUEST *request)
 module_t rlm_exec = {
 	RLM_MODULE_INIT,
 	"exec",				/* Name */
-	RLM_TYPE_THREAD_SAFE,		/* type */
+	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
 	exec_instantiate,		/* instantiation */
 	exec_detach,			/* detach */
 	{

@@ -79,7 +79,6 @@ static int eap_handler_cmp(const void *a, const void *b)
 	const EAP_HANDLER *one = a;
 	const EAP_HANDLER *two = b;
 
-
 	if (one->eap_id < two->eap_id) return -1;
 	if (one->eap_id > two->eap_id) return +1;
 
@@ -204,8 +203,8 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	 *	of 'inst', above.
 	 */
 
-	/* Generate a state key, specific to eap */
-	generate_key();
+	inst->rand_start = lrad_rand();
+	inst->rand_increment = lrad_rand();
 
 	/*
 	 *	Lookup sessions in the tree.  We don't free them in
@@ -653,7 +652,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 module_t rlm_eap = {
 	RLM_MODULE_INIT,
 	"eap",
-	RLM_TYPE_THREAD_SAFE,		/* type */
+	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
 	eap_instantiate,		/* instantiation */
 	eap_detach,			/* detach */
 	{
