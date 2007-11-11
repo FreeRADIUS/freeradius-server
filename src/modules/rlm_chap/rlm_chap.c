@@ -143,7 +143,7 @@ static int chap_authenticate(void *instance, REQUEST *request)
 module_t rlm_chap = {
 	 RLM_MODULE_INIT,
 	"CHAP",
-	0,				/* type */
+	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
 	NULL,				/* instantiation */
 	NULL,				/* detach */
 	{

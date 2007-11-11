@@ -42,7 +42,7 @@ RCSID("$Id$")
 
 extern pid_t radius_pid;
 extern int dont_fork;
-
+extern int check_config;
 
 /*
  *	Ridiculous amounts of local state.
@@ -2439,6 +2439,11 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		exit(1);
 	}
 #endif
+
+	if (check_config) {
+		DEBUG2("radiusd: #### Skipping IP addresses and Ports ####");
+		return 1;
+	}
 
 #ifndef __MINGW32__
 	/*

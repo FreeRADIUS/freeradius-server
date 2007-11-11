@@ -69,6 +69,7 @@ const char *radlib_dir = NULL;
 int log_stripped_names;
 int debug_flag = 0;
 int log_auth_detail = FALSE;
+int check_config = FALSE;
 
 const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
@@ -142,7 +143,7 @@ int main(int argc, char *argv[])
 	mainconfig.log_file = NULL;
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Aa:bcd:fg:hi:l:mn:p:sSvxXyz")) != EOF) {
+	while ((argval = getopt(argc, argv, "Aa:bcCd:fg:hi:l:mn:p:sSvxXyz")) != EOF) {
 
 		switch(argval) {
 
@@ -157,6 +158,12 @@ int main(int argc, char *argv[])
 
 			case 'c':
 				/* ignore for backwards compatibility with Cistron */
+				break;
+
+			case 'C':
+				check_config = TRUE;
+				spawn_flag = FALSE;
+				dont_fork = TRUE;
 				break;
 
 			case 'd':
@@ -235,10 +242,6 @@ int main(int argc, char *argv[])
 				version();
 				break;
 
-				/*
-				 *  BIG debugging mode for users who are
-				 *  TOO LAZY to type '-sfxxyz -l stdout' themselves.
-				 */
 			case 'X':
 				spawn_flag = FALSE;
 				dont_fork = TRUE;
@@ -315,24 +318,6 @@ int main(int argc, char *argv[])
 #endif
 
 	/*
-	 *	If we're NOT debugging, trap fatal signals, so we can
-	 *	easily clean up after ourselves.
-	 *
-	 *	If we ARE debugging, don't trap them, so we can
-	 *	dump core.
-	 */
-	if ((mainconfig.allow_core_dumps == FALSE) && (debug_flag == 0)) {
-#ifdef SIGSEGV
-#ifdef HAVE_SIGACTION
-		act.sa_handler = sig_fatal;
-		sigaction(SIGSEGV, &act, NULL);
-#else
-		signal(SIGSEGV, sig_fatal);
-#endif
-#endif
-	}
-
-	/*
 	 *  Ensure that we're using the CORRECT pid after forking,
 	 *  NOT the one we started with.
 	 */
@@ -385,6 +370,9 @@ int main(int argc, char *argv[])
 		}
 		dup2(devnull, STDERR_FILENO);
 		close(devnull);
+
+	} else {
+		setlinebuf(stdout); /* unbuffered output */
 	}
 
 	/*
@@ -392,13 +380,6 @@ int main(int argc, char *argv[])
 	 *	more than that.
 	 */
 	radius_event_init(mainconfig.config, spawn_flag);
-
-	/*
-	 *  Use linebuffered or unbuffered stdout if
-	 *  the debug flag is on.
-	 */
-	if (debug_flag == TRUE)
-		setlinebuf(stdout);
 
 	/*
 	 *	Now that we've set everything up, we can install the signal
@@ -435,6 +416,14 @@ int main(int argc, char *argv[])
 		signal(SIGQUIT, sig_fatal);
 #endif
 #endif
+	}
+
+	/*
+	 *	Everything seems to have loaded OK, exit gracefully.
+	 */
+	if (check_config) {
+		DEBUG("Configuration appears OK.");
+		exit(0);
 	}
 
 	/*
@@ -507,6 +496,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "Options:\n\n");
 	fprintf(output, "  -a acct_dir     use accounting directory 'acct_dir'.\n");
 	fprintf(output, "  -A              Log auth detail.\n");
+	fprintf(output, "  -C              Check configuration and exit.\n");
 	fprintf(output, "  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
 	fprintf(output, "  -f              Run as a foreground process, not a daemon.\n");
 	fprintf(output, "  -h              Print this help message.\n");

@@ -154,7 +154,7 @@ static int always_detach(void *instance)
 module_t rlm_always = {
 	RLM_MODULE_INIT,
 	"always",
-	RLM_TYPE_THREAD_SAFE,		/* type */
+	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
 	always_instantiate,		/* instantiation */
 	always_detach,			/* detach */
 	{

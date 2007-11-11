@@ -30,6 +30,8 @@ RCSID("$Id$")
 #include <freeradius-devel/modcall.h>
 #include <freeradius-devel/rad_assert.h>
 
+extern int check_config;
+
 typedef struct indexed_modcallable {
 	const		char *server;
 	int		comp;
@@ -294,12 +296,19 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 		return NULL;
 	}
 
-	DEBUG2(" Module: Instantiating %s", instname);
+	if (check_config && (node->entry->module->instantiate) &&
+	    (node->entry->module->type & RLM_TYPE_CHECK_CONFIG_SAFE) == 0) {
+		DEBUG2(" Module: Skipping instantiation of %s", instname);
+	} else {
+		DEBUG2(" Module: Instantiating %s", instname);
+	}
 
 	/*
 	 *	Call the module's instantiation routine.
 	 */
 	if ((node->entry->module->instantiate) &&
+	    (!check_config ||
+	     ((node->entry->module->type & RLM_TYPE_CHECK_CONFIG_SAFE) != 0)) &&
 	    ((node->entry->module->instantiate)(cs, &node->insthandle) < 0)) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Instantiation failed for module \"%s\"",

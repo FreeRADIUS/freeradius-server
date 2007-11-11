@@ -27,8 +27,9 @@ enum {
   RLM_COMPONENT_COUNT		/* 8: How many components are there */
 };
 
-#define RLM_TYPE_THREAD_SAFE	(0 << 0)
-#define RLM_TYPE_THREAD_UNSAFE	(1 << 0)
+#define RLM_TYPE_THREAD_SAFE		(0 << 0)
+#define RLM_TYPE_THREAD_UNSAFE		(1 << 0)
+#define RLM_TYPE_CHECK_CONFIG_SAFE	(1 << 1)
 
 #define RLM_MODULE_MAGIC_NUMBER ((uint32_t) (0xf4ee4ad2))
 #define RLM_MODULE_INIT RLM_MODULE_MAGIC_NUMBER
