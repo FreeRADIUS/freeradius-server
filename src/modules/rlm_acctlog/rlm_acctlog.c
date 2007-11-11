@@ -124,7 +124,7 @@ static int do_acctlog_acct(void *instance, REQUEST *request)
 module_t rlm_acctlog = {
     RLM_MODULE_INIT,
     "acctlog",
-    RLM_TYPE_THREAD_SAFE,       /* type */
+    RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
     acctlog_instantiate,        /* instantiation */
     acctlog_detach,         /* detach */
     {

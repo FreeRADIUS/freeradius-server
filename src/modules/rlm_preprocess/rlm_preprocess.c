@@ -638,7 +638,7 @@ static int preprocess_detach(void *instance)
 module_t rlm_preprocess = {
 	RLM_MODULE_INIT,
 	"preprocess",
-	0,			/* type: reserved */
+	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
 	preprocess_instantiate,	/* instantiation */
 	preprocess_detach,	/* detach */
 	{

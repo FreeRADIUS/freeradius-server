@@ -311,7 +311,7 @@ void rlm_policy_free_item(policy_item_t *item)
 module_t rlm_policy = {
 	RLM_MODULE_INIT,
 	"policy",
-	RLM_TYPE_THREAD_SAFE,		/* type */
+	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
 	policy_instantiate,		/* instantiation */
 	policy_detach,			/* detach */
 	{
