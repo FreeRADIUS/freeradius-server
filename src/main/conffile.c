@@ -509,9 +509,9 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 }
 
 
-static const CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
-					  const CONF_SECTION *outercs,
-					  const char *ptr)
+CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
+			     const CONF_SECTION *outercs,
+			     const char *ptr)
 {
 	CONF_PAIR *cp;
 	const CONF_SECTION *cs = outercs, *next;
@@ -545,13 +545,49 @@ static const CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
 	}
 
 	while (*p) {
-		char *q = strchr(p, '.');
+		char *q, *r;
 
-		if (!q) break;
+		r = strchr(p, '[');
+		q = strchr(p, '.');
+		if (!r && !q) break;
 
-		*q = '\0';
-		next = cf_section_sub_find(cs, p);
-		*q = '.';
+		if (r && q > r) q = NULL;
+		if (q && q < r) r = NULL;
+
+		/*
+		 *	Split off name2.
+		 */
+		if (r) {
+			q = strchr(r + 1, ']');
+			if (!q) return NULL; /* parse error */
+
+			/*
+			 *	Points to foo[bar]xx: parse error,
+			 *	it should be foo[bar] or foo[bar].baz
+			 */
+			if (q[1] && q[1] != '.') goto no_such_item;
+
+			*r = '\0';
+			*q = '\0';
+			next = cf_section_sub_find_name2(cs, p, r + 1);
+			*r = '[';
+			*q = ']';
+
+			/*
+			 *	Points to a named instance of a section.
+			 */
+			if (!q[1]) {
+				if (!next) goto no_such_item;
+				return cf_sectiontoitem(next);
+			}
+
+			q++;	/* ensure we skip the ']' and '.' */
+
+		} else {
+			*q = '\0';
+			next = cf_section_sub_find(cs, p);
+			*q = '.';
+		}
 
 		if (!next) break; /* it MAY be a pair in this section! */
 
@@ -559,7 +595,7 @@ static const CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
 		p = q + 1;
 	}
 
-	if (!*p) return NULL;
+	if (!*p) goto no_such_item;
 
  retry:
 	/*
@@ -580,6 +616,8 @@ static const CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
 		goto retry;
 	}
 
+no_such_item:
+	DEBUG2("WARNING: No such configuration item %s", ptr);
 	return NULL;
 }
 
@@ -1570,10 +1608,22 @@ int cf_file_include(const char *filename, CONF_SECTION *cs)
  */
 CONF_SECTION *cf_file_read(const char *filename)
 {
+	char *p;
+	CONF_PAIR *cp;
 	CONF_SECTION *cs;
 
 	cs = cf_section_alloc("main", NULL, NULL);
 	if (!cs) return NULL;
+
+	cp = cf_pair_alloc("confdir", filename, T_OP_SET, T_BARE_WORD, cs);
+	if (!cp) return NULL;
+
+	p = strrchr(cp->value, '/');
+	if (p) *p = '\0';
+
+	cp->item.filename = "internal";
+	cp->item.lineno = 0;
+	cf_item_add(cs, cf_pairtoitem(cp));
 
 	if (cf_file_include(filename, cs) < 0) {
 		cf_section_free(&cs);

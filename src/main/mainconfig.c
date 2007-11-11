@@ -202,191 +202,26 @@ static int xlat_config(void *instance, REQUEST *request,
 		       size_t outlen,
 		       RADIUS_ESCAPE_STRING func)
 {
-	CONF_SECTION *cs;
-	CONF_PAIR *cp;
-	int i, argc, left;
-	const char *from, *value;
-	char *to;
-	char myfmt[1024];
-	char argv_buf[1024];
-	char *argv[MAX_ARGV];
+	const char *value;
+	const CONF_PAIR *cp;
+	const CONF_ITEM *ci;
 
 	request = request;	/* -Wunused */
 	instance = instance;	/* -Wunused */
 
-	cp = NULL;
-	cs = NULL;
-
 	/*
-	 *	Split the string into argv's BEFORE doing radius_xlat...
-	 *	Copied from exec.c
+	 *	FIXME: radius_xlat, with a function that escapes
+	 *	"%{[].\\\'"\`".
 	 */
-	from = fmt;
-	to = myfmt;
-	argc = 0;
-	while (*from) {
-		int flag, length;
 
-		flag = 0;
-		argv[argc] = to;
-		argc++;
-
-		if (argc >= (MAX_ARGV - 1)) break;
-
-		/*
-		 *	Copy the argv over to our buffer.
-		 */
-		while (*from) {
-			if (to >= myfmt + sizeof(myfmt) - 1) {
-				return 0; /* no error msg */
-			}
-
-			switch (*from) {
-			case '%':
-				if (from[1] == '{') {
-					*(to++) = *(from++);
-
-					length = rad_copy_variable(to, from);
-					if (length < 0) {
-						return -1;
-					}
-					from += length;
-					to += length;
-				} else { /* FIXME: catch %%{ ? */
-					*(to++) = *(from++);
-				}
-				break;
-
-			case '[':
-				if (flag != 0) {
-					radlog(L_ERR, "config: Unexpected nested '[' in \"%s\"", fmt);
-					return 0;
-				}
-				flag++;
-				*(to++) = *(from++);
-				break;
-
-			case ']':
-				if (flag == 0) {
-					radlog(L_ERR, "config: Unbalanced ']' in \"%s\"", fmt);
-					return 0;
-				}
-				if (from[1] != '.') {
-					radlog(L_ERR, "config: Unexpected text after ']' in \"%s\"", fmt);
-					return 0;
-				}
-
-				flag--;
-				*(to++) = *(from++);
-				break;
-
-			case '.':
-				if (flag == 0) break;
-				/* FALL-THROUGH */
-
-			default:
-				*(to++) = *(from++);
-				break;
-			}
-
-			if ((*from == '.') && (flag == 0)) {
-				from++;
-				break;
-			}
-		} /* end of string, or found a period */
-
-		if (flag != 0) {
-			radlog(L_ERR, "config: Unbalanced '[' in \"%s\"", fmt);
-			return 0;
-		}
-
-		*(to++) = '\0';	/* terminate the string. */
-	}
-
-	/*
-	 *	Expand each string, as appropriate
-	 */
-	to = argv_buf;
-	left = sizeof(argv_buf);
-	for (i = 0; i < argc; i++) {
-		int sublen;
-
-		/*
-		 *	Don't touch argv's which won't be translated.
-		 */
-		if (strchr(argv[i], '%') == NULL) continue;
-
-		sublen = radius_xlat(to, left - 1, argv[i], request, NULL);
-		if (sublen <= 0) {
-			/*
-			 *	Fail to be backwards compatible.
-			 *
-			 *	It's yucky, but it won't break anything,
-			 *	and it won't cause security problems.
-			 */
-			sublen = 0;
-		}
-
-		argv[i] = to;
-		to += sublen;
-		*(to++) = '\0';
-		left -= sublen;
-		left--;
-
-		if (left <= 0) {
-			return 0;
-		}
-	}
-	argv[argc] = NULL;
-
-	cs = request->root->config;
-
-	/*
-	 *	Root through section & subsection references.
-	 *	The last entry of argv MUST be the CONF_PAIR.
-	 */
-	for (i = 0; i < argc - 1; i++) {
-		char *name2 = NULL;
-		CONF_SECTION *subcs;
-
-		/*
-		 *	FIXME: What about RADIUS attributes containing '['?
-		 */
-		name2 = strchr(argv[i], '[');
-		if (name2) {
-			char *p = strchr(name2, ']');
-			rad_assert(p != NULL);
-			rad_assert(p[1] =='\0');
-			*p = '\0';
-			*name2 = '\0';
-			name2++;
-		}
-
-		if (name2) {
-			subcs = cf_section_sub_find_name2(cs, argv[i],
-							  name2);
-			if (!subcs) {
-			  radlog(L_ERR, "config: section \"%s %s {}\" not found while dereferencing \"%s\"", argv[i], name2, fmt);
-			  return 0;
-			}
-		} else {
-			subcs = cf_section_sub_find(cs, argv[i]);
-			if (!subcs) {
-			  radlog(L_ERR, "config: section \"%s {}\" not found while dereferencing \"%s\"", argv[i], fmt);
-			  return 0;
-			}
-		}
-		cs = subcs;
-	} /* until argc - 1 */
-
-	/*
-	 *	This can now have embedded periods in it.
-	 */
-	cp = cf_pair_find(cs, argv[argc - 1]);
-	if (!cp) {
-		radlog(L_ERR, "config: item \"%s\" not found while dereferencing \"%s\"", argv[argc], fmt);
+	ci = cf_reference_item(request->root->config,
+			       request->root->config, fmt);
+	if (!ci || !cf_item_is_pair(ci)) {
+		*out = '\0';
 		return 0;
 	}
+
+	cp = cf_itemtopair(ci);
 
 	/*
 	 *  Ensure that we only copy what's necessary.
