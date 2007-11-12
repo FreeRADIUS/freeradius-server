@@ -749,7 +749,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 module_t rlm_radutmp = {
 	RLM_MODULE_INIT,
 	"radutmp",
-	0,                            /* type: reserved */
+	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
 	radutmp_instantiate,          /* instantiation */
 	radutmp_detach,               /* detach */
 	{

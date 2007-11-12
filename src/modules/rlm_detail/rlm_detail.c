@@ -556,7 +556,7 @@ static int detail_post_proxy(void *instance, REQUEST *request)
 module_t rlm_detail = {
 	RLM_MODULE_INIT,
 	"detail",
-	RLM_TYPE_THREAD_UNSAFE,        /* type: reserved */
+	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_CHECK_CONFIG_SAFE,
 	detail_instantiate,		/* instantiation */
 	detail_detach,			/* detach */
 	{
