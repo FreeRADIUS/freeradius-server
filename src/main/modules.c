@@ -763,6 +763,62 @@ static int load_byserver(CONF_SECTION *cs)
 	return 0;
 }
 
+
+int module_hup(CONF_SECTION *modules)
+{
+	CONF_ITEM *ci;
+	CONF_SECTION *cs;
+	module_instance_t *node;
+
+	if (!modules) return 0;
+
+	/*
+	 *	Loop over the modules
+	 */
+	for (ci=cf_item_find_next(modules, NULL);
+	     ci != NULL;
+	     ci=cf_item_find_next(modules, ci)) {
+		void *insthandle = NULL;
+		void *old_insthandle = NULL;
+
+		/*
+		 *	If it's not a section, ignore it.
+		 */
+		if (!cf_item_is_section(ci)) continue;
+
+		cs = cf_itemtosection(ci);
+
+		node = cf_data_find(cs, "instance");
+		if (!node ||
+		    ((node->entry->module->type & RLM_TYPE_HUP_SAFE) == 0)) {
+			continue;
+		}
+
+		DEBUG2(" Module: Trying to reload module \"%s\"", node->name);
+
+		if ((node->entry->module->instantiate)(cs, &insthandle) < 0) {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "HUP failed for module \"%s\"",
+				   node->name);
+			continue;
+		}
+
+		radlog(L_INFO, " Module: Reloaded module \"%s\"", node->name);
+
+		old_insthandle = node->insthandle;
+		node->insthandle = insthandle;
+
+		cf_section_parse_free(cs, old_insthandle);
+
+		if (node->entry->module->detach) {
+			(node->entry->module->detach)(old_insthandle);
+		}
+	}
+
+	return 1;
+}
+
+
 /*
  *	Parse the module config sections, and load
  *	and call each module's init() function.

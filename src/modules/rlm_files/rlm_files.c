@@ -567,7 +567,7 @@ static int file_postauth(void *instance, REQUEST *request)
 module_t rlm_files = {
 	RLM_MODULE_INIT,
 	"files",
-	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type: reserved */
+	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,
 	file_instantiate,		/* instantiation */
 	file_detach,			/* detach */
 	{

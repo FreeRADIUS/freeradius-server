@@ -430,13 +430,7 @@ int main(int argc, char *argv[])
 	 *	Process requests until HUP or exit.
 	 */
 	while ((rcode = radius_event_process()) == 0x80) {
-		thread_pool_lock();
-		/*
-		 *	Reload anything that can safely be reloaded.
-		 */
-		DEBUG("HUP support not available.");
-
-		thread_pool_unlock();
+		module_hup(cf_section_sub_find(mainconfig.config, "modules"));
 	}
 	
 	DEBUG("Exiting...");

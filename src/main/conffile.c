@@ -264,9 +264,10 @@ static int data_cmp(const void *a, const void *b)
 /*
  *	Free strings we've parsed into data structures.
  */
-static void cf_section_parse_free(void *base, const CONF_PARSER *variables)
+void cf_section_parse_free(CONF_SECTION *cs, void *base)
 {
 	int i;
+	const CONF_PARSER *variables = cs->variables;
 
 	/*
 	 *	Don't automatically free the strings if we're being
@@ -322,9 +323,7 @@ void cf_section_free(CONF_SECTION **cs)
 
 	if (!cs || !*cs) return;
 
-	if ((*cs)->variables) {
-		cf_section_parse_free((*cs)->base, (*cs)->variables);
-	}
+	cf_section_parse_free(*cs, (*cs)->base);
 
 	for (ci = (*cs)->children; ci; ci = next) {
 		next = ci->next;
@@ -960,6 +959,8 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 	int i;
 	void *data;
 
+	cs->variables = variables; /* this doesn't hurt anything */
+
 	if (!cs->name2) {
 		DEBUG2("%.*s%s {", cs->depth, parse_spaces,
 		       cs->name1);
@@ -1021,13 +1022,12 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 	DEBUG2("%.*s}", cs->depth, parse_spaces);
 
 	cs->base = base;
-	cs->variables = variables;
 
 	return 0;
 
  error:
 	DEBUG2("%.*s}", cs->depth, parse_spaces);
-	cf_section_parse_free(base, variables);
+	cf_section_parse_free(cs, base);
 	return -1;
 }
 

@@ -54,6 +54,7 @@ int		cf_item_parse(CONF_SECTION *cs, const char *name,
 			      int type, void *data, const char *dflt);
 int		cf_section_parse(CONF_SECTION *, void *base,
 				 const CONF_PARSER *variables);
+void		cf_section_parse_free(CONF_SECTION *cs, void *base);
 CONF_SECTION	*cf_file_read(const char *file);
 int		cf_file_include(const char *file, CONF_SECTION *cs);
 
