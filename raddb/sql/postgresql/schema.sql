@@ -181,7 +181,7 @@ CREATE TABLE radpostauth (
 
 /*
  * Note: (pnixon: 2003-12-10) The following function should not be required
- * if you use the PG specific queries in raddb/postgresql.conf
+ * if you use the PG specific queries in raddb/sql/postgresql/dialup.conf
  *
  * Common utility function for date calculations. This is used in our
  * alternative account stop query to calculate the start of a session.

@@ -1,4 +1,4 @@
--- Id: postgresql.conf,v 1.8.2.11 2003/07/15 11:15:43 pnixon Exp $
+-- $Id$
 
 -- create plpgsql language
 CREATE FUNCTION "plpgsql_call_handler" () RETURNS LANGUAGE_HANDLER AS '$libdir/plpgsql' LANGUAGE C;

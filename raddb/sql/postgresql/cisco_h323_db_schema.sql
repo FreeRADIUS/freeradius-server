@@ -1,20 +1,20 @@
 /*
- * Id: postgresql.conf,v 1.8.2.11 2003/07/15 11:15:43 pnixon Exp $
+ * $Id$
  *
  * --- Peter Nixon [ codemonkey@peternixon.net ]
- * This is a custom SQL schema for doing H323 and SIP VoIP accounting with FreeRadius
- * and Cisco equipment. It is currently known to work with 3640, 5300 and 5350 series
- * as well as CSPS (Cisco SIP Proxy Server).
- * It will scale ALOT better than the default radius schema which is designed for
- * simple dialup installations of FreeRadius.
  *
- * For this schema to work properly you MUST replace raddb/postgresql.conf
- * with the contents of pgsql-voip.conf
+ * This is a custom SQL schema for doing H323 and SIP VoIP accounting
+ * with FreeRadius and Cisco equipment. It is currently known to work
+ * with 3640, 5300 and 5350 series as well as CSPS (Cisco SIP Proxy
+ * Server).  It will scale A LOT better than the default radius schema
+ * which is designed for simple dialup installations of FreeRadius.
  *
- * If you wish to do RADIUS Authentication using the same database, you must use
- * src/modules/rlm_sql/drivers/rlm_sql_postgresql/db_postgresql.sql as well as
- * this schema.
+ * For this schema to work properly you MUST use
+ * raddb/sql/postgresql/voip-postpaid.conf rather than
+ * raddb/sql/postgresql/dialup.conf
  *
+ * If you wish to do RADIUS Authentication using the same database,
+ * you MUST use use raddb/sql/postgresql/schema.sql as well as this schema.
  */
 
 /*
