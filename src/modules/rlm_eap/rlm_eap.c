@@ -203,9 +203,6 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	 *	of 'inst', above.
 	 */
 
-	inst->rand_start = lrad_rand();
-	inst->rand_increment = lrad_rand();
-
 	/*
 	 *	Lookup sessions in the tree.  We don't free them in
 	 *	the tree, as that's taken care of elsewhere...
