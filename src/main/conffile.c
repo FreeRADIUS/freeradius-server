@@ -34,10 +34,10 @@ RCSID("$Id$")
 
 #ifdef HAVE_DIRENT_H
 #include <dirent.h>
+#endif
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
-#endif
 #endif
 
 #include <ctype.h>
@@ -1128,7 +1128,7 @@ static const char *cf_local_file(CONF_SECTION *cs, const char *local,
 	p = strrchr(parentcs->item.filename, '/');
 	if (!p) return local;
 
-	dirsize = (p - parentcs->item.filename);
+	dirsize = (p - parentcs->item.filename) + 1;
 
 	if ((dirsize + strlen(local)) >= bufsize) {
 		return NULL;
