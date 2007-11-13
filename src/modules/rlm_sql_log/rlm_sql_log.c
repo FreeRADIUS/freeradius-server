@@ -38,6 +38,20 @@ static int sql_log_detach(void *instance);
 static int sql_log_accounting(void *instance, REQUEST *request);
 static int sql_log_postauth(void *instance, REQUEST *request);
 
+#ifndef HAVE_PTHREAD_H
+/*
+ *      This is a lot simpler than putting ifdef's around
+ *      every use of the pthread functions.
+ */
+#define pthread_mutex_lock(a)
+#define pthread_mutex_trylock(a) (0)
+#define pthread_mutex_unlock(a)
+#define pthread_mutex_init(a,b)
+#define pthread_mutex_destroy(a)
+#else
+#include	<pthread.h>
+#endif
+
 #define MAX_QUERY_LEN 4096
 
 /*
@@ -50,6 +64,9 @@ typedef struct rlm_sql_log_t {
 	char		*sql_user_name;
 	char		*allowed_chars;
 	CONF_SECTION	*conf_section;
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t	mutex;
+#endif
 } rlm_sql_log_t;
 
 /*
@@ -307,8 +324,9 @@ static int sql_log_write(rlm_sql_log_t *inst, REQUEST *request, const char *line
 
 	path[0] = '\0';
 	radius_xlat(path, sizeof(path), inst->path, request, NULL);
-	if (path[0] == '\0')
+	if (path[0] == '\0') {
 		return RLM_MODULE_FAIL;
+	}
 
 	while (!locked) {
 		if ((fd = open(path, O_WRONLY | O_APPEND | O_CREAT, 0666)) < 0) {
@@ -426,7 +444,7 @@ static int sql_log_postauth(void *instance, REQUEST *request)
 module_t rlm_sql_log = {
 	RLM_MODULE_INIT,
 	"sql_log",
-	RLM_TYPE_THREAD_SAFE,		/* type */
+	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,		/* type */
 	sql_log_instantiate,		/* instantiation */
 	sql_log_detach,			/* detach */
 	{

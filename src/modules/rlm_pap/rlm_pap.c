@@ -827,7 +827,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 module_t rlm_pap = {
 	RLM_MODULE_INIT,
 	"PAP",
-	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
 	pap_instantiate,		/* instantiation */
 	pap_detach,			/* detach */
 	{

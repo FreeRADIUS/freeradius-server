@@ -557,7 +557,7 @@ static int passwd_authorize(void *instance, REQUEST *request)
 module_t rlm_passwd = {
 	RLM_MODULE_INIT,
 	"passwd",
-	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
 	passwd_instantiate,		/* instantiation */
 	passwd_detach,			/* detach */
 	{

@@ -459,7 +459,7 @@ static int realm_detach(void *instance)
 module_t rlm_realm = {
 	RLM_MODULE_INIT,
 	"realm",
-	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
 	realm_instantiate,	       	/* instantiation */
 	realm_detach,			/* detach */
 	{

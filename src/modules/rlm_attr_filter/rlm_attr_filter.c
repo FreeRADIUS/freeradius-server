@@ -349,7 +349,7 @@ static int attr_filter_postauth(void *instance, REQUEST *request)
 module_t rlm_attr_filter = {
 	RLM_MODULE_INIT,
 	"attr_filter",
-	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
 	attr_filter_instantiate,	/* instantiation */
 	attr_filter_detach,		/* detach */
 	{
