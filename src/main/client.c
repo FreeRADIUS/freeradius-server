@@ -407,6 +407,154 @@ static const CONF_PARSER client_config[] = {
 };
 
 
+static RADCLIENT *client_parse(CONF_SECTION *cs, int global)
+{
+	RADCLIENT	*c;
+	const char	*name2;
+
+	name2 = cf_section_name2(cs);
+	if (!name2) {
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Missing client name");
+		return NULL;
+	}
+
+	/*
+	 * The size is fine.. Let's create the buffer
+	 */
+	c = rad_malloc(sizeof(*c));
+	memset(c, 0, sizeof(*c));
+	c->cs = cs;
+
+#ifdef WITH_SNMP
+	c->auth = rad_malloc(sizeof(*c->auth));
+	memset(c->auth, 0, sizeof(*c->auth));
+
+	c->acct = rad_malloc(sizeof(*c->acct));
+	memset(c->acct, 0, sizeof(*c->acct));
+#endif
+
+	memset(&cl_ip4addr, 0, sizeof(cl_ip4addr));
+	memset(&cl_ip6addr, 0, sizeof(cl_ip6addr));
+	c->prefix = -1;
+
+	if (cf_section_parse(cs, c, client_config) < 0) {
+		client_free(c);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Error parsing client section.");
+		return NULL;
+	}
+
+	/*
+	 *	Global clients can set servers to use,
+	 *	per-server clients cannot.
+	 */
+	if (!global && c->server) {
+		client_free(c);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Clients inside of an server section cannot point to a server.");
+		return NULL;
+	}
+		
+	/*
+	 *	No "ipaddr" or "ipv6addr", use old-style
+	 *	"client <ipaddr> {" syntax.
+	 */
+	if (!cf_pair_find(cs, "ipaddr") &&
+	    !cf_pair_find(cs, "ipv6addr")) {
+		char *prefix_ptr;
+
+		prefix_ptr = strchr(name2, '/');
+
+		/*
+		 *	Look for prefixes.
+		 */
+		if (prefix_ptr) {
+			c->prefix = atoi(prefix_ptr + 1);
+			if ((c->prefix < 0) || (c->prefix > 128)) {
+				client_free(c);
+				cf_log_err(cf_sectiontoitem(cs),
+					   "Invalid Prefix value '%s' for IP.",
+					   prefix_ptr + 1);
+				return NULL;
+			}
+			/* Replace '/' with '\0' */
+			*prefix_ptr = '\0';
+		}
+			
+		/*
+		 *	Always get the numeric representation of IP
+		 */
+		if (ip_hton(name2, AF_UNSPEC, &c->ipaddr) < 0) {
+			client_free(c);
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Failed to look up hostname %s: %s",
+				   name2, librad_errstr);
+			return NULL;
+		}
+
+		if (prefix_ptr) *prefix_ptr = '/';
+		c->longname = strdup(name2);
+
+		if (!c->shortname) c->shortname = strdup(c->longname);
+
+	} else {
+		char buffer[1024];
+
+		/*
+		 *	Figure out which one to use.
+		 */
+		if (cf_pair_find(cs, "ipaddr")) {
+			c->ipaddr.af = AF_INET;
+			c->ipaddr.ipaddr.ip4addr = cl_ip4addr;
+
+			if ((c->prefix < -1) || (c->prefix > 32)) {
+				client_free(c);
+				cf_log_err(cf_sectiontoitem(cs),
+					   "Netmask must be between 0 and 32");
+				return NULL;
+			}
+				
+		} else if (cf_pair_find(cs, "ipv6addr")) {
+			c->ipaddr.af = AF_INET6;
+			c->ipaddr.ipaddr.ip6addr = cl_ip6addr;
+				
+			if ((c->prefix < -1) || (c->prefix > 128)) {
+				client_free(c);
+				cf_log_err(cf_sectiontoitem(cs),
+					   "Netmask must be between 0 and 128");
+				return NULL;
+			}
+		} else {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "No IP address defined for the client");
+			client_free(c);
+			return NULL;
+		}
+
+		ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
+		c->longname = strdup(buffer);
+
+		/*
+		 *	Set the short name to the name2
+		 */
+		if (!c->shortname) c->shortname = strdup(name2);
+	}
+
+	if (c->prefix < 0) switch (c->ipaddr.af) {
+	case AF_INET:
+		c->prefix = 32;
+		break;
+	case AF_INET6:
+		c->prefix = 128;
+		break;
+	default:
+		break;
+	}
+
+	return c;
+}
+
 /*
  *	Create the linked list of clients from the new configuration
  *	type.  This way we don't have to change too much in the other
@@ -414,9 +562,9 @@ static const CONF_PARSER client_config[] = {
  */
 RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 {
-	CONF_SECTION	*cs, *parentcs;
+	int		global = FALSE;
+	CONF_SECTION	*cs;
 	RADCLIENT	*c;
-	const char	*name2;
 	RADCLIENT_LIST	*clients;
 
 	/*
@@ -429,7 +577,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 	clients = clients_init();
 	if (!clients) return NULL;
 
-	parentcs = cf_top_section(section);
+	if (cf_top_section(section) == section) global = TRUE;
 
 	/*
 	 *	Associate the clients structure with the section, where
@@ -446,143 +594,9 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 	for (cs = cf_subsection_find_next(section, NULL, "client");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(section, cs, "client")) {
-
-		name2 = cf_section_name2(cs);
-		if (!name2) {
-			cf_log_err(cf_sectiontoitem(cs),
-				   "Missing client name");
+		c = client_parse(cs, global);
+		if (!c) {
 			return NULL;
-		}
-
-		/*
-		 * The size is fine.. Let's create the buffer
-		 */
-		c = rad_malloc(sizeof(*c));
-		memset(c, 0, sizeof(*c));
-		c->cs = cs;
-
-#ifdef WITH_SNMP
-		c->auth = rad_malloc(sizeof(*c->auth));
-		memset(c->auth, 0, sizeof(*c->auth));
-
-		c->acct = rad_malloc(sizeof(*c->acct));
-		memset(c->acct, 0, sizeof(*c->acct));
-#endif
-
-		memset(&cl_ip4addr, 0, sizeof(cl_ip4addr));
-		memset(&cl_ip6addr, 0, sizeof(cl_ip6addr));
-		c->prefix = -1;
-
-		if (cf_section_parse(cs, c, client_config) < 0) {
-			client_free(c);
-			cf_log_err(cf_sectiontoitem(cs),
-				   "Error parsing client section.");
-			return NULL;
-		}
-
-		/*
-		 *	Global clients can set servers to use,
-		 *	per-server clients cannot.
-		 */
-		if ((section != parentcs) && c->server) {
-			client_free(c);
-			cf_log_err(cf_sectiontoitem(cs),
-				   "Clients inside of an server section cannot point to another server.");
-			return NULL;
-		}
-		
-		/*
-		 *	No "ipaddr" or "ipv6addr", use old-style
-		 *	"client <ipaddr> {" syntax.
-		 */
-		if (!cf_pair_find(cs, "ipaddr") &&
-		    !cf_pair_find(cs, "ipv6addr")) {
-			char *prefix_ptr;
-
-			prefix_ptr = strchr(name2, '/');
-
-			/*
-			 *	Look for prefixes.
-			 */
-			if (prefix_ptr) {
-				c->prefix = atoi(prefix_ptr + 1);
-				if ((c->prefix < 0) || (c->prefix > 128)) {
-					client_free(c);
-					cf_log_err(cf_sectiontoitem(cs),
-						   "Invalid Prefix value '%s' for IP.",
-						   prefix_ptr + 1);
-					return NULL;
-				}
-				/* Replace '/' with '\0' */
-				*prefix_ptr = '\0';
-			}
-			
-			/*
-			 *	Always get the numeric representation of IP
-			 */
-			if (ip_hton(name2, AF_UNSPEC, &c->ipaddr) < 0) {
-				client_free(c);
-				cf_log_err(cf_sectiontoitem(cs),
-					   "Failed to look up hostname %s: %s",
-					   name2, librad_errstr);
-				return NULL;
-			}
-
-			if (prefix_ptr) *prefix_ptr = '/';
-			c->longname = strdup(name2);
-
-			if (!c->shortname) c->shortname = strdup(c->longname);
-
-		} else {
-			char buffer[1024];
-
-			/*
-			 *	Figure out which one to use.
-			 */
-			if (cf_pair_find(cs, "ipaddr")) {
-				c->ipaddr.af = AF_INET;
-				c->ipaddr.ipaddr.ip4addr = cl_ip4addr;
-
-				if ((c->prefix < -1) || (c->prefix > 32)) {
-					client_free(c);
-					cf_log_err(cf_sectiontoitem(cs),
-						   "Netmask must be between 0 and 32");
-					return NULL;
-				}
-				
-			} else if (cf_pair_find(cs, "ipv6addr")) {
-				c->ipaddr.af = AF_INET6;
-				c->ipaddr.ipaddr.ip6addr = cl_ip6addr;
-				
-				if ((c->prefix < -1) || (c->prefix > 128)) {
-					client_free(c);
-					cf_log_err(cf_sectiontoitem(cs),
-						   "Netmask must be between 0 and 128");
-					return NULL;
-				}
-			} else {
-				client_free(c);	/* a fairly bad error */
-				return NULL;
-			}
-
-			ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
-			c->longname = strdup(buffer);
-
-			/*
-			 *	Set the short name to the name2
-			 */
-			if (!c->shortname) c->shortname = strdup(name2);
-		}
-
-		if (c->prefix < 0) switch (c->ipaddr.af) {
-		case AF_INET:
-			c->prefix = 32;
-			break;
-		case AF_INET6:
-			c->prefix = 128;
-			break;
-		default:
-			break;
 		}
 
 		/*
@@ -592,7 +606,8 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 
 		if (!client_add(clients, c)) {
 			cf_log_err(cf_sectiontoitem(cs),
-				   "Failed to add client %s", name2);
+				   "Failed to add client %s",
+				   cf_section_name2(cs));
 			client_free(c);
 			return NULL;
 		}
@@ -603,7 +618,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 	 *	The old one is still referenced from the original
 	 *	configuration, and will be freed when that is freed.
 	 */
-	if (section == parentcs) {
+	if (global) {
 		root_clients = clients;
 	}
 
