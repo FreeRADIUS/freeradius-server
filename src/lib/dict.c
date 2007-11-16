@@ -676,6 +676,36 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	return 0;
 }
 
+static int sscanf_i(const char *str, int *pvalue)
+{
+	int rcode = 0;
+	int base = 10;
+	const char *tab = "0123456789";
+
+	if ((str[0] == '0') &&
+	    ((str[1] == 'x') || (str[1] == 'X'))) {
+		tab = "0123456789abcdef";
+		base = 16;
+
+		str += 2;
+	}
+
+	while (*str) {
+		const char *c;
+
+		c = memchr(tab, tolower((int) *str), base);
+		if (!c) return 0;
+
+		rcode *= base;
+		rcode += (c - tab);
+		str++;
+	}
+
+	*pvalue = rcode;
+	return 1;
+}
+
+
 /*
  *	Process the ATTRIBUTE command
  */
@@ -697,11 +727,10 @@ static int process_attribute(const char* fn, const int line,
 	/*
 	 *	Validate all entries
 	 */
-	if (!isdigit((int) argv[1][0])) {
+	if (!sscanf_i(argv[1], &value)) {
 		librad_log("dict_init: %s[%d]: invalid value", fn, line);
 		return -1;
 	}
-	sscanf(argv[1], "%i", &value);
 
 	/*
 	 *	find the type of the attribute.
@@ -851,12 +880,11 @@ static int process_value(const char* fn, const int line, char **argv,
 	/*
 	 *	Validate all entries
 	 */
-	if (!isdigit((int) argv[2][0])) {
+	if (!sscanf_i(argv[2], &value)) {
 		librad_log("dict_init: %s[%d]: invalid value",
 			fn, line);
 		return -1;
 	}
-	sscanf(argv[2], "%i", &value);
 
 	if (dict_addvalue(argv[1], argv[0], value) < 0) {
 		librad_log("dict_init: %s[%d]: %s",
