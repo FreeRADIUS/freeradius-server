@@ -257,8 +257,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 */
 		if ((handler->request->packet->dst_port == 0) &&
 		    (default_eap_type == PW_EAP_TLS)) {
-			DEBUG2(" rlm_eap: Unable to tunnel TLS inside of TLS");
-			return EAP_INVALID;
+			DEBUG2(" rlm_eap: WARNING: Tunnelling TLS inside of a TLS will probably not work.");
 		}
 
 		if (eaptype_call(inst->types[default_eap_type],

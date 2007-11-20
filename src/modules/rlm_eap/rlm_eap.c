@@ -262,10 +262,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		case PW_EAP_TLS:
 		case PW_EAP_TTLS:
 		case PW_EAP_PEAP:
-			DEBUG2(" rlm_eap: Unable to tunnel TLS inside of TLS");
-			eap_fail(handler);
-			eap_handler_free(handler);
-			return RLM_MODULE_INVALID;
+			DEBUG2(" rlm_eap: WARNING: Tunnelling TLS inside of a TLS will probably not work.");
 			break;
 
 		default:	/* It may be OK, allow it to proceed */
