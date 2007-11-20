@@ -189,11 +189,6 @@ static VALUE_PAIR *eap2vp(EAP_DS *eap_ds,
  */
 static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 {
-	if (vp->next != NULL) {
-		radlog(L_ERR, "rlm_eap_peap: EAP Request packet is too large.  Code must be fixed to handle this.");
-		return 0;
-	}
-
 	/*
 	 *	Skip the id, code, and length.  Just write the EAP
 	 *	type & data to the client.
@@ -201,14 +196,24 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 #ifndef NDEBUG
 	if (debug_flag > 2) {
 		int i;
-		int total = vp->length - 4;
+		int total;
+		VALUE_PAIR *this;
 
-		if (debug_flag > 0) for (i = 0; i < total; i++) {
-			if ((i & 0x0f) == 0) printf("  PEAP tunnel data out %04x: ", i);
+		total = 0;
 
-			printf("%02x ", vp->vp_strvalue[i + 4]);
+		for (this = vp; this != NULL; this = this->next) {
+			int start = 0;
 
-			if ((i & 0x0f) == 0x0f) printf("\n");
+			if (this == vp) start = EAP_HEADER_LEN;
+			
+			for (i = start; i < vp->length; i++) {
+				if ((total & 0x0f) == 0) printf("  PEAP tunnel data out %04x: ", i);
+
+				printf("%02x ", vp->vp_octets[i]);
+				
+				if ((total & 0x0f) == 0x0f) printf("\n");
+				total++;
+			}
 		}
 		if ((total & 0x0f) != 0) printf("\n");
 	}
@@ -217,12 +222,19 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 	/*
 	 *	Send the EAP data, WITHOUT the header.
 	 */
-#if 1
-	(tls_session->record_plus)(&tls_session->clean_in, vp->vp_strvalue + EAP_HEADER_LEN,
-		vp->length - EAP_HEADER_LEN);
-#else
-	(tls_session->record_plus)(&tls_session->clean_in, vp->vp_strvalue, vp->length);
-#endif
+
+	(tls_session->record_plus)(&tls_session->clean_in,
+				   vp->vp_strvalue + EAP_HEADER_LEN,
+				   vp->length - EAP_HEADER_LEN);
+
+	/*
+	 *	Send the rest of the EAP data.
+	 */
+	for (vp = vp->next; vp != NULL; vp = vp->next) {
+		(tls_session->record_plus)(&tls_session->clean_in,
+					   vp->vp_strvalue, vp->length);
+	}
+
 	tls_handshake_send(tls_session);
 
 	return 1;
@@ -504,7 +516,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		eaptls_success(handler->eap_ds, 0);
 		eaptls_gen_mppe_keys(&handler->request->reply->vps,
 				     tls_session->ssl,
-				     "client EAP encryption");
+				     tls_session->client_encryption_key);
 		return 1;
 
 	default:
