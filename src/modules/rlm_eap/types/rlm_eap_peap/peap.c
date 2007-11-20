@@ -152,15 +152,8 @@ static int eapmessage_verify(const uint8_t *data, unsigned int data_len)
 static VALUE_PAIR *eap2vp(EAP_DS *eap_ds,
 			  const uint8_t *data, unsigned int data_len)
 {
-	VALUE_PAIR *vp = NULL;
-
-	/*
-	 *	Sanity check this...
-	 */
-	if (data_len + EAP_HEADER_LEN > MAX_STRING_LEN) {
-		radlog(L_ERR, "rlm_eap_peap: EAP Response packet is too large.  Code must be fixed to handle this.");
-		return NULL;
-	}
+	int total;
+	VALUE_PAIR *vp = NULL, *head, **tail;
 
 	vp = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
 	if (!vp) {
@@ -168,18 +161,42 @@ static VALUE_PAIR *eap2vp(EAP_DS *eap_ds,
 		return NULL;
 	}
 
+	total = data_len;
+	if (total > 249) total = 249;
+
 	/*
 	 *	Hand-build an EAP packet from the crap in PEAP version 0.
 	 */
-	vp->vp_strvalue[0] = PW_EAP_RESPONSE;
-	vp->vp_strvalue[1] = eap_ds->response->id;
-	vp->vp_strvalue[2] = 0;
-	vp->vp_strvalue[3] = EAP_HEADER_LEN + data_len;
+	vp->vp_octets[0] = PW_EAP_RESPONSE;
+	vp->vp_octets[1] = eap_ds->response->id;
+	vp->vp_octets[2] = 0;
+	vp->vp_octets[3] = EAP_HEADER_LEN + total;
 
-	memcpy(vp->vp_strvalue + EAP_HEADER_LEN, data, data_len);
-	vp->length = EAP_HEADER_LEN + data_len;
+	memcpy(vp->vp_octets + EAP_HEADER_LEN, data, total);
+	vp->length = EAP_HEADER_LEN + total;
 
-	return vp;
+	head = vp;
+	while (total < data_len) {
+		int vp_len;
+
+		tail = &(vp->next);
+
+		vp = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
+		if (!vp) {
+			DEBUG2("  rlm_eap_peap: Failure in creating VP");
+			pairfree(&head);
+			return NULL;
+		}
+		vp_len = (data_len - total);
+		if (vp_len > 253) vp_len = 253;
+
+		memcpy(vp->vp_octets, data + total, vp_len);
+		vp->length = vp_len;
+		
+		total += vp_len;
+	}
+
+	return head;
 }
 
 
@@ -195,8 +212,7 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 	 */
 #ifndef NDEBUG
 	if (debug_flag > 2) {
-		int i;
-		int total;
+		int i, total;
 		VALUE_PAIR *this;
 
 		total = 0;
@@ -207,7 +223,7 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 			if (this == vp) start = EAP_HEADER_LEN;
 			
 			for (i = start; i < vp->length; i++) {
-				if ((total & 0x0f) == 0) printf("  PEAP tunnel data out %04x: ", i);
+				if ((total & 0x0f) == 0) printf("  PEAP tunnel data out %04x: ", total);
 
 				printf("%02x ", vp->vp_octets[i]);
 				
@@ -222,17 +238,16 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 	/*
 	 *	Send the EAP data, WITHOUT the header.
 	 */
-
 	(tls_session->record_plus)(&tls_session->clean_in,
-				   vp->vp_strvalue + EAP_HEADER_LEN,
+				   vp->vp_octets + EAP_HEADER_LEN,
 				   vp->length - EAP_HEADER_LEN);
-
+	
 	/*
 	 *	Send the rest of the EAP data.
 	 */
 	for (vp = vp->next; vp != NULL; vp = vp->next) {
 		(tls_session->record_plus)(&tls_session->clean_in,
-					   vp->vp_strvalue, vp->length);
+					   vp->vp_octets, vp->length);
 	}
 
 	tls_handshake_send(tls_session);
@@ -588,6 +603,14 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	err = SSL_read(tls_session->ssl, tls_session->clean_out.data,
 		       sizeof(tls_session->clean_out.data));
 	if (err < 0) {
+		/*
+		 *	FIXME: if SSL_want_read(), create a tls ACK
+		 *	packet (0x1900), and send it back.  This also
+		 *	involves adding the internal EAP handler to the
+		 *	EAP handler list, so that we can pick up this
+		 *	connection from where we left off.
+		 */
+
 		/*
 		 *	FIXME: Call SSL_get_error() to see what went
 		 *	wrong.
