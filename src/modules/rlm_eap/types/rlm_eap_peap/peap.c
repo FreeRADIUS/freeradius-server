@@ -531,7 +531,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		eaptls_success(handler->eap_ds, 0);
 		eaptls_gen_mppe_keys(&handler->request->reply->vps,
 				     tls_session->ssl,
-				     tls_session->client_encryption_key);
+				     "client EAP encryption");
 		return 1;
 
 	default:
