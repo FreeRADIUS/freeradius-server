@@ -502,6 +502,34 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 	}
 
 	/*
+	 *	The EAP RFC's say 1020, but we're less picky.
+	 */
+	if (conf->fragment_size < 100) {
+		radlog(L_ERR, "rlm_eap_tls: Fragment size is too small.");
+		eaptls_detach(inst);
+		return -1;
+	}
+
+	/*
+	 *	The maximum size for a RADIUS packet is 4096,
+	 *	minus the header (20), Message-Authenticator (18),
+	 *	and State (18), etc. results in about 4000 bytes of data
+	 *	that can be devoted *solely* to EAP.
+	 */
+	if (conf->fragment_size > 4000) {
+		radlog(L_ERR, "rlm_eap_tls: Fragment size is too large.");
+		eaptls_detach(inst);
+		return -1;
+	}
+
+	/*
+	 *	Account for the EAP header (4), and the EAP-TLS header
+	 *	(6), as per Section 4.2 of RFC 2716.  What's left is
+	 *	the maximum amount of data we read from a TLS buffer.
+	 */
+	conf->fragment_size -= 10;
+
+	/*
 	 *	This magic makes the administrators life HUGELY easier
 	 *	on initial deployments.
 	 *
