@@ -37,52 +37,24 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_python_t {
-    /* Config section */
 
-    /* Names of modules */
-    char
-        *mod_instantiate,
-        *mod_authorize,
-	*mod_authenticate,
-	*mod_preacct,
-	*mod_accounting,
-	*mod_checksimul,
-	*mod_detach,
+#define RLM_PYTHON_STRUCT(foo)  char *mod_##foo; \
+				char *func_##foo; \
+				PyObject *pModule_##foo; \
+				PyObject *pFunc_##foo
 
-    /* Names of functions */
-        *func_instantiate,
-        *func_authorize,
-	*func_authenticate,
-	*func_preacct,
-	*func_accounting,
-	*func_checksimul,
-	*func_detach;
+	RLM_PYTHON_STRUCT(instantiate);
+	RLM_PYTHON_STRUCT(authorize);
+	RLM_PYTHON_STRUCT(authenticate);
+	RLM_PYTHON_STRUCT(preacct);
+	RLM_PYTHON_STRUCT(accounting);
+	RLM_PYTHON_STRUCT(checksimul);
+	RLM_PYTHON_STRUCT(preproxy);
+	RLM_PYTHON_STRUCT(postproxy);
+	RLM_PYTHON_STRUCT(postauth);
+	RLM_PYTHON_STRUCT(detach);
 
-
-    /* End Config section */
-
-
-    /* Python objects for modules */
-    PyObject
-        *pModule_builtin,
-        *pModule_instantiate,
-        *pModule_authorize,
-	*pModule_authenticate,
-	*pModule_preacct,
-	*pModule_accounting,
-	*pModule_checksimul,
-	*pModule_detach,
-
-
-	/* Functions */
-
-	*pFunc_instantiate,
-	*pFunc_authorize,
-	*pFunc_authenticate,
-	*pFunc_preacct,
-	*pFunc_accounting,
-	*pFunc_checksimul,
-	*pFunc_detach;
+	PyObject *pModule_builtin;
 
 } rlm_python_t;
 
@@ -95,44 +67,24 @@ typedef struct rlm_python_t {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
+#define RLM_PYTHON_CONF(foo) { "mod_"#foo,  PW_TYPE_STRING_PTR, \
+    offsetof(rlm_python_t, mod_##foo), NULL,  NULL}, \
+  { "func_"#foo,  PW_TYPE_STRING_PTR, \
+    offsetof(rlm_python_t, func_##foo), NULL,  NULL}
+
 static const CONF_PARSER module_config[] = {
-  { "mod_instantiate",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, mod_instantiate), NULL,  NULL},
-  { "func_instantiate",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, func_instantiate), NULL,  NULL},
-
-  { "mod_authorize",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, mod_authorize), NULL,  NULL},
-  { "func_authorize",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, func_authorize), NULL,  NULL},
-
-  { "mod_authenticate",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, mod_authenticate), NULL,  NULL},
-  { "func_authenticate",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, func_authenticate), NULL,  NULL},
-
-  { "mod_preacct",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, mod_preacct), NULL,  NULL},
-  { "func_preacct",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, func_preacct), NULL,  NULL},
-
-  { "mod_accounting",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, mod_accounting), NULL,  NULL},
-  { "func_accounting",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, func_accounting), NULL,  NULL},
-
-  { "mod_checksimul",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, mod_checksimul), NULL,  NULL},
-  { "func_checksimul",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, func_checksimul), NULL,  NULL},
-
-  { "mod_detach",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, mod_detach), NULL,  NULL},
-  { "func_detach",  PW_TYPE_STRING_PTR,
-    offsetof(rlm_python_t, func_detach), NULL,  NULL},
-
-
-  { NULL, -1, 0, NULL, NULL }		/* end the list */
+	RLM_PYTHON_CONF(instantiate),
+	RLM_PYTHON_CONF(authorize),
+	RLM_PYTHON_CONF(authenticate),
+	RLM_PYTHON_CONF(preacct),
+	RLM_PYTHON_CONF(accounting),
+	RLM_PYTHON_CONF(checksimul),
+	RLM_PYTHON_CONF(preproxy),
+	RLM_PYTHON_CONF(postproxy),
+	RLM_PYTHON_CONF(postauth),
+	RLM_PYTHON_CONF(detach),
+	
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 /*
@@ -140,7 +92,7 @@ static const CONF_PARSER module_config[] = {
  */
 
 /* radlog wrapper */
-static PyObject *radlog_py(const PyObject *self, PyObject *args) {
+static PyObject *radlog_py(UNUSED const PyObject *self, PyObject *args) {
     int status;
     char *msg;
 
@@ -600,48 +552,21 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
     /*
      * Import user modules.
      */
-
-    if (load_python_function(data->mod_instantiate, data->func_instantiate,
-		&data->pModule_instantiate, &data->pFunc_instantiate)==-1) {
-	/* TODO: check if we need to cleanup data */
-	return -1;
+#define RLM_PYTHON_LOAD(foo) if (load_python_function(data->mod_##foo, data->func_##foo, \
+		&data->pModule_##foo, &data->pFunc_##foo)==-1) { \
+	/* TODO: check if we need to cleanup data */ \
+	return -1; \
     }
 
-    if (load_python_function(data->mod_authenticate, data->func_authenticate,
-		&data->pModule_authenticate, &data->pFunc_authenticate)==-1) {
-	/* TODO: check if we need to cleanup data */
-	return -1;
-    }
-
-    if (load_python_function(data->mod_authorize, data->func_authorize,
-		&data->pModule_authorize, &data->pFunc_authorize)==-1) {
-	/* TODO: check if we need to cleanup data */
-	return -1;
-    }
-
-    if (load_python_function(data->mod_preacct, data->func_preacct,
-		&data->pModule_preacct, &data->pFunc_preacct)==-1) {
-	/* TODO: check if we need to cleanup data */
-	return -1;
-    }
-
-    if (load_python_function(data->mod_accounting, data->func_accounting,
-		&data->pModule_accounting, &data->pFunc_accounting)==-1) {
-	/* TODO: check if we need to cleanup data */
-	return -1;
-    }
-
-    if (load_python_function(data->mod_checksimul, data->func_checksimul,
-		&data->pModule_checksimul, &data->pFunc_checksimul)==-1) {
-	/* TODO: check if we need to cleanup data */
-	return -1;
-    }
-
-    if (load_python_function(data->mod_detach, data->func_detach,
-		&data->pModule_detach, &data->pFunc_detach)==-1) {
-	/* TODO: check if we need to cleanup data */
-	return -1;
-    }
+    RLM_PYTHON_LOAD(instantiate);
+    RLM_PYTHON_LOAD(authenticate);
+    RLM_PYTHON_LOAD(authorize);
+    RLM_PYTHON_LOAD(preacct);
+    RLM_PYTHON_LOAD(accounting);
+    RLM_PYTHON_LOAD(checksimul);
+    RLM_PYTHON_LOAD(preproxy);
+    RLM_PYTHON_LOAD(postproxy);
+    RLM_PYTHON_LOAD(detach);
 
     *instance=data;
 
@@ -649,46 +574,22 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
     return python_function(NULL, data->pFunc_instantiate, "instantiate");
 }
 
-/* Wrapper functions */
-static int python_authorize(void *instance, REQUEST *request)
-{
-    return python_function(request,
-			   ((struct rlm_python_t *)instance)->pFunc_authorize,
-			   "authorize");
+#define RLM_PYTHON_FUNC(foo) static int python_##foo(void *instance, REQUEST *request) \
+{ \
+    return python_function(request, \
+			   ((struct rlm_python_t *)instance)->pFunc_##foo, \
+			   #foo); \
 }
 
-static int python_authenticate(void *instance, REQUEST *request)
-{
-    return python_function(
-	request,
-	((struct rlm_python_t *)instance)->pFunc_authenticate,
-	"authenticate");
-}
 
-static int python_preacct(void *instance, REQUEST *request)
-{
-    return python_function(
-	request,
-	((struct rlm_python_t *)instance)->pFunc_preacct,
-	"preacct");
-}
-
-static int python_accounting(void *instance, REQUEST *request)
-{
-    return python_function(
-	request,
-	((struct rlm_python_t *)instance)->pFunc_accounting,
-	"accounting");
-}
-
-static int python_checksimul(void *instance, REQUEST *request)
-{
-    return python_function(
-	request,
-	((struct rlm_python_t *)instance)->pFunc_checksimul,
-	"checksimul");
-}
-
+RLM_PYTHON_FUNC(authorize)
+RLM_PYTHON_FUNC(authenticate)
+RLM_PYTHON_FUNC(preacct)
+RLM_PYTHON_FUNC(accounting)
+RLM_PYTHON_FUNC(checksimul)
+RLM_PYTHON_FUNC(preproxy)
+RLM_PYTHON_FUNC(postproxy)
+RLM_PYTHON_FUNC(postauth)
 
 static int python_detach(void *instance)
 {
@@ -762,8 +663,8 @@ module_t rlm_python = {
 		python_preacct,		/* preaccounting */
 		python_accounting,	/* accounting */
 		python_checksimul,	/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+		python_preproxy,	/* pre-proxy */
+		python_postproxy,	/* post-proxy */
+		python_postauth		/* post-auth */
 	},
 };
