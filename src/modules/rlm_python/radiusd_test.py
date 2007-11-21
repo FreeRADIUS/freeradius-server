@@ -31,6 +31,21 @@ def accounting(p):
   print p 
   return radiusd.RLM_MODULE_OK
 
+def preproxy(p):
+  print "*** preproxy ***"
+  print p 
+  return radiusd.RLM_MODULE_OK
+
+def postproxy(p):
+  print "*** postproxy ***"
+  print p 
+  return radiusd.RLM_MODULE_OK
+
+def postauth(p):
+  print "*** postauth ***"
+  print p 
+  return radiusd.RLM_MODULE_OK
+
 
 def detach():
   print "*** goodbye from radiusd_test.py ***"
