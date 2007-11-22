@@ -315,7 +315,8 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			a = inet_ntop(AF_INET6, &addr, buf, sizeof(buf));
 			if (a) {
 				char *p = buf + strlen(buf);
-				sprintf(p, "/%u", (unsigned int) vp->vp_strvalue[1]);
+				snprintf(p, buf + sizeof(buf) - p - 1, "/%u",
+					 (unsigned int) vp->vp_octets[1]);
 			}
 		}
 			break;
