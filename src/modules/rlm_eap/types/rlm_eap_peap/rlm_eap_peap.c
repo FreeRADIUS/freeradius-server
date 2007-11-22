@@ -215,6 +215,11 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	do nothing.
 		 */
 	case EAPTLS_HANDLED:
+	  /*
+	   *	FIXME: If the SSL session is established, grab the state
+	   *	and EAP id from the inner tunnel, and update it with
+	   *	the expected EAP id!
+	   */
 		DEBUG2("  rlm_eap_peap: EAPTLS_HANDLED");
 		return 1;
 

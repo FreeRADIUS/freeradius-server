@@ -936,45 +936,26 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	ttls_tunnel_t *t;
 	const uint8_t *data;
 	unsigned int data_len;
-	char buffer[1024];
 	REQUEST *request = handler->request;
 
 	/*
-	 *	Grab the dirty data, and copy it to our buffer.
-	 *
-	 *	I *really* don't like these 'record_t' things...
+	 *	FIXME: if the SSL session says "want read", or
+	 *	similar, leave the data in the clean_out buffer.  This
+	 *	lets the application data be sent across multiple
+	 *	fragments.
 	 */
-	data_len = (tls_session->record_minus)(&tls_session->dirty_in, buffer, sizeof(buffer));
-	data = buffer;
-
-	/*
-	 *	Write the data from the dirty buffer (i.e. packet
-	 *	data) into the buffer which we will give to SSL for
-	 *	decoding.
-	 *
-	 *	Some of this code COULD technically go into the TLS
-	 *	module, in eaptls_process(), where it returns EAPTLS_OK.
-	 *
-	 *	Similarly, the writing of data to the SSL context could
-	 *	go there, too...
-	 */
-	BIO_write(tls_session->into_ssl, buffer, data_len);
-	(tls_session->record_init)(&tls_session->clean_out);
-
-	/*
-	 *	Read (and decrypt) the tunneled data from the SSL session,
-	 *	and put it into the decrypted data buffer.
-	 */
-	err = SSL_read(tls_session->ssl, tls_session->clean_out.data,
-		       sizeof(tls_session->clean_out.data));
-	if (err < 0) {
-		/*
-		 *	FIXME: Call SSL_get_error() to see what went
-		 *	wrong.
-		 */
-		radlog(L_INFO, "rlm_eap_ttls: SSL_read Error");
-		return PW_AUTHENTICATION_REJECT;
+	err = tls_handshake_recv(tls_session);
+	if (!err) {
+		DEBUG2(" rlm_eap_peap: Failed in SSL");
+		return RLM_MODULE_REJECT;
 	}
+
+	/*
+	 *	Just look at the buffer directly, without doing
+	 *	record_minus.
+	 */
+	data_len = tls_session->clean_out.used;
+	data = tls_session->clean_out.data;
 
 	t = (ttls_tunnel_t *) tls_session->opaque;
 
@@ -982,7 +963,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	If there's no data, maybe this is an ACK to an
 	 *	MS-CHAP2-Success.
 	 */
-	if (err == 0) {
+	if (data_len == 0) {
 		if (t->authenticated) {
 			DEBUG2("  TTLS: Got ACK, and the user was already authenticated.");
 			return PW_AUTHENTICATION_ACK;
@@ -995,9 +976,6 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		radlog(L_INFO, "rlm_eap_ttls: SSL_read Error");
 		return PW_AUTHENTICATION_REJECT;
 	}
-
-	data_len = tls_session->clean_out.used = err;
-	data = tls_session->clean_out.data;
 
 #ifndef NDEBUG
 	if (debug_flag > 2) {

@@ -564,9 +564,8 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	REQUEST *fake;
 	VALUE_PAIR *vp;
 	int rcode = RLM_MODULE_REJECT;
-	const uint8_t *data;
+	const uint8_t	*data;
 	unsigned int data_len;
-	unsigned char buffer[1024];
 #ifndef NDEBUG
 	int i;
 #endif
@@ -575,64 +574,22 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	EAP_DS *eap_ds = handler->eap_ds;
 
 	/*
-	 *	Grab the dirty data, and copy it to our buffer.
-	 *
-	 *	I *really* don't like these 'record_t' things...
+	 *	FIXME: if the SSL session says "want read", or
+	 *	similar, leave the data in the clean_out buffer.  This
+	 *	lets the application data be sent across multiple
+	 *	fragments.
 	 */
-	data_len = (tls_session->record_minus)(&tls_session->dirty_in, buffer, sizeof(buffer));
-	data = buffer;
-
-	/*
-	 *	Write the data from the dirty buffer (i.e. packet
-	 *	data) into the buffer which we will give to SSL for
-	 *	decoding.
-	 *
-	 *	Some of this code COULD technically go into the TLS
-	 *	module, in eaptls_process(), where it returns EAPTLS_OK.
-	 *
-	 *	Similarly, the writing of data to the SSL context could
-	 *	go there, too...
-	 */
-	BIO_write(tls_session->into_ssl, buffer, data_len);
-	(tls_session->record_init)(&tls_session->clean_out);
-
-	/*
-	 *	Read (and decrypt) the tunneled data from the SSL session,
-	 *	and put it into the decrypted data buffer.
-	 */
-	err = SSL_read(tls_session->ssl, tls_session->clean_out.data,
-		       sizeof(tls_session->clean_out.data));
-	if (err < 0) {
-		/*
-		 *	FIXME: if SSL_want_read(), create a tls ACK
-		 *	packet (0x1900), and send it back.  This also
-		 *	involves adding the internal EAP handler to the
-		 *	EAP handler list, so that we can pick up this
-		 *	connection from where we left off.
-		 */
-
-		/*
-		 *	FIXME: Call SSL_get_error() to see what went
-		 *	wrong.
-		 */
-		radlog(L_INFO, "rlm_eap_peap: SSL_read Error");
+	err = tls_handshake_recv(tls_session);
+	if (!err) {
+		DEBUG2(" rlm_eap_peap: Failed in SSL");
 		return RLM_MODULE_REJECT;
 	}
 
 	/*
-	 *	If there's no data, maybe this is an ACK to an
-	 *	MS-CHAP2-Success.
+	 *	Just look at the buffer directly, without doing
+	 *	record_minus.
 	 */
-	if (err == 0) {
-		/*
-		 *	FIXME: Call SSL_get_error() to see what went
-		 *	wrong.
-		 */
-		radlog(L_INFO, "rlm_eap_peap: No data inside of the tunnel.");
-		return RLM_MODULE_REJECT;
-	}
-
-	data_len = tls_session->clean_out.used = err;
+	data_len = tls_session->clean_out.used;
 	data = tls_session->clean_out.data;
 
 #ifndef NDEBUG
@@ -743,7 +700,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 */
 	if (t->state) {
 		DEBUG2("  PEAP: Adding old state with %02x %02x",
-		       t->state->vp_strvalue[0], t->state->vp_strvalue[1]);
+		       t->state->vp_octets[0], t->state->vp_octets[1]);
 		vp = paircopy(t->state);
 		if (vp) pairadd(&fake->packet->vps, vp);
 	}
