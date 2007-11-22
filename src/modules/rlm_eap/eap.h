@@ -111,6 +111,8 @@ typedef struct _eap_handler {
 	int		status;
 
 	int		stage;
+
+	int		trips;
 } EAP_HANDLER;
 
 /*

@@ -366,6 +366,13 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 		return NULL;
 	}
 
+	if (handler->trips >= 50) {
+		DEBUG2("  rlm_eap: More than 50 authentication packets for this EAP session.  Aborted.");
+		eap_handler_free(handler);
+		return NULL;
+	}
+	handler->trips++;
+
 	DEBUG2("  rlm_eap: Request found, released from the list");
 
 	/*
