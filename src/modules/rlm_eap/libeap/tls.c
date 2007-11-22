@@ -200,11 +200,32 @@ int tls_handshake_recv(tls_session_t *ssn)
 		DEBUG2("In SSL Connect mode \n");
 	}
 
+	/*
+	 *	If we're finished the setup, and doing session
+	 *	resumption, (CCS and Finish received, parsed,
+	 *	and validated), wind up handshake.
+	 */
+	if (SSL_is_init_finished(ssn->ssl) & (ssn->ssl->hit == 1)) {
+		record_init(&ssn->dirty_in);
+
+		/*
+		 *	Magic value. See eaptls_operation().
+		 */
+		return 0xea; 
+
+	}
+
 	if (ssn->info.content_type != application_data) {
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
 			       sizeof(ssn->dirty_out.data));
 		if (err > 0) {
 			ssn->dirty_out.used = err;
+
+		} else if (BIO_should_retry(ssn->from_ssl)) {
+			record_init(&ssn->dirty_in);
+			DEBUG2("  tls: Asking for more data in tunnel");
+			return 1;
+
 		} else {
 			int_ssl_check(ssn->ssl, err, "BIO_read");
 			record_init(&ssn->dirty_in);

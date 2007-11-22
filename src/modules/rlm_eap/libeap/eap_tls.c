@@ -240,10 +240,11 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 		return EAPTLS_FAIL;
 
 	case handshake:
-		if (tls_session->info.handshake_type == finished) {
+		if ((tls_session->info.handshake_type == finished) &&
+		    (tls_session->dirty_out.used == 0)) {
 			DEBUG2("  rlm_eap_tls: ack handshake is finished");
 			return EAPTLS_SUCCESS;
-		}
+		} /* else more data to send */
 
 		DEBUG2("  rlm_eap_tls: ack handshake fragment handler");
 		/* Fragmentation handler, send next fragment */
@@ -628,6 +629,8 @@ static void eaptls_operation(EAPTLS_PACKET *eaptls_packet UNUSED,
 		 */
 		eaptls_send_ack(handler->eap_ds, tls_session->peap_flag);
 	} else {
+		int rcode;
+
 		/*
 		 *	We have the complete TLS-data or TLS-message.
 		 *
@@ -637,16 +640,38 @@ static void eaptls_operation(EAPTLS_PACKET *eaptls_packet UNUSED,
 		 *	Success/Failure.
 		 *
 		 *	If more info
-		 *	is required then send another request.  */
-		if (tls_handshake_recv(tls_session)) {
+		 *	is required then send another request.
+		 */
+		rcode = tls_handshake_recv(tls_session);
+		if (rcode == 1) {
 			/*
 			 *	FIXME: return success/fail.
 			 *
 			 *	TLS proper can decide what to do, then.
 			 */
 			eaptls_request(handler->eap_ds, tls_session);
+
+			/*
+			 *	TLS returns 0 or 1.
+			 *	anything else is application-specific.
+			 *
+			 *	In our code, this means "session
+			 *	resumption was OK".
+			 */
+		} else if (rcode == 0xea) {
+			/*
+			 *	FIXME: hard-code key based on EAP type.
+			 *	Also, this code is duplicated all over
+			 *	the place...
+			 */
+			eaptls_success(handler->eap_ds, 0);
+			eaptls_gen_mppe_keys(&handler->request->reply->vps,
+					     tls_session->ssl,
+					     "client EAP encryption");
+
 		} else {
 			eaptls_fail(handler->eap_ds, tls_session->peap_flag);
+
 		}
 	}
 	return;
