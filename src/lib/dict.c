@@ -78,8 +78,8 @@ typedef struct value_fixup_t {
 static value_fixup_t *value_fixup = NULL;
 
 static const LRAD_NAME_NUMBER type_table[] = {
-	{ "string",	PW_TYPE_STRING },
 	{ "integer",	PW_TYPE_INTEGER },
+	{ "string",	PW_TYPE_STRING },
 	{ "ipaddr",	PW_TYPE_IPADDR },
 	{ "date",	PW_TYPE_DATE },
 	{ "abinary",	PW_TYPE_ABINARY },
@@ -301,6 +301,80 @@ static int dict_stat_check(const char *root_dir, const char *root_file)
 	return 1;
 }
 
+typedef struct fr_pool_t {
+	void	*page_end;
+	void	*free_ptr;
+	struct fr_pool_t *page_free;
+	struct fr_pool_t *page_next;
+} fr_pool_t;
+
+#define FR_POOL_SIZE (32768)
+#define FR_ALLOC_ALIGN (8)
+
+static fr_pool_t *dict_pool = NULL;
+
+static fr_pool_t *fr_pool_create(void)
+{
+	fr_pool_t *fp = malloc(FR_POOL_SIZE);
+
+	if (!fp) return NULL;
+
+	fp->page_end = ((uint8_t *) fp) + FR_POOL_SIZE;
+	fp->free_ptr = ((uint8_t *) fp) + sizeof(*fp);
+	fp->page_free = fp;
+	fp->page_next = NULL;
+	return fp;
+}
+
+static void fr_pool_delete(fr_pool_t **pfp)
+{
+	fr_pool_t *fp, *next;
+
+	if (!pfp || !*pfp) return;
+
+	for (fp = *pfp; fp != NULL; fp = next) {
+		next = fp->page_next;
+		free(fp);
+	}
+}
+
+
+static void *fr_pool_alloc(size_t size)
+{
+	void *ptr;
+
+	if (size == 0) return NULL;
+
+	if (size > 256) return NULL; /* shouldn't happen */
+
+	if (!dict_pool) {
+		dict_pool = fr_pool_create();
+		if (!dict_pool) return NULL;
+	}
+
+	if ((size & (FR_ALLOC_ALIGN - 1)) != 0) {
+		size += FR_ALLOC_ALIGN - (size & (FR_ALLOC_ALIGN - 1));
+	}
+
+	if ((((uint8_t *) dict_pool->page_free->free_ptr) + size) > (uint8_t *) dict_pool->page_free->page_end) {
+		dict_pool->page_free->page_next = fr_pool_create();
+		if (!dict_pool->page_free->page_next) return NULL;
+		dict_pool->page_free = dict_pool->page_free->page_next;
+	}
+
+	ptr = dict_pool->page_free->free_ptr;
+	dict_pool->page_free->free_ptr = ((uint8_t *) dict_pool->page_free->free_ptr) + size;
+
+	return ptr;
+}
+
+
+static void fr_pool_free(UNUSED void *ptr)
+{
+	/*
+	 *	Place-holder for later code.
+	 */
+}
 
 /*
  *	Free the dictionary_attributes and dictionary_values lists.
@@ -327,6 +401,8 @@ void dict_free(void)
 
 	memset(dict_base_attrs, 0, sizeof(dict_base_attrs));
 
+	fr_pool_delete(&dict_pool);
+
 	dict_stat_free();
 }
 
@@ -349,7 +425,7 @@ int dict_addvendor(const char *name, int value)
 		return -1;
 	}
 
-	if ((dv = malloc(sizeof(*dv) + length)) == NULL) {
+	if ((dv = fr_pool_alloc(sizeof(*dv) + length)) == NULL) {
 		librad_log("dict_addvendor: out of memory");
 		return -1;
 	}
@@ -374,7 +450,7 @@ int dict_addvendor(const char *name, int value)
 		/*
 		 *	Already inserted.  Discard the duplicate entry.
 		 */
-		free(dv);
+		fr_pool_free(dv);
 		return 0;
 	}
 
@@ -443,10 +519,24 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	}
 
 	if (vendor) {
-		DICT_VENDOR *dv = dict_vendorbyvalue(vendor);
+		DICT_VENDOR *dv;
+		static DICT_VENDOR *last_vendor = NULL;
 
 		/*
-		 *	If the vendor isn't defined, die/
+		 *	Most ATTRIBUTEs are bunched together by
+		 *	VENDOR.  We can save a lot of lookups on
+		 *	dictionary initialization by caching the last
+		 *	vendor.
+		 */
+		if (last_vendor && (vendor == last_vendor->vendorpec)) {
+			dv = last_vendor;
+		} else {
+			dv = dict_vendorbyvalue(vendor);
+			last_vendor = dv;
+		}
+
+		/*
+		 *	If the vendor isn't defined, die.
 		 */
 		if (!dv) {
 			librad_log("dict_addattr: Unknown vendor");
@@ -466,7 +556,7 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	/*
 	 *	Create a new attribute for the list
 	 */
-	if ((attr = malloc(sizeof(*attr))) == NULL) {
+	if ((attr = fr_pool_alloc(sizeof(*attr))) == NULL) {
 		librad_log("dict_addattr: out of memory");
 		return -1;
 	}
@@ -493,7 +583,7 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		if (a && (strcasecmp(a->name, attr->name) == 0)) {
 			if (a->attr != attr->attr) {
 				librad_log("dict_addattr: Duplicate attribute name %s", name);
-				free(attr);
+				fr_pool_free(attr);
 				return -1;
 			}
 
@@ -510,7 +600,7 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 
 		if (!lrad_hash_table_replace(attributes_byname, attr)) {
 			librad_log("dict_addattr: Internal error storing attribute %s", name);
-			free(attr);
+			fr_pool_free(attr);
 			return -1;
 		}
 	}
@@ -546,6 +636,8 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	DICT_ATTR	*dattr;
 	DICT_VALUE	*dval;
 
+	static DICT_ATTR *last_attr = NULL;
+
 	if (!*namestr) {
 		librad_log("dict_addvalue: empty names are not permitted");
 		return -1;
@@ -556,7 +648,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 		return -1;
 	}
 
-	if ((dval = malloc(sizeof(*dval) + length)) == NULL) {
+	if ((dval = fr_pool_alloc(sizeof(*dval) + length)) == NULL) {
 		librad_log("dict_addvalue: out of memory");
 		return -1;
 	}
@@ -566,10 +658,21 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	dval->value = value;
 
 	/*
+	 *	Most VALUEs are bunched together by ATTRIBUTE.  We can
+	 *	save a lot of lookups on dictionary initialization by
+	 *	caching the last attribute.
+	 */
+	if (last_attr && (strcasecmp(attrstr, last_attr->name) == 0)) {
+		dattr = last_attr;
+	} else {
+		dattr = dict_attrbyname(attrstr);
+		last_attr = dattr;
+	}
+
+	/*
 	 *	Remember which attribute is associated with this
 	 *	value, if possible.
 	 */
-	dattr = dict_attrbyname(attrstr);
 	if (dattr) {
 		if (dattr->flags.has_value_alias) {
 			librad_log("dict_addvalue: Cannot add VALUE for ATTRIBUTE \"%s\": It already has a VALUE-ALIAS", attrstr);
@@ -586,14 +689,14 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 		switch (dattr->type) {
 			case PW_TYPE_BYTE:
 				if (value > 255) {
-					free(dval);
+					fr_pool_free(dval);
 					librad_log("dict_addvalue: ATTRIBUTEs of type 'byte' cannot have VALUEs larger than 255");
 					return -1;
 				}
 				break;
 			case PW_TYPE_SHORT:
 				if (value > 65535) {
-					free(dval);
+					fr_pool_free(dval);
 					librad_log("dict_addvalue: ATTRIBUTEs of type 'short' cannot have VALUEs larger than 65535");
 					return -1;
 				}
@@ -609,7 +712,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 				break;
 
 			default:
-				free(dval);
+				fr_pool_free(dval);
 				librad_log("dict_addvalue: VALUEs cannot be defined for attributes of type '%s'",
 					   lrad_int2str(type_table, dattr->type, "?Unknown?"));
 				return -1;
@@ -621,7 +724,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 
 		fixup = (value_fixup_t *) malloc(sizeof(*fixup));
 		if (!fixup) {
-			free(dval);
+			fr_pool_free(dval);
 			librad_log("dict_addvalue: out of memory");
 			return -1;
 		}
@@ -653,12 +756,12 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 			 */
 			old = dict_valbyname(dattr->attr, namestr);
 			if (old && (old->value == dval->value)) {
-				free(dval);
+				fr_pool_free(dval);
 				return 0;
 			}
 		}
 
-		free(dval);
+		fr_pool_free(dval);
 		librad_log("dict_addvalue: Duplicate value name %s for attribute %s", namestr, attrstr);
 		return -1;
 	}
@@ -958,7 +1061,7 @@ static int process_value_alias(const char* fn, const int line, char **argv,
 		return -1;
 	}
 
-	if ((dval = malloc(sizeof(*dval))) == NULL) {
+	if ((dval = fr_pool_alloc(sizeof(*dval))) == NULL) {
 		librad_log("dict_addvalue: out of memory");
 		return -1;
 	}
@@ -971,7 +1074,7 @@ static int process_value_alias(const char* fn, const int line, char **argv,
 	if (!lrad_hash_table_insert(values_byname, dval)) {
 		librad_log("dict_init: %s[%d]: Error create alias",
 			   fn, line);
-		free(dval);
+		fr_pool_free(dval);
 		return -1;
 	}
 
@@ -1219,25 +1322,17 @@ static int my_dict_init(const char *dir, const char *fn,
 			return -1;
 		}
 
-		if (0) {
-			int i;
-
-			fprintf(stderr, "ARGC = %d\n",argc);
-			for (i = 0; i < argc; i++) {
-				fprintf(stderr, "\t%s\n", argv[i]);
-			}
-		}
-
 		/*
-		 *	See if we need to import another dictionary.
+		 *	Process VALUE lines.
 		 */
-		if (strcasecmp(argv[0], "$INCLUDE") == 0) {
-			if (my_dict_init(dir, argv[1], fn, line) < 0) {
+		if (strcasecmp(argv[0], "VALUE") == 0) {
+			if (process_value(fn, line,
+					  argv + 1, argc - 1) == -1) {
 				fclose(fp);
 				return -1;
 			}
 			continue;
-		} /* $INCLUDE */
+		}
 
 		/*
 		 *	Perhaps this is an attribute.
@@ -1252,16 +1347,15 @@ static int my_dict_init(const char *dir, const char *fn,
 		}
 
 		/*
-		 *	Process VALUE lines.
+		 *	See if we need to import another dictionary.
 		 */
-		if (strcasecmp(argv[0], "VALUE") == 0) {
-			if (process_value(fn, line,
-					  argv + 1, argc - 1) == -1) {
+		if (strcasecmp(argv[0], "$INCLUDE") == 0) {
+			if (my_dict_init(dir, argv[1], fn, line) < 0) {
 				fclose(fp);
 				return -1;
 			}
 			continue;
-		}
+		} /* $INCLUDE */
 
 		if (strcasecmp(argv[0], "VALUE-ALIAS") == 0) {
 			if (process_value_alias(fn, line,
@@ -1337,9 +1431,8 @@ static int my_dict_init(const char *dir, const char *fn,
 		/*
 		 *	Any other string: We don't recognize it.
 		 */
-		librad_log(
-			"dict_init: %s[%d] invalid keyword \"%s\"",
-			fn, line, argv[0]);
+		librad_log("dict_init: %s[%d] invalid keyword \"%s\"",
+			   fn, line, argv[0]);
 		fclose(fp);
 		return -1;
 	}
@@ -1389,7 +1482,7 @@ int dict_init(const char *dir, const char *fn)
 	 */
 	vendors_byname = lrad_hash_table_create(dict_vendor_name_hash,
 						dict_vendor_name_cmp,
-						free);
+						fr_pool_free);
 	if (!vendors_byname) {
 		return -1;
 	}
@@ -1401,7 +1494,7 @@ int dict_init(const char *dir, const char *fn)
 	 */
 	vendors_byvalue = lrad_hash_table_create(dict_vendor_value_hash,
 						 dict_vendor_value_cmp,
-						 NULL);
+						 fr_pool_free);
 	if (!vendors_byvalue) {
 		return -1;
 	}
@@ -1414,7 +1507,7 @@ int dict_init(const char *dir, const char *fn)
 	 */
 	attributes_byname = lrad_hash_table_create(dict_attr_name_hash,
 						   dict_attr_name_cmp,
-						   free);
+						   fr_pool_free);
 	if (!attributes_byname) {
 		return -1;
 	}
@@ -1426,21 +1519,21 @@ int dict_init(const char *dir, const char *fn)
 	 */
 	attributes_byvalue = lrad_hash_table_create(dict_attr_value_hash,
 						    dict_attr_value_cmp,
-						    NULL);
+						    fr_pool_free);
 	if (!attributes_byvalue) {
 		return -1;
 	}
 
 	values_byname = lrad_hash_table_create(dict_value_name_hash,
 					       dict_value_name_cmp,
-					       free);
+					       fr_pool_free);
 	if (!values_byname) {
 		return -1;
 	}
 
 	values_byvalue = lrad_hash_table_create(dict_value_value_hash,
 						dict_value_value_cmp,
-						NULL);
+						fr_pool_free);
 	if (!values_byvalue) {
 		return -1;
 	}
