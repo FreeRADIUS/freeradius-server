@@ -738,7 +738,10 @@ static int recv_one_packet(int wait_time)
 	} else {
 		totaldeny++;
 	}
-	radclient->done = 1;
+	
+	if (radclient->resend == resend_count) {
+		radclient->done = 1;
+	}
 
  packet_done:
 	rad_free(&radclient->reply);
