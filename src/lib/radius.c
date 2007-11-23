@@ -239,7 +239,10 @@ ssize_t rad_recv_header(int sockfd, lrad_ipaddr_t *src_ipaddr, int *src_port,
 
 	data_len = recvfrom(sockfd, header, sizeof(header), MSG_PEEK,
 			    (struct sockaddr *)&src, &sizeof_src);
-	if (data_len < 0) return -1;
+	if (data_len < 0) {
+		if ((errno == EAGAIN) || (errno == EINTR)) return 0;
+		return -1;
+	}
 
 	/*
 	 *	Too little data is available, discard the packet.
@@ -346,7 +349,10 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	 */
 	data_len = recvfrom(sockfd, header, sizeof(header), MSG_PEEK,
 			    (struct sockaddr *)&src, &sizeof_src);
-	if (data_len < 0) return -1;
+	if (data_len < 0) {
+		if ((errno == EAGAIN) || (errno == EINTR)) return 0;
+		return -1;
+	}
 
 	/*
 	 *	Too little data is available, discard the packet.
