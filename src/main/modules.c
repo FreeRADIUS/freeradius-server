@@ -766,11 +766,22 @@ static int load_byserver(CONF_SECTION *cs)
 
 int module_hup(CONF_SECTION *modules)
 {
+	time_t when;
 	CONF_ITEM *ci;
 	CONF_SECTION *cs;
 	module_instance_t *node;
 
+	static int insthandle_counter = -1;
+	static time_t hup_times[16];
+
 	if (!modules) return 0;
+
+	if (insthandle_counter < 0) {
+		memset(hup_times, 0, sizeof(hup_times));
+		insthandle_counter = 0;
+	}
+
+	when = time(NULL);
 
 	/*
 	 *	Loop over the modules
@@ -778,8 +789,8 @@ int module_hup(CONF_SECTION *modules)
 	for (ci=cf_item_find_next(modules, NULL);
 	     ci != NULL;
 	     ci=cf_item_find_next(modules, ci)) {
+		int i;
 		void *insthandle = NULL;
-		void *old_insthandle = NULL;
 
 		/*
 		 *	If it's not a section, ignore it.
@@ -790,6 +801,7 @@ int module_hup(CONF_SECTION *modules)
 
 		node = cf_data_find(cs, "instance");
 		if (!node ||
+		    !node->entry->module->instantiate ||
 		    ((node->entry->module->type & RLM_TYPE_HUP_SAFE) == 0)) {
 			continue;
 		}
@@ -798,22 +810,56 @@ int module_hup(CONF_SECTION *modules)
 
 		if ((node->entry->module->instantiate)(cs, &insthandle) < 0) {
 			cf_log_err(cf_sectiontoitem(cs),
-				   "HUP failed for module \"%s\"",
+				   "HUP failed for module \"%s\".  Using old configuration.",
 				   node->name);
 			continue;
 		}
 
 		radlog(L_INFO, " Module: Reloaded module \"%s\"", node->name);
 
-		old_insthandle = node->insthandle;
+		/*
+		 *	Free all configurations old enough to be
+		 *	deleted.  This is slightly wasteful, but easy
+		 *	to do.
+		 *
+		 *	We permit HUPs every 5s, and we cache the last
+		 *	16 configurations.  So the current entry at
+		 *	insthandle_counter will either be empty, OR will
+		 *	be at least (5*16) = 80s old.  The following check
+		 *	ensures that it will be deleted.
+		 */
+		for (i = 0; i < 16; i++) {
+			if ((int) (when - hup_times[insthandle_counter]) < 60)
+				continue;
+
+			if (!node->old_insthandle[i]) continue;
+
+			cf_section_parse_free(cs, node->old_insthandle[i]);
+			
+			if (node->entry->module->detach) {
+				(node->entry->module->detach)(node->old_insthandle[i]);
+			}
+			node->old_insthandle[i] = NULL;
+		}
+
+		/*
+		 *	Save the old instance handle for later deletion.
+		 */
+		node->old_insthandle[insthandle_counter] = node->insthandle;
 		node->insthandle = insthandle;
 
-		cf_section_parse_free(cs, old_insthandle);
-
-		if (node->entry->module->detach) {
-			(node->entry->module->detach)(old_insthandle);
-		}
+		/*
+		 *	FIXME: Set a timeout to come back in 60s, so that
+		 *	we can pro-actively clean up the old instances.
+		 */
 	}
+
+	/*
+	 *	Remember when we were last HUP'd.
+	 */
+	hup_times[insthandle_counter] = when;
+	insthandle_counter++;
+	insthandle_counter &= 0x0f;
 
 	return 1;
 }

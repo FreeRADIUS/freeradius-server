@@ -27,6 +27,7 @@ typedef struct module_instance_t {
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		*mutex;
 #endif
+	void			*old_insthandle[16];
 } module_instance_t;
 
 module_instance_t *find_module_instance(CONF_SECTION *, const char *instname);
