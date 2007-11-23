@@ -96,8 +96,18 @@ static const char *eap_types[] = {
   "27",
   "28",
   "cisco_mschapv2"		/* 29 */
+  "30",
+  "31",
+  "32",
+  "33",
+  "34",
+  "35",
+  "36",
+  "37",
+  "tnc",			/* 38 */
+  "39"
 };
-#define MAX_EAP_TYPE_NAME 29
+#define MAX_EAP_TYPE_NAME 39
 
 /*
  *	Return an EAP-Type for a particular name.
