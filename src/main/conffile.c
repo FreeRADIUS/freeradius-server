@@ -1246,12 +1246,18 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		 */
 	       if ((strcasecmp(buf1, "$INCLUDE") == 0) ||
 		   (strcasecmp(buf1, "$-INCLUDE") == 0)) {
-			t2 = getword(&ptr, buf2, sizeof(buf2));
+		       int relative = 1;
+
+		        t2 = getword(&ptr, buf2, sizeof(buf2));
+
+			if (buf2[0] == '$') relative = 0;
 
 			value = cf_expand_variables(filename, lineno, this, buf, buf2);
 			if (!value) return -1;
 
-			if (value[0] != '/') {
+			if (value[0] == '/') relative = 0;
+
+			if (relative) {
 				value = cf_local_file(current, value, buf3,
 						      sizeof(buf3));
 				if (!value) {
