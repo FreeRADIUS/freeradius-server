@@ -398,7 +398,7 @@ const char *inet_ntop(int af, const void *src, char *dst, size_t cnt)
  *	address family, or the first address (of whatever family),
  *	if AF_UNSPEC is used.
  */
-int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
+int ip_hton(const char *src, int af, fr_ipaddr_t *dst)
 {
 	int error;
 	struct addrinfo hints, *ai = NULL, *res = NULL;
@@ -454,7 +454,7 @@ int ip_hton(const char *src, int af, lrad_ipaddr_t *dst)
 /*
  *	Look IP addreses up, and print names (depending on DNS config)
  */
-const char *ip_ntoh(const lrad_ipaddr_t *src, char *dst, size_t cnt)
+const char *ip_ntoh(const fr_ipaddr_t *src, char *dst, size_t cnt)
 {
 	struct sockaddr_storage ss;
 	struct sockaddr_in  *s4;
@@ -513,7 +513,7 @@ static const char *hextab = "0123456789abcdef";
  *
  *	We allow: hex == bin
  */
-int lrad_hex2bin(const char *hex, uint8_t *bin, int len)
+int fr_hex2bin(const char *hex, uint8_t *bin, int len)
 {
 	int i;
 	char *c1, *c2;
@@ -534,7 +534,7 @@ int lrad_hex2bin(const char *hex, uint8_t *bin, int len)
  *
  *	If the output buffer isn't long enough, we have a buffer overflow.
  */
-void lrad_bin2hex(const uint8_t *bin, char *hex, int len)
+void fr_bin2hex(const uint8_t *bin, char *hex, int len)
 {
 	int i;
 
@@ -580,7 +580,7 @@ int closefrom(int fd)
 }
 #endif
 
-int lrad_ipaddr_cmp(const lrad_ipaddr_t *a, const lrad_ipaddr_t *b)
+int fr_ipaddr_cmp(const fr_ipaddr_t *a, const fr_ipaddr_t *b)
 {
 	if (a->af < b->af) return -1;
 	if (a->af > b->af) return +1;

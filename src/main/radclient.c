@@ -47,19 +47,19 @@ static int totallost = 0;
 
 static int server_port = 0;
 static int packet_code = 0;
-static lrad_ipaddr_t server_ipaddr;
+static fr_ipaddr_t server_ipaddr;
 static int resend_count = 1;
 static int done = 1;
 static int print_filename = 0;
 
-static lrad_ipaddr_t client_ipaddr;
+static fr_ipaddr_t client_ipaddr;
 static int client_port = 0;
 
 static int sockfd;
 static int last_used_id = -1;
 
 static rbtree_t *filename_tree = NULL;
-static lrad_packet_list_t *pl = NULL;
+static fr_packet_list_t *pl = NULL;
 
 static int sleep_time = -1;
 
@@ -392,7 +392,7 @@ static void deallocate_id(radclient_t *radclient)
 	/*
 	 *	One more unused RADIUS ID.
 	 */
-	lrad_packet_list_id_free(pl, radclient->request);
+	fr_packet_list_id_free(pl, radclient->request);
 	radclient->request->id = -1;
 
 	/*
@@ -500,16 +500,16 @@ static int send_one_packet(radclient_t *radclient)
 		 *	this packet.
 		 */
 	retry:
-		rcode = lrad_packet_list_id_alloc(pl, radclient->request);
+		rcode = fr_packet_list_id_alloc(pl, radclient->request);
 		if (rcode < 0) {
 			int mysockfd;
 
-			mysockfd = lrad_socket(&client_ipaddr, 0);
+			mysockfd = fr_socket(&client_ipaddr, 0);
 			if (!mysockfd) {
 				fprintf(stderr, "radclient: Can't open new socket\n");
 				exit(1);
 			}
-			if (!lrad_packet_list_socket_add(pl, mysockfd)) {
+			if (!fr_packet_list_socket_add(pl, mysockfd)) {
 				fprintf(stderr, "radclient: Can't add new socket\n");
 				exit(1);
 			}
@@ -526,7 +526,7 @@ static int send_one_packet(radclient_t *radclient)
 		assert(radclient->request->data == NULL);
 
 		for (i = 0; i < 4; i++) {
-			*((uint32_t *) radclient->request->vector) = lrad_rand();
+			*((uint32_t *) radclient->request->vector) = fr_rand();
 		}
 
 		/*
@@ -565,7 +565,7 @@ static int send_one_packet(radclient_t *radclient)
 		/*
 		 *	Duplicate found.  Serious error!
 		 */
-		if (!lrad_packet_list_insert(pl, &radclient->request)) {
+		if (!fr_packet_list_insert(pl, &radclient->request)) {
 			assert(0 == 1);
 		}
 
@@ -605,7 +605,7 @@ static int send_one_packet(radclient_t *radclient)
 			 *	Delete the request from the tree of
 			 *	outstanding requests.
 			 */
-			lrad_packet_list_yank(pl, radclient->request);
+			fr_packet_list_yank(pl, radclient->request);
 
 			fprintf(stderr, "radclient: no response from server for ID %d socket %d\n", radclient->request->id, radclient->request->sockfd);
 			deallocate_id(radclient);
@@ -656,7 +656,7 @@ static int recv_one_packet(int wait_time)
 	/* And wait for reply, timing out as necessary */
 	FD_ZERO(&set);
 
-	max_fd = lrad_packet_list_fd_set(pl, &set);
+	max_fd = fr_packet_list_fd_set(pl, &set);
 	if (max_fd < 0) exit(1); /* no sockets to listen on! */
 
 	if (wait_time <= 0) {
@@ -676,7 +676,7 @@ static int recv_one_packet(int wait_time)
 	/*
 	 *	Look for the packet.
 	 */
-	reply = lrad_packet_list_recv(pl, &set);
+	reply = fr_packet_list_recv(pl, &set);
 	if (!reply) {
 		fprintf(stderr, "radclient: received bad packet: %s\n",
 			librad_errstr);
@@ -692,13 +692,13 @@ static int recv_one_packet(int wait_time)
 
 	if (librad_debug > 2) print_hex(reply);
 
-	request_p = lrad_packet_list_find_byreply(pl, reply);
+	request_p = fr_packet_list_find_byreply(pl, reply);
 	if (!request_p) {
 		fprintf(stderr, "radclient: received response to request we did not send. (id=%d socket %d)\n", reply->id, reply->sockfd);
 		rad_free(&reply);
 		return -1;	/* got reply to packet we didn't send */
 	}
-	radclient = lrad_packet2myptr(radclient_t, request, request_p);
+	radclient = fr_packet2myptr(radclient_t, request, request_p);
 
 	/*
 	 *	Fails the signature validation: not a real reply.
@@ -710,7 +710,7 @@ static int recv_one_packet(int wait_time)
 		goto packet_done; /* shared secret is incorrect */
 	}
 
-	lrad_packet_list_yank(pl, radclient->request);
+	fr_packet_list_yank(pl, radclient->request);
 	if (print_filename) printf("%s:%d %d\n",
 				   radclient->filename,
 				   radclient->packet_number,
@@ -1023,19 +1023,19 @@ int main(int argc, char **argv)
 		client_ipaddr = radclient_head->request->src_ipaddr;
 		client_port = radclient_head->request->src_port;
 	}
-	sockfd = lrad_socket(&client_ipaddr, client_port);
+	sockfd = fr_socket(&client_ipaddr, client_port);
 	if (sockfd < 0) {
 		fprintf(stderr, "radclient: socket: %s\n", librad_errstr);
 		exit(1);
 	}
 
-	pl = lrad_packet_list_create(1);
+	pl = fr_packet_list_create(1);
 	if (!pl) {
 		fprintf(stderr, "radclient: Out of memory\n");
 		exit(1);
 	}
 
-	if (!lrad_packet_list_socket_add(pl, sockfd)) {
+	if (!fr_packet_list_socket_add(pl, sockfd)) {
 		fprintf(stderr, "radclient: Out of memory\n");
 		exit(1);
 	}
@@ -1163,7 +1163,7 @@ int main(int argc, char **argv)
 		/*
 		 *	Still have outstanding requests.
 		 */
-		if (lrad_packet_list_num_elements(pl) > 0) {
+		if (fr_packet_list_num_elements(pl) > 0) {
 			done = 0;
 		} else {
 			sleep_time = 0;
@@ -1182,7 +1182,7 @@ int main(int argc, char **argv)
 	} while (!done);
 
 	rbtree_free(filename_tree);
-	lrad_packet_list_free(pl);
+	fr_packet_list_free(pl);
 	dict_free();
 
 	if (do_summary) {

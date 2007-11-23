@@ -1,5 +1,5 @@
-#ifndef _LRAD_SHA1_H
-#define _LRAD_SHA1_H
+#ifndef _FR_SHA1_H
+#define _FR_SHA1_H
 
 /*
  *  FreeRADIUS defines to ensure globally unique SHA1 function names,
@@ -34,4 +34,4 @@ void fr_fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context);
 extern void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160]);
 
 
-#endif /* _LRAD_SHA1_H */
+#endif /* _FR_SHA1_H */

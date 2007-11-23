@@ -60,8 +60,8 @@ struct conf_pair {
 	CONF_ITEM item;
 	char *attr;
 	char *value;
-	LRAD_TOKEN operator;
-	LRAD_TOKEN value_type;
+	FR_TOKEN operator;
+	FR_TOKEN value_type;
 };
 struct conf_part {
 	CONF_ITEM item;
@@ -147,7 +147,7 @@ static CONF_ITEM *cf_datatoitem(CONF_DATA *cd)
  *	Create a new CONF_PAIR
  */
 static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
-				LRAD_TOKEN operator, LRAD_TOKEN value_type,
+				FR_TOKEN operator, FR_TOKEN value_type,
 				CONF_SECTION *parent)
 {
 	CONF_PAIR *cp;
@@ -781,7 +781,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 	int rcode = 0;
 	char **q;
 	const char *value;
-	lrad_ipaddr_t ipaddr;
+	fr_ipaddr_t ipaddr;
 	const CONF_PAIR *cp;
 	char ipbuf[128];
 

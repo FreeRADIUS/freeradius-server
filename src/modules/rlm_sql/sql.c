@@ -318,7 +318,7 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row)
 	char *ptr, *value;
 	char buf[MAX_STRING_LEN];
 	char do_xlat = 0;
-	LRAD_TOKEN token, operator = T_EOL;
+	FR_TOKEN token, operator = T_EOL;
 
 	/*
 	 *	Verify the 'Attribute' field

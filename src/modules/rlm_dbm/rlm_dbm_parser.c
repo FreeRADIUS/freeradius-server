@@ -180,7 +180,7 @@ static int getuname(char **p,char *u,int n) {
 }
 
 static int sm_parse_file(FILE*fp,const char* fname) {
-        LRAD_TOKEN tok;
+        FR_TOKEN tok;
         VALUE_PAIR *vp = NULL;
 	sm_parse_state_t  parse_state = SMP_USER;
 	unsigned long lino  = 0;

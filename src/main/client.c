@@ -78,7 +78,7 @@ static int client_ipaddr_cmp(const void *one, const void *two)
 	const RADCLIENT *a = one;
 	const RADCLIENT *b = two;
 
-	return lrad_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
+	return fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
 }
 
 #ifdef WITH_SNMP
@@ -292,7 +292,7 @@ RADCLIENT *client_findbynumber(const RADCLIENT_LIST *clients,
  *	Find a client in the RADCLIENTS list.
  */
 RADCLIENT *client_find(const RADCLIENT_LIST *clients,
-		       const lrad_ipaddr_t *ipaddr)
+		       const fr_ipaddr_t *ipaddr)
 {
 	int i, max_prefix;
 	RADCLIENT myclient;
@@ -336,7 +336,7 @@ RADCLIENT *client_find(const RADCLIENT_LIST *clients,
 /*
  *	Old wrapper for client_find
  */
-RADCLIENT *client_find_old(const lrad_ipaddr_t *ipaddr)
+RADCLIENT *client_find_old(const fr_ipaddr_t *ipaddr)
 {
 	return client_find(root_clients, ipaddr);
 }
@@ -346,7 +346,7 @@ RADCLIENT *client_find_old(const lrad_ipaddr_t *ipaddr)
  *	Find the name of a client (prefer short name).
  */
 const char *client_name(const RADCLIENT_LIST *clients,
-			const lrad_ipaddr_t *ipaddr)
+			const fr_ipaddr_t *ipaddr)
 {
 	/* We don't call this unless we should know about the client. */
 	RADCLIENT *cl;
@@ -372,7 +372,7 @@ const char *client_name(const RADCLIENT_LIST *clients,
 	return "UNKNOWN-CLIENT";
 }
 
-const char *client_name_old(const lrad_ipaddr_t *ipaddr)
+const char *client_name_old(const fr_ipaddr_t *ipaddr)
 {
 	return client_name(root_clients, ipaddr);
 }

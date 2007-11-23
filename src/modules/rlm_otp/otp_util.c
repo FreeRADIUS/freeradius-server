@@ -41,7 +41,7 @@ otp_get_random(char *rnd_data, size_t len)
   while (bytes_read < len) {
     int n;
     unsigned int bytes_left = len - bytes_read;
-    uint32_t r = lrad_rand();
+    uint32_t r = fr_rand();
 
     n = sizeof(r) < bytes_left ? sizeof(r) : bytes_left;
     (void) memcpy(rnd_data + bytes_read, &r, n);

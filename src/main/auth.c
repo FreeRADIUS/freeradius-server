@@ -266,7 +266,7 @@ static int rad_check_password(REQUEST *request)
 				return -1;
 			}
 
-			switch (lrad_crypt_check((char *)auth_item->vp_strvalue,
+			switch (fr_crypt_check((char *)auth_item->vp_strvalue,
 									 (char *)password_pair->vp_strvalue)) {
 			case -1:
 			  rad_authlog("Login incorrect "

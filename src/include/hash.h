@@ -1,5 +1,5 @@
-#ifndef LRAD_HASH_H
-#define LRAD_HASH_H
+#ifndef FR_HASH_H
+#define FR_HASH_H
 
 /*
  * hash.h	Structures and prototypes
@@ -31,34 +31,34 @@ RCSIDH(hash_h, "$Id$")
  *	Fast hash, which isn't too bad.  Don't use for cryptography,
  *	just for hashing internal data.
  */
-uint32_t lrad_hash(const void *, size_t);
-uint32_t lrad_hash_update(const void *data, size_t size, uint32_t hash);
-uint32_t lrad_hash_string(const char *p);
+uint32_t fr_hash(const void *, size_t);
+uint32_t fr_hash_update(const void *data, size_t size, uint32_t hash);
+uint32_t fr_hash_string(const char *p);
 
 /*
  *	If you need fewer than 32-bits of hash, use this macro to get
  *	the number of bits in the hash you need.  The upper bits of the
  *	hash will be set to zero.
  */
-uint32_t lrad_hash_fold(uint32_t hash, int bits);
+uint32_t fr_hash_fold(uint32_t hash, int bits);
 
-typedef struct lrad_hash_table_t lrad_hash_table_t;
-typedef void (*lrad_hash_table_free_t)(void *);
-typedef uint32_t (*lrad_hash_table_hash_t)(const void *);
-typedef int (*lrad_hash_table_cmp_t)(const void *, const void *);
-typedef int (*lrad_hash_table_walk_t)(void * /* ctx */, void * /* data */);
+typedef struct fr_hash_table_t fr_hash_table_t;
+typedef void (*fr_hash_table_free_t)(void *);
+typedef uint32_t (*fr_hash_table_hash_t)(const void *);
+typedef int (*fr_hash_table_cmp_t)(const void *, const void *);
+typedef int (*fr_hash_table_walk_t)(void * /* ctx */, void * /* data */);
 
-lrad_hash_table_t *lrad_hash_table_create(lrad_hash_table_hash_t hashNode,
-					  lrad_hash_table_cmp_t cmpNode,
-					  lrad_hash_table_free_t freeNode);
-void		lrad_hash_table_free(lrad_hash_table_t *ht);
-int		lrad_hash_table_insert(lrad_hash_table_t *ht, void *data);
-int		lrad_hash_table_delete(lrad_hash_table_t *ht, const void *data);
-void		*lrad_hash_table_yank(lrad_hash_table_t *ht, const void *data);
-int		lrad_hash_table_replace(lrad_hash_table_t *ht, void *data);
-void		*lrad_hash_table_finddata(lrad_hash_table_t *ht, const void *data);
-int		lrad_hash_table_num_elements(lrad_hash_table_t *ht);
-int		lrad_hash_table_walk(lrad_hash_table_t *ht,
-				     lrad_hash_table_walk_t callback,
+fr_hash_table_t *fr_hash_table_create(fr_hash_table_hash_t hashNode,
+					  fr_hash_table_cmp_t cmpNode,
+					  fr_hash_table_free_t freeNode);
+void		fr_hash_table_free(fr_hash_table_t *ht);
+int		fr_hash_table_insert(fr_hash_table_t *ht, void *data);
+int		fr_hash_table_delete(fr_hash_table_t *ht, const void *data);
+void		*fr_hash_table_yank(fr_hash_table_t *ht, const void *data);
+int		fr_hash_table_replace(fr_hash_table_t *ht, void *data);
+void		*fr_hash_table_finddata(fr_hash_table_t *ht, const void *data);
+int		fr_hash_table_num_elements(fr_hash_table_t *ht);
+int		fr_hash_table_walk(fr_hash_table_t *ht,
+				     fr_hash_table_walk_t callback,
 				     void *ctx);
-#endif /* LRAD_HASH_H */
+#endif /* FR_HASH_H */

@@ -23,10 +23,10 @@ RCSID("$Id$")
     to return for gethostbyname() & gethostbyaddr(), if that is the
     case then use only one mutex instead of seperate mutexes
  */
-static int lrad_hostbyname = 0;
-static int lrad_hodtbyaddr = 0;
-static pthread_mutex_t lrad_hostbyname_mutex;
-static pthread_mutex_t lrad_hodtbyaddr_mutex;
+static int fr_hostbyname = 0;
+static int fr_hodtbyaddr = 0;
+static pthread_mutex_t fr_hostbyname_mutex;
+static pthread_mutex_t fr_hodtbyaddr_mutex;
 #endif
 
 #undef LOCAL_GETHOSTBYNAMERSTYLE
@@ -127,11 +127,11 @@ gethostbyname_r(const char *hostname, struct hostent *result,
     struct hostent *hp;
 
 #ifdef HAVE_PTHREAD_H
-    if (lrad_hostbyname == 0) {
-    	pthread_mutex_init(&lrad_hostbyname_mutex, NULL);
-	lrad_hostbyname = 1;
+    if (fr_hostbyname == 0) {
+    	pthread_mutex_init(&fr_hostbyname_mutex, NULL);
+	fr_hostbyname = 1;
     }
-    pthread_mutex_lock(&lrad_hostbyname_mutex);
+    pthread_mutex_lock(&fr_hostbyname_mutex);
 #endif
 
     hp = gethostbyname(hostname);
@@ -144,7 +144,7 @@ gethostbyname_r(const char *hostname, struct hostent *result,
     }
 
 #ifdef HAVE_PTHREAD_H
-    pthread_mutex_unlock(&lrad_hostbyname_mutex);
+    pthread_mutex_unlock(&fr_hostbyname_mutex);
 #endif
 
     return hp;
@@ -160,11 +160,11 @@ gethostbyaddr_r(const char *addr, int len, int type, struct hostent *result,
     struct hostent *hp;
 
 #ifdef HAVE_PTHREAD_H
-    if (lrad_hodtbyaddr == 0) {
-    	pthread_mutex_init(&lrad_hodtbyaddr_mutex, NULL);
-	lrad_hodtbyaddr = 1;
+    if (fr_hodtbyaddr == 0) {
+    	pthread_mutex_init(&fr_hodtbyaddr_mutex, NULL);
+	fr_hodtbyaddr = 1;
     }
-    pthread_mutex_lock(&lrad_hodtbyaddr_mutex);
+    pthread_mutex_lock(&fr_hodtbyaddr_mutex);
 #endif
 
     hp = gethostbyaddr(addr, len, type);
@@ -177,7 +177,7 @@ gethostbyaddr_r(const char *addr, int len, int type, struct hostent *result,
     }
 
 #ifdef HAVE_PTHREAD_H
-    pthread_mutex_unlock(&lrad_hodtbyaddr_mutex);
+    pthread_mutex_unlock(&fr_hodtbyaddr_mutex);
 #endif
 
     return hp;

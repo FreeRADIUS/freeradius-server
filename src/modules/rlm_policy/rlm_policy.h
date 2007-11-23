@@ -247,10 +247,10 @@ typedef struct rlm_policy_t {
 /*
  *	Functions.
  */
-extern const LRAD_NAME_NUMBER rlm_policy_tokens[];
-extern const LRAD_NAME_NUMBER policy_reserved_words[];
-extern const LRAD_NAME_NUMBER policy_return_codes[];
-extern const LRAD_NAME_NUMBER policy_component_names[];
+extern const FR_NAME_NUMBER rlm_policy_tokens[];
+extern const FR_NAME_NUMBER policy_reserved_words[];
+extern const FR_NAME_NUMBER policy_return_codes[];
+extern const FR_NAME_NUMBER policy_component_names[];
 
 extern int rlm_policy_insert(rbtree_t *head, policy_named_t *policy);
 extern policy_named_t *rlm_policy_find(rbtree_t *head, const char *name);

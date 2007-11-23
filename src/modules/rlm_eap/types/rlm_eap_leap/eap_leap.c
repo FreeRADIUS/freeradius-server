@@ -225,7 +225,7 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 
 	} else {		/* MUST be NT-Password */
 		if (password->length == 32) {
-			password->length = lrad_hex2bin(password->vp_strvalue,
+			password->length = fr_hex2bin(password->vp_strvalue,
 							password->vp_octets,
 							16);
 		}
@@ -415,7 +415,7 @@ LEAP_PACKET *eapleap_initiate(UNUSED EAP_DS *eap_ds, VALUE_PAIR *user_name)
 	 *	Fill the challenge with random bytes.
 	 */
 	for (i = 0; i < reply->count; i++) {
-		reply->challenge[i] = lrad_rand();
+		reply->challenge[i] = fr_rand();
 	}
 
 	DEBUG2("  rlm_eap_leap: Issuing AP Challenge");

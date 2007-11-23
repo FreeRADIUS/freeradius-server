@@ -82,7 +82,7 @@ static int eap_handler_cmp(const void *a, const void *b)
 	if (one->eap_id < two->eap_id) return -1;
 	if (one->eap_id > two->eap_id) return +1;
 
-	rcode = lrad_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr);
+	rcode = fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr);
 	if (rcode != 0) return rcode;
 
 	return memcmp(one->state, two->state, sizeof(one->state));

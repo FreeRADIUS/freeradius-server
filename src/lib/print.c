@@ -289,7 +289,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 
 			strcpy(buf, "0x");
 
-			lrad_bin2hex(vp->vp_octets, buf + 2, vp->length);
+			fr_bin2hex(vp->vp_octets, buf + 2, vp->length);
 			a = buf;
 		  break;
 

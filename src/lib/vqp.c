@@ -73,7 +73,7 @@ RCSID("$Id$");
  *	Duplicate code is bad.
  */
 static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
-		      lrad_ipaddr_t *src_ipaddr, lrad_ipaddr_t *dst_ipaddr,
+		      fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr,
 		      int dst_port)
 {
 	struct sockaddr_storage	dst;
@@ -166,8 +166,8 @@ static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
  *	FIXME:  This is copied from rad_recvfrom, with minor edits.
  */
 static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
-			    lrad_ipaddr_t *src_ipaddr, uint16_t *src_port,
-			    lrad_ipaddr_t *dst_ipaddr, uint16_t *dst_port)
+			    fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
+			    fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port)
 {
 	struct sockaddr_storage	src;
 	struct sockaddr_storage	dst;

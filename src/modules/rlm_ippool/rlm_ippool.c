@@ -342,7 +342,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 			fr_MD5Update(&md5_context, xlat_str, strlen(xlat_str));
 			fr_MD5Final(key_str, &md5_context);
 			key_str[17] = '\0';
-			lrad_bin2hex(key_str,hex_str,16);
+			fr_bin2hex(key_str,hex_str,16);
 			hex_str[32] = '\0';
 			DEBUG("rlm_ippool: MD5 on 'key' directive maps to: %s",hex_str);
 			memcpy(key.key,key_str,16);
@@ -485,7 +485,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	fr_MD5Update(&md5_context, xlat_str, strlen(xlat_str));
 	fr_MD5Final(key_str, &md5_context);
 	key_str[17] = '\0';
-	lrad_bin2hex(key_str,hex_str,16);
+	fr_bin2hex(key_str,hex_str,16);
 	hex_str[32] = '\0';
 	DEBUG("rlm_ippool: MD5 on 'key' directive maps to: %s",hex_str);
 	memcpy(key.key,key_str,16);

@@ -94,7 +94,7 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	DICT_ATTR *dattr;
 	ATTR_FLAGS flags;
 
-	static const LRAD_NAME_NUMBER names[] = {
+	static const FR_NAME_NUMBER names[] = {
 		{ "string", PW_TYPE_STRING },
 		{ "integer", PW_TYPE_INTEGER },
 		{ "ipaddr", PW_TYPE_IPADDR },
@@ -177,7 +177,7 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	 *	so we don't have to do string comparisons on each
 	 *	packet.
 	 */
-	data->dat_type = lrad_str2int(names, data->data_type, -1);
+	data->dat_type = fr_str2int(names, data->data_type, -1);
 	if (data->dat_type < 0) {
 		radlog(L_ERR, "rlm_checkval: Data type %s in not known",data->data_type);
 		checkval_detach(data);

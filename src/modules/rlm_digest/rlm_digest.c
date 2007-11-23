@@ -243,7 +243,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		 *	Set A1 to Digest-HA1 if no User-Password found
 		 */
 		if (passwd->attribute == PW_DIGEST_HA1) {
-			if (lrad_hex2bin(passwd->vp_strvalue, &a1[0], 16) != 16) {
+			if (fr_hex2bin(passwd->vp_strvalue, &a1[0], 16) != 16) {
 				DEBUG2("rlm_digest: Invalid text in Digest-HA1");
 				return RLM_MODULE_INVALID;
 			}
@@ -258,7 +258,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		 */
 		if (passwd->attribute == PW_CLEARTEXT_PASSWORD) {
 			fr_md5_calc(hash, &a1[0], a1_len);
-			lrad_bin2hex(hash, (char *) &a1[0], 16);
+			fr_bin2hex(hash, (char *) &a1[0], 16);
 		} else {	/* MUST be Digest-HA1 */
 			memcpy(&a1[0], passwd->vp_strvalue, 32);
 		}
@@ -381,7 +381,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	} else {
 		memcpy(&hash[0], &a1[0], a1_len);
 	}
-	lrad_bin2hex(hash, (char *) kd, sizeof(hash));
+	fr_bin2hex(hash, (char *) kd, sizeof(hash));
 
 #ifndef NDEBUG
 	if (debug_flag) {
@@ -450,7 +450,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 
 	fr_md5_calc(&hash[0], &a2[0], a2_len);
 
-	lrad_bin2hex(hash, (char *) kd + kd_len, sizeof(hash));
+	fr_bin2hex(hash, (char *) kd + kd_len, sizeof(hash));
 
 #ifndef NDEBUG
 	if (debug_flag) {
@@ -482,7 +482,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	if (lrad_hex2bin(&vp->vp_strvalue[0], &hash[0], vp->length >> 1) != (vp->length >> 1)) {
+	if (fr_hex2bin(&vp->vp_strvalue[0], &hash[0], vp->length >> 1) != (vp->length >> 1)) {
 		DEBUG2("rlm_digest: Invalid text in Digest-Response");
 		return RLM_MODULE_INVALID;
 	}

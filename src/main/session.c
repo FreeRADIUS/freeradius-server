@@ -127,7 +127,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	char	address[16];
 	char	port[11];
 	RADCLIENT *cl;
-	lrad_ipaddr_t ipaddr;
+	fr_ipaddr_t ipaddr;
 
 	ipaddr.af = AF_INET;
 	ipaddr.ipaddr.ip4addr.s_addr = nasaddr;

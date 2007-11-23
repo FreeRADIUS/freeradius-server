@@ -37,7 +37,7 @@ static int openlog_run = 0;
  /*
  * Logging facility names
  */
-static const LRAD_NAME_NUMBER levels[] = {
+static const FR_NAME_NUMBER levels[] = {
 	{ ": Debug: ",          L_DBG   },
 	{ ": Auth: ",           L_AUTH  },
 	{ ": Proxy: ",          L_PROXY },
@@ -143,7 +143,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		timeval = time(NULL);
 		CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
 
-		s = lrad_int2str(levels, (lvl & ~L_CONS), ": ");
+		s = fr_int2str(levels, (lvl & ~L_CONS), ": ");
 
 		strcat(buffer, s);
 		len = strlen(buffer);

@@ -151,7 +151,7 @@ typedef struct value_pair {
 	int			vendor;
 	int			type;
 	int			length; /* of data */
-	LRAD_TOKEN		operator;
+	FR_TOKEN		operator;
         ATTR_FLAGS              flags;
 	struct value_pair	*next;
 	uint32_t		lvalue;
@@ -180,13 +180,13 @@ typedef struct value_pair {
 #endif
 
 
-typedef struct lrad_ipaddr_t {
+typedef struct fr_ipaddr_t {
 	int		af;	/* address family */
 	union {
 		struct in_addr	ip4addr;
 		struct in6_addr ip6addr; /* maybe defined in missing.h */
 	} ipaddr;
-} lrad_ipaddr_t;
+} fr_ipaddr_t;
 
 /*
  *	vector:		Request authenticator from access-request packet
@@ -199,8 +199,8 @@ typedef struct lrad_ipaddr_t {
  */
 typedef struct radius_packet {
 	int			sockfd;
-	lrad_ipaddr_t		src_ipaddr;
-        lrad_ipaddr_t		dst_ipaddr;
+	fr_ipaddr_t		src_ipaddr;
+        fr_ipaddr_t		dst_ipaddr;
 	uint16_t		src_port;
 	uint16_t		dst_port;
 	int			id;
@@ -277,7 +277,7 @@ void fr_hmac_sha1(const uint8_t *text, int text_len,
 int		rad_send(RADIUS_PACKET *, const RADIUS_PACKET *, const char *secret);
 int		rad_packet_ok(RADIUS_PACKET *packet);
 RADIUS_PACKET	*rad_recv(int fd);
-ssize_t rad_recv_header(int sockfd, lrad_ipaddr_t *src_ipaddr, int *src_port,
+ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, int *src_port,
 			int *code);
 void		rad_recv_discard(int sockfd);
 int		rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
@@ -323,8 +323,8 @@ void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr);
 VALUE_PAIR	*pairparsevalue(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*pairmake(const char *attribute, const char *value, int operator);
-VALUE_PAIR	*pairread(char **ptr, LRAD_TOKEN *eol);
-LRAD_TOKEN	userparse(char *buffer, VALUE_PAIR **first_pair);
+VALUE_PAIR	*pairread(char **ptr, FR_TOKEN *eol);
+FR_TOKEN	userparse(char *buffer, VALUE_PAIR **first_pair);
 VALUE_PAIR     *readvp2(FILE *fp, int *pfiledone, const char *errprefix);
 
 /*
@@ -356,8 +356,8 @@ uint8_t		*ifid_aton(const char *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
-void		lrad_bin2hex(const uint8_t *bin, char *hex, int len);
-int		lrad_hex2bin(const char *hex, uint8_t *bin, int len);
+void		fr_bin2hex(const uint8_t *bin, char *hex, int len);
+int		fr_hex2bin(const char *hex, uint8_t *bin, int len);
 #ifndef HAVE_INET_PTON
 int		inet_pton(int af, const char *src, void *dst);
 #endif
@@ -367,10 +367,10 @@ const char	*inet_ntop(int af, const void *src, char *dst, size_t cnt);
 #ifndef HAVE_CLOSEFROM
 int		closefrom(int fd);
 #endif
-int lrad_ipaddr_cmp(const lrad_ipaddr_t *a, const lrad_ipaddr_t *b);
+int fr_ipaddr_cmp(const fr_ipaddr_t *a, const fr_ipaddr_t *b);
 
-int		ip_hton(const char *src, int af, lrad_ipaddr_t *dst);
-const char	*ip_ntoh(const lrad_ipaddr_t *src, char *dst, size_t cnt);
+int		ip_hton(const char *src, int af, fr_ipaddr_t *dst);
+const char	*ip_ntoh(const fr_ipaddr_t *src, char *dst, size_t cnt);
 
 
 
@@ -382,23 +382,23 @@ void		print_abinary(VALUE_PAIR *vp, char *buffer, int len);
 
 /* random numbers in isaac.c */
 /* context of random number generator */
-typedef struct lrad_randctx {
+typedef struct fr_randctx {
   uint32_t randcnt;
   uint32_t randrsl[256];
   uint32_t randmem[256];
   uint32_t randa;
   uint32_t randb;
   uint32_t randc;
-} lrad_randctx;
+} fr_randctx;
 
-void lrad_isaac(lrad_randctx *ctx);
-void lrad_randinit(lrad_randctx *ctx, int flag);
-uint32_t lrad_rand(void);	/* like rand(), but better. */
-void lrad_rand_seed(const void *, size_t ); /* seed the random pool */
+void fr_isaac(fr_randctx *ctx);
+void fr_randinit(fr_randctx *ctx, int flag);
+uint32_t fr_rand(void);	/* like rand(), but better. */
+void fr_rand_seed(const void *, size_t ); /* seed the random pool */
 
 
 /* crypt wrapper from crypt.c */
-int lrad_crypt_check(const char *key, const char *salt);
+int fr_crypt_check(const char *key, const char *salt);
 
 /* rbtree.c */
 typedef struct rbtree_t rbtree_t;
@@ -437,14 +437,14 @@ int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order, int (*callback)(void *, void
 /*
  *	FIFOs
  */
-typedef struct lrad_fifo_t lrad_fifo_t;
-typedef void (*lrad_fifo_free_t)(void *);
-lrad_fifo_t *lrad_fifo_create(int max_entries, lrad_fifo_free_t freeNode);
-void lrad_fifo_free(lrad_fifo_t *fi);
-int lrad_fifo_push(lrad_fifo_t *fi, void *data);
-void *lrad_fifo_pop(lrad_fifo_t *fi);
-void *lrad_fifo_peek(lrad_fifo_t *fi);
-int lrad_fifo_num_elements(lrad_fifo_t *fi);
+typedef struct fr_fifo_t fr_fifo_t;
+typedef void (*fr_fifo_free_t)(void *);
+fr_fifo_t *fr_fifo_create(int max_entries, fr_fifo_free_t freeNode);
+void fr_fifo_free(fr_fifo_t *fi);
+int fr_fifo_push(fr_fifo_t *fi, void *data);
+void *fr_fifo_pop(fr_fifo_t *fi);
+void *fr_fifo_peek(fr_fifo_t *fi);
+int fr_fifo_num_elements(fr_fifo_t *fi);
 
 #include <freeradius-devel/packet.h>
 

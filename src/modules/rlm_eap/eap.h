@@ -92,7 +92,7 @@ typedef enum operation_t {
 typedef struct _eap_handler {
 	struct _eap_handler *prev, *next;
 	uint8_t		state[EAP_STATE_LEN];
-	lrad_ipaddr_t	src_ipaddr;
+	fr_ipaddr_t	src_ipaddr;
 	unsigned int	eap_id;
 	unsigned int	eap_type;
 

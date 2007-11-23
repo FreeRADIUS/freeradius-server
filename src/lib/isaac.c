@@ -27,7 +27,7 @@ RCSID("$Id$")
   *(r++) = b = (ind(mm,y>>RANDSIZL) + x) & 0xffffffff; \
 }
 
-void lrad_isaac(lrad_randctx *ctx)
+void fr_isaac(fr_randctx *ctx)
 {
    register uint32_t a,b,x,y,*m,*mm,*m2,*r,*mend;
    mm=ctx->randmem; r=ctx->randrsl;
@@ -63,7 +63,7 @@ void lrad_isaac(lrad_randctx *ctx)
 }
 
 /* if (flag==1), then use the contents of randrsl[] to initialize mm[]. */
-void lrad_randinit(lrad_randctx *ctx, int flag)
+void fr_randinit(fr_randctx *ctx, int flag)
 {
   int i;
   uint32_t a,b,c,d,e,f,g,h;
@@ -103,7 +103,7 @@ void lrad_randinit(lrad_randctx *ctx, int flag)
     }
   }
 
-  lrad_isaac(ctx);       /* fill in the first set of results */
+  fr_isaac(ctx);       /* fill in the first set of results */
   ctx->randcnt=RANDSIZ;  /* prepare to use the first set of results */
 }
 
@@ -117,14 +117,14 @@ void lrad_randinit(lrad_randctx *ctx, int flag)
 int main()
 {
   uint32_t i,j;
-  lrad_randctx ctx;
+  fr_randctx ctx;
 
   ctx.randa = ctx.randb = ctx.randc = (uint32_t)0;
 
   for (i=0; i<256; ++i) ctx.randrsl[i]=(uint32_t)0;
-  lrad_randinit(&ctx, 1);
+  fr_randinit(&ctx, 1);
   for (i=0; i<2; ++i) {
-    lrad_isaac(&ctx);
+    fr_isaac(&ctx);
     for (j=0; j<256; ++j) {
       printf("%.8lx",ctx.randrsl[j]);
       if ((j&7)==7) printf("\n");

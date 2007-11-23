@@ -258,7 +258,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	vp = pairfind(request->packet->vps, PW_FREERADIUS_PROXIED_TO);
 	if (vp && (request->packet->src_ipaddr.af == AF_INET)) {
 		int i;
-		lrad_ipaddr_t my_ipaddr;
+		fr_ipaddr_t my_ipaddr;
 
 		my_ipaddr.af = AF_INET;
 		my_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
@@ -271,7 +271,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *	send it there again.
 		 */
 		for (i = 0; i < realm->acct_pool->num_home_servers; i++) {
-			if (lrad_ipaddr_cmp(&realm->acct_pool->servers[i]->ipaddr,
+			if (fr_ipaddr_cmp(&realm->acct_pool->servers[i]->ipaddr,
 					    &my_ipaddr) == 0) {
 				DEBUG2("Suppressing proxy due to FreeRADIUS-Proxied-To");
 				return 0;
@@ -295,7 +295,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *	send it there again.
 		 */
 		for (i = 0; i < realm->acct_pool->num_home_servers; i++) {
-			if ((lrad_ipaddr_cmp(&realm->acct_pool->servers[i]->ipaddr,
+			if ((fr_ipaddr_cmp(&realm->acct_pool->servers[i]->ipaddr,
 					     &request->packet->src_ipaddr) == 0) &&
 			    (realm->acct_pool->servers[i]->port == request->packet->src_port)) {
 				DEBUG2("Suppressing proxy because packet was already sent to a server in that realm");

@@ -29,7 +29,7 @@ typedef struct home_server {
 
 	const char	*hostname;
 
-	lrad_ipaddr_t	ipaddr;
+	fr_ipaddr_t	ipaddr;
 
 
 	int		port;
@@ -41,7 +41,7 @@ typedef struct home_server {
 
 	const char	*secret;
 
-	lrad_event_t	*ev;
+	fr_event_t	*ev;
 	struct timeval	when;
 
 	int		response_window;
@@ -106,6 +106,6 @@ void realms_free(void);
 REALM *realm_find(const char *name);
 
 home_server *home_server_ldb(const char *realmname, home_pool_t *pool, REQUEST *request);
-home_server *home_server_find(lrad_ipaddr_t *ipaddr, int port);
+home_server *home_server_find(fr_ipaddr_t *ipaddr, int port);
 
 #endif /* REALMS_H */

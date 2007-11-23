@@ -105,7 +105,7 @@ static int home_server_addr_cmp(const void *one, const void *two)
 	if (a->port < b->port) return -1;
 	if (a->port > b->port) return +1;
 
-	return lrad_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
+	return fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
 }
 
 
@@ -620,7 +620,7 @@ static int server_pool_add(realm_config_t *rc,
 
 	cp = cf_pair_find(cs, "type");
 	if (cp) {
-		static LRAD_NAME_NUMBER pool_types[] = {
+		static FR_NAME_NUMBER pool_types[] = {
 			{ "load-balance", HOME_POOL_LOAD_BALANCE },
 			{ "fail-over", HOME_POOL_FAIL_OVER },
 			{ "round_robin", HOME_POOL_LOAD_BALANCE },
@@ -638,7 +638,7 @@ static int server_pool_add(realm_config_t *rc,
 			goto error;
 		}
 
-		pool->type = lrad_str2int(pool_types, value, 0);
+		pool->type = fr_str2int(pool_types, value, 0);
 		if (!pool->type) {
 			cf_log_err(cf_pairtoitem(cp),
 				   "Unknown type \"%s\".",
@@ -1361,11 +1361,11 @@ home_server *home_server_ldb(const char *realmname,
 	case HOME_POOL_CLIENT_BALANCE:
 		switch (request->packet->src_ipaddr.af) {
 		case AF_INET:
-			hash = lrad_hash(&request->packet->src_ipaddr.ipaddr.ip4addr,
+			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.ip4addr,
 					 sizeof(request->packet->src_ipaddr.ipaddr.ip4addr));
 			break;
 		case AF_INET6:
-			hash = lrad_hash(&request->packet->src_ipaddr.ipaddr.ip6addr,
+			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.ip6addr,
 					 sizeof(request->packet->src_ipaddr.ipaddr.ip6addr));
 			break;
 		default:
@@ -1378,25 +1378,25 @@ home_server *home_server_ldb(const char *realmname,
 	case HOME_POOL_CLIENT_PORT_BALANCE:
 		switch (request->packet->src_ipaddr.af) {
 		case AF_INET:
-			hash = lrad_hash(&request->packet->src_ipaddr.ipaddr.ip4addr,
+			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.ip4addr,
 					 sizeof(request->packet->src_ipaddr.ipaddr.ip4addr));
 			break;
 		case AF_INET6:
-			hash = lrad_hash(&request->packet->src_ipaddr.ipaddr.ip6addr,
+			hash = fr_hash(&request->packet->src_ipaddr.ipaddr.ip6addr,
 					 sizeof(request->packet->src_ipaddr.ipaddr.ip6addr));
 			break;
 		default:
 			hash = 0;
 			break;
 		}
-		lrad_hash_update(&request->packet->src_port,
+		fr_hash_update(&request->packet->src_port,
 				 sizeof(request->packet->src_port), hash);
 		start = hash % pool->num_home_servers;
 		break;
 
 	case HOME_POOL_KEYED_BALANCE:
 		if ((vp = pairfind(request->config_items, PW_LOAD_BALANCE_KEY)) != NULL) {
-			hash = lrad_hash(vp->vp_strvalue, vp->length);
+			hash = fr_hash(vp->vp_strvalue, vp->length);
 			start = hash % pool->num_home_servers;
 			break;
 		}
@@ -1477,7 +1477,7 @@ home_server *home_server_ldb(const char *realmname,
 		 *	From the list of servers which have the same
 		 *	load, choose one at random.
 		 */
-		if (((count + 1) * (lrad_rand() & 0xffff)) < (uint32_t) 0x10000) {
+		if (((count + 1) * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
 			found = home;
 		}
 
@@ -1541,7 +1541,7 @@ home_server *home_server_ldb(const char *realmname,
 }
 
 
-home_server *home_server_find(lrad_ipaddr_t *ipaddr, int port)
+home_server *home_server_find(fr_ipaddr_t *ipaddr, int port)
 {
 	home_server myhome;
 

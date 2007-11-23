@@ -27,24 +27,24 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 
-typedef struct lrad_fifo_entry_t {
-	struct lrad_fifo_entry_t *next;
+typedef struct fr_fifo_entry_t {
+	struct fr_fifo_entry_t *next;
 	void			*data;
-} lrad_fifo_entry_t;
+} fr_fifo_entry_t;
 
-struct lrad_fifo_t {
-	lrad_fifo_entry_t *head, **tail;
-	lrad_fifo_entry_t *freelist;
+struct fr_fifo_t {
+	fr_fifo_entry_t *head, **tail;
+	fr_fifo_entry_t *freelist;
 
 	int num_elements;
 	int max_entries;
-	lrad_fifo_free_t freeNode;
+	fr_fifo_free_t freeNode;
 };
 
 
-lrad_fifo_t *lrad_fifo_create(int max_entries, lrad_fifo_free_t freeNode)
+fr_fifo_t *fr_fifo_create(int max_entries, fr_fifo_free_t freeNode)
 {
-	lrad_fifo_t *fi;
+	fr_fifo_t *fi;
 
 	if ((max_entries < 2) || (max_entries > (1024 * 1024))) return NULL;
 
@@ -59,9 +59,9 @@ lrad_fifo_t *lrad_fifo_create(int max_entries, lrad_fifo_free_t freeNode)
 	return fi;
 }
 
-static void lrad_fifo_free_entries(lrad_fifo_t *fi, lrad_fifo_entry_t *head)
+static void fr_fifo_free_entries(fr_fifo_t *fi, fr_fifo_entry_t *head)
 {
-	lrad_fifo_entry_t *next;
+	fr_fifo_entry_t *next;
 
 	while (head) {
 		next = head->next;
@@ -73,19 +73,19 @@ static void lrad_fifo_free_entries(lrad_fifo_t *fi, lrad_fifo_entry_t *head)
 	}
 }
 
-void lrad_fifo_free(lrad_fifo_t *fi)
+void fr_fifo_free(fr_fifo_t *fi)
 {
 	if (!fi) return;
 
-	lrad_fifo_free_entries(fi, fi->head);
-	lrad_fifo_free_entries(fi, fi->freelist);
+	fr_fifo_free_entries(fi, fi->head);
+	fr_fifo_free_entries(fi, fi->freelist);
 
 	free(fi);
 }
 
-static lrad_fifo_entry_t *lrad_fifo_alloc_entry(lrad_fifo_t *fi)
+static fr_fifo_entry_t *fr_fifo_alloc_entry(fr_fifo_t *fi)
 {
-	lrad_fifo_entry_t *entry;
+	fr_fifo_entry_t *entry;
 
 	if (fi->freelist) {
 		entry = fi->freelist;
@@ -99,15 +99,15 @@ static lrad_fifo_entry_t *lrad_fifo_alloc_entry(lrad_fifo_t *fi)
 	return entry;
 }
 
-int lrad_fifo_push(lrad_fifo_t *fi, void *data)
+int fr_fifo_push(fr_fifo_t *fi, void *data)
 {
-	lrad_fifo_entry_t *entry;
+	fr_fifo_entry_t *entry;
 
 	if (!fi || !data) return 0;
 
 	if (fi->num_elements >= fi->max_entries) return 0;
 
-	entry = lrad_fifo_alloc_entry(fi);
+	entry = fr_fifo_alloc_entry(fi);
 	if (!entry) return 0;
 	entry->data = data;
 
@@ -123,7 +123,7 @@ int lrad_fifo_push(lrad_fifo_t *fi, void *data)
 	return 1;
 }
 
-static void lrad_fifo_free_entry(lrad_fifo_t *fi, lrad_fifo_entry_t *entry)
+static void fr_fifo_free_entry(fr_fifo_t *fi, fr_fifo_entry_t *entry)
 {
 	entry->data = NULL;
 	entry->next = fi->freelist;
@@ -131,10 +131,10 @@ static void lrad_fifo_free_entry(lrad_fifo_t *fi, lrad_fifo_entry_t *entry)
 }
 
 
-void *lrad_fifo_pop(lrad_fifo_t *fi)
+void *fr_fifo_pop(fr_fifo_t *fi)
 {
 	void *data;
-	lrad_fifo_entry_t *entry;
+	fr_fifo_entry_t *entry;
 
 	if (!fi || !fi->head) return NULL;
 
@@ -142,7 +142,7 @@ void *lrad_fifo_pop(lrad_fifo_t *fi)
 	fi->head = entry->next;
 
 	data = entry->data;
-	lrad_fifo_free_entry(fi, entry);
+	fr_fifo_free_entry(fi, entry);
 
 	fi->num_elements--;
 
@@ -154,14 +154,14 @@ void *lrad_fifo_pop(lrad_fifo_t *fi)
 	return data;
 }
 
-void *lrad_fifo_peek(lrad_fifo_t *fi)
+void *fr_fifo_peek(fr_fifo_t *fi)
 {
 	if (!fi || !fi->head) return NULL;
 
 	return fi->head->data;
 }
 
-int lrad_fifo_num_elements(lrad_fifo_t *fi)
+int fr_fifo_num_elements(fr_fifo_t *fi)
 {
 	if (!fi) return 0;
 
@@ -180,21 +180,21 @@ int lrad_fifo_num_elements(lrad_fifo_t *fi)
 int main(int argc, char **argv)
 {
 	int i, array[MAX];
-	lrad_fifo_t *fi;
+	fr_fifo_t *fi;
 
-	fi = lrad_fifo_create(MAX, NULL);
+	fi = fr_fifo_create(MAX, NULL);
 	if (!fi) exit(1);
 
 	for (i = 0; i < MAX; i++) {
 		array[i] = i;
 
-		if (!lrad_fifo_push(fi, &array[i])) exit(2);
+		if (!fr_fifo_push(fi, &array[i])) exit(2);
 	}
 
 	for (i = 0; i < MAX; i++) {
 		int *p;
 
-		p = lrad_fifo_pop(fi);
+		p = fr_fifo_pop(fi);
 		if (!p) {
 			fprintf(stderr, "No pop at %d\n", i);
 			exit(3);

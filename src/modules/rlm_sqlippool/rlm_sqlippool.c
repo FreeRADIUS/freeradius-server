@@ -531,7 +531,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	uint32_t ip_allocation;
 	VALUE_PAIR * vp;
 	SQLSOCK * sqlsocket;
-	lrad_ipaddr_t ipaddr;
+	fr_ipaddr_t ipaddr;
 	char    logstr[MAX_STRING_LEN];
 
 	/*

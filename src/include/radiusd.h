@@ -44,7 +44,7 @@ typedef struct request_data_t request_data_t;
 typedef struct rad_snmp_client_entry_t rad_snmp_client_entry_t;
 
 typedef struct radclient {
-	lrad_ipaddr_t		ipaddr;
+	fr_ipaddr_t		ipaddr;
 	int			prefix;
 	char			*longname;
 	char			*secret;
@@ -124,9 +124,9 @@ struct auth_req {
 	int			child_state;
 	RAD_LISTEN_TYPE		priority;
 
-	lrad_event_t		*ev;
+	fr_event_t		*ev;
 	struct timeval		next_when;
-	lrad_event_callback_t	next_callback;
+	fr_event_callback_t	next_callback;
 
 	int			in_request_hash;
 	int			in_proxy_hash;
@@ -212,7 +212,7 @@ typedef enum radlog_dest_t {
 typedef struct main_config_t {
 	struct main_config *next;
 	int		refcount;
-	lrad_ipaddr_t	myip;	/* from the command-line only */
+	fr_ipaddr_t	myip;	/* from the command-line only */
 	int		port;	/* from the command-line only */
 	int		log_auth;
 	int		log_auth_badpass;
@@ -364,13 +364,13 @@ RADCLIENT_LIST	*clients_parse_section(CONF_SECTION *section);
 void		client_free(RADCLIENT *client);
 int		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 RADCLIENT	*client_find(const RADCLIENT_LIST *clients,
-			     const lrad_ipaddr_t *ipaddr);
+			     const fr_ipaddr_t *ipaddr);
 const char	*client_name(const RADCLIENT_LIST *clients,
-			     const lrad_ipaddr_t *ipaddr);
+			     const fr_ipaddr_t *ipaddr);
 RADCLIENT	*client_findbynumber(const RADCLIENT_LIST *clients,
 				     int number);
-RADCLIENT	*client_find_old(const lrad_ipaddr_t *ipaddr);
-const char	*client_name_old(const lrad_ipaddr_t *ipaddr);
+RADCLIENT	*client_find_old(const fr_ipaddr_t *ipaddr);
+const char	*client_name_old(const fr_ipaddr_t *ipaddr);
 
 /* files.c */
 int		pairlist_read(const char *file, PAIR_LIST **list, int complain);

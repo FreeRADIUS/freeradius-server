@@ -33,8 +33,8 @@ RCSID("$Id$")
 /*
  *  No pthreads, no mutex.
  */
-static int lrad_crypt_init = 0;
-static pthread_mutex_t lrad_crypt_mutex;
+static int fr_crypt_init = 0;
+static pthread_mutex_t fr_crypt_mutex;
 #endif
 
 
@@ -45,7 +45,7 @@ static pthread_mutex_t lrad_crypt_mutex;
  *          -1 -- failed to crypt
  *           1 -- check failed
  */
-int lrad_crypt_check(const char *key, const char *crypted)
+int fr_crypt_check(const char *key, const char *crypted)
 {
 	char *passwd;
 	int cmp = 0;
@@ -54,12 +54,12 @@ int lrad_crypt_check(const char *key, const char *crypted)
 	/*
 	 *	Ensure we're thread-safe, as crypt() isn't.
 	 */
-	if (lrad_crypt_init == 0) {
-		pthread_mutex_init(&lrad_crypt_mutex, NULL);
-		lrad_crypt_init = 1;
+	if (fr_crypt_init == 0) {
+		pthread_mutex_init(&fr_crypt_mutex, NULL);
+		fr_crypt_init = 1;
 	}
 
-	pthread_mutex_lock(&lrad_crypt_mutex);
+	pthread_mutex_lock(&fr_crypt_mutex);
 #endif
 
 	passwd = crypt(key, crypted);
@@ -74,7 +74,7 @@ int lrad_crypt_check(const char *key, const char *crypted)
 	}
 
 #ifdef HAVE_PTHREAD_H
-	pthread_mutex_unlock(&lrad_crypt_mutex);
+	pthread_mutex_unlock(&fr_crypt_mutex);
 #endif
 
 	/*

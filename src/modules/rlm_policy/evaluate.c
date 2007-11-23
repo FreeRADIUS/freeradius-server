@@ -73,7 +73,7 @@ static void policy_print(const policy_item_t *item, int indent)
 				if (indent) printf("%*s", indent, " ");
 
 				printf("\t%s %s ", assign->lhs,
-				       lrad_int2str(rlm_policy_tokens,
+				       fr_int2str(rlm_policy_tokens,
 						    assign->assign, "?"));
 				if (assign->rhs_type == POLICY_LEX_BARE_WORD) {
 					printf("%s\n", assign->rhs);
@@ -129,7 +129,7 @@ static void policy_print(const policy_item_t *item, int indent)
 				/*
 				 *	We always print this condition.
 				 */
-				printf(" %s ", lrad_int2str(rlm_policy_tokens,
+				printf(" %s ", fr_int2str(rlm_policy_tokens,
 							    condition->compare,
 							    "?"));
 				if (condition->rhs_type == POLICY_LEX_BARE_WORD) {
@@ -146,7 +146,7 @@ static void policy_print(const policy_item_t *item, int indent)
 
 				if ((condition->child_condition != POLICY_LEX_BAD) &&
 				    (condition->child_condition != POLICY_LEX_BARE_WORD)) {
-					printf(" %s ", lrad_int2str(rlm_policy_tokens, condition->child_condition, "?"));
+					printf(" %s ", fr_int2str(rlm_policy_tokens, condition->child_condition, "?"));
 					policy_print(condition->child, indent);
 				}
 			}
@@ -188,9 +188,9 @@ static void policy_print(const policy_item_t *item, int indent)
 
 				if (indent) printf("%*s", indent, " ");
 				printf("%s %s {\n",
-				       lrad_int2str(policy_reserved_words,
+				       fr_int2str(policy_reserved_words,
 						    this->where, "?"),
-				       lrad_int2str(rlm_policy_tokens,
+				       fr_int2str(rlm_policy_tokens,
 						    this->how, "?"));
 				policy_print(this->attributes, indent + 1);
 				if (indent) printf("%*s", indent, " ");
@@ -228,7 +228,7 @@ static void policy_print(const policy_item_t *item, int indent)
 				this = (const policy_return_t *) item;
 				if (indent) printf("%*s", indent, " ");
 				printf("return %s\n",
-				       lrad_int2str(policy_return_codes,
+				       fr_int2str(policy_return_codes,
 						    this->rcode, "???"));
 			}
 			break;
@@ -240,7 +240,7 @@ static void policy_print(const policy_item_t *item, int indent)
 				this = (const policy_module_t *) item;
 				if (indent) printf("%*s", indent, " ");
 				printf("module %s <stuff>\n",
-				       lrad_int2str(policy_component_names,
+				       fr_int2str(policy_component_names,
 						    this->component, "???"));
 			}
 			break;
@@ -519,7 +519,7 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 			 *	evaluate all of it...
 			 */
 			rcode = policy_evaluate_name(state, this->lhs);
-			data = lrad_int2str(policy_return_codes, rcode, "???");
+			data = fr_int2str(policy_return_codes, rcode, "???");
 			strlcpy(lhs_buffer, data, sizeof(lhs_buffer)); /* FIXME: yuck */
 		} else if (this->lhs_type == POLICY_LEX_DOUBLE_QUOTED_STRING) {
 			if (radius_xlat(lhs_buffer, sizeof(lhs_buffer), this->lhs,
@@ -800,7 +800,7 @@ static VALUE_PAIR *assign2vp(REQUEST *request,
 			     const policy_assignment_t *assign)
 {
 	VALUE_PAIR *vp;
-	LRAD_TOKEN operator = T_OP_EQ;
+	FR_TOKEN operator = T_OP_EQ;
 	const char *value = assign->rhs;
 	char buffer[2048];
 
@@ -829,7 +829,7 @@ static VALUE_PAIR *assign2vp(REQUEST *request,
 
 	default:
 		fprintf(stderr, "Expected '=' for operator, not '%s' at line %d\n",
-			lrad_int2str(rlm_policy_tokens,
+			fr_int2str(rlm_policy_tokens,
 				     assign->assign, "?"),
 			assign->item.lineno);
 		return NULL;
@@ -1095,7 +1095,7 @@ int rlm_policy_evaluate(rlm_policy_t *inst, REQUEST *request, const char *name)
 	state->request = request;
 	state->inst = inst;
 	state->rcode = RLM_MODULE_OK;
-	state->component = lrad_str2int(policy_component_names, name,
+	state->component = fr_str2int(policy_component_names, name,
 					RLM_COMPONENT_COUNT);
 
 	rcode = policy_evaluate_name(state, name);

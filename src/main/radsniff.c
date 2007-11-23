@@ -226,7 +226,7 @@ int main(int argc, char *argv[])
 	char *radius_filter = NULL;
 	int packet_count = -1;		/* how many packets to sniff */
 	int opt;
-	LRAD_TOKEN parsecode;
+	FR_TOKEN parsecode;
 	const char *radius_dir = RADIUS_DIR;
 	int port = 1812;
 

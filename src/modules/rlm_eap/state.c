@@ -91,7 +91,7 @@ void generate_key(void)
 	 *	pseudo-random numbers.
 	 */
 	for (i = 0; i < sizeof(state_key); i++) {
-		state_key[i] = lrad_rand();
+		state_key[i] = fr_rand();
 	}
 
 	key_initialized = 1;
@@ -125,7 +125,7 @@ VALUE_PAIR *generate_state(time_t timestamp)
 
 	/* Generate challenge (a random value).  */
 	for (i = 0; i < sizeof(challenge); i++) {
-		challenge[i] = lrad_rand();
+		challenge[i] = fr_rand();
 	}
 
 	memcpy(value, challenge, sizeof(challenge));

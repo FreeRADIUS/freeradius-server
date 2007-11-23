@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef _LRAD_MD5_H
-#define _LRAD_MD5_H
+#ifndef _FR_MD5_H
+#define _FR_MD5_H
 
 #include <freeradius-devel/ident.h>
 RCSIDH(md5_h, "$Id$")
@@ -67,4 +67,4 @@ void	 fr_MD5Transform(uint32_t [4], const uint8_t [MD5_BLOCK_LENGTH])
 /*		__attribute__((__bounded__(__minbytes__,2,MD5_BLOCK_LENGTH)))*/;
 /* __END_DECLS */
 
-#endif /* _LRAD_MD5_H */
+#endif /* _FR_MD5_H */

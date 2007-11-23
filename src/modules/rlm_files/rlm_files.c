@@ -38,27 +38,27 @@ struct file_instance {
 
 	/* autz */
 	char *usersfile;
-	lrad_hash_table_t *users;
+	fr_hash_table_t *users;
 
 	/* preacct */
 	char *acctusersfile;
-	lrad_hash_table_t *acctusers;
+	fr_hash_table_t *acctusers;
 
 	/* pre-proxy */
 	char *preproxy_usersfile;
-	lrad_hash_table_t *preproxy_users;
+	fr_hash_table_t *preproxy_users;
 
 	/* authenticate */
 	char *auth_usersfile;
-	lrad_hash_table_t *auth_users;
+	fr_hash_table_t *auth_users;
 
 	/* post-proxy */
 	char *postproxy_usersfile;
-	lrad_hash_table_t *postproxy_users;
+	fr_hash_table_t *postproxy_users;
 
 	/* post-authenticate */
 	char *postauth_usersfile;
-	lrad_hash_table_t *postauth_users;
+	fr_hash_table_t *postauth_users;
 };
 
 
@@ -96,7 +96,7 @@ static const CONF_PARSER module_config[] = {
 
 static uint32_t pairlist_hash(const void *data)
 {
-	return lrad_hash_string(((const PAIR_LIST *)data)->name);
+	return fr_hash_string(((const PAIR_LIST *)data)->name);
 }
 
 static int pairlist_cmp(const void *a, const void *b)
@@ -113,13 +113,13 @@ static void my_pairlist_free(void *data)
 }
 
 
-static int getusersfile(const char *filename, lrad_hash_table_t **pht,
+static int getusersfile(const char *filename, fr_hash_table_t **pht,
 			char *compat_mode_str)
 {
 	int rcode;
 	PAIR_LIST *users = NULL;
 	PAIR_LIST *entry, *next;
-	lrad_hash_table_t *ht, *tailht;
+	fr_hash_table_t *ht, *tailht;
 	int order = 0;
 
 	if (!filename) {
@@ -252,17 +252,17 @@ static int getusersfile(const char *filename, lrad_hash_table_t **pht,
 
 	}
 
-	ht = lrad_hash_table_create(pairlist_hash, pairlist_cmp,
+	ht = fr_hash_table_create(pairlist_hash, pairlist_cmp,
 				    my_pairlist_free);
 	if (!ht) {
 		pairlist_free(&users);
 		return -1;
 	}
 
-	tailht = lrad_hash_table_create(pairlist_hash, pairlist_cmp,
+	tailht = fr_hash_table_create(pairlist_hash, pairlist_cmp,
 					NULL);
 	if (!tailht) {
-		lrad_hash_table_free(ht);
+		fr_hash_table_free(ht);
 		pairlist_free(&users);
 		return -1;
 	}
@@ -282,30 +282,30 @@ static int getusersfile(const char *filename, lrad_hash_table_t **pht,
 		 *	Insert it into the hash table, and remember
 		 *	the tail of the linked list.
 		 */
-		tail = lrad_hash_table_finddata(tailht, entry);
+		tail = fr_hash_table_finddata(tailht, entry);
 		if (!tail) {
 			/*
 			 *	Insert it into the head & tail.
 			 */
-			if (!lrad_hash_table_insert(ht, entry) ||
-			    !lrad_hash_table_insert(tailht, entry)) {
+			if (!fr_hash_table_insert(ht, entry) ||
+			    !fr_hash_table_insert(tailht, entry)) {
 				pairlist_free(&next);
-				lrad_hash_table_free(ht);
-				lrad_hash_table_free(tailht);
+				fr_hash_table_free(ht);
+				fr_hash_table_free(tailht);
 				return -1;
 			}
 		} else {
 			tail->next = entry;
-			if (!lrad_hash_table_replace(tailht, entry)) {
+			if (!fr_hash_table_replace(tailht, entry)) {
 				pairlist_free(&next);
-				lrad_hash_table_free(ht);
-				lrad_hash_table_free(tailht);
+				fr_hash_table_free(ht);
+				fr_hash_table_free(tailht);
 				return -1;
 			}
 		}
 	}
 
-	lrad_hash_table_free(tailht);
+	fr_hash_table_free(tailht);
 	*pht = ht;
 
 	return 0;
@@ -317,12 +317,12 @@ static int getusersfile(const char *filename, lrad_hash_table_t **pht,
 static int file_detach(void *instance)
 {
 	struct file_instance *inst = instance;
-	lrad_hash_table_free(inst->users);
-	lrad_hash_table_free(inst->acctusers);
-	lrad_hash_table_free(inst->preproxy_users);
-	lrad_hash_table_free(inst->auth_users);
-	lrad_hash_table_free(inst->postproxy_users);
-	lrad_hash_table_free(inst->postauth_users);
+	fr_hash_table_free(inst->users);
+	fr_hash_table_free(inst->acctusers);
+	fr_hash_table_free(inst->preproxy_users);
+	fr_hash_table_free(inst->auth_users);
+	fr_hash_table_free(inst->postproxy_users);
+	fr_hash_table_free(inst->postauth_users);
 	free(inst);
 	return 0;
 }
@@ -401,7 +401,7 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
  *	Common code called by everything below.
  */
 static int file_common(struct file_instance *inst, REQUEST *request,
-		       const char *filename, lrad_hash_table_t *ht,
+		       const char *filename, fr_hash_table_t *ht,
 		       VALUE_PAIR *request_pairs, VALUE_PAIR **reply_pairs)
 {
 	const char	*name, *match;
@@ -432,9 +432,9 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 	if (!ht) return RLM_MODULE_NOOP;
 
 	my_pl.name = name;
-	user_pl = lrad_hash_table_finddata(ht, &my_pl);
+	user_pl = fr_hash_table_finddata(ht, &my_pl);
 	my_pl.name = "DEFAULT";
-	default_pl = lrad_hash_table_finddata(ht, &my_pl);
+	default_pl = fr_hash_table_finddata(ht, &my_pl);
 
 	/*
 	 *	Find the entry for the user.

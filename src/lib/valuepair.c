@@ -865,7 +865,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			}
 
 			{
-				lrad_ipaddr_t ipaddr;
+				fr_ipaddr_t ipaddr;
 
 				if (ip_hton(cs, AF_INET, &ipaddr) < 0) {
 					librad_log("Failed to find IP address for %s", cs);
@@ -1431,13 +1431,13 @@ static const int valid_attr_name[256] = {
  *	Read a valuepair from a buffer, and advance pointer.
  *	Sets *eol to T_EOL if end of line was encountered.
  */
-VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
+VALUE_PAIR *pairread(char **ptr, FR_TOKEN *eol)
 {
 	char		buf[64];
 	char		attr[64];
 	char		value[512];
 	char		*p, *q;
-	LRAD_TOKEN	token, t, xlat;
+	FR_TOKEN	token, t, xlat;
 	VALUE_PAIR	*vp;
 	size_t		len;
 
@@ -1583,12 +1583,12 @@ VALUE_PAIR *pairread(char **ptr, LRAD_TOKEN *eol)
  *	Read one line of attribute/value pairs. This might contain
  *	multiple pairs seperated by comma's.
  */
-LRAD_TOKEN userparse(char *buffer, VALUE_PAIR **first_pair)
+FR_TOKEN userparse(char *buffer, VALUE_PAIR **first_pair)
 {
 	VALUE_PAIR	*vp;
 	char		*p;
-	LRAD_TOKEN	last_token = T_OP_INVALID;
-	LRAD_TOKEN	previous_token;
+	FR_TOKEN	last_token = T_OP_INVALID;
+	FR_TOKEN	previous_token;
 
 	/*
 	 *	We allow an empty line.
@@ -1626,7 +1626,7 @@ LRAD_TOKEN userparse(char *buffer, VALUE_PAIR **first_pair)
 VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
 {
 	char buf[8192];
-	LRAD_TOKEN last_token = T_EOL;
+	FR_TOKEN last_token = T_EOL;
 	VALUE_PAIR *vp;
 	VALUE_PAIR *list;
 	int error = 0;

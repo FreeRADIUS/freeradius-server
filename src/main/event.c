@@ -47,8 +47,8 @@ extern int check_config;
 /*
  *	Ridiculous amounts of local state.
  */
-static lrad_event_list_t	*el = NULL;
-static lrad_packet_list_t	*pl = NULL;
+static fr_event_list_t	*el = NULL;
+static fr_packet_list_t	*pl = NULL;
 static int			request_num_counter = 0;
 static struct timeval		now;
 static time_t			start_time;
@@ -74,9 +74,9 @@ static pthread_mutex_t	proxy_mutex;
 #define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
-#define INSERT_EVENT(_function, _ctx) if (!lrad_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
+#define INSERT_EVENT(_function, _ctx) if (!fr_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
 
-static lrad_packet_list_t *proxy_list = NULL;
+static fr_packet_list_t *proxy_list = NULL;
 
 /*
  *	We keep the proxy FD's here.  The RADIUS Id's are marked
@@ -191,7 +191,7 @@ static void remove_from_request_hash(REQUEST *request)
 {
 	if (!request->in_request_hash) return;
 
-	lrad_packet_list_yank(pl, request->packet);
+	fr_packet_list_yank(pl, request->packet);
 	request->in_request_hash = FALSE;
 
 	snmp_inc_counters(request);
@@ -204,14 +204,14 @@ static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 	REQUEST *request;
 
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-	proxy_p = lrad_packet_list_find_byreply(proxy_list, reply);
+	proxy_p = fr_packet_list_find_byreply(proxy_list, reply);
 
 	if (!proxy_p) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		return NULL;
 	}
 
-	request = lrad_packet2myptr(REQUEST, proxy, proxy_p);
+	request = fr_packet2myptr(REQUEST, proxy, proxy_p);
 
 	if (!request) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
@@ -225,8 +225,8 @@ static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 	 *	correctly.
 	 */
 	if (request->num_proxied_requests == request->num_proxied_responses) {
-		lrad_packet_list_yank(proxy_list, request->proxy);
-		lrad_packet_list_id_free(proxy_list, request->proxy);
+		fr_packet_list_yank(proxy_list, request->proxy);
+		fr_packet_list_id_free(proxy_list, request->proxy);
 		request->in_proxy_hash = FALSE;
 	}
 
@@ -252,8 +252,8 @@ static void remove_from_proxy_hash(REQUEST *request)
 	if (!request->in_proxy_hash) return;
 
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-	lrad_packet_list_yank(proxy_list, request->proxy);
-	lrad_packet_list_id_free(proxy_list, request->proxy);
+	fr_packet_list_yank(proxy_list, request->proxy);
+	fr_packet_list_id_free(proxy_list, request->proxy);
 
 	/*
 	 *	The home server hasn't replied, but we've given up on
@@ -293,7 +293,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		request->home_server->total_requests_sent--;
 	}
 
-	if (!lrad_packet_list_id_alloc(proxy_list, request->proxy)) {
+	if (!fr_packet_list_id_alloc(proxy_list, request->proxy)) {
 		int found;
 		rad_listen_t *proxy_listener;
 
@@ -339,14 +339,14 @@ static int insert_into_proxy_hash(REQUEST *request)
 		}
 		rad_assert(found >= 0);
 
-		if (!lrad_packet_list_socket_add(proxy_list, proxy_listener->fd)) {
+		if (!fr_packet_list_socket_add(proxy_list, proxy_listener->fd)) {
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 			DEBUG2("ERROR: Failed to create a new socket for proxying requests.");
 			return 0; /* leak proxy_listener */
 
 		}
 
-		if (!lrad_packet_list_id_alloc(proxy_list, request->proxy)) {
+		if (!fr_packet_list_id_alloc(proxy_list, request->proxy)) {
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 			DEBUG2("ERROR: Failed to create a new socket for proxying requests.");
 			return 0;
@@ -376,8 +376,8 @@ static int insert_into_proxy_hash(REQUEST *request)
 	rad_assert(proxy_listeners[proxy] != NULL);
 	request->proxy_listener = proxy_listeners[proxy];
 
-	if (!lrad_packet_list_insert(proxy_list, &request->proxy)) {
-		lrad_packet_list_id_free(proxy_list, request->proxy);
+	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
+		fr_packet_list_id_free(proxy_list, request->proxy);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		DEBUG2("ERROR: Failed to insert entry into proxy list");
 		return 0;
@@ -422,7 +422,7 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 			       request->number,
 			       (unsigned int) (request->timestamp - start_time));
 		}
-		lrad_event_delete(el, &request->ev);
+		fr_event_delete(el, &request->ev);
 		remove_from_proxy_hash(request);
 		remove_from_request_hash(request);
 		request_free(&request);
@@ -481,7 +481,7 @@ static void cleanup_delay(void *ctx)
 	       request->number, request->packet->id,
 	       (unsigned int) (request->timestamp - start_time));
 
-	lrad_event_delete(el, &request->ev);
+	fr_event_delete(el, &request->ev);
 	request_free(&request);
 }
 
@@ -554,11 +554,11 @@ static void received_response_to_ping(REQUEST *request)
 			 buffer, sizeof(buffer)),
 	       request->proxy->dst_port);
 
-	if (!lrad_event_delete(el, &home->ev)) {
+	if (!fr_event_delete(el, &home->ev)) {
 		DEBUG2("Hmm... no event for home server, WTF?");
 	}
 
-	if (!lrad_event_delete(el, &request->ev)) {
+	if (!fr_event_delete(el, &request->ev)) {
 		DEBUG2("Hmm... no event for request, WTF?");
 	}
 
@@ -587,7 +587,7 @@ static void ping_home_server(void *ctx)
 	request->proxy = rad_alloc(1);
 	rad_assert(request->proxy != NULL);
 
-	lrad_event_now(el, &request->when);
+	fr_event_now(el, &request->when);
 	home->when = request->when;
 
 	if (home->ping_check == HOME_PING_CHECK_STATUS_SERVER) {
@@ -654,7 +654,7 @@ static void ping_home_server(void *ctx)
 	 */
 	home->when.tv_sec += home->ping_interval - 2;
 
-	jitter = lrad_rand();
+	jitter = fr_rand();
 	jitter ^= (jitter >> 10);
 	jitter &= ((1 << 23) - 1); /* 22 bits of 1 */
 
@@ -842,7 +842,7 @@ static void wait_a_bit(void *ctx)
 {
 	struct timeval when;
 	REQUEST *request = ctx;
-	lrad_event_callback_t callback = NULL;
+	fr_event_callback_t callback = NULL;
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 
@@ -859,7 +859,7 @@ static void wait_a_bit(void *ctx)
 		 *	this call won't re-set it, because we're not
 		 *	in the event loop.
 		 */
-		lrad_event_now(el, &now);
+		fr_event_now(el, &now);
 
 		if (timercmp(&now, &when, <)) {
 			if (request->delay < (USEC / 10)) {
@@ -1706,7 +1706,7 @@ static int can_handle_new_request(RADIUS_PACKET *packet,
 	 *	error.
 	 */
 	if (root->max_requests) {
-		int request_count = lrad_packet_list_num_elements(pl);
+		int request_count = fr_packet_list_num_elements(pl);
 
 		/*
 		 *	This is a new request.  Let's see if
@@ -1753,9 +1753,9 @@ int received_request(rad_listen_t *listener,
 	REQUEST *request = NULL;
 	struct main_config_t *root = &mainconfig;
 
-	packet_p = lrad_packet_list_find(pl, packet);
+	packet_p = fr_packet_list_find(pl, packet);
 	if (packet_p) {
-		request = lrad_packet2myptr(REQUEST, packet, packet_p);
+		request = fr_packet2myptr(REQUEST, packet, packet_p);
 		rad_assert(request->in_request_hash);
 
 		if ((request->packet->data_len == packet->data_len) &&
@@ -1847,7 +1847,7 @@ int received_request(rad_listen_t *listener,
 	/*
 	 *	Remember the request in the list.
 	 */
-	if (!lrad_packet_list_insert(pl, &request->packet)) {
+	if (!fr_packet_list_insert(pl, &request->packet)) {
 		radlog(L_ERR, "Failed to insert request %d in the list of live requests: discarding", request->number);
 		request_free(&request);
 		return 0;
@@ -2066,9 +2066,9 @@ static void handle_signal_self(int flag)
 
 	if ((flag & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
 		if ((flag & RADIUS_SIGNAL_SELF_EXIT) != 0) {
-			lrad_event_loop_exit(el, 1);
+			fr_event_loop_exit(el, 1);
 		} else {
-			lrad_event_loop_exit(el, 2);
+			fr_event_loop_exit(el, 2);
 		}
 
 		return;
@@ -2090,7 +2090,7 @@ static void handle_signal_self(int flag)
 		}
 		last_hup = when;
 
-		lrad_event_loop_exit(el, 0x80);
+		fr_event_loop_exit(el, 0x80);
 	}
 }
 
@@ -2141,7 +2141,7 @@ void radius_signal_self(int flag)
 }
 
 
-static void event_signal_handler(lrad_event_list_t *xel, int fd, void *ctx)
+static void event_signal_handler(fr_event_list_t *xel, int fd, void *ctx)
 {
 	size_t i, rcode;
 	char buffer[32];
@@ -2175,11 +2175,11 @@ static void event_reset_fd(rad_listen_t *listener, int fd, int usec)
 
 	tv_add(&when, usec);	
 
-	if (!lrad_event_fd_delete(el, 0, fd)) {
+	if (!fr_event_fd_delete(el, 0, fd)) {
 		rad_panic("Failed deleting fd");
 	}
 	
-	if (!lrad_event_insert(el, event_poll_fd, listener,
+	if (!fr_event_insert(el, event_poll_fd, listener,
 			       &when, NULL)) {
 		rad_panic("Failed inserting event");
 	}
@@ -2193,7 +2193,7 @@ static void event_reset_fd(rad_listen_t *listener, int fd, int usec)
  *	FIXME: On Linux, use inotify to watch the detail file.  This
  *	
  */
-static void event_detail_handler(lrad_event_list_t *xel, int fd, void *ctx)
+static void event_detail_handler(fr_event_list_t *xel, int fd, void *ctx)
 {
 	rad_listen_t *listener = ctx;
 	RAD_REQUEST_FUNP fun;
@@ -2256,7 +2256,7 @@ static void event_detail_handler(lrad_event_list_t *xel, int fd, void *ctx)
 }
 
 
-static void event_socket_handler(lrad_event_list_t *xel, int fd, void *ctx)
+static void event_socket_handler(fr_event_list_t *xel, int fd, void *ctx)
 {
 	rad_listen_t *listener = ctx;
 	RAD_REQUEST_FUNP fun;
@@ -2314,7 +2314,7 @@ static void event_poll_fd(void *ctx)
 	RAD_REQUEST_FUNP fun;
 	REQUEST *request;
 	rad_listen_t *listener = ctx;
-	lrad_event_fd_handler_t handler;
+	fr_event_fd_handler_t handler;
 
 	/*
 	 *	Ignore the detail file if we're busy with other work.
@@ -2353,7 +2353,7 @@ static void event_poll_fd(void *ctx)
 		gettimeofday(&when, NULL);
 		when.tv_sec += 1;
 		
-		if (!lrad_event_insert(el, event_poll_fd, listener,
+		if (!fr_event_insert(el, event_poll_fd, listener,
 				       &when, NULL)) {
 			rad_panic("Failed inserting event");
 		}
@@ -2370,7 +2370,7 @@ static void event_poll_fd(void *ctx)
 	/*
 	 *	We have an FD.  Start watching it.
 	 */
-	if (!lrad_event_fd_insert(el, 0, listener->fd,
+	if (!fr_event_fd_insert(el, 0, listener->fd,
 				  handler, listener)) {
 		char buffer[256];
 		
@@ -2412,10 +2412,10 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 	time(&start_time);
 
-	el = lrad_event_list_create(event_status);
+	el = fr_event_list_create(event_status);
 	if (!el) return 0;
 
-	pl = lrad_packet_list_create(0);
+	pl = fr_packet_list_create(0);
 	if (!el) return 0;
 
 	request_num_counter = 0;
@@ -2432,7 +2432,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		 *	Create the tree for managing proxied requests and
 		 *	responses.
 		 */
-		proxy_list = lrad_packet_list_create(1);
+		proxy_list = fr_packet_list_create(1);
 		if (!proxy_list) return 0;
 
 #ifdef HAVE_PTHREAD_H
@@ -2476,7 +2476,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		exit(1);
 	}
 
-	if (!lrad_event_fd_insert(el, 0, self_pipe[0],
+	if (!fr_event_fd_insert(el, 0, self_pipe[0],
 				  event_signal_handler, el)) {
 		radlog(L_ERR, "Failed creating handler for signals");
 		exit(1);
@@ -2521,7 +2521,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 			
 			proxy_fds[this->fd & 0x1f] = this->fd;
 			proxy_listeners[this->fd & 0x1f] = this;
-			if (!lrad_packet_list_socket_add(proxy_list,
+			if (!fr_packet_list_socket_add(proxy_list,
 							 this->fd)) {
 				rad_assert(0 == 1);
 			}
@@ -2547,7 +2547,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 			gettimeofday(&when, NULL);
 			when.tv_sec += 1;
 
-			if (!lrad_event_insert(el, event_poll_fd, this,
+			if (!fr_event_insert(el, event_poll_fd, this,
 					       &when, NULL)) {
 				radlog(L_ERR, "Failed creating handler");
 				exit(1);
@@ -2562,7 +2562,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		 *	FIXME: if we DO open the detail files automatically,
 		 *	then much of this code becomes simpler.
 		 */
-		if (!lrad_event_fd_insert(el, 0, this->fd,
+		if (!fr_event_fd_insert(el, 0, this->fd,
 					  event_socket_handler, this)) {
 			this->print(this, buffer, sizeof(buffer));
 			radlog(L_ERR, "Failed creating handler for socket %s",
@@ -2578,11 +2578,11 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 static int request_hash_cb(void *ctx, void *data)
 {
 	ctx = ctx;		/* -Wunused */
-	REQUEST *request = lrad_packet2myptr(REQUEST, packet, data);
+	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
 
 	rad_assert(request->in_proxy_hash == FALSE);
 
-	lrad_event_delete(el, &request->ev);
+	fr_event_delete(el, &request->ev);
 	remove_from_request_hash(request);
 	request_free(&request);
 
@@ -2593,13 +2593,13 @@ static int request_hash_cb(void *ctx, void *data)
 static int proxy_hash_cb(void *ctx, void *data)
 {
 	ctx = ctx;		/* -Wunused */
-	REQUEST *request = lrad_packet2myptr(REQUEST, proxy, data);
+	REQUEST *request = fr_packet2myptr(REQUEST, proxy, data);
 
-	lrad_packet_list_yank(proxy_list, request->proxy);
+	fr_packet_list_yank(proxy_list, request->proxy);
 	request->in_proxy_hash = FALSE;
 
 	if (!request->in_request_hash) {
-		lrad_event_delete(el, &request->ev);
+		fr_event_delete(el, &request->ev);
 		request_free(&request);
 	}
 
@@ -2621,18 +2621,18 @@ void radius_event_free(void)
 	 */
 	if (proxy_list) {
 		PTHREAD_MUTEX_LOCK(&proxy_mutex);
-		lrad_packet_list_walk(proxy_list, NULL, proxy_hash_cb);
+		fr_packet_list_walk(proxy_list, NULL, proxy_hash_cb);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		lrad_packet_list_free(proxy_list);
+		fr_packet_list_free(proxy_list);
 		proxy_list = NULL;
 	}
 
-	lrad_packet_list_walk(pl, NULL, request_hash_cb);
+	fr_packet_list_walk(pl, NULL, request_hash_cb);
 
-	lrad_packet_list_free(pl);
+	fr_packet_list_free(pl);
 	pl = NULL;
 
-	lrad_event_list_free(el);
+	fr_event_list_free(el);
 }
 
 int radius_event_process(void)
@@ -2641,7 +2641,7 @@ int radius_event_process(void)
 
 	just_started = TRUE;
 
-	return lrad_event_loop(el);
+	return fr_event_loop(el);
 }
 
 void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun)

@@ -63,8 +63,8 @@ typedef struct radius_packet_t {
   uint8_t	data[1];
 } radius_packet_t;
 
-static lrad_randctx lrad_rand_pool;	/* across multiple calls */
-static int lrad_rand_initialized = 0;
+static fr_randctx fr_rand_pool;	/* across multiple calls */
+static int fr_rand_initialized = 0;
 static unsigned int salt_offset = 0;
 
 
@@ -130,8 +130,8 @@ static const char *packet_codes[] = {
  *	possible combinations.
  */
 static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
-		      lrad_ipaddr_t *src_ipaddr, int src_port,
-		      lrad_ipaddr_t *dst_ipaddr, int dst_port)
+		      fr_ipaddr_t *src_ipaddr, int src_port,
+		      fr_ipaddr_t *dst_ipaddr, int dst_port)
 {
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_dst = sizeof(dst);
@@ -229,7 +229,7 @@ void rad_recv_discard(int sockfd)
 }
 
 
-ssize_t rad_recv_header(int sockfd, lrad_ipaddr_t *src_ipaddr, int *src_port,
+ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, int *src_port,
 			int *code)
 {
 	ssize_t			data_len, packet_len;
@@ -317,8 +317,8 @@ ssize_t rad_recv_header(int sockfd, lrad_ipaddr_t *src_ipaddr, int *src_port,
  *	possible combinations.
  */
 static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
-			    lrad_ipaddr_t *src_ipaddr, uint16_t *src_port,
-			    lrad_ipaddr_t *dst_ipaddr, uint16_t *dst_port)
+			    fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
+			    fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port)
 {
 	struct sockaddr_storage	src;
 	struct sockaddr_storage	dst;
@@ -611,8 +611,8 @@ static void make_tunnel_passwd(uint8_t *output, int *outlen,
 	 *	add in some CSPRNG data.  should be OK..
 	 */
 	passwd[0] = (0x80 | ( ((salt_offset++) & 0x0f) << 3) |
-		     (lrad_rand() & 0x07));
-	passwd[1] = lrad_rand();
+		     (fr_rand() & 0x07));
+	passwd[1] = fr_rand();
 	passwd[2] = inlen;	/* length of the password string */
 
 	fr_MD5Init(&context);
@@ -2404,7 +2404,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 *	Merge information from the outside world into our
 	 *	random pool.
 	 */
-	lrad_rand_seed(packet->data, AUTH_HDR_LEN);
+	fr_rand_seed(packet->data, AUTH_HDR_LEN);
 
 	return 0;
 }
@@ -2588,8 +2588,8 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret,
 	 *	add in some CSPRNG data.  should be OK..
 	 */
 	salt[0] = (0x80 | ( ((salt_offset++) & 0x0f) << 3) |
-		   (lrad_rand() & 0x07));
-	salt[1] = lrad_rand();
+		   (fr_rand() & 0x07));
+	salt[1] = fr_rand();
 
 	/*
 	 *	Padd password to multiple of AUTH_PASS_LEN bytes.
@@ -2796,17 +2796,17 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
  *
  *	May be called any number of times.
  */
-void lrad_rand_seed(const void *data, size_t size)
+void fr_rand_seed(const void *data, size_t size)
 {
 	uint32_t hash;
 
 	/*
 	 *	Ensure that the pool is initialized.
 	 */
-	if (!lrad_rand_initialized) {
+	if (!fr_rand_initialized) {
 		int fd;
 
-		memset(&lrad_rand_pool, 0, sizeof(lrad_rand_pool));
+		memset(&fr_rand_pool, 0, sizeof(fr_rand_pool));
 
 		fd = open("/dev/urandom", O_RDONLY);
 		if (fd >= 0) {
@@ -2814,22 +2814,22 @@ void lrad_rand_seed(const void *data, size_t size)
 			ssize_t this;
 
 			total = this = 0;
-			while (total < sizeof(lrad_rand_pool.randrsl)) {
-				this = read(fd, lrad_rand_pool.randrsl,
-					    sizeof(lrad_rand_pool.randrsl) - total);
+			while (total < sizeof(fr_rand_pool.randrsl)) {
+				this = read(fd, fr_rand_pool.randrsl,
+					    sizeof(fr_rand_pool.randrsl) - total);
 				if ((this < 0) && (errno != EINTR)) break;
 				if (this > 0) total += this;
  			}
 			close(fd);
 		} else {
-			lrad_rand_pool.randrsl[0] = fd;
-			lrad_rand_pool.randrsl[1] = time(NULL);
-			lrad_rand_pool.randrsl[2] = errno;
+			fr_rand_pool.randrsl[0] = fd;
+			fr_rand_pool.randrsl[1] = time(NULL);
+			fr_rand_pool.randrsl[2] = errno;
 		}
 
-		lrad_randinit(&lrad_rand_pool, 1);
-		lrad_rand_pool.randcnt = 0;
-		lrad_rand_initialized = 1;
+		fr_randinit(&fr_rand_pool, 1);
+		fr_rand_pool.randcnt = 0;
+		fr_rand_initialized = 1;
 	}
 
 	if (!data) return;
@@ -2837,32 +2837,32 @@ void lrad_rand_seed(const void *data, size_t size)
 	/*
 	 *	Hash the user data
 	 */
-	hash = lrad_rand();
-	if (!hash) hash = lrad_rand();
-	hash = lrad_hash_update(data, size, hash);
+	hash = fr_rand();
+	if (!hash) hash = fr_rand();
+	hash = fr_hash_update(data, size, hash);
 
-	lrad_rand_pool.randmem[lrad_rand_pool.randcnt] ^= hash;
+	fr_rand_pool.randmem[fr_rand_pool.randcnt] ^= hash;
 }
 
 
 /*
  *	Return a 32-bit random number.
  */
-uint32_t lrad_rand(void)
+uint32_t fr_rand(void)
 {
 	uint32_t num;
 
 	/*
 	 *	Ensure that the pool is initialized.
 	 */
-	if (!lrad_rand_initialized) {
-		lrad_rand_seed(NULL, 0);
+	if (!fr_rand_initialized) {
+		fr_rand_seed(NULL, 0);
 	}
 
-	num = lrad_rand_pool.randrsl[lrad_rand_pool.randcnt++];
-	if (lrad_rand_pool.randcnt == 256) {
-		lrad_rand_pool.randcnt = 0;
-		lrad_isaac(&lrad_rand_pool);
+	num = fr_rand_pool.randrsl[fr_rand_pool.randcnt++];
+	if (fr_rand_pool.randcnt == 256) {
+		fr_rand_pool.randcnt = 0;
+		fr_isaac(&fr_rand_pool);
 	}
 
 	return num;
@@ -2892,13 +2892,13 @@ RADIUS_PACKET *rad_alloc(int newvector)
 		 *	Don't expose the actual contents of the random
 		 *	pool.
 		 */
-		base = lrad_rand();
+		base = fr_rand();
 		for (i = 0; i < AUTH_VECTOR_LEN; i += sizeof(uint32_t)) {
-			hash = lrad_rand() ^ base;
+			hash = fr_rand() ^ base;
 			memcpy(rp->vector + i, &hash, sizeof(hash));
 		}
 	}
-	lrad_rand();		/* stir the pool again */
+	fr_rand();		/* stir the pool again */
 
 	return rp;
 }

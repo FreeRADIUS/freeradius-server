@@ -1,5 +1,5 @@
-#ifndef LRAD_TOKEN_H
-#define LRAD_TOKEN_H
+#ifndef FR_TOKEN_H
+#define FR_TOKEN_H
 
 /*
  * token.h	Special tokens.
@@ -26,7 +26,7 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(token_h, "$Id$")
 
-typedef enum lrad_token_t {
+typedef enum fr_token_t {
   T_OP_INVALID = 0,		/* invalid token */
   T_EOL,			/* end of line */
   T_LCBRACE,			/* { */
@@ -56,24 +56,24 @@ typedef enum lrad_token_t {
   T_SINGLE_QUOTED_STRING,	/* 'foo' 	25 */
   T_BACK_QUOTED_STRING,		/* `foo` */
   T_TOKEN_LAST
-} LRAD_TOKEN;
+} FR_TOKEN;
 
 #define T_EQSTART	T_OP_ADD
 #define	T_EQEND		(T_OP_CMP_EQ + 1)
 
-typedef struct LRAD_NAME_NUMBER {
+typedef struct FR_NAME_NUMBER {
 	const char	*name;
 	int		number;
-} LRAD_NAME_NUMBER;
+} FR_NAME_NUMBER;
 
-int lrad_str2int(const LRAD_NAME_NUMBER *table, const char *name, int def);
-const char *lrad_int2str(const LRAD_NAME_NUMBER *table, int number,
+int fr_str2int(const FR_NAME_NUMBER *table, const char *name, int def);
+const char *fr_int2str(const FR_NAME_NUMBER *table, int number,
 			 const char *def);
 
 
 int		getword (char **ptr, char *buf, int buflen);
 int		getbareword (char **ptr, char *buf, int buflen);
-LRAD_TOKEN	gettoken(char **ptr, char *buf, int buflen);
-LRAD_TOKEN	getstring(char **ptr, char *buf, int buflen);
+FR_TOKEN	gettoken(char **ptr, char *buf, int buflen);
+FR_TOKEN	getstring(char **ptr, char *buf, int buflen);
 
-#endif /* LRAD_TOKEN_H */
+#endif /* FR_TOKEN_H */

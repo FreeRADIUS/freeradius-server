@@ -36,7 +36,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/modules.h>
 
-const LRAD_NAME_NUMBER policy_return_codes[] = {
+const FR_NAME_NUMBER policy_return_codes[] = {
 	{ "reject", RLM_MODULE_REJECT },
 	{ "fail", RLM_MODULE_FAIL },
 	{ "ok", RLM_MODULE_OK },
@@ -52,7 +52,7 @@ const LRAD_NAME_NUMBER policy_return_codes[] = {
 /*
  *	Explanations of what the lexical tokens are.
  */
-static const LRAD_NAME_NUMBER policy_explanations[] = {
+static const FR_NAME_NUMBER policy_explanations[] = {
 	{ "invalid input", POLICY_LEX_BAD },
 	{ "end of file", POLICY_LEX_EOF },
 	{ "end of line", POLICY_LEX_EOL },
@@ -86,7 +86,7 @@ static const LRAD_NAME_NUMBER policy_explanations[] = {
 };
 
 
-const LRAD_NAME_NUMBER rlm_policy_tokens[] = {
+const FR_NAME_NUMBER rlm_policy_tokens[] = {
 	{ "EOF", POLICY_LEX_EOF },
 	{ "#", POLICY_LEX_HASH },
 	{ "(", POLICY_LEX_L_BRACKET },
@@ -488,7 +488,7 @@ static policy_lex_t policy_lex_file(policy_lex_file_t *lexer,
 			if (flags & POLICY_LEX_FLAG_PRINT_TOKEN) {
 				debug_tokens("[%s token %s] ",
 					     (flags & POLICY_LEX_FLAG_PEEK) ? "peek " : "",
-					     lrad_int2str(rlm_policy_tokens,
+					     fr_int2str(rlm_policy_tokens,
 							  token, "?"));
 			}
 			return token;
@@ -533,7 +533,7 @@ static int parse_block(policy_lex_file_t *lexer, policy_item_t **tail);
 /*
  *	Map reserved words to tokens, and vice versa.
  */
-const LRAD_NAME_NUMBER policy_reserved_words[] = {
+const FR_NAME_NUMBER policy_reserved_words[] = {
 	{ "if", POLICY_RESERVED_IF },
 	{ "else", POLICY_RESERVED_ELSE },
 	{ "debug", POLICY_RESERVED_DEBUG },
@@ -555,7 +555,7 @@ const LRAD_NAME_NUMBER policy_reserved_words[] = {
  *	Simplifies some later coding
  */
 static int policy_lex_str2int(policy_lex_file_t *lexer,
-			      const LRAD_NAME_NUMBER *table, int default_value)
+			      const FR_NAME_NUMBER *table, int default_value)
 {
 	policy_lex_t token;
 	char buffer[256];
@@ -567,7 +567,7 @@ static int policy_lex_str2int(policy_lex_file_t *lexer,
 		return default_value;
 	}
 
-	return lrad_str2int(table, buffer, default_value);
+	return fr_str2int(table, buffer, default_value);
 }
 
 
@@ -620,7 +620,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 	if (token != POLICY_LEX_L_BRACKET) {
 		fprintf(stderr, "%s[%d]: Expected '(', got \"%s\"\n",
 			lexer->filename, lexer->lineno,
-			lrad_int2str(rlm_policy_tokens, token, lhs));
+			fr_int2str(rlm_policy_tokens, token, lhs));
 		return 0;
 	}
 
@@ -694,7 +694,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 			if (token != POLICY_LEX_L_BRACKET) {
 				fprintf(stderr, "%s[%d]: Expected left bracket, got \"%s\"\n",
 					lexer->filename, lexer->lineno,
-					lrad_int2str(rlm_policy_tokens, token, "?"));
+					fr_int2str(rlm_policy_tokens, token, "?"));
 				return 0;
 			}
 
@@ -702,7 +702,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 			if (token != POLICY_LEX_R_BRACKET) {
 				fprintf(stderr, "%s[%d]: Expected right bracket, got \"%s\"\n",
 					lexer->filename, lexer->lineno,
-					lrad_int2str(rlm_policy_tokens, token, "?"));
+					fr_int2str(rlm_policy_tokens, token, "?"));
 				return 0;
 			}
 		} /* else it's a comparison? */
@@ -740,7 +740,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 		default:
 			fprintf(stderr, "%s[%d]: Invalid operator \"%s\"\n",
 				lexer->filename, lexer->lineno,
-				lrad_int2str(rlm_policy_tokens, compare, rhs));
+				fr_int2str(rlm_policy_tokens, compare, rhs));
 			rlm_policy_free_item((policy_item_t *) this);
 			return 0;
 		}
@@ -754,7 +754,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 			return 0;
 		}
 		debug_tokens("[COMPARE (%s %s %s)] ",
-		       lhs, lrad_int2str(rlm_policy_tokens, compare, "?"), rhs);
+		       lhs, fr_int2str(rlm_policy_tokens, compare, "?"), rhs);
 		this->lhs = strdup(lhs);
 		this->compare = compare;
 		this->rhs_type = token;
@@ -772,7 +772,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 	if (token != POLICY_LEX_R_BRACKET) {
 		fprintf(stderr, "%s[%d]: Expected ')', got \"%s\"\n",
 			lexer->filename, lexer->lineno,
-			lrad_int2str(rlm_policy_tokens, token, "?"));
+			fr_int2str(rlm_policy_tokens, token, "?"));
 		rlm_policy_free_item((policy_item_t *) this);
 		return 0;
 	}
@@ -784,7 +784,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 	if ((token == POLICY_LEX_L_AND) || (token == POLICY_LEX_L_OR)) {
 		token = policy_lex_file(lexer, 0, NULL, 0); /* skip over it */
 		debug_tokens("[%s] ",
-		       lrad_int2str(rlm_policy_tokens, token, "?"));
+		       fr_int2str(rlm_policy_tokens, token, "?"));
 		this->child_condition = token;
 		rcode = parse_condition(lexer, &(this->child));
 		if (!rcode) {
@@ -834,7 +834,7 @@ static int parse_if(policy_lex_file_t *lexer, policy_item_t **tail)
 	token = policy_lex_file(lexer, POLICY_LEX_FLAG_PEEK,
 				mystring, sizeof(mystring));
 	if ((token == POLICY_LEX_BARE_WORD) &&
-	    (lrad_str2int(policy_reserved_words, mystring,
+	    (fr_str2int(policy_reserved_words, mystring,
 			  POLICY_RESERVED_UNKNOWN) == POLICY_RESERVED_ELSE)) {
 		debug_tokens("[ELSE] ");
 		token = policy_lex_file(lexer, 0, mystring, sizeof(mystring));
@@ -842,7 +842,7 @@ static int parse_if(policy_lex_file_t *lexer, policy_item_t **tail)
 		token = policy_lex_file(lexer, POLICY_LEX_FLAG_PEEK,
 					mystring, sizeof(mystring));
 		if ((token == POLICY_LEX_BARE_WORD) &&
-		    (lrad_str2int(policy_reserved_words, mystring,
+		    (fr_str2int(policy_reserved_words, mystring,
 				  POLICY_RESERVED_UNKNOWN) == POLICY_RESERVED_IF)) {
 			token = policy_lex_file(lexer, 0,
 						mystring, sizeof(mystring));
@@ -890,7 +890,7 @@ static int parse_call(policy_lex_file_t *lexer, policy_item_t **tail,
 	if (token != POLICY_LEX_L_BRACKET) {
 		fprintf(stderr, "%s[%d]: Expected left bracket, got \"%s\"\n",
 			lexer->filename, lexer->lineno,
-			lrad_int2str(rlm_policy_tokens, token, "?"));
+			fr_int2str(rlm_policy_tokens, token, "?"));
 		return 0;
 	}
 
@@ -898,7 +898,7 @@ static int parse_call(policy_lex_file_t *lexer, policy_item_t **tail,
 	if (token != POLICY_LEX_R_BRACKET) {
 		fprintf(stderr, "%s[%d]: Expected right bracket, got \"%s\"\n",
 			lexer->filename, lexer->lineno,
-			lrad_int2str(rlm_policy_tokens, token, "?"));
+			fr_int2str(rlm_policy_tokens, token, "?"));
 		return 0;
 	}
 
@@ -937,7 +937,7 @@ static int parse_attribute_block(policy_lex_file_t *lexer,
 	default:
 		fprintf(stderr, "%s[%d]: Unexpected token %s\n",
 			lexer->filename, lexer->lineno,
-			lrad_int2str(rlm_policy_tokens, token, "?"));
+			fr_int2str(rlm_policy_tokens, token, "?"));
 		return 0;	/* unknown */
 	}
 
@@ -1000,7 +1000,7 @@ static int parse_return(policy_lex_file_t *lexer, policy_item_t **tail)
 }
 
 
-const LRAD_NAME_NUMBER policy_component_names[] = {
+const FR_NAME_NUMBER policy_component_names[] = {
 	{ "authenticate", RLM_COMPONENT_AUTH },
 	{ "authorize", RLM_COMPONENT_AUTZ },
 	{ "preacct", RLM_COMPONENT_PREACCT },
@@ -1034,7 +1034,7 @@ static int parse_module(policy_lex_file_t *lexer, policy_item_t **tail)
 	if (token != POLICY_LEX_DOUBLE_QUOTED_STRING) {
 		fprintf(stderr, "%s[%d]: Expected filename, got \"%s\"\n",
 			lexer->filename, lexer->lineno,
-			lrad_int2str(rlm_policy_tokens, token, "?"));
+			fr_int2str(rlm_policy_tokens, token, "?"));
 		return 0;
 	}
 
@@ -1073,7 +1073,7 @@ static int parse_module(policy_lex_file_t *lexer, policy_item_t **tail)
 
 	section_name = cf_section_name1(subcs);
 	rad_assert(section_name != NULL);
-	component = lrad_str2int(policy_component_names, section_name,
+	component = fr_str2int(policy_component_names, section_name,
 				 RLM_COMPONENT_COUNT);
 	if (component == RLM_COMPONENT_COUNT) {
 		fprintf(stderr, "%s[%d]: Invalid section name \"%s\"\n",
@@ -1131,7 +1131,7 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 		break;
 
 	case POLICY_LEX_BARE_WORD:
-		reserved = lrad_str2int(policy_reserved_words,
+		reserved = fr_str2int(policy_reserved_words,
 					lhs,
 					POLICY_RESERVED_UNKNOWN);
 		switch (reserved) {
@@ -1224,7 +1224,7 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 	default:
 		fprintf(stderr, "%s[%d]: Unexpected %s\n",
 			lexer->filename, lexer->lineno,
-			lrad_int2str(policy_explanations,
+			fr_int2str(policy_explanations,
 				     token, "string"));
 		break;
 	}
@@ -1244,7 +1244,7 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 	default:
 		fprintf(stderr, "%s[%d]: Unexpected assign %s\n",
 			lexer->filename, lexer->lineno,
-			lrad_int2str(policy_explanations,
+			fr_int2str(policy_explanations,
 				     assign, "string"));
 		return 0;
 	}
@@ -1260,7 +1260,7 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 	    (token != POLICY_LEX_DOUBLE_QUOTED_STRING)) {
 		fprintf(stderr, "%s[%d]: Unexpected rhs %s\n",
 			lexer->filename, lexer->lineno,
-			lrad_int2str(policy_explanations,
+			fr_int2str(policy_explanations,
 				     token, "string"));
 		rlm_policy_free_item((policy_item_t *) this);
 		return 0;
@@ -1277,7 +1277,7 @@ static int parse_statement(policy_lex_file_t *lexer, policy_item_t **tail)
 		return 0;
 	}
 	debug_tokens("[ASSIGN %s %s %s]\n",
-	       lhs, lrad_int2str(rlm_policy_tokens, assign, "?"), rhs);
+	       lhs, fr_int2str(rlm_policy_tokens, assign, "?"), rhs);
 
 	/*
 	 *	Fill in the assignment struct
@@ -1411,7 +1411,7 @@ static int parse_named_policy(policy_lex_file_t *lexer)
 	if (token != POLICY_LEX_BARE_WORD) {
 		fprintf(stderr, "%s[%d]: Expected policy name, got \"%s\"\n",
 			lexer->filename, lexer->lineno,
-			lrad_int2str(rlm_policy_tokens, token, "?"));
+			fr_int2str(rlm_policy_tokens, token, "?"));
 		rlm_policy_free_item((policy_item_t *) this);
 		return 0;
 	}
@@ -1467,7 +1467,7 @@ static int parse_include(policy_lex_file_t *lexer)
 	if (token != POLICY_LEX_DOUBLE_QUOTED_STRING) {
 		fprintf(stderr, "%s[%d]: Expected filename, got \"%s\"\n",
 			lexer->filename, lexer->lineno,
-			lrad_int2str(rlm_policy_tokens, token, "?"));
+			fr_int2str(rlm_policy_tokens, token, "?"));
 		return 0;
 	}
 
@@ -1568,7 +1568,7 @@ int rlm_policy_parse(rbtree_t *policies, const char *filename)
 		token = policy_lex_file(lexer, 0, buffer, sizeof(buffer));
 		switch (token) {
 		case POLICY_LEX_BARE_WORD:
-			reserved = lrad_str2int(policy_reserved_words,
+			reserved = fr_str2int(policy_reserved_words,
 						buffer,
 						POLICY_RESERVED_UNKNOWN);
 			switch (reserved) {

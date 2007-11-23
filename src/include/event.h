@@ -1,5 +1,5 @@
-#ifndef LRAD_EVENT_H
-#define LRAD_EVENT_H
+#ifndef FR_EVENT_H
+#define FR_EVENT_H
 
 /*
  * event.h	Simple event queue
@@ -27,31 +27,31 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(event_h, "$Id$")
 
-typedef struct lrad_event_list_t lrad_event_list_t;
-typedef struct lrad_event_t lrad_event_t;
+typedef struct fr_event_list_t fr_event_list_t;
+typedef struct fr_event_t fr_event_t;
 
-typedef	void (*lrad_event_callback_t)(void *);
-typedef	void (*lrad_event_status_t)(struct timeval *);
-typedef void (*lrad_event_fd_handler_t)(lrad_event_list_t *el, int sock, void *ctx);
+typedef	void (*fr_event_callback_t)(void *);
+typedef	void (*fr_event_status_t)(struct timeval *);
+typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, void *ctx);
 
-lrad_event_list_t *lrad_event_list_create(lrad_event_status_t status);
-void lrad_event_list_free(lrad_event_list_t *el);
+fr_event_list_t *fr_event_list_create(fr_event_status_t status);
+void fr_event_list_free(fr_event_list_t *el);
 
-int lrad_event_list_num_elements(lrad_event_list_t *el);
+int fr_event_list_num_elements(fr_event_list_t *el);
 
-int lrad_event_insert(lrad_event_list_t *el,
-		      lrad_event_callback_t callback,
-		      void *ctx, struct timeval *when, lrad_event_t **ev_p);
-int lrad_event_delete(lrad_event_list_t *el, lrad_event_t **ev_p);
+int fr_event_insert(fr_event_list_t *el,
+		      fr_event_callback_t callback,
+		      void *ctx, struct timeval *when, fr_event_t **ev_p);
+int fr_event_delete(fr_event_list_t *el, fr_event_t **ev_p);
 
-int lrad_event_run(lrad_event_list_t *el, struct timeval *when);
+int fr_event_run(fr_event_list_t *el, struct timeval *when);
 
-int lrad_event_now(lrad_event_list_t *el, struct timeval *when);
+int fr_event_now(fr_event_list_t *el, struct timeval *when);
 
-int lrad_event_fd_insert(lrad_event_list_t *el, int type, int fd,
-			 lrad_event_fd_handler_t handler, void *ctx);
-int lrad_event_fd_delete(lrad_event_list_t *el, int type, int fd);
-int lrad_event_loop(lrad_event_list_t *el);
-void lrad_event_loop_exit(lrad_event_list_t *el, int code);
+int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
+			 fr_event_fd_handler_t handler, void *ctx);
+int fr_event_fd_delete(fr_event_list_t *el, int type, int fd);
+int fr_event_loop(fr_event_list_t *el);
+void fr_event_loop_exit(fr_event_list_t *el, int code);
 
-#endif /* LRAD_HASH_H */
+#endif /* FR_HASH_H */

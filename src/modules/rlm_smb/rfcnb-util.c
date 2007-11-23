@@ -319,7 +319,7 @@ void RFCNB_Print_Pkt(FILE *fd, char *dirn, struct RFCNB_Pkt *pkt, int len)
 int RFCNB_Name_To_IP(char *host, struct in_addr *Dest_IP)
 
 {
-	lrad_ipaddr_t ipaddr;
+	fr_ipaddr_t ipaddr;
 
 	if (ip_hton(host, AF_INET, &ipaddr) < 0) {
 		/* Try NetBIOS name lookup, how the hell do we do that? */

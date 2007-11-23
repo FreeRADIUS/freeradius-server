@@ -106,7 +106,7 @@ int radLdapXtnNMASAuth( LDAP *, char *, char *, char *, char *, size_t *, char *
 struct TLDAP_RADIUS {
 	char*                 attr;
 	char*                 radius_attr;
-	LRAD_TOKEN	      operator;
+	FR_TOKEN	      operator;
 	struct TLDAP_RADIUS*  next;
 };
 typedef struct TLDAP_RADIUS TLDAP_RADIUS;
@@ -641,7 +641,7 @@ read_mappings(ldap_instance* inst)
 	char buf[MAX_LINE_LEN], itemType[MAX_LINE_LEN];
 	char radiusAttribute[MAX_LINE_LEN], ldapAttribute[MAX_LINE_LEN];
 	int linenumber;
-	LRAD_TOKEN operator;
+	FR_TOKEN operator;
 	char opstring[MAX_LINE_LEN];
 
 	/* open the mappings file for reading */
@@ -1202,7 +1202,7 @@ static int ldap_xlat(void *instance, REQUEST *request, char *fmt,
 /*
  *	For auto-header discovery.
  */
-static const LRAD_NAME_NUMBER header_names[] = {
+static const FR_NAME_NUMBER header_names[] = {
 	{ "{clear}",	PW_CLEARTEXT_PASSWORD },
 	{ "{cleartext}", PW_CLEARTEXT_PASSWORD },
 	{ "{md5}",	PW_MD5_PASSWORD },
@@ -1474,7 +1474,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					memcpy(autobuf, value, p - value + 1);
 					autobuf[p - value + 1] = '\0';
 
-					attr = lrad_str2int(header_names,
+					attr = fr_str2int(header_names,
 							    autobuf, 0);
 					if (!attr) continue;
 					value = p + 1;
@@ -2491,7 +2491,7 @@ fieldcpy(char *string, char **uptr)
 /*
  *	Copied from src/lib/token.c
  */
-static const LRAD_NAME_NUMBER tokens[] = {
+static const FR_NAME_NUMBER tokens[] = {
 	{ "=~", T_OP_REG_EQ,	}, /* order is important! */
 	{ "!~", T_OP_REG_NE,	},
 	{ "{",	T_LCBRACE,	},
@@ -2530,7 +2530,7 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 	char           *ptr;
 	char	       *value;
 	TLDAP_RADIUS   *element;
-	LRAD_TOKEN      token, operator;
+	FR_TOKEN      token, operator;
 	int             is_generic_attribute;
 	char		buf[MAX_STRING_LEN];
 	VALUE_PAIR     *pairlist = NULL;
@@ -2572,7 +2572,7 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 				/*
 				 *	This is a generic attribute.
 				 */
-				LRAD_TOKEN dummy; /* makes pairread happy */
+				FR_TOKEN dummy; /* makes pairread happy */
 
 				/* not sure if using pairread here is ok ... */
 				if ( (newpair = pairread(&value, &dummy)) != NULL) {

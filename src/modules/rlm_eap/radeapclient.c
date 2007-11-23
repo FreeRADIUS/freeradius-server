@@ -53,7 +53,7 @@ static int totaldeny = 0;
 static char filesecret[256];
 const char *radius_dir = RADDBDIR;
 const char *progname = "radeapclient";
-/* lrad_randctx randctx; */
+/* fr_randctx randctx; */
 
 
 radlog_dest_t radlog_dest = RADLOG_STDERR;
@@ -362,10 +362,10 @@ static int process_eap_start(RADIUS_PACKET *req,
 		newvp->vp_octets[1]=0;
 		newvp->length = 18;  /* 16 bytes of nonce + padding */
 
-		nonce[0]=lrad_rand();
-		nonce[1]=lrad_rand();
-		nonce[2]=lrad_rand();
-		nonce[3]=lrad_rand();
+		nonce[0]=fr_rand();
+		nonce[1]=fr_rand();
+		nonce[2]=fr_rand();
+		nonce[3]=fr_rand();
 		memcpy(&newvp->vp_octets[2], nonce, 16);
 		pairreplace(&(rep->vps), newvp);
 
@@ -1033,7 +1033,7 @@ int main(int argc, char **argv)
 			fclose(randinit);
 		}
 	}
-	lrad_randinit(&randctx, 1);
+	fr_randinit(&randctx, 1);
 #endif
 
 	req->id = id;

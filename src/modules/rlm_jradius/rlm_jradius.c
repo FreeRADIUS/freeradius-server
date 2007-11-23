@@ -417,7 +417,7 @@ static int jradius_instantiate(CONF_SECTION *conf, void **instance)
       if (sscanf(b, "%[^:]:%d", host, &port) == 2) { h = host; p = port; }
 
       if (h) {
-	lrad_ipaddr_t ipaddr;
+	fr_ipaddr_t ipaddr;
 	if (ip_hton(h, AF_INET, &ipaddr) < 0) {
 	  radlog(L_ERR, "Can't find IP address for host %s", h);
 	  continue;

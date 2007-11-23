@@ -71,7 +71,7 @@ typedef struct {
 	module_instance_t *modinst;
 } modsingle;
 
-static const LRAD_NAME_NUMBER grouptype_table[] = {
+static const FR_NAME_NUMBER grouptype_table[] = {
 	{ "", GROUPTYPE_SIMPLE },
 	{ "redundant ", GROUPTYPE_REDUNDANT },
 	{ "append ", GROUPTYPE_APPEND },
@@ -121,7 +121,7 @@ static void add_child(modgroup *g, modcallable *c)
 
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
-static const LRAD_NAME_NUMBER rcode_table[] = {
+static const FR_NAME_NUMBER rcode_table[] = {
 	{ "reject",     RLM_MODULE_REJECT       },
 	{ "fail",       RLM_MODULE_FAIL         },
 	{ "ok",         RLM_MODULE_OK           },
@@ -169,7 +169,7 @@ static int compile_action(modcallable *c, CONF_PAIR *cp)
 	if (strcasecmp(attr, "default") != 0) {
 		int rcode;
 
-		rcode = lrad_str2int(rcode_table, attr, -1);
+		rcode = fr_str2int(rcode_table, attr, -1);
 		if (rcode < 0) {
 			cf_log_err(cf_pairtoitem(cp),
 				   "Unknown module rcode '%s'.\n",
@@ -463,7 +463,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 					count++;
 
-					if ((count * (lrad_rand() & 0xffff)) < (uint32_t) 0x10000) {
+					if ((count * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
 						q = p;
 					}
 				}
@@ -516,7 +516,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				       stack.pointer + 1, modcall_spaces,
 				       group_name[child->type],
 				       child->name ? child->name : "",
-				       lrad_int2str(rcode_table,
+				       fr_int2str(rcode_table,
 						    stack.result[stack.pointer],
 						    "??"));
 				goto do_return;
@@ -542,7 +542,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		DEBUG2("%.*s[%s] returns %s",
 		       stack.pointer + 1, modcall_spaces,
 		       child->name ? child->name : "",
-		       lrad_int2str(rcode_table, myresult, "??"));
+		       fr_int2str(rcode_table, myresult, "??"));
 
 
 		/*
@@ -663,7 +663,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			       stack.pointer + 1, modcall_spaces,
 			       group_name[parent->type],
 			       parent->name ? parent->name : "",
-			       lrad_int2str(rcode_table, myresult, "??"));
+			       fr_int2str(rcode_table, myresult, "??"));
 
 			if ((parent->type == MOD_IF) ||
 			    (parent->type == MOD_ELSIF)) {
@@ -720,7 +720,7 @@ static void dump_mc(modcallable *c, int indent)
 
 	for(i = 0; i<RLM_MODULE_NUMCODES; ++i) {
 		DEBUG("%.*s%s = %s", indent+1, "\t\t\t\t\t\t\t\t\t\t\t",
-		      lrad_int2str(rcode_table, i, "??"),
+		      fr_int2str(rcode_table, i, "??"),
 		      action2str(c->actions[i]));
 	}
 

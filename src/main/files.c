@@ -71,7 +71,7 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	PAIR_LIST **last = &pl;
 	int lineno = 0;
 	int old_lineno = 0;
-	LRAD_TOKEN parsecode;
+	FR_TOKEN parsecode;
 	char newfile[8192];
 
 	/*

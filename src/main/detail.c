@@ -44,7 +44,7 @@ typedef struct listen_detail_t {
 	FILE		*fp;
 	int		state;
 	time_t		timestamp;
-	lrad_ipaddr_t	client_ip;
+	fr_ipaddr_t	client_ip;
 	int		load_factor; /* 1..100 */
 
 	int		has_rtt;
@@ -546,12 +546,12 @@ int detail_recv(rad_listen_t *listener,
 	 *	packets before having a collision, which means it's
 	 *	effectively impossible.
 	 */
-	packet->id = lrad_rand() & 0xffff;
-	packet->src_port = 1024 + (lrad_rand() & 0x7fff);
-	packet->dst_port = 1024 + (lrad_rand() & 0x7fff);
+	packet->id = fr_rand() & 0xffff;
+	packet->src_port = 1024 + (fr_rand() & 0x7fff);
+	packet->dst_port = 1024 + (fr_rand() & 0x7fff);
 
 	packet->dst_ipaddr.af = AF_INET;
-	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl((INADDR_LOOPBACK & ~0xffffff) | (lrad_rand() & 0xffffff));
+	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl((INADDR_LOOPBACK & ~0xffffff) | (fr_rand() & 0xffffff));
 
 	/*
 	 *	If everything's OK, this is a waste of memory.

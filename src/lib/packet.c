@@ -33,18 +33,18 @@ RCSID("$Id$")
  *	Take the key fields of a request packet, and convert it to a
  *	hash.
  */
-uint32_t lrad_request_packet_hash(const RADIUS_PACKET *packet)
+uint32_t fr_request_packet_hash(const RADIUS_PACKET *packet)
 {
 	uint32_t hash;
 
 	if (packet->hash) return packet->hash;
 
-	hash = lrad_hash(&packet->sockfd, sizeof(packet->sockfd));
-	hash = lrad_hash_update(&packet->src_port, sizeof(packet->src_port),
+	hash = fr_hash(&packet->sockfd, sizeof(packet->sockfd));
+	hash = fr_hash_update(&packet->src_port, sizeof(packet->src_port),
 				hash);
-	hash = lrad_hash_update(&packet->dst_port,
+	hash = fr_hash_update(&packet->dst_port,
 				sizeof(packet->dst_port), hash);
-	hash = lrad_hash_update(&packet->src_ipaddr.af,
+	hash = fr_hash_update(&packet->src_ipaddr.af,
 				sizeof(packet->src_ipaddr.af), hash);
 
 	/*
@@ -52,18 +52,18 @@ uint32_t lrad_request_packet_hash(const RADIUS_PACKET *packet)
 	 */
 	switch (packet->src_ipaddr.af) {
 	case AF_INET:
-		hash = lrad_hash_update(&packet->src_ipaddr.ipaddr.ip4addr,
+		hash = fr_hash_update(&packet->src_ipaddr.ipaddr.ip4addr,
 					sizeof(packet->src_ipaddr.ipaddr.ip4addr),
 					hash);
-		hash = lrad_hash_update(&packet->dst_ipaddr.ipaddr.ip4addr,
+		hash = fr_hash_update(&packet->dst_ipaddr.ipaddr.ip4addr,
 					sizeof(packet->dst_ipaddr.ipaddr.ip4addr),
 					hash);
 		break;
 	case AF_INET6:
-		hash = lrad_hash_update(&packet->src_ipaddr.ipaddr.ip6addr,
+		hash = fr_hash_update(&packet->src_ipaddr.ipaddr.ip6addr,
 					sizeof(packet->src_ipaddr.ipaddr.ip6addr),
 					hash);
-		hash = lrad_hash_update(&packet->dst_ipaddr.ipaddr.ip6addr,
+		hash = fr_hash_update(&packet->dst_ipaddr.ipaddr.ip6addr,
 					sizeof(packet->dst_ipaddr.ipaddr.ip6addr),
 					hash);
 		break;
@@ -71,7 +71,7 @@ uint32_t lrad_request_packet_hash(const RADIUS_PACKET *packet)
 		break;
 	}
 
-	return lrad_hash_update(&packet->id, sizeof(packet->id), hash);
+	return fr_hash_update(&packet->id, sizeof(packet->id), hash);
 }
 
 
@@ -84,17 +84,17 @@ uint32_t lrad_request_packet_hash(const RADIUS_PACKET *packet)
  *	of the request.  e.g. where the request does (src, dst), we do
  *	(dst, src)
  */
-uint32_t lrad_reply_packet_hash(const RADIUS_PACKET *packet)
+uint32_t fr_reply_packet_hash(const RADIUS_PACKET *packet)
 {
 	uint32_t hash;
 
-	hash = lrad_hash(&packet->sockfd, sizeof(packet->sockfd));
-	hash = lrad_hash_update(&packet->id, sizeof(packet->id), hash);
-	hash = lrad_hash_update(&packet->src_port, sizeof(packet->src_port),
+	hash = fr_hash(&packet->sockfd, sizeof(packet->sockfd));
+	hash = fr_hash_update(&packet->id, sizeof(packet->id), hash);
+	hash = fr_hash_update(&packet->src_port, sizeof(packet->src_port),
 				hash);
-	hash = lrad_hash_update(&packet->dst_port,
+	hash = fr_hash_update(&packet->dst_port,
 				sizeof(packet->dst_port), hash);
-	hash = lrad_hash_update(&packet->src_ipaddr.af,
+	hash = fr_hash_update(&packet->src_ipaddr.af,
 				sizeof(packet->src_ipaddr.af), hash);
 
 	/*
@@ -102,18 +102,18 @@ uint32_t lrad_reply_packet_hash(const RADIUS_PACKET *packet)
 	 */
 	switch (packet->src_ipaddr.af) {
 	case AF_INET:
-		hash = lrad_hash_update(&packet->dst_ipaddr.ipaddr.ip4addr,
+		hash = fr_hash_update(&packet->dst_ipaddr.ipaddr.ip4addr,
 					sizeof(packet->dst_ipaddr.ipaddr.ip4addr),
 					hash);
-		hash = lrad_hash_update(&packet->src_ipaddr.ipaddr.ip4addr,
+		hash = fr_hash_update(&packet->src_ipaddr.ipaddr.ip4addr,
 					sizeof(packet->src_ipaddr.ipaddr.ip4addr),
 					hash);
 		break;
 	case AF_INET6:
-		hash = lrad_hash_update(&packet->dst_ipaddr.ipaddr.ip6addr,
+		hash = fr_hash_update(&packet->dst_ipaddr.ipaddr.ip6addr,
 					sizeof(packet->dst_ipaddr.ipaddr.ip6addr),
 					hash);
-		hash = lrad_hash_update(&packet->src_ipaddr.ipaddr.ip6addr,
+		hash = fr_hash_update(&packet->src_ipaddr.ipaddr.ip6addr,
 					sizeof(packet->src_ipaddr.ipaddr.ip6addr),
 					hash);
 		break;
@@ -121,7 +121,7 @@ uint32_t lrad_reply_packet_hash(const RADIUS_PACKET *packet)
 		break;
 	}
 
-	return lrad_hash_update(&packet->id, sizeof(packet->id), hash);
+	return fr_hash_update(&packet->id, sizeof(packet->id), hash);
 }
 
 
@@ -132,7 +132,7 @@ uint32_t lrad_reply_packet_hash(const RADIUS_PACKET *packet)
  *	That's because if the authentication vector is different,
  *	it means that the NAS has given up on the earlier request.
  */
-int lrad_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b)
+int fr_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b)
 {
 	int rcode;
 
@@ -148,16 +148,16 @@ int lrad_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b)
 	if (a->dst_port < b->dst_port) return -1;
 	if (a->dst_port > b->dst_port) return +1;
 
-	rcode = lrad_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
+	rcode = fr_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
 	if (rcode != 0) return rcode;
-	return lrad_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
+	return fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
 }
 
 
 /*
  *	Create a fake "request" from a reply, for later lookup.
  */
-void lrad_request_from_reply(RADIUS_PACKET *request,
+void fr_request_from_reply(RADIUS_PACKET *request,
 			     const RADIUS_PACKET *reply)
 {
 	request->sockfd = reply->sockfd;
@@ -172,7 +172,7 @@ void lrad_request_from_reply(RADIUS_PACKET *request,
 /*
  *	Open a socket on the given IP and port.
  */
-int lrad_socket(lrad_ipaddr_t *ipaddr, int port)
+int fr_socket(fr_ipaddr_t *ipaddr, int port)
 {
 	int sockfd;
 	struct sockaddr_storage salocal;
@@ -252,16 +252,16 @@ int lrad_socket(lrad_ipaddr_t *ipaddr, int port)
 /*
  *	We need to keep track of the socket & it's IP/port.
  */
-typedef struct lrad_packet_socket_t {
+typedef struct fr_packet_socket_t {
 	int		sockfd;
 
 	int		num_outgoing;
 
 	int		offset;	/* 0..31 */
 	int		inaddr_any;
-	lrad_ipaddr_t	ipaddr;
+	fr_ipaddr_t	ipaddr;
 	int		port;
-} lrad_packet_socket_t;
+} fr_packet_socket_t;
 
 
 #define FNV_MAGIC_PRIME (0x01000193)
@@ -275,24 +275,24 @@ typedef struct lrad_packet_socket_t {
  *	Structure defining a list of packets (incoming or outgoing)
  *	that should be managed.
  */
-struct lrad_packet_list_t {
-	lrad_hash_table_t *ht;
+struct fr_packet_list_t {
+	fr_hash_table_t *ht;
 
-	lrad_hash_table_t *dst2id_ht;
+	fr_hash_table_t *dst2id_ht;
 
 	int		alloc_id;
 	int		num_outgoing;
 
 	uint32_t mask;
 	int last_recv;
-	lrad_packet_socket_t sockets[MAX_SOCKETS];
+	fr_packet_socket_t sockets[MAX_SOCKETS];
 };
 
 
 /*
  *	Ugh.  Doing this on every sent/received packet is not nice.
  */
-static lrad_packet_socket_t *lrad_socket_find(lrad_packet_list_t *pl,
+static fr_packet_socket_t *fr_socket_find(fr_packet_list_t *pl,
 					     int sockfd)
 {
 	int i, start;
@@ -308,13 +308,13 @@ static lrad_packet_socket_t *lrad_socket_find(lrad_packet_list_t *pl,
 	return NULL;
 }
 
-int lrad_packet_list_socket_remove(lrad_packet_list_t *pl, int sockfd)
+int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd)
 {
-	lrad_packet_socket_t *ps;
+	fr_packet_socket_t *ps;
 
 	if (!pl) return 0;
 
-	ps = lrad_socket_find(pl, sockfd);
+	ps = fr_socket_find(pl, sockfd);
 	if (!ps) return 0;
 
 	/*
@@ -329,12 +329,12 @@ int lrad_packet_list_socket_remove(lrad_packet_list_t *pl, int sockfd)
 	return 1;
 }
 
-int lrad_packet_list_socket_add(lrad_packet_list_t *pl, int sockfd)
+int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd)
 {
 	int i, start;
 	struct sockaddr_storage	src;
 	socklen_t	        sizeof_src = sizeof(src);
-	lrad_packet_socket_t	*ps;
+	fr_packet_socket_t	*ps;
 
 	if (!pl) return 0;
 
@@ -409,7 +409,7 @@ int lrad_packet_list_socket_add(lrad_packet_list_t *pl, int sockfd)
 
 static uint32_t packet_entry_hash(const void *data)
 {
-	return lrad_request_packet_hash(*(const RADIUS_PACKET * const *) data);
+	return fr_request_packet_hash(*(const RADIUS_PACKET * const *) data);
 }
 
 static int packet_entry_cmp(const void *one, const void *two)
@@ -417,7 +417,7 @@ static int packet_entry_cmp(const void *one, const void *two)
 	const RADIUS_PACKET * const *a = one;
 	const RADIUS_PACKET * const *b = two;
 
-	return lrad_packet_cmp(*a, *b);
+	return fr_packet_cmp(*a, *b);
 }
 
 /*
@@ -435,28 +435,28 @@ static int packet_entry_cmp(const void *one, const void *two)
  *	This means that if destinations are added and removed, they
  *	won't be removed from this tree.
  */
-typedef struct lrad_packet_dst2id_t {
-	lrad_ipaddr_t	dst_ipaddr;
+typedef struct fr_packet_dst2id_t {
+	fr_ipaddr_t	dst_ipaddr;
 	int		dst_port;
 	uint32_t	id[1];	/* really id[256] */
-} lrad_packet_dst2id_t;
+} fr_packet_dst2id_t;
 
 
 static uint32_t packet_dst2id_hash(const void *data)
 {
 	uint32_t hash;
-	const lrad_packet_dst2id_t *pd = data;
+	const fr_packet_dst2id_t *pd = data;
 
-	hash = lrad_hash(&pd->dst_port, sizeof(pd->dst_port));
+	hash = fr_hash(&pd->dst_port, sizeof(pd->dst_port));
 
 	switch (pd->dst_ipaddr.af) {
 	case AF_INET:
-		hash = lrad_hash_update(&pd->dst_ipaddr.ipaddr.ip4addr,
+		hash = fr_hash_update(&pd->dst_ipaddr.ipaddr.ip4addr,
 					sizeof(pd->dst_ipaddr.ipaddr.ip4addr),
 					hash);
 		break;
 	case AF_INET6:
-		hash = lrad_hash_update(&pd->dst_ipaddr.ipaddr.ip6addr,
+		hash = fr_hash_update(&pd->dst_ipaddr.ipaddr.ip6addr,
 					sizeof(pd->dst_ipaddr.ipaddr.ip6addr),
 					hash);
 		break;
@@ -469,13 +469,13 @@ static uint32_t packet_dst2id_hash(const void *data)
 
 static int packet_dst2id_cmp(const void *one, const void *two)
 {
-	const lrad_packet_dst2id_t *a = one;
-	const lrad_packet_dst2id_t *b = two;
+	const fr_packet_dst2id_t *a = one;
+	const fr_packet_dst2id_t *b = two;
 
 	if (a->dst_port < b->dst_port) return -1;
 	if (a->dst_port > b->dst_port) return +1;
 
-	return lrad_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
+	return fr_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
 }
 
 static void packet_dst2id_free(void *data)
@@ -484,12 +484,12 @@ static void packet_dst2id_free(void *data)
 }
 
 
-void lrad_packet_list_free(lrad_packet_list_t *pl)
+void fr_packet_list_free(fr_packet_list_t *pl)
 {
 	if (!pl) return;
 
-	lrad_hash_table_free(pl->ht);
-	lrad_hash_table_free(pl->dst2id_ht);
+	fr_hash_table_free(pl->ht);
+	fr_hash_table_free(pl->dst2id_ht);
 	free(pl);
 }
 
@@ -497,20 +497,20 @@ void lrad_packet_list_free(lrad_packet_list_t *pl)
 /*
  *	Caller is responsible for managing the packet entries.
  */
-lrad_packet_list_t *lrad_packet_list_create(int alloc_id)
+fr_packet_list_t *fr_packet_list_create(int alloc_id)
 {
 	int i;
-	lrad_packet_list_t	*pl;
+	fr_packet_list_t	*pl;
 
 	pl = malloc(sizeof(*pl));
 	if (!pl) return NULL;
 	memset(pl, 0, sizeof(*pl));
 
-	pl->ht = lrad_hash_table_create(packet_entry_hash,
+	pl->ht = fr_hash_table_create(packet_entry_hash,
 					packet_entry_cmp,
 					NULL);
 	if (!pl->ht) {
-		lrad_packet_list_free(pl);
+		fr_packet_list_free(pl);
 		return NULL;
 	}
 
@@ -521,11 +521,11 @@ lrad_packet_list_t *lrad_packet_list_create(int alloc_id)
 	if (alloc_id) {
 		pl->alloc_id = 1;
 
-		pl->dst2id_ht = lrad_hash_table_create(packet_dst2id_hash,
+		pl->dst2id_ht = fr_hash_table_create(packet_dst2id_hash,
 						       packet_dst2id_cmp,
 						       packet_dst2id_free);
 		if (!pl->dst2id_ht) {
-			lrad_packet_list_free(pl);
+			fr_packet_list_free(pl);
 			return NULL;
 		}
 	}
@@ -535,25 +535,25 @@ lrad_packet_list_t *lrad_packet_list_create(int alloc_id)
 
 
 /*
- *	If pl->alloc_id is set, then lrad_packet_list_id_alloc() MUST
+ *	If pl->alloc_id is set, then fr_packet_list_id_alloc() MUST
  *	be called before inserting the packet into the list!
  */
-int lrad_packet_list_insert(lrad_packet_list_t *pl,
+int fr_packet_list_insert(fr_packet_list_t *pl,
 			    RADIUS_PACKET **request_p)
 {
 	if (!pl || !request_p || !*request_p) return 0;
 
-	(*request_p)->hash = lrad_request_packet_hash(*request_p);
+	(*request_p)->hash = fr_request_packet_hash(*request_p);
 
-	return lrad_hash_table_insert(pl->ht, request_p);
+	return fr_hash_table_insert(pl->ht, request_p);
 }
 
-RADIUS_PACKET **lrad_packet_list_find(lrad_packet_list_t *pl,
+RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl,
 				      RADIUS_PACKET *request)
 {
 	if (!pl || !request) return 0;
 
-	return lrad_hash_table_finddata(pl->ht, &request);
+	return fr_hash_table_finddata(pl->ht, &request);
 }
 
 
@@ -561,15 +561,15 @@ RADIUS_PACKET **lrad_packet_list_find(lrad_packet_list_t *pl,
  *	This presumes that the reply has dst_ipaddr && dst_port set up
  *	correctly (i.e. real IP, or "*").
  */
-RADIUS_PACKET **lrad_packet_list_find_byreply(lrad_packet_list_t *pl,
+RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 					      RADIUS_PACKET *reply)
 {
 	RADIUS_PACKET my_request, *request;
-	lrad_packet_socket_t *ps;
+	fr_packet_socket_t *ps;
 
 	if (!pl || !reply) return NULL;
 
-	ps = lrad_socket_find(pl, reply->sockfd);
+	ps = fr_socket_find(pl, reply->sockfd);
 	if (!ps) return NULL;
 
 	/*
@@ -594,23 +594,23 @@ RADIUS_PACKET **lrad_packet_list_find_byreply(lrad_packet_list_t *pl,
 
 	request = &my_request;
 
-	return lrad_hash_table_finddata(pl->ht, &request);
+	return fr_hash_table_finddata(pl->ht, &request);
 }
 
 
-RADIUS_PACKET **lrad_packet_list_yank(lrad_packet_list_t *pl,
+RADIUS_PACKET **fr_packet_list_yank(fr_packet_list_t *pl,
 				      RADIUS_PACKET *request)
 {
 	if (!pl || !request) return NULL;
 
-	return lrad_hash_table_yank(pl->ht, &request);
+	return fr_hash_table_yank(pl->ht, &request);
 }
 
-int lrad_packet_list_num_elements(lrad_packet_list_t *pl)
+int fr_packet_list_num_elements(fr_packet_list_t *pl)
 {
 	if (!pl) return 0;
 
-	return lrad_hash_table_num_elements(pl->ht);
+	return fr_hash_table_num_elements(pl->ht);
 }
 
 
@@ -627,20 +627,20 @@ int lrad_packet_list_num_elements(lrad_packet_list_t *pl)
  *	the same mutex as the one protecting the insert/find/yank
  *	calls!
  */
-int lrad_packet_list_id_alloc(lrad_packet_list_t *pl,
+int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 			      RADIUS_PACKET *request)
 {
 	int i, id, start;
 	uint32_t free_mask;
-	lrad_packet_dst2id_t my_pd, *pd;
-	lrad_packet_socket_t *ps;
+	fr_packet_dst2id_t my_pd, *pd;
+	fr_packet_socket_t *ps;
 
 	if (!pl || !pl->alloc_id || !request) return 0;
 
 	my_pd.dst_ipaddr = request->dst_ipaddr;
 	my_pd.dst_port = request->dst_port;
 
-	pd = lrad_hash_table_finddata(pl->dst2id_ht, &my_pd);
+	pd = fr_hash_table_finddata(pl->dst2id_ht, &my_pd);
 	if (!pd) {
 		pd = malloc(sizeof(*pd) + 255 * sizeof(pd->id[0]));
 		if (!pd) return 0;
@@ -650,7 +650,7 @@ int lrad_packet_list_id_alloc(lrad_packet_list_t *pl,
 		pd->dst_ipaddr = request->dst_ipaddr;
 		pd->dst_port = request->dst_port;
 
-		if (!lrad_hash_table_insert(pl->dst2id_ht, pd)) {
+		if (!fr_hash_table_insert(pl->dst2id_ht, pd)) {
 			free(pd);
 			return 0;
 		}
@@ -667,7 +667,7 @@ int lrad_packet_list_id_alloc(lrad_packet_list_t *pl,
 	 *	Id's only when all responses have been received, OR after
 	 *	a timeout.
 	 */
-	id = start = (int) lrad_rand() & 0xff;
+	id = start = (int) fr_rand() & 0xff;
 
 	while (pd->id[id] == pl->mask) { /* all sockets are using this ID */
 		id++;
@@ -711,21 +711,21 @@ int lrad_packet_list_id_alloc(lrad_packet_list_t *pl,
  *	Should be called AFTER yanking it from the list, so that
  *	any newly inserted entries don't collide with this one.
  */
-int lrad_packet_list_id_free(lrad_packet_list_t *pl,
+int fr_packet_list_id_free(fr_packet_list_t *pl,
 			     RADIUS_PACKET *request)
 {
-	lrad_packet_socket_t *ps;
-	lrad_packet_dst2id_t my_pd, *pd;
+	fr_packet_socket_t *ps;
+	fr_packet_dst2id_t my_pd, *pd;
 
 	if (!pl || !request) return 0;
 
-	ps = lrad_socket_find(pl, request->sockfd);
+	ps = fr_socket_find(pl, request->sockfd);
 	if (!ps) return 0;
 
 	my_pd.dst_ipaddr = request->dst_ipaddr;
 	my_pd.dst_port = request->dst_port;
 
-	pd = lrad_hash_table_finddata(pl->dst2id_ht, &my_pd);
+	pd = fr_hash_table_finddata(pl->dst2id_ht, &my_pd);
 	if (!pd) return 0;
 
 	pd->id[request->id] &= ~(1 << ps->offset);
@@ -737,15 +737,15 @@ int lrad_packet_list_id_free(lrad_packet_list_t *pl,
 	return 1;
 }
 
-int lrad_packet_list_walk(lrad_packet_list_t *pl, void *ctx,
-			  lrad_hash_table_walk_t callback)
+int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx,
+			  fr_hash_table_walk_t callback)
 {
 	if (!pl || !callback) return 0;
 
-	return lrad_hash_table_walk(pl->ht, callback, ctx);
+	return fr_hash_table_walk(pl->ht, callback, ctx);
 }
 
-int lrad_packet_list_fd_set(lrad_packet_list_t *pl, fd_set *set)
+int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set)
 {
 	int i, maxfd;
 
@@ -772,7 +772,7 @@ int lrad_packet_list_fd_set(lrad_packet_list_t *pl, fd_set *set)
  *	FIXME: Add sockfd, if -1, do round-robin, else do sockfd
  *		IF in fdset.
  */
-RADIUS_PACKET *lrad_packet_list_recv(lrad_packet_list_t *pl, fd_set *set)
+RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 {
 	int start;
 	RADIUS_PACKET *packet;
@@ -792,7 +792,7 @@ RADIUS_PACKET *lrad_packet_list_recv(lrad_packet_list_t *pl, fd_set *set)
 		if (!packet) continue;
 
 		/*
-		 *	Call lrad_packet_list_find_byreply().  If it
+		 *	Call fr_packet_list_find_byreply().  If it
 		 *	doesn't find anything, discard the reply.
 		 */
 
@@ -803,19 +803,19 @@ RADIUS_PACKET *lrad_packet_list_recv(lrad_packet_list_t *pl, fd_set *set)
 	return NULL;
 }
 
-int lrad_packet_list_num_incoming(lrad_packet_list_t *pl)
+int fr_packet_list_num_incoming(fr_packet_list_t *pl)
 {
 	int num_elements;
 
 	if (!pl) return 0;
 
-	num_elements = lrad_hash_table_num_elements(pl->ht);
+	num_elements = fr_hash_table_num_elements(pl->ht);
 	if (num_elements < pl->num_outgoing) return 0; /* panic! */
 
 	return num_elements - pl->num_outgoing;
 }
 
-int lrad_packet_list_num_outgoing(lrad_packet_list_t *pl)
+int fr_packet_list_num_outgoing(fr_packet_list_t *pl)
 {
 	if (!pl) return 0;
 

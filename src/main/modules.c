@@ -499,7 +499,7 @@ static int define_type(const DICT_ATTR *dattr, const char *name)
 	 *	is that it's unique.
 	 */
 	do {
-		value = lrad_rand() & 0x00ffffff;
+		value = fr_rand() & 0x00ffffff;
 	} while (dict_valbyattr(dattr->attr, value));
 
 	if (dict_addvalue(name, dattr->name, value) < 0) {

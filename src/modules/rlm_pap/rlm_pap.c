@@ -77,7 +77,7 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static const LRAD_NAME_NUMBER schemes[] = {
+static const FR_NAME_NUMBER schemes[] = {
 	{ "clear", PAP_ENC_CLEAR },
 	{ "crypt", PAP_ENC_CRYPT },
 	{ "md5", PAP_ENC_MD5 },
@@ -94,7 +94,7 @@ static const LRAD_NAME_NUMBER schemes[] = {
 /*
  *	For auto-header discovery.
  */
-static const LRAD_NAME_NUMBER header_names[] = {
+static const FR_NAME_NUMBER header_names[] = {
 	{ "{clear}",	PW_CLEARTEXT_PASSWORD },
 	{ "{cleartext}", PW_CLEARTEXT_PASSWORD },
 	{ "{md5}",	PW_MD5_PASSWORD },
@@ -147,7 +147,7 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	inst->sch = lrad_str2int(schemes, inst->scheme, PAP_ENC_INVALID);
+	inst->sch = fr_str2int(schemes, inst->scheme, PAP_ENC_INVALID);
 	if (inst->sch == PAP_ENC_INVALID) {
 		radlog(L_ERR, "rlm_pap: Unknown scheme \"%s\"", inst->scheme);
 		pap_detach(inst);
@@ -249,7 +249,7 @@ static void normify(VALUE_PAIR *vp, int min_length)
 	 *	Hex encoding.
 	 */
 	if (vp->length >= (2 * min_length)) {
-		decoded = lrad_hex2bin(vp->vp_octets, buffer, vp->length >> 1);
+		decoded = fr_hex2bin(vp->vp_octets, buffer, vp->length >> 1);
 		if (decoded == (vp->length >> 1)) {
 			DEBUG2("rlm_pap: Normalizing %s from hex encoding", vp->name);
 			memcpy(vp->vp_octets, buffer, decoded);
@@ -332,7 +332,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 			memcpy(buffer, q, p - q + 1);
 			buffer[p - q + 1] = '\0';
 
-			attr = lrad_str2int(header_names, buffer, 0);
+			attr = fr_str2int(header_names, buffer, 0);
 			if (!attr) {
 				DEBUG2("rlm_pap: Found unknown header {%s}: Not doing anything", buffer);
 				break;
@@ -592,7 +592,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	case PAP_ENC_CRYPT:
 	do_crypt:
 		DEBUG("rlm_pap: Using CRYPT encryption.");
-		if (lrad_crypt_check((char *) request->password->vp_strvalue,
+		if (fr_crypt_check((char *) request->password->vp_strvalue,
 				     (char *) vp->vp_strvalue) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CRYPT password check failed");
 			goto make_msg;
@@ -713,7 +713,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
 			goto make_msg;
 		}
-		if ((lrad_hex2bin(digest, digest, 16) != vp->length) ||
+		if ((fr_hex2bin(digest, digest, 16) != vp->length) ||
 		    (memcmp(digest, vp->vp_octets, vp->length) != 0)) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: NT password check failed");
 			goto make_msg;
@@ -738,7 +738,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
 			goto make_msg;
 		}
-		if ((lrad_hex2bin(digest, digest, 16) != vp->length) ||
+		if ((fr_hex2bin(digest, digest, 16) != vp->length) ||
 		    (memcmp(digest, vp->vp_octets, vp->length) != 0)) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: LM password check failed");
 		make_msg:
@@ -764,7 +764,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	Sanity check the value of NS-MTA-MD5-Password
 		 */
-		if (lrad_hex2bin(vp->vp_octets, buff, 32) != 16) {
+		if (fr_hex2bin(vp->vp_octets, buff, 32) != 16) {
 			DEBUG("rlm_pap: Configured NS-MTA-MD5-Password has invalid value");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NS-MTA-MD5-Password has invalid value");
 			goto make_msg;

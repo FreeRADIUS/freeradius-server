@@ -71,7 +71,7 @@ struct detail_instance {
 	/* log src/dst information */
 	int log_srcdst;
 
-	lrad_hash_table_t *ht;
+	fr_hash_table_t *ht;
 };
 
 static const CONF_PARSER module_config[] = {
@@ -98,7 +98,7 @@ static int detail_detach(void *instance)
 {
         struct detail_instance *inst = instance;
 	free((char*) inst->last_made_directory);
-	if (inst->ht) lrad_hash_table_free(inst->ht);
+	if (inst->ht) fr_hash_table_free(inst->ht);
 
         free(inst);
 	return 0;
@@ -108,7 +108,7 @@ static int detail_detach(void *instance)
 static uint32_t detail_hash(const void *data)
 {
 	const DICT_ATTR *da = data;
-	return lrad_hash(&(da->attr), sizeof(da->attr));
+	return fr_hash(&(da->attr), sizeof(da->attr));
 }
 
 static int detail_cmp(const void *a, const void *b)
@@ -145,7 +145,7 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 	if (cs) {
 		CONF_ITEM	*ci;
 
-		inst->ht = lrad_hash_table_create(detail_hash, detail_cmp,
+		inst->ht = fr_hash_table_create(detail_hash, detail_cmp,
 						  NULL);
 
 		for (ci = cf_item_find_next(cs, NULL);
@@ -171,7 +171,7 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 			 *	since the suppression list will usually
 			 *	be small, it doesn't matter.
 			 */
-			if (!lrad_hash_table_insert(inst->ht, da)) {
+			if (!fr_hash_table_insert(inst->ht, da)) {
 				radlog(L_ERR, "rlm_detail: Failed trying to remember %s", attr);
 				detail_detach(inst);
 				return -1;
@@ -425,7 +425,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		da.attr = pair->attribute;
 
 		if (inst->ht &&
-		    lrad_hash_table_finddata(inst->ht, &da)) continue;
+		    fr_hash_table_finddata(inst->ht, &da)) continue;
 
 		/*
 		 *	Don't print passwords in old format...

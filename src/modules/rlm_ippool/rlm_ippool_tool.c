@@ -157,7 +157,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 		fr_MD5Update(&md5_context, md5_input_str, strlen(md5_input_str));
 		fr_MD5Final(key_str, &md5_context);
 		memcpy(key.key,key_str,16);
-		lrad_bin2hex(key_str,hex_str,16);
+		fr_bin2hex(key_str,hex_str,16);
 		hex_str[32] = '\0';
 		key_datum.dptr = (char *) &key;
 		key_datum.dsize = sizeof(ippool_key);
@@ -413,7 +413,7 @@ void tonewformat(char *sessiondbname,char *newsessiondbname){
 		fr_MD5Update(&md5_context, md5_input_str, strlen(md5_input_str));
 		fr_MD5Final(key_str, &md5_context);
 		memcpy(key.key,key_str,16);
-		lrad_bin2hex(key_str,hex_str,16);
+		fr_bin2hex(key_str,hex_str,16);
 		hex_str[32] = '\0';
 		printf("rlm_ippool_tool: Transforming pair nas/port (%s/%d) to md5 '%s'\n",
 			old_key.nas,old_key.port,hex_str);
@@ -481,7 +481,7 @@ void viewdb(char *sessiondbname,char *indexdbname,char *ipaddress, int old) {
 		        printf("NAS:%s port:0x%x - ",old_key.nas,old_key.port);
 		    else{
 			memcpy(key_str,key.key,16);
-			lrad_bin2hex(key_str,hex_str,16);
+			fr_bin2hex(key_str,hex_str,16);
 			hex_str[32] = '\0';
 			printf("KEY: '%s' - ",hex_str);
 		    }
@@ -549,7 +549,7 @@ void viewdb(char *sessiondbname,char *indexdbname,char *ipaddress, int old) {
 			printf("NAS:%s port:0x%x\n",old_key.nas,old_key.port);
 		    else{
 			memcpy(key_str,key.key,16);
-			lrad_bin2hex(key_str,hex_str,16);
+			fr_bin2hex(key_str,hex_str,16);
 			hex_str[32] = '\0';
 			printf("KEY: '%s' - ",hex_str);
 		    }

@@ -68,7 +68,7 @@ static int allow_core_dumps = 0;
 static const char *localstatedir = NULL;
 static const char *prefix = NULL;
 static char *syslog_facility = NULL;
-static const LRAD_NAME_NUMBER str2fac[] = {
+static const FR_NAME_NUMBER str2fac[] = {
 #ifdef LOG_KERN
 	{ "kern", LOG_KERN },
 #endif
@@ -496,7 +496,7 @@ static int switch_users(void)
 }
 
 
-static const LRAD_NAME_NUMBER str2dest[] = {
+static const FR_NAME_NUMBER str2dest[] = {
 	{ "null", RADLOG_NULL },
 	{ "files", RADLOG_FILES },
 	{ "syslog", RADLOG_SYSLOG },
@@ -616,7 +616,7 @@ int read_mainconfig(int reload)
 				      "files");
 		if (rcode < 0) return -1;
 
-		mainconfig.radlog_dest = lrad_str2int(str2dest, radlog_dest, RADLOG_NUM_DEST);
+		mainconfig.radlog_dest = fr_str2int(str2dest, radlog_dest, RADLOG_NUM_DEST);
 		if (mainconfig.radlog_dest == RADLOG_NUM_DEST) {
 			fprintf(stderr, "radiusd: Error: Unknown log_destination %s\n",
 				radlog_dest);
@@ -641,7 +641,7 @@ int read_mainconfig(int reload)
 				cf_section_free(&cs);
 				return -1;
 			}
-			mainconfig.syslog_facility = lrad_str2int(str2fac, syslog_facility, -1);
+			mainconfig.syslog_facility = fr_str2int(str2fac, syslog_facility, -1);
 			if (mainconfig.syslog_facility < 0) {
 				fprintf(stderr, "radiusd: Error: Unknown syslog_facility %s\n",
 					syslog_facility);

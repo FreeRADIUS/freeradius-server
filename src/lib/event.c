@@ -28,14 +28,14 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/event.h>
 
-typedef struct lrad_event_fd_t {
+typedef struct fr_event_fd_t {
 	int			fd;
-	lrad_event_fd_handler_t	handler;
+	fr_event_fd_handler_t	handler;
 	void			*ctx;
-} lrad_event_fd_t;
+} fr_event_fd_t;
 
 
-struct lrad_event_list_t {
+struct fr_event_list_t {
 	rbtree_t	*times;
 
 	rbtree_t	*readers;
@@ -45,7 +45,7 @@ struct lrad_event_list_t {
 
 	int		exit;
 
-	lrad_event_status_t status;
+	fr_event_status_t status;
 
 	struct timeval  now;
 	int		dispatch;
@@ -54,19 +54,19 @@ struct lrad_event_list_t {
 /*
  *	Internal structure for managing events.
  */
-struct lrad_event_t {
-	lrad_event_callback_t	callback;
+struct fr_event_t {
+	fr_event_callback_t	callback;
 	void			*ctx;
 	struct timeval		when;
-	lrad_event_t		**ev_p;
+	fr_event_t		**ev_p;
 	rbnode_t		*node;
 };
 
 
-static int lrad_event_list_time_cmp(const void *one, const void *two)
+static int fr_event_list_time_cmp(const void *one, const void *two)
 {
-	const lrad_event_t *a = one;
-	const lrad_event_t *b = two;
+	const fr_event_t *a = one;
+	const fr_event_t *b = two;
 
 	if (a->when.tv_sec < b->when.tv_sec) return -1;
 	if (a->when.tv_sec > b->when.tv_sec) return +1;
@@ -78,16 +78,16 @@ static int lrad_event_list_time_cmp(const void *one, const void *two)
 }
 
 
-static int lrad_event_list_fd_cmp(const void *one, const void *two)
+static int fr_event_list_fd_cmp(const void *one, const void *two)
 {
-	const lrad_event_fd_t *a = one;
-	const lrad_event_fd_t *b = two;
+	const fr_event_fd_t *a = one;
+	const fr_event_fd_t *b = two;
 
 	return a->fd - b->fd;
 }
 
 
-void lrad_event_list_free(lrad_event_list_t *el)
+void fr_event_list_free(fr_event_list_t *el)
 {
 	if (!el) return;
 
@@ -97,25 +97,25 @@ void lrad_event_list_free(lrad_event_list_t *el)
 }
 
 
-lrad_event_list_t *lrad_event_list_create(lrad_event_status_t status)
+fr_event_list_t *fr_event_list_create(fr_event_status_t status)
 {
-	lrad_event_list_t *el;
+	fr_event_list_t *el;
 
 	el = malloc(sizeof(*el));
 	if (!el) return NULL;
 	memset(el, 0, sizeof(*el));
 
-	el->times = rbtree_create(lrad_event_list_time_cmp,
+	el->times = rbtree_create(fr_event_list_time_cmp,
 				  free, 0);
 	if (!el->times) {
-		lrad_event_list_free(el);
+		fr_event_list_free(el);
 		return NULL;
 	}
 
-	el->readers = rbtree_create(lrad_event_list_fd_cmp,
+	el->readers = rbtree_create(fr_event_list_fd_cmp,
 				  free, 0);
 	if (!el->readers) {
-		lrad_event_list_free(el);
+		fr_event_list_free(el);
 		return NULL;
 	}
 
@@ -124,7 +124,7 @@ lrad_event_list_t *lrad_event_list_create(lrad_event_status_t status)
 	return el;
 }
 
-int lrad_event_list_num_elements(lrad_event_list_t *el)
+int fr_event_list_num_elements(fr_event_list_t *el)
 {
 	if (!el) return 0;
 
@@ -132,9 +132,9 @@ int lrad_event_list_num_elements(lrad_event_list_t *el)
 }
 
 
-int lrad_event_delete(lrad_event_list_t *el, lrad_event_t **ev_p)
+int fr_event_delete(fr_event_list_t *el, fr_event_t **ev_p)
 {
-	lrad_event_t *ev;
+	fr_event_t *ev;
 
 	if (!el || !ev_p || !*ev_p) return 0;
 
@@ -147,16 +147,16 @@ int lrad_event_delete(lrad_event_list_t *el, lrad_event_t **ev_p)
 }
 
 
-int lrad_event_insert(lrad_event_list_t *el,
-		      lrad_event_callback_t callback,
+int fr_event_insert(fr_event_list_t *el,
+		      fr_event_callback_t callback,
 		      void *ctx, struct timeval *when,
-		      lrad_event_t **ev_p)
+		      fr_event_t **ev_p)
 {
-	lrad_event_t *ev;
+	fr_event_t *ev;
 
 	if (!el || !callback | !when) return 0;
 
-	if (ev_p && *ev_p) lrad_event_delete(el, ev_p);
+	if (ev_p && *ev_p) fr_event_delete(el, ev_p);
 
 	ev = malloc(sizeof(*ev));
 	if (!ev) return 0;
@@ -208,11 +208,11 @@ int lrad_event_insert(lrad_event_list_t *el,
 }
 
 
-int lrad_event_run(lrad_event_list_t *el, struct timeval *when)
+int fr_event_run(fr_event_list_t *el, struct timeval *when)
 {
-	lrad_event_callback_t callback;
+	fr_event_callback_t callback;
 	void *ctx;
-	lrad_event_t *ev;
+	fr_event_t *ev;
 
 	if (!el) return 0;
 
@@ -245,14 +245,14 @@ int lrad_event_run(lrad_event_list_t *el, struct timeval *when)
 	/*
 	 *	Delete the event before calling it.
 	 */
-	lrad_event_delete(el, &ev);
+	fr_event_delete(el, &ev);
 
 	callback(ctx);
 	return 1;
 }
 
 
-int lrad_event_now(lrad_event_list_t *el, struct timeval *when)
+int fr_event_now(fr_event_list_t *el, struct timeval *when)
 {
 	if (!el || !when || !el->dispatch) return 0;
 
@@ -261,10 +261,10 @@ int lrad_event_now(lrad_event_list_t *el, struct timeval *when)
 }
 
 
-int lrad_event_fd_insert(lrad_event_list_t *el, int type, int fd,
-			 lrad_event_fd_handler_t handler, void *ctx)
+int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
+			 fr_event_fd_handler_t handler, void *ctx)
 {
-	lrad_event_fd_t *ef;
+	fr_event_fd_t *ef;
 
 	if (!el || (fd < 0) || !handler || !ctx) return 0;
 
@@ -288,9 +288,9 @@ int lrad_event_fd_insert(lrad_event_list_t *el, int type, int fd,
 	return 1;
 }
 
-int lrad_event_fd_delete(lrad_event_list_t *el, int type, int fd)
+int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 {
-	lrad_event_fd_t my_ef;
+	fr_event_fd_t my_ef;
 
 	if (!el || (fd < 0)) return 0;
 
@@ -305,7 +305,7 @@ int lrad_event_fd_delete(lrad_event_list_t *el, int type, int fd)
 }			 
 
 
-void lrad_event_loop_exit(lrad_event_list_t *el, int code)
+void fr_event_loop_exit(fr_event_list_t *el, int code)
 {
 	if (!el) return;
 
@@ -313,10 +313,10 @@ void lrad_event_loop_exit(lrad_event_list_t *el, int code)
 }
 
 
-static int lrad_event_fd_set(void *ctx, void *data)
+static int fr_event_fd_set(void *ctx, void *data)
 {
 	fd_set *fds = ctx;
-	lrad_event_fd_t *ef = data;
+	fr_event_fd_t *ef = data;
 
 	if (ef->fd < 0) return 0; /* ignore it */
 
@@ -325,16 +325,16 @@ static int lrad_event_fd_set(void *ctx, void *data)
 	return 0;		/* continue walking */
 }
 
-typedef struct lrad_fd_walk_t {
-	lrad_event_list_t *el;
+typedef struct fr_fd_walk_t {
+	fr_event_list_t *el;
 	fd_set		  *fds;
-} lrad_fd_walk_t;
+} fr_fd_walk_t;
 
 
-static int lrad_event_fd_dispatch(void *ctx, void *data)
+static int fr_event_fd_dispatch(void *ctx, void *data)
 {
-	lrad_fd_walk_t *ew = ctx;
-	lrad_event_fd_t *ef = data;
+	fr_fd_walk_t *ew = ctx;
+	fr_event_fd_t *ef = data;
 
 	if (ef->fd < 0) return 0;
 
@@ -348,12 +348,12 @@ static int lrad_event_fd_dispatch(void *ctx, void *data)
 }
 
 
-int lrad_event_loop(lrad_event_list_t *el)
+int fr_event_loop(fr_event_list_t *el)
 {
 	int rcode;
 	fd_set read_fds;
 	struct timeval when, *wake;
-	lrad_fd_walk_t ew;
+	fr_fd_walk_t ew;
 
 	/*
 	 *	Cache the list of FD's to watch.
@@ -361,7 +361,7 @@ int lrad_event_loop(lrad_event_list_t *el)
 	if (el->changed) {
 		FD_ZERO(&el->read_fds);
 
-		rbtree_walk(el->readers, InOrder, lrad_event_fd_set,
+		rbtree_walk(el->readers, InOrder, fr_event_fd_set,
 			    &el->read_fds);
 		el->changed = 0;
 	}
@@ -379,7 +379,7 @@ int lrad_event_loop(lrad_event_list_t *el)
 		when.tv_usec = 0;
 
 		if (rbtree_num_elements(el->times) > 0) {
-			lrad_event_t *ev;
+			fr_event_t *ev;
 
 			ev = rbtree_min(el->times);
 			if (!ev) _exit(42);
@@ -421,7 +421,7 @@ int lrad_event_loop(lrad_event_list_t *el)
 			do {
 				gettimeofday(&el->now, NULL);
 				when = el->now;
-			} while (lrad_event_run(el, &when) == 1);
+			} while (fr_event_run(el, &when) == 1);
 		}
 		
 		if (rcode <= 0) continue;
@@ -430,7 +430,7 @@ int lrad_event_loop(lrad_event_list_t *el)
 		ew.el = el;
 
 		el->changed = 0;
-		rbtree_walk(el->readers, InOrder, lrad_event_fd_dispatch, &ew);
+		rbtree_walk(el->readers, InOrder, fr_event_fd_dispatch, &ew);
 	}
 
 	el->dispatch = 0;
@@ -463,7 +463,7 @@ static void print_time(void *ctx)
 	fflush(stdout);
 }
 
-static lrad_randctx rand_pool;
+static fr_randctx rand_pool;
 
 static uint32_t event_rand(void)
 {
@@ -471,7 +471,7 @@ static uint32_t event_rand(void)
 
 	num = rand_pool.randrsl[rand_pool.randcnt++];
 	if (rand_pool.randcnt == 256) {
-		lrad_isaac(&rand_pool);
+		fr_isaac(&rand_pool);
 		rand_pool.randcnt = 0;
 	}
 
@@ -485,15 +485,15 @@ int main(int argc, char **argv)
 	int i, rcode;
 	struct timeval array[MAX];
 	struct timeval now, when;
-	lrad_event_list_t *el;
+	fr_event_list_t *el;
 
-	el = lrad_event_list_create();
+	el = fr_event_list_create();
 	if (!el) exit(1);
 
 	memset(&rand_pool, 0, sizeof(rand_pool));
 	rand_pool.randrsl[1] = time(NULL);
 
-	lrad_randinit(&rand_pool, 1);
+	fr_randinit(&rand_pool, 1);
 	rand_pool.randcnt = 0;
 
 	gettimeofday(&array[0], NULL);
@@ -505,13 +505,13 @@ int main(int argc, char **argv)
 			array[i].tv_usec -= 1000000;
 			array[i].tv_sec++;
 		}
-		lrad_event_insert(el, print_time, &array[i], &array[i]);
+		fr_event_insert(el, print_time, &array[i], &array[i]);
 	}
 
-	while (lrad_event_list_num_elements(el)) {
+	while (fr_event_list_num_elements(el)) {
 		gettimeofday(&now, NULL);
 		when = now;
-		if (!lrad_event_run(el, &when)) {
+		if (!fr_event_run(el, &when)) {
 			int delay = (when.tv_sec - now.tv_sec) * 1000000;
 			delay += when.tv_usec;
 			delay -= now.tv_usec;
@@ -522,7 +522,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	lrad_event_list_free(el);
+	fr_event_list_free(el);
 
 	return 0;
 }

@@ -1,5 +1,5 @@
-#ifndef LRAD_VQP_H
-#define LRAD_VQP_H
+#ifndef FR_VQP_H
+#define FR_VQP_H
 
 /*
  * vqp.h	Structures and prototypes for Cisco's VLAN Query Protocol
@@ -32,4 +32,4 @@ int vqp_send(RADIUS_PACKET *packet);
 int vqp_decode(RADIUS_PACKET *packet);
 int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original);
 
-#endif /* LRAD_VQP_H */
+#endif /* FR_VQP_H */

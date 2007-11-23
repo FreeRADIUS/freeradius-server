@@ -134,7 +134,7 @@ typedef struct THREAD_POOL {
 	int spawn_flag;
 
 	pthread_mutex_t	wait_mutex;
-	lrad_hash_table_t *waiters;
+	fr_hash_table_t *waiters;
 
 	/*
 	 *	All threads wait on this semaphore, for requests
@@ -150,7 +150,7 @@ typedef struct THREAD_POOL {
 	int		max_queue_size;
 	int		num_queued;
 	int		can_read_detail;
-	lrad_fifo_t	*fifo[NUM_FIFOS];
+	fr_fifo_t	*fifo[NUM_FIFOS];
 } THREAD_POOL;
 
 static THREAD_POOL thread_pool;
@@ -266,12 +266,12 @@ static void reap_children(void)
 		if (pid <= 0) break;
 
 		mytf.pid = pid;
-		tf = lrad_hash_table_finddata(thread_pool.waiters, &mytf);
+		tf = fr_hash_table_finddata(thread_pool.waiters, &mytf);
 		if (!tf) continue;
 
 		tf->status = status;
 		tf->exited = 1;
-	} while (lrad_hash_table_num_elements(thread_pool.waiters) > 0);
+	} while (fr_hash_table_num_elements(thread_pool.waiters) > 0);
 
 	pthread_mutex_unlock(&thread_pool.wait_mutex);
 }
@@ -308,7 +308,7 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	/*
 	 *	Push the request onto the appropriate fifo for that
 	 */
-	if (!lrad_fifo_push(thread_pool.fifo[request->priority],
+	if (!fr_fifo_push(thread_pool.fifo[request->priority],
 			    entry)) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		radlog(L_ERR, "!!! ERROR !!! Failed inserting request %d into the queue", request->number);
@@ -364,7 +364,7 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	requests will be quickly cleared.
 	 */
 	for (i = 0; i < RAD_LISTEN_MAX; i++) {
-		entry = lrad_fifo_peek(thread_pool.fifo[i]);
+		entry = fr_fifo_peek(thread_pool.fifo[i]);
 		if (!entry ||
 		    (entry->request->master_state != REQUEST_STOP_PROCESSING)) {
 			continue;
@@ -372,7 +372,7 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 		/*
 		 *	This entry was marked to be stopped.  Acknowledge it.
 		 */
-		entry = lrad_fifo_pop(thread_pool.fifo[i]);
+		entry = fr_fifo_pop(thread_pool.fifo[i]);
 		rad_assert(entry != NULL);
 		entry->request->child_state = REQUEST_DONE;
 	}
@@ -383,7 +383,7 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	Pop results from the top of the queue
 	 */
 	for (i = start; i < RAD_LISTEN_MAX; i++) {
-		entry = lrad_fifo_pop(thread_pool.fifo[i]);
+		entry = fr_fifo_pop(thread_pool.fifo[i]);
 		if (entry) {
 			start = i;
 			break;
@@ -693,7 +693,7 @@ static uint32_t pid_hash(const void *data)
 {
 	const thread_fork_t *tf = data;
 
-	return lrad_hash(&tf->pid, sizeof(tf->pid));
+	return fr_hash(&tf->pid, sizeof(tf->pid));
 }
 
 static int pid_cmp(const void *one, const void *two)
@@ -748,7 +748,7 @@ int thread_pool_init(CONF_SECTION *cs, int spawn_flag)
 		/*
 		 *	Create the hash table of child PID's
 		 */
-		thread_pool.waiters = lrad_hash_table_create(pid_hash,
+		thread_pool.waiters = fr_hash_table_create(pid_hash,
 							     pid_cmp,
 							     free);
 		if (!thread_pool.waiters) {
@@ -807,7 +807,7 @@ int thread_pool_init(CONF_SECTION *cs, int spawn_flag)
 	 *	Allocate multiple fifos.
 	 */
 	for (i = 0; i < RAD_LISTEN_MAX; i++) {
-		thread_pool.fifo[i] = lrad_fifo_create(65536, NULL);
+		thread_pool.fifo[i] = fr_fifo_create(65536, NULL);
 		if (!thread_pool.fifo[i]) {
 			radlog(L_ERR, "FATAL: Failed to set up request fifo");
 			return -1;
@@ -1056,7 +1056,7 @@ pid_t rad_fork(void)
 
 	reap_children();	/* be nice to non-wait thingies */
 
-	if (lrad_hash_table_num_elements(thread_pool.waiters) >= 1024) {
+	if (fr_hash_table_num_elements(thread_pool.waiters) >= 1024) {
 		return -1;
 	}
 
@@ -1074,7 +1074,7 @@ pid_t rad_fork(void)
 		tf->pid = child_pid;
 
 		pthread_mutex_lock(&thread_pool.wait_mutex);
-		rcode = lrad_hash_table_insert(thread_pool.waiters, tf);
+		rcode = fr_hash_table_insert(thread_pool.waiters, tf);
 		pthread_mutex_unlock(&thread_pool.wait_mutex);
 
 		if (!rcode) {
@@ -1105,7 +1105,7 @@ pid_t rad_waitpid(pid_t pid, int *status)
 	mytf.pid = pid;
 
 	pthread_mutex_lock(&thread_pool.wait_mutex);
-	tf = lrad_hash_table_finddata(thread_pool.waiters, &mytf);
+	tf = fr_hash_table_finddata(thread_pool.waiters, &mytf);
 	pthread_mutex_unlock(&thread_pool.wait_mutex);
 
 	if (!tf) return -1;
@@ -1117,7 +1117,7 @@ pid_t rad_waitpid(pid_t pid, int *status)
 			*status = tf->status;
 
 			pthread_mutex_lock(&thread_pool.wait_mutex);
-			lrad_hash_table_delete(thread_pool.waiters, &mytf);
+			fr_hash_table_delete(thread_pool.waiters, &mytf);
 			pthread_mutex_unlock(&thread_pool.wait_mutex);
 			return pid;
 		}
@@ -1128,7 +1128,7 @@ pid_t rad_waitpid(pid_t pid, int *status)
 	 *	10 seconds have passed, give up on the child.
 	 */
 	pthread_mutex_lock(&thread_pool.wait_mutex);
-	lrad_hash_table_delete(thread_pool.waiters, &mytf);
+	fr_hash_table_delete(thread_pool.waiters, &mytf);
 	pthread_mutex_unlock(&thread_pool.wait_mutex);
 
 	return 0;

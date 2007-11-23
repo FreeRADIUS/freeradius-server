@@ -1,5 +1,5 @@
-#ifndef LRAD_PACKET_H
-#define LRAD_PACKET_H
+#ifndef FR_PACKET_H
+#define FR_PACKET_H
 
 /*
  * packet.h	Structures and prototypes
@@ -27,40 +27,40 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(packet_h, "$Id$")
 
-uint32_t lrad_request_packet_hash(const RADIUS_PACKET *packet);
-uint32_t lrad_reply_packet_hash(const RADIUS_PACKET *packet);
-int lrad_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b);
-void lrad_request_from_reply(RADIUS_PACKET *request,
+uint32_t fr_request_packet_hash(const RADIUS_PACKET *packet);
+uint32_t fr_reply_packet_hash(const RADIUS_PACKET *packet);
+int fr_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b);
+void fr_request_from_reply(RADIUS_PACKET *request,
 			     const RADIUS_PACKET *reply);
-int lrad_socket(lrad_ipaddr_t *ipaddr, int port);
+int fr_socket(fr_ipaddr_t *ipaddr, int port);
 
-typedef struct lrad_packet_list_t lrad_packet_list_t;
+typedef struct fr_packet_list_t fr_packet_list_t;
 
-lrad_packet_list_t *lrad_packet_list_create(int alloc_id);
-void lrad_packet_list_free(lrad_packet_list_t *pl);
-int lrad_packet_list_insert(lrad_packet_list_t *pl,
+fr_packet_list_t *fr_packet_list_create(int alloc_id);
+void fr_packet_list_free(fr_packet_list_t *pl);
+int fr_packet_list_insert(fr_packet_list_t *pl,
 			    RADIUS_PACKET **request_p);
 
-RADIUS_PACKET **lrad_packet_list_find(lrad_packet_list_t *pl,
+RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl,
 				      RADIUS_PACKET *request);
-RADIUS_PACKET **lrad_packet_list_find_byreply(lrad_packet_list_t *pl,
+RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 					      RADIUS_PACKET *reply);
-RADIUS_PACKET **lrad_packet_list_yank(lrad_packet_list_t *pl,
+RADIUS_PACKET **fr_packet_list_yank(fr_packet_list_t *pl,
 				      RADIUS_PACKET *request);
-int lrad_packet_list_num_elements(lrad_packet_list_t *pl);
-int lrad_packet_list_id_alloc(lrad_packet_list_t *pl,
+int fr_packet_list_num_elements(fr_packet_list_t *pl);
+int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 			      RADIUS_PACKET *request);
-int lrad_packet_list_id_free(lrad_packet_list_t *pl,
+int fr_packet_list_id_free(fr_packet_list_t *pl,
 			     RADIUS_PACKET *request);
-int lrad_packet_list_socket_add(lrad_packet_list_t *pl, int sockfd);
-int lrad_packet_list_socket_remove(lrad_packet_list_t *pl, int sockfd);
-int lrad_packet_list_walk(lrad_packet_list_t *pl, void *ctx,
-			  lrad_hash_table_walk_t callback);
-int lrad_packet_list_fd_set(lrad_packet_list_t *pl, fd_set *set);
-RADIUS_PACKET *lrad_packet_list_recv(lrad_packet_list_t *pl, fd_set *set);
+int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd);
+int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd);
+int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx,
+			  fr_hash_table_walk_t callback);
+int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set);
+RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set);
 
-int lrad_packet_list_num_incoming(lrad_packet_list_t *pl);
-int lrad_packet_list_num_outgoing(lrad_packet_list_t *pl);
+int fr_packet_list_num_incoming(fr_packet_list_t *pl);
+int fr_packet_list_num_outgoing(fr_packet_list_t *pl);
 
 
 #ifndef offsetof
@@ -74,5 +74,5 @@ int lrad_packet_list_num_outgoing(lrad_packet_list_t *pl);
  *	the member from the returned pointer, and cast it to the
  *	required type.
  */
-# define lrad_packet2myptr(TYPE, MEMBER, PTR) (TYPE *) (((char *)PTR) - offsetof(TYPE, MEMBER))
-#endif /* LRAD_PACKET_H */
+# define fr_packet2myptr(TYPE, MEMBER, PTR) (TYPE *) (((char *)PTR) - offsetof(TYPE, MEMBER))
+#endif /* FR_PACKET_H */

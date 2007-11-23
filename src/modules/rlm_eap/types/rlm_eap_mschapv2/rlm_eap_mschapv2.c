@@ -230,7 +230,7 @@ static int mschapv2_initiate(void *type_data, EAP_HANDLER *handler)
 	 */
 	challenge->length = MSCHAPV2_CHALLENGE_LEN;
 	for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) {
-		challenge->vp_strvalue[i] = lrad_rand();
+		challenge->vp_strvalue[i] = fr_rand();
 	}
 	radlog(L_INFO, "rlm_eap_mschapv2: Issuing Challenge");
 

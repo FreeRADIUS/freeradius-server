@@ -364,7 +364,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	0 means "ok"
 	 */
-	if (lrad_crypt_check((char *) request->password->vp_strvalue,
+	if (fr_crypt_check((char *) request->password->vp_strvalue,
 			     (char *) vp->vp_strvalue) != 0) {
 		radlog(L_AUTH, "rlm_unix: [%s]: invalid password",
 		       request->username->vp_strvalue);

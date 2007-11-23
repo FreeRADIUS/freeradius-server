@@ -73,7 +73,7 @@ static int md5_initiate(void *type_data, EAP_HANDLER *handler)
 	 *	Get a random challenge.
 	 */
 	for (i = 0; i < reply->value_size; i++) {
-		reply->value[i] = lrad_rand();
+		reply->value[i] = fr_rand();
 	}
 	radlog(L_INFO, "rlm_eap_md5: Issuing Challenge");
 

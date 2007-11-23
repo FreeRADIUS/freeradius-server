@@ -61,7 +61,7 @@ typedef struct listen_socket_t {
 	/*
 	 *	For normal sockets.
 	 */
-	lrad_ipaddr_t	ipaddr;
+	fr_ipaddr_t	ipaddr;
 	int		port;
 	RADCLIENT_LIST	*clients;
 } listen_socket_t;
@@ -70,7 +70,7 @@ typedef struct listen_socket_t {
  *	Find a per-socket client.
  */
 RADCLIENT *client_listener_find(const rad_listen_t *listener,
-				       const lrad_ipaddr_t *ipaddr)
+				       const fr_ipaddr_t *ipaddr)
 {
 	const RADCLIENT_LIST *clients;
 
@@ -213,7 +213,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
 	int		listen_port;
-	lrad_ipaddr_t	ipaddr;
+	fr_ipaddr_t	ipaddr;
 	listen_socket_t *sock = this->data;
 	const char	*section_name = NULL;
 	CONF_SECTION	*client_cs, *parentcs;
@@ -418,7 +418,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 	RAD_REQUEST_FUNP fun = NULL;
 	char		buffer[128];
 	RADCLIENT	*client;
-	lrad_ipaddr_t	src_ipaddr;
+	fr_ipaddr_t	src_ipaddr;
 
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
@@ -519,7 +519,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 	RAD_REQUEST_FUNP fun = NULL;
 	char		buffer[128];
 	RADCLIENT	*client;
-	lrad_ipaddr_t	src_ipaddr;
+	fr_ipaddr_t	src_ipaddr;
 
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
@@ -852,14 +852,14 @@ static int listen_bind(rad_listen_t *this)
 
 		if ((sock->port == other->port) &&
 		    (sock->ipaddr.af == other->ipaddr.af) &&
-		    (lrad_ipaddr_cmp(&sock->ipaddr, &other->ipaddr) == 0)) {
+		    (fr_ipaddr_cmp(&sock->ipaddr, &other->ipaddr) == 0)) {
 			this->fd = (*last)->fd;
 			(*last)->fd = -1;
 			return 0;
 		}
 	}
 
-	this->fd = lrad_socket(&sock->ipaddr, sock->port);
+	this->fd = fr_socket(&sock->ipaddr, sock->port);
 	if (this->fd < 0) {
 		radlog(L_ERR, "ERROR: Failed to open socket: %s",
 		       librad_errstr);
@@ -1018,7 +1018,7 @@ rad_listen_t *proxy_new_listener()
 }
 
 
-static const LRAD_NAME_NUMBER listen_compare[] = {
+static const FR_NAME_NUMBER listen_compare[] = {
 	{ "auth",	RAD_LISTEN_AUTH },
 	{ "acct",	RAD_LISTEN_ACCT },
 	{ "detail",	RAD_LISTEN_DETAIL },
@@ -1049,7 +1049,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 		return NULL;
 	}
 
-	type = lrad_str2int(listen_compare, listen_type,
+	type = fr_str2int(listen_compare, listen_type,
 			    RAD_LISTEN_NONE);
 	if (type == RAD_LISTEN_NONE) {
 		cf_log_err(cf_sectiontoitem(cs),
@@ -1104,7 +1104,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 	CONF_SECTION	*cs;
 	rad_listen_t	**last;
 	rad_listen_t	*this;
-	lrad_ipaddr_t	server_ipaddr;
+	fr_ipaddr_t	server_ipaddr;
 	int		auth_port = 0;
 
 	/*
@@ -1325,7 +1325,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 			}
 		}
 
-		if (port < 0) port = 1024 + (lrad_rand() & 0x1ff);
+		if (port < 0) port = 1024 + (fr_rand() & 0x1ff);
 
 		/*
 		 *	Address is still unspecified, use IPv4.

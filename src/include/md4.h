@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef _LRAD_MD4_H
-#define _LRAD_MD4_H
+#ifndef _FR_MD4_H
+#define _FR_MD4_H
 
 #include <freeradius-devel/ident.h>
 RCSIDH(md4_h, "$Id$")
@@ -78,4 +78,4 @@ void	 fr_MD4Transform(uint32_t [4], const uint8_t [MD4_BLOCK_LENGTH])
 		__attribute__((__bounded__(__minbytes__,2,MD4_BLOCK_LENGTH)))*/;
 /*__END_DECLS*/
 
-#endif /* _LRAD_MD4_H */
+#endif /* _FR_MD4_H */

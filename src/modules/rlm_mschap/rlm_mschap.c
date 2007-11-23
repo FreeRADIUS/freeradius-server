@@ -540,7 +540,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 		DEBUG("rlm_mschap: NT-Hash: %s",p);
 		ntpwdhash(buffer,p);
 
-		lrad_bin2hex(buffer, out, 16);
+		fr_bin2hex(buffer, out, 16);
 		out[32] = '\0';
 		DEBUG("rlm_mschap: NT-Hash: Result: %s",out);
 		return 32;
@@ -557,7 +557,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 
 		DEBUG("rlm_mschap: LM-Hash: %s",p);
 		smbdes_lmpwdhash(p,buffer);
-		lrad_bin2hex(buffer, out, 16);
+		fr_bin2hex(buffer, out, 16);
 		out[32] = '\0';
 		DEBUG("rlm_mschap: LM-Hash: Result: %s",out);
 		return 32;
@@ -831,7 +831,7 @@ static int do_mschap(rlm_mschap_t *inst,
 		/*
 		 *	Update the NT hash hash, from the NT key.
 		 */
-		if (lrad_hex2bin(buffer + 8, nthashhash, 16) != 16) {
+		if (fr_hex2bin(buffer + 8, nthashhash, 16) != 16) {
 			DEBUG2("  rlm_mschap: Invalid output from ntlm_auth: NT_KEY has non-hex values");
 			return -1;
 		}
@@ -1078,7 +1078,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 */
 		if ((lm_password->length == 16) ||
 		    ((lm_password->length == 32) &&
-		     (lrad_hex2bin(lm_password->vp_strvalue,
+		     (fr_hex2bin(lm_password->vp_strvalue,
 				   lm_password->vp_strvalue, 16) == 16))) {
 			DEBUG2("  rlm_mschap: Found LM-Password");
 			lm_password->length = 16;
@@ -1110,7 +1110,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	if (nt_password) {
 		if ((nt_password->length == 16) ||
 		    ((nt_password->length == 32) &&
-		     (lrad_hex2bin(nt_password->vp_strvalue,
+		     (fr_hex2bin(nt_password->vp_strvalue,
 				   nt_password->vp_strvalue, 16) == 16))) {
 			DEBUG2("  rlm_mschap: Found NT-Password");
 			nt_password->length = 16;

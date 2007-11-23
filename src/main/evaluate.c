@@ -71,7 +71,7 @@ static const char *filler = "???????????????????????????????????????????????????
 
 static const char *expand_string(char *buffer, size_t sizeof_buffer,
 				 REQUEST *request,
-				 LRAD_TOKEN value_type, const char *value)
+				 FR_TOKEN value_type, const char *value)
 {
 	int result;
 	char *p;
@@ -112,7 +112,7 @@ static const char *expand_string(char *buffer, size_t sizeof_buffer,
 }
 
 #ifdef HAVE_REGEX_H
-static LRAD_TOKEN getregex(char **ptr, char *buffer, size_t buflen, int *pcflags)
+static FR_TOKEN getregex(char **ptr, char *buffer, size_t buflen, int *pcflags)
 {
 	char *p = *ptr;
 	char *q = buffer;
@@ -191,7 +191,7 @@ static LRAD_TOKEN getregex(char **ptr, char *buffer, size_t buflen, int *pcflags
 }
 #endif
 
-static const LRAD_NAME_NUMBER modreturn_table[] = {
+static const FR_NAME_NUMBER modreturn_table[] = {
 	{ "reject",     RLM_MODULE_REJECT       },
 	{ "fail",       RLM_MODULE_FAIL         },
 	{ "ok",         RLM_MODULE_OK           },
@@ -213,7 +213,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 	int evaluate_next_condition = evaluate_it;
 	const char *p = *ptr;
 	const char *q, *start;
-	LRAD_TOKEN token, lt, rt;
+	FR_TOKEN token, lt, rt;
 	char left[1024], right[1024], comp[4];
 	const char *pleft, *pright;
 	char  xleft[1024], xright[1024];
@@ -396,7 +396,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 				result = (lint != 0);
 
 			} else if (lt == T_BARE_WORD) {
-				result = (modreturn == lrad_str2int(modreturn_table, pleft, -1));
+				result = (modreturn == fr_str2int(modreturn_table, pleft, -1));
 			} else {
 				result = (*pleft != '\0');
 			}
@@ -951,8 +951,8 @@ struct conf_pair {
 	CONF_ITEM item;
 	char *attr;
 	char *value;
-	LRAD_TOKEN operator;
-	LRAD_TOKEN value_type;
+	FR_TOKEN operator;
+	FR_TOKEN value_type;
 };
 
 /*

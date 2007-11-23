@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 extern RADCLIENT *client_listener_find(const rad_listen_t *listener,
-				       const lrad_ipaddr_t *ipaddr);
+				       const fr_ipaddr_t *ipaddr);
 
 #ifdef WITH_VMPS
 /*
