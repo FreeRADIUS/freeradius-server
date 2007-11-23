@@ -134,7 +134,7 @@ VALUE_PAIR *generate_state(time_t timestamp)
 	/*
 	 *	hmac(challenge + timestamp)
 	 */
-	lrad_hmac_md5(value, sizeof(value),
+	fr_hmac_md5(value, sizeof(value),
 		      state_key, sizeof(state_key), hmac);
 
 	/*
@@ -180,7 +180,7 @@ int verify_state(VALUE_PAIR *state, time_t timestamp)
 	memcpy(value + EAP_CHALLENGE_LEN, &timestamp, sizeof(timestamp));
 
 	/* Generate hmac.  */
-	lrad_hmac_md5(value, sizeof(value),
+	fr_hmac_md5(value, sizeof(value),
 		      state_key, sizeof(state_key), hmac);
 
 	/*

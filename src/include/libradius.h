@@ -259,11 +259,11 @@ DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 
 /* md5.c */
 
-void		librad_md5_calc(uint8_t *, const uint8_t *, unsigned int);
+void		fr_md5_calc(uint8_t *, const uint8_t *, unsigned int);
 
 /* hmac.c */
 
-void lrad_hmac_md5(const uint8_t *text, int text_len,
+void fr_hmac_md5(const uint8_t *text, int text_len,
 		   const uint8_t *key, int key_len,
 		   unsigned char *digest);
 

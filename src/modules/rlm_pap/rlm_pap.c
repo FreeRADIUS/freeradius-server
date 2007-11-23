@@ -478,7 +478,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	VALUE_PAIR *vp;
 	VALUE_PAIR *module_fmsg_vp;
 	char module_fmsg[MAX_STRING_LEN];
-	MD5_CTX md5_context;
+	FR_MD5_CTX md5_context;
 	SHA1_CTX sha1_context;
 	uint8_t digest[40];
 	char buff[MAX_STRING_LEN];
@@ -611,10 +611,10 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 
-		MD5Init(&md5_context);
-		MD5Update(&md5_context, request->password->vp_strvalue,
+		fr_MD5Init(&md5_context);
+		fr_MD5Update(&md5_context, request->password->vp_strvalue,
 			  request->password->length);
-		MD5Final(digest, &md5_context);
+		fr_MD5Final(digest, &md5_context);
 		if (memcmp(digest, vp->vp_octets, vp->length) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: MD5 password check failed");
 			goto make_msg;
@@ -633,11 +633,11 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 
-		MD5Init(&md5_context);
-		MD5Update(&md5_context, request->password->vp_strvalue,
+		fr_MD5Init(&md5_context);
+		fr_MD5Update(&md5_context, request->password->vp_strvalue,
 			  request->password->length);
-		MD5Update(&md5_context, &vp->vp_octets[16], vp->length - 16);
-		MD5Final(digest, &md5_context);
+		fr_MD5Update(&md5_context, &vp->vp_octets[16], vp->length - 16);
+		fr_MD5Final(digest, &md5_context);
 
 		/*
 		 *	Compare only the MD5 hash results, not the salt.
@@ -796,9 +796,9 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			memcpy(p, &vp->vp_octets[32], 32);
 			p += 32;
 
-			MD5Init(&md5_context);
-			MD5Update(&md5_context, buff2, p - buff2);
-			MD5Final(digest, &md5_context);
+			fr_MD5Init(&md5_context);
+			fr_MD5Update(&md5_context, buff2, p - buff2);
+			fr_MD5Final(digest, &md5_context);
 		}
 		if (memcmp(digest, buff, 16) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: NS-MTA-MD5 password check failed");

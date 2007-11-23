@@ -150,12 +150,12 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 	}
 	else{
 		char md5_input_str[MAX_STRING_LEN];
-		MD5_CTX md5_context;
+		FR_MD5_CTX md5_context;
 
 		snprintf(md5_input_str,MAX_STRING_LEN, "%s %s",NASname,NASport);
-		MD5Init(&md5_context);
-		MD5Update(&md5_context, md5_input_str, strlen(md5_input_str));
-		MD5Final(key_str, &md5_context);
+		fr_MD5Init(&md5_context);
+		fr_MD5Update(&md5_context, md5_input_str, strlen(md5_input_str));
+		fr_MD5Final(key_str, &md5_context);
 		memcpy(key.key,key_str,16);
 		lrad_bin2hex(key_str,hex_str,16);
 		hex_str[32] = '\0';
@@ -405,13 +405,13 @@ void tonewformat(char *sessiondbname,char *newsessiondbname){
 	keynext_datum=gdbm_nextkey(sessiondb,key_datum);
 	if (key_datum.dsize==sizeof(struct old_ippool_key)) {
 		char md5_input_str[MAX_STRING_LEN];
-		MD5_CTX md5_context;
+		FR_MD5_CTX md5_context;
 
 	        memcpy(&old_key,key_datum.dptr,sizeof(struct old_ippool_key));
 		snprintf(md5_input_str,MAX_STRING_LEN, "%s %d",old_key.nas,old_key.port);
-		MD5Init(&md5_context);
-		MD5Update(&md5_context, md5_input_str, strlen(md5_input_str));
-		MD5Final(key_str, &md5_context);
+		fr_MD5Init(&md5_context);
+		fr_MD5Update(&md5_context, md5_input_str, strlen(md5_input_str));
+		fr_MD5Final(key_str, &md5_context);
 		memcpy(key.key,key_str,16);
 		lrad_bin2hex(key_str,hex_str,16);
 		hex_str[32] = '\0';

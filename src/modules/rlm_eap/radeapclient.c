@@ -701,7 +701,7 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 	unsigned char identifier;
 	unsigned char *value;
 	unsigned char *name;
-	MD5_CTX	context;
+	FR_MD5_CTX	context;
 	char    response[16];
 
 	cleanresp(rep);
@@ -743,11 +743,11 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 	 * buffer. We could also call rad_chap_encode, but it wants
 	 * a CHAP-Challenge, which we don't want to bother with.
 	 */
-	lrad_MD5Init(&context);
-	lrad_MD5Update(&context, &identifier, 1);
-	lrad_MD5Update(&context, password, strlen(password));
-	lrad_MD5Update(&context, value, valuesize);
-	lrad_MD5Final(response, &context);
+	fr_MD5Init(&context);
+	fr_MD5Update(&context, &identifier, 1);
+	fr_MD5Update(&context, password, strlen(password));
+	fr_MD5Update(&context, value, valuesize);
+	fr_MD5Final(response, &context);
 
 	vp = paircreate(ATTRIBUTE_EAP_BASE+PW_EAP_MD5, PW_TYPE_OCTETS);
 	vp->vp_octets[0]=16;
@@ -839,7 +839,7 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 		rep->data = NULL;
 	}
 
-	librad_md5_calc(rep->vector, rep->vector,
+	fr_md5_calc(rep->vector, rep->vector,
 			sizeof(rep->vector));
 
 	if (*password != '\0') {

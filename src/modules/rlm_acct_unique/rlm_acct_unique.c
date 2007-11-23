@@ -215,7 +215,7 @@ static int add_unique_id(void *instance, REQUEST *request)
 
 	DEBUG2("rlm_acct_unique: Hashing '%s'", buffer);
 	/* calculate a 'unique' string based on the above information */
-	librad_md5_calc(md5_buf, (u_char *)buffer, (p - buffer));
+	fr_md5_calc(md5_buf, (u_char *)buffer, (p - buffer));
 	sprintf(buffer, "%02x%02x%02x%02x%02x%02x%02x%02x",
 		md5_buf[0], md5_buf[1], md5_buf[2], md5_buf[3],
 		md5_buf[4], md5_buf[5], md5_buf[6], md5_buf[7]);

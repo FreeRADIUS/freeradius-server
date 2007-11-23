@@ -197,7 +197,7 @@ int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 	memcpy(ptr, challenge, MD5_CHALLENGE_LEN);
 	len += MD5_CHALLENGE_LEN;
 
-	librad_md5_calc((u_char *)output, (u_char *)string, len);
+	fr_md5_calc((u_char *)output, (u_char *)string, len);
 
 	/*
 	 *	The length of the response is always 16 for MD5.

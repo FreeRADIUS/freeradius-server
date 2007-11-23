@@ -323,7 +323,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	char key_str[17];
 	char hex_str[35];
 	char xlat_str[MAX_STRING_LEN];
-	MD5_CTX md5_context;
+	FR_MD5_CTX md5_context;
 
 
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL)
@@ -338,9 +338,9 @@ static int ippool_accounting(void *instance, REQUEST *request)
 				DEBUG("rlm_ippool: xlat on the 'key' directive failed");
 				return RLM_MODULE_NOOP;
 			}
-			MD5Init(&md5_context);
-			MD5Update(&md5_context, xlat_str, strlen(xlat_str));
-			MD5Final(key_str, &md5_context);
+			fr_MD5Init(&md5_context);
+			fr_MD5Update(&md5_context, xlat_str, strlen(xlat_str));
+			fr_MD5Final(key_str, &md5_context);
 			key_str[17] = '\0';
 			lrad_bin2hex(key_str,hex_str,16);
 			hex_str[32] = '\0';
@@ -451,7 +451,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	char key_str[17];
 	char hex_str[35];
 	char xlat_str[MAX_STRING_LEN];
-	MD5_CTX md5_context;
+	FR_MD5_CTX md5_context;
 
 
 	/* quiet the compiler */
@@ -481,9 +481,9 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		DEBUG("rlm_ippool: xlat on the 'key' directive failed");
 		return RLM_MODULE_NOOP;
 	}
-	MD5Init(&md5_context);
-	MD5Update(&md5_context, xlat_str, strlen(xlat_str));
-	MD5Final(key_str, &md5_context);
+	fr_MD5Init(&md5_context);
+	fr_MD5Update(&md5_context, xlat_str, strlen(xlat_str));
+	fr_MD5Final(key_str, &md5_context);
 	key_str[17] = '\0';
 	lrad_bin2hex(key_str,hex_str,16);
 	hex_str[32] = '\0';

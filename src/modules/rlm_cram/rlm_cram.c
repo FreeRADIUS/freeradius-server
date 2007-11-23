@@ -60,32 +60,32 @@ RCSID("$Id$")
 
 
 static void calc_apop_digest(char * buffer, const char * challenge, int challen, const char * password){
-	MD5_CTX Context;
+	FR_MD5_CTX Context;
 
-	MD5Init(&Context);
-	MD5Update(&Context,challenge,challen);
-	MD5Update(&Context,password,strlen(password));
-        MD5Final(buffer,&Context);
+	fr_MD5Init(&Context);
+	fr_MD5Update(&Context,challenge,challen);
+	fr_MD5Update(&Context,password,strlen(password));
+        fr_MD5Final(buffer,&Context);
 }
 
 
 static void calc_md5_digest(char * buffer, const char * challenge, int challen, const char * password){
 	char buf[1024];
 	int i;
-	MD5_CTX Context;
+	FR_MD5_CTX Context;
 
 	memset(buf, 0, 1024);
 	memset(buf, 0x36, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
 	memcpy(buf+64, challenge, challen);
-	MD5Init(&Context);
-	MD5Update(&Context,buf,64+challen);
+	fr_MD5Init(&Context);
+	fr_MD5Update(&Context,buf,64+challen);
 	memset(buf, 0x5c, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
-        MD5Final(buf+64,&Context);
-	MD5Init(&Context);
-	MD5Update(&Context,buf,64+16);
-        MD5Final(buffer,&Context);
+        fr_MD5Final(buf+64,&Context);
+	fr_MD5Init(&Context);
+	fr_MD5Update(&Context,buf,64+16);
+        fr_MD5Final(buffer,&Context);
 }
 
 static void calc_md4_digest(char * buffer, const char * challenge, int challen, const char * password){

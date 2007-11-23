@@ -22,7 +22,7 @@
  */
 
 /*
-** Function: hmac_md5
+** Function: fr_hmac_md5
 */
 
 #include <freeradius-devel/ident.h>
@@ -40,11 +40,11 @@ unsigned char*  digest;              caller digest to be filled in
 */
 
 void
-lrad_hmac_md5(const uint8_t *text, int text_len,
+fr_hmac_md5(const uint8_t *text, int text_len,
 	      const uint8_t *key, int key_len,
 	      uint8_t *digest)
 {
-        lrad_MD5_CTX context;
+        FR_MD5_CTX context;
         uint8_t k_ipad[65];    /* inner padding -
                                       * key XORd with ipad
                                       */
@@ -56,11 +56,11 @@ lrad_hmac_md5(const uint8_t *text, int text_len,
         /* if key is longer than 64 bytes reset it to key=MD5(key) */
         if (key_len > 64) {
 
-		lrad_MD5_CTX      tctx;
+		FR_MD5_CTX      tctx;
 
-                lrad_MD5Init(&tctx);
-                lrad_MD5Update(&tctx, key, key_len);
-                lrad_MD5Final(tk, &tctx);
+                fr_MD5Init(&tctx);
+                fr_MD5Update(&tctx, key, key_len);
+                fr_MD5Final(tk, &tctx);
 
                 key = tk;
                 key_len = 16;
@@ -92,20 +92,20 @@ lrad_hmac_md5(const uint8_t *text, int text_len,
         /*
          * perform inner MD5
          */
-        lrad_MD5Init(&context);                   /* init context for 1st
+        fr_MD5Init(&context);                   /* init context for 1st
                                               * pass */
-        lrad_MD5Update(&context, k_ipad, 64);      /* start with inner pad */
-        lrad_MD5Update(&context, text, text_len); /* then text of datagram */
-        lrad_MD5Final(digest, &context);          /* finish up 1st pass */
+        fr_MD5Update(&context, k_ipad, 64);      /* start with inner pad */
+        fr_MD5Update(&context, text, text_len); /* then text of datagram */
+        fr_MD5Final(digest, &context);          /* finish up 1st pass */
         /*
          * perform outer MD5
          */
-        lrad_MD5Init(&context);                   /* init context for 2nd
+        fr_MD5Init(&context);                   /* init context for 2nd
                                               * pass */
-        lrad_MD5Update(&context, k_opad, 64);     /* start with outer pad */
-        lrad_MD5Update(&context, digest, 16);     /* then results of 1st
+        fr_MD5Update(&context, k_opad, 64);     /* start with outer pad */
+        fr_MD5Update(&context, digest, 16);     /* then results of 1st
                                               * hash */
-        lrad_MD5Final(digest, &context);          /* finish up 2nd pass */
+        fr_MD5Final(digest, &context);          /* finish up 2nd pass */
 }
 
 /*
@@ -158,7 +158,7 @@ int main(int argc, char **argv)
   text = argv[2];
   text_len = strlen(text);
 
-  lrad_hmac_md5(text, text_len, key, key_len, digest);
+  fr_hmac_md5(text, text_len, key, key_len, digest);
 
   for (i = 0; i < 16; i++) {
     printf("%02x", digest[i]);

@@ -257,7 +257,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		 *	H(A1).
 		 */
 		if (passwd->attribute == PW_CLEARTEXT_PASSWORD) {
-			librad_md5_calc(hash, &a1[0], a1_len);
+			fr_md5_calc(hash, &a1[0], a1_len);
 			lrad_bin2hex(hash, (char *) &a1[0], 16);
 		} else {	/* MUST be Digest-HA1 */
 			memcpy(&a1[0], passwd->vp_strvalue, 32);
@@ -377,7 +377,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	     (strcasecmp(algo->vp_strvalue, "MD5-Sess") == 0)) ||
 	    (passwd->attribute == PW_CLEARTEXT_PASSWORD)) {
 		a1[a1_len] = '\0';
-		librad_md5_calc(&hash[0], &a1[0], a1_len);
+		fr_md5_calc(&hash[0], &a1[0], a1_len);
 	} else {
 		memcpy(&hash[0], &a1[0], a1_len);
 	}
@@ -448,7 +448,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	kd[kd_len] = ':';
 	kd_len++;
 
-	librad_md5_calc(&hash[0], &a2[0], a2_len);
+	fr_md5_calc(&hash[0], &a2[0], a2_len);
 
 	lrad_bin2hex(hash, (char *) kd + kd_len, sizeof(hash));
 
@@ -470,7 +470,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Take the hash of KD.
 	 */
-	librad_md5_calc(&hash[0], &kd[0], kd_len);
+	fr_md5_calc(&hash[0], &kd[0], kd_len);
 	memcpy(&kd[0], &hash[0], 16);
 
 	/*

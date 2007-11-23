@@ -370,7 +370,7 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 	/*
 	 *	These 16 bytes are the session key to use.
 	 */
-	librad_md5_calc(ntpwdhash, buffer, 16 + 8 + 24 + 8 + 24);
+	fr_md5_calc(ntpwdhash, buffer, 16 + 8 + 24 + 8 + 24);
 
 	memcpy(vp->vp_strvalue + vp->length, ntpwdhash, 16);
 	memset(vp->vp_strvalue + vp->length + 16, 0,
