@@ -2078,7 +2078,17 @@ static void handle_signal_self(int flag)
 	 *	Tell the even loop to stop processing.
 	 */
 	if ((flag & RADIUS_SIGNAL_SELF_HUP) != 0) {
+		time_t when;
+		static time_t last_hup = 0;
+
 		DEBUG("Received HUP signal.");
+
+		when = time(NULL);
+		if ((int) (when - last_hup) < 5) {
+			radlog(L_INFO, "Ignoring HUP (less than 5s since last one)");
+			return;
+		}
+		last_hup = when;
 
 		lrad_event_loop_exit(el, 0x80);
 	}
