@@ -110,20 +110,20 @@ static void calc_md4_digest(char * buffer, const char * challenge, int challen, 
 static void calc_sha1_digest(char * buffer, const char * challenge, int challen, const char * password){
 	char buf[1024];
 	int i;
-	SHA1_CTX Context;
+	fr_SHA1_CTX Context;
 
 	memset(buf, 0, 1024);
 	memset(buf, 0x36, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
 	memcpy(buf+64, challenge, challen);
-	SHA1Init(&Context);
-	SHA1Update(&Context,buf,64+challen);
+	fr_SHA1Init(&Context);
+	fr_SHA1Update(&Context,buf,64+challen);
 	memset(buf, 0x5c, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
-        SHA1Final(buf+64,&Context);
-	SHA1Init(&Context);
-	SHA1Update(&Context,buf,64+20);
-        SHA1Final(buffer,&Context);
+        fr_SHA1Final(buf+64,&Context);
+	fr_SHA1Init(&Context);
+	fr_SHA1Update(&Context,buf,64+20);
+        fr_SHA1Final(buffer,&Context);
 }
 
 

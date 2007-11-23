@@ -102,7 +102,7 @@ static void onesixty_add_mod(onesixty *sum, onesixty *a, onesixty *b)
  */
 void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 {
-	SHA1_CTX context;
+	fr_SHA1_CTX context;
 	int j;
 	onesixty xval, xkey, w_0, w_1, sum, one;
 	uint8_t *f;
@@ -134,12 +134,12 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 		xval = xkey;
 
 		/*   b. w_0 = SHA1(XVAL)  */
-		SHA1Init(&context);
+		fr_SHA1Init(&context);
 
 		memset(zeros, 0, sizeof(zeros));
 		memcpy(zeros, xval.p, 20);
-		SHA1Transform(context.state, zeros);
-		SHA1FinalNoLen(w_0.p, &context);
+		fr_SHA1Transform(context.state, zeros);
+		fr_fr_SHA1FinalNoLen(w_0.p, &context);
 
 		/*   c. XKEY = (1 + XKEY + w_0) mod 2^160 */
 		onesixty_add_mod(&sum,  &xkey, &w_0);
@@ -149,12 +149,12 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 		xval = xkey;
 
 		/*   e. w_1 = SHA1(XVAL)  */
-		SHA1Init(&context);
+		fr_SHA1Init(&context);
 
 		memset(zeros, 0, sizeof(zeros));
 		memcpy(zeros, xval.p, 20);
-		SHA1Transform(context.state, zeros);
-		SHA1FinalNoLen(w_1.p, &context);
+		fr_SHA1Transform(context.state, zeros);
+		fr_fr_SHA1FinalNoLen(w_1.p, &context);
 
 		/*   f. XKEY = (1 + XKEY + w_1) mod 2^160 */
 		onesixty_add_mod(&sum,  &xkey, &w_1);

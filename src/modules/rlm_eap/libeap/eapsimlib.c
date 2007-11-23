@@ -284,7 +284,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		memcpy(&hdr->data[encoded_size+1], append, appendlen);
 
 		/* HMAC it! */
-		lrad_hmac_sha1(buffer, hmaclen,
+		fr_hmac_sha1(buffer, hmaclen,
 			       vp->vp_octets, vp->length,
 			       sha1digest);
 
@@ -488,7 +488,7 @@ eapsim_checkmac(VALUE_PAIR *rvps,
 	}
 
 	/* now, HMAC-SHA1 it with the key. */
-	lrad_hmac_sha1(buffer, len,
+	fr_hmac_sha1(buffer, len,
 		       key, 16,
 		       calcmac);
 

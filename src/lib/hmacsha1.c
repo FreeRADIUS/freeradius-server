@@ -28,11 +28,11 @@ unsigned int sha1_data_problems = 0;
 #endif
 
 void
-lrad_hmac_sha1(const uint8_t *text, int text_len,
+fr_hmac_sha1(const uint8_t *text, int text_len,
 	       const uint8_t *key, int key_len,
 	       uint8_t *digest)
 {
-        SHA1_CTX context;
+        fr_SHA1_CTX context;
         uint8_t k_ipad[65];    /* inner padding -
                                       * key XORd with ipad
                                       */
@@ -44,11 +44,11 @@ lrad_hmac_sha1(const uint8_t *text, int text_len,
         /* if key is longer than 64 bytes reset it to key=SHA1(key) */
         if (key_len > 64) {
 
-                SHA1_CTX      tctx;
+                fr_SHA1_CTX      tctx;
 
-                SHA1Init(&tctx);
-                SHA1Update(&tctx, key, key_len);
-                SHA1Final(tk, &tctx);
+                fr_SHA1Init(&tctx);
+                fr_SHA1Update(&tctx, key, key_len);
+                fr_SHA1Final(tk, &tctx);
 
                 key = tk;
                 key_len = 20;
@@ -119,20 +119,20 @@ lrad_hmac_sha1(const uint8_t *text, int text_len,
         /*
          * perform inner SHA1
          */
-        SHA1Init(&context);                   /* init context for 1st
+        fr_SHA1Init(&context);                   /* init context for 1st
                                               * pass */
-        SHA1Update(&context, k_ipad, 64);      /* start with inner pad */
-        SHA1Update(&context, text, text_len); /* then text of datagram */
-        SHA1Final(digest, &context);          /* finish up 1st pass */
+        fr_SHA1Update(&context, k_ipad, 64);      /* start with inner pad */
+        fr_SHA1Update(&context, text, text_len); /* then text of datagram */
+        fr_SHA1Final(digest, &context);          /* finish up 1st pass */
         /*
          * perform outer MD5
          */
-        SHA1Init(&context);                   /* init context for 2nd
+        fr_SHA1Init(&context);                   /* init context for 2nd
                                               * pass */
-        SHA1Update(&context, k_opad, 64);     /* start with outer pad */
-        SHA1Update(&context, digest, 20);     /* then results of 1st
+        fr_SHA1Update(&context, k_opad, 64);     /* start with outer pad */
+        fr_SHA1Update(&context, digest, 20);     /* then results of 1st
                                               * hash */
-        SHA1Final(digest, &context);          /* finish up 2nd pass */
+        fr_SHA1Final(digest, &context);          /* finish up 2nd pass */
 
 #ifdef HMAC_SHA1_DATA_PROBLEMS
 	if(sha1_data_problems)
@@ -199,7 +199,7 @@ int main(int argc, char **argv)
   text = argv[2];
   text_len = strlen(text);
 
-  lrad_hmac_sha1(text, text_len, key, key_len, digest);
+  fr_hmac_sha1(text, text_len, key, key_len, digest);
 
   for (i = 0; i < 20; i++) {
     printf("%02x", digest[i]);

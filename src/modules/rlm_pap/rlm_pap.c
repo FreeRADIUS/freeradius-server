@@ -479,7 +479,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	VALUE_PAIR *module_fmsg_vp;
 	char module_fmsg[MAX_STRING_LEN];
 	FR_MD5_CTX md5_context;
-	SHA1_CTX sha1_context;
+	fr_SHA1_CTX sha1_context;
 	uint8_t digest[40];
 	char buff[MAX_STRING_LEN];
 	char buff2[MAX_STRING_LEN + 50];
@@ -660,10 +660,10 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 
-		SHA1Init(&sha1_context);
-		SHA1Update(&sha1_context, request->password->vp_strvalue,
+		fr_SHA1Init(&sha1_context);
+		fr_SHA1Update(&sha1_context, request->password->vp_strvalue,
 			   request->password->length);
-		SHA1Final(digest,&sha1_context);
+		fr_SHA1Final(digest,&sha1_context);
 		if (memcmp(digest, vp->vp_octets, vp->length) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SHA1 password check failed");
 			goto make_msg;
@@ -683,11 +683,11 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 
 
-		SHA1Init(&sha1_context);
-		SHA1Update(&sha1_context, request->password->vp_strvalue,
+		fr_SHA1Init(&sha1_context);
+		fr_SHA1Update(&sha1_context, request->password->vp_strvalue,
 			   request->password->length);
-		SHA1Update(&sha1_context, &vp->vp_octets[20], vp->length - 20);
-		SHA1Final(digest,&sha1_context);
+		fr_SHA1Update(&sha1_context, &vp->vp_octets[20], vp->length - 20);
+		fr_SHA1Final(digest,&sha1_context);
 		if (memcmp(digest, vp->vp_octets, 20) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SSHA password check failed");
 			goto make_msg;

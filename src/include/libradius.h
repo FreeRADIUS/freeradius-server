@@ -269,7 +269,7 @@ void fr_hmac_md5(const uint8_t *text, int text_len,
 
 /* hmacsha1.c */
 
-void lrad_hmac_sha1(const uint8_t *text, int text_len,
+void fr_hmac_sha1(const uint8_t *text, int text_len,
 		    const uint8_t *key, int key_len,
 		    uint8_t *digest);
 

@@ -180,14 +180,14 @@ static void challenge_hash( const uint8_t *peer_challenge,
 			    const uint8_t *auth_challenge,
 			    const char *user_name, uint8_t *challenge )
 {
-	SHA1_CTX Context;
+	fr_SHA1_CTX Context;
 	uint8_t hash[20];
 
-	SHA1Init(&Context);
-	SHA1Update(&Context, peer_challenge, 16);
-	SHA1Update(&Context, auth_challenge, 16);
-	SHA1Update(&Context, user_name, strlen(user_name));
-	SHA1Final(hash, &Context);
+	fr_SHA1Init(&Context);
+	fr_SHA1Update(&Context, peer_challenge, 16);
+	fr_SHA1Update(&Context, auth_challenge, 16);
+	fr_SHA1Update(&Context, user_name, strlen(user_name));
+	fr_SHA1Final(hash, &Context);
 	memcpy(challenge, hash, 8);
 }
 
@@ -202,7 +202,7 @@ static void auth_response(const char *username,
 			  char *peer_challenge, char *auth_challenge,
 			  char *response)
 {
-	SHA1_CTX Context;
+	fr_SHA1_CTX Context;
 	static const uint8_t magic1[39] =
 	{0x4D, 0x61, 0x67, 0x69, 0x63, 0x20, 0x73, 0x65, 0x72, 0x76,
 	 0x65, 0x72, 0x20, 0x74, 0x6F, 0x20, 0x63, 0x6C, 0x69, 0x65,
@@ -222,17 +222,17 @@ static void auth_response(const char *username,
         char challenge[8];
 	uint8_t digest[20];
 
-	SHA1Init(&Context);
-	SHA1Update(&Context, nt_hash_hash, 16);
-	SHA1Update(&Context, ntresponse, 24);
-	SHA1Update(&Context, magic1, 39);
-	SHA1Final(digest, &Context);
+	fr_SHA1Init(&Context);
+	fr_SHA1Update(&Context, nt_hash_hash, 16);
+	fr_SHA1Update(&Context, ntresponse, 24);
+	fr_SHA1Update(&Context, magic1, 39);
+	fr_SHA1Final(digest, &Context);
 	challenge_hash(peer_challenge, auth_challenge, username, challenge);
-	SHA1Init(&Context);
-	SHA1Update(&Context, digest, 20);
-	SHA1Update(&Context, challenge, 8);
-	SHA1Update(&Context, magic2, 41);
-	SHA1Final(digest, &Context);
+	fr_SHA1Init(&Context);
+	fr_SHA1Update(&Context, digest, 20);
+	fr_SHA1Update(&Context, challenge, 8);
+	fr_SHA1Update(&Context, magic2, 41);
+	fr_SHA1Final(digest, &Context);
 
 	/*
 	 *	Encode the value of 'Digest' as "S=" followed by
@@ -888,13 +888,13 @@ static void mppe_GetMasterKey(uint8_t *nt_hashhash,uint8_t *nt_response,
 			      uint8_t *masterkey)
 {
        uint8_t digest[20];
-       SHA1_CTX Context;
+       fr_SHA1_CTX Context;
 
-       SHA1Init(&Context);
-       SHA1Update(&Context,nt_hashhash,16);
-       SHA1Update(&Context,nt_response,24);
-       SHA1Update(&Context,magic1,27);
-       SHA1Final(digest,&Context);
+       fr_SHA1Init(&Context);
+       fr_SHA1Update(&Context,nt_hashhash,16);
+       fr_SHA1Update(&Context,nt_response,24);
+       fr_SHA1Update(&Context,magic1,27);
+       fr_SHA1Final(digest,&Context);
 
        memcpy(masterkey,digest,16);
 }
@@ -905,7 +905,7 @@ static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
 {
        uint8_t digest[20];
        const uint8_t *s;
-       SHA1_CTX Context;
+       fr_SHA1_CTX Context;
 
        memset(digest,0,20);
 
@@ -915,12 +915,12 @@ static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
                s = magic2;
        }
 
-       SHA1Init(&Context);
-       SHA1Update(&Context,masterkey,16);
-       SHA1Update(&Context,SHSpad1,40);
-       SHA1Update(&Context,s,84);
-       SHA1Update(&Context,SHSpad2,40);
-       SHA1Final(digest,&Context);
+       fr_SHA1Init(&Context);
+       fr_SHA1Update(&Context,masterkey,16);
+       fr_SHA1Update(&Context,SHSpad1,40);
+       fr_SHA1Update(&Context,s,84);
+       fr_SHA1Update(&Context,SHSpad2,40);
+       fr_SHA1Final(digest,&Context);
 
        memcpy(sesskey,digest,keylen);
 }
