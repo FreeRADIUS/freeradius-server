@@ -167,7 +167,7 @@ static void ntpwdhash (unsigned char *szHash, const char *szPassword)
 	}
 
 	/* Encrypt Unicode password to a 16-byte MD4 hash */
-	md4_calc(szHash, szUnicodePass, (nPasswordLen<<1) );
+	fr_md4_calc(szHash, szUnicodePass, (nPasswordLen<<1) );
 }
 
 
@@ -786,7 +786,7 @@ static int do_mschap(rlm_mschap_t *inst,
 		 *	here minimizes work for later.
 		 */
 		if (password && (password->attribute == PW_NT_PASSWORD)) {
-			md4_calc(nthashhash, password->vp_strvalue, 16);
+			fr_md4_calc(nthashhash, password->vp_strvalue, 16);
 		} else {
 			memset(nthashhash, 0, 16);
 		}

@@ -221,7 +221,7 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 		/*
 		 *  Get the NT Password hash.
 		 */
-		md4_calc(ntpwdhash, unicode, password->length * 2);
+		fr_md4_calc(ntpwdhash, unicode, password->length * 2);
 
 	} else {		/* MUST be NT-Password */
 		if (password->length == 32) {
@@ -334,7 +334,7 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 		eapleap_free(&reply);
 		return NULL;
 	}
-	md4_calc(ntpwdhashhash, ntpwdhash, 16);
+	fr_md4_calc(ntpwdhashhash, ntpwdhash, 16);
 
 	/*
 	 *	Calculate our response, to authenticate ourselves

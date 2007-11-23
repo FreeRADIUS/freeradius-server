@@ -59,7 +59,7 @@ static void ntpwdhash (char *szHash, const char *szPassword)
 	}
 
 	/* Encrypt Unicode password to a 16-byte MD4 hash */
-	md4_calc(szHash, szUnicodePass, (nPasswordLen<<1) );
+	fr_md4_calc(szHash, szUnicodePass, (nPasswordLen<<1) );
 }
 
 
