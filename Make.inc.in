@@ -51,6 +51,7 @@ RADDBDIR	= ${raddbdir}
 RUNDIR		= ${localstatedir}/run/radiusd
 SBINDIR		= ${sbindir}
 RADIR		= ${radacctdir}
+LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la
 
 LIBLTDL		= @LIBLTDL@
 INCLTDL		= @INCLTDL@
