@@ -108,14 +108,13 @@ endif
 
 build-module: $(TARGET).la $(RLM_UTILS)
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=all common
-	@[ -d .libs ] && cp .libs/* $(top_builddir)/src/modules/lib
+	@[ -d .libs ] && cp .libs/* $(top_builddir)/src/modules/lib/.libs
 	@cp $< $(top_builddir)/src/modules/lib
 
 $(TARGET).la: $(LT_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
 	-module $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) -o $@     \
-	-rpath $(libdir) $^ $(top_builddir)/src/lib/libradius.la \
-	$(RLM_LIBS) $(LIBS)
+	-rpath $(libdir) $^ $(LIBRADIUS) $(RLM_LIBS) $(LIBS)
 
 #######################################################################
 #

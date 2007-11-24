@@ -30,7 +30,7 @@ else
 LINK_MODE	= -static
 endif
 
-TARGET		= $(LIBPREFIX)radius
+TARGET		= $(LIBPREFIX)freeradius-radius
 
 # Define new rule for libtool objects
 %.lo : %.c
