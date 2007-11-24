@@ -1,17 +1,23 @@
 FreeRADIUS 2.0.0 ; $Date$, urgency=low
-	Feature improvements over v1.x.y
+	Feature improvements
 	* Debugging mode is much clearer and easier to read.
-	* EAP-TLS and OpenSSL certificates "just work".
-	  See raddb/certs/README for details.
-	* Proxying works much better than in 1.x.y.
-	  See proxy.conf for documentation on pools, and new config items.
-	* Full support for IPv6.
-	* Much more complete support for the RADIUS SNMP MIBs.
         * A new policy language makes many configurations trivial.
 	  See "man unlang" for a complete description.
 	* Virtual servers are now supported.  This permits clear separation
 	  of policies.  See raddb/sites-available/README
+	* EAP-TLS (PEAP, EAP-TTLS) and OpenSSL certificates "just work".
+	  See raddb/certs/README for details.
+	* Proxying is much more configurable than before.
+	  See proxy.conf for documentation on pools, and new config items.
+	* Full support for IPv6.
+	* Much more complete support for the RADIUS SNMP MIBs.
+	* HUP now works.  Only some modules are re-loaded,
+	  and the server configuation is *not* reloaded.
+	* "check config" option now works.  See "man radiusd"
+	* radrelay functionality is now included in the server core.
+	  See raddb/sites-available/copy-acct-to-home-server
 	* VMPS support.  It is minimal, but functional.
+	* Cleaned up internal API's and names, including library names.
 	
 	Bug fixes
 	* Many.
