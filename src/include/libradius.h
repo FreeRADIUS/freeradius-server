@@ -150,7 +150,7 @@ typedef struct value_pair {
 	int			attribute;
 	int			vendor;
 	int			type;
-	int			length; /* of data */
+	size_t			length; /* of data */
 	FR_TOKEN		operator;
         ATTR_FLAGS              flags;
 	struct value_pair	*next;
@@ -217,9 +217,11 @@ typedef struct radius_packet {
 /*
  *	Printing functions.
  */
-void		librad_safeprint(char *in, int inlen, char *out, int outlen);
-int     vp_prints_value(char *out, int outlen, VALUE_PAIR *vp,int delimitst);
-int     vp_prints(char *out, int outlen, VALUE_PAIR *vp);
+void		librad_safeprint(char *in, size_t inlen,
+				 char *out, size_t outlen);
+int     	vp_prints_value(char *out, size_t outlen,
+				VALUE_PAIR *vp, int delimitst);
+int     	vp_prints(char *out, size_t outlen, VALUE_PAIR *vp);
 void		vp_print(FILE *, VALUE_PAIR *);
 void		vp_printlist(FILE *, VALUE_PAIR *);
 #define		fprint_attr_val vp_print
@@ -290,13 +292,13 @@ int		rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 
 RADIUS_PACKET	*rad_alloc(int newvector);
 void		rad_free(RADIUS_PACKET **);
-int		rad_pwencode(char *encpw, int *len, const char *secret,
+int		rad_pwencode(char *encpw, size_t *len, const char *secret,
 			     const uint8_t *vector);
-int		rad_pwdecode(char *encpw, int len, const char *secret,
+int		rad_pwdecode(char *encpw, size_t len, const char *secret,
 			     const uint8_t *vector);
-int		rad_tunnel_pwencode(char *encpw, int *len, const char *secret,
+int		rad_tunnel_pwencode(char *encpw, size_t *len, const char *secret,
 				    const uint8_t *vector);
-int		rad_tunnel_pwdecode(uint8_t *encpw, int *len,
+int		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len,
 				    const char *secret, const uint8_t *vector);
 int		rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output,
 				int id, VALUE_PAIR *password);
@@ -356,8 +358,8 @@ uint8_t		*ifid_aton(const char *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
-void		fr_bin2hex(const uint8_t *bin, char *hex, int len);
-int		fr_hex2bin(const char *hex, uint8_t *bin, int len);
+void		fr_bin2hex(const uint8_t *bin, char *hex, size_t len);
+size_t		fr_hex2bin(const char *hex, uint8_t *bin, size_t len);
 #ifndef HAVE_INET_PTON
 int		inet_pton(int af, const char *src, void *dst);
 #endif
@@ -377,7 +379,7 @@ const char	*ip_ntoh(const fr_ipaddr_t *src, char *dst, size_t cnt);
 #ifdef ASCEND_BINARY
 /* filters.c */
 int		ascend_parse_filter(VALUE_PAIR *pair);
-void		print_abinary(VALUE_PAIR *vp, char *buffer, int len);
+void		print_abinary(VALUE_PAIR *vp, char *buffer, size_t len);
 #endif /*ASCEND_BINARY*/
 
 /* random numbers in isaac.c */

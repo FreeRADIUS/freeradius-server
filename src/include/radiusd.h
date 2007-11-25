@@ -164,7 +164,7 @@ typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 typedef struct radclient_list RADCLIENT_LIST;
 
 typedef struct pair_list {
-	char			*name;
+	const char		*name;
 	VALUE_PAIR		*check;
 	VALUE_PAIR		*reply;
 	int			lineno;
@@ -433,12 +433,13 @@ VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 			    int operator);
 
 /* xlat.c */
-typedef int (*RADIUS_ESCAPE_STRING)(char *out, int outlen, const char *in);
+typedef size_t (*RADIUS_ESCAPE_STRING)(char *out, size_t outlen, const char *in);
 
 int            radius_xlat(char * out, int outlen, const char *fmt,
 			   REQUEST * request, RADIUS_ESCAPE_STRING func);
-typedef int (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char *, char *, size_t, RADIUS_ESCAPE_STRING func);
-int		xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance);
+typedef size_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char *, char *, size_t, RADIUS_ESCAPE_STRING func);
+int		xlat_register(const char *module, RAD_XLAT_FUNC func,
+			      void *instance);
 void		xlat_unregister(const char *module, RAD_XLAT_FUNC func);
 void		xlat_free(void);
 

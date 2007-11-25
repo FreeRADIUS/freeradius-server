@@ -59,18 +59,18 @@ CONF_SECTION	*cf_file_read(const char *file);
 int		cf_file_include(const char *file, CONF_SECTION *cs);
 
 CONF_PAIR	*cf_pair_find(const CONF_SECTION *, const char *name);
-CONF_PAIR	*cf_pair_find_next(const CONF_SECTION *, const CONF_PAIR *, const char *name);
+CONF_PAIR	*cf_pair_find_next(const CONF_SECTION *, CONF_PAIR *, const char *name);
 CONF_SECTION	*cf_section_find(const char *name);
 CONF_SECTION	*cf_section_sub_find(const CONF_SECTION *, const char *name);
 CONF_SECTION	*cf_section_sub_find_name2(const CONF_SECTION *, const char *name1, const char *name2);
-char 		*cf_section_value_find(const CONF_SECTION *, const char *attr);
-CONF_SECTION	*cf_top_section(const CONF_SECTION *cs);
+const char 	*cf_section_value_find(const CONF_SECTION *, const char *attr);
+CONF_SECTION	*cf_top_section(CONF_SECTION *cs);
 
 void *cf_data_find(CONF_SECTION *, const char *);
 int cf_data_add(CONF_SECTION *, const char *, void *, void (*)(void *));
 
-char *cf_pair_attr(CONF_PAIR *pair);
-char *cf_pair_value(CONF_PAIR *pair);
+const char *cf_pair_attr(CONF_PAIR *pair);
+const char *cf_pair_value(CONF_PAIR *pair);
 VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair);
 const char *cf_section_name1(const CONF_SECTION *);
 const char *cf_section_name2(const CONF_SECTION *);
@@ -95,7 +95,7 @@ CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs);
 int cf_section_template(CONF_SECTION *cs, CONF_SECTION *template);
 void cf_log_err(CONF_ITEM *ci, const char *fmt, ...);
 CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
-			     const CONF_SECTION *outercs,
+			     CONF_SECTION *outercs,
 			     const char *ptr);
 /*
  *	Big magic.
