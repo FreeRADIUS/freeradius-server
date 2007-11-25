@@ -197,14 +197,14 @@ static const CONF_PARSER server_config[] = {
 /*
  *	Xlat for %{config:section.subsection.attribute}
  */
-static int xlat_config(void *instance, REQUEST *request,
+static size_t xlat_config(void *instance, REQUEST *request,
 		       char *fmt, char *out,
 		       size_t outlen,
 		       RADIUS_ESCAPE_STRING func)
 {
 	const char *value;
-	const CONF_PAIR *cp;
-	const CONF_ITEM *ci;
+	CONF_PAIR *cp;
+	CONF_ITEM *ci;
 
 	request = request;	/* -Wunused */
 	instance = instance;	/* -Wunused */
@@ -242,7 +242,7 @@ static int xlat_config(void *instance, REQUEST *request,
 /*
  *	Xlat for %{client:foo}
  */
-static int xlat_client(UNUSED void *instance, REQUEST *request,
+static size_t xlat_client(UNUSED void *instance, REQUEST *request,
 		       char *fmt, char *out,
 		       size_t outlen,
 		       UNUSED RADIUS_ESCAPE_STRING func)

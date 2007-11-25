@@ -436,11 +436,11 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	 */
 	{
 	  VALUE_PAIR *randcfgvp[3];
-	  unsigned char *randcfg[3];
+	  uint8_t *randcfg[3];
 
-	  randcfg[0] = &randvp->vp_strvalue[2];
-	  randcfg[1] = &randvp->vp_strvalue[2+EAPSIM_RAND_SIZE];
-	  randcfg[2] = &randvp->vp_strvalue[2+EAPSIM_RAND_SIZE*2];
+	  randcfg[0] = &randvp->vp_octets[2];
+	  randcfg[1] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE];
+	  randcfg[2] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE*2];
 
 	  randcfgvp[0] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND1);
 	  randcfgvp[1] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND2);
@@ -453,9 +453,9 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	    return 0;
 	  }
 
-	  if(memcmp(randcfg[0], randcfgvp[0]->vp_strvalue, EAPSIM_RAND_SIZE)!=0 ||
-	     memcmp(randcfg[1], randcfgvp[1]->vp_strvalue, EAPSIM_RAND_SIZE)!=0 ||
-	     memcmp(randcfg[2], randcfgvp[2]->vp_strvalue, EAPSIM_RAND_SIZE)!=0) {
+	  if(memcmp(randcfg[0], randcfgvp[0]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
+	     memcmp(randcfg[1], randcfgvp[1]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
+	     memcmp(randcfg[2], randcfgvp[2]->vp_octets, EAPSIM_RAND_SIZE)!=0) {
 	    int rnum,i,j;
 
 	    fprintf(stderr, "radeapclient: one of rand 1,2,3 didn't match\n");
@@ -480,7 +480,7 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 		}
 		j++;
 
-		fprintf(stderr, "%02x", randcfgvp[rnum]->vp_strvalue[i]);
+		fprintf(stderr, "%02x", randcfgvp[rnum]->vp_octets[i]);
 	      }
 	      fprintf(stderr, "\n");
 	    }
@@ -697,12 +697,12 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 			   RADIUS_PACKET *rep)
 {
 	VALUE_PAIR *vp, *id, *state;
-	int valuesize, namesize;
-	unsigned char identifier;
-	unsigned char *value;
-	unsigned char *name;
+	size_t valuesize, namesize;
+	uint8_t identifier;
+	uint8_t *value;
+	uint8_t *name;
 	FR_MD5_CTX	context;
-	char    response[16];
+	uint8_t    response[16];
 
 	cleanresp(rep);
 
@@ -745,7 +745,7 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 	 */
 	fr_MD5Init(&context);
 	fr_MD5Update(&context, &identifier, 1);
-	fr_MD5Update(&context, password, strlen(password));
+	fr_MD5Update(&context, (uint8_t *) password, strlen(password));
 	fr_MD5Update(&context, value, valuesize);
 	fr_MD5Final(response, &context);
 
@@ -855,7 +855,7 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 			strlcpy((char *)vp->vp_strvalue, password, sizeof(vp->vp_strvalue));
 			vp->length = strlen(password);
 
-			rad_chap_encode(rep, (char *) vp->vp_strvalue, rep->id, vp);
+			rad_chap_encode(rep, vp->vp_octets, rep->id, vp);
 			vp->length = 17;
 		}
 	} /* there WAS a password */

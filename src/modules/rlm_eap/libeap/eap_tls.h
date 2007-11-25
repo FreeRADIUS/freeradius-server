@@ -189,7 +189,7 @@ int 		eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn);
 /* MPPE key generation */
 void            eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
 				     const char *prf_label);
-void		eapttls_gen_challenge(SSL *s, char *buffer, int size);
+void		eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size);
 
 #define BUFFER_SIZE 1024
 

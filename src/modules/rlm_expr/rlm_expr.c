@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include "rlm_expr.h"
 
 /*
  *	Define a structure for our module configuration.
@@ -207,8 +208,9 @@ static int get_number(REQUEST *request, const char **string, int *answer)
 /*
  *  Do xlat of strings!
  */
-static int expr_xlat(void *instance, REQUEST *request, char *fmt, char *out, int outlen,
-		                        RADIUS_ESCAPE_STRING func)
+static size_t expr_xlat(void *instance, REQUEST *request, char *fmt,
+			char *out, size_t outlen,
+		     RADIUS_ESCAPE_STRING func)
 {
 	int		rcode, result;
 	rlm_expr_t	*inst = instance;
@@ -256,7 +258,7 @@ static int expr_xlat(void *instance, REQUEST *request, char *fmt, char *out, int
 static int expr_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_expr_t	*inst;
-	char		*xlat_name;
+	const char	*xlat_name;
 
 	/*
 	 *	Set up a storage area for instance data

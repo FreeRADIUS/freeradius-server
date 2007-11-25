@@ -215,7 +215,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	int		listen_port;
 	fr_ipaddr_t	ipaddr;
 	listen_socket_t *sock = this->data;
-	const char	*section_name = NULL;
+	char		*section_name = NULL;
 	CONF_SECTION	*client_cs, *parentcs;
 
 	/*

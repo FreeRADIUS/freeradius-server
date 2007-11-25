@@ -299,7 +299,8 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 */
 		rcode = request_data_add(request,
 					 inst, REQUEST_DATA_EAP_HANDLER,
-					 handler, eap_handler_free);
+					 handler,
+					 (void *) eap_handler_free);
 		rad_assert(rcode == 0);
 
 		return RLM_MODULE_HANDLED;
@@ -322,7 +323,8 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 */
 		rcode = request_data_add(request,
 					 inst, REQUEST_DATA_EAP_HANDLER,
-					 handler, eap_handler_free);
+					 handler,
+					 (void *) eap_handler_free);
 		rad_assert(rcode == 0);
 
 		/*
@@ -495,7 +497,8 @@ static int eap_authorize(void *instance, REQUEST *request)
  */
 static int eap_post_proxy(void *inst, REQUEST *request)
 {
-	int		i, len;
+	size_t		i;
+	size_t		len;
 	VALUE_PAIR	*vp;
 	EAP_HANDLER	*handler;
 
@@ -620,7 +623,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 	 *	Decrypt the session key, using the proxy data.
 	 */
 	i = 34;			/* starts off with 34 octets */
-	len = rad_tunnel_pwdecode(vp->vp_strvalue + 17, &i,
+	len = rad_tunnel_pwdecode(vp->vp_octets + 17, &i,
 				  request->home_server->secret,
 				  request->proxy->vector);
 

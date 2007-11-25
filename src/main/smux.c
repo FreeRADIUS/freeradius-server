@@ -128,7 +128,7 @@ oid_compare_part (oid *o1, int o1_len, oid *o2, int o2_len)
 static void
 smux_oid_dump(const char *prefix, oid *my_oid, size_t oid_len)
 {
-	int i;
+	size_t i;
 	int first = 1;
 	char buf[MAX_OID_LEN * 3];
 
@@ -228,10 +228,10 @@ static void
 smux_getresp_send (oid objid[], size_t objid_len, long reqid, long errstat,
 		long errindex, u_char val_type, const void *arg, size_t arg_len)
 {
-	int ret;
+	size_t ret;
 	u_char buf[BUFSIZ];
 	u_char *ptr, *h1, *h1e, *h2, *h2e;
-	int len, length;
+	size_t len, length;
 
 	ptr = buf;
 	len = BUFSIZ;

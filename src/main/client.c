@@ -213,7 +213,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	 */
 	if (!clients->trees[client->prefix]) {
 		clients->trees[client->prefix] = rbtree_create(client_ipaddr_cmp,
-							       client_free, 0);
+							       (void *) client_free, 0);
 		if (!clients->trees[client->prefix]) {
 			return 0;
 		}
@@ -583,7 +583,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 	 *	Associate the clients structure with the section, where
 	 *	it will be freed once the section is freed.
 	 */
-	if (cf_data_add(section, "clients", clients, clients_free) < 0) {
+	if (cf_data_add(section, "clients", clients, (void *) clients_free) < 0) {
 		cf_log_err(cf_sectiontoitem(section),
 			   "Failed to associate clients with section %s",
 		       cf_section_name1(section));

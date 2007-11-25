@@ -127,13 +127,13 @@ static int utf8_char(uint8_t *str)
  *	has to be larger than the input string by at least 5 bytes.
  *	If not, the output is silently truncated...
  */
-void librad_safeprint(char *in, int inlen, char *out, int outlen)
+void librad_safeprint(char *in, size_t inlen, char *out, size_t outlen)
 {
-	unsigned char	*str = (unsigned char *)in;
+	uint8_t		*str = (uint8_t *)in;
 	int		sp = 0;
 	int		utf8 = 0;
 
-	if (inlen < 0) inlen = strlen(in);
+	if (inlen == 0) inlen = strlen(in);
 
 	/*
 	 *	
@@ -200,7 +200,7 @@ void librad_safeprint(char *in, int inlen, char *out, int outlen)
  *  Print one value into a string.
  *  delimitst will define if strings and dates will be delimited by '"'
  */
-int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
+int vp_prints_value(char * out, size_t outlen, VALUE_PAIR *vp, int delimitst)
 {
 	DICT_VALUE  *v;
 	char        buf[1024];
@@ -217,13 +217,13 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 			if ((delimitst == 1) && vp->flags.has_tag) {
 				/* Tagged attribute: print delimter and ignore tag */
 				buf[0] = '"';
-				librad_safeprint((char *)(vp->vp_strvalue),
+				librad_safeprint(vp->vp_strvalue,
 						 vp->length, buf + 1, sizeof(buf) - 2);
 				strcat(buf, "\"");
 			} else if (delimitst == 1) {
 				/* Non-tagged attribute: print delimter */
 				buf[0] = '"';
-				librad_safeprint((char *)vp->vp_strvalue,
+				librad_safeprint(vp->vp_strvalue,
 						 vp->length, buf + 1, sizeof(buf) - 2);
 				strcat(buf, "\"");
 
@@ -233,7 +233,7 @@ int vp_prints_value(char * out, int outlen, VALUE_PAIR *vp, int delimitst)
 
 			} else {
 				/* Non-tagged attribute: no delimiter */
-				librad_safeprint((char *)vp->vp_strvalue,
+				librad_safeprint(vp->vp_strvalue,
 						 vp->length, buf, sizeof(buf));
 			}
 			a = buf;
@@ -376,7 +376,7 @@ static const char *vp_tokens[] = {
 /*
  *	Print one attribute and value into a string.
  */
-int vp_prints(char *out, int outlen, VALUE_PAIR *vp)
+int vp_prints(char *out, size_t outlen, VALUE_PAIR *vp)
 {
 	int		len;
 	const char	*token = NULL;

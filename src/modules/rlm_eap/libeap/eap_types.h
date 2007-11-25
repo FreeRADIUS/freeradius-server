@@ -78,9 +78,9 @@ enum {
  * EAP-Type specific data.
  */
 typedef struct eaptype_t {
-	unsigned char	type;
-	unsigned int	length;
-	unsigned char	*data;
+	uint8_t	type;
+	size_t	length;
+	uint8_t	*data;
 } eaptype_t;
 
 /*

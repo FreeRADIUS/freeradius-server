@@ -41,7 +41,7 @@ void pairlist_free(PAIR_LIST **pl)
 	PAIR_LIST *p, *next;
 
 	for (p = *pl; p; p = next) {
-		if (p->name) free(p->name);
+		/* name is allocated contiguous with p */
 		if (p->check) pairfree(&p->check);
 		if (p->reply) pairfree(&p->reply);
 		next = p->next;
@@ -230,18 +230,27 @@ parse_again:
 				}
 			}
 			else {
+				size_t entry_len;
+				char *q;
+
+				entry_len = strlen(entry) + 1;
+
 				/*
 				 *	Done with this entry...
 				 */
-				t = rad_malloc(sizeof(PAIR_LIST));
+				q = rad_malloc(sizeof(*t) + entry_len);
+				t = (PAIR_LIST *) q;
 
 				memset(t, 0, sizeof(*t));
-				t->name = strdup(entry);
 				t->check = check_tmp;
 				t->reply = reply_tmp;
 				t->lineno = old_lineno;
 				check_tmp = NULL;
 				reply_tmp = NULL;
+
+				q += sizeof(*t);
+				memcpy(q, entry, entry_len);
+				t->name = q;
 
 				*last = t;
 				last = &(t->next);

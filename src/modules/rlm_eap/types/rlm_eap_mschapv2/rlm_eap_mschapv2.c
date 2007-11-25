@@ -127,7 +127,7 @@ static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 		eap_ds->request->type.length = length;
 
 		ptr = eap_ds->request->type.data;
-		hdr = eap_ds->request->type.data;
+		hdr = (mschapv2_header_t *) ptr;
 
 		hdr->opcode = PW_EAP_MSCHAPV2_CHALLENGE;
 		hdr->mschapv2_id = eap_ds->response->id + 1;

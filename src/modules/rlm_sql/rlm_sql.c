@@ -123,7 +123,7 @@ static int fallthrough(VALUE_PAIR *vp)
  *	Yucky prototype.
  */
 static int generate_sql_clients(SQL_INST *inst);
-static int sql_escape_func(char *out, int outlen, const char *in);
+static size_t sql_escape_func(char *out, size_t outlen, const char *in);
 
 /*
  *	sql xlat function. Right now only SELECTs are supported. Only
@@ -138,7 +138,7 @@ static int sql_xlat(void *instance, REQUEST *request,
 	SQL_INST *inst = instance;
 	char querystr[MAX_QUERY_LEN];
 	char sqlusername[MAX_STRING_LEN];
-	int ret = 0;
+	size_t ret = 0;
 
 	DEBUG("rlm_sql (%s): - sql_xlat", inst->config->xlat_name);
 	/*
@@ -324,7 +324,7 @@ static int generate_sql_clients(SQL_INST *inst)
 		/*
 		 *	Other values (secret, shortname, nastype)
 		 */
-		c->secret = (u_char *)strdup(row[4]);
+		c->secret = strdup(row[4]);
 		c->shortname = strdup(row[2]);
 		if(row[3] != NULL)
 			c->nastype = strdup(row[3]);
@@ -350,9 +350,9 @@ static int generate_sql_clients(SQL_INST *inst)
 /*
  *	Translate the SQL queries.
  */
-static int sql_escape_func(char *out, int outlen, const char *in)
+static size_t sql_escape_func(char *out, size_t outlen, const char *in)
 {
-	int len = 0;
+	size_t len = 0;
 
 	while (in[0]) {
 		/*

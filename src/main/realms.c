@@ -124,9 +124,9 @@ static int home_pool_name_cmp(const void *one, const void *two)
 /*
  *	Xlat for %{home_server:foo}
  */
-static int xlat_home_server(UNUSED void *instance, REQUEST *request,
-			    char *fmt, char *out, size_t outlen,
-			    UNUSED RADIUS_ESCAPE_STRING func)
+static size_t xlat_home_server(UNUSED void *instance, REQUEST *request,
+			       char *fmt, char *out, size_t outlen,
+			       UNUSED RADIUS_ESCAPE_STRING func)
 {
 	const char *value = NULL;
 	CONF_PAIR *cp;
@@ -153,9 +153,9 @@ static int xlat_home_server(UNUSED void *instance, REQUEST *request,
 /*
  *	Xlat for %{home_server_pool:foo}
  */
-static int xlat_server_pool(UNUSED void *instance, REQUEST *request,
-			    char *fmt, char *out, size_t outlen,
-			    UNUSED RADIUS_ESCAPE_STRING func)
+static size_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
+			       char *fmt, char *out, size_t outlen,
+			       UNUSED RADIUS_ESCAPE_STRING func)
 {
 	const char *value = NULL;
 	CONF_PAIR *cp;
@@ -942,7 +942,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 
 static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 {
-	char *host;
+	const char *host;
 	const char *secret = NULL;
 	home_pool_type_t ldflag;
 	CONF_PAIR *cp;

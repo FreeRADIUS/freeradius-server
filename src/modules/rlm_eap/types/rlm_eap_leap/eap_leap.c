@@ -203,7 +203,7 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 {
 	if ((password->attribute == PW_USER_PASSWORD) ||
 	    (password->attribute == PW_CLEARTEXT_PASSWORD)) {
-		int i;
+		size_t i;
 		unsigned char unicode[512];
 
 		/*
@@ -282,7 +282,7 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 			    VALUE_PAIR *user_name, VALUE_PAIR* password,
 			    leap_session_t *session, VALUE_PAIR **reply_vps)
 {
-	int i;
+	size_t i;
 	unsigned char ntpwdhash[16], ntpwdhashhash[16];
 	unsigned char buffer[256];
 	LEAP_PACKET *reply;

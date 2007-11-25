@@ -58,8 +58,8 @@ struct conf_item {
 };
 struct conf_pair {
 	CONF_ITEM item;
-	char *attr;
-	char *value;
+	const char *attr;
+	const char *value;
 	FR_TOKEN operator;
 	FR_TOKEN value_type;
 };
@@ -150,14 +150,30 @@ static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
 				FR_TOKEN operator, FR_TOKEN value_type,
 				CONF_SECTION *parent)
 {
+	char *p;
+	size_t attr_len, value_len = 0;
 	CONF_PAIR *cp;
 
-	cp = rad_malloc(sizeof(*cp));
+	if (!attr) return NULL;
+	attr_len = strlen(attr) + 1;
+	if (value) value_len = strlen(value) + 1;
+
+	p = rad_malloc(sizeof(*cp) + attr_len + value_len);
+
+	cp = (CONF_PAIR *) p;
 	memset(cp, 0, sizeof(*cp));
 	cp->item.type = CONF_ITEM_PAIR;
 	cp->item.parent = parent;
-	cp->attr = strdup(attr);
-	if (value) cp->value = strdup(value);
+
+	p += sizeof(*cp);
+	memcpy(p, attr, attr_len);
+	cp->attr = p;
+
+	if (value) {
+		p += attr_len;
+		memcpy(p, value, value_len);
+		cp->value = p;
+	}
 	cp->value_type = value_type;
 	cp->operator = operator;
 
@@ -171,10 +187,9 @@ void cf_pair_free(CONF_PAIR **cp)
 {
 	if (!cp || !*cp) return;
 
-	if ((*cp)->attr)
-		free((*cp)->attr);
-	if ((*cp)->value)
-		free((*cp)->value);
+	/*
+	 *	attr && value are allocated contiguous with cp.
+	 */
 
 #ifndef NDEBUG
 	memset(*cp, 0, sizeof(*cp));
@@ -189,7 +204,7 @@ static void cf_data_free(CONF_DATA **cd)
 {
 	if (!cd || !*cd) return;
 
-	if ((*cd)->flag != 0) free((*cd)->name);
+	/* name is allocated contiguous with cd */
 	if (!(*cd)->free) {
 		free((*cd)->data);
 	} else {
@@ -352,10 +367,10 @@ void cf_section_free(CONF_SECTION **cs)
 		}
 	}
 
-	if ((*cs)->name1)
-		free((*cs)->name1);
-	if ((*cs)->name2)
-		free((*cs)->name2);
+	/*
+	 *	Name1 and name2 are allocated contiguous with
+	 *	cs.
+	 */
 	if ((*cs)->pair_tree)
 		rbtree_free((*cs)->pair_tree);
 	if ((*cs)->section_tree)
@@ -383,27 +398,32 @@ void cf_section_free(CONF_SECTION **cs)
 static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 				      CONF_SECTION *parent)
 {
+	size_t name1_len, name2_len = 0;
+	char *p;
 	CONF_SECTION	*cs;
 
 	if (!name1) return NULL;
 
-	cs = rad_malloc(sizeof(*cs));
+	name1_len = strlen(name1) + 1;
+	if (name2) name2_len = strlen(name2) + 1;
+
+	p = rad_malloc(sizeof(*cs) + name1_len + name2_len);
+
+	cs = (CONF_SECTION *) p;
 	memset(cs, 0, sizeof(*cs));
 	cs->item.type = CONF_ITEM_SECTION;
 	cs->item.parent = parent;
-	cs->name1 = strdup(name1);
-	if (!cs->name1) {
-		cf_section_free(&cs);
-		return NULL;
-	}
+
+	p += sizeof(*cs);
+	memcpy(p, name1, name1_len);
+	cs->name1 = p;
 
 	if (name2 && *name2) {
-		cs->name2 = strdup(name2);
-		if (!cs->name2) {
-			cf_section_free(&cs);
-			return NULL;
-		}
+		p += name1_len;
+		memcpy(p, name2, name2_len);
+		cs->name2 = p;
 	}
+
 	cs->pair_tree = rbtree_create(pair_cmp, NULL, 0);
 	if (!cs->pair_tree) {
 		cf_section_free(&cs);
@@ -454,7 +474,7 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 				break;
 
 			case CONF_ITEM_SECTION: {
-				const CONF_SECTION *cs_new = cf_itemtosection(ci);
+				CONF_SECTION *cs_new = cf_itemtosection(ci);
 
 				if (!cs->section_tree) {
 					cs->section_tree = rbtree_create(section_cmp, NULL, 0);
@@ -509,11 +529,12 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 
 
 CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
-			     const CONF_SECTION *outercs,
+			     CONF_SECTION *outercs,
 			     const char *ptr)
 {
 	CONF_PAIR *cp;
-	const CONF_SECTION *cs = outercs, *next;
+	CONF_SECTION *next;
+	const CONF_SECTION *cs = outercs;
 	char name[8192];
 	char *p;
 
@@ -621,7 +642,7 @@ no_such_item:
 }
 
 
-CONF_SECTION *cf_top_section(const CONF_SECTION *cs)
+CONF_SECTION *cf_top_section(CONF_SECTION *cs)
 {
 	while (cs->item.parent != NULL) {
 		cs = cs->item.parent;
@@ -635,7 +656,7 @@ CONF_SECTION *cf_top_section(const CONF_SECTION *cs)
  *	Expand the variables in an input string.
  */
 static const char *cf_expand_variables(const char *cf, int *lineno,
-				       const CONF_SECTION *outercs,
+				       CONF_SECTION *outercs,
 				       char *output, const char *input)
 {
 	char *p;
@@ -684,7 +705,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			 *	Can't really happen because input lines are
 			 *	capped at 8k, which is sizeof(name)
 			 */
-			if ((end - ptr) >= sizeof(name)) {
+			if ((size_t) (end - ptr) >= sizeof(name)) {
 				radlog(L_ERR, "%s[%d]: Reference string is too large",
 				       cf, *lineno);
 				return NULL;
@@ -730,7 +751,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			 *	Can't really happen because input lines are
 			 *	capped at 8k, which is sizeof(name)
 			 */
-			if ((end - ptr) >= sizeof(name)) {
+			if ((size_t) (end - ptr) >= sizeof(name)) {
 				radlog(L_ERR, "%s[%d]: Environment variable name is too large",
 				       cf, *lineno);
 				return NULL;
@@ -977,7 +998,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 		 *	Handle subsections specially
 		 */
 		if (variables[i].type == PW_TYPE_SUBSECTION) {
-			const CONF_SECTION *subcs;
+			CONF_SECTION *subcs;
 			subcs = cf_section_sub_find(cs, variables[i].name);
 
 			/*
@@ -1039,11 +1060,11 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
  *	We're not really parsing it here, just checking if it's mostly
  *	well-formed.
  */
-static int condition_looks_ok(const char **ptr)
+static int condition_looks_ok(char **ptr)
 {
 	int num_braces = 1;
 	int quote = 0;
-	const char *p = *ptr;
+	char *p = *ptr;
 
 	while (*p) {
 		if (quote) {
@@ -1158,7 +1179,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 	char buf3[8192];
 	int t1, t2, t3;
 	char *cbuf = buf;
-	int len;
+	size_t len;
 
 	this = current;		/* add items here */
 
@@ -1437,7 +1458,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		case T_LBRACE:
 			if ((strcmp(buf1, "if") == 0) ||
 			    (strcmp(buf1, "elsif") == 0)) {
-				const char *end = ptr;
+				char *end = ptr;
 				CONF_SECTION *server;
 
 				if (!condition_looks_ok(&end)) {
@@ -1446,7 +1467,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 					return -1;
 				}
 
-				if ((end - ptr) >= (sizeof(buf2) - 1)) {
+				if ((size_t) (end - ptr) >= (sizeof(buf2) - 1)) {
 					radlog(L_ERR, "%s[%d]: Statement too complicated after \"%s\"",
 					       filename, *lineno, buf1);
 					return -1;
@@ -1677,7 +1698,7 @@ CONF_PAIR *cf_pair_find(const CONF_SECTION *cs, const char *name)
  * Return the attr of a CONF_PAIR
  */
 
-char *cf_pair_attr(CONF_PAIR *pair)
+const char *cf_pair_attr(CONF_PAIR *pair)
 {
 	return (pair ? pair->attr : NULL);
 }
@@ -1686,7 +1707,7 @@ char *cf_pair_attr(CONF_PAIR *pair)
  * Return the value of a CONF_PAIR
  */
 
-char *cf_pair_value(CONF_PAIR *pair)
+const char *cf_pair_value(CONF_PAIR *pair)
 {
 	return (pair ? pair->value : NULL);
 }
@@ -1764,7 +1785,7 @@ const char *cf_section_name2(const CONF_SECTION *cs)
 /*
  * Find a value in a CONF_SECTION
  */
-char *cf_section_value_find(const CONF_SECTION *cs, const char *attr)
+const char *cf_section_value_find(const CONF_SECTION *cs, const char *attr)
 {
 	CONF_PAIR	*cp;
 
@@ -1780,7 +1801,7 @@ char *cf_section_value_find(const CONF_SECTION *cs, const char *attr)
  */
 
 CONF_PAIR *cf_pair_find_next(const CONF_SECTION *cs,
-			     const CONF_PAIR *pair, const char *attr)
+			     CONF_PAIR *pair, const char *attr)
 {
 	CONF_ITEM	*ci;
 
@@ -1999,17 +2020,24 @@ int cf_item_is_pair(CONF_ITEM *item)
 static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, const char *name,
 				void *data, void (*data_free)(void *))
 {
+	char *p;
+	size_t name_len;
 	CONF_DATA *cd;
 
-	cd = rad_malloc(sizeof(*cd));
+	name_len = strlen(name) + 1;
+
+	p = rad_malloc(sizeof(*cd) + name_len);
+	cd = (CONF_DATA *) p;
 	memset(cd, 0, sizeof(*cd));
 
 	cd->item.type = CONF_ITEM_DATA;
 	cd->item.parent = parent;
-	cd->name = strdup(name);
 	cd->data = data;
 	cd->free = data_free;
 
+	p += sizeof(*cd);
+	memcpy(p, name, name_len);
+	cd->name = p;
 	return cd;
 }
 

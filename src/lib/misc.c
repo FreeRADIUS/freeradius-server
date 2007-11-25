@@ -513,9 +513,9 @@ static const char *hextab = "0123456789abcdef";
  *
  *	We allow: hex == bin
  */
-int fr_hex2bin(const char *hex, uint8_t *bin, int len)
+size_t fr_hex2bin(const char *hex, uint8_t *bin, size_t len)
 {
-	int i;
+	size_t i;
 	char *c1, *c2;
 
 	for (i = 0; i < len; i++) {
@@ -534,9 +534,9 @@ int fr_hex2bin(const char *hex, uint8_t *bin, int len)
  *
  *	If the output buffer isn't long enough, we have a buffer overflow.
  */
-void fr_bin2hex(const uint8_t *bin, char *hex, int len)
+void fr_bin2hex(const uint8_t *bin, char *hex, size_t len)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < len; i++) {
 		hex[0] = hextab[((*bin) >> 4) & 0x0f];

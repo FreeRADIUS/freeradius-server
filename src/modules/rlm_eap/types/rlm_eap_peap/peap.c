@@ -150,9 +150,9 @@ static int eapmessage_verify(const uint8_t *data, unsigned int data_len)
  *	Convert a pseudo-EAP packet to a list of VALUE_PAIR's.
  */
 static VALUE_PAIR *eap2vp(EAP_DS *eap_ds,
-			  const uint8_t *data, unsigned int data_len)
+			  const uint8_t *data, size_t data_len)
 {
-	int total;
+	size_t total;
 	VALUE_PAIR *vp = NULL, *head, **tail;
 
 	vp = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
@@ -212,7 +212,7 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 	 */
 #ifndef NDEBUG
 	if (debug_flag > 2) {
-		int i, total;
+		size_t i, total;
 		VALUE_PAIR *this;
 
 		total = 0;
@@ -567,7 +567,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	const uint8_t	*data;
 	unsigned int data_len;
 #ifndef NDEBUG
-	int i;
+	size_t i;
 #endif
 
 	REQUEST *request = handler->request;

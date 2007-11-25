@@ -32,9 +32,12 @@ RCSID("$Id$")
 
 static const char * hex = "0123456789ABCDEF";
 
+/*
+ *	FIXME: use functions in freeradius
+ */
 static void tohex (const unsigned char * src, size_t len, char *dst)
 {
-	int i;
+	size_t i;
 	for (i=0; i<len; i++) {
 		dst[(i*2)] = hex[(src[i] >> 4)];
 		dst[(i*2) + 1] = hex[(src[i]&0x0F)];
@@ -42,7 +45,7 @@ static void tohex (const unsigned char * src, size_t len, char *dst)
 	dst[(i*2)] = 0;
 }
 
-static void ntpwdhash (char *szHash, const char *szPassword)
+static void ntpwdhash (uint8_t *szHash, const char *szPassword)
 {
 	char szUnicodePass[513];
 	char nPasswordLen;
@@ -59,7 +62,7 @@ static void ntpwdhash (char *szHash, const char *szPassword)
 	}
 
 	/* Encrypt Unicode password to a 16-byte MD4 hash */
-	fr_md4_calc(szHash, szUnicodePass, (nPasswordLen<<1) );
+	fr_md4_calc(szHash, (uint8_t *) szUnicodePass, (nPasswordLen<<1) );
 }
 
 
@@ -68,7 +71,7 @@ int main (int argc, char *argv[])
 {
 	int i, l;
 	char password[1024];
-	char hash[16];
+	uint8_t hash[16];
 	char ntpass[33];
 	char lmpass[33];
 

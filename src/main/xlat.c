@@ -97,9 +97,9 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 /*
  *	Dynamically translate for check:, request:, reply:, etc.
  */
-static int xlat_packet(void *instance, REQUEST *request,
-		       char *fmt, char *out, size_t outlen,
-		       RADIUS_ESCAPE_STRING func)
+static size_t xlat_packet(void *instance, REQUEST *request,
+			  char *fmt, char *out, size_t outlen,
+			  RADIUS_ESCAPE_STRING func)
 {
 	DICT_ATTR	*da;
 	VALUE_PAIR	*vp;
@@ -154,7 +154,7 @@ static int xlat_packet(void *instance, REQUEST *request,
 	 */
 	da = dict_attrbyname(fmt);
 	if (!da) {
-		int count;
+		size_t count;
 		const char *p = strchr(fmt, '[');
 		char buffer[256];
 
@@ -373,9 +373,9 @@ static int xlat_packet(void *instance, REQUEST *request,
 /*
  *	Pull %{0} to %{8} out of the packet.
  */
-static int xlat_regex(void *instance, REQUEST *request,
-		      char *fmt, char *out, size_t outlen,
-		      RADIUS_ESCAPE_STRING func)
+static size_t xlat_regex(void *instance, REQUEST *request,
+			 char *fmt, char *out, size_t outlen,
+			 RADIUS_ESCAPE_STRING func)
 {
 	char *regex;
 
@@ -418,7 +418,7 @@ static int xlat_cmp(const void *a, const void *b)
 /*
  *	find the appropriate registered xlat function.
  */
-static const xlat_t *xlat_find(const char *module)
+static xlat_t *xlat_find(const char *module)
 {
 	xlat_t my_xlat;
 
@@ -427,15 +427,7 @@ static const xlat_t *xlat_find(const char *module)
 	 */
 	if ((dict_attrbyname(module) != NULL) ||
 	    (strchr(module, '[') != NULL)) {
-		static const xlat_t dict_xlat = {
-			"request",
-			7,
-			&xlat_inst[1],
-			xlat_packet,
-			TRUE
-		};
-
-		return &dict_xlat;
+		module = "request";
 	}
 
 	strlcpy(my_xlat.module, module, sizeof(my_xlat.module));
@@ -621,7 +613,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		/*
 		 *	This is really bad, but it works.
 		 */
-		size_t len1, len2;
+		int len1, len2;
 		size_t mylen = strlen(p);
 		char *first = rad_malloc(mylen);
 		char *second = rad_malloc(mylen);
@@ -904,7 +896,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
  *  we use this one.  It simplifies the coding, as the check for
  *  func == NULL only happens once.
  */
-static int xlat_copy(char *out, int outlen, const char *in)
+static size_t xlat_copy(char *out, size_t outlen, const char *in)
 {
 	int freespace = outlen;
 

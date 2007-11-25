@@ -114,7 +114,7 @@ static VALUE_PAIR **decode_string(REQUEST *request, const char *string)
 /*
  *	Do xlat of strings.
  */
-static int exec_xlat(void *instance, REQUEST *request,
+static size_t exec_xlat(void *instance, REQUEST *request,
 		     char *fmt, char *out, size_t outlen,
 		     UNUSED RADIUS_ESCAPE_STRING func)
 {

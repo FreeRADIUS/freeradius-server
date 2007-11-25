@@ -337,6 +337,10 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 	    ((eap_ds->response->length == EAP_HEADER_LEN + 2) &&
 	     ((eaptls_packet->flags & 0xc0) == 0x00))) {
 
+#if 1
+			radlog(L_INFO, "XXX rlm_eap_tls: Received EAP-TLS ACK message");
+			return eaptls_ack_handler(handler);
+#else
 		if (prev_eap_ds->request->id == eap_ds->response->id) {
 			/*
 			 *	Run the ACK handler directly from here.
@@ -347,6 +351,7 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 			radlog(L_ERR, "rlm_eap_tls: Received Invalid EAP-TLS ACK message");
 			return EAPTLS_INVALID;
 		}
+#endif
 	}
 
 	/*

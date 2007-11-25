@@ -320,7 +320,7 @@ static void     fieldcpy(char *, char **);
 #endif
 static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *,VALUE_PAIR **,int);
 static int ldap_groupcmp(void *, REQUEST *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
-static int ldap_xlat(void *, REQUEST *, char *, char *, size_t, RADIUS_ESCAPE_STRING);
+static size_t ldap_xlat(void *, REQUEST *, char *, char *, size_t, RADIUS_ESCAPE_STRING);
 static LDAP    *ldap_connect(void *instance, const char *, const char *, int, int *, char **);
 static int     read_mappings(ldap_instance* inst);
 
@@ -695,8 +695,6 @@ read_mappings(ldap_instance* inst)
 		if (token_count == 3) {
 			operator = T_OP_INVALID; /* use defaults */
 		} else {
-			char *ptr;
-
 			ptr = opstring;
 			operator = gettoken(&ptr, buf, sizeof(buf));
 			if ((operator < T_OP_ADD) || (operator > T_OP_CMP_EQ)) {
@@ -1047,7 +1045,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req,
 	}
 	if ((vals = ldap_get_values(conn->ld, msg,
 				    inst->groupmemb_attr)) != NULL) {
-		unsigned int i = 0;
+		int i = 0;
 		char found = 0;
 
 		for (;i < ldap_count_values(vals);i++){
@@ -1104,12 +1102,12 @@ static int ldap_groupcmp(void *instance, REQUEST *req,
  * ldap_xlat()
  * Do an xlat on an LDAP URL
  */
-static int ldap_xlat(void *instance, REQUEST *request, char *fmt,
+static size_t ldap_xlat(void *instance, REQUEST *request, char *fmt,
 		     char *out, size_t freespace, RADIUS_ESCAPE_STRING func)
 {
 	char url[MAX_FILTER_STR_LEN];
 	int res;
-	int ret = 0;
+	size_t ret = 0;
 	ldap_instance *inst = instance;
 	LDAPURLDesc *ldap_url;
 	LDAPMessage *result = NULL;
@@ -1469,7 +1467,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 					p = strchr(value, '}');
 					if (!p) continue;
-					if ((p - value + 1) >= sizeof(autobuf))
+					if ((size_t)(p - value + 1) >= sizeof(autobuf))
 						continue; /* paranoia */
 					memcpy(autobuf, value, p - value + 1);
 					autobuf[p - value + 1] = '\0';

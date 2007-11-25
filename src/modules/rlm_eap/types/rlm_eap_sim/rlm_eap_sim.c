@@ -49,7 +49,7 @@ struct eap_sim_server_state {
  * Add value pair to reply
  */
 static void add_reply(VALUE_PAIR** vp,
-		      const char* name, const char* value, int len)
+		      const char* name, const uint8_t *value, size_t len)
 {
 	VALUE_PAIR *reply_attr;
 	reply_attr = pairmake(name, "", T_OP_EQ);
@@ -487,8 +487,8 @@ static int process_eap_sim_start(EAP_HANDLER *handler, VALUE_PAIR *vps)
 static int process_eap_sim_challenge(EAP_HANDLER *handler, VALUE_PAIR *vps)
 {
 	struct eap_sim_server_state *ess;
-	unsigned char srescat[EAPSIM_SRES_SIZE*3];
-	unsigned char calcmac[EAPSIM_CALCMAC_SIZE];
+	uint8_t srescat[EAPSIM_SRES_SIZE*3];
+	uint8_t calcmac[EAPSIM_CALCMAC_SIZE];
 
 	ess = (struct eap_sim_server_state *)handler->opaque;
 
@@ -503,7 +503,7 @@ static int process_eap_sim_challenge(EAP_HANDLER *handler, VALUE_PAIR *vps)
 		DEBUG2("MAC check succeed\n");
 	} else {
 		int i, j;
-		unsigned char macline[20*3];
+		char macline[20*3];
 		char *m = macline;
 
 		j=0;

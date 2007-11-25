@@ -2425,7 +2425,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
  *	int *pwlen is updated to the new length of the encrypted
  *	password - a multiple of 16 bytes.
  */
-int rad_pwencode(char *passwd, int *pwlen, const char *secret,
+int rad_pwencode(char *passwd, size_t *pwlen, const char *secret,
 		 const uint8_t *vector)
 {
 	FR_MD5_CTX context, old;
@@ -2490,12 +2490,13 @@ int rad_pwencode(char *passwd, int *pwlen, const char *secret,
 /*
  *	Decode password.
  */
-int rad_pwdecode(char *passwd, int pwlen, const char *secret,
+int rad_pwdecode(char *passwd, size_t pwlen, const char *secret,
 		 const uint8_t *vector)
 {
 	FR_MD5_CTX context, old;
 	uint8_t	digest[AUTH_VECTOR_LEN];
-	int	i, n, secretlen;
+	int	i;
+	size_t	n, secretlen;
 
 	/*
 	 *	The RFC's say that the maximum is 128.
@@ -2561,7 +2562,7 @@ int rad_pwdecode(char *passwd, int pwlen, const char *secret,
  *      This is per RFC-2868 which adds a two char SALT to the initial intermediate
  *      value MD5 hash.
  */
-int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret,
+int rad_tunnel_pwencode(char *passwd, size_t *pwlen, const char *secret,
 			const uint8_t *vector)
 {
 	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
@@ -2644,7 +2645,7 @@ int rad_tunnel_pwencode(char *passwd, int *pwlen, const char *secret,
  *      initial intermediate value, to differentiate it from the
  *      above.
  */
-int rad_tunnel_pwdecode(uint8_t *passwd, int *pwlen, const char *secret,
+int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, const char *secret,
 			const uint8_t *vector)
 {
 	FR_MD5_CTX  context, old;

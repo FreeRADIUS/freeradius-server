@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include "rlm_expr.h"
 
 /*
  *	Compare a Connect-Info and a Connect-Rate

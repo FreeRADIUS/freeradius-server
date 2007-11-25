@@ -162,11 +162,11 @@ void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
  *	It's in the TLS module simply because it's only a few lines
  *	of code, and it needs access to the TLS PRF functions.
  */
-void eapttls_gen_challenge(SSL *s, char *buffer, int size)
+void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 {
-	unsigned char out[32], buf[32];
-	unsigned char seed[sizeof(EAPTLS_PRF_CHALLENGE)-1 + 2*SSL3_RANDOM_SIZE];
-	unsigned char *p = seed;
+	uint8_t out[32], buf[32];
+	uint8_t seed[sizeof(EAPTLS_PRF_CHALLENGE)-1 + 2*SSL3_RANDOM_SIZE];
+	uint8_t *p = seed;
 
 	memcpy(p, EAPTLS_PRF_CHALLENGE, sizeof(EAPTLS_PRF_CHALLENGE)-1);
 	p += sizeof(EAPTLS_PRF_CHALLENGE)-1;

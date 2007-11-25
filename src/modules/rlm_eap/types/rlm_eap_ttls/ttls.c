@@ -187,13 +187,13 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
  *	Convert diameter attributes to our VALUE_PAIR's
  */
 static VALUE_PAIR *diameter2vp(SSL *ssl,
-			       const uint8_t *data, unsigned int data_len)
+			       const uint8_t *data, size_t data_len)
 {
 	uint32_t	attr;
 	uint32_t	length;
-	unsigned int	offset;
-	int		size;
-	unsigned int	data_left = data_len;
+	size_t		offset;
+	size_t		size;
+	size_t		data_left = data_len;
 	VALUE_PAIR	*first = NULL;
 	VALUE_PAIR	**last = &first;
 	VALUE_PAIR	*vp;
@@ -573,7 +573,7 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 		 *	Align the data to a multiple of 4 bytes.
 		 */
 		if ((total & 0x03) != 0) {
-			unsigned int i;
+			size_t i;
 
 			length = 4 - (total & 0x03);
 			for (i = 0; i < length; i++) {
@@ -589,7 +589,7 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 	 */
 	if (total > 0) {
 #ifndef NDEBUG
-		unsigned int i;
+		size_t i;
 
 		if (debug_flag > 2) {
 			for (i = 0; i < total; i++) {
@@ -935,7 +935,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	VALUE_PAIR *vp;
 	ttls_tunnel_t *t;
 	const uint8_t *data;
-	unsigned int data_len;
+	size_t data_len;
 	REQUEST *request = handler->request;
 
 	/*
@@ -979,7 +979,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 #ifndef NDEBUG
 	if (debug_flag > 2) {
-		unsigned int i;
+		size_t i;
 
 		for (i = 0; i < data_len; i++) {
 			if ((i & 0x0f) == 0) printf("  TTLS tunnel data in %04x: ", i);

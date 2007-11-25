@@ -293,8 +293,6 @@ static int logintime_instantiate(CONF_SECTION *conf, void **instance)
 
 static int logintime_detach(void *instance)
 {
-	rlm_logintime_t *data = (rlm_logintime_t *) instance;
-
 	paircompare_unregister(PW_CURRENT_TIME, timecmp);
 	paircompare_unregister(PW_TIME_OF_DAY, time_of_day);
 	free(instance);
@@ -313,7 +311,7 @@ static int logintime_detach(void *instance)
 module_t rlm_logintime = {
 	RLM_MODULE_INIT,
 	"logintime",
-	RLM_TYPE_THREAD_SAFE,		/* type */
+	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
 	logintime_instantiate,		/* instantiation */
 	logintime_detach,		/* detach */
 	{

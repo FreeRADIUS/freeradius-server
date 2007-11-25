@@ -150,7 +150,7 @@ static int pdb_decode_acct_ctrl(const char *p)
  *	ntpwdhash converts Unicode password to 16-byte NT hash
  *	with MD4
  */
-static void ntpwdhash (unsigned char *szHash, const char *szPassword)
+static void ntpwdhash (uint8_t *szHash, const char *szPassword)
 {
 	char szUnicodePass[513];
 	int nPasswordLen;
@@ -167,7 +167,7 @@ static void ntpwdhash (unsigned char *szHash, const char *szPassword)
 	}
 
 	/* Encrypt Unicode password to a 16-byte MD4 hash */
-	fr_md4_calc(szHash, szUnicodePass, (nPasswordLen<<1) );
+	fr_md4_calc(szHash, (uint8_t *) szUnicodePass, (nPasswordLen<<1) );
 }
 
 
@@ -186,7 +186,8 @@ static void challenge_hash( const uint8_t *peer_challenge,
 	fr_SHA1Init(&Context);
 	fr_SHA1Update(&Context, peer_challenge, 16);
 	fr_SHA1Update(&Context, auth_challenge, 16);
-	fr_SHA1Update(&Context, user_name, strlen(user_name));
+	fr_SHA1Update(&Context, (const uint8_t *) user_name,
+		      strlen(user_name));
 	fr_SHA1Final(hash, &Context);
 	memcpy(challenge, hash, 8);
 }
@@ -199,7 +200,7 @@ static void challenge_hash( const uint8_t *peer_challenge,
 static void auth_response(const char *username,
 			  const uint8_t *nt_hash_hash,
 			  uint8_t *ntresponse,
-			  char *peer_challenge, char *auth_challenge,
+			  uint8_t *peer_challenge, uint8_t *auth_challenge,
 			  char *response)
 {
 	fr_SHA1_CTX Context;
@@ -218,8 +219,8 @@ static void auth_response(const char *username,
 
 	static const char hex[16] = "0123456789ABCDEF";
 
-	int i;
-        char challenge[8];
+	size_t i;
+        uint8_t challenge[8];
 	uint8_t digest[20];
 
 	fr_SHA1Init(&Context);
@@ -275,7 +276,7 @@ typedef struct rlm_mschap_t {
  *	Pulls NT-Response, LM-Response, or Challenge from MSCHAP
  *	attributes.
  */
-static int mschap_xlat(void *instance, REQUEST *request,
+static size_t mschap_xlat(void *instance, REQUEST *request,
 		       char *fmt, char *out, size_t outlen,
 		       RADIUS_ESCAPE_STRING func)
 {
@@ -556,7 +557,7 @@ static int mschap_xlat(void *instance, REQUEST *request,
 			return 0;
 
 		DEBUG("rlm_mschap: LM-Hash: %s",p);
-		smbdes_lmpwdhash(p,buffer);
+		smbdes_lmpwdhash(p, buffer);
 		fr_bin2hex(buffer, out, 16);
 		out[32] = '\0';
 		DEBUG("rlm_mschap: LM-Hash: Result: %s",out);
@@ -708,7 +709,7 @@ void mschap_add_reply(VALUE_PAIR** vp, unsigned char ident,
  *	Add MPPE attributes to the reply.
  */
 static void mppe_add_reply(VALUE_PAIR **vp,
-			   const char* name, const char* value, int len)
+			   const char* name, const uint8_t * value, int len)
 {
        VALUE_PAIR *reply_attr;
        reply_attr = pairmake(name, "", T_OP_EQ);
@@ -786,7 +787,7 @@ static int do_mschap(rlm_mschap_t *inst,
 		 *	here minimizes work for later.
 		 */
 		if (password && (password->attribute == PW_NT_PASSWORD)) {
-			fr_md4_calc(nthashhash, password->vp_strvalue, 16);
+			fr_md4_calc(nthashhash, password->vp_octets, 16);
 		} else {
 			memset(nthashhash, 0, 16);
 		}
@@ -1030,7 +1031,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	VALUE_PAIR *username;
 	VALUE_PAIR *reply_attr;
 	uint8_t nthashhash[16];
-	uint8_t msch2resp[42];
+	char msch2resp[42];
 	char *username_string;
 	int chap = 0;
 
@@ -1079,7 +1080,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		if ((lm_password->length == 16) ||
 		    ((lm_password->length == 32) &&
 		     (fr_hex2bin(lm_password->vp_strvalue,
-				   lm_password->vp_strvalue, 16) == 16))) {
+				 lm_password->vp_octets, 16) == 16))) {
 			DEBUG2("  rlm_mschap: Found LM-Password");
 			lm_password->length = 16;
 
@@ -1097,7 +1098,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			radlog(L_ERR, "No memory");
 		} else {
 			smbdes_lmpwdhash(password->vp_strvalue,
-				       lm_password->vp_strvalue);
+					 lm_password->vp_octets);
 			lm_password->length = 16;
 			pairadd(&request->config_items, lm_password);
 		}
@@ -1111,7 +1112,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		if ((nt_password->length == 16) ||
 		    ((nt_password->length == 32) &&
 		     (fr_hex2bin(nt_password->vp_strvalue,
-				   nt_password->vp_strvalue, 16) == 16))) {
+				 nt_password->vp_octets, 16) == 16))) {
 			DEBUG2("  rlm_mschap: Found NT-Password");
 			nt_password->length = 16;
 
@@ -1128,7 +1129,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			radlog(L_ERR, "No memory");
 			return RLM_MODULE_FAIL;
 		} else {
-			ntpwdhash(nt_password->vp_strvalue,
+			ntpwdhash(nt_password->vp_octets,
 				  password->vp_strvalue);
 			nt_password->length = 16;
 			pairadd(&request->config_items, nt_password);
