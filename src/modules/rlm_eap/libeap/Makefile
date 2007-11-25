@@ -18,7 +18,7 @@ LINK_MODE	= -export-dynamic
 else
 LINK_MODE	= -static
 endif
-TARGET		= $(LIBPREFIX)eap
+TARGET		= $(LIBPREFIX)freeradius-eap
 
 # Define new rule for libtool objects
 %.lo: %.c
@@ -29,7 +29,7 @@ all: $(TARGET).la
 $(TARGET).la: $(LT_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
 	$(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^ \
-	$(top_builddir)/src/lib/libradius.la $(LIBS)
+	$(LIBRADIUS) $(LIBS)
 
 $(LT_OBJS): $(INCLUDES)
 
