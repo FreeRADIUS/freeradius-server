@@ -18,15 +18,19 @@ RCSID("$Id$")
 #ifdef HAVE_PTHREAD_H
 #include	<pthread.h>
 
+#if 0
 /* Thread safe DNS lookups */
-/* TODO There are some systems that use the same hostent structure
-    to return for gethostbyname() & gethostbyaddr(), if that is the
-    case then use only one mutex instead of seperate mutexes
+/*
+ *	FIXME: There are some systems that use the same hostent
+ *	structure to return for gethostbyname() & gethostbyaddr(), if
+ *	that is the case then use only one mutex instead of separate
+ *	mutexes
  */
 static int fr_hostbyname = 0;
 static int fr_hodtbyaddr = 0;
 static pthread_mutex_t fr_hostbyname_mutex;
 static pthread_mutex_t fr_hodtbyaddr_mutex;
+#endif
 #endif
 
 #undef LOCAL_GETHOSTBYNAMERSTYLE

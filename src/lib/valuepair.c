@@ -622,7 +622,7 @@ static char *mystrtok(char **ptr, const char *sep)
  *	Turn printable string into time_t
  *	Returns -1 on error, 0 on OK.
  */
-static int gettime(const char *valstr, uint32_t *lvalue)
+static int gettime(const char *valstr, time_t *date)
 {
 	int		i;
 	time_t		t;
@@ -635,7 +635,7 @@ static int gettime(const char *valstr, uint32_t *lvalue)
 	/*
 	 * Test for unix timestamp date
 	 */
-	*lvalue = strtoul(valstr, &tail, 10);
+	*date = strtoul(valstr, &tail, 10);
 	if (*tail == '\0') {
 		return 0;
 	}
@@ -752,7 +752,7 @@ static int gettime(const char *valstr, uint32_t *lvalue)
 	t = mktime(tm);
 	if (t == (time_t) -1) return -1;
 
-	*lvalue = t;
+	*date = t;
 
 	return 0;
 }
@@ -771,7 +771,8 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 {
 	char		*p, *s=0;
 	const char	*cp, *cs;
-	int		length, x;
+	int		x;
+	size_t		length;
 	DICT_VALUE	*dval;
 
 	/*
@@ -1089,9 +1090,9 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 		case PW_TYPE_ETHERNET:
 			{
-				int i = 0;
 				const char *c1, *c2;
 
+				length = 0;
 				cp = value;
 				while (*cp) {
 					if (cp[1] == ':') {
@@ -1108,12 +1109,12 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 					} else {
 						c1 = c2 = NULL;
 					}
-					if (!c1 || !c2 || (i >= sizeof(vp->vp_ether))) {
+					if (!c1 || !c2 || (length >= sizeof(vp->vp_ether))) {
 						librad_log("failed to parse Ethernet address \"%s\"", value);
 						return NULL;
 					}
-					vp->vp_ether[i] = ((c1-hextab)<<4) + (c2-hextab);
-					i++;
+					vp->vp_ether[length] = ((c1-hextab)<<4) + (c2-hextab);
+					length++;
 				}
 			}
 			vp->length = 6;

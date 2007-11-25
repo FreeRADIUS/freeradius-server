@@ -372,7 +372,6 @@ static void DeleteFixup(rbtree_t *tree, rbnode_t *X, rbnode_t *Parent)
  */
 void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 {
-	int fixup = 0;
 	rbnode_t *X, *Y;
 	rbnode_t *Parent;
 
