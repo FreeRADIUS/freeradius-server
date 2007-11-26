@@ -100,7 +100,7 @@ void init(){
  */
 static int tnc_initiate(void *type_data, EAP_HANDLER *handler)
 {
-	DEBUG("§§§§§§§§§§§§§§§§§§§§§§§§§ tnc_initiate: %d", handler->timestamp);
+	DEBUG("tnc_initiate: %d", handler->timestamp);
     if(vlanAccess==0 || vlanIsolate==0 || pathToSO==0){
         init();
     }
