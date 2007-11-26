@@ -8,10 +8,10 @@ if test x$with_[]modname != xno; then
 	## everyone has it.
 	AC_CHECK_HEADERS(malloc.h)
 
-	targetname=modname     # keep this!  Don't change!
+	targetname=modname
 else
-	targetname=            # keep this!  Don't change!
-	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+	targetname=
+	echo \*\*\* module modname is disabled.
 fi
 
 dnl  Don't change this section.
@@ -30,5 +30,5 @@ AC_SUBST(eap_tnc_ldflags)
 
 dnl AC_CONFIG_HEADER(config.h)
 
-AC_SUBST(targetname)  # keep this!  Don't change!
-AC_OUTPUT(Makefile)  # keep this!  Don't change!
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)
