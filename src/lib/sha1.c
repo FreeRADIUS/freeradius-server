@@ -10,24 +10,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/autoconf.h>
-
-#include <string.h>
-
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
-
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
-
-#ifdef HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif
+#include <freeradius-devel/libradius.h>
 
 #include "../include/sha1.h"
 

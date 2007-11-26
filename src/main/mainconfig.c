@@ -279,7 +279,7 @@ static int r_mkdir(const char *part)
 	if (stat(part, &st) == 0)
 		return(0);
 
-	ptr = strrchr(part, '/');
+	ptr = strrchr(part, FR_DIR_SEP);
 
 	if (ptr == part)
 		return(0);
@@ -306,7 +306,7 @@ static int radlogdir_iswritable(const char *effectiveuser)
 	struct passwd *pwent;
 #endif
 
-	if (!radlog_dir || radlog_dir[0] != '/')
+	if (!radlog_dir || FR_DIR_IS_RELATIVE(radlog_dir))
 		return(0);
 
 	if (r_mkdir(radlog_dir) != 0)

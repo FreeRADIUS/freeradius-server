@@ -373,6 +373,11 @@ int gettimeofday (struct timeval *tv, void *tz);
 #ifdef WIN32
 #undef mkdir
 #define mkdir(_d, _p) mkdir(_d)
+#define FR_DIR_SEP '\\'
+#define FR_DIR_IS_RELATIVE(p) ((*p && (p[1] != ':')) || ((*p != '\\') && (*p != '\\')))
+#else
+#define FR_DIR_SEP '/'
+#define FR_DIR_IS_RELATIVE(p) ((*p) != '/')
 #endif
 
 #ifdef HAVE_SYS_LOCKING_H

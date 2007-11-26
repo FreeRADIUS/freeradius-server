@@ -151,10 +151,10 @@ parse_again:
 				 *	files *relative* to the current
 				 *	file.
 				 */
-				if (*s != '/') {
+				if (FR_DIR_IS_RELATIVE(s)) {
 					strlcpy(newfile, file,
 						sizeof(newfile));
-					ptr = strrchr(newfile, '/');
+					ptr = strrchr(newfile, FR_DIR_SEP);
 					strcpy(ptr + 1, s);
 					s = newfile;
 				}

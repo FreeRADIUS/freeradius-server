@@ -1146,7 +1146,7 @@ static const char *cf_local_file(CONF_SECTION *cs, const char *local,
 	const char *p;
 	CONF_SECTION *parentcs = cf_top_section(cs);
 
-	p = strrchr(parentcs->item.filename, '/');
+	p = strrchr(parentcs->item.filename, FR_DIR_SEP);
 	if (!p) return local;
 
 	dirsize = (p - parentcs->item.filename) + 1;
@@ -1276,7 +1276,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			value = cf_expand_variables(filename, lineno, this, buf, buf2);
 			if (!value) return -1;
 
-			if (value[0] == '/') relative = 0;
+			if (!FR_DIR_IS_RELATIVE(value)) relative = 0;
 
 			if (relative) {
 				value = cf_local_file(current, value, buf3,
@@ -1645,7 +1645,7 @@ CONF_SECTION *cf_file_read(const char *filename)
 	cp = cf_pair_alloc("confdir", filename, T_OP_SET, T_BARE_WORD, cs);
 	if (!cp) return NULL;
 
-	p = strrchr(cp->value, '/');
+	p = strrchr(cp->value, FR_DIR_SEP);
 	if (p) *p = '\0';
 
 	cp->item.filename = "internal";

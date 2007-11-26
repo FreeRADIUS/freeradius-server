@@ -280,7 +280,7 @@ int rad_mkdir(char *directory, int mode)
 	 *	Look for the LAST directory name.  Try to create that,
 	 *	failing on any error.
 	 */
-	p = strrchr(directory, '/');
+	p = strrchr(directory, FR_DIR_SEP);
 	if (p != NULL) {
 		*p = '\0';
 		rcode = rad_mkdir(directory, mode);
@@ -297,7 +297,7 @@ int rad_mkdir(char *directory, int mode)
 		 *	Reset the directory delimiter, and go ask
 		 *	the system to make the directory.
 		 */
-		*p = '/';
+		*p = FR_DIR_SEP;
 	} else {
 		return 0;
 	}
