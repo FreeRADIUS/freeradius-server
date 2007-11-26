@@ -95,7 +95,7 @@ static const char *eap_types[] = {
   "mschapv2",			/* 26 */
   "27",
   "28",
-  "cisco_mschapv2"		/* 29 */
+  "cisco_mschapv2",		/* 29 */
   "30",
   "31",
   "32",
