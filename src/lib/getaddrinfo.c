@@ -68,8 +68,8 @@ static pthread_mutex_t fr_hodtbyaddr_mutex;
  */
 #if defined(LOCAL_GETHOSTBYNAMER) || defined(LOCAL_GETHOSTBYADDRR)
 #define BUFFER_OVERFLOW 255
-int copy_hostent(struct hostent *from, struct hostent *to,
-           char *buffer, int buflen, int *error)
+static int copy_hostent(struct hostent *from, struct hostent *to,
+			char *buffer, int buflen, int *error)
 {
     int i, len;
     char *ptr = buffer;
@@ -221,7 +221,7 @@ malloc_ai(int port, u_long addr, int socktype, int proto)
     }
 }
 
-char *
+const char *
 gai_strerror(int ecode)
 {
     switch (ecode) {
@@ -288,7 +288,7 @@ getaddrinfo(const char *hostname, const char *servname,
             port = htons(atoi(servname));
         else {
             struct servent *se;
-            char *pe_proto;
+            const char *pe_proto;
 
             switch (socktype) {
             case SOCK_DGRAM:
@@ -377,7 +377,7 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen,
 		char *serv, size_t servlen,
 		unsigned int flags)
 {
-    struct sockaddr_in *sin = (struct sockaddr_in *)sa;
+    const struct sockaddr_in *sin = (const struct sockaddr_in *)sa;
     struct hostent *hp;
     struct hostent result;
     char tmpserv[16];
@@ -406,24 +406,24 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen,
         /*  Reverse DNS lookup required */
 #ifdef GETHOSTBYADDRRSTYLE
 #if GETHOSTBYADDRRSTYLE == SYSVSTYLE
-            hp = gethostbyaddr_r((char *)&sin->sin_addr,
-                               sizeof(struct in_addr), AF_INET,
+            hp = gethostbyaddr_r((const char *)&sin->sin_addr,
+                               salen, AF_INET,
 			       &result, buffer, sizeof(buffer), &error);
 #elif GETHOSTBYADDRRSTYLE == GNUSTYLE
-            if (gethostbyaddr_r((char *)&sin->sin_addr,
-                               sizeof(struct in_addr), AF_INET,
+            if (gethostbyaddr_r((const char *)&sin->sin_addr,
+                               salen, AF_INET,
 				    &result, buffer, sizeof(buffer),
 				    &hp, &error) != 0) {
 			hp = NULL;
 	     }
 #else
-            hp = gethostbyaddr_r((char *)&sin->sin_addr,
-                               sizeof(struct in_addr), AF_INET,
+            hp = gethostbyaddr_r((const char *)&sin->sin_addr,
+                               salen, AF_INET,
 			       &result, buffer, sizeof(buffer), &error);
 #endif
 #else
-            hp = gethostbyaddr_r((char *)&sin->sin_addr,
-                               sizeof(struct in_addr), AF_INET,
+            hp = gethostbyaddr_r((const char *)&sin->sin_addr,
+                               salen, AF_INET,
 			       &result, buffer, sizeof(buffer), &error);
 #endif
             if (hp)

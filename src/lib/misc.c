@@ -230,6 +230,7 @@ static int inet_pton4(const char *src, struct in_addr *dst)
 }
 
 
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
 /* int
  * inet_pton6(src, dst)
  *	convert presentation level address to network order binary form.
@@ -293,7 +294,7 @@ inet_pton6(const char *src, unsigned char *dst)
 			continue;
 		}
 		if (ch == '.' && ((tp + INADDRSZ) <= endp) &&
-		    inet_pton4(curtok, tp) > 0) {
+		    inet_pton4(curtok, (struct in_addr *) tp) > 0) {
 			tp += INADDRSZ;
 			saw_xdigit = 0;
 			break;	/* '\0' was seen by inet_pton4(). */
@@ -326,6 +327,7 @@ inet_pton6(const char *src, unsigned char *dst)
 	memcpy(dst, tmp, IN6ADDRSZ);
 	return (1);
 }
+#endif
 
 /*
  *	Utility function, so that the rest of the server doesn't

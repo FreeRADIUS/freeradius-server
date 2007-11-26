@@ -29,10 +29,10 @@ RCSID("$Id$")
 #include	<ctype.h>
 
 #ifndef HAVE_CRYPT
-char *crypt(char *key, char *salt)
+char *crypt(UNUSED char *key, char *salt)
 {
 	/*log(L_ERR, "crypt() called but not implemented");*/
-	return "____fnord____";
+	return salt;
 }
 #endif
 
@@ -80,7 +80,7 @@ int strcasecmp(char *s1, char *s2)
 #endif
 
 #ifndef HAVE_INET_ATON
-int inet_aton(char *cp, struct in_addr *inp)
+int inet_aton(const char *cp, struct in_addr *inp)
 {
 	int	a1, a2, a3, a4;
 

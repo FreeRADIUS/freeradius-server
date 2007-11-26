@@ -112,7 +112,7 @@ struct tm *localtime_r(const time_t *l_clock, struct tm *result);
 char *ctime_r(const time_t *l_clock, char *l_buf);
 #endif
 
-#ifdef NEED_DECLARATION_CRYPT
+#if defined(NEED_DECLARATION_CRYPT) || !defined(HAVE_CRYPT)
 char *crypt(char *key, char *salt);
 #endif
 
@@ -124,9 +124,9 @@ int strncasecmp(char *s1, char *s2, int n);
 int strcasecmp(char *s1, char *s2);
 #endif
 
-#ifdef NEED_DECLARATION_INET_ATON
+#if defined(NEED_DECLARATION_INET_ATON) || !defined(HAVE_INET_ATON)
 struct in_addr;
-int inet_aton(char *cp, struct in_addr *inp);
+int inet_aton(const char *cp, struct in_addr *inp);
 #endif
 
 #ifndef HAVE_SETLINEBUF
@@ -322,7 +322,7 @@ extern int getaddrinfo (const char *__name,
 extern void freeaddrinfo (struct addrinfo *__ai);
 
 /* Convert error return from getaddrinfo() to a string.  */
-extern char *gai_strerror (int __ecode);
+extern const char *gai_strerror (int __ecode);
 #endif
 
 /* Translate a socket address to a location and service name. */
