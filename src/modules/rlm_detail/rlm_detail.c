@@ -271,25 +271,24 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		*p = '/';
 	} /* else there was no directory delimiter. */
 
-	/*
-	 *	Open & create the file, with the given permissions.
-	 */
-	if ((outfd = open(buffer, O_WRONLY | O_APPEND | O_CREAT,
-			  inst->detailperm)) < 0) {
-		radlog(L_ERR, "rlm_detail: Couldn't open file %s: %s",
-		       buffer, strerror(errno));
-		return RLM_MODULE_FAIL;
-	}
-
-	/*
-	 *	If we're not using locking, we'll just pass straight though
-	 *	the while loop.
-	 *	If we fail to aquire the filelock in 80 tries (approximately
-	 *	two seconds) we bail out.
-	 */
 	locked = 0;
 	lock_count = 0;
 	do {
+		/*
+		 *	Open & create the file, with the given
+		 *	permissions.
+		 */
+		if ((outfd = open(buffer, O_WRONLY | O_APPEND | O_CREAT,
+				  inst->detailperm)) < 0) {
+			radlog(L_ERR, "rlm_detail: Couldn't open file %s: %s",
+			       buffer, strerror(errno));
+			return RLM_MODULE_FAIL;
+		}
+
+		/*
+		 *	If we fail to aquire the filelock in 80 tries
+		 *	(approximately two seconds) we bail out.
+		 */
 		if (inst->locking) {
 			lseek(outfd, 0L, SEEK_SET);
 			if (rad_lockfd_nonblock(outfd, 0) < 0) {
@@ -298,15 +297,36 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 				tv.tv_usec = 25000;
 				select(0, NULL, NULL, NULL, &tv);
 				lock_count++;
-			} else {
-				DEBUG("rlm_detail: Acquired filelock, tried %d time(s)",
-				      lock_count + 1);
-				locked = 1;
+				continue;
 			}
-		}
-	} while (!locked && inst->locking && lock_count < 80);
 
-	if (!locked && inst->locking && lock_count >= 80) {
+			/*
+			 *	The file might have been deleted by
+			 *	radrelay while we tried to acquire
+			 *	the lock (race condition)
+			 */
+			if (fstat(outfd, &st) != 0) {
+				radlog(L_ERR, "rlm_detail: Couldn't stat file %s: %s",
+				       buffer, strerror(errno));
+				close(outfd);
+				return RLM_MODULE_FAIL;
+			}
+			if (st.st_nlink == 0) {
+				DEBUG("rlm_detail: File %s removed by another program, retrying",
+				      buffer);
+				close(outfd);
+				lock_count = 0;
+				continue;
+			}
+
+			DEBUG("rlm_detail: Acquired filelock, tried %d time(s)",
+			      lock_count + 1);
+			locked = 1;
+		}
+	} while (inst->locking && !locked && lock_count < 80);
+
+	if (inst->locking && !locked) {
+ 		close(outfd);
 		radlog(L_ERR, "rlm_detail: Failed to aquire filelock for %s, giving up",
 		       buffer);
 		return RLM_MODULE_FAIL;
