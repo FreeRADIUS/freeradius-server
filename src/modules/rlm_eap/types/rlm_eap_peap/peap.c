@@ -101,7 +101,7 @@ static int eapmessage_verify(const uint8_t *data, unsigned int data_len)
 {
 	const eap_packet_t *eap_packet = (const eap_packet_t *) data;
 	uint8_t eap_type;
-	char identity[256];
+	char buffer[256];
 
 	if (!data || (data_len <= 1)) {
 		return 0;
@@ -110,9 +110,8 @@ static int eapmessage_verify(const uint8_t *data, unsigned int data_len)
 	eap_type = *data;
 	switch (eap_type) {
 	case PW_EAP_IDENTITY:
-		memcpy(identity, data + 1, data_len - 1);
-		identity[data_len - 1] = '\0';
-		DEBUG2("  rlm_eap_peap: Identity - %s", identity);
+		DEBUG2("  rlm_eap_peap: Identity - %*s",
+		       data_len - 1, data + 1);
 		return 1;
 		break;
 
@@ -138,7 +137,7 @@ static int eapmessage_verify(const uint8_t *data, unsigned int data_len)
 	default:
 		DEBUG2("  rlm_eap_peap: EAP type %s",
 		       eaptype_type2name(eap_type,
-					 identity, sizeof(identity)));
+					 buffer, sizeof(buffer)));
 		return 1;
 		break;
 	}
@@ -155,6 +154,8 @@ static VALUE_PAIR *eap2vp(EAP_DS *eap_ds,
 	size_t total;
 	VALUE_PAIR *vp = NULL, *head, **tail;
 
+	if (data_len > 65535) return NULL; /* paranoia */
+
 	vp = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
 	if (!vp) {
 		DEBUG2("  rlm_eap_peap: Failure in creating VP");
@@ -169,17 +170,17 @@ static VALUE_PAIR *eap2vp(EAP_DS *eap_ds,
 	 */
 	vp->vp_octets[0] = PW_EAP_RESPONSE;
 	vp->vp_octets[1] = eap_ds->response->id;
-	vp->vp_octets[2] = 0;
-	vp->vp_octets[3] = EAP_HEADER_LEN + total;
+	vp->vp_octets[2] = (data_len + EAP_HEADER_LEN) >> 8;
+	vp->vp_octets[3] = (data_len + EAP_HEADER_LEN) & 0xff;
 
 	memcpy(vp->vp_octets + EAP_HEADER_LEN, data, total);
 	vp->length = EAP_HEADER_LEN + total;
 
 	head = vp;
+	tail = &(vp->next);
 	while (total < data_len) {
 		int vp_len;
 
-		tail = &(vp->next);
 
 		vp = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
 		if (!vp) {
@@ -194,6 +195,8 @@ static VALUE_PAIR *eap2vp(EAP_DS *eap_ds,
 		vp->length = vp_len;
 		
 		total += vp_len;
+		*tail = vp;
+		tail = &(vp->next);
 	}
 
 	return head;
@@ -699,7 +702,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	Add the State attribute, too, if it exists.
 	 */
 	if (t->state) {
-		DEBUG2("  PEAP: Adding old state with %02x %02x",
+		DEBUG2("  PEAP: Adding old state with %02x%02x",
 		       t->state->vp_octets[0], t->state->vp_octets[1]);
 		vp = paircopy(t->state);
 		if (vp) pairadd(&fake->packet->vps, vp);
