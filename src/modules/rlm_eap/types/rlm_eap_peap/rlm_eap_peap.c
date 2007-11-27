@@ -180,7 +180,6 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 	DEBUG2("  rlm_eap_peap: Authenticate");
 
 	status = eaptls_process(handler);
-	tls_session->clean_out.used = 0;
 	DEBUG2("  eaptls_process returned %d\n", status);
 	switch (status) {
 		/*

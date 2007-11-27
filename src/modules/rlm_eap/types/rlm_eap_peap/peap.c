@@ -590,9 +590,10 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 	/*
 	 *	Just look at the buffer directly, without doing
-	 *	record_minus.
+	 *	record_minus.  This lets us avoid another data copy.
 	 */
 	data_len = tls_session->clean_out.used;
+	tls_session->clean_out.used = 0;
 	data = tls_session->clean_out.data;
 
 #ifndef NDEBUG
@@ -609,10 +610,10 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 #endif
 
 	if (!eapmessage_verify(data, data_len)) {
+		DEBUG2("  rlm_eap_peap: Tunneled data is invalid.");
 		return RLM_MODULE_REJECT;
 	}
 
-	DEBUG2("  rlm_eap_peap: Tunneled data is valid.");
 
 	/*
 	 *	If we authenticated the user, then it's OK.
@@ -702,8 +703,6 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	Add the State attribute, too, if it exists.
 	 */
 	if (t->state) {
-		DEBUG2("  PEAP: Adding old state with %02x%02x",
-		       t->state->vp_octets[0], t->state->vp_octets[1]);
 		vp = paircopy(t->state);
 		if (vp) pairadd(&fake->packet->vps, vp);
 	}
