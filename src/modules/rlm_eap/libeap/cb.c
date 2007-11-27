@@ -42,11 +42,11 @@ void cbtls_info(const SSL *s, int where, int ret)
 	state = state ? state : "NULL";
 
 	if (where & SSL_CB_LOOP) {
-		if (debug_flag) radlog(L_INFO, "%s: %s\n", str, state);
+		DEBUG2("%s: %s\n", str, state);
 	} else if (where & SSL_CB_HANDSHAKE_START) {
-		if (debug_flag) radlog(L_INFO, "%s: %s\n", str, state);
+		DEBUG2("%s: %s\n", str, state);
 	} else if (where & SSL_CB_HANDSHAKE_DONE) {
-		radlog(L_INFO, "%s: %s\n", str, state);
+		DEBUG2("%s: %s\n", str, state);
 	} else if (where & SSL_CB_ALERT) {
 		str=(where & SSL_CB_READ)?"read":"write";
 		radlog(L_ERR,"TLS Alert %s:%s:%s\n", str,

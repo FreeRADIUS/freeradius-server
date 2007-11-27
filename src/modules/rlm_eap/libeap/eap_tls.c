@@ -337,15 +337,18 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 	    ((eap_ds->response->length == EAP_HEADER_LEN + 2) &&
 	     ((eaptls_packet->flags & 0xc0) == 0x00))) {
 
-#if 1
-			radlog(L_INFO, "XXX rlm_eap_tls: Received EAP-TLS ACK message");
-			return eaptls_ack_handler(handler);
+#if 0
+		/*
+		 *	Un-comment this for TLS inside of TTLS/PEAP
+		 */
+		DEBUG2("rlm_eap_tls: Received EAP-TLS ACK message");
+		return eaptls_ack_handler(handler);
 #else
 		if (prev_eap_ds->request->id == eap_ds->response->id) {
 			/*
 			 *	Run the ACK handler directly from here.
 			 */
-			radlog(L_INFO, "rlm_eap_tls: Received EAP-TLS ACK message");
+			DEBUG2("rlm_eap_tls: Received EAP-TLS ACK message");
 			return eaptls_ack_handler(handler);
 		} else {
 			radlog(L_ERR, "rlm_eap_tls: Received Invalid EAP-TLS ACK message");
@@ -376,6 +379,8 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 	 *	from a fragment acknowledgement.
 	 */
 	if (TLS_LENGTH_INCLUDED(eaptls_packet->flags)) {
+		DEBUG2("  TLS Length %d",
+		       eaptls_packet->data[2] * 256 | eaptls_packet->data[3]);
 		if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
 			/*
 			 * FIRST_FRAGMENT is identified
@@ -388,22 +393,21 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 			    (eaptls_prev == NULL) ||
 			    !TLS_MORE_FRAGMENTS(eaptls_prev->flags)) {
 
-				radlog(L_INFO, "rlm_eap_tls:  Received EAP-TLS First Fragment of the message");
+				DEBUG2("rlm_eap_tls:  Received EAP-TLS First Fragment of the message");
 				return EAPTLS_FIRST_FRAGMENT;
 			} else {
 
-				radlog(L_INFO, "rlm_eap_tls:  More Fragments with length included");
+				DEBUG2("rlm_eap_tls:  More Fragments with length included");
 				return EAPTLS_MORE_FRAGMENTS_WITH_LENGTH;
 			}
 		} else {
-
-			radlog(L_INFO, "rlm_eap_tls:  Length Included");
+			DEBUG2("rlm_eap_tls:  Length Included");
 			return EAPTLS_LENGTH_INCLUDED;
 		}
 	}
 
 	if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
-		radlog(L_INFO, "rlm_eap_tls:  More fragments to follow");
+		DEBUG2("rlm_eap_tls:  More fragments to follow");
 		return EAPTLS_MORE_FRAGMENTS;
 	}
 

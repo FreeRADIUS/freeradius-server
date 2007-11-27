@@ -233,7 +233,7 @@ int tls_handshake_recv(tls_session_t *ssn)
 			return 0;
 		}
 	} else {
-		radlog(L_INFO, "rlm_eap_tls: Application Data");
+		DEBUG2("rlm_eap_tls: Application Data");
 		/* Its clean application data, do whatever we want */
 		record_init(&ssn->clean_out);
 	}
