@@ -260,6 +260,12 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			DEBUG2(" rlm_eap: WARNING: Tunnelling TLS inside of a TLS will probably not work.");
 		}
 
+		if ((default_eap_type == PW_EAP_TNC) &&
+		    !handler->request->parent) {
+			DEBUG2(" rlm_eap: ERROR: EAP-TNC must be run inside of a TLS method.");
+			return EAP_INVALID;
+		}
+
 		if (eaptype_call(inst->types[default_eap_type],
 				 handler) == 0) {
 			DEBUG2(" rlm_eap: Default EAP type %s failed in initiate",

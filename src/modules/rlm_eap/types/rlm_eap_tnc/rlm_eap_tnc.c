@@ -100,6 +100,11 @@ static void init(void){
  */
 static int tnc_initiate(void *type_data, EAP_HANDLER *handler)
 {
+	if (!handler->request || !handler->request->parent) {
+		DEBUG2("rlm_eap_tnc: Must be run inside of a TLS method");
+		return 0;
+	}
+
 	DEBUG("tnc_initiate: %ld", handler->timestamp);
     if(vlanAccess==0 || vlanIsolate==0 || pathToSO==0){
         init();
