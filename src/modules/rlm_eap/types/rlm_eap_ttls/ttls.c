@@ -955,6 +955,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	record_minus.
 	 */
 	data_len = tls_session->clean_out.used;
+	tls_session->clean_out.used = 0;
 	data = tls_session->clean_out.data;
 
 	t = (ttls_tunnel_t *) tls_session->opaque;
@@ -1099,8 +1100,6 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	Add the State attribute, too, if it exists.
 	 */
 	if (t->state) {
-		DEBUG2("  TTLS: Adding old state with %02x %02x",
-		       t->state->vp_strvalue[0], t->state->vp_strvalue[1]);
 		vp = paircopy(t->state);
 		if (vp) pairadd(&fake->packet->vps, vp);
 	}

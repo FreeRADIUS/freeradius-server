@@ -117,21 +117,6 @@ static int eapttls_attach(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-	/*
-	 *	Can't tunnel TLS inside of TLS, we don't like it.
-	 *
-	 *	More realistically, we haven't tested it, so we don't
-	 *	claim it works.
-	 */
-	if ((inst->default_eap_type == PW_EAP_TLS) ||
-	    (inst->default_eap_type == PW_EAP_TTLS) ||
-	    (inst->default_eap_type == PW_EAP_PEAP)) {
-		radlog(L_ERR, "rlm_eap_ttls: Cannot tunnel EAP-Type/%s inside of TTLS",
-		       inst->default_eap_type_name);
-		eapttls_detach(inst);
-		return -1;
-	}
-
 	*instance = inst;
 	return 0;
 }
