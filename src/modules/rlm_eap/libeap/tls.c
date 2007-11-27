@@ -175,10 +175,11 @@ int tls_handshake_recv(tls_session_t *ssn)
 	int err;
 
 	BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
-	err = SSL_read(ssn->ssl, ssn->clean_out.data,
-		       sizeof(ssn->clean_out.data));
+
+	err = SSL_read(ssn->ssl, ssn->clean_out.data + ssn->clean_out.used,
+		       sizeof(ssn->clean_out.data) - ssn->clean_out.used);
 	if (err > 0) {
-		ssn->clean_out.used = err;
+		ssn->clean_out.used += err;
 	} else if (!int_ssl_check(ssn->ssl, err, "SSL_read")) {
 		return 0;
 	}
