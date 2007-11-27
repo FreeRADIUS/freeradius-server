@@ -190,6 +190,7 @@ static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
  */
 int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
+	size_t		i;
 	unsigned int	default_eap_type = inst->default_eap_type;
 	eaptype_t	*eaptype;
 	VALUE_PAIR	*vp;
@@ -295,55 +296,82 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			handler->opaque = NULL;
 		}
 
-		/*
-		 *	It is invalid to request identity,
-		 *	notification & nak in nak
-		 */
 		if (eaptype->data == NULL) {
 			DEBUG2(" rlm_eap: Empty NAK packet, cannot decide what EAP type the client wants.");
 			return EAP_INVALID;
 		}
 
 		/*
-		 *	FIXME: Pick one type out of the one they asked
-		 *	for, as they may have asked for many.
+		 *	Pick one type out of the one they asked for,
+		 *	as they may have asked for many.
 		 */
-		if ((eaptype->data[0] < PW_EAP_MD5) ||
-		    (eaptype->data[0] > PW_EAP_MAX_TYPES)) {
-			DEBUG2(" rlm_eap: NAK asked for bad type %d",
-			       eaptype->data[0]);
-			return EAP_INVALID;
+		default_eap_type = 0;
+		vp = pairfind(handler->request->config_items,
+			      PW_EAP_TYPE);
+		for (i = 0; i < eaptype->length; i++) {
+			/*
+			 *	It is invalid to request identity,
+			 *	notification & nak in nak.
+			 *
+			 *	Type 0 is valid, and means there are no
+			 *	common choices.
+			 */
+			if (eaptype->data[i] < PW_EAP_MD5) {
+				DEBUG2(" rlm_eap: NAK asked for bad type %d",
+				       eaptype->data[i]);
+				return EAP_INVALID;
+			}
+
+			if ((eaptype->data[i] > PW_EAP_MAX_TYPES) ||
+			    !inst->types[eaptype->data[i]]) {
+				DEBUG2(" rlm_eap: NAK asked for unsupported type %d",
+				       eaptype->data[i]);
+				continue;
+			}
+
+			eaptype_name = eaptype_type2name(eaptype->data[i],
+							 namebuf,
+							 sizeof(namebuf));
+			
+			/*
+			 *	Prevent a firestorm if the client is confused.
+			 */
+			if (handler->eap_type == eaptype->data[i]) {
+				DEBUG2(" rlm_eap: ERROR! Our request for %s was NAK'd with a request for %s.  Skipping the requested type.",
+				       eaptype_name, eaptype_name);
+				continue;
+			}
+
+			/*
+			 *	Enforce per-user configuration of EAP
+			 *	types.
+			 */
+			if (vp && (vp->vp_integer != eaptype->data[i])) {
+				char	mynamebuf[64];
+				DEBUG2("  rlm_eap: Client wants %s, while we require %s.  Skipping the requested type.",
+				       eaptype_name,
+				       eaptype_type2name(vp->vp_integer,
+							 mynamebuf,
+							 sizeof(mynamebuf)));
+				continue;
+			}
+
+			default_eap_type = eaptype->data[i];
+			break;
 		}
 
-		default_eap_type = eaptype->data[0];
+		/*
+		 *	We probably want to return 'fail' here...
+		 */
+		if (!default_eap_type) {
+			DEBUG2(" rlm_eap: No common EAP types found.");
+			return EAP_INVALID;
+		}
 		eaptype_name = eaptype_type2name(default_eap_type,
 						 namebuf, sizeof(namebuf));
 		DEBUG2(" rlm_eap: EAP-NAK asked for EAP-Type/%s",
 		       eaptype_name);
 
-		/*
-		 *	Prevent a firestorm if the client is confused.
-		 */
-		if (handler->eap_type == default_eap_type) {
-			DEBUG2(" rlm_eap: ERROR! Our request for %s was NAK'd with a request for %s, what is the client thinking?",
-			       eaptype_name, eaptype_name);
-			return EAP_INVALID;
-		}
-
-		/*
-		 *	Enforce per-user configuration of EAP types.
-		 */
-		vp = pairfind(handler->request->config_items,
-			      PW_EAP_TYPE);
-		if (vp && (vp->vp_integer != default_eap_type)) {
-			char	mynamebuf[64];
-			DEBUG2("  rlm_eap: Client wants %s, while we require %s, rejecting the user.",
-			       eaptype_name,
-			       eaptype_type2name(vp->vp_integer,
-						 mynamebuf,
-						 sizeof(mynamebuf)));
-			return EAP_INVALID;
-		}
 		goto do_initiate;
 		break;
 
