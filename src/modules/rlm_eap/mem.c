@@ -166,6 +166,22 @@ void eaplist_free(rlm_eap_t *inst)
 }
 
 /*
+ *	Return a 32-bit random number.
+ */
+static uint32_t eap_rand(fr_randctx *ctx)
+{
+	uint32_t num;
+
+	num = ctx->randrsl[ctx->randcnt++];
+	if (ctx->randcnt == 256) {
+		ctx->randcnt = 0;
+		fr_isaac(ctx);
+	}
+
+	return num;
+}
+
+/*
  *	Add a handler to the set of active sessions.
  *
  *	Since we're adding it to the list, we guess that this means
@@ -173,7 +189,8 @@ void eaplist_free(rlm_eap_t *inst)
  */
 int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
-	int		status;
+	int		i, status;
+	uint32_t	lvalue;
 	VALUE_PAIR	*state;
 
 	rad_assert(handler != NULL);
@@ -183,14 +200,10 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 *	Generate State, since we've been asked to add it to
 	 *	the list.
 	 */
-	state = generate_state(handler->request->timestamp);
+	state = pairmake("State", "0x00", T_OP_EQ);
+	if (!state) return 0;
 	pairadd(&(handler->request->reply->vps), state);
-
-	/*
-	 *	Create a unique 'key' for the handler, based
-	 *	on State, Client-IP-Address, and EAP ID.
-	 */
-	rad_assert(state->length == EAP_STATE_LEN);
+	state->length = EAP_STATE_LEN;
 
 	/*
 	 *	The time at which this request was made was the time
@@ -199,7 +212,6 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	handler->timestamp = handler->request->timestamp;
 	handler->status = 1;
 
-	memcpy(handler->state, state->vp_strvalue, sizeof(handler->state));
 	handler->src_ipaddr = handler->request->packet->src_ipaddr;
 	handler->eap_id = handler->eap_ds->request->id;
 
@@ -213,6 +225,16 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 *	means that we need a lock, to avoid conflict.
 	 */
 	pthread_mutex_lock(&(inst->session_mutex));
+
+	/*
+	 *	Create a completely random state.
+	 */
+	for (i = 0; i < 4; i++) {
+		lvalue = eap_rand(&inst->rand_pool);
+		memcpy(state->vp_octets + i * 4, &lvalue, sizeof(lvalue));
+	}
+	state->vp_octets[15] = handler->eap_id;
+	memcpy(handler->state, state->vp_strvalue, sizeof(handler->state));
 
 	/*
 	 *	Big-time failure.
@@ -314,38 +336,24 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 		handler = rbtree_node2data(inst->session_tree, node);
 
 		/*
-		 *	Check against replays.  The client can re-play
-		 *	a State attribute verbatim, so we wish to
-		 *	ensure that the attribute falls within the
-		 *	valid time window, which is the second at
-		 *	which it was sent out.
-		 *
-		 *	Hmm... I'm not sure that this step is
-		 *	necessary, or even that it does anything.
+		 *	Delete old handler from the tree.
 		 */
-		if (verify_state(state, handler->timestamp) != 0) {
-			handler = NULL;
+		rbtree_delete(inst->session_tree, node);
+		
+		/*
+		 *	And unsplice it from the linked list.
+		 */
+		if (handler->prev) {
+			handler->prev->next = handler->next;
 		} else {
-			/*
-			 *	It's OK, delete it from the tree.
-			 */
-			rbtree_delete(inst->session_tree, node);
-
-			/*
-			 *	And unsplice it from the linked list.
-			 */
-			if (handler->prev) {
-				handler->prev->next = handler->next;
-			} else {
-				inst->session_head = handler->next;
-			}
-			if (handler->next) {
-				handler->next->prev = handler->prev;
-			} else {
-				inst->session_tail = handler->prev;
-			}
-			handler->prev = handler->next = NULL;
+			inst->session_head = handler->next;
 		}
+		if (handler->next) {
+			handler->next->prev = handler->prev;
+		} else {
+			inst->session_tail = handler->prev;
+		}
+		handler->prev = handler->next = NULL;
 	}
 
 	pthread_mutex_unlock(&(inst->session_mutex));

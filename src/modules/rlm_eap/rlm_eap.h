@@ -65,6 +65,8 @@ typedef struct rlm_eap_t {
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	session_mutex;
 #endif
+
+	fr_randctx	rand_pool;
 } rlm_eap_t;
 
 /*

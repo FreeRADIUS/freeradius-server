@@ -94,7 +94,7 @@ static int eap_handler_cmp(const void *a, const void *b)
  */
 static int eap_instantiate(CONF_SECTION *cs, void **instance)
 {
-	int		eap_type;
+	int		i, eap_type;
 	int		num_types;
 	CONF_SECTION 	*scs;
 	rlm_eap_t	*inst;
@@ -108,6 +108,14 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		eap_detach(inst);
 		return -1;
 	}
+
+	/*
+	 *	Create our own random pool.
+	 */
+	for (i = 0; i < 256; i++) {
+		inst->rand_pool.randrsl[i] = fr_rand();
+	}
+	fr_randinit(&inst->rand_pool, 1);
 
 	/* Load all the configured EAP-Types */
 	num_types = 0;
