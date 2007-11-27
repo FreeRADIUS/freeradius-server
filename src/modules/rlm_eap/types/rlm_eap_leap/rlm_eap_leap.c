@@ -121,7 +121,7 @@ static int leap_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
 	password = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD);
 	if (!password) password = pairfind(handler->request->config_items, PW_NT_PASSWORD);
 	if (!password) {
-		radlog(L_INFO, "rlm_eap_leap: No Cleartext-Password or NT-Password configured for this user");
+		DEBUG2("rlm_eap_leap: No Cleartext-Password or NT-Password configured for this user");
 		eapleap_free(&packet);
 		return 0;
 	}

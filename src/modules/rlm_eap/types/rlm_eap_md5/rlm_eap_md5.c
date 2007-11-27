@@ -75,7 +75,7 @@ static int md5_initiate(void *type_data, EAP_HANDLER *handler)
 	for (i = 0; i < reply->value_size; i++) {
 		reply->value[i] = fr_rand();
 	}
-	radlog(L_INFO, "rlm_eap_md5: Issuing Challenge");
+	DEBUG2("rlm_eap_md5: Issuing Challenge");
 
 	/*
 	 *	Keep track of the challenge.
@@ -121,7 +121,7 @@ static int md5_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
 
 	password = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD);
 	if (password == NULL) {
-		radlog(L_INFO, "rlm_eap_md5: Cleartext-Password is required for EAP-MD5 authentication");
+		DEBUG2("rlm_eap_md5: Cleartext-Password is required for EAP-MD5 authentication");
 		return 0;
 	}
 

@@ -100,7 +100,7 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
 	BIO_free(bio);
 	if (!dh) {
-		radlog(L_INFO, "WARNING: rlm_eap_tls: Unable to set DH parameters.  DH cipher suites may not work!");
+		DEBUG2("WARNING: rlm_eap_tls: Unable to set DH parameters.  DH cipher suites may not work!");
 		DEBUG2("WARNING: Fix this by running the OpenSSL command listed in eap.conf");
 		return 0;
 	}
@@ -249,14 +249,14 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	} /* depth == 0 */
 
 	if (debug_flag > 0) {
-		radlog(L_INFO, "chain-depth=%d, ", depth);
-		radlog(L_INFO, "error=%d", err);
+		DEBUG2("chain-depth=%d, ", depth);
+		DEBUG2("error=%d", err);
 
-		radlog(L_INFO, "--> User-Name = %s", handler->identity);
-		radlog(L_INFO, "--> BUF-Name = %s", common_name);
-		radlog(L_INFO, "--> subject = %s", subject);
-		radlog(L_INFO, "--> issuer  = %s", issuer);
-		radlog(L_INFO, "--> verify return:%d", my_ok);
+		DEBUG2("--> User-Name = %s", handler->identity);
+		DEBUG2("--> BUF-Name = %s", common_name);
+		DEBUG2("--> subject = %s", subject);
+		DEBUG2("--> issuer  = %s", issuer);
+		DEBUG2("--> verify return:%d", my_ok);
 	}
 	return my_ok;
 }
@@ -315,7 +315,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	 *	openSSL.org
 	 */
 	if (type == SSL_FILETYPE_PEM) {
-		radlog(L_INFO, "rlm_eap_tls: Loading the certificate file as a chain");
+		DEBUG2("rlm_eap_tls: Loading the certificate file as a chain");
 		if (!(SSL_CTX_use_certificate_chain_file(ctx, conf->certificate_file))) {
 			radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
 			radlog(L_ERR, "rlm_eap_tls: Error reading certificate file %s", conf->certificate_file);

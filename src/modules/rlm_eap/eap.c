@@ -1034,7 +1034,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
                         *	request vps so that autz's work
                         *	correctly
 			*/
-                       radlog(L_INFO, "rlm_eap: Broken NAS did not set User-Name, setting from EAP Identity");
+                       DEBUG2("rlm_eap: Broken NAS did not set User-Name, setting from EAP Identity");
                        vp = pairmake("User-Name", handler->identity, T_OP_EQ);
                        if (vp == NULL) {
                                radlog(L_ERR, "rlm_eap: out of memory");
@@ -1093,7 +1093,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
                         *	request vps so that autz's work
                         *	correctly
 			*/
-                       radlog(L_INFO, "rlm_eap: WARNING NAS did not set User-Name.  Setting it locally from EAP Identity");
+                       DEBUG2("rlm_eap: WARNING NAS did not set User-Name.  Setting it locally from EAP Identity");
                        vp = pairmake("User-Name", handler->identity, T_OP_EQ);
                        if (vp == NULL) {
                                radlog(L_ERR, "rlm_eap: out of memory");

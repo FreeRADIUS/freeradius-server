@@ -973,7 +973,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		 *	FIXME: Call SSL_get_error() to see what went
 		 *	wrong.
 		 */
-		radlog(L_INFO, "rlm_eap_ttls: SSL_read Error");
+		DEBUG2("rlm_eap_ttls: SSL_read Error");
 		return PW_AUTHENTICATION_REJECT;
 	}
 
