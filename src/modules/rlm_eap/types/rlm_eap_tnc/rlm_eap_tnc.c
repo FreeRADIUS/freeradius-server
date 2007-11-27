@@ -41,7 +41,7 @@ static char* vlanAccess=0;
 static char* vlanIsolate=0;
 static char* pathToSO=0;
 
-void init(){
+static void init(void){
     FILE *f;
     f = fopen("/etc/tnc/tncs_fhh.conf", "r");
     if(f==NULL){
@@ -100,7 +100,7 @@ void init(){
  */
 static int tnc_initiate(void *type_data, EAP_HANDLER *handler)
 {
-	DEBUG("tnc_initiate: %d", handler->timestamp);
+	DEBUG("tnc_initiate: %ld", handler->timestamp);
     if(vlanAccess==0 || vlanIsolate==0 || pathToSO==0){
         init();
     }
@@ -177,20 +177,20 @@ static void setVlanAttribute(EAP_HANDLER *handler, VlanAccessMode mode){
     VALUE_PAIR *vlanId;
     vlanId = pairmake("Tunnel-Private-Group-ID", vlanNumber, T_OP_SET);
     pairadd(&handler->request->reply->vps, vlanId);
-    printf("XXXXXXXXXXXXXXXXXX added VALUE_Pair!\n");
+    DEBUG2("XXXXXXXXXXXXXXXXXX added VALUE_Pair!\n");
     
 }
 
 /*
  *	Authenticate a previously sent challenge.
  */
-static int tnc_authenticate(void *arg, EAP_HANDLER *handler)
+static int tnc_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
 {
     TNC_PACKET	*packet;
     TNC_PACKET	*reply;
-    printf("HANDLER_OPAQUE: %d\n", *((TNC_ConnectionID *) (handler->opaque)));
+    DEBUG2("HANDLER_OPAQUE: %d\n", *((TNC_ConnectionID *) (handler->opaque)));
     TNC_ConnectionID connId = *((TNC_ConnectionID *) (handler->opaque));
-    printf("XXXXXXXXXXXX TNC-AUTHENTICATE is starting now for %d..........\n", connId);
+    DEBUG2("XXXXXXXXXXXX TNC-AUTHENTICATE is starting now for %d..........\n", connId);
 
     /*
 	 *	Get the User-Password for this user.
@@ -242,9 +242,9 @@ static int tnc_authenticate(void *arg, EAP_HANDLER *handler)
     DEBUG("Data received: (%d)\n", tnccsMsgLength);
 /*    int i;
     for(i=0;i<tnccsMsgLength;i++){
-        printf("%c", (packet->data)[i]);
+        DEBUG2("%c", (packet->data)[i]);
     }
-    printf("\n");
+    DEBUG2("\n");
    */
     TNC_ConnectionState state = exchangeTNCCSMessages(pathToSO,
                                                         connId,
@@ -270,9 +270,9 @@ static int tnc_authenticate(void *arg, EAP_HANDLER *handler)
         DEBUG("GOT Message from TNCS (length: %d)", outMessageLength);
         
  /*       for(i=0;i<outMessageLength;i++){
-            printf("%c", outMessage[i]);
+            DEBUG2("%c", outMessage[i]);
         }
-        printf("\n");
+        DEBUG2("\n");
  */
         DEBUG("outIsLengthIncluded: %d, outMoreFragments: %d, outOverallLength: %d", 
                 outIsLengthIncluded, outMoreFragments, outOverallLength);
@@ -280,7 +280,7 @@ static int tnc_authenticate(void *arg, EAP_HANDLER *handler)
         switch(state){
             case TNC_CONNECTION_STATE_HANDSHAKE:
                 reply->code = PW_TNC_REQUEST;
-                printf("Set Reply->Code to EAP-REQUEST\n");
+                DEBUG2("Set Reply->Code to EAP-REQUEST\n");
                 break;
             case TNC_CONNECTION_STATE_ACCESS_ALLOWED:
                 reply->code = PW_TNC_SUCCESS;

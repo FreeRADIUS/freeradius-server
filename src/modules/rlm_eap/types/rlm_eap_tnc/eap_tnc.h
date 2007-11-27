@@ -95,9 +95,9 @@ typedef struct tnc_packet_t {
 } tnc_packet_t;
 
 typedef struct tnc_packet {
-	unsigned char	code;
-	unsigned char	id;
-	unsigned short	length;
+	uint8_t		code;
+	uint8_t		id;
+	uint16_t	length;
 	uint8_t	flags_ver;
 	uint32_t data_length;
 	uint8_t *data;

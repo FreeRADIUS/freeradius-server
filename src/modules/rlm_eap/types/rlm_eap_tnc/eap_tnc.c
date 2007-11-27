@@ -56,7 +56,7 @@
 
 #include "eap_tnc.h"
 
-unsigned long ByteSwap2 (unsigned long nLongNumber)
+static uint32_t ByteSwap2 (uint32_t nLongNumber)
 {
    return (((nLongNumber&0x000000FF)<<24)+((nLongNumber&0x0000FF00)<<8)+
    ((nLongNumber&0x00FF0000)>>8)+((nLongNumber&0xFF000000)>>24));
@@ -131,23 +131,23 @@ TNC_PACKET *eaptnc_extract(EAP_DS *eap_ds)
     unsigned char *ptr = (unsigned char*)data;
 
 
-	printf("Flags/Ver: %x\n", packet->flags_ver);
+	DEBUG2("Flags/Ver: %x\n", packet->flags_ver);
 	int thisDataLength;
     int dataStart;
     if(TNC_LENGTH_INCLUDED(packet->flags_ver)){
-        printf("data_length included\n");
+        DEBUG2("data_length included\n");
 //        memcpy(&packet->flags_ver[1], &data->flags_ver[1], 4);
         //packet->data_length = data->data_length;
         memcpy(&packet->data_length, &ptr[1], TNC_DATA_LENGTH_LENGTH);
-        printf("data_length: %x\n", packet->data_length);
-        printf("data_length: %d\n", packet->data_length);
-        printf("data_length: %x\n", ByteSwap2(packet->data_length));
-        printf("data_length: %d\n", ByteSwap2(packet->data_length));
+        DEBUG2("data_length: %x\n", packet->data_length);
+        DEBUG2("data_length: %d\n", packet->data_length);
+        DEBUG2("data_length: %x\n", ByteSwap2(packet->data_length));
+        DEBUG2("data_length: %d\n", ByteSwap2(packet->data_length));
         packet->data_length = ByteSwap2(packet->data_length);
 		thisDataLength = packet->length-TNC_PACKET_LENGTH; //1: we need space for flags_ver
         dataStart = TNC_DATA_LENGTH_LENGTH+TNC_FLAGS_VERSION_LENGTH;
     }else{
-        printf("no data_length included\n");
+        DEBUG2("no data_length included\n");
 	 	thisDataLength = packet->length-TNC_PACKET_LENGTH_WITHOUT_DATA_LENGTH;
         packet->data_length = 0;
         dataStart = TNC_FLAGS_VERSION_LENGTH;
@@ -181,12 +181,12 @@ int eaptnc_compose(EAP_DS *eap_ds, TNC_PACKET *reply)
 	if (reply->code < 3) {
 		//fill: EAP-Type (0x888e)
 		eap_ds->request->type.type = PW_EAP_TNC;
-        printf("TYPE: EAP-TNC set\n");
+        DEBUG2("TYPE: EAP-TNC set\n");
 		rad_assert(reply->length > 0);
 		
 		//alloc enough space for whole TNC-Packet (from Code on)
 		eap_ds->request->type.data = calloc(reply->length, sizeof(unsigned char*));
-        printf("Malloc %d bytes for packet\n", reply->length);
+        DEBUG2("Malloc %d bytes for packet\n", reply->length);
 		if (eap_ds->request->type.data == NULL) {
 			radlog(L_ERR, "rlm_eap_tnc: out of memory");
 			return 0;
@@ -197,36 +197,36 @@ int eaptnc_compose(EAP_DS *eap_ds, TNC_PACKET *reply)
 
 		//ptr++;
 		*ptr = reply->flags_ver;
-        printf("Set Flags/Version: %d\n", *ptr);
+        DEBUG2("Set Flags/Version: %d\n", *ptr);
 		if(reply->data_length!=0){
-            printf("Set data-length: %d\n", reply->data_length);
+            DEBUG2("Set data-length: %d\n", reply->data_length);
 			ptr++; //move to start-position of "data_length"
-            printf("Set data-length: %x\n", reply->data_length);
-            printf("Set data-length (swapped): %x\n", ByteSwap2(reply->data_length));
+            DEBUG2("Set data-length: %x\n", reply->data_length);
+            DEBUG2("Set data-length (swapped): %x\n", ByteSwap2(reply->data_length));
             unsigned long swappedDataLength = ByteSwap2(reply->data_length);
-            //printf("DATA-length: %d", reply->data_
+            //DEBUG2("DATA-length: %d", reply->data_
             memcpy(ptr, &swappedDataLength, 4);
 			//*ptr = swappedDataLength;
 		}
 		uint16_t thisDataLength=0;
 		if(reply->data!=NULL){
-            printf("Adding TNCCS-Data ");
+            DEBUG2("Adding TNCCS-Data ");
 			int offset;
 			//if data_length-Field present
 			if(reply->data_length !=0){
-                printf("with Fragmentation\n");
+                DEBUG2("with Fragmentation\n");
 				offset = TNC_DATA_LENGTH_LENGTH; //length of data_length-field: 4
 				thisDataLength = reply->length-TNC_PACKET_LENGTH;
 			}else{ //data_length-Field not present
-                printf("without Fragmentation\n");
+                DEBUG2("without Fragmentation\n");
 				offset = 1;
 				thisDataLength = reply->length-TNC_PACKET_LENGTH_WITHOUT_DATA_LENGTH;
 			}
-            printf("TNCCS-Datalength: %d\n", thisDataLength);
+            DEBUG2("TNCCS-Datalength: %d\n", thisDataLength);
 			ptr=ptr+offset; //move to start-position of "data"
 			memcpy(ptr,reply->data, thisDataLength);
 		}else{
-            printf("No TNCCS-Data present");
+            DEBUG2("No TNCCS-Data present");
         }
 
 		//the length of the TNC-packet (behind Type)
@@ -235,7 +235,7 @@ int eaptnc_compose(EAP_DS *eap_ds, TNC_PACKET *reply)
         }else{
             eap_ds->request->type.length = TNC_FLAGS_VERSION_LENGTH+thisDataLength; //1: flags_ver
         }
-        printf("Packet built\n");
+        DEBUG2("Packet built\n");
 
 	} else {
 		eap_ds->request->type.length = 0;
