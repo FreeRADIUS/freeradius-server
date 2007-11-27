@@ -105,9 +105,8 @@ static int eapmessage_verify(const uint8_t *data, unsigned int data_len)
 	eap_type = *data;
 	switch (eap_type) {
 	case PW_EAP_IDENTITY:
-		memcpy(identity, data + 1, data_len - 1);
-		identity[data_len - 1] = '\0';
-		DEBUG2("  rlm_eap_peap: Identity - %s", identity);
+		DEBUG2("  rlm_eap_peap: Identity - %*s",
+		       data_len - 1, data + 1);
 		return 1;
 		break;
 
