@@ -63,9 +63,11 @@ ATTRIBUTE	Client-Shortname			1024	string
 ATTRIBUTE	Load-Balance-Key			1025	string
 
 #
-#	Range:	1025-1028
+#	Range:	1024-1026
 #		unused
 #
+ATTRIBUTE	TNC-VLAN-Access				1027	string
+ATTRIBUTE	TNC-VLAN-Isolate			1028	string
 ATTRIBUTE	User-Category				1029	string
 ATTRIBUTE	Group-Name				1030	string
 ATTRIBUTE	Huntgroup-Name				1031	string
@@ -133,6 +135,7 @@ ATTRIBUTE	Packet-Dst-IPv6-Address			1098	ipv6addr
 ATTRIBUTE	Virtual-Server				1099	string
 ATTRIBUTE	Cleartext-Password			1100	string
 ATTRIBUTE	Password-With-Header			1101	string
+ATTRIBUTE	Inner-Tunnel-User-Name			1102	string
 
 #
 #	Range:	1200-1279

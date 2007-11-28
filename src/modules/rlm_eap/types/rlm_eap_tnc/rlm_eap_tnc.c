@@ -114,13 +114,20 @@ static int tnc_initiate(void *type_data, EAP_HANDLER *handler)
 
 static void setVlanAttribute(rlm_eap_tnc_t *inst, EAP_HANDLER *handler,
 			     VlanAccessMode mode){
+	VALUE_PAIR *vp;
     char *vlanNumber = NULL;
     switch(mode){
         case VLAN_ISOLATE:
             vlanNumber = inst->vlan_isolate;
+	    vp = pairfind(handler->request->config_items,
+			  PW_TNC_VLAN_ISOLATE);
+	    if (vp) vlanNumber = vp->vp_strvalue;
             break;
         case VLAN_ACCESS:
             vlanNumber = inst->vlan_access;
+	    vp = pairfind(handler->request->config_items,
+			  PW_TNC_VLAN_ACCESS);
+	    if (vp) vlanNumber = vp->vp_strvalue;
             break;
 
     default:
