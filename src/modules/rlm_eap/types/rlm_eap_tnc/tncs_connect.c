@@ -23,13 +23,12 @@
  */
 
 #include "tncs_connect.h"
-#include <dlfcn.h>
+#include <ltdl.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <eap.h>
 
-#define PATH_TO_SO "/usr/local/lib/libTNCS.so"
-static void *handle = NULL;
+static lt_dlhandle handle = NULL;
 
 static ExchangeTNCCSMessagePointer callTNCS = NULL;
 
@@ -41,11 +40,12 @@ static ExchangeTNCCSMessagePointer callTNCS = NULL;
  * 
  * return: the procAddress if found, else NULL
  */
-void *getProcAddress(void *soHandle, const char *name){
+static void *getProcAddress(lt_dlhandle soHandle, const char *name){
+	void *proc = lt_dlsym(soHandle, name);
 	DEBUG("Searching for function %s", name);
-	void *proc = dlsym(soHandle, name);
 	if(proc == NULL){
-		DEBUG(dlerror());
+		DEBUG("rlm_eap_tnc: Failed to resolve symbol %s: %s",
+		      name, lt_dlerror());
 	}
 	return proc;
 }
@@ -61,13 +61,14 @@ void *getProcAddress(void *soHandle, const char *name){
 int connectToTncs(char *pathToSO){
 	int state = -1;
 	if(handle==NULL){
-		handle = dlopen(pathToSO, RTLD_LAZY);
+		handle = lt_dlopen(pathToSO);
 		DEBUG("OPENED HANDLE!");
 	}
 	
 	if(handle==NULL){
 		DEBUG("HANDLE IS NULL");
-        DEBUG(dlerror());
+        DEBUG("rlm_eap_tnc: Failed to link to library %s: %s",
+	      pathToSO, lt_dlerror());
 	}else{
 		DEBUG("SO %s found!", pathToSO);
 		if(callTNCS==NULL){
@@ -107,12 +108,12 @@ int connectToTncs(char *pathToSO){
 TNC_ConnectionState exchangeTNCCSMessages(/*in*/ char *pathToSO,
                                           /*in*/ TNC_ConnectionID connId, 
                                           /*in*/ int isAcknoledgement,
-									      /*in*/ TNC_BufferReference input, 
+					  /*in*/ TNC_BufferReference input, 
                                           /*in*/ TNC_UInt32 inputLength,
                                           /*in*/ int isFirst, 
                                           /*in*/ int moreFragments,
-                                          /*in*/ TNC_UInt32 overallLength,                                          
-									      /*out*/ TNC_BufferReference *output,
+                                          /*in*/ TNC_UInt32 overallLength,
+					  /*out*/ TNC_BufferReference *output,
                                           /*out*/ TNC_UInt32 *outputLength,
                                           /*out*/ int *answerIsFirst,
                                           /*out*/ int *moreFragmentsFollow,
