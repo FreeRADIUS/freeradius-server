@@ -307,11 +307,11 @@ static int tnc_detach(void *arg)
 
 
 static CONF_PARSER module_config[] = {
-	{ "vlan_access", PW_TYPE_STRING,
+	{ "vlan_access", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_tnc_t, vlan_access), NULL, NULL },
-	{ "vlan_isolate", PW_TYPE_STRING,
+	{ "vlan_isolate", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_tnc_t, vlan_isolate), NULL, NULL },
-	{ "tnc_path", PW_TYPE_STRING,
+	{ "tnc_path", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_tnc_t, tnc_path), NULL,
 	"/usr/local/lib/libTNCS.so"},
 
