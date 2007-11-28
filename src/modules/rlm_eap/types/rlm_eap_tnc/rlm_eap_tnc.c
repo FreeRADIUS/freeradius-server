@@ -22,6 +22,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
+ *   Modifications to integrate with FreeRADIUS configuration
+ *   Copyright (C) 2007 Alan DeKok <aland@deployingradius.com>
  */
 
 #include <freeradius-devel/autoconf.h>
@@ -34,64 +36,13 @@
 #include "tncs.h"
 #include <freeradius-devel/rad_assert.h>
 
-
+typedef struct rlm_eap_tnc_t {
+	char	*vlan_access;
+	char	*vlan_isolate;
+	char	*tnc_path;
+} rlm_eap_tnc_t;
 
 static int sessionCounter=0;
-static char* vlanAccess=0;
-static char* vlanIsolate=0;
-static char* pathToSO=0;
-
-static void init(void){
-    FILE *f;
-    f = fopen("/etc/tnc/tncs_fhh.conf", "r");
-    if(f==NULL){
-        DEBUG("Could not open tncs_fhh.conf, use default values for VLANs (96,97)");
-        vlanAccess = "96";
-        vlanIsolate = "97";
-    }else{
-        char *line = calloc(sizeof(char), 212);
-        while(fgets(line, 212, f)!=NULL){
-            //DEBUG("line: %s", line);
-            if(strncmp(line, "VLAN_ACCESS=",12)==0){
-                int i;
-                for(i=12;i<20;i++){
-                    if(line[i]==' ' || line[i]=='\n'){
-                        vlanAccess= calloc(i-12+1, sizeof(char));
-                        memcpy(vlanAccess, &(line[12]), i-12);
-                        break;
-                        //memcpy(&vlanAccess[i-13],"\n", 1);
-                    }
-                }
-            }
-            if(strncmp(line, "VLAN_ISOLATE=", 13)==0){
-                int i;
-                for(i=13;i<20;i++){
-                    if(line[i]==' ' || line[i]=='\n'){
-                        vlanIsolate= calloc(i-13, sizeof(char));
-                        memcpy(vlanIsolate, &(line[13]), i-13);
-                        break;
-                    }
-                }
-            }
-            //also inits path to TNCS-SO
-            if(strncmp(line, "TNCS_PATH=", 10)==0){
-                int i;
-                for(i=10;i<212;i++){
-                    if(line[i]==' ' || line[i]=='\n'){
-                        pathToSO= calloc(i-9, sizeof(char));
-                        memcpy(pathToSO, &(line[10]), i-10);
-                        pathToSO[i]='\0';
-                        break;
-                    }
-                }            
-            }
-        }
-        DEBUG("VLAN_ISOLATE: %s", vlanIsolate);
-        DEBUG("VLAN_ACCESS: %s", vlanAccess);
-        DEBUG("PATH to SO: %s", pathToSO);
-    }
-    fclose(f);
-}
 
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
@@ -100,18 +51,18 @@ static void init(void){
  */
 static int tnc_initiate(void *type_data, EAP_HANDLER *handler)
 {
+	rlm_eap_tnc_t *inst = type_data;
+
 	if (!handler->request || !handler->request->parent) {
 		DEBUG2("rlm_eap_tnc: Must be run inside of a TLS method");
 		return 0;
 	}
 
 	DEBUG("tnc_initiate: %ld", handler->timestamp);
-    if(vlanAccess==0 || vlanIsolate==0 || pathToSO==0){
-        init();
-    }
+
 	TNC_PACKET	*reply;
 	
-	if(connectToTncs(pathToSO)==-1){
+	if(connectToTncs(inst->tnc_path)==-1){
 		DEBUG("Could not connect to TNCS");
 	}else{
 		
@@ -161,40 +112,43 @@ static int tnc_initiate(void *type_data, EAP_HANDLER *handler)
 	return 1;
 }
 
-static void setVlanAttribute(EAP_HANDLER *handler, VlanAccessMode mode){
-    char *vlanNumber = "1";
+static void setVlanAttribute(rlm_eap_tnc_t *inst, EAP_HANDLER *handler,
+			     VlanAccessMode mode){
+    char *vlanNumber = NULL;
     switch(mode){
         case VLAN_ISOLATE:
-            vlanNumber = vlanIsolate;
+            vlanNumber = inst->vlan_isolate;
             break;
         case VLAN_ACCESS:
-            vlanNumber = vlanAccess;
+            vlanNumber = inst->vlan_access;
             break;
+
+    default:
+	    DEBUG2("  rlm_eap_tnc: Internal error.  Not setting vlan number");
+	    return;
     }
-    VALUE_PAIR *tunnelType = pairmake("Tunnel-Type", "VLAN", T_OP_SET);
-    pairadd(&handler->request->reply->vps, tunnelType);
+    pairadd(&handler->request->reply->vps,
+	    pairmake("Tunnel-Type", "VLAN", T_OP_SET));
     
-    VALUE_PAIR *tunnelMedium;
-    tunnelMedium = pairmake("Tunnel-Medium-Type", "IEEE-802", T_OP_SET);
-    pairadd(&handler->request->reply->vps, tunnelMedium);
+    pairadd(&handler->request->reply->vps,
+	    pairmake("Tunnel-Medium-Type", "IEEE-802", T_OP_SET));
     
-    
-    VALUE_PAIR *vlanId;
-    vlanId = pairmake("Tunnel-Private-Group-ID", vlanNumber, T_OP_SET);
-    pairadd(&handler->request->reply->vps, vlanId);
-    DEBUG2("XXXXXXXXXXXXXXXXXX added VALUE_Pair!\n");
+    pairadd(&handler->request->reply->vps,
+	    pairmake("Tunnel-Private-Group-ID", vlanNumber, T_OP_SET));
     
 }
 
 /*
  *	Authenticate a previously sent challenge.
  */
-static int tnc_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
+static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
 {
     TNC_PACKET	*packet;
     TNC_PACKET	*reply;
-    DEBUG2("HANDLER_OPAQUE: %d\n", *((TNC_ConnectionID *) (handler->opaque)));
     TNC_ConnectionID connId = *((TNC_ConnectionID *) (handler->opaque));
+    rlm_eap_tnc_t *inst = type_arg;
+
+    DEBUG2("HANDLER_OPAQUE: %d\n", *((TNC_ConnectionID *) (handler->opaque)));
     DEBUG2("XXXXXXXXXXXX TNC-AUTHENTICATE is starting now for %d..........\n", connId);
 
     /*
@@ -234,14 +188,14 @@ static int tnc_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
     int outIsLengthIncluded=0;
     int outMoreFragments=0;
     TNC_UInt32 outOverallLength=0;
-    int isAcknoledgement = 0;
+    int isAcknowledgement = 0;
     if(isLengthIncluded == 0 
         && moreFragments == 0 
         && overallLength == 0 
         && tnccsMsgLength == 0
         && TNC_START(packet->flags_ver)==0){
         
-        isAcknoledgement = 1;
+        isAcknowledgement = 1;
     }
     
     DEBUG("Data received: (%d)\n", tnccsMsgLength);
@@ -251,9 +205,9 @@ static int tnc_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
     }
     DEBUG2("\n");
    */
-    TNC_ConnectionState state = exchangeTNCCSMessages(pathToSO,
+    TNC_ConnectionState state = exchangeTNCCSMessages(inst->tnc_path,
                                                         connId,
-                                                        isAcknoledgement,
+                                                        isAcknowledgement,
                                                         packet->data, 
                                                         tnccsMsgLength, 
                                                         isLengthIncluded, 
@@ -289,15 +243,15 @@ static int tnc_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
                 break;
             case TNC_CONNECTION_STATE_ACCESS_ALLOWED:
                 reply->code = PW_TNC_SUCCESS;
-                setVlanAttribute(handler,VLAN_ACCESS);
+                setVlanAttribute(inst, handler,VLAN_ACCESS);
                 break;
             case TNC_CONNECTION_STATE_ACCESS_NONE:
                 reply->code = PW_TNC_FAILURE;
-                //setVlanAttribute(handler, VLAN_ISOLATE);
+                //setVlanAttribute(inst, handler, VLAN_ISOLATE);
                 break;
             case TNC_CONNECTION_STATE_ACCESS_ISOLATED:
                 reply->code = PW_TNC_SUCCESS;
-                setVlanAttribute(handler, VLAN_ISOLATE);
+                setVlanAttribute(inst, handler, VLAN_ISOLATE);
                 break;
             default:
                 reply->code= PW_TNC_FAILURE;
@@ -336,14 +290,63 @@ static int tnc_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
 }
 
 /*
+ *	Detach the EAP-TNC module.
+ */
+static int tnc_detach(void *arg)
+{
+	free(arg);
+	return 0;
+}
+
+
+static CONF_PARSER module_config[] = {
+	{ "vlan_access", PW_TYPE_STRING,
+	  offsetof(rlm_eap_tnc_t, vlan_access), NULL, NULL },
+	{ "vlan_isolate", PW_TYPE_STRING,
+	  offsetof(rlm_eap_tnc_t, vlan_isolate), NULL, NULL },
+	{ "libtns.so", PW_TYPE_STRING,
+	  offsetof(rlm_eap_tnc_t, tnc_path), NULL,
+	"/usr/local/lib/libTNCS.so"},
+
+ 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+};
+
+/*
+ *	Attach the EAP-TNC module.
+ */
+static int tnc_attach(CONF_SECTION *cs, void **instance)
+{
+	rlm_eap_tnc_t *inst;
+
+	inst = malloc(sizeof(*inst));
+	if (!inst) return -1;
+	memset(inst, 0, sizeof(*inst));
+
+	if (cf_section_parse(cs, inst, module_config) < 0) {
+		tnc_detach(inst);
+		return -1;
+	}
+
+	
+	if (!inst->vlan_access || !inst->vlan_isolate) {
+		radlog(L_ERR, "rlm_eap_tnc: Must set both vlan_access and vlan_isolate");
+		tnc_detach(inst);
+		return -1;
+	}
+
+	*instance = inst;
+	return 0;
+}
+
+/*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
 EAP_TYPE rlm_eap_tnc = {
 	"eap_tnc",
-	NULL,				/* attach */
+	tnc_attach,			/* attach */
 	tnc_initiate,			/* Start the initial request */
 	NULL,				/* authorization */
 	tnc_authenticate,		/* authentication */
-	NULL				/* detach */
+	tnc_detach		      	/* detach */
 };
