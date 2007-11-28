@@ -18,7 +18,6 @@ RCSID("$Id$")
 #ifdef HAVE_PTHREAD_H
 #include	<pthread.h>
 
-#if 0
 /* Thread safe DNS lookups */
 /*
  *	FIXME: There are some systems that use the same hostent
@@ -26,11 +25,16 @@ RCSID("$Id$")
  *	that is the case then use only one mutex instead of separate
  *	mutexes
  */
+#ifdef LOCAL_GETHOSTBYNAMERSTYLE
 static int fr_hostbyname = 0;
-static int fr_hodtbyaddr = 0;
 static pthread_mutex_t fr_hostbyname_mutex;
-static pthread_mutex_t fr_hodtbyaddr_mutex;
 #endif
+
+#ifdef LOCAL_GETHOSTBYNAMERSTYLE
+static int fr_hostbyaddr = 0;
+static pthread_mutex_t fr_hostbyaddr_mutex;
+#endif
+
 #endif
 
 #undef LOCAL_GETHOSTBYNAMERSTYLE
@@ -164,11 +168,11 @@ gethostbyaddr_r(const char *addr, int len, int type, struct hostent *result,
     struct hostent *hp;
 
 #ifdef HAVE_PTHREAD_H
-    if (fr_hodtbyaddr == 0) {
-    	pthread_mutex_init(&fr_hodtbyaddr_mutex, NULL);
-	fr_hodtbyaddr = 1;
+    if (fr_hostbyaddr == 0) {
+    	pthread_mutex_init(&fr_hostbyaddr_mutex, NULL);
+	fr_hostbyaddr = 1;
     }
-    pthread_mutex_lock(&fr_hodtbyaddr_mutex);
+    pthread_mutex_lock(&fr_hostbyaddr_mutex);
 #endif
 
     hp = gethostbyaddr(addr, len, type);
@@ -181,7 +185,7 @@ gethostbyaddr_r(const char *addr, int len, int type, struct hostent *result,
     }
 
 #ifdef HAVE_PTHREAD_H
-    pthread_mutex_unlock(&fr_hodtbyaddr_mutex);
+    pthread_mutex_unlock(&fr_hostbyaddr_mutex);
 #endif
 
     return hp;
