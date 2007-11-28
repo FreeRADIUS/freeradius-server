@@ -311,7 +311,7 @@ static CONF_PARSER module_config[] = {
 	  offsetof(rlm_eap_tnc_t, vlan_access), NULL, NULL },
 	{ "vlan_isolate", PW_TYPE_STRING,
 	  offsetof(rlm_eap_tnc_t, vlan_isolate), NULL, NULL },
-	{ "libtns.so", PW_TYPE_STRING,
+	{ "tnc_path", PW_TYPE_STRING,
 	  offsetof(rlm_eap_tnc_t, tnc_path), NULL,
 	"/usr/local/lib/libTNCS.so"},
 
