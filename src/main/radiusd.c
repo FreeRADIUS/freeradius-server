@@ -117,6 +117,16 @@ int main(int argc, char *argv[])
 	else
 		progname++;
 
+#ifdef WIN32
+	{
+		WSADATA wsaData;
+		if (WSAStartup(MAKEWORD(2, 0), &wsaData)) {
+			fprintf(stderr, "%s: Unable to initialize socket library.\n");
+			return 1;
+		}
+	}
+#endif
+
 	debug_flag = 0;
 	spawn_flag = TRUE;
 	radius_dir = strdup(RADIUS_DIR);
@@ -474,6 +484,10 @@ int main(int argc, char *argv[])
 	
 	free(radius_dir);
 		
+#ifdef WIN32
+	WSACleanup();
+#endif
+
 	return (rcode - 1);
 }
 
