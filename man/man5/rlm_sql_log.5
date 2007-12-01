@@ -58,11 +58,13 @@ modules {
 .br
   sql_log {
 .br
-    path = ${radacctdir}/sql-relay
+    path = "${radacctdir}/sql-relay"
 .br
     acct_table = "radacct"
 .br
     postauth_table = "radpostauth"
+.br
+    sql_user_name = "%{User-Name:-DEFAULT}"
 .br
 
 .br
