@@ -1189,9 +1189,10 @@ $INCLUDE eap.conf
 	#  See rlm_sql_log(5) manpage.
 	#
 #	sql_log {
-#		path = ${radacctdir}/sql-relay
+#		path = "${radacctdir}/sql-relay"
 #		acct_table = "radacct"
 #		postauth_table = "radpostauth"
+#		sql_user_name = "%{%{User-Name}:-DEFAULT}"
 #
 #		Start = "INSERT INTO ${acct_table} (AcctSessionId, UserName, \
 #		 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
