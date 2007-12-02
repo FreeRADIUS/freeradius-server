@@ -797,9 +797,7 @@ int free_mainconfig(void)
 	free(mainconfig.radiusd_conf);
 	realms_free();
 	listen_free(&mainconfig.listen);
-	xlat_free();
 	dict_free();
-	lt_dlexit();
 
 	return 0;
 }

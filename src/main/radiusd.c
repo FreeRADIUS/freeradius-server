@@ -483,6 +483,8 @@ int main(int argc, char *argv[])
 	 */
 	detach_modules();
 	
+	xlat_free();		/* modules may have xlat's */
+
 	free(radius_dir);
 		
 #ifdef WIN32

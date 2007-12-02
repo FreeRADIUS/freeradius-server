@@ -42,9 +42,11 @@ typedef struct indexed_modcallable {
 /*
  *	For each component, keep an ordered list of ones to call.
  */
-static rbtree_t *components;
+static rbtree_t *components = NULL;
 
 static rbtree_t *module_tree = NULL;
+
+static rbtree_t *instance_tree = NULL;
 
 typedef struct section_type_value_t {
 	const char	*section;
@@ -96,14 +98,35 @@ static int indexed_modcallable_cmp(const void *one, const void *two)
 
 
 /*
+ *	Compare two module entries
+ */
+static int module_instance_cmp(const void *one, const void *two)
+{
+	const module_instance_t *a = one;
+	const module_instance_t *b = two;
+
+	return strcmp(a->name, b->name);
+}
+
+
+/*
  *	Free a module instance.
  */
 static void module_instance_free(void *data)
 {
 	module_instance_t *this = data;
 
-	if (this->entry->module->detach)
+	if (this->entry->module->detach) {
+		int i;
+
 		(this->entry->module->detach)(this->insthandle);
+		for (i = 0; i < 16; i++) {
+			if (this->old_insthandle[i]) {
+				(this->entry->module->detach)(this->old_insthandle[i]);
+			}
+		}
+	}
+
 #ifdef HAVE_PTHREAD_H
 	if (this->mutex) {
 		/*
@@ -115,6 +138,7 @@ static void module_instance_free(void *data)
 		free(this->mutex);
 	}
 #endif
+	memset(this, 0, sizeof(*this));
 	free(this);
 }
 
@@ -138,6 +162,7 @@ static void module_entry_free(void *data)
 	module_entry_t *this = data;
 
 	lt_dlclose(this->handle);	/* ignore any errors */
+	memset(this, 0, sizeof(*this));
 	free(this);
 }
 
@@ -147,8 +172,11 @@ static void module_entry_free(void *data)
  */
 int detach_modules(void)
 {
+	rbtree_free(instance_tree);
 	rbtree_free(components);
 	rbtree_free(module_tree);
+
+	lt_dlexit();
 
 	return 0;
 }
@@ -165,7 +193,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	lt_dlhandle handle;
 	char module_struct[256];
 	char *p;
-	const void *module;
+	const module_t *module;
 
 	strlcpy(myentry.name, module_name, sizeof(myentry.name));
 	node = rbtree_finddata(module_tree, &myentry);
@@ -209,7 +237,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	/*
 	 *	Before doing anything else, check if it's sane.
 	 */
-	if ((*(const uint32_t *) module) != RLM_MODULE_MAGIC_NUMBER) {
+	if (module->magic != RLM_MODULE_MAGIC_NUMBER) {
 		lt_dlclose(handle);
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Invalid version in module '%s'",
@@ -249,7 +277,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 {
 	CONF_SECTION *cs;
 	const char *name1, *name2;
-	module_instance_t *node;
+	module_instance_t *node, myNode;
 	char module_name[256];
 
 	if (!modules) return NULL;
@@ -269,7 +297,8 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	/*
 	 *	If there's already a module instance, return it.
 	 */
-	node = cf_data_find(cs, "instance");
+	strlcpy(myNode.name, instname, sizeof(myNode.name));
+	node = rbtree_finddata(instance_tree, &myNode);
 	if (node) return node;
 
 	name1 = cf_section_name1(cs);
@@ -343,7 +372,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	}
 
 #endif
-	cf_data_add(cs, "instance", node, module_instance_free);
+	rbtree_insert(instance_tree, node);
 
 	return node;
 }
@@ -791,6 +820,8 @@ int module_hup(CONF_SECTION *modules)
 	     ci=cf_item_find_next(modules, ci)) {
 		int i;
 		void *insthandle = NULL;
+		const char *instname;
+		module_instance_t myNode;
 
 		/*
 		 *	If it's not a section, ignore it.
@@ -798,8 +829,11 @@ int module_hup(CONF_SECTION *modules)
 		if (!cf_item_is_section(ci)) continue;
 
 		cs = cf_itemtosection(ci);
+		instname = cf_section_name2(cs);
+		if (!instname) instname = cf_section_name1(cs);
 
-		node = cf_data_find(cs, "instance");
+		strlcpy(myNode.name, instname, sizeof(myNode.name));
+		node = rbtree_finddata(instance_tree, &myNode);
 		if (!node ||
 		    !node->entry->module->instantiate ||
 		    ((node->entry->module->type & RLM_TYPE_HUP_SAFE) == 0)) {
@@ -878,6 +912,8 @@ int setup_modules(int reload, CONF_SECTION *config)
 	rad_listen_t	*listener;
 	int		null_server = FALSE;
 
+	if (reload) return 0;
+
 	/*
 	 *	If necessary, initialize libltdl.
 	 */
@@ -913,8 +949,13 @@ int setup_modules(int reload, CONF_SECTION *config)
 			radlog(L_ERR, "Failed to initialize modules\n");
 			return -1;
 		}
-	} else {
-		rbtree_free(components);
+
+		instance_tree = rbtree_create(module_instance_cmp,
+					      module_instance_free, 0);
+		if (!instance_tree) {
+			radlog(L_ERR, "Failed to initialize modules\n");
+			return -1;
+		}
 	}
 
 	components = rbtree_create(indexed_modcallable_cmp,
