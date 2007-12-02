@@ -369,7 +369,8 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	if (inst->log_srcdst) {
 		VALUE_PAIR src_vp, dst_vp;
 
-		src_vp.name[0] = dst_vp.name[0] = '\0';	/* for vp_prints() */
+		memset(&src_vp, 0, sizeof(src_vp));
+		memset(&dst_vp, 0, sizeof(dst_vp));
 		src_vp.operator = dst_vp.operator = T_OP_EQ;
 
 		switch (packet->src_ipaddr.af) {
