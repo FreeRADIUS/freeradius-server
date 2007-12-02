@@ -27,13 +27,17 @@ RCSIDH(smux_h, "$Id$")
 #include <asn1.h>
 #include <snmp.h>
 #include <snmp_impl.h>
-#else
-# ifdef HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H
+
+#elif defined (HAVE_NET_SNMP_NET_SNMP_CONFIG_H)
+# include <net-snmp/net-snmp-config.h>
+# include <net-snmp/definitions.h>
+# include <net-snmp/types.h>
+
+#elif defined(HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H)
 # include <ucd-snmp/ucd-snmp-config.h>
 # include <ucd-snmp/asn1.h>
 # include <ucd-snmp/snmp.h>
 # include <ucd-snmp/snmp_impl.h>
-# endif
 #endif
 
 #define SMUX_PORT_DEFAULT 199
