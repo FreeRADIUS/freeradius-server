@@ -42,7 +42,7 @@ RCSID("$Id$")
 
 
 /* internal prototypes */
-static int oid_compare (oid *, int, oid *, int);
+static int oid_compare (oid *, size_t, oid *, size_t);
 
 /* SMUX subtree vector. */
 static struct list *treelist = NULL;
@@ -90,9 +90,9 @@ oid_copy_addr (oid my_oid[], struct in_addr *addr, int len)
 #endif /* NOT USED */
 
 static int
-oid_compare (oid *o1, int o1_len, oid *o2, int o2_len)
+oid_compare (oid *o1, size_t o1_len, oid *o2, size_t o2_len)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < min (o1_len, o2_len); i++) {
 			if (o1[i] < o2[i])
@@ -109,9 +109,9 @@ oid_compare (oid *o1, int o1_len, oid *o2, int o2_len)
 }
 
 static int
-oid_compare_part (oid *o1, int o1_len, oid *o2, int o2_len)
+oid_compare_part (oid *o1, size_t o1_len, oid *o2, size_t o2_len)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < min (o1_len, o2_len); i++) {
 			if (o1[i] < o2[i])
@@ -226,7 +226,7 @@ smux_sock (void)
 
 static void
 smux_getresp_send (oid objid[], size_t objid_len, long reqid, long errstat,
-		long errindex, u_char val_type, const void *arg, size_t arg_len)
+		long errindex, u_char val_type, void *arg, size_t arg_len)
 {
 	size_t ret;
 	u_char buf[BUFSIZ];
@@ -268,7 +268,7 @@ smux_getresp_send (oid objid[], size_t objid_len, long reqid, long errstat,
 	h2e = ptr;
 
 	ptr = snmp_build_var_op (ptr, objid, &objid_len,
-			val_type, arg_len, arg, &len);
+				 val_type, arg_len, arg, &len);
 
 	/* Now variable size is known, fill in size */
 	asn_build_sequence(h2,&length,(u_char)(ASN_SEQUENCE|ASN_CONSTRUCTOR),ptr-h2e);
@@ -281,8 +281,8 @@ smux_getresp_send (oid objid[], size_t objid_len, long reqid, long errstat,
 	ret = send (rad_snmp.smux_fd, buf, (ptr - buf), 0);
 }
 
-static char *
-smux_var (char *ptr, int len, oid objid[], size_t *objid_len,
+static u_char *
+smux_var (u_char *ptr, size_t len, oid objid[], size_t *objid_len,
 		size_t *var_val_len,
 		u_char *var_val_type,
 		void **var_value)
@@ -383,7 +383,7 @@ smux_set (oid *reqid, size_t *reqid_len,
 	struct list *l;
 	int subresult;
 	oid *suffix;
-	int suffix_len;
+	size_t suffix_len;
 	int result;
 	const unsigned char *statP = NULL;
 	WriteMethod *write_method = NULL;
@@ -439,7 +439,7 @@ smux_set (oid *reqid, size_t *reqid_len,
 
 static int
 smux_get (oid *reqid, size_t *reqid_len, int exact,
-		u_char *val_type,const void **val, size_t *val_len)
+		u_char *val_type,u_char **val, size_t *val_len)
 {
 	int j;
 	struct subtree *subtree;
@@ -447,7 +447,7 @@ smux_get (oid *reqid, size_t *reqid_len, int exact,
 	struct list *l;
 	int subresult;
 	oid *suffix;
-	int suffix_len;
+	size_t suffix_len;
 	int result;
 	WriteMethod *write_method=NULL;
 
@@ -477,7 +477,7 @@ smux_get (oid *reqid, size_t *reqid_len, int exact,
 					DEBUG3 ("SMUX function call index is %d", v->magic);
 
 					*val = (*v->findVar) (v, suffix, &suffix_len, exact,
-							val_len, &write_method);
+							      val_len, &write_method);
 					/* There is no instance. */
 					if (*val == NULL)
 						return SNMP_ERR_NOSUCHNAME;
@@ -500,7 +500,7 @@ smux_get (oid *reqid, size_t *reqid_len, int exact,
 
 static int
 smux_getnext (oid *reqid, size_t *reqid_len, int exact,
-		u_char *val_type, const void **val, size_t *val_len)
+		u_char *val_type, u_char **val, size_t *val_len)
 {
 	int j;
 	oid save[MAX_OID_LEN];
@@ -510,7 +510,7 @@ smux_getnext (oid *reqid, size_t *reqid_len, int exact,
 	struct list *l;
 	int subresult;
 	oid *suffix;
-	int suffix_len;
+	size_t suffix_len;
 	int result;
 	WriteMethod *write_method=NULL;
 
@@ -561,7 +561,7 @@ smux_getnext (oid *reqid, size_t *reqid_len, int exact,
 						suffix_len = v->namelen;
 					}
 					*val = (*v->findVar) (v, suffix, &suffix_len, exact,
-					val_len, &write_method);
+							      val_len, &write_method);
 					*reqid_len = suffix_len + subtree->name_len;
 					if (*val) {
 						*val_type = v->type;
@@ -578,8 +578,8 @@ smux_getnext (oid *reqid, size_t *reqid_len, int exact,
 }
 
 /* GET message header. */
-static char *
-smux_parse_get_header (char *ptr, size_t *len, long *reqid)
+static u_char *
+smux_parse_get_header (u_char *ptr, size_t *len, long *reqid)
 {
 	u_char type;
 	long errstat;
@@ -604,7 +604,7 @@ smux_parse_get_header (char *ptr, size_t *len, long *reqid)
 }
 
 static void
-smux_parse_set (char *ptr, size_t len, int action)
+smux_parse_set (u_char *ptr, size_t len, int action)
 {
 	long reqid;
 	oid my_oid[MAX_OID_LEN];
@@ -633,13 +633,13 @@ smux_parse_set (char *ptr, size_t len, int action)
 }
 
 static void
-smux_parse_get (char *ptr, size_t len, int exact)
+smux_parse_get (u_char *ptr, size_t len, int exact)
 {
 	long reqid;
 	oid my_oid[MAX_OID_LEN];
 	size_t oid_len;
 	u_char val_type;
-	const void *val;
+	u_char *val;
 	size_t val_len;
 	int ret;
 
@@ -666,7 +666,7 @@ smux_parse_get (char *ptr, size_t len, int exact)
 
 /* Parse SMUX_CLOSE message. */
 static void
-smux_parse_close (char *ptr, int len)
+smux_parse_close (u_char *ptr, size_t len)
 {
 	long reason = 0;
 
@@ -679,9 +679,9 @@ smux_parse_close (char *ptr, int len)
 
 /* SMUX_RRSP message. */
 static void
-smux_parse_rrsp (char *ptr, int len)
+smux_parse_rrsp (u_char *ptr, size_t len)
 {
-	char val;
+	u_char val;
 	long errstat;
 
 	ptr = asn_parse_int (ptr, &len, &val, &errstat, sizeof (errstat));
@@ -691,12 +691,12 @@ smux_parse_rrsp (char *ptr, int len)
 
 /* Parse SMUX message. */
 static int
-smux_parse (char *ptr, int len)
+smux_parse (u_char *ptr, size_t len)
 {
 	/* this buffer we'll use for SOUT message. We could allocate it with malloc and
 		 save only static pointer/lenght, but IMHO static buffer is a faster solusion */
 	static u_char sout_save_buff[SMUXMAXPKTSIZE];
-	static int sout_save_len = 0;
+	static size_t sout_save_len = 0;
 
 	int len_income = len; /* see note below: YYY */
 	u_char type;
@@ -841,9 +841,9 @@ smux_open(void)
 {
 	u_char buf[BUFSIZ];
 	u_char *ptr;
-	int len;
-	u_long smux_proto_version;
-	u_char rad_progname[] = "radiusd";
+	size_t len;
+	long smux_proto_version;
+	char rad_progname[] = "radiusd";
 
 	smux_oid_dump ("SMUX open oid", smux_oid, smux_oid_len);
 	DEBUG2 ("SMUX open progname: %s", rad_progname);
@@ -858,26 +858,26 @@ smux_open(void)
 	/* SMUX Open. */
 	smux_proto_version = 0;
 	ptr = asn_build_int (ptr, &len,
-			(u_char)(ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_INTEGER),
-			&smux_proto_version, sizeof (u_long));
+			     (u_char)(ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_INTEGER),
+			     &smux_proto_version, sizeof (u_long));
 
 	/* SMUX connection oid. */
 	ptr = asn_build_objid (ptr, &len,
-			(u_char)
-			(ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_OBJECT_ID),
-			smux_oid, smux_oid_len);
+			       (u_char)
+			       (ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_OBJECT_ID),
+			       smux_oid, smux_oid_len);
 
 	/* SMUX connection description. */
 	ptr = asn_build_string (ptr, &len,
-			(u_char)
-			(ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_OCTET_STR),
-			rad_progname, strlen (rad_progname));
+				(u_char)
+				(ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_OCTET_STR),
+				(u_char *) rad_progname, strlen(rad_progname));
 
 	/* SMUX connection password. */
 	ptr = asn_build_string (ptr, &len,
-			(u_char)
-			(ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_OCTET_STR),
-			rad_snmp.smux_password, strlen(rad_snmp.smux_password));
+				(u_char)
+				(ASN_UNIVERSAL | ASN_PRIMITIVE | ASN_OCTET_STR),
+				(const u_char *) rad_snmp.smux_password, strlen(rad_snmp.smux_password));
 
 	/* Fill in real SMUX header.	We exclude ASN header size (2). */
 	len = BUFSIZ;
@@ -891,7 +891,8 @@ smux_register(void)
 {
 	u_char buf[BUFSIZ];
 	u_char *ptr;
-	int len, ret;
+	size_t len;
+	int ret;
 	long priority;
 	long operation;
 	struct subtree *subtree;
