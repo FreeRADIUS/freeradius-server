@@ -140,7 +140,6 @@ int isdateline(char *d);
 int read_one(FILE *fp, struct relay_request *req);
 int do_recv(struct relay_misc *r_args);
 int do_send(struct relay_request *r, char *secret);
-int detail_move(char *from, char *to);
 void loop(struct relay_misc *r_args);
 int find_shortname(char *shortname, char **host, char **secret);
 void usage(void);
@@ -202,8 +201,6 @@ inline int isdateline(char *d)
 
 /*
  *	Read one request from the detail file.
- *	Note that the file is locked during the read, and that
- *	we return *with the file locked* if we reach end-of-file.
  *
  *	STATE_EMPTY:	Slot is empty.
  *	STATE_BUSY1:	Looking for start of a detail record (timestamp)
@@ -219,8 +216,6 @@ int read_one(FILE *fp, struct relay_request *r_req)
 	char key[32], val[32];
 	int skip;
 	long fpos;
-	int x;
-	unsigned int i = 0;
 
 	/* Never happens */
 	if (r_req->state == STATE_FULL)
@@ -230,21 +225,7 @@ int read_one(FILE *fp, struct relay_request *r_req)
 		r_req->state = STATE_BUSY1;
 	}
 
-	/*
-	 * Try to lock the detail-file.
-	 * If lockf is used we want to lock the _whole_ file, hence the
-	 * fseek to the start of the file.
-	 */
 	fpos = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);
-	do {
-		x = rad_lockfd_nonblock(fileno(fp), 0);
-		if (x == -1)
-			ms_sleep(100);
-	} while (x == -1 && i++ < 20);
-
-	if (x == -1)
-		return 0;
 
 redo:
 	s = NULL;
@@ -358,11 +339,6 @@ redo:
 		if (r_req->state == STATE_EMPTY || r_req->state == STATE_FULL)
 			return EOF;
 	}
-
-	fpos = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);
-	rad_unlockfd(fileno(fp), 0);
-	fseek(fp, fpos, SEEK_SET);
 
 	return 0;
 }
@@ -523,30 +499,6 @@ int do_send(struct relay_request *r, char *secret)
 }
 
 /*
- *	Rename a file, then recreate the old file with the
- *	same permissions and zero size.
- */
-int detail_move(char *from, char *to)
-{
-	struct stat st;
-	int n;
-	int oldmask;
-
-	if (stat(from, &st) < 0)
-		return -1;
-	if (rename(from, to) < 0)
-		return -1;
-
-	oldmask = umask(0);
-	if ((n = open(from, O_CREAT|O_RDWR, st.st_mode)) >= 0)
-		close(n);
-	umask(oldmask);
-
-	return 0;
-}
-
-
-/*
  *	Open detail file, collect records, send them to the
  *	remote accounting server, yadda yadda yadda.
  *
@@ -567,11 +519,10 @@ void loop(struct relay_misc *r_args)
 	struct relay_stats stats;
 	fd_set readfds;
 	char work[1030];
-	time_t now, uptime, last_rename = 0;
+	time_t now, uptime;
 	int i, n;
 	int state = STATE_RUN;
 	int id;
-	long fpos;
 
 	strNcpy(work, r_args->detail, sizeof(work) - 6);
 	strcat(work, ".work");
@@ -607,19 +558,40 @@ void loop(struct relay_misc *r_args)
 		if (got_sigterm) state = STATE_SHUTDOWN;
 
 		/*
-		 *	Open detail file - if needed, and if we can.
+		 *	Open detail.work first, so we don't lose
+		 *	accounting packets.  It's probably better to
+		 *	duplicate them than to lose them.
+		 *
+		 *	Note that we're not writing to the file, but
+		 *	we've got to open it for writing in order to
+		 *	establish the lock, to prevent rlm_detail from
+		 *	writing to it.
 		 */
 		if (state == STATE_RUN && fp == NULL) {
-			if ((fp = fopen(work, "r+")) != NULL)
-				state = STATE_BACKLOG;
-			else
-				fp = fopen(r_args->detail, "r+");
-			if (fp == NULL) {
-				fprintf(stderr, "%s: Unable to open detail file - %s\n", progname, r_args->detail);
-				perror("fopen");
-				return;
+			if ((fp = fopen(work, "r+")) == NULL) {
+				/*
+				 *	Try moving the detail file.  If it
+				 *	doesn't exist, we can't do anything.
+				 */
+				if(rename(r_args->detail, work) != -1)
+					fp = fopen(work, "r+");
 			}
 
+			
+			if(fp) {
+				/*
+				 * Try to lock the detail-file.  If lockf is
+				 * used we want to lock the _whole_ file, hence
+				 * the fseek to the start of the file.
+				 */
+				fseek(fp, 0L, SEEK_SET);
+				if(rad_lockfd_nonblock(fileno(fp), 0) == -1) {
+					fclose(fp);
+					fp = NULL;
+				} else {
+					state = STATE_BACKLOG;
+				}
+			}
 		}
 
 		/*
@@ -640,43 +612,6 @@ void loop(struct relay_misc *r_args)
 					state = STATE_CLOSE;
 					break;
 				}
-
-				/*
-				 *	End of file. See if the file has
-				 *	any size, and if we renamed less
-				 *	than 10 seconds ago or not.
-				 */
-				now = time(NULL);
-				if (ftell(fp) == 0 || now < last_rename + 10) {
-					fpos = ftell(fp);
-					fseek(fp, 0L, SEEK_SET);
-					rad_unlockfd(fileno(fp), 0);
-					fseek(fp, fpos, SEEK_SET);
-					break;
-				}
-				last_rename = now;
-
-				/*
-				 *	We rename the file to <file>.work
-				 *	and create an empty new file.
-				 */
-				if (detail_move(r_args->detail, work) == 0) {
-					if (debug_flag > 0)
-						fprintf(stderr, "Moving %s to %s\n",
-							r_args->detail, work);
-					/*
-					 *	rlm_detail might still write
-					 *	something to <detail>.work if
-					 *	it opens <detail> before it is
-					 *	renamed (race condition)
-					 */
-					ms_sleep(1000);
-					state = STATE_BACKLOG;
-				}
-				fpos = ftell(fp);
-				fseek(fp, 0L, SEEK_SET);
-				rad_unlockfd(fileno(fp), 0);
-				fseek(fp, fpos, SEEK_SET);
 			} while(0);
 			if (r_args->records_print && state == STATE_RUN){
 				stats.records_read++;
