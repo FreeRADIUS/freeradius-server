@@ -39,11 +39,37 @@ static const char *months[] = {
         "jan", "feb", "mar", "apr", "may", "jun",
         "jul", "aug", "sep", "oct", "nov", "dec" };
 
+/*
+ *	This padding is necessary only for attributes that are NOT
+ *	in the dictionary, and then only because the rest of the
+ *	code accesses vp->name directly, rather than through an
+ *	accessor function.
+ *
+ *	The name padding only has to large enough for:
+ *
+ *		Vendor-65535-Attr-65535
+ *
+ *	i.e. 23 characters, plus a zero.  We add another 8 bytes for
+ *	padding, because the VALUE_PAIR structure may be un-aligned.
+ *
+ *	The result is that for the normal case, the server uses a less
+ *	memory (36 bytes * number of VALUE_PAIRs).
+ */
+#define FR_VP_NAME_PAD (32)
+#define FR_VP_NAME_LEN (24)
+
 VALUE_PAIR *pairalloc(DICT_ATTR *da)
 {
+	size_t name_len = 0;
 	VALUE_PAIR *vp;
 
-	vp = malloc(sizeof(*vp));
+	/*
+	 *	Not in the dictionary: the name is allocated AFTER
+	 *	the VALUE_PAIR struct.
+	 */
+	if (!da) name_len = FR_VP_NAME_PAD;
+
+	vp = malloc(sizeof(*vp) + name_len);
 	if (!vp) return NULL;
 	memset(vp, 0, sizeof(*vp));
 
@@ -51,14 +77,15 @@ VALUE_PAIR *pairalloc(DICT_ATTR *da)
 		vp->attribute = da->attr;
 		vp->vendor = da->vendor;
 		vp->type = da->type;
-		strlcpy(vp->name, da->name, sizeof(vp->name));
+		vp->name = da->name;
 		vp->flags = da->flags;
 	} else {
 		vp->attribute = 0;
 		vp->vendor = 0;
 		vp->type = PW_TYPE_OCTETS;
-		vp->name[0] = '\0';
+		vp->name = NULL;
 		memset(&vp->flags, 0, sizeof(vp->flags));
+		vp->flags.unknown_attr = 1;
 	}
 
 	switch (vp->type) {
@@ -117,30 +144,41 @@ VALUE_PAIR *paircreate(int attr, int type)
 	vp->operator = T_OP_EQ;
 
 	/*
-	 *	Update the name...
+	 *	It isn't in the dictionary: update the name.
 	 */
 	if (!da) {
-		if (VENDOR(attr) == 0) {
-			snprintf(vp->name, sizeof(vp->name), "Attr-%u", attr);
+		size_t len = 0;
+		char *p = (char *) (vp + 1);
+		
+		vp->vendor = VENDOR(attr);
+		vp->attribute = attr;
+		vp->name = p;
+		vp->type = type; /* be forgiving */
 
-		} else {
+		if (vp->vendor) {
 			DICT_VENDOR *v;
 
-			v = dict_vendorbyvalue(VENDOR(attr));
+			v = dict_vendorbyvalue(vp->vendor);
 			if (v) {
-				snprintf(vp->name, sizeof(vp->name),
-					 "%s-Attr-%u",
-					 v->name, attr & 0xffff);
+				snprintf(p, FR_VP_NAME_LEN, "%s-", v->name);
 			} else {
-				snprintf(vp->name, sizeof(vp->name),
-					 "Vendor-%u-Attr-%u",
-					 VENDOR(attr), attr & 0xffff);
+				snprintf(p, FR_VP_NAME_LEN, "Vendor-%u-", vp->vendor);
+			}
+
+			len = strlen(p);
+			if (len == FR_VP_NAME_LEN) {
+				free(vp);
+				return NULL;
 			}
 		}
-		vp->type = type;
-
-	} else {
-		vp->type = da->type;
+		
+		snprintf(p + len, FR_VP_NAME_LEN - len, "Attr-%u",
+			 attr & 0xffff);
+		len += strlen(p + len);
+		if (len == FR_VP_NAME_LEN) {
+			free(vp);
+			return NULL;
+		}
 	}
 
 	return vp;
@@ -286,15 +324,24 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr)
 	last = &first;
 
 	while (vp) {
+		size_t name_len;
+
 		if (attr >= 0 && vp->attribute != attr) {
 			vp = vp->next;
 			continue;
 		}
+
+		if (!vp->flags.unknown_attr) {
+			name_len = 0;
+		} else {
+			name_len = FR_VP_NAME_PAD;
+		}
+		
 		if ((n = malloc(sizeof(*n))) == NULL) {
 			librad_log("out of memory");
 			return first;
 		}
-		memcpy(n, vp, sizeof(VALUE_PAIR));
+		memcpy(n, vp, sizeof(*n) + name_len);
 		n->next = NULL;
 		*last = n;
 		last = &n->next;
@@ -779,7 +826,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 	 *	Even for integers, dates and ip addresses we
 	 *	keep the original string in vp->vp_strvalue.
 	 */
-	strlcpy((char *)vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
+	strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
 	vp->length = strlen(vp->vp_strvalue);
 
 	switch(vp->type) {
@@ -1038,23 +1085,21 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 
 		case PW_TYPE_IFID:
-			if (ifid_aton(value, (unsigned char *) vp->vp_strvalue) == NULL) {
+			if (ifid_aton(value, (void *) &vp->vp_ifid) == NULL) {
 				librad_log("failed to parse interface-id "
 					   "string \"%s\"", value);
 				return NULL;
 			}
 			vp->length = 8;
-			vp->vp_strvalue[vp->length] = '\0';
 			break;
 
 		case PW_TYPE_IPV6ADDR:
-			if (inet_pton(AF_INET6, value, vp->vp_strvalue) <= 0) {
+			if (inet_pton(AF_INET6, value, &vp->vp_ipv6addr) <= 0) {
 				librad_log("failed to parse IPv6 address "
 					   "string \"%s\"", value);
 				return NULL;
 			}
 			vp->length = 16; /* length of IPv6 address */
-			vp->vp_strvalue[vp->length] = '\0';
 			break;
 
 		case PW_TYPE_IPV6PREFIX:
@@ -1070,7 +1115,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				memcpy(buffer, value, p - value);
 				buffer[p - value] = '\0';
 
-				if (inet_pton(AF_INET6, buffer, vp->vp_strvalue + 2) <= 0) {
+				if (inet_pton(AF_INET6, buffer, vp->vp_octets + 2) <= 0) {
 					librad_log("failed to parse IPv6 address "
 						   "string \"%s\"", value);
 					return NULL;
@@ -1082,9 +1127,9 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 						   "string \"%s\"", value);
 					return NULL;
 				}
-				vp->vp_strvalue[1] = prefix;
+				vp->vp_octets[1] = prefix;
 			}
-			vp->vp_strvalue[0] = '\0';
+			vp->vp_octets[0] = '\0';
 			vp->length = 16 + 2;
 			break;
 
@@ -1137,88 +1182,124 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
  *
  *	Attr-%d
  *	Vendor-%d-Attr-%d
+ *	VendorName-Attr-%d
  */
 static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 				int operator)
 {
-	int		attr;
-	const char	*p;
+	int		attr, vendor;
+	size_t		size;
+	const char	*p = attribute;
+	char		*q;
 	VALUE_PAIR	*vp;
 
 	/*
 	 *	Unknown attributes MUST be of type 'octets'
 	 */
 	if (value && (strncasecmp(value, "0x", 2) != 0)) {
-		goto error;
+		librad_log("Invalid octet string \"%s\" for attribute name \"%s\"", value, attribute);
+		return NULL;
+	}
+
+	attr = vendor = 0;
+
+	/*
+	 *	Pull off vendor prefix first.
+	 */
+	if (strncasecmp(p, "Attr-", 5) != 0) {
+		if (strncasecmp(p, "Vendor-", 7) == 0) {
+			vendor = (int) strtol(p + 7, &q, 10);
+			if ((vendor == 0) || (vendor > 65535)) {
+				librad_log("Invalid vendor value in attribute name \"%s\"", attribute);
+				return NULL;
+			}
+
+			p = q;
+
+		} else {	/* must be vendor name */
+			q = strchr(p, '-');
+			char buffer[256];
+
+			if (!q) {
+				librad_log("Invalid vendor name in attribute name \"%s\"", attribute);
+				return NULL;
+			}
+
+			if ((q - p) >= sizeof(buffer)) {
+				librad_log("Vendor name too long in attribute name \"%s\"", attribute);
+				return NULL;
+			}
+
+			memcpy(buffer, p, (q - p));
+			buffer[q - p] = '\0';
+
+			vendor = dict_vendorbyname(buffer);
+			if (!vendor) {
+				librad_log("Unknown vendor name in attribute name \"%s\"", attribute);
+				return NULL;
+			}
+
+			p = q;
+		}
+
+		if (*p != '-') {
+			librad_log("Invalid text following vendor definition in attribute name \"%s\"", attribute);
+			return NULL;
+		}
+		p++;
 	}
 
 	/*
 	 *	Attr-%d
 	 */
-	if (strncasecmp(attribute, "Attr-", 5) == 0) {
-		attr = atoi(attribute + 5);
-		p = attribute + 5;
-		p += strspn(p, "0123456789");
-		if (*p != 0) goto error;
-
-		/*
-		 *	Vendor-%d-Attr-%d
-		 */
-	} else if (strncasecmp(attribute, "Vendor-", 7) == 0) {
-		int vendor;
-
-		vendor = atoi(attribute + 7);
-		if ((vendor == 0) || (vendor > 65535)) goto error;
-
-		p = attribute + 7;
-		p += strspn(p, "0123456789");
-
-		/*
-		 *	Not Vendor-%d-Attr-%d
-		 */
-		if (strncasecmp(p, "-Attr-", 6) != 0) goto error;
-
-		p += 6;
-		attr = atoi(p);
-
-		p += strspn(p, "0123456789");
-		if (*p != 0) goto error;
-
-		if ((attr == 0) || (attr > 65535)) goto error;
-
-		attr |= (vendor << 16);
-
-		/*
-		 *	VendorName-Attr-%d
-		 */
-	} else if (((p = strchr(attribute, '-')) != NULL) &&
-		   (strncasecmp(p, "-Attr-", 6) == 0)) {
-		int vendor;
-		char buffer[256];
-
-		if (((size_t) (p - attribute)) >= sizeof(buffer)) goto error;
-
-		memcpy(buffer, attribute, p - attribute);
-		buffer[p - attribute] = '\0';
-
-		vendor = dict_vendorbyname(buffer);
-		if (vendor == 0) goto error;
-
-		p += 6;
-		attr = atoi(p);
-
-		p += strspn(p, "0123456789");
-		if (*p != 0) goto error;
-
-		if ((attr == 0) || (attr > 65535)) goto error;
-
-		attr |= (vendor << 16);
-
-	} else {		/* very much unknown: die */
-	error:
-		librad_log("Unknown attribute \"%s\"", attribute);
+	if (strncasecmp(p, "Attr-", 5) != 0) {
+		librad_log("Invalid format in attribute name \"%s\"", attribute);
 		return NULL;
 	}
+
+	attr = strtol(p + 5, &q, 10);
+
+	/*
+	 *	Invalid, or trailing text after number.
+	 */
+	if ((attr == 0) || *q) {
+		librad_log("Invalid value in attribute name \"%s\"", attribute);
+		return NULL;
+	}
+
+	/*
+	 *	Double-check the size of attr.
+	 */
+	if (vendor) {
+		DICT_VENDOR *dv = dict_vendorbyvalue(vendor);
+
+		if (!dv) {
+			if (attr > 255) {
+			attr_error:
+				librad_log("Invalid attribute number in attribute name \"%s\"", attribute);
+				return NULL;
+			}
+
+		} else switch (dv->type) {
+			case 1:
+				if (attr > 255) goto attr_error;
+				break;
+
+			case 2:
+				if (attr > 65535) goto attr_error;
+				break;
+
+			case 4:	/* Internal limitations! */
+				if (attr > 65535) goto attr_error;
+				break;
+
+			default:
+				librad_log("Internal sanity check failed");
+				return NULL;
+		}
+	}
+
+	attr |= vendor << 16;
 
 	/*
 	 *	We've now parsed the attribute properly, Let's create
@@ -1230,10 +1311,48 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		return NULL;
 	}
 
-	if (pairparsevalue(vp, value) == NULL) {
-		pairfree(&vp);
+	size = strlen(value + 2);
+
+	/*
+	 *	We may be reading something like Attr-5.  i.e.
+	 *	who-ever wrote the text didn't understand it, but we
+	 *	do.
+	 */
+	switch (vp->type) {
+	default:
+		if (size == (vp->length * 2)) break;
+		vp->type = PW_TYPE_OCTETS;
+		/* FALL-THROUGH */
+		
+	case PW_TYPE_STRING:
+	case PW_TYPE_OCTETS:
+	case PW_TYPE_ABINARY:
+		vp->length = size >> 1;
+		break;
+	}
+
+	if (fr_hex2bin(value + 2, vp->vp_octets, size) != vp->length) {
+		librad_log("Invalid hex string");
+		free(vp);
 		return NULL;
 	}
+
+	/*
+	 *	Move contents around based on type.  This is
+	 *	to work around the historical use of "lvalue".
+	 */
+	switch (vp->type) {
+	case PW_TYPE_DATE:
+	case PW_TYPE_IPADDR:
+	case PW_TYPE_INTEGER:
+		memcpy(&vp->lvalue, vp->vp_octets, sizeof(vp->lvalue));
+		vp->vp_strvalue[0] = '\0';
+		break;
+		
+	default:
+		break;
+	}
+       
 	vp->operator = (operator == 0) ? T_OP_EQ : operator;
 
 	return vp;
@@ -1775,13 +1894,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 		break;
 
 	case PW_TYPE_STRING:
-		if (one->flags.caseless) {
-			compare = strcasecmp(two->vp_strvalue,
-					     one->vp_strvalue);
-		} else {
-			compare = strcmp(two->vp_strvalue,
-					 one->vp_strvalue);
-		}
+		compare = strcmp(two->vp_strvalue, one->vp_strvalue);
 		break;
 
 	case PW_TYPE_BYTE:

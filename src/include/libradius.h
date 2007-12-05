@@ -94,7 +94,7 @@ typedef struct attr_flags {
 	unsigned int		addport : 1;  /* add NAS-Port to IP address */
 	unsigned int		has_tag : 1;  /* tagged attribute */
 	unsigned int		do_xlat : 1;  /* strvalue is dynamic */
-	unsigned int		caseless : 1; /* case insensitive compares */
+	unsigned int		unknown_attr : 1; /* not in dictionary */
 	unsigned int		array : 1; /* pack multiples into 1 attr */
 	unsigned int		has_value : 1; /* has a value */
 	unsigned int		has_value_alias : 1; /* has a value alias */
@@ -146,7 +146,7 @@ typedef union value_pair_data {
 } VALUE_PAIR_DATA;
 
 typedef struct value_pair {
-	char			name[40];
+	const char	        *name;
 	int			attribute;
 	int			vendor;
 	int			type;
