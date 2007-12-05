@@ -105,6 +105,8 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{nt}",	PW_NT_PASSWORD },
 	{ "{x-nthash}",	PW_NT_PASSWORD },
 	{ "{ns-mta-md5}", PW_NS_MTA_MD5_PASSWORD },
+	{ "{x- orcllmv}", PW_LM_PASSWORD },
+	{ "{X- ORCLNTV}", PW_NT_PASSWORD },
 	{ NULL, 0 }
 };
 
@@ -211,7 +213,7 @@ static int base64_decode (const char *src, uint8_t *dst)
 {
 	int length, equals;
 	int i, num;
-	char last[3];
+	uint8_t last[3];
 
 	length = equals = 0;
 	while (src[length] && src[length] != '=') length++;
@@ -241,7 +243,7 @@ static int base64_decode (const char *src, uint8_t *dst)
 static void normify(VALUE_PAIR *vp, int min_length)
 {
 	int decoded;
-	char buffer[64];
+	uint8_t buffer[64];
 
 	if ((size_t) min_length >= sizeof(buffer)) return; /* paranoia */
 
@@ -249,7 +251,7 @@ static void normify(VALUE_PAIR *vp, int min_length)
 	 *	Hex encoding.
 	 */
 	if (vp->length >= (2 * min_length)) {
-		decoded = fr_hex2bin(vp->vp_octets, buffer, vp->length >> 1);
+		decoded = fr_hex2bin(vp->vp_strvalue, buffer, vp->length >> 1);
 		if (decoded == (vp->length >> 1)) {
 			DEBUG2("rlm_pap: Normalizing %s from hex encoding", vp->name);
 			memcpy(vp->vp_octets, buffer, decoded);
@@ -263,7 +265,7 @@ static void normify(VALUE_PAIR *vp, int min_length)
 	 *	and we want to avoid division...
 	 */
 	if ((vp->length * 3) >= ((min_length * 4))) {
-		decoded = base64_decode(vp->vp_octets, buffer);
+		decoded = base64_decode(vp->vp_strvalue, buffer);
 		if (decoded >= min_length) {
 			DEBUG2("rlm_pap: Normalizing %s from base64 encoding", vp->name);
 			memcpy(vp->vp_octets, buffer, decoded);
@@ -310,7 +312,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 		case PW_PASSWORD_WITH_HEADER: /* preferred */
 		{
 			int attr;
-			uint8_t *p, *q;
+			char *p, *q;
 			char buffer[64];
 			VALUE_PAIR *new_vp;
 
@@ -612,8 +614,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 
 		fr_MD5Init(&md5_context);
-		fr_MD5Update(&md5_context, request->password->vp_strvalue,
-			  request->password->length);
+		fr_MD5Update(&md5_context, request->password->vp_octets,
+			     request->password->length);
 		fr_MD5Final(digest, &md5_context);
 		if (memcmp(digest, vp->vp_octets, vp->length) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: MD5 password check failed");
@@ -634,8 +636,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 
 		fr_MD5Init(&md5_context);
-		fr_MD5Update(&md5_context, request->password->vp_strvalue,
-			  request->password->length);
+		fr_MD5Update(&md5_context, request->password->vp_octets,
+			     request->password->length);
 		fr_MD5Update(&md5_context, &vp->vp_octets[16], vp->length - 16);
 		fr_MD5Final(digest, &md5_context);
 
@@ -661,8 +663,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 
 		fr_SHA1Init(&sha1_context);
-		fr_SHA1Update(&sha1_context, request->password->vp_strvalue,
-			   request->password->length);
+		fr_SHA1Update(&sha1_context, request->password->vp_octets,
+			      request->password->length);
 		fr_SHA1Final(digest,&sha1_context);
 		if (memcmp(digest, vp->vp_octets, vp->length) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SHA1 password check failed");
@@ -684,7 +686,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 
 		fr_SHA1Init(&sha1_context);
-		fr_SHA1Update(&sha1_context, request->password->vp_strvalue,
+		fr_SHA1Update(&sha1_context, request->password->vp_octets,
 			   request->password->length);
 		fr_SHA1Update(&sha1_context, &vp->vp_octets[20], vp->length - 20);
 		fr_SHA1Final(digest,&sha1_context);
@@ -708,7 +710,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 		snprintf(buff2, sizeof(buff2), "%%{mschap:NT-Hash %s}",
 			request->password->vp_strvalue);
-		if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
+		if (!radius_xlat(digest, sizeof(digest),buff2,request,NULL)){
 			DEBUG("rlm_pap: mschap xlat failed");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
 			goto make_msg;
@@ -764,7 +766,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	Sanity check the value of NS-MTA-MD5-Password
 		 */
-		if (fr_hex2bin(vp->vp_octets, buff, 32) != 16) {
+		if (fr_hex2bin(vp->vp_strvalue, buff, 32) != 16) {
 			DEBUG("rlm_pap: Configured NS-MTA-MD5-Password has invalid value");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NS-MTA-MD5-Password has invalid value");
 			goto make_msg;
