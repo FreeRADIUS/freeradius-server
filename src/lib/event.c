@@ -34,12 +34,12 @@ typedef struct fr_event_fd_t {
 	void			*ctx;
 } fr_event_fd_t;
 
+#define FR_EV_MAX_FDS (256)
+
 
 struct fr_event_list_t {
 	rbtree_t	*times;
 
-	rbtree_t	*readers;
-	fd_set		read_fds;
 	int		changed;
 	int		maxfd;
 
@@ -49,6 +49,10 @@ struct fr_event_list_t {
 
 	struct timeval  now;
 	int		dispatch;
+
+	int		max_readers;
+	fd_set		read_fds;
+	fr_event_fd_t	readers[FR_EV_MAX_FDS];
 };
 
 /*
@@ -78,27 +82,18 @@ static int fr_event_list_time_cmp(const void *one, const void *two)
 }
 
 
-static int fr_event_list_fd_cmp(const void *one, const void *two)
-{
-	const fr_event_fd_t *a = one;
-	const fr_event_fd_t *b = two;
-
-	return a->fd - b->fd;
-}
-
-
 void fr_event_list_free(fr_event_list_t *el)
 {
 	if (!el) return;
 
 	rbtree_free(el->times);
-	rbtree_free(el->readers);
 	free(el);
 }
 
 
 fr_event_list_t *fr_event_list_create(fr_event_status_t status)
 {
+	int i;
 	fr_event_list_t *el;
 
 	el = malloc(sizeof(*el));
@@ -112,14 +107,12 @@ fr_event_list_t *fr_event_list_create(fr_event_status_t status)
 		return NULL;
 	}
 
-	el->readers = rbtree_create(fr_event_list_fd_cmp,
-				  free, 0);
-	if (!el->readers) {
-		fr_event_list_free(el);
-		return NULL;
+	for (i = 0; i < FR_EV_MAX_FDS; i++) {
+		el->readers[i].fd = -1;
 	}
 
 	el->status = status;
+	el->changed = 1;	/* force re-set of fds's */
 
 	return el;
 }
@@ -264,25 +257,34 @@ int fr_event_now(fr_event_list_t *el, struct timeval *when)
 int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 			 fr_event_fd_handler_t handler, void *ctx)
 {
+	int i;
 	fr_event_fd_t *ef;
 
 	if (!el || (fd < 0) || !handler || !ctx) return 0;
 
 	if (type != 0) return 0;
 
-	ef = malloc(sizeof(*ef));
+	if (el->max_readers >= FR_EV_MAX_FDS) return 0;
+
+	ef = NULL;
+	for (i = 0; i <= el->max_readers; i++) {
+		if (el->readers[i].fd == fd) return 0;
+
+		if (el->readers[i].fd < 0) {
+			ef = &el->readers[i];
+
+			if (i == el->max_readers) el->max_readers = i + 1;
+			break;
+		}
+	}
+
 	if (!ef) return 0;
 
 	ef->fd = fd;
 	ef->handler = handler;
 	ef->ctx = ctx;
 
-	if (!rbtree_insert(el->readers, ef)) {
-		free(ef);
-		return 0;
-	}
-
-	if (fd > el->maxfd) el->maxfd = fd;
+       	if (fd > el->maxfd) el->maxfd = fd;
 	el->changed = 1;
 
 	return 1;
@@ -290,18 +292,23 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 
 int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 {
-	fr_event_fd_t my_ef;
+	int i;
 
 	if (!el || (fd < 0)) return 0;
 
 	if (type != 0) return 0;
 
-	my_ef.fd = fd;
+	for (i = 0; i < el->max_readers; i++) {
+		if (el->readers[i].fd == fd) {
+			el->readers[i].fd = -1;
+			if ((i + 1) == el->max_readers) el->max_readers = i;
+			if (fd == el->maxfd) el->maxfd--;
+			el->changed = 1;
+			return 1;
+		}
+	}
 
-	if (fd == el->maxfd) el->maxfd--;
-	el->changed = 1;
-
-	return rbtree_deletebydata(el->readers, &my_ef);
+	return 0;
 }			 
 
 
@@ -313,47 +320,11 @@ void fr_event_loop_exit(fr_event_list_t *el, int code)
 }
 
 
-static int fr_event_fd_set(void *ctx, void *data)
-{
-	fd_set *fds = ctx;
-	fr_event_fd_t *ef = data;
-
-	if (ef->fd < 0) return 0; /* ignore it */
-
-	FD_SET(ef->fd, fds);
-
-	return 0;		/* continue walking */
-}
-
-typedef struct fr_fd_walk_t {
-	fr_event_list_t *el;
-	fd_set		  *fds;
-} fr_fd_walk_t;
-
-
-static int fr_event_fd_dispatch(void *ctx, void *data)
-{
-	fr_fd_walk_t *ew = ctx;
-	fr_event_fd_t *ef = data;
-
-	if (ef->fd < 0) return 0;
-
-	if (!FD_ISSET(ef->fd, ew->fds)) return 0;
-
-	ef->handler(ew->el, ef->fd, ef->ctx);
-
-	if (ew->el->changed) return 1;
-
-	return 0;		/* continue walking */
-}
-
-
 int fr_event_loop(fr_event_list_t *el)
 {
-	int rcode;
-	fd_set read_fds;
+	int i, rcode;
 	struct timeval when, *wake;
-	fr_fd_walk_t ew;
+	fd_set read_fds;
 
 	/*
 	 *	Cache the list of FD's to watch.
@@ -361,8 +332,11 @@ int fr_event_loop(fr_event_list_t *el)
 	if (el->changed) {
 		FD_ZERO(&el->read_fds);
 
-		rbtree_walk(el->readers, InOrder, fr_event_fd_set,
-			    &el->read_fds);
+		for (i = 0; i < el->max_readers; i++) {
+			if (el->readers[i].fd < 0) continue;
+			FD_SET(el->readers[i].fd, &el->read_fds);
+		}
+
 		el->changed = 0;
 	}
 
@@ -404,13 +378,12 @@ int fr_event_loop(fr_event_list_t *el)
 			wake = NULL;
 		}
 
-		read_fds = el->read_fds;
-
 		/*
 		 *	Tell someone what the status is.
 		 */
 		if (el->status) el->status(wake);
 
+		read_fds = el->read_fds;
 		rcode = select(el->maxfd + 1, &read_fds, NULL, NULL, wake);
 		if ((rcode < 0) && (errno != EINTR)) {
 			el->dispatch = 0;
@@ -426,11 +399,19 @@ int fr_event_loop(fr_event_list_t *el)
 		
 		if (rcode <= 0) continue;
 
-		ew.fds = &read_fds;
-		ew.el = el;
-
 		el->changed = 0;
-		rbtree_walk(el->readers, InOrder, fr_event_fd_dispatch, &ew);
+
+		for (i = 0; i < el->max_readers; i++) {
+			fr_event_fd_t *ef = &el->readers[i];
+
+			if (ef->fd < 0) continue;
+
+			if (!FD_ISSET(ef->fd, &read_fds)) continue;
+			
+			ef->handler(el, ef->fd, ef->ctx);
+
+			if (el->changed) break;
+		}
 	}
 
 	el->dispatch = 0;
