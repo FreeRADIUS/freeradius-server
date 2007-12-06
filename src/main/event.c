@@ -1889,7 +1889,7 @@ int received_request(rad_listen_t *listener,
 	request->timestamp = request->received.tv_sec;
 	request->when = request->received;
 
-	request->delay = USEC / 10;
+	request->delay = USEC;
 
 	tv_add(&request->when, request->delay);
 
@@ -2045,7 +2045,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 
 	request->child_state = REQUEST_QUEUED;
 	request->when = now;
-	request->delay = USEC / 10;
+	request->delay = USEC;
 	request->priority = RAD_LISTEN_PROXY;
 	tv_add(&request->when, request->delay);
 
@@ -2143,7 +2143,7 @@ void radius_signal_self(int flag)
 
 static void event_signal_handler(fr_event_list_t *xel, int fd, void *ctx)
 {
-	size_t i, rcode;
+	ssize_t i, rcode;
 	char buffer[32];
 
 	xel = xel;
