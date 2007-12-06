@@ -1665,7 +1665,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	 *	packet->data == NULL
 	 */
 	if ((packet->data_len == 0) || !packet->data) {
-		librad_log("No data.");
+		librad_log("Empty packet: Socket is not ready.");
 		free(packet);
 		return NULL;
 	}
