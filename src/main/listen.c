@@ -41,6 +41,11 @@ RCSID("$Id$")
 #include <net/if.h>
 #endif
 
+#ifdef HAVE_FCNTL_H
+#include <fcntl.h>
+#endif
+
+
 /*
  *	We'll use this below.
  */
@@ -866,6 +871,11 @@ static int listen_bind(rad_listen_t *this)
 		return -1;
 	}
 
+	/*
+	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
+	 *	kernel instead binds us to a 1.2.3.4.  If this
+	 *	happens, notice, and remember our real IP.
+	 */
 	{
 		struct sockaddr_storage	src;
 		socklen_t	        sizeof_src = sizeof(src);
@@ -894,19 +904,23 @@ static int listen_bind(rad_listen_t *this)
 		}
 	}
 
-#if 0
 #ifdef O_NONBLOCK
-	if ((flags = fcntl(this->fd, F_GETFL, NULL)) < 0)  {
-		radlog(L_ERR, "Failure in fcntl: %s)\n", strerror(errno));
-		return -1;
+	{
+		int flags;
+		
+		if ((flags = fcntl(this->fd, F_GETFL, NULL)) < 0)  {
+			radlog(L_ERR, "Failure getting socket flags: %s)\n",
+			       strerror(errno));
+			return -1;
+		}
+		
+		flags |= O_NONBLOCK;
+		if( fcntl(this->fd, F_SETFL, flags) < 0) {
+			radlog(L_ERR, "Failure setting socket flags: %s)\n",
+			       strerror(errno));
+			return -1;
+		}
 	}
-
-	flags |= O_NONBLOCK;
-	if( fcntl(this->fd, F_SETFL, flags) < 0) {
-		radlog(L_ERR, "Failure in fcntl: %s)\n", strerror(errno));
-		return -1;
-	}
-#endif
 #endif
 
 	return 0;
