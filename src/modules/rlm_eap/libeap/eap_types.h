@@ -119,8 +119,6 @@ extern int eaptype_name2type(const char *name);
 extern const char *eaptype_type2name(unsigned int type, char *buffer, size_t buflen);
 int eap_wireformat(EAP_PACKET *reply);
 extern int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply);
-extern void map_eap_types(RADIUS_PACKET *req);
 extern eap_packet_t *eap_attribute(VALUE_PAIR *vps);
-extern void unmap_eap_types(RADIUS_PACKET *rep);
 
 #endif /* _EAP_TYPES_H */

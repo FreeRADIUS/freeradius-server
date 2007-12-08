@@ -63,6 +63,9 @@ char password[256];
 
 struct eapsim_keys eapsim_mk;
 
+static void map_eap_types(RADIUS_PACKET *req);
+static void unmap_eap_types(RADIUS_PACKET *rep);
+
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: radeapclient [options] server[:port] <command> [<secret>]\n");
@@ -1132,3 +1135,271 @@ int main(int argc, char **argv)
 	}
 	return 0;
 }
+
+/*
+ * given a radius request with some attributes in the EAP range, build
+ * them all into a single EAP-Message body.
+ *
+ * Note that this function will build multiple EAP-Message bodies
+ * if there are multiple eligible EAP-types. This is incorrect, as the
+ * recipient will in fact concatenate them.
+ *
+ * XXX - we could break the loop once we process one type. Maybe this
+ *       just deserves an assert?
+ *
+ */
+static void map_eap_types(RADIUS_PACKET *req)
+{
+	VALUE_PAIR *vp, *vpnext;
+	int id, eapcode;
+	EAP_PACKET ep;
+	int eap_type;
+
+	vp = pairfind(req->vps, ATTRIBUTE_EAP_ID);
+	if(vp == NULL) {
+		id = ((int)getpid() & 0xff);
+	} else {
+		id = vp->vp_integer;
+	}
+
+	vp = pairfind(req->vps, ATTRIBUTE_EAP_CODE);
+	if(vp == NULL) {
+		eapcode = PW_EAP_REQUEST;
+	} else {
+		eapcode = vp->vp_integer;
+	}
+
+
+	for(vp = req->vps; vp != NULL; vp = vpnext) {
+		/* save it in case it changes! */
+		vpnext = vp->next;
+
+		if(vp->attribute >= ATTRIBUTE_EAP_BASE &&
+		   vp->attribute < ATTRIBUTE_EAP_BASE+256) {
+			break;
+		}
+	}
+
+	if(vp == NULL) {
+		return;
+	}
+
+	eap_type = vp->attribute - ATTRIBUTE_EAP_BASE;
+
+	switch(eap_type) {
+	case PW_EAP_IDENTITY:
+	case PW_EAP_NOTIFICATION:
+	case PW_EAP_NAK:
+	case PW_EAP_MD5:
+	case PW_EAP_OTP:
+	case PW_EAP_GTC:
+	case PW_EAP_TLS:
+	case PW_EAP_LEAP:
+	case PW_EAP_TTLS:
+	case PW_EAP_PEAP:
+	default:
+		/*
+		 * no known special handling, it is just encoded as an
+		 * EAP-message with the given type.
+		 */
+
+		/* nuke any existing EAP-Messages */
+		pairdelete(&req->vps, PW_EAP_MESSAGE);
+
+		memset(&ep, 0, sizeof(ep));
+		ep.code = eapcode;
+		ep.id   = id;
+		ep.type.type = eap_type;
+		ep.type.length = vp->length;
+		ep.type.data = malloc(vp->length);
+		memcpy(ep.type.data,vp->vp_octets, vp->length);
+		eap_basic_compose(req, &ep);
+	}
+}
+
+/*
+ * given a radius request with an EAP-Message body, decode it specific
+ * attributes.
+ */
+static void unmap_eap_types(RADIUS_PACKET *rep)
+{
+	VALUE_PAIR *eap1;
+	eap_packet_t *e;
+	int len;
+	int type;
+
+	/* find eap message */
+	e = eap_attribute(rep->vps);
+
+	/* nothing to do! */
+	if(e == NULL) return;
+
+	/* create EAP-ID and EAP-CODE attributes to start */
+	eap1 = paircreate(ATTRIBUTE_EAP_ID, PW_TYPE_INTEGER);
+	eap1->vp_integer = e->id;
+	pairadd(&(rep->vps), eap1);
+
+	eap1 = paircreate(ATTRIBUTE_EAP_CODE, PW_TYPE_INTEGER);
+	eap1->vp_integer = e->code;
+	pairadd(&(rep->vps), eap1);
+
+	switch(e->code)
+	{
+	default:
+	case PW_EAP_SUCCESS:
+	case PW_EAP_FAILURE:
+		/* no data */
+		break;
+
+	case PW_EAP_REQUEST:
+	case PW_EAP_RESPONSE:
+		/* there is a type field, which we use to create
+		 * a new attribute */
+
+		/* the length was decode already into the attribute
+		 * length, and was checked already. Network byte
+		 * order, just pull it out using math.
+		 */
+		len = e->length[0]*256 + e->length[1];
+
+		/* verify the length is big enough to hold type */
+		if(len < 5)
+		{
+			return;
+		}
+
+		type = e->data[0];
+
+		type += ATTRIBUTE_EAP_BASE;
+		len -= 5;
+
+		if(len > MAX_STRING_LEN) {
+			len = MAX_STRING_LEN;
+		}
+
+		eap1 = paircreate(type, PW_TYPE_OCTETS);
+		memcpy(eap1->vp_strvalue, &e->data[1], len);
+		eap1->length = len;
+		pairadd(&(rep->vps), eap1);
+		break;
+	}
+
+	return;
+}
+
+#ifdef TEST_CASE
+
+#include <assert.h>
+
+const char *radius_dir = RADDBDIR;
+
+int radlog(int lvl, const char *msg, ...)
+{
+	va_list ap;
+	int r;
+
+	va_start(ap, msg);
+	r = vfprintf(stderr, msg, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+
+	return r;
+}
+
+main(int argc, char *argv[])
+{
+	int filedone;
+	RADIUS_PACKET *req,*req2;
+	VALUE_PAIR *vp, *vpkey, *vpextra;
+	extern unsigned int sha1_data_problems;
+
+	req = NULL;
+	req2 = NULL;
+	filedone = 0;
+
+	if(argc>1) {
+	  sha1_data_problems = 1;
+	}
+
+	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
+		librad_perror("radclient");
+		return 1;
+	}
+
+	if ((req = rad_alloc(1)) == NULL) {
+		librad_perror("radclient");
+		exit(1);
+	}
+
+	if ((req2 = rad_alloc(1)) == NULL) {
+		librad_perror("radclient");
+		exit(1);
+	}
+
+	while(!filedone) {
+		if(req->vps) pairfree(&req->vps);
+		if(req2->vps) pairfree(&req2->vps);
+
+		if ((req->vps = readvp2(stdin, &filedone, "eapsimlib:")) == NULL) {
+			break;
+		}
+
+		printf("\nRead:\n");
+		vp_printlist(stdout, req->vps);
+
+		map_eapsim_types(req);
+		map_eap_types(req);
+		printf("Mapped to:\n");
+		vp_printlist(stdout, req->vps);
+
+		/* find the EAP-Message, copy it to req2 */
+		vp = paircopy2(req->vps, PW_EAP_MESSAGE);
+
+		if(vp == NULL) continue;
+
+		pairadd(&req2->vps, vp);
+
+		/* only call unmap for sim types here */
+		unmap_eap_types(req2);
+		unmap_eapsim_types(req2);
+
+		printf("Unmapped to:\n");
+		vp_printlist(stdout, req2->vps);
+
+		vp = pairfind(req2->vps,
+			      ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC);
+		vpkey   = pairfind(req->vps, ATTRIBUTE_EAP_SIM_KEY);
+		vpextra = pairfind(req->vps, ATTRIBUTE_EAP_SIM_EXTRA);
+
+		if(vp != NULL && vpkey != NULL && vpextra!=NULL) {
+			uint8_t calcmac[16];
+
+			/* find the EAP-Message, copy it to req2 */
+
+			memset(calcmac, 0, sizeof(calcmac));
+			printf("Confirming MAC...");
+			if(eapsim_checkmac(req2->vps, vpkey->vp_strvalue,
+					   vpextra->vp_strvalue, vpextra->length,
+					   calcmac)) {
+				printf("succeed\n");
+			} else {
+				int i, j;
+
+				printf("calculated MAC (");
+				for (i = 0; i < 20; i++) {
+					if(j==4) {
+						printf("_");
+						j=0;
+					}
+					j++;
+
+					printf("%02x", calcmac[i]);
+				}
+				printf(" did not match\n");
+			}
+		}
+
+		fflush(stdout);
+	}
+}
+#endif
