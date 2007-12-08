@@ -324,8 +324,15 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 			rad_assert(node != NULL);
 			rbtree_delete(inst->session_tree, node);
 
+			/*
+			 *	handler == inst->session_head
+			 */
 			inst->session_head = handler->next;
-			if (handler->next) handler->next->prev = NULL;
+			if (handler->next) {
+				handler->next->prev = NULL;
+			} else {
+				inst->session_head = NULL;
+			}
 			eap_handler_free(handler);
 		}
 	}
