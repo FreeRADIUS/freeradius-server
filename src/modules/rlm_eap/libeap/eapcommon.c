@@ -175,7 +175,7 @@ const char *eaptype_type2name(unsigned int type, char *buffer, size_t buflen)
  *                      be malloc()'ed to the right size.
  *
  */
-static int eap_wireformat(EAP_PACKET *reply)
+int eap_wireformat(EAP_PACKET *reply)
 {
 
 	eap_packet_t	*hdr;
@@ -184,13 +184,10 @@ static int eap_wireformat(EAP_PACKET *reply)
 	if (reply == NULL) return EAP_INVALID;
 
 	/*
-	 * if reply->packet is set, then the wire format
-	 * has already been calculated, just succeed!
+	 *	If reply->packet is set, then the wire format
+	 *	has already been calculated, just succeed.
 	 */
-	if(reply->packet != NULL)
-	{
-		return EAP_VALID;
-	}
+	if(reply->packet != NULL) return EAP_VALID;
 
 	total_length = EAP_HEADER_LEN;
 	if (reply->code < 3) {

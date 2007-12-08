@@ -409,64 +409,6 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 
 
 /*
- *	EAP packet format to be sent over the wire
- *
- *	i.e. code+id+length+data where data = null/type+typedata
- *	based on code.
- */
-static int eap_wireformat(EAP_PACKET *reply)
-{
-	eap_packet_t	*hdr;
-	uint16_t total_length = 0;
-
-	if (reply == NULL) return EAP_INVALID;
-
-	total_length = EAP_HEADER_LEN;
-	if (reply->code < 3) {
-		total_length += 1/*EAPtype*/;
-		if (reply->type.data && reply->type.length > 0) {
-			total_length += reply->type.length;
-		}
-	}
-
-	reply->packet = (unsigned char *)malloc(total_length);
-	hdr = (eap_packet_t *)reply->packet;
-	if (!hdr) {
-		radlog(L_ERR, "rlm_eap: out of memory");
-		return EAP_INVALID;
-	}
-
-	hdr->code = (reply->code & 0xFF);
-	hdr->id = (reply->id & 0xFF);
-	total_length = htons(total_length);
-	memcpy(hdr->length, &total_length, sizeof(uint16_t));
-
-	/*
-	 *	Request and Response packets are special.
-	 */
-	if ((reply->code == PW_EAP_REQUEST) ||
-	    (reply->code == PW_EAP_RESPONSE)) {
-		hdr->data[0] = (reply->type.type & 0xFF);
-
-		/*
-		 * Here since we cannot know the typedata format and length
-		 *
-		 * Type_data is expected to be wired by each EAP-Type
-		 *
-		 * Zero length/No typedata is supported as long as
-		 * type is defined
-		 */
-		if (reply->type.data && reply->type.length > 0) {
-			memcpy(&hdr->data[1], reply->type.data, reply->type.length);
-			free(reply->type.data);
-			reply->type.data = reply->packet + EAP_HEADER_LEN + 1/*EAPtype*/;
-		}
-	}
-
-	return EAP_VALID;
-}
-
-/*
  *	compose EAP reply packet in EAP-Message attr of RADIUS.  If
  *	EAP exceeds 253, frame it in multiple EAP-Message attrs.
  *
