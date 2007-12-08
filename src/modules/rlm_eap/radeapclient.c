@@ -65,6 +65,8 @@ struct eapsim_keys eapsim_mk;
 
 static void map_eap_types(RADIUS_PACKET *req);
 static void unmap_eap_types(RADIUS_PACKET *rep);
+static int map_eapsim_types(RADIUS_PACKET *r);
+static int unmap_eapsim_types(RADIUS_PACKET *r);
 
 static void NEVER_RETURNS usage(void)
 {
@@ -1287,6 +1289,34 @@ static void unmap_eap_types(RADIUS_PACKET *rep)
 	return;
 }
 
+static int map_eapsim_types(RADIUS_PACKET *r)
+{
+	EAP_PACKET ep;
+	int ret;
+
+	memset(&ep, 0, sizeof(ep));
+	ret = map_eapsim_basictypes(r, &ep);
+	if(ret != 1) {
+		return ret;
+	}
+	eap_basic_compose(r, &ep);
+
+	return 1;
+}
+
+static int unmap_eapsim_types(RADIUS_PACKET *r)
+{
+	VALUE_PAIR             *esvp;
+
+	esvp = pairfind(r->vps, ATTRIBUTE_EAP_BASE+PW_EAP_SIM);
+	if (esvp == NULL) {
+		radlog(L_ERR, "eap: EAP-Sim attribute not found");
+		return 0;
+	}
+
+	return unmap_eapsim_basictypes(r, esvp->vp_octets, esvp->length);
+}
+
 #ifdef TEST_CASE
 
 #include <assert.h>
@@ -1403,3 +1433,4 @@ main(int argc, char *argv[])
 	}
 }
 #endif
+

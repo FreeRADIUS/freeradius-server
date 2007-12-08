@@ -103,9 +103,7 @@ enum eapsim_serverstates {
 /*
  * interfaces in eapsimlib.c
  */
-extern int map_eapsim_types(RADIUS_PACKET *r);
 extern int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep);
-extern int unmap_eapsim_types(RADIUS_PACKET *r);
 extern const char *sim_state2name(enum eapsim_clientstates state, char *buf, int buflen);
 extern const char *sim_subtype2name(enum eapsim_subtype subtype, char *buf, int buflen);
 extern int unmap_eapsim_basictypes(RADIUS_PACKET *r,

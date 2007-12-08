@@ -307,21 +307,6 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	return 1;
 }
 
-int map_eapsim_types(RADIUS_PACKET *r)
-{
-	EAP_PACKET ep;
-	int ret;
-
-	memset(&ep, 0, sizeof(ep));
-	ret = map_eapsim_basictypes(r, &ep);
-	if(ret != 1) {
-		return ret;
-	}
-	eap_basic_compose(r, &ep);
-
-	return 1;
-}
-
 /*
  * given a radius request with an EAP-SIM body, decode it into TLV pairs
  *
@@ -393,19 +378,6 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		es_attribute_count++;
 	}
 	return 1;
-}
-
-int unmap_eapsim_types(RADIUS_PACKET *r)
-{
-	VALUE_PAIR             *esvp;
-
-	esvp = pairfind(r->vps, ATTRIBUTE_EAP_BASE+PW_EAP_SIM);
-	if (esvp == NULL) {
-		radlog(L_ERR, "eap: EAP-Sim attribute not found");
-		return 0;
-	}
-
-	return unmap_eapsim_basictypes(r, esvp->vp_octets, esvp->length);
 }
 
 /*
