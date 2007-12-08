@@ -159,7 +159,6 @@ static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 		DEBUG2("MSCHAP Success\n");
 		length = 46;
 		eap_ds->request->type.data = malloc(length);
-		memset(eap_ds->request->type.data, 0, length);
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
@@ -167,6 +166,7 @@ static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 			radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 			return 0;
 		}
+		memset(eap_ds->request->type.data, 0, length);
 		eap_ds->request->type.length = length;
 
 		eap_ds->request->type.data[0] = PW_EAP_MSCHAPV2_SUCCESS;
@@ -180,7 +180,6 @@ static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 		DEBUG2("MSCHAP Failure\n");
 		length = 4 + MSCHAPV2_FAILURE_MESSAGE_LEN;
 		eap_ds->request->type.data = malloc(length);
-		memset(eap_ds->request->type.data, 0, length);
 
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
@@ -189,6 +188,7 @@ static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 			radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 			return 0;
 		}
+		memset(eap_ds->request->type.data, 0, length);
 		eap_ds->request->type.length = length;
 
 		eap_ds->request->type.data[0] = PW_EAP_MSCHAPV2_FAILURE;
