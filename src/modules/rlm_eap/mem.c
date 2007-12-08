@@ -52,10 +52,13 @@ void eap_packet_free(EAP_PACKET **eap_packet_ptr)
 
    	if (eap_packet->type.data) {
 		/*
-		 * This is just a pointer in the packet
-		 * so we do not free it but we NULL it
-		free(eap_packet->type.data);
-		*/
+		 *	There's no packet, OR the type data isn't
+		 *	pointing inside of the packet: free it.
+		 */
+		if ((eap_packet->packet == NULL) ||
+		    (eap_packet->type.data != (eap_packet->packet + 5))) {
+			free(eap_packet->type.data);
+		}
 		eap_packet->type.data = NULL;
 	}
 
