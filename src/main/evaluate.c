@@ -669,7 +669,7 @@ static void my_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	int i, j, count, from_count, to_count, tailto;
 	VALUE_PAIR *vp, *next, **last;
 	VALUE_PAIR **from_list, **to_list;
-	int *edited;
+	int *edited = NULL;
 
 	/*
 	 *	Set up arrays for editing, to remove some of the
@@ -926,6 +926,7 @@ static void my_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		}
 	}
 	free(to_list);
+	free(edited);
 }
 
 
