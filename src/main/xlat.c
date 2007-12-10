@@ -1077,7 +1077,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'C': /* ClientName */
-				strlcpy(q,client_name_old(&request->packet->src_ipaddr),freespace);
+				strlcpy(q,request->client->shortname,freespace);
 				q += strlen(q);
 				p++;
 				break;

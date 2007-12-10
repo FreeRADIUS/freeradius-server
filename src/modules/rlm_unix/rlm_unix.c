@@ -514,11 +514,9 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	originator's IP address.
 	 */
 	if (nas_address == 0) {
-		RADCLIENT *cl;
 		nas_address = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 
-		if ((cl = client_find_old(&request->packet->src_ipaddr)) != NULL)
-			s = cl->shortname;
+		s = request->client->shortname;
 	}
 	if (!s || s[0] == 0) s = uue(&(nas_address));
 

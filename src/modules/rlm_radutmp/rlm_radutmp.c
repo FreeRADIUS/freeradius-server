@@ -320,22 +320,11 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	if (nas_address == 0) {
 		nas_address = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 		ut.nas_address = nas_address;
-		nas = client_name_old(&request->packet->src_ipaddr); /* MUST be a valid client */
+		nas = request->client->shortname;
 
 	} else if (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr == nas_address) {		/* might be a client, might not be. */
-		RADCLIENT *cl;
+		nas = request->client->shortname;
 
-		/*
-		 *	Hack like 'client_name()', but with sane
-		 *	fall-back.
-		 */
-		cl = client_find_old(&request->packet->src_ipaddr);
-		if (!cl) rad_assert(0 == 1); /* WTF? */
-		if (cl->shortname && cl->shortname[0]) {
-			nas = cl->shortname;
-		} else {
-			nas = cl->longname;
-		}
 	} else {
 		/*
 		 *	The NAS isn't a client, it's behind

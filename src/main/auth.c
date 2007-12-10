@@ -47,7 +47,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 		port = pair->vp_integer;
 
 	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
-			client_name_old(&request->packet->src_ipaddr), port,
+			request->client->shortname, port,
 		 (do_cli ? " cli " : ""), (do_cli ? (char *)cli->vp_strvalue : ""),
 		 (request->packet->src_port == 0) ? " via TLS tunnel" : "");
 
@@ -201,6 +201,8 @@ static int rad_check_password(REQUEST *request)
 	}
 
 	if (password_pair) {
+		DICT_ATTR *da;
+
 		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		DEBUG("!!!    Replacing User-Password in config items with Cleartext-Password.     !!!");
 		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -208,8 +210,13 @@ static int rad_check_password(REQUEST *request)
 		DEBUG("!!! clear text password is in Cleartext-Password, and not in User-Password. !!!");
 		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		password_pair->attribute = PW_CLEARTEXT_PASSWORD;
-		strlcpy(password_pair->name, "Cleartext-Password",
-			sizeof(password_pair->name));
+		da = dict_attrbyvalue(PW_CLEARTEXT_PASSWORD);
+		if (!da) {
+			radlog(L_ERR, "FATAL: You broke the dictionaries.  Please use the default dictionaries!");
+			_exit(1);
+		}
+
+		password_pair->name = da->name;
 	}
 
 	/*
