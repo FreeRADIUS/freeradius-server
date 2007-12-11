@@ -197,7 +197,7 @@ static int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	pthread_mutex_unlock(&(inst->session_mutex));
 
 	if (!status) {
-		radlog(L_ERR, "rlm_eap: Failed to remember handler!");
+		radlog(L_ERR, "rlm_eap2: Failed to remember handler!");
 		eap_handler_free(handler);
 		return 0;
 	}
@@ -301,7 +301,7 @@ static EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request)
 	 *	Not found.
 	 */
 	if (!node) {
-		DEBUG2("  rlm_eap: Request not found in the list");
+		DEBUG2("  rlm_eap2: Request not found in the list");
 		return NULL;
 	}
 
@@ -309,11 +309,11 @@ static EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request)
 	 *	Found, but state verification failed.
 	 */
 	if (!handler) {
-		radlog(L_ERR, "rlm_eap: State verification failed.");
+		radlog(L_ERR, "rlm_eap2: State verification failed.");
 		return NULL;
 	}
 
-	DEBUG2("  rlm_eap: Request found, released from the list");
+	DEBUG2("  rlm_eap2: Request found, released from the list");
 
 	return handler;
 }
@@ -486,6 +486,7 @@ static int eap_example_server_init_tls(rlm_eap_t *inst)
 static int eap_instantiate(CONF_SECTION *cs, void **instance)
 {
 	int i, num_types;
+	int		has_tls, do_tls;
 	rlm_eap_t	*inst;
 	CONF_SECTION	*scs;
 
@@ -518,7 +519,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	 */
 	inst->session_tree = rbtree_create(eap_handler_cmp, NULL, 0);
 	if (!inst->session_tree) {
-		radlog(L_ERR|L_CONS, "rlm_eap: Cannot initialize tree");
+		radlog(L_ERR|L_CONS, "rlm_eap2: Cannot initialize tree");
 		eap_detach(inst);
 		return -1;
 	}
@@ -536,6 +537,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 
 	/* Load all the configured EAP-Types */
 	num_types = 0;
+	has_tls = do_tls = 0;
 	for (scs=cf_subsection_find_next(cs, NULL, NULL);
 		scs != NULL;
 		scs=cf_subsection_find_next(cs, scs, NULL)) {
@@ -565,23 +567,46 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		inst->methods[num_types] = eap_server_get_type(buffer,
 							       &inst->vendors[num_types]);
 		if (inst->methods[num_types] == EAP_TYPE_NONE) {
-			radlog(L_ERR|L_CONS, "rlm_eap: Unknown EAP type %s",
+			radlog(L_ERR|L_CONS, "rlm_eap2: Unknown EAP type %s",
 			       auth_type);
 			eap_detach(inst);
 			return -1;
+		}
+
+		switch (inst->methods[num_types]) {
+		case EAP_TYPE_TLS:
+			has_tls = TRUE;
+			/* FALL-THROUGH */
+
+		case EAP_TYPE_TTLS:
+		case EAP_TYPE_PEAP:
+		case EAP_TYPE_FAST:
+			do_tls = TRUE;
+			break;
+
+		default:
+			break;
 		}
 
 		num_types++;	/* successfully loaded one more types */
 	}
 	inst->num_types = num_types;
 
-	/*
-	 *	Initialize TLS.
-	 */
-	if (eap_example_server_init_tls(inst) < 0) {
-		radlog(L_ERR|L_CONS, "rlm_eap: Cannot initialize TLS");
+	if (do_tls && !has_tls) {
+		radlog(L_ERR|L_CONS, "rlm_eap2: TLS has not been configured.  Cannot do methods that need TLS.");
 		eap_detach(inst);
 		return -1;
+	}
+
+	if (do_tls) {
+		/*
+		 *	Initialize TLS.
+		 */
+		if (eap_example_server_init_tls(inst) < 0) {
+			radlog(L_ERR|L_CONS, "rlm_eap2: Cannot initialize TLS");
+			eap_detach(inst);
+			return -1;
+		}
 	}
 
 	pthread_mutex_init(&(inst->session_mutex), NULL);
@@ -644,7 +669,6 @@ static int eap_example_server_step(EAP_HANDLER *handler)
 		DEBUG("==> Success");
 		process = 1;
 		res = 0;
-		handler->server_ctx.eap_if->eapSuccess = 1;
 
 		if (handler->server_ctx.eap_if->eapKeyAvailable) {
 			int length = handler->server_ctx.eap_if->eapKeyDataLen;
@@ -682,7 +706,6 @@ static int eap_example_server_step(EAP_HANDLER *handler)
 	if (handler->server_ctx.eap_if->eapFail) {
 		DEBUG("==> Fail");
 		process = 1;
-		handler->server_ctx.eap_if->eapFail = 1;
 	}
 
 	if (process && handler->server_ctx.eap_if->eapReqData) {
@@ -712,7 +735,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	 */
 	first = pairfind(vps, PW_EAP_MESSAGE);
 	if (first == NULL) {
-		radlog(L_ERR, "rlm_eap: EAP-Message not found");
+		radlog(L_ERR, "rlm_eap2: EAP-Message not found");
 		return -1;
 	}
 
@@ -720,7 +743,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	 *	Sanity check the length before doing anything.
 	 */
 	if (first->length < 4) {
-		radlog(L_ERR, "rlm_eap: EAP packet is too short.");
+		radlog(L_ERR, "rlm_eap2: EAP packet is too short.");
 		return -1;
 	}
 
@@ -735,7 +758,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	 *	Take out even more weird things.
 	 */
 	if (len < 4) {
-		radlog(L_ERR, "rlm_eap: EAP packet has invalid length.");
+		radlog(L_ERR, "rlm_eap2: EAP packet has invalid length.");
 		return -1;
 	}
 
@@ -747,7 +770,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 		total_len += vp->length;
 
 		if (total_len > len) {
-			radlog(L_ERR, "rlm_eap: Malformed EAP packet.  Length in packet header does not match actual length");
+			radlog(L_ERR, "rlm_eap2: Malformed EAP packet.  Length in packet header does not match actual length");
 			return -1;
 		}
 	}
@@ -756,7 +779,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	 *	If the length is SMALLER, die, too.
 	 */
 	if (total_len < len) {
-		radlog(L_ERR, "rlm_eap: Malformed EAP packet.  Length in packet header does not match actual length");
+		radlog(L_ERR, "rlm_eap2: Malformed EAP packet.  Length in packet header does not match actual length");
 		return -1;
 	}
 
@@ -765,7 +788,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	 */
 	*data = malloc(len);
 	if (!*data) {
-		radlog(L_ERR, "rlm_eap: out of memory");
+		radlog(L_ERR, "rlm_eap2: out of memory");
 		return -1;
 	}
 	*data_len = len;
@@ -785,7 +808,13 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 }
 
 /*
- *	For backwards compatibility.
+ *	FIXME: Add an "authorize" section which sets Auth-Type = EAP2
+ *	FIXME: Also in "authorize", set User-Name if not already set.
+ */
+
+
+/*
+ *	Do EAP.
  */
 static int eap_authenticate(void *instance, REQUEST *request)
 {
@@ -800,7 +829,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 
 	vp = pairfind(request->packet->vps, PW_EAP_MESSAGE);
 	if (!vp) {
-		DEBUG("rlm_eap: No EAP-Message.  Not doing EAP.");
+		DEBUG("rlm_eap2: No EAP-Message.  Not doing EAP.");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -810,7 +839,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	data = NULL;
 	data_len = 0;
 	if (eap_vp2data(request->packet->vps, &data, &data_len) < 0) {
-		radlog(L_ERR, "rlm_eap: Malformed EAP Message");
+		radlog(L_ERR, "rlm_eap2: Malformed EAP Message");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -818,7 +847,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	if (vp) {
 		handler = eaplist_find(inst, request);
 		if (!handler) {
-			DEBUG("rlm_eap: No handler found");
+			DEBUG("rlm_eap2: No handler found");
 			return RLM_MODULE_FAIL;
 		}
 	} else {
@@ -872,7 +901,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 
 	if (handler->server_ctx.eap_if->eapFail ||
 	    handler->server_ctx.eap_if->eapSuccess) {
-		DEBUG2("  rlm_eap: Freeing handler");
+		DEBUG2("  rlm_eap2: Freeing handler");
 		/* handler is not required any more, free it now */
 		eap_handler_free(handler);
 		handler = NULL;
