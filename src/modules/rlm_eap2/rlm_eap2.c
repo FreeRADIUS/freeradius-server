@@ -52,6 +52,7 @@ typedef struct EAP_HANDLER {
 	time_t		timestamp;
 
 	REQUEST		*request;
+	struct rlm_eap_t *inst;
 
 	struct eapol_callbacks eap_cb;
 	struct eap_config eap_conf;
@@ -69,6 +70,10 @@ typedef struct rlm_eap_t {
 	int		cisco_accounting_username_bug;
 
 	struct tls_connection_params tparams;
+
+	int		num_types;
+	EapType		methods[EAP_MAX_METHODS];
+	int		vendors[EAP_MAX_METHODS];
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	session_mutex;
@@ -355,29 +360,40 @@ static int server_get_eap_user(void *ctx, const u8 *identity,
 			       size_t identity_len, int phase2,
 			       struct eap_user *user)
 {
+	int i;
 	VALUE_PAIR *vp;
 	EAP_HANDLER *handler = ctx;
 	REQUEST *request = handler->request;
 
 	os_memset(user, 0, sizeof(*user));
-	request = request;	/* -Wunused */
+
+	/*
+	 *	FIXME: Run through "authorise" again to look up
+	 *	password for the given identity
+	 */
+	identity = identity;	/* -Wunused */
+	identity_len = identity_len; /* -Wunused */
+
+	/*
+	 *	Do this always, just in case.
+	 */
+	vp = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD);
+	if (vp) {
+		user->password = (u8 *) os_strdup(vp->vp_strvalue);
+		user->password_len = vp->length;
+	}
+	if (!vp) vp = pairfind(request->config_items, PW_NT_PASSWORD);
+	if (vp) {
+		user->password = (u8 *) malloc(vp->length);
+		memcpy(user->password, vp->vp_octets, vp->length);
+		user->password_len = vp->length;
+	}
 
 	if (!phase2) {
-		/*
-		 *	FIXME: Selectively control outer EAP types.
-		 */
-		user->methods[0].vendor = EAP_VENDOR_IETF;
-		user->methods[0].method = EAP_TYPE_PEAP;
-		user->methods[1].vendor = EAP_VENDOR_IETF;
-		user->methods[1].method = EAP_TYPE_TTLS;
-		user->methods[2].vendor = EAP_VENDOR_IETF;
-		user->methods[2].method = EAP_TYPE_TLS;
-		user->methods[3].vendor = EAP_VENDOR_IETF;
-		user->methods[3].method = EAP_TYPE_MD5;
-		user->methods[4].vendor = EAP_VENDOR_IETF;
-		user->methods[4].method = EAP_TYPE_LEAP;
-		user->methods[5].vendor = EAP_VENDOR_IETF;
-		user->methods[5].method = EAP_TYPE_MSCHAPV2;
+		for (i = 0; i < handler->inst->num_types; i++) {
+			user->methods[i].vendor = handler->inst->vendors[i];
+			user->methods[i].method = handler->inst->methods[i];
+		}
 		return 0;
 	}
 
@@ -392,18 +408,6 @@ static int server_get_eap_user(void *ctx, const u8 *identity,
 	user->methods[0].method = EAP_TYPE_MD5;
 	user->methods[1].vendor = EAP_VENDOR_IETF;
 	user->methods[1].method = EAP_TYPE_MSCHAPV2;
-
-	vp = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD);
-	if (vp) {
-		user->password = (u8 *) os_strdup(vp->vp_strvalue);
-		user->password_len = vp->length;
-	}
-	if (!vp) vp = pairfind(request->config_items, PW_NT_PASSWORD);
-	if (vp) {
-		user->password = (u8 *) malloc(vp->length);
-		memcpy(user->password, vp->vp_octets, vp->length);
-		user->password_len = vp->length;
-	}
 
 	/*
 	 *	No password configured...
@@ -421,12 +425,7 @@ static const char * server_get_eap_req_id_text(void *ctx, size_t *len)
 }
 
 
-static const CONF_PARSER module_config[] = {
-	{ "timer_expire", PW_TYPE_INTEGER,
-	  offsetof(rlm_eap_t, timer_limit), NULL, "60"},
-	{ "cisco_accounting_username_bug", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_t, cisco_accounting_username_bug), NULL, "no" },
-
+static CONF_PARSER tls_config[] = {
 	/*
 	 *	TLS parameters.
 	 */
@@ -442,6 +441,17 @@ static const CONF_PARSER module_config[] = {
 	{ "private_key_password", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_t, tparams.private_key_passwd),
 	  NULL, "whatever" },
+
+ 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+};
+
+static const CONF_PARSER module_config[] = {
+	{ "timer_expire", PW_TYPE_INTEGER,
+	  offsetof(rlm_eap_t, timer_limit), NULL, "60"},
+	{ "cisco_accounting_username_bug", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_t, cisco_accounting_username_bug), NULL, "no" },
+
+	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (const void *) tls_config },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -475,9 +485,9 @@ static int eap_example_server_init_tls(rlm_eap_t *inst)
  */
 static int eap_instantiate(CONF_SECTION *cs, void **instance)
 {
-	int i;
-
+	int i, num_types;
 	rlm_eap_t	*inst;
+	CONF_SECTION	*scs;
 
 	inst = (rlm_eap_t *) malloc(sizeof(*inst));
 	if (!inst) {
@@ -498,17 +508,6 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	fr_randinit(&inst->rand_pool, 1);
 
 	/*
-	 *	This registers ALL available methods.
-	 *
-	 *	FIXME: we probably want to selectively register
-	 *	some methods.
-	 */
-	if (eap_server_register_methods() < 0) {
-		eap_detach(inst);
-		return -1;
-	}
-
-	/*
 	 *	List of sessions are set to NULL by the memset
 	 *	of 'inst', above.
 	 */
@@ -523,6 +522,58 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		eap_detach(inst);
 		return -1;
 	}
+
+	/*
+	 *	This registers ALL available methods.
+	 *
+	 *	FIXME: we probably want to selectively register
+	 *	some methods.
+	 */
+	if (eap_server_register_methods() < 0) {
+		eap_detach(inst);
+		return -1;
+	}
+
+	/* Load all the configured EAP-Types */
+	num_types = 0;
+	for (scs=cf_subsection_find_next(cs, NULL, NULL);
+		scs != NULL;
+		scs=cf_subsection_find_next(cs, scs, NULL)) {
+		const char	*auth_type;
+		char		buffer[64], *p;
+
+		auth_type = cf_section_name1(scs);
+
+		if (!auth_type)  continue;
+
+		if (num_types >= EAP_MAX_METHODS) {
+			radlog(L_INFO, "WARNING: Ignoring EAP type %s: too many types defined", auth_type);
+			continue;
+		}
+
+		/*
+		 *	Hostapd doesn't do case-insensitive comparisons.
+		 *	So we mash everything to uppercase for it.
+		 */
+		strlcpy(buffer, auth_type, sizeof(buffer));
+
+		for (p = buffer; *p; p++) {
+			if (!islower((int)*p)) continue;
+			*p = toupper((int)*p);
+		}
+
+		inst->methods[num_types] = eap_server_get_type(buffer,
+							       &inst->vendors[num_types]);
+		if (inst->methods[num_types] == EAP_TYPE_NONE) {
+			radlog(L_ERR|L_CONS, "rlm_eap: Unknown EAP type %s",
+			       auth_type);
+			eap_detach(inst);
+			return -1;
+		}
+
+		num_types++;	/* successfully loaded one more types */
+	}
+	inst->num_types = num_types;
 
 	/*
 	 *	Initialize TLS.
@@ -776,6 +827,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 
 		memset(handler, 0, sizeof(handler));
 
+		handler->inst = inst;
 		handler->eap_cb.get_eap_user = server_get_eap_user;
 		handler->eap_cb.get_eap_req_id_text = server_get_eap_req_id_text;
 
