@@ -206,7 +206,7 @@ int tls_handshake_recv(tls_session_t *ssn)
 	 *	resumption, (CCS and Finish received, parsed,
 	 *	and validated), wind up handshake.
 	 */
-	if (SSL_is_init_finished(ssn->ssl) & (ssn->ssl->hit == 1)) {
+	if (SSL_is_init_finished(ssn->ssl) && (ssn->ssl->hit == 1)) {
 		record_init(&ssn->dirty_in);
 
 		/*
