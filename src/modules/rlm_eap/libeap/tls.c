@@ -206,6 +206,7 @@ int tls_handshake_recv(tls_session_t *ssn)
 	 *	resumption, (CCS and Finish received, parsed,
 	 *	and validated), wind up handshake.
 	 */
+#if 0
 	if (SSL_is_init_finished(ssn->ssl) && (ssn->ssl->hit == 1)) {
 		record_init(&ssn->dirty_in);
 
@@ -215,6 +216,7 @@ int tls_handshake_recv(tls_session_t *ssn)
 		return 0xea; 
 
 	}
+#endif
 
 	if (ssn->info.content_type != application_data) {
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
