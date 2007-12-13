@@ -655,6 +655,14 @@ $INCLUDE eap.conf
 		#
 		# Be VERY careful when editing the following line!
 		#
+		# You can also try setting the user name as:
+		#
+		#	... --username=%{mschap:User-Name} ...
+		#
+		# In that case, the mschap module will look at the User-Name
+		# attribute, and do prefix/suffix checks in order to obtain
+		# the "best" user name for the request.
+		#
 		#ntlm_auth = "/path/to/ntlm_auth --request-nt-key --username=%{Stripped-User-Name:-%{User-Name:-None}} --challenge=%{mschap:Challenge:-00} --nt-response=%{mschap:NT-Response:-00}"
 	}
 
