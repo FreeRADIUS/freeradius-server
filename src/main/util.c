@@ -382,6 +382,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
   fake->child_pid = NO_SUCH_CHILD_PID;
   fake->parent = request;
   fake->root = request->root;
+  fake->client = request->client;
 
   /*
    *	For new server support.
