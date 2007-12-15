@@ -64,7 +64,7 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	int mode = FIND_MODE_NAME;
 	char entry[256];
 	char buffer[8192];
-	char *ptr, *s;
+	const char *ptr, *s;
 	VALUE_PAIR *check_tmp;
 	VALUE_PAIR *reply_tmp;
 	PAIR_LIST *pl = NULL, *t;
@@ -87,6 +87,7 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	}
 
 	parsecode = T_EOL;
+
 	/*
 	 *	Read the entire file into memory for speed.
 	 */
@@ -104,13 +105,8 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 		 *	ignore it.
 		 */
 		ptr = buffer;
-		while ((ptr[0] == ' ') ||
-		       (ptr[0] == '\t') ||
-		       (ptr[0] == '\r') ||
-		       (ptr[0] == '\n')) {
-			ptr++;
-		}
-		if (ptr[0] == '\0') continue;
+		while (isspace((int) *ptr)) ptr++;
+		if (*ptr == '\0') continue;
 
 parse_again:
 		if(mode == FIND_MODE_NAME) {
@@ -138,10 +134,6 @@ parse_again:
 			if (strcasecmp(entry, "$include") == 0) {
 				while(isspace((int) *ptr))
 					ptr++;
-				s = ptr;
-				while (!isspace((int) *ptr))
-					ptr++;
-				*ptr = 0;
 
 				/*
 				 *	If it's an absolute pathname,
@@ -151,16 +143,22 @@ parse_again:
 				 *	files *relative* to the current
 				 *	file.
 				 */
-				if (FR_DIR_IS_RELATIVE(s)) {
+				if (FR_DIR_IS_RELATIVE(ptr)) {
+					char *p;
+
 					strlcpy(newfile, file,
 						sizeof(newfile));
-					ptr = strrchr(newfile, FR_DIR_SEP);
-					strcpy(ptr + 1, s);
-					s = newfile;
+					p = strrchr(newfile, FR_DIR_SEP);
+					if (!p) _exit(0);
+					getword(&ptr, p,
+						sizeof(newfile) - (p - buffer));
+				} else {
+					getword(&ptr, newfile,
+						sizeof(newfile));
 				}
 
 				t = NULL;
-				if (pairlist_read(s, &t, 0) != 0) {
+				if (pairlist_read(newfile, &t, 0) != 0) {
 					pairlist_free(&pl);
 					radlog(L_ERR|L_CONS,
 					       "%s[%d]: Could not open included file %s: %s",

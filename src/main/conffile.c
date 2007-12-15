@@ -1060,11 +1060,11 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
  *	We're not really parsing it here, just checking if it's mostly
  *	well-formed.
  */
-static int condition_looks_ok(char **ptr)
+static int condition_looks_ok(const char **ptr)
 {
 	int num_braces = 1;
 	int quote = 0;
-	char *p = *ptr;
+	const char *p = *ptr;
 
 	while (*p) {
 		if (quote) {
@@ -1171,7 +1171,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 {
 	CONF_SECTION *this, *css;
 	CONF_PAIR *cpn;
-	char *ptr;
+	const char *ptr;
 	const char *value;
 	char buf[8192];
 	char buf1[8192];
@@ -1461,7 +1461,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		case T_LBRACE:
 			if ((strcmp(buf1, "if") == 0) ||
 			    (strcmp(buf1, "elsif") == 0)) {
-				char *end = ptr;
+				const char *end = ptr;
 				CONF_SECTION *server;
 
 				if (!condition_looks_ok(&end)) {
