@@ -39,7 +39,7 @@ RCSID("$Id$")
 
 typedef struct listen_detail_t {
 	int		delay_time; /* should be first entry */
-	const char	*filename;
+	char	*filename;
 	VALUE_PAIR	*vps;
 	FILE		*fp;
 	int		state;
@@ -701,7 +701,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->ipaddr.ipaddr.ip4addr.s_addr = INADDR_NONE;
 	client->prefix = 0;
 	client->longname = client->shortname = data->filename;
-	client->secret = "testing123";
+	client->secret = client->shortname;
 	client->nastype = "none";
 
 	return 0;
