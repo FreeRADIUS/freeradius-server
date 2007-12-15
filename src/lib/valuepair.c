@@ -1225,7 +1225,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 				return NULL;
 			}
 
-			if ((q - p) >= sizeof(buffer)) {
+			if ((size_t) (q - p) >= sizeof(buffer)) {
 				librad_log("Vendor name too long in attribute name \"%s\"", attribute);
 				return NULL;
 			}
@@ -1551,12 +1551,12 @@ static const int valid_attr_name[256] = {
  *	Read a valuepair from a buffer, and advance pointer.
  *	Sets *eol to T_EOL if end of line was encountered.
  */
-VALUE_PAIR *pairread(char **ptr, FR_TOKEN *eol)
+VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 {
 	char		buf[64];
 	char		attr[64];
-	char		value[512];
-	char		*p, *q;
+	char		value[512], *q;
+	const char	*p;
 	FR_TOKEN	token, t, xlat;
 	VALUE_PAIR	*vp;
 	size_t		len;
@@ -1703,10 +1703,10 @@ VALUE_PAIR *pairread(char **ptr, FR_TOKEN *eol)
  *	Read one line of attribute/value pairs. This might contain
  *	multiple pairs seperated by comma's.
  */
-FR_TOKEN userparse(char *buffer, VALUE_PAIR **first_pair)
+FR_TOKEN userparse(const char *buffer, VALUE_PAIR **first_pair)
 {
 	VALUE_PAIR	*vp;
-	char		*p;
+	const char	*p;
 	FR_TOKEN	last_token = T_OP_INVALID;
 	FR_TOKEN	previous_token;
 

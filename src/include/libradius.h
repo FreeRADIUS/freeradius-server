@@ -325,8 +325,8 @@ void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr);
 VALUE_PAIR	*pairparsevalue(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*pairmake(const char *attribute, const char *value, int operator);
-VALUE_PAIR	*pairread(char **ptr, FR_TOKEN *eol);
-FR_TOKEN	userparse(char *buffer, VALUE_PAIR **first_pair);
+VALUE_PAIR	*pairread(const char **ptr, FR_TOKEN *eol);
+FR_TOKEN	userparse(const char *buffer, VALUE_PAIR **first_pair);
 VALUE_PAIR     *readvp2(FILE *fp, int *pfiledone, const char *errprefix);
 
 /*
