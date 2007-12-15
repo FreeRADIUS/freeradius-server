@@ -31,9 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/vmps.h>
 #include <freeradius-devel/rad_assert.h>
 
-extern RADCLIENT *client_listener_find(const rad_listen_t *listener,
-				       const fr_ipaddr_t *ipaddr);
-
 #ifdef WITH_VMPS
 /*
  *	Check if an incoming request is "ok"
@@ -120,5 +117,7 @@ int vmps_process(REQUEST *request)
 	DEBUG2("Done VMPS");
 
 	request->reply->code = PW_AUTHENTICATION_ACK;
+
+	return 0;
 }
 #endif
