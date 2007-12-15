@@ -103,7 +103,7 @@ static char *allowed_chars = NULL;
 /*
  *	Translate the SQL queries.
  */
-static int sql_escape_func(char *out, int outlen, const char *in)
+static size_t sql_escape_func(char *out, size_t outlen, const char *in)
 {
 	int len = 0;
 
@@ -712,7 +712,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		}
 
 		if ((reply_item = pairfind(request->reply->vps, data->reply_attr)) != NULL) {
-			if (reply_item->vp_integer > res)
+			if (reply_item->vp_integer > (unsigned int) res)
 				reply_item->vp_integer = res;
 		} else {
 			reply_item = radius_paircreate(request,
