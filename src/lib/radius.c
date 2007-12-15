@@ -841,11 +841,6 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		break;
 
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-		if (!original) {
-			librad_log("ERROR: No request packet, cannot encrypt %s attribute in the vp.", vp->name);
-			return -1;
-		}
-
 		/*
 		 *	Check if 255 - offset - total_length is less
 		 *	than 18.  If so, we can't fit the data into
@@ -857,9 +852,27 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 */
 		if ((255 - offset - total_length) < 18) return 0;
 
-		make_tunnel_passwd(ptr + offset, &len,
-				   data, len, 255 - offset - total_length,
-				   secret, original->vector);
+        	switch (packet->code) {
+	        case PW_AUTHENTICATION_ACK:
+        	case PW_AUTHENTICATION_REJECT:
+        	case PW_ACCESS_CHALLENGE:
+        	default:
+			if (!original) {
+				librad_log("ERROR: No request packet, cannot encrypt %s attribute in the vp.", vp->name);
+				return -1;
+			}
+			make_tunnel_passwd(ptr + offset, &len,
+					   data, len, 255 - offset - total_length,
+					   secret, original->vector);
+                	break;
+	        case PW_ACCOUNTING_REQUEST:
+        	case PW_DISCONNECT_REQUEST:
+	        case PW_COA_REQUEST:
+			make_tunnel_passwd(ptr + offset, &len,
+					   data, len, 255 - offset - total_length,
+					   secret, packet->vector);
+	                break;
+        	}
 		break;
 
 		/*
