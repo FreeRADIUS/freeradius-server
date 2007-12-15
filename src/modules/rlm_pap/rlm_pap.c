@@ -240,12 +240,12 @@ static int base64_decode (const char *src, uint8_t *dst)
 /*
  *	Hex or base64 or bin auto-discovery.
  */
-static void normify(VALUE_PAIR *vp, int min_length)
+static void normify(VALUE_PAIR *vp, size_t min_length)
 {
-	int decoded;
+	size_t decoded;
 	uint8_t buffer[64];
 
-	if ((size_t) min_length >= sizeof(buffer)) return; /* paranoia */
+	if (min_length >= sizeof(buffer)) return; /* paranoia */
 
 	/*
 	 *	Hex encoding.
@@ -799,7 +799,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			p += 32;
 
 			fr_MD5Init(&md5_context);
-			fr_MD5Update(&md5_context, buff2, p - buff2);
+			fr_MD5Update(&md5_context, (uint8_t *) buff2,
+				     p - buff2);
 			fr_MD5Final(digest, &md5_context);
 		}
 		if (memcmp(digest, buff, 16) != 0) {
