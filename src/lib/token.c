@@ -69,10 +69,11 @@ static const FR_NAME_NUMBER tokens[] = {
  *	At end-of-line, buf[0] is set to '\0'.
  *	Returns 0 or special token value.
  */
-static FR_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
-			   const FR_NAME_NUMBER *tokenlist)
+static FR_TOKEN getthing(const char **ptr, char *buf, int buflen, int tok,
+			 const FR_NAME_NUMBER *tokenlist)
 {
-	char	*s, *p;
+	char *s;
+	const char *p;
 	int	quote;
 	int	escape;
 	unsigned int	x;
@@ -196,7 +197,7 @@ static FR_TOKEN getthing(char **ptr, char *buf, int buflen, int tok,
  *	Read a "word" - this means we don't honor
  *	tokens as delimiters.
  */
-int getword(char **ptr, char *buf, int buflen)
+int getword(const char **ptr, char *buf, int buflen)
 {
 	return getthing(ptr, buf, buflen, 0, tokens) == T_EOL ? 0 : 1;
 }
@@ -205,7 +206,7 @@ int getword(char **ptr, char *buf, int buflen)
  *	Read a bare "word" - this means we don't honor
  *	tokens as delimiters.
  */
-int getbareword(char **ptr, char *buf, int buflen)
+int getbareword(const char **ptr, char *buf, int buflen)
 {
 	FR_TOKEN token;
 
@@ -220,7 +221,7 @@ int getbareword(char **ptr, char *buf, int buflen)
 /*
  *	Read the next word, use tokens as delimiters.
  */
-FR_TOKEN gettoken(char **ptr, char *buf, int buflen)
+FR_TOKEN gettoken(const char **ptr, char *buf, int buflen)
 {
 	return getthing(ptr, buf, buflen, 1, tokens);
 }
@@ -228,9 +229,9 @@ FR_TOKEN gettoken(char **ptr, char *buf, int buflen)
 /*
  *	Expect a string.
  */
-FR_TOKEN getstring(char **ptr, char *buf, int buflen)
+FR_TOKEN getstring(const char **ptr, char *buf, int buflen)
 {
-	char *p = *ptr;
+	const char *p = *ptr;
 
 	while (p && (isspace((int)*p))) p++;
 
