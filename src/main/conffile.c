@@ -1195,52 +1195,55 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		eof = (fgets(cbuf, sizeof(buf) - (cbuf - buf), fp) == NULL);
 		(*lineno)++;
 
-		len = strlen(cbuf);
-
 		/*
-		 *	We've filled the buffer, and there isn't
-		 *	a CR in it.  Die!
+		 *	We read the entire 8k worth of data: complain.
+		 *	Note that we don't care if the last character
+		 *	is \n: it's still forbidden.  This means that
+		 *	the maximum allowed length of text is 8k-1, which
+		 *	should be plenty.
 		 */
-		if ((cbuf[len - 1] != '\n') && !feof(fp)) {
+		len = strlen(cbuf);
+		if ((cbuf + len + 1) >= (buf + sizeof(buf))) {
 			radlog(L_ERR, "%s[%d]: Line too long",
 			       filename, *lineno);
 			return -1;
 		}
 
 		/*
-		 *  Check for continuations.
+		 *	Not doing continuations: check for edge
+		 *	conditions.
 		 */
-		if (cbuf[len - 1] == '\n') len--;
+		if (cbuf == buf) {
+			if (eof) break;
+			
+			ptr = buf;
+			while (*ptr && isspace((int) *ptr)) ptr++;
+
+			if (!*ptr || (*ptr == '#')) continue;
+
+		} else if (eof || (len == 0)) {
+			radlog(L_ERR, "%s[%d]: Continuation at EOF is illegal",
+			       filename, *lineno);
+			return -1;
+		}
 
 		/*
-		 *	Last character is '\\'.  Over-write it,
-		 *	and read another line.
+		 *	See if there's a continuation.
 		 */
-		if ((len > 0) && (cbuf[len - 1] == '\\')) {
-			if (len >= (sizeof(buf) - 5)) {
-				radlog(L_ERR, "%s[%d]: Line too long",
-				       filename, *lineno);
-				return -1;
-			}
+		while ((len > 0) &&
+		       ((cbuf[len - 1] == '\n') || (cbuf[len - 1] == '\r'))) {
+			len--;
+			cbuf[len] = '\0';
+		}
 
+		if ((len > 0) && (cbuf[len - 1] == '\\')) {
 			cbuf[len - 1] = '\0';
 			cbuf += len - 1;
 			continue;
 		}
 
-		/*
-		 *  We're at EOF, and haven't read anything.  Stop.
-		 */
-		if (eof && (cbuf == buf)) {
-			break;
-		}
-
 		ptr = cbuf = buf;
 		t1 = gettoken(&ptr, buf1, sizeof(buf1));
-
-		if ((*buf1 == '#') || (*buf1 == '\0')) {
-			continue;
-		}
 
 		/*
 		 *	The caller eats "name1 name2 {", and calls us
