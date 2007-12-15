@@ -182,7 +182,7 @@ static int sql_log_detach(void *instance)
 /*
  *	Translate the SQL queries.
  */
-static int sql_escape_func(char *out, int outlen, const char *in)
+static size_t sql_escape_func(char *out, size_t outlen, const char *in)
 {
 	int len = 0;
 
@@ -374,7 +374,7 @@ static int sql_log_accounting(void *instance, REQUEST *request)
 {
 	int		ret;
 	char		querystr[MAX_QUERY_LEN];
-	char		*cfquery;
+	const char	*cfquery;
 	rlm_sql_log_t	*inst = (rlm_sql_log_t *)instance;
 	VALUE_PAIR	*pair;
 	DICT_VALUE	*dval;
