@@ -149,9 +149,12 @@ parse_again:
 					strlcpy(newfile, file,
 						sizeof(newfile));
 					p = strrchr(newfile, FR_DIR_SEP);
-					if (!p) _exit(0);
-					getword(&ptr, p,
-						sizeof(newfile) - (p - buffer));
+					if (!p) {
+						p = newfile + strlen(newfile);
+						*p = FR_DIR_SEP;
+					}
+					getword(&ptr, p + 1,
+						sizeof(newfile) - 1 - (p - buffer));
 				} else {
 					getword(&ptr, newfile,
 						sizeof(newfile));
