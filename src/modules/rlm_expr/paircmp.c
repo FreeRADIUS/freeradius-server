@@ -56,7 +56,7 @@ static int portcmp(void *instance,
 	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	char buf[MAX_STRING_LEN];
-	char *s, *p;
+	char *s, *p, *next;
 	uint32_t lo, hi;
 	uint32_t port = request->vp_integer;
 
@@ -70,10 +70,13 @@ static int portcmp(void *instance,
 	}
 
 	/* Same size */
-	strcpy(buf, (char *)check->vp_strvalue);
-	s = strtok(buf, ",");
+	strcpy(buf, check->vp_strvalue);
 
-	while (s != NULL) {
+	s = buf;
+	while (1) {
+		next = strchr(s, ',');
+		if (next) *next = '\0';
+
 		if ((p = strchr(s, '-')) != NULL)
 			p++;
 		else
@@ -83,7 +86,9 @@ static int portcmp(void *instance,
 		if (lo <= port && port <= hi) {
 			return 0;
 		}
-		s = strtok(NULL, ",");
+
+		if (!next) break;
+		s = next + 1;
 	}
 
 	return -1;
