@@ -180,7 +180,11 @@ int tls_handshake_recv(tls_session_t *ssn)
 		       sizeof(ssn->clean_out.data) - ssn->clean_out.used);
 	if (err > 0) {
 		ssn->clean_out.used += err;
-	} else if (!int_ssl_check(ssn->ssl, err, "SSL_read")) {
+		record_init(&ssn->dirty_in);
+		return 1;
+	}
+
+	if (!int_ssl_check(ssn->ssl, err, "SSL_read")) {
 		return 0;
 	}
 
@@ -218,7 +222,8 @@ int tls_handshake_recv(tls_session_t *ssn)
 	}
 #endif
 
-	if (ssn->info.content_type != application_data) {
+	err = BIO_ctrl_pending(ssn->from_ssl);
+	if (err > 0) {
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
 			       sizeof(ssn->dirty_out.data));
 		if (err > 0) {
