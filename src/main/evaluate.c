@@ -112,9 +112,10 @@ static const char *expand_string(char *buffer, size_t sizeof_buffer,
 }
 
 #ifdef HAVE_REGEX_H
-static FR_TOKEN getregex(char **ptr, char *buffer, size_t buflen, int *pcflags)
+static FR_TOKEN getregex(const char **ptr, char *buffer, size_t buflen,
+			 int *pcflags)
 {
-	char *p = *ptr;
+	const char *p = *ptr;
 	char *q = buffer;
 
 	if (*p != '/') return T_OP_INVALID;
