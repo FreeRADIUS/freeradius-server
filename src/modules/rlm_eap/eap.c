@@ -209,6 +209,14 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 	}
 
 	/*
+	 *	Multiple levels of nesting are invalid.
+	 */
+	if (handler->request->parent && handler->request->parent->parent) {
+		DEBUG2(" rlm_eap: Multiple levels of TLS nesting is invalid.");
+		return EAP_INVALID;
+	}
+
+	/*
 	 *	Figure out what to do.
 	 */
 	switch(eaptype->type) {
