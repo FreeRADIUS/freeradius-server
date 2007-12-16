@@ -79,8 +79,10 @@ static int eap_handler_cmp(const void *a, const void *b)
 	const EAP_HANDLER *one = a;
 	const EAP_HANDLER *two = b;
 
+#if 0
 	if (one->eap_id < two->eap_id) return -1;
 	if (one->eap_id > two->eap_id) return +1;
+#endif
 
 	rcode = fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr);
 	if (rcode != 0) return rcode;
@@ -244,7 +246,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Get the eap packet  to start with
 	 */
-	eap_packet = eap_attribute(request->packet->vps);
+	eap_packet = eap_vp2packet(request->packet->vps);
 	if (eap_packet == NULL) {
 		radlog(L_ERR, "rlm_eap: Malformed EAP Message");
 		return RLM_MODULE_FAIL;
@@ -259,24 +261,6 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	if (handler == NULL) {
 		DEBUG2("  rlm_eap: Failed in handler");
 		return RLM_MODULE_INVALID;
-	}
-
-	/*
-	 *	If it's a recursive request, then disallow
-	 *	TLS, TTLS, and PEAP, inside of the TLS tunnel.
-	 */
-	if (request->packet->dst_port == 0) {
-		switch(handler->eap_ds->response->type.type) {
-		case PW_EAP_TLS:
-		case PW_EAP_TTLS:
-		case PW_EAP_PEAP:
-			DEBUG2(" rlm_eap: WARNING: Tunnelling TLS inside of a TLS will probably not work.");
-			break;
-
-		default:	/* It may be OK, allow it to proceed */
-			break;
-
-		}
 	}
 
 	/*

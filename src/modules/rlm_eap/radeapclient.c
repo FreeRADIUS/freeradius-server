@@ -1231,7 +1231,7 @@ static void unmap_eap_types(RADIUS_PACKET *rep)
 	int type;
 
 	/* find eap message */
-	e = eap_attribute(rep->vps);
+	e = eap_vp2packet(rep->vps);
 
 	/* nothing to do! */
 	if(e == NULL) return;

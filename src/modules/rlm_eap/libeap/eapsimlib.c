@@ -273,7 +273,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		hdr->code = eapcode & 0xFF;
 		hdr->id = (id & 0xFF);
 		total_length = htons(total_length);
-		memcpy(hdr->length, &total_length, sizeof(uint16_t));
+		memcpy(hdr->length, &total_length, sizeof(total_length));
 
 		hdr->data[0] = PW_EAP_SIM;
 
@@ -409,7 +409,7 @@ eapsim_checkmac(VALUE_PAIR *rvps,
 	/* get original copy of EAP message, note that it was sanitized
 	 * to have a valid length, which we depend upon.
 	 */
-	e = eap_attribute(rvps);
+	e = eap_vp2packet(rvps);
 
 	if(e == NULL)
 	{
@@ -417,7 +417,7 @@ eapsim_checkmac(VALUE_PAIR *rvps,
 	}
 
 	/* make copy big enough for everything */
-	elen = e->length[0]*256 + e->length[1];
+	elen = e->length[0] * 256 + e->length[1];
 	len = elen + extralen;
 
 	buffer = malloc(len);

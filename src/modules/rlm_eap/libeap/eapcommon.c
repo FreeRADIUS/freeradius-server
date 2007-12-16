@@ -177,7 +177,6 @@ const char *eaptype_type2name(unsigned int type, char *buffer, size_t buflen)
  */
 int eap_wireformat(EAP_PACKET *reply)
 {
-
 	eap_packet_t	*hdr;
 	uint16_t total_length = 0;
 
@@ -207,7 +206,7 @@ int eap_wireformat(EAP_PACKET *reply)
 	hdr->code = (reply->code & 0xFF);
 	hdr->id = (reply->id & 0xFF);
 	total_length = htons(total_length);
-	memcpy(hdr->length, &total_length, sizeof(uint16_t));
+	memcpy(hdr->length, &total_length, sizeof(total_length));
 
 	/*
 	 *	Request and Response packets are special.
@@ -234,17 +233,15 @@ int eap_wireformat(EAP_PACKET *reply)
 	return EAP_VALID;
 }
 
+
 /*
  *	compose EAP reply packet in EAP-Message attr of RADIUS.  If
  *	EAP exceeds 253, frame it in multiple EAP-Message attrs.
  */
 int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 {
-	uint16_t eap_len, len;
-	VALUE_PAIR *eap_msg;
 	VALUE_PAIR *vp;
 	eap_packet_t *eap_packet;
-	unsigned char 	*ptr;
 	int rcode;
 
 	if (eap_wireformat(reply) == EAP_INVALID) {
@@ -252,32 +249,11 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 	}
 	eap_packet = (eap_packet_t *)reply->packet;
 
-	memcpy(&eap_len, &(eap_packet->length), sizeof(uint16_t));
-	len = eap_len = ntohs(eap_len);
-	ptr = (unsigned char *)eap_packet;
-
 	pairdelete(&(packet->vps), PW_EAP_MESSAGE);
 
-	do {
-		if (eap_len > 253) {
-			len = 253;
-			eap_len -= 253;
-		} else {
-			len = eap_len;
-			eap_len = 0;
-		}
-
-		/*
-		 * create a value pair & append it to the packet list
-		 * This memory gets freed up when packet is freed up
-		 */
-		eap_msg = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
-		memcpy(eap_msg->vp_strvalue, ptr, len);
-		eap_msg->length = len;
-		pairadd(&(packet->vps), eap_msg);
-		ptr += len;
-		eap_msg = NULL;
-	} while (eap_len);
+	vp = eap_packet2vp(eap_packet);
+	if (!vp) return RLM_MODULE_INVALID;
+	pairadd(&(packet->vps), vp);
 
 	/*
 	 *	EAP-Message is always associated with
@@ -321,6 +297,41 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 }
 
 
+VALUE_PAIR *eap_packet2vp(const eap_packet_t *packet)
+{
+	int		total, size;
+	const uint8_t	*ptr;
+	VALUE_PAIR	*head = NULL;
+	VALUE_PAIR	**tail = &head;
+	VALUE_PAIR	*vp;
+
+	total = packet->length[0] * 256 + packet->length[1];
+
+	ptr = (const uint8_t *) packet;
+
+	do {
+		size = total;
+		if (size > 253) size = 253;
+
+		vp = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
+		if (!vp) {
+			pairfree(&head);
+			return NULL;
+		}
+		memcpy(vp->vp_octets, ptr, size);
+		vp->length = size;
+
+		*tail = vp;
+		tail = &(vp->next);
+
+		ptr += size;
+		total -= size;
+	} while (total > 0);
+
+	return head;
+}
+
+
 /*
  * Handles multiple EAP-Message attrs
  * ie concatenates all to get the complete EAP packet.
@@ -328,7 +339,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
  * NOTE: Sometimes Framed-MTU might contain the length of EAP-Message,
  *      refer fragmentation in rfc2869.
  */
-eap_packet_t *eap_attribute(VALUE_PAIR *vps)
+eap_packet_t *eap_vp2packet(VALUE_PAIR *vps)
 {
 	VALUE_PAIR *first, *vp;
 	eap_packet_t *eap_packet;
@@ -399,7 +410,7 @@ eap_packet_t *eap_attribute(VALUE_PAIR *vps)
 	}
 
 	/*
-	 *	Copy the data from EAP-Message's over to out EAP packet.
+	 *	Copy the data from EAP-Message's over to our EAP packet.
 	 */
 	ptr = (unsigned char *)eap_packet;
 

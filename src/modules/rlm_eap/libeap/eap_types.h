@@ -102,14 +102,11 @@ typedef struct eap_packet {
  * Structure to represent packet format of eap *on wire*
  */
 typedef struct eap_packet_t {
-	unsigned char	code;
-	unsigned char	id;
-	unsigned char	length[2];
-	unsigned char	data[1];
+	uint8_t		code;
+	uint8_t		id;
+	uint8_t		length[2];
+	uint8_t		data[1];
 } eap_packet_t;
-
-
-
 
 
 /*
@@ -117,8 +114,9 @@ typedef struct eap_packet_t {
  */
 extern int eaptype_name2type(const char *name);
 extern const char *eaptype_type2name(unsigned int type, char *buffer, size_t buflen);
-int eap_wireformat(EAP_PACKET *reply);
+extern int eap_wireformat(EAP_PACKET *reply);
 extern int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply);
-extern eap_packet_t *eap_attribute(VALUE_PAIR *vps);
+extern VALUE_PAIR *eap_packet2vp(const eap_packet_t *reply);
+extern eap_packet_t *eap_vp2packet(VALUE_PAIR *vps);
 
 #endif /* _EAP_TYPES_H */

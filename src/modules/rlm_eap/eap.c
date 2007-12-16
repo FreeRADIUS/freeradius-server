@@ -251,16 +251,6 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			default_eap_type = PW_EAP_TLS;
 		}
 
-
-		/*
-		 *	We don't do TLS inside of TLS, as it's a bad
-		 *	idea...
-		 */
-		if ((handler->request->packet->dst_port == 0) &&
-		    (default_eap_type == PW_EAP_TLS)) {
-			DEBUG2(" rlm_eap: WARNING: Tunnelling TLS inside of a TLS will probably not work.");
-		}
-
 		if ((default_eap_type == PW_EAP_TNC) &&
 		    !handler->request->parent) {
 			DEBUG2(" rlm_eap: ERROR: EAP-TNC must be run inside of a TLS method.");
@@ -417,11 +407,8 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
  */
 int eap_compose(EAP_HANDLER *handler)
 {
-	uint16_t eap_len, len;
-	VALUE_PAIR *eap_msg;
 	VALUE_PAIR *vp;
 	eap_packet_t *eap_packet;
-	unsigned char 	*ptr;
 	REQUEST *request = handler->request;
 	EAP_DS *eap_ds = handler->eap_ds;
 	EAP_PACKET *reply = eap_ds->request;
@@ -494,36 +481,19 @@ int eap_compose(EAP_HANDLER *handler)
 		eap_ds->request->type.type = handler->eap_type;
 	}
 
-
+	/*
+	 *	FIXME: We malloc memory for the eap packet, and then
+	 *	immediately copy that data into VALUE_PAIRs.  This
+	 *	could be done more efficiently...
+	 */
 	if (eap_wireformat(reply) == EAP_INVALID) {
 		return RLM_MODULE_INVALID;
 	}
 	eap_packet = (eap_packet_t *)reply->packet;
 
-	memcpy(&eap_len, &(eap_packet->length), sizeof(uint16_t));
-	len = eap_len = ntohs(eap_len);
-	ptr = (unsigned char *)eap_packet;
-
-	do {
-		if (eap_len > 253) {
-			len = 253;
-			eap_len -= 253;
-		} else {
-			len = eap_len;
-			eap_len = 0;
-		}
-
-		/*
-		 * create a value pair & append it to the request reply list
-		 * This memory gets freed up when request is freed up
-		 */
-		eap_msg = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
-		memcpy(eap_msg->vp_octets, ptr, len);
-		eap_msg->length = len;
-		pairadd(&(request->reply->vps), eap_msg);
-		ptr += len;
-		eap_msg = NULL;
-	} while (eap_len);
+	vp = eap_packet2vp(eap_packet);
+	if (!vp) return RLM_MODULE_INVALID;
+	pairadd(&(request->reply->vps), vp);
 
 	/*
 	 *	EAP-Message is always associated with
