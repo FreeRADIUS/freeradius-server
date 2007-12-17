@@ -1249,7 +1249,7 @@ static int my_dict_init(const char *dir, const char *fn,
 	 *	First see if fn is relative to dir. If so, create
 	 *	new filename. If not, remember the absolute dir.
 	 */
-	if ((p = strrchr(fn, '/')) != NULL) {
+	if ((p = strrchr(fn, FR_DIR_SEP)) != NULL) {
 		strcpy(dirtmp, fn);
 		dirtmp[p - fn] = 0;
 		dir = dirtmp;
