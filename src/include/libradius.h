@@ -221,6 +221,7 @@ void		librad_safeprint(char *in, size_t inlen,
 				 char *out, size_t outlen);
 int     	vp_prints_value(char *out, size_t outlen,
 				VALUE_PAIR *vp, int delimitst);
+const char	*vp_print_name(char *buffer, size_t bufsize, int attr);
 int     	vp_prints(char *out, size_t outlen, VALUE_PAIR *vp);
 void		vp_print(FILE *, VALUE_PAIR *);
 void		vp_printlist(FILE *, VALUE_PAIR *);

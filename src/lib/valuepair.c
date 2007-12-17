@@ -147,7 +147,6 @@ VALUE_PAIR *paircreate(int attr, int type)
 	 *	It isn't in the dictionary: update the name.
 	 */
 	if (!da) {
-		size_t len = 0;
 		char *p = (char *) (vp + 1);
 		
 		vp->vendor = VENDOR(attr);
@@ -155,27 +154,7 @@ VALUE_PAIR *paircreate(int attr, int type)
 		vp->name = p;
 		vp->type = type; /* be forgiving */
 
-		if (vp->vendor) {
-			DICT_VENDOR *v;
-
-			v = dict_vendorbyvalue(vp->vendor);
-			if (v) {
-				snprintf(p, FR_VP_NAME_LEN, "%s-", v->name);
-			} else {
-				snprintf(p, FR_VP_NAME_LEN, "Vendor-%u-", vp->vendor);
-			}
-
-			len = strlen(p);
-			if (len == FR_VP_NAME_LEN) {
-				free(vp);
-				return NULL;
-			}
-		}
-		
-		snprintf(p + len, FR_VP_NAME_LEN - len, "Attr-%u",
-			 attr & 0xffff);
-		len += strlen(p + len);
-		if (len == FR_VP_NAME_LEN) {
+		if (!vp_print_name(p, FR_VP_NAME_LEN, vp->attribute)) {
 			free(vp);
 			return NULL;
 		}

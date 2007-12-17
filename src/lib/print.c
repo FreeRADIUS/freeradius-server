@@ -372,29 +372,61 @@ static const char *vp_tokens[] = {
   "<`STRING`>"
 };
 
+const char *vp_print_name(char *buffer, size_t bufsize, int attr)
+{
+	int vendor;
+	size_t len = 0;
+
+	if (!buffer) return NULL;
+
+	vendor = VENDOR(attr);
+	if (vendor) {
+		DICT_VENDOR *v;
+		
+		v = dict_vendorbyvalue(vendor);
+		if (v) {
+			snprintf(buffer, bufsize, "%s-", v->name);
+		} else {
+			snprintf(buffer, bufsize, "Vendor-%u-", vendor);
+		}
+
+		len = strlen(buffer);
+		if (len == bufsize) {
+			return NULL;
+		}
+	}
+
+	snprintf(buffer + len, bufsize - len, "Attr-%u", attr & 0xffff);
+	len += strlen(buffer + len);
+	if (len == bufsize) {
+		return NULL;
+	}
+
+	return buffer;
+}
+
 
 /*
  *	Print one attribute and value into a string.
  */
 int vp_prints(char *out, size_t outlen, VALUE_PAIR *vp)
 {
-	int		len;
+	size_t		len;
 	const char	*token = NULL;
 	const char	*name;
+	char		namebuf[128];
 
 	out[0] = 0;
 	if (!vp) return 0;
+
 	name = vp->name;
+	len = 0;
 
-	if (!*name) {
-		DICT_ATTR *da = dict_attrbyvalue(vp->attribute);
-		if (!da) return 0;
-
-		name = da->name;
-	}
-
-	if (strlen(name) + 3 > (size_t)outlen) {
-		return 0;
+	if (!name || !*name) {
+		if (!vp_print_name(namebuf, sizeof(namebuf), vp->attribute)) {
+			return 0;
+		}
+		name = namebuf;
 	}
 
 	if ((vp->operator > T_OP_INVALID) &&
@@ -405,22 +437,20 @@ int vp_prints(char *out, size_t outlen, VALUE_PAIR *vp)
 	}
 
 	if( vp->flags.has_tag ) {
-
-		snprintf(out, outlen, "%s:%d %s ", name, vp->flags.tag,
-			 token);
+		snprintf(out, outlen, "%s:%d %s ",
+			 name, vp->flags.tag, token);
 
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);
 
 	} else {
-
 	        snprintf(out, outlen, "%s %s ", name, token);
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);
 
 	}
 
-	return strlen(out);
+	return len + strlen(out + len);
 }
 
 
