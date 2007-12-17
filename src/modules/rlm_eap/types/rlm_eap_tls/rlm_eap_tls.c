@@ -615,13 +615,6 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 		} else {
 			client_cert = vp->vp_integer;
 		}
-
-	} else if (handler->request->parent) {
-		/*
-		 *	If we're doing EAP-TLS inside of a TLS tunnel,
-		 *	we don't need a client certificate.
-		 */
-		client_cert = FALSE;
 	}
 
 	/*
