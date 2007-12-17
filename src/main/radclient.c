@@ -911,7 +911,7 @@ int main(int argc, char **argv)
 
 		if (*argv[1] == '[') { /* IPv6 URL encoded */
 			p = strchr(argv[1], ']');
-			if ((p - argv[1]) >= sizeof(buffer)) {
+			if ((size_t) (p - argv[1]) >= sizeof(buffer)) {
 				usage();
 			}
 
