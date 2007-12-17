@@ -708,19 +708,18 @@ void mschap_add_reply(VALUE_PAIR** vp, unsigned char ident,
 /*
  *	Add MPPE attributes to the reply.
  */
-static void mppe_add_reply(VALUE_PAIR **vp,
+static void mppe_add_reply(REQUEST *request,
 			   const char* name, const uint8_t * value, int len)
 {
-       VALUE_PAIR *reply_attr;
-       reply_attr = pairmake(name, "", T_OP_EQ);
-       if (!reply_attr) {
+       VALUE_PAIR *vp;
+       vp = radius_pairmake(request, &request->reply->vps, name, "", T_OP_EQ);
+       if (!vp) {
 	       DEBUG("rlm_mschap: mppe_add_reply failed to create attribute %s: %s\n", name, librad_errstr);
 	       return;
        }
 
-       memcpy(reply_attr->vp_octets, value, len);
-       reply_attr->length = len;
-       pairadd(vp, reply_attr);
+       memcpy(vp->vp_octets, value, len);
+       vp->length = len;
 }
 
 
@@ -969,7 +968,6 @@ static int mschap_authorize(void * instance, REQUEST *request)
 {
 #define inst ((rlm_mschap_t *)instance)
 	VALUE_PAIR *challenge = NULL, *response = NULL;
-	VALUE_PAIR *vp;
 
 	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE);
 	if (!challenge) {
@@ -988,6 +986,11 @@ static int mschap_authorize(void * instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
+	if (pairfind(request->config_items, PW_AUTH_TYPE)) {
+		DEBUG2("  rlm_mschap: Found existing Auth-Type.  Not changing it.");
+		return RLM_MODULE_NOOP;
+	}
+
 	DEBUG2("  rlm_mschap: Found MS-CHAP attributes.  Setting 'Auth-Type  = %s'", inst->xlat_name);
 
 	/*
@@ -995,10 +998,10 @@ static int mschap_authorize(void * instance, REQUEST *request)
 	 *	will take care of turning clear-text passwords into
 	 *	NT/LM passwords.
 	 */
-	vp = pairmake("Auth-Type", inst->auth_type, T_OP_EQ);
-	if (!vp) return RLM_MODULE_FAIL;
-	pairmove(&request->config_items, &vp);
-	pairfree(&vp);		/* may be NULL */
+	if (!radius_pairmake(request, &request->config_items,
+			     "Auth-Type", inst->auth_type, T_OP_EQ)) {
+		return RLM_MODULE_FAIL;
+	}
 
 	return RLM_MODULE_OK;
 #undef inst
@@ -1029,7 +1032,6 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	VALUE_PAIR *password = NULL;
 	VALUE_PAIR *lm_password, *nt_password, *smb_ctrl;
 	VALUE_PAIR *username;
-	VALUE_PAIR *reply_attr;
 	uint8_t nthashhash[16];
 	char msch2resp[42];
 	char *username_string;
@@ -1044,9 +1046,13 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		password = pairfind(request->config_items,
 				    PW_SMB_ACCOUNT_CTRL_TEXT);
 		if (password) {
-			smb_ctrl = pairmake("SMB-Account-CTRL", "0", T_OP_SET);
-			pairadd(&request->config_items, smb_ctrl);
-			smb_ctrl->vp_integer = pdb_decode_acct_ctrl(password->vp_strvalue);
+			smb_ctrl = radius_pairmake(request,
+						   &request->config_items,
+						   "SMB-Account-CTRL", "0",
+						   T_OP_SET);
+			if (smb_ctrl) {
+				smb_ctrl->vp_integer = pdb_decode_acct_ctrl(password->vp_strvalue);
+			}
 		}
 	}
 
@@ -1093,14 +1099,14 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		DEBUG2("  rlm_mschap: No Cleartext-Password configured.  Cannot create LM-Password.");
 
 	} else {		/* there is a configured Cleartext-Password */
-		lm_password = pairmake("LM-Password", "", T_OP_EQ);
+		lm_password = radius_pairmake(request, &request->config_items,
+					      "LM-Password", "", T_OP_EQ);
 		if (!lm_password) {
 			radlog(L_ERR, "No memory");
 		} else {
 			smbdes_lmpwdhash(password->vp_strvalue,
 					 lm_password->vp_octets);
 			lm_password->length = 16;
-			pairadd(&request->config_items, lm_password);
 		}
 	}
 
@@ -1124,7 +1130,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		DEBUG2("  rlm_mschap: No Cleartext-Password configured.  Cannot create NT-Password.");
 
 	} else {		/* there is a configured Cleartext-Password */
-		nt_password = pairmake("NT-Password", "", T_OP_EQ);
+		nt_password = radius_pairmake(request, &request->config_items,
+					      "NT-Password", "", T_OP_EQ);
 		if (!nt_password) {
 			radlog(L_ERR, "No memory");
 			return RLM_MODULE_FAIL;
@@ -1132,7 +1139,6 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			ntpwdhash(nt_password->vp_octets,
 				  password->vp_strvalue);
 			nt_password->length = 16;
-			pairadd(&request->config_items, nt_password);
 		}
 	}
 
@@ -1240,7 +1246,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		        username_string = username->vp_strvalue;
 		}
 
-#if __APPLE__
+#ifdef __APPLE__
 		/*
 		 *	No "known good" NT-Password attribute.  Try to do
 		 *	OpenDirectory authentication.
@@ -1354,7 +1360,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			 */
 			memcpy(mppe_sendkey + 8,
 			       nthashhash, 16);
-			mppe_add_reply(&request->reply->vps,
+			mppe_add_reply(request,
 				       "MS-CHAP-MPPE-Keys",
 				       mppe_sendkey, 32);
 		} else if (chap == 2) {
@@ -1363,25 +1369,22 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 					       response->vp_octets + 26,
 					       mppe_sendkey, mppe_recvkey);
 
-			mppe_add_reply(&request->reply->vps,
+			mppe_add_reply(request,
 				       "MS-MPPE-Recv-Key",
 				       mppe_recvkey, 16);
-			mppe_add_reply(&request->reply->vps,
+			mppe_add_reply(request,
 				       "MS-MPPE-Send-Key",
 				       mppe_sendkey, 16);
 
 		}
-		reply_attr = pairmake("MS-MPPE-Encryption-Policy",
-				      (inst->require_encryption)? "0x00000002":"0x00000001",
-				      T_OP_EQ);
-		rad_assert(reply_attr != NULL);
-		pairadd(&request->reply->vps, reply_attr);
-		reply_attr = pairmake("MS-MPPE-Encryption-Types",
-				      (inst->require_strong)? "0x00000004":"0x00000006",
-				      T_OP_EQ);
-		rad_assert(reply_attr != NULL);
-		pairadd(&request->reply->vps, reply_attr);
-
+		radius_pairmake(request, &request->reply->vps,
+				"MS-MPPE-Encryption-Policy",
+				(inst->require_encryption)? "0x00000002":"0x00000001",
+				T_OP_EQ);
+		radius_pairmake(request, &request->reply->vps,
+				"MS-MPPE-Encryption-Types",
+				(inst->require_strong)? "0x00000004":"0x00000006",
+				T_OP_EQ);
 	} /* else we weren't asked to use MPPE */
 
 	return RLM_MODULE_OK;
