@@ -51,6 +51,7 @@ static int sessionCounter=0;
  */
 static int tnc_initiate(void *type_data, EAP_HANDLER *handler)
 {
+	uint8_t flags_ver = 1; //set version to 1
 	rlm_eap_tnc_t *inst = type_data;
 
 	if (!handler->request || !handler->request->parent) {
@@ -82,7 +83,6 @@ static int tnc_initiate(void *type_data, EAP_HANDLER *handler)
 	 *	Fill it with data.
 	 */
 	reply->code = PW_TNC_REQUEST;
-	uint8_t flags_ver = 1; //set version to 1
 	flags_ver = SET_START(flags_ver); //set start-flag
 	DEBUG("$$$$$$$$$$$$$$$$Flags: %d", flags_ver);
 	reply->flags_ver = flags_ver;
@@ -155,8 +155,8 @@ static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
     TNC_ConnectionID connId = *((TNC_ConnectionID *) (handler->opaque));
     rlm_eap_tnc_t *inst = type_arg;
 
-    DEBUG2("HANDLER_OPAQUE: %d\n", *((TNC_ConnectionID *) (handler->opaque)));
-    DEBUG2("XXXXXXXXXXXX TNC-AUTHENTICATE is starting now for %d..........\n", connId);
+    DEBUG2("HANDLER_OPAQUE: %d", (int) *((TNC_ConnectionID *) (handler->opaque)));
+    DEBUG2("TNC-AUTHENTICATE is starting now for %d..........", (int) connId);
 
     /*
 	 *	Get the User-Password for this user.
@@ -205,7 +205,7 @@ static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
         isAcknowledgement = 1;
     }
     
-    DEBUG("Data received: (%d)\n", tnccsMsgLength);
+    DEBUG("Data received: (%d)", (int) tnccsMsgLength);
 /*    int i;
     for(i=0;i<tnccsMsgLength;i++){
         DEBUG2("%c", (packet->data)[i]);
@@ -225,7 +225,7 @@ static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
                                                         &outIsLengthIncluded,
                                                         &outMoreFragments,
                                                         &outOverallLength);
-    DEBUG("GOT State %d from TNCS", state);
+    DEBUG("GOT State %08x from TNCS", (unsigned int) state);
     if(state == TNC_CONNECTION_EAP_ACKNOWLEDGEMENT){ //send back acknoledgement
         reply->code = PW_TNC_REQUEST;
         reply->data = NULL;
@@ -233,7 +233,7 @@ static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
         reply->flags_ver = 1;
         reply->length =TNC_PACKET_LENGTH_WITHOUT_DATA_LENGTH; 
     }else{ //send back normal message
-        DEBUG("GOT Message from TNCS (length: %d)", outMessageLength);
+        DEBUG("GOT Message from TNCS (length: %d)", (int) outMessageLength);
         
  /*       for(i=0;i<outMessageLength;i++){
             DEBUG2("%c", outMessage[i]);
@@ -241,8 +241,8 @@ static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
         DEBUG2("\n");
  */
         DEBUG("outIsLengthIncluded: %d, outMoreFragments: %d, outOverallLength: %d", 
-                outIsLengthIncluded, outMoreFragments, outOverallLength);
-        DEBUG("NEW STATE: %d", state);
+                outIsLengthIncluded, outMoreFragments, (int) outOverallLength);
+        DEBUG("NEW STATE: %08x", (unsigned int) state);
         switch(state){
             case TNC_CONNECTION_STATE_HANDSHAKE:
                 reply->code = PW_TNC_REQUEST;
@@ -273,7 +273,7 @@ static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
             reply->data_length = outOverallLength;
             reply->length = TNC_PACKET_LENGTH + outMessageLength;
             DEBUG("SET LENGTH: %d", reply->length);
-            DEBUG("SET DATALENGTH: %d", outOverallLength);
+            DEBUG("SET DATALENGTH: %d", (int) outOverallLength);
         }else{
             reply->data_length = 0;
             reply->length = TNC_PACKET_LENGTH_WITHOUT_DATA_LENGTH + outMessageLength;        
