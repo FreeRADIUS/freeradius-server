@@ -4,7 +4,7 @@ IMPORTS
 	MODULE-IDENTITY,
 	OBJECT-IDENTITY
 		FROM SNMPv2-SMI
-	gnomeProducts
+	freeRadiusProducts
 		FROM FREERADIUS-SMI;
 
 freeradius MODULE-IDENTITY
@@ -25,13 +25,13 @@ freeradius MODULE-IDENTITY
 		"The product registrations for the FreeRADIUS SNMP subagent.
 		These registrations are guaranteed to be unique and are used
 		for SMUX registration by default (if not overridden manually)."
-	::= { freeradiusProducts 1 }
+	::= { freeRadiusProducts 1 }
 
 radiusd OBJECT-IDENTITY
 	STATUS  current
 	DESCRIPTION
 		"radiusd is the RADIUS protocol deamon of the FreeRADIUS
 		project."
-	::= { radiusd 1 }
+	::= { freeradius 1 }
 
 END
