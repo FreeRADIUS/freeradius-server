@@ -315,7 +315,7 @@ int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket)
 int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row)
 {
 	VALUE_PAIR *pair;
-	char *ptr, *value;
+	const char *ptr, *value;
 	char buf[MAX_STRING_LEN];
 	char do_xlat = 0;
 	FR_TOKEN token, operator = T_EOL;
