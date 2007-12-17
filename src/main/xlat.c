@@ -622,12 +622,12 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		len1 = rad_copy_variable(first, p);
 		if (len1 < 0) {
 			DEBUG2("Badly formatted variable: %s", p);
-			goto done;
+			goto free_and_done;
 		}
 
 		if ((p[len1] != ':') || (p[len1 + 1] != '-')) {
 			DEBUG2("No trailing :- after variable at %s", p);
-			goto done;
+			goto free_and_done;
 		}
 
 		p += len1 + 2;
@@ -638,7 +638,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			expand2 = TRUE;
 			if (len2 < 0) {
 				DEBUG2("Invalid text after :- at %s", p);
-				goto done;
+				goto free_and_done;
 			}
 			p += len2;
 
@@ -656,16 +656,13 @@ static void decode_attribute(const char **from, char **to, int freespace,
 
 		if (*p != '}') {
 			DEBUG2("Failed to find trailing '}' in string");
-			goto done;
+			goto free_and_done;
 		}
 
 		mylen = radius_xlat(q, freespace, first, request, func);
-		free(first);
 		if (mylen) {
-			free(second);
-
 			q += mylen;
-			goto done;
+			goto free_and_done;
 		}
 
 		if (!expand2) {
@@ -674,16 +671,18 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		} else {
 			mylen = radius_xlat(q, freespace, second,
 					    request, func);
-			free(second);
 			if (mylen) {
 				q += mylen;
-				goto done;
+				goto free_and_done;
 			}
 		}
 
 		/*
 		 *	Else the output is an empty string.
 		 */
+	free_and_done:
+		free(first);
+		free(second);
 		goto done;
 	}
 
