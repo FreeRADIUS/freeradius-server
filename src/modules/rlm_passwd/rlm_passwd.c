@@ -61,7 +61,7 @@ void printpw(struct mypasswd *pw, int nfields){
 #endif
 
 
-static struct mypasswd * mypasswd_malloc(const char* buffer, int nfields, int* len)
+static struct mypasswd * mypasswd_malloc(const char* buffer, int nfields, size_t* len)
 {
 	struct mypasswd *t;
 	/* reserve memory for (struct mypasswd) + listflag (nfields * sizeof (char*)) +
@@ -119,7 +119,7 @@ static void destroy_password (struct mypasswd * pass)
 }
 
 
-static unsigned int hash(const unsigned char * username, unsigned int tablesize)
+static unsigned int hash(const char * username, unsigned int tablesize)
 {
 	int h=1;
 	while (*username) {
@@ -384,7 +384,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 	int nfields=0, keyfield=-1, listable=0;
 	char *s;
 	char *lf=NULL; /* destination list flags temporary */
-	int len;
+	size_t len;
 	int i;
 	DICT_ATTR * da;
 
