@@ -135,7 +135,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 		 *	attribute.
 		 */
 		if ((vp->attribute & 0xffff) == 1) {
-			char *p;
+			const char *p;
 			DICT_ATTR	*dattr;
 
 			p = vp->vp_strvalue;

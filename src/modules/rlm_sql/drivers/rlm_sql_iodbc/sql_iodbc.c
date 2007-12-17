@@ -46,7 +46,7 @@ typedef struct rlm_sql_iodbc_sock {
 	void	*conn;
 } rlm_sql_iodbc_sock;;
 
-static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 
 /*************************************************************************
@@ -312,7 +312,7 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-static char *sql_error(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
+static const char *sql_error(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
 
 	SQLINTEGER errornum = 0;
 	SQLSMALLINT length = 0;

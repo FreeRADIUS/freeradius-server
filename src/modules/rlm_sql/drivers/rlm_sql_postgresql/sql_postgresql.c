@@ -141,7 +141,7 @@ static int check_fatal_error (char *errorcode)
  *************************************************************************/
 static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	char connstring[2048];
-	char *port, *host;
+	const char *port, *host;
 	rlm_sql_postgres_sock *pg_sock;
 
 	if (config->sql_server[0] != '\0') {
@@ -412,7 +412,7 @@ static int sql_free_result(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-static char *sql_error(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config) {
+static const char *sql_error(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config) {
 
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 

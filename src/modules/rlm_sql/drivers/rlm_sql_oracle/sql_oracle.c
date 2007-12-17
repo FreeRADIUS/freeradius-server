@@ -52,7 +52,7 @@ typedef struct rlm_sql_oracle_sock {
  *               connection
  *
  *************************************************************************/
-static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	static char	msgbuf[512];
 	sb4		errcode = 0;

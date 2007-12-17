@@ -375,7 +375,7 @@ static int sql_free_result(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
  *               connection
  *
  *************************************************************************/
-static char *sql_error(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+static const char *sql_error(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 

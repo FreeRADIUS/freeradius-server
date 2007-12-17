@@ -50,7 +50,7 @@ typedef struct rlm_sql_module_t {
 	int (*sql_num_rows)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_fetch_row)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_free_result)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
-	char *(*sql_error)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+	const char *(*sql_error)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_close)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_finish_query)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_finish_select_query)(SQLSOCK *sqlsocket, SQL_CONFIG *config);

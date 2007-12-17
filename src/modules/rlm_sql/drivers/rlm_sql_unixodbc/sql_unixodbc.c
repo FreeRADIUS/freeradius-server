@@ -40,7 +40,7 @@ typedef struct rlm_sql_unixodbc_sock {
 #include <sqlext.h>
 
 /* Forward declarations */
-static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 static int sql_state(long err_handle, SQLSOCK *sqlsocket, SQL_CONFIG *config);
 static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config);
@@ -350,7 +350,7 @@ static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     SQLCHAR state[256];
     SQLCHAR error[256];
     SQLINTEGER errornum = 0;

@@ -26,7 +26,7 @@ RCSID("$Id$")
 
 
 /* Forward declarations */
-static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config);
@@ -279,7 +279,7 @@ static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_firebird_sock *firebird_sock = sqlsocket->conn;
     return firebird_sock->lasterror;
 }

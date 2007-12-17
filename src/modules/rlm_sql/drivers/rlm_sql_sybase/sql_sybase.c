@@ -764,7 +764,7 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-static char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	static char	msg='\0';
 /*
 	static char	msgbuf[2048];
