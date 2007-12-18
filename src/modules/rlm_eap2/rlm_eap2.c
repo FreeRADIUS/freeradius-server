@@ -331,6 +331,8 @@ static int eap_detach(void *instance)
 	rbtree_free(inst->session_tree);
 	inst->session_tree = NULL;
 	eaplist_free(inst);
+	eap_server_unregister_methods();
+	tls_deinit(inst->tls_ctx);
 
 	pthread_mutex_destroy(&(inst->session_mutex));
 
@@ -618,14 +620,14 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 
 static int eap_req2vp(EAP_HANDLER *handler)
 {
-	int		total, size;
+	int		encoded, total, size;
 	const uint8_t	*ptr;
 	VALUE_PAIR	*head = NULL;
 	VALUE_PAIR	**tail = &head;
 	VALUE_PAIR	*vp;
 
-	total = handler->server_ctx.eap_if->eapReqDataLen;
-	ptr = handler->server_ctx.eap_if->eapReqData;
+	ptr = wpabuf_head(handler->server_ctx.eap_if->eapReqData);
+	encoded = total = wpabuf_len(handler->server_ctx.eap_if->eapReqData);
 
 	do {
 		size = total;
@@ -649,7 +651,7 @@ static int eap_req2vp(EAP_HANDLER *handler)
 	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE);
 	pairadd(&handler->request->reply->vps, head);
 
-	return 0;
+	return encoded;
 }
 
 static int eap_example_server_step(EAP_HANDLER *handler)
@@ -708,8 +710,12 @@ static int eap_example_server_step(EAP_HANDLER *handler)
 		process = 1;
 	}
 
-	if (process && handler->server_ctx.eap_if->eapReqData) {
-		eap_req2vp(handler);
+	if (process) {
+		if (wpabuf_head(handler->server_ctx.eap_if->eapReqData)) {
+			if (!eap_req2vp(handler)) return -1;
+		} else {
+			return -1;
+		}
 	}
 
 	return res;
@@ -854,7 +860,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		handler = malloc(sizeof(*handler));
 		if (!handler) return RLM_MODULE_FAIL;
 
-		memset(handler, 0, sizeof(handler));
+		memset(handler, 0, sizeof(*handler));
 
 		handler->inst = inst;
 		handler->eap_cb.get_eap_user = server_get_eap_user;
@@ -879,18 +885,23 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	}
 
 	handler->request = request;
-	free(handler->server_ctx.eap_if->eapRespData);
-	handler->server_ctx.eap_if->eapRespData = data;
-	handler->server_ctx.eap_if->eapRespDataLen = data_len;
-	handler->server_ctx.eap_if->eapResp = TRUE;
+	wpabuf_free(handler->server_ctx.eap_if->eapRespData);
+	handler->server_ctx.eap_if->eapRespData = wpabuf_alloc_copy(data, data_len);
+	if (handler->server_ctx.eap_if->eapRespData) {
+		handler->server_ctx.eap_if->eapResp = TRUE;
+	}
 	
-	eap_example_server_step(handler);
+	if (eap_example_server_step(handler) < 0) {
+		DEBUG("rlm_eap2: Failed in EAP library");
+		goto fail;
+	}
 
 	if (handler->server_ctx.eap_if->eapSuccess) {
 		request->reply->code = PW_AUTHENTICATION_ACK;
 		rcode = RLM_MODULE_OK;
 
 	} else if (handler->server_ctx.eap_if->eapFail) {
+	fail:
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		rcode = RLM_MODULE_REJECT;
 

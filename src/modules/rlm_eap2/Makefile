@@ -15,14 +15,14 @@
 #
 
 
-HOSTAP	    = /path/to/src/hostap/
+HOSTAP	    = /path/to/hostap
 
 TARGET      = 
 SRCS        = rlm_eap2.c
 HEADERS     =
 RLM_CFLAGS  = $(INCLTDL) -I$(HOSTAP)/src/eap_common \
 	      -I$(HOSTAP)/src/eap_server  -I$(HOSTAP)/src  \
-	      -I$(HOSTAP)/src/common
+	      -I$(HOSTAP)/src/common -I$(HOSTAP)/src/utils
 RLM_LIBS    = $(HOSTAP)/eap_example/libeap.so
 
 ## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
