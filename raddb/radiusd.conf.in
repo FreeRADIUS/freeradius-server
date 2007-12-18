@@ -793,12 +793,14 @@ $INCLUDE ${confdir}/eap.conf
 		#  the correct User-Password or NT-Password from the database.
 		#
 		#  Note that NT-Passwords MUST be stored as a 32-digit hex
-		#  string, and MUST start off with "0x", such as:
+		#  string, as follows:
 		#
-		#	0x000102030405060708090a0b0c0d0e0f
+		#	000102030405060708090a0b0c0d0e0f
 		#
-		#  Without the leading "0x", NT-Passwords will not work.
-		#  This goes for NT-Passwords stored in SQL, too.
+		#  The default configuration uses the "pap" module to
+		#  convert the NT-Password from whatever format is in
+		#  a database, to the format needed by the rest of the
+		#  server.
 		#
 		# password_attribute = userPassword
 		#
