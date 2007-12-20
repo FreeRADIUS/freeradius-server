@@ -184,6 +184,38 @@ static uint32_t eap_rand(fr_randctx *ctx)
 	return num;
 }
 
+static EAP_HANDLER *eaplist_delete(rlm_eap_t *inst, EAP_HANDLER *handler)
+{
+	rbnode_t *node;
+
+	node = rbtree_find(inst->session_tree, handler);
+	if (!node) return NULL;
+
+	handler = rbtree_node2data(inst->session_tree, node);
+
+	/*
+	 *	Delete old handler from the tree.
+	 */
+	rbtree_delete(inst->session_tree, node);
+	
+	/*
+	 *	And unsplice it from the linked list.
+	 */
+	if (handler->prev) {
+		handler->prev->next = handler->next;
+	} else {
+		inst->session_head = handler->next;
+	}
+	if (handler->next) {
+		handler->next->prev = handler->prev;
+	} else {
+		inst->session_tail = handler->prev;
+	}
+	handler->prev = handler->next = NULL;
+
+	return handler;
+}
+
 /*
  *	Add a handler to the set of active sessions.
  *
@@ -192,8 +224,7 @@ static uint32_t eap_rand(fr_randctx *ctx)
  */
 int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
-	int		i, status;
-	uint32_t	lvalue;
+	int		status;
 	VALUE_PAIR	*state;
 
 	rad_assert(handler != NULL);
@@ -206,7 +237,6 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	state = pairmake("State", "0x00", T_OP_EQ);
 	if (!state) return 0;
 	pairadd(&(handler->request->reply->vps), state);
-	state->length = EAP_STATE_LEN;
 
 	/*
 	 *	The time at which this request was made was the time
@@ -230,14 +260,35 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	pthread_mutex_lock(&(inst->session_mutex));
 
 	/*
-	 *	Create a completely random state.
+	 *	Create a unique content for the State variable.
+	 *	It will be modified slightly per round trip, but less so
+	 *	than in 1.x.
 	 */
-	for (i = 0; i < 4; i++) {
-		lvalue = eap_rand(&inst->rand_pool);
-		memcpy(state->vp_octets + i * 4, &lvalue, sizeof(lvalue));
+	if (memcmp(handler->state, "\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000", 16) == 0) {
+		int i;
+
+		for (i = 0; i < 4; i++) {
+			uint32_t lvalue;
+			
+			lvalue = eap_rand(&inst->rand_pool);
+			memcpy(handler->state + i * 4, &lvalue,
+			       sizeof(lvalue));
+		}
 	}
-	state->vp_octets[15] = handler->eap_id;
-	memcpy(handler->state, state->vp_strvalue, sizeof(handler->state));
+	memcpy(state->vp_octets, handler->state, sizeof(handler->state));
+	state->length = EAP_STATE_LEN;
+
+	/*
+	 *	Add some more data to distinguish the sessions.
+	 */
+	state->vp_octets[4] = handler->trips ^ handler->state[0];
+	state->vp_octets[5] = handler->eap_id ^ handler->state[1];
+	state->vp_octets[6] = handler->eap_type ^ handler->state[2];
+
+	/*
+	 *	and copy the state back again.
+	 */
+	memcpy(handler->state, state->vp_octets, sizeof(handler->state));
 
 	/*
 	 *	Big-time failure.
@@ -289,7 +340,6 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 {
 	int		i;
 	VALUE_PAIR	*state;
-	rbnode_t	*node;
 	EAP_HANDLER	*handler, myHandler;
 
 	/*
@@ -323,6 +373,7 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 		handler = inst->session_head;
 		if (handler &&
 		    ((request->timestamp - handler->timestamp) > inst->timer_limit)) {
+			rbnode_t *node;
 			node = rbtree_find(inst->session_tree, handler);
 			rad_assert(node != NULL);
 			rbtree_delete(inst->session_tree, node);
@@ -340,47 +391,14 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 		}
 	}
 
-	handler = NULL;
-	node = rbtree_find(inst->session_tree, &myHandler);
-	if (node) {
-		handler = rbtree_node2data(inst->session_tree, node);
-
-		/*
-		 *	Delete old handler from the tree.
-		 */
-		rbtree_delete(inst->session_tree, node);
-		
-		/*
-		 *	And unsplice it from the linked list.
-		 */
-		if (handler->prev) {
-			handler->prev->next = handler->next;
-		} else {
-			inst->session_head = handler->next;
-		}
-		if (handler->next) {
-			handler->next->prev = handler->prev;
-		} else {
-			inst->session_tail = handler->prev;
-		}
-		handler->prev = handler->next = NULL;
-	}
-
+	handler = eaplist_delete(inst, &myHandler);
 	pthread_mutex_unlock(&(inst->session_mutex));
 
 	/*
-	 *	Not found.
-	 */
-	if (!node) {
-		DEBUG2("  rlm_eap: Request not found in the list");
-		return NULL;
-	}
-
-	/*
-	 *	Found, but state verification failed.
+	 *	Might not have been there.
 	 */
 	if (!handler) {
-		radlog(L_ERR, "rlm_eap: State verification failed.");
+		radlog(L_ERR, "rlm_eap: No EAP session matching the State variable.");
 		return NULL;
 	}
 
