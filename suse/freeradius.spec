@@ -324,6 +324,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/naspasswd
 %attr(640,-,radiusd) %ghost %config(noreplace) /etc/raddb/oraclesql.conf
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/postgresql.conf
+%attr(640,-,radiusd) %config(noreplace) /etc/raddb/postgresqlippool.conf
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/sqlippool.conf
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/preproxy_users
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/proxy.conf
