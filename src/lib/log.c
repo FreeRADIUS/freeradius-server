@@ -55,4 +55,5 @@ void librad_perror(const char *fmt, ...)
 	if (strchr(fmt, ':') == NULL)
 		fprintf(stderr, ": ");
 	fprintf(stderr, "%s\n", librad_errstr);
+	va_end(ap);
 }
