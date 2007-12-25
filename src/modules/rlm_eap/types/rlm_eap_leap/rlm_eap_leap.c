@@ -161,6 +161,7 @@ static int leap_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
 		 *	is EAP_SUCCESS.
 		 */
 		handler->request->reply->code = PW_ACCESS_CHALLENGE;
+		eapleap_free(&packet);
 		return 1;
 		break;
 
