@@ -136,6 +136,7 @@ static int md5_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
 	 */
 	reply = eapmd5_alloc();
 	if (!reply) {
+		eapmd5_free(&packet);
 		return 0;
 	}
 	reply->id = handler->eap_ds->request->id;
