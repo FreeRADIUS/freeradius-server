@@ -313,13 +313,14 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 *	Explicit list given: use it.
 		 */
 		client_cs = cf_section_find(section_name);
-		free(section_name);
 		if (!client_cs) {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Failed to find clients %s {...}",
 				   section_name);
+			free(section_name);
 			return -1;
 		}
+		free(section_name);
 	} /* else there was no "clients = " entry. */
 
 	parentcs = cf_top_section(cs);
