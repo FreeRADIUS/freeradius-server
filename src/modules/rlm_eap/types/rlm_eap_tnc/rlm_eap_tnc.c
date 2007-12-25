@@ -94,9 +94,15 @@ static int tnc_initiate(void *type_data, EAP_HANDLER *handler)
 	 *	and free it.
 	 */
 	eaptnc_compose(handler->eap_ds, reply);
+	eaptnc_free(&reply);
 
     //put sessionAttribute to Handler and increase sessionCounter
     handler->opaque = calloc(sizeof(TNC_ConnectionID), 1);
+    if (handler->opaque == NULL)  {
+	radlog(L_ERR, "rlm_eap_tnc: out of memory");
+	return 0;
+    }
+    handler->free_opaque = free;
     memcpy(handler->opaque, &sessionCounter, sizeof(int));
     sessionCounter++;
     
@@ -176,6 +182,7 @@ static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
 	 */
 	reply = eaptnc_alloc();
 	if (!reply) {
+		eaptnc_free(&packet);
 		return 0;
 	}
     
@@ -289,7 +296,8 @@ static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
 	 *	and free it.
 	 */
 	eaptnc_compose(handler->eap_ds, reply);
-    
+    	eaptnc_free(&reply);
+
     handler->stage = AUTHENTICATE;
     
 	eaptnc_free(&packet);
