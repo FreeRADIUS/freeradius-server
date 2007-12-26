@@ -150,6 +150,9 @@ static int compile_action(modcallable *c, CONF_PAIR *cp)
 	if (!strcasecmp(value, "return"))
 		action = MOD_ACTION_RETURN;
 
+	else if (!strcasecmp(value, "break"))
+		action = MOD_ACTION_RETURN;
+
 	else if (!strcasecmp(value, "reject"))
 		action = MOD_ACTION_REJECT;
 
@@ -1493,7 +1496,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			}
 
 			return csingle;
-		}
+
+		} /* else it's something like sql { fail = 1 ...} */
 
 	} else if (!cf_item_is_pair(ci)) { /* CONF_DATA or some such */
 		return NULL;
@@ -1514,26 +1518,42 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			cf_log_err(ci, "Entry is not a reference to a module");
 			return NULL;
 		}
-	}
-
-	/*
-	 *	See if the module is a virtual one.  If so, return that,
-	 *	rather than doing anything here.
-	 */
-	if (((cs = cf_section_find("instantiate")) != NULL) &&
-	    (subcs = cf_section_sub_find_name2(cs, NULL, modrefname)) != NULL) {
-		DEBUG2(" Module: Loading virtual module %s", modrefname);
 
 		/*
-		 *	As it's sole configuration, the
-		 *	virtual module takes a section which
-		 *	contains the
+		 *	See if the module is a virtual one.  If so,
+		 *	return that, rather than doing anything here.
 		 */
-		return do_compile_modsingle(parent,
-					    component,
-					    cf_sectiontoitem(subcs),
-					    grouptype,
-					    modname);
+		subcs = NULL;
+		cs = cf_section_find("instantiate");
+		if (!subcs) {
+			cs = cf_section_find("policy");
+			if (cs) subcs = cf_section_sub_find_name2(cs, NULL,
+								  modrefname);
+		}
+		if (subcs) {
+			DEBUG2(" Module: Loading virtual module %s",
+			       modrefname);
+
+			/*
+			 *	redundant foo {} is a single.
+			 */
+			if (cf_section_name2(subcs)) {
+				return do_compile_modsingle(parent,
+							    component,
+							    cf_sectiontoitem(subcs),
+							    grouptype,
+							    modname);
+			} else {
+				/*
+				 *	foo {} is a group.
+				 */
+				return do_compile_modgroup(parent,
+							   component,
+							   subcs,
+							   GROUPTYPE_SIMPLE,
+							   grouptype);
+			}
+		}
 	}
 
 	/*
