@@ -1817,6 +1817,15 @@ instantiate {
 
 ######################################################################
 #
+#	Policies that can be applied in multiple places are listed
+#	globally.  That way, they can be defined once, and referred
+#	to multiple times.
+#
+######################################################################
+$INCLUDE policy.conf
+
+######################################################################
+#
 #	As of 2.0.0, the "authorize", "authenticate", etc. sections
 #	are in separate configuration files, per virtual host.
 #
