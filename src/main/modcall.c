@@ -48,7 +48,7 @@ struct modcallable {
 	modcallable *parent;
 	struct modcallable *next;
 	const char *name;
-	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE, MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE } type;
+	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE, MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE, MOD_POLICY } type;
 	int method;
 	int actions[RLM_MODULE_NUMCODES];
 };
@@ -87,7 +87,7 @@ static modsingle *mod_callabletosingle(modcallable *p)
 }
 static modgroup *mod_callabletogroup(modcallable *p)
 {
-	rad_assert((p->type > MOD_SINGLE) && (p->type <= MOD_CASE));
+	rad_assert((p->type > MOD_SINGLE) && (p->type <= MOD_POLICY));
 
 	return (modgroup *)p;
 }
@@ -281,7 +281,8 @@ static const char *group_name[] = {
 	"elsif",
 	"update",
 	"switch",
-	"case"
+	"case",
+	"policy"
 };
 
 static const char *modcall_spaces = "++++++++++++++++++++++++++++++++";
@@ -442,6 +443,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			case MOD_ELSIF:
 			case MOD_CASE:
 			case MOD_GROUP:
+			case MOD_POLICY: /* same as MOD_GROUP */
 				stack.children[stack.pointer] = g->children;
 				break;
 
@@ -624,6 +626,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			case MOD_ELSIF:
 			case MOD_CASE:
 			case MOD_GROUP:
+			case MOD_POLICY: /* same as MOD_GROUP */
 				stack.children[stack.pointer] = child->next;
 				break;
 
@@ -1692,6 +1695,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 
 	c = mod_grouptocallable(g);
 	c->parent = parent;
+	c->type = MOD_GROUP;
 	c->next = NULL;
 	memset(c->actions, 0, sizeof(c->actions));
 
@@ -1702,8 +1706,14 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 	 *	rbtree, so that groups can reference each other...
 	 */
 	c->name = cf_section_name2(cs);
-	if (!c->name) c->name = "";
-	c->type = MOD_GROUP;
+	if (!c->name) {
+		c->name = cf_section_name1(cs);
+		if (strcmp(c->name, "group") == 0) {
+			c->name = "";
+		} else {
+			c->type = MOD_POLICY;
+		}
+	}
 	g->children = NULL;
 
 	/*
