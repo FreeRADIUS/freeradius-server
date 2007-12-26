@@ -296,10 +296,13 @@ Double-quoted strings are expanded by inserting the value of any
 variables (see VARIABLES, below) before being evaluated.  If
 the result is a number it is evaluated in a numerical context.
 
-String length is limited by line-length, usually about 8000 characters.
+String length is limited by line-length, usually about 8000
+characters.  A double quote character (") can be used in a string via
+the normal escaping method.  ("like \\"this\\" !")
 .RE
 .IP 'strings'
 Single-quoted strings are evaluated as-is.
+
 .IP `strings`
 Back-quoted strings are evaluated by expanding the contents of the
 string, as described above for double-quoted strings.  The resulting
@@ -590,11 +593,9 @@ When a module is called, it returns one of the following codes to
 These return codes can be tested for in a condition, as described
 above in the CONDITIONS section.
 .SH FILES
-/etc/raddb/vmpsd.conf,
 /etc/raddb/radiusd.conf
 .SH "SEE ALSO"
 .BR radiusd.conf (5),
-.BR vmpsd.conf (5),
 .BR dictionary (5)
 .SH AUTHOR
 Alan DeKok <aland@deployingradius.com>
