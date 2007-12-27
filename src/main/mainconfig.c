@@ -141,10 +141,16 @@ static const CONF_PARSER security_config[] = {
 
 
 /*
- *  syslog configuration for the server.
+ *	Logging configuration for the server.
  */
 static const CONF_PARSER log_config[] = {
 	{ "syslog_facility",  PW_TYPE_STRING_PTR, 0, &syslog_facility, Stringify(0) },
+	{ "stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
+
+	{ "file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, "${logdir}/radius.log" },
+	{ "auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, "no" },
+	{ "auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
+	{ "auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -626,14 +632,9 @@ int read_mainconfig(int reload)
 		}
 
 		if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
-			static const CONF_PARSER syslog_config[] = {
-				{ "log", PW_TYPE_SUBSECTION, 0, NULL,  (const void *) log_config},
-				{ NULL, -1, 0, NULL, NULL }
-			};
-			cf_section_parse(cs, NULL, syslog_config);
-
 			/*
-			 *	Make sure syslog_facility isn't NULL before using it
+			 *	Make sure syslog_facility isn't NULL
+			 *	before using it
 			 */
 			if (!syslog_facility) {
 				fprintf(stderr, "radiusd: Error: Unknown syslog chosen but no facility spedified\n");
@@ -650,15 +651,6 @@ int read_mainconfig(int reload)
 				cf_section_free(&cs);
 				return -1;
 			}
-		}
-
-		if (mainconfig.radlog_dest == RADLOG_FILES) {
-			static const CONF_PARSER file_config[] = {
-				{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, "${logdir}/radius.log" },
-				{ NULL, -1, 0, NULL, NULL }
-			};
-
-			cf_section_parse(cs, NULL, file_config);
 		}
 
 		free(radlog_dest);

@@ -37,12 +37,6 @@ confdir = ${raddbdir}
 run_dir = ${localstatedir}/run/radiusd
 
 #
-#  The logging messages for the server are appended to the
-#  tail of this file.
-#
-log_file = ${logdir}/radius.log
-
-#
 #  Destination for log messages.  This can be one of:
 #
 #	files - log to ${log_file}, as defined above.
@@ -307,28 +301,37 @@ log {
 	#  don't want to change this.
 	#
 	syslog_facility = daemon
+
+	#
+	#  The logging messages for the server are appended to the
+	#  tail of this file.
+	#
+	#  If the server is running in debugging mode, this file is
+	#  NOT used.
+	#
+	file = ${logdir}/radius.log
+
+	#  Log the full User-Name attribute, as it was found in the request.
+	#
+	# allowed values: {no, yes}
+	#
+	stripped_names = no
+
+	#  Log authentication requests to the log file.
+	#
+	#  allowed values: {no, yes}
+	#
+	auth = no
+
+	#  Log passwords with the authentication requests.
+	#  auth_badpass  - logs password if it's rejected
+	#  auth_goodpass - logs password if it's correct
+	#
+	#  allowed values: {no, yes}
+	#
+	auth_badpass = no
+	auth_goodpass = no
 }
-
-#  Log the full User-Name attribute, as it was found in the request.
-#
-# allowed values: {no, yes}
-#
-log_stripped_names = no
-
-#  Log authentication requests to the log file.
-#
-#  allowed values: {no, yes}
-#
-log_auth = no
-
-#  Log passwords with the authentication requests.
-#  log_auth_badpass  - logs password if it's rejected
-#  log_auth_goodpass - logs password if it's correct
-#
-#  allowed values: {no, yes}
-#
-log_auth_badpass = no
-log_auth_goodpass = no
 
 #  The program to execute to do concurrency checks.
 checkrad = ${sbindir}/checkrad
