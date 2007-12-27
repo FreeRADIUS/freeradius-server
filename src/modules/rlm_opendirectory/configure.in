@@ -32,5 +32,4 @@ fi
 AC_SUBST(od_ldflags)
 AC_SUBST(od_cflags)
 AC_SUBST(targetname)
-AC_CONFIG_HEADER(config.h)
 AC_OUTPUT(Makefile)
