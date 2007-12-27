@@ -31,10 +31,10 @@
 #include <EAPIKEv2/connector.h>
 #include "eap.h"
 
-#define RAD_EAP_IKEV2_IDTYPE		1900
-#define RAD_EAP_IKEV2_ID		1901
-#define RAD_EAP_IKEV2_SECRET		1902
-#define RAD_EAP_IKEV2_AUTHTYPE 		1903
+#define RAD_EAP_IKEV2_IDTYPE		1103
+#define RAD_EAP_IKEV2_ID		1104
+#define RAD_EAP_IKEV2_SECRET		1105
+#define RAD_EAP_IKEV2_AUTHTYPE 		1106
 
 
 int rad_load_proposals(ikev2_ctx *i2,CONF_SECTION *cf);
