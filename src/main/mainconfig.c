@@ -753,7 +753,7 @@ int read_mainconfig(int reload)
 	 * 	The first time around, ensure that we can write to the
 	 *	log directory.
 	 */
-	if (!reload) {
+	if (!reload && !debug_flag) {
 		/*
 		 *	We need root to do mkdir() and chown(), so we
 		 *	do this before giving up root.
