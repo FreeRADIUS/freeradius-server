@@ -315,7 +315,6 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	 *	openSSL.org
 	 */
 	if (type == SSL_FILETYPE_PEM) {
-		DEBUG2("rlm_eap_tls: Loading the certificate file as a chain");
 		if (!(SSL_CTX_use_certificate_chain_file(ctx, conf->certificate_file))) {
 			radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
 			radlog(L_ERR, "rlm_eap_tls: Error reading certificate file %s", conf->certificate_file);
