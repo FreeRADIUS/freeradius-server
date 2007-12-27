@@ -105,9 +105,16 @@ static const char *eap_types[] = {
   "36",
   "37",
   "tnc",			/* 38 */
-  "39"
-};
-#define MAX_EAP_TYPE_NAME 39
+  "39",
+  "40",
+  "41",
+  "42",
+  "43",
+  "44",
+  "45",
+  "46",
+  "ikev2"
+};				/* MUST have PW_EAP_MAX_TYPES */
 
 /*
  *	Return an EAP-Type for a particular name.
@@ -132,7 +139,7 @@ const char *eaptype_type2name(unsigned int type, char *buffer, size_t buflen)
 {
 	DICT_VALUE	*dval;
 
-	if (type > MAX_EAP_TYPE_NAME) {
+	if (type > PW_EAP_MAX_TYPES) {
 		/*
 		 *	Prefer the dictionary name over a number,
 		 *	if it exists.
