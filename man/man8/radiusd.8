@@ -1,4 +1,4 @@
-.TH RADIUSD 8 "11 Nov 2007" "" "FreeRADIUS Daemon"
+.TH RADIUSD 8 "27 Dec 2007" "" "FreeRADIUS Daemon"
 .SH NAME
 radiusd - Authentication, Authorization and Accounting server
 .SH SYNOPSIS
@@ -80,59 +80,6 @@ Debugging mode.  Equivalent to -sfxx -l stdout
 Finer-grained debug mode. In this mode the server will print details
 of every request on it's \fBstdout\fP output. You can specify this
 option multiple times (-x -x or -xx) to get more detailed output.
-.SH DEPRECATED OPTIONS
-The following options may work, and are accepted for backwards
-compatibility.  Support for these options may be removed in a future
-revision of the server.
-.IP \-A
-Write a file \fIdetail.auth\fP in addition to the standard \fBdetail\fP file
-in the same directory. This file will contain all the authentication-request
-records. This can be useful for debugging, but not for normal operation.
-
-This command line option is accepted only for backwards
-compatibility.  It no longer does anything.  See the configuration for
-the \fIdetail\fP module in \fIradiusd.conf\fP.
-.IP "\-a \fIaccounting directory\fP"
-This defaults to \fI/var/log/radacct\fP. If that directory exists,
-\fBradiusd\fP will write an ascii accounting record into a detail file for
-every login/logout recorded. The location of the detail file is
-\fIacct_dir/\fP\fBterminal_server\fP\fI/detail\fP.
-
-This command line option is deprecated.  See the \fIradacctdir\fP
-configuration item in the \fIradiusd.conf\fP file.
-.IP "\-g \fIfacility\fP"
-Specifies the syslog facility to be used with \fB-l syslog\fP. Default is
-\fIdaemon\fP. Another reasonable choice would be \fIauthpriv\fP.
-.IP "\-l \fIlogging directory\fP"
-This defaults to \fI/var/log\fP. \fBRadiusd\fP writes a logfile here
-called \fIradius.log\fP. It contains informational and error messages,
-and optionally a record of every login attempt (for aiding an ISP's
-helpdesk). The special arguments \fIstdout\fP and \fIstderr\fP cause
-the information to get written to the standard output, or standard
-error instead. The special argument \fIsyslog\fP sends the information
-with \fBsyslog\fP(3).
-
-This command line option is deprecated.  See the \fIlog_dir\fP
-configuration item in the \fIradiusd.conf\fP file.
-.IP \-S
-Write the stripped usernames (without prefix or suffix) in the \fBdetail\fP
-file instead of the raw record as received from the terminal server.
-
-This command line option is deprecated.  See the \fIlog_stripped_names\fP
-configuration item in the \fIradiusd.conf\fP file.
-.IP \-y
-Write details about every authentication request in the
-\fIradius.log\fP file.
-
-This command line option is deprecated.  See the \fIlog_auth\fP
-configuration item in the \fIradiusd.conf\fP file.
-.IP \-z
-Include the password in the \fIradius.log\fP file \fBeven\fP for successful
-logins. \fIThis is very insecure!\fP.
-
-This command line option is deprecated.  See the
-\fIlog_auth_badpass\fP and the \fIlog_auth_goodpass\fP configuration
-items in the \fIradiusd.conf\fP file.
 .SH DEBUGGING
 The server can be difficult to configure correctly in systems with
 complex requirements.  We STRONGLY RECOMMEND proceeding via the

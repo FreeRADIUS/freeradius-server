@@ -69,7 +69,6 @@ const char *radlog_dir = NULL;
 const char *radlib_dir = NULL;
 int log_stripped_names;
 int debug_flag = 0;
-int log_auth_detail = FALSE;
 int check_config = FALSE;
 
 const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
@@ -99,7 +98,6 @@ static void sig_hup (int);
 int main(int argc, char *argv[])
 {
 	int rcode;
-	unsigned char buffer[4096];
 	int argval;
 	int spawn_flag = TRUE;
 	int dont_fork = FALSE;
@@ -154,23 +152,9 @@ int main(int argc, char *argv[])
 	mainconfig.log_file = NULL;
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Aa:bcCd:fg:hi:l:mn:p:sSvxXyz")) != EOF) {
+	while ((argval = getopt(argc, argv, "Cd:fhi:mn:p:svxX")) != EOF) {
 
 		switch(argval) {
-
-			case 'A':
-				log_auth_detail = TRUE;
-				break;
-
-			case 'a':
-				if (radacct_dir) free(radacct_dir);
-				radacct_dir = strdup(optarg);
-				break;
-
-			case 'c':
-				/* ignore for backwards compatibility with Cistron */
-				break;
-
 			case 'C':
 				check_config = TRUE;
 				spawn_flag = FALSE;
@@ -198,40 +182,8 @@ int main(int argc, char *argv[])
 				flag |= 1;
 				break;
 
-			case 'l':
-				if ((strcmp(optarg, "stdout") == 0) ||
-				    (strcmp(optarg, "stderr") == 0) ||
-				    (strcmp(optarg, "syslog") == 0)) {
-					fprintf(stderr, "radiusd: -l %s is unsupported.  Use log_destination in radiusd.conf\n", optarg);
-					exit(1);
-				}
-				if (radlog_dir) free(radlog_dir);
-				radlog_dir = strdup(optarg);
-				break;
-
-			case 'g':
-				fprintf(stderr, "radiusd: -g is unsupported.  Use log_destination in radiusd.conf.\n");
-				exit(1);
-				break;
-
 			case 'm':
 				debug_memory = 1;
-				break;
-
-			case 'n':
-				if ((strchr(optarg, '/') != NULL) ||
-				    (strchr(optarg, '.') != NULL) ||
-				    (strlen(optarg) > 45)) usage(1);
-
-				snprintf(buffer, sizeof(buffer), "%s.conf",
-					 optarg);
-				if (mainconfig.radiusd_conf)
-					free(mainconfig.radiusd_conf);
-				mainconfig.radiusd_conf = strdup(buffer);
-				break;
-
-			case 'S':
-				log_stripped_names++;
 				break;
 
 			case 'p':
@@ -266,16 +218,6 @@ int main(int argc, char *argv[])
 
 			case 'x':
 				debug_flag++;
-				break;
-
-			case 'y':
-				mainconfig.log_auth = TRUE;
-				mainconfig.log_auth_badpass = TRUE;
-				break;
-
-			case 'z':
-				mainconfig.log_auth_badpass = TRUE;
-				mainconfig.log_auth_goodpass = TRUE;
 				break;
 
 			default:
@@ -503,24 +445,18 @@ static void NEVER_RETURNS usage(int status)
 	FILE *output = status?stderr:stdout;
 
 	fprintf(output,
-			"Usage: %s [-a acct_dir] [-d db_dir] [-l log_dir] [-i address] [-AcfnsSvXxyz]\n", progname);
+			"Usage: %s [-d db_dir] [-l log_dir] [-i address] [-fsvXx]\n", progname);
 	fprintf(output, "Options:\n\n");
-	fprintf(output, "  -a acct_dir     use accounting directory 'acct_dir'.\n");
-	fprintf(output, "  -A              Log auth detail.\n");
 	fprintf(output, "  -C              Check configuration and exit.\n");
 	fprintf(output, "  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
 	fprintf(output, "  -f              Run as a foreground process, not a daemon.\n");
 	fprintf(output, "  -h              Print this help message.\n");
 	fprintf(output, "  -i ipaddr       Listen on ipaddr ONLY\n");
-	fprintf(output, "  -l log_dir      Log file is \"log_dir/radius.log\" (not used in debug mode)\n");
 	fprintf(output, "  -p port         Listen on port ONLY\n");
 	fprintf(output, "  -s              Do not spawn child processes to handle requests.\n");
-	fprintf(output, "  -S              Log stripped names.\n");
 	fprintf(output, "  -v              Print server version information.\n");
 	fprintf(output, "  -X              Turn on full debugging.\n");
 	fprintf(output, "  -x              Turn on additional debugging. (-xx gives more debugging).\n");
-	fprintf(output, "  -y              Log authentication failures, with password.\n");
-	fprintf(output, "  -z              Log authentication successes, with password.\n");
 	exit(status);
 }
 
