@@ -1052,7 +1052,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 
 	listen_type = NULL;
 	
-	DEBUG2("listen {");
+	cf_log_info(cs, "listen {");
 
 	rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
 			      &listen_type, "");
@@ -1104,7 +1104,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 		return NULL;
 	}
 
-	DEBUG2("}");
+	cf_log_info(cs, "}");
 
 	return this;
 }

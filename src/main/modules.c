@@ -253,7 +253,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	node->module = module;
 	node->handle = handle;
 
-	DEBUG(" Module: Linked to module %s", module_name);
+	cf_log_module(cs, "Linked to module %s", module_name);
 
 	/*
 	 *	Add the module as "rlm_foo-version" to the configuration
@@ -327,9 +327,9 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 
 	if (check_config && (node->entry->module->instantiate) &&
 	    (node->entry->module->type & RLM_TYPE_CHECK_CONFIG_SAFE) == 0) {
-		DEBUG2(" Module: Skipping instantiation of %s", instname);
+		cf_log_module(cs, "Skipping instantiation of %s", instname);
 	} else {
-		DEBUG2(" Module: Instantiating %s", instname);
+		cf_log_module(cs, "Instantiating %s", instname);
 	}
 
 	/*
@@ -670,7 +670,7 @@ static int load_byserver(CONF_SECTION *cs)
 	int comp, flag;
 	const char *server = cf_section_name2(cs);
 
-	DEBUG2(" modules {");
+	cf_log_info(cs, " modules {");
 
 	/*
 	 *	Define types first.
@@ -694,7 +694,7 @@ static int load_byserver(CONF_SECTION *cs)
 			cf_log_err(cf_sectiontoitem(subcs),
 				   "No such attribute %s",
 				   section_type_value[comp].typename);
-			DEBUG2(" }");
+			cf_log_info(cs, " }");
 			return -1;
 		}
 
@@ -731,7 +731,7 @@ static int load_byserver(CONF_SECTION *cs)
 			if (strcmp(name1, section_type_value[comp].typename) == 0) {
 				if (!define_type(dattr,
 						 cf_section_name2(subsubcs))) {
-					DEBUG2(" }");
+					cf_log_info(cs, " }");
 					return -1;
 				}
 			}
@@ -752,11 +752,11 @@ static int load_byserver(CONF_SECTION *cs)
 			
 		if (cf_item_find_next(subcs, NULL) == NULL) continue;
 			
-		DEBUG2(" Module: Checking %s {...} for more modules to load",
+		cf_log_module(cs, "Checking %s {...} for more modules to load",
 		       section_type_value[comp].section);
 
 		if (load_component_section(subcs, server, comp) < 0) {
-			DEBUG2(" }");
+			cf_log_info(cs, " }");
 			return -1;
 		}
 		flag = 1;
@@ -773,7 +773,7 @@ static int load_byserver(CONF_SECTION *cs)
 
 		subcs = cf_section_sub_find(cs, "vmps");
 		if (subcs) {
-			DEBUG2(" Module: Checking vmps {...} for more modules to load");		
+			cf_log_module(cs, "Checking vmps {...} for more modules to load");		
 			if (load_component_section(subcs, server,
 						   RLM_COMPONENT_POST_AUTH) < 0) {
 				return -1;
@@ -782,7 +782,7 @@ static int load_byserver(CONF_SECTION *cs)
 		}
 	}
 
-	DEBUG2(" }");
+	cf_log_info(cs, " }");
 
 	if (!flag && server) {
 		DEBUG("WARNING: Server %s is empty, and will do nothing!",
@@ -840,7 +840,7 @@ int module_hup(CONF_SECTION *modules)
 			continue;
 		}
 
-		DEBUG2(" Module: Trying to reload module \"%s\"", node->name);
+		cf_log_module(cs, "Trying to reload module \"%s\"", node->name);
 
 		if ((node->entry->module->instantiate)(cs, &insthandle) < 0) {
 			cf_log_err(cf_sectiontoitem(cs),
@@ -989,7 +989,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		module_instance_t *module;
 		const char *name;
 
-		DEBUG2(" instantiate {");
+		cf_log_info(cs, " instantiate {");
 
 		/*
 		 *  Loop over the items in the 'instantiate' section.
@@ -1014,7 +1014,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 			}
 		} /* loop over items in the subsection */
 
-		DEBUG2(" }");
+		cf_log_info(cs, " }");
 	} /* if there's an 'instantiate' section. */
 
 	/*
@@ -1049,16 +1049,16 @@ int setup_modules(int reload, CONF_SECTION *config)
 		const char *name2 = cf_section_name2(cs);
 
 		if (name2) {
-			DEBUG2("server %s {", name2);
+			cf_log_info(cs, "server %s {", name2);
 		} else {
-			DEBUG2("server {");
+			cf_log_info(cs, "server {");
 			null_server = TRUE;
 		}
 		if (load_byserver(cs) < 0) {
-			DEBUG2("}");
+			cf_log_info(cs, "}");
 			return -1;
 		}
-		DEBUG2("}");
+		cf_log_info(cs, "}");
 	}
 
 	/*
@@ -1066,12 +1066,12 @@ int setup_modules(int reload, CONF_SECTION *config)
 	 *	one for backwards compatibility.
 	 */
 	if (!null_server) {
-		DEBUG2("server {");
+		cf_log_info(cs, "server {");
 		if (load_byserver(config) < 0) {
-			DEBUG2("}");
+			cf_log_info(cs, "}");
 			return -1;
 		}
-		DEBUG2("}");
+		cf_log_info(cs, "}");
 	}
 
 	return 0;

@@ -99,6 +99,9 @@ static int cf_data_add_internal(CONF_SECTION *cs, const char *name,
 static void *cf_data_find_internal(CONF_SECTION *cs, const char *name,
 				   int flag);
 
+int cf_log_config = 1;
+int cf_log_modules = 1;
+
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
  */
@@ -838,12 +841,12 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			radlog(L_ERR, "Bad value \"%s\" for boolean variable %s", value, name);
 			return -1;
 		}
-		DEBUG2("\t%s = %s", name, value);
+		cf_log_info(cs, "\t%s = %s", name, value);
 		break;
 
 	case PW_TYPE_INTEGER:
 		*(int *)data = strtol(value, 0, 0);
-		DEBUG2("\t%s = %d", name, *(int *)data);
+		cf_log_info(cs, "\t%s = %d", name, *(int *)data);
 		break;
 
 	case PW_TYPE_STRING_PTR:
@@ -871,7 +874,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			if (!value) return -1;
 		}
 
-		DEBUG2("\t%s = \"%s\"", name, value ? value : "(null)");
+		cf_log_info(cs, "\t%s = \"%s\"", name, value ? value : "(null)");
 		*q = value ? strdup(value) : NULL;
 		break;
 
@@ -905,7 +908,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			if (!value) return -1;
 		}
 
-		DEBUG2("\t%s = \"%s\"", name, value ? value : "(null)");
+		cf_log_info(cs, "\t%s = \"%s\"", name, value ? value : "(null)");
 		*q = value ? strdup(value) : NULL;
 
 		/*
@@ -932,7 +935,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		 */
 		if (strcmp(value, "*") == 0) {
 			*(uint32_t *) data = htonl(INADDR_ANY);
-			DEBUG2("\t%s = *", name);
+			cf_log_info(cs, "\t%s = *", name);
 			break;
 		}
 		if (ip_hton(value, AF_INET, &ipaddr) < 0) {
@@ -941,9 +944,9 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		}
 		
 		if (strspn(value, "0123456789.") == strlen(value)) {
-			DEBUG2("\t%s = %s", name, value);
+			cf_log_info(cs, "\t%s = %s", name, value);
 		} else {
-			DEBUG2("\t%s = %s IP address [%s]", name, value,
+			cf_log_info(cs, "\t%s = %s IP address [%s]", name, value,
 			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
 		}
 		*(uint32_t *) data = ipaddr.ipaddr.ip4addr.s_addr;
@@ -954,7 +957,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			radlog(L_ERR, "Can't find IPv6 address for host %s", value);
 			return -1;
 		}
-		DEBUG2("\t%s = %s IPv6 address [%s]", name, value,
+		cf_log_info(cs, "\t%s = %s IPv6 address [%s]", name, value,
 			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
 		memcpy(data, &ipaddr.ipaddr.ip6addr,
 		       sizeof(ipaddr.ipaddr.ip6addr));
@@ -983,10 +986,10 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 	cs->variables = variables; /* this doesn't hurt anything */
 
 	if (!cs->name2) {
-		DEBUG2("%.*s%s {", cs->depth, parse_spaces,
+		cf_log_info(cs, "%.*s%s {", cs->depth, parse_spaces,
 		       cs->name1);
 	} else {
-		DEBUG2("%.*s%s %s {", cs->depth, parse_spaces,
+		cf_log_info(cs, "%.*s%s %s {", cs->depth, parse_spaces,
 		       cs->name1, cs->name2);
 	}
 
@@ -1040,14 +1043,14 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 		}
 	} /* for all variables in the configuration section */
 
-	DEBUG2("%.*s}", cs->depth, parse_spaces);
+	cf_log_info(cs, "%.*s}", cs->depth, parse_spaces);
 
 	cs->base = base;
 
 	return 0;
 
  error:
-	DEBUG2("%.*s}", cs->depth, parse_spaces);
+	cf_log_info(cs, "%.*s}", cs->depth, parse_spaces);
 	cf_section_parse_free(cs, base);
 	return -1;
 }
@@ -2324,7 +2327,8 @@ int cf_section_template(CONF_SECTION *cs, CONF_SECTION *template)
 /*
  *	This is here to make the rest of the code easier to read.  It
  *	ties conffile.c to log.c, but it means we don't have to
- *	pollute the 
+ *	pollute every other function with the knowledge of the
+ *	configuration internals.
  */
 void cf_log_err(CONF_ITEM *ci, const char *fmt, ...)
 {
@@ -2336,6 +2340,33 @@ void cf_log_err(CONF_ITEM *ci, const char *fmt, ...)
 	va_end(ap);
 
 	radlog(L_ERR, "%s[%d]: %s", ci->filename, ci->lineno, buffer);
+}
+
+
+void cf_log_info(UNUSED CONF_SECTION *cs, const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	if (debug_flag > 1 && cf_log_config) vradlog(L_DBG, fmt, ap);
+	va_end(ap);
+}
+
+/*
+ *	Wrapper to simplify the code.
+ */
+void cf_log_module(UNUSED CONF_SECTION *cs, const char *fmt, ...)
+{
+	va_list ap;
+	char buffer[256];
+
+	va_start(ap, fmt);
+	if (debug_flag > 1 && cf_log_modules) {
+		vsnprintf(buffer, sizeof(buffer), fmt, ap);
+
+		radlog(L_DBG, " Module: %s", buffer);
+	}
+	va_end(ap);
 }
 
 
