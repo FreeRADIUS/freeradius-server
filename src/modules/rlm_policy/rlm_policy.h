@@ -71,6 +71,14 @@ typedef enum policy_lex_t {
 	POLICY_LEX_CONCAT_EQUALS, /* .= */
 	POLICY_LEX_VARIABLE,	/* %{foo} */
 	POLICY_LEX_FUNCTION,	/* Hmmm... */
+	POLICY_LEX_BEFORE_HEAD_ASSIGN, /* ^= */
+	POLICY_LEX_BEFORE_WHERE_ASSIGN, /* ^== */
+	POLICY_LEX_BEFORE_HEAD_EQUALS, /* ^. */
+	POLICY_LEX_BEFORE_WHERE_EQUALS, /* ^.= */
+	POLICY_LEX_AFTER_TAIL_ASSIGN, /* $= */
+	POLICY_LEX_AFTER_WHERE_ASSIGN, /* $== */
+	POLICY_LEX_AFTER_TAIL_EQUALS, /* $. */
+	POLICY_LEX_AFTER_WHERE_EQUALS, /* $.= */
 	POLICY_LEX_DOUBLE_QUOTED_STRING,
 	POLICY_LEX_SINGLE_QUOTED_STRING,
 	POLICY_LEX_BACK_QUOTED_STRING,
@@ -148,6 +156,7 @@ typedef struct policy_attributes_t {
 	policy_reserved_word_t	where; /* where to do it */
 	policy_lex_t		how; /* how to do */
 	policy_item_t		*attributes; /* things to do */
+	policy_item_t		*where_loc; /* search for location in list*/
 	/* FIXME: VALUE_PAIR *vps; */
 } policy_attributes_t;
 

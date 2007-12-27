@@ -110,6 +110,14 @@ const FR_NAME_NUMBER rlm_policy_tokens[] = {
 	{ ">=", POLICY_LEX_GT },
 	{ "=~", POLICY_LEX_RX_EQUALS },
 	{ "!~", POLICY_LEX_RX_NOT_EQUALS },
+	{ "^=", POLICY_LEX_BEFORE_HEAD_ASSIGN },
+	{ "^==", POLICY_LEX_BEFORE_WHERE_ASSIGN },
+	{ "^.", POLICY_LEX_BEFORE_HEAD_EQUALS },
+	{ "^.=", POLICY_LEX_BEFORE_WHERE_EQUALS },
+	{ "$=", POLICY_LEX_AFTER_TAIL_ASSIGN },
+	{ "$==", POLICY_LEX_AFTER_WHERE_ASSIGN },
+	{ "$.", POLICY_LEX_AFTER_TAIL_EQUALS },
+	{ "$.=", POLICY_LEX_AFTER_WHERE_EQUALS },
 	{ ".=", POLICY_LEX_CONCAT_EQUALS },
 	{ ":=", POLICY_LEX_SET_EQUALS },
 	{ "double quoted string", POLICY_LEX_DOUBLE_QUOTED_STRING },
@@ -208,6 +216,56 @@ static const char *policy_lex_string(const char *input,
 			*token = POLICY_LEX_CONCAT_EQUALS;
 			return input + 2;
 		}
+		*token = POLICY_LEX_BAD;
+		return input + 1;
+	
+	case '^':
+		if (input[1] == '.' ) {
+			if (input[2] == '=') {
+				*token = POLICY_LEX_BEFORE_WHERE_EQUALS;
+				return input + 3;
+			}
+			else {
+				*token = POLICY_LEX_BEFORE_HEAD_EQUALS;
+				return input + 2;
+			}
+		}
+		else if (input[1] == '=') {
+			if (input[2] == '=') {
+				*token = POLICY_LEX_BEFORE_WHERE_ASSIGN;
+				return input + 3;
+			}
+			else {
+				*token = POLICY_LEX_BEFORE_HEAD_ASSIGN;
+				return input + 2;
+			}
+		}
+			
+		*token = POLICY_LEX_BAD;
+		return input + 1;
+
+	case '$':
+		if (input[1] == '.' ) {
+			if (input[2] == '=') {
+				*token = POLICY_LEX_AFTER_WHERE_EQUALS;
+				return input + 3;
+			}
+			else {
+				*token = POLICY_LEX_AFTER_TAIL_EQUALS;
+				return input + 2;
+			}
+		}
+		else if (input[1] == '=') {
+			if (input[2] == '=') {
+				*token = POLICY_LEX_AFTER_WHERE_ASSIGN;
+				return input + 3;
+			}
+			else {
+				*token = POLICY_LEX_AFTER_TAIL_ASSIGN;
+				return input + 2;
+			}
+		}
+
 		*token = POLICY_LEX_BAD;
 		return input + 1;
 
@@ -927,8 +985,28 @@ static int parse_attribute_block(policy_lex_file_t *lexer,
 	policy_attributes_t *this;
 	char buffer[32];
 
+	this = rad_malloc(sizeof(*this));
+	if (!this) {
+		return 0;
+	}
+	memset(this, 0, sizeof(*this));
+	this->item.type = POLICY_TYPE_ATTRIBUTE_LIST;
+
 	token = policy_lex_file(lexer, 0, buffer, sizeof(buffer));
 	switch (token) {
+	case POLICY_LEX_BEFORE_WHERE_EQUALS:
+	case POLICY_LEX_AFTER_WHERE_EQUALS:
+	case POLICY_LEX_BEFORE_WHERE_ASSIGN:
+	case POLICY_LEX_AFTER_WHERE_ASSIGN:
+		if (!parse_condition(lexer, &(this->where_loc))) {
+			rlm_policy_free_item((policy_item_t *)this);
+			return 0;
+		}
+		break;
+	case POLICY_LEX_BEFORE_HEAD_EQUALS:
+	case POLICY_LEX_AFTER_TAIL_EQUALS:
+	case POLICY_LEX_BEFORE_HEAD_ASSIGN:
+	case POLICY_LEX_AFTER_TAIL_ASSIGN:
 	case POLICY_LEX_ASSIGN:
 	case POLICY_LEX_SET_EQUALS:
 	case POLICY_LEX_CONCAT_EQUALS:
@@ -1085,7 +1163,7 @@ static int parse_module(policy_lex_file_t *lexer, policy_item_t **tail)
 	/*
 	 *	Compile the module entry.
 	 */
-	mc = compile_modgroup(component, subcs, buffer);
+	mc = compile_modgroup(NULL, component, subcs);
 	if (!mc) {
 		cf_section_free(&cs);
 		return 0;	/* more often results in calling exit... */

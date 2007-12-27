@@ -591,6 +591,7 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 			 */
 			vp_prints_value(buffer, sizeof(buffer), vp, 0);
 			myvp = pairmake(vp->name, this->rhs, T_OP_EQ);
+			if (!myvp) return FALSE; /* memory failure */
 			data = buffer;
 
 			/*
@@ -853,6 +854,7 @@ static int evaluate_attr_list(policy_state_t *state, const policy_item_t *item)
 	VALUE_PAIR **vps = NULL;
 	VALUE_PAIR *vp, *head, **tail;
 	const policy_item_t *attr;
+	policy_lex_t this_how;
 
 	this = (const policy_attributes_t *) item;
 
@@ -903,10 +905,17 @@ static int evaluate_attr_list(policy_state_t *state, const policy_item_t *item)
 		tail = &(vp->next);
 	}
 
-	switch (this->how) {
+	this_how = this->how;
+ retry_how:
+	switch (this_how) {
 	case POLICY_LEX_SET_EQUALS: /* dangerous: removes all previous things! */
 		pairfree(vps);
 		*vps = head;
+		break;
+
+	case POLICY_LEX_AFTER_TAIL_ASSIGN:
+		pairmove(vps, &head);
+		pairfree(&head);
 		break;
 
 	case POLICY_LEX_ASSIGN: /* 'union' */
@@ -914,9 +923,102 @@ static int evaluate_attr_list(policy_state_t *state, const policy_item_t *item)
 		pairfree(&head);
 		break;
 
+	case POLICY_LEX_BEFORE_HEAD_ASSIGN:
+		pairmove(&head, &vps);
+		pairfree(vps);
+		*vps = head;
+		break;
+
+	case POLICY_LEX_AFTER_TAIL_EQUALS:
 	case POLICY_LEX_CONCAT_EQUALS:
 		pairadd(vps, head);
 		break;
+
+	case POLICY_LEX_BEFORE_HEAD_EQUALS:
+		pairadd(&head, *vps);
+		*vps = head;
+		break;
+
+	case POLICY_LEX_BEFORE_WHERE_EQUALS:
+	case POLICY_LEX_AFTER_WHERE_EQUALS:
+	case POLICY_LEX_BEFORE_WHERE_ASSIGN:
+	case POLICY_LEX_AFTER_WHERE_ASSIGN:
+		/* find location*/
+		{
+			VALUE_PAIR *vpprev = NULL, *vpnext = NULL, *lvp;
+
+			for(lvp = *vps; lvp; vpprev = lvp, lvp = lvp->next) {
+				vpnext = lvp->next;
+				lvp->next = NULL;
+				if (evaluate_condition(state, this->where_loc))
+					break;
+				lvp->next = vpnext;
+			}
+
+			if (lvp) { 
+				switch(this_how) {
+				case POLICY_LEX_BEFORE_WHERE_EQUALS:
+				case POLICY_LEX_BEFORE_WHERE_ASSIGN:
+					if (vpprev) {
+						lvp->next = vpnext;
+						vpnext = lvp;
+						vpprev->next = NULL;
+						lvp = vpprev;
+					}
+				default: /* always reached */
+					break;
+				}
+
+				switch(this_how) {
+				case POLICY_LEX_BEFORE_WHERE_EQUALS:
+					if (vpprev) 
+						pairadd(&lvp, head);
+					else
+						*vps = lvp = head;
+					break;
+ 				case POLICY_LEX_AFTER_WHERE_EQUALS:
+ 					pairadd(&lvp, head);
+					break;
+				case POLICY_LEX_BEFORE_WHERE_ASSIGN:
+					if (vpprev) {
+						pairmove(&lvp, &head);
+						pairfree(&head);
+					}
+					else
+						*vps = lvp = head;
+					break;
+				case POLICY_LEX_AFTER_WHERE_ASSIGN:
+					pairmove(&lvp, &head);
+					pairfree(&head);
+					break;
+				default:/*never reached*/
+					break;
+				}	
+				for( ; lvp && lvp->next; lvp = lvp->next);
+				if (lvp)
+					lvp->next = vpnext;
+				break;
+			}
+
+			switch(this_how) {
+				case POLICY_LEX_BEFORE_WHERE_EQUALS:
+					this_how = POLICY_LEX_BEFORE_HEAD_EQUALS;
+					break;
+				case POLICY_LEX_AFTER_WHERE_EQUALS:
+					this_how = POLICY_LEX_AFTER_TAIL_EQUALS;
+					break;
+				case POLICY_LEX_BEFORE_WHERE_ASSIGN:
+					this_how = POLICY_LEX_BEFORE_HEAD_ASSIGN;
+					break;
+				case POLICY_LEX_AFTER_WHERE_ASSIGN:
+					this_how = POLICY_LEX_AFTER_TAIL_ASSIGN;
+					break;
+				default: /*never reached*/
+					break;
+			}
+			goto retry_how; 
+		}
+		/* FALL-THROUGH */
 
 	default:
 		fprintf(stderr, "HUH?\n");
