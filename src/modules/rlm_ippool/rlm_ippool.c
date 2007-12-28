@@ -280,9 +280,9 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 			if (rcode < 0) {
 				radlog(L_ERR, "rlm_ippool: Failed storing data to %s: %s",
 						data->session_db, gdbm_strerror(gdbm_errno));
-				free(data);
 				gdbm_close(data->gdbm);
 				gdbm_close(data->ip);
+				free(data);
 				return -1;
 			}
 		}
@@ -341,7 +341,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 			fr_MD5Init(&md5_context);
 			fr_MD5Update(&md5_context, xlat_str, strlen(xlat_str));
 			fr_MD5Final(key_str, &md5_context);
-			key_str[17] = '\0';
+			key_str[16] = '\0';
 			fr_bin2hex(key_str,hex_str,16);
 			hex_str[32] = '\0';
 			DEBUG("rlm_ippool: MD5 on 'key' directive maps to: %s",hex_str);
@@ -484,7 +484,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	fr_MD5Init(&md5_context);
 	fr_MD5Update(&md5_context, xlat_str, strlen(xlat_str));
 	fr_MD5Final(key_str, &md5_context);
-	key_str[17] = '\0';
+	key_str[16] = '\0';
 	fr_bin2hex(key_str,hex_str,16);
 	hex_str[32] = '\0';
 	DEBUG("rlm_ippool: MD5 on 'key' directive maps to: %s",hex_str);
