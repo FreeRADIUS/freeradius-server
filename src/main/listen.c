@@ -1003,7 +1003,10 @@ rad_listen_t *proxy_new_listener()
 		last = &(tmp->next);
 	}
 
-	if (!old) return NULL;	/* This is a serious error. */
+	if (!old) {
+		listen_free(this);
+		return NULL;	/* This is a serious error. */
+	}
 
 	/*
 	 *	FIXME: find a new IP address to listen on?
@@ -1029,6 +1032,7 @@ rad_listen_t *proxy_new_listener()
 		}
 	}
 
+	listen_free(this);
 	return NULL;
 }
 
