@@ -109,10 +109,12 @@ static const char *eap_types[] = {
   "40",
   "41",
   "42",
-  "43",
+  "fast",
   "44",
   "45",
-  "46",
+  "pax",
+  "psk",
+  "sake",
   "ikev2"
 };				/* MUST have PW_EAP_MAX_TYPES */
 
