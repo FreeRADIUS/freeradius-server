@@ -616,7 +616,7 @@ static int server_pool_add(realm_config_t *rc,
 				 num_home_servers);
 	pool->cs = cs;
 
-	if (do_print) DEBUG2(" home_server_pool %s {", name2);
+	if (do_print) cf_log_info(cs, " home_server_pool %s {", name2);
 
 	cp = cf_pair_find(cs, "type");
 	if (cp) {
@@ -646,14 +646,14 @@ static int server_pool_add(realm_config_t *rc,
 			goto error;
 		}
 
-		if (do_print) DEBUG2("\ttype = %s", value);
+		if (do_print) cf_log_info(cs, "\ttype = %s", value);
 	}
 
 	cp = cf_pair_find(cs, "virtual_server");
 	if (cp) {
 		pool->virtual_server = cf_pair_value(cp);
 		if (do_print && pool->virtual_server) {
-			DEBUG2("\tvirtual_server = %s", pool->virtual_server);
+			cf_log_info(cs, "\tvirtual_server = %s", pool->virtual_server);
 		}
 
 		if (!cf_section_sub_find_name2(rc->cs, "server",
@@ -692,7 +692,7 @@ static int server_pool_add(realm_config_t *rc,
 			continue;
 		}
 
-		if (do_print) DEBUG2("\thome_server = %s", home->name);
+		if (do_print) cf_log_info(cs, "\thome_server = %s", home->name);
 		pool->servers[num_home_servers++] = home;
 	} /* loop over home_server's */
 
@@ -701,14 +701,14 @@ static int server_pool_add(realm_config_t *rc,
 		goto error;
 	}
 
-	if (do_print) DEBUG2(" }");
+	if (do_print) cf_log_info(cs, " }");
 
 	rad_assert(pool->server_type != 0);
 
 	return 1;
 
  error:
-	if (do_print) DEBUG2(" }");
+	if (do_print) cf_log_info(cs, " }");
 	free(pool);
 	return 0;
 }
@@ -957,11 +957,11 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 		}
 
 		if (strcasecmp(host, "fail_over") == 0) {
-			DEBUG2("\tldflag = fail_over");
+			cf_log_info(cs, "\tldflag = fail_over");
 			
 		} else if (strcasecmp(host, "round_robin") == 0) {
 			ldflag = HOME_POOL_LOAD_BALANCE;
-			DEBUG2("\tldflag = round_robin");
+			cf_log_info(cs, "\tldflag = round_robin");
 			
 		} else {
 			cf_log_err(cf_sectiontoitem(cs), "Unknown value \"%s\" for ldflag", host);
@@ -995,7 +995,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 			}
 		}
 			
-		DEBUG2("\tauthhost = %s",  host);
+		cf_log_info(cs, "\tauthhost = %s",  host);
 
 		if (!old_server_add(rc, cs, r->name, host, secret, ldflag,
 				    &r->auth_pool, HOME_TYPE_AUTH)) {
@@ -1029,7 +1029,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 			}
 		}
 		
-		DEBUG2("\taccthost = %s", host);
+		cf_log_info(cs, "\taccthost = %s", host);
 
 		if (!old_server_add(rc, cs, r->name, host, secret, ldflag,
 				    &r->acct_pool, HOME_TYPE_ACCT)) {
@@ -1037,7 +1037,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 		}
 	}
 
-	if (secret) DEBUG2("\tsecret = %s", secret);
+	if (secret) cf_log_info(cs, "\tsecret = %s", secret);
 
 	return 1;
 
@@ -1169,7 +1169,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		}
 	}
 
-	DEBUG2(" realm %s {", name2);
+	cf_log_info(cs, " realm %s {", name2);
 
 	/*
 	 *	The realm MAY already exist if it's an old-style realm.
@@ -1187,7 +1187,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 			goto error;
 		}
 
-		DEBUG2(" } # realm %s", name2);
+		cf_log_info(cs, " } # realm %s", name2);
 		return 1;
 	}
 
@@ -1201,16 +1201,16 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	if (auth_pool_name &&
 	    (auth_pool_name == acct_pool_name)) { /* yes, ptr comparison */
-		DEBUG2("\tpool = %s", auth_pool_name);
+		cf_log_info(cs, "\tpool = %s", auth_pool_name);
 	} else {
-		if (auth_pool_name) DEBUG2("\tauth_pool = %s", auth_pool_name);
-		if (acct_pool_name) DEBUG2("\tacct_pool = %s", acct_pool_name);
+		if (auth_pool_name) cf_log_info(cs, "\tauth_pool = %s", auth_pool_name);
+		if (acct_pool_name) cf_log_info(cs, "\tacct_pool = %s", acct_pool_name);
 	}
 
 	cp = cf_pair_find(cs, "nostrip");
 	if (cp && (cf_pair_value(cp) == NULL)) {
 		r->striprealm = 0;
-		DEBUG2("\tnostrip");
+		cf_log_info(cs, "\tnostrip");
 	}
 
 	/*
@@ -1240,12 +1240,12 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		goto error;
 	}
 
-	DEBUG2(" }");
+	cf_log_info(cs, " }");
 
 	return 1;
 
  error:
-	DEBUG2(" } # realm %s", name2);
+	cf_log_info(cs, " } # realm %s", name2);
 	free(r);
 	return 0;
 }
@@ -1301,6 +1301,7 @@ int realms_init(CONF_SECTION *config)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "realm")) {
 		if (!realm_add(rc, cs)) {
+			free(rc);
 			realms_free();
 			return 0;
 		}
