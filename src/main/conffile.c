@@ -1609,6 +1609,7 @@ int cf_file_include(const char *filename, CONF_SECTION *cs)
 
 	if (cf_data_add_internal(cs, filename, mtime, free,
 				 PW_TYPE_FILENAME) < 0) {
+		fclose(fp);
 		radlog(L_ERR|L_CONS, "Internal error open file \"%s\"",
 		       filename);
 		return -1;
@@ -1616,6 +1617,7 @@ int cf_file_include(const char *filename, CONF_SECTION *cs)
 
 	cd = cf_data_find_internal(cs, filename, PW_TYPE_FILENAME);
 	if (!cd) {
+		fclose(fp);
 		radlog(L_ERR|L_CONS, "Internal error open file \"%s\"",
 		       filename);
 		return -1;

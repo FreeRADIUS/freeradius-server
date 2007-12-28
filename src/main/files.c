@@ -94,6 +94,7 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	while(fgets(buffer, sizeof(buffer), fp) != NULL) {
 		lineno++;
 		if (!feof(fp) && (strchr(buffer, '\n') == NULL)) {
+			fclose(fp);
 			radlog(L_ERR, "%s[%d]: line too long", file, lineno);
 			pairlist_free(&pl);
 			return -1;
@@ -167,7 +168,7 @@ parse_again:
 					       "%s[%d]: Could not open included file %s: %s",
 					       file, lineno, s, strerror(errno));
 					fclose(fp);
-				return -1;
+					return -1;
 				}
 				*last = t;
 
