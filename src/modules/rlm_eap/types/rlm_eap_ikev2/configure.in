@@ -19,30 +19,20 @@ if test x$with_[]modname != xno; then
 			 [Diectory to look for EAPIKEv2 library file]),
 		    eap_ikev2_libraries=-L$with_eap_ikev2_libraries)
 	
-	AC_ARG_WITH(openssl-libraries,
-	  AS_HELP_STRING([--with-openssl-libraries],
-			 [Diectory to look for OpenSSL library file]),
-			 openssl_libraries=-L$with_openssl_libraries)
+	LDFLAGS="$eap_ikev2_libraries $OPENSSL_LIBS"
+	AC_CHECK_LIB([eap-ikev2],[ikev2_set_log_callback])
+	if test "x$ac_cv_lib_eap_ikev2_ikev2_set_log_callback" != "xyes"; then
+		fail="$fail libeap-ikev2"
+	fi
 
-	old_LDFLAGS=$LDFLAGS
-	LDFLAGS=$openssl_libraries
-	AC_CHECK_LIB([crypto],[DH_new], ,
-		     AC_MSG_ERROR([OpenSSL library not found!]))
-	AC_CHECK_LIB([ssl],[SSL_new], ,
-		     AC_MSG_ERROR([OpenSSL library not found!]))
-	LDFLAGS=$old_LDFLAGS
-
-	
-	old_LDFLAGS=$LDFLAGS
-	LDFLAGS=$eap_ikev2_libraries
-	AC_CHECK_LIB([eap-ikev2],[ikev2_set_log_callback], ,
-		     AC_MSG_ERROR([EAP_IKEv2 library not found !!!]))
 	LDFLAGS=$old_LDFLAG
 	
 	old_CPPFLAGS=$CPPFLAGS
 	CPPFLAGS=$eap_ikev2_includes
-	AC_CHECK_HEADER(EAPIKEv2/connector.h, ,
-			AC_MSG_ERROR([EAPIKEv2/connector.h not found !!!]))
+	AC_CHECK_HEADER(EAPIKEv2/connector.h)
+	if test "x$ac_cv_header_EAPIKEv2_connector_h" != "xyes"; then
+		fail="$fail EAPIKEv2/connector.h"
+	fi
 	CPPFLAGS=$old_CPPFLAGS
 
 	eap_ikev2_cflags="$eap_ikev2_includes"

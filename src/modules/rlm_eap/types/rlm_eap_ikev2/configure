@@ -1248,8 +1248,6 @@ Optional Packages:
                           Diectory to look for EAPIKEv2 include files
   --with-eap-ikev2-libraries
                           Diectory to look for EAPIKEv2 library file
-  --with-openssl-libraries
-                          Diectory to look for OpenSSL library file
 
 Some influential environment variables:
   CC          C compiler command
@@ -3402,170 +3400,7 @@ if test "${with_eap_ikev2_libraries+set}" = set; then
 fi
 
 
-
-# Check whether --with-openssl-libraries was given.
-if test "${with_openssl_libraries+set}" = set; then
-  withval=$with_openssl_libraries; openssl_libraries=-L$with_openssl_libraries
-fi
-
-
-	old_LDFLAGS=$LDFLAGS
-	LDFLAGS=$openssl_libraries
-
-{ echo "$as_me:$LINENO: checking for DH_new in -lcrypto" >&5
-echo $ECHO_N "checking for DH_new in -lcrypto... $ECHO_C" >&6; }
-if test "${ac_cv_lib_crypto_DH_new+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lcrypto  $LIBS"
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char DH_new ();
-int
-main ()
-{
-return DH_new ();
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext conftest$ac_exeext
-if { (ac_try="$ac_link"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
-  (eval "$ac_link") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest$ac_exeext &&
-       $as_test_x conftest$ac_exeext; then
-  ac_cv_lib_crypto_DH_new=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_lib_crypto_DH_new=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
-      conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ echo "$as_me:$LINENO: result: $ac_cv_lib_crypto_DH_new" >&5
-echo "${ECHO_T}$ac_cv_lib_crypto_DH_new" >&6; }
-if test $ac_cv_lib_crypto_DH_new = yes; then
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBCRYPTO 1
-_ACEOF
-
-  LIBS="-lcrypto $LIBS"
-
-else
-  { { echo "$as_me:$LINENO: error: OpenSSL library not found!" >&5
-echo "$as_me: error: OpenSSL library not found!" >&2;}
-   { (exit 1); exit 1; }; }
-fi
-
-
-{ echo "$as_me:$LINENO: checking for SSL_new in -lssl" >&5
-echo $ECHO_N "checking for SSL_new in -lssl... $ECHO_C" >&6; }
-if test "${ac_cv_lib_ssl_SSL_new+set}" = set; then
-  echo $ECHO_N "(cached) $ECHO_C" >&6
-else
-  ac_check_lib_save_LIBS=$LIBS
-LIBS="-lssl  $LIBS"
-cat >conftest.$ac_ext <<_ACEOF
-/* confdefs.h.  */
-_ACEOF
-cat confdefs.h >>conftest.$ac_ext
-cat >>conftest.$ac_ext <<_ACEOF
-/* end confdefs.h.  */
-
-/* Override any GCC internal prototype to avoid an error.
-   Use char because int might match the return type of a GCC
-   builtin and then its argument prototype would still apply.  */
-#ifdef __cplusplus
-extern "C"
-#endif
-char SSL_new ();
-int
-main ()
-{
-return SSL_new ();
-  ;
-  return 0;
-}
-_ACEOF
-rm -f conftest.$ac_objext conftest$ac_exeext
-if { (ac_try="$ac_link"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
-  (eval "$ac_link") 2>conftest.er1
-  ac_status=$?
-  grep -v '^ *+' conftest.er1 >conftest.err
-  rm -f conftest.er1
-  cat conftest.err >&5
-  echo "$as_me:$LINENO: \$? = $ac_status" >&5
-  (exit $ac_status); } && {
-	 test -z "$ac_c_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest$ac_exeext &&
-       $as_test_x conftest$ac_exeext; then
-  ac_cv_lib_ssl_SSL_new=yes
-else
-  echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_cv_lib_ssl_SSL_new=no
-fi
-
-rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
-      conftest$ac_exeext conftest.$ac_ext
-LIBS=$ac_check_lib_save_LIBS
-fi
-{ echo "$as_me:$LINENO: result: $ac_cv_lib_ssl_SSL_new" >&5
-echo "${ECHO_T}$ac_cv_lib_ssl_SSL_new" >&6; }
-if test $ac_cv_lib_ssl_SSL_new = yes; then
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBSSL 1
-_ACEOF
-
-  LIBS="-lssl $LIBS"
-
-else
-  { { echo "$as_me:$LINENO: error: OpenSSL library not found!" >&5
-echo "$as_me: error: OpenSSL library not found!" >&2;}
-   { (exit 1); exit 1; }; }
-fi
-
-	LDFLAGS=$old_LDFLAGS
-
-
-	old_LDFLAGS=$LDFLAGS
-	LDFLAGS=$eap_ikev2_libraries
+	LDFLAGS="$eap_ikev2_libraries $OPENSSL_LIBS"
 
 { echo "$as_me:$LINENO: checking for ikev2_set_log_callback in -leap-ikev2" >&5
 echo $ECHO_N "checking for ikev2_set_log_callback in -leap-ikev2... $ECHO_C" >&6; }
@@ -3635,11 +3470,11 @@ _ACEOF
 
   LIBS="-leap-ikev2 $LIBS"
 
-else
-  { { echo "$as_me:$LINENO: error: EAP_IKEv2 library not found !!!" >&5
-echo "$as_me: error: EAP_IKEv2 library not found !!!" >&2;}
-   { (exit 1); exit 1; }; }
 fi
+
+	if test "x$ac_cv_lib_eap_ikev2_ikev2_set_log_callback" != "xyes"; then
+		fail="$fail libeap-ikev2"
+	fi
 
 	LDFLAGS=$old_LDFLAG
 
@@ -3770,15 +3605,11 @@ fi
 echo "${ECHO_T}$ac_cv_header_EAPIKEv2_connector_h" >&6; }
 
 fi
-if test $ac_cv_header_EAPIKEv2_connector_h = yes; then
-  :
-else
-  { { echo "$as_me:$LINENO: error: EAPIKEv2/connector.h not found !!!" >&5
-echo "$as_me: error: EAPIKEv2/connector.h not found !!!" >&2;}
-   { (exit 1); exit 1; }; }
-fi
 
 
+	if test "x$ac_cv_header_EAPIKEv2_connector_h" != "xyes"; then
+		fail="$fail EAPIKEv2/connector.h"
+	fi
 	CPPFLAGS=$old_CPPFLAGS
 
 	eap_ikev2_cflags="$eap_ikev2_includes"
