@@ -9,6 +9,7 @@ VENDOR		Waverider			2979
 BEGIN-VENDOR	Waverider
 ATTRIBUTE	Waverider-Grade-Of-Service		1	integer
 ATTRIBUTE	Waverider-Priority-Enabled		2	integer
+ATTRIBUTE	Waverider-Authentication-Key		3	string
 ATTRIBUTE	Waverider-Current-Password		5	string
 ATTRIBUTE	Waverider-New-Password			6	string
 ATTRIBUTE	Waverider-Radio-Frequency		7	integer
