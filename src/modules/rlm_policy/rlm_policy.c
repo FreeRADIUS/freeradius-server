@@ -126,7 +126,6 @@ static int policy_instantiate(CONF_SECTION *conf, void **instance)
 int rlm_policy_insert(rbtree_t *head, policy_named_t *policy)
 {
 	if (!rbtree_insert(head, policy)) {
-		rlm_policy_free_item((policy_item_t *) policy);
 		return 0;
 	}
 

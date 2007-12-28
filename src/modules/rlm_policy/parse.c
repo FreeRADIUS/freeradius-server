@@ -652,6 +652,7 @@ static int parse_print(policy_lex_file_t *lexer, policy_item_t **tail)
 	    (token != POLICY_LEX_DOUBLE_QUOTED_STRING)) {
 		fprintf(stderr, "%s[%d]: Bad print command\n",
 			lexer->filename, lexer->lineno);
+		rlm_policy_free_item((policy_item_t *) this);
 		return 0;
 	}
 
@@ -753,6 +754,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 				fprintf(stderr, "%s[%d]: Expected left bracket, got \"%s\"\n",
 					lexer->filename, lexer->lineno,
 					fr_int2str(rlm_policy_tokens, token, "?"));
+				rlm_policy_free_item((policy_item_t *) this);
 				return 0;
 			}
 
@@ -761,6 +763,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 				fprintf(stderr, "%s[%d]: Expected right bracket, got \"%s\"\n",
 					lexer->filename, lexer->lineno,
 					fr_int2str(rlm_policy_tokens, token, "?"));
+				rlm_policy_free_item((policy_item_t *) this);
 				return 0;
 			}
 		} /* else it's a comparison? */
@@ -1515,7 +1518,7 @@ static int parse_named_policy(policy_lex_file_t *lexer)
 	 *	For now, policy names aren't scoped, they're global.
 	 */
 	if (!rlm_policy_insert(lexer->policies, this)) {
-		fprintf(stderr, "Failed to insert policy \"%s\"\n", this->name);
+		radlog(L_ERR, "Failed to insert policy \"%s\"", this->name);
 		rlm_policy_free_item((policy_item_t *) this);
 		return 0;
 	}
