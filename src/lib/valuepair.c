@@ -881,8 +881,10 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			 *	FIXME: complain if hostname
 			 *	cannot be resolved, or resolve later!
 			 */
+			s = NULL;
 			if ((p = strrchr(value, '+')) != NULL && !p[1]) {
 				cs = s = strdup(value);
+				if (!s) return NULL;
 				p = strrchr(s, '+');
 				*p = 0;
 				vp->flags.addport = 1;
@@ -895,13 +897,14 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				fr_ipaddr_t ipaddr;
 
 				if (ip_hton(cs, AF_INET, &ipaddr) < 0) {
+					free(s);
 					librad_log("Failed to find IP address for %s", cs);
 					return NULL;
 				}
 
 				vp->vp_ipaddr = ipaddr.ipaddr.ip4addr.s_addr;
 			}
-			if (s) free(s);
+			free(s);
 			vp->length = 4;
 			break;
 
