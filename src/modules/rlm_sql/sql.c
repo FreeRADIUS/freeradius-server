@@ -104,6 +104,7 @@ int sql_init_socketpool(SQL_INST * inst)
 #ifdef HAVE_PTHREAD_H
 		rcode = pthread_mutex_init(&sqlsocket->mutex,NULL);
 		if (rcode != 0) {
+			free(sqlsocket);
 			radlog(L_ERR, "rlm_sql: Failed to init lock: %s",
 			       strerror(errno));
 			return 0;
