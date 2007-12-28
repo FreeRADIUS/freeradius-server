@@ -464,7 +464,7 @@ static VALUE_PAIR *find_vp(REQUEST *request, const char *name)
  *
  *	Not really used much...
  */
-static int evaluate_assignment(policy_state_t *state, const policy_item_t *item)
+static int evaluate_assignment(UNUSED policy_state_t *state, const policy_item_t *item)
 {
 	const policy_assignment_t *this;
 #if 0
@@ -924,7 +924,7 @@ static int evaluate_attr_list(policy_state_t *state, const policy_item_t *item)
 		break;
 
 	case POLICY_LEX_BEFORE_HEAD_ASSIGN:
-		pairmove(&head, &vps);
+		pairmove(&head, vps);
 		pairfree(vps);
 		*vps = head;
 		break;
