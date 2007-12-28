@@ -293,7 +293,6 @@ static int python_function(REQUEST *request,
 	    pString1 = PyString_FromString(buf);
 	    PyTuple_SetItem(pValuePair, 0, pString1);
 
-
 	    /* The value. Use delimiter - don't know what that means */
 	    vp_prints_value(buf, sizeof(buf), vp, 1);
 	    pString2 = PyString_FromString(buf);
@@ -319,15 +318,23 @@ static int python_function(REQUEST *request,
 	 */
 
 	if ((pArgs = PyTuple_New(1)) == NULL) {
+	    Py_DECREF(pValuePairContainer);
+	    free(pValueHolder);
 	    radlog(L_ERR, "%s: could not create tuple", function_name);
 	    return -1;
 	}
 	if ((PyTuple_SetItem(pArgs, 0, pValuePairContainer)) != 0) {
+	    Py_DECREF(pValuePairContainer);
+	    free(pValueHolder);
+	    Py_DECREF(pArgs);
 	    radlog(L_ERR, "%s: could not set tuple item", function_name);
 	    return -1;
 	}
 
 	if ((pValue = PyObject_CallObject(pFunc, pArgs)) == NULL) {
+	    Py_DECREF(pValuePairContainer);
+	    free(pValueHolder);
+	    Py_DECREF(pArgs);
 	    radlog(L_ERR, "%s: function call failed", function_name);
 	    python_error();
 	    return -1;
