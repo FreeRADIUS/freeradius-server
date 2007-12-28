@@ -1139,6 +1139,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		    (vp->operator != T_OP_GE) &&
 		    (vp->operator != T_OP_SET)) {
 			pairfree(&head);
+			pairfree(&vp);
 			cf_log_err(ci, "Invalid operator for attribute");
 			return NULL;
 		}
@@ -1154,6 +1155,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 			    (vp->type != PW_TYPE_SHORT) &&
 			    (vp->type != PW_TYPE_INTEGER)) {
 				pairfree(&head);
+				pairfree(&vp);
 				cf_log_err(ci, "Enforcment of <= or >= is possible only for integer attributes");
 				return NULL;
 			}
