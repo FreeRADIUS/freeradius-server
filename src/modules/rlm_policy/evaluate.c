@@ -94,6 +94,10 @@ static void policy_print(const policy_item_t *item, int indent)
 
 				printf("(");
 
+				if (condition->sense) {
+					printf("!");
+				}
+
 				/*
 				 *	Nested conditions.
 				 */
@@ -259,9 +263,9 @@ static void policy_print(const policy_item_t *item, int indent)
 
 void rlm_policy_print(const policy_item_t *item)
 {
-	printf("----------------------------------------------------------\n");
+	printf("# rlm_policy \n");
 	policy_print(item, 0);
-	printf("----------------------------------------------------------\n");
+	fflush(stdout);
 }
 
 /*
@@ -388,6 +392,7 @@ static int evaluate_print(policy_state_t *state, const policy_item_t *item)
 
 	this = (const policy_print_t *) item;
 
+	fflush(stdout);
 	if (this->rhs_type == POLICY_LEX_BARE_WORD) {
 		printf("%s\n", this->rhs);
 	} else {
@@ -396,7 +401,9 @@ static int evaluate_print(policy_state_t *state, const policy_item_t *item)
 		radius_xlat(buffer, sizeof(buffer), this->rhs,
 			    state->request, NULL);
 		printf("%s", buffer);
+		if (!strchr(buffer, '\n')) printf("\n");
 	}
+	fflush(stdout);
 
 	/*
 	 *	Doesn't change state->rcode
@@ -579,10 +586,13 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 			vp = find_vp(state->request, this->lhs);
 
 			/*
-			 *	A op B always returns FALSE if A doesn't
+			 *	A op B is FALSE if A doesn't
 			 *	exist.
 			 */
-			if (!vp) return FALSE; /* not in the request */
+			if (!vp) {
+				rcode = FALSE;
+				break;
+			}
 
 			/*
 			 *	FIXME: Move sanity checks to
@@ -656,6 +666,7 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 			 */
 			if (regcomp(&reg, this->rhs,
 				    REG_EXTENDED) != 0) {
+				/* FIXME: print error */
 				return FALSE;
 			}
 			rad_assert(data != NULL);
@@ -733,6 +744,8 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 		} /* switch over comparison operators */
 		break;		/* default from first switch over compare */
 	}
+
+	if (this->sense) rcode = (rcode == FALSE); /* reverse sense of test */
 
 	/*
 	 *	No trailing &&, ||

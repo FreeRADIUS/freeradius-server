@@ -670,7 +670,7 @@ static int parse_print(policy_lex_file_t *lexer, policy_item_t **tail)
  */
 static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 {
-	int rcode;
+	int rcode, seen_not = FALSE;
 	policy_lex_t token, compare;
 	char lhs[256], rhs[256];
 	policy_condition_t *this;
@@ -689,6 +689,7 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 	this->item.type = POLICY_TYPE_CONDITIONAL;
 	this->item.lineno = lexer->lineno;
 
+ redo:
 	token = policy_lex_file(lexer, 0, lhs, sizeof(lhs));
 	switch (token) {
 	case POLICY_LEX_L_BRACKET:
@@ -707,15 +708,22 @@ static int parse_condition(policy_lex_file_t *lexer, policy_item_t **tail)
 		break;
 
 	case POLICY_LEX_L_NOT:
-		this->compare = POLICY_LEX_L_NOT;
+		if (seen_not) {
+			fprintf(stderr, "%s[%d]: Syntax error at \"!!\"\n",
+				lexer->filename, lexer->lineno);
+			rlm_policy_free_item((policy_item_t *) this);
+			return 0;
+		}
+
 		debug_tokens("[NOT] ");
 
-		/*
-		 *	FIXME: allow !foo, !foo=bar, etc.
-		 *
-		 *	Maybe we should learn how to use lex && yacc?
-		 */
+		token = policy_lex_file(lexer, POLICY_LEX_FLAG_PEEK, NULL, 0);
+		if (token != POLICY_LEX_L_BRACKET) {
+			seen_not = this->sense = 1;
+			goto redo;
+		}
 
+		this->compare = POLICY_LEX_L_NOT;
 		rcode = parse_condition(lexer, &(this->child));
 		if (!rcode) {
 			rlm_policy_free_item((policy_item_t *) this);
@@ -1523,12 +1531,11 @@ static int parse_named_policy(policy_lex_file_t *lexer)
 		return 0;
 	}
 
-	/*
-	 *	Do NOT add it into the list of parsed expressions!
-	 *	The above insertion will take care of freeing it if
-	 *	anything goes wrong...
-	 */
-	return 1;
+	if ((lexer->debug & POLICY_DEBUG_PRINT_POLICY) != 0) {
+		rlm_policy_print(this);
+	}
+
+       	return 1;
 }
 
 
@@ -1691,6 +1698,10 @@ int rlm_policy_parse(rbtree_t *policies, const char *filename)
 		fflush(stdout);
 	} while (token != POLICY_LEX_EOF);
 
+	if ((lexer->debug & POLICY_DEBUG_PRINT_POLICY) != 0) {
+		printf("# rlm_policy \n");
+		fflush(stdout);
+	}
 
 	debug_tokens("--------------------------------------------------\n");
 
