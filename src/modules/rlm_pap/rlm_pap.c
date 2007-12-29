@@ -510,7 +510,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	DEBUG("rlm_pap: login attempt with password %s",
+	DEBUG("rlm_pap: login attempt with password \"%s\"",
 	      request->password->vp_strvalue);
 
 	/*
@@ -580,7 +580,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	switch (scheme) {
 	case PAP_ENC_CLEAR:
 	do_clear:
-		DEBUG("rlm_pap: Using clear text password.");
+		DEBUG("rlm_pap: Using clear text password \"%s\"",
+		      vp->vp_strvalue);
 		if (strcmp((char *) vp->vp_strvalue,
 			   (char *) request->password->vp_strvalue) != 0){
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CLEAR TEXT password check failed");
