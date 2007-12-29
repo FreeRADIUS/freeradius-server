@@ -2,6 +2,7 @@
 #	Sample of a policy language for rlm_policy.
 #
 #	This is NOT the "unlang" policy, and has NO RELATION to "unlang"!
+#	The syntax is different, and the functionality is different.
 #
 
 #	As of 2.0.0, the new configuration "un-language" is better
@@ -24,7 +25,9 @@
 #
 #debug print_tokens	# as we're parsing this file
 debug print_policy	# once the file has been parsed
-debug evaluate		# print limited information during evaluation
+
+# Using this requires code edits to rlm_policy/evaluate.c
+#debug evaluate		# print limited information during evaluation
 
 #
 #  A named policy.
@@ -83,7 +86,7 @@ if (Time-Of-Day < "15:00") {
 #
 policy authorize {
   if (CHAP-Password) {
-     if (!(CHAP-Challenge)) {
+     if (!CHAP-Challenge) {
         print "Adding CHAP-Challenge = %{request:Packet-Authentication-Vector}\n"
 
         #
@@ -164,7 +167,7 @@ policy add_inter_vrf {
 	#	If there's no ip address thingy,
 	#	add ip unnumbered after the vrf stuff.
 	#
-	if (!(reply:Cisco-Avpair =~ "lcp:interface-config=ip address.*")) {
+	if (!reply:Cisco-Avpair =~ "lcp:interface-config=ip address.*") {
 	        reply $== (reply:Cisco-AVpair == "lcp:interface-config=ip vrf forwarding CHL-PRIVATE") {
         		Cisco-Avpair    += "lcp:interface-config=ip unnumbered l10"
 	        }
@@ -174,7 +177,7 @@ policy add_inter_vrf {
 	#	No IP address assigned through RADIUS, tell the Cisco
 	#	NAS to assign it from it's own private IP pool.
 	#
-	if (!(reply:Framed-IP-Address =* "")) {
+	if (!reply:Framed-IP-Address =* "") {
 		reply = {
                 	Cisco-Avpair    += "ip:addr-pool=privatepool"
 		}
