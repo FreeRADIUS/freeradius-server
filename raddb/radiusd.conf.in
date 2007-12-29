@@ -1756,6 +1756,23 @@ $INCLUDE eap.conf
 #		keytab = /path/to/keytab
 #		service_principal = name_of_principle
 #	}
+
+	#
+	#  Module implementing a DIFFERENT policy language.
+	#  The syntax here is NOT "unlang", but something else.
+	#
+	#  See the "policy.txt" file for documentation and examples.
+	#
+	policy {
+	       #  The only configuration item is a filename containing
+	       #  the policies to execute.
+	       #
+	       #  When "policy" is listed in a section (e.g. "authorize"),
+	       #  it will run a policy named for that section.
+	       # 
+	       filename = ${confdir}/policy.txt
+	}
+
 }
 
 # Instantiation
