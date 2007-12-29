@@ -212,6 +212,7 @@ typedef struct policy_condition_t {
 	policy_lex_t	compare;
 	policy_lex_t	rhs_type; /* bare word, quoted string, etc. */
 	char		*rhs;
+	int		sense;	/* whether to flip match or not */
 
 	policy_lex_t	child_condition;
 	policy_item_t	*child;
