@@ -40,7 +40,7 @@ RCSID("$Id$")
  */
 static const CONF_PARSER module_config[] = {
   { "filename",  PW_TYPE_FILENAME,
-    offsetof(rlm_policy_t,filename), NULL,  NULL},
+    offsetof(rlm_policy_t,filename), NULL,  "${confdir}/policy.txt"},
 
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
