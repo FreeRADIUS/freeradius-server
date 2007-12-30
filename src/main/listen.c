@@ -1004,7 +1004,7 @@ rad_listen_t *proxy_new_listener()
 	}
 
 	if (!old) {
-		listen_free(this);
+		listen_free(&this);
 		return NULL;	/* This is a serious error. */
 	}
 
@@ -1032,7 +1032,7 @@ rad_listen_t *proxy_new_listener()
 		}
 	}
 
-	listen_free(this);
+	listen_free(&this);
 	return NULL;
 }
 
