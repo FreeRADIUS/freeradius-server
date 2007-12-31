@@ -6,7 +6,7 @@ TESTS	= user_password chap mschapv1 digest-auth-MD5 digest-auth-int \
 
 #	example.com stripped.example.com
 
-EAPOL_TEST = /usr/bin/env eapol_test
+EAPOL_TEST = eapol_test
 
 EAP_TLS_TESTS = eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
 
