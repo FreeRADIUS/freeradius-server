@@ -1718,8 +1718,8 @@ static int can_handle_new_request(RADIUS_PACKET *packet,
 			       "from client %s port %d - ID: %d", request_count,
 			       client->shortname,
 			       packet->src_port, packet->id);
-			radlog(L_INFO, "WARNING: Please check the %s file.\n"
-			       "\tThe value for 'max_requests' is probably set too low.\n", root->radiusd_conf);
+			radlog(L_INFO, "WARNING: Please check the configuration file.\n"
+			       "\tThe value for 'max_requests' is probably set too low.\n");
 			return 0;
 		} /* else there were a small number of requests */
 	} /* else there was no configured limit for requests */
