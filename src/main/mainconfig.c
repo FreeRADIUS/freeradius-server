@@ -194,7 +194,6 @@ static const CONF_PARSER server_config[] = {
 	{ "debug_level", PW_TYPE_INTEGER, 0, &mainconfig.debug_level, "0"},
 
 	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_requests, "yes" },
-	{ "dictionary",         PW_TYPE_STRING_PTR, 0, &dictionary_dir,   NULL },
 	{ "log", PW_TYPE_SUBSECTION, 0, NULL,  (const void *) log_config},
 	{ "security", PW_TYPE_SUBSECTION, 0, NULL, (const void *) security_config },
 	{ NULL, -1, 0, NULL, NULL }
@@ -523,9 +522,10 @@ int read_mainconfig(int reload)
 {
 	const char *p = NULL;
 	static int old_debug_level = -1;
-	char buffer[1024];
+	CONF_PAIR *cp;
 	CONF_SECTION *cs, *templates;
 	struct stat statbuf;
+	char buffer[1024];
 
 	if (stat(radius_dir, &statbuf) < 0) {
 		radlog(L_ERR, "Errors reading %s: %s",
@@ -563,6 +563,7 @@ int read_mainconfig(int reload)
 		return -1;
 	}
 
+#if 0
 	/*
 	 *	Add templates to each kind of subsection.
 	 */
@@ -607,6 +608,7 @@ int read_mainconfig(int reload)
 			}
 		}
 	}
+#endif
 
 	/*
 	 *	Debug flag 1 MAY go to files.
@@ -663,8 +665,9 @@ int read_mainconfig(int reload)
 	}
 
 	/* Initialize the dictionary */
-	p = radius_dir;
-	if (dictionary_dir) p = dictionary_dir;
+	cp = cf_pair_find(cs, "dictionary");
+	if (cp) p = cf_pair_value(cp);
+	if (!p) p = radius_dir;
 	DEBUG2("including dictionary file %s/%s", p, RADIUS_DICTIONARY);
 	if (dict_init(p, RADIUS_DICTIONARY) != 0) {
 		radlog(L_ERR, "Errors reading dictionary: %s",
