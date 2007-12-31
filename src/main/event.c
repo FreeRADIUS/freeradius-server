@@ -2451,7 +2451,8 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 #endif
 
 	if (check_config) {
-		DEBUG2("radiusd: #### Skipping IP addresses and Ports ####");
+		DEBUG2("%s: #### Skipping IP addresses and Ports ####",
+		       mainconfig.name);
 		return 1;
 	}
 
@@ -2488,7 +2489,8 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	 */
 	for (i = 0; i < 32; i++) proxy_fds[i] = -1;
 
-	DEBUG2("radiusd: #### Opening IP addresses and Ports ####");
+	DEBUG2("%s: #### Opening IP addresses and Ports ####",
+	       mainconfig.name);
 
 	if (listen_init(cs, &head) < 0) {
 		_exit(1);

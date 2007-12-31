@@ -708,7 +708,7 @@ int read_mainconfig(int reload)
 
 	clients_parse_section(cs);
 
-	DEBUG2("radiusd: #### Loading Realms and Home Servers ####");
+	DEBUG2("%s: #### Loading Realms and Home Servers ####", mainconfig.name);
 
 	if (!realms_init(cs)) {
 		return -1;

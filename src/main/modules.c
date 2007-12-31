@@ -976,7 +976,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		return -1;
 	}
 
-	DEBUG2("radiusd: #### Instantiating modules ####");
+	DEBUG2("%s: #### Instantiating modules ####", mainconfig.name);
 
 	/*
 	 *  Look for the 'instantiate' section, which tells us
@@ -1040,7 +1040,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		}
 	}
 
-	DEBUG2("radiusd: #### Loading Virtual Servers ####");
+	DEBUG2("%s: #### Loading Virtual Servers ####", mainconfig.name);
 
 	/*
 	 *	Load all of the virtual servers.

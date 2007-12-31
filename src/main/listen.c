@@ -1119,6 +1119,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
  */
 int listen_init(CONF_SECTION *config, rad_listen_t **head)
 {
+	int		override = FALSE;
 	int		rcode;
 	CONF_SECTION	*cs;
 	rad_listen_t	**last;
@@ -1149,6 +1150,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 	if (mainconfig.myip.af != AF_UNSPEC) {
 		memcpy(&server_ipaddr, &mainconfig.myip,
 		       sizeof(server_ipaddr));
+		override = TRUE;
 		goto bind_it;
 	}
 
@@ -1181,6 +1183,13 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		sock->ipaddr = server_ipaddr;
 		sock->port = auth_port;
 
+		sock->clients = clients_parse_section(config);
+		if (!sock->clients) {
+			cf_log_err(cf_sectiontoitem(config),
+				   "Failed to find any clients for this listen section");
+			return -1;
+		}
+
 		if (listen_bind(this) < 0) {
 			listen_free(&this);
 			listen_free(head);
@@ -1188,6 +1197,12 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 			return -1;
 		}
 		auth_port = sock->port;	/* may have been updated in listen_bind */
+		if (override) {
+			cs = cf_section_sub_find_name2(config, "server",
+						       mainconfig.name);
+			if (cs) this->server = mainconfig.name;
+		}
+
 		*last = this;
 		last = &(this->next);
 
@@ -1216,11 +1231,24 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		sock->ipaddr = server_ipaddr;
 		sock->port = auth_port + 1;
 
+		sock->clients = clients_parse_section(config);
+		if (!sock->clients) {
+			cf_log_err(cf_sectiontoitem(config),
+				   "Failed to find any clients for this listen section");
+			return -1;
+		}
+
 		if (listen_bind(this) < 0) {
 			listen_free(&this);
 			listen_free(head);
 			radlog(L_ERR, "There appears to be another RADIUS server running on the accounting port %d", sock->port);
 			return -1;
+		}
+
+		if (override) {
+			cs = cf_section_sub_find_name2(config, "server",
+						       mainconfig.name);
+			if (cs) this->server = mainconfig.name;
 		}
 
 		*last = this;
