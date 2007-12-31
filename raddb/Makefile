@@ -10,7 +10,7 @@ include ../Make.inc
 #  The list of files to install.
 #
 FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
-	attrs.pre-proxy clients.conf dictionary eap.conf		\
+	attrs.pre-proxy clients.conf dictionary eap.conf templates.conf	\
 	experimental.conf hints huntgroups ldap.attrmap otp.conf	\
 	policy.txt preproxy_users proxy.conf radiusd.conf		\
 	snmp.conf sql.conf sqlippool.conf users	policy.conf	\
