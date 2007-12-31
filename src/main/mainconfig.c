@@ -60,6 +60,7 @@ static uid_t server_uid;
 static gid_t server_gid;
 static const char *uid_name = NULL;
 static const char *gid_name = NULL;
+static const char *dictionary_dir = NULL;
 static int allow_core_dumps = 0;
 
 /*
@@ -193,6 +194,7 @@ static const CONF_PARSER server_config[] = {
 	{ "debug_level", PW_TYPE_INTEGER, 0, &mainconfig.debug_level, "0"},
 
 	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_requests, "yes" },
+	{ "dictionary",         PW_TYPE_STRING_PTR, 0, &dictionary_dir,   NULL },
 	{ "log", PW_TYPE_SUBSECTION, 0, NULL,  (const void *) log_config},
 	{ "security", PW_TYPE_SUBSECTION, 0, NULL, (const void *) security_config },
 	{ NULL, -1, 0, NULL, NULL }
@@ -519,6 +521,7 @@ static const FR_NAME_NUMBER str2dest[] = {
  */
 int read_mainconfig(int reload)
 {
+	const char *p = NULL;
 	static int old_debug_level = -1;
 	char buffer[1024];
 	CONF_SECTION *cs, *templates;
@@ -660,8 +663,10 @@ int read_mainconfig(int reload)
 	}
 
 	/* Initialize the dictionary */
-	DEBUG2("including dictionary file %s/%s", radius_dir, RADIUS_DICTIONARY);
-	if (dict_init(radius_dir, RADIUS_DICTIONARY) != 0) {
+	p = radius_dir;
+	if (dictionary_dir) p = dictionary_dir;
+	DEBUG2("including dictionary file %s/%s", p, RADIUS_DICTIONARY);
+	if (dict_init(p, RADIUS_DICTIONARY) != 0) {
 		radlog(L_ERR, "Errors reading dictionary: %s",
 				librad_errstr);
 		return -1;
