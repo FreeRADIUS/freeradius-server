@@ -6,7 +6,7 @@ TESTS	= user_password chap mschapv1 digest-auth-MD5 digest-auth-int \
 
 #	example.com stripped.example.com
 
-EAPOL_TEST = ~/src/wpa_supplicant-0.5.8/eapol_test
+EAPOL_TEST = /usr/bin/env eapol_test
 
 EAP_TLS_TESTS = eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
 
@@ -47,7 +47,6 @@ eap: $(EAP_TLS_TESTS)
 md5:
 	$(EAPOL_TEST) -c eap-md5.conf -s $(SECRET) 
 
-
 tls:
 	$(EAPOL_TEST) -c eap-ttls-tls.conf -s $(SECRET)
 
@@ -59,10 +58,3 @@ peap:
 
 leap:
 	$(EAPOL_TEST) -c leap.conf -s $(SECRET)
-
-
-10k:
-	../main/radclient -qc 10000 -d ../../share -f user_password localhost auth testing123
-
-one:
-	../main/radclient -xxxxc 1 -d ../../share -f user_password localhost:32000 auth testing123
