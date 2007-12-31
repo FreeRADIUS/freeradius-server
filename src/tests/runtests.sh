@@ -22,7 +22,7 @@ function pidkill () {
 
 # Starts the server
 function start_radiusd () {
-    ../main/radiusd -Xmd ./raddb/ -i 127.0.0.1 -p $PORT > radiusd.log 2>&1 &
+    ../main/radiusd -Xmd ../../raddb/ -n test -i 127.0.0.1 -p $PORT > radiusd.log 2>&1 &
     PID=$!
 #wait for the process to startup or die...
     sleep 3
@@ -68,7 +68,6 @@ done
 #  Now run the tests
 #
 echo "Starting radiusd..."
-cp users raddb/
 start_radiusd
 echo "Running tests..."
 
@@ -80,7 +79,7 @@ do
    echo "-f .cache/$x" >> .bar
 done
 
-../main/radclient `cat .bar` -xFd ./raddb 127.0.0.1:$PORT auth testing123 > radclient.log 2>&1
+../main/radclient `cat .bar` -xFd . 127.0.0.1:$PORT auth testing123 > radclient.log 2>&1
 
 for x in `cat .foo`
 do
