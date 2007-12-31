@@ -35,7 +35,7 @@ RETVAL=0
 case "$1" in
   start)
 	echo -n $"Starting RADIUS server: "
-	daemon $RADIUSD -y
+	daemon $RADIUSD
 	RETVAL=$?
 	echo
 	[ $RETVAL -eq 0 ] && touch $LOCKF &&
