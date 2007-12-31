@@ -1,14 +1,10 @@
-#
-#  Preliminary test harness.
-#
-#  1. Test packets go into a local file.
-#  2. Simple configuration goes into the "users" file.
-#      using attributes Test-Name && Test-Number, where appropriate
-#  3. Realms go into "proxy.conf"
-#  4. We use the default "radiusd.conf" file for some simple tests.
-#
-#  Type "make tests" for a series of tests that exercise (some)
-#  of the server functionality.
-#
-#  See "runtests.sh" for more details.
-#
+  This is a preliminary test harness for the server.
+
+$ make tests
+
+	makes all of the tests
+
+config/*
+
+	virtual server configuration that is used for the tests
+
