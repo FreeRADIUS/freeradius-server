@@ -17,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2006  The FreeRADIUS server project
+ * Copyright 1999-2008  The FreeRADIUS server project
  * Copyright 2000  Alan DeKok <aland@ox.org>
  * Copyright 2000  Chris Parker <cparker@starnetusa.com>
  */
@@ -46,7 +46,7 @@ void NEVER_RETURNS version(void)
 #endif
 	printf("\n");
 #endif
-	printf("Copyright (C) 2000-2007 The FreeRADIUS server project.\n");
+	printf("Copyright (C) 1999-2008 The FreeRADIUS server project and contributors.\n");
 	printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 	printf("PARTICULAR PURPOSE.\n");
 	printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
