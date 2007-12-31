@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
 	set_auth_parameters(argc,argv);
 #endif
 
-	if ((progname = strrchr(argv[0], '/')) == NULL)
+	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
 		progname = argv[0];
 	else
 		progname++;
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 	memset(&mainconfig, 0, sizeof(mainconfig));
 	mainconfig.myip.af = AF_UNSPEC;
 	mainconfig.port = -1;
-	mainconfig.name = "radiusd";
+	mainconfig.name = progname;
 
 #ifdef HAVE_SIGACTION
 	memset(&act, 0, sizeof(act));
