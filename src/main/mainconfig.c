@@ -553,8 +553,8 @@ int read_mainconfig(int reload)
 	}
 
 	/* Read the configuration file */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s",
-		 radius_dir, mainconfig.radiusd_conf);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
+		 radius_dir, mainconfig.name);
 	if ((cs = cf_file_read(buffer)) == NULL) {
 		radlog(L_ERR, "Errors reading %s", buffer);
 		return -1;
@@ -786,7 +786,6 @@ int free_mainconfig(void)
 	 *	structures.
 	 */
 	cf_section_free(&mainconfig.config);
-	free(mainconfig.radiusd_conf);
 	realms_free();
 	listen_free(&mainconfig.listen);
 	dict_free();

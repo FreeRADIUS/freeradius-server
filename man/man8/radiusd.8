@@ -9,6 +9,8 @@ radiusd - Authentication, Authorization and Accounting server
 .RB [ \-f ]
 .RB [ \-i
 .IR ip-address ]
+.RB [ \-n
+.IR name ]
 .RB [ \-p
 .IR port ]
 .RB [ \-s ]
@@ -55,6 +57,8 @@ If this command-line option is given, then the "bind_address" and all
 This option MUST be used in conjunction with "-p".
 .IP \-f
 Do not fork, stay running as a foreground process.
+.IP "\-n 
+Read \fIraddb/name.conf\fP instead of \fIraddb/radiusd.conf\fP.
 .IP "\-p \fIport\fP"
 Normally radiusd listens on the ports specified in \fI/etc/services\fP
 (radius and radacct). When this option is given, radiusd listens on

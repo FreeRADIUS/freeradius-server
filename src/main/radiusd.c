@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 	memset(&mainconfig, 0, sizeof(mainconfig));
 	mainconfig.myip.af = AF_UNSPEC;
 	mainconfig.port = -1;
-	mainconfig.radiusd_conf = strdup("radiusd.conf");
+	mainconfig.name = "radiusd";
 
 #ifdef HAVE_SIGACTION
 	memset(&act, 0, sizeof(act));
@@ -180,6 +180,10 @@ int main(int argc, char *argv[])
 					exit(1);
 				}
 				flag |= 1;
+				break;
+
+			case 'n':
+				mainconfig.name = optarg;
 				break;
 
 			case 'm':
@@ -445,13 +449,14 @@ static void NEVER_RETURNS usage(int status)
 	FILE *output = status?stderr:stdout;
 
 	fprintf(output,
-			"Usage: %s [-d db_dir] [-l log_dir] [-i address] [-fsvXx]\n", progname);
+			"Usage: %s [-d db_dir] [-l log_dir] [-i address] [-n name] [-fsvXx]\n", progname);
 	fprintf(output, "Options:\n\n");
 	fprintf(output, "  -C              Check configuration and exit.\n");
 	fprintf(output, "  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
 	fprintf(output, "  -f              Run as a foreground process, not a daemon.\n");
 	fprintf(output, "  -h              Print this help message.\n");
 	fprintf(output, "  -i ipaddr       Listen on ipaddr ONLY\n");
+	fprintf(output, "  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
 	fprintf(output, "  -p port         Listen on port ONLY\n");
 	fprintf(output, "  -s              Do not spawn child processes to handle requests.\n");
 	fprintf(output, "  -v              Print server version information.\n");
