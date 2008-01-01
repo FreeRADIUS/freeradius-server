@@ -3,37 +3,6 @@
 PORT=12340
 HOME_PORT=12350
 
-# Sends a signal which checks if the process is active (doesn't kill anything)
-function pidactive () {
-    kill -0 $1 2> /dev/null
-    return
-}
-
-# Kill a particular process
-function pidkill () {
-    kill $1 || return
-    #adjust depending how long it takes to die gracefully
-    sleep 1    
-    if pidactive $1; then
-        #escalating
-        kill -9 $1
-    fi  
-}
-
-# Starts the server
-function start_radiusd () {
-    ../main/radiusd -Xmd ../../raddb/ -n test -i 127.0.0.1 -p $PORT > radiusd.log 2>&1 &
-    PID=$!
-#wait for the process to startup or die...
-    sleep 3
-    if ! pidactive $PID; then
-	wait $PID
-	tail -5 radiusd.log
-	echo "Command failed with $?"
-        exit 1
-    fi
-}
-
 rm -f verbose.log
 RCODE=0
 
@@ -64,13 +33,7 @@ do
   done
 done
 
-#
-#  Now run the tests
-#
-echo "Starting radiusd..."
-start_radiusd
 echo "Running tests..."
-
 
 (cd .cache;ls -1  > ../.foo)
 rm -f .bar
@@ -92,8 +55,6 @@ do
   fi
 done
 
-
-pidkill $PID
 
 if [ "$RCODE" = "0" ]
 then
