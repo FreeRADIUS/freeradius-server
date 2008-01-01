@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 	memset(&mainconfig, 0, sizeof(mainconfig));
 	mainconfig.myip.af = AF_UNSPEC;
 	mainconfig.port = -1;
-	mainconfig.name = progname;
+	mainconfig.name = "radiusd";
 
 #ifdef HAVE_SIGACTION
 	memset(&act, 0, sizeof(act));
