@@ -788,7 +788,7 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 
 		if (!FD_ISSET(pl->sockets[start].sockfd, set)) continue;
 
-		packet = rad_recv(pl->sockets[start].sockfd);
+		packet = rad_recv(pl->sockets[start].sockfd, 0);
 		if (!packet) continue;
 
 		/*

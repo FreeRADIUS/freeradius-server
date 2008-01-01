@@ -494,10 +494,10 @@ static int auth_socket_recv(rad_listen_t *listener,
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(listener->fd);
+	packet = rad_recv(listener->fd, client->message_authenticator);
 	if (!packet) {
 		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
-		radlog(L_ERR, "%s", librad_errstr);
+		DEBUG("%s", librad_errstr);
 		return 0;
 	}
 
@@ -595,7 +595,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(listener->fd);
+	packet = rad_recv(listener->fd, 0);
 	if (!packet) {
 		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
 		radlog(L_ERR, "%s", librad_errstr);
@@ -628,7 +628,7 @@ static int proxy_socket_recv(rad_listen_t *listener,
 	RAD_REQUEST_FUNP fun = NULL;
 	char		buffer[128];
 
-	packet = rad_recv(listener->fd);
+	packet = rad_recv(listener->fd, 0);
 	if (!packet) {
 		radlog(L_ERR, "%s", librad_errstr);
 		return 0;

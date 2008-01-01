@@ -49,6 +49,7 @@ typedef struct radclient {
 	char			*longname;
 	char			*secret;
 	char			*shortname;
+	int			message_authenticator;
 	char			*nastype;
 	char			*login;
 	char			*password;

@@ -278,8 +278,8 @@ void fr_hmac_sha1(const uint8_t *text, int text_len,
 
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, const RADIUS_PACKET *, const char *secret);
-int		rad_packet_ok(RADIUS_PACKET *packet);
-RADIUS_PACKET	*rad_recv(int fd);
+int		rad_packet_ok(RADIUS_PACKET *packet, int flags);
+RADIUS_PACKET	*rad_recv(int fd, int flags);
 ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, int *src_port,
 			int *code);
 void		rad_recv_discard(int sockfd);

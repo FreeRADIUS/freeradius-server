@@ -388,6 +388,9 @@ static const CONF_PARSER client_config[] = {
 	{ "netmask",  PW_TYPE_INTEGER,
 	  offsetof(RADCLIENT, prefix), 0, NULL },
 
+	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
+	  offsetof(RADCLIENT, message_authenticator), 0, "no" },
+
 	{ "secret",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, secret), 0, NULL },
 	{ "shortname",  PW_TYPE_STRING_PTR,

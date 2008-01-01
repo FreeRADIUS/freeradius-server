@@ -1353,7 +1353,7 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
  *	packet is not 'const * const' because we may update data_len,
  *	if there's more data in the UDP packet than in the RADIUS packet.
  */
-int rad_packet_ok(RADIUS_PACKET *packet)
+int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 {
 	uint8_t			*attr;
 	int			totallen;
@@ -1421,6 +1421,11 @@ int rad_packet_ok(RADIUS_PACKET *packet)
 	 *	packets, otherwise they can be trivially forged.
 	 */
 	if (hdr->code == PW_STATUS_SERVER) require_ma = 1;
+
+	/*
+	 *	It's also required if the caller asks for it.
+	 */
+	if (flags) require_ma = 1;
 
 	/*
 	 *	Repeat the length checks.  This time, instead of
@@ -1632,7 +1637,7 @@ int rad_packet_ok(RADIUS_PACKET *packet)
  *	Receive UDP client requests, and fill in
  *	the basics of a RADIUS_PACKET structure.
  */
-RADIUS_PACKET *rad_recv(int fd)
+RADIUS_PACKET *rad_recv(int fd, int flags)
 {
 	RADIUS_PACKET		*packet;
 
@@ -1686,7 +1691,7 @@ RADIUS_PACKET *rad_recv(int fd)
 	/*
 	 *	See if it's a well-formed RADIUS packet.
 	 */
-	if (!rad_packet_ok(packet)) {
+	if (!rad_packet_ok(packet, flags)) {
 		rad_free(&packet);
 		return NULL;
 	}

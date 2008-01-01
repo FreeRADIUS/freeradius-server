@@ -163,7 +163,7 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 	packet->data = payload;
 	packet->data_len = header->len - size_ethernet - size_ip - size_udp;
 
-	if (!rad_packet_ok(packet)) {
+	if (!rad_packet_ok(packet, 0)) {
 		librad_perror("Packet");
 		free(packet);
 		return;
