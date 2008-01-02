@@ -1,3 +1,11 @@
+# -*- text -*-
+##
+## Makefile -- Build and run tests for the server.
+##
+##	http://www.freeradius.org/
+##	$Id$
+##
+#
 include ../../Make.inc
 
 TESTS	= user_password chap mschapv1 digest-auth-MD5 digest-auth-int \
@@ -38,7 +46,6 @@ test.conf: dictionary
 	@echo 'pidfile = $${testdir}/radiusd.pid' >> test.conf
 	@echo '$$INCLUDE radiusd.conf' >> test.conf
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
-	@[ -f ../../raddb/test.conf ] || ln -s ../src/tests/test.conf ../../raddb/
 
 radiusd.pid: test.conf
 	@../main/radiusd -md ../../raddb/ -n test -i 127.0.0.1 -p $(PORT)
@@ -48,15 +55,25 @@ radiusd.pid: test.conf
 .PHONY: radiusd.kill
 radiusd.kill:
 	@if [ -f radiusd.pid ]; then \
-		kill -TERM `cat radiusd.pid`; \
+		(kill -TERM `cat radiusd.pid` >/dev/null 2>&1) || exit 0; \
 	fi
 	@rm -f radiusd.pid
 
-tests: test.conf dictionary
-	@$(MAKE) radiusd.kill
-	@$(MAKE) radiusd.pid
+#  Link from the main database directory to here
+../../raddb/test.conf: test.conf
+	@[ -f ../../raddb/test.conf ] || ln -s ../src/tests/test.conf ../../raddb/
+
+# kill the server (if it's running)
+# start the server
+# run the tests
+# kill the server
+# remove the changes to raddb/
+tests: ../../raddb/test.conf radiusd.kill radiusd.pid
 	@chmod a+x runtests.sh
-	./runtests.sh $(TESTS)
+	@rm -f radius.log
+	@./runtests.sh $(TESTS)
+	@$(MAKE) radiusd.kill
+	@rm -f ../../raddb/test.conf
 
 eap: $(EAP_TLS_TESTS)
 	$(EAPOL_TEST) -c eap-ttls-pap.conf -s $(SECRET) 
