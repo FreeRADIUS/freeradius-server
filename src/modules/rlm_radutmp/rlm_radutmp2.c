@@ -852,31 +852,20 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	if (nas_address == 0) {
 		nas_address = request->packet->src_ipaddr;
 		utmp.nas_address = nas_address;
-		nas = client_name(nas_address);	/* MUST be a valid client */
+		nas = request->client->shortname;
 
-	} else {		/* might be a client, might not be. */
-		RADCLIENT *cl;
+	} else if (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr == nas_address) {		/* might be a client, might not be. */
+		nas = request->client->shortname;
 
+	} else {
 		/*
-		 *	Hack like 'client_name()', but with sane
-		 *	fall-back.
+		 *	The NAS isn't a client, it's behind
+		 *	a proxy server.  In that case, just
+		 *	get the IP address.
 		 */
-		cl = client_find(nas_address);
-		if (cl) {
-			if (cl->shortname && cl->shortname[0]) {
-				nas = cl->shortname;
-			} else {
-				nas = cl->longname;
-			}
-		} else {
-			/*
-			 *	The NAS isn't a client, it's behind
-			 *	a proxy server.  In that case, just
-			 *	get the IP address.
-			 */
-			nas = ip_ntoa(ip_name, nas_address);
-		}
+		nas = ip_ntoa(ip_name, nas_address);
 	}
+
 
 	/*
 	 *	Set the protocol field.
