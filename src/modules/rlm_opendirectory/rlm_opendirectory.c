@@ -367,7 +367,8 @@ int od_authorize(void *instance, REQUEST *request)
 	/* resolve client access list */
 	uuid_clear(guid_nasgroup);
 #if 0
-	if ( (rad_client = client_find(request->packet->src_ipaddr)) != NULL && rad_client->community[0] != '\0' )
+	rad_client = request->client;
+	if (rad_client->community[0] != '\0' )
 	{
 		/*
 		 *	The "community" can be a GUID (Globally Unique ID) or
