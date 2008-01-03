@@ -220,7 +220,16 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	}
 
 	/*
-	 *	Duplicate?
+	 *	Cannot insert the same client twice.
+	 */
+	if (rbtree_find(clients->trees[client->prefix], client)) {
+		radlog(L_ERR, "Failed to add duplicate client %s",
+		       client->shortname);
+		return 0;
+	}
+
+	/*
+	 *	Other error adding client: likely is fatal.
 	 */
 	if (!rbtree_insert(clients->trees[client->prefix], client)) {
 		return 0;
@@ -339,42 +348,6 @@ RADCLIENT *client_find(const RADCLIENT_LIST *clients,
 RADCLIENT *client_find_old(const fr_ipaddr_t *ipaddr)
 {
 	return client_find(root_clients, ipaddr);
-}
-
-
-/*
- *	Find the name of a client (prefer short name).
- */
-const char *client_name(const RADCLIENT_LIST *clients,
-			const fr_ipaddr_t *ipaddr)
-{
-	/* We don't call this unless we should know about the client. */
-	RADCLIENT *cl;
-	char host_ipaddr[128];
-
-	if ((cl = client_find(clients, ipaddr)) != NULL) {
-		if (cl->shortname && cl->shortname[0])
-			return cl->shortname;
-		else
-			return cl->longname;
-	}
-
-	/*
-	 * this isn't normally reachable, but if a loggable event happens just
-	 * after a client list change and a HUP, then we may not know this
-	 * information any more.
-	 *
-	 * If you see lots of these, then there's something wrong.
-	 */
-	radlog(L_ERR, "Trying to look up name of unknown client %s.\n",
-	       ip_ntoh(ipaddr, host_ipaddr, sizeof(host_ipaddr)));
-
-	return "UNKNOWN-CLIENT";
-}
-
-const char *client_name_old(const fr_ipaddr_t *ipaddr)
-{
-	return client_name(root_clients, ipaddr);
 }
 
 static struct in_addr cl_ip4addr;

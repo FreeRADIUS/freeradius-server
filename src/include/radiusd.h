@@ -370,10 +370,6 @@ void		*request_data_reference(REQUEST *request,
 int		rad_copy_string(char *dst, const char *src);
 int		rad_copy_variable(char *dst, const char *from);
 
-/* request_process.c */
-int rad_respond(REQUEST *request, RAD_REQUEST_FUNP fun);
-void		request_reject(REQUEST *request, request_fail_t reason);
-
 /* client.c */
 RADCLIENT_LIST	*clients_init(void);
 void		clients_free(RADCLIENT_LIST *clients);
@@ -382,17 +378,13 @@ void		client_free(RADCLIENT *client);
 int		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 RADCLIENT	*client_find(const RADCLIENT_LIST *clients,
 			     const fr_ipaddr_t *ipaddr);
-const char	*client_name(const RADCLIENT_LIST *clients,
-			     const fr_ipaddr_t *ipaddr);
 RADCLIENT	*client_findbynumber(const RADCLIENT_LIST *clients,
 				     int number);
 RADCLIENT	*client_find_old(const fr_ipaddr_t *ipaddr);
-const char	*client_name_old(const fr_ipaddr_t *ipaddr);
 
 /* files.c */
 int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
-int		read_config_files(void);
 
 /* version.c */
 void		version(void);
@@ -410,11 +402,6 @@ int		log_debug(const char *, ...)
 #endif
 ;
 void 		vp_listdebug(VALUE_PAIR *vp);
-
-
-/* proxy.c */
-int proxy_receive(REQUEST *request);
-int proxy_send(REQUEST *request);
 
 /* auth.c */
 char	*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
