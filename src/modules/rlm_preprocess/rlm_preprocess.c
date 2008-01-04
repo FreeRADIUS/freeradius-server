@@ -177,8 +177,9 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 	int		number = 1;
 
 	for ( ; vp != NULL; vp = vp->next) {
-		vendorcode = VENDOR(vp->attribute);
 		DICT_ATTR *da;
+
+		vendorcode = VENDOR(vp->attribute);
 		if (vendorcode != 12394) continue;
 		if (vp->type != PW_TYPE_STRING) continue;
 
