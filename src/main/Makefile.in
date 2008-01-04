@@ -125,6 +125,8 @@ clean:
 	rm -rf *.o *.so *.lo *~ $(BINARIES) .libs
 
 install:
+	$(INSTALL) -d -m 755	$(R)$(sbindir)
+	$(INSTALL) -d -m 755	$(R)$(bindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radiusd$(EXEEXT)	$(R)$(sbindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radclient$(EXEEXT)	$(R)$(bindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radwho$(EXEEXT)	$(R)$(bindir)
