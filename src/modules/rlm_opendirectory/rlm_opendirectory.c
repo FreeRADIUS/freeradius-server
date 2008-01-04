@@ -39,7 +39,13 @@
 
 #include <DirectoryService/DirectoryService.h>
 #include <membership.h>
+
+#if HAVE_APPLE_SPI
 #include <membershipPriv.h>
+#else
+int mbr_check_service_membership(const uuid_t user, const char *servicename, int *ismember);
+int mbr_check_membership_refresh(const uuid_t user, uuid_t group, int *ismember);
+#endif
 
 /* RADIUS service ACL constants */
 #define kRadiusSACLName		"com.apple.access_radius"
@@ -393,11 +399,11 @@ int od_authorize(void *instance, REQUEST *request)
 	{
 		if (rad_client == NULL) {
 			radlog(L_DBG, "rlm_opendirectory: The client record could not be found for host %s.",
-					ip_ntoa(host_ipaddr, request->packet->src_ipaddr));
+					ip_ntoa(host_ipaddr, request->packet->src_ipaddr.ipaddr.ip4addr.s_addr));
 		}
 		else {
 			radlog(L_DBG, "rlm_opendirectory: The host %s does not have an access group.",
-					ip_ntoa(host_ipaddr, request->packet->src_ipaddr));
+					ip_ntoa(host_ipaddr, request->packet->src_ipaddr.ipaddr.ip4addr.s_addr));
 		}
 	}
 	

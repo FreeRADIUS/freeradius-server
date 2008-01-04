@@ -1,7 +1,7 @@
 TARGET     = @targetname@
 SRCS       = rlm_opendirectory.c
 HEADERS    =
-RLM_LDFLAGS = @od_ldflags@
+RLM_LIBS   = @od_ldflags@
 RLM_CFLAGS = @od_cflags@
 
 include ../rules.mak

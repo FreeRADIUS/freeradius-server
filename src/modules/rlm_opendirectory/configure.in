@@ -9,9 +9,9 @@ if test x$with_[]modname != xno; then
 
 	od_ldflags="${od_ldflags} -framework DirectoryService" 
 	
-	FR_SMART_CHECK_INCLUDE(membershipPriv.h)
-	if test "$ac_cv_header_membershippriv_h" != "yes"; then
-	  fail="$fail membershipPriv.h"
+	FR_SMART_CHECK_INCLUDE(membership.h)
+	if test "$ac_cv_header_membership_h" != "yes"; then
+	  fail="$fail membership.h"
 	fi
 	targetname=modname
 else
