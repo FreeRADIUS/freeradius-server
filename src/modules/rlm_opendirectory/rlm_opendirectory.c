@@ -349,7 +349,7 @@ int od_authorize(void *instance, REQUEST *request)
 	uuid_t guid_sacl;
 	uuid_t guid_nasgroup;
 	int err;
-	char host_ipaddr[32] = {0};
+	char host_ipaddr[128] = {0};
 	
 	if (request == NULL || request->username == NULL) {
 		radlog(L_AUTH, "rlm_opendirectory: Attribute \"User-Name\" is required for authorization.");
@@ -372,8 +372,9 @@ int od_authorize(void *instance, REQUEST *request)
 	
 	/* resolve client access list */
 	uuid_clear(guid_nasgroup);
-#if 0
+
 	rad_client = request->client;
+#if 0
 	if (rad_client->community[0] != '\0' )
 	{
 		/*
@@ -399,11 +400,13 @@ int od_authorize(void *instance, REQUEST *request)
 	{
 		if (rad_client == NULL) {
 			radlog(L_DBG, "rlm_opendirectory: The client record could not be found for host %s.",
-					ip_ntoa(host_ipaddr, request->packet->src_ipaddr.ipaddr.ip4addr.s_addr));
+					ip_ntoh(&request->packet->src_ipaddr,
+						host_ipaddr, sizeof(host_ipaddr)));
 		}
 		else {
 			radlog(L_DBG, "rlm_opendirectory: The host %s does not have an access group.",
-					ip_ntoa(host_ipaddr, request->packet->src_ipaddr.ipaddr.ip4addr.s_addr));
+					ip_ntoh(&request->packet->src_ipaddr,
+						host_ipaddr, sizeof(host_ipaddr)));
 		}
 	}
 	
