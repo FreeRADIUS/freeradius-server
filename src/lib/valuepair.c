@@ -1199,8 +1199,9 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 			p = q;
 
 		} else {	/* must be vendor name */
-			q = strchr(p, '-');
 			char buffer[256];
+
+			q = strchr(p, '-');
 
 			if (!q) {
 				librad_log("Invalid vendor name in attribute name \"%s\"", attribute);
