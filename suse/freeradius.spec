@@ -31,7 +31,6 @@ BuildRequires: gcc-c++
 BuildRequires: gdbm-devel
 BuildRequires: gettext-devel
 BuildRequires: glibc-devel
-BuildRequires: libeap-ikev2-devel
 BuildRequires: libtool
 BuildRequires: ncurses-devel
 BuildRequires: net-snmp-devel
@@ -191,6 +190,7 @@ autoreconf
 		--with-edir \
 		--with-experimental-modules \
 		--with-system-libtool \
+		--without-rlm_eap_ikev2 \
 		--without-rlm_opendirectory \
 %if %{?fedora_version:1}0
                 --with-rlm-krb5-include-dir=/usr/kerberos/include \
