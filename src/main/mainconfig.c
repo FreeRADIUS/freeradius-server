@@ -180,12 +180,7 @@ static const CONF_PARSER server_config[] = {
 	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &mainconfig.kill_unresponsive_children, Stringify(FALSE) },
 #endif
 	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, "no" },
-	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
 
-	{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, "${logdir}/radius.log" },
-	{ "log_auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, "no" },
-	{ "log_auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
-	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
 	{ "pidfile", PW_TYPE_STRING_PTR, 0, &mainconfig.pid_file, "${run_dir}/radiusd.pid"},
 	{ "user", PW_TYPE_STRING_PTR, 0, &uid_name, NULL},
 	{ "group", PW_TYPE_STRING_PTR, 0, &gid_name, NULL},
@@ -196,6 +191,20 @@ static const CONF_PARSER server_config[] = {
 	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_requests, "yes" },
 	{ "log", PW_TYPE_SUBSECTION, 0, NULL,  (const void *) log_config},
 	{ "security", PW_TYPE_SUBSECTION, 0, NULL, (const void *) security_config },
+
+	/*
+	 *	People with old configs will have these.  They are listed
+	 *	AFTER the "log" section, so if they exist in radiusd.conf,
+	 *	it will prefer "log_foo = bar" to "log { foo = bar }".
+	 *	They're listed with default values of NULL, so that if they
+	 *	DON'T exist in radiusd.conf, then the previously parsed
+	 *	values for "log { foo = bar}" will be used.
+	 */
+	{ "log_auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, NULL },
+	{ "log_auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, NULL },
+	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, NULL },
+	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names, NULL },
+	{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
