@@ -60,7 +60,6 @@ static uid_t server_uid;
 static gid_t server_gid;
 static const char *uid_name = NULL;
 static const char *gid_name = NULL;
-static const char *dictionary_dir = NULL;
 static int allow_core_dumps = 0;
 
 /*
@@ -532,7 +531,7 @@ int read_mainconfig(int reload)
 	const char *p = NULL;
 	static int old_debug_level = -1;
 	CONF_PAIR *cp;
-	CONF_SECTION *cs, *templates;
+	CONF_SECTION *cs;
 	struct stat statbuf;
 	char buffer[1024];
 
