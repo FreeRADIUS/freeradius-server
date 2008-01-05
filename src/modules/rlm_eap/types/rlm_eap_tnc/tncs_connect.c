@@ -21,6 +21,8 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  */
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include "tncs_connect.h"
 #include <ltdl.h>
@@ -28,6 +30,9 @@
 #include <stdio.h>
 #include <eap.h>
 
+     /*
+      *	FIXME: This linking should really be done at compile time.
+      */
 static lt_dlhandle handle = NULL;
 
 static ExchangeTNCCSMessagePointer callTNCS = NULL;
@@ -133,7 +138,7 @@ TNC_ConnectionState exchangeTNCCSMessages(/*in*/ char *pathToSO,
                             answerIsFirst, 
                             moreFragmentsFollow, 
                             overallLengthOut);
-        DEBUG("GOT TNC_ConnectionState (juhuuu): %d", state);
+        DEBUG("GOT TNC_ConnectionState (juhuuu): %u", (unsigned int) state);
 	}else{
 		DEBUG("CAN NOT CONNECT TO TNCS");
 	}

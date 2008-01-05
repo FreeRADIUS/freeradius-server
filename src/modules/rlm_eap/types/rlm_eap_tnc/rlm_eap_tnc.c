@@ -26,6 +26,9 @@
  *   Copyright (C) 2007 Alan DeKok <aland@deployingradius.com>
  */
 
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
 #include <freeradius-devel/autoconf.h>
 
 #include <stdio.h>

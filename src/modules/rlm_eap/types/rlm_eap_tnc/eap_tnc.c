@@ -23,6 +23,9 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  */
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
 
 /*
  *
@@ -56,6 +59,9 @@
 
 #include "eap_tnc.h"
 
+     /*
+      *	WTF is wrong with htonl ?
+      */
 static uint32_t ByteSwap2 (uint32_t nLongNumber)
 {
    return (((nLongNumber&0x000000FF)<<24)+((nLongNumber&0x0000FF00)<<8)+
