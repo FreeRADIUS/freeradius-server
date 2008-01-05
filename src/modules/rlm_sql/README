@@ -23,7 +23,7 @@ sql_fetch_row: returns 0 if ok, SQL_DOWN on 'socket not connected', row is
 
 TODO:
 
-db2/freetds/iodbc/unixodbc:
+db2/iodbc/unixodbc:
      for the above functions, where it can return SQL_DOWN, determine if an
      error with the database exists, if it is down, and return SQL_DOWN
 
