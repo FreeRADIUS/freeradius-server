@@ -1318,10 +1318,11 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	CONF_SECTION *cs, *subcs, *modules;
 
 	if (cf_item_is_section(ci)) {
-		cs = cf_itemtosection(ci);
-		const char *name2 = cf_section_name2(cs);
+		const char *name2;
 
+		cs = cf_itemtosection(ci);
 		modrefname = cf_section_name1(cs);
+		name2 = cf_section_name2(cs);
 		if (!name2) name2 = "_UnNamedGroup";
 
 		/*
