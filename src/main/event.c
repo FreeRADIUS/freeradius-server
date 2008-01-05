@@ -633,7 +633,7 @@ static void ping_home_server(void *ctx)
 	rad_assert(request->proxy_listener == NULL);
 
 	if (!insert_into_proxy_hash(request)) {
-		DEBUG2("Failed inserting status check %d into proxy hash.  Discarding it.",
+		DEBUG2("ERROR: Failed inserting status check %d into proxy hash.  Discarding it.",
 		       request->number);
 		request_free(&request);
 		return;
@@ -1050,7 +1050,7 @@ static int proxy_request(REQUEST *request)
 	char buffer[128];
 
 	if (!insert_into_proxy_hash(request)) {
-		DEBUG("Error: Failed inserting request into proxy hash.");
+		DEBUG("ERROR: Failed inserting request into proxy hash.");
 		return 0;
 	}
 
@@ -1110,6 +1110,15 @@ static int successfully_proxied_request(REQUEST *request)
 	home_server *home;
 	REALM *realm = NULL;
 	home_pool_t *pool;
+
+	/*
+	 *	If it was already proxied, do nothing.
+	 *
+	 *	FIXME: This should really be a serious error.
+	 */
+	if (request->in_proxy_hash || request->proxy) {
+		return 0;
+	}
 
 	realmpair = pairfind(request->config_items, PW_PROXY_TO_REALM);
 	if (!realmpair || (realmpair->length == 0)) {
@@ -1365,6 +1374,7 @@ static void request_post_handler(REQUEST *request)
 	}
 
 	if (request->root->proxy_requests &&
+	    !request->proxy &&
 	    (request->reply->code == 0) &&
 	    (request->packet->dst_port != 0) &&
 	    (request->packet->code != PW_STATUS_SERVER)) {
