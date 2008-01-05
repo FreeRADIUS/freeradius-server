@@ -2141,14 +2141,11 @@ void radius_signal_self(int flag)
 }
 
 
-static void event_signal_handler(fr_event_list_t *xel, int fd, void *ctx)
+static void event_signal_handler(UNUSED fr_event_list_t *xel,
+				 UNUSED int fd, UNUSED void *ctx)
 {
 	ssize_t i, rcode;
 	char buffer[32];
-
-	xel = xel;
-	fd = fd;
-	ctx = ctx;
 
 	rcode = read(self_pipe[0], buffer, sizeof(buffer));
 	if (rcode <= 0) return;
@@ -2256,7 +2253,7 @@ static void event_detail_handler(fr_event_list_t *xel, int fd, void *ctx)
 }
 
 
-static void event_socket_handler(fr_event_list_t *xel, int fd, void *ctx)
+static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd, void *ctx)
 {
 	rad_listen_t *listener = ctx;
 	RAD_REQUEST_FUNP fun;
@@ -2265,7 +2262,6 @@ static void event_socket_handler(fr_event_list_t *xel, int fd, void *ctx)
 	rad_assert(xel == el);
 
 	xel = xel;
-	fd = fd;
 
 	if (listener->fd < 0) rad_panic("Socket was closed on us!");
 	
@@ -2577,9 +2573,8 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 }
 
 
-static int request_hash_cb(void *ctx, void *data)
+static int request_hash_cb(UNUSED void *ctx, void *data)
 {
-	ctx = ctx;		/* -Wunused */
 	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
 
 	rad_assert(request->in_proxy_hash == FALSE);
@@ -2592,9 +2587,8 @@ static int request_hash_cb(void *ctx, void *data)
 }
 
 
-static int proxy_hash_cb(void *ctx, void *data)
+static int proxy_hash_cb(UNUSED void *ctx, void *data)
 {
-	ctx = ctx;		/* -Wunused */
 	REQUEST *request = fr_packet2myptr(REQUEST, proxy, data);
 
 	fr_packet_list_yank(proxy_list, request->proxy);
