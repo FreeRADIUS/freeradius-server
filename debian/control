@@ -1,5 +1,5 @@
 Source: freeradius
-Build-Depends: debhelper (>= 5), dpatch (>= 2), dpkg-dev (>= 1.13.19), autotools-dev, libtool (>= 1.5), libltdl3-dev, libpam0g-dev, libmysqlclient15-dev | libmysqlclient-dev, libgdbm-dev, libldap2-dev, libsasl2-dev, libiodbc2-dev, libkrb5-dev, libperl-dev, libpcap-dev, snmp, libsnmp9-dev | libsnmp-dev, libpq-dev, libssl-dev
+Build-Depends: debhelper (>= 5), dpatch (>= 2), dpkg-dev (>= 1.13.19), autotools-dev, libtool (>= 1.5), libltdl3-dev, libpam0g-dev, libmysqlclient15-dev | libmysqlclient-dev, libgdbm-dev, libldap2-dev, libsasl2-dev, libiodbc2-dev, libkrb5-dev, libperl-dev, libpcap-dev, python-dev, snmp, libsnmp9-dev | libsnmp-dev, libpq-dev, libssl-dev
 Section: net
 Priority: optional
 Maintainer: Nicolas Baradakis <nbk@sitadelle.com>
