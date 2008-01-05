@@ -764,14 +764,12 @@ static void post_proxy_fail_handler(REQUEST *request)
 	if (!setup_post_proxy_fail(request)) {
 		request->child_state = REQUEST_RUNNING;
 		request_post_handler(request);
-		wait_a_bit(request);
 
 	} else {
 		/*
 		 *	Re-queue the request.
 		 */
 		request->child_state = REQUEST_QUEUED;
-		wait_a_bit(request);
 
 		/*
 		 *	There is a post-proxy-type of fail.  We run
@@ -780,11 +778,22 @@ static void post_proxy_fail_handler(REQUEST *request)
 		 *	request.  However, we set the per-request
 		 *	handler to NULL, as we don't want to do
 		 *	anything else.
+		 *
+		 *	Note that when we're not threaded, this will
+		 *	process the request even if it's greater than
+		 *	max_request_time.  That's not fatal.
 		 */
 		request->priority = 0;
 		rad_assert(request->proxy != NULL);
 		thread_pool_addrequest(request, null_handler);
+
 	}
+
+	/*
+	 *	MAY free the request if we're over max_request_time,
+	 *	AND we're not in threaded mode!
+	 */
+	wait_a_bit(request);
 }
 
 
@@ -861,6 +870,10 @@ static void wait_a_bit(void *ctx)
 		 */
 		fr_event_now(el, &now);
 
+		/*
+		 *	Request still has more time.  Continue
+		 *	waiting.
+		 */
 		if (timercmp(&now, &when, <)) {
 			if (request->delay < (USEC / 10)) {
 				request->delay = USEC / 10;
@@ -869,21 +882,60 @@ static void wait_a_bit(void *ctx)
 			request->when = now;
 			tv_add(&request->when, request->delay);
 			callback = wait_a_bit;
+			break;
+		}
 
-		} else {
+		/*
+		 *	A child thread MAY still be running on the
+		 *	request.  Ask the thread to stop working on
+		 *	the request.
+		 */
+		if (have_children) {
 			/* FIXME: kill unresponsive children? */
-			radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d, in module %s component %s",
+
+			/*
+			 *	Print this error message ONLY if
+			 *	there's a child currently processing
+			 *	the request.  As we don't have thread
+			 *	locks here, there may be race
+			 *	conditions on this check.  But it's
+			 *	just an error message, so that's OK.
+			 */
+			if (request->child_pid != NO_SUCH_CHILD_PID) {
+				radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d, in module %s component %s",
 			       (unsigned long)request->child_pid, request->number,
-			       request->module ? request->module : "<server core>",
-			       request->component ? request->component : "<server core>");
+				       request->module ? request->module : "<server core>",
+				       request->component ? request->component : "<server core>");
+			}
 
 			request->master_state = REQUEST_STOP_PROCESSING;
-
+			
 			request->delay = USEC / 4;
 			tv_add(&request->when, request->delay);
 			callback = wait_for_child_to_die;
+			break;
 		}
-		break;
+
+		/*
+		 *	Else there are no child threads.  We probably
+		 *	should have just marked the request as 'done'
+		 *	elsewhere, like in the post-proxy-fail
+		 *	handler.  But doing that would involve
+		 *	checking for max_request_time in multiple
+		 *	places, so this may be simplest.
+		 */
+		request->child_state = REQUEST_DONE;
+		/* FALL-THROUGH */
+
+		/*
+		 *	Mark the request as no longer running,
+		 *	and clean it up.
+		 */
+	case REQUEST_DONE:
+		request->child_pid = NO_SUCH_CHILD_PID;
+		snmp_inc_counters(request);
+		cleanup_delay(request);
+		return;
 
 	case REQUEST_REJECT_DELAY:
 	case REQUEST_CLEANUP_DELAY:
@@ -898,16 +950,6 @@ static void wait_a_bit(void *ctx)
 		callback = request->next_callback;
 		request->next_callback = NULL;
 		break;
-
-		/*
-		 *	Mark the request as no longer running,
-		 *	and clean it up.
-		 */
-	case REQUEST_DONE:
-		request->child_pid = NO_SUCH_CHILD_PID;
-		snmp_inc_counters(request);
-		cleanup_delay(request);
-		return;
 
 	default:
 		rad_panic("Internal sanity check failure");
