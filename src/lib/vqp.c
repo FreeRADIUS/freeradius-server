@@ -24,6 +24,7 @@
 RCSID("$Id$");
 
 #include	<freeradius-devel/libradius.h>
+#include	<freeradius-devel/udpfromto.h>
 #include	<freeradius-devel/vqp.h>
 
 #ifdef WITH_VMPS
