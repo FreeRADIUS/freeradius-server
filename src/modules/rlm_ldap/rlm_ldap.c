@@ -847,9 +847,9 @@ retry:
 /*
  *	Translate the LDAP queries.
  */
-static int ldap_escape_func(char *out, int outlen, const char *in)
+static size_t ldap_escape_func(char *out, size_t outlen, const char *in)
 {
-	int len = 0;
+	size_t len = 0;
 
 	while (in[0]) {
 		/*
@@ -1512,9 +1512,8 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	 	*/
 			VALUE_PAIR	*passwd_item;
 			VALUE_PAIR	*vp_user_dn;
-			int		passwd_len;
 			char		*universal_password = NULL;
-			int		universal_password_len = UNIVERSAL_PASS_LEN;
+			size_t		universal_password_len = UNIVERSAL_PASS_LEN;
 			char		*passwd_val = NULL;
 
 			res = 0;
