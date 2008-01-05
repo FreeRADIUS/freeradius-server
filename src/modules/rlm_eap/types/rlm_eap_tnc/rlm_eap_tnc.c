@@ -53,6 +53,7 @@ static int tnc_initiate(void *type_data, EAP_HANDLER *handler)
 {
 	uint8_t flags_ver = 1; //set version to 1
 	rlm_eap_tnc_t *inst = type_data;
+	TNC_PACKET *reply;
 
 	if (!handler->request || !handler->request->parent) {
 		DEBUG2("rlm_eap_tnc: Must be run inside of a TLS method");
@@ -61,15 +62,10 @@ static int tnc_initiate(void *type_data, EAP_HANDLER *handler)
 
 	DEBUG("tnc_initiate: %ld", handler->timestamp);
 
-	TNC_PACKET	*reply;
-	
 	if(connectToTncs(inst->tnc_path)==-1){
 		DEBUG("Could not connect to TNCS");
-	}else{
-		
 	}
 
-	type_data = type_data;	/* -Wunused */
 	/*
 	 *	Allocate an EAP-MD5 packet.
 	 */
@@ -159,12 +155,23 @@ static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
     TNC_PACKET	*packet;
     TNC_PACKET	*reply;
     TNC_ConnectionID connId = *((TNC_ConnectionID *) (handler->opaque));
+    TNC_ConnectionState state;
     rlm_eap_tnc_t *inst = type_arg;
+    int isAcknowledgement = 0;
+    TNC_UInt32 tnccsMsgLength = 0;
+    int isLengthIncluded;
+    int moreFragments;
+    TNC_UInt32 overallLength;
+    TNC_BufferReference outMessage;
+    TNC_UInt32 outMessageLength = 2;
+    int outIsLengthIncluded=0;
+    int outMoreFragments=0;
+    TNC_UInt32 outOverallLength=0;
 
     DEBUG2("HANDLER_OPAQUE: %d", (int) *((TNC_ConnectionID *) (handler->opaque)));
     DEBUG2("TNC-AUTHENTICATE is starting now for %d..........", (int) connId);
 
-    /*
+	/*
 	 *	Get the User-Password for this user.
 	 */
     rad_assert(handler->request != NULL);
@@ -176,8 +183,7 @@ static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
     if (!(packet = eaptnc_extract(handler->eap_ds)))
 		return 0;
 
-    
-    /*
+	/*
 	 *	Create a reply, and initialize it.
 	 */
 	reply = eaptnc_alloc();
@@ -188,21 +194,14 @@ static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
     
 	reply->id = handler->eap_ds->request->id;
 	reply->length = 0;
-    TNC_UInt32 tnccsMsgLength = 0;
     if(packet->data_length==0){
         tnccsMsgLength = packet->length-TNC_PACKET_LENGTH_WITHOUT_DATA_LENGTH;
     }else{
         tnccsMsgLength = packet->length-TNC_PACKET_LENGTH;
     }
-    TNC_BufferReference outMessage;
-    TNC_UInt32 outMessageLength = 2;
-    int isLengthIncluded = TNC_LENGTH_INCLUDED(packet->flags_ver);
-    TNC_UInt32 overallLength = packet->data_length;
-    int moreFragments = TNC_MORE_FRAGMENTS(packet->flags_ver);
-    int outIsLengthIncluded=0;
-    int outMoreFragments=0;
-    TNC_UInt32 outOverallLength=0;
-    int isAcknowledgement = 0;
+    isLengthIncluded = TNC_LENGTH_INCLUDED(packet->flags_ver);
+    moreFragments = TNC_MORE_FRAGMENTS(packet->flags_ver);
+    overallLength = packet->data_length;
     if(isLengthIncluded == 0 
         && moreFragments == 0 
         && overallLength == 0 
@@ -219,19 +218,19 @@ static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
     }
     DEBUG2("\n");
    */
-    TNC_ConnectionState state = exchangeTNCCSMessages(inst->tnc_path,
-                                                        connId,
-                                                        isAcknowledgement,
-                                                        packet->data, 
-                                                        tnccsMsgLength, 
-                                                        isLengthIncluded, 
-                                                        moreFragments, 
-                                                        overallLength, 
-                                                        &outMessage, 
-                                                        &outMessageLength,
-                                                        &outIsLengthIncluded,
-                                                        &outMoreFragments,
-                                                        &outOverallLength);
+    state = exchangeTNCCSMessages(inst->tnc_path,
+                                  connId,
+                                  isAcknowledgement,
+                                  packet->data, 
+                                  tnccsMsgLength, 
+                                  isLengthIncluded, 
+                                  moreFragments, 
+                                  overallLength, 
+                                  &outMessage, 
+                                  &outMessageLength,
+                                  &outIsLengthIncluded,
+                                  &outMoreFragments,
+                                  &outOverallLength);
     DEBUG("GOT State %08x from TNCS", (unsigned int) state);
     if(state == TNC_CONNECTION_EAP_ACKNOWLEDGEMENT){ //send back acknoledgement
         reply->code = PW_TNC_REQUEST;
