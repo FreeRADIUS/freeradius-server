@@ -1,6 +1,6 @@
-freeradius (2.0.0-pre2) unstable; urgency=low
+freeradius (2.0.0-0) unstable; urgency=low
 
-  * New upstream pre-release, in preparation for the final 2.0.0 release.
+  * New upstream release.
   * Upgrade debhelper compatibility to version 5. This breaks the build
     on Sarge, which is no longer in stable.
   * Rewrite large parts of debian/rules based on the changes from the
@@ -10,8 +10,9 @@ freeradius (2.0.0-pre2) unstable; urgency=low
     start-stop-daemon.
   * Create default certificates in postinst to enable the EAP modules (tls,
     ttls and peap) when the server starts for the first time.
+  * Update Standards-Version to 3.7.3.
 
- -- Nicolas Baradakis <nbk@sitadelle.com>  Mon, 20 Aug 2007 18:40:13 +0200
+ -- Nicolas Baradakis <nbk@sitadelle.com>  Sat,  4 Jan 2008 20:15:42 +0100
 
 freeradius (1.1.7-0) unstable; urgency=low
 
