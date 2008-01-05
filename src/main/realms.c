@@ -340,17 +340,10 @@ static int home_server_add(CONF_SECTION *cs, int type)
 		return 0;
 	}
 
-	if (!hs_type) {
-		cf_log_err(cf_sectiontoitem(cs),
-			   "Fatal error!  Home server %s has no type defined!",
-			   name2);
-		free(home);
-		free(hs_type);
-		hs_type = NULL;
-		free(hs_check);
-		hs_check = NULL;
-		return 0;
-	}
+	/*
+	 *	Use a reasonable default.
+	 */
+	if (!hs_type) hs_type = strdup("auth+acct");
 
 	if (strcasecmp(hs_type, "auth") == 0) {
 		home->type = HOME_TYPE_AUTH;
@@ -1118,6 +1111,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	Prefer new configuration to old one.
 	 */
 	cp = cf_pair_find(cs, "pool");
+	if (!cp) cp = cf_pair_find(cs, "home_server_pool");
 	if (cp) auth_pool_name = cf_pair_value(cp);
 	if (cp && auth_pool_name) {
 		acct_pool_name = auth_pool_name;
