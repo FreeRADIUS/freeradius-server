@@ -1,52 +1,78 @@
+AC_PREREQ([2.59])
 AC_INIT(sql_mysql.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_sql_mysql])
 AC_CONFIG_HEADER(config.h)
 
-SMART_LIBS=""
-SMART_CLFAGS=""
-mysql_lib_dir=""
-mysql_include_dir=""
-
+fail=
+SMART_LIBS=
+SMART_CLFAGS=
 if test x$with_[]modname != xno; then
-
-    targetname=modname # we change this if a test fails
 
     dnl ############################################################
     dnl # Check for command line options
     dnl ############################################################
 
-    dnl extra argument: --with-mysql-dir=DIR
-    AC_ARG_WITH(mysql-dir,
-    [  --with-mysql-dir=DIR          base directory where MySQL is installed ],
-    [ mysql_lib_dir="$withval/lib/mysql"
-      mysql_include_dir="$withval/include" ]
-    )
+    dnl extra argument: --with-mysql-include-dir=DIR
+    mysql_include_dir=
+    AC_ARG_WITH(mysql-include-dir,
+	[AS_HELP_STRING([--with-mysql-include-dir=DIR],
+		[Directory where the mysql includes may be found])],
+	[case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need mysql-include-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		mysql_include_dir="$withval"
+		;;
+	esac])
 
     dnl extra argument: --with-mysql-lib-dir=DIR
+    mysql_lib_dir=
     AC_ARG_WITH(mysql-lib-dir,
-    [  --with-mysql-lib-dir=DIR      directory where the MySQL libraries may be found ],
-    [ mysql_lib_dir="$withval" ]
-    )
+	[AS_HELP_STRING([--with-mysql-lib-dir=DIR],
+		[Directory where the mysql libraries may be found])],
+	[case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need mysql-lib-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		mysql_lib_dir="$withval"
+		;;
+	esac])
 
-    dnl extra argument: --with-mysql-include-dir=DIR
-    AC_ARG_WITH(mysql-include-dir,
-    [  --with-mysql-include-dir=DIR  directory where the MySQL includes may be found ],
-    [ mysql_include_dir="$withval" ]
-    )
+    dnl extra argument: --with-mysql-dir=DIR
+    AC_ARG_WITH(mysql-dir,
+	[AS_HELP_STRING([--with-mysql-dir=DIR],
+		[Base directory where mysql is installed])],
+	[case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need mysql-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		mysql_lib_dir="$withval/lib"
+		mysql_include_dir="$withval/include"
+		;;
+	esac])
 
     dnl extra argument: --with-threads
     mysql_with_threads=yes
     AC_ARG_WITH(threads,
-    [  --with-threads                use threads, if available. (default=yes) ],
-    [ case "$withval" in
-	no)
-	    mysql_with_threads=no
-	    ;;
-	*)
-	    ;;
-	esac ]
-    )
+	[AS_HELP_STRING([--with-threads],
+		[use threads, if available. (default=yes)])],
+	[case "$withval" in
+	    no)
+		mysql_with_threads=no
+		;;
+	    *)
+		;;
+	esac])
 
     dnl ############################################################
     dnl # Check for programs
@@ -95,8 +121,8 @@ if test x$with_[]modname != xno; then
 	    if test "x$ac_cv_lib_mysqlclient_r_mysql_init" != "xyes"
 		then
 		dnl nothing worked :(
-		AC_MSG_WARN([mysql libraries not found. Use --with-mysql-lib-dir=<path>.])
-		targetname="" # disable module
+		AC_MSG_WARN([MySQL libraries not found. Use --with-mysql-lib-dir=<path>.])
+		fail="$fail libmysqlclient_r"
 	    fi
 	fi
     else
@@ -123,8 +149,8 @@ if test x$with_[]modname != xno; then
 	    if test "x$ac_cv_lib_mysqlclient_mysql_init" != "xyes"
 		then
 		dnl nothing worked :(
-		AC_MSG_WARN([mysql libraries not found. Use --with-mysql-lib-dir=<path>.])
-		targetname="" # disable module
+		AC_MSG_WARN([MySQL libraries not found. Use --with-mysql-lib-dir=<path>.])
+		fail="$fail libmysqlclient"
 	    fi
 	fi
     fi
@@ -154,22 +180,31 @@ if test x$with_[]modname != xno; then
 	smart_try_dir="$mysql_include_dir /usr/local/include \
 		/usr/local/mysql/include"
 	FR_SMART_CHECK_INCLUDE(mysql/mysql.h)
-	if test "$ac_cv_header_mysql_mysql_h" = "yes"; then
+	if test "x$ac_cv_header_mysql_mysql_h" = "xyes"; then
 	    AC_DEFINE(HAVE_MYSQL_MYSQL_H, [],
 		      [Define if you have <mysql/mysql.h>])
 	else
 	    dnl nothing worked :(
-	    AC_MSG_WARN([mysql headers not found. Use --with-mysql-include-dir=<path>.])
-	    targetname="" # disable module
+	    AC_MSG_WARN([MySQL headers not found. Use --with-mysql-include-dir=<path>.])
+	    fail="$fail mysql.h"
 	fi
     fi
 
-    if test "x$targetname" = "x"; then
-	AC_MSG_WARN([sql submodule 'mysql' disabled])
-    fi
+    targetname=modname
 else
     targetname=
     echo \*\*\* module modname is disabled.
+fi
+
+dnl Don't change this section.
+if test "x$fail" != x; then
+	if test "x${enable_strict_dependencies}" = xyes; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires:$fail.]);
+		targetname=
+	fi
 fi
 
 sql_mysql_ldflags="$SMART_LIBS"
