@@ -173,7 +173,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 	int i;
 	unsigned j;
 	const char *cli = "0";
-	char *pool_name = NULL;
+	const char *pool_name = NULL;
 
 	/*
 	 *	Set up a storage area for instance data
@@ -320,7 +320,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	int num = 0;
 	VALUE_PAIR *vp;
 	char str[32];
-	char key_str[17];
+	uint8_t key_str[17];
 	char hex_str[35];
 	char xlat_str[MAX_STRING_LEN];
 	FR_MD5_CTX md5_context;
@@ -448,7 +448,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	VALUE_PAIR *vp;
 	char *cli = NULL;
 	char str[32];
-	char key_str[17];
+	uint8_t key_str[17];
 	char hex_str[35];
 	char xlat_str[MAX_STRING_LEN];
 	FR_MD5_CTX md5_context;

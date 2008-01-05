@@ -105,7 +105,7 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
     old_ippool_key old_key;
     ippool_info entry;
     struct in_addr ipaddr;
-    char key_str[17];
+    uint8_t key_str[17];
     char hex_str[35];
     int num=0;
 	int mppp=0;
@@ -389,7 +389,7 @@ void tonewformat(char *sessiondbname,char *newsessiondbname){
     datum key_datum,keynext_datum,data_datum,newkey_datum;
     old_ippool_key old_key;
     ippool_key key;
-    char key_str[17];
+    uint8_t key_str[17];
     char hex_str[35];
     int rcode;
 
@@ -445,7 +445,7 @@ void viewdb(char *sessiondbname,char *indexdbname,char *ipaddress, int old) {
     ippool_info info;
     struct in_addr ipaddr;
     int num;
-    char key_str[17];
+    uint8_t key_str[17];
     char hex_str[35];
     char *ip;
     int mode=GDBM_READER;
