@@ -70,7 +70,6 @@ configure-stamp: patch-stamp
 		--with-logdir=/var/log/$(package) \
 		--with-system-libtool --disable-ltdl-install \
 		--with-large-files --with-udpfromto --with-edir \
-		--enable-strict-dependencies \
 		--enable-developer \
 		--with-rlm-sql-postgresql-lib-dir=`pg_config --libdir` \
 		--with-rlm-sql-postgresql-include-dir=`pg_config --includedir`
