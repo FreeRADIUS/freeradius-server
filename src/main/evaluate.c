@@ -483,6 +483,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		
 		if (evaluate_next_condition) {
 			switch (token) {
+			case T_OP_GE:
 			case T_OP_GT:
 			case T_OP_LE:
 			case T_OP_LT:
@@ -499,6 +500,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 				break;
 				
 			default:
+				lint = rint = 0;  /* quiet the compiler */
 				break;
 			}
 
