@@ -115,7 +115,7 @@ static int radutmp_detach(void *instance)
 /*
  *	Zap all users on a NAS from the radutmp file.
  */
-static int radutmp_zap(rlm_radutmp_t *inst,
+static int radutmp_zap(UNUSED rlm_radutmp_t *inst,
 		       const char *filename,
 		       uint32_t nasaddr,
 		       time_t t)

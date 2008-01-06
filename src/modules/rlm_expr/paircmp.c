@@ -103,19 +103,16 @@ static int portcmp(void *instance,
  *	- if PW_STRIP_USER_NAME is not present in check_pairs,
  *	  add a PW_STRIPPED_USER_NAME to the request.
  */
-static int presufcmp(void *instance,
+static int presufcmp(UNUSED void *instance,
 		     REQUEST *req,
 		     VALUE_PAIR *request, VALUE_PAIR *check,
-	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+		     VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
 	VALUE_PAIR *vp;
-	char *name = (char *)request->vp_strvalue;
+	char *name = request->vp_strvalue;
 	char rest[MAX_STRING_LEN];
 	int len, namelen;
 	int ret = -1;
-
-	instance = instance;
-	reply_pairs = reply_pairs; /* shut the compiler up */
 
 #if 0 /* DEBUG */
 	printf("Comparing %s and %s, check->attr is %d\n",
@@ -125,9 +122,9 @@ static int presufcmp(void *instance,
 	len = strlen((char *)check->vp_strvalue);
 	switch (check->attribute) {
 		case PW_PREFIX:
-			ret = strncmp(name, (char *)check->vp_strvalue, len);
-			if (ret == 0 && rest)
-				strcpy(rest, name + len);
+			ret = strncmp(name, check->vp_strvalue, len);
+			if (ret == 0)
+				strlcpy(rest, name + len, sizeof(rest));
 			break;
 		case PW_SUFFIX:
 			namelen = strlen(name);
@@ -135,7 +132,7 @@ static int presufcmp(void *instance,
 				break;
 			ret = strcmp(name + namelen - len,
 					(char *)check->vp_strvalue);
-			if (ret == 0 && rest) {
+			if (ret == 0) {
 				strlcpy(rest, name, namelen - len + 1);
 			}
 			break;
