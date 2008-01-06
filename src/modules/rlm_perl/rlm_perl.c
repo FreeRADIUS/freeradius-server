@@ -614,14 +614,15 @@ static XS(XS_radiusd_radlog)
 /*
  * The xlat function
  */
-static int perl_xlat(void *instance, REQUEST *request, char *fmt, char * out,
-		     size_t freespace, RADIUS_ESCAPE_STRING func)
+static size_t perl_xlat(void *instance, REQUEST *request, char *fmt, char *out,
+			size_t freespace, RADIUS_ESCAPE_STRING func)
 {
 
 	PERL_INST	*inst= (PERL_INST *) instance;
 	PerlInterpreter *perl;
 	char		params[1024], *ptr, *tmp;
-	int		count, ret=0;
+	int		count;
+	size_t		ret = 0;
 	STRLEN		n_a;
 
 	/*
