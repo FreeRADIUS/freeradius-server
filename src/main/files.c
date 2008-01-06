@@ -64,7 +64,7 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	int mode = FIND_MODE_NAME;
 	char entry[256];
 	char buffer[8192];
-	const char *ptr, *s;
+	const char *ptr;
 	VALUE_PAIR *check_tmp;
 	VALUE_PAIR *reply_tmp;
 	PAIR_LIST *pl = NULL, *t;
@@ -166,7 +166,7 @@ parse_again:
 					pairlist_free(&pl);
 					radlog(L_ERR|L_CONS,
 					       "%s[%d]: Could not open included file %s: %s",
-					       file, lineno, s, strerror(errno));
+					       file, lineno, newfile, strerror(errno));
 					fclose(fp);
 					return -1;
 				}
