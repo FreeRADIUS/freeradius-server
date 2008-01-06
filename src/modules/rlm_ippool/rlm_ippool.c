@@ -170,8 +170,6 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 	ippool_key key;
 	datum key_datum;
 	datum data_datum;
-	int i;
-	unsigned j;
 	const char *cli = "0";
 	const char *pool_name = NULL;
 
@@ -241,6 +239,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 			 * active = 0
 			 */
 		int rcode;
+		uint32_t i, j;
 		uint32_t or_result;
 		char str[32];
 		char init_str[17];
