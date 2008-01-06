@@ -702,7 +702,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->prefix = 0;
 	client->longname = client->shortname = data->filename;
 	client->secret = client->shortname;
-	client->nastype = "none";
+	client->nastype = strdup("none");
 
 	return 0;
 }
