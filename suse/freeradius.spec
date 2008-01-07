@@ -189,6 +189,7 @@ autoreconf
 		--with-edir \
 		--with-experimental-modules \
 		--with-system-libtool \
+		--with-udpfromto \
 		--without-rlm_eap_ikev2 \
 		--without-rlm_opendirectory \
 %if %{?fedora_version:1}0
