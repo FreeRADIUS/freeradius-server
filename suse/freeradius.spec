@@ -186,7 +186,6 @@ autoreconf
 		--libdir=%{_libdir}/freeradius \
                 --disable-ltdl-install \
                 --enable-developer \
-		--enable-strict-dependencies \
 		--with-edir \
 		--with-experimental-modules \
 		--with-system-libtool \
