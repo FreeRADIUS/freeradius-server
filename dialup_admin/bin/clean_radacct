@@ -29,7 +29,7 @@ die "sql_command directive is not set in admin.conf\n" if ($sqlcmd eq '');
 die "sql command '$sqlcmd' not found or does not seem to be executable\n" if (! -x $sqlcmd);
 
 if ($sql_type eq 'mysql'){
-	$sql_password = ($sql_password eq '') ? '' : "-p$sql_password";
+	$sql_password = (!$sql_password) ? '' : "-p$sql_password";
 }
 $sql_password =~ s/(\W)/\\$1/g;
 

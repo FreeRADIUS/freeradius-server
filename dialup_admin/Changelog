@@ -106,6 +106,23 @@ Ver 1.72:
 * Fix a small error in lib/sql/find.php3. This closes bug #103
 * Add a small note in the FAQ about checking for sql/ldap driver availability in PHP if the user get's
   a blank white page back.
+
+Ver 1.70.3:
+* Test for unset variable, rather than empty variable in clean_radacct,
+  monthly_tot_stats and truncate_radacct.
+
+Ver 1.70.2:
+* Fix redirects in dialup-admin pages on servers with register_globals
+  turned off.
+* HTTP form fields will always fail is_int, use in_numeric instead.
+
+Ver 1.70.1:
+* Report correct data transfer statistics for users.
+* Lower-case sql column names to match creation scripts.
+* Fix creation of empty groups.
+* Put quote around usernames in HTML output.
+* Properly notice when we've got a blank password to SQL.
+
 Ver 1.70:
 * Add the /bin postgresql compatibility patch from Guy Fraser
 * Add ldap_userdn as a configuration directive. If set we use that for

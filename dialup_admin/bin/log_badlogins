@@ -95,7 +95,7 @@ close CLIENTS;
 $realm_del = '@' if ($realm_del eq '');
 $realm_for = 'suffix' if ($realm_for eq '');
 if ($sql_type eq 'mysql'){
-	$pass = ($sql_password ne '') ? "-p$sql_password" : '';
+	$pass = (!$sql_password) ? '' : "-p$sql_password";
 }
 else{
 	$pass = $sql_password;

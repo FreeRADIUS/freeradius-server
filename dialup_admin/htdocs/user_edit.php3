@@ -104,7 +104,7 @@ else if ($badusers == 1){
 
 ?>
    <form name="edituser" method=post>
-      <input type=hidden name=login value=<?php print $login ?>>
+      <input type=hidden name=login value="<?php print $login ?>">
       <input type=hidden name=user_type value=<?php print $user_type ?>>
       <input type=hidden name=change value="0">
       <input type=hidden name=add value="0">
