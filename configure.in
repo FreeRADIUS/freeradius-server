@@ -523,6 +523,7 @@ if test "x$WITH_OPENSSL" = xyes; then
   fi
   AC_CHECK_LIB(crypto, DH_new,
     [
+	LIBS="-lcrypto $LIBS"
 	AC_DEFINE(HAVE_LIBCRYPTO, 1,
 	    [Define to 1 if you have the `crypto' library (-lcrypto).])
 	AC_CHECK_LIB(ssl, SSL_new,
