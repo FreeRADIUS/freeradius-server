@@ -209,28 +209,85 @@ static const CONF_PARSER server_config[] = {
 
 
 #define MAX_ARGV (256)
+
+
+static size_t config_escape_func(char *out, size_t outlen, const char *in)
+{
+	size_t len = 0;
+	static const char *disallowed = "%{}\\'\"`";
+
+	while (in[0]) {
+		/*
+		 *	Non-printable characters get replaced with their
+		 *	mime-encoded equivalents.
+		 */
+		if ((in[0] < 32)) {
+			if (outlen <= 3) break;
+
+			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
+			in++;
+			out += 3;
+			outlen -= 3;
+			len += 3;
+			continue;
+
+		} else if (strchr(disallowed, *in) != NULL) {
+			if (outlen <= 2) break;
+
+			out[0] = '\\';
+			out[1] = *in;
+			in++;
+			out += 2;
+			outlen -= 2;
+			len += 2;
+			continue;
+		}
+
+		/*
+		 *	Only one byte left.
+		 */
+		if (outlen <= 1) {
+			break;
+		}
+
+		/*
+		 *	Allowed character.
+		 */
+		*out = *in;
+		out++;
+		in++;
+		outlen--;
+		len++;
+	}
+	*out = '\0';
+	return len;
+}
+
 /*
  *	Xlat for %{config:section.subsection.attribute}
  */
 static size_t xlat_config(void *instance, REQUEST *request,
-		       char *fmt, char *out,
-		       size_t outlen,
-		       RADIUS_ESCAPE_STRING func)
+			  char *fmt, char *out,
+			  size_t outlen,
+			  RADIUS_ESCAPE_STRING func)
 {
 	const char *value;
 	CONF_PAIR *cp;
 	CONF_ITEM *ci;
+	char buffer[1024];
 
 	request = request;	/* -Wunused */
 	instance = instance;	/* -Wunused */
 
 	/*
-	 *	FIXME: radius_xlat, with a function that escapes
-	 *	"%{[].\\\'"\`".
+	 *	Expand it safely.
 	 */
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, config_escape_func)) {
+		return 0;
+	}
 
 	ci = cf_reference_item(request->root->config,
-			       request->root->config, fmt);
+			       request->root->config, buffer);
 	if (!ci || !cf_item_is_pair(ci)) {
 		*out = '\0';
 		return 0;
