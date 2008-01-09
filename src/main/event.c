@@ -408,6 +408,7 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 	rad_assert(request->magic == REQUEST_MAGIC);
 	rad_assert(request->proxy != NULL);
 
+	if (!fr_event_now(el, &now)) gettimeofday(&now, NULL);
 	request->when = request->proxy_when;
 	request->when.tv_sec += home->response_window;
 
