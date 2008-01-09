@@ -679,6 +679,7 @@ static void check_for_zombie_home_server(REQUEST *request)
 	when = home->zombie_period_start;
 	when.tv_sec += home->zombie_period;
 
+	fr_event_now(el, &now);
 	if (timercmp(&now, &when, <)) {
 		return;
 	}
