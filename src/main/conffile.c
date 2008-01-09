@@ -913,8 +913,12 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 
 		/*
 		 *	And now we "stat" the file.
+		 *
+		 *	FIXME: This appears to leak memory on exit,
+		 *	and we don't use this information.  So it's
+		 *	commented out for now.
 		 */
-		if (*q) {
+		if (0 && *q) {
 			struct stat buf;
 
 			if (stat(*q, &buf) == 0) {
@@ -2115,7 +2119,7 @@ int cf_data_add(CONF_SECTION *cs, const char *name,
 	return cf_data_add_internal(cs, name, data, data_free, 0);
 }
 
-
+#if 0
 /*
  *	Copy CONF_DATA from src to dst
  */
@@ -2315,6 +2319,7 @@ int cf_section_migrate(CONF_SECTION *dst, CONF_SECTION *src)
 
 	return 1;		/* rcode means anything? */
 }
+#endif
 
 int cf_section_template(CONF_SECTION *cs, CONF_SECTION *template)
 {
