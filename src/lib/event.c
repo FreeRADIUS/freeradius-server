@@ -133,6 +133,7 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **ev_p)
 
 	ev = *ev_p;
 	if (ev->ev_p) *(ev->ev_p) = NULL;
+	*ev_p = NULL;
 
 	rbtree_delete(el->times, ev->node);
 
