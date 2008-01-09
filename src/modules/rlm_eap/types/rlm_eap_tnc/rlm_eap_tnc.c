@@ -59,7 +59,18 @@ static int tnc_initiate(void *type_data, EAP_HANDLER *handler)
 	TNC_PACKET *reply;
 
 	if (!handler->request || !handler->request->parent) {
-		DEBUG2("rlm_eap_tnc: Must be run inside of a TLS method");
+		DEBUG("rlm_eap_tnc: EAP-TNC can only be run inside of a TLS-based method.");
+		return 0;
+	}
+
+	/*
+	 *	FIXME: Update this when the TTLS and PEAP methods can
+	 *	run EAP-TLC *after* the user has been authenticated.
+	 *	This likely means moving the phase2 handlers to a
+	 *	common code base.
+	 */
+	if (1) {
+		DEBUG("rlm-eap_tnc: EAP-TNC can only be run after the user has been authenticated.");
 		return 0;
 	}
 
