@@ -180,9 +180,7 @@ static int sqlippool_expand(char * out, int outlen, const char * fmt, void * ins
 	char *q;
 	const char *p;
 	char tmp[40]; /* For temporary storing of integers */
-	int openbraces;
 
-	openbraces = 0;
 	q = out;
 	for (p = fmt; *p ; p++) {
 		int freespace;
@@ -195,15 +193,6 @@ static int sqlippool_expand(char * out, int outlen, const char * fmt, void * ins
 
 		c = *p;
 		if (c != '%' && c != '$' && c != '\\') {
-			/*
-			 * We check if we're inside an open brace.  If we are
-			 * then we assume this brace is NOT literal, but is
-			 * a closing brace and apply it 
-			 */
-			if((c == '}') && openbraces) {
-				openbraces--;
-				continue;
-			}
 			*q++ = *p;
 			continue;
 		}
