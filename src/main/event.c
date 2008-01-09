@@ -2621,6 +2621,8 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		}
 	}
 
+	mainconfig.listen = head;
+
 	return 1;
 }
 
