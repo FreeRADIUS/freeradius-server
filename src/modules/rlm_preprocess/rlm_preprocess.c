@@ -326,7 +326,9 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 		/*
 		 *	Use "paircompare", which is a little more general...
 		 */
-		if (paircompare(request, request_pairs, i->check, NULL) == 0) {
+		if (((strcmp(i->name, "DEFAULT") == 0) ||
+		     (strcmp(i->name, name) == 0)) &&
+		    (paircompare(request, request_pairs, i->check, NULL) == 0)) {
 			DEBUG2("  hints: Matched %s at %d",
 			       i->name, i->lineno);
 			break;
