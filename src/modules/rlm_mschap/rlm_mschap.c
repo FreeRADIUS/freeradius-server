@@ -629,6 +629,7 @@ static int mschap_detach(void *instance){
 #define inst ((rlm_mschap_t *)instance)
 	if (inst->xlat_name) {
 		xlat_unregister(inst->xlat_name, mschap_xlat);
+		free(inst->xlat_name);
 	}
 	free(instance);
 	return 0;
@@ -671,6 +672,7 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+	inst->xlat_name = strdup(inst->xlat_name);
 	xlat_register(inst->xlat_name, mschap_xlat, inst);
 
 	/*
