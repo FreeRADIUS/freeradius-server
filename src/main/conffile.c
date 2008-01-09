@@ -1762,8 +1762,18 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 
 	vp->operator = pair->operator;
 
-	if ((pair->value_type == T_BARE_WORD) ||
-	    (pair->value_type == T_SINGLE_QUOTED_STRING)) {
+	if (pair->value_type == T_BARE_WORD) {
+		if ((vp->type == PW_TYPE_STRING) && 
+		    (pair->value[0] == '0') && (pair->value[1] == 'x')) {
+			vp->type = PW_TYPE_OCTETS;
+		}
+		if (!pairparsevalue(vp, pair->value)) {
+			pairfree(&vp);
+			return NULL;
+		}
+		vp->flags.do_xlat = 0;
+	  
+	} else if (pair->value_type == T_SINGLE_QUOTED_STRING) {
 		if (!pairparsevalue(vp, pair->value)) {
 			pairfree(&vp);
 			return NULL;
