@@ -192,6 +192,8 @@ void realms_free(void)
 
 	rbtree_free(realms_byname);
 	realms_byname = NULL;
+
+	free(realm_config);
 }
 
 
