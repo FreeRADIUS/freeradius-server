@@ -110,6 +110,7 @@ int rad_unlockfd(int fd, int lock_len)
 #if defined(F_LOCK) && !defined(BSD)
 	return lockf(fd, F_ULOCK, lock_len);
 #elif defined(LOCK_EX)
+	lock_len = lock_len;	/* -Wunused */
 	return flock(fd, LOCK_UN);
 #else
 	struct flock fl;
