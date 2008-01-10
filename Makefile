@@ -21,6 +21,10 @@ clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	@rm -f *~
 
+.PHONY: tests
+tests:
+	@$(MAKE) -C src/tests tests
+
 #
 # The $(R) is a magic variable not defined anywhere in this source.
 # It's purpose is to allow an admin to create an installation 'tar'
