@@ -333,7 +333,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 		radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list %s",conf->ca_file );
 		return NULL;
 	}
-	SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
+	if (conf->ca_file || !*conf->ca_file) SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
 	if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
 		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
 		radlog(L_ERR, "rlm_eap_tls: Error reading private key file %s", conf->private_key_file);
