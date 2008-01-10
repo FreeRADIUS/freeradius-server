@@ -108,6 +108,7 @@ endif
 
 build-module: $(TARGET).la $(RLM_UTILS)
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=all common
+	@mkdir -p $(top_builddir)/src/modules/lib/.libs
 	@cp .libs/* $(top_builddir)/src/modules/lib/.libs
 	@cp $< $(top_builddir)/src/modules/lib
 
