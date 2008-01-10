@@ -137,7 +137,7 @@ freeradius-server-$(RADIUSD_VERSION).tar.gz.sig: freeradius-server-$(RADIUSD_VER
 	gpg --default-key aland@freeradius.org -b $<
 
 freeradius-server-$(RADIUSD_VERSION).tar.bz2: freeradius-server-$(RADIUSD_VERSION)
-	@tar --exclude=CVS -zcf $@ $<
+	@tar --exclude=CVS -jcf $@ $<
 
 freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig: freeradius-server-$(RADIUSD_VERSION).tar.bz2
 	gpg --default-key aland@freeradius.org -b $<
@@ -149,7 +149,6 @@ dist-sign: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(R
 
 publish: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2 freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig
 	scp $^ freeradius.org@freeradius.org:public_ftp
-	@echo "Remember to go update the links on freeradius.org!"
 
 #
 #  Note that we do NOT do the tagging here!  We just print out what
