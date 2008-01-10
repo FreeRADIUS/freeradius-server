@@ -117,3 +117,43 @@ check-includes:
 
 TAGS:
 	etags `find src -type f -name '*.[ch]' -print`
+
+######################################################################
+#
+#  Make a release.
+#
+#  Note that "Make.inc" has to be updated with the release number
+#  BEFORE running this command!
+#
+######################################################################
+freeradius-server-$(RADIUSD_VERSION): CVS
+	@CVSROOT=`cat CVS/Root`; \
+	cvs -d $$CVSROOT checkout -P -d freeradius-server-$(RADIUSD_VERSION) radiusd
+
+freeradius-server-$(RADIUSD_VERSION).tar.gz: freeradius-server-$(RADIUSD_VERSION)
+	@tar --exclude=CVS -zcf  $@ $<
+
+freeradius-server-$(RADIUSD_VERSION).tar.gz.sig: freeradius-server-$(RADIUSD_VERSION).tar.gz
+	gpg --default-key aland@freeradius.org -b $<
+
+freeradius-server-$(RADIUSD_VERSION).tar.bz2: freeradius-server-$(RADIUSD_VERSION)
+	@tar --exclude=CVS -zcf $@ $<
+
+freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig: freeradius-server-$(RADIUSD_VERSION).tar.bz2
+	gpg --default-key aland@freeradius.org -b $<
+
+# high-level targets
+dist: freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.bz2
+
+dist-sign: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig
+
+publish: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2 freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig
+	scp $^ freeradius.org@freeradius.org:public_ftp
+	@echo "Remember to go update the links on freeradius.org!"
+
+#
+#  Note that we do NOT do the tagging here!  We just print out what
+#  to do!
+#
+dist-tag: freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.bz2
+	@echo "cd freeradius-server-$(RADIUSD_VERSION) && cvs tag release_`echo $(RADIUSD_VERSION) | tr .- __` && cd .."
