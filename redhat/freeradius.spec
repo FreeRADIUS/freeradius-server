@@ -1,7 +1,7 @@
 Summary: High-performance and highly configurable RADIUS server
 URL: http://www.freeradius.org/
 Name: freeradius
-Version: 2.0.0
+Version: 2.0.1-pre
 Release: 0
 License: GPL
 Group: Networking/Daemons
