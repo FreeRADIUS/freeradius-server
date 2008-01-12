@@ -201,9 +201,26 @@ static int add_unique_id(void *instance, REQUEST *request)
 
 	/* loop over items to create unique identifiers */
 	while (cur) {
+		VALUE_PAIR hack;
+
 		vp = pairfind(request->packet->vps, cur->dattr->attr);
 		if (!vp) {
-			DEBUG2("rlm_acct_unique: WARNING: Attribute %s was not found in request, unique ID MAY be inconsistent", cur->dattr->name);
+			/*
+			 *	This was changed in 2.x, but it's still
+			 *	useful.
+			 */
+			if ((cur->dattr->attr == PW_CLIENT_IP_ADDRESS) &&
+			    (request->packet->src_ipaddr.af == AF_INET)) {
+				memset(&hack, 0, sizeof(hack));
+				hack.name = cur->dattr->name;
+				hack.attribute = cur->dattr->attr;
+				hack.type = cur->dattr->type;
+				hack.length = 4;
+				hack.lvalue = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+				vp = &hack;
+			} else {
+				DEBUG2("rlm_acct_unique: WARNING: Attribute %s was not found in request, unique ID MAY be inconsistent", cur->dattr->name);
+			}
 		}
 		length = vp_prints(p, left, vp);
 		left -= length + 1;	/* account for ',' in between elements */
