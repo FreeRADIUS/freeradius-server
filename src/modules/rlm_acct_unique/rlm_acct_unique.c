@@ -215,6 +215,7 @@ static int add_unique_id(void *instance, REQUEST *request)
 				hack.name = cur->dattr->name;
 				hack.attribute = cur->dattr->attr;
 				hack.type = cur->dattr->type;
+				hack.operator = T_OP_EQ;
 				hack.length = 4;
 				hack.lvalue = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 				vp = &hack;
