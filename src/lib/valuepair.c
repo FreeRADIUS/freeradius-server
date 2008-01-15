@@ -1174,6 +1174,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	const char	*p = attribute;
 	char		*q;
 	VALUE_PAIR	*vp;
+	DICT_ATTR	*da;
 
 	/*
 	 *	Unknown attributes MUST be of type 'octets'
@@ -1181,6 +1182,12 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	if (value && (strncasecmp(value, "0x", 2) != 0)) {
 		librad_log("Invalid octet string \"%s\" for attribute name \"%s\"", value, attribute);
 		return NULL;
+	}
+
+	da = dict_attrbyname(attribute);
+	if (da) {
+		attr = da->attr;
+		goto raw;
 	}
 
 	attr = vendor = 0;
@@ -1284,6 +1291,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 
 	attr |= vendor << 16;
 
+ raw:
 	/*
 	 *	We've now parsed the attribute properly, Let's create
 	 *	it.  This next stop also looks the attribute up in the
@@ -1393,6 +1401,11 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	 *	another method to create the attribute.
 	 */
 	if ((da = dict_attrbyname(attribute)) == NULL) {
+		return pairmake_any(attribute, value, operator);
+	}
+
+	if ((value[0] == '0') && (value[1] == 'x') &&
+	    (da->type != PW_TYPE_OCTETS)) {
 		return pairmake_any(attribute, value, operator);
 	}
 
