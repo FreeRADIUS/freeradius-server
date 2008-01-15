@@ -478,6 +478,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 		
 	default:
 		DEBUG4(">>> NOT IMPLEMENTED %d", token);
+		result = FALSE;
 		break;
 	}
 	
