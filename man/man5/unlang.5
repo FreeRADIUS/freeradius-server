@@ -77,8 +77,8 @@ returned false, and if the specified condition evaluates to true.
 .br
 Evaluate the given string, and choose the first matching "case"
 statement inside of the current block.  If the string is surrounded by
-double quotes, it is expanded as described below in the STRINGS AND
-VARIABLES section.
+double quotes, may be expanded as described in the DATA TYPES section,
+below.
 
 No statement other than "case" can appear in a "switch" block.
 
@@ -241,10 +241,16 @@ non-zero number.  Note that the language is not typed, so the string
 avoided by comparings strings to an empty string, rather than by
 evaluating the string by itself.
 
-If the text is not quoted, then it is used as a test for one of the
-module return codes.  The condition evaluates to true if the most
-recent module return code matches the name given here.  Valid module
-return codes are given in MODULE RETURN CODES, below.
+If the 'foo' is not a quoted string, then it can be taken as a
+reference to a named attribute.  See "Referencing attribute lists",
+below, for examples of attribute references.  The condition evaluates
+to true if the named attribute exists.
+
+If 'foo' is not a quoted string, and is not an attribute reference,
+then it is interpreted as a reference to a module return code.  The
+condition evaluates to true if the most recent module return code
+matches the name given here.  Valid module return codes are given in
+MODULE RETURN CODES, below.
 .IP Negation
 .DS
 	(!foo)
@@ -279,18 +285,43 @@ comparison operators are ":=" and "=".
 .PP
 Conditions may be nested to any depth, subject only to line length
 limitations (8192 bytes).
-.SH STRINGS AND NUMBERS
-Strings and numbers can appear as stand-alone conditions, in which
-case they are evaluated as described in "Simple conditions", above.
-They can also appear (with some exceptions noted below) on the
-left-hand or on the right-hand side of a comparison.
+.SH DATA TYPES
+There are only a few data types supported in the language.  Reference
+to attributes, numbers, and strings.  Any data type can appear in
+stand-alone condition, in which case they are evaluated as described
+in "Simple conditions", above.  They can also appear (with some
+exceptions noted below) on the left-hand or on the right-hand side of
+a comparison.
 .IP Numbers
 Numbers are composed of decimal digits.  Floating point, hex, and
 octal numbers are not supported.  The maximum value for a number is
 machine-dependent, but is usually 32-bits, including one bit for a
 sign value.
 .PP
-"strings"
+word
+.RS
+Text that is not enclosed in quotes is interpreted differently
+depending on where it occurs in a condition.  On the left hand side of
+a condition, it is interpreted as a reference to an attribute.  On the
+right hand side, it is interpreted as a simple string, in the same
+manner as a single-quoted string.
+
+Using attribute references permits limited type-specific comparisons,
+as seen in the examples below.
+
+.DS
+	if (User-Name == "bob") {
+.br
+		...
+.br
+	if (Framed-IP-Address > 127.0.0.1) {
+.br
+		...
+.br
+	if (Service-Type == Login-User) { 
+.DE
+.RE
+.IP "strings"
 .RS
 Double-quoted strings are expanded by inserting the value of any
 variables (see VARIABLES, below) before being evaluated.  If
@@ -298,11 +329,12 @@ the result is a number it is evaluated in a numerical context.
 
 String length is limited by line-length, usually about 8000
 characters.  A double quote character (") can be used in a string via
-the normal escaping method.  ("like \\"this\\" !")
+the normal back-slash escaping method.  ("like \\"this\\" !")
 .RE
 .IP 'strings'
-Single-quoted strings are evaluated as-is.
-
+Single-quoted strings are evaluated as-is.  Their values are not
+expanded as with double-quoted strings above, and they are not
+interpreted as attribute references.
 .IP `strings`
 Back-quoted strings are evaluated by expanding the contents of the
 string, as described above for double-quoted strings.  The resulting
@@ -535,8 +567,8 @@ This operator is valid only for attributes of integer type.
 .br
 The format of the value is attribute-specific, and is usually a
 string, integer, IP address, etc.  Prior to the attribute being
-instantiated, the value is handled as described above in the STRINGS
-AND NUMBERS section.  This flexibility means that, for example, you
+instantiated, the value may be expanded as described above in the DATA
+TYPES section, above.  This flexibility means that, for example, you
 can assign an IP address value to an attribute by specifying the IP
 address directly, or by having the address returned from a database
 query, or by having the address returned as the output of a program

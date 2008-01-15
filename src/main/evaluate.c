@@ -205,6 +205,286 @@ static const FR_NAME_NUMBER modreturn_table[] = {
 	{ NULL, 0 }
 };
 
+
+static int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
+			
+{
+	const char *vp_name = name;
+	REQUEST *myrequest = request;
+	DICT_ATTR *da;
+	VALUE_PAIR *vps = NULL;
+
+	*vp_p = NULL;
+
+	/*
+	 *	Allow for tunneled sessions.
+	 */
+	if (memcmp(vp_name, "outer.", 6) == 0) {
+		if (!myrequest->parent) return TRUE;
+		vp_name += 6;
+		myrequest = myrequest->parent;
+	}
+
+	if (memcmp(vp_name, "request:", 8) == 0) {
+		vp_name += 8;
+		vps = myrequest->packet->vps;
+
+	} else if (memcmp(vp_name, "reply:", 6) == 0) {
+		vp_name += 6;
+		vps = myrequest->reply->vps;
+
+	} else if (memcmp(vp_name, "proxy-request:", 14) == 0) {
+		vp_name += 14;
+		if (request->proxy) vps = myrequest->proxy->vps;
+
+	} else if (memcmp(vp_name, "proxy-reply:", 12) == 0) {
+		vp_name += 12;
+		if (request->proxy_reply) vps = myrequest->proxy_reply->vps;
+
+	} else if (memcmp(vp_name, "config:", 7) == 0) {
+		vp_name += 7;
+		vps = myrequest->config_items;
+
+	} else if (memcmp(vp_name, "control:", 8) == 0) {
+		vp_name += 8;
+		vps = myrequest->config_items;
+
+	} else {
+		vps = myrequest->packet->vps;
+	}
+
+	da = dict_attrbyname(vp_name);
+	if (!da) return FALSE;	/* not a dictionary name */
+
+	/*
+	 *	May not may not be found, but it *is* a known name.
+	 */
+	*vp_p = pairfind(vps, da->attr);
+	return TRUE;
+}
+
+
+/*
+ *	*presult is "did comparison match or not"
+ */
+static int radius_do_cmp(REQUEST *request, int *presult,
+			 FR_TOKEN lt, const char *pleft, FR_TOKEN token,
+			 FR_TOKEN rt, const char *pright,
+			 int cflags, int modreturn)
+{
+	int result;
+	int lint, rint;
+	VALUE_PAIR *vp = NULL;
+	char buffer[1024];
+
+	rt = rt;		/* -Wunused */
+
+	if (lt == T_BARE_WORD) {
+		/*
+		 *	Maybe check the last return code.
+		 */
+		if (token == T_OP_CMP_TRUE) {
+			int isreturn;
+
+			/*
+			 *	Looks like a return code, treat is as such.
+			 */
+			isreturn = fr_str2int(modreturn_table, pleft, -1);
+			if (isreturn != -1) {
+				*presult = (modreturn == isreturn);
+				return TRUE;
+			}
+		}
+
+		/*
+		 *	Bare words on the left can be attribute names.
+		 */
+		if (radius_get_vp(request, pleft, &vp)) {
+			VALUE_PAIR myvp;
+
+			/*
+			 *	VP exists, and that's all we're looking for.
+			 */
+			if (token == T_OP_CMP_TRUE) {
+				*presult = (vp != NULL);
+				return TRUE;
+			}
+
+			if (!vp) {
+				DEBUG2("    (Attribute %s was not found)",
+				       pleft);
+				return FALSE;
+			}
+
+#ifdef HAVE_REGEX_H
+			/*
+			 * 	Regex comparisons treat everything as
+			 *	strings.
+			 */
+			if ((token == T_OP_REG_EQ) ||
+			    (token == T_OP_REG_NE)) {
+				vp_prints_value(buffer, sizeof(buffer), vp, 0);
+				pleft = buffer;
+				goto do_checks;
+			}
+#endif
+
+			memcpy(&myvp, vp, sizeof(myvp));
+			if (!pairparsevalue(&myvp, pright)) {
+				DEBUG2("Failed parsing \"%s\": %s",
+				       pright, librad_errstr);
+				return FALSE;
+			}
+
+			myvp.operator = token;
+			*presult = paircmp(&myvp, vp);
+			return TRUE;
+		} /* else it's not a attribute in the dictionary */
+	}
+
+	do_checks:
+	switch (token) {
+	case T_OP_GE:
+	case T_OP_GT:
+	case T_OP_LE:
+	case T_OP_LT:
+		if (!all_digits(pright)) {
+			DEBUG2("    (Right field is not a number at: %s)", pright);
+			return FALSE;
+		}
+		rint = atoi(pright);
+		if (!all_digits(pleft)) {
+			DEBUG2("    (Left field is not a number at: %s)", pleft);
+			return FALSE;
+		}
+		lint = atoi(pleft);
+		break;
+		
+	default:
+		lint = rint = 0;  /* quiet the compiler */
+		break;
+	}
+	
+	switch (token) {
+	case T_OP_CMP_TRUE:
+		/*
+		 *	Check for truth or falsehood.
+		 */
+		if (all_digits(pleft)) {
+			lint = atoi(pleft);
+			result = (lint != 0);
+			
+		} else {
+			result = (*pleft != '\0');
+		}
+		break;
+		
+
+	case T_OP_CMP_EQ:
+		result = (strcmp(pleft, pright) == 0);
+		break;
+		
+	case T_OP_NE:
+		result = (strcmp(pleft, pright) != 0);
+		break;
+		
+	case T_OP_GE:
+		result = (lint >= rint);
+		break;
+		
+	case T_OP_GT:
+		result = (lint > rint);
+		break;
+		
+	case T_OP_LE:
+		result = (lint <= rint);
+		break;
+		
+	case T_OP_LT:
+		result = (lint < rint);
+		break;
+
+#ifdef HAVE_REGEX_H
+	case T_OP_REG_EQ: {
+		int i, compare;
+		regex_t reg;
+		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
+		
+		/*
+		 *	Include substring matches.
+		 */
+		regcomp(&reg, pright, cflags);
+		compare = regexec(&reg, pleft,
+				  REQUEST_MAX_REGEX + 1,
+				  rxmatch, 0);
+		regfree(&reg);
+		
+		/*
+		 *	Add new %{0}, %{1}, etc.
+		 */
+		if (compare == 0) for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
+			char *r;
+
+			free(request_data_get(request, request,
+					      REQUEST_DATA_REGEX | i));
+			/*
+			 *	No %{i}, skip it.
+			 *	We MAY have %{2} without %{1}.
+			 */
+			if (rxmatch[i].rm_so == -1) continue;
+			
+			/*
+			 *	Copy substring into buffer.
+			 */
+			memcpy(buffer, pleft + rxmatch[i].rm_so,
+			       rxmatch[i].rm_eo - rxmatch[i].rm_so);
+			buffer[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
+			
+			/*
+			 *	Copy substring, and add it to
+			 *	the request.
+			 *
+			 *	Note that we don't check
+			 *	for out of memory, which is
+			 *	the only error we can get...
+			 */
+			r = strdup(buffer);
+			request_data_add(request, request,
+					 REQUEST_DATA_REGEX | i,
+					 r, free);
+		}
+		result = (compare == 0);
+	}
+		break;
+		
+	case T_OP_REG_NE: {
+		int compare;
+		regex_t reg;
+		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
+		
+		/*
+		 *	Include substring matches.
+		 */
+		regcomp(&reg, pright, cflags);
+		compare = regexec(&reg, pleft,
+				  REQUEST_MAX_REGEX + 1,
+				  rxmatch, 0);
+		regfree(&reg);
+		
+		result = (compare != 0);
+	}
+		break;
+#endif
+		
+	default:
+		DEBUG4(">>> NOT IMPLEMENTED %d", token);
+		break;
+	}
+	
+	*presult = result;
+	return TRUE;
+}
+
 int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			      const char **ptr, int evaluate_it, int *presult)
 {
@@ -218,7 +498,6 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 	char left[1024], right[1024], comp[4];
 	const char *pleft, *pright;
 	char  xleft[1024], xright[1024];
-	int lint, rint;
 #ifdef HAVE_REGEX_H
 	int cflags = 0;
 #endif
@@ -390,39 +669,12 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		    ((q[0] == '&') && (q[1] == '&')) ||
 		    ((q[0] == '|') && (q[1] == '|'))) {
 			/*
-			 *	Check for truth or falsehood.
+			 *	Simplify the code.
 			 */
-			if (all_digits(pleft)) {
-				lint = atoi(pleft);
-				result = (lint != 0);
-
-			} else if (lt == T_BARE_WORD) {
-				result = (modreturn == fr_str2int(modreturn_table, pleft, -1));
-			} else {
-				result = (*pleft != '\0');
-			}
-
-			if (invert) {
-				DEBUG4(">>> INVERTING result");
-				result = (result == FALSE);
-				invert = FALSE;
-			}
-
-			if (evaluate_next_condition) {
-				DEBUG2("%.*s Evaluating %s\"%s\" -> %s",
-				       depth, filler,
-				       invert ? "!" : "", pleft,
-				       (result != FALSE) ? "TRUE" : "FALSE");
-
-			} else if (request) {
-				DEBUG2("%.*s Skipping %s\"%s\"",
-				       depth, filler,
-				       invert ? "!" : "", pleft);
-			}
-
-			DEBUG4(">>> I%d %d:%s", invert,
-			       lt, left);
-			goto end_of_condition;
+			token = T_OP_CMP_TRUE;
+			rt = T_OP_INVALID;
+			pright = NULL;
+			goto do_cmp;
 		}
 
 		/*
@@ -481,130 +733,14 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		DEBUG4(">>> %d:%s %d %d:%s",
 		       lt, pleft, token, rt, pright);
 		
+	do_cmp:
 		if (evaluate_next_condition) {
-			switch (token) {
-			case T_OP_GE:
-			case T_OP_GT:
-			case T_OP_LE:
-			case T_OP_LT:
-				if (!all_digits(pleft)) {
-					radlog(L_ERR, "Left field is not a number at: %s", pleft);
-					return FALSE;
-				}
-				if (!all_digits(pright)) {
-					radlog(L_ERR, "Right field is not a number at: %s", pright);
-					return FALSE;
-				}
-				lint = atoi(pleft);
-				rint = atoi(pright);
-				break;
-				
-			default:
-				lint = rint = 0;  /* quiet the compiler */
-				break;
-			}
-
-			switch (token) {
-			case T_OP_CMP_EQ:
-				result = (strcmp(pleft, pright) == 0);
-				break;
-
-			case T_OP_NE:
-				result = (strcmp(pleft, pright) != 0);
-				break;
-
-			case T_OP_GE:
-				result = (lint >= rint);
-				break;
-
-			case T_OP_GT:
-				result = (lint > rint);
-				break;
-
-			case T_OP_LE:
-				result = (lint <= rint);
-				break;
-
-			case T_OP_LT:
-				result = (lint < rint);
-				break;
-
-#ifdef HAVE_REGEX_H
-			case T_OP_REG_EQ: {
-				int i, compare;
-				regex_t reg;
-				regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
-				
-				/*
-				 *	Include substring matches.
-				 */
-				regcomp(&reg, pright, cflags);
-				compare = regexec(&reg, pleft,
-						  REQUEST_MAX_REGEX + 1,
-						  rxmatch, 0);
-				regfree(&reg);
-				
-				/*
-				 *	Add new %{0}, %{1}, etc.
-				 */
-				if (compare == 0) for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
-					char *r;
-					char buffer[1024];
-					
-					free(request_data_get(request, request,
-							      REQUEST_DATA_REGEX | i));
-					/*
-					 *	No %{i}, skip it.
-					 *	We MAY have %{2} without %{1}.
-					 */
-					if (rxmatch[i].rm_so == -1) continue;
-
-					/*
-					 *	Copy substring into buffer.
-					 */
-					memcpy(buffer, pleft + rxmatch[i].rm_so,
-					       rxmatch[i].rm_eo - rxmatch[i].rm_so);
-					buffer[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
-					
-					/*
-					 *	Copy substring, and add it to
-					 *	the request.
-					 *
-					 *	Note that we don't check
-					 *	for out of memory, which is
-					 *	the only error we can get...
-					 */
-					r = strdup(buffer);
-					request_data_add(request, request,
-							 REQUEST_DATA_REGEX | i,
-							 r, free);
-				}
-				result = (compare == 0);
-			}
-				break;
-
-			case T_OP_REG_NE: {
-				int compare;
-				regex_t reg;
-				regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
-				
-				/*
-				 *	Include substring matches.
-				 */
-				regcomp(&reg, pright, cflags);
-				compare = regexec(&reg, pleft,
-						  REQUEST_MAX_REGEX + 1,
-						  rxmatch, 0);
-				regfree(&reg);
-				
-				result = (compare != 0);
-			}
-				break;
-#endif
-
-			default:
-				DEBUG4(">>> NOT IMPLEMENTED %d", token);
-				break;
+			/*
+			 *	More parse errors.
+			 */
+			if (!radius_do_cmp(request, &result, lt, pleft, token,
+					   rt, pright, cflags, modreturn)) {
+				return FALSE;
 			}
 
 			DEBUG2("%.*s Evaluating %s(%.*s) -> %s",
@@ -619,12 +755,11 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			 *	parsing it.
 			 */
 		} else if (request) {
-			DEBUG2("%.*s Skipping %s(\"%s\" %s \"%s\")",
+			DEBUG2("%.*s Skipping %s(%.*s)",
 			       depth, filler,
-			       invert ? "!" : "", pleft, comp, pright);
+			       invert ? "!" : "", p - start, start);
 		}
 
-		end_of_condition:
 		if (invert) {
 			DEBUG4(">>> INVERTING result");
 			result = (result == FALSE);
