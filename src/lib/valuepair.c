@@ -1864,7 +1864,6 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 	case PW_TYPE_OCTETS:
 	{
 		size_t length;
-		const uint8_t *p, *q;
 
 		if (one->length < two->length) {
 			length = one->length;
@@ -1872,11 +1871,10 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 			length = two->length;
 		}
 
-		p = two->vp_octets;
-		q = one->vp_octets;
-		while (length) {
-			compare = ((int) *p) - ((int) *q);
-			if (compare != 0) goto type_switch;
+		if (length) {
+			compare = memcmp(two->vp_octets, one->vp_octets,
+					 length);
+			if (compare != 0) break;
 		}
 
 		/*
@@ -1926,7 +1924,6 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 	/*
 	 *	Now do the operator comparison.
 	 */
- type_switch:
 	switch (one->operator) {
 	case T_OP_CMP_EQ:
 		return (compare == 0);
