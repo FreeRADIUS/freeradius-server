@@ -1,4 +1,4 @@
-.TH unlang 5 "09 Jan 2008" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "16 Jan 2008" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -236,21 +236,21 @@ conditions
 
 Evalutes to true if 'foo' is a non-empty string (single quotes, double
 quotes, or back-quoted).  Also evaluates to true if 'foo' is a
-non-zero number.  Note that the language is not typed, so the string
-"0000" can be interpreted as a numerical zero.  This issue can be
-avoided by comparings strings to an empty string, rather than by
+non-zero number.  Note that the language is poorly typed, so the
+string "0000" can be interpreted as a numerical zero.  This issue can
+be avoided by comparings strings to an empty string, rather than by
 evaluating the string by itself.
 
-If the 'foo' is not a quoted string, then it can be taken as a
+If the word 'foo' is not a quoted string, then it can be taken as a
 reference to a named attribute.  See "Referencing attribute lists",
 below, for examples of attribute references.  The condition evaluates
 to true if the named attribute exists.
 
-If 'foo' is not a quoted string, and is not an attribute reference,
-then it is interpreted as a reference to a module return code.  The
-condition evaluates to true if the most recent module return code
-matches the name given here.  Valid module return codes are given in
-MODULE RETURN CODES, below.
+Otherwise, if the word 'foo' is not a quoted string, and is not an
+attribute reference, then it is interpreted as a reference to a module
+return code.  The condition evaluates to true if the most recent
+module return code matches the name given here.  Valid module return
+codes are given in MODULE RETURN CODES, below.
 .IP Negation
 .DS
 	(!foo)
@@ -401,9 +401,9 @@ Attribute lists may be referenced via the following syntax
 
 Where <list> is one of "request", "reply", "proxy-request",
 "proxy-reply", "control", "outer.request", "outer.reply", or
-"outer.control", as described above in the documentation for the
-"update" section.  The "<list>:" prefix is optional, and if omitted,
-is assumed to refer to the "request" list.
+"outer.control", as described above for the "update" section.  The
+"<list>:" prefix is optional, and if omitted, is assumed to refer to
+the "request" list.
 
 When a variable is encountered, the given list is examined for an
 attribute of the given name.  If found, the variable reference in the
@@ -547,9 +547,9 @@ Enforce that the integer value of the attribute is less than or equal
 to the value given here.  If there is no attribute of the same name in
 the list, the attribute is added with the given value, is with "+=".
 If an attribute in the list exists, and has value less than given
-here, it's value is unchanged.  If an attribute in the exists, and has
-value greater than given here, it's value is replaced with the value
-given here.
+here, it's value is unchanged.  If an attribute in the list exists,
+and has a value greater than given here, then that value is replaced
+with the one given here.
 
 This operator is valid only for attributes of integer type.
 .IP >=
@@ -557,9 +557,9 @@ Enforce that the integer value of the attribute is greater than or
 equal to the value given here.  If there is no attribute of the same
 name in the list, the attribute is added with the given value, is with
 "+=".  If an attribute in the list exists, and has value greater than
-given here, it's value is unchanged.  If an attribute in the exists,
-and has value less than given here, it's value is replaced with the
-value given here.
+given here, it's value is unchanged.  If an attribute in the list
+exists, and has value less than given here, then that value is
+replaced with the one given here.
 
 This operator is valid only for attributes of integer type.
 .RE
@@ -588,7 +588,7 @@ modules, and the local configuration.
 Some use keywords that are defined in the default configuration file
 are:
 .IP fail
-Cause the request to be treated as if a database failure had occured.
+Cause the request to be treated as if a database failure had occurred.
 .IP noop
 Do nothing.  This also serves as an instruction to the configurable
 failover tracking that nothing was done in the current section.
