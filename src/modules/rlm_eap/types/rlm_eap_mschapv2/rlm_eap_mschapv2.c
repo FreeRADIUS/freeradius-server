@@ -602,9 +602,10 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	 *	Take the response from the mschap module, and
 	 *	return success or failure, depending on the result.
 	 */
+	response = NULL;
 	if (rcode == RLM_MODULE_OK) {
-		response = paircopy2(handler->request->reply->vps,
-				     PW_MSCHAP2_SUCCESS);
+		pairmove2(&response, &handler->request->reply->vps,
+			 PW_MSCHAP2_SUCCESS);
 		data->code = PW_EAP_MSCHAPV2_SUCCESS;
 	} else {
 		/*
@@ -613,8 +614,8 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		eap_ds->request->code = PW_EAP_FAILURE;
 		return 1;
 #if 0
-		response = paircopy2(handler->request->reply->vps,
-				     PW_MSCHAP_ERROR);
+		pairmove2(&handler->request->reply->vps, &response
+			  PW_MSCHAP_ERROR);
 		data->code = PW_EAP_MSCHAPV2_FAILURE;
 #endif
 	}
