@@ -63,14 +63,6 @@ authorize {
 	mschap
 
 	#
-	#  Pull crypt'd passwords from /etc/passwd or /etc/shadow,
-	#  using the system API's to get the password.  If you want
-	#  to read /etc/passwd or /etc/shadow directly, see the
-	#  passwd module, above.
-	#
-	unix
-
-	#
 	#  If you have a Cisco SIP server authenticating against
 	#  FreeRADIUS, uncomment the following line, and the 'digest'
 	#  line in the 'authenticate' section.
@@ -111,6 +103,14 @@ authorize {
 	eap {
 		ok = return
 	}
+
+	#
+	#  Pull crypt'd passwords from /etc/passwd or /etc/shadow,
+	#  using the system API's to get the password.  If you want
+	#  to read /etc/passwd or /etc/shadow directly, see the
+	#  passwd module in radiusd.conf.
+	#
+	unix
 
 	#
 	#  Read the 'users' file
