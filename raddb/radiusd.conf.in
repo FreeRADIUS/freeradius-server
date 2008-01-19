@@ -31,6 +31,7 @@ sbindir = @sbindir@
 logdir = @logdir@
 raddbdir = @raddbdir@
 radacctdir = @radacctdir@
+db_dir = $(raddbdir)
 
 #  Location of config and logfiles.
 confdir = ${raddbdir}
@@ -1419,7 +1420,7 @@ $INCLUDE eap.conf
 	#  'check-name' attribute.
 	#
 	counter daily {
-		filename = ${confdir}/db.daily
+		filename = ${db_dir}/db.daily
 		key = User-Name
 		count-attribute = Acct-Session-Time
 		reset = daily
@@ -1714,11 +1715,11 @@ $INCLUDE eap.conf
 
 		# session-db:
 		#	The main db file used to allocate addresses.
-		session-db = ${confdir}/db.ippool
+		session-db = ${db_dir}/db.ippool
 
 		# ip-index:
 		#	Helper db index file used in multilink
-		ip-index = ${confdir}/db.ipindex
+		ip-index = ${db_dir}/db.ipindex
 
 		# override:
 		#	If set, the Framed-IP-Address already in the
