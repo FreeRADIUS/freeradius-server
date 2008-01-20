@@ -909,7 +909,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 
 		case PW_TYPE_BYTE:
-			if ((value[0] == '0') && (value[1] == 'x')) {
+			if (value && (value[0] == '0') && (value[1] == 'x')) {
 				goto do_octets;
 			}
 
@@ -1404,7 +1404,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		return pairmake_any(attribute, value, operator);
 	}
 
-	if ((value[0] == '0') && (value[1] == 'x') &&
+	if (value && (value[0] == '0') && (value[1] == 'x') &&
 	    (da->type != PW_TYPE_OCTETS)) {
 		return pairmake_any(attribute, value, operator);
 	}
