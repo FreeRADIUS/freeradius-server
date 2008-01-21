@@ -31,24 +31,13 @@ sbindir = @sbindir@
 logdir = @logdir@
 raddbdir = @raddbdir@
 radacctdir = @radacctdir@
-db_dir = $(raddbdir)
 
 #  Location of config and logfiles.
 confdir = ${raddbdir}
 run_dir = ${localstatedir}/run/radiusd
 
-#
-#  Destination for log messages.  This can be one of:
-#
-#	files - log to ${log_file}, as defined above.
-#	syslog - to syslog (see also the log{} section, below)
-#	stdout - standard output
-#	stderr - standard error.
-#
-#  The command-line option "-X" over-rides this option, and forces
-#  logging to go to stdout.
-#
-log_destination = files
+# Should likely be ${localstatedir}/lib/radiusd
+db_dir = $(raddbdir)
 
 #
 # libdir: Where to find the rlm_* modules.
@@ -295,6 +284,19 @@ extended_expressions	= @REGEX_EXTENDED@
 #  will eventually be moved here.
 #
 log {
+	#
+	#  Destination for log messages.  This can be one of:
+	#
+	#	files - log to ${log_file}, as defined above.
+	#	syslog - to syslog (see also the log{} section, below)
+	#	stdout - standard output
+	#	stderr - standard error.
+	#
+	#  The command-line option "-X" over-rides this option, and forces
+	#  logging to go to stdout.
+	#
+	destination = files
+
 	#
 	#  Which syslog facility to use, if ${log_destination} == "syslog"
 	#
