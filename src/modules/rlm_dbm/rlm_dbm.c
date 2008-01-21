@@ -147,8 +147,9 @@ static int isfallthrough(VALUE_PAIR *vp) {
  *  parsed_users - list of parsed user names for loop removal
  */
 
-static int sm_parse_user(DBM *pdb, const char * username, VALUE_PAIR const* request, VALUE_PAIR **config,
-		VALUE_PAIR **reply, SM_USER_ENTRY **ulist)
+static int sm_parse_user(DBM *pdb, const char * username, REQUEST *req,
+			 VALUE_PAIR const* request, VALUE_PAIR **config,
+			 VALUE_PAIR **reply, SM_USER_ENTRY **ulist)
 {
    	datum 	k,d;
    	int		retcod, found = RLM_MODULE_NOTFOUND, res ;
@@ -205,7 +206,7 @@ static int sm_parse_user(DBM *pdb, const char * username, VALUE_PAIR const* requ
    	 				if ( parse_state == SMP_PATTERN ) { /* pattern line found */
    	 					DEBUG2("process pattern");
    	 					/* check pattern against request */
-						if ( paircompare(NULL, request, vp, reply ) == 0 ) {
+						if ( paircompare(req, request, vp, reply ) == 0 ) {
 							DEBUG2("rlm_dbm: Pattern matched, look for request");
    	 						pairmove(&tmp_config, &vp);
    	 						pairfree(&vp);
@@ -225,7 +226,7 @@ static int sm_parse_user(DBM *pdb, const char * username, VALUE_PAIR const* requ
    	 					 	DEBUG2("rlm_dbm: Proccess nested record: username %s",
    	 					 		(char *)join_attr->vp_strvalue);
    	 					 	/* res =  RLM_MODULE_NOTFOUND; */
-   	 						res =  sm_parse_user(pdb, (char *)join_attr->vp_strvalue, request, &tmp_config,
+   	 						res =  sm_parse_user(pdb, (char *)join_attr->vp_strvalue, req, request, &tmp_config,
    	 					 			&nu_reply, ulist);
 							DEBUG("rlm_dbm: recived: %d\n",res);
 							switch ( res ) {
@@ -329,10 +330,10 @@ static int rlm_dbm_authorize(void *instance, REQUEST *request)
 	/* open database */
 	if ( ( pdb = dbm_open(inst->userfile, O_RDONLY, 0600) ) != NULL ) {
 		DEBUG("rlm_dbm: Call parse_user:\n");
-		found = sm_parse_user(pdb, name, request_pairs, &check_tmp, &reply_tmp, &ulist);
+		found = sm_parse_user(pdb, name, request, request_pairs, &check_tmp, &reply_tmp, &ulist);
 	   	if ( found == RLM_MODULE_NOTFOUND ) {
 		  sm_user_list_wipe(&ulist);
-		  found = sm_parse_user(pdb, "DEFAULT", request_pairs, &check_tmp, &reply_tmp, &ulist);
+		  found = sm_parse_user(pdb, "DEFAULT", request, request_pairs, &check_tmp, &reply_tmp, &ulist);
 		}
 		dbm_close(pdb);
 	} else {
