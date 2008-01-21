@@ -142,6 +142,8 @@ void *request_data_get(REQUEST *request,
 {
 	request_data_t **last;
 
+	if (!request) return NULL;
+
 	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
 		if (((*last)->unique_ptr == unique_ptr) &&
 		    ((*last)->unique_int == unique_int)) {
