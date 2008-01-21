@@ -61,6 +61,7 @@ static gid_t server_gid;
 static const char *uid_name = NULL;
 static const char *gid_name = NULL;
 static int allow_core_dumps = 0;
+static const char *radlog_dest = NULL;
 
 /*
  *	These are not used anywhere else..
@@ -144,6 +145,7 @@ static const CONF_PARSER security_config[] = {
  *	Logging configuration for the server.
  */
 static const CONF_PARSER log_config[] = {
+	{ "destination",  PW_TYPE_STRING_PTR, 0, &radlog_dest, "files" },
 	{ "syslog_facility",  PW_TYPE_STRING_PTR, 0, &syslog_facility, Stringify(0) },
 	{ "stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
 
@@ -188,8 +190,12 @@ static const CONF_PARSER server_config[] = {
 	{ "debug_level", PW_TYPE_INTEGER, 0, &mainconfig.debug_level, "0"},
 
 	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_requests, "yes" },
-	{ "log", PW_TYPE_SUBSECTION, 0, NULL,  (const void *) log_config},
 	{ "security", PW_TYPE_SUBSECTION, 0, NULL, (const void *) security_config },
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+static const CONF_PARSER serverlog_config[] = {
+	{ "log", PW_TYPE_SUBSECTION, 0, NULL,  (const void *) log_config},
 
 	/*
 	 *	People with old configs will have these.  They are listed
@@ -204,6 +210,7 @@ static const CONF_PARSER server_config[] = {
 	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, NULL },
 	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names, NULL },
 	{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, NULL },
+	{ "log_destination", PW_TYPE_STRING_PTR, -1, &radlog_dest, "files" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -628,75 +635,32 @@ int read_mainconfig(int reload)
 		return -1;
 	}
 
-#if 0
-	/*
-	 *	Add templates to each kind of subsection.
-	 */
-	templates = cf_section_sub_find(cs, "templates");
-	if (templates) {
-		CONF_SECTION *ts, *mycs;
-
-		/*
-		 *	Loop over the templates, adding them to the
-		 *	sections in the main configuration file.
-		 */
-		for (ts = cf_subsection_find_next(templates, NULL, NULL);
-		     ts != NULL;
-		     ts = cf_subsection_find_next(templates, ts, NULL)) {
-			const char *name1 = cf_section_name1(ts);
-
-			/*
-			 *	Loop over sections in the main config
-			 *	file, adding templats.
-			 */
-			for (mycs = cf_subsection_find_next(cs, NULL, name1);
-			     mycs != NULL;
-			     mycs = cf_subsection_find_next(cs, mycs, name1)) {
-				const char *value;
-
-				value = cf_section_value_find(mycs, "template");
-				if (value) {
-					CONF_SECTION *tts;
-
-					tts = cf_section_sub_find_name2(templates,
-									name1,
-									value);
-					if (!tts) {
-						radlog(L_ERR, "%s[%d]: Section refers to non-existent template \"%s\"",
-						       cf_section_filename(mycs), cf_section_lineno(mycs), value);
-						return -1;
-					}
-					cf_section_template(mycs, tts);
-				} else {
-					cf_section_template(mycs, ts);
-				}
-			}
-		}
-	}
-#endif
-
 	/*
 	 *	Debug flag 1 MAY go to files.
 	 *	Debug flag 2 ALWAYS goes to stdout
 	 *
-	 *	Parse the log_destination before printing anything else.
+	 *	Parse the log{} section before printing anything else.
 	 *	All messages before this MUST be errors, which log.c
-	 *	will print to stderr, since log_file is NULL, too.
+	 *	will print to stderr.
 	 */
 	if (debug_flag < 2) {
-		int rcode;
-		char *radlog_dest = NULL;
+		if (cf_section_parse(cs, NULL, serverlog_config) < 0) {
+			fprintf(stderr, "radiusd: Error: Failed to parse log{} section.\n");
+			cf_section_free(&cs);
+			return -1;
+		}
 
-		rcode = cf_item_parse(cs, "log_destination",
-				      PW_TYPE_STRING_PTR, &radlog_dest,
-				      "files");
-		if (rcode < 0) return -1;
+		if (!radlog_dest) {
+			fprintf(stderr, "radiusd: Error: No log destination specified.\n");
+			cf_section_free(&cs);
+			return -1;
+		}
 
-		mainconfig.radlog_dest = fr_str2int(str2dest, radlog_dest, RADLOG_NUM_DEST);
+		mainconfig.radlog_dest = fr_str2int(str2dest, radlog_dest,
+						    RADLOG_NUM_DEST);
 		if (mainconfig.radlog_dest == RADLOG_NUM_DEST) {
 			fprintf(stderr, "radiusd: Error: Unknown log_destination %s\n",
 				radlog_dest);
-			free(radlog_dest);
 			cf_section_free(&cs);
 			return -1;
 		}
@@ -707,8 +671,7 @@ int read_mainconfig(int reload)
 			 *	before using it
 			 */
 			if (!syslog_facility) {
-				fprintf(stderr, "radiusd: Error: Unknown syslog chosen but no facility spedified\n");
-				free(radlog_dest);
+				fprintf(stderr, "radiusd: Error: Syslog chosen but no facility was specified\n");
 				cf_section_free(&cs);
 				return -1;
 			}
@@ -716,14 +679,10 @@ int read_mainconfig(int reload)
 			if (mainconfig.syslog_facility < 0) {
 				fprintf(stderr, "radiusd: Error: Unknown syslog_facility %s\n",
 					syslog_facility);
-				free(radlog_dest);
-				free(syslog_facility);
 				cf_section_free(&cs);
 				return -1;
 			}
 		}
-
-		free(radlog_dest);
 	} else {
 		mainconfig.radlog_dest = RADLOG_STDOUT;
 		mainconfig.radlog_fd = STDOUT_FILENO;
@@ -745,24 +704,6 @@ int read_mainconfig(int reload)
 	 *	radiusd.conf, the other configuration files exist.
 	 */
 	cf_section_parse(cs, NULL, server_config);
-
-#if 0
-	/*
-	 *	Merge the old with the new.
-	 */
-	if (reload) {
-		CONF_SECTION *newcs;
-
-		newcs = cf_section_sub_find(cs, "modules");
-		oldcs = cf_section_sub_find(mainconfig.config, "modules");
-		if (newcs && oldcs) {
-			if (!cf_section_migrate(newcs, oldcs)) {
-				radlog(L_ERR, "Fatal error migrating configuration data");
-				return -1;
-			}
-		}
-	}
-#endif
 
 	/*
 	 *	Free the old configuration items, and replace them
