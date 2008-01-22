@@ -27,9 +27,9 @@ AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
 
 dnl # The version of the software
-RADIUSD_MAJOR_VERSION=2
-RADIUSD_MINOR_VERSION=0.1
-RADIUSD_VERSION="${RADIUSD_MAJOR_VERSION}.${RADIUSD_MINOR_VERSION}"
+RADIUSD_VERSION=`cat VERSION`
+RADIUSD_MAJOR_VERSION=`cat VERSION | sed 's/\..*//'`
+RADIUSD_MINOR_VERSION=`cat VERSION | sed 's/^2\.//'`
 PACKAGE=freeradius
 
 dnl #############################################################
