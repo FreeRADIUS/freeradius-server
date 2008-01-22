@@ -1,4 +1,18 @@
-FreeRADIUS 2.0.0 ; $Date$, urgency=low
+FreeRADIUS 2.0.1 ; $Date$ , urgency=low
+	Feature improvements
+	* "unlang" has been expanded to do less run-time expansion,
+	  and to have better handling of typed data.  See "man unlang"
+	  for documentation and new examples.
+	
+	Bug fixes
+	* The 'acct_unique' module has been updated to understand
+	  the deprecated (but still used) Client-IP-Address attribute.
+	* The EAP-MSCHAPv2 module no longer leaks MS-CHAP2-Success in
+	  packets.
+	* Fixed crash in rlm_dbm.
+	* Fixed parsing of syslog configuration.
+
+FreeRADIUS 2.0.0 ; Date: 2007/11/24 08:33:09 , urgency=low
 	Feature improvements
 	* Debugging mode is much clearer and easier to read.
         * A new policy language makes many configurations trivial.

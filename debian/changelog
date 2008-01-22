@@ -1,7 +1,10 @@
-freeradius (2.0.1-pre-0) unstable; urgency=low
+freeradius (2.0.1-0) unstable; urgency=low
+  * Improve "unlang".  See "man unlang"
+  * update acct_module
+  * fix parsing of syslog logging
   * Minor fixes over 2.0.0
 
- -- Alan DeKok <aland@freeradius.org>  Fri, 11 Jan 2008 11:19:08 +0100
+ -- Alan DeKok <aland@freeradius.org>  Tue, 22 Jan 2008 14:25:44 +0100
 
 freeradius (2.0.0-0) unstable; urgency=low
 
