@@ -1,4 +1,9 @@
-FreeRADIUS 2.0.1 ; $Date$ , urgency=low
+FreeRADIUS 2.0.2-pre ; $Date$ , urgency=low
+	Feature improvements
+
+	Bug fixes
+	
+FreeRADIUS 2.0.1 ; Date: 2008/01/22 13:29:37  , urgency=low
 	Feature improvements
 	* "unlang" has been expanded to do less run-time expansion,
 	  and to have better handling of typed data.  See "man unlang"

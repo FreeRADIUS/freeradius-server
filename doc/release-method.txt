@@ -8,13 +8,10 @@ vi doc/ChangeLog
 cvs commit doc/ChangeLog
 
 
-	Change version numbers in the configure scripts:
+	Change version numbers in the VERSION file:
 
-vi configure.in
-cvs commit configure.in
-make reconfig
-cvs commit configure
-
+vi VERSION
+cvs commit VERSION
 
 	Make the files
 
@@ -29,7 +26,6 @@ make dist
 	Note that this does NOT actually do the tagging!  You will
 	have to run the command it prints out yourself.
 
-
 make dist-tag
 
 
@@ -39,6 +35,7 @@ make dist-tag
 make dist-sign
 
 
-	Push to the FTP site.
+	Push to the FTP site.  You will need write access to the FTP site
+	for this to work.
 
 make dist-publish
