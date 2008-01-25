@@ -6,12 +6,40 @@
 ##	$Id$
 ##
 
-#  	The location of other config files and
-#  	logfiles are declared in this file
+######################################################################
 #
-#  	Also general configuration for modules can be done
-#  	in this file, it is exported through the API to
-#  	modules that ask for it.
+#	Read "man radiusd" before editing this file.  See the section
+#	titled DEBUGGING.  It outlines a method where you can quickly
+#	obtain the configuration you want, without running into
+#	trouble.
+#
+#	Run the server in debugging mode, and READ the output.
+#
+#		$ radiusd -X
+#
+#	We cannot emphasize this point strongly enough.  The vast
+#	majority of problems can be solved by carefully reading the
+#	debugging output, which includes warnings about common issues,
+#	and suggestions for how they may be fixed.
+#
+#	There may be a lot of output, but look carefully for words like:
+#	"warning", "error", "reject", or "failure".  The messages there
+#	will usually be enough to guide you to a solution.
+#
+#	If you are going to ask a question on the mailing list, then
+#	explain what you are trying to do, and include the output from
+#	debugging mode (radiusd -X).  Failure to do so means that all
+#	of the responses to your question will be people telling you
+#	to "post the output of radiusd -X".
+
+######################################################################
+#
+#  	The location of other config files and logfiles are declared
+#  	in this file.
+#
+#  	Also general configuration for modules can be done in this
+#  	file, it is exported through the API to modules that ask for
+#  	it.
 #
 #	See "man radiusd.conf" for documentation on the format of this
 #	file.  Note that the individual configuration items are NOT
@@ -287,8 +315,8 @@ log {
 	#
 	#  Destination for log messages.  This can be one of:
 	#
-	#	files - log to ${log_file}, as defined above.
-	#	syslog - to syslog (see also the log{} section, below)
+	#	files - log to "file", as defined below.
+	#	syslog - to syslog (see also the "syslog_facility", below.
 	#	stdout - standard output
 	#	stderr - standard error.
 	#
@@ -298,21 +326,21 @@ log {
 	destination = files
 
 	#
-	#  Which syslog facility to use, if ${log_destination} == "syslog"
-	#
-	#  The exact values permitted here are OS-dependent.  You probably
-	#  don't want to change this.
-	#
-	syslog_facility = daemon
-
-	#
 	#  The logging messages for the server are appended to the
-	#  tail of this file.
+	#  tail of this file if ${destination} == "files"
 	#
 	#  If the server is running in debugging mode, this file is
 	#  NOT used.
 	#
 	file = ${logdir}/radius.log
+
+	#
+	#  Which syslog facility to use, if ${destination} == "syslog"
+	#
+	#  The exact values permitted here are OS-dependent.  You probably
+	#  don't want to change this.
+	#
+	syslog_facility = daemon
 
 	#  Log the full User-Name attribute, as it was found in the request.
 	#
