@@ -316,7 +316,7 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr)
 			name_len = FR_VP_NAME_PAD;
 		}
 		
-		if ((n = malloc(sizeof(*n))) == NULL) {
+		if ((n = malloc(sizeof(*n) + name_len)) == NULL) {
 			librad_log("out of memory");
 			return first;
 		}
