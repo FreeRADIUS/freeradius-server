@@ -2381,8 +2381,12 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		 *	to 'octets'.  If the type in the dictionary
 		 *	is different, then the dictionary type will
 		 *	over-ride this one.
+		 *
+		 *	If the attribute has no data, then discard it.
 		 */
 	create_pair:
+		if (!attrlen) goto next;
+
 		pair = rad_attr2vp(packet, original, secret,
 				   attribute, attrlen, ptr);
 		if (!pair) {
@@ -2418,6 +2422,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			return -1;
 		}
 
+		    next:
 		ptr += attrlen;
 		packet_length -= attrlen;
 	}
