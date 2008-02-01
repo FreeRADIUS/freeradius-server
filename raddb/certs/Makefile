@@ -53,6 +53,9 @@ dh:
 ca.key ca.pem:
 	openssl req -new -x509 -keyout ca.key -out ca.pem -config ./ca.cnf 
 
+ca.der: ca.pem
+	openssl x509 -inform PEM -outform DER -in ca.pem -out ca.der
+
 ######################################################################
 #
 #  Create a new server certificate, signed by the above CA.
@@ -90,7 +93,7 @@ client.p12: client.crt
 	openssl pkcs12 -export -in client.crt -inkey client.key -out client.p12  -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
 
 client.pem: client.p12
-	openssl pkcs12 -in client.p12 -out client.pem -passin pass:$(PASSWORD_SERVER) -passout pass:$(PASSWORD_CLIENT)
+	openssl pkcs12 -in client.p12 -out client.pem -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
 	cp client.pem $(USER_NAME).pem
 
 .PHONY: server.vrfy

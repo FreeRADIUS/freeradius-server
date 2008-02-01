@@ -75,6 +75,10 @@ $ make ca.pem
 
   This step creates the CA certificate.
 
+$ make ca.der
+
+  This step creates the DER format of the self-signed certificate,
+  which is can be imported into Windows.
 
 
 		MAKING A SERVER CERTIFICATE
