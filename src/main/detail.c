@@ -39,7 +39,8 @@ RCSID("$Id$")
 
 typedef struct listen_detail_t {
 	int		delay_time; /* should be first entry */
-	char	*filename;
+	char		*filename;
+	char		*filename_work;
 	VALUE_PAIR	*vps;
 	FILE		*fp;
 	int		state;
@@ -147,7 +148,9 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	data->delay_time = (data->srtt * (100 - data->load_factor)) / (data->load_factor);
 
+#if 0
 	DEBUG2("RTT %d\tdelay %d", data->srtt, data->delay_time);
+#endif
 
 	data->last_packet = now;
 	data->state = STATE_REPLIED;
@@ -170,6 +173,8 @@ static int detail_open(rad_listen_t *this)
 
 	rad_assert(data->state == STATE_UNOPENED);
 	snprintf(buffer, sizeof(buffer), "%s.work", data->filename);
+	free(data->filename_work);
+	data->filename_work = strdup(buffer);
 
 	/*
 	 *	Open detail.work first, so we don't lose
@@ -183,6 +188,8 @@ static int detail_open(rad_listen_t *this)
 	 */
 	this->fd = open(buffer, O_RDWR);
 	if (this->fd < 0) {
+		DEBUG2("Polling for detail file %s", data->filename);
+
 		/*
 		 *	Try reading the detail file.  If it
 		 *	doesn't exist, we can't do anything.
@@ -261,6 +268,7 @@ int detail_recv(rad_listen_t *listener,
 
 	switch (data->state) {
 		case STATE_UNOPENED:
+	open_file:
 			rad_assert(listener->fd < 0);
 			
 			/*
@@ -306,15 +314,18 @@ int detail_recv(rad_listen_t *listener,
 
 		case STATE_HEADER:
 		do_header:
+			if (!data->fp) {
+				data->state = STATE_UNOPENED;
+				goto open_file;
+			}
+
 			/*
 			 *	End of file.  Delete it, and re-set
 			 *	everything.
 			 */
 			if (feof(data->fp)) {
 			cleanup:
-				snprintf(buffer, sizeof(buffer),
-					 "%s.work", data->filename);
-				unlink(buffer);
+				unlink(data->filename_work);
 				fclose(data->fp); /* closes listener->fd */
 				data->fp = NULL;
 				listener->fd = -1;
@@ -598,6 +609,20 @@ int detail_recv(rad_listen_t *listener,
 		return 0;
 	}
 
+	{
+		struct stat buf;
+
+		stat(data->filename_work, &buf);
+		if (((off_t) ftell(data->fp)) == buf.st_size) {
+			unlink(data->filename_work);
+			fclose(data->fp); /* closes listener->fd */
+			data->fp = NULL;
+			listener->fd = -1;
+			data->state = STATE_RUNNING;
+			return 1;
+		}
+	}
+
 	data->state = STATE_RUNNING;
 
 	return 1;
@@ -667,8 +692,8 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	RADCLIENT	*client;
 
 	if (!this->data) {
-		this->data = rad_malloc(sizeof(listen_detail_t));
-		memset(this->data, 0, sizeof(listen_detail_t));
+		this->data = rad_malloc(sizeof(*this->data));
+		memset(this->data, 0, sizeof(*this->data));
 	}
 
 	data = this->data;
@@ -697,6 +722,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	Initialize the fake client.
 	 */
 	client = &data->detail_client;
+	memset(client, 0, sizeof(*client));
 	client->ipaddr.af = AF_INET;
 	client->ipaddr.ipaddr.ip4addr.s_addr = INADDR_NONE;
 	client->prefix = 0;
