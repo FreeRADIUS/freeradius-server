@@ -612,7 +612,7 @@ int detail_recv(rad_listen_t *listener,
 	{
 		struct stat buf;
 
-		stat(data->filename_work, &buf);
+		fstat(listener->fd, &buf);
 		if (((off_t) ftell(data->fp)) == buf.st_size) {
 			unlink(data->filename_work);
 			fclose(data->fp); /* closes listener->fd */
@@ -692,8 +692,8 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	RADCLIENT	*client;
 
 	if (!this->data) {
-		this->data = rad_malloc(sizeof(*this->data));
-		memset(this->data, 0, sizeof(*this->data));
+		this->data = rad_malloc(sizeof(*data));
+		memset(this->data, 0, sizeof(*data));
 	}
 
 	data = this->data;
