@@ -1262,9 +1262,34 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 
 	/*
 	 *	They specified an IP on the command-line, ignore
-	 *	all listen sections.
+	 *	all listen sections except the one in '-n'.
 	 */
-	if (mainconfig.myip.af != AF_UNSPEC) goto do_proxy;
+	if (mainconfig.myip.af != AF_UNSPEC) {
+		CONF_SECTION *subcs;
+		const char *name2 = cf_section_name2(cs);
+
+		cs = cf_section_sub_find_name2(config, "server",
+					       mainconfig.name);
+		if (!cs) goto do_proxy;
+
+		/*
+		 *	Should really abstract this code...
+		 */
+		for (subcs = cf_subsection_find_next(cs, NULL, "listen");
+		     subcs != NULL;
+		     subcs = cf_subsection_find_next(cs, subcs, "listen")) {
+			this = listen_parse(subcs, name2);
+			if (!this) {
+				listen_free(head);
+				return -1;
+			}
+			
+			*last = this;
+			last = &(this->next);
+		} /* loop over "listen" directives in server <foo> */
+
+		goto do_proxy;
+	}
 
 	/*
 	 *	Walk through the "listen" sections, if they exist.
