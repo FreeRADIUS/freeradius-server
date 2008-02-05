@@ -1019,6 +1019,17 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 */
 		if ((VENDOR(reply->attribute) == 0) &&
 		    ((reply->attribute & 0xFFFF) > 0xff)) {
+#ifndef NDEBUG
+			/*
+			 *	Permit the admin to send BADLY formatted
+			 *	attributes with a debug build.
+			 */
+			if (reply->attribute == PW_RAW_ATTRIBUTE) {
+				memcpy(ptr, reply->vp_octets, reply->length);
+				len = reply->length;
+				goto next;
+			}
+#endif
 			continue;
 		}
 
@@ -1060,6 +1071,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			break;
 		}
 
+	next:
 		ptr += len;
 		total_length += len;
 	} /* done looping over all attributes */

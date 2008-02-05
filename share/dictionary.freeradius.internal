@@ -61,11 +61,7 @@ ATTRIBUTE	EAP-Code				1021	integer
 ATTRIBUTE	PEAP-Version				1023	integer
 ATTRIBUTE	Client-Shortname			1024	string
 ATTRIBUTE	Load-Balance-Key			1025	string
-
-#
-#	Range:	1025-1026
-#		unused
-#
+ATTRIBUTE	Raw-Attribute				1026	octets
 ATTRIBUTE	TNC-VLAN-Access				1027	string
 ATTRIBUTE	TNC-VLAN-Isolate			1028	string
 ATTRIBUTE	User-Category				1029	string
