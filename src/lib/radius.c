@@ -1269,7 +1269,8 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		      packet->dst_port);
 
 		for (reply = packet->vps; reply; reply = reply->next) {
-			/* FIXME: ignore attributes > 0xff */
+			if ((VENDOR(reply->attribute) == 0) &&
+			    ((reply->attribute & 0xFFFF) > 0xff)) continue;
 			debug_pair(reply);
 		}
 	}
