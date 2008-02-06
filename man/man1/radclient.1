@@ -137,7 +137,7 @@ configurable support for it).
 .sp
 .nf
 .ne 3
-$ echo "User-Name = fnord" | radclient 192.168.1.42 12 s3cr3t
+$ echo "Message-Authenticator = 0x00" | radclient 192.168.1.42 status s3cr3t
 Sending request to server 192.168.1.42, port 1812.
 radrecv: Packet from host 192.168.1.42 code=2, id=140, length=54
     Reply-Message = "FreeRADIUS up 21 days, 02:05"
