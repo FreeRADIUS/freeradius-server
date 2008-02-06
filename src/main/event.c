@@ -2226,7 +2226,7 @@ static void event_reset_fd(rad_listen_t *listener, int fd, int usec)
 
 	tv_add(&when, usec);	
 
-	if (!fr_event_fd_delete(el, 0, fd)) {
+	if ((fd >= 0) && !fr_event_fd_delete(el, 0, fd)) {
 		rad_panic("Failed deleting fd");
 	}
 	
@@ -2370,7 +2370,8 @@ static void event_poll_fd(void *ctx)
 	 *	Ignore the detail file if we're busy with other work.
 	 */
 	if ((listener->type == RAD_LISTEN_DETAIL) && !read_from_detail) {
-		goto reset;
+		event_reset_fd(listener, listener->fd, USEC);
+		return;
 	}
 
 	/*
@@ -2397,17 +2398,7 @@ static void event_poll_fd(void *ctx)
 	 *	closed.  Re-set the polling timer and return.
 	 */
 	if (listener->fd < 0) {
-		struct timeval when;
-
-	reset:
-		gettimeofday(&when, NULL);
-		when.tv_sec += 1;
-		
-		if (!fr_event_insert(el, event_poll_fd, listener,
-				       &when, NULL)) {
-			rad_panic("Failed inserting event");
-		}
-
+		event_reset_fd(listener, -1, USEC);
 		return;
 	}
 
@@ -2438,10 +2429,14 @@ static void event_status(struct timeval *wake)
 			just_started = FALSE;
 		}
 		return;
+
+	} else {
+		read_from_detail = TRUE;
 	}
 
 	if (!wake) {
 		DEBUG("Ready to process requests.");
+
 	} else if ((wake->tv_sec != 0) ||
 		   (wake->tv_usec >= 100000)) {
 		DEBUG("Waking up in %d.%01u seconds.\n",
