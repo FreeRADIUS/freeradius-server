@@ -1160,7 +1160,7 @@ static int successfully_proxied_request(REQUEST *request)
 	 *
 	 *	FIXME: This should really be a serious error.
 	 */
-	if (request->in_proxy_hash || request->proxy) {
+	if (request->in_proxy_hash) {
 		return 0;
 	}
 
@@ -1418,7 +1418,7 @@ static void request_post_handler(REQUEST *request)
 	}
 
 	if (request->root->proxy_requests &&
-	    !request->proxy &&
+	    !request->in_proxy_hash &&
 	    (request->reply->code == 0) &&
 	    (request->packet->dst_port != 0) &&
 	    (request->packet->code != PW_STATUS_SERVER)) {
