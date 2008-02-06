@@ -282,7 +282,7 @@ post-auth {
 	#  attribute INSTEAD of the configuration below.
 	#
 	#update outer.reply {
-	#	User-Name = "%{request.User-Name}"
+	#	User-Name = "%{request:User-Name}"
 	#}
 
 }
