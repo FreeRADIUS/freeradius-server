@@ -1,8 +1,24 @@
 FreeRADIUS 2.0.2-pre ; $Date$ , urgency=low
 	Feature improvements
+	* Added notes on how to debug the server in radiusd.conf
+	* Moved all "log_*" in radiusd.conf to log{} section.
+	* Added ca.der target in raddb/certs/Makefile.  This is
+	  needed for Windows.
+	* Added ability send raw attributes via "Raw-Attribute = 0x0102..."
+	  This is available only in debug versions, and can be used
+	  to create invalid packets, so it should be used with care.
 
 	Bug fixes
-	
+	* Fixed reading of "detail" files.
+	* Allow inner EAP tunneled sessions to be proxied.
+	* Corrected MySQL schemas
+	* syslog now works in log{} section.
+	* Corrected typo in raddb/certs/client.cnf
+	* Updated raddb/sites-available/proxy-inner-tunnel to
+	  permit authentication to work.
+	* Ignore zero-length attributes in received packets.
+	* Correct memcpy when dealing with unknown attributes.
+
 FreeRADIUS 2.0.1 ; Date: 2008/01/22 13:29:37  , urgency=low
 	Feature improvements
 	* "unlang" has been expanded to do less run-time expansion,
