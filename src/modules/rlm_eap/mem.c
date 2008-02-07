@@ -269,12 +269,15 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 
 		for (i = 0; i < 4; i++) {
 			uint32_t lvalue;
-			
+
 			lvalue = eap_rand(&inst->rand_pool);
+			if (i == 0) lvalue ^= fr_rand(); /* !thread-safe */
+
 			memcpy(handler->state + i * 4, &lvalue,
 			       sizeof(lvalue));
-		}
+		}		
 	}
+
 	memcpy(state->vp_octets, handler->state, sizeof(handler->state));
 	state->length = EAP_STATE_LEN;
 
@@ -317,8 +320,10 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	pthread_mutex_unlock(&(inst->session_mutex));
 
 	if (!status) {
-		radlog(L_ERR, "rlm_eap: Failed to remember handler!");
-		eap_handler_free(handler);
+		char buffer[1024];
+
+		vp_prints_value(buffer, sizeof(buffer), state, 0);
+		radlog(L_ERR, "rlm_eap: Failed to remember handler with State %s!", buffer);
 		return 0;
 	}
 

@@ -79,10 +79,8 @@ static int eap_handler_cmp(const void *a, const void *b)
 	const EAP_HANDLER *one = a;
 	const EAP_HANDLER *two = b;
 
-#if 0
 	if (one->eap_id < two->eap_id) return -1;
 	if (one->eap_id > two->eap_id) return +1;
-#endif
 
 	rcode = fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr);
 	if (rcode != 0) return rcode;
@@ -355,9 +353,8 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	 *	Add to the list only if it is EAP-Request, OR if
 	 *	it's LEAP, and a response.
 	 */
-	if ((handler->eap_ds->request->code == PW_EAP_REQUEST) &&
-	    (handler->eap_ds->request->type.type >= PW_EAP_MD5)) {
-		eaplist_add(inst, handler);
+	if (((handler->eap_ds->request->code == PW_EAP_REQUEST) &&
+	    (handler->eap_ds->request->type.type >= PW_EAP_MD5)) ||
 
 		/*
 		 *	LEAP is a little different.  At Stage 4,
@@ -368,12 +365,16 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 *	At stage 6, LEAP sends an EAP-Response, which
 		 *	isn't put into the list.
 		 */
-	} else if ((handler->eap_ds->response->code == PW_EAP_RESPONSE) &&
-		   (handler->eap_ds->response->type.type == PW_EAP_LEAP) &&
-		   (handler->eap_ds->request->code == PW_EAP_SUCCESS) &&
-		   (handler->eap_ds->request->type.type == 0)) {
+	    ((handler->eap_ds->response->code == PW_EAP_RESPONSE) &&
+	     (handler->eap_ds->response->type.type == PW_EAP_LEAP) &&
+	     (handler->eap_ds->request->code == PW_EAP_SUCCESS) &&
+	     (handler->eap_ds->request->type.type == 0))) {
 
-		eaplist_add(inst, handler);
+		if (!eaplist_add(inst, handler)) {
+			eap_fail(handler);
+			eap_handler_free(handler);
+			return RLM_MODULE_FAIL;
+		}
 
 	} else {
 		DEBUG2("  rlm_eap: Freeing handler");
