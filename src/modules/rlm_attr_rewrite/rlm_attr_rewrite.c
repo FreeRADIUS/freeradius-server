@@ -298,7 +298,7 @@ do_again:
 			err = regexec(&preg, ptr2, REQUEST_MAX_REGEX, pmatch, 0);
 			if (err == REG_NOMATCH) {
 				if (i == 0) {
-					DEBUG2("rlm_attr_rewrite: No match found for attribute %s with value '%s'",
+					DEBUG2("rlm_attr_rewrite: Does not match: %s = %s",
 							data->attribute, attr_vp->vp_strvalue);
 					regfree(&preg);
 					goto to_do_again;
