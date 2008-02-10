@@ -1323,10 +1323,18 @@ int realms_init(CONF_SECTION *config)
 REALM *realm_find(const char *name)
 {
 	REALM myrealm;
-
+	REALM *realm;
+	
 	if (!name) name = "NULL";
 
 	myrealm.name = name;
+	realm = rbtree_finddata(realms_byname, &myrealm);
+	if (realm) return realm;
+
+	/*
+	 *	Couldn't find a realm.  Look for DEFAULT.
+	 */
+	myrealm.name = "DEFAULT";
 	return rbtree_finddata(realms_byname, &myrealm);
 }
 
