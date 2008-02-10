@@ -176,7 +176,7 @@ static uint32_t eap_rand(fr_randctx *ctx)
 	uint32_t num;
 
 	num = ctx->randrsl[ctx->randcnt++];
-	if (ctx->randcnt == 256) {
+	if (ctx->randcnt >= 256) {
 		ctx->randcnt = 0;
 		fr_isaac(ctx);
 	}
@@ -264,14 +264,13 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 *	It will be modified slightly per round trip, but less so
 	 *	than in 1.x.
 	 */
-	if (memcmp(handler->state, "\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000", 16) == 0) {
+	if (handler->trips == 0) {
 		int i;
 
 		for (i = 0; i < 4; i++) {
 			uint32_t lvalue;
 
 			lvalue = eap_rand(&inst->rand_pool);
-			if (i == 0) lvalue ^= fr_rand(); /* !thread-safe */
 
 			memcpy(handler->state + i * 4, &lvalue,
 			       sizeof(lvalue));

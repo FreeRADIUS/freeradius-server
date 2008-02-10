@@ -116,6 +116,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		inst->rand_pool.randrsl[i] = fr_rand();
 	}
 	fr_randinit(&inst->rand_pool, 1);
+	inst->rand_pool.randcnt = 0;
 
 	/* Load all the configured EAP-Types */
 	num_types = 0;
