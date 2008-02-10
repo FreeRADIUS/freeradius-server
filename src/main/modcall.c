@@ -1617,8 +1617,13 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	csingle = mod_singletocallable(single);
 	csingle->parent = parent;
 	csingle->next = NULL;
-	memcpy(csingle->actions, defaultactions[component][grouptype],
-	       sizeof csingle->actions);
+	if (!parent || (component != RLM_COMPONENT_AUTH)) {
+		memcpy(csingle->actions, defaultactions[component][grouptype],
+		       sizeof csingle->actions);
+	} else { /* inside Auth-Type has different rules */
+		memcpy(csingle->actions, defaultactions[RLM_COMPONENT_AUTZ][grouptype],
+		       sizeof csingle->actions);
+	}
 	rad_assert(modrefname != NULL);
 	csingle->name = modrefname;
 	csingle->type = MOD_SINGLE;
@@ -1794,7 +1799,11 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 		if (!c->actions[i]) {
-			c->actions[i] = defaultactions[component][parentgrouptype][i];
+			if (!parent || (component != RLM_COMPONENT_AUTH)) {
+				c->actions[i] = defaultactions[component][parentgrouptype][i];
+			} else { /* inside Auth-Type has different rules */
+				c->actions[i] = defaultactions[RLM_COMPONENT_AUTZ][parentgrouptype][i];
+			}
 		}
 	}
 
