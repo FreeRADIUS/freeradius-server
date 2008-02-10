@@ -2,11 +2,12 @@ FreeRADIUS 2.0.2-pre ; $Date$ , urgency=low
 	Feature improvements
 	* Added notes on how to debug the server in radiusd.conf
 	* Moved all "log_*" in radiusd.conf to log{} section.
+	  The old configurations are still accepted, though.
 	* Added ca.der target in raddb/certs/Makefile.  This is
-	  needed for Windows.
+	  needed for importing CA certs into Windows.
 	* Added ability send raw attributes via "Raw-Attribute = 0x0102..."
-	  This is available only in debug versions, and can be used
-	  to create invalid packets, so it should be used with care.
+	  This is available only debug builds.  It can be used
+	  to create invalid packets! Use it with care.
 
 	Bug fixes
 	* Fixed reading of "detail" files.
@@ -18,6 +19,9 @@ FreeRADIUS 2.0.2-pre ; $Date$ , urgency=low
 	  permit authentication to work.
 	* Ignore zero-length attributes in received packets.
 	* Correct memcpy when dealing with unknown attributes.
+	* Corrected debugging messages in attr_rewrite.
+	* Corrected generation of State attribute in EAP.  This
+	  fixes the "failed to remember handler" issues.
 
 FreeRADIUS 2.0.1 ; Date: 2008/01/22 13:29:37  , urgency=low
 	Feature improvements
