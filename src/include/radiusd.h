@@ -329,6 +329,7 @@ void			radius_signal_self(int flag);
 #define RADIUS_SIGNAL_SELF_TERM		(1 << 1)
 #define RADIUS_SIGNAL_SELF_EXIT		(1 << 2)
 #define RADIUS_SIGNAL_SELF_DETAIL	(1 << 3)
+#define RADIUS_SIGNAL_SELF_NEW_FD	(1 << 4)
 
 
 /*

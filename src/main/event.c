@@ -88,6 +88,7 @@ static rad_listen_t	*proxy_listeners[32];
 static void request_post_handler(REQUEST *request);
 static void wait_a_bit(void *ctx);
 static void event_poll_fd(void *ctx);
+static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd, void *ctx);
 
 static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
 				    const char *msg)
@@ -298,18 +299,9 @@ static int insert_into_proxy_hash(REQUEST *request)
 		rad_listen_t *proxy_listener;
 
 		/*
-		 *	Allocate a new proxy fd.  This function adds it
-		 *	into the list of listeners.
-		 *
-		 *	FIXME!: Call event_fd_insert()!  Otherwise this
-		 *	FD will never be used in select()!
-		 *
-		 *	We probably want to add RADIUS_SIGNAL_SELF_FD,
-		 *	which tells us to walk over the listeners,
-		 *	adding a new FD.
-		 *
-		 *	Hmm... maybe do this for the detail file, too.
-		 *	that will simplify some of the rest of the code.
+		 *	Allocate a new proxy fd.  This function adds
+		 *	it to the tail of the list of listeners.  With
+		 *	some care, this can be thread-safe.
 		 */
 		proxy_listener = proxy_new_listener();
 		if (!proxy_listener) {
@@ -324,8 +316,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 		found = -1;
 		proxy = proxy_listener->fd;
 		for (i = 0; i < 32; i++) {
-			DEBUG2("PROXY %d %d", i, proxy_fds[(proxy + i) & 0x1f]);
-
 			/*
 			 *	Found a free entry.  Save the socket,
 			 *	and remember where we saved it.
@@ -342,7 +332,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		if (!fr_packet_list_socket_add(proxy_list, proxy_listener->fd)) {
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 			DEBUG2("ERROR: Failed to create a new socket for proxying requests.");
-			return 0; /* leak proxy_listener */
+			return 0;
 
 		}
 
@@ -351,6 +341,12 @@ static int insert_into_proxy_hash(REQUEST *request)
 			DEBUG2("ERROR: Failed to create a new socket for proxying requests.");
 			return 0;
 		}
+
+		/*
+		 *	Signal the main thread to add the new FD to the list
+		 *	of listening FD's.
+		 */
+		radius_signal_self(RADIUS_SIGNAL_SELF_NEW_FD);
 	}
 	rad_assert(request->proxy->sockfd >= 0);
 
@@ -2145,6 +2141,22 @@ static void handle_signal_self(int flag)
 		last_hup = when;
 
 		fr_event_loop_exit(el, 0x80);
+	}
+
+	if ((flag & RADIUS_SIGNAL_SELF_NEW_FD) != 0) {
+		rad_listen_t *this;
+		
+		for (this = mainconfig.listen;
+		     this != NULL;
+		     this = this->next) {
+			if (this->type != RAD_LISTEN_PROXY) continue;
+			
+			if (!fr_event_fd_insert(el, 0, this->fd,
+						event_socket_handler, this)) {
+				radlog(L_ERR, "Failed remembering handle for proxy socket!");
+				_exit(1);
+			}
+		}
 	}
 }
 
