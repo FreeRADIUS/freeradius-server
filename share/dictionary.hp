@@ -19,6 +19,10 @@ ATTRIBUTE	HP-Command-Exception-Flag		3	integer
 # Access control
 ATTRIBUTE	HP-Cos					40	string
 ATTRIBUTE	HP-Rate-Limit				46	integer
+
+ATTRIBUTE	HP-Bandwidth-Max-Ingress		46	integer
+ATTRIBUTE	HP-Bandwidth-Max-Egress			48	integer
+
 ATTRIBUTE	HP-Ip-Filter-Raw			61	string
 
 END-VENDOR	HP
