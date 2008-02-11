@@ -256,7 +256,7 @@ int fr_event_now(fr_event_list_t *el, struct timeval *when)
 
 
 int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
-			 fr_event_fd_handler_t handler, void *ctx)
+		       fr_event_fd_handler_t handler, void *ctx)
 {
 	int i;
 	fr_event_fd_t *ef;
@@ -269,7 +269,20 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 
 	ef = NULL;
 	for (i = 0; i <= el->max_readers; i++) {
-		if (el->readers[i].fd == fd) return 0;
+		/*
+		 *	Be fail-safe on multiple inserts.
+		 */
+		if (el->readers[i].fd == fd) {
+			if ((el->readers[i].handler != handler) ||
+			    (el->readers[i].ctx != ctx)) {
+				return 0;
+			}
+
+			/*
+			 *	No change.
+			 */
+			return 1;
+		}
 
 		if (el->readers[i].fd < 0) {
 			ef = &el->readers[i];
