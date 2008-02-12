@@ -884,6 +884,8 @@ static int listen_bind(rad_listen_t *this)
 		memset(&src, 0, sizeof_src);
 		if (getsockname(this->fd, (struct sockaddr *) &src,
 				&sizeof_src) < 0) {
+			radlog(L_ERR, "Failed getting socket name: %s",
+			       strerror(errno));
 			return -1;
 		}
 
@@ -901,6 +903,7 @@ static int listen_bind(rad_listen_t *this)
 			sock->ipaddr.ipaddr.ip6addr = s6->sin6_addr;
 #endif
 		} else {
+			radlog(L_ERR, "Socket has unsupported address family");
 			return -1;
 		}
 	}
