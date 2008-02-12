@@ -8,6 +8,11 @@ FreeRADIUS 2.0.2-pre ; $Date$ , urgency=low
 	* Added ability send raw attributes via "Raw-Attribute = 0x0102..."
 	  This is available only debug builds.  It can be used
 	  to create invalid packets! Use it with care.
+	* Permit "unlang" policies inside of Auth-Type{} sub-sections
+	  of the authenticate{} section.  This makes some policies easier
+	  to implement.
+	* "listen" sections can now have "type = proxy".  This lets you
+	  control which IP is used for sending proxied requests.
 
 	Bug fixes
 	* Fixed reading of "detail" files.
@@ -22,6 +27,8 @@ FreeRADIUS 2.0.2-pre ; $Date$ , urgency=low
 	* Corrected debugging messages in attr_rewrite.
 	* Corrected generation of State attribute in EAP.  This
 	  fixes the "failed to remember handler" issues.
+	* Fall back to DEFAULT realm if no realm was found.
+	  Based on a patch from Vincent Magnin.
 
 FreeRADIUS 2.0.1 ; Date: 2008/01/22 13:29:37  , urgency=low
 	Feature improvements

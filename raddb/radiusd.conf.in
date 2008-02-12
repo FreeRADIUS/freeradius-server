@@ -208,6 +208,22 @@ max_requests = 1024
 #  on the command line.
 #
 listen {
+	#  Type of packets to listen for.
+	#  Allowed values are:
+	#	auth	listen for authentication packets
+	#	acct	listen for accounting packets
+	#	proxy   IP to use for sending proxied packets
+	#
+	type = auth
+
+	#  Note: "type = proxy" lets you control the source IP used for
+	#        proxying packets, with some limitations:
+	#
+	#    * Only ONE proxy listener can be defined.
+	#    * A proxy listener CANNOT be used in a virtual server section.
+	#    * You should probably set "port = 0".
+	#    * Any "clients" configuration will be ignored.
+
 	#  IP address on which to listen.
 	#  Allowed values are:
 	#	dotted quad (1.2.3.4)
@@ -224,13 +240,6 @@ listen {
 	#	integer port number (1812)
 	#	0 means "use /etc/services for the proper port"
 	port = 0
-
-	#  Type of packets to listen for.
-	#  Allowed values are:
-	#	auth	listen for authentication packets
-	#	acct	listen for accounting packets
-	#
-	type = auth
 
 	#  Some systems support binding to an interface, in addition
 	#  to the IP address.  This feature isn't strictly necessary,
