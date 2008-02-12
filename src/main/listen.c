@@ -251,6 +251,12 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			      &listen_port, "0");
 	if (rcode < 0) return -1;
 
+	if ((listen_port < 0) || (listen_port > 65500)) {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Invalid value for \"port\"");
+			return -1;
+	}
+
 	sock->ipaddr = ipaddr;
 	sock->port = listen_port;
 
@@ -299,6 +305,11 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		} /* else it worked. */
 #endif
 	}
+
+	/*
+	 *	Proxy sockets don't have clients.
+	 */
+	if (this->type == RAD_LISTEN_PROXY) return 0;
 	
 	/*
 	 *	The more specific configurations are preferred to more
@@ -758,7 +769,7 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
 
 	/* proxying */
-	{ NULL, NULL,
+	{ common_socket_parse, NULL,
 	  proxy_socket_recv, proxy_socket_send,
 	  socket_print, proxy_socket_encode, proxy_socket_decode },
 
@@ -823,6 +834,10 @@ static int listen_bind(rad_listen_t *this)
 			} else {
 				sock->port = PW_ACCT_UDP_PORT;
 			}
+			break;
+
+		case RAD_LISTEN_PROXY:
+			sock->port = 0;
 			break;
 
 #ifdef WITH_VMPS
@@ -894,6 +909,7 @@ static int listen_bind(rad_listen_t *this)
 			
 			s4 = (struct sockaddr_in *)&src;
 			sock->ipaddr.ipaddr.ip4addr = s4->sin_addr;
+			sock->port = ntohs(s4->sin_port);
 			
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 		} else if (src.ss_family == AF_INET6) {
@@ -901,6 +917,7 @@ static int listen_bind(rad_listen_t *this)
 			
 			s6 = (struct sockaddr_in6 *)&src;
 			sock->ipaddr.ipaddr.ip6addr = s6->sin6_addr;
+			sock->port = ntohs(s6->sin6_port);
 #endif
 		} else {
 			radlog(L_ERR, "Socket has unsupported address family");
@@ -1044,6 +1061,7 @@ static const FR_NAME_NUMBER listen_compare[] = {
 	{ "auth",	RAD_LISTEN_AUTH },
 	{ "acct",	RAD_LISTEN_ACCT },
 	{ "detail",	RAD_LISTEN_DETAIL },
+	{ "proxy",	RAD_LISTEN_PROXY },
 #ifdef WITH_VMPS
 	{ "vmps",	RAD_LISTEN_VQP },
 #endif
@@ -1129,6 +1147,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 	rad_listen_t	*this;
 	fr_ipaddr_t	server_ipaddr;
 	int		auth_port = 0;
+	int		defined_proxy = 0;
 
 	/*
 	 *	We shouldn't be called with a pre-existing list.
@@ -1286,6 +1305,8 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 				listen_free(head);
 				return -1;
 			}
+
+			if (this->type == RAD_LISTEN_PROXY) defined_proxy = 1;
 			
 			*last = this;
 			last = &(this->next);
@@ -1305,6 +1326,8 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 			listen_free(head);
 			return -1;
 		}
+
+		if (this->type == RAD_LISTEN_PROXY) defined_proxy = 1;
 
 		*last = this;
 		last = &(this->next);
@@ -1330,6 +1353,12 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 				return -1;
 			}
 			
+			if (this->type == RAD_LISTEN_PROXY) {
+				radlog(L_ERR, "Error: listen type \"proxy\" Cannot appear in a virtual server section");
+				listen_free(head);
+				return -1;
+			}
+
 			*last = this;
 			last = &(this->next);
 		} /* loop over "listen" directives in virtual servers */
@@ -1376,6 +1405,8 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 
 			goto do_snmp;
 		}
+
+		if (defined_proxy) goto do_snmp;
 
 		/*
 		 *	Find the first authentication port,
