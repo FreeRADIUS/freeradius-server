@@ -2574,6 +2574,10 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 			has_detail_listener = TRUE;
 			break;
 
+		case RAD_LISTEN_SNMP:
+			DEBUG("Listening on SNMP %s", buffer);
+			break;
+
 		case RAD_LISTEN_PROXY:
 			rad_assert(proxy_fds[this->fd & 0x1f] == -1);
 			rad_assert(proxy_listeners[this->fd & 0x1f] == NULL);
@@ -2584,11 +2588,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 							 this->fd)) {
 				rad_assert(0 == 1);
 			}
-			break;
-
-		case RAD_LISTEN_SNMP:
-			DEBUG("Listening on SNMP %s", buffer);
-			break;
+			/* FALL-THROUGH */
 
 		default:
 			DEBUG("Listening on %s", buffer);
