@@ -135,3 +135,25 @@ $ make client.pem
   To create another client certificate, just repeat the steps for
   making a client certificate, being sure to enter a different login
   name for "commonName", and a different password.
+
+
+		PERFORMANCE
+
+
+  EAP performance for EAP-TLS, TTLS, and PEAP is dominated by SSL
+  calculations.  That is, a normal system can handle PAP
+  authentication at a rate of 10k packets/s.  However, SSL involves
+  RSA calculations, which are very expensive.  To benchmark your system,
+  do:
+
+$ openssl speed rsa
+
+  or
+
+$ openssl speed rsa2048
+
+  to test 2048 bit keys.
+
+  A 1GHz system will likely do 30 calculations/s.  A 2Ghz system may
+  do 50 calculations/s, or more.  That number is also the number of
+  authentications/s that can be done for EAP-TLS (or TTLS, or PEAP).
