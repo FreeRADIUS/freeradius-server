@@ -807,7 +807,6 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
  */
 static int listen_bind(rad_listen_t *this)
 {
-	rad_listen_t	**last;
 	listen_socket_t *sock = this->data;
 
 	/*
@@ -849,34 +848,6 @@ static int listen_bind(rad_listen_t *this)
 		default:
 			radlog(L_ERR, "ERROR: Non-fatal internal sanity check failed in bind.");
 			return -1;
-		}
-	}
-
-	/*
-	 *	Find it in the old list, AFTER updating the port.  If
-	 *	it's there, use that, rather than creating a new
-	 *	socket.  This allows HUP's to re-use the old sockets,
-	 *	which means that packets waiting in the socket queue
-	 *	don't get lost.
-	 */
-	for (last = &mainconfig.listen;
-	     *last != NULL;
-	     last = &((*last)->next)) {
-		listen_socket_t *other;
-
-		if (this->type != (*last)->type) continue;
-
-		if ((this->type == RAD_LISTEN_DETAIL) ||
-		    (this->type == RAD_LISTEN_SNMP)) continue;
-
-		other = (listen_socket_t *)((*last)->data);
-
-		if ((sock->port == other->port) &&
-		    (sock->ipaddr.af == other->ipaddr.af) &&
-		    (fr_ipaddr_cmp(&sock->ipaddr, &other->ipaddr) == 0)) {
-			this->fd = (*last)->fd;
-			(*last)->fd = -1;
-			return 0;
 		}
 	}
 
@@ -1379,33 +1350,6 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		 */
 		if (!*head) return -1;
 
-		/*
-		 *	If we previously had proxy sockets, copy them
-		 *	to the new config.
-		 */
-		if (mainconfig.listen != NULL) {
-			rad_listen_t *old, *next, **tail;
-
-			tail = &mainconfig.listen;
-			for (old = mainconfig.listen;
-			     old != NULL;
-			     old = next) {
-				next = old->next;
-
-				if (old->type != RAD_LISTEN_PROXY) {
-					tail = &((*tail)->next);
-					continue;
-				}
-
-				*last = old;
-				*tail = next;
-				old->next = NULL;
-				last = &(old->next);
-			}
-
-			goto do_snmp;
-		}
-
 		if (defined_proxy) goto do_snmp;
 
 		/*
@@ -1473,16 +1417,6 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
  do_snmp:
 #ifdef WITH_SNMP
 	if (radius_snmp_init(config)) {
-		/*
-		 *      Forget about the old one.
-		 */
-		for (this = mainconfig.listen;
-		     this != NULL;
-		     this = this->next) {
-			if (this->type != RAD_LISTEN_SNMP) continue;
-			this->fd = -1;
-		}
-
 		this = rad_malloc(sizeof(*this));
 		memset(this, 0, sizeof(*this));
 
