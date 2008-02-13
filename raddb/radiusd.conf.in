@@ -582,7 +582,7 @@ modules {
 
 	# PAP module to authenticate users based on their stored password
 	#
-	#  Supports multiple encryption/hash schemes.  See "man passwd"
+	#  Supports multiple encryption/hash schemes.  See "man pap"
 	#  for details.
 	#
 	#  The "auto_header" configuration item can be set to "yes".
