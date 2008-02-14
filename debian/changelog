@@ -1,3 +1,26 @@
+freeradius (2.0.2-0) unstable; urgency=medium
+  * Added notes on how to debug the server in radiusd.conf
+  * Moved all "log_*" in radiusd.conf to log{} section.
+  * Added ca.der target in raddb/certs/Makefile.
+  * Added ability send raw attributes via "Raw-Attribute = 0x0102..."
+  * Permit "unlang" policies inside of Auth-Type{} sub-sections.
+  * "listen" sections can now have "type = proxy"
+  * Fixed reading of "detail" files.
+  * Allow inner EAP tunneled sessions to be proxied.
+  * Corrected MySQL schemas
+  * syslog now works in log{} section.
+  * Corrected typo in raddb/certs/client.cnf
+  * Updated raddb/sites-available/proxy-inner-tunnel.
+  * Ignore zero-length attributes in received packets.
+  * Correct memcpy when dealing with unknown attributes.
+  * Corrected debugging messages in attr_rewrite.
+  * Corrected generation of State attribute in EAP.
+  * Fall back to DEFAULT realm if no realm was found.
+  * Updated example raddb/sites-available/proxy-inner-tunnel
+  * Corrected behavior of attr_filter to match documentation.
+
+ -- Alan DeKok <aland@freeradius.org>  Thu, 14 Feb 2008 12:08:06 +0100
+
 freeradius (2.0.1-0) unstable; urgency=low
   * Improve "unlang".  See "man unlang"
   * update acct_module

@@ -1,7 +1,7 @@
 Summary: High-performance and highly configurable RADIUS server
 URL: http://www.freeradius.org/
-Name: freeradius
-Version: 2.0.1
+Name: freeradius-server
+Version: 2.0.2
 Release: 0
 License: GPL
 Group: Networking/Daemons
@@ -55,7 +55,6 @@ perl -i -pe 's/^#group =.*$/group = radiusd/' $RADDB/radiusd.conf
 perl -i -pe 's/#	shadow =/shadow =/' $RADDB/radiusd.conf
 
 # remove unneeded stuff
-rm -f $RPM_BUILD_ROOT%{_mandir}/man8/builddbm.8
 rm -f $RPM_BUILD_ROOT%{_prefix}/sbin/rc.radiusd
 
 # more files go to /usr/share/doc/freeradius-%{version}
