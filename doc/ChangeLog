@@ -1,4 +1,4 @@
-FreeRADIUS 2.0.2-pre ; $Date$ , urgency=low
+FreeRADIUS 2.0.2 ; $Date$ , urgency=medium
 	Feature improvements
 	* Added notes on how to debug the server in radiusd.conf
 	* Moved all "log_*" in radiusd.conf to log{} section.
@@ -31,6 +31,9 @@ FreeRADIUS 2.0.2-pre ; $Date$ , urgency=low
 	* Fall back to DEFAULT realm if no realm was found.
 	  Based on a patch from Vincent Magnin.
 	* Updated example raddb/sites-available/proxy-inner-tunnel
+	* Corrected behavior of attr_filter to match documentation.
+	  This is NOT backwards compatible with previous versions!
+	  See "man rlm_attr_filter" for details.
 
 FreeRADIUS 2.0.1 ; Date: 2008/01/22 13:29:37  , urgency=low
 	Feature improvements
