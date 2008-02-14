@@ -324,9 +324,14 @@ static int attr_filter_common(void *instance, REQUEST *request,
 	return RLM_MODULE_UPDATED;
 }
 
-static int attr_filter_accounting(void *instance, REQUEST *request)
+static int attr_filter_preacct(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, &request->packet->vps);
+}
+
+static int attr_filter_accounting(void *instance, REQUEST *request)
+{
+	return attr_filter_common(instance, request, &request->reply->vps);
 }
 
 static int attr_filter_preproxy(void *instance, REQUEST *request)
@@ -344,6 +349,11 @@ static int attr_filter_postauth(void *instance, REQUEST *request)
 	return attr_filter_common(instance, request, &request->reply->vps);
 }
 
+static int attr_filter_authorize(void *instance, REQUEST *request)
+{
+	return attr_filter_common(instance, request, &request->packet->vps);
+}
+
 
 /* globally exported name */
 module_t rlm_attr_filter = {
@@ -354,8 +364,8 @@ module_t rlm_attr_filter = {
 	attr_filter_detach,		/* detach */
 	{
 		NULL,			/* authentication */
-		NULL,			/* authorization */
-		NULL,			/* preaccounting */
+		attr_filter_authorize,	/* authorization */
+		attr_filter_preacct,	/* pre-acct */
 		attr_filter_accounting,	/* accounting */
 		NULL,			/* checksimul */
 		attr_filter_preproxy,	/* pre-proxy */

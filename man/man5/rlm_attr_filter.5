@@ -1,4 +1,4 @@
-.TH rlm_attr_filter 5 "3 February 2004" "" "FreeRADIUS Module"
+.TH rlm_attr_filter 5 "12 February 2008" "" "FreeRADIUS Module"
 .SH NAME
 rlm_attr_filter \- FreeRADIUS Module
 .SH DESCRIPTION
@@ -15,6 +15,15 @@ where the realm is anything that is defined and matched based on the
 configuration of the \fIrlm_realm\fP module.  Filter rules can
 optionally be applied using another attribute, by editing the
 \fIkey\fP configuration for this module.
+.PP
+In 2.0.1 and earlier versions, the "accounting" section filtered the
+Accounting-Request, even though it was documented as filtering the
+response.  This issue has been fixed in version 2.0.2 and later
+versions.  The "preacct" section may now be used to filter
+Accounting-Request packets.  The "accounting" section now filters
+Accounting-Response packets.  Administrators using "attr_filter" in
+the "accounting" section SHOULD move the reference to "attr_filter"
+from "accounting" to "preacct".
 .PP
 The file that defines the attribute filtering rules follows a similar
 syntax to the \fIusers\fP file.  There are a few differences however:
@@ -92,10 +101,20 @@ attribute that exists in the request.  Note that the module always
 keys off of attributes in the request, and NOT in any other packet.
 .PP
 .SH SECTIONS
-.BR accounting,
-.BR pre-proxy,
-.BR post-proxy,
-.BR post-auth
+.IP preacct
+Filters Accounting-Request packets.
+.IP accounting
+Filters Accounting-Response packets.
+.IP pre-proxy
+Filters Accounting-Request or Access-Request packets prior to proxying
+them.
+.IP post-proxy
+Filters Accounting-Response, Access-Accept, Access-Reject, or
+Access-Challenge responses from a home server.
+.IP authorize
+Filters Access-Request packets.
+.IP post-auth
+Filters Access-Accept or Access-Reject packets.
 .PP
 .SH FILES
 .I /etc/raddb/radiusd.conf
