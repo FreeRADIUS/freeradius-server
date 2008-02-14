@@ -59,6 +59,7 @@ RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/modules.h>
+#include	<freeradius-devel/rad_assert.h>
 
 #include	<sys/stat.h>
 #include	<ctype.h>
@@ -162,8 +163,7 @@ static int sim_file_authorize(void *instance, REQUEST *request)
 		f = strsep(&l, ",");
 		if(f)
 		{
-			imsi[0]='\0';
-			strncat(imsi, f, sizeof(imsi));
+			strlcpy(imsi, f, sizeof(imsi));
 			fieldcount++;
 		}
 
@@ -176,24 +176,21 @@ static int sim_file_authorize(void *instance, REQUEST *request)
 		f = strsep(&l, ",");
 		if(f)
 		{
-			chal[2]='\0';
-			strncat(chal+2, f, sizeof(chal)-2);
+			strlcpy(chal + 2, f, sizeof(chal) - 2);
 			fieldcount++;
 		}
 
 		f = strsep(&l, ",");
 		if(f)
 		{
-			sres[2]='\0';
-			strncat(sres+2, f, sizeof(sres)-2);
+			strlcpy(sres + 2, f, sizeof(sres) - 2);
 			fieldcount++;
 		}
 
 		f = strsep(&l, ",\n");
 		if(f)
 		{
-			kc[2]='\0';
-			strncat(kc+2, f, sizeof(kc)-2);
+			strlcpy(kc + 2, f, sizeof(kc) - 2);
 			fieldcount++;
 		}
 
