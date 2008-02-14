@@ -171,3 +171,10 @@ dist-publish: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-
 #
 dist-tag: freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.bz2
 	@echo "cd freeradius-server-$(RADIUSD_VERSION) && cvs tag release_`echo $(RADIUSD_VERSION) | tr .- __` && cd .."
+
+#
+#	Build a debian package
+#
+.PHONY: deb
+deb:
+	fakeroot dpkg-buildpackage -b -uc
