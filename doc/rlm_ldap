@@ -13,7 +13,7 @@ the "dictionary" file.
 
 The mapping between radius and ldap attributes is in raddb/ldap.attrmap. You
 should edit the file and add any new mapping which you need. The schema files
-is located in doc/RADIUS-LDAPv3.schema. Before adding any radius attributes
+is located in doc/examples/openldap.schema. Before adding any radius attributes
 the ldap server schema should be updated.  All ldap entries containing radius
 attributes should contain at least "objectclass: radiusprofile"
 
