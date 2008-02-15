@@ -427,7 +427,7 @@ static indexed_modcallable *new_sublist(const char *server, int comp, int idx)
 	return c;
 }
 
-static int indexed_modcall(int comp, int idx, REQUEST *request)
+int indexed_modcall(int comp, int idx, REQUEST *request)
 {
 	int rcode;
 	indexed_modcallable *this;

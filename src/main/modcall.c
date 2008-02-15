@@ -48,7 +48,7 @@ struct modcallable {
 	modcallable *parent;
 	struct modcallable *next;
 	const char *name;
-	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE, MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE, MOD_POLICY } type;
+	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE, MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE, MOD_POLICY, MOD_REFERENCE } type;
 	int method;
 	int actions[RLM_MODULE_NUMCODES];
 };
@@ -70,6 +70,12 @@ typedef struct {
 	modcallable mc;
 	module_instance_t *modinst;
 } modsingle;
+
+typedef struct {
+	modcallable mc;
+	const char *ref_name;
+	CONF_SECTION *ref_cs;
+} modref;
 
 static const FR_NAME_NUMBER grouptype_table[] = {
 	{ "", GROUPTYPE_SIMPLE },
@@ -100,7 +106,18 @@ static modcallable *mod_grouptocallable(modgroup *p)
 	return (modcallable *)p;
 }
 
+static modref *mod_callabletoref(modcallable *p)
+{
+	rad_assert(p->type==MOD_REFERENCE);
+	return (modref *)p;
+}
+static modcallable *mod_reftocallable(modref *p)
+{
+	return (modcallable *)p;
+}
+
 /* modgroups are grown by adding a modcallable to the end */
+/* FIXME: This is O(N^2) */
 static void add_child(modgroup *g, modcallable *c)
 {
 	modcallable **head = &g->children;
@@ -408,6 +425,25 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			if (rcode != RLM_MODULE_UPDATED) {
 				myresult = rcode;
 			}
+			goto handle_result;
+		}
+
+	
+		if (child->type == MOD_REFERENCE) {
+			modref *mr = mod_callabletoref(child);
+			const char *server = request->server;
+
+			if (server == mr->ref_name) {
+				DEBUG("WARNING: Suppressing recursive call to server %s", server);
+				myresult = RLM_MODULE_NOOP;
+				goto handle_result;
+			}
+			
+			request->server = mr->ref_name;
+			DEBUG("server %s { # nested call", mr->ref_name);
+			myresult = indexed_modcall(component, 0, request);
+			DEBUG("} # server %s with nested call", mr->ref_name);
+			request->server = server;
 			goto handle_result;
 		}
 
@@ -1192,7 +1228,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 
 
 static modcallable *do_compile_modswitch(modcallable *parent,
-	int component, CONF_SECTION *cs)
+					 int component, CONF_SECTION *cs)
 {
 	modcallable *csingle;
 	CONF_ITEM *ci;
@@ -1252,6 +1288,43 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 				     GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
 	if (!csingle) return NULL;
 	csingle->type = MOD_SWITCH;
+	return csingle;
+}
+
+
+static modcallable *do_compile_modserver(modcallable *parent,
+					 int component, CONF_ITEM *ci,
+					 const char *name,
+					 CONF_SECTION *cs,
+					 const char *server)
+{
+	modcallable *csingle;
+	CONF_SECTION *subcs;
+	modref *mr;
+
+	subcs = cf_section_sub_find_name2(cs, comp2str[component], NULL);
+	if (!subcs) {
+		cf_log_err(ci, "Server %s has no %s section",
+			   server, comp2str[component]);
+		return NULL;
+	}
+
+	mr = rad_malloc(sizeof(*mr));
+	memset(mr, 0, sizeof(*mr));
+
+	csingle = mod_reftocallable(mr);
+	csingle->parent = parent;
+	csingle->next = NULL;
+	csingle->name = name;
+	csingle->type = MOD_REFERENCE;
+	csingle->method = component;
+
+	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
+	       sizeof(csingle->actions));
+	
+	mr->ref_name = strdup(server);
+	mr->ref_cs = cs;
+
 	return csingle;
 }
 
@@ -1572,14 +1645,14 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		this = find_module_instance(modules, modrefname);
 	}
 
-       	if (!this) {
+	if (!this) do {
 		int i;
 		char *p;
-
+	  
 		/*
 		 *	Maybe it's module.method
 		 */
-		p = strchr(modrefname, '.');
+		p = strrchr(modrefname, '.');
 		if (p) for (i = RLM_COMPONENT_AUTH;
 			    i < RLM_COMPONENT_COUNT;
 			    i++) {
@@ -1600,13 +1673,33 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 				break;
 			}
 		}
+		if (this) break;
 
-		if (!this) {
-			*modname = NULL;
-			cf_log_err(ci, "Failed to find module \"%s\".", modrefname);
-			return NULL;
+		if (strncmp(modrefname, "server[", 7) == 0) {
+			char buffer[256];
+
+			strlcpy(buffer, modrefname + 7, sizeof(buffer));
+			p = strrchr(buffer, ']');
+			if (!p || p[1] != '\0' || (p == buffer)) {
+				cf_log_err(ci, "Invalid server reference in \"%s\".", modrefname);
+				return NULL;
+			}
+			*p = '\0';
+
+			cs = cf_section_sub_find_name2(NULL, "server", buffer);
+			if (!cs) {
+				cf_log_err(ci, "No such server \"%s\".", buffer);
+				return NULL;
+			}
+			
+			return do_compile_modserver(parent, component, ci,
+						    modrefname, cs, buffer);
 		}
-	}
+		
+		*modname = NULL;
+		cf_log_err(ci, "Failed to find module \"%s\".", modrefname);
+		return NULL;
+	} while (0);
 
 	/*
 	 *	We know it's all OK, allocate the structures, and fill
