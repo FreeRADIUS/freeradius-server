@@ -30,6 +30,9 @@
 #define DO_PRAGMA(x) _Pragma(#x)
 #define RCSID(id) DO_PRAGMA(sun ident id)
 #define RCSIDH(h, id) DO_PRAGMA(sun ident id)
+#else
+#define RCSID(id)
+#define RCSIDH(h, id)
 #endif
 
 #endif /* IDENT_H */
