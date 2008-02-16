@@ -62,11 +62,6 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set);
 int fr_packet_list_num_incoming(fr_packet_list_t *pl);
 int fr_packet_list_num_outgoing(fr_packet_list_t *pl);
 
-
-#ifndef offsetof
-# define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
-#endif
-
 /*
  *	"find" returns a pointer to the RADIUS_PACKET* member in the
  *	caller's structure.  In order to get the pointer to the *top*

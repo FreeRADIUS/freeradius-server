@@ -391,4 +391,8 @@ int gettimeofday (struct timeval *tv, void *tz);
 #define F_TEST  _LK_RLCK  /* Test section for locks by other processes. */
 #endif
 
+#ifndef offsetof
+# define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
+#endif
+
 #endif /* _FR_MISSING_H */

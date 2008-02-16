@@ -43,10 +43,6 @@ typedef struct CONF_PARSER {
 /* This preprocessor trick will be useful in initializing CONF_PARSER struct */
 #define XStringify(x) #x
 #define Stringify(x) XStringify(x)
-/* And this pointer trick too */
-#ifndef offsetof
-# define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
-#endif
 
 void		cf_pair_free(CONF_PAIR **cp);
 void		cf_section_free(CONF_SECTION **cp);
