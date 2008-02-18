@@ -437,6 +437,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		 */
 		rad_assert(fake->packet == NULL);
 		fake->packet = request->proxy;
+		fake->packet->src_ipaddr = request->packet->src_ipaddr;
 		request->proxy = NULL;
 
 		rad_assert(fake->reply == NULL);
@@ -448,17 +449,14 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		 *	handler, too...
 		 */
 		fake->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-		DEBUG2("  PEAP: Passing reply back for EAP-MS-CHAP-V2 %p %d",
-		       fake, fake->reply->code);
+		DEBUG2("  PEAP: Passing reply back for EAP-MS-CHAP-V2");
 		rcode = module_post_proxy(0, fake);
 
 		/*
 		 *	FIXME: If rcode returns fail, do something
 		 *	intelligent...
 		 */
-		DEBUG2("  POST-PROXY %d", rcode);
 		rcode = rad_postauth(fake);
-		DEBUG2("  POST-AUTH %d", rcode);
 
 #ifndef NDEBUG
 		if (debug_flag > 0) {

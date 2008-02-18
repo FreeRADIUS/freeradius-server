@@ -820,6 +820,7 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 		 */
 		rad_assert(fake->packet == NULL);
 		fake->packet = request->proxy;
+		fake->packet->src_ipaddr = request->packet->src_ipaddr;
 		request->proxy = NULL;
 
 		rad_assert(fake->reply == NULL);
