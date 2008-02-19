@@ -2195,11 +2195,9 @@ void radius_signal_self(int flag)
 		for (i = 1; i < rcode; i++) {
 			buffer[0] |= buffer[i];
 		}
+	} else {
+		buffer[0] = 0;
 	}
-
-#ifndef NDEBUG
-	memset(buffer + 1, 0, sizeof(buffer) - 1);
-#endif
 
 	buffer[0] |= flag;
 
