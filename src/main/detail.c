@@ -47,6 +47,7 @@ typedef struct listen_detail_t {
 	time_t		timestamp;
 	fr_ipaddr_t	client_ip;
 	int		load_factor; /* 1..100 */
+	int		signal;
 
 	int		has_rtt;
 	int		srtt;
@@ -83,8 +84,10 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 *	caller it's OK to read more "detail" file stuff.
 	 */
 	if (request->reply->code == 0) {
-		radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
+		data->delay_time = 1;
+		data->signal = 1;
 		data->state = STATE_NO_REPLY;
+		radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
 		return 0;
 	}
 
@@ -147,15 +150,29 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 *	rtt / (rtt + delay) = load_factor / 100
 	 */
 	data->delay_time = (data->srtt * (100 - data->load_factor)) / (data->load_factor);
+	if (data->delay_time == 0) data->delay_time = USEC / 10;
 
 #if 0
 	DEBUG2("RTT %d\tdelay %d", data->srtt, data->delay_time);
 #endif
 
 	data->last_packet = now;
+	data->signal = 1;
 	data->state = STATE_REPLIED;
+	radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
 
 	return 0;
+}
+
+int detail_delay(rad_listen_t *listener)
+{
+	listen_detail_t *data = listener->data;
+
+	if (!data->signal) return 0;
+
+	data->signal = 0;
+
+	return data->delay_time;
 }
 
 
@@ -172,9 +189,7 @@ static int detail_open(rad_listen_t *this)
 	listen_detail_t *data = this->data;
 
 	rad_assert(data->state == STATE_UNOPENED);
-	snprintf(buffer, sizeof(buffer), "%s.work", data->filename);
-	free(data->filename_work);
-	data->filename_work = strdup(buffer);
+	data->delay_time = USEC;
 
 	/*
 	 *	Open detail.work first, so we don't lose
@@ -186,7 +201,7 @@ static int detail_open(rad_listen_t *this)
 	 *	establish the lock, to prevent rlm_detail from
 	 *	writing to it.
 	 */
-	this->fd = open(buffer, O_RDWR);
+	this->fd = open(data->filename_work, O_RDWR);
 	if (this->fd < 0) {
 		DEBUG2("Polling for detail file %s", data->filename);
 
@@ -216,7 +231,7 @@ static int detail_open(rad_listen_t *this)
 		/*
 		 *	Rename detail to detail.work
 		 */
-		if (rename(data->filename, buffer) < 0) {
+		if (rename(data->filename, data->filename_work) < 0) {
 			close(this->fd);
 			this->fd = -1;
 			return 0;
@@ -224,14 +239,7 @@ static int detail_open(rad_listen_t *this)
 	} /* else detail.work existed, and we opened it */
 
 	rad_assert(data->vps == NULL);
-
 	rad_assert(data->fp == NULL);
-	data->fp = fdopen(this->fd, "r");
-	if (!data->fp) {
-		radlog(L_ERR, "Failed to re-open %s: %s",
-		       data->filename, strerror(errno));
-		return 0;
-	}
 
 	data->state = STATE_UNLOCKED;
 
@@ -271,11 +279,6 @@ int detail_recv(rad_listen_t *listener,
 	open_file:
 			rad_assert(listener->fd < 0);
 			
-			/*
-			 *	FIXME: If the file doesn't exist, then
-			 *	return "sleep for 1s", to avoid busy
-			 *	looping.
-			 */
 			if (!detail_open(listener)) return 0;
 
 			rad_assert(data->state == STATE_UNLOCKED);
@@ -302,8 +305,24 @@ int detail_recv(rad_listen_t *listener,
 			 *	radrelay.
 			 */
 			if (rad_lockfd_nonblock(listener->fd, 0) < 0) {
+				/*
+				 *	Close the FD.  The main loop
+				 *	will wake up in a second and
+				 *	try again.
+				 */
+				close(listener->fd);
+				listener->fd = -1;
+				data->state = STATE_UNOPENED;
 				return 0;
 			}
+
+			data->fp = fdopen(listener->fd, "r");
+			if (!data->fp) {
+				radlog(L_ERR, "FATAL: Failed to re-open detail file %s: %s",
+				       data->filename, strerror(errno));
+				exit(1);
+			}
+
 			/*
 			 *	Look for the header
 			 */
@@ -319,6 +338,15 @@ int detail_recv(rad_listen_t *listener,
 				goto open_file;
 			}
 
+			{
+				struct stat buf;
+				
+				fstat(listener->fd, &buf);
+				if (((off_t) ftell(data->fp)) == buf.st_size) {
+					goto cleanup;
+				}
+			}
+
 			/*
 			 *	End of file.  Delete it, and re-set
 			 *	everything.
@@ -326,7 +354,7 @@ int detail_recv(rad_listen_t *listener,
 			if (feof(data->fp)) {
 			cleanup:
 				unlink(data->filename_work);
-				fclose(data->fp); /* closes listener->fd */
+				if (data->fp) fclose(data->fp);
 				data->fp = NULL;
 				listener->fd = -1;
 				data->state = STATE_UNOPENED;
@@ -501,8 +529,8 @@ int detail_recv(rad_listen_t *listener,
 	 */
 	packet = rad_alloc(1);
 	if (!packet) {
-		data->state = STATE_NO_REPLY;	/* try again later */
-		return 0;	/* maybe memory will magically free up... */
+		radlog(L_ERR, "FATAL: Failed allocating memory for detail");
+		exit(1);
 	}
 
 	memset(packet, 0, sizeof(*packet));
@@ -609,20 +637,6 @@ int detail_recv(rad_listen_t *listener,
 		return 0;
 	}
 
-	{
-		struct stat buf;
-
-		fstat(listener->fd, &buf);
-		if (((off_t) ftell(data->fp)) == buf.st_size) {
-			unlink(data->filename_work);
-			fclose(data->fp); /* closes listener->fd */
-			data->fp = NULL;
-			listener->fd = -1;
-			data->state = STATE_RUNNING;
-			return 1;
-		}
-	}
-
 	data->state = STATE_RUNNING;
 
 	return 1;
@@ -690,6 +704,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	int		rcode;
 	listen_detail_t *data;
 	RADCLIENT	*client;
+	char buffer[2048];
 
 	if (!this->data) {
 		this->data = rad_malloc(sizeof(*data));
@@ -697,6 +712,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 	data = this->data;
+	data->delay_time = USEC;
 
 	rcode = cf_section_parse(cs, data, detail_config);
 	if (rcode < 0) {
@@ -713,6 +729,10 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		cf_log_err(cf_sectiontoitem(cs), "Load factor must be between 1 and 100");
 		return -1;
 	}
+
+	snprintf(buffer, sizeof(buffer), "%s.work", data->filename);
+	free(data->filename_work);
+	data->filename_work = strdup(buffer); /* FIXME: leaked */
 
 	data->vps = NULL;
 	data->fp = NULL;

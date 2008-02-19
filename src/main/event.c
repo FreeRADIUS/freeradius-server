@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/event.h>
+#include <freeradius-devel/detail.h>
 #include <freeradius-devel/radius_snmp.h>
 
 #include <freeradius-devel/rad_assert.h>
@@ -54,7 +55,6 @@ static struct timeval		now;
 static time_t			start_time;
 static int			have_children;
 static int			has_detail_listener = FALSE;
-static int			read_from_detail = TRUE;
 static int			just_started = FALSE;
 
 #ifndef __MINGW32__
@@ -87,7 +87,6 @@ static rad_listen_t	*proxy_listeners[32];
 
 static void request_post_handler(REQUEST *request);
 static void wait_a_bit(void *ctx);
-static void event_poll_fd(void *ctx);
 static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd, void *ctx);
 
 static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
@@ -1862,7 +1861,8 @@ int received_request(rad_listen_t *listener,
 	/*
 	 *	We may want to quench the new request.
 	 */
-	if (!can_handle_new_request(packet, client, root)) {
+	if ((listener->type != RAD_LISTEN_DETAIL) &&
+	    !can_handle_new_request(packet, client, root)) {
 		return 0;
 	}
 
@@ -2108,12 +2108,21 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 }
 
 
+static void event_detail_timer(void *ctx)
+{
+	rad_listen_t *listener = ctx;
+	RAD_REQUEST_FUNP fun;
+	REQUEST *request;
+
+	if (listener->recv(listener, &fun, &request)) {
+		if (!thread_pool_addrequest(request, fun)) {
+			request->child_state = REQUEST_DONE;
+		}
+	}
+}
+
 static void handle_signal_self(int flag)
 {
-	if ((flag & RADIUS_SIGNAL_SELF_DETAIL) != 0) {
-		read_from_detail = TRUE;
-	}
-
 	if ((flag & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
 		if ((flag & RADIUS_SIGNAL_SELF_EXIT) != 0) {
 			fr_event_loop_exit(el, 1);
@@ -2143,6 +2152,37 @@ static void handle_signal_self(int flag)
 		fr_event_loop_exit(el, 0x80);
 	}
 
+	if ((flag & RADIUS_SIGNAL_SELF_DETAIL) != 0) {
+		rad_listen_t *this;
+		
+		for (this = mainconfig.listen;
+		     this != NULL;
+		     this = this->next) {
+			int delay;
+			struct timeval when;
+
+			if (this->type != RAD_LISTEN_DETAIL) continue;
+			
+			delay = detail_delay(this);
+			if (!delay) continue;
+
+			fr_event_now(el, &now);
+			when = now;
+			tv_add(&when, delay);
+
+			if (delay > 100000) {
+				DEBUG2("Delaying next detail event for %d.%01u seconds.",
+				       delay / USEC, (delay % USEC) / 100000);
+			}
+
+			if (!fr_event_insert(el, event_detail_timer, this,
+					     &when, NULL)) {
+				radlog(L_ERR, "Failed remembering timer");
+				exit(1);
+			}
+		}
+	}
+
 	if ((flag & RADIUS_SIGNAL_SELF_NEW_FD) != 0) {
 		rad_listen_t *this;
 		
@@ -2154,7 +2194,7 @@ static void handle_signal_self(int flag)
 			if (!fr_event_fd_insert(el, 0, this->fd,
 						event_socket_handler, this)) {
 				radlog(L_ERR, "Failed remembering handle for proxy socket!");
-				_exit(1);
+				exit(1);
 			}
 		}
 	}
@@ -2175,24 +2215,13 @@ void radius_signal_self(int flag)
 	uint8_t buffer[16];
 
 	/*
-	 *	The caller is telling us it's OK to read from the
-	 *	detail files.  However, we're not even listening on
-	 *	the detail files.  Therefore, suppress the flag to
-	 *	avoid bothering the main worker thread.
-	 */
-	if ((flag == RADIUS_SIGNAL_SELF_DETAIL) &&
-	    !has_detail_listener) {
-		return;
-	}
-
-	/*
 	 *	The read MUST be non-blocking for this to work.
 	 */
 	rcode = read(self_pipe[0], buffer, sizeof(buffer));
 	if (rcode > 0) {
 		ssize_t i;
 
-		for (i = 1; i < rcode; i++) {
+		for (i = 0; i < rcode; i++) {
 			buffer[0] |= buffer[i];
 		}
 	} else {
@@ -2209,7 +2238,7 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
 				 UNUSED int fd, UNUSED void *ctx)
 {
 	ssize_t i, rcode;
-	char buffer[32];
+	uint8_t buffer[32];
 
 	rcode = read(self_pipe[0], buffer, sizeof(buffer));
 	if (rcode <= 0) return;
@@ -2217,7 +2246,7 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
 	/*
 	 *	Merge pending signals.
 	 */
-	for (i = 1; i < rcode; i++) {
+	for (i = 0; i < rcode; i++) {
 		buffer[0] |= buffer[i];
 	}
 
@@ -2225,99 +2254,9 @@ static void event_signal_handler(UNUSED fr_event_list_t *xel,
 }
 #endif
 
-/*
- *	The given FD is closed.  Delete it from the list of FD's to poll,
- *	and set a timer to periodically look for an FD again.
- */
-static void event_reset_fd(rad_listen_t *listener, int fd, int usec)
-{
-	struct timeval when;
-	gettimeofday(&when, NULL);
 
-	tv_add(&when, usec);	
-
-	if ((fd >= 0) && !fr_event_fd_delete(el, 0, fd)) {
-		rad_panic("Failed deleting fd");
-	}
-	
-	if (!fr_event_insert(el, event_poll_fd, listener,
-			       &when, NULL)) {
-		rad_panic("Failed inserting event");
-	}
-}
-
-
-/*
- *	Reads from the detail file if possible, OR sets up a timeout
- *	to see if the detail file is ready for reading.
- *
- *	FIXME: On Linux, use inotify to watch the detail file.  This
- *	
- */
-static void event_detail_handler(fr_event_list_t *xel, int fd, void *ctx)
-{
-	rad_listen_t *listener = ctx;
-	RAD_REQUEST_FUNP fun;
-	REQUEST *request;
-
-	rad_assert(xel == el);
-	rad_assert(fd == listener->fd);
-
-	xel = xel;
-
-	/*
-	 *	We're too busy to read from the detail file.  Stop
-	 *	watching the file, and instead go back to polling.
-	 */
-	if (!read_from_detail) {
-		event_reset_fd(listener, fd, USEC);
-		return;
-	}
-	
-	/*
-	 *	FIXME: Put this somewhere else, where it isn't called
-	 *	all of the time...
-	 */
-#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
-	/*
-	 *	If there are no child threads, then there may
-	 *	be child processes.  In that case, wait for
-	 *	their exit status, and throw that exit status
-	 *	away.  This helps get rid of zxombie children.
-	 */
-	while (waitpid(-1, &argval, WNOHANG) > 0) {
-		/* do nothing */
-	}
-#endif
-
-	/*
-	 *	Didn't read anything from the detail file.
-	 *	Wake up in one second to check it again.
-	 */
-	if (!listener->recv(listener, &fun, &request)) {
-		event_reset_fd(listener, fd, USEC);
-		return;
-	}
-
-	/*
-	 *	Drop the request into the thread pool,
-	 *	and let the thread pool take care of
-	 *	doing something with it.
-	 */
-	if (!thread_pool_addrequest(request, fun)) {
-		request->child_state = REQUEST_DONE;
-	}
-
-	/*
-	 *	Reset based on the fd we were given, as detail_recv()
-	 *	may have read all of the file, and closed it.  It then
-	 *	sets listener->fd = -1.
-	 */
-	event_reset_fd(listener, fd, *(int *) listener->data);
-}
-
-
-static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd, void *ctx)
+static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
+				 void *ctx)
 {
 	rad_listen_t *listener = ctx;
 	RAD_REQUEST_FUNP fun;
@@ -2350,83 +2289,77 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd, void *ctx)
 	if (!thread_pool_addrequest(request, fun)) {
 		request->child_state = REQUEST_DONE;
 	}
-
-	/*
-	 *	If we've read a packet from a socket OTHER than the
-	 *	detail file, we start ignoring the detail file.
-	 *
-	 *	When the child thread pulls the request off of the
-	 *	queues, it will check if the queues are empty.  Once
-	 *	all queues are empty, it will signal us to read the
-	 *	detail file again.
-	 */
-	read_from_detail = FALSE;
 }
 
 
 /*
- *	This function is called periodically to see if a file
- *	descriptor is available for reading.
+ *	This function is called periodically to see if any FD's are
+ *	available for reading.
  */
-static void event_poll_fd(void *ctx)
+static void event_poll_fds(UNUSED void *ctx)
 {
 	int rcode;
 	RAD_REQUEST_FUNP fun;
 	REQUEST *request;
-	rad_listen_t *listener = ctx;
-	fr_event_fd_handler_t handler;
+	rad_listen_t *this;
+	struct timeval when;
 
-	/*
-	 *	Ignore the detail file if we're busy with other work.
-	 */
-	if ((listener->type == RAD_LISTEN_DETAIL) && !read_from_detail) {
-		event_reset_fd(listener, listener->fd, USEC);
-		return;
-	}
+	fr_event_now(el, &now);
+	when = now;
+	when.tv_sec += 1;
 
-	/*
-	 *	Try to read a RADIUS packet.  This also opens the FD.
-	 *
-	 *	FIXME: This does poll AND receive.
-	 */
-	rcode = listener->recv(listener, &fun, &request);
+	for (this = mainconfig.listen; this != NULL; this = this->next) {
+		if (this->fd >= 0) continue;
 
-	/*
-	 *	We read a request.  Add it to the list for processing.
-	 */
-	if (rcode == 1) {
+		/*
+		 *	Try to read something.
+		 *
+		 *	FIXME: This does poll AND receive.
+		 */
+		rcode = this->recv(this, &fun, &request);
+		if (!rcode) continue;
+		
 		rad_assert(fun != NULL);
 		rad_assert(request != NULL);
-
+			
 		if (!thread_pool_addrequest(request, fun)) {
 			request->child_state = REQUEST_DONE;
+		}
+
+		/*
+		 *	We have an FD.  Start watching it.
+		 */
+		if (this->fd >= 0) {
+			/*
+			 *	... unless it's a detail file.  In
+			 *	that case, we rely on the signal to
+			 *	self to know when to continue
+			 *	processing the detail file.
+			 */
+			if (this->type == RAD_LISTEN_DETAIL) continue;
+
+			/*
+			 *	FIXME: this should be SNMP handler,
+			 *	and we should do SOMETHING when the
+			 *	fd is closed!
+			 */
+			if (!fr_event_fd_insert(el, 0, this->fd,
+						event_socket_handler, this)) {
+				char buffer[256];
+				
+				this->print(this, buffer, sizeof(buffer));
+				rad_panic("Failed creating handler for snmp");
+			}
 		}
 	}
 
 	/*
-	 *	Still no FD, OR the fd was read completely, and then
-	 *	closed.  Re-set the polling timer and return.
+	 *	Reset the poll.
 	 */
-	if (listener->fd < 0) {
-		event_reset_fd(listener, -1, USEC);
-		return;
-	}
-
-	if (listener->type == RAD_LISTEN_DETAIL) {
-		handler = event_detail_handler;
-	} else {
-		handler = event_socket_handler;
-	}
-
-	/*
-	 *	We have an FD.  Start watching it.
-	 */
-	if (!fr_event_fd_insert(el, 0, listener->fd,
-				  handler, listener)) {
-		char buffer[256];
-		
-		listener->print(listener, buffer, sizeof(buffer));
-		rad_panic("Failed creating handler for socket");
+	if (!fr_event_insert(el, event_poll_fds, NULL,
+			     &when, NULL)) {
+		radlog(L_ERR, "Failed creating handler");
+		exit(1);
 	}
 }
 
@@ -2439,9 +2372,6 @@ static void event_status(struct timeval *wake)
 			just_started = FALSE;
 		}
 		return;
-
-	} else {
-		read_from_detail = TRUE;
 	}
 
 	if (!wake) {
@@ -2449,7 +2379,7 @@ static void event_status(struct timeval *wake)
 
 	} else if ((wake->tv_sec != 0) ||
 		   (wake->tv_usec >= 100000)) {
-		DEBUG("Waking up in %d.%01u seconds.\n",
+		DEBUG("Waking up in %d.%01u seconds.",
 		      (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
 	}
 }
@@ -2461,6 +2391,7 @@ static void event_status(struct timeval *wake)
 int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 {
 	int i;
+	int has_snmp_listener = FALSE;
 	rad_listen_t *this, *head = NULL;
 
 	if (el) return 0;
@@ -2574,6 +2505,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 		case RAD_LISTEN_SNMP:
 			DEBUG("Listening on SNMP %s", buffer);
+			has_snmp_listener = TRUE;
 			break;
 
 		case RAD_LISTEN_PROXY:
@@ -2599,16 +2531,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		 *	and detail file fd's.
 		 */
 		if (this->fd < 0) {
-			struct timeval when;
-
-			gettimeofday(&when, NULL);
-			when.tv_sec += 1;
-
-			if (!fr_event_insert(el, event_poll_fd, this,
-					       &when, NULL)) {
-				radlog(L_ERR, "Failed creating handler");
-				exit(1);
-			}
 			continue;
 		}
 
@@ -2624,6 +2546,19 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 			this->print(this, buffer, sizeof(buffer));
 			radlog(L_ERR, "Failed creating handler for socket %s",
 			       buffer);
+			exit(1);
+		}
+	}
+
+	if (has_detail_listener || has_snmp_listener) {
+		struct timeval when;
+		
+		gettimeofday(&when, NULL);
+		when.tv_sec += 1;
+		
+		if (!fr_event_insert(el, event_poll_fds, NULL,
+				     &when, NULL)) {
+			radlog(L_ERR, "Failed creating handler");
 			exit(1);
 		}
 	}
