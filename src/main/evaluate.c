@@ -219,33 +219,33 @@ static int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 	/*
 	 *	Allow for tunneled sessions.
 	 */
-	if (memcmp(vp_name, "outer.", 6) == 0) {
+	if (strncmp(vp_name, "outer.", 6) == 0) {
 		if (!myrequest->parent) return TRUE;
 		vp_name += 6;
 		myrequest = myrequest->parent;
 	}
 
-	if (memcmp(vp_name, "request:", 8) == 0) {
+	if (strncmp(vp_name, "request:", 8) == 0) {
 		vp_name += 8;
 		vps = myrequest->packet->vps;
 
-	} else if (memcmp(vp_name, "reply:", 6) == 0) {
+	} else if (strncmp(vp_name, "reply:", 6) == 0) {
 		vp_name += 6;
 		vps = myrequest->reply->vps;
 
-	} else if (memcmp(vp_name, "proxy-request:", 14) == 0) {
+	} else if (strncmp(vp_name, "proxy-request:", 14) == 0) {
 		vp_name += 14;
 		if (request->proxy) vps = myrequest->proxy->vps;
 
-	} else if (memcmp(vp_name, "proxy-reply:", 12) == 0) {
+	} else if (strncmp(vp_name, "proxy-reply:", 12) == 0) {
 		vp_name += 12;
 		if (request->proxy_reply) vps = myrequest->proxy_reply->vps;
 
-	} else if (memcmp(vp_name, "config:", 7) == 0) {
+	} else if (strncmp(vp_name, "config:", 7) == 0) {
 		vp_name += 7;
 		vps = myrequest->config_items;
 
-	} else if (memcmp(vp_name, "control:", 8) == 0) {
+	} else if (strncmp(vp_name, "control:", 8) == 0) {
 		vp_name += 8;
 		vps = myrequest->config_items;
 
@@ -1112,7 +1112,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	 *	If we are an inner tunnel session, permit the
 	 *	policy to update the outer lists directly.
 	 */
-	if (memcmp(name, "outer.", 6) == 0) {
+	if (strncmp(name, "outer.", 6) == 0) {
 		if (!request->parent) return RLM_MODULE_NOOP;
 
 		request_vps = request->parent;
