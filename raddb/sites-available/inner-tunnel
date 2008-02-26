@@ -52,8 +52,30 @@ authorize {
 	#  Otherwise, when the first style of realm doesn't match,
 	#  the other styles won't be checked.
 	#
+	#  Note that proxying the inner tunnel authentication means
+	#  that the user MAY use one identity in the outer session
+	#  (e.g. "anonymous", and a different one here
+	#  (e.g. "user@example.com").  The inner session will then be
+	#  proxied elsewhere for authentication.  If you are not
+	#  careful, this means that the user can cause you to forward
+	#  the authentication to another RADIUS server, and have the
+	#  accounting logs *not* sent to the other server.  This makes
+	#  it difficult to bill people for their network activity.
+	#
 	suffix
 #	ntdomain
+
+	#
+	#  The "suffix" module takes care of stripping the domain
+	#  (e.g. "@example.com") from the User-Name attribute, and the
+	#  next few lines ensure that the request is not proxied.
+	#
+	#  If you want the inner tunnel request to be proxied, delete
+	#  the next few lines.
+	#
+	update control {
+	       Proxy-To-Realm := LOCAL
+	}
 
 	#
 	#  This module takes care of EAP-MSCHAPv2 authentication.

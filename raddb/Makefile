@@ -75,5 +75,9 @@ install:
 		cd $(R)$(raddbdir)/sites-enabled/; \
 		ln -s ../sites-available/default; \
 	fi
+	if [ ! -f $(R)$(raddbdir)/sites-enabled/inner-tunnel ]; then \
+		cd $(R)$(raddbdir)/sites-enabled/; \
+		ln -s ../sites-available/inner-tunnel; \
+	fi
 
 clean:
