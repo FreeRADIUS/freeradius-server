@@ -252,7 +252,7 @@ static int sm_parse_file(FILE*fp,const char* fname) {
 
 		    	case T_COMMA: break;  /* parse next line */
 		    	default: /* error: we do  not expect anything else */
-		    			fprintf(stderr ,"%s: %s[%lu]: sintax error\n",progname,fname,lino);
+		    			fprintf(stderr ,"%s: %s[%lu]: syntax error\n",progname,fname,lino);
 		    			librad_perror("Error");
 		    			parse_state = SMP_INVALID;
 		    			st_errors++;
