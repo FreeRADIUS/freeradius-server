@@ -92,7 +92,7 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd, void *ctx)
 static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
 				    const char *msg)
 {
-	radlog(L_ERR, "]%s:%d] %s", file, line, msg);
+	radlog(L_ERR, "[%s:%d] %s", file, line, msg);
 	_exit(1);
 }
 
