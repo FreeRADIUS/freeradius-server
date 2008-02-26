@@ -177,7 +177,7 @@ static int sm_parse_user(DBM *pdb, const char * username, REQUEST *req,
 
    	d = dbm_fetch(pdb, k);
    	if ( d.dptr == NULL ) {
-   		 DEBUG2("rlm_dbm: User <%s> not foud in database\n",username);
+   		 DEBUG2("rlm_dbm: User <%s> not found in database\n",username);
    		 return RLM_MODULE_NOTFOUND;
    	}
 
