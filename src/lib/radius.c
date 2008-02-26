@@ -1842,10 +1842,10 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 *	It looks like a RADIUS packet, but we can't validate
 	 *	the signature.
 	 */
-	if ((packet->code == 0) || packet->code >= MAX_PACKET_CODE) {
+	if ((packet->code == 0) || (packet->code >= MAX_PACKET_CODE)) {
 		char buffer[32];
-		librad_log("Received Unknown packet code %d"
-			   "from client %s port %d: Cannot validate signature",
+		librad_log("Received Unknown packet code %d "
+			   "from client %s port %d: Cannot validate signature.",
 			   packet->code,
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
@@ -1863,17 +1863,19 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 		case PW_AUTHENTICATION_REQUEST:
 		case PW_STATUS_SERVER:
-		case PW_DISCONNECT_REQUEST:
 			/*
 			 *	The authentication vector is random
 			 *	nonsense, invented by the client.
 			 */
 			break;
 
+		case PW_COA_REQUEST:
+		case PW_DISCONNECT_REQUEST:
 		case PW_ACCOUNTING_REQUEST:
 			if (calc_acctdigest(packet, secret) > 1) {
-				librad_log("Received Accounting-Request packet "
+				librad_log("Received %s packet "
 					   "from %s with invalid signature!  (Shared secret is incorrect.)",
+					   packet_codes[packet->code],
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.ipaddr,
 						     buffer, sizeof(buffer)));
@@ -1905,7 +1907,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			break;
 
 		default:
-			librad_log("Received Unknown packet code %d"
+			librad_log("Received Unknown packet code %d "
 				   "from client %s port %d: Cannot validate signature",
 				   packet->code,
 				   inet_ntop(packet->src_ipaddr.af,
