@@ -56,7 +56,8 @@ server vmps {
         			update request {
 					VMPS-Mac = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
 				}
-			} else {
+			}
+			else {
 				update request {
 					VMPS-Mac = "%{VMPS-Cookie}"
 				}
