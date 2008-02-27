@@ -78,8 +78,5 @@ server vmps {
 		}
 	}
 
-	#  Proxying of requests is supported, as are the "pre-proxy"
-	#  and "post-proxy" sections.  However, any VMPS requests will
-	#  be proxied as RADIUS packets, and not VMPS packets.  This
-	#  is because FreeRADIUS is still, at heart, a RADIUS server.
+	# Proxying of VMPS requests is NOT supported.
 }
