@@ -63,13 +63,18 @@ server vmps {
 			}
 		}
 
-		#
-		#  This is a hack for testing
-		#
+		# required VMPS reply attributes
 		update reply {
 			VMPS-Packet-Type = VMPS-Join-Response
-			VMPS-VLAN-Name = "foo"
 			VMPS-Cookie = "%{VMPS-Mac}"
+
+			VMPS-VLAN-Name = "please_use_real_vlan_here"
+
+			#
+			#  If you have VLAN's in a database, you can select
+			#  the VLAN name based on the MAC address.
+			#
+			#VMPS-VLAN-Name = "%{sql:select ... where mac='%{VMPS-Mac}'}"
 		}
 	}
 
