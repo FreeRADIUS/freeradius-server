@@ -49,6 +49,21 @@ server vmps {
 	#
 	vmps {
 		#
+		#  Some requests may not have a MAC address.  Try to
+		#  create one using other attributes.
+		if (!VMPS-Mac) {
+			if (VMPS-Ethernet-Frame =~ /0x.{12}(..)(..)(..)(..)(..)(..).*/) {
+        			update request {
+					VMPS-Mac = "%{1}:%{2}:%{3}:%{4}:%{5}:%{6}"
+				}
+			} else {
+				update request {
+					VMPS-Mac = "%{VMPS-Cookie}"
+				}
+			}
+		}
+
+		#
 		#  This is a hack for testing
 		#
 		update reply {
