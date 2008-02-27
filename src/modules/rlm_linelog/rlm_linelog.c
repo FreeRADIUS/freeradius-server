@@ -31,6 +31,22 @@ RCSID("$Id$")
 #include <fcntl.h>
 #endif
 
+#ifdef HAVE_SYSLOG_H
+#include <syslog.h>
+
+#ifndef LOG_AUTHPRIV
+#define LOG_AUTHPRIV LOG_USER
+#endif
+
+#ifndef LOG_PID
+#define LOG_PID (0)
+#endif
+
+#ifndef LOG_INFO
+#define LOG_INFO (0)
+#endif
+#endif
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -92,6 +108,26 @@ static int linelog_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
+	if (!inst->filename) {
+		radlog(L_ERR, "rlm_linelog: Must specify an output filename");
+		linelog_detach(inst);
+		return -1;
+	}
+
+#ifdef HAVE_SYSLOG_H
+	if (strcmp(inst->filename, "syslog") == 0) {
+		radlog(L_ERR, "rlm_linelog: Syslog output is not supported");
+		linelog_detach(inst);
+		return -1;
+	}
+#endif
+
+	if (!inst->line) {
+		radlog(L_ERR, "rlm_linelog: Must specify a log format");
+		linelog_detach(inst);
+		return -1;
+	}
+
 	*instance = inst;
 
 	return 0;
@@ -101,7 +137,7 @@ static int linelog_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Escape unprintable characters.
  */
-static int linelog_escape_func(char *out, int outlen, const char *in)
+static size_t linelog_escape_func(char *out, size_t outlen, const char *in)
 {
 	int len = 0;
 
@@ -161,7 +197,7 @@ static int linelog_escape_func(char *out, int outlen, const char *in)
 
 static int do_linelog(void *instance, REQUEST *request)
 {
-	int fd;
+	int fd = -1;
 	char buffer[4096];
 	char line[1024];
 	rlm_linelog_t *inst;
@@ -171,13 +207,16 @@ static int do_linelog(void *instance, REQUEST *request)
 	/*
 	 *	FIXME: Check length.
 	 */
-	radius_xlat(buffer, sizeof(buffer), inst->filename, request, NULL);
-
-	fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, 0600);
-	if (fd == -1) {
-		radlog(L_ERR, "rlm_linelog: Failed to open %s: %s",
-		       buffer, strerror(errno));
-		return RLM_MODULE_FAIL;
+	if (strcmp(inst->filename, "syslog") != 0) {
+		radius_xlat(buffer, sizeof(buffer), inst->filename, request,
+			    NULL);
+		
+		fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, 0600);
+		if (fd == -1) {
+			radlog(L_ERR, "rlm_linelog: Failed to open %s: %s",
+			       buffer, strerror(errno));
+			return RLM_MODULE_FAIL;
+		}
 	}
 
 	/*
@@ -185,10 +224,18 @@ static int do_linelog(void *instance, REQUEST *request)
 	 */
 	radius_xlat(line, sizeof(line) - 1, inst->line, request,
 		    linelog_escape_func);
-	strcat(line, "\n");
 
-	write(fd, line, strlen(line));
-	close(fd);
+	if (fd >= 0) {
+		strcat(line, "\n");
+		
+		write(fd, line, strlen(line));
+		close(fd);
+
+#ifdef HAVE_SYSLOG_H
+	} else {
+		syslog(LOG_AUTHPRIV | LOG_PID | LOG_INFO, "%s", line);
+#endif
+	}
 
 	return RLM_MODULE_OK;
 }
