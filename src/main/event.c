@@ -1462,7 +1462,8 @@ static void request_post_handler(REQUEST *request)
 	/*
 	 *	Access-Requests get delayed or cached.
 	 */
-	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
+	switch (request->packet->code) {
+	case PW_AUTHENTICATION_REQUEST:
 		gettimeofday(&request->next_when, NULL);
 
 		if (request->reply->code == 0) {
@@ -1517,21 +1518,25 @@ static void request_post_handler(REQUEST *request)
 		request->next_when.tv_sec += request->root->cleanup_delay;
 		request->next_callback = cleanup_delay;
 		child_state = REQUEST_CLEANUP_DELAY;
+		break;
 
-	} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+	case PW_ACCOUNTING_REQUEST:
 		request->next_callback = NULL; /* just to be safe */
 		child_state = REQUEST_DONE;
+		break;
 
 		/*
 		 *	FIXME: Status-Server should probably not be
 		 *	handled here...
 		 */
-	} else if (request->packet->code == PW_STATUS_SERVER) {
+	case PW_STATUS_SERVER:
 		request->next_callback = NULL;
 		child_state = REQUEST_DONE;
+		break;
 
-	} else {
+	default:
 		rad_panic("Unknown packet type");
+		break;
 	}
 
 	/*
@@ -2484,11 +2489,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	
 	/*
 	 *	Add all of the sockets to the event loop.
-	 *
-	 *	FIXME: New proxy sockets aren't currently added to the
-	 *	event loop.  They're allocated in a child thread, and
-	 *	we don't have (or want) a mutex around the event
-	 *	handling code.
 	 */
 	for (this = head;
 	     this != NULL;
