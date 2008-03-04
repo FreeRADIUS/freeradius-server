@@ -459,7 +459,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	if (inst->set_auth_type) {
 		DICT_VALUE *dv = dict_valbyname(PW_AUTH_TYPE, xlat_name);
 		if (!dv) {
-			DEBUG2("rlm_ldap: Over-riding set_auth_type, as we're not listed in the \"authenticate\" section.");
+			DEBUG2("rlm_ldap: Over-riding set_auth_type, as there is no module %s listed in the \"authenticate\" section.", xlat_name);
 			inst->set_auth_type = 0;
 		}
 	} /* else no need to look up the value */
