@@ -812,6 +812,13 @@ $INCLUDE eap.conf
 		#  backend. This will work ONLY IF FreeRADIUS has been
 		#  built with the --with-edir configure option.
 		#
+		#  See also the following link:
+		#
+		#  https://secure-support.novell.com/KanisaPlatform/Publishing/558/3009668_f.SAL_Public.html
+		#
+		#  Novell may require TLS encrypted sessions before returning
+		#  the user's password.
+		#
 		# password_attribute = userPassword
 
 		#  Un-comment the following to disable Novell
