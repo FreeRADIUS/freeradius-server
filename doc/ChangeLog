@@ -1,4 +1,25 @@
-FreeRADIUS 2.0.2 ; $Date$ , urgency=medium
+FreeRADIUS 2.0.3 ; $Date$ , urgency=medium
+	Feature improvements
+	* Updated raddb/certs/ca.cnf with extensions to allow ca.der
+	  to be imported as a CA on Symbian and Windows Mobile devices.
+	  Closes bug #524
+	* Enable multiple matches in "hints" via Fall-Through = Yes.
+	  Closes bug #477
+	* Added preliminary SQLite driver, contibuted by Apple.
+	  Untested, with no sample configuration.  This address bug #470.
+
+	Bug fixes
+	* Corrected typos in rlm_dbm.  Closes bugs #521 and #522.
+	* Detail file "listen" sections now work much better.
+	* Don't allow old "log_*" to over-ride new format.  Closes bug #525
+	* Initialize allocated memory in Oracle SQL driver.  This fixes
+	  occasional crashes on some systems.  Closes bug #518
+	* Call correct function in rlm_protocol_filter.  This enables the
+	  module to build.  Closes bug #512.
+	* Added deprecated flag to build for rlm_krb5.  This allows it to
+	  run on 64-bit systems.  Closes bug #491
+
+FreeRADIUS 2.0.2 ; Date: 2008/02/14 11:13:48  , urgency=medium
 	Feature improvements
 	* Added notes on how to debug the server in radiusd.conf
 	* Moved all "log_*" in radiusd.conf to log{} section.
