@@ -400,6 +400,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 				return -1;
 			}
 			rowdata[y-1]=rad_malloc(dsize+1);
+			memset(rowdata[y-1], 0, dsize+1);
 			break;
 		case SQLT_DAT:
 		case SQLT_INT:
@@ -409,6 +410,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 		case SQLT_BIN:
 		case SQLT_NUM:
 			rowdata[y-1]=rad_malloc(dsize+1);
+			memset(rowdata[y-1], 0, dsize+1);
 			break;
 		default:
 			dsize=0;
