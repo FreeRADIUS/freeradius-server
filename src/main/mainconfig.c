@@ -210,7 +210,7 @@ static const CONF_PARSER serverlog_config[] = {
 	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, NULL },
 	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names, NULL },
 	{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, NULL },
-	{ "log_destination", PW_TYPE_STRING_PTR, -1, &radlog_dest, "files" },
+	{ "log_destination", PW_TYPE_STRING_PTR, -1, &radlog_dest, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
