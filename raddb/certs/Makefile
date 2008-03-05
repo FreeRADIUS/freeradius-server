@@ -122,6 +122,9 @@ random:
 print:
 	openssl x509 -text -in server.crt
 
+printca:
+	openssl x509 -text -in ca.pem
+
 clean:
 	@rm -f *~ *old client.csr client.key client.crt client.p12 client.pem
 
