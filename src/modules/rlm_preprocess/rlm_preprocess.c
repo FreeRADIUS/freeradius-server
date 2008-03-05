@@ -70,6 +70,16 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
+/*
+ *     See if a VALUE_PAIR list contains Fall-Through = Yes
+ */
+static int fallthrough(VALUE_PAIR *vp)
+{
+	VALUE_PAIR *tmp;
+	tmp = pairfind(vp, PW_FALL_THROUGH);
+
+	return tmp ? tmp->lvalue : 0;
+}
 
 /*
  *	dgreer --
@@ -302,6 +312,8 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 	VALUE_PAIR	*tmp;
 	PAIR_LIST	*i;
 	VALUE_PAIR *request_pairs;
+	int		updated = 0, ft;
+
 
 	request_pairs = request->packet->vps;
 
@@ -331,22 +343,23 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 		    (paircompare(request, request_pairs, i->check, NULL) == 0)) {
 			DEBUG2("  hints: Matched %s at %d",
 			       i->name, i->lineno);
-			break;
+			/*
+			 *	Now add all attributes to the request list,
+			 *	except PW_STRIP_USER_NAME and PW_FALL_THROUGH
+			 *	and xlat them.
+			 */
+			add = paircopy(i->reply);
+			ft = fallthrough(add);
+			pairdelete(&add, PW_STRIP_USER_NAME);
+			pairdelete(&add, PW_FALL_THROUGH);
+			pairxlatmove(request, &request->packet->vps, &add);
+			pairfree(&add);
+			updated = 1;
+			if (!ft) break;
 		}
 	}
 
-	if (i == NULL) return RLM_MODULE_NOOP;
-
-	add = paircopy(i->reply);
-
-	/*
-	 *	Now add all attributes to the request list,
-	 *	except the PW_STRIP_USER_NAME one, and
-	 *	xlat them.
-	 */
-	pairdelete(&add, PW_STRIP_USER_NAME);
-	pairxlatmove(request, &request->packet->vps, &add);
-	pairfree(&add);
+	if (updated == 0) return RLM_MODULE_NOOP;
 
 	return RLM_MODULE_UPDATED;
 }
