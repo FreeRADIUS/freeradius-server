@@ -100,8 +100,7 @@ static int filter_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	inst->cs = conf_read("rlm_protocol_filter", 0,
-			     inst->filename, NULL);
+	inst->cs = cf_file_read(inst->filename);
 	if (!inst->cs) {
 		filter_detach(inst);
 		return -1;
