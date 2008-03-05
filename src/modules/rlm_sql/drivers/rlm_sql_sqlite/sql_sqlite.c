@@ -20,16 +20,15 @@
  * Copyright 2007 Apple Inc.
  */
 
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
-#include <stdio.h>
+#include <freeradius-devel/radiusd.h>
+
 #include <sys/stat.h>
-#include <stdlib.h>
-#include <string.h>
 
 #include <sqlite3.h>
 
-#include "radiusd.h"
-#include "config.h"
 #include "rlm_sql.h"
 
 typedef struct rlm_sql_sqlite_sock {
@@ -331,7 +330,7 @@ static int sql_free_result(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *               connection
  *
  *************************************************************************/
-static char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+static const char *sql_error(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 {
 	return NULL;
 }
