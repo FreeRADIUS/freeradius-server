@@ -166,10 +166,10 @@ static int digest_authenticate(void *instance, REQUEST *request)
 			sub->vp_octets[attrlen - 2] = '\0';
 			sub->length = attrlen - 2;
 
-			if (debug_flag) {
-			  putchar('\t');
-			  vp_print(stdout, sub);
-			  putchar('\n');
+			if ((debug_flag > 1) && fr_log_fp) {
+			  fputc('\t', fr_log_fp);
+			  vp_print(fr_log_fp, sub);
+			  fputc('\n', fr_log_fp);
 			}
 
 			/*
@@ -384,12 +384,12 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	fr_bin2hex(hash, (char *) kd, sizeof(hash));
 
 #ifndef NDEBUG
-	if (debug_flag) {
-		printf("H(A1) = ");
+	if (debug_flag > 1) {
+		fr_printf_log("H(A1) = ");
 		for (i = 0; i < 16; i++) {
-			printf("%02x", hash[i]);
+			fr_printf_log("%02x", hash[i]);
 		}
-		printf("\n");
+		fr_printf_log("\n");
 	}
 #endif
 	kd_len = 32;
@@ -453,12 +453,12 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	fr_bin2hex(hash, (char *) kd + kd_len, sizeof(hash));
 
 #ifndef NDEBUG
-	if (debug_flag) {
-		printf("H(A2) = ");
+	if (debug_flag > 1) {
+		fr_printf_log("H(A2) = ");
 		for (i = 0; i < 16; i++) {
-			printf("%02x", hash[i]);
+			fr_printf_log("%02x", hash[i]);
 		}
-		printf("\n");
+		fr_printf_log("\n");
 	}
 #endif
 	kd_len += 32;
@@ -488,18 +488,18 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	}
 
 #ifndef NDEBUG
-	if (debug_flag) {
-		printf("EXPECTED ");
+	if (debug_flag > 1) {
+		fr_printf_log("EXPECTED ");
 		for (i = 0; i < 16; i++) {
-			printf("%02x", kd[i]);
+			fr_printf_log("%02x", kd[i]);
 		}
-		printf("\n");
+		fr_printf_log("\n");
 
-		printf("RECEIVED ");
+		fr_printf_log("RECEIVED ");
 		for (i = 0; i < 16; i++) {
-			printf("%02x", hash[i]);
+			fr_printf_log("%02x", hash[i]);
 		}
-		printf("\n");
+		fr_printf_log("\n");
 	}
 #endif
 
