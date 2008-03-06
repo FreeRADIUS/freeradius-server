@@ -38,6 +38,7 @@ RCSID("$Id$")
 static int openlog_run = 0;
 #endif
 
+static int can_update_log_fp = TRUE;
 static FILE *log_fp = NULL;
 
 /*
@@ -141,21 +142,15 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		} else if (log_fp) {
 			struct stat buf;
 
-			if ((stat(myconfig->log_file, &buf) < 0) ||
-			    (buf.st_ino == 0)) {
+			if (stat(myconfig->log_file, &buf) < 0) {
 				fclose(log_fp);
 				log_fp = fr_log_fp = NULL;
 			}
 		}
 
-		if (log_fp) {
-			fclose(log_fp);
-			log_fp = fr_log_fp = NULL;
-		}
-
 		if (!log_fp) {
-			log_fp = fopen(myconfig->log_file, "a");
-			if (!log_fp) {
+			fp = fopen(myconfig->log_file, "a");
+			if (!fp) {
 				fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
 					progname, myconfig->log_file, strerror(errno));
 				
@@ -164,9 +159,15 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 				fprintf(stderr, ")\n");
 				return -1;
 			}
-			fr_log_fp = log_fp;
-			setlinebuf(log_fp);
+			setlinebuf(fp);
 		}
+
+		/*
+		 *	We can only set the global variable log_fp IF
+		 *	we have no child threads.  If we do have child
+		 *	threads, each thread has to open it's own FP.
+		 */
+		if (can_update_log_fp) fr_log_fp = log_fp = fp;
 	}
 
 	if (print_timestamp) {
@@ -223,6 +224,9 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 #endif
 	if (log_fp != NULL) {
 		fputs(buffer, log_fp);
+	} else if (fp != NULL) {
+		fputs(buffer, fp);
+		fclose(fp);
 	} else if (fd >= 0) {
 		write(fd, buffer, strlen(buffer));
 	}
@@ -267,6 +271,23 @@ void vp_listdebug(VALUE_PAIR *vp)
         }
 }
 
-
-
-
+/*
+ *	If the server is running with multiple threads, signal the log
+ *	subsystem that we're about to START multiple threads.  Once
+ *	that happens, we can no longer open/close the log_fp in a
+ *	child thread, as writing to global variables causes a race
+ *	condition.
+ *
+ *	We also close the fr_log_fp, as it can no longer write to the
+ *	log file (if any).
+ *
+ *	All of this work is because we want to catch the case of the
+ *	administrator deleting the log file.  If that happens, we want
+ *	the logs to go to the *new* file, and not the *old* one.
+ */
+void force_log_reopen(void)
+{
+	can_update_log_fp = 0;
+	if (log_fp) fclose(log_fp);
+	fr_log_fp = log_fp = NULL;
+}

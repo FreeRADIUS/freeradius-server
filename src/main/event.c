@@ -44,6 +44,7 @@ RCSID("$Id$")
 extern pid_t radius_pid;
 extern int dont_fork;
 extern int check_config;
+extern void force_log_reopen(void);
 
 /*
  *	Ridiculous amounts of local state.
@@ -2434,6 +2435,12 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		}
 #endif
 	}
+
+	/*
+	 *	Just before we spawn the child threads, force the log
+	 *	subsystem to re-open the log file for every write.
+	 */
+	if (spawn_flag) force_log_reopen();
 
 #ifdef HAVE_PTHREAD_H
 	if (thread_pool_init(cs, spawn_flag) < 0) {
