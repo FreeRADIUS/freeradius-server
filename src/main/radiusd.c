@@ -54,11 +54,6 @@ RCSID("$Id$")
 #	define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
 
-#ifndef HAVE_PTHREAD_H
-#define thread_pool_lock(_x)
-#define thread_pool_unlock(_x)
-#endif
-
 /*
  *  Global variables.
  */
@@ -153,7 +148,7 @@ int main(int argc, char *argv[])
 	mainconfig.log_file = NULL;
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Cd:fhi:l:mn:p:svxX")) != EOF) {
+	while ((argval = getopt(argc, argv, "Cd:fhi:l:mn:p:stvxX")) != EOF) {
 
 		switch(argval) {
 			case 'C':
@@ -209,6 +204,10 @@ int main(int argc, char *argv[])
 			case 's':	/* Single process mode */
 				spawn_flag = FALSE;
 				dont_fork = TRUE;
+				break;
+
+			case 't':	/* no child threads */
+				spawn_flag = FALSE;
 				break;
 
 			case 'v':
@@ -339,8 +338,7 @@ int main(int argc, char *argv[])
 	}
 
 	/*
-	 *	It's called the thread pool, but it does a little
-	 *	more than that.
+	 *	Initialize the event pool, including threads.
 	 */
 	radius_event_init(mainconfig.config, spawn_flag);
 
