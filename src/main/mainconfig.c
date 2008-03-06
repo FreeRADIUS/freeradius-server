@@ -636,6 +636,11 @@ int read_mainconfig(int reload)
 	}
 
 	/*
+	 *	Don't over-ride a destination set on the command-line.
+	 */
+	if (mainconfig.radlog_dest != RADLOG_NULL) goto read_dict;
+
+	/*
 	 *	Debug flag 1 MAY go to files.
 	 *	Debug flag 2 ALWAYS goes to stdout
 	 *
@@ -655,7 +660,7 @@ int read_mainconfig(int reload)
 			cf_section_free(&cs);
 			return -1;
 		}
-
+		
 		mainconfig.radlog_dest = fr_str2int(str2dest, radlog_dest,
 						    RADLOG_NUM_DEST);
 		if (mainconfig.radlog_dest == RADLOG_NUM_DEST) {
@@ -664,7 +669,7 @@ int read_mainconfig(int reload)
 			cf_section_free(&cs);
 			return -1;
 		}
-
+		
 		if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
 			/*
 			 *	Make sure syslog_facility isn't NULL
@@ -683,11 +688,13 @@ int read_mainconfig(int reload)
 				return -1;
 			}
 		}
-	} else {
+
+	} else if (mainconfig.radlog_dest != RADLOG_NULL) {
 		mainconfig.radlog_dest = RADLOG_STDOUT;
 		mainconfig.radlog_fd = STDOUT_FILENO;
 	}
 
+ read_dict:
 	/* Initialize the dictionary */
 	cp = cf_pair_find(cs, "dictionary");
 	if (cp) p = cf_pair_value(cp);

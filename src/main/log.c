@@ -28,13 +28,19 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+
 #ifdef HAVE_SYSLOG_H
 #	include <syslog.h>
 /* keep track of whether we've run openlog() */
 static int openlog_run = 0;
 #endif
 
- /*
+static FILE *log_fp = NULL;
+
+/*
  * Logging facility names
  */
 static const FR_NAME_NUMBER levels[] = {
@@ -89,6 +95,13 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		print_timestamp = 1;
 	}
 
+	if ((fd != -1) &&
+	    (myconfig->radlog_dest != RADLOG_STDOUT) &&
+	    (myconfig->radlog_dest != RADLOG_STDERR)) {
+		myconfig->radlog_fd = -1;
+		fd = -1;
+	}
+
 	*buffer = '\0';
 	len = 0;
 	if (fd != -1) {
@@ -125,14 +138,34 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 				return 0;
 			}
 			
-		} else if ((fp = fopen(myconfig->log_file, "a")) == NULL) {
-			fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
-				progname, myconfig->log_file, strerror(errno));
-			
-			fprintf(stderr, "  (");
-			vfprintf(stderr, fmt, ap);  /* the message that caused the log */
-			fprintf(stderr, ")\n");
-			return -1;
+		} else if (log_fp) {
+			struct stat buf;
+
+			if ((stat(myconfig->log_file, &buf) < 0) ||
+			    (buf.st_ino == 0)) {
+				fclose(log_fp);
+				log_fp = fr_log_fp = NULL;
+			}
+		}
+
+		if (log_fp) {
+			fclose(log_fp);
+			log_fp = fr_log_fp = NULL;
+		}
+
+		if (!log_fp) {
+			log_fp = fopen(myconfig->log_file, "a");
+			if (!log_fp) {
+				fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
+					progname, myconfig->log_file, strerror(errno));
+				
+				fprintf(stderr, "  (");
+				vfprintf(stderr, fmt, ap);  /* the message that caused the log */
+				fprintf(stderr, ")\n");
+				return -1;
+			}
+			fr_log_fp = log_fp;
+			setlinebuf(log_fp);
 		}
 	}
 
@@ -188,10 +221,8 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		syslog(lvl, "%s", buffer);
 	} else
 #endif
-	if (fp != NULL) {
-		fputs(buffer, fp);
-		fflush(fp);
-		fclose(fp);
+	if (log_fp != NULL) {
+		fputs(buffer, log_fp);
 	} else if (fd >= 0) {
 		write(fd, buffer, strlen(buffer));
 	}

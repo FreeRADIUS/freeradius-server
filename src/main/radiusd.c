@@ -148,11 +148,12 @@ int main(int argc, char *argv[])
 	 *	Don't put output anywhere until we get told a little
 	 *	more.
 	 */
+	mainconfig.radlog_dest = RADLOG_NULL;
 	mainconfig.radlog_fd = -1;
 	mainconfig.log_file = NULL;
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Cd:fhi:mn:p:svxX")) != EOF) {
+	while ((argval = getopt(argc, argv, "Cd:fhi:l:mn:p:svxX")) != EOF) {
 
 		switch(argval) {
 			case 'C':
@@ -173,6 +174,11 @@ int main(int argc, char *argv[])
 			case 'h':
 				usage(0);
 				break;
+
+			case 'l':
+				mainconfig.log_file = strdup(optarg);
+				mainconfig.radlog_dest = RADLOG_FILES;
+				break;		  
 
 			case 'i':
 				if (ip_hton(optarg, AF_UNSPEC, &mainconfig.myip) < 0) {
@@ -254,7 +260,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Disconnect from session
 	 */
-	if (debug_flag == 0 && dont_fork == FALSE) {
+	if (dont_fork == FALSE) {
 		pid_t pid = fork();
 
 		if (pid < 0) {
