@@ -66,11 +66,18 @@ RCSIDH(libradius_h, "$Id$")
 #  define VENDORPEC_USR		429
 #define VENDORPEC_LUCENT	4846
 #define VENDORPEC_STARENT	8164
-#  define DEBUG			if (librad_debug) printf
-#  define debug_pair(vp)	do { if (librad_debug) { \
-					putchar('\t'); \
-					vp_print(stdout, vp); \
-					putchar('\n'); \
+#ifndef NDEBUG
+#  define DEBUG			fr_printf_log
+#else
+	/*
+	 *	Rely on the compiler to optimize it out.
+	 */
+#  define DEBUG                 if (0) fr_printf_log
+#endif
+#  define debug_pair(vp)	do { if (librad_debug && fr_log_fp) { \
+					fputc('\t', fr_log_fp); \
+					vp_print(fr_log_fp, vp); \
+					fputc('\n', fr_log_fp); \
 				     } \
 				} while(0)
 #  define TAG_VALID(x)          ((x) > 0 && (x) < 0x20)
@@ -349,6 +356,12 @@ extern char	librad_errstr[];
 extern int	librad_dodns;	/* 0 = no dns lookups */
 extern int	librad_debug;	/* 0 = no debugging information */
 extern int	librad_max_attributes; /* per incoming packet */
+extern FILE	*fr_log_fp;
+void		fr_printf_log(const char *, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 1, 2)))
+#endif
+;
 
 /*
  *	Several handy miscellaneous functions.

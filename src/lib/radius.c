@@ -54,6 +54,7 @@ RCSID("$Id$")
  *	even if the end request is rejected.
  */
 int librad_max_attributes = 0;
+FILE *fr_log_fp = NULL;
 
 typedef struct radius_packet_t {
   uint8_t	code;
@@ -124,6 +125,22 @@ static const char *packet_codes[] = {
   "IP-Address-Release"
 };
 
+
+void fr_printf_log(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	if ((librad_debug == 0) || !fr_log_fp) {
+		va_end(ap);
+		return;
+	}
+
+	vfprintf(fr_log_fp, fmt, ap);
+	va_end(ap);
+
+	return;
+}
 
 /*
  *	Wrapper for sendto which handles sendfromto, IPv6, and all
@@ -1421,7 +1438,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 */
 	if ((hdr->code == 0) ||
 	    (hdr->code >= MAX_PACKET_CODE)) {
-		librad_log("WARNING: Bad RADIUS packet from host %s: unknown packet code %d",
+		librad_log("WARNING: Bad RADIUS packet from host %s: unknown packet code%d ",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -1729,21 +1746,21 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 		char host_ipaddr[128];
 
 		if ((packet->code > 0) && (packet->code < MAX_PACKET_CODE)) {
-			printf("rad_recv: %s packet from host %s port %d",
-			       packet_codes[packet->code],
-			       inet_ntop(packet->src_ipaddr.af,
-					 &packet->src_ipaddr.ipaddr,
-					 host_ipaddr, sizeof(host_ipaddr)),
-			       packet->src_port);
+			DEBUG("rad_recv: %s packet from host %s port %d",
+			      packet_codes[packet->code],
+			      inet_ntop(packet->src_ipaddr.af,
+					&packet->src_ipaddr.ipaddr,
+					host_ipaddr, sizeof(host_ipaddr)),
+			      packet->src_port);
 		} else {
-			printf("rad_recv: Packet from host %s port %d code=%d",
-			       inet_ntop(packet->src_ipaddr.af,
-					 &packet->src_ipaddr.ipaddr,
-					 host_ipaddr, sizeof(host_ipaddr)),
-			       packet->src_port,
-			       packet->code);
+			DEBUG("rad_recv: Packet from host %s port %d code=%d",
+			      inet_ntop(packet->src_ipaddr.af,
+					&packet->src_ipaddr.ipaddr,
+					host_ipaddr, sizeof(host_ipaddr)),
+			      packet->src_port,
+			      packet->code);
 		}
-		printf(", id=%d, length=%d\n", packet->id, packet->data_len);
+		DEBUG(", id=%d, length=%d\n", packet->id, packet->data_len);
 	}
 
 	return packet;
