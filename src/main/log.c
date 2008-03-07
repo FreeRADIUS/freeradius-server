@@ -167,7 +167,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		 *	we have no child threads.  If we do have child
 		 *	threads, each thread has to open it's own FP.
 		 */
-		if (can_update_log_fp) fr_log_fp = log_fp = fp;
+		if (can_update_log_fp && fp) fr_log_fp = log_fp = fp;
 	}
 
 	if (print_timestamp) {
