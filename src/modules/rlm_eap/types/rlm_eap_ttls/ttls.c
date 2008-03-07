@@ -591,15 +591,15 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 #ifndef NDEBUG
 		size_t i;
 
-		if (debug_flag > 2) {
+		if ((debug_flag > 2) && fr_log_fp) {
 			for (i = 0; i < total; i++) {
-				if ((i & 0x0f) == 0) printf("  TTLS tunnel data out %04x: ", i);
+				if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  TTLS tunnel data out %04x: ", i);
 
-				printf("%02x ", buffer[i]);
+				fprintf(fr_log_fp, "%02x ", buffer[i]);
 
-				if ((i & 0x0f) == 0x0f) printf("\n");
+				if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 			}
-			if ((total & 0x0f) != 0) printf("\n");
+			if ((total & 0x0f) != 0) fprintf(fr_log_fp, "\n");
 		}
 #endif
 
@@ -836,12 +836,15 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 		DEBUG2("  POST-AUTH %d", rcode);
 
 #ifndef NDEBUG
-		if (debug_flag > 0) {
-			printf("  TTLS: Final reply from tunneled session code %d\n",
+		if ((debug_flag > 0) && fr_log_fp) {
+			fprintf(fr_log_fp, "  TTLS: Final reply from tunneled session code %d\n",
 			       fake->reply->code);
 
 			for (vp = fake->reply->vps; vp != NULL; vp = vp->next) {
-				putchar('\t');vp_print(stdout, vp);putchar('\n');
+				fputc('\t', fr_log_fp);
+				vp_print(fr_log_fp, vp);
+				fputc('\n', fr_log_fp);
+
 			}
 		}
 #endif
@@ -980,17 +983,17 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	}
 
 #ifndef NDEBUG
-	if (debug_flag > 2) {
+	if ((debug_flag > 2) && fr_log_fp) {
 		size_t i;
 
 		for (i = 0; i < data_len; i++) {
-			if ((i & 0x0f) == 0) printf("  TTLS tunnel data in %04x: ", i);
+			if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  TTLS tunnel data in %04x: ", i);
 
-			printf("%02x ", data[i]);
+			fprintf(fr_log_fp, "%02x ", data[i]);
 
-			if ((i & 0x0f) == 0x0f) printf("\n");
+			if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 		}
-		if ((data_len & 0x0f) != 0) printf("\n");
+		if ((data_len & 0x0f) != 0) fprintf(fr_log_fp, "\n");
 	}
 #endif
 
@@ -1023,12 +1026,10 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	}
 
 #ifndef NDEBUG
-	if (debug_flag > 0) {
-		printf("  TTLS: Got tunneled request\n");
+	if ((debug_flag > 0) && fr_log_fp) {
+		fprintf(fr_log_fp, "  TTLS: Got tunneled request\n");
 
-		for (vp = fake->packet->vps; vp != NULL; vp = vp->next) {
-			putchar('\t');vp_print(stdout, vp);putchar('\n');
-		}
+		debug_pair_list(fake->packet->vps);
 	}
 #endif
 
@@ -1184,14 +1185,12 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 
 #ifndef NDEBUG
-	if (debug_flag > 0) {
-		printf("  TTLS: Sending tunneled request\n");
+	if ((debug_flag > 0) && fr_log_fp) {
+		fprintf(fr_log_fp, "  TTLS: Sending tunneled request\n");
 
-		for (vp = fake->packet->vps; vp != NULL; vp = vp->next) {
-			putchar('\t');vp_print(stdout, vp);putchar('\n');
-		}
+		debug_pair_list(fake->packet->vps);
 
-		printf("server %s {\n", fake->server);
+		fprintf(fr_log_fp, "server %s {\n", fake->server);
 	}
 #endif
 
@@ -1206,15 +1205,13 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	attributes.
 	 */
 #ifndef NDEBUG
-	if (debug_flag > 0) {
-		printf("} # server %s\n", fake->server);
+	if ((debug_flag > 0) && fr_log_fp) {
+		fprintf(fr_log_fp, "} # server %s\n", fake->server);
 
-		printf("  TTLS: Got tunneled reply RADIUS code %d\n",
+		fprintf(fr_log_fp, "  TTLS: Got tunneled reply RADIUS code %d\n",
 		       fake->reply->code);
 		
-		for (vp = fake->reply->vps; vp != NULL; vp = vp->next) {
-			putchar('\t');vp_print(stdout, vp);putchar('\n');
-		}
+		debug_pair_list(fake->reply->vps);
 	}
 #endif
 

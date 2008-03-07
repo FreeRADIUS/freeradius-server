@@ -1,5 +1,5 @@
 /*
- * peap.c  contains the interfaces that are called from eap
+ * peap.c contains the interfaces that are called from eap
  *
  * Version:     $Id$
  *
@@ -214,7 +214,7 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 	 *	type & data to the client.
 	 */
 #ifndef NDEBUG
-	if (debug_flag > 2) {
+	if ((debug_flag > 2) && fr_log_fp) {
 		size_t i, total;
 		VALUE_PAIR *this;
 
@@ -226,15 +226,15 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 			if (this == vp) start = EAP_HEADER_LEN;
 			
 			for (i = start; i < vp->length; i++) {
-				if ((total & 0x0f) == 0) printf("  PEAP tunnel data out %04x: ", total);
+				if ((total & 0x0f) == 0) fprintf(fr_log_fp, "  PEAP tunnel data out %04x: ", total);
 
-				printf("%02x ", vp->vp_octets[i]);
+				fprintf(fr_log_fp, "%02x ", vp->vp_octets[i]);
 				
-				if ((total & 0x0f) == 0x0f) printf("\n");
+				if ((total & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 				total++;
 			}
 		}
-		if ((total & 0x0f) != 0) printf("\n");
+		if ((total & 0x0f) != 0) fprintf(fr_log_fp, "\n");
 	}
 #endif
 
@@ -296,13 +296,11 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 	peap_tunnel_t *t = tls_session->opaque;
 
 #ifndef NDEBUG
-	if (debug_flag > 0) {
-		printf("  PEAP: Processing from tunneled session code %p %d\n",
+	if ((debug_flag > 0) && fr_log_fp) {
+		fprintf(fr_log_fp, "  PEAP: Processing from tunneled session code %p %d\n",
 		       reply, reply->code);
 
-		for (vp = reply->vps; vp != NULL; vp = vp->next) {
-			putchar('\t');vp_print(stdout, vp);putchar('\n');
-		}
+		debug_pair_list(reply->vps);
 	}
 #endif
 
@@ -426,7 +424,6 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 	 *	Do the callback, if it exists, and if it was a success.
 	 */
 	if (fake && (handler->request->proxy_reply->code == PW_AUTHENTICATION_ACK)) {
-		VALUE_PAIR *vp;
 		REQUEST *request = handler->request;
 		peap_tunnel_t *t = tls_session->opaque;
 
@@ -459,13 +456,11 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		rcode = rad_postauth(fake);
 
 #ifndef NDEBUG
-		if (debug_flag > 0) {
-			printf("  PEAP: Final reply from tunneled session code %d\n",
+		if ((debug_flag > 0) && fr_log_fp) {
+			fprintf(fr_log_fp, "  PEAP: Final reply from tunneled session code %d\n",
 			       fake->reply->code);
 
-			for (vp = fake->reply->vps; vp != NULL; vp = vp->next) {
-				putchar('\t');vp_print(stdout, vp);putchar('\n');
-			}
+			debug_pair_list(fake->reply->vps);
 		}
 #endif
 
@@ -595,15 +590,15 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	data = tls_session->clean_out.data;
 
 #ifndef NDEBUG
-	if (debug_flag > 2) {
+	if ((debug_flag > 2) && fr_log_fp) {
 		for (i = 0; i < data_len; i++) {
-			if ((i & 0x0f) == 0) printf("  PEAP tunnel data in %04x: ", i);
+			if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  PEAP tunnel data in %04x: ", i);
 
-			printf("%02x ", data[i]);
+			fprintf(fr_log_fp, "%02x ", data[i]);
 
-			if ((i & 0x0f) == 0x0f) printf("\n");
+			if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 		}
-		if ((data_len & 0x0f) != 0) printf("\n");
+		if ((data_len & 0x0f) != 0) fprintf(fr_log_fp, "\n");
 	}
 #endif
 
@@ -641,12 +636,10 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	}
 
 #ifndef NDEBUG
-	if (debug_flag > 0) {
-	  printf("  PEAP: Got tunneled EAP-Message\n");
-
-	  for (vp = fake->packet->vps; vp != NULL; vp = vp->next) {
-	    putchar('\t');vp_print(stdout, vp);putchar('\n');
-	  }
+	if ((debug_flag > 0) && fr_log_fp) {
+		fprintf(fr_log_fp, "  PEAP: Got tunneled EAP-Message\n");
+		
+		debug_pair_list(fake->packet->vps);
 	}
 #endif
 
@@ -785,14 +778,12 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	} /* else fake->server == request->server */
 
 #ifndef NDEBUG
-	if (debug_flag > 0) {
-		printf("  PEAP: Sending tunneled request\n");
+	if ((debug_flag > 0) && fr_log_fp) {
+		fprintf(fr_log_fp, "  PEAP: Sending tunneled request\n");
 
-		for (vp = fake->packet->vps; vp != NULL; vp = vp->next) {
-			putchar('\t');vp_print(stdout, vp);putchar('\n');
-		}
+		debug_pair_list(fake->packet->vps);
 
-		printf("server %s {\n", fake->server);
+		fprintf(fr_log_fp, "server %s {\n", fake->server);
 	}
 #endif
 
@@ -807,15 +798,13 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	attributes.
 	 */
 #ifndef NDEBUG
-	if (debug_flag > 0) {
-		printf("} # server %s\n", fake->server);
+	if ((debug_flag > 0) && fr_log_fp) {
+		fprintf(fr_log_fp, "} # server %s\n", fake->server);
 
-		printf("  PEAP: Got tunneled reply RADIUS code %d\n",
-		 fake->reply->code);
-
-		for (vp = fake->reply->vps; vp != NULL; vp = vp->next) {
-			putchar('\t');vp_print(stdout, vp);putchar('\n');
-		}
+		fprintf(fr_log_fp, "  PEAP: Got tunneled reply RADIUS code %d\n",
+			fake->reply->code);
+		
+		debug_pair_list(fake->reply->vps);
 	}
 #endif
 
