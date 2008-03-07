@@ -1694,13 +1694,10 @@ int rlm_policy_parse(rbtree_t *policies, const char *filename)
 				lexer->filename, lexer->lineno);
 			return 0;
 		}
-
-		fflush(stdout);
 	} while (token != POLICY_LEX_EOF);
 
 	if ((lexer->debug & POLICY_DEBUG_PRINT_POLICY) != 0) {
 		printf("# rlm_policy \n");
-		fflush(stdout);
 	}
 
 	debug_tokens("--------------------------------------------------\n");

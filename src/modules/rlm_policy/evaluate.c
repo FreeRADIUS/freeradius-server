@@ -265,7 +265,6 @@ void rlm_policy_print(const policy_item_t *item)
 {
 	printf("# rlm_policy \n");
 	policy_print(item, 0);
-	fflush(stdout);
 }
 
 /*
@@ -392,7 +391,6 @@ static int evaluate_print(policy_state_t *state, const policy_item_t *item)
 
 	this = (const policy_print_t *) item;
 
-	fflush(stdout);
 	if (this->rhs_type == POLICY_LEX_BARE_WORD) {
 		printf("%s\n", this->rhs);
 	} else {
@@ -403,7 +401,6 @@ static int evaluate_print(policy_state_t *state, const policy_item_t *item)
 		printf("%s", buffer);
 		if (!strchr(buffer, '\n')) printf("\n");
 	}
-	fflush(stdout);
 
 	/*
 	 *	Doesn't change state->rcode
