@@ -226,8 +226,10 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	/* outvps is the data to the client. */
 	outvps= &handler->request->reply->vps;
 
-	printf("+++> EAP-sim decoded packet:\n");
-	vp_printlist(stdout, *invps);
+	if ((debug_flag > 0) && fr_log_fp) {
+		fprintf(fr_log_fp, "+++> EAP-sim decoded packet:\n");
+		debug_pair_list(*invps);
+	}
 
 	/* okay, we got the challenges! Put them into an attribute */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_RAND,
