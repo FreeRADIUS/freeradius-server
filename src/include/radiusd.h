@@ -330,6 +330,7 @@ void			radius_signal_self(int flag);
 #define RADIUS_SIGNAL_SELF_EXIT		(1 << 2)
 #define RADIUS_SIGNAL_SELF_DETAIL	(1 << 3)
 #define RADIUS_SIGNAL_SELF_NEW_FD	(1 << 4)
+#define RADIUS_SIGNAL_SELF_MAX		(1 << 5)
 
 
 /*
@@ -348,9 +349,9 @@ int		session_zap(REQUEST *request, uint32_t nasaddr,
 			    char proto,int session_time);
 
 /* radiusd.c */
-#ifndef _LIBRADIUS
-void		debug_pair(FILE *, VALUE_PAIR *);
-#endif
+#undef debug_pair
+void		debug_pair(VALUE_PAIR *);
+void		debug_pair_list(VALUE_PAIR *);
 int		log_err (char *);
 
 /* util.c */

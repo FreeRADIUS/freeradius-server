@@ -700,3 +700,23 @@ VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 	return vp;
 }
 
+void debug_pair(VALUE_PAIR *vp)
+{
+	if (!vp || !debug_flag || !fr_log_fp) return;
+
+	fputc('\t', fr_log_fp);
+	vp_print(fr_log_fp, vp);
+	fputc('\n', fr_log_fp);
+}
+
+void debug_pair_list(VALUE_PAIR *vp)
+{
+	if (!vp || !debug_flag || !fr_log_fp) return;
+
+	while (vp) {
+		fputc('\t', fr_log_fp);
+		vp_print(fr_log_fp, vp);
+		fputc('\n', fr_log_fp);
+		vp = vp->next;
+	}
+}
