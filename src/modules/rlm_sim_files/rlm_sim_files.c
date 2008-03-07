@@ -244,10 +244,10 @@ static int sim_file_authorize(void *instance, REQUEST *request)
 
 #if 0
 	DEBUG("rlm_sim_files: saw config");
-	vp_printlist(stdout, *config_pairs);
+	debug_pair_list(*config_pairs);
 
 	DEBUG("rlm_sim_files: saw reply");
-	vp_printlist(stdout, *reply_pairs);
+	debug_pair_list(*reply_pairs);
 #endif
 
 	return RLM_MODULE_OK;
