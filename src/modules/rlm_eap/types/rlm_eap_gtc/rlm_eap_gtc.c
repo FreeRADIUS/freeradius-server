@@ -172,15 +172,15 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 	}
 
 #if 0
-	if (debug_flag > 2) {
+	if ((debug_flag > 2) && fr_log_fp) {
 		int i;
 
 		for (i = 0; i < eap_ds->response->length - 4; i++) {
-			if ((i & 0x0f) == 0) printf("%d: ", i);
+			if ((i & 0x0f) == 0) fprintf(fr_log_fp, "%d: ", i);
 
-			printf("%02x ", eap_ds->response->type.data[i]);
+			fprintf(fr_log_fp, "%02x ", eap_ds->response->type.data[i]);
 
-			if ((i & 0x0f) == 0x0f) printf("\n");
+			if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 		}
 	}
 #endif
