@@ -288,6 +288,9 @@ void vp_listdebug(VALUE_PAIR *vp)
 void force_log_reopen(void)
 {
 	can_update_log_fp = 0;
+
+	if (mainconfig.radlog_dest != RADLOG_FILES) return;
+
 	if (log_fp) fclose(log_fp);
 	fr_log_fp = log_fp = NULL;
 }
