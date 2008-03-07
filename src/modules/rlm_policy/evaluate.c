@@ -38,29 +38,29 @@ RCSID("$Id$")
 static void policy_print(const policy_item_t *item, int indent)
 {
 	if (!item) {
-		if (indent) printf("%*s", indent, " ");
-		printf("[NULL]\n");
+		if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
+		fprintf(fr_log_fp, "[NULL]\n");
 		return;
 	}
 
 	while (item) {
 		switch (item->type) {
 		case POLICY_TYPE_BAD:
-			if (indent) printf("%*s", indent, " ");
-			printf("[BAD STATEMENT]");
+			if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
+			fprintf(fr_log_fp, "[BAD STATEMENT]");
 			break;
 
 		case POLICY_TYPE_PRINT:
-			if (indent) printf("%*s", indent, " ");
+			if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
 			{
 				const policy_print_t *this;
 
 				this = (const policy_print_t *) item;
 
 				if (this->rhs_type == POLICY_LEX_BARE_WORD) {
-					printf("print %s\n", this->rhs);
+					fprintf(fr_log_fp, "print %s\n", this->rhs);
 				} else {
-					printf("print \"%s\"\n", this->rhs);
+					fprintf(fr_log_fp, "print \"%s\"\n", this->rhs);
 				}
 			}
 			break;
@@ -70,18 +70,18 @@ static void policy_print(const policy_item_t *item, int indent)
 				const policy_assignment_t *assign;
 
 				assign = (const policy_assignment_t *) item;
-				if (indent) printf("%*s", indent, " ");
+				if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
 
-				printf("\t%s %s ", assign->lhs,
+				fprintf(fr_log_fp, "\t%s %s ", assign->lhs,
 				       fr_int2str(rlm_policy_tokens,
 						    assign->assign, "?"));
 				if (assign->rhs_type == POLICY_LEX_BARE_WORD) {
-					printf("%s\n", assign->rhs);
+					fprintf(fr_log_fp, "%s\n", assign->rhs);
 				} else {
 					/*
 					 *	FIXME: escape "
 					 */
-					printf("\"%s\"\n", assign->rhs);
+					fprintf(fr_log_fp, "\"%s\"\n", assign->rhs);
 				}
 			}
 			break;
@@ -92,10 +92,10 @@ static void policy_print(const policy_item_t *item, int indent)
 
 				condition = (const policy_condition_t *) item;
 
-				printf("(");
+				fprintf(fr_log_fp, "(");
 
 				if (condition->sense) {
-					printf("!");
+					fprintf(fr_log_fp, "!");
 				}
 
 				/*
@@ -103,54 +103,54 @@ static void policy_print(const policy_item_t *item, int indent)
 				 */
 				if (condition->compare == POLICY_LEX_L_BRACKET) {
 					policy_print(condition->child, indent);
-					printf(")");
+					fprintf(fr_log_fp, ")");
 					break;
 				}
 
 				if (condition->compare == POLICY_LEX_L_NOT) {
-					printf("!");
+					fprintf(fr_log_fp, "!");
 					policy_print(condition->child, indent);
-					printf(")");
+					fprintf(fr_log_fp, ")");
 					break;
 				}
 
 				if (condition->compare == POLICY_LEX_CMP_TRUE) {
-					printf("%s)", condition->lhs);
+					fprintf(fr_log_fp, "%s)", condition->lhs);
 					break;
 				}
 
 				if (condition->lhs_type == POLICY_LEX_FUNCTION) {
-					printf("%s()", condition->lhs);
+					fprintf(fr_log_fp, "%s()", condition->lhs);
 				} else {
 					/*
 					 *	FIXME: escape ",
 					 *	and move all of this logic
 					 *	to a function.
 					 */
-					printf("\"%s\"", condition->lhs);
+					fprintf(fr_log_fp, "\"%s\"", condition->lhs);
 				}
 
 				/*
 				 *	We always print this condition.
 				 */
-				printf(" %s ", fr_int2str(rlm_policy_tokens,
+				fprintf(fr_log_fp, " %s ", fr_int2str(rlm_policy_tokens,
 							    condition->compare,
 							    "?"));
 				if (condition->rhs_type == POLICY_LEX_BARE_WORD) {
-					printf("%s", condition->rhs);
+					fprintf(fr_log_fp, "%s", condition->rhs);
 				} else {
 					/*
 					 *	FIXME: escape ",
 					 *	and move all of this logic
 					 *	to a function.
 					 */
-					printf("\"%s\"", condition->rhs);
+					fprintf(fr_log_fp, "\"%s\"", condition->rhs);
 				}
-				printf(")");
+				fprintf(fr_log_fp, ")");
 
 				if ((condition->child_condition != POLICY_LEX_BAD) &&
 				    (condition->child_condition != POLICY_LEX_BARE_WORD)) {
-					printf(" %s ", fr_int2str(rlm_policy_tokens, condition->child_condition, "?"));
+					fprintf(fr_log_fp, " %s ", fr_int2str(rlm_policy_tokens, condition->child_condition, "?"));
 					policy_print(condition->child, indent);
 				}
 			}
@@ -162,24 +162,24 @@ static void policy_print(const policy_item_t *item, int indent)
 
 				statement = (const policy_if_t *) item;
 
-				if (indent) printf("%*s", indent, " ");
-				printf("if ");
+				if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
+				fprintf(fr_log_fp, "if ");
 				policy_print(statement->condition, indent);
-				printf(" {\n");
+				fprintf(fr_log_fp, " {\n");
 				policy_print(statement->if_true, indent + 1);
-				if (indent) printf("%*s", indent, " ");
+				if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
 				if (statement->if_false) {
-					printf("} else ");
+					fprintf(fr_log_fp, "} else ");
 					if (statement->if_false->type == POLICY_TYPE_ASSIGNMENT) {
-						printf(" { ");
+						fprintf(fr_log_fp, " { ");
 						policy_print(statement->if_false, indent + 1);
-						if (indent) printf("%*s", indent, " ");
-						printf(" }");
+						if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
+						fprintf(fr_log_fp, " }");
 					} else {
 						policy_print(statement->if_false, indent + 1);
 					}
 				} else {
-					printf("}\n");
+					fprintf(fr_log_fp, "}\n");
 				}
 			}
 			break;
@@ -190,15 +190,15 @@ static void policy_print(const policy_item_t *item, int indent)
 
 				this = (const policy_attributes_t *) item;
 
-				if (indent) printf("%*s", indent, " ");
-				printf("%s %s {\n",
+				if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
+				fprintf(fr_log_fp, "%s %s {\n",
 				       fr_int2str(policy_reserved_words,
 						    this->where, "?"),
 				       fr_int2str(rlm_policy_tokens,
 						    this->how, "?"));
 				policy_print(this->attributes, indent + 1);
-				if (indent) printf("%*s", indent, " ");
-				printf("}\n");
+				if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
+				fprintf(fr_log_fp, "}\n");
 			}
 			break;
 
@@ -207,11 +207,11 @@ static void policy_print(const policy_item_t *item, int indent)
 				const policy_named_t *this;
 
 				this = (const policy_named_t *) item;
-				if (indent) printf("%*s", indent, " ");
-				printf("policy %s {\n", this->name);
+				if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
+				fprintf(fr_log_fp, "policy %s {\n", this->name);
 				policy_print(this->policy, indent + 1);
-				if (indent) printf("%*s", indent, " ");
-				printf("}\n");
+				if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
+				fprintf(fr_log_fp, "}\n");
 			}
 			break;
 
@@ -220,8 +220,8 @@ static void policy_print(const policy_item_t *item, int indent)
 				const policy_call_t *this;
 
 				this = (const policy_call_t *) item;
-				if (indent) printf("%*s", indent, " ");
-				printf("call %s\n", this->name);
+				if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
+				fprintf(fr_log_fp, "call %s\n", this->name);
 			}
 			break;
 
@@ -230,8 +230,8 @@ static void policy_print(const policy_item_t *item, int indent)
 				const policy_return_t *this;
 
 				this = (const policy_return_t *) item;
-				if (indent) printf("%*s", indent, " ");
-				printf("return %s\n",
+				if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
+				fprintf(fr_log_fp, "return %s\n",
 				       fr_int2str(policy_return_codes,
 						    this->rcode, "???"));
 			}
@@ -242,16 +242,16 @@ static void policy_print(const policy_item_t *item, int indent)
 				const policy_module_t *this;
 
 				this = (const policy_module_t *) item;
-				if (indent) printf("%*s", indent, " ");
-				printf("module %s <stuff>\n",
+				if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
+				fprintf(fr_log_fp, "module %s <stuff>\n",
 				       fr_int2str(policy_component_names,
 						    this->component, "???"));
 			}
 			break;
 
 		default:
-			if (indent) printf("%*s", indent, " ");
-			printf("[HUH?]\n");
+			if (indent) fprintf(fr_log_fp, "%*s", indent, " ");
+			fprintf(fr_log_fp, "[HUH?]\n");
 			break;
 
 		}
@@ -263,7 +263,9 @@ static void policy_print(const policy_item_t *item, int indent)
 
 void rlm_policy_print(const policy_item_t *item)
 {
-	printf("# rlm_policy \n");
+	if (!fr_log_fp) return;
+
+	fprintf(fr_log_fp, "# rlm_policy \n");
 	policy_print(item, 0);
 }
 
@@ -389,17 +391,19 @@ static int evaluate_print(policy_state_t *state, const policy_item_t *item)
 {
 	const policy_print_t *this;
 
+	if (!fr_log_fp) return 1;
+
 	this = (const policy_print_t *) item;
 
 	if (this->rhs_type == POLICY_LEX_BARE_WORD) {
-		printf("%s\n", this->rhs);
+		fprintf(fr_log_fp, "%s\n", this->rhs);
 	} else {
 		char buffer[1024];
 
 		radius_xlat(buffer, sizeof(buffer), this->rhs,
 			    state->request, NULL);
-		printf("%s", buffer);
-		if (!strchr(buffer, '\n')) printf("\n");
+		fprintf(fr_log_fp, "%s", buffer);
+		if (!strchr(buffer, '\n')) fprintf(fr_log_fp, "\n");
 	}
 
 	/*
@@ -621,7 +625,7 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 			/*
 			 *	FIXME: Do something for RHS type?
 			 */
-			printf("CMP %s %s\n", lhs_buffer, this->rhs);
+			fr_printf_log("CMP %s %s\n", lhs_buffer, this->rhs);
 			compare = strcmp(lhs_buffer, this->rhs);
 		}
 
@@ -848,7 +852,7 @@ static VALUE_PAIR *assign2vp(REQUEST *request,
 
 	vp = pairmake(assign->lhs, value, operator);
 	if (!vp) {
-		fprintf(stderr, "SHIT: %s %s\n", value, librad_errstr);
+		fprintf(stderr, "Failed creating pair: %s %s\n", value, librad_errstr);
 	}
 
 	return vp;

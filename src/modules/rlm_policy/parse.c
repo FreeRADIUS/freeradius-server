@@ -474,7 +474,7 @@ typedef struct policy_lex_file_t {
 #define POLICY_LEX_FLAG_PEEK        (1 << 1)
 #define POLICY_LEX_FLAG_PRINT_TOKEN (1 << 2)
 
-#define debug_tokens if (lexer->debug & POLICY_DEBUG_PRINT_TOKENS) printf
+#define debug_tokens if ((lexer->debug & POLICY_DEBUG_PRINT_TOKENS) && fr_log_fp) fr_printf_log
 
 
 /*
@@ -1696,8 +1696,8 @@ int rlm_policy_parse(rbtree_t *policies, const char *filename)
 		}
 	} while (token != POLICY_LEX_EOF);
 
-	if ((lexer->debug & POLICY_DEBUG_PRINT_POLICY) != 0) {
-		printf("# rlm_policy \n");
+	if (((lexer->debug & POLICY_DEBUG_PRINT_POLICY) != 0) && fr_log_fp) {
+		fprintf(fr_log_fp, "# rlm_policy \n");
 	}
 
 	debug_tokens("--------------------------------------------------\n");
