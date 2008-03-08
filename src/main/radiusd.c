@@ -223,6 +223,7 @@ int main(int argc, char *argv[])
 				mainconfig.log_auth_goodpass = TRUE;
 				mainconfig.radlog_dest = RADLOG_STDOUT;
 				mainconfig.radlog_fd = STDOUT_FILENO;
+				fr_log_fp = stdout;
 				break;
 
 			case 'x':

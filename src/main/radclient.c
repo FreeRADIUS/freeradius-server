@@ -881,6 +881,7 @@ int main(int argc, char **argv)
 			break;
 		case 'x':
 			librad_debug++;
+			fr_log_fp = stdout;
 			break;
 		case 'h':
 		default:
