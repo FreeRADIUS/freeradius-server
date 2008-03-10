@@ -1365,7 +1365,8 @@ static int all_children_are_modules(CONF_SECTION *cs, const char *name)
 		if (cf_item_is_pair(ci)) {
 			CONF_PAIR *cp = cf_itemtopair(ci);
 			if (cf_pair_value(cp) != NULL) {
-				cf_log_err(ci, "Invalid entry in %s section");
+				cf_log_err(ci,
+					   "Entry with no value is invalid");
 				return 0;
 			}
 		}
