@@ -89,9 +89,21 @@ CONF_SECTION *cf_itemtosection(CONF_ITEM *item);
 CONF_ITEM *cf_pairtoitem(CONF_PAIR *cp);
 CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs);
 int cf_section_template(CONF_SECTION *cs, CONF_SECTION *template);
-void cf_log_err(CONF_ITEM *ci, const char *fmt, ...);
-void cf_log_info(CONF_SECTION *cs, const char *fmt, ...);
-void cf_log_module(CONF_SECTION *cs, const char *fmt, ...);
+void cf_log_err(CONF_ITEM *ci, const char *fmt, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 2, 3)))
+#endif
+;
+void cf_log_info(CONF_SECTION *cs, const char *fmt, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 2, 3)))
+#endif
+;
+void cf_log_module(CONF_SECTION *cs, const char *fmt, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 2, 3)))
+#endif
+;
 CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
 			     CONF_SECTION *outercs,
 			     const char *ptr);
