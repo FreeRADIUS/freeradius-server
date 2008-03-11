@@ -118,6 +118,9 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	fr_randinit(&inst->rand_pool, 1);
 	inst->rand_pool.randcnt = 0;
 
+	inst->xlat_name = cf_section_name2(cs);
+	if (!inst->xlat_name) inst->xlat_name = "EAP";
+
 	/* Load all the configured EAP-Types */
 	num_types = 0;
 	for(scs=cf_subsection_find_next(cs, NULL, NULL);
@@ -473,7 +476,7 @@ static int eap_authorize(void *instance, REQUEST *request)
 	vp = pairfind(request->config_items, PW_AUTH_TYPE);
 	if ((!vp) ||
 	    (vp->vp_integer != PW_AUTHTYPE_REJECT)) {
-		vp = pairmake("Auth-Type", "EAP", T_OP_EQ);
+		vp = pairmake("Auth-Type", inst->xlat_name, T_OP_EQ);
 		if (!vp) {
 			return RLM_MODULE_FAIL;
 		}
@@ -520,9 +523,11 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		/*
 		 *	Do the callback...
 		 */
+		DEBUG2("  rlm_eap: Doing post-proxy callback");
 		rcode = data->callback(handler, data->tls_session);
 		free(data);
 		if (rcode == 0) {
+			DEBUG2("  rlm_eap: Failed in post-proxy callback");
 			eap_fail(handler);
 			eap_handler_free(handler);
 			return RLM_MODULE_REJECT;
@@ -540,8 +545,12 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		 */
 		if ((handler->eap_ds->request->code == PW_EAP_REQUEST) &&
 		    (handler->eap_ds->request->type.type >= PW_EAP_MD5)) {
-			eaplist_add(inst, handler);
-
+			if (!eaplist_add(inst, handler)) {
+				eap_fail(handler);
+				eap_handler_free(handler);
+				return RLM_MODULE_FAIL;
+			}
+			
 		} else {	/* couldn't have been LEAP, there's no tunnel */
 			DEBUG2("  rlm_eap: Freeing handler");
 			/* handler is not required any more, free it now */
@@ -568,6 +577,8 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		}
 
 		return RLM_MODULE_OK;
+	} else {
+		DEBUG2("  rlm_eap: No pre-existing handler found");
 	}
 
 

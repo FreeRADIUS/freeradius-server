@@ -66,6 +66,7 @@ typedef struct rlm_eap_t {
 	pthread_mutex_t	session_mutex;
 #endif
 
+	const char	*xlat_name; /* no xlat's yet */
 	fr_randctx	rand_pool;
 } rlm_eap_t;
 
