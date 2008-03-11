@@ -1001,10 +1001,11 @@ int setup_modules(int reload, CONF_SECTION *config)
 		     ci=cf_item_find_next(cs, ci)) {
 
 			/*
-			 *	Skip sections.  They'll be handled
-			 *	later, if they're referenced at all...
+			 *	Skip sections and "other" stuff.
+			 *	Sections will be handled later, if
+			 *	they're referenced at all...
 			 */
-			if (cf_item_is_section(ci)) {
+			if (!cf_item_is_pair(ci)) {
 				continue;
 			}
 
