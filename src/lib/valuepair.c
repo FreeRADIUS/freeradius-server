@@ -817,7 +817,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			cp = value;
 			length = 0;
 
-			while (*cp && (length < sizeof(vp->vp_strvalue))) {
+			while (*cp && (length < (sizeof(vp->vp_strvalue) - 1))) {
 				char c = *cp++;
 
 				if (c == '\\') {
