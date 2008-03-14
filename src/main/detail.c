@@ -152,6 +152,12 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	data->delay_time = (data->srtt * (100 - data->load_factor)) / (data->load_factor);
 	if (data->delay_time == 0) data->delay_time = USEC / 10;
 
+	/*
+	 *	Cap delay at 4 packets/s.  If the end system can't
+	 *	handle this, then it's very broken.
+	 */
+	if (data->delay_time > (USEC / 4)) data->delay_time= USEC / 4;
+
 #if 0
 	DEBUG2("RTT %d\tdelay %d", data->srtt, data->delay_time);
 #endif
@@ -185,7 +191,6 @@ int detail_delay(rad_listen_t *listener)
 static int detail_open(rad_listen_t *this)
 {
 	struct stat st;
-	char buffer[2048];
 	listen_detail_t *data = this->data;
 
 	rad_assert(data->state == STATE_UNOPENED);
