@@ -1,3 +1,20 @@
+freeradius (2.0.3-0) unstable; urgency=medium
+  * Updated raddb/certs/ca.cnf with extensions to allow ca.der to be imported as a CA on Symbian and Windows Mobile devices. Closes bug #524
+  * Enable multiple matches in "hints" via Fall-Through = Yes. Closes bug #477
+  * Added preliminary SQLite driver, contibuted by Apple. Untested, with no sample configuration.  This address bug #470.
+  * Updated logging sub-system so that log messages from libfreeradius can go to the log file, and not stdout.
+  * Added dictionary.rfc5176
+  * EAP module now checks for instance name, and uses that for authentication.  This avoids the need to set Auth-Type when there are multiple instances of the EAP module.
+  * Corrected typos in rlm_dbm.  Closes bugs #521 and #522.
+  * Detail file "listen" sections now work much better.
+  * Don't allow old "log_*" to over-ride new format.  Closes bug #525
+  * Initialize allocated memory in Oracle SQL driver.  This fixes occasional crashes on some systems.  Closes bug #518
+  * Call correct function in rlm_protocol_filter.  This enables the module to build.  Closes bug #512.
+  * Added deprecated flag to build for rlm_krb5.  This allows it to run on 64-bit systems.  Closes bug #491
+  * Corrected error message when parsing invalid configurations so it doesn't crash.  Closes bug #527
+  * Fix handling of timeouts in rlm_ldap that affected 64-bit systems.
+  * Handle $INCLUDE's in "instantiate" section.  Closes #528.
+
 freeradius (2.0.2-0) unstable; urgency=medium
   * Added notes on how to debug the server in radiusd.conf
   * Moved all "log_*" in radiusd.conf to log{} section.
