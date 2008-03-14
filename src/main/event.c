@@ -872,11 +872,23 @@ static void wait_a_bit(void *ctx)
 		 *	Request still has more time.  Continue
 		 *	waiting.
 		 */
-		if (timercmp(&now, &when, <)) {
+		if (timercmp(&now, &when, <) ||
+		    ((request->listener->type == RAD_LISTEN_DETAIL) &&
+		     (request->child_state == REQUEST_QUEUED))) {
 			if (request->delay < (USEC / 10)) {
 				request->delay = USEC / 10;
 			}
 			request->delay += request->delay >> 1;
+
+			/*
+			 *	Cap wait at some sane value for detail
+			 *	files.
+			 */
+			if ((request->listener->type == RAD_LISTEN_DETAIL) &&
+			    (request->delay > (request->root->max_request_time * USEC))) {
+				request->delay = request->root->max_request_time * USEC;
+			}
+
 			request->when = now;
 			tv_add(&request->when, request->delay);
 			callback = wait_a_bit;
