@@ -45,6 +45,7 @@ CREATE TABLE radacct (
   KEY username (username),
   KEY framedipaddress (framedipaddress),
   KEY acctsessionid (acctsessionid),
+  KEY acctsessiontime (acctsessiontime),
   KEY acctuniqueid (acctuniqueid),
   KEY acctstarttime (acctstarttime),
   KEY acctstoptime (acctstoptime),
