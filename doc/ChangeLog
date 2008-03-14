@@ -7,6 +7,12 @@ FreeRADIUS 2.0.3 ; $Date$ , urgency=medium
 	  Closes bug #477
 	* Added preliminary SQLite driver, contibuted by Apple.
 	  Untested, with no sample configuration.  This address bug #470.
+	* Updated logging sub-system so that log messages from libfreeradius
+	  can go to the log file, and not stdout.
+	* Added dictionary.rfc5176
+	* EAP module now checks for instance name, and uses that for
+	  authentication.  This avoids the need to set Auth-Type when
+	  there are multiple instances of the EAP module.
 
 	Bug fixes
 	* Corrected typos in rlm_dbm.  Closes bugs #521 and #522.
@@ -18,6 +24,10 @@ FreeRADIUS 2.0.3 ; $Date$ , urgency=medium
 	  module to build.  Closes bug #512.
 	* Added deprecated flag to build for rlm_krb5.  This allows it to
 	  run on 64-bit systems.  Closes bug #491
+	* Corrected error message when parsing invalid configurations
+	  so it doesn't crash.  Closes bug #527
+	* Fix handling of timeouts in rlm_ldap that affected 64-bit systems.
+	* Handle $INCLUDE's in "instantiate" section.  Closes #528.
 
 FreeRADIUS 2.0.2 ; Date: 2008/02/14 11:13:48  , urgency=medium
 	Feature improvements
