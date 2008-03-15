@@ -1597,6 +1597,11 @@ static void request_post_handler(REQUEST *request)
 	DEBUG2("Finished request %d.", request->number);
 
 	request->child_state = child_state;
+
+	/*
+	 *	Single threaded mode: update timers now.
+	 */
+	if (!have_children) wait_a_bit(request);
 }
 
 
