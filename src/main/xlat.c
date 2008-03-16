@@ -345,6 +345,15 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 				return strlen(out);
 				break;
 
+			case PW_MODULE_RETURN_CODE:
+				localvp.attribute = da->attr;
+
+				/*
+				 *	See modcall.c for a bit of a hack.
+				 */
+				localvp.vp_integer = request->simul_max;
+				break;
+
 			default:
 				return 0; /* not found */
 				break;

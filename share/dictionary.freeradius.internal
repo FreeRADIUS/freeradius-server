@@ -155,6 +155,19 @@ VALUE	EAP-IKEv2-AuthType		secret			1
 VALUE	EAP-IKEv2-AuthType		cert			2
 VALUE	EAP-IKEv2-AuthType		both			3
 
+ATTRIBUTE	Module-Return-Code			1108	integer
+
+VALUE	Module-Return-Code		reject			0
+VALUE	Module-Return-Code		fail			1
+VALUE	Module-Return-Code		ok			2
+VALUE	Module-Return-Code		handled			3
+VALUE	Module-Return-Code		invalid			4
+VALUE	Module-Return-Code		userlock		5
+VALUE	Module-Return-Code		notfound		6
+VALUE	Module-Return-Code		noop			7
+VALUE	Module-Return-Code		updated			8
+
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.

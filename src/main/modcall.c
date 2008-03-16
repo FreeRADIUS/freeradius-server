@@ -585,6 +585,11 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		       child->name ? child->name : "",
 		       fr_int2str(rcode_table, myresult, "??"));
 
+		/*
+		 *	This is a bit of a hack...
+		 */
+		if (component != RLM_COMPONENT_SESS) request->simul_max = myresult;
+
 
 		/*
 		 *	FIXME: Allow modules to push a modcallable

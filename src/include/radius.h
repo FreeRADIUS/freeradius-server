@@ -217,6 +217,7 @@
 #define PW_VIRTUAL_SERVER		1099
 #define PW_CLEARTEXT_PASSWORD		1100
 #define PW_PASSWORD_WITH_HEADER		1101
+#define PW_MODULE_RETURN_CODE		1108
 
 /*
  *	Integer Translations
