@@ -1,3 +1,15 @@
+.\"     # DS - begin display
+.de DS
+.RS
+.nf
+.sp
+..
+.\"     # DE - end display
+.de DE
+.fi
+.RE
+.sp
+..
 .TH radiusd.conf 5 "12 Jun 2007" "" "FreeRADIUS configuration file"
 .SH NAME
 radiusd.conf \- configuration file for the FreeRADIUS server
@@ -47,7 +59,7 @@ A section begins with a section name, followed on the same line by an
 open bracket '\fB{\fP'.  Section may contain other sections, comments, or
 variables.  Sections may be nested to any depth, limited
 only by available memory.  A section ends with a close bracket
-'\fB}\fP', on a line by itself.
+\'\fB}\fP', on a line by itself.
 
 .DS
 .br
@@ -150,5 +162,6 @@ the configuration file.
 /etc/raddb/radiusd.conf
 .SH "SEE ALSO"
 .BR radiusd (8)
+.BR unlang (5)
 .SH AUTHOR
 Alan DeKok <aland@freeradius.org>
