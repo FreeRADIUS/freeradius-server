@@ -13,6 +13,8 @@ FreeRADIUS 2.0.3 ; $Date$ , urgency=medium
 	* EAP module now checks for instance name, and uses that for
 	  authentication.  This avoids the need to set Auth-Type when
 	  there are multiple instances of the EAP module.
+	* Added Module-Return-Code attribute, which contains the value
+	  returned by the previous module (ok/fail/update/etc.)
 
 	Bug fixes
 	* Corrected typos in rlm_dbm.  Closes bugs #521 and #522.
@@ -28,6 +30,7 @@ FreeRADIUS 2.0.3 ; $Date$ , urgency=medium
 	  so it doesn't crash.  Closes bug #527
 	* Fix handling of timeouts in rlm_ldap that affected 64-bit systems.
 	* Handle $INCLUDE's in "instantiate" section.  Closes #528.
+	* Format updates to "man" pages from Stephen Gran.
 
 FreeRADIUS 2.0.2 ; Date: 2008/02/14 11:13:48  , urgency=medium
 	Feature improvements
