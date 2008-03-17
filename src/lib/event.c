@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
+#include <freeradius-devel/heap.h>
 #include <freeradius-devel/event.h>
 
 typedef struct fr_event_fd_t {
@@ -38,7 +39,7 @@ typedef struct fr_event_fd_t {
 
 
 struct fr_event_list_t {
-	rbtree_t	*times;
+	fr_heap_t	*times;
 
 	int		changed;
 	int		maxfd;
@@ -63,7 +64,7 @@ struct fr_event_t {
 	void			*ctx;
 	struct timeval		when;
 	fr_event_t		**ev_p;
-	rbnode_t		*node;
+	int			heap;
 };
 
 
@@ -86,7 +87,7 @@ void fr_event_list_free(fr_event_list_t *el)
 {
 	if (!el) return;
 
-	rbtree_free(el->times);
+	fr_heap_delete(el->times);
 	free(el);
 }
 
@@ -100,8 +101,8 @@ fr_event_list_t *fr_event_list_create(fr_event_status_t status)
 	if (!el) return NULL;
 	memset(el, 0, sizeof(*el));
 
-	el->times = rbtree_create(fr_event_list_time_cmp,
-				  free, 0);
+	el->times = fr_heap_create(fr_event_list_time_cmp, 
+				   offsetof(fr_event_t, heap));
 	if (!el->times) {
 		fr_event_list_free(el);
 		return NULL;
@@ -121,7 +122,7 @@ int fr_event_list_num_elements(fr_event_list_t *el)
 {
 	if (!el) return 0;
 
-	return rbtree_num_elements(el->times);
+	return fr_heap_num_elements(el->times);
 }
 
 
@@ -135,7 +136,7 @@ int fr_event_delete(fr_event_list_t *el, fr_event_t **ev_p)
 	if (ev->ev_p) *(ev->ev_p) = NULL;
 	*ev_p = NULL;
 
-	rbtree_delete(el->times, ev->node);
+	fr_heap_extract(el->times, ev);
 
 	return 1;
 }
@@ -161,38 +162,7 @@ int fr_event_insert(fr_event_list_t *el,
 	ev->when = *when;
 	ev->ev_p = ev_p;
 
-	/*
-	 *	There's a tiny chance that two events will be
-	 *	scheduled at the same time.  If this happens, we
-	 *	increase the usec counter by 1, in order to avoid the
-	 *	duplicate.  If we can't insert it after 10 tries, die.
-	 */
-	ev->node = rbtree_insertnode(el->times, ev);
-	if (!ev->node) {
-		if (rbtree_finddata(el->times, ev)) {
-			int i;
-
-			for (i = 0; i < 10; i++) {
-				ev->when.tv_usec++;
-				if (ev->when.tv_usec >= 1000000) {
-					ev->when.tv_usec = 0;
-					ev->when.tv_sec++;
-				}
-
-				if (rbtree_finddata(el->times, ev)) {
-					continue;
-				}
-
-				ev->node = rbtree_insertnode(el->times, ev);
-				if (!ev->node) { /* error */
-					break;
-				}
-
-				if (ev_p) *ev_p = ev;
-				return 1;
-			}
-
-		}
+	if (!fr_heap_insert(el->times, ev)) {
 		free(ev);
 		return 0;
 	}
@@ -210,13 +180,13 @@ int fr_event_run(fr_event_list_t *el, struct timeval *when)
 
 	if (!el) return 0;
 
-	if (rbtree_num_elements(el->times) == 0) {
+	if (fr_heap_num_elements(el->times) == 0) {
 		when->tv_sec = 0;
 		when->tv_usec = 0;
 		return 0;
 	}
 
-	ev = rbtree_min(el->times);
+	ev = fr_heap_peek(el->times);
 	if (!ev) {
 		when->tv_sec = 0;
 		when->tv_usec = 0;
@@ -366,10 +336,10 @@ int fr_event_loop(fr_event_list_t *el)
 		when.tv_sec = 0;
 		when.tv_usec = 0;
 
-		if (rbtree_num_elements(el->times) > 0) {
+		if (fr_heap_num_elements(el->times) > 0) {
 			fr_event_t *ev;
 
-			ev = rbtree_min(el->times);
+			ev = fr_heap_peek(el->times);
 			if (!ev) _exit(42);
 
 			gettimeofday(&el->now, NULL);
@@ -404,7 +374,7 @@ int fr_event_loop(fr_event_list_t *el)
 			return 0;
 		}
 
-		if (rbtree_num_elements(el->times) > 0) {
+		if (fr_heap_num_elements(el->times) > 0) {
 			do {
 				gettimeofday(&el->now, NULL);
 				when = el->now;
