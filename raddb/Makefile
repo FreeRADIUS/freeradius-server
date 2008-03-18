@@ -13,9 +13,7 @@ FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
 	attrs.pre-proxy clients.conf dictionary eap.conf templates.conf	\
 	experimental.conf hints huntgroups ldap.attrmap otp.conf	\
 	policy.txt preproxy_users proxy.conf radiusd.conf		\
-	snmp.conf sql.conf sqlippool.conf users	policy.conf	\
-	sites-available/default sites-available/example \
-	sites-available/README
+	snmp.conf sql.conf sqlippool.conf users	policy.conf
 
 #
 #	This target is here for local debugging
@@ -33,7 +31,7 @@ install:
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)/sites-available
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)/sites-enabled
 	@echo "Creating/updating files in $(R)$(raddbdir)"; \
-	for i in $(FILES); do \
+	for i in $(FILES) `ls sites-available/* | sed 's/CVS//'`; do \
 		[ ! -f $(R)$(raddbdir)/$$i ] && $(INSTALL) -m 640 $$i $(R)$(raddbdir)/$$i; \
 		if [ "`find $$i -newer $(R)$(raddbdir)/$$i`" ]; then \
 			echo "** $(R)$(raddbdir)/$$i"; \
