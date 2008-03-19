@@ -63,7 +63,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 	snprintf(buffer, sizeof(buffer), "%s/sqlite_radius_client_database",
 		 radius_dir);
 	radlog(L_INFO, "rlm_sql_sqlite: Opening sqlite database %s for #%d",
-			sqlsocket->id);
+			buffer, sqlsocket->id);
 	
 	status = sqlite3_open(buffer, &sqlite_sock->pDb);
 	radlog(L_INFO, "rlm_sql_sqlite: sqlite3_open() = %d\n", status);
