@@ -4,9 +4,11 @@ AC_DEFUN(modname,[rlm_eap_tnc])
 
 if test x$with_[]modname != xno; then
 
-	## We may need more complex checking here.  Assume for now that 
-	## everyone has it.
-	AC_CHECK_HEADERS(malloc.h)
+	AC_CHECK_LIB(TNCS, exchangeTNCCSMessages)
+	if test "x$ac_cv_lib_tncs_exchangetnccsmessages" != xyes; then
+		AC_MSG_WARN([the TNCS library isn't found!])
+		fail="$fail -lTNCS"
+	fi
 
 	targetname=modname
 else
@@ -27,8 +29,6 @@ fi
 
 AC_SUBST(eap_tnc_cflags)
 AC_SUBST(eap_tnc_ldflags)
-
-dnl AC_CONFIG_HEADER(config.h)
 
 AC_SUBST(targetname)
 AC_OUTPUT(Makefile)

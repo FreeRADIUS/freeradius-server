@@ -1,12 +1,15 @@
+#
+# $Id$
+#
+
 TARGET      = @targetname@
 SRCS        = rlm_eap_tnc.c eap_tnc.c tncs_connect.c 
-RLM_CFLAGS  = $(INCLTDL) -I../.. -I../../libeap
-HEADERS     = eap_tnc.h tncs.h tncs_connect.h
-RLM_INSTALL = 
-
-$(STATIC_OBJS): $(HEADERS)
-
-$(DYNAMIC_OBJS): $(HEADERS)
+HEADERS     = eap_tnc.h tncs.h tncs_connect.h ../../eap.h ../../rlm_eap.h
+RLM_CFLAGS  = -I../.. -I../../libeap $(INCLTDL) $(OPENSSL_INCLUDE) @eap_tnc_cflags@
+RLM_LIBS    = @eap_tnc_ldflags@ ../../libeap/$(LIBPREFIX)freeradius-eap.la $(OPENSSL_LIBS)
+RLM_INSTALL =
 
 RLM_DIR=../../
 include ${RLM_DIR}../rules.mak
+
+$(LT_OBJS): $(HEADERS)
