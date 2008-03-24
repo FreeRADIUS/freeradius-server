@@ -378,6 +378,8 @@ post-auth {
 	#
 #	ldap
 
+	exec
+
 	#
 	#  Access-Reject packets are sent through the REJECT sub-section of the
 	#  post-auth section.
