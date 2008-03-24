@@ -109,7 +109,7 @@ fi
 %config (noreplace) /etc/raddb/*
 %doc %{_datadir}/doc/%{name}-%{version}
 %{_bindir}/*
-%{_datadir}/%{name}
+%{_datadir}/freeradius
 %{_libdir}/*
 %{_mandir}/*/*
 %{_sbindir}/*
