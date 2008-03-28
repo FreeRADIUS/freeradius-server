@@ -2291,22 +2291,6 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
 
 	if (listener->fd < 0) rad_panic("Socket was closed on us!");
 	
-	/*
-	 *	FIXME: Put this somewhere else, where it isn't called
-	 *	all of the time...
-	 */
-#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
-	/*
-	 *	If there are no child threads, then there may
-	 *	be child processes.  In that case, wait for
-	 *	their exit status, and throw that exit status
-	 *	away.  This helps get rid of zxombie children.
-	 */
-	while (waitpid(-1, &argval, WNOHANG) > 0) {
-		/* do nothing */
-	}
-#endif
-
 	if (!listener->recv(listener, &fun, &request)) return;
 
 	if (!thread_pool_addrequest(request, fun)) {
@@ -2389,6 +2373,10 @@ static void event_poll_fds(UNUSED void *ctx)
 
 static void event_status(struct timeval *wake)
 {
+#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
+	int argval;
+#endif
+
 	if (debug_flag == 0) {
 		if (just_started) {
 			radlog(L_INFO, "Ready to process requests.");
@@ -2405,6 +2393,25 @@ static void event_status(struct timeval *wake)
 		DEBUG("Waking up in %d.%01u seconds.",
 		      (int) wake->tv_sec, (unsigned int) wake->tv_usec / 100000);
 	}
+
+
+	/*
+	 *	FIXME: Put this somewhere else, where it isn't called
+	 *	all of the time...
+	 */
+
+#if !defined(HAVE_PTHREAD_H) && defined(WNOHANG)
+	/*
+	 *	If there are no child threads, then there may
+	 *	be child processes.  In that case, wait for
+	 *	their exit status, and throw that exit status
+	 *	away.  This helps get rid of zxombie children.
+	 */
+	while (waitpid(-1, &argval, WNOHANG) > 0) {
+		/* do nothing */
+	}
+#endif
+
 }
 
 
