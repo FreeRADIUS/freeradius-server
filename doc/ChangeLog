@@ -1,4 +1,11 @@
-FreeRADIUS 2.0.3 ; $Date$ , urgency=medium
+FreeRADIUS 2.0.4 ; $Date$ , urgency=medium
+	Feature improvements
+	Bug fixes
+	* Allow non-threaded builds.
+	* Don't treat '0x' as special for known attributes.
+
+
+FreeRADIUS 2.0.3 ; Date: 2008/03/17 09:22:17  , urgency=medium
 	Feature improvements
 	* Updated raddb/certs/ca.cnf with extensions to allow ca.der
 	  to be imported as a CA on Symbian and Windows Mobile devices.
