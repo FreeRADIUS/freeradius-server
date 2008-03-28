@@ -263,7 +263,7 @@ int vp_prints_value(char * out, size_t outlen, VALUE_PAIR *vp, int delimitst)
 			break;
 		case PW_TYPE_DATE:
 			t = vp->vp_date;
-			if (delimitst) {
+			if (delimitst == 1) {
 			  len = strftime(buf, sizeof(buf), "\"%b %e %Y %H:%M:%S %Z\"",
 					 localtime_r(&t, &s_tm));
 			} else {
