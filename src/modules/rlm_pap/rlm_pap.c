@@ -383,7 +383,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 		case PW_PROXY_TO_REALM:
 		{
 			REALM *realm = realm_find(vp->vp_strvalue);
-			if (realm && !realm->auth_pool) {
+			if (realm && realm->auth_pool) {
 				return RLM_MODULE_NOOP;
 			}
 			break;
