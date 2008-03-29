@@ -589,19 +589,27 @@ autz_redo:
 	    ((tmp = pairfind(request->config_items, PW_PROXY_TO_REALM)) != NULL)) {
 		REALM *realm;
 
+		realm = realm_find(tmp->vp_strvalue);
+
+		/*
+		 *	Don't authenticate, as the request is going to
+		 *	be proxied.
+		 */
+		if (realm && realm->auth_pool) {
+			return RLM_MODULE_OK;
+		}
+
 		/*
 		 *	Catch users who set Proxy-To-Realm to a LOCAL
-		 *	realm (sigh).
+		 *	realm (sigh).  But don't complain if it is
+		 *	*the* LOCAL realm.
 		 */
-		realm = realm_find(tmp->vp_strvalue);
-		if (realm && !realm->auth_pool) {
+		if (realm &&(strcmp(realm->name, "LOCAL") != 0)) {
 			DEBUG2("  WARNING: You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling invalid proxy request.", realm->name);
-		} else {
-			/*
-			 *	Don't authenticate, as the request is
-			 *	proxied.
-			 */
-			return RLM_MODULE_OK;
+		}
+
+		if (!realm) {
+			DEBUG2("  WARNING: You set Proxy-To-Realm = %s, but the realm does not exist!  Cancelling invalid proxy request.", realm->name);
 		}
 	}
 
