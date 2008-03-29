@@ -192,14 +192,6 @@ the rlm_ldap module:
 #
 #	password_attribute = "userPassword"
 
-#	password_radius_attribute: Defined the RADIUS attribute where the extracted
-#	user password will be stored to. Can be used to set it to NT-Password or any
-#	other similar attribute instead of the default
-#
-#	default: User-Password
-#
-#	password_radius_attribute = "NT-Password"
-
 #	edir_account_policy_check: Specifies if the module has to enforce
 #	Novell eDirectory account policy check and intruder detection for
 #	RADIUS users.  This will work only if FreeRADIUS is configured to build
