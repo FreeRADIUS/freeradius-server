@@ -609,7 +609,7 @@ autz_redo:
 		}
 
 		if (!realm) {
-			DEBUG2("  WARNING: You set Proxy-To-Realm = %s, but the realm does not exist!  Cancelling invalid proxy request.", realm->name);
+			DEBUG2("  WARNING: You set Proxy-To-Realm = %s, but the realm does not exist!  Cancelling invalid proxy request.", tmp->vp_strvalue);
 		}
 	}
 
