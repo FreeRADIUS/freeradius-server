@@ -513,7 +513,7 @@ static void addresult (struct passwd_instance * inst, VALUE_PAIR ** vp, struct m
 	}
 }
 
-static int passwd_authorize(void *instance, REQUEST *request)
+static int passwd_map(void *instance, REQUEST *request)
 {
 #define inst ((struct passwd_instance *)instance)
 	char * name;
@@ -522,8 +522,6 @@ static int passwd_authorize(void *instance, REQUEST *request)
 	struct mypasswd * pw;
 	int found = 0;
 
-	if(!request || !request->packet ||!request->packet->vps)
-	 return RLM_MODULE_INVALID;
 	for (key = request->packet->vps;
 	 key && (key = pairfind (key, inst->keyattr));
 	  key = key->next ){
@@ -562,13 +560,13 @@ module_t rlm_passwd = {
 	passwd_detach,			/* detach */
 	{
 		NULL,			/* authentication */
-		passwd_authorize,	/* authorization */
+		passwd_map,		/* authorization */
 		NULL,			/* pre-accounting */
-		NULL,			/* accounting */
+		passwd_map,		/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+		passwd_map	       	/* post-auth */
 	},
 };
 #endif /* TEST */
