@@ -976,7 +976,6 @@ static int request_pre_handler(REQUEST *request)
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 	rad_assert(request->packet != NULL);
-	rad_assert(request->packet->dst_port != 0);
 
 	request->child_state = REQUEST_RUNNING;
 
@@ -1145,6 +1144,46 @@ static int proxy_request(REQUEST *request)
 				      request);
 	return 1;
 }
+
+
+/*
+ *	"Proxy" the request by sending it to a new virtual server.
+ */
+static int proxy_to_virtual_server(REQUEST *request)
+{
+	REQUEST *fake;
+
+	if (!request->home_server || !request->home_server->server) return 0;
+
+	if (request->parent) {
+		DEBUG2("WARNING: Cancelling proxy request to virtual server %s as this request was itself proxied.", request->home_server->server);
+		return 0;
+	}
+
+	fake = request_alloc_fake(request);
+	if (!fake) {
+		DEBUG2("WARNING: Out of memory");
+		return 0;
+	}
+
+	fake->packet->vps = paircopy(request->proxy->vps);
+	fake->server = request->home_server->server;
+
+	DEBUG2(">>> Sending proxied request internally to virtual server.");
+	radius_handle_request(fake, rad_authenticate);
+	DEBUG2("<<< Received proxied response from internal virtual server.");
+
+	request->proxy_reply = fake->reply;
+	fake->reply = NULL;
+
+	/*
+	 *	And run it through the post-proxy section...
+	 */
+	rad_authenticate(request);
+
+	return 2;		/* success, but NOT '1' !*/
+}
+
 
 /*
  *	Return 1 if we did proxy it, or the proxy attempt failed
@@ -1391,6 +1430,10 @@ static int successfully_proxied_request(REQUEST *request)
 		return 1;
 	}
 
+	if (request->home_server->server) {
+		return proxy_to_virtual_server(request);
+	}
+
 	if (!proxy_request(request)) {
 		DEBUG("ERROR: Failed to proxy request %d", request->number);
 		return -1;
@@ -1450,7 +1493,8 @@ static void request_post_handler(REQUEST *request)
 		}
 
 		/*
-		 *	Else we weren't supposed to proxy it.
+		 *	Else we weren't supposed to proxy it,
+		 *	OR we proxied it internally to a virutal server.
 		 */
 	}
 
