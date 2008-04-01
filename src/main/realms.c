@@ -102,6 +102,14 @@ static int home_server_addr_cmp(const void *one, const void *two)
 	const home_server *a = one;
 	const home_server *b = two;
 
+	if (a->server && !b->server) return -1;
+	if (!a->server && b->server) return +1;
+	if (a->server && b->server) {
+		int rcode = a->type - b->type;
+		if (rcode != 0) return rcode;
+		return strcmp(a->server, b->server);
+	}
+
 	if (a->port < b->port) return -1;
 	if (a->port > b->port) return +1;
 
@@ -252,11 +260,12 @@ static CONF_PARSER home_server_config[] = {
 };
 
 
-static int home_server_add(CONF_SECTION *cs, int type)
+static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 {
 	const char *name2;
 	home_server *home;
 	int dual = FALSE;
+	CONF_PAIR *cp;
 
 	name2 = cf_section_name1(cs);
 	if (!name2 || (strcasecmp(name2, "home_server") != 0)) {
@@ -282,19 +291,6 @@ static int home_server_add(CONF_SECTION *cs, int type)
 	memset(&hs_ip6addr, 0, sizeof(hs_ip6addr));
 	cf_section_parse(cs, home, home_server_config);
 
-	if (!cf_pair_find(cs, "ipaddr") &&
-	    !cf_pair_find(cs, "ipv6addr")) {
-		cf_log_err(cf_sectiontoitem(cs),
-			   "No IPv4 or IPv6 address defined for home server %s.",
-			   name2);
-		free(home);
-		free(hs_type);
-		hs_type = NULL;
-		free(hs_check);
-		hs_check = NULL;
-		return 0;
-	}
-
 	/*
 	 *	Figure out which one to use.
 	 */
@@ -306,10 +302,32 @@ static int home_server_add(CONF_SECTION *cs, int type)
 		home->ipaddr.af = AF_INET6;
 		home->ipaddr.ipaddr.ip6addr = hs_ip6addr;
 
+	} else if ((cp = cf_pair_find(cs, "virtual_server")) != NULL) {
+		home->ipaddr.af = AF_UNSPEC;
+		home->server = cf_pair_value(cp);
+		if (!home->server) {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Invalid value for virtual_server");
+			goto error;
+		}
+
+		if (!cf_section_sub_find_name2(rc->cs, "server", home->server)) {
+		  
+			cf_log_err(cf_sectiontoitem(cs),
+				   "No such server %s", home->server);
+			goto error;
+		}
+
+		free(hs_type);
+		hs_type = NULL;
+		home->secret = "";
+		goto skip_port;
+
 	} else {
 		cf_log_err(cf_sectiontoitem(cs),
-			   "Internal sanity check failed for home server %s.",
+			   "No ipaddr, ipv6addr, or virtual_server defined for home server \"%s\".",
 			   name2);
+	error:
 		free(home);
 		free(hs_type);
 		hs_type = NULL;
@@ -322,29 +340,28 @@ static int home_server_add(CONF_SECTION *cs, int type)
 		cf_log_err(cf_sectiontoitem(cs),
 			   "No port, or invalid port defined for home server %s.",
 			   name2);
-		free(home);
-		free(hs_type);
-		hs_type = NULL;
-		free(hs_check);
-		hs_check = NULL;
-		return 0;
+		goto error;
 	}
 
 	if (0) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Fatal error!  Home server %s is ourselves!",
 			   name2);
+		goto error;
+	}
+
+	if (!home->secret) {
+		cf_log_err(cf_sectiontoitem(cs),
+			   "No shared secret defined for home server %s.",
+			   name2);
 		free(home);
-		free(hs_type);
-		hs_type = NULL;
-		free(hs_check);
-		hs_check = NULL;
 		return 0;
 	}
 
 	/*
 	 *	Use a reasonable default.
 	 */
+ skip_port:
 	if (!hs_type) hs_type = strdup("auth+acct");
 
 	if (strcasecmp(hs_type, "auth") == 0) {
@@ -384,14 +401,6 @@ static int home_server_add(CONF_SECTION *cs, int type)
 	}
 	free(hs_type);
 	hs_type = NULL;
-
-	if (!home->secret) {
-		cf_log_err(cf_sectiontoitem(cs),
-			   "No shared secret defined for home server %s.",
-			   name2);
-		free(home);
-		return 0;
-	}
 
 	if (!hs_check || (strcasecmp(hs_check, "none") == 0)) {
 		home->ping_check = HOME_PING_CHECK_NONE;
@@ -588,7 +597,7 @@ static int server_pool_add(realm_config_t *rc,
 			return 0;
 		}
 
-		if (!home_server_add(server_cs, server_type)) {
+		if (!home_server_add(rc, server_cs, server_type)) {
 			return 0;
 		}
 
@@ -713,7 +722,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			  const char *realm,
 			  const char *name, const char *secret,
 			  home_pool_type_t ldflag, home_pool_t **pool_p,
-			  int type)
+			  int type, const char *server)
 {
 	int i, insert_point, num_home_servers;
 	home_server myhome, *home;
@@ -846,13 +855,18 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			p = q;
 		}
 
-		if (ip_hton(p, AF_UNSPEC, &home->ipaddr) < 0) {
-			cf_log_err(cf_sectiontoitem(cs),
-				   "Failed looking up hostname %s.",
-				   p);
-			free(home);
-			free(q);
-			return 0;
+		if (!server) {
+			if (ip_hton(p, AF_UNSPEC, &home->ipaddr) < 0) {
+				cf_log_err(cf_sectiontoitem(cs),
+					   "Failed looking up hostname %s.",
+					   p);
+				free(home);
+				free(q);
+				return 0;
+			}
+		} else {
+			home->ipaddr.af = AF_UNSPEC;
+			home->server = server;
 		}
 		free(q);
 
@@ -993,7 +1007,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 		cf_log_info(cs, "\tauthhost = %s",  host);
 
 		if (!old_server_add(rc, cs, r->name, host, secret, ldflag,
-				    &r->auth_pool, HOME_TYPE_AUTH)) {
+				    &r->auth_pool, HOME_TYPE_AUTH, NULL)) {
 			return 0;
 		}
 	}
@@ -1027,7 +1041,27 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 		cf_log_info(cs, "\taccthost = %s", host);
 
 		if (!old_server_add(rc, cs, r->name, host, secret, ldflag,
-				    &r->acct_pool, HOME_TYPE_ACCT)) {
+				    &r->acct_pool, HOME_TYPE_ACCT, NULL)) {
+			return 0;
+		}
+	}
+
+	cp = cf_pair_find(cs, "virtual_server");
+	if (cp) {
+		host = cf_pair_value(cp);
+		if (!host) {
+			cf_log_err(cf_pairtoitem(cp), "No value specified for virtual_server");
+			return 0;
+		}
+
+		cf_log_info(cs, "\tvirtual_server = %s", host);
+
+		if (!old_server_add(rc, cs, r->name, host, "", ldflag,
+				    &r->auth_pool, HOME_TYPE_AUTH, host)) {
+			return 0;
+		}
+		if (!old_server_add(rc, cs, r->name, host, "", ldflag,
+				    &r->acct_pool, HOME_TYPE_ACCT, host)) {
 			return 0;
 		}
 	}

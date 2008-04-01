@@ -28,9 +28,9 @@ typedef struct home_server {
 	const char	*name;
 
 	const char	*hostname;
+	const char	*server;
 
 	fr_ipaddr_t	ipaddr;
-
 
 	int		port;
 	int		type;		/* auth/acct */
