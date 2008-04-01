@@ -64,6 +64,13 @@ server vmps {
 			}
 		}
 
+		#  Do a simple mapping of MAC to VLAN.
+		#
+		#  See radiusd.conf for the definition of the "mac2vlan"
+		#  module.
+		#
+		#mac2vlan
+
 		# required VMPS reply attributes
 		update reply {
 			VMPS-Packet-Type = VMPS-Join-Response
