@@ -9,6 +9,34 @@
 #
 #	$Id$
 #
+######################################################################
+#
+#	Read "man radiusd" before editing this file.  See the section
+#	titled DEBUGGING.  It outlines a method where you can quickly
+#	obtain the configuration you want, without running into
+#	trouble.  See also "man unlang", which documents the format
+#	of this file.
+#
+#	This configuration is designed to work in the widest possible
+#	set of circumstances, with the widest possible number of
+#	authentication methods.  This means that in general, you should
+#	need to make very few changes to this file.
+#
+#	The best way to configure the server for your local system
+#	is to CAREFULLY edit this file.  Most attempts to make large
+#	edits to this file will BREAK THE SERVER.  Any edits should
+#	be small, and tested by running the server with "radiusd -X".
+#	Once the edits have been verified to work, save a copy of these
+#	configuration files somewhere.  (e.g. as a "tar" file).  Then,
+#	make more edits, and test, as above.
+#
+#	There are many "commented out" references to modules such
+#	as ldap, sql, etc.  These references serve as place-holders.
+#	If you need the functionality of that module, then configure
+#	it in radiusd.conf, and un-comment the references to it in
+#	this file.  In most cases, those small changes will result
+#	in the server being able to connect to the DB, and to
+#	authenticate users.
 #
 ######################################################################
 
