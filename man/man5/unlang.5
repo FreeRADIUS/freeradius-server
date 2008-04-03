@@ -156,7 +156,7 @@ will be removed in a future release.
 For EAP methods with tunneled authentication sessions (i.e. PEAP and
 EAP-TTLS), the inner tunnel session can also reference
 "outer.request", "outer.reply", and "outer.control".  Those references
-will update the relevant list in the outer tunnel session.
+allow you to address the relevant list in the outer tunnel session.
 
 The only contents permitted in an "update" section are attributes and
 values.  The contents of the "update" section are described in the
@@ -411,11 +411,11 @@ Attribute lists may be referenced via the following syntax
 	%{<list>:Attribute-Name}
 .DE
 
-Where <list> is one of "request", "reply", "proxy-request",
-"proxy-reply", "control", "outer.request", "outer.reply", or
-"outer.control", as described above for the "update" section.  The
-"<list>:" prefix is optional, and if omitted, is assumed to refer to
-the "request" list.
+Where <list> is one of "request", "reply", "control", "proxy-request",
+"proxy-reply", or "outer.request", "outer.reply", "outer.control",
+"outer.proxy-request", or "outer.proxy-reply". just as with the
+"update" section, above.  The "<list>:" prefix is optional, and if
+omitted, is assumed to refer to the "request" list.
 
 When a variable is encountered, the given list is examined for an
 attribute of the given name.  If found, the variable reference in the
@@ -427,6 +427,8 @@ string is replaced with the value of that attribute.  Some examples are:
 	%{request:User-Name} # same as above
 .br
 	%{reply:User-Name}
+.br
+	%{outer.reqest:User-Name} # from inside of a TTLS/PEAP tunnel
 .DE
 .RE
 .PP
