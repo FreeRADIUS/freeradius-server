@@ -832,6 +832,7 @@ int main(int argc, char **argv)
 
 		case 'q':
 			do_output = 0;
+			fr_log_fp = NULL; /* no output from you, either! */
 			break;
 		case 'r':
 			if (!isdigit((int) *optarg))
