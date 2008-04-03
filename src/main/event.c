@@ -966,6 +966,25 @@ static void wait_a_bit(void *ctx)
 		return;
 	}
 
+	/*
+	 *	Something major went wrong.  Discard the request, and
+	 *	keep running.
+	 *
+	 *	FIXME: No idea why this happens or how to fix it...
+	 *	It seems to happen *only* when requests are proxied,
+	 *	and where the home server doesn't respond.  So it looks
+	 *	like a race condition above, but it happens in debug
+	 *	mode, with no threads...
+	 */
+	if (!callback) {
+		DEBUG("WARNING: Internal sanity check failed in event handler for request %d: Discarding the request!", request->number);
+		fr_event_delete(el, &request->ev);
+		remove_from_proxy_hash(request);
+		remove_from_request_hash(request);
+		request_free(&request);
+		return;
+	}
+
 	INSERT_EVENT(callback, request);
 }
 
