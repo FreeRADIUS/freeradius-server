@@ -127,7 +127,7 @@ static void fr_fifo_free_entry(fr_fifo_t *fi, fr_fifo_entry_t *entry)
 {
 	entry->data = NULL;
 	entry->next = fi->freelist;
-	fi->freelist = entry->next;
+	fi->freelist = entry;
 }
 
 
