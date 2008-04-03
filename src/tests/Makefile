@@ -8,11 +8,10 @@
 #
 include ../../Make.inc
 
-TESTS	= user_password chap mschapv1 digest-auth-MD5 digest-auth-int \
-	digest-auth-noalgo digest-md5-sess digest-auth-MD5_Sess \
-	digest-auth_int-MD5 digest-auth_int-MD5_Sess digest-auth_int-noalgo
+TESTS	= user_password chap mschapv1 digest-01/digest*
 
-PORT	= 12340
+PORT	 = 12340
+ACCTPORT = $(shell expr $(PORT) + 1)
 
 #	example.com stripped.example.com
 
@@ -43,12 +42,13 @@ test.conf: dictionary
 	@echo "testdir =" $(top_builddir)/src/tests/ >> test.conf
 	@echo 'dictionary = $${testdir}' >> test.conf
 	@echo 'logdir = $${testdir}' >> test.conf
+	@echo 'radacctdir = $${testdir}' >> test.conf
 	@echo 'pidfile = $${testdir}/radiusd.pid' >> test.conf
 	@echo '$$INCLUDE radiusd.conf' >> test.conf
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
-radiusd.pid: test.conf
-	@../main/radiusd -md ../../raddb/ -n test -i 127.0.0.1 -p $(PORT)
+radiusd.pid: ../../raddb/test.conf test.conf
+	@../main/radiusd -txxl `pwd`/radius.log -md ../../raddb/ -n test -i 127.0.0.1 -p $(PORT)
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
@@ -65,12 +65,13 @@ radiusd.kill:
 
 # kill the server (if it's running)
 # start the server
-# run the tests
+# run the tests (ignoring any failures)
 # kill the server
 # remove the changes to raddb/
-tests: ../../raddb/test.conf radiusd.kill radiusd.pid
+tests: ../../raddb/test.conf radiusd.kill
 	@chmod a+x runtests.sh
 	@rm -f radius.log
+	@$(MAKE) radiusd.pid
 	@./runtests.sh $(TESTS)
 	@$(MAKE) radiusd.kill
 	@rm -f ../../raddb/test.conf
