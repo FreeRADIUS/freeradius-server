@@ -25,6 +25,9 @@ all:
 	@if [ ! -f sites-enabled/default ]; then \
 		cd sites-enabled && ln -s ../sites-available/default; \
 	fi
+	@if [ ! -f sites-enabled/inner-tunnel ]; then \
+		cd sites-enabled && ln -s ../sites-available/inner-tunnel; \
+	fi
 
 install:
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)
