@@ -125,8 +125,8 @@ typedef struct {
 	char           *server;
 	int             port;
 	int             timelimit;
-	struct timeval  net_timeout;
-	struct timeval  timeout;
+	int  		net_timeout;
+	int		timeout;
 	int             debug;
 	int             tls_mode;
 	int		start_tls;
@@ -208,10 +208,10 @@ static const CONF_PARSER module_config[] = {
 	 */
 	/* wait forever on network activity */
 	{"net_timeout", PW_TYPE_INTEGER,
-	 offsetof(ldap_instance,net_timeout.tv_sec), NULL, "10"},
+	 offsetof(ldap_instance,net_timeout), NULL, "10"},
 	/* wait forever for search results */
 	{"timeout", PW_TYPE_INTEGER,
-	 offsetof(ldap_instance,timeout.tv_sec), NULL, "20"},
+	 offsetof(ldap_instance,timeout), NULL, "20"},
 	/* allow server unlimited time for search (server-side limit) */
 	{"timelimit", PW_TYPE_INTEGER,
 	 offsetof(ldap_instance,timelimit), NULL, "20"},
@@ -404,8 +404,6 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 #endif
 	}
 
-	inst->timeout.tv_usec = 0;
-	inst->net_timeout.tv_usec = 0;
 	/* workaround for servers which support LDAPS but not START TLS */
 	if(inst->port == LDAPS_PORT || inst->tls_mode)
 		inst->tls_mode = LDAP_OPT_X_TLS_HARD;
@@ -753,6 +751,7 @@ static int perform_search(void *instance, LDAP_CONN *conn,
 	int		ldap_errno = 0;
 	ldap_instance  *inst = instance;
 	int		search_retry = 0;
+	struct timeval  tv;
 
 	*result = NULL;
 
@@ -784,10 +783,13 @@ retry:
 		conn->bound = 1;
 		conn->failed_conns = 0;
 	}
+
+	tv.tv_sec = inst->timeout;
+	tv.tv_usec = 0;
 	DEBUG2("rlm_ldap: performing search in %s, with filter %s",
 	       search_basedn ? search_basedn : "(null)" , filter);
 	switch (ldap_search_st(conn->ld, search_basedn, scope, filter,
-			       attrs, 0, &(inst->timeout), result)) {
+			       attrs, 0, &tv, result)) {
 	case LDAP_SUCCESS:
 	case LDAP_NO_SUCH_OBJECT:
 		break;
@@ -2153,6 +2155,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 	int             msgid, rc, ldap_version;
 	int		ldap_errno = 0;
 	LDAPMessage    *res;
+	struct timeval tv;
 
 	if (inst->is_url){
 #ifdef HAVE_LDAP_INITIALIZE
@@ -2171,9 +2174,11 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			return (NULL);
 		}
 	}
+	tv.tv_sec = inst->net_timeout;
+	tv.tv_usec = 0;
 	if (ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT,
-			    (void *) &(inst->net_timeout)) != LDAP_OPT_SUCCESS) {
-		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_NETWORK_TIMEOUT %ld.%ld", inst->net_timeout.tv_sec, inst->net_timeout.tv_usec);
+			    (void *) &tv) != LDAP_OPT_SUCCESS) {
+		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_NETWORK_TIMEOUT %d", inst->net_timeout);
 	}
 
 	if (ldap_set_option(ld, LDAP_OPT_TIMELIMIT,
@@ -2320,7 +2325,9 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 	}
 	DEBUG("rlm_ldap: waiting for bind result ...");
 
-	rc = ldap_result(ld, msgid, 1, &(inst->timeout), &res);
+	tv.tv_sec = inst->timeout;
+	tv.tv_usec = 0;
+	rc = ldap_result(ld, msgid, 1, &tv, &res);
 
 	if (rc < 1) {
 		DEBUG("rlm_ldap: ldap_result()");
