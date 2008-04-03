@@ -621,11 +621,9 @@ int detail_recv(rad_listen_t *listener,
 	*pfun = rad_accounting;
 
 	if (debug_flag) {
-		printf("detail_recv: Read packet from %s\n", data->filename);
+		fr_printf_log("detail_recv: Read packet from %s\n", data->filename);
 		for (vp = packet->vps; vp; vp = vp->next) {
-			putchar('\t');
-			vp_print(stdout, vp);
-			putchar('\n');
+			debug_pair(vp);
 		}
 	}
 
