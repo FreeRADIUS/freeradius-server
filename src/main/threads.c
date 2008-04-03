@@ -149,7 +149,6 @@ typedef struct THREAD_POOL {
 
 	int		max_queue_size;
 	int		num_queued;
-	int		can_read_detail;
 	fr_fifo_t	*fifo[NUM_FIFOS];
 } THREAD_POOL;
 
@@ -316,15 +315,6 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		return 0;
 	}
 
-	/*
-	 *	We've added an entry that didn't come from the detail
-	 *	file.  Note that the child thread should signal the
-	 *	main worker thread again when the queue becomes empty.
-	 */
-	if (request->listener->type != RAD_LISTEN_DETAIL) {
-		thread_pool.can_read_detail = FALSE;
-	}
-
 	thread_pool.num_queued++;
 
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
@@ -445,8 +435,6 @@ static void *request_handler_thread(void *arg)
 	 *	Loop forever, until told to exit.
 	 */
 	do {
-		int can_read_detail;
-
 		/*
 		 *	Wait to be signalled.
 		 */
@@ -493,29 +481,7 @@ static void *request_handler_thread(void *arg)
 		pthread_mutex_lock(&thread_pool.queue_mutex);
 		rad_assert(thread_pool.active_threads > 0);
 		thread_pool.active_threads--;
-
-		/*
-		 *	If we're not currently allowed to read the
-		 *	detail file, AND there are no requests queued,
-		 *	THEN signal the main worker thread that
-		 *	there's at least one waiting thread (us) who
-		 *	can accept a packet from the detail file.
-		 */
-		can_read_detail = FALSE;
-		if (!thread_pool.can_read_detail &&
-		    (thread_pool.num_queued == 0)) {
-			can_read_detail = TRUE;
-		}
-
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
-
-		/*
-		 *	Do this out of the lock to be nice to everyone.
-		 */
-		if (can_read_detail) {
-			radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
-		}
-
 	} while (self->status != THREAD_CANCELLED);
 
 	DEBUG2("Thread %d exiting...", self->thread_num);
