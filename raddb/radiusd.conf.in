@@ -696,6 +696,14 @@ $INCLUDE eap.conf
 		# to work.  See the ntlm_auth program documentation
 		# for details.
 		#
+		# If ntlm_auth is configured below, then the mschap
+		# module will call ntlm_auth for every MS-CHAP
+		# authentication request.  If there is a cleartext
+		# or NT hashed password available, you can set
+		# "MS-CHAP-Use-NTLM-Auth := No" in the control items,
+		# and the mschap module will do the authentication itself,
+		# without calling ntlm_auth.
+		#
 		# Be VERY careful when editing the following line!
 		#
 		# You can also try setting the user name as:
