@@ -52,7 +52,10 @@ DEFAULT
 	User-Password =* ANY,
 	CHAP-Password =* ANY,
 	CHAP-Challenge =* ANY,
+	MS-CHAP-Challenge =* ANY,
+	MS-CHAP-Response =* ANY,
+	EAP-Message =* ANY,
 	State =* ANY,
-	NAS-Ip-Address =* ANY,
+	NAS-IP-Address =* ANY,
 	NAS-Identifier =* ANY,
 	Proxy-State =* ANY
