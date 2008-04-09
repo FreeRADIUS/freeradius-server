@@ -55,6 +55,7 @@ DEFAULT
 	MS-CHAP-Challenge =* ANY,
 	MS-CHAP-Response =* ANY,
 	EAP-Message =* ANY,
+	Message-Authenticator =* ANY,
 	State =* ANY,
 	NAS-IP-Address =* ANY,
 	NAS-Identifier =* ANY,

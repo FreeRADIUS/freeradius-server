@@ -117,6 +117,7 @@ DEFAULT
 	Reply-Message =* ANY,
 	Proxy-State =* ANY,
 	EAP-Message =* ANY,
+	Message-Authenticator =* ANY,
 	MS-MPPE-Recv-Key =* ANY,
 	MS-MPPE-Send-Key =* ANY,
 	MS-CHAP-MPPE-Keys =* ANY,
