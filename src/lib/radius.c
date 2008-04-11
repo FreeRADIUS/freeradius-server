@@ -2926,7 +2926,7 @@ uint32_t fr_rand(void)
 	}
 
 	num = fr_rand_pool.randrsl[fr_rand_pool.randcnt++];
-	if (fr_rand_pool.randcnt == 256) {
+	if (fr_rand_pool.randcnt >= 256) {
 		fr_rand_pool.randcnt = 0;
 		fr_isaac(&fr_rand_pool);
 	}
