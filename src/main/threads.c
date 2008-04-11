@@ -365,6 +365,8 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 		entry = fr_fifo_pop(thread_pool.fifo[i]);
 		rad_assert(entry != NULL);
 		entry->request->child_state = REQUEST_DONE;
+		thread_pool.num_queued--;
+		free(entry);
 	}
 
 	start = 0;
