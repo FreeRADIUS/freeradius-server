@@ -49,7 +49,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
 			request->client->shortname, port,
 		 (do_cli ? " cli " : ""), (do_cli ? (char *)cli->vp_strvalue : ""),
-		 (request->packet->src_port == 0) ? " via TLS tunnel" : "");
+		 (request->packet->dst_port == 0) ? " via TLS tunnel" : "");
 
 	return buf;
 }
