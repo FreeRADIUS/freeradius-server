@@ -270,12 +270,14 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 			break;
 
 			case PGRES_FATAL_ERROR:
+#if defined(PG_DIAG_SQLSTATE) && defined(PG_DIAG_MESSAGE_PRIMARY)
 				/*A fatal error occurred.*/
 
 				errorcode = PQresultErrorField(pg_sock->result, PG_DIAG_SQLSTATE);
 				errormsg  = PQresultErrorField(pg_sock->result, PG_DIAG_MESSAGE_PRIMARY);
 				radlog(L_DBG, "rlm_sql_postgresql: Error %s", errormsg);
 				return check_fatal_error(errorcode);
+#endif
 
 			break;
 
@@ -308,6 +310,7 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 		}
 		*/
 	}
+	return -1;
 }
 
 
