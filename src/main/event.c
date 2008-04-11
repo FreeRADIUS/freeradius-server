@@ -790,8 +790,13 @@ static void post_proxy_fail_handler(REQUEST *request)
 	/*
 	 *	MAY free the request if we're over max_request_time,
 	 *	AND we're not in threaded mode!
+	 *
+	 *	Note that we call this ONLY if we're threaded, as
+	 *	if we're NOT threaded, request_post_handler() calls
+	 *	wait_a_bit(), which means that "request" may not
+	 *	exist any more...
 	 */
-	wait_a_bit(request);
+	if (have_children) wait_a_bit(request);
 }
 
 
