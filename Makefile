@@ -118,6 +118,13 @@ check-includes:
 TAGS:
 	etags `find src -type f -name '*.[ch]' -print`
 
+#
+#  Make test certificates.
+#
+.PHONY: certs
+certs:
+	@cd raddb/certs && $(MAKE)
+
 ######################################################################
 #
 #  Make a release.
