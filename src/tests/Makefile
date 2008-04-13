@@ -8,7 +8,7 @@
 #
 include ../../Make.inc
 
-TESTS	= user_password chap mschapv1 digest-01/digest*
+TESTS	= user_password chap mschapv1 digest-01/digest* test.example.com
 
 PORT	 = 12340
 ACCTPORT = $(shell expr $(PORT) + 1)
