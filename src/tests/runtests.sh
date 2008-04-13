@@ -22,14 +22,15 @@ do
   for NUMBER in `echo $TOTAL`
   do
     cp $NAME .request
+    BASE=`echo $NAME | sed 's,.*/,,'`
 
     #
     #  Add the name of the test, and the variant to the request
     #
-    echo "Test-Name = \"$NAME\"," >> .request
+    echo "Test-Name = \"$BASE\"," >> .request
     echo 'Test-Number = ' $NUMBER >> .request
 
-    mv .request .cache/$NAME:$NUMBER
+    mv .request .cache/$BASE:$NUMBER
   done
 done
 
