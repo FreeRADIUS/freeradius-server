@@ -1586,6 +1586,7 @@ home_server *home_server_find(fr_ipaddr_t *ipaddr, int port)
 
 	myhome.ipaddr = *ipaddr;
 	myhome.port = port;
+	myhome.server = NULL;	/* we're not called for internal proxying */
 
 	return rbtree_finddata(home_servers_byaddr, &myhome);
 }
