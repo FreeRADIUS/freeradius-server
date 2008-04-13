@@ -1584,6 +1584,7 @@ home_server *home_server_find(fr_ipaddr_t *ipaddr, int port)
 {
 	home_server myhome;
 
+	memset(&myhome, 0, sizeof(myhome));
 	myhome.ipaddr = *ipaddr;
 	myhome.port = port;
 	myhome.server = NULL;	/* we're not called for internal proxying */
