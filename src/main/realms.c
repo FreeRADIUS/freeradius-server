@@ -1236,7 +1236,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	In that case, merge the old-style realm with this one.
 	 */
 	r = realm_find(name2);
-	if (r) {
+	if (r && (strcmp(r->name, name2) == 0)) {
 		if (cf_pair_find(cs, "auth_pool") ||
 		    cf_pair_find(cs, "acct_pool")) {
 			cf_log_err(cf_sectiontoitem(cs), "Duplicate realm \"%s\"", name2);
