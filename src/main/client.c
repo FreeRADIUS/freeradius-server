@@ -383,7 +383,7 @@ static const CONF_PARSER client_config[] = {
 };
 
 
-static RADCLIENT *client_parse(CONF_SECTION *cs, int global)
+static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 {
 	RADCLIENT	*c;
 	const char	*name2;
@@ -425,7 +425,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int global)
 	 *	Global clients can set servers to use,
 	 *	per-server clients cannot.
 	 */
-	if (!global && c->server) {
+	if (in_server && c->server) {
 		client_free(c);
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Clients inside of an server section cannot point to a server.");
@@ -528,6 +528,14 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int global)
 		break;
 	}
 
+	if (!c->secret || !*c->secret) {
+		client_free(c);
+		cf_log_err(cf_sectiontoitem(cs),
+			   "secret must be at least 1 character long");
+		return NULL;
+	}
+
+
 	return c;
 }
 
@@ -538,7 +546,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int global)
  */
 RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 {
-	int		global = FALSE;
+	int		global = FALSE, in_server = FALSE;
 	CONF_SECTION	*cs;
 	RADCLIENT	*c;
 	RADCLIENT_LIST	*clients;
@@ -555,6 +563,8 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 
 	if (cf_top_section(section) == section) global = TRUE;
 
+	if (strcmp("server", cf_section_name1(section)) == 0) in_server = TRUE;
+
 	/*
 	 *	Associate the clients structure with the section, where
 	 *	it will be freed once the section is freed.
@@ -570,7 +580,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 	for (cs = cf_subsection_find_next(section, NULL, "client");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(section, cs, "client")) {
-		c = client_parse(cs, global);
+		c = client_parse(cs, in_server);
 		if (!c) {
 			return NULL;
 		}
