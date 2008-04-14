@@ -209,12 +209,15 @@ static struct in_addr hs_ip4addr;
 static struct in6_addr hs_ip6addr;
 static char *hs_type = NULL;
 static char *hs_check = NULL;
+static char *hs_virtual_server = NULL;
 
 static CONF_PARSER home_server_config[] = {
 	{ "ipaddr",  PW_TYPE_IPADDR,
 	  0, &hs_ip4addr,  NULL },
 	{ "ipv6addr",  PW_TYPE_IPV6ADDR,
 	  0, &hs_ip6addr, NULL },
+	{ "virtual_server",  PW_TYPE_STRING_PTR,
+	  0, &hs_virtual_server, NULL },
 
 	{ "port", PW_TYPE_INTEGER,
 	  offsetof(home_server,port), NULL,   "0" },
@@ -266,6 +269,9 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 	home_server *home;
 	int dual = FALSE;
 	CONF_PAIR *cp;
+
+	free(hs_virtual_server); /* used only for printing during parsing */
+	hs_virtual_server = NULL;
 
 	name2 = cf_section_name1(cs);
 	if (!name2 || (strcasecmp(name2, "home_server") != 0)) {
@@ -320,7 +326,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 
 		free(hs_type);
 		hs_type = NULL;
-		home->secret = "";
+		home->secret = strdup("");
 		goto skip_port;
 
 	} else {
@@ -538,6 +544,49 @@ static home_pool_t *server_pool_alloc(const char *name, home_pool_type_t type,
 	return pool;
 }
 
+static int pool_check_home_server(realm_config_t *rc, CONF_PAIR *cp,
+				  const char *name, int server_type,
+				  home_server **phome)
+{
+	home_server myhome, *home;
+	CONF_SECTION *server_cs;
+
+	if (!name) {
+		cf_log_err(cf_pairtoitem(cp),
+			   "No value given for home_server.");
+		return 0;
+	}
+
+	myhome.name = name;
+	myhome.type = server_type;
+	home = rbtree_finddata(home_servers_byname, &myhome);
+	if (home) {
+		*phome = home;
+		return 1;
+	}
+	
+	server_cs = cf_section_sub_find_name2(rc->cs, "home_server", name);
+	if (!server_cs) {
+		cf_log_err(cf_pairtoitem(cp),
+			   "Unknown home_server \"%s\".", name);
+		return 0;
+	}
+	
+	if (!home_server_add(rc, server_cs, server_type)) {
+		return 0;
+	}
+	
+	home = rbtree_finddata(home_servers_byname, &myhome);
+	if (!home) {
+		radlog(L_ERR, "Internal sanity check failed %d",
+		       __LINE__);
+		return 0;
+	}
+
+	*phome = home;
+	return 1;
+}
+
 
 static int server_pool_add(realm_config_t *rc,
 			   CONF_SECTION *cs, int server_type, int do_print)
@@ -547,6 +596,7 @@ static int server_pool_add(realm_config_t *rc,
 	const char *value;
 	CONF_PAIR *cp;
 	int num_home_servers;
+	home_server *home;
 
 	name2 = cf_section_name1(cs);
 	if (!name2 || ((strcasecmp(name2, "server_pool") != 0) &&
@@ -570,41 +620,11 @@ static int server_pool_add(realm_config_t *rc,
 	for (cp = cf_pair_find(cs, "home_server");
 	     cp != NULL;
 	     cp = cf_pair_find_next(cs, cp, "home_server")) {
-		home_server myhome, *home;
-		CONF_SECTION *server_cs;
-
 		num_home_servers++;
 
-		value = cf_pair_value(cp);
-		if (!value) {
-			cf_log_err(cf_pairtoitem(cp),
-				   "No value given for home_server.");
-			return 0;;
-		}
-
-		myhome.name = value;
-		myhome.type = server_type;
-		home = rbtree_finddata(home_servers_byname, &myhome);
-		if (home) continue;
-
-		server_cs = cf_section_sub_find_name2(rc->cs,
-						      "home_server",
-						      value);
-		if (!server_cs) {
-			cf_log_err(cf_pairtoitem(cp),
-				   "Unknown home_server \"%s\".",
-				   value);
-			return 0;
-		}
-
-		if (!home_server_add(rc, server_cs, server_type)) {
-			return 0;
-		}
-
-		home = rbtree_finddata(home_servers_byname, &myhome);
-		if (!home) {
-			radlog(L_ERR, "Internal sanity check failed %d",
-			       __LINE__);
+		if (!pool_check_home_server(rc, cp, cf_pair_value(cp),
+					    server_type, &home)) {
+					    
 			return 0;
 		}
 	}
@@ -619,6 +639,16 @@ static int server_pool_add(realm_config_t *rc,
 	pool = server_pool_alloc(name2, HOME_POOL_FAIL_OVER, server_type,
 				 num_home_servers);
 	pool->cs = cs;
+
+
+	cp = cf_pair_find(cs, "fallback");
+	if (cp) {
+		if (!pool_check_home_server(rc, cp, cf_pair_value(cp),
+					    server_type, &pool->fallback)) {
+			
+			goto error;
+		}
+	}
 
 	if (do_print) cf_log_info(cs, " home_server_pool %s {", name2);
 
@@ -673,15 +703,11 @@ static int server_pool_add(realm_config_t *rc,
 	for (cp = cf_pair_find(cs, "home_server");
 	     cp != NULL;
 	     cp = cf_pair_find_next(cs, cp, "home_server")) {
-		home_server myhome, *home;
+		home_server myhome;
 
 		value = cf_pair_value(cp);
-		if (!value) {
-			cf_log_err(cf_pairtoitem(cp),
-				   "No value given for home_server.");
-			goto error;
-		}
 
+		memset(&myhome, 0, sizeof(&myhome));
 		myhome.name = value;
 		myhome.type = server_type;
 
@@ -699,6 +725,10 @@ static int server_pool_add(realm_config_t *rc,
 		if (do_print) cf_log_info(cs, "\thome_server = %s", home->name);
 		pool->servers[num_home_servers++] = home;
 	} /* loop over home_server's */
+
+	if (pool->fallback && do_print) {
+		cf_log_info(cs, "\tfallback = %s", pool->fallback->name);
+	}
 
 	if (!rbtree_insert(home_pools_byname, pool)) {
 		rad_assert("Internal sanity check failed");

@@ -28,7 +28,7 @@ typedef struct home_server {
 	const char	*name;
 
 	const char	*hostname;
-	const char	*server;
+	const char	*server; /* for internal proxying */
 
 	fr_ipaddr_t	ipaddr;
 
@@ -85,7 +85,9 @@ typedef struct home_pool_t {
 	int			server_type;
 	CONF_SECTION		*cs;
 
-	const char		*virtual_server;
+	const char		*virtual_server; /* for pre/post-proxy */
+	
+	home_server		*fallback;
 
 	int			num_home_servers;
 	home_server		*servers[1];
