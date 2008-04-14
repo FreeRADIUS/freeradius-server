@@ -1555,6 +1555,14 @@ home_server *home_server_ldb(const char *realmname,
 	if (found) return found;
 
 	/*
+	 *	There's a fallback if they're all dead.
+	 */
+	if (pool->fallback &&
+	    (pool->fallback->state == HOME_STATE_ALIVE)) {
+		return pool->fallback;
+	}
+
+	/*
 	 *	No live match found, and no fallback to the "DEFAULT"
 	 *	realm.  We fix this by blindly marking all servers as
 	 *	"live".  But only do it for ones that don't support

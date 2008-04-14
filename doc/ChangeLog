@@ -1,10 +1,25 @@
 FreeRADIUS 2.0.4 ; $Date$ , urgency=medium
 	Feature improvements
+	* Allow "virtual_server" in "realm" and "home_server" sections.
+	  See raddb/proxy.conf and raddb/sites-available/virtual.example.com.
+	* Allow "passwd" module to be listed in "authorize" and "post-auth".
+	* Added "fallback" to "home_server_pool" configuration, to handle
+	  the case of all home servers being dead.  See raddb/proxy.conf
+
 	Bug fixes
+	* Install all files in raddb/sites-available
 	* Allow non-threaded builds.
-	* Don't treat '0x' as special for known attributes.
-
-
+	* Don't treat '0x' as special for known attributes that are not
+	  of type "octets".
+	* Fix log error in rlm_pap.
+	* Remove documentation about non-existent functionality.
+	* Updated warning messages in debug output.
+	* Fix handling of timeouts in rlm_ldap that affected 64-bit systems.
+	  This fix was supposed to go into 2.0.3, but did not make it.
+	* Fix event handling in debug mode for failed proxy requests.
+	* Fix memleak in fifos.  Closes #537.
+	* Fix memleak on blocked threads.  Closes #538.
+	
 FreeRADIUS 2.0.3 ; Date: 2008/03/17 09:22:17  , urgency=medium
 	Feature improvements
 	* Updated raddb/certs/ca.cnf with extensions to allow ca.der
