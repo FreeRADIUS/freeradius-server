@@ -316,6 +316,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	generic ones.
 	 */
 	client_cs = NULL;
+	parentcs = cf_top_section(cs);
 	rcode = cf_item_parse(cs, "clients", PW_TYPE_STRING_PTR,
 			      &section_name, NULL);
 	if (rcode < 0) return -1; /* bad string */
@@ -323,7 +324,9 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		/*
 		 *	Explicit list given: use it.
 		 */
-		client_cs = cf_section_find(section_name);
+		client_cs = cf_section_sub_find_name2(parentcs,
+						      "clients",
+						      section_name);
 		if (!client_cs) {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Failed to find clients %s {...}",
@@ -334,7 +337,6 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		free(section_name);
 	} /* else there was no "clients = " entry. */
 
-	parentcs = cf_top_section(cs);
 	if (!client_cs) {
 		CONF_SECTION *server_cs;
 
