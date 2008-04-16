@@ -84,7 +84,7 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 *	caller it's OK to read more "detail" file stuff.
 	 */
 	if (request->reply->code == 0) {
-		data->delay_time = 1;
+		data->delay_time = USEC;
 		data->signal = 1;
 		data->state = STATE_NO_REPLY;
 		radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
