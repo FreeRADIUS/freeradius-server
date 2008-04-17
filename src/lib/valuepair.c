@@ -292,6 +292,31 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 	*prev = replace;
 }
 
+
+/*
+ *	Copy just one VP.
+ */
+VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
+{
+	size_t name_len;
+	VALUE_PAIR *n;
+	
+	if (!vp->flags.unknown_attr) {
+		name_len = 0;
+	} else {
+		name_len = FR_VP_NAME_PAD;
+	}
+	
+	if ((n = malloc(sizeof(*n) + name_len)) == NULL) {
+		librad_log("out of memory");
+		return NULL;
+	}
+	memcpy(n, vp, sizeof(*n) + name_len);
+	n->next = NULL;
+	return n;
+}
+
+
 /*
  *	Copy just a certain type of pairs.
  */
@@ -303,25 +328,13 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr)
 	last = &first;
 
 	while (vp) {
-		size_t name_len;
-
 		if (attr >= 0 && vp->attribute != attr) {
 			vp = vp->next;
 			continue;
 		}
 
-		if (!vp->flags.unknown_attr) {
-			name_len = 0;
-		} else {
-			name_len = FR_VP_NAME_PAD;
-		}
-		
-		if ((n = malloc(sizeof(*n) + name_len)) == NULL) {
-			librad_log("out of memory");
-			return first;
-		}
-		memcpy(n, vp, sizeof(*n) + name_len);
-		n->next = NULL;
+		n = paircopyvp(vp);
+		if (!n) return first;
 		*last = n;
 		last = &n->next;
 		vp = vp->next;
