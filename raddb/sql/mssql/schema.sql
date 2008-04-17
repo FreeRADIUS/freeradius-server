@@ -93,6 +93,16 @@ CREATE TABLE [radusergroup] (
 ) ON [PRIMARY]
 GO
 
+/****** Object:  Table [radusergroup]    Script Date: 16.04.08 19:44:11 ******/
+CREATE TABLE [radpostauth] (
+        [id] [int] IDENTITY (1, 1) NOT NULL ,
+        [userName] [varchar] (64) NOT NULL ,
+        [pass] [varchar] (64) NOT NULL ,
+        [reply] [varchar] (32) NOT NULL ,
+        [authdate] [datetime] NOT NULL
+)
+GO
+
 ALTER TABLE [radacct] WITH NOCHECK ADD
 	CONSTRAINT [DF_radacct_AcctSessionId] DEFAULT ('') FOR [AcctSessionId],
 	CONSTRAINT [DF_radacct_AcctUniqueId] DEFAULT ('') FOR [AcctUniqueId],
@@ -175,6 +185,17 @@ ALTER TABLE [radusergroup] WITH NOCHECK ADD
 	(
 		[id]
 	)  ON [PRIMARY]
+GO
+
+ALTER TABLE [radpostauth] WITH NOCHECK ADD
+        CONSTRAINT [DF_radpostauth_userName] DEFAULT ('') FOR [userName],
+        CONSTRAINT [DF_radpostauth_pass] DEFAULT ('') FOR [pass],
+        CONSTRAINT [DF_radpostauth_reply] DEFAULT ('') FOR [reply],
+        CONSTRAINT [DF_radpostauth_authdate] DEFAULT (getdate()) FOR [authdate],
+        CONSTRAINT [PK_radpostauth] PRIMARY KEY NONCLUSTERED
+        (
+                [id]
+        ) ON [PRIMARY]
 GO
 
  CREATE  INDEX [UserName] ON [radacct]([UserName]) ON [PRIMARY]
