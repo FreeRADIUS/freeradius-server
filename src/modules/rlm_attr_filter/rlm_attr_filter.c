@@ -308,6 +308,16 @@ static int attr_filter_common(void *instance, REQUEST *request,
 	pairfree(input);
 	*input = output;
 
+	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
+		request->username = pairfind(request->packet->vps,
+					     PW_STRIPPED_USER_NAME);
+		if (!request->username) 
+			request->username = pairfind(request->packet->vps,
+						     PW_USER_NAME);
+		request->password = pairfind(request->packet->vps,
+					     PW_USER_PASSWORD);
+	}
+
 	return RLM_MODULE_UPDATED;
 }
 
