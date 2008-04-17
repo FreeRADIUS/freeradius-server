@@ -71,23 +71,6 @@ static void check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 	return;
 }
 
-/*
- *	Copy the specified attribute to the specified list
- */
-static int mypairappend(REQUEST *request, VALUE_PAIR *item, VALUE_PAIR **to)
-{
-	VALUE_PAIR *tmp;
-	tmp = radius_paircreate(request, to, item->attribute, item->type);
-
-	/*
-	 *	Copy EVERYTHING.
-	 */
-	memcpy(tmp, item, sizeof(*tmp));
-	tmp->next = NULL;
-	*to = tmp;
-
-	return 0;
-}
 
 static int getattrsfile(const char *filename, PAIR_LIST **pair_list)
 {
@@ -187,7 +170,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 {
 	struct attr_filter_instance *inst = instance;
 	VALUE_PAIR	*vp;
-	VALUE_PAIR	*output = NULL;
+	VALUE_PAIR	*output;
 	VALUE_PAIR	**output_tail;
 	VALUE_PAIR	*check_item;
 	PAIR_LIST	*pl;
@@ -215,6 +198,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 		keyname = buffer;
 	}
 
+	output = NULL;
 	output_tail = &output;
 
 	/*
@@ -250,11 +234,13 @@ static int attr_filter_common(void *instance, REQUEST *request,
 			 *    the output list without checking it.
 			 */
 			if (check_item->operator == T_OP_SET ) {
-				if (mypairappend(request, check_item, output_tail) < 0) {
+				vp = paircopyvp(check_item);
+				if (!vp) {
 					pairfree(&output);
 					return RLM_MODULE_FAIL;
 				}
-				output_tail = &((*output_tail)->next);
+				*output_tail = vp;
+				output_tail = &(vp->next);
 			}
 		}
 
@@ -297,7 +283,8 @@ static int attr_filter_common(void *instance, REQUEST *request,
 
 			/* only move attribute if it passed all rules */
 			if (fail == 0 && pass > 0) {
-				if (mypairappend(request, vp, output_tail) < 0) {
+				*output_tail = paircopyvp(vp);
+				if (!*output_tail) {
 					pairfree(&output);
 					return RLM_MODULE_FAIL;
 				}
