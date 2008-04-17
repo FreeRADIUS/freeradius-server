@@ -2,9 +2,9 @@ FreeRADIUS 2.0.4 ; $Date$ , urgency=medium
 	Feature improvements
 	* Allow "virtual_server" in "realm" and "home_server" sections.
 	  See raddb/proxy.conf and raddb/sites-available/virtual.example.com.
-	* Allow "passwd" module to be listed in "authorize" and "post-auth".
+	* Allow "passwd" module to be listed in "accounting" and "post-auth".
 	* Added "fallback" to "home_server_pool" configuration, to handle
-	  the case of all home servers being dead.  See raddb/proxy.conf
+	  the case of all home servers being dead.  See raddb/proxy.conf.
 
 	Bug fixes
 	* Install all files in raddb/sites-available
@@ -19,6 +19,16 @@ FreeRADIUS 2.0.4 ; $Date$ , urgency=medium
 	* Fix event handling in debug mode for failed proxy requests.
 	* Fix memleak in fifos.  Closes #537.
 	* Fix memleak on blocked threads.  Closes #538.
+	* Perform additional checks on NULL realms.  Closes #541.
+	* Fix handling of "clients" in "listen" section.
+	* When detail file cannot process a packet, sleep for longer
+	  to let the rest of the server do something.
+	* Add missing table to raddb/sql/mssql/schema.sql.  Closes #545.
+	* Updated rlm_sql_postgresql to build with PostgreSQL 7.x. 
+	  Closes #533.
+	* Fix "postauth" of rlm_ldap to look for LDAP-UserDn in the
+	  correct place.
+	* Update rlm_attr_filter for some corner cases.  Closes #543.
 	
 FreeRADIUS 2.0.3 ; Date: 2008/03/17 09:22:17  , urgency=medium
 	Feature improvements
