@@ -193,9 +193,6 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		request->username = vp;
 	}
 
-	DEBUG2("    rlm_realm: Proxying request from user %s to realm %s",
-	       username, realm->name);
-
 	/*
 	 *	Add the realm name to the request.
 	 */
@@ -232,6 +229,9 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		}
 		break;
 	}
+
+	DEBUG2("    rlm_realm: Proxying request from user %s to realm %s",
+	       username, realm->name);
 
 	/*
 	 *	Skip additional checks if it's not an accounting
