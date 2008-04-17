@@ -2084,7 +2084,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 					return RLM_MODULE_FAIL;
 				}
 
-				vp_fdn = pairfind(request->packet->vps, da->attr);
+				vp_fdn = pairfind(request->config_items, da->attr);
 				if (vp_fdn == NULL) {
 					DEBUG("rlm_ldap: User's FQDN not in config items list.");
 					return RLM_MODULE_FAIL;
