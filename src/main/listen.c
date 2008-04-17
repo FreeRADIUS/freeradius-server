@@ -328,6 +328,9 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 						      "clients",
 						      section_name);
 		if (!client_cs) {
+			client_cs = cf_section_find(section_name);
+		}
+		if (!client_cs) {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Failed to find clients %s {...}",
 				   section_name);
