@@ -1735,7 +1735,6 @@ extern void librad_log(const char *, ...);
  */
 VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 {
-	DICT_ATTR *da;
 	VALUE_PAIR *vp;
 
 	if (!pair) {
