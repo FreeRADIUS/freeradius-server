@@ -589,7 +589,7 @@ autz_redo:
 	    ((tmp = pairfind(request->config_items, PW_PROXY_TO_REALM)) != NULL)) {
 		REALM *realm;
 
-		realm = realm_find(tmp->vp_strvalue);
+		realm = realm_find2(tmp->vp_strvalue);
 
 		/*
 		 *	Don't authenticate, as the request is going to

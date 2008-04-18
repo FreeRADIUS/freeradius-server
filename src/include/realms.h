@@ -105,7 +105,8 @@ typedef struct _realm {
 
 int realms_init(CONF_SECTION *config);
 void realms_free(void);
-REALM *realm_find(const char *name);
+REALM *realm_find(const char *name); /* name is from a packet */
+REALM *realm_find2(const char *name); /* ... with name taken from realm_find */
 
 home_server *home_server_ldb(const char *realmname, home_pool_t *pool, REQUEST *request);
 home_server *home_server_find(fr_ipaddr_t *ipaddr, int port);

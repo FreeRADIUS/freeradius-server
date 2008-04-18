@@ -1242,7 +1242,7 @@ static int successfully_proxied_request(REQUEST *request)
 
 	realmname = (char *) realmpair->vp_strvalue;
 
-	realm = realm_find(realmname);
+	realm = realm_find2(realmname);
 	if (!realm) {
 		DEBUG2("ERROR: Cannot proxy to unknown realm %s", realmname);
 		return 0;

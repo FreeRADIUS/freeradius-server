@@ -1279,7 +1279,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	The realm MAY already exist if it's an old-style realm.
 	 *	In that case, merge the old-style realm with this one.
 	 */
-	r = realm_find(name2);
+	r = realm_find2(name2);
 	if (r && (strcmp(r->name, name2) == 0)) {
 		if (cf_pair_find(cs, "auth_pool") ||
 		    cf_pair_find(cs, "acct_pool")) {
@@ -1368,7 +1368,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		last = &realms_regex;
 		while (*last) last = &((*last)->next);  /* O(N^2)... sue me. */
 
-		r->name = name2 + 1; /* skip the '~' */
+		r->name = name2;
 		rr->realm = r;
 		rr->next = NULL;
 
@@ -1464,6 +1464,39 @@ int realms_init(CONF_SECTION *config)
 	return 1;
 }
 
+/*
+ *	Find a realm where "name" might be the regex.
+ */
+REALM *realm_find2(const char *name)
+{
+	REALM myrealm;
+	REALM *realm;
+	
+	if (!name) name = "NULL";
+
+	myrealm.name = name;
+	realm = rbtree_finddata(realms_byname, &myrealm);
+	if (realm) return realm;
+
+#ifdef HAVE_REGEX_H
+	if (realms_regex) {
+		realm_regex_t *this;
+
+		for (this = realms_regex; this != NULL; this = this->next) {
+			if (strcmp(this->realm->name, name) == 0) {
+				return this->realm;
+			}
+		}
+	}
+#endif
+
+	/*
+	 *	Couldn't find a realm.  Look for DEFAULT.
+	 */
+	myrealm.name = "DEFAULT";
+	return rbtree_finddata(realms_byname, &myrealm);
+}
+
 
 /*
  *	Find a realm in the REALM list.
@@ -1490,7 +1523,7 @@ REALM *realm_find(const char *name)
 			/*
 			 *	Include substring matches.
 			 */
-			if (regcomp(&reg, this->realm->name,
+			if (regcomp(&reg, this->realm->name + 1,
 				    REG_EXTENDED | REG_NOSUB | REG_ICASE) != 0) {
 				continue;
 			}
