@@ -32,7 +32,38 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <fcntl.h>
 
+#ifdef HAVE_REGEX_H
+#include <regex.h>
+
+/*
+ *  For POSIX Regular expressions.
+ *  (0) Means no extended regular expressions.
+ *  REG_EXTENDED means use extended regular expressions.
+ */
+#ifndef REG_EXTENDED
+#define REG_EXTENDED (0)
+#endif
+
+#ifndef REG_NOSUB
+#define REG_NOSUB (0)
+#endif
+
+#ifndef REG_ICASE
+#define REG_ICASE (0)
+#endif
+#endif
+
 static rbtree_t *realms_byname = NULL;
+
+#ifdef HAVE_REGEX_H
+typedef struct realm_regex_t {
+	REALM	*realm;
+	struct realm_regex_t *next;
+} realm_regex_t;
+
+static realm_regex_t *realms_regex = NULL;
+
+#endif /* HAVE_REGEX_H */
 
 static rbtree_t	*home_servers_byaddr = NULL;
 static rbtree_t	*home_servers_byname = NULL;
@@ -200,6 +231,18 @@ void realms_free(void)
 
 	rbtree_free(realms_byname);
 	realms_byname = NULL;
+
+#ifdef HAVE_REGEX_H
+	if (realms_regex) {
+		realm_regex_t *this, *next;
+
+		for (this = realms_regex; this != NULL; this = next) {
+			next = this->next;
+			free(this->realm);
+			free(this);
+		}
+	}
+#endif
 
 	free(realm_config);
 }
@@ -1150,6 +1193,7 @@ static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
 	return 1;
 }
 
+
 static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 {
 	const char *name2;
@@ -1251,6 +1295,23 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		return 1;
 	}
 
+#ifdef HAVE_REGEX_H
+	if (name2[0] == '~') {
+		regex_t reg;
+		
+		/*
+		 *	Include substring matches.
+		 */
+		if (regcomp(&reg, name2 + 1,
+			    REG_EXTENDED | REG_NOSUB | REG_ICASE) != 0) {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Invalid regex in realm \"%s\"", name2);
+			goto error;
+		}
+		regfree(&reg);
+	}
+#endif
+
 	r = rad_malloc(sizeof(*r));
 	memset(r, 0, sizeof(*r));
 
@@ -1294,6 +1355,29 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	} else if (!old_realm_config(rc, cs, r)) {
 		goto error;
 	}
+
+#ifdef HAVE_REGEX_H
+	/*
+	 *	It's a regex.  Add it to a separate list.
+	 */
+	if (name2[0] == '~') {
+		realm_regex_t *rr, **last;
+
+		rr = rad_malloc(sizeof(*rr));
+		
+		last = &realms_regex;
+		while (*last) last = &((*last)->next);  /* O(N^2)... sue me. */
+
+		r->name = name2 + 1; /* skip the '~' */
+		rr->realm = r;
+		rr->next = NULL;
+
+		*last = rr;
+
+		cf_log_info(cs, " }");
+		return 1;
+	}
+#endif
 
 	if (!rbtree_insert(realms_byname, r)) {
 		rad_assert("Internal sanity check failed");
@@ -1394,6 +1478,30 @@ REALM *realm_find(const char *name)
 	myrealm.name = name;
 	realm = rbtree_finddata(realms_byname, &myrealm);
 	if (realm) return realm;
+
+#ifdef HAVE_REGEX_H
+	if (realms_regex) {
+		realm_regex_t *this;
+
+		for (this = realms_regex; this != NULL; this = this->next) {
+			int compare;
+			regex_t reg;
+
+			/*
+			 *	Include substring matches.
+			 */
+			if (regcomp(&reg, this->realm->name,
+				    REG_EXTENDED | REG_NOSUB | REG_ICASE) != 0) {
+				continue;
+			}
+
+			compare = regexec(&reg, name, 0, NULL, 0);
+			regfree(&reg);
+
+			if (compare == 0) return this->realm;
+		}
+	}
+#endif
 
 	/*
 	 *	Couldn't find a realm.  Look for DEFAULT.
