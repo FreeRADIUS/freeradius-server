@@ -1743,24 +1743,18 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 		return NULL;
 	}
 
-	da = dict_attrbyname(pair->attr);
-	if (!da) {
-		librad_log("Unknown attribute %s", pair->attr);
-		return NULL;
-	}
-
 	if (!pair->value) {
 		librad_log("No value given for attribute %s", pair->attr);
 		return NULL;
 	}
 
-	vp = pairalloc(da);
+	/*
+	 *	pairmake handles tags.  pairalloc() doesn't.
+	 */
+	vp = pairmake(pair->attr, NULL, pair->operator);
 	if (!vp) {
-		librad_log("Out of memory");
 		return NULL;
 	}
-
-	vp->operator = pair->operator;
 
 	if (pair->value_type == T_BARE_WORD) {
 		if ((vp->type == PW_TYPE_STRING) && 
