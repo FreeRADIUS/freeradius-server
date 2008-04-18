@@ -1369,6 +1369,8 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	int		res;
 	regex_t		cre;
 #endif
+	char		buffer[64];
+	const char	*attrname = attribute;
 
 	/*
 	 *    Check for tags in 'Attribute:Tag' format.
@@ -1383,6 +1385,10 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	}
 
 	if (ts && ts[1]) {
+		strlcpy(buffer, attribute, sizeof(buffer));
+		attrname = buffer;
+		ts = strrchr(attrname, ':');
+
 	         /* Colon found with something behind it */
 	         if (ts[1] == '*' && ts[2] == 0) {
 		         /* Wildcard tag for check items */
@@ -1405,8 +1411,8 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	 *	It's not found in the dictionary, so we use
 	 *	another method to create the attribute.
 	 */
-	if ((da = dict_attrbyname(attribute)) == NULL) {
-		return pairmake_any(attribute, value, operator);
+	if ((da = dict_attrbyname(attrname)) == NULL) {
+		return pairmake_any(attrname, value, operator);
 	}
 
 	if ((vp = pairalloc(da)) == NULL) {
@@ -1497,7 +1503,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		}
 		regfree(&cre);
 #else
-		librad_log("Regelar expressions not enabled in this build, error in attribute %s",
+		librad_log("Regular expressions not enabled in this build, error in attribute %s",
 				vp->name);
 		pairbasicfree(vp);
 		return NULL;
