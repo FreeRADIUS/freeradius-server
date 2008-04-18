@@ -10,6 +10,7 @@ VENDOR		Nokia				94
 
 BEGIN-VENDOR	Nokia
 
+ATTRIBUTE	Nokia-AVPair				1	string
 ATTRIBUTE	Nokia-User-Profile			2	string
 ATTRIBUTE	Nokia-Service-Name			3	octets	# magic format
 ATTRIBUTE	Nokia-Service-Id			4	octets	# magic format
