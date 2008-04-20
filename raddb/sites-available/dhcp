@@ -1,0 +1,193 @@
+# -*- text -*-
+######################################################################
+#
+#	This is a virtual server that handles DHCP.
+#
+#		!!!! WARNING !!!!
+#
+#	This code is experimental, and SHOULD NOT be used in a
+#	production system.  It is intended for validation and
+#	experimentation ONLY.
+#
+#	In order for this to work, you will need to run configure:
+#
+#		$ ./configure --with-dhcp
+#		$ make
+#		$ make install
+#
+#	DHCP is NOT enabled by default.
+#
+#	The goal of this effort is to get the code in front of
+#	people who are interested in another DHCP server.
+#	We NEED FEEDBACK, patches, bug reports, etc.  Especially patches!
+#
+#	Please contribute, or this work will be nothing more than
+#	a curiosity.
+#
+#
+#	Q: What does it do?
+#	A: It allows the server to receive DHCP packets, and to
+#	   respond with static, pre-configured DHCP responses.
+#
+#	Q: Does it do static/dynamic IP assignment?
+#	A: No.  Or, maybe.  Try it and see.
+#
+#	Q: Does it read ISC configuration or lease files?
+#	A: No.  Please submit patches.
+#
+#	Q: Does it have DHCP feature X?
+#	A: No.  Please submit patches.
+#
+#	Q: Does it support option 82?
+#	A: Yes.
+#
+#	Q: Does it support other options?
+#	A: Maybe.  See dictionary.dhcp.  Please submit patches.
+#
+#	Q: It doesn't seem to do much of anything!
+#	A: Exactly.
+#
+#	$Id$
+#
+######################################################################
+
+#
+#  The DHCP functionality goes into a virtual server.
+#
+server dhcp {
+
+#  This is part RADIUS legacy (sorry).  Clients have to be defined for
+#  DHCP.  This is not normal practice for a DHCP server, but it does
+#  enable a simple filter list of "known clients".
+#
+
+#  DHCP packets are normally sent with source IP address 0.0.0.0.
+#  If you want to accept packets from any IP, uncomment the "netmask"
+#  entry below, and delete the other "client" sections in this file.
+client any {
+	ipaddr = 0.0.0.0
+	#netmask = 0
+	dhcp = yes
+}
+
+#  For local testing.
+client localnet {
+	ipaddr = 127.0.0.0
+	netmask = 8
+	dhcp = yes
+}
+
+#  Define a DHCP socket.
+#
+#  The default port below is 6700, so you don't break your network.
+#  If you want it to do real DHCP, change this to 67, and good luck!
+#
+#  You can also bind the DHCP socket to an interface.
+#  See raddb/radiusd.conf for examples.
+#
+#  This lets you run *one* DHCP server instance and have it listen on
+#  multiple interfaces, each with a separate policy.
+listen {
+	ipaddr = *
+	port = 6700
+	type = dhcp
+}
+
+#  Packets received on the socket will be processed through one
+#  of the following sections, named after the DHCP packet type.
+#  See dictionary.dhcp for the packet types.
+dhcp DHCP-Discover {
+	update reply {
+	       DHCP-Message-Type = DHCP-Offer
+	}
+
+	#  The contents here are invented.  Change them!
+	update reply {
+	        DHCP-Domain-Name-Server = 127.0.0.1
+	        DHCP-Domain-Name-Server = 127.0.0.2
+		DHCP-Subnet-Mask = 255.255.255.0
+		DHCP-Router-Address = 192.168.1.1
+		DHCP-IP-Address-Lease-Time = 86400
+		DHCP-DHCP-Server-Identifier = 192.168.1.1
+	}
+
+	#  Do a simple mapping of MAC to assigned IP.
+	#
+	#  See below for the definition of the "mac2ip"
+	#  module.
+	#
+	#mac2ip
+
+	#  If the MAC wasn't found in that list, do something else.
+	#  You could call a Perl, Python, or Java script here.
+
+	#if (notfound) {
+	# ...
+	#}
+
+	ok
+}
+
+dhcp DHCP-Request {
+	update reply {
+	       DHCP-Message-Type = DHCP-Ack
+	}
+
+	#  The contents here are invented.  Change them!
+	update reply {
+	        DHCP-Domain-Name-Server = 127.0.0.1
+	        DHCP-Domain-Name-Server = 127.0.0.2
+		DHCP-Subnet-Mask = 255.255.255.0
+		DHCP-Router-Address = 192.168.1.1
+		DHCP-IP-Address-Lease-Time = 86400
+		DHCP-DHCP-Server-Identifier = 192.168.1.1
+	}
+
+	#  Do a simple mapping of MAC to assigned IP.
+	#
+	#  See below for the definition of the "mac2ip"
+	#  module.
+	#
+	#mac2ip
+
+	#  If the MAC wasn't found in that list, do something else.
+	#  You could call a Perl, Python, or Java script here.
+
+	#if (notfound) {
+	# ...
+	#}
+
+	ok
+}
+
+#  If there's no named section for the packet type, then the packet
+#  is processed through this section.
+dhcp {
+	# send a DHCP NAK.
+	reject
+}
+
+
+}
+
+######################################################################
+#
+#  This next section is a sample configuration for the "passwd"
+#  module, that reads flat-text files.  It should go into
+#  radiusd.conf, in the "modules" section.
+#
+#  The file is in the format <mac>,<ip>
+#
+#	00:01:02:03:04:05,192.168.1.100
+#	01:01:02:03:04:05,192.168.1.101
+#	02:01:02:03:04:05,192.168.1.102
+#
+#  This lets you perform simple static IP assignment.
+#
+######################################################################
+
+#passwd mac2vlan {
+#	filename = ${confdir}/mac2ip
+#	format = "*DHCP-Client-Hardware-Address:=DHCP-Your-IP-Address"
+#	delimiter = ","
+#}
