@@ -616,8 +616,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 {
 	rlm_sqlcounter_t *data = (rlm_sqlcounter_t *) instance;
 	int ret=RLM_MODULE_NOOP;
-	int counter=0;
-	int res=0;
+	unsigned int counter;
 	DICT_ATTR *dattr;
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
@@ -679,15 +678,19 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	/* Finally, xlat resulting SQL query */
 	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, request, sql_escape_func);
 
-	counter = atoi(querystr);
-
+	if (sscanf(querystr, "%u", &counter) != 1) {
+		DEBUG2("rlm_sqlcounter: No integer found in string \"%s\"",
+		       querystr);
+		return RLM_MODULE_NOOP;
+	}
 
 	/*
 	 * Check if check item > counter
 	 */
-	res=check_vp->vp_integer - counter;
-	if (res > 0) {
-		DEBUG2("rlm_sqlcounter: (Check item - counter) is greater than zero");
+	if (check_vp->vp_integer > counter) {
+		unsigned int res = check_vp->lvalue - counter;
+
+		DEBUG2("rlm_sqlcounter: Check item is greater than query result");
 		/*
 		 *	We are assuming that simultaneous-use=1. But
 		 *	even if that does not happen then our user
@@ -705,14 +708,14 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		 *	limit, so that the user will not need to
 		 *	login again
 		 */
-		if (data->reset_time && (
-			res >= (data->reset_time - request->timestamp))) {
+		if (data->reset_time &&
+		    (res >= (data->reset_time - request->timestamp))) {
 			res = data->reset_time - request->timestamp;
 			res += check_vp->vp_integer;
 		}
 
 		if ((reply_item = pairfind(request->reply->vps, data->reply_attr)) != NULL) {
-			if (reply_item->vp_integer > (unsigned int) res)
+			if (reply_item->vp_integer > res)
 				reply_item->vp_integer = res;
 		} else {
 			reply_item = radius_paircreate(request,
@@ -724,9 +727,9 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 
 		ret=RLM_MODULE_OK;
 
-		DEBUG2("rlm_sqlcounter: Authorized user %s, check_item=%d, counter=%d",
+		DEBUG2("rlm_sqlcounter: Authorized user %s, check_item=%u, counter=%u",
 				key_vp->vp_strvalue,check_vp->vp_integer,counter);
-		DEBUG2("rlm_sqlcounter: Sent Reply-Item for user %s, Type=%s, value=%d",
+		DEBUG2("rlm_sqlcounter: Sent Reply-Item for user %s, Type=%s, value=%u",
 				key_vp->vp_strvalue,data->reply_name,reply_item->vp_integer);
 	}
 	else{
@@ -748,7 +751,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 
 		ret=RLM_MODULE_REJECT;
 
-		DEBUG2("rlm_sqlcounter: Rejected user %s, check_item=%d, counter=%d",
+		DEBUG2("rlm_sqlcounter: Rejected user %s, check_item=%u, counter=%u",
 				key_vp->vp_strvalue,check_vp->vp_integer,counter);
 	}
 
