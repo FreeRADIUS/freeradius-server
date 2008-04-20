@@ -5,6 +5,12 @@ FreeRADIUS 2.0.4 ; $Date$ , urgency=medium
 	* Allow "passwd" module to be listed in "accounting" and "post-auth".
 	* Added "fallback" to "home_server_pool" configuration, to handle
 	  the case of all home servers being dead.  See raddb/proxy.conf.
+	* Added sample text to raddb/sites-available/inner-tunnel which
+	  can simplify debugging of inner tunnel configurations.
+	* Added regular expression matching in realm names.  See
+	  raddb/proxy.conf for examples.
+	* Added simple DHCP server functionality.  For comments, see
+	  raddb/sites-available/dhcp.
 
 	Bug fixes
 	* Install all files in raddb/sites-available
