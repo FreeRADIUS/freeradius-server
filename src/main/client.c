@@ -529,6 +529,18 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	}
 
 	if (!c->secret || !*c->secret) {
+#ifdef WITH_DHCP
+		const char *value = NULL;
+		CONF_PAIR *cp = cf_pair_find(cs, "dhcp");
+
+		if (cp) value = cf_pair_value(cp);
+
+		/*
+		 *	Secrets aren't needed for DHCP.
+		 */
+		if (value && (strcmp(value, "yes") == 0)) return c;
+
+#endif
 		client_free(c);
 		cf_log_err(cf_sectiontoitem(cs),
 			   "secret must be at least 1 character long");

@@ -455,7 +455,7 @@ int indexed_modcall(int comp, int idx, REQUEST *request)
  *	block
  */
 static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
-				     const char *server, int comp)
+				     const char *server, int attr, int comp)
 {
 	indexed_modcallable *subcomp;
 	modcallable *ml;
@@ -489,7 +489,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 *	automatically.  If it isn't found, it's a serious
 	 *	error.
 	 */
-	dval = dict_valbyname(section_type_value[comp].attr, name2);
+	dval = dict_valbyname(attr, name2);
 	if (!dval) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "%s %s Not previously configured",
@@ -580,7 +580,9 @@ static int load_component_section(CONF_SECTION *cs,
 			if (strcmp(name1,
 				   section_type_value[comp].typename) == 0) {
 				if (!load_subcomponent_section(NULL, scs,
-							       server, comp)) {
+							       server,
+							       dattr->attr,
+							       comp)) {
 					return -1; /* FIXME: memleak? */
 				}
 				continue;
@@ -782,6 +784,38 @@ static int load_byserver(CONF_SECTION *cs)
 			}
 			flag = 1;
 		}
+
+#ifdef WITH_DHCP
+		if (!flag) {
+			const DICT_ATTR *dattr;
+
+			dattr = dict_attrbyname("DHCP-Message-Type");
+			if (!dattr) {
+				radlog(L_ERR, "No DHCP-Message-Type attribute");
+				return -1;
+			}
+
+			/*
+			 *	Handle each DHCP Message type separately.
+			 */
+			for (subcs = cf_subsection_find_next(cs, NULL,
+							     "dhcp");
+			     subcs != NULL;
+			     subcs = cf_subsection_find_next(cs, subcs,
+							     "dhcp")) {
+				const char *name2 = cf_section_name2(subcs);
+
+				DEBUG2(" Module: Checking dhcp %s {...} for more modules to load", name2);
+				if (!load_subcomponent_section(NULL, subcs,
+							       server,
+							       dattr->attr,
+							       RLM_COMPONENT_POST_AUTH)) {
+					return -1; /* FIXME: memleak? */
+				}
+				flag = 1;
+			}
+		}
+#endif
 	}
 
 	cf_log_info(cs, " }");

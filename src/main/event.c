@@ -1616,6 +1616,14 @@ static void request_post_handler(REQUEST *request)
 		break;
 
 	default:
+		if ((request->packet->code > 1024) &&
+		    (request->packet->code < (1024 + 254 + 1))) {
+			request->next_callback = NULL;
+			child_state = REQUEST_DONE;
+			break;
+		}
+
+		radlog(L_ERR, "Unknown packet type %d", request->packet->code);
 		rad_panic("Unknown packet type");
 		break;
 	}

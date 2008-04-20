@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/vqp.h>
+#include <freeradius-devel/dhcp.h>
 
 #include <freeradius-devel/vmps.h>
 #include <freeradius-devel/detail.h>
@@ -84,7 +85,8 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 
 	rad_assert((listener->type == RAD_LISTEN_AUTH) ||
 		   (listener->type == RAD_LISTEN_ACCT) ||
-		   (listener->type == RAD_LISTEN_VQP));
+		   (listener->type == RAD_LISTEN_VQP) ||
+		   (listener->type == RAD_LISTEN_DHCP));
 
 	clients = ((listen_socket_t *)listener->data)->clients;
 
@@ -193,6 +195,12 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 #ifdef WITH_VMPS
 	case RAD_LISTEN_VQP:
 		name = "vmps";
+		break;
+#endif
+
+#ifdef WITH_DHCP
+	case RAD_LISTEN_DHCP:
+		name = "dhcp";
 		break;
 #endif
 
@@ -734,7 +742,6 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 			   request->home_server->secret);
 }
 
-
 #ifdef WITH_SNMP
 static int radius_snmp_recv(rad_listen_t *listener,
 			    UNUSED RAD_REQUEST_FUNP *pfun,
@@ -770,6 +777,8 @@ static int radius_snmp_print(UNUSED rad_listen_t *this, char *buffer, size_t buf
 
 #endif
 
+#include "dhcpd.c"
+
 static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
 
@@ -798,6 +807,15 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ common_socket_parse, NULL,
 	  vqp_socket_recv, vqp_socket_send,
 	  socket_print, vqp_socket_encode, vqp_socket_decode },
+#else
+	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+#endif
+
+#ifdef WITH_DHCP
+	/* dhcp query protocol */
+	{ dhcp_socket_parse, NULL,
+	  dhcp_socket_recv, dhcp_socket_send,
+	  socket_print, dhcp_socket_encode, dhcp_socket_decode },
 #else
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
@@ -946,6 +964,7 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 	case RAD_LISTEN_ACCT:
 	case RAD_LISTEN_PROXY:
 	case RAD_LISTEN_VQP:
+	case RAD_LISTEN_DHCP:
 		this->data = rad_malloc(sizeof(listen_socket_t));
 		memset(this->data, 0, sizeof(listen_socket_t));
 		break;
@@ -1040,6 +1059,11 @@ static const FR_NAME_NUMBER listen_compare[] = {
 	{ "proxy",	RAD_LISTEN_PROXY },
 #ifdef WITH_VMPS
 	{ "vmps",	RAD_LISTEN_VQP },
+#endif
+#ifdef WITH_DHCP
+	{ "dhcp",	RAD_LISTEN_DHCP },
+#else
+	{ "dhcp",	RAD_LISTEN_NONE },
 #endif
 	{ NULL, 0 },
 };
