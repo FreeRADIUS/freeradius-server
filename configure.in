@@ -259,7 +259,7 @@ AC_ARG_WITH(vmps,
   esac ]
 )
 if test "x$WITH_VMPS" = "xyes"; then
-	AC_DEFINE(WITH_VMPS, [], [define if you want VMPS support])
+	AC_DEFINE(WITH_VMPS, [1], [define if you want VMPS support])
 fi
 
 dnl extra argument: --with-dhcp
@@ -267,7 +267,8 @@ AC_ARG_WITH(dhcp,
 [  --with-dhcp             Compile in DHCP support. (default=no)],
 [ case "$withval" in
     yes)
-        AC_DEFINE(WITH_DHCP, [], [Include experimental support for DHCP])
+        AC_DEFINE(WITH_DHCP, [1], [Include experimental support for DHCP])
+	;;
     *)
 	;;
   esac ]
