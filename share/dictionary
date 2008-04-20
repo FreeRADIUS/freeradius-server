@@ -106,6 +106,7 @@ $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.colubris
 $INCLUDE dictionary.cosine
+#$INCLUDE dictionary.dhcp
 $INCLUDE dictionary.digium
 $INCLUDE dictionary.epygi
 $INCLUDE dictionary.erx
