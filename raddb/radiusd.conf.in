@@ -1546,7 +1546,7 @@ $INCLUDE eap.conf
 	#  The 'expression' module currently has no configuration.
 	#
 	#  This module is useful only for 'xlat'.  To use it,
-	#  put 'exec' into the 'instantiate' section.  You can then
+	#  put 'expr' into the 'instantiate' section.  You can then
 	#  do dynamic translation of attributes like:
 	#
 	#  Attribute-Name = `%{expr:2 + 3 + %{exec: uid -u}}`
