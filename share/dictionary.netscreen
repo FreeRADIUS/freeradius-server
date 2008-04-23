@@ -16,6 +16,9 @@ ATTRIBUTE	NS-Secondary-DNS			5	ipaddr
 ATTRIBUTE	NS-Primary-WINS				6	ipaddr
 ATTRIBUTE	NS-Secondary-WINS			7	ipaddr
 
+ATTRIBUTE	NS-NSM-User-Domain-Name			220	string
+ATTRIBUTE	NS-NSM-User-Role-Mapping		221	string
+
 #
 #  Values VSYS-Admin and Read-Only-VSYS-Admin require a NS-VSYS-Name
 #  attribute in the response packet.
