@@ -546,11 +546,6 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		return RLM_MODULE_NOOP;
 	}
 
-	if (pairfind(request->packet->vps, PW_NAS_PORT) == NULL) {
-		DEBUG("rlm_sqlippool: unknown NAS-Port");
-		return RLM_MODULE_NOOP;
-	}
-
 	sqlsocket = sql_get_socket(data->sql_inst);
 	if (sqlsocket == NULL) {
 		DEBUG("rlm_sqlippool: cannot allocate sql connection");
@@ -678,11 +673,6 @@ static int sqlippool_accounting_start(void * instance, REQUEST * request)
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	SQLSOCK * sqlsocket;
 
-	if (pairfind(request->packet->vps, PW_NAS_PORT) == NULL) {
-		DEBUG("rlm_ippool: Could not find port number in packet.");
-		return RLM_MODULE_NOOP;
-	}
-
 	if (pairfind(request->packet->vps, PW_NAS_IP_ADDRESS) == NULL) {
 		DEBUG("rlm_ippool: Could not find nas information in packet.");
 		return RLM_MODULE_NOOP;
@@ -721,11 +711,6 @@ static int sqlippool_accounting_alive(void * instance, REQUEST * request)
 {
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	SQLSOCK * sqlsocket;
-
-	if (pairfind(request->packet->vps, PW_NAS_PORT) == NULL) {
-		DEBUG("rlm_ippool: Could not find port number in packet.");
-		return RLM_MODULE_NOOP;
-	}
 
 	if (pairfind(request->packet->vps, PW_NAS_IP_ADDRESS) == NULL) {
 		DEBUG("rlm_ippool: Could not find nas information in packet.");
@@ -767,11 +752,6 @@ static int sqlippool_accounting_stop(void * instance, REQUEST * request)
 
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	SQLSOCK * sqlsocket;
-
-	if (pairfind(request->packet->vps, PW_NAS_PORT) == NULL) {
-		DEBUG("rlm_ippool: Could not find port number in packet.");
-		return RLM_MODULE_NOOP;
-	}
 
 	if (pairfind(request->packet->vps, PW_NAS_IP_ADDRESS) == NULL) {
 		DEBUG("rlm_ippool: Could not find nas information in packet.");
