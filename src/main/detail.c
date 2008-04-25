@@ -488,6 +488,14 @@ int detail_recv(rad_listen_t *listener,
 		 */
 		if (!strcasecmp(key, "Timestamp")) {
 			data->timestamp = atoi(value);
+
+			vp = paircreate(PW_PACKET_ORIGINAL_TIMESTAMP,
+					PW_TYPE_DATE);
+			if (vp) {
+				vp->vp_date = (uint32_t) data->timestamp;
+				*tail = vp;
+				tail = &(vp->next);
+			}
 			continue;
 		}
 

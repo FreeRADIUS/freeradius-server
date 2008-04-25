@@ -167,6 +167,7 @@ VALUE	Module-Return-Code		notfound		6
 VALUE	Module-Return-Code		noop			7
 VALUE	Module-Return-Code		updated			8
 
+ATTRIBUTE	Packet-Original-Timestamp		1109	date
 
 #
 #	Range:	1200-1279
