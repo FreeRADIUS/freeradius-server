@@ -33,6 +33,10 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #endif
 
+#ifdef HAVE_GLOB_H
+#include <glob.h>
+#endif
+
 #include <fcntl.h>
 
 #define USEC (1000000)
@@ -192,6 +196,7 @@ static int detail_open(rad_listen_t *this)
 {
 	struct stat st;
 	listen_detail_t *data = this->data;
+	char *filename = data->filename;
 
 	rad_assert(data->state == STATE_UNOPENED);
 	data->delay_time = USEC;
@@ -208,7 +213,7 @@ static int detail_open(rad_listen_t *this)
 	 */
 	this->fd = open(data->filename_work, O_RDWR);
 	if (this->fd < 0) {
-		DEBUG2("Polling for detail file %s", data->filename);
+		DEBUG2("Polling for detail file %s", filename);
 
 		/*
 		 *	Try reading the detail file.  If it
@@ -218,29 +223,66 @@ static int detail_open(rad_listen_t *this)
 		 *	exists, even if we don't have permissions
 		 *	to read it.
 		 */
-		if (stat(data->filename, &st) < 0) {
+		if (stat(filename, &st) < 0) {
+#ifdef HAVE_GLOB_H
+			int i, found;
+			time_t ctime;
+			glob_t files;
+
+			memset(&files, 0, sizeof(files));
+			if (glob(filename, 0, NULL, &files) != 0) {
+				return 0;
+			}
+
+			ctime = 0;
+			found = -1;
+			for (i = 0; i < files.gl_pathc; i++) {
+				if (stat(files.gl_pathv[i], &st) < 0) continue;
+
+				if ((i == 0) ||
+				    (st.st_ctime < ctime)) {
+					ctime = st.st_ctime;
+					found = i;
+				}
+			}
+
+			if (found < 0) {
+				globfree(&files);
+				return 0;
+			}
+
+			filename = strdup(files.gl_pathv[found]);
+			globfree(&files);
+
+
+#else
 			return 0;
+#endif
 		}
 
 		/*
 		 *	Open it BEFORE we rename it, just to
 		 *	be safe...
 		 */
-		this->fd = open(data->filename, O_RDWR);
+		this->fd = open(filename, O_RDWR);
 		if (this->fd < 0) {
 			radlog(L_ERR, "Failed to open %s: %s",
-			       data->filename, strerror(errno));
+			       filename, strerror(errno));
+			if (filename != data->filename) free(filename);
 			return 0;
 		}
 
 		/*
 		 *	Rename detail to detail.work
 		 */
-		if (rename(data->filename, data->filename_work) < 0) {
+		DEBUG("detail_recv: Renaming %s -> %s", filename, data->filename_work);
+		if (rename(filename, data->filename_work) < 0) {
+			if (filename != data->filename) free(filename);
 			close(this->fd);
 			this->fd = -1;
 			return 0;
 		}
+		if (filename != data->filename) free(filename);
 	} /* else detail.work existed, and we opened it */
 
 	rad_assert(data->vps == NULL);
@@ -629,7 +671,7 @@ int detail_recv(rad_listen_t *listener,
 	*pfun = rad_accounting;
 
 	if (debug_flag) {
-		fr_printf_log("detail_recv: Read packet from %s\n", data->filename);
+		fr_printf_log("detail_recv: Read packet from %s\n", data->filename_work);
 		for (vp = packet->vps; vp; vp = vp->next) {
 			debug_pair(vp);
 		}
