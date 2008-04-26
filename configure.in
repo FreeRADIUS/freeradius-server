@@ -617,6 +617,7 @@ AC_CHECK_HEADERS( \
 	fcntl.h \
 	sys/fcntl.h \
 	sys/prctl.h \
+	glob.h \
 	prot.h \
 	pwd.h \
 	grp.h \
