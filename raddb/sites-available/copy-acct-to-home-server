@@ -32,6 +32,15 @@ server copy-acct-to-home-server {
 		#  The location where the detail file is located.
 		#  This should be on local disk, and NOT on an NFS
 		#  mounted location!
+		#
+		#  On most systems, this should support file globbing
+		#  e.g. "${radacctdir}/detail-*:*"
+		#  This lets you write many smaller detail files as in
+		#  the example in radiusd.conf: ".../detail-%Y%m%d:%H"
+		#  Writing many small files is often better than writing
+		#  one large file.  File globbing also means that with
+		#  a common naming scheme for detail files, then you can
+		#  have many detail file writers, and only one reader.
 		filename = ${radacctdir}/detail
 
 		#
