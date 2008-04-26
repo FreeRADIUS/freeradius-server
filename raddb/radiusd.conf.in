@@ -213,6 +213,8 @@ listen {
 	#	auth	listen for authentication packets
 	#	acct	listen for accounting packets
 	#	proxy   IP to use for sending proxied packets
+	#	detail  Read from the detail file.  For examples, see
+	#               raddb/sites-available/copy-acct-to-home-server
 	#
 	type = auth
 
