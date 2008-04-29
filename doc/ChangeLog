@@ -11,6 +11,9 @@ FreeRADIUS 2.0.4 ; $Date$ , urgency=medium
 	  raddb/proxy.conf for examples.
 	* Added simple DHCP server functionality.  For comments, see
 	  raddb/sites-available/dhcp.
+	* Added file globbing capabilities to detail file reader
+	* Added sample raddb/sites-available/robust-proxy-accounting
+	* Clients in SQL can now refer to a virtual server.
 
 	Bug fixes
 	* Install all files in raddb/sites-available
