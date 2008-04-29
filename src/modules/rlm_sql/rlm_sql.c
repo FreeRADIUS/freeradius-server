@@ -221,6 +221,7 @@ static int generate_sql_clients(SQL_INST *inst)
 	RADCLIENT *c;
 	char *prefix_ptr = NULL;
 	unsigned int i = 0;
+	int numf = 0;
 
 	DEBUG("rlm_sql (%s): Processing generate_sql_clients",
 	      inst->config->xlat_name);
@@ -254,6 +255,7 @@ static int generate_sql_clients(SQL_INST *inst)
 	 *  2. Shortname
 	 *  3. Type
 	 *  4. Secret
+	 *  5. Virtual Server (optional)
 	 */
 		if (!row[0]){
 			radlog(L_ERR, "rlm_sql (%s): No row id found on pass %d",inst->config->xlat_name,i);
@@ -322,16 +324,19 @@ static int generate_sql_clients(SQL_INST *inst)
 		}
 
 		/*
-		 *	Other values (secret, shortname, nastype)
+		 *	Other values (secret, shortname, nastype, virtual_server)
 		 */
 		c->secret = strdup(row[4]);
 		c->shortname = strdup(row[2]);
 		if(row[3] != NULL)
 			c->nastype = strdup(row[3]);
 
-		DEBUG("rlm_sql (%s): Adding client %s (%s) to clients list",
+		numf = (inst->module->sql_num_fields)(sqlsocket, inst->config);
+		if ((numf > 5) && (row[5] != NULL)) c->server = strdup(row[5]);
+
+		DEBUG("rlm_sql (%s): Adding client %s (%s, server=%s) to clients list",
 		      inst->config->xlat_name,
-		      c->longname,c->shortname);
+		      c->longname,c->shortname, c->server ? c->server : "<none>");
 		if (!client_add(NULL, c)) {
 			DEBUG("rlm_sql (%s): Failed to add client %s (%s) to clients list.  Maybe there's a duplicate?",
 			      inst->config->xlat_name,
