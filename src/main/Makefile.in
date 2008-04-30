@@ -98,6 +98,9 @@ modules.lo: modules.c ../include/modules.h
 session.lo: session.c ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c session.c
 
+# It's #include'd for simplicity.  This should be fixed...
+listen.lo: dhcpd.c
+
 #
 # Helper programs
 #
