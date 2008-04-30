@@ -79,7 +79,7 @@ $ radtest bob bob localhost:2000 0 testing123
 3. Capabilities and limitations
 
 
-  The only sub-sections that can appear in a virtual server sectopm
+  The only sub-sections that can appear in a virtual server section
 are:
 
 	listen
