@@ -1,3 +1,36 @@
+freeradius (2.0.4-0) unstable; urgency=medium
+  * Allow "virtual_server" in "realm" and "home_server" sections. See raddb/proxy.conf and raddb/sites-available/virtual.example.com.
+  * Allow "passwd" module to be listed in "accounting" and "post-auth".
+  * Added "fallback" to "home_server_pool" configuration, to handle the case of all home servers being dead.  See raddb/proxy.conf.
+  * Added sample text to raddb/sites-available/inner-tunnel which can simplify debugging of inner tunnel configurations.
+  * Added regular expression matching in realm names.  See raddb/proxy.conf for examples.
+  * Added simple DHCP server functionality.  For comments, see raddb/sites-available/dhcp.
+  * Added file globbing capabilities to detail file reader
+  * Added sample raddb/sites-available/robust-proxy-accounting
+  * Clients in SQL can now refer to a virtual server. Patch from Michael Bretterklieber.
+  * Added some examples of creating RADIUS administrator in SQL, and assigning appropriate access rights.
+  * Install all files in raddb/sites-available
+  * Allow non-threaded builds.
+  * Don't treat '0x' as special for known attributes that are not of type "octets".
+  * Fix log error in rlm_pap.
+  * Remove documentation about non-existent functionality.
+  * Updated warning messages in debug output.
+  * Fix handling of timeouts in rlm_ldap that affected 64-bit systems. This fix was supposed to go into 2.0.3, but did not make it.
+  * Fix event handling in debug mode for failed proxy requests.
+  * Fix memleak in fifos.  Closes #537.
+  * Fix memleak on blocked threads.  Closes #538.
+  * Perform additional checks on NULL realms.  Closes #541.
+  * Fix handling of "clients" in "listen" section.
+  * When detail file cannot process a packet, sleep for longer to let the rest of the server do something.
+  * Add missing table to raddb/sql/mssql/schema.sql.  Closes #545.
+  * Updated rlm_sql_postgresql to build with PostgreSQL 7.x.  Closes #533.
+  * Fix "postauth" of rlm_ldap to look for LDAP-UserDn in the correct place.
+  * Update rlm_attr_filter for some corner cases.  Closes #543.
+  * Fixed memory leak in libfreeradius event handler.
+  * In the SQL Accounting on/off queries, remove the restriction that the session time had to be zero.
+
+ -- Alan DeKok <aland@freeradius.org>  Wed, 30 Apr 2008 7:32:00 +0100
+
 freeradius (2.0.3-0) unstable; urgency=medium
   * Updated raddb/certs/ca.cnf with extensions to allow ca.der to be imported as a CA on Symbian and Windows Mobile devices. Closes bug #524
   * Enable multiple matches in "hints" via Fall-Through = Yes. Closes bug #477
