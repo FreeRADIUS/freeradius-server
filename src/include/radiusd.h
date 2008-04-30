@@ -493,4 +493,5 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			      const char **ptr, int evaluate_it, int *presult);
 int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			   VALUE_PAIR *input_vps, const char *name);
+void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);
 #endif /*RADIUSD_H*/
