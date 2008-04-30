@@ -14,7 +14,10 @@ FreeRADIUS 2.0.4 ; $Date$ , urgency=medium
 	* Added file globbing capabilities to detail file reader
 	* Added sample raddb/sites-available/robust-proxy-accounting
 	* Clients in SQL can now refer to a virtual server.
-
+	  Patch from Michael Bretterklieber.
+	* Added some examples of creating RADIUS administrator in SQL,
+	  and assigning appropriate access rights.
+	
 	Bug fixes
 	* Install all files in raddb/sites-available
 	* Allow non-threaded builds.
@@ -38,6 +41,9 @@ FreeRADIUS 2.0.4 ; $Date$ , urgency=medium
 	* Fix "postauth" of rlm_ldap to look for LDAP-UserDn in the
 	  correct place.
 	* Update rlm_attr_filter for some corner cases.  Closes #543.
+	* Fixed memory leak in libfreeradius event handler.
+	* In the SQL Accounting on/off queries, remove the restriction
+	  that the session time had to be zero.
 	
 FreeRADIUS 2.0.3 ; Date: 2008/03/17 09:22:17  , urgency=medium
 	Feature improvements
