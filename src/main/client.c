@@ -60,6 +60,7 @@ void client_free(RADCLIENT *client)
 	free(client->nastype);
 	free(client->login);
 	free(client->password);
+	free(client->server);
 
 #ifdef WITH_SNMP
 	free(client->auth);
