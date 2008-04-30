@@ -21,6 +21,9 @@
 
 1. Schema and usage
 
+  The schemas are available in raddb/sql/<DB>/*, where <DB> is the
+  name of the database (mysql, postgresql, etc.)
+
   The SQL module employs two sets of check and reply item tables for
   processing in the authorization stage.  One set of tables (radcheck and
   radreply) are specific to a single user.  The other set of tables
@@ -278,4 +281,3 @@
     sql_instance2
     ...
   }
-
