@@ -1035,6 +1035,8 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	 */
 	*to = NULL;
 	last = to;
+	request->username = NULL;
+	request->password = NULL;
 	for (i = 0; i < tailto; i++) {
 		if (!to_list[i]) continue;
 		
@@ -1055,19 +1057,15 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		/*
 		 *	Fix dumb cache issues
 		 */
-		request->username = NULL;
-		request->password = NULL;
-		if ((i >= to_count) || edited[i]) {
-			if ((to_list[i]->attribute == PW_USER_NAME) &&
-			    !request->username) {
-				request->username = to_list[i];
-				
-			} else if (to_list[i]->attribute == PW_STRIPPED_USER_NAME) {
-				request->username = to_list[i];
-				
-			} else if (to_list[i]->attribute == PW_USER_PASSWORD) {
-				request->password = to_list[i];
-			}
+		if ((to_list[i]->attribute == PW_USER_NAME) &&
+		    !request->username) {
+			request->username = to_list[i];
+			
+		} else if (to_list[i]->attribute == PW_STRIPPED_USER_NAME) {
+			request->username = to_list[i];
+			
+		} else if (to_list[i]->attribute == PW_USER_PASSWORD) {
+			request->password = to_list[i];
 		}
 	}
 	free(to_list);
