@@ -795,6 +795,29 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 	return TRUE;
 }
 
+
+static void fix_up(REQUEST *request)
+{
+	VALUE_PAIR *vp;
+
+	request->username = NULL;
+	request->password = NULL;
+	
+	for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
+		if ((vp->attribute == PW_USER_NAME) &&
+		    !request->username) {
+			request->username = vp;
+			
+		} else if (vp->attribute == PW_STRIPPED_USER_NAME) {
+			request->username = vp;
+			
+		} else if (vp->attribute == PW_USER_PASSWORD) {
+			request->password = vp;
+		}
+	}
+}
+
+
 /*
  *	The pairmove() function in src/lib/valuepair.c does all sorts of
  *	extra magic that we don't want here.
@@ -1035,8 +1058,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	 */
 	*to = NULL;
 	last = to;
-	request->username = NULL;
-	request->password = NULL;
+
 	for (i = 0; i < tailto; i++) {
 		if (!to_list[i]) continue;
 		
@@ -1053,21 +1075,17 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 
 		*last = to_list[i];
 		last = &(*last)->next;
-
-		/*
-		 *	Fix dumb cache issues
-		 */
-		if ((to_list[i]->attribute == PW_USER_NAME) &&
-		    !request->username) {
-			request->username = to_list[i];
-			
-		} else if (to_list[i]->attribute == PW_STRIPPED_USER_NAME) {
-			request->username = to_list[i];
-			
-		} else if (to_list[i]->attribute == PW_USER_PASSWORD) {
-			request->password = to_list[i];
-		}
 	}
+
+	/*
+	 *	Fix dumb cache issues
+	 */
+	if (to == &request->packet->vps) {
+		fix_up(request);
+	} else if (request->parent && (to == &request->parent->packet->vps)) {
+		fix_up(request->parent);
+	}
+
 	free(to_list);
 	free(edited);
 }
