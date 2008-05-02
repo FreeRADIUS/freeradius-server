@@ -16,6 +16,13 @@ ATTRIBUTE	HP-Privilege-Level			1	integer
 ATTRIBUTE	HP-Command-String			2	string
 ATTRIBUTE	HP-Command-Exception-Flag		3	integer
 
+#
+#  HP's names for some attributes
+#
+ATTRIBUTE	HP-port-priority-regeneration-table	40	string
+ATTRIBUTE	HP-EI-Status				47	string
+ATTRIBUTE	HP-nas-filter-rule			61	string
+
 # Access control
 ATTRIBUTE	HP-Cos					40	string
 ATTRIBUTE	HP-Rate-Limit				46	integer
