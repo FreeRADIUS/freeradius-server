@@ -32,7 +32,7 @@ all: dh random server ca
 client: client.pem
 
 .PHONY: ca
-ca: ca.pem
+ca: ca.der
 
 .PHONY: server
 server: server.pem
