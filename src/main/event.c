@@ -1176,6 +1176,7 @@ static int proxy_request(REQUEST *request)
 static int proxy_to_virtual_server(REQUEST *request)
 {
 	REQUEST *fake;
+	RAD_REQUEST_FUNP fun;
 
 	if (!request->home_server || !request->home_server->server) return 0;
 
@@ -1193,8 +1194,19 @@ static int proxy_to_virtual_server(REQUEST *request)
 	fake->packet->vps = paircopy(request->proxy->vps);
 	fake->server = request->home_server->server;
 
+	if (request->proxy->code == PW_AUTHENTICATION_REQUEST) {
+		fun = rad_authenticate;
+
+	} else if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
+		fun = rad_accounting;
+
+	} else {
+		DEBUG2("Unknown packet type %d", request->proxy->code);
+		return 0;
+	}
+
 	DEBUG2(">>> Sending proxied request internally to virtual server.");
-	radius_handle_request(fake, rad_authenticate);
+	radius_handle_request(fake, fun);
 	DEBUG2("<<< Received proxied response from internal virtual server.");
 
 	request->proxy_reply = fake->reply;
