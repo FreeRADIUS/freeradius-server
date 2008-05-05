@@ -1215,7 +1215,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 	/*
 	 *	And run it through the post-proxy section...
 	 */
-	rad_authenticate(request);
+	fun(request);
 
 	return 2;		/* success, but NOT '1' !*/
 }
