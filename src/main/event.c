@@ -504,9 +504,13 @@ static void reject_delay(void *ctx)
 static void revive_home_server(void *ctx)
 {
 	home_server *home = ctx;
+	char buffer[128];
 
 	home->state = HOME_STATE_ALIVE;
-	DEBUG2("Marking home server alive again... we have no idea if it really is alive or not.");
+	radlog(L_INFO, "PROXY: Marking home server %s port %d alive again... we have no idea if it really is alive or not.",
+	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
+			 buffer, sizeof(buffer)),
+	       home->port);
 	home->currently_outstanding = 0;
 }
 
@@ -545,7 +549,7 @@ static void received_response_to_ping(REQUEST *request)
 		return;
 	}
 
-	DEBUG2("Marking home server %s port %d alive",
+	radlog(L_INFO, "PROXY: Marking home server %s port %d alive",
 	       inet_ntop(request->proxy->dst_ipaddr.af,
 			 &request->proxy->dst_ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
@@ -684,7 +688,7 @@ static void check_for_zombie_home_server(REQUEST *request)
 	 *	It's been a zombie for too long, mark it as
 	 *	dead.
 	 */
-	DEBUG2("FAILURE: Marking home server %s port %d as dead.",
+	radlog(L_INFO, "PROXY: Marking home server %s port %d as dead.",
 	       inet_ntop(request->proxy->dst_ipaddr.af,
 			 &request->proxy->dst_ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
@@ -838,7 +842,7 @@ static void no_response_to_proxied_request(void *ctx)
 	 *	sent.
 	 */
 	if (home->state == HOME_STATE_ALIVE) {
-		DEBUG2("WARNING: Marking home server %s port %d as zombie (it looks like it is dead).",
+		radlog(L_ERR, "PROXY: Marking home server %s port %d as zombie (it looks like it is dead).",
 		       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
 		       home->port);
