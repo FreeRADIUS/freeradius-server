@@ -121,9 +121,9 @@ pidfile = ${run_dir}/radiusd.pid
 #
 #   We STRONGLY recommend that you run the server with as few permissions
 #   as possible.  That is, if you're not using shadow passwords, the
-#   user and group items below should be set to 'nobody'.
+#   user and group items below should be set to radius'.
 #
-#    On SCO (ODT 3) use "user = nouser" and "group = nogroup".
+#    On SCO (ODT 3) use "user = nouser" and "group = radius".
 #
 #  NOTE that some kernels refuse to setgid(group) when the value of
 #  (unsigned)group is above 60000; don't use group nobody on these systems!
@@ -134,8 +134,8 @@ pidfile = ${run_dir}/radiusd.pid
 #  that the debugging mode server is running as a user that can read the
 #  shadow info, and the user listed below can not.
 #
-#user = nobody
-#group = nobody
+#user = radius
+#group = radius
 
 #  max_request_time: The maximum time (in seconds) to handle a request.
 #
