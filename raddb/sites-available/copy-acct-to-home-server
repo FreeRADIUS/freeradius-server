@@ -29,6 +29,28 @@ server copy-acct-to-home-server {
 	listen {
 		type = detail
 
+		######################################################
+		#
+		#  !!!! WARNING !!!!
+		#
+		#  The detail file reader acts just like a NAS.
+		#
+		#  This means that if accounting fails, the packet
+		#  is re-tried FOREVER.  It is YOUR responsibility
+		#  to write an accounting policy that returns "ok"
+		#  if the packet was processed properly, "fail" on
+		#  a database error, AND "ok" if you want to ignore
+		#  the packet (e.g. no Acct-Status-Type).
+		#
+		#  Neither the detail file write OR the detail file
+		#  reader look at the contents of the packets.  They
+		#  just either dump the packet verbatim to the file,
+		#  or read it verbatim from the file and pass it to
+		#  the server.
+		#
+		######################################################
+
+
 		#  The location where the detail file is located.
 		#  This should be on local disk, and NOT on an NFS
 		#  mounted location!
