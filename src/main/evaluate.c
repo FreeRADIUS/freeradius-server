@@ -275,7 +275,11 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 	int result;
 	int lint, rint;
 	VALUE_PAIR *vp = NULL;
+#ifdef HAVE_REGEX_H
 	char buffer[1024];
+#else
+	cflags = cflags;	/* -Wunused */
+#endif
 
 	rt = rt;		/* -Wunused */
 
@@ -342,7 +346,9 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 		} /* else it's not a attribute in the dictionary */
 	}
 
+#ifdef HAVE_REGEX_H
 	do_checks:
+#endif
 	switch (token) {
 	case T_OP_GE:
 	case T_OP_GT:
@@ -499,10 +505,8 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 	char left[1024], right[1024], comp[4];
 	const char *pleft, *pright;
 	char  xleft[1024], xright[1024];
-#ifdef HAVE_REGEX_H
 	int cflags = 0;
-#endif
-
+	
 	if (!ptr || !*ptr || (depth >= 64)) {
 		radlog(L_ERR, "Internal sanity check failed in evaluate condition");
 		return FALSE;
