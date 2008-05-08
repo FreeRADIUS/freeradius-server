@@ -381,6 +381,25 @@ static int sql_fetch_row(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config) {
 	return 0;
 }
 
+/*************************************************************************
+ *
+ *      Function: sql_num_fields
+ *
+ *      Purpose: database specific num_fields. Returns number of rows in
+ *               query
+ *
+ *************************************************************************/
+static int sql_num_fields(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+{
+        rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
+        
+        pg_sock->affected_rows = PQntuples(pg_sock->result);
+        if (pg_sock->result)
+                return PQnfields(pg_sock->result);
+
+        return 0;
+}
+
 
 
 /*************************************************************************
@@ -502,7 +521,7 @@ rlm_sql_module_t rlm_sql_postgresql = {
 	sql_query,
 	sql_select_query,
 	not_implemented, /* sql_store_result */
-	not_implemented, /* sql_num_fields */
+	sql_num_fields,
 	not_implemented, /* sql_num_rows */
 	sql_fetch_row,
 	not_implemented, /* sql_free_result */
