@@ -160,6 +160,7 @@ typedef struct {
 #endif
 	int             ldap_debug; /* Debug flag for LDAP SDK */
 	char		*xlat_name; /* name used to xlat */
+	char		*auth_type;
 	char		*tls_cacertfile;
 	char		*tls_cacertdir;
 	char		*tls_certfile;
@@ -456,9 +457,17 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	 */
 	if (inst->set_auth_type) {
 		DICT_VALUE *dv = dict_valbyname(PW_AUTH_TYPE, xlat_name);
+
+		/*
+		 *	No section of *my* name, but maybe there's an
+		 *	LDAP section...
+		 */
+		if (!dv) dv = dict_valbyname(PW_AUTH_TYPE, "LDAP");
 		if (!dv) {
 			DEBUG2("rlm_ldap: Over-riding set_auth_type, as there is no module %s listed in the \"authenticate\" section.", xlat_name);
 			inst->set_auth_type = 0;
+		} else {
+			inst->auth_type = dv->name; /* doesn't change on HUP */
 		}
 	} /* else no need to look up the value */
 
@@ -1696,8 +1705,8 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	    request->password &&
 	    (request->password->attribute == PW_USER_PASSWORD) &&
 	    !added_known_password) {
-		pairadd(check_pairs, pairmake("Auth-Type", inst->xlat_name, T_OP_EQ));
-		DEBUG("rlm_ldap: Setting Auth-Type = %s", inst->xlat_name);
+		pairadd(check_pairs, pairmake("Auth-Type", inst->auth_type, T_OP_EQ));
+		DEBUG("rlm_ldap: Setting Auth-Type = %s", inst->auth_type);
 	}
 
 	DEBUG("rlm_ldap: user %s authorized to use remote access",
