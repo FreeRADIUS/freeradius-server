@@ -180,6 +180,8 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket)
 	return 1;
 }
 
+static time_t last_logged_failure = 0;
+
 
 /*************************************************************************
  *
@@ -193,6 +195,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 	SQLSOCK *cur, *start;
 	int tried_to_connect = 0;
 	int unconnected = 0;
+	time_t now;
 
 	/*
 	 *	Start at the last place we left off.
@@ -280,6 +283,18 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 			break;
 		}
 	}
+
+	/*
+	 *	Suppress most of the log messages.  We don't want to
+	 *	flood the log with this message for EVERY packet.
+	 *	Instead, write to the log only once a second or so.
+	 *
+	 *	This code has race conditions when threaded, but the
+	 *	only result is that a few more messages are logged.
+	 */
+	now = time(NULL);
+	if (now <= last_logged_failure) return NULL;
+	last_logged_failure = now;
 
 	/* We get here if every DB handle is unconnected and unconnectABLE */
 	radlog(L_INFO, "rlm_sql (%s): There are no DB handles to use! skipped %d, tried to connect %d", inst->config->xlat_name, unconnected, tried_to_connect);
