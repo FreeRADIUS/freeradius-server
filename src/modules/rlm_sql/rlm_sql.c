@@ -70,7 +70,7 @@ static const CONF_PARSER module_config[] = {
 	{"authorize_check_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,authorize_check_query), NULL, ""},
 	{"authorize_reply_query", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,authorize_reply_query), NULL, ""},
+	 offsetof(SQL_CONFIG,authorize_reply_query), NULL, NULL},
 	{"authorize_group_check_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,authorize_group_check_query), NULL, ""},
 	{"authorize_group_reply_query", PW_TYPE_STRING_PTR,
@@ -944,7 +944,8 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 			found = 1;
 			DEBUG2("rlm_sql (%s): User found in radcheck table", inst->config->xlat_name);
 
-			if (inst->config->authorize_reply_query) {
+			if (inst->config->authorize_reply_query &&
+			    *inst->config->authorize_reply_query) {
 
 			/*
 			 *	Now get the reply pairs since the paircompare matched
@@ -972,8 +973,8 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 			if (!inst->config->read_groups)
 				dofallthrough = fallthrough(reply_tmp);
 			pairxlatmove(request, &request->reply->vps, &reply_tmp);
-			pairxlatmove(request, &request->config_items, &check_tmp);
 			}
+			pairxlatmove(request, &request->config_items, &check_tmp);
 		}
 	}
 
