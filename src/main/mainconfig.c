@@ -215,6 +215,46 @@ static const CONF_PARSER serverlog_config[] = {
 };
 
 
+static const CONF_PARSER log_config_nodest[] = {
+	{ "stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
+
+	{ "auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, "no" },
+	{ "auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
+	{ "auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
+
+	/*
+	 *	If the destination is already set, don't change it,
+	 *	or the log file.
+	 */
+
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+
+static const CONF_PARSER serverlog_config_nodest[] = {
+	{ "log", PW_TYPE_SUBSECTION, 0, NULL,  (const void *) log_config_nodest},
+
+	/*
+	 *	People with old configs will have these.  They are listed
+	 *	AFTER the "log" section, so if they exist in radiusd.conf,
+	 *	it will prefer "log_foo = bar" to "log { foo = bar }".
+	 *	They're listed with default values of NULL, so that if they
+	 *	DON'T exist in radiusd.conf, then the previously parsed
+	 *	values for "log { foo = bar}" will be used.
+	 */
+	{ "log_auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, NULL },
+	{ "log_auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, NULL },
+	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, NULL },
+	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names, NULL },
+	/*
+	 *	If the destination is already set, don't change it,
+	 *	or the log file.
+	 */
+
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+
 #define MAX_ARGV (256)
 
 
@@ -637,24 +677,23 @@ int read_mainconfig(int reload)
 
 	/*
 	 *	Don't over-ride a destination set on the command-line.
-	 */
-	if (mainconfig.radlog_dest != RADLOG_NULL) goto read_dict;
-
-	/*
-	 *	Debug flag 1 MAY go to files.
-	 *	Debug flag 2 ALWAYS goes to stdout
 	 *
-	 *	Parse the log{} section before printing anything else.
-	 *	All messages before this MUST be errors, which log.c
-	 *	will print to stderr.
+	 *	BUT, parse the rest of the options.
 	 */
-	if (debug_flag < 2) {
-		if (cf_section_parse(cs, NULL, serverlog_config) < 0) {
+	if (mainconfig.radlog_dest != RADLOG_NULL) {
+		if (cf_section_parse(cs, NULL, serverlog_config_nodest) < 0) {
 			fprintf(stderr, "radiusd: Error: Failed to parse log{} section.\n");
 			cf_section_free(&cs);
 			return -1;
 		}
 
+	} else {
+		if (cf_section_parse(cs, NULL, serverlog_config) < 0) {
+			fprintf(stderr, "radiusd: Error: Failed to parse log{} section.\n");
+			cf_section_free(&cs);
+			return -1;
+		}
+		
 		if (!radlog_dest) {
 			fprintf(stderr, "radiusd: Error: No log destination specified.\n");
 			cf_section_free(&cs);
@@ -688,13 +727,8 @@ int read_mainconfig(int reload)
 				return -1;
 			}
 		}
-
-	} else if (mainconfig.radlog_dest != RADLOG_NULL) {
-		mainconfig.radlog_dest = RADLOG_STDOUT;
-		mainconfig.radlog_fd = STDOUT_FILENO;
 	}
 
- read_dict:
 	/* Initialize the dictionary */
 	cp = cf_pair_find(cs, "dictionary");
 	if (cp) p = cf_pair_value(cp);
