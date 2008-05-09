@@ -857,6 +857,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 		rlm_sql_detach(inst);
 		return -1;
 	}
+
 	paircompare_register(PW_SQL_GROUP, PW_USER_NAME, sql_groupcmp, inst);
 
 	if (inst->config->do_clients){
@@ -942,6 +943,9 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		if (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) == 0) {
 			found = 1;
 			DEBUG2("rlm_sql (%s): User found in radcheck table", inst->config->xlat_name);
+
+			if (inst->config->authorize_reply_query) {
+
 			/*
 			 *	Now get the reply pairs since the paircompare matched
 			 */
@@ -964,10 +968,12 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 				pairfree(&reply_tmp);
 				return RLM_MODULE_FAIL;
 			}
+
 			if (!inst->config->read_groups)
 				dofallthrough = fallthrough(reply_tmp);
 			pairxlatmove(request, &request->reply->vps, &reply_tmp);
 			pairxlatmove(request, &request->config_items, &check_tmp);
+			}
 		}
 	}
 
