@@ -1569,13 +1569,17 @@ static void request_post_handler(REQUEST *request)
 			 */
 			vp = pairfind(request->config_items,
 				      PW_RESPONSE_PACKET_TYPE);
-			if (!vp || (vp->vp_integer != 256)) {
+			if (!vp) {
 				DEBUG2("There was no response configured: rejecting request %d",
 				       request->number);
 				request->reply->code = PW_AUTHENTICATION_REJECT;
-			} else {
+			} else if (vp->vp_integer == 256) {
 				DEBUG2("Not responding to request %d",
 				       request->number);
+
+			} else {
+				request->reply->code = vp->vp_integer;
+
 			}
 		}
 
