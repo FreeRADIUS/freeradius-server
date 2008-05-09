@@ -97,6 +97,8 @@ endif
 build-module: $(TARGET).la
 	@[ -d .libs ] && cp .libs/* ../lib
 	@cp $< ../lib
+	@cp .libs/* $(top_builddir)/src/modules/lib/.libs
+	@cp $< $(top_builddir)/src/modules/lib
 
 $(TARGET).la: $(LT_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
