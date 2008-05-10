@@ -66,14 +66,7 @@ RCSIDH(libradius_h, "$Id$")
 #  define VENDORPEC_USR		429
 #define VENDORPEC_LUCENT	4846
 #define VENDORPEC_STARENT	8164
-#ifndef NDEBUG
-#  define DEBUG			fr_printf_log
-#else
-	/*
-	 *	Rely on the compiler to optimize it out.
-	 */
-#  define DEBUG                 if (0) fr_printf_log
-#endif
+#  define DEBUG			if (librad_debug && fr_log_fp) fr_printf_log
 #  define debug_pair(vp)	do { if (librad_debug && fr_log_fp) { \
 					fputc('\t', fr_log_fp); \
 					vp_print(fr_log_fp, vp); \
