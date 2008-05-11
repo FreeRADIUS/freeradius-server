@@ -16,7 +16,7 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
 #
-#    Copyright (C) 2001-2002 The FreeRADIUS Project http://www.freeradius.org
+#    Copyright (C) 2001-2008 The FreeRADIUS Project http://www.freeradius.org
 
 prefix=@prefix@
 exec_prefix=@exec_prefix@
@@ -69,8 +69,11 @@ case "$1" in
 	sleep 3
 	sh $0 start
 	;;
+  check)
+  	$RADIUSD -C $ARGS
+	;;
   *)
-        echo "Usage: /etc/init.d/$RADIUS {start|stop|reload|restart}"
+        echo "Usage: /etc/init.d/$RADIUS {start|stop|reload|restart|check}"
         exit 1
 esac
 
