@@ -315,6 +315,24 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 			}
 
 			if (!vp) {
+				DICT_ATTR *da;
+				
+				/*
+				 *	The attribute on the LHS may
+				 *	have been a dynamically
+				 *	registered callback.  i.e. it
+				 *	doesn't exist as a VALUE_PAIR.
+				 *	If so, try looking for it.
+				 */
+				da = dict_attrbyname(pleft);
+				if (da && radius_find_compare(da->attr)) {
+					VALUE_PAIR *check = pairmake(pleft, pright, token);
+					*presult = (radius_callback_compare(request, NULL, check, NULL, NULL) == 0);
+					pairfree(&check);
+					if (*presult)  return TRUE;
+					return FALSE;
+				}
+				
 				DEBUG2("    (Attribute %s was not found)",
 				       pleft);
 				return FALSE;
@@ -343,7 +361,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 			myvp.operator = token;
 			*presult = paircmp(&myvp, vp);
 			return TRUE;
-		} /* else it's not a attribute in the dictionary */
+		} /* else it's not a VP in a list */
 	}
 
 #ifdef HAVE_REGEX_H
