@@ -1,4 +1,18 @@
-FreeRADIUS 2.0.4 ; $Date$ , urgency=medium
+FreeRADIUS 2.0.5 ; $Date$ , urgency=medium
+	Feature improvements
+	* Permit SQL authorize_reply_query to be empty.
+	* Allow setting response packet type in Post-Proxy-Type Fail
+	  handler.
+	* Added install-chown target to set correct permission and ownership
+	  make RADMIN=radmin RGROUP=radius install-chown
+	* Support for LDAP-Group and other dynamic comparison attributes
+	  in unlang.  Developed from a patch by	Jason Alderfer.
+	
+	Bug fixes
+	* Allow proxying to virtual servers for accounting packets, too.
+	* Added "num fields" function to PostgreSQL client.
+
+FreeRADIUS 2.0.4 ; Date: 2008/04/30 08:56:40  , urgency=medium
 	Feature improvements
 	* Allow "virtual_server" in "realm" and "home_server" sections.
 	  See raddb/proxy.conf and raddb/sites-available/virtual.example.com.
