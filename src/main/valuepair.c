@@ -263,6 +263,23 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 
 
 /*
+ *	Find a comparison function for two attributes.
+ */
+int radius_find_compare(int attribute)
+{
+	struct cmp *c;
+
+	for (c = cmp; c; c = c->next) {
+		if (c->attribute == attribute) {
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+
+/*
  *	See what attribute we want to compare with.
  */
 static int otherattr(int attr)
