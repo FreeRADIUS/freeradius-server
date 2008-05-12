@@ -67,6 +67,22 @@ install:
 	done
 	$(LIBTOOL) --finish $(R)$(libdir)
 
+ifneq ($(RADMIN),)
+ifneq ($(RGROUP),)
+.PHONY: install-chown
+install-chown:
+	chown -R $(RADMIN)   $(R)$(raddbdir)
+	chgrp -R $(RGROUP)   $(R)$(raddbdir)
+	chmod u=rwx,g=rx,o=  `find $(R)$(raddbdir) -type d -print`
+	chmod u=rw,g=r,o=    `find $(R)$(raddbdir) -type f -print`
+	chown -R $(RADMIN)   $(R)$(logdir)
+	chgrp -R $(RGROUP)   $(R)$(logdir)
+	chmod u=rwx,g=rwx,o= `find $(R)$(logdir) -type d -print`
+	chmod g+s            `find $(R)$(logdir) -type d -print`
+	chmod u=rw,g=rw,o=   `find $(R)$(logdir) -type f -print`
+endif
+endif
+
 common:
 	@for dir in $(SUBDIRS); do \
 		echo "Making $(WHAT_TO_MAKE) in $$dir..."; \
