@@ -80,6 +80,8 @@ install-chown:
 	find $(R)$(logdir) -type d -exec chmod u=rwx,g=rwx,o= {} \;
 	find $(R)$(logdir) -type d -exec chmod g+s {} \;
 	find $(R)$(logdir) -type f -exec chmod u=rw,g=rw,o= {} \;
+	chown -R $(RADMIN)   $(R)$(RUNDIR)
+	chgrp -R $(RGROUP)   $(R)$(RUNDIR)
 	find $(R)$(RUNDIR) -type d -exec chmod u=rwx,g=rwx,o= {} \;
 	find $(R)$(RUNDIR) -type d -exec chmod g+s {} \;
 	find $(R)$(RUNDIR) -type f -exec chmod u=rw,g=rw,o= {} \;
