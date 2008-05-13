@@ -116,14 +116,14 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 		}
 	}
 
-	if (goodpass && request->root->log_auth_goodpass) {
+	if (goodpass) {
 		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
 				msg,
 				clean_username,
 				request->root->log_auth_goodpass ? "/" : "",
 				request->root->log_auth_goodpass ? clean_password : "",
 				auth_name(buf, sizeof(buf), request, 1));
-	} else if (!goodpass && request->root->log_auth_badpass) {
+	} else {
 		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
 				msg,
 				clean_username,
