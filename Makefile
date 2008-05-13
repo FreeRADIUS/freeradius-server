@@ -77,9 +77,12 @@ install-chown:
 	chmod u=rw,g=r,o=    `find $(R)$(raddbdir) -type f -print`
 	chown -R $(RADMIN)   $(R)$(logdir)
 	chgrp -R $(RGROUP)   $(R)$(logdir)
-	chmod u=rwx,g=rwx,o= `find $(R)$(logdir) -type d -print`
-	chmod g+s            `find $(R)$(logdir) -type d -print`
-	chmod u=rw,g=rw,o=   `find $(R)$(logdir) -type f -print`
+	find $(R)$(logdir) -type d -exec chmod u=rwx,g=rwx,o= {} \;
+	find $(R)$(logdir) -type d -exec chmod g+s {} \;
+	find $(R)$(logdir) -type f -exec chmod u=rw,g=rw,o= {} \;
+	find $(R)$(RUNDIR) -type d -exec chmod u=rwx,g=rwx,o= {} \;
+	find $(R)$(RUNDIR) -type d -exec chmod g+s {} \;
+	find $(R)$(RUNDIR) -type f -exec chmod u=rw,g=rw,o= {} \;
 endif
 endif
 
