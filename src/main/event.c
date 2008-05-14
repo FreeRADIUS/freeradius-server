@@ -710,6 +710,47 @@ static void check_for_zombie_home_server(REQUEST *request)
 	}
 }
 
+static int proxy_to_virtual_server(REQUEST *request);
+
+static int virtual_server_handler(UNUSED REQUEST *request)
+{
+	proxy_to_virtual_server(request);
+	return 0;
+}
+
+static void proxy_fallback_handler(REQUEST *request)
+{
+	/*
+	 *	A proper time is required for wait_a_bit.
+	 */
+	request->delay = USEC / 10;
+	gettimeofday(&now, NULL);
+	request->next_when = now;
+	tv_add(&request->next_when, request->delay);
+	request->next_callback = wait_a_bit;
+
+	/*
+	 *	Re-queue the request.
+	 */
+	request->child_state = REQUEST_QUEUED;
+	
+	rad_assert(request->proxy != NULL);
+	if (!thread_pool_addrequest(request, virtual_server_handler)) {
+		request->child_state = REQUEST_DONE;
+	}
+
+	/*
+	 *	MAY free the request if we're over max_request_time,
+	 *	AND we're not in threaded mode!
+	 *
+	 *	Note that we call this ONLY if we're threaded, as
+	 *	if we're NOT threaded, request_post_handler() calls
+	 *	wait_a_bit(), which means that "request" may not
+	 *	exist any more...
+	 */
+	if (have_children) wait_a_bit(request);
+}
+
 
 static int setup_post_proxy_fail(REQUEST *request)
 {
@@ -788,7 +829,6 @@ static void post_proxy_fail_handler(REQUEST *request)
 		request->priority = 0;
 		rad_assert(request->proxy != NULL);
 		thread_pool_addrequest(request, null_handler);
-
 	}
 
 	/*
@@ -813,6 +853,16 @@ static void no_response_to_proxied_request(void *ctx)
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 	rad_assert(request->child_state == REQUEST_PROXIED);
+
+	/*
+	 *	If we've failed over to an internal home server,
+	 *	replace the callback with the correct one.  This
+	 *	is due to locking issues with child threads...
+	 */
+	if (request->home_server->server) {
+		wait_a_bit(request);
+		return;
+	}
 
 	radlog(L_ERR, "Rejecting request %d due to lack of any response from home server %s port %d",
 	       request->number,
@@ -998,6 +1048,83 @@ static void wait_a_bit(void *ctx)
 }
 
 
+static int process_proxy_reply(REQUEST *request)
+{
+	int rcode;
+	int post_proxy_type = 0;
+	VALUE_PAIR *vp;
+	
+	/*
+	 *	Delete any reply we had accumulated until now.
+	 */
+	pairfree(&request->reply->vps);
+	
+	/*
+	 *	Run the packet through the post-proxy stage,
+	 *	BEFORE playing games with the attributes.
+	 */
+	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE);
+	if (vp) {
+		DEBUG2("  Found Post-Proxy-Type %s", vp->vp_strvalue);
+		post_proxy_type = vp->vp_integer;
+	}
+	
+	rad_assert(request->home_pool != NULL);
+	
+	if (request->home_pool->virtual_server) {
+		const char *old_server = request->server;
+		
+		request->server = request->home_pool->virtual_server;
+		DEBUG2(" server %s {", request->server);
+		rcode = module_post_proxy(post_proxy_type, request);
+		DEBUG2(" }");
+		request->server = old_server;
+	} else {
+		rcode = module_post_proxy(post_proxy_type, request);
+	}
+	
+	/*
+	 *	There may NOT be a proxy reply, as we may be
+	 *	running Post-Proxy-Type = Fail.
+	 */
+	if (request->proxy_reply) {
+		/*
+		 *	Delete the Proxy-State Attributes from
+		 *	the reply.  These include Proxy-State
+		 *	attributes from us and remote server.
+		 */
+		pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE);
+		
+		/*
+		 *	Add the attributes left in the proxy
+		 *	reply to the reply list.
+		 */
+		pairadd(&request->reply->vps, request->proxy_reply->vps);
+		request->proxy_reply->vps = NULL;
+		
+		/*
+		 *	Free proxy request pairs.
+		 */
+		pairfree(&request->proxy->vps);
+	}
+	
+	switch (rcode) {
+	default:  /* Don't do anything */
+		break;
+	case RLM_MODULE_FAIL:
+		/* FIXME: debug print stuff */
+		request->child_state = REQUEST_DONE;
+		return 0;
+		
+	case RLM_MODULE_HANDLED:
+		/* FIXME: debug print stuff */
+		request->child_state = REQUEST_DONE;
+		return 0;
+	}
+
+	return 1;
+}
+
 static int request_pre_handler(REQUEST *request)
 {
 	int rcode;
@@ -1044,76 +1171,7 @@ static int request_pre_handler(REQUEST *request)
 					     PW_USER_NAME);
 
 	} else {
-		int post_proxy_type = 0;
-		VALUE_PAIR *vp;
-
-		/*
-		 *	Delete any reply we had accumulated until now.
-		 */
-		pairfree(&request->reply->vps);
-
-		/*
-		 *	Run the packet through the post-proxy stage,
-		 *	BEFORE playing games with the attributes.
-		 */
-		vp = pairfind(request->config_items, PW_POST_PROXY_TYPE);
-		if (vp) {
-			DEBUG2("  Found Post-Proxy-Type %s", vp->vp_strvalue);
-			post_proxy_type = vp->vp_integer;
-		}
-
-		rad_assert(request->home_pool != NULL);
-
-		if (request->home_pool->virtual_server) {
-			const char *old_server = request->server;
-
-			request->server = request->home_pool->virtual_server;
-			DEBUG2(" server %s {", request->server);
-			rcode = module_post_proxy(post_proxy_type, request);
-			DEBUG2(" }");
-			request->server = old_server;
-		} else {
-			rcode = module_post_proxy(post_proxy_type, request);
-		}
-
-		/*
-		 *	There may NOT be a proxy reply, as we may be
-		 *	running Post-Proxy-Type = Fail.
-		 */
-		if (request->proxy_reply) {
-			/*
-			 *	Delete the Proxy-State Attributes from
-			 *	the reply.  These include Proxy-State
-			 *	attributes from us and remote server.
-			 */
-			pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE);
-
-			/*
-			 *	Add the attributes left in the proxy
-			 *	reply to the reply list.
-			 */
-			pairadd(&request->reply->vps, request->proxy_reply->vps);
-			request->proxy_reply->vps = NULL;
-
-			/*
-			 *	Free proxy request pairs.
-			 */
-			pairfree(&request->proxy->vps);
-		}
-
-		switch (rcode) {
-                default:  /* Don't do anything */
-			break;
-                case RLM_MODULE_FAIL:
-			/* FIXME: debug print stuff */
-			request->child_state = REQUEST_DONE;
-			return 0;
-
-                case RLM_MODULE_HANDLED:
-			/* FIXME: debug print stuff */
-			request->child_state = REQUEST_DONE;
-			return 0;
-		}
+		return process_proxy_reply(request);
 	}
 
 	return 1;
@@ -1127,6 +1185,11 @@ static int proxy_request(REQUEST *request)
 {
 	struct timeval when;
 	char buffer[128];
+
+	if (request->home_server->server) {
+		DEBUG("ERROR: Cannot perform real proxying to a virtual server.");
+		return 0;
+	}
 
 	if (!insert_into_proxy_hash(request)) {
 		DEBUG("ERROR: Failed inserting request into proxy hash.");
@@ -1216,9 +1279,9 @@ static int proxy_to_virtual_server(REQUEST *request)
 	request->proxy_reply = fake->reply;
 	fake->reply = NULL;
 
-	/*
-	 *	And run it through the post-proxy section...
-	 */
+	request_free(&fake);
+
+	process_proxy_reply(request);
 	fun(request);
 
 	return 2;		/* success, but NOT '1' !*/
@@ -1773,6 +1836,16 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			free(request->proxy->data);
 			request->proxy->data = NULL;
 			request->proxy->data_len = 0;
+
+			/*
+			 *	This request failed over to a virtual
+			 *	server.  Push it back onto the queue
+			 *	to be processed.
+			 */
+			if (request->home_server->server) {
+				proxy_fallback_handler(request);
+				return;
+			}
 
 			/*
 			 *	Try to proxy the request.
