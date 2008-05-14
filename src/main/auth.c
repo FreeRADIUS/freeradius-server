@@ -736,15 +736,6 @@ autz_redo:
 	}
 
 	/*
-	 *	We might need this later.  The 'password' string
-	 *	is NOT used anywhere below here, except for logging,
-	 *	so it should be safe...
-	 */
-	if ((auth_item != NULL) && (auth_item->attribute == PW_CHAP_PASSWORD)) {
-		password = "CHAP-Password";
-	}
-
-	/*
 	 *	Add the port number to the Framed-IP-Address if
 	 *	vp->addport is set.
 	 */
