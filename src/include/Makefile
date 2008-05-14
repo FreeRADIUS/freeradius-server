@@ -23,6 +23,7 @@ clean:
 install:
 	$(INSTALL) -d -m 755 $(R)$(includedir)/freeradius
 	for i in $(HEADERS); do \
-		sed 's/^#include <freeradius-devel/#include <freeradius/' $$i > $(R)$(includedir)/freeradius/$$i; \
-		chmod 644 $(R)$(includedir)/freeradius/$$i; \
+		sed 's/^#include <freeradius-devel/#include <freeradius/' $$i > .inst.$$$$ ; \
+		$(INSTALL) -m 644 .inst.$$$$   $(R)$(includedir)/freeradius/$$i; \
+		rm -f .inst.$$$$ ; \
 	done
