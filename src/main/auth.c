@@ -475,7 +475,8 @@ int rad_authenticate(REQUEST *request)
 						&request->config_items,
 						PW_AUTH_TYPE, PW_TYPE_INTEGER);
 			if (tmp) tmp->vp_integer = PW_AUTHTYPE_ACCEPT;
-			break;
+			goto authenticate;
+
 		/*
 		 *	Challenges are punted back to the NAS without any
 		 *	further processing.
@@ -613,6 +614,7 @@ autz_redo:
 		}
 	}
 
+ authenticate:
 	/*
 	 *	Perhaps there is a Stripped-User-Name now.
 	 */
