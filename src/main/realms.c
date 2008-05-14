@@ -697,7 +697,7 @@ static int server_pool_add(realm_config_t *rc,
 		}
 
 		if (!pool->fallback->server) {
-			cf_log_err(cs, "Fallback home_server %s does NOT contain a virtual_server directive.", pool->fallback->name);
+			cf_log_err(cf_sectiontoitem(cs), "Fallback home_server %s does NOT contain a virtual_server directive.", pool->fallback->name);
 			goto error;
 		}
 	}
