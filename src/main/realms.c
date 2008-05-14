@@ -684,11 +684,20 @@ static int server_pool_add(realm_config_t *rc,
 	pool->cs = cs;
 
 
+	/*
+	 *	Fallback servers must be defined, and must be
+	 *	virtual servers.
+	 */
 	cp = cf_pair_find(cs, "fallback");
 	if (cp) {
 		if (!pool_check_home_server(rc, cp, cf_pair_value(cp),
 					    server_type, &pool->fallback)) {
 			
+			goto error;
+		}
+
+		if (!pool->fallback->server) {
+			cf_log_err(cs, "Fallback home_server %s does NOT contain a virtual_server directive.", pool->fallback->name);
 			goto error;
 		}
 	}
@@ -1698,8 +1707,7 @@ home_server *home_server_ldb(const char *realmname,
 	/*
 	 *	There's a fallback if they're all dead.
 	 */
-	if (pool->fallback &&
-	    (pool->fallback->state == HOME_STATE_ALIVE)) {
+	if (pool->fallback) {
 		return pool->fallback;
 	}
 
