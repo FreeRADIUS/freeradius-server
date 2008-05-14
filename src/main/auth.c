@@ -447,7 +447,7 @@ int rad_authenticate(REQUEST *request)
 {
 	VALUE_PAIR	*namepair;
 	VALUE_PAIR	*check_item;
-	VALUE_PAIR	*auth_item;
+	VALUE_PAIR	*auth_item = NULL;
 	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
 	int		result;
