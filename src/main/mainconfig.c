@@ -50,6 +50,14 @@ RCSID("$Id$")
 #	include <syslog.h>
 #endif
 
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+
+#ifdef HAVE_FCNTL_H
+#include <fcntl.h>
+#endif
+
 struct main_config_t mainconfig;
 
 /*
@@ -60,6 +68,7 @@ static uid_t server_uid;
 static gid_t server_gid;
 static const char *uid_name = NULL;
 static const char *gid_name = NULL;
+static const char *chroot_dir = NULL;
 static int allow_core_dumps = 0;
 static const char *radlog_dest = NULL;
 
@@ -183,8 +192,6 @@ static const CONF_PARSER server_config[] = {
 	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, "no" },
 
 	{ "pidfile", PW_TYPE_STRING_PTR, 0, &mainconfig.pid_file, "${run_dir}/radiusd.pid"},
-	{ "user", PW_TYPE_STRING_PTR, 0, &uid_name, NULL},
-	{ "group", PW_TYPE_STRING_PTR, 0, &gid_name, NULL},
 	{ "checkrad", PW_TYPE_STRING_PTR, 0, &mainconfig.checkrad, "${sbindir}/checkrad" },
 
 	{ "debug_level", PW_TYPE_INTEGER, 0, &mainconfig.debug_level, "0"},
@@ -461,17 +468,27 @@ static int radlogdir_iswritable(const char *effectiveuser)
 /*
  *  Switch UID and GID to what is specified in the config file
  */
-static int switch_users(void)
+static int switch_users(CONF_SECTION *cs)
 {
 	int did_setuid = FALSE;
+	CONF_PAIR *cp;
 
 #ifdef HAVE_SYS_RESOURCE_H
 	struct rlimit core_limits;
 #endif
 
+	/*
+	 *	Don't do chroot/setuid/setgid if we're in debugging
+	 *	as non-root.
+	 */
+	if (debug_flag && (getuid() != 0)) return 1;
+
 #ifdef HAVE_GRP_H
 	/*  Set GID.  */
-	if (gid_name != NULL) {
+	cp = cf_pair_find(cs, "group");
+	if (cp) gid_name = cf_pair_value(cp);
+
+	if (gid_name) {
 		struct group *gr;
 
 		gr = getgrnam(gid_name);
@@ -484,11 +501,6 @@ static int switch_users(void)
 			return 0;
 		}
 		server_gid = gr->gr_gid;
-		if (setgid(server_gid) < 0) {
-			radlog(L_ERR, "Failed setting Group to %s: %s",
-			       gid_name, strerror(errno));
-			return 0;
-		}
 	} else {
 		server_gid = getgid();
 	}
@@ -496,9 +508,11 @@ static int switch_users(void)
 
 #ifdef HAVE_PWD_H
 	/*  Set UID.  */
-	if (uid_name != NULL) {
+	cp = cf_pair_find(cs, "user");
+	if (cp) uid_name = cf_pair_value(cp);
+	if (uid_name) {
 		struct passwd *pw;
-
+		
 		pw = getpwnam(uid_name);
 		if (pw == NULL) {
 			if (errno == ENOMEM) {
@@ -517,16 +531,59 @@ static int switch_users(void)
 			}
 		}
 #endif
-		if (setuid(server_uid) < 0) {
-			radlog(L_ERR, "Failed setting User to %s: %s", uid_name, strerror(errno));
+	} else {
+		server_uid = getuid();
+	}
+#endif
+
+	cp = cf_pair_find(cs, "chroot");
+	if (cp) chroot_dir = cf_pair_value(cp);
+	if (chroot_dir) {
+		if (chroot(chroot_dir) < 0) {
+			radlog(L_ERR, "Failed to do chroot %s: %s",
+			       chroot_dir, strerror(errno));
 			return 0;
 		}
 
 		/*
-		 *	Now core dumps are disabled on most secure systems.
+		 *	Note that we leave chdir alone.  It may be
+		 *	OUTSIDE of the root.  This allows us to read
+		 *	the configuration from "-d ./etc/raddb", with
+		 *	the chroot as "./chroot/" for example.  After
+		 *	the server has been loaded, it does a "cd
+		 *	${logdir}" below, so that core files (if any)
+		 *	go to a logging directory.
+		 *
+		 *	This also allows the configuration of the
+		 *	server to be outside of the chroot.  If the
+		 *	server is statically linked, then the only
+		 *	things needed inside of the chroot are the
+		 *	logging directories.
 		 */
-		did_setuid = TRUE;
+		radlog(L_INFO, "chroot to %s\n", chroot_dir);
 	}
+
+#ifdef HAVE_GRP_H
+	/*  Set GID.  */
+	if (gid_name && (setgid(server_gid) < 0)) {
+		radlog(L_ERR, "Failed setting Group to %s: %s",
+		       chroot_dir, strerror(errno));
+		return 0;
+	}
+#endif
+
+#ifdef HAVE_PWD_H
+	if (uid_name && (setuid(server_uid) < 0)) {
+		radlog(L_ERR, "Failed setting User to %s: %s", uid_name,
+		       strerror(errno));
+		return 0;
+	}
+
+	
+	/*
+	 *	Now core dumps are disabled on most secure systems.
+	 */
+	did_setuid = TRUE;
 #endif
 
 #ifdef HAVE_SYS_RESOURCE_H
@@ -729,6 +786,11 @@ int read_mainconfig(int reload)
 		}
 	}
 
+	/*
+	 *	We should really switch users earlier in the process.
+	 */
+	if (!switch_users(cs)) exit(1);
+
 	/* Initialize the dictionary */
 	cp = cf_pair_find(cs, "dictionary");
 	if (cp) p = cf_pair_value(cp);
@@ -809,11 +871,6 @@ int read_mainconfig(int reload)
 	}
 
 	/*
-	 *	We should really switch users earlier in the process.
-	 */
-	if (!switch_users()) exit(1);
-
-	/*
 	 *	Sanity check the configuration for internal
 	 *	consistency.
 	 */
@@ -826,6 +883,14 @@ int read_mainconfig(int reload)
 	if (setup_modules(reload, mainconfig.config) < 0) {
 		radlog(L_ERR, "Errors initializing modules");
 		return -1;
+	}
+
+	if (chroot_dir) {
+		if (chdir(radlog_dir) < 0) {
+			radlog(L_ERR, "Failed to 'chdir %s' after chroot: %s",
+			       radlog_dir, strerror(errno));
+			return -1;
+		}
 	}
 
 	return 0;
