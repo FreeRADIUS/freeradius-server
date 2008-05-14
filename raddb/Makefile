@@ -34,7 +34,7 @@ install:
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)/sites-available
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)/sites-enabled
 	@echo "Creating/updating files in $(R)$(raddbdir)"; \
-	for i in $(FILES) `ls sites-available/* | sed 's/CVS//'`; do \
+	for i in $(FILES) `find sites-available/ -type f -print | sed 's/.*CVS.*//;s/.*~//;s/.*#.*//' `; do \
 		[ ! -f $(R)$(raddbdir)/$$i ] && $(INSTALL) -m 640 $$i $(R)$(raddbdir)/$$i; \
 		if [ "`find $$i -newer $(R)$(raddbdir)/$$i`" ]; then \
 			echo "** $(R)$(raddbdir)/$$i"; \
