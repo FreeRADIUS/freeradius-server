@@ -112,6 +112,30 @@ libdir = @libdir@
 #
 pidfile = ${run_dir}/radiusd.pid
 
+#  chroot: directory where the server does "chroot".
+#
+#  The chroot is done very early in the process of starting the server.
+#  After the chroot has been performed it switches to the "user" listed
+#  below (which MUST be specified).  If "group" is specified, it switchs
+#  to that group, too.  Any other groups listed for the specified "user"
+#  in "/etc/group" are also added as part of this process.
+#
+#  The current working directory (chdir / cd) is left *outside* of the
+#  chroot until all of the modules have been initialized.  This allows
+#  the "raddb" directory to be left outside of the chroot.  Once the
+#  modules have been initialized, it does a "chdir" to ${logdir}.  This
+#  means that it should be impossible to break out of the chroot.
+#
+#  If you are worried about security issues related to this use of chdir,
+#  then simply ensure that the "raddb" directory is inside of the chroot,
+#  end be sure to do "cd raddb" BEFORE starting the server.
+#
+#  If the server is statically linked, then the only files that have
+#  to exist in the chroot are ${run_dir} and ${logdir}.  If you do the
+#  "cd raddb" as discussed above, then the "raddb" directory has to be
+#  inside of the chroot directory, too.
+#
+#chroot = /path/to/chroot/directory
 
 # user/group: The name (or #number) of the user/group to run radiusd as.
 #
@@ -123,8 +147,6 @@ pidfile = ${run_dir}/radiusd.pid
 #   as possible.  That is, if you're not using shadow passwords, the
 #   user and group items below should be set to radius'.
 #
-#    On SCO (ODT 3) use "user = nouser" and "group = radius".
-#
 #  NOTE that some kernels refuse to setgid(group) when the value of
 #  (unsigned)group is above 60000; don't use group nobody on these systems!
 #
@@ -133,6 +155,10 @@ pidfile = ${run_dir}/radiusd.pid
 #  authenticate users while in debug mode, but not in daemon mode, it may be
 #  that the debugging mode server is running as a user that can read the
 #  shadow info, and the user listed below can not.
+#
+#  The server will also try to use "initgroups" to read /etc/groups.
+#  It will join all groups where "user" is a member.  This can allow
+#  for some finer-grained access controls.
 #
 #user = radius
 #group = radius
