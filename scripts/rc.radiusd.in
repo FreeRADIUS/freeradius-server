@@ -49,6 +49,26 @@ ARGS=""
 test -f $RADIUSD || exit 0
 test -f $RADDBDIR/radiusd.conf || exit 0
 
+#if [ ! -d $rundir ] ; then
+#    mkdir $rundir
+#    chown radmin:radius $rundir
+#    chmod 775 $rundir
+#fi
+#
+#if [ ! -d $logdir ] ; then
+#    mkdir $logdir
+#    chown radmin:radius $logdir
+#    chmod 770 $logdir
+#    chmod g+s $logdir
+#fi
+#
+#if [ ! -f $logdir/radius.log ]; then
+#        touch $logdir/radius.log
+#fi
+#
+#chown radmin:radius $logdir/radius.log
+#chmod 660 $logdir/radius.log
+
 case "$1" in
   start)
 	echo -n "Starting $DESC:"
