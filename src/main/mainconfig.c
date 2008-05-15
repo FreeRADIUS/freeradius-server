@@ -560,7 +560,7 @@ static int switch_users(CONF_SECTION *cs)
 		 *	things needed inside of the chroot are the
 		 *	logging directories.
 		 */
-		radlog(L_INFO, "chroot to %s\n", chroot_dir);
+		radlog(L_INFO, "performing chroot to %s\n", chroot_dir);
 	}
 
 #ifdef HAVE_GRP_H
@@ -733,6 +733,13 @@ int read_mainconfig(int reload)
 	}
 
 	/*
+	 *	We should really switch users earlier in the process.
+	 */
+	if (!switch_users(cs)) exit(1);
+
+	DEBUG2("reading log{} section to direct logs to appropriate place.");
+
+	/*
 	 *	Don't over-ride a destination set on the command-line.
 	 *
 	 *	BUT, parse the rest of the options.
@@ -785,11 +792,6 @@ int read_mainconfig(int reload)
 			}
 		}
 	}
-
-	/*
-	 *	We should really switch users earlier in the process.
-	 */
-	if (!switch_users(cs)) exit(1);
 
 	/* Initialize the dictionary */
 	cp = cf_pair_find(cs, "dictionary");
