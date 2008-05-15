@@ -153,15 +153,30 @@ static const CONF_PARSER security_config[] = {
 /*
  *	Logging configuration for the server.
  */
-static const CONF_PARSER log_config[] = {
+static const CONF_PARSER logdest_config[] = {
 	{ "destination",  PW_TYPE_STRING_PTR, 0, &radlog_dest, "files" },
 	{ "syslog_facility",  PW_TYPE_STRING_PTR, 0, &syslog_facility, Stringify(0) },
-	{ "stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
 
 	{ "file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, "${logdir}/radius.log" },
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+
+static const CONF_PARSER serverdest_config[] = {
+	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (const void *) logdest_config },
+	{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, NULL },
+	{ "log_destination", PW_TYPE_STRING_PTR, -1, &radlog_dest, NULL },
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+
+static const CONF_PARSER log_config_nodest[] = {
+	{ "stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
+
 	{ "auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, "no" },
 	{ "auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
 	{ "auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -197,12 +212,7 @@ static const CONF_PARSER server_config[] = {
 	{ "debug_level", PW_TYPE_INTEGER, 0, &mainconfig.debug_level, "0"},
 
 	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_requests, "yes" },
-	{ "security", PW_TYPE_SUBSECTION, 0, NULL, (const void *) security_config },
-	{ NULL, -1, 0, NULL, NULL }
-};
-
-static const CONF_PARSER serverlog_config[] = {
-	{ "log", PW_TYPE_SUBSECTION, 0, NULL,  (const void *) log_config},
+	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (const void *) log_config_nodest },
 
 	/*
 	 *	People with old configs will have these.  They are listed
@@ -216,51 +226,9 @@ static const CONF_PARSER serverlog_config[] = {
 	{ "log_auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, NULL },
 	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, NULL },
 	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names, NULL },
-	{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, NULL },
-	{ "log_destination", PW_TYPE_STRING_PTR, -1, &radlog_dest, NULL },
-	{ NULL, -1, 0, NULL, NULL }
-};
-
-
-static const CONF_PARSER log_config_nodest[] = {
-	{ "stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
-
-	{ "auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, "no" },
-	{ "auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
-	{ "auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
-
-	/*
-	 *	If the destination is already set, don't change it,
-	 *	or the log file.
-	 */
 
 	{ NULL, -1, 0, NULL, NULL }
 };
-
-
-static const CONF_PARSER serverlog_config_nodest[] = {
-	{ "log", PW_TYPE_SUBSECTION, 0, NULL,  (const void *) log_config_nodest},
-
-	/*
-	 *	People with old configs will have these.  They are listed
-	 *	AFTER the "log" section, so if they exist in radiusd.conf,
-	 *	it will prefer "log_foo = bar" to "log { foo = bar }".
-	 *	They're listed with default values of NULL, so that if they
-	 *	DON'T exist in radiusd.conf, then the previously parsed
-	 *	values for "log { foo = bar}" will be used.
-	 */
-	{ "log_auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, NULL },
-	{ "log_auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, NULL },
-	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, NULL },
-	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names, NULL },
-	/*
-	 *	If the destination is already set, don't change it,
-	 *	or the log file.
-	 */
-
-	{ NULL, -1, 0, NULL, NULL }
-};
-
 
 #define MAX_ARGV (256)
 
@@ -423,49 +391,10 @@ static int r_mkdir(const char *part)
 	return(0);
 }
 
-/*
- *	Checks if the log directory is writeable by a particular user.
- */
-static int radlogdir_iswritable(const char *effectiveuser)
-{
-#ifdef HAVE_GETPWNAM
-	struct passwd *pwent;
-#endif
-
-	if (!radlog_dir || FR_DIR_IS_RELATIVE(radlog_dir))
-		return(0);
-
-	if (r_mkdir(radlog_dir) != 0)
-		return(1);
-
-	/* FIXME: do we have this function? */
-	if (strstr(radlog_dir, "radius") == NULL)
-		return(0);
-
-	/* we have a logdir that mentions 'radius', so it's probably
-	 * safe to chown the immediate directory to be owned by the normal
-	 * process owner. we gotta do it before we give up root.  -chad
-	 */
-
-	if (!effectiveuser) {
-		return 1;
-	}
-
-#ifdef HAVE_GETPWNAM
-	pwent = getpwnam(effectiveuser);
-
-	if (pwent == NULL) /* uh oh! */
-		return(1);
-
-	if (chown(radlog_dir, pwent->pw_uid, -1) != 0)
-		return(1);
-#endif
-
-	return(0);
-}
-
 
 /*
+ *  Do chroot, if requested.
+ *
  *  Switch UID and GID to what is specified in the config file
  */
 static int switch_users(CONF_SECTION *cs)
@@ -487,17 +416,14 @@ static int switch_users(CONF_SECTION *cs)
 	/*  Set GID.  */
 	cp = cf_pair_find(cs, "group");
 	if (cp) gid_name = cf_pair_value(cp);
-
 	if (gid_name) {
 		struct group *gr;
 
+		DEBUG2("group = %s", gid_name);
 		gr = getgrnam(gid_name);
 		if (gr == NULL) {
-			if (errno == ENOMEM) {
-				radlog(L_ERR, "Cannot switch to Group %s: out of memory", gid_name);
-			} else {
-				radlog(L_ERR, "Cannot switch group; %s doesn't exist", gid_name);
-			}
+			fprintf(stderr, "%s: Cannot get ID for group %s: %s\n",
+				progname, gid_name, strerror(errno));
 			return 0;
 		}
 		server_gid = gr->gr_gid;
@@ -513,22 +439,19 @@ static int switch_users(CONF_SECTION *cs)
 	if (uid_name) {
 		struct passwd *pw;
 		
+		DEBUG2("user = %s", uid_name);
 		pw = getpwnam(uid_name);
 		if (pw == NULL) {
-			if (errno == ENOMEM) {
-				radlog(L_ERR, "Cannot switch to User %s: out of memory", uid_name);
-			} else {
-				radlog(L_ERR, "Cannot switch user; %s doesn't exist", uid_name);
-			}
+			fprintf(stderr, "%s: Cannot get passwd entry for user %s: %s\n",
+				progname, uid_name, strerror(errno));
 			return 0;
 		}
 		server_uid = pw->pw_uid;
 #ifdef HAVE_INITGROUPS
 		if (initgroups(uid_name, server_gid) < 0) {
-			if (errno != EPERM) {
-				radlog(L_ERR, "Failed setting supplementary groups for User %s: %s", uid_name, strerror(errno));
-				return 0;
-			}
+			fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
+				progname, uid_name, strerror(errno));
+			return 0;
 		}
 #endif
 	} else {
@@ -539,9 +462,10 @@ static int switch_users(CONF_SECTION *cs)
 	cp = cf_pair_find(cs, "chroot");
 	if (cp) chroot_dir = cf_pair_value(cp);
 	if (chroot_dir) {
+		DEBUG2("chroot = %s", chroot_dir);
 		if (chroot(chroot_dir) < 0) {
-			radlog(L_ERR, "Failed to do chroot %s: %s",
-			       chroot_dir, strerror(errno));
+			fprintf(stderr, "%s: Failed to perform chroot %s: %s",
+				progname, chroot_dir, strerror(errno));
 			return 0;
 		}
 
@@ -566,25 +490,46 @@ static int switch_users(CONF_SECTION *cs)
 #ifdef HAVE_GRP_H
 	/*  Set GID.  */
 	if (gid_name && (setgid(server_gid) < 0)) {
-		radlog(L_ERR, "Failed setting Group to %s: %s",
-		       chroot_dir, strerror(errno));
+		fprintf(stderr, "%s: Failed setting group to %s: %s",
+			progname, gid_name, strerror(errno));
 		return 0;
 	}
 #endif
 
 #ifdef HAVE_PWD_H
 	if (uid_name && (setuid(server_uid) < 0)) {
-		radlog(L_ERR, "Failed setting User to %s: %s", uid_name,
-		       strerror(errno));
+		fprintf(stderr, "%s: Failed setting user to %s: %s",
+			progname, uid_name, strerror(errno));
 		return 0;
 	}
 
-	
 	/*
 	 *	Now core dumps are disabled on most secure systems.
 	 */
 	did_setuid = TRUE;
 #endif
+
+	/*
+	 *	Double check that we can write to the log directory.
+	 *
+	 *	If we can't, don't start, as we can't log any errors!
+	 */
+	if ((mainconfig.radlog_dest == RADLOG_FILES) &&
+	    (mainconfig.log_file != NULL)) {
+		int fd = open(mainconfig.log_file,
+			      O_WRONLY | O_APPEND | O_CREAT, 0640);
+		if (fd < 0) {
+			fprintf(stderr, "%s: Cannot write to log file %s: %s\n",
+				progname, mainconfig.log_file, strerror(errno));
+			return 0;
+		}
+		close(fd);
+
+		/*
+		 *	After this it's safe to call radlog(), as it's going
+		 *	to the right place.
+		 */
+	}
 
 #ifdef HAVE_SYS_RESOURCE_H
 	/*  Get the current maximum for core files.  */
@@ -656,18 +601,6 @@ static int switch_users(CONF_SECTION *cs)
 	 *	   core dump capabilities inherited from the parent shell.
 	 */
 
-#if defined(HAVE_PWD_H) && defined(HAVE_GRP_H)
-	/*
-	 *	We've probably written to the log file already as
-	 *	root.root, so if we have switched users, we've got to
-	 *	update the ownership of the file.
-	 */
-	if ((debug_flag == 0) &&
-	    (mainconfig.radlog_dest == RADLOG_FILES) &&
-	    (mainconfig.log_file != NULL)) {
-		chown(mainconfig.log_file, server_uid, server_gid);
-	}
-#endif
 	return 1;
 }
 
@@ -733,26 +666,11 @@ int read_mainconfig(int reload)
 	}
 
 	/*
-	 *	We should really switch users earlier in the process.
+	 *	If there was no log destination set on the command line,
+	 *	set it now.
 	 */
-	if (!switch_users(cs)) exit(1);
-
-	DEBUG2("reading log{} section to direct logs to appropriate place.");
-
-	/*
-	 *	Don't over-ride a destination set on the command-line.
-	 *
-	 *	BUT, parse the rest of the options.
-	 */
-	if (mainconfig.radlog_dest != RADLOG_NULL) {
-		if (cf_section_parse(cs, NULL, serverlog_config_nodest) < 0) {
-			fprintf(stderr, "radiusd: Error: Failed to parse log{} section.\n");
-			cf_section_free(&cs);
-			return -1;
-		}
-
-	} else {
-		if (cf_section_parse(cs, NULL, serverlog_config) < 0) {
+	if (mainconfig.radlog_dest == RADLOG_NULL) {
+		if (cf_section_parse(cs, NULL, serverdest_config) < 0) {
 			fprintf(stderr, "radiusd: Error: Failed to parse log{} section.\n");
 			cf_section_free(&cs);
 			return -1;
@@ -792,6 +710,11 @@ int read_mainconfig(int reload)
 			}
 		}
 	}
+
+	/*
+	 *	We should really switch users earlier in the process.
+	 */
+	if (!switch_users(cs)) exit(1);
 
 	/* Initialize the dictionary */
 	cp = cf_pair_find(cs, "dictionary");
@@ -859,18 +782,6 @@ int read_mainconfig(int reload)
 	 *  Go update our behaviour, based on the configuration
 	 *  changes.
 	 */
-
-	/*
-	 * 	The first time around, ensure that we can write to the
-	 *	log directory.
-	 */
-	if (!reload && !debug_flag) {
-		/*
-		 *	We need root to do mkdir() and chown(), so we
-		 *	do this before giving up root.
-		 */
-		radlogdir_iswritable(uid_name);
-	}
 
 	/*
 	 *	Sanity check the configuration for internal
