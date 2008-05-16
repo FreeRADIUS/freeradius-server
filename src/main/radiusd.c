@@ -247,7 +247,7 @@ int main(int argc, char *argv[])
 		radlog(L_INFO, "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 		radlog(L_INFO, "PARTICULAR PURPOSE.\n");
 		radlog(L_INFO, "You may redistribute copies of FreeRADIUS under the terms of the\n");
-		radlog(L_INFO, "GNU General Public License.\n");
+		radlog(L_INFO, "GNU General Public License v2.\n");
 		fflush(NULL);
 	}
 
@@ -384,7 +384,7 @@ int main(int argc, char *argv[])
 	 *	Everything seems to have loaded OK, exit gracefully.
 	 */
 	if (check_config) {
-		DEBUG("Configuration appears OK.");
+		DEBUG("Configuration appears to be OK.");
 		exit(0);
 	}
 
@@ -395,7 +395,7 @@ int main(int argc, char *argv[])
 		module_hup(cf_section_sub_find(mainconfig.config, "modules"));
 	}
 	
-	DEBUG("Exiting...");
+	radlog(L_INFO, "Exiting normally.");
 	
 	/*
 	 *	Ignore the TERM signal: we're
