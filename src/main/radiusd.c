@@ -392,6 +392,7 @@ int main(int argc, char *argv[])
 	 *	Process requests until HUP or exit.
 	 */
 	while ((rcode = radius_event_process()) == 0x80) {
+		radlog(L_INFO, "Received HUP.");
 		module_hup(cf_section_sub_find(mainconfig.config, "modules"));
 	}
 	
