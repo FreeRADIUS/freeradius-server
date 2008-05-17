@@ -210,6 +210,10 @@ static int detail_open(rad_listen_t *this)
 	 *	we've got to open it for writing in order to
 	 *	establish the lock, to prevent rlm_detail from
 	 *	writing to it.
+	 *
+	 *	This also means that if we're doing globbing,
+	 *	this file will be read && processed before the
+	 *	file globbing is done.
 	 */
 	this->fd = open(data->filename_work, O_RDWR);
 	if (this->fd < 0) {
@@ -253,8 +257,6 @@ static int detail_open(rad_listen_t *this)
 
 			filename = strdup(files.gl_pathv[found]);
 			globfree(&files);
-
-
 #else
 			return 0;
 #endif
@@ -783,7 +785,31 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
-	snprintf(buffer, sizeof(buffer), "%s.work", data->filename);
+	/*
+	 *	If the filename is a glob, use "detail.work" as the
+	 *	work file name.
+	 */
+	if ((strchr(data->filename, '*') != NULL) ||
+	    (strchr(data->filename, '[') != NULL)) {
+		char *p;
+
+#ifndef HAVE_GLOB_H
+		radlog(L_INFO, "WARNING: Detail file \"%s\" appears to use file globbing, but it is not supported on this system.", data->filename);
+#endif
+		strlcpy(buffer, data->filename, sizeof(buffer));
+		p = strrchr(buffer, FR_DIR_SEP);
+		if (p) {
+			p[1] = '\0';
+		} else {
+			buffer[0] = '\0';
+		}
+		strlcat(buffer, "detail.work",
+			sizeof(buffer) - strlen(buffer));
+			
+	} else {
+		snprintf(buffer, sizeof(buffer), "%s.work", data->filename);
+	}
+
 	free(data->filename_work);
 	data->filename_work = strdup(buffer); /* FIXME: leaked */
 
