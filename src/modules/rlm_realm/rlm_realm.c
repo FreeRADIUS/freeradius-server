@@ -83,7 +83,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	if ((request->proxy != NULL) ||
 	    (request->username == NULL)) {
 		DEBUG2("    rlm_realm: Proxy reply, or no User-Name.  Ignoring.");
-		return 0;
+		return RLM_MODULE_OK;
 	}
 
 	/*
@@ -93,7 +93,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 
 	if ( (vp = pairfind(request->packet->vps, PW_REALM)) != NULL ) {
 	        DEBUG2("    rlm_realm: Request already proxied.  Ignoring.");
-		return 0;
+		return RLM_MODULE_OK;
 	}
 
 	/*
@@ -146,7 +146,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		if( inst->ignore_null ) {
 			DEBUG2("    rlm_realm: No '%c' in User-Name = \"%s\", skipping NULL due to config.",
 			inst->delim[0], request->username->vp_strvalue);
-			return 0;
+			return RLM_MODULE_NOOP;
 		}
 		DEBUG2("    rlm_realm: No '%c' in User-Name = \"%s\", looking up realm NULL",
 		       inst->delim[0], request->username->vp_strvalue);
@@ -159,12 +159,12 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	if (!realm) {
 		DEBUG2("    rlm_realm: No such realm \"%s\"",
 		       (realmname == NULL) ? "NULL" : realmname);
-		return 0;
+		return RLM_MODULE_NOOP;
 	}
 	if( inst->ignore_default &&
 	    (strcmp(realm->name, "DEFAULT")) == 0) {
 		DEBUG2("    rlm_realm: Found DEFAULT, but skipping due to config.");
-		return 0;
+		return RLM_MODULE_NOOP;
 	}
 
 	DEBUG2("    rlm_realm: Found realm \"%s\"", realm->name);
@@ -207,7 +207,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	default:
 		DEBUG2("    rlm_realm: Unknown packet code %d\n",
 		       request->packet->code);
-		return 0;		/* don't do anything */
+		return RLM_MODULE_OK;		/* don't do anything */
 
 		/*
 		 *	Perhaps accounting proxying was turned off.
@@ -215,7 +215,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	case PW_ACCOUNTING_REQUEST:
 		if (!realm->acct_pool) {
 			DEBUG2("    rlm_realm: Accounting realm is LOCAL.");
-			return 0;
+			return RLM_MODULE_OK;
 		}
 		break;
 
@@ -225,7 +225,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	case PW_AUTHENTICATION_REQUEST:
 		if (!realm->auth_pool) {
 			DEBUG2("    rlm_realm: Authentication realm is LOCAL.");
-			return 0;
+			return RLM_MODULE_OK;
 		}
 		break;
 	}
@@ -239,7 +239,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 */
 	if (request->packet->code != PW_ACCOUNTING_REQUEST) {
 		*returnrealm = realm;
-		return 0;
+		return RLM_MODULE_UPDATED;
 	}
 
 	/*
@@ -274,7 +274,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 			if (fr_ipaddr_cmp(&realm->acct_pool->servers[i]->ipaddr,
 					    &my_ipaddr) == 0) {
 				DEBUG2("Suppressing proxy due to FreeRADIUS-Proxied-To");
-				return 0;
+				return RLM_MODULE_OK;
 			}
 		}
 
@@ -299,7 +299,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 					     &request->packet->src_ipaddr) == 0) &&
 			    (realm->acct_pool->servers[i]->port == request->packet->src_port)) {
 				DEBUG2("Suppressing proxy because packet was already sent to a server in that realm");
-				return 0;
+				return RLM_MODULE_OK;
 			}
 		}
 
@@ -309,7 +309,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	We got this far, which means we have a realm, set returnrealm
 	 */
 	*returnrealm = realm;
-	return 0;
+	return RLM_MODULE_UPDATED;
 }
 
 /*
@@ -389,6 +389,7 @@ static int realm_instantiate(CONF_SECTION *conf, void **instance)
  */
 static int realm_authorize(void *instance, REQUEST *request)
 {
+	int rcode;
 	REALM *realm;
 
 	/*
@@ -396,12 +397,9 @@ static int realm_authorize(void *instance, REQUEST *request)
 	 *	If not, return without adding a Proxy-To-Realm
 	 *	attribute.
 	 */
-	if (check_for_realm(instance, request, &realm) < 0) {
-		return RLM_MODULE_FAIL;
-	}
-	if (!realm) {
-		return RLM_MODULE_NOOP;
-	}
+	rcode = check_for_realm(instance, request, &realm);
+	if (rcode != RLM_MODULE_UPDATED) return rcode;
+	if (!realm) return RLM_MODULE_NOOP;
 
 	/*
 	 *	Maybe add a Proxy-To-Realm attribute to the request.
@@ -419,6 +417,7 @@ static int realm_authorize(void *instance, REQUEST *request)
  */
 static int realm_preacct(void *instance, REQUEST *request)
 {
+	int rcode;
 	const char *name = (char *)request->username->vp_strvalue;
 	REALM *realm;
 
@@ -431,13 +430,9 @@ static int realm_preacct(void *instance, REQUEST *request)
 	 *	If not, return without adding a Proxy-To-Realm
 	 *	attribute.
 	 */
-	if (check_for_realm(instance, request, &realm) < 0) {
-		return RLM_MODULE_FAIL;
-	}
-	if (!realm) {
-		return RLM_MODULE_NOOP;
-	}
-
+	rcode = check_for_realm(instance, request, &realm);
+	if (rcode != RLM_MODULE_UPDATED) return rcode;
+	if (!realm) return RLM_MODULE_NOOP;
 
 	/*
 	 *	Maybe add a Proxy-To-Realm attribute to the request.
