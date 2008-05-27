@@ -168,6 +168,7 @@ VALUE	Module-Return-Code		noop			7
 VALUE	Module-Return-Code		updated			8
 
 ATTRIBUTE	Packet-Original-Timestamp		1109	date
+ATTRIBUTE	SQL-Table-Name				1110	string
 
 #
 #	Range:	1200-1279
