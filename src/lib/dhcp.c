@@ -404,8 +404,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			break;
 			
 		case PW_TYPE_ETHERNET:
-			memcpy(vp->vp_ether, p, packet->data[2]);
-			vp->length = packet->data[2];
+			memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
+			vp->length = sizeof(vp->vp_ether);
 			break;
 			
 		default:
@@ -947,6 +947,11 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			case PW_TYPE_OCTETS: /* only for Client HW Address */
 				memcpy(vp->vp_octets, p, packet->data[2]);
 				vp->length = packet->data[2];
+				break;
+				
+			case PW_TYPE_ETHERNET: /* only for Client HW Address */
+				memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
+				vp->length = sizeof(vp->vp_ether);
 				break;
 				
 			default:

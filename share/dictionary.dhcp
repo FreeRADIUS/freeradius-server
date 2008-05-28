@@ -42,7 +42,7 @@ ATTRIBUTE	DHCP-Client-IP-Address			263	ipaddr
 ATTRIBUTE	DHCP-Your-IP-Address			264	ipaddr
 ATTRIBUTE	DHCP-Server-IP-Address			265	ipaddr
 ATTRIBUTE	DHCP-Gateway-IP-Address			266	ipaddr
-ATTRIBUTE	DHCP-Client-Hardware-Address		267	octets	  # 16 octets
+ATTRIBUTE	DHCP-Client-Hardware-Address		267	ether	  # 16 octets
 ATTRIBUTE	DHCP-Server-Host-Name			268	string	  # 64 octets
 ATTRIBUTE	DHCP-Boot-Filename			269	string	  # 128 octets
 
