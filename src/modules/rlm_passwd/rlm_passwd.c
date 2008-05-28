@@ -530,6 +530,11 @@ static int passwd_map(void *instance, REQUEST *request)
 				snprintf(buffer, 1024, "%u", key->vp_integer);
 				name = buffer;
 				break;
+			case PW_TYPE_ETHERNET:
+				vp_prints_value(buffer, sizeof(buffer),
+						key, 0);
+				name = buffer;
+				break;
 			default:
 				name = key->vp_strvalue;
 		}
