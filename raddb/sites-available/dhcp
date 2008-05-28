@@ -186,7 +186,7 @@ dhcp {
 #
 ######################################################################
 
-#passwd mac2vlan {
+#passwd mac2ip {
 #	filename = ${confdir}/mac2ip
 #	format = "*DHCP-Client-Hardware-Address:=DHCP-Your-IP-Address"
 #	delimiter = ","
