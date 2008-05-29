@@ -83,14 +83,19 @@ client localnet {
 #  If you want it to do real DHCP, change this to 67, and good luck!
 #
 #  You can also bind the DHCP socket to an interface.
-#  See raddb/radiusd.conf for examples.
+#  See below, and raddb/radiusd.conf for examples.
 #
 #  This lets you run *one* DHCP server instance and have it listen on
 #  multiple interfaces, each with a separate policy.
+#
+#  If you have multiple interfaces, it is a good idea to bind the
+#  listen section to an interface.  You will likely also need one
+#  listen section per interface.
 listen {
 	ipaddr = *
 	port = 6700
 	type = dhcp
+	#interface = eth0
 }
 
 #  Packets received on the socket will be processed through one
