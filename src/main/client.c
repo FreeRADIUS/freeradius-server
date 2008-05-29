@@ -147,7 +147,11 @@ static int client_sane(RADCLIENT *client)
 		/*
 		 *	Zero out the subnet bits.
 		 */
-		if (client->prefix < 32) {
+		if (client->prefix == 0) {
+			memset(&client->ipaddr.ipaddr.ip4addr, 0,
+			       sizeof(client->ipaddr.ipaddr.ip4addr));
+
+		} else if (client->prefix < 32) {
 			uint32_t mask = ~0;
 
 			mask <<= (32 - client->prefix);
@@ -158,7 +162,11 @@ static int client_sane(RADCLIENT *client)
 	case AF_INET6:
 		if (client->prefix > 128) return 0;
 
-		if (client->prefix < 128) {
+		if (client->prefix == 0) {
+			memset(&client->ipaddr.ipaddr.ip6addr, 0,
+			       sizeof(client->ipaddr.ipaddr.ip6addr));
+
+		} else if (client->prefix < 128) {
 			int i;
 			uint32_t mask, *addr;
 
