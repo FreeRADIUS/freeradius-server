@@ -165,22 +165,24 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	 *	IPv4 is supported.
 	 */
 	if (dst_ipaddr->af == AF_INET) {
-		struct sockaddr_in	*s4;
+		struct sockaddr_in	s4;
 
-		s4 = (struct sockaddr_in *)&dst;
-		sizeof_dst = sizeof(struct sockaddr_in);
+		sizeof_dst = sizeof(s4);
 
-		s4->sin_family = AF_INET;
-		s4->sin_addr = dst_ipaddr->ipaddr.ip4addr;
-		s4->sin_port = htons(dst_port);
+		s4.sin_family = AF_INET;
+		s4.sin_addr = dst_ipaddr->ipaddr.ip4addr;
+		s4.sin_port = htons(dst_port);
+		memset(&dst, 0, sizeof(dst));
+		memcpy(&dst, &s4, sizeof_dst);
 
 #ifdef WITH_UDPFROMTO
-		s4 = (struct sockaddr_in *)&src;
-		sizeof_src = sizeof(struct sockaddr_in);
+		sizeof_src = sizeof(s4);
 
-		s4->sin_family = AF_INET;
-		s4->sin_addr = src_ipaddr->ipaddr.ip4addr;
-		s4->sin_port = htons(src_port);
+		s4.sin_family = AF_INET;
+		s4.sin_addr = src_ipaddr->ipaddr.ip4addr;
+		s4.sin_port = htons(src_port);
+		memset(&src, 0, sizeof(src));
+		memcpy(&src, &s4, sizeof_src);
 #else
 		src_port = src_port; /* -Wunused */
 #endif
@@ -190,23 +192,25 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	 */
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (dst_ipaddr->af == AF_INET6) {
-		struct sockaddr_in6	*s6;
+		struct sockaddr_in6	s6;
 
-		s6 = (struct sockaddr_in6 *)&dst;
-		sizeof_dst = sizeof(struct sockaddr_in6);
+		sizeof_dst = sizeof(s6);
 
-		s6->sin6_family = AF_INET6;
-		s6->sin6_addr = dst_ipaddr->ipaddr.ip6addr;
-		s6->sin6_port = htons(dst_port);
+		s6.sin6_family = AF_INET6;
+		s6.sin6_addr = dst_ipaddr->ipaddr.ip6addr;
+		s6.sin6_port = htons(dst_port);
+		memset(&dst, 0, sizeof(dst));
+		memcpy(&dst, &s6, sizeof_dst);
 
 #ifdef WITH_UDPFROMTO
 		return -1;	/* UDPFROMTO && IPv6 are not supported */
 #if 0
-		s6 = (struct sockaddr_in6 *)&src;
-		sizeof_src = sizeof(struct sockaddr_in6);
+		sizeof_src = sizeof(s6);
 
-		s6->sin6_family = AF_INET6;
-		s6->sin6_addr = src_ipaddr->ipaddr.ip6addr;
+		s6.sin6_family = AF_INET6;
+		s6.sin6_addr = src_ipaddr->ipaddr.ip6addr;
+		memset(&src, 0, sizeof(src));
+		memcpy(&src, &s6, sizeof_src);
 #endif /* #if 0 */
 #endif /* WITH_UDPFROMTO */
 #endif /* HAVE_STRUCT_SOCKADDR_IN6 */
@@ -233,7 +237,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	 *	No udpfromto, OR an IPv6 socket, fail gracefully.
 	 */
 	return sendto(sockfd, data, data_len, flags,
-		      (struct sockaddr *)&dst, sizeof_dst);
+		      (struct sockaddr *) &dst, sizeof_dst);
 }
 
 
@@ -298,21 +302,21 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, int *src_port,
 	}
 
 	if (src.ss_family == AF_INET) {
-		struct sockaddr_in	*s4;
+		struct sockaddr_in	s4;
 
-		s4 = (struct sockaddr_in *)&src;
+		memcpy(&s4, &src, sizeof(s4));
 		src_ipaddr->af = AF_INET;
-		src_ipaddr->ipaddr.ip4addr = s4->sin_addr;
-		*src_port = ntohs(s4->sin_port);
+		src_ipaddr->ipaddr.ip4addr = s4.sin_addr;
+		*src_port = ntohs(s4.sin_port);
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (src.ss_family == AF_INET6) {
-		struct sockaddr_in6	*s6;
+		struct sockaddr_in6	s6;
 
-		s6 = (struct sockaddr_in6 *)&src;
+		memcpy(&s6, &src, sizeof(s6));
 		src_ipaddr->af = AF_INET6;
-		src_ipaddr->ipaddr.ip6addr = s6->sin6_addr;
-		*src_port = ntohs(s6->sin6_port);
+		src_ipaddr->ipaddr.ip6addr = s6.sin6_addr;
+		*src_port = ntohs(s6.sin6_port);
 
 #endif
 	} else {
@@ -435,31 +439,31 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	 *	Check address families, and update src/dst ports, etc.
 	 */
 	if (src.ss_family == AF_INET) {
-		struct sockaddr_in	*s4;
+		struct sockaddr_in	s4;
 
-		s4 = (struct sockaddr_in *)&src;
+		memcpy(&s4, &src, sizeof(s4));
 		src_ipaddr->af = AF_INET;
-		src_ipaddr->ipaddr.ip4addr = s4->sin_addr;
-		*src_port = ntohs(s4->sin_port);
+		src_ipaddr->ipaddr.ip4addr = s4.sin_addr;
+		*src_port = ntohs(s4.sin_port);
 
-		s4 = (struct sockaddr_in *)&dst;
+		memcpy(&s4, &dst, sizeof(s4));
 		dst_ipaddr->af = AF_INET;
-		dst_ipaddr->ipaddr.ip4addr = s4->sin_addr;
-		*dst_port = ntohs(s4->sin_port);
+		dst_ipaddr->ipaddr.ip4addr = s4.sin_addr;
+		*dst_port = ntohs(s4.sin_port);
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (src.ss_family == AF_INET6) {
-		struct sockaddr_in6	*s6;
+		struct sockaddr_in6	s6;
 
-		s6 = (struct sockaddr_in6 *)&src;
+		memcpy(&s6, &src, sizeof(s6));
 		src_ipaddr->af = AF_INET6;
-		src_ipaddr->ipaddr.ip6addr = s6->sin6_addr;
-		*src_port = ntohs(s6->sin6_port);
+		src_ipaddr->ipaddr.ip6addr = s6.sin6_addr;
+		*src_port = ntohs(s6.sin6_port);
 
-		s6 = (struct sockaddr_in6 *)&dst;
+		memcpy(&s6, &dst, sizeof(s6));
 		dst_ipaddr->af = AF_INET6;
-		dst_ipaddr->ipaddr.ip6addr = s6->sin6_addr;
-		*dst_port = ntohs(s6->sin6_port);
+		dst_ipaddr->ipaddr.ip6addr = s6.sin6_addr;
+		*dst_port = ntohs(s6.sin6_port);
 #endif
 	} else {
 		free(buf);
@@ -1108,7 +1112,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		return -1;
 	}
 
-	memcpy(packet->data, data, packet->data_len);
+	memcpy(packet->data, hdr, packet->data_len);
 	hdr = (radius_packet_t *) packet->data;
 
 	total_length = htons(total_length);

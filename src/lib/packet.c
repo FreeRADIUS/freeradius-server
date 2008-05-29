@@ -175,6 +175,7 @@ void fr_request_from_reply(RADIUS_PACKET *request,
 int fr_socket(fr_ipaddr_t *ipaddr, int port)
 {
 	int sockfd;
+	uint16_t sport;
 	struct sockaddr_storage salocal;
 	socklen_t	salen;
 
@@ -185,6 +186,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 
 	sockfd = socket(ipaddr->af, SOCK_DGRAM, 0);
 	if (sockfd < 0) {
+		librad_log("cannot open socket: %s", strerror(errno));
 		return sockfd;
 	}
 
@@ -194,29 +196,34 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 	 */
 	if (udpfromto_init(sockfd) != 0) {
 		close(sockfd);
+		librad_log("cannot initialize udpfromto: %s", strerror(errno));
 		return -1;
 	}
 #endif
 
+	sport = port;
+	sport = htons(sport);
 	memset(&salocal, 0, sizeof(salocal));
 	if (ipaddr->af == AF_INET) {
-		struct sockaddr_in *sa;
+		struct sockaddr_in s4;
 
-		sa = (struct sockaddr_in *) &salocal;
-		sa->sin_family = AF_INET;
-		sa->sin_addr = ipaddr->ipaddr.ip4addr;
-		sa->sin_port = htons((uint16_t) port);
-		salen = sizeof(*sa);
+		s4.sin_family = AF_INET;
+		s4.sin_addr = ipaddr->ipaddr.ip4addr;
+		s4.sin_port = sport;
+		salen = sizeof(s4);
+		memset(&salocal, 0, sizeof(salocal));
+		memcpy(&salocal, &s4, salen);
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (ipaddr->af == AF_INET6) {
-		struct sockaddr_in6 *sa;
+		struct sockaddr_in6 s6;
 
-		sa = (struct sockaddr_in6 *) &salocal;
-		sa->sin6_family = AF_INET6;
-		sa->sin6_addr = ipaddr->ipaddr.ip6addr;
-		sa->sin6_port = htons((uint16_t) port);
-		salen = sizeof(*sa);
+		s6.sin6_family = AF_INET6;
+		s6.sin6_addr = ipaddr->ipaddr.ip6addr;
+		s6.sin6_port = sport;
+		salen = sizeof(s6);
+		memset(&salocal, 0, sizeof(salocal));
+		memcpy(&salocal, &s6, salen);
 
 #if 1
 		/*
@@ -242,6 +249,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 
 	if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 		close(sockfd);
+		librad_log("cannot bind socket: %s", strerror(errno));
 		return -1;
 	}
 
@@ -377,11 +385,11 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd)
 	 */
 	ps->ipaddr.af = src.ss_family;
 	if (src.ss_family == AF_INET) {
-		struct sockaddr_in	*s4;
+		struct sockaddr_in	s4;
 
-		s4 = (struct sockaddr_in *)&src;
-		ps->ipaddr.ipaddr.ip4addr = s4->sin_addr;
-		ps->port = ntohs(s4->sin_port);
+		memcpy(&s4, &src, sizeof(s4));
+		ps->ipaddr.ipaddr.ip4addr = s4.sin_addr;
+		ps->port = ntohs(s4.sin_port);
 
 		if (ps->ipaddr.ipaddr.ip4addr.s_addr == INADDR_ANY) {
 			ps->inaddr_any = 1;
@@ -389,11 +397,11 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd)
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	} else if (src.ss_family == AF_INET6) {
-		struct sockaddr_in6	*s6;
+		struct sockaddr_in6	s6;
 
-		s6 = (struct sockaddr_in6 *)&src;
-		ps->ipaddr.ipaddr.ip6addr = s6->sin6_addr;
-		ps->port = ntohs(s6->sin6_port);
+		memcpy(&s6, &src, sizeof(s6));
+		ps->ipaddr.ipaddr.ip6addr = s6.sin6_addr;
+		ps->port = ntohs(s6.sin6_port);
 
 		if (IN6_IS_ADDR_UNSPECIFIED(&ps->ipaddr.ipaddr.ip6addr)) {
 			ps->inaddr_any = 1;
