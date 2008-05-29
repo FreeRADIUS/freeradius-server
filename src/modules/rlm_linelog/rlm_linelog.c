@@ -114,7 +114,7 @@ static int linelog_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-#ifdef HAVE_SYSLOG_H
+#ifndef HAVE_SYSLOG_H
 	if (strcmp(inst->filename, "syslog") == 0) {
 		radlog(L_ERR, "rlm_linelog: Syslog output is not supported");
 		linelog_detach(inst);
