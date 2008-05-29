@@ -82,5 +82,4 @@ install:
 	fi
 
 clean:
-	rm -f sites-enabled/inner-tunnel sites-enabled/default
-	@rmdir sites-enabled
+	rm -rf sites-enabled/inner-tunnel sites-enabled/default
