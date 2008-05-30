@@ -1,0 +1,49 @@
+# -*- text -*-
+#
+#  $Id$
+
+#
+#  The rlm_sql_log module appends the SQL queries in a log
+#  file which is read later by the radsqlrelay program.
+#
+#  This module only performs the dynamic expansion of the
+#  variables found in the SQL statements. No operation is
+#  executed on the database server. (this could be done
+#  later by an external program) That means the module is
+#  useful only with non-"SELECT" statements.
+#
+#  See rlm_sql_log(5) manpage.
+#
+#  This same functionality could also be implemented by logging
+#  to a "detail" file, reading that, and then writing to SQL.
+#  See raddb/sites-available/buffered-sql for an example.
+#
+sql_log {
+	path = "${radacctdir}/sql-relay"
+	acct_table = "radacct"
+	postauth_table = "radpostauth"
+	sql_user_name = "%{%{User-Name}:-DEFAULT}"
+
+	Start = "INSERT INTO ${acct_table} (AcctSessionId, UserName, \
+	 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
+	 AcctSessionTime, AcctTerminateCause) VALUES                 \
+	 ('%{Acct-Session-Id}', '%{User-Name}', '%{NAS-IP-Address}', \
+	 '%{Framed-IP-Address}', '%S', '0', '0', '');"
+	Stop = "INSERT INTO ${acct_table} (AcctSessionId, UserName,  \
+	 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
+	 AcctSessionTime, AcctTerminateCause) VALUES                 \
+	 ('%{Acct-Session-Id}', '%{User-Name}', '%{NAS-IP-Address}', \
+	 '%{Framed-IP-Address}', '0', '%S', '%{Acct-Session-Time}',  \
+	 '%{Acct-Terminate-Cause}');"
+	Alive = "INSERT INTO ${acct_table} (AcctSessionId, UserName, \
+	 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
+	 AcctSessionTime, AcctTerminateCause) VALUES                 \
+	 ('%{Acct-Session-Id}', '%{User-Name}', '%{NAS-IP-Address}', \
+	 '%{Framed-IP-Address}', '0', '0', '%{Acct-Session-Time}','');"
+
+	Post-Auth = "INSERT INTO ${postauth_table}                   \
+	 (username, pass, reply, authdate) VALUES                    \
+	 ('%{User-Name}', '%{User-Password:-Chap-Password}',         \
+	 '%{reply:Packet-Type}', '%S');"
+}
+

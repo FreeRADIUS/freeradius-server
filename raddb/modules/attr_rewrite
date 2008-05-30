@@ -1,0 +1,46 @@
+# -*- text -*-
+#
+#  $Id$
+
+#  rewrite arbitrary packets.  Useful in accounting and authorization.
+#
+#  As of 2.0, much of the functionality of this module is in "unlang".
+#  You should probably investigate using that before trying to use
+#  the "attr_rewrite" module.
+#
+#
+#  The module can also use the Rewrite-Rule attribute. If it
+#  is set and matches the name of the module instance, then
+#  that module instance will be the only one which runs.
+#
+#  Also if new_attribute is set to yes then a new attribute
+#  will be created containing the value replacewith and it
+#  will be added to searchin (packet, reply, proxy,
+#  proxy_reply or config).
+#
+# searchfor,ignore_case and max_matches will be ignored in that case.
+#
+# Backreferences are supported.
+#	%{0} will contain the string the whole match
+#	%{1} to %{8} will contain the contents of the 1st to
+#	the 8th parentheses
+#
+# If max_matches is greater than one, the backreferences will
+# correspond to the first attributed that matched.
+
+#
+attr_rewrite sanecallerid {
+	attribute = Called-Station-Id
+	# may be "packet", "reply", "proxy", "proxy_reply" or "config"
+	searchin = packet
+	searchfor = "[+ ]"
+	replacewith = ""
+	ignore_case = no
+	new_attribute = no
+	max_matches = 10
+
+	## If set to yes then the replace string will be
+	## appended to the original string
+	append = no
+}
+

@@ -1,0 +1,25 @@
+# -*- text -*-
+#
+#  $Id$
+
+#  "passwd" configuration, for the /etc/group file. Adds a Etc-Group-Name
+#  attribute for every group that the user is member of.
+#
+#  You will have to define the Etc-Group-Name in the 'dictionary' file
+#  as a 'string' type.
+#
+#  The Group-Name attribute is automatically created by the Unix module,
+#  and does checking against /etc/group automatically.
+#
+#  i.e. this module should NOT be used as-is, but should be edited to
+#  point to a different group file.
+#
+passwd etc_group {
+	filename = /etc/group
+	format = "=Etc-Group-Name:::*,User-Name"
+	hashsize = 50
+	ignorenislike = yes
+	allowmultiplekeys = yes
+	delimiter = ":"
+}
+

@@ -1,0 +1,19 @@
+# -*- text -*-
+#
+#  $Id$
+
+#
+# The expiration module. This handles the Expiration attribute
+# It should be included in the *end* of the authorize section
+# in order to handle user Expiration. It should also be included
+# in the instantiate section in order to register the Expiration
+# compare function
+#
+expiration {
+	#
+	# The Reply-Message which will be sent back in case the
+	# account has expired. Dynamic substitution is supported
+	#
+	reply-message = "Password Has Expired\r\n" 
+	#reply-message = "Your account has expired, %{User-Name}\r\n"
+}

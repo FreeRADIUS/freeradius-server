@@ -1,0 +1,44 @@
+# -*- text -*-
+#
+#  $Id$
+
+#  A simple value checking module
+#
+#  As of 2.0, much of the functionality of this module is in "unlang".
+#  You should probably investigate using that before trying to use
+#  the "checkval" module.
+#
+#  It can be used to check if an attribute value in the request
+#  matches a (possibly multi valued) attribute in the check
+#  items This can be used for example for caller-id
+#  authentication.  For the module to run, both the request
+#  attribute and the check items attribute must exist
+#
+#  i.e.
+#  A user has an ldap entry with 2 radiusCallingStationId
+#  attributes with values "12345678" and "12345679".  If we
+#  enable rlm_checkval, then any request which contains a
+#  Calling-Station-Id with one of those two values will be
+#  accepted.  Requests with other values for
+#  Calling-Station-Id will be rejected.
+#
+#  Regular expressions in the check attribute value are allowed
+#  as long as the operator is '=~'
+#
+checkval {
+	# The attribute to look for in the request
+	item-name = Calling-Station-Id
+
+	# The attribute to look for in check items. Can be multi valued
+	check-name = Calling-Station-Id
+
+	# The data type. Can be
+	# string,integer,ipaddr,date,abinary,octets
+	data-type = string
+
+	# If set to yes and we dont find the item-name attribute in the
+	# request then we send back a reject
+	# DEFAULT is no
+	#notfound-reject = no
+}
+	

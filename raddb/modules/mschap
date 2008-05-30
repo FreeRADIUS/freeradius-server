@@ -1,0 +1,66 @@
+# -*- text -*-
+#
+#  $Id$
+
+# Microsoft CHAP authentication
+#
+#  This module supports MS-CHAP and MS-CHAPv2 authentication.
+#  It also enforces the SMB-Account-Ctrl attribute.
+#
+mschap {
+	#
+	#  If you are using /etc/smbpasswd, see the 'passwd'
+	#  module for an example of how to use /etc/smbpasswd
+
+	# if use_mppe is not set to no mschap will
+	# add MS-CHAP-MPPE-Keys for MS-CHAPv1 and
+	# MS-MPPE-Recv-Key/MS-MPPE-Send-Key for MS-CHAPv2
+	#
+	#use_mppe = no
+
+	# if mppe is enabled require_encryption makes
+	# encryption moderate
+	#
+	#require_encryption = yes
+
+	# require_strong always requires 128 bit key
+	# encryption
+	#
+	#require_strong = yes
+
+	# Windows sends us a username in the form of
+	# DOMAIN\user, but sends the challenge response
+	# based on only the user portion.  This hack
+	# corrects for that incorrect behavior.
+	#
+	#with_ntdomain_hack = no
+
+	# The module can perform authentication itself, OR
+	# use a Windows Domain Controller.  This configuration
+	# directive tells the module to call the ntlm_auth
+	# program, which will do the authentication, and return
+	# the NT-Key.  Note that you MUST have "winbindd" and
+	# "nmbd" running on the local machine for ntlm_auth
+	# to work.  See the ntlm_auth program documentation
+	# for details.
+	#
+	# If ntlm_auth is configured below, then the mschap
+	# module will call ntlm_auth for every MS-CHAP
+	# authentication request.  If there is a cleartext
+	# or NT hashed password available, you can set
+	# "MS-CHAP-Use-NTLM-Auth := No" in the control items,
+	# and the mschap module will do the authentication itself,
+	# without calling ntlm_auth.
+	#
+	# Be VERY careful when editing the following line!
+	#
+	# You can also try setting the user name as:
+	#
+	#	... --username=%{mschap:User-Name} ...
+	#
+	# In that case, the mschap module will look at the User-Name
+	# attribute, and do prefix/suffix checks in order to obtain
+	# the "best" user name for the request.
+	#
+	#ntlm_auth = "/path/to/ntlm_auth --request-nt-key --username=%{Stripped-User-Name:-%{User-Name:-None}} --challenge=%{mschap:Challenge:-00} --nt-response=%{mschap:NT-Response:-00}"
+}
