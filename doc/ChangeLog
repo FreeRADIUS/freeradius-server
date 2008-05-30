@@ -7,10 +7,17 @@ FreeRADIUS 2.0.5 ; $Date$ , urgency=medium
 	  make RADMIN=radmin RGROUP=radius install-chown
 	* Support for LDAP-Group and other dynamic comparison attributes
 	  in unlang.  Developed from a patch by	Jason Alderfer.
+	* Added chroot support.  See radiusd.conf for comments.
+	* Allow clients of 0/0.  We do not recommend using this, though.
+	* Moved many module configurations into raddb/modules/*
 	
 	Bug fixes
 	* Allow proxying to virtual servers for accounting packets, too.
 	* Added "num fields" function to PostgreSQL client.
+	* Updated proxy fallback mechanism to validate fallback servers,
+	  and to process fallback requests in a child thread.
+	* rlm_realm returns "ok" for LOCAL realms, not "noop".
+	* Fixed some DHCP code handling.  The examples should now work.
 
 FreeRADIUS 2.0.4 ; Date: 2008/04/30 08:56:40  , urgency=medium
 	Feature improvements
