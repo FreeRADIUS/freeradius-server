@@ -450,6 +450,9 @@ int rad_postauth(REQUEST *request)
 int rad_authenticate(REQUEST *request)
 {
 	VALUE_PAIR	*namepair;
+#ifdef WITH_SESSION_MGMT
+	VALUE_PAIR	*check_item;
+#endif
 	VALUE_PAIR	*auth_item = NULL;
 	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
@@ -680,7 +683,6 @@ autz_redo:
 	if (result >= 0 &&
 	    (check_item = pairfind(request->config_items, PW_SIMULTANEOUS_USE)) != NULL) {
 		int r, session_type = 0;
-		VALUE_PAIR	*check_item;
 		char		logstr[1024];
 		char		umsg[MAX_STRING_LEN + 1];
 		const char	*user_msg = NULL;
