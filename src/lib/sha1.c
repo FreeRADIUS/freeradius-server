@@ -14,6 +14,7 @@ RCSID("$Id$")
 
 #include "../include/sha1.h"
 
+#ifndef WITH_OPENSSL_SHA1
 #define blk0(i) (block->l[i] = htonl(block->l[i]))
 
 #define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
@@ -153,7 +154,7 @@ uint8_t finalcount[8];
 #endif
 }
 
-void fr_fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context)
+void fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context)
 {
   uint32_t i, j;
 
@@ -172,4 +173,4 @@ void fr_fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context)
     fr_SHA1Transform(context->state, context->buffer);
 #endif
 }
-
+#endif
