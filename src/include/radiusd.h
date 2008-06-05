@@ -124,9 +124,11 @@ struct auth_req {
 	uint32_t		magic; /* for debugging only */
 #endif
 	RADIUS_PACKET		*packet;
-	RADIUS_PACKET		*proxy;
 #ifdef WITH_PROXY
+	RADIUS_PACKET		*proxy;
+#endif
 	RADIUS_PACKET		*reply;
+#ifdef WITH_PROXY
 	RADIUS_PACKET		*proxy_reply;
 #endif
 	VALUE_PAIR		*config_items;
