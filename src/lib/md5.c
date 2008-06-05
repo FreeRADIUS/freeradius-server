@@ -28,6 +28,8 @@ void fr_md5_calc(uint8_t *output, const uint8_t *input,
 	fr_MD5Final(output, &context);
 }
 
+
+#ifndef WITH_OPENSSL_MD5
 /*	The below was retrieved from
  *	http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.c?rev=1.1
  *	with the following changes:
@@ -275,3 +277,4 @@ fr_MD5Transform(uint32_t state[4], const uint8_t block[MD5_BLOCK_LENGTH])
 	state[2] += c;
 	state[3] += d;
 }
+#endif

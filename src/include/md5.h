@@ -26,6 +26,7 @@ RCSIDH(md5_h, "$Id$")
 
 #include <string.h>
 
+#ifndef WITH_OPENSSL_MD5
 /*  The below was retrieved from
  *  http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.h?rev=1.1
  *  With the following changes: uint64_t => uint32_t[2]
@@ -66,5 +67,16 @@ void	 fr_MD5Transform(uint32_t [4], const uint8_t [MD5_BLOCK_LENGTH])
 /*		__attribute__((__bounded__(__minbytes__,1,4)))*/
 /*		__attribute__((__bounded__(__minbytes__,2,MD5_BLOCK_LENGTH)))*/;
 /* __END_DECLS */
+
+#else  /* WITH_OPENSSL_HASH */
+
+#include <openssl/md5.h>
+
+#define FR_MD5_CTX	MD5_CTX
+#define fr_MD5Init	MD5_Init
+#define fr_MD5Update	MD5_Update
+#define fr_MD5Final	MD5_Final
+#define fr_MD5Transform MD5_Transform
+#endif
 
 #endif /* _FR_MD5_H */
