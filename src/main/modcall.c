@@ -48,7 +48,11 @@ struct modcallable {
 	modcallable *parent;
 	struct modcallable *next;
 	const char *name;
-	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE, MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE, MOD_POLICY, MOD_REFERENCE } type;
+	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE,
+#ifdef WITH_UNLANG
+	       MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE,
+#endif
+	       MOD_POLICY, MOD_REFERENCE } type;
 	int method;
 	int actions[RLM_MODULE_NUMCODES];
 };
@@ -293,12 +297,14 @@ static const char *group_name[] = {
 	"group",
 	"load-balance group",
 	"redundant-load-balance group",
+#ifdef WITH_UNLANG
 	"if",
 	"else",
 	"elsif",
 	"update",
 	"switch",
 	"case",
+#endif
 	"policy"
 };
 
@@ -361,6 +367,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		}
 		parent = child->parent;
 
+#ifdef WITH_UNLANG
 		if ((child->type == MOD_ELSE) || (child->type == MOD_ELSIF)) {
 			myresult = stack.result[stack.pointer];
 
@@ -427,7 +434,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			}
 			goto handle_result;
 		}
-
+#endif
 	
 		if (child->type == MOD_REFERENCE) {
 			modref *mr = mod_callabletoref(child);
@@ -452,7 +459,10 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 */
 		if (child->type != MOD_SINGLE) {
 			int count = 1;
-			modcallable *p, *q, *null_case;
+			modcallable *p, *q;
+#ifdef WITH_UNLANG
+			modcallable *null_case;
+#endif
 			modgroup *g = mod_callabletogroup(child);
 
 			stack.pointer++;
@@ -472,12 +482,14 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			stack.priority[stack.pointer] = 0;
 			stack.result[stack.pointer] = default_component_results[component];
 			switch (child->type) {
+#ifdef WITH_UNLANG
 				char buffer[1024];
 
 			case MOD_IF:
 			case MOD_ELSE:
 			case MOD_ELSIF:
 			case MOD_CASE:
+#endif
 			case MOD_GROUP:
 			case MOD_POLICY: /* same as MOD_GROUP */
 				stack.children[stack.pointer] = g->children;
@@ -511,6 +523,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				stack.children[stack.pointer] = q;
 				break;
 
+#ifdef WITH_UNLANG
 			case MOD_SWITCH:
 				radius_xlat(buffer, sizeof(buffer),
 					    child->name, request, NULL);
@@ -531,6 +544,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 				stack.children[stack.pointer] = q;
 				break;
+#endif
 
 			default:
 				DEBUG2("Internal sanity check failed in modcall %d", child->type);
@@ -590,7 +604,6 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 */
 		if (component != RLM_COMPONENT_SESS) request->simul_max = myresult;
 
-
 		/*
 		 *	FIXME: Allow modules to push a modcallable
 		 *	onto this stack.  This should simplify
@@ -646,7 +659,9 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		}
 
 
+#ifdef WITH_UNLANG
 	next_section:
+#endif
 		/*
 		 *	No parent, we must be done.
 		 */
@@ -662,16 +677,20 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 *	Go to the "next" child, whatever that is.
 		 */
 		switch (parent->type) {
+#ifdef WITH_UNLANG
 			case MOD_IF:
 			case MOD_ELSE:
 			case MOD_ELSIF:
 			case MOD_CASE:
+#endif
 			case MOD_GROUP:
 			case MOD_POLICY: /* same as MOD_GROUP */
 				stack.children[stack.pointer] = child->next;
 				break;
 
+#ifdef WITH_UNLANG
 			case MOD_SWITCH:
+#endif
 			case MOD_LOAD_BALANCE:
 				stack.children[stack.pointer] = NULL;
 				break;
@@ -712,12 +731,14 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			       parent->name ? parent->name : "",
 			       fr_int2str(rcode_table, myresult, "??"));
 
+#ifdef WITH_UNLANG
 			if ((parent->type == MOD_IF) ||
 			    (parent->type == MOD_ELSIF)) {
 				if_taken = was_if = TRUE;
 			} else {
 				if_taken = was_if = FALSE;
 			}
+#endif
 
 			/*
 			 *	Unroll the stack.
@@ -1104,6 +1125,7 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 };
 
 
+#ifdef WITH_UNLANG
 static modcallable *do_compile_modupdate(modcallable *parent,
 					 int component, CONF_SECTION *cs,
 					 const char *name2)
@@ -1295,7 +1317,7 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 	csingle->type = MOD_SWITCH;
 	return csingle;
 }
-
+#endif
 
 static modcallable *do_compile_modserver(modcallable *parent,
 					 int component, CONF_ITEM *ci,
@@ -1389,7 +1411,9 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 					 int grouptype,
 					 const char **modname)
 {
+#ifdef WITH_UNLANG
 	int result;
+#endif
 	const char *modrefname;
 	modsingle *single;
 	modcallable *csingle;
@@ -1461,6 +1485,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			csingle->type = MOD_REDUNDANT_LOAD_BALANCE;
 			return csingle;
 
+#ifdef WITH_UNLANG
 		} else 	if (strcmp(modrefname, "if") == 0) {
 			if (!cf_section_name2(cs)) {
 				cf_log_err(ci, "'if' without condition.");
@@ -1581,7 +1606,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			}
 
 			return csingle;
-
+#endif
 		} /* else it's something like sql { fail = 1 ...} */
 
 	} else if (!cf_item_is_pair(ci)) { /* CONF_DATA or some such */

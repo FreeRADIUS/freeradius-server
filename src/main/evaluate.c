@@ -48,6 +48,16 @@ RCSID("$Id$")
 #endif
 
 
+#ifndef NDEBUG
+#ifndef DEBUG4
+#define DEBUG4  if (debug_flag > 4)log_debug
+#endif
+#else
+#define DEBUG4 if (0) log_debug
+#endif
+
+#ifdef WITH_UNLANG
+
 static int all_digits(const char *string)
 {
 	const char *p = string;
@@ -58,14 +68,6 @@ static int all_digits(const char *string)
 
 	return (*p == '\0');
 }
-
-#ifndef NDEBUG
-#ifndef DEBUG4
-#define DEBUG4  if (debug_flag > 4)log_debug
-#endif
-#else
-#define DEBUG4 if (0) log_debug
-#endif
 
 static const char *filler = "????????????????????????????????????????????????????????????????";
 
@@ -818,7 +820,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 	if (evaluate_next_condition) *presult = result;
 	return TRUE;
 }
-
+#endif
 
 static void fix_up(REQUEST *request)
 {
@@ -840,7 +842,6 @@ static void fix_up(REQUEST *request)
 		}
 	}
 }
-
 
 /*
  *	The pairmove() function in src/lib/valuepair.c does all sorts of
@@ -1115,6 +1116,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 }
 
 
+#ifdef WITH_UNLANG
 /*
  *     Copied shamelessly from conffile.c, to simplify the API for
  *     now...
@@ -1243,3 +1245,4 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 
 	return RLM_MODULE_UPDATED;
 }
+#endif

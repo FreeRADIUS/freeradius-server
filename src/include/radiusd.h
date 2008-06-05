@@ -72,6 +72,10 @@ typedef pid_t child_pid_t;
 #define WITH_SESSION_MGMT (1)
 #endif
 
+#ifndef WITHOUT_UNLANG
+#define WITH_UNLANG (1)
+#endif
+
 /*
  *	See util.c
  */
