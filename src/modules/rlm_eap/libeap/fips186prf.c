@@ -139,7 +139,7 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 		memset(zeros, 0, sizeof(zeros));
 		memcpy(zeros, xval.p, 20);
 		fr_SHA1Transform(context.state, zeros);
-		fr_fr_SHA1FinalNoLen(w_0.p, &context);
+		fr_SHA1FinalNoLen(w_0.p, &context);
 
 		/*   c. XKEY = (1 + XKEY + w_0) mod 2^160 */
 		onesixty_add_mod(&sum,  &xkey, &w_0);
@@ -154,7 +154,7 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 		memset(zeros, 0, sizeof(zeros));
 		memcpy(zeros, xval.p, 20);
 		fr_SHA1Transform(context.state, zeros);
-		fr_fr_SHA1FinalNoLen(w_1.p, &context);
+		fr_SHA1FinalNoLen(w_1.p, &context);
 
 		/*   f. XKEY = (1 + XKEY + w_1) mod 2^160 */
 		onesixty_add_mod(&sum,  &xkey, &w_1);
