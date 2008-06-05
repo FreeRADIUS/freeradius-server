@@ -39,6 +39,8 @@ RCSID("$Id$")
 
 #include <fcntl.h>
 
+#ifdef WITH_DETAIL
+
 #define USEC (1000000)
 
 typedef struct listen_detail_t {
@@ -831,3 +833,4 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	return 0;
 }
+#endif

@@ -211,7 +211,9 @@ static const CONF_PARSER server_config[] = {
 
 	{ "debug_level", PW_TYPE_INTEGER, 0, &mainconfig.debug_level, "0"},
 
+#ifdef WITH_PROXY
 	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_requests, "yes" },
+#endif
 	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (const void *) log_config_nodest },
 
 	/*

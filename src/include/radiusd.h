@@ -53,6 +53,22 @@ typedef pid_t child_pid_t;
 #endif
 
 /*
+ *	New defines for minimizing the size of the server, to strip
+ *	out functionality.  In order to ensure that people don't have
+ *	to re-run "configure", after "cvs update", we play some
+ *	special games with the defines.  i.e. any top-level "configure"
+ *	option should set both WITH_FOO and WITHOUT_FOO.  After a few
+ *	weeks, the WITHOUT_FOO can be deleted from the configure script.
+ */
+#ifndef WITHOUT_PROXY
+#define WITH_PROXY (1)
+#endif
+
+#ifndef WITHOUT_DETAIL
+#define WITH_DETAIL (1)
+#endif
+
+/*
  *	See util.c
  */
 typedef struct request_data_t request_data_t;
@@ -109,8 +125,10 @@ struct auth_req {
 #endif
 	RADIUS_PACKET		*packet;
 	RADIUS_PACKET		*proxy;
+#ifdef WITH_PROXY
 	RADIUS_PACKET		*reply;
 	RADIUS_PACKET		*proxy_reply;
+#endif
 	VALUE_PAIR		*config_items;
 	VALUE_PAIR		*username;
 	VALUE_PAIR		*password;
@@ -124,7 +142,9 @@ struct auth_req {
 	int			number; /* internal server number */
 
 	rad_listen_t		*listener;
+#ifdef WITH_PROXY
 	rad_listen_t		*proxy_listener;
+#endif
 
 	int                     simul_max;
 	int                     simul_count;
@@ -147,6 +167,7 @@ struct auth_req {
 	fr_event_callback_t	next_callback;
 
 	int			in_request_hash;
+#ifdef WITH_PROXY
 	int			in_proxy_hash;
 
 	home_server	       	*home_server;
@@ -156,6 +177,7 @@ struct auth_req {
 
 	int			num_proxied_requests;
 	int			num_proxied_responses;
+#endif
 
 	const char		*server;
 	REQUEST			*parent;

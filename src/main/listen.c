@@ -314,10 +314,12 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 #endif
 	}
 
+#ifdef WITH_PROXY
 	/*
 	 *	Proxy sockets don't have clients.
 	 */
 	if (this->type == RAD_LISTEN_PROXY) return 0;
+#endif
 	
 	/*
 	 *	The more specific configurations are preferred to more
@@ -413,6 +415,7 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 }
 
 
+#ifdef WITH_PROXY
 /*
  *	Send a packet to a home server.
  *
@@ -431,6 +434,7 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 	return rad_send(request->proxy, request->packet,
 			request->home_server->secret);
 }
+#endif
 
 
 /*
@@ -641,6 +645,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 }
 
 
+#ifdef WITH_PROXY
 /*
  *	Recieve packets from a proxy socket.
  */
@@ -696,6 +701,7 @@ static int proxy_socket_recv(rad_listen_t *listener,
 
 	return 1;
 }
+#endif
 
 
 static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
@@ -722,6 +728,7 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 			  request->client->secret);
 }
 
+#ifdef WITH_PROXY
 static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	rad_encode(request->proxy, NULL, request->home_server->secret);
@@ -741,6 +748,7 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	return rad_decode(request->proxy_reply, request->proxy,
 			   request->home_server->secret);
 }
+#endif
 
 #ifdef WITH_SNMP
 static int radius_snmp_recv(rad_listen_t *listener,
@@ -782,10 +790,14 @@ static int radius_snmp_print(UNUSED rad_listen_t *this, char *buffer, size_t buf
 static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
 
+#ifdef WITH_PROXY
 	/* proxying */
 	{ common_socket_parse, NULL,
 	  proxy_socket_recv, proxy_socket_send,
 	  socket_print, proxy_socket_encode, proxy_socket_decode },
+#else
+	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+#endif
 
 	/* authentication */
 	{ common_socket_parse, NULL,
@@ -797,10 +809,14 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	  acct_socket_recv, acct_socket_send,
 	  socket_print, client_socket_encode, client_socket_decode},
 
+#ifdef WITH_DETAIL
 	/* detail */
 	{ detail_parse, detail_free,
 	  detail_recv, detail_send,
 	  detail_print, detail_encode, detail_decode },
+#else
+	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+#endif
 
 #ifdef WITH_VMPS
 	/* vlan query protocol */
@@ -858,9 +874,11 @@ static int listen_bind(rad_listen_t *this)
 			}
 			break;
 
+#ifdef WITH_PROXY
 		case RAD_LISTEN_PROXY:
 			sock->port = 0;
 			break;
+#endif
 
 #ifdef WITH_VMPS
 		case RAD_LISTEN_VQP:
@@ -969,9 +987,11 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 		memset(this->data, 0, sizeof(listen_socket_t));
 		break;
 
+#ifdef WITH_DETAIL
 	case RAD_LISTEN_DETAIL:
 		this->data = NULL;
 		break;
+#endif
 
 	default:
 		rad_assert("Unsupported option!" == NULL);
@@ -982,6 +1002,7 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 }
 
 
+#ifdef WITH_PROXY
 /*
  *	Externally visible function for creating a new proxy LISTENER.
  *
@@ -1050,13 +1071,17 @@ rad_listen_t *proxy_new_listener()
 	listen_free(&this);
 	return NULL;
 }
-
+#endif
 
 static const FR_NAME_NUMBER listen_compare[] = {
 	{ "auth",	RAD_LISTEN_AUTH },
 	{ "acct",	RAD_LISTEN_ACCT },
+#ifdef WITH_DETAIL
 	{ "detail",	RAD_LISTEN_DETAIL },
+#endif
+#ifdef WITH_PROXY
 	{ "proxy",	RAD_LISTEN_PROXY },
+#endif
 #ifdef WITH_VMPS
 	{ "vmps",	RAD_LISTEN_VQP },
 #endif
@@ -1147,7 +1172,9 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 	rad_listen_t	*this;
 	fr_ipaddr_t	server_ipaddr;
 	int		auth_port = 0;
+#ifdef WITH_PROXY
 	int		defined_proxy = 0;
+#endif
 
 	/*
 	 *	We shouldn't be called with a pre-existing list.
@@ -1306,7 +1333,9 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 				return -1;
 			}
 
+#ifdef WITH_PROXY
 			if (this->type == RAD_LISTEN_PROXY) defined_proxy = 1;
+#endif
 			
 			*last = this;
 			last = &(this->next);
@@ -1327,7 +1356,9 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 			return -1;
 		}
 
+#ifdef WITH_PROXY
 		if (this->type == RAD_LISTEN_PROXY) defined_proxy = 1;
+#endif
 
 		*last = this;
 		last = &(this->next);
@@ -1353,11 +1384,13 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 				return -1;
 			}
 			
+#ifdef WITH_PROXY
 			if (this->type == RAD_LISTEN_PROXY) {
 				radlog(L_ERR, "Error: listen type \"proxy\" Cannot appear in a virtual server section");
 				listen_free(head);
 				return -1;
 			}
+#endif
 
 			*last = this;
 			last = &(this->next);
@@ -1369,6 +1402,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 	 *	Otherwise, don't do anything.
 	 */
  do_proxy:
+#ifdef WITH_PROXY
 	if (mainconfig.proxy_requests == TRUE) {
 		int		port = -1;
 		listen_socket_t *sock = NULL;
@@ -1443,7 +1477,9 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		}
 	}
 
- do_snmp:
+ do_snmp:			/* used only in proxy code. */
+#endif
+
 #ifdef WITH_SNMP
 	if (radius_snmp_init(config)) {
 		this = rad_malloc(sizeof(*this));

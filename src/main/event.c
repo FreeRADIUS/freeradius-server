@@ -63,7 +63,9 @@ static int self_pipe[2];
 #endif
 
 #ifdef HAVE_PTHREAD_H
+#ifdef WITH_PROXY
 static pthread_mutex_t	proxy_mutex;
+#endif
 
 #define PTHREAD_MUTEX_LOCK if (have_children) pthread_mutex_lock
 #define PTHREAD_MUTEX_UNLOCK if (have_children) pthread_mutex_unlock
@@ -77,6 +79,7 @@ static pthread_mutex_t	proxy_mutex;
 
 #define INSERT_EVENT(_function, _ctx) if (!fr_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
 
+#ifdef WITH_PROXY
 static fr_packet_list_t *proxy_list = NULL;
 
 /*
@@ -85,6 +88,9 @@ static fr_packet_list_t *proxy_list = NULL;
  */
 static int		proxy_fds[32];
 static rad_listen_t	*proxy_listeners[32];
+#else
+#define remove_from_proxy_hash(foo)
+#endif
 
 static void request_post_handler(REQUEST *request);
 static void wait_a_bit(void *ctx);
@@ -199,6 +205,7 @@ static void remove_from_request_hash(REQUEST *request)
 }
 
 
+#ifdef WITH_PROXY
 static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 {
 	RADIUS_PACKET **proxy_p;
@@ -428,7 +435,7 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 
 	INSERT_EVENT(wait_for_proxy_id_to_expire, request);
 }
-
+#endif
 
 static void wait_for_child_to_die(void *ctx)
 {
@@ -450,10 +457,12 @@ static void wait_for_child_to_die(void *ctx)
 	DEBUG2("Child is finally responsive for request %d", request->number);
 	remove_from_request_hash(request);
 
+#ifdef WITH_PROXY
 	if (request->proxy) {
 		wait_for_proxy_id_to_expire(request);
 		return;
 	}
+#endif
 
 	request_free(&request);
 }
@@ -469,10 +478,12 @@ static void cleanup_delay(void *ctx)
 
 	remove_from_request_hash(request);
 
+#ifdef WITH_PROXY
 	if (request->proxy && request->in_proxy_hash) {
 		wait_for_proxy_id_to_expire(request);
 		return;
 	}
+#endif
 
 	DEBUG2("Cleaning up request %d ID %d with timestamp +%d",
 	       request->number, request->packet->id,
@@ -501,6 +512,7 @@ static void reject_delay(void *ctx)
 }
 
 
+#ifdef WITH_PROXY
 static void revive_home_server(void *ctx)
 {
 	home_server *home = ctx;
@@ -902,7 +914,7 @@ static void no_response_to_proxied_request(void *ctx)
 		return;
 	}
 }
-
+#endif
 
 static void wait_a_bit(void *ctx)
 {
@@ -939,6 +951,7 @@ static void wait_a_bit(void *ctx)
 			}
 			request->delay += request->delay >> 1;
 
+#ifdef WITH_DETAIL
 			/*
 			 *	Cap wait at some sane value for detail
 			 *	files.
@@ -947,6 +960,7 @@ static void wait_a_bit(void *ctx)
 			    (request->delay > (request->root->max_request_time * USEC))) {
 				request->delay = request->root->max_request_time * USEC;
 			}
+#endif
 
 			request->when = now;
 			tv_add(&request->when, request->delay);
@@ -1048,6 +1062,7 @@ static void wait_a_bit(void *ctx)
 }
 
 
+#ifdef WITH_PROXY
 static int process_proxy_reply(REQUEST *request)
 {
 	int rcode;
@@ -1124,6 +1139,7 @@ static int process_proxy_reply(REQUEST *request)
 
 	return 1;
 }
+#endif
 
 static int request_pre_handler(REQUEST *request)
 {
@@ -1170,14 +1186,17 @@ static int request_pre_handler(REQUEST *request)
 		request->username = pairfind(request->packet->vps,
 					     PW_USER_NAME);
 
+#ifdef WITH_PROXY
 	} else {
 		return process_proxy_reply(request);
+#endif
 	}
 
 	return 1;
 }
 
 
+#ifdef WITH_PROXY
 /*
  *	Do state handling when we proxy a request.
  */
@@ -1360,6 +1379,7 @@ static int successfully_proxied_request(REQUEST *request)
 	pairadd(&request->packet->vps,
 		pairmake("Realm", realmname, T_OP_EQ));
 
+#ifdef WITH_DETAIL
 	/*
 	 *	We read the packet from a detail file, AND it came from
 	 *	the server we're about to send it to.  Don't do that.
@@ -1372,6 +1392,7 @@ static int successfully_proxied_request(REQUEST *request)
 		DEBUG2("    rlm_realm: Packet came from realm %s, proxy cancelled", realmname);
 		return 0;
 	}
+#endif
 
 	/*
 	 *	Allocate the proxy packet, only if it wasn't already
@@ -1544,6 +1565,7 @@ static int successfully_proxied_request(REQUEST *request)
 	
 	return 1;
 }
+#endif
 
 
 static void request_post_handler(REQUEST *request)
@@ -1571,6 +1593,7 @@ static void request_post_handler(REQUEST *request)
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 	}
 
+#ifdef WITH_PROXY
 	if (request->root->proxy_requests &&
 	    !request->in_proxy_hash &&
 	    (request->reply->code == 0) &&
@@ -1600,6 +1623,7 @@ static void request_post_handler(REQUEST *request)
 		 *	OR we proxied it internally to a virutal server.
 		 */
 	}
+#endif
 
 	/*
 	 *	Fake requests don't get encoded or signed.  The caller
@@ -1613,11 +1637,13 @@ static void request_post_handler(REQUEST *request)
 		return;
 	}
 
+#ifdef WITH_PROXY
 	/*
 	 *	Copy Proxy-State from the request to the reply.
 	 */
 	vp = paircopy2(request->packet->vps, PW_PROXY_STATE);
 	if (vp) pairadd(&request->reply->vps, vp);
+#endif
 
 	/*
 	 *	Access-Requests get delayed or cached.
@@ -1734,6 +1760,7 @@ static void request_post_handler(REQUEST *request)
 
 	pairfree(&request->reply->vps);
 
+#ifdef WITH_PROXY
 	if (request->proxy) {
 		pairfree(&request->proxy->vps);
 
@@ -1752,6 +1779,7 @@ static void request_post_handler(REQUEST *request)
 			request->home_server = NULL;
 		}
 	}
+#endif
 
 	DEBUG2("Finished request %d.", request->number);
 
@@ -1766,7 +1794,9 @@ static void request_post_handler(REQUEST *request)
 
 static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 {
+#ifdef WITH_PROXY
 	char buffer[128];
+#endif
 
 	RAD_SNMP_TYPE_INC(request->listener, total_dup_requests);
 	RAD_SNMP_CLIENT_INC(request->listener, client, dup_requests);
@@ -1774,7 +1804,9 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 	switch (request->child_state) {
 	case REQUEST_QUEUED:
 	case REQUEST_RUNNING:
+#ifdef WITH_PROXY
 	discard:
+#endif
 		radlog(L_ERR, "Discarding duplicate request from "
 		       "client %s port %d - ID: %d due to unfinished request %d",
 		       client->shortname,
@@ -1782,6 +1814,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		       request->number);
 		break;
 
+#ifdef WITH_PROXY
 	case REQUEST_PROXIED:
 		/*
 		 *	We're not supposed to have duplicate
@@ -1875,6 +1908,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		request->proxy_listener->send(request->proxy_listener,
 					      request);
 		break;
+#endif
 
 	case REQUEST_REJECT_DELAY:
 		DEBUG2("Waiting to send Access-Reject "
@@ -2142,6 +2176,7 @@ int received_request(rad_listen_t *listener,
 }
 
 
+#ifdef WITH_PROXY
 REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 {
 	char		buffer[128];
@@ -2298,8 +2333,9 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 
 	return request;
 }
+#endif
 
-
+#ifdef WITH_DETAIL
 static void event_detail_timer(void *ctx)
 {
 	rad_listen_t *listener = ctx;
@@ -2312,6 +2348,7 @@ static void event_detail_timer(void *ctx)
 		}
 	}
 }
+#endif
 
 static void handle_signal_self(int flag)
 {
@@ -2344,6 +2381,7 @@ static void handle_signal_self(int flag)
 		fr_event_loop_exit(el, 0x80);
 	}
 
+#ifdef WITH_DETAIL
 	if ((flag & RADIUS_SIGNAL_SELF_DETAIL) != 0) {
 		rad_listen_t *this;
 		
@@ -2374,6 +2412,7 @@ static void handle_signal_self(int flag)
 			}
 		}
 	}
+#endif
 
 	if ((flag & RADIUS_SIGNAL_SELF_NEW_FD) != 0) {
 		rad_listen_t *this;
@@ -2506,6 +2545,7 @@ static void event_poll_fds(UNUSED void *ctx)
 		 *	We have an FD.  Start watching it.
 		 */
 		if (this->fd >= 0) {
+#ifdef WITH_DETAIL
 			/*
 			 *	... unless it's a detail file.  In
 			 *	that case, we rely on the signal to
@@ -2513,6 +2553,7 @@ static void event_poll_fds(UNUSED void *ctx)
 			 *	processing the detail file.
 			 */
 			if (this->type == RAD_LISTEN_DETAIL) continue;
+#endif
 
 			/*
 			 *	FIXME: this should be SNMP handler,
@@ -2589,7 +2630,6 @@ static void event_status(struct timeval *wake)
  */
 int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 {
-	int i;
 	int has_snmp_listener = FALSE;
 	rad_listen_t *this, *head = NULL;
 
@@ -2612,6 +2652,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	 */
 	have_children = spawn_flag;
 
+#ifdef WITH_PROXY
 	if (mainconfig.proxy_requests) {
 		/*
 		 *	Create the tree for managing proxied requests and
@@ -2628,6 +2669,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		}
 #endif
 	}
+#endif
 
 	/*
 	 *	Just before we spawn the child threads, force the log
@@ -2675,10 +2717,16 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	}
 #endif
 
+#ifdef WITH_PROXY
 	/*
 	 *	Mark the proxy Fd's as unused.
 	 */
-	for (i = 0; i < 32; i++) proxy_fds[i] = -1;
+	{
+		int i;
+
+		for (i = 0; i < 32; i++) proxy_fds[i] = -1;
+	}
+#endif
 
 	DEBUG2("%s: #### Opening IP addresses and Ports ####",
 	       mainconfig.name);
@@ -2698,16 +2746,21 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		this->print(this, buffer, sizeof(buffer));
 
 		switch (this->type) {
+#ifdef WITH_DETAIL
 		case RAD_LISTEN_DETAIL:
 			DEBUG("Listening on %s", buffer);
 			has_detail_listener = TRUE;
 			break;
+#endif
 
+#ifdef WITH_SNMP
 		case RAD_LISTEN_SNMP:
 			DEBUG("Listening on SNMP %s", buffer);
 			has_snmp_listener = TRUE;
 			break;
+#endif
 
+#ifdef WITH_PROXY
 		case RAD_LISTEN_PROXY:
 			rad_assert(proxy_fds[this->fd & 0x1f] == -1);
 			rad_assert(proxy_listeners[this->fd & 0x1f] == NULL);
@@ -2719,6 +2772,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 				rad_assert(0 == 1);
 			}
 			/* FALL-THROUGH */
+#endif
 
 		default:
 			DEBUG("Listening on %s", buffer);
@@ -2773,7 +2827,9 @@ static int request_hash_cb(UNUSED void *ctx, void *data)
 {
 	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
 
+#ifdef WITH_PROXY
 	rad_assert(request->in_proxy_hash == FALSE);
+#endif
 
 	fr_event_delete(el, &request->ev);
 	remove_from_request_hash(request);
@@ -2783,6 +2839,7 @@ static int request_hash_cb(UNUSED void *ctx, void *data)
 }
 
 
+#ifdef WITH_PROXY
 static int proxy_hash_cb(UNUSED void *ctx, void *data)
 {
 	REQUEST *request = fr_packet2myptr(REQUEST, proxy, data);
@@ -2797,7 +2854,7 @@ static int proxy_hash_cb(UNUSED void *ctx, void *data)
 
 	return 0;
 }
-
+#endif
 
 void radius_event_free(void)
 {
@@ -2807,6 +2864,7 @@ void radius_event_free(void)
 	 *	are empty.
 	 */
 
+#ifdef WITH_PROXY
 	/*
 	 *	There are requests in the proxy hash that aren't
 	 *	referenced from anywhere else.  Remove them first.
@@ -2818,6 +2876,7 @@ void radius_event_free(void)
 		fr_packet_list_free(proxy_list);
 		proxy_list = NULL;
 	}
+#endif
 
 	fr_packet_list_walk(pl, NULL, request_hash_cb);
 

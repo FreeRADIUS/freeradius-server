@@ -65,11 +65,6 @@ static realm_regex_t *realms_regex = NULL;
 
 #endif /* HAVE_REGEX_H */
 
-static rbtree_t	*home_servers_byaddr = NULL;
-static rbtree_t	*home_servers_byname = NULL;
-
-static rbtree_t	*home_pools_byname = NULL;
-
 typedef struct realm_config_t {
 	CONF_SECTION	*cs;
 	int		dead_time;
@@ -80,6 +75,12 @@ typedef struct realm_config_t {
 } realm_config_t;
 
 static realm_config_t *realm_config = NULL;
+
+#ifdef WITH_PROXY
+static rbtree_t	*home_servers_byaddr = NULL;
+static rbtree_t	*home_servers_byname = NULL;
+
+static rbtree_t	*home_pools_byname = NULL;
 
 /*
  *  Map the proxy server configuration parameters to variables.
@@ -107,6 +108,7 @@ static const CONF_PARSER proxy_config[] = {
 
 	{ NULL, -1, 0, NULL, NULL }
 };
+#endif
 
 static int realm_name_cmp(const void *one, const void *two)
 {
@@ -117,6 +119,7 @@ static int realm_name_cmp(const void *one, const void *two)
 }
 
 
+#ifdef WITH_PROXY
 static int home_server_name_cmp(const void *one, const void *two)
 {
 	const home_server *a = one;
@@ -146,7 +149,6 @@ static int home_server_addr_cmp(const void *one, const void *two)
 
 	return fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
 }
-
 
 static int home_pool_name_cmp(const void *one, const void *two)
 {
@@ -216,10 +218,11 @@ static size_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
 
 	return strlen(out);
 }
-
+#endif
 
 void realms_free(void)
 {
+#ifdef WITH_PROXY
 	rbtree_free(home_servers_byname);
 	home_servers_byname = NULL;
 
@@ -228,6 +231,7 @@ void realms_free(void)
 
 	rbtree_free(home_pools_byname);
 	home_pools_byname = NULL;
+#endif
 
 	rbtree_free(realms_byname);
 	realms_byname = NULL;
@@ -248,6 +252,7 @@ void realms_free(void)
 }
 
 
+#ifdef WITH_PROXY
 static struct in_addr hs_ip4addr;
 static struct in6_addr hs_ip6addr;
 static char *hs_type = NULL;
@@ -798,7 +803,7 @@ static int server_pool_add(realm_config_t *rc,
 	free(pool);
 	return 0;
 }
-
+#endif
 
 static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			  const char *realm,
@@ -806,10 +811,19 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			  home_pool_type_t ldflag, home_pool_t **pool_p,
 			  int type, const char *server)
 {
+#ifdef WITH_PROXY
 	int i, insert_point, num_home_servers;
 	home_server myhome, *home;
 	home_pool_t mypool, *pool;
 	CONF_SECTION *subcs;
+#else
+	rc = rc;		/* -Wunused */
+	realm = realm;
+	secret = secret;
+	ldflag = ldflag;
+	type = type;
+	server = server;
+#endif
 
 	/*
 	 *	LOCAL realms get sanity checked, and nothing else happens.
@@ -822,6 +836,10 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		return 1;
 	}
 
+#ifndef WITH_PROXY
+	return 0;		/* Not proxying.  Can't do non-LOCAL realms */
+
+#else
 	mypool.name = realm;
 	mypool.server_type = type;
 	pool = rbtree_finddata(home_pools_byname, &mypool);
@@ -1029,6 +1047,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	*pool_p = pool;
 
 	return 1;
+#endif
 }
 
 static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
@@ -1155,6 +1174,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 }
 
 
+#ifdef WITH_PROXY
 static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
 			     const char *name, home_pool_t **dest,
 			     int server_type, int do_print)
@@ -1201,6 +1221,7 @@ static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
 
 	return 1;
 }
+#endif
 
 
 static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
@@ -1208,8 +1229,10 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	const char *name2;
 	REALM *r = NULL;
 	CONF_PAIR *cp;
+#ifdef WITH_PROXY
 	home_pool_t *auth_pool, *acct_pool;
 	const char *auth_pool_name, *acct_pool_name;
+#endif
 
 	name2 = cf_section_name1(cs);
 	if (!name2 || (strcasecmp(name2, "realm") != 0)) {
@@ -1223,6 +1246,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		return 0;
 	}
 
+#ifdef WITH_PROXY
 	auth_pool = acct_pool = NULL;
 	auth_pool_name = acct_pool_name = NULL;
 
@@ -1281,9 +1305,11 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 			return 0;
 		}
 	}
+#endif
 
 	cf_log_info(cs, " realm %s {", name2);
 
+#ifdef WITH_PROXY
 	/*
 	 *	The realm MAY already exist if it's an old-style realm.
 	 *	In that case, merge the old-style realm with this one.
@@ -1303,6 +1329,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		cf_log_info(cs, " } # realm %s", name2);
 		return 1;
 	}
+#endif
 
 #ifdef HAVE_REGEX_H
 	if (name2[0] == '~') {
@@ -1325,10 +1352,11 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	memset(r, 0, sizeof(*r));
 
 	r->name = name2;
+	r->striprealm = 1;
+#ifdef WITH_PROXY
 	r->auth_pool = auth_pool;
 	r->acct_pool = acct_pool;
-	r->striprealm = 1;
-
+	
 	if (auth_pool_name &&
 	    (auth_pool_name == acct_pool_name)) { /* yes, ptr comparison */
 		cf_log_info(cs, "\tpool = %s", auth_pool_name);
@@ -1336,6 +1364,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		if (auth_pool_name) cf_log_info(cs, "\tauth_pool = %s", auth_pool_name);
 		if (acct_pool_name) cf_log_info(cs, "\tacct_pool = %s", acct_pool_name);
 	}
+#endif
 
 	cp = cf_pair_find(cs, "nostrip");
 	if (cp && (cf_pair_value(cp) == NULL)) {
@@ -1417,6 +1446,7 @@ int realms_init(CONF_SECTION *config)
 		return 0;
 	}
 
+#ifdef WITH_PROXY
 	home_servers_byaddr = rbtree_create(home_server_addr_cmp, free, 0);
 	if (!home_servers_byaddr) {
 		realms_free();
@@ -1434,11 +1464,13 @@ int realms_init(CONF_SECTION *config)
 		realms_free();
 		return 0;
 	}
+#endif
 
 	rc = rad_malloc(sizeof(*rc));
 	memset(rc, 0, sizeof(*rc));
 	rc->cs = config;
 
+#ifdef WITH_PROXY
 	cs = cf_subsection_find_next(config, NULL, "proxy");
 	if (cs) {
 		cf_section_parse(cs, rc, proxy_config);
@@ -1449,6 +1481,7 @@ int realms_init(CONF_SECTION *config)
 		rc->fallback = 0;
 		rc->wake_all_if_all_dead= 0;
 	}
+#endif
 
 	for (cs = cf_subsection_find_next(config, NULL, "realm");
 	     cs != NULL;
@@ -1460,8 +1493,10 @@ int realms_init(CONF_SECTION *config)
 		}
 	}
 
+#ifdef WITH_PROXY
 	xlat_register("home_server", xlat_home_server, NULL);
 	xlat_register("home_server_pool", xlat_server_pool, NULL);
+#endif
 
 	/*
 	 *	Swap pointers atomically.
@@ -1553,6 +1588,7 @@ REALM *realm_find(const char *name)
 }
 
 
+#ifdef WITH_PROXY
 home_server *home_server_ldb(const char *realmname,
 			     home_pool_t *pool, REQUEST *request)
 {
@@ -1778,3 +1814,4 @@ home_server *home_server_find(fr_ipaddr_t *ipaddr, int port)
 
 	return rbtree_finddata(home_servers_byaddr, &myhome);
 }
+#endif
