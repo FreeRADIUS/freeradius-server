@@ -54,7 +54,6 @@ typedef struct section_type_value_t {
 	int		attr;
 } section_type_value_t;
 
-
 /*
  *	Ordered by component
  */
@@ -68,6 +67,64 @@ static const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 	{ "post-proxy",   "Post-Proxy-Type", PW_POST_PROXY_TYPE },
 	{ "post-auth",    "Post-Auth-Type",  PW_POST_AUTH_TYPE },
 };
+
+
+#ifdef WITHOUT_LIBLTDL
+typedef struct lt_dlmodule_t {
+  const char	*name;
+  void		*ref;
+} lt_dlmodule_t;
+
+/*
+ *	Define modules here.
+ */
+extern module_t rlm_pap;
+extern module_t rlm_chap;
+extern module_t rlm_eap;
+
+/*
+ *	EAP structures are defined elsewhere.
+ */
+typedef struct eap_type_t EAP_TYPE;
+
+/*
+ *	And so on for other EAP types.
+ */
+extern EAP_TYPE rlm_eap_md5;
+
+static const lt_dlmodule_t lt_dlmodules[] = {
+	{ "rlm_pap", &rlm_pap },
+	{ "rlm_chap", &rlm_chap },
+	{ "rlm_eap", &rlm_eap },
+	{ "rlm_eap_md5", &rlm_eap_md5 },
+	
+	/*
+	 *	Add other modules here.
+	 */
+		
+	{ NULL, NULL }
+};
+
+
+lt_dlhandle lt_dlopenext(const char *name)
+{
+	int i;
+
+	for (i = 0; lt_dlmodules[i].name != NULL; i++) {
+		if (strcmp(name, lt_dlmodules[i].name) == 0) {
+			return lt_dlmodules[i].ref;
+		}
+	}
+
+	return NULL;
+}
+
+void *lt_dlsym(lt_dlhandle handle, UNUSED const char *symbol)
+{
+	return handle;
+}
+#endif /* WITHOUT_LIBLTDL */
+
 
 static void indexed_modcallable_free(void *data)
 {

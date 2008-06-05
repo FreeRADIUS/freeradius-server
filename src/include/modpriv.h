@@ -4,7 +4,22 @@
  * Version: $Id$ */
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+
+#ifndef WITHOUT_LIBLTDL
 #include "ltdl.h"
+#else
+typedef void *lt_dlhandle;
+
+lt_dlhandle lt_dlopenext(const char *name);
+void *lt_dlsym(lt_dlhandle handle, const char *symbol);
+
+#define LTDL_SET_PRELOADED_SYMBOLS(_x)
+#define lt_dlinit(_x) (0)
+#define lt_dlclose(_x)
+#define lt_dlexit(_x)
+#define lt_dlerror(foo) "Internal error"
+#define lt_dlsetsearchpath(_x)
+#endif
 
 /*
  *	Keep track of which modules we've loaded.
