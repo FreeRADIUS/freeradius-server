@@ -26,10 +26,10 @@ void fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context);
 #include <openssl/sha.h>
 
 #define fr_SHA1_CTX	SHA_CTX
-#define fr_SHA1Init	SHA_Init
-#define fr_SHA1Update	SHA_Update
-#define fr_SHA1Final	SHA_Final
-#define fr_SHA1Transform SHA_Transform
+#define fr_SHA1Init	SHA1_Init
+#define fr_SHA1Update	SHA1_Update
+#define fr_SHA1Final	SHA1_Final
+#define fr_SHA1Transform SHA1_Transform
 #endif
 
 /*
