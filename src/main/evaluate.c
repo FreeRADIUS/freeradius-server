@@ -233,6 +233,7 @@ static int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 		vp_name += 6;
 		vps = myrequest->reply->vps;
 
+#ifdef WITH_PROXY
 	} else if (strncmp(vp_name, "proxy-request:", 14) == 0) {
 		vp_name += 14;
 		if (request->proxy) vps = myrequest->proxy->vps;
@@ -240,6 +241,7 @@ static int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 	} else if (strncmp(vp_name, "proxy-reply:", 12) == 0) {
 		vp_name += 12;
 		if (request->proxy_reply) vps = myrequest->proxy_reply->vps;
+#endif
 
 	} else if (strncmp(vp_name, "config:", 7) == 0) {
 		vp_name += 7;
@@ -1169,11 +1171,13 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	} else if (strcmp(name, "reply") == 0) {
 		output_vps = &request_vps->reply->vps;
 
+#ifdef WITH_PROXY
 	} else if (strcmp(name, "proxy-request") == 0) {
 		if (request->proxy) output_vps = &request_vps->proxy->vps;
 
 	} else if (strcmp(name, "proxy-reply") == 0) {
 		if (request->proxy_reply) output_vps = &request->proxy_reply->vps;
+#endif
 
 	} else if (strcmp(name, "config") == 0) {
 		output_vps = &request_vps->config_items;

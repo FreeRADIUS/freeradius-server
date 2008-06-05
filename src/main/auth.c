@@ -188,7 +188,11 @@ static int rad_check_password(REQUEST *request)
 	 *  that means it is accepted and we do no further
 	 *  authentication
 	 */
-	if ((auth_type == PW_AUTHTYPE_ACCEPT) || (request->proxy)) {
+	if ((auth_type == PW_AUTHTYPE_ACCEPT)
+#ifdef WITH_PROXY
+	    || (request->proxy)
+#endif
+	    ) {
 		DEBUG2("  rad_check_password: Auth-Type = Accept, accepting the user");
 		return 0;
 	}
@@ -460,6 +464,7 @@ int rad_authenticate(REQUEST *request)
 
 	password = "";
 
+#ifdef WITH_PROXY
 	/*
 	 *	If this request got proxied to another server, we need
 	 *	to check whether it authenticated the request or not.
@@ -499,6 +504,7 @@ int rad_authenticate(REQUEST *request)
 			return RLM_MODULE_REJECT;
 		}
 	}
+#endif
 
 	/*
 	 *	Get the username from the request.
@@ -586,7 +592,10 @@ autz_redo:
 	 *	modules has decided that a proxy should be used. If
 	 *	so, get out of here and send the packet.
 	 */
-	if ((request->proxy == NULL) &&
+	if (
+#ifdef WITH_PROXY
+	    (request->proxy == NULL) &&
+#endif
 	    ((tmp = pairfind(request->config_items, PW_PROXY_TO_REALM)) != NULL)) {
 		REALM *realm;
 
@@ -614,7 +623,10 @@ autz_redo:
 		}
 	}
 
+#ifdef WITH_PROXY
  authenticate:
+#endif
+
 	/*
 	 *	Perhaps there is a Stripped-User-Name now.
 	 */

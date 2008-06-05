@@ -39,10 +39,17 @@ int rad_accounting(REQUEST *request)
 {
 	int result = RLM_MODULE_OK;
 
+
+#ifdef WITH_PROXY
+#define WAS_PROXIED (request->proxy)
+#else
+#define WAS_PROXIED (0)
+#endif
+
 	/*
 	 *	Run the modules only once, before proxying.
 	 */
-	if (!request->proxy) {
+	if (!WAS_PROXIED) {
 		VALUE_PAIR	*vp;
 		int		acct_type = 0;
 

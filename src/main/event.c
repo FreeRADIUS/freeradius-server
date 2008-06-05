@@ -1163,13 +1163,16 @@ static int request_pre_handler(REQUEST *request)
 		return 1;
 	}
 
+#ifdef WITH_PROXY
 	/*
 	 *	Put the decoded packet into it's proper place.
 	 */
 	if (request->proxy_reply != NULL) {
 		rcode = request->proxy_listener->decode(request->proxy_listener,
 							request);
-	} else if (request->packet->vps == NULL) {
+	} else
+#endif
+	if (request->packet->vps == NULL) {
 		rcode = request->listener->decode(request->listener, request);
 
 	} else {
@@ -1182,8 +1185,11 @@ static int request_pre_handler(REQUEST *request)
 		return 0;
 	}
 
-	if (!request->proxy) {
-		request->username = pairfind(request->packet->vps,
+#ifdef WITH_PROXY
+	if (!request->proxy)
+#endif
+	  {
+		  request->username = pairfind(request->packet->vps,
 					     PW_USER_NAME);
 
 #ifdef WITH_PROXY

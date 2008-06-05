@@ -200,14 +200,18 @@ void request_free(REQUEST **request_ptr)
 	if (request->packet)
 		rad_free(&request->packet);
 
+#ifdef WITH_PROXY
 	if (request->proxy)
 		rad_free(&request->proxy);
+#endif
 
 	if (request->reply)
 		rad_free(&request->reply);
 
+#ifdef WITH_PROXY
 	if (request->proxy_reply)
 		rad_free(&request->proxy_reply);
+#endif
 
 	if (request->config_items)
 		pairfree(&request->config_items);
@@ -238,7 +242,9 @@ void request_free(REQUEST **request_ptr)
 	request->magic = 0x01020304;	/* set the request to be nonsense */
 #endif
 	request->client = NULL;
+#ifdef WITH_PROXY
 	request->home_server = NULL;
+#endif
 	free(request);
 
 	*request_ptr = NULL;
@@ -354,9 +360,13 @@ REQUEST *request_alloc(void)
 #ifndef NDEBUG
 	request->magic = REQUEST_MAGIC;
 #endif
+#ifdef WITH_PROXY
 	request->proxy = NULL;
+#endif
 	request->reply = NULL;
+#ifdef WITH_PROXY
 	request->proxy_reply = NULL;
+#endif
 	request->config_items = NULL;
 	request->username = NULL;
 	request->password = NULL;

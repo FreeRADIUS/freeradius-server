@@ -122,13 +122,17 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		break;
 
 	case 3:
+#ifdef WITH_PROXY
 		if (request->proxy) vps = request->proxy->vps;
 		packet = request->proxy;
+#endif
 		break;
 
 	case 4:
+#ifdef WITH_PROXY
 		if (request->proxy_reply) vps = request->proxy_reply->vps;
 		packet = request->proxy_reply;
+#endif
 		break;
 
 	case 5:
