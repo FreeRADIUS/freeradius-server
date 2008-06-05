@@ -450,15 +450,11 @@ int rad_postauth(REQUEST *request)
 int rad_authenticate(REQUEST *request)
 {
 	VALUE_PAIR	*namepair;
-	VALUE_PAIR	*check_item;
 	VALUE_PAIR	*auth_item = NULL;
 	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
 	int		result;
-	char		umsg[MAX_STRING_LEN + 1];
-	const char	*user_msg = NULL;
 	const char	*password;
-	char		logstr[1024];
 	char		autz_retry = 0;
 	int		autz_type = 0;
 
@@ -680,9 +676,14 @@ autz_redo:
 		}
 	}
 
+#ifdef WITH_SESSION_MGMT
 	if (result >= 0 &&
 	    (check_item = pairfind(request->config_items, PW_SIMULTANEOUS_USE)) != NULL) {
 		int r, session_type = 0;
+		VALUE_PAIR	*check_item;
+		char		logstr[1024];
+		char		umsg[MAX_STRING_LEN + 1];
+		const char	*user_msg = NULL;
 
 		tmp = pairfind(request->config_items, PW_SESSION_TYPE);
 		if (tmp) {
@@ -738,6 +739,7 @@ autz_redo:
 			}
 		}
 	}
+#endif
 
 	/*
 	 *	Result should be >= 0 here - if not, it means the user

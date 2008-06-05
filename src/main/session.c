@@ -24,12 +24,14 @@
 RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/modules.h>
 #include	<freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_SYS_WAIT_H
 #include	<sys/wait.h>
 #endif
 
+#ifdef WITH_SESSION_MGMT
 /*
  *	End a session by faking a Stop packet to all accounting modules.
  */
@@ -216,6 +218,25 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	return 2;
 }
 #else
+int rad_check_ts(UNUSED uint32_t nasaddr, UNUSED unsigned int portnum,
+		 UNUSED const char *user, UNUSED const char *session_id)
+{
+	radlog(L_ERR, "Simultaneous-Use is not supported");
+	return 2;
+}
+#endif
+
+#else
+/* WITH_SESSION_MGMT */
+
+int session_zap(UNUSED REQUEST *request, UNUSED uint32_t nasaddr, UNUSED unsigned int port,
+		UNUSED const char *user,
+		UNUSED const char *sessionid, UNUSED uint32_t cliaddr, UNUSED char proto,
+		UNUSED int session_time)
+{
+	return RLM_MODULE_FAIL;
+}
+
 int rad_check_ts(UNUSED uint32_t nasaddr, UNUSED unsigned int portnum,
 		 UNUSED const char *user, UNUSED const char *session_id)
 {

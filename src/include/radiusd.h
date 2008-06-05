@@ -68,6 +68,10 @@ typedef pid_t child_pid_t;
 #define WITH_DETAIL (1)
 #endif
 
+#ifndef WITHOUT_SESSION_MGMT
+#define WITH_SESSION_MGMT (1)
+#endif
+
 /*
  *	See util.c
  */
@@ -148,9 +152,12 @@ struct auth_req {
 	rad_listen_t		*proxy_listener;
 #endif
 
-	int                     simul_max;
+
+	int                     simul_max; /* see modcall.c && xlat.c */
+#ifdef WITH_SESSION_MGMT
 	int                     simul_count;
 	int                     simul_mpp; /* WEIRD: 1 is false, 2 is true */
+#endif
 
 	int			options; /* miscellanous options */
 	const char		*module; /* for debugging unresponsive children */

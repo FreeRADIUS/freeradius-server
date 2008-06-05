@@ -1147,6 +1147,7 @@ int module_accounting(int acct_type, REQUEST *request)
 	return indexed_modcall(RLM_COMPONENT_ACCT, acct_type, request);
 }
 
+#ifdef WITH_SESSION_MGMT
 /*
  *	See if a user is already logged in.
  *
@@ -1172,7 +1173,9 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
 
 	return (request->simul_count < maxsimul) ? 0 : request->simul_mpp;
 }
+#endif
 
+#ifdef WITH_PROXY
 /*
  *	Do pre-proxying for ALL configured sessions
  */
@@ -1188,6 +1191,7 @@ int module_post_proxy(int type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_POST_PROXY, type, request);
 }
+#endif
 
 /*
  *	Do post-authentication for ALL configured sessions
