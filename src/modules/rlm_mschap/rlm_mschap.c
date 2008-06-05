@@ -49,6 +49,7 @@ RCSID("$Id$")
 #include	<freeradius-devel/modules.h>
 #include	<freeradius-devel/rad_assert.h>
 #include        <freeradius-devel/md5.h>
+#include        <freeradius-devel/sha1.h>
 
 #include 	<ctype.h>
 
