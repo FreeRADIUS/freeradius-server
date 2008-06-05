@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 
+#ifdef ASCEND_BINARY
 #include <ctype.h>
 
 /*
@@ -1315,3 +1316,4 @@ void print_abinary(VALUE_PAIR *vp, char *buffer, size_t len)
   *(p++) = '"';
   *p = '\0';
 }
+#endif
