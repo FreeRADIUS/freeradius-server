@@ -28,6 +28,7 @@ RCSIDH(md4_h, "$Id$")
 
 void fr_md4_calc (unsigned char *, const unsigned char *, unsigned int);
 
+#ifndef WITH_OPENSSL_MD4
 /*  The below was retrieved from
  *  http://www.openbsd.org/cgi-bin/cvsweb/src/include/md4.h?rev=1.12
  *  With the following changes: uint64_t => uint32_t[2]
@@ -77,5 +78,15 @@ void	 fr_MD4Transform(uint32_t [4], const uint8_t [MD4_BLOCK_LENGTH])
 /*		__attribute__((__bounded__(__minbytes__,1,4)))
 		__attribute__((__bounded__(__minbytes__,2,MD4_BLOCK_LENGTH)))*/;
 /*__END_DECLS*/
+#else  /* WITH_OPENSSL_MD4 */
+
+#include <openssl/md4.h>
+
+#define FR_MD4_CTX	MD4_CTX
+#define fr_MD4Init	MD4_Init
+#define fr_MD4Update	MD4_Update
+#define fr_MD4Final	MD4_Final
+#define fr_MD4Transform MD4_Transform
+#endif
 
 #endif /* _FR_MD4_H */

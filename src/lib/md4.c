@@ -30,6 +30,7 @@ unsigned int inlen;                     /* length of input block */
 	fr_MD4Final(output, &context);
 }
 
+#ifndef WITH_OPENSSL_MD4
 /*	The below was retrieved from
  *	http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/lib/libc/hash/md4.c?rev=1.2
  *	with the following changes:
@@ -320,3 +321,4 @@ fr_MD4Transform(uint32_t buf[4], const unsigned char inc[MD4_BLOCK_LENGTH])
 	buf[2] += c;
 	buf[3] += d;
 }
+#endif
