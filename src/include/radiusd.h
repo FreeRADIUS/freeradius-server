@@ -71,6 +71,17 @@ typedef pthread_t child_pid_t;
 #define WITH_UNLANG (1)
 #endif
 
+#ifndef WITHOUT_ACCOUNTING
+#define WITH_ACCOUNTING (1)
+#else
+#ifdef WITH_SESSION_MGMT
+#error WITH_SESSION_MGMT is defined, but WITH_ACCOUNTING is not.  Session management requires accounting.
+#endif
+#ifdef WITH_DETAIL
+#error WITH_DETAIL is defined, but WITH_ACCOUNTING is not.  Detail file reading requires accounting.
+#endif
+#endif
+
 /*
  *	See util.c
  */
@@ -92,7 +103,10 @@ typedef struct radclient {
 	int			number;	/* internal use only */
 	const CONF_SECTION	*cs;
 #ifdef WITH_SNMP
-	rad_snmp_client_entry_t *auth, *acct;
+	rad_snmp_client_entry_t *auth;
+#ifdef WITH_ACCOUNTING
+  	rad_snmp_client_entry_t *acct;
+#endif
 #endif
 } RADCLIENT;
 

@@ -105,6 +105,7 @@ static const oid radius_oid [] = { RADIUSOID };
 #define RADIUSAUTHSERVUNKNOWNTYPES       12
 
 /* Hook functions. */
+#ifdef WITH_ACCOUNTING
 static const u_char *radAccServ(struct variable *vp,
 	oid     *name,
 	size_t  *length,
@@ -117,6 +118,7 @@ static const u_char *radAccEntry(struct variable *vp,
 	int     exact,
 	size_t  *var_len,
 	WriteMethod **write_method);
+#endif
 static const u_char *radAuthServ(struct variable *vp,
 	oid     *name,
 	size_t  *length,
@@ -130,6 +132,7 @@ static const u_char *radAuthEntry(struct variable *vp,
 	size_t  *var_len,
 	WriteMethod **write_method);
 
+#ifdef WITH_ACCOUNTING
 static const struct variable radiusacc_variables[] =
 {
 	{RADIUSACCSERVIDENT, STRING, RONLY, radAccServ, 1, {1}},
@@ -156,6 +159,7 @@ static const struct variable radiusacc_variables[] =
 	{RADIUSACCSERVNORECORDS, COUNTER, RONLY, radAccEntry, 3, {14,1,10}},
 	{RADIUSACCSERVUNKNOWNTYPES, COUNTER, RONLY, radAccEntry, 3, {14,1,11}},
 };
+#endif
 
 static const struct variable radiusauth_variables[] =
 {
@@ -249,6 +253,7 @@ radServReset(int action, u_char *var_val, u_char var_val_type,
 	return SNMP_ERR_NOERROR;
 }
 
+#ifdef WITH_ACCOUNTING
 static const u_char *
 radAccServ(struct variable *vp, oid *name, size_t *length, int exact,
 		size_t *var_len, WriteMethod **write_method) {
@@ -391,6 +396,7 @@ radAccEntry(struct variable *vp, oid *name, size_t *length, int exact,
 	}
 	return NULL;
 }
+#endif
 
 static const u_char *
 radAuthServ(struct variable *vp, oid *name, size_t *length, int exact,
@@ -564,8 +570,11 @@ radius_snmp_init (CONF_SECTION *cs)
 		memset(&rad_snmp, 0, sizeof(rad_snmp));
 
 		rad_snmp.auth.ident = radiusd_version;
+#ifdef WITH_ACCOUNTING
 		rad_snmp.acct.ident = radiusd_version;
 
+
+#endif
 		rad_snmp.smux_event = SMUX_NONE;
 		rad_snmp.smux_password = NULL;
 		rad_snmp.snmp_write_access = FALSE;
@@ -576,11 +585,15 @@ radius_snmp_init (CONF_SECTION *cs)
 		rad_snmp.auth.start_time = time(NULL);
 		rad_snmp.auth.last_reset_time = rad_snmp.auth.start_time;
 
+#ifdef WITH_ACCOUNTING
 		rad_snmp.acct.start_time = rad_snmp.auth.start_time;
 		rad_snmp.acct.last_reset_time = rad_snmp.auth.start_time;
+#endif
 	} else {
 		rad_snmp.auth.last_reset_time = time(NULL);
+#ifdef WITH_ACCOUNTING
 		rad_snmp.acct.last_reset_time = rad_snmp.auth.last_reset_time;
+#endif
 		rad_snmp.smux_failures = 0;
 	}
 
@@ -599,7 +612,9 @@ radius_snmp_init (CONF_SECTION *cs)
 	smux_init (radius_oid, sizeof (radius_oid) / sizeof (oid));
 
 	if (!initialized) {
+#ifdef WITH_ACCOUNTING
 		SMUX_REGISTER_MIB("mibII/radius-acc-server", radiusacc_variables, variable, radacc_oid);
+#endif
 		SMUX_REGISTER_MIB("mibII/radius-auth-server", radiusauth_variables, variable, radauth_oid);
 	}
 

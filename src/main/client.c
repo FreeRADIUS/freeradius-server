@@ -64,7 +64,9 @@ void client_free(RADCLIENT *client)
 
 #ifdef WITH_SNMP
 	free(client->auth);
+#ifdef WITH_ACCOUNTING
 	free(client->acct);
+#endif
 #endif
 
 	free(client);
@@ -258,11 +260,12 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		memset(client->auth, 0, sizeof(*client->auth));
 	}
 
+#ifdef WITH_ACCOUNTING
 	if (!client->acct) {
 		client->acct = rad_malloc(sizeof(*client->acct));
 		memset(client->acct, 0, sizeof(*client->acct));
 	}
-
+#endif
 
 	client->number = tree_num_max;
 	tree_num_max++;
@@ -415,8 +418,10 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	c->auth = rad_malloc(sizeof(*c->auth));
 	memset(c->auth, 0, sizeof(*c->auth));
 
+#ifdef WITH_ACCOUNTING
 	c->acct = rad_malloc(sizeof(*c->acct));
 	memset(c->acct, 0, sizeof(*c->acct));
+#endif
 #endif
 
 	memset(&cl_ip4addr, 0, sizeof(cl_ip4addr));

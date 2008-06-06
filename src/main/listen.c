@@ -138,6 +138,7 @@ static int rad_status_server(REQUEST *request)
 		}
 		break;
 
+#ifdef WITH_ACCOUNTING
 	case RAD_LISTEN_ACCT:
 		dval = dict_valbyname(PW_ACCT_TYPE, "Status-Server");
 		if (dval) {
@@ -157,6 +158,7 @@ static int rad_status_server(REQUEST *request)
 			break;
 		}
 		break;
+#endif
 
 	default:
 		return 0;
@@ -184,13 +186,17 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 		name = "authentication";
 		break;
 
+#ifdef WITH_ACCOUNTING
 	case RAD_LISTEN_ACCT:
 		name = "accounting";
 		break;
+#endif
 
+#ifdef WITH_PROXY
 	case RAD_LISTEN_PROXY:
 		name = "proxy";
 		break;
+#endif
 
 #ifdef WITH_VMPS
 	case RAD_LISTEN_VQP:
@@ -394,6 +400,7 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 }
 
 
+#ifdef WITH_ACCOUNTING
 /*
  *	Send an accounting response packet (or not)
  */
@@ -413,7 +420,7 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 	return rad_send(request->reply, request->packet,
 			request->client->secret);
 }
-
+#endif
 
 #ifdef WITH_PROXY
 /*
@@ -541,6 +548,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 }
 
 
+#ifdef WITH_ACCOUNTING
 /*
  *	Receive packets from an accounting socket
  */
@@ -643,7 +651,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 	*pfun = fun;
 	return 1;
 }
-
+#endif
 
 #ifdef WITH_PROXY
 /*
@@ -673,9 +681,11 @@ static int proxy_socket_recv(rad_listen_t *listener,
 		fun = rad_authenticate;
 		break;
 
+#ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
 		fun = rad_accounting;
 		break;
+#endif
 
 	default:
 		/*
@@ -804,10 +814,14 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	  auth_socket_recv, auth_socket_send,
 	  socket_print, client_socket_encode, client_socket_decode },
 
+#ifdef WITH_ACCOUNTING
 	/* accounting */
 	{ common_socket_parse, NULL,
 	  acct_socket_recv, acct_socket_send,
 	  socket_print, client_socket_encode, client_socket_decode},
+#else
+	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+#endif
 
 #ifdef WITH_DETAIL
 	/* detail */
@@ -865,6 +879,7 @@ static int listen_bind(rad_listen_t *this)
 			}
 			break;
 
+#ifdef WITH_ACCOUNTING
 		case RAD_LISTEN_ACCT:
 			svp = getservbyname ("radacct", "udp");
 			if (svp != NULL) {
@@ -873,6 +888,7 @@ static int listen_bind(rad_listen_t *this)
 				sock->port = PW_ACCT_UDP_PORT;
 			}
 			break;
+#endif
 
 #ifdef WITH_PROXY
 		case RAD_LISTEN_PROXY:
@@ -1075,7 +1091,9 @@ rad_listen_t *proxy_new_listener()
 
 static const FR_NAME_NUMBER listen_compare[] = {
 	{ "auth",	RAD_LISTEN_AUTH },
+#ifdef WITH_ACCOUNTING
 	{ "acct",	RAD_LISTEN_ACCT },
+#endif
 #ifdef WITH_DETAIL
 	{ "detail",	RAD_LISTEN_DETAIL },
 #endif
@@ -1262,6 +1280,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		if (strcmp(progname, "vmpsd") == 0) goto do_proxy;
 #endif
 
+#ifdef WITH_ACCOUNTING
 		/*
 		 *	Open Accounting Socket.
 		 *
@@ -1302,7 +1321,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 
 		*last = this;
 		last = &(this->next);
-
+#endif
 	} else if (mainconfig.port > 0) { /* no bind address, but a port */
 		radlog(L_ERR, "The command-line says \"-p %d\", but there is no associated IP address to use",
 		       mainconfig.port);

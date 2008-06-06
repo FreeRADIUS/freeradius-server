@@ -44,7 +44,9 @@ typedef struct rad_snmp_server_t {
 
 typedef struct rad_snmp_t {
 	rad_snmp_server_t auth;
+#ifdef WITH_ACCOUNTING
 	rad_snmp_server_t acct;
+#endif
   	smux_event_t      smux_event;
 	const char	  *smux_password;
 	int		  snmp_write_access;
@@ -75,6 +77,7 @@ struct rad_snmp_client_entry_t {
 extern rad_snmp_t	rad_snmp;
 
 #define RAD_SNMP_INC(_x) if (mainconfig.do_snmp) _x++
+#ifdef WITH_ACCOUNTING
 #define RAD_SNMP_TYPE_INC(_listener, _x) if (mainconfig.do_snmp) { \
                                      if (_listener->type == RAD_LISTEN_AUTH) { \
                                        rad_snmp.auth._x++; \
@@ -86,6 +89,16 @@ extern rad_snmp_t	rad_snmp;
                                        _client->auth->_x++; \
 				     } else { if (_listener->type == RAD_LISTEN_ACCT) \
                                        _client->acct->_x++; } }
+
+#else  /* WITH_ACCOUNTING */
+
+#define RAD_SNMP_TYPE_INC(_listener, _x) if (mainconfig.do_snmp) { \
+                                     rad_snmp.auth._x++; }
+
+#define RAD_SNMP_CLIENT_INC(_listener, _client, _x) if (mainconfig.do_snmp) { \
+                                     _client->auth->_x++; }
+
+#endif
 
 
 #else

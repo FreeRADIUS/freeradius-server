@@ -164,12 +164,14 @@ static void snmp_inc_counters(REQUEST *request)
 		}
 		break;
 
+#ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
 		rad_snmp.acct.total_responses++;
 		if (request->client && request->client->acct) {
 			request->client->acct->responses++;
 		}
 		break;
+#endif
 
 		/*
 		 *	No response, it must have been a bad
@@ -628,6 +630,7 @@ static void ping_home_server(void *ctx)
 				"Message-Authenticator", "0x00", T_OP_SET);
 
 	} else {
+#ifdef WITH_ACCOUNTING
 		request->proxy->code = PW_ACCOUNTING_REQUEST;
 		
 		radius_pairmake(request, &request->proxy->vps,
@@ -639,6 +642,9 @@ static void ping_home_server(void *ctx)
 		vp = radius_pairmake(request, &request->proxy->vps,
 				     "Event-Timestamp", "0", T_OP_SET);
 		vp->vp_date = now.tv_sec;
+#else
+		rad_assert("Internal sanity check failed");
+#endif
 	}
 
 	radius_pairmake(request, &request->proxy->vps,
@@ -1305,8 +1311,10 @@ static int proxy_to_virtual_server(REQUEST *request)
 	if (request->proxy->code == PW_AUTHENTICATION_REQUEST) {
 		fun = rad_authenticate;
 
+#ifdef WITH_ACCOUNTING
 	} else if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
 		fun = rad_accounting;
+#endif
 
 	} else {
 		DEBUG2("Unknown packet type %d", request->proxy->code);
@@ -1374,8 +1382,10 @@ static int successfully_proxied_request(REQUEST *request)
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		pool = realm->auth_pool;
 
+#ifdef WITH_ACCOUNTING
 	} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
 		pool = realm->acct_pool;
+#endif
 
 	} else {
 		rad_panic("Internal sanity check failed");

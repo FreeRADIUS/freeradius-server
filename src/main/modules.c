@@ -1188,6 +1188,7 @@ int module_authenticate(int auth_type, REQUEST *request)
 	return indexed_modcall(RLM_COMPONENT_AUTH, auth_type, request);
 }
 
+#ifdef WITH_ACCOUNTING
 /*
  *	Do pre-accounting for ALL configured sessions
  */
@@ -1203,6 +1204,7 @@ int module_accounting(int acct_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_ACCT, acct_type, request);
 }
+#endif
 
 #ifdef WITH_SESSION_MGMT
 /*

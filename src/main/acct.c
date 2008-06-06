@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
+#ifdef WITH_ACCOUNTING
 /*
  *	rad_accounting: call modules.
  *
@@ -179,3 +180,4 @@ int rad_accounting(REQUEST *request)
 	}
 	return result;
 }
+#endif
