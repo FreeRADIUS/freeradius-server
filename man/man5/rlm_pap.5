@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH rlm_pap 5 "8 February 2005" "" "FreeRADIUS Module"
+.TH rlm_pap 5 "6 June 2008" "" "FreeRADIUS Module"
 .SH NAME
 rlm_pap \- FreeRADIUS Module
 .SH DESCRIPTION
@@ -44,9 +44,9 @@ Header       Attribute          Description
 .br
 ------       ---------          -----------
 .br
-{clear}      User-Password      clear-text passwords
+{clear}      Cleartext-Password clear-text passwords
 .br
-{cleartext}  User-Password      clear-text passwords
+{cleartext}  Cleartext-Password clear-text passwords
 .br
 {crypt}      Crypt-Password     Unix-style "crypt"ed passwords
 .br
@@ -69,6 +69,16 @@ The module tries to be flexible when handling the various password
 formats.  It will automatically handle Base-64 encoded data, hex
 strings, and binary data, and convert them to a format that the server
 can use.
+.PP
+It is important to understand the difference between the User-Password
+and Cleartext-Password attributes.  The Cleartext-Password attribute
+is the "known good" password for the user.  Simply supplying the
+Cleartext-Password to the server will result in most authentication
+methods working.  The User-Password attribute is the password as typed
+in by the user on their private machine.  The two are not the same,
+and should be treated very differently.  That is, you should generally
+not use the User-Password attribute anywhere in the RADIUS
+configuration.
 .PP
 For backwards compatibility, there are old configuration parameters
 which may be work, although we do not recommend using them.
