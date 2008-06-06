@@ -75,7 +75,11 @@ static pthread_mutex_t	proxy_mutex;
  */
 #define PTHREAD_MUTEX_LOCK(_x)
 #define PTHREAD_MUTEX_UNLOCK(_x)
-#define thread_pool_addrequest radius_handle_request
+int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
+{
+	radius_handle_request(request, fun);
+	return 1;
+}
 #endif
 
 #define INSERT_EVENT(_function, _ctx) if (!fr_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
@@ -440,11 +444,7 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 }
 #endif
 
-/*
- *	If we don't have pthreads, we MAY be proxying.
- *	If we don't have either, then this function isn't necessary.
- */
-#if defined(HAVE_PTHREAD_H) || defined(WITH_PROXY)
+#ifdef HAVE_PTHREAD_H
 static void wait_for_child_to_die(void *ctx)
 {
 	REQUEST *request = ctx;
@@ -1983,6 +1983,7 @@ static void received_conflicting_request(REQUEST *request,
 	remove_from_request_hash(request);
 
 	switch (request->child_state) {
+#ifdef HAVE_PTHREAD_H
 		/*
 		 *	It's queued or running.  Tell it to stop, and
 		 *	wait for it to do so.
@@ -1996,6 +1997,7 @@ static void received_conflicting_request(REQUEST *request,
 
 		INSERT_EVENT(wait_for_child_to_die, request);
 		return;
+#endif
 
 		/*
 		 *	It's in some other state, and therefore also
