@@ -75,6 +75,7 @@ static pthread_mutex_t	proxy_mutex;
  */
 #define PTHREAD_MUTEX_LOCK(_x)
 #define PTHREAD_MUTEX_UNLOCK(_x)
+#define thread_pool_addrequest radius_handle_request
 #endif
 
 #define INSERT_EVENT(_function, _ctx) if (!fr_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
@@ -437,6 +438,11 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 }
 #endif
 
+/*
+ *	If we don't have pthreads, we MAY be proxying.
+ *	If we don't have either, then this function isn't necessary.
+ */
+#if defined(HAVE_PTHREAD_H) || defined(WITH_PROXY)
 static void wait_for_child_to_die(void *ctx)
 {
 	REQUEST *request = ctx;
@@ -466,7 +472,7 @@ static void wait_for_child_to_die(void *ctx)
 
 	request_free(&request);
 }
-
+#endif
 
 static void cleanup_delay(void *ctx)
 {
@@ -751,6 +757,7 @@ static void proxy_fallback_handler(REQUEST *request)
 		request->child_state = REQUEST_DONE;
 	}
 
+#ifdef HAVE_PTHREAD_H
 	/*
 	 *	MAY free the request if we're over max_request_time,
 	 *	AND we're not in threaded mode!
@@ -761,6 +768,7 @@ static void proxy_fallback_handler(REQUEST *request)
 	 *	exist any more...
 	 */
 	if (have_children) wait_a_bit(request);
+#endif
 }
 
 
@@ -968,6 +976,7 @@ static void wait_a_bit(void *ctx)
 			break;
 		}
 
+#if defined(HAVE_PTHREAD_H) || defined(WITH_PROXY)
 		/*
 		 *	A child thread MAY still be running on the
 		 *	request.  Ask the thread to stop working on
@@ -998,6 +1007,7 @@ static void wait_a_bit(void *ctx)
 			callback = wait_for_child_to_die;
 			break;
 		}
+#endif
 
 		/*
 		 *	Else there are no child threads.  We probably
@@ -1015,14 +1025,18 @@ static void wait_a_bit(void *ctx)
 		 *	and clean it up.
 		 */
 	case REQUEST_DONE:
+#ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
+#endif
 		snmp_inc_counters(request);
 		cleanup_delay(request);
 		return;
 
 	case REQUEST_REJECT_DELAY:
 	case REQUEST_CLEANUP_DELAY:
+#ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
+#endif
 		snmp_inc_counters(request);
 
 	case REQUEST_PROXIED:
@@ -1254,7 +1268,9 @@ static int proxy_request(REQUEST *request)
 	 */
 	request->num_proxied_requests = 1;
 	request->num_proxied_responses = 0;
+#ifdef HAVE_PTHREAD_H
 	request->child_pid = NO_SUCH_CHILD_PID;
+#endif
 	request->child_state = REQUEST_PROXIED;
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
@@ -1584,7 +1600,9 @@ static void request_post_handler(REQUEST *request)
 	    (request->parent &&
 	     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
 		DEBUG2("Request %d was cancelled.", request->number);
+#ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
+#endif
 		request->child_state = REQUEST_DONE;
 		return;
 	}
@@ -1638,7 +1656,9 @@ static void request_post_handler(REQUEST *request)
 	 */
 	if (request->packet->dst_port == 0) {
 		/* FIXME: DEBUG going to the next request */
+#ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
+#endif
 		request->child_state = REQUEST_DONE;
 		return;
 	}
@@ -1705,7 +1725,9 @@ static void request_post_handler(REQUEST *request)
 				       request->root->reject_delay);
 				request->next_when = when;
 				request->next_callback = reject_delay;
+#ifdef HAVE_PTHREAD_H
 				request->child_pid = NO_SUCH_CHILD_PID;
+#endif
 				request->child_state = REQUEST_REJECT_DELAY;
 				return;
 			}
