@@ -1,3 +1,19 @@
+freeradius (2.0.5-0) unstable; urgency=medium
+  * Permit SQL authorize_reply_query to be empty.
+  * Allow setting response packet type in Post-Proxy-Type Fail handler.
+  * Added install-chown target to set correct permission and ownership make RADMIN=radmin RGROUP=radius install-chown
+  * Support for LDAP-Group and other dynamic comparison attributes in unlang.  Developed from a patch by Jason Alderfer.
+  * Added chroot support.  See radiusd.conf for comments.
+  * Allow clients of 0/0.  We do not recommend using this, though.
+  * Moved many module configurations into raddb/modules/*
+  * Allow proxying to virtual servers for accounting packets, too.
+  * Added "num fields" function to PostgreSQL client.
+  * Updated proxy fallback mechanism to validate fallback servers, and to process fallback requests in a child thread.
+  * rlm_realm returns "ok" for LOCAL realms, not "noop".
+  * Fixed some DHCP code handling.  The examples should now work.
+
+ -- Alan DeKok <aland@freeradius.org>  Sat, 07 Jun 2008 17:17:00 +0100
+
 freeradius (2.0.4-0) unstable; urgency=medium
   * Allow "virtual_server" in "realm" and "home_server" sections. See raddb/proxy.conf and raddb/sites-available/virtual.example.com.
   * Allow "passwd" module to be listed in "accounting" and "post-auth".
