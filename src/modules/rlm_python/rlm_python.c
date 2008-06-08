@@ -19,6 +19,7 @@
  * Copyright 2000,2006  The FreeRADIUS server project
  * Copyright 2002  Miguel A.L. Paraz <mparaz@mparaz.com>
  * Copyright 2002  Imperium Technology, Inc.
+ * - rewritten by Paul P. Komkoff Jr <i@stingr.net>
  */
 
 #include <freeradius-devel/ident.h>
@@ -29,34 +30,32 @@ RCSID("$Id$")
 
 #include <Python.h>
 
+#define Pyx_BLOCK_THREADS    {PyGILState_STATE __gstate = PyGILState_Ensure();
+#define Pyx_UNBLOCK_THREADS   PyGILState_Release(__gstate);}
+
 /*
- *	Define a structure for our module configuration.
- *
- *	These variables do not need to be in a structure, but it's
- *	a lot cleaner to do so, and a pointer to the structure can
- *	be used as the instance handle.
+ *	TODO: The only needed thing here is function. Anything else is
+ *	required for initialization only. I will remove it, putting a
+ *	symbolic constant here instead.
  */
-typedef struct rlm_python_t {
+struct py_function_def {
+	PyObject *module;
+	PyObject *function;
+	
+	char     *module_name;
+	char     *function_name;
+}; 
 
-#define RLM_PYTHON_STRUCT(foo)  char *mod_##foo; \
-				char *func_##foo; \
-				PyObject *pModule_##foo; \
-				PyObject *pFunc_##foo
-
-	RLM_PYTHON_STRUCT(instantiate);
-	RLM_PYTHON_STRUCT(authorize);
-	RLM_PYTHON_STRUCT(authenticate);
-	RLM_PYTHON_STRUCT(preacct);
-	RLM_PYTHON_STRUCT(accounting);
-	RLM_PYTHON_STRUCT(checksimul);
-	RLM_PYTHON_STRUCT(preproxy);
-	RLM_PYTHON_STRUCT(postproxy);
-	RLM_PYTHON_STRUCT(postauth);
-	RLM_PYTHON_STRUCT(detach);
-
-	PyObject *pModule_builtin;
-
-} rlm_python_t;
+struct rlm_python_t {
+	struct py_function_def 
+		instantiate,
+		authorize,
+		authenticate,
+		preacct,
+		accounting,
+		checksimul,
+		detach;
+};
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -67,284 +66,343 @@ typedef struct rlm_python_t {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-#define RLM_PYTHON_CONF(foo) { "mod_"#foo,  PW_TYPE_STRING_PTR, \
-    offsetof(rlm_python_t, mod_##foo), NULL,  NULL}, \
-  { "func_"#foo,  PW_TYPE_STRING_PTR, \
-    offsetof(rlm_python_t, func_##foo), NULL,  NULL}
+static CONF_PARSER module_config[] = {
 
-static const CONF_PARSER module_config[] = {
-	RLM_PYTHON_CONF(instantiate),
-	RLM_PYTHON_CONF(authorize),
-	RLM_PYTHON_CONF(authenticate),
-	RLM_PYTHON_CONF(preacct),
-	RLM_PYTHON_CONF(accounting),
-	RLM_PYTHON_CONF(checksimul),
-	RLM_PYTHON_CONF(preproxy),
-	RLM_PYTHON_CONF(postproxy),
-	RLM_PYTHON_CONF(postauth),
-	RLM_PYTHON_CONF(detach),
-	
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+#define A(x) { "mod_" #x, PW_TYPE_STRING_PTR, offsetof(struct rlm_python_t, x.module_name) }, \
+  { "func_" #x, PW_TYPE_STRING_PTR, offsetof(struct rlm_python_t, x.function_name) },
+
+  A(instantiate)
+  A(authorize)
+  A(authenticate)
+  A(preacct)
+  A(accounting)
+  A(checksimul)
+  A(detach)
+
+#undef A
+
+  { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
+static struct {
+  const char *name;
+  int  value;
+} radiusd_constants[] = {
+
+#define A(x) { #x, x },
+
+  A(L_DBG)
+  A(L_AUTH)
+  A(L_INFO)
+  A(L_ERR)
+  A(L_PROXY)
+  A(L_CONS)
+  A(RLM_MODULE_REJECT)
+  A(RLM_MODULE_FAIL)
+  A(RLM_MODULE_OK)
+  A(RLM_MODULE_HANDLED)
+  A(RLM_MODULE_INVALID)
+  A(RLM_MODULE_USERLOCK)
+  A(RLM_MODULE_NOTFOUND)
+  A(RLM_MODULE_NOOP)
+  A(RLM_MODULE_UPDATED)
+  A(RLM_MODULE_NUMCODES)
+
+#undef A
+
+  { 0 },
+};
+
+
 /*
- * radiusd Python functions
+ *	Let assume that radiusd module is only one since we have only
+ *	one intepreter
+ */
+
+static PyObject *radiusd_module = NULL;
+
+/*
+ *	radiusd Python functions
  */
 
 /* radlog wrapper */
-static PyObject *radlog_py(UNUSED const PyObject *self, PyObject *args) {
-    int status;
-    char *msg;
+static PyObject *python_radlog(PyObject *module, PyObject *args)
+{
+	int status;
+	char *msg;
+	
+	if (!PyArg_ParseTuple(args, "is", &status, &msg)) {
+		return NULL;
+	}
 
-    if (!PyArg_ParseTuple(args, "is", &status, &msg)) {
-	return NULL;
-    }
-
-    radlog(status, msg);
-    return Py_None;
+	radlog(status, "%s", msg);
+	Py_INCREF(Py_None);
+	
+	return Py_None;
 }
 
 static PyMethodDef radiusd_methods[] = {
-    {"radlog", (PyCFunction)radlog_py, METH_VARARGS, "freeradius radlog()."},
-    {NULL, NULL, 0, NULL}
+	{ "radlog", &python_radlog, METH_VARARGS, 
+	  "radiusd.radlog(level, msg)\n\n" \
+	  "Print a message using radiusd logging system. level should be one of the\n" \
+	  "constants L_DBG, L_AUTH, L_INFO, L_ERR, L_PROXY, L_CONS\n"
+	},
+	{ 0 },
 };
 
 
-/* Extract string representation of Python error. */
-static void python_error(void) {
-    PyObject *pType, *pValue, *pTraceback, *pStr1, *pStr2;
-
-    PyErr_Fetch(&pType, &pValue, &pTraceback);
-    pStr1 = PyObject_Str(pType);
-    pStr2 = PyObject_Str(pValue);
-
-    radlog(L_ERR, "%s: %s\n",
-	   PyString_AsString(pStr1), PyString_AsString(pStr2));
-}
-
-/* Tuple to value pair conversion */
-static void add_vp_tuple(VALUE_PAIR **vpp, PyObject *pValue,
-			 const char *function_name) {
-    int i, outertuplesize;
-    VALUE_PAIR	*vp;
-
-    /* If the Python function gave us None for the tuple, then just return. */
-    if (pValue == Py_None) {
-	return;
-    }
-
-    if (!PyTuple_Check(pValue)) {
-	radlog(L_ERR, "%s: non-tuple passed", function_name);
-    }
-
-    /* Get the tuple size. */
-    outertuplesize = PyTuple_Size(pValue);
-
-    for (i = 0; i < outertuplesize; i++) {
-	PyObject *pTupleElement = PyTuple_GetItem(pValue, i);
-
-	if ((pTupleElement != NULL) &&
-	    (PyTuple_Check(pTupleElement))) {
-
-	    /* Check if it's a pair */
-	    int tuplesize;
-
-	    if ((tuplesize = PyTuple_Size(pTupleElement)) != 2) {
-		radlog(L_ERR, "%s: tuple element %d is a tuple "
-		       " of size %d. must be 2\n", function_name,
-		       i, tuplesize);
-	    }
-	    else {
-		PyObject *pString1, *pString2;
-
-		pString1 = PyTuple_GetItem(pTupleElement, 0);
-		pString2 = PyTuple_GetItem(pTupleElement, 1);
-
-		/* xxx PyString_Check does not compile here */
-		if  ((pString1 != NULL) &&
-		     (pString2 != NULL) &&
-		     PyObject_TypeCheck(pString1,&PyString_Type) &&
-		     PyObject_TypeCheck(pString2,&PyString_Type)) {
-
-
-		    const char *s1, *s2;
-
-		    /* pairmake() will convert and find any
-		     * errors in the pair.
-		     */
-
-		    s1 = PyString_AsString(pString1);
-		    s2 = PyString_AsString(pString2);
-
-		    if ((s1 != NULL) && (s2 != NULL)) {
-			radlog(L_DBG, "%s: %s = %s ",
-			       function_name, s1, s2);
-
-			/* xxx Might need to support other T_OP */
-			vp = pairmake(s1, s2, T_OP_EQ);
-			if (vp != NULL) {
-			    pairadd(vpp, vp);
-			    radlog(L_DBG, "%s: s1, s2 OK\n",
-				   function_name);
-			}
-			else {
-			    radlog(L_DBG, "%s: s1, s2 FAILED\n",
-				   function_name);
-			}
-		    }
-		    else {
-			radlog(L_ERR, "%s: string conv failed\n",
-			       function_name);
-		    }
-
-		}
-		else {
-		    radlog(L_ERR, "%s: tuple element %d must be "
-			   "(string, string)", function_name, i);
-		}
-	    }
-	}
-	else {
-	    radlog(L_ERR, "%s: tuple element %d is not a tuple\n",
-		   function_name, i);
-	}
-    }
-
-}
-
-/* This is the core Python function that the others wrap around.
- * Pass the value-pair print strings in a tuple.
- * xxx We're not checking the errors. If we have errors, what do we do?
- */
-
-static int python_function(REQUEST *request,
-			   PyObject *pFunc, const char *function_name)
+static void python_error(void)
 {
-#define BUF_SIZE 1024
+	PyObject 
+		*pType = NULL,
+		*pValue = NULL,
+		*pTraceback = NULL,
+		*pStr1 = NULL,
+		*pStr2 = NULL;
+	
+	Pyx_BLOCK_THREADS
 
-    char buf[BUF_SIZE];		/* same size as vp_print buffer */
+	PyErr_Fetch(&pType, &pValue, &pTraceback);
+	if (pType == NULL || pValue == NULL)
+		goto failed;
+	if (((pStr1 = PyObject_Str(pType)) == NULL) ||
+	    ((pStr2 = PyObject_Str(pValue)) == NULL))
+		goto failed;
 
-    VALUE_PAIR	*vp;
+	radlog(L_ERR, "rlm_python:EXCEPT:%s: %s", PyString_AsString(pStr1), PyString_AsString(pStr2));
+	
+ failed:
+	Py_XDECREF(pStr1);
+	Py_XDECREF(pStr2);
+	Py_XDECREF(pType);
+	Py_XDECREF(pValue);
+	Py_XDECREF(pTraceback);
+	
+	Pyx_UNBLOCK_THREADS
+}
 
-    PyObject *pValue, *pValuePairContainer, **pValueHolder, **pValueHolderPtr;
-    int i, n_tuple, return_value;
+static int python_init(void)
+{
+	int i;
 
-    /* Return with "OK, continue" if the function is not defined. */
-    if (pFunc == NULL) {
-	return RLM_MODULE_OK;
-    }
-
-    /* Default return value is "OK, continue" */
-    return_value = RLM_MODULE_OK;
-
-    /* We will pass a tuple containing (name, value) tuples
-     * We can safely use the Python function to build up a tuple,
-     * since the tuple is not used elsewhere.
-     *
-     * Determine the size of our tuple by walking through the packet.
-     * If request is NULL, pass None.
-     */
-    n_tuple = 0;
-
-    if (request != NULL) {
-	for (vp = request->packet->vps; vp; vp = vp->next) {
-	    n_tuple++;
-	}
-    }
-
-    /* Create the tuple and a holder for the pointers, so that we can
-     * decref more efficiently later without the overhead of reading
-     * the tuple.
-     *
-     * We use malloc() instead of the Python memory allocator since we
-     * are not embedded.
-     */
-
-    if (NULL == (pValueHolder = pValueHolderPtr =
-		 malloc(sizeof(PyObject *) * n_tuple))) {
-
-	radlog(L_ERR, "%s: malloc of %d bytes failed\n",
-	       function_name, sizeof(PyObject *) * n_tuple);
-
+	if (radiusd_module) return 0;
+	
+	Py_SetProgramName("radiusd");
+	Py_Initialize();
+	PyEval_InitThreads(); /* This also grabs a lock */
+	
+	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods, 
+					     "FreeRADIUS Module.")) == NULL)
+		goto failed;
+	
+	for (i = 0; radiusd_constants[i].name; i++)
+		if ((PyModule_AddIntConstant(radiusd_module,
+					     radiusd_constants[i].name, 
+					     radiusd_constants[i].value)) < 0)
+			goto failed;
+	
+	PyEval_ReleaseLock(); /* Drop lock grabbed by InitThreads */
+	
+	radlog(L_DBG, "python_init done");
+	return 0;
+	
+ failed:
+	python_error();
+	Py_XDECREF(radiusd_module);
+	radiusd_module = NULL;
+	Py_Finalize();
 	return -1;
-    }
+}
 
-    if (n_tuple == 0) {
-	pValuePairContainer = Py_None;
-    }
-    else {
-	pValuePairContainer = PyTuple_New(n_tuple);
+#if 0
 
-	i = 0;
-	for (vp = request->packet->vps; vp; vp = vp->next) {
-	    PyObject *pValuePair, *pString1, *pString2;
+static int python_destroy(void)
+{
+	Pyx_BLOCK_THREADS
+	Py_XDECREF(radiusd_module);
+	Py_Finalize();
+	Pyx_UNBLOCK_THREADS
+	return 0;
+}
 
-	    /* The inside tuple has two only: */
-	    pValuePair = PyTuple_New(2);
+/*
+ *	This will need reconsidering in a future. Maybe we'll need to
+ *	have our own reference counting for radiusd_module
+ */
+#endif
 
-	    /* The name. logic from vp_prints, lib/print.c */
-	    if (vp->flags.has_tag) {
-		snprintf(buf, BUF_SIZE, "%s:%d", vp->name, vp->flags.tag);
-	    }
-	    else {
-		strcpy(buf, vp->name);
-	    }
+/* TODO: Convert this function to accept any iterable objects? */
 
-	    pString1 = PyString_FromString(buf);
-	    PyTuple_SetItem(pValuePair, 0, pString1);
+static void python_vptuple(VALUE_PAIR **vpp, PyObject *pValue,
+			   const char *funcname)
+{
+        int             i;
+        int             tuplesize;
+        VALUE_PAIR      *vp;
 
-	    /* The value. Use delimiter - don't know what that means */
-	    vp_prints_value(buf, sizeof(buf), vp, 1);
-	    pString2 = PyString_FromString(buf);
-	    PyTuple_SetItem(pValuePair, 1, pString2);
-
-	    /* Put the tuple inside the container */
-	    PyTuple_SetItem(pValuePairContainer, i++, pValuePair);
-
-	    /* Store the pointer in our malloc() storage */
-	    *pValueHolderPtr++ = pValuePair;
-	}
-    }
-
-
-    /* Call Python function.
-     */
-
-    if (pFunc && PyCallable_Check(pFunc)) {
-	PyObject *pArgs;
-
-	/* call the function with a singleton tuple containing the
-	 * container tuple.
+        /*
+	 *	If the Python function gave us None for the tuple,
+	 *	then just return.
 	 */
+        if (pValue == Py_None)
+                return;
 
-	if ((pArgs = PyTuple_New(1)) == NULL) {
-	    Py_DECREF(pValuePairContainer);
-	    free(pValueHolder);
-	    radlog(L_ERR, "%s: could not create tuple", function_name);
-	    return -1;
-	}
-	if ((PyTuple_SetItem(pArgs, 0, pValuePairContainer)) != 0) {
-	    Py_DECREF(pValuePairContainer);
-	    free(pValueHolder);
-	    Py_DECREF(pArgs);
-	    radlog(L_ERR, "%s: could not set tuple item", function_name);
-	    return -1;
+        if (!PyTuple_CheckExact(pValue)) {
+                radlog(L_ERR, "rlm_python:%s: non-tuple passed", funcname);
+                return;
+        }
+        /* Get the tuple tuplesize. */
+        tuplesize = PyTuple_GET_SIZE(pValue);
+        for (i = 0; i < tuplesize; i++) {
+                PyObject *pTupleElement = PyTuple_GET_ITEM(pValue, i);
+                PyObject *pStr1;
+                PyObject *pStr2;
+                int pairsize;
+                const char *s1;
+                const char *s2;
+
+                if (!PyTuple_CheckExact(pTupleElement)) {
+                        radlog(L_ERR, "rlm_python:%s: tuple element %d is not a tuple", funcname, i);
+                        continue;
+                }
+                /* Check if it's a pair */
+                if ((pairsize = PyTuple_GET_SIZE(pTupleElement)) != 2) {
+                        radlog(L_ERR, "rlm_python:%s: tuple element %d is a tuple of size %d. Must be 2", funcname, i, pairsize);
+                        continue;
+                }
+                pStr1 = PyTuple_GET_ITEM(pTupleElement, 0);
+                pStr2 = PyTuple_GET_ITEM(pTupleElement, 1);
+                if ((!PyString_CheckExact(pStr1)) || (!PyString_CheckExact(pStr2))) {
+                        radlog(L_ERR, "rlm_python:%s: tuple element %d must be as (str, str)", funcname, i);
+                        continue;
+                }
+                s1 = PyString_AsString(pStr1);
+                s2 = PyString_AsString(pStr2);
+                /* xxx Might need to support other T_OP */
+                vp = pairmake(s1, s2, T_OP_EQ);
+                if (vp != NULL) {
+                        pairadd(vpp, vp);
+                        radlog(L_DBG, "rlm_python:%s: '%s' = '%s'", funcname, s1, s2);
+                } else {
+                        radlog(L_DBG, "rlm_python:%s: Failed: '%s' = '%s'", funcname, s1, s2);
+                }
+        }
+}
+
+
+/*
+ *	This is the core Python function that the others wrap around.
+ *	Pass the value-pair print strings in a tuple.
+ *
+ *	FIXME: We're not checking the errors. If we have errors, what
+ *	do we do?
+ */
+static int python_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
+{
+	PyObject *pStr = NULL;
+	char buf[1024];
+	
+	/* Look at the vp_print_name? */
+	
+	if (vp->flags.has_tag)
+		pStr = PyString_FromFormat("%s:%d", vp->name, vp->flags.tag);
+	else
+		pStr = PyString_FromString(vp->name);
+	
+	if (pStr == NULL)
+		goto failed;
+	
+	PyTuple_SET_ITEM(pPair, 0, pStr);
+	
+	vp_prints_value(buf, sizeof(buf), vp, 1);
+	
+	if ((pStr = PyString_FromString(buf)) == NULL)
+		goto failed;
+	PyTuple_SET_ITEM(pPair, 1, pStr);
+	
+	return 0;
+	
+ failed:
+	return -1;
+}
+
+static int python_function(REQUEST *request, PyObject *pFunc,
+			   const char *funcname)
+{
+	VALUE_PAIR      *vp;
+	PyObject        *pRet = NULL;
+	PyObject        *pArgs = NULL;
+	int             tuplelen;
+	int             ret;
+	
+	PyGILState_STATE gstate;
+	
+	/* Return with "OK, continue" if the function is not defined. */
+	if (pFunc == NULL)
+		return RLM_MODULE_OK;
+	
+	/* Default return value is "OK, continue" */
+	ret = RLM_MODULE_OK;
+	
+	/*
+	 *	We will pass a tuple containing (name, value) tuples
+	 *	We can safely use the Python function to build up a
+	 *	tuple, since the tuple is not used elsewhere.
+	 *
+	 *	Determine the size of our tuple by walking through the packet.
+	 *	If request is NULL, pass None.
+	 */
+	tuplelen = 0;
+	if (request != NULL) {
+		for (vp = request->packet->vps; vp; vp = vp->next)
+			tuplelen++;
 	}
 
-	if ((pValue = PyObject_CallObject(pFunc, pArgs)) == NULL) {
-	    Py_DECREF(pValuePairContainer);
-	    free(pValueHolder);
-	    Py_DECREF(pArgs);
-	    radlog(L_ERR, "%s: function call failed", function_name);
-	    python_error();
-	    return -1;
-	}
+	gstate = PyGILState_Ensure();
+	
+	if (tuplelen == 0) {
+		Py_INCREF(Py_None);
+		pArgs = Py_None;
+	} else {
+		int i = 0;
+		if ((pArgs = PyTuple_New(tuplelen)) == NULL)
+			goto failed;
 
-	/* The function returns either:
-	 *  1. tuple containing the integer return value,
-	 *  then the integer reply code (or None to not set),
-	 *  then the string tuples to build the reply with.
-	 *     (returnvalue, (p1, s1), (p2, s2))
+		for (vp = request->packet->vps;
+		     vp != NULL;
+		     vp = vp->next, i++) {
+			PyObject *pPair;
+			
+			/* The inside tuple has two only: */
+			if ((pPair = PyTuple_New(2)) == NULL)
+				goto failed;
+			
+			if (python_populate_vptuple(pPair, vp) == 0) {
+				/* Put the tuple inside the container */
+				PyTuple_SET_ITEM(pArgs, i, pPair);
+			} else {
+				Py_INCREF(Py_None);
+				PyTuple_SET_ITEM(pArgs, i, Py_None);
+				Py_DECREF(pPair);
+			}
+		}
+	}
+	
+	/* Call Python function. */
+	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
+	
+	if (pRet == NULL)
+		goto failed;
+	
+	if (request == NULL)
+		goto okay;
+
+	/*
+	 *	The function returns either:
+	 *  1. (returnvalue, replyTuple, configTuple), where
+	 *   - returnvalue is one of the constants RLM_*
+	 *   - replyTuple and configTuple are tuples of string
+	 *      tuples of size 2
 	 *
 	 *  2. the function return value alone
 	 *
@@ -352,144 +410,138 @@ static int python_function(REQUEST *request,
 	 *
 	 * xxx This code is messy!
 	 */
-
-	if (PyTuple_Check(pValue)) {
-	    PyObject *pTupleInt;
-
-	    if (PyTuple_Size(pValue) != 3) {
-		radlog(L_ERR, "%s: tuple must be " \
-		       "(return, replyTuple, configTuple)",
-		       function_name);
-
-	    }
-	    else {
-		pTupleInt = PyTuple_GetItem(pValue, 0);
-
-		if ((pTupleInt == NULL) || !PyInt_Check(pTupleInt)) {
-		    radlog(L_ERR, "%s: first tuple element not an integer",
-			   function_name);
+	if (PyTuple_CheckExact(pRet)) {
+		PyObject *pTupleInt;
+		
+		if (PyTuple_GET_SIZE(pRet) != 3) {
+			radlog(L_ERR, "rlm_python:%s: tuple must be (return, replyTuple, configTuple)", funcname);
+			goto failed;
 		}
-		else {
-		    /* Now have the return value */
-		    return_value = PyInt_AsLong(pTupleInt);
-
-		    /* Reply item tuple */
-		    add_vp_tuple(&request->reply->vps,
-				 PyTuple_GetItem(pValue, 1), function_name);
-
-		    /* Config item tuple */
-		    add_vp_tuple(&request->config_items,
-				 PyTuple_GetItem(pValue, 2), function_name);
+		
+		pTupleInt = PyTuple_GET_ITEM(pRet, 0);
+		if (!PyInt_CheckExact(pTupleInt)) {
+			radlog(L_ERR, "rlm_python:%s: first tuple element not an integer", funcname);
+			goto failed;
 		}
-	    }
-	}
-	else if (PyInt_Check(pValue)) {
-	    /* Just an integer */
-	    return_value = PyInt_AsLong(pValue);
-	}
-	else if (pValue == Py_None) {
-	    /* returned 'None', return value defaults to "OK, continue." */
-	    return_value = RLM_MODULE_OK;
-	}
-	else {
-	    /* Not tuple or None */
-	    radlog(L_ERR, "%s function did not return a tuple or None\n",
-		   function_name);
+		/* Now have the return value */
+		ret = PyInt_AsLong(pTupleInt);
+		/* Reply item tuple */
+		python_vptuple(&request->reply->vps,
+			       PyTuple_GET_ITEM(pRet, 1), funcname);
+		/* Config item tuple */
+		python_vptuple(&request->config_items,
+			       PyTuple_GET_ITEM(pRet, 2), funcname);
+
+	} else if (PyInt_CheckExact(pRet)) {
+		/* Just an integer */
+		ret = PyInt_AsLong(pRet);
+
+	} else if (pRet == Py_None) {
+		/* returned 'None', return value defaults to "OK, continue." */
+		ret = RLM_MODULE_OK;
+	} else {
+		/* Not tuple or None */
+		radlog(L_ERR, "rlm_python:%s: function did not return a tuple or None", funcname);
+		goto failed;
 	}
 
-
-	/* Decrease reference counts for the argument and return tuple */
+ okay:
 	Py_DECREF(pArgs);
-	Py_DECREF(pValue);
-    }
-
-    /* Decrease reference count for the tuples passed, the
-     * container tuple, and the return value.
-     */
-
-    pValueHolderPtr = pValueHolder;
-    i = n_tuple;
-    while (i--) {
-	/* Can't write as pValueHolderPtr since Py_DECREF is a macro */
-	Py_DECREF(*pValueHolderPtr);
-	pValueHolderPtr++;
-    }
-    free(pValueHolder);
-    Py_DECREF(pValuePairContainer);
-
-    /* pDict and pFunc are borrowed and must not be Py_DECREF-ed */
-
-    /* Free pairs if we are rejecting.
-     * xxx Shouldn't the core do that?
-     */
-
-    if ((return_value == RLM_MODULE_REJECT) && (request != NULL)) {
-	pairfree(&(request->reply->vps));
-    }
-
-    /* Return the specified by the Python module */
-    return return_value;
+	Py_DECREF(pRet);
+	PyGILState_Release(gstate);
+	return ret;
+	
+ failed:
+	python_error();
+	Py_XDECREF(pArgs);
+	Py_XDECREF(pRet);
+	PyGILState_Release(gstate);
+	
+	return -1;
 }
-
-
-static struct varlookup {
-	const char*	name;
-	int		value;
-} constants[] = {
-	{ "L_DBG",		L_DBG			},
-	{ "L_AUTH",		L_AUTH			},
-	{ "L_INFO",		L_INFO			},
-	{ "L_ERR",		L_ERR			},
-	{ "L_PROXY",		L_PROXY			},
-	{ "L_CONS",		L_CONS			},
-	{ "RLM_MODULE_REJECT",	RLM_MODULE_REJECT	},
-	{ "RLM_MODULE_FAIL",	RLM_MODULE_FAIL		},
-	{ "RLM_MODULE_OK",	RLM_MODULE_OK		},
-	{ "RLM_MODULE_HANDLED",	RLM_MODULE_HANDLED	},
-	{ "RLM_MODULE_INVALID",	RLM_MODULE_INVALID	},
-	{ "RLM_MODULE_USERLOCK",RLM_MODULE_USERLOCK	},
-	{ "RLM_MODULE_NOTFOUND",RLM_MODULE_NOTFOUND	},
-	{ "RLM_MODULE_NOOP",	RLM_MODULE_NOOP		},
-	{ "RLM_MODULE_UPDATED",	RLM_MODULE_UPDATED	},
-	{ "RLM_MODULE_NUMCODES",RLM_MODULE_NUMCODES	},
-	{ NULL, 0 },
-};
 
 /*
- * Import a user module and load a function from it
+ *	Import a user module and load a function from it
  */
-static int load_python_function(const char* module, const char* func,
-				PyObject** pyModule, PyObject** pyFunc) {
 
-    if ((module==NULL) || (func==NULL)) {
-	*pyFunc=NULL;
-	*pyModule=NULL;
-    } else {
-	PyObject *pName;
-
-	pName = PyString_FromString(module);
-	Py_INCREF(pName);
-	*pyModule = PyImport_Import(pName);
-	Py_DECREF(pName);
-	if (*pyModule != NULL) {
-	    PyObject *pDict;
-
-	    pDict = PyModule_GetDict(*pyModule);
-	    /* pDict: borrowed reference */
-
-	    *pyFunc = PyDict_GetItemString(pDict, func);
-	    /* pFunc: Borrowed reference */
-	} else {
-	    python_error();
-
-	    radlog(L_ERR, "Failed to import python module \"%s\"\n", module);
-	    return -1;
+static int python_load_function(struct py_function_def *def)
+{
+	const char *funcname = "python_load_function";
+	PyGILState_STATE gstate;
+	
+	gstate = PyGILState_Ensure();
+	
+	if (def->module_name != NULL && def->function_name != NULL) {
+		if ((def->module = PyImport_ImportModule(def->module_name)) == NULL) {
+			radlog(L_ERR, "rlm_python:%s: module '%s' is not found", funcname, def->module_name);
+			goto failed;
+		}
+		
+		if ((def->function = PyObject_GetAttrString(def->module, def->function_name)) == NULL) {
+			radlog(L_ERR, "rlm_python:%s: function '%s.%s' is not found", funcname, def->module_name, def->function_name);
+			goto failed;
+		}
+		
+		if (!PyCallable_Check(def->function)) {
+			radlog(L_ERR, "rlm_python:%s: function '%s.%s' is not callable", funcname, def->module_name, def->function_name);
+			goto failed;
+		}
 	}
-    }
-
-    return 0;
+	PyGILState_Release(gstate);
+	return 0;
+	
+ failed:
+	python_error();
+	radlog(L_ERR, "rlm_python:%s: failed to import python function '%s.%s'", funcname, def->module_name, def->function_name);
+	Py_XDECREF(def->function);
+	def->function = NULL;
+	Py_XDECREF(def->module);
+	def->module = NULL;
+	PyGILState_Release(gstate);
+	return -1;
 }
 
+
+static void python_objclear(PyObject **ob)
+{
+	if (*ob != NULL) {
+		Pyx_BLOCK_THREADS
+		Py_DECREF(*ob);
+		Pyx_UNBLOCK_THREADS
+	        *ob = NULL;
+	}
+}
+
+static void free_and_null(char **p)
+{
+	if (*p != NULL) {
+		free(*p);
+		*p = NULL;
+	}
+}
+
+static void python_funcdef_clear(struct py_function_def *def)
+{
+	python_objclear(&def->function);
+	python_objclear(&def->module);
+	free_and_null(&def->function_name);
+	free_and_null(&def->module_name);
+}
+
+static void python_instance_clear(struct rlm_python_t *data)
+{
+#define A(x) python_funcdef_clear(&data->x)
+	
+	A(instantiate);
+	A(authorize);
+	A(authenticate);
+	A(preacct);
+	A(accounting);
+	A(checksimul);
+	A(detach);
+
+#undef A
+}
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -504,150 +556,80 @@ static int load_python_function(const char* module, const char* func,
  */
 static int python_instantiate(CONF_SECTION *conf, void **instance)
 {
-    rlm_python_t *data;
-    PyObject *module;
-    int idx;
+        struct rlm_python_t    *data = NULL;
 
-    /*
-     * Initialize Python interpreter. Fatal error if this fails.
-     */
-    Py_Initialize();
+        /*
+         *      Set up a storage area for instance data
+         */
+        if ((data = malloc(sizeof(*data))) == NULL)
+                return -1;
+        memset(data, 0, sizeof(*data));
 
-    /*
-     *	Set up a storage area for instance data
-     */
-    data = rad_malloc(sizeof(*data));
-    if (!data) {
-      return -1;
-    }
-    memset(data, 0, sizeof(*data));
+        if (python_init() != 0) {
+		free(data);
+		return -1;
+        }
 
-    /*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
+        /*
+         *      If the configuration parameters can't be parsed, then
+         *      fail.
+         */
+        if (cf_section_parse(conf, data, module_config) < 0) {
+                free(data);
+                return -1;
+        }
+
+#define A(x) if (python_load_function(&data->x) < 0) goto failed
+
+        A(instantiate);
+        A(authenticate);
+        A(authorize);
+        A(preacct);
+        A(accounting);
+        A(checksimul);
+        A(detach);
+
+#undef A
+
+        *instance = data;
+
+        /*
+	 *	Call the instantiate function.  No request.  Use the
+	 *	return value.
 	 */
-    if (cf_section_parse(conf, data, module_config) < 0) {
-	free(data);
-	return -1;
-    }
-
-
-    /*
-     * Setup our 'radiusd' module.
-     */
-
-    /* Code */
-    if ((module = data->pModule_builtin =
-	 Py_InitModule3("radiusd", radiusd_methods,
-			"FreeRADIUS Module.")) == NULL) {
-
-	radlog(L_ERR, "Python Py_InitModule3 failed");
-	free(data);
-	return -1;
-    }
-
-    /*
-     * Load constants into module
-     */
-    for (idx=0; constants[idx].name; idx++)
-	if ((PyModule_AddIntConstant(module, constants[idx].name, constants[idx].value)) == -1) {
-
-	    radlog(L_ERR, "Python AddIntConstant failed");
-	}
-
-
-    /*
-     * Import user modules.
-     */
-#define RLM_PYTHON_LOAD(foo) if (load_python_function(data->mod_##foo, data->func_##foo, \
-		&data->pModule_##foo, &data->pFunc_##foo)==-1) { \
-	/* TODO: check if we need to cleanup data */ \
-	return -1; \
-    }
-
-    RLM_PYTHON_LOAD(instantiate);
-    RLM_PYTHON_LOAD(authenticate);
-    RLM_PYTHON_LOAD(authorize);
-    RLM_PYTHON_LOAD(preacct);
-    RLM_PYTHON_LOAD(accounting);
-    RLM_PYTHON_LOAD(checksimul);
-    RLM_PYTHON_LOAD(preproxy);
-    RLM_PYTHON_LOAD(postproxy);
-    RLM_PYTHON_LOAD(detach);
-
-    *instance=data;
-
-    /* Call the instantiate function.  No request.  Use the return value. */
-    return python_function(NULL, data->pFunc_instantiate, "instantiate");
+	return python_function(NULL, data->instantiate.function,
+			       "instantiate");
+ failed:
+        python_error();
+        python_instance_clear(data);
+        free(data);
+        return -1;
 }
-
-#define RLM_PYTHON_FUNC(foo) static int python_##foo(void *instance, REQUEST *request) \
-{ \
-    return python_function(request, \
-			   ((struct rlm_python_t *)instance)->pFunc_##foo, \
-			   #foo); \
-}
-
-
-RLM_PYTHON_FUNC(authorize)
-RLM_PYTHON_FUNC(authenticate)
-RLM_PYTHON_FUNC(preacct)
-RLM_PYTHON_FUNC(accounting)
-RLM_PYTHON_FUNC(checksimul)
-RLM_PYTHON_FUNC(preproxy)
-RLM_PYTHON_FUNC(postproxy)
-RLM_PYTHON_FUNC(postauth)
 
 static int python_detach(void *instance)
 {
-    int return_value;
-
-    /* Default return value is failure */
-    return_value = -1;
-
-    if (((rlm_python_t *)instance)->pFunc_detach &&
-	PyCallable_Check(((rlm_python_t *)instance)->pFunc_detach)) {
-
-	PyObject *pArgs, *pValue;
-
-	/* call the function with an empty tuple */
-
-	pArgs = PyTuple_New(0);
-	pValue = PyObject_CallObject(((rlm_python_t *)instance)->pFunc_detach,
-				     pArgs);
-
-	if (pValue == NULL) {
-	    python_error();
-	    return -1;
-	}
-	else {
-	    if (!PyInt_Check(pValue)) {
-		radlog(L_ERR, "detach: return value not an integer");
-	    }
-	    else {
-		return_value = PyInt_AsLong(pValue);
-	    }
-	}
-
-	/* Decrease reference counts for the argument and return tuple */
-	Py_DECREF(pArgs);
-	Py_DECREF(pValue);
-    }
-
-    free(instance);
-
-#if 0
-    /* xxx test delete module object so it will be reloaded later.
-     * xxx useless since we can't SIGHUP reliably, anyway.
-     */
-    PyObject_Del(((struct rlm_python_t *)instance)->pModule_accounting);
-#endif
-
-    radlog(L_DBG, "python_detach done");
-
-    /* Return the specified by the Python module */
-    return return_value;
+        struct rlm_python_t    *data = (struct rlm_python_t *) instance;
+        int             ret;
+	
+        ret = python_function(NULL, data->detach.function, "detach");
+	
+        python_instance_clear(data);
+	
+        free(data);
+        return ret;
 }
+
+#define A(x) static int python_##x(void *instance, REQUEST *request) { \
+  return python_function(request, ((struct rlm_python_t *)instance)->x.function, #x); \
+}
+
+A(authenticate)
+A(authorize)
+A(preacct)
+A(accounting)
+A(checksimul)
+
+#undef A
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -663,15 +645,15 @@ module_t rlm_python = {
 	"python",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	python_instantiate,		/* instantiation */
-	python_detach,			/* detach */
+        python_detach,
 	{
 		python_authenticate,	/* authentication */
 		python_authorize,	/* authorization */
 		python_preacct,		/* preaccounting */
 		python_accounting,	/* accounting */
 		python_checksimul,	/* checksimul */
-		python_preproxy,	/* pre-proxy */
-		python_postproxy,	/* post-proxy */
-		python_postauth		/* post-auth */
-	},
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
+	}
 };
