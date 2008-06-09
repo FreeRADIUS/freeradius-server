@@ -493,7 +493,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 		}
 	}
 
-	if (rbtree_finddata(home_servers_byaddr, home)) {
+	if ((home->ipaddr.af != AF_UNSPEC) && /* could be virtual server */
+	    rbtree_finddata(home_servers_byaddr, home)) {
 		DEBUG2("Ignoring duplicate home server %s.", name2);
 		return 1;
 	}
@@ -506,7 +507,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 		return 0;
 	}
 
-	if (!rbtree_insert(home_servers_byaddr, home)) {
+	if ((home->ipaddr.af != AF_UNSPEC) && /* could be virtual server */
+	    !rbtree_insert(home_servers_byaddr, home)) {
 		rbtree_deletebydata(home_servers_byname, home);
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Internal error adding home server %s.",
@@ -558,7 +560,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 			return 0;
 		}
 		
-		if (!rbtree_insert(home_servers_byaddr, home2)) {
+		if ((home->ipaddr.af != AF_UNSPEC) &&
+		    !rbtree_insert(home_servers_byaddr, home2)) {
 			rbtree_deletebydata(home_servers_byname, home2);
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Internal error adding home server %s.",
