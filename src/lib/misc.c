@@ -50,7 +50,7 @@ const char *ip_ntoa(char *buffer, uint32_t ipaddr)
 	return buffer;
 }
 
-
+#undef F_LOCK
 
 /*
  *	Internal wrapper for locking, to minimize the number of ifdef's
@@ -59,7 +59,7 @@ const char *ip_ntoa(char *buffer, uint32_t ipaddr)
  */
 int rad_lockfd(int fd, int lock_len)
 {
-#if defined(F_LOCK) && !defined(BSD)
+#if defined(F_LOCK)
 	return lockf(fd, F_LOCK, lock_len);
 #elif defined(LOCK_EX)
 	lock_len = lock_len;	/* -Wunused */
@@ -462,8 +462,8 @@ int ip_hton(const char *src, int af, fr_ipaddr_t *dst)
 const char *ip_ntoh(const fr_ipaddr_t *src, char *dst, size_t cnt)
 {
 	struct sockaddr_storage ss;
-	struct sockaddr_in  *s4;
-	int error, len;
+	int error;
+	socklen_t salen;
 
 	/*
 	 *	No DNS lookups
@@ -472,37 +472,11 @@ const char *ip_ntoh(const fr_ipaddr_t *src, char *dst, size_t cnt)
 		return inet_ntop(src->af, &(src->ipaddr), dst, cnt);
 	}
 
+	if (!fr_ipaddr2sockaddr(src, 0, &ss, &salen)) {
+		return NULL;
+	}
 
-	memset(&ss, 0, sizeof(ss));
-        switch (src->af) {
-        case AF_INET :
-                s4 = (struct sockaddr_in *)&ss;
-                len    = sizeof(struct sockaddr_in);
-                s4->sin_family = AF_INET;
-                s4->sin_port = 0;
-                memcpy(&s4->sin_addr, &src->ipaddr.ip4addr, 4);
-                break;
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-        case AF_INET6 :
-		{
-		struct sockaddr_in6 *s6;
-
-                s6 = (struct sockaddr_in6 *)&ss;
-                len    = sizeof(struct sockaddr_in6);
-                s6->sin6_family = AF_INET6;
-                s6->sin6_flowinfo = 0;
-                s6->sin6_port = 0;
-                memcpy(&s6->sin6_addr, &src->ipaddr.ip6addr, 16);
-                break;
-		}
-#endif
-
-        default :
-                return NULL;
-        }
-
-	if ((error = getnameinfo((struct sockaddr *)&ss, len, dst, cnt, NULL, 0,
+	if ((error = getnameinfo((struct sockaddr *)&ss, salen, dst, cnt, NULL, 0,
 				 NI_NUMERICHOST | NI_NUMERICSERV)) != 0) {
 		librad_log("ip_ntoh: %s", gai_strerror(error));
 		return NULL;
@@ -610,4 +584,71 @@ int fr_ipaddr_cmp(const fr_ipaddr_t *a, const fr_ipaddr_t *b)
 	}
 
 	return -1;
+}
+
+int fr_ipaddr2sockaddr(const fr_ipaddr_t *ipaddr, int port,
+		       struct sockaddr_storage *sa, socklen_t *salen)
+{
+	if (ipaddr->af == AF_INET) {
+		struct sockaddr_in s4;
+
+		*salen = sizeof(s4);
+
+		s4.sin_family = AF_INET;
+		s4.sin_addr = ipaddr->ipaddr.ip4addr;
+		s4.sin_port = htons(port);
+		memset(sa, 0, sizeof(*sa));
+		memcpy(sa, &s4, sizeof(s4));
+
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+	} else if (ipaddr->af == AF_INET6) {
+		struct sockaddr_in6 s6;
+
+		*salen = sizeof(s6);
+
+		s6.sin6_family = AF_INET6;
+		s6.sin6_addr = ipaddr->ipaddr.ip6addr;
+		s6.sin6_port = htons(port);
+		memset(sa, 0, sizeof(*sa));
+		memcpy(sa, &s6, sizeof(s6));
+#endif
+	} else {
+		return 0;
+	}
+
+	return 1;
+}
+
+
+int fr_sockaddr2ipaddr(const struct sockaddr_storage *sa, socklen_t salen,
+		       fr_ipaddr_t *ipaddr, int * port)
+{
+	/*
+	 *	FIXME: Check salen against sizeof socket structures.
+	 */
+	salen = salen;		/* -Wunused */
+
+	if (sa->ss_family == AF_INET) {
+		struct sockaddr_in	s4;
+		
+		memcpy(&s4, sa, sizeof(s4));
+		ipaddr->af = AF_INET;
+		ipaddr->ipaddr.ip4addr = s4.sin_addr;
+		if (port) *port = ntohs(s4.sin_port);
+		
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+	} else if (sa->ss_family == AF_INET6) {
+		struct sockaddr_in6	s6;
+		
+		memcpy(&s6, sa, sizeof(s6));
+		ipaddr->af = AF_INET6;
+		ipaddr->ipaddr.ip6addr = s6.sin6_addr;
+		if (port) *port = ntohs(s6.sin6_port);
+#endif
+
+	} else {
+		return 0;
+	}
+
+	return 1;
 }

@@ -381,7 +381,10 @@ int fr_ipaddr_cmp(const fr_ipaddr_t *a, const fr_ipaddr_t *b);
 
 int		ip_hton(const char *src, int af, fr_ipaddr_t *dst);
 const char	*ip_ntoh(const fr_ipaddr_t *src, char *dst, size_t cnt);
-
+int fr_ipaddr2sockaddr(const fr_ipaddr_t *ipaddr, int port,
+		       struct sockaddr_storage *sa, socklen_t *salen);
+int fr_sockaddr2ipaddr(const struct sockaddr_storage *sa, socklen_t salen,
+		       fr_ipaddr_t *ipaddr, int * port);
 
 
 #ifdef ASCEND_BINARY
