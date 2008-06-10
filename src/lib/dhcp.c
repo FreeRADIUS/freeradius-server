@@ -118,12 +118,9 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	uint32_t		magic;
 	struct sockaddr_storage	src;
 	struct sockaddr_storage	dst;
-	socklen_t		sizeof_src = sizeof(src);
-	socklen_t	        sizeof_dst = sizeof(dst);
+	socklen_t		sizeof_src;
+	socklen_t	        sizeof_dst;
 	RADIUS_PACKET		*packet;
-
-	memset(&src, 0, sizeof_src);
-	memset(&dst, 0, sizeof_dst);
 
 	packet = rad_alloc(0);
 	if (!packet) return NULL;
@@ -227,8 +224,9 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	 *	FIXME: More checks, like DHCP packet type?
 	 */
 
+
 	{
-		struct sockaddr_in	*s4;
+		int port;
 		struct sockaddr_storage si;
 		socklen_t si_len = sizeof(si);
 
@@ -236,16 +234,8 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 		 *	This should never fail...
 		 */
 		getsockname(sockfd, (struct sockaddr *) &si, &si_len);
-
-		s4 = (struct sockaddr_in *)&src;
-		packet->src_ipaddr.af = AF_INET;
-		packet->src_ipaddr.ipaddr.ip4addr = s4->sin_addr;
-		packet->src_port = ntohs(s4->sin_port);
-
-		s4 = (struct sockaddr_in *)&si;
-		packet->dst_ipaddr.af = AF_INET;
-		packet->dst_ipaddr.ipaddr.ip4addr = s4->sin_addr;
-		packet->dst_port = ntohs(s4->sin_port);
+		fr_sockaddr2ipaddr(&si, si_len, &packet->src_ipaddr, &port);
+		packet->src_port = port;
 	}
 
 	if (librad_debug > 1) {
@@ -285,32 +275,17 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 {
 	struct sockaddr_storage	dst;
 	struct sockaddr_storage	src;
-	socklen_t		sizeof_dst = sizeof(dst);
-	socklen_t		sizeof_src = sizeof(src);
+	socklen_t		sizeof_dst;
+	socklen_t		sizeof_src;
 
-	memset(&src, 0, sizeof(src));
-	memset(&dst, 0, sizeof(dst));
+	fr_ipaddr2sockaddr(&packet->dst_ipaddr, packet->dst_port,
+			   &dst, &sizeof_dst);
 
 	/*
-	 *	Only IPv4 is supported.
+	 *	Currently unused...
 	 */
-	{
-		struct sockaddr_in	*s4;
-
-		s4 = (struct sockaddr_in *)&dst;
-		sizeof_dst = sizeof(struct sockaddr_in);
-
-		s4->sin_family = AF_INET;
-		s4->sin_addr = packet->dst_ipaddr.ipaddr.ip4addr;
-		s4->sin_port = htons(packet->dst_port);
-
-		s4 = (struct sockaddr_in *)&src;
-		sizeof_src = sizeof(struct sockaddr_in);
-
-		s4->sin_family = AF_INET;
-		s4->sin_addr = packet->src_ipaddr.ipaddr.ip4addr;
-		s4->sin_port = htons(packet->src_port);
-	}
+	fr_ipaddr2sockaddr(&packet->src_ipaddr, packet->src_port,
+			   &src, &sizeof_src);
 
 	/*
 	 *	Assume that the packet is encoded before sending it.

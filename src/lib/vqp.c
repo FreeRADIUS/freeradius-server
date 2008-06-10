@@ -78,63 +78,20 @@ static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
 		      int dst_port)
 {
 	struct sockaddr_storage	dst;
-	socklen_t		sizeof_dst = sizeof(dst);
+	socklen_t		sizeof_dst;
 
 #ifdef WITH_UDPFROMTO
 	struct sockaddr_storage	src;
-	socklen_t		sizeof_src = sizeof(src);
+	socklen_t		sizeof_src;
 
-	memset(&src, 0, sizeof(src));
-#endif
-	memset(&dst, 0, sizeof(dst));
-
-	/*
-	 *	IPv4 is supported.
-	 */
-	if (dst_ipaddr->af == AF_INET) {
-		struct sockaddr_in	*s4;
-
-		s4 = (struct sockaddr_in *)&dst;
-		sizeof_dst = sizeof(struct sockaddr_in);
-
-		s4->sin_family = AF_INET;
-		s4->sin_addr = dst_ipaddr->ipaddr.ip4addr;
-		s4->sin_port = htons(dst_port);
-
-#ifdef WITH_UDPFROMTO
-		s4 = (struct sockaddr_in *)&src;
-		sizeof_src = sizeof(struct sockaddr_in);
-
-		s4->sin_family = AF_INET;
-		s4->sin_addr = src_ipaddr->ipaddr.ip4addr;
+	fr_ipaddr2sockaddr(src_ipaddr, 0, &src, &sizeof_src);
+#else
+	src_ipaddr = src_ipaddr; /* -Wunused */
 #endif
 
-	/*
-	 *	IPv6 MAY be supported.
-	 */
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	} else if (dst_ipaddr->af == AF_INET6) {
-		struct sockaddr_in6	*s6;
-
-		s6 = (struct sockaddr_in6 *)&dst;
-		sizeof_dst = sizeof(struct sockaddr_in6);
-		
-		s6->sin6_family = AF_INET6;
-		s6->sin6_addr = dst_ipaddr->ipaddr.ip6addr;
-		s6->sin6_port = htons(dst_port);
-
-#ifdef WITH_UDPFROMTO
-		return -1;	/* UDPFROMTO && IPv6 are not supported */
-#if 0
-		s6 = (struct sockaddr_in6 *)&src;
-		sizeof_src = sizeof(struct sockaddr_in6);
-
-		s6->sin6_family = AF_INET6;
-		s6->sin6_addr = src_ipaddr->ipaddr.ip6addr;
-#endif /* #if 0 */
-#endif /* WITH_UDPFROMTO */
-#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
-	} else return -1;   /* Unknown address family, Die Die Die! */
+	if (!fr_ipaddr2sockaddr(dst_ipaddr, dst_port, &dst, &sizeof_dst)) {
+		return -1;   /* Unknown address family, Die Die Die! */
+	}
 
 #ifdef WITH_UDPFROMTO
 	/*
@@ -178,6 +135,7 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	uint8_t			header[4];
 	void			*buf;
 	size_t			len;
+	int			port;
 
 	memset(&src, 0, sizeof_src);
 	memset(&dst, 0, sizeof_dst);
@@ -285,41 +243,15 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 		return data_len;
 	}
 
-	/*
-	 *	Check address families, and update src/dst ports, etc.
-	 */
-	if (src.ss_family == AF_INET) {
-		struct sockaddr_in	*s4;
-
-		s4 = (struct sockaddr_in *)&src;
-		src_ipaddr->af = AF_INET;
-		src_ipaddr->ipaddr.ip4addr = s4->sin_addr;
-		*src_port = ntohs(s4->sin_port);
-
-		s4 = (struct sockaddr_in *)&dst;
-		dst_ipaddr->af = AF_INET;
-		dst_ipaddr->ipaddr.ip4addr = s4->sin_addr;
-		*dst_port = ntohs(s4->sin_port);
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	} else if (src.ss_family == AF_INET6) {
-		struct sockaddr_in6	*s6;
-
-		s6 = (struct sockaddr_in6 *)&src;
-		src_ipaddr->af = AF_INET6;
-		src_ipaddr->ipaddr.ip6addr = s6->sin6_addr;
-		*src_port = ntohs(s6->sin6_port);
-
-		s6 = (struct sockaddr_in6 *)&dst;
-		dst_ipaddr->af = AF_INET6;
-		dst_ipaddr->ipaddr.ip6addr = s6->sin6_addr;
-		*dst_port = ntohs(s6->sin6_port);
-#endif
-	} else {
+	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, &port)) {
 		free(buf);
 		return -1;	/* Unknown address family, Die Die Die! */
 	}
-	
+	*src_port = port;
+
+	fr_sockaddr2ipaddr(&dst, sizeof_dst, dst_ipaddr, &port);
+	*dst_port = port;
+
 	/*
 	 *	Different address families should never happen.
 	 */
