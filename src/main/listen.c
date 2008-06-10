@@ -932,22 +932,8 @@ static int listen_bind(rad_listen_t *this)
 			return -1;
 		}
 
-		if (src.ss_family == AF_INET) {
-			struct sockaddr_in	s4;
-			
-			memcpy(&s4, &src, sizeof(s4));
-			sock->ipaddr.ipaddr.ip4addr = s4.sin_addr;
-			sock->port = ntohs(s4.sin_port);
-			
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-		} else if (src.ss_family == AF_INET6) {
-			struct sockaddr_in6	s6;
-			
-			memcpy(&s6, &src, sizeof(s6));
-			sock->ipaddr.ipaddr.ip6addr = s6.sin6_addr;
-			sock->port = ntohs(s6.sin6_port);
-#endif
-		} else {
+		if (!fr_sockaddr2ipaddr(&src, sizeof_src,
+					&sock->ipaddr, &sock->port)) {
 			radlog(L_ERR, "Socket has unsupported address family");
 			return -1;
 		}
