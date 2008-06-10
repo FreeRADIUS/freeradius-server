@@ -121,6 +121,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	socklen_t		sizeof_src;
 	socklen_t	        sizeof_dst;
 	RADIUS_PACKET		*packet;
+	int port;
 
 	packet = rad_alloc(0);
 	if (!packet) return NULL;
@@ -224,19 +225,17 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	 *	FIXME: More checks, like DHCP packet type?
 	 */
 
-
-	{
-		int port;
-		struct sockaddr_storage si;
-		socklen_t si_len = sizeof(si);
-
-		/*
-		 *	This should never fail...
+	sizeof_dst = sizeof(dst);
+	/*
+	 *	This should never fail...
 		 */
-		getsockname(sockfd, (struct sockaddr *) &si, &si_len);
-		fr_sockaddr2ipaddr(&si, si_len, &packet->src_ipaddr, &port);
-		packet->src_port = port;
-	}
+	getsockname(sockfd, (struct sockaddr *) &dst, &sizeof_dst);
+	
+	fr_sockaddr2ipaddr(&src, sizeof_src, &packet->src_ipaddr, &port);
+	packet->src_port = port;
+
+	fr_sockaddr2ipaddr(&dst, sizeof_dst, &packet->dst_ipaddr, &port);
+	packet->dst_port = port;
 
 	if (librad_debug > 1) {
 		char type_buf[64];
