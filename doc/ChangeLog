@@ -1,4 +1,10 @@
-FreeRADIUS 2.0.5 ; $Date$ , urgency=medium
+FreeRADIUS 2.0.6 ; $Date$ , urgency=medium
+	Feature improvements
+	* Clients may now be defined dynamically.  See
+	  raddb/sites-available/dynamic-clients.
+	Bug fixes
+
+FreeRADIUS 2.0.5 ; Date: 2008/06/07 17:17:00 , urgency=medium
 	Feature improvements
 	* Permit SQL authorize_reply_query to be empty.
 	* Allow setting response packet type in Post-Proxy-Type Fail
