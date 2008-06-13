@@ -229,6 +229,8 @@ static const CONF_PARSER server_config[] = {
 	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, NULL },
 	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names, NULL },
 
+	{  "security", PW_TYPE_SUBSECTION, 0, NULL, (const void *) security_config },
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
