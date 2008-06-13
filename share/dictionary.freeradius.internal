@@ -170,6 +170,18 @@ VALUE	Module-Return-Code		updated			8
 ATTRIBUTE	Packet-Original-Timestamp		1109	date
 ATTRIBUTE	SQL-Table-Name				1110	string
 
+ATTRIBUTE	FreeRADIUS-Client-IP-Address		1120	ipaddr
+ATTRIBUTE	FreeRADIUS-Client-IPv6-Address		1121	ipv6addr
+ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	integer
+
+VALUE	FreeRADIUS-Client-Require-MA	no			0
+VALUE	FreeRADIUS-Client-Require-MA	yes			1
+
+ATTRIBUTE	FreeRADIUS-Client-Secret		1123	string
+ATTRIBUTE	FreeRADIUS-Client-Shortname		1124	string
+ATTRIBUTE	FreeRADIUS-Client-NAS-Type		1125	string
+ATTRIBUTE	FreeRADIUS-Client-Virtual-Server	1126	string
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.

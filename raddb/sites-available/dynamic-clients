@@ -1,0 +1,153 @@
+# -*- text -*-
+######################################################################
+#
+#	Sample configuration file for dynamically updating the list
+#	of RADIUS clients at run time.
+#
+#	Everything is keyed off of a client "network".  (e.g. 192.168/16)
+#	This configuration lets the server know that clients within
+#	that network are defined dynamically.
+#
+#	When the server receives a packet from an unknown IP address
+#	within that network, it tries to find a dynamic definition
+#	for that client.  If the definition is found, the IP address
+#	(and other configuration) is added to the server's internal
+#	cache of "known clients", with a configurable lifetime.
+#
+#	Further packets from that IP address result in the client
+#	definition being found in the cache.  Once the lifetime is
+#	reached, the client definition is deleted, and any new requests
+#	from that client are looked up as above.
+#
+#	If the dynamic definition is not found, then the request is
+#	treated as if it came from an unknown client.  i.e. It is
+#	silently discarded.
+#
+#	As part of protection from Denial of Service (DoS) attacks,
+#	the server will add only one new client per second.  This CANNOT
+#	be changed, and is NOT configurable.
+#
+#	$Id$
+#
+######################################################################
+
+#
+#  Define a network where clients may be dynamically defined.
+client dynamic {
+	ipaddr = 192.168.0.0
+
+	#
+	#  You MUST specify a netmask!
+	#  IPv4 /32 or IPv6 /128 are NOT allowed!
+	netmask = 16
+
+	#
+	#  Any other configuration normall found in a "client"
+	#  entry can be used here.
+
+	#
+	#  A shared secret does NOT have to be defined.  It can
+	#  be left out.
+
+	#
+	#  Define the virtual server used to discover dynamic clients.
+	dynamic_clients = dynamic_client_server
+
+	#
+	#  Define the lifetime (in seconds) for dynamic clients.
+	#  They will be cached for this lifetime, and deleted afterwards.
+	#
+	#  If the lifetime is "0", then the dynamic client is never
+	#  deleted.  The only way to delete the client is to re-start
+	#  the server.
+	lifetime = 86400
+}
+
+#
+#  This is the virtual server referenced above by "dynamic_clients".
+server dynamic_client_server {
+
+	#
+	#  The only contents of the virtual server is the "authorize" section.
+	authorize {
+
+		#
+		#  Put any modules you want here.  SQL, LDAP, "exec",
+		#  Perl, etc.  The only requirements is that the
+		#  attributes MUST go into the control item list.
+		#
+		#  The request that is processed through this section
+		#  is EMPTY.  There are NO attributes.  The request is fake,
+		#  and is NOT the packet that triggered the lookup of
+		#  the dynamic client.
+		#
+		#  The ONLY piece of useful information is either
+		#
+		#	Packet-Src-IP-Address (IPv4 clients)
+		#	Packet-Src-IPv6-Address (IPv6 clients)
+		#
+		#  The attributes used to define a dynamic client mirror
+		#  the configuration items in the "client" structure.
+		#
+		update control {
+
+			#
+			#  Echo the IP address of the client.
+			FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
+
+			# require_message_authenticator
+			FreeRADIUS-Client-Require-MA = no
+
+			# secret
+			FreeRADIUS-Client-Secret = "testing123"
+
+			# shortname
+			FreeRADIUS-Client-Shortname = "%{Packet-Src-IP-Address}"
+
+			# nastype
+			FreeRADIUS-Client-NAS-Type = "other"
+
+			# virtual_server
+			#
+			#  This can ONLY be used if the network client
+			#  definition (e.g. "client dynamic" above) has
+			#  NO virtual_server defined.
+			#
+			#  If the network client definition does have a
+			#  virtual_server defined, then that is used,
+			#  and there is no need to define this attribute.
+			#  
+			FreeRADIUS-Client-Virtual-Server = "something"
+
+		}
+
+		#
+		#  Or, look the client up in SQL.
+		#
+		#  This requires the SQL module to be configured, of course.
+		if ("%{sql: SELECT nasname FROM nas WHERE nasname = %{Packet-Src-IP-Address}}") {
+			update control {
+				#
+				#  Echo the IP.
+				FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
+
+				#
+				#  Do multiple SELECT statements to grab
+				#  the various definitions.
+				FreeRADIUS-Client-Shortname = "%{sql: SELECT shortname FROM nas WHERE nasname = %{Packet-Src-IP-Address}}"
+
+				FreeRADIUS-Client-Secret = "%{sql: SELECT secret FROM nas WHERE nasname = %{Packet-Src-IP-Address}}"
+
+				FreeRADIUS-Client-NAS-Type = "%{sql: SELECT type FROM nas WHERE nasname = %{Packet-Src-IP-Address}}"
+			}
+
+		}
+
+		#
+		#  Tell the caller that the client was defined properly.
+		#
+		#  If the authorize section does NOT return "ok", then
+		#  the new client is ignored.
+		ok
+	}
+}

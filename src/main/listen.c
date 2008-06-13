@@ -78,7 +78,14 @@ typedef struct listen_socket_t {
 RADCLIENT *client_listener_find(const rad_listen_t *listener,
 				       const fr_ipaddr_t *ipaddr)
 {
-	const RADCLIENT_LIST *clients;
+#ifdef WITH_DYNAMIC_CLIENTS
+	int rcode;
+	time_t now;
+	listen_socket_t *sock;
+	REQUEST *request;
+	RADCLIENT *client, *created;
+#endif
+	RADCLIENT_LIST *clients;
 
 	rad_assert(listener != NULL);
 	rad_assert(ipaddr != NULL);
@@ -95,7 +102,138 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	 */
 	rad_assert(clients != NULL);
 
+#ifdef WITH_DYNAMIC_CLIENTS
+	client = client_find(clients, ipaddr);
+	if (!client) return NULL;
+
+	/*
+	 *	No server defined, and it's not dynamic.  Return it.
+	 */
+	if (!client->client_server && !client->dynamic) return client;
+
+	now = time(NULL);
+	
+	/*
+	 *	It's a dynamically generated client, check it.
+	 */
+	if (client->dynamic) {
+		/*
+		 *	Lives forever.  Return it.
+		 */
+		if (client->lifetime == 0) return client;
+		
+		/*
+		 *	Rate-limit the deletion of known clients.
+		 *	This makes them last a little longer, but
+		 *	prevents the server from melting down if (say)
+		 *	10k clients all expire at once.
+		 */
+		if (now == client->last_new_client) return client;
+
+		/*
+		 *	It's not dead yet.  Return it.
+		 */
+		if ((client->created + client->lifetime) > now) return client;
+		
+		/*
+		 *	It's dead, Jim.  Delete it.
+		 */
+		client_delete(clients, client);
+
+		/*
+		 *	Go find the enclosing network again.
+		 */
+		client = client_find(clients, ipaddr);
+
+		/*
+		 *	WTF?
+		 */
+		if (!client) return NULL;
+		if (!client->client_server) return NULL;
+
+		/*
+		 *	At this point, 'client' is the enclosing
+		 *	network that configures where dynamic clients
+		 *	can be defined.
+		 */
+		rad_assert(client->dynamic == 0);
+	} else {
+		/*
+		 *	The IP is unknown, so we've found an enclosing
+		 *	network.  Enable DoS protection.  We only
+		 *	allow one new client per second.  Known
+		 *	clients aren't subject to this restriction.
+		 */
+		if (now == client->last_new_client) return NULL;
+	}
+
+	client->last_new_client = now;
+
+	request = request_alloc();
+	if (!request) return NULL;
+
+	request->listener = listener;
+	request->client = client;
+	request->packet = rad_alloc(0);
+	if (!request->packet) {
+		request_free(&request);
+		return NULL;
+	}
+	request->reply = rad_alloc(0);
+	if (!request->reply) {
+		request_free(&request);
+		return NULL;
+	}
+	request->packet->timestamp = request->timestamp;
+	request->number = 0;
+	request->priority = listener->type;
+	request->server = client->client_server;
+	request->root = &mainconfig;
+
+	/*
+	 *	Run a fake request through the given virtual server.
+	 *	Look for FreeRADIUS-Client-IP-Address
+	 *	         FreeRADIUS-Client-Secret
+	 *		...
+	 *
+	 *	and create the RADCLIENT structure from that.
+	 */
+
+	sock = listener->data;
+	request->packet->sockfd = listener->fd;
+	request->packet->src_ipaddr = *ipaddr;
+	request->packet->src_port = 0; /* who cares... */
+	request->packet->dst_ipaddr = sock->ipaddr;
+	request->packet->dst_port = sock->port;
+
+	request->reply->sockfd = request->packet->sockfd;
+	request->reply->dst_ipaddr = request->packet->src_ipaddr;
+	request->reply->src_ipaddr = request->packet->dst_ipaddr;
+	request->reply->dst_port = request->packet->src_port;
+	request->reply->src_port = request->packet->dst_port;
+	request->reply->id = request->packet->id;
+	request->reply->code = 0; /* UNKNOWN code */
+
+	
+	DEBUG("server %s {", request->server);
+
+	rcode = module_authorize(0, request);
+
+	DEBUG("} # server %s", request->server);
+
+	if (rcode != RLM_MODULE_OK) {
+		request_free(&request);
+		return NULL;
+	}
+
+	created = client_create(clients, request);
+
+	request_free(&request);
+
+	return created;		/* may be NULL */
+#else
 	return client_find(clients, ipaddr);
+#endif
 }
 
 static int listen_bind(rad_listen_t *this);

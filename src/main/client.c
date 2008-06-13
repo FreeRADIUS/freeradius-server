@@ -69,9 +69,12 @@ void client_free(RADCLIENT *client)
 #endif
 #endif
 
+#ifdef WITH_DYNAMIC_CLIENTS
+	free(client->client_server);
+#endif
+
 	free(client);
 }
-
 
 /*
  *	Callback for comparing two clients.
@@ -267,6 +270,28 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	}
 #endif
 
+#ifdef WITH_DYNAMIC_CLIENTS
+	/*
+	 *	More catching of clients added by rlm_sql.
+	 *
+	 *	The sql modules sets the dynamic flag BEFORE calling
+	 *	us.  The client_create() function sets it AFTER
+	 *	calling us.
+	 */
+	if (client->dynamic && (client->lifetime == 0)) {
+		RADCLIENT *network;
+
+		/*
+		 *	If there IS an enclosing network,
+		 *	inherit the lifetime from it.
+		 */
+		network = client_find(clients, &client->ipaddr);
+		if (network) {
+			client->lifetime = network->lifetime;
+		}
+	}
+#endif
+
 	client->number = tree_num_max;
 	tree_num_max++;
 	if (tree_num) rbtree_insert(tree_num, client);
@@ -278,6 +303,18 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	return 1;
 }
+
+
+#ifdef WITH_DYNAMIC_CLIENTS
+void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
+{
+	if (!clients || !client) return;
+
+	rad_assert((client->prefix >= 0) && (client->prefix <= 128));
+
+	rbtree_deletebydata(clients->trees[client->prefix], client);
+}
+#endif
 
 
 /*
@@ -390,6 +427,13 @@ static const CONF_PARSER client_config[] = {
 	  offsetof(RADCLIENT, server), 0, NULL },
 	{ "server",  PW_TYPE_STRING_PTR, /* compatability with 2.0-pre */
 	  offsetof(RADCLIENT, server), 0, NULL },
+
+#ifdef WITH_DYNAMIC_CLIENTS
+	{ "dynamic_clients",  PW_TYPE_STRING_PTR,
+	  offsetof(RADCLIENT, client_server), 0, NULL },
+	{ "lifetime",  PW_TYPE_INTEGER,
+	  offsetof(RADCLIENT, lifetime), 0, NULL },
+#endif
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -542,6 +586,25 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		break;
 	}
 
+#ifdef WITH_DYNAMIC_CLIENTS
+	if (c->client_server) {
+		free(c->secret);
+		c->secret = strdup("testing123");
+
+		if (((c->ipaddr.af == AF_INET) &&
+		     (c->prefix == 32)) ||
+		    ((c->ipaddr.af == AF_INET6) &&
+		     (c->prefix == 128))) {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Dynamic clients MUST be a network, not a single IP address.");
+			client_free(c);
+			return NULL;
+		}
+
+		return c;
+	}
+#endif
+
 	if (!c->secret || !*c->secret) {
 #ifdef WITH_DHCP
 		const char *value = NULL;
@@ -636,3 +699,167 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 
 	return clients;
 }
+
+#ifdef WITH_DYNAMIC_CLIENTS
+/*
+ *	We overload this structure a lot.
+ */
+static const CONF_PARSER dynamic_config[] = {
+	{ "FreeRADIUS-Client-IP-Address",  PW_TYPE_IPADDR,
+	  offsetof(RADCLIENT, ipaddr), 0, NULL },
+	{ "FreeRADIUS-Client-IPv6-Address",  PW_TYPE_IPV6ADDR,
+	  offsetof(RADCLIENT, ipaddr), 0, NULL },
+
+	{ "FreeRADIUS-Client-Require-MA",  PW_TYPE_BOOLEAN,
+	  offsetof(RADCLIENT, message_authenticator), NULL, NULL },
+
+	{ "FreeRADIUS-Client-Secret",  PW_TYPE_STRING_PTR,
+	  offsetof(RADCLIENT, secret), 0, "" },
+	{ "FreeRADIUS-Client-Shortname",  PW_TYPE_STRING_PTR,
+	  offsetof(RADCLIENT, shortname), 0, "" },
+	{ "FreeRADIUS-Client-NAS-Type",  PW_TYPE_STRING_PTR,
+	  offsetof(RADCLIENT, nastype), 0, NULL },
+	{ "FreeRADIUS-Client-Virtual-Server",  PW_TYPE_STRING_PTR,
+	  offsetof(RADCLIENT, server), 0, NULL },
+
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
+{
+	int i, *pi;
+	char **p;
+	RADCLIENT *c;
+	char buffer[128];
+
+	if (!clients || !request) return NULL;
+
+	c = rad_malloc(sizeof(*c));
+	memset(c, 0, sizeof(*c));
+	c->cs = request->client->cs;
+	c->ipaddr.af = AF_UNSPEC;
+
+	for (i = 0; dynamic_config[i].name != NULL; i++) {
+		DICT_ATTR *da;
+		VALUE_PAIR *vp;
+
+		da = dict_attrbyname(dynamic_config[i].name);
+		if (!da) {
+			DEBUG("- Cannot add client %s: attribute \"%s\"is not in the dictionary",
+			      ip_ntoh(&request->packet->src_ipaddr,
+				      buffer, sizeof(buffer)),
+			      dynamic_config[i].name);
+		error:
+			client_free(c);
+			return NULL;
+		}
+
+		vp = pairfind(request->config_items, da->attr);
+		if (!vp) {
+			/*
+			 *	Not required.  Skip it.
+			 */
+			if (!dynamic_config[i].dflt) continue;
+			
+			DEBUG("- Cannot add client %s: Required attribute \"%s\" is missing.",	
+			      ip_ntoh(&request->packet->src_ipaddr,
+				      buffer, sizeof(buffer)),
+			      dynamic_config[i].name);
+			goto error;
+		}
+
+		switch (dynamic_config[i].type) {
+		case PW_TYPE_IPADDR:
+			c->ipaddr.af = AF_INET;
+			c->ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+			c->prefix = 32;
+			break;
+
+		case PW_TYPE_IPV6ADDR:
+			c->ipaddr.af = AF_INET6;
+			c->ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+			c->prefix = 128;
+			break;
+
+		case PW_TYPE_STRING_PTR:
+			p = (char **) ((char *) c + dynamic_config[i].offset);
+			if (*p) free(*p);
+			*p = strdup(vp->vp_strvalue);
+			break;
+
+		case PW_TYPE_BOOLEAN:
+			pi = (int *) ((char *) c + dynamic_config[i].offset);
+			*pi = vp->vp_integer;
+			break;
+
+		default:
+			goto error;
+		}
+	}
+
+	if (c->ipaddr.af == AF_UNSPEC) {
+		DEBUG("- Cannot add client %s: No IP address was specified.",
+		      ip_ntoh(&request->packet->src_ipaddr,
+			      buffer, sizeof(buffer)));
+
+		goto error;
+	}
+
+	if (fr_ipaddr_cmp(&request->packet->src_ipaddr, &c->ipaddr) != 0) {
+		char buf2[128];
+
+		DEBUG("- Cannot add client %s: IP address %s do not match",
+		      ip_ntoh(&request->packet->src_ipaddr,
+			      buffer, sizeof(buffer)),
+		      ip_ntoh(&c->ipaddr,
+			      buf2, sizeof(buf2)));		      
+		goto error;
+	}
+
+	/*
+	 *	No virtual server defined.  Inherit the parent's
+	 *	definition.
+	 */
+	if (request->client->server && !c->server) {
+		c->server = strdup(request->client->server);
+	}
+
+	/*
+	 *	If the client network isn't global (not tied to a
+	 *	virtual server), then ensure that this clients server
+	 *	is the same as the enclosing networks virtual server.
+	 */
+	if (request->client->server &&
+	     (strcmp(request->client->server, c->server) != 0)) {
+		DEBUG("- Cannot add client %s: Virtual server %s is not the same as the virtual server for the network.",
+		      ip_ntoh(&request->packet->src_ipaddr,
+			      buffer, sizeof(buffer)),
+		      c->server);
+
+		goto error;
+	}
+
+	if (!client_add(clients, c)) {
+		DEBUG("- Cannot add client %s: Internal error",
+		      ip_ntoh(&request->packet->src_ipaddr,
+			      buffer, sizeof(buffer)));
+
+		goto error;
+	}
+
+	/*
+	 *	Initialize the remaining fields.
+	 */
+	c->dynamic = TRUE;
+	c->lifetime = request->client->lifetime;
+	c->created = request->timestamp;
+	c->longname = strdup(c->shortname);
+
+	DEBUG("- Added client %s with shared secret %s",
+	      ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
+	      c->secret);
+
+	return c;
+}
+
+#endif

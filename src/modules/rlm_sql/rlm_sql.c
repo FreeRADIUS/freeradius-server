@@ -280,6 +280,10 @@ static int generate_sql_clients(SQL_INST *inst)
 		c = rad_malloc(sizeof(*c));
 		memset(c, 0, sizeof(*c));
 
+#ifdef WITH_DYNAMIC_CLIENTS
+		c->dynamic = 1;
+#endif
+
 		/*
 		 *	Look for prefixes
 		 */

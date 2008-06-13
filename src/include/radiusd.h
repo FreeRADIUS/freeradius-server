@@ -82,6 +82,10 @@ typedef pthread_t child_pid_t;
 #endif
 #endif
 
+#ifndef WITHOUT_DYNAMIC_CLIENTS
+#define WITH_DYNAMIC_CLIENTS (1)
+#endif
+
 /*
  *	See util.c
  */
@@ -107,6 +111,14 @@ typedef struct radclient {
 #ifdef WITH_ACCOUNTING
   	rad_snmp_client_entry_t *acct;
 #endif
+#endif
+
+#ifdef WITH_DYNAMIC_CLIENTS
+	int			lifetime;
+	int			dynamic; /* was dynamically defined */
+	time_t			created;
+	time_t			last_new_client;
+	char			*client_server;
 #endif
 } RADCLIENT;
 
@@ -425,6 +437,10 @@ void		clients_free(RADCLIENT_LIST *clients);
 RADCLIENT_LIST	*clients_parse_section(CONF_SECTION *section);
 void		client_free(RADCLIENT *client);
 int		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
+#ifdef WITH_DYNAMIC_CLIENTS
+void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
+RADCLIENT	*client_create(RADCLIENT_LIST *clients, REQUEST *request);
+#endif
 RADCLIENT	*client_find(const RADCLIENT_LIST *clients,
 			     const fr_ipaddr_t *ipaddr);
 RADCLIENT	*client_findbynumber(const RADCLIENT_LIST *clients,
