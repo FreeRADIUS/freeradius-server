@@ -125,7 +125,7 @@ server dynamic_client_server {
 		#  Or, look the client up in SQL.
 		#
 		#  This requires the SQL module to be configured, of course.
-		if ("%{sql: SELECT nasname FROM nas WHERE nasname = %{Packet-Src-IP-Address}}") {
+		if ("%{sql: SELECT nasname FROM nas WHERE nasname = '%{Packet-Src-IP-Address}'}") {
 			update control {
 				#
 				#  Echo the IP.
@@ -134,11 +134,11 @@ server dynamic_client_server {
 				#
 				#  Do multiple SELECT statements to grab
 				#  the various definitions.
-				FreeRADIUS-Client-Shortname = "%{sql: SELECT shortname FROM nas WHERE nasname = %{Packet-Src-IP-Address}}"
+				FreeRADIUS-Client-Shortname = "%{sql: SELECT shortname FROM nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
 
-				FreeRADIUS-Client-Secret = "%{sql: SELECT secret FROM nas WHERE nasname = %{Packet-Src-IP-Address}}"
+				FreeRADIUS-Client-Secret = "%{sql: SELECT secret FROM nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
 
-				FreeRADIUS-Client-NAS-Type = "%{sql: SELECT type FROM nas WHERE nasname = %{Packet-Src-IP-Address}}"
+				FreeRADIUS-Client-NAS-Type = "%{sql: SELECT type FROM nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
 			}
 
 		}
