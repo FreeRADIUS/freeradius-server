@@ -69,6 +69,9 @@ typedef struct listen_socket_t {
 	 */
 	fr_ipaddr_t	ipaddr;
 	int		port;
+#ifdef SO_BINDTODEVICE
+	const char		*interface;
+#endif
 	RADCLIENT_LIST	*clients;
 } listen_socket_t;
 
@@ -308,16 +311,9 @@ static int rad_status_server(REQUEST *request)
 
 static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 {
+	size_t len;
 	listen_socket_t *sock = this->data;
 	const char *name;
-	char ip_buf[256];
-
-	if ((sock->ipaddr.af == AF_INET) &&
-	    (sock->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
-		strcpy(ip_buf, "*");
-	} else {
-		ip_ntoh(&sock->ipaddr, ip_buf, sizeof(ip_buf));
-	}
 
 	switch (this->type) {
 	case RAD_LISTEN_AUTH:
@@ -353,13 +349,42 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 		break;
 	}
 
-	if (!this->server) {
-		return snprintf(buffer, bufsize, "%s address %s port %d",
-				name, ip_buf, sock->port);
+#define FORWARD len = strlen(buffer); if (len >= (bufsize + 1)) return 0;buffer += len;bufsize -= len
+#define ADDSTRING(_x) strlcpy(buffer, _x, bufsize);FORWARD
+
+	strlcpy(buffer, name, bufsize);
+	FORWARD;
+
+#ifdef SO_BINDTODEVICE
+	if (sock->interface) {
+		ADDSTRING(" interface ");
+		ADDSTRING(sock->interface);
+	}
+#endif
+
+	ADDSTRING(" address ");
+	
+	if ((sock->ipaddr.af == AF_INET) &&
+	    (sock->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
+		strlcpy(buffer, "*", bufsize);
+	} else {
+		ip_ntoh(&sock->ipaddr, buffer, bufsize);
+	}
+	FORWARD;
+
+	ADDSTRING(" port ");
+	snprintf(buffer, bufsize, "%d", sock->port);
+	FORWARD;
+
+	if (this->server) {
+		ADDSTRING(" as server ");
+		ADDSTRING(this->server);
 	}
 
-	return snprintf(buffer, bufsize, "%s address %s port %d as server %s",
-			name, ip_buf, sock->port, this->server);
+#undef ADDSTRING
+#undef FORWARD
+
+	return 1;
 }
 
 
@@ -413,18 +438,6 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->port = listen_port;
 
 	/*
-	 *	And bind it to the port.
-	 */
-	if (listen_bind(this) < 0) {
-		char buffer[128];
-		cf_log_err(cf_sectiontoitem(cs),
-			   "Error binding to port for %s port %d",
-			   ip_ntoh(&sock->ipaddr, buffer, sizeof(buffer)),
-			   sock->port);
-		return -1;
-	}
-
-	/*
 	 *	If we can bind to interfaces, do so,
 	 *	else don't.
 	 */
@@ -436,7 +449,6 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 #else
 		const char *value;
 		CONF_PAIR *cp = cf_pair_find(cs, "interface");
-		struct ifreq ifreq;
 
 		rad_assert(cp != NULL);
 		value = cf_pair_value(cp);
@@ -445,17 +457,20 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 				   "No interface name given");
 			return -1;
 		}
-
-		strcpy(ifreq.ifr_name, value);
-
-		if (setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE,
-			       (char *)&ifreq, sizeof(ifreq)) < 0) {
-			cf_log_err(cf_sectiontoitem(cs),
-				   "Failed binding to interface %s: %s",
-				   value, strerror(errno));
-			return -1;
-		} /* else it worked. */
+		sock->interface = value;
 #endif
+	}
+
+	/*
+	 *	And bind it to the port.
+	 */
+	if (listen_bind(this) < 0) {
+		char buffer[128];
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Error binding to port for %s port %d",
+			   ip_ntoh(&sock->ipaddr, buffer, sizeof(buffer)),
+			   sock->port);
+		return -1;
 	}
 
 #ifdef WITH_PROXY
@@ -998,6 +1013,8 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
  */
 static int listen_bind(rad_listen_t *this)
 {
+	struct sockaddr_storage salocal;
+	socklen_t	salen;
 	listen_socket_t *sock = this->data;
 
 	/*
@@ -1046,13 +1063,78 @@ static int listen_bind(rad_listen_t *this)
 		}
 	}
 
-	this->fd = fr_socket(&sock->ipaddr, sock->port);
+	/*
+	 *	Copy fr_socket() here, as we may need to bind to a device.
+	 */
+	this->fd = socket(sock->ipaddr.af, SOCK_DGRAM, 0);
 	if (this->fd < 0) {
-		radlog(L_ERR, "ERROR: Failed to open socket: %s",
-		       librad_errstr);
+		radlog(L_ERR, "Failed opening socket: %s", strerror(errno));
 		return -1;
 	}
+		
+#ifdef SO_BINDTODEVICE
+	/*
+	 *	Bind to a device BEFORE touching IP addresses.
+	 */
+	if (sock->interface) {
+		struct ifreq ifreq;
+		strcpy(ifreq.ifr_name, sock->interface);
+		
+		if (setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE,
+			       (char *)&ifreq, sizeof(ifreq)) < 0) {
+			close(this->fd);
+			radlog(L_ERR, "Failed opening to interface %s: %s",
+			       sock->interface, strerror(errno));
+			return -1;
+		} /* else it worked. */
+	}
+#endif
 
+#ifdef WITH_UDPFROMTO
+	/*
+	 *	Initialize udpfromto for all sockets.
+	 */
+	if (udpfromto_init(this->fd) != 0) {
+		close(this->fd);
+		return -1;
+	}
+#endif
+	
+	/*
+	 *	Set up sockaddr stuff.
+	 */
+	if (!fr_ipaddr2sockaddr(&sock->ipaddr, sock->port, &salocal, &salen)) {
+		close(this->fd);
+		return -1;
+	}
+		
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+	if (sock->ipaddr.af == AF_INET6) {
+		/*
+		 *	Listening on '::' does NOT get you IPv4 to
+		 *	IPv6 mapping.  You've got to listen on an IPv4
+		 *	address, too.  This makes the rest of the server
+		 *	design a little simpler.
+		 */
+#ifdef IPV6_V6ONLY
+		
+		if (IN6_IS_ADDR_UNSPECIFIED(&sock->ipaddr.ipaddr.ip6addr)) {
+			int on = 1;
+			
+			setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
+				   (char *)&on, sizeof(on));
+		}
+#endif /* IPV6_V6ONLY */
+#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
+	}
+		
+	if (bind(this->fd, (struct sockaddr *) &salocal, salen) < 0) {
+		close(this->fd);
+		radlog(L_ERR, "Failed binding to socket: %s\n",
+		       strerror(errno));
+		return -1;
+	}
+	
 	/*
 	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
 	 *	kernel instead binds us to a 1.2.3.4.  If this
