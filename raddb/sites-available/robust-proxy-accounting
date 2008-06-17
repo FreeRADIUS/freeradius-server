@@ -95,14 +95,14 @@ realm acct_realm.example.com {
 #  (5) Define the virtual server to write the packets to the detail file
 #  This will be called when ALL home servers are down, because of the
 #  "fallback" configuration in the home server pool.
-virtual_server acct_detail.example.com {
+server acct_detail.example.com {
 	accounting {
 		detail.example.com
 	}
 }
 
 #  (6) Define a virtual server to handle pre/post-proxy re-writing
-virtual_server home.example.com {
+server home.example.com {
 	pre-proxy {
 		#  Insert pre-proxy rules here
 	}
