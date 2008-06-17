@@ -340,8 +340,8 @@ rm -rf $RPM_BUILD_ROOT
 /etc/raddb/certs/xpextensions
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/certs/*.cnf
 %attr(750,-,radiusd) /etc/raddb/certs/bootstrap
-%attr(750,-,radiusd) %config /etc/raddb/sites-available/example
-%attr(640,-,radiusd) /etc/raddb/sites-available/*
+%attr(640,-,radiusd) %config(noreplace) /etc/raddb/sites-available/*
+%attr(640,-,radiusd) %config(noreplace) /etc/raddb/modules/*
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/sites-enabled/*
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/eap.conf
 %attr(640,-,radiusd) /etc/raddb/example.pl
