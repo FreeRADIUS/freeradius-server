@@ -89,22 +89,8 @@ realm acct_realm.example.com {
 	acct_pool = acct_pool.example.com
 }
 
-#  (4) Define a detail file writer.  This next section MUST be
-#  copied to the "modules" section of radiusd.conf, and un-commented
-#
-#  We write *multiple* detail files here.  They will be processed
-#  in the order that they were created.  The directory containing
-#  these files should NOT be used for any other purposes.  That is,
-#  it should have NO other files in it.
-#
-#  Writing multiple detail enables the server to process the pieces
-#  in smaller chunks.  This helps in certain catastrophic corner cases.
-#  (e.g. home servers down for days...)
-#
-#detail detail.example.com {
-#	detailfile = ${radacctdir}/detail.example.com/detail-%Y%m%d:%H
-#}
-
+#  (4) Define a detail file writer.
+#   See raddb/modules/detail.example.com
 
 #  (5) Define the virtual server to write the packets to the detail file
 #  This will be called when ALL home servers are down, because of the
