@@ -351,7 +351,6 @@ rm -rf $RPM_BUILD_ROOT
 %attr(700,radiusd,radiusd) %dir /var/run/radiusd/
 # binaries
 %defattr(-,root,root)
-/usr/sbin/check-radiusd-config
 /usr/sbin/checkrad
 /usr/sbin/radiusd
 /usr/sbin/radrelay
