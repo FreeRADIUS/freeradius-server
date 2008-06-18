@@ -331,6 +331,7 @@ rm -rf $RPM_BUILD_ROOT
 %dir %attr(640,-,radiusd) /etc/raddb/sql
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql/*/*.conf
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql/*/*.sql
+%attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql/oracle/msqlippool.txt
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/users
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/experimental.conf
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/otp.conf
