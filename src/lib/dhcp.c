@@ -1130,6 +1130,12 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	if (dhcp->giaddr != htonl(INADDR_ANY)) {
 		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->giaddr;
 
+		/*
+		 *	Gateways send FROM 68 to 67, and we
+		 *	respond FROM 67 to 67... not to 68.
+		 */
+		packet->dst_port = original->dst_port;
+
 	} else if (packet->code == PW_DHCP_NAK) {
 		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
 		
