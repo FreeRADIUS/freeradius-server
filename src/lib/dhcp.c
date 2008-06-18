@@ -728,6 +728,14 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	if (packet->code == 0) packet->code = PW_DHCP_NAK;
 
+	/*
+	 *	FIXME: allow it to send client packets.
+	 */
+	if (!original) {
+		librad_log("Need original to send response!");
+		return -1;
+	}
+
 	if (librad_debug > 1) {
 		char type_buf[64];
 		const char *name = type_buf;
@@ -854,16 +862,8 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	memset(p, 0, 4);	/* siaddr is zero */
 	p += 4;
 
-	memset(p, 0, 4);	/* gateway address is zero */
+	memcpy(p, original->data + 24, 4); /* copy gateway IP address */
 	p += 4;
-
-	/*
-	 *	FIXME: allow it to send client packets.
-	 */
-	if (!original) {
-		librad_log("Need original to send response!");
-		return -1;
-	}
 
 	memcpy(p, original->data + 28, DHCP_CHADDR_LEN);
 	p += DHCP_CHADDR_LEN;
