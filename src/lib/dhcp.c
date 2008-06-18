@@ -134,6 +134,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	}
 
 	packet->sockfd = sockfd;
+	sizeof_src = sizeof(src);
 	packet->data_len = recvfrom(sockfd, packet->data, MAX_PACKET_SIZE, 0,
 				    (struct sockaddr *)&src, &sizeof_src);
 	if (packet->data_len <= 0) {
