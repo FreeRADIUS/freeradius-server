@@ -213,10 +213,8 @@ void request_stats_reply(REQUEST *request)
 	if ((request->packet->src_ipaddr.af != AF_INET) ||
 	    (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_LOOPBACK))) return;
 
-#if 0
-	vp = pairfind(request->packet->vps, PW_CLASS);
+	vp = pairfind(request->packet->vps, PW_CONFIGURATION_TOKEN);
 	if (!vp || (strcmp(vp->vp_strvalue, "Statistics") != 0)) return;
-#endif
 
 	for (i = 0; authvp[i].attribute != 0; i++) {
 		vp = radius_paircreate(request, &request->reply->vps,
