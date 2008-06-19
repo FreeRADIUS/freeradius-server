@@ -112,11 +112,11 @@ typedef struct attr_flags {
 #define FLAG_ENCRYPT_ASCEND_SECRET   (3)
 
 typedef struct dict_attr {
-	char			name[40];
 	int			attr;
 	int			type;
 	int			vendor;
         ATTR_FLAGS              flags;
+	char			name[1];
 } DICT_ATTR;
 
 typedef struct dict_value {

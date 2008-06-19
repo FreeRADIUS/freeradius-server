@@ -37,6 +37,7 @@ RCSID("$Id$")
 
 #define DICT_VALUE_MAX_NAME_LEN (128)
 #define DICT_VENDOR_MAX_NAME_LEN (128)
+#define DICT_ATTR_MAX_NAME_LEN (128)
 
 static fr_hash_table_t *vendors_byname = NULL;
 static fr_hash_table_t *vendors_byvalue = NULL;
@@ -66,7 +67,7 @@ static dict_stat_t *stat_head = NULL;
 static dict_stat_t *stat_tail = NULL;
 
 typedef struct value_fixup_t {
-	char		attrstr[40];
+	char		attrstr[DICT_ATTR_MAX_NAME_LEN];
 	DICT_VALUE	*dval;
 	struct value_fixup_t *next;
 } value_fixup_t;
@@ -478,10 +479,12 @@ int dict_addvendor(const char *name, int value)
 int dict_addattr(const char *name, int vendor, int type, int value,
 		 ATTR_FLAGS flags)
 {
+	size_t namelen;
 	static int      max_attr = 0;
 	DICT_ATTR	*attr;
 
-	if (strlen(name) > (sizeof(attr->name) -1)) {
+	namelen = strlen(name);
+	if (namelen >= DICT_ATTR_MAX_NAME_LEN) {
 		librad_log("dict_addattr: attribute name too long");
 		return -1;
 	}
@@ -556,12 +559,13 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	/*
 	 *	Create a new attribute for the list
 	 */
-	if ((attr = fr_pool_alloc(sizeof(*attr))) == NULL) {
+	if ((attr = fr_pool_alloc(sizeof(*attr) + namelen)) == NULL) {
 		librad_log("dict_addattr: out of memory");
 		return -1;
 	}
 
-	strcpy(attr->name, name);
+	memcpy(attr->name, name, namelen);
+	attr->name[namelen] = '\0';
 	attr->attr = value;
 	attr->attr |= (vendor << 16); /* FIXME: hack */
 	attr->vendor = vendor;
@@ -1625,13 +1629,15 @@ DICT_ATTR *dict_attrbyvalue(int attr)
  */
 DICT_ATTR *dict_attrbyname(const char *name)
 {
-	DICT_ATTR dattr;
+	DICT_ATTR *da;
+	uint32_t buffer[(sizeof(*da) + DICT_ATTR_MAX_NAME_LEN + 3)/4];
 
 	if (!name) return NULL;
 
-	strlcpy(dattr.name, name, sizeof(dattr.name));
+	da = (DICT_ATTR *) buffer;
+	strlcpy(da->name, name, DICT_ATTR_MAX_NAME_LEN + 1);
 
-	return fr_hash_table_finddata(attributes_byname, &dattr);
+	return fr_hash_table_finddata(attributes_byname, da);
 }
 
 /*
@@ -1680,7 +1686,7 @@ DICT_VALUE *dict_valbyname(int attr, const char *name)
 	dv = fr_hash_table_finddata(values_byname, my_dv);
 	if (dv) my_dv->attr = dv->value;
 
-	strlcpy(my_dv->name, name, DICT_VALUE_MAX_NAME_LEN);
+	strlcpy(my_dv->name, name, DICT_VALUE_MAX_NAME_LEN + 1);
 
 	return fr_hash_table_finddata(values_byname, my_dv);
 }
@@ -1698,7 +1704,7 @@ int dict_vendorbyname(const char *name)
 	if (!name) return 0;
 
 	dv = (DICT_VENDOR *) buffer;
-	strlcpy(dv->name, name, DICT_VENDOR_MAX_NAME_LEN);
+	strlcpy(dv->name, name, DICT_VENDOR_MAX_NAME_LEN + 1);
 
 	dv = fr_hash_table_finddata(vendors_byname, dv);
 	if (!dv) return 0;
