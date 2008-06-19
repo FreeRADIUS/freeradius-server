@@ -15,17 +15,20 @@ BEGIN-VENDOR	FreeRADIUS
 
 ATTRIBUTE	FreeRADIUS-Proxied-To			1	ipaddr
 
-
 #
 #  Really a bitmask.
 #
 ATTRIBUTE	FreeRADIUS-Statistics-Type		127	integer
 
-VALUE	FreeRADIUS-Statistics-Type	None	0
-VALUE	FreeRADIUS-Statistics-Type	Authentication	1
-VALUE	FreeRADIUS-Statistics-Type	Accounting	2
+VALUE	FreeRADIUS-Statistics-Type	None			0
+VALUE	FreeRADIUS-Statistics-Type	Authentication		1
+VALUE	FreeRADIUS-Statistics-Type	Accounting		2
 VALUE	FreeRADIUS-Statistics-Type	Proxy-Authentication	4
 VALUE	FreeRADIUS-Statistics-Type	Proxy-Accounting	8
+
+VALUE	FreeRADIUS-Statistics-Type	Auth-Acct		3
+VALUE	FreeRADIUS-Statistics-Type	Proxy-Auth-Acct		12
+VALUE	FreeRADIUS-Statistics-Type	All			15
 
 #
 #  Note that these statistics are available ONLY for packets
@@ -40,8 +43,8 @@ ATTRIBUTE	FreeRADIUS-Total-Access-Accepts		129	integer
 ATTRIBUTE	FreeRADIUS-Total-Access-Rejects		130	integer
 ATTRIBUTE	FreeRADIUS-Total-Access-Challenges	131	integer
 ATTRIBUTE	FreeRADIUS-Total-Auth-Responses		132	integer
-ATTRIBUTE	FreeRADIUS-Total-Auth-Duplicate-Requests	133	integer
-ATTRIBUTE	FreeRADIUS-Total-Auth-Malformed-Requests	134	integer
+ATTRIBUTE	FreeRADIUS-Total-Auth-Duplicate-Requests 133	integer
+ATTRIBUTE	FreeRADIUS-Total-Auth-Malformed-Requests 134	integer
 ATTRIBUTE	FreeRADIUS-Total-Auth-Invalid-Requests	135	integer
 ATTRIBUTE	FreeRADIUS-Total-Auth-Dropped-Requests	136	integer
 ATTRIBUTE	FreeRADIUS-Total-Auth-Unknown-Types	137	integer
@@ -56,17 +59,17 @@ ATTRIBUTE	FreeRADIUS-Total-Proxy-Access-Challenges 141	integer
 ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Responses	142	integer
 ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Duplicate-Requests 143	integer
 ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Malformed-Requests 144	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Invalid-Requests	145	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Dropped-Requests	146	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Unknown-Types	147	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Invalid-Requests 145	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Dropped-Requests 146	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Unknown-Types 147	integer
 
 #
 #  Global accounting statistics for packets received by the server.
 #
 ATTRIBUTE	FreeRADIUS-Total-Accounting-Requests	148	integer
 ATTRIBUTE	FreeRADIUS-Total-Accounting-Responses	149	integer
-ATTRIBUTE	FreeRADIUS-Total-Acct-Duplicate-Requests	150	integer
-ATTRIBUTE	FreeRADIUS-Total-Acct-Malformed-Requests	151	integer
+ATTRIBUTE	FreeRADIUS-Total-Acct-Duplicate-Requests 150	integer
+ATTRIBUTE	FreeRADIUS-Total-Acct-Malformed-Requests 151	integer
 ATTRIBUTE	FreeRADIUS-Total-Acct-Invalid-Requests	152	integer
 ATTRIBUTE	FreeRADIUS-Total-Acct-Dropped-Requests	153	integer
 ATTRIBUTE	FreeRADIUS-Total-Acct-Unknown-Types	154	integer
@@ -74,12 +77,12 @@ ATTRIBUTE	FreeRADIUS-Total-Acct-Unknown-Types	154	integer
 #
 #  Global statistics for acct packets sent by the server to all home servers
 #
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Accounting-Requests	155	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Accounting-Responses	156	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Duplicate-Requests	157	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Malformed-Requests	158	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Invalid-Requests	159	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Dropped-Requests	160	integer
-ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Unknown-Types	161	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Accounting-Requests 155	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Accounting-Responses 156	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Duplicate-Requests 157	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Malformed-Requests 158	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Invalid-Requests 159	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Dropped-Requests 160	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Unknown-Types 161	integer
 
 END-VENDOR FreeRADIUS
