@@ -35,7 +35,6 @@ typedef struct rad_snmp_server_t {
 	time_t		last_reset_time;
 	int32_t		reset_time;
 	int32_t		config_reset;
-	fr_stats_t	stats;
 } rad_snmp_server_t;
 
 typedef struct rad_snmp_t {
@@ -52,37 +51,6 @@ typedef struct rad_snmp_t {
 } rad_snmp_t;
 
 extern rad_snmp_t	rad_snmp;
-
-#define RAD_SNMP_INC(_x) if (mainconfig.do_snmp) _x++
-#ifdef WITH_ACCOUNTING
-#define RAD_SNMP_TYPE_INC(_listener, _x) if (mainconfig.do_snmp) { \
-                                     if (_listener->type == RAD_LISTEN_AUTH) { \
-                                       rad_snmp.auth.stats._x++; \
-				     } else { if (_listener->type == RAD_LISTEN_ACCT) \
-                                       rad_snmp.acct.stats._x++; } }
-
-#define RAD_SNMP_CLIENT_INC(_listener, _client, _x) if (mainconfig.do_snmp) { \
-                                     if (_listener->type == RAD_LISTEN_AUTH) { \
-                                       _client->auth->_x++; \
-				     } else { if (_listener->type == RAD_LISTEN_ACCT) \
-                                       _client->acct->_x++; } }
-
-#else  /* WITH_ACCOUNTING */
-
-#define RAD_SNMP_TYPE_INC(_listener, _x) if (mainconfig.do_snmp) { \
-                                     rad_snmp.auth.stats._x++; }
-
-#define RAD_SNMP_CLIENT_INC(_listener, _client, _x) if (mainconfig.do_snmp) { \
-                                     _client->auth->_x++; }
-
-#endif
-
-
-#else
-#define  RAD_SNMP_INC(_x)
-#define RAD_SNMP_TYPE_INC(_listener, _x)
-#define RAD_SNMP_CLIENT_INC(_listener, _client, _x)
-
 #endif /* WITH_SNMP */
 
 #endif /* _RADIUS_SNMP_H */

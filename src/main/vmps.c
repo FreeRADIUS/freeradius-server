@@ -54,8 +54,6 @@ int vqp_socket_recv(rad_listen_t *listener,
 
 	if ((client = client_listener_find(listener,
 					   &packet->src_ipaddr)) == NULL) {
-		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
-		
 		radlog(L_ERR, "Ignoring request from unknown client %s port %d",
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,

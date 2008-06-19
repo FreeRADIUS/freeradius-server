@@ -305,6 +305,10 @@ static int rad_status_server(REQUEST *request)
 		return 0;
 	}
 
+#ifdef WITH_STATS
+	request_stats_reply(request);
+#endif
+
 	return 0;
 }
 
@@ -352,8 +356,7 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 #define FORWARD len = strlen(buffer); if (len >= (bufsize + 1)) return 0;buffer += len;bufsize -= len
 #define ADDSTRING(_x) strlcpy(buffer, _x, bufsize);FORWARD
 
-	strlcpy(buffer, name, bufsize);
-	FORWARD;
+	ADDSTRING(name);
 
 #ifdef SO_BINDTODEVICE
 	if (sock->interface) {
@@ -617,17 +620,17 @@ static int auth_socket_recv(rad_listen_t *listener,
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
-	RAD_SNMP_TYPE_INC(listener, total_requests);
+	RAD_STATS_TYPE_INC(listener, total_requests);
 
 	if (rcode < 20) {	/* AUTH_HDR_LEN */
-		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
+		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
 		return 0;
 	}
 
 	if ((client = client_listener_find(listener,
 					   &src_ipaddr)) == NULL) {
 		rad_recv_discard(listener->fd);
-		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
+		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
 
 		if (debug_flag > 0) {
 			char name[1024];
@@ -652,15 +655,15 @@ static int auth_socket_recv(rad_listen_t *listener,
 	 */
 	switch(code) {
 	case PW_AUTHENTICATION_REQUEST:
-		RAD_SNMP_CLIENT_INC(listener, client, requests);
+		RAD_STATS_CLIENT_INC(listener, client, requests);
 		fun = rad_authenticate;
 		break;
 
 	case PW_STATUS_SERVER:
 		if (!mainconfig.status_server) {
 			rad_recv_discard(listener->fd);
-			RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
-			RAD_SNMP_CLIENT_INC(listener, client, packets_dropped);
+			RAD_STATS_TYPE_INC(listener, total_packets_dropped);
+			RAD_STATS_CLIENT_INC(listener, client, packets_dropped);
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
 			return 0;
 		}
@@ -669,8 +672,8 @@ static int auth_socket_recv(rad_listen_t *listener,
 
 	default:
 		rad_recv_discard(listener->fd);
-		RAD_SNMP_INC(rad_snmp.auth.total_unknown_types);
-		RAD_SNMP_CLIENT_INC(listener, client, unknown_types);
+		RAD_STATS_INC(radius_auth_stats.total_unknown_types);
+		RAD_STATS_CLIENT_INC(listener, client, unknown_types);
 
 		DEBUG("Invalid packet code %d sent to authentication port from client %s port %d : IGNORED",
 		      code, client->shortname, src_port);
@@ -684,14 +687,14 @@ static int auth_socket_recv(rad_listen_t *listener,
 	 */
 	packet = rad_recv(listener->fd, client->message_authenticator);
 	if (!packet) {
-		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
+		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
 		DEBUG("%s", librad_errstr);
 		return 0;
 	}
 
 	if (!received_request(listener, packet, prequest, client)) {
-		RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
-		RAD_SNMP_CLIENT_INC(listener, client, packets_dropped);
+		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
+		RAD_STATS_CLIENT_INC(listener, client, packets_dropped);
 		rad_free(&packet);
 		return 0;
 	}
@@ -719,17 +722,17 @@ static int acct_socket_recv(rad_listen_t *listener,
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
-	RAD_SNMP_TYPE_INC(listener, total_requests);
+	RAD_STATS_TYPE_INC(listener, total_requests);
 
 	if (rcode < 20) {	/* AUTH_HDR_LEN */
-		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
+		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
 		return 0;
 	}
 
 	if ((client = client_listener_find(listener,
 					   &src_ipaddr)) == NULL) {
 		rad_recv_discard(listener->fd);
-		RAD_SNMP_TYPE_INC(listener, total_invalid_requests);
+		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
 
 		/*
 		 *	This is debugging rather than logging, so that
@@ -754,15 +757,15 @@ static int acct_socket_recv(rad_listen_t *listener,
 	 */
 	switch(code) {
 	case PW_ACCOUNTING_REQUEST:
-		RAD_SNMP_CLIENT_INC(listener, client, requests);
+		RAD_STATS_CLIENT_INC(listener, client, requests);
 		fun = rad_accounting;
 		break;
 
 	case PW_STATUS_SERVER:
 		if (!mainconfig.status_server) {
 			rad_recv_discard(listener->fd);
-			RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
-			RAD_SNMP_CLIENT_INC(listener, client, unknown_types);
+			RAD_STATS_TYPE_INC(listener, total_packets_dropped);
+			RAD_STATS_CLIENT_INC(listener, client, unknown_types);
 
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
 			return 0;
@@ -772,8 +775,8 @@ static int acct_socket_recv(rad_listen_t *listener,
 
 	default:
 		rad_recv_discard(listener->fd);
-		RAD_SNMP_TYPE_INC(listener, total_unknown_types);
-		RAD_SNMP_CLIENT_INC(listener, client, unknown_types);
+		RAD_STATS_TYPE_INC(listener, total_unknown_types);
+		RAD_STATS_CLIENT_INC(listener, client, unknown_types);
 
 		DEBUG("Invalid packet code %d sent to a accounting port from client %s port %d : IGNORED",
 		      code, client->shortname, src_port);
@@ -786,7 +789,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 	 */
 	packet = rad_recv(listener->fd, 0);
 	if (!packet) {
-		RAD_SNMP_TYPE_INC(listener, total_malformed_requests);
+		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
 		radlog(L_ERR, "%s", librad_errstr);
 		return 0;
 	}
@@ -795,8 +798,8 @@ static int acct_socket_recv(rad_listen_t *listener,
 	 *	There can be no duplicate accounting packets.
 	 */
 	if (!received_request(listener, packet, prequest, client)) {
-		RAD_SNMP_TYPE_INC(listener, total_packets_dropped);
-		RAD_SNMP_CLIENT_INC(listener, client, packets_dropped);
+		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
+		RAD_STATS_CLIENT_INC(listener, client, packets_dropped);
 		rad_free(&packet);
 		return 0;
 	}

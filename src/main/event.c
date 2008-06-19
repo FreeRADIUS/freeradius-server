@@ -1760,8 +1760,8 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 	char buffer[128];
 #endif
 
-	RAD_SNMP_TYPE_INC(request->listener, total_dup_requests);
-	RAD_SNMP_CLIENT_INC(request->listener, client, dup_requests);
+	RAD_STATS_TYPE_INC(request->listener, total_dup_requests);
+	RAD_STATS_CLIENT_INC(request->listener, client, dup_requests);
 
 	switch (request->child_state) {
 	case REQUEST_QUEUED:

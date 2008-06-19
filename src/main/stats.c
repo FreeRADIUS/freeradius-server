@@ -26,13 +26,19 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/radius_snmp.h>
 
 #ifdef WITH_STATS
 
+fr_stats_t radius_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+#ifdef WITH_ACCOUNTING
+fr_stats_t radius_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+#endif
+
 #ifdef WITH_PROXY
 fr_stats_t proxy_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+#ifdef WITH_ACCOUNTING
 fr_stats_t proxy_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+#endif
 #endif
 
 void request_stats_final(REQUEST *request)
@@ -52,32 +58,32 @@ void request_stats_final(REQUEST *request)
 	 */
 	switch (request->reply->code) {
 	case PW_AUTHENTICATION_ACK:
-		rad_snmp.auth.stats.total_responses++;
-		rad_snmp.auth.stats.total_access_accepts++;
+		radius_auth_stats.total_responses++;
+		radius_auth_stats.total_access_accepts++;
 		if (request->client && request->client->auth) {
 			request->client->auth->accepts++;
 		}
 		break;
 
 	case PW_AUTHENTICATION_REJECT:
-		rad_snmp.auth.stats.total_responses++;
-		rad_snmp.auth.stats.total_access_rejects++;
+		radius_auth_stats.total_responses++;
+		radius_auth_stats.total_access_rejects++;
 		if (request->client && request->client->auth) {
 			request->client->auth->rejects++;
 		}
 		break;
 
 	case PW_ACCESS_CHALLENGE:
-		rad_snmp.auth.stats.total_responses++;
-		rad_snmp.auth.stats.total_access_challenges++;
+		radius_auth_stats.total_responses++;
+		radius_auth_stats.total_access_challenges++;
 		if (request->client && request->client->auth) {
 			request->client->auth->challenges++;
 		}
 		break;
 
-#ifdef WITH_ACCOUNTINGxu
+#ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
-		rad_snmp.acct.stats.total_responses++;
+		radius_acct_stats.total_responses++;
 		if (request->client && request->client->acct) {
 			request->client->acct->responses++;
 		}
@@ -90,7 +96,7 @@ void request_stats_final(REQUEST *request)
 		 */
 	case 0:
 		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
-			rad_snmp.auth.stats.total_bad_authenticators++;
+			radius_auth_stats.total_bad_authenticators++;
 			if (request->client && request->client->auth) {
 				request->client->auth->bad_authenticators++;
 			}
@@ -139,7 +145,7 @@ void request_stats_final(REQUEST *request)
 
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
-		rad_snmp.acct.stats.total_responses++;
+		radius_acct_stats.total_responses++;
 		break;
 #endif
 
@@ -218,7 +224,7 @@ void request_stats_reply(REQUEST *request)
 				       PW_TYPE_INTEGER);
 		if (!vp) continue;
 
-		vp->vp_integer = *(int *)(((char *) &rad_snmp.auth.stats) + 
+		vp->vp_integer = *(int *)(((char *) &radius_auth_stats) + 
 					  authvp[i].offset);
 	}
 
