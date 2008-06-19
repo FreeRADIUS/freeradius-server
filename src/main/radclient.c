@@ -526,7 +526,7 @@ static int send_one_packet(radclient_t *radclient)
 		assert(radclient->request->data == NULL);
 
 		for (i = 0; i < 4; i++) {
-			*((uint32_t *) radclient->request->vector) = fr_rand();
+			((uint32_t *) radclient->request->vector)[i] = fr_rand();
 		}
 
 		/*
