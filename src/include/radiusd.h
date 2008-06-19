@@ -86,12 +86,16 @@ typedef pthread_t child_pid_t;
 #define WITH_DYNAMIC_CLIENTS (1)
 #endif
 
+#ifndef WITHOUT_STATS
+#define WITH_STATS
+#endif
+#include <freeradius-devel/stats.h>
+
+
 /*
  *	See util.c
  */
 typedef struct request_data_t request_data_t;
-
-typedef struct rad_snmp_client_entry_t rad_snmp_client_entry_t;
 
 typedef struct radclient {
 	fr_ipaddr_t		ipaddr;
@@ -106,10 +110,10 @@ typedef struct radclient {
 	char			*server;
 	int			number;	/* internal use only */
 	const CONF_SECTION	*cs;
-#ifdef WITH_SNMP
-	rad_snmp_client_entry_t *auth;
+#ifdef WITH_STATS
+	fr_client_stats_t	*auth;
 #ifdef WITH_ACCOUNTING
-  	rad_snmp_client_entry_t *acct;
+	fr_client_stats_t	*acct;
 #endif
 #endif
 

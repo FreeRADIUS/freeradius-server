@@ -1,5 +1,8 @@
 #ifndef _RADIUS_SNMP_H
 #define _RADIUS_SNMP_H
+
+#include <freeradius-devel/stats.h>
+
 /*
  * Version:	$Id$
  */
@@ -8,6 +11,10 @@
 RCSIDH(radius_snmp_h, "$Id$")
 
 #ifdef WITH_SNMP
+
+#ifndef WITH_STATS
+#error WITH_SNMP needs WITH_STATS
+#endif
 
 typedef enum smux_event_t {
   SMUX_NONE, SMUX_CONNECT, SMUX_READ
@@ -28,18 +35,7 @@ typedef struct rad_snmp_server_t {
 	time_t		last_reset_time;
 	int32_t		reset_time;
 	int32_t		config_reset;
-	int32_t		total_requests;
-	int32_t		total_invalid_requests;
-	int32_t		total_dup_requests;
-	int32_t		total_responses;
-	int32_t		total_access_accepts;
-	int32_t		total_access_rejects;
-	int32_t		total_access_challenges;
-	int32_t		total_malformed_requests;
-	int32_t		total_bad_authenticators;
-	int32_t		total_packets_dropped;
-	int32_t		total_no_records;
-	int32_t		total_unknown_types;
+	fr_stats_t	stats;
 } rad_snmp_server_t;
 
 typedef struct rad_snmp_t {
@@ -55,34 +51,15 @@ typedef struct rad_snmp_t {
 	int		  smux_max_failures;
 } rad_snmp_t;
 
-/*
- *  Taken from RFC 2619 and RFC 2621
- */
-struct rad_snmp_client_entry_t {
-	int		index;
-	/* IP address */
-	/* Client ID (string ) */
-	uint32_t       	requests;
-	uint32_t	dup_requests;
-	uint32_t	responses;
-	uint32_t	accepts;
-	uint32_t	rejects;
-	uint32_t	challenges;
-	uint32_t	malformed_requests;
-	uint32_t	bad_authenticators;
-	uint32_t	packets_dropped;
-	uint32_t	unknown_types;
-};
-
 extern rad_snmp_t	rad_snmp;
 
 #define RAD_SNMP_INC(_x) if (mainconfig.do_snmp) _x++
 #ifdef WITH_ACCOUNTING
 #define RAD_SNMP_TYPE_INC(_listener, _x) if (mainconfig.do_snmp) { \
                                      if (_listener->type == RAD_LISTEN_AUTH) { \
-                                       rad_snmp.auth._x++; \
+                                       rad_snmp.auth.stats._x++; \
 				     } else { if (_listener->type == RAD_LISTEN_ACCT) \
-                                       rad_snmp.acct._x++; } }
+                                       rad_snmp.acct.stats._x++; } }
 
 #define RAD_SNMP_CLIENT_INC(_listener, _client, _x) if (mainconfig.do_snmp) { \
                                      if (_listener->type == RAD_LISTEN_AUTH) { \
@@ -93,7 +70,7 @@ extern rad_snmp_t	rad_snmp;
 #else  /* WITH_ACCOUNTING */
 
 #define RAD_SNMP_TYPE_INC(_listener, _x) if (mainconfig.do_snmp) { \
-                                     rad_snmp.auth._x++; }
+                                     rad_snmp.auth.stats._x++; }
 
 #define RAD_SNMP_CLIENT_INC(_listener, _client, _x) if (mainconfig.do_snmp) { \
                                      _client->auth->_x++; }

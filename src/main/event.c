@@ -125,82 +125,6 @@ static void tv_add(struct timeval *tv, int usec_delay)
 	}
 }
 
-#ifdef WITH_SNMP
-static void snmp_inc_counters(REQUEST *request)
-{
-	if (!request->root->do_snmp) return;
-
-	if (request->master_state == REQUEST_COUNTED) return;
-
-	if ((request->listener->type != RAD_LISTEN_AUTH) &&
-	    (request->listener->type != RAD_LISTEN_ACCT)) return;
-
-	/*
-	 *	Update the SNMP statistics.
-	 *
-	 *	Note that we do NOT do this in a child thread.
-	 *	Instead, we update the stats when a request is
-	 *	deleted, because only the main server thread calls
-	 *	this function, which makes it thread-safe.
-	 */
-	switch (request->reply->code) {
-	case PW_AUTHENTICATION_ACK:
-		rad_snmp.auth.total_responses++;
-		rad_snmp.auth.total_access_accepts++;
-		if (request->client && request->client->auth) {
-			request->client->auth->accepts++;
-		}
-		break;
-
-	case PW_AUTHENTICATION_REJECT:
-		rad_snmp.auth.total_responses++;
-		rad_snmp.auth.total_access_rejects++;
-		if (request->client && request->client->auth) {
-			request->client->auth->rejects++;
-		}
-		break;
-
-	case PW_ACCESS_CHALLENGE:
-		rad_snmp.auth.total_responses++;
-		rad_snmp.auth.total_access_challenges++;
-		if (request->client && request->client->auth) {
-			request->client->auth->challenges++;
-		}
-		break;
-
-#ifdef WITH_ACCOUNTING
-	case PW_ACCOUNTING_RESPONSE:
-		rad_snmp.acct.total_responses++;
-		if (request->client && request->client->acct) {
-			request->client->acct->responses++;
-		}
-		break;
-#endif
-
-		/*
-		 *	No response, it must have been a bad
-		 *	authenticator.
-		 */
-	case 0:
-		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
-			rad_snmp.auth.total_bad_authenticators++;
-			if (request->client && request->client->auth) {
-				request->client->auth->bad_authenticators++;
-			}
-		}
-		break;
-
-	default:
-		break;
-	}
-
-	request->master_state = REQUEST_COUNTED;
-}
-#else
-#define snmp_inc_counters(_x)
-#endif
-
-
 static void remove_from_request_hash(REQUEST *request)
 {
 	if (!request->in_request_hash) return;
@@ -208,7 +132,7 @@ static void remove_from_request_hash(REQUEST *request)
 	fr_packet_list_yank(pl, request->packet);
 	request->in_request_hash = FALSE;
 
-	snmp_inc_counters(request);
+	request_stats_final(request);
 }
 
 
@@ -1034,7 +958,7 @@ static void wait_a_bit(void *ctx)
 #ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
 #endif
-		snmp_inc_counters(request);
+		request_stats_final(request);
 		cleanup_delay(request);
 		return;
 
@@ -1043,7 +967,7 @@ static void wait_a_bit(void *ctx)
 #ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
 #endif
-		snmp_inc_counters(request);
+		request_stats_final(request);
 
 	case REQUEST_PROXIED:
 		rad_assert(request->next_callback != NULL);

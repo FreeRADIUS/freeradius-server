@@ -289,39 +289,39 @@ radAccServ(struct variable *vp, oid *name, size_t *length, int exact,
 
 		case RADIUSACCSERVTOTALREQUESTS:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.acct.total_requests;
+			return (u_char *) &rad_snmp.acct.stats.total_requests;
 
 		case RADIUSACCSERVTOTALINVALIDREQUESTS:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.acct.total_invalid_requests;
+			return (u_char *) &rad_snmp.acct.stats.total_invalid_requests;
 
 		case RADIUSACCSERVTOTALDUPREQUESTS:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.acct.total_dup_requests;
+			return (u_char *) &rad_snmp.acct.stats.total_dup_requests;
 
 		case RADIUSACCSERVTOTALRESPONSES:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.acct.total_responses;
+			return (u_char *) &rad_snmp.acct.stats.total_responses;
 
 		case RADIUSACCSERVTOTALMALFORMEDREQUESTS:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.acct.total_malformed_requests;
+			return (u_char *) &rad_snmp.acct.stats.total_malformed_requests;
 
 		case RADIUSACCSERVTOTALBADAUTHENTICATORS:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.acct.total_bad_authenticators;
+			return (u_char *) &rad_snmp.acct.stats.total_bad_authenticators;
 
 		case RADIUSACCSERVTOTALPACKETSDROPPED:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.acct.total_packets_dropped;
+			return (u_char *) &rad_snmp.acct.stats.total_packets_dropped;
 
 		case RADIUSACCSERVTOTALNORECORDS:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.acct.total_no_records;
+			return (u_char *) &rad_snmp.acct.stats.total_no_records;
 
 		case RADIUSACCSERVTOTALUNKNOWNTYPES:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.acct.total_unknown_types;
+			return (u_char *) &rad_snmp.acct.stats.total_unknown_types;
 
 	}
 
@@ -434,43 +434,43 @@ radAuthServ(struct variable *vp, oid *name, size_t *length, int exact,
 
 		case RADIUSAUTHSERVTOTALACCESSREQUESTS:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.auth.total_requests;
+			return (u_char *) &rad_snmp.auth.stats.total_requests;
 
 		case RADIUSAUTHSERVTOTALINVALIDREQUESTS:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.auth.total_invalid_requests;
+			return (u_char *) &rad_snmp.auth.stats.total_invalid_requests;
 
 		case RADIUSAUTHSERVTOTALDUPACCESSREQUESTS:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.auth.total_dup_requests;
+			return (u_char *) &rad_snmp.auth.stats.total_dup_requests;
 
 		case RADIUSAUTHSERVTOTALACCESSACCEPTS:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.auth.total_access_accepts;
+			return (u_char *) &rad_snmp.auth.stats.total_access_accepts;
 
 		case RADIUSAUTHSERVTOTALACCESSREJECTS:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.auth.total_access_rejects;
+			return (u_char *) &rad_snmp.auth.stats.total_access_rejects;
 
 		case RADIUSAUTHSERVTOTALACCESSCHALLENGES:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.auth.total_access_challenges;
+			return (u_char *) &rad_snmp.auth.stats.total_access_challenges;
 
 		case RADIUSAUTHSERVTOTALMALFORMEDACCESSREQUESTS:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.auth.total_malformed_requests;
+			return (u_char *) &rad_snmp.auth.stats.total_malformed_requests;
 
 		case RADIUSAUTHSERVTOTALBADAUTHENTICATORS:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.auth.total_bad_authenticators;
+			return (u_char *) &rad_snmp.auth.stats.total_bad_authenticators;
 
 		case RADIUSAUTHSERVTOTALPACKETSDROPPED:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.auth.total_packets_dropped;
+			return (u_char *) &rad_snmp.auth.stats.total_packets_dropped;
 
 		case RADIUSAUTHSERVTOTALUNKNOWNTYPES:
 			*var_len = sizeof(int32_t);
-			return (u_char *) &rad_snmp.auth.total_unknown_types;
+			return (u_char *) &rad_snmp.auth.stats.total_unknown_types;
 
 	}
 
