@@ -72,27 +72,23 @@ extern fr_stats_t	radius_acct_stats;
 
 void request_stats_final(REQUEST *request);
 
-#define RAD_STATS_INC(_x) if (mainconfig.do_snmp) _x++
+#define RAD_STATS_INC(_x) _x++
 #ifdef WITH_ACCOUNTING
-#define RAD_STATS_TYPE_INC(_listener, _x) if (mainconfig.do_snmp) { \
-                                     if (_listener->type == RAD_LISTEN_AUTH) { \
+#define RAD_STATS_TYPE_INC(_listener, _x) if (_listener->type == RAD_LISTEN_AUTH) \
                                        radius_auth_stats._x++; \
-				     } else { if (_listener->type == RAD_LISTEN_ACCT) \
-                                       radius_acct_stats._x++; } }
+				     else if (_listener->type == RAD_LISTEN_ACCT) \
+                                       radius_acct_stats._x++
 
-#define RAD_STATS_CLIENT_INC(_listener, _client, _x) if (mainconfig.do_snmp) { \
-                                     if (_listener->type == RAD_LISTEN_AUTH) { \
+#define RAD_STATS_CLIENT_INC(_listener, _client, _x) if (_listener->type == RAD_LISTEN_AUTH) \
                                        _client->auth->_x++; \
-				     } else { if (_listener->type == RAD_LISTEN_ACCT) \
-                                       _client->acct->_x++; } }
+				     else if (_listener->type == RAD_LISTEN_ACCT) \
+                                       _client->acct->_x++
 
 #else  /* WITH_ACCOUNTING */
 
-#define RAD_STATS_TYPE_INC(_listener, _x) if (mainconfig.do_snmp) { \
-                                     radius_auth_stats._x++; }
+#define RAD_STATS_TYPE_INC(_listener, _x) radius_auth_stats._x++
 
-#define RAD_STATS_CLIENT_INC(_listener, _client, _x) if (mainconfig.do_snmp) { \
-                                     _client->auth->_x++; }
+#define RAD_STATS_CLIENT_INC(_listener, _client, _x) _client->auth->_x++
 
 #endif /* WITH_ACCOUNTING */
 
