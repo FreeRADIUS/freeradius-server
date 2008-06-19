@@ -15,4 +15,32 @@ BEGIN-VENDOR	FreeRADIUS
 
 ATTRIBUTE	FreeRADIUS-Proxied-To			1	ipaddr
 
+#
+#  Global numbers received by the server.
+#
+ATTRIBUTE	FreeRADIUS-Total-Access-Requests	128	integer
+ATTRIBUTE	FreeRADIUS-Total-Access-Accepts		129	integer
+ATTRIBUTE	FreeRADIUS-Total-Access-Rejects		130	integer
+ATTRIBUTE	FreeRADIUS-Total-Access-Challenges	131	integer
+ATTRIBUTE	FreeRADIUS-Total-Auth-Responses		132	integer
+ATTRIBUTE	FreeRADIUS-Total-Auth-Duplicate-Requests	133	integer
+ATTRIBUTE	FreeRADIUS-Total-Auth-Malformed-Requests	134	integer
+ATTRIBUTE	FreeRADIUS-Total-Auth-Invalid-Requests	135	integer
+ATTRIBUTE	FreeRADIUS-Total-Auth-Dropped-Requests	136	integer
+ATTRIBUTE	FreeRADIUS-Total-Auth-Unknown-Types	137	integer
+
+#
+#  Global numbers sent by the server to all home servers
+#
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Access-Requests	138	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Access-Accepts	139	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Access-Rejects	140	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Access-Challenges 141	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Responses	142	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Duplicate-Requests 143	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Malformed-Requests 144	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Invalid-Requests	145	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Dropped-Requests	146	integer
+ATTRIBUTE	FreeRADIUS-Total-Proxy-Auth-Unknown-Types	147	integer
+
 END-VENDOR FreeRADIUS
