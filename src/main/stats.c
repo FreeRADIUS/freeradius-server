@@ -182,6 +182,7 @@ static fr_stats2vp authvp[] = {
 	{ 0, 0 }
 };
 
+
 #ifdef WITH_PROXY
 /*
  *	Proxied authentication requests.
@@ -201,11 +202,58 @@ static fr_stats2vp proxy_authvp[] = {
 };
 #endif
 
+
+#ifdef WITH_ACCOUNTING
+/*
+ *	Accounting
+ */
+static fr_stats2vp acctvp[] = {
+	{ 148, offsetof(fr_stats_t, total_requests) },
+	{ 149, offsetof(fr_stats_t, total_responses) },
+	{ 150, offsetof(fr_stats_t, total_dup_requests) },
+	{ 151, offsetof(fr_stats_t, total_malformed_requests) },
+	{ 152, offsetof(fr_stats_t, total_bad_authenticators) },
+	{ 153, offsetof(fr_stats_t, total_packets_dropped) },
+	{ 154, offsetof(fr_stats_t, total_unknown_types) },
+	{ 0, 0 }
+};
+
+#ifdef WITH_PROXY
+static fr_stats2vp proxy_acctvp[] = {
+	{ 155, offsetof(fr_stats_t, total_requests) },
+	{ 156, offsetof(fr_stats_t, total_responses) },
+	{ 157, offsetof(fr_stats_t, total_dup_requests) },
+	{ 158, offsetof(fr_stats_t, total_malformed_requests) },
+	{ 159, offsetof(fr_stats_t, total_bad_authenticators) },
+	{ 160, offsetof(fr_stats_t, total_packets_dropped) },
+	{ 161, offsetof(fr_stats_t, total_unknown_types) },
+	{ 0, 0 }
+};
+#endif
+#endif
+
+
 #define FR2ATTR(x) ((11344 << 16) | (x))
+
+static void request_stats_addvp(REQUEST *request,
+				fr_stats2vp *table, fr_stats_t *stats)
+{
+	int i;
+	VALUE_PAIR *vp;
+
+	for (i = 0; table[i].attribute != 0; i++) {
+		vp = radius_paircreate(request, &request->reply->vps,
+				       FR2ATTR(table[i].attribute),
+				       PW_TYPE_INTEGER);
+		if (!vp) continue;
+
+		vp->vp_integer = *(int *)(((char *) stats) + table[i].offset);
+	}
+}
+
 
 void request_stats_reply(REQUEST *request)
 {
-	int i;
 	VALUE_PAIR *vp;
 
 	if (request->packet->code != PW_STATUS_SERVER) return;
@@ -213,29 +261,30 @@ void request_stats_reply(REQUEST *request)
 	if ((request->packet->src_ipaddr.af != AF_INET) ||
 	    (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_LOOPBACK))) return;
 
-	vp = pairfind(request->packet->vps, PW_CONFIGURATION_TOKEN);
-	if (!vp || (strcmp(vp->vp_strvalue, "Statistics") != 0)) return;
+	vp = pairfind(request->packet->vps, FR2ATTR(127));
+	if (!vp || (vp->vp_integer == 0)) return;
 
-	for (i = 0; authvp[i].attribute != 0; i++) {
-		vp = radius_paircreate(request, &request->reply->vps,
-				       FR2ATTR(authvp[i].attribute),
-				       PW_TYPE_INTEGER);
-		if (!vp) continue;
 
-		vp->vp_integer = *(int *)(((char *) &radius_auth_stats) + 
-					  authvp[i].offset);
+	if (vp->vp_integer & 0x01) {
+		request_stats_addvp(request, authvp, &radius_auth_stats);
 	}
+		
+#ifdef WITH_ACCOUNTING
+	if (vp->vp_integer & 0x02) {
+		request_stats_addvp(request, acctvp, &radius_acct_stats);
+	}
+#endif
 
 #ifdef WITH_PROXY
-	for (i = 0; proxy_authvp[i].attribute != 0; i++) {
-		vp = radius_paircreate(request, &request->reply->vps,
-				       FR2ATTR(proxy_authvp[i].attribute),
-				       PW_TYPE_INTEGER);
-		if (!vp) continue;
-
-		vp->vp_integer = *(int *)(((char *) &proxy_auth_stats) + 
-					  proxy_authvp[i].offset);
+	if (vp->vp_integer & 0x04) {
+		request_stats_addvp(request, proxy_authvp, &proxy_auth_stats);
 	}
+
+#ifdef WITH_ACCOUNTING
+	if (vp->vp_integer & 0x08) {
+		request_stats_addvp(request, proxy_acctvp, &proxy_acct_stats);
+	}
+#endif
 #endif
 }
 
