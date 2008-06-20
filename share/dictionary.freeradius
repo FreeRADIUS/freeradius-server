@@ -92,17 +92,17 @@ ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Unknown-Types 161	integer
 #
 #  Internal queues.  Different packet types are put into different queues.
 #
-ATTRIBUTE	FreeRADIUS-Queue-Len-Internal		  162	integer
-ATTRIBUTE	FreeRADIUS-Queue-Len-Proxy		  163	integer
-ATTRIBUTE	FreeRADIUS-Queue-Len-Auth		  164	integer
-ATTRIBUTE	FreeRADIUS-Queue-Len-Acct		  165	integer
-ATTRIBUTE	FreeRADIUS-Queue-Len-Detail		  166	integer
+ATTRIBUTE	FreeRADIUS-Queue-Len-Internal		162	integer
+ATTRIBUTE	FreeRADIUS-Queue-Len-Proxy		163	integer
+ATTRIBUTE	FreeRADIUS-Queue-Len-Auth		164	integer
+ATTRIBUTE	FreeRADIUS-Queue-Len-Acct		165	integer
+ATTRIBUTE	FreeRADIUS-Queue-Len-Detail		166	integer
 
-ATTRIBUTE	FreeRADIUS-Stats-Client-IP-Address	  167	ipaddr
-ATTRIBUTE	FreeRADIUS-Stats-Client-Number		  168	integer
-ATTRIBUTE	FreeRADIUS-Stats-Client-Netmask		  169	integer
+ATTRIBUTE	FreeRADIUS-Stats-Client-IP-Address	167	ipaddr
+ATTRIBUTE	FreeRADIUS-Stats-Client-Number		168	integer
+ATTRIBUTE	FreeRADIUS-Stats-Client-Netmask		169	integer
 
-ATTRIBUTE	FreeRADIUS-Stats-Server-IP-Address	  170	ipaddr
-ATTRIBUTE	FreeRADIUS-Stats-Server-Port		  171	integer
+ATTRIBUTE	FreeRADIUS-Stats-Server-IP-Address	170	ipaddr
+ATTRIBUTE	FreeRADIUS-Stats-Server-Port		171	integer
 
 END-VENDOR FreeRADIUS
