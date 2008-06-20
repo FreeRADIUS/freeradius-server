@@ -229,7 +229,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	sizeof_dst = sizeof(dst);
 	/*
 	 *	This should never fail...
-		 */
+	 */
 	getsockname(sockfd, (struct sockaddr *) &dst, &sizeof_dst);
 	
 	fr_sockaddr2ipaddr(&src, sizeof_src, &packet->src_ipaddr, &port);
@@ -846,6 +846,16 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	p += 2;
 
 	memcpy(p, original->data + 10, 6); /* copy flags && ciaddr */
+
+	/*
+	 *	Allow the admin to set the broadcast flag.
+	 */
+	vp = pairfind(packet->vps, DHCP2ATTR(262));
+	if (vp) {
+		p[0] |= (vp->vp_integer & 0xff00) >> 8;
+		p[1] |= (vp->vp_integer & 0xff);
+	}
+
 	p += 6;
 
 	/*
