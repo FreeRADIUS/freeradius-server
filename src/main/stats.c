@@ -232,11 +232,37 @@ static fr_stats2vp proxy_acctvp[] = {
 #endif
 #endif
 
+static fr_stats2vp client_authvp[] = {
+	{ 128, offsetof(fr_client_stats_t, requests) },
+	{ 129, offsetof(fr_client_stats_t, accepts) },
+	{ 130, offsetof(fr_client_stats_t, rejects) },
+	{ 131, offsetof(fr_client_stats_t, challenges) },
+	{ 132, offsetof(fr_client_stats_t, responses) },
+	{ 133, offsetof(fr_client_stats_t, dup_requests) },
+	{ 134, offsetof(fr_client_stats_t, malformed_requests) },
+	{ 135, offsetof(fr_client_stats_t, bad_authenticators) },
+	{ 136, offsetof(fr_client_stats_t, packets_dropped) },
+	{ 137, offsetof(fr_client_stats_t, unknown_types) },
+	{ 0, 0 }
+};
+
+#ifdef WITH_ACCOUNTING
+static fr_stats2vp client_acctvp[] = {
+	{ 155, offsetof(fr_client_stats_t, requests) },
+	{ 156, offsetof(fr_client_stats_t, responses) },
+	{ 157, offsetof(fr_client_stats_t, dup_requests) },
+	{ 158, offsetof(fr_client_stats_t, malformed_requests) },
+	{ 159, offsetof(fr_client_stats_t, bad_authenticators) },
+	{ 160, offsetof(fr_client_stats_t, packets_dropped) },
+	{ 161, offsetof(fr_client_stats_t, unknown_types) },
+	{ 0, 0 }
+};
+#endif
 
 #define FR2ATTR(x) ((11344 << 16) | (x))
 
 static void request_stats_addvp(REQUEST *request,
-				fr_stats2vp *table, fr_stats_t *stats)
+				fr_stats2vp *table, void *stats)
 {
 	int i;
 	VALUE_PAIR *vp;
@@ -254,38 +280,126 @@ static void request_stats_addvp(REQUEST *request,
 
 void request_stats_reply(REQUEST *request)
 {
-	VALUE_PAIR *vp;
+	VALUE_PAIR *flag, *vp;
 
 	if (request->packet->code != PW_STATUS_SERVER) return;
 
 	if ((request->packet->src_ipaddr.af != AF_INET) ||
 	    (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_LOOPBACK))) return;
 
-	vp = pairfind(request->packet->vps, FR2ATTR(127));
-	if (!vp || (vp->vp_integer == 0)) return;
+	flag = pairfind(request->packet->vps, FR2ATTR(127));
+	if (!flag || (flag->vp_integer == 0)) return;
 
 
-	if (vp->vp_integer & 0x01) {
+	if (((flag->vp_integer & 0x01) != 0) &&
+	    ((flag->vp_integer & 0x20) == 0)) {
 		request_stats_addvp(request, authvp, &radius_auth_stats);
 	}
 		
 #ifdef WITH_ACCOUNTING
-	if (vp->vp_integer & 0x02) {
+	if (((flag->vp_integer & 0x02) != 0) &&
+	    ((flag->vp_integer & 0x20) == 0)) {
 		request_stats_addvp(request, acctvp, &radius_acct_stats);
 	}
 #endif
 
 #ifdef WITH_PROXY
-	if (vp->vp_integer & 0x04) {
+	if (((flag->vp_integer & 0x04) != 0) &&
+	    ((flag->vp_integer & 0x20) == 0)) {
 		request_stats_addvp(request, proxy_authvp, &proxy_auth_stats);
 	}
 
 #ifdef WITH_ACCOUNTING
-	if (vp->vp_integer & 0x08) {
+	if (((flag->vp_integer & 0x08) != 0) &&
+	    ((flag->vp_integer & 0x20) == 0)) {
 		request_stats_addvp(request, proxy_acctvp, &proxy_acct_stats);
 	}
 #endif
 #endif
+
+#ifdef HAVE_PTHREAD_H
+	if ((flag->vp_integer & 0x10) != 0) {
+		int i, array[RAD_LISTEN_MAX];
+
+		thread_pool_queue_stats(&array);
+
+		for (i = 0; i <= RAD_LISTEN_DETAIL; i++) {
+			vp = radius_paircreate(request, &request->reply->vps,
+					       FR2ATTR(162 + i),
+					       PW_TYPE_INTEGER);
+			
+			if (!vp) continue;
+			vp->vp_integer = array[i];
+		}
+	}
+#endif
+
+	if ((flag->vp_integer & 0x20) != 0) {
+		fr_ipaddr_t ipaddr;
+		RADCLIENT *client = NULL;
+		RADCLIENT_LIST *cl = NULL;
+		
+		vp = pairfind(request->packet->vps, FR2ATTR(167));
+		if (vp) {
+			ipaddr.af = AF_INET;
+			ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+			client = client_find(cl, &ipaddr);
+
+			/*
+			 *	Else look it up by number.
+			 */
+		} else if ((vp = pairfind(request->packet->vps,
+					   FR2ATTR(168))) != NULL) {
+			client = client_findbynumber(cl, vp->vp_integer);
+		}
+
+		if (client) {
+			/*
+			 *	If found, echo it back, along with
+			 *	the requested statistics.
+			 */
+			pairadd(&request->reply->vps, paircopyvp(vp));
+
+			/*
+			 *	When retrieving client by number, also
+			 *	echo back it's IP address.
+			 */
+			if ((vp->type == PW_TYPE_INTEGER) &&
+			    (client->ipaddr.af == AF_INET)) {
+				vp = radius_paircreate(request,
+						       &request->reply->vps,
+						       FR2ATTR(167),
+						       PW_TYPE_IPADDR);
+				if (vp) {
+					vp->vp_ipaddr = client->ipaddr.ipaddr.ip4addr.s_addr;
+				}
+
+				if (client->prefix != 32) {
+					vp = radius_paircreate(request,
+							       &request->reply->vps,
+							       FR2ATTR(169),
+							       PW_TYPE_INTEGER);
+					if (vp) {
+						vp->vp_integer = client->prefix;
+					}
+				}
+			}
+
+			if (client->auth &&
+			    ((flag->vp_integer & 0x01) != 0)) {
+				request_stats_addvp(request, client_authvp,
+						    client->auth);
+			}
+#ifdef WITH_ACCOUNTING
+			if (client->acct &&
+			    ((flag->vp_integer & 0x01) != 0)) {
+				request_stats_addvp(request, client_acctvp,
+						    client->acct);
+			}
+#endif
+		} /* else client wasn't found, don't echo it back */
+	}
+
 }
 
 #endif /* WITH_STATS */

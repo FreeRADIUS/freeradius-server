@@ -1111,4 +1111,19 @@ void thread_pool_unlock(void)
 {
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 }
+
+void thread_pool_queue_stats(int *array)
+{
+	int i;
+
+	if (pool_initialized) {
+		for (i = 0; i < RAD_LISTEN_MAX; i++) {
+			array[i] = fr_fifo_num_elements(thread_pool.fifo[i]);
+		}
+	} else {
+		for (i = 0; i < RAD_LISTEN_MAX; i++) {
+			array[i] = 0;
+		}
+	}
+}
 #endif /* HAVE_PTHREAD_H */

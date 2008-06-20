@@ -25,10 +25,13 @@ VALUE	FreeRADIUS-Statistics-Type	Authentication		1
 VALUE	FreeRADIUS-Statistics-Type	Accounting		2
 VALUE	FreeRADIUS-Statistics-Type	Proxy-Authentication	4
 VALUE	FreeRADIUS-Statistics-Type	Proxy-Accounting	8
+VALUE	FreeRADIUS-Statistics-Type	Request-Queue		0x10
+VALUE	FreeRADIUS-Statistics-Type	Client			0x20
 
-VALUE	FreeRADIUS-Statistics-Type	Auth-Acct		3
-VALUE	FreeRADIUS-Statistics-Type	Proxy-Auth-Acct		12
-VALUE	FreeRADIUS-Statistics-Type	All			15
+VALUE	FreeRADIUS-Statistics-Type	Auth-Acct		0x03
+VALUE	FreeRADIUS-Statistics-Type	Proxy-Auth-Acct		0x0c
+
+VALUE	FreeRADIUS-Statistics-Type	All			0x1f
 
 #
 #  Note that these statistics are available ONLY for packets
@@ -84,5 +87,18 @@ ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Malformed-Requests 158	integer
 ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Invalid-Requests 159	integer
 ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Dropped-Requests 160	integer
 ATTRIBUTE	FreeRADIUS-Total-Proxy-Acct-Unknown-Types 161	integer
+
+#
+#  Internal queues.  Different packet types are put into different queues.
+#
+ATTRIBUTE	FreeRADIUS-Queue-Len-Internal		  162	integer
+ATTRIBUTE	FreeRADIUS-Queue-Len-Proxy		  163	integer
+ATTRIBUTE	FreeRADIUS-Queue-Len-Auth		  164	integer
+ATTRIBUTE	FreeRADIUS-Queue-Len-Acct		  165	integer
+ATTRIBUTE	FreeRADIUS-Queue-Len-Detail		  166	integer
+
+ATTRIBUTE	FreeRADIUS-Stats-Client-IP-Address	  167	ipaddr
+ATTRIBUTE	FreeRADIUS-Stats-Client-Number		  168	integer
+ATTRIBUTE	FreeRADIUS-Stats-Client-Netmask		  169	integer
 
 END-VENDOR FreeRADIUS
