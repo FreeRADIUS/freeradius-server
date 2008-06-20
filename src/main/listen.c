@@ -94,8 +94,15 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	rad_assert(ipaddr != NULL);
 
 	rad_assert((listener->type == RAD_LISTEN_AUTH) ||
+#ifdef WITH_STATS
+		   (listener->type == RAD_LISTEN_NONE) ||
+#endif
+#ifdef WITH_ACCOUNTING
 		   (listener->type == RAD_LISTEN_ACCT) ||
+#endif
+#ifdef WITH_VMPS
 		   (listener->type == RAD_LISTEN_VQP) ||
+#endif
 		   (listener->type == RAD_LISTEN_DHCP));
 
 	clients = ((listen_socket_t *)listener->data)->clients;
@@ -253,6 +260,9 @@ static int rad_status_server(REQUEST *request)
 	DICT_VALUE *dval;
 
 	switch (request->listener->type) {
+#ifdef WITH_STATS
+	case RAD_LISTEN_NONE:
+#endif
 	case RAD_LISTEN_AUTH:
 		dval = dict_valbyname(PW_AUTZ_TYPE, "Status-Server");
 		if (dval) {
@@ -320,6 +330,12 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 	const char *name;
 
 	switch (this->type) {
+#ifdef WITH_STATS
+	case RAD_LISTEN_NONE:	/* what a hack... */
+		name = "status";
+		break;
+#endif
+
 	case RAD_LISTEN_AUTH:
 		name = "authentication";
 		break;
@@ -596,6 +612,91 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 
 	return rad_send(request->proxy, request->packet,
 			request->home_server->secret);
+}
+#endif
+
+#ifdef WITH_STATS
+/*
+ *	Check if an incoming request is "ok"
+ *
+ *	It takes packets, not requests.  It sees if the packet looks
+ *	OK.  If so, it does a number of sanity checks on it.
+  */
+static int stats_socket_recv(rad_listen_t *listener,
+			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+{
+	ssize_t		rcode;
+	int		code, src_port;
+	RADIUS_PACKET	*packet;
+	char		buffer[128];
+	RADCLIENT	*client;
+	fr_ipaddr_t	src_ipaddr;
+
+	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
+	if (rcode < 0) return 0;
+
+	RAD_STATS_TYPE_INC(listener, total_requests);
+
+	if (rcode < 20) {	/* AUTH_HDR_LEN */
+		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		return 0;
+	}
+
+	/*
+	 *	We only understand Status-Server on this socket.
+	 */
+	if (code != PW_STATUS_SERVER) {
+		DEBUG("Ignoring packet code %d sent to Status-Server port",
+		      code);
+		rad_recv_discard(listener->fd);
+		RAD_STATS_TYPE_INC(listener, total_unknown_types);
+		RAD_STATS_CLIENT_INC(listener, client, unknown_types);
+		return 0;
+	}
+
+	if ((client = client_listener_find(listener,
+					   &src_ipaddr)) == NULL) {
+		rad_recv_discard(listener->fd);
+		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
+
+		if (debug_flag > 0) {
+			char name[1024];
+
+			listener->print(listener, name, sizeof(name));
+
+			/*
+			 *	This is debugging rather than logging, so that
+			 *	DoS attacks don't affect us.
+			 */
+			DEBUG("Ignoring request to %s from unknown client %s port %d",
+			      name,
+			      inet_ntop(src_ipaddr.af, &src_ipaddr.ipaddr,
+					buffer, sizeof(buffer)), src_port);
+		}
+
+		return 0;
+	}
+
+	/*
+	 *	Now that we've sanity checked everything, receive the
+	 *	packet.
+	 */
+	packet = rad_recv(listener->fd, 1); /* require message authenticator */
+	if (!packet) {
+		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		DEBUG("%s", librad_errstr);
+		return 0;
+	}
+
+	if (!received_request(listener, packet, prequest, client)) {
+		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
+		RAD_STATS_CLIENT_INC(listener, client, packets_dropped);
+		rad_free(&packet);
+		return 0;
+	}
+
+	*pfun = rad_status_server;
+	return 1;
 }
 #endif
 
@@ -954,7 +1055,13 @@ static int radius_snmp_print(UNUSED rad_listen_t *this, char *buffer, size_t buf
 #include "dhcpd.c"
 
 static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
+#ifdef WITH_STATS
+	{ common_socket_parse, NULL,
+	  stats_socket_recv, auth_socket_send,
+	  socket_print, client_socket_encode, client_socket_decode },
+#else
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
+#endif
 
 #ifdef WITH_PROXY
 	/* proxying */
@@ -1203,6 +1310,9 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 	this->decode = master_listen[this->type].decode;
 
 	switch (type) {
+#ifdef WITH_STATS
+	case RAD_LISTEN_NONE:
+#endif
 	case RAD_LISTEN_AUTH:
 	case RAD_LISTEN_ACCT:
 	case RAD_LISTEN_PROXY:
@@ -1299,6 +1409,9 @@ rad_listen_t *proxy_new_listener()
 #endif
 
 static const FR_NAME_NUMBER listen_compare[] = {
+#ifdef WITH_STATS
+	{ "status",	RAD_LISTEN_NONE },
+#endif
 	{ "auth",	RAD_LISTEN_AUTH },
 #ifdef WITH_ACCOUNTING
 	{ "acct",	RAD_LISTEN_ACCT },
@@ -1314,8 +1427,6 @@ static const FR_NAME_NUMBER listen_compare[] = {
 #endif
 #ifdef WITH_DHCP
 	{ "dhcp",	RAD_LISTEN_DHCP },
-#else
-	{ "dhcp",	RAD_LISTEN_NONE },
 #endif
 	{ NULL, 0 },
 };
@@ -1341,9 +1452,8 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 		return NULL;
 	}
 
-	type = fr_str2int(listen_compare, listen_type,
-			    RAD_LISTEN_NONE);
-	if (type == RAD_LISTEN_NONE) {
+	type = fr_str2int(listen_compare, listen_type, -1);
+	if (type < 0) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Invalid type \"%s\" in listen section.",
 			   listen_type);

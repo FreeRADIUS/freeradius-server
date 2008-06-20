@@ -45,7 +45,8 @@ void request_stats_final(REQUEST *request)
 {
 	if (request->master_state == REQUEST_COUNTED) return;
 
-	if ((request->listener->type != RAD_LISTEN_AUTH) &&
+	if ((request->listener->type != RAD_LISTEN_NONE) &&
+	    (request->listener->type != RAD_LISTEN_AUTH) &&
 	    (request->listener->type != RAD_LISTEN_ACCT)) return;
 
 	/*
@@ -312,9 +313,18 @@ void request_stats_reply(REQUEST *request)
 
 	if (request->packet->code != PW_STATUS_SERVER) return;
 
-	if ((request->packet->src_ipaddr.af != AF_INET) ||
-	    (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_LOOPBACK))) return;
-
+	/*
+	 *	Status sockets can have any IP.  For other sockets, we
+	 *	do respond with statistics only if they're from
+	 *	localhost.
+	 */
+	if (request->listener->type != RAD_LISTEN_NONE) {
+		if ((request->packet->src_ipaddr.af != AF_INET) ||
+		    (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_LOOPBACK))) {
+			return;
+		}
+	}
+		
 	flag = pairfind(request->packet->vps, FR2ATTR(127));
 	if (!flag || (flag->vp_integer == 0)) return;
 
@@ -490,13 +500,15 @@ void request_stats_reply(REQUEST *request)
 			paircopyvp(server_port));
 
 		if (((flag->vp_integer & 0x01) != 0) &&
-		    (request->listener->type == RAD_LISTEN_AUTH)) {
+		    ((request->listener->type == RAD_LISTEN_AUTH) ||
+		     (request->listener->type == RAD_LISTEN_NONE))) {
 			request_stats_addvp(request, authvp, &this->stats);
 		}
 		
 #ifdef WITH_ACCOUNTING
 		if (((flag->vp_integer & 0x02) != 0) &&
-		    (request->listener->type == RAD_LISTEN_ACCT)) {
+		    ((request->listener->type == RAD_LISTEN_ACCT) ||
+		     (request->listener->type == RAD_LISTEN_NONE))) {
 			request_stats_addvp(request, acctvp, &this->stats);
 		}
 #endif
@@ -558,14 +570,16 @@ void request_stats_reply(REQUEST *request)
 		}
 
 		if (((flag->vp_integer & 0x01) != 0) &&
-		    (request->listener->type == RAD_LISTEN_AUTH)) {
+		    ((request->listener->type == RAD_LISTEN_AUTH) ||
+		     (request->listener->type == RAD_LISTEN_NONE))) {
 			request_stats_addvp(request, proxy_authvp,
 					    &home->stats);
 		}
 
 #ifdef WITH_ACCOUNTING
 		if (((flag->vp_integer & 0x02) != 0) &&
-		    (request->listener->type == RAD_LISTEN_ACCT)) {
+		    ((request->listener->type == RAD_LISTEN_ACCT) ||
+		     (request->listener->type == RAD_LISTEN_NONE))) {
 			request_stats_addvp(request, proxy_acctvp,
 					    &home->stats);
 		}
