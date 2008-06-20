@@ -1718,19 +1718,6 @@ home_server *home_server_ldb(const char *realmname,
 			continue;
 		}
 
-		if (home->total_requests_sent < found->total_requests_sent) {
-			DEBUG3("Choosing %s: It's been less busy than %s",
-			       home->name, found->name);
-			found = home;
-			continue;
-		}
-
-		if (home->total_requests_sent > found->total_requests_sent) {
-			DEBUG3("Skipping %s: It's been busier than %s",
-			       home->name, found->name);
-			continue;
-		}
-
 		/*
 		 *	From the list of servers which have the same
 		 *	load, choose one at random.

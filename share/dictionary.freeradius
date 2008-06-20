@@ -120,4 +120,15 @@ ATTRIBUTE	FreeRADIUS-Stats-Client-Netmask		169	integer
 ATTRIBUTE	FreeRADIUS-Stats-Server-IP-Address	170	ipaddr
 ATTRIBUTE	FreeRADIUS-Stats-Server-Port		171	integer
 
+ATTRIBUTE	FreeRADIUS-Stats-Server-Outstanding-Requests	172	integer
+ATTRIBUTE	FreeRADIUS-Stats-Server-State		173	integer
+
+VALUE	FreeRADIUS-Stats-Server-State	Alive	0
+VALUE	FreeRADIUS-Stats-Server-State	Zombie	1
+VALUE	FreeRADIUS-Stats-Server-State	Dead	2
+
+ATTRIBUTE	FreeRADIUS-Stats-Server-Time-Of-Death	174	date
+ATTRIBUTE	FreeRADIUS-Stats-Server-Time-Of-Life	175	date
+
+
 END-VENDOR FreeRADIUS

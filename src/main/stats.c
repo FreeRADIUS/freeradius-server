@@ -536,12 +536,33 @@ void request_stats_reply(REQUEST *request)
 		pairadd(&request->reply->vps,
 			paircopyvp(server_port));
 
+		vp = radius_paircreate(request, &request->reply->vps,
+				       FR2ATTR(172), PW_TYPE_INTEGER);
+		if (vp) vp->vp_integer = home->currently_outstanding;
+
+		vp = radius_paircreate(request, &request->reply->vps,
+				       FR2ATTR(173), PW_TYPE_INTEGER);
+		if (vp) vp->vp_integer = home->state;
+
+		if ((home->state == HOME_STATE_ALIVE) &&
+		    (home->revive_time.tv_sec != 0)) {
+			vp = radius_paircreate(request, &request->reply->vps,
+					       FR2ATTR(175), PW_TYPE_DATE);
+			if (vp) vp->vp_date = home->revive_time.tv_sec;
+		}
+
+		if (home->state == HOME_STATE_IS_DEAD) {
+			vp = radius_paircreate(request, &request->reply->vps,
+					       FR2ATTR(174), PW_TYPE_DATE);
+			if (vp) vp->vp_date = home->zombie_period_start.tv_sec + home->zombie_period;
+		}
+
 		if (((flag->vp_integer & 0x01) != 0) &&
 		    (request->listener->type == RAD_LISTEN_AUTH)) {
 			request_stats_addvp(request, proxy_authvp,
 					    &home->stats);
 		}
-		
+
 #ifdef WITH_ACCOUNTING
 		if (((flag->vp_integer & 0x02) != 0) &&
 		    (request->listener->type == RAD_LISTEN_ACCT)) {
