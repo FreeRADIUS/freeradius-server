@@ -50,7 +50,7 @@ ATTRIBUTE	MS-Secondary-NBNS-Server		31	ipaddr
 
 ## MS-RNAP
 #
-http://download.microsoft.com/download/9/5/E/95EF66AF-9026-4BB0-A41D-A4F81802D92C/%5BMS-RNAP%5D.pdf
+# http://download.microsoft.com/download/9/5/E/95EF66AF-9026-4BB0-A41D-A4F81802D92C/%5BMS-RNAP%5D.pdf
 
 ATTRIBUTE	MS-RAS-Client-Name			34	string
 ATTRIBUTE	MS-RAS-Client-Version			35	string
