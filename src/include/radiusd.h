@@ -35,8 +35,6 @@ RCSIDH(radiusd_h, "$Id$")
 
 typedef struct auth_req REQUEST;
 
-#include <freeradius-devel/realms.h>
-
 #ifdef HAVE_PTHREAD_H
 #include	<pthread.h>
 typedef pthread_t child_pid_t;
@@ -90,6 +88,7 @@ typedef pthread_t child_pid_t;
 #define WITH_STATS
 #endif
 #include <freeradius-devel/stats.h>
+#include <freeradius-devel/realms.h>
 
 
 /*

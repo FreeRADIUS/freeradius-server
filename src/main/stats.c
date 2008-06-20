@@ -121,11 +121,15 @@ void request_stats_final(REQUEST *request)
 	switch (request->proxy_reply->code) {
 	case PW_AUTHENTICATION_REQUEST:
 		proxy_auth_stats.total_requests += request->num_proxied_requests;
+		request->proxy_listener->stats.total_requests += request->num_proxied_requests;
+		request->home_server->stats.total_requests += request->num_proxied_requests;
 		break;
 
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_REQUEST:
 		proxy_acct_stats.total_requests++;
+		request->proxy_listener->stats.total_requests += request->num_proxied_requests;
+		request->home_server->stats.total_requests += request->num_proxied_requests;
 		break;
 #endif
 
@@ -139,26 +143,42 @@ void request_stats_final(REQUEST *request)
 	case PW_AUTHENTICATION_ACK:
 		proxy_auth_stats.total_responses += request->num_proxied_responses;
 		proxy_auth_stats.total_access_accepts += request->num_proxied_responses;
+		request->proxy_listener->stats.total_responses += request->num_proxied_responses;
+		request->home_server->stats.total_access_accepts += request->num_proxied_responses;
+		request->home_server->stats.total_responses += request->num_proxied_responses;
+		request->home_server->stats.total_access_accepts += request->num_proxied_responses;
 		break;
 
 	case PW_AUTHENTICATION_REJECT:
 		proxy_auth_stats.total_responses += request->num_proxied_responses;
 		proxy_auth_stats.total_access_rejects += request->num_proxied_responses;
+		request->proxy_listener->stats.total_responses += request->num_proxied_responses;
+		request->proxy_listener->stats.total_access_rejects += request->num_proxied_responses;
+		request->home_server->stats.total_responses += request->num_proxied_responses;
+		request->home_server->stats.total_access_rejects += request->num_proxied_responses;
 		break;
 
 	case PW_ACCESS_CHALLENGE:
 		proxy_auth_stats.total_responses += request->num_proxied_responses;
 		proxy_auth_stats.total_access_challenges += request->num_proxied_responses;
+		request->proxy_listener->stats.total_responses += request->num_proxied_responses;
+		request->proxy_listener->stats.total_access_challenges += request->num_proxied_responses;
+		request->home_server->stats.total_responses += request->num_proxied_responses;
+		request->home_server->stats.total_access_challenges += request->num_proxied_responses;
 		break;
 
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
 		radius_acct_stats.total_responses++;
+		request->proxy_listener->stats.total_responses++;
+		request->home_server->stats.total_responses++;
 		break;
 #endif
 
 	default:
 		proxy_auth_stats.total_unknown_types++;
+		request->proxy_listener->stats.total_unknown_types++;
+		request->home_server->stats.total_unknown_types++;
 		break;
 	}
 
@@ -298,15 +318,14 @@ void request_stats_reply(REQUEST *request)
 	flag = pairfind(request->packet->vps, FR2ATTR(127));
 	if (!flag || (flag->vp_integer == 0)) return;
 
-
 	if (((flag->vp_integer & 0x01) != 0) &&
-	    ((flag->vp_integer & 0x20) == 0)) {
+	    ((flag->vp_integer & 0xc0) == 0)) {
 		request_stats_addvp(request, authvp, &radius_auth_stats);
 	}
 		
 #ifdef WITH_ACCOUNTING
 	if (((flag->vp_integer & 0x02) != 0) &&
-	    ((flag->vp_integer & 0x20) == 0)) {
+	    ((flag->vp_integer & 0xc0) == 0)) {
 		request_stats_addvp(request, acctvp, &radius_acct_stats);
 	}
 #endif
@@ -438,8 +457,8 @@ void request_stats_reply(REQUEST *request)
 		} /* else client wasn't found, don't echo it back */
 	}
 
-	if (((flag->vp_integer && 0x40) != 0) &&
-	    ((flag->vp_integer && 0x03) != 0)) {
+	if (((flag->vp_integer & 0x40) != 0) &&
+	    ((flag->vp_integer & 0x03) != 0)) {
 		rad_listen_t *this;
 		VALUE_PAIR *server_ip, *server_port;
 		fr_ipaddr_t ipaddr;
@@ -479,6 +498,55 @@ void request_stats_reply(REQUEST *request)
 		if (((flag->vp_integer & 0x02) != 0) &&
 		    (request->listener->type == RAD_LISTEN_ACCT)) {
 			request_stats_addvp(request, acctvp, &this->stats);
+		}
+#endif
+	}
+
+	/*
+	 *	Home servers.
+	 */
+	if (((flag->vp_integer & 0x80) != 0) &&
+	    ((flag->vp_integer & 0x03) != 0)) {
+		home_server *home;
+		VALUE_PAIR *server_ip, *server_port;
+		fr_ipaddr_t ipaddr;
+
+		/*
+		 *	See if we need to look up the server by socket
+		 *	socket.
+		 */
+		server_ip = pairfind(request->packet->vps, FR2ATTR(170));
+		if (!server_ip) return;
+
+		server_port = pairfind(request->packet->vps,
+				       FR2ATTR(171));
+		if (!server_port) return;
+		
+		ipaddr.af = AF_INET;
+		ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
+		home = home_server_find(&ipaddr, server_port->vp_integer);
+
+		/*
+		 *	Not found: don't do anything
+		 */
+		if (!home) return;
+		
+		pairadd(&request->reply->vps,
+			paircopyvp(server_ip));
+		pairadd(&request->reply->vps,
+			paircopyvp(server_port));
+
+		if (((flag->vp_integer & 0x01) != 0) &&
+		    (request->listener->type == RAD_LISTEN_AUTH)) {
+			request_stats_addvp(request, proxy_authvp,
+					    &home->stats);
+		}
+		
+#ifdef WITH_ACCOUNTING
+		if (((flag->vp_integer & 0x02) != 0) &&
+		    (request->listener->type == RAD_LISTEN_ACCT)) {
+			request_stats_addvp(request, proxy_acctvp,
+					    &home->stats);
 		}
 #endif
 	}

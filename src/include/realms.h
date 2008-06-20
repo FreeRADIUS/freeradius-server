@@ -65,6 +65,9 @@ typedef struct home_server {
 
 	int		revive_interval; /* if it doesn't support pings */
 	CONF_SECTION	*cs;
+#ifdef WITH_STATS
+	fr_stats_t	stats;
+#endif
 } home_server;
 
 
