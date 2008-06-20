@@ -2074,6 +2074,11 @@ int received_request(rad_listen_t *listener,
 	request->priority = listener->type;
 
 	/*
+	 *	Status-Server packets go to the head of the queue.
+	 */
+	if (request->packet->code == PW_STATUS_SERVER) request->priority = 0;
+
+	/*
 	 *	Set virtual server identity
 	 */
 	if (client->server) {
