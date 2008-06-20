@@ -60,8 +60,8 @@ void request_stats_final(REQUEST *request)
 	case PW_AUTHENTICATION_ACK:
 		radius_auth_stats.total_responses++;
 		radius_auth_stats.total_access_accepts++;
-		request->listener->auth.total_responses++;
-		request->listener->auth.total_access_accepts++;
+		request->listener->stats.total_responses++;
+		request->listener->stats.total_access_accepts++;
 		if (request->client && request->client->auth) {
 			request->client->auth->accepts++;
 		}
@@ -70,8 +70,8 @@ void request_stats_final(REQUEST *request)
 	case PW_AUTHENTICATION_REJECT:
 		radius_auth_stats.total_responses++;
 		radius_auth_stats.total_access_rejects++;
-		request->listener->auth.total_responses++;
-		request->listener->auth.total_access_rejects++;
+		request->listener->stats.total_responses++;
+		request->listener->stats.total_access_rejects++;
 		if (request->client && request->client->auth) {
 			request->client->auth->rejects++;
 		}
@@ -80,8 +80,8 @@ void request_stats_final(REQUEST *request)
 	case PW_ACCESS_CHALLENGE:
 		radius_auth_stats.total_responses++;
 		radius_auth_stats.total_access_challenges++;
-		request->listener->auth.total_responses++;
-		request->listener->auth.total_access_challenges++;
+		request->listener->stats.total_responses++;
+		request->listener->stats.total_access_challenges++;
 		if (request->client && request->client->auth) {
 			request->client->auth->challenges++;
 		}
@@ -90,7 +90,7 @@ void request_stats_final(REQUEST *request)
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
 		radius_acct_stats.total_responses++;
-		request->listener->auth.total_responses++;
+		request->listener->stats.total_responses++;
 		if (request->client && request->client->acct) {
 			request->client->acct->responses++;
 		}
@@ -104,7 +104,7 @@ void request_stats_final(REQUEST *request)
 	case 0:
 		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 			radius_auth_stats.total_bad_authenticators++;
-			request->listener->auth.total_bad_authenticators++;
+			request->listener->stats.total_bad_authenticators++;
 			if (request->client && request->client->auth) {
 				request->client->auth->bad_authenticators++;
 			}
@@ -470,13 +470,15 @@ void request_stats_reply(REQUEST *request)
 		pairadd(&request->reply->vps,
 			paircopyvp(server_port));
 
-		if ((flag->vp_integer & 0x01) != 0) {
-			request_stats_addvp(request, authvp, &this->auth);
+		if (((flag->vp_integer & 0x01) != 0) &&
+		    (request->listener->type == RAD_LISTEN_AUTH)) {
+			request_stats_addvp(request, authvp, &this->stats);
 		}
 		
 #ifdef WITH_ACCOUNTING
-		if ((flag->vp_integer & 0x02) != 0) {
-			request_stats_addvp(request, acctvp, &this->acct);
+		if (((flag->vp_integer & 0x02) != 0) &&
+		    (request->listener->type == RAD_LISTEN_ACCT)) {
+			request_stats_addvp(request, acctvp, &this->stats);
 		}
 #endif
 	}

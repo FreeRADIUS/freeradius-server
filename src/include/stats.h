@@ -77,10 +77,10 @@ void request_stats_reply(REQUEST *request);
 #ifdef WITH_ACCOUNTING
 #define RAD_STATS_TYPE_INC(_listener, _x) if (_listener->type == RAD_LISTEN_AUTH) { \
                                        radius_auth_stats._x++; \
-                                       _listener->auth._x++; \
+                                       _listener->stats._x++; \
 				     } else if (_listener->type == RAD_LISTEN_ACCT) { \
                                        radius_acct_stats._x++; \
-				       _listener->acct._x++; }
+				       _listener->stats._x++; }
 
 #define RAD_STATS_CLIENT_INC(_listener, _client, _x) if (_listener->type == RAD_LISTEN_AUTH) \
                                        _client->auth->_x++; \
@@ -89,7 +89,7 @@ void request_stats_reply(REQUEST *request);
 
 #else  /* WITH_ACCOUNTING */
 
-#define RAD_STATS_TYPE_INC(_listener, _x) { radius_auth_stats._x++; _listener->auth._x++; }
+#define RAD_STATS_TYPE_INC(_listener, _x) { radius_auth_stats._x++; _listener->stats._x++; }
 
 #define RAD_STATS_CLIENT_INC(_listener, _client, _x) _client->auth->_x++
 

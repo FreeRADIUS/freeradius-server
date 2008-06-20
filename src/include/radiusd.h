@@ -279,10 +279,7 @@ struct rad_listen_t {
 	void		*data;
 
 #ifdef WITH_STATS
-	fr_stats_t	auth;
-#ifdef WITH_ACCOUNTING
-	fr_stats_t	acct;
-#endif
+	fr_stats_t	stats;
 #endif
 };
 
