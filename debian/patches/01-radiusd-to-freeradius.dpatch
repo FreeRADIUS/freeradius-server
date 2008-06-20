@@ -44,8 +44,8 @@
  #  that the debugging mode server is running as a user that can read the
  #  shadow info, and the user listed below can not.
  #
--#user = nobody
--#group = nobody
+-#user = radius
+-#group = radius
 +user = freerad
 +group = freerad
  
