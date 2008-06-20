@@ -1756,3 +1756,48 @@ void listen_free(rad_listen_t **head)
 
 	*head = NULL;
 }
+
+#ifdef WITH_STATS
+RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
+					  int port)
+{
+	rad_listen_t *this;
+
+	for (this = mainconfig.listen; this != NULL; this = this->next) {
+		listen_socket_t *sock;
+
+		if ((this->type != RAD_LISTEN_AUTH) &&
+		    (this->type != RAD_LISTEN_ACCT)) continue;
+		
+		sock = this->data;
+
+		if ((sock->port == port) &&
+		    (fr_ipaddr_cmp(ipaddr, &sock->ipaddr) == 0)) {
+			return sock->clients;
+		}
+	}
+
+	return NULL;
+}
+
+rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port)
+{
+	rad_listen_t *this;
+
+	for (this = mainconfig.listen; this != NULL; this = this->next) {
+		listen_socket_t *sock;
+
+		if ((this->type != RAD_LISTEN_AUTH) &&
+		    (this->type != RAD_LISTEN_ACCT)) continue;
+		
+		sock = this->data;
+
+		if ((sock->port == port) &&
+		    (fr_ipaddr_cmp(ipaddr, &sock->ipaddr) == 0)) {
+			return this;
+		}
+	}
+
+	return NULL;
+}
+#endif

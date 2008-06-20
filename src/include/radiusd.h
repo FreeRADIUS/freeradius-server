@@ -277,6 +277,13 @@ struct rad_listen_t {
 	rad_listen_print_t print;
 
 	void		*data;
+
+#ifdef WITH_STATS
+	fr_stats_t	auth;
+#ifdef WITH_ACCOUNTING
+	fr_stats_t	acct;
+#endif
+#endif
 };
 
 
@@ -525,6 +532,7 @@ extern		pid_t rad_waitpid(pid_t pid, int *status);
 extern          int total_active_threads(void);
 extern          void thread_pool_lock(void);
 extern          void thread_pool_unlock(void);
+extern		void thread_pool_queue_stats(int *array);
 
 #ifndef HAVE_PTHREAD_H
 #define rad_fork(n) fork()
@@ -544,6 +552,11 @@ int listen_init(CONF_SECTION *cs, rad_listen_t **head);
 rad_listen_t *proxy_new_listener(void);
 RADCLIENT *client_listener_find(const rad_listen_t *listener,
 				const fr_ipaddr_t *ipaddr);
+#ifdef WITH_STATS
+RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
+					  int port);
+rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port);
+#endif
 
 /* event.c */
 int radius_event_init(CONF_SECTION *cs, int spawn_flag);

@@ -60,6 +60,8 @@ void request_stats_final(REQUEST *request)
 	case PW_AUTHENTICATION_ACK:
 		radius_auth_stats.total_responses++;
 		radius_auth_stats.total_access_accepts++;
+		request->listener->auth.total_responses++;
+		request->listener->auth.total_access_accepts++;
 		if (request->client && request->client->auth) {
 			request->client->auth->accepts++;
 		}
@@ -68,6 +70,8 @@ void request_stats_final(REQUEST *request)
 	case PW_AUTHENTICATION_REJECT:
 		radius_auth_stats.total_responses++;
 		radius_auth_stats.total_access_rejects++;
+		request->listener->auth.total_responses++;
+		request->listener->auth.total_access_rejects++;
 		if (request->client && request->client->auth) {
 			request->client->auth->rejects++;
 		}
@@ -76,6 +80,8 @@ void request_stats_final(REQUEST *request)
 	case PW_ACCESS_CHALLENGE:
 		radius_auth_stats.total_responses++;
 		radius_auth_stats.total_access_challenges++;
+		request->listener->auth.total_responses++;
+		request->listener->auth.total_access_challenges++;
 		if (request->client && request->client->auth) {
 			request->client->auth->challenges++;
 		}
@@ -84,6 +90,7 @@ void request_stats_final(REQUEST *request)
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
 		radius_acct_stats.total_responses++;
+		request->listener->auth.total_responses++;
 		if (request->client && request->client->acct) {
 			request->client->acct->responses++;
 		}
@@ -97,6 +104,7 @@ void request_stats_final(REQUEST *request)
 	case 0:
 		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 			radius_auth_stats.total_bad_authenticators++;
+			request->listener->auth.total_bad_authenticators++;
 			if (request->client && request->client->auth) {
 				request->client->auth->bad_authenticators++;
 			}
@@ -321,7 +329,7 @@ void request_stats_reply(REQUEST *request)
 	if ((flag->vp_integer & 0x10) != 0) {
 		int i, array[RAD_LISTEN_MAX];
 
-		thread_pool_queue_stats(&array);
+		thread_pool_queue_stats(array);
 
 		for (i = 0; i <= RAD_LISTEN_DETAIL; i++) {
 			vp = radius_paircreate(request, &request->reply->vps,
@@ -336,9 +344,32 @@ void request_stats_reply(REQUEST *request)
 
 	if ((flag->vp_integer & 0x20) != 0) {
 		fr_ipaddr_t ipaddr;
+		VALUE_PAIR *server_ip, *server_port;
 		RADCLIENT *client = NULL;
 		RADCLIENT_LIST *cl = NULL;
-		
+
+		/*
+		 *	See if we need to look up the client by server
+		 *	socket.
+		 */
+		server_ip = pairfind(request->packet->vps, FR2ATTR(170));
+		if (server_ip) {
+			server_port = pairfind(request->packet->vps,
+					       FR2ATTR(171));
+
+			if (server_port) {
+				ipaddr.af = AF_INET;
+				ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
+				cl = listener_find_client_list(&ipaddr, server_port->vp_integer);
+							       
+				/*
+				 *	Not found: don't do anything
+				 */
+				if (!cl) return;
+			}
+		}
+
+
 		vp = pairfind(request->packet->vps, FR2ATTR(167));
 		if (vp) {
 			ipaddr.af = AF_INET;
@@ -384,6 +415,13 @@ void request_stats_reply(REQUEST *request)
 					}
 				}
 			}
+			
+			if (server_ip) {
+				pairadd(&request->reply->vps,
+					paircopyvp(server_ip));
+				pairadd(&request->reply->vps,
+					paircopyvp(server_port));
+			}
 
 			if (client->auth &&
 			    ((flag->vp_integer & 0x01) != 0)) {
@@ -400,6 +438,48 @@ void request_stats_reply(REQUEST *request)
 		} /* else client wasn't found, don't echo it back */
 	}
 
+	if (((flag->vp_integer && 0x40) != 0) &&
+	    ((flag->vp_integer && 0x03) != 0)) {
+		rad_listen_t *this;
+		VALUE_PAIR *server_ip, *server_port;
+		fr_ipaddr_t ipaddr;
+
+		/*
+		 *	See if we need to look up the server by socket
+		 *	socket.
+		 */
+		server_ip = pairfind(request->packet->vps, FR2ATTR(170));
+		if (!server_ip) return;
+
+		server_port = pairfind(request->packet->vps,
+				       FR2ATTR(171));
+		if (!server_port) return;
+		
+		ipaddr.af = AF_INET;
+		ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
+		this = listener_find_byipaddr(&ipaddr,
+					      server_port->vp_integer);
+		
+		/*
+		 *	Not found: don't do anything
+		 */
+		if (!this) return;
+		
+		pairadd(&request->reply->vps,
+			paircopyvp(server_ip));
+		pairadd(&request->reply->vps,
+			paircopyvp(server_port));
+
+		if ((flag->vp_integer & 0x01) != 0) {
+			request_stats_addvp(request, authvp, &this->auth);
+		}
+		
+#ifdef WITH_ACCOUNTING
+		if ((flag->vp_integer & 0x02) != 0) {
+			request_stats_addvp(request, acctvp, &this->acct);
+		}
+#endif
+	}
 }
 
 #endif /* WITH_STATS */

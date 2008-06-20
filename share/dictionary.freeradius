@@ -27,6 +27,7 @@ VALUE	FreeRADIUS-Statistics-Type	Proxy-Authentication	4
 VALUE	FreeRADIUS-Statistics-Type	Proxy-Accounting	8
 VALUE	FreeRADIUS-Statistics-Type	Request-Queue		0x10
 VALUE	FreeRADIUS-Statistics-Type	Client			0x20
+VALUE	FreeRADIUS-Statistics-Type	Server			0x40
 
 VALUE	FreeRADIUS-Statistics-Type	Auth-Acct		0x03
 VALUE	FreeRADIUS-Statistics-Type	Proxy-Auth-Acct		0x0c
@@ -100,5 +101,8 @@ ATTRIBUTE	FreeRADIUS-Queue-Len-Detail		  166	integer
 ATTRIBUTE	FreeRADIUS-Stats-Client-IP-Address	  167	ipaddr
 ATTRIBUTE	FreeRADIUS-Stats-Client-Number		  168	integer
 ATTRIBUTE	FreeRADIUS-Stats-Client-Netmask		  169	integer
+
+ATTRIBUTE	FreeRADIUS-Stats-Server-IP-Address	  170	ipaddr
+ATTRIBUTE	FreeRADIUS-Stats-Server-Port		  171	integer
 
 END-VENDOR FreeRADIUS

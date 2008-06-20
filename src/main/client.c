@@ -43,7 +43,7 @@ struct radclient_list {
 };
 
 
-#ifdef WITH_SNMP
+#ifdef WITH_STATS
 static rbtree_t		*tree_num;	/* client numbers 0..N */
 static int		tree_num_max;
 #endif
@@ -62,7 +62,7 @@ void client_free(RADCLIENT *client)
 	free(client->password);
 	free(client->server);
 
-#ifdef WITH_SNMP
+#ifdef WITH_STATS
 	free(client->auth);
 #ifdef WITH_ACCOUNTING
 	free(client->acct);
@@ -87,7 +87,7 @@ static int client_ipaddr_cmp(const void *one, const void *two)
 	return fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
 }
 
-#ifdef WITH_SNMP
+#ifdef WITH_STATS
 static int client_num_cmp(const void *one, const void *two)
 {
 	const RADCLIENT *a = one;
@@ -112,7 +112,7 @@ void clients_free(RADCLIENT_LIST *clients)
 	}
 
 	if (clients == root_clients) {
-#ifdef WITH_SNMP
+#ifdef WITH_STATS
 		if (tree_num) rbtree_free(tree_num);
 		tree_num = NULL;
 		tree_num_max = 0;
@@ -249,7 +249,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		return 0;
 	}
 
-#ifdef WITH_SNMP
+#ifdef WITH_STATS
 	if (!tree_num) {
 		tree_num = rbtree_create(client_num_cmp, NULL, 0);
 	}
@@ -319,12 +319,12 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 /*
  *	Find a client in the RADCLIENTS list by number.
- *	This is a support function for the SNMP code.
+ *	This is a support function for the statistics code.
  */
 RADCLIENT *client_findbynumber(const RADCLIENT_LIST *clients,
 			       int number)
 {
-#ifdef WITH_SNMP
+#ifdef WITH_STATS
 	if (!clients) clients = root_clients;
 
 	if (!clients) return NULL;
@@ -458,7 +458,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	memset(c, 0, sizeof(*c));
 	c->cs = cs;
 
-#ifdef WITH_SNMP
+#ifdef WITH_STATS
 	c->auth = rad_malloc(sizeof(*c->auth));
 	memset(c->auth, 0, sizeof(*c->auth));
 
