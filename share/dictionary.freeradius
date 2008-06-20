@@ -28,6 +28,7 @@ ATTRIBUTE	FreeRADIUS-Proxied-To			1	ipaddr
 #
 #	Globally - all sockets auth/acct/proxy-auth/proxy-acct
 #	By server IP/port - return auth or acct statistics for that port
+#	By home server IP/port - return proxied auth and acct statistics
 #	By client - send IP, return auth & acct statistics
 #	By client for a server IP/port - return auth & acct statistics
 #
@@ -46,6 +47,7 @@ VALUE	FreeRADIUS-Statistics-Type	Proxy-Accounting	8
 VALUE	FreeRADIUS-Statistics-Type	Request-Queue		0x10
 VALUE	FreeRADIUS-Statistics-Type	Client			0x20
 VALUE	FreeRADIUS-Statistics-Type	Server			0x40
+VALUE	FreeRADIUS-Statistics-Type	Home-Server		0x80
 
 VALUE	FreeRADIUS-Statistics-Type	Auth-Acct		0x03
 VALUE	FreeRADIUS-Statistics-Type	Proxy-Auth-Acct		0x0c
