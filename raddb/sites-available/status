@@ -1,0 +1,30 @@
+# -*- text -*-
+######################################################################
+#
+#	A virtual server to handle ONLY Status-Server packets.
+#
+#	Server statistics can be queried with a properly formatted
+#	Status-Server request.  See dictionary.freeradius for comments.
+#
+#	$Id$
+#
+######################################################################
+
+server status {
+	listen {
+		#  ONLY Status-Server is allowed to this port.
+		#  ALL other packets are ignored.
+		type = status
+
+		ipaddr = 127.0.0.1
+		port = 18120
+	}
+
+	#
+	#  Simple authorize section.  The "Autz-Type Status-Server"
+	#  section will work here, too.  See "raddb/sites-available/default".
+	authorize {
+		# respond to the Status-Server request.
+		ok
+	}
+}
