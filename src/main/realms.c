@@ -286,7 +286,7 @@ static CONF_PARSER home_server_config[] = {
 	{ "status_check", PW_TYPE_STRING_PTR,
 	  0, &hs_check,   "none" },
 	{ "ping_check", PW_TYPE_STRING_PTR,
-	  0, &hs_check,   "none" },
+	  0, &hs_check,   NULL },
 
 	{ "ping_interval", PW_TYPE_INTEGER,
 	  offsetof(home_server,ping_interval), NULL,   "30" },
