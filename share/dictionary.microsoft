@@ -48,6 +48,52 @@ ATTRIBUTE	MS-Secondary-NBNS-Server		31	ipaddr
 
 #ATTRIBUTE	MS-ARAP-Challenge	33	octets
 
+## MS-RNAP
+#
+http://download.microsoft.com/download/9/5/E/95EF66AF-9026-4BB0-A41D-A4F81802D92C/%5BMS-RNAP%5D.pdf
+
+ATTRIBUTE	MS-RAS-Client-Name			34	string
+ATTRIBUTE	MS-RAS-Client-Version			35	string
+ATTRIBUTE	MS-Quarantine-IPFilter			36	octets
+ATTRIBUTE	MS-Quarantine-Session-Timeout		37	integer
+ATTRIBUTE	MS-User-Security-Identity		40	string
+ATTRIBUTE	MS-Identity-Type			41	integer
+ATTRIBUTE	MS-Service-Class			42	string
+ATTRIBUTE	MS-Quarantine-User-Class		44	string
+ATTRIBUTE	MS-Quarantine-State			45	integer
+ATTRIBUTE	MS-Quarantine-Grace-Time		46	integer
+ATTRIBUTE	MS-Network-Access-Server-Type		47	integer
+ATTRIBUTE	MS-AFW-Zone				48	integer
+
+VALUE	MS-AFW-Zone			MS-AFW-Zone-Boundary-Policy 1
+VALUE	MS-AFW-Zone			MS-AFW-Zone-Unprotected-Policy 2
+VALUE	MS-AFW-Zone			MS-AFW-Zone-Protected-Policy 3
+
+ATTRIBUTE	MS-AFW-Protection-Level			49	integer
+
+VALUE	MS-AFW-Protection-Level		HECP-Response-Sign-Only	1
+VALUE	MS-AFW-Protection-Level		HECP-Response-Sign-And-Encrypt 2
+
+ATTRIBUTE	MS-Machine-Name				50	string
+ATTRIBUTE	MS-IPv6-Filter				51	octets
+ATTRIBUTE	MS-IPv4-Remediation-Servers		52	octets
+ATTRIBUTE	MS-IPv6-Remediation-Servers		53	octets
+ATTRIBUTE	MS-RNAP-Not-Quarantine-Capable		54	integer
+
+VALUE	MS-RNAP-Not-Quarantine-Capable	SoH-Sent		0
+VALUE	MS-RNAP-Not-Quarantine-Capable	SoH-Not-Sent		1
+
+ATTRIBUTE	MS-Quarantine-SOH			55	octets
+ATTRIBUTE	MS-RAS-Correlation-ID			56	octets
+ATTRIBUTE	MS-Extended-Quarantine-State		57	integer
+
+ATTRIBUTE	MS-HCAP-User-Groups			58	string
+ATTRIBUTE	MS-HCAP-Location-Group-Name		59	string
+ATTRIBUTE	MS-HCAP-User-Name			60	string
+ATTRIBUTE	MS-User-IPv4-Address			61	ipaddr
+ATTRIBUTE	MS-User-IPv6-Address			62	ipv6addr
+ATTRIBUTE	MS-TSG-Device-Redirection		63	integer
+
 #
 #	Integer Translations
 #
