@@ -16,7 +16,25 @@ BEGIN-VENDOR	FreeRADIUS
 ATTRIBUTE	FreeRADIUS-Proxied-To			1	ipaddr
 
 #
-#  Really a bitmask.
+#	If you send a Status-Server packet from localhost to localhost
+#	containing a FreeRADIUS-Statistics-Type attribute, the
+#	response will contain relevant statistics.
+#
+#	The FreeRADIUS-Statistics-Type attribute is ignored for ALL
+#	other packet types, and for ALL other IP addresses.  This will
+#	not be changed.
+#
+#	Statistics can be queried by a number of methods:
+#
+#	Globally - all sockets auth/acct/proxy-auth/proxy-acct
+#	By server IP/port - return auth or acct statistics for that port
+#	By client - send IP, return auth & acct statistics
+#	By client for a server IP/port - return auth & acct statistics
+#
+#	Just send FreeRADIUS-Statistics-Type, and client IP, and/or
+#	server IP/port, using the attributes defined below.
+#
+#  This is really a bitmask.
 #
 ATTRIBUTE	FreeRADIUS-Statistics-Type		127	integer
 
@@ -33,11 +51,6 @@ VALUE	FreeRADIUS-Statistics-Type	Auth-Acct		0x03
 VALUE	FreeRADIUS-Statistics-Type	Proxy-Auth-Acct		0x0c
 
 VALUE	FreeRADIUS-Statistics-Type	All			0x1f
-
-#
-#  Note that these statistics are available ONLY for packets
-#  originating from localhost.
-#
 
 #
 #  Global authentication statistics for packets received by the server.
