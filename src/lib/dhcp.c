@@ -106,7 +106,7 @@ static int dhcp_header_sizes[] = {
  *	Some clients silently ignore responses less than 300 bytes.
  */
 #define MIN_PACKET_SIZE (244)
-#define DEFAULT_PACKET_SIZE (576)
+#define DEFAULT_PACKET_SIZE (300)
 #define MAX_PACKET_SIZE (1500 - 40)
 
 /*
