@@ -311,19 +311,11 @@ void request_stats_reply(REQUEST *request)
 {
 	VALUE_PAIR *flag, *vp;
 
-	if (request->packet->code != PW_STATUS_SERVER) return;
-
 	/*
-	 *	Status sockets can have any IP.  For other sockets, we
-	 *	do respond with statistics only if they're from
-	 *	localhost.
+	 *	Statistics are available ONLY on a "status" port.
 	 */
-	if (request->listener->type != RAD_LISTEN_NONE) {
-		if ((request->packet->src_ipaddr.af != AF_INET) ||
-		    (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_LOOPBACK))) {
-			return;
-		}
-	}
+	rad_assert(request->packet->code == PW_STATUS_SERVER);
+	rad_assert(request->listener->type == RAD_LISTEN_NONE);
 		
 	flag = pairfind(request->packet->vps, FR2ATTR(127));
 	if (!flag || (flag->vp_integer == 0)) return;
