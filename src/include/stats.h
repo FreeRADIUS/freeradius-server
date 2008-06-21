@@ -48,25 +48,6 @@ typedef struct fr_stats_t {
 	fr_uint_t		total_unknown_types;
 } fr_stats_t;
 
-/*
- *  Taken from RFC 2619 and RFC 2621
- */
-typedef struct fr_client_stats_t {
-	/* IP address */
-	/* Client ID (string ) */
-	fr_uint_t       	requests;
-	fr_uint_t	dup_requests;
-	fr_uint_t	responses;
-	fr_uint_t	accepts;
-	fr_uint_t	rejects;
-	fr_uint_t	challenges;
-	fr_uint_t	malformed_requests;
-	fr_uint_t	bad_authenticators;
-	fr_uint_t	packets_dropped;
-	fr_uint_t	unknown_types;
-} fr_client_stats_t;
-
-
 extern fr_stats_t	radius_auth_stats;
 extern fr_stats_t	radius_acct_stats;
 
@@ -77,10 +58,9 @@ void request_stats_reply(REQUEST *request);
 #ifdef WITH_ACCOUNTING
 #define RAD_STATS_TYPE_INC(_listener, _x) if (_listener->type == RAD_LISTEN_AUTH) { \
                                        radius_auth_stats._x++; \
-                                       _listener->stats._x++; \
 				     } else if (_listener->type == RAD_LISTEN_ACCT) { \
-                                       radius_acct_stats._x++; \
-				       _listener->stats._x++; }
+                                       radius_acct_stats._x++; } \
+				       _listener->stats._x++
 
 #define RAD_STATS_CLIENT_INC(_listener, _client, _x) if (_listener->type == RAD_LISTEN_AUTH) \
                                        _client->auth->_x++; \

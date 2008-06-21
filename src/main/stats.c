@@ -64,7 +64,7 @@ void request_stats_final(REQUEST *request)
 		request->listener->stats.total_responses++;
 		request->listener->stats.total_access_accepts++;
 		if (request->client && request->client->auth) {
-			request->client->auth->accepts++;
+			request->client->auth->total_access_accepts++;
 		}
 		break;
 
@@ -74,7 +74,7 @@ void request_stats_final(REQUEST *request)
 		request->listener->stats.total_responses++;
 		request->listener->stats.total_access_rejects++;
 		if (request->client && request->client->auth) {
-			request->client->auth->rejects++;
+			request->client->auth->total_access_rejects++;
 		}
 		break;
 
@@ -84,7 +84,7 @@ void request_stats_final(REQUEST *request)
 		request->listener->stats.total_responses++;
 		request->listener->stats.total_access_challenges++;
 		if (request->client && request->client->auth) {
-			request->client->auth->challenges++;
+			request->client->auth->total_access_challenges++;
 		}
 		break;
 
@@ -93,7 +93,7 @@ void request_stats_final(REQUEST *request)
 		radius_acct_stats.total_responses++;
 		request->listener->stats.total_responses++;
 		if (request->client && request->client->acct) {
-			request->client->acct->responses++;
+			request->client->acct->total_responses++;
 		}
 		break;
 #endif
@@ -107,7 +107,7 @@ void request_stats_final(REQUEST *request)
 			radius_auth_stats.total_bad_authenticators++;
 			request->listener->stats.total_bad_authenticators++;
 			if (request->client && request->client->auth) {
-				request->client->auth->bad_authenticators++;
+				request->client->auth->total_bad_authenticators++;
 			}
 		}
 		break;
@@ -262,28 +262,28 @@ static fr_stats2vp proxy_acctvp[] = {
 #endif
 
 static fr_stats2vp client_authvp[] = {
-	{ 128, offsetof(fr_client_stats_t, requests) },
-	{ 129, offsetof(fr_client_stats_t, accepts) },
-	{ 130, offsetof(fr_client_stats_t, rejects) },
-	{ 131, offsetof(fr_client_stats_t, challenges) },
-	{ 132, offsetof(fr_client_stats_t, responses) },
-	{ 133, offsetof(fr_client_stats_t, dup_requests) },
-	{ 134, offsetof(fr_client_stats_t, malformed_requests) },
-	{ 135, offsetof(fr_client_stats_t, bad_authenticators) },
-	{ 136, offsetof(fr_client_stats_t, packets_dropped) },
-	{ 137, offsetof(fr_client_stats_t, unknown_types) },
+	{ 128, offsetof(fr_stats_t, total_requests) },
+	{ 129, offsetof(fr_stats_t, total_access_accepts) },
+	{ 130, offsetof(fr_stats_t, total_access_rejects) },
+	{ 131, offsetof(fr_stats_t, total_access_challenges) },
+	{ 132, offsetof(fr_stats_t, total_responses) },
+	{ 133, offsetof(fr_stats_t, total_dup_requests) },
+	{ 134, offsetof(fr_stats_t, total_malformed_requests) },
+	{ 135, offsetof(fr_stats_t, total_bad_authenticators) },
+	{ 136, offsetof(fr_stats_t, total_packets_dropped) },
+	{ 137, offsetof(fr_stats_t, total_unknown_types) },
 	{ 0, 0 }
 };
 
 #ifdef WITH_ACCOUNTING
 static fr_stats2vp client_acctvp[] = {
-	{ 155, offsetof(fr_client_stats_t, requests) },
-	{ 156, offsetof(fr_client_stats_t, responses) },
-	{ 157, offsetof(fr_client_stats_t, dup_requests) },
-	{ 158, offsetof(fr_client_stats_t, malformed_requests) },
-	{ 159, offsetof(fr_client_stats_t, bad_authenticators) },
-	{ 160, offsetof(fr_client_stats_t, packets_dropped) },
-	{ 161, offsetof(fr_client_stats_t, unknown_types) },
+	{ 155, offsetof(fr_stats_t, total_requests) },
+	{ 156, offsetof(fr_stats_t, total_responses) },
+	{ 157, offsetof(fr_stats_t, total_dup_requests) },
+	{ 158, offsetof(fr_stats_t, total_malformed_requests) },
+	{ 159, offsetof(fr_stats_t, total_bad_authenticators) },
+	{ 160, offsetof(fr_stats_t, total_packets_dropped) },
+	{ 161, offsetof(fr_stats_t, total_unknown_types) },
 	{ 0, 0 }
 };
 #endif
@@ -291,7 +291,7 @@ static fr_stats2vp client_acctvp[] = {
 #define FR2ATTR(x) ((11344 << 16) | (x))
 
 static void request_stats_addvp(REQUEST *request,
-				fr_stats2vp *table, void *stats)
+				fr_stats2vp *table, fr_stats_t *stats)
 {
 	int i;
 	VALUE_PAIR *vp;

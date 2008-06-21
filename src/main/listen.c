@@ -650,7 +650,7 @@ static int stats_socket_recv(rad_listen_t *listener,
 		      code);
 		rad_recv_discard(listener->fd);
 		RAD_STATS_TYPE_INC(listener, total_unknown_types);
-		RAD_STATS_CLIENT_INC(listener, client, unknown_types);
+		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
 		return 0;
 	}
 
@@ -690,7 +690,7 @@ static int stats_socket_recv(rad_listen_t *listener,
 
 	if (!received_request(listener, packet, prequest, client)) {
 		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-		RAD_STATS_CLIENT_INC(listener, client, packets_dropped);
+		RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
 	}
@@ -756,7 +756,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 	 */
 	switch(code) {
 	case PW_AUTHENTICATION_REQUEST:
-		RAD_STATS_CLIENT_INC(listener, client, requests);
+		RAD_STATS_CLIENT_INC(listener, client, total_requests);
 		fun = rad_authenticate;
 		break;
 
@@ -764,7 +764,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 		if (!mainconfig.status_server) {
 			rad_recv_discard(listener->fd);
 			RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-			RAD_STATS_CLIENT_INC(listener, client, packets_dropped);
+			RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
 			return 0;
 		}
@@ -774,7 +774,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 	default:
 		rad_recv_discard(listener->fd);
 		RAD_STATS_INC(radius_auth_stats.total_unknown_types);
-		RAD_STATS_CLIENT_INC(listener, client, unknown_types);
+		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
 
 		DEBUG("Invalid packet code %d sent to authentication port from client %s port %d : IGNORED",
 		      code, client->shortname, src_port);
@@ -795,7 +795,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 
 	if (!received_request(listener, packet, prequest, client)) {
 		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-		RAD_STATS_CLIENT_INC(listener, client, packets_dropped);
+		RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
 	}
@@ -858,7 +858,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 	 */
 	switch(code) {
 	case PW_ACCOUNTING_REQUEST:
-		RAD_STATS_CLIENT_INC(listener, client, requests);
+		RAD_STATS_CLIENT_INC(listener, client, total_requests);
 		fun = rad_accounting;
 		break;
 
@@ -866,7 +866,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 		if (!mainconfig.status_server) {
 			rad_recv_discard(listener->fd);
 			RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-			RAD_STATS_CLIENT_INC(listener, client, unknown_types);
+			RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
 
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
 			return 0;
@@ -877,7 +877,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 	default:
 		rad_recv_discard(listener->fd);
 		RAD_STATS_TYPE_INC(listener, total_unknown_types);
-		RAD_STATS_CLIENT_INC(listener, client, unknown_types);
+		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
 
 		DEBUG("Invalid packet code %d sent to a accounting port from client %s port %d : IGNORED",
 		      code, client->shortname, src_port);
@@ -900,7 +900,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 	 */
 	if (!received_request(listener, packet, prequest, client)) {
 		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-		RAD_STATS_CLIENT_INC(listener, client, packets_dropped);
+		RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
 	}
