@@ -3,7 +3,10 @@ FreeRADIUS 2.0.6 ; $Date$ , urgency=medium
 	* Clients may now be defined dynamically.  See
 	  raddb/sites-available/dynamic-clients.
 	* SNMP statistics have been replaced by statistics gathered
-	  via Status-Server.  See dictionary.freeradius.
+	  via Status-Server.  See raddb/sites-available/status
+	* SNMP support has been removed from the server.  Since it has not
+	  worked for a while, this should not affect anyone.
+	* Added more Microsoft attributes from bug #568.
 
 	Bug fixes
 	* Parse "security" section in radiusd.conf.  This was accidentally
@@ -11,6 +14,7 @@ FreeRADIUS 2.0.6 ; $Date$ , urgency=medium
 	* Bind to interface before IP, which allows DHCP sockets to
 	  listen on "*" for multiple interfaces.
 	* Fix handling of giaddr in DHCP responses.
+	* Corrected parsing of status_check in home_server so that it works.
 
 FreeRADIUS 2.0.5 ; Date: 2008/06/07 17:17:00 , urgency=medium
 	Feature improvements
