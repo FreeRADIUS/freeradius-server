@@ -51,6 +51,7 @@ typedef struct fr_stats_t {
 extern fr_stats_t	radius_auth_stats;
 extern fr_stats_t	radius_acct_stats;
 
+void radius_stats_init(int flag);
 void request_stats_final(REQUEST *request);
 void request_stats_reply(REQUEST *request);
 
@@ -77,6 +78,7 @@ void request_stats_reply(REQUEST *request);
 
 
 #else  /* WITH_STATS */
+#define request_stats_init(_x)
 #define request_stats_final(_x)
 
 #define  RAD_STATS_INC(_x)

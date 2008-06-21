@@ -15,27 +15,9 @@ BEGIN-VENDOR	FreeRADIUS
 
 ATTRIBUTE	FreeRADIUS-Proxied-To			1	ipaddr
 
+
 #
-#	If you send a Status-Server packet from localhost to localhost
-#	containing a FreeRADIUS-Statistics-Type attribute, the
-#	response will contain relevant statistics.
-#
-#	The FreeRADIUS-Statistics-Type attribute is ignored for ALL
-#	other packet types, and for ALL other IP addresses.  This will
-#	not be changed.
-#
-#	Statistics can be queried by a number of methods:
-#
-#	Globally - all sockets auth/acct/proxy-auth/proxy-acct
-#	By server IP/port - return auth or acct statistics for that port
-#	By home server IP/port - return proxied auth and acct statistics
-#	By client - send IP, return auth & acct statistics
-#	By client for a server IP/port - return auth & acct statistics
-#
-#	Just send FreeRADIUS-Statistics-Type, and client IP, and/or
-#	server IP/port, using the attributes defined below.
-#
-#  This is really a bitmask.
+#  This attribute is really a bitmask.
 #
 ATTRIBUTE	FreeRADIUS-Statistics-Type		127	integer
 
@@ -44,7 +26,7 @@ VALUE	FreeRADIUS-Statistics-Type	Authentication		1
 VALUE	FreeRADIUS-Statistics-Type	Accounting		2
 VALUE	FreeRADIUS-Statistics-Type	Proxy-Authentication	4
 VALUE	FreeRADIUS-Statistics-Type	Proxy-Accounting	8
-VALUE	FreeRADIUS-Statistics-Type	Request-Queue		0x10
+VALUE	FreeRADIUS-Statistics-Type	Internal		0x10
 VALUE	FreeRADIUS-Statistics-Type	Client			0x20
 VALUE	FreeRADIUS-Statistics-Type	Server			0x40
 VALUE	FreeRADIUS-Statistics-Type	Home-Server		0x80
@@ -127,8 +109,17 @@ VALUE	FreeRADIUS-Stats-Server-State	Alive	0
 VALUE	FreeRADIUS-Stats-Server-State	Zombie	1
 VALUE	FreeRADIUS-Stats-Server-State	Dead	2
 
+#
+#  When a home server is marked "dead" or "alive"
+#
 ATTRIBUTE	FreeRADIUS-Stats-Server-Time-Of-Death	174	date
 ATTRIBUTE	FreeRADIUS-Stats-Server-Time-Of-Life	175	date
 
+#
+#  When this server was started.  If start == hup, it hasn't been
+#  hup'd yet.  This is friendlier than having hup == 0 on start.
+#
+ATTRIBUTE	FreeRADIUS-Stats-Start-Time		176	date
+ATTRIBUTE	FreeRADIUS-Stats-HUP-Time		177	date
 
 END-VENDOR FreeRADIUS

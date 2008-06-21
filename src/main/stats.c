@@ -29,6 +29,9 @@ RCSID("$Id$")
 
 #ifdef WITH_STATS
 
+static struct timeval	start_time;
+static struct timeval	hup_time;
+
 fr_stats_t radius_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 #ifdef WITH_ACCOUNTING
 fr_stats_t radius_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -346,8 +349,15 @@ void request_stats_reply(REQUEST *request)
 #endif
 #endif
 
-#ifdef HAVE_PTHREAD_H
 	if ((flag->vp_integer & 0x10) != 0) {
+		vp = radius_paircreate(request, &request->reply->vps,
+				       FR2ATTR(176), PW_TYPE_DATE);
+		if (vp) vp->vp_date = start_time.tv_sec;
+		vp = radius_paircreate(request, &request->reply->vps,
+				       FR2ATTR(177), PW_TYPE_DATE);
+		if (vp) vp->vp_date = hup_time.tv_sec;
+		
+#ifdef HAVE_PTHREAD_H
 		int i, array[RAD_LISTEN_MAX];
 
 		thread_pool_queue_stats(array);
@@ -360,8 +370,8 @@ void request_stats_reply(REQUEST *request)
 			if (!vp) continue;
 			vp->vp_integer = array[i];
 		}
-	}
 #endif
+	}
 
 	if ((flag->vp_integer & 0x20) != 0) {
 		fr_ipaddr_t ipaddr;
@@ -576,6 +586,16 @@ void request_stats_reply(REQUEST *request)
 					    &home->stats);
 		}
 #endif
+	}
+}
+
+void radius_stats_init(int flag)
+{
+	if (!flag) {
+		gettimeofday(&start_time, NULL);
+		hup_time = start_time; /* it's just nicer this way */
+	} else {
+		gettimeofday(&hup_time, NULL);
 	}
 }
 

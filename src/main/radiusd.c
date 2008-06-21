@@ -29,7 +29,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/radius_snmp.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -68,7 +67,6 @@ int check_config = FALSE;
 
 const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
-time_t time_now;
 pid_t radius_pid;
 
 static int debug_memory = 0;
@@ -388,10 +386,13 @@ int main(int argc, char *argv[])
 		exit(0);
 	}
 
+	radius_stats_init(0);
+
 	/*
 	 *	Process requests until HUP or exit.
 	 */
 	while ((rcode = radius_event_process()) == 0x80) {
+		radius_stats_init(1);
 		radlog(L_INFO, "Received HUP.");
 		module_hup(cf_section_sub_find(mainconfig.config, "modules"));
 	}
