@@ -28,7 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/event.h>
 #include <freeradius-devel/detail.h>
-#include <freeradius-devel/radius_snmp.h>
 
 #include <freeradius-devel/rad_assert.h>
 
@@ -2474,7 +2473,7 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
  *	This function is called periodically to see if any FD's are
  *	available for reading.
  */
-static void event_poll_fds(UNUSED void *ctx)
+static void event_poll_detail(UNUSED void *ctx)
 {
 	int rcode;
 	RAD_REQUEST_FUNP fun;
@@ -2487,6 +2486,8 @@ static void event_poll_fds(UNUSED void *ctx)
 	when.tv_sec += 1;
 
 	for (this = mainconfig.listen; this != NULL; this = this->next) {
+		if (this->type != RAD_LISTEN_DETAIL) continue;
+
 		if (this->fd >= 0) continue;
 
 		/*
@@ -2503,40 +2504,12 @@ static void event_poll_fds(UNUSED void *ctx)
 		if (!thread_pool_addrequest(request, fun)) {
 			request->child_state = REQUEST_DONE;
 		}
-
-		/*
-		 *	We have an FD.  Start watching it.
-		 */
-		if (this->fd >= 0) {
-#ifdef WITH_DETAIL
-			/*
-			 *	... unless it's a detail file.  In
-			 *	that case, we rely on the signal to
-			 *	self to know when to continue
-			 *	processing the detail file.
-			 */
-			if (this->type == RAD_LISTEN_DETAIL) continue;
-#endif
-
-			/*
-			 *	FIXME: this should be SNMP handler,
-			 *	and we should do SOMETHING when the
-			 *	fd is closed!
-			 */
-			if (!fr_event_fd_insert(el, 0, this->fd,
-						event_socket_handler, this)) {
-				char buffer[256];
-				
-				this->print(this, buffer, sizeof(buffer));
-				rad_panic("Failed creating handler for snmp");
-			}
-		}
 	}
 
 	/*
 	 *	Reset the poll.
 	 */
-	if (!fr_event_insert(el, event_poll_fds, NULL,
+	if (!fr_event_insert(el, event_poll_detail, NULL,
 			     &when, NULL)) {
 		radlog(L_ERR, "Failed creating handler");
 		exit(1);
@@ -2593,7 +2566,6 @@ static void event_status(struct timeval *wake)
  */
 int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 {
-	int has_snmp_listener = FALSE;
 	rad_listen_t *this, *head = NULL;
 
 	if (el) return 0;
@@ -2716,13 +2688,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 			break;
 #endif
 
-#ifdef WITH_SNMP
-		case RAD_LISTEN_SNMP:
-			DEBUG("Listening on SNMP %s", buffer);
-			has_snmp_listener = TRUE;
-			break;
-#endif
-
 #ifdef WITH_PROXY
 		case RAD_LISTEN_PROXY:
 			rad_assert(proxy_fds[this->fd & 0x1f] == -1);
@@ -2744,8 +2709,8 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 		/*
 		 *	The file descriptor isn't ready.  Poll for
-		 *	when it will become ready.  This is for SNMP
-		 *	and detail file fd's.
+		 *	when it will become ready.  This is for the
+		 *	detail file fd's.
 		 */
 		if (this->fd < 0) {
 			continue;
@@ -2767,13 +2732,13 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		}
 	}
 
-	if (has_detail_listener || has_snmp_listener) {
+	if (has_detail_listener) {
 		struct timeval when;
 		
 		gettimeofday(&when, NULL);
 		when.tv_sec += 1;
 		
-		if (!fr_event_insert(el, event_poll_fds, NULL,
+		if (!fr_event_insert(el, event_poll_detail, NULL,
 				     &when, NULL)) {
 			radlog(L_ERR, "Failed creating handler");
 			exit(1);

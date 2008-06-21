@@ -33,7 +33,6 @@ BuildRequires: gettext-devel
 BuildRequires: glibc-devel
 BuildRequires: libtool
 BuildRequires: ncurses-devel
-BuildRequires: net-snmp-devel
 BuildRequires: openldap2-devel
 BuildRequires: openssl-devel
 BuildRequires: pam-devel
@@ -326,7 +325,6 @@ rm -rf $RPM_BUILD_ROOT
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/preproxy_users
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/proxy.conf
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/radiusd.conf
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/snmp.conf
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql.conf
 %dir %attr(640,-,radiusd) /etc/raddb/sql
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql/*/*.conf

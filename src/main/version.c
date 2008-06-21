@@ -41,9 +41,6 @@ void NEVER_RETURNS version(void)
 #if defined(OSFC2)
 	printf(" OSFC2");
 #endif
-#if defined(WITH_SNMP)
-	printf(" WITH_SNMP");
-#endif
 	printf("\n");
 #endif
 	printf("Copyright (C) 1999-2008 The FreeRADIUS server project and contributors.\n");

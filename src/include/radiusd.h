@@ -138,7 +138,6 @@ typedef enum RAD_LISTEN_TYPE {
 	RAD_LISTEN_DETAIL,
 	RAD_LISTEN_VQP,
 	RAD_LISTEN_DHCP,
-	RAD_LISTEN_SNMP,
 	RAD_LISTEN_MAX
 } RAD_LISTEN_TYPE;
 
@@ -320,7 +319,6 @@ typedef struct main_config_t {
 	radlog_dest_t	radlog_dest;
 	CONF_SECTION	*config;
 	const char	*name;
-	int		do_snmp;
 } MAIN_CONFIG_T;
 
 #define DEBUG	if(debug_flag)log_debug

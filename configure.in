@@ -224,29 +224,6 @@ AC_ARG_WITH(threads,
   esac ]
 )
 
-dnl extra argument: --with-snmp
-WITH_SNMP=yes
-AC_ARG_WITH(snmp,
-[  --with-snmp             Compile in SNMP support. (default=yes)],
-[ case "$withval" in
-    yes)
-        ;;
-    *)
-	WITH_SNMP=no
-  esac ]
-)
-
-dnl #
-dnl # extra argument: --with-snmp-include-dir
-dnl #
-AC_ARG_WITH(snmp-include-dir,
-[  --with-snmp-include-dir=DIR  Directory to look for include files used by SNMP],
-[ case "$withval" in
-    *)
-	;;
-  esac ]
-)
-
 dnl extra argument: --with-vmps
 WITH_VMPS=yes
 AC_ARG_WITH(vmps,
@@ -413,7 +390,7 @@ dnl AC_SUBST(IQUOTE)
 dnl extra argument: --with-udpfromto
 WITH_UDPFROMTO=no
 AC_ARG_WITH(udpfromto,
-[  --with-udpfromto        Compile in UDPFROMTO support. (default=yes)],
+[  --with-udpfromto        Compile in UDPFROMTO support. (default=no)],
 [ case "$withval" in
     yes)
 	WITH_UDPFROMTO=yes
@@ -948,10 +925,6 @@ AC_CHECK_LIB(cipher, setkey,
 )
 AC_SUBST(CRYPTLIB)
 
-if test "x$WITH_SNMP" = "xyes"; then
-  SNMP_CHECKS
-fi
-
 dnl Check the style of gethostbyaddr, in order of preference
 dnl GNU (_r eight args)
 AC_DEFINE(GNUSTYLE, [1], [GNU-Style get*byaddr_r])
@@ -1165,7 +1138,7 @@ dnl #############################################################
 AC_CONFIG_COMMANDS([stamp-h], [echo timestamp > src/include/stamp-h])
 AC_CONFIG_COMMANDS([build-radpaths-h], [(cd ./src/include && /bin/sh ./build-radpaths-h)])
 AC_CONFIG_COMMANDS([main-chmod], [(cd ./src/main   && chmod +x checkrad.pl radlast radtest)])
-AC_CONFIG_COMMANDS([scripts-chmod], [(cd ./scripts    && chmod +x rc.radiusd radwatch check-radiusd-config radiusd.cron.daily radiusd.cron.monthly cryptpasswd)])
+AC_CONFIG_COMMANDS([scripts-chmod], [(cd ./scripts    && chmod +x rc.radiusd radwatch radiusd.cron.daily radiusd.cron.monthly cryptpasswd)])
 
 dnl #
 dnl #  Substitute whatever libraries we found to be necessary

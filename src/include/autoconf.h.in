@@ -21,9 +21,6 @@
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
-/* Define if you have the <asn1.h>, <snmp_impl.h> and <snmp.h> header file. */
-#undef HAVE_ASN1_SNMP_SNMPIMPL_H
-
 /* Define to 1 if you have the `closefrom' function. */
 #undef HAVE_CLOSEFROM
 
@@ -112,9 +109,6 @@
 
 /* Define to 1 if you have the `resolv' library (-lresolv). */
 #undef HAVE_LIBRESOLV
-
-/* Define if you have the snmp library (-lsnmp). */
-#undef HAVE_LIBSNMP
 
 /* Define to 1 if you have the `socket' library (-lsocket). */
 #undef HAVE_LIBSOCKET
@@ -304,10 +298,6 @@
 /* Define to 1 if you have the <sys/wait.h> header file. */
 #undef HAVE_SYS_WAIT_H
 
-/* Define if you have the <ucd-snmp/asn1.h>, <ucd-snmp/snmp_impl.h> and
-   <ucd-snmp/snmp.h> header file. */
-#undef HAVE_UCD_SNMP_ASN1_SNMP_SNMPIMPL_H
-
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
@@ -364,9 +354,6 @@
 
 /* Include experimental support for DHCP */
 #undef WITH_DHCP
-
-/* Include SNMP subagent */
-#undef WITH_SNMP
 
 /* define if you want udpfromto */
 #undef WITH_UDPFROMTO
