@@ -49,13 +49,13 @@ RCSID("$Id$")
  *	Header above output and format.
  */
 static const char *hdr1 =
-"Login      Name              What  TTY  When      From      Location";
-static const char *rfmt1 = "%-10.10s %-17.17s %-5.5s %s%-3u %-9.9s %-9.9s %-.19s%s";
+"Login      Name              What  TTY  When      From            Location";
+static const char *rfmt1 = "%-10.10s %-17.17s %-5.5s %s%-3u %-9.9s %-15.15s %-.19s%s";
 static const char *rfmt1r = "%s,%s,%s,%s%u,%s,%s,%s%s";
 
 static const char *hdr2 =
-"Login      Port    What      When          From       Location";
-static const char *rfmt2 = "%-10.10s %s%-5u  %-6.6s %-13.13s %-10.10s %-.28s%s";
+"Login      Port    What      When          From            Location";
+static const char *rfmt2 = "%-10.10s %s%-5u  %-6.6s %-13.13s %-15.15s %-.28s%s";
 static const char *rfmt2r = "%s,%s%u,%s,%s,%s,%s%s";
 
 static const char *eol = "\n";
@@ -112,7 +112,7 @@ static FILE *safe_popen(const char *cmd, const char *mode)
 
 /*
  *	Print a file from FINGER_DIR. If the file is executable,
- *	execute it instead. Return 0 if succesfull.
+ *	execute it instead. Return 0 if successful.
  */
 static int ffile(const char *arg)
 {
@@ -222,10 +222,10 @@ static char *dotime(time_t t)
 	char *s = ctime(&t);
 
 	if (showname) {
-		strlcpy(s + 4, s + 11, 5);
+		strlcpy(s + 4, s + 11, 6);
 		s[9] = 0;
 	} else {
-		strlcpy(s + 4, s + 8, 8);
+		strlcpy(s + 4, s + 8, 9);
 		s[12] = 0;
 	}
 
