@@ -306,6 +306,11 @@ static CONF_PARSER home_server_config[] = {
 	{ "password",  PW_TYPE_STRING_PTR,
 	  offsetof(home_server,ping_user_password), NULL,  NULL},
 
+#ifdef WITH_STATS
+	{ "historic_average_window", PW_TYPE_INTEGER,
+	  offsetof(home_server,ema.window), NULL,  NULL },
+#endif
+
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 
 };

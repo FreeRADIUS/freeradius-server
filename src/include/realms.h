@@ -67,6 +67,8 @@ typedef struct home_server {
 	CONF_SECTION	*cs;
 #ifdef WITH_STATS
 	fr_stats_t	stats;
+
+	fr_stats_ema_t  ema;
 #endif
 } home_server;
 

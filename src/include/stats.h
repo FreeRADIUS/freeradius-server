@@ -48,12 +48,22 @@ typedef struct fr_stats_t {
 	fr_uint_t		total_unknown_types;
 } fr_stats_t;
 
+typedef struct fr_stats_ema_t {
+	int		window;
+
+	int		f1, f10;
+	int		ema1, ema10;
+
+} fr_stats_ema_t;
+
 extern fr_stats_t	radius_auth_stats;
 extern fr_stats_t	radius_acct_stats;
 
 void radius_stats_init(int flag);
 void request_stats_final(REQUEST *request);
 void request_stats_reply(REQUEST *request);
+void radius_stats_ema(fr_stats_ema_t *ema,
+		      struct timeval *start, struct timeval *end);
 
 #define RAD_STATS_INC(_x) _x++
 #ifdef WITH_ACCOUNTING

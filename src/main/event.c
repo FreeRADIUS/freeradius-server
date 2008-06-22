@@ -2173,6 +2173,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	home = request->home_server;
 
 	gettimeofday(&now, NULL);
+
 	home->state = HOME_STATE_ALIVE;
 
 	if (request->reply && request->reply->code != 0) {
@@ -2208,6 +2209,20 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		rad_free(&packet);
 		return NULL;
 	}
+#ifdef WITH_STATS
+	/*
+	 *	The average includes our time to receive packets and
+	 *	look them up in the hashes, which should be the same
+	 *	for all packets.
+	 *
+	 *	We update the response time only for the FIRST packet
+	 *	we receive.
+	 */
+	else if (home->ema.window > 0) {
+		radius_stats_ema(&home->ema, &now, &request->proxy_when);
+	}
+#endif
+
 
 	switch (request->child_state) {
 	case REQUEST_QUEUED:

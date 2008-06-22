@@ -29,6 +29,12 @@ RCSID("$Id$")
 
 #ifdef WITH_STATS
 
+#define USEC (1000000)
+#define EMA_SCALE (100)
+#define PREC (USEC * EMA_SCALE)
+
+#define F_EMA_SCALE (1000000)
+
 static struct timeval	start_time;
 static struct timeval	hup_time;
 
@@ -323,12 +329,18 @@ void request_stats_reply(REQUEST *request)
 	flag = pairfind(request->packet->vps, FR2ATTR(127));
 	if (!flag || (flag->vp_integer == 0)) return;
 
+	/*
+	 *	Authentication.
+	 */
 	if (((flag->vp_integer & 0x01) != 0) &&
 	    ((flag->vp_integer & 0xc0) == 0)) {
 		request_stats_addvp(request, authvp, &radius_auth_stats);
 	}
 		
 #ifdef WITH_ACCOUNTING
+	/*
+	 *	Accounting
+	 */
 	if (((flag->vp_integer & 0x02) != 0) &&
 	    ((flag->vp_integer & 0xc0) == 0)) {
 		request_stats_addvp(request, acctvp, &radius_acct_stats);
@@ -336,12 +348,18 @@ void request_stats_reply(REQUEST *request)
 #endif
 
 #ifdef WITH_PROXY
+	/*
+	 *	Proxied authentication requests.
+	 */
 	if (((flag->vp_integer & 0x04) != 0) &&
 	    ((flag->vp_integer & 0x20) == 0)) {
 		request_stats_addvp(request, proxy_authvp, &proxy_auth_stats);
 	}
 
 #ifdef WITH_ACCOUNTING
+	/*
+	 *	Proxied accounting requests.
+	 */
 	if (((flag->vp_integer & 0x08) != 0) &&
 	    ((flag->vp_integer & 0x20) == 0)) {
 		request_stats_addvp(request, proxy_acctvp, &proxy_acct_stats);
@@ -349,6 +367,9 @@ void request_stats_reply(REQUEST *request)
 #endif
 #endif
 
+	/*
+	 *	Internal server statistics
+	 */
 	if ((flag->vp_integer & 0x10) != 0) {
 		vp = radius_paircreate(request, &request->reply->vps,
 				       FR2ATTR(176), PW_TYPE_DATE);
@@ -373,9 +394,12 @@ void request_stats_reply(REQUEST *request)
 #endif
 	}
 
+	/*
+	 *	For a particular client.
+	 */
 	if ((flag->vp_integer & 0x20) != 0) {
 		fr_ipaddr_t ipaddr;
-		VALUE_PAIR *server_ip, *server_port;
+		VALUE_PAIR *server_ip, *server_port = NULL;
 		RADCLIENT *client = NULL;
 		RADCLIENT_LIST *cl = NULL;
 
@@ -469,6 +493,9 @@ void request_stats_reply(REQUEST *request)
 		} /* else client wasn't found, don't echo it back */
 	}
 
+	/*
+	 *	For a particular "listen" socket.
+	 */
 	if (((flag->vp_integer & 0x40) != 0) &&
 	    ((flag->vp_integer & 0x03) != 0)) {
 		rad_listen_t *this;
@@ -565,6 +592,26 @@ void request_stats_reply(REQUEST *request)
 			if (vp) vp->vp_date = home->revive_time.tv_sec;
 		}
 
+		if ((home->state == HOME_STATE_ALIVE) &&
+		    (home->ema.window > 0)) {
+				vp = radius_paircreate(request,
+						       &request->reply->vps,
+						       FR2ATTR(178),
+						       PW_TYPE_INTEGER);
+				if (vp) vp->vp_integer = home->ema.window;
+				vp = radius_paircreate(request,
+						       &request->reply->vps,
+						       FR2ATTR(179),
+						       PW_TYPE_INTEGER);
+				if (vp) vp->vp_integer = home->ema.ema1 / EMA_SCALE;
+				vp = radius_paircreate(request,
+						       &request->reply->vps,
+						       FR2ATTR(180),
+						       PW_TYPE_INTEGER);
+				if (vp) vp->vp_integer = home->ema.ema10 / EMA_SCALE;
+
+		}
+
 		if (home->state == HOME_STATE_IS_DEAD) {
 			vp = radius_paircreate(request, &request->reply->vps,
 					       FR2ATTR(174), PW_TYPE_DATE);
@@ -597,6 +644,63 @@ void radius_stats_init(int flag)
 	} else {
 		gettimeofday(&hup_time, NULL);
 	}
+}
+
+void radius_stats_ema(fr_stats_ema_t *ema,
+		      struct timeval *start, struct timeval *end)
+{
+	int micro;
+	time_t tdiff;
+#ifdef WITH_STATS_DEBUG
+	static int n = 0;
+#endif
+	if (ema->window == 0) return;
+
+	rad_assert(start->tv_sec >= end->tv_sec);
+
+	/*
+	 *	Initialize it.
+	 */
+	if (ema->f1 == 0) {
+		if (ema->window > 10000) ema->window = 10000;
+		
+		ema->f1 =  (2 * F_EMA_SCALE) / (ema->window + 1);
+		ema->f10 = (2 * F_EMA_SCALE) / ((10 * ema->window) + 1);
+	}
+
+
+	tdiff = start->tv_sec;
+	tdiff -= end->tv_sec;
+	
+	micro = (int) tdiff;
+	if (micro > 40) micro = 40; /* don't overflow 32-bit ints */
+	micro *= USEC;
+	micro += start->tv_usec;
+	micro -= end->tv_usec;
+	
+	micro *= EMA_SCALE;
+
+	if (ema->ema1 == 0) {
+		ema->ema1 = micro;
+		ema->ema10 = micro;
+	} else {
+		int diff;
+		
+		diff = ema->f1 * (micro - ema->ema1);
+		ema->ema1 += (diff / 1000000);
+		
+		diff = ema->f10 * (micro - ema->ema10);
+		ema->ema10 += (diff / 1000000);
+	}
+	
+	
+#ifdef WITH_STATS_DEBUG
+	DEBUG("time %d %d.%06d\t%d.%06d\t%d.%06d\n",
+	      n, micro / PREC, (micro / EMA_SCALE) % USEC,
+	      ema->ema1 / PREC, (ema->ema1 / EMA_SCALE) % USEC,
+	      ema->ema10 / PREC, (ema->ema10 / EMA_SCALE) % USEC);
+	n++;
+#endif	
 }
 
 #endif /* WITH_STATS */
