@@ -99,6 +99,17 @@ server status {
 #		FreeRADIUS-Stats-Server-Port = 1812
 
 #
+#  You can also get exponentially weighted moving averages of
+#  response times (in usec) of home servers.  Just set the config
+#  item "historic_average_window" in a home_server section.
+#
+#  By default it is zero (don't calculate it).  Useful values
+#  are between 100, and 10,000.  The server will calculate and
+#  remember the moving average for this window, and for 10 times
+#  that window.
+#
+
+#
 #  Some of this could have been simplified.  e.g. the proxy-auth and
 #  proxy-acct bits aren't completely necessary.  But using them permits
 #  the server to be queried for ALL inbound && outbound packets at once.
