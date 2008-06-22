@@ -25,7 +25,6 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
-#include <freeradius-devel/radius_snmp.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/vqp.h>
@@ -1017,41 +1016,6 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 }
 #endif
 
-#ifdef WITH_SNMP
-static int radius_snmp_recv(rad_listen_t *listener,
-			    UNUSED RAD_REQUEST_FUNP *pfun,
-			    UNUSED REQUEST **prequest)
-{
-	if ((rad_snmp.smux_fd >= 0) &&
-	    (rad_snmp.smux_event == SMUX_READ)) {
-		smux_read();
-	}
-
-	/*
-	 *  If we've got to re-connect, then do so now,
-	 *  before calling select again.
-	 */
-	if (rad_snmp.smux_event == SMUX_CONNECT) {
-		smux_connect();
-	}
-
-	/*
-	 *	Reset this every time, as the smux connect may have
-	 *	opened a new socket.
-	 */
-	listener->fd = rad_snmp.smux_fd;
-
-	return 0;
-}
-
-
-static int radius_snmp_print(UNUSED rad_listen_t *this, char *buffer, size_t bufsize)
-{
-	return snprintf(buffer, bufsize, "SMUX with OID .1.3.6.1.4.1.11344.1.1.1");
-}
-
-#endif
-
 #include "dhcpd.c"
 
 static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
@@ -1113,7 +1077,6 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
-	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL}	/* RAD_LISTEN_SNMP */
 };
 
 
@@ -1751,7 +1714,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		 */
 		if (!*head) return -1;
 
-		if (defined_proxy) goto do_snmp;
+		if (defined_proxy) goto done;
 
 		/*
 		 *	Find the first authentication port,
@@ -1815,23 +1778,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		}
 	}
 
- do_snmp:			/* used only in proxy code. */
-#endif
-
-#ifdef WITH_SNMP
-	if (radius_snmp_init(config)) {
-		this = rad_malloc(sizeof(*this));
-		memset(this, 0, sizeof(*this));
-
-		this->type = RAD_LISTEN_SNMP;
-		this->fd = rad_snmp.smux_fd;
-
-		this->recv = radius_snmp_recv;
-		this->print = radius_snmp_print;
-
-		*last = this;
-		last = &(this->next);
-	}
+ done:			/* used only in proxy code. */
 #endif
 
 	return 0;
