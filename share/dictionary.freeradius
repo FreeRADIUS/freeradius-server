@@ -122,4 +122,16 @@ ATTRIBUTE	FreeRADIUS-Stats-Server-Time-Of-Life	175	date
 ATTRIBUTE	FreeRADIUS-Stats-Start-Time		176	date
 ATTRIBUTE	FreeRADIUS-Stats-HUP-Time		177	date
 
+#
+#  Exponential moving average of home server response time
+#  Window-1 is the average is calculated over "window" packets.
+#  Window-10 is the average is calculated over "10 * window" packets.
+#
+#  Both Window-1 and Window-10 are times in microseconds
+#  (1/1000000 of a second).
+#
+ATTRIBUTE	FreeRADIUS-Server-EMA-Window		178	integer
+ATTRIBUTE	FreeRADIUS-Server-EMA-USEC-Window-1	179	integer
+ATTRIBUTE	FreeRADIUS-Server-EMA-USEC-Window-10	180	integer
+
 END-VENDOR FreeRADIUS
