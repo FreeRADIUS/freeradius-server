@@ -127,8 +127,8 @@ void request_stats_final(REQUEST *request)
 
 #ifdef WITH_PROXY
 	if (!request->proxy) goto done;	/* simplifies formatting */
-		
-	switch (request->proxy_reply->code) {
+
+	switch (request->proxy->code) {
 	case PW_AUTHENTICATION_REQUEST:
 		proxy_auth_stats.total_requests += request->num_proxied_requests;
 		request->proxy_listener->stats.total_requests += request->num_proxied_requests;
@@ -149,32 +149,23 @@ void request_stats_final(REQUEST *request)
 
 	if (!request->proxy_reply) goto done;	/* simplifies formatting */
 
+#undef INC
+#define INC(_x) proxy_auth_stats._x += request->num_proxied_responses; request->proxy_listener->stats._x += request->num_proxied_responses; request->home_server->stats._x += request->num_proxied_responses;
+
 	switch (request->proxy_reply->code) {
 	case PW_AUTHENTICATION_ACK:
-		proxy_auth_stats.total_responses += request->num_proxied_responses;
-		proxy_auth_stats.total_access_accepts += request->num_proxied_responses;
-		request->proxy_listener->stats.total_responses += request->num_proxied_responses;
-		request->home_server->stats.total_access_accepts += request->num_proxied_responses;
-		request->home_server->stats.total_responses += request->num_proxied_responses;
-		request->home_server->stats.total_access_accepts += request->num_proxied_responses;
+		INC(total_responses);
+		INC(total_access_accepts);
 		break;
 
 	case PW_AUTHENTICATION_REJECT:
-		proxy_auth_stats.total_responses += request->num_proxied_responses;
-		proxy_auth_stats.total_access_rejects += request->num_proxied_responses;
-		request->proxy_listener->stats.total_responses += request->num_proxied_responses;
-		request->proxy_listener->stats.total_access_rejects += request->num_proxied_responses;
-		request->home_server->stats.total_responses += request->num_proxied_responses;
-		request->home_server->stats.total_access_rejects += request->num_proxied_responses;
+		INC(total_responses);
+		INC(total_access_rejects);
 		break;
 
 	case PW_ACCESS_CHALLENGE:
-		proxy_auth_stats.total_responses += request->num_proxied_responses;
-		proxy_auth_stats.total_access_challenges += request->num_proxied_responses;
-		request->proxy_listener->stats.total_responses += request->num_proxied_responses;
-		request->proxy_listener->stats.total_access_challenges += request->num_proxied_responses;
-		request->home_server->stats.total_responses += request->num_proxied_responses;
-		request->home_server->stats.total_access_challenges += request->num_proxied_responses;
+		INC(total_responses);
+		INC(total_access_challenges);
 		break;
 
 #ifdef WITH_ACCOUNTING
@@ -619,16 +610,14 @@ void request_stats_reply(REQUEST *request)
 		}
 
 		if (((flag->vp_integer & 0x01) != 0) &&
-		    ((request->listener->type == RAD_LISTEN_AUTH) ||
-		     (request->listener->type == RAD_LISTEN_NONE))) {
+		    (home->type == HOME_TYPE_AUTH)) {
 			request_stats_addvp(request, proxy_authvp,
 					    &home->stats);
 		}
 
 #ifdef WITH_ACCOUNTING
 		if (((flag->vp_integer & 0x02) != 0) &&
-		    ((request->listener->type == RAD_LISTEN_ACCT) ||
-		     (request->listener->type == RAD_LISTEN_NONE))) {
+		    (home->type == HOME_TYPE_ACCT)) {
 			request_stats_addvp(request, proxy_acctvp,
 					    &home->stats);
 		}
