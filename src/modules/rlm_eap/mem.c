@@ -216,6 +216,42 @@ static EAP_HANDLER *eaplist_delete(rlm_eap_t *inst, EAP_HANDLER *handler)
 	return handler;
 }
 
+
+static void eaplist_expire(rlm_eap_t *inst, time_t timestamp)
+{
+	int i;
+	EAP_HANDLER *handler;
+
+	/*
+	 *	Check the first few handlers in the list, and delete
+	 *	them if they're too old.  We don't need to check them
+	 *	all, as incoming requests will quickly cause older
+	 *	handlers to be deleted.
+	 *
+	 */
+	for (i = 0; i < 2; i++) {
+		handler = inst->session_head;
+		if (handler &&
+		    ((timestamp - handler->timestamp) > inst->timer_limit)) {
+			rbnode_t *node;
+			node = rbtree_find(inst->session_tree, handler);
+			rad_assert(node != NULL);
+			rbtree_delete(inst->session_tree, node);
+
+			/*
+			 *	handler == inst->session_head
+			 */
+			inst->session_head = handler->next;
+			if (handler->next) {
+				handler->next->prev = NULL;
+			} else {
+				inst->session_head = NULL;
+			}
+			eap_handler_free(handler);
+		}
+	}
+}
+
 /*
  *	Add a handler to the set of active sessions.
  *
@@ -224,7 +260,7 @@ static EAP_HANDLER *eaplist_delete(rlm_eap_t *inst, EAP_HANDLER *handler)
  */
 int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
-	int		status;
+	int		status = 0;
 	VALUE_PAIR	*state;
 
 	rad_assert(handler != NULL);
@@ -258,6 +294,14 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 *	means that we need a lock, to avoid conflict.
 	 */
 	pthread_mutex_lock(&(inst->session_mutex));
+
+	/*
+	 *	If we have a DoS attack, discard new sessions.
+	 */
+	if (rbtree_num_elements(inst->session_tree) >= inst->max_sessions) {
+		eaplist_expire(inst, handler->timestamp);
+		goto done;
+	}
 
 	/*
 	 *	Create a unique content for the State variable.
@@ -316,13 +360,11 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 *	Now that we've finished mucking with the list,
 	 *	unlock it.
 	 */
+ done:
 	pthread_mutex_unlock(&(inst->session_mutex));
 
 	if (!status) {
-		char buffer[1024];
-
-		vp_prints_value(buffer, sizeof(buffer), state, 0);
-		radlog(L_ERR, "rlm_eap: Failed to remember handler with State %s!", buffer);
+		radlog(L_ERR, "rlm_eap: Failed to store handler");
 		return 0;
 	}
 
@@ -342,7 +384,6 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 			  eap_packet_t *eap_packet)
 {
-	int		i;
 	VALUE_PAIR	*state;
 	EAP_HANDLER	*handler, myHandler;
 
@@ -366,34 +407,7 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 	 */
 	pthread_mutex_lock(&(inst->session_mutex));
 
-	/*
-	 *	Check the first few handlers in the list, and delete
-	 *	them if they're too old.  We don't need to check them
-	 *	all, as incoming requests will quickly cause older
-	 *	handlers to be deleted.
-	 *
-	 */
-	for (i = 0; i < 2; i++) {
-		handler = inst->session_head;
-		if (handler &&
-		    ((request->timestamp - handler->timestamp) > inst->timer_limit)) {
-			rbnode_t *node;
-			node = rbtree_find(inst->session_tree, handler);
-			rad_assert(node != NULL);
-			rbtree_delete(inst->session_tree, node);
-
-			/*
-			 *	handler == inst->session_head
-			 */
-			inst->session_head = handler->next;
-			if (handler->next) {
-				handler->next->prev = NULL;
-			} else {
-				inst->session_head = NULL;
-			}
-			eap_handler_free(handler);
-		}
-	}
+	eaplist_expire(inst, request->timestamp);
 
 	handler = eaplist_delete(inst, &myHandler);
 	pthread_mutex_unlock(&(inst->session_mutex));

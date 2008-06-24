@@ -39,6 +39,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_eap_t, ignore_unknown_eap_types), NULL, "no" },
 	{ "cisco_accounting_username_bug", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_t, cisco_accounting_username_bug), NULL, "no" },
+	{ "max_sessions", PW_TYPE_INTEGER,
+	  offsetof(rlm_eap_t, max_sessions), NULL, "2048"},
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
