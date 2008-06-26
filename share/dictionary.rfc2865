@@ -48,7 +48,7 @@ ATTRIBUTE	Framed-AppleTalk-Zone			39	string
 ATTRIBUTE	CHAP-Challenge				60	octets
 ATTRIBUTE	NAS-Port-Type				61	integer
 ATTRIBUTE	Port-Limit				62	integer
-ATTRIBUTE	Login-LAT-Port				63	integer
+ATTRIBUTE	Login-LAT-Port				63	string
 
 #
 #	Integer Translations
