@@ -43,7 +43,11 @@ static int dhcp_process(REQUEST *request)
 	 *	Look for Relay attribute, and forward it if so...
 	 */
 
-	switch (rcode) {
+	vp = pairfind(request->reply->vps, DHCP2ATTR(53)); /* DHCP-Message-Type */
+	if (vp) {
+		request->reply->code = vp->vp_integer;
+	}
+	else switch (rcode) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		if (request->packet->code == (PW_DHCP_DISCOVER)) {
@@ -62,15 +66,11 @@ static int dhcp_process(REQUEST *request)
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_NOOP:
-		request->reply->code = PW_DHCP_NAK;
-		break;
-
 	case RLM_MODULE_NOTFOUND:
-		request->reply->code = PW_DHCP_DECLINE;
+		request->reply->code = PW_DHCP_NAK;
 		break;
 
 	case RLM_MODULE_HANDLED:
-		request->reply->code = PW_DHCP_NAK;
 		break;
 	}
 
