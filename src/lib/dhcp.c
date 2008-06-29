@@ -190,7 +190,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	if ((packet->data[240] != 53) ||
 	    (packet->data[241] != 1) ||
 	    (packet->data[242] == 0) ||
-	    (packet->data[242] >= 8)) {
+	    (packet->data[242] > 8)) {
 		fprintf(stderr, "Unknown, or badly formatted DHCP packet\n");
 		rad_free(&packet);
 		return NULL;
@@ -957,13 +957,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		 */
 		p = pp;
 	}
-
-	vp = pairfind(packet->vps, DHCP2ATTR(53));
-	if (vp && (vp->vp_integer != (packet->code - PW_DHCP_OFFSET))) {
-		fprintf(stderr, "Message-Type doesn't match! %d %d\n",
-			packet->code, vp->vp_integer);
-	}
-	pairdelete(&packet->vps, DHCP2ATTR(0x35));
 
 	/*
 	 *	Before packing the attributes, re-order them so that
