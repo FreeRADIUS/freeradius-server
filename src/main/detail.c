@@ -232,7 +232,7 @@ static int detail_open(rad_listen_t *this)
 		if (stat(filename, &st) < 0) {
 #ifdef HAVE_GLOB_H
 			int i, found;
-			time_t ctime;
+			time_t chtime;
 			glob_t files;
 
 			memset(&files, 0, sizeof(files));
@@ -240,14 +240,14 @@ static int detail_open(rad_listen_t *this)
 				return 0;
 			}
 
-			ctime = 0;
+			chtime = 0;
 			found = -1;
 			for (i = 0; i < files.gl_pathc; i++) {
 				if (stat(files.gl_pathv[i], &st) < 0) continue;
 
 				if ((i == 0) ||
-				    (st.st_ctime < ctime)) {
-					ctime = st.st_ctime;
+				    (st.st_ctime < chtime)) {
+					chtime = st.st_ctime;
 					found = i;
 				}
 			}
