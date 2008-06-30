@@ -502,8 +502,8 @@ int indexed_modcall(int comp, int idx, REQUEST *request)
 
 	rcode = modcall(comp, list, request);
 
-	request->module = "<server-core>";
-	request->component = "<server-core>";
+	request->module = "";
+	request->component = "";
 	return rcode;
 }
 
