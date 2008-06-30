@@ -341,7 +341,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 		if (((strcmp(i->name, "DEFAULT") == 0) ||
 		     (strcmp(i->name, name) == 0)) &&
 		    (paircompare(request, request_pairs, i->check, NULL) == 0)) {
-			DEBUG2("  hints: Matched %s at %d",
+			RDEBUG2("  hints: Matched %s at %d",
 			       i->name, i->lineno);
 			/*
 			 *	Now add all attributes to the request list,
@@ -580,7 +580,7 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 	if ((r = huntgroup_access(request,
 				  data->huntgroups)) != RLM_MODULE_OK) {
 		char buf[1024];
-		radlog(L_AUTH, "No huntgroup access: [%s] (%s)",
+		radlog_request(L_AUTH, 0, request, "No huntgroup access: [%s] (%s)",
 		       request->username ? request->username->vp_strvalue : "<NO User-Name>",
 		       auth_name(buf, sizeof(buf), request, 1));
 		return r;
@@ -631,7 +631,7 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 	if ((r = huntgroup_access(request,
 				  data->huntgroups)) != RLM_MODULE_OK) {
 		char buf[1024];
-		radlog(L_INFO, "No huntgroup access: [%s] (%s)",
+		radlog_request(L_INFO, 0, request, "No huntgroup access: [%s] (%s)",
 		       request->username ? request->username->vp_strvalue : "<NO User-Name>",
 		       auth_name(buf, sizeof(buf), request, 1));
 		return r;

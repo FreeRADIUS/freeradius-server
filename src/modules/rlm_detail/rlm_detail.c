@@ -219,7 +219,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 *	variables.
 	 */
 	radius_xlat(buffer, sizeof(buffer), inst->detailfile, request, NULL);
-	DEBUG2("rlm_detail: %s expands to %s", inst->detailfile, buffer);
+	RDEBUG2("%s expands to %s", inst->detailfile, buffer);
 
 	/*
 	 *	Grab the last directory delimiter.
@@ -257,7 +257,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		 *	deleted a directory that the server was using.
 		 */
 		if (rad_mkdir(inst->last_made_directory, inst->dirperm) < 0) {
-			radlog(L_ERR, "rlm_detail: Failed to create directory %s: %s", inst->last_made_directory, strerror(errno));
+			radlog_request(L_ERR, 0, request, "rlm_detail: Failed to create directory %s: %s", inst->last_made_directory, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}
 
@@ -273,7 +273,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		 */
 		if ((outfd = open(buffer, O_WRONLY | O_APPEND | O_CREAT,
 				  inst->detailperm)) < 0) {
-			radlog(L_ERR, "rlm_detail: Couldn't open file %s: %s",
+			radlog_request(L_ERR, 0, request, "rlm_detail: Couldn't open file %s: %s",
 			       buffer, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}
@@ -299,20 +299,20 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			 *	the lock (race condition)
 			 */
 			if (fstat(outfd, &st) != 0) {
-				radlog(L_ERR, "rlm_detail: Couldn't stat file %s: %s",
+				radlog_request(L_ERR, 0, request, "rlm_detail: Couldn't stat file %s: %s",
 				       buffer, strerror(errno));
 				close(outfd);
 				return RLM_MODULE_FAIL;
 			}
 			if (st.st_nlink == 0) {
-				DEBUG("rlm_detail: File %s removed by another program, retrying",
+				RDEBUG2("File %s removed by another program, retrying",
 				      buffer);
 				close(outfd);
 				lock_count = 0;
 				continue;
 			}
 
-			DEBUG("rlm_detail: Acquired filelock, tried %d time(s)",
+			RDEBUG2("Acquired filelock, tried %d time(s)",
 			      lock_count + 1);
 			locked = 1;
 		}
@@ -320,7 +320,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 
 	if (inst->locking && !locked) {
 		close(outfd);
-		radlog(L_ERR, "rlm_detail: Failed to acquire filelock for %s, giving up",
+		radlog_request(L_ERR, 0, request, "rlm_detail: Failed to acquire filelock for %s, giving up",
 		       buffer);
 		return RLM_MODULE_FAIL;
 	}
@@ -330,12 +330,12 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 *	after this operation.
 	 */
 	if ((outfp = fdopen(outfd, "a")) == NULL) {
-		radlog(L_ERR, "rlm_detail: Couldn't open file %s: %s",
+		radlog_request(L_ERR, 0, request, "rlm_detail: Couldn't open file %s: %s",
 		       buffer, strerror(errno));
 		if (inst->locking) {
 			lseek(outfd, 0L, SEEK_SET);
 			rad_unlockfd(outfd, 0);
-			DEBUG("rlm_detail: Released filelock");
+			RDEBUG2("Released filelock");
 		}
 		close(outfd);	/* automatically releases the lock */
 
@@ -453,7 +453,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 				  proxy_buffer, sizeof(proxy_buffer));
 			fprintf(outfp, "\tFreeradius-Proxied-To = %s\n",
 					proxy_buffer);
-				DEBUG("rlm_detail: Freeradius-Proxied-To = %s",
+				RDEBUG("Freeradius-Proxied-To = %s",
 				      proxy_buffer);
 		}
 
@@ -473,7 +473,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		fflush(outfp);
 		lseek(outfd, 0L, SEEK_SET);
 		rad_unlockfd(outfd, 0);
-		DEBUG("rlm_detail: Released filelock");
+		RDEBUG2("Released filelock");
 	}
 
 	fclose(outfp);
@@ -490,7 +490,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 static int detail_accounting(void *instance, REQUEST *request)
 {
 	if (request->listener->type == RAD_LISTEN_DETAIL) {
-		DEBUG2("  rlm_detail: Suppressing writes to detail file as the request was just read from a detail file.");
+		RDEBUG("Suppressing writes to detail file as the request was just read from a detail file.");
 		return RLM_MODULE_NOOP;
 	}
 

@@ -464,7 +464,7 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 		}
 
 		if (paircompare(request, request_pairs, pl->check, reply_pairs) == 0) {
-			DEBUG2("    %s: Matched entry %s at line %d",
+			RDEBUG2("%s: Matched entry %s at line %d",
 			       filename, match, pl->lineno);
 			found = 1;
 			check_tmp = paircopy(pl->check);
