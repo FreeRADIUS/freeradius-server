@@ -294,3 +294,48 @@ void force_log_reopen(void)
 	if (log_fp) fclose(log_fp);
 	fr_log_fp = log_fp = NULL;
 }
+
+
+void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ...)
+{
+	va_list ap;
+
+	request = request;	/* -Wunused */
+
+	va_start(ap, msg);
+
+	/*
+	 *	Debugging messages get printed as informational messages
+	 *	if there's a log function, and the priority there says
+	 *	to print it.
+	 */
+	if ((lvl == L_DBG) && !debug_flag &&
+	    (request && request->radlog && 
+	     (request->options >= priority))) lvl = L_INFO;
+
+	/*
+	 *	If the message is normal, OR it's debugging at a high
+	 *	enough priority level, print it out.
+	 */
+	if ((lvl != L_DBG) ||
+	    (debug_flag >= priority)) {
+		size_t len;
+		char buffer[1024];
+
+		if (!request->module[0]) {
+			len = 0;
+		} else {
+			snprintf(buffer, sizeof(buffer), "[%s] ", request->module);
+			len = strlen(buffer);
+		}
+		vsnprintf(buffer + len, sizeof(buffer) - len, msg, ap);
+
+		/*
+		 *	FIXME: Allow different log messages to go to
+		 *	different locations, based on "xlat".
+		 */
+		radlog(lvl, "%s", buffer);
+	}
+	va_end(ap);
+}
+

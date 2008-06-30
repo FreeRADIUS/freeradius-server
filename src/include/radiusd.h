@@ -146,6 +146,7 @@ typedef enum RAD_LISTEN_TYPE {
  *	For listening on multiple IP's and ports.
  */
 typedef struct rad_listen_t rad_listen_t;
+typedef		void (*radlog_func_t)(int, int, REQUEST *, const char *, ...);
 
 #define REQUEST_DATA_REGEX (0xadbeef00)
 #define REQUEST_MAX_REGEX (8)
@@ -219,9 +220,14 @@ struct auth_req {
 
 	const char		*server;
 	REQUEST			*parent;
+	radlog_func_t		radlog;	/* logging function, if set */
 };				/* REQUEST typedef */
 
 #define RAD_REQUEST_OPTION_NONE            (0)
+#define RAD_REQUEST_OPTION_DEBUG           (1)
+#define RAD_REQUEST_OPTION_DEBUG2          (2)
+#define RAD_REQUEST_OPTION_DEBUG3          (3)
+#define RAD_REQUEST_OPTION_DEBUG4          (4)
 
 #define REQUEST_ACTIVE 		(1)
 #define REQUEST_STOP_PROCESSING (2)
@@ -324,6 +330,18 @@ typedef struct main_config_t {
 #define DEBUG	if(debug_flag)log_debug
 #define DEBUG2  if (debug_flag > 1)log_debug
 #define DEBUG3  if (debug_flag > 2)log_debug
+
+#if __GNUC__ >= 3
+#define RDEBUG(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG, 1, request, fmt, ## __VA_ARGS__)
+#define RDEBUG2(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG, 2, request, fmt, ## __VA_ARGS__)
+#define RDEBUG3(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG, 3, request, fmt, ## __VA_ARGS__)
+#define RDEBUG4(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG, 4, request, fmt, ## __VA_ARGS__)
+#else
+#define RDEBUG  DEBUG
+#define RDEBUG2 DEBUG2
+#define RDEBUG3 DEBUG3
+#define RDEBUG4 DEBUG4
+#endif
 
 #define SECONDS_PER_DAY		86400
 #define MAX_REQUEST_TIME	30
@@ -472,6 +490,11 @@ int		log_debug(const char *, ...)
 #endif
 ;
 void 		vp_listdebug(VALUE_PAIR *vp);
+void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 4, 5)))
+#endif
+;
 
 /* auth.c */
 char	*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
