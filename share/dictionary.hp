@@ -15,6 +15,8 @@ BEGIN-VENDOR	HP
 ATTRIBUTE	HP-Privilege-Level			1	integer
 ATTRIBUTE	HP-Command-String			2	string
 ATTRIBUTE	HP-Command-Exception-Flag		3	integer
+ATTRIBUTE	HP-Management-Protocol			26	integer
+
 
 #
 #  HP's names for some attributes
@@ -25,11 +27,28 @@ ATTRIBUTE	HP-nas-filter-rule			61	string
 
 # Access control
 ATTRIBUTE	HP-Cos					40	string
-ATTRIBUTE	HP-Rate-Limit				46	integer
+#ATTRIBUTE	HP-Rate-Limit				46	integer
 
 ATTRIBUTE	HP-Bandwidth-Max-Ingress		46	integer
 ATTRIBUTE	HP-Bandwidth-Max-Egress			48	integer
 
 ATTRIBUTE	HP-Ip-Filter-Raw			61	string
+
+# HP-Management-Protocol
+VALUE	HP-Management-Protocol		HTTP			5
+VALUE	HP-Management-Protocol		HTTPS			6
+
+#
+#  Conflicting attributes are commented out.
+#
+#ATTRIBUTE	HP-Management-Role			26	integer
+
+# HP-Management-Role
+#VALUE	HP-Management-Role		SuperUser		1
+#VALUE	HP-Management-Role		Monitor			2
+#VALUE	HP-Management-Role		HelpDeskManager		16
+#VALUE	HP-Management-Role		NetworkAdministrator	17
+#VALUE	HP-Management-Role		SystemAdministrator	18
+#VALUE	HP-Management-Role		WebUserAdminstrator	19
 
 END-VENDOR	HP
