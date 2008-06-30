@@ -117,14 +117,14 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 	}
 
 	if (goodpass) {
-		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
+		radlog_request(L_AUTH, 0, request, "%s: [%s%s%s] (%s)",
 				msg,
 				clean_username,
 				request->root->log_auth_goodpass ? "/" : "",
 				request->root->log_auth_goodpass ? clean_password : "",
 				auth_name(buf, sizeof(buf), request, 1));
 	} else {
-		radlog(L_AUTH, "%s: [%s%s%s] (%s)",
+		radlog_request(L_AUTH, 0, request, "%s: [%s%s%s] (%s)",
 				msg,
 				clean_username,
 				request->root->log_auth_badpass ? "/" : "",
@@ -167,18 +167,18 @@ static int rad_check_password(REQUEST *request)
 		auth_type = auth_type_pair->vp_integer;
 		auth_type_count++;
 
-		DEBUG2("  rad_check_password:  Found Auth-Type %s",
+		RDEBUG2("  rad_check_password:  Found Auth-Type %s",
 				auth_type_pair->vp_strvalue);
 		cur_config_item = auth_type_pair->next;
 
 		if (auth_type == PW_AUTHTYPE_REJECT) {
-			DEBUG2("  rad_check_password: Auth-Type = Reject, rejecting user");
+			RDEBUG2("  rad_check_password: Auth-Type = Reject, rejecting user");
 			return -2;
 		}
 	}
 
 	if (( auth_type_count > 1) && (debug_flag)) {
-		radlog(L_ERR, "Warning:  Found %d auth-types on request for user '%s'",
+		radlog_request(L_ERR, 0, request, "Warning:  Found %d auth-types on request for user '%s'",
 			auth_type_count, request->username->vp_strvalue);
 	}
 
@@ -193,7 +193,7 @@ static int rad_check_password(REQUEST *request)
 	    || (request->proxy)
 #endif
 	    ) {
-		DEBUG2("  rad_check_password: Auth-Type = Accept, accepting the user");
+		RDEBUG2("  rad_check_password: Auth-Type = Accept, accepting the user");
 		return 0;
 	}
 
@@ -207,16 +207,16 @@ static int rad_check_password(REQUEST *request)
 	if (password_pair) {
 		DICT_ATTR *da;
 
-		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		DEBUG("!!!    Replacing User-Password in config items with Cleartext-Password.     !!!");
-		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		DEBUG("!!! Please update your configuration so that the \"known good\"               !!!");
-		DEBUG("!!! clear text password is in Cleartext-Password, and not in User-Password. !!!");
-		DEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		RDEBUG("!!!    Replacing User-Password in config items with Cleartext-Password.     !!!");
+		RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		RDEBUG("!!! Please update your configuration so that the \"known good\"               !!!");
+		RDEBUG("!!! clear text password is in Cleartext-Password, and not in User-Password. !!!");
+		RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		password_pair->attribute = PW_CLEARTEXT_PASSWORD;
 		da = dict_attrbyvalue(PW_CLEARTEXT_PASSWORD);
 		if (!da) {
-			radlog(L_ERR, "FATAL: You broke the dictionaries.  Please use the default dictionaries!");
+			radlog_request(L_ERR, 0, request, "FATAL: You broke the dictionaries.  Please use the default dictionaries!");
 			_exit(1);
 		}
 
@@ -249,7 +249,7 @@ static int rad_check_password(REQUEST *request)
 		 	*
 		 	*	This is fail-safe.
 		 	*/
-			DEBUG2("auth: No authenticate method (Auth-Type) configuration found for the request: Rejecting the user");
+			RDEBUG2("auth: No authenticate method (Auth-Type) configuration found for the request: Rejecting the user");
 			return -2;
 		}
 	}
@@ -265,13 +265,13 @@ static int rad_check_password(REQUEST *request)
 			 */
 			auth_item = request->password;
 			if (auth_item == NULL) {
-				DEBUG2("auth: No User-Password or CHAP-Password attribute in the request");
+				RDEBUG2("auth: No User-Password or CHAP-Password attribute in the request");
 				return -1;
 			}
 
-			DEBUG2("auth: type Crypt");
+			RDEBUG2("auth: type Crypt");
 			if (password_pair == NULL) {
-				DEBUG2("No Crypt-Password configured for the user");
+				RDEBUG2("No Crypt-Password configured for the user");
 				rad_authlog("Login incorrect "
 					"(No Crypt-Password configured for the user)", request, 0);
 				return -1;
@@ -287,7 +287,7 @@ static int rad_check_password(REQUEST *request)
 			}
 			break;
 		case PW_AUTHTYPE_LOCAL:
-			DEBUG2("auth: type Local");
+			RDEBUG2("auth: type Local");
 
 			/*
 			 *	Find the password sent by the user. It
@@ -299,7 +299,7 @@ static int rad_check_password(REQUEST *request)
 				auth_item = pairfind(request->packet->vps,
 						     PW_CHAP_PASSWORD);
 			if (!auth_item) {
-				DEBUG2("auth: No User-Password or CHAP-Password attribute in the request");
+				RDEBUG2("auth: No User-Password or CHAP-Password attribute in the request");
 				return -1;
 			}
 
@@ -307,7 +307,7 @@ static int rad_check_password(REQUEST *request)
 			 *	Plain text password.
 			 */
 			if (password_pair == NULL) {
-				DEBUG2("auth: No password configured for the user");
+				RDEBUG2("auth: No password configured for the user");
 				rad_authlog("Login incorrect "
 					"(No password configured for the user)", request, 0);
 				return -1;
@@ -319,14 +319,14 @@ static int rad_check_password(REQUEST *request)
 			if (auth_item->attribute == PW_USER_PASSWORD) {
 				if (strcmp((char *)password_pair->vp_strvalue,
 					   (char *)auth_item->vp_strvalue) != 0) {
-					DEBUG2("auth: user supplied User-Password does NOT match local User-Password");
+					RDEBUG2("auth: user supplied User-Password does NOT match local User-Password");
 					return -1;
 				}
-				DEBUG2("auth: user supplied User-Password matches local User-Password");
+				RDEBUG2("auth: user supplied User-Password matches local User-Password");
 				break;
 
 			} else if (auth_item->attribute != PW_CHAP_PASSWORD) {
-				DEBUG2("The user did not supply a User-Password or a CHAP-Password attribute");
+				RDEBUG2("The user did not supply a User-Password or a CHAP-Password attribute");
 				rad_authlog("Login incorrect "
 					"(no User-Password or CHAP-Password attribute)", request, 0);
 				return -1;
@@ -340,17 +340,17 @@ static int rad_check_password(REQUEST *request)
 			 */
 			if (memcmp(my_chap + 1, auth_item->vp_strvalue + 1,
 				   CHAP_VALUE_LENGTH) != 0) {
-				DEBUG2("auth: user supplied CHAP-Password does NOT match local User-Password");
+				RDEBUG2("auth: user supplied CHAP-Password does NOT match local User-Password");
 				return -1;
 			}
-			DEBUG2("auth: user supplied CHAP-Password matches local User-Password");
+			RDEBUG2("auth: user supplied CHAP-Password matches local User-Password");
 			break;
 		default:
 			dval = dict_valbyattr(PW_AUTH_TYPE, auth_type);
 			if (dval) {
-				DEBUG2("auth: type \"%s\"", dval->name);
+				RDEBUG2("auth: type \"%s\"", dval->name);
 			} else {
-				DEBUG2("auth: type UNKNOWN-%d", auth_type);
+				RDEBUG2("auth: type UNKNOWN-%d", auth_type);
 			}
 
 			/*
@@ -406,7 +406,7 @@ int rad_postauth(REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, PW_POST_AUTH_TYPE);
 	if (vp) {
-		DEBUG2("  Found Post-Auth-Type %s", vp->vp_strvalue);
+		RDEBUG2("  Found Post-Auth-Type %s", vp->vp_strvalue);
 		postauth_type = vp->vp_integer;
 	}
 	result = module_post_auth(postauth_type, request);
@@ -578,7 +578,7 @@ autz_redo:
 	if (!autz_retry) {
 		tmp = pairfind(request->config_items, PW_AUTZ_TYPE);
 		if (tmp) {
-			DEBUG2("  Found Autz-Type %s", tmp->vp_strvalue);
+			RDEBUG2("  Found Autz-Type %s", tmp->vp_strvalue);
 			autz_type = tmp->vp_integer;
 			autz_retry = 1;
 			goto autz_redo;
@@ -614,11 +614,11 @@ autz_redo:
 		 *	*the* LOCAL realm.
 		 */
 		if (realm &&(strcmp(realm->name, "LOCAL") != 0)) {
-			DEBUG2("  WARNING: You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling invalid proxy request.", realm->name);
+			RDEBUG2("  WARNING: You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling invalid proxy request.", realm->name);
 		}
 
 		if (!realm) {
-			DEBUG2("  WARNING: You set Proxy-To-Realm = %s, but the realm does not exist!  Cancelling invalid proxy request.", tmp->vp_strvalue);
+			RDEBUG2("  WARNING: You set Proxy-To-Realm = %s, but the realm does not exist!  Cancelling invalid proxy request.", tmp->vp_strvalue);
 		}
 	}
 
@@ -650,7 +650,7 @@ autz_redo:
 	 *	wants to send back.
 	 */
 	if (result < 0) {
-		DEBUG2("auth: Failed to validate the user.");
+		RDEBUG2("auth: Failed to validate the user.");
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 
 		if ((module_msg = pairfind(request->packet->vps,PW_MODULE_FAILURE_MESSAGE)) != NULL){
@@ -689,7 +689,7 @@ autz_redo:
 
 		tmp = pairfind(request->config_items, PW_SESSION_TYPE);
 		if (tmp) {
-			DEBUG2("  Found Session-Type %s", tmp->vp_strvalue);
+			RDEBUG2("  Found Session-Type %s", tmp->vp_strvalue);
 			session_type = tmp->vp_integer;
 		}
 
@@ -707,7 +707,7 @@ autz_redo:
 
 				if ((port_limit = pairfind(request->reply->vps, PW_PORT_LIMIT)) != NULL &&
 					port_limit->vp_integer > check_item->vp_integer){
-					DEBUG2("main auth: MPP is OK");
+					RDEBUG2("main auth: MPP is OK");
 					mpp_ok = 1;
 				}
 			}
@@ -770,7 +770,7 @@ autz_redo:
 		  tmp->flags.addport = 0;
 		  ip_ntoa(tmp->vp_strvalue, tmp->vp_integer);
 		} else {
-			DEBUG2("WARNING: No NAS-Port attribute in request.  CANNOT return a Framed-IP-Address + NAS-Port.\n");
+			RDEBUG2("WARNING: No NAS-Port attribute in request.  CANNOT return a Framed-IP-Address + NAS-Port.\n");
 			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS);
 		}
 	}

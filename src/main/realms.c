@@ -1698,7 +1698,7 @@ home_server *home_server_ldb(const char *realmname,
 			return home;
 		}
 
-		DEBUG3("PROXY %s %d\t%s %d",
+		RDEBUG3("PROXY %s %d\t%s %d",
 		       found->name, found->currently_outstanding,
 		       home->name, home->currently_outstanding);
 
@@ -1707,7 +1707,7 @@ home_server *home_server_ldb(const char *realmname,
 		 *	one we previously found.
 		 */
 		if (home->currently_outstanding < found->currently_outstanding) {
-			DEBUG3("Choosing %s: It's less busy than %s",
+			RDEBUG3("PROXY Choosing %s: It's less busy than %s",
 			       home->name, found->name);
 			found = home;
 			continue;
@@ -1718,7 +1718,7 @@ home_server *home_server_ldb(const char *realmname,
 		 *	we found.
 		 */
 		if (home->currently_outstanding > found->currently_outstanding) {
-			DEBUG3("Skipping %s: It's busier than %s",
+			RDEBUG3("PROXY Skipping %s: It's busier than %s",
 			       home->name, found->name);
 			continue;
 		}
@@ -1787,7 +1787,7 @@ home_server *home_server_ldb(const char *realmname,
 		}
 		if (!pool) return NULL;
 
-		DEBUG2("  Realm %s has no live home servers.  Falling back to the DEFAULT realm.", realmname);
+		RDEBUG2("PROXY - realm %s has no live home servers.  Falling back to the DEFAULT realm.", realmname);
 		return home_server_ldb(rd->name, pool, request);
 	}
 

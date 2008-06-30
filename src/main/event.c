@@ -235,7 +235,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		proxy_listener = proxy_new_listener();
 		if (!proxy_listener) {
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			DEBUG2("ERROR: Failed to create a new socket for proxying requests.");
+			RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
 			return 0;
 		}
 
@@ -260,14 +260,14 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 		if (!fr_packet_list_socket_add(proxy_list, proxy_listener->fd)) {
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			DEBUG2("ERROR: Failed to create a new socket for proxying requests.");
+			RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
 			return 0;
 
 		}
 
 		if (!fr_packet_list_id_alloc(proxy_list, request->proxy)) {
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			DEBUG2("ERROR: Failed to create a new socket for proxying requests.");
+			RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
 			return 0;
 		}
 
@@ -293,7 +293,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 	if (proxy < 0) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		DEBUG2("ERROR: All sockets are full.");
+		RDEBUG2("ERROR: All sockets are full.");
 		return 0;
 	}
 
@@ -304,13 +304,13 @@ static int insert_into_proxy_hash(REQUEST *request)
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
 		fr_packet_list_id_free(proxy_list, request->proxy);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		DEBUG2("ERROR: Failed to insert entry into proxy list");
+		RDEBUG2("ERROR: Failed to insert entry into proxy list");
 		return 0;
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
-	DEBUG3(" proxy: allocating destination %s port %d - Id %d",
+	RDEBUG3(" proxy: allocating destination %s port %d - Id %d",
 	       inet_ntop(request->proxy->dst_ipaddr.af,
 			 &request->proxy->dst_ipaddr.ipaddr, buf, sizeof(buf)),
 	       request->proxy->dst_port,
@@ -340,11 +340,11 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 	if ((request->num_proxied_requests == request->num_proxied_responses) ||
 	    timercmp(&now, &request->when, >)) {
 		if (request->packet) {
-			DEBUG2("Cleaning up request %d ID %d with timestamp +%d",
+			RDEBUG2("Cleaning up request %d ID %d with timestamp +%d",
 			       request->number, request->packet->id,
 			       (unsigned int) (request->timestamp - start_time));
 		} else {
-			DEBUG2("Cleaning up request %d with timestamp +%d",
+			RDEBUG2("Cleaning up request %d with timestamp +%d",
 			       request->number,
 			       (unsigned int) (request->timestamp - start_time));
 		}
@@ -371,13 +371,13 @@ static void wait_for_child_to_die(void *ctx)
 		request->delay += (request->delay >> 1);
 		tv_add(&request->when, request->delay);
 
-		DEBUG2("Child is still stuck for request %d", request->number);
+		RDEBUG2("Child is still stuck for request %d", request->number);
 
 		INSERT_EVENT(wait_for_child_to_die, request);
 		return;
 	}
 
-	DEBUG2("Child is finally responsive for request %d", request->number);
+	RDEBUG2("Child is finally responsive for request %d", request->number);
 	remove_from_request_hash(request);
 
 #ifdef WITH_PROXY
@@ -408,7 +408,7 @@ static void cleanup_delay(void *ctx)
 	}
 #endif
 
-	DEBUG2("Cleaning up request %d ID %d with timestamp +%d",
+	RDEBUG2("Cleaning up request %d ID %d with timestamp +%d",
 	       request->number, request->packet->id,
 	       (unsigned int) (request->timestamp - start_time));
 
@@ -424,7 +424,7 @@ static void reject_delay(void *ctx)
 	rad_assert(request->magic == REQUEST_MAGIC);
 	rad_assert(request->child_state == REQUEST_REJECT_DELAY);
 
-	DEBUG2("Sending delayed reject for request %d", request->number);
+	RDEBUG2("Sending delayed reject for request %d", request->number);
 
 	request->listener->send(request->listener, request);
 
@@ -459,7 +459,7 @@ static void no_response_to_ping(void *ctx)
 
 	home->num_received_pings = 0;
 
-	DEBUG2("No response to status check %d from home server %s port %d",
+	RDEBUG2("No response to status check %d from home server %s port %d",
 	       request->number,
 	       inet_ntop(request->proxy->dst_ipaddr.af,
 			 &request->proxy->dst_ipaddr.ipaddr,
@@ -477,7 +477,7 @@ static void received_response_to_ping(REQUEST *request)
 
 	home->num_received_pings++;
 
-	DEBUG2("Received response to status check %d (%d in current sequence)",
+	RDEBUG2("Received response to status check %d (%d in current sequence)",
 	       request->number, home->num_received_pings);
 
 	if (home->num_received_pings < home->num_pings_to_alive) {
@@ -492,11 +492,11 @@ static void received_response_to_ping(REQUEST *request)
 	       request->proxy->dst_port);
 
 	if (!fr_event_delete(el, &home->ev)) {
-		DEBUG2("Hmm... no event for home server, WTF?");
+		RDEBUG2("Hmm... no event for home server, WTF?");
 	}
 
 	if (!fr_event_delete(el, &request->ev)) {
-		DEBUG2("Hmm... no event for request, WTF?");
+		RDEBUG2("Hmm... no event for request, WTF?");
 	}
 
 	wait_for_proxy_id_to_expire(request);
@@ -575,7 +575,7 @@ static void ping_home_server(void *ctx)
 	rad_assert(request->proxy_listener == NULL);
 
 	if (!insert_into_proxy_hash(request)) {
-		DEBUG2("ERROR: Failed inserting status check %d into proxy hash.  Discarding it.",
+		RDEBUG2("ERROR: Failed inserting status check %d into proxy hash.  Discarding it.",
 		       request->number);
 		request_free(&request);
 		return;
@@ -987,7 +987,7 @@ static void wait_a_bit(void *ctx)
 	 *	mode, with no threads...
 	 */
 	if (!callback) {
-		DEBUG("WARNING: Internal sanity check failed in event handler for request %d: Discarding the request!", request->number);
+		RDEBUG("WARNING: Internal sanity check failed in event handler for request %d: Discarding the request!", request->number);
 		fr_event_delete(el, &request->ev);
 		remove_from_proxy_hash(request);
 		remove_from_request_hash(request);
@@ -1017,7 +1017,7 @@ static int process_proxy_reply(REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE);
 	if (vp) {
-		DEBUG2("  Found Post-Proxy-Type %s", vp->vp_strvalue);
+		RDEBUG2("  Found Post-Proxy-Type %s", vp->vp_strvalue);
 		post_proxy_type = vp->vp_integer;
 	}
 	
@@ -1027,9 +1027,9 @@ static int process_proxy_reply(REQUEST *request)
 		const char *old_server = request->server;
 		
 		request->server = request->home_pool->virtual_server;
-		DEBUG2(" server %s {", request->server);
+		RDEBUG2(" server %s {", request->server);
 		rcode = module_post_proxy(post_proxy_type, request);
-		DEBUG2(" }");
+		RDEBUG2(" }");
 		request->server = old_server;
 	} else {
 		rcode = module_post_proxy(post_proxy_type, request);
@@ -1149,12 +1149,12 @@ static int proxy_request(REQUEST *request)
 	char buffer[128];
 
 	if (request->home_server->server) {
-		DEBUG("ERROR: Cannot perform real proxying to a virtual server.");
+		RDEBUG("ERROR: Cannot perform real proxying to a virtual server.");
 		return 0;
 	}
 
 	if (!insert_into_proxy_hash(request)) {
-		DEBUG("ERROR: Failed inserting request into proxy hash.");
+		RDEBUG("ERROR: Failed inserting request into proxy hash.");
 		return 0;
 	}
 
@@ -1175,7 +1175,7 @@ static int proxy_request(REQUEST *request)
 	}
 	request->next_callback = no_response_to_proxied_request;
 
-	DEBUG2("Proxying request %d to home server %s port %d",
+	RDEBUG2("Proxying request %d to home server %s port %d",
 	       request->number,
 	       inet_ntop(request->proxy->dst_ipaddr.af,
 			 &request->proxy->dst_ipaddr.ipaddr,
@@ -1212,13 +1212,13 @@ static int proxy_to_virtual_server(REQUEST *request)
 	if (!request->home_server || !request->home_server->server) return 0;
 
 	if (request->parent) {
-		DEBUG2("WARNING: Cancelling proxy request to virtual server %s as this request was itself proxied.", request->home_server->server);
+		RDEBUG2("WARNING: Cancelling proxy request to virtual server %s as this request was itself proxied.", request->home_server->server);
 		return 0;
 	}
 
 	fake = request_alloc_fake(request);
 	if (!fake) {
-		DEBUG2("WARNING: Out of memory");
+		RDEBUG2("WARNING: Out of memory");
 		return 0;
 	}
 
@@ -1234,13 +1234,13 @@ static int proxy_to_virtual_server(REQUEST *request)
 #endif
 
 	} else {
-		DEBUG2("Unknown packet type %d", request->proxy->code);
+		RDEBUG2("Unknown packet type %d", request->proxy->code);
 		return 0;
 	}
 
-	DEBUG2(">>> Sending proxied request internally to virtual server.");
+	RDEBUG2(">>> Sending proxied request internally to virtual server.");
 	radius_handle_request(fake, fun);
-	DEBUG2("<<< Received proxied response from internal virtual server.");
+	RDEBUG2("<<< Received proxied response from internal virtual server.");
 
 	request->proxy_reply = fake->reply;
 	fake->reply = NULL;
@@ -1289,7 +1289,7 @@ static int successfully_proxied_request(REQUEST *request)
 
 	realm = realm_find2(realmname);
 	if (!realm) {
-		DEBUG2("ERROR: Cannot proxy to unknown realm %s", realmname);
+		RDEBUG2("ERROR: Cannot proxy to unknown realm %s", realmname);
 		return 0;
 	}
 
@@ -1309,14 +1309,14 @@ static int successfully_proxied_request(REQUEST *request)
 	}
 
 	if (!pool) {
-		DEBUG2(" WARNING: Cancelling proxy to Realm %s, as the realm is local.",
+		RDEBUG2(" WARNING: Cancelling proxy to Realm %s, as the realm is local.",
 		       realmname);
 		return 0;
 	}
 
 	home = home_server_ldb(realmname, pool, request);
 	if (!home) {
-		DEBUG2("ERROR: Failed to find live home server for realm %s",
+		RDEBUG2("ERROR: Failed to find live home server for realm %s",
 		       realmname);
 		return -1;
 	}
@@ -1338,7 +1338,7 @@ static int successfully_proxied_request(REQUEST *request)
 	    (home->ipaddr.af == AF_INET) &&
 	    (request->packet->src_ipaddr.af == AF_INET) &&
 	    (home->ipaddr.ipaddr.ip4addr.s_addr == request->packet->src_ipaddr.ipaddr.ip4addr.s_addr)) {
-		DEBUG2("    rlm_realm: Packet came from realm %s, proxy cancelled", realmname);
+		RDEBUG2("    rlm_realm: Packet came from realm %s, proxy cancelled", realmname);
 		return 0;
 	}
 #endif
@@ -1454,7 +1454,7 @@ static int successfully_proxied_request(REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE);
 	if (vp) {
-		DEBUG2("  Found Pre-Proxy-Type %s", vp->vp_strvalue);
+		RDEBUG2("  Found Pre-Proxy-Type %s", vp->vp_strvalue);
 		pre_proxy_type = vp->vp_integer;
 	}
 
@@ -1464,9 +1464,9 @@ static int successfully_proxied_request(REQUEST *request)
 		const char *old_server = request->server;
 		
 		request->server = request->home_pool->virtual_server;
-		DEBUG2(" server %s {", request->server);
+		RDEBUG2(" server %s {", request->server);
 		rcode = module_pre_proxy(pre_proxy_type, request);
-		DEBUG2(" }");
+		RDEBUG2(" }");
 			request->server = old_server;
 	} else {
 		rcode = module_pre_proxy(pre_proxy_type, request);
@@ -1508,7 +1508,7 @@ static int successfully_proxied_request(REQUEST *request)
 	}
 
 	if (!proxy_request(request)) {
-		DEBUG("ERROR: Failed to proxy request %d", request->number);
+		RDEBUG("ERROR: Failed to proxy request %d", request->number);
 		return -1;
 	}
 	
@@ -1526,7 +1526,7 @@ static void request_post_handler(REQUEST *request)
 	if ((request->master_state == REQUEST_STOP_PROCESSING) ||
 	    (request->parent &&
 	     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
-		DEBUG2("Request %d was cancelled.", request->number);
+		RDEBUG2("Request %d was cancelled.", request->number);
 #ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
 #endif
@@ -1582,7 +1582,7 @@ static void request_post_handler(REQUEST *request)
 	 *	here!
 	 */
 	if (request->packet->dst_port == 0) {
-		/* FIXME: DEBUG going to the next request */
+		/* FIXME: RDEBUG going to the next request */
 #ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
 #endif
@@ -1612,11 +1612,11 @@ static void request_post_handler(REQUEST *request)
 			vp = pairfind(request->config_items,
 				      PW_RESPONSE_PACKET_TYPE);
 			if (!vp) {
-				DEBUG2("There was no response configured: rejecting request %d",
+				RDEBUG2("There was no response configured: rejecting request %d",
 				       request->number);
 				request->reply->code = PW_AUTHENTICATION_REJECT;
 			} else if (vp->vp_integer == 256) {
-				DEBUG2("Not responding to request %d",
+				RDEBUG2("Not responding to request %d",
 				       request->number);
 
 			} else {
@@ -1647,7 +1647,7 @@ static void request_post_handler(REQUEST *request)
 			when.tv_sec += request->root->reject_delay;
 
 			if (timercmp(&when, &request->next_when, >)) {
-				DEBUG2("Delaying reject of request %d for %d seconds",
+				RDEBUG2("Delaying reject of request %d for %d seconds",
 				       request->number,
 				       request->root->reject_delay);
 				request->next_when = when;
@@ -1723,6 +1723,7 @@ static void request_post_handler(REQUEST *request)
 			pairfree(&request->proxy_reply->vps);
 		}
 
+#if 0
 		/*
 		 *	We're not tracking responses from the home
 		 *	server, we can therefore free this memory in
@@ -1733,10 +1734,11 @@ static void request_post_handler(REQUEST *request)
 			rad_free(&request->proxy_reply);
 			request->home_server = NULL;
 		}
+#endif
 	}
 #endif
 
-	DEBUG2("Finished request %d.", request->number);
+	RDEBUG2("Finished request %d.", request->number);
 
 	request->child_state = child_state;
 
@@ -1802,7 +1804,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 
 			home = home_server_ldb(NULL, request->home_pool, request);
 			if (!home) {
-				DEBUG2("Failed to find live home server for request %d", request->number);
+				RDEBUG2("Failed to find live home server for request %d", request->number);
 			no_home_servers:
 				/*
 				 *	Do post-request processing,
@@ -1839,7 +1841,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			 *	Try to proxy the request.
 			 */
 			if (!proxy_request(request)) {
-				DEBUG("ERROR: Failed to re-proxy request %d", request->number);
+				RDEBUG("ERROR: Failed to re-proxy request %d", request->number);
 				goto no_home_servers;
 			}
 
@@ -1853,7 +1855,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			return;
 		} /* else the home server is still alive */
 
-		DEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
+		RDEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
 		       inet_ntop(request->proxy->dst_ipaddr.af,
 				 &request->proxy->dst_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
@@ -1866,7 +1868,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 #endif
 
 	case REQUEST_REJECT_DELAY:
-		DEBUG2("Waiting to send Access-Reject "
+		RDEBUG2("Waiting to send Access-Reject "
 		       "to client %s port %d - ID: %d",
 		       client->shortname,
 		       request->packet->src_port, request->packet->id);
@@ -1874,7 +1876,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 
 	case REQUEST_CLEANUP_DELAY:
 	case REQUEST_DONE:
-		DEBUG2("Sending duplicate reply "
+		RDEBUG2("Sending duplicate reply "
 		       "to client %s port %d - ID: %d",
 		       client->shortname,
 		       request->packet->src_port, request->packet->id);
@@ -2177,7 +2179,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	home->state = HOME_STATE_ALIVE;
 
 	if (request->reply && request->reply->code != 0) {
-		DEBUG2("We already replied to this request.  Discarding response from home server.");
+		RDEBUG2("We already replied to this request.  Discarding response from home server.");
 		rad_free(&packet);
 		return NULL;
 	}
@@ -2190,7 +2192,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		if (memcmp(request->proxy_reply->vector,
 			   packet->vector,
 			   sizeof(request->proxy_reply->vector)) == 0) {
-			DEBUG2("Discarding duplicate reply from home server %s port %d  - ID: %d for request %d",
+			RDEBUG2("Discarding duplicate reply from home server %s port %d  - ID: %d for request %d",
 			       inet_ntop(packet->src_ipaddr.af,
 					 &packet->src_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
@@ -2202,7 +2204,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 			 *	reply, which doesn't match the old
 			 *	one.  Delete it.
 			 */
-			DEBUG2("Ignoring conflicting proxy reply");
+			RDEBUG2("Ignoring conflicting proxy reply");
 		}
 
 		/* assert that there's an event queued for request? */
@@ -2378,7 +2380,7 @@ static void handle_signal_self(int flag)
 			tv_add(&when, delay);
 
 			if (delay > 100000) {
-				DEBUG2("Delaying next detail event for %d.%01u seconds.",
+				DEBUG("Delaying next detail event for %d.%01u seconds.",
 				       delay / USEC, (delay % USEC) / 100000);
 			}
 
@@ -2634,7 +2636,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 #endif
 
 	if (check_config) {
-		DEBUG2("%s: #### Skipping IP addresses and Ports ####",
+		DEBUG("%s: #### Skipping IP addresses and Ports ####",
 		       mainconfig.name);
 		return 1;
 	}
@@ -2678,7 +2680,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	}
 #endif
 
-	DEBUG2("%s: #### Opening IP addresses and Ports ####",
+       DEBUG("%s: #### Opening IP addresses and Ports ####",
 	       mainconfig.name);
 
 	if (listen_init(cs, &head) < 0) {
@@ -2840,20 +2842,22 @@ int radius_event_process(void)
 
 void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
+	request->options = RAD_REQUEST_OPTION_DEBUG2;
+
 	if (request_pre_handler(request)) {
 		rad_assert(fun != NULL);
 		rad_assert(request != NULL);
 		
-		if (request->server) DEBUG("server %s {",
+		if (request->server) RDEBUG("server %s {",
 					     request->server); 
 		fun(request);
 
-		if (request->server) DEBUG("} # server %s",
+		if (request->server) RDEBUG("} # server %s",
 					     request->server);
 
 		request_post_handler(request);
 	}
 
-	DEBUG2("Going to the next request");
+	RDEBUG2("Going to the next request");
 	return;
 }

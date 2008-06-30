@@ -256,7 +256,7 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request,
 {
 	int myresult = default_result;
 
-	DEBUG3("  modsingle[%s]: calling %s (%s) for request %d",
+	RDEBUG3("  modsingle[%s]: calling %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
 	safe_lock(sp->modinst);
@@ -269,9 +269,9 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request,
 	myresult = sp->modinst->entry->module->methods[component](
 			sp->modinst->insthandle, request);
 
-	request->module = "<server-core>";
+	request->module = "";
 	safe_unlock(sp->modinst);
-	DEBUG3("  modsingle[%s]: returned from %s (%s) for request %d",
+	RDEBUG3("  modsingle[%s]: returned from %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
 
@@ -372,14 +372,14 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			myresult = stack.result[stack.pointer];
 
 			if (!was_if) { /* error */
-				DEBUG2("%.*s ... skipping %s for request %d: No preceding \"if\"",
+				RDEBUG2("%.*s ... skipping %s for request %d: No preceding \"if\"",
 				       stack.pointer + 1, modcall_spaces,
 				       group_name[child->type],
 				       request->number);
 				goto unroll;
 			}
 			if (if_taken) {
-				DEBUG2("%.*s ... skipping %s for request %d: Preceding \"if\" was taken",
+				RDEBUG2("%.*s ... skipping %s for request %d: Preceding \"if\" was taken",
 				       stack.pointer + 1, modcall_spaces,
 				       group_name[child->type],
 				       request->number);
@@ -394,14 +394,14 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			int condition = TRUE;
 			const char *p = child->name;
 
-			DEBUG2("%.*s? %s %s",
+			RDEBUG2("%.*s? %s %s",
 			       stack.pointer + 1, modcall_spaces,
 			       (child->type == MOD_IF) ? "if" : "elsif",
 			       child->name);
 
 			if (radius_evaluate_condition(request, myresult,
 						      0, &p, TRUE, &condition)) {
-				DEBUG2("%.*s? %s %s -> %s",
+				RDEBUG2("%.*s? %s %s -> %s",
 				       stack.pointer + 1, modcall_spaces,
 				       (child->type == MOD_IF) ? "if" : "elsif",
 				       child->name, (condition != FALSE) ? "TRUE" : "FALSE");
@@ -441,15 +441,15 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			const char *server = request->server;
 
 			if (server == mr->ref_name) {
-				DEBUG("WARNING: Suppressing recursive call to server %s", server);
+				RDEBUG("WARNING: Suppressing recursive call to server %s", server);
 				myresult = RLM_MODULE_NOOP;
 				goto handle_result;
 			}
 			
 			request->server = mr->ref_name;
-			DEBUG("server %s { # nested call", mr->ref_name);
+			RDEBUG("server %s { # nested call", mr->ref_name);
 			myresult = indexed_modcall(component, 0, request);
-			DEBUG("} # server %s with nested call", mr->ref_name);
+			RDEBUG("} # server %s with nested call", mr->ref_name);
 			request->server = server;
 			goto handle_result;
 		}
@@ -547,7 +547,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 #endif
 
 			default:
-				DEBUG2("Internal sanity check failed in modcall %d", child->type);
+				RDEBUG2("Internal sanity check failed in modcall %d", child->type);
 				exit(1); /* internal sanity check failure */
 				break;
 			}
@@ -555,7 +555,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 			stack.start[stack.pointer] = stack.children[stack.pointer];
 
-			DEBUG2("%.*s- entering %s %s",
+			RDEBUG2("%.*s- entering %s %s",
 			       stack.pointer, modcall_spaces,
 			       group_name[child->type],
 			       child->name ? child->name : "");
@@ -567,7 +567,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				/*
 				 *	Print message for NULL group
 				 */
-				DEBUG2("%.*s- %s %s returns %s",
+				RDEBUG2("%.*s- %s %s returns %s",
 				       stack.pointer + 1, modcall_spaces,
 				       group_name[child->type],
 				       child->name ? child->name : "",
@@ -594,7 +594,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		myresult = call_modsingle(child->method, sp, request,
 					  default_component_results[component]);
 	handle_result:
-		DEBUG2("%.*s[%s] returns %s",
+		RDEBUG2("%.*s[%s] returns %s",
 		       stack.pointer + 1, modcall_spaces,
 		       child->name ? child->name : "",
 		       fr_int2str(rcode_table, myresult, "??"));
@@ -708,7 +708,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				}
 				break;
 			default:
-				DEBUG2("Internal sanity check failed in modcall  next %d", child->type);
+				RDEBUG2("Internal sanity check failed in modcall  next %d", child->type);
 				exit(1);
 		}
 
@@ -725,7 +725,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 			if (stack.pointer == 0) break;
 
-			DEBUG2("%.*s- %s %s returns %s",
+			RDEBUG2("%.*s- %s %s returns %s",
 			       stack.pointer + 1, modcall_spaces,
 			       group_name[parent->type],
 			       parent->name ? parent->name : "",
@@ -775,29 +775,29 @@ static void dump_mc(modcallable *c, int indent)
 
 	if(c->type==MOD_SINGLE) {
 		modsingle *single = mod_callabletosingle(c);
-		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
+		RDEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 			single->modinst->name);
 	} else {
 		modgroup *g = mod_callabletogroup(c);
 		modcallable *p;
-		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
+		RDEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 		      group_name[c->type]);
 		for(p = g->children;p;p = p->next)
 			dump_mc(p, indent+1);
 	}
 
 	for(i = 0; i<RLM_MODULE_NUMCODES; ++i) {
-		DEBUG("%.*s%s = %s", indent+1, "\t\t\t\t\t\t\t\t\t\t\t",
+		RDEBUG("%.*s%s = %s", indent+1, "\t\t\t\t\t\t\t\t\t\t\t",
 		      fr_int2str(rcode_table, i, "??"),
 		      action2str(c->actions[i]));
 	}
 
-	DEBUG("%.*s}", indent, "\t\t\t\t\t\t\t\t\t\t\t");
+	RDEBUG("%.*s}", indent, "\t\t\t\t\t\t\t\t\t\t\t");
 }
 
 static void dump_tree(int comp, modcallable *c)
 {
-	DEBUG("[%s]", comp2str[comp]);
+	RDEBUG("[%s]", comp2str[comp]);
 	dump_mc(c, 0);
 }
 #else

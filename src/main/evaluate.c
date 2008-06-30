@@ -48,14 +48,6 @@ RCSID("$Id$")
 #endif
 
 
-#ifndef NDEBUG
-#ifndef DEBUG4
-#define DEBUG4  if (debug_flag > 4)log_debug
-#endif
-#else
-#define DEBUG4 if (0) log_debug
-#endif
-
 #ifdef WITH_UNLANG
 
 static int all_digits(const char *string)
@@ -337,7 +329,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 					return FALSE;
 				}
 				
-				DEBUG2("    (Attribute %s was not found)",
+				RDEBUG2("    (Attribute %s was not found)",
 				       pleft);
 				return FALSE;
 			}
@@ -357,7 +349,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 
 			memcpy(&myvp, vp, sizeof(myvp));
 			if (!pairparsevalue(&myvp, pright)) {
-				DEBUG2("Failed parsing \"%s\": %s",
+				RDEBUG2("Failed parsing \"%s\": %s",
 				       pright, librad_errstr);
 				return FALSE;
 			}
@@ -377,12 +369,12 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 	case T_OP_LE:
 	case T_OP_LT:
 		if (!all_digits(pright)) {
-			DEBUG2("    (Right field is not a number at: %s)", pright);
+			RDEBUG2("    (Right field is not a number at: %s)", pright);
 			return FALSE;
 		}
 		rint = atoi(pright);
 		if (!all_digits(pleft)) {
-			DEBUG2("    (Left field is not a number at: %s)", pleft);
+			RDEBUG2("    (Left field is not a number at: %s)", pleft);
 			return FALSE;
 		}
 		lint = atoi(pleft);
@@ -505,7 +497,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 #endif
 		
 	default:
-		DEBUG4(">>> NOT IMPLEMENTED %d", token);
+		RDEBUG4(">>> NOT IMPLEMENTED %d", token);
 		result = FALSE;
 		break;
 	}
@@ -538,7 +530,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		while ((*p == ' ') || (*p == '\t')) p++;
 
 		if (*p == '!') {
-			DEBUG4(">>> INVERT");
+			RDEBUG4(">>> INVERT");
 			invert = TRUE;
 			p++;
 		}
@@ -553,7 +545,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			 *	Evaluate the condition, bailing out on
 			 *	parse error.
 			 */
-			DEBUG4(">>> CALLING EVALUATE %s", end);
+			RDEBUG4(">>> CALLING EVALUATE %s", end);
 			if (!radius_evaluate_condition(request, modreturn,
 						       depth + 1, &end,
 						       evaluate_next_condition,
@@ -562,7 +554,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			}
 
 			if (invert && evaluate_next_condition) {
-				DEBUG2("%.*s Converting !%s -> %s",
+				RDEBUG2("%.*s Converting !%s -> %s",
 				       depth, filler,
 				       (result != FALSE) ? "TRUE" : "FALSE",
 				       (result == FALSE) ? "TRUE" : "FALSE");
@@ -577,7 +569,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			 *	condition
 			 */
 			p = end;
-			DEBUG4(">>> EVALUATE RETURNED ::%s::", end);
+			RDEBUG4(">>> EVALUATE RETURNED ::%s::", end);
 			
 			if (!((*p == ')') || (*p == '!') ||
 			      ((p[0] == '&') && (p[1] == '&')) ||
@@ -595,7 +587,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			 *	EOL.  It's OK.
 			 */
 			if (!*p) {
-				DEBUG4(">>> AT EOL");
+				RDEBUG4(">>> AT EOL");
 				*ptr = p;
 				*presult = result;
 				return TRUE;
@@ -625,7 +617,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 				p += 2;
 
 			} else if (*p == ')') {
-				DEBUG4(">>> CLOSING BRACE");
+				RDEBUG4(">>> CLOSING BRACE");
 				*ptr = p;
 				*presult = result;
 				return TRUE;
@@ -646,7 +638,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		 */
 		if ((*p == '(') || (p[0] == '!')) continue;
 
-		DEBUG4(">>> LOOKING AT %s", p);
+		RDEBUG4(">>> LOOKING AT %s", p);
 		start = p;
 
 		/*
@@ -757,7 +749,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			}
 		}
 		
-		DEBUG4(">>> %d:%s %d %d:%s",
+		RDEBUG4(">>> %d:%s %d %d:%s",
 		       lt, pleft, token, rt, pright);
 		
 	do_cmp:
@@ -770,25 +762,25 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 				return FALSE;
 			}
 
-			DEBUG2("%.*s Evaluating %s(%.*s) -> %s",
+			RDEBUG2("%.*s Evaluating %s(%.*s) -> %s",
 			       depth, filler,
 			       invert ? "!" : "", p - start, start,
 			       (result != FALSE) ? "TRUE" : "FALSE");
 
-			DEBUG4(">>> GOT result %d", result);
+			RDEBUG4(">>> GOT result %d", result);
 
 			/*
 			 *	Not evaluating it.  We may be just
 			 *	parsing it.
 			 */
 		} else if (request) {
-			DEBUG2("%.*s Skipping %s(%.*s)",
+			RDEBUG2("%.*s Skipping %s(%.*s)",
 			       depth, filler,
 			       invert ? "!" : "", p - start, start);
 		}
 
 		if (invert) {
-			DEBUG4(">>> INVERTING result");
+			RDEBUG4(">>> INVERTING result");
 			result = (result == FALSE);
 			invert = FALSE;
 		}
@@ -796,7 +788,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		/*
 		 *	Don't evaluate it.
 		 */
-		DEBUG4(">>> EVALUATE %d ::%s::",
+		RDEBUG4(">>> EVALUATE %d ::%s::",
 			evaluate_next_condition, p);
 
 		while ((*p == ' ') || (*p == '\t')) p++;
@@ -808,14 +800,14 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		    ((*p == '!') && (p[1] != '=') && (p[1] != '~')) ||
 		    ((p[0] == '&') && (p[1] == '&')) ||
 		    ((p[0] == '|') && (p[1] == '|'))) {
-			DEBUG4(">>> AT EOL2a");
+			RDEBUG4(">>> AT EOL2a");
 			*ptr = p;
 			if (evaluate_next_condition) *presult = result;
 			return TRUE;
 		}
 	} /* loop over the input condition */
 
-	DEBUG4(">>> AT EOL2b");
+	RDEBUG4(">>> AT EOL2b");
 	*ptr = p;
 	if (evaluate_next_condition) *presult = result;
 	return TRUE;
@@ -907,7 +899,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	edited = rad_malloc(sizeof(*edited) * to_count);
 	memset(edited, 0, sizeof(*edited) * to_count);
 
-	DEBUG4("::: FROM %d TO %d MAX %d", from_count, to_count, count);
+	RDEBUG4("::: FROM %d TO %d MAX %d", from_count, to_count, count);
 
 	/*
 	 *	Now that we have the lists initialized, start working
@@ -916,7 +908,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	for (i = 0; i < from_count; i++) {
 		int found;
 
-		DEBUG4("::: Examining %s", from_list[i]->name);
+		RDEBUG4("::: Examining %s", from_list[i]->name);
 
 		/*
 		 *	Attribute should be appended, OR the "to" list
@@ -949,7 +941,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 			 *	the one in the "from" list.
 			 */
 			if (from_list[i]->operator == T_OP_SET) {
-				DEBUG4("::: OVERWRITING %s FROM %d TO %d",
+				RDEBUG4("::: OVERWRITING %s FROM %d TO %d",
 				       to_list[j]->name, i, j);
 				pairfree(&to_list[j]);
 				to_list[j] = from_list[i];
@@ -1006,7 +998,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 				case T_OP_SUB:
 					if (rcode == 0) {
 					delete:
-						DEBUG4("::: DELETING %s FROM %d TO %d",
+						RDEBUG4("::: DELETING %s FROM %d TO %d",
 						       from_list[i]->name, i, j);
 						pairfree(&to_list[j]);
 						to_list[j] = NULL;
@@ -1019,7 +1011,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 					 */
 				case T_OP_LE:
 					if (rcode > 0) {
-						DEBUG4("::: REPLACING %s FROM %d TO %d",
+						RDEBUG4("::: REPLACING %s FROM %d TO %d",
 						       from_list[i]->name, i, j);
 						pairfree(&to_list[j]);
 						to_list[j] = from_list[i];
@@ -1030,7 +1022,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 
 				case T_OP_GE:
 					if (rcode < 0) {
-						DEBUG4("::: REPLACING %s FROM %d TO %d",
+						RDEBUG4("::: REPLACING %s FROM %d TO %d",
 						       from_list[i]->name, i, j);
 						pairfree(&to_list[j]);
 						to_list[j] = from_list[i];
@@ -1058,7 +1050,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 			    (from_list[i]->operator == T_OP_GE) ||
 			    (from_list[i]->operator == T_OP_SET)) {
 			append:
-				DEBUG4("::: APPENDING %s FROM %d TO %d",
+				RDEBUG4("::: APPENDING %s FROM %d TO %d",
 				       from_list[i]->name, i, tailto);
 				to_list[tailto++] = from_list[i];
 				from_list[i] = NULL;
@@ -1076,7 +1068,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	}
 	free(from_list);
 
-	DEBUG4("::: TO in %d out %d", to_count, tailto);
+	RDEBUG4("::: TO in %d out %d", to_count, tailto);
 
 	/*
 	 *	Re-chain the "to" list.
@@ -1087,7 +1079,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	for (i = 0; i < tailto; i++) {
 		if (!to_list[i]) continue;
 		
-		DEBUG4("::: to[%d] = %s", i, to_list[i]->name);
+		RDEBUG4("::: to[%d] = %s", i, to_list[i]->name);
 
 		/*
 		 *	Mash the operator to a simple '='.  The
@@ -1195,7 +1187,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 
 	newlist = paircopy(input_vps);
 	if (!newlist) {
-		DEBUG2("Out of memory");
+		RDEBUG2("Out of memory");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -1231,7 +1223,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			}
 
 			if (!pairparsevalue(vp, value)) {
-				DEBUG2("ERROR: Failed parsing value \"%s\" for attribute %s: %s",
+				RDEBUG2("ERROR: Failed parsing value \"%s\" for attribute %s: %s",
 				       value, vp->name, librad_errstr);
 				pairfree(&newlist);
 				return RLM_MODULE_FAIL;
