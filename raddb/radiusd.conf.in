@@ -364,12 +364,37 @@ log {
 
 	#
 	#  The logging messages for the server are appended to the
-	#  tail of this file if ${destination} == "files"
+	#  tail of this file if destination == "files"
 	#
 	#  If the server is running in debugging mode, this file is
 	#  NOT used.
 	#
 	file = ${logdir}/radius.log
+
+	#
+	#  If this configuration parameter is set, then log messages for
+	#  a *request* go to this file, rather than to radius.log.
+	#
+	#  i.e. This is a log file per request, once the server has accepted
+	#  the request as being from a valid client.  Messages that are
+	#  not associated with a request still go to radius.log.
+	#
+	#  Not all log messages in the server core have been updated to use
+	#  this new internal API.  As a result, some messages will still
+	#  go to radius.log.  Please submit patches to fix this behavior.
+	#
+	#  The file name is expanded dynamically.  You should ONLY user
+	#  server-side attributes for the filename (e.g. things you control).
+	#  Using this feature MAY also slow down the server substantially,
+	#  especially if you do thinks like SQL calls as part of the
+	#  expansion of the filename.
+	#
+	#  The name of the log file should use attributes that don't change
+	#  over the lifetime of a request, such as User-Name,
+	#  Virtual-Server or Packet-Src-IP-Address.  Otherwise, the log
+	#  messages will be distributed over multiple files.
+	#
+	#requests = ${logdir}/radiusd-%{%{Virtual-Server}:-DEFAULT}-%Y%m%d.log
 
 	#
 	#  Which syslog facility to use, if ${destination} == "syslog"
