@@ -351,7 +351,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 				mschap_reply[0] = 'S';
 				mschap_reply[1] = '=';
 				memcpy(&(mschap_reply[2]), &(pStepBuff->fBufferData[4]), len);
-				mschap_add_reply(&request->reply->vps,
+				mschap_add_reply(request, &request->reply->vps,
 						 *response->vp_strvalue,
 						 "MS-CHAP2-Success",
 						 mschap_reply, len+2);

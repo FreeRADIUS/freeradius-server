@@ -43,11 +43,11 @@ static int chap_authorize(void *instance, REQUEST *request)
 	}
 
 	if (pairfind(request->config_items, PW_AUTHTYPE) != NULL) {
-		DEBUG2("  rlm_chap: WARNING: Auth-Type already set.  Not setting to CHAP");
+		RDEBUG2("WARNING: Auth-Type already set.  Not setting to CHAP");
 		return RLM_MODULE_NOOP;
 	}
 
-	DEBUG("  rlm_chap: Setting 'Auth-Type := CHAP'");
+	RDEBUG("Setting 'Auth-Type := CHAP'");
 	pairadd(&request->config_items,
 		pairmake("Auth-Type", "CHAP", T_OP_EQ));
 	return RLM_MODULE_OK;
@@ -72,34 +72,34 @@ static int chap_authenticate(void *instance, REQUEST *request)
 	request = request;
 
 	if (!request->username) {
-		radlog(L_AUTH, "rlm_chap: Attribute \"User-Name\" is required for authentication.\n");
+		radlog_request(L_AUTH, 0, request, "rlm_chap: Attribute \"User-Name\" is required for authentication.\n");
 		return RLM_MODULE_INVALID;
 	}
 
 	chap = pairfind(request->packet->vps, PW_CHAP_PASSWORD);
 	if (!chap) {
-		radlog(L_AUTH, "rlm_chap: Attribute \"CHAP-Password\" is required for authentication.");
+		radlog_request(L_AUTH, 0, request, "rlm_chap: Attribute \"CHAP-Password\" is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (chap->length == 0) {
-		radlog(L_ERR, "rlm_chap: empty password supplied");
+		radlog_request(L_ERR, 0, request, "rlm_chap: empty password supplied");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (chap->length != CHAP_VALUE_LENGTH + 1) {
-		radlog(L_ERR, "rlm_chap: password supplied has wrong length");
+		radlog_request(L_ERR, 0, request, "rlm_chap: password supplied has wrong length");
 		return RLM_MODULE_INVALID;
 	}
 
 	/*
 	 *	Don't print out the CHAP password here.  It's binary crap.
 	 */
-	DEBUG("  rlm_chap: login attempt by \"%s\" with CHAP password",
+	RDEBUG("login attempt by \"%s\" with CHAP password",
 		request->username->vp_strvalue);
 
 	if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD)) == NULL){
-	  DEBUG("  rlm_chap: Cleartext-Password is required for authentication");
+	  RDEBUG("Cleartext-Password is required for authentication");
 		snprintf(module_fmsg, sizeof(module_fmsg),
 			 "rlm_chap: Clear text password not available");
 		module_fmsg_vp = pairmake("Module-Failure-Message",
@@ -108,7 +108,7 @@ static int chap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	DEBUG("  rlm_chap: Using clear text password \"%s\" for user %s authentication.",
+	RDEBUG("Using clear text password \"%s\" for user %s authentication.",
 	      passwd_item->vp_strvalue, request->username->vp_strvalue);
 
 	rad_chap_encode(request->packet,pass_str,
@@ -116,7 +116,7 @@ static int chap_authenticate(void *instance, REQUEST *request)
 
 	if (memcmp(pass_str + 1, chap->vp_octets + 1,
 		   CHAP_VALUE_LENGTH) != 0){
-		DEBUG("  rlm_chap: Password check failed");
+		RDEBUG("Password check failed");
 		snprintf(module_fmsg, sizeof(module_fmsg),
 			 "rlm_chap: Wrong user password");
 		module_fmsg_vp = pairmake("Module-Failure-Message",
@@ -125,7 +125,7 @@ static int chap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_REJECT;
 	}
 
-	DEBUG("  rlm_chap: chap user %s authenticated succesfully",
+	RDEBUG("chap user %s authenticated succesfully",
 	      request->username->vp_strvalue);
 
 	return RLM_MODULE_OK;

@@ -240,7 +240,7 @@ static int base64_decode (const char *src, uint8_t *dst)
 /*
  *	Hex or base64 or bin auto-discovery.
  */
-static void normify(VALUE_PAIR *vp, size_t min_length)
+static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 {
 	size_t decoded;
 	uint8_t buffer[64];
@@ -253,7 +253,7 @@ static void normify(VALUE_PAIR *vp, size_t min_length)
 	if (vp->length >= (2 * min_length)) {
 		decoded = fr_hex2bin(vp->vp_strvalue, buffer, vp->length >> 1);
 		if (decoded == (vp->length >> 1)) {
-			DEBUG2("rlm_pap: Normalizing %s from hex encoding", vp->name);
+			RDEBUG2("Normalizing %s from hex encoding", vp->name);
 			memcpy(vp->vp_octets, buffer, decoded);
 			vp->length = decoded;
 			return;
@@ -267,7 +267,7 @@ static void normify(VALUE_PAIR *vp, size_t min_length)
 	if ((vp->length * 3) >= ((min_length * 4))) {
 		decoded = base64_decode(vp->vp_strvalue, buffer);
 		if (decoded >= min_length) {
-			DEBUG2("rlm_pap: Normalizing %s from base64 encoding", vp->name);
+			RDEBUG2("Normalizing %s from base64 encoding", vp->name);
 			memcpy(vp->vp_octets, buffer, decoded);
 			vp->length = decoded;
 			return;
@@ -336,7 +336,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 
 			attr = fr_str2int(header_names, buffer, 0);
 			if (!attr) {
-				DEBUG2("rlm_pap: Found unknown header {%s}: Not doing anything", buffer);
+				RDEBUG2("Found unknown header {%s}: Not doing anything", buffer);
 				break;
 			}
 
@@ -366,13 +366,13 @@ static int pap_authorize(void *instance, REQUEST *request)
 		case PW_SMD5_PASSWORD:
 		case PW_NT_PASSWORD:
 		case PW_LM_PASSWORD:
-			normify(vp, 16); /* ensure it's in the right format */
+			normify(request, vp, 16); /* ensure it's in the right format */
 			found_pw = TRUE;
 			break;
 
 		case PW_SHA_PASSWORD:
 		case PW_SSHA_PASSWORD:
-			normify(vp, 20); /* ensure it's in the right format */
+			normify(request, vp, 20); /* ensure it's in the right format */
 			found_pw = TRUE;
 			break;
 
@@ -432,7 +432,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		DEBUG("rlm_pap: WARNING! No \"known good\" password found for the user.  Authentication may fail because of this.");
+		RDEBUG("WARNING! No \"known good\" password found for the user.  Authentication may fail because of this.");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -440,7 +440,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 	 *	Don't touch existing Auth-Types.
 	 */
 	if (auth_type) {
-		DEBUG2("rlm_pap: Found existing Auth-Type, not changing it.");
+		RDEBUG2("Found existing Auth-Type, not changing it.");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -457,7 +457,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		DEBUG2("rlm_pap: No clear-text password in the request.  Not performing PAP.");
+		RDEBUG2("No clear-text password in the request.  Not performing PAP.");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -488,7 +488,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	int scheme = PAP_ENC_INVALID;
 
 	if (!request->password){
-		radlog(L_AUTH, "rlm_pap: Attribute \"Password\" is required for authentication.");
+		radlog_request(L_AUTH, 0, request, "Attribute \"Password\" is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -496,7 +496,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	 *	Clear-text passwords are the only ones we support.
 	 */
 	if (request->password->attribute != PW_USER_PASSWORD) {
-		radlog(L_AUTH, "rlm_pap: Attribute \"User-Password\" is required for authentication. Cannot use \"%s\".", request->password->name);
+		radlog_request(L_AUTH, 0, request, "Attribute \"User-Password\" is required for authentication. Cannot use \"%s\".", request->password->name);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -510,7 +510,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	DEBUG("rlm_pap: login attempt with password \"%s\"",
+	RDEBUG("login attempt with password \"%s\"",
 	      request->password->vp_strvalue);
 
 	/*
@@ -555,7 +555,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 
 	fail:
-		DEBUG("rlm_pap: No password configured for the user.  Cannot do authentication");
+		RDEBUG("No password configured for the user.  Cannot do authentication");
 		return RLM_MODULE_FAIL;
 
 	} else {
@@ -580,7 +580,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	switch (scheme) {
 	case PAP_ENC_CLEAR:
 	do_clear:
-		DEBUG("rlm_pap: Using clear text password \"%s\"",
+		RDEBUG("Using clear text password \"%s\"",
 		      vp->vp_strvalue);
 		if (strcmp((char *) vp->vp_strvalue,
 			   (char *) request->password->vp_strvalue) != 0){
@@ -588,13 +588,13 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 	done:
-		DEBUG("rlm_pap: User authenticated successfully");
+		RDEBUG("User authenticated successfully");
 		return RLM_MODULE_OK;
 		break;
 
 	case PAP_ENC_CRYPT:
 	do_crypt:
-		DEBUG("rlm_pap: Using CRYPT encryption.");
+		RDEBUG("Using CRYPT encryption.");
 		if (fr_crypt_check((char *) request->password->vp_strvalue,
 				     (char *) vp->vp_strvalue) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CRYPT password check failed");
@@ -605,11 +605,11 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 	case PW_MD5_PASSWORD:
 	do_md5:
-		DEBUG("rlm_pap: Using MD5 encryption.");
+		RDEBUG("Using MD5 encryption.");
 
-		normify(vp, 16);
+		normify(request, vp, 16);
 		if (vp->length != 16) {
-		DEBUG("rlm_pap: Configured MD5 password has incorrect length");
+		RDEBUG("Configured MD5 password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured MD5 password has incorrect length");
 			goto make_msg;
 		}
@@ -627,11 +627,11 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 	case PW_SMD5_PASSWORD:
 	do_smd5:
-		DEBUG("rlm_pap: Using SMD5 encryption.");
+		RDEBUG("Using SMD5 encryption.");
 
-		normify(vp, 16);
+		normify(request, vp, 16);
 		if (vp->length <= 16) {
-			DEBUG("rlm_pap: Configured SMD5 password has incorrect length");
+			RDEBUG("Configured SMD5 password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured SMD5 password has incorrect length");
 			goto make_msg;
 		}
@@ -654,11 +654,11 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 	case PW_SHA_PASSWORD:
 	do_sha:
-		DEBUG("rlm_pap: Using SHA1 encryption.");
+		RDEBUG("Using SHA1 encryption.");
 
-		normify(vp, 20);
+		normify(request, vp, 20);
 		if (vp->length != 20) {
-			DEBUG("rlm_pap: Configured SHA1 password has incorrect length");
+			RDEBUG("Configured SHA1 password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured SHA1 password has incorrect length");
 			goto make_msg;
 		}
@@ -676,11 +676,11 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 	case PW_SSHA_PASSWORD:
 	do_ssha:
-		DEBUG("rlm_pap: Using SSHA encryption.");
+		RDEBUG("Using SSHA encryption.");
 
-		normify(vp, 20);
+		normify(request, vp, 20);
 		if (vp->length <= 20) {
-			DEBUG("rlm_pap: Configured SSHA password has incorrect length");
+			RDEBUG("Configured SSHA password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured SHA password has incorrect length");
 			goto make_msg;
 		}
@@ -700,11 +700,11 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 	case PW_NT_PASSWORD:
 	do_nt:
-		DEBUG("rlm_pap: Using NT encryption.");
+		RDEBUG("Using NT encryption.");
 
-		normify(vp, 16);
+		normify(request, vp, 16);
 		if (vp->length != 16) {
-			DEBUG("rlm_pap: Configured NT-Password has incorrect length");
+			RDEBUG("Configured NT-Password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NT-Password has incorrect length");
 			goto make_msg;
 		}
@@ -712,7 +712,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		snprintf(buff2, sizeof(buff2), "%%{mschap:NT-Hash %s}",
 			request->password->vp_strvalue);
 		if (!radius_xlat(digest, sizeof(digest),buff2,request,NULL)){
-			DEBUG("rlm_pap: mschap xlat failed");
+			RDEBUG("mschap xlat failed");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
 			goto make_msg;
 		}
@@ -726,18 +726,18 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 	case PW_LM_PASSWORD:
 	do_lm:
-		DEBUG("rlm_pap: Using LM encryption.");
+		RDEBUG("Using LM encryption.");
 
-		normify(vp, 16);
+		normify(request, vp, 16);
 		if (vp->length != 16) {
-			DEBUG("rlm_pap: Configured LM-Password has incorrect length");
+			RDEBUG("Configured LM-Password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured LM-Password has incorrect length");
 			goto make_msg;
 		}
 		snprintf(buff2, sizeof(buff2), "%%{mschap:LM-Hash %s}",
 			request->password->vp_strvalue);
 		if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
-			DEBUG("rlm_pap: mschap xlat failed");
+			RDEBUG("mschap xlat failed");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
 			goto make_msg;
 		}
@@ -745,7 +745,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		    (memcmp(digest, vp->vp_octets, vp->length) != 0)) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: LM password check failed");
 		make_msg:
-			DEBUG("rlm_pap: Passwords don't match");
+			RDEBUG("Passwords don't match");
 			module_fmsg_vp = pairmake("Module-Failure-Message",
 						  module_fmsg, T_OP_EQ);
 			pairadd(&request->packet->vps, module_fmsg_vp);
@@ -756,10 +756,10 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 	case PAP_ENC_NS_MTA_MD5:
 	do_ns_mta_md5:
-		DEBUG("rlm_pap: Using NT-MTA-MD5 password");
+		RDEBUG("Using NT-MTA-MD5 password");
 
 		if (vp->length != 64) {
-			DEBUG("rlm_pap: Configured NS-MTA-MD5-Password has incorrect length");
+			RDEBUG("Configured NS-MTA-MD5-Password has incorrect length");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NS-MTA-MD5-Password has incorrect length");
 			goto make_msg;
 		}
@@ -768,7 +768,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		 *	Sanity check the value of NS-MTA-MD5-Password
 		 */
 		if (fr_hex2bin(vp->vp_strvalue, buff, 32) != 16) {
-			DEBUG("rlm_pap: Configured NS-MTA-MD5-Password has invalid value");
+			RDEBUG("Configured NS-MTA-MD5-Password has invalid value");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NS-MTA-MD5-Password has invalid value");
 			goto make_msg;
 		}
@@ -779,7 +779,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		 *	This really: sizeof(buff) - 2 - 2*32 - strlen(passwd)
 		 */
 		if (strlen(request->password->vp_strvalue) >= (sizeof(buff2) - 2 - 2 * 32)) {
-			DEBUG("rlm_pap: Configured password is too long");
+			RDEBUG("Configured password is too long");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: password is too long");
 			goto make_msg;
 		}
@@ -814,7 +814,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		break;
 	}
 
-	DEBUG("rlm_pap: No password configured for the user.  Cannot do authentication");
+	RDEBUG("No password configured for the user.  Cannot do authentication");
 	return RLM_MODULE_FAIL;
 }
 
