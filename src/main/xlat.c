@@ -414,6 +414,32 @@ static size_t xlat_regex(void *instance, REQUEST *request,
 
 
 /*
+ *	Change the debugging level.
+ */
+static size_t xlat_debug(void *instance, REQUEST *request,
+			  char *fmt, char *out, size_t outlen,
+			  RADIUS_ESCAPE_STRING func)
+{
+	int level = 0;
+
+	if (*fmt) level = atoi(fmt);
+
+	if (level == 0) {
+		request->options = RAD_REQUEST_OPTION_NONE;
+		request->radlog = NULL;
+	} else {
+		if (level > 4) level = 4;
+
+		request->options = level;
+		request->radlog = radlog_request;
+	}
+
+	snprintf(out, outlen, "%d", level);
+	return strlen(out);
+}
+
+
+/*
  *	Compare two xlat_t structs, based ONLY on the module name.
  */
 static int xlat_cmp(const void *a, const void *b)
@@ -512,6 +538,12 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 			c->internal = TRUE;
 		}
 #endif /* HAVE_REGEX_H */
+
+
+		xlat_register("debug", xlat_debug, &xlat_inst[0]);
+		c = xlat_find("debug");
+		rad_assert(c != NULL);
+		c->internal = TRUE;
 	}
 
 	/*
