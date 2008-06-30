@@ -295,47 +295,86 @@ void force_log_reopen(void)
 	fr_log_fp = log_fp = NULL;
 }
 
+extern char *request_log_file;
 
 void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ...)
 {
+	size_t len = 0;
+	FILE *fp = NULL;
 	va_list ap;
-
-	request = request;	/* -Wunused */
+	char buffer[1024];
 
 	va_start(ap, msg);
 
 	/*
-	 *	Debugging messages get printed as informational messages
-	 *	if there's a log function, and the priority there says
-	 *	to print it.
+	 *	Debug messages get treated specially.
 	 */
-	if ((lvl == L_DBG) && !debug_flag &&
-	    (request && request->radlog && 
-	     (request->options >= priority))) lvl = L_INFO;
-
-	/*
-	 *	If the message is normal, OR it's debugging at a high
-	 *	enough priority level, print it out.
-	 */
-	if ((lvl != L_DBG) ||
-	    (debug_flag >= priority)) {
-		size_t len;
-		char buffer[1024];
-
-		if (!request->module[0]) {
-			len = 0;
-		} else {
-			snprintf(buffer, sizeof(buffer), "[%s] ", request->module);
-			len = strlen(buffer);
+	if (lvl == L_DBG) {
+		/*
+		 *	There is log function, but the debug level
+		 *	isn't high enough.  OR, we're in debug mode,
+		 *	and the debug level isn't high enough.  Return.
+		 */
+		if ((request && request->radlog &&
+		     (priority > request->options)) ||
+		    ((debug_flag != 0) && (priority > debug_flag))) {
+			va_end(ap);
+			return;
 		}
-		vsnprintf(buffer + len, sizeof(buffer) - len, msg, ap);
 
 		/*
-		 *	FIXME: Allow different log messages to go to
-		 *	different locations, based on "xlat".
+		 *	Debug messages get mashed to L_INFO for
+		 *	radius.log.
 		 */
-		radlog(lvl, "%s", buffer);
+		if (!request_log_file) lvl = L_INFO;
 	}
+
+	if (request && request_log_file) {
+		radius_xlat(buffer, sizeof(buffer), request_log_file,
+			    request, NULL); /* FIXME: escape chars! */
+
+		/*
+		 *	FIXME: call mkdir?
+		 */
+		fp = fopen(buffer, "a");
+	}
+
+	/*
+	 *	Print timestamps to the file.
+	 */
+	if (fp) {
+		char *s;
+		time_t timeval;
+		timeval = time(NULL);
+
+		CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
+		
+		s = strrchr(buffer, '\n');
+		if (s) {
+			s[0] = ' ';
+			s[1] = '\0';
+		}
+		
+		s = fr_int2str(levels, (lvl & ~L_CONS), ": ");
+		
+		strcat(buffer, s);
+		len = strlen(buffer);
+	}
+	
+	if (request->module[0]) {
+		snprintf(buffer + len, sizeof(buffer) + len, "[%s] ", request->module);
+		len = strlen(buffer);
+	}
+	vsnprintf(buffer + len, sizeof(buffer) - len, msg, ap);
+	
+	if (!fp) {
+		radlog(lvl, "%s", buffer);
+	} else {
+		fputs(buffer, fp);
+		fputc('\n', fp);
+		fclose(fp);
+	}
+
 	va_end(ap);
 }
 

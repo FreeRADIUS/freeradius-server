@@ -59,6 +59,7 @@ RCSID("$Id$")
 #endif
 
 struct main_config_t mainconfig;
+char *request_log_file = NULL;
 
 /*
  *	Temporary local variables for parsing the configuration
@@ -158,6 +159,7 @@ static const CONF_PARSER logdest_config[] = {
 	{ "syslog_facility",  PW_TYPE_STRING_PTR, 0, &syslog_facility, Stringify(0) },
 
 	{ "file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, "${logdir}/radius.log" },
+	{ "requests", PW_TYPE_STRING_PTR, -1, &request_log_file, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
