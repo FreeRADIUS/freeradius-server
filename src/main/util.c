@@ -376,6 +376,10 @@ REQUEST *request_alloc(void)
 #endif
 	request->options = RAD_REQUEST_OPTION_NONE;
 
+	request->module = "";
+	request->component = "";
+	if (debug_flag) request->radlog = radlog_request;
+
 	return request;
 }
 
