@@ -77,6 +77,14 @@ int log_stripped_names;
  *	Global, for log.c to use.
  */
 struct main_config_t mainconfig;
+char *request_log_file = NULL;
+char *debug_log_file = NULL;
+int radius_xlat(char *out, int outlen, const char *fmt,
+		REQUEST *request, RADIUS_ESCAPE_STRING func)
+{
+	*out = 0;
+	return 0;
+}
 
 struct radutmp_config_t {
   char *radutmp_fn;
