@@ -1250,7 +1250,40 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		}
 
 		ptr = cbuf = buf;
-		t1 = gettoken(&ptr, buf1, sizeof(buf1));
+
+		/*
+		 *	The parser is getting to be evil.
+		 */
+		while ((*ptr == ' ') || (*ptr == '\t')) ptr++;
+
+		if ((ptr[0] == '%') && (ptr[1] == '{')) {
+			int hack;
+
+			hack = rad_copy_variable(buf1, ptr);
+			if (hack < 0) {
+				radlog(L_ERR, "%s[%d]: Invalid expansion: %s",
+				       filename, *lineno, ptr);
+				return -1;
+			}
+
+			t1 = T_BARE_WORD;
+			ptr += hack;
+
+
+			t2 = gettoken(&ptr, buf2, sizeof(buf2));
+			switch (t2) {
+			case T_EOL:
+			case T_HASH:
+				goto do_bare_word;
+				
+			default:
+				radlog(L_ERR, "%s[%d]: Invalid expansion: %s",
+				       filename, *lineno, ptr);
+				return -1;
+			}
+		} else {
+			t1 = gettoken(&ptr, buf1, sizeof(buf1));
+		}
 
 		/*
 		 *	The caller eats "name1 name2 {", and calls us
@@ -1415,6 +1448,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		switch (t2) {
 		case T_EOL:
 		case T_HASH:
+		do_bare_word:
 			t2 = T_OP_EQ;
 			value = NULL;
 			goto do_set;

@@ -52,7 +52,7 @@ struct modcallable {
 #ifdef WITH_UNLANG
 	       MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE,
 #endif
-	       MOD_POLICY, MOD_REFERENCE } type;
+	       MOD_POLICY, MOD_REFERENCE, MOD_XLAT } type;
 	int method;
 	int actions[RLM_MODULE_NUMCODES];
 };
@@ -80,6 +80,11 @@ typedef struct {
 	const char *ref_name;
 	CONF_SECTION *ref_cs;
 } modref;
+
+typedef struct {
+	modcallable mc;
+	const char *xlat_name;
+} modxlat;
 
 static const FR_NAME_NUMBER grouptype_table[] = {
 	{ "", GROUPTYPE_SIMPLE },
@@ -116,6 +121,16 @@ static modref *mod_callabletoref(modcallable *p)
 	return (modref *)p;
 }
 static modcallable *mod_reftocallable(modref *p)
+{
+	return (modcallable *)p;
+}
+
+static modxlat *mod_callabletoxlat(modcallable *p)
+{
+	rad_assert(p->type==MOD_XLAT);
+	return (modxlat *)p;
+}
+static modcallable *mod_xlattocallable(modxlat *p)
 {
 	return (modcallable *)p;
 }
@@ -451,6 +466,15 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			myresult = indexed_modcall(component, 0, request);
 			RDEBUG("} # server %s with nested call", mr->ref_name);
 			request->server = server;
+			goto handle_result;
+		}
+
+		if (child->type == MOD_XLAT) {
+			modxlat *mx = mod_callabletoxlat(child);
+			char buffer[128];
+
+			radius_xlat(buffer, sizeof(buffer), mx->xlat_name,
+				    request, NULL);
 			goto handle_result;
 		}
 
@@ -1355,6 +1379,30 @@ static modcallable *do_compile_modserver(modcallable *parent,
 	return csingle;
 }
 
+static modcallable *do_compile_modxlat(modcallable *parent,
+				       int component, const char *fmt)
+{
+	modcallable *csingle;
+	modxlat *mx;
+
+	mx = rad_malloc(sizeof(*mx));
+	memset(mx, 0, sizeof(*mx));
+
+	csingle = mod_xlattocallable(mx);
+	csingle->parent = parent;
+	csingle->next = NULL;
+	csingle->name = "expand";
+	csingle->type = MOD_XLAT;
+	csingle->method = component;
+
+	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
+	       sizeof(csingle->actions));
+	
+	mx->xlat_name = strdup(fmt);
+
+	return csingle;
+}
+
 /*
  *	redundant, etc. can refer to modules or groups, but not much else.
  */
@@ -1627,6 +1675,11 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		if (cf_pair_value(cp) != NULL) {
 			cf_log_err(ci, "Entry is not a reference to a module");
 			return NULL;
+		}
+
+		if ((modrefname[0] == '%') && (modrefname[1] == '{')) {
+			return do_compile_modxlat(parent, component,
+						  modrefname);
 		}
 
 		/*
