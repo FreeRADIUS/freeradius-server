@@ -296,10 +296,12 @@ void force_log_reopen(void)
 }
 
 extern char *request_log_file;
+extern char *debug_log_file;
 
 void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ...)
 {
 	size_t len = 0;
+	const char *filename = request_log_file;
 	FILE *fp = NULL;
 	va_list ap;
 	char buffer[1024];
@@ -323,19 +325,40 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 		}
 
 		/*
+		 *	Use the debug output file, if specified,
+		 *	otherwise leave it as "request_log_file".
+		 */
+		if (debug_log_file) filename = debug_log_file;
+
+		/*
 		 *	Debug messages get mashed to L_INFO for
 		 *	radius.log.
 		 */
-		if (!request_log_file) lvl = L_INFO;
+		if (!filename) lvl = L_INFO;
 	}
 
-	if (request && request_log_file) {
-		radius_xlat(buffer, sizeof(buffer), request_log_file,
-			    request, NULL); /* FIXME: escape chars! */
+	if (request && filename) {
+		char *p;
 
 		/*
-		 *	FIXME: call mkdir?
+		 *	This is SLOW!  Doing it for every log message
+		 *	in every request is NOT recommended!
 		 */
+		radius_xlat(buffer, sizeof(buffer), filename,
+			    request, NULL); /* FIXME: escape chars! */
+
+		p = strrchr(buffer, FR_DIR_SEP);
+		if (p) {
+			*p = '\0';
+			if (rad_mkdir(buffer, S_IRWXU) < 0) {
+				radlog(L_ERR, "Failed creating %s: %s",
+				       buffer,strerror(errno));
+				va_end(ap);
+				return;
+			}
+			*p = FR_DIR_SEP;
+		}
+
 		fp = fopen(buffer, "a");
 	}
 
@@ -377,4 +400,3 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 
 	va_end(ap);
 }
-
