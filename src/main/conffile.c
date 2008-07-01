@@ -1256,10 +1256,15 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		 */
 		while ((*ptr == ' ') || (*ptr == '\t')) ptr++;
 
-		if ((ptr[0] == '%') && (ptr[1] == '{')) {
+		if (((ptr[0] == '%') && (ptr[1] == '{')) ||
+		    (ptr[0] == '`')) {
 			int hack;
 
-			hack = rad_copy_variable(buf1, ptr);
+			if (ptr[0] == '%') {
+				hack = rad_copy_variable(buf1, ptr);
+			} else {
+				hack = rad_copy_string(buf1, ptr);
+			}
 			if (hack < 0) {
 				radlog(L_ERR, "%s[%d]: Invalid expansion: %s",
 				       filename, *lineno, ptr);
@@ -1268,7 +1273,6 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 
 			t1 = T_BARE_WORD;
 			ptr += hack;
-
 
 			t2 = gettoken(&ptr, buf2, sizeof(buf2));
 			switch (t2) {

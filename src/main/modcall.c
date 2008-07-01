@@ -83,7 +83,8 @@ typedef struct {
 
 typedef struct {
 	modcallable mc;
-	const char *xlat_name;
+	int exec;
+	char *xlat_name;
 } modxlat;
 
 static const FR_NAME_NUMBER grouptype_table[] = {
@@ -473,8 +474,17 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			modxlat *mx = mod_callabletoxlat(child);
 			char buffer[128];
 
-			radius_xlat(buffer, sizeof(buffer), mx->xlat_name,
-				    request, NULL);
+			if (!mx->exec) {
+				radius_xlat(buffer, sizeof(buffer),
+					    mx->xlat_name, request, NULL);
+			} else {
+				RDEBUG("`%s`", mx->xlat_name);
+				radius_exec_program(mx->xlat_name, request,
+						    0, NULL, 0,
+						    request->packet->vps,
+						    NULL, 1);
+			}
+					    
 			goto handle_result;
 		}
 
@@ -1399,6 +1409,14 @@ static modcallable *do_compile_modxlat(modcallable *parent,
 	       sizeof(csingle->actions));
 	
 	mx->xlat_name = strdup(fmt);
+	if (fmt[0] != '%') {
+		char *p;
+		mx->exec = TRUE;
+
+		strcpy(mx->xlat_name, fmt + 1);
+		p = strrchr(mx->xlat_name, '`');
+		if (p) *p = '\0';
+	}
 
 	return csingle;
 }
@@ -1677,7 +1695,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			return NULL;
 		}
 
-		if ((modrefname[0] == '%') && (modrefname[1] == '{')) {
+		if (((modrefname[0] == '%') && (modrefname[1] == '{')) ||
+		    (modrefname[0] == '`')) {
 			return do_compile_modxlat(parent, component,
 						  modrefname);
 		}
