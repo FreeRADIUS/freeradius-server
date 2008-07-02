@@ -551,7 +551,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->clients = clients_parse_section(client_cs);
 	if (!sock->clients) {
 		cf_log_err(cf_sectiontoitem(cs),
-			   "Failed to find any clients for this listen section");
+			   "Failed to load clients for this listen section");
 		return -1;
 	}
 
