@@ -2858,6 +2858,6 @@ void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun)
 		request_post_handler(request);
 	}
 
-	RDEBUG2("Going to the next request");
+	DEBUG2("Going to the next request");
 	return;
 }
