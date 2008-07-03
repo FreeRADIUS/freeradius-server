@@ -207,9 +207,6 @@ retry:
     return -1;
 
   if ((rc = otp_write(fdp, (const char *) request, sizeof(*request))) != 0) {
-    if (rc == EPIPE)
-      goto retry;	/* otpd disconnect */	/*TODO: pause */
-    else
       return -1;
   }
 
@@ -284,7 +281,7 @@ otp_write(otp_fd_t *fdp, const char *buf, size_t len)
 
   while (nleft) {
     if ((nwrote = write(fdp->fd, &buf[len - nleft], nleft)) == -1) {
-      if (errno == EINTR || errno == EPIPE) {
+      if (errno == EINTR) {
         continue;
       } else {
         (void) radlog(L_ERR, "rlm_otp: %s: write to otpd: %s",
