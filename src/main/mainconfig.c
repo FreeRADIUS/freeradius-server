@@ -751,6 +751,10 @@ int read_mainconfig(int reload)
 	cf_section_free(&mainconfig.config);
 	mainconfig.config = cs;
 
+	if (!clients_parse_section(cs)) {
+		return -1;
+	}
+
 	DEBUG2("%s: #### Loading Realms and Home Servers ####", mainconfig.name);
 
 	if (!realms_init(cs)) {
