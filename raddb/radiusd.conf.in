@@ -521,18 +521,6 @@ $INCLUDE proxy.conf
 $INCLUDE clients.conf
 
 
-# SNMP CONFIGURATION
-#
-#  Snmp configuration is only valid if SNMP support was enabled
-#  at compile time.
-#
-#  To enable SNMP querying of the server, set the value of the
-#  'snmp' attribute to 'yes'
-#
-snmp	= no
-$INCLUDE snmp.conf
-
-
 # THREAD POOL CONFIGURATION
 #
 #  The thread pool is a long-lived group of threads which
