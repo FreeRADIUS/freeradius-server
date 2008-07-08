@@ -315,7 +315,13 @@ static int rad_status_server(REQUEST *request)
 	}
 
 #ifdef WITH_STATS
-	request_stats_reply(request);
+	/*
+	 *	Full statistics are available only on a statistics
+	 *	socket.
+	 */
+	if (request->listener->type == RAD_LISTEN_NONE) {
+		request_stats_reply(request);
+	}
 #endif
 
 	return 0;
