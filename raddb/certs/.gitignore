@@ -1,0 +1,11 @@
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.old
+*.attr
+dh
+index.txt
+random
+serial
