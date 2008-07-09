@@ -137,7 +137,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 
 		eap_type = eaptype_name2type(auth_type);
 		if (eap_type < 0) {
-			radlog(L_ERR|L_CONS, "rlm_eap: Unknown EAP type %s",
+			radlog(L_ERR, "rlm_eap: Unknown EAP type %s",
 			       auth_type);
 			eap_detach(inst);
 			return -1;
@@ -159,7 +159,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		if ((eap_type == PW_EAP_TLS) ||
 		    (eap_type == PW_EAP_TTLS) ||
 		    (eap_type == PW_EAP_PEAP)) {
-			DEBUG2("rlm_eap: Ignoring EAP-Type/%s because we do not have OpenSSL support.", auth_type);
+			RDEBUG2("Ignoring EAP-Type/%s because we do not have OpenSSL support.", auth_type);
 			continue;
 		}
 #endif
@@ -252,7 +252,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	 */
 	eap_packet = eap_vp2packet(request->packet->vps);
 	if (eap_packet == NULL) {
-		radlog(L_ERR, "rlm_eap: Malformed EAP Message");
+		radlog_request(L_ERR, 0, request, "Malformed EAP Message");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -263,7 +263,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	 */
 	handler = eap_handler(inst, &eap_packet, request);
 	if (handler == NULL) {
-		DEBUG2("  rlm_eap: Failed in handler");
+		RDEBUG2("Failed in handler");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -279,7 +279,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	if (rcode == EAP_INVALID) {
 		eap_fail(handler);
 		eap_handler_free(handler);
-		DEBUG2("  rlm_eap: Failed in EAP select");
+		RDEBUG2("Failed in EAP select");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -287,7 +287,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	 *	If we're doing horrible tunneling work, remember it.
 	 */
 	if ((request->options & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
-		DEBUG2("  Not-EAP proxy set.  Not composing EAP");
+		RDEBUG2("  Not-EAP proxy set.  Not composing EAP");
 		/*
 		 *	Add the handle to the proxied list, so that we
 		 *	can retrieve it in the post-proxy stage, and
@@ -345,7 +345,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 */
 		pairdelete(&request->proxy->vps, PW_FREERADIUS_PROXIED_TO);
 
-		DEBUG2("  Tunneled session will be proxied.  Not doing EAP.");
+		RDEBUG2("  Tunneled session will be proxied.  Not doing EAP.");
 		return RLM_MODULE_HANDLED;
 	}
 
@@ -392,7 +392,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		}
 
 	} else {
-		DEBUG2("  rlm_eap: Freeing handler");
+		RDEBUG2("Freeing handler");
 		/* handler is not required any more, free it now */
 		eap_handler_free(handler);
 	}
@@ -526,7 +526,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 							      request->proxy,
 							      REQUEST_DATA_EAP_TUNNEL_CALLBACK);
 		if (!data) {
-			radlog(L_ERR, "rlm_eap: Failed to retrieve callback for tunneled session!");
+			radlog_request(L_ERR, 0, request, "Failed to retrieve callback for tunneled session!");
 			eap_handler_free(handler);
 			return RLM_MODULE_FAIL;
 		}
@@ -534,11 +534,11 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		/*
 		 *	Do the callback...
 		 */
-		DEBUG2("  rlm_eap: Doing post-proxy callback");
+		RDEBUG2("Doing post-proxy callback");
 		rcode = data->callback(handler, data->tls_session);
 		free(data);
 		if (rcode == 0) {
-			DEBUG2("  rlm_eap: Failed in post-proxy callback");
+			RDEBUG2("Failed in post-proxy callback");
 			eap_fail(handler);
 			eap_handler_free(handler);
 			return RLM_MODULE_REJECT;
@@ -563,7 +563,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 			}
 			
 		} else {	/* couldn't have been LEAP, there's no tunnel */
-			DEBUG2("  rlm_eap: Freeing handler");
+			RDEBUG2("Freeing handler");
 			/* handler is not required any more, free it now */
 			eap_handler_free(handler);
 		}
@@ -589,7 +589,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 
 		return RLM_MODULE_OK;
 	} else {
-		DEBUG2("  rlm_eap: No pre-existing handler found");
+		RDEBUG2("No pre-existing handler found");
 	}
 
 
@@ -630,7 +630,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 	 *	The format is very specific.
 	 */
 	if (vp->length != 17 + 34) {
-		DEBUG2("  rlm_eap: Cisco-AVPair with leap:session-key has incorrect length %d: Expected %d",
+		RDEBUG2("Cisco-AVPair with leap:session-key has incorrect length %d: Expected %d",
 		       vp->length, 17 + 34);
 		return RLM_MODULE_NOOP;
 	}
