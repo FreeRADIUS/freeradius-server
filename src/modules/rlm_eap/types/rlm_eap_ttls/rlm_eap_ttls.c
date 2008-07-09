@@ -132,7 +132,7 @@ static void ttls_free(void *p)
 	if (!t) return;
 
 	if (t->username) {
-		DEBUG2("  TTLS: Freeing handler for user %s",
+		DEBUG2("rlm_eap_ttls: Freeing handler for user %s",
 		       t->username->vp_strvalue);
 	}
 
@@ -171,14 +171,15 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 	rlm_eap_ttls_t *inst = (rlm_eap_ttls_t *) arg;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
 	ttls_tunnel_t *t = (ttls_tunnel_t *) tls_session->opaque;
+	REQUEST *request = handler->request;
 
-	DEBUG2("  rlm_eap_ttls: Authenticate");
+	RDEBUG2("Authenticate");
 
 	/*
 	 *	Process TLS layer until done.
 	 */
 	status = eaptls_process(handler);
-	DEBUG2("  eaptls_process returned %d\n", status);
+	RDEBUG2("eaptls_process returned %d\n", status);
 	switch (status) {
 		/*
 		 *	EAP-TLS handshake was successful, tell the
@@ -229,7 +230,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 	 *	Session is established, proceed with decoding
 	 *	tunneled data.
 	 */
-	DEBUG2("  rlm_eap_ttls: Session established.  Proceeding to decode tunneled attributes.");
+	RDEBUG2("Session established.  Proceeding to decode tunneled attributes.");
 
 	/*
 	 *	We may need TTLS data associated with the session, so

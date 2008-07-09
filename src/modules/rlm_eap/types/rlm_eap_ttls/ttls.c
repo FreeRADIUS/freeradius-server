@@ -43,7 +43,8 @@ RCSID("$Id$")
 /*
  *	Verify that the diameter packet is valid.
  */
-static int diameter_verify(const uint8_t *data, unsigned int data_len)
+static int diameter_verify(REQUEST *request,
+			   const uint8_t *data, unsigned int data_len)
 {
 	uint32_t attr;
 	uint32_t length;
@@ -52,7 +53,7 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
 
 	while (data_left > 0) {
 		if (data_len < 12) {
-			DEBUG2("  rlm_eap_ttls:  Diameter attribute is too small to contain a Diameter header");
+			RDEBUG2(" Diameter attribute is too small to contain a Diameter header");
 			return 0;
 		}
 
@@ -61,7 +62,7 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
 		data += 4;
 		attr = ntohl(attr);
 		if (attr > 255) {
-			DEBUG2("  rlm_eap_ttls:  Non-RADIUS attribute in tunneled authentication is not supported");
+			RDEBUG2(" Non-RADIUS attribute in tunneled authentication is not supported");
 			return 0;
 		}
 
@@ -83,7 +84,7 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
 			vendor = ntohl(vendor);
 
 			if (vendor > 65535) {
-				DEBUG2("  rlm_eap_ttls: Vendor codes larger than 65535 are not supported");
+				RDEBUG2("Vendor codes larger than 65535 are not supported");
 				return 0;
 			}
 
@@ -96,7 +97,7 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
 			 *	for the mandatory bit.
 			 */
 			if (!da) {
-				DEBUG2("  rlm_eap_ttls: Fatal! Vendor %u, Attribute %u was not found in our dictionary. ",
+				RDEBUG2("Fatal! Vendor %u, Attribute %u was not found in our dictionary. ",
 				       vendor, attr);
 				return 0;
 			}
@@ -118,7 +119,7 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
 		 *	Too short or too long is bad.
 		 */
 		if (length < offset) {
-			DEBUG2("  rlm_eap_ttls: Tunneled attribute %d is too short (%d)to contain anything useful.", attr, length);
+			RDEBUG2("Tunneled attribute %d is too short (%d)to contain anything useful.", attr, length);
 			return 0;
 		}
 
@@ -128,12 +129,12 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
 		 */
 		if ((attr != PW_EAP_MESSAGE) &&
 		    (length > (MAX_STRING_LEN + 8))) {
-			DEBUG2("  rlm_eap_ttls: Tunneled attribute %d is too long (%d) to pack into a RADIUS attribute.", attr, length);
+			RDEBUG2("Tunneled attribute %d is too long (%d) to pack into a RADIUS attribute.", attr, length);
 			return 0;
 		}
 
 		if (length > data_left) {
-			DEBUG2("  rlm_eap_ttls: Tunneled attribute %d is longer than room left in the packet (%d > %d).", attr, length, data_left);
+			RDEBUG2("Tunneled attribute %d is longer than room left in the packet (%d > %d).", attr, length, data_left);
 			return 0;
 		}
 
@@ -159,7 +160,7 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
 		 *	of the packet, die.
 		 */
 		if (data_left < length) {
-			DEBUG2("  rlm_eap_ttls: ERROR! Diameter attribute overflows packet!");
+			RDEBUG2("ERROR! Diameter attribute overflows packet!");
 			return 0;
 		}
 
@@ -186,7 +187,7 @@ static int diameter_verify(const uint8_t *data, unsigned int data_len)
 /*
  *	Convert diameter attributes to our VALUE_PAIR's
  */
-static VALUE_PAIR *diameter2vp(SSL *ssl,
+static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 			       const uint8_t *data, size_t data_len)
 {
 	uint32_t	attr;
@@ -220,13 +221,13 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 			vendor = ntohl(vendor);
 
 			if (attr > 65535) {
-				DEBUG2("  rlm_eap_ttls: Cannot handle vendor attributes greater than 65535");
+				RDEBUG2("Cannot handle vendor attributes greater than 65535");
 				pairfree(&first);
 				return NULL;
 			}
 
 			if (vendor > 32767) {
-				DEBUG2("  rlm_eap_ttls: Cannot handle vendor Id greater than 32767");
+				RDEBUG2("Cannot handle vendor Id greater than 32767");
 				pairfree(&first);
 				return NULL;
 			}
@@ -242,7 +243,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		 *	Normal attributes cannot be.
 		 */
 		if ((attr > 255) && (VENDOR(attr) == 0)) {
-			DEBUG2("  rlm_eap_ttls: Cannot handle Diameter attributes");
+			RDEBUG2("Cannot handle Diameter attributes");
 			pairfree(&first);
 			return NULL;
 		}
@@ -269,7 +270,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		 */
 		vp = paircreate(attr, PW_TYPE_OCTETS);
 		if (!vp) {
-			DEBUG2("  rlm_eap_ttls: Failure in creating VP");
+			RDEBUG2("Failure in creating VP");
 			pairfree(&first);
 			return NULL;
 		}
@@ -282,7 +283,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
 			if (size != vp->length) {
-				DEBUG2("  rlm_eap_ttls: Invalid length attribute %d",
+				RDEBUG2("Invalid length attribute %d",
 				       attr);
 				pairfree(&first);
 				pairfree(&vp);
@@ -298,7 +299,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 
 		case PW_TYPE_IPADDR:
 			if (size != vp->length) {
-				DEBUG2("  rlm_eap_ttls: Invalid length attribute %d",
+				RDEBUG2("Invalid length attribute %d",
 				       attr);
 				pairfree(&first);
 				pairfree(&vp);
@@ -341,7 +342,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 
 					vp = paircreate(attr, PW_TYPE_OCTETS);
 					if (!vp) {
-						DEBUG2("  rlm_eap_ttls: Failure in creating VP");
+						RDEBUG2("Failure in creating VP");
 						pairfree(&first);
 						return NULL;
 					}
@@ -401,7 +402,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 		case PW_MSCHAP_CHALLENGE:
 			if ((vp->length < 8) ||
 			    (vp->length > 16)) {
-				DEBUG2("  TTLS: Tunneled challenge has invalid length");
+				RDEBUG("Tunneled challenge has invalid length");
 				pairfree(&first);
 				pairfree(&vp);
 				return NULL;
@@ -414,7 +415,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
 
 				if (memcmp(challenge, vp->vp_octets,
 					   vp->length) != 0) {
-					DEBUG2("  TTLS: Tunneled challenge is incorrect");
+					RDEBUG("Tunneled challenge is incorrect");
 					pairfree(&first);
 					pairfree(&vp);
 					return NULL;
@@ -465,7 +466,7 @@ static VALUE_PAIR *diameter2vp(SSL *ssl,
  *	are ones which can go inside of a RADIUS (i.e. diameter)
  *	packet.  So no server-configuration attributes, or the like.
  */
-static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
+static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *first)
 {
 	/*
 	 *	RADIUS packets are no more than 4k in size, so if
@@ -488,7 +489,7 @@ static int vp2diameter(tls_session_t *tls_session, VALUE_PAIR *first)
 		 *	Too much data: die.
 		 */
 		if ((total + vp->length + 12) >= sizeof(buffer)) {
-			DEBUG2("  TTLS output buffer is full!");
+			RDEBUG2("output buffer is full!");
 			return 0;
 		}
 
@@ -652,7 +653,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 	 */
 	switch (reply->code) {
 	case PW_AUTHENTICATION_ACK:
-		DEBUG2("  TTLS: Got tunneled Access-Accept");
+		RDEBUG("Got tunneled Access-Accept");
 
 		rcode = RLM_MODULE_OK;
 
@@ -667,7 +668,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		vp = NULL;
 		pairmove2(&vp, &reply->vps, PW_MSCHAP2_SUCCESS);
 		if (vp) {
-			DEBUG2("  TTLS: Got MS-CHAP2-Success, tunneling it to the client in a challenge.");
+			RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge.");
 			rcode = RLM_MODULE_HANDLED;
 			t->authenticated = TRUE;
 
@@ -707,7 +708,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	VP's back to the client.
 		 */
 		if (vp) {
-			vp2diameter(tls_session, vp);
+			vp2diameter(request, tls_session, vp);
 			pairfree(&vp);
 		}
 
@@ -727,7 +728,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 
 
 	case PW_AUTHENTICATION_REJECT:
-		DEBUG2("  TTLS: Got tunneled Access-Reject");
+		RDEBUG("Got tunneled Access-Reject");
 		rcode = RLM_MODULE_REJECT;
 		break;
 
@@ -738,7 +739,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	a Reply-Message to the client.
 		 */
 	case PW_ACCESS_CHALLENGE:
-		DEBUG2("  TTLS: Got tunneled Access-Challenge");
+		RDEBUG("Got tunneled Access-Challenge");
 
 		/*
 		 *	Keep the State attribute, if necessary.
@@ -773,14 +774,14 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	VP's back to the client.
 		 */
 		if (vp) {
-			vp2diameter(tls_session, vp);
+			vp2diameter(request, tls_session, vp);
 			pairfree(&vp);
 		}
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
 	default:
-		DEBUG2("  TTLS: Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
+		RDEBUG("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
 		rcode = RLM_MODULE_INVALID;
 		break;
 	}
@@ -796,9 +797,9 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 {
 	int rcode;
 	tls_session_t *tls_session = (tls_session_t *) data;
-	REQUEST *fake;
+	REQUEST *fake, *request = handler->request;
 
-	DEBUG2("  TTLS: Passing reply from proxy back into the tunnel.");
+	RDEBUG("Passing reply from proxy back into the tunnel.");
 
 	/*
 	 *	If there was a fake request associated with the proxied
@@ -812,7 +813,6 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 	 *	Do the callback, if it exists, and if it was a success.
 	 */
 	if (fake && (handler->request->proxy_reply->code == PW_AUTHENTICATION_ACK)) {
-		VALUE_PAIR *vp;
 		REQUEST *request = handler->request;
 
 		/*
@@ -833,10 +833,12 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 		 */
 		fake->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 		rcode = rad_postauth(fake);
-		DEBUG2("  POST-AUTH %d", rcode);
+		RDEBUG2("post-auth returns %d", rcode);
 
 #ifndef NDEBUG
 		if ((debug_flag > 0) && fr_log_fp) {
+			VALUE_PAIR *vp;
+
 			fprintf(fr_log_fp, "  TTLS: Final reply from tunneled session code %d\n",
 			       fake->reply->code);
 
@@ -869,7 +871,7 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 			break;
 
                 default:  /* Don't Do Anything */
-			DEBUG2(" TTLS: Got reply %d",
+			RDEBUG2("sGot reply %d",
 			       request->proxy_reply->code);
 			break;
 		}
@@ -891,16 +893,16 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
-		DEBUG2("  TTLS: Reply was rejected");
+		RDEBUG("Reply was rejected");
 		break;
 
 	case RLM_MODULE_HANDLED:
-		DEBUG2("  TTLS: Reply was handled");
+		RDEBUG("Reply was handled");
 		eaptls_request(handler->eap_ds, tls_session);
 		return 1;
 
 	case RLM_MODULE_OK:
-		DEBUG2("  TTLS: Reply was OK");
+		RDEBUG("Reply was OK");
 		eaptls_success(handler->eap_ds, 0);
 		eaptls_gen_mppe_keys(&handler->request->reply->vps,
 				     tls_session->ssl,
@@ -908,7 +910,7 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 		return 1;
 
 	default:
-		DEBUG2("  TTLS: Reply was unknown.");
+		RDEBUG("Reply was unknown.");
 		break;
 	}
 
@@ -950,7 +952,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 */
 	err = tls_handshake_recv(tls_session);
 	if (!err) {
-		DEBUG2(" rlm_eap_peap: Failed in SSL");
+		RDEBUG2("Failed in SSL");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -970,7 +972,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 */
 	if (data_len == 0) {
 		if (t->authenticated) {
-			DEBUG2("  TTLS: Got ACK, and the user was already authenticated.");
+			RDEBUG("Got ACK, and the user was already authenticated.");
 			return PW_AUTHENTICATION_ACK;
 		} /* else no session, no data, die. */
 
@@ -978,7 +980,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		 *	FIXME: Call SSL_get_error() to see what went
 		 *	wrong.
 		 */
-		DEBUG2("rlm_eap_ttls: SSL_read Error");
+		RDEBUG2("SSL_read Error");
 		return PW_AUTHENTICATION_REJECT;
 	}
 
@@ -997,7 +999,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	}
 #endif
 
-	if (!diameter_verify(data, data_len)) {
+	if (!diameter_verify(request, data, data_len)) {
 		return PW_AUTHENTICATION_REJECT;
 	}
 
@@ -1011,7 +1013,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	/*
 	 *	Add the tunneled attributes to the fake request.
 	 */
-	fake->packet->vps = diameter2vp(tls_session->ssl, data, data_len);
+	fake->packet->vps = diameter2vp(request, tls_session->ssl, data, data_len);
 	if (!fake->packet->vps) {
 		request_free(&fake);
 		return PW_AUTHENTICATION_REJECT;
@@ -1020,14 +1022,14 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	vp = pairmake("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
+	vp = pairmake("Freeradius-Proxied-T<o", "127.0.0.1", T_OP_EQ);
 	if (vp) {
 		pairadd(&fake->packet->vps, vp);
 	}
 
 #ifndef NDEBUG
 	if ((debug_flag > 0) && fr_log_fp) {
-		fprintf(fr_log_fp, "  TTLS: Got tunneled request\n");
+		RDEBUG("Got tunneled request\n");
 
 		debug_pair_list(fake->packet->vps);
 	}
@@ -1065,7 +1067,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				t->username->length = vp->length - 5;
 				t->username->vp_strvalue[t->username->length] = 0;
 
-				DEBUG2("  TTLS: Got tunneled identity of %s",
+				RDEBUG("Got tunneled identity of %s",
 				       t->username->vp_strvalue);
 
 				/*
@@ -1073,7 +1075,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				 *	set it here.
 				 */
 				if (t->default_eap_type != 0) {
-					DEBUG2("  TTLS: Setting default EAP type for tunneled EAP session.");
+					RDEBUG("Setting default EAP type for tunneled EAP session.");
 					vp = paircreate(PW_EAP_TYPE,
 							PW_TYPE_INTEGER);
 					rad_assert(vp != NULL);
@@ -1087,7 +1089,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				 *	as it's permitted to do EAP without
 				 *	user-name.
 				 */
-				DEBUG2("  rlm_eap_ttls: WARNING! No EAP-Identity found to start EAP conversation.");
+				RDEBUG2("WARNING! No EAP-Identity found to start EAP conversation.");
 			}
 		} /* else there WAS a t->username */
 
@@ -1186,7 +1188,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 #ifndef NDEBUG
 	if ((debug_flag > 0) && fr_log_fp) {
-		fprintf(fr_log_fp, "  TTLS: Sending tunneled request\n");
+		RDEBUG("Sending tunneled request\n");
 
 		debug_pair_list(fake->packet->vps);
 
@@ -1208,7 +1210,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	if ((debug_flag > 0) && fr_log_fp) {
 		fprintf(fr_log_fp, "} # server %s\n", fake->server);
 
-		fprintf(fr_log_fp, "  TTLS: Got tunneled reply RADIUS code %d\n",
+		RDEBUG("Got tunneled reply RADIUS code %d\n",
 		       fake->reply->code);
 		
 		debug_pair_list(fake->reply->vps);
@@ -1223,7 +1225,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		vp = pairfind(fake->config_items, PW_PROXY_TO_REALM);
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
-			DEBUG2("  TTLS: Tunneled authentication will be proxied to %s", vp->vp_strvalue);
+			RDEBUG("Tunneled authentication will be proxied to %s", vp->vp_strvalue);
 
 			/*
 			 *	Tell the original request that it's going
@@ -1282,7 +1284,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			rcode = PW_STATUS_CLIENT;
 
 		} else {
-			DEBUG2("  TTLS: No tunneled reply was found for request %d , and the request was not proxied: rejecting the user.",
+			RDEBUG("No tunneled reply was found for request %d , and the request was not proxied: rejecting the user.",
 			       request->number);
 			rcode = PW_AUTHENTICATION_REJECT;
 		}
