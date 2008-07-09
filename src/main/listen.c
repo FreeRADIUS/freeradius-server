@@ -647,18 +647,6 @@ static int stats_socket_recv(rad_listen_t *listener,
 		return 0;
 	}
 
-	/*
-	 *	We only understand Status-Server on this socket.
-	 */
-	if (code != PW_STATUS_SERVER) {
-		DEBUG("Ignoring packet code %d sent to Status-Server port",
-		      code);
-		rad_recv_discard(listener->fd);
-		RAD_STATS_TYPE_INC(listener, total_unknown_types);
-		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
-		return 0;
-	}
-
 	if ((client = client_listener_find(listener,
 					   &src_ipaddr)) == NULL) {
 		rad_recv_discard(listener->fd);
@@ -679,6 +667,18 @@ static int stats_socket_recv(rad_listen_t *listener,
 					buffer, sizeof(buffer)), src_port);
 		}
 
+		return 0;
+	}
+
+	/*
+	 *	We only understand Status-Server on this socket.
+	 */
+	if (code != PW_STATUS_SERVER) {
+		DEBUG("Ignoring packet code %d sent to Status-Server port",
+		      code);
+		rad_recv_discard(listener->fd);
+		RAD_STATS_TYPE_INC(listener, total_unknown_types);
+		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
 		return 0;
 	}
 
@@ -1473,7 +1473,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 {
 	int		override = FALSE;
 	int		rcode;
-	CONF_SECTION	*cs;
+	CONF_SECTION	*cs = NULL;
 	rad_listen_t	**last;
 	rad_listen_t	*this;
 	fr_ipaddr_t	server_ipaddr;
