@@ -462,6 +462,12 @@ REQUEST *request_alloc_fake(REQUEST *request)
   fake->reply->id = fake->packet->id;
   fake->reply->code = 0; /* UNKNOWN code */
 
+  /*
+   *	Copy debug information.
+   */
+  fake->options = request->options;
+  fake->radlog = request->radlog;
+
   return fake;
 }
 
