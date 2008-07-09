@@ -262,9 +262,10 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
 	int		status = 0;
 	VALUE_PAIR	*state;
+	REQUEST		*request = handler->request;
 
 	rad_assert(handler != NULL);
-	rad_assert(handler->request != NULL);
+	rad_assert(request != NULL);
 
 	/*
 	 *	Generate State, since we've been asked to add it to
@@ -272,22 +273,16 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 */
 	state = pairmake("State", "0x00", T_OP_EQ);
 	if (!state) return 0;
-	pairadd(&(handler->request->reply->vps), state);
 
 	/*
 	 *	The time at which this request was made was the time
 	 *	at which it was received by the RADIUS server.
 	 */
-	handler->timestamp = handler->request->timestamp;
+	handler->timestamp = request->timestamp;
 	handler->status = 1;
 
-	handler->src_ipaddr = handler->request->packet->src_ipaddr;
+	handler->src_ipaddr = request->packet->src_ipaddr;
 	handler->eap_id = handler->eap_ds->request->id;
-
-	/*
-	 *	We don't need this any more.
-	 */
-	handler->request = NULL;
 
 	/*
 	 *	Playing with a data structure shared among threads
@@ -361,12 +356,21 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 *	unlock it.
 	 */
  done:
+
+	/*
+	 *	We don't need this any more.
+	 */
+	if (status) handler->request = NULL;
+
 	pthread_mutex_unlock(&(inst->session_mutex));
 
 	if (!status) {
+		pairfree(&state);
 		radlog(L_ERR, "rlm_eap: Failed to store handler");
 		return 0;
 	}
+
+	pairadd(&(request->reply->vps), state);
 
 	return 1;
 }

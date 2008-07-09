@@ -788,6 +788,15 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
  */
 void eap_fail(EAP_HANDLER *handler)
 {
+	/*
+	 *	Delete any previous replies.
+	 */
+	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE);
+	pairdelete(&handler->request->reply->vps, PW_STATE);
+
+	eap_packet_free(&handler->eap_ds->request);
+	handler->eap_ds->request = eap_packet_alloc();
+
 	handler->eap_ds->request->code = PW_EAP_FAILURE;
 	eap_compose(handler);
 }

@@ -376,6 +376,15 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	     (handler->eap_ds->request->code == PW_EAP_SUCCESS) &&
 	     (handler->eap_ds->request->type.type == 0))) {
 
+		/*
+		 *	Return FAIL if we can't remember the handler.
+		 *	This is actually disallowed by the
+		 *	specification, as unexpected FAILs could have
+		 *	been forged.  However, we want to signal to
+		 *	everyone else involved that we are
+		 *	intentionally failing the session, as opposed
+		 *	to accidentally failing it.
+		 */
 		if (!eaplist_add(inst, handler)) {
 			eap_fail(handler);
 			eap_handler_free(handler);
