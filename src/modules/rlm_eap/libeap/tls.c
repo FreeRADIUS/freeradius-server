@@ -403,6 +403,8 @@ void tls_session_information(tls_session_t *tls_session)
 {
 	const char *str_write_p, *str_version, *str_content_type = "";
 	const char *str_details1 = "", *str_details2= "";
+	EAP_HANDLER *handler;
+	REQUEST *request;
 
 	/*
 	 *	Don't print this out in the normal course of
@@ -585,5 +587,13 @@ void tls_session_information(tls_session_t *tls_session)
 		 str_write_p, str_version, str_content_type,
 		 (unsigned long)tls_session->info.record_len,
 		 str_details1, str_details2);
-	DEBUG2("  rlm_eap_tls: %s\n", tls_session->info.info_description);
+
+	handler = (EAP_HANDLER *)SSL_get_ex_data(tls_session->ssl, 0);
+	if (handler) {
+		request = handler->request;
+	} else {
+		request = NULL;
+	}
+
+	RDEBUG2("%s\n", tls_session->info.info_description);
 }

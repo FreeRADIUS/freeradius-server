@@ -719,14 +719,15 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
 	EAPTLS_PACKET	*tlspacket;
 	eaptls_status_t	status;
+	REQUEST *request = handler->request;
 
-	DEBUG2("  rlm_eap_tls: processing TLS");
+	RDEBUG2("processing EAP-TLS");
 
 	/* This case is when SSL generates Alert then we
 	 * send that alert to the client and then send the EAP-Failure
 	 */
 	status = eaptls_verify(handler);
-	DEBUG2("  eaptls_verify returned %d\n", status);
+	RDEBUG2("eaptls_verify returned %d\n", status);
 
 	switch (status) {
 	default:
@@ -757,7 +758,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 		 *	data" phase.
 		 */
 	case EAPTLS_OK:
-		DEBUG2("  rlm_eap_tls: Done initial handshake");
+		RDEBUG2("Done initial handshake");
 
 		/*
 		 *	Get the rest of the fragments.

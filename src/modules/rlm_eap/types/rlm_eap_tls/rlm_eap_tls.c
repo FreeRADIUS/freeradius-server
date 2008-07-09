@@ -152,6 +152,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	int err, depth;
 	EAP_TLS_CONF *conf;
 	int my_ok = ok;
+	REQUEST *request;
 
 	client_cert = X509_STORE_CTX_get_current_cert(ctx);
 	err = X509_STORE_CTX_get_error(ctx);
@@ -169,6 +170,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 */
 	ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
 	handler = (EAP_HANDLER *)SSL_get_ex_data(ssl, 0);
+	request = handler->request;
 	conf = (EAP_TLS_CONF *)SSL_get_ex_data(ssl, 1);
 
 	/*
@@ -239,7 +241,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				/* if this fails, fail the verification */
 				my_ok = 0;
 			} else {
-				DEBUG2("    rlm_eap_tls: checking certificate CN (%s) with xlat'ed value (%s)", common_name, cn_str);
+				RDEBUG2("checking certificate CN (%s) with xlat'ed value (%s)", common_name, cn_str);
 				if (strcmp(cn_str, common_name) != 0) {
 					radlog(L_AUTH, "rlm_eap_tls: Certificate CN (%s) does not match specified value (%s)!", common_name, cn_str);
 					my_ok = 0;
@@ -249,14 +251,14 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	} /* depth == 0 */
 
 	if (debug_flag > 0) {
-		DEBUG2("chain-depth=%d, ", depth);
-		DEBUG2("error=%d", err);
+		RDEBUG2("chain-depth=%d, ", depth);
+		RDEBUG2("error=%d", err);
 
-		DEBUG2("--> User-Name = %s", handler->identity);
-		DEBUG2("--> BUF-Name = %s", common_name);
-		DEBUG2("--> subject = %s", subject);
-		DEBUG2("--> issuer  = %s", issuer);
-		DEBUG2("--> verify return:%d", my_ok);
+		RDEBUG2("--> User-Name = %s", handler->identity);
+		RDEBUG2("--> BUF-Name = %s", common_name);
+		RDEBUG2("--> subject = %s", subject);
+		RDEBUG2("--> issuer  = %s", issuer);
+		RDEBUG2("--> verify return:%d", my_ok);
 	}
 	return my_ok;
 }
@@ -597,6 +599,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	VALUE_PAIR	*vp;
 	int		client_cert = TRUE;
 	int		verify_mode = 0;
+	REQUEST		*request = handler->request;
 
 	inst = (eap_tls_t *)type_arg;
 
@@ -632,7 +635,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *	Verify the peer certificate, if asked.
 	 */
 	if (client_cert) {
-		DEBUG2(" rlm_eap_tls: Requiring client certificate");
+		RDEBUG2("Requiring client certificate");
 		verify_mode = SSL_VERIFY_PEER;
 		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
@@ -685,7 +688,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	handler->opaque = ((void *)ssn);
 	handler->free_opaque = session_free;
 
-	DEBUG2("  rlm_eap_tls: Initiate");
+	RDEBUG2("Initiate");
 
 	/*
 	 *	PEAP-specific breakage.
@@ -715,7 +718,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *	related handshaking or application data.
 	 */
 	status = eaptls_start(handler->eap_ds, ssn->peap_flag);
-	DEBUG2("  rlm_eap_tls: Start returned %d", status);
+	RDEBUG2("Start returned %d", status);
 	if (status == 0)
 		return 0;
 
@@ -734,11 +737,12 @@ static int eaptls_authenticate(void *arg UNUSED, EAP_HANDLER *handler)
 {
 	eaptls_status_t	status;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
+	REQUEST *request = handler->request;
 
-	DEBUG2("  rlm_eap_tls: Authenticate");
+	RDEBUG2("Authenticate");
 
 	status = eaptls_process(handler);
-	DEBUG2("  eaptls_process returned %d\n", status);
+	RDEBUG2("eaptls_process returned %d\n", status);
 	switch (status) {
 		/*
 		 *	EAP-TLS handshake was successful, return an
@@ -760,7 +764,7 @@ static int eaptls_authenticate(void *arg UNUSED, EAP_HANDLER *handler)
 		 *	data.
 		 */
 	case EAPTLS_OK:
-		DEBUG2("  rlm_eap_tls: Received unexpected tunneled data after successful handshake.");
+		RDEBUG2("Received unexpected tunneled data after successful handshake.");
 #ifndef NDEBUG
 		if ((debug_flag > 2) && fr_log_fp) {
 			unsigned int i;

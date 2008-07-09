@@ -32,6 +32,10 @@ void cbtls_info(const SSL *s, int where, int ret)
 {
 	const char *str, *state;
 	int w;
+	EAP_HANDLER *handler = (EAP_HANDLER *)SSL_get_ex_data(s, 0);
+	REQUEST *request = NULL;
+
+	if (handler) request = handler->request;
 
 	w = where & ~SSL_ST_MASK;
 	if (w & SSL_ST_CONNECT) str="    TLS_connect";
@@ -42,11 +46,11 @@ void cbtls_info(const SSL *s, int where, int ret)
 	state = state ? state : "NULL";
 
 	if (where & SSL_CB_LOOP) {
-		DEBUG2("%s: %s\n", str, state);
+		RDEBUG2("%s: %s\n", str, state);
 	} else if (where & SSL_CB_HANDSHAKE_START) {
-		DEBUG2("%s: %s\n", str, state);
+		RDEBUG2("%s: %s\n", str, state);
 	} else if (where & SSL_CB_HANDSHAKE_DONE) {
-		DEBUG2("%s: %s\n", str, state);
+		RDEBUG2("%s: %s\n", str, state);
 	} else if (where & SSL_CB_ALERT) {
 		str=(where & SSL_CB_READ)?"read":"write";
 		radlog(L_ERR,"TLS Alert %s:%s:%s\n", str,
@@ -57,7 +61,7 @@ void cbtls_info(const SSL *s, int where, int ret)
 			radlog(L_ERR, "%s:failed in %s\n", str, state);
 		} else if (ret < 0) {
 			if (SSL_want_read(s)) {
-				DEBUG2("%s: Need to read more data: %s",
+				RDEBUG2("%s: Need to read more data: %s",
 				       str, state);
 			} else {
 				radlog(L_ERR, "%s:error in %s\n", str, state);
