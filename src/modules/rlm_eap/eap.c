@@ -145,8 +145,10 @@ static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
 {
 	int rcode = 1;
 	REQUEST *request = handler->request;
+	const char *module = request->module;
 
 	RDEBUG2("processing type %s", atype->typename);
+	request->module = atype->typename;
 
 	rad_assert(atype != NULL);
 
@@ -181,6 +183,7 @@ static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
 		break;
 	}
 
+	request->module = module;
 	return rcode;
 }
 
