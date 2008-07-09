@@ -291,6 +291,11 @@ if test "x$developer" != "xno" -a -d $srcdir/CVS; then
   developer="yes"
 fi
 
+if test "x$developer" != "xno" -a -d $srcdir/.git; then
+  dnl turn on the developer flag when taken from a git checkout (not a release)
+  developer="yes"
+fi
+
 dnl extra argument: --with-experimental-modules
 EXPERIMENTAL=
 AC_ARG_WITH(experimental-modules,
