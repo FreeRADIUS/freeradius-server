@@ -159,7 +159,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		if ((eap_type == PW_EAP_TLS) ||
 		    (eap_type == PW_EAP_TTLS) ||
 		    (eap_type == PW_EAP_PEAP)) {
-			RDEBUG2("Ignoring EAP-Type/%s because we do not have OpenSSL support.", auth_type);
+			DEBUG2("Ignoring EAP-Type/%s because we do not have OpenSSL support.", auth_type);
 			continue;
 		}
 #endif
