@@ -736,4 +736,5 @@ void debug_pair_list(VALUE_PAIR *vp)
 		fputc('\n', fr_log_fp);
 		vp = vp->next;
 	}
+	fflush(fr_log_fp);
 }
