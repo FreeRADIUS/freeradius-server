@@ -222,8 +222,8 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 				   (char *)&on, sizeof(on));
 		}
 #endif /* IPV6_V6ONLY */
-#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 	}
+#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 
 	if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 		close(sockfd);
