@@ -50,7 +50,7 @@ dh:
 #  Create a new self-signed CA certificate
 #
 ######################################################################
-ca.key ca.pem:
+ca.key ca.pem: ca.cnf
 	openssl req -new -x509 -keyout ca.key -out ca.pem -config ./ca.cnf 
 
 ca.der: ca.pem
@@ -61,7 +61,7 @@ ca.der: ca.pem
 #  Create a new server certificate, signed by the above CA.
 #
 ######################################################################
-server.csr server.key: 
+server.csr server.key: server.cnf
 	openssl req -new  -out server.csr -keyout server.key -config ./server.cnf
 
 server.crt: server.csr ca.key ca.pem index.txt serial
