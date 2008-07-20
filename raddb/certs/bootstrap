@@ -12,4 +12,4 @@
 #
 umask 027
 cd `dirname $0`
-make ca server dh random
+make all
