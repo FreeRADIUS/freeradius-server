@@ -19,6 +19,7 @@ rlm_files
 rlm_ippool
 rlm_krb5
 rlm_ldap
+rlm_linelog
 rlm_logintime
 rlm_mschap
 rlm_ns_mta_md5
