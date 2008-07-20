@@ -49,14 +49,12 @@ RCSID("$Id$")
 
 /*
  *	Define a structure for our module configuration.
- *
- *	These variables do not need to be in a structure, but it's
- *	a lot cleaner to do so, and a pointer to the structure can
- *	be used as the instance handle.
  */
 typedef struct rlm_linelog_t {
+	CONF_SECTION	*cs;
 	char		*filename;
 	char		*line;
+	char		*reference;
 } rlm_linelog_t;
 
 /*
@@ -73,6 +71,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_linelog_t,filename), NULL,  NULL},
 	{ "format",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_linelog_t,line), NULL,  NULL},
+	{ "reference",  PW_TYPE_STRING_PTR,
+	  offsetof(rlm_linelog_t,reference), NULL,  NULL},
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -80,7 +80,6 @@ static const CONF_PARSER module_config[] = {
 static int linelog_detach(void *instance)
 {
 	rlm_linelog_t *inst = instance;
-
 
 	free(inst);
 	return 0;
@@ -128,6 +127,7 @@ static int linelog_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
+	inst->cs = conf;
 	*instance = inst;
 
 	return 0;
@@ -200,9 +200,8 @@ static int do_linelog(void *instance, REQUEST *request)
 	int fd = -1;
 	char buffer[4096];
 	char line[1024];
-	rlm_linelog_t *inst;
-
-	inst = (rlm_linelog_t*) instance;
+	rlm_linelog_t *inst = (rlm_linelog_t*) instance;
+	const char *value = inst->line;
 
 	/*
 	 *	FIXME: Check length.
@@ -219,10 +218,43 @@ static int do_linelog(void *instance, REQUEST *request)
 		}
 	}
 
+	if (inst->reference) {
+		CONF_ITEM *ci;
+		CONF_PAIR *cp;
+
+		radius_xlat(line + 1, sizeof(line) - 2, inst->reference,
+			    request, linelog_escape_func);
+		line[0] = '.';	/* force to be in current section */
+
+		/*
+		 *	Don't allow it to go back up
+		 */
+		if (line[1] == '.') goto do_log;
+
+		ci = cf_reference_item(NULL, inst->cs, line);
+		if (!ci) {
+			RDEBUG2("No such entry \"%s\"", line);
+			return RLM_MODULE_NOOP;
+		}
+
+		if (!cf_item_is_pair(ci)) {
+			RDEBUG2("Entry \"%s\" is not a variable assignment ", line);
+			goto do_log;
+		}
+
+		cp = cf_itemtopair(ci);
+		value = cf_pair_value(cp);
+		if (!value) {
+			RDEBUG2("Entry \"%s\" has no value", line);
+			goto do_log;
+		}
+	}
+
+ do_log:
 	/*
 	 *	FIXME: Check length.
 	 */
-	radius_xlat(line, sizeof(line) - 1, inst->line, request,
+	radius_xlat(line, sizeof(line) - 1, value, request,
 		    linelog_escape_func);
 
 	if (fd >= 0) {
