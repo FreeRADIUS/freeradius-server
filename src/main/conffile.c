@@ -564,6 +564,8 @@ CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
 		 *	"foo.bar.baz" means "from the root"
 		 */
 	} else if (strchr(p, '.') != NULL) {
+		if (!parentcs) goto no_such_item;
+
 		cs = parentcs;
 	}
 
@@ -634,7 +636,7 @@ CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
 	/*
 	 *	"foo" is "in the current section, OR in main".
 	 */
-	if ((p == name) && (cs != parentcs)) {
+	if ((p == name) && (parentcs != NULL) && (cs != parentcs)) {
 		cs = parentcs;
 		goto retry;
 	}
