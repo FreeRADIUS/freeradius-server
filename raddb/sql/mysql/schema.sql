@@ -1,12 +1,12 @@
 ###########################################################################
 # $Id$                 #
 #                                                                         #
-#  db_mysql.sql                     rlm_sql - FreeRADIUS SQL Module       #
+#  schema.sql                       rlm_sql - FreeRADIUS SQL Module       #
 #                                                                         #
 #     Database schema for MySQL rlm_sql module                            #
 #                                                                         #
 #     To load:                                                            #
-#         mysql -uroot -prootpass radius < db_mysql.sql                   #
+#         mysql -uroot -prootpass radius < schema.sql                     #
 #                                                                         #
 #                                   Mike Machado <mike@innercite.com>     #
 ###########################################################################
