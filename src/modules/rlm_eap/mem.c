@@ -246,6 +246,7 @@ static void eaplist_expire(rlm_eap_t *inst, time_t timestamp)
 				handler->next->prev = NULL;
 			} else {
 				inst->session_head = NULL;
+				inst->session_tail = NULL;
 			}
 			eap_handler_free(handler);
 		}
