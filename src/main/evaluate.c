@@ -447,6 +447,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 
 			free(request_data_get(request, request,
 					      REQUEST_DATA_REGEX | i));
+
 			/*
 			 *	No %{i}, skip it.
 			 *	We MAY have %{2} without %{1}.
@@ -454,21 +455,13 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 			if (rxmatch[i].rm_so == -1) continue;
 			
 			/*
-			 *	Copy substring into buffer.
+			 *	Copy substring into allocated buffer
 			 */
-			memcpy(buffer, pleft + rxmatch[i].rm_so,
+			r = rad_malloc(rxmatch[i].rm_eo -rxmatch[i].rm_so + 1);
+			memcpy(r, pleft + rxmatch[i].rm_so,
 			       rxmatch[i].rm_eo - rxmatch[i].rm_so);
-			buffer[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
-			
-			/*
-			 *	Copy substring, and add it to
-			 *	the request.
-			 *
-			 *	Note that we don't check
-			 *	for out of memory, which is
-			 *	the only error we can get...
-			 */
-			r = strdup(buffer);
+			r[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
+
 			request_data_add(request, request,
 					 REQUEST_DATA_REGEX | i,
 					 r, free);
