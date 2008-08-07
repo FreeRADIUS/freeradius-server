@@ -827,6 +827,10 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 		fake->reply = request->proxy_reply;
 		request->proxy_reply = NULL;
 
+		if ((debug_flag > 0) && fr_log_fp) {
+			fprintf(fr_log_fp, "server %s {\n", fake->server);
+		}
+
 		/*
 		 *	Perform a post-auth stage for the tunneled
 		 *	session.
@@ -835,21 +839,13 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 		rcode = rad_postauth(fake);
 		RDEBUG2("post-auth returns %d", rcode);
 
-#ifndef NDEBUG
 		if ((debug_flag > 0) && fr_log_fp) {
-			VALUE_PAIR *vp;
-
-			fprintf(fr_log_fp, "  TTLS: Final reply from tunneled session code %d\n",
+			fprintf(fr_log_fp, "} # server %s\n", fake->server);
+			
+			RDEBUG("Final reply from tunneled session code %d",
 			       fake->reply->code);
-
-			for (vp = fake->reply->vps; vp != NULL; vp = vp->next) {
-				fputc('\t', fr_log_fp);
-				vp_print(fr_log_fp, vp);
-				fputc('\n', fr_log_fp);
-
-			}
+			debug_pair_list(fake->reply->vps);
 		}
-#endif
 
 		/*
 		 *	Terrible hacks.
@@ -1027,13 +1023,11 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		pairadd(&fake->packet->vps, vp);
 	}
 
-#ifndef NDEBUG
 	if ((debug_flag > 0) && fr_log_fp) {
-		RDEBUG("Got tunneled request\n");
+		RDEBUG("Got tunneled request");
 
 		debug_pair_list(fake->packet->vps);
 	}
-#endif
 
 	/*
 	 *	Update other items in the REQUEST data structure.
@@ -1186,15 +1180,13 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	} /* else fake->server == request->server */
 
 
-#ifndef NDEBUG
 	if ((debug_flag > 0) && fr_log_fp) {
-		RDEBUG("Sending tunneled request\n");
+		RDEBUG("Sending tunneled request");
 
 		debug_pair_list(fake->packet->vps);
 
 		fprintf(fr_log_fp, "server %s {\n", fake->server);
 	}
-#endif
 
 	/*
 	 *	Call authentication recursively, which will
@@ -1206,16 +1198,13 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	Note that we don't do *anything* with the reply
 	 *	attributes.
 	 */
-#ifndef NDEBUG
 	if ((debug_flag > 0) && fr_log_fp) {
 		fprintf(fr_log_fp, "} # server %s\n", fake->server);
 
-		RDEBUG("Got tunneled reply RADIUS code %d\n",
-		       fake->reply->code);
+		RDEBUG("Got tunneled reply code %d", fake->reply->code);
 		
 		debug_pair_list(fake->reply->vps);
 	}
-#endif
 
 	/*
 	 *	Decide what to do with the reply.

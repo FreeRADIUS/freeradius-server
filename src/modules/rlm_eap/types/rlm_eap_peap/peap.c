@@ -295,14 +295,12 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 	VALUE_PAIR *vp;
 	peap_tunnel_t *t = tls_session->opaque;
 
-#ifndef NDEBUG
 	if ((debug_flag > 0) && fr_log_fp) {
-		fprintf(fr_log_fp, "  PEAP: Processing from tunneled session code %p %d\n",
-		       reply, reply->code);
+		RDEBUG("Got tunneled reply RADIUS code %d",
+		       reply->code);
 
 		debug_pair_list(reply->vps);
 	}
-#endif
 
 	switch (reply->code) {
 	case PW_AUTHENTICATION_ACK:
@@ -441,6 +439,10 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		fake->reply = request->proxy_reply;
 		request->proxy_reply = NULL;
 
+		if ((debug_flag > 0) && fr_log_fp) {
+			fprintf(fr_log_fp, "server %s {\n", fake->server);
+		}
+
 		/*
 		 *	Perform a post-auth stage, which will get the EAP
 		 *	handler, too...
@@ -455,14 +457,14 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		 */
 		rcode = rad_postauth(fake);
 
-#ifndef NDEBUG
 		if ((debug_flag > 0) && fr_log_fp) {
-			fprintf(fr_log_fp, "  PEAP: Final reply from tunneled session code %d\n",
+			fprintf(fr_log_fp, "} # server %s\n", fake->server);
+			
+			RDEBUG("Final reply from tunneled session code %d",
 			       fake->reply->code);
-
+		
 			debug_pair_list(fake->reply->vps);
 		}
-#endif
 
 		/*
 		 *	Terrible hacks.
@@ -635,13 +637,13 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		return PW_AUTHENTICATION_REJECT;
 	}
 
-#ifndef NDEBUG
 	if ((debug_flag > 0) && fr_log_fp) {
-		fprintf(fr_log_fp, "  PEAP: Got tunneled EAP-Message\n");
+		RDEBUG("Got tunnled request");
 		
 		debug_pair_list(fake->packet->vps);
+
+		fprintf(fr_log_fp, "server %s {\n", fake->server);
 	}
-#endif
 
 	/*
 	 *	Tell the request that it's a fake one.
@@ -777,15 +779,13 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 	} /* else fake->server == request->server */
 
-#ifndef NDEBUG
 	if ((debug_flag > 0) && fr_log_fp) {
-		fprintf(fr_log_fp, "  PEAP: Sending tunneled request\n");
+		fprintf(fr_log_fp, "Sending tunneled request\n");
 
 		debug_pair_list(fake->packet->vps);
 
 		fprintf(fr_log_fp, "server %s {\n", fake->server);
 	}
-#endif
 
 	/*
 	 *	Call authentication recursively, which will
@@ -797,16 +797,13 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	Note that we don't do *anything* with the reply
 	 *	attributes.
 	 */
-#ifndef NDEBUG
 	if ((debug_flag > 0) && fr_log_fp) {
 		fprintf(fr_log_fp, "} # server %s\n", fake->server);
 
-		fprintf(fr_log_fp, "  PEAP: Got tunneled reply RADIUS code %d\n",
-			fake->reply->code);
+		RDEBUG("Got tunneled reply code %d", fake->reply->code);
 		
 		debug_pair_list(fake->reply->vps);
 	}
-#endif
 
 	/*
 	 *	Decide what to do with the reply.
