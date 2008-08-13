@@ -431,12 +431,12 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	No radwtmp.  Don't do anything.
 	 */
 	if (!inst->radwtmp) {
-		DEBUG2("rlm_unix: No radwtmp file configured.  Ignoring accounting request.");
+		RDEBUG2("No radwtmp file configured.  Ignoring accounting request.");
 		return RLM_MODULE_NOOP;
 	}
 
 	if (request->packet->src_ipaddr.af != AF_INET) {
-		DEBUG2("rlm_unix: IPv6 is not supported!");
+		RDEBUG2("IPv6 is not supported!");
 		return RLM_MODULE_NOOP;
 	}
 
