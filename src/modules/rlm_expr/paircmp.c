@@ -157,6 +157,7 @@ static int presufcmp(UNUSED void *instance,
 		 */
 		vp = radius_paircreate(req, &request,
 				       PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
+		if (vp) req->username = vp;
 	}
 
 	strlcpy((char *)vp->vp_strvalue, rest, sizeof(vp->vp_strvalue));
