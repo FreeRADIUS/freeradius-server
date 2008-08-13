@@ -42,7 +42,7 @@ client dynamic {
 	netmask = 16
 
 	#
-	#  Any other configuration normall found in a "client"
+	#  Any other configuration normally found in a "client"
 	#  entry can be used here.
 
 	#
