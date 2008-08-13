@@ -55,13 +55,29 @@ linelog {
 	#  for every section.  e.g. reference = foo.bar will reference
 	#  the "foo" section, "bar" configuration item.
 	#
-	#  Both "foo" and "bar" can be dynamically expanded, such as
-	#  reference = "Accounting-Request.%{Acct-Status-Type}"
-	#
 
 	#
 	#  Used if:	reference = "foo.bar".
 	foo {
 	    bar = "Example log.  Please ignore"
 	}
+
+	#
+	#  Another example:
+	#      reference = "Accounting-Request.%{%{Acct-Status-Type}:-unknown}"
+	#
+	Accounting-Request {
+		Start = "Connect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address})"
+		Stop = "Disconnect: [%{User-Name}] (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} ip %{Framed-IP-Address}) %{Acct-Session-Time} seconds"
+
+		#  Don't log anything for these packets.
+		Alive = ""
+
+		Accounting-On = "NAS %C (%{NAS-IP-Address}) just came online"
+		Accounting-Off = "NAS %C (%{NAS-IP-Address}) just went offline"
+
+		# don't log anything for other Acct-Status-Types.
+		unknown = ""
+	}
+
 }
