@@ -79,7 +79,7 @@ static int do_acctlog_acct(void *instance, REQUEST *request)
 	rlm_acctlog_t *inst;
 	VALUE_PAIR *pair;
 
-	char    logstr[MAX_STRING_LEN];
+	char    logstr[1024];
 	int     acctstatustype = 0;
 
 
