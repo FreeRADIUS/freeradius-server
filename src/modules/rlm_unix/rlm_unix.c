@@ -249,7 +249,8 @@ static int unix_getpw(UNUSED void *instance, REQUEST *request,
 	 *	Users with a particular shell are denied access
 	 */
 	if (strcmp(pwd->pw_shell, DENY_SHELL) == 0) {
-		radlog(L_AUTH, "rlm_unix: [%s]: invalid shell", name);
+		radlog_request(L_AUTH, 0, request,
+			       "rlm_unix: [%s]: invalid shell", name);
 		return RLM_MODULE_REJECT;
 	}
 #endif
@@ -267,7 +268,7 @@ static int unix_getpw(UNUSED void *instance, REQUEST *request,
 	}
 	endusershell();
 	if (shell == NULL) {
-		radlog(L_AUTH, "rlm_unix: [%s]: invalid shell [%s]",
+		radlog_request(L_AUTH, 0, request, "[%s]: invalid shell [%s]",
 		       name, pwd->pw_shell);
 		return RLM_MODULE_REJECT;
 	}
@@ -280,7 +281,7 @@ static int unix_getpw(UNUSED void *instance, REQUEST *request,
 	 */
 	if (spwd && spwd->sp_expire > 0 &&
 	    (request->timestamp / 86400) > spwd->sp_expire) {
-		radlog(L_AUTH, "rlm_unix: [%s]: password has expired", name);
+		radlog_request(L_AUTH, 0, request, "[%s]: password has expired", name);
 		return RLM_MODULE_REJECT;
 	}
 #endif
@@ -291,7 +292,7 @@ static int unix_getpw(UNUSED void *instance, REQUEST *request,
 	 */
 	if ((pwd->pw_expire > 0) &&
 	    (request->timestamp > pwd->pw_expire)) {
-		radlog(L_AUTH, "rlm_unix: [%s]: password has expired", name);
+		radlog_request(L_AUTH, 0, request, "[%s]: password has expired", name);
 		return RLM_MODULE_REJECT;
 	}
 #endif
@@ -354,7 +355,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 
 	if (!request->password ||
 	    (request->password->attribute != PW_USER_PASSWORD)) {
-		radlog(L_AUTH, "rlm_unix: Attribute \"User-Password\" is required for authentication.");
+		radlog_request(L_AUTH, 0, request, "Attribute \"User-Password\" is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -366,8 +367,8 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	 */
 	if (fr_crypt_check((char *) request->password->vp_strvalue,
 			     (char *) vp->vp_strvalue) != 0) {
-		radlog(L_AUTH, "rlm_unix: [%s]: invalid password",
-		       request->username->vp_strvalue);
+		radlog_request(L_AUTH, 0, request, "invalid password \"%s\"",
+			       request->username->vp_strvalue);
 		return RLM_MODULE_REJECT;
 	}
 #endif /* OSFFIA */
