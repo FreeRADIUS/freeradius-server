@@ -248,6 +248,11 @@ static int do_linelog(void *instance, REQUEST *request)
 			RDEBUG2("Entry \"%s\" has no value", line);
 			goto do_log;
 		}
+
+		/*
+		 *	Value exists, but is empty.  Don't log anything.
+		 */
+		if (!*value) return RLM_MODULE_OK;
 	}
 
  do_log:
