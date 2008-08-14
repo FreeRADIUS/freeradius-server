@@ -1256,10 +1256,8 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	int		conn_id = -1;
 	int		added_known_password = 0;
 
-	DEBUG("rlm_ldap: - authorize");
-
 	if (!request->username){
-		DEBUG2("rlm_ldap: Attribute \"User-Name\" is required for authorization.\n");
+		RDEBUG2("Attribute \"User-Name\" is required for authorization.\n");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -1270,21 +1268,21 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	 * Check for valid input, zero length names not permitted
 	 */
 	if (request->username->vp_strvalue == 0) {
-		radlog(L_ERR, "rlm_ldap: zero length username not permitted\n");
+		DEBUG2("zero length username not permitted\n");
 		return RLM_MODULE_INVALID;
 	}
-	DEBUG("rlm_ldap: performing user authorization for %s",
+	RDEBUG("performing user authorization for %s",
 	       request->username->vp_strvalue);
 
 	if (!radius_xlat(filter, sizeof(filter), inst->filter,
 			 request, ldap_escape_func)) {
-		radlog (L_ERR, "rlm_ldap: unable to create filter.\n");
+		radlog(L_ERR, "rlm_ldap: unable to create filter.\n");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (!radius_xlat(basedn, sizeof(basedn), inst->basedn,
 			 request, ldap_escape_func)) {
-		radlog (L_ERR, "rlm_ldap: unable to create basedn.\n");
+		radlog(L_ERR, "rlm_ldap: unable to create basedn.\n");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -1293,7 +1291,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		return RLM_MODULE_FAIL;
 	}
 	if ((res = perform_search(instance, conn, basedn, LDAP_SCOPE_SUBTREE, filter, inst->atts, &result)) != RLM_MODULE_OK) {
-		DEBUG("rlm_ldap: search failed");
+		RDEBUG("search failed");
 		if (res == RLM_MODULE_NOTFOUND){
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: User not found");
 			module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
@@ -1303,13 +1301,13 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		return (res);
 	}
 	if ((msg = ldap_first_entry(conn->ld, result)) == NULL) {
-		DEBUG("rlm_ldap: ldap_first_entry() failed");
+		RDEBUG("ldap_first_entry() failed");
 		ldap_msgfree(result);
 		ldap_release_conn(conn_id,inst->conns);
 		return RLM_MODULE_FAIL;
 	}
 	if ((user_dn = ldap_get_dn(conn->ld, msg)) == NULL) {
-		DEBUG("rlm_ldap: ldap_get_dn() failed");
+		RDEBUG("ldap_get_dn() failed");
 		ldap_msgfree(result);
 		ldap_release_conn(conn_id,inst->conns);
 		return RLM_MODULE_FAIL;
@@ -1326,9 +1324,9 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	if (inst->access_attr) {
 		if ((vals = ldap_get_values(conn->ld, msg, inst->access_attr)) != NULL) {
 			if (inst->default_allow){
-				DEBUG("rlm_ldap: checking if remote access for %s is allowed by %s", request->username->vp_strvalue, inst->access_attr);
+				RDEBUG("checking if remote access for %s is allowed by %s", request->username->vp_strvalue, inst->access_attr);
 				if (!strncmp(vals[0], "FALSE", 5)) {
-					DEBUG("rlm_ldap: dialup access disabled");
+					RDEBUG("dialup access disabled");
 					snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Access Attribute denies access");
 					module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
 					pairadd(&request->packet->vps, module_fmsg_vp);
@@ -1340,7 +1338,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 				ldap_value_free(vals);
 			}
 			else{
-				DEBUG("rlm_ldap: %s attribute exists - access denied by default", inst->access_attr);
+				RDEBUG("%s attribute exists - access denied by default", inst->access_attr);
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Access Attribute denies access");
 				module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
 				pairadd(&request->packet->vps, module_fmsg_vp);
@@ -1351,7 +1349,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 			}
 		} else {
 			if (inst->default_allow){
-				DEBUG("rlm_ldap: no %s attribute - access denied by default", inst->access_attr);
+				RDEBUG("no %s attribute - access denied by default", inst->access_attr);
 				snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Access Attribute denies access");
 				module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
 				pairadd(&request->packet->vps, module_fmsg_vp);
@@ -1398,7 +1396,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 				}
 				ldap_msgfree(def_result);
 			} else
-				DEBUG("rlm_ldap: default_profile/user-profile search failed");
+				RDEBUG("default_profile/user-profile search failed");
 		}
 	}
 
@@ -1437,7 +1435,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					}
 					ldap_msgfree(def_attr_result);
 				} else
-					DEBUG("rlm_ldap: profile_attribute search failed");
+					RDEBUG("profile_attribute search failed");
 				i++;
 			}
 			ldap_value_free(vals);
@@ -1496,7 +1494,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 							strlen(inst->passwd_hdr)) == 0) {
 						value += strlen(inst->passwd_hdr);
 					} else {
-						DEBUG("rlm_ldap: Password header not found in password %s for user %s", passwd_vals[0], request->username->vp_strvalue);
+						RDEBUG("Password header not found in password %s for user %s", passwd_vals[0], request->username->vp_strvalue);
 					}
 				}
 				if (!value) continue;
@@ -1509,7 +1507,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 				strlcpy(passwd_item->vp_strvalue, value,
 					sizeof(passwd_item->vp_strvalue));
 				passwd_item->length = strlen(passwd_item->vp_strvalue);
-				DEBUG("rlm_ldap: Added %s = %s in check items",
+				RDEBUG("Added %s = %s in check items",
 				      passwd_item->name,
 				      passwd_item->vp_strvalue);
 				added_known_password = 1;
@@ -1546,7 +1544,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 						if (passwd_val != NULL)
 							passwd_val += strlen((char*)inst->passwd_hdr);
 						else
-							DEBUG("rlm_ldap: Password header not found in password %s for user %s ",passwd_val,request->username->vp_strvalue);
+							RDEBUG("Password header not found in password %s for user %s ",passwd_val,request->username->vp_strvalue);
 					}
 
 					if (passwd_val){
@@ -1594,11 +1592,11 @@ static int ldap_authorize(void *instance, REQUEST * request)
 						}
 #endif
 
-						DEBUG("rlm_ldap: Added the eDirectory password %s in check items as %s",passwd_item->vp_strvalue,passwd_item->name);
+						RDEBUG("Added the eDirectory password %s in check items as %s",passwd_item->vp_strvalue,passwd_item->name);
 					}
 				}
 				else {
-					DEBUG("rlm_ldap: Error reading Universal Password.Return Code = %d",res);
+					RDEBUG("Error reading Universal Password.Return Code = %d",res);
 				}
 
 				memset(universal_password, 0, universal_password_len);
@@ -1628,13 +1626,13 @@ static int ldap_authorize(void *instance, REQUEST * request)
 				vp_auth_opt->length = strlen(auth_option[0]);
 				pairadd(&request->config_items, vp_auth_opt);
 			}else{
-				DEBUG("rlm_ldap: No default NMAS login sequence");
+				RDEBUG("No default NMAS login sequence");
 			}
 		}
 	}
 #endif
 
-	DEBUG("rlm_ldap: looking for check items in directory...");
+	RDEBUG("looking for check items in directory...");
 
 	if ((check_tmp = ldap_pairget(conn->ld, msg, inst->check_item_map,check_pairs,1)) != NULL) {
 		if (inst->do_xlat){
@@ -1646,7 +1644,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	}
 
 
-	DEBUG("rlm_ldap: looking for reply items in directory...");
+	RDEBUG("looking for reply items in directory...");
 
 
 	if ((reply_tmp = ldap_pairget(conn->ld, msg, inst->reply_item_map,reply_pairs,0)) != NULL) {
@@ -1673,7 +1671,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 			vp_apc->vp_strvalue[0] = '1';
 #endif
 
-		DEBUG("rlm_ldap: Pairs do not match. Rejecting user.");
+		RDEBUG("Pairs do not match. Rejecting user.");
 		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_ldap: Pairs do not match");
 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
 		pairadd(&request->packet->vps, module_fmsg_vp);
@@ -1706,10 +1704,10 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	    (request->password->attribute == PW_USER_PASSWORD) &&
 	    !added_known_password) {
 		pairadd(check_pairs, pairmake("Auth-Type", inst->auth_type, T_OP_EQ));
-		DEBUG("rlm_ldap: Setting Auth-Type = %s", inst->auth_type);
+		RDEBUG("Setting Auth-Type = %s", inst->auth_type);
 	}
 
-	DEBUG("rlm_ldap: user %s authorized to use remote access",
+	RDEBUG("user %s authorized to use remote access",
 	      request->username->vp_strvalue);
 	ldap_msgfree(result);
 	ldap_release_conn(conn_id,inst->conns);
@@ -1741,8 +1739,6 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 #ifdef NOVELL
 	char		*err = NULL;
 #endif
-
-	DEBUG("rlm_ldap: - authenticate");
 
 	/*
 	 * Ensure that we're being passed a plain-text password, and not
@@ -1786,20 +1782,20 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 	}
 
 
-	DEBUG("rlm_ldap: login attempt by \"%s\" with password \"%s\"",
+	RDEBUG("login attempt by \"%s\" with password \"%s\"",
 	       request->username->vp_strvalue, request->password->vp_strvalue);
 
 	while ((vp_user_dn = pairfind(request->config_items,
 				      PW_LDAP_USERDN)) == NULL) {
 		if (!radius_xlat(filter, sizeof(filter), inst->filter,
 				request, ldap_escape_func)) {
-			radlog (L_ERR, "rlm_ldap: unable to create filter.\n");
+			radlog(L_ERR, "rlm_ldap: unable to create filter.\n");
 			return RLM_MODULE_INVALID;
 		}
 
 		if (!radius_xlat(basedn, sizeof(basedn), inst->basedn,
 		 		request, ldap_escape_func)) {
-			radlog (L_ERR, "rlm_ldap: unable to create basedn.\n");
+			radlog(L_ERR, "rlm_ldap: unable to create basedn.\n");
 			return RLM_MODULE_INVALID;
 		}
 
@@ -1822,7 +1818,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 			return RLM_MODULE_FAIL;
 		}
 		if ((user_dn = ldap_get_dn(conn->ld, msg)) == NULL) {
-			DEBUG("rlm_ldap: ldap_get_dn() failed");
+			RDEBUG("ldap_get_dn() failed");
 			ldap_msgfree(result);
 			ldap_release_conn(conn_id,inst->conns);
 			return RLM_MODULE_FAIL;
@@ -1835,7 +1831,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 
 	user_dn = vp_user_dn->vp_strvalue;
 
-	DEBUG("rlm_ldap: user DN: %s", user_dn);
+	RDEBUG("user DN: %s", user_dn);
 
 #ifndef NOVELL
 	ld_user = ldap_connect(instance, user_dn, request->password->vp_strvalue,
@@ -1871,7 +1867,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 
 		if(vp_auth_opt )
 		{
-			DEBUG("rlm_ldap: ldap auth option = %s", vp_auth_opt->vp_strvalue);
+			RDEBUG("ldap auth option = %s", vp_auth_opt->vp_strvalue);
 			strncpy(seq, vp_auth_opt->vp_strvalue, vp_auth_opt->length);
 			seq[vp_auth_opt->length] = '\0';
 			if( strcmp(seq, "<No Default>") ){
@@ -1887,7 +1883,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 
 				/*  If state attribute present in request it is a reply to challenge. */
 				if((vp_state = pairfind(request->packet->vps, PW_STATE))!= NULL ){
-					DEBUG("rlm_ldap: Response to Access-Challenge");
+					RDEBUG("Response to Access-Challenge");
 					strncpy(challenge, vp_state->vp_strvalue, sizeof(challenge));
 					challenge_len = vp_state->length;
 					challenge[challenge_len] = 0;
@@ -1926,7 +1922,7 @@ retry:
 					conn1->bound = 1;
 					conn1->failed_conns = 0;
 				}
-				DEBUG("rlm_ldap: Performing NMAS Authentication for user: %s, seq: %s \n", user_dn,seq);
+				RDEBUG("Performing NMAS Authentication for user: %s, seq: %s \n", user_dn,seq);
 
 				res = radLdapXtnNMASAuth(conn1->ld, user_dn, request->password->vp_strvalue, seq, host_ipaddr, &challenge_len, challenge, &auth_state );
 
@@ -1937,10 +1933,10 @@ retry:
 							res = RLM_MODULE_FAIL;
 						if ( auth_state != REQUEST_CHALLENGED){
 							if (auth_state == REQUEST_ACCEPTED){
-								DEBUG("rlm_ldap: user %s authenticated succesfully",request->username->vp_strvalue);
+								RDEBUG("user %s authenticated succesfully",request->username->vp_strvalue);
 								res = RLM_MODULE_OK;
 							}else if(auth_state == REQUEST_REJECTED){
-								DEBUG("rlm_ldap: user %s authentication failed",request->username->vp_strvalue);
+								RDEBUG("user %s authentication failed",request->username->vp_strvalue);
 								res = RLM_MODULE_REJECT;
 							}
 						}else{
@@ -1956,7 +1952,7 @@ retry:
 							free(state);
 							/* Mark the packet as a Acceess-Challenge Packet */
 							request->reply->code = PW_ACCESS_CHALLENGE;
-							DEBUG("rlm_ldap: Sending Access-Challenge.");
+							RDEBUG("Sending Access-Challenge.");
 							res = RLM_MODULE_HANDLED;
 						}
 						if(challenge)
@@ -1987,7 +1983,7 @@ retry:
 
 	if(err != NULL){
 		/* 'err' contains the LDAP connection error description */
-		DEBUG("rlm_ldap: %s", err);
+		RDEBUG("%s", err);
 		pairadd(&request->reply->vps, pairmake("Reply-Message", err, T_OP_EQ));
 		ldap_memfree((void *)err);
 	}
@@ -2001,13 +1997,13 @@ retry:
 			pairadd(&request->packet->vps, module_fmsg_vp);
 		}
 		if (res == RLM_MODULE_FAIL){
-			DEBUG("rlm_ldap: ldap_connect() failed");
+			RDEBUG("ldap_connect() failed");
 			inst->failed_conns++;
 		}
 		return (res);
 	}
 
-	DEBUG("rlm_ldap: user %s authenticated succesfully",
+	RDEBUG("user %s authenticated succesfully",
 	      request->username->vp_strvalue);
 	ldap_unbind_s(ld_user);
 	inst->failed_conns = 0;
@@ -2082,20 +2078,20 @@ static int ldap_postauth(void *instance, REQUEST * request)
 					/* Bind to eDirectory as the RADIUS user using the user's UP */
 					vp_pwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD);
 					if (vp_pwd == NULL) {
-						DEBUG("rlm_ldap: User's Universal Password not in config items list.");
+						RDEBUG("User's Universal Password not in config items list.");
 						return RLM_MODULE_FAIL;
 					}
 					strcpy(password, vp_pwd->vp_strvalue);
 				}
 
 				if ((da = dict_attrbyname("Ldap-UserDn")) == NULL) {
-					DEBUG("rlm_ldap: Attribute for user FDN not found in dictionary. Unable to proceed");
+					RDEBUG("Attribute for user FDN not found in dictionary. Unable to proceed");
 					return RLM_MODULE_FAIL;
 				}
 
 				vp_fdn = pairfind(request->config_items, da->attr);
 				if (vp_fdn == NULL) {
-					DEBUG("rlm_ldap: User's FQDN not in config items list.");
+					RDEBUG("User's FQDN not in config items list.");
 					return RLM_MODULE_FAIL;
 				}
 
@@ -2121,7 +2117,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 						radlog(L_ERR, "rlm_ldap: eDirectory account policy check failed.");
 
 						if (error_msg != NULL) {
-							DEBUG("rlm_ldap: %s", error_msg);
+							RDEBUG("%s", error_msg);
 							pairadd(&request->reply->vps, pairmake("Reply-Message", error_msg, T_OP_EQ));
 							ldap_memfree((void *)error_msg);
 						}
@@ -2136,10 +2132,10 @@ static int ldap_postauth(void *instance, REQUEST * request)
 						conn->bound = 0;
 						goto postauth_reconnect;
 					}
-					DEBUG("rlm_ldap: eDirectory account policy check failed.");
+					RDEBUG("eDirectory account policy check failed.");
 					ldap_get_option(conn->ld, LDAP_OPT_ERROR_STRING, &error_msg);
 					if (error_msg != NULL) {
-						DEBUG("rlm_ldap: %s", error_msg);
+						RDEBUG("%s", error_msg);
 						pairadd(&request->reply->vps, pairmake("Reply-Message", error_msg, T_OP_EQ));
 						ldap_memfree((void *)error_msg);
 					}
@@ -2666,7 +2662,7 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 				}
 				vp_prints(print_buffer, sizeof(print_buffer),
 					  newpair);
-				DEBUG("rlm_ldap: LDAP attribute %s as RADIUS attribute %s",
+				DEBUG("rlm_ldap: %s -> %s",
 				      element->attr, print_buffer);
 
 
