@@ -220,7 +220,7 @@ static int add_unique_id(void *instance, REQUEST *request)
 				hack.lvalue = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 				vp = &hack;
 			} else {
-				DEBUG2("rlm_acct_unique: WARNING: Attribute %s was not found in request, unique ID MAY be inconsistent", cur->dattr->name);
+				RDEBUG2("WARNING: Attribute %s was not found in request, unique ID MAY be inconsistent", cur->dattr->name);
 			}
 		}
 		length = vp_prints(p, left, vp);
@@ -231,14 +231,14 @@ static int add_unique_id(void *instance, REQUEST *request)
 	}
 	buffer[BUFFERLEN-left-1] = '\0';
 
-	DEBUG2("rlm_acct_unique: Hashing '%s'", buffer);
+	RDEBUG2("Hashing '%s'", buffer);
 	/* calculate a 'unique' string based on the above information */
 	fr_md5_calc(md5_buf, (u_char *)buffer, (p - buffer));
 	sprintf(buffer, "%02x%02x%02x%02x%02x%02x%02x%02x",
 		md5_buf[0], md5_buf[1], md5_buf[2], md5_buf[3],
 		md5_buf[4], md5_buf[5], md5_buf[6], md5_buf[7]);
 
-	DEBUG2("rlm_acct_unique: Acct-Unique-Session-ID = \"%s\".", buffer);
+	RDEBUG2("Acct-Unique-Session-ID = \"%s\".", buffer);
 
 	vp = pairmake("Acct-Unique-Session-Id", buffer, 0);
 	if (!vp) {
