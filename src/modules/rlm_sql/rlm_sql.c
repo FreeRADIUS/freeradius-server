@@ -140,7 +140,8 @@ static int sql_xlat(void *instance, REQUEST *request,
 	char sqlusername[MAX_STRING_LEN];
 	size_t ret = 0;
 
-	DEBUG("rlm_sql (%s): - sql_xlat", inst->config->xlat_name);
+	RDEBUG("sql_xlat");
+
 	/*
          * Add SQL-User-Name attribute just in case it is needed
          *  We could search the string fmt for SQL-User-Name to see if this is
@@ -171,8 +172,7 @@ static int sql_xlat(void *instance, REQUEST *request,
 	ret = rlm_sql_fetch_row(sqlsocket, inst);
 
 	if (ret) {
-		DEBUG("rlm_sql (%s): SQL query did not succeed",
-		      inst->config->xlat_name);
+		RDEBUG("SQL query did not succeed");
 		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst,sqlsocket);
 		return 0;
@@ -180,24 +180,21 @@ static int sql_xlat(void *instance, REQUEST *request,
 
 	row = sqlsocket->row;
 	if (row == NULL) {
-		DEBUG("rlm_sql (%s): SQL query did not return any results",
-		      inst->config->xlat_name);
+		RDEBUG("SQL query did not return any results");
 		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst,sqlsocket);
 		return 0;
 	}
 
 	if (row[0] == NULL){
-		DEBUG("rlm_sql (%s): row[0] returned NULL",
-		      inst->config->xlat_name);
+		RDEBUG("row[0] returned NULL");
 		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst,sqlsocket);
 		return 0;
 	}
 	ret = strlen(row[0]);
 	if (ret >= freespace){
-		DEBUG("rlm_sql (%s): sql_xlat:: Insufficient string space",
-		      inst->config->xlat_name);
+		RDEBUG("Insufficient string space");
 		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst,sqlsocket);
 		return 0;
@@ -205,8 +202,7 @@ static int sql_xlat(void *instance, REQUEST *request,
 
 	strlcpy(out,row[0],freespace);
 
-	DEBUG("rlm_sql (%s): - sql_xlat finished",
-	      inst->config->xlat_name);
+	RDEBUG("sql_xlat finished");
 
 	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 	sql_release_socket(inst,sqlsocket);
@@ -433,15 +429,17 @@ int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char
 	}
 
 	strlcpy(sqlusername, tmpuser, MAX_STRING_LEN);
-	DEBUG2("rlm_sql (%s): sql_set_user escaped user --> '%s'",
-		       inst->config->xlat_name, sqlusername);
-	vp = pairmake("SQL-User-Name", sqlusername, 0);
-	if (vp == NULL) {
+	RDEBUG2("sql_set_user escaped user --> '%s'", sqlusername);
+	vp = radius_pairmake(request, &request->packet->vps,
+			     "SQL-User-Name", NULL, 0);
+	if (!vp) {
 		radlog(L_ERR, "%s", librad_errstr);
 		return -1;
 	}
 
-	pairadd(&request->packet->vps, vp);
+	strlcpy(vp->vp_strvalue, tmpuser, sizeof(vp->vp_strvalue));
+	vp->length = strlen(vp->vp_strvalue);
+
 	return 0;
 
 }
@@ -475,14 +473,15 @@ static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *reque
 		return 0;
 
 	if (!radius_xlat(querystr, sizeof(querystr), inst->config->groupmemb_query, request, sql_escape_func)) {
-		radlog(L_ERR, "rlm_sql (%s): xlat failed.",
-			inst->config->xlat_name);
+		radlog_request(L_ERR, 0, request, "xlat \"%s\" failed.",
+			       inst->config->groupmemb_query);
 		return -1;
 	}
 
 	if (rlm_sql_select_query(sqlsocket, inst, querystr) < 0) {
-		radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
-		       inst->config->xlat_name,querystr,
+		radlog_request(L_ERR, 0, request,
+			       "database query error, %s: %s",
+			       querystr,
 		       (inst->module->sql_error)(sqlsocket,inst->config));
 		return -1;
 	}
@@ -491,8 +490,7 @@ static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *reque
 		if (row == NULL)
 			break;
 		if (row[0] == NULL){
-			DEBUG("rlm_sql (%s): row[0] returned NULL",
-				inst->config->xlat_name);
+			RDEBUG("row[0] returned NULL");
 			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 			sql_grouplist_free(group_list);
 			return -1;
@@ -521,7 +519,7 @@ static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *reque
  * username will then be checked with the passed check string.
  */
 
-static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
+static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp, VALUE_PAIR *check,
 			VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
 	SQLSOCK *sqlsocket;
@@ -531,23 +529,21 @@ static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE
 
 	check_pairs = check_pairs;
 	reply_pairs = reply_pairs;
-	request = request;
+	request_vp = request_vp;
 
-	DEBUG("rlm_sql (%s): - sql_groupcmp", inst->config->xlat_name);
+	RDEBUG("sql_groupcmp");
 	if (!check || !check->vp_strvalue || !check->length){
-		DEBUG("rlm_sql (%s): sql_groupcmp: Illegal group name",
-		      inst->config->xlat_name);
+		RDEBUG("sql_groupcmp: Illegal group name");
 		return 1;
 	}
-	if (req == NULL){
-		DEBUG("rlm_sql (%s): sql_groupcmp: NULL request",
-		      inst->config->xlat_name);
+	if (!request){
+		RDEBUG("sql_groupcmp: NULL request");
 		return 1;
 	}
 	/*
 	 * Set, escape, and check the user attr here
 	 */
-	if (sql_set_user(inst, req, sqlusername, NULL) < 0)
+	if (sql_set_user(inst, request, sqlusername, NULL) < 0)
 		return 1;
 
 	/*
@@ -556,31 +552,30 @@ static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE
 	sqlsocket = sql_get_socket(inst);
 	if (sqlsocket == NULL) {
 		/* Remove the username we (maybe) added above */
-		pairdelete(&req->packet->vps, PW_SQL_USER_NAME);
+		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 		return 1;
 	}
 
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
-	if (sql_get_grouplist(inst, sqlsocket, req, &group_list) < 0) {
-		radlog(L_ERR, "rlm_sql (%s): Error getting group membership",
-		       inst->config->xlat_name);
+	if (sql_get_grouplist(inst, sqlsocket, request, &group_list) < 0) {
+		radlog_request(L_ERR, 0, request,
+			       "Error getting group membership");
 		/* Remove the username we (maybe) added above */
-		pairdelete(&req->packet->vps, PW_SQL_USER_NAME);
+		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 		sql_release_socket(inst, sqlsocket);
 		return 1;
 	}
 
 	for (group_list_tmp = group_list; group_list_tmp != NULL; group_list_tmp = group_list_tmp->next) {
 		if (strcmp(group_list_tmp->groupname, check->vp_strvalue) == 0){
-			DEBUG("rlm_sql (%s): - sql_groupcmp finished: User is a member of group %s",
-			      inst->config->xlat_name,
-			      (char *)check->vp_strvalue);
+			RDEBUG("sql_groupcmp finished: User is a member of group %s",
+			       check->vp_strvalue);
 			/* Free the grouplist */
 			sql_grouplist_free(&group_list);
 			/* Remove the username we (maybe) added above */
-			pairdelete(&req->packet->vps, PW_SQL_USER_NAME);
+			pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 			sql_release_socket(inst, sqlsocket);
 			return 0;
 		}
@@ -589,11 +584,11 @@ static int sql_groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request, VALUE
 	/* Free the grouplist */
 	sql_grouplist_free(&group_list);
 	/* Remove the username we (maybe) added above */
-	pairdelete(&req->packet->vps, PW_SQL_USER_NAME);
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 	sql_release_socket(inst,sqlsocket);
 
-	DEBUG("rlm_sql (%s): - sql_groupcmp finished: User is NOT a member of group %s",
-	      inst->config->xlat_name, (char *)check->vp_strvalue);
+	RDEBUG("sql_groupcmp finished: User is NOT a member of group %s",
+	       check->vp_strvalue);
 
 	return 1;
 }
@@ -614,8 +609,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 	 *	Get the list of groups this user is a member of
 	 */
 	if (sql_get_grouplist(inst, sqlsocket, request, &group_list) < 0) {
-		radlog(L_ERR, "rlm_sql (%s): Error retrieving group list",
-		       inst->config->xlat_name);
+		radlog_request(L_ERR, 0, request, "Error retrieving group list");
 		return -1;
 	}
 
@@ -626,22 +620,22 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 		 */
 		sql_group = pairmake("Sql-Group", group_list_tmp->groupname, T_OP_EQ);
 		if (!sql_group) {
-			radlog(L_ERR, "rlm_sql (%s): Error creating Sql-Group attribute",
-			       inst->config->xlat_name);
+			radlog_request(L_ERR, 0, request,
+				       "Error creating Sql-Group attribute");
 			return -1;
 		}
 		pairadd(&request->packet->vps, sql_group);
 		if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_check_query, request, sql_escape_func)) {
-			radlog(L_ERR, "rlm_sql (%s): Error generating query; rejecting user",
-			       inst->config->xlat_name);
+			radlog_request(L_ERR, 0, request,
+				       "Error generating query; rejecting user");
 			/* Remove the grouup we added above */
 			pairdelete(&request->packet->vps, PW_SQL_GROUP);
 			return -1;
 		}
 		rows = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr);
 		if (rows < 0) {
-			radlog(L_ERR, "rlm_sql (%s): Error retrieving check pairs for group %s",
-			       inst->config->xlat_name, group_list_tmp->groupname);
+			radlog_request(L_ERR, 0, request, "Error retrieving check pairs for group %s",
+			       group_list_tmp->groupname);
 			/* Remove the grouup we added above */
 			pairdelete(&request->packet->vps, PW_SQL_GROUP);
 			pairfree(&check_tmp);
@@ -652,22 +646,21 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			 */
 			if (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) == 0) {
 				found = 1;
-				DEBUG2("rlm_sql (%s): User found in group %s",
-					inst->config->xlat_name, group_list_tmp->groupname);
+				RDEBUG2("User found in group %s",
+					group_list_tmp->groupname);
 				/*
 				 *	Now get the reply pairs since the paircompare matched
 				 */
 				if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query, request, sql_escape_func)) {
-					radlog(L_ERR, "rlm_sql (%s): Error generating query; rejecting user",
-					       inst->config->xlat_name);
+					radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 					/* Remove the grouup we added above */
 					pairdelete(&request->packet->vps, PW_SQL_GROUP);
 					pairfree(&check_tmp);
 					return -1;
 				}
 				if (sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr) < 0) {
-					radlog(L_ERR, "rlm_sql (%s): Error retrieving reply pairs for group %s",
-					       inst->config->xlat_name, group_list_tmp->groupname);
+					radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
+					       group_list_tmp->groupname);
 					/* Remove the grouup we added above */
 					pairdelete(&request->packet->vps, PW_SQL_GROUP);
 					pairfree(&check_tmp);
@@ -686,22 +679,21 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			 *	match expected behavior
 			 */
 			found = 1;
-			DEBUG2("rlm_sql (%s): User found in group %s",
-				inst->config->xlat_name, group_list_tmp->groupname);
+			RDEBUG2("User found in group %s",
+				group_list_tmp->groupname);
 			/*
 			 *	Now get the reply pairs since the paircompare matched
 			 */
 			if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query, request, sql_escape_func)) {
-				radlog(L_ERR, "rlm_sql (%s): Error generating query; rejecting user",
-				       inst->config->xlat_name);
+				radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 				/* Remove the grouup we added above */
 				pairdelete(&request->packet->vps, PW_SQL_GROUP);
 				pairfree(&check_tmp);
 				return -1;
 			}
 			if (sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr) < 0) {
-				radlog(L_ERR, "rlm_sql (%s): Error retrieving reply pairs for group %s",
-				       inst->config->xlat_name, group_list_tmp->groupname);
+				radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
+				       group_list_tmp->groupname);
 				/* Remove the grouup we added above */
 				pairdelete(&request->packet->vps, PW_SQL_GROUP);
 				pairfree(&check_tmp);
@@ -813,7 +805,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	}
 
 	if (inst->config->num_sql_socks > MAX_SQL_SOCKS) {
-		radlog(L_ERR | L_CONS, "rlm_sql (%s): sql_instantiate: number of sqlsockets cannot exceed MAX_SQL_SOCKS, %d",
+		radlog(L_ERR, "rlm_sql (%s): sql_instantiate: number of sqlsockets cannot exceed MAX_SQL_SOCKS, %d",
 		       inst->config->xlat_name, MAX_SQL_SOCKS);
 		rlm_sql_detach(inst);
 		return -1;
@@ -823,27 +815,26 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	 *	Sanity check for crazy people.
 	 */
 	if (strncmp(inst->config->sql_driver, "rlm_sql_", 8) != 0) {
-		radlog(L_ERR, "rlm_sql (%s): \"%s\" is NOT an SQL driver!",
-		       inst->config->xlat_name, inst->config->sql_driver);
+		radlog(L_ERR, "\"%s\" is NOT an SQL driver!",
+		       inst->config->sql_driver);
 		rlm_sql_detach(inst);
 		return -1;
 	}
 
 	inst->handle = lt_dlopenext(inst->config->sql_driver);
 	if (inst->handle == NULL) {
-		radlog(L_ERR, "rlm_sql (%s): Could not link driver %s: %s",
-		       inst->config->xlat_name, inst->config->sql_driver,
+		radlog(L_ERR, "Could not link driver %s: %s",
+		       inst->config->sql_driver,
 		       lt_dlerror());
-		radlog(L_ERR, "rlm_sql (%s): Make sure it (and all its dependent libraries!) are in the search path of your system's ld.",
-		       inst->config->xlat_name);
+		radlog(L_ERR, "Make sure it (and all its dependent libraries!) are in the search path of your system's ld.");
 		rlm_sql_detach(inst);
 		return -1;
 	}
 
 	inst->module = (rlm_sql_module_t *) lt_dlsym(inst->handle, inst->config->sql_driver);
 	if (!inst->module) {
-		radlog(L_ERR, "rlm_sql (%s): Could not link symbol %s: %s",
-		       inst->config->xlat_name, inst->config->sql_driver,
+		radlog(L_ERR, "Could not link symbol %s: %s",
+		       inst->config->sql_driver,
 		       lt_dlerror());
 		rlm_sql_detach(inst);
 		return -1;
@@ -866,7 +857,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 
 	if (inst->config->do_clients){
 		if (generate_sql_clients(inst) == -1){
-			radlog(L_ERR, "rlm_sql (%s): generate_sql_clients() returned error",inst->config->xlat_name);
+			radlog(L_ERR, "Failed to load clients from SQL.");
 			rlm_sql_detach(inst);
 			return -1;
 		}
@@ -924,8 +915,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	 * Alright, start by getting the specific entry for the user
 	 */
 	if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_check_query, request, sql_escape_func)) {
-		radlog(L_ERR, "rlm_sql (%s): Error generating query; rejecting user",
-		       inst->config->xlat_name);
+		radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 		sql_release_socket(inst, sqlsocket);
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
@@ -933,8 +923,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	}
 	rows = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr);
 	if (rows < 0) {
-		radlog(L_ERR, "rlm_sql (%s): SQL query error; rejecting user",
-		       inst->config->xlat_name);
+		radlog_request(L_ERR, 0, request, "SQL query error; rejecting user");
 		sql_release_socket(inst, sqlsocket);
 		/* Remove the username we (maybe) added above */
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
@@ -946,7 +935,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		 */
 		if (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) == 0) {
 			found = 1;
-			DEBUG2("rlm_sql (%s): User found in radcheck table", inst->config->xlat_name);
+			RDEBUG2("User found in radcheck table");
 
 			if (inst->config->authorize_reply_query &&
 			    *inst->config->authorize_reply_query) {
@@ -955,8 +944,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 			 *	Now get the reply pairs since the paircompare matched
 			 */
 			if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_reply_query, request, sql_escape_func)) {
-				radlog(L_ERR, "rlm_sql (%s): Error generating query; rejecting user",
-				       inst->config->xlat_name);
+				radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 				sql_release_socket(inst, sqlsocket);
 				/* Remove the username we (maybe) added above */
 				pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
@@ -964,8 +952,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 				return RLM_MODULE_FAIL;
 			}
 			if (sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr) < 0) {
-				radlog(L_ERR, "rlm_sql (%s): SQL query error; rejecting user",
-				       inst->config->xlat_name);
+				radlog_request(L_ERR, 0, request, "SQL query error; rejecting user");
 				sql_release_socket(inst, sqlsocket);
 				/* Remove the username we (maybe) added above */
 				pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
@@ -997,8 +984,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	if (dofallthrough) {
 		rows = rlm_sql_process_groups(inst, request, sqlsocket, &dofallthrough);
 		if (rows < 0) {
-			radlog(L_ERR, "rlm_sql (%s): Error processing groups; rejecting user",
-			       inst->config->xlat_name);
+			radlog_request(L_ERR, 0, request, "Error processing groups; rejecting user");
 			sql_release_socket(inst, sqlsocket);
 			/* Remove the username we (maybe) added above */
 			pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
@@ -1023,11 +1009,9 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 			if (user_profile != NULL)
 				profile = user_profile->vp_strvalue;
 			if (profile && strlen(profile)){
-				radlog(L_DBG, "rlm_sql (%s): Checking profile %s",
-				       inst->config->xlat_name, profile);
+				RDEBUG("Checking profile %s", profile);
 				if (sql_set_user(inst, request, profileusername, profile) < 0) {
-					radlog(L_ERR, "rlm_sql (%s): Error setting profile; rejecting user",
-					       inst->config->xlat_name);
+					radlog_request(L_ERR, 0, request, "Error setting profile; rejecting user");
 					sql_release_socket(inst, sqlsocket);
 					/* Remove the username we (maybe) added above */
 					pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
@@ -1041,8 +1025,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		if (profile_found) {
 			rows = rlm_sql_process_groups(inst, request, sqlsocket, &dofallthrough);
 			if (rows < 0) {
-				radlog(L_ERR, "rlm_sql (%s): Error processing profile groups; rejecting user",
-				       inst->config->xlat_name);
+				radlog_request(L_ERR, 0, request, "Error processing profile groups; rejecting user");
 				sql_release_socket(inst, sqlsocket);
 				/* Remove the username we (maybe) added above */
 				pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
@@ -1058,8 +1041,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	sql_release_socket(inst, sqlsocket);
 
 	if (!found) {
-		radlog(L_DBG, "rlm_sql (%s): User %s not found",
-		       inst->config->xlat_name, sqlusername);
+		RDEBUG("User %s not found", sqlusername);
 		return RLM_MODULE_NOTFOUND;
 	} else {
 		return RLM_MODULE_OK;
@@ -1094,8 +1076,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 		acctstatustype = pair->vp_integer;
 	} else {
 		radius_xlat(logstr, sizeof(logstr), "packet has no accounting status type. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
-		radlog(L_ERR, "rlm_sql (%s) in sql_accounting: %s",
-		       inst->config->xlat_name, logstr);
+		radlog_request(L_ERR, 0, request, "%s", logstr);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -1106,7 +1087,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			 */
 		case PW_STATUS_ACCOUNTING_ON:
 		case PW_STATUS_ACCOUNTING_OFF:
-			radlog(L_INFO, "rlm_sql (%s): received Acct On/Off packet", inst->config->xlat_name);
+			RDEBUG("Received Acct On/Off packet");
 			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_onoff_query, request, sql_escape_func);
 			query_log(request, inst, querystr);
 
@@ -1115,8 +1096,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				return(RLM_MODULE_FAIL);
 			if (*querystr) { /* non-empty query */
 				if (rlm_sql_query(sqlsocket, inst, querystr)) {
-					radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL accounting for Acct On/Off packet - %s",
-					       inst->config->xlat_name,
+					radlog_request(L_ERR, 0, request, "Couldn't update SQL accounting for Acct On/Off packet - %s",
 					       (inst->module->sql_error)(sqlsocket, inst->config));
 					ret = RLM_MODULE_FAIL;
 				}
@@ -1143,8 +1123,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				return(RLM_MODULE_FAIL);
 			if (*querystr) { /* non-empty query */
 				if (rlm_sql_query(sqlsocket, inst, querystr)) {
-					radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL accounting ALIVE record - %s",
-					       inst->config->xlat_name,
+					radlog_request(L_ERR, 0, request, "Couldn't update SQL accounting ALIVE record - %s",
 					       (inst->module->sql_error)(sqlsocket, inst->config));
 					ret = RLM_MODULE_FAIL;
 				}
@@ -1162,8 +1141,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 						query_log(request, inst, querystr);
 						if (*querystr) { /* non-empty query */
 							if (rlm_sql_query(sqlsocket, inst, querystr)) {
-								radlog(L_ERR, "rlm_sql (%s): Couldn't insert SQL accounting ALIVE record - %s",
-								       inst->config->xlat_name,
+								radlog_request(L_ERR, 0, request, "Couldn't insert SQL accounting ALIVE record - %s",
 								       (inst->module->sql_error)(sqlsocket, inst->config));
 								ret = RLM_MODULE_FAIL;
 							}
@@ -1193,8 +1171,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				return(RLM_MODULE_FAIL);
 			if (*querystr) { /* non-empty query */
 				if (rlm_sql_query(sqlsocket, inst, querystr)) {
-					radlog(L_ERR, "rlm_sql (%s): Couldn't insert SQL accounting START record - %s",
-					       inst->config->xlat_name,
+					radlog_request(L_ERR, 0, request, "Couldn't insert SQL accounting START record - %s",
 					       (inst->module->sql_error)(sqlsocket, inst->config));
 
 					/*
@@ -1207,8 +1184,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 					if (*querystr) { /* non-empty query */
 						if (rlm_sql_query(sqlsocket, inst, querystr)) {
-							radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL accounting START record - %s",
-							       inst->config->xlat_name,
+							radlog_request(L_ERR, 0, request, "Couldn't update SQL accounting START record - %s",
 							       (inst->module->sql_error)(sqlsocket, inst->config));
 							ret = RLM_MODULE_FAIL;
 						}
@@ -1237,8 +1213,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				return(RLM_MODULE_FAIL);
 			if (*querystr) { /* non-empty query */
 				if (rlm_sql_query(sqlsocket, inst, querystr)) {
-					radlog(L_ERR, "rlm_sql (%s): Couldn't update SQL accounting STOP record - %s",
-					       inst->config->xlat_name,
+					radlog_request(L_ERR, 0, request, "Couldn't update SQL accounting STOP record - %s",
 					       (inst->module->sql_error)(sqlsocket, inst->config));
 					ret = RLM_MODULE_FAIL;
 				}
@@ -1263,7 +1238,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 						if (acctsessiontime <= 0) {
 							radius_xlat(logstr, sizeof(logstr), "stop packet with zero session length. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
-							radlog(L_ERR, "rlm_sql (%s) in sql_accounting: %s", inst->config->xlat_name, logstr);
+							radlog_request(L_ERR, 0, request, "%s", logstr);
 							sql_release_socket(inst, sqlsocket);
 							ret = RLM_MODULE_NOOP;
 						}
@@ -1274,8 +1249,8 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 						if (*querystr) { /* non-empty query */
 							if (rlm_sql_query(sqlsocket, inst, querystr)) {
-								radlog(L_ERR, "rlm_sql (%s): Couldn't insert SQL accounting STOP record - %s",
-								       inst->config->xlat_name,
+								radlog_request(L_ERR, 0, request, "Couldn't insert SQL accounting STOP record - %s",
+
 								       (inst->module->sql_error)(sqlsocket, inst->config));
 								ret = RLM_MODULE_FAIL;
 							}
@@ -1291,7 +1266,8 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			 *	Anything else is ignored.
 			 */
 		default:
-			radlog(L_INFO, "rlm_sql (%s): Unsupported Acct-Status-Type = %d", inst->config->xlat_name, acctstatustype);
+			RDEBUG("Unsupported Acct-Status-Type = %d",
+		       acctstatustype);
 			return RLM_MODULE_NOOP;
 			break;
 
@@ -1333,7 +1309,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	}
 
 	if((request->username == NULL) || (request->username->length == 0)) {
-		radlog(L_ERR, "rlm_sql (%s): Zero Length username not permitted\n", inst->config->xlat_name);
+		radlog_request(L_ERR, 0, request, "Zero Length username not permitted\n");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -1389,7 +1365,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 
 	radius_xlat(querystr, sizeof(querystr), inst->config->simul_verify_query, request, sql_escape_func);
 	if(rlm_sql_select_query(sqlsocket, inst, querystr)) {
-		radlog(L_ERR, "rlm_sql (%s): sql_checksimul: Database query error", inst->config->xlat_name);
+		radlog_request(L_ERR, 0, request, "Database query error");
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
 	}
@@ -1412,13 +1388,13 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 		if (!row[2]){
 			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 			sql_release_socket(inst, sqlsocket);
-			DEBUG("rlm_sql (%s): Cannot zap stale entry. No username present in entry.", inst->config->xlat_name);
+			RDEBUG("Cannot zap stale entry. No username present in entry.", inst->config->xlat_name);
 			return RLM_MODULE_FAIL;
 		}
 		if (!row[1]){
 			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 			sql_release_socket(inst, sqlsocket);
-			DEBUG("rlm_sql (%s): Cannot zap stale entry. No session id in entry.", inst->config->xlat_name);
+			RDEBUG("Cannot zap stale entry. No session id in entry.", inst->config->xlat_name);
 			return RLM_MODULE_FAIL;
 		}
 		if (row[3])
@@ -1474,7 +1450,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 			 */
 			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 			sql_release_socket(inst, sqlsocket);
-			radlog(L_ERR, "rlm_sql (%s): sql_checksimul: Failed to check the terminal server for user '%s'.", inst->config->xlat_name, row[2]);
+			radlog_request(L_ERR, 0, request, "Failed to check the terminal server for user '%s'.", row[2]);
 			return RLM_MODULE_FAIL;
 		}
 	}
@@ -1498,8 +1474,6 @@ static int rlm_sql_postauth(void *instance, REQUEST *request) {
 	SQL_INST	*inst = instance;
 	char		querystr[MAX_QUERY_LEN];
 	char		sqlusername[MAX_STRING_LEN];
-
-	DEBUG("rlm_sql (%s): Processing sql_postauth", inst->config->xlat_name);
 
 	if(sql_set_user(inst, request, sqlusername, NULL) < 0)
 		return RLM_MODULE_FAIL;
