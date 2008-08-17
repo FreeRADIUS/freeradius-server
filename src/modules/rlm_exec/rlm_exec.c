@@ -134,10 +134,10 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 	/*
 	 *	FIXME: Do xlat of program name?
 	 */
-	DEBUG2("rlm_exec (%s): Executing %s", inst->xlat_name, fmt);
+	RDEBUG2("Executing %s", fmt);
 	result = radius_exec_program(fmt, request, inst->wait,
 				     out, outlen, *input_pairs, NULL, inst->shell_escape);
-	DEBUG2("rlm_exec (%s): result %d", inst->xlat_name, result);
+	RDEBUG2("result %d", result);
 	if (result != 0) {
 		out[0] = '\0';
 		return 0;
@@ -282,8 +282,8 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	       (request->proxy->code == inst->packet_code)) ||
 	      (request->proxy_reply &&
 	       (request->proxy_reply->code == inst->packet_code)))) {
-		DEBUG2("  rlm_exec (%s): Packet type is not %s.  Not executing.",
-		       inst->xlat_name, inst->packet_type);
+		RDEBUG2("Packet type is not %s.  Not executing.",
+		       inst->packet_type);
 		return RLM_MODULE_NOOP;
 	}
 
@@ -298,7 +298,7 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	 *	list is empty.
 	 */
 	if (input_pairs && !*input_pairs) {
-		DEBUG2("rlm_exec (%s): WARNING! Input pairs are empty.  No attributes will be passed to the script", inst->xlat_name);
+		RDEBUG2("WARNING! Input pairs are empty.  No attributes will be passed to the script");
 	}
 
 	/*
@@ -380,7 +380,7 @@ static int exec_postauth(void *instance, REQUEST *request)
 		tmp = pairmake("Reply-Message", "Access denied (external check failed)", T_OP_SET);
 		pairadd(&request->reply->vps, tmp);
 
-		DEBUG2("Login incorrect (external check failed)");
+		RDEBUG2("Login incorrect (external check failed)");
 
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		return RLM_MODULE_REJECT;
@@ -392,7 +392,7 @@ static int exec_postauth(void *instance, REQUEST *request)
 		 *	exit status.
 		 */
 		request->reply->code = PW_AUTHENTICATION_REJECT;
-		DEBUG2("Login incorrect (external check said so)");
+		RDEBUG2("Login incorrect (external check said so)");
 		return RLM_MODULE_REJECT;
 	}
 
