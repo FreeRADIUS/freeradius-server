@@ -493,7 +493,7 @@ static int passwd_detach (void *instance) {
 #undef inst
 }
 
-static void addresult (struct passwd_instance * inst, VALUE_PAIR ** vp, struct mypasswd * pw, char when, const char *listname)
+static void addresult (struct passwd_instance * inst, REQUEST *request, VALUE_PAIR ** vp, struct mypasswd * pw, char when, const char *listname)
 {
 	int i;
 	VALUE_PAIR *newpair;
@@ -505,10 +505,10 @@ static void addresult (struct passwd_instance * inst, VALUE_PAIR ** vp, struct m
 					radlog(L_AUTH, "rlm_passwd: Unable to create %s: %s", inst->pwdfmt->field[i], pw->field[i]);
 					return;
 				}
-				radlog(L_DBG, "rlm_passwd: Added %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
+				RDEBUG("Added %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
 				pairadd (vp, newpair);
 			} else
-				radlog(L_DBG, "rlm_passwd: NOOP %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
+				RDEBUG("NOOP %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
 		}
 	}
 }
@@ -542,9 +542,9 @@ static int passwd_map(void *instance, REQUEST *request)
 			continue;
 		}
 		do {
-			addresult(inst, &request->config_items, pw, 0, "config_items");
-			addresult(inst, &request->reply->vps, pw, 1, "reply_items");
-			addresult(inst, &request->packet->vps, 	pw, 2, "request_items");
+			addresult(inst, request, &request->config_items, pw, 0, "config_items");
+			addresult(inst, request, &request->reply->vps, pw, 1, "reply_items");
+			addresult(inst, request, &request->packet->vps, 	pw, 2, "request_items");
 		} while ( (pw = get_next(name, inst->ht)) );
 		found++;
 		if (!inst->allowmultiple) break;
