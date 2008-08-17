@@ -218,35 +218,36 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 {
 	tls_session_t *tls_session;
+	REQUEST *request = handler->request;
 
 	tls_session = (tls_session_t *)handler->opaque;
 	if (tls_session == NULL){
-		radlog(L_ERR, "rlm_eap_tls: Unexpected ACK received");
+		radlog_request(L_ERR, 0, request, "Unexpected ACK received");
 		return EAPTLS_FAIL;
 	}
 	if (tls_session->info.initialized == 0) {
-		DEBUG("  rlm_eap_tls: No SSL info available. Waiting for more SSL data.");
+		RDEBUG("No SSL info available. Waiting for more SSL data.");
 		return EAPTLS_REQUEST;
 	}
 	if (tls_session->info.origin == 0) {
-		radlog(L_ERR, "rlm_eap_tls: Unexpected ACK received");
+		radlog_request(L_ERR, 0, request, "Unexpected ACK received");
 		return EAPTLS_FAIL;
 	}
 
 	switch (tls_session->info.content_type) {
 	case alert:
-		DEBUG2("  rlm_eap_tls: ack alert");
+		RDEBUG2("ACK alert");
 		eaptls_fail(handler->eap_ds, tls_session->peap_flag);
 		return EAPTLS_FAIL;
 
 	case handshake:
 		if ((tls_session->info.handshake_type == finished) &&
 		    (tls_session->dirty_out.used == 0)) {
-			DEBUG2("  rlm_eap_tls: ack handshake is finished");
+			RDEBUG2("ACK handshake is finished");
 			return EAPTLS_SUCCESS;
 		} /* else more data to send */
 
-		DEBUG2("  rlm_eap_tls: ack handshake fragment handler");
+		RDEBUG2("ACK handshake fragment handler");
 		/* Fragmentation handler, send next fragment */
 		return EAPTLS_REQUEST;
 
@@ -255,8 +256,8 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 		 *	to the default section below.
 		 */
 	default:
-		DEBUG2("  rlm_eap_tls: ack default");
-		radlog(L_ERR, "rlm_eap_tls: Invalid ACK received: %d",
+		RDEBUG2("ACK default");
+		radlog_request(L_ERR, 0, request, "Invalid ACK received: %d",
 		       tls_session->info.content_type);
 		return EAPTLS_FAIL;
 	}
@@ -306,6 +307,7 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 	EAP_DS *eap_ds = handler->eap_ds;
 	EAP_DS *prev_eap_ds = handler->prev_eapds;
 	eaptls_packet_t	*eaptls_packet, *eaptls_prev = NULL;
+	REQUEST *request = handler->request;
 
 	/*
 	 *	We don't check ANY of the input parameters.  It's all
@@ -341,17 +343,17 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 		/*
 		 *	Un-comment this for TLS inside of TTLS/PEAP
 		 */
-		DEBUG2("rlm_eap_tls: Received EAP-TLS ACK message");
+		RDEBUG2("Received EAP-TLS ACK message");
 		return eaptls_ack_handler(handler);
 #else
 		if (prev_eap_ds->request->id == eap_ds->response->id) {
 			/*
 			 *	Run the ACK handler directly from here.
 			 */
-			DEBUG2("rlm_eap_tls: Received EAP-TLS ACK message");
+			RDEBUG2("Received TLS ACK");
 			return eaptls_ack_handler(handler);
 		} else {
-			radlog(L_ERR, "rlm_eap_tls: Received Invalid EAP-TLS ACK message");
+			radlog_request(L_ERR, 0, request, "Received Invalid TLS ACK");
 			return EAPTLS_INVALID;
 		}
 #endif
