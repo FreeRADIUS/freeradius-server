@@ -38,20 +38,6 @@ static int sql_log_detach(void *instance);
 static int sql_log_accounting(void *instance, REQUEST *request);
 static int sql_log_postauth(void *instance, REQUEST *request);
 
-#ifndef HAVE_PTHREAD_H
-/*
- *      This is a lot simpler than putting ifdef's around
- *      every use of the pthread functions.
- */
-#define pthread_mutex_lock(a)
-#define pthread_mutex_trylock(a) (0)
-#define pthread_mutex_unlock(a)
-#define pthread_mutex_init(a,b)
-#define pthread_mutex_destroy(a)
-#else
-#include	<pthread.h>
-#endif
-
 #define MAX_QUERY_LEN 4096
 
 /*
@@ -64,9 +50,6 @@ typedef struct rlm_sql_log_t {
 	char		*sql_user_name;
 	char		*allowed_chars;
 	CONF_SECTION	*conf_section;
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_t	mutex;
-#endif
 } rlm_sql_log_t;
 
 /*
