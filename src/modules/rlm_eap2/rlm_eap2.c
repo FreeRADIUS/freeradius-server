@@ -301,7 +301,7 @@ static EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request)
 	 *	Not found.
 	 */
 	if (!node) {
-		DEBUG2("  rlm_eap2: Request not found in the list");
+		RDEBUG2("Request not found in the list");
 		return NULL;
 	}
 
@@ -313,7 +313,7 @@ static EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request)
 		return NULL;
 	}
 
-	DEBUG2("  rlm_eap2: Request found, released from the list");
+	RDEBUG2("Request found, released from the list");
 
 	return handler;
 }
@@ -835,7 +835,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 
 	vp = pairfind(request->packet->vps, PW_EAP_MESSAGE);
 	if (!vp) {
-		DEBUG("rlm_eap2: No EAP-Message.  Not doing EAP.");
+		RDEBUG("No EAP-Message.  Not doing EAP.");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -853,7 +853,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	if (vp) {
 		handler = eaplist_find(inst, request);
 		if (!handler) {
-			DEBUG("rlm_eap2: No handler found");
+			RDEBUG("No handler found");
 			return RLM_MODULE_FAIL;
 		}
 	} else {
@@ -892,7 +892,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	}
 	
 	if (eap_example_server_step(handler) < 0) {
-		DEBUG("rlm_eap2: Failed in EAP library");
+		RDEBUG("Failed in EAP library");
 		goto fail;
 	}
 
@@ -912,7 +912,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 
 	if (handler->server_ctx.eap_if->eapFail ||
 	    handler->server_ctx.eap_if->eapSuccess) {
-		DEBUG2("  rlm_eap2: Freeing handler");
+		RDEBUG2("Freeing handler");
 		/* handler is not required any more, free it now */
 		eap_handler_free(handler);
 		handler = NULL;
