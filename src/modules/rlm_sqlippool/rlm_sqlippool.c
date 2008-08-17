@@ -562,7 +562,7 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
  */
 static int do_logging(char *str, int retcode)
 {
-	if (strlen(str))
+	if (str && (*str != '\0'))
 		radlog(L_INFO,"%s", str);
 	return retcode;
 }
