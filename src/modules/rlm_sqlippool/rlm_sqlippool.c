@@ -374,9 +374,6 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt,
 		strcpy(query, expansion);
 	}
 
-#if 0
-	DEBUG2("sqlippool_query1: '%s'", query);
-#endif
 	if (rlm_sql_select_query(sqlsocket, data->sql_inst, query)){
 		radlog(L_ERR, "sqlippool_query1: database query error");
 		out[0] = '\0';
@@ -392,16 +389,16 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt,
 					strcpy(out, sqlsocket->row[0]);
 					retval = rlen;
 				} else {
-					DEBUG("sqlippool_query1: insufficient string space");
+					RDEBUG("insufficient string space");
 				}
 			} else {
-				DEBUG("sqlippool_query1: row[0] returned NULL");
+				RDEBUG("row[0] returned NULL");
 			}
 		} else {
-			DEBUG("sqlippool_query1: SQL query did not return any results");
+			RDEBUG("SQL query did not return any results");
 		}
 	} else {
-		DEBUG("sqlippool_query1: SQL query did not succeed");
+		RDEBUG("SQL query did not succeed");
 	}
 
 	(data->sql_inst->module->sql_finish_select_query)(sqlsocket,
@@ -592,27 +589,22 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		/* We already have a Framed-IP-Address */
 		radius_xlat(logstr, sizeof(logstr), data->log_exists,
 			    request, NULL);
-		DEBUG("rlm_sqlippool: Framed-IP-Address already exists");
+		RDEBUG("Framed-IP-Address already exists");
 
 		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
 
 	if (pairfind(request->config_items, PW_POOL_NAME) == NULL) {
-		DEBUG("rlm_sqlippool: No Pool-Name defined.");
+		RDEBUG("No Pool-Name defined.");
 		radius_xlat(logstr, sizeof(logstr), data->log_nopool,
 			    request, NULL);
 
 		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
 
-	if (pairfind(request->packet->vps, PW_NAS_IP_ADDRESS) == NULL) {
-		DEBUG("rlm_sqlippool: No NAS-IP-Address in packet.");
-		return RLM_MODULE_NOOP;
-	}
-
 	sqlsocket = sql_get_socket(data->sql_inst);
 	if (sqlsocket == NULL) {
-		DEBUG("rlm_sqlippool: cannot allocate sql connection");
+		RDEBUG("cannot allocate sql connection");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -670,7 +662,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 				 *	that case, we should return
 				 *	NOTFOUND
 				 */
-				DEBUG("rlm_sqlippool: pool appears to be full");
+				RDEBUG("pool appears to be full");
 				radius_xlat(logstr, sizeof(logstr), data->log_failed, request, NULL);
 				return do_logging(logstr, RLM_MODULE_NOTFOUND);
 
@@ -682,14 +674,14 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 			 *	sqlippool, so we should just ignore this
 			 *	allocation failure and return NOOP
 			 */
-			DEBUG("rlm_sqlippool: IP address could not be allocated as no pool exists with that name.");
+			RDEBUG("IP address could not be allocated as no pool exists with that name.");
 			return RLM_MODULE_NOOP;
 
 		}
 
 		sql_release_socket(data->sql_inst, sqlsocket);
 
-		DEBUG("rlm_sqlippool: IP address could not be allocated.");
+		RDEBUG("IP address could not be allocated.");
 		radius_xlat(logstr, sizeof(logstr), data->log_failed,
 			    request, NULL);
 
@@ -708,7 +700,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		sqlippool_command(data->allocate_commit, sqlsocket, instance,
 				  request, (char *) NULL, 0);
 
-		DEBUG("rlm_sqlippool: Invalid IP number [%s] returned from database query.", allocation);
+		RDEBUG("Invalid IP number [%s] returned from database query.", allocation);
 		sql_release_socket(data->sql_inst, sqlsocket);
 		radius_xlat(logstr, sizeof(logstr), data->log_failed,
 			    request, NULL);
@@ -722,8 +714,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	sqlippool_command(data->allocate_update, sqlsocket, instance, request,
 			  allocation, allocation_len);
 
-	DEBUG("rlm_sqlippool: Allocated IP %s [%08x]",
-	      allocation, ip_allocation);
+	RDEBUG("Allocated IP %s [%08x]", allocation, ip_allocation);
 
 	vp = radius_paircreate(request, &request->reply->vps,
 			       PW_FRAMED_IP_ADDRESS, PW_TYPE_IPADDR);
@@ -746,14 +737,9 @@ static int sqlippool_accounting_start(void * instance, REQUEST * request)
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	SQLSOCK * sqlsocket;
 
-	if (pairfind(request->packet->vps, PW_NAS_IP_ADDRESS) == NULL) {
-		DEBUG("rlm_ippool: Could not find nas information in packet.");
-		return RLM_MODULE_NOOP;
-	}
-
 	sqlsocket = sql_get_socket(data->sql_inst);
 	if (sqlsocket == NULL) {
-		DEBUG("rlm_sqlippool: cannot allocate sql connection");
+		RDEBUG("cannot allocate sql connection");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -785,14 +771,9 @@ static int sqlippool_accounting_alive(void * instance, REQUEST * request)
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	SQLSOCK * sqlsocket;
 
-	if (pairfind(request->packet->vps, PW_NAS_IP_ADDRESS) == NULL) {
-		DEBUG("rlm_ippool: Could not find nas information in packet.");
-		return RLM_MODULE_NOOP;
-	}
-
 	sqlsocket = sql_get_socket(data->sql_inst);
 	if (sqlsocket == NULL) {
-		DEBUG("rlm_sqlippool: cannot allocate sql connection");
+		RDEBUG("cannot allocate sql connection");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -826,14 +807,9 @@ static int sqlippool_accounting_stop(void * instance, REQUEST * request)
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	SQLSOCK * sqlsocket;
 
-	if (pairfind(request->packet->vps, PW_NAS_IP_ADDRESS) == NULL) {
-		DEBUG("rlm_ippool: Could not find nas information in packet.");
-		return RLM_MODULE_NOOP;
-	}
-
 	sqlsocket = sql_get_socket(data->sql_inst);
 	if (sqlsocket == NULL) {
-		DEBUG("rlm_sqlippool: cannot allocate sql connection");
+		RDEBUG("cannot allocate sql connection");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -866,14 +842,9 @@ static int sqlippool_accounting_on(void * instance, REQUEST * request)
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	SQLSOCK * sqlsocket;
 
-	if (pairfind(request->packet->vps, PW_NAS_IP_ADDRESS) == NULL) {
-		DEBUG("rlm_ippool: Could not find nas information in packet.");
-		return RLM_MODULE_NOOP;
-	}
-
 	sqlsocket = sql_get_socket(data->sql_inst);
 	if (sqlsocket == NULL) {
-		DEBUG("rlm_sqlippool: cannot allocate sql connection");
+		RDEBUG("cannot allocate sql connection");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -905,14 +876,9 @@ static int sqlippool_accounting_off(void * instance, REQUEST * request)
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	SQLSOCK * sqlsocket;
 
-	if (pairfind(request->packet->vps, PW_NAS_IP_ADDRESS) == NULL) {
-		DEBUG("rlm_ippool: Could not find nas information in packet.");
-		return RLM_MODULE_NOOP;
-	}
-
 	sqlsocket = sql_get_socket(data->sql_inst);
 	if (sqlsocket == NULL) {
-		DEBUG("rlm_sqlippool: cannot allocate sql connection");
+		RDEBUG("cannot allocate sql connection");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -951,7 +917,7 @@ static int sqlippool_accounting(void * instance, REQUEST * request)
 
 	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE);
 	if (!vp) {
-		DEBUG("rlm_sqlippool: Could not find account status type in packet.");
+		RDEBUG("Could not find account status type in packet.");
 		return RLM_MODULE_NOOP;
 	}
 	acct_status_type = vp->vp_integer;
