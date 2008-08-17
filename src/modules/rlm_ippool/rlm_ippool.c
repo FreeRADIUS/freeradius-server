@@ -328,13 +328,13 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL)
 		acctstatustype = vp->vp_integer;
 	else {
-		DEBUG("rlm_ippool: Could not find account status type in packet. Return NOOP.");
+		RDEBUG("Could not find account status type in packet. Return NOOP.");
 		return RLM_MODULE_NOOP;
 	}
 	switch(acctstatustype){
 		case PW_STATUS_STOP:
 			if (!radius_xlat(xlat_str,MAX_STRING_LEN,data->key, request, NULL)){
-				DEBUG("rlm_ippool: xlat on the 'key' directive failed");
+				RDEBUG("xlat on the 'key' directive failed");
 				return RLM_MODULE_NOOP;
 			}
 			fr_MD5Init(&md5_context);
@@ -343,17 +343,17 @@ static int ippool_accounting(void *instance, REQUEST *request)
 			key_str[16] = '\0';
 			fr_bin2hex(key_str,hex_str,16);
 			hex_str[32] = '\0';
-			DEBUG("rlm_ippool: MD5 on 'key' directive maps to: %s",hex_str);
+			RDEBUG("MD5 on 'key' directive maps to: %s",hex_str);
 			memcpy(key.key,key_str,16);
 			break;
 		default:
 			/* We don't care about any other accounting packet */
-			DEBUG("rlm_ippool: This is not an Accounting-Stop. Return NOOP.");
+			RDEBUG("This is not an Accounting-Stop. Return NOOP.");
 
 			return RLM_MODULE_NOOP;
 	}
 
-	DEBUG("rlm_ippool: Searching for an entry for key: '%s'",xlat_str);
+	RDEBUG("Searching for an entry for key: '%s'",xlat_str);
 	key_datum.dptr = (char *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
@@ -366,7 +366,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 		 */
 		memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
 		free(data_datum.dptr);
-		DEBUG("rlm_ippool: Deallocated entry for ip: %s",ip_ntoa(str,entry.ipaddr));
+		RDEBUG("Deallocated entry for ip: %s",ip_ntoa(str,entry.ipaddr));
 		entry.active = 0;
 		entry.timestamp = 0;
 		entry.timeout = 0;
@@ -399,7 +399,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 			free(data_datum.dptr);
 			if (num >0){
 				num--;
-				DEBUG("rlm_ippool: num: %d",num);
+				RDEBUG("num: %d",num);
 				data_datum.dptr = (char *) &num;
 				data_datum.dsize = sizeof(int);
 				rcode = gdbm_store(data->ip, key_datum, data_datum, GDBM_REPLACE);
@@ -423,7 +423,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	}
 	else{
 		pthread_mutex_unlock(&data->op_mutex);
-		DEBUG("rlm_ippool: Entry not found");
+		RDEBUG("Entry not found");
 	}
 
 	return RLM_MODULE_OK;
@@ -464,7 +464,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		if (data->name == NULL || (strcmp(data->name,vp->vp_strvalue) && strcmp(vp->vp_strvalue,"DEFAULT")))
 			return RLM_MODULE_NOOP;
 	} else {
-		DEBUG("rlm_ippool: Could not find Pool-Name attribute.");
+		RDEBUG("Could not find Pool-Name attribute.");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -477,7 +477,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 
 
 	if (!radius_xlat(xlat_str,MAX_STRING_LEN,data->key, request, NULL)){
-		DEBUG("rlm_ippool: xlat on the 'key' directive failed");
+		RDEBUG("xlat on the 'key' directive failed");
 		return RLM_MODULE_NOOP;
 	}
 	fr_MD5Init(&md5_context);
@@ -486,10 +486,10 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	key_str[16] = '\0';
 	fr_bin2hex(key_str,hex_str,16);
 	hex_str[32] = '\0';
-	DEBUG("rlm_ippool: MD5 on 'key' directive maps to: %s",hex_str);
+	RDEBUG("MD5 on 'key' directive maps to: %s",hex_str);
 	memcpy(key.key,key_str,16);
 
-	DEBUG("rlm_ippool: Searching for an entry for key: '%s'",hex_str);
+	RDEBUG("Searching for an entry for key: '%s'",hex_str);
 	key_datum.dptr = (char *) &key;
 	key_datum.dsize = sizeof(ippool_key);
 
@@ -504,7 +504,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
 		free(data_datum.dptr);
 		if (entry.active){
-			DEBUG("rlm_ippool: Found a stale entry for ip: %s",ip_ntoa(str,entry.ipaddr));
+			RDEBUG("Found a stale entry for ip: %s",ip_ntoa(str,entry.ipaddr));
 			entry.active = 0;
 			entry.timestamp = 0;
 			entry.timeout = 0;
@@ -535,7 +535,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 				free(data_datum.dptr);
 				if (num >0){
 					num--;
-					DEBUG("rlm_ippool: num: %d",num);
+					RDEBUG("num: %d",num);
 					data_datum.dptr = (char *) &num;
 					data_datum.dsize = sizeof(int);
 					rcode = gdbm_store(data->ip, key_datum, data_datum, GDBM_REPLACE);
@@ -564,15 +564,15 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	 * If there is a Framed-IP-Address attribute in the reply, check for override
 	 */
 	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS) != NULL) {
-		DEBUG("rlm_ippool: Found Framed-IP-Address attribute in reply attribute list.");
+		RDEBUG("Found Framed-IP-Address attribute in reply attribute list.");
 		if (data->override)
 		{
 			/* Override supplied Framed-IP-Address */
-			DEBUG("rlm_ippool: override is set to yes. Override the existing Framed-IP-Address attribute.");
+			RDEBUG("override is set to yes. Override the existing Framed-IP-Address attribute.");
 			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS);
 		} else {
 			/* Abort */
-			DEBUG("rlm_ippool: override is set to no. Return NOOP.");
+			RDEBUG("override is set to no. Return NOOP.");
 			return RLM_MODULE_NOOP;
 		}
 	}
@@ -760,7 +760,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		} else
 			num = 0;
 		num++;
-		DEBUG("rlm_ippool: num: %d",num);
+		RDEBUG("num: %d",num);
 		data_datum.dptr = (char *) &num;
 		data_datum.dsize = sizeof(int);
 		rcode = gdbm_store(data->ip, key_datum, data_datum, GDBM_REPLACE);
@@ -773,7 +773,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		pthread_mutex_unlock(&data->op_mutex);
 
 
-		DEBUG("rlm_ippool: Allocated ip %s to client key: %s",ip_ntoa(str,entry.ipaddr),hex_str);
+		RDEBUG("Allocated ip %s to client key: %s",ip_ntoa(str,entry.ipaddr),hex_str);
 		vp = radius_paircreate(request, &request->reply->vps,
 				       PW_FRAMED_IP_ADDRESS, PW_TYPE_IPADDR);
 		vp->vp_ipaddr = entry.ipaddr;
@@ -792,7 +792,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	}
 	else{
 		pthread_mutex_unlock(&data->op_mutex);
-		DEBUG("rlm_ippool: No available ip addresses in pool.");
+		RDEBUG("No available ip addresses in pool.");
 		return RLM_MODULE_NOTFOUND;
 	}
 
