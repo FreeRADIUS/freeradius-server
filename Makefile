@@ -154,18 +154,14 @@ certs:
 #  BEFORE running this command!
 #
 ######################################################################
-freeradius-server-$(RADIUSD_VERSION): CVS
-	@CVSROOT=`cat CVS/Root`; \
-	cvs -d $$CVSROOT checkout -P -d freeradius-server-$(RADIUSD_VERSION) radiusd
-
-freeradius-server-$(RADIUSD_VERSION).tar.gz: freeradius-server-$(RADIUSD_VERSION)
-	@tar --exclude=CVS -zcf  $@ $<
+freeradius-server-$(RADIUSD_VERSION).tar.gz: .git
+	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/ master | gzip > $@
 
 freeradius-server-$(RADIUSD_VERSION).tar.gz.sig: freeradius-server-$(RADIUSD_VERSION).tar.gz
 	gpg --default-key aland@freeradius.org -b $<
 
-freeradius-server-$(RADIUSD_VERSION).tar.bz2: freeradius-server-$(RADIUSD_VERSION)
-	@tar --exclude=CVS -jcf $@ $<
+freeradius-server-$(RADIUSD_VERSION).tar.bz2: .git
+	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/ master | bzip2 > $@
 
 freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig: freeradius-server-$(RADIUSD_VERSION).tar.bz2
 	gpg --default-key aland@freeradius.org -b $<
@@ -198,7 +194,7 @@ dist-publish: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-
 #  to do!
 #
 dist-tag: freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.bz2
-	@echo "cd freeradius-server-$(RADIUSD_VERSION) && cvs tag release_`echo $(RADIUSD_VERSION) | tr .- __` && cd .."
+	@echo "git tag release_`echo $(RADIUSD_VERSION) | tr .- __`"
 
 #
 #	Build a debian package
