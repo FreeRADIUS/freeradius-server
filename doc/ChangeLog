@@ -1,12 +1,17 @@
 FreeRADIUS 2.0.6 ; $Date$ , urgency=medium
 	Feature improvements
-	* Clients may now be defined dynamically.  See
-	  raddb/sites-available/dynamic-clients.
+	* Clients may now be defined dynamically, based on *any* criteria.
+	  See raddb/sites-available/dynamic-clients.
 	* SNMP statistics have been replaced by statistics gathered
 	  via Status-Server.  See raddb/sites-available/status
 	* SNMP support has been removed from the server.  Since it has not
 	  worked for a while, this should not affect anyone.
 	* Added more Microsoft attributes from bug #568.
+	* The "linelog" module has more functionality and flexibility
+	* The debugging output has been sanitized.  It should be much
+	  more readable.
+	* Debug logs can now be turned on and off while the server is running,
+	  for a user, group, realm, etc.  See "log" section of radiusd.conf.
 
 	Bug fixes
 	* Parse "security" section in radiusd.conf.  This was accidentally
@@ -15,6 +20,9 @@ FreeRADIUS 2.0.6 ; $Date$ , urgency=medium
 	  listen on "*" for multiple interfaces.
 	* Fix handling of giaddr in DHCP responses.
 	* Corrected parsing of status_check in home_server so that it works.
+	* Fix hints so that "Puser" works again.
+	* Removed length restrictions on attribute names in the dictionaries.
+	* Update socket code to avoid C compiler optimizations.
 
 FreeRADIUS 2.0.5 ; Date: 2008/06/07 17:17:00 , urgency=medium
 	Feature improvements
