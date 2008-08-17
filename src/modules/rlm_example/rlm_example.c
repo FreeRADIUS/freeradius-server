@@ -117,7 +117,7 @@ static int example_authorize(void *instance, REQUEST *request)
 	 */
 	state =  pairfind(request->packet->vps, PW_STATE);
 	if (state != NULL) {
-		DEBUG("rlm_example: Found reply to access challenge");
+		RDEBUG("Found reply to access challenge");
 		return RLM_MODULE_OK;
 	}
 
@@ -135,7 +135,7 @@ static int example_authorize(void *instance, REQUEST *request)
 	 *  The server will take care of sending it to the user.
 	 */
 	request->reply->code = PW_ACCESS_CHALLENGE;
-	DEBUG("rlm_example: Sending Access-Challenge.");
+	RDEBUG("Sending Access-Challenge.");
 
 	return RLM_MODULE_HANDLED;
 }
