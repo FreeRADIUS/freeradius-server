@@ -72,12 +72,12 @@ static int expiration_authorize(void *instance, REQUEST *request)
 		*      and add our own Reply-Message, saying
 		*      why they're being rejected.
 		*/
-		DEBUG("rlm_expiration: Checking Expiration time: '%s'",check_item->vp_strvalue);
+		RDEBUG("Checking Expiration time: '%s'",check_item->vp_strvalue);
 		if (((time_t) check_item->vp_date) <= request->timestamp) {
 			char logstr[MAX_STRING_LEN];
 			VALUE_PAIR *module_fmsg_vp;
 
-			DEBUG("rlm_expiration: Account has expired");
+			RDEBUG("Account has expired");
 
 			if (data->msg && data->msg[0]){
 				if (!radius_xlat(msg, sizeof(msg), data->msg, request, NULL)) {
