@@ -93,7 +93,7 @@ static int get_number(REQUEST *request, const char **string, int *answer)
 		for (i = 0; map[i].token != TOKEN_LAST; i++) {
 			if (*p == map[i].op) {
 				if (this != TOKEN_NONE) {
-					DEBUG2("rlm_expr: Invalid operator at \"%s\"", p);
+					RDEBUG2("Invalid operator at \"%s\"", p);
 					return -1;
 				}
 				this = map[i].token;
@@ -115,7 +115,7 @@ static int get_number(REQUEST *request, const char **string, int *answer)
 		 */
 		if (*p == ')') {
 			if (this != TOKEN_NONE) {
-				DEBUG2("rlm_expr: Trailing operator before end sub-expression at \"%s\"", p);
+				RDEBUG2("Trailing operator before end sub-expression at \"%s\"", p);
 				return -1;
 			}
 			p++;
@@ -140,7 +140,7 @@ static int get_number(REQUEST *request, const char **string, int *answer)
 			 *  If it isn't, then we die.
 			 */
 			if ((*p < '0') || (*p > '9')) {
-				DEBUG2("rlm_expr: Not a number at \"%s\"", p);
+				RDEBUG2("Not a number at \"%s\"", p);
 				return -1;
 			}
 
@@ -237,7 +237,7 @@ static size_t expr_xlat(void *instance, REQUEST *request, char *fmt,
 	 *  We MUST have eaten the entire input string.
 	 */
 	if (*p != '\0') {
-		DEBUG2("rlm_expr: Failed at %s", p);
+		RDEBUG2("Failed at %s", p);
 		return 0;
 	}
 
