@@ -178,7 +178,7 @@ static int eaptype_call(EAP_TYPES *atype, EAP_HANDLER *handler)
 
 	default:
 		/* Should never enter here */
-		radlog(L_DBG, "rlm_eap: Invalid operation on eap_type");
+		RDEBUG("Internal sanity check failed on eap_type");
 		rcode = 0;
 		break;
 	}
@@ -818,7 +818,7 @@ void eap_success(EAP_HANDLER *handler)
 /*
  * Basic EAP packet verfications & validations
  */
-static int eap_validation(eap_packet_t *eap_packet)
+static int eap_validation(REQUEST *request, eap_packet_t *eap_packet)
 {
 	uint16_t len;
 
@@ -834,15 +834,15 @@ static int eap_validation(eap_packet_t *eap_packet)
 	    (eap_packet->data[0] <= 0) ||
 	    (eap_packet->data[0] > PW_EAP_MAX_TYPES)) {
 
-		radlog(L_AUTH, "rlm_eap: Incorrect EAP Message, "
-				"Ignoring the packet");
+		radlog_request(L_AUTH, 0, request, 
+			       "Badly formatted EAP Message: Ignoring the packet");
 		return EAP_INVALID;
 	}
 
 	/* we don't expect notification, but we send it */
 	if (eap_packet->data[0] == PW_EAP_NOTIFICATION) {
-		radlog(L_AUTH, "rlm_eap: Got NOTIFICATION, "
-				"Ignoring the packet");
+		radlog_request(L_AUTH, 0, request, "Got NOTIFICATION, "
+			       "Ignoring the packet");
 		return EAP_INVALID;
 	}
 
@@ -853,7 +853,7 @@ static int eap_validation(eap_packet_t *eap_packet)
 /*
  *  Get the user Identity only from EAP-Identity packets
  */
-static char *eap_identity(eap_packet_t *eap_packet)
+static char *eap_identity(REQUEST *request, eap_packet_t *eap_packet)
 {
 	int size;
 	uint16_t len;
@@ -869,16 +869,12 @@ static char *eap_identity(eap_packet_t *eap_packet)
 	len = ntohs(len);
 
 	if ((len <= 5) || (eap_packet->data[1] == 0x00)) {
-		radlog(L_ERR, "rlm_eap: UserIdentity Unknown ");
+		RDEBUG("UserIdentity Unknown ");
 		return NULL;
 	}
 
 	size = len - 5;
-	identity = (char *)malloc(size + 1);
-	if (identity == NULL) {
-		radlog(L_ERR, "rlm_eap: out of memory");
-		return NULL;
-	}
+	identity = rad_malloc(size + 1);
 	memcpy(identity, &eap_packet->data[1], size);
 	identity[size] = '\0';
 
@@ -956,7 +952,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 	/*
 	 *	Ensure it's a valid EAP-Request, or EAP-Response.
 	 */
-	if (eap_validation(eap_packet) == EAP_INVALID) {
+	if (eap_validation(request, eap_packet) == EAP_INVALID) {
 		free(*eap_packet_p);
 		*eap_packet_p = NULL;
 		return NULL;
@@ -970,8 +966,8 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 		handler = eaplist_find(inst, request, eap_packet);
 		if (handler == NULL) {
 			/* Either send EAP_Identity or EAP-Fail */
-			radlog(L_ERR, "rlm_eap: Either EAP-request timed out OR"
-				" EAP-response to an unknown EAP-request");
+			RDEBUG("Either EAP-request timed out OR"
+			       " EAP-response to an unknown EAP-request");
 			free(*eap_packet_p);
 			*eap_packet_p = NULL;
 			return NULL;
@@ -987,7 +983,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 		 */
 		if ((eap_packet->data[0] != PW_EAP_NAK) &&
 		    (eap_packet->data[0] != handler->eap_type)) {
-			radlog(L_ERR, "rlm_eap: Response appears to match, but EAP type is wrong.");
+			RDEBUG("Response appears to match, but EAP type is wrong.");
 			free(*eap_packet_p);
 			*eap_packet_p = NULL;
 			return NULL;
@@ -1005,7 +1001,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 		       RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
                        vp = pairmake("User-Name", handler->identity, T_OP_EQ);
                        if (vp == NULL) {
-                               radlog(L_ERR, "rlm_eap: out of memory");
+			       RDEBUG("Out of memory");
                                free(*eap_packet_p);
                                *eap_packet_p = NULL;
                                return NULL;
@@ -1025,7 +1021,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 			*/
                        if (strncmp(handler->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
-                               radlog(L_ERR, "rlm_eap: Identity does not match User-Name.  Authentication failed.");
+                               RDEBUG("Identity does not match User-Name.  Authentication failed.");
                                free(*eap_packet_p);
                                *eap_packet_p = NULL;
                                return NULL;
@@ -1034,7 +1030,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 	} else {		/* packet was EAP identity */
 		handler = eap_handler_alloc();
 		if (handler == NULL) {
-			radlog(L_ERR, "rlm_eap: out of memory");
+			RDEBUG("Out of memory.");
 			free(*eap_packet_p);
 			*eap_packet_p = NULL;
 			return NULL;
@@ -1043,9 +1039,9 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 		/*
 		 *	All fields in the handler are set to zero.
 		 */
-		handler->identity = eap_identity(eap_packet);
+		handler->identity = eap_identity(request, eap_packet);
 		if (handler->identity == NULL) {
-			radlog(L_ERR, "rlm_eap: Identity Unknown, authentication failed");
+			RDEBUG("Identity Unknown, authentication failed");
 			free(*eap_packet_p);
 			*eap_packet_p = NULL;
 			eap_handler_free(handler);
@@ -1064,7 +1060,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 		       RDEBUG2("WARNING NAS did not set User-Name.  Setting it locally from EAP Identity");
                        vp = pairmake("User-Name", handler->identity, T_OP_EQ);
                        if (vp == NULL) {
-                               radlog(L_ERR, "rlm_eap: out of memory");
+                               RDEBUG("Out of memory");
                                free(*eap_packet_p);
                                *eap_packet_p = NULL;
 			       eap_handler_free(handler);
@@ -1081,7 +1077,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 			*/
                        if (strncmp(handler->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
-                               radlog(L_ERR, "rlm_eap: Identity does not match User-Name, setting from EAP Identity.");
+                               RDEBUG("Identity does not match User-Name, setting from EAP Identity.");
                                free(*eap_packet_p);
                                *eap_packet_p = NULL;
                                eap_handler_free(handler);
