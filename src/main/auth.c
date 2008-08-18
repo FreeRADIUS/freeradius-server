@@ -166,13 +166,15 @@ static int rad_check_password(REQUEST *request)
 	while(((auth_type_pair = pairfind(cur_config_item, PW_AUTH_TYPE))) != NULL) {
 		auth_type = auth_type_pair->vp_integer;
 		auth_type_count++;
+		DICT_VALUE *dv = dict_valbyattr(auth_type_pair->attribute,
+						auth_type_pair->vp_integer);
 
-		RDEBUG2("  rad_check_password:  Found Auth-Type %s",
-				auth_type_pair->vp_strvalue);
+		RDEBUG2("Found Auth-Type = %s",
+			(dv != NULL) ? dv->name : "?");
 		cur_config_item = auth_type_pair->next;
 
 		if (auth_type == PW_AUTHTYPE_REJECT) {
-			RDEBUG2("  rad_check_password: Auth-Type = Reject, rejecting user");
+			RDEBUG2("Auth-Type = Reject, rejecting user");
 			return -2;
 		}
 	}
@@ -193,7 +195,7 @@ static int rad_check_password(REQUEST *request)
 	    || (request->proxy)
 #endif
 	    ) {
-		RDEBUG2("  rad_check_password: Auth-Type = Accept, accepting the user");
+		RDEBUG2("Auth-Type = Accept, accepting the user");
 		return 0;
 	}
 
@@ -249,15 +251,16 @@ static int rad_check_password(REQUEST *request)
 		 	*
 		 	*	This is fail-safe.
 		 	*/
-			RDEBUG2("auth: No authenticate method (Auth-Type) configuration found for the request: Rejecting the user");
+			RDEBUG2("No authenticate method (Auth-Type) configuration found for the request: Rejecting the user");
 			return -2;
 		}
 	}
 
 	switch(auth_type) {
-		DICT_VALUE *dval;
-
 		case PW_AUTHTYPE_CRYPT:
+			RDEBUG2("WARNING: Please update your configuration, and remove 'Auth-Type = Crypt'");
+			RDEBUG2("WARNING: Use the PAP module instead.");
+
 			/*
 			 *	Find the password sent by the user. It
 			 *	SHOULD be there, if it's not
@@ -265,11 +268,10 @@ static int rad_check_password(REQUEST *request)
 			 */
 			auth_item = request->password;
 			if (auth_item == NULL) {
-				RDEBUG2("auth: No User-Password or CHAP-Password attribute in the request");
+				RDEBUG2("No User-Password or CHAP-Password attribute in the request");
 				return -1;
 			}
 
-			RDEBUG2("auth: type Crypt");
 			if (password_pair == NULL) {
 				RDEBUG2("No Crypt-Password configured for the user");
 				rad_authlog("Login incorrect "
@@ -287,7 +289,8 @@ static int rad_check_password(REQUEST *request)
 			}
 			break;
 		case PW_AUTHTYPE_LOCAL:
-			RDEBUG2("auth: type Local");
+			RDEBUG2("WARNING: Please update your configuration, and remove 'Auth-Type = Local'");
+			RDEBUG2("WARNING: Use the PAP or CHAP modules instead.");
 
 			/*
 			 *	Find the password sent by the user. It
@@ -299,7 +302,8 @@ static int rad_check_password(REQUEST *request)
 				auth_item = pairfind(request->packet->vps,
 						     PW_CHAP_PASSWORD);
 			if (!auth_item) {
-				RDEBUG2("auth: No User-Password or CHAP-Password attribute in the request");
+				RDEBUG2("No User-Password or CHAP-Password attribute in the request.");
+				RDEBUG2("Cannot perform authentication.");
 				return -1;
 			}
 
@@ -307,7 +311,8 @@ static int rad_check_password(REQUEST *request)
 			 *	Plain text password.
 			 */
 			if (password_pair == NULL) {
-				RDEBUG2("auth: No password configured for the user");
+				RDEBUG2("No \"known good\" password was configured for the user.");
+				RDEBUG2("As a result, we cannot authenticate the user.");
 				rad_authlog("Login incorrect "
 					"(No password configured for the user)", request, 0);
 				return -1;
@@ -319,10 +324,10 @@ static int rad_check_password(REQUEST *request)
 			if (auth_item->attribute == PW_USER_PASSWORD) {
 				if (strcmp((char *)password_pair->vp_strvalue,
 					   (char *)auth_item->vp_strvalue) != 0) {
-					RDEBUG2("auth: user supplied User-Password does NOT match local User-Password");
+					RDEBUG2("User-Password in the request does NOT match \"known good\" password.");
 					return -1;
 				}
-				RDEBUG2("auth: user supplied User-Password matches local User-Password");
+				RDEBUG2("User-Password in the request is correct.");
 				break;
 
 			} else if (auth_item->attribute != PW_CHAP_PASSWORD) {
@@ -340,19 +345,12 @@ static int rad_check_password(REQUEST *request)
 			 */
 			if (memcmp(my_chap + 1, auth_item->vp_strvalue + 1,
 				   CHAP_VALUE_LENGTH) != 0) {
-				RDEBUG2("auth: user supplied CHAP-Password does NOT match local User-Password");
+				RDEBUG2("CHAP-Password is incorrect.");
 				return -1;
 			}
-			RDEBUG2("auth: user supplied CHAP-Password matches local User-Password");
+			RDEBUG2("CHAP-Password is correct.");
 			break;
 		default:
-			dval = dict_valbyattr(PW_AUTH_TYPE, auth_type);
-			if (dval) {
-				RDEBUG2("auth: type \"%s\"", dval->name);
-			} else {
-				RDEBUG2("auth: type UNKNOWN-%d", auth_type);
-			}
-
 			/*
 			 *	See if there is a module that handles
 			 *	this type, and turn the RLM_ return
@@ -406,7 +404,7 @@ int rad_postauth(REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, PW_POST_AUTH_TYPE);
 	if (vp) {
-		RDEBUG2("  Found Post-Auth-Type %s", vp->vp_strvalue);
+		RDEBUG2("Using Post-Auth-Type %s", vp->vp_strvalue);
 		postauth_type = vp->vp_integer;
 	}
 	result = module_post_auth(postauth_type, request);
@@ -578,7 +576,7 @@ autz_redo:
 	if (!autz_retry) {
 		tmp = pairfind(request->config_items, PW_AUTZ_TYPE);
 		if (tmp) {
-			RDEBUG2("  Found Autz-Type %s", tmp->vp_strvalue);
+			RDEBUG2("Using Autz-Type %s", tmp->vp_strvalue);
 			autz_type = tmp->vp_integer;
 			autz_retry = 1;
 			goto autz_redo;
@@ -614,11 +612,11 @@ autz_redo:
 		 *	*the* LOCAL realm.
 		 */
 		if (realm &&(strcmp(realm->name, "LOCAL") != 0)) {
-			RDEBUG2("  WARNING: You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling invalid proxy request.", realm->name);
+			RDEBUG2("WARNING: You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling proxy request.", realm->name);
 		}
 
 		if (!realm) {
-			RDEBUG2("  WARNING: You set Proxy-To-Realm = %s, but the realm does not exist!  Cancelling invalid proxy request.", tmp->vp_strvalue);
+			RDEBUG2("WARNING: You set Proxy-To-Realm = %s, but the realm does not exist!  Cancelling invalid proxy request.", tmp->vp_strvalue);
 		}
 	}
 
@@ -650,7 +648,7 @@ autz_redo:
 	 *	wants to send back.
 	 */
 	if (result < 0) {
-		RDEBUG2("auth: Failed to validate the user.");
+		RDEBUG2("Failed to authenticate the user.");
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 
 		if ((module_msg = pairfind(request->packet->vps,PW_MODULE_FAILURE_MESSAGE)) != NULL){
@@ -689,7 +687,7 @@ autz_redo:
 
 		tmp = pairfind(request->config_items, PW_SESSION_TYPE);
 		if (tmp) {
-			RDEBUG2("  Found Session-Type %s", tmp->vp_strvalue);
+			RDEBUG2("Using Session-Type %s", tmp->vp_strvalue);
 			session_type = tmp->vp_integer;
 		}
 
@@ -707,7 +705,7 @@ autz_redo:
 
 				if ((port_limit = pairfind(request->reply->vps, PW_PORT_LIMIT)) != NULL &&
 					port_limit->vp_integer > check_item->vp_integer){
-					RDEBUG2("main auth: MPP is OK");
+					RDEBUG2("MPP is OK");
 					mpp_ok = 1;
 				}
 			}
