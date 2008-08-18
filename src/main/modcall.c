@@ -589,7 +589,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 			stack.start[stack.pointer] = stack.children[stack.pointer];
 
-			RDEBUG2("%.*s- entering %s %s",
+			RDEBUG2("%.*s- entering %s %s {...}",
 			       stack.pointer, modcall_spaces,
 			       group_name[child->type],
 			       child->name ? child->name : "");
