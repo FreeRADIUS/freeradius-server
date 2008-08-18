@@ -116,6 +116,17 @@ int log_debug(const char *msg, ...)
 	return r;
 }
 
+void radlog_request(UNUSED int lvl, UNUSED int priority,
+		    UNUSED REQUEST *request, const char *msg, ...)
+{
+	va_list ap;
+
+	va_start(ap, msg);
+	vfprintf(stderr, msg, ap);
+	va_end(ap);
+	fputc('\n', stderr);
+}
+
 static int getport(const char *name)
 {
 	struct	servent		*svp;
