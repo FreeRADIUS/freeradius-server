@@ -48,27 +48,6 @@ section, and MODULE RETURN CODES, below.
 .br
 	...
 .DE
-.IP %{module-name:\ string}
-Calls the named module, with the arguments "string".  There are no
-other side effects.  See also the section below titled "Obtaining
-results from databases".  The functionality described here is the same
-as in that section, except that the returned string (if any) is
-discarded.
-
-Not all modules have this feature.  Similarly, the string arguments to
-the module are undocumented, other than perhaps in the comments to the
-module configuration.
-.DS
-	...
-.br
-	%{sql:INSERT ... } # performs an SQL insert
-.br
-	%{exec:/path/to/pgm %{User-Name}} # runs pgm with args
-.br
-	...
-.DE
-This functionality is available anywhere a normal "module-name"
-reference is allowed.
 .IP if
 .br
 Checks for a particular condition.  If true, the block after the
