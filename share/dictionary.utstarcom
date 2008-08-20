@@ -7,6 +7,8 @@
 #
 ##############################################################################
 
+VENDOR		UTStarcom			7064
+
 BEGIN-VENDOR	UTStarcom
 
 ATTRIBUTE	UTStarcom-VLAN-ID			140	integer
