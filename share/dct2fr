@@ -17,7 +17,8 @@ while (<>) {
 	$name = $1;
 	$vendor = $2;
 
-	print "BEGIN-VENDOR foo $2\n";
+	print "VENDOR foo $2\n";
+	print "BEGIN-VENDOR foo\n";
     }
 
 #    if (/^ATTRIBUTE\s+([^ \t]+)\s+$name\s*\((\d+),s+(\w+)\)/i) {
