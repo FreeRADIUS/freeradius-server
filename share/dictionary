@@ -176,6 +176,7 @@ $INCLUDE dictionary.versanet
 $INCLUDE dictionary.vqp
 $INCLUDE dictionary.waverider
 $INCLUDE dictionary.walabi
+$INCLUDE dictionary.wimax
 $INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia
 $INCLUDE dictionary.xylan
