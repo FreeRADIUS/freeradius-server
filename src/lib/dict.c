@@ -91,6 +91,9 @@ static const FR_NAME_NUMBER type_table[] = {
 	{ "byte",	PW_TYPE_BYTE },
 	{ "short",	PW_TYPE_SHORT },
 	{ "ether",	PW_TYPE_ETHERNET },
+	{ "combo-ip",	PW_TYPE_COMBO_IP },
+	{ "tlv",	PW_TYPE_TLV },
+	{ "signed",	PW_TYPE_SIGNED },
 	{ NULL, 0 }
 };
 
@@ -525,6 +528,26 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		DICT_VENDOR *dv;
 		static DICT_VENDOR *last_vendor = NULL;
 
+		if (flags.is_tlv && (flags.encrypt != FLAG_ENCRYPT_NONE)) {
+			librad_log("Sub-TLV's cannot be encrypted");
+			return -1;
+		}
+
+		if (flags.has_tlv && (flags.encrypt != FLAG_ENCRYPT_NONE)) {
+			librad_log("TLV's cannot be encrypted");
+			return -1;
+		}
+
+		if (flags.is_tlv && flags.has_tag) {
+			librad_log("Sub-TLV's cannot have a tag");
+			return -1;
+		}
+
+		if (flags.has_tlv && flags.has_tag) {
+			librad_log("TLV's cannot have a tag");
+			return -1;
+		}
+
 		/*
 		 *	Most ATTRIBUTEs are bunched together by
 		 *	VENDOR.  We can save a lot of lookups on
@@ -550,7 +573,7 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		 *	FIXME: Switch over dv->type, and limit things
 		 *	properly.
 		 */
-		if ((dv->type == 1) && (value >= 256)) {
+		if ((dv->type == 1) && (value >= 256) && !flags.is_tlv) {
 			librad_log("dict_addattr: ATTRIBUTE has invalid number (larger than 255).");
 			return -1;
 		} /* else 256..65535 are allowed */
@@ -817,8 +840,8 @@ static int sscanf_i(const char *str, int *pvalue)
  *	Process the ATTRIBUTE command
  */
 static int process_attribute(const char* fn, const int line,
-			     const int block_vendor, char **argv,
-			     int argc)
+			     const int block_vendor, DICT_ATTR *block_tlv,
+			     char **argv, int argc)
 {
 	int		vendor = 0;
 	int		value;
@@ -950,6 +973,34 @@ static int process_attribute(const char* fn, const int line,
 			return -1;
 
 		}
+	}
+
+	if (type == PW_TYPE_TLV) {
+		flags.has_tlv = 1;
+	}
+
+	if (block_tlv) {
+		/*
+		 *	TLV's can be only one octet.
+		 */
+		if ((value <= 0) || (value > 255)) {
+			librad_log( "dict_init: %s[%d]: sub-tlv's cannot have value > 255",
+				    fn, line);
+			return -1;
+		}
+
+		if (flags.encrypt != FLAG_ENCRYPT_NONE) {
+			librad_log( "dict_init: %s[%d]: sub-tlv's cannot be encrypted",
+				    fn, line);
+			return -1;
+		}
+
+		/*
+		 *	
+		 */
+		value <<= 8;
+		value |= (block_tlv->attr & 0xffff);
+		flags.is_tlv = 1;
 	}
 
 	/*
@@ -1093,6 +1144,7 @@ static int process_vendor(const char* fn, const int line, char **argv,
 			  int argc)
 {
 	int	value;
+	int	continuation = 0;
 	const	char *format = NULL;
 
 	if ((argc < 2) || (argc > 3)) {
@@ -1147,10 +1199,11 @@ static int process_vendor(const char* fn, const int line, char **argv,
 		}
 
 		p = format + 7;
-		if ((strlen(p) != 3) ||
+		if ((strlen(p) < 3) ||
 		    !isdigit((int) p[0]) ||
 		    (p[1] != ',') ||
-		    !isdigit((int) p[2])) {
+		    !isdigit((int) p[2]) ||
+		    (p[3] && (p[3] != ','))) {
 			librad_log("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
 				   fn, line, p);
 			return -1;
@@ -1158,6 +1211,16 @@ static int process_vendor(const char* fn, const int line, char **argv,
 
 		type = (int) (p[0] - '0');
 		length = (int) (p[2] - '0');
+
+		if (p[3] == ',') {
+			if ((p[4] != 'c') ||
+			    (p[5] != '\0')) {
+				librad_log("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
+					   fn, line, p);
+				return -1;
+			}
+			continuation = 1;
+		}
 
 		dv = dict_vendorbyvalue(value);
 		if (!dv) {
@@ -1180,6 +1243,7 @@ static int process_vendor(const char* fn, const int line, char **argv,
 
 		dv->type = type;
 		dv->length = length;
+		dv->flags = continuation;
 	}
 
 	return 0;
@@ -1242,6 +1306,7 @@ static int my_dict_init(const char *dir, const char *fn,
 	struct stat statbuf;
 	char	*argv[MAX_ARGV];
 	int	argc;
+	DICT_ATTR *da, *block_tlv = NULL;
 
 	if (strlen(fn) >= sizeof(dirtmp) / 2 ||
 	    strlen(dir) >= sizeof(dirtmp) / 2) {
@@ -1343,6 +1408,7 @@ static int my_dict_init(const char *dir, const char *fn,
 		 */
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
 			if (process_attribute(fn, line, block_vendor,
+					      block_tlv,
 					      argv + 1, argc - 1) == -1) {
 				fclose(fp);
 				return -1;
@@ -1381,6 +1447,65 @@ static int my_dict_init(const char *dir, const char *fn,
 			}
 			continue;
 		}
+
+		if (strcasecmp(argv[0], "BEGIN-TLV") == 0) {
+			if (argc != 2) {
+				librad_log(
+				"dict_init: %s[%d] invalid BEGIN-TLV entry",
+					fn, line);
+				fclose(fp);
+				return -1;
+			}
+
+			da = dict_attrbyname(argv[1]);
+			if (!da) {
+				librad_log(
+					"dict_init: %s[%d]: unknown attribute %s",
+					fn, line, argv[1]);
+				fclose(fp);
+				return -1;
+			}
+
+			if (da->type != PW_TYPE_TLV) {
+				librad_log(
+					"dict_init: %s[%d]: attribute %s is not of type tlv",
+					fn, line, argv[1]);
+				fclose(fp);
+				return -1;
+			}
+
+			block_tlv = da;
+			continue;
+		} /* BEGIN-TLV */
+
+		if (strcasecmp(argv[0], "END-TLV") == 0) {
+			if (argc != 2) {
+				librad_log(
+				"dict_init: %s[%d] invalid END-TLV entry",
+					fn, line);
+				fclose(fp);
+				return -1;
+			}
+
+			da = dict_attrbyname(argv[1]);
+			if (!da) {
+				librad_log(
+					"dict_init: %s[%d]: unknown attribute %s",
+					fn, line, argv[1]);
+				fclose(fp);
+				return -1;
+			}
+
+			if (da != block_tlv) {
+				librad_log(
+					"dict_init: %s[%d]: END-TLV %s does not match any previous BEGIN-TLV",
+					fn, line, argv[1]);
+				fclose(fp);
+				return -1;
+			}
+			block_tlv = NULL;
+			continue;
+		} /* END-VENDOR */
 
 		if (strcasecmp(argv[0], "BEGIN-VENDOR") == 0) {
 			if (argc != 2) {
