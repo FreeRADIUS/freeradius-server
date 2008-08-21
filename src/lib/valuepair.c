@@ -1664,7 +1664,13 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 			vp->flags.do_xlat = 1;
 			vp->length = 0;
 		} else {
-			vp = pairmake(attr, value, token);
+		case T_SINGLE_QUOTED_STRING:
+			vp = pairmake(attr, NULL, token);
+			if (vp) {
+				strlcpy(vp->vp_strvalue, value,
+					sizeof(vp->vp_strvalue));
+				vp->length = strlen(vp->vp_strvalue);
+			}
 		}
 		break;
 
