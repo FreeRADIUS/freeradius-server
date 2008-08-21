@@ -100,6 +100,7 @@ VALUE_PAIR *pairalloc(DICT_ATTR *da)
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_IPADDR:
 		case PW_TYPE_DATE:
+		case PW_TYPE_SIGNED:
 			vp->length = 4;
 			break;
 
@@ -119,6 +120,12 @@ VALUE_PAIR *pairalloc(DICT_ATTR *da)
 			vp->length = sizeof(vp->vp_ether);
 			break;
 
+		case PW_TYPE_TLV:
+			vp->vp_tlv = NULL;
+			vp->length = 0;
+			break;
+
+		case PW_TYPE_COMBO_IP:
 		default:
 			vp->length = 0;
 			break;
@@ -169,6 +176,7 @@ VALUE_PAIR *paircreate(int attr, int type)
  */
 void pairbasicfree(VALUE_PAIR *pair)
 {
+	if (pair->type == PW_TYPE_TLV) free(pair->vp_tlv);
 	/* clear the memory here */
 	memset(pair, 0, sizeof(*pair));
 	free(pair);
@@ -313,6 +321,13 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 	}
 	memcpy(n, vp, sizeof(*n) + name_len);
 	n->next = NULL;
+
+	if ((n->type == PW_TYPE_TLV) &&
+	    (n->vp_tlv != NULL)) {
+		n->vp_tlv = malloc(n->length);
+		memcpy(n->vp_tlv, vp->vp_tlv, n->length);
+	}
+
 	return n;
 }
 
@@ -818,8 +833,10 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 	 *	Even for integers, dates and ip addresses we
 	 *	keep the original string in vp->vp_strvalue.
 	 */
-	strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
-	vp->length = strlen(vp->vp_strvalue);
+	if (vp->type != PW_TYPE_TLV) {
+		strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
+		vp->length = strlen(vp->vp_strvalue);
+	}
 
 	switch(vp->type) {
 		case PW_TYPE_STRING:
@@ -1158,6 +1175,54 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				}
 			}
 			vp->length = 6;
+			break;
+
+		case PW_TYPE_COMBO_IP:
+			if (inet_pton(AF_INET6, value, vp->vp_strvalue) > 0) {
+				vp->type = PW_TYPE_IPV6ADDR;
+				vp->length = 16; /* length of IPv6 address */
+				vp->vp_strvalue[vp->length] = '\0';
+
+			} else {
+				fr_ipaddr_t ipaddr;
+
+				if (ip_hton(value, AF_INET, &ipaddr) < 0) {
+					librad_log("Failed to find IPv4 address for %s", value);
+					return NULL;
+				}
+
+				vp->type = PW_TYPE_IPADDR;
+				vp->vp_ipaddr = ipaddr.ipaddr.ip4addr.s_addr;
+				vp->length = 4;
+			}
+			break;
+
+		case PW_TYPE_SIGNED: /* Damned code for 1 WiMAX attribute */
+			vp->vp_signed = (int32_t) strtol(value, &p, 10);
+			vp->length = 4;
+			break;
+
+		case PW_TYPE_TLV: /* don't use this! */
+			if (strncasecmp(value, "0t", 2) != 0) {
+				librad_log("Invalid TLV specification");
+				return NULL;
+			}
+			length = strlen(value + 2) / 2;
+			if (vp->length < length) {
+				free(vp->vp_tlv);
+				vp->vp_tlv = NULL;
+			}
+			vp->vp_tlv = malloc(length);
+			if (!vp->vp_tlv) {
+				librad_log("No memory");
+				return NULL;
+			}
+			if (fr_hex2bin(value + 2, vp->vp_tlv,
+				       length) != length) {
+				librad_log("Invalid hex data in TLV");
+				return NULL;
+			}
+			vp->length = length;
 			break;
 
 			/*
@@ -1557,7 +1622,7 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 {
 	char		buf[64];
 	char		attr[64];
-	char		value[512], *q;
+	char		value[1024], *q;
 	const char	*p;
 	FR_TOKEN	token, t, xlat;
 	VALUE_PAIR	*vp;
