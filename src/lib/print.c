@@ -272,6 +272,10 @@ int vp_prints_value(char * out, size_t outlen, VALUE_PAIR *vp, int delimitst)
 			}
 			if (len > 0) a = buf;
 			break;
+		case PW_TYPE_SIGNED: /* Damned code for 1 WiMAX attribute */
+			snprintf(buf, sizeof(buf), "%d", vp->vp_signed);
+			a = buf;
+			break;
 		case PW_TYPE_IPADDR:
 			a = inet_ntop(AF_INET, &(vp->vp_ipaddr),
 				      buf, sizeof(buf));
@@ -328,6 +332,15 @@ int vp_prints_value(char * out, size_t outlen, VALUE_PAIR *vp, int delimitst)
 				 vp->vp_ether[4], vp->vp_ether[5]);
 			a = buf;
 			break;
+
+		case PW_TYPE_TLV:
+			if (outlen <= (2 * (vp->length + 1))) return 0;
+
+			strcpy(buf, "0t");
+
+			fr_bin2hex(vp->vp_tlv, buf + 2, vp->length);
+			a = buf;
+		  break;
 
 		default:
 			a = "UNKNOWN-TYPE";
