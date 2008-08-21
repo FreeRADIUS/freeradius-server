@@ -98,6 +98,9 @@ typedef struct attr_flags {
 	unsigned int		array : 1; /* pack multiples into 1 attr */
 	unsigned int		has_value : 1; /* has a value */
 	unsigned int		has_value_alias : 1; /* has a value alias */
+	unsigned int		has_tlv : 1; /* has sub attributes */
+	unsigned int		is_tlv : 1; /* is a sub attribute */
+	unsigned int		encoded : 1; /* has been put into packet */
 
 	int8_t			tag;	      /* tag for tunneled attributes */
 	uint8_t		        encrypt;      /* encryption method */
@@ -129,6 +132,7 @@ typedef struct dict_vendor {
 	int			vendorpec;
 	int			type; /* length of type data */
 	int			length;	/* length of length data */
+	int			flags;
 	char			name[1];
 } DICT_VENDOR;
 
@@ -139,10 +143,12 @@ typedef union value_pair_data {
 	struct in6_addr		ipv6addr;
 	uint32_t		date;
 	uint32_t		integer;
+	int32_t			sinteger;
 	uint8_t			filter[32];
 	uint8_t			ifid[8]; /* struct? */
 	uint8_t			ipv6prefix[18]; /* struct? */
      	uint8_t			ether[6];
+	uint8_t			*tlv;
 } VALUE_PAIR_DATA;
 
 typedef struct value_pair {
@@ -164,6 +170,8 @@ typedef struct value_pair {
 #define vp_ipv6prefix data.ipv6prefix
 #define vp_filter     data.filter
 #define vp_ether      data.ether
+#define vp_signed     data.sinteger
+#define vp_tlv	      data.tlv
 
 #if 0
 #define vp_ipaddr     data.ipaddr.s_addr

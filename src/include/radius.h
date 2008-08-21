@@ -18,6 +18,9 @@
 #define PW_TYPE_BYTE			9
 #define PW_TYPE_SHORT			10
 #define PW_TYPE_ETHERNET	       	11
+#define PW_TYPE_SIGNED			12
+#define PW_TYPE_COMBO_IP	       	13
+#define PW_TYPE_TLV	       		14
 
 #define	PW_AUTHENTICATION_REQUEST	1
 #define	PW_AUTHENTICATION_ACK		2
