@@ -89,12 +89,6 @@ server dynamic_client_server {
 		#  The attributes used to define a dynamic client mirror
 		#  the configuration items in the "client" structure.
 		#
-		#  You can use any policy here.  e.g. Check NAS-Identifier,
-		#  and define a shared secret by NAS-Identifier, rather than
-		#  from the IP address.  The IP address still has to be
-		#  defined, and is still used as the key for *subsequent*
-		#  packets.
-		#
 		update control {
 
 			#
