@@ -625,8 +625,8 @@ static EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
  *	SSL_CTX (internally) or TLS module(explicitly). If TLS module,
  *	then how to let SSL API know about these sessions.)
  */
-static void eaptls_operation(EAPTLS_PACKET *eaptls_packet UNUSED,
-			     eaptls_status_t status, EAP_HANDLER *handler)
+static eaptls_status_t eaptls_operation(eaptls_status_t status,
+					EAP_HANDLER *handler)
 {
 	tls_session_t *tls_session;
 
@@ -636,56 +636,61 @@ static void eaptls_operation(EAPTLS_PACKET *eaptls_packet UNUSED,
 	    (status == EAPTLS_MORE_FRAGMENTS_WITH_LENGTH) ||
 	    (status == EAPTLS_FIRST_FRAGMENT)) {
 		/*
-		 * Send the ACK.
+		 *	Send the ACK.
 		 */
 		eaptls_send_ack(handler->eap_ds, tls_session->peap_flag);
-	} else {
-		int rcode;
+		return EAPTLS_HANDLED;
 
-		/*
-		 *	We have the complete TLS-data or TLS-message.
-		 *
-		 *	Clean the dirty message.
-		 *
-		 *	Authenticate the user and send
-		 *	Success/Failure.
-		 *
-		 *	If more info
-		 *	is required then send another request.
-		 */
-		rcode = tls_handshake_recv(tls_session);
-		if (rcode == 1) {
-			/*
-			 *	FIXME: return success/fail.
-			 *
-			 *	TLS proper can decide what to do, then.
-			 */
-			eaptls_request(handler->eap_ds, tls_session);
-
-			/*
-			 *	TLS returns 0 or 1.
-			 *	anything else is application-specific.
-			 *
-			 *	In our code, this means "session
-			 *	resumption was OK".
-			 */
-		} else if (rcode == 0xea) {
-			/*
-			 *	FIXME: hard-code key based on EAP type.
-			 *	Also, this code is duplicated all over
-			 *	the place...
-			 */
-			eaptls_success(handler->eap_ds, 0);
-			eaptls_gen_mppe_keys(&handler->request->reply->vps,
-					     tls_session->ssl,
-					     "client EAP encryption");
-
-		} else {
-			eaptls_fail(handler->eap_ds, tls_session->peap_flag);
-
-		}
 	}
-	return;
+
+	/*
+	 *	We have the complete TLS-data or TLS-message.
+	 *
+	 *	Clean the dirty message.
+	 *
+	 *	Authenticate the user and send
+	 *	Success/Failure.
+	 *
+	 *	If more info
+	 *	is required then send another request.
+	 */
+	if (!tls_handshake_recv(tls_session)) {
+		DEBUG2("TLS receive handshake failed during operation");
+		eaptls_fail(handler->eap_ds, tls_session->peap_flag);
+		return EAPTLS_FAIL;
+	}
+
+	/*
+	 *	FIXME: return success/fail.
+	 *
+	 *	TLS proper can decide what to do, then.
+	 */
+	if (tls_session->dirty_out.used > 0) {
+		eaptls_request(handler->eap_ds, tls_session);
+		return EAPTLS_HANDLED;
+	}
+		
+	/* 
+	 *	If there is no data to send i.e
+	 *	dirty_out.used <=0 and if the SSL
+	 *	handshake is finished, then return a
+	 *	EPTLS_SUCCESS
+	 */
+	
+	if (SSL_is_init_finished(tls_session->ssl)) {
+		/*
+		 *	Init is finished.  The rest is
+		 *	application data.
+		 */
+		tls_session->info.content_type = application_data; 
+		return EAPTLS_SUCCESS;
+	}
+	
+	/*
+	 *	Who knows what happened...
+	 */
+	DEBUG2("TLS failed during operation");
+	return EAPTLS_FAIL;
 }
 
 
@@ -796,22 +801,89 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	}
 
 	/*
+	 *	No longer needed.
+	 */
+	eaptls_free(&tlspacket);
+
+	/*
 	 *	SSL initalization is done.  Return.
 	 *
 	 *	The TLS data will be in the tls_session structure.
 	 */
 	if (SSL_is_init_finished(tls_session->ssl)) {
-		eaptls_free(&tlspacket);
+		int err;
+
+		/*
+		 *	The initialization may be finished, but if
+		 *	there more fragments coming, then send ACK,
+		 *	and get the caller to continue the
+		 *	conversation.
+		 */	
+	        if ((status == EAPTLS_MORE_FRAGMENTS) ||
+        	    (status == EAPTLS_MORE_FRAGMENTS_WITH_LENGTH) ||
+            	    (status == EAPTLS_FIRST_FRAGMENT)) {
+			/*
+			 *	Send the ACK.
+			 */
+			eaptls_send_ack(handler->eap_ds,
+					tls_session->peap_flag);
+			return EAPTLS_HANDLED;
+		}
+
+		/*	
+		 *	Decrypt the complete record.
+		 */
+		BIO_write(tls_session->into_ssl, tls_session->dirty_in.data,
+			  tls_session->dirty_in.used);
+
+		/*
+		 *      Clear the dirty buffer now that we are done with it
+		 *      and init the clean_out buffer to store decrypted data
+		 */
+		(tls_session->record_init)(&tls_session->dirty_in);
+		(tls_session->record_init)(&tls_session->clean_out);
+
+		/*
+		 *      Read (and decrypt) the tunneled data from the
+		 *      SSL session, and put it into the decrypted
+		 *      data buffer.
+		 */
+		err = SSL_read(tls_session->ssl, tls_session->clean_out.data,
+			       sizeof(tls_session->clean_out.data));
+
+		if (err < 0) {
+			RDEBUG("SSL_read Error");
+
+			switch (SSL_get_error(tls_session->ssl, err)) {
+			case SSL_ERROR_WANT_READ:
+			case SSL_ERROR_WANT_WRITE:
+				RDEBUG("Error in fragmentation logic");
+				break;
+			default:
+				/*
+				 *	FIXME: Call int_ssl_check?
+				 */
+				break;
+			}
+			return EAPTLS_FAIL;
+		}
+
+		if (err == 0) {
+			RDEBUG("WARNING: No data inside of the tunnel.");
+		}
+	
+		/*
+		 *	Passed all checks, successfully decrypted data
+		 */
+		tls_session->clean_out.used = err;
+		
 		return EAPTLS_OK;
 	}
 
 	/*
 	 *	Continue the handshake.
 	 */
-	eaptls_operation(tlspacket, status, handler);
-
-	eaptls_free(&tlspacket);
-	return EAPTLS_HANDLED;
+	return eaptls_operation(status, handler);
 }
 
 

@@ -941,18 +941,6 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	REQUEST *request = handler->request;
 
 	/*
-	 *	FIXME: if the SSL session says "want read", or
-	 *	similar, leave the data in the clean_out buffer.  This
-	 *	lets the application data be sent across multiple
-	 *	fragments.
-	 */
-	err = tls_handshake_recv(tls_session);
-	if (!err) {
-		RDEBUG2("Failed in SSL");
-		return RLM_MODULE_REJECT;
-	}
-
-	/*
 	 *	Just look at the buffer directly, without doing
 	 *	record_minus.
 	 */

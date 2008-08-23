@@ -572,18 +572,6 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	EAP_DS *eap_ds = handler->eap_ds;
 
 	/*
-	 *	FIXME: if the SSL session says "want read", or
-	 *	similar, leave the data in the clean_out buffer.  This
-	 *	lets the application data be sent across multiple
-	 *	fragments.
-	 */
-	err = tls_handshake_recv(tls_session);
-	if (!err) {
-		DEBUG2(" rlm_eap_peap: Failed in SSL");
-		return RLM_MODULE_REJECT;
-	}
-
-	/*
 	 *	Just look at the buffer directly, without doing
 	 *	record_minus.  This lets us avoid another data copy.
 	 */
