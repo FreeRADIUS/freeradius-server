@@ -115,6 +115,26 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	return 0;
 }
 
+
+/*
+ *	Generate ephemeral RSA keys.
+ */
+static int generate_eph_rsa_key(SSL_CTX *ctx)
+{
+	RSA *rsa;
+
+	rsa = RSA_generate_key(512, RSA_F4, NULL, NULL);
+
+	if (!SSL_CTX_set_tmp_rsa(ctx, rsa)) {
+		radlog(L_ERR, "rlm_eap_tls: Couldn't set ephemeral RSA key");
+		return -1;
+	}
+
+	RSA_free(rsa);
+	return 0;
+}
+
+
 /*
  *	Before trusting a certificate, you must make sure that the
  *	certificate is 'valid'. There are several steps that your
@@ -565,6 +585,10 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 		eaptls_detach(inst);
 		return -1;
 	}
+
+        if (generate_eph_rsa_key(inst->ctx) < 0) {
+                return -1;
+        }
 
 	*instance = inst;
 
