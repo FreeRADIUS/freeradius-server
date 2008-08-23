@@ -84,7 +84,9 @@ VALUE	MS-RNAP-Not-Quarantine-Capable	SoH-Sent		0
 VALUE	MS-RNAP-Not-Quarantine-Capable	SoH-Not-Sent		1
 
 ATTRIBUTE	MS-Quarantine-SOH			55	octets
-ATTRIBUTE	MS-RAS-Correlation-ID			56	octets
+ATTRIBUTE	MS-RAS-Correlation			56	octets
+
+#  Or this might be 56?
 ATTRIBUTE	MS-Extended-Quarantine-State		57	integer
 
 ATTRIBUTE	MS-HCAP-User-Groups			58	string
@@ -125,5 +127,33 @@ VALUE	MS-Acct-EAP-Type		MD5			4
 VALUE	MS-Acct-EAP-Type		OTP			5
 VALUE	MS-Acct-EAP-Type		Generic-Token-Card	6
 VALUE	MS-Acct-EAP-Type		TLS			13
+
+#  MS-Identity-Type Values
+
+VALUE	MS-Identity-Type		Machine-Health-Check	1
+VALUE	MS-Identity-Type		Ignore-User-Lookup-Failure 2
+
+#  MS-Quarantine-State Values
+
+VALUE	MS-Quarantine-State		Full-Access		0
+VALUE	MS-Quarantine-State		Quarantine		1
+VALUE	MS-Quarantine-State		Probation		2
+
+#  MS-Network-Access-Server-Type Values
+
+VALUE	MS-Network-Access-Server-Type	Unspecified		0
+VALUE	MS-Network-Access-Server-Type	Terminal-Server-Gateway	1
+VALUE	MS-Network-Access-Server-Type	Remote-Access-Server	2
+VALUE	MS-Network-Access-Server-Type	DHCP-Server		3
+VALUE	MS-Network-Access-Server-Type	Wireless-Access-Point	4
+VALUE	MS-Network-Access-Server-Type	HRA			5
+VALUE	MS-Network-Access-Server-Type	HCAP-Server		6
+
+#  MS-Extended-Quarantine-State Values
+
+VALUE	MS-Extended-Quarantine-State	Transition		1
+VALUE	MS-Extended-Quarantine-State	Infected		2
+VALUE	MS-Extended-Quarantine-State	Unknown			3
+VALUE	MS-Extended-Quarantine-State	No-Data			4
 
 END-VENDOR Microsoft
