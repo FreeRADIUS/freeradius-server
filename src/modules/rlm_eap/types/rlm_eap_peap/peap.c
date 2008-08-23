@@ -292,7 +292,7 @@ static int eappeap_check_tlv(REQUEST *request, const uint8_t *data)
  *	Use a reply packet to determine what to do.
  */
 static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
-			 UNUSED REQUEST *request, RADIUS_PACKET *reply)
+			 REQUEST *request, RADIUS_PACKET *reply)
 {
 	int rcode = RLM_MODULE_REJECT;
 	VALUE_PAIR *vp;
@@ -307,7 +307,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 
 	switch (reply->code) {
 	case PW_AUTHENTICATION_ACK:
-		DEBUG2("  PEAP: Tunneled authentication was successful.");
+		RDEBUG2("Tunneled authentication was successful.");
 		t->status = PEAP_STATUS_SENT_TLV_SUCCESS;
 		eappeap_success(handler, tls_session);
 		rcode = RLM_MODULE_HANDLED;
@@ -320,7 +320,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	tunneled user!
 		 */
 		if (t->use_tunneled_reply) {
-			DEBUG2("  Saving tunneled attributes for later");
+			RDEBUG2("Saving tunneled attributes for later");
 
 			/*
 			 *	Clean up the tunneled reply.
@@ -335,14 +335,14 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		break;
 
 	case PW_AUTHENTICATION_REJECT:
-		DEBUG2("  PEAP: Tunneled authentication was rejected.");
+		RDEBUG2("Tunneled authentication was rejected.");
 		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
 		eappeap_failure(handler, tls_session);
 		rcode = RLM_MODULE_HANDLED;
 		break;
 
 	case PW_ACCESS_CHALLENGE:
-		DEBUG2("  PEAP: Got tunneled Access-Challenge");
+		RDEBUG2("Got tunneled Access-Challenge");
 
 		/*
 		 *	Keep the State attribute, if necessary.
@@ -368,7 +368,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	an "ack" packet.
 		 */
 		if (t->home_access_accept && t->use_tunneled_reply) {
-			DEBUG2("  Saving tunneled attributes for later");
+			RDEBUG2("Saving tunneled attributes for later");
 
 			/*
 			 *	Clean up the tunneled reply.
@@ -393,7 +393,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		break;
 
 	default:
-		DEBUG2("  PEAP: Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
+		RDEBUG2("Unknown RADIUS packet type %d: rejecting tunneled user", reply->code);
 		rcode = RLM_MODULE_REJECT;
 		break;
 	}
@@ -409,9 +409,9 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 {
 	int rcode;
 	tls_session_t *tls_session = (tls_session_t *) data;
-	REQUEST *fake;
+	REQUEST *fake, *request = handler->request;
 
-	DEBUG2("  PEAP: Passing reply from proxy back into the tunnel.");
+	RDEBUG2("Passing reply from proxy back into the tunnel.");
 
 	/*
 	 *	If there was a fake request associated with the proxied
@@ -451,7 +451,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		 *	handler, too...
 		 */
 		fake->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-		DEBUG2("  PEAP: Passing reply back for EAP-MS-CHAP-V2");
+		RDEBUG2("Passing reply back for EAP-MS-CHAP-V2");
 		rcode = module_post_proxy(0, fake);
 
 		/*
@@ -489,8 +489,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 			break;
 
                 default:  /* Don't Do Anything */
-			DEBUG2(" PEAP: Got reply %d",
-			       request->proxy_reply->code);
+			RDEBUG2("Got reply %d", request->proxy_reply->code);
 			break;
 		}
 	}
@@ -518,17 +517,17 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
-		DEBUG2("  PEAP: Reply was rejected");
+		RDEBUG2("Reply was rejected");
 		eaptls_fail(handler->eap_ds, 0);
 		return 0;
 
 	case RLM_MODULE_HANDLED:
-		DEBUG2("  PEAP: Reply was handled");
+		RDEBUG2("Reply was handled");
 		eaptls_request(handler->eap_ds, tls_session);
 		return 1;
 
 	case RLM_MODULE_OK:
-		DEBUG2("  PEAP: Reply was OK");
+		RDEBUG2("Reply was OK");
 		eaptls_success(handler->eap_ds, 0);
 		eaptls_gen_mppe_keys(&handler->request->reply->vps,
 				     tls_session->ssl,
@@ -536,7 +535,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		return 1;
 
 	default:
-		DEBUG2("  PEAP: Reply was unknown.");
+		RDEBUG2("Reply was unknown.");
 		break;
 	}
 
