@@ -460,6 +460,13 @@ static void *request_handler_thread(void *arg)
 
 		DEBUG2("Thread %d got semaphore", self->thread_num);
 
+#ifdef HAVE_OPENSSL_ERR_H
+ 		/*
+		 *	Clear the error queue for the current thread.
+		 */
+		ERR_clear_error ();
+#endif
+
 		/*
 		 *	Try to grab a request from the queue.
 		 *
