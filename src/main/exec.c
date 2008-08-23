@@ -350,6 +350,10 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	if (pid < 0) {
 		radlog(L_ERR|L_CONS, "Couldn't fork %s: %s",
 		       argv[0], strerror(errno));
+		if (exec_wait) {
+			close(pd[0]);
+			close(pd[1]);
+		}
 		return -1;
 	}
 
