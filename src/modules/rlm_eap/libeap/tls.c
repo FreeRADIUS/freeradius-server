@@ -43,8 +43,8 @@ tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 	client_cert = client_cert; /* -Wunused.  See bug #350 */
 
 	if ((new_tls = SSL_new(ssl_ctx)) == NULL) {
-		radlog(L_ERR, "rlm_eap_tls: Error creating new SSL");
-		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
+		radlog(L_ERR, "SSL: Error creating new SSL: %s",
+		       ERR_error_string(ERR_get_error(), NULL));
 		return NULL;
 	}
 
@@ -136,12 +136,12 @@ static int int_ssl_check(SSL *s, int ret, const char *text)
 		 *	being regarded as "dead".
 		 */
 	case SSL_ERROR_SYSCALL:
-		radlog(L_ERR, "rlm_eap_tls: %s failed in a system call (%d), TLS session fails.",
+		radlog(L_ERR, "SSL: %s failed in a system call (%d), TLS session fails.",
 		       text, ret);
 		return 0;
 
 	case SSL_ERROR_SSL:
-		radlog(L_ERR, "rlm_eap_tls: %s failed inside of TLS (%d), TLS session fails.",
+		radlog(L_ERR, "SSL: %s failed inside of TLS (%d), TLS session fails.",
 		       text, ret);
 		return 0;
 
@@ -152,7 +152,7 @@ static int int_ssl_check(SSL *s, int ret, const char *text)
 		 *	them - so "politely inform" the caller that
 		 *	the code needs updating here.
 		 */
-		radlog(L_ERR, "rlm_eap_tls: FATAL SSL error ..... %d\n", e);
+		radlog(L_ERR, "SSL: FATAL SSL error ..... %d\n", e);
 		return 0;
 	}
 
@@ -225,7 +225,7 @@ int tls_handshake_recv(tls_session_t *ssn)
 			return 0;
 		}
 	} else {
-		DEBUG2("rlm_eap_tls: Application Data");
+		DEBUG2("SSL Application Data");
 		/* Its clean application data, do whatever we want */
 		record_init(&ssn->clean_out);
 	}

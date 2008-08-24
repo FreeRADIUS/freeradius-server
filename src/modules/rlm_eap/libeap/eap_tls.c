@@ -241,15 +241,16 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 
 	tls_session = (tls_session_t *)handler->opaque;
 	if (tls_session == NULL){
-		radlog_request(L_ERR, 0, request, "Unexpected ACK received");
+		radlog_request(L_ERR, 0, request, "FAIL: Unexpected ACK received.  Could not obtain session information.");
 		return EAPTLS_FAIL;
 	}
 	if (tls_session->info.initialized == 0) {
 		RDEBUG("No SSL info available. Waiting for more SSL data.");
 		return EAPTLS_REQUEST;
 	}
-	if (tls_session->info.origin == 0) {
-		radlog_request(L_ERR, 0, request, "Unexpected ACK received");
+	if ((tls_session->info.content_type == handshake) &&
+	    (tls_session->info.origin == 0)) {
+		radlog_request(L_ERR, 0, request, "FAIL: ACK without earlier message.");
 		return EAPTLS_FAIL;
 	}
 
@@ -260,9 +261,15 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 		return EAPTLS_FAIL;
 
 	case handshake:
-		if ((tls_session->info.handshake_type == finished) &&
-		    (tls_session->dirty_out.used == 0)) {
+		if (tls_session->info.handshake_type == finished) {
 			RDEBUG2("ACK handshake is finished");
+
+			/* 
+			 *	From now on all the content is
+			 *	application data set it here as nobody else
+			 *	sets it.
+			 */
+			tls_session->info.content_type = application_data;
 			return EAPTLS_SUCCESS;
 		} /* else more data to send */
 
@@ -270,6 +277,10 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 		/* Fragmentation handler, send next fragment */
 		return EAPTLS_REQUEST;
 
+	case application_data:
+		RDEBUG2("ACK handshake fragment handler in application data");
+		return EAPTLS_REQUEST;
+						
 		/*
 		 *	For the rest of the conditions, switch over
 		 *	to the default section below.
@@ -382,7 +393,7 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 	 *	We send TLS_START, but do not receive it.
 	 */
 	if (TLS_START(eaptls_packet->flags)) {
-		radlog(L_ERR, "rlm_eap_tls:  Received unexpected EAP-TLS Start message");
+		RDEBUG("Received unexpected EAP-TLS Start message");
 		return EAPTLS_INVALID;
 	}
 
@@ -414,21 +425,21 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 			    (eaptls_prev == NULL) ||
 			    !TLS_MORE_FRAGMENTS(eaptls_prev->flags)) {
 
-				DEBUG2("rlm_eap_tls:  Received EAP-TLS First Fragment of the message");
+				RDEBUG2("Received EAP-TLS First Fragment of the message");
 				return EAPTLS_FIRST_FRAGMENT;
 			} else {
 
-				DEBUG2("rlm_eap_tls:  More Fragments with length included");
+				RDEBUG2("More Fragments with length included");
 				return EAPTLS_MORE_FRAGMENTS_WITH_LENGTH;
 			}
 		} else {
-			DEBUG2("rlm_eap_tls:  Length Included");
+			RDEBUG2("Length Included");
 			return EAPTLS_LENGTH_INCLUDED;
 		}
 	}
 
 	if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
-		DEBUG2("rlm_eap_tls:  More fragments to follow");
+		RDEBUG2("More fragments to follow");
 		return EAPTLS_MORE_FRAGMENTS;
 	}
 
@@ -473,7 +484,7 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
  *  packet including the Code, Identifir, Length, Type, and TLS data
  *  fields.
  */
-static EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
+static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, eaptls_status_t status)
 {
 	EAPTLS_PACKET	*tlspacket;
 	uint32_t	data_len = 0;
@@ -519,7 +530,7 @@ static EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 	 */
 	if (TLS_LENGTH_INCLUDED(tlspacket->flags) &&
 	    (tlspacket->length < 5)) { /* flags + TLS message length */
-		radlog(L_ERR, "rlm_eap_tls: Invalid EAP-TLS packet received.  (Length bit is set, but no length was found.)");
+		RDEBUG("Invalid EAP-TLS packet received.  (Length bit is set, but no length was found.)");
 		eaptls_free(&tlspacket);
 		return NULL;
 	}
@@ -538,7 +549,7 @@ static EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 		memcpy(&data_len, &eap_ds->response->type.data[1], 4);
 		data_len = ntohl(data_len);
 		if (data_len > MAX_RECORD_SIZE) {
-			radlog(L_ERR, "rlm_eap_tls: The EAP-TLS packet will contain more data than we can process.");
+			RDEBUG("The EAP-TLS packet will contain more data than we can process.");
 			eaptls_free(&tlspacket);
 			return NULL;
 		}
@@ -547,7 +558,7 @@ static EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 		DEBUG2(" TLS: %d %d\n", data_len, tlspacket->length);
 
 		if (data_len < tlspacket->length) {
-			radlog(L_ERR, "rlm_eap_tls: EAP-TLS packet claims to be smaller than the encapsulating EAP packet.");
+			RDEBUG("EAP-TLS packet claims to be smaller than the encapsulating EAP packet.");
 			eaptls_free(&tlspacket);
 			return NULL;
 		}
@@ -568,7 +579,7 @@ static EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 	case EAPTLS_LENGTH_INCLUDED:
 	case EAPTLS_MORE_FRAGMENTS_WITH_LENGTH:
 		if (tlspacket->length < 5) { /* flags + TLS message length */
-			radlog(L_ERR, "rlm_eap_tls: Invalid EAP-TLS packet received.  (Expected length, got none.)");
+			RDEBUG("Invalid EAP-TLS packet received.  (Expected length, got none.)");
 			eaptls_free(&tlspacket);
 			return NULL;
 		}
@@ -601,7 +612,7 @@ static EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 		break;
 
 	default:
-		radlog(L_ERR, "rlm_eap_tls: Invalid EAP-TLS packet received");
+		RDEBUG("Invalid EAP-TLS packet received");
 		eaptls_free(&tlspacket);
 		return NULL;
 	}
@@ -610,7 +621,7 @@ static EAPTLS_PACKET *eaptls_extract(EAP_DS *eap_ds, eaptls_status_t status)
 	if (data_len) {
 		tlspacket->data = (unsigned char *)malloc(data_len);
 		if (tlspacket->data == NULL) {
-			radlog(L_ERR, "rlm_eap_tls: out of memory");
+			RDEBUG("out of memory");
 			eaptls_free(&tlspacket);
 			return NULL;
 		}
@@ -799,7 +810,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	/*
 	 *	Extract the TLS packet from the buffer.
 	 */
-	if ((tlspacket = eaptls_extract(handler->eap_ds, status)) == NULL)
+	if ((tlspacket = eaptls_extract(request, handler->eap_ds, status)) == NULL)
 		return EAPTLS_FAIL;
 
 	/*
@@ -815,7 +826,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	if (tlspacket->dlen !=
 	    (tls_session->record_plus)(&tls_session->dirty_in, tlspacket->data, tlspacket->dlen)) {
 		eaptls_free(&tlspacket);
-		radlog(L_ERR, "rlm_eap_tls: Exceeded maximum record size");
+		RDEBUG("Exceeded maximum record size");
 		return EAPTLS_FAIL;
 	}
 
@@ -846,6 +857,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 			 */
 			eaptls_send_ack(handler->eap_ds,
 					tls_session->peap_flag);
+			RDEBUG2("Init is done, but tunneled data is fragmented");
 			return EAPTLS_HANDLED;
 		}
 
@@ -935,7 +947,7 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
 	 */
 	eap_ds->request->type.data = malloc(reply->length - TLS_HEADER_LEN + 1);
 	if (eap_ds->request->type.data == NULL) {
-		radlog(L_ERR, "rlm_eap_tls: out of memory");
+		radlog(L_ERR, "out of memory");
 		return 0;
 	}
 
