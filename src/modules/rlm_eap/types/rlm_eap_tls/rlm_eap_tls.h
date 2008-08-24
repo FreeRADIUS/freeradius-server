@@ -59,6 +59,13 @@ typedef struct eap_tls_conf {
 	char		*check_cert_cn;
 	char		*cipher_list;
 	char		*check_cert_issuer;
+
+        int     	session_cache_enable;
+        int     	session_timeout;
+        int     	session_cache_size;
+	char		*session_id_name;
+	char		session_context_id[128];
+	time_t		session_last_flushed;
 } EAP_TLS_CONF;
 
 /* This structure gets stored in arg */

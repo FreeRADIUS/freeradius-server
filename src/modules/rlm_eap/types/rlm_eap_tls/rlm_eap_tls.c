@@ -38,6 +38,18 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #endif
 
+static CONF_PARSER cache_config[] = {
+	{ "enable", PW_TYPE_BOOLEAN,
+	  offsetof(EAP_TLS_CONF, session_cache_enable), NULL, "no" },
+	{ "lifetime", PW_TYPE_INTEGER,
+	  offsetof(EAP_TLS_CONF, session_timeout), NULL, "24" },
+	{ "max_entries", PW_TYPE_INTEGER,
+	  offsetof(EAP_TLS_CONF, session_cache_size), NULL, "255" },
+	{ "name", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, session_id_name), NULL, NULL},
+ 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+};
+
 static CONF_PARSER module_config[] = {
 	{ "rsa_key_exchange", PW_TYPE_BOOLEAN,
 	  offsetof(EAP_TLS_CONF, rsa_key), NULL, "no" },
@@ -79,6 +91,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(EAP_TLS_CONF, check_cert_issuer), NULL, NULL},
 	{ "make_cert_command", PW_TYPE_STRING_PTR,
 	  offsetof(EAP_TLS_CONF, make_cert_command), NULL, NULL},
+
+	{ "cache", PW_TYPE_SUBSECTION, 0, NULL, (const void *) cache_config },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -134,6 +148,64 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
 	return 0;
 }
 
+
+/*
+ *	These functions don't do anything other than print debugging
+ *	messages.
+ *
+ *	FIXME: Write sessions to some long-term storage, so that
+ *	       session resumption can still occur after the server
+ *	       restarts.
+ */
+#define MAX_SESSION_SIZE (256)
+
+static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
+{
+	size_t size;
+	char buffer[2 * MAX_SESSION_SIZE + 1];
+
+	size = sess->session_id_length;
+	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
+
+	fr_bin2hex(sess->session_id, buffer, size);
+
+        DEBUG2("  SSL: Removing session %s from the cache", buffer);
+        SSL_SESSION_free(sess);
+
+        return;
+}
+
+static int cbtls_new_session(SSL *s, SSL_SESSION *sess)
+{
+	size_t size;
+	char buffer[2 * MAX_SESSION_SIZE + 1];
+
+	size = sess->session_id_length;
+	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
+
+	fr_bin2hex(sess->session_id, buffer, size);
+
+	DEBUG2("  SSL: adding session %s to cache", buffer);
+
+	return 1;
+}
+
+static SSL_SESSION *cbtls_get_session(SSL *s, unsigned char *data, int len,
+				      int *copy)
+{
+	size_t size;
+	char buffer[2 * MAX_SESSION_SIZE + 1];
+
+	size = len;
+	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
+
+	fr_bin2hex(data, buffer, size);
+
+        DEBUG2("  SSL: Client requested nonexistent cached session %s",
+	       buffer);
+
+	return NULL;
+}
 
 /*
  *	Before trusting a certificate, you must make sure that the
@@ -415,6 +487,17 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	SSL_CTX_set_info_callback(ctx, cbtls_info);
 
 	/*
+	 *	Callbacks, etc. for session resumption.
+	 */						      
+	if (conf->session_cache_enable) {
+		SSL_CTX_sess_set_new_cb(ctx, cbtls_new_session);
+		SSL_CTX_sess_set_get_cb(ctx, cbtls_get_session);
+		SSL_CTX_sess_set_remove_cb(ctx, cbtls_remove_session);
+
+		SSL_CTX_set_quiet_shutdown(ctx, 1);
+	}
+
+	/*
 	 *	Check the certificates for revocation.
 	 */
 #ifdef X509_V_FLAG_CRL_CHECK
@@ -457,6 +540,48 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 			radlog(L_ERR, "rlm_eap_tls: Error setting cipher list");
 			return NULL;
 		}
+	}
+
+	/*
+	 *	Setup session caching
+	 */
+	if (conf->session_cache_enable) {
+		/*
+		 *	Create a unique context Id per EAP-TLS configuration.
+		 */
+		if (conf->session_id_name) {
+			snprintf(conf->session_context_id,
+				 sizeof(conf->session_context_id),
+				 "FreeRADIUS EAP-TLS %s",
+				 conf->session_id_name);
+		} else {
+			snprintf(conf->session_context_id,
+				 sizeof(conf->session_context_id),
+				 "FreeRADIUS EAP-TLS %p", conf);
+		}
+
+		/*
+		 *	Cache it, and DON'T auto-clear it.
+		 */
+		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_AUTO_CLEAR);
+					       
+		SSL_CTX_set_session_id_context(ctx,
+					       (unsigned char *) conf->session_context_id,
+					       (unsigned int) strlen(conf->session_context_id));
+
+		/*
+		 *	Our timeout is in hours, this is in seconds.
+		 */
+		SSL_CTX_set_timeout(ctx, conf->session_timeout * 3600);
+		
+		/*
+		 *	Set the maximum number of entries in the
+		 *	session cache.
+		 */
+		SSL_CTX_sess_set_cache_size(ctx, conf->session_cache_size);
+
+	} else {
+		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 	}
 
 	return ctx;
@@ -628,6 +753,22 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	inst = (eap_tls_t *)type_arg;
 
 	/*
+	 *	Manually flush the sessions every so often.  If HALF
+	 *	of the session lifetime has passed since we last
+	 *	flushed, then flush it again.
+	 *
+	 *	FIXME: Also do it every N sessions?
+	 */
+	if (inst->conf->session_cache_enable &&
+	    ((inst->conf->session_last_flushed + (inst->conf->session_timeout * 1800)) <= request->timestamp)) {
+		RDEBUG2("Flushing SSL sessions (of #%ld)",
+			SSL_CTX_sess_number(inst->ctx));
+
+		SSL_CTX_flush_sessions(inst->ctx, request->timestamp);
+		inst->conf->session_last_flushed = request->timestamp;
+	}
+
+	/*
 	 *	If we're TTLS or PEAP, then do NOT require a client
 	 *	certificate.
 	 *
@@ -773,11 +914,12 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int eaptls_authenticate(void *arg UNUSED, EAP_HANDLER *handler)
+static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 {
 	eaptls_status_t	status;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
 	REQUEST *request = handler->request;
+	eap_tls_t *inst = (eap_tls_t *) arg;
 
 	RDEBUG2("Authenticate");
 
@@ -830,9 +972,50 @@ static int eaptls_authenticate(void *arg UNUSED, EAP_HANDLER *handler)
 
 		/*
 		 *	Anything else: fail.
+		 *
+		 *	Also, remove the session from the cache so that
+		 *	the client can't re-use it.
 		 */
 	default:
+		if (inst->conf->session_cache_enable) {	
+			SSL_CTX_remove_session(inst->ctx,
+					       tls_session->ssl->session);
+		}
+
 		return 0;
+	}
+
+	/*
+	 *	New sessions cause some additional information to be
+	 *	cached.
+	 */
+	if (!SSL_session_reused(tls_session->ssl)) {
+		/*
+		 *	FIXME: Store miscellaneous data.
+		 */
+		RDEBUG2("Adding user data to cached session");
+		
+#if 0
+		SSL_SESSION_set_ex_data(tls_session->ssl->session,
+					ssl_session_idx_user_session, session_data);
+#endif
+	} else {
+		/*
+		 *	FIXME: Retrieve miscellaneous data.
+		 */
+#if 0
+		data = SSL_SESSION_get_ex_data(tls_session->ssl->session,
+					       ssl_session_idx_user_session);
+
+		if (!session_data) {
+			radlog_request(L_ERR, 0, request,
+				       "No user session data in cached session - "
+				       " REJECTING");
+			return 0;
+		}
+#endif
+
+		RDEBUG2("Retrieved session data from cached session");
 	}
 
 	/*
