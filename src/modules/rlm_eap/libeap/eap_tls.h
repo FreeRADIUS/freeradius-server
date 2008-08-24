@@ -139,6 +139,7 @@ typedef struct _tls_info_t {
  * 					if set to no then only the first fragment contains length
  */
 typedef struct _tls_session_t {
+	SSL_CTX		*ctx;
 	SSL 		*ssl;
 	tls_info_t	info;
 
@@ -173,6 +174,8 @@ typedef struct _tls_session_t {
 	 */
 	void 		*opaque;
 	void 		(*free_opaque)(void *opaque);
+
+	const char	*prf_label;
 } tls_session_t;
 
 
@@ -181,8 +184,8 @@ typedef struct _tls_session_t {
  */
 eaptls_status_t eaptls_process(EAP_HANDLER *handler);
 
-int 		eaptls_success(EAP_DS *eap_ds, int peap_flag);
-int 		eaptls_fail(EAP_DS *eap_ds, int peap_flag);
+int 		eaptls_success(EAP_HANDLER *handler, int peap_flag);
+int 		eaptls_fail(EAP_HANDLER *handler, int peap_flag);
 int 		eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn);
 
 

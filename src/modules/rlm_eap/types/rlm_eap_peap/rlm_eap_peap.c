@@ -260,7 +260,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 	rcode = eappeap_process(handler, tls_session);
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
-		eaptls_fail(handler->eap_ds, 0);
+		eaptls_fail(handler, 0);
 		return 0;
 
 	case RLM_MODULE_HANDLED:
@@ -268,7 +268,10 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		return 1;
 
 	case RLM_MODULE_OK:
-		eaptls_success(handler->eap_ds, 0);
+		/*
+		 *	Success: Automatically return MPPE keys.
+		 */
+		eaptls_success(handler, 0);
 
 		/*
 		 *	Move the saved VP's from the Access-Accept to
@@ -280,11 +283,6 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		}
 		pairmove(&handler->request->reply->vps, &peap->accept_vps);
 		pairfree(&peap->accept_vps);
-
-		eaptls_gen_mppe_keys(&handler->request->reply->vps,
-				     tls_session->ssl,
-				     "client EAP encryption");
-
 		return 1;
 
 		/*
@@ -302,7 +300,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		break;
 	}
 
-	eaptls_fail(handler->eap_ds, 0);
+	eaptls_fail(handler, 0);
 	return 0;
 }
 

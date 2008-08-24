@@ -54,6 +54,8 @@ tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 	state = (tls_session_t *)malloc(sizeof(*state));
 	memset(state, 0, sizeof(*state));
 	session_init(state);
+
+	state->ctx = ssl_ctx;
 	state->ssl = new_tls;
 
 	/*
@@ -255,7 +257,6 @@ int tls_handshake_send(tls_session_t *ssn)
 
 		written = SSL_write(ssn->ssl, ssn->clean_in.data, ssn->clean_in.used);
 		record_minus(&ssn->clean_in, NULL, written);
-
 
 		/* Get the dirty data from Bio to send it */
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,

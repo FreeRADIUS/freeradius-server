@@ -715,9 +715,22 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	RDEBUG2("Initiate");
 
 	/*
-	 *	PEAP-specific breakage.
+	 *	Set up type-specific information.
 	 */
-	if (handler->eap_type == PW_EAP_PEAP) {
+	switch (handler->eap_type) {
+	case PW_EAP_TLS:
+	default:
+		ssn->prf_label = "client EAP encryption";
+		break;
+
+	case PW_EAP_TTLS:
+		ssn->prf_label = "ttls keying material";
+		break;
+
+		/*
+		 *	PEAP-specific breakage.
+		 */
+	case PW_EAP_PEAP:
 		/*
 		 *	As it is a poorly designed protocol, PEAP uses
 		 *	bits in the TLS header to indicate PEAP
@@ -735,6 +748,9 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 		 *	we force it here.
 		 */
 		ssn->length_flag = 0;
+
+		ssn->prf_label = "client EAP encryption";
+		break;
 	}
 
 	/*
@@ -808,7 +824,7 @@ static int eaptls_authenticate(void *arg UNUSED, EAP_HANDLER *handler)
 		}
 #endif
 
-		eaptls_fail(handler->eap_ds, 0);
+		eaptls_fail(handler, 0);
 		return 0;
 		break;
 
@@ -820,12 +836,9 @@ static int eaptls_authenticate(void *arg UNUSED, EAP_HANDLER *handler)
 	}
 
 	/*
-	 *	Success: Return MPPE keys.
+	 *	Success: Automatically return MPPE keys.
 	 */
-	eaptls_success(handler->eap_ds, 0);
-	eaptls_gen_mppe_keys(&handler->request->reply->vps,
-			     tls_session->ssl,
-			     "client EAP encryption");
+	eaptls_success(handler, 0);
 	return 1;
 }
 

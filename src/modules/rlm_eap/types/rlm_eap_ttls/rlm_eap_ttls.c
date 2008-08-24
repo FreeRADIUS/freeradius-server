@@ -195,10 +195,10 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 					 &t->reply);
 				pairfree(&t->reply);
 			}
-			eaptls_success(handler->eap_ds, 0);
-			eaptls_gen_mppe_keys(&handler->request->reply->vps,
-					     tls_session->ssl,
-					     "ttls keying material");
+			/*
+			 *	Success: Automatically return MPPE keys.
+			 */
+			eaptls_success(handler, 0);
 		} else {
 			eaptls_request(handler->eap_ds, tls_session);
 		}
@@ -247,7 +247,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 	rcode = eapttls_process(handler, tls_session);
 	switch (rcode) {
 	case PW_AUTHENTICATION_REJECT:
-		eaptls_fail(handler->eap_ds, 0);
+		eaptls_fail(handler, 0);
 		return 0;
 
 		/*
@@ -258,13 +258,10 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		return 1;
 
 		/*
-		 *	Success: Return MPPE keys.
+		 *	Success: Automatically return MPPE keys.
 		 */
 	case PW_AUTHENTICATION_ACK:
-		eaptls_success(handler->eap_ds, 0);
-		eaptls_gen_mppe_keys(&handler->request->reply->vps,
-				     tls_session->ssl,
-				     "ttls keying material");
+		eaptls_success(handler, 0);
 		return 1;
 
 		/*
@@ -285,7 +282,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 	/*
 	 *	Something we don't understand: Reject it.
 	 */
-	eaptls_fail(handler->eap_ds, 0);
+	eaptls_fail(handler, 0);
 	return 0;
 }
 

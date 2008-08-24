@@ -102,9 +102,10 @@ int eaptls_start(EAP_DS *eap_ds, int peap_flag)
 	return 1;
 }
 
-int eaptls_success(EAP_DS *eap_ds, int peap_flag)
+int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 {
 	EAPTLS_PACKET	reply;
+	tls_session_t *tls_session = handler->opaque;
 
 	reply.code = EAPTLS_SUCCESS;
 	reply.length = TLS_HEADER_LEN;
@@ -112,14 +113,27 @@ int eaptls_success(EAP_DS *eap_ds, int peap_flag)
 	reply.data = NULL;
 	reply.dlen = 0;
 
-	eaptls_compose(eap_ds, &reply);
+	eaptls_compose(handler->eap_ds, &reply);
+
+	/*
+	 *	Automatically generate MPPE keying material.
+	 */
+	if (tls_session->prf_label) {
+		eaptls_gen_mppe_keys(&handler->request->reply->vps,
+				     tls_session->ssl, tls_session->prf_label);
+	} else {
+		REQUEST *request = handler->request;
+
+		RDEBUG("WARNING: Not adding MPPE keys because there is no PRF label");
+	}
 
 	return 1;
 }
 
-int eaptls_fail(EAP_DS *eap_ds, int peap_flag)
+int eaptls_fail(EAP_HANDLER *handler, int peap_flag)
 {
 	EAPTLS_PACKET	reply;
+	tls_session_t *tls_session = handler->opaque;
 
 	reply.code = EAPTLS_FAIL;
 	reply.length = TLS_HEADER_LEN;
@@ -127,7 +141,12 @@ int eaptls_fail(EAP_DS *eap_ds, int peap_flag)
 	reply.data = NULL;
 	reply.dlen = 0;
 
-	eaptls_compose(eap_ds, &reply);
+	/*
+	 *	Force the session to NOT be cached.
+	 */
+	SSL_CTX_remove_session(tls_session->ctx, tls_session->ssl->session);
+
+	eaptls_compose(handler->eap_ds, &reply);
 
 	return 1;
 }
@@ -237,7 +256,7 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 	switch (tls_session->info.content_type) {
 	case alert:
 		RDEBUG2("ACK alert");
-		eaptls_fail(handler->eap_ds, tls_session->peap_flag);
+		eaptls_fail(handler, tls_session->peap_flag);
 		return EAPTLS_FAIL;
 
 	case handshake:
@@ -656,7 +675,7 @@ static eaptls_status_t eaptls_operation(eaptls_status_t status,
 	 */
 	if (!tls_handshake_recv(tls_session)) {
 		DEBUG2("TLS receive handshake failed during operation");
-		eaptls_fail(handler->eap_ds, tls_session->peap_flag);
+		eaptls_fail(handler, tls_session->peap_flag);
 		return EAPTLS_FAIL;
 	}
 

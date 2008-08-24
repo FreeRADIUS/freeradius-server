@@ -484,7 +484,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		switch (rcode) {
                 case RLM_MODULE_FAIL:
 			request_free(&fake);
-			eaptls_fail(handler->eap_ds, 0);
+			eaptls_fail(handler, 0);
 			return 0;
 			break;
 
@@ -518,7 +518,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
 		RDEBUG2("Reply was rejected");
-		eaptls_fail(handler->eap_ds, 0);
+		eaptls_fail(handler, 0);
 		return 0;
 
 	case RLM_MODULE_HANDLED:
@@ -528,10 +528,11 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 
 	case RLM_MODULE_OK:
 		RDEBUG2("Reply was OK");
-		eaptls_success(handler->eap_ds, 0);
-		eaptls_gen_mppe_keys(&handler->request->reply->vps,
-				     tls_session->ssl,
-				     "client EAP encryption");
+
+		/*
+		 *	Success: Automatically return MPPE keys.
+		 */
+		eaptls_success(handler, 0);
 		return 1;
 
 	default:
@@ -539,7 +540,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		break;
 	}
 
-	eaptls_fail(handler->eap_ds, 0);
+	eaptls_fail(handler, 0);
 	return 0;
 }
 
