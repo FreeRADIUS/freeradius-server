@@ -599,7 +599,6 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		return RLM_MODULE_REJECT;
 	}
 
-
 	/*
 	 *	If we authenticated the user, then it's OK.
 	 */
@@ -609,9 +608,43 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			return RLM_MODULE_OK;
 		}
 
+		/*
+		 *	Otherwise, the client rejected the session
+		 *	resumption.  If the session is being re-used,
+		 *	we need to do a full authentication.
+		 *
+		 *	We do this by sending an EAP-Identity request
+		 *	inside of the PEAP tunnel.
+		 */
+		if ((t->session_resumption_state != PEAP_RESUMPTION_NO) &&
+		    SSL_session_reused(tls_session->ssl)) {
+			eap_packet_t eap_packet;
+			
+			RDEBUG2("Client rejected session resumption.  Re-starting full authentication");
+			eap_packet.code = PW_EAP_REQUEST;
+			eap_packet.id = handler->eap_ds->response->id + 1;
+			eap_packet.length[0] = 0;
+			eap_packet.length[1] = EAP_HEADER_LEN + 1;
+			eap_packet.data[0] = PW_EAP_IDENTITY;
+			
+			/*
+			 *	Mark session resumption status.
+			 */
+			t->status = 0;
+			t->session_resumption_state = PEAP_RESUMPTION_NO;
+			
+			(tls_session->record_plus)(&tls_session->clean_in,
+						   &eap_packet,
+						   sizeof(eap_packet));
+			tls_handshake_send(tls_session);
+			return RLM_MODULE_HANDLED;
+		}
+
 		return RLM_MODULE_REJECT;
 
-	} else if (t->status == PEAP_STATUS_SENT_TLV_FAILURE) {
+	}
+
+	if (t->status == PEAP_STATUS_SENT_TLV_FAILURE) {
 		RDEBUG2(" Had sent TLV failure.  User was rejected earlier in this session.");
 		return RLM_MODULE_REJECT;
 	}

@@ -189,12 +189,18 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	an EAP-TLS-Success packet here.
 		 */
 	case EAPTLS_SUCCESS:
+		if (SSL_session_reused(tls_session->ssl)) {
+			RDEBUG("Skipping Phase2 due to session resumption");
+			goto do_keys;
+		}
+
 		if (t && t->authenticated) {
 			if (t->reply) {
 				pairmove(&handler->request->reply->vps,
 					 &t->reply);
 				pairfree(&t->reply);
 			}
+		do_keys:
 			/*
 			 *	Success: Automatically return MPPE keys.
 			 */

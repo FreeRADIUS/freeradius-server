@@ -162,6 +162,7 @@ static peap_tunnel_t *peap_alloc(rlm_eap_peap_t *inst)
 	t->use_tunneled_reply = inst->use_tunneled_reply;
 	t->proxy_tunneled_request_as_eap = inst->proxy_tunneled_request_as_eap;
 	t->virtual_server = inst->virtual_server;
+	t->session_resumption_state = PEAP_RESUMPTION_MAYBE;
 
 	return t;
 }
@@ -175,12 +176,20 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 	eaptls_status_t status;
 	rlm_eap_peap_t *inst = (rlm_eap_peap_t *) arg;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
-	peap_tunnel_t *peap = NULL;
+	peap_tunnel_t *peap = tls_session->opaque;
+	REQUEST *request = handler->request;
 
-	DEBUG2("  rlm_eap_peap: Authenticate");
+	/*
+	 *	Session resumption requires the storage of data, so
+	 *	allocate it if it doesn't already exist.
+	 */
+	if (!tls_session->opaque) {
+		peap = tls_session->opaque = peap_alloc(inst);
+		tls_session->free_opaque = peap_free;
+	}
 
 	status = eaptls_process(handler);
-	DEBUG2("  eaptls_process returned %d\n", status);
+	RDEBUG2("eaptls_process returned %d\n", status);
 	switch (status) {
 		/*
 		 *	EAP-TLS handshake was successful, tell the
@@ -190,7 +199,31 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	an EAP-TLS-Success packet here.
 		 */
 	case EAPTLS_SUCCESS:
-		{
+		if (SSL_session_reused(tls_session->ssl)) {
+			uint8_t tlv_packet[11];
+			
+			RDEBUG2("Skipping Phase2 because of session resumption.");
+			peap->session_resumption_state = PEAP_RESUMPTION_YES;
+			
+			tlv_packet[0] = PW_EAP_REQUEST;
+			tlv_packet[1] = handler->eap_ds->response->id +1;
+			tlv_packet[2] = 0;
+			tlv_packet[3] = 11;     /* length of this packet */
+			tlv_packet[4] = PW_EAP_TLV;
+			tlv_packet[5] = 0x80;
+			tlv_packet[6] = EAP_TLV_ACK_RESULT;
+			tlv_packet[7] = 0;
+			tlv_packet[8] = 2;      /* length of the data portion */
+			tlv_packet[9] = 0;
+			tlv_packet[10] = EAP_TLV_SUCCESS;
+			
+			peap->status = PEAP_STATUS_SENT_TLV_SUCCESS;
+
+			(tls_session->record_plus)(&tls_session->clean_in, tlv_packet, 11);
+			tls_handshake_send(tls_session);
+			(tls_session->record_init)(&tls_session->clean_in);
+
+		} else {
 			eap_packet_t eap_packet;
 
 			eap_packet.code = PW_EAP_REQUEST;
@@ -205,8 +238,9 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 			tls_handshake_send(tls_session);
 			(tls_session->record_init)(&tls_session->clean_in);
 		}
+
 		eaptls_request(handler->eap_ds, tls_session);
-		DEBUG2("  rlm_eap_peap: EAPTLS_SUCCESS");
+		RDEBUG2("EAPTLS_SUCCESS");
 		return 1;
 
 		/*

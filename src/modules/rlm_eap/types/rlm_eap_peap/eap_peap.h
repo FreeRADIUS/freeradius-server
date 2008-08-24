@@ -39,11 +39,16 @@ typedef struct peap_tunnel_t {
 	int		use_tunneled_reply;
 	int		proxy_tunneled_request_as_eap;
 	const char	*virtual_server;
+	int		session_resumption_state;
 } peap_tunnel_t;
 
 #define PEAP_STATUS_START_PART2 0
 #define PEAP_STATUS_SENT_TLV_SUCCESS 1
 #define PEAP_STATUS_SENT_TLV_FAILURE 2
+
+#define PEAP_RESUMPTION_NO	(0)
+#define PEAP_RESUMPTION_YES	(1)
+#define PEAP_RESUMPTION_MAYBE	(2)
 
 #define EAP_TLV_SUCCESS (1)
 #define EAP_TLV_FAILURE (2)
