@@ -1430,10 +1430,6 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	char            *tc, *ts;
 	signed char     tag;
 	int             found_tag;
-#ifdef HAVE_REGEX_H
-	int		res;
-	regex_t		cre;
-#endif
 	char		buffer[64];
 	const char	*attrname = attribute;
 
@@ -1543,36 +1539,12 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		 */
 	case T_OP_REG_EQ:	/* =~ */
 	case T_OP_REG_NE:	/* !~ */
-		if (vp->type == PW_TYPE_INTEGER) {
-			return vp;
-		}
-#ifdef HAVE_REGEX_H
 		/*
-		 *	Regular expression match with no regular
-		 *	expression is wrong.
+		 *	If anything goes wrong, this is a run-time error,
+		 *	not a compile-time error.
 		 */
-		if (!value) {
-			pairfree(&vp);
-			return NULL;
-		}
+		return vp;
 
-		res = regcomp(&cre, value, REG_EXTENDED|REG_NOSUB);
-		if (res != 0) {
-			char	msg[128];
-
-			regerror(res, &cre, msg, sizeof(msg));
-			librad_log("Illegal regular expression in attribute: %s: %s",
-				vp->name, msg);
-			pairbasicfree(vp);
-			return NULL;
-		}
-		regfree(&cre);
-#else
-		librad_log("Regular expressions not enabled in this build, error in attribute %s",
-				vp->name);
-		pairbasicfree(vp);
-		return NULL;
-#endif
 	}
 
 	/*
