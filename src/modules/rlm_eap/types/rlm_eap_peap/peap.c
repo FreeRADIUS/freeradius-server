@@ -34,8 +34,9 @@ RCSID("$Id$")
 static int eappeap_failure(EAP_HANDLER *handler, tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[11];
+	REQUEST *request = handler->request;
 
-	DEBUG2("  rlm_eap_peap: FAILURE");
+	RDEBUG2("FAILURE");
 
 	tlv_packet[0] = PW_EAP_REQUEST;
 	tlv_packet[1] = handler->eap_ds->response->id +1;
@@ -68,8 +69,9 @@ static int eappeap_failure(EAP_HANDLER *handler, tls_session_t *tls_session)
 static int eappeap_success(EAP_HANDLER *handler, tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[11];
+	REQUEST *request = handler->request;
 
-	DEBUG2("  rlm_eap_peap: SUCCESS");
+	RDEBUG2("SUCCESS");
 
 	tlv_packet[0] = PW_EAP_REQUEST;
 	tlv_packet[1] = handler->eap_ds->response->id +1;
@@ -97,7 +99,8 @@ static int eappeap_success(EAP_HANDLER *handler, tls_session_t *tls_session)
 /*
  *	Verify the tunneled EAP message.
  */
-static int eapmessage_verify(const uint8_t *data, unsigned int data_len)
+static int eapmessage_verify(REQUEST *request,
+			     const uint8_t *data, unsigned int data_len)
 {
 	const eap_packet_t *eap_packet = (const eap_packet_t *) data;
 	uint8_t eap_type;
@@ -110,7 +113,7 @@ static int eapmessage_verify(const uint8_t *data, unsigned int data_len)
 	eap_type = *data;
 	switch (eap_type) {
 	case PW_EAP_IDENTITY:
-		DEBUG2("  rlm_eap_peap: Identity - %*s",
+		RDEBUG2("Identity - %*s",
 		       data_len - 1, data + 1);
 		return 1;
 		break;
@@ -122,10 +125,10 @@ static int eapmessage_verify(const uint8_t *data, unsigned int data_len)
 		 */
 	case PW_EAP_RESPONSE:
 		if (eap_packet->data[0] == PW_EAP_TLV) {
-			DEBUG2("  rlm_eap_peap: Received EAP-TLV response.");
+			RDEBUG2("Received EAP-TLV response.");
 			return 1;
 		}
-		DEBUG2("  rlm_eap_peap: Got something weird.");
+		RDEBUG2("Got something weird.");
 		break;
 
 
@@ -135,7 +138,7 @@ static int eapmessage_verify(const uint8_t *data, unsigned int data_len)
 		 */
 	case PW_EAP_MSCHAPV2:
 	default:
-		DEBUG2("  rlm_eap_peap: EAP type %s",
+		RDEBUG2("EAP type %s",
 		       eaptype_type2name(eap_type,
 					 buffer, sizeof(buffer)));
 		return 1;
@@ -148,7 +151,7 @@ static int eapmessage_verify(const uint8_t *data, unsigned int data_len)
 /*
  *	Convert a pseudo-EAP packet to a list of VALUE_PAIR's.
  */
-static VALUE_PAIR *eap2vp(EAP_DS *eap_ds,
+static VALUE_PAIR *eap2vp(REQUEST *request, EAP_DS *eap_ds,
 			  const uint8_t *data, size_t data_len)
 {
 	size_t total;
@@ -158,7 +161,7 @@ static VALUE_PAIR *eap2vp(EAP_DS *eap_ds,
 
 	vp = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
 	if (!vp) {
-		DEBUG2("  rlm_eap_peap: Failure in creating VP");
+		RDEBUG2("Failure in creating VP");
 		return NULL;
 	}
 
@@ -184,7 +187,7 @@ static VALUE_PAIR *eap2vp(EAP_DS *eap_ds,
 
 		vp = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
 		if (!vp) {
-			DEBUG2("  rlm_eap_peap: Failure in creating VP");
+			RDEBUG2("Failure in creating VP");
 			pairfree(&head);
 			return NULL;
 		}
@@ -262,7 +265,7 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 /*
  *	See if there's a TLV in the response.
  */
-static int eappeap_check_tlv(const uint8_t *data)
+static int eappeap_check_tlv(REQUEST *request, const uint8_t *data)
 {
 	const eap_packet_t *eap_packet = (const eap_packet_t *) data;
 
@@ -276,7 +279,7 @@ static int eappeap_check_tlv(const uint8_t *data)
 		}
 
 		if (data[10] == EAP_TLV_FAILURE) {
-			DEBUG2("  rlm_eap_peap: Client rejected our response.  The password is probably incorrect.");
+			RDEBUG2("Client rejected our response.  The password is probably incorrect.");
 			return 0;
 		}
 	}
@@ -557,7 +560,6 @@ static void my_request_free(void *data)
  */
 int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 {
-	int err;
 	peap_tunnel_t *t = tls_session->opaque;
 	REQUEST *fake;
 	VALUE_PAIR *vp;
@@ -592,8 +594,8 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	}
 #endif
 
-	if (!eapmessage_verify(data, data_len)) {
-		DEBUG2("  rlm_eap_peap: Tunneled data is invalid.");
+	if (!eapmessage_verify(request, data, data_len)) {
+		RDEBUG2("Tunneled data is invalid.");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -602,15 +604,15 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	If we authenticated the user, then it's OK.
 	 */
 	if (t->status == PEAP_STATUS_SENT_TLV_SUCCESS) {
-		if (eappeap_check_tlv(data)) {
-			DEBUG2("  rlm_eap_peap: Success");
+		if (eappeap_check_tlv(request, data)) {
+			RDEBUG2("Success");
 			return RLM_MODULE_OK;
 		}
 
 		return RLM_MODULE_REJECT;
 
 	} else if (t->status == PEAP_STATUS_SENT_TLV_FAILURE) {
-		DEBUG2("  rlm_eap_peap:  Had sent TLV failure.  User was rejected earlier in this session.");
+		RDEBUG2(" Had sent TLV failure.  User was rejected earlier in this session.");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -618,10 +620,10 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 	rad_assert(fake->packet->vps == NULL);
 
-	fake->packet->vps = eap2vp(eap_ds, data, data_len);
+	fake->packet->vps = eap2vp(request, eap_ds, data, data_len);
 	if (!fake->packet->vps) {
 		request_free(&fake);
-		DEBUG2("  rlm_eap_peap: Unable to convert tunneled EAP packet to internal server data structures");
+		RDEBUG2("Unable to convert tunneled EAP packet to internal server data structures");
 		return PW_AUTHENTICATION_REJECT;
 	}
 

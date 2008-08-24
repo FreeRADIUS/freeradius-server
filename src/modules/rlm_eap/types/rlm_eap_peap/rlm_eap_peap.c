@@ -220,7 +220,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 	   *	and EAP id from the inner tunnel, and update it with
 	   *	the expected EAP id!
 	   */
-		DEBUG2("  rlm_eap_peap: EAPTLS_HANDLED");
+		RDEBUG2("EAPTLS_HANDLED");
 		return 1;
 
 		/*
@@ -228,14 +228,14 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	data.
 		 */
 	case EAPTLS_OK:
-		DEBUG2("  rlm_eap_peap: EAPTLS_OK");
+		RDEBUG2("EAPTLS_OK");
 		break;
 
 		/*
 		 *	Anything else: fail.
 		 */
 	default:
-		DEBUG2("  rlm_eap_peap: EAPTLS_OTHERS");
+		RDEBUG2("EAPTLS_OTHERS");
 		return 0;
 	}
 
@@ -243,7 +243,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 	 *	Session is established, proceed with decoding
 	 *	tunneled data.
 	 */
-	DEBUG2("  rlm_eap_peap: Session established.  Decoding tunneled attributes.");
+	RDEBUG2("Session established.  Decoding tunneled attributes.");
 
 	/*
 	 *	We may need PEAP data associated with the session, so
