@@ -303,21 +303,20 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 
 	case RLM_MODULE_OK:
 		/*
-		 *	Success: Automatically return MPPE keys.
-		 */
-		eaptls_success(handler, 0);
-
-		/*
 		 *	Move the saved VP's from the Access-Accept to
 		 *	our Access-Accept.
 		 */
 		peap = tls_session->opaque;
 		if (peap->accept_vps) {
-			DEBUG2("  Using saved attributes from the original Access-Accept");
+			RDEBUG2("Using saved attributes from the original Access-Accept");
+			pairmove(&handler->request->reply->vps, &peap->accept_vps);
+			pairfree(&peap->accept_vps);
 		}
-		pairmove(&handler->request->reply->vps, &peap->accept_vps);
-		pairfree(&peap->accept_vps);
-		return 1;
+
+		/*
+		 *	Success: Automatically return MPPE keys.
+		 */
+		return eaptls_success(handler, 0);
 
 		/*
 		 *	No response packet, MUST be proxying it.

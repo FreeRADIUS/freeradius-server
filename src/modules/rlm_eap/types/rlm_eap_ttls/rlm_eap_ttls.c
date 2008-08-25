@@ -204,7 +204,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 			/*
 			 *	Success: Automatically return MPPE keys.
 			 */
-			eaptls_success(handler, 0);
+			return eaptls_success(handler, 0);
 		} else {
 			eaptls_request(handler->eap_ds, tls_session);
 		}
@@ -267,8 +267,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case PW_AUTHENTICATION_ACK:
-		eaptls_success(handler, 0);
-		return 1;
+		return eaptls_success(handler, 0);
 
 		/*
 		 *	No response packet, MUST be proxying it.

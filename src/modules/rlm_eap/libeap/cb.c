@@ -113,4 +113,11 @@ int cbtls_password(char *buf,
 	return(strlen((char *)userdata));
 }
 
+/*
+ *	For callbacks
+ */
+int eaptls_handle_idx = -1;
+int eaptls_conf_idx = -1;
+int eaptls_session_idx = -1;
+
 #endif /* !defined(NO_OPENSSL) */

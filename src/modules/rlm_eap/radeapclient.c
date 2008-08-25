@@ -68,6 +68,11 @@ static void unmap_eap_types(RADIUS_PACKET *rep);
 static int map_eapsim_types(RADIUS_PACKET *r);
 static int unmap_eapsim_types(RADIUS_PACKET *r);
 
+void debug_pair_list(UNUSED VALUE_PAIR *vp)
+{
+	return;
+}
+
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: radeapclient [options] server[:port] <command> [<secret>]\n");

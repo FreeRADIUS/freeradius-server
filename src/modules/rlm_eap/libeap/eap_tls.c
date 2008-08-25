@@ -105,6 +105,8 @@ int eaptls_start(EAP_DS *eap_ds, int peap_flag)
 int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 {
 	EAPTLS_PACKET	reply;
+	VALUE_PAIR *vp, *vps = NULL;
+	REQUEST *request = handler->request;
 	tls_session_t *tls_session = handler->opaque;
 
 	reply.code = EAPTLS_SUCCESS;
@@ -113,6 +115,45 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 	reply.data = NULL;
 	reply.dlen = 0;
 
+	/*
+	 *	Store the reply, if configured.
+	 */
+	if (!SSL_session_reused(tls_session->ssl)) {
+		RDEBUG2("Saving response in the cache");
+		
+		vp = paircopy2(request->reply->vps, PW_USER_NAME);
+		pairadd(&vps, vp);
+		
+		vp = paircopy2(request->packet->vps, PW_STRIPPED_USER_NAME);
+		pairadd(&vps, vp);
+		
+		if (vps) {
+			SSL_SESSION_set_ex_data(tls_session->ssl->session,
+						eaptls_session_idx, vps);
+		}
+
+		/*
+		 *	Copy the previous reply.
+		 */
+	} else {
+		vp = SSL_SESSION_get_ex_data(tls_session->ssl->session,
+					     eaptls_session_idx);
+		if (!vp) {
+			RDEBUG("WARNING: No information in cached session!");
+			/*
+			 *	FIXME: Call eaptls_fail, and return 0
+			 */
+			return 1;
+		}
+
+		RDEBUG("Adding cached attributes to the reply:");
+		debug_pair_list(vp);
+		pairadd(&request->reply->vps, paircopy(vp));		
+	}
+
+	/*
+	 *	Call compose AFTER checking for cached data.
+	 */
 	eaptls_compose(handler->eap_ds, &reply);
 
 	/*
@@ -979,3 +1020,4 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
 
 	return 1;
 }
+

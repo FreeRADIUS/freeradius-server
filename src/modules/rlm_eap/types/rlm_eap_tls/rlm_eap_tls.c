@@ -357,6 +357,19 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 
 /*
+ *	Free cached session data, which is always a list of VALUE_PAIRs
+ */
+void eaptls_session_free(void *parent, void *data_ptr, CRYPTO_EX_DATA *ad,
+			 int idx, long argl, void *argp)
+{
+	VALUE_PAIR *vp = data_ptr;
+	if (!data_ptr) return;
+
+	pairfree(&vp);
+}
+
+
+/*
  *	Create Global context SSL and use it in every new session
  *
  *	- Load the trusted CAs
@@ -582,6 +595,28 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 
 	} else {
 		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
+	}
+
+	/*
+	 *	Register the application indices.  We can't use
+	 *	hard-coded "0" and "1" as before, because we need to
+	 *	set up a "free" handler for the cached session
+	 *	information.
+	 */
+	if (eaptls_handle_idx < 0) {
+		eaptls_handle_idx = SSL_get_ex_new_index(0, "eaptls_handle_idx",
+							  NULL, NULL, NULL);
+	}
+	
+	if (eaptls_conf_idx < 0) {
+		eaptls_conf_idx = SSL_get_ex_new_index(0, "eaptls_conf_idx",
+							  NULL, NULL, NULL);
+	}
+
+	if (eaptls_session_idx < 0) {
+		eaptls_session_idx = SSL_get_ex_new_index(0, "eaptls_session_idx",
+							  NULL, NULL,
+							  eaptls_session_free);
 	}
 
 	return ctx;
@@ -1021,8 +1056,7 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 	/*
 	 *	Success: Automatically return MPPE keys.
 	 */
-	eaptls_success(handler, 0);
-	return 1;
+	return eaptls_success(handler, 0);
 }
 
 /*

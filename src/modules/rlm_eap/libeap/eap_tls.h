@@ -231,7 +231,6 @@ void		eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size);
 #define SET_MORE_FRAGMENTS(x) 	((x) | (0x40))
 #define SET_LENGTH_INCLUDED(x) 	((x) | (0x80))
 
-
 /*
  *	Following enums from rfc2246
  *
@@ -367,5 +366,10 @@ void 		tls_session_information(tls_session_t *tls_session);
 void 		session_free(void *ssn);
 void 		session_close(tls_session_t *ssn);
 void 		session_init(tls_session_t *ssn);
+
+/* SSL Indicies for ex data */
+extern int	eaptls_handle_idx;
+extern int	eaptls_conf_idx;
+extern int	eaptls_session_idx;
 
 #endif /*_EAP_TLS_H*/

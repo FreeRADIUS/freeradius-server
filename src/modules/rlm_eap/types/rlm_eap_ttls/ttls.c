@@ -903,8 +903,7 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		eaptls_success(handler, 0);
-		return 1;
+		return eaptls_success(handler, 0);
 
 	default:
 		RDEBUG("Reply was unknown.");
