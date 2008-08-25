@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 use POSIX;
+use File::Temp;
 
 $conf=shift||'/data/local/dialupadmin/conf/admin.conf';
 $back_days = 80;
@@ -38,14 +39,13 @@ if (POSIX::strftime("%Y-%m-%d %T",localtime) eq $date){
 
 $query = "SELECT * FROM $sql_accounting_table WHERE AcctStopTime < '$date' AND AcctStopTime > '$date2';";
 print "$query\n";
-open TMP, ">/tmp/backup_radacct.query"
-	or die "Could not open tmp file\n";
-print TMP "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF TZH:TZM';\n" if ($sql_type eq 'oracle');
-print TMP $query;
-close TMP;
-$comm = "$sqlcmd -B -h $sql_server -u $sql_username $sql_password $sql_database </tmp/backup_radacct.query >$backup_directory/$date3" if ($sql_type eq 'mysql');
-$comm = "$sqlcmd  -U $sql_username -f /tmp/backup_radacct.query $sql_database >$backup_directory/$date3" if ($sql_type eq 'pg');
+my ($fh, $tmp_filename) = tempfile() or die "Could not open tmp file\n";
+print $fh "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF TZH:TZM';\n" if ($sql_type eq 'oracle');
+print $fh $query;
+close $fh;
+$comm = "$sqlcmd -B -h $sql_server -u $sql_username $sql_password $sql_database < $tmp_filename >$backup_directory/$date3" if ($sql_type eq 'mysql');
+$comm = "$sqlcmd  -U $sql_username -f $tmp_filename $sql_database >$backup_directory/$date3" if ($sql_type eq 'pg');
 $command = "$sqlcmd  $sql_username/$pass" . "@" . "$sql_database <$tmpfile.$server" if ($sql_type eq 'oracle');
-$command = "$sqlcmd '$sql_server' '$sql_port' '' '$sql_username' '$sql_password' </tmp/backup_radacct.query >$backup_directory/$date3" if ($sql_type eq 'sqlrelay');
+$command = "$sqlcmd '$sql_server' '$sql_port' '' '$sql_username' '$sql_password' < $tmp_filename >$backup_directory/$date3" if ($sql_type eq 'sqlrelay');
 `$comm`;
 `/usr/local/bin/gzip -9 $backup_directory/$date3`;
