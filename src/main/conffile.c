@@ -730,6 +730,11 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			 *  Substitute the value of the variable.
 			 */
 			cp = cf_itemtopair(ci);
+			if (!cp->value) {
+				radlog(L_ERR, "%s[%d]: Reference \"%s\" has no value",
+				       cf, *lineno, input);
+				return NULL;
+			}
 			strcpy(p, cp->value);
 			p += strlen(p);
 			ptr = end + 1;
