@@ -929,6 +929,10 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 		break;
 	}
 
+	if (inst->conf->session_cache_enable) {
+		ssn->allow_session_resumption = 1; /* otherwise it's zero */
+	}
+
 	/*
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.

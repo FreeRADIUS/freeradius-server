@@ -182,6 +182,12 @@ ATTRIBUTE	FreeRADIUS-Client-Shortname		1124	string
 ATTRIBUTE	FreeRADIUS-Client-NAS-Type		1125	string
 ATTRIBUTE	FreeRADIUS-Client-Virtual-Server	1126	string
 
+# For session resumption
+ATTRIBUTE	Allow-Session-Resumption		1127	integer
+
+VALUE	Allow-Session-Resumption	no			0
+VALUE	Allow-Session-Resumption	yes			1
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.

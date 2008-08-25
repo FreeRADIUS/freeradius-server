@@ -176,6 +176,7 @@ typedef struct _tls_session_t {
 	void 		(*free_opaque)(void *opaque);
 
 	const char	*prf_label;
+	int		allow_session_resumption;
 } tls_session_t;
 
 

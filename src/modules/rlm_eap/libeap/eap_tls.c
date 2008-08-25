@@ -116,9 +116,35 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 	reply.dlen = 0;
 
 	/*
-	 *	Store the reply, if configured.
+	 *	If there's no session resumption, delete the entry
+	 *	from the cache.  This means either it's disabled
+	 *	globally for this SSL context, OR we were told to
+	 *	disable it for this user.
+	 *
+	 *	This also means you can't turn it on just for one
+	 *	user.
 	 */
-	if (!SSL_session_reused(tls_session->ssl)) {
+	if ((!tls_session->allow_session_resumption) ||
+	    (((vp = pairfind(request->config_items, 1127)) != NULL) &&
+	     (vp->vp_integer == 0))) {
+		SSL_CTX_remove_session(tls_session->ctx,
+				       tls_session->ssl->session);
+		tls_session->allow_session_resumption = 0;
+
+		/*
+		 *	If we're in a resumed session and it's
+		 *	not allowed, 
+		 */
+		if (SSL_session_reused(tls_session->ssl)) {
+			RDEBUG("FAIL: Forcibly stopping session resumption as it is not allowed.");
+			return eaptls_fail(handler, peap_flag);
+		}
+		
+		/*
+		 *	Else resumption IS allowed, so we store the
+		 *	user data in the cache.
+		 */
+	} else if (!SSL_session_reused(tls_session->ssl)) {
 		RDEBUG2("Saving response in the cache");
 		
 		vp = paircopy2(request->reply->vps, PW_USER_NAME);
@@ -133,9 +159,11 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 		}
 
 		/*
-		 *	Copy the previous reply.
+		 *	Else the session WAS allowed.  Copy the cached
+		 *	reply.
 		 */
 	} else {
+	       
 		vp = SSL_SESSION_get_ex_data(tls_session->ssl->session,
 					     eaptls_session_idx);
 		if (!vp) {
