@@ -1,19 +1,27 @@
-FreeRADIUS 2.0.6 ; $Date$ , urgency=medium
+FreeRADIUS 2.1.0 ; $Date$ , urgency=medium
 	Feature improvements
-	* Clients may now be defined dynamically, based on *any* criteria.
+	* Clients may now be defined dynamically, based on IP address.
 	  See raddb/sites-available/dynamic-clients.
-	* SNMP statistics have been replaced by statistics gathered
-	  via Status-Server.  See raddb/sites-available/status
-	* SNMP support has been removed from the server.  Since it has not
-	  worked for a while, this should not affect anyone.
+	* SNMP support is now available through an experimental Perl script.
+	  See scripts/snmp-proxy/README
+	* SNMP statistics are available through Status-Server packets.
+	  See raddb/sites-available/status
 	* Added more Microsoft attributes from bug #568.
-	* The "linelog" module has more functionality and flexibility
+	* The "linelog" module has more functionality and flexibility.
+	  See raddb/modules/linelog.
 	* The debugging output has been sanitized.  It should be much
 	  more readable.
-	* Debug logs can now be turned on and off while the server is running,
-	  for a user, group, realm, etc.  See "log" section of radiusd.conf.
+	* Debug logs can now be turned on/off while the server is running, for
+	  a user, group, realm, etc.  See the "log" section of radiusd.conf.
+	* Added support for WiMAX Forum attributes.  The dynamic keys
+	  are not yet calculated.  See share/dictionary.wimax
+	* Added session resumption for PEAP and TTLS.
+	  See raddb/eap.conf, "cache" sub-section.
 
 	Bug fixes
+	* Double escaping of '\\' in the "users" (and some other) files
+	  has been fixed.  If you have '\\' in the "users" file, your
+	  configuration WILL NEED TO BE CHECKED, AND FIXED!
 	* Parse "security" section in radiusd.conf.  This was accidentally
 	  deleted in 2.0.5.  Closes bug #566.
 	* Bind to interface before IP, which allows DHCP sockets to
