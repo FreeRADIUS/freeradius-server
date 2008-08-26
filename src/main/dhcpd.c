@@ -121,7 +121,7 @@ static int dhcp_socket_recv(rad_listen_t *listener,
 
 	packet = fr_dhcp_recv(listener->fd);
 	if (!packet) {
-		radlog(L_ERR, "%s", fr_strerror);
+		radlog(L_ERR, "%s", fr_strerror());
 		return 0;
 	}
 

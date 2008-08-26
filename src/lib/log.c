@@ -1,6 +1,6 @@
 /*
  * log.c	Functions in the library call radlib_log() which
- *		sets a global error string "char *fr_strerror".
+ *		does internal logging.
  *
  * Version:	$Id$
  *
@@ -26,7 +26,11 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 
-char fr_strerror[1024];
+
+#define FR_STRERROR_BUFSIZE (1024)
+
+static char fr_strerror_buffer[FR_STRERROR_BUFSIZE];
+
 
 /*
  *  Do logging to a static buffer.  Note that we MIGHT be asked
@@ -38,12 +42,14 @@ char fr_strerror[1024];
 void fr_strerror_printf(const char *fmt, ...)
 {
 	va_list ap;
-	char my_errstr[sizeof(fr_strerror)];
-
 	va_start(ap, fmt);
-	vsnprintf(my_errstr, sizeof(my_errstr), fmt, ap);
-	strcpy(fr_strerror, my_errstr);
+	vsnprintf(fr_strerror_buffer, sizeof(fr_strerror_buffer), fmt, ap);
 	va_end(ap);
+}
+
+const char *fr_strerror(void)
+{
+	return fr_strerror_buffer;
 }
 
 void fr_perror(const char *fmt, ...)
@@ -54,6 +60,6 @@ void fr_perror(const char *fmt, ...)
 	vfprintf(stderr, fmt, ap);
 	if (strchr(fmt, ':') == NULL)
 		fprintf(stderr, ": ");
-	fprintf(stderr, "%s\n", fr_strerror);
+	fprintf(stderr, "%s\n", fr_strerror());
 	va_end(ap);
 }

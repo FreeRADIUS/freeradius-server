@@ -47,7 +47,7 @@ int vqp_socket_recv(rad_listen_t *listener,
 
 	packet = vqp_recv(listener->fd);
 	if (!packet) {
-		radlog(L_ERR, "%s", fr_strerror);
+		radlog(L_ERR, "%s", fr_strerror());
 		return 0;
 	}
 
@@ -87,7 +87,7 @@ int vqp_socket_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(listener->send == vqp_socket_send);
 
 	if (vqp_encode(request->reply, request->packet) < 0) {
-		DEBUG2("Failed encoding packet: %s\n", fr_strerror);
+		DEBUG2("Failed encoding packet: %s\n", fr_strerror());
 		return -1;
 	}
 

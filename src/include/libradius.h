@@ -354,7 +354,7 @@ void		fr_perror(const char *, ...)
 		__attribute__ ((format (printf, 1, 2)))
 #endif
 ;
-extern char	fr_strerror[];
+extern const char *fr_strerror(void);
 extern int	fr_dns_lookups;	/* 0 = no dns lookups */
 extern int	fr_debug_flag;	/* 0 = no debugging information */
 extern int	fr_max_attributes; /* per incoming packet */

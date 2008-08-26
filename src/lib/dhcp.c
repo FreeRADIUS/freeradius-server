@@ -330,7 +330,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	for (i = 0; i < 14; i++) {
 		vp = pairmake(dhcp_header_names[i], NULL, T_OP_EQ);
 		if (!vp) {
-			fprintf(stderr, "Parse error %s\n", fr_strerror);
+			fprintf(stderr, "Parse error %s\n", fr_strerror());
 			pairfree(&head);
 			return -1;
 		}
@@ -487,7 +487,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			vp = pairmake(da->name, NULL, T_OP_EQ);
 			if (!vp) {
 				fprintf(stderr, "Cannot build attribute %s\n",
-					fr_strerror);
+					fr_strerror());
 				pairfree(&head);
 				return -1;
 			}
@@ -529,7 +529,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 				raw:
 					vp = pairmake(da->name, NULL, T_OP_EQ);
 					if (!vp) {
-						fprintf(stderr, "Cannot build attribute %s\n", fr_strerror);
+						fprintf(stderr, "Cannot build attribute %s\n", fr_strerror());
 						pairfree(&head);
 						return -1;
 					}
@@ -897,7 +897,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		for (i = 0; i < 14; i++) {
 			vp = pairmake(dhcp_header_names[i], NULL, T_OP_EQ);
 			if (!vp) {
-				fprintf(stderr, "Parse error %s\n", fr_strerror);
+				fprintf(stderr, "Parse error %s\n", fr_strerror());
 				return -1;
 			}
 			

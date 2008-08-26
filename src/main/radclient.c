@@ -680,7 +680,7 @@ static int send_one_packet(radclient_t *radclient)
 	 */
 	if (rad_send(radclient->request, NULL, secret) < 0) {
 		fprintf(stderr, "radclient: Failed to send packet for ID %d: %s\n",
-			radclient->request->id, fr_strerror);
+			radclient->request->id, fr_strerror());
 	}
 
 	if (fr_debug_flag > 2) print_hex(radclient->request);
@@ -725,7 +725,7 @@ static int recv_one_packet(int wait_time)
 	reply = fr_packet_list_recv(pl, &set);
 	if (!reply) {
 		fprintf(stderr, "radclient: received bad packet: %s\n",
-			fr_strerror);
+			fr_strerror());
 		return -1;	/* bad packet */
 	}
 
@@ -1073,7 +1073,7 @@ int main(int argc, char **argv)
 	}
 	sockfd = fr_socket(&client_ipaddr, client_port);
 	if (sockfd < 0) {
-		fprintf(stderr, "radclient: socket: %s\n", fr_strerror);
+		fprintf(stderr, "radclient: socket: %s\n", fr_strerror());
 		exit(1);
 	}
 

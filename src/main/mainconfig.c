@@ -731,7 +731,7 @@ int read_mainconfig(int reload)
 	DEBUG2("including dictionary file %s/%s", p, RADIUS_DICTIONARY);
 	if (dict_init(p, RADIUS_DICTIONARY) != 0) {
 		radlog(L_ERR, "Errors reading dictionary: %s",
-				fr_strerror);
+				fr_strerror());
 		return -1;
 	}
 

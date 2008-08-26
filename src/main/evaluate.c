@@ -350,7 +350,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 			memcpy(&myvp, vp, sizeof(myvp));
 			if (!pairparsevalue(&myvp, pright)) {
 				RDEBUG2("Failed parsing \"%s\": %s",
-				       pright, fr_strerror);
+				       pright, fr_strerror());
 				return FALSE;
 			}
 
@@ -1217,7 +1217,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 
 			if (!pairparsevalue(vp, value)) {
 				RDEBUG2("ERROR: Failed parsing value \"%s\" for attribute %s: %s",
-				       value, vp->name, fr_strerror);
+				       value, vp->name, fr_strerror());
 				pairfree(&newlist);
 				return RLM_MODULE_FAIL;
 			}

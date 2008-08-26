@@ -689,7 +689,7 @@ static int stats_socket_recv(rad_listen_t *listener,
 	packet = rad_recv(listener->fd, 1); /* require message authenticator */
 	if (!packet) {
 		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
-		DEBUG("%s", fr_strerror);
+		DEBUG("%s", fr_strerror());
 		return 0;
 	}
 
@@ -794,7 +794,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 	packet = rad_recv(listener->fd, client->message_authenticator);
 	if (!packet) {
 		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
-		DEBUG("%s", fr_strerror);
+		DEBUG("%s", fr_strerror());
 		return 0;
 	}
 
@@ -896,7 +896,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 	packet = rad_recv(listener->fd, 0);
 	if (!packet) {
 		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
-		radlog(L_ERR, "%s", fr_strerror);
+		radlog(L_ERR, "%s", fr_strerror());
 		return 0;
 	}
 
@@ -929,7 +929,7 @@ static int proxy_socket_recv(rad_listen_t *listener,
 
 	packet = rad_recv(listener->fd, 0);
 	if (!packet) {
-		radlog(L_ERR, "%s", fr_strerror);
+		radlog(L_ERR, "%s", fr_strerror());
 		return 0;
 	}
 

@@ -2650,7 +2650,7 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 						   do_xlat ? NULL : value,
 						   operator);
 				if (newpair == NULL) {
-					radlog(L_ERR, "rlm_ldap: Failed to create the pair: %s", fr_strerror);
+					radlog(L_ERR, "rlm_ldap: Failed to create the pair: %s", fr_strerror());
 					continue;
 				}
 

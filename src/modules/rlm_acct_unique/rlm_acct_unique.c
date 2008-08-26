@@ -242,7 +242,7 @@ static int add_unique_id(void *instance, REQUEST *request)
 
 	vp = pairmake("Acct-Unique-Session-Id", buffer, 0);
 	if (!vp) {
-		radlog(L_ERR, "%s", fr_strerror);
+		radlog(L_ERR, "%s", fr_strerror());
 		return RLM_MODULE_FAIL;
 	}
 

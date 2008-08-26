@@ -39,7 +39,7 @@ static void add_reply(VALUE_PAIR** vp,
 	if (!reply_attr) {
 		DEBUG("rlm_eap_tls: "
 		      "add_reply failed to create attribute %s: %s\n",
-		      name, fr_strerror);
+		      name, fr_strerror());
 		return;
 	}
 

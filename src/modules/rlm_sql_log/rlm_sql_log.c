@@ -221,7 +221,7 @@ static int sql_set_user(rlm_sql_log_t *inst, REQUEST *request, char *sqlusername
 		RDEBUG2("sql_set_user escaped user --> '%s'", sqlusername);
 		vp = pairmake("SQL-User-Name", sqlusername, 0);
 		if (vp == NULL) {
-			radlog(L_ERR, "%s", fr_strerror);
+			radlog(L_ERR, "%s", fr_strerror());
 			return -1;
 		}
 

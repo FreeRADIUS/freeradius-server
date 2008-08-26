@@ -522,7 +522,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			client_free(c);
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Failed to look up hostname %s: %s",
-				   name2, fr_strerror);
+				   name2, fr_strerror());
 			return NULL;
 		}
 
