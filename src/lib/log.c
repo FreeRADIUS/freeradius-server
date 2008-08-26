@@ -29,27 +29,93 @@ RCSID("$Id$")
 
 #define FR_STRERROR_BUFSIZE (1024)
 
-static char fr_strerror_buffer[FR_STRERROR_BUFSIZE];
+#ifdef HAVE_THREAD_TLS
+/*
+ *	GCC on most Linux systems
+ */
+#define THREAD_TLS __thread
 
+#elif defined(HAVE_DECLSPEC_THREAD)
+/*
+ *	Visual C++, Borland
+ */
+#define THREAD_TLS __declspec(thread)
+#else
+#define THREAD_TLS
 
 /*
- *  Do logging to a static buffer.  Note that we MIGHT be asked
- *  to write a previous log message to fr_strerror.
- *
- *  This also isn't multithreaded-safe, so it'll have to be changed
- *  in the future.
+ *	Use pthread keys if we have pthreads.  For MAC, which should
+ *	be very fast.
+ */
+#ifdef HAVE_PTHREAD_H
+#define USE_PTHREAD_TLS (1)
+#endif
+#endif
+
+#ifndef USE_PTHREAD_TLS
+/*
+ *	Try to create a thread-local-storage version of this buffer.
+ */
+static THREAD_TLS char fr_strerror_buffer[FR_STRERROR_BUFSIZE];
+
+#else
+#include <pthread.h>
+
+static pthread_key_t  fr_strerror_key;
+static pthread_once_t fr_strerror_once = PTHREAD_ONCE_INIT;
+
+/* Create Key */
+static void fr_strerror_make_key()
+{
+	pthread_key_create(&fr_strerror_key, NULL);
+}
+#endif
+
+/*
+ *	Log to a buffer, trying to be thread-safe.
  */
 void fr_strerror_printf(const char *fmt, ...)
 {
 	va_list ap;
+
+#ifdef USE_PTHREAD_TLS
+	char *buffer;
+
+	pthread_once(&fr_strerror_once, fr_strerror_make_key);
+	
+	buffer = pthread_getspecific(fr_strerror_key);
+	if (!buffer) {
+		buffer = malloc(FR_STRERROR_BUFSIZE);
+		if (!buffer) return; /* panic and die! */
+
+		pthread_setspecific(fr_strerror_key, buffer);
+	}
+
+	va_start(ap, fmt);
+	vsnprintf(buffer, FR_STRERROR_BUFSIZE, fmt, ap);
+
+#else
 	va_start(ap, fmt);
 	vsnprintf(fr_strerror_buffer, sizeof(fr_strerror_buffer), fmt, ap);
+#endif
+
 	va_end(ap);
 }
 
 const char *fr_strerror(void)
 {
+#ifndef USE_PTHREAD_TLS
 	return fr_strerror_buffer;
+
+#else
+	const char *msg;
+
+	(void) pthread_once(&fr_strerror_once, fr_strerror_make_key);
+	msg = pthread_getspecific(fr_strerror_make_key);
+	if (msg) return msg;
+
+	return "";		/* DON'T return NULL! */
+#endif
 }
 
 void fr_perror(const char *fmt, ...)
