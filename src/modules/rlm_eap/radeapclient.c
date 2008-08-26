@@ -191,7 +191,7 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 			}
 			break;
 		} else {	/* NULL: couldn't receive the packet */
-			librad_perror("radclient:");
+			fr_perror("radclient:");
 			exit(1);
 		}
 	}
@@ -209,17 +209,17 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 	 *	a lot more than radeapclient.
        	 */
 	if (rad_verify(*rep, req, secret) != 0) {
-		librad_perror("rad_verify");
+		fr_perror("rad_verify");
 		exit(1);
 	}
 
 	if (rad_decode(*rep, req, secret) != 0) {
-		librad_perror("rad_decode");
+		fr_perror("rad_decode");
 		exit(1);
 	}
 
 	/* libradius debug already prints out the value pairs for us */
-	if (!librad_debug && do_output) {
+	if (!fr_debug_flag && do_output) {
 		printf("Received response ID %d, code %d, length = %d\n",
 				(*rep)->id, (*rep)->code, (*rep)->data_len);
 		vp_printlist(stdout, (*rep)->vps);
@@ -931,7 +931,7 @@ int main(int argc, char **argv)
 	int id;
 
 	id = ((int)getpid() & 0xff);
-	librad_debug = 0;
+	fr_debug_flag = 0;
 
 	radlog_dest = RADLOG_STDERR;
 
@@ -954,7 +954,7 @@ int main(int argc, char **argv)
 			break;
 		case 'x':
 		        debug_flag++;
-			librad_debug++;
+			fr_debug_flag++;
 			break;
 
 		case 'X':
@@ -1033,12 +1033,12 @@ int main(int argc, char **argv)
 	}
 
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
-		librad_perror("radclient");
+		fr_perror("radclient");
 		return 1;
 	}
 
 	if ((req = rad_alloc(1)) == NULL) {
-		librad_perror("radclient");
+		fr_perror("radclient");
 		exit(1);
 	}
 
@@ -1368,17 +1368,17 @@ main(int argc, char *argv[])
 	}
 
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
-		librad_perror("radclient");
+		fr_perror("radclient");
 		return 1;
 	}
 
 	if ((req = rad_alloc(1)) == NULL) {
-		librad_perror("radclient");
+		fr_perror("radclient");
 		exit(1);
 	}
 
 	if ((req2 = rad_alloc(1)) == NULL) {
-		librad_perror("radclient");
+		fr_perror("radclient");
 		exit(1);
 	}
 

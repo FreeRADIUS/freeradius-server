@@ -395,7 +395,7 @@ do_again:
 		DEBUG2("%s: Changed value for attribute %s from '%s' to '%s'", data->name,
 				data->attribute, attr_vp->vp_strvalue, new_str);
 		if (pairparsevalue(attr_vp, new_str) == NULL) {
-			DEBUG2("%s: Could not write value '%s' into attribute %s: %s", data->name, new_str, data->attribute, librad_errstr);
+			DEBUG2("%s: Could not write value '%s' into attribute %s: %s", data->name, new_str, data->attribute, fr_strerror);
 			return ret;
 		}
 

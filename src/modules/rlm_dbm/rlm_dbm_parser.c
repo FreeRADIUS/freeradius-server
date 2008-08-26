@@ -46,8 +46,8 @@ char sccsid[] =
 
 #define	MAX_BUFF_SIZE	1024
 
-#define DOUT1	if( librad_debug > 0 ) printf
-#define DOUT2	if( librad_debug > 5 ) printf
+#define DOUT1	if( fr_debug_flag > 0 ) printf
+#define DOUT2	if( fr_debug_flag > 5 ) printf
 
 typedef enum sm_parse_state_t {
 	SMP_INVALID = 0,
@@ -253,7 +253,7 @@ static int sm_parse_file(FILE*fp,const char* fname) {
 		    	case T_COMMA: break;  /* parse next line */
 		    	default: /* error: we do  not expect anything else */
 		    			fprintf(stderr ,"%s: %s[%lu]: syntax error\n",progname,fname,lino);
-		    			librad_perror("Error");
+		    			fr_perror("Error");
 		    			parse_state = SMP_INVALID;
 		    			st_errors++;
 		    }
@@ -308,7 +308,7 @@ int main(int n,char **argv) {
 
 	progname = argv[0];
 
-	librad_debug = 0;
+	fr_debug_flag = 0;
 
 	while ((ch = getopt(n, argv, "d:i:xo:qvc")) != -1)
 	 	switch (ch) {
@@ -319,7 +319,7 @@ int main(int n,char **argv) {
 				fname = optarg;
 				break;
 			case 'x':
-				librad_debug++;
+				fr_debug_flag++;
 			case 'o':
 				ofile = optarg;
 				break;
@@ -342,7 +342,7 @@ int main(int n,char **argv) {
 
 	DOUT1("Use dictionary in: %s\n",sm_radius_dir);
 	if (dict_init(sm_radius_dir, RADIUS_DICTIONARY) < 0 ) {
-       		librad_perror("parser: init dictionary:");
+       		fr_perror("parser: init dictionary:");
                 exit(1);
         }
 

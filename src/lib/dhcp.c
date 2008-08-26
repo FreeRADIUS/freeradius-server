@@ -238,7 +238,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	fr_sockaddr2ipaddr(&dst, sizeof_dst, &packet->dst_ipaddr, &port);
 	packet->dst_port = port;
 
-	if (librad_debug > 1) {
+	if (fr_debug_flag > 1) {
 		char type_buf[64];
 		const char *name = type_buf;
 		char src_ip_buf[256], dst_ip_buf[256];
@@ -309,7 +309,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	tail = &head;
 	p = packet->data;
 	
-	if ((librad_debug > 2) && fr_log_fp) {
+	if ((fr_debug_flag > 2) && fr_log_fp) {
 		for (i = 0; i < packet->data_len; i++) {
 			if ((i & 0x0f) == 0x00) fprintf(stderr, "%d: ", i);
 			fprintf(fr_log_fp, "%02x ", packet->data[i]);
@@ -330,7 +330,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	for (i = 0; i < 14; i++) {
 		vp = pairmake(dhcp_header_names[i], NULL, T_OP_EQ);
 		if (!vp) {
-			fprintf(stderr, "Parse error %s\n", librad_errstr);
+			fprintf(stderr, "Parse error %s\n", fr_strerror);
 			pairfree(&head);
 			return -1;
 		}
@@ -392,7 +392,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 
 		if (!vp) continue;
 		
-		if (librad_debug > 1) {
+		if (fr_debug_flag > 1) {
 			vp_prints(buffer, sizeof(buffer), vp);
 			fprintf(stderr, "\t%s\n", buffer);
 		}
@@ -487,7 +487,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			vp = pairmake(da->name, NULL, T_OP_EQ);
 			if (!vp) {
 				fprintf(stderr, "Cannot build attribute %s\n",
-					librad_errstr);
+					fr_strerror);
 				pairfree(&head);
 				return -1;
 			}
@@ -529,7 +529,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 				raw:
 					vp = pairmake(da->name, NULL, T_OP_EQ);
 					if (!vp) {
-						fprintf(stderr, "Cannot build attribute %s\n", librad_errstr);
+						fprintf(stderr, "Cannot build attribute %s\n", fr_strerror);
 						pairfree(&head);
 						return -1;
 					}
@@ -548,7 +548,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 				
 			vp->length = alen;
 
-			if (librad_debug > 1) {
+			if (fr_debug_flag > 1) {
 				vp_prints(buffer, sizeof(buffer), vp);
 				fprintf(stderr, "\t%s\n", buffer);
 			}
@@ -621,7 +621,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		maxms->vp_integer = mtu->vp_integer;
 	}
 
-	if (librad_debug) fflush(stdout);
+	if (fr_debug_flag) fflush(stdout);
 
 	return 0;
 }
@@ -733,11 +733,11 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	 *	FIXME: allow it to send client packets.
 	 */
 	if (!original) {
-		librad_log("Need original to send response!");
+		fr_strerror_printf("Need original to send response!");
 		return -1;
 	}
 
-	if (librad_debug > 1) {
+	if (fr_debug_flag > 1) {
 		char type_buf[64];
 		const char *name = type_buf;
 		char src_ip_buf[256], dst_ip_buf[256];
@@ -889,7 +889,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	/*
 	 *	Print the header.
 	 */
-	if (librad_debug > 1) {
+	if (fr_debug_flag > 1) {
 		uint8_t *pp = p;
 
 		p = packet->data;
@@ -897,7 +897,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		for (i = 0; i < 14; i++) {
 			vp = pairmake(dhcp_header_names[i], NULL, T_OP_EQ);
 			if (!vp) {
-				fprintf(stderr, "Parse error %s\n", librad_errstr);
+				fprintf(stderr, "Parse error %s\n", fr_strerror);
 				return -1;
 			}
 			
@@ -1041,7 +1041,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		}
 
 		for (i = 0; i < num_entries; i++) {
-			if (librad_debug > 1) {
+			if (fr_debug_flag > 1) {
 				vp_prints(buffer, sizeof(buffer), vp);
 				fprintf(stderr, "\t%s\n", buffer);
 			}
@@ -1170,7 +1170,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		packet->data_len = DEFAULT_PACKET_SIZE;
 	}
 
-	if ((librad_debug > 2) && fr_log_fp) {
+	if ((fr_debug_flag > 2) && fr_log_fp) {
 		for (i = 0; i < packet->data_len; i++) {
 			if ((i & 0x0f) == 0x00) fprintf(fr_log_fp, "%d: ", i);
 			fprintf(fr_log_fp, "%02x ", packet->data[i]);

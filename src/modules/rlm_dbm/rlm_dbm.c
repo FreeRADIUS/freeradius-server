@@ -198,7 +198,7 @@ static int sm_parse_user(DBM *pdb, const char * username, REQUEST *req,
 		DEBUG2("parse buffer: <<%s>>\n",beg);
 
    		retcod = userparse(beg,&vp);
-   		if ( retcod == T_OP_INVALID ) librad_perror("parse error ");
+   		if ( retcod == T_OP_INVALID ) fr_perror("parse error ");
 
    	 	switch ( retcod ) {
    	 		case T_COMMA: break; /* continue parse the current list */

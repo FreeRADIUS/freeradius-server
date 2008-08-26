@@ -1117,7 +1117,7 @@ static int request_pre_handler(REQUEST *request)
 	}
 
 	if (rcode < 0) {
-		radlog(L_ERR, "%s Dropping packet without response.", librad_errstr);
+		radlog(L_ERR, "%s Dropping packet without response.", fr_strerror);
 		request->child_state = REQUEST_DONE;
 		return 0;
 	}

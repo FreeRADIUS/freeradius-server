@@ -1224,7 +1224,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		vp = cf_pairtovp(cp);
 		if (!vp) {
 			pairfree(&head);
-			cf_log_err(ci, "ERROR: %s", librad_errstr);
+			cf_log_err(ci, "ERROR: %s", fr_strerror);
 			return NULL;
 		}
 

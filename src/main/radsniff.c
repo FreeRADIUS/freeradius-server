@@ -164,7 +164,7 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 	packet->data_len = header->len - size_ethernet - size_ip - size_udp;
 
 	if (!rad_packet_ok(packet, 0)) {
-		librad_perror("Packet");
+		fr_perror("Packet");
 		free(packet);
 		return;
 	}
@@ -174,7 +174,7 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 	 */
 	if (rad_decode(packet, NULL, radius_secret) != 0) {
 		free(packet);
-		librad_perror("decode");
+		fr_perror("decode");
 		return;
 	}
 	if (filter_vps && filter_packet(packet)) {
@@ -280,14 +280,14 @@ int main(int argc, char *argv[])
 	}
 
         if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
-                librad_perror("radsniff");
+                fr_perror("radsniff");
                 return 1;
         }
 
 	if (radius_filter) {
 		parsecode = userparse(radius_filter, &filter_vps);
 		if (parsecode == T_OP_INVALID) {
-			fprintf(stderr, "radsniff: Invalid RADIUS filter \"%s\": %s\n", radius_filter, librad_errstr);
+			fprintf(stderr, "radsniff: Invalid RADIUS filter \"%s\": %s\n", radius_filter, fr_strerror);
 			exit(1);
 		}
 		if (!filter_vps) {

@@ -145,7 +145,7 @@ static const FR_NAME_NUMBER str2fac[] = {
  *  Security configuration for the server.
  */
 static const CONF_PARSER security_config[] = {
-	{ "max_attributes",  PW_TYPE_INTEGER, 0, &librad_max_attributes, Stringify(0) },
+	{ "max_attributes",  PW_TYPE_INTEGER, 0, &fr_max_attributes, Stringify(0) },
 	{ "reject_delay",  PW_TYPE_INTEGER, 0, &mainconfig.reject_delay, Stringify(0) },
 	{ "status_server", PW_TYPE_BOOLEAN, 0, &mainconfig.status_server, "no"},
 	{ NULL, -1, 0, NULL, NULL }
@@ -201,7 +201,7 @@ static const CONF_PARSER server_config[] = {
 	{ "logdir",             PW_TYPE_STRING_PTR, 0, &radlog_dir,        "${localstatedir}/log"},
 	{ "libdir",             PW_TYPE_STRING_PTR, 0, &radlib_dir,        "${prefix}/lib"},
 	{ "radacctdir",         PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
-	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &librad_dodns,      "no" },
+	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &fr_dns_lookups,      "no" },
 	{ "max_request_time", PW_TYPE_INTEGER, 0, &mainconfig.max_request_time, Stringify(MAX_REQUEST_TIME) },
 	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &mainconfig.cleanup_delay, Stringify(CLEANUP_DELAY) },
 	{ "max_requests", PW_TYPE_INTEGER, 0, &mainconfig.max_requests, Stringify(MAX_REQUESTS) },
@@ -731,7 +731,7 @@ int read_mainconfig(int reload)
 	DEBUG2("including dictionary file %s/%s", p, RADIUS_DICTIONARY);
 	if (dict_init(p, RADIUS_DICTIONARY) != 0) {
 		radlog(L_ERR, "Errors reading dictionary: %s",
-				librad_errstr);
+				fr_strerror);
 		return -1;
 	}
 
@@ -785,7 +785,7 @@ int read_mainconfig(int reload)
 		 */
 		debug_flag = mainconfig.debug_level;
 	}
-	librad_debug = debug_flag;
+	fr_debug_flag = debug_flag;
 	old_debug_level = mainconfig.debug_level;
 
 	/*

@@ -1,6 +1,6 @@
 /*
  * log.c	Functions in the library call radlib_log() which
- *		sets a global error string "char *librad_errstr".
+ *		sets a global error string "char *fr_strerror".
  *
  * Version:	$Id$
  *
@@ -26,27 +26,27 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 
-char librad_errstr[1024];
+char fr_strerror[1024];
 
 /*
  *  Do logging to a static buffer.  Note that we MIGHT be asked
- *  to write a previous log message to librad_errstr.
+ *  to write a previous log message to fr_strerror.
  *
  *  This also isn't multithreaded-safe, so it'll have to be changed
  *  in the future.
  */
-void librad_log(const char *fmt, ...)
+void fr_strerror_printf(const char *fmt, ...)
 {
 	va_list ap;
-	char my_errstr[sizeof(librad_errstr)];
+	char my_errstr[sizeof(fr_strerror)];
 
 	va_start(ap, fmt);
 	vsnprintf(my_errstr, sizeof(my_errstr), fmt, ap);
-	strcpy(librad_errstr, my_errstr);
+	strcpy(fr_strerror, my_errstr);
 	va_end(ap);
 }
 
-void librad_perror(const char *fmt, ...)
+void fr_perror(const char *fmt, ...)
 {
 	va_list ap;
 
@@ -54,6 +54,6 @@ void librad_perror(const char *fmt, ...)
 	vfprintf(stderr, fmt, ap);
 	if (strchr(fmt, ':') == NULL)
 		fprintf(stderr, ": ");
-	fprintf(stderr, "%s\n", librad_errstr);
+	fprintf(stderr, "%s\n", fr_strerror);
 	va_end(ap);
 }

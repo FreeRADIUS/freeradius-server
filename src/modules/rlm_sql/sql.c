@@ -404,7 +404,7 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row)
 	 */
 	pair = pairmake(row[2], value, operator);
 	if (pair == NULL) {
-		radlog(L_ERR, "rlm_sql: Failed to create the pair: %s", librad_errstr);
+		radlog(L_ERR, "rlm_sql: Failed to create the pair: %s", fr_strerror);
 		return -1;
 	}
 	if (do_xlat) {

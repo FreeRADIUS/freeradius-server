@@ -698,7 +698,7 @@ void mschap_add_reply(REQUEST *request, VALUE_PAIR** vp, unsigned char ident,
 	VALUE_PAIR *reply_attr;
 	reply_attr = pairmake(name, "", T_OP_EQ);
 	if (!reply_attr) {
-		RDEBUG("Failed to create attribute %s: %s\n", name, librad_errstr);
+		RDEBUG("Failed to create attribute %s: %s\n", name, fr_strerror);
 		return;
 	}
 
@@ -717,7 +717,7 @@ static void mppe_add_reply(REQUEST *request,
        VALUE_PAIR *vp;
        vp = radius_pairmake(request, &request->reply->vps, name, "", T_OP_EQ);
        if (!vp) {
-	       RDEBUG("rlm_mschap: mppe_add_reply failed to create attribute %s: %s\n", name, librad_errstr);
+	       RDEBUG("rlm_mschap: mppe_add_reply failed to create attribute %s: %s\n", name, fr_strerror);
 	       return;
        }
 

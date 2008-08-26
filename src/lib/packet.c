@@ -179,13 +179,13 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 	socklen_t	salen;
 
 	if ((port < 0) || (port > 65535)) {
-		librad_log("Port %d is out of allowed bounds", port);
+		fr_strerror_printf("Port %d is out of allowed bounds", port);
 		return -1;
 	}
 
 	sockfd = socket(ipaddr->af, SOCK_DGRAM, 0);
 	if (sockfd < 0) {
-		librad_log("cannot open socket: %s", strerror(errno));
+		fr_strerror_printf("cannot open socket: %s", strerror(errno));
 		return sockfd;
 	}
 
@@ -195,7 +195,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 	 */
 	if (udpfromto_init(sockfd) != 0) {
 		close(sockfd);
-		librad_log("cannot initialize udpfromto: %s", strerror(errno));
+		fr_strerror_printf("cannot initialize udpfromto: %s", strerror(errno));
 		return -1;
 	}
 #endif
@@ -227,7 +227,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 
 	if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 		close(sockfd);
-		librad_log("cannot bind socket: %s", strerror(errno));
+		fr_strerror_printf("cannot bind socket: %s", strerror(errno));
 		return -1;
 	}
 

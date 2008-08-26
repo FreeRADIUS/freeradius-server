@@ -303,7 +303,7 @@ static int generate_sql_clients(SQL_INST *inst)
 		if (ip_hton(row[1], AF_UNSPEC, &c->ipaddr) < 0) {
 			radlog(L_CONS|L_ERR, "rlm_sql (%s): Failed to look up hostname %s: %s",
 			       inst->config->xlat_name,
-			       row[1], librad_errstr);
+			       row[1], fr_strerror);
 			free(c);
 			continue;
 		} else {
@@ -433,7 +433,7 @@ int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char
 	vp = radius_pairmake(request, &request->packet->vps,
 			     "SQL-User-Name", NULL, 0);
 	if (!vp) {
-		radlog(L_ERR, "%s", librad_errstr);
+		radlog(L_ERR, "%s", fr_strerror);
 		return -1;
 	}
 

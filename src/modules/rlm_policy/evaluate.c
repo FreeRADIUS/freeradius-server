@@ -852,7 +852,7 @@ static VALUE_PAIR *assign2vp(REQUEST *request,
 
 	vp = pairmake(assign->lhs, value, operator);
 	if (!vp) {
-		fprintf(stderr, "Failed creating pair: %s %s\n", value, librad_errstr);
+		fprintf(stderr, "Failed creating pair: %s %s\n", value, fr_strerror);
 	}
 
 	return vp;

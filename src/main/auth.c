@@ -86,7 +86,7 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 	if (username == NULL) {
 		strcpy(clean_username, "<no User-Name attribute>");
 	} else {
-		librad_safeprint((char *)username->vp_strvalue,
+		fr_print_string((char *)username->vp_strvalue,
 				username->length,
 				clean_username, sizeof(clean_username));
 	}
@@ -110,7 +110,7 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass) {
 		} else if (pairfind(request->packet->vps, PW_CHAP_PASSWORD)) {
 			strcpy(clean_password, "<CHAP-Password>");
 		} else {
-			librad_safeprint((char *)request->password->vp_strvalue,
+			fr_print_string((char *)request->password->vp_strvalue,
 					 request->password->length,
 					 clean_password, sizeof(clean_password));
 		}

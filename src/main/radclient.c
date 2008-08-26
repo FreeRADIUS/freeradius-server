@@ -184,7 +184,7 @@ static radclient_t *radclient_init(const char *filename)
 
 		radclient->request = rad_alloc(1);
 		if (!radclient->request) {
-			librad_perror("radclient: Y");
+			fr_perror("radclient: Y");
 			radclient_free(radclient);
 			if (fp != stdin) fclose(fp);
 			return NULL; /* memory leak "start" */
@@ -680,10 +680,10 @@ static int send_one_packet(radclient_t *radclient)
 	 */
 	if (rad_send(radclient->request, NULL, secret) < 0) {
 		fprintf(stderr, "radclient: Failed to send packet for ID %d: %s\n",
-			radclient->request->id, librad_errstr);
+			radclient->request->id, fr_strerror);
 	}
 
-	if (librad_debug > 2) print_hex(radclient->request);
+	if (fr_debug_flag > 2) print_hex(radclient->request);
 
 	return 0;
 }
@@ -725,7 +725,7 @@ static int recv_one_packet(int wait_time)
 	reply = fr_packet_list_recv(pl, &set);
 	if (!reply) {
 		fprintf(stderr, "radclient: received bad packet: %s\n",
-			librad_errstr);
+			fr_strerror);
 		return -1;	/* bad packet */
 	}
 
@@ -736,7 +736,7 @@ static int recv_one_packet(int wait_time)
 	 */
 	reply->dst_ipaddr = client_ipaddr;
 
-	if (librad_debug > 2) print_hex(reply);
+	if (fr_debug_flag > 2) print_hex(reply);
 
 	request_p = fr_packet_list_find_byreply(pl, reply);
 	if (!request_p) {
@@ -751,7 +751,7 @@ static int recv_one_packet(int wait_time)
 	 *	FIXME: Silently drop it and listen for another packet.
 	 */
 	if (rad_verify(reply, radclient->request, secret) < 0) {
-		librad_perror("rad_verify");
+		fr_perror("rad_verify");
 		totallost++;
 		goto packet_done; /* shared secret is incorrect */
 	}
@@ -768,13 +768,13 @@ static int recv_one_packet(int wait_time)
 	 *	If this fails, we're out of memory.
 	 */
 	if (rad_decode(reply, radclient->request, secret) != 0) {
-		librad_perror("rad_decode");
+		fr_perror("rad_decode");
 		totallost++;
 		goto packet_done;
 	}
 
 	/* libradius debug already prints out the value pairs for us */
-	if (!librad_debug && do_output) {
+	if (!fr_debug_flag && do_output) {
 		printf("Received response ID %d, code %d, length = %d\n",
 		       reply->id, reply->code, reply->data_len);
 		vp_printlist(stdout, reply->vps);
@@ -821,7 +821,7 @@ int main(int argc, char **argv)
 	radclient_t	*this;
 	int force_af = AF_UNSPEC;
 
-	librad_debug = 0;
+	fr_debug_flag = 0;
 
 	filename_tree = rbtree_create(filename_cmp, NULL, 0);
 	if (!filename_tree) {
@@ -927,7 +927,7 @@ int main(int argc, char **argv)
 			exit(0);
 			break;
 		case 'x':
-			librad_debug++;
+			fr_debug_flag++;
 			fr_log_fp = stdout;
 			break;
 		case 'h':
@@ -944,7 +944,7 @@ int main(int argc, char **argv)
 	}
 
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
-		librad_perror("radclient");
+		fr_perror("radclient");
 		return 1;
 	}
 
@@ -1073,7 +1073,7 @@ int main(int argc, char **argv)
 	}
 	sockfd = fr_socket(&client_ipaddr, client_port);
 	if (sockfd < 0) {
-		fprintf(stderr, "radclient: socket: %s\n", librad_errstr);
+		fprintf(stderr, "radclient: socket: %s\n", fr_strerror);
 		exit(1);
 	}
 

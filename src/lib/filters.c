@@ -554,7 +554,7 @@ static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
 			break;
 
 		default:
-			librad_log("Unknown string \"%s\" in IPX data filter",
+			fr_strerror_printf("Unknown string \"%s\" in IPX data filter",
 				   argv[0]);
 			return -1;
 		}
@@ -627,7 +627,7 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 				break;
 
 			default:
-				librad_log("Invalid character in IP address");
+				fr_strerror_printf("Invalid character in IP address");
 				return -1;
 			}
 		} /* loop over one character */
@@ -832,7 +832,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 			} else {
 				token = fr_str2int(filterProtoName, argv[0], -1);
 				if (token == -1) {
-					librad_log("Unknown IP protocol \"%s\" in IP data filter",
+					fr_strerror_printf("Unknown IP protocol \"%s\" in IP data filter",
 						   argv[0]);
 					return -1;
 				}
@@ -850,7 +850,7 @@ static int ascend_parse_ip(int argc, char **argv, ascend_ip_filter_t *filter)
 	 *	We should have parsed everything by now.
 	 */
 	if (argc != 0) {
-		librad_log("Unknown extra string \"%s\" in IP data filter",
+		fr_strerror_printf("Unknown extra string \"%s\" in IP data filter",
 			   argv[0]);
 		return -1;
 	}
@@ -959,7 +959,7 @@ static int ascend_parse_generic(int argc, char **argv,
 			break;
 
 		default:
-			librad_log("Invalid string \"%s\" in generic data filter",
+			fr_strerror_printf("Invalid string \"%s\" in generic data filter",
 				   argv[0]);
 			return -1;
 		}
@@ -1000,7 +1000,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	 *	a general one here, which won't be used if the function
 	 *	returns OK.
 	 */
-	librad_log("Text is not in proper format");
+	fr_strerror_printf("Text is not in proper format");
 
 	/*
 	 *	Tokenize the input string in the VP.
@@ -1028,7 +1028,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 		break;
 
 	default:
-		librad_log("Unknown Ascend filter type \"%s\"", argv[0]);
+		fr_strerror_printf("Unknown Ascend filter type \"%s\"", argv[0]);
 		return -1;
 		break;
 	}
@@ -1047,7 +1047,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 		break;
 
 	default:
-		librad_log("Unknown Ascend filter direction \"%s\"", argv[1]);
+		fr_strerror_printf("Unknown Ascend filter direction \"%s\"", argv[1]);
 		return -1;
 		break;
 	}
@@ -1066,7 +1066,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 		break;
 
 	default:
-		librad_log("Unknown Ascend filter action \"%s\"", argv[2]);
+		fr_strerror_printf("Unknown Ascend filter action \"%s\"", argv[2]);
 		return -1;
 		break;
 	}
@@ -1115,7 +1115,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	   ( filt->forward != radFil.forward ) ) {
 	    gen = &filt->u.generic;
 	    gen->more = FALSE;
-	    librad_log("filterBinary:  'more' for previous entry doesn't match: %s.\n",
+	    fr_strerror_printf("filterBinary:  'more' for previous entry doesn't match: %s.\n",
 		     valstr);
 	}
     }

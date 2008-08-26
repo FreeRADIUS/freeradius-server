@@ -194,7 +194,7 @@ parse_again:
 				pairlist_free(&pl);
 				radlog(L_ERR|L_CONS,
 				"%s[%d]: Parse error (check) for entry %s: %s",
-					file, lineno, entry, librad_errstr);
+					file, lineno, entry, fr_strerror);
 				fclose(fp);
 				return -1;
 			} else if (parsecode == T_COMMA) {
@@ -226,7 +226,7 @@ parse_again:
 					pairlist_free(&pl);
 					radlog(L_ERR|L_CONS,
 					       "%s[%d]: Parse error (reply) for entry %s: %s",
-					       file, lineno, entry, librad_errstr);
+					       file, lineno, entry, fr_strerror);
 					fclose(fp);
 					return -1;
 				}

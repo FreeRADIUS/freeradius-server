@@ -66,8 +66,8 @@ RCSIDH(libradius_h, "$Id$")
 #  define VENDORPEC_USR		429
 #define VENDORPEC_LUCENT	4846
 #define VENDORPEC_STARENT	8164
-#  define DEBUG			if (librad_debug && fr_log_fp) fr_printf_log
-#  define debug_pair(vp)	do { if (librad_debug && fr_log_fp) { \
+#  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
+#  define debug_pair(vp)	do { if (fr_debug_flag && fr_log_fp) { \
 					fputc('\t', fr_log_fp); \
 					vp_print(fr_log_fp, vp); \
 					fputc('\n', fr_log_fp); \
@@ -225,7 +225,7 @@ typedef struct radius_packet {
 /*
  *	Printing functions.
  */
-void		librad_safeprint(char *in, size_t inlen,
+void		fr_print_string(char *in, size_t inlen,
 				 char *out, size_t outlen);
 int     	vp_prints_value(char *out, size_t outlen,
 				VALUE_PAIR *vp, int delimitst);
@@ -343,21 +343,21 @@ VALUE_PAIR     *readvp2(FILE *fp, int *pfiledone, const char *errprefix);
  *	Error functions.
  */
 #ifdef _LIBRADIUS
-void		librad_log(const char *, ...)
+void		fr_strerror_printf(const char *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 1, 2)))
 #endif
 ;
 #endif
-void		librad_perror(const char *, ...)
+void		fr_perror(const char *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 1, 2)))
 #endif
 ;
-extern char	librad_errstr[];
-extern int	librad_dodns;	/* 0 = no dns lookups */
-extern int	librad_debug;	/* 0 = no debugging information */
-extern int	librad_max_attributes; /* per incoming packet */
+extern char	fr_strerror[];
+extern int	fr_dns_lookups;	/* 0 = no dns lookups */
+extern int	fr_debug_flag;	/* 0 = no debugging information */
+extern int	fr_max_attributes; /* per incoming packet */
 extern FILE	*fr_log_fp;
 void		fr_printf_log(const char *, ...)
 #ifdef __GNUC__

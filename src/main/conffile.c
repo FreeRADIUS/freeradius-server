@@ -1772,7 +1772,7 @@ const char *cf_pair_value(CONF_PAIR *pair)
 /*
  *	Copied here for error reporting.
  */
-extern void librad_log(const char *, ...);
+extern void fr_strerror_printf(const char *, ...);
 
 /*
  * Turn a CONF_PAIR into a VALUE_PAIR
@@ -1783,12 +1783,12 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 	VALUE_PAIR *vp;
 
 	if (!pair) {
-		librad_log("Internal error");
+		fr_strerror_printf("Internal error");
 		return NULL;
 	}
 
 	if (!pair->value) {
-		librad_log("No value given for attribute %s", pair->attr);
+		fr_strerror_printf("No value given for attribute %s", pair->attr);
 		return NULL;
 	}
 

@@ -29,8 +29,8 @@ RCSID("$Id$")
 #include	<sys/file.h>
 #include	<fcntl.h>
 
-int		librad_dodns = 0;
-int		librad_debug = 0;
+int		fr_dns_lookups = 0;
+int		fr_debug_flag = 0;
 
 
 /*
@@ -412,7 +412,7 @@ int ip_hton(const char *src, int af, fr_ipaddr_t *dst)
 	hints.ai_family = af;
 
 	if ((error = getaddrinfo(src, NULL, &hints, &res)) != 0) {
-		librad_log("ip_nton: %s", gai_strerror(error));
+		fr_strerror_printf("ip_nton: %s", gai_strerror(error));
 		return -1;
 	}
 
@@ -422,7 +422,7 @@ int ip_hton(const char *src, int af, fr_ipaddr_t *dst)
 	}
 
 	if (!ai) {
-		librad_log("ip_hton failed to find requested information for host %.100s", src);
+		fr_strerror_printf("ip_hton failed to find requested information for host %.100s", src);
 		freeaddrinfo(ai);
 		return -1;
 	}
@@ -447,7 +447,7 @@ int ip_hton(const char *src, int af, fr_ipaddr_t *dst)
 		/* Flow should never reach here */
 	case AF_UNSPEC :
 	default :
-		librad_log("ip_hton found unusable information for host %.100s", src);
+		fr_strerror_printf("ip_hton found unusable information for host %.100s", src);
 		freeaddrinfo(ai);
 		return -1;
 	}
@@ -468,7 +468,7 @@ const char *ip_ntoh(const fr_ipaddr_t *src, char *dst, size_t cnt)
 	/*
 	 *	No DNS lookups
 	 */
-	if (!librad_dodns) {
+	if (!fr_dns_lookups) {
 		return inet_ntop(src->af, &(src->ipaddr), dst, cnt);
 	}
 
@@ -478,7 +478,7 @@ const char *ip_ntoh(const fr_ipaddr_t *src, char *dst, size_t cnt)
 
 	if ((error = getnameinfo((struct sockaddr *)&ss, salen, dst, cnt, NULL, 0,
 				 NI_NUMERICHOST | NI_NUMERICSERV)) != 0) {
-		librad_log("ip_ntoh: %s", gai_strerror(error));
+		fr_strerror_printf("ip_ntoh: %s", gai_strerror(error));
 		return NULL;
 	}
 	return dst;

@@ -145,7 +145,7 @@ VALUE_PAIR *paircreate(int attr, int type)
 
 	da = dict_attrbyvalue(attr);
 	if ((vp = pairalloc(da)) == NULL) {
-		librad_log("out of memory");
+		fr_strerror_printf("out of memory");
 		return NULL;
 	}
 	vp->operator = T_OP_EQ;
@@ -316,7 +316,7 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 	}
 	
 	if ((n = malloc(sizeof(*n) + name_len)) == NULL) {
-		librad_log("out of memory");
+		fr_strerror_printf("out of memory");
 		return NULL;
 	}
 	memcpy(n, vp, sizeof(*n) + name_len);
@@ -928,7 +928,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 				if (ip_hton(cs, AF_INET, &ipaddr) < 0) {
 					free(s);
-					librad_log("Failed to find IP address for %s", cs);
+					fr_strerror_printf("Failed to find IP address for %s", cs);
 					return NULL;
 				}
 
@@ -949,7 +949,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			vp->vp_integer = (uint32_t) strtoul(value, &p, 10);
 			if (!*p) {
 				if (vp->vp_integer > 255) {
-					librad_log("Byte value \"%s\" is larger than 255", value);
+					fr_strerror_printf("Byte value \"%s\" is larger than 255", value);
 					return NULL;
 				}
 				vp->length = 1;
@@ -961,7 +961,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			 *	attribute.
 			 */
 			if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
-				librad_log("Unknown value %s for attribute %s",
+				fr_strerror_printf("Unknown value %s for attribute %s",
 					   value, vp->name);
 				return NULL;
 			}
@@ -976,7 +976,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			vp->vp_integer = (uint32_t) strtoul(value, &p, 10);
 			if (!*p) {
 				if (vp->vp_integer > 65535) {
-					librad_log("Byte value \"%s\" is larger than 65535", value);
+					fr_strerror_printf("Byte value \"%s\" is larger than 65535", value);
 					return NULL;
 				}
 				vp->length = 2;
@@ -988,7 +988,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			 *	attribute.
 			 */
 			if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
-				librad_log("Unknown value %s for attribute %s",
+				fr_strerror_printf("Unknown value %s for attribute %s",
 					   value, vp->name);
 				return NULL;
 			}
@@ -1011,7 +1011,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			 *	attribute.
 			 */
 			if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
-				librad_log("Unknown value %s for attribute %s",
+				fr_strerror_printf("Unknown value %s for attribute %s",
 					   value, vp->name);
 				return NULL;
 			}
@@ -1030,7 +1030,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				time_t date;
 
 				if (gettime(value, &date) < 0) {
-					librad_log("failed to parse time string "
+					fr_strerror_printf("failed to parse time string "
 						   "\"%s\"", value);
 					return NULL;
 				}
@@ -1048,8 +1048,8 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			}
 
 		  	if (ascend_parse_filter(vp) < 0 ) {
-				librad_log("failed to parse Ascend binary attribute: %s",
-					   librad_errstr);
+				fr_strerror_printf("failed to parse Ascend binary attribute: %s",
+					   fr_strerror);
 				return NULL;
 			}
 			break;
@@ -1075,7 +1075,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				 *	die.
 				 */
 				if ((strlen(cp) & 0x01) != 0) {
-					librad_log("Hex string is not an even length string.");
+					fr_strerror_printf("Hex string is not an even length string.");
 					return NULL;
 				}
 
@@ -1085,7 +1085,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 					unsigned int tmp;
 
 					if (sscanf(cp, "%02x", &tmp) != 1) {
-						librad_log("Non-hex characters at %c%c", cp[0], cp[1]);
+						fr_strerror_printf("Non-hex characters at %c%c", cp[0], cp[1]);
 						return NULL;
 					}
 
@@ -1098,7 +1098,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 		case PW_TYPE_IFID:
 			if (ifid_aton(value, (void *) &vp->vp_ifid) == NULL) {
-				librad_log("failed to parse interface-id "
+				fr_strerror_printf("failed to parse interface-id "
 					   "string \"%s\"", value);
 				return NULL;
 			}
@@ -1107,7 +1107,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 		case PW_TYPE_IPV6ADDR:
 			if (inet_pton(AF_INET6, value, &vp->vp_ipv6addr) <= 0) {
-				librad_log("failed to parse IPv6 address "
+				fr_strerror_printf("failed to parse IPv6 address "
 					   "string \"%s\"", value);
 				return NULL;
 			}
@@ -1117,7 +1117,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 		case PW_TYPE_IPV6PREFIX:
 			p = strchr(value, '/');
 			if (!p || ((p - value) >= 256)) {
-				librad_log("invalid IPv6 prefix "
+				fr_strerror_printf("invalid IPv6 prefix "
 					   "string \"%s\"", value);
 				return NULL;
 			} else {
@@ -1128,14 +1128,14 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				buffer[p - value] = '\0';
 
 				if (inet_pton(AF_INET6, buffer, vp->vp_octets + 2) <= 0) {
-					librad_log("failed to parse IPv6 address "
+					fr_strerror_printf("failed to parse IPv6 address "
 						   "string \"%s\"", value);
 					return NULL;
 				}
 
 				prefix = strtoul(p + 1, &eptr, 10);
 				if ((prefix > 128) || *eptr) {
-					librad_log("failed to parse IPv6 address "
+					fr_strerror_printf("failed to parse IPv6 address "
 						   "string \"%s\"", value);
 					return NULL;
 				}
@@ -1167,7 +1167,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 						c1 = c2 = NULL;
 					}
 					if (!c1 || !c2 || (length >= sizeof(vp->vp_ether))) {
-						librad_log("failed to parse Ethernet address \"%s\"", value);
+						fr_strerror_printf("failed to parse Ethernet address \"%s\"", value);
 						return NULL;
 					}
 					vp->vp_ether[length] = ((c1-hextab)<<4) + (c2-hextab);
@@ -1187,7 +1187,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				fr_ipaddr_t ipaddr;
 
 				if (ip_hton(value, AF_INET, &ipaddr) < 0) {
-					librad_log("Failed to find IPv4 address for %s", value);
+					fr_strerror_printf("Failed to find IPv4 address for %s", value);
 					return NULL;
 				}
 
@@ -1204,7 +1204,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 		case PW_TYPE_TLV: /* don't use this! */
 			if (strncasecmp(value, "0t", 2) != 0) {
-				librad_log("Invalid TLV specification");
+				fr_strerror_printf("Invalid TLV specification");
 				return NULL;
 			}
 			length = strlen(value + 2) / 2;
@@ -1214,12 +1214,12 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			}
 			vp->vp_tlv = malloc(length);
 			if (!vp->vp_tlv) {
-				librad_log("No memory");
+				fr_strerror_printf("No memory");
 				return NULL;
 			}
 			if (fr_hex2bin(value + 2, vp->vp_tlv,
 				       length) != length) {
-				librad_log("Invalid hex data in TLV");
+				fr_strerror_printf("Invalid hex data in TLV");
 				return NULL;
 			}
 			vp->length = length;
@@ -1229,7 +1229,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			 *  Anything else.
 			 */
 		default:
-			librad_log("unknown attribute type %d", vp->type);
+			fr_strerror_printf("unknown attribute type %d", vp->type);
 			return NULL;
 	}
 
@@ -1257,7 +1257,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	 *	Unknown attributes MUST be of type 'octets'
 	 */
 	if (value && (strncasecmp(value, "0x", 2) != 0)) {
-		librad_log("Invalid octet string \"%s\" for attribute name \"%s\"", value, attribute);
+		fr_strerror_printf("Invalid octet string \"%s\" for attribute name \"%s\"", value, attribute);
 		return NULL;
 	}
 
@@ -1270,7 +1270,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		if (strncasecmp(p, "Vendor-", 7) == 0) {
 			vendor = (int) strtol(p + 7, &q, 10);
 			if ((vendor == 0) || (vendor > 65535)) {
-				librad_log("Invalid vendor value in attribute name \"%s\"", attribute);
+				fr_strerror_printf("Invalid vendor value in attribute name \"%s\"", attribute);
 				return NULL;
 			}
 
@@ -1282,12 +1282,12 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 			q = strchr(p, '-');
 
 			if (!q) {
-				librad_log("Invalid vendor name in attribute name \"%s\"", attribute);
+				fr_strerror_printf("Invalid vendor name in attribute name \"%s\"", attribute);
 				return NULL;
 			}
 
 			if ((size_t) (q - p) >= sizeof(buffer)) {
-				librad_log("Vendor name too long in attribute name \"%s\"", attribute);
+				fr_strerror_printf("Vendor name too long in attribute name \"%s\"", attribute);
 				return NULL;
 			}
 
@@ -1296,7 +1296,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 
 			vendor = dict_vendorbyname(buffer);
 			if (!vendor) {
-				librad_log("Unknown vendor name in attribute name \"%s\"", attribute);
+				fr_strerror_printf("Unknown vendor name in attribute name \"%s\"", attribute);
 				return NULL;
 			}
 
@@ -1304,7 +1304,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		}
 
 		if (*p != '-') {
-			librad_log("Invalid text following vendor definition in attribute name \"%s\"", attribute);
+			fr_strerror_printf("Invalid text following vendor definition in attribute name \"%s\"", attribute);
 			return NULL;
 		}
 		p++;
@@ -1314,7 +1314,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	 *	Attr-%d
 	 */
 	if (strncasecmp(p, "Attr-", 5) != 0) {
-		librad_log("Invalid format in attribute name \"%s\"", attribute);
+		fr_strerror_printf("Invalid format in attribute name \"%s\"", attribute);
 		return NULL;
 	}
 
@@ -1324,7 +1324,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	 *	Invalid, or trailing text after number.
 	 */
 	if ((attr == 0) || *q) {
-		librad_log("Invalid value in attribute name \"%s\"", attribute);
+		fr_strerror_printf("Invalid value in attribute name \"%s\"", attribute);
 		return NULL;
 	}
 
@@ -1337,7 +1337,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		if (!dv) {
 			if (attr > 255) {
 			attr_error:
-				librad_log("Invalid attribute number in attribute name \"%s\"", attribute);
+				fr_strerror_printf("Invalid attribute number in attribute name \"%s\"", attribute);
 				return NULL;
 			}
 
@@ -1355,7 +1355,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 				break;
 
 			default:
-				librad_log("Internal sanity check failed");
+				fr_strerror_printf("Internal sanity check failed");
 				return NULL;
 		}
 	}
@@ -1368,7 +1368,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	 *	dictionary, and creates the appropriate type for it.
 	 */
 	if ((vp = paircreate(attr, PW_TYPE_OCTETS)) == NULL) {
-		librad_log("out of memory");
+		fr_strerror_printf("out of memory");
 		return NULL;
 	}
 
@@ -1393,7 +1393,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	}
 
 	if (fr_hex2bin(value + 2, vp->vp_octets, size) != vp->length) {
-		librad_log("Invalid hex string");
+		fr_strerror_printf("Invalid hex string");
 		free(vp);
 		return NULL;
 	}
@@ -1441,7 +1441,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 
 	ts = strrchr(attribute, ':');
 	if (ts && !ts[1]) {
-		librad_log("Invalid tag for attribute %s", attribute);
+		fr_strerror_printf("Invalid tag for attribute %s", attribute);
 		return NULL;
 	}
 
@@ -1462,7 +1462,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 				 *ts = 0;
 			 else tag = 0;
 		 } else {
-			 librad_log("Invalid tag for attribute %s", attribute);
+			 fr_strerror_printf("Invalid tag for attribute %s", attribute);
 			 return NULL;
 		 }
 		 found_tag = 1;
@@ -1477,7 +1477,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	}
 
 	if ((vp = pairalloc(da)) == NULL) {
-		librad_log("out of memory");
+		fr_strerror_printf("out of memory");
 		return NULL;
 	}
 	vp->operator = (operator == 0) ? T_OP_EQ : operator;
@@ -1491,7 +1491,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	        /* If we already found a tag, this is invalid */
 	        if(found_tag) {
 		        pairbasicfree(vp);
-			librad_log("Duplicate tag %s for attribute %s",
+			fr_strerror_printf("Duplicate tag %s for attribute %s",
 				   value, vp->name);
 			DEBUG("Duplicate tag %s for attribute %s\n",
 				   value, vp->name);
@@ -1607,13 +1607,13 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 
 	if (!*p) {
 		*eol = T_OP_INVALID;
-		librad_log("No token read where we expected an attribute name");
+		fr_strerror_printf("No token read where we expected an attribute name");
 		return NULL;
 	}
 
 	if (*p == '#') {
 		*eol = T_HASH;
-		librad_log("Read a comment instead of a token");
+		fr_strerror_printf("Read a comment instead of a token");
 		return NULL;
 	}
 
@@ -1628,7 +1628,7 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 
 	if (len == sizeof(attr)) {
 		*eol = T_OP_INVALID;
-		librad_log("Attribute name is too long");
+		fr_strerror_printf("Attribute name is too long");
 		return NULL;
 	}
 
@@ -1646,14 +1646,14 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 	/* Now we should have an operator here. */
 	token = gettoken(ptr, buf, sizeof(buf));
 	if (token < T_EQSTART || token > T_EQEND) {
-		librad_log("expecting operator");
+		fr_strerror_printf("expecting operator");
 		return NULL;
 	}
 
 	/* Read value.  Note that empty string values are allowed */
 	xlat = gettoken(ptr, value, sizeof(value));
 	if (xlat == T_EOL) {
-		librad_log("failed to get value");
+		fr_strerror_printf("failed to get value");
 		return NULL;
 	}
 
@@ -1663,7 +1663,7 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 	p = *ptr;
 	t = gettoken(&p, buf, sizeof(buf));
 	if (t != T_EOL && t != T_COMMA && t != T_HASH) {
-		librad_log("Expected end of line or comma");
+		fr_strerror_printf("Expected end of line or comma");
 		return NULL;
 	}
 
@@ -1688,7 +1688,7 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 		p = strchr(value, '%');
 		if (p && (p[1] == '{')) {
 			if (strlen(value) >= sizeof(vp->vp_strvalue)) {
-				librad_log("Value too long");
+				fr_strerror_printf("Value too long");
 				return NULL;
 			}
 			vp = pairmake(attr, NULL, token);
@@ -1717,7 +1717,7 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 		 */
 	case T_BACK_QUOTED_STRING:
 		if (strlen(value) >= sizeof(vp->vp_strvalue)) {
-			librad_log("Value too long");
+			fr_strerror_printf("Value too long");
 			return NULL;
 		}
 
@@ -1822,7 +1822,7 @@ VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
 		last_token = userparse(buf, &vp);
 		if (!vp) {
 			if (last_token != T_EOL) {
-				librad_perror("%s", errprefix);
+				fr_perror("%s", errprefix);
 				error = 1;
 				break;
 			}
@@ -1881,7 +1881,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 					  REG_EXTENDED);
 			if (compare != 0) {
 				regerror(compare, &reg, buffer, sizeof(buffer));
-				librad_log("Illegal regular expression in attribute: %s: %s",
+				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
 					   one->name, buffer);
 				return -1;
 			}

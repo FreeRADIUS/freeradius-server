@@ -279,7 +279,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	 *	Allocate the new request data structure
 	 */
 	if ((packet = malloc(sizeof(*packet))) == NULL) {
-		librad_log("out of memory");
+		fr_strerror_printf("out of memory");
 		return NULL;
 	}
 	memset(packet, 0, sizeof(*packet));
@@ -292,7 +292,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	 *	Check for socket errors.
 	 */
 	if (packet->data_len < 0) {
-		librad_log("Error receiving packet: %s", strerror(errno));
+		fr_strerror_printf("Error receiving packet: %s", strerror(errno));
 		/* packet->data is NULL */
 		free(packet);
 		return NULL;
@@ -305,7 +305,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	 *	packet than normal implementations may send.
 	 */
 	if (packet->data_len < VQP_HDR_LEN) {
-		librad_log("VQP packet is too short");
+		fr_strerror_printf("VQP packet is too short");
 		rad_free(&packet);
 		return NULL;
 	}
@@ -323,7 +323,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	}
 
 	if (ptr[3] > VQP_MAX_ATTRIBUTES) {
-		librad_log("Too many VQP attributes");
+		fr_strerror_printf("Too many VQP attributes");
 		rad_free(&packet);
 		return NULL;
 	}
@@ -339,7 +339,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 
 		while (length > 0) {
 			if (length < 7) {
-				librad_log("Packet contains malformed attribute");
+				fr_strerror_printf("Packet contains malformed attribute");
 				rad_free(&packet);
 				return NULL;
 			}
@@ -350,7 +350,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 			 */
 			if ((ptr[0] != 0) || (ptr[1] != 0) ||
 			    (ptr[2] != 0x0c) || (ptr[3] < 1) || (ptr[3] > 8)) {
-				librad_log("Packet contains invalid attribute");
+				fr_strerror_printf("Packet contains invalid attribute");
 				rad_free(&packet);
 				return NULL;
 			}
@@ -364,7 +364,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 			 *	won't be typing in a 32K vlan name.
 			 */
 			if ((ptr[4] != 0) || (ptr[5] > 253)) {
-				librad_log("Packet contains attribute with invalid length %02x %02x", ptr[4], ptr[5]);
+				fr_strerror_printf("Packet contains attribute with invalid length %02x %02x", ptr[4], ptr[5]);
 				rad_free(&packet);
 				return NULL;
 			}
@@ -431,7 +431,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 	vp = paircreate(PW_VQP_PACKET_TYPE, PW_TYPE_OCTETS);
 	if (!vp) {
-		librad_log("No memory");
+		fr_strerror_printf("No memory");
 		return -1;
 	}
 	vp->lvalue = packet->data[1];
@@ -442,7 +442,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 	vp = paircreate(PW_VQP_ERROR_CODE, PW_TYPE_OCTETS);
 	if (!vp) {
-		librad_log("No memory");
+		fr_strerror_printf("No memory");
 		return -1;
 	}
 	vp->lvalue = packet->data[2];
@@ -453,7 +453,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 	vp = paircreate(PW_VQP_SEQUENCE_NUMBER, PW_TYPE_OCTETS);
 	if (!vp) {
-		librad_log("No memory");
+		fr_strerror_printf("No memory");
 		return -1;
 	}
 	vp->lvalue = packet->id; /* already set by vqp_recv */
@@ -483,7 +483,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		if (!vp) {
 			pairfree(&packet->vps);
 
-			librad_log("No memory");
+			fr_strerror_printf("No memory");
 			return -1;
 		}
 
@@ -543,7 +543,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	VALUE_PAIR	*vps[VQP_MAX_ATTRIBUTES];
 
 	if (!packet) {
-		librad_log("Failed encoding VQP");
+		fr_strerror_printf("Failed encoding VQP");
 		return -1;
 	}
 
@@ -551,13 +551,13 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	vp = pairfind(packet->vps, PW_VQP_PACKET_TYPE);
 	if (!vp) {
-		librad_log("Failed to find VQP-Packet-Type in response packet");
+		fr_strerror_printf("Failed to find VQP-Packet-Type in response packet");
 		return -1;
 	}
 
 	code = vp->lvalue;
 	if ((code < 1) || (code > 4)) {
-		librad_log("Invalid value %d for VQP-Packet-Type", code);
+		fr_strerror_printf("Invalid value %d for VQP-Packet-Type", code);
 		return -1;
 	}
 
@@ -585,7 +585,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		 *	FIXME: Print the name...
 		 */
 		if (!vps[i]) {
-			librad_log("Failed to find VQP attribute %02x",
+			fr_strerror_printf("Failed to find VQP attribute %02x",
 				   contents[code][i]);
 			return -1;
 		}
@@ -596,7 +596,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	packet->data = malloc(length);
 	if (!packet->data) {
-		librad_log("No memory");
+		fr_strerror_printf("No memory");
 		return -1;
 	}
 	packet->data_len = length;
@@ -625,7 +625,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		memcpy(ptr + 4, &sequence, 4);
 	} else {
 		if (!original) {
-			librad_log("Cannot send VQP response without request");
+			fr_strerror_printf("Cannot send VQP response without request");
 			return -1;
 		}
 

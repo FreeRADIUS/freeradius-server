@@ -60,7 +60,7 @@ static void add_reply(VALUE_PAIR** vp,
 	VALUE_PAIR *reply_attr;
 	reply_attr = pairmake(name, "", T_OP_EQ);
 	if (!reply_attr) {
-		radlog(L_INFO, IKEv2_LOG_PREFIX "add_reply failed to create attribute %s: %s", name, librad_errstr);
+		radlog(L_INFO, IKEv2_LOG_PREFIX "add_reply failed to create attribute %s: %s", name, fr_strerror);
 		return;
 	}
 

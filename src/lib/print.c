@@ -127,7 +127,7 @@ static int utf8_char(uint8_t *str)
  *	has to be larger than the input string by at least 5 bytes.
  *	If not, the output is silently truncated...
  */
-void librad_safeprint(char *in, size_t inlen, char *out, size_t outlen)
+void fr_print_string(char *in, size_t inlen, char *out, size_t outlen)
 {
 	uint8_t		*str = (uint8_t *)in;
 	int		sp = 0;
@@ -217,13 +217,13 @@ int vp_prints_value(char * out, size_t outlen, VALUE_PAIR *vp, int delimitst)
 			if ((delimitst == 1) && vp->flags.has_tag) {
 				/* Tagged attribute: print delimter and ignore tag */
 				buf[0] = '"';
-				librad_safeprint(vp->vp_strvalue,
+				fr_print_string(vp->vp_strvalue,
 						 vp->length, buf + 1, sizeof(buf) - 2);
 				strcat(buf, "\"");
 			} else if (delimitst == 1) {
 				/* Non-tagged attribute: print delimter */
 				buf[0] = '"';
-				librad_safeprint(vp->vp_strvalue,
+				fr_print_string(vp->vp_strvalue,
 						 vp->length, buf + 1, sizeof(buf) - 2);
 				strcat(buf, "\"");
 
@@ -233,7 +233,7 @@ int vp_prints_value(char * out, size_t outlen, VALUE_PAIR *vp, int delimitst)
 
 			} else {
 				/* Non-tagged attribute: no delimiter */
-				librad_safeprint(vp->vp_strvalue,
+				fr_print_string(vp->vp_strvalue,
 						 vp->length, buf, sizeof(buf));
 			}
 			a = buf;

@@ -53,7 +53,7 @@ RCSID("$Id$")
  *	is unsigned, and the attacker can use resources on the server,
  *	even if the end request is rejected.
  */
-int librad_max_attributes = 0;
+int fr_max_attributes = 0;
 FILE *fr_log_fp = NULL;
 
 typedef struct radius_packet_t {
@@ -131,7 +131,7 @@ void fr_printf_log(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	if ((librad_debug == 0) || !fr_log_fp) {
+	if ((fr_debug_flag == 0) || !fr_log_fp) {
 		va_end(ap);
 		return;
 	}
@@ -650,13 +650,13 @@ static int vp2data(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	case PW_TYPE_TLV:
 		data = vp->vp_tlv;
 		if (!data) {
-			librad_log("ERROR: Cannot encode NULL TLV");
+			fr_strerror_printf("ERROR: Cannot encode NULL TLV");
 			return -1;
 		}
 		break;
 
 	default:		/* unknown type: ignore it */
-		librad_log("ERROR: Unknown attribute type %d", vp->type);
+		fr_strerror_printf("ERROR: Unknown attribute type %d", vp->type);
 		return -1;
 	}
 
@@ -698,7 +698,7 @@ static int vp2data(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
         	case PW_ACCESS_CHALLENGE:
         	default:
 			if (!original) {
-				librad_log("ERROR: No request packet, cannot encrypt %s attribute in the vp.", vp->name);
+				fr_strerror_printf("ERROR: No request packet, cannot encrypt %s attribute in the vp.", vp->name);
 				return -1;
 			}
 			make_tunnel_passwd(ptr + offset, &len,
@@ -1109,7 +1109,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	case PW_AUTHENTICATION_REJECT:
 	case PW_ACCESS_CHALLENGE:
 		if (!original) {
-			librad_log("ERROR: Cannot sign response packet without a request packet.");
+			fr_strerror_printf("ERROR: Cannot sign response packet without a request packet.");
 			return -1;
 		}
 		break;
@@ -1255,7 +1255,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	packet->data_len = total_length;
 	packet->data = (uint8_t *) malloc(packet->data_len);
 	if (!packet->data) {
-		librad_log("Out of memory");
+		fr_strerror_printf("Out of memory");
 		return -1;
 	}
 
@@ -1281,13 +1281,13 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *	It wasn't assigned an Id, this is bad!
 	 */
 	if (packet->id < 0) {
-		librad_log("ERROR: RADIUS packets must be assigned an Id.");
+		fr_strerror_printf("ERROR: RADIUS packets must be assigned an Id.");
 		return -1;
 	}
 
 	if (!packet->data || (packet->data_len < AUTH_HDR_LEN) ||
 	    (packet->offset < 0)) {
-		librad_log("ERROR: You must call rad_encode() before rad_sign()");
+		fr_strerror_printf("ERROR: You must call rad_encode() before rad_sign()");
 		return -1;
 	}
 
@@ -1314,7 +1314,7 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		case PW_AUTHENTICATION_REJECT:
 		case PW_ACCESS_CHALLENGE:
 			if (!original) {
-				librad_log("ERROR: Cannot sign response packet without a request packet.");
+				fr_strerror_printf("ERROR: Cannot sign response packet without a request packet.");
 				return -1;
 			}
 			memcpy(hdr->vector, original->vector,
@@ -1429,7 +1429,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 *	If packet->data points to data, then we print out
 		 *	the VP list again only for debugging.
 		 */
-	} else if (librad_debug) {
+	} else if (fr_debug_flag) {
 	  	DEBUG("Sending %s of id %d to %s port %d\n", what, packet->id,
 		      inet_ntop(packet->dst_ipaddr.af,
 				&packet->dst_ipaddr.ipaddr,
@@ -1553,7 +1553,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	"The minimum length is 20 ..."
 	 */
 	if (packet->data_len < AUTH_HDR_LEN) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: too short (received %d < minimum %d)",
+		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too short (received %d < minimum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -1567,7 +1567,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	" ... and maximum length is 4096."
 	 */
 	if (packet->data_len > MAX_PACKET_LEN) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: too long (received %d > maximum %d)",
+		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too long (received %d > maximum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -1589,7 +1589,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 */
 	if ((hdr->code == 0) ||
 	    (hdr->code >= MAX_PACKET_CODE)) {
-		librad_log("WARNING: Bad RADIUS packet from host %s: unknown packet code%d ",
+		fr_strerror_printf("WARNING: Bad RADIUS packet from host %s: unknown packet code%d ",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -1620,7 +1620,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	"The minimum length is 20 ..."
 	 */
 	if (totallen < AUTH_HDR_LEN) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: too short (length %d < minimum %d)",
+		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too short (length %d < minimum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -1636,7 +1636,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	" ... and maximum length is 4096."
 	 */
 	if (totallen > MAX_PACKET_LEN) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: too long (length %d > maximum %d)",
+		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too long (length %d > maximum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -1653,7 +1653,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	i.e. No response to the NAS.
 	 */
 	if (packet->data_len < totallen) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: received %d octets, packet length says %d",
+		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: received %d octets, packet length says %d",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -1697,7 +1697,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 		 *	Attribute number zero is NOT defined.
 		 */
 		if (attr[0] == 0) {
-			librad_log("WARNING: Malformed RADIUS packet from host %s: Invalid attribute 0",
+			fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: Invalid attribute 0",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)));
@@ -1709,7 +1709,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 		 *	fields.  Anything shorter is an invalid attribute.
 		 */
        		if (attr[1] < 2) {
-			librad_log("WARNING: Malformed RADIUS packet from host %s: attribute %d too short",
+			fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: attribute %d too short",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
@@ -1734,7 +1734,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 
 		case PW_MESSAGE_AUTHENTICATOR:
 			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
-				librad_log("WARNING: Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
+				fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.ipaddr,
 						     host_ipaddr, sizeof(host_ipaddr)),
@@ -1762,7 +1762,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	If not, we complain, and throw the packet away.
 	 */
 	if (count != 0) {
-		librad_log("WARNING: Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
+		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
@@ -1774,13 +1774,13 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	attributes, and we've seen more than that maximum,
 	 *	then throw the packet away, as a possible DoS.
 	 */
-	if ((librad_max_attributes > 0) &&
-	    (num_attributes > librad_max_attributes)) {
-		librad_log("WARNING: Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
+	if ((fr_max_attributes > 0) &&
+	    (num_attributes > fr_max_attributes)) {
+		fr_strerror_printf("WARNING: Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
-			   num_attributes, librad_max_attributes);
+			   num_attributes, fr_max_attributes);
 		return 0;
 	}
 
@@ -1796,7 +1796,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	Message-Authenticator attributes.
 	 */
 	if (require_ma && ! seen_ma) {
-		librad_log("WARNING: Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
+		fr_strerror_printf("WARNING: Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
@@ -1826,7 +1826,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 *	Allocate the new request data structure
 	 */
 	if ((packet = malloc(sizeof(*packet))) == NULL) {
-		librad_log("out of memory");
+		fr_strerror_printf("out of memory");
 		return NULL;
 	}
 	memset(packet, 0, sizeof(*packet));
@@ -1839,7 +1839,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 *	Check for socket errors.
 	 */
 	if (packet->data_len < 0) {
-		librad_log("Error receiving packet: %s", strerror(errno));
+		fr_strerror_printf("Error receiving packet: %s", strerror(errno));
 		/* packet->data is NULL */
 		free(packet);
 		return NULL;
@@ -1851,7 +1851,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 *	packet.
 	 */
 	if (packet->data_len > MAX_PACKET_LEN) {
-		librad_log("Discarding packet: Larger than RFC limitation of 4096 bytes.");
+		fr_strerror_printf("Discarding packet: Larger than RFC limitation of 4096 bytes.");
 		/* packet->data is NULL */
 		free(packet);
 		return NULL;
@@ -1864,7 +1864,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 *	packet->data == NULL
 	 */
 	if ((packet->data_len == 0) || !packet->data) {
-		librad_log("Empty packet: Socket is not ready.");
+		fr_strerror_printf("Empty packet: Socket is not ready.");
 		free(packet);
 		return NULL;
 	}
@@ -1893,7 +1893,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 */
 	packet->vps = NULL;
 
-	if (librad_debug) {
+	if (fr_debug_flag) {
 		char host_ipaddr[128];
 
 		if ((packet->code > 0) && (packet->code < MAX_PACKET_CODE)) {
@@ -1973,7 +1973,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			case PW_AUTHENTICATION_REJECT:
 			case PW_ACCESS_CHALLENGE:
 				if (!original) {
-					librad_log("ERROR: Cannot validate Message-Authenticator in response packet without a request packet.");
+					fr_strerror_printf("ERROR: Cannot validate Message-Authenticator in response packet without a request packet.");
 					return -1;
 				}
 				memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
@@ -1986,7 +1986,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (memcmp(calc_auth_vector, msg_auth_vector,
 				   sizeof(calc_auth_vector)) != 0) {
 				char buffer[32];
-				librad_log("Received packet from %s with invalid Message-Authenticator!  (Shared secret is incorrect.)",
+				fr_strerror_printf("Received packet from %s with invalid Message-Authenticator!  (Shared secret is incorrect.)",
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.ipaddr,
 						     buffer, sizeof(buffer)));
@@ -2012,7 +2012,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 */
 	if ((packet->code == 0) || (packet->code >= MAX_PACKET_CODE)) {
 		char buffer[32];
-		librad_log("Received Unknown packet code %d "
+		fr_strerror_printf("Received Unknown packet code %d "
 			   "from client %s port %d: Cannot validate signature.",
 			   packet->code,
 			   inet_ntop(packet->src_ipaddr.af,
@@ -2041,7 +2041,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		case PW_DISCONNECT_REQUEST:
 		case PW_ACCOUNTING_REQUEST:
 			if (calc_acctdigest(packet, secret) > 1) {
-				librad_log("Received %s packet "
+				fr_strerror_printf("Received %s packet "
 					   "from %s with invalid signature!  (Shared secret is incorrect.)",
 					   packet_codes[packet->code],
 					   inet_ntop(packet->src_ipaddr.af,
@@ -2062,7 +2062,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		case PW_COA_NAK:
 			rcode = calc_replydigest(packet, original, secret);
 			if (rcode > 1) {
-				librad_log("Received %s packet "
+				fr_strerror_printf("Received %s packet "
 					   "from client %s port %d with invalid signature (err=%d)!  (Shared secret is incorrect.)",
 					   packet_codes[packet->code],
 					   inet_ntop(packet->src_ipaddr.af,
@@ -2075,7 +2075,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			break;
 
 		default:
-			librad_log("Received Unknown packet code %d "
+			fr_strerror_printf("Received Unknown packet code %d "
 				   "from client %s port %d: Cannot validate signature",
 				   packet->code,
 				   inet_ntop(packet->src_ipaddr.af,
@@ -2301,7 +2301,7 @@ static VALUE_PAIR *data2vp(const RADIUS_PACKET *packet,
 		vp->vp_tlv = malloc(length);
 		if (!vp->vp_tlv) {
 			pairfree(&vp);
-			librad_log("No memory");
+			fr_strerror_printf("No memory");
 			return NULL;
 		}
 		memcpy(vp->vp_tlv, data, length);
@@ -2949,7 +2949,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				   attribute, attrlen, ptr);
 		if (!pair) {
 			pairfree(&packet->vps);
-			librad_log("out of memory");
+			fr_strerror_printf("out of memory");
 			return -1;
 		}
 
@@ -2968,16 +2968,16 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		 *	then without using the dictionary.  We
 		 *	therefore enforce the limits here, too.
 		 */
-		if ((librad_max_attributes > 0) &&
-		    (num_attributes > librad_max_attributes)) {
+		if ((fr_max_attributes > 0) &&
+		    (num_attributes > fr_max_attributes)) {
 			char host_ipaddr[128];
 
 			pairfree(&packet->vps);
-			librad_log("WARNING: Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
+			fr_strerror_printf("WARNING: Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
-				   num_attributes, librad_max_attributes);
+				   num_attributes, fr_max_attributes);
 			return -1;
 		}
 
@@ -3241,7 +3241,7 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, const char *secret,
 	 *	We need at least a salt.
 	 */
 	if (len < 2) {
-		librad_log("tunnel password is too short");
+		fr_strerror_printf("tunnel password is too short");
 		return -1;
 	}
 
@@ -3296,7 +3296,7 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, const char *secret,
 			 */
 			reallen = passwd[2] ^ digest[0];
 			if (reallen >= len) {
-				librad_log("tunnel password is too long for the attribute");
+				fr_strerror_printf("tunnel password is too long for the attribute");
 				return -1;
 			}
 
@@ -3470,7 +3470,7 @@ RADIUS_PACKET *rad_alloc(int newvector)
 	RADIUS_PACKET	*rp;
 
 	if ((rp = malloc(sizeof(RADIUS_PACKET))) == NULL) {
-		librad_log("out of memory");
+		fr_strerror_printf("out of memory");
 		return NULL;
 	}
 	memset(rp, 0, sizeof(*rp));

@@ -589,7 +589,7 @@ static int define_type(const DICT_ATTR *dattr, const char *name)
 	} while (dict_valbyattr(dattr->attr, value));
 
 	if (dict_addvalue(name, dattr->name, value) < 0) {
-		radlog(L_ERR, "%s", librad_errstr);
+		radlog(L_ERR, "%s", fr_strerror);
 		return 0;
 	}
 
