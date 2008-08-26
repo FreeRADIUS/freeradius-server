@@ -907,6 +907,8 @@ else
   AC_MSG_RESULT(no.)
 fi
 
+FR_TLS
+
 dnl #############################################################
 dnl #
 dnl #  7. Checks for library functions

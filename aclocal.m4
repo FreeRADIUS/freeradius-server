@@ -102,3 +102,15 @@ fi
 
 m4_include([libtool.m4])
 m4_include([acinclude.m4])
+
+#  See if the compilation works with __thread, for thread-local storage
+#
+AC_DEFUN([FR_TLS],
+[
+    AC_MSG_CHECKING(for TLS)
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[ static __thread int val; int main() { return 0; } ]])],[have_tls=yes],[have_tls=no],[have_tls=no ])
+    AC_MSG_RESULT($have_tls)
+    if test "$have_tls" = "yes"; then
+        AC_DEFINE([HAVE_THREAD_TLS],[1],[Define if the compiler supports __thread])
+    fi
+])
