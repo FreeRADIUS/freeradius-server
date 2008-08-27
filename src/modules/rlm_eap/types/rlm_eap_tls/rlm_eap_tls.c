@@ -159,7 +159,7 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
  */
 #define MAX_SESSION_SIZE (256)
 
-static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
+static void cbtls_remove_session(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 {
 	size_t size;
 	char buffer[2 * MAX_SESSION_SIZE + 1];
@@ -175,7 +175,7 @@ static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
         return;
 }
 
-static int cbtls_new_session(SSL *s, SSL_SESSION *sess)
+static int cbtls_new_session(UNUSED SSL *s, SSL_SESSION *sess)
 {
 	size_t size;
 	char buffer[2 * MAX_SESSION_SIZE + 1];
@@ -190,8 +190,9 @@ static int cbtls_new_session(SSL *s, SSL_SESSION *sess)
 	return 1;
 }
 
-static SSL_SESSION *cbtls_get_session(SSL *s, unsigned char *data, int len,
-				      int *copy)
+static SSL_SESSION *cbtls_get_session(UNUSED SSL *s,
+				      unsigned char *data, int len,
+				      UNUSED int *copy)
 {
 	size_t size;
 	char buffer[2 * MAX_SESSION_SIZE + 1];
@@ -359,8 +360,9 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 /*
  *	Free cached session data, which is always a list of VALUE_PAIRs
  */
-void eaptls_session_free(void *parent, void *data_ptr, CRYPTO_EX_DATA *ad,
-			 int idx, long argl, void *argp)
+static void eaptls_session_free(UNUSED void *parent, void *data_ptr,
+				UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
+				UNUSED long argl, UNUSED void *argp)
 {
 	VALUE_PAIR *vp = data_ptr;
 	if (!data_ptr) return;
