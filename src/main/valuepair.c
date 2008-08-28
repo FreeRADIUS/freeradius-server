@@ -80,8 +80,15 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 		/*
 		 *	Include substring matches.
 		 */
-		regcomp(&reg, (char *)check->vp_strvalue,
-			REG_EXTENDED);
+		compare = regcomp(&reg, check->vp_strvalue, REG_EXTENDED);
+		if (compare != 0) {
+			char buffer[256];
+			regerror(compare, &reg, buffer, sizeof(buffer));
+
+			RDEBUG("Invalid regular expression %s: %s",
+			       check->vp_strvalue, buffer);
+			return -1;
+		}
 		compare = regexec(&reg, value,  REQUEST_MAX_REGEX + 1,
 				  rxmatch, 0);
 		regfree(&reg);
