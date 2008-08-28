@@ -41,6 +41,11 @@ RCSID("$Id$")
  */
 #define THREAD_TLS __declspec(thread)
 #else
+
+/*
+ *	We don't have thread-local storage.  Ensure we don't
+ *	ask for it.
+ */
 #define THREAD_TLS
 
 /*
@@ -48,11 +53,11 @@ RCSID("$Id$")
  *	be very fast.
  */
 #ifdef HAVE_PTHREAD_H
-#define USE_PTHREAD_TLS (1)
+#define USE_PTHREAD_FOR_TLS (1)
 #endif
 #endif
 
-#ifndef USE_PTHREAD_TLS
+#ifndef USE_PTHREAD_FOR_TLS
 /*
  *	Try to create a thread-local-storage version of this buffer.
  */
@@ -78,7 +83,7 @@ void fr_strerror_printf(const char *fmt, ...)
 {
 	va_list ap;
 
-#ifdef USE_PTHREAD_TLS
+#ifdef USE_PTHREAD_FOR_TLS
 	char *buffer;
 
 	pthread_once(&fr_strerror_once, fr_strerror_make_key);
@@ -104,17 +109,18 @@ void fr_strerror_printf(const char *fmt, ...)
 
 const char *fr_strerror(void)
 {
-#ifndef USE_PTHREAD_TLS
+#ifndef USE_PTHREAD_FOR_TLS
 	return fr_strerror_buffer;
 
 #else
 	const char *msg;
 
-	(void) pthread_once(&fr_strerror_once, fr_strerror_make_key);
-	msg = pthread_getspecific(fr_strerror_make_key);
+	pthread_once(&fr_strerror_once, fr_strerror_make_key);
+
+	msg = pthread_getspecific(fr_strerror_key);
 	if (msg) return msg;
 
-	return "";		/* DON'T return NULL! */
+	return "(unknown error)"; /* DON'T return NULL! */
 #endif
 }
 
