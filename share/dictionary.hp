@@ -17,7 +17,6 @@ ATTRIBUTE	HP-Command-String			2	string
 ATTRIBUTE	HP-Command-Exception-Flag		3	integer
 ATTRIBUTE	HP-Management-Protocol			26	integer
 
-
 #
 #  HP's names for some attributes
 #
@@ -50,5 +49,11 @@ VALUE	HP-Management-Protocol		HTTPS			6
 #VALUE	HP-Management-Role		NetworkAdministrator	17
 #VALUE	HP-Management-Role		SystemAdministrator	18
 #VALUE	HP-Management-Role		WebUserAdminstrator	19
+
+#	Privilege attributes for HP-GbE2c, HP 1:10Gb, and HP 10Gb
+#	Ethernet Blade Switches
+#
+VALUE	Service-Type			HP-Oper			252
+VALUE	Service-Type			HP-User			255
 
 END-VENDOR	HP
