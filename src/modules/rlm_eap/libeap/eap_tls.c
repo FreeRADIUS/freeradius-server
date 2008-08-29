@@ -181,8 +181,8 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 		/*
 		 *	Mark the request as resumed.
 		 */
-		radius_pairmake(request, &request->config_items,
-				"EAP-Session-Resumed", "0", T_OP_SET);
+		vp = pairmake("EAP-Session-Resumed", "0", T_OP_SET);
+		if (vp) pairadd(&request->packet->vps, vp);
 	}
 
 	/*
@@ -197,8 +197,6 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 		eaptls_gen_mppe_keys(&handler->request->reply->vps,
 				     tls_session->ssl, tls_session->prf_label);
 	} else {
-		REQUEST *request = handler->request;
-
 		RDEBUG("WARNING: Not adding MPPE keys because there is no PRF label");
 	}
 
