@@ -188,6 +188,11 @@ ATTRIBUTE	Allow-Session-Resumption		1127	integer
 VALUE	Allow-Session-Resumption	no			0
 VALUE	Allow-Session-Resumption	yes			1
 
+ATTRIBUTE	EAP-Session-Resumed			1128	integer
+
+VALUE	EAP-Session-Resumed		no			0
+VALUE	EAP-Session-Resumed		yes			1
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.

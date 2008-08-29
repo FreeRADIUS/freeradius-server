@@ -177,6 +177,12 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 		RDEBUG("Adding cached attributes to the reply:");
 		debug_pair_list(vp);
 		pairadd(&request->reply->vps, paircopy(vp));		
+
+		/*
+		 *	Mark the request as resumed.
+		 */
+		radius_pairmake(request, &request->config_items,
+				"EAP-Session-Resumed", "0", T_OP_SET);
 	}
 
 	/*
