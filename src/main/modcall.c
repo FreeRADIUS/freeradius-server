@@ -1707,6 +1707,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		 */
 		subcs = NULL;
 		cs = cf_section_find("instantiate");
+		if (cs) subcs = cf_section_sub_find_name2(cs, NULL,
+							  modrefname);
 		if (!subcs) {
 			cs = cf_section_find("policy");
 			if (cs) subcs = cf_section_sub_find_name2(cs, NULL,
