@@ -469,6 +469,10 @@ RADCLIENT	*client_find(const RADCLIENT_LIST *clients,
 RADCLIENT	*client_findbynumber(const RADCLIENT_LIST *clients,
 				     int number);
 RADCLIENT	*client_find_old(const fr_ipaddr_t *ipaddr);
+int		client_validate(RADCLIENT_LIST *clients, RADCLIENT *master,
+				RADCLIENT *c);
+RADCLIENT	*client_read(const char *filename, int in_server);
+
 
 /* files.c */
 int		pairlist_read(const char *file, PAIR_LIST **list, int complain);

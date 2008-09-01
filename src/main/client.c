@@ -33,6 +33,12 @@ RCSID("$Id$")
 #include <ctype.h>
 #include <fcntl.h>
 
+#ifdef WITH_DYNAMIC_CLIENTS
+#ifdef HAVE_DIRENT_H
+#include <dirent.h>
+#endif
+#endif
+
 struct radclient_list {
 	/*
 	 *	FIXME: One set of trees for IPv4, and another for IPv6?
@@ -627,6 +633,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	return c;
 }
 
+
 /*
  *	Create the linked list of clients from the new configuration
  *	type.  This way we don't have to change too much in the other
@@ -678,6 +685,88 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 		 *	for migration issues.
 		 */
 
+#ifdef WITH_DYNAMIC_CLIENTS
+#ifdef HAVE_DIRENT_H
+		if (c->client_server) {
+			const char *value;
+			CONF_PAIR *cp;
+			DIR		*dir;
+			struct dirent	*dp;
+			struct stat stat_buf;
+			char buf2[2048];
+
+			/*
+			 *	Find the directory where individual
+			 *	client definitions are stored.
+			 */
+			cp = cf_pair_find(cs, "directory");
+			if (!cp) continue;
+			
+			value = cf_pair_value(cp);
+			if (!value) {
+				cf_log_err(cf_sectiontoitem(cs),
+					   "The \"directory\" entry must not be empty");
+				client_free(c);
+				return NULL;
+			}
+
+			DEBUG("including dynamic clients in %s", value);
+			
+			dir = opendir(value);
+			if (!dir) {
+				cf_log_err(cf_sectiontoitem(cs), "Error reading directory %s: %s", value, strerror(errno));
+				client_free(c);
+				return NULL;
+			}
+			
+			/*
+			 *	Read the directory, ignoring "." files.
+			 */
+			while ((dp = readdir(dir)) != NULL) {
+				const char *p;
+				RADCLIENT *dc;
+
+				if (dp->d_name[0] == '.') continue;
+
+				/*
+				 *	Check for valid characters
+				 */
+				for (p = dp->d_name; *p != '\0'; p++) {
+					if (isalpha((int)*p) ||
+					    isdigit((int)*p) ||
+					    (*p == ':') ||
+					    (*p == '.')) continue;
+						break;
+				}
+				if (*p != '\0') continue;
+
+				snprintf(buf2, sizeof(buf2), "%s/%s",
+					 value, dp->d_name);
+
+				if ((stat(buf2, &stat_buf) != 0) ||
+				    S_ISDIR(stat_buf.st_mode)) continue;
+
+				dc = client_read(buf2, in_server);
+				if (!dc) {
+					cf_log_err(cf_sectiontoitem(cs),
+						   "Failed reading client file \"%s\"", buf2);
+					client_free(c);
+					return NULL;
+				}
+
+				/*
+				 *	Validate, and add to the list.
+				 */
+				if (!client_validate(clients, c, dc)) {
+					
+					client_free(c);
+					return NULL;
+				}
+			} /* loop over the directory */
+		}
+#endif /* HAVE_DIRENT_H */
+#endif /* WITH_DYNAMIC_CLIENTS */
+
 		if (!client_add(clients, c)) {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Failed to add client %s",
@@ -685,6 +774,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 			client_free(c);
 			return NULL;
 		}
+
 	}
 
 	/*
@@ -723,6 +813,62 @@ static const CONF_PARSER dynamic_config[] = {
 
 	{ NULL, -1, 0, NULL, NULL }
 };
+
+
+int client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
+{
+	char buffer[128];
+
+	/*
+	 *	No virtual server defined.  Inherit the parent's
+	 *	definition.
+	 */
+	if (master->server && !c->server) {
+		c->server = strdup(master->server);
+	}
+
+	/*
+	 *	If the client network isn't global (not tied to a
+	 *	virtual server), then ensure that this clients server
+	 *	is the same as the enclosing networks virtual server.
+	 */
+	if (master->server &&
+	     (strcmp(master->server, c->server) != 0)) {
+		DEBUG("- Cannot add client %s: Virtual server %s is not the same as the virtual server for the network.",
+		      ip_ntoh(&c->ipaddr,
+			      buffer, sizeof(buffer)),
+		      c->server);
+
+		goto error;
+	}
+
+	if (!client_add(clients, c)) {
+		DEBUG("- Cannot add client %s: Internal error",
+		      ip_ntoh(&c->ipaddr,
+			      buffer, sizeof(buffer)));
+
+		goto error;
+	}
+
+	/*
+	 *	Initialize the remaining fields.
+	 */
+	c->dynamic = TRUE;
+	c->lifetime = master->lifetime;
+	c->created = time(NULL);
+	c->longname = strdup(c->shortname);
+
+	DEBUG("- Added client %s with shared secret %s",
+	      ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)),
+	      c->secret);
+
+	return 1;
+
+ error:
+	client_free(c);
+	return 0;
+}
+
 
 RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 {
@@ -815,50 +961,49 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 		goto error;
 	}
 
-	/*
-	 *	No virtual server defined.  Inherit the parent's
-	 *	definition.
-	 */
-	if (request->client->server && !c->server) {
-		c->server = strdup(request->client->server);
+	if (!client_validate(clients, request->client, c)) {
+		return NULL;
 	}
-
-	/*
-	 *	If the client network isn't global (not tied to a
-	 *	virtual server), then ensure that this clients server
-	 *	is the same as the enclosing networks virtual server.
-	 */
-	if (request->client->server &&
-	     (strcmp(request->client->server, c->server) != 0)) {
-		DEBUG("- Cannot add client %s: Virtual server %s is not the same as the virtual server for the network.",
-		      ip_ntoh(&request->packet->src_ipaddr,
-			      buffer, sizeof(buffer)),
-		      c->server);
-
-		goto error;
-	}
-
-	if (!client_add(clients, c)) {
-		DEBUG("- Cannot add client %s: Internal error",
-		      ip_ntoh(&request->packet->src_ipaddr,
-			      buffer, sizeof(buffer)));
-
-		goto error;
-	}
-
-	/*
-	 *	Initialize the remaining fields.
-	 */
-	c->dynamic = TRUE;
-	c->lifetime = request->client->lifetime;
-	c->created = request->timestamp;
-	c->longname = strdup(c->shortname);
-
-	DEBUG("- Added client %s with shared secret %s",
-	      ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
-	      c->secret);
 
 	return c;
 }
 
+/*
+ *	Read a client definition from the given filename.
+ */
+RADCLIENT *client_read(const char *filename, int in_server)
+{
+	const char *p;
+	RADCLIENT *c;
+	CONF_SECTION *cs;
+	char buffer[256];
+
+	if (!filename) return NULL;
+
+	cs = cf_file_read(filename);
+	if (!cs) return NULL;
+
+	c = client_parse(cf_section_sub_find(cs, "client"), in_server);
+
+	p = strrchr(filename, FR_DIR_SEP);
+	if (p) {
+		p++;
+	} else {
+		p = filename;
+	}
+
+	/*
+	 *	Additional validations
+	 */
+	ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
+	if (strcmp(p, buffer) != 0) {
+		DEBUG("Invalid client definition in %s: IP address %s does not match name %s", filename, buffer, p);
+		client_free(c);
+		return NULL;
+	}
+
+
+
+	return c;
+}
 #endif
