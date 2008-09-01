@@ -235,8 +235,22 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 		return NULL;
 	}
 
-	created = client_create(clients, request);
+	/*
+	 *	If the client was updated by rlm_dynamic_clients,
+	 *	don't create the client from attribute-value pairs.
+	 */
+	if (request->client == client) {
+		created = client_create(clients, request);
+	} else {
+		created = request->client;
 
+		/*
+		 *	This frees the client if it isn't valid.
+		 */
+		if (!client_validate(clients, request, created)) {
+			return NULL;
+		}
+	}
 	request_free(&request);
 
 	return created;		/* may be NULL */
