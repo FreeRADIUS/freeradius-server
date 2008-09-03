@@ -74,6 +74,8 @@ typedef struct listen_socket_t {
 	RADCLIENT_LIST	*clients;
 } listen_socket_t;
 
+static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type);
+
 /*
  *	Find a per-socket client.
  */
@@ -247,7 +249,7 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 		/*
 		 *	This frees the client if it isn't valid.
 		 */
-		if (!client_validate(clients, request, created)) {
+		if (!client_validate(clients, client, created)) {
 			return NULL;
 		}
 	}
@@ -1038,6 +1040,8 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 #include "dhcpd.c"
 
+#include "command.c"
+
 static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 #ifdef WITH_STATS
 	{ common_socket_parse, NULL,
@@ -1093,6 +1097,15 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ dhcp_socket_parse, NULL,
 	  dhcp_socket_recv, dhcp_socket_send,
 	  socket_print, dhcp_socket_encode, dhcp_socket_decode },
+#else
+	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+#endif
+
+#ifdef WITH_COMMAND_SOCKET
+	/* TCP command socket */
+	{ command_socket_parse, NULL,
+	  command_domain_accept, command_domain_send,
+	  command_socket_print, command_socket_encode, command_socket_decode },
 #else
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
@@ -1311,6 +1324,13 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 		break;
 #endif
 
+#ifdef WITH_COMMAND_SOCKET
+	case RAD_LISTEN_COMMAND:
+		this->data = rad_malloc(sizeof(fr_command_socket_t));
+		memset(this->data, 0, sizeof(fr_command_socket_t));
+		break;
+#endif
+
 	default:
 		rad_assert("Unsupported option!" == NULL);
 		break;
@@ -1410,6 +1430,9 @@ static const FR_NAME_NUMBER listen_compare[] = {
 #endif
 #ifdef WITH_DHCP
 	{ "dhcp",	RAD_LISTEN_DHCP },
+#endif
+#ifdef WITH_COMMAND_SOCKET
+	{ "control",	RAD_LISTEN_COMMAND },
 #endif
 	{ NULL, 0 },
 };

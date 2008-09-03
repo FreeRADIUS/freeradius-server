@@ -87,6 +87,13 @@ typedef pthread_t child_pid_t;
 #ifndef WITHOUT_STATS
 #define WITH_STATS
 #endif
+
+#ifndef WITHOUT_COMMAND_SOCKET
+#ifdef HAVE_SYS_UN_H
+#define WITH_COMMAND_SOCKET (1)
+#endif
+#endif
+
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
 

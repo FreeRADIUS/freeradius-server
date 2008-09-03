@@ -99,7 +99,7 @@ session.lo: session.c ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c session.c
 
 # It's #include'd for simplicity.  This should be fixed...
-listen.lo: dhcpd.c
+listen.lo: dhcpd.c command.c
 
 #
 # Helper programs
@@ -122,7 +122,6 @@ radwho.lo: radwho.c $(INCLUDES)
 
 radwho: radwho.lo util.lo log.lo conffile.lo $(LIBRADIUS)
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radwho radwho.lo util.lo log.lo conffile.lo $(LIBRADIUS) $(LIBS)
-
 
 clean:
 	rm -rf *.o *.so *.lo *~ $(BINARIES) .libs
