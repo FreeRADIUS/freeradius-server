@@ -317,24 +317,24 @@ int fr_event_loop(fr_event_list_t *el)
 	struct timeval when, *wake;
 	fd_set read_fds;
 
-	/*
-	 *	Cache the list of FD's to watch.
-	 */
-	if (el->changed) {
-		FD_ZERO(&el->read_fds);
-
-		for (i = 0; i < el->max_readers; i++) {
-			if (el->readers[i].fd < 0) continue;
-			FD_SET(el->readers[i].fd, &el->read_fds);
-		}
-
-		el->changed = 0;
-	}
-
 	el->exit = 0;
 	el->dispatch = 1;
 
 	while (!el->exit) {
+		/*
+		 *	Cache the list of FD's to watch.
+		 */
+		if (el->changed) {
+			FD_ZERO(&el->read_fds);
+			
+			for (i = 0; i < el->max_readers; i++) {
+				if (el->readers[i].fd < 0) continue;
+				
+				FD_SET(el->readers[i].fd, &el->read_fds);
+			}
+			
+			el->changed = 0;
+		}
 
 		/*
 		 *	Find the first event.  If there's none, we wait
@@ -389,8 +389,6 @@ int fr_event_loop(fr_event_list_t *el)
 		}
 		
 		if (rcode <= 0) continue;
-
-		el->changed = 0;
 
 		for (i = 0; i < el->max_readers; i++) {
 			fr_event_fd_t *ef = &el->readers[i];
