@@ -52,7 +52,7 @@ static fr_event_list_t	*el = NULL;
 static fr_packet_list_t	*pl = NULL;
 static int			request_num_counter = 0;
 static struct timeval		now;
-static time_t			start_time;
+time_t				fr_start_time;
 static int			have_children;
 static int			has_detail_listener = FALSE;
 static int			just_started = FALSE;
@@ -342,11 +342,11 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 		if (request->packet) {
 			RDEBUG2("Cleaning up request %d ID %d with timestamp +%d",
 			       request->number, request->packet->id,
-			       (unsigned int) (request->timestamp - start_time));
+			       (unsigned int) (request->timestamp - fr_start_time));
 		} else {
 			RDEBUG2("Cleaning up request %d with timestamp +%d",
 			       request->number,
-			       (unsigned int) (request->timestamp - start_time));
+			       (unsigned int) (request->timestamp - fr_start_time));
 		}
 		fr_event_delete(el, &request->ev);
 		remove_from_proxy_hash(request);
@@ -410,7 +410,7 @@ static void cleanup_delay(void *ctx)
 
 	RDEBUG2("Cleaning up request %d ID %d with timestamp +%d",
 	       request->number, request->packet->id,
-	       (unsigned int) (request->timestamp - start_time));
+	       (unsigned int) (request->timestamp - fr_start_time));
 
 	fr_event_delete(el, &request->ev);
 	request_free(&request);
@@ -2314,6 +2314,42 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 }
 #endif
 
+void event_new_fd(rad_listen_t *this)
+{
+	char buffer[1024];
+	
+	this->print(this, buffer, sizeof(buffer));
+	
+	if (this->status == RAD_LISTEN_STATUS_INIT) {
+		DEBUG2(" ... adding new socket %s", buffer);
+		
+		if (!fr_event_fd_insert(el, 0, this->fd,
+					event_socket_handler, this)) {
+			radlog(L_ERR, "Failed remembering handle for proxy socket!");
+			exit(1);
+		}
+		
+		this->status = RAD_LISTEN_STATUS_KNOWN;
+		return;
+	}
+	
+	if (this->status == RAD_LISTEN_STATUS_CLOSED) {
+		DEBUG2(" ... closing socket %s", buffer);
+		
+		fr_event_fd_delete(el, 0, this->fd);
+		this->status = RAD_LISTEN_STATUS_FINISH;
+		
+		/*
+		 *	Close the fd AFTER fixing up the requests and
+		 *	listeners, so that they don't send/recv on the
+		 *	wrong socket (if someone manages to open
+		 *	another one).
+		 */
+		close(this->fd);
+		this->fd = -1;
+	}
+}
+
 #ifdef WITH_DETAIL
 static void event_detail_timer(void *ctx)
 {
@@ -2587,7 +2623,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 	if (el) return 0;
 
-	time(&start_time);
+	time(&fr_start_time);
 
 	el = fr_event_list_create(event_status);
 	if (!el) return 0;

@@ -273,6 +273,7 @@ struct rad_listen_t {
 	RAD_LISTEN_TYPE	type;
 	int		fd;
 	const char	*server;
+	int		status;
 
 	rad_listen_recv_t recv;
 	rad_listen_send_t send;
@@ -287,6 +288,10 @@ struct rad_listen_t {
 #endif
 };
 
+#define RAD_LISTEN_STATUS_INIT   (0)
+#define RAD_LISTEN_STATUS_KNOWN  (1)
+#define RAD_LISTEN_STATUS_CLOSED (2)
+#define RAD_LISTEN_STATUS_FINISH (3)
 
 typedef enum radlog_dest_t {
   RADLOG_STDOUT = 0,
@@ -588,6 +593,7 @@ int received_request(rad_listen_t *listener,
 		     RADIUS_PACKET *packet, REQUEST **prequest,
 		     RADCLIENT *client);
 REQUEST *received_proxy_response(RADIUS_PACKET *packet);
+void event_new_fd(rad_listen_t *listener);
 
 /* evaluate.c */
 int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
