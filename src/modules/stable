@@ -38,3 +38,4 @@ rlm_sqlippool
 rlm_sql_log
 rlm_unix
 rlm_policy
+rlm_dynamic_clients
