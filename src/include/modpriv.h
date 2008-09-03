@@ -42,7 +42,10 @@ typedef struct module_instance_t {
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		*mutex;
 #endif
+	CONF_SECTION		*cs;
 	void			*old_insthandle[16];
 } module_instance_t;
 
-module_instance_t *find_module_instance(CONF_SECTION *, const char *instname);
+module_instance_t *find_module_instance(CONF_SECTION *, const char *instname,
+					int do_link);
+int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when);

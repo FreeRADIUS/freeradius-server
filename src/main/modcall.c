@@ -1747,7 +1747,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	this = NULL;
 
 	if (modules && cf_section_sub_find_name2(modules, NULL, modrefname)) {
-		this = find_module_instance(modules, modrefname);
+		this = find_module_instance(modules, modrefname, 1);
 	}
 
 	if (!this) do {
@@ -1768,7 +1768,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 				buffer[p - modrefname] = '\0';
 				component = i;
 				
-				this = find_module_instance(cf_section_find("modules"), buffer);
+				this = find_module_instance(cf_section_find("modules"), buffer, 1);
 				if (this &&
 				    !this->entry->module->methods[i]) {
 					*modname = NULL;
