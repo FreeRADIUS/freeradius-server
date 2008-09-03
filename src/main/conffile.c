@@ -447,6 +447,42 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 	return cs;
 }
 
+/*
+ *	Replace pair in a given section with a new pair,
+ *	of the given value.
+ */
+int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, const char *value)
+{
+	CONF_PAIR *newp;
+	CONF_ITEM *ci, *cn, **last;
+
+	newp = cf_pair_alloc(cp->attr, value, cp->operator, cp->value_type,
+			     cs);
+	if (!newp) return -1;
+
+	ci = cf_pairtoitem(cp);
+	cn = cf_pairtoitem(newp);
+
+	/*
+	 *	Find the old one from the linked list, and replace it
+	 *	with the new one.
+	 */
+	for (last = &cs->children; (*last) != NULL; last = &(*last)->next) {
+		if (*last == ci) {
+			cn->next = (*last)->next;
+			*last = cn;
+			ci->next = NULL;
+			break;
+		}
+	}
+
+	rbtree_deletebydata(cs->pair_tree, ci);
+
+	rbtree_insert(cs->pair_tree, cn);
+
+	return 0;
+}
+
 
 /*
  *	Add an item to a configuration section.
@@ -813,10 +849,10 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 	char **q;
 	const char *value;
 	fr_ipaddr_t ipaddr;
-	const CONF_PAIR *cp;
+	const CONF_PAIR *cp = NULL;
 	char ipbuf[128];
 
-	cp = cf_pair_find(cs, name);
+	if (cs) cp = cf_pair_find(cs, name);
 	if (cp) {
 		value = cp->value;
 
@@ -2398,25 +2434,25 @@ void cf_log_err(CONF_ITEM *ci, const char *fmt, ...)
 }
 
 
-void cf_log_info(UNUSED CONF_SECTION *cs, const char *fmt, ...)
+void cf_log_info(CONF_SECTION *cs, const char *fmt, ...)
 {
 	va_list ap;
 
 	va_start(ap, fmt);
-	if (debug_flag > 1 && cf_log_config) vradlog(L_DBG, fmt, ap);
+	if (debug_flag > 1 && cf_log_config && cs) vradlog(L_DBG, fmt, ap);
 	va_end(ap);
 }
 
 /*
  *	Wrapper to simplify the code.
  */
-void cf_log_module(UNUSED CONF_SECTION *cs, const char *fmt, ...)
+void cf_log_module(CONF_SECTION *cs, const char *fmt, ...)
 {
 	va_list ap;
 	char buffer[256];
 
 	va_start(ap, fmt);
-	if (debug_flag > 1 && cf_log_modules) {
+	if (debug_flag > 1 && cf_log_modules && cs) {
 		vsnprintf(buffer, sizeof(buffer), fmt, ap);
 
 		radlog(L_DBG, " Module: %s", buffer);
@@ -2424,6 +2460,12 @@ void cf_log_module(UNUSED CONF_SECTION *cs, const char *fmt, ...)
 	va_end(ap);
 }
 
+const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs)
+{
+	if (!cs) return NULL;
+
+	return cs->variables;
+}
 
 #if 0
 /*
