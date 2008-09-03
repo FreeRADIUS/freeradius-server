@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
+#include <freeradius-devel/radpaths.h>
 
 #ifdef HAVE_READLINE_READLINE_H
 #include <readline/readline.h>
@@ -99,12 +100,16 @@ int main(int argc, char **argv)
 	int sockfd, port;
 	char *line;
 	ssize_t len, size;
+	const char *file = RUNDIR "/radiusd/radiusd.sock";
 	char *p, buffer[2048];
 
-	if (argc == 1) {
-		fprintf(stderr, "Figure it out, einstein.\n");
-		exit(1);
+	if ((argc > 2) ||
+	    ((argc == 2) && (strcmp(argv[1], "-h") == 0))) {
+		printf("Usage: radmin [socket]\n");
+		exit(0);
 	}
+
+	if (argc == 2) file = argv[1];
 
 #ifdef HAVE_READLINE_READLINE_H
 	using_history();
@@ -114,7 +119,7 @@ int main(int argc, char **argv)
 	/*
 	 *	FIXME: Get destination from command line, if possible?
 	 */
-	sockfd = fr_domain_socket(argv[1]);
+	sockfd = fr_domain_socket(file);
 	if (sockfd < 0) {
 		exit(1);
 	}
