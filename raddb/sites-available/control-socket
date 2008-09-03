@@ -1,0 +1,28 @@
+# -*- text -*-
+######################################################################
+#
+#	Control socket interface.
+#
+#	HIGHLY experimental!  It should NOT be used in production
+#	environments.  There is VERY little security on the
+#	control socket, other than Unix file permissions.
+#
+#	This functionality is NOT enabled by default.
+#
+#	See also the "radmin" program, which is used to communicate
+#	with the server over the control socket.
+#
+#	$Id$
+#
+######################################################################
+listen {
+	#
+	#  Listen on the control socket.
+	#
+	type = control
+
+	#
+	#  Socket location.
+	#
+	socket = ${run_dir}/radiusd.sock
+}
