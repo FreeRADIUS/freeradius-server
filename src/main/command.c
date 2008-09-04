@@ -24,10 +24,18 @@
 #ifdef WITH_COMMAND_SOCKET
 
 #include <freeradius-devel/modpriv.h>
-/*
- *	FIXME: configure checks.
- */
+
+#ifdef HAVE_SYS_UN_H
 #include <sys/un.h>
+#endif
+
+#ifdef HAVE_PWD_H
+#include <pwd.h>
+#endif
+
+#ifdef HAVE_GRP_H
+#include <grp.h>
+#endif
 
 typedef struct fr_command_table_t fr_command_table_t;
 
@@ -44,18 +52,52 @@ struct fr_command_table_t {
 
 typedef struct fr_command_socket_t {
 	char	*path;
+	uid_t	uid;
+	gid_t	gid;
+	char	*uid_name;
+	char	*gid_name;
 	char user[256];
 	ssize_t offset;
 	ssize_t next;
 	char buffer[COMMAND_BUFFER_SIZE];
 } fr_command_socket_t;
 
+static const CONF_PARSER command_config[] = {
+  { "socket",  PW_TYPE_STRING_PTR,
+    offsetof(fr_command_socket_t, path), NULL, "${run_dir}/radiusd.sock"},
+  { "uid",  PW_TYPE_STRING_PTR,
+    offsetof(fr_command_socket_t, uid_name), NULL, NULL},
+  { "gid",  PW_TYPE_STRING_PTR,
+    offsetof(fr_command_socket_t, gid_name), NULL, NULL},
+
+  { NULL, -1, 0, NULL, NULL }		/* end the list */
+};
 
 static ssize_t cprintf(rad_listen_t *listener, const char *fmt, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 3)))
 #endif
 ;
+
+#ifndef HAVE_GETPEEREID
+static int getpeereid(int s, uid_t *euid, gid_t *egid)
+{
+#ifndef SO_PEERCRED
+	return -1;
+#else
+	struct ucred cr;
+	socklen_t cl = sizeof(cr);
+	
+	if (getsockopt(s, SOL_SOCKET, SO_PEERCRED, &cr, &cl) < 0) {
+		return -1;
+	}
+
+	*euid = cr.uid;
+	*egid = cr.gid;
+	return 0;
+#endif /* SO_PEERCRED */
+}
+#endif /* HAVE_GETPEEREID */
 
 
 static int fr_server_domain_socket(const char *path)
@@ -97,6 +139,17 @@ static int fr_server_domain_socket(const char *path)
 		close(sockfd);
 		return -1;
         }
+
+	/*
+	 *	FIXME: There's a race condition here.  But Linux
+	 *	doesn't seem to permit fchmod on domain sockets.
+	 */
+	if (chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) < 0) {
+		radlog(L_ERR, "Failed setting permissions on %s: %s",
+		       path, strerror(errno));
+		close(sockfd);
+		return -1;
+	}
 
 	if (listen(sockfd, 8) < 0) {
 		fprintf(stderr, "Failed listening to %s: %s\n",
@@ -584,16 +637,50 @@ static fr_command_table_t command_table[] = {
 /*
  *	FIXME: Unix domain sockets!
  */
-static int command_socket_parse(UNUSED CONF_SECTION *cs, rad_listen_t *this)
+static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
-	int rcode;
 	fr_command_socket_t *sock;
 
 	sock = this->data;
 
-	rcode = cf_item_parse(cs, "socket", PW_TYPE_STRING_PTR,
-			      &sock->path, "${run_dir}/radiusd.sock");
-	if (rcode < 0) return -1;
+	if (cf_section_parse(cs, sock, command_config) < 0) {
+		return -1;
+	}
+
+#if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
+	if (sock->uid_name) {
+		struct passwd *pw;
+		
+		pw = getpwnam(sock->uid_name);
+		if (!pw) {
+			radlog(L_ERR, "Failed getting uid for %s: %s",
+			       sock->uid_name, strerror(errno));
+			return -1;
+		}
+
+		sock->uid = pw->pw_uid;
+	}
+
+	if (sock->gid_name) {
+		struct group *gr;
+
+		gr = getgrnam(sock->gid_name);
+		if (!gr) {
+			radlog(L_ERR, "Failed getting gid for %s: %s",
+			       sock->gid_name, strerror(errno));
+			return -1;
+		}
+		sock->gid = gr->gr_gid; 
+	}
+
+#else  /* can't get uid or gid of connecting user */
+
+	if (sock->uid_name || sock->gid_name) {
+		radlog(L_ERR, "System does not support uid or gid authentication for sockets");
+		return -1;
+	}
+
+#endif
 
 	/*
 	 *	FIXME: check for absolute pathnames?
@@ -861,8 +948,7 @@ static int command_domain_accept(rad_listen_t *listener,
 	rad_listen_t *this;
 	socklen_t salen;
 	struct sockaddr_storage src;
-	listen_socket_t *sock;
-	fr_command_socket_t *co;
+	fr_command_socket_t *sock = listener->data;
 	
 	salen = sizeof(src);
 
@@ -881,14 +967,34 @@ static int command_domain_accept(rad_listen_t *listener,
 		return -1;
 	}
 
-#if 0
-struct ucred cr;
- int cl=sizeof(cr);
+	/*
+	 *	Perform user authentication.
+	 */
+	if (sock->uid_name || sock->gid_name) {
+		uid_t uid;
+		gid_t gid;
 
- if (getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &cr, &cl)==0) {
-   printf("Peer's pid=%d, uid=%d, gid=%d\n",
-           cr.pid, cr.uid, cr.gid);
-#endif
+		if (getpeereid(listener->fd, &uid, &gid) < 0) {
+			radlog(L_ERR, "Failed getting peer credentials for %s: %s",
+			       sock->path, strerror(errno));
+			close(newfd);
+			return -1;
+		}
+
+		if (sock->uid_name && (sock->uid != uid)) {
+			radlog(L_ERR, "Unauthorized connection to %s from uid %ld",
+			       sock->path, (long int) uid);
+			close(newfd);
+			return -1;
+		}
+
+		if (sock->gid_name && (sock->gid != gid)) {
+			radlog(L_ERR, "Unauthorized connection to %s from gid %ld",
+			       sock->path, (long int) gid);
+			close(newfd);
+			return -1;
+		}
+	}
 
 	/*
 	 *	Add the new listener.
@@ -900,17 +1006,14 @@ struct ucred cr;
 	 *	Copy everything, including the pointer to the socket
 	 *	information.
 	 */
-	free(this->data);
-	this->data = rad_malloc(sizeof(fr_command_socket_t));
 	sock = this->data;
-	memcpy(this->data, listener->data, sizeof(*sock));
 	memcpy(this, listener, sizeof(*this));
 	this->next = NULL;
 	this->data = sock;	/* fix it back */
 
-	co = this->data;
-	co->offset = 0;
-	co->user[0] = '\0';
+	sock->offset = 0;
+	sock->user[0] = '\0';
+	sock->path = ((fr_command_socket_t *) listener->data)->path;
 
 	this->fd = newfd;
 	this->recv = command_domain_recv;
