@@ -227,6 +227,12 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
+	if ((mi->entry->module->type & RLM_TYPE_HUP_SAFE) == 0) {
+		cprintf(listener, "ERROR: Module %s cannot be hup'd\n",
+			argv[0]);
+		return 0;
+	}
+
 	if (!module_hup_module(mi->cs, mi, time(NULL))) {
 		cprintf(listener, "ERROR: Failed to reload module\n");
 		return 0;
@@ -256,13 +262,6 @@ static int command_uptime(rad_listen_t *listener,
 	return 1;		/* success */
 }
 
-static int command_show_config(UNUSED rad_listen_t *listener,
-			       UNUSED int argc, UNUSED char *argv[])
-{
-
-	return 1;		/* success */
-}
-
 static const char *tabs = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
 /*
@@ -277,6 +276,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 	const char *name1 = cf_section_name1(cs);
 	const char *name2 = cf_section_name2(cs);
 	const CONF_PARSER *variables = cf_section_parse_table(cs);
+	char buffer[256];
 
 	if (name2) {
 		cprintf(listener, "%.*s%s %s {\n", indent, tabs, name1, name2);
@@ -308,7 +308,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 		} else {
 			data = (((char *)base) + variables[i].offset);
 		}
-		
+
 		switch (variables[i].type) {
 		default:
 			cprintf(listener, "%.*s%s = ?\n", indent, tabs,
@@ -320,6 +320,14 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 				variables[i].name, *(int *) data);
 			break;
 			
+		case PW_TYPE_IPADDR:
+			inet_ntop(AF_INET, data, buffer, sizeof(buffer));
+			break;
+
+		case PW_TYPE_IPV6ADDR:
+			inet_ntop(AF_INET6, data, buffer, sizeof(buffer));
+			break;
+
 		case PW_TYPE_BOOLEAN:
 			cprintf(listener, "%.*s%s = %s\n", indent, tabs,
 				variables[i].name, 
@@ -490,12 +498,15 @@ static fr_command_table_t command_table_show_module[] = {
 	{ "config",
 	  "show module config <module> - show configuration for <module>",
 	  command_show_module_config, NULL },
-	{ "methods",
-	  "show module methods <module> - show sections where <module> may be used",
-	  command_show_module_methods, NULL },
 	{ "flags",
 	  "show module flags <module> - show other module properties",
 	  command_show_module_flags, NULL },
+	{ "list",
+	  "shows list of loaded modules",
+	  command_show_modules, NULL },
+	{ "methods",
+	  "show module methods <module> - show sections where <module> may be used",
+	  command_show_module_methods, NULL },
 
 	{ NULL, NULL, NULL, NULL }
 };
@@ -503,8 +514,8 @@ static fr_command_table_t command_table_show_module[] = {
 
 static fr_command_table_t command_table_show[] = {
 	{ "config",
-	  "show config - show configuration stuff",
-	  command_show_config, NULL },
+	  "show config <module> - show configuration for module",
+	  command_show_module_config, NULL },
 	{ "module",
 	  "show module <command> - do sub-command of module",
 	  NULL, command_table_show_module },
@@ -908,7 +919,8 @@ static int command_domain_recv(rad_listen_t *listener,
 	 *	No such command
 	 */
 	if (!len) {
-		if (strcmp(argv[0], "help") == 0) {
+		if ((strcmp(argv[0], "help") == 0) ||
+		    (strcmp(argv[0], "?") == 0)) {
 		do_help:
 			for (i = 0; table[i].command != NULL; i++) {
 				if (table[i].help) {
