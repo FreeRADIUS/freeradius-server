@@ -599,6 +599,8 @@ AC_CHECK_HEADERS( \
 	fcntl.h \
 	sys/fcntl.h \
 	sys/prctl.h \
+	sys/un.h \
+	readline/readline.h \
 	glob.h \
 	prot.h \
 	pwd.h \

@@ -21678,6 +21678,8 @@ fi
 
 
 
+
+
 for ac_header in \
 	unistd.h \
 	crypt.h \
@@ -21707,6 +21709,8 @@ for ac_header in \
 	fcntl.h \
 	sys/fcntl.h \
 	sys/prctl.h \
+	sys/un.h \
+	readline/readline.h \
 	glob.h \
 	prot.h \
 	pwd.h \
