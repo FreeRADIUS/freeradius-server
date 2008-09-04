@@ -533,7 +533,7 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 		data->pool_name = strdup("ippool");
 
 	modinst = find_module_instance(cf_section_find("modules"),
-				       data->sql_instance_name);
+				       data->sql_instance_name, 1);
 	if (!modinst) {
 		radlog(L_ERR, "sqlippool_instantiate: failed to find sql instance named %s", data->sql_instance_name);
 		sqlippool_detach(data);

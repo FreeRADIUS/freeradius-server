@@ -321,7 +321,7 @@ static int sqlhpwippool_instantiate(CONF_SECTION *conf, void **instance)
 
 	data->sincesync = 0;
 
-	modinst = find_module_instance(cf_section_find("modules"), (data->sqlinst_name) );
+	modinst = find_module_instance(cf_section_find("modules"), (data->sqlinst_name), 1 );
 	if (!modinst) {
 		nvp_log(__LINE__, data, L_ERR,
 		        "sqlhpwippool_instantiate(): cannot find module instance "
