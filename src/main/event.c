@@ -2435,13 +2435,9 @@ static void handle_signal_self(int flag)
 		for (this = mainconfig.listen;
 		     this != NULL;
 		     this = this->next) {
-			if (this->type != RAD_LISTEN_PROXY) continue;
-			
-			if (!fr_event_fd_insert(el, 0, this->fd,
-						event_socket_handler, this)) {
-				radlog(L_ERR, "Failed remembering handle for proxy socket!");
-				exit(1);
-			}
+			if (this->status == RAD_LISTEN_STATUS_KNOWN) continue;
+
+			event_new_fd(this);
 		}
 	}
 }
@@ -2783,6 +2779,8 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 			       buffer);
 			exit(1);
 		}
+
+		this->status = RAD_LISTEN_STATUS_KNOWN;
 	}
 
 	if (has_detail_listener) {
