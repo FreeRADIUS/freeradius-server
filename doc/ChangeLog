@@ -17,6 +17,8 @@ FreeRADIUS 2.1.0 ; $Date$ , urgency=medium
 	  are not yet calculated.  See share/dictionary.wimax
 	* Added session resumption for PEAP and TTLS.
 	  See raddb/eap.conf, "cache" sub-section.
+	* Added "radmin" command-line tool for administering a running server.
+	  See "man radmin" and raddb/sites-available/control-socket.
 
 	Bug fixes
 	* Double escaping of '\\' in the "users" (and some other) files
