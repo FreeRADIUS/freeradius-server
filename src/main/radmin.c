@@ -99,6 +99,7 @@ static int fr_domain_socket(const char *path)
 int main(int argc, char **argv)
 {
 	int sockfd, port;
+	uint32_t magic;
 	char *line;
 	ssize_t len, size;
 	const char *file = RUNDIR "/radiusd/radiusd.sock";
@@ -124,6 +125,33 @@ int main(int argc, char **argv)
 	if (sockfd < 0) {
 		exit(1);
 	}
+
+	/*
+	 *	Read initial magic && version information.
+	 */
+	for (size = 0; size < 8; size += len) {
+		len = read(sockfd, buffer + size, 8 - size);
+		if (len < 0) {
+			fprintf(stderr, "Failed reading initial data from socket: %s\n",
+				strerror(errno));
+			exit(1);
+		}
+	}
+
+	memcpy(&magic, buffer, 4);
+	magic = ntohl(magic);
+	if (magic != 0xf7eead15) {
+		fprintf(stderr, "Socket is not FreeRADIUS administration socket\n");
+		exit(1);
+	}
+	
+	memcpy(&magic, buffer + 4, 4);
+	magic = ntohl(magic);
+	if (magic != 1) {
+		fprintf(stderr, "Socket version mismatch: Need 1, got %d\n",
+			magic);
+		exit(1);
+	}	
 
 	/*
 	 *	FIXME: Do login?

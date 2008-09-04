@@ -945,6 +945,7 @@ static int command_domain_accept(rad_listen_t *listener,
 				 UNUSED REQUEST **prequest)
 {
 	int newfd;
+	uint32_t magic;
 	rad_listen_t *this;
 	socklen_t salen;
 	struct sockaddr_storage src;
@@ -997,6 +998,25 @@ static int command_domain_accept(rad_listen_t *listener,
 	}
 
 	/*
+	 *	Write 32-bit magic number && version information.
+	 */
+	magic = htonl(0xf7eead15);
+	if (write(newfd, &magic, 4) < 0) {
+		radlog(L_ERR, "Failed writing initial data to socket: %s",
+		       strerror(errno));
+		close(newfd);
+		return -1;
+	}
+	magic = htonl(1);	/* protocol version */
+	if (write(newfd, &magic, 4) < 0) {
+		radlog(L_ERR, "Failed writing initial data to socket: %s",
+		       strerror(errno));
+		close(newfd);
+		return -1;
+	}
+
+
+	/*
 	 *	Add the new listener.
 	 */
 	this = listen_alloc(listener->type);
@@ -1017,11 +1037,6 @@ static int command_domain_accept(rad_listen_t *listener,
 
 	this->fd = newfd;
 	this->recv = command_domain_recv;
-
-	/*
-	 *	FIXME: set O_NONBLOCK on the accept'd fd.
-	 *	See djb's portability rants for details.
-	 */
 
 	/*
 	 *	Tell the event loop that we have a new FD
