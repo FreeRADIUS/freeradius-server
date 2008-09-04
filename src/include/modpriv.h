@@ -30,6 +30,8 @@ typedef struct module_entry_t {
 	lt_dlhandle		handle;
 } module_entry_t;
 
+typedef struct fr_module_hup_t fr_module_hup_t;
+
 /*
  *	Per-instance data structure, to correlate the modules
  *	with the instance names (may NOT be the module names!),
@@ -43,7 +45,7 @@ typedef struct module_instance_t {
 	pthread_mutex_t		*mutex;
 #endif
 	CONF_SECTION		*cs;
-	void			*old_insthandle[16];
+	fr_module_hup_t	       	*mh;
 } module_instance_t;
 
 module_instance_t *find_module_instance(CONF_SECTION *, const char *instname,

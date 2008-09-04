@@ -54,6 +54,14 @@ typedef struct section_type_value_t {
 	int		attr;
 } section_type_value_t;
 
+struct fr_module_hup_t {
+	module_instance_t	*mi;
+	time_t			when;
+	void			*insthandle;
+	fr_module_hup_t		*next;
+};
+
+
 /*
  *	Ordered by component
  */
@@ -166,6 +174,38 @@ static int module_instance_cmp(const void *one, const void *two)
 }
 
 
+static void module_instance_free_old(CONF_SECTION *cs, module_instance_t *node,
+				     time_t when)
+{
+	fr_module_hup_t *mh, **last;
+
+	/*
+	 *	Walk the list, freeing up old instances.
+	 */
+	last = &(node->mh);
+	while (*last) {
+		mh = *last;
+
+		/*
+		 *	Free only every 60 seconds.
+		 */
+		if ((when - mh->when) < 60) {
+			last = &(mh->next);
+			continue;
+		}
+
+		cf_section_parse_free(cs, mh->insthandle);
+		
+		if (node->entry->module->detach) {
+			(node->entry->module->detach)(mh->insthandle);
+		}
+
+		*last = mh->next;
+		free(mh);
+	}
+}
+
+
 /*
  *	Free a module instance.
  */
@@ -173,15 +213,10 @@ static void module_instance_free(void *data)
 {
 	module_instance_t *this = data;
 
-	if (this->entry->module->detach) {
-		int i;
+	module_instance_free_old(this->cs, this, time(NULL) + 100);
 
+	if (this->entry->module->detach) {
 		(this->entry->module->detach)(this->insthandle);
-		for (i = 0; i < 16; i++) {
-			if (this->old_insthandle[i]) {
-				(this->entry->module->detach)(this->old_insthandle[i]);
-			}
-		}
 	}
 
 #ifdef HAVE_PTHREAD_H
@@ -888,13 +923,11 @@ static int load_byserver(CONF_SECTION *cs)
 	return 0;
 }
 
-static int insthandle_counter = -1;
-static time_t hup_times[16];
 
 int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 {
-	int i;
 	void *insthandle = NULL;
+	fr_module_hup_t *mh;
 
 	if (!node ||
 	    !node->entry->module->instantiate ||
@@ -913,35 +946,18 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 
 	radlog(L_INFO, " Module: Reloaded module \"%s\"", node->name);
 
-	/*
-	 *	Free all configurations old enough to be
-	 *	deleted.  This is slightly wasteful, but easy
-	 *	to do.
-	 *
-	 *	We permit HUPs every 5s, and we cache the last
-	 *	16 configurations.  So the current entry at
-	 *	insthandle_counter will either be empty, OR will
-	 *	be at least (5*16) = 80s old.  The following check
-	 *	ensures that it will be deleted.
-	 */
-	for (i = 0; i < 16; i++) {
-		if ((int) (when - hup_times[insthandle_counter]) < 60)
-			continue;
-		
-		if (!node->old_insthandle[i]) continue;
-		
-		cf_section_parse_free(cs, node->old_insthandle[i]);
-		
-		if (node->entry->module->detach) {
-			(node->entry->module->detach)(node->old_insthandle[i]);
-		}
-		node->old_insthandle[i] = NULL;
-	}
-	
+	module_instance_free_old(cs, node, when);
+
 	/*
 	 *	Save the old instance handle for later deletion.
 	 */
-	node->old_insthandle[insthandle_counter] = node->insthandle;
+	mh = rad_malloc(sizeof(*mh));
+	mh->mi = node;
+	mh->when = when;
+	mh->insthandle = node->insthandle;
+	mh->next = node->mh;
+	node->mh = mh;
+
 	node->insthandle = insthandle;
 	
 	/*
@@ -961,11 +977,6 @@ int module_hup(CONF_SECTION *modules)
 	module_instance_t *node;
 
 	if (!modules) return 0;
-
-	if (insthandle_counter < 0) {
-		memset(hup_times, 0, sizeof(hup_times));
-		insthandle_counter = 0;
-	}
 
 	when = time(NULL);
 
@@ -992,13 +1003,6 @@ int module_hup(CONF_SECTION *modules)
 
 		module_hup_module(cs, node, when);
 	}
-
-	/*
-	 *	Remember when we were last HUP'd.
-	 */
-	hup_times[insthandle_counter] = when;
-	insthandle_counter++;
-	insthandle_counter &= 0x0f;
 
 	return 1;
 }
