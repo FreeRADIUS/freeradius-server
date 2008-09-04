@@ -119,6 +119,7 @@ static int fr_server_domain_socket(const char *path)
 		return -1;
         }
 
+	memset(&salocal, 0, sizeof(salocal));
         salocal.sun_family = AF_UNIX;
 	memcpy(salocal.sun_path, path, len); /* not zero terminated */
 	
