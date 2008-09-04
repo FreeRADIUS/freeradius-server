@@ -544,6 +544,9 @@ AC_CHECK_LIB(pcap, pcap_open_live,
 	],
 	[ AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer.]) ])
 
+AC_CHECK_LIB(readline, readline,
+	[ LIBREADLINE="-lreadline" AC_SUBST(LIBREADLINE) ])
+
 dnl #############################################################
 dnl #
 dnl #  3. Checks for header files
@@ -824,6 +827,7 @@ AC_CHECK_FUNCS( \
 	getnameinfo \
 	closefrom \
 	gettimeofday \
+	getpeereid \
 	strlcat \
 	strlcpy
 )
