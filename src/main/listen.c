@@ -94,17 +94,20 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	rad_assert(listener != NULL);
 	rad_assert(ipaddr != NULL);
 
-	rad_assert((listener->type == RAD_LISTEN_AUTH) ||
+	rad_assert((listener->type == RAD_LISTEN_AUTH)
 #ifdef WITH_STATS
-		   (listener->type == RAD_LISTEN_NONE) ||
+		   || (listener->type == RAD_LISTEN_NONE)
 #endif
 #ifdef WITH_ACCOUNTING
-		   (listener->type == RAD_LISTEN_ACCT) ||
+		   || (listener->type == RAD_LISTEN_ACCT)
 #endif
 #ifdef WITH_VMPS
-		   (listener->type == RAD_LISTEN_VQP) ||
+		   || (listener->type == RAD_LISTEN_VQP)
 #endif
-		   (listener->type == RAD_LISTEN_DHCP));
+#ifdef WITH_DHCP
+		   || (listener->type == RAD_LISTEN_DHCP)
+#endif
+		   );
 
 	clients = ((listen_socket_t *)listener->data)->clients;
 
@@ -1048,6 +1051,9 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	  stats_socket_recv, auth_socket_send,
 	  socket_print, client_socket_encode, client_socket_decode },
 #else
+	/*
+	 *	This always gets defined.
+	 */
 	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
 #endif
 
@@ -1056,8 +1062,6 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ common_socket_parse, NULL,
 	  proxy_socket_recv, proxy_socket_send,
 	  socket_print, proxy_socket_encode, proxy_socket_decode },
-#else
-	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
 	/* authentication */
@@ -1070,8 +1074,6 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ common_socket_parse, NULL,
 	  acct_socket_recv, acct_socket_send,
 	  socket_print, client_socket_encode, client_socket_decode},
-#else
-	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
 #ifdef WITH_DETAIL
@@ -1079,8 +1081,6 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ detail_parse, detail_free,
 	  detail_recv, detail_send,
 	  detail_print, detail_encode, detail_decode },
-#else
-	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
 #ifdef WITH_VMPS
@@ -1088,8 +1088,6 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ common_socket_parse, NULL,
 	  vqp_socket_recv, vqp_socket_send,
 	  socket_print, vqp_socket_encode, vqp_socket_decode },
-#else
-	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
 #ifdef WITH_DHCP
@@ -1097,8 +1095,6 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ dhcp_socket_parse, NULL,
 	  dhcp_socket_recv, dhcp_socket_send,
 	  socket_print, dhcp_socket_encode, dhcp_socket_decode },
-#else
-	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
 #ifdef WITH_COMMAND_SOCKET
@@ -1106,8 +1102,6 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	{ command_socket_parse, NULL,
 	  command_domain_accept, command_domain_send,
 	  command_socket_print, command_socket_encode, command_socket_decode },
-#else
-	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},
 #endif
 
 };
@@ -1310,10 +1304,18 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 	case RAD_LISTEN_NONE:
 #endif
 	case RAD_LISTEN_AUTH:
+#ifdef WITH_ACCOUNTING
 	case RAD_LISTEN_ACCT:
+#endif
+#ifdef WITH_PROXY
 	case RAD_LISTEN_PROXY:
+#endif
+#ifdef WITH_VMPS
 	case RAD_LISTEN_VQP:
+#endif
+#ifdef WITH_DHCP
 	case RAD_LISTEN_DHCP:
+#endif
 		this->data = rad_malloc(sizeof(listen_socket_t));
 		memset(this->data, 0, sizeof(listen_socket_t));
 		break;
