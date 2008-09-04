@@ -1,3 +1,26 @@
+freeradius (2.1.0-0) unstable; urgency=medium
+
+  * Clients may now be defined dynamically, based on IP address.  See raddb/sites-available/dynamic-clients.
+  * SNMP support is now available through an experimental Perl script.  See scripts/snmp-proxy/README
+  * SNMP statistics are available through Status-Server packets.  See raddb/sites-available/status
+  * Added more Microsoft attributes from bug #568.
+  * The "linelog" module has more functionality and flexibility. See raddb/modules/linelog.
+  * The debugging output has been sanitized.  It should be much more readable.
+  * Debug logs can now be turned on/off while the server is running, for a user, group, realm, etc.  See the "log" section of radiusd.conf.
+  * Added support for WiMAX Forum attributes.  The dynamic keys are not yet calculated.  See share/dictionary.wimax
+  * Added session resumption for PEAP and TTLS.  See raddb/eap.conf, "cache" sub-section.
+  * Added "radmin" command-line tool for administering a running server.  See "man radmin" and raddb/sites-available/control-socket.
+  * Double escaping of '\\' in the "users" (and some other) files has been fixed.  If you have '\\' in the "users" file, your configuration WILL NEED TO BE CHECKED, AND FIXED!
+  * Parse "security" section in radiusd.conf.  This was accidentally deleted in 2.0.5.  Closes bug #566.
+  * Bind to interface before IP, which allows DHCP sockets to listen on "*" for multiple interfaces.
+  * Fix handling of giaddr in DHCP responses.
+  * Corrected parsing of status_check in home_server so that it works.
+  * Fix hints so that "Puser" works again.
+  * Removed length restrictions on attribute names in the dictionaries.
+  * Update socket code to avoid C compiler optimizations.
+	
+ -- Alan DeKok <aland@freeradius.org>  Thu, 04 Sep 2008 16:08:30 +0100
+
 freeradius (2.0.5-0) unstable; urgency=medium
   * Permit SQL authorize_reply_query to be empty.
   * Allow setting response packet type in Post-Proxy-Type Fail handler.
