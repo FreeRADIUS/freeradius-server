@@ -32,12 +32,13 @@ RCSID("$Id$")
 #include <readline/history.h>
 #endif
 
-/*
- *	FIXME: configure checks.
- */
-#include <sys/types.h>
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif
+
+#ifdef HAVE_SYS_UN_H
 #include <sys/un.h>
+#endif
 
 
 static int fr_domain_socket(const char *path)
@@ -180,6 +181,21 @@ int main(int argc, char **argv)
 		memset(buffer, 0, sizeof(buffer));
 
 		while (port == 1) {
+			int rcode;
+			fd_set readfds;
+
+			FD_ZERO(&readfds);
+			FD_SET(sockfd, &readfds);
+
+			rcode = select(sockfd + 1, &readfds, NULL, NULL, NULL);
+			if (rcode < 0) {
+				if (errno == EINTR) continue;
+
+				fprintf(stderr, "Failed selecting: %s\n",
+					strerror(errno));
+				exit(1);
+			}
+
 			len = recv(sockfd, buffer + size,
 				   sizeof(buffer) - size - 1, MSG_DONTWAIT);
 			if (len < 0) {
