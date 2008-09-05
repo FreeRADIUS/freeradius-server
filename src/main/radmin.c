@@ -102,7 +102,7 @@ static int fr_domain_socket(const char *path)
 
 int main(int argc, char **argv)
 {
-	int argval;
+	int argval, quiet = 0;
 	int sockfd, port;
 	uint32_t magic;
 	char *line;
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 	const char *file = RUNDIR "/radiusd/radiusd.sock";
 	char *p, buffer[2048];
 
-	while ((argval = getopt(argc, argv, "hf:")) != EOF) {
+	while ((argval = getopt(argc, argv, "hf:q")) != EOF) {
 		switch(argval) {
 		case 'f':
 			file = optarg;
@@ -120,12 +120,20 @@ int main(int argc, char **argv)
 		case 'h':
 			printf("Usage: radmin [-f socket]\n");
 			exit(0);
+
+		case 'q':
+			quiet = 1;
+			break;
 		}
 	}
 
+	if (!isatty(STDIN_FILENO)) quiet = 1;
+
 #ifdef HAVE_READLINE_READLINE_H
-	using_history();
-	rl_bind_key('\t', rl_insert);
+	if (!quiet) {
+		using_history();
+		rl_bind_key('\t', rl_insert);
+	}
 #endif
 
 	/*
@@ -163,44 +171,49 @@ int main(int argc, char **argv)
 		exit(1);
 	}	
 
-	printf("radmin " RADIUSD_VERSION " - FreeRADIUS Server administration tool.\n");
-	printf("Copyright (C) 2008 The FreeRADIUS server project and contributors.\n");
-	printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
-	printf("PARTICULAR PURPOSE.\n");
-	printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
-	printf("GNU General Public License v2.\n");
+	if (!quiet) {
+		printf("radmin " RADIUSD_VERSION " - FreeRADIUS Server administration tool.\n");
+		printf("Copyright (C) 2008 The FreeRADIUS server project and contributors.\n");
+		printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
+		printf("PARTICULAR PURPOSE.\n");
+		printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
+		printf("GNU General Public License v2.\n");
+	}
 
 	/*
 	 *	FIXME: Do login?
 	 */
 
 	while (1) {
+		if (!quiet) {
 #ifndef HAVE_READLINE_READLINE_H
-		printf("radmin> ");
-		fflush(stdout);
-
-		line = fgets(buffer, sizeof(buffer), stdin);
-		if (!line) break;
-
-		p = strchr(buffer, '\n');
-		if (!p) {
-			fprintf(stderr, "line too long\n");
-			exit(1);
-		}
-
-		*p = '\0';
+			printf("radmin> ");
+			fflush(stdout);
 #else
-		line = readline("radmin> ");
-
-		if (!line) break;
-		
-		if (!*line) {
-			free(line);
-			continue;
-		}
-
-		add_history(line);
+			line = readline("radmin> ");
+			
+			if (!line) break;
+			
+			if (!*line) {
+				free(line);
+				continue;
+			}
+			
+			add_history(line);
 #endif
+		} else {	/* quiet, or no readline */
+			
+			line = fgets(buffer, sizeof(buffer), stdin);
+			if (!line) break;
+			
+			p = strchr(buffer, '\n');
+			if (!p) {
+				fprintf(stderr, "line too long\n");
+				exit(1);
+			}
+			
+			*p = '\0';
+		}
 
 		/*
 		 *	Write the text to the socket.
