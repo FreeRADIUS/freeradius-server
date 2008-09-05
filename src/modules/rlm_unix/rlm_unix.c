@@ -516,9 +516,8 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 */
 	if (nas_address == 0) {
 		nas_address = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
-
-		s = request->client->shortname;
 	}
+	s = request->client->shortname;
 	if (!s || s[0] == 0) s = uue(&(nas_address));
 
 #ifdef __linux__
