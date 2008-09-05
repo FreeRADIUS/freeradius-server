@@ -553,6 +553,11 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 		return 0;
 	}
 
+	if ((mi->entry->module->type & RLM_TYPE_HUP_SAFE) == 0) {
+		cprintf(listener, "ERROR: Cannot change configuration of module as it is cannot be HUP'd.\n");
+		return 0;
+	}
+
 	variables = cf_section_parse_table(mi->cs);
 	if (!variables) {
 		cprintf(listener, "ERROR: Cannot find configuration for module\n");
@@ -601,7 +606,6 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	 *	If it's a string, look for leading single/double quotes,
 	 *	end then call tokenize functions???
 	 */
-#if 0
 	cf_pair_replace(mi->cs, cp, argv[2]);
 
 	rcode = cf_item_parse(mi->cs, argv[1], variables[i].type,
@@ -610,7 +614,6 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 		cprintf(listener, "ERROR: Failed to parse value\n");
 		return 0;
 	}
-#endif
 
 	return 1;		/* success */
 }
@@ -1041,6 +1044,7 @@ static int command_domain_accept(rad_listen_t *listener,
 	 */
 	sock = this->data;
 	memcpy(this, listener, sizeof(*this));
+	this->status = RAD_LISTEN_STATUS_INIT;
 	this->next = NULL;
 	this->data = sock;	/* fix it back */
 
