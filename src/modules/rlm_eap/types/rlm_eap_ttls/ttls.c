@@ -1006,7 +1006,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	vp = pairmake("Freeradius-Proxied-T<o", "127.0.0.1", T_OP_EQ);
+	vp = pairmake("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
 	if (vp) {
 		pairadd(&fake->packet->vps, vp);
 	}
