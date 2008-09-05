@@ -354,6 +354,7 @@ rm -rf $RPM_BUILD_ROOT
 /usr/sbin/radiusd
 /usr/sbin/radrelay
 /usr/sbin/radwatch
+/usr/sbin/radmin
 # man-pages
 %doc %{_mandir}/man1/*
 %doc %{_mandir}/man5/*
