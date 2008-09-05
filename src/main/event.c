@@ -55,7 +55,7 @@ static struct timeval		now;
 time_t				fr_start_time;
 static int			have_children;
 static int			has_detail_listener = FALSE;
-static int			just_started = FALSE;
+static int			just_started = TRUE;
 
 #ifndef __MINGW32__
 static int self_pipe[2];
@@ -2321,8 +2321,11 @@ void event_new_fd(rad_listen_t *this)
 	this->print(this, buffer, sizeof(buffer));
 	
 	if (this->status == RAD_LISTEN_STATUS_INIT) {
-		DEBUG2(" ... adding new socket %s", buffer);
-		
+		if (just_started) {
+			DEBUG("Listening on %s", buffer);
+		} else {
+			DEBUG2(" ... adding new socket %s", buffer);
+		}
 		if (!fr_event_fd_insert(el, 0, this->fd,
 					event_socket_handler, this)) {
 			radlog(L_ERR, "Failed remembering handle for proxy socket!");
@@ -2752,7 +2755,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 #endif
 
 		default:
-			DEBUG("Listening on %s", buffer);
 			break;
 		}
 
@@ -2765,22 +2767,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 			continue;
 		}
 
-		/*
-		 *	The socket is open.  It MUST be a socket,
-		 *	as we don't pre-open the detail files (yet).
-		 *
-		 *	FIXME: if we DO open the detail files automatically,
-		 *	then much of this code becomes simpler.
-		 */
-		if (!fr_event_fd_insert(el, 0, this->fd,
-					  event_socket_handler, this)) {
-			this->print(this, buffer, sizeof(buffer));
-			radlog(L_ERR, "Failed creating handler for socket %s",
-			       buffer);
-			exit(1);
-		}
-
-		this->status = RAD_LISTEN_STATUS_KNOWN;
+		event_new_fd(this);
 	}
 
 	if (has_detail_listener) {
@@ -2868,8 +2855,6 @@ void radius_event_free(void)
 int radius_event_process(void)
 {
 	if (!el) return 0;
-
-	just_started = TRUE;
 
 	return fr_event_loop(el);
 }
