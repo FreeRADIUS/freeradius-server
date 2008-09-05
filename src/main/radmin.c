@@ -40,6 +40,10 @@ RCSID("$Id$")
 #include <sys/un.h>
 #endif
 
+#ifdef HAVE_GETOPT_H
+#include <getopt.h>
+#endif
+
 
 static int fr_domain_socket(const char *path)
 {
@@ -98,6 +102,7 @@ static int fr_domain_socket(const char *path)
 
 int main(int argc, char **argv)
 {
+	int argval;
 	int sockfd, port;
 	uint32_t magic;
 	char *line;
@@ -105,13 +110,18 @@ int main(int argc, char **argv)
 	const char *file = RUNDIR "/radiusd/radiusd.sock";
 	char *p, buffer[2048];
 
-	if ((argc > 2) ||
-	    ((argc == 2) && (strcmp(argv[1], "-h") == 0))) {
-		printf("Usage: radmin [socket]\n");
-		exit(0);
-	}
+	while ((argval = getopt(argc, argv, "hf:")) != EOF) {
+		switch(argval) {
+		case 'f':
+			file = optarg;
+			break;
 
-	if (argc == 2) file = argv[1];
+		default:
+		case 'h':
+			printf("Usage: radmin [-f socket]\n");
+			exit(0);
+		}
+	}
 
 #ifdef HAVE_READLINE_READLINE_H
 	using_history();
@@ -153,13 +163,20 @@ int main(int argc, char **argv)
 		exit(1);
 	}	
 
+	printf("radmin " RADIUSD_VERSION " - FreeRADIUS Server administration tool.\n");
+	printf("Copyright (C) 2008 The FreeRADIUS server project and contributors.\n");
+	printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
+	printf("PARTICULAR PURPOSE.\n");
+	printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
+	printf("GNU General Public License v2.\n");
+
 	/*
 	 *	FIXME: Do login?
 	 */
 
 	while (1) {
 #ifndef HAVE_READLINE_READLINE_H
-		fprintf(stdout, "radmin> ");
+		printf("radmin> ");
 		fflush(stdout);
 
 		line = fgets(buffer, sizeof(buffer), stdin);
