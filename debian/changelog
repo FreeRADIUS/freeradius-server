@@ -19,7 +19,7 @@ freeradius (2.1.0-0) unstable; urgency=medium
   * Removed length restrictions on attribute names in the dictionaries.
   * Update socket code to avoid C compiler optimizations.
 	
- -- Alan DeKok <aland@freeradius.org>  Thu, 04 Sep 2008 16:08:30 +0100
+ -- Alan DeKok <aland@freeradius.org>  Fri, Sep 5 13:20:01 +0100
 
 freeradius (2.0.5-0) unstable; urgency=medium
   * Permit SQL authorize_reply_query to be empty.

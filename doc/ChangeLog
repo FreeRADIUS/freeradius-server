@@ -1,4 +1,4 @@
-FreeRADIUS 2.1.0 ; $Date$ , urgency=medium
+FreeRADIUS 2.1.0 Fri Sep  5 13:20:01 CEST 2008;  , urgency=medium
 	Feature improvements
 	* Clients may now be defined dynamically, based on IP address.
 	  See raddb/sites-available/dynamic-clients.
