@@ -47,7 +47,7 @@ RCSID("$Id$")
 /*
  *	For configuration file stuff.
  */
-const char *radius_dir = NULL;
+const char *radius_dir = RADDBDIR;
 const char *progname = "radmin";
 
 /*
@@ -74,13 +74,13 @@ static int fr_domain_socket(const char *path)
 
 	len = strlen(path);
 	if (len >= sizeof(saremote.sun_path)) {
-		fprintf(stderr, "Path too long in filename\n");
+		fprintf(stderr, "%s: Path too long in filename\n", progname);
 		return -1;
 	}
 
         if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		fprintf(stderr, "Failed creating socket: %s\n",
-			strerror(errno));
+		fprintf(stderr, "%s: Failed creating socket: %s\n",
+			progname, strerror(errno));
 		return -1;
         }
 
@@ -90,8 +90,8 @@ static int fr_domain_socket(const char *path)
 	socklen = sizeof(saremote.sun_family) + len;
 
         if (connect(sockfd, (struct sockaddr *)&saremote, socklen) < 0) {
-		fprintf(stderr, "Failed connecting to %s: %s\n",
-			path, strerror(errno));
+		fprintf(stderr, "%s: Failed connecting to %s: %s\n",
+			progname, path, strerror(errno));
 		close(sockfd);
 		return -1;
         }
@@ -101,16 +101,16 @@ static int fr_domain_socket(const char *path)
 		int flags;
 		
 		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
-			fprintf(stderr, "Failure getting socket flags: %s",
-				strerror(errno));
+			fprintf(stderr, "%s: Failure getting socket flags: %s",
+				progname, strerror(errno));
 			close(sockfd);
 			return -1;
 		}
 		
 		flags |= O_NONBLOCK;
 		if( fcntl(sockfd, F_SETFL, flags) < 0) {
-			fprintf(stderr, "Failure setting socket flags: %s",
-				strerror(errno));
+			fprintf(stderr, "%s: Failure setting socket flags: %s",
+				progname, strerror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -120,35 +120,57 @@ static int fr_domain_socket(const char *path)
 	return sockfd;
 }
 
+static int usage(void)
+{
+	printf("Usage: %s [ -d raddb_dir ] [ -f socket_file ] [ -n name ] [ -q ]\n", progname);
+	printf("  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
+	printf("  -f socket_file  Open socket_file directly, without reading radius.conf\n");
+	printf("  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
+	printf("  -q              Quiet mode.\n");
+
+	exit(1);
+}
+
 int main(int argc, char **argv)
 {
 	int argval, quiet = 0;
+	int done_license = 0;
 	int sockfd, port;
 	uint32_t magic;
 	char *line;
 	ssize_t len, size;
-	const char *file = RUNDIR "/radiusd/radiusd.sock";
+	const char *file = NULL;
+	const char *name = "radiusd";
 	char *p, buffer[2048];
 
-	while ((argval = getopt(argc, argv, "d:hf:q")) != EOF) {
+	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
+		progname = argv[0];
+	else
+		progname++;
+
+	while ((argval = getopt(argc, argv, "d:hf:n:q")) != EOF) {
 		switch(argval) {
 		case 'd':
+			if (file) {
+				fprintf(stderr, "%s: -d and -f cannot be used together.\n", progname);
+				exit(1);
+			}
 			radius_dir = optarg;
 			break;
 
 		case 'f':
-			if (radius_dir != NULL) {
-				fprintf(stderr, "-d and -f cannot be used together.\n");
-				exit(1);
-			}
+			radius_dir = NULL;
 			file = optarg;
 			break;
 
 		default:
 		case 'h':
-		usage:
-			printf("Usage: radmin [-q] [-f socket]\n");
-			exit(0);
+			usage();
+			break;
+
+		case 'n':
+			name = optarg;
+			break;
 
 		case 'q':
 			quiet = 1;
@@ -162,12 +184,13 @@ int main(int argc, char **argv)
 
 		file = NULL;	/* MUST read it from the conffile now */
 
-		snprintf(buffer, sizeof(buffer), "%s/radiusd.conf",
-			 radius_dir);
+		snprintf(buffer, sizeof(buffer), "%s/%s.conf",
+			 radius_dir, name);
 
 		cs = cf_file_read(buffer);
 		if (!cs) {
-			fprintf(stderr, "Errors reading %s\n", buffer);
+			fprintf(stderr, "%s: Errors reading %s\n",
+				progname, buffer);
 			exit(1);
 		}
 
@@ -190,20 +213,21 @@ int main(int argc, char **argv)
 					      PW_TYPE_STRING_PTR,
 					      &file, NULL);
 			if (rcode < 0) {
-				fprintf(stderr, "Failed parsing listen section\n");
+				fprintf(stderr, "%s: Failed parsing listen section\n", progname);
 				exit(1);
 			}
 
 			if (!file) {
-				fprintf(stderr, "No path given for socket\n");
+				fprintf(stderr, "%s: No path given for socket\n",
+					progname);
 				exit(1);
 			}
 			break;
 		}
 
 		if (!file) {
-			fprintf(stderr, "Could not find control socket in %s\n",
-				buffer);
+			fprintf(stderr, "%s: Could not find control socket in %s\n",
+				progname, buffer);
 			exit(1);
 		}
 	}
@@ -217,6 +241,7 @@ int main(int argc, char **argv)
 	}
 #endif
 
+ reconnect:
 	/*
 	 *	FIXME: Get destination from command line, if possible?
 	 */
@@ -231,8 +256,8 @@ int main(int argc, char **argv)
 	for (size = 0; size < 8; size += len) {
 		len = read(sockfd, buffer + size, 8 - size);
 		if (len < 0) {
-			fprintf(stderr, "Failed reading initial data from socket: %s\n",
-				strerror(errno));
+			fprintf(stderr, "%s: Error reading initial data from socket: %s\n",
+				progname, strerror(errno));
 			exit(1);
 		}
 	}
@@ -240,25 +265,27 @@ int main(int argc, char **argv)
 	memcpy(&magic, buffer, 4);
 	magic = ntohl(magic);
 	if (magic != 0xf7eead15) {
-		fprintf(stderr, "Socket is not FreeRADIUS administration socket\n");
+		fprintf(stderr, "%s: Socket %s is not FreeRADIUS administration socket\n", progname, file);
 		exit(1);
 	}
 	
 	memcpy(&magic, buffer + 4, 4);
 	magic = ntohl(magic);
 	if (magic != 1) {
-		fprintf(stderr, "Socket version mismatch: Need 1, got %d\n",
-			magic);
+		fprintf(stderr, "%s: Socket version mismatch: Need 1, got %d\n",
+			progname, magic);
 		exit(1);
 	}	
 
-	if (!quiet) {
+	if (!done_license && !quiet) {
 		printf("radmin " RADIUSD_VERSION " - FreeRADIUS Server administration tool.\n");
 		printf("Copyright (C) 2008 The FreeRADIUS server project and contributors.\n");
 		printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 		printf("PARTICULAR PURPOSE.\n");
 		printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
 		printf("GNU General Public License v2.\n");
+
+		done_license = 1;
 	}
 
 	/*
@@ -289,11 +316,17 @@ int main(int argc, char **argv)
 			
 			p = strchr(buffer, '\n');
 			if (!p) {
-				fprintf(stderr, "line too long\n");
+				fprintf(stderr, "%s: Input line too long\n",
+					progname);
 				exit(1);
 			}
 			
 			*p = '\0';
+		}
+
+		if (strcmp(line, "reconnect") == 0) {
+			close(sockfd);
+			goto reconnect;
 		}
 
 		/*
@@ -330,8 +363,8 @@ int main(int argc, char **argv)
 			if (rcode < 0) {
 				if (errno == EINTR) continue;
 
-				fprintf(stderr, "Failed selecting: %s\n",
-					strerror(errno));
+				fprintf(stderr, "%s: Failed selecting: %s\n",
+					progname, strerror(errno));
 				exit(1);
 			}
 
@@ -345,8 +378,8 @@ int main(int argc, char **argv)
 					continue;
 				}
 
-				fprintf(stderr, "Error reading socket: %s\n",
-					strerror(errno));
+				fprintf(stderr, "%s: Error reading socket: %s\n",
+					progname, strerror(errno));
 				exit(1);
 			}
 			if (len == 0) break; /* clean close of socket */
