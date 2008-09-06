@@ -123,7 +123,7 @@ radwho.lo: radwho.c $(INCLUDES)
 radwho: radwho.lo util.lo log.lo conffile.lo $(LIBRADIUS)
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radwho radwho.lo util.lo log.lo conffile.lo $(LIBRADIUS) $(LIBS)
 
-radmin: radmin.lo $(LIBREADLINE)
+radmin: radmin.lo $(LIBREADLINE) $(LIBRADIUS) util.lo log.lo conffile.lo
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o $@ $^
 
 clean:

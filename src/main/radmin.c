@@ -24,7 +24,7 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/radpaths.h>
 
 #ifdef HAVE_READLINE_READLINE_H
@@ -44,6 +44,26 @@ RCSID("$Id$")
 #include <getopt.h>
 #endif
 
+/*
+ *	For configuration file stuff.
+ */
+const char *radius_dir = NULL;
+const char *progname = "radmin";
+
+/*
+ *	The rest of this is because the conffile.c, etc. assume
+ *	they're running inside of the server.  And we don't (yet)
+ *	have a "libfreeradius-server", or "libfreeradius-util".
+ */
+int debug_flag = 0;
+struct main_config_t mainconfig;
+char *request_log_file = NULL;
+char *debug_log_file = NULL;
+int radius_xlat(UNUSED char *out, UNUSED int outlen, UNUSED const char *fmt,
+		UNUSED REQUEST *request, UNUSED RADIUS_ESCAPE_STRING func)
+{
+	return -1;
+}
 
 static int fr_domain_socket(const char *path)
 {
@@ -110,20 +130,81 @@ int main(int argc, char **argv)
 	const char *file = RUNDIR "/radiusd/radiusd.sock";
 	char *p, buffer[2048];
 
-	while ((argval = getopt(argc, argv, "hf:q")) != EOF) {
+	while ((argval = getopt(argc, argv, "d:hf:q")) != EOF) {
 		switch(argval) {
+		case 'd':
+			radius_dir = optarg;
+			break;
+
 		case 'f':
+			if (radius_dir != NULL) {
+				fprintf(stderr, "-d and -f cannot be used together.\n");
+				exit(1);
+			}
 			file = optarg;
 			break;
 
 		default:
 		case 'h':
-			printf("Usage: radmin [-f socket]\n");
+		usage:
+			printf("Usage: radmin [-q] [-f socket]\n");
 			exit(0);
 
 		case 'q':
 			quiet = 1;
 			break;
+		}
+	}
+
+	if (radius_dir) {
+		int rcode;
+		CONF_SECTION *cs, *subcs;
+
+		file = NULL;	/* MUST read it from the conffile now */
+
+		snprintf(buffer, sizeof(buffer), "%s/radiusd.conf",
+			 radius_dir);
+
+		cs = cf_file_read(buffer);
+		if (!cs) {
+			fprintf(stderr, "Errors reading %s\n", buffer);
+			exit(1);
+		}
+
+		subcs = NULL;
+		while ((subcs = cf_subsection_find_next(cs, subcs, "listen")) != NULL) {
+			const char *value;
+			CONF_PAIR *cp = cf_pair_find(subcs, "type");
+			
+			if (!cp) continue;
+
+			value = cf_pair_value(cp);
+			if (!value) continue;
+
+			if (strcmp(value, "control") != 0) continue;
+
+			/*
+			 *	Now find the socket name (sigh)
+			 */
+			rcode = cf_item_parse(subcs, "socket",
+					      PW_TYPE_STRING_PTR,
+					      &file, NULL);
+			if (rcode < 0) {
+				fprintf(stderr, "Failed parsing listen section\n");
+				exit(1);
+			}
+
+			if (!file) {
+				fprintf(stderr, "No path given for socket\n");
+				exit(1);
+			}
+			break;
+		}
+
+		if (!file) {
+			fprintf(stderr, "Could not find control socket in %s\n",
+				buffer);
+			exit(1);
 		}
 	}
 
