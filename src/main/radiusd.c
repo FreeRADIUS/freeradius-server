@@ -412,7 +412,7 @@ int main(int argc, char *argv[])
 	 *	ignored.)
 	 */
 #ifndef __MINGW32__
-	kill(-radius_pid, SIGTERM);
+	if (spawn_flag) kill(-radius_pid, SIGTERM);
 #endif
 	
 	/*
