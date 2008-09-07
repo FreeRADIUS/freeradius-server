@@ -571,13 +571,13 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
 
-	sqlsocket = sql_get_socket(data->sql_inst);
+	sqlsocket = data->sql_inst->sql_get_socket(data->sql_inst);
 	if (sqlsocket == NULL) {
 		RDEBUG("cannot allocate sql connection");
 		return RLM_MODULE_FAIL;
 	}
 
-	if (sql_set_user(data->sql_inst, request, sqlusername, NULL) < 0) {
+	if (data->sql_inst->sql_set_user(data->sql_inst, request, sqlusername, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 
@@ -863,13 +863,13 @@ static int sqlippool_accounting(void * instance, REQUEST * request)
 		return RLM_MODULE_NOOP;
 	}
 
-	sqlsocket = sql_get_socket(data->sql_inst);
+	sqlsocket = data->sql_inst->sql_get_socket(data->sql_inst);
 	if (sqlsocket == NULL) {
 		RDEBUG("cannot allocate sql connection");
 		return RLM_MODULE_NOOP;
 	}
 
-	if (sql_set_user(data->sql_inst, request, sqlusername, NULL) < 0) {
+	if (data->sql_inst->sql_set_user(data->sql_inst, request, sqlusername, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 
@@ -899,7 +899,7 @@ static int sqlippool_accounting(void * instance, REQUEST * request)
 		return RLM_MODULE_NOOP;
 	}
 
-	sql_release_socket(data->sql_inst, sqlsocket);
+	data->sql_inst->sql_release_socket(data->sql_inst, sqlsocket);
 
 	return rcode;
 }
