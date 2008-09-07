@@ -427,6 +427,7 @@ int main(int argc, char **argv)
 
 		if (strcmp(line, "reconnect") == 0) {
 			close(sockfd);
+			line = NULL;
 			goto reconnect;
 		}
 
