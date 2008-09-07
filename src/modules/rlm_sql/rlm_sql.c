@@ -788,6 +788,13 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	memset(inst->config, 0, sizeof(SQL_CONFIG));
 
 	/*
+	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
+	 */
+	inst->sql_set_user = sql_set_user;
+	inst->sql_get_socket = sql_get_socket;
+	inst->sql_release_socket = sql_release_socket;
+
+	/*
 	 * If the configuration parameters can't be parsed, then
 	 * fail.
 	 */

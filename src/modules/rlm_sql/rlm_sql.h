@@ -57,7 +57,9 @@ typedef struct rlm_sql_module_t {
 	int (*sql_affected_rows)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 } rlm_sql_module_t;
 
-typedef struct sql_inst {
+typedef struct sql_inst SQL_INST;
+
+struct sql_inst {
 	time_t		connect_after;
 	SQLSOCK		*sqlpool;
 	SQLSOCK		*last_used;
@@ -65,7 +67,11 @@ typedef struct sql_inst {
 
 	lt_dlhandle handle;
 	rlm_sql_module_t *module;
-} SQL_INST;
+
+	int (*sql_set_user)(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username);
+	SQLSOCK *(*sql_get_socket)(SQL_INST * inst);
+	int (*sql_release_socket)(SQL_INST * inst, SQLSOCK * sqlsocket);
+};
 
 typedef struct sql_grouplist {
 	char			groupname[MAX_STRING_LEN];
