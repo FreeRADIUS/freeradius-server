@@ -24,7 +24,7 @@ CFLAGS		+= $(OPENSSL_INCLUDE)
 VFLAGS		= -DRADIUSD_MAJOR_VERSION=$(RADIUSD_MAJOR_VERSION)
 VFLAGS		+= -DRADIUSD_MINOR_VERSION=$(RADIUSD_MINOR_VERSION)
 MODULE_LIBS	= $(STATIC_MODULES)
-BINARIES	= radiusd radwho radclient radmin
+BINARIES	= radiusd radwho radclient radmin radconf2xml
 
 #
 #  The RADIUS sniffer
@@ -126,6 +126,9 @@ radwho: radwho.lo util.lo log.lo conffile.lo $(LIBRADIUS)
 radmin: radmin.lo $(LIBREADLINE) $(LIBRADIUS) util.lo log.lo conffile.lo
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o $@ $^
 
+radconf2xml: radconf2xml.lo $(LIBRADIUS) util.lo log.lo conffile.lo
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o $@ $^
+
 clean:
 	rm -rf *.o *.so *.lo *~ $(BINARIES) .libs
 
@@ -136,6 +139,7 @@ install:
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radmin$(EXEEXT)	$(R)$(sbindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radclient$(EXEEXT)	$(R)$(bindir)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radwho$(EXEEXT)	$(R)$(bindir)
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radconf2xml$(EXEEXT)	$(R)$(bindir)
 ifneq ($(PCAP_LIBS),)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radsniff$(EXEEXT)	$(R)$(bindir)
 endif
