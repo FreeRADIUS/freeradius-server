@@ -24,6 +24,7 @@
 #ifdef WITH_COMMAND_SOCKET
 
 #include <freeradius-devel/modpriv.h>
+#include <freeradius-devel/conffile.h>
 
 #ifdef HAVE_SYS_UN_H
 #include <sys/un.h>
@@ -493,6 +494,44 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 	return 1;		/* success */
 }
 
+static int command_show_xml(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+{
+	CONF_ITEM *ci;
+	FILE *fp = fdopen(dup(listener->fd), "a");
+
+	if (!fp) {
+		cprintf(listener, "ERROR: Can't dup %s\n", strerror(errno));
+		return 0;
+	}
+
+	if (argc == 0) {
+		cprintf(listener, "ERROR: <reference> is required\n");
+		return 0;
+	}
+	
+	ci = cf_reference_item(mainconfig.config, mainconfig.config, argv[0]);
+	if (!ci) {
+		cprintf(listener, "ERROR: No such item <reference>\n");
+		return 0;
+	}
+
+	if (cf_item_is_section(ci)) {
+		cf_section2xml(fp, cf_itemtosection(ci));
+
+	} else if (cf_item_is_pair(ci)) {
+		cf_pair2xml(fp, cf_itemtopair(ci));
+
+	} else {
+		cprintf(listener, "ERROR: No such item <reference>\n");
+		fclose(fp);
+		return 0;
+	}
+
+	fclose(fp);
+
+	return 1;		/* success */
+}
+
 
 static fr_command_table_t command_table_show_module[] = {
 	{ "config",
@@ -525,7 +564,9 @@ static fr_command_table_t command_table_show[] = {
 	{ "uptime",
 	  "show uptime - shows time at which server started",
 	  command_uptime, NULL },
-
+	{ "xml",
+	  "show xml <reference> - Prints out configuration as XML",
+	  command_show_xml, NULL },
 	{ NULL, NULL, NULL, NULL }
 };
 
