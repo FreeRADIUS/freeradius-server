@@ -131,13 +131,97 @@ static int usage(void)
 	exit(1);
 }
 
+static ssize_t run_command(int sockfd, const char *command,
+			   char *buffer, size_t bufsize)
+{
+	char *p;
+	ssize_t size, len;
+	int flag = 1;
+
+	/*
+	 *	Write the text to the socket.
+	 */
+	if (write(sockfd, command, strlen(command)) < 0) return -1;
+	if (write(sockfd, "\r\n", 2) < 0) return -1;
+
+	/*
+	 *	Read the response
+	 */
+	size = 0;
+	buffer[0] = '\0';
+
+	memset(buffer, 0, bufsize);
+
+	while (flag == 1) {
+		int rcode;
+		fd_set readfds;
+
+		FD_ZERO(&readfds);
+		FD_SET(sockfd, &readfds);
+
+		rcode = select(sockfd + 1, &readfds, NULL, NULL, NULL);
+		if (rcode < 0) {
+			if (errno == EINTR) continue;
+
+			fprintf(stderr, "%s: Failed selecting: %s\n",
+				progname, strerror(errno));
+			exit(1);
+		}
+
+		len = recv(sockfd, buffer + size,
+			   bufsize - size - 1, MSG_DONTWAIT);
+		if (len < 0) {
+			/*
+			 *	No data: keep looping
+			 */
+			if ((errno == EAGAIN) || (errno == EINTR)) {
+				continue;
+			}
+
+			fprintf(stderr, "%s: Error reading socket: %s\n",
+				progname, strerror(errno));
+			exit(1);
+		}
+		if (len == 0) return 0;	/* clean exit */
+
+		size += len;
+		buffer[size] = '\0';
+
+		/*
+		 *	There really is a better way of doing this.
+		 */
+		p = strstr(buffer, "radmin> ");
+		if (p &&
+		    ((p == buffer) || 
+		     (p[-1] == '\n') ||
+		     (p[-1] == '\r'))) {
+			*p = '\0';
+
+			if (p[-1] == '\n') p[-1] = '\0';
+
+			flag = 0;
+			break;
+		}
+	}
+
+	/*
+	 *	Blank prompt.  Go get another command.
+	 */
+	if (!buffer[0]) return 1;
+
+	buffer[size] = '\0'; /* this is at least right */
+
+	return 2;
+}
+
+
 int main(int argc, char **argv)
 {
 	int argval, quiet = 0;
 	int done_license = 0;
-	int sockfd, port;
+	int sockfd;
 	uint32_t magic;
-	char *line;
+	char *line = NULL;
 	ssize_t len, size;
 	const char *file = NULL;
 	const char *name = "radiusd";
@@ -148,7 +232,7 @@ int main(int argc, char **argv)
 	else
 		progname++;
 
-	while ((argval = getopt(argc, argv, "d:hf:n:q")) != EOF) {
+	while ((argval = getopt(argc, argv, "d:he:f:n:q")) != EOF) {
 		switch(argval) {
 		case 'd':
 			if (file) {
@@ -156,6 +240,10 @@ int main(int argc, char **argv)
 				exit(1);
 			}
 			radius_dir = optarg;
+			break;
+
+		case 'e':
+			line = optarg;
 			break;
 
 		case 'f':
@@ -277,6 +365,19 @@ int main(int argc, char **argv)
 		exit(1);
 	}	
 
+	/*
+	 *	Run one command.
+	 */
+	if (line) {
+		size = run_command(sockfd, line, buffer, sizeof(buffer));
+		if (size < 0) exit(1);
+		if ((size == 0) || (size == 1)) exit(0);
+
+		puts(buffer);
+		fflush(stdout);
+		exit(0);
+	}
+
 	if (!done_license && !quiet) {
 		printf("radmin " RADIUSD_VERSION " - FreeRADIUS Server administration tool.\n");
 		printf("Copyright (C) 2008 The FreeRADIUS server project and contributors.\n");
@@ -330,12 +431,6 @@ int main(int argc, char **argv)
 		}
 
 		/*
-		 *	Write the text to the socket.
-		 */
-		if (write(sockfd, line, strlen(line)) < 0) break;
-		if (write(sockfd, "\r\n", 2) < 0) break;
-
-		/*
 		 *	Exit, done, etc.
 		 */
 		if ((strcmp(line, "exit") == 0) ||
@@ -343,74 +438,11 @@ int main(int argc, char **argv)
 			break;
 		}
 
-		/*
-		 *	Read the response
-		 */
-		size = 0;
-		buffer[0] = '\0';
+		size = run_command(sockfd, line, buffer, sizeof(buffer));
+		if (size <= 0) break; /* error, or clean exit */
 
-		port = 1;
-		memset(buffer, 0, sizeof(buffer));
+		if (size == 1) continue; /* no output. */
 
-		while (port == 1) {
-			int rcode;
-			fd_set readfds;
-
-			FD_ZERO(&readfds);
-			FD_SET(sockfd, &readfds);
-
-			rcode = select(sockfd + 1, &readfds, NULL, NULL, NULL);
-			if (rcode < 0) {
-				if (errno == EINTR) continue;
-
-				fprintf(stderr, "%s: Failed selecting: %s\n",
-					progname, strerror(errno));
-				exit(1);
-			}
-
-			len = recv(sockfd, buffer + size,
-				   sizeof(buffer) - size - 1, MSG_DONTWAIT);
-			if (len < 0) {
-				/*
-				 *	No data: keep looping
-				 */
-				if ((errno == EAGAIN) || (errno == EINTR)) {
-					continue;
-				}
-
-				fprintf(stderr, "%s: Error reading socket: %s\n",
-					progname, strerror(errno));
-				exit(1);
-			}
-			if (len == 0) break; /* clean close of socket */
-
-			size += len;
-			buffer[size] = '\0';
-
-			/*
-			 *	There really has to be a better way of
-			 *	doing this.
-			 */
-			p = strstr(buffer, "radmin> ");
-			if (p &&
-			    ((p == buffer) || 
-			     (p[-1] == '\n') ||
-			     (p[-1] == '\r'))) {
-				*p = '\0';
-
-				if (p[-1] == '\n') p[-1] = '\0';
-
-				port = 0;
-				break;
-			}
-		}
-
-		/*
-		 *	Blank prompt.  Go get another line.
-		 */
-		if (!buffer[0]) continue;
-
-		buffer[size] = '\0'; /* this is at least right */
 		puts(buffer);
 		fflush(stdout);
 	}
