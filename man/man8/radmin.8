@@ -1,12 +1,20 @@
-.TH RADMIN 8 "4 Sept 2008" "" "FreeRADIUS Administration Tool"
+.TH RADMIN 8 "7 Sept 2008" "" "FreeRADIUS Server Administration Tool"
 .SH NAME
 radmin - FreeRADIUS Administration tool
 .SH SYNOPSIS
 .B radmin
-.RB [ path ]
+.RB [ \-d
+.IR config_directory ]
+.RB [ \-e
+.IR command ]
+.RB [ \-f
+.IR socket_file ]
+.RB [ \-n
+.IR name ]
+.RB [ \-q ]
 .SH DESCRIPTION
-Tool that connects to the control socket of the FreeRADIUS server, and
-gives a command-liner interface to the server.
+FreeRADIUS Server administration tool that connects to the control
+socket of a running server, and gives a command-line interface to it.
 
 At this time, only a few commands are supported.  Please type "help"
 at the command prompt for detailed information about the supported
@@ -15,6 +23,20 @@ commands.
 This tool is experimental and should not be used in production
 environments.  Changes may be made at any time to the commands
 accepted by the server, and/or to the resulting output.
+.SH OPTIONS
+The following command-line options are accepted by the program.
+.IP "\-d \fIconfig directory\fP"
+Defaults to \fI/etc/raddb\fP. \fBradmin\fP looks here for the server
+configuration files to find the "listen" section that defines the
+control socket filename.
+.IP "\-e \fIcommand\fP"
+Run \fIcommand\fP and exit.
+.IP "\-f \fIsocket_file\fP"
+Specify the socket filename directly.  The radiusd.conf file is not read.
+.IP "\-n \fImname\fP"
+Read \fIraddb/name.conf\fP instead of \fIraddb/radiusd.conf\fP.
+.IP \-q
+Quiet mode.
 .SH SEE ALSO
 radiusd.conf(5), raddb/sites-available/control
 .SH AUTHOR
