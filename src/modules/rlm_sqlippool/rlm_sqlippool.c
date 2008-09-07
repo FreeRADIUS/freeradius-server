@@ -391,22 +391,6 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt,
 	return retval;
 }
 
-static int sqlippool_initialize_sql(void * instance)
-{
-
-	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
-
-	SQLSOCK * sqlsocket;
-
-	sqlsocket = sql_get_socket(data->sql_inst);
-	if (sqlsocket == NULL) {
-		DEBUG("rlm_sqlippool: cannot allocate sql connection for initialization sequence");
-		return 0;
-	}
-
-	return 1;
-}
-
 static int sqlippool_detach(void *instance)
 {
 	free(instance);
@@ -535,7 +519,6 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 
 	data->sql_inst = (SQL_INST *) modinst->insthandle;
 
-	sqlippool_initialize_sql(data);
 	*instance = data;
 	return 0;
 }
