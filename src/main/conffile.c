@@ -2517,3 +2517,68 @@ int dump_config(CONF_SECTION *cs)
 	return dump_config_section(cs, 0);
 }
 #endif
+
+
+int cf_pair2xml(FILE *fp, CONF_PAIR *cp)
+{
+	fprintf(fp, "<pair name=\"%s\">", cp->attr);
+
+	switch (cp->value_type) {
+	case T_DOUBLE_QUOTED_STRING:
+		/*
+		 *	FIXME: Handle this later!
+		 */
+
+	case T_BARE_WORD:
+	default:
+		/*
+		 *	FIXME: Escape '<', '>', '&', etc.
+		 */
+		if (cp->value) fprintf(fp, cp->value);
+		break;
+	}
+
+	fprintf(fp, "</pair>\n");
+
+	return 1;
+}
+
+int cf_section2xml(FILE *fp, CONF_SECTION *cs)
+{
+	CONF_ITEM *ci, *next;
+
+	/*
+	 *	Section header
+	 */
+	if (!cs->name2) {
+		fprintf(fp, "<section name=\"%s\">\n", cs->name1);
+	} else {
+		fprintf(fp, "<section name=\"%s\" name2=\"%s\">\n",
+			cs->name1, cs->name2);
+	}
+
+	/*
+	 *	Loop over contents.
+	 */
+	for (ci = cs->children; ci; ci = next) {
+		next = ci->next;
+
+		switch (ci->type) {
+		case CONF_ITEM_PAIR:
+			if (!cf_pair2xml(fp, (CONF_PAIR *) ci)) return 0;
+			break;
+
+		case CONF_ITEM_SECTION:
+			if (!cf_section2xml(fp, (CONF_SECTION *) ci)) return 0;
+			break;
+
+		default:	/* should really be an error. */
+			break;
+		
+		}
+	}
+
+	fprintf(fp, "</section>\n");
+
+	return 1;		/* success */
+}
