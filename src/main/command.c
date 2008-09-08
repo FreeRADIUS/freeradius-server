@@ -566,6 +566,54 @@ static int command_show_xml(rad_listen_t *listener, UNUSED int argc, UNUSED char
 	return 1;		/* success */
 }
 
+static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
+{
+	int number;
+
+	if (argc == 0) {
+		cprintf(listener, "ERROR: Must specify <number>\n");
+		return -1;
+	}
+
+	number = atoi(argv[0]);
+	if ((number < 0) || (number > 4)) {
+		cprintf(listener, "ERROR: <number> must be between 0 and 4\n");
+		return -1;
+	}
+
+	fr_debug_flag = debug_flag = number;
+
+	return 0;
+}
+
+extern char *debug_log_file;
+static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
+{
+	if (argc == 0) {
+		cprintf(listener, "ERROR: Must specify <filename>\n");
+		return -1;
+	}
+
+	if (debug_log_file) {
+		free(debug_log_file);
+		debug_log_file = NULL;
+	}
+	debug_log_file = strdup(argv[1]);
+
+	return 0;
+}
+
+static fr_command_table_t command_table_debug[] = {
+	{ "level",
+	  "debug level <number> - Set debug level to <number>.  Higher is more debugging.",
+	  command_debug_level, NULL },
+
+	{ "file",
+	  "debug file <filename> - Send debug output to <filename>",
+	  command_debug_file, NULL },
+
+	{ NULL, NULL, NULL, NULL }
+};
 
 static fr_command_table_t command_table_show_module[] = {
 	{ "config",
@@ -711,6 +759,9 @@ static fr_command_table_t command_table_set[] = {
 
 
 static fr_command_table_t command_table[] = {
+	{ "debug",
+	  "debug <command> - debugging commands",
+	  NULL, command_table_debug },
 	{ "hup",
 	  "hup [module] - sends a HUP signal to the server, or optionally to one module",
 	  command_hup, NULL },
@@ -851,6 +902,9 @@ static int command_domain_recv(rad_listen_t *listener,
 	char *my_argv[MAX_ARGV], **argv;
 	fr_command_table_t *table;
 	fr_command_socket_t *co = listener->data;
+
+	*pfun = NULL;
+	*prequest = NULL;
 
 	do {
 		ssize_t c;
