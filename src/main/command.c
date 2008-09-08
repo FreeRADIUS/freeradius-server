@@ -161,17 +161,12 @@ static int fr_server_domain_socket(const char *path)
 			radlog(L_ERR, "We do not own %s", path);
 			return -1;
 		}
-	}
 
-
-	/*
-	 *	FIXME: stat it, first, to see who owns it,
-	 *	and who owns the directory above it.
-	 */
-	if (unlink(path) < 0) {
-		radlog(L_ERR, "Failed to delete %s: %s",
-			path, strerror(errno));
-		return -1;
+		if (unlink(path) < 0) {
+			radlog(L_ERR, "Failed to delete %s: %s",
+			       path, strerror(errno));
+			return -1;
+		}
 	}
 
         if (bind(sockfd, (struct sockaddr *)&salocal, socklen) < 0) {
