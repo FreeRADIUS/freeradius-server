@@ -25,9 +25,13 @@
 
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/conffile.h>
-
+#
 #ifdef HAVE_SYS_UN_H
 #include <sys/un.h>
+#endif
+
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
 #endif
 
 #ifdef HAVE_PWD_H
@@ -107,15 +111,16 @@ static int fr_server_domain_socket(const char *path)
 	size_t len;
 	socklen_t socklen;
         struct sockaddr_un salocal;
+	struct stat buf;
 
 	len = strlen(path);
 	if (len >= sizeof(salocal.sun_path)) {
-		fprintf(stderr, "Path too long in filename\n");
+		radlog(L_ERR, "Path too long in socket filename.");
 		return -1;
 	}
 
         if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		fprintf(stderr, "Failed creating socket: %s\n",
+		radlog(L_ERR, "Failed creating socket: %s",
 			strerror(errno));
 		return -1;
         }
@@ -127,16 +132,50 @@ static int fr_server_domain_socket(const char *path)
 	socklen = sizeof(salocal.sun_family) + len;
 
 	/*
+	 *	Check the path.
+	 */
+	if (stat(path, &buf) < 0) {
+		if (errno != ENOENT) {
+			radlog(L_ERR, "Failed to stat %s: %s",
+			       path, strerror(errno));
+			return -1;
+		}
+
+		/*
+		 *	FIXME: Check the enclosing directory?
+		 */
+	} else {		/* it exists */
+		if (!S_ISREG(buf.st_mode)
+#ifdef S_ISSOCK
+		    && !S_ISSOCK(buf.st_mode)
+#endif
+			) {
+			radlog(L_ERR, "Cannot turn %s into socket", path);
+			return -1;		       
+		}
+
+		/*
+		 *	Refuse to open sockets not owned by us.
+		 */
+		if (buf.st_uid != geteuid()) {
+			radlog(L_ERR, "We do not own %s", path);
+			return -1;
+		}
+	}
+
+
+	/*
 	 *	FIXME: stat it, first, to see who owns it,
 	 *	and who owns the directory above it.
 	 */
 	if (unlink(path) < 0) {
-		fprintf(stderr, "Failed to delete %s: %s\n",
+		radlog(L_ERR, "Failed to delete %s: %s",
 			path, strerror(errno));
+		return -1;
 	}
 
         if (bind(sockfd, (struct sockaddr *)&salocal, socklen) < 0) {
-		fprintf(stderr, "Failed binding to %s: %s\n",
+		radlog(L_ERR, "Failed binding to %s: %s",
 			path, strerror(errno));
 		close(sockfd);
 		return -1;
@@ -154,7 +193,7 @@ static int fr_server_domain_socket(const char *path)
 	}
 
 	if (listen(sockfd, 8) < 0) {
-		fprintf(stderr, "Failed listening to %s: %s\n",
+		radlog(L_ERR, "Failed listening to %s: %s",
 			path, strerror(errno));
 		close(sockfd);
 		return -1;
@@ -165,7 +204,7 @@ static int fr_server_domain_socket(const char *path)
 		int flags;
 		
 		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
-			fprintf(stderr, "Failure getting socket flags: %s",
+			radlog(L_ERR, "Failure getting socket flags: %s",
 				strerror(errno));
 			close(sockfd);
 			return -1;
@@ -173,7 +212,7 @@ static int fr_server_domain_socket(const char *path)
 		
 		flags |= O_NONBLOCK;
 		if( fcntl(sockfd, F_SETFL, flags) < 0) {
-			fprintf(stderr, "Failure setting socket flags: %s",
+			radlog(L_ERR, "Failure setting socket flags: %s",
 				strerror(errno));
 			close(sockfd);
 			return -1;
