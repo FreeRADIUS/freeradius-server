@@ -544,8 +544,7 @@ AC_CHECK_LIB(pcap, pcap_open_live,
 	],
 	[ AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer.]) ])
 
-AC_CHECK_LIB(readline, readline,
-	[ LIBREADLINE="-lreadline" AC_SUBST(LIBREADLINE) ])
+AC_LIB_READLINE
 
 dnl #############################################################
 dnl #
@@ -603,7 +602,6 @@ AC_CHECK_HEADERS( \
 	sys/fcntl.h \
 	sys/prctl.h \
 	sys/un.h \
-	readline/readline.h \
 	glob.h \
 	prot.h \
 	pwd.h \
