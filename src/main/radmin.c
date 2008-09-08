@@ -343,7 +343,7 @@ int main(int argc, char **argv)
 
 	if (!isatty(STDIN_FILENO)) quiet = 1;
 
-#ifdef HAVE_READLINE_READLINE_H
+#ifdef HAVE_LIBREADLINE
 	if (!quiet) {
 		using_history();
 		rl_bind_key('\t', rl_insert);
@@ -415,11 +415,13 @@ int main(int argc, char **argv)
 	 */
 
 	while (1) {
+#ifndef HAVE_LIBREADLINE
 		if (!quiet) {
-#ifndef HAVE_READLINE_READLINE_H
 			printf("radmin> ");
 			fflush(stdout);
+		}
 #else
+		if (!quiet) {
 			line = readline("radmin> ");
 			
 			if (!line) break;
@@ -430,9 +432,9 @@ int main(int argc, char **argv)
 			}
 			
 			add_history(line);
+		} else		/* quiet, or no readline */
 #endif
-		} else {	/* quiet, or no readline */
-			
+		{
 			line = fgets(buffer, sizeof(buffer), stdin);
 			if (!line) break;
 			
