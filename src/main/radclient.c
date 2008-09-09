@@ -434,8 +434,7 @@ static void print_hex(RADIUS_PACKET *packet)
 		ptr = packet->data + 20;
 
 		while (total > 0) {
-			int attrlen, vsa = 0;
-			int mask = 16;
+			int attrlen;
 
 			printf("\t\t");
 			if (total < 2) { /* too short */
@@ -450,64 +449,19 @@ static void print_hex(RADIUS_PACKET *packet)
 				break;
 			}
 
-			if (ptr[0] == PW_VENDOR_SPECIFIC) vsa = 1;
-
 			printf("%02x  %02x  ", ptr[0], ptr[1]);
 			attrlen = ptr[1] - 2;
 			ptr += 2;
 			total -= 2;
 
-			if (vsa && (attrlen > 4)) {
-				int vendor, vsa_tlen, vsa_llen;
-				DICT_VENDOR *dv;
-
-				mask = 7;
-				vendor = ((ptr[0] << 24) | (ptr[1] << 16) | 
-					  (ptr[2] << 8) | ptr[3]);
-				dv = dict_vendorbyvalue(vendor);
-				vsa_tlen = vsa_llen = 1;
-				if (dv) {
-					vsa_tlen = dv->type;
-					vsa_llen = dv->length;
-				}
-
-				printf("%02x%02x%02x%02x  ",
-				       ptr[0], ptr[1], ptr[2], ptr[3]);
-				ptr += 4;
-				attrlen -= 4;
-				total -= 4;				
-
-				if (attrlen >= (vsa_tlen + vsa_llen)) {
-					for (i = 0; i < vsa_tlen; i++) {
-						printf("%02x", ptr[i]);
-					}
-					printf("  ");
-					ptr += vsa_tlen;
-					attrlen -= vsa_tlen;
-					total -= vsa_tlen;
-
-					for (i = 0; i < vsa_llen; i++) {
-						printf("%02x", ptr[i]);
-					}
-					printf("  ");
-					ptr += vsa_llen;
-					attrlen -= vsa_llen;
-					total -= vsa_tlen;
-				}
-
-				printf("\n\t\t\t\t");
-			}
-
 			for (i = 0; i < attrlen; i++) {
-				if ((i > 0) && ((i & mask) == 0x00)) {
+				if ((i > 0) && ((i & 0x0f) == 0x00))
 					printf("\t\t\t");
-					if (mask == 7) printf("\t");
-				}
 				printf("%02x ", ptr[i]);
-				if ((i & mask) == mask) printf("\n");
+				if ((i & 0x0f) == 0x0f) printf("\n");
 			}
 
-			if ((attrlen & mask) != 0x00) printf("\n");
+			if ((attrlen & 0x0f) != 0x00) printf("\n");
 
 			ptr += attrlen;
 			total -= attrlen;
