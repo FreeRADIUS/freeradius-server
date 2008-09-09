@@ -44,6 +44,7 @@ extern pid_t radius_pid;
 extern int dont_fork;
 extern int check_config;
 extern void force_log_reopen(void);
+extern char *debug_condition;
 
 /*
  *	Ridiculous amounts of local state.
@@ -2132,6 +2133,20 @@ int received_request(rad_listen_t *listener,
 	request->delay = USEC;
 
 	tv_add(&request->when, request->delay);
+
+	if (debug_condition) {
+		int result = FALSE;
+
+		if (radius_evaluate_condition(request, RLM_MODULE_OK, 0,
+					      &debug_condition, 1, &result)) {
+			if (result) request->priority = 2;
+
+		} else {	/* the condition could not be parsed */
+			radlog(L_ERR, "Debug condition could not be parsed: Deleting");
+			free(debug_condition);
+			debug_condition = NULL;
+		}
+	}
 
 	INSERT_EVENT(wait_a_bit, request);
 

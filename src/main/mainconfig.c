@@ -61,6 +61,7 @@ RCSID("$Id$")
 struct main_config_t mainconfig;
 char *request_log_file = NULL;
 char *debug_log_file = NULL;
+char *debug_condition = NULL;
 
 /*
  *	Temporary local variables for parsing the configuration
