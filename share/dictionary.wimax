@@ -10,11 +10,8 @@
 #	WiMAX VSA's are on p. 450 and following.
 #
 #	DHCP && MIP keys are on p.48 and following.
-#	The MSK is 32 octets, and all other keys are derived from HMAC-SHA1,
-#	and are 160 bits in length.	
 #
-#	WiMAX VSA's have a non-standard format that is not currently
-#	supported by FreeRADIUS.  The VSA contents are:
+#	WiMAX VSA's have a non-standard format:
 #
 #		type		1 octet
 #		length		1 octet
@@ -93,22 +90,40 @@ ATTRIBUTE	WiMAX-AAA-Session-Id			4	octets
 
 # 32 octets in length
 ATTRIBUTE	WiMAX-MSK				5	octets encrypt=2
-ATTRIBUTE	WiMAX-HA-IP-MIP4			6	combo-ip
-ATTRIBUTE	WiMAX-HA-IP-MIP6			7	combo-ip
+ATTRIBUTE	WiMAX-hHA-IP-MIP4			6	ipaddr
+ATTRIBUTE	WiMAX-hHA-IP-MIP6			7	ipv6addr
 ATTRIBUTE	WiMAX-DHCPv4-Server			8	combo-ip
 ATTRIBUTE	WiMAX-DHCPv6-Server			9	combo-ip
 
-ATTRIBUTE	WiMAX-MN-HA-MIP4-Key			10	octets encrypt=2
-ATTRIBUTE	WiMAX-MN-HA-MIP4-SPI			11	integer
-ATTRIBUTE	WiMAX-MN-HA-MIP6-Key			12	octets encrypt=2
-ATTRIBUTE	WiMAX-MN-HA-MIP6-SPI			13	integer
+# MN-HA-CMIP4 = H(MIP-RK, "CMIP4 MN HA" | HA-IPv4 | MN-NAI), or
+# MN-HA-PMIP4 = H(MIP-RK, "PMIP4 MN HA" | HA-IPv4 | MN-NAI)
+ATTRIBUTE	WiMAX-MN-hHA-MIP4-Key			10	octets encrypt=2
+
+# MN-HA-CMIP4-SPI == MIP-SPI, or
+# MN-HA-PIMP4-SPI == MIP-SPI + 1
+ATTRIBUTE	WiMAX-MN-hHA-MIP4-SPI			11	integer
+
+# MN-HA-CMIP6 = H(MIP-RK, "CMIP6 MN HA" | HA-IPv6 | MN-NAI)
+ATTRIBUTE	WiMAX-MN-hHA-MIP6-Key			12	octets encrypt=2
+
+# MN-HA-CMIP6-SPI == MIP-SPI + 2
+ATTRIBUTE	WiMAX-MN-hHA-MIP6-SPI			13	integer
+
+# FA-RK = H(MIP-RK, "FA-RK")
 ATTRIBUTE	WiMAX-FA-RK-Key				14	octets encrypt=2
+
+# 160 bit random number
 ATTRIBUTE	WiMAX-HA-RK-Key				15	octets encrypt=2
+# SPI-CMIP4
 ATTRIBUTE	WiMAX-HA-RK-SPI				16	integer
+
 ATTRIBUTE	WiMAX-HA-RK-Lifetime			17	integer
+
+#  The same as MN-HA-CMIP4, etc.  But in different packets.
 ATTRIBUTE	WiMAX-RRQ-HA-IP				18	combo-ip
 ATTRIBUTE	WiMAX-RRQ-MN-HA-Key			19	octets encrypt=2
 ATTRIBUTE	WiMAX-RRQ-MN-HA-SPI			20	integer
+
 ATTRIBUTE	WiMAX-Session-Continue			21	integer
 ATTRIBUTE	WiMAX-Beginning-Of-Session		22	integer
 ATTRIBUTE	WiMAX-IP-Technology			23	integer
@@ -324,6 +339,7 @@ VALUE	WiMAX-DM-Action-Code		MS-Idle			5
 VALUE	WiMAX-DM-Action-Code		MS-Completed-IPv6-Handover 6
 VALUE	WiMAX-DM-Action-Code		BS-Sends-RES-Cmd	0xffff
 
+# FA-RK-SPI = SPI-CMIP4 = MIP-SPI
 ATTRIBUTE	WiMAX-FA-RK-SPI				61	integer
 
 # Formatted as per IP Filter rule specification.
@@ -331,6 +347,9 @@ ATTRIBUTE	WiMAX-Downlink-Flow-Description		62	string
 
 # Same as QoS-Descriptor... dang.
 ATTRIBUTE	WiMAX-Downlink-Granted-QoS		63	tlv
+
+# More MIP keys, calculated as above... but in different packets.
+# Why, oh why?
 ATTRIBUTE	WiMAX-vHA-IP-MIP4			64	ipaddr
 ATTRIBUTE	WiMAX-vHA-IP-MIP6			65	ipv6addr
 ATTRIBUTE	WiMAX-vHA-MIP4-Key			66	octets encrypt=2
@@ -339,7 +358,7 @@ ATTRIBUTE	WiMAX-vHA-RK-SPI			68	integer
 ATTRIBUTE	WiMAX-vHA-RK-Lifetime			69	integer
 
 ATTRIBUTE	WiMAX-MN-vHA-MIP6-Key			70	octets encrypt=2
-ATTRIBUTE	WiMAX-MN-vHA-MIPV-SPI			71	integer
+ATTRIBUTE	WiMAX-MN-vHA-MIP4-SPI			71	integer
 ATTRIBUTE	WiMAX-MN-vHA-MIP6-SPI			72	integer
 ATTRIBUTE	WiMAX-vDHCPv4-Server			73	ipaddr
 ATTRIBUTE	WiMAX-vDHCPv6-Server			74	ipv6addr
