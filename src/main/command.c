@@ -598,12 +598,40 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 		free(debug_log_file);
 		debug_log_file = NULL;
 	}
-	debug_log_file = strdup(argv[1]);
+	debug_log_file = strdup(argv[0]);
+
+	return 0;
+}
+
+extern char *debug_condition;
+static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[])
+{
+	/*
+	 *	Delete old condition.
+	 *
+	 *	This is thread-safe because the condition is evaluated
+	 *	in the main server thread, as is this code.
+	 */
+	free(debug_condition);
+	debug_condition = NULL;
+
+	/*
+	 *	Disable it.
+	 */
+	if (argc == 0) {
+		return 0;
+	}
+
+	debug_condition = strdup(argv[0]);
 
 	return 0;
 }
 
 static fr_command_table_t command_table_debug[] = {
+	{ "condition",
+	  "debug condition <condition> - Enable debugging for requests matching <condition>",
+	  command_debug_condition, NULL },
+
 	{ "level",
 	  "debug level <number> - Set debug level to <number>.  Higher is more debugging.",
 	  command_debug_level, NULL },
