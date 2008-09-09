@@ -852,6 +852,8 @@ static int command_socket_print(rad_listen_t *this, char *buffer, size_t bufsize
 static int str2argv(char *str, char **argv, int max_argc)
 {
 	int argc = 0;
+	size_t len;
+	char buffer[1024];
 
 	while (*str) {
 		if (argc >= max_argc) return argc;
@@ -871,7 +873,29 @@ static int str2argv(char *str, char **argv, int max_argc)
 
 		if (!*str) return argc;
 
-		argv[argc] = str;
+		if ((*str == '\'') || (*str == '"')) {
+			char *p = str;
+			FR_TOKEN token;
+
+			token = gettoken((const char **) &p, buffer,
+					 sizeof(buffer));
+			if ((token != T_SINGLE_QUOTED_STRING) &&
+			    (token != T_DOUBLE_QUOTED_STRING)) {
+				return -1;
+			}
+
+			len = strlen(buffer);
+			if (len >= (size_t) (p - str)) {
+				return -1;
+			}
+
+			memcpy(str, buffer, len + 1);
+			argv[argc] = str;
+			str = p;
+
+		} else {
+			argv[argc] = str;
+		}
 		argc++;
 
 		while (*str &&
@@ -976,7 +1000,13 @@ static int command_domain_recv(rad_listen_t *listener,
 	} while (1);
 
 	argc = str2argv(co->buffer, my_argv, MAX_ARGV);
-	if (argc == 0) goto do_next;
+	if (argc == 0) goto do_next; /* empty strings are OK */
+
+	if (argc < 0) {
+		cprintf(listener, "ERROR: Failed parsing command.\n");
+		goto do_next;
+	}
+
 	argv = my_argv;
 
 	for (len = 0; len <= co->offset; len++) {
