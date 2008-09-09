@@ -700,7 +700,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 			 *	client definitions are stored.
 			 */
 			cp = cf_pair_find(cs, "directory");
-			if (!cp) continue;
+			if (!cp) goto add_client;
 			
 			value = cf_pair_value(cp);
 			if (!value) {
@@ -767,6 +767,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 #endif /* HAVE_DIRENT_H */
 #endif /* WITH_DYNAMIC_CLIENTS */
 
+	add_client:
 		if (!client_add(clients, c)) {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Failed to add client %s",
