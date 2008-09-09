@@ -394,6 +394,19 @@ log {
 	#  Virtual-Server or Packet-Src-IP-Address.  Otherwise, the log
 	#  messages will be distributed over multiple files.
 	#
+	#  Logging can be enabled for an individual request by a special
+	#  dynamic expansion macro:  %{debug: 1}, where the debug level
+	#  for this request is set to '1' (or 2, 3, etc.).  e.g.
+	#
+	#	...
+	#	update control {
+	#	       Tmp-String-0 = "%{debug:1}"
+	#	}
+	#	...
+	#
+	#  The attribute that the value is assigned to is unimportant,
+	#  and should be a "throw-away" attribute with no side effects.
+	#
 	#requests = ${logdir}/radiusd-%{%{Virtual-Server}:-DEFAULT}-%Y%m%d.log
 
 	#
