@@ -2369,38 +2369,25 @@ static void rad_sortvp(VALUE_PAIR **head)
 
 
 /*
- *	Start at the *data* portion of a continued attribute.  search
- *	through the rest of the attributes to find a matching one, and
- *	add it's contents to our contents.
+ *	Walk the packet, looking for continuations of this attribute.
+ *
+ *	This is (worst-case) O(N^2) in the number of RADIUS
+ *	attributes.  That happens only when perverse clients create
+ *	continued attributes, AND separate the fragmented portions
+ *	with a lot of other attributes.
+ *
+ *	Sane clients should put the fragments next to each other, in
+ *	which case this is O(N), in the number of fragments.
  */
-static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
-				       const RADIUS_PACKET *original,
-				       const char *secret, int attribute,
-				       int length,
-				       uint8_t *data, size_t packet_length,
-				       int flag)
+static uint8_t *rad_coalesce(int attribute, size_t length, uint8_t *data,
+			     size_t packet_length, size_t *ptlv_length)
+			     
 {
-	int well_formed;
 	uint32_t lvalue;
-	size_t tlv_length = length;
-	uint8_t *ptr = data + length;
-	uint8_t *tlv;
-	VALUE_PAIR *vp, *head, **tail;
+	size_t tlv_length = 0;
+	uint8_t *ptr, *tlv, *tlv_data;
 
-	/*
-	 *	Walk the packet, looking for continuations of this
-	 *	attribute.
-	 *
-	 *	This is (worst-case) O(N^2) in the number of RADIUS
-	 *	attributes.  That happens only when perverse clients
-	 *	create continued attributes, AND separate the
-	 *	fragmented portions with a lot of other attributes.
-	 *
-	 *	Sane clients should put the fragments next to each
-	 *	other, in which case this is O(N), in the number of
-	 *	fragments.
-	 */
-	if (flag) for (ptr = data + length;
+	for (ptr = data + length;
 	     ptr != (data + packet_length);
 	     ptr += ptr[1]) {
 		if ((ptr[0] != PW_VENDOR_SPECIFIC) ||
@@ -2425,28 +2412,17 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 		if ((ptr[2 + 4 + 1 + 1] & 0x80) == 0) break;
 	}
 
-	/*
-	 *	Create the attribute.
-	 */
-	vp = paircreate(attribute, PW_TYPE_OCTETS);
-	if (!vp) return NULL;
+	tlv = tlv_data = malloc(tlv_length);
+	if (!tlv_data) return NULL;
 
-	vp->length = tlv_length;
-	vp->vp_tlv = malloc(tlv_length);
-	if (!vp->vp_tlv) {
-		pairfree(&vp);
-		return NULL;
-	}
-
-	tlv = vp->vp_tlv;
 	memcpy(tlv, data, length);
 	tlv += length;
 
 	/*
 	 *	Now we walk the list again, copying the data over to
-	 *	our newly created vp;
+	 *	our newly created memory.
 	 */
-	if (flag) for (ptr = data + length;
+	for (ptr = data + length;
 	     ptr != (data + packet_length);
 	     ptr += ptr[1]) {
 		if ((ptr[0] != PW_VENDOR_SPECIFIC) ||
@@ -2475,84 +2451,105 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 		if ((ptr[2 + 4 + 1 + 1] & 0x80) == 0) break;
 	}
 
-	/*
-	 *	Now that we've copied the data to vp->vp_tlv, check
-	 *	the type of the attribute again.  This allows integer
-	 *	and string types to be continued.
-	 */
-	if (vp->type != PW_TYPE_TLV) {
-		/*
-		 *	It's a byte, short, integer, etc. with the C
-		 *	bit set: it's badly formed.  Keep it as
-		 *	"opaque data", and return.
-		 *
-		 *	Note that we do this even if the total length
-		 *	is correct!  If the C bit is set, then it's
-		 *	badly formed, full-stop!
-		 */
-		if (((vp->type != PW_TYPE_OCTETS) &&
-		     (vp->type != PW_TYPE_STRING)) ||
-		    
-		    	/*
-			 *	If it's a tunnel encrypted password
-			 *	AND it's continued, then it's also
-			 *	badly formed.  The spec says that it
-			 *	MAY be continued, but also that all
-			 *	encrypted attributes are keys of no
-			 *	more than 160 bits in length!
-			 */
-		    ((vp->flags.encrypt != FLAG_ENCRYPT_NONE) &&
-		     (vp->length > 244)) ||
+	*ptlv_length = tlv_length;
+	return tlv_data;
+}
 
-		    	/*
-			 *	Similarly, strings and octets that
-			 *	don't fit with the RADIUS data model
-			 *	are not well-formed.
-			 */
-		    (vp->length >= MAX_STRING_LEN)) {
+/*
+ *	Start at the *data* portion of a continued attribute.  search
+ *	through the rest of the attributes to find a matching one, and
+ *	add it's contents to our contents.
+ */
+static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
+				       const RADIUS_PACKET *original,
+				       const char *secret, int attribute,
+				       int length,
+				       uint8_t *data, size_t packet_length,
+				       int flag)
+{
+	size_t tlv_length, left;
+	uint8_t *ptr;
+	uint8_t *tlv_data;
+	DICT_ATTR *da;
+	VALUE_PAIR *vp, *head, **tail;
+
+	/*
+	 *	Ensure we have data that hasn't been split across
+	 *	multiple attributes.
+	 */
+	if (flag) {
+		tlv_data = rad_coalesce(attribute, length,
+					data, packet_length, &tlv_length);
+		if (!tlv_data) return NULL;
+	} else {
+		tlv_data = data;
+		tlv_length = length;
+	}
+
+	da = dict_attrbyvalue(attribute);
+	if (!da) return NULL;
+
+	if (da->type != PW_TYPE_TLV) {
+		/*
+		 *	If it's not continued, just create the normal
+		 *	attribute.
+		 */
+		if (!flag) {
+			vp = paircreate(attribute, PW_TYPE_OCTETS);
+			if (!vp) return NULL;
+
+			if (!data2vp(packet, original, secret,
+				     attribute, length, data, vp)) {
+				pairfree(&vp);
+				return NULL;
+			}
+		} else {
 			/*
-			 *	Keep it as type TLV, which is really
-			 *	"long octets" type.  Also clear all
-			 *	flags, so that no one looks at it's
-			 *	contents.
+			 *	Non-TLV types cannot be continued
+			 *	across multiple attributes.  This is
+			 *	true even of keys that are encrypted
+			 *	with the tunnel-password method.  The
+			 *	spec says that they can be
+			 *	continued... but also that the keys
+			 *	are 160 bits, which means that they
+			 *	CANNOT be continued.  <sigh>
 			 */
+		not_well_formed:
+			if (tlv_data == data) {	/* true if we had 'goto' */
+				tlv_data = malloc(tlv_length);
+				if (!tlv_data) return NULL;
+				memcpy(tlv_data, data, tlv_length);
+			}
+			
+			vp = paircreate(attribute, PW_TYPE_OCTETS);
+			if (!vp) return NULL;
+			
 			vp->type = PW_TYPE_TLV;
 			vp->flags.encrypt = FLAG_ENCRYPT_NONE;
 			vp->flags.has_tag = 0;
 			vp->flags.is_tlv = 0;
-			return vp;
+			vp->vp_tlv = tlv_data;
+			vp->length = tlv_length;
 		}
 
-		/*
-		 *	Otherwise it's OK.  Keep the type, and copy
-		 *	the data to where it belongs.
-		 */
-		tlv = vp->vp_tlv; /* will get over-written by the memcpy */
-		memcpy(vp->vp_octets, tlv, vp->length);
-		vp->vp_octets[vp->length] = 0; /* for string types */
 		return vp;
-	}
+	} /* else it WAS a TLV, go decode the sub-tlv's */
 
 	/*
-	 *	Now (sigh) we walk over the TLV, seeing if it is well
-	 *	formatted.
+	 *	Now (sigh) we walk over the TLV, seeing if it is
+	 *	well-formed.
 	 */
-	tlv_length = vp->length;
-	well_formed = 1;
-	
-	for (ptr = vp->vp_tlv;
-	     ptr != (vp->vp_tlv + vp->length);
+	left = tlv_length;
+	for (ptr = tlv_data;
+	     ptr != (tlv_data + tlv_length);
 	     ptr += ptr[1]) {
-		if ((tlv_length < 2) ||
+		if ((left < 2) ||
 		    (ptr[1] < 2) ||
-		    (ptr[1] > tlv_length)) {
-			well_formed = 0;
-			break;
+		    (ptr[1] > left)) {
+			goto not_well_formed;
 		}
-		tlv_length -= ptr[1];
+		left -= ptr[1];
 	}
-
-	if (!well_formed) return vp;
 
 	/*
 	 *	Now we walk over the TLV *again*, creating sub-tlv's.
@@ -2560,33 +2557,31 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 	head = NULL;
 	tail = &head;
 
-	tlv_length = vp->length;
-	well_formed = 1;
-	
-	for (ptr = vp->vp_tlv;
-	     ptr != (vp->vp_tlv + vp->length);
+	for (ptr = tlv_data;
+	     ptr != (tlv_data + tlv_length);
 	     ptr += ptr[1]) {
-		VALUE_PAIR *sub;
-
-		sub = paircreate(attribute | (ptr[0] << 8), PW_TYPE_OCTETS);
-		if (!sub) {
+		vp = paircreate(attribute | (ptr[0] << 8), PW_TYPE_OCTETS);
+		if (!vp) {
 			pairfree(&head);
-			return vp;
+			goto not_well_formed;
 		}
 
 		if (!data2vp(packet, original, secret,
-			     ptr[0], ptr[1] - 2, ptr + 2, sub)) {
+			     ptr[0], ptr[1] - 2, ptr + 2, vp)) {
 			pairfree(&head);
-			return vp;
+			goto not_well_formed;
 		}
 
-		*tail = sub;
-		tail = &(sub->next);
+		*tail = vp;
+		tail = &(vp->next);
 	}
 
-	pairfree(&vp);		/* not needed any more */
+	/*
+	 *	TLV's MAY be continued, but sometimes they're not.
+	 */
+	if (tlv_data != data) free(tlv_data);
 
-	rad_sortvp(&head);
+	if (head->next) rad_sortvp(&head);
 
 	return head;
 }
