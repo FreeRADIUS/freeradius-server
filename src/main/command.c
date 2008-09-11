@@ -637,7 +637,7 @@ static fr_command_table_t command_table_debug[] = {
 	  command_debug_level, NULL },
 
 	{ "file",
-	  "debug file <filename> - Send debug output to <filename>",
+	  "debug file <filename> - Send all debuggin output to <filename>",
 	  command_debug_file, NULL },
 
 	{ NULL, NULL, NULL, NULL }
