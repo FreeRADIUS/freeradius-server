@@ -1,3 +1,19 @@
+FreeRADIUS 2.1.1 Thu Sep  11 13:20:01 CEST 2008;  , urgency=medium
+	Feature improvements
+	* More options and features to radmin
+	* "debug" command in radmin.  Try: debug file /var/log/radius/bob.log
+	  and then: debug condition '(User-Name == "bob")'
+	  See "man radmin" for more information.
+	* Added dictionary.networkphysics
+
+	Bug fixes
+	* Fixed bug that made radmin not work
+	* Fixed Suse && Debian package scripts
+	* Fixed issues with dynamic clients
+	* Fixed configure checks for -lreadline
+	* rlm_sqlippool no longer needs to be linked to rlm_sql.
+	* Add statistics for detail file listeners.  This closes bug #593.
+
 FreeRADIUS 2.1.0 Fri Sep  5 13:20:01 CEST 2008;  , urgency=medium
 	Feature improvements
 	* Clients may now be defined dynamically, based on IP address.
