@@ -418,6 +418,115 @@ static void cleanup_delay(void *ctx)
 }
 
 
+/*
+ *	FIXME: Put into a libradius function.
+ */
+#define MAX_PACKET_CODE (52)
+static const char *packet_codes[] = {
+  "",
+  "Access-Request",
+  "Access-Accept",
+  "Access-Reject",
+  "Accounting-Request",
+  "Accounting-Response",
+  "Accounting-Status",
+  "Password-Request",
+  "Password-Accept",
+  "Password-Reject",
+  "Accounting-Message",
+  "Access-Challenge",
+  "Status-Server",
+  "Status-Client",
+  "14",
+  "15",
+  "16",
+  "17",
+  "18",
+  "19",
+  "20",
+  "Resource-Free-Request",
+  "Resource-Free-Response",
+  "Resource-Query-Request",
+  "Resource-Query-Response",
+  "Alternate-Resource-Reclaim-Request",
+  "NAS-Reboot-Request",
+  "NAS-Reboot-Response",
+  "28",
+  "Next-Passcode",
+  "New-Pin",
+  "Terminate-Session",
+  "Password-Expired",
+  "Event-Request",
+  "Event-Response",
+  "35",
+  "36",
+  "37",
+  "38",
+  "39",
+  "Disconnect-Request",
+  "Disconnect-ACK",
+  "Disconnect-NAK",
+  "CoA-Request",
+  "CoA-ACK",
+  "CoA-NAK",
+  "46",
+  "47",
+  "48",
+  "49",
+  "IP-Address-Allocate",
+  "IP-Address-Release"
+};
+
+
+
+static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
+{
+	VALUE_PAIR *vp;
+	char buffer[1024];
+	const char *received, *from;
+	const fr_ipaddr_t *ip;
+	int port;
+
+	if (direction == 0) {
+		received = "Received";
+		from = "from";	/* what else? */
+		ip = &packet->src_ipaddr;
+		port = packet->src_port;
+
+	} else {
+		received = "Sending";
+		from = "to";	/* hah! */
+		ip = &packet->dst_ipaddr;
+		port = packet->dst_port;
+	}
+	
+	/*
+	 *	Client-specific debugging re-prints the input
+	 *	packet into the client log.
+	 *
+	 *	This really belongs in a utility library
+	 */
+	
+	if ((packet->code > 0) && (packet->code < MAX_PACKET_CODE)) {
+		RDEBUG("%s %s packet %s host %s port %d, id=%d, length=%d",
+		       received, packet_codes[packet->code], from,
+		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
+		       port, packet->id, packet->data_len);
+	} else {
+		RDEBUG("%s packet %s host %s port %d code=%d, id=%d, length=%d",
+		       received, from,
+		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
+		       port,
+		       packet->code, packet->id, packet->data_len);
+	}
+	for (vp = request->packet->vps;
+	     vp != NULL;
+	     vp = vp->next) {
+		vp_prints(buffer, sizeof(buffer), vp);
+		request->radlog(L_DBG, 0, request, "\t%s", buffer);
+	}
+}
+
 static void reject_delay(void *ctx)
 {
 	REQUEST *request = ctx;
@@ -427,6 +536,9 @@ static void reject_delay(void *ctx)
 
 	RDEBUG2("Sending delayed reject for request %d", request->number);
 
+	if (request->options) {
+		debug_packet(request, request->reply, 1);
+	}
 	request->listener->send(request->listener, request);
 
 	request->when.tv_sec += request->root->cleanup_delay;
@@ -1108,11 +1220,32 @@ static int request_pre_handler(REQUEST *request)
 	if (request->proxy_reply != NULL) {
 		rcode = request->proxy_listener->decode(request->proxy_listener,
 							request);
+		if (request->options) {
+			debug_packet(request, request->proxy_reply, 0);
+		}
 	} else
 #endif
 	if (request->packet->vps == NULL) {
 		rcode = request->listener->decode(request->listener, request);
-
+		
+		if (debug_condition) {
+			int result = FALSE;
+			
+			/*
+			 *	Ignore parse errors.
+			 */
+			radius_evaluate_condition(request, RLM_MODULE_OK, 0,
+						  &debug_condition, 1,
+						  &result);
+			if (result) {
+				request->priority = 2;
+				request->radlog = radlog_request;
+			}
+		}
+		
+		if (request->options) {
+			debug_packet(request, request->packet, 0);
+		}
 	} else {
 		rcode = 0;
 	}
@@ -1196,6 +1329,11 @@ static int proxy_request(REQUEST *request)
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
 	request->child_state = REQUEST_PROXIED;
+
+	if (request->options) {
+		debug_packet(request, request->proxy, 1);
+	}
+
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 	return 1;
@@ -1702,6 +1840,9 @@ static void request_post_handler(REQUEST *request)
 	 */
 	if ((request->reply->code != 0) ||
 	    (request->listener->type == RAD_LISTEN_DETAIL)) {
+		if (request->options) {
+			debug_packet(request, request->reply, 1);
+		}
 		request->listener->send(request->listener, request);
 	}
 
@@ -1863,6 +2004,11 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		       request->proxy->dst_port,
 		       request->proxy->id);
 		request->num_proxied_requests++;
+
+		if (request->options) {
+			debug_packet(request, request->proxy, 1);
+		}
+
 		request->proxy_listener->send(request->proxy_listener,
 					      request);
 		break;
@@ -1881,6 +2027,9 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		       "to client %s port %d - ID: %d",
 		       client->shortname,
 		       request->packet->src_port, request->packet->id);
+		if (request->options) {
+			debug_packet(request, request->reply, 1);
+		}
 		request->listener->send(request->listener, request);
 		break;
 	}
@@ -2133,20 +2282,6 @@ int received_request(rad_listen_t *listener,
 	request->delay = USEC;
 
 	tv_add(&request->when, request->delay);
-
-	if (debug_condition) {
-		int result = FALSE;
-
-		if (radius_evaluate_condition(request, RLM_MODULE_OK, 0,
-					      &debug_condition, 1, &result)) {
-			if (result) request->priority = 2;
-
-		} else {	/* the condition could not be parsed */
-			radlog(L_ERR, "Debug condition could not be parsed: Deleting");
-			free(debug_condition);
-			debug_condition = NULL;
-		}
-	}
 
 	INSERT_EVENT(wait_a_bit, request);
 
