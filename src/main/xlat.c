@@ -217,7 +217,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 */
 		p += 1 + strspn(p + 1, "0123456789");
 		if (*p != ']') {
-			DEBUG2("xlat: Invalid array reference in string at %s %s",
+			RDEBUG2("xlat: Invalid array reference in string at %s %s",
 			       fmt, p);
 			return 0;
 		}
@@ -416,9 +416,9 @@ static size_t xlat_regex(void *instance, REQUEST *request,
 /*
  *	Change the debugging level.
  */
-static size_t xlat_debug(void *instance, REQUEST *request,
+static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
 			  char *fmt, char *out, size_t outlen,
-			  RADIUS_ESCAPE_STRING func)
+			  UNUSED RADIUS_ESCAPE_STRING func)
 {
 	int level = 0;
 
@@ -666,12 +666,12 @@ static void decode_attribute(const char **from, char **to, int freespace,
 
 		len1 = rad_copy_variable(first, p);
 		if (len1 < 0) {
-			DEBUG2("Badly formatted variable: %s", p);
+			RDEBUG2("Badly formatted variable: %s", p);
 			goto free_and_done;
 		}
 
 		if ((p[len1] != ':') || (p[len1 + 1] != '-')) {
-			DEBUG2("No trailing :- after variable at %s", p);
+			RDEBUG2("No trailing :- after variable at %s", p);
 			goto free_and_done;
 		}
 
@@ -682,7 +682,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 
 			expand2 = TRUE;
 			if (len2 < 0) {
-				DEBUG2("Invalid text after :- at %s", p);
+				RDEBUG2("Invalid text after :- at %s", p);
 				goto free_and_done;
 			}
 			p += len2;
@@ -700,7 +700,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		}
 
 		if (*p != '}') {
-			DEBUG2("Failed to find trailing '}' in string");
+			RDEBUG2("Failed to find trailing '}' in string");
 			goto free_and_done;
 		}
 
@@ -743,7 +743,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 			 *	Skip to the end of the input
 			 */
 			p += strlen(p);
-			DEBUG("xlat: Module name is too long in string %%%s",
+			RDEBUG("xlat: Module name is too long in string %%%s",
 			      *from);
 			goto done;
 		}
@@ -751,7 +751,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	*pa = '\0';
 
 	if (!*p) {
-		DEBUG("xlat: Invalid syntax in %s", *from);
+		RDEBUG("xlat: Invalid syntax in %s", *from);
 
 		/*
 		 *	%{name} is a simple attribute reference,
@@ -766,7 +766,7 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		goto do_xlat;
 
 	} else if ((p[0] == ':') && (p[1] == '-')) { /* handle ':- */
-		DEBUG2("WARNING: Deprecated conditional expansion \":-\".  See \"man unlang\" for details");
+		RDEBUG2("WARNING: Deprecated conditional expansion \":-\".  See \"man unlang\" for details");
 		p += 2;
 		xlat_string = xlat_name;
 		goto do_xlat;
@@ -867,19 +867,19 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		 */
 	do_xlat:
 		if ((c = xlat_find(xlat_name)) != NULL) {
-			if (!c->internal) DEBUG3("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
+			if (!c->internal) RDEBUG3("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
 						c->module, xlat_string);
 			retlen = c->do_xlat(c->instance, request, xlat_string,
 					    q, freespace, func);
 			/* If retlen is 0, treat it as not found */
 			if (retlen > 0) found = 1;
 
-#ifndef NDEBUG
+#ifndef NRDEBUG
 		} else {
 			/*
 			 *	No attribute by that name, return an error.
 			 */
-			DEBUG2("WARNING: Unknown module \"%s\" in string expansion \"%%%s\"", xlat_name, *from);
+			RDEBUG2("WARNING: Unknown module \"%s\" in string expansion \"%%%s\"", xlat_name, *from);
 #endif
 		}
 	}
@@ -1208,7 +1208,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			default:
-				DEBUG2("WARNING: Unknown variable '%%%c': See 'doc/variables.txt'", *p);
+				RDEBUG2("WARNING: Unknown variable '%%%c': See 'doc/variables.txt'", *p);
 				if (freespace > 2) {
 					*q++ = '%';
 					*q++ = *p++;
@@ -1218,7 +1218,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 	}
 	*q = '\0';
 
-	DEBUG2("\texpand: %s -> %s", fmt, out);
+	RDEBUG2("\texpand: %s -> %s", fmt, out);
 
 	return strlen(out);
 }
