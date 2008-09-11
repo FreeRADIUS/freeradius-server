@@ -126,7 +126,7 @@ void request_stats_final(REQUEST *request)
 	}
 
 #ifdef WITH_PROXY
-	if (!request->proxy) goto done;	/* simplifies formatting */
+	if (!request->proxy || !request->proxy_listener) goto done;	/* simplifies formatting */
 
 	switch (request->proxy->code) {
 	case PW_AUTHENTICATION_REQUEST:
