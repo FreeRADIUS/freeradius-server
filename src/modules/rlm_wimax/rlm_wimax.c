@@ -59,8 +59,8 @@ static int wimax_authorize(void *instance, REQUEST *request)
 		vp->vp_strvalue[(5*3)+2] = '\0';
 		vp->length = (5*3)+2;
 
-		DEBUG2("rlm_wimax: Fixing WiMAX binary Calling-Station-Id to %s",
-		       buffer);
+		RDEBUG2("Fixing WiMAX binary Calling-Station-Id to %s",
+			buffer);
 	}
 
 	return RLM_MODULE_OK;
