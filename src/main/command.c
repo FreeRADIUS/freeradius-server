@@ -604,7 +604,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 }
 
 extern char *debug_condition;
-static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[])
+static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char *argv[])
 {
 	/*
 	 *	Delete old condition.
@@ -627,6 +627,34 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 	return 0;
 }
 
+static int command_show_debug_condition(rad_listen_t *listener,
+					UNUSED int argc, UNUSED char *argv[])
+{
+	if (!debug_condition) return 0;
+
+	cprintf(listener, "%s\n", debug_condition);
+	return 0;
+}
+
+
+static int command_show_debug_file(rad_listen_t *listener,
+					UNUSED int argc, UNUSED char *argv[])
+{
+	if (!debug_log_file) return 0;
+
+	cprintf(listener, "%s\n", debug_log_file);
+	return 0;
+}
+
+
+static int command_show_debug_level(rad_listen_t *listener,
+					UNUSED int argc, UNUSED char *argv[])
+{
+	cprintf(listener, "%d\n", debug_flag);
+	return 0;
+}
+
+
 static fr_command_table_t command_table_debug[] = {
 	{ "condition",
 	  "debug condition <condition> - Enable debugging for requests matching <condition>",
@@ -639,6 +667,23 @@ static fr_command_table_t command_table_debug[] = {
 	{ "file",
 	  "debug file <filename> - Send all debuggin output to <filename>",
 	  command_debug_file, NULL },
+
+	{ NULL, NULL, NULL, NULL }
+};
+
+static fr_command_table_t command_table_show_debug[] = {
+	{ "condition",
+	  "show debug condition - Shows current debugging condition.",
+	  command_show_debug_condition, NULL },
+
+	{ "level",
+	  "show debug level - Shows current debugging level.",
+	  command_show_debug_level, NULL },
+
+	{ "file",
+	  "show debug file - Shows current debugging file.",
+	  command_show_debug_file, NULL },
+
 
 	{ NULL, NULL, NULL, NULL }
 };
@@ -665,6 +710,9 @@ static fr_command_table_t command_table_show[] = {
 	{ "config",
 	  "show config <module> - show configuration for module",
 	  command_show_module_config, NULL },
+	{ "debug",
+	  "show debug <command> - show debug properties",
+	  NULL, command_table_show_debug },
 	{ "module",
 	  "show module <command> - do sub-command of module",
 	  NULL, command_table_show_module },
