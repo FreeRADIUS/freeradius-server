@@ -37,7 +37,7 @@ listen {
 	#  no permissions for "other" users.  These permissions form
 	#  minimal security, and should not be relied on.
 	#
-	socket = ${run_dir}/radiusd.sock
+	socket = ${run_dir}/${name}.sock
 
 	#
 	#  The following two parameters perform authentication and
