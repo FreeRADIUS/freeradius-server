@@ -594,6 +594,11 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 		return -1;
 	}
 
+	if (debug_flag && mainconfig.radlog_dest == RADLOG_STDOUT) {
+		cprintf(listener, "ERROR: Cannot redirect debug logs to a file when already in debugging mode.\n");
+		return -1;
+	}
+
 	if (debug_log_file) {
 		free(debug_log_file);
 		debug_log_file = NULL;

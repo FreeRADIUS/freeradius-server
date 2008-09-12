@@ -536,7 +536,7 @@ static void reject_delay(void *ctx)
 
 	RDEBUG2("Sending delayed reject for request %d", request->number);
 
-	if (request->options) {
+	if (!debug_flag && request->options) {
 		debug_packet(request, request->reply, 1);
 	}
 	request->listener->send(request->listener, request);
@@ -1220,7 +1220,7 @@ static int request_pre_handler(REQUEST *request)
 	if (request->proxy_reply != NULL) {
 		rcode = request->proxy_listener->decode(request->proxy_listener,
 							request);
-		if (request->options) {
+		if (!debug_flag && request->options) {
 			debug_packet(request, request->proxy_reply, 0);
 		}
 	} else
@@ -1243,7 +1243,7 @@ static int request_pre_handler(REQUEST *request)
 			}
 		}
 		
-		if (request->options) {
+		if (!debug_flag && request->options) {
 			debug_packet(request, request->packet, 0);
 		}
 	} else {
@@ -1330,7 +1330,7 @@ static int proxy_request(REQUEST *request)
 #endif
 	request->child_state = REQUEST_PROXIED;
 
-	if (request->options) {
+	if (!debug_flag && request->options) {
 		debug_packet(request, request->proxy, 1);
 	}
 
@@ -1840,7 +1840,7 @@ static void request_post_handler(REQUEST *request)
 	 */
 	if ((request->reply->code != 0) ||
 	    (request->listener->type == RAD_LISTEN_DETAIL)) {
-		if (request->options) {
+		if (!debug_flag && request->options) {
 			debug_packet(request, request->reply, 1);
 		}
 		request->listener->send(request->listener, request);
@@ -2005,7 +2005,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		       request->proxy->id);
 		request->num_proxied_requests++;
 
-		if (request->options) {
+		if (!debug_flag && request->options) {
 			debug_packet(request, request->proxy, 1);
 		}
 
@@ -2027,7 +2027,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		       "to client %s port %d - ID: %d",
 		       client->shortname,
 		       request->packet->src_port, request->packet->id);
-		if (request->options) {
+		if (!debug_flag && request->options) {
 			debug_packet(request, request->reply, 1);
 		}
 		request->listener->send(request->listener, request);
