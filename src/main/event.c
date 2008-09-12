@@ -487,6 +487,8 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	const fr_ipaddr_t *ip;
 	int port;
 
+	if (!packet) return;
+
 	if (direction == 0) {
 		received = "Received";
 		from = "from";	/* what else? */
@@ -506,7 +508,6 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	 *
 	 *	This really belongs in a utility library
 	 */
-	
 	if ((packet->code > 0) && (packet->code < MAX_PACKET_CODE)) {
 		RDEBUG("%s %s packet %s host %s port %d, id=%d, length=%d",
 		       received, packet_codes[packet->code], from,
@@ -519,9 +520,8 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 		       port,
 		       packet->code, packet->id, packet->data_len);
 	}
-	for (vp = request->packet->vps;
-	     vp != NULL;
-	     vp = vp->next) {
+
+	for (vp = packet->vps; vp != NULL; vp = vp->next) {
 		vp_prints(buffer, sizeof(buffer), vp);
 		request->radlog(L_DBG, 0, request, "\t%s", buffer);
 	}
