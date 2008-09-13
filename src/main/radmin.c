@@ -246,7 +246,7 @@ int main(int argc, char **argv)
 	ssize_t len, size;
 	const char *file = NULL;
 	const char *name = "radiusd";
-	char *p, buffer[2048];
+	char *p, buffer[65536];
 
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
 		progname = argv[0];
