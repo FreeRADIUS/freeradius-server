@@ -225,7 +225,7 @@ typedef struct radius_packet {
 /*
  *	Printing functions.
  */
-void		fr_print_string(char *in, size_t inlen,
+void		fr_print_string(const char *in, size_t inlen,
 				 char *out, size_t outlen);
 int     	vp_prints_value(char *out, size_t outlen,
 				VALUE_PAIR *vp, int delimitst);

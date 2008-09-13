@@ -127,7 +127,7 @@ static int utf8_char(uint8_t *str)
  *	has to be larger than the input string by at least 5 bytes.
  *	If not, the output is silently truncated...
  */
-void fr_print_string(char *in, size_t inlen, char *out, size_t outlen)
+void fr_print_string(const char *in, size_t inlen, char *out, size_t outlen)
 {
 	uint8_t		*str = (uint8_t *)in;
 	int		sp = 0;
