@@ -62,4 +62,15 @@ listen {
 	#  Name of group that is allowed to connect to the control socket.
 	#
 #	gid = radius
+
+	#
+	#  Access mode.
+	#
+	#  This can be used to give *some* administrators access to
+	#  monitor the system, but not to change it.
+	#
+	#	ro = read only access (default)
+	#	rw = read/write access.
+	#
+#	mode = rw
 }
