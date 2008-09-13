@@ -729,6 +729,85 @@ static int command_show_debug_level(rad_listen_t *listener,
 }
 
 
+static int command_show_client_config(rad_listen_t *listener, int argc, char *argv[])
+{
+	RADCLIENT *client;
+	FILE *fp;
+	fr_ipaddr_t ipaddr;
+
+	if (argc == 0) {
+		cprintf(listener, "ERROR: Must specify <ipaddr>\n");
+		return 0;
+	}
+
+	if (ip_hton(argv[0], AF_UNSPEC, &ipaddr) < 0) {
+		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
+			fr_strerror());
+		return 0;
+	}
+
+	client = client_find(NULL, &ipaddr);
+	if (!client) {
+		cprintf(listener, "ERROR: No such client\n");
+		return 0;
+	}
+
+	if (!client->cs) return 1;
+
+	fp = fdopen(dup(listener->fd), "a");
+	if (!fp) {
+		cprintf(listener, "ERROR: Can't dup %s\n", strerror(errno));
+		return 0;
+	}
+
+	cf_section2file(fp, client->cs);
+	fclose(fp);
+
+	return 1;
+}
+
+static int command_show_home_server_config(rad_listen_t *listener, int argc, char *argv[])
+{
+	home_server *home;
+	FILE *fp;
+	int port;
+	fr_ipaddr_t ipaddr;
+
+	if (argc < 1) {
+		cprintf(listener, "ERROR: Must specify <ipaddr> <port>\n");
+		return 0;
+	}
+
+	if (ip_hton(argv[0], AF_UNSPEC, &ipaddr) < 0) {
+		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
+			fr_strerror());
+		return 0;
+	}
+
+	port = atoi(argv[1]);
+
+	home = home_server_find(&ipaddr, port);
+	if (!home) {
+		cprintf(listener, "ERROR: No such home server\n");
+		return 0;
+	}
+
+	if (!home->cs) return 1;
+
+	fp = fdopen(dup(listener->fd), "a");
+	if (!fp) {
+		cprintf(listener, "ERROR: Can't dup %s\n", strerror(errno));
+		return 0;
+	}
+
+	cf_section2file(fp, home->cs);
+	fclose(fp);
+
+	return 1;
+}
+
+
+
 static fr_command_table_t command_table_debug[] = {
 	{ "condition", FR_WRITE,
 	  "debug condition <condition> - Enable debugging for requests matching <condition>",
@@ -763,13 +842,13 @@ static fr_command_table_t command_table_show_debug[] = {
 
 static fr_command_table_t command_table_show_module[] = {
 	{ "config", FR_READ,
-	  "show module config <module> - show configuration for <module>",
+	  "show module config <module> - show configuration for given module",
 	  command_show_module_config, NULL },
 	{ "flags", FR_READ,
 	  "show module flags <module> - show other module properties",
 	  command_show_module_flags, NULL },
 	{ "list", FR_READ,
-	  "shows list of loaded modules",
+	  "show module list - shows list of loaded modules",
 	  command_show_modules, NULL },
 	{ "methods", FR_READ,
 	  "show module methods <module> - show sections where <module> may be used",
@@ -778,23 +857,42 @@ static fr_command_table_t command_table_show_module[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
+static fr_command_table_t command_table_show_client[] = {
+	{ "config", FR_READ,
+	  "show client config <ipaddr> - show configuration for given client",
+	  command_show_client_config, NULL },
+	{ "list", FR_READ,
+	  "show client list - shows list of global clients",
+	  command_show_clients, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
+static fr_command_table_t command_table_show_home[] = {
+	{ "config", FR_READ,
+	  "show home_server config <ipaddr> <port> - show configuration for given home server",
+	  command_show_home_server_config, NULL },
+	{ "list", FR_READ,
+	  "show home_server list - shows list of home servers",
+	  command_show_home_servers, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
 
 static fr_command_table_t command_table_show[] = {
-	{ "clients", FR_READ,
-	  "show clients - shows list of clients (ip addresses)",
-	  command_show_clients, NULL },
+	{ "client", FR_READ,
+	  "show client <command> - do sub-command of client",
+	  NULL, command_table_show_client },
 	{ "debug", FR_READ,
 	  "show debug <command> - show debug properties",
 	  NULL, command_table_show_debug },
-	{ "home_servers", FR_READ,
-	  "show home_servers - shows list of home server (ip addresses and ports)",
-	  command_show_home_servers, NULL },
+	{ "home_server", FR_READ,
+	  "show home_server <command> - do sub-command of home_server",
+	  NULL, command_table_show_home },
 	{ "module", FR_READ,
 	  "show module <command> - do sub-command of module",
 	  NULL, command_table_show_module },
-	{ "modules", FR_READ,
-	  "show modules - shows list of loaded modules",
-	  command_show_modules, NULL },
 	{ "uptime", FR_READ,
 	  "show uptime - shows time at which server started",
 	  command_uptime, NULL },
