@@ -79,6 +79,10 @@ static realm_config_t *realm_config = NULL;
 #ifdef WITH_PROXY
 static rbtree_t	*home_servers_byaddr = NULL;
 static rbtree_t	*home_servers_byname = NULL;
+#ifdef WITH_STATS
+static int home_server_max_number = 0;
+static rbtree_t	*home_servers_bynumber = NULL;
+#endif
 
 static rbtree_t	*home_pools_byname = NULL;
 
@@ -149,6 +153,16 @@ static int home_server_addr_cmp(const void *one, const void *two)
 
 	return fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
 }
+
+#ifdef WITH_STATS
+static int home_server_number_cmp(const void *one, const void *two)
+{
+	const home_server *a = one;
+	const home_server *b = two;
+
+	return (a->number - b->number);
+}
+#endif
 
 static int home_pool_name_cmp(const void *one, const void *two)
 {
@@ -223,6 +237,11 @@ static size_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
 void realms_free(void)
 {
 #ifdef WITH_PROXY
+#ifdef WITH_STATS
+	rbtree_free(home_servers_bynumber);
+	home_servers_bynumber = NULL;
+#endif
+
 	rbtree_free(home_servers_byname);
 	home_servers_byname = NULL;
 
@@ -522,6 +541,21 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 		return 0;
 	}
 
+#ifdef WITH_STATS
+	home->number = home_server_max_number++;
+	if (!rbtree_insert(home_servers_bynumber, home)) {
+		rbtree_deletebydata(home_servers_byname, home);
+		if (home->ipaddr.af != AF_UNSPEC) {
+			rbtree_deletebydata(home_servers_byname, home);
+		}
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Internal error adding home server %s.",
+			   name2);
+		free(home);
+		return 0;
+	}
+#endif
+
 	if (home->response_window < 5) home->response_window = 5;
 	if (home->response_window > 60) home->response_window = 60;
 
@@ -574,6 +608,21 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 			free(home2);
 			return 0;
 		}
+
+#ifdef WITH_STATS
+		home->number = home_server_max_number++;
+		if (!rbtree_insert(home_servers_bynumber, home)) {
+			rbtree_deletebydata(home_servers_byname, home);
+			if (home->ipaddr.af != AF_UNSPEC) {
+				rbtree_deletebydata(home_servers_byname, home);
+			}
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Internal error adding home server %s.",
+				   name2);
+			free(home);
+			return 0;
+		}
+#endif
 	}
 
 	return 1;
@@ -1008,6 +1057,21 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			free(home);
 			return 0;
 		}
+
+#ifdef WITH_STATS
+		home->number = home_server_max_number++;
+		if (!rbtree_insert(home_servers_bynumber, home)) {
+			rbtree_deletebydata(home_servers_byname, home);
+			if (home->ipaddr.af != AF_UNSPEC) {
+				rbtree_deletebydata(home_servers_byname, home);
+			}
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Internal error adding home server %s.",
+				   name);
+			free(home);
+			return 0;
+		}
+#endif
 	}
 
 	/*
@@ -1467,6 +1531,14 @@ int realms_init(CONF_SECTION *config)
 		return 0;
 	}
 
+#ifdef WITH_STATS
+	home_servers_bynumber = rbtree_create(home_server_number_cmp, NULL, 0);
+	if (!home_servers_bynumber) {
+		realms_free();
+		return 0;
+	}
+#endif
+
 	home_pools_byname = rbtree_create(home_pool_name_cmp, free, 0);
 	if (!home_pools_byname) {
 		realms_free();
@@ -1809,4 +1881,17 @@ home_server *home_server_find(fr_ipaddr_t *ipaddr, int port)
 
 	return rbtree_finddata(home_servers_byaddr, &myhome);
 }
+
+#ifdef WITH_STATS
+home_server *home_server_bynumber(int number)
+{
+	home_server myhome;
+
+	memset(&myhome, 0, sizeof(myhome));
+	myhome.number = number;
+	myhome.server = NULL;	/* we're not called for internal proxying */
+
+	return rbtree_finddata(home_servers_bynumber, &myhome);
+}
+#endif
 #endif

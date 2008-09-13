@@ -66,6 +66,8 @@ typedef struct home_server {
 	int		revive_interval; /* if it doesn't support pings */
 	CONF_SECTION	*cs;
 #ifdef WITH_STATS
+	int		number;
+
 	fr_stats_t	stats;
 
 	fr_stats_ema_t  ema;
@@ -115,5 +117,8 @@ REALM *realm_find2(const char *name); /* ... with name taken from realm_find */
 
 home_server *home_server_ldb(const char *realmname, home_pool_t *pool, REQUEST *request);
 home_server *home_server_find(fr_ipaddr_t *ipaddr, int port);
+#ifdef WITH_STATS
+home_server *home_server_bynumber(int number);
+#endif
 
 #endif /* REALMS_H */
