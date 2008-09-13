@@ -13,7 +13,7 @@
 #	they are executed.
 #
 #	For now, anyone who has permission to connect to the socket
-#	has complete control over the server.
+#	has nearly complete control over the server.  Be warned!
 #
 #	This functionality is NOT enabled by default.
 #
