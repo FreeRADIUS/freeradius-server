@@ -25,7 +25,9 @@
 
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/conffile.h>
-#
+#include <freeradius-devel/stats.h>
+#include <freeradius-devel/realms.h>
+
 #ifdef HAVE_SYS_UN_H
 #include <sys/un.h>
 #endif
@@ -93,6 +95,7 @@ static FR_NAME_NUMBER mode_names[] = {
 	{ "rw", FR_READ | FR_WRITE },
 	{ NULL, 0 }
 };
+
 
 static ssize_t cprintf(rad_listen_t *listener, const char *fmt, ...)
 #ifdef __GNUC__
@@ -544,6 +547,56 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 	return 1;		/* success */
 }
 
+static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+{
+	int i;
+	home_server *home;
+	char buffer[256];
+
+	for (i = 0; i < 256; i++) {
+		home = home_server_bynumber(i);
+		if (!home) break;
+
+		/*
+		 *	Internal "virtual" home server.
+		 */
+		if (home->ipaddr.af == AF_UNSPEC) continue;
+
+		cprintf(listener, "\t%s\t%d\n",
+			ip_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
+			home->port);
+	}
+
+	return 0;
+}
+
+
+static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+{
+	int i;
+	RADCLIENT *client;
+	char buffer[256];
+
+	for (i = 0; i < 256; i++) {
+		client = client_findbynumber(NULL, i);
+		if (!client) break;
+
+		ip_ntoh(&client->ipaddr, buffer, sizeof(buffer));
+
+		if (((client->ipaddr.af == AF_INET) &&
+		     (client->prefix != 32)) ||
+		    ((client->ipaddr.af == AF_INET6) &&
+		     (client->prefix != 128))) {
+			cprintf(listener, "\t%s/%d\n", buffer, client->prefix);
+		} else {
+			cprintf(listener, "\t%s\n", buffer);
+		}
+	}
+
+	return 0;
+}
+
+
 static int command_show_xml(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
 {
 	CONF_ITEM *ci;
@@ -730,9 +783,15 @@ static fr_command_table_t command_table_show[] = {
 	{ "config", FR_READ,
 	  "show config <module> - show configuration for module",
 	  command_show_module_config, NULL },
+	{ "clients", FR_READ,
+	  "show clients - shows list of clients (ip addresses)",
+	  command_show_clients, NULL },
 	{ "debug", FR_READ,
 	  "show debug <command> - show debug properties",
 	  NULL, command_table_show_debug },
+	{ "home_servers", FR_READ,
+	  "show home_servers - shows list of home server (ip addresses and ports)",
+	  command_show_home_servers, NULL },
 	{ "module", FR_READ,
 	  "show module <command> - do sub-command of module",
 	  NULL, command_table_show_module },
@@ -837,6 +896,119 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	return 1;		/* success */
 }
 
+static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
+			       int auth)
+{
+	cprintf(listener, "\trequests\t%d\n", stats->total_requests);
+	cprintf(listener, "\tresponses\t%d\n", stats->total_responses);
+	
+	if (auth) {
+		cprintf(listener, "\taccepts\t\t%d\n",
+			stats->total_access_accepts);
+		cprintf(listener, "\trejects\t\t%d\n",
+			stats->total_access_rejects);
+		cprintf(listener, "\tchallenges\t%d\n",
+			stats->total_access_challenges);
+	}
+
+	cprintf(listener, "\tdup\t\t%d\n", stats->total_dup_requests);
+	cprintf(listener, "\tinvalid\t\t%d\n", stats->total_invalid_requests);
+	cprintf(listener, "\tmalformed\t%d\n", stats->total_malformed_requests);
+	cprintf(listener, "\tbad_signature\t%d\n", stats->total_bad_authenticators);
+	cprintf(listener, "\tdropped\t\t%d\n", stats->total_packets_dropped);
+	cprintf(listener, "\tunknown_types\t%d\n", stats->total_unknown_types);
+	
+	return 1;
+}
+
+
+static int command_stats_home_server(rad_listen_t *listener, int argc, char *argv[])
+{
+	int port;
+	home_server *home;
+	fr_ipaddr_t ipaddr;
+
+	if (argc < 2) {
+		cprintf(listener, "ERROR: <ipaddr> and <port> are required.\n");
+		return 0;
+	}
+
+	if (ip_hton(argv[0], AF_UNSPEC, &ipaddr) < 0) {
+		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
+			fr_strerror());
+		return 0;
+	}
+
+	port = atoi(argv[1]);
+
+	home = home_server_find(&ipaddr, port);
+	if (!home) {
+		cprintf(listener, "ERROR: No such home server\n");
+		return 0;
+	}
+
+	return command_print_stats(listener, &home->stats,
+				   (home->type == HOME_TYPE_AUTH));
+}
+
+
+static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
+{
+	int auth = TRUE;
+	RADCLIENT *client;
+	fr_ipaddr_t ipaddr;
+
+	if (argc == 0) {
+		return command_print_stats(listener, &radius_auth_stats, 1);
+	}
+
+	if (strcmp(argv[0], "auth") == 0) {
+		auth = TRUE;
+
+	} else if (strcmp(argv[0], "acct") == 0) {
+#ifdef WITH_ACCOUNTING
+		auth = FALSE;
+#else
+		cprintf(listener, "ERROR: This server was built without accounting support.\n");
+		return 0;
+#endif
+
+	} else {
+		cprintf(listener, "ERROR: Unknown statistics type\n");
+		return 0;
+	}
+
+	if (argc == 1) {
+#ifdef WITH_ACCOUNTING
+		if (!auth) {
+			return command_print_stats(listener,
+						   &radius_acct_stats, auth);
+		}
+#endif
+		return command_print_stats(listener, &radius_auth_stats, auth);
+	}
+
+	if (ip_hton(argv[1], AF_UNSPEC, &ipaddr) < 0) {
+		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
+			fr_strerror());
+		return 0;
+	}
+
+	client = client_find(NULL, &ipaddr);
+	if (!client) {
+		cprintf(listener, "ERROR: No such client\n");
+		return 0;
+	}
+
+#ifdef WITH_ACCOUNTING
+	if (!auth) {
+		return command_print_stats(listener, client->acct, auth);
+	}
+#endif
+
+	return command_print_stats(listener, client->auth, auth);
+}
+
 
 static fr_command_table_t command_table_set_module[] = {
 	{ "config", FR_WRITE,
@@ -854,6 +1026,17 @@ static fr_command_table_t command_table_set[] = {
 };
 
 
+static fr_command_table_t command_table_stats[] = {
+	{ "client", FR_READ,
+	  "stats client [auth/acct] <ipaddr> - show statistics for client",
+	  command_stats_client, NULL },
+	{ "home_server", FR_READ,
+	  "stats home_server <ipaddr> <port> - show statistics for home server",
+	  command_stats_home_server, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
 static fr_command_table_t command_table[] = {
 	{ "debug", FR_WRITE,
 	  "debug <command> - debugging commands",
@@ -867,8 +1050,9 @@ static fr_command_table_t command_table[] = {
 	{ "terminate", FR_WRITE,
 	  "terminate - terminates the server, and causes it to exit",
 	  command_terminate, NULL },
-	{ "show",  FR_READ, NULL, NULL, command_table_show },
 	{ "set", FR_WRITE, NULL, NULL, command_table_set },
+	{ "show",  FR_READ, NULL, NULL, command_table_show },
+	{ "stats",  FR_READ, NULL, NULL, command_table_stats },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
