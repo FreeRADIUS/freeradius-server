@@ -780,9 +780,6 @@ static fr_command_table_t command_table_show_module[] = {
 
 
 static fr_command_table_t command_table_show[] = {
-	{ "config", FR_READ,
-	  "show config <module> - show configuration for module",
-	  command_show_module_config, NULL },
 	{ "clients", FR_READ,
 	  "show clients - shows list of clients (ip addresses)",
 	  command_show_clients, NULL },
