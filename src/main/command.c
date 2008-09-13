@@ -46,8 +46,12 @@ typedef struct fr_command_table_t fr_command_table_t;
 
 typedef int (*fr_command_func_t)(rad_listen_t *, int, char *argv[]);
 
+#define FR_READ  (1)
+#define FR_WRITE (2)
+
 struct fr_command_table_t {
 	const char *command;
+	int mode;		/* read/write */
 	const char *help;
 	fr_command_func_t func;
 	fr_command_table_t *table;
@@ -59,8 +63,10 @@ typedef struct fr_command_socket_t {
 	char	*path;
 	uid_t	uid;
 	gid_t	gid;
+	int	mode;
 	char	*uid_name;
 	char	*gid_name;
+	char	*mode_name;
 	char user[256];
 	ssize_t offset;
 	ssize_t next;
@@ -74,8 +80,18 @@ static const CONF_PARSER command_config[] = {
     offsetof(fr_command_socket_t, uid_name), NULL, NULL},
   { "gid",  PW_TYPE_STRING_PTR,
     offsetof(fr_command_socket_t, gid_name), NULL, NULL},
+  { "mode",  PW_TYPE_STRING_PTR,
+    offsetof(fr_command_socket_t, mode_name), NULL, NULL},
 
   { NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+
+static FR_NAME_NUMBER mode_names[] = {
+	{ "ro", FR_READ },
+	{ "read-only", FR_READ },
+	{ "read-write", FR_READ | FR_WRITE },
+	{ "rw", FR_READ | FR_WRITE },
+	{ NULL, 0 }
 };
 
 static ssize_t cprintf(rad_listen_t *listener, const char *fmt, ...)
@@ -661,76 +677,75 @@ static int command_show_debug_level(rad_listen_t *listener,
 
 
 static fr_command_table_t command_table_debug[] = {
-	{ "condition",
+	{ "condition", FR_WRITE,
 	  "debug condition <condition> - Enable debugging for requests matching <condition>",
 	  command_debug_condition, NULL },
 
-	{ "level",
+	{ "level", FR_WRITE,
 	  "debug level <number> - Set debug level to <number>.  Higher is more debugging.",
 	  command_debug_level, NULL },
 
-	{ "file",
+	{ "file", FR_WRITE,
 	  "debug file <filename> - Send all debuggin output to <filename>",
 	  command_debug_file, NULL },
 
-	{ NULL, NULL, NULL, NULL }
+	{ NULL, 0, NULL, NULL, NULL }
 };
 
 static fr_command_table_t command_table_show_debug[] = {
-	{ "condition",
+	{ "condition", FR_READ,
 	  "show debug condition - Shows current debugging condition.",
 	  command_show_debug_condition, NULL },
 
-	{ "level",
+	{ "level", FR_READ,
 	  "show debug level - Shows current debugging level.",
 	  command_show_debug_level, NULL },
 
-	{ "file",
+	{ "file", FR_READ,
 	  "show debug file - Shows current debugging file.",
 	  command_show_debug_file, NULL },
 
-
-	{ NULL, NULL, NULL, NULL }
+	{ NULL, 0, NULL, NULL, NULL }
 };
 
 static fr_command_table_t command_table_show_module[] = {
-	{ "config",
+	{ "config", FR_READ,
 	  "show module config <module> - show configuration for <module>",
 	  command_show_module_config, NULL },
-	{ "flags",
+	{ "flags", FR_READ,
 	  "show module flags <module> - show other module properties",
 	  command_show_module_flags, NULL },
-	{ "list",
+	{ "list", FR_READ,
 	  "shows list of loaded modules",
 	  command_show_modules, NULL },
-	{ "methods",
+	{ "methods", FR_READ,
 	  "show module methods <module> - show sections where <module> may be used",
 	  command_show_module_methods, NULL },
 
-	{ NULL, NULL, NULL, NULL }
+	{ NULL, 0, NULL, NULL, NULL }
 };
 
 
 static fr_command_table_t command_table_show[] = {
-	{ "config",
+	{ "config", FR_READ,
 	  "show config <module> - show configuration for module",
 	  command_show_module_config, NULL },
-	{ "debug",
+	{ "debug", FR_READ,
 	  "show debug <command> - show debug properties",
 	  NULL, command_table_show_debug },
-	{ "module",
+	{ "module", FR_READ,
 	  "show module <command> - do sub-command of module",
 	  NULL, command_table_show_module },
-	{ "modules",
+	{ "modules", FR_READ,
 	  "show modules - shows list of loaded modules",
 	  command_show_modules, NULL },
-	{ "uptime",
+	{ "uptime", FR_READ,
 	  "show uptime - shows time at which server started",
 	  command_uptime, NULL },
-	{ "xml",
+	{ "xml", FR_READ,
 	  "show xml <reference> - Prints out configuration as XML",
 	  command_show_xml, NULL },
-	{ NULL, NULL, NULL, NULL }
+	{ NULL, 0, NULL, NULL, NULL }
 };
 
 
@@ -824,40 +839,45 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 
 
 static fr_command_table_t command_table_set_module[] = {
-	{ "config",
+	{ "config", FR_WRITE,
 	  "set module config <module> variable value - set configuration for <module>",
 	  command_set_module_config, NULL },
 
-	{ NULL, NULL, NULL, NULL }
+	{ NULL, 0, NULL, NULL, NULL }
 };
 
 
 static fr_command_table_t command_table_set[] = {
-	{ "module", NULL, NULL, command_table_set_module },
+	{ "module", FR_WRITE, NULL, NULL, command_table_set_module },
 
-	{ NULL, NULL, NULL, NULL }
+	{ NULL, 0, NULL, NULL, NULL }
 };
 
 
 static fr_command_table_t command_table[] = {
-	{ "debug",
+	{ "debug", FR_WRITE,
 	  "debug <command> - debugging commands",
 	  NULL, command_table_debug },
-	{ "hup",
+	{ "hup", FR_WRITE,
 	  "hup [module] - sends a HUP signal to the server, or optionally to one module",
 	  command_hup, NULL },
-	{ "terminate",
+	{ "reconnect", FR_READ,
+	  "reconnect - reconnect to a running server",
+	  NULL, NULL },		/* just here for "help" */
+	{ "terminate", FR_WRITE,
 	  "terminate - terminates the server, and causes it to exit",
 	  command_terminate, NULL },
-	{ "show", NULL, NULL, command_table_show },
-	{ "set", NULL, NULL, command_table_set },
+	{ "show",  FR_READ, NULL, NULL, command_table_show },
+	{ "set", FR_WRITE, NULL, NULL, command_table_set },
 
-	{ NULL, NULL, NULL, NULL }
+	{ NULL, 0, NULL, NULL, NULL }
 };
 
 
 /*
- *	FIXME: Unix domain sockets!
+ *	Parse the unix domain sockets.
+ *
+ *	FIXME: TCP + SSL, after RadSec is in.
  */
 static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
@@ -903,6 +923,17 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 #endif
+
+	if (!sock->mode_name) {
+		sock->mode = FR_READ;
+	} else {
+		sock->mode = fr_str2int(mode_names, sock->mode_name, 0);
+		if (!sock->mode) {
+			radlog(L_ERR, "Invalid mode name \"%s\"",
+			       sock->mode_name);
+			return -1;
+		}
+	}
 
 	/*
 	 *	FIXME: check for absolute pathnames?
@@ -1134,6 +1165,15 @@ static int command_domain_recv(rad_listen_t *listener,
 	len = 0;
 	for (i = 0; table[i].command != NULL; i++) {
 		if (strcmp(table[i].command, argv[0]) == 0) {
+			/*
+			 *	Check permissions.
+			 */
+			if (((co->mode & FR_WRITE) == 0) &&
+			    ((table[i].mode & FR_WRITE) != 0)) {
+				cprintf(listener, "ERROR: You do not have write permission.\n");
+				goto do_next;
+			}
+
 			if (table[i].table) {
 				/*
 				 *	This is the last argument, but
@@ -1149,6 +1189,11 @@ static int command_domain_recv(rad_listen_t *listener,
 				argv++;
 				table = table[i].table;
 				goto retry;
+			}
+
+			if (!table[i].func) {
+				cprintf(listener, "ERROR: Invalid command\n");
+				goto do_next;
 			}
 
 			len = 1;
@@ -1291,6 +1336,7 @@ static int command_domain_accept(rad_listen_t *listener,
 	sock->offset = 0;
 	sock->user[0] = '\0';
 	sock->path = ((fr_command_socket_t *) listener->data)->path;
+	sock->mode = ((fr_command_socket_t *) listener->data)->mode;
 
 	this->fd = newfd;
 	this->recv = command_domain_recv;
