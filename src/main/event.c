@@ -478,6 +478,10 @@ static const char *packet_codes[] = {
 };
 
 
+/*
+ *	In daemon mode, AND this request has debug flags set.
+ */
+#define DEBUG_PACKET if (!debug_flag && request->options) debug_packet
 
 static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 {
@@ -1220,9 +1224,7 @@ static int request_pre_handler(REQUEST *request)
 	if (request->proxy_reply != NULL) {
 		rcode = request->proxy_listener->decode(request->proxy_listener,
 							request);
-		if (!debug_flag && request->options) {
-			debug_packet(request, request->proxy_reply, 0);
-		}
+		DEBUG_PACKET(request, request->proxy_reply, 0);
 	} else
 #endif
 	if (request->packet->vps == NULL) {
@@ -1243,9 +1245,7 @@ static int request_pre_handler(REQUEST *request)
 			}
 		}
 		
-		if (!debug_flag && request->options) {
-			debug_packet(request, request->packet, 0);
-		}
+		DEBUG_PACKET(request, request->packet, 0);
 	} else {
 		rcode = 0;
 	}
@@ -1840,9 +1840,7 @@ static void request_post_handler(REQUEST *request)
 	 */
 	if ((request->reply->code != 0) ||
 	    (request->listener->type == RAD_LISTEN_DETAIL)) {
-		if (!debug_flag && request->options) {
-			debug_packet(request, request->reply, 1);
-		}
+		DEBUG_PACKET(request, request->reply, 1);
 		request->listener->send(request->listener, request);
 	}
 
@@ -2005,10 +2003,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		       request->proxy->id);
 		request->num_proxied_requests++;
 
-		if (!debug_flag && request->options) {
-			debug_packet(request, request->proxy, 1);
-		}
-
+		DEBUG_PACKET(request, request->proxy, 1);
 		request->proxy_listener->send(request->proxy_listener,
 					      request);
 		break;
@@ -2027,9 +2022,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		       "to client %s port %d - ID: %d",
 		       client->shortname,
 		       request->packet->src_port, request->packet->id);
-		if (!debug_flag && request->options) {
-			debug_packet(request, request->reply, 1);
-		}
+		DEBUG_PACKET(request, request->reply, 1);
 		request->listener->send(request->listener, request);
 		break;
 	}
