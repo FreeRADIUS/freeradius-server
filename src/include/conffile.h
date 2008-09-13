@@ -115,6 +115,8 @@ extern int cf_log_modules;
 
 extern int cf_pair2xml(FILE *fp, CONF_PAIR *cp);
 extern int cf_section2xml(FILE *fp, CONF_SECTION *cs);
+extern int cf_pair2file(FILE *fp, CONF_PAIR *cp);
+extern int cf_section2file(FILE *fp, CONF_SECTION *cs);
 
 /*
  *	Big magic.

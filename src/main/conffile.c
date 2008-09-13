@@ -2518,11 +2518,40 @@ int dump_config(CONF_SECTION *cs)
 }
 #endif
 
+static const char *cf_pair_print_value(const CONF_PAIR *cp,
+				       char *buffer, size_t buflen)
+{
+	char *p;
+
+	if (!cp->value) return "";
+
+	switch (cp->value_type) {
+	default:
+	case T_BARE_WORD:
+		snprintf(buffer, buflen, "%s", cp->value);
+		break;
+
+	case T_SINGLE_QUOTED_STRING:
+		snprintf(buffer, buflen, "'%s'", cp->value);
+		break;
+
+	case T_DOUBLE_QUOTED_STRING:
+		buffer[0] = '"';
+		fr_print_string(cp->value, strlen(cp->value),
+				buffer + 1, buflen - 3);
+		p = buffer + strlen(buffer); /* yuck... */
+		p[0] = '"';
+		p[1] = '\0';
+		break;
+	}
+
+	return buffer;
+}
+
 
 int cf_pair2xml(FILE *fp, CONF_PAIR *cp)
 {
 	fprintf(fp, "<pair name=\"%s\">", cp->attr);
-
 	switch (cp->value_type) {
 	case T_DOUBLE_QUOTED_STRING:
 		/*
@@ -2533,8 +2562,9 @@ int cf_pair2xml(FILE *fp, CONF_PAIR *cp)
 	default:
 		/*
 		 *	FIXME: Escape '<', '>', '&', etc.
+
 		 */
-		if (cp->value) fprintf(fp, cp->value);
+		if (cp->value) fprintf(fp, "%s", cp->value);
 		break;
 	}
 
@@ -2579,6 +2609,56 @@ int cf_section2xml(FILE *fp, CONF_SECTION *cs)
 	}
 
 	fprintf(fp, "</section>\n");
+
+	return 1;		/* success */
+}
+
+int cf_pair2file(FILE *fp, CONF_PAIR *cp)
+{
+	char buffer[2048];
+
+	fprintf(fp, "\t%s = %s\n", cp->attr,
+		cf_pair_print_value(cp, buffer, sizeof(buffer)));
+
+	return 1;
+}
+
+int cf_section2file(FILE *fp, CONF_SECTION *cs)
+{
+	CONF_ITEM *ci, *next;
+
+	/*
+	 *	Section header
+	 */
+	if (!cs->name2) {
+		fprintf(fp, "%s {\n", cs->name1);
+	} else {
+		fprintf(fp, "%s %s {\n",
+			cs->name1, cs->name2);
+	}
+
+	/*
+	 *	Loop over contents.
+	 */
+	for (ci = cs->children; ci; ci = next) {
+		next = ci->next;
+
+		switch (ci->type) {
+		case CONF_ITEM_PAIR:
+			if (!cf_pair2file(fp, (CONF_PAIR *) ci)) return 0;
+			break;
+
+		case CONF_ITEM_SECTION:
+			if (!cf_section2file(fp, (CONF_SECTION *) ci)) return 0;
+			break;
+
+		default:	/* should really be an error. */
+			break;
+		
+		}
+	}
+
+	fprintf(fp, "}\n");
 
 	return 1;		/* success */
 }
