@@ -70,7 +70,7 @@ static pthread_key_t  fr_strerror_key;
 static pthread_once_t fr_strerror_once = PTHREAD_ONCE_INIT;
 
 /* Create Key */
-static void fr_strerror_make_key()
+static void fr_strerror_make_key(void)
 {
 	pthread_key_create(&fr_strerror_key, NULL);
 }
