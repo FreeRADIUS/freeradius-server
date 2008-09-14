@@ -1237,12 +1237,12 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 	 *	Read, checking for line continuations ('\\' at EOL)
 	 */
 	for (;;) {
-		int eof;
+		int at_eof;
 
 		/*
 		 *	Get data, and remember if we are at EOF.
 		 */
-		eof = (fgets(cbuf, sizeof(buf) - (cbuf - buf), fp) == NULL);
+		at_eof = (fgets(cbuf, sizeof(buf) - (cbuf - buf), fp) == NULL);
 		(*lineno)++;
 
 		/*
@@ -1264,14 +1264,14 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		 *	conditions.
 		 */
 		if (cbuf == buf) {
-			if (eof) break;
+			if (at_eof) break;
 			
 			ptr = buf;
 			while (*ptr && isspace((int) *ptr)) ptr++;
 
 			if (!*ptr || (*ptr == '#')) continue;
 
-		} else if (eof || (len == 0)) {
+		} else if (at_eof || (len == 0)) {
 			radlog(L_ERR, "%s[%d]: Continuation at EOF is illegal",
 			       filename, *lineno);
 			return -1;
