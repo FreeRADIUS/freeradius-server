@@ -189,8 +189,15 @@ static ssize_t run_command(int sockfd, const char *command,
 			exit(1);
 		}
 
+#ifndef MSG_DONTWAIT
 		len = recv(sockfd, buffer + size,
 			   bufsize - size - 1, MSG_DONTWAIT);
+#else
+		/*
+		 *	Read one byte at a time (ugh)
+		 */
+		len = recv(sockfd, buffer + size, 1, 0);
+#endif
 		if (len < 0) {
 			/*
 			 *	No data: keep looping
