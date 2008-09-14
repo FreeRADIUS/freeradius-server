@@ -88,7 +88,8 @@ int radius_xlat(UNUSED char *out, UNUSED int outlen, UNUSED const char *fmt,
 
 static int fr_domain_socket(const char *path)
 {
-        int sockfd;
+	int sockfd = -1;
+#ifdef HAVE_SYS_UN_H
 	size_t len;
 	socklen_t socklen;
         struct sockaddr_un saremote;
@@ -137,7 +138,7 @@ static int fr_domain_socket(const char *path)
 		}
 	}
 #endif
-
+#endif
 	return sockfd;
 }
 
