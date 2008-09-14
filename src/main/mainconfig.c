@@ -67,10 +67,12 @@ char *debug_condition = NULL;
  *	Temporary local variables for parsing the configuration
  *	file.
  */
+#ifndef __MINGW32__
 static uid_t server_uid;
 static gid_t server_gid;
 static const char *uid_name = NULL;
 static const char *gid_name = NULL;
+#endif
 static const char *chroot_dir = NULL;
 static int allow_core_dumps = 0;
 static const char *radlog_dest = NULL;
@@ -401,6 +403,7 @@ static int r_mkdir(const char *part)
 }
 
 
+#ifndef __MINGW32__
 /*
  *  Do chroot, if requested.
  *
@@ -612,6 +615,7 @@ static int switch_users(CONF_SECTION *cs)
 
 	return 1;
 }
+#endif
 
 
 static const FR_NAME_NUMBER str2dest[] = {
@@ -720,10 +724,12 @@ int read_mainconfig(int reload)
 		}
 	}
 
+#ifndef __MINGW32__
 	/*
 	 *	We should really switch users earlier in the process.
 	 */
 	if (!switch_users(cs)) exit(1);
+#endif
 
 	/* Initialize the dictionary */
 	cp = cf_pair_find(cs, "dictionary");
