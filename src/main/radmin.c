@@ -189,7 +189,7 @@ static ssize_t run_command(int sockfd, const char *command,
 			exit(1);
 		}
 
-#ifndef MSG_DONTWAIT
+#ifdef MSG_DONTWAIT
 		len = recv(sockfd, buffer + size,
 			   bufsize - size - 1, MSG_DONTWAIT);
 #else
