@@ -1225,8 +1225,8 @@ static int listen_bind(rad_listen_t *this)
 				   (char *)&on, sizeof(on));
 		}
 #endif /* IPV6_V6ONLY */
-#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 	}
+#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 		
 	if (bind(this->fd, (struct sockaddr *) &salocal, salen) < 0) {
 		close(this->fd);
