@@ -585,7 +585,6 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	memset(handle, 0, sizeof(THREAD_HANDLE));
 	handle->prev = NULL;
 	handle->next = NULL;
-	handle->pthread_id = NO_SUCH_CHILD_PID;
 	handle->thread_num = thread_pool.max_thread_num++;
 	handle->request_count = 0;
 	handle->status = THREAD_RUNNING;
