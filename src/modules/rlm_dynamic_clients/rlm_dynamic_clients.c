@@ -78,7 +78,7 @@ static int dynamic_client_authorize(UNUSED void *instance, REQUEST *request)
 	/*
 	 *	Read the buffer and generate the client.
 	 */
-	c = client_read(buffer, (request->client->server != NULL));
+	c = client_read(buffer, (request->client->server != NULL), TRUE);
 	if (!c) return RLM_MODULE_FAIL;
 
 	/*

@@ -746,7 +746,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 				if ((stat(buf2, &stat_buf) != 0) ||
 				    S_ISDIR(stat_buf.st_mode)) continue;
 
-				dc = client_read(buf2, in_server);
+				dc = client_read(buf2, in_server, TRUE);
 				if (!dc) {
 					cf_log_err(cf_sectiontoitem(cs),
 						   "Failed reading client file \"%s\"", buf2);
@@ -972,7 +972,7 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 /*
  *	Read a client definition from the given filename.
  */
-RADCLIENT *client_read(const char *filename, int in_server)
+RADCLIENT *client_read(const char *filename, int in_server, int flag)
 {
 	const char *p;
 	RADCLIENT *c;
@@ -992,6 +992,8 @@ RADCLIENT *client_read(const char *filename, int in_server)
 	} else {
 		p = filename;
 	}
+
+	if (!flag) return c;
 
 	/*
 	 *	Additional validations
