@@ -1143,7 +1143,9 @@ static fr_command_table_t command_table_add_client[] = {
 
 
 static fr_command_table_t command_table_add[] = {
-	{ "client", FR_WRITE, NULL, NULL, command_table_add_client },
+	{ "client", FR_WRITE,
+	  "add client <command> - Add client configuration commands",
+	  NULL, command_table_add_client },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
@@ -1176,7 +1178,9 @@ static fr_command_table_t command_table_stats[] = {
 };
 
 static fr_command_table_t command_table[] = {
-	{ "add", FR_WRITE, NULL, NULL, command_table_add },
+	{ "add", FR_WRITE,
+	  "add <command> - add configuration commands",
+	  NULL, command_table_add },
 	{ "debug", FR_WRITE,
 	  "debug <command> - debugging commands",
 	  NULL, command_table_debug },
