@@ -120,19 +120,10 @@ int main(int argc, char **argv)
 		}
 	}
 
-	/*
-	 *	Header.
-	 */
-	fprintf(fp, "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n\n");
-
-	fprintf(fp, "<config id=\"1234\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:noNamespaceSchemaLocation=\"freeradius-server-config.xsd\">\n");
-
 	if (!cf_section2xml(fp, cs)) {
 		if (fp != stdout) unlink(file);
 		return 1;
 	}
-	
-	fprintf(fp, "</config>\n");
 
 	return 0;
 }
