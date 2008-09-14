@@ -69,6 +69,8 @@ static pthread_mutex_t	proxy_mutex;
 
 #define PTHREAD_MUTEX_LOCK if (have_children) pthread_mutex_lock
 #define PTHREAD_MUTEX_UNLOCK if (have_children) pthread_mutex_unlock
+
+static pthread_t NO_SUCH_CHILD_PID;
 #else
 /*
  *	This is easier than ifdef's throughout the code.
@@ -1033,9 +1035,9 @@ static void wait_a_bit(void *ctx)
 			 *	conditions on this check.  But it's
 			 *	just an error message, so that's OK.
 			 */
-			if (request->child_pid != NO_SUCH_CHILD_PID) {
-				radlog(L_ERR, "WARNING: Unresponsive child (id %lu) for request %d, in module %s component %s",
-			       (unsigned long)request->child_pid, request->number,
+			if (!pthread_equal(request->child_pid, NO_SUCH_CHILD_PID)) {
+				radlog(L_ERR, "WARNING: Unresponsive child for request %d, in module %s component %s",
+				       request->number,
 				       request->module ? request->module : "<server core>",
 				       request->component ? request->component : "<server core>");
 			}
@@ -2210,6 +2212,9 @@ int received_request(rad_listen_t *listener,
 	request->packet->timestamp = request->timestamp;
 	request->number = request_num_counter++;
 	request->priority = listener->type;
+#ifdef HAVE_PTHREAD_H
+	request->child_pid = NO_SUCH_CHILD_PID;
+#endif
 
 	/*
 	 *	Status-Server packets go to the head of the queue.
@@ -2808,6 +2813,11 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	if (spawn_flag) force_log_reopen();
 
 #ifdef HAVE_PTHREAD_H
+#ifndef __MINGW32__
+	NO_SUCH_CHILD_PID = (pthread_t ) (0);
+#else
+	NO_SUCH_CHILD_PID = pthread_self(); /* not a child thread */
+#endif
 	if (thread_pool_init(cs, spawn_flag) < 0) {
 		exit(1);
 	}

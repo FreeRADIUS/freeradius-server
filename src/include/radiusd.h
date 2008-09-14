@@ -37,8 +37,6 @@ typedef struct auth_req REQUEST;
 
 #ifdef HAVE_PTHREAD_H
 #include	<pthread.h>
-typedef pthread_t child_pid_t;
-#define NO_SUCH_CHILD_PID (child_pid_t) (0)
 #endif
 
 #ifndef NDEBUG
@@ -192,7 +190,7 @@ struct auth_req {
 	request_data_t		*data;
 	RADCLIENT		*client;
 #ifdef HAVE_PTHREAD_H
-	child_pid_t    		child_pid;
+	pthread_t    		child_pid;
 #endif
 	time_t			timestamp;
 	int			number; /* internal server number */

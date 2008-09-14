@@ -371,9 +371,6 @@ REQUEST *request_alloc(void)
 	request->username = NULL;
 	request->password = NULL;
 	request->timestamp = time(NULL);
-#ifdef HAVE_PTHREAD_H
-	request->child_pid = NO_SUCH_CHILD_PID;
-#endif
 	request->options = RAD_REQUEST_OPTION_NONE;
 
 	request->module = "";
@@ -398,7 +395,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
 
   fake->number = request->number;
 #ifdef HAVE_PTHREAD_H
-  fake->child_pid = NO_SUCH_CHILD_PID;
+  fake->child_pid = request->child_pid;
 #endif
   fake->parent = request;
   fake->root = request->root;
