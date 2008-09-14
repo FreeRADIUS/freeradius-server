@@ -2551,24 +2551,37 @@ static const char *cf_pair_print_value(const CONF_PAIR *cp,
 
 int cf_pair2xml(FILE *fp, CONF_PAIR *cp)
 {
-	fprintf(fp, "<pair name=\"%s\">", cp->attr);
-	switch (cp->value_type) {
-	case T_DOUBLE_QUOTED_STRING:
-		/*
-		 *	FIXME: Handle this later!
-		 */
+	fprintf(fp, "<%s>", cp->attr);
+	if (cp->value) {
+		char buffer[2048];
 
-	case T_BARE_WORD:
-	default:
-		/*
-		 *	FIXME: Escape '<', '>', '&', etc.
+		char *p = buffer;
+		const char *q = cp->value;
 
-		 */
-		if (cp->value) fprintf(fp, "%s", cp->value);
-		break;
+		while (*q && (p < (buffer + sizeof(buffer)))) {
+			if (q[0] == '&') {
+				memcpy(p, "&amp;", 4);
+				p += 5;
+
+			} else if (q[0] == '<') {
+				memcpy(p, "&lt;", 4);
+				p += 4;
+
+			} else if (q[0] == '>') {
+				memcpy(p, "&gt;", 4);
+				p += 4;
+
+			} else {
+				*(p++) = *q;
+			}
+			q++;
+		}
+
+		*p = '\0';
+		fprintf(fp, "%s", buffer);
 	}
 
-	fprintf(fp, "</pair>\n");
+	fprintf(fp, "</%s>\n", cp->attr);
 
 	return 1;
 }
@@ -2580,11 +2593,9 @@ int cf_section2xml(FILE *fp, CONF_SECTION *cs)
 	/*
 	 *	Section header
 	 */
-	if (!cs->name2) {
-		fprintf(fp, "<section name=\"%s\">\n", cs->name1);
-	} else {
-		fprintf(fp, "<section name=\"%s\" name2=\"%s\">\n",
-			cs->name1, cs->name2);
+	fprintf(fp, "<%s>\n", cs->name1);
+	if (cs->name2) {
+		fprintf(fp, "<_name2>%s</_name2>\n", cs->name2);
 	}
 
 	/*
@@ -2608,7 +2619,7 @@ int cf_section2xml(FILE *fp, CONF_SECTION *cs)
 		}
 	}
 
-	fprintf(fp, "</section>\n");
+	fprintf(fp, "</%s>\n", cs->name1);
 
 	return 1;		/* success */
 }
