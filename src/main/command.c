@@ -1105,6 +1105,49 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 }
 
 
+static int command_add_client_file(rad_listen_t *listener, int argc, char *argv[])
+{
+	RADCLIENT *c;
+
+	if (argc < 1) {
+		cprintf(listener, "ERROR: <file> is required\n");
+		return 0;
+	}
+
+	/*
+	 *	Read the file and generate the client.
+	 */
+	c = client_read(argv[0], FALSE, FALSE);
+	if (!c) {
+		cprintf(listener, "ERROR: Unknown error reading client file.\n");
+		return 0;
+	}
+
+	if (!client_add(NULL, c)) {
+		cprintf(listener, "ERROR: Unknown error inserting new client.\n");
+		client_free(c);
+		return 0;
+	}
+
+	return 1;
+}
+
+
+static fr_command_table_t command_table_add_client[] = {
+	{ "file", FR_WRITE,
+	  "add client file <filename> - Add new client definition from <filename>",
+	  command_add_client_file, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
+
+static fr_command_table_t command_table_add[] = {
+	{ "client", FR_WRITE, NULL, NULL, command_table_add_client },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
 static fr_command_table_t command_table_set_module[] = {
 	{ "config", FR_WRITE,
 	  "set module config <module> variable value - set configuration for <module>",
@@ -1133,6 +1176,7 @@ static fr_command_table_t command_table_stats[] = {
 };
 
 static fr_command_table_t command_table[] = {
+	{ "add", FR_WRITE, NULL, NULL, command_table_add },
 	{ "debug", FR_WRITE,
 	  "debug <command> - debugging commands",
 	  NULL, command_table_debug },
