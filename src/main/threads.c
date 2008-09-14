@@ -133,8 +133,10 @@ typedef struct THREAD_POOL {
 	int cleanup_delay;
 	int spawn_flag;
 
+#ifdef WNOHANG
 	pthread_mutex_t	wait_mutex;
 	fr_hash_table_t *waiters;
+#endif
 
 	/*
 	 *	All threads wait on this semaphore, for requests
@@ -234,7 +236,7 @@ static int setup_ssl_mutexes(void)
 }
 #endif
 
-
+#ifdef WNOHANG
 /*
  *	We don't want to catch SIGCHLD for a host of reasons.
  *
@@ -274,6 +276,9 @@ static void reap_children(void)
 
 	pthread_mutex_unlock(&thread_pool.wait_mutex);
 }
+#else
+#define reap_children()
+#endif /* WNOHANG */
 
 /*
  *	Add a request to the list of waiting requests.
@@ -663,6 +668,7 @@ int total_active_threads(void)
 }
 
 
+#ifdef WNOHANG
 static uint32_t pid_hash(const void *data)
 {
 	const thread_fork_t *tf = data;
@@ -677,6 +683,7 @@ static int pid_cmp(const void *one, const void *two)
 
 	return (a->pid - b->pid);
 }
+#endif
 
 /*
  *	Allocate the thread pool, and seed it with an initial number
@@ -713,6 +720,7 @@ int thread_pool_init(CONF_SECTION *cs, int spawn_flag)
 		thread_pool.cleanup_delay = 5;
 		thread_pool.spawn_flag = spawn_flag;
 
+#ifdef WNOHANG
 		if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
 			radlog(L_ERR, "FATAL: Failed to initialize wait mutex: %s",
 			       strerror(errno));
@@ -729,6 +737,7 @@ int thread_pool_init(CONF_SECTION *cs, int spawn_flag)
 			radlog(L_ERR, "FATAL: Failed to set up wait hash");
 			return -1;
 		}
+#endif
 	}
 
 	pool_cf = cf_subsection_find_next(cs, NULL, "thread");
@@ -833,12 +842,14 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 	if (!thread_pool.spawn_flag) {
 		radius_handle_request(request, fun);
 
+#ifdef WNOHANG
 		/*
 		 *	Requests that care about child process exit
 		 *	codes have already either called
 		 *	rad_waitpid(), or they've given up.
 		 */
 		wait(NULL);
+#endif
 		return 1;
 	}
 
@@ -1019,6 +1030,7 @@ static void thread_pool_manage(time_t now)
 }
 
 
+#ifdef WNOHANG
 /*
  *	Thread wrapper for fork().
  */
@@ -1107,6 +1119,11 @@ pid_t rad_waitpid(pid_t pid, int *status)
 
 	return 0;
 }
+#else
+/*
+ *	No rad_fork or rad_waitpid
+ */
+#endif
 
 void thread_pool_lock(void)
 {
