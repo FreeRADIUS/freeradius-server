@@ -766,22 +766,21 @@ static int command_show_client_config(rad_listen_t *listener, int argc, char *ar
 	return 1;
 }
 
-static int command_show_home_server_config(rad_listen_t *listener, int argc, char *argv[])
+static home_server *get_home_server(rad_listen_t *listener, int argc, char *argv[])
 {
 	home_server *home;
-	FILE *fp;
 	int port;
 	fr_ipaddr_t ipaddr;
 
-	if (argc < 1) {
+	if (argc < 2) {
 		cprintf(listener, "ERROR: Must specify <ipaddr> <port>\n");
-		return 0;
+		return NULL;
 	}
 
 	if (ip_hton(argv[0], AF_UNSPEC, &ipaddr) < 0) {
 		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
 			fr_strerror());
-		return 0;
+		return NULL;
 	}
 
 	port = atoi(argv[1]);
@@ -789,6 +788,19 @@ static int command_show_home_server_config(rad_listen_t *listener, int argc, cha
 	home = home_server_find(&ipaddr, port);
 	if (!home) {
 		cprintf(listener, "ERROR: No such home server\n");
+		return NULL;
+	}
+
+	return home;
+}
+
+static int command_show_home_server_config(rad_listen_t *listener, int argc, char *argv[])
+{
+	home_server *home;
+	FILE *fp;
+
+	home = get_home_server(listener, argc, argv);
+	if (!home) {
 		return 0;
 	}
 
@@ -803,6 +815,70 @@ static int command_show_home_server_config(rad_listen_t *listener, int argc, cha
 	cf_section2file(fp, home->cs);
 	fclose(fp);
 
+	return 1;
+}
+
+extern void revive_home_server(void *ctx);
+extern void mark_home_server_dead(home_server *home, struct timeval *when);
+
+static int command_set_home_server_state(rad_listen_t *listener, int argc, char *argv[])
+{
+	home_server *home;
+
+	if (argc < 3) {
+		cprintf(listener, "ERROR: Must specify <ipaddr> <port> <state>\n");
+		return 0;
+	}
+
+	home = get_home_server(listener, argc, argv);
+	if (!home) {
+		return 0;
+	}
+
+	if (strcmp(argv[2], "alive") == 0) {
+		revive_home_server(home);
+
+	} else if (strcmp(argv[2], "dead") == 0) {
+		struct timeval now;
+
+		gettimeofday(&now, NULL); /* we do this WAY too ofetn */
+		mark_home_server_dead(home, &now);
+
+	} else {
+		cprintf(listener, "ERROR: Unknown state \"%s\"\n", argv[2]);
+		return 0;
+	}
+
+	return 1;
+}
+
+static int command_show_home_server_state(rad_listen_t *listener, int argc, char *argv[])
+{
+	home_server *home;
+
+	home = get_home_server(listener, argc, argv);
+	if (!home) {
+		return 0;
+	}
+
+	switch (home->state) {
+	case HOME_STATE_ALIVE:
+		cprintf(listener, "alive\n");
+		break;
+
+	case HOME_STATE_IS_DEAD:
+		cprintf(listener, "dead\n");
+		break;
+
+	case HOME_STATE_ZOMBIE:
+		cprintf(listener, "zombie\n");
+		break;
+
+	default:
+		cprintf(listener, "unknown\n");
+		break;
+	}
+	
 	return 1;
 }
 
@@ -875,6 +951,9 @@ static fr_command_table_t command_table_show_home[] = {
 	{ "list", FR_READ,
 	  "show home_server list - shows list of home servers",
 	  command_show_home_servers, NULL },
+	{ "state", FR_READ,
+	  "show home_server state <ipaddr> <port> - shows state of given home server",
+	  command_show_home_server_state, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
@@ -1150,6 +1229,15 @@ static fr_command_table_t command_table_add[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
+
+static fr_command_table_t command_table_set_home[] = {
+	{ "state", FR_WRITE,
+	  "set home_server state <ipaddr> <port> [alive|dead] - set state for given home server",
+	  command_set_home_server_state, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
 static fr_command_table_t command_table_set_module[] = {
 	{ "config", FR_WRITE,
 	  "set module config <module> variable value - set configuration for <module>",
@@ -1160,7 +1248,12 @@ static fr_command_table_t command_table_set_module[] = {
 
 
 static fr_command_table_t command_table_set[] = {
-	{ "module", FR_WRITE, NULL, NULL, command_table_set_module },
+	{ "module", FR_WRITE,
+	  "set module <command> - set module commands",
+	  NULL, command_table_set_module },
+	{ "home_server", FR_WRITE, 
+	  "set home_server <command> - set home server commands",
+	  NULL, command_table_set_home },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };

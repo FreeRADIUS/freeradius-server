@@ -555,7 +555,7 @@ static void reject_delay(void *ctx)
 
 
 #ifdef WITH_PROXY
-static void revive_home_server(void *ctx)
+void revive_home_server(void *ctx)
 {
 	home_server *home = ctx;
 	char buffer[128];
@@ -726,11 +726,39 @@ static void ping_home_server(void *ctx)
 }
 
 
+void mark_home_server_dead(home_server *home, struct timeval *when)
+{
+	char buffer[128];
+
+	/*
+	 *	It's been a zombie for too long, mark it as
+	 *	dead.
+	 */
+	radlog(L_INFO, "PROXY: Marking home server %s port %d as dead.",
+	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
+			 buffer, sizeof(buffer)),
+	       home->port);
+	home->state = HOME_STATE_IS_DEAD;
+	home->num_received_pings = 0;
+	home->when = *when;
+
+	if (home->ping_check != HOME_PING_CHECK_NONE) {
+		rad_assert((home->ping_check == HOME_PING_CHECK_STATUS_SERVER) ||
+			   (home->ping_user_name != NULL));
+		home->when.tv_sec += home->ping_interval;
+
+		INSERT_EVENT(ping_home_server, home);
+	} else {
+		home->when.tv_sec += home->revive_interval;
+
+		INSERT_EVENT(revive_home_server, home);
+	}
+}
+
 static void check_for_zombie_home_server(REQUEST *request)
 {
 	home_server *home;
 	struct timeval when;
-	char buffer[128];
 
 	home = request->home_server;
 
@@ -744,30 +772,7 @@ static void check_for_zombie_home_server(REQUEST *request)
 		return;
 	}
 
-	/*
-	 *	It's been a zombie for too long, mark it as
-	 *	dead.
-	 */
-	radlog(L_INFO, "PROXY: Marking home server %s port %d as dead.",
-	       inet_ntop(request->proxy->dst_ipaddr.af,
-			 &request->proxy->dst_ipaddr.ipaddr,
-			 buffer, sizeof(buffer)),
-	       request->proxy->dst_port);
-	home->state = HOME_STATE_IS_DEAD;
-	home->num_received_pings = 0;
-	home->when = request->when;
-
-	if (home->ping_check != HOME_PING_CHECK_NONE) {
-		rad_assert((home->ping_check == HOME_PING_CHECK_STATUS_SERVER) ||
-			   (home->ping_user_name != NULL));
-		home->when.tv_sec += home->ping_interval;
-
-		INSERT_EVENT(ping_home_server, home);
-	} else {
-		home->when.tv_sec += home->revive_interval;
-
-		INSERT_EVENT(revive_home_server, home);
-	}
+	mark_home_server_dead(home, &request->when);
 }
 
 static int proxy_to_virtual_server(REQUEST *request);
