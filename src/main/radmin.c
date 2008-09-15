@@ -150,6 +150,7 @@ static int usage(void)
 	printf("  -f socket_file  Open socket_file directly, without reading radius.conf\n");
 	printf("  -i input_file   Read commands from 'input_file'.\n");
 	printf("  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
+	printf("  -o output_file  Write commands to 'output_file'.\n");
 	printf("  -q              Quiet mode.\n");
 
 	exit(1);
@@ -259,13 +260,15 @@ int main(int argc, char **argv)
 	char *p, buffer[65536];
 	const char *input_file = NULL;
 	FILE *inputfp = stdin;
+	const char *output_file = NULL;
+	FILE *outputfp = stdout;
 
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
 		progname = argv[0];
 	else
 		progname++;
 
-	while ((argval = getopt(argc, argv, "d:hi:e:f:n:q")) != EOF) {
+	while ((argval = getopt(argc, argv, "d:hi:e:f:n:o:q")) != EOF) {
 		switch(argval) {
 		case 'd':
 			if (file) {
@@ -298,6 +301,13 @@ int main(int argc, char **argv)
 
 		case 'n':
 			name = optarg;
+			break;
+
+		case 'o':
+			if (strcmp(optarg, "-") != 0) {
+				output_file = optarg;
+			}
+			quiet = 1;
 			break;
 
 		case 'q':
@@ -369,6 +379,15 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (output_file) {
+		outputfp = fopen(output_file, "w");
+		if (!outputfp) {
+			fprintf(stderr, "%s: Failed creating %s: %s\n",
+				progname, output_file, strerror(errno));
+			exit(1);
+		}
+	}
+
 	/*
 	 *	Check if stdin is a TTY only if input is from stdin
 	 */
@@ -425,8 +444,8 @@ int main(int argc, char **argv)
 		if (size < 0) exit(1);
 		if ((size == 0) || (size == 1)) exit(0);
 
-		puts(buffer);
-		fflush(stdout);
+		fputs(buffer, outputfp);
+		fflush(outputfp);
 		exit(0);
 	}
 
@@ -516,11 +535,11 @@ int main(int argc, char **argv)
 
 		if (size == 1) continue; /* no output. */
 
-		puts(buffer);
-		fflush(stdout);
+		fputs(buffer, outputfp);
+		fflush(outputfp);
 	}
 
-	printf("\n");
+	fprintf(outputfp, "\n");
 
 	return 0;
 }
