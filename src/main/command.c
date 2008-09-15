@@ -729,26 +729,39 @@ static int command_show_debug_level(rad_listen_t *listener,
 }
 
 
-static int command_show_client_config(rad_listen_t *listener, int argc, char *argv[])
+static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
 {
 	RADCLIENT *client;
-	FILE *fp;
 	fr_ipaddr_t ipaddr;
 
-	if (argc == 0) {
+	if (argc < 1) {
 		cprintf(listener, "ERROR: Must specify <ipaddr>\n");
-		return 0;
+		return NULL;
 	}
 
 	if (ip_hton(argv[0], AF_UNSPEC, &ipaddr) < 0) {
 		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
 			fr_strerror());
-		return 0;
+		return NULL;
 	}
 
 	client = client_find(NULL, &ipaddr);
 	if (!client) {
 		cprintf(listener, "ERROR: No such client\n");
+		return NULL;
+	}
+
+	return client;
+}
+
+
+static int command_show_client_config(rad_listen_t *listener, int argc, char *argv[])
+{
+	RADCLIENT *client;
+	FILE *fp;
+
+	client = get_client(listener, argc, argv);
+	if (!client) {
 		return 0;
 	}
 
@@ -1130,10 +1143,10 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 {
 	int auth = TRUE;
 	RADCLIENT *client;
-	fr_ipaddr_t ipaddr;
 
-	if (argc == 0) {
-		return command_print_stats(listener, &radius_auth_stats, 1);
+	if (argc < 1) {
+		cprintf(listener, "ERROR: Must specify [auth/acct]\n");
+		return 0;
 	}
 
 	if (strcmp(argv[0], "auth") == 0) {
@@ -1152,6 +1165,9 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
+	/*
+	 *	Global results for all client.
+	 */
 	if (argc == 1) {
 #ifdef WITH_ACCOUNTING
 		if (!auth) {
@@ -1162,15 +1178,8 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 		return command_print_stats(listener, &radius_auth_stats, auth);
 	}
 
-	if (ip_hton(argv[1], AF_UNSPEC, &ipaddr) < 0) {
-		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
-			fr_strerror());
-		return 0;
-	}
-
-	client = client_find(NULL, &ipaddr);
+	client = get_client(listener, argc - 1, argv + 1);
 	if (!client) {
-		cprintf(listener, "ERROR: No such client\n");
 		return 0;
 	}
 
