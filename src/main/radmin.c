@@ -144,9 +144,11 @@ static int fr_domain_socket(const char *path)
 
 static int usage(void)
 {
-	printf("Usage: %s [ -d raddb_dir ] [ -f socket_file ] [ -n name ] [ -q ]\n", progname);
+	printf("Usage: %s [ args ]\n", progname);
 	printf("  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
+	printf("  -e command      Execute 'command' and then exit.\n");
 	printf("  -f socket_file  Open socket_file directly, without reading radius.conf\n");
+	printf("  -i input_file   Read commands from 'input_file'.\n");
 	printf("  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
 	printf("  -q              Quiet mode.\n");
 
@@ -255,13 +257,15 @@ int main(int argc, char **argv)
 	const char *file = NULL;
 	const char *name = "radiusd";
 	char *p, buffer[65536];
+	const char *input_file = NULL;
+	FILE *inputfp = stdin;
 
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
 		progname = argv[0];
 	else
 		progname++;
 
-	while ((argval = getopt(argc, argv, "d:he:f:n:q")) != EOF) {
+	while ((argval = getopt(argc, argv, "d:hi:e:f:n:q")) != EOF) {
 		switch(argval) {
 		case 'd':
 			if (file) {
@@ -283,6 +287,13 @@ int main(int argc, char **argv)
 		default:
 		case 'h':
 			usage();
+			break;
+
+		case 'i':
+			if (strcmp(optarg, "-") != 0) {
+				input_file = optarg;
+			}
+			quiet = 1;
 			break;
 
 		case 'n':
@@ -349,7 +360,19 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (!isatty(STDIN_FILENO)) quiet = 1;
+	if (input_file) {
+		inputfp = fopen(input_file, "r");
+		if (!inputfp) {
+			fprintf(stderr, "%s: Failed opening %s: %s\n",
+				progname, input_file, strerror(errno));
+			exit(1);
+		}
+	}
+
+	/*
+	 *	Check if stdin is a TTY only if input is from stdin
+	 */
+	if (input_file && !quiet && !isatty(STDIN_FILENO)) quiet = 1;
 
 #ifdef HAVE_LIBREADLINE
 	if (!quiet) {
@@ -443,7 +466,7 @@ int main(int argc, char **argv)
 		} else		/* quiet, or no readline */
 #endif
 		{
-			line = fgets(buffer, sizeof(buffer), stdin);
+			line = fgets(buffer, sizeof(buffer), inputfp);
 			if (!line) break;
 			
 			p = strchr(buffer, '\n');
@@ -454,6 +477,24 @@ int main(int argc, char **argv)
 			}
 			
 			*p = '\0';
+
+			for (p = line; *p != '\0'; p++) {
+				if ((p[0] == ' ') ||
+				    (p[0] == '\t')) {
+					line = p + 1;
+					continue;
+				}
+
+				if (p[0] == '#') {
+					line = NULL;
+					break;
+				}
+			}
+
+			/*
+			 *	Comments: keep going.
+			 */
+			if (!line) continue;
 		}
 
 		if (strcmp(line, "reconnect") == 0) {
