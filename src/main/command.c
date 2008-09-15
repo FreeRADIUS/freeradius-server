@@ -1111,31 +1111,17 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 
 static int command_stats_home_server(rad_listen_t *listener, int argc, char *argv[])
 {
-	int port;
 	home_server *home;
-	fr_ipaddr_t ipaddr;
 
-	if (argc < 2) {
-		cprintf(listener, "ERROR: <ipaddr> and <port> are required.\n");
-		return 0;
-	}
-
-	if (ip_hton(argv[0], AF_UNSPEC, &ipaddr) < 0) {
-		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
-			fr_strerror());
-		return 0;
-	}
-
-	port = atoi(argv[1]);
-
-	home = home_server_find(&ipaddr, port);
+	home = get_home_server(listener, argc, argv);
 	if (!home) {
-		cprintf(listener, "ERROR: No such home server\n");
 		return 0;
 	}
 
-	return command_print_stats(listener, &home->stats,
-				   (home->type == HOME_TYPE_AUTH));
+	command_print_stats(listener, &home->stats,
+			    (home->type == HOME_TYPE_AUTH));
+	cprintf(listener, "\toutstanding\t%d\n", home->currently_outstanding);
+	return 1;
 }
 
 
