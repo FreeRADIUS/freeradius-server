@@ -551,6 +551,8 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 {
 	int i;
 	home_server *home;
+	const char *type, *state;
+
 	char buffer[256];
 
 	for (i = 0; i < 256; i++) {
@@ -562,9 +564,29 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 		 */
 		if (home->ipaddr.af == AF_UNSPEC) continue;
 
-		cprintf(listener, "\t%s\t%d\n",
+		if (home->type == HOME_TYPE_AUTH) {
+			type = "auth";
+
+		} else if (home->type == HOME_TYPE_AUTH) {
+			type = "auth";
+
+		} else continue;
+
+		if (home->state == HOME_STATE_ALIVE) {
+			state = "alive";
+
+		} else if (home->state == HOME_STATE_ZOMBIE) {
+			state = "zombie";
+
+		} else if (home->state == HOME_STATE_IS_DEAD) {
+			state = "dead";
+
+		} else continue;
+
+		cprintf(listener, "\t%s\t%d\t%s\t%s\t%d\n",
 			ip_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
-			home->port);
+			home->port, type, state,
+			home->currently_outstanding);
 	}
 
 	return 0;
