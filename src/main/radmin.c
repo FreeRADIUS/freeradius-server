@@ -537,6 +537,7 @@ int main(int argc, char **argv)
 
 		fputs(buffer, outputfp);
 		fflush(outputfp);
+		fprintf(outputfp, "\n");
 	}
 
 	fprintf(outputfp, "\n");
