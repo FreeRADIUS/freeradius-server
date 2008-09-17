@@ -547,6 +547,7 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 	return 1;		/* success */
 }
 
+#ifdef WITH_PROXY
 static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
 {
 	int i;
@@ -591,7 +592,7 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 
 	return 0;
 }
-
+#endif
 
 static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
 {
@@ -655,6 +656,12 @@ static int command_show_xml(rad_listen_t *listener, UNUSED int argc, UNUSED char
 	fclose(fp);
 
 	return 1;		/* success */
+}
+
+static int command_show_version(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+{
+	cprintf(listener, "%s\n", radiusd_version);
+	return 1;
 }
 
 static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
@@ -801,6 +808,7 @@ static int command_show_client_config(rad_listen_t *listener, int argc, char *ar
 	return 1;
 }
 
+#ifdef WITH_PROXY
 static home_server *get_home_server(rad_listen_t *listener, int argc, char *argv[])
 {
 	home_server *home;
@@ -916,7 +924,7 @@ static int command_show_home_server_state(rad_listen_t *listener, int argc, char
 	
 	return 1;
 }
-
+#endif
 
 
 static fr_command_table_t command_table_debug[] = {
@@ -979,6 +987,7 @@ static fr_command_table_t command_table_show_client[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
+#ifdef WITH_PROXY
 static fr_command_table_t command_table_show_home[] = {
 	{ "config", FR_READ,
 	  "show home_server config <ipaddr> <port> - show configuration for given home server",
@@ -992,6 +1001,7 @@ static fr_command_table_t command_table_show_home[] = {
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
+#endif
 
 
 static fr_command_table_t command_table_show[] = {
@@ -1001,15 +1011,20 @@ static fr_command_table_t command_table_show[] = {
 	{ "debug", FR_READ,
 	  "show debug <command> - show debug properties",
 	  NULL, command_table_show_debug },
+#ifdef WITH_PROXY
 	{ "home_server", FR_READ,
 	  "show home_server <command> - do sub-command of home_server",
 	  NULL, command_table_show_home },
+#endif
 	{ "module", FR_READ,
 	  "show module <command> - do sub-command of module",
 	  NULL, command_table_show_module },
 	{ "uptime", FR_READ,
 	  "show uptime - shows time at which server started",
 	  command_uptime, NULL },
+	{ "version", FR_READ,
+	  "show version - Prints version of the running server",
+	  command_show_version, NULL },
 	{ "xml", FR_READ,
 	  "show xml <reference> - Prints out configuration as XML",
 	  command_show_xml, NULL },
@@ -1131,9 +1146,31 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 }
 
 
+#ifdef WITH_PROXY
 static int command_stats_home_server(rad_listen_t *listener, int argc, char *argv[])
 {
 	home_server *home;
+
+	if (argc == 0) {
+		cprintf(listener, "ERROR: Must specify [auth/acct] OR <ipaddr> <port>\n");
+		return 0;
+	}
+
+	if (argc == 1) {
+#ifdef WITH_ACCOUNTING
+		if (strcmp(argv[0], "acct") == 0) {
+			return command_print_stats(listener,
+						   &proxy_acct_stats, 0);
+		}
+#endif
+		if (strcmp(argv[0], "auth") == 0) {
+			return command_print_stats(listener,
+						   &proxy_auth_stats, 1);
+		}
+
+		cprintf(listener, "ERROR: Should specify [auth/acct]\n");
+		return 0;
+	}
 
 	home = get_home_server(listener, argc, argv);
 	if (!home) {
@@ -1145,7 +1182,7 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 	cprintf(listener, "\toutstanding\t%d\n", home->currently_outstanding);
 	return 1;
 }
-
+#endif
 
 static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 {
@@ -1247,6 +1284,7 @@ static fr_command_table_t command_table_add[] = {
 };
 
 
+#ifdef WITH_PROXY
 static fr_command_table_t command_table_set_home[] = {
 	{ "state", FR_WRITE,
 	  "set home_server state <ipaddr> <port> [alive|dead] - set state for given home server",
@@ -1254,6 +1292,7 @@ static fr_command_table_t command_table_set_home[] = {
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
+#endif
 
 static fr_command_table_t command_table_set_module[] = {
 	{ "config", FR_WRITE,
@@ -1268,9 +1307,11 @@ static fr_command_table_t command_table_set[] = {
 	{ "module", FR_WRITE,
 	  "set module <command> - set module commands",
 	  NULL, command_table_set_module },
+#ifdef WITH_PROXY
 	{ "home_server", FR_WRITE, 
 	  "set home_server <command> - set home server commands",
 	  NULL, command_table_set_home },
+#endif
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
@@ -1280,9 +1321,11 @@ static fr_command_table_t command_table_stats[] = {
 	{ "client", FR_READ,
 	  "stats client [auth/acct] <ipaddr> - show statistics for client",
 	  command_stats_client, NULL },
+#ifdef WITH_PROXY
 	{ "home_server", FR_READ,
 	  "stats home_server <ipaddr> <port> - show statistics for home server",
 	  command_stats_home_server, NULL },
+#endif
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
@@ -1301,7 +1344,7 @@ static fr_command_table_t command_table[] = {
 	  "reconnect - reconnect to a running server",
 	  NULL, NULL },		/* just here for "help" */
 	{ "terminate", FR_WRITE,
-	  "terminate - terminates the server, and causes it to exit",
+	  "terminate - terminates the server, and cause it to exit",
 	  command_terminate, NULL },
 	{ "set", FR_WRITE, NULL, NULL, command_table_set },
 	{ "show",  FR_READ, NULL, NULL, command_table_show },
