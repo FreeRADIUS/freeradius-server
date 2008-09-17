@@ -1,3 +1,17 @@
+freeradius (2.1.1-0) unstable; urgency=medium
+  * Many more options and features in radmin.  See "man radmin" and raddb/sites-available/control-socket
+  * Many more commands available via the control socket.  Connect via "radmin", and type "help" for more information.
+  * Added dictionary.networkphysics and dictionary.lancom.
+  * Fixed bug that made radmin not work
+  * Fixed Suse && Debian package scripts
+  * Fixed issues with dynamic clients
+  * Fixed configure checks for -lreadline
+  * rlm_sqlippool no longer needs to be linked to rlm_sql.
+  * Add statistics for detail file listeners.  This closes bug #593.
+  * Fixed printing of some WiMAX attributes.
+
+-- Alan DeKok <aland@freeradius.org>  Thu, 18 Sep 2008 10:03:00 +0100
+
 freeradius (2.1.0-0) unstable; urgency=medium
 
   * Clients may now be defined dynamically, based on IP address.  See raddb/sites-available/dynamic-clients.
