@@ -310,7 +310,7 @@ static int sqlippool_command(const char * fmt, SQLSOCK * sqlsocket,
 	 * Do an xlat on the provided string
 	 */
 	if (request) {
-		if (!radius_xlat(query, sizeof(query), expansion, request, NULL)) {
+		if (!radius_xlat(query, sizeof(query), expansion, request, data->sql_inst->sql_escape_func)) {
 			radlog(L_ERR, "sqlippool_command: xlat failed on: '%s'", query);
 			return 0;
 		}
@@ -349,7 +349,7 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt,
 	 * Do an xlat on the provided string
 	 */
 	if (request) {
-		if (!radius_xlat(query, sizeof(query), expansion, request, NULL)) {
+		if (!radius_xlat(query, sizeof(query), expansion, request, data->sql_inst->sql_escape_func)) {
 			radlog(L_ERR, "sqlippool_command: xlat failed.");
 			out[0] = '\0';
 			return 0;
