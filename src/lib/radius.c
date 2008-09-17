@@ -2384,7 +2384,7 @@ static uint8_t *rad_coalesce(int attribute, size_t length, uint8_t *data,
 			     
 {
 	uint32_t lvalue;
-	size_t tlv_length = 0;
+	size_t tlv_length = length;
 	uint8_t *ptr, *tlv, *tlv_data;
 
 	for (ptr = data + length;
@@ -2425,6 +2425,8 @@ static uint8_t *rad_coalesce(int attribute, size_t length, uint8_t *data,
 	for (ptr = data + length;
 	     ptr != (data + packet_length);
 	     ptr += ptr[1]) {
+		int this_length;
+
 		if ((ptr[0] != PW_VENDOR_SPECIFIC) ||
 		    (ptr[1] < (2 + 4 + 3)) || /* WiMAX VSA with continuation */
 		    (ptr[2] != 0) || (ptr[3] != 0)) { /* our requirement */
@@ -2443,9 +2445,9 @@ static uint8_t *rad_coalesce(int attribute, size_t length, uint8_t *data,
 		 */
 		if ((ptr[2 + 4 + 1]) < 3) break;
 
-		tlv_length = ptr[2 + 4 + 1] - 3;
-		memcpy(tlv, ptr + 2 + 4 + 3, tlv_length);
-		tlv += tlv_length;
+		this_length = ptr[2 + 4 + 1] - 3;
+		memcpy(tlv, ptr + 2 + 4 + 3, this_length);
+		tlv += this_length;
 
 		ptr[2 + 4] = 0;	/* What a hack! */
 		if ((ptr[2 + 4 + 1 + 1] & 0x80) == 0) break;
@@ -2465,12 +2467,11 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 				       const char *secret, int attribute,
 				       int length,
 				       uint8_t *data, size_t packet_length,
-				       int flag)
+				       int flag, DICT_ATTR *da)
 {
 	size_t tlv_length, left;
 	uint8_t *ptr;
 	uint8_t *tlv_data;
-	DICT_ATTR *da;
 	VALUE_PAIR *vp, *head, **tail;
 
 	/*
@@ -2486,52 +2487,34 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 		tlv_length = length;
 	}
 
-	da = dict_attrbyvalue(attribute);
-	if (!da) return NULL;
-
+	/*
+	 *	Non-TLV types cannot be continued across multiple
+	 *	attributes.  This is true even of keys that are
+	 *	encrypted with the tunnel-password method.  The spec
+	 *	says that they can be continued... but also that the
+	 *	keys are 160 bits, which means that they CANNOT be
+	 *	continued.  <sigh>
+	 *
+	 *	Note that we don't check "flag" here.  The calling
+	 *	code ensures that 
+	 */
 	if (da->type != PW_TYPE_TLV) {
-		/*
-		 *	If it's not continued, just create the normal
-		 *	attribute.
-		 */
-		if (!flag) {
-			vp = paircreate(attribute, PW_TYPE_OCTETS);
-			if (!vp) return NULL;
-
-			if (!data2vp(packet, original, secret,
-				     attribute, length, data, vp)) {
-				pairfree(&vp);
-				return NULL;
-			}
-		} else {
-			/*
-			 *	Non-TLV types cannot be continued
-			 *	across multiple attributes.  This is
-			 *	true even of keys that are encrypted
-			 *	with the tunnel-password method.  The
-			 *	spec says that they can be
-			 *	continued... but also that the keys
-			 *	are 160 bits, which means that they
-			 *	CANNOT be continued.  <sigh>
-			 */
-		not_well_formed:
-			if (tlv_data == data) {	/* true if we had 'goto' */
-				tlv_data = malloc(tlv_length);
-				if (!tlv_data) return NULL;
-				memcpy(tlv_data, data, tlv_length);
-			}
-			
-			vp = paircreate(attribute, PW_TYPE_OCTETS);
-			if (!vp) return NULL;
-			
-			vp->type = PW_TYPE_TLV;
-			vp->flags.encrypt = FLAG_ENCRYPT_NONE;
-			vp->flags.has_tag = 0;
-			vp->flags.is_tlv = 0;
-			vp->vp_tlv = tlv_data;
-			vp->length = tlv_length;
+	not_well_formed:
+		if (tlv_data == data) {	/* true if we had 'goto' */
+			tlv_data = malloc(tlv_length);
+			if (!tlv_data) return NULL;
+			memcpy(tlv_data, data, tlv_length);
 		}
-
+		
+		vp = paircreate(attribute, PW_TYPE_OCTETS);
+		if (!vp) return NULL;
+			
+		vp->type = PW_TYPE_TLV;
+		vp->flags.encrypt = FLAG_ENCRYPT_NONE;
+		vp->flags.has_tag = 0;
+		vp->flags.is_tlv = 0;
+		vp->vp_tlv = tlv_data;
+		vp->length = tlv_length;
 		return vp;
 	} /* else it WAS a TLV, go decode the sub-tlv's */
 
@@ -2595,55 +2578,8 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *origin
 			const uint8_t *data)
 {
 	VALUE_PAIR *vp;
-	DICT_ATTR *da;
 
-	da = dict_attrbyvalue(attribute);
-	if (da) {
-		if (!da->flags.has_tlv) {
-			vp = pairalloc(da);
-		} else {
-			int tlv, tlv_length;
-			const uint8_t *ptr;
-			VALUE_PAIR *head, **tail;
-
-			ptr = data;
-			head = NULL;
-			tail = &head;
-
-			while (length > 0) {
-				if ((length <= 2) ||
-				    (ptr[1] <= 2) ||
-				    (ptr[1] > length)) {
-					vp = paircreate(attribute,
-							PW_TYPE_OCTETS);
-					if (vp) vp->type = PW_TYPE_OCTETS;
-					tlv = attribute;
-					tlv_length = length;
-				} else {
-					tlv = attribute | (ptr[0] << 8);
-					tlv_length = ptr[1] - 2;
-					ptr += 2;
-					length -= 2;
-					
-					vp = paircreate(tlv, PW_TYPE_OCTETS);
-				}
-				if (!data2vp(packet, original, secret,
-					     tlv, tlv_length, ptr, vp)) {
-					pairfree(&head);
-					return NULL;
-				}
-				ptr += tlv_length;
-				length -= tlv_length;
-				*tail = vp;
-				tail = &(vp->next);
-			} /* loop over data */
-
-			return head;
-		}
-	} else {	
-		vp = paircreate(attribute, PW_TYPE_OCTETS);
-	}
-
+	vp = paircreate(attribute, PW_TYPE_OCTETS);
 	if (!vp) return NULL;
 
 	return data2vp(packet, original, secret, attribute, length, data, vp);
@@ -2919,10 +2855,27 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		if (attribute == 0x60b50000) goto next;
 
 		if (vsa_offset) {
+			DICT_ATTR *da;
+
+			da = dict_attrbyvalue(attribute);
+
+			/*
+			 *	If it's NOT continued, AND we know
+			 *	about it, AND it's not a TLV, we can
+			 *	create a normal pair.
+			 */
+			if (((vsa_ptr[2] & 0x80) == 0) &&
+			    da && (da->type != PW_TYPE_TLV)) goto create_pair;
+
+			/*
+			 *	Else it IS continued, or it's a TLV.
+			 *	Go do a lot of work to find the stuff.
+			 */
 			pair = rad_continuation2vp(packet, original, secret,
 						   attribute, attrlen, ptr,
 						   packet_length,
-						   (vsa_ptr[2] & 0x80) != 0);
+						   ((vsa_ptr[2] & 0x80) != 0),
+						   da);
 			goto created_pair;
 		}
 
