@@ -1203,7 +1203,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 
 		case PW_TYPE_TLV: /* don't use this! */
-			if (strncasecmp(value, "0t", 2) != 0) {
+			if (strncasecmp(value, "0x", 2) != 0) {
 				fr_strerror_printf("Invalid TLV specification");
 				return NULL;
 			}

@@ -336,7 +336,7 @@ int vp_prints_value(char * out, size_t outlen, VALUE_PAIR *vp, int delimitst)
 		case PW_TYPE_TLV:
 			if (outlen <= (2 * (vp->length + 1))) return 0;
 
-			strcpy(buf, "0t");
+			strcpy(buf, "0x");
 
 			fr_bin2hex(vp->vp_tlv, buf + 2, vp->length);
 			a = buf;
