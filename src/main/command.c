@@ -1659,7 +1659,7 @@ static int command_domain_recv(rad_listen_t *listener,
 			goto do_next;
 		}
 
-		cprintf(listener, "ERROR: Unknown command \"%s\"\r\n",
+		cprintf(listener, "ERROR: Unknown command \"%s\"\n",
 			argv[0]);
 	}
 
