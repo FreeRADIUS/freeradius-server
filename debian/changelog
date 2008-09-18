@@ -10,7 +10,7 @@ freeradius (2.1.1-0) unstable; urgency=medium
   * Add statistics for detail file listeners.  This closes bug #593.
   * Fixed printing of some WiMAX attributes.
 
--- Alan DeKok <aland@freeradius.org>  Thu, 18 Sep 2008 10:03:00 +0100
+ -- Alan DeKok <aland@freeradius.org>  Thu, 18 Sep 2008 10:03:00 +0100
 
 freeradius (2.1.0-0) unstable; urgency=medium
 
