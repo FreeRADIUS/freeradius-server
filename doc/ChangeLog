@@ -1,10 +1,10 @@
 FreeRADIUS 2.1.1 Thu Sep  11 13:20:01 CEST 2008;  , urgency=medium
 	Feature improvements
-	* More options and features to radmin
-	* "debug" command in radmin.  Try: debug file /var/log/radius/bob.log
-	  and then: debug condition '(User-Name == "bob")'
-	  See "man radmin" for more information.
-	* Added dictionary.networkphysics
+	* Many more options and features in radmin.  See "man radmin" and
+	  raddb/sites-available/control-socket
+	* Many more commands available via the control socket.  Connect
+	  via "radmin", and type "help" for more information.
+	* Added dictionary.networkphysics and dictionary.lancom.
 
 	Bug fixes
 	* Fixed bug that made radmin not work
@@ -13,6 +13,7 @@ FreeRADIUS 2.1.1 Thu Sep  11 13:20:01 CEST 2008;  , urgency=medium
 	* Fixed configure checks for -lreadline
 	* rlm_sqlippool no longer needs to be linked to rlm_sql.
 	* Add statistics for detail file listeners.  This closes bug #593.
+	* Fixed printing of some WiMAX attributes.
 
 FreeRADIUS 2.1.0 Fri Sep  5 13:20:01 CEST 2008;  , urgency=medium
 	Feature improvements
