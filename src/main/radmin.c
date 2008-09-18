@@ -445,6 +445,7 @@ int main(int argc, char **argv)
 		if ((size == 0) || (size == 1)) exit(0);
 
 		fputs(buffer, outputfp);
+		fprintf(outputfp, "\n");
 		fflush(outputfp);
 		exit(0);
 	}
