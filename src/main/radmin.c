@@ -86,6 +86,9 @@ int radius_xlat(UNUSED char *out, UNUSED int outlen, UNUSED const char *fmt,
 	return -1;
 }
 
+static FILE *outputfp = NULL;
+static int echo = FALSE;
+
 static int fr_domain_socket(const char *path)
 {
 	int sockfd = -1;
@@ -147,6 +150,7 @@ static int usage(void)
 	printf("Usage: %s [ args ]\n", progname);
 	printf("  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
 	printf("  -e command      Execute 'command' and then exit.\n");
+	printf("  -E              Echo commands as they are being executed.\n");
 	printf("  -f socket_file  Open socket_file directly, without reading radius.conf\n");
 	printf("  -i input_file   Read commands from 'input_file'.\n");
 	printf("  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
@@ -162,6 +166,10 @@ static ssize_t run_command(int sockfd, const char *command,
 	char *p;
 	ssize_t size, len;
 	int flag = 1;
+
+	if (echo) {
+		fprintf(outputfp, "%s\n", command);
+	}
 
 	/*
 	 *	Write the text to the socket.
@@ -261,14 +269,15 @@ int main(int argc, char **argv)
 	const char *input_file = NULL;
 	FILE *inputfp = stdin;
 	const char *output_file = NULL;
-	FILE *outputfp = stdout;
+
+	outputfp = stdout;	/* stdout is not a constant value... */
 
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
 		progname = argv[0];
 	else
 		progname++;
 
-	while ((argval = getopt(argc, argv, "d:hi:e:f:n:o:q")) != EOF) {
+	while ((argval = getopt(argc, argv, "d:hi:e:Ef:n:o:q")) != EOF) {
 		switch(argval) {
 		case 'd':
 			if (file) {
@@ -280,6 +289,10 @@ int main(int argc, char **argv)
 
 		case 'e':
 			line = optarg;
+			break;
+
+		case 'E':
+			echo = TRUE;
 			break;
 
 		case 'f':
@@ -488,7 +501,7 @@ int main(int argc, char **argv)
 		{
 			line = fgets(buffer, sizeof(buffer), inputfp);
 			if (!line) break;
-			
+
 			p = strchr(buffer, '\n');
 			if (!p) {
 				fprintf(stderr, "%s: Input line too long\n",
@@ -498,6 +511,9 @@ int main(int argc, char **argv)
 			
 			*p = '\0';
 
+			/*
+			 *	Strip off leading spaces.
+			 */
 			for (p = line; *p != '\0'; p++) {
 				if ((p[0] == ' ') ||
 				    (p[0] == '\t')) {
@@ -509,12 +525,25 @@ int main(int argc, char **argv)
 					line = NULL;
 					break;
 				}
+
+				break;
 			}
 
 			/*
 			 *	Comments: keep going.
 			 */
 			if (!line) continue;
+
+			/*
+			 *	Strip off CR / LF
+			 */
+			for (p = line; *p != '\0'; p++) {
+				if ((p[0] == '\r') ||
+				    (p[0] == '\n')) {
+					p[0] = '\0';
+					break;
+				}
+			}
 		}
 
 		if (strcmp(line, "reconnect") == 0) {
