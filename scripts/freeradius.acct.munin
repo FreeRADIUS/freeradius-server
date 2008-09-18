@@ -22,36 +22,21 @@ if [ "$1" = "autoconf" ]; then
 fi
 
 if [ "$1" = "config" ]; then
-    echo 'graph_title FreeRADIUS Authentication Requests'
+    echo 'graph_title FreeRADIUS Accounting Requests'
     echo 'graph_args --base 1000 -l 0 '
     echo 'graph_period second'
     echo 'graph_vlabel requests / ${graph_period}'
     echo 'graph_category Other'
 
-    echo 'requests.label Access-Requests'
+    echo 'requests.label Accounting-Requests'
     echo 'requests.info total incoming request packets'
     echo 'requests.type DERIVE'
     echo 'requests.min 0'
 
-    echo 'responses.label responses (all types)'
+    echo 'responses.label Accounting-Responses'
     echo 'responses.info total outgoing response packets'
     echo 'responses.type DERIVE'
     echo 'responses.min 0'
-
-    echo 'accepts.label Access-Accepts'
-    echo 'accepts.info total sent Access-Accept packets'
-    echo 'accepts.type DERIVE'
-    echo 'accepts.min 0'
-
-    echo 'rejects.label Access-Rejects'
-    echo 'rejects.info total sent Access-Reject packets'
-    echo 'rejects.type DERIVE'
-    echo 'rejects.min 0'
-
-    echo 'challenges.label Access-Challenges'
-    echo 'challenges.info total sent Access-Challenge packets'
-    echo 'challenges.type DERIVE'
-    echo 'challenges.min 0'
 
     echo 'dup.label Duplicate requests'
     echo 'dup.info total duplicate request packets'
@@ -86,4 +71,4 @@ if [ "$1" = "config" ]; then
     exit 0
 fi
 
-$RADMIN -f $SOCKETFILE -e "stats client auth" | awk '{print $1".value " $2}'
+$RADMIN -f $SOCKETFILE -e "stats client acct" | awk '{print $1".value " $2}'
