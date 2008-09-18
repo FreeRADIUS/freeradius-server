@@ -29,12 +29,12 @@ if [ "$1" = "config" ]; then
     echo 'graph_category Other'
 
     echo 'requests.label Accounting-Requests'
-    echo 'requests.info total incoming request packets'
+    echo 'requests.info total received request packets'
     echo 'requests.type DERIVE'
     echo 'requests.min 0'
 
     echo 'responses.label Accounting-Responses'
-    echo 'responses.info total outgoing response packets'
+    echo 'responses.info total sent response packets'
     echo 'responses.type DERIVE'
     echo 'responses.min 0'
 
