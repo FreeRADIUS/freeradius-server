@@ -568,8 +568,8 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 		if (home->type == HOME_TYPE_AUTH) {
 			type = "auth";
 
-		} else if (home->type == HOME_TYPE_AUTH) {
-			type = "auth";
+		} else if (home->type == HOME_TYPE_ACCT) {
+			type = "acct";
 
 		} else continue;
 
@@ -584,7 +584,7 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 
 		} else continue;
 
-		cprintf(listener, "\t%s\t%d\t%s\t%s\t%d\n",
+		cprintf(listener, "%s\t%d\t%s\t%s\t%d\n",
 			ip_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
 			home->port, type, state,
 			home->currently_outstanding);
