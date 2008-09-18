@@ -483,7 +483,7 @@ static const char *packet_codes[] = {
 /*
  *	In daemon mode, AND this request has debug flags set.
  */
-#define DEBUG_PACKET if (!debug_flag && request->options) debug_packet
+#define DEBUG_PACKET if (!debug_flag && request->options && request->radlog) debug_packet
 
 static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 {
