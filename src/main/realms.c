@@ -525,8 +525,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 
 	if (!rbtree_insert(home_servers_byname, home)) {
 		cf_log_err(cf_sectiontoitem(cs),
-			   "Internal error adding home server %s.",
-			   name2);
+			   "Internal error %d adding home server %s.",
+			   __LINE__, name2);
 		free(home);
 		return 0;
 	}
@@ -535,8 +535,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 	    !rbtree_insert(home_servers_byaddr, home)) {
 		rbtree_deletebydata(home_servers_byname, home);
 		cf_log_err(cf_sectiontoitem(cs),
-			   "Internal error adding home server %s.",
-			   name2);
+			   "Internal error %d adding home server %s.",
+			   __LINE__, name2);
 		free(home);
 		return 0;
 	}
@@ -549,8 +549,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 			rbtree_deletebydata(home_servers_byname, home);
 		}
 		cf_log_err(cf_sectiontoitem(cs),
-			   "Internal error adding home server %s.",
-			   name2);
+			   "Internal error %d adding home server %s.",
+			   __LINE__, name2);
 		free(home);
 		return 0;
 	}
@@ -593,8 +593,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 
 		if (!rbtree_insert(home_servers_byname, home2)) {
 			cf_log_err(cf_sectiontoitem(cs),
-				   "Internal error adding home server %s.",
-				   name2);
+				   "Internal error %d adding home server %s.",
+				   __LINE__, name2);
 			free(home2);
 			return 0;
 		}
@@ -603,23 +603,23 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 		    !rbtree_insert(home_servers_byaddr, home2)) {
 			rbtree_deletebydata(home_servers_byname, home2);
 			cf_log_err(cf_sectiontoitem(cs),
-				   "Internal error adding home server %s.",
-				   name2);
+				   "Internal error %d adding home server %s.",
+				   __LINE__, name2);
 			free(home2);
 			return 0;
 		}
 
 #ifdef WITH_STATS
-		home->number = home_server_max_number++;
-		if (!rbtree_insert(home_servers_bynumber, home)) {
-			rbtree_deletebydata(home_servers_byname, home);
-			if (home->ipaddr.af != AF_UNSPEC) {
-				rbtree_deletebydata(home_servers_byname, home);
+		home2->number = home_server_max_number++;
+		if (!rbtree_insert(home_servers_bynumber, home2)) {
+			rbtree_deletebydata(home_servers_byname, home2);
+			if (home2->ipaddr.af != AF_UNSPEC) {
+				rbtree_deletebydata(home_servers_byname, home2);
 			}
 			cf_log_err(cf_sectiontoitem(cs),
-				   "Internal error adding home server %s.",
-				   name2);
-			free(home);
+				   "Internal error %d adding home server %s.",
+				   __LINE__, name2);
+			free(home2);
 			return 0;
 		}
 #endif
@@ -1046,14 +1046,14 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		}
 
 		if (!rbtree_insert(home_servers_byname, home)) {
-			cf_log_err(cf_sectiontoitem(cs), "Internal error adding home server %s.", name);
+			cf_log_err(cf_sectiontoitem(cs), "Internal error %d adding home server %s.", __LINE__, name);
 			free(home);
 			return 0;
 		}
 
 		if (!rbtree_insert(home_servers_byaddr, home)) {
 			rbtree_deletebydata(home_servers_byname, home);
-			cf_log_err(cf_sectiontoitem(cs), "Internal error adding home server %s.", name);
+			cf_log_err(cf_sectiontoitem(cs), "Internal error %d adding home server %s.", __LINE__, name);
 			free(home);
 			return 0;
 		}
@@ -1066,8 +1066,8 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 				rbtree_deletebydata(home_servers_byname, home);
 			}
 			cf_log_err(cf_sectiontoitem(cs),
-				   "Internal error adding home server %s.",
-				   name);
+				   "Internal error %d adding home server %s.",
+				   __LINE__, name);
 			free(home);
 			return 0;
 		}
