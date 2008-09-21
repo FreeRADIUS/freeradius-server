@@ -68,8 +68,8 @@ struct rlm_python_t {
  */
 static CONF_PARSER module_config[] = {
 
-#define A(x) { "mod_" #x, PW_TYPE_STRING_PTR, offsetof(struct rlm_python_t, x.module_name) }, \
-  { "func_" #x, PW_TYPE_STRING_PTR, offsetof(struct rlm_python_t, x.function_name) },
+#define A(x) { "mod_" #x, PW_TYPE_STRING_PTR, offsetof(struct rlm_python_t, x.module_name), NULL, NULL }, \
+  { "func_" #x, PW_TYPE_STRING_PTR, offsetof(struct rlm_python_t, x.function_name), NULL, NULL },
 
   A(instantiate)
   A(authorize)
@@ -110,7 +110,7 @@ static struct {
 
 #undef A
 
-  { 0 },
+  { NULL, 0 },
 };
 
 
@@ -126,7 +126,7 @@ static PyObject *radiusd_module = NULL;
  */
 
 /* radlog wrapper */
-static PyObject *python_radlog(PyObject *module, PyObject *args)
+static PyObject *python_radlog(UNUSED PyObject *module, PyObject *args)
 {
 	int status;
 	char *msg;
@@ -147,7 +147,7 @@ static PyMethodDef radiusd_methods[] = {
 	  "Print a message using radiusd logging system. level should be one of the\n" \
 	  "constants L_DBG, L_AUTH, L_INFO, L_ERR, L_PROXY, L_CONS\n"
 	},
-	{ 0 },
+	{ NULL, NULL, 0, NULL },
 };
 
 
