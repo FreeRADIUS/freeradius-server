@@ -64,6 +64,7 @@ ATTRIBUTE	h323-voice-quality			31	string
 ATTRIBUTE	h323-gw-id				33	string
 ATTRIBUTE	h323-incoming-conf-id			35	string
 
+ATTRIBUTE	sip-conf-id				100	string
 ATTRIBUTE	h323-credit-amount			101	string
 ATTRIBUTE	h323-credit-time			102	string
 ATTRIBUTE	h323-return-code			103	string
