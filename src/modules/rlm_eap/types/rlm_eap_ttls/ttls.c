@@ -813,8 +813,6 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 	 *	Do the callback, if it exists, and if it was a success.
 	 */
 	if (fake && (handler->request->proxy_reply->code == PW_AUTHENTICATION_ACK)) {
-		REQUEST *request = handler->request;
-
 		/*
 		 *	Terrible hacks.
 		 */
@@ -931,7 +929,6 @@ static void my_request_free(void *data)
  */
 int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 {
-	int err;
 	int rcode = PW_AUTHENTICATION_REJECT;
 	REQUEST *fake;
 	VALUE_PAIR *vp;
