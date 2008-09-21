@@ -122,7 +122,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *      Purpose: Free socket and private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	free(sqlsocket->conn);
 	sqlsocket->conn = NULL;
@@ -199,7 +199,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
  *               set for the query.
  *
  *************************************************************************/
-static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_store_result(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
   /* Not used */
     return 0;
 }
@@ -290,7 +290,7 @@ static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_finish_query(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
 
     SQLFreeStmt(unixodbc_sock->stmt_handle, SQL_CLOSE);
@@ -331,7 +331,7 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection and cleans up any open handles.
  *
  *************************************************************************/
-static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_close(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
 
     SQLFreeStmt(unixodbc_sock->stmt_handle, SQL_DROP);
@@ -350,7 +350,7 @@ static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static const char *sql_error(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
     SQLCHAR state[256];
     SQLCHAR error[256];
     SQLINTEGER errornum = 0;
@@ -384,7 +384,7 @@ static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection related or -1 for other errors
  *
  *************************************************************************/
-static int sql_state(long err_handle, SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_state(long err_handle, SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
     SQLCHAR state[256];
     SQLCHAR error[256];
     SQLINTEGER errornum = 0;
