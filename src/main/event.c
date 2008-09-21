@@ -542,9 +542,8 @@ static void reject_delay(void *ctx)
 
 	RDEBUG2("Sending delayed reject for request %d", request->number);
 
-	if (!debug_flag && request->options) {
-		debug_packet(request, request->reply, 1);
-	}
+	DEBUG_PACKET(request, request->reply, 1);
+
 	request->listener->send(request->listener, request);
 
 	request->when.tv_sec += request->root->cleanup_delay;
@@ -1337,9 +1336,7 @@ static int proxy_request(REQUEST *request)
 #endif
 	request->child_state = REQUEST_PROXIED;
 
-	if (!debug_flag && request->options) {
-		debug_packet(request, request->proxy, 1);
-	}
+	DEBUG_PACKET(request, request->proxy, 1);
 
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
