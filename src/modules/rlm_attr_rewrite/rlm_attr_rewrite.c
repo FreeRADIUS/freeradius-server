@@ -130,7 +130,6 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 			radlog(L_ERR, "rlm_attr_rewrite: Illegal searchin directive given. Assuming packet.");
 			data->searchin = RLM_REGEX_INPACKET;
 		}
-		free((char *)data->searchin_str);
 	}
 	dattr = dict_attrbyname(data->attribute);
 	if (dattr == NULL) {
