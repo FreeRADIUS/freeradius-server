@@ -353,6 +353,7 @@ typedef struct main_config_t {
 #define DEBUG	if(debug_flag)log_debug
 #define DEBUG2  if (debug_flag > 1)log_debug
 #define DEBUG3  if (debug_flag > 2)log_debug
+#define DEBUG4  if (debug_flag > 3)log_debug
 
 #if __GNUC__ >= 3
 #define RDEBUG(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG, 1, request, fmt, ## __VA_ARGS__)
