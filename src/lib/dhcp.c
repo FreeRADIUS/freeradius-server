@@ -1134,13 +1134,11 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	if (dhcp->giaddr != htonl(INADDR_ANY)) {
 		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->giaddr;
 
-		/*
-		 *	Relays send FROM the server port, and we're
-		 *	supposed to send responses back to that port.
-		 *	If the relay sends FROM 68, and expects to see
-		 *	the response back TO 67, then it's broken.
-		 */
-		packet->dst_port = original->src_port;
+		if (dhcp->giaddr != htonl(INADDR_LOOPBACK)) {
+			packet->dst_port = original->dst_port;
+		} else {
+			packet->dst_port = original->src_port; /* debugging */
+		}
 
 	} else if (packet->code == PW_DHCP_NAK) {
 		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
