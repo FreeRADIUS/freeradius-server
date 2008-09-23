@@ -21,6 +21,15 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
+/*
+ *	FIXME: Add check for this header to configure.in
+ */
+#include <openssl/hmac.h>
+
+/*
+ *	FIXME: Fix the build system to create definitions from names.
+ */
+#define WIMAX2ATTR(x) ((24757 << 16) | (x))
 
 /*
  *	Find the named user in this modules database.  Create the set
@@ -59,8 +68,8 @@ static int wimax_authorize(void *instance, REQUEST *request)
 		vp->vp_strvalue[(5*3)+2] = '\0';
 		vp->length = (5*3)+2;
 
-		RDEBUG2("Fixing WiMAX binary Calling-Station-Id to %s",
-			buffer);
+		DEBUG2("rlm_wimax: Fixing WiMAX binary Calling-Station-Id to %s",
+		       buffer);
 	}
 
 	return RLM_MODULE_OK;
@@ -87,6 +96,373 @@ static int wimax_accounting(void *instance, REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
+/*
+ *	Generate the keys after the user has been authenticated.
+ */
+static int wimax_postauth(UNUSED void *instance, REQUEST *request)
+{
+	VALUE_PAIR *msk, *emsk, *vp;
+	VALUE_PAIR *mn_nai, *ip, *fa_rk;
+	HMAC_CTX hmac;
+	unsigned int rk1_len, rk2_len, rk_len;
+	int rk_lifetime = 3600;	/* ? */
+	uint32_t mip_spi;
+	uint8_t usage_data[24];
+	uint8_t mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
+	uint8_t mip_rk[2 * EVP_MAX_MD_SIZE];
+
+	msk = pairfind(request->reply->vps, 1127);
+	emsk = pairfind(request->reply->vps, 1128);
+	if (!msk || !emsk) {
+		RDEBUG("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys.");
+		return RLM_MODULE_NOOP;
+	}
+
+	/*
+	 *	Initialize usage data.
+	 */
+	memcpy(usage_data, "miprk@wimaxforum.org", 21);	/* with trailing \0 */
+	usage_data[21] = 0x02;
+	usage_data[22] = 0x00;
+	usage_data[23] = 0x01;
+
+	/*
+	 *	MIP-RK-1 = HMAC-SSHA256(EMSK, usage-data | 0x01)
+	 */
+	HMAC_CTX_init(&hmac);
+	HMAC_Init_ex(&hmac, emsk->vp_octets, emsk->length, EVP_sha256(), NULL);
+	
+	HMAC_Update(&hmac, &usage_data[0], sizeof(usage_data));
+	HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
+
+	/*
+	 *	MIP-RK-2 = HMAC-SSHA256(EMSK, MIP-RK-1 | usage-data | 0x01)
+	 */
+	HMAC_CTX_init(&hmac);
+	HMAC_Init_ex(&hmac, emsk->vp_octets, emsk->length, EVP_sha256(), NULL);
+	
+	HMAC_Update(&hmac, (const uint8_t *) &mip_rk_1, rk1_len);
+	HMAC_Update(&hmac, &usage_data[0], sizeof(usage_data));
+	HMAC_Final(&hmac, &mip_rk_2[0], &rk2_len);
+
+	vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT);
+	if (vp) rk_lifetime = vp->vp_integer;
+
+	memcpy(mip_rk, mip_rk_1, rk1_len);
+	memcpy(mip_rk + rk1_len, mip_rk_2, rk2_len);
+	rk_len = rk1_len + rk2_len;
+
+	/*
+	 *	MIP-SPI = HMAC-SSHA256(MIP-RK, "SPI CMIP PMIP");
+	 */
+	HMAC_CTX_init(&hmac);
+	HMAC_Init_ex(&hmac, mip_rk, rk_len, EVP_sha256(), NULL);
+	
+	HMAC_Update(&hmac, (const uint8_t *) "SPI CMIP PMIP", 12);
+	HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
+
+	/*
+	 *	Take the 4 most significant octets.
+	 *	If less than 256, add 256.
+	 */
+	mip_spi = ((mip_rk_1[0] << 24) | (mip_rk_1[1] << 16) |
+		   (mip_rk_1[2] << 8) | mip_rk_1[3]);
+	if (mip_spi < 256) mip_spi += 256;
+
+	if (debug_flag) {
+		int len = rk_len;
+		char buffer[512];
+
+		if (len > 128) len = 128; /* buffer size */
+
+		fr_bin2hex(mip_rk, buffer, len);
+		radlog_request(L_DBG, 0, request, "MIP-RK = 0x%s", buffer);
+		radlog_request(L_DBG, 0, request, "MIP-SPI = %08x",
+			       ntohl(mip_spi));
+	}
+
+	/*
+	 *	FIXME: Perform SPI collision prevention
+	 */
+
+	/*
+	 *	Calculate mobility keys
+	 */
+	mn_nai = pairfind(request->packet->vps, 1912);
+	if (!mn_nai) mn_nai = pairfind(request->reply->vps, 1912);
+	if (!mn_nai) {
+		RDEBUG("WARNING: WiMAX-MN-NAI was not found in the request or in the reply.");
+		RDEBUG("WARNING: We cannot calculate MN-HA keys.");
+	}
+
+	/*
+	 *	WiMAX-IP-Technology
+	 */
+	vp = NULL;
+	if (mn_nai) vp = pairfind(request->reply->vps, WIMAX2ATTR(23));
+	if (!vp) {
+		RDEBUG("WARNING: WiMAX-IP-Technology not found in reply.");
+		RDEBUG("WARNING: Not calculating MN-HA keys");
+	}
+
+	if (vp) switch (vp->vp_integer) {
+	case 2:			/* PMIP4 */
+		/*
+		 *	Look for WiMAX-hHA-IP-MIP4
+		 */
+		ip = pairfind(request->reply->vps, WIMAX2ATTR(6));
+		if (!ip) {
+			RDEBUG("WARNING: WiMAX-hHA-IP-MIP4 not found.  Cannot calculate MN-HA-PMIP4 key");
+			break;
+		}
+
+		/*
+		 *	MN-HA-PMIP4 =
+		 *	   H(MIP-RK, "PMIP4 MN HA" | HA-IPv4 | MN-NAI);
+		 */
+		HMAC_CTX_init(&hmac);
+		HMAC_Init_ex(&hmac, mip_rk, rk_len, EVP_sha1(), NULL);
+
+		HMAC_Update(&hmac, (const uint8_t *) "PMIP4 MN HA", 11);
+		HMAC_Update(&hmac, (const uint8_t *) &ip->vp_ipaddr, 4);
+		HMAC_Update(&hmac, (const uint8_t *) &mn_nai->vp_strvalue, mn_nai->length);
+		HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
+
+		/*
+		 *	Put MN-HA-PMIP4 into WiMAX-MN-hHA-MIP4-Key
+		 */
+		vp = pairfind(request->reply->vps, WIMAX2ATTR(10));
+		if (!vp) {
+			vp = radius_paircreate(request, &request->reply->vps,
+					       WIMAX2ATTR(10), PW_TYPE_OCTETS);
+		}
+		if (!vp) {
+			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP4-Key");
+			break;
+		}
+		memcpy(vp->vp_octets, &mip_rk_1[0], rk1_len);
+		vp->length = rk1_len;
+
+		/*
+		 *	Put MN-HA-PMIP4-SPI into WiMAX-MN-hHA-MIP4-SPI
+		 */
+		vp = pairfind(request->reply->vps, WIMAX2ATTR(11));
+		if (!vp) {
+			vp = radius_paircreate(request, &request->reply->vps,
+					       WIMAX2ATTR(11), PW_TYPE_INTEGER);
+		}
+		if (!vp) {
+			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP4-SPI");
+			break;
+		}
+		vp->vp_integer = mip_spi + 1;
+		break;
+
+	case 3:			/* CMIP4 */
+		/*
+		 *	Look for WiMAX-hHA-IP-MIP4
+		 */
+		ip = pairfind(request->reply->vps, WIMAX2ATTR(6));
+		if (!ip) {
+			RDEBUG("WARNING: WiMAX-hHA-IP-MIP4 not found.  Cannot calculate MN-HA-CMIP4 key");
+			break;
+		}
+
+		/*
+		 *	MN-HA-CMIP4 =
+		 *	   H(MIP-RK, "CMIP4 MN HA" | HA-IPv4 | MN-NAI);
+		 */
+		HMAC_CTX_init(&hmac);
+		HMAC_Init_ex(&hmac, mip_rk, rk_len, EVP_sha1(), NULL);
+
+		HMAC_Update(&hmac, (const uint8_t *) "CMIP4 MN HA", 11);
+		HMAC_Update(&hmac, (const uint8_t *) &ip->vp_ipaddr, 4);
+		HMAC_Update(&hmac, (const uint8_t *) &mn_nai->vp_strvalue, mn_nai->length);
+		HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
+
+		/*
+		 *	Put MN-HA-CMIP4 into WiMAX-MN-hHA-MIP4-Key
+		 */
+		vp = pairfind(request->reply->vps, WIMAX2ATTR(10));
+		if (!vp) {
+			vp = radius_paircreate(request, &request->reply->vps,
+					       WIMAX2ATTR(10), PW_TYPE_OCTETS);
+		}
+		if (!vp) {
+			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP4-Key");
+			break;
+		}
+		memcpy(vp->vp_octets, &mip_rk_1[0], rk1_len);
+		vp->length = rk1_len;
+
+		/*
+		 *	Put MN-HA-CMIP4-SPI into WiMAX-MN-hHA-MIP4-SPI
+		 */
+		vp = pairfind(request->reply->vps, WIMAX2ATTR(11));
+		if (!vp) {
+			vp = radius_paircreate(request, &request->reply->vps,
+					       WIMAX2ATTR(11), PW_TYPE_INTEGER);
+		}
+		if (!vp) {
+			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP4-SPI");
+			break;
+		}
+		vp->vp_integer = mip_spi;
+		break;
+
+	case 4:			/* CMIP6 */
+		/*
+		 *	Look for WiMAX-hHA-IP-MIP6
+		 */
+		ip = pairfind(request->reply->vps, WIMAX2ATTR(7));
+		if (!ip) {
+			RDEBUG("WARNING: WiMAX-hHA-IP-MIP6 not found.  Cannot calculate MN-HA-CMIP6 key");
+			break;
+		}
+
+		/*
+		 *	MN-HA-CMIP6 =
+		 *	   H(MIP-RK, "CMIP6 MN HA" | HA-IPv6 | MN-NAI);
+		 */
+		HMAC_CTX_init(&hmac);
+		HMAC_Init_ex(&hmac, mip_rk, rk_len, EVP_sha1(), NULL);
+
+		HMAC_Update(&hmac, (const uint8_t *) "CMIP6 MN HA", 11);
+		HMAC_Update(&hmac, (const uint8_t *) &ip->vp_ipv6addr, 16);
+		HMAC_Update(&hmac, (const uint8_t *) &mn_nai->vp_strvalue, mn_nai->length);
+		HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
+
+		/*
+		 *	Put MN-HA-CMIP6 into WiMAX-MN-hHA-MIP6-Key
+		 */
+		vp = pairfind(request->reply->vps, WIMAX2ATTR(12));
+		if (!vp) {
+			vp = radius_paircreate(request, &request->reply->vps,
+					       WIMAX2ATTR(12), PW_TYPE_OCTETS);
+		}
+		if (!vp) {
+			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP6-Key");
+			break;
+		}
+		memcpy(vp->vp_octets, &mip_rk_1[0], rk1_len);
+		vp->length = rk1_len;
+
+		/*
+		 *	Put MN-HA-CMIP6-SPI into WiMAX-MN-hHA-MIP6-SPI
+		 */
+		vp = pairfind(request->reply->vps, WIMAX2ATTR(13));
+		if (!vp) {
+			vp = radius_paircreate(request, &request->reply->vps,
+					       WIMAX2ATTR(13), PW_TYPE_INTEGER);
+		}
+		if (!vp) {
+			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP6-SPI");
+			break;
+		}
+		vp->vp_integer = mip_spi + 2;
+		break;
+
+	default:
+		break;		/* do nothing */
+	}
+
+	/*
+	 *	Generate FA-RK, if requested.
+	 *
+	 *	FA-RK= H(MIP-RK, "FA-RK")
+	 */
+	fa_rk = pairfind(request->reply->vps, WIMAX2ATTR(14));
+	if (fa_rk && (fa_rk->length == 0)) {
+		HMAC_CTX_init(&hmac);
+		HMAC_Init_ex(&hmac, mip_rk, rk_len, EVP_sha1(), NULL);
+		
+		HMAC_Update(&hmac, (const uint8_t *) "FA-RK", 5);
+
+		HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
+
+		memcpy(fa_rk->vp_octets, &mip_rk_1[0], rk1_len);
+		fa_rk->length = rk1_len;
+	}
+
+	/*
+	 *	Create FA-RK-SPI, which is really SPI-CMIP4, which is
+	 *	really MIP-SPI.  Clear?  Of course.  This is WiMAX.
+	 */
+	if (fa_rk) {
+		vp = pairfind(request->reply->vps, WIMAX2ATTR(61));
+		if (!vp) {
+			vp = radius_paircreate(request, &request->reply->vps,
+					       WIMAX2ATTR(61), PW_TYPE_INTEGER);
+		}
+		if (!vp) {
+			RDEBUG("WARNING: Failed creating WiMAX-FA-RK-SPI");
+		} else {
+			vp->vp_integer = mip_spi;
+		}
+	}
+
+	/*
+	 *	Generate MN-FA = H(FA-RK, "MN FA" | FA-IP | MN-NAI)
+	 */
+	ip = pairfind(request->reply->vps, 1913);
+	if (fa_rk && ip && mn_nai) {
+		HMAC_CTX_init(&hmac);
+		HMAC_Init_ex(&hmac, fa_rk->vp_octets, fa_rk->length,
+			     EVP_sha1(), NULL);
+		
+		HMAC_Update(&hmac, (const uint8_t *) "MN FA", 5);
+		HMAC_Update(&hmac, (const uint8_t *) &ip->vp_ipaddr, 4);
+		HMAC_Update(&hmac, (const uint8_t *) &mn_nai->vp_strvalue, mn_nai->length);
+
+		HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
+
+		vp = radius_paircreate(request, &request->reply->vps,
+				       1910, PW_TYPE_OCTETS);
+		if (!vp) {
+			RDEBUG("WARNING: Failed creating WiMAX-MN-FA");
+		} else {
+			memcpy(vp->vp_octets, &mip_rk_1[0], rk1_len);
+			vp->length = rk1_len;
+		}
+	}
+
+	/*
+	 *	Give additional information about requests && responses
+	 *
+	 *	WiMAX-RRQ-MN-HA-SPI
+	 */
+	vp = pairfind(request->packet->vps, WIMAX2ATTR(20));
+	if (vp) {
+		RDEBUG("Client requested MN-HA key: Should use SPI to look up key from storage.");
+		if (!mn_nai) {
+			RDEBUG("WARNING: MN-NAI was not found!");
+		}
+
+		/*
+		 *	WiMAX-RRQ-HA-IP
+		 */
+		if (!pairfind(request->packet->vps, WIMAX2ATTR(18))) {
+			RDEBUG("WARNING: HA-IP was not found!");
+		}
+
+
+		/*
+		 *	WiMAX-HA-RK-Key-Requested
+		 */
+		vp = pairfind(request->packet->vps, WIMAX2ATTR(58));
+		if (vp && (vp->vp_integer == 1)) {
+			RDEBUG("Client requested HA-RK: Should use IP to look it up from storage.");
+		}
+	}
+
+	/*
+	 *	Wipe the context of all sensitive information.
+	 */
+	HMAC_CTX_cleanup(&hmac);
+
+	return RLM_MODULE_UPDATED;
+}
+
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -111,6 +487,6 @@ module_t rlm_wimax = {
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		NULL	 		/* post-auth */
+		wimax_postauth 		/* post-auth */
 	},
 };
