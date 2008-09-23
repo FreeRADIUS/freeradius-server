@@ -194,6 +194,12 @@ VALUE	EAP-Session-Resumed		no			0
 VALUE	EAP-Session-Resumed		yes			1
 
 #
+#	Expose EAP keys in the reply.
+#
+ATTRIBUTE	EAP-MSK					1129	octets
+ATTRIBUTE	EAP-EMSK				1130	octets
+
+#
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.
 #

@@ -127,7 +127,7 @@ static void PRF(const unsigned char *secret, unsigned int secret_len,
 void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
 			  const char *prf_label)
 {
-	unsigned char out[2*EAPTLS_MPPE_KEY_LEN], buf[2*EAPTLS_MPPE_KEY_LEN];
+	unsigned char out[4*EAPTLS_MPPE_KEY_LEN], buf[4*EAPTLS_MPPE_KEY_LEN];
 	unsigned char seed[64 + 2*SSL3_RANDOM_SIZE];
 	unsigned char *p = seed;
 	size_t prf_size;
@@ -151,6 +151,9 @@ void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
 	add_reply(reply_vps, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
 	p += EAPTLS_MPPE_KEY_LEN;
 	add_reply(reply_vps, "MS-MPPE-Send-Key", p, EAPTLS_MPPE_KEY_LEN);
+
+	add_reply(reply_vps, "EAP-MSK", out, 64);
+	add_reply(reply_vps, "EAP-EMSK", out + 64, 64);
 }
 
 
