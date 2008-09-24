@@ -168,21 +168,17 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 					     eaptls_session_idx);
 		if (!vp) {
 			RDEBUG("WARNING: No information in cached session!");
+		} else {
+			RDEBUG("Adding cached attributes to the reply:");
+			debug_pair_list(vp);
+			pairadd(&request->reply->vps, paircopy(vp));
+
 			/*
-			 *	FIXME: Call eaptls_fail, and return 0
+			 *	Mark the request as resumed.
 			 */
-			return 1;
+			vp = pairmake("EAP-Session-Resumed", "0", T_OP_SET);
+			if (vp) pairadd(&request->packet->vps, vp);
 		}
-
-		RDEBUG("Adding cached attributes to the reply:");
-		debug_pair_list(vp);
-		pairadd(&request->reply->vps, paircopy(vp));		
-
-		/*
-		 *	Mark the request as resumed.
-		 */
-		vp = pairmake("EAP-Session-Resumed", "0", T_OP_SET);
-		if (vp) pairadd(&request->packet->vps, vp);
 	}
 
 	/*
