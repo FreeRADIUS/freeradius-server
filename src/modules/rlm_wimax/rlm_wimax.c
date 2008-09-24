@@ -111,8 +111,8 @@ static int wimax_postauth(UNUSED void *instance, REQUEST *request)
 	uint8_t mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
 	uint8_t mip_rk[2 * EVP_MAX_MD_SIZE];
 
-	msk = pairfind(request->reply->vps, 1127);
-	emsk = pairfind(request->reply->vps, 1128);
+	msk = pairfind(request->reply->vps, 1129);
+	emsk = pairfind(request->reply->vps, 1130);
 	if (!msk || !emsk) {
 		RDEBUG("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys.");
 		return RLM_MODULE_NOOP;
