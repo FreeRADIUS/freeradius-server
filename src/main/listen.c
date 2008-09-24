@@ -80,15 +80,16 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type);
  *	Find a per-socket client.
  */
 RADCLIENT *client_listener_find(const rad_listen_t *listener,
-				       const fr_ipaddr_t *ipaddr)
+				const fr_ipaddr_t *ipaddr, int src_port)
 {
 #ifdef WITH_DYNAMIC_CLIENTS
 	int rcode;
-	time_t now;
 	listen_socket_t *sock;
 	REQUEST *request;
-	RADCLIENT *client, *created;
+	RADCLIENT *created;
 #endif
+	time_t now;
+	RADCLIENT *client;
 	RADCLIENT_LIST *clients;
 
 	rad_assert(listener != NULL);
@@ -116,9 +117,39 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	 */
 	rad_assert(clients != NULL);
 
-#ifdef WITH_DYNAMIC_CLIENTS
 	client = client_find(clients, ipaddr);
-	if (!client) return NULL;
+	if (!client) {
+		static time_t last_printed = 0;
+		char name[256], buffer[128];
+					
+#ifdef WITH_DYNAMIC_CLIENTS
+	unknown:		/* used only for dynamic clients */
+#endif
+
+		/*
+		 *	DoS attack quenching, but only in debug mode.
+		 *	If they're running in debug mode, show them
+		 *	every packet.
+		 */
+		if (debug_flag == 0) {
+			now = time(NULL);
+			if (last_printed == now) return NULL;
+			
+			last_printed = now;
+		}
+
+		listener->print(listener, name, sizeof(name));
+
+		radlog(L_ERR, "Ignoring request to %s from unknown client %s port %d",
+		       name, inet_ntop(ipaddr->af, &ipaddr->ipaddr,
+				       buffer, sizeof(buffer)),
+		       src_port);
+		return NULL;
+	}
+
+#ifndef WITH_DYNAMIC_CLIENTS
+	return client;		/* return the found client. */
+#else
 
 	/*
 	 *	No server defined, and it's not dynamic.  Return it.
@@ -162,8 +193,8 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 		/*
 		 *	WTF?
 		 */
-		if (!client) return NULL;
-		if (!client->client_server) return NULL;
+		if (!client) goto unknown;
+		if (!client->client_server) goto unknown;
 
 		/*
 		 *	At this point, 'client' is the enclosing
@@ -178,25 +209,25 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 		 *	allow one new client per second.  Known
 		 *	clients aren't subject to this restriction.
 		 */
-		if (now == client->last_new_client) return NULL;
+		if (now == client->last_new_client) goto unknown;
 	}
 
 	client->last_new_client = now;
 
 	request = request_alloc();
-	if (!request) return NULL;
+	if (!request) goto unknown;
 
 	request->listener = listener;
 	request->client = client;
 	request->packet = rad_alloc(0);
 	if (!request->packet) {
 		request_free(&request);
-		return NULL;
+		goto unknown;
 	}
 	request->reply = rad_alloc(0);
 	if (!request->reply) {
 		request_free(&request);
-		return NULL;
+		goto unknown;
 	}
 	request->packet->timestamp = request->timestamp;
 	request->number = 0;
@@ -237,7 +268,7 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 
 	if (rcode != RLM_MODULE_OK) {
 		request_free(&request);
-		return NULL;
+		goto unknown;
 	}
 
 	/*
@@ -252,15 +283,13 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 		/*
 		 *	This frees the client if it isn't valid.
 		 */
-		if (!client_validate(clients, client, created)) {
-			return NULL;
-		}
+		if (!client_validate(clients, client, created)) goto unknown;
 	}
 	request_free(&request);
 
-	return created;		/* may be NULL */
-#else
-	return client_find(clients, ipaddr);
+	if (!created) goto unknown;
+
+	return created;
 #endif
 }
 
@@ -652,7 +681,6 @@ static int stats_socket_recv(rad_listen_t *listener,
 	ssize_t		rcode;
 	int		code, src_port;
 	RADIUS_PACKET	*packet;
-	char		buffer[128];
 	RADCLIENT	*client;
 	fr_ipaddr_t	src_ipaddr;
 
@@ -667,25 +695,9 @@ static int stats_socket_recv(rad_listen_t *listener,
 	}
 
 	if ((client = client_listener_find(listener,
-					   &src_ipaddr)) == NULL) {
+					   &src_ipaddr, src_port)) == NULL) {
 		rad_recv_discard(listener->fd);
 		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
-
-		if (debug_flag > 0) {
-			char name[1024];
-
-			listener->print(listener, name, sizeof(name));
-
-			/*
-			 *	This is debugging rather than logging, so that
-			 *	DoS attacks don't affect us.
-			 */
-			DEBUG("Ignoring request to %s from unknown client %s port %d",
-			      name,
-			      inet_ntop(src_ipaddr.af, &src_ipaddr.ipaddr,
-					buffer, sizeof(buffer)), src_port);
-		}
-
 		return 0;
 	}
 
@@ -738,7 +750,6 @@ static int auth_socket_recv(rad_listen_t *listener,
 	int		code, src_port;
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
-	char		buffer[128];
 	RADCLIENT	*client;
 	fr_ipaddr_t	src_ipaddr;
 
@@ -753,25 +764,9 @@ static int auth_socket_recv(rad_listen_t *listener,
 	}
 
 	if ((client = client_listener_find(listener,
-					   &src_ipaddr)) == NULL) {
+					   &src_ipaddr, src_port)) == NULL) {
 		rad_recv_discard(listener->fd);
 		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
-
-		if (debug_flag > 0) {
-			char name[1024];
-
-			listener->print(listener, name, sizeof(name));
-
-			/*
-			 *	This is debugging rather than logging, so that
-			 *	DoS attacks don't affect us.
-			 */
-			DEBUG("Ignoring request to %s from unknown client %s port %d",
-			      name,
-			      inet_ntop(src_ipaddr.af, &src_ipaddr.ipaddr,
-					buffer, sizeof(buffer)), src_port);
-		}
-
 		return 0;
 	}
 
@@ -840,7 +835,6 @@ static int acct_socket_recv(rad_listen_t *listener,
 	int		code, src_port;
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
-	char		buffer[128];
 	RADCLIENT	*client;
 	fr_ipaddr_t	src_ipaddr;
 
@@ -855,25 +849,9 @@ static int acct_socket_recv(rad_listen_t *listener,
 	}
 
 	if ((client = client_listener_find(listener,
-					   &src_ipaddr)) == NULL) {
+					   &src_ipaddr, src_port)) == NULL) {
 		rad_recv_discard(listener->fd);
 		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
-
-		/*
-		 *	This is debugging rather than logging, so that
-		 *	DoS attacks don't affect us.
-		 */
-		if (debug_flag > 0) {
-			char name[1024];
-
-			listener->print(listener, name, sizeof(name));
-
-			DEBUG("Ignoring request to %s from unknown client %s port %d",
-			      name,
-			      inet_ntop(src_ipaddr.af, &src_ipaddr.ipaddr,
-					buffer, sizeof(buffer)), src_port);
-		}
-
 		return 0;
 	}
 

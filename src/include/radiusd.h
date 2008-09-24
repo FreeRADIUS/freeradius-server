@@ -596,7 +596,7 @@ void listen_free(rad_listen_t **head);
 int listen_init(CONF_SECTION *cs, rad_listen_t **head);
 rad_listen_t *proxy_new_listener(void);
 RADCLIENT *client_listener_find(const rad_listen_t *listener,
-				const fr_ipaddr_t *ipaddr);
+				const fr_ipaddr_t *ipaddr, int src_port);
 #ifdef WITH_STATS
 RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
 					  int port);

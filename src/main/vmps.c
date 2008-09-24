@@ -42,7 +42,6 @@ int vqp_socket_recv(rad_listen_t *listener,
 {
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
-	char		buffer[128];
 	RADCLIENT	*client;
 
 	packet = vqp_recv(listener->fd);
@@ -52,12 +51,8 @@ int vqp_socket_recv(rad_listen_t *listener,
 	}
 
 	if ((client = client_listener_find(listener,
-					   &packet->src_ipaddr)) == NULL) {
-		radlog(L_ERR, "Ignoring request from unknown client %s port %d",
-		       inet_ntop(packet->src_ipaddr.af,
-				 &packet->src_ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-		       packet->src_port);
+					   &packet->src_ipaddr,
+					   packet->src_port)) == NULL) {
 		rad_free(&packet);
 		return 0;
 	}
