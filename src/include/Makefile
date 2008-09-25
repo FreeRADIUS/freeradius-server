@@ -18,7 +18,20 @@ radpaths.h: build-radpaths-h
 distclean:
 	rm -f radpaths.h
 
+dict:
+	@mkdir dict
+	@for x in ../../share/dictionary*; do \
+		../../share/header.pl $$x > dict/`basename $$x`.h; \
+	done
+
+dictionary.h: dict
+	@echo "#ifndef _FR_DICTIONARY_H" > $@
+	@echo "#define _FR_DICTIONARY_H" >> $@
+	@echo "#include <freeradius-devel/dict/dictionary.h>" >> $@
+	@echo "#endif" >> $@
+
 clean:
+	@rm -rf dict
 
 install:
 	$(INSTALL) -d -m 755 $(R)$(includedir)/freeradius
