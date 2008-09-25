@@ -1,10 +1,11 @@
-FreeRADIUS 2.1.1 Thu Sep  11 13:20:01 CEST 2008;  , urgency=medium
+FreeRADIUS 2.1.1 Thu Sep 25 11:03:00 CEST 2008;  , urgency=medium
 	Feature improvements
 	* Many more options and features in radmin.  See "man radmin" and
 	  raddb/sites-available/control-socket
 	* Many more commands available via the control socket.  Connect
 	  via "radmin", and type "help" for more information.
 	* Added dictionary.networkphysics and dictionary.lancom.
+	* Calculate WiMAX MIP keys, and added sample WiMAX SQL tables.
 
 	Bug fixes
 	* Fixed bug that made radmin not work
@@ -14,6 +15,9 @@ FreeRADIUS 2.1.1 Thu Sep  11 13:20:01 CEST 2008;  , urgency=medium
 	* rlm_sqlippool no longer needs to be linked to rlm_sql.
 	* Add statistics for detail file listeners.  This closes bug #593.
 	* Fixed printing of some WiMAX attributes.
+	* Fix double free on exit() in rlm_attr_filter
+	* Fixed build issues on Solaris.
+	* Fixed fast session resumption for EAP-TLS
 
 FreeRADIUS 2.1.0 Fri Sep  5 13:20:01 CEST 2008;  , urgency=medium
 	Feature improvements
