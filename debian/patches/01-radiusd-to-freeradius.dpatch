@@ -35,7 +35,7 @@
 -#  e.g.:  kill -HUP `cat /var/run/radiusd/radiusd.pid`
 +#  e.g.:  kill -HUP `cat /var/run/freeradius/freeradius.pid`
  #
--pidfile = ${run_dir}/radiusd.pid
+-pidfile = ${run_dir}/${name}.pid
 +pidfile = ${run_dir}/freeradius.pid
 
 
