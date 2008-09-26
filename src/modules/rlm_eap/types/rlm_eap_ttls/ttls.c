@@ -826,7 +826,8 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 		request->proxy_reply = NULL;
 
 		if ((debug_flag > 0) && fr_log_fp) {
-			fprintf(fr_log_fp, "server %s {\n", fake->server);
+			fprintf(fr_log_fp, "server %s {\n",
+				(fake->server == NULL) ? "" : fake->server);
 		}
 
 		/*
@@ -838,7 +839,8 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 		RDEBUG2("post-auth returns %d", rcode);
 
 		if ((debug_flag > 0) && fr_log_fp) {
-			fprintf(fr_log_fp, "} # server %s\n", fake->server);
+			fprintf(fr_log_fp, "} # server %s\n",
+				(fake->server == NULL) ? "" : fake->server);
 			
 			RDEBUG("Final reply from tunneled session code %d",
 			       fake->reply->code);
@@ -1170,7 +1172,8 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 		debug_pair_list(fake->packet->vps);
 
-		fprintf(fr_log_fp, "server %s {\n", fake->server);
+		fprintf(fr_log_fp, "server %s {\n",
+			(fake->server == NULL) ? "" : fake->server);
 	}
 
 	/*
@@ -1184,7 +1187,8 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	attributes.
 	 */
 	if ((debug_flag > 0) && fr_log_fp) {
-		fprintf(fr_log_fp, "} # server %s\n", fake->server);
+		fprintf(fr_log_fp, "} # server %s\n",
+			(fake->server == NULL) ? "" : fake->server);
 
 		RDEBUG("Got tunneled reply code %d", fake->reply->code);
 		

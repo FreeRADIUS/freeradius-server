@@ -659,11 +659,12 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	}
 
 	if ((debug_flag > 0) && fr_log_fp) {
-		RDEBUG("Got tunnled request");
+		RDEBUG("Got tunneled request");
 		
 		debug_pair_list(fake->packet->vps);
 
-		fprintf(fr_log_fp, "server %s {\n", fake->server);
+		fprintf(fr_log_fp, "server %s {\n",
+			(fake->server == NULL) ? "" : fake->server);
 	}
 
 	/*
@@ -805,7 +806,8 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 		debug_pair_list(fake->packet->vps);
 
-		fprintf(fr_log_fp, "server %s {\n", fake->server);
+		fprintf(fr_log_fp, "server %s {\n",
+			(fake->server == NULL) ? "" : fake->server);
 	}
 
 	/*
@@ -819,7 +821,8 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	attributes.
 	 */
 	if ((debug_flag > 0) && fr_log_fp) {
-		fprintf(fr_log_fp, "} # server %s\n", fake->server);
+		fprintf(fr_log_fp, "} # server %s\n",
+			(fake->server == NULL) ? "" : fake->server);
 
 		RDEBUG("Got tunneled reply code %d", fake->reply->code);
 		
