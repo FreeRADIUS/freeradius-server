@@ -68,7 +68,7 @@ char *debug_condition = NULL;
  *	file.
  */
 #ifndef __MINGW32__
-static uid_t server_uid;
+uid_t server_uid;
 static gid_t server_gid;
 static const char *uid_name = NULL;
 static const char *gid_name = NULL;
@@ -509,10 +509,26 @@ static int switch_users(CONF_SECTION *cs)
 #endif
 
 #ifdef HAVE_PWD_H
-	if (uid_name && (setuid(server_uid) < 0)) {
-		fprintf(stderr, "%s: Failed setting user to %s: %s",
-			progname, uid_name, strerror(errno));
-		return 0;
+	if (uid_name) {
+
+#ifndef HAVE_SETRESUID
+/*
+ *	Fake out setresuid with something that's close.
+ */
+#define setresuid(_a, _b, _c) setuid(_b)
+#endif
+
+		if (setresuid(-1, server_uid, geteuid()) < 0) {
+			fprintf(stderr, "%s: Failed switching uid: %s\n",
+				progname, strerror(errno));
+			return 0;
+		}
+		
+		if (geteuid() != server_uid) {
+			fprintf(stderr, "%s: Failed switching uid: UID is incorrect\n",
+				progname);
+			return 0;
+		}
 	}
 
 	/*
