@@ -323,6 +323,8 @@ static fr_pool_t *fr_pool_create(void)
 
 	if (!fp) return NULL;
 
+	memset(fp, 0, FR_POOL_SIZE);
+
 	fp->page_end = ((uint8_t *) fp) + FR_POOL_SIZE;
 	fp->free_ptr = ((uint8_t *) fp) + sizeof(*fp);
 	fp->page_free = fp;
@@ -1120,7 +1122,6 @@ static int process_value_alias(const char* fn, const int line, char **argv,
 		fr_strerror_printf("dict_addvalue: out of memory");
 		return -1;
 	}
-	memset(dval, 0, sizeof(*dval));
 
 	dval->name[0] = '\0';	/* empty name */
 	dval->attr = my_da->attr;
