@@ -1701,16 +1701,45 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 			vp->flags.do_xlat = 1;
 			vp->length = 0;
 		} else {
-		case T_SINGLE_QUOTED_STRING:
-			vp = pairmake(attr, NULL, token);
-			if (vp) {
-				strlcpy(vp->vp_strvalue, value,
-					sizeof(vp->vp_strvalue));
-				vp->length = strlen(vp->vp_strvalue);
+			/*
+			 *	Parse && escape it, as defined by the
+			 *	data type.
+			 */
+			vp = pairmake(attr, value, token);
+			if (!vp) {
+				*eol = T_OP_INVALID;
+				return NULL;
 			}
 		}
 		break;
 
+	case T_SINGLE_QUOTED_STRING:
+		vp = pairmake(attr, NULL, token);
+		if (!vp) {
+			*eol = T_OP_INVALID;
+			return NULL;
+		}
+
+		/*
+		 *	String and octet types get copied verbatim.
+		 */
+		if ((vp->type == PW_TYPE_STRING) ||
+		    (vp->type == PW_TYPE_OCTETS)) {
+			strlcpy(vp->vp_strvalue, value,
+				sizeof(vp->vp_strvalue));
+			vp->length = strlen(vp->vp_strvalue);
+
+			/*
+			 *	Everything else gets parsed: it's
+			 *	DATA, not a string!
+			 */
+		} else if (!pairparsevalue(vp, value)) {
+				pairfree(&pair);
+				*eol = T_OP_INVALID;
+				return NULL;
+			}
+		}
+		break;
 
 		/*
 		 *	Mark the pair to be allocated later.
