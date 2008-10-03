@@ -183,7 +183,6 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	struct radutmp	ut, u;
 	VALUE_PAIR	*vp;
 	int		status = -1;
-	uint32_t	nas_address = 0;
 	uint32_t	framed_address = 0;
 	int		protocol = -1;
 	time_t		t;
@@ -256,6 +255,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	time(&t);
 	memset(&ut, 0, sizeof(ut));
 	ut.porttype = 'A';
+	ut.nas_address = htonl(INADDR_NONE);
 
 	/*
 	 *	First, find the interesting attributes.
@@ -271,7 +271,6 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 				protocol = vp->vp_integer;
 				break;
 			case PW_NAS_IP_ADDRESS:
-				nas_address = vp->vp_ipaddr;
 				ut.nas_address = vp->vp_ipaddr;
 				break;
 			case PW_NAS_PORT:
@@ -317,12 +316,11 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	 *	If we didn't find out the NAS address, use the
 	 *	originator's IP address.
 	 */
-	if (nas_address == 0) {
-		nas_address = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
-		ut.nas_address = nas_address;
+	if (ut.nas_address == htonl(INADDR_NONE)) {
+		ut.nas_address = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 		nas = request->client->shortname;
 
-	} else if (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr == nas_address) {		/* might be a client, might not be. */
+	} else if (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr == ut.nas_address) {		/* might be a client, might not be. */
 		nas = request->client->shortname;
 
 	} else {
@@ -331,7 +329,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		 *	a proxy server.  In that case, just
 		 *	get the IP address.
 		 */
-		nas = ip_ntoa(ip_name, nas_address);
+		nas = ip_ntoa(ip_name, ut.nas_address);
 	}
 
 	/*
@@ -357,17 +355,19 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	 *	the NAS comes up, because of issues with receiving
 	 *	UDP packets out of order.
 	 */
-	if (status == PW_STATUS_ACCOUNTING_ON && nas_address) {
+	if (status == PW_STATUS_ACCOUNTING_ON &&
+	    (ut.nas_address != htonl(INADDR_NONE))) {
 		radlog(L_INFO, "rlm_radutmp: NAS %s restarted (Accounting-On packet seen)",
 		       nas);
-		radutmp_zap(inst, filename, nas_address, ut.time);
+		radutmp_zap(inst, filename, ut.nas_address, ut.time);
 		return RLM_MODULE_OK;
 	}
 
-	if (status == PW_STATUS_ACCOUNTING_OFF && nas_address) {
+	if (status == PW_STATUS_ACCOUNTING_OFF &&
+	    (ut.nas_address != htonl(INADDR_NONE))) {
 		radlog(L_INFO, "rlm_radutmp: NAS %s rebooted (Accounting-Off packet seen)",
 		       nas);
-		radutmp_zap(inst, filename, nas_address, ut.time);
+		radutmp_zap(inst, filename, ut.nas_address, ut.time);
 		return RLM_MODULE_OK;
 	}
 
