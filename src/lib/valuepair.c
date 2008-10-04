@@ -1734,10 +1734,9 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 			 *	DATA, not a string!
 			 */
 		} else if (!pairparsevalue(vp, value)) {
-				pairfree(&pair);
-				*eol = T_OP_INVALID;
-				return NULL;
-			}
+			pairfree(&vp);
+			*eol = T_OP_INVALID;
+			return NULL;
 		}
 		break;
 
