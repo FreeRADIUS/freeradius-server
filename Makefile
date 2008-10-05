@@ -7,7 +7,7 @@
 # Version:	$Id$
 #
 
-include Make.inc
+-include Make.inc
 
 .PHONY: all clean install
 

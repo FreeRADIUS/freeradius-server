@@ -64,6 +64,41 @@ AC_PREREQ([2.50])dnl
 am_aux_dir=`cd $ac_aux_dir && pwd`
 ])
 
+# AM_CONDITIONAL                                            -*- Autoconf -*-
+
+# Copyright (C) 1997, 2000, 2001, 2003, 2004, 2005, 2006
+# Free Software Foundation, Inc.
+#
+# This file is free software; the Free Software Foundation
+# gives unlimited permission to copy and/or distribute it,
+# with or without modifications, as long as this notice is preserved.
+
+# serial 8
+
+# AM_CONDITIONAL(NAME, SHELL-CONDITION)
+# -------------------------------------
+# Define a conditional.
+AC_DEFUN([AM_CONDITIONAL],
+[AC_PREREQ(2.52)dnl
+ ifelse([$1], [TRUE],  [AC_FATAL([$0: invalid condition: $1])],
+	[$1], [FALSE], [AC_FATAL([$0: invalid condition: $1])])dnl
+AC_SUBST([$1_TRUE])dnl
+AC_SUBST([$1_FALSE])dnl
+_AM_SUBST_NOTMAKE([$1_TRUE])dnl
+_AM_SUBST_NOTMAKE([$1_FALSE])dnl
+if $2; then
+  $1_TRUE=
+  $1_FALSE='#'
+else
+  $1_TRUE='#'
+  $1_FALSE=
+fi
+AC_CONFIG_COMMANDS_PRE(
+[if test -z "${$1_TRUE}" && test -z "${$1_FALSE}"; then
+  AC_MSG_ERROR([[conditional "$1" was never defined.
+Usually this means the macro was only invoked conditionally.]])
+fi])])
+
 # Fake the existence of programs that GNU maintainers use.  -*- Autoconf -*-
 
 # Copyright (C) 1997, 1999, 2000, 2001, 2003, 2004, 2005
@@ -100,64 +135,23 @@ else
 fi
 ])
 
-m4_include([libtool.m4])
-m4_include([acinclude.m4])
-
-#  See if the compilation works with __thread, for thread-local storage
+# Copyright (C) 2006  Free Software Foundation, Inc.
 #
-AC_DEFUN([FR_TLS],
-[
-    AC_MSG_CHECKING(for TLS)
-    AC_RUN_IFELSE([AC_LANG_SOURCE([[ static __thread int val; int main() { return 0; } ]])],[have_tls=yes],[have_tls=no],[have_tls=no ])
-    AC_MSG_RESULT($have_tls)
-    if test "$have_tls" = "yes"; then
-        AC_DEFINE([HAVE_THREAD_TLS],[1],[Define if the compiler supports __thread])
-    fi
-])
+# This file is free software; the Free Software Foundation
+# gives unlimited permission to copy and/or distribute it,
+# with or without modifications, as long as this notice is preserved.
 
+# _AM_SUBST_NOTMAKE(VARIABLE)
+# ---------------------------
+# Prevent Automake from outputing VARIABLE = @VARIABLE@ in Makefile.in.
+# This macro is traced by Automake.
+AC_DEFUN([_AM_SUBST_NOTMAKE])
 
-AC_DEFUN([AC_LIB_READLINE], [
-  AC_CACHE_CHECK([for a readline compatible library],
-                 ac_cv_lib_readline, [
-    ORIG_LIBS=$LIBS
-    for readline_lib in readline edit editline; do
-      for termcap_lib in "" termcap curses ncurses; do
-        if test -z "$termcap_lib"; then
-          TRY_LIB="-l$readline_lib"
-        else
-          TRY_LIB="-l$readline_lib -l$termcap_lib"
-        fi
-        LIBS="$ORIG_LIBS $TRY_LIB"
-        AC_TRY_LINK_FUNC(readline, ac_cv_lib_readline="$TRY_LIB")
-        if test -n "$ac_cv_lib_readline"; then
-          LIBREADLINE="$TRY_LIB"
-          AC_SUBST(LIBREADLINE)
-          break
-        fi
-      done
-      if test -n "$ac_cv_lib_readline"; then
-        break
-      fi
-    done
-    if test -z "$ac_cv_lib_readline"; then
-      ac_cv_lib_readline="no"
-      LIBS=$ORIG_LIBS
-    fi
-  ])
-
-  if test "$ac_cv_lib_readline" != "no"; then
-    AC_DEFINE(HAVE_LIBREADLINE, 1,
-              [Define if you have a readline compatible library])
-    AC_CHECK_HEADERS(readline.h readline/readline.h)
-    AC_CACHE_CHECK([whether readline supports history],
-                   ac_cv_lib_readline_history, [
-      ac_cv_lib_readline_history="no"
-      AC_TRY_LINK_FUNC(add_history, ac_cv_lib_readline_history="yes")
-    ])
-    if test "$ac_cv_lib_readline_history" = "yes"; then
-      AC_DEFINE(HAVE_READLINE_HISTORY, 1,
-                [Define if your readline library has \`add_history'])
-      AC_CHECK_HEADERS(history.h readline/history.h)
-    fi
-  fi
-])
+m4_include([libltdl/m4/argz.m4])
+m4_include([libltdl/m4/libtool.m4])
+m4_include([libltdl/m4/ltdl.m4])
+m4_include([libltdl/m4/ltoptions.m4])
+m4_include([libltdl/m4/ltsugar.m4])
+m4_include([libltdl/m4/ltversion.m4])
+m4_include([libltdl/m4/lt~obsolete.m4])
+m4_include([acinclude.m4])

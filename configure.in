@@ -50,7 +50,6 @@ AC_AIX
 
 AC_PROG_GCC_TRADITIONAL
 AC_PROG_CC_SUNPRO
-AC_PROG_RANLIB
 
 dnl Compile in large (2G+) file support.
 AC_SYS_LARGEFILE
@@ -81,6 +80,11 @@ if test x"$enable_ltdl_install" = x"yes"; then
 fi
 AC_SUBST(LTDL_SUBDIRS)
 
+
+AC_CONFIG_MACRO_DIR([libltdl/m4])
+dnl Stupid autoconf doesn't set ac_aux_dir  WTF?
+AC_CONFIG_AUX_DIR([.])
+
 dnl use system-wide libtool, if it exists
 AC_ARG_WITH(system-libtool,
 [  --with-system-libtool              try to use libtool installed in your system [default=use our own]],
@@ -89,6 +93,10 @@ AC_ARG_WITH(system-libtool,
   LIBTOOL="`pwd`/libtool"
   AC_SUBST(LIBTOOL)
   dnl ensure that we're looking for dlopen
+  LT_CONFIG_LTDL_DIR([libltdl])
+  LT_INIT
+  LTDL_INIT
+  AC_CONFIG_AUX_DIR([libltdl/config])
   AC_LIBTOOL_DLOPEN
 
   dnl Figure out how to build shared libraries
