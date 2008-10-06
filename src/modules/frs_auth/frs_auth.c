@@ -33,6 +33,42 @@ RCSID("$Id$")
 
 
 /*
+ *	Process and reply to a server-status request.
+ */
+static int auth_status_server(REQUEST *request)
+{
+	int rcode = RLM_MODULE_OK;
+	DICT_VALUE *dval;
+
+	dval = dict_valbyname(PW_AUTZ_TYPE, "Status-Server");
+	if (dval) {
+		rcode = module_authorize(dval->value, request);
+	} else {
+		rcode = RLM_MODULE_OK;
+	}
+	
+	switch (rcode) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		request->reply->code = PW_AUTHENTICATION_ACK;
+		break;
+		
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_HANDLED:
+		request->reply->code = 0; /* don't reply */
+		break;
+		
+	default:
+	case RLM_MODULE_REJECT:
+		request->reply->code = PW_AUTHENTICATION_REJECT;
+		break;
+	}
+
+	return 0;
+}
+
+
+/*
  * Make sure user/pass are clean
  * and then log them
  */
@@ -788,7 +824,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
 			return 0;
 		}
-		fun = rad_status_server;
+		fun = auth_status_server;
 		break;
 
 	default:

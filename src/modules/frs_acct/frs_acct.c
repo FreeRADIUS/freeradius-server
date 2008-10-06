@@ -32,6 +32,35 @@ RCSID("$Id$")
 
 
 /*
+ *	Process and reply to a server-status request.
+ */
+static int acct_status_server(REQUEST *request)
+{
+	int rcode = RLM_MODULE_OK;
+	DICT_VALUE *dval;
+
+	dval = dict_valbyname(PW_ACCT_TYPE, "Status-Server");
+	if (dval) {
+		rcode = module_accounting(dval->value, request);
+	} else {
+		rcode = RLM_MODULE_OK;
+	}
+	
+	switch (rcode) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		request->reply->code = PW_ACCOUNTING_RESPONSE;
+		break;
+		
+	default:
+		request->reply->code = 0; /* don't reply */
+		break;
+	}
+
+	return 0;
+}
+
+/*
  *	rad_accounting: call modules.
  *
  *	The return value of this function isn't actually used right now, so
@@ -231,7 +260,7 @@ static int acct_socket_recv(rad_listen_t *listener,
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
 			return 0;
 		}
-		fun = rad_status_server;
+		fun = acct_status_server;
 		break;
 
 	default:

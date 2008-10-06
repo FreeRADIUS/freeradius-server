@@ -110,8 +110,6 @@ extern int listen_socket_parse(CONF_SECTION *cs, rad_listen_t *this);
 extern int listen_socket_print(rad_listen_t *this,
 			       char *buffer, size_t bufsize);
 
-extern int rad_status_server(REQUEST *request);
-
 /*
  *	This is pretty bad.
  */

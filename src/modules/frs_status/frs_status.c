@@ -507,9 +507,37 @@ static void request_stats_reply(REQUEST *request)
 
 static int status_process(REQUEST *request)
 {
-	rad_status_server(request);
+	int rcode = RLM_MODULE_OK;
+	DICT_VALUE *dval;
 
-	request_stats_reply(request);
+	dval = dict_valbyname(PW_AUTZ_TYPE, "Status-Server");
+	if (dval) {
+		rcode = module_authorize(dval->value, request);
+	} else {
+		rcode = RLM_MODULE_OK;
+	}
+	
+	switch (rcode) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		request->reply->code = PW_AUTHENTICATION_ACK;
+
+		/*
+		 *	Stats only go in the Access-Accept
+		 */
+		request_stats_reply(request);
+		break;
+		
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_HANDLED:
+		request->reply->code = 0; /* don't reply */
+		break;
+		
+	default:
+	case RLM_MODULE_REJECT:
+		request->reply->code = PW_AUTHENTICATION_REJECT;
+		break;
+	}
 
 	return 0;
 }
