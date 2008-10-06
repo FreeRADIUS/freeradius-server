@@ -700,45 +700,71 @@ static int listen_bind(rad_listen_t *this)
 	return 0;
 }
 
+#define MAX_HANDLES (32)
+static int frs_init = 0;
+static lt_dlhandle frs_modules[MAX_HANDLES];
+
 
 /*
  *	Allocate & initialize a new listener.
  */
 rad_listen_t *listen_alloc(const char *type_name)
 {
+	int i;
 	rad_listen_t *this;
 	const frs_module_t *frs;
-	lt_dlhandle handle;
 	char buffer[256];
 
 	this = rad_malloc(sizeof(*this));
 	memset(this, 0, sizeof(*this));
 
 	snprintf(buffer, sizeof(buffer), "frs_%s", type_name);
-	
-	handle = lt_dlopenext(buffer);
-	if (!handle) {
-		radlog(L_ERR, "Failed opening %s: %s",
-		       type_name, lt_dlerror());
-		return NULL;
+
+	if (!frs_init) {
+		memset(frs_modules, 0, sizeof(frs_modules));
+		frs_init = TRUE;
+	}
+
+	frs = NULL;
+	for (i = 0; i < MAX_HANDLES; i++) {
+		if (!frs_modules[i]) continue;
+
+		frs = lt_dlsym(frs_modules[i], buffer);
+		if (frs) break;
 	}
 	
-	frs = lt_dlsym(handle, buffer);
 	if (!frs) {
-		radlog(L_ERR, "Failed linking to %s: %s",
-		       type_name, lt_dlerror());
-		return NULL;
-	}
+		lt_dlhandle handle;
+
+		handle = lt_dlopenext(buffer);
+		if (!handle) {
+			radlog(L_ERR, "Failed opening %s: %s",
+			       type_name, lt_dlerror());
+			return NULL;
+		}
+		
+		frs = lt_dlsym(handle, buffer);
+		if (!frs) {
+			lt_dlclose(handle);
+			radlog(L_ERR, "Failed linking to %s: %s",
+			       type_name, lt_dlerror());
+			return NULL;
+		}
 	
-	if (frs->magic != FRS_MODULE_MAGIC_NUMBER) {
-		radlog(L_ERR, "Invalid version in %s\n",
-		       type_name);
-		return NULL;
+		if (frs->magic != FRS_MODULE_MAGIC_NUMBER) {
+			lt_dlclose(handle);
+			radlog(L_ERR, "Invalid version in %s\n",
+			       type_name);
+			return NULL;
+		}
+
+		for (i = 0; i < MAX_HANDLES; i++) {
+			if (!frs_modules[i]) {
+				frs_modules[i] = handle;
+				break;
+			}
+		} /* if we run out, we leak the handle.  Too bad. */
 	}
-	
-	/*
-	 *	FIXME: handle is leaked.
-	 */
 
 	this->type = frs->type;
 	this->frs = frs;
@@ -1284,4 +1310,8 @@ void listen_free(rad_listen_t **head)
 	}
 
 	*head = NULL;
+
+	/*
+	 *	FIXME: Unlink the handles, too.
+	 */
 }
