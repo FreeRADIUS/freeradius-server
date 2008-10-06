@@ -1805,10 +1805,6 @@ const char *cf_pair_value(CONF_PAIR *pair)
 	return (pair ? pair->value : NULL);
 }
 
-/*
- *	Copied here for error reporting.
- */
-extern void fr_strerror_printf(const char *, ...);
 
 /*
  * Turn a CONF_PAIR into a VALUE_PAIR
