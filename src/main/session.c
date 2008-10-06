@@ -33,6 +33,57 @@ RCSID("$Id$")
 
 #ifdef WITH_SESSION_MGMT
 /*
+ *	Copied from rad_accounting, with edits.  i.e. We don't proxy
+ *	these packets.
+ */
+static int session_accounting(REQUEST *request)
+{
+	int result = RLM_MODULE_OK;
+	VALUE_PAIR	*vp;
+	int		acct_type = 0;
+
+	result = module_preacct(request);
+	switch (result) {
+		/*
+		 *	The module has a number of OK return codes.
+		 */
+	case RLM_MODULE_NOOP:
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		break;
+
+		/*
+		 *	Something went wrong: stop.
+		 */
+	case RLM_MODULE_FAIL:
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_NOTFOUND:
+	case RLM_MODULE_REJECT:
+	case RLM_MODULE_USERLOCK:
+	case RLM_MODULE_HANDLED:
+	default:
+		return result;
+	}
+	
+	/*
+	 *	Run Acct-Type.
+	 */
+	vp = pairfind(request->config_items, PW_ACCT_TYPE);
+	if (vp) {
+		DEBUG2("  Found Acct-Type %s", vp->vp_strvalue);
+		acct_type = vp->vp_integer;
+	}
+	result = module_accounting(acct_type, request);
+
+	/*
+	 *	Don't bother setting reply code: it's a fake packet.
+	 *	Don't bother proxying it.  It's a fake packet.
+	 */
+	
+	return result;
+}
+
+/*
  *	End a session by faking a Stop packet to all accounting modules.
  */
 int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
@@ -101,7 +152,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 	stopreq->username = userpair;
 	stopreq->password = NULL;
 
-	ret = rad_accounting(stopreq);
+	ret = session_accounting(stopreq);
 
 	/*
 	 *  We've got to clean it up by hand, because no one else will.

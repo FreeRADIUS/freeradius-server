@@ -7,6 +7,7 @@
 include ../../Make.inc
 
 WHAT_TO_MAKE	= all
+FRS_MODULES	= $(shell echo frs_*/Makefile | sed 's,/Makefile,,g')
 
 all:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
@@ -43,7 +44,7 @@ reconfig:
 
 common:
 	@[ -d lib/ ] || mkdir lib
-	@for mod in $(MODULES); do \
+	@for mod in $(FRS_MODULES) $(MODULES); do \
 		if [ -d $$mod ] && [ -f $$mod/Makefile ]; then \
 			echo "Making $(WHAT_TO_MAKE) in $$mod..."; \
 			$(MAKE) $(MFLAGS) -C $$mod $(WHAT_TO_MAKE) || exit $$?; \

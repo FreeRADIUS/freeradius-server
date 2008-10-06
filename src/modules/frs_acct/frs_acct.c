@@ -27,16 +27,17 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/modules.h>
 
-#ifdef WITH_ACCOUNTING
+
 /*
  *	rad_accounting: call modules.
  *
  *	The return value of this function isn't actually used right now, so
  *	it's not entirely clear if it is returning the right things. --Pac.
  */
-int rad_accounting(REQUEST *request)
+static int rad_accounting(REQUEST *request)
 {
 	int result = RLM_MODULE_OK;
 
@@ -180,4 +181,144 @@ int rad_accounting(REQUEST *request)
 	}
 	return result;
 }
-#endif
+
+
+/*
+ *	Receive packets from an accounting socket
+ */
+static int acct_socket_recv(rad_listen_t *listener,
+			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+{
+	ssize_t		rcode;
+	int		code, src_port;
+	RADIUS_PACKET	*packet;
+	RAD_REQUEST_FUNP fun = NULL;
+	RADCLIENT	*client;
+	fr_ipaddr_t	src_ipaddr;
+
+	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
+	if (rcode < 0) return 0;
+
+	RAD_STATS_TYPE_INC(listener, total_requests);
+
+	if (rcode < 20) {	/* AUTH_HDR_LEN */
+		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		return 0;
+	}
+
+	if ((client = client_listener_find(listener,
+					   &src_ipaddr, src_port)) == NULL) {
+		rad_recv_discard(listener->fd);
+		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
+		return 0;
+	}
+
+	/*
+	 *	Some sanity checks, based on the packet code.
+	 */
+	switch(code) {
+	case PW_ACCOUNTING_REQUEST:
+		RAD_STATS_CLIENT_INC(listener, client, total_requests);
+		fun = rad_accounting;
+		break;
+
+	case PW_STATUS_SERVER:
+		if (!mainconfig.status_server) {
+			rad_recv_discard(listener->fd);
+			RAD_STATS_TYPE_INC(listener, total_packets_dropped);
+			RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
+
+			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
+			return 0;
+		}
+		fun = rad_status_server;
+		break;
+
+	default:
+		rad_recv_discard(listener->fd);
+		RAD_STATS_TYPE_INC(listener, total_unknown_types);
+		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
+
+		DEBUG("Invalid packet code %d sent to a accounting port from client %s port %d : IGNORED",
+		      code, client->shortname, src_port);
+		return 0;
+	} /* switch over packet types */
+
+	/*
+	 *	Now that we've sanity checked everything, receive the
+	 *	packet.
+	 */
+	packet = rad_recv(listener->fd, 0);
+	if (!packet) {
+		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		radlog(L_ERR, "%s", fr_strerror());
+		return 0;
+	}
+
+	/*
+	 *	There can be no duplicate accounting packets.
+	 */
+	if (!received_request(listener, packet, prequest, client)) {
+		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
+		RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
+		rad_free(&packet);
+		return 0;
+	}
+
+	*pfun = fun;
+	return 1;
+}
+
+
+/*
+ *	Send an accounting response packet (or not)
+ */
+static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
+{
+	rad_assert(request->listener == listener);
+	rad_assert(listener->send == acct_socket_send);
+
+	/*
+	 *	Accounting reject's are silently dropped.
+	 *
+	 *	We do it here to avoid polluting the rest of the
+	 *	code with this knowledge
+	 */
+	if (request->reply->code == 0) return 0;
+
+	return rad_send(request->reply, request->packet,
+			request->client->secret);
+}
+
+
+static int acct_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
+{
+	if (!request->reply->code) return 0;
+
+	rad_encode(request->reply, request->packet,
+		   request->client->secret);
+	rad_sign(request->reply, request->packet,
+		 request->client->secret);
+
+	return 0;
+}
+
+
+static int acct_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
+{
+	if (rad_verify(request->packet, NULL,
+		       request->client->secret) < 0) {
+		return -1;
+	}
+
+	return rad_decode(request->packet, NULL,
+			  request->client->secret);
+}
+
+
+frs_module_t frs_acct = {
+  FRS_MODULE_INIT, RAD_LISTEN_ACCT, "acct",
+  listen_socket_parse, NULL,
+  acct_socket_recv, acct_socket_send,
+  listen_socket_print, acct_socket_encode, acct_socket_decode
+};

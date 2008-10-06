@@ -63,11 +63,14 @@ extern fr_stats_t	proxy_auth_stats;
 extern fr_stats_t	proxy_acct_stats;
 #endif
 
+extern struct timeval	radius_start_time;
+extern struct timeval	radius_hup_time;
+
 void radius_stats_init(int flag);
 void request_stats_final(REQUEST *request);
-void request_stats_reply(REQUEST *request);
 void radius_stats_ema(fr_stats_ema_t *ema,
 		      struct timeval *start, struct timeval *end);
+#define EMA_SCALE (100)
 
 #define RAD_STATS_INC(_x) _x++
 #ifdef WITH_ACCOUNTING

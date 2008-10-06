@@ -96,14 +96,6 @@ typedef struct THREAD_HANDLE {
 	REQUEST		     *request;
 } THREAD_HANDLE;
 
-/*
- *	For the request queue.
- */
-typedef struct request_queue_t {
-	REQUEST	    	  *request;
-	RAD_REQUEST_FUNP  fun;
-} request_queue_t;
-
 typedef struct thread_fork_t {
 	pid_t		pid;
 	int		status;
@@ -288,8 +280,7 @@ static void reap_children(void)
  */
 static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
-	request_queue_t *entry;
-
+	rad_assert(request->process == fun);
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
 	thread_pool.request_count++;
@@ -305,15 +296,10 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		return 0;
 	}
 
-	entry = rad_malloc(sizeof(*entry));
-	entry->request = request;
-	entry->fun = fun;
-
 	/*
 	 *	Push the request onto the appropriate fifo for that
 	 */
-	if (!fr_fifo_push(thread_pool.fifo[request->priority],
-			    entry)) {
+	if (!fr_fifo_push(thread_pool.fifo[request->priority], request)) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		radlog(L_ERR, "!!! ERROR !!! Failed inserting request %d into the queue", request->number);
 		request->child_state = REQUEST_DONE;
@@ -341,10 +327,10 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 /*
  *	Remove a request from the queue.
  */
-static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
+static int request_dequeue(REQUEST **prequest, RAD_REQUEST_FUNP *fun)
 {
 	RAD_LISTEN_TYPE i, start;
-	request_queue_t *entry;
+	REQUEST *request = NULL;
 
 	reap_children();
 
@@ -359,19 +345,18 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	requests will be quickly cleared.
 	 */
 	for (i = 0; i < RAD_LISTEN_MAX; i++) {
-		entry = fr_fifo_peek(thread_pool.fifo[i]);
-		if (!entry ||
-		    (entry->request->master_state != REQUEST_STOP_PROCESSING)) {
+		request = fr_fifo_peek(thread_pool.fifo[i]);
+		if (!request ||
+		    (request->master_state != REQUEST_STOP_PROCESSING)) {
 			continue;
 }
 		/*
 		 *	This entry was marked to be stopped.  Acknowledge it.
 		 */
-		entry = fr_fifo_pop(thread_pool.fifo[i]);
-		rad_assert(entry != NULL);
-		entry->request->child_state = REQUEST_DONE;
+		request = fr_fifo_pop(thread_pool.fifo[i]);
+		rad_assert(request != NULL);
+		request->child_state = REQUEST_DONE;
 		thread_pool.num_queued--;
-		free(entry);
 	}
 
 	start = 0;
@@ -380,28 +365,26 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	Pop results from the top of the queue
 	 */
 	for (i = start; i < RAD_LISTEN_MAX; i++) {
-		entry = fr_fifo_pop(thread_pool.fifo[i]);
-		if (entry) {
+		request = fr_fifo_pop(thread_pool.fifo[i]);
+		if (request) {
 			start = i;
 			break;
 		}
 	}
 
-	if (!entry) {
+	if (!request) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
-		*request = NULL;
+		*prequest = NULL;
 		*fun = NULL;
 		return 0;
 	}
 
 	rad_assert(thread_pool.num_queued > 0);
 	thread_pool.num_queued--;
-	*request = entry->request;
-	*fun = entry->fun;
-	free(entry);
+	*prequest = request;
+	*fun = request->process;
 
-	rad_assert(*request != NULL);
-	rad_assert((*request)->magic == REQUEST_MAGIC);
+	rad_assert(request->magic == REQUEST_MAGIC);
 	rad_assert(*fun != NULL);
 
 	/*
@@ -412,8 +395,8 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	the queue, and therefore won't clean it up until we
 	 *	have acknowledged it as "done".
 	 */
-	if ((*request)->master_state == REQUEST_STOP_PROCESSING) {
-		(*request)->child_state = REQUEST_DONE;
+	if (request->master_state == REQUEST_STOP_PROCESSING) {
+		request->child_state = REQUEST_DONE;
 		goto retry;
 	}
 
@@ -835,6 +818,8 @@ int thread_pool_init(CONF_SECTION *cs, int spawn_flag)
 int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	time_t now = request->timestamp;
+
+	request->process = fun;
 
 	/*
 	 *	We've been told not to spawn threads, so don't.

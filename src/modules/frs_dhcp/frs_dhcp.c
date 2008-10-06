@@ -21,7 +21,11 @@
  * Copyright 2008 Alan DeKok <aland@deployingradius.com>
  */
 
-#ifdef WITH_DHCP
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/conffile.h>
+#include <freeradius-devel/rad_assert.h>
+#include "dhcp.h"
 
 static int dhcp_process(REQUEST *request)
 {
@@ -83,7 +87,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	int on = 1;
 	listen_socket_t *sock;
 
-	rcode = common_socket_parse(cs, this);
+	rcode = listen_socket_parse(cs, this);
 	if (rcode != 0) return rcode;
 
 	sock = this->data;
@@ -173,5 +177,12 @@ static int dhcp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	return fr_dhcp_decode(request->packet);
 }
-#endif /* WITH_DCHP */
+
+
+frs_module_t frs_dhcp = {
+  FRS_MODULE_INIT, RAD_LISTEN_DHCP, "dhcp",
+  dhcp_socket_parse, NULL,
+  dhcp_socket_recv, dhcp_socket_send,
+  listen_socket_print, dhcp_socket_encode, dhcp_socket_decode
+};
 

@@ -26,12 +26,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/rad_assert.h>
-#include <freeradius-devel/vqp.h>
-#include <freeradius-devel/dhcp.h>
-
-#include <freeradius-devel/vmps.h>
-#include <freeradius-devel/detail.h>
 
 #ifdef HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
@@ -44,37 +40,6 @@ RCSID("$Id$")
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
-
-
-/*
- *	We'll use this below.
- */
-typedef int (*rad_listen_parse_t)(CONF_SECTION *, rad_listen_t *);
-typedef void (*rad_listen_free_t)(rad_listen_t *);
-
-typedef struct rad_listen_master_t {
-	rad_listen_parse_t	parse;
-	rad_listen_free_t	free;
-	rad_listen_recv_t	recv;
-	rad_listen_send_t	send;
-	rad_listen_print_t	print;
-	rad_listen_encode_t	encode;
-	rad_listen_decode_t	decode;
-} rad_listen_master_t;
-
-typedef struct listen_socket_t {
-	/*
-	 *	For normal sockets.
-	 */
-	fr_ipaddr_t	ipaddr;
-	int		port;
-#ifdef SO_BINDTODEVICE
-	const char		*interface;
-#endif
-	RADCLIENT_LIST	*clients;
-} listen_socket_t;
-
-static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type);
 
 /*
  *	Find a per-socket client.
@@ -297,11 +262,11 @@ static int listen_bind(rad_listen_t *this);
 
 
 /*
- *	Process and reply to a server-status request.
- *	Like rad_authenticate and rad_accounting this should
- *	live in it's own file but it's so small we don't bother.
+ *	Process and reply to a server-status request.  This function
+ *	should likely live in it's own file but it's so small we don't
+ *	bother.
  */
-static int rad_status_server(REQUEST *request)
+int rad_status_server(REQUEST *request)
 {
 	int rcode = RLM_MODULE_OK;
 	DICT_VALUE *dval;
@@ -362,21 +327,11 @@ static int rad_status_server(REQUEST *request)
 		return 0;
 	}
 
-#ifdef WITH_STATS
-	/*
-	 *	Full statistics are available only on a statistics
-	 *	socket.
-	 */
-	if (request->listener->type == RAD_LISTEN_NONE) {
-		request_stats_reply(request);
-	}
-#endif
-
 	return 0;
 }
 
 
-static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
+int listen_socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 {
 	size_t len;
 	listen_socket_t *sock = this->data;
@@ -463,7 +418,7 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 /*
  *	Parse an authentication or accounting socket.
  */
-static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
+int listen_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
 	int		listen_port;
@@ -611,479 +566,6 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	return 0;
 }
-
-/*
- *	Send an authentication response packet
- */
-static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
-{
-	rad_assert(request->listener == listener);
-	rad_assert(listener->send == auth_socket_send);
-
-	return rad_send(request->reply, request->packet,
-			request->client->secret);
-}
-
-
-#ifdef WITH_ACCOUNTING
-/*
- *	Send an accounting response packet (or not)
- */
-static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
-{
-	rad_assert(request->listener == listener);
-	rad_assert(listener->send == acct_socket_send);
-
-	/*
-	 *	Accounting reject's are silently dropped.
-	 *
-	 *	We do it here to avoid polluting the rest of the
-	 *	code with this knowledge
-	 */
-	if (request->reply->code == 0) return 0;
-
-	return rad_send(request->reply, request->packet,
-			request->client->secret);
-}
-#endif
-
-#ifdef WITH_PROXY
-/*
- *	Send a packet to a home server.
- *
- *	FIXME: have different code for proxy auth & acct!
- */
-static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
-{
-	listen_socket_t *sock = listener->data;
-
-	rad_assert(request->proxy_listener == listener);
-	rad_assert(listener->send == proxy_socket_send);
-
-	request->proxy->src_ipaddr = sock->ipaddr;
-	request->proxy->src_port = sock->port;
-
-	return rad_send(request->proxy, request->packet,
-			request->home_server->secret);
-}
-#endif
-
-#ifdef WITH_STATS
-/*
- *	Check if an incoming request is "ok"
- *
- *	It takes packets, not requests.  It sees if the packet looks
- *	OK.  If so, it does a number of sanity checks on it.
-  */
-static int stats_socket_recv(rad_listen_t *listener,
-			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
-{
-	ssize_t		rcode;
-	int		code, src_port;
-	RADIUS_PACKET	*packet;
-	RADCLIENT	*client;
-	fr_ipaddr_t	src_ipaddr;
-
-	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
-	if (rcode < 0) return 0;
-
-	RAD_STATS_TYPE_INC(listener, total_requests);
-
-	if (rcode < 20) {	/* AUTH_HDR_LEN */
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
-		return 0;
-	}
-
-	if ((client = client_listener_find(listener,
-					   &src_ipaddr, src_port)) == NULL) {
-		rad_recv_discard(listener->fd);
-		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
-		return 0;
-	}
-
-	/*
-	 *	We only understand Status-Server on this socket.
-	 */
-	if (code != PW_STATUS_SERVER) {
-		DEBUG("Ignoring packet code %d sent to Status-Server port",
-		      code);
-		rad_recv_discard(listener->fd);
-		RAD_STATS_TYPE_INC(listener, total_unknown_types);
-		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
-		return 0;
-	}
-
-	/*
-	 *	Now that we've sanity checked everything, receive the
-	 *	packet.
-	 */
-	packet = rad_recv(listener->fd, 1); /* require message authenticator */
-	if (!packet) {
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
-		DEBUG("%s", fr_strerror());
-		return 0;
-	}
-
-	if (!received_request(listener, packet, prequest, client)) {
-		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-		RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
-		rad_free(&packet);
-		return 0;
-	}
-
-	*pfun = rad_status_server;
-	return 1;
-}
-#endif
-
-
-/*
- *	Check if an incoming request is "ok"
- *
- *	It takes packets, not requests.  It sees if the packet looks
- *	OK.  If so, it does a number of sanity checks on it.
-  */
-static int auth_socket_recv(rad_listen_t *listener,
-			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
-{
-	ssize_t		rcode;
-	int		code, src_port;
-	RADIUS_PACKET	*packet;
-	RAD_REQUEST_FUNP fun = NULL;
-	RADCLIENT	*client;
-	fr_ipaddr_t	src_ipaddr;
-
-	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
-	if (rcode < 0) return 0;
-
-	RAD_STATS_TYPE_INC(listener, total_requests);
-
-	if (rcode < 20) {	/* AUTH_HDR_LEN */
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
-		return 0;
-	}
-
-	if ((client = client_listener_find(listener,
-					   &src_ipaddr, src_port)) == NULL) {
-		rad_recv_discard(listener->fd);
-		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
-		return 0;
-	}
-
-	/*
-	 *	Some sanity checks, based on the packet code.
-	 */
-	switch(code) {
-	case PW_AUTHENTICATION_REQUEST:
-		RAD_STATS_CLIENT_INC(listener, client, total_requests);
-		fun = rad_authenticate;
-		break;
-
-	case PW_STATUS_SERVER:
-		if (!mainconfig.status_server) {
-			rad_recv_discard(listener->fd);
-			RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-			RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
-			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
-			return 0;
-		}
-		fun = rad_status_server;
-		break;
-
-	default:
-		rad_recv_discard(listener->fd);
-		RAD_STATS_INC(radius_auth_stats.total_unknown_types);
-		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
-
-		DEBUG("Invalid packet code %d sent to authentication port from client %s port %d : IGNORED",
-		      code, client->shortname, src_port);
-		return 0;
-		break;
-	} /* switch over packet types */
-
-	/*
-	 *	Now that we've sanity checked everything, receive the
-	 *	packet.
-	 */
-	packet = rad_recv(listener->fd, client->message_authenticator);
-	if (!packet) {
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
-		DEBUG("%s", fr_strerror());
-		return 0;
-	}
-
-	if (!received_request(listener, packet, prequest, client)) {
-		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-		RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
-		rad_free(&packet);
-		return 0;
-	}
-
-	*pfun = fun;
-	return 1;
-}
-
-
-#ifdef WITH_ACCOUNTING
-/*
- *	Receive packets from an accounting socket
- */
-static int acct_socket_recv(rad_listen_t *listener,
-			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
-{
-	ssize_t		rcode;
-	int		code, src_port;
-	RADIUS_PACKET	*packet;
-	RAD_REQUEST_FUNP fun = NULL;
-	RADCLIENT	*client;
-	fr_ipaddr_t	src_ipaddr;
-
-	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
-	if (rcode < 0) return 0;
-
-	RAD_STATS_TYPE_INC(listener, total_requests);
-
-	if (rcode < 20) {	/* AUTH_HDR_LEN */
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
-		return 0;
-	}
-
-	if ((client = client_listener_find(listener,
-					   &src_ipaddr, src_port)) == NULL) {
-		rad_recv_discard(listener->fd);
-		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
-		return 0;
-	}
-
-	/*
-	 *	Some sanity checks, based on the packet code.
-	 */
-	switch(code) {
-	case PW_ACCOUNTING_REQUEST:
-		RAD_STATS_CLIENT_INC(listener, client, total_requests);
-		fun = rad_accounting;
-		break;
-
-	case PW_STATUS_SERVER:
-		if (!mainconfig.status_server) {
-			rad_recv_discard(listener->fd);
-			RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-			RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
-
-			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
-			return 0;
-		}
-		fun = rad_status_server;
-		break;
-
-	default:
-		rad_recv_discard(listener->fd);
-		RAD_STATS_TYPE_INC(listener, total_unknown_types);
-		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
-
-		DEBUG("Invalid packet code %d sent to a accounting port from client %s port %d : IGNORED",
-		      code, client->shortname, src_port);
-		return 0;
-	} /* switch over packet types */
-
-	/*
-	 *	Now that we've sanity checked everything, receive the
-	 *	packet.
-	 */
-	packet = rad_recv(listener->fd, 0);
-	if (!packet) {
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
-		radlog(L_ERR, "%s", fr_strerror());
-		return 0;
-	}
-
-	/*
-	 *	There can be no duplicate accounting packets.
-	 */
-	if (!received_request(listener, packet, prequest, client)) {
-		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-		RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
-		rad_free(&packet);
-		return 0;
-	}
-
-	*pfun = fun;
-	return 1;
-}
-#endif
-
-#ifdef WITH_PROXY
-/*
- *	Recieve packets from a proxy socket.
- */
-static int proxy_socket_recv(rad_listen_t *listener,
-			      RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
-{
-	REQUEST		*request;
-	RADIUS_PACKET	*packet;
-	RAD_REQUEST_FUNP fun = NULL;
-	char		buffer[128];
-
-	packet = rad_recv(listener->fd, 0);
-	if (!packet) {
-		radlog(L_ERR, "%s", fr_strerror());
-		return 0;
-	}
-
-	/*
-	 *	FIXME: Client MIB updates?
-	 */
-	switch(packet->code) {
-	case PW_AUTHENTICATION_ACK:
-	case PW_ACCESS_CHALLENGE:
-	case PW_AUTHENTICATION_REJECT:
-		fun = rad_authenticate;
-		break;
-
-#ifdef WITH_ACCOUNTING
-	case PW_ACCOUNTING_RESPONSE:
-		fun = rad_accounting;
-		break;
-#endif
-
-	default:
-		/*
-		 *	FIXME: Update MIB for packet types?
-		 */
-		radlog(L_ERR, "Invalid packet code %d sent to a proxy port "
-		       "from home server %s port %d - ID %d : IGNORED",
-		       packet->code,
-		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
-		       packet->src_port, packet->id);
-		rad_free(&packet);
-		return 0;
-	}
-
-	request = received_proxy_response(packet);
-	if (!request) {
-		return 0;
-	}
-
-	rad_assert(fun != NULL);
-	*pfun = fun;
-	*prequest = request;
-
-	return 1;
-}
-#endif
-
-
-static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
-{
-	if (!request->reply->code) return 0;
-
-	rad_encode(request->reply, request->packet,
-		   request->client->secret);
-	rad_sign(request->reply, request->packet,
-		 request->client->secret);
-
-	return 0;
-}
-
-
-static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
-{
-	if (rad_verify(request->packet, NULL,
-		       request->client->secret) < 0) {
-		return -1;
-	}
-
-	return rad_decode(request->packet, NULL,
-			  request->client->secret);
-}
-
-#ifdef WITH_PROXY
-static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
-{
-	rad_encode(request->proxy, NULL, request->home_server->secret);
-	rad_sign(request->proxy, NULL, request->home_server->secret);
-
-	return 0;
-}
-
-
-static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
-{
-	if (rad_verify(request->proxy_reply, request->proxy,
-		       request->home_server->secret) < 0) {
-		return -1;
-	}
-
-	return rad_decode(request->proxy_reply, request->proxy,
-			   request->home_server->secret);
-}
-#endif
-
-#include "dhcpd.c"
-
-#include "command.c"
-
-static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
-#ifdef WITH_STATS
-	{ common_socket_parse, NULL,
-	  stats_socket_recv, auth_socket_send,
-	  socket_print, client_socket_encode, client_socket_decode },
-#else
-	/*
-	 *	This always gets defined.
-	 */
-	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
-#endif
-
-#ifdef WITH_PROXY
-	/* proxying */
-	{ common_socket_parse, NULL,
-	  proxy_socket_recv, proxy_socket_send,
-	  socket_print, proxy_socket_encode, proxy_socket_decode },
-#endif
-
-	/* authentication */
-	{ common_socket_parse, NULL,
-	  auth_socket_recv, auth_socket_send,
-	  socket_print, client_socket_encode, client_socket_decode },
-
-#ifdef WITH_ACCOUNTING
-	/* accounting */
-	{ common_socket_parse, NULL,
-	  acct_socket_recv, acct_socket_send,
-	  socket_print, client_socket_encode, client_socket_decode},
-#endif
-
-#ifdef WITH_DETAIL
-	/* detail */
-	{ detail_parse, detail_free,
-	  detail_recv, detail_send,
-	  detail_print, detail_encode, detail_decode },
-#endif
-
-#ifdef WITH_VMPS
-	/* vlan query protocol */
-	{ common_socket_parse, NULL,
-	  vqp_socket_recv, vqp_socket_send,
-	  socket_print, vqp_socket_encode, vqp_socket_decode },
-#endif
-
-#ifdef WITH_DHCP
-	/* dhcp query protocol */
-	{ dhcp_socket_parse, NULL,
-	  dhcp_socket_recv, dhcp_socket_send,
-	  socket_print, dhcp_socket_encode, dhcp_socket_decode },
-#endif
-
-#ifdef WITH_COMMAND_SOCKET
-	/* TCP command socket */
-	{ command_socket_parse, NULL,
-	  command_domain_accept, command_domain_send,
-	  command_socket_print, command_socket_encode, command_socket_decode },
-#endif
-
-};
-
 
 
 /*
@@ -1263,21 +745,51 @@ static int listen_bind(rad_listen_t *this)
 /*
  *	Allocate & initialize a new listener.
  */
-static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
+rad_listen_t *listen_alloc(const char *type_name)
 {
 	rad_listen_t *this;
+	const frs_module_t *frs;
+	lt_dlhandle handle;
+	char buffer[256];
 
 	this = rad_malloc(sizeof(*this));
 	memset(this, 0, sizeof(*this));
 
-	this->type = type;
-	this->recv = master_listen[this->type].recv;
-	this->send = master_listen[this->type].send;
-	this->print = master_listen[this->type].print;
-	this->encode = master_listen[this->type].encode;
-	this->decode = master_listen[this->type].decode;
+	snprintf(buffer, sizeof(buffer), "frs_%s", type_name);
+	
+	handle = lt_dlopenext(buffer);
+	if (!handle) {
+		radlog(L_ERR, "Failed opening %s: %s",
+		       type_name, lt_dlerror());
+		return NULL;
+	}
+	
+	frs = lt_dlsym(handle, buffer);
+	if (!frs) {
+		radlog(L_ERR, "Failed linking to %s: %s",
+		       type_name, lt_dlerror());
+		return NULL;
+	}
+	
+	if (frs->magic != FRS_MODULE_MAGIC_NUMBER) {
+		radlog(L_ERR, "Invalid version in %s\n",
+		       type_name);
+		return NULL;
+	}
+	
+	/*
+	 *	FIXME: handle is leaked.
+	 */
 
-	switch (type) {
+	this->type = frs->type;
+	this->frs = frs;
+	this->recv = frs->recv;
+	this->send = frs->send;
+	this->print = frs->print;
+	this->encode = frs->encode;
+	this->decode = frs->decode;
+
+	switch (this->type) {
 #ifdef WITH_STATS
 	case RAD_LISTEN_NONE:
 #endif
@@ -1305,9 +817,10 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 #endif
 
 #ifdef WITH_COMMAND_SOCKET
+	/*
+	 *	The data here is allocate in the "parse" section.
+	 */
 	case RAD_LISTEN_COMMAND:
-		this->data = rad_malloc(sizeof(fr_command_socket_t));
-		memset(this->data, 0, sizeof(fr_command_socket_t));
 		break;
 #endif
 
@@ -1335,7 +848,8 @@ rad_listen_t *proxy_new_listener()
 	rad_listen_t *this, *tmp, **last;
 	listen_socket_t *sock, *old;
 
-	this = listen_alloc(RAD_LISTEN_PROXY);
+	this = listen_alloc("proxy");
+	if (!this) return NULL;
 
 	/*
 	 *	Find an existing proxy socket to copy.
@@ -1391,36 +905,10 @@ rad_listen_t *proxy_new_listener()
 }
 #endif
 
-static const FR_NAME_NUMBER listen_compare[] = {
-#ifdef WITH_STATS
-	{ "status",	RAD_LISTEN_NONE },
-#endif
-	{ "auth",	RAD_LISTEN_AUTH },
-#ifdef WITH_ACCOUNTING
-	{ "acct",	RAD_LISTEN_ACCT },
-#endif
-#ifdef WITH_DETAIL
-	{ "detail",	RAD_LISTEN_DETAIL },
-#endif
-#ifdef WITH_PROXY
-	{ "proxy",	RAD_LISTEN_PROXY },
-#endif
-#ifdef WITH_VMPS
-	{ "vmps",	RAD_LISTEN_VQP },
-#endif
-#ifdef WITH_DHCP
-	{ "dhcp",	RAD_LISTEN_DHCP },
-#endif
-#ifdef WITH_COMMAND_SOCKET
-	{ "control",	RAD_LISTEN_COMMAND },
-#endif
-	{ NULL, 0 },
-};
-
 
 static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 {
-	int		type, rcode;
+	int		rcode;
 	char		*listen_type;
 	rad_listen_t	*this;
 
@@ -1438,16 +926,6 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 		return NULL;
 	}
 
-	type = fr_str2int(listen_compare, listen_type, -1);
-	if (type < 0) {
-		cf_log_err(cf_sectiontoitem(cs),
-			   "Invalid type \"%s\" in listen section.",
-			   listen_type);
-		free(listen_type);
-		return NULL;
-	}
-	free(listen_type);
-	
 	/*
 	 *	Allow listen sections in the default config to
 	 *	refer to a server.
@@ -1459,20 +937,26 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 			rcode = cf_item_parse(cs, "server", PW_TYPE_STRING_PTR,
 					      &server, NULL);
 		}
-		if (rcode < 0) return NULL;
+		if (rcode < 0) {
+			free(listen_type);
+			return NULL;
+		}
 	}
 
 	/*
 	 *	Set up cross-type data.
 	 */
-	this = listen_alloc(type);
+	this = listen_alloc(listen_type);
+	if (!this) return NULL;
+
+	free(listen_type);
 	this->server = server;
 	this->fd = -1;
 
 	/*
 	 *	Call per-type parser.
 	 */
-	if (master_listen[type].parse(cs, this) < 0) {
+	if (this->frs->parse(cs, this) < 0) {
 		listen_free(&this);
 		return NULL;
 	}
@@ -1544,11 +1028,15 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 	bind_it:
 #ifdef WITH_VMPS
 		if (strcmp(progname, "vmpsd") == 0) {
-			this = listen_alloc(RAD_LISTEN_VQP);
+			this = listen_alloc("vmps");
+			if (!this) return 0;	/* FIXME: memleak? */
 			if (!auth_port) auth_port = 1589;
 		} else
 #endif
-			this = listen_alloc(RAD_LISTEN_AUTH);
+		{
+			this = listen_alloc("auth");
+			if (!this) return 0;	/* FIXME: memleak? */
+		}
 
 		sock = this->data;
 
@@ -1592,7 +1080,8 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		 *	If we haven't already gotten acct_port from
 		 *	/etc/services, then make it auth_port + 1.
 		 */
-		this = listen_alloc(RAD_LISTEN_ACCT);
+		this = listen_alloc("acct");
+		if (!this) return 0;	/* FIXME: memleak? */
 		sock = this->data;
 
 		/*
@@ -1772,7 +1261,8 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 			server_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
 		}
 
-		this = listen_alloc(RAD_LISTEN_PROXY);
+		this = listen_alloc("proxy");
+		if (!this) return 0;	/* FIXME: memleak? */
 		sock = this->data;
 
 		/*
@@ -1825,8 +1315,8 @@ void listen_free(rad_listen_t **head)
 		 */
 		if (this->fd >= 0) close(this->fd);
 
-		if (master_listen[this->type].free) {
-			master_listen[this->type].free(this);
+		if (this->frs->free) {
+			this->frs->free(this);
 		}
 		free(this->data);
 		free(this);
@@ -1836,48 +1326,3 @@ void listen_free(rad_listen_t **head)
 
 	*head = NULL;
 }
-
-#ifdef WITH_STATS
-RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
-					  int port)
-{
-	rad_listen_t *this;
-
-	for (this = mainconfig.listen; this != NULL; this = this->next) {
-		listen_socket_t *sock;
-
-		if ((this->type != RAD_LISTEN_AUTH) &&
-		    (this->type != RAD_LISTEN_ACCT)) continue;
-		
-		sock = this->data;
-
-		if ((sock->port == port) &&
-		    (fr_ipaddr_cmp(ipaddr, &sock->ipaddr) == 0)) {
-			return sock->clients;
-		}
-	}
-
-	return NULL;
-}
-
-rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port)
-{
-	rad_listen_t *this;
-
-	for (this = mainconfig.listen; this != NULL; this = this->next) {
-		listen_socket_t *sock;
-
-		if ((this->type != RAD_LISTEN_AUTH) &&
-		    (this->type != RAD_LISTEN_ACCT)) continue;
-		
-		sock = this->data;
-
-		if ((sock->port == port) &&
-		    (fr_ipaddr_cmp(ipaddr, &sock->ipaddr) == 0)) {
-			return this;
-		}
-	}
-
-	return NULL;
-}
-#endif

@@ -24,9 +24,9 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/udpfromto.h>
-#include <freeradius-devel/dhcp.h>
+#include "dhcp.h"
 
 #ifdef WITH_DHCP
 #define DHCP_CHADDR_LEN	(16)

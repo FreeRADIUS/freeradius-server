@@ -21,8 +21,8 @@
  * Copyright 2008 Alan DeKok <aland@deployingradius.com>
  */
 
-#ifdef WITH_COMMAND_SOCKET
-
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/conffile.h>
 #include <freeradius-devel/stats.h>
@@ -1363,6 +1363,8 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	fr_command_socket_t *sock;
 
+	this->data = rad_malloc(sizeof(fr_command_socket_t));
+	memset(this->data, 0, sizeof(fr_command_socket_t));
 	sock = this->data;
 
 	if (cf_section_parse(cs, sock, command_config) < 0) {
@@ -1720,7 +1722,6 @@ static int command_domain_recv(rad_listen_t *listener,
 	return 0;
 }
 
-
 static int command_domain_accept(rad_listen_t *listener,
 				 UNUSED RAD_REQUEST_FUNP *pfun,
 				 UNUSED REQUEST **prequest)
@@ -1796,17 +1797,18 @@ static int command_domain_accept(rad_listen_t *listener,
 		return -1;
 	}
 
-
 	/*
 	 *	Add the new listener.
 	 */
-	this = listen_alloc(listener->type);
+	this = listen_alloc(listener->frs->name);
 	if (!this) return -1;
 
 	/*
 	 *	Copy everything, including the pointer to the socket
 	 *	information.
 	 */
+	this->data = rad_malloc(sizeof(fr_command_socket_t));
+	memset(this->data, 0, sizeof(fr_command_socket_t));
 	sock = this->data;
 	memcpy(this, listener, sizeof(*this));
 	this->status = RAD_LISTEN_STATUS_INIT;
@@ -1853,4 +1855,9 @@ static int command_socket_decode(UNUSED rad_listen_t *listener,
 	return 0;
 }
 
-#endif /* WITH_COMMAND_SOCKET */
+frs_module_t frs_control = {
+  FRS_MODULE_INIT, RAD_LISTEN_COMMAND, "control",
+  command_socket_parse, NULL,
+  command_domain_accept, command_domain_send,
+  command_socket_print, command_socket_encode, command_socket_decode
+};

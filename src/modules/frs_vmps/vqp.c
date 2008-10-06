@@ -23,11 +23,18 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$");
 
-#include	<freeradius-devel/libradius.h>
+#include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/udpfromto.h>
-#include	<freeradius-devel/vqp.h>
+#include	"vqp.h"
 
 #ifdef WITH_VMPS
+
+#  define debug_pair(vp)	do { if (fr_debug_flag && fr_log_fp) { \
+					fputc('\t', fr_log_fp); \
+					vp_print(fr_log_fp, vp); \
+					fputc('\n', fr_log_fp); \
+				     } \
+				} while(0)
 
 /*
  *  http://www.openbsd.org/cgi-bin/cvsweb/src/usr.sbin/tcpdump/print-vqp.c

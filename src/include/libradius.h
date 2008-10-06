@@ -342,13 +342,11 @@ VALUE_PAIR     *readvp2(FILE *fp, int *pfiledone, const char *errprefix);
 /*
  *	Error functions.
  */
-#ifdef _LIBRADIUS
 void		fr_strerror_printf(const char *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 1, 2)))
 #endif
 ;
-#endif
 void		fr_perror(const char *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 1, 2)))

@@ -79,6 +79,7 @@ static pthread_t NO_SUCH_CHILD_PID;
 #define PTHREAD_MUTEX_UNLOCK(_x)
 int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
+	request->process = fun;
 	radius_handle_request(request, fun);
 	return 1;
 }
@@ -493,7 +494,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	const fr_ipaddr_t *ip;
 	int port;
 
-	if (!packet) return;
+	if (!packet || (packet->code == 0)) return;
 
 	if (direction == 0) {
 		received = "Received";
@@ -1350,7 +1351,6 @@ static int proxy_request(REQUEST *request)
 static int proxy_to_virtual_server(REQUEST *request)
 {
 	REQUEST *fake;
-	RAD_REQUEST_FUNP fun;
 
 	if (!request->home_server || !request->home_server->server) return 0;
 
@@ -1368,21 +1368,19 @@ static int proxy_to_virtual_server(REQUEST *request)
 	fake->packet->vps = paircopy(request->proxy->vps);
 	fake->server = request->home_server->server;
 
-	if (request->proxy->code == PW_AUTHENTICATION_REQUEST) {
-		fun = rad_authenticate;
-
+	if ((request->proxy->code != PW_AUTHENTICATION_REQUEST)
 #ifdef WITH_ACCOUNTING
-	} else if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
-		fun = rad_accounting;
+	    && (request->proxy->code == PW_ACCOUNTING_REQUEST)
 #endif
-
-	} else {
+		) {
 		RDEBUG2("Unknown packet type %d", request->proxy->code);
 		return 0;
 	}
 
+	rad_assert(request->process != NULL);
+
 	RDEBUG2(">>> Sending proxied request internally to virtual server.");
-	radius_handle_request(fake, fun);
+	radius_handle_request(fake, request->process);
 	RDEBUG2("<<< Received proxied response from internal virtual server.");
 
 	request->proxy_reply = fake->reply;
@@ -1391,7 +1389,11 @@ static int proxy_to_virtual_server(REQUEST *request)
 	request_free(&fake);
 
 	process_proxy_reply(request);
-	fun(request);
+
+	/*
+	 *	And do all of this again...
+	 */
+	request->process(request);
 
 	return 2;		/* success, but NOT '1' !*/
 }
@@ -1835,18 +1837,8 @@ static void request_post_handler(REQUEST *request)
 		break;
 	}
 
-	/*
-	 *      Suppress "no reply" packets here, unless we're reading
-	 *      from the "detail" file.  In that case, we've got to
-	 *      tell the detail file handler that the request is dead,
-	 *      and it should re-send it.
-	 *	If configured, encode, sign, and send.
-	 */
-	if ((request->reply->code != 0) ||
-	    (request->listener->type == RAD_LISTEN_DETAIL)) {
-		DEBUG_PACKET(request, request->reply, 1);
-		request->listener->send(request->listener, request);
-	}
+	DEBUG_PACKET(request, request->reply, 1);
+	request->listener->send(request->listener, request);
 
 	/*
 	 *	Clean up.  These are no longer needed.
@@ -2297,16 +2289,6 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	home_server	*home;
 	REQUEST		*request;
 
-	if (!home_server_find(&packet->src_ipaddr, packet->src_port)) {
-		radlog(L_ERR, "Ignoring request from unknown home server %s port %d",
-		       inet_ntop(packet->src_ipaddr.af,
-				 &packet->src_ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-			       packet->src_port);
-		rad_free(&packet);
-		return NULL;
-	}
-
 	/*
 	 *	Also removes from the proxy hash if responses == requests
 	 */
@@ -2561,7 +2543,11 @@ static void handle_signal_self(int flag)
 
 			if (this->type != RAD_LISTEN_DETAIL) continue;
 			
-			delay = detail_delay(this);
+			/*
+			 *	FIXME: HORRIBLE hack!  We really need
+			 *	a separate callback for this!
+			 */
+			delay = this->encode(this, NULL);
 			if (!delay) continue;
 
 			fr_event_now(el, &now);

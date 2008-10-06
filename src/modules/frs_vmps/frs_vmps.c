@@ -26,19 +26,30 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
-#include <freeradius-devel/vqp.h>
-#include <freeradius-devel/vmps.h>
 #include <freeradius-devel/rad_assert.h>
+#include "vqp.h"
 
 #ifdef WITH_VMPS
+static int vmps_process(REQUEST *request)
+{
+	DEBUG2("Doing VMPS");
+	module_post_auth(0, request);
+	DEBUG2("Done VMPS");
+
+	request->reply->code = PW_AUTHENTICATION_ACK;
+
+	return 0;
+}
+
+
 /*
  *	Check if an incoming request is "ok"
  *
  *	It takes packets, not requests.  It sees if the packet looks
  *	OK.  If so, it does a number of sanity checks on it.
  */
-int vqp_socket_recv(rad_listen_t *listener,
-		    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+static int vqp_socket_recv(rad_listen_t *listener,
+			   RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
 {
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
@@ -76,7 +87,7 @@ int vqp_socket_recv(rad_listen_t *listener,
 /*
  *	Send an authentication response packet
  */
-int vqp_socket_send(rad_listen_t *listener, REQUEST *request)
+static int vqp_socket_send(rad_listen_t *listener, REQUEST *request)
 {
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == vqp_socket_send);
@@ -90,26 +101,22 @@ int vqp_socket_send(rad_listen_t *listener, REQUEST *request)
 }
 
 
-int vqp_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
+static int vqp_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	return vqp_encode(request->reply, request->packet);
 }
 
 
-int vqp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
+static int vqp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	return vqp_decode(request->packet);
 }
 
 
-int vmps_process(REQUEST *request)
-{
-	DEBUG2("Doing VMPS");
-	module_post_auth(0, request);
-	DEBUG2("Done VMPS");
-
-	request->reply->code = PW_AUTHENTICATION_ACK;
-
-	return 0;
-}
-#endif
+frs_module_t frs_vmps = {
+  FRS_MODULE_INIT, RAD_LISTEN_VQP, "vmps",
+  listen_socket_parse, NULL,
+  vqp_socket_recv, vqp_socket_send,
+  listen_socket_print, vqp_socket_encode, vqp_socket_decode
+};
+#endif /* WITH_VMPS */

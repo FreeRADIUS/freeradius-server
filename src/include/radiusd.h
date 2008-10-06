@@ -95,6 +95,10 @@ typedef struct auth_req REQUEST;
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
 
+typedef struct radclient_list RADCLIENT_LIST;
+
+#include <freeradius-devel/smodule.h>
+
 
 /*
  *	See util.c
@@ -130,40 +134,10 @@ typedef struct radclient {
 #endif
 } RADCLIENT;
 
-/*
- *	Types of listeners.
- *
- *	Ordered by priority!
- */
-typedef enum RAD_LISTEN_TYPE {
-	RAD_LISTEN_NONE = 0,
-#ifdef WITH_PROXY
-	RAD_LISTEN_PROXY,
-#endif
-	RAD_LISTEN_AUTH,
-#ifdef WITH_ACCOUNTING
-	RAD_LISTEN_ACCT,
-#endif
-#ifdef WITH_DETAIL
-	RAD_LISTEN_DETAIL,
-#endif
-#ifdef WITH_VMPS
-	RAD_LISTEN_VQP,
-#endif
-#ifdef WITH_DHCP
-	RAD_LISTEN_DHCP,
-#endif
-#ifdef WITH_COMMAND_SOCKET
-	RAD_LISTEN_COMMAND,
-#endif
-	RAD_LISTEN_MAX
-} RAD_LISTEN_TYPE;
-
 
 /*
  *	For listening on multiple IP's and ports.
  */
-typedef struct rad_listen_t rad_listen_t;
 typedef		void (*radlog_func_t)(int, int, REQUEST *, const char *, ...);
 
 #define REQUEST_DATA_REGEX (0xadbeef00)
@@ -239,6 +213,7 @@ struct auth_req {
 	const char		*server;
 	REQUEST			*parent;
 	radlog_func_t		radlog;	/* logging function, if set */
+	RAD_REQUEST_FUNP	process;
 };				/* REQUEST typedef */
 
 #define RAD_REQUEST_OPTION_NONE            (0)
@@ -258,13 +233,6 @@ struct auth_req {
 #define REQUEST_CLEANUP_DELAY	(5)
 #define REQUEST_DONE		(6)
 
-/*
- *  Function handler for requests.
- */
-typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
-
-typedef struct radclient_list RADCLIENT_LIST;
-
 typedef struct pair_list {
 	const char		*name;
 	VALUE_PAIR		*check;
@@ -274,42 +242,6 @@ typedef struct pair_list {
 	struct pair_list	*next;
 	struct pair_list	*lastdefault;
 } PAIR_LIST;
-
-
-typedef int (*rad_listen_recv_t)(rad_listen_t *, RAD_REQUEST_FUNP *, REQUEST **);
-typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
-typedef int (*rad_listen_print_t)(rad_listen_t *, char *, size_t);
-typedef int (*rad_listen_encode_t)(rad_listen_t *, REQUEST *);
-typedef int (*rad_listen_decode_t)(rad_listen_t *, REQUEST *);
-
-struct rad_listen_t {
-	struct rad_listen_t *next; /* should be rbtree stuff */
-
-	/*
-	 *	For normal sockets.
-	 */
-	RAD_LISTEN_TYPE	type;
-	int		fd;
-	const char	*server;
-	int		status;
-
-	rad_listen_recv_t recv;
-	rad_listen_send_t send;
-	rad_listen_encode_t encode;
-	rad_listen_decode_t decode;
-	rad_listen_print_t print;
-
-	void		*data;
-
-#ifdef WITH_STATS
-	fr_stats_t	stats;
-#endif
-};
-
-#define RAD_LISTEN_STATUS_INIT   (0)
-#define RAD_LISTEN_STATUS_KNOWN  (1)
-#define RAD_LISTEN_STATUS_CLOSED (2)
-#define RAD_LISTEN_STATUS_FINISH (3)
 
 typedef enum radlog_dest_t {
   RADLOG_STDOUT = 0,
@@ -443,9 +375,6 @@ void			radius_signal_self(int flag);
  *	Function prototypes.
  */
 
-/* acct.c */
-int		rad_accounting(REQUEST *);
-
 /* session.c */
 int		rad_check_ts(uint32_t nasaddr, unsigned int port, const char *user,
 			     const char *sessionid);
@@ -526,7 +455,6 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 
 /* auth.c */
 char	*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
-int		rad_authenticate (REQUEST *);
 int		rad_postauth(REQUEST *);
 
 /* exec.c */
@@ -597,11 +525,6 @@ int listen_init(CONF_SECTION *cs, rad_listen_t **head);
 rad_listen_t *proxy_new_listener(void);
 RADCLIENT *client_listener_find(const rad_listen_t *listener,
 				const fr_ipaddr_t *ipaddr, int src_port);
-#ifdef WITH_STATS
-RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
-					  int port);
-rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port);
-#endif
 
 /* event.c */
 int radius_event_init(CONF_SECTION *cs, int spawn_flag);

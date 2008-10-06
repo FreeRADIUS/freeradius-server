@@ -28,6 +28,8 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/detail.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/detail.h>
+
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -38,8 +40,6 @@ RCSID("$Id$")
 #endif
 
 #include <fcntl.h>
-
-#ifdef WITH_DETAIL
 
 #define USEC (1000000)
 
@@ -71,6 +71,157 @@ typedef struct listen_detail_t {
 #define STATE_RUNNING	(5)
 #define STATE_NO_REPLY	(6)
 #define STATE_REPLIED	(7)
+
+/*
+ *	Copied from rad_accounting without any changes.
+ *
+ *	This isn't perfect, but it helps with modularization
+ */
+static int detail_accounting(REQUEST *request)
+{
+	int result = RLM_MODULE_OK;
+
+
+#ifdef WITH_PROXY
+#define WAS_PROXIED (request->proxy)
+#else
+#define WAS_PROXIED (0)
+#endif
+
+	/*
+	 *	Run the modules only once, before proxying.
+	 */
+	if (!WAS_PROXIED) {
+		VALUE_PAIR	*vp;
+		int		acct_type = 0;
+
+		result = module_preacct(request);
+		switch (result) {
+			/*
+			 *	The module has a number of OK return codes.
+			 */
+			case RLM_MODULE_NOOP:
+			case RLM_MODULE_OK:
+			case RLM_MODULE_UPDATED:
+				break;
+			/*
+			 *	The module handled the request, stop here.
+			 */
+			case RLM_MODULE_HANDLED:
+				return result;
+			/*
+			 *	The module failed, or said the request is
+			 *	invalid, therefore we stop here.
+			 */
+			case RLM_MODULE_FAIL:
+			case RLM_MODULE_INVALID:
+			case RLM_MODULE_NOTFOUND:
+			case RLM_MODULE_REJECT:
+			case RLM_MODULE_USERLOCK:
+			default:
+				return result;
+		}
+
+		/*
+		 *	Do the data storage before proxying. This is to ensure
+		 *	that we log the packet, even if the proxy never does.
+		 */
+		vp = pairfind(request->config_items, PW_ACCT_TYPE);
+		if (vp) {
+			DEBUG2("  Found Acct-Type %s", vp->vp_strvalue);
+			acct_type = vp->vp_integer;
+		}
+		result = module_accounting(acct_type, request);
+		switch (result) {
+			/*
+			 *	In case the accounting module returns FAIL,
+			 *	it's still useful to send the data to the
+			 *	proxy.
+			 */
+			case RLM_MODULE_FAIL:
+			case RLM_MODULE_NOOP:
+			case RLM_MODULE_OK:
+			case RLM_MODULE_UPDATED:
+				break;
+			/*
+			 *	The module handled the request, don't reply.
+			 */
+			case RLM_MODULE_HANDLED:
+				return result;
+			/*
+			 *	Neither proxy, nor reply to invalid requests.
+			 */
+			case RLM_MODULE_INVALID:
+			case RLM_MODULE_NOTFOUND:
+			case RLM_MODULE_REJECT:
+			case RLM_MODULE_USERLOCK:
+			default:
+				return result;
+		}
+
+		/*
+		 *	Maybe one of the preacct modules has decided
+		 *	that a proxy should be used.
+		 */
+		if ((vp = pairfind(request->config_items, PW_PROXY_TO_REALM))) {
+			REALM *realm;
+
+			/*
+			 *	Check whether Proxy-To-Realm is
+			 *	a LOCAL realm.
+			 */
+			realm = realm_find2(vp->vp_strvalue);
+			if (realm && !realm->acct_pool) {
+				DEBUG("rad_accounting: Cancelling proxy to realm %s, as it is a LOCAL realm.", realm->name);
+				pairdelete(&request->config_items, PW_PROXY_TO_REALM);
+			} else {
+				/*
+				 *	Don't reply to the NAS now because
+				 *	we have to send the proxied packet
+				 *	before that.
+				 */
+				return result;
+			}
+		}
+	}
+
+	/*
+	 *	We get here IF we're not proxying, OR if we've
+	 *	received the accounting reply from the end server,
+	 *	THEN we can reply to the NAS.
+	 *      If the accounting module returns NOOP, the data
+	 *      storage did not succeed, so radiusd should not send
+	 *      Accounting-Response.
+	 */
+	switch (result) {
+		/*
+		 *	Send back an ACK to the NAS.
+		 */
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			request->reply->code = PW_ACCOUNTING_RESPONSE;
+			break;
+		/*
+		 *	The module handled the request, don't reply.
+		 */
+		case RLM_MODULE_HANDLED:
+			break;
+		/*
+		 *	Failed to log or to proxy the accounting data,
+		 *	therefore don't reply to the NAS.
+		 */
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_INVALID:
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_REJECT:
+		case RLM_MODULE_USERLOCK:
+		default:
+			break;
+	}
+	return result;
+}
+
 
 /*
  *	If we're limiting outstanding packets, then mark the response
@@ -174,17 +325,6 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
 
 	return 0;
-}
-
-int detail_delay(rad_listen_t *listener)
-{
-	listen_detail_t *data = listener->data;
-
-	if (!data->signal) return 0;
-
-	data->signal = 0;
-
-	return data->delay_time;
 }
 
 
@@ -672,7 +812,7 @@ int detail_recv(rad_listen_t *listener,
 		vp->vp_integer += time(NULL) - data->timestamp;
 	}
 
-	*pfun = rad_accounting;
+	*pfun = detail_accounting;
 
 	if (debug_flag) {
 		fr_printf_log("detail_recv: Read packet from %s\n", data->filename_work);
@@ -726,18 +866,25 @@ int detail_print(rad_listen_t *this, char *buffer, size_t bufsize)
 			this->server);
 }
 
-int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
+/*
+ *	FIXME: src/main/event.c doesn't ever call encode, so
+ *	we overload it here.
+ */
+int detail_encode(rad_listen_t *this, UNUSED REQUEST *request)
 {
-	/*
-	 *	We never encode responses "sent to" the detail file.
-	 */
-	return 0;
+	listen_detail_t *data = this->data;
+
+	if (!data->signal) return 0;
+
+	data->signal = 0;
+
+	return data->delay_time;
 }
 
 int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 {
 	/*
-	 *	We never decode responses read from the detail file.
+	 *	We never decode responses "sent to" the detail file.
 	 */
 	return 0;
 }
@@ -833,4 +980,10 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	return 0;
 }
-#endif
+
+frs_module_t frs_detail = {
+  FRS_MODULE_INIT, RAD_LISTEN_DETAIL, "detail",
+  detail_parse, detail_free,
+  detail_recv, detail_send,
+  detail_print, detail_encode, detail_decode
+};
