@@ -335,52 +335,11 @@ int listen_socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 {
 	size_t len;
 	listen_socket_t *sock = this->data;
-	const char *name;
-
-	switch (this->type) {
-#ifdef WITH_STATS
-	case RAD_LISTEN_NONE:	/* what a hack... */
-		name = "status";
-		break;
-#endif
-
-	case RAD_LISTEN_AUTH:
-		name = "authentication";
-		break;
-
-#ifdef WITH_ACCOUNTING
-	case RAD_LISTEN_ACCT:
-		name = "accounting";
-		break;
-#endif
-
-#ifdef WITH_PROXY
-	case RAD_LISTEN_PROXY:
-		name = "proxy";
-		break;
-#endif
-
-#ifdef WITH_VMPS
-	case RAD_LISTEN_VQP:
-		name = "vmps";
-		break;
-#endif
-
-#ifdef WITH_DHCP
-	case RAD_LISTEN_DHCP:
-		name = "dhcp";
-		break;
-#endif
-
-	default:
-		name = "??";
-		break;
-	}
 
 #define FORWARD len = strlen(buffer); if (len >= (bufsize + 1)) return 0;buffer += len;bufsize -= len
 #define ADDSTRING(_x) strlcpy(buffer, _x, bufsize);FORWARD
 
-	ADDSTRING(name);
+	ADDSTRING(this->frs->name);
 
 #ifdef SO_BINDTODEVICE
 	if (sock->interface) {
