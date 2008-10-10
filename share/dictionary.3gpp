@@ -40,4 +40,21 @@ ATTRIBUTE	3GPP-IPv6-DNS-Servers			17	octets
 ATTRIBUTE	3GPP-SGSN-MCC-MNC			18	string
 ATTRIBUTE	3GPP-Teardown-Indicator			19	octets
 
+ATTRIBUTE	3GPP-IMEISV				20	string
+ATTRIBUTE	3GPP-RAT-Type				21	octets
+ATTRIBUTE	3GPP-User-Location-Info			22	octets
+ATTRIBUTE	3GPP-MS-TimeZone			23	octets
+ATTRIBUTE	3GPP-Camel-Charging			24	octets
+
+#
+#  Complex type.  Not Ascend Filters, and not anything else...
+#
+ATTRIBUTE	3GPP-Packet-Filter			25	octets
+ATTRIBUTE	3GPP-Negotiated-DSCP			26	octets
+ATTRIBUTE	3GPP-PDN-Type				27	integer
+
+VALUE	3GPP-PDN-Type			IPv4			0
+VALUE	3GPP-PDN-Type			IPv6			1
+VALUE	3GPP-PDN-Type			IPv4v6			2
+
 END-VENDOR	3GPP
