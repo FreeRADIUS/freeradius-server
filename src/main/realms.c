@@ -1667,6 +1667,46 @@ REALM *realm_find(const char *name)
 	return rbtree_finddata(realms_byname, &myrealm);
 }
 
+fr_realm_status_t realm_status(const char *name, int flag)
+{
+	int i;
+	REALM myrealm;
+	REALM *realm;
+	home_pool_t *pool;
+
+	if (!name) return FR_REALM_UNKNOWN;
+
+	myrealm.name = name;
+	realm = rbtree_finddata(realms_byname, &myrealm);
+	if (!realm) return FR_REALM_UNKNOWN;
+
+	if (flag == 0) {
+		pool = realm->auth_pool;
+	} else {
+		pool = realm->acct_pool;
+	}
+
+	if (!pool) return FR_REALM_ALIVE; /* local realms are always alive */
+
+	/*
+	 *	FIXME: We should really have WITH_PROXY around some of
+	 *	this.
+	 */
+	for (i = 0; i < pool->num_home_servers; i++) {
+		home_server *home = pool->servers[i];
+
+		if (home->state != HOME_STATE_IS_DEAD) return FR_REALM_ALIVE;
+	}
+
+	/*
+	 *	There's a LOCAL fallback server.  It will do SOMETHING
+	 *	with the request.  So the realm is alive.
+	 */
+	if (pool->fallback) return FR_REALM_ALIVE;
+
+	return FR_REALM_DEAD;
+}
+
 
 #ifdef WITH_PROXY
 home_server *home_server_ldb(const char *realmname,

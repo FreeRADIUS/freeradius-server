@@ -51,7 +51,6 @@ typedef struct home_server {
 	struct timeval	revive_time;
 	struct timeval	zombie_period_start;
 	int		zombie_period; /* unresponsive for T, mark it dead */
-
 	int		state;
 
 	int		ping_check;
@@ -110,11 +109,24 @@ typedef struct _realm {
 	home_pool_t		*acct_pool;
 } REALM;
 
+
+/*
+ *	A synthetic value derived dynamically.  It's too expensive to
+ *	maintain this information in sync as home servers go up and
+ *	down.
+ */
+typedef enum fr_realm_status_t {
+	FR_REALM_UNKNOWN = 0,	/* the realm is unknown */
+	FR_REALM_ALIVE,		/* realm has "live" home servers */
+	FR_REALM_DEAD		/* all home servers are dead */
+} fr_realm_status_t;
+
 int realms_init(CONF_SECTION *config);
 void realms_free(void);
 REALM *realm_find(const char *name); /* name is from a packet */
 REALM *realm_find2(const char *name); /* ... with name taken from realm_find */
 
+fr_realm_status_t realm_status(const char *name, int flag);
 home_server *home_server_ldb(const char *realmname, home_pool_t *pool, REQUEST *request);
 home_server *home_server_find(fr_ipaddr_t *ipaddr, int port);
 #ifdef WITH_STATS

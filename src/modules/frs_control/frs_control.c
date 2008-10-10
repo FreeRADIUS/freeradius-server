@@ -927,6 +927,45 @@ static int command_show_home_server_state(rad_listen_t *listener, int argc, char
 #endif
 
 
+static int command_show_realm_state(rad_listen_t *listener, int argc, char *argv[])
+{
+	int flag = 0;		/* default to authentication */
+	fr_realm_status_t status;
+
+	if (argc < 2) {
+		cprintf(listener, "ERROR: Must specify [auth/acct] and <realm>\n");
+		return 0;
+	}
+
+#ifdef WITH_ACCOUNTING
+	if (strcmp(argv[0], "acct") == 0) {
+		flag = 1;
+	} else
+#endif
+	if (strcmp(argv[0], "auth") != 0) {
+		cprintf(listener, "ERROR: Invalid string.  Please use [auth/acct]\n");
+		return 0;
+	}
+
+	status = realm_status(argv[1], flag);
+
+	switch (status) {
+	default:
+		cprintf(listener, "unknown-realm\n");
+		break;
+
+	case FR_REALM_ALIVE:
+		cprintf(listener, "alive\n");
+		break;
+		
+	case FR_REALM_DEAD:
+		cprintf(listener, "dead\n");
+		break;
+	}
+	
+	return 1;
+}
+
 static fr_command_table_t command_table_debug[] = {
 	{ "condition", FR_WRITE,
 	  "debug condition <condition> - Enable debugging for requests matching <condition>",
@@ -1003,6 +1042,18 @@ static fr_command_table_t command_table_show_home[] = {
 };
 #endif
 
+static fr_command_table_t command_table_show_realm[] = {
+#if 0
+	{ "list", FR_READ,
+	  "show realm list - shows list of realms",
+	  command_show_realms, NULL },
+#endif
+	{ "state", FR_READ,
+	  "show realm state [auth/acct] <realm> - shows state of proxying status for given realm",
+	  command_show_realm_state, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
 
 static fr_command_table_t command_table_show[] = {
 	{ "client", FR_READ,
@@ -1019,6 +1070,9 @@ static fr_command_table_t command_table_show[] = {
 	{ "module", FR_READ,
 	  "show module <command> - do sub-command of module",
 	  NULL, command_table_show_module },
+	{ "realm", FR_READ,
+	  "show realm <command> - do sub-command of realm",
+	  NULL, command_table_show_realm },
 	{ "uptime", FR_READ,
 	  "show uptime - shows time at which server started",
 	  command_uptime, NULL },
