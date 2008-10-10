@@ -560,12 +560,19 @@ void revive_home_server(void *ctx)
 	char buffer[128];
 
 	home->state = HOME_STATE_ALIVE;
+	home->currently_outstanding = 0;
+	home->revive_time = now;
+
+	/*
+	 *	Delete any outstanding events.
+	 */
+	if (home->ev) fr_event_delete(el, &home->ev);
+
 	radlog(L_INFO, "PROXY: Marking home server %s port %d alive again... we have no idea if it really is alive or not.",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
 	       home->port);
-	home->currently_outstanding = 0;
-	home->revive_time = now;
+
 }
 
 
@@ -598,9 +605,36 @@ static void received_response_to_ping(REQUEST *request)
 	RDEBUG2("Received response to status check %d (%d in current sequence)",
 	       request->number, home->num_received_pings);
 
+	/*
+	 *	Remove the request from any hashes
+	 */
+	fr_event_delete(el, &request->ev);
+	remove_from_proxy_hash(request);
+	rad_assert(request->in_request_hash == FALSE);
+	request_free(&request);
+
+	/*
+	 *	The control socket may have marked the home server as
+	 *	alive.  OR, it may have suddenly started responding to
+	 *	requests again.  If so, don't re-do the "make alive"
+	 *	work.
+	 */
+	if (home->state == HOME_STATE_ALIVE) return;
+
+	/*
+	 *	We haven't received enough ping responses to mark it
+	 *	"alive".  Wait a bit.
+	 */
 	if (home->num_received_pings < home->num_pings_to_alive) {
-		wait_for_proxy_id_to_expire(request);
 		return;
+	}
+
+	home->state = HOME_STATE_ALIVE;
+	home->currently_outstanding = 0;
+	home->revive_time = now;
+
+	if (!fr_event_delete(el, &home->ev)) {
+		RDEBUG2("Hmm... no event for home server.  Oh well.");
 	}
 
 	radlog(L_INFO, "PROXY: Marking home server %s port %d alive",
@@ -608,23 +642,13 @@ static void received_response_to_ping(REQUEST *request)
 			 &request->proxy->dst_ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
 	       request->proxy->dst_port);
-
-	if (!fr_event_delete(el, &home->ev)) {
-		RDEBUG2("Hmm... no event for home server, WTF?");
-	}
-
-	if (!fr_event_delete(el, &request->ev)) {
-		RDEBUG2("Hmm... no event for request, WTF?");
-	}
-
-	wait_for_proxy_id_to_expire(request);
-
-	home->state = HOME_STATE_ALIVE;
-	home->currently_outstanding = 0;
-	home->revive_time = now;
 }
 
 
+/*
+ *	Called from start of zombie period, OR after control socket
+ *	marks the home server dead.
+ */
 static void ping_home_server(void *ctx)
 {
 	uint32_t jitter;
@@ -720,34 +744,39 @@ static void ping_home_server(void *ctx)
 
 	tv_add(&home->when, jitter);
 
-
 	INSERT_EVENT(ping_home_server, home);
 }
 
 
 void mark_home_server_dead(home_server *home, struct timeval *when)
 {
+	int previous_state = home->state;
 	char buffer[128];
 
-	/*
-	 *	It's been a zombie for too long, mark it as
-	 *	dead.
-	 */
 	radlog(L_INFO, "PROXY: Marking home server %s port %d as dead.",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
 	       home->port);
+
 	home->state = HOME_STATE_IS_DEAD;
 	home->num_received_pings = 0;
-	home->when = *when;
 
 	if (home->ping_check != HOME_PING_CHECK_NONE) {
-		rad_assert((home->ping_check == HOME_PING_CHECK_STATUS_SERVER) ||
-			   (home->ping_user_name != NULL));
-		home->when.tv_sec += home->ping_interval;
+		/*
+		 *	If the control socket marks us dead, start
+		 *	pinging.  Otherwise, we already started
+		 *	pinging when it was marked "zombie".
+		 */
+		if (previous_state == HOME_STATE_ALIVE) {
+			ping_home_server(home);
+		}
 
-		INSERT_EVENT(ping_home_server, home);
 	} else {
+		/*
+		 *	Revive it after a fixed period of time.  This
+		 *	is very, very, bad.
+		 */
+		home->when = *when;
 		home->when.tv_sec += home->revive_interval;
 
 		INSERT_EVENT(revive_home_server, home);
@@ -953,9 +982,8 @@ static void no_response_to_proxied_request(void *ctx)
 
 	/*
 	 *	Enable the zombie period when we notice that the home
-	 *	server hasn't responded.  We also back-date the start
-	 *	of the zombie period to when the proxied request was
-	 *	sent.
+	 *	server hasn't responded.  We do NOT back-date the start
+	 *	of the zombie period.
 	 */
 	if (home->state == HOME_STATE_ALIVE) {
 		radlog(L_ERR, "PROXY: Marking home server %s port %d as zombie (it looks like it is dead).",
@@ -964,8 +992,11 @@ static void no_response_to_proxied_request(void *ctx)
 		       home->port);
 		home->state = HOME_STATE_ZOMBIE;
 		home->zombie_period_start = now;
-		home->zombie_period_start.tv_sec -= home->response_window;
-		return;
+
+		/*
+		 *	Start pinging the home server.
+		 */
+		ping_home_server(home);
 	}
 }
 #endif
@@ -2326,6 +2357,9 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 
 	gettimeofday(&now, NULL);
 
+	/*
+	 *	FIXME: mark the home server alive?
+	 */
 	home->state = HOME_STATE_ALIVE;
 
 	if (request->reply && request->reply->code != 0) {
@@ -2404,12 +2438,9 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 #if 0
 	/*
 	 *	Perform RTT calculations, as per RFC 2988 (for TCP).
-	 *	Note that we do so only if we sent one request, and
-	 *	received one response.  If we sent two requests, we
-	 *	have no idea if the response is for the first, or for
-	 *	the second request/
+	 *	Note that we only do so on the first response.
 	 */
-	if (request->num_proxied_requests == 1) {
+	if ((request->num_proxied_responses == 1)
 		int rtt;
 		home_server *home = request->home_server;
 
