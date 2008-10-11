@@ -27,6 +27,7 @@
 #include <freeradius-devel/rad_assert.h>
 #include "dhcp.h"
 
+#ifdef WITH_DHCP
 static int dhcp_process(REQUEST *request)
 {
 	int rcode;
@@ -185,4 +186,4 @@ frs_module_t frs_dhcp = {
   dhcp_socket_recv, dhcp_socket_send,
   listen_socket_print, dhcp_socket_encode, dhcp_socket_decode
 };
-
+#endif /* WITH_DHCP */
