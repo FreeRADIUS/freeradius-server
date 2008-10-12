@@ -117,8 +117,8 @@ radwho.lo: radwho.c $(INCLUDES)
 radwho: radwho.lo util.lo log.lo conffile.lo $(LIBRADIUS)
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radwho radwho.lo util.lo log.lo conffile.lo $(LIBRADIUS) $(LIBS)
 
-radmin: radmin.lo $(LIBREADLINE) $(LIBRADIUS) util.lo log.lo conffile.lo
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o $@ $^ $(LIBS)
+radmin: radmin.lo $(LIBRADIUS) util.lo log.lo conffile.lo
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o $@ $^ $(LIBREADLINE) $(LIBS)
 
 radconf2xml: radconf2xml.lo $(LIBRADIUS) util.lo log.lo conffile.lo
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o $@ $^ $(LIBS)
