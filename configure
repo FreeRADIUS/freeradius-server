@@ -21168,8 +21168,8 @@ rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
     done
     if test -z "$ac_cv_lib_readline"; then
       ac_cv_lib_readline="no"
-      LIBS=$ORIG_LIBS
     fi
+    LIBS=$ORIG_LIBS
 
 fi
 { echo "$as_me:$LINENO: result: $ac_cv_lib_readline" >&5
@@ -23706,6 +23706,8 @@ fi
 
 
 
+
+
 for ac_func in \
 	getopt_long \
 	lockf \
@@ -23734,6 +23736,8 @@ for ac_func in \
 	closefrom \
 	gettimeofday \
 	getpeereid \
+	setresuid \
+	getresuid \
 	strlcat \
 	strlcpy
 
