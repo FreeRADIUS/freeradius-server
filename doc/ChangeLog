@@ -1,3 +1,21 @@
+FreeRADIUS 2.1.2 Thu Sep 25 11:03:00 CEST 2008;  , urgency=medium
+	Feature improvements
+	* Allow running with "user=radiusd" and binding to secure
+	  sockets.
+	* Start sending Status-Server "are you alive" messages earlier,
+	  which helps with proxying and multiple realms.
+
+	Bug fixes
+	* Fix Debian patch to allow it to build.
+	* Fix potential NULL dereference in debugging mode on certain
+	  platforms for TTLS and PEAP inner tunnels.
+	* Fix uninitialized memory in handling of vendor definitions
+	* Fix parsing of quoted (but non-string) attributes in the "users"
+	  file.
+	* Initialize uknown NAS IP to 255.255.255.255, rather than 0.0.0.0
+	* use SUN_LEN in control socket, to avoid truncation on some
+	  platforms.
+
 FreeRADIUS 2.1.1 Thu Sep 25 11:03:00 CEST 2008;  , urgency=medium
 	Feature improvements
 	* Many more options and features in radmin.  See "man radmin" and
