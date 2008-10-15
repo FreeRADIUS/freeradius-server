@@ -141,8 +141,8 @@ AC_DEFUN([AC_LIB_READLINE], [
     done
     if test -z "$ac_cv_lib_readline"; then
       ac_cv_lib_readline="no"
-      LIBS=$ORIG_LIBS
     fi
+    LIBS=$ORIG_LIBS
   ])
 
   if test "$ac_cv_lib_readline" != "no"; then
