@@ -1,9 +1,11 @@
-FreeRADIUS 2.1.2 Thu Sep 25 11:03:00 CEST 2008;  , urgency=medium
+FreeRADIUS 2.1.2 Fri Oct 31 12:00:00 CEST 2008;  , urgency=medium
 	Feature improvements
 	* Allow running with "user=radiusd" and binding to secure
 	  sockets.
 	* Start sending Status-Server "are you alive" messages earlier,
-	  which helps with proxying and multiple realms.
+	  which helps with proxying multiple realms to a home server.
+	* Removed thread pool code from rlm_perl.  It's not necessary.
+	* Added example Perl configuration to raddb/modules/perl
 
 	Bug fixes
 	* Fix Debian patch to allow it to build.
