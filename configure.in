@@ -826,6 +826,8 @@ AC_CHECK_FUNCS( \
 	closefrom \
 	gettimeofday \
 	getpeereid \
+	setresuid \
+	getresuid \
 	strlcat \
 	strlcpy
 )
