@@ -27,7 +27,7 @@ use strict;
 # use ...
 # This is very important ! Without this script will not get the filled hashesh from main.
 use vars qw(%RAD_REQUEST %RAD_REPLY %RAD_CHECK);
-use Data::Dumper;
+#use Data::Dumper;
 
 # This is hash wich hold original request from radius
 #my %RAD_REQUEST;
