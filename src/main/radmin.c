@@ -110,9 +110,9 @@ static int fr_domain_socket(const char *path)
         }
 
         saremote.sun_family = AF_UNIX;
-	memcpy(saremote.sun_path, path, len); /* not zero terminated */
+	memcpy(saremote.sun_path, path, len + 1); /* SUN_LEN does strlen */
 	
-	socklen = sizeof(saremote.sun_family) + len;
+	socklen = SUN_LEN(&saremote);
 
         if (connect(sockfd, (struct sockaddr *)&saremote, socklen) < 0) {
 		fprintf(stderr, "%s: Failed connecting to %s: %s\n",
