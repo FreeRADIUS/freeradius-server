@@ -1269,12 +1269,13 @@ static int request_pre_handler(REQUEST *request)
 		
 		if (debug_condition) {
 			int result = FALSE;
-			
+			const char *my_debug = debug_condition;
+
 			/*
 			 *	Ignore parse errors.
 			 */
 			radius_evaluate_condition(request, RLM_MODULE_OK, 0,
-						  &debug_condition, 1,
+						  &my_debug, 1,
 						  &result);
 			if (result) {
 				request->priority = 2;
