@@ -17,6 +17,10 @@ FreeRADIUS 2.1.2 Fri Oct 31 12:00:00 CEST 2008;  , urgency=medium
 	* Initialize uknown NAS IP to 255.255.255.255, rather than 0.0.0.0
 	* use SUN_LEN in control socket, to avoid truncation on some
 	  platforms.
+	* Correct internal handling of "debug condition" to prevent it
+	  from being over-written.
+	* Check return code of regcomp in "unlang", so that invalid
+	  regular expressions are caught rather than mishandled.
 
 FreeRADIUS 2.1.1 Thu Sep 25 11:03:00 CEST 2008;  , urgency=medium
 	Feature improvements
