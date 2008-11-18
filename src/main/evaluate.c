@@ -433,7 +433,17 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 		/*
 		 *	Include substring matches.
 		 */
-		regcomp(&reg, pright, cflags);
+		compare = regcomp(&reg, pright, cflags);
+		if (compare != 0) {
+			if (debug_flag) {
+				char errbuf[128];
+
+				regerror(compare, &reg, errbuf, sizeof(errbuf));
+				DEBUG("ERROR: Failed compiling regular expression: %s", errbuf);
+			}
+			return FALSE;
+		}
+
 		compare = regexec(&reg, pleft,
 				  REQUEST_MAX_REGEX + 1,
 				  rxmatch, 0);
