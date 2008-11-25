@@ -18,7 +18,9 @@ install:
 
 clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	@rm -f *~ lib/rlm_* lib/*.o lib/smbencrypt lib/radeapclient
+	@rm -f *~ lib/rlm_* lib/frs_* lib/*.o lib/*.la lib/*.lo
+	@rm -f lib/smbencrypt lib/radeapclient
+	@rm -rf lib/.libs
 
 distclean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
