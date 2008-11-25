@@ -15,7 +15,7 @@
  */
 CREATE TABLE radacct (
 	RadAcctId		BIGSERIAL PRIMARY KEY,
-	AcctSessionId		VARCHAR(32) NOT NULL,
+	AcctSessionId		VARCHAR(64) NOT NULL,
 	AcctUniqueId		VARCHAR(32) NOT NULL,
 	UserName		VARCHAR(253),
 	GroupName		VARCHAR(253),
