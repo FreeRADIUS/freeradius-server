@@ -5,8 +5,7 @@ all:
 
 clean:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	@rm -f lib/rlm_* lib/*.o
-	@rmdir lib
+	@rm -rf lib
 
 install:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
