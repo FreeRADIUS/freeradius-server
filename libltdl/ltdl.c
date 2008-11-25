@@ -426,6 +426,9 @@ tryall_dlopen (lt_dlhandle *phandle, const char *filename,
 		 (loader_vtable && loader_vtable->name) ? loader_vtable->name : "(null)",
 		 filename ? filename : "(null)");
 #endif
+
+	if (!loader_vtable) continue;
+
 	handle->module = (*loader_vtable->module_open) (loader_vtable->dlloader_data,
 							filename, advise);
 #ifdef LT_DEBUG_LOADERS
