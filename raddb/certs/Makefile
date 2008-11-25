@@ -19,6 +19,7 @@ PASSWORD_CA	= `grep output_password ca.cnf | sed 's/.*=//;s/^ *//'`
 PASSWORD_CLIENT	= `grep output_password client.cnf | sed 's/.*=//;s/^ *//'`
 
 USER_NAME	= `grep emailAddress client.cnf | grep '@' | sed 's/.*=//;s/^ *//'`
+CA_DEFAULT_DAYS = `grep default_days ca.cnf | sed 's/.*=//;s/^ *//'`
 
 ######################################################################
 #
@@ -51,7 +52,9 @@ dh:
 #
 ######################################################################
 ca.key ca.pem: ca.cnf
-	openssl req -new -x509 -keyout ca.key -out ca.pem -config ./ca.cnf 
+	openssl req -new -x509 -keyout ca.key -out ca.pem \
+		-days $(CA_DEFAULT_DAYS) -config ./ca.cnf
+		
 
 ca.der: ca.pem
 	openssl x509 -inform PEM -outform DER -in ca.pem -out ca.der
@@ -129,12 +132,8 @@ clean:
 	@rm -f *~ *old client.csr client.key client.crt client.p12 client.pem
 
 #
-#  Run distclean ONLY if there's a CVS directory, AND it points to
-#  cvs.freeradius.org.  Otherwise, it would be easy for administrators
-#  to type "make distclean", and destroy their CA and server certificates.
+#	Make a target that people won't run too often.
 #
-distclean:
-	@if [ -d CVS -a `grep -i 'cvs\.freeradius\.org' CVS/Root` ] ; then \
-		rm -f *~ dh *.csr *.crt *.p12 *.der *.pem *.key index.txt* \
-			serial* random *\.0 *\.1; \
-	fi
+destroycerts:
+	rm -f *~ dh *.csr *.crt *.p12 *.der *.pem *.key index.txt* \
+			serial* random *\.0 *\.1
