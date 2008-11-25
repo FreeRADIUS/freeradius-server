@@ -6,6 +6,8 @@ FreeRADIUS 2.1.2 Fri Oct 31 12:00:00 CEST 2008;  , urgency=medium
 	  which helps with proxying multiple realms to a home server.
 	* Removed thread pool code from rlm_perl.  It's not necessary.
 	* Added example Perl configuration to raddb/modules/perl
+	* Force OpenSSL to support certificates with SHA256.
+	  This seems to be necessary for WiMAX certs.
 
 	Bug fixes
 	* Fix Debian patch to allow it to build.
@@ -21,6 +23,10 @@ FreeRADIUS 2.1.2 Fri Oct 31 12:00:00 CEST 2008;  , urgency=medium
 	  from being over-written.
 	* Check return code of regcomp in "unlang", so that invalid
 	  regular expressions are caught rather than mishandled.
+	* Make rlm_sql use <ltdl.h>.  Addresses bug #610.
+	* Document list "type = status" better.  Closes bug #580.
+	* Set "default days" for certificates, because OpenSSL won't
+	  do it.  This closes bug #615.
 
 FreeRADIUS 2.1.1 Thu Sep 25 11:03:00 CEST 2008;  , urgency=medium
 	Feature improvements
