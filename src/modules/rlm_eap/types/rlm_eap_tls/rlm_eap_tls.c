@@ -32,7 +32,12 @@ RCSID("$Id$")
 #include <openssl/rand.h>
 #endif
 
+#ifdef HAVE_OPENSSL_EVP_H
+#include <openssl/evp.h>
+#endif
+
 #include "rlm_eap_tls.h"
+#include "config.h"
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -393,6 +398,15 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	 */
 	SSL_library_init();
 	SSL_load_error_strings();
+
+	/*
+	 *	SHA256 is in all versions of OpenSSL, but isn't
+	 *	initialized by default.  It's needed for WiMAX
+	 *	certificates.
+	 */
+#ifdef HAVE_OPENSSL_EVP_SHA256
+	EVP_add_digest(EVP_sha256());
+#endif
 
 	meth = TLSv1_method();
 	ctx = SSL_CTX_new(meth);
