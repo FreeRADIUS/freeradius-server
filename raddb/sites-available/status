@@ -59,8 +59,12 @@ server status {
 	#  Simple authorize section.  The "Autz-Type Status-Server"
 	#  section will work here, too.  See "raddb/sites-available/default".
 	authorize {
-		# respond to the Status-Server request.
 		ok
+
+		# respond to the Status-Server request.
+		Autz-Type Status-Server {
+			ok
+		}
 	}
 }
 
