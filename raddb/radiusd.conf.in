@@ -245,6 +245,8 @@ listen {
 	#	proxy   IP to use for sending proxied packets
 	#	detail  Read from the detail file.  For examples, see
 	#               raddb/sites-available/copy-acct-to-home-server
+	#	status  listen for Status-Server packets.  For examples,
+	#		see raddb/sites-available/status
 	#
 	type = auth
 
@@ -498,6 +500,8 @@ security {
 	#  The NAS can periodically "ping" the server with a Status-Server
 	#  packet.  If the server responds, it must be alive, and the
 	#  NAS can start using it for real requests.
+	#
+	#  See also raddb/sites-available/status
 	#
 	status_server = yes
 }
