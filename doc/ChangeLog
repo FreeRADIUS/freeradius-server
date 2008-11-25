@@ -27,6 +27,10 @@ FreeRADIUS 2.1.2 Fri Oct 31 12:00:00 CEST 2008;  , urgency=medium
 	* Document list "type = status" better.  Closes bug #580.
 	* Set "default days" for certificates, because OpenSSL won't
 	  do it.  This closes bug #615.
+	* Reference correct list in example raddb/modules/ldap.
+	  Closes #596.
+	* Increase default schema size for Acct-Session-Id to 64.
+	  Closes #540.
 
 FreeRADIUS 2.1.1 Thu Sep 25 11:03:00 CEST 2008;  , urgency=medium
 	Feature improvements
