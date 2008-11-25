@@ -16,7 +16,7 @@
 /****** Object:  Table [radacct]    Script Date: 26.03.02 16:55:17 ******/
 CREATE TABLE [radacct] (
 	[RadAcctId] [numeric](21, 0) IDENTITY (1, 1) NOT NULL ,
-	[AcctSessionId] [varchar] (32) NOT NULL ,
+	[AcctSessionId] [varchar] (64) NOT NULL ,
 	[AcctUniqueId] [varchar] (32) NOT NULL ,
 	[UserName] [varchar] (64) NOT NULL ,
 	[GroupName] [varchar] (64) NOT NULL ,

@@ -16,7 +16,7 @@
 
 CREATE TABLE radacct (
   radacctid bigint(21) NOT NULL auto_increment,
-  acctsessionid varchar(32) NOT NULL default '',
+  acctsessionid varchar(64) NOT NULL default '',
   acctuniqueid varchar(32) NOT NULL default '',
   username varchar(64) NOT NULL default '',
   groupname varchar(64) NOT NULL default '',

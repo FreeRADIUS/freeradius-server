@@ -12,7 +12,7 @@
  */
 CREATE TABLE radacct (
 	radacctid		INT PRIMARY KEY,
-	acctsessionid		VARCHAR(32) NOT NULL,
+	acctsessionid		VARCHAR(64) NOT NULL,
 	acctuniqueid		VARCHAR(32),
 	username		VARCHAR(64) NOT NULL,
 	groupname		VARCHAR(32) NOT NULL,
