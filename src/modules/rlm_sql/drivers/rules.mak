@@ -95,10 +95,10 @@ endif
 #
 #######################################################################
 build-module: $(TARGET).la
-	@[ -d .libs ] && cp .libs/* ../lib
-	@cp $< ../lib
-	@cp .libs/* $(top_builddir)/src/modules/lib/.libs
-	@cp $< $(top_builddir)/src/modules/lib
+	@for x in .libs/* $^; do \
+		rm -f $(top_builddir)/src/modules/lib/$$x; \
+		ln -s $(top_builddir)/src/modules/rlm_sql/drivers/$(TARGET)/$$x $(top_builddir)/src/modules/lib/$$x; \
+	done
 
 $(TARGET).la: $(LT_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
