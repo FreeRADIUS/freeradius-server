@@ -30,6 +30,10 @@ $(TARGET).la: $(LT_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
 	$(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^ \
 	$(LIBRADIUS) $(LIBS)
+	@for x in .libs/* $^; do \
+		rm -f $(top_builddir)/src/modules/lib/$$x; \
+		ln -s $(top_builddir)/src/modules/rlm_eap/libeap/$$x $(top_builddir)/src/modules/lib/$$x; \
+	done
 
 $(LT_OBJS): $(INCLUDES)
 

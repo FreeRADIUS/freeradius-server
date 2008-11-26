@@ -43,6 +43,7 @@ reconfig:
 
 common:
 	@[ -d lib/ ] || mkdir lib
+	@[ -d lib/.libs ] || mkdir lib/.libs
 	@for mod in $(MODULES); do \
 		if [ -d $$mod ] && [ -f $$mod/Makefile ]; then \
 			echo "Making $(WHAT_TO_MAKE) in $$mod..."; \
