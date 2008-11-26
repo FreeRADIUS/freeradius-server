@@ -277,13 +277,13 @@ static fr_stats2vp client_authvp[] = {
 
 #ifdef WITH_ACCOUNTING
 static fr_stats2vp client_acctvp[] = {
-	{ 155, offsetof(fr_stats_t, total_requests) },
-	{ 156, offsetof(fr_stats_t, total_responses) },
-	{ 157, offsetof(fr_stats_t, total_dup_requests) },
-	{ 158, offsetof(fr_stats_t, total_malformed_requests) },
-	{ 159, offsetof(fr_stats_t, total_bad_authenticators) },
-	{ 160, offsetof(fr_stats_t, total_packets_dropped) },
-	{ 161, offsetof(fr_stats_t, total_unknown_types) },
+	{ 148, offsetof(fr_stats_t, total_requests) },
+	{ 149, offsetof(fr_stats_t, total_responses) },
+	{ 150, offsetof(fr_stats_t, total_dup_requests) },
+	{ 151, offsetof(fr_stats_t, total_malformed_requests) },
+	{ 152, offsetof(fr_stats_t, total_bad_authenticators) },
+	{ 153, offsetof(fr_stats_t, total_packets_dropped) },
+	{ 154, offsetof(fr_stats_t, total_unknown_types) },
 	{ 0, 0 }
 };
 #endif
