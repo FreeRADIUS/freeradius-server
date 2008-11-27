@@ -669,7 +669,7 @@ rad_listen_t *listen_alloc(const char *type_name)
 		handle = lt_dlopenext(buffer);
 		if (!handle) {
 			radlog(L_ERR, "Failed opening %s: %s",
-			       type_name, lt_dlerror());
+			       buffer, lt_dlerror());
 			return NULL;
 		}
 		
@@ -677,14 +677,14 @@ rad_listen_t *listen_alloc(const char *type_name)
 		if (!frs) {
 			lt_dlclose(handle);
 			radlog(L_ERR, "Failed linking to %s: %s",
-			       type_name, lt_dlerror());
+			       buffer, lt_dlerror());
 			return NULL;
 		}
 	
 		if (frs->magic != FRS_MODULE_MAGIC_NUMBER) {
 			lt_dlclose(handle);
 			radlog(L_ERR, "Invalid version in %s\n",
-			       type_name);
+			       buffer);
 			return NULL;
 		}
 
