@@ -404,6 +404,8 @@ static int r_mkdir(const char *part)
 
 
 #ifndef __MINGW32__
+int did_setuid = FALSE;
+
 /*
  *  Do chroot, if requested.
  *
@@ -411,7 +413,6 @@ static int r_mkdir(const char *part)
  */
 static int switch_users(CONF_SECTION *cs)
 {
-	int did_setuid = FALSE;
 	CONF_PAIR *cp;
 
 #ifdef HAVE_SYS_RESOURCE_H
