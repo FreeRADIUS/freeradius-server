@@ -2816,9 +2816,12 @@ static void fr_suid_up(void)
 }
 
 extern uid_t server_uid;
+extern int did_setuid;
 static void fr_suid_down(void)
 {
 	uid_t ruid, euid, suid;
+
+	if (!did_setuid) return;
 
 	if (getresuid(&ruid, &euid, &suid) < 0) {
 		radlog(L_ERR, "Failed getting saved UID's");
@@ -2826,7 +2829,8 @@ static void fr_suid_down(void)
 	}
 
 	if (setresuid(server_uid, server_uid, server_uid) < 0) {
-		radlog(L_ERR, "Failed to permanently switch UID");
+		radlog(L_ERR, "Failed to permanently switch UID to %u: %s",
+		       server_uid, strerror(errno));
 		_exit(1);
 	}
 
@@ -2837,7 +2841,8 @@ static void fr_suid_down(void)
 
 
 	if (getresuid(&ruid, &euid, &suid) < 0) {
-		radlog(L_ERR, "Failed getting saved UID's");
+		radlog(L_ERR, "Failed getting saved UID's: %s",
+		       strerror(errno));
 		_exit(1);
 	}
 }
