@@ -50,6 +50,9 @@ SUB_MODULES += rlm_sql_db2 rlm_sql_iodbc rlm_sql_mysql
 SUB_MODULES += rlm_sql_oracle rlm_sql_postgresql rlm_sql_sybase rlm_sql_unixodbc
 LIBS        += $(shell test -f ../modules/rlm_eap/libeap/$(LIBPREFIX)freeradius-eap.la && echo ../modules/rlm_eap/libeap/$(LIBPREFIX)freeradius-eap.la)
 
+MODULES += frs_acct frs_auth frs_control frs_detail frs_proxy
+MODULES += frs_status frs_vmps
+
 MODULE_LIBS	+= $(shell for x in $(MODULES);do test -f ../modules/$$x/$$x.la && echo -dlpreopen ../modules/$$x/$$x.la;done)
 MODULE_LIBS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types/$$x/$$x.la && echo -dlpreopen ../modules/*/types/$$x/$$x.la;done)
 MODULE_LIBS	+= $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$$x/$$x.la && echo -dlpreopen ../modules/*/drivers/$$x/$$x.la;done)
