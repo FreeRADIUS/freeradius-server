@@ -37,6 +37,7 @@ typedef struct sql_socket {
 
 	void	*conn;
 	SQL_ROW row;
+	time_t  connected;
 } SQLSOCK;
 
 typedef struct rlm_sql_module_t {
