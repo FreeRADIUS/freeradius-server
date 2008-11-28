@@ -59,6 +59,7 @@ static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst)
 		       inst->config->xlat_name, sqlsocket->id);
 		sqlsocket->state = sockconnected;
 		if (inst->config->lifetime) time(&sqlsocket->connected);
+		sqlsocket->queries = 0;
 		return(0);
 	}
 
@@ -231,6 +232,17 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 		}
 
 		/*
+		 *	If we have performed too many queries over this
+		 *	socket, then close it.
+		 */
+		if (inst->config->max_queries && (cur->state == sockconnected) &&
+		    (cur->queries >= inst->config->max_queries)) {
+			(inst->module->sql_close)(cur, inst->config);
+			cur->state = sockunconnected;
+			goto reconnect;
+		}
+
+		/*
 		 *	If we happen upon an unconnected socket, and
 		 *	this instance's grace period on
 		 *	(re)connecting has expired, then try to
@@ -273,6 +285,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 		 *	as it's a pointer only used for reading.
 		 */
 		inst->last_used = cur->next;
+		cur->queries++;
 		return cur;
 
 		/* move along the list */
