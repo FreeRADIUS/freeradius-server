@@ -53,12 +53,12 @@ static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst)
 	int rcode;
 	radlog(L_DBG, "rlm_sql (%s): Attempting to connect %s #%d",
 	       inst->config->xlat_name, inst->module->name, sqlsocket->id);
-
 	rcode = (inst->module->sql_init_socket)(sqlsocket, inst->config);
 	if (rcode == 0) {
 		radlog(L_DBG, "rlm_sql (%s): Connected new DB handle, #%d",
 		       inst->config->xlat_name, sqlsocket->id);
 		sqlsocket->state = sockconnected;
+		if (inst->config->lifetime) time(&sqlsocket->connected);
 		return(0);
 	}
 
@@ -195,7 +195,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 	SQLSOCK *cur, *start;
 	int tried_to_connect = 0;
 	int unconnected = 0;
-	time_t now;
+	time_t now = time(NULL);
 
 	/*
 	 *	Start at the last place we left off.
@@ -219,12 +219,25 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 #endif
 
 		/*
+		 *	If the socket has outlived its lifetime, and
+		 *	is connected, close it, and mark it as open for
+		 *	reconnections.
+		 */
+		if (inst->config->lifetime && (cur->state == sockconnected) &&
+		    ((cur->connected + inst->config->lifetime) < now)) {
+			(inst->module->sql_close)(cur, inst->config);
+			cur->state = sockunconnected;
+			goto reconnect;
+		}
+
+		/*
 		 *	If we happen upon an unconnected socket, and
 		 *	this instance's grace period on
 		 *	(re)connecting has expired, then try to
 		 *	connect it.  This should be really rare.
 		 */
-		if ((cur->state == sockunconnected) && (time(NULL) > inst->connect_after)) {
+		if ((cur->state == sockunconnected) && (now > inst->connect_after)) {
+		reconnect:
 			radlog(L_INFO, "rlm_sql (%s): Trying to (re)connect unconnected handle %d..", inst->config->xlat_name, cur->id);
 			tried_to_connect++;
 			connect_single_socket(cur, inst);
@@ -292,7 +305,6 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 	 *	This code has race conditions when threaded, but the
 	 *	only result is that a few more messages are logged.
 	 */
-	now = time(NULL);
 	if (now <= last_logged_failure) return NULL;
 	last_logged_failure = now;
 

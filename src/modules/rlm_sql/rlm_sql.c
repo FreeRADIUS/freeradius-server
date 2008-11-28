@@ -62,6 +62,8 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,deletestalesessions), NULL, "yes"},
 	{"num_sql_socks", PW_TYPE_INTEGER,
 	 offsetof(SQL_CONFIG,num_sql_socks), NULL, "5"},
+	{"lifetime", PW_TYPE_INTEGER,
+	 offsetof(SQL_CONFIG,lifetime), NULL, "0"},
 	{"sql_user_name", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,query_user), NULL, ""},
 	{"default_user_profile", PW_TYPE_STRING_PTR,
