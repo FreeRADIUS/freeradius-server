@@ -43,6 +43,7 @@ typedef struct sql_config {
 	int     deletestalesessions;
 	int     num_sql_socks;
 	int     lifetime;
+	int     max_queries;
 	int     connect_failure_retry_delay;
 	char   *postauth_query;
 	char   *allowed_chars;
