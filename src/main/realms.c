@@ -1775,6 +1775,11 @@ home_server *home_server_ldb(const char *realmname,
 			return home;
 		}
 
+		if (!found) {
+			found = home;
+			continue;
+		}
+
 		RDEBUG3("PROXY %s %d\t%s %d",
 		       found->name, found->currently_outstanding,
 		       home->name, home->currently_outstanding);
