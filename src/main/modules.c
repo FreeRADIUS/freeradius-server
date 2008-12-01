@@ -558,7 +558,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	const char *name2 = cf_section_name2(cs);
 
 	rad_assert(comp >= RLM_COMPONENT_AUTH);
-	rad_assert(comp <= RLM_COMPONENT_COUNT);
+	rad_assert(comp < RLM_COMPONENT_COUNT);
 
 	/*
 	 *	Sanity check.
