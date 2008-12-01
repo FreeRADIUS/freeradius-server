@@ -148,7 +148,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 			}
 		}
 
-		if (!log_fp) {
+		if (!log_fp && myconfig->log_file) {
 			fp = fopen(myconfig->log_file, "a");
 			if (!fp) {
 				fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
