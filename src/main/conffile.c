@@ -517,11 +517,13 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 
 				if (!cs->section_tree) {
 					cs->section_tree = rbtree_create(section_cmp, NULL, 0);
-					/* ignore any errors */
+					if (!cs->section_tree) {
+						radlog(L_ERR, "Out of memory");
+						_exit(1);
+					}
 				}
 
-				if (cs->section_tree) {
-					rbtree_insert(cs->section_tree, cs_new);				}
+				rbtree_insert(cs->section_tree, cs_new);
 
 				/*
 				 *	Two names: find the named instance.
