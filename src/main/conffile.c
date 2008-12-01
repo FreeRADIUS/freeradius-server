@@ -1942,10 +1942,12 @@ CONF_SECTION *cf_section_sub_find(const CONF_SECTION *cs, const char *name)
 {
 	CONF_ITEM *ci;
 
+	if (!name) return NULL;	/* can't find an un-named section */
+
 	/*
 	 *	Do the fast lookup if possible.
 	 */
-	if (name && cs->section_tree) {
+	if (cs->section_tree) {
 		CONF_SECTION mycs;
 
 		mycs.name1 = name;
