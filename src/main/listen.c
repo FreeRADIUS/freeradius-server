@@ -962,13 +962,14 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		if (!sock->clients) {
 			cf_log_err(cf_sectiontoitem(config),
 				   "Failed to find any clients for this listen section");
+			listen_free(&this);
 			return -1;
 		}
 
 		if (listen_bind(this) < 0) {
-			listen_free(&this);
 			listen_free(head);
 			radlog(L_ERR, "There appears to be another RADIUS server running on the authentication port %d", sock->port);
+			listen_free(&this);
 			return -1;
 		}
 		auth_port = sock->port;	/* may have been updated in listen_bind */
