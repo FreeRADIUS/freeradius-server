@@ -389,7 +389,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 		len = strlen(buffer);
 	}
 	
-	if (request->module[0]) {
+	if (request && request->module[0]) {
 		snprintf(buffer + len, sizeof(buffer) + len, "[%s] ", request->module);
 		len = strlen(buffer);
 	}
