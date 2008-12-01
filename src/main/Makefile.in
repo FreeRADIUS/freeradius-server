@@ -99,7 +99,7 @@ session.lo: session.c ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c session.c
 
 # It's #include'd for simplicity.  This should be fixed...
-listen.lo: dhcpd.c command.c
+listen.lo: listen.c dhcpd.c command.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c listen.c
 
 #
