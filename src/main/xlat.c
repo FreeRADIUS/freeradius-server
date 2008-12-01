@@ -660,8 +660,8 @@ static void decode_attribute(const char **from, char **to, int freespace,
 		 */
 		int len1, len2;
 		size_t mylen = strlen(p);
-		char *first = rad_malloc(mylen);
-		char *second = rad_malloc(mylen);
+		char *first = rad_malloc(mylen + 1);
+		char *second = rad_malloc(mylen + 1);
 		int expand2 = FALSE;
 
 		len1 = rad_copy_variable(first, p);
