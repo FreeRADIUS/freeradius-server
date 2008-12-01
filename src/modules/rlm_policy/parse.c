@@ -1002,8 +1002,12 @@ static int parse_attribute_block(policy_lex_file_t *lexer,
 	}
 	memset(this, 0, sizeof(*this));
 	this->item.type = POLICY_TYPE_ATTRIBUTE_LIST;
+	this->item.lineno = lexer->lineno;
+	this->where = where;
 
 	token = policy_lex_file(lexer, 0, buffer, sizeof(buffer));
+	this->how = token;
+
 	switch (token) {
 	case POLICY_LEX_BEFORE_WHERE_EQUALS:
 	case POLICY_LEX_AFTER_WHERE_EQUALS:
@@ -1029,14 +1033,6 @@ static int parse_attribute_block(policy_lex_file_t *lexer,
 			fr_int2str(rlm_policy_tokens, token, "?"));
 		return 0;	/* unknown */
 	}
-
-	this = rad_malloc(sizeof(*this));
-	memset(this, 0, sizeof(*this));
-
-	this->item.type = POLICY_TYPE_ATTRIBUTE_LIST;
-	this->item.lineno = lexer->lineno;
-	this->where = where;
-	this->how = token;
 
 	if (!parse_block(lexer, &(this->attributes))) {
 		rlm_policy_free_item((policy_item_t *) this);
