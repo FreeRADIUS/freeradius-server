@@ -526,7 +526,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 	int result = TRUE;
 	int invert = FALSE;
 	int evaluate_next_condition = evaluate_it;
-	const char *p = *ptr;
+	const char *p;
 	const char *q, *start;
 	FR_TOKEN token, lt, rt;
 	char left[1024], right[1024], comp[4];
@@ -539,6 +539,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		return FALSE;
 	}
 
+	p =  *ptr;
 	while (*p) {
 		while ((*p == ' ') || (*p == '\t')) p++;
 
