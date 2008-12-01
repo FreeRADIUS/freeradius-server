@@ -424,7 +424,7 @@ int detail_recv(rad_listen_t *listener,
 			 *	we have.
 			 */
 		case STATE_READING:
-			if (!feof(data->fp)) break;
+			if (data->fp && !feof(data->fp)) break;
 			data->state = STATE_QUEUED;
 
 			/* FALL-THROUGH */
