@@ -799,8 +799,13 @@ static int server_pool_add(realm_config_t *rc,
 
 	cp = cf_pair_find(cs, "virtual_server");
 	if (cp) {
-		pool->virtual_server = cf_pair_value(cp);
-		if (do_print && pool->virtual_server) {
+		pool->virtual_server = cf_pair_value(cp);		
+		if (!pool->virtual_server) {
+			cf_log_err(cf_pairtoitem(cp), "No value given for virtual_server");
+			goto error;
+		}
+
+		if (do_print) {
 			cf_log_info(cs, "\tvirtual_server = %s", pool->virtual_server);
 		}
 
