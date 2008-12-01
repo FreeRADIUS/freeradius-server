@@ -372,6 +372,7 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 		entry->request->child_state = REQUEST_DONE;
 		thread_pool.num_queued--;
 		free(entry);
+		entry = NULL;
 	}
 
 	start = 0;
@@ -399,6 +400,7 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	*request = entry->request;
 	*fun = entry->fun;
 	free(entry);
+	entry = NULL;
 
 	rad_assert(*request != NULL);
 	rad_assert((*request)->magic == REQUEST_MAGIC);
