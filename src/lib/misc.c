@@ -594,6 +594,7 @@ int fr_ipaddr2sockaddr(const fr_ipaddr_t *ipaddr, int port,
 
 		*salen = sizeof(s4);
 
+		memset(&s4, 0, sizeof(s4));
 		s4.sin_family = AF_INET;
 		s4.sin_addr = ipaddr->ipaddr.ip4addr;
 		s4.sin_port = htons(port);
@@ -606,6 +607,7 @@ int fr_ipaddr2sockaddr(const fr_ipaddr_t *ipaddr, int port,
 
 		*salen = sizeof(s6);
 
+		memset(&s6, 0, sizeof(s6));
 		s6.sin6_family = AF_INET6;
 		s6.sin6_addr = ipaddr->ipaddr.ip6addr;
 		s6.sin6_port = htons(port);
