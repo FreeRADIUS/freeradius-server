@@ -1410,6 +1410,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 
 	} else {
 		RDEBUG2("Unknown packet type %d", request->proxy->code);
+		request_free(&fake);
 		return 0;
 	}
 
