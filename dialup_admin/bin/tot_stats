@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 use POSIX;
+use File::Temp;
 
 # Log in the totacct table aggregated daily accounting information for
 # each user.
@@ -48,14 +49,13 @@ $query2 = "INSERT INTO totacct (UserName,AcctDate,ConnNum,ConnTotDuration,
 	AcctStopTime < '$date_end' GROUP BY UserName,NASIPAddress;";
 print "$query1\n";
 print "$query2\n";
-open TMP, ">/tmp/tot_stats.query"
-	or die "Could not open tmp file\n";
-print TMP "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF TZH:TZM';\n" if ($sql_type eq 'oracle');
-print TMP $query1;
-print TMP $query2;
-close TMP;
-$command = "$sqlcmd -h $sql_server -u $sql_username $sql_password $sql_database </tmp/tot_stats.query" if ($sql_type eq 'mysql');
-$command = "$sqlcmd  -U $sql_username -f /tmp/tot_stats.query $sql_database" if ($sql_type eq 'pg');
+my ($fh, $tmp_filename) = tempfile() or die "Could not open tmp file\n";
+print $fh "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF TZH:TZM';\n" if ($sql_type eq 'oracle');
+print $fh $query1;
+print $fh $query2;
+close $fh;
+$command = "$sqlcmd -h $sql_server -u $sql_username $sql_password $sql_database < $tmp_filename" if ($sql_type eq 'mysql');
+$command = "$sqlcmd  -U $sql_username -f  $tmp_filename $sql_database" if ($sql_type eq 'pg');
 $command = "$sqlcmd  $sql_username/$pass" . "@" . "$sql_database <$tmpfile.$server" if ($sql_type eq 'oracle');
-$command = "$sqlcmd '$sql_server' '$sql_port' '' '$sql_username' '$sql_password' </tmp/tot_stats.query" if ($sql_type eq 'sqlrelay');
+$command = "$sqlcmd '$sql_server' '$sql_port' '' '$sql_username' '$sql_password' < $tmp_filename" if ($sql_type eq 'sqlrelay');
 `$command`;

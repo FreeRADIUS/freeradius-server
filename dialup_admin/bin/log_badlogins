@@ -14,6 +14,7 @@
 
 use Date::Manip qw(ParseDate UnixDate);
 use Digest::MD5;
+use File::Temp;
 $|=1;
 
 $file=shift||'none';
@@ -29,7 +30,8 @@ $all_file=shift||'no';
 # CHANGE THESE TO MATCH YOUR SETUP
 #
 #$regexp = 'from client localhost port 135|from client blabla ';
-$tmpfile='/var/tmp/sql.input';
+$tmpdir=tempdir( CLEANUP => 1 );
+$tmpfile="$tmpdir/sql.input";
 #
 $verbose = 0;
 #
