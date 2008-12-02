@@ -5,6 +5,7 @@
 # Works with mysql and postgresql
 #
 use POSIX;
+use File::Temp;
 
 $conf=shift||'/usr/local/dialup_admin/conf/admin.conf';
 $back_days = 90;
@@ -44,13 +45,12 @@ $query = "LOCK TABLES $sql_accounting_table WRITE;" if ($sql_type eq 'mysql');
 $query .= "DELETE FROM $sql_accounting_table WHERE AcctStopTime < '$date' AND AcctStopTime IS NOT NULL ;";
 $query .= "UNLOCK TABLES;" if ($sql_type eq 'mysql');
 print "$query\n";
-open TMP, ">/tmp/truncate_radacct.query"
-        or die "Could not open tmp file\n";
-print TMP "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF TZH:TZM';\n" if ($sql_type eq 'oracle');
-print TMP $query;
-close TMP;
-$command = "$sqlcmd -h$sql_server -u$sql_username $sql_password $sql_database </tmp/truncate_radacct.query" if ($sql_type eq 'mysql');
-$command = "$sqlcmd  -U $sql_username -f /tmp/truncate_radacct.query $sql_database" if ($sql_type eq 'pg');
+my ($fh, $tmp_filename) = tempfile() or die "Could not open tmp file\n";
+print $fh "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF TZH:TZM';\n" if ($sql_type eq 'oracle');
+print $fh $query;
+close $fh;
+$command = "$sqlcmd -h$sql_server -u$sql_username $sql_password $sql_database < $tmp_filename" if ($sql_type eq 'mysql');
+$command = "$sqlcmd  -U $sql_username -f  $tmp_filename $sql_database" if ($sql_type eq 'pg');
 $command = "$sqlcmd  $sql_username/$pass" . "@" . "$sql_database <$tmpfile.$server" if ($sql_type eq 'oracle');
-$command = "$sqlcmd '$sql_server' '$sql_port' '' '$sql_username' '$sql_password' </tmp/truncate_radacct.query" if ($sql_type eq 'sqlrelay');
+$command = "$sqlcmd '$sql_server' '$sql_port' '' '$sql_username' '$sql_password' < $tmp_filename" if ($sql_type eq 'sqlrelay');
 `$command`;
