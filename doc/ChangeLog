@@ -1,4 +1,4 @@
-FreeRADIUS 2.1.2 Fri Oct 31 12:00:00 CEST 2008;  , urgency=medium
+FreeRADIUS 2.1.2 Wed Dec 2 12:00:00 CEST 2008;  , urgency=medium
 	Feature improvements
 	* Allow running with "user=radiusd" and binding to secure
 	  sockets.
@@ -31,6 +31,9 @@ FreeRADIUS 2.1.2 Fri Oct 31 12:00:00 CEST 2008;  , urgency=medium
 	  Closes #596.
 	* Increase default schema size for Acct-Session-Id to 64.
 	  Closes #540.
+	* Fix use of temporary files in dialup-admin.  Closes #605
+	  and addresses CVE-2008-4474.
+	* Addressed a number of minor issues found by Coverity.
 
 FreeRADIUS 2.1.1 Thu Sep 25 11:03:00 CEST 2008;  , urgency=medium
 	Feature improvements
