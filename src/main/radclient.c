@@ -706,11 +706,12 @@ static int recv_one_packet(int wait_time)
 				   reply->code);
 	deallocate_id(radclient);
 	radclient->reply = reply;
+	reply = NULL;
 
 	/*
 	 *	If this fails, we're out of memory.
 	 */
-	if (rad_decode(reply, radclient->request, secret) != 0) {
+	if (rad_decode(radclient->reply, radclient->request, secret) != 0) {
 		fr_perror("rad_decode");
 		totallost++;
 		goto packet_done;
@@ -719,10 +720,11 @@ static int recv_one_packet(int wait_time)
 	/* libradius debug already prints out the value pairs for us */
 	if (!fr_debug_flag && do_output) {
 		printf("Received response ID %d, code %d, length = %d\n",
-		       reply->id, reply->code, reply->data_len);
-		vp_printlist(stdout, reply->vps);
+		       radclient->reply->id, radclient->reply->code,
+		       radclient->reply->data_len);
+		vp_printlist(stdout, radclient->reply->vps);
 	}
-	if (reply->code != PW_AUTHENTICATION_REJECT) {
+	if (radclient->reply->code != PW_AUTHENTICATION_REJECT) {
 		totalapp++;
 	} else {
 		totaldeny++;
@@ -734,6 +736,7 @@ static int recv_one_packet(int wait_time)
 
  packet_done:
 	rad_free(&radclient->reply);
+	rad_free(&reply);	/* may be NULL */
 
 	return 0;
 }
