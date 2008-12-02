@@ -140,17 +140,17 @@ static void radclient_free(radclient_t *radclient)
 }
 
 /*
- *	Initialize a radclient data structure
+ *	Initialize a radclient data structure and add it to
+ *	the global linked list.
  */
-static radclient_t *radclient_init(const char *filename)
+static int radclient_init(const char *filename)
 {
 	FILE *fp;
 	VALUE_PAIR *vp;
-	radclient_t *start, *radclient, *prev = NULL;
+	radclient_t *radclient;
 	int filedone = 0;
 	int packet_number = 1;
 
-	start = NULL;
 	assert(filename != NULL);
 
 	/*
@@ -161,7 +161,7 @@ static radclient_t *radclient_init(const char *filename)
 		if (!fp) {
 			fprintf(stderr, "radclient: Error opening %s: %s\n",
 				filename, strerror(errno));
-			return NULL;
+			return 0;
 		}
 	} else {
 		fp = stdin;
@@ -178,16 +178,16 @@ static radclient_t *radclient_init(const char *filename)
 		if (!radclient) {
 			perror("radclient: X");
 			if (fp != stdin) fclose(fp);
-			return NULL; /* memory leak "start" */
+			return 0;
 		}
 		memset(radclient, 0, sizeof(*radclient));
 
 		radclient->request = rad_alloc(1);
 		if (!radclient->request) {
 			fr_perror("radclient: Y");
-			radclient_free(radclient);
+			free(radclient);
 			if (fp != stdin) fclose(fp);
-			return NULL; /* memory leak "start" */
+			return 0;
 		}
 
 		radclient->filename = filename;
@@ -199,9 +199,10 @@ static radclient_t *radclient_init(const char *filename)
 		 */
 		radclient->request->vps = readvp2(fp, &filedone, "radclient:");
 		if (!radclient->request->vps) {
-			radclient_free(radclient);
+			rad_free(&radclient->request);
+			free(radclient);
 			if (fp != stdin) fclose(fp);
-			return start; /* done: return the list */
+			return 1;
 		}
 
 		/*
@@ -285,14 +286,21 @@ static radclient_t *radclient_init(const char *filename)
 			}
 		} /* loop over the VP's we read in */
 
-		if (!start) {
-			start = radclient;
-			prev = start;
+		/*
+		 *	Add it to the tail of the list.
+		 */
+		if (!radclient_head) {
+			assert(radclient_tail == NULL);
+			radclient_head = radclient;
+			radclient->prev = NULL;
 		} else {
-			prev->next = radclient;
-			radclient->prev = prev;
-			prev = radclient;
+			assert(radclient_tail->next == NULL);
+			radclient_tail->next = radclient;
+			radclient->prev = radclient_tail;
 		}
+		radclient_tail = radclient;
+		radclient->next = NULL;
+
 	} while (!filedone); /* loop until the file is done. */
 
 	if (fp != stdin) fclose(fp);
@@ -300,7 +308,7 @@ static radclient_t *radclient_init(const char *filename)
 	/*
 	 *	And we're done.
 	 */
-	return start;
+	return 1;
 }
 
 
@@ -346,34 +354,15 @@ static int filename_cmp(const void *one, const void *two)
 static int filename_walk(void *context, void *data)
 {
 	const char	*filename = data;
-	radclient_t	*radclient;
 
 	context = context;	/* -Wunused */
 
 	/*
-	 *	Initialize the request we're about
-	 *	to send.
+	 *	Read request(s) from the file.
 	 */
-	radclient = radclient_init(filename);
-	if (!radclient) {
-		exit(1);
+	if (!radclient_init(filename)) {
+		return 1;	/* stop walking */
 	}
-
-	if (!radclient_head) {
-		assert(radclient_tail == NULL);
-		radclient_head = radclient;
-	} else {
-		assert(radclient_tail->next == NULL);
-		radclient_tail->next = radclient;
-		radclient->prev = radclient_tail;
-	}
-
-	/*
-	 *	We may have had a list of "radclient" structures
-	 *	returned to us.
-	 */
-	while (radclient->next) radclient = radclient->next;
-	radclient_tail = radclient;
 
 	return 0;
 }
@@ -1185,6 +1174,7 @@ int main(int argc, char **argv)
 
 	rbtree_free(filename_tree);
 	fr_packet_list_free(pl);
+	while (radclient_head) radclient_free(radclient_head);
 	dict_free();
 
 	if (do_summary) {
