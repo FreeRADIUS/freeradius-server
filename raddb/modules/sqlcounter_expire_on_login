@@ -1,0 +1,24 @@
+# -*- text -*-
+#
+#  $Id$
+
+#
+#  Set an account to expire T seconds after first login.
+#  Requires the Expire-After attribute to be set, in seconds.
+#  You may need to edit raddb/dictionary to add the Expire-After
+#  attribute.
+#
+#  This example is for MySQL.  Other SQL variants should be similar.
+#
+sqlcounter expire_on_login {
+	counter-name = Expire-After-Initial-Login
+	check-name = Expire-After
+	sqlmod-inst = sql
+	key = User-Name
+	reset = never
+	query = "SELECT TIME_TO_SEC(TIMEDIFF(NOW(), acctstarttime)) \
+		 FROM radacct \
+		 WHERE UserName='%{%k}' \
+		 ORDER BY acctstarttime \
+		 LIMIT 1;"
+}
