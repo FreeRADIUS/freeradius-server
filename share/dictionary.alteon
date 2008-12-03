@@ -12,12 +12,12 @@ BEGIN-VENDOR	Alteon
 
 ATTRIBUTE	Alteon-Group-Mapping			1	string
 ATTRIBUTE	Alteon-VPN-Id				3	integer
-ATTRIBUTE	Alteon-Client-IP-Address		4	string
-ATTRIBUTE	Alteon-Client-Netmask			5	string
-ATTRIBUTE	Alteon-Primary-NBNS-Server		6	string
-ATTRIBUTE	Alteon-Secondary-NBNS-Server		7	string
-ATTRIBUTE	Alteon-Primary-DNS-Server		8	string
-ATTRIBUTE	Alteon-Secondary-DNS-Server		9	string
+ATTRIBUTE	Alteon-Client-IP-Address		4	ipaddr
+ATTRIBUTE	Alteon-Client-Netmask			5	ipaddr
+ATTRIBUTE	Alteon-Primary-NBNS-Server		6	ipaddr
+ATTRIBUTE	Alteon-Secondary-NBNS-Server		7	ipaddr
+ATTRIBUTE	Alteon-Primary-DNS-Server		8	ipaddr
+ATTRIBUTE	Alteon-Secondary-DNS-Server		9	ipaddr
 ATTRIBUTE	Alteon-Domain-Name			10	string
 
 ATTRIBUTE	Alteon-Service-Type			26	integer
