@@ -500,7 +500,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			      &listen_port, "0");
 	if (rcode < 0) return -1;
 
-	if ((listen_port < 0) || (listen_port > 65500)) {
+	if ((listen_port < 0) || (listen_port > 65535)) {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Invalid value for \"port\"");
 			return -1;
