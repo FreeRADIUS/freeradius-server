@@ -1,3 +1,28 @@
+freeradius (2.1.2-0) unstable; urgency=medium
+  * Allow running with "user=radiusd" and binding to secure sockets.
+  * Start sending Status-Server "are you alive" messages earlier, which helps with proxying multiple realms to a home server.
+  * Removed thread pool code from rlm_perl.  It's not necessary.
+  * Added example Perl configuration to raddb/modules/perl
+  * Force OpenSSL to support certificates with SHA256. This seems to be necessary for WiMAX certs.
+  * Fix Debian patch to allow it to build.
+  * Fix potential NULL dereference in debugging mode on certain platforms for TTLS and PEAP inner tunnels.
+  * Fix uninitialized memory in handling of vendor definitions
+  * Fix parsing of quoted (but non-string) attributes in the "users" file.
+  * Initialize uknown NAS IP to 255.255.255.255, rather than 0.0.0.0
+  * use SUN_LEN in control socket, to avoid truncation on some platforms.
+  * Correct internal handling of "debug condition" to prevent it from being over-written.
+  * Check return code of regcomp in "unlang", so that invalid regular expressions are caught rather than mishandled.
+  * Make rlm_sql use <ltdl.h>.  Addresses bug #610.
+  * Document list "type = status" better.  Closes bug #580.
+  * Set "default days" for certificates, because OpenSSL won't do it.  This closes bug #615.
+  * Reference correct list in example raddb/modules/ldap. Closes #596.
+  * Increase default schema size for Acct-Session-Id to 64. Closes #540.
+  * Fix use of temporary files in dialup-admin.  Closes #605 and addresses CVE-2008-4474.
+  * Addressed a number of minor issues found by Coverity.
+  * Added DHCP option 150 to the dictionary.  Closes #618.
+
+ -- Alan DeKok <aland@freeradius.org>  Thu, 03 Dec 2008 10:47:00 +0100
+
 freeradius (2.1.1-0) unstable; urgency=medium
   * Many more options and features in radmin.  See "man radmin" and raddb/sites-available/control-socket
   * Many more commands available via the control socket.  Connect via "radmin", and type "help" for more information.
