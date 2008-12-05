@@ -1,4 +1,4 @@
-freeradius (2.1.2-0) unstable; urgency=medium
+freeradius (2.1.3-0) unstable; urgency=medium
   * Allow running with "user=radiusd" and binding to secure sockets.
   * Start sending Status-Server "are you alive" messages earlier, which helps with proxying multiple realms to a home server.
   * Removed thread pool code from rlm_perl.  It's not necessary.
@@ -21,6 +21,10 @@ freeradius (2.1.2-0) unstable; urgency=medium
   * Addressed a number of minor issues found by Coverity.
   * Added DHCP option 150 to the dictionary.  Closes #618.
 
+ -- Alan DeKok <aland@freeradius.org>  Fri, 04 Dec 2008 17:40:00 +0100
+
+freeradius (2.1.2-0) unstable; urgency=medium
+  * Due to packaging issues. 2.1.2 has been pulled from the net.
  -- Alan DeKok <aland@freeradius.org>  Thu, 03 Dec 2008 10:47:00 +0100
 
 freeradius (2.1.1-0) unstable; urgency=medium
