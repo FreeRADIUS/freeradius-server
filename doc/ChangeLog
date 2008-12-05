@@ -1,4 +1,4 @@
-FreeRADIUS 2.1.2 Thurs Dec 3 10:47:00 CEST 2008;  , urgency=medium
+FreeRADIUS 2.1.2 Fri Dec 5 17:40:00 CEST 2008;  , urgency=medium
 	Feature improvements
 	* Allow running with "user=radiusd" and binding to secure
 	  sockets.
@@ -35,6 +35,9 @@ FreeRADIUS 2.1.2 Thurs Dec 3 10:47:00 CEST 2008;  , urgency=medium
 	  and addresses CVE-2008-4474.
 	* Addressed a number of minor issues found by Coverity.
 	* Added DHCP option 150 to the dictionary.  Closes #618.
+
+FreeRADIUS 2.1.2 Thurs Dec 3 10:47:00 CEST 2008;  , urgency=medium
+	Due to packaging issues, 2.1.2 has been pulled from the net.
 
 FreeRADIUS 2.1.1 Thu Sep 25 11:03:00 CEST 2008;  , urgency=medium
 	Feature improvements
