@@ -155,13 +155,13 @@ certs:
 #
 ######################################################################
 freeradius-server-$(RADIUSD_VERSION).tar.gz: .git
-	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/ master | gzip > $@
+	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/ stable | gzip > $@
 
 freeradius-server-$(RADIUSD_VERSION).tar.gz.sig: freeradius-server-$(RADIUSD_VERSION).tar.gz
 	gpg --default-key aland@freeradius.org -b $<
 
 freeradius-server-$(RADIUSD_VERSION).tar.bz2: .git
-	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/ master | bzip2 > $@
+	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/ stable | bzip2 > $@
 
 freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig: freeradius-server-$(RADIUSD_VERSION).tar.bz2
 	gpg --default-key aland@freeradius.org -b $<
@@ -187,7 +187,8 @@ dist: dist-check freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$
 dist-sign: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig
 
 dist-publish: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2 freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig
-	scp $^ freeradius.org@freeradius.org:public_ftp
+	scp $^ freeradius.org@ns5.freeradius.org:public_ftp
+	scp $^ freeradius.org@www.tr.freeradius.org:public_ftp
 
 #
 #  Note that we do NOT do the tagging here!  We just print out what
