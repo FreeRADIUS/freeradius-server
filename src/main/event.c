@@ -2857,7 +2857,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	if (!el) return 0;
 
 	pl = fr_packet_list_create(0);
-	if (!el) return 0;
+	if (!pl) return 0;	/* leak el */
 
 	request_num_counter = 0;
 
