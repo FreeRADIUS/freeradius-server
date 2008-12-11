@@ -254,6 +254,7 @@ static ssize_t run_command(int sockfd, const char *command,
 	return 2;
 }
 
+#define MAX_COMMANDS (4)
 
 int main(int argc, char **argv)
 {
@@ -269,6 +270,9 @@ int main(int argc, char **argv)
 	const char *input_file = NULL;
 	FILE *inputfp = stdin;
 	const char *output_file = NULL;
+	
+	char *commands[MAX_COMMANDS];
+	int num_commands = -1;
 
 	outputfp = stdout;	/* stdout is not a constant value... */
 
@@ -288,7 +292,13 @@ int main(int argc, char **argv)
 			break;
 
 		case 'e':
-			line = optarg;
+			num_commands++; /* starts at -1 */
+			if (num_commands >= MAX_COMMANDS) {
+				fprintf(stderr, "%s: Too many '-e'\n",
+					progname);
+				exit(1);
+			}
+			commands[num_commands] = optarg;
 			break;
 
 		case 'E':
@@ -452,14 +462,18 @@ int main(int argc, char **argv)
 	/*
 	 *	Run one command.
 	 */
-	if (line) {
-		size = run_command(sockfd, line, buffer, sizeof(buffer));
-		if (size < 0) exit(1);
-		if ((size == 0) || (size == 1)) exit(0);
+	if (num_commands >= 0) {
+		int i;
 
-		fputs(buffer, outputfp);
-		fprintf(outputfp, "\n");
-		fflush(outputfp);
+		for (i = 0; i <= num_commands; i++) {
+			size = run_command(sockfd, commands[i],
+					   buffer, sizeof(buffer));
+			if (size < 0) exit(1);
+			
+			fputs(buffer, outputfp);
+			fprintf(outputfp, "\n");
+			fflush(outputfp);
+		}
 		exit(0);
 	}
 
