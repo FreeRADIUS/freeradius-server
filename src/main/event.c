@@ -1278,7 +1278,7 @@ static int request_pre_handler(REQUEST *request)
 						  &my_debug, 1,
 						  &result);
 			if (result) {
-				request->priority = 2;
+				request->options = 2;
 				request->radlog = radlog_request;
 			}
 		}
