@@ -30,6 +30,9 @@
 
 #ifdef HAVE_SYS_UN_H
 #include <sys/un.h>
+#ifndef SUN_LEN
+#define SUN_LEN(su)  (sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
+#endif
 #endif
 
 #ifdef HAVE_SYS_STAT_H
@@ -237,6 +240,19 @@ static int fr_server_domain_socket(const char *path)
 	return sockfd;
 }
 
+static void command_close_socket(rad_listen_t *this)
+{
+	this->status = RAD_LISTEN_STATUS_CLOSED;
+
+	/*
+	 *	This removes the socket from the event fd, so no one
+	 *	will be calling us any more.
+	 */
+	event_new_fd(this);
+
+	listen_free(&this);
+}
+
 
 static ssize_t cprintf(rad_listen_t *listener, const char *fmt, ...)
 {
@@ -251,10 +267,7 @@ static ssize_t cprintf(rad_listen_t *listener, const char *fmt, ...)
 	if (listener->status == RAD_LISTEN_STATUS_CLOSED) return 0;
 
 	len = write(listener->fd, buffer, len);
-	if (len < 0) {
-		listener->status = RAD_LISTEN_STATUS_CLOSED;
-		event_new_fd(listener);
-	}
+	if (len <= 0) command_close_socket(listener);
 
 	/*
 	 *	FIXME: Keep writing until done?
@@ -1598,8 +1611,7 @@ static int command_domain_recv(rad_listen_t *listener,
 		 */
 		if ((co->offset == 0) && (co->buffer[0] == 0x04)) {
 		close_socket:
-			listener->status = RAD_LISTEN_STATUS_CLOSED;
-			event_new_fd(listener);
+			command_close_socket(listener);
 			return 0;
 		}
 
