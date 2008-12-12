@@ -47,7 +47,6 @@ RCSID("$Id$")
 #endif
 #endif
 
-
 #ifdef WITH_UNLANG
 
 static int all_digits(const char *string)
@@ -539,11 +538,14 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		return FALSE;
 	}
 
+	/*
+	 *	Horrible parser.
+	 */
 	p =  *ptr;
 	while (*p) {
 		while ((*p == ' ') || (*p == '\t')) p++;
 
-		if (*p == '!') {
+		if (!found_condition && (*p == '!')) {
 			RDEBUG4(">>> INVERT");
 			invert = TRUE;
 			p++;
@@ -552,14 +554,14 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		/*
 		 *	It's a subcondition.
 		 */
-		if (*p == '(') {
+		if (!found_condition && (*p == '(')) {
 			const char *end = p + 1;
 
 			/*
 			 *	Evaluate the condition, bailing out on
 			 *	parse error.
 			 */
-			RDEBUG4(">>> CALLING EVALUATE %s", end);
+			RDEBUG4(">>> RECURSING WITH ... %s", end);
 			if (!radius_evaluate_condition(request, modreturn,
 						       depth + 1, &end,
 						       evaluate_next_condition,
@@ -567,13 +569,13 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 				return FALSE;
 			}
 
-			if (invert && evaluate_next_condition) {
+			if (invert) {
+				if (evaluate_next_condition)
 				RDEBUG2("%.*s Converting !%s -> %s",
 				       depth, filler,
 				       (result != FALSE) ? "TRUE" : "FALSE",
 				       (result == FALSE) ? "TRUE" : "FALSE");
 
-				       
 				result = (result == FALSE);
 				invert = FALSE;
 			}
@@ -583,74 +585,69 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			 *	condition
 			 */
 			p = end;
-			RDEBUG4(">>> EVALUATE RETURNED ::%s::", end);
-			
-			if (!((*p == ')') || (*p == '!') ||
-			      ((p[0] == '&') && (p[1] == '&')) ||
-			      ((p[0] == '|') && (p[1] == '|')))) {
+			RDEBUG4(">>> AFTER RECURSION ... %s", end);
 
-				radlog(L_ERR, "Parse error in condition at: %s", p);
-				return FALSE;
-			}
-			if (*p == ')') p++;	/* skip it */
-			found_condition = TRUE;
-			
 			while ((*p == ' ') || (*p == '\t')) p++;
 
-			/*
-			 *	EOL.  It's OK.
-			 */
 			if (!*p) {
-				RDEBUG4(">>> AT EOL");
-				*ptr = p;
-				*presult = result;
-				return TRUE;
-				
-				/*
-				 *	(A && B) means "evaluate B
-				 *	only if A was true"
-				 */
-			} else if ((p[0] == '&') && (p[1] == '&')) {
-				if (result == TRUE) {
-					evaluate_next_condition = evaluate_it;
-				} else {
-					evaluate_next_condition = FALSE;
-				}
-				p += 2;
-				
-				/*
-				 *	(A || B) means "evaluate B
-				 *	only if A was false"
-				 */
-			} else if ((p[0] == '|') && (p[1] == '|')) {
-				if (result == FALSE) {
-					evaluate_next_condition = evaluate_it;
-				} else {
-					evaluate_next_condition = FALSE;
-				}
-				p += 2;
-
-			} else if (*p == ')') {
-				RDEBUG4(">>> CLOSING BRACE");
-				*ptr = p;
-				*presult = result;
-				return TRUE;
-
-			} else {
-				/*
-				 *	Parse error
-				 */
-				radlog(L_ERR, "Unexpected trailing text at: %s", p);
+				radlog(L_ERR, "No closing brace");
 				return FALSE;
 			}
-		} /* else it wasn't an opening brace */
+
+			if (*p == ')') p++; /* eat closing brace */
+			found_condition = TRUE;
+		}
 
 		while ((*p == ' ') || (*p == '\t')) p++;
 
 		/*
-		 *	More conditions, keep going.
+		 *	At EOL or closing brace, update && return.
 		 */
-		if ((*p == '(') || (p[0] == '!')) continue;
+		if (found_condition && (!*p || (*p == ')'))) break;
+
+		/*
+		 *	Now it's either:
+		 *
+		 *	WORD
+		 *	WORD1 op WORD2
+		 *	&& condition
+		 *	|| condition
+		 */
+		if (found_condition) {
+			/*
+			 *	(A && B) means "evaluate B
+			 *	only if A was true"
+			 */
+			if ((p[0] == '&') && (p[1] == '&')) {
+				if (!result) evaluate_next_condition = FALSE;
+				p += 2;
+				found_condition = FALSE;
+				continue; /* go back to the start */
+			}
+
+			/*
+			 *	(A || B) means "evaluate B
+			 *	only if A was false"
+			 */
+			if ((p[0] == '|') && (p[1] == '|')) {
+				if (result) evaluate_next_condition = FALSE;
+				p += 2;
+				found_condition = FALSE;
+				continue;
+			}
+
+			/*
+			 *	It must be:
+			 *
+			 *	WORD
+			 *	WORD1 op WORD2
+			 */
+		}
+
+		if (found_condition) {
+			radlog(L_ERR, "Consecutive conditions at %s", p);
+			return FALSE;
+		}
 
 		RDEBUG4(">>> LOOKING AT %s", p);
 		start = p;
@@ -664,7 +661,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		}
 
 		/*
-		 *	Look for word == value
+		 *	Look for WORD1 op WORD2
 		 */
 		lt = gettoken(&p, left, sizeof(left));
 		if ((lt != T_BARE_WORD) &&
@@ -687,23 +684,34 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		}
 
 		/*
-		 *	Peek ahead.  Maybe it's just a check for
-		 *	existence.  If so, there shouldn't be anything
-		 *	else.
+		 *	Peek ahead, to see if it's:
+		 *
+		 *	WORD
+		 *
+		 *	or something else, such as
+		 *
+		 *	WORD1 op WORD2
+		 *	WORD )
+		 *	WORD && condition
+		 *	WORD || condition
 		 */
 		q = p;
 		while ((*q == ' ') || (*q == '\t')) q++;
 
 		/*
-		 *	End of condition, 
+		 *	If the next thing is:
+		 *
+		 *	EOL
+		 *	end of condition
+		 *      &&
+		 *	||
+		 *
+		 *	Then WORD is just a test for existence.
+		 *	Remember that and skip ahead.
 		 */
 		if (!*q || (*q == ')') ||
-		    ((*q == '!') && (q[1] != '=') && (q[1] != '~')) ||
 		    ((q[0] == '&') && (q[1] == '&')) ||
 		    ((q[0] == '|') && (q[1] == '|'))) {
-			/*
-			 *	Simplify the code.
-			 */
 			token = T_OP_CMP_TRUE;
 			rt = T_OP_INVALID;
 			pright = NULL;
@@ -711,7 +719,9 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		}
 
 		/*
-		 *	Else it's a full "foo == bar" thingy.
+		 *	Otherwise, it's:
+		 *
+		 *	WORD1 op WORD2
 		 */
 		token = gettoken(&p, comp, sizeof(comp));
 		if ((token < T_OP_NE) || (token > T_OP_CMP_EQ) ||
@@ -776,11 +786,17 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 				return FALSE;
 			}
 
+			if (invert) {
+				RDEBUG4(">>> INVERTING result");
+				result = (result == FALSE);
+			}
+
 			RDEBUG2("%.*s Evaluating %s(%.*s) -> %s",
 			       depth, filler,
 			       invert ? "!" : "", p - start, start,
 			       (result != FALSE) ? "TRUE" : "FALSE");
 
+			invert = FALSE;
 			RDEBUG4(">>> GOT result %d", result);
 
 			/*
@@ -793,37 +809,12 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			       invert ? "!" : "", p - start, start);
 		}
 
-		if (invert) {
-			RDEBUG4(">>> INVERTING result");
-			result = (result == FALSE);
-			invert = FALSE;
-		}
-
-		/*
-		 *	Don't evaluate it.
-		 */
-		RDEBUG4(">>> EVALUATE %d ::%s::",
-			evaluate_next_condition, p);
-
-		while ((*p == ' ') || (*p == '\t')) p++;
-
-		/*
-		 *	Closing brace or EOL, return.
-		 */
-		if (!*p || (*p == ')') ||
-		    ((*p == '!') && (p[1] != '=') && (p[1] != '~')) ||
-		    ((p[0] == '&') && (p[1] == '&')) ||
-		    ((p[0] == '|') && (p[1] == '|'))) {
-			RDEBUG4(">>> AT EOL2a");
-			*ptr = p;
-			if (evaluate_next_condition) *presult = result;
-			return TRUE;
-		}
+		found_condition = TRUE;
 	} /* loop over the input condition */
 
-	RDEBUG4(">>> AT EOL2b");
+	RDEBUG4(">>> AT EOL -> %d", result);
 	*ptr = p;
-	if (evaluate_next_condition) *presult = result;
+	if (evaluate_it) *presult = result;
 	return TRUE;
 }
 #endif
