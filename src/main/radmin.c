@@ -33,6 +33,9 @@ RCSID("$Id$")
 
 #ifdef HAVE_SYS_UN_H
 #include <sys/un.h>
+#ifndef SUN_LEN
+#define SUN_LEN(su)  (sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
+#endif
 #endif
 
 #ifdef HAVE_GETOPT_H
