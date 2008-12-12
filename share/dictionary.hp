@@ -14,7 +14,7 @@ BEGIN-VENDOR	HP
 
 ATTRIBUTE	HP-Privilege-Level			1	integer
 ATTRIBUTE	HP-Command-String			2	string
-ATTRIBUTE	HP-Command-Exception-Flag		3	integer
+ATTRIBUTE	HP-Command-Exception			3	integer
 ATTRIBUTE	HP-Management-Protocol			26	integer
 
 #
@@ -32,6 +32,10 @@ ATTRIBUTE	HP-Bandwidth-Max-Ingress		46	integer
 ATTRIBUTE	HP-Bandwidth-Max-Egress			48	integer
 
 ATTRIBUTE	HP-Ip-Filter-Raw			61	string
+
+# HP-Command-Exception Attribute Values
+VALUE	HP-Command-Exception		Permit-List		0
+VALUE	HP-Command-Exception		Deny-List		1
 
 # HP-Management-Protocol
 VALUE	HP-Management-Protocol		HTTP			5
