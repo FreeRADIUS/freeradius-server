@@ -400,6 +400,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
   fake->parent = request;
   fake->root = request->root;
   fake->client = request->client;
+  fake->process = request->process;
 
   /*
    *	For new server support.
