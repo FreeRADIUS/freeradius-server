@@ -812,6 +812,11 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		found_condition = TRUE;
 	} /* loop over the input condition */
 
+	if (!found_condition) {
+		radlog(L_ERR, "Syntax error.  Expected condition at %s", p);
+		return FALSE;
+	}
+
 	RDEBUG4(">>> AT EOL -> %d", result);
 	*ptr = p;
 	if (evaluate_it) *presult = result;
