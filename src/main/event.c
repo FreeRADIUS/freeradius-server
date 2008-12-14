@@ -2781,67 +2781,6 @@ static void event_status(struct timeval *wake)
 
 }
 
-#if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
-static void fr_suid_up(void)
-{
-	uid_t ruid, euid, suid;
-	
-	if (getresuid(&ruid, &euid, &suid) < 0) {
-		radlog(L_ERR, "Failed getting saved UID's");
-		_exit(1);
-	}
-
-	if (setresuid(-1, suid, -1) < 0) {
-		radlog(L_ERR, "Failed switching to privileged user");
-		_exit(1);
-	}
-
-	if (geteuid() != suid) {
-		radlog(L_ERR, "Switched to unknown UID");
-		_exit(1);
-	}
-}
-
-extern uid_t server_uid;
-extern int did_setuid;
-static void fr_suid_down(void)
-{
-	uid_t ruid, euid, suid;
-
-	if (!did_setuid) return;
-
-	if (getresuid(&ruid, &euid, &suid) < 0) {
-		radlog(L_ERR, "Failed getting saved UID's");
-		_exit(1);
-	}
-
-	if (setresuid(server_uid, server_uid, server_uid) < 0) {
-		radlog(L_ERR, "Failed to permanently switch UID to %u: %s",
-		       server_uid, strerror(errno));
-		_exit(1);
-	}
-
-	if (geteuid() != server_uid) {
-		radlog(L_ERR, "Switched to unknown UID");
-		_exit(1);
-	}
-
-
-	if (getresuid(&ruid, &euid, &suid) < 0) {
-		radlog(L_ERR, "Failed getting saved UID's: %s",
-		       strerror(errno));
-		_exit(1);
-	}
-}
-#else
-/*
- *	Much less secure...
- */
-#define fr_suid_up()
-#define fr_suid_down()
-#endif
-
-
 /*
  *	Externally-visibly functions.
  */
@@ -2952,13 +2891,24 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
        DEBUG("%s: #### Opening IP addresses and Ports ####",
 	       mainconfig.name);
 
-       fr_suid_up();		/* sockets may bind to privileged ports */
-
+       /*
+	*	The server temporarily switches to an unprivileged
+	*	user very early in the bootstrapping process.
+	*	However, some sockets MAY require privileged access
+	*	(bind to device, or to port < 1024, or to raw
+	*	sockets).  Those sockets need to call suid up/down
+	*	themselves around the functions that need a privileged
+	*	uid.
+	*/
 	if (listen_init(cs, &head) < 0) {
 		_exit(1);
 	}
 	
-	fr_suid_down();
+	/*
+	 *	At this point, no one has any business *ever* going
+	 *	back to root uid.
+	 */
+	fr_suid_down_permanent();
 
 	/*
 	 *	Add all of the sockets to the event loop.
