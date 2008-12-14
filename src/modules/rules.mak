@@ -106,12 +106,18 @@ endif
 #
 #######################################################################
 
+#
+#  We can't use $(PWD), because that's apparently where the "make"
+#  started.  Any child builds (make -C foo) don't change PWD.
+#
+WHERE=$(shell pwd)
+
 build-module: $(TARGET).la $(RLM_UTILS)
 	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=all common
 	@[ -d $(top_builddir)/src/modules/lib/.libs ] || mkdir $(top_builddir)/src/modules/lib/.libs
 	for x in .libs/* $^; do \
 		rm -rf $(top_builddir)/src/modules/lib/$$x; \
-		ln -s $(PWD)/$(TARGET)/$$x $(top_builddir)/src/modules/lib/$$x; \
+		ln -s $(WHERE)/$$x $(top_builddir)/src/modules/lib/$$x; \
 	done
 
 $(TARGET).la: $(LT_OBJS)
