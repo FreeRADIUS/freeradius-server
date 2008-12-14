@@ -406,6 +406,95 @@ static int r_mkdir(const char *part)
 #ifndef __MINGW32__
 int did_setuid = FALSE;
 
+#if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
+void fr_suid_up(void)
+{
+	uid_t ruid, euid, suid;
+	
+	if (getresuid(&ruid, &euid, &suid) < 0) {
+		radlog(L_ERR, "Failed getting saved UID's");
+		_exit(1);
+	}
+
+	if (setresuid(-1, suid, -1) < 0) {
+		radlog(L_ERR, "Failed switching to privileged user");
+		_exit(1);
+	}
+
+	if (geteuid() != suid) {
+		radlog(L_ERR, "Switched to unknown UID");
+		_exit(1);
+	}
+}
+
+void fr_suid_down(void)
+{
+	if (!did_setuid) return;
+
+	if (setresuid(-1, server_uid, geteuid()) < 0) {
+		fprintf(stderr, "%s: Failed switching to uid %s: %s\n",
+			progname, uid_name, strerror(errno));
+		_exit(1);
+	}
+		
+	if (geteuid() != server_uid) {
+		fprintf(stderr, "%s: Failed switching uid: UID is incorrect\n",
+			progname);
+		_exit(1);
+	}
+}
+
+void fr_suid_down_permanent(void)
+{
+	uid_t ruid, euid, suid;
+
+	if (!did_setuid) return;
+
+	if (getresuid(&ruid, &euid, &suid) < 0) {
+		radlog(L_ERR, "Failed getting saved uid's");
+		_exit(1);
+	}
+
+	if (setresuid(server_uid, server_uid, server_uid) < 0) {
+		radlog(L_ERR, "Failed in permanent switch to uid %s: %s",
+		       uid_name, strerror(errno));
+		_exit(1);
+	}
+
+	if (geteuid() != server_uid) {
+		radlog(L_ERR, "Switched to unknown uid");
+		_exit(1);
+	}
+
+
+	if (getresuid(&ruid, &euid, &suid) < 0) {
+		radlog(L_ERR, "Failed getting saved uid's: %s",
+		       strerror(errno));
+		_exit(1);
+	}
+}
+#else
+/*
+ *	Much less secure...
+ */
+void fr_suid_up(void)
+{
+}
+void fr_suid_down(void)
+{
+	if (!uid_name) return;
+
+	if (setuid(server_uid) < 0) {
+		fprintf(stderr, "%s: Failed switching to uid %s: %s\n",
+			progname, uid_name, strerror(errno));
+		_exit(1);
+	}
+}
+void fr_suid_down_permanent(void)
+{
+}
+#endif
+
 /*
  *  Do chroot, if requested.
  *
@@ -511,31 +600,14 @@ static int switch_users(CONF_SECTION *cs)
 
 #ifdef HAVE_PWD_H
 	if (uid_name) {
+		fr_suid_down();
 
-#ifndef HAVE_SETRESUID
-/*
- *	Fake out setresuid with something that's close.
- */
-#define setresuid(_a, _b, _c) setuid(_b)
-#endif
-
-		if (setresuid(-1, server_uid, geteuid()) < 0) {
-			fprintf(stderr, "%s: Failed switching uid: %s\n",
-				progname, strerror(errno));
-			return 0;
-		}
+		/*
+		 *	Now core dumps are disabled on most secure systems.
+		 */
 		
-		if (geteuid() != server_uid) {
-			fprintf(stderr, "%s: Failed switching uid: UID is incorrect\n",
-				progname);
-			return 0;
-		}
+		did_setuid = TRUE;
 	}
-
-	/*
-	 *	Now core dumps are disabled on most secure systems.
-	 */
-	did_setuid = TRUE;
 #endif
 
 	/*

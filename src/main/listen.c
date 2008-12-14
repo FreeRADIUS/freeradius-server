@@ -1091,6 +1091,7 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
  */
 static int listen_bind(rad_listen_t *this)
 {
+	int rcode;
 	struct sockaddr_storage salocal;
 	socklen_t	salen;
 	listen_socket_t *sock = this->data;
@@ -1157,11 +1158,14 @@ static int listen_bind(rad_listen_t *this)
 	if (sock->interface) {
 		struct ifreq ifreq;
 		strcpy(ifreq.ifr_name, sock->interface);
-		
-		if (setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE,
-			       (char *)&ifreq, sizeof(ifreq)) < 0) {
+
+		fr_suid_up();
+		rcode = setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE,
+				   (char *)&ifreq, sizeof(ifreq));
+		fr_suid_down();
+		if (rcode < 0) {
 			close(this->fd);
-			radlog(L_ERR, "Failed opening to interface %s: %s",
+			radlog(L_ERR, "Failed binding to interface %s: %s",
 			       sock->interface, strerror(errno));
 			return -1;
 		} /* else it worked. */
@@ -1205,8 +1209,14 @@ static int listen_bind(rad_listen_t *this)
 #endif /* IPV6_V6ONLY */
 	}
 #endif /* HAVE_STRUCT_SOCKADDR_IN6 */
-		
-	if (bind(this->fd, (struct sockaddr *) &salocal, salen) < 0) {
+
+	/*
+	 *	May be binding to priviledged ports.
+	 */
+	fr_suid_up();
+	rcode = bind(this->fd, (struct sockaddr *) &salocal, salen);
+	fr_suid_down();
+	if (rcode < 0) {
 		close(this->fd);
 		radlog(L_ERR, "Failed binding to socket: %s\n",
 		       strerror(errno));
