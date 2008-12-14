@@ -194,7 +194,6 @@ static void rlm_perl_close_handles(void **handles)
 
 static void rlm_perl_destruct(PerlInterpreter *perl)
 {
-	char **orig_environ = NULL;
 	dTHXa(perl);
 
 	PERL_SET_CONTEXT(perl);
@@ -216,10 +215,6 @@ static void rlm_perl_destruct(PerlInterpreter *perl)
 
 	perl_destruct(perl);
 	perl_free(perl);
-
-	if (orig_environ) {
-		environ = orig_environ;
-	}
 }
 
 static void rlm_destroy_perl(PerlInterpreter *perl)
