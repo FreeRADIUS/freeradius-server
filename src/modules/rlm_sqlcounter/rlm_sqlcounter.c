@@ -305,7 +305,6 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, void *insta
 	const char *p;
 	char *q;
 	char tmpdt[40]; /* For temporary storing of dates */
-	int openbraces=0;
 
 	q = out;
 	for (p = fmt; *p ; p++) {
@@ -314,16 +313,7 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, void *insta
 		if (freespace <= 1)
 			break;
 		c = *p;
-		if ((c != '%') && (c != '$') && (c != '\\')) {
-			/*
-			 * We check if we're inside an open brace.  If we are
-			 * then we assume this brace is NOT literal, but is
-			 * a closing brace and apply it
-			 */
-			if((c == '}') && openbraces) {
-				openbraces--;
-				continue;
-			}
+		if ((c != '%') && (c != '\\')) {
 			*q++ = *p;
 			continue;
 		}
