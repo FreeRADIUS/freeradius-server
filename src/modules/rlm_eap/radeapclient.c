@@ -289,7 +289,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 	/* verify that the attribute length is big enough for a length field */
 	if(vp->length < 4)
 	{
-		fprintf(stderr, "start message has illegal VERSION_LIST. Too short: %d\n", vp->length);
+		fprintf(stderr, "start message has illegal VERSION_LIST. Too short: %u\n", (unsigned int) vp->length);
 		return 0;
 	}
 
@@ -299,7 +299,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 	 */
 	if((unsigned)vp->length <= (versioncount*2 + 2))
 	{
-		fprintf(stderr, "start message is too short. Claimed %d versions does not fit in %d bytes\n", versioncount, vp->length);
+		fprintf(stderr, "start message is too short. Claimed %d versions does not fit in %u bytes\n", versioncount, (unsigned int) vp->length);
 		return 0;
 	}
 
@@ -755,8 +755,8 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 	/* sanitize items */
 	if(valuesize > vp->length)
 	{
-		fprintf(stderr, "radeapclient: md5 valuesize if too big (%d > %d)\n",
-			valuesize, vp->length);
+		fprintf(stderr, "radeapclient: md5 valuesize if too big (%u > %u)\n",
+			(unsigned int) valuesize, (unsigned int) vp->length);
 		return 0;
 	}
 
@@ -1283,6 +1283,7 @@ static void unmap_eap_types(RADIUS_PACKET *rep)
 		/* verify the length is big enough to hold type */
 		if(len < 5)
 		{
+			free(e);
 			return;
 		}
 
@@ -1302,6 +1303,7 @@ static void unmap_eap_types(RADIUS_PACKET *rep)
 		break;
 	}
 
+	free(e);
 	return;
 }
 
