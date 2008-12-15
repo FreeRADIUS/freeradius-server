@@ -111,7 +111,6 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 	int mppp=0;
     int mode=GDBM_WRITER;
     signed int rcode;
-	char *cli = NULL;
 	int delete = 0;
 	int port;
 	int extra = 0;
@@ -217,37 +216,6 @@ void addip(char *sessiondbname,char *indexdbname,char *ipaddress, char* NASname,
 		}
 	}
 	key_datum.dptr = NULL;
-
-	if (cli != NULL){
-		key_datum = gdbm_firstkey(sessiondb);
-		while(key_datum.dptr){
-			data_datum = gdbm_fetch(sessiondb, key_datum);
-			if (data_datum.dptr){
-				memcpy(&entry,data_datum.dptr, sizeof(ippool_info));
-				free(data_datum.dptr);
-				/*
-		 		* If we find an entry for the same caller-id and nas with active=1
-		 		* then we use that for multilink (MPPP) to work properly.
-		 		*/
-				if (strcmp(entry.cli,cli) == 0 && entry.active){
-					if (old){
-						memcpy(&old_key,key_datum.dptr,sizeof(ippool_key));
-						if (!strcmp(old_key.nas,NASname)){
-							mppp = 1;
-							break;
-						}
-					}
-					else{
-						mppp = 1;
-						break;
-					}
-				}
-			}
-			nextkey = gdbm_nextkey(sessiondb, key_datum);
-			free(key_datum.dptr);
-			key_datum = nextkey;
-		}
-	}
 
 	if (key_datum.dptr == NULL) {
 		key_datum = gdbm_firstkey(sessiondb);
