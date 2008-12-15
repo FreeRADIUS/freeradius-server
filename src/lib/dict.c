@@ -922,30 +922,10 @@ static int process_attribute(const char* fn, const int line,
 						return -1;
 				}
 				
-			} else if (block_vendor) {
+			} else {
 				fr_strerror_printf( "dict_init: %s[%d]: unknown option \"%s\"",
 					    fn, line, key);
 				return -1;
-
-			} else {
-				/* Must be a vendor 'flag'... */
-				if (strncmp(key, "vendor=", 7) == 0) {
-					/* New format */
-					key += 7;
-				}
-
-				vendor = dict_vendorbyname(key);
-				if (!vendor) {
-					fr_strerror_printf( "dict_init: %s[%d]: unknown vendor \"%s\"",
-						    fn, line, key);
-					return -1;
-				}
-				if (block_vendor && argv[3][0] &&
-				    (block_vendor != vendor)) {
-					fr_strerror_printf("dict_init: %s[%d]: mismatched vendor %s within BEGIN-VENDOR/END-VENDOR block",
-						   fn, line, argv[3]);
-					return -1;
-				}
 			}
 
 			key = next;
