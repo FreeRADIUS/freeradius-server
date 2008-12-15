@@ -144,7 +144,7 @@ void fr_print_string(const char *in, size_t inlen, char *out, size_t outlen)
 		 *	Some clients send strings with an off-by-one
 		 *	length (confused with strings in C).
 		 */
-		if ((inlen == 0) && (*str == 0)) break;
+		if ((inlen == 1) && (*str == 0)) break;
 
 		switch (*str) {
 			case '\\':
