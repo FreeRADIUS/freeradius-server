@@ -829,6 +829,8 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 	size_t		length;
 	DICT_VALUE	*dval;
 
+	if (!value) return NULL;
+
 	/*
 	 *	Even for integers, dates and ip addresses we
 	 *	keep the original string in vp->vp_strvalue.
@@ -939,10 +941,6 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 
 		case PW_TYPE_BYTE:
-			if (value && (value[0] == '0') && (value[1] == 'x')) {
-				goto do_octets;
-			}
-
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
@@ -1059,8 +1057,8 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			 *	then fall through to raw octets, so that
 			 *	the user can at least make them by hand...
 			 */
-#endif
 	do_octets:
+#endif
 			/* raw octets: 0x01020304... */
 		case PW_TYPE_OCTETS:
 			if (strncasecmp(value, "0x", 2) == 0) {
