@@ -293,11 +293,17 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	input_pairs = decode_string(request, inst->input);
 	output_pairs = decode_string(request, inst->output);
 
+	if (!input_pairs) {
+		RDEBUG2("WARNING: Possible parse error in %s",
+			inst->input);
+		return RLM_MODULE_NOOP;
+	}
+
 	/*
 	 *	It points to the attribute list, but the attribute
 	 *	list is empty.
 	 */
-	if (input_pairs && !*input_pairs) {
+	if (!*input_pairs) {
 		RDEBUG2("WARNING! Input pairs are empty.  No attributes will be passed to the script");
 	}
 
