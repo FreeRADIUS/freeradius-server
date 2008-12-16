@@ -55,7 +55,6 @@ static int			request_num_counter = 0;
 static struct timeval		now;
 time_t				fr_start_time;
 static int			have_children;
-static int			has_detail_listener = FALSE;
 static int			just_started = TRUE;
 
 #ifndef __MINGW32__
@@ -102,6 +101,9 @@ static rad_listen_t	*proxy_listeners[32];
 static void request_post_handler(REQUEST *request);
 static void wait_a_bit(void *ctx);
 static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd, void *ctx);
+#ifdef WITH_DETAIL
+static void event_poll_detail(void *ctx);
+#endif
 
 static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
 				    const char *msg)
@@ -2536,21 +2538,6 @@ void event_new_fd(rad_listen_t *this)
 	}
 }
 
-#ifdef WITH_DETAIL
-static void event_detail_timer(void *ctx)
-{
-	rad_listen_t *listener = ctx;
-	RAD_REQUEST_FUNP fun;
-	REQUEST *request;
-
-	if (listener->recv(listener, &fun, &request)) {
-		if (!thread_pool_addrequest(request, fun)) {
-			request->child_state = REQUEST_DONE;
-		}
-	}
-}
-#endif
-
 static void handle_signal_self(int flag)
 {
 	if ((flag & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
@@ -2586,6 +2573,9 @@ static void handle_signal_self(int flag)
 	if ((flag & RADIUS_SIGNAL_SELF_DETAIL) != 0) {
 		rad_listen_t *this;
 		
+		/*
+		 *	FIXME: O(N) loops suck.
+		 */
 		for (this = mainconfig.listen;
 		     this != NULL;
 		     this = this->next) {
@@ -2601,14 +2591,17 @@ static void handle_signal_self(int flag)
 			when = now;
 			tv_add(&when, delay);
 
-			if (delay > 100000) {
+			if (delay > (USEC / 10)) {
 				DEBUG("Delaying next detail event for %d.%01u seconds.",
 				       delay / USEC, (delay % USEC) / 100000);
 			}
 
-			if (!fr_event_insert(el, event_detail_timer, this,
+			/*
+			 *	Reset the detail timer.
+			 */
+			if (!fr_event_insert(el, event_poll_detail, this,
 					     &when, NULL)) {
-				radlog(L_ERR, "Failed remembering timer");
+				radlog(L_ERR, "Failed remembering detail timer");
 				exit(1);
 			}
 		}
@@ -2705,46 +2698,52 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
 
 
 /*
- *	This function is called periodically to see if any FD's are
- *	available for reading.
+ *	This function is called periodically to see if this detail
+ *	file is available for reading.
  */
-static void event_poll_detail(UNUSED void *ctx)
+static void event_poll_detail(void *ctx)
 {
 	int rcode;
 	RAD_REQUEST_FUNP fun;
 	REQUEST *request;
-	rad_listen_t *this;
+	rad_listen_t *this = ctx;
 	struct timeval when;
 
 	fr_event_now(el, &now);
 	when = now;
+
+	/*
+	 *	Set the next poll time to be 1.0 to 1.1s, to help
+	 *	spread the load a bit over time.
+	 */
 	when.tv_sec += 1;
+	when.tv_usec += fr_rand() % (USEC / 10);
 
-	for (this = mainconfig.listen; this != NULL; this = this->next) {
-		if (this->type != RAD_LISTEN_DETAIL) continue;
+	rad_assert(this->type == RAD_LISTEN_DETAIL);
 
-		if (this->fd >= 0) continue;
-
-		/*
-		 *	Try to read something.
-		 *
-		 *	FIXME: This does poll AND receive.
-		 */
-		rcode = this->recv(this, &fun, &request);
-		if (!rcode) continue;
-		
+	/*
+	 *	Try to read something.
+	 *
+	 *	FIXME: This does poll AND receive.
+	 */
+	rcode = this->recv(this, &fun, &request);
+	if (rcode != 0) {
 		rad_assert(fun != NULL);
 		rad_assert(request != NULL);
-			
+		
 		if (!thread_pool_addrequest(request, fun)) {
 			request->child_state = REQUEST_DONE;
 		}
 	}
 
 	/*
-	 *	Reset the poll.
+	 *	Reset the poll to fire one second from now.  If the
+	 *	detail reader DOES read a packet, it will send us a
+	 *	signal when it's done, and the signal handler will
+	 *	reset the timer to a more appropriate (i.e. shorter)
+	 *	value.
 	 */
-	if (!fr_event_insert(el, event_poll_detail, NULL,
+	if (!fr_event_insert(el, event_poll_detail, this,
 			     &when, NULL)) {
 		radlog(L_ERR, "Failed creating handler");
 		exit(1);
@@ -2936,9 +2935,23 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 		switch (this->type) {
 #ifdef WITH_DETAIL
+			struct timeval when;
+
 		case RAD_LISTEN_DETAIL:
 			DEBUG("Listening on %s", buffer);
-			has_detail_listener = TRUE;
+
+			/*
+			 *	Add some initial jitter to help spread
+			 *	the load a bit.
+			 */
+			when.tv_sec = fr_start_time + 1;
+			when.tv_usec = fr_rand() % USEC;
+
+			if (!fr_event_insert(el, event_poll_detail, this,
+					     &when, NULL)) {
+				radlog(L_ERR, "Failed creating detail poll timer");
+				exit(1);
+			}
 			break;
 #endif
 
@@ -2970,19 +2983,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		}
 
 		event_new_fd(this);
-	}
-
-	if (has_detail_listener) {
-		struct timeval when;
-		
-		gettimeofday(&when, NULL);
-		when.tv_sec += 1;
-		
-		if (!fr_event_insert(el, event_poll_detail, NULL,
-				     &when, NULL)) {
-			radlog(L_ERR, "Failed creating handler");
-			exit(1);
-		}
 	}
 
 	mainconfig.listen = head;
