@@ -314,8 +314,20 @@ ATTRIBUTE	Tmp-IP-Address-7			1827	ipaddr
 ATTRIBUTE	Tmp-IP-Address-8			1828	ipaddr
 ATTRIBUTE	Tmp-IP-Address-9			1829	ipaddr
 
+#	Range:	1900-1909
+#	WiMAX server-side attributes.
 #
-#	Range:	1900-2999
+#	These are NOT sent in a packet, but are otherwise
+#	available for testing and validation.  The various
+#	things that *are* sent in a packet are derived from
+#	these attributes.
+#
+ATTRIBUTE	WiMAX-MN-NAI				1900	string
+ATTRIBUTE	WiMAX-FA-IP-Address			1901	ipaddr
+ATTRIBUTE	WiMAX-MN-FA				1902	octets
+
+#
+#	Range:	1910-2999
 #		Free
 #
 #	Range:	3000-3999
