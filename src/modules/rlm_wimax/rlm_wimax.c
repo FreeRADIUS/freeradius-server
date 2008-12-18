@@ -188,8 +188,8 @@ static int wimax_postauth(UNUSED void *instance, REQUEST *request)
 	/*
 	 *	Calculate mobility keys
 	 */
-	mn_nai = pairfind(request->packet->vps, 1912);
-	if (!mn_nai) mn_nai = pairfind(request->reply->vps, 1912);
+	mn_nai = pairfind(request->packet->vps, 1900);
+	if (!mn_nai) mn_nai = pairfind(request->reply->vps, 1900);
 	if (!mn_nai) {
 		RDEBUG("WARNING: WiMAX-MN-NAI was not found in the request or in the reply.");
 		RDEBUG("WARNING: We cannot calculate MN-HA keys.");
@@ -404,7 +404,7 @@ static int wimax_postauth(UNUSED void *instance, REQUEST *request)
 	/*
 	 *	Generate MN-FA = H(FA-RK, "MN FA" | FA-IP | MN-NAI)
 	 */
-	ip = pairfind(request->reply->vps, 1913);
+	ip = pairfind(request->reply->vps, 1901);
 	if (fa_rk && ip && mn_nai) {
 		HMAC_CTX_init(&hmac);
 		HMAC_Init_ex(&hmac, fa_rk->vp_octets, fa_rk->length,
@@ -417,7 +417,7 @@ static int wimax_postauth(UNUSED void *instance, REQUEST *request)
 		HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
 
 		vp = radius_paircreate(request, &request->reply->vps,
-				       1910, PW_TYPE_OCTETS);
+				       1902, PW_TYPE_OCTETS);
 		if (!vp) {
 			RDEBUG("WARNING: Failed creating WiMAX-MN-FA");
 		} else {
