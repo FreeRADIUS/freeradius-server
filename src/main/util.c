@@ -197,6 +197,10 @@ void request_free(REQUEST **request_ptr)
 
 	request = *request_ptr;
 
+	rad_assert(!request->in_request_hash);
+	rad_assert(!request->in_proxy_hash);
+	rad_assert(!request->ev);
+
 	if (request->packet)
 		rad_free(&request->packet);
 
@@ -237,6 +241,17 @@ void request_free(REQUEST **request_ptr)
 		request->root->refcount--;
 		request->root = NULL;
 	}
+
+#ifdef WITH_COA
+	if (request->coa) {
+		request->coa->parent = NULL;
+		request_free(&request->coa);
+	}
+
+	if (request->parent && (request->parent->coa == request)) {
+		request->parent->coa = NULL;
+	}
+#endif
 
 #ifndef NDEBUG
 	request->magic = 0x01020304;	/* set the request to be nonsense */
@@ -469,6 +484,19 @@ REQUEST *request_alloc_fake(REQUEST *request)
   return fake;
 }
 
+#ifdef WITH_COA
+REQUEST *request_alloc_coa(REQUEST *request)
+{
+	if (!request || request->coa) return NULL;
+
+	request->coa = request_alloc_fake(request);
+	request->coa->packet->code = 0; /* unknown, as of yet */
+	request->coa->child_state = REQUEST_RUNNING;
+	request->coa->proxy = rad_alloc(0);
+
+	return request->coa;
+}
+#endif
 
 /*
  *	Copy a quoted string.

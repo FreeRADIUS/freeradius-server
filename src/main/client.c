@@ -440,6 +440,11 @@ static const CONF_PARSER client_config[] = {
 	  offsetof(RADCLIENT, lifetime), 0, NULL },
 #endif
 
+#ifdef WITH_COA
+	{ "coa_server",  PW_TYPE_STRING_PTR,
+	  offsetof(RADCLIENT, coa_name), 0, NULL },
+#endif
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -629,6 +634,24 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		return NULL;
 	}
 
+#ifdef WITH_COA
+	/*
+	 *	Point the client to the home server pool, OR to the
+	 *	home server.  This gets around the problem of figuring
+	 *	out which port to use.
+	 */
+	if (c->coa_name) {
+		c->coa_pool = home_pool_byname(c->coa_name, HOME_TYPE_COA);
+		if (!c->coa_pool) {
+			c->coa_server = home_server_byname(c->coa_name);
+		}
+		if (!c->coa_server) {
+			client_free(c);
+			cf_log_err(cf_sectiontoitem(cs), "No such home_server or home_server_pool \"%s\"", c->coa_name);
+			return NULL;
+		}
+	}
+#endif
 
 	return c;
 }

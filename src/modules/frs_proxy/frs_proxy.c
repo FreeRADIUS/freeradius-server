@@ -29,6 +29,39 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 
+#ifdef WITH_COA
+/*
+ *	For now, all CoA requests are *only* originated, and not
+ *	proxied.  So all of the necessary work is done in the
+ *	post-proxy section, which is automatically handled by event.c.
+ *	As a result, we don't have to do anything here.
+ */
+static int rad_coa_reply(REQUEST *request)
+{
+	VALUE_PAIR *s1, *s2;
+
+	/*
+	 *	Inform the user about RFC requirements.
+	 */
+	s1 = pairfind(request->proxy->vps, PW_STATE);
+	if (s1) {
+		s2 = pairfind(request->proxy_reply->vps, PW_STATE);
+
+		if (!s2) {
+			DEBUG("WARNING: Client was sent State in CoA, and did not respond with State.");
+
+		} else if ((s1->length != s2->length) ||
+			   (memcmp(s1->vp_octets, s2->vp_octets,
+				   s1->length) != 0)) {
+			DEBUG("WARNING: Client was sent State in CoA, and did not respond with the same State.");
+		}
+	}
+
+	return RLM_MODULE_OK;
+}
+#endif
+
+
 /*
  *	Send a packet to a home server.
  *
@@ -57,6 +90,9 @@ static int proxy_socket_recv(rad_listen_t *listener,
 	REQUEST		*request;
 	RADIUS_PACKET	*packet;
 	char		buffer[128];
+#ifdef WITH_COA
+	RAD_REQUEST_FUNP fun = NULL;
+#endif
 
 	packet = rad_recv(listener->fd, 0);
 	if (!packet) {
@@ -74,7 +110,19 @@ static int proxy_socket_recv(rad_listen_t *listener,
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
 #endif
+#ifdef WITH_COA
+		fun = request->process; /* re-run original function */
+#endif
 		break;
+
+#ifdef WITH_COA
+	case PW_DISCONNECT_ACK:
+	case PW_DISCONNECT_NAK:
+	case PW_COA_ACK:
+	case PW_COA_NAK:
+		fun = rad_coa_reply; /* run NEW function */
+		break;
+#endif
 
 	default:
 		/*
@@ -96,7 +144,11 @@ static int proxy_socket_recv(rad_listen_t *listener,
 
 	rad_assert(request->process != NULL);
 
+#ifndef WITH_COA
 	*pfun = request->process;
+#else
+	*pfun = fun;
+#endif
 	*prequest = request;
 
 	return 1;

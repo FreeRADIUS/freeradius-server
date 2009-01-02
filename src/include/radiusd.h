@@ -92,6 +92,13 @@ typedef struct auth_req REQUEST;
 #endif
 #endif
 
+#ifndef WITHOUT_COA
+#define WITH_COA (1)
+#ifndef WITH_PROXY
+#error WITH_COA requires WITH_PROXY
+#endif
+#endif
+
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
 
@@ -131,6 +138,12 @@ typedef struct radclient {
 	time_t			created;
 	time_t			last_new_client;
 	char			*client_server;
+#endif
+
+#ifdef WITH_COA
+	char			*coa_name;
+	home_server		*coa_server;
+	home_pool_t		*coa_pool;
 #endif
 } RADCLIENT;
 
@@ -214,6 +227,10 @@ struct auth_req {
 	REQUEST			*parent;
 	radlog_func_t		radlog;	/* logging function, if set */
 	RAD_REQUEST_FUNP	process;
+#ifdef WITH_COA
+	REQUEST			*coa;
+	int			num_coa_requests;
+#endif
 };				/* REQUEST typedef */
 
 #define RAD_REQUEST_OPTION_NONE            (0)
@@ -397,6 +414,7 @@ int		rad_checkfilename(const char *filename);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
 REQUEST		*request_alloc(void);
 REQUEST		*request_alloc_fake(REQUEST *oldreq);
+REQUEST		*request_alloc_coa(REQUEST *request);
 int		request_data_add(REQUEST *request,
 				 void *unique_ptr, int unique_int,
 				 void *opaque, void (*free_opaque)(void *));

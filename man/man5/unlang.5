@@ -144,10 +144,11 @@ the current block.
 .DE
 
 The <list> can be one of "request", "reply", "proxy-request",
-"proxy-reply", or "control".  The "control" list is the list of
-attributes maintainted internally by the server that controls how the
-server processes the request.  Any attribute that does not go in a
-packet on the network will generally be placed in the "control" list.
+"proxy-reply", "coa", "disconnect", or "control".  The "control" list
+is the list of attributes maintainted internally by the server that
+controls how the server processes the request.  Any attribute that
+does not go in a packet on the network will generally be placed in the
+"control" list.
 
 For backwards compatibility with older versions, "check" is accepted
 as a synonym for "control".  The use of "check" is deprecated, and
@@ -157,6 +158,14 @@ For EAP methods with tunneled authentication sessions (i.e. PEAP and
 EAP-TTLS), the inner tunnel session can also reference
 "outer.request", "outer.reply", and "outer.control".  Those references
 allow you to address the relevant list in the outer tunnel session.
+
+The "coa" and "disconnect" sections can only be used when the server
+receives an Access-Request or Accounting-Request.  Adding one or more
+attributes to either of the "coa" or "disconnect" list causes server
+to originate a CoA-Request or Disconnect-Request packet.  That packet
+is sent when the current Access-Request or Accounting-Request has been
+finished, and a reply sent to the NAS.  See
+raddb/sites-available/originate-coa for additional information.
 
 The only contents permitted in an "update" section are attributes and
 values.  The contents of the "update" section are described in the

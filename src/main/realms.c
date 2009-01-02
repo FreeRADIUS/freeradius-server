@@ -330,12 +330,22 @@ static CONF_PARSER home_server_config[] = {
 	  offsetof(home_server,ema.window), NULL,  NULL },
 #endif
 
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+#ifdef WITH_COA
+	{ "irt",  PW_TYPE_INTEGER,
+	  offsetof(home_server, coa_irt), 0, Stringify(2) },
+	{ "mrt",  PW_TYPE_INTEGER,
+	  offsetof(home_server, coa_mrt), 0, Stringify(16) },
+	{ "mrc",  PW_TYPE_INTEGER,
+	  offsetof(home_server, coa_mrc), 0, Stringify(5) },
+	{ "mrd",  PW_TYPE_INTEGER,
+	  offsetof(home_server, coa_mrd), 0, Stringify(30) },
+#endif
 
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 
-static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
+static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 {
 	const char *name2;
 	home_server *home;
@@ -367,7 +377,10 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 
 	memset(&hs_ip4addr, 0, sizeof(hs_ip4addr));
 	memset(&hs_ip6addr, 0, sizeof(hs_ip6addr));
-	cf_section_parse(cs, home, home_server_config);
+	if (cf_section_parse(cs, home, home_server_config) < 0) {
+		free(home);
+		return 0;
+	}
 
 	/*
 	 *	Figure out which one to use.
@@ -396,8 +409,11 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 			goto error;
 		}
 
-		free(hs_type);
-		hs_type = NULL;
+		/*
+		 *	When CoA is used, the user has to specify the type
+		 *	of the home server, even when they point to
+		 *	virtual servers.
+		 */
 		home->secret = strdup("");
 		goto skip_port;
 
@@ -432,8 +448,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 		cf_log_err(cf_sectiontoitem(cs),
 			   "No shared secret defined for home server %s.",
 			   name2);
-		free(home);
-		return 0;
+		goto error;
 	}
 
 	/*
@@ -444,38 +459,41 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 
 	if (strcasecmp(hs_type, "auth") == 0) {
 		home->type = HOME_TYPE_AUTH;
-		if (type != home->type) {
+		if (pool_type != home->type) {
+		mismatch:
 			cf_log_err(cf_sectiontoitem(cs),
-				   "Server pool of \"acct\" servers cannot include home server %s of type \"auth\"",
-				   name2);
-			free(home);
-			return 0;
+				   "Server pool cannot include home server %s of type \"%s\"",
+				   name2, hs_type);
+			goto error;
 		}
 
 	} else if (strcasecmp(hs_type, "acct") == 0) {
 		home->type = HOME_TYPE_ACCT;
-		if (type != home->type) {
-			cf_log_err(cf_sectiontoitem(cs),
-				   "Server pool of \"auth\" servers cannot include home server %s of type \"acct\"",
-				   name2);
-			free(home);
-			return 0;
-		}
+		if (pool_type != home->type) goto mismatch;
 
 	} else if (strcasecmp(hs_type, "auth+acct") == 0) {
 		home->type = HOME_TYPE_AUTH;
 		dual = TRUE;
 
+#ifdef WITH_COA
+	} else if (strcasecmp(hs_type, "coa") == 0) {
+		home->type = HOME_TYPE_COA;
+		dual = FALSE;
+
+		if (pool_type != home->type) goto mismatch;
+
+		if (home->server != NULL) {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Home servers of type \"coa\" cannot point to a virtual server");
+			goto error;
+		}
+#endif
+
 	} else {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Invalid type \"%s\" for home server %s.",
 			   hs_type, name2);
-		free(home);
-		free(hs_type);
-		hs_type = NULL;
-		free(hs_check);
-		hs_check = NULL;
-		return 0;
+		goto error;
 	}
 	free(hs_type);
 	hs_type = NULL;
@@ -493,10 +511,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Invalid ping_check \"%s\" for home server %s.",
 			   hs_check, name2);
-		free(home);
-		free(hs_check);
-		hs_check = NULL;
-		return 0;
+		goto error;
 	}
 	free(hs_check);
 	hs_check = NULL;
@@ -505,30 +520,27 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 	    (home->ping_check != HOME_PING_CHECK_STATUS_SERVER)) {
 		if (!home->ping_user_name) {
 			cf_log_err(cf_sectiontoitem(cs), "You must supply a user name to enable ping checks");
-			free(home);
-			return 0;
+			goto error;
 		}
 
 		if ((home->type == HOME_TYPE_AUTH) &&
 		    !home->ping_user_password) {
 			cf_log_err(cf_sectiontoitem(cs), "You must supply a password to enable ping checks");
-			free(home);
-			return 0;
+			goto error;
 		}
 	}
 
 	if ((home->ipaddr.af != AF_UNSPEC) && /* could be virtual server */
 	    rbtree_finddata(home_servers_byaddr, home)) {
-		DEBUG2("Ignoring duplicate home server %s.", name2);
-		return 1;
+		cf_log_err(cf_sectiontoitem(cs), "Duplicate home server");
+		goto error;
 	}
 
 	if (!rbtree_insert(home_servers_byname, home)) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Internal error %d adding home server %s.",
 			   __LINE__, name2);
-		free(home);
-		return 0;
+		goto error;
 	}
 
 	if ((home->ipaddr.af != AF_UNSPEC) && /* could be virtual server */
@@ -537,8 +549,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Internal error %d adding home server %s.",
 			   __LINE__, name2);
-		free(home);
-		return 0;
+		goto error;
 	}
 
 #ifdef WITH_STATS
@@ -551,8 +562,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Internal error %d adding home server %s.",
 			   __LINE__, name2);
-		free(home);
-		return 0;
+		goto error;
 	}
 #endif
 
@@ -580,6 +590,20 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int type)
 
 	if (home->revive_interval < 60) home->revive_interval = 60;
 	if (home->revive_interval > 3600) home->revive_interval = 3600;
+
+#ifdef WITH_COA
+	if (home->coa_irt < 1) home->coa_irt = 1;
+	if (home->coa_irt > 5) home->coa_irt = 5;
+
+	if (home->coa_mrc < 0) home->coa_mrc = 0;
+	if (home->coa_mrc > 20 ) home->coa_mrc = 20;
+
+	if (home->coa_mrt < 0) home->coa_mrt = 0;
+	if (home->coa_mrt > 30 ) home->coa_mrt = 30;
+
+	if (home->coa_mrd < 5) home->coa_mrd = 5;
+	if (home->coa_mrd > 60 ) home->coa_mrd = 60;
+#endif
 
 	if (dual) {
 		home_server *home2 = rad_malloc(sizeof(*home2));
@@ -683,8 +707,6 @@ static int pool_check_home_server(realm_config_t *rc, CONF_PAIR *cp,
 	
 	home = rbtree_finddata(home_servers_byname, &myhome);
 	if (!home) {
-		radlog(L_ERR, "Internal sanity check failed %d",
-		       __LINE__);
 		return 0;
 	}
 
@@ -752,6 +774,13 @@ static int server_pool_add(realm_config_t *rc,
 	 */
 	cp = cf_pair_find(cs, "fallback");
 	if (cp) {
+#ifdef WITH_COA
+		if (server_type == HOME_TYPE_COA) {
+			cf_log_err(cf_sectiontoitem(cs), "Home server pools of type \"coa\" cannot have a fallback virtual server.");
+			goto error;
+		}
+#endif
+
 		if (!pool_check_home_server(rc, cp, cf_pair_value(cp),
 					    server_type, &pool->fallback)) {
 			
@@ -855,6 +884,8 @@ static int server_pool_add(realm_config_t *rc,
 	}
 
 	if (do_print) cf_log_info(cs, " }");
+
+	cf_data_add(cs, "home_server_pool", pool, NULL);
 
 	rad_assert(pool->server_type != 0);
 
@@ -1578,6 +1609,22 @@ int realms_init(CONF_SECTION *config)
 		}
 	}
 
+#ifdef WITH_COA
+	/*
+	 *	CoA pools aren't tied to realms.
+	 */
+	for (cs = cf_subsection_find_next(config, NULL, "home_server_pool");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(config, cs, "home_server_pool")) {
+		if (cf_data_find(cs, "home_server_pool")) continue;
+
+		if (!server_pool_add(rc, cs, HOME_TYPE_COA, TRUE)) {
+			return 0;
+		}
+	}
+#endif
+
+
 #ifdef WITH_PROXY
 	xlat_register("home_server", xlat_home_server, NULL);
 	xlat_register("home_server_pool", xlat_server_pool, NULL);
@@ -1932,6 +1979,18 @@ home_server *home_server_find(fr_ipaddr_t *ipaddr, int port)
 	return rbtree_finddata(home_servers_byaddr, &myhome);
 }
 
+#ifdef WITH_COA
+home_server *home_server_byname(const char *name)
+{
+	home_server myhome;
+
+	memset(&myhome, 0, sizeof(myhome));
+	myhome.name = name;
+
+	return rbtree_finddata(home_servers_byname, &myhome);
+}
+#endif
+
 #ifdef WITH_STATS
 home_server *home_server_bynumber(int number)
 {
@@ -1944,4 +2003,15 @@ home_server *home_server_bynumber(int number)
 	return rbtree_finddata(home_servers_bynumber, &myhome);
 }
 #endif
+
+home_pool_t *home_pool_byname(const char *name, int type)
+{
+	home_pool_t mypool;
+	
+	memset(&mypool, 0, sizeof(mypool));
+	mypool.name = name;
+	mypool.server_type = type;
+	return rbtree_finddata(home_pools_byname, &mypool);
+}
+
 #endif

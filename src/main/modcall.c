@@ -1166,6 +1166,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 					 const char *name2)
 {
 	int i, ok = FALSE;
+	const char *vp_name;
 	modgroup *g;
 	modcallable *csingle;
 	CONF_ITEM *ci;
@@ -1174,8 +1175,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	static const char *attrlist_names[] = {
 		"request", "reply", "proxy-request", "proxy-reply",
 		"config", "control",
-		"outer.request", "outer.reply",
-		"outer.config", "outer.control",
+		"coa", "coa-reply", "disconnect", "disconnect-reply",
 		NULL
 	};
 
@@ -1187,8 +1187,13 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		return NULL;
 	}
 
+	vp_name = name2;
+	if (strncmp(vp_name, "outer.", 6) == 0) {
+		vp_name += 6;
+	} 
+
 	for (i = 0; attrlist_names[i] != NULL; i++) {
-		if (strcmp(name2, attrlist_names[i]) == 0) {
+		if (strcmp(vp_name, attrlist_names[i]) == 0) {
 			ok = TRUE;
 			break;
 		}
