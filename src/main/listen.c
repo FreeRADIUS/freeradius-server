@@ -912,6 +912,39 @@ static int acct_socket_recv(rad_listen_t *listener,
 }
 #endif
 
+
+#ifdef WITH_COA
+/*
+ *	For now, all CoA requests are *only* originated, and not
+ *	proxied.  So all of the necessary work is done in the
+ *	post-proxy section, which is automatically handled by event.c.
+ *	As a result, we don't have to do anything here.
+ */
+static int rad_coa_reply(REQUEST *request)
+{
+	VALUE_PAIR *s1, *s2;
+
+	/*
+	 *	Inform the user about RFC requirements.
+	 */
+	s1 = pairfind(request->proxy->vps, PW_STATE);
+	if (s1) {
+		s2 = pairfind(request->proxy_reply->vps, PW_STATE);
+
+		if (!s2) {
+			DEBUG("WARNING: Client was sent State in CoA, and did not respond with State.");
+
+		} else if ((s1->length != s2->length) ||
+			   (memcmp(s1->vp_octets, s2->vp_octets,
+				   s1->length) != 0)) {
+			DEBUG("WARNING: Client was sent State in CoA, and did not respond with the same State.");
+		}
+	}
+
+	return RLM_MODULE_OK;
+}
+#endif
+
 #ifdef WITH_PROXY
 /*
  *	Recieve packets from a proxy socket.
@@ -946,6 +979,15 @@ static int proxy_socket_recv(rad_listen_t *listener,
 		break;
 #endif
 
+#ifdef WITH_COA
+	case PW_DISCONNECT_ACK:
+	case PW_DISCONNECT_NAK:
+	case PW_COA_ACK:
+	case PW_COA_NAK:
+		fun = rad_coa_reply;
+		break;
+#endif
+
 	default:
 		/*
 		 *	FIXME: Update MIB for packet types?
@@ -961,6 +1003,7 @@ static int proxy_socket_recv(rad_listen_t *listener,
 
 	request = received_proxy_response(packet);
 	if (!request) {
+		rad_free(&packet);
 		return 0;
 	}
 

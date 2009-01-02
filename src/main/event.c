@@ -180,6 +180,7 @@ static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 	 *	responded at all.
 	 */
 	if (!request->proxy_reply &&
+	    request->home_server &&
 	    request->home_server->currently_outstanding) {
 		request->home_server->currently_outstanding--;
 	}
@@ -204,6 +205,7 @@ static void remove_from_proxy_hash(REQUEST *request)
 	 *	home server.
 	 */
 	if (!request->proxy_reply &&
+	    request->home_server &&
 	    request->home_server->currently_outstanding) {
 		request->home_server->currently_outstanding--;
 	}
@@ -213,8 +215,64 @@ static void remove_from_proxy_hash(REQUEST *request)
 	request->in_proxy_hash = FALSE;
 }
 
+static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
+{
+	int i, proxy, found;
+	rad_listen_t *proxy_listener;
 
-static int insert_into_proxy_hash(REQUEST *request)
+	if (fr_packet_list_id_alloc(proxy_list, packet)) return 1;
+
+	/*
+	 *	Allocate a new proxy fd.  This function adds
+	 *	it to the tail of the list of listeners.  With
+	 *	some care, this can be thread-safe.
+	 */
+	proxy_listener = proxy_new_listener();
+	if (!proxy_listener) {
+		RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
+		return 0;
+	}
+	
+	/*
+	 *	Cache it locally.
+	 */
+	found = -1;
+	proxy = proxy_listener->fd;
+	for (i = 0; i < 32; i++) {
+		/*
+		 *	Found a free entry.  Save the socket,
+		 *	and remember where we saved it.
+		 */
+		if (proxy_fds[(proxy + i) & 0x1f] == -1) {
+			found = (proxy + i) & 0x1f;
+			proxy_fds[found] = proxy;
+			proxy_listeners[found] = proxy_listener;
+			break;
+		}
+	}
+	rad_assert(found >= 0);
+	
+	if (!fr_packet_list_socket_add(proxy_list, proxy_listener->fd)) {
+			RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
+		return 0;
+		
+	}
+	
+	if (!fr_packet_list_id_alloc(proxy_list, packet)) {
+			RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
+		return 0;
+	}
+	
+	/*
+	 *	Signal the main thread to add the new FD to the list
+	 *	of listening FD's.
+	 */
+	radius_signal_self(RADIUS_SIGNAL_SELF_NEW_FD);
+	return 1;
+}
+
+
+static int insert_into_proxy_hash(REQUEST *request, int retransmit)
 {
 	int i, proxy;
 	char buf[128];
@@ -222,66 +280,41 @@ static int insert_into_proxy_hash(REQUEST *request)
 	rad_assert(request->proxy != NULL);
 	rad_assert(proxy_list != NULL);
 
-	request->proxy->sockfd = -1;
-
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 
-	request->home_server->currently_outstanding++;
-
-	if (!fr_packet_list_id_alloc(proxy_list, request->proxy)) {
-		int found;
-		rad_listen_t *proxy_listener;
-
-		/*
-		 *	Allocate a new proxy fd.  This function adds
-		 *	it to the tail of the list of listeners.  With
-		 *	some care, this can be thread-safe.
-		 */
-		proxy_listener = proxy_new_listener();
-		if (!proxy_listener) {
-			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
-			return 0;
-		}
-
-		/*
-		 *	Cache it locally.
-		 */
-		found = -1;
-		proxy = proxy_listener->fd;
-		for (i = 0; i < 32; i++) {
-			/*
-			 *	Found a free entry.  Save the socket,
-			 *	and remember where we saved it.
-			 */
-			if (proxy_fds[(proxy + i) & 0x1f] == -1) {
-				found = (proxy + i) & 0x1f;
-				proxy_fds[found] = proxy;
-				proxy_listeners[found] = proxy_listener;
-				break;
-			}
-		}
-		rad_assert(found >= 0);
-
-		if (!fr_packet_list_socket_add(proxy_list, proxy_listener->fd)) {
-			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
-			return 0;
-
-		}
-
-		if (!fr_packet_list_id_alloc(proxy_list, request->proxy)) {
-			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
-			return 0;
-		}
-
-		/*
-		 *	Signal the main thread to add the new FD to the list
-		 *	of listening FD's.
-		 */
-		radius_signal_self(RADIUS_SIGNAL_SELF_NEW_FD);
+	/*
+	 *	Keep track of maximum outstanding requests to a
+	 *	particular home server.  'max_outstanding' is
+	 *	enforced in home_server_ldb(), in realms.c.
+	 */
+	if (request->home_server) {
+		request->home_server->currently_outstanding++;
+		request->home_server->stats.total_requests++;
 	}
+
+	if (retransmit) {
+		RADIUS_PACKET packet;
+
+		packet = *request->proxy;
+
+		if (!proxy_id_alloc(request, &packet)) {
+			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+			return 0;
+		}
+
+		/*
+		 *	Yank the request, free the old Id, and
+		 *	remember the new Id.
+		 */
+		fr_packet_list_yank(proxy_list, request->proxy);
+		fr_packet_list_id_free(proxy_list, request->proxy);
+		*request->proxy = packet;
+
+	} else if (!proxy_id_alloc(request, request->proxy)) {
+		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		return 0;
+	}
+
 	rad_assert(request->proxy->sockfd >= 0);
 
 	/*
@@ -333,14 +366,20 @@ static int insert_into_proxy_hash(REQUEST *request)
 static void wait_for_proxy_id_to_expire(void *ctx)
 {
 	REQUEST *request = ctx;
-	home_server *home = request->home_server;
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 	rad_assert(request->proxy != NULL);
 
 	if (!fr_event_now(el, &now)) gettimeofday(&now, NULL);
 	request->when = request->proxy_when;
-	request->when.tv_sec += home->response_window;
+
+#ifdef WITH_COA
+	if ((request->packet->code == PW_COA_REQUEST) ||
+	    (request->packet->code == PW_DISCONNECT_REQUEST)) {
+		request->when.tv_sec += request->home_server->coa_mrd;
+	} else
+#endif
+	request->when.tv_sec += request->home_server->response_window;
 
 	if ((request->num_proxied_requests == request->num_proxied_responses) ||
 	    timercmp(&now, &request->when, >)) {
@@ -353,6 +392,7 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 			       request->number,
 			       (unsigned int) (request->timestamp - fr_start_time));
 		}
+
 		fr_event_delete(el, &request->ev);
 		remove_from_proxy_hash(request);
 		remove_from_request_hash(request);
@@ -581,9 +621,12 @@ void revive_home_server(void *ctx)
 static void no_response_to_ping(void *ctx)
 {
 	REQUEST *request = ctx;
-	home_server *home = request->home_server;
+	home_server *home;
 	char buffer[128];
 
+	rad_assert(request->home_server != NULL);
+
+	home = request->home_server;
 	home->num_received_pings = 0;
 
 	RDEBUG2("No response to status check %d from home server %s port %d",
@@ -599,9 +642,12 @@ static void no_response_to_ping(void *ctx)
 
 static void received_response_to_ping(REQUEST *request)
 {
-	home_server *home = request->home_server;
+	home_server *home;
 	char buffer[128];
 
+	rad_assert(request->home_server != NULL);
+
+	home = request->home_server;
 	home->num_received_pings++;
 
 	RDEBUG2("Received response to status check %d (%d in current sequence)",
@@ -718,7 +764,7 @@ static void ping_home_server(void *ctx)
 
 	rad_assert(request->proxy_listener == NULL);
 
-	if (!insert_into_proxy_hash(request)) {
+	if (!insert_into_proxy_hash(request, FALSE)) {
 		RDEBUG2("ERROR: Failed inserting status check %d into proxy hash.  Discarding it.",
 		       request->number);
 		request_free(&request);
@@ -860,6 +906,23 @@ static int setup_post_proxy_fail(REQUEST *request)
 	} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, "Fail-Accounting");
 
+#ifdef WITH_COA
+		/*
+		 *	See no_response_to_coa_request
+		 */
+	} else if (((request->packet->code >> 8) & 0xff) == PW_COA_REQUEST) {
+		request->packet->code &= 0xff; /* restore it */
+
+		if (request->proxy->code == PW_COA_REQUEST) {
+			dval = dict_valbyname(PW_POST_PROXY_TYPE, "Fail-CoA");
+
+		} else if (request->proxy->code == PW_DISCONNECT_REQUEST) {
+			dval = dict_valbyname(PW_POST_PROXY_TYPE, "Fail-Disconnect");
+		} else {
+			return 0;
+		}
+
+#endif
 	} else {
 		return 0;
 	}
@@ -1011,6 +1074,23 @@ static void wait_a_bit(void *ctx)
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 
+#ifdef WITH_COA
+	/*
+	 *	The CoA request is a new (internally generated)
+	 *	request, created in a child thread.  We therefore need
+	 *	some way to tie its events back into the main event
+	 *	handler.
+	 */
+	if (request->coa && !request->coa->proxy_reply &&
+	    request->coa->next_callback) {
+		request->coa->when = request->coa->next_when;
+		INSERT_EVENT(request->coa->next_callback, request->coa);
+		request->coa->next_callback = NULL;
+		request->coa->parent = NULL;
+		request->coa = NULL;
+	}
+#endif
+
 	switch (request->child_state) {
 	case REQUEST_QUEUED:
 	case REQUEST_RUNNING:
@@ -1107,6 +1187,25 @@ static void wait_a_bit(void *ctx)
 #ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
 #endif
+
+#ifdef WTH_COA
+		/*
+		 *	This is a CoA request.  It's been divorced
+		 *	from everything else, so we clean it up now.
+		 */
+		if (!request->in_request_hash &&
+		    request->proxy &&
+		    ((request->proxy->code == PW_COA_REQUEST) ||
+		     (request->proxy->code == PW_DISCONNECT_REQUEST))) {
+			/*
+			 *	FIXME: Do CoA MIBs
+			 */
+			fr_event_delete(el, &request->ev);
+			remove_from_proxy_hash(request);
+			request_free(&request);
+			return;
+		}
+#endif
 		request_stats_final(request);
 		cleanup_delay(request);
 		return;
@@ -1154,6 +1253,369 @@ static void wait_a_bit(void *ctx)
 	INSERT_EVENT(callback, request);
 }
 
+#ifdef WITH_COA
+static void no_response_to_coa_request(void *ctx)
+{
+	REQUEST *request = ctx;
+	char buffer[128];
+
+	rad_assert(request->magic == REQUEST_MAGIC);
+	rad_assert(request->child_state == REQUEST_PROXIED);
+	rad_assert(request->home_server != NULL);
+	rad_assert(!request->in_request_hash);
+
+	radlog(L_ERR, "No response to CoA request sent to %s",
+	       inet_ntop(request->proxy->dst_ipaddr.af,
+			 &request->proxy->dst_ipaddr.ipaddr,
+			 buffer, sizeof(buffer)));
+
+	/*
+	 *	Hack.
+	 */
+	request->packet->code |= (PW_COA_REQUEST << 8);
+	post_proxy_fail_handler(request);
+}
+
+
+static int update_event_timestamp(RADIUS_PACKET *packet, time_t when)
+{
+	VALUE_PAIR *vp;
+
+	vp = pairfind(packet->vps, PW_EVENT_TIMESTAMP);
+	if (!vp) return 0;
+
+	vp->vp_date = when;
+
+	if (packet->data) {
+		free(packet->data);
+		packet->data = NULL;
+		packet->data_len = 0;
+	}
+
+	return 1;		/* time stamp updated */
+}
+
+
+/*
+ *	Called when we haven't received a response to a CoA request.
+ */
+static void retransmit_coa_request(void *ctx)
+{
+	int delay, frac;
+	struct timeval mrd;
+	REQUEST *request = ctx;
+
+	rad_assert(request->magic == REQUEST_MAGIC);
+	rad_assert(request->child_state == REQUEST_PROXIED);
+	rad_assert(request->home_server != NULL);
+	rad_assert(!request->in_request_hash);
+	rad_assert(request->parent == NULL);
+	
+	fr_event_now(el, &now);
+
+	/*
+	 *	Cap count at MRC, if it is non-zero.
+	 */
+	if (request->home_server->coa_mrc &&
+	    (request->num_coa_requests >= request->home_server->coa_mrc)) {
+		no_response_to_coa_request(request);
+		return;
+	}
+
+	/*
+	 *	RFC 5080 Section 2.2.1
+	 *
+	 *	RT = 2*RTprev + RAND*RTprev
+	 *	   = 1.9 * RTprev + rand(0,.2) * RTprev
+	 *	   = 1.9 * RTprev + rand(0,1) * (RTprev / 5)
+	 */
+	delay = fr_rand();
+	delay ^= (delay >> 16);
+	delay &= 0xffff;
+	frac = request->delay / 5;
+	delay = ((frac >> 16) * delay) + (((frac & 0xffff) * delay) >> 16);
+
+	delay += (2 * request->delay) - (request->delay / 10);
+
+	/*
+	 *	Cap delay at MRT, if MRT is non-zero.
+	 */
+	if (request->home_server->coa_mrt &&
+	    (delay > (request->home_server->coa_mrt * USEC))) {
+		int mrt_usec = request->home_server->coa_mrt * USEC;
+
+		/*
+		 *	delay = MRT + RAND * MRT
+		 *	      = 0.9 MRT + rand(0,.2)  * MRT
+		 */
+		delay = fr_rand();
+		delay ^= (delay >> 15);
+		delay &= 0x1ffff;
+		delay = ((mrt_usec >> 16) * delay) + (((mrt_usec & 0xffff) * delay) >> 16);
+		delay += mrt_usec - (mrt_usec / 10);
+	}
+
+	request->delay = delay;
+	request->when = now;
+	tv_add(&request->when, request->delay);
+	mrd = request->proxy_when;
+	mrd.tv_sec += request->home_server->coa_mrd;
+
+	/*
+	 *	Cap duration at MRD.
+	 */
+	if (timercmp(&mrd, &request->when, <)) {
+		request->when = mrd;
+		INSERT_EVENT(no_response_to_coa_request, request);
+
+	} else {
+		INSERT_EVENT(retransmit_coa_request, request);
+	}
+	
+	if (update_event_timestamp(request->proxy, now.tv_sec)) {
+		if (!insert_into_proxy_hash(request, TRUE)) {
+			DEBUG("ERROR: Failed re-inserting CoA request into proxy hash.");
+			return;
+		}
+
+		request->num_proxied_requests = 0;
+		request->num_proxied_responses = 0;
+	}
+
+	request->num_proxied_requests++;
+	request->num_coa_requests++; /* is NOT reset by code 3 lines above! */
+
+	request->proxy_listener->send(request->proxy_listener,
+				      request);
+}
+
+
+/*
+ *	The original request is either DONE, or in CLEANUP_DELAY.
+ */
+static int originated_coa_request(REQUEST *request)
+{
+	int delay, rcode, pre_proxy_type = 0;
+	VALUE_PAIR *vp;
+	REQUEST *coa;
+	fr_ipaddr_t ipaddr;
+	char buffer[256];
+
+	rad_assert(request->proxy == NULL);
+	rad_assert(!request->in_proxy_hash);
+	rad_assert(request->proxy_reply == NULL);
+
+	vp = pairfind(request->config_items, PW_SEND_COA_REQUEST);
+	if (!vp && request->coa) vp = pairfind(request->coa->proxy->vps, PW_SEND_COA_REQUEST);
+	if (vp) {
+		if (vp->vp_integer == 0) {
+			request_free(&request->coa);
+			return 1;	/* success */
+		}
+
+		if (!request->coa) request_alloc_coa(request);
+		if (!request->coa) return 0;
+	}
+
+	coa = request->coa;
+
+	/*
+	 *	src_ipaddr will be set up in proxy_encode.
+	 */
+	memset(&ipaddr, 0, sizeof(ipaddr));
+	vp = pairfind(coa->proxy->vps, PW_PACKET_DST_IP_ADDRESS);
+	if (vp) {
+		ipaddr.af = AF_INET;
+		ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+
+	} else if ((vp = pairfind(coa->proxy->vps,
+				  PW_PACKET_DST_IPV6_ADDRESS)) != NULL) {
+		ipaddr.af = AF_INET6;
+		ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+		
+	} else if ((vp = pairfind(coa->proxy->vps,
+				  PW_HOME_SERVER_POOL)) != NULL) {
+		coa->home_pool = home_pool_byname(vp->vp_strvalue,
+						  HOME_TYPE_COA);
+		if (!coa->home_pool) {
+			RDEBUG2("WARNING: No such home_server_pool %s",
+			       vp->vp_strvalue);
+	fail:
+			request_free(&request->coa);
+			return 0;
+		}
+
+		/*
+		 *	Prefer
+		 */
+	} else if (request->client->coa_pool) {
+		coa->home_pool = request->client->coa_pool;
+
+	} else if (request->client->coa_server) {
+		coa->home_server = request->client->coa_server;
+
+	} else {
+		/*
+		 *	If all else fails, send it to the client that
+		 *	originated this request.
+		 */
+		memcpy(&ipaddr, &request->packet->src_ipaddr, sizeof(ipaddr));
+	}
+
+	/*
+	 *	Use the pool, if it exists.
+	 */
+	if (coa->home_pool) {
+		coa->home_server = home_server_ldb(NULL, coa->home_pool, coa);
+		if (!coa->home_server) {
+			RDEBUG("WARNING: No live home server for home_server_pool %s", vp->vp_strvalue);
+			goto fail;
+		}
+
+	} else if (!coa->home_server) {
+		int port = PW_COA_UDP_PORT;
+
+		vp = pairfind(coa->proxy->vps, PW_PACKET_DST_PORT);
+		if (vp) port = vp->vp_integer;
+
+		coa->home_server = home_server_find(&ipaddr, port);
+		if (!coa->home_server) {
+			RDEBUG2("WARNING: Unknown destination %s:%d for CoA request.",
+			       inet_ntop(ipaddr.af, &ipaddr.ipaddr,
+					 buffer, sizeof(buffer)), port);
+			goto fail;
+		}
+	}
+
+	vp = pairfind(coa->proxy->vps, PW_PACKET_TYPE);
+	if (vp) {
+		switch (vp->vp_integer) {
+		case PW_COA_REQUEST:
+		case PW_DISCONNECT_REQUEST:
+			coa->proxy->code = vp->vp_integer;
+			break;
+			
+		default:
+			DEBUG("Cannot set CoA Packet-Type to code %d",
+			      vp->vp_integer);
+			goto fail;
+		}
+	}
+
+	/*
+	 *	The rest of the server code assumes that
+	 *	request->packet && request->reply exist.  Copy them
+	 *	from the original request.
+	 */
+	rad_assert(coa->packet != NULL);
+	rad_assert(coa->packet->vps == NULL);
+	memcpy(coa->packet, request->packet, sizeof(*request->packet));
+	coa->packet->vps = paircopy(request->packet->vps);
+	coa->packet->data = NULL;
+	rad_assert(coa->reply != NULL);
+	rad_assert(coa->reply->vps == NULL);
+	memcpy(coa->reply, request->reply, sizeof(*request->reply));
+	coa->reply->vps = paircopy(request->reply->vps);
+	coa->reply->data = NULL;
+	coa->config_items = paircopy(request->config_items);
+
+	/*
+	 *	Call the pre-proxy routines.
+	 */
+	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE);
+	if (vp) {
+		RDEBUG2("  Found Pre-Proxy-Type %s", vp->vp_strvalue);
+		pre_proxy_type = vp->vp_integer;
+	}
+
+	if (coa->home_server && coa->home_pool->virtual_server) {
+		const char *old_server = coa->server;
+		
+		coa->server = coa->home_pool->virtual_server;
+		RDEBUG2(" server %s {", coa->server);
+		rcode = module_pre_proxy(pre_proxy_type, coa);
+		RDEBUG2(" }");
+		coa->server = old_server;
+	} else {
+		rcode = module_pre_proxy(pre_proxy_type, coa);
+	}
+	switch (rcode) {
+	default:
+		goto fail;
+
+	/*
+	 *	Only send the CoA packet if the pre-proxy code succeeded.
+	 */
+	case RLM_MODULE_NOOP:
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		break;
+	}
+
+	/*
+	 *	Source IP / port is set when the proxy socket
+	 *	is chosen.
+	 */
+	coa->proxy->dst_ipaddr = coa->home_server->ipaddr;
+	coa->proxy->dst_port = coa->home_server->port;
+
+	if (!insert_into_proxy_hash(coa, FALSE)) {
+		DEBUG("ERROR: Failed inserting CoA request into proxy hash.");
+		goto fail;
+	}
+
+	/*
+	 *	Forget about the original request completely at this
+	 *	point.
+	 */
+	request = coa;
+
+	gettimeofday(&request->proxy_when, NULL);	
+	request->received = request->next_when = request->proxy_when;
+	rad_assert(request->proxy_reply == NULL);
+
+	/*
+	 *	Implement re-transmit algorithm as per RFC 5080
+	 *	Section 2.2.1.
+	 *
+	 *	We want IRT + RAND*IRT
+	 *	or 0.9 IRT + rand(0,.2) IRT
+	 *
+	 *	2^20 ~ USEC, and we want 2.
+	 *	rand(0,0.2) USEC ~ (rand(0,2^21) / 10)
+	 */
+	delay = (fr_rand() & ((1 << 22) - 1)) / 10;
+	request->delay = delay * request->home_server->coa_irt;
+	delay = request->home_server->coa_irt * USEC;
+	delay -= delay / 10;
+	delay += request->delay;
+     
+	request->delay = delay;
+	tv_add(&request->next_when, delay);
+	request->next_callback = retransmit_coa_request;
+	
+	/*
+	 *	Note that we set proxied BEFORE sending the packet.
+	 *
+	 *	Once we send it, the request is tainted, as
+	 *	another thread may have picked it up.  Don't
+	 *	touch it!
+	 */
+	request->num_proxied_requests = 1;
+	request->num_proxied_responses = 0;
+	request->child_pid = NO_SUCH_CHILD_PID;
+
+	update_event_timestamp(request->proxy, request->proxy_when.tv_sec);
+
+	request->child_state = REQUEST_PROXIED;
+
+	DEBUG_PACKET(request, request->proxy, 1);
+
+	request->proxy_listener->send(request->proxy_listener,
+				      request);
+	return 1;
+}
+#endif	/* WITH_COA */
 
 #ifdef WITH_PROXY
 static int process_proxy_reply(REQUEST *request)
@@ -1190,6 +1652,12 @@ static int process_proxy_reply(REQUEST *request)
 	} else {
 		rcode = module_post_proxy(post_proxy_type, request);
 	}
+
+#ifdef WITH_COA
+	if ((request->proxy->code != PW_COA_REQUEST) &&
+	    (request->proxy->code != PW_DISCONNECT_REQUEST))
+		/* quietly follow the next if request->proxy_reply */
+#endif
 	
 	/*
 	 *	There may NOT be a proxy reply, as we may be
@@ -1296,15 +1764,13 @@ static int request_pre_handler(REQUEST *request)
 		return 0;
 	}
 
-#ifdef WITH_PROXY
-	if (!request->proxy)
-#endif
-	  {
-		  request->username = pairfind(request->packet->vps,
+	if (!request->username) {
+		request->username = pairfind(request->packet->vps,
 					     PW_USER_NAME);
+	}
 
 #ifdef WITH_PROXY
-	} else {
+	if (request->proxy) {
 		return process_proxy_reply(request);
 #endif
 	}
@@ -1327,7 +1793,7 @@ static int proxy_request(REQUEST *request)
 		return 0;
 	}
 
-	if (!insert_into_proxy_hash(request)) {
+	if (!insert_into_proxy_hash(request, FALSE)) {
 		RDEBUG("ERROR: Failed inserting request into proxy hash.");
 		return 0;
 	}
@@ -1431,7 +1897,6 @@ static int proxy_to_virtual_server(REQUEST *request)
 	return 2;		/* success, but NOT '1' !*/
 }
 
-
 /*
  *	Return 1 if we did proxy it, or the proxy attempt failed
  *	completely.  Either way, the caller doesn't touch the request
@@ -1444,7 +1909,7 @@ static int successfully_proxied_request(REQUEST *request)
 	VALUE_PAIR *realmpair;
 	VALUE_PAIR *strippedname;
 	VALUE_PAIR *vp;
-	char *realmname;
+	char *realmname = NULL;
 	home_server *home;
 	REALM *realm = NULL;
 	home_pool_t *pool;
@@ -1694,7 +2159,6 @@ static int successfully_proxied_request(REQUEST *request)
 }
 #endif
 
-
 static void request_post_handler(REQUEST *request)
 {
 	int child_state = -1;
@@ -1708,13 +2172,28 @@ static void request_post_handler(REQUEST *request)
 #ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
 #endif
-		request->child_state = REQUEST_DONE;
-		return;
+		child_state = REQUEST_DONE;
+		goto cleanup;
 	}
 
 	if (request->child_state != REQUEST_RUNNING) {
 		rad_panic("Internal sanity check failed");
 	}
+
+#ifdef WITH_COA
+	/*
+	 *	If it's not in the request hash, it's a CoA request.
+	 *	We hope.
+	 */
+	if (!request->in_request_hash &&
+	    request->proxy &&
+	    ((request->proxy->code == PW_COA_REQUEST) ||
+	     (request->proxy->code == PW_DISCONNECT_REQUEST))) {
+		request->next_callback = NULL;
+		child_state = REQUEST_DONE;
+		goto cleanup;
+	}
+#endif
 
 	if ((request->reply->code == 0) &&
 	    ((vp = pairfind(request->config_items, PW_AUTH_TYPE)) != NULL) &&
@@ -1729,6 +2208,14 @@ static void request_post_handler(REQUEST *request)
 	    (request->packet->dst_port != 0) &&
 	    (request->packet->code != PW_STATUS_SERVER)) {
 		int rcode = successfully_proxied_request(request);
+
+#ifdef WITH_COA
+		/*
+		 *	If we proxy it, we CANNOT originate a CoA
+		 *	request at the same time.
+		 */
+		if (rcode != 0) request_free(&request->coa);
+#endif
 
 		if (rcode == 1) return;
 
@@ -1866,7 +2353,8 @@ static void request_post_handler(REQUEST *request)
 		}
 
 		radlog(L_ERR, "Unknown packet type %d", request->packet->code);
-		rad_panic("Unknown packet type");
+		request->next_callback = NULL;
+		child_state = REQUEST_DONE;
 		break;
 	}
 
@@ -1883,6 +2371,21 @@ static void request_post_handler(REQUEST *request)
 		request->listener->send(request->listener, request);
 	}
 
+#ifdef WITH_COA
+	/*
+	 *	Now that we've completely processed the request,
+	 *	see if we need to originate a CoA request.
+	 */
+	if (request->coa ||
+	    (pairfind(request->config_items, PW_SEND_COA_REQUEST) != NULL)) {
+		if (!originated_coa_request(request)) {
+			RDEBUG2("Do CoA Fail handler here");
+		}
+		/* request->coa is stil set, so we can update events */
+	}
+#endif
+
+ cleanup:
 	/*
 	 *	Clean up.  These are no longer needed.
 	 */
@@ -1918,7 +2421,7 @@ static void request_post_handler(REQUEST *request)
 #endif
 
 	RDEBUG2("Finished request %d.", request->number);
-
+	rad_assert(child_state >= 0);
 	request->child_state = child_state;
 
 	/*
@@ -1936,7 +2439,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 
 	RAD_STATS_TYPE_INC(request->listener, total_dup_requests);
 	RAD_STATS_CLIENT_INC(request->listener, client, total_dup_requests);
-
+	
 	switch (request->child_state) {
 	case REQUEST_QUEUED:
 	case REQUEST_RUNNING:
@@ -1963,9 +2466,15 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		 *
 		 *	Instead, we just discard the packet.  We may
 		 *	eventually respond, or the client will send a
-		 *	new accounting packet.
+		 *	new accounting packet.		  
+		 *
+		 *	The same comments go for Status-Server, and
+		 *	other packet types.
+		 *
+		 *	FIXME: coa: when we proxy CoA && Disconnect
+		 *	packets, this logic has to be fixed.
 		 */
-		if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+		if (request->packet->code != PW_AUTHENTICATION_REQUEST) {
 			goto discard;
 		}
 
@@ -2057,6 +2566,13 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 
 	case REQUEST_CLEANUP_DELAY:
 	case REQUEST_DONE:
+		/*
+		 *	FIXME: This sends duplicate replies to
+		 *	accounting requests, even if Acct-Delay-Time
+		 *	or Event-Timestamp is in the packet.  In those
+		 *	cases, the Id should be changed, and the packet
+		 *	re-calculated.
+		 */
 		RDEBUG2("Sending duplicate reply "
 		       "to client %s port %d - ID: %d",
 		       client->shortname,
@@ -2329,18 +2845,7 @@ int received_request(rad_listen_t *listener,
 REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 {
 	char		buffer[128];
-	home_server	*home;
 	REQUEST		*request;
-
-	if (!home_server_find(&packet->src_ipaddr, packet->src_port)) {
-		radlog(L_ERR, "Ignoring request from unknown home server %s port %d",
-		       inet_ntop(packet->src_ipaddr.af,
-				 &packet->src_ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-			       packet->src_port);
-		rad_free(&packet);
-		return NULL;
-	}
 
 	/*
 	 *	Also removes from the proxy hash if responses == requests
@@ -2348,39 +2853,61 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	request = lookup_in_proxy_hash(packet);
 
 	if (!request) {
-		radlog(L_PROXY, "No outstanding request was found for proxy reply from home server %s port %d - ID %d",
+		radlog(L_PROXY, "No outstanding request was found for reply from host %s port %d - ID %d",
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
 		       packet->src_port, packet->id);
-		rad_free(&packet);
 		return NULL;
 	}
-
-	home = request->home_server;
 
 	gettimeofday(&now, NULL);
 
+	request->home_server->state = HOME_STATE_ALIVE;
+	
+#ifdef WITH_COA
 	/*
-	 *	FIXME: mark the home server alive?
+	 *	This is a response to a CoA packet that we originated.
+	 *	It's handled differently from normal proxied packets.
 	 */
-	home->state = HOME_STATE_ALIVE;
+	if ((request->proxy->code == PW_COA_REQUEST) ||
+	    (request->proxy->code == PW_DISCONNECT_REQUEST)) {
+		/*
+		 *	The parent request is done, but we haven't
+		 *	figured that out yet.  Separate the two
+		 *	requests here, the FIRST time we process the
+		 *	packet.  If there is a proxy reply already, it
+		 *	gets ignored below.
+		 */
+		if (!request->proxy_reply && request->parent &&
+		    (request->parent->coa == request)) {
+			request->parent->coa = NULL;
+			request->parent = NULL;
+		}
+
+		/*
+		 *	request->reply exists, and we don't care about
+		 *	it here.  So we skip the next step.
+		 */
+		rad_assert(request->packet != NULL);
+		rad_assert(request->reply != NULL);
+	} else
+#endif
 
 	if (request->reply && request->reply->code != 0) {
-		RDEBUG2("We already replied to this request.  Discarding response from home server.");
-		rad_free(&packet);
+		RDEBUG2("We already replied to this request.  Discarding response.");
 		return NULL;
 	}
-
+	
 	/*
-	 *	We had previously received a reply, so we don't need
-	 *	to do anything here.
+	 *	We had previously received a reply, so we
+	 *	don't need to do anything here.
 	 */
 	if (request->proxy_reply) {
 		if (memcmp(request->proxy_reply->vector,
 			   packet->vector,
 			   sizeof(request->proxy_reply->vector)) == 0) {
-			RDEBUG2("Discarding duplicate reply from home server %s port %d  - ID: %d for request %d",
+			RDEBUG2("Discarding duplicate reply from host %s port %d  - ID: %d for request %d",
 			       inet_ntop(packet->src_ipaddr.af,
 					 &packet->src_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
@@ -2394,9 +2921,8 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 			 */
 			RDEBUG2("Ignoring conflicting proxy reply");
 		}
-
+		
 		/* assert that there's an event queued for request? */
-		rad_free(&packet);
 		return NULL;
 	}
 #ifdef WITH_STATS
@@ -2408,17 +2934,17 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	 *	We update the response time only for the FIRST packet
 	 *	we receive.
 	 */
-	else if (home->ema.window > 0) {
-		radius_stats_ema(&home->ema, &now, &request->proxy_when);
+	else if (request->home_server->ema.window > 0) {
+		radius_stats_ema(&request->home_server->ema,
+				 &now, &request->proxy_when);
 	}
 #endif
-
 
 	switch (request->child_state) {
 	case REQUEST_QUEUED:
 	case REQUEST_RUNNING:
-		rad_panic("Internal sanity check failed for child state");
-		break;
+		radlog(L_ERR, "Internal sanity check failed for child state");
+		/* FALL-THROUGH */
 
 	case REQUEST_REJECT_DELAY:
 	case REQUEST_CLEANUP_DELAY:
@@ -2430,7 +2956,6 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		       packet->src_port, packet->id,
 		       request->number);
 		/* assert that there's an event queued for request? */
-		rad_free(&packet);
 		return NULL;
 
 	case REQUEST_PROXIED:

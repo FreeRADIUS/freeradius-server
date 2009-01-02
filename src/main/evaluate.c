@@ -244,6 +244,42 @@ static int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 		vp_name += 8;
 		vps = myrequest->config_items;
 
+#ifdef WITH_COA
+	} else if (strncmp(vp_name, "coa:", 4) == 0) {
+		vp_name += 4;
+
+		if (myrequest->coa &&
+		    (myrequest->coa->proxy->code == PW_COA_REQUEST)) {
+			vps = myrequest->coa->proxy->vps;
+		}
+
+	} else if (strncmp(vp_name, "coa-reply:", 10) == 0) {
+		vp_name += 10;
+
+		if (myrequest->coa && /* match reply with request */
+		    (myrequest->coa->proxy->code == PW_COA_REQUEST) &&
+		    (myrequest->coa->proxy_reply)) {
+			vps = myrequest->coa->proxy_reply->vps;
+		}
+
+	} else if (strncmp(vp_name, "disconnect:", 11) == 0) {
+		vp_name += 11;
+
+		if (myrequest->coa &&
+		    (myrequest->coa->proxy->code == PW_DISCONNECT_REQUEST)) {
+			vps = myrequest->coa->proxy->vps;
+		}
+
+	} else if (strncmp(vp_name, "disconnect-reply:", 17) == 0) {
+		vp_name += 17;
+
+		if (myrequest->coa && /* match reply with request */
+		    (myrequest->coa->proxy->code == PW_DISCONNECT_REQUEST) &&
+		    (myrequest->coa->proxy_reply)) {
+			vps = myrequest->coa->proxy_reply->vps;
+		}
+#endif
+
 	} else {
 		vps = myrequest->packet->vps;
 	}
@@ -845,6 +881,7 @@ static void fix_up(REQUEST *request)
 	}
 }
 
+
 /*
  *	The pairmove() function in src/lib/valuepair.c does all sorts of
  *	extra magic that we don't want here.
@@ -1154,7 +1191,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	CONF_ITEM *ci;
 	VALUE_PAIR *newlist, *vp;
 	VALUE_PAIR **output_vps = NULL;
-	REQUEST *request_vps = request;
+	REQUEST *myrequest = request;
 
 	if (!request || !cs) return RLM_MODULE_INVALID;
 
@@ -1165,29 +1202,67 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	if (strncmp(name, "outer.", 6) == 0) {
 		if (!request->parent) return RLM_MODULE_NOOP;
 
-		request_vps = request->parent;
+		myrequest = request->parent;
 		name += 6;
 	}
 
 	if (strcmp(name, "request") == 0) {
-		output_vps = &request_vps->packet->vps;
+		output_vps = &myrequest->packet->vps;
 
 	} else if (strcmp(name, "reply") == 0) {
-		output_vps = &request_vps->reply->vps;
+		output_vps = &myrequest->reply->vps;
 
 #ifdef WITH_PROXY
 	} else if (strcmp(name, "proxy-request") == 0) {
-		if (request->proxy) output_vps = &request_vps->proxy->vps;
+		if (request->proxy) output_vps = &myrequest->proxy->vps;
 
 	} else if (strcmp(name, "proxy-reply") == 0) {
 		if (request->proxy_reply) output_vps = &request->proxy_reply->vps;
 #endif
 
 	} else if (strcmp(name, "config") == 0) {
-		output_vps = &request_vps->config_items;
+		output_vps = &myrequest->config_items;
 
 	} else if (strcmp(name, "control") == 0) {
-		output_vps = &request_vps->config_items;
+		output_vps = &myrequest->config_items;
+
+#ifdef WITH_COA
+	} else if (strcmp(name, "coa") == 0) {
+		if (!myrequest->coa) {
+			request_alloc_coa(myrequest);
+			myrequest->coa->proxy->code = PW_COA_REQUEST;
+		}
+		  
+		if (myrequest->coa &&
+		    (myrequest->coa->proxy->code == PW_COA_REQUEST)) {
+			output_vps = &myrequest->coa->proxy->vps;
+		}
+
+	} else if (strcmp(name, "coa-reply") == 0) {
+		if (myrequest->coa && /* match reply with request */
+		    (myrequest->coa->proxy->code == PW_COA_REQUEST) &&
+		     (myrequest->coa->proxy_reply)) {
+		      output_vps = &myrequest->coa->proxy_reply->vps;
+		}
+
+	} else if (strcmp(name, "disconnect") == 0) {
+		if (!myrequest->coa) {
+			request_alloc_coa(myrequest);
+			if (myrequest->coa) myrequest->coa->proxy->code = PW_DISCONNECT_REQUEST;
+		}
+
+		if (myrequest->coa &&
+		    (myrequest->coa->proxy->code == PW_DISCONNECT_REQUEST)) {
+			output_vps = &myrequest->coa->proxy->vps;
+		}
+
+	} else if (strcmp(name, "disconnect-reply") == 0) {
+		if (myrequest->coa && /* match reply with request */
+		    (myrequest->coa->proxy->code == PW_DISCONNECT_REQUEST) &&
+		    (myrequest->coa->proxy_reply)) {
+			output_vps = &myrequest->coa->proxy_reply->vps;
+		}
+#endif
 
 	} else {
 		return RLM_MODULE_INVALID;

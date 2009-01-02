@@ -155,6 +155,12 @@ VALUE	EAP-IKEv2-AuthType		secret			1
 VALUE	EAP-IKEv2-AuthType		cert			2
 VALUE	EAP-IKEv2-AuthType		both			3
 
+ATTRIBUTE	Send-Disconnect-Request			1107	integer
+ATTRIBUTE	Send-CoA-Request			1107	integer
+
+VALUE	Send-CoA-Request		No			0
+VALUE	Send-CoA-Request		Yes			1
+
 ATTRIBUTE	Module-Return-Code			1108	integer
 
 VALUE	Module-Return-Code		reject			0
@@ -169,6 +175,7 @@ VALUE	Module-Return-Code		updated			8
 
 ATTRIBUTE	Packet-Original-Timestamp		1109	date
 ATTRIBUTE	SQL-Table-Name				1110	string
+ATTRIBUTE	Home-Server-Pool			1111	string
 
 ATTRIBUTE	FreeRADIUS-Client-IP-Address		1120	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-IPv6-Address		1121	ipv6addr
@@ -460,6 +467,12 @@ VALUE	Response-Packet-Type		Access-Challenge	11
 VALUE	Response-Packet-Type		Status-Server		12
 VALUE	Response-Packet-Type		Status-Client		13
 
+VALUE	Response-Packet-Type		Disconnect-Request	40
+VALUE	Response-Packet-Type		Disconnect-ACK		41
+VALUE	Response-Packet-Type		Disconnect-NAK		42
+VALUE	Response-Packet-Type		CoA-Request		43
+VALUE	Response-Packet-Type		CoA-ACK			44
+VALUE	Response-Packet-Type		CoA-NAK			45
 #
 #  Special value
 #

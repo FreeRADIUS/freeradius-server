@@ -45,6 +45,7 @@
 #define PW_AUTH_UDP_PORT                1812
 #define PW_ACCT_UDP_PORT                1813
 #define PW_POD_UDP_PORT			1700
+#define PW_COA_UDP_PORT			3799
 
 #define	PW_USER_NAME			1
 #define	PW_USER_PASSWORD		2
@@ -220,8 +221,10 @@
 #define PW_VIRTUAL_SERVER		1099
 #define PW_CLEARTEXT_PASSWORD		1100
 #define PW_PASSWORD_WITH_HEADER		1101
+#define PW_SEND_COA_REQUEST		1107
 #define PW_MODULE_RETURN_CODE		1108
 #define PW_PACKET_ORIGINAL_TIMESTAMP   	1109
+#define PW_HOME_SERVER_POOL		1111
 
 /*
  *	Integer Translations
