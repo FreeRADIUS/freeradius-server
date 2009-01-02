@@ -1502,6 +1502,8 @@ static int originated_coa_request(REQUEST *request)
 		}
 	}
 
+	if (!coa->proxy->code) coa->proxy->code = PW_COA_REQUEST;
+
 	/*
 	 *	The rest of the server code assumes that
 	 *	request->packet && request->reply exist.  Copy them
@@ -1528,7 +1530,7 @@ static int originated_coa_request(REQUEST *request)
 		pre_proxy_type = vp->vp_integer;
 	}
 
-	if (coa->home_server && coa->home_pool->virtual_server) {
+	if (coa->home_pool && coa->home_pool->virtual_server) {
 		const char *old_server = coa->server;
 		
 		coa->server = coa->home_pool->virtual_server;
@@ -1639,9 +1641,7 @@ static int process_proxy_reply(REQUEST *request)
 		post_proxy_type = vp->vp_integer;
 	}
 	
-	rad_assert(request->home_pool != NULL);
-	
-	if (request->home_pool->virtual_server) {
+	if (request->home_pool && request->home_pool->virtual_server) {
 		const char *old_server = request->server;
 		
 		request->server = request->home_pool->virtual_server;
