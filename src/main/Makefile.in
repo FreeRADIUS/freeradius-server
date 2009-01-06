@@ -98,6 +98,9 @@ modules.lo: modules.c ../include/modules.h
 session.lo: session.c ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c session.c
 
+listen.lo: listen.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c listen.c
+
 #
 # Helper programs
 #
