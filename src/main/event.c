@@ -58,6 +58,12 @@ static int			have_children;
 static int			just_started = TRUE;
 
 #ifndef __MINGW32__
+#ifdef HAVE_PTHREAD_H
+#define WITH_SELF_PIPE (1)
+#endif
+#endif
+
+#ifdef WITH_SELF_PIPE
 static int self_pipe[2];
 #endif
 
@@ -3146,7 +3152,7 @@ static void handle_signal_self(int flag)
 	}
 }
 
-#ifdef __MINGW32__
+#ifndef WITH_SELF_PIPE
 void radius_signal_self(int flag)
 {
 	handle_signal_self(flag);
@@ -3387,7 +3393,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		return 1;
 	}
 
-#ifndef __MINGW32__
+#ifdef WITH_SELF_PIPE
 	/*
 	 *	Child threads need a pipe to signal us, as do the
 	 *	signal handlers.
@@ -3413,7 +3419,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		radlog(L_ERR, "Failed creating handler for signals");
 		exit(1);
 	}
-#endif
+#endif	/* WITH_SELF_PIPE */
 
 #ifdef WITH_PROXY
 	/*
