@@ -66,7 +66,7 @@ name = radiusd
 
 #  Location of config and logfiles.
 confdir = ${raddbdir}
-run_dir = ${localstatedir}/run/radiusd
+run_dir = ${localstatedir}/run/${name}
 
 # Should likely be ${localstatedir}/lib/radiusd
 db_dir = ${raddbdir}
