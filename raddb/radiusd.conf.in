@@ -661,7 +661,7 @@ modules {
 	#  Include another file that has the SQL-related configuration.
 	#  This is another file only because it tends to be big.
 	#
-	$INCLUDE sql.conf
+#	$INCLUDE sql.conf
 
 	#
 	#  This module is an SQL enabled version of the counter module.
@@ -673,16 +673,15 @@ modules {
 	#  totally dependent on the SQL module to process Accounting
 	#  packets.
 	#
-	$INCLUDE sql/mysql/counter.conf
-	#$INCLUDE sql/postgresql/counter.conf
+#	$INCLUDE sql/mysql/counter.conf
 
 	#
 	#  IP addresses managed in an SQL table.
 	#
-	#$INCLUDE sqlippool.conf
+#	$INCLUDE sqlippool.conf
 
 	# OTP token support.  Not included by default.
-	# $INCLUDE otp.conf
+#	$INCLUDE otp.conf
 
 }
 
