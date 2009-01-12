@@ -1,6 +1,10 @@
 FreeRADIUS 2.1.4 Thu Dec 25 17:40:00 CEST 2008;  , urgency=medium
 	Feature improvements
 	* Permit multiple "-e" in radmin.
+	* Add support for originating CoA-Request and Disconnect-Request.
+	  See raddb/sites-available/originate-coa.
+	* Added "lifetime" and "max_queries" to raddb/sql.conf.
+	  This helps address the problem of hung SQL sockets.
 
 	Bug fixes
 	* Clean up control sockets when they are closed, so that we don't
@@ -12,7 +16,12 @@ FreeRADIUS 2.1.4 Thu Dec 25 17:40:00 CEST 2008;  , urgency=medium
 	  have affected developers.
 	* Change how we manage unprivileged user/group, so that we do not
 	  create control sockets owned by root.
-	
+	* Fixed more minor issues found by Coverity.
+	* Allow raddb/certs/bootstrap to run when there is no "make"
+	  command installed.
+	* In radiusd.conf, run_dir depends on the name of the program,
+	  and isn't hard-coded to "..../radiusd"
+
 FreeRADIUS 2.1.3 Fri Dec 5 17:40:00 CEST 2008;  , urgency=medium
 	Feature improvements
 	* Allow running with "user=radiusd" and binding to secure
