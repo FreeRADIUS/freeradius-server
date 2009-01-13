@@ -131,6 +131,13 @@ server home.example.com {
 
 	#  Read accounting packets from the detail file(s) for
 	#  the home server.
+	#
+	#  Note that you can have only ONE "listen" section reading
+	#  detail files from a particular directory.  That is why the
+	#  destination host name is used as part of the directory name
+	#  below.  Having two "listen" sections reading detail files
+	#  from the same directory WILL cause problems.  The packets
+	#  may be read by one, the other, or both "listen" sections.
 	listen {
 		type = detail
 		filename = "${radacctdir}/detail.example.com/detail-*:*"
