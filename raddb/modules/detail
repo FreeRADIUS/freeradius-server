@@ -26,6 +26,13 @@ detail {
 	#
 	#  This will create a new detail file for every hour.
 	#
+	#  If you are reading detail files via the "listen" section
+	#  (e.g. as in raddb/sites-available/robust-proxy-accounting),
+	#  you MUST use a unique directory for each combination of a
+	#  detail file writer, and reader.  That is, there can only
+	#  be ONE "listen" section reading detail files from a
+	#  particular directory.
+	#
 	detailfile = ${radacctdir}/%{Client-IP-Address}/detail-%Y%m%d
 
 	#
