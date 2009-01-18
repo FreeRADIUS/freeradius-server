@@ -1336,8 +1336,7 @@ sub redback_telnet {
     $t->cmd(String => "context $context");
 
     #Ask the question
-    @lines = $t->cmd(String => "show subscribers active
-$user\@$context");
+    @lines = $t->cmd(String => "show subscribers active $user\@$context");
     if ($lines[0] =~ /subscriber $user\@$context/ ) {
 	return 1;
     }
