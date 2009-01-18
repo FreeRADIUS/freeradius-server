@@ -375,8 +375,8 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 	request->when = request->proxy_when;
 
 #ifdef WITH_COA
-	if ((request->packet->code == PW_COA_REQUEST) ||
-	    (request->packet->code == PW_DISCONNECT_REQUEST)) {
+	if ((request->proxy->code == PW_COA_REQUEST) ||
+	    (request->proxy->code == PW_DISCONNECT_REQUEST)) {
 		request->when.tv_sec += request->home_server->coa_mrd;
 	} else
 #endif
