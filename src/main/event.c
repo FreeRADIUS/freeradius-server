@@ -1196,6 +1196,7 @@ static void wait_a_bit(void *ctx)
 		 */
 		if (!request->in_request_hash &&
 		    request->proxy &&
+		    (request->packet->code != request->proxy->code) &&
 		    ((request->proxy->code == PW_COA_REQUEST) ||
 		     (request->proxy->code == PW_DISCONNECT_REQUEST))) {
 			/*
@@ -1655,9 +1656,12 @@ static int process_proxy_reply(REQUEST *request)
 	}
 
 #ifdef WITH_COA
-	if ((request->proxy->code != PW_COA_REQUEST) &&
-	    (request->proxy->code != PW_DISCONNECT_REQUEST))
-		/* quietly follow the next if request->proxy_reply */
+	if (request->packet->code == request->proxy->code)
+	  /*
+	   *	Don't run the next bit if we originated a CoA
+	   *	packet, after receiving an Access-Request or
+	   *	Accounting-Request.
+	   */
 #endif
 	
 	/*
@@ -2862,8 +2866,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	 *	This is a response to a CoA packet that we originated.
 	 *	It's handled differently from normal proxied packets.
 	 */
-	if ((request->proxy->code == PW_COA_REQUEST) ||
-	    (request->proxy->code == PW_DISCONNECT_REQUEST)) {
+	if (request->packet->code != request->proxy->code) {
 		/*
 		 *	The parent request is done, but we haven't
 		 *	figured that out yet.  Separate the two
