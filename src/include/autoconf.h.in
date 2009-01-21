@@ -114,6 +114,9 @@
 /* Define to 1 if you have the `getpeereid' function. */
 #undef HAVE_GETPEEREID
 
+/* Define to 1 if you have the `getresuid' function. */
+#undef HAVE_GETRESUID
+
 /* Define to 1 if you have the `gettimeofday' function. */
 #undef HAVE_GETTIMEOFDAY
 
@@ -279,8 +282,14 @@
 /* Define to 1 if you have the `setlinebuf' function. */
 #undef HAVE_SETLINEBUF
 
+/* Define to 1 if you have the `setresuid' function. */
+#undef HAVE_SETRESUID
+
 /* Define to 1 if you have the `setsid' function. */
 #undef HAVE_SETSID
+
+/* Define to 1 if you have the `setuid' function. */
+#undef HAVE_SETUID
 
 /* Define to 1 if you have the `setvbuf' function. */
 #undef HAVE_SETVBUF
