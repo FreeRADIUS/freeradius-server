@@ -67,7 +67,10 @@ char *debug_condition = NULL;
  *	Temporary local variables for parsing the configuration
  *	file.
  */
-#ifndef __MINGW32__
+#ifdef HAVE_SETUID
+/*
+ *	Systems that have set/getresuid also have setuid.
+ */
 uid_t server_uid;
 static gid_t server_gid;
 static const char *uid_name = NULL;
@@ -403,7 +406,7 @@ static int r_mkdir(const char *part)
 }
 
 
-#ifndef __MINGW32__
+#ifdef HAVE_SETUID
 int did_setuid = FALSE;
 
 #if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
@@ -813,9 +816,9 @@ int read_mainconfig(int reload)
 		}
 	}
 
-#ifndef __MINGW32__
+#ifdef HAVE_SETUID
 	/*
-	 *	We should really switch users earlier in the process.
+	 *	Switch users as early as possible.
 	 */
 	if (!switch_users(cs)) exit(1);
 #endif
