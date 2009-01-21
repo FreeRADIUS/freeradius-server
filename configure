@@ -23708,6 +23708,7 @@ fi
 
 
 
+
 for ac_func in \
 	getopt_long \
 	lockf \
@@ -23736,6 +23737,7 @@ for ac_func in \
 	closefrom \
 	gettimeofday \
 	getpeereid \
+	setuid \
 	setresuid \
 	getresuid \
 	strlcat \

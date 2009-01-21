@@ -218,6 +218,9 @@
 /* Define to 1 if you have the `setsid' function. */
 #undef HAVE_SETSID
 
+/* Define to 1 if you have the `setuid' function. */
+#undef HAVE_SETUID
+
 /* Define to 1 if you have the `setvbuf' function. */
 #undef HAVE_SETVBUF
 
