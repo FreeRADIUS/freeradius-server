@@ -19,7 +19,7 @@ ATTRIBUTE	CVPN3000-Secondary-DNS			6	ipaddr
 ATTRIBUTE	CVPN3000-Primary-WINS			7	ipaddr
 ATTRIBUTE	CVPN3000-Secondary-WINS			8	ipaddr
 ATTRIBUTE	CVPN3000-SEP-Card-Assignment		9	integer
-ATTRIBUTE	CVPN3000-Priority-On-SEP		10	ipaddr
+ATTRIBUTE	CVPN3000-Priority-On-SEP		10	integer
 ATTRIBUTE	CVPN3000-Tunneling-Protocols		11	integer
 ATTRIBUTE	CVPN3000-IPSec-Sec-Association		12	string
 ATTRIBUTE	CVPN3000-IPSec-Authentication		13	integer
