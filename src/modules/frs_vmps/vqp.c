@@ -36,6 +36,8 @@ RCSID("$Id$");
 				     } \
 				} while(0)
 
+#define MAX_VMPS_LEN (MAX_STRING_LEN - 1)
+
 /*
  *  http://www.openbsd.org/cgi-bin/cvsweb/src/usr.sbin/tcpdump/print-vqp.c
  *
@@ -205,7 +207,7 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 			/*
 			 *	Maximum length we support.
 			 */
-			len = (12 * (4 + 4 + 253));
+			len = (12 * (4 + 4 + MAX_VMPS_LEN));
 
 		} else {
 			if (len != 2) {
@@ -216,7 +218,7 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 			/*
 			 *	Maximum length we support.
 			 */
-			len = (12 * (4 + 4 + 253));
+			len = (12 * (4 + 4 + MAX_VMPS_LEN));
 		}
 #endif
 	}
@@ -224,7 +226,7 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	/*
 	 *	For now, be generous.
 	 */
-	len = (12 * (4 + 4 + 253));
+	len = (12 * (4 + 4 + MAX_VMPS_LEN));
 
 	buf = malloc(len);
 	if (!buf) return -1;
@@ -361,7 +363,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 				rad_free(&packet);
 				return NULL;
 			}
-			
+
 			/*
 			 *	Length is 2 bytes
 			 *
@@ -369,8 +371,12 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 			 *	server reasons.  Also, there's no reason
 			 *	for bigger lengths to exist... admins
 			 *	won't be typing in a 32K vlan name.
+			 *
+			 *	Except for received ethernet frames...
+			 *	they get chopped to 253 internally.
 			 */
-			if ((ptr[4] != 0) || (ptr[5] > 253)) {
+			if ((ptr[3] != 5) &&
+			    ((ptr[4] != 0) || (ptr[5] > MAX_VMPS_LEN))) {
 				fr_strerror_printf("Packet contains attribute with invalid length %02x %02x", ptr[4], ptr[5]);
 				rad_free(&packet);
 				return NULL;
@@ -479,7 +485,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	 */
 	while (ptr < end) {
 		attribute = (ptr[2] << 8) | ptr[3];
-		length = ptr[5];
+		length = (ptr[4] << 8) | ptr[5];
 		ptr += 6;
 
 		/*
@@ -505,10 +511,17 @@ int vqp_decode(RADIUS_PACKET *packet)
 			/* FALL-THROUGH */
 
 		default:
-		case PW_TYPE_STRING:
 		case PW_TYPE_OCTETS:
-			memcpy(vp->vp_octets, ptr, length);
-			vp->length = length;
+		case PW_TYPE_STRING:
+			if (length < MAX_VMPS_LEN) {
+				memcpy(vp->vp_octets, ptr, length);
+				vp->length = length;
+				vp->vp_octets[length] = '\0';
+			} else {
+				memcpy(vp->vp_octets, ptr, MAX_VMPS_LEN);
+				vp->length = MAX_VMPS_LEN;
+				vp->vp_octets[MAX_VMPS_LEN] = '\0';
+			}
 			break;
 		}
 		ptr += length;
