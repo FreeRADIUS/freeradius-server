@@ -412,7 +412,7 @@ int ip_hton(const char *src, int af, fr_ipaddr_t *dst)
 	hints.ai_family = af;
 
 	if ((error = getaddrinfo(src, NULL, &hints, &res)) != 0) {
-		fr_strerror_printf("ip_nton: %s", gai_strerror(error));
+		fr_strerror_printf("ip_hton: %s", gai_strerror(error));
 		return -1;
 	}
 
