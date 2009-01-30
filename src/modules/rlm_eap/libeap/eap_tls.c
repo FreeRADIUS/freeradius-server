@@ -330,7 +330,8 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 		return EAPTLS_FAIL;
 
 	case handshake:
-		if (tls_session->info.handshake_type == finished) {
+		if ((tls_session->info.handshake_type == finished) &&
+		    (tls_session->dirty_out.used == 0)) {
 			RDEBUG2("ACK handshake is finished");
 
 			/* 
