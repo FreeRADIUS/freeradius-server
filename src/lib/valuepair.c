@@ -1537,6 +1537,8 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		 */
 	case T_OP_REG_EQ:	/* =~ */
 	case T_OP_REG_NE:	/* !~ */
+		strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
+		vp->length = strlen(vp->vp_strvalue);
 		/*
 		 *	If anything goes wrong, this is a run-time error,
 		 *	not a compile-time error.
