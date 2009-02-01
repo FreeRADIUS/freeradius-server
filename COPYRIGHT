@@ -3,50 +3,43 @@
 Unless otherwise mentioned, the copyrights described in section 4,
 below, apply to all files in this distribution.
 
-2. BACKGROUND
+2. INDIVIDUAL DIRECTORIES
 
-Much of the code in this package was originally written by Miquel van
-Smoorenburg <miquels@cistron.nl> for Cistron Internet Services B.V.  A
-significant fraction of the code was written by others for the
-FreeRADIUS Server Project.
-
-3. INDIVIDUAL DIRECTORIES
-
-3.1 doc/rfc/
+2.1 doc/rfc/
 
 Most of the files in this directory are copyrighted by the Internet
 Society, Inc.  See the contents of the files for details.
 
-3.2 src/lib/
+2.2 src/lib/
 
 Copyright for files in this directory is held by the contributors.
 See the contents of the files for details
 
-3.2.1 LICENSE
+2.2.1 LICENSE
 
 The license for all files in the src/lib directory is the GNU LGPL
 version 2, which is included with this program in the file
 src/lib/LICENSE.
 
-3.3 libltdl/
+2.3 libltdl/
 
 Most of the files in this directory are copyright the Free Software
 Foundation, Inc.  See the contents of the files for details.
 
-4. ALL OTHER FILES
+3. ALL OTHER FILES
 
 Copyright for files in this directory is held by the contributors.
 See the contents of the files for details.  Files without explicit
 copyright notices are copyright The FreeRADIUS Server Project.  See
 section 4.2 for more information.
 
-4.1 LICENSE
+3.1 LICENSE
 
 The license for all other source code and documentation except the
 files in src/lib directory is the GNU GPL version 2, which is included
 with this program in the LICENSE file in this directory.
 
-4.2 LIST OF COPYRIGHT HOLDERS
+3.2 LIST OF COPYRIGHT HOLDERS
 
 Portions of the source code and documentation included here are
 copyright by one or more of the following organizations and
@@ -54,10 +47,10 @@ individuals.  This list is not exhaustive.  Consult the individual
 files for more detailed copyright statements.
 
 
-Copyright (C) 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 The FreeRADIUS
+Copyright (C) 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009 The FreeRADIUS
 Server Project
 
-Copyright (C) 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008 Alan DeKok
+Copyright (C) 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009 Alan DeKok
 <aland@deployingradius.com>
 
 Copyright (C) 1996, 1997, 1999, 2000, 2002, 2003, 2004, 2005 Free
