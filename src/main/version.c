@@ -43,7 +43,7 @@ void NEVER_RETURNS version(void)
 #endif
 	printf("\n");
 #endif
-	printf("Copyright (C) 1999-2008 The FreeRADIUS server project and contributors.\n");
+	printf("Copyright (C) 1999-2009 The FreeRADIUS server project and contributors.\n");
 	printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 	printf("PARTICULAR PURPOSE.\n");
 	printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
