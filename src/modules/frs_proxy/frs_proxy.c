@@ -90,9 +90,7 @@ static int proxy_socket_recv(rad_listen_t *listener,
 	REQUEST		*request;
 	RADIUS_PACKET	*packet;
 	char		buffer[128];
-#ifdef WITH_COA
 	RAD_REQUEST_FUNP fun = NULL;
-#endif
 
 	packet = rad_recv(listener->fd, 0);
 	if (!packet) {
@@ -109,9 +107,6 @@ static int proxy_socket_recv(rad_listen_t *listener,
 	case PW_AUTHENTICATION_REJECT:
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
-#endif
-#ifdef WITH_COA
-		fun = request->process; /* re-run original function */
 #endif
 		break;
 
@@ -132,7 +127,7 @@ static int proxy_socket_recv(rad_listen_t *listener,
 		       "from home server %s port %d - ID %d : IGNORED",
 		       packet->code,
 		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
-		       packet->src_port, packet->id);
+ 		       packet->src_port, packet->id);
 		rad_free(&packet);
 		return 0;
 	}
@@ -144,11 +139,11 @@ static int proxy_socket_recv(rad_listen_t *listener,
 
 	rad_assert(request->process != NULL);
 
-#ifndef WITH_COA
-	*pfun = request->process;
-#else
-	*pfun = fun;
+#ifdef WITH_COA
+	if (!fun)
 #endif
+	  fun = request->process; /* re-run original function */
+	*pfun = fun;
 	*prequest = request;
 
 	return 1;
