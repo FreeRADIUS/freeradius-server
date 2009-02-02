@@ -1540,6 +1540,34 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	return 0;
 }
 
+#ifdef WITH_COA
+static int pool_peek_type(CONF_SECTION *cs)
+{
+	const char *name;
+	CONF_PAIR *cp;
+	home_server *home;
+
+	cp = cf_pair_find(cs, "home_server");
+	if (!cp) {
+		cf_log_err(cf_sectiontoitem(cs), "Pool does not contain a \"home_server\" entry");
+		return HOME_TYPE_INVALID;
+	}
+
+	name = cf_pair_value(cp);
+	if (!name) {
+		cf_log_err(cf_pairtoitem(cp), "home_server entry does not reference a home server");
+		return HOME_TYPE_INVALID;
+	}
+
+	home = home_server_byname(name);
+	if (!home) {
+		cf_log_err(cf_pairtoitem(cp), "home_server \"%s\" does not exist", name);
+		return HOME_TYPE_INVALID;
+	}
+
+	return home->type;
+}
+#endif
 
 int realms_init(CONF_SECTION *config)
 {
@@ -1616,9 +1644,14 @@ int realms_init(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "home_server_pool");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "home_server_pool")) {
+		int type;
+
 		if (cf_data_find(cs, "home_server_pool")) continue;
 
-		if (!server_pool_add(rc, cs, HOME_TYPE_COA, TRUE)) {
+		type = pool_peek_type(cs);
+		if (type == HOME_TYPE_INVALID) return 0;
+
+		if (!server_pool_add(rc, cs, type, TRUE)) {
 			return 0;
 		}
 	}
