@@ -74,6 +74,9 @@ struct sql_inst {
 	SQLSOCK *(*sql_get_socket)(SQL_INST * inst);
 	int (*sql_release_socket)(SQL_INST * inst, SQLSOCK * sqlsocket);
 	size_t (*sql_escape_func)(char *out, size_t outlen, const char *in);
+	int (*sql_query)(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
+	int (*sql_select_query)(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
+	int (*sql_fetch_row)(SQLSOCK *sqlsocket, SQL_INST *inst);
 };
 
 typedef struct sql_grouplist {

@@ -321,7 +321,7 @@ static int sqlippool_command(const char * fmt, SQLSOCK * sqlsocket,
 #if 0
 	DEBUG2("sqlippool_command: '%s'", query);
 #endif
-	if (rlm_sql_query(sqlsocket, data->sql_inst, query)){
+	if (data->sql_inst->sql_query(sqlsocket, data->sql_inst, query)){
 		radlog(L_ERR, "sqlippool_command: database query error in: '%s'", query);
 		return 0;
 	}
@@ -359,7 +359,7 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt,
 		strcpy(query, expansion);
 	}
 
-	if (rlm_sql_select_query(sqlsocket, data->sql_inst, query)){
+	if (data->sql_inst->sql_select_query(sqlsocket, data->sql_inst, query)){
 		radlog(L_ERR, "sqlippool_query1: database query error");
 		out[0] = '\0';
 		return 0;
@@ -367,7 +367,7 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt,
 
 	out[0] = '\0';
 
-	if (!rlm_sql_fetch_row(sqlsocket, data->sql_inst)) {
+	if (!data->sql_inst->sql_fetch_row(sqlsocket, data->sql_inst)) {
 		if (sqlsocket->row) {
 			if (sqlsocket->row[0]) {
 				if ((rlen = strlen(sqlsocket->row[0])) < outlen) {
@@ -623,7 +623,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 						 data->pool_check, sqlsocket, data, request,
 						(char *) NULL, 0);
 
-			sql_release_socket(data->sql_inst, sqlsocket);
+			data->sql_inst->sql_release_socket(data->sql_inst, sqlsocket);
 
 			if (allocation_len) {
 
@@ -652,7 +652,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 		}
 
-		sql_release_socket(data->sql_inst, sqlsocket);
+		data->sql_inst->sql_release_socket(data->sql_inst, sqlsocket);
 
 		RDEBUG("IP address could not be allocated.");
 		radius_xlat(logstr, sizeof(logstr), data->log_failed,
@@ -674,7 +674,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 				  request, (char *) NULL, 0);
 
 		RDEBUG("Invalid IP number [%s] returned from database query.", allocation);
-		sql_release_socket(data->sql_inst, sqlsocket);
+		data->sql_inst->sql_release_socket(data->sql_inst, sqlsocket);
 		radius_xlat(logstr, sizeof(logstr), data->log_failed,
 			    request, NULL);
 
@@ -699,7 +699,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	sqlippool_command(data->allocate_commit, sqlsocket, data, request,
 			  (char *) NULL, 0);
 
-	sql_release_socket(data->sql_inst, sqlsocket);
+	data->sql_inst->sql_release_socket(data->sql_inst, sqlsocket);
 	radius_xlat(logstr, sizeof(logstr), data->log_success, request, NULL);
 
 	return do_logging(logstr, RLM_MODULE_OK);

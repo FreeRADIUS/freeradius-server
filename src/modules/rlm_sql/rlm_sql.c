@@ -799,6 +799,9 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	inst->sql_get_socket = sql_get_socket;
 	inst->sql_release_socket = sql_release_socket;
 	inst->sql_escape_func = sql_escape_func;
+	inst->sql_query = rlm_sql_query;
+	inst->sql_select_query = rlm_sql_select_query;
+	inst->sql_fetch_row = rlm_sql_fetch_row;
 
 	/*
 	 * If the configuration parameters can't be parsed, then
