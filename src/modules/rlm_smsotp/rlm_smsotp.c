@@ -43,7 +43,7 @@ RCSID("$Id: rlm_smsotp.c,v 0.2 2009/02/03 08:06:44 wofflger Exp $")
 static const CONF_PARSER module_config[] = {
   { "socket", PW_TYPE_STRING_PTR, offsetof(rlm_smsotp_t, smsotp_socket), NULL, SMSOTP_SOCKET },
   { "challenge_message", PW_TYPE_STRING_PTR, offsetof(rlm_smsotp_t, smsotp_challengemessage), NULL, SMSOTP_CHALLENGEMESSAGE },
-  { "auth_type", PW_TYPE_STRING_PTR, offsetof(rlm_smsotp_t, smsotp_authtype), NULL, SMSOTP_AUTHTYPE },
+  { "challenge_type", PW_TYPE_STRING_PTR, offsetof(rlm_smsotp_t, smsotp_authtype), NULL, SMSOTP_AUTHTYPE },
 
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
