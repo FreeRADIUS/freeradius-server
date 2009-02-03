@@ -181,7 +181,11 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 		if ((client->created + client->lifetime) > now) return client;
 		
 		/*
-		 *	It's dead, Jim.  Delete it.
+		 *	FIXME: Don't delete it until after the last
+		 *	request using it has expired.  i.e. keep a
+		 *	"use counter" (ugh).  Why can't we use a
+		 *	language with garbage collection?
+		 *	
 		 */
 		client_delete(clients, client);
 
