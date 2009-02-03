@@ -23,10 +23,10 @@ typedef struct rlm_smsotp_t {
 	char *smsotp_authtype;
 } rlm_smsotp_t;
 
-extern void _smsotp_pthread_mutex_init(pthread_mutex_t *, const pthread_mutexattr_t *, const char *);
-extern void _smsotp_pthread_mutex_lock(pthread_mutex_t *, const char *);
-extern int _smsotp_pthread_mutex_trylock(pthread_mutex_t *, const char *);
-extern void _smsotp_pthread_mutex_unlock(pthread_mutex_t *, const char *);
+static void _smsotp_pthread_mutex_init(pthread_mutex_t *, const pthread_mutexattr_t *, const char *);
+static void _smsotp_pthread_mutex_lock(pthread_mutex_t *, const char *);
+static int _smsotp_pthread_mutex_trylock(pthread_mutex_t *, const char *);
+static void _smsotp_pthread_mutex_unlock(pthread_mutex_t *, const char *);
 
 #define smsotp_pthread_mutex_init(a, b) _smsotp_pthread_mutex_init((a), (b), __func__)
 #define smsotp_pthread_mutex_lock(a) _smsotp_pthread_mutex_lock((a), __func__)

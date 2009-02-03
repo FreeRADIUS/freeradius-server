@@ -41,9 +41,9 @@ RCSID("$Id: rlm_smsotp.c,v 0.2 2009/02/03 08:06:44 wofflger Exp $")
  */
 
 static const CONF_PARSER module_config[] = {
-  { "smsotp_socket", PW_TYPE_STRING_PTR, offsetof(rlm_smsotp_t, smsotp_socket), NULL, SMSOTP_SOCKET },
-  { "smsotp_challengemessage", PW_TYPE_STRING_PTR, offsetof(rlm_smsotp_t, smsotp_challengemessage), NULL, SMSOTP_CHALLENGEMESSAGE },
-  { "smsotp_authtype", PW_TYPE_STRING_PTR, offsetof(rlm_smsotp_t, smsotp_authtype), NULL, SMSOTP_AUTHTYPE },
+  { "socket", PW_TYPE_STRING_PTR, offsetof(rlm_smsotp_t, smsotp_socket), NULL, SMSOTP_SOCKET },
+  { "challenge_message", PW_TYPE_STRING_PTR, offsetof(rlm_smsotp_t, smsotp_challengemessage), NULL, SMSOTP_CHALLENGEMESSAGE },
+  { "auth_type", PW_TYPE_STRING_PTR, offsetof(rlm_smsotp_t, smsotp_authtype), NULL, SMSOTP_AUTHTYPE },
 
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -238,7 +238,7 @@ static int smsotp_detach(void *instance)
 }
 
 /* forward declarations */
-static smsotp_fd_t *smsotp_fd_head;
+static smsotp_fd_t *smsotp_fd_head = NULL;
 static pthread_mutex_t smsotp_fd_head_mutex = PTHREAD_MUTEX_INITIALIZER;
 /* forward declarations end */
 
@@ -404,7 +404,7 @@ static int smsotp_write(smsotp_fd_t *fdp, const char *buf, size_t len)
 
 /* mutex functions begin*/
 /* guaranteed initialization */
-void _smsotp_pthread_mutex_init(pthread_mutex_t *mutexp, const pthread_mutexattr_t *attr, const char *caller)
+static void _smsotp_pthread_mutex_init(pthread_mutex_t *mutexp, const pthread_mutexattr_t *attr, const char *caller)
 {
   int rc;
 
@@ -415,7 +415,7 @@ void _smsotp_pthread_mutex_init(pthread_mutex_t *mutexp, const pthread_mutexattr
 }
 
 /* guaranteed lock */
-void _smsotp_pthread_mutex_lock(pthread_mutex_t *mutexp, const char *caller)
+static void _smsotp_pthread_mutex_lock(pthread_mutex_t *mutexp, const char *caller)
 {
   int rc;
 
@@ -426,7 +426,7 @@ void _smsotp_pthread_mutex_lock(pthread_mutex_t *mutexp, const char *caller)
 }
 
 /* guaranteed trylock */
-int _smsotp_pthread_mutex_trylock(pthread_mutex_t *mutexp, const char *caller)
+static int _smsotp_pthread_mutex_trylock(pthread_mutex_t *mutexp, const char *caller)
 {
   int rc;
 
@@ -440,7 +440,7 @@ int _smsotp_pthread_mutex_trylock(pthread_mutex_t *mutexp, const char *caller)
 }
 
 /* guaranteed unlock */
-void _smsotp_pthread_mutex_unlock(pthread_mutex_t *mutexp, const char *caller)
+static void _smsotp_pthread_mutex_unlock(pthread_mutex_t *mutexp, const char *caller)
 {
   int rc;
 
