@@ -198,6 +198,8 @@ static void module_instance_free_old(CONF_SECTION *cs, module_instance_t *node,
 		
 		if (node->entry->module->detach) {
 			(node->entry->module->detach)(mh->insthandle);
+		} else {
+			free(mh->insthandle);
 		}
 
 		*last = mh->next;
