@@ -8,7 +8,7 @@
 #
 #	Some useful things to remember:
 #
-#	WiMAX-MSK = EAP MSK, but is 32 octets.
+#	WiMAX-MSK = EAP MSK, but is 64 octets.
 #
 #	MIP-RK-1 = HMAC-SHA256(ESMK, "miprk@wimaxforum.org" | 0x00020001)
 #	MIP-RK-2 = HMAC-SHA256(ESMK, MIP-RK-1 | "miprk@wimaxforum.org" | 0x00020002)
