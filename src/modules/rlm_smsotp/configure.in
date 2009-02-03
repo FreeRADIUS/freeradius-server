@@ -8,21 +8,10 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	dnl put configuration checks here.
-	dnl set $fail to what's missing, on fatal errors.
-	dnl use AC_MSG_WARN() on important messages.
-	AC_CHECK_LIB(c, printf,
-		[ smsotp_ldflags="$smsotp_ldflags -lc" ],
-		[ fail=$fail" printf" ]
-	)
-
-	AC_CHECK_HEADER(stdio.h,
-		[ smsotp_cflags="$smsotp_cflags -I/usr/include" ],
-		[ fail=$fail" stdio.h" ]
-	)
-
-	AC_CHECK_HEADERS(stdio.h stdlib.h)  # for the config.h defs
-	AC_CHECK_FUNCS(printf)  # for the config.h defs
+	AC_CHECK_HEADERS(sys/un.h)  # for the config.h defs
+	if test "$ac_cv_header_sys_un_h" != "yes"; then
+	  fail="$fail sys/un.h"
+	fi
 
 	targetname=modname     # keep this!  Don't change!
 else

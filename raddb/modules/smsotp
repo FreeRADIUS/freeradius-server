@@ -1,0 +1,50 @@
+# -*- text -*-
+#
+#  $Id$
+
+#  SMS One-time Password system.
+#
+#  This module will extend FreeRadius with a socks interface to create and
+#  validate One-Time-Passwords. The program for that creates the socket
+#  and interacts with this module is not included here.
+# 
+#  The module does not check the User-Password, this should be done with
+#  the "pap" module.  See the example below.
+#
+#  The module must be used in the "authorize" section to set 
+#  Auth-Type properly.  The first time through, the module is called
+#  in the "authenticate" section to authenticate the user password, and
+#  to send the challenge.  The second time through, it authenticates
+#  the response to the challenge. e.g.:
+#
+#  authorize {
+#	...
+#	smsotp
+#	...
+#  }
+#
+#  authenticate {
+#	...
+#	Auth-Type smsotp {
+#		pap
+#		smsotp
+#	}
+#
+#	Auth-Type smsotp-reply {
+#		smsotp
+#	}
+#	...
+#  }
+#
+smsotp {
+	#  The location of the socket.
+	socket = "/var/run/smsotp_socket"
+
+	#  Defines the challenge message that will be send to the
+	#  NAS. Default is "Enter Mobile PIN" }
+	challenge_message = "Enter Mobile PIN:"
+
+	#  Defines the Auth-Type section that is run for the response to
+	#  the challenge. Default is "smsotp-reply".
+	challenge_type = "smsotp-reply"
+}
