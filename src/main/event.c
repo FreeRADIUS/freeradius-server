@@ -1978,40 +1978,6 @@ static int successfully_proxied_request(REQUEST *request)
 		pairmake("Realm", realmname, T_OP_EQ));
 
 	/*
-	 *	Allocate the proxy packet, only if it wasn't already
-	 *	allocated by a module.  This check is mainly to support
-	 *	the proxying of EAP-TTLS and EAP-PEAP tunneled requests.
-	 *
-	 *	In those cases, the EAP module creates a "fake"
-	 *	request, and recursively passes it through the
-	 *	authentication stage of the server.  The module then
-	 *	checks if the request was supposed to be proxied, and
-	 *	if so, creates a proxy packet from the TUNNELED request,
-	 *	and not from the EAP request outside of the tunnel.
-	 *
-	 *	The proxy then works like normal, except that the response
-	 *	packet is "eaten" by the EAP module, and encapsulated into
-	 *	an EAP packet.
-	 */
-	if (!request->proxy) {
-		if ((request->proxy = rad_alloc(TRUE)) == NULL) {
-			radlog(L_ERR|L_CONS, "no memory");
-			exit(1);
-		}
-
-		/*
-		 *	Copy the request, then look up name and
-		 *	plain-text password in the copy.
-		 *
-		 *	Note that the User-Name attribute is the
-		 *	*original* as sent over by the client.  The
-		 *	Stripped-User-Name attribute is the one hacked
-		 *	through the 'hints' file.
-		 */
-		request->proxy->vps =  paircopy(request->packet->vps);
-	}
-
-	/*
 	 *	Strip the name, if told to.
 	 *
 	 *	Doing it here catches the case of proxied tunneled
@@ -2079,9 +2045,6 @@ static int successfully_proxied_request(REQUEST *request)
 	 *	pre-proxy may use this information, or change it.
 	 */
 	request->proxy->code = request->packet->code;
-	request->proxy->dst_ipaddr = home->ipaddr;
-	request->proxy->dst_port = home->port;
-	request->home_server = home;
 
 	/*
 	 *	Call the pre-proxy routines.
@@ -2485,9 +2448,6 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			}
 
 			request->proxy->code = request->packet->code;
-			request->proxy->dst_ipaddr = home->ipaddr;
-			request->proxy->dst_port = home->port;
-			request->home_server = home;
 
 			/*
 			 *	Free the old packet, to force re-encoding
