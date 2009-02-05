@@ -50,6 +50,7 @@ typedef struct home_server {
 	int		response_window;
 	int		max_outstanding; /* don't overload it */
 	int		currently_outstanding;
+	int		message_authenticator;
 
 	struct timeval	revive_time;
 	struct timeval	zombie_period_start;
