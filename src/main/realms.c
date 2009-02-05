@@ -1891,6 +1891,19 @@ home_server *home_server_ldb(const char *realmname,
 			continue;
 		}
 
+#ifdef WITH_DETAIL
+		/*
+		 *	We read the packet from a detail file, AND it
+		 *	came from this server.  Don't re-proxy it
+		 *	there.
+		 */
+		if ((request->listener->type == RAD_LISTEN_DETAIL) &&
+		    (request->packet->code == PW_ACCOUNTING_REQUEST) &&
+		    (fr_ipaddr_cmp(&home->ipaddr, &request->packet->src_ipaddr) == 0)) {
+			continue;
+		}
+#endif
+
 		if (pool->type != HOME_POOL_LOAD_BALANCE) {
 			return home;
 		}
