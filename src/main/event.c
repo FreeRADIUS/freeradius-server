@@ -1981,21 +1981,6 @@ static int successfully_proxied_request(REQUEST *request)
 	pairadd(&request->packet->vps,
 		pairmake("Realm", realmname, T_OP_EQ));
 
-#ifdef WITH_DETAIL
-	/*
-	 *	We read the packet from a detail file, AND it came from
-	 *	the server we're about to send it to.  Don't do that.
-	 */
-	if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
-	    (request->listener->type == RAD_LISTEN_DETAIL) &&
-	    (home->ipaddr.af == AF_INET) &&
-	    (request->packet->src_ipaddr.af == AF_INET) &&
-	    (home->ipaddr.ipaddr.ip4addr.s_addr == request->packet->src_ipaddr.ipaddr.ip4addr.s_addr)) {
-		RDEBUG2("    rlm_realm: Packet came from realm %s, proxy cancelled", realmname);
-		return 0;
-	}
-#endif
-
 	/*
 	 *	Allocate the proxy packet, only if it wasn't already
 	 *	allocated by a module.  This check is mainly to support
