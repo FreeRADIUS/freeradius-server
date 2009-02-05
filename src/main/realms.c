@@ -1865,7 +1865,8 @@ home_server *home_server_ldb(const char *realmname,
 #endif
 
 		if (pool->type != HOME_POOL_LOAD_BALANCE) {
-			return home;
+			found = home;
+			break;
 		}
 
 		if (!found) {
@@ -1908,13 +1909,61 @@ home_server *home_server_ldb(const char *realmname,
 
 	} /* loop over the home servers */
 
-	if (found) return found;
-
 	/*
 	 *	There's a fallback if they're all dead.
 	 */
-	if (pool->fallback) {
-		return pool->fallback;
+	if (!found && pool->fallback) {
+		found = pool->fallback;
+	}
+
+	if (found) {
+	update_and_return:
+		/*
+		 *	Allocate the proxy packet, only if it wasn't
+		 *	already allocated by a module.  This check is
+		 *	mainly to support the proxying of EAP-TTLS and
+		 *	EAP-PEAP tunneled requests.
+		 *
+		 *	In those cases, the EAP module creates a
+		 *	"fake" request, and recursively passes it
+		 *	through the authentication stage of the
+		 *	server.  The module then checks if the request
+		 *	was supposed to be proxied, and if so, creates
+		 *	a proxy packet from the TUNNELED request, and
+		 *	not from the EAP request outside of the
+		 *	tunnel.
+		 *
+		 *	The proxy then works like normal, except that
+		 *	the response packet is "eaten" by the EAP
+		 *	module, and encapsulated into an EAP packet.
+		 */
+		if (!request->proxy) {
+			if ((request->proxy = rad_alloc(TRUE)) == NULL) {
+				radlog(L_ERR|L_CONS, "no memory");
+				exit(1);
+			}
+			
+			/*
+			 *	Copy the request, then look up name
+			 *	and plain-text password in the copy.
+			 *
+			 *	Note that the User-Name attribute is
+			 *	the *original* as sent over by the
+			 *	client.  The Stripped-User-Name
+			 *	attribute is the one hacked through
+			 *	the 'hints' file.
+			 */
+			request->proxy->vps =  paircopy(request->packet->vps);
+		}
+
+		/*
+		 *	Update the various fields as appropriate.
+		 */
+		request->proxy->dst_ipaddr = found->ipaddr;
+		request->proxy->dst_port = found->port;
+		request->home_server = found;
+
+		return found;
 	}
 
 	/*
@@ -1926,19 +1975,17 @@ home_server *home_server_ldb(const char *realmname,
 	 */
 	if (!realm_config->fallback &&
 	    realm_config->wake_all_if_all_dead) {
-		home_server *lb = NULL;
-
 		for (count = 0; count < pool->num_home_servers; count++) {
 			home_server *home = pool->servers[count];
 
 			if ((home->state == HOME_STATE_IS_DEAD) &&
 			    (home->ping_check == HOME_PING_CHECK_NONE)) {
 				home->state = HOME_STATE_ALIVE;
-				if (!lb) lb = home;
+				if (!found) found = home;
 			}
 		}
 
-		if (lb) return lb;
+		if (found) goto update_and_return;
 	}
 
 	/*
