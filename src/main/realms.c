@@ -299,6 +299,8 @@ static CONF_PARSER home_server_config[] = {
 	  offsetof(home_server,response_window), NULL,   "30" },
 	{ "max_outstanding", PW_TYPE_INTEGER,
 	  offsetof(home_server,max_outstanding), NULL,   "65536" },
+	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
+	  offsetof(home_server, message_authenticator), 0, NULL },
 
 	{ "zombie_period", PW_TYPE_INTEGER,
 	  offsetof(home_server,zombie_period), NULL,   "40" },
@@ -1962,6 +1964,18 @@ home_server *home_server_ldb(const char *realmname,
 		request->proxy->dst_ipaddr = found->ipaddr;
 		request->proxy->dst_port = found->port;
 		request->home_server = found;
+
+		/*
+		 *	We're supposed to add a Message-Authenticator
+		 *	if it doesn't exist, and it doesn't exist.
+		 */
+		if (found->message_authenticator &&
+		    (request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+		    !pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR)) {
+			radius_pairmake(request, &request->proxy->vps,
+					"Message-Authenticator", "0x00",
+					T_OP_SET);
+		}
 
 		return found;
 	}
