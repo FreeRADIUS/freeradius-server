@@ -679,10 +679,6 @@ modules {
 	#  IP addresses managed in an SQL table.
 	#
 #	$INCLUDE sqlippool.conf
-
-	# OTP token support.  Not included by default.
-#	$INCLUDE otp.conf
-
 }
 
 # Instantiation
