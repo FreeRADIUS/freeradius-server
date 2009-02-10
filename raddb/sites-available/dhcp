@@ -13,6 +13,11 @@
 #
 #		$ ./configure --with-dhcp
 #		$ make
+#		$ vi share/dictionary
+#
+#	## Un-comment the line containing $INCLUDE dictionary.dhcp
+#	## Then, save the file.
+#
 #		$ make install
 #
 #	DHCP is NOT enabled by default.
