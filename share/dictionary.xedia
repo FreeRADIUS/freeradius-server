@@ -9,7 +9,7 @@
 #############################################################################
 VENDOR		Xedia				838
 
-BEGIN-Vendor	Xedia
+BEGIN-VENDOR	Xedia
 
 ATTRIBUTE	Xedia-DNS-Server			1	ipaddr
 ATTRIBUTE	Xedia-NetBios-Server			2	ipaddr
