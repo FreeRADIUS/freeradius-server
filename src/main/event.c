@@ -3182,11 +3182,11 @@ static void event_poll_detail(void *ctx)
 	when = now;
 
 	/*
-	 *	Set the next poll time to be 1.0 to 1.1s, to help
+	 *	Set the next poll time to be 10.0s to 10.5s, to help
 	 *	spread the load a bit over time.
 	 */
-	when.tv_sec += 1;
-	when.tv_usec += fr_rand() % (USEC / 10);
+	when.tv_sec += 10;
+	when.tv_usec += fr_rand() % (USEC / 2);
 
 	rad_assert(this->type == RAD_LISTEN_DETAIL);
 
