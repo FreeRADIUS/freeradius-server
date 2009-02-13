@@ -473,9 +473,11 @@ int main(int argc, char **argv)
 					   buffer, sizeof(buffer));
 			if (size < 0) exit(1);
 			
-			fputs(buffer, outputfp);
-			fprintf(outputfp, "\n");
-			fflush(outputfp);
+			if (buffer[0]) {
+				fputs(buffer, outputfp);
+				fprintf(outputfp, "\n");
+				fflush(outputfp);
+			}
 		}
 		exit(0);
 	}
