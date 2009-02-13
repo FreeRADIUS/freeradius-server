@@ -328,7 +328,8 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 		 *	Use the debug output file, if specified,
 		 *	otherwise leave it as "request_log_file".
 		 */
-		if (debug_log_file) filename = debug_log_file;
+		filename = debug_log_file;
+		if (!filename) filename = request_log_file;
 
 		/*
 		 *	Debug messages get mashed to L_INFO for

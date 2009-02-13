@@ -60,7 +60,6 @@ RCSID("$Id$")
 
 struct main_config_t mainconfig;
 char *request_log_file = NULL;
-char *debug_log_file = NULL;
 char *debug_condition = NULL;
 
 /*
@@ -167,7 +166,6 @@ static const CONF_PARSER logdest_config[] = {
 
 	{ "file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, "${logdir}/radius.log" },
 	{ "requests", PW_TYPE_STRING_PTR, -1, &request_log_file, NULL },
-	{ "debug_file", PW_TYPE_STRING_PTR, -1, &debug_log_file, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 

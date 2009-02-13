@@ -697,24 +697,37 @@ static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
 	return 0;
 }
 
-extern char *debug_log_file;
+char *debug_log_file = NULL;
+static char debug_log_file_buffer[1024];
+
 static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 {
-	if (argc == 0) {
-		cprintf(listener, "ERROR: Must specify <filename>\n");
-		return -1;
-	}
-
 	if (debug_flag && mainconfig.radlog_dest == RADLOG_STDOUT) {
 		cprintf(listener, "ERROR: Cannot redirect debug logs to a file when already in debugging mode.\n");
 		return -1;
 	}
 
-	if (debug_log_file) {
-		free(debug_log_file);
-		debug_log_file = NULL;
+	if ((argc > 0) && (strchr(argv[0], FR_DIR_SEP) != NULL)) {
+		cprintf(listener, "ERROR: Cannot direct debug logs to absolute path.\n");
 	}
-	debug_log_file = strdup(argv[0]);
+
+	debug_log_file = NULL;
+
+	if (argc == 0) return 0;
+
+	/*
+	 *	This looks weird, but it's here to avoid locking
+	 *	a mutex for every log message.
+	 */
+	memset(debug_log_file_buffer, 0, sizeof(debug_log_file_buffer));
+
+	/*
+	 *	Debug files always go to the logging directory.
+	 */
+	snprintf(debug_log_file_buffer, sizeof(debug_log_file_buffer),
+		 "%s/%s", radlog_dir, argv[0]);
+
+	debug_log_file = &debug_log_file_buffer;
 
 	return 0;
 }
@@ -942,7 +955,7 @@ static int command_show_home_server_state(rad_listen_t *listener, int argc, char
 
 static fr_command_table_t command_table_debug[] = {
 	{ "condition", FR_WRITE,
-	  "debug condition <condition> - Enable debugging for requests matching <condition>",
+	  "debug condition [condition] - Enable debugging for requests matching [condition]",
 	  command_debug_condition, NULL },
 
 	{ "level", FR_WRITE,
@@ -950,7 +963,7 @@ static fr_command_table_t command_table_debug[] = {
 	  command_debug_level, NULL },
 
 	{ "file", FR_WRITE,
-	  "debug file <filename> - Send all debuggin output to <filename>",
+	  "debug file [filename] - Send all debugging output to [filename]",
 	  command_debug_file, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
