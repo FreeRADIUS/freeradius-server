@@ -28,28 +28,34 @@
 #
 #
 
+usage() {
+    printf "Usage: %s: [-c condition] [-d directory] [-i client-ip-address] [-I client-ipv6-address] [-f socket_file] [-t timeout] [-u user]\n" $(basename $0) >&2
+    exit 2
+}
+
 extra=
-filename=
 condition=1
 timeout=10
-while getopts 'c:i:I:f:t:u:' OPTION
+while getopts 'd:c:i:I:f:t:u:' OPTION
 do
   case $OPTION in
   c)	condition="$OPTARG"
+	;;
+  d)    [ "$extra" == "" ] || usage
+	extra="-d $OPTARG"
 	;;
   i)	condition="(Packet-Src-IP-Address == $OPTARG)"
 	;;
   I)	condition="(Packet-Src-IPv6-Address == $OPTARG)"
 	;;
-  f)	filename="$OPTARG"
-  	extra="-f $filename"
+  f)	[ "$extra" == "" ] || usage
+	extra="-f $OPTARG"
 	;;
   t)	timeout="$OPTARG"
 	;;
   u)	condition="(User-Name == $OPTARG)"
 	;;
-  ?)	printf "Usage: %s: [-c condition] [-i client-ip-address] [-I client-ipv6-address] [-f socket_file] [-t timeout] [-u user]\n" $(basename $0) >&2
-	exit 2
+  ?)	usage
 	;;
   esac
 done
@@ -69,7 +75,7 @@ fi
 #
 #  Debug to a file, and then tell us where the file is.
 #
-outfile=`$radmin -e "debug file radmin.debug" -e "show debug file"`
+outfile=`$radmin -e "debug file radmin.debug.$$" -e "show debug file"`
 
 #
 #  If there was an error setting the debug output, re-set the
