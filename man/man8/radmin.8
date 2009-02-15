@@ -1,4 +1,4 @@
-.TH RADMIN 8 "10 Sept 2008" "" "FreeRADIUS Server Administration Tool"
+.TH RADMIN 8 "15 Feb 2009" "" "FreeRADIUS Server Administration Tool"
 .SH NAME
 radmin - FreeRADIUS Administration tool
 .SH SYNOPSIS
@@ -30,7 +30,7 @@ accepted by the server, and/or to the resulting output.
 
 The security protections offered by this command are pretty minimal.
 If someone has permission to connect to the server, they can do almost
-anything, from stopping the server, to changing it's configuration.
+anything, from stopping the server, to changing its configuration.
 
 Please exercise caution when using this command!
 .SH OPTIONS
@@ -87,7 +87,84 @@ containing User-Name "bob", or requests that originate from source IP
 address 192.0.2.22.
 .IP debug\ condition
 Disable debug conditionals.
+.SH FULL LIST OF COMMANDS
+.IP add\ <command>
+do sub-command of add
+.IP add\ client\ <command>
+Add client configuration commands
+.IP add\ client\ file\ <filename>
+Add new client definition from <filename>
+.IP debug\ <command>
+debugging commands
+.IP debug\ condition\ [condition]
+Enable debugging for requests matching [condition]
+.IP debug\ level\ <number>
+Set debug level to <number>.  Higher is more debugging.
+.IP debug\ file\ [filename]
+Send all debugging output to [filename]
+.IP hup\ [module]
+sends a HUP signal to the server, or optionally to one module
+.IP reconnect
+reconnect to a running server
+.IP terminate
+terminates the server, and cause it to exit
+.IP set\ <command>
+do sub-command of set
+.IP set\ module\ <command>
+set module commands
+.IP set\ module\ config\ <module>\ variable\ value
+set configuration for <module>
+.IP set\ home_server\ <command>
+set home server commands
+.IP set\ home_server\ state\ <ipaddr>\ <port>\ [alive|dead]
+set state for given home server
+.IP show\ <command>
+do sub-command of show
+.IP show\ client\ <command>
+do sub-command of client
+.IP show\ client\ config\ <ipaddr>
+show configuration for given client
+.IP show\ client\ list
+shows list of global clients
+.IP show\ debug\ <command>
+show debug properties
+.IP show\ debug\ condition
+Shows current debugging condition.
+.IP show\ debug\ level
+Shows current debugging level.
+.IP show\ debug\ file
+Shows current debugging file.
+.IP show\ home_server\ <command>
+do sub-command of home_server
+.IP show\ home_server\ config\ <ipaddr>\ <port>
+show configuration for given home server
+.IP show\ home_server\ list
+shows list of home servers
+.IP show\ home_server\ state\ <ipaddr>\ <port>
+shows state of given home server
+.IP show\ module\ <command>
+do sub-command of module
+.IP show\ module\ config\ <module>
+show configuration for given module
+.IP show\ module\ flags\ <module>
+show other module properties
+.IP show\ module\ list
+shows list of loaded modules
+.IP show\ module\ methods\ <module>
+show sections where <module> may be used
+.IP show\ uptime
+shows time at which server started
+.IP show\ version
+Prints version of the running server
+.IP show\ xml\ <reference>
+Prints out configuration as XML
+.IP stats\ <command>
+do sub-command of stats
+.IP stats\ client\ [auth/acct]\ <ipaddr>
+show statistics for client
+.IP stats\ home_server\ <ipaddr>\ <port>
+show statistics for home server
 .SH SEE ALSO
-unlang(5), radiusd.conf(5), raddb/sites-available/control
+unlang(5), radiusd.conf(5), raddb/sites-available/control-socket
 .SH AUTHOR
 Alan DeKok <aland@freeradius.org>
