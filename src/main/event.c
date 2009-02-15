@@ -3181,14 +3181,14 @@ static void event_poll_detail(void *ctx)
 	fr_event_now(el, &now);
 	when = now;
 
+	rad_assert(this->type == RAD_LISTEN_DETAIL);
+
 	/*
-	 *	Set the next poll time to be 10.0s to 10.5s, to help
+	 *	Set the next poll time to be X +/- 0.5s, to help
 	 *	spread the load a bit over time.
 	 */
-	when.tv_sec += 10;
+	when.tv_sec += this->decode(this); /* ugh */
 	when.tv_usec += fr_rand() % (USEC / 2);
-
-	rad_assert(this->type == RAD_LISTEN_DETAIL);
 
 	/*
 	 *	Try to read something.
