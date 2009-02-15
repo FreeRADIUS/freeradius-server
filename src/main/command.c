@@ -1357,9 +1357,7 @@ static fr_command_table_t command_table_stats[] = {
 };
 
 static fr_command_table_t command_table[] = {
-	{ "add", FR_WRITE,
-	  "add <command> - add configuration commands",
-	  NULL, command_table_add },
+	{ "add", FR_WRITE, NULL, NULL, command_table_add },
 	{ "debug", FR_WRITE,
 	  "debug <command> - debugging commands",
 	  NULL, command_table_debug },
@@ -1524,6 +1522,26 @@ static int str2argv(char *str, char **argv, int max_argc)
 	}
 
 	return argc;
+}
+
+static void print_help(rad_listen_t *listener,
+		       fr_command_table_t *table, int recursive)
+{
+	int i;
+	
+	for (i = 0; table[i].command != NULL; i++) {
+		if (table[i].help) {
+			cprintf(listener, "%s\n",
+				table[i].help);
+		} else {
+			cprintf(listener, "%s <command> - do sub-command of %s\n",
+				table[i].command, table[i].command);
+		}
+
+		if (recursive && table[i].table) {
+			print_help(listener, table[i].table, recursive);
+		}
+	}
 }
 
 #define MAX_ARGV (16)
@@ -1714,16 +1732,14 @@ static int command_domain_recv(rad_listen_t *listener,
 	if (!len) {
 		if ((strcmp(argv[0], "help") == 0) ||
 		    (strcmp(argv[0], "?") == 0)) {
+			int recursive = 0;
+
 		do_help:
-			for (i = 0; table[i].command != NULL; i++) {
-				if (table[i].help) {
-					cprintf(listener, "%s\n",
-						table[i].help);
-				} else {
-					cprintf(listener, "%s <command> - do sub-command of %s\n",
-						table[i].command, table[i].command);
-				}
+			if ((argc > 1) && (strcmp(argv[1], "-r") == 0)) {
+				recursive = TRUE;
 			}
+
+			print_help(listener, table, recursive);
 			goto do_next;
 		}
 
