@@ -546,7 +546,13 @@ static int detail_post_proxy(void *instance, REQUEST *request)
 	 *	it's doing normal accounting.
 	 */
 	if (!request->proxy_reply) {
-		return detail_accounting(instance, request);
+		int rcode;
+
+		rcode = detail_accounting(instance, request);
+		if (rcode == RLM_MODULE_OK) {
+			request->reply->code = PW_ACCOUNTING_RESPONSE;
+		}
+		return rcode;
 	}
 
 	return RLM_MODULE_NOOP;
