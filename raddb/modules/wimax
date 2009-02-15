@@ -1,7 +1,12 @@
 #
 #	The WiMAX module currently takes no configuration.
 #
-#	In order to calculate the various WiMAX keys, it SHOULD
+#	It should be listed in the "authorize" and "preacct" sections.
+#	This enables the module to fix the horrible binary version
+#	of Calling-Station-Id to the normal format, as specified in
+#	RFC 3580, Section 3.21.
+#
+#	In order to calculate the various WiMAX keys, the module should
 #	be listed in the "post-auth" section.  If EAP authentication
 #	has been used, AND the EAP method derives MSK and EMSK, then
 #	the various WiMAX keys can be calculated.
