@@ -54,6 +54,7 @@ typedef struct listen_detail_t {
 	fr_ipaddr_t	client_ip;
 	int		load_factor; /* 1..100 */
 	int		signal;
+	int		poll_interval;
 
 	int		has_rtt;
 	int		srtt;
@@ -749,6 +750,8 @@ static const CONF_PARSER detail_config[] = {
 	  offsetof(listen_detail_t, filename), NULL,  NULL },
 	{ "load_factor",   PW_TYPE_INTEGER,
 	  offsetof(listen_detail_t, load_factor), NULL, Stringify(10)},
+	{ "poll_interval",   PW_TYPE_INTEGER,
+	  offsetof(listen_detail_t, poll_interval), NULL, Stringify(1)},
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -785,6 +788,11 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	if ((data->load_factor < 1) || (data->load_factor > 100)) {
 		cf_log_err(cf_sectiontoitem(cs), "Load factor must be between 1 and 100");
+		return -1;
+	}
+
+	if ((data->poll_interval < 1) || (data->poll_interval > 3600)) {
+		cf_log_err(cf_sectiontoitem(cs), "poll_interval must be between 1 and 3600");
 		return -1;
 	}
 
@@ -834,4 +842,12 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	return 0;
 }
+
+int detail_poll_interval(rad_listen_t *listener)
+{
+	listen_detail_t *data = listener->data;
+
+	return data->poll_interval;
+}
+
 #endif

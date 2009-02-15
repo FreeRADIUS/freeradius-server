@@ -71,6 +71,14 @@ server buffered-sql {
 		#  causing databases to go into overload.
 		#  
 		load_factor = 10
+
+		#
+		#  Set the interval for polling the detail file.
+		#  If the detail file doesn't exist, the server will
+		#  wake up, and poll for it every N seconds.
+		#
+		#  Useful range of values: 1 to 60
+		poll_interval = 1
 	}
 
 	#

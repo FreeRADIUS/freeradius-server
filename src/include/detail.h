@@ -19,5 +19,6 @@ int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request);
 int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request);
 int detail_parse(CONF_SECTION *cs, rad_listen_t *this);
 int detail_delay(rad_listen_t *this);
+int detail_poll_interval(rad_listen_t *listener);
 
 #endif /* DETAIL_H */
