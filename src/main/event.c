@@ -3187,7 +3187,7 @@ static void event_poll_detail(void *ctx)
 	 *	Set the next poll time to be X +/- 0.5s, to help
 	 *	spread the load a bit over time.
 	 */
-	when.tv_sec += this->decode(this); /* ugh */
+	when.tv_sec += this->decode(this, NULL); /* ugh */
 	when.tv_usec += fr_rand() % (USEC / 2);
 
 	/*

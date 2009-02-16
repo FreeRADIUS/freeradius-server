@@ -888,6 +888,8 @@ int detail_encode(rad_listen_t *this, UNUSED REQUEST *request)
  */
 int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 {
+	listen_detail_t *data = this->data;
+
 	return data->poll_interval;
 }
 
@@ -988,12 +990,6 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->nastype = strdup("none");
 
 	return 0;
-}
-
-int detail_poll_interval(rad_listen_t *listener)
-{
-	listen_detail_t *data = listener->data;
-
 }
 
 
