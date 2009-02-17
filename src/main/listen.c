@@ -60,21 +60,6 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	rad_assert(listener != NULL);
 	rad_assert(ipaddr != NULL);
 
-	rad_assert((listener->type == RAD_LISTEN_AUTH)
-#ifdef WITH_STATS
-		   || (listener->type == RAD_LISTEN_NONE)
-#endif
-#ifdef WITH_ACCOUNTING
-		   || (listener->type == RAD_LISTEN_ACCT)
-#endif
-#ifdef WITH_VMPS
-		   || (listener->type == RAD_LISTEN_VQP)
-#endif
-#ifdef WITH_DHCP
-		   || (listener->type == RAD_LISTEN_DHCP)
-#endif
-		   );
-
 	clients = ((listen_socket_t *)listener->data)->clients;
 
 	/*
