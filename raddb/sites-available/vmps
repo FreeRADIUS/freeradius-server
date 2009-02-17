@@ -84,6 +84,14 @@ server vmps {
 			#
 			#VMPS-VLAN-Name = "%{sql:select ... where mac='%{VMPS-Mac}'}"
 		}
+		
+		# correct reply packet type for reconfirmation requests
+		#   
+		if (VMPS-Packet-Type == VMPS-Reconfirm-Request){
+			update reply {
+				VMPS-Packet-Type := VMPS-Reconfirm-Response
+			}
+		}
 	}
 
 	# Proxying of VMPS requests is NOT supported.
