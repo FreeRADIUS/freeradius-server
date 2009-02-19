@@ -846,8 +846,13 @@ retry:
 		return (RLM_MODULE_FAIL);
 	}
 
-	if ((ldap_count_entries(conn->ld, *result)) != 1) {
-		DEBUG("rlm_ldap: object not found or got ambiguous search result");
+	ldap_errno = ldap_count_entries(conn->ld, *result);
+	if (ldap_errno != 1) {
+		if (ldap_errno == 0) {
+			DEBUG("rlm_ldap: object not found");
+		} else {
+			DEBUG("rlm_ldap: got ambiguous search result (% results)", ldap_errno);
+		}
 		res = RLM_MODULE_NOTFOUND;
 		ldap_msgfree(*result);
 	}
