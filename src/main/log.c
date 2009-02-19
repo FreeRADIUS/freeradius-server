@@ -296,7 +296,7 @@ void force_log_reopen(void)
 }
 
 extern char *request_log_file;
-extern char *debug_log_file;
+char *debug_log_file = NULL;
 
 void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ...)
 {

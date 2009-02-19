@@ -697,7 +697,7 @@ static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
 	return 0;
 }
 
-char *debug_log_file = NULL;
+extern char *debug_log_file;
 static char debug_log_file_buffer[1024];
 
 static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
