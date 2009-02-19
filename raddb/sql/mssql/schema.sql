@@ -104,6 +104,7 @@ CREATE TABLE [radpostauth] (
 GO
 
 ALTER TABLE [radacct] WITH NOCHECK ADD
+	CONSTRAINT [DF_radacct_GroupName] DEFAULT ('') FOR [GroupName],
 	CONSTRAINT [DF_radacct_AcctSessionId] DEFAULT ('') FOR [AcctSessionId],
 	CONSTRAINT [DF_radacct_AcctUniqueId] DEFAULT ('') FOR [AcctUniqueId],
 	CONSTRAINT [DF_radacct_UserName] DEFAULT ('') FOR [UserName],
