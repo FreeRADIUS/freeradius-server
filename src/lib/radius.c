@@ -68,9 +68,7 @@ static fr_randctx fr_rand_pool;	/* across multiple calls */
 static int fr_rand_initialized = 0;
 static unsigned int salt_offset = 0;
 
-
-#define MAX_PACKET_CODE (52)
-static const char *packet_codes[] = {
+const char *fr_packet_codes[FR_MAX_PACKET_CODE] = {
   "",
   "Access-Request",
   "Access-Accept",
@@ -1088,8 +1086,8 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 */
 	uint32_t	data[(MAX_PACKET_LEN + 256) / 4];
 
-	if ((packet->code > 0) && (packet->code < MAX_PACKET_CODE)) {
-		what = packet_codes[packet->code];
+	if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
+		what = fr_packet_codes[packet->code];
 	} else {
 		what = "Reply";
 	}
@@ -1400,8 +1398,8 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		return 0;
 	}
 
-	if ((packet->code > 0) && (packet->code < MAX_PACKET_CODE)) {
-		what = packet_codes[packet->code];
+	if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
+		what = fr_packet_codes[packet->code];
 	} else {
 		what = "Reply";
 	}
@@ -1588,7 +1586,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	Code of 16 or greate is not understood.
 	 */
 	if ((hdr->code == 0) ||
-	    (hdr->code >= MAX_PACKET_CODE)) {
+	    (hdr->code >= FR_MAX_PACKET_CODE)) {
 		fr_strerror_printf("WARNING: Bad RADIUS packet from host %s: unknown packet code%d ",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
@@ -1896,9 +1894,9 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	if (fr_debug_flag) {
 		char host_ipaddr[128];
 
-		if ((packet->code > 0) && (packet->code < MAX_PACKET_CODE)) {
+		if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
 			DEBUG("rad_recv: %s packet from host %s port %d",
-			      packet_codes[packet->code],
+			      fr_packet_codes[packet->code],
 			      inet_ntop(packet->src_ipaddr.af,
 					&packet->src_ipaddr.ipaddr,
 					host_ipaddr, sizeof(host_ipaddr)),
@@ -2010,7 +2008,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 *	It looks like a RADIUS packet, but we can't validate
 	 *	the signature.
 	 */
-	if ((packet->code == 0) || (packet->code >= MAX_PACKET_CODE)) {
+	if ((packet->code == 0) || (packet->code >= FR_MAX_PACKET_CODE)) {
 		char buffer[32];
 		fr_strerror_printf("Received Unknown packet code %d "
 			   "from client %s port %d: Cannot validate signature.",
@@ -2043,7 +2041,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (calc_acctdigest(packet, secret) > 1) {
 				fr_strerror_printf("Received %s packet "
 					   "from %s with invalid signature!  (Shared secret is incorrect.)",
-					   packet_codes[packet->code],
+					   fr_packet_codes[packet->code],
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.ipaddr,
 						     buffer, sizeof(buffer)));
@@ -2064,7 +2062,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (rcode > 1) {
 				fr_strerror_printf("Received %s packet "
 					   "from client %s port %d with invalid signature (err=%d)!  (Shared secret is incorrect.)",
-					   packet_codes[packet->code],
+					   fr_packet_codes[packet->code],
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.ipaddr,
 						     buffer, sizeof(buffer)),
