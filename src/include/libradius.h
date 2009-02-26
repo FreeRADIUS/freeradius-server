@@ -356,6 +356,8 @@ extern const char *fr_strerror(void);
 extern int	fr_dns_lookups;	/* 0 = no dns lookups */
 extern int	fr_debug_flag;	/* 0 = no debugging information */
 extern int	fr_max_attributes; /* per incoming packet */
+#define	FR_MAX_PACKET_CODE (52)
+extern const char *fr_packet_codes[FR_MAX_PACKET_CODE];
 extern FILE	*fr_log_fp;
 void		fr_printf_log(const char *, ...)
 #ifdef __GNUC__
