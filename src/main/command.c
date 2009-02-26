@@ -727,7 +727,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 	snprintf(debug_log_file_buffer, sizeof(debug_log_file_buffer),
 		 "%s/%s", radlog_dir, argv[0]);
 
-	debug_log_file = &debug_log_file_buffer;
+	debug_log_file = &debug_log_file_buffer[0];
 
 	return 0;
 }
