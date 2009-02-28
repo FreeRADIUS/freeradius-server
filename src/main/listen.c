@@ -146,7 +146,7 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	/*
 	 *	It's a dynamically generated client, check it.
 	 */
-	if (client->dynamic) {
+	if (client->dynamic && (src_port != 0)) {
 		/*
 		 *	Lives forever.  Return it.
 		 */
@@ -1902,6 +1902,7 @@ RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
 
 	return NULL;
 }
+#endif
 
 rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port)
 {
@@ -1910,6 +1911,10 @@ rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port)
 	for (this = mainconfig.listen; this != NULL; this = this->next) {
 		listen_socket_t *sock;
 
+		/*
+		 *	FIXME: For TCP, ignore the *secondary*
+		 *	listeners associated with the main socket.
+		 */
 		if ((this->type != RAD_LISTEN_AUTH) &&
 		    (this->type != RAD_LISTEN_ACCT)) continue;
 		
@@ -1919,8 +1924,21 @@ rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port)
 		    (fr_ipaddr_cmp(ipaddr, &sock->ipaddr) == 0)) {
 			return this;
 		}
+
+		if ((sock->port == port) &&
+		    ((sock->ipaddr.af == AF_INET) &&
+		     (sock->ipaddr.ipaddr.ip4addr.s_addr == INADDR_ANY))) {
+			return this;
+		}
+
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+		if ((sock->port == port) &&
+		    (sock->ipaddr.af == AF_INET6) &&
+		    (IN6_IS_ADDR_UNSPECIFIED(&sock->ipaddr.ipaddr.ip6addr))) {
+			return this;
+		}
+#endif
 	}
 
 	return NULL;
 }
-#endif

@@ -73,6 +73,20 @@ typedef struct fr_command_socket_t {
 	char	*gid_name;
 	char	*mode_name;
 	char user[256];
+
+	/*
+	 *	The next few entries handle fake packets injected by
+	 *	the control socket.
+	 */
+	fr_ipaddr_t	src_ipaddr; /* src_port is always 0 */
+	fr_ipaddr_t	dst_ipaddr;
+	int		dst_port;
+	rad_listen_t	*inject_listener;
+	RADCLIENT	*inject_client;
+
+	/*
+	 *	The next few entries do buffer management.
+	 */
 	ssize_t offset;
 	ssize_t next;
 	char buffer[COMMAND_BUFFER_SIZE];
@@ -952,6 +966,285 @@ static int command_show_home_server_state(rad_listen_t *listener, int argc, char
 }
 #endif
 
+/*
+ *	For encode/decode stuff
+ */
+static int null_socket_dencode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
+{
+	return 0;
+}
+
+static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
+{
+	char *output_file;
+	FILE *fp;
+	VALUE_PAIR *vp;
+
+	output_file = request_data_reference(request, null_socket_send, 0);
+	if (!output_file) {
+		radlog(L_ERR, "WARNING: No output file for injected packet %d",
+		       request->number);
+		return 0;
+	}
+
+	fp = fopen(output_file, "w");
+	if (!fp) {
+		radlog(L_ERR, "Failed to send injected file to %s: %s",
+		       output_file, strerror(errno));
+		return 0;
+	}
+
+	if (request->reply->code != 0) {
+		const char *what = "reply";
+		char buffer[1024];
+
+		if (request->reply->code < FR_MAX_PACKET_CODE) {
+			what = fr_packet_codes[request->reply->code];
+		}
+
+		fprintf(fp, "%s\n", what);
+
+		if (debug_flag) {
+			request->radlog(L_DBG, 0, request,
+					"Injected %s packet to host %s port 0 code=%d, id=%d",
+					what,
+					inet_ntop(request->reply->src_ipaddr.af,
+						  &request->reply->src_ipaddr.ipaddr,
+						  buffer, sizeof(buffer)),
+					request->reply->code, request->reply->id);
+		}
+
+		for (vp = request->reply->vps; vp != NULL; vp = vp->next) {
+			vp_prints(buffer, sizeof(buffer), vp);
+			fprintf(fp, "%s\n", buffer);
+			if (debug_flag) {
+				request->radlog(L_DBG, 0, request, "\t%s",
+						buffer);
+			}
+		}
+	}
+	fclose(fp);
+
+	return 0;
+}
+
+static int command_inject_to(rad_listen_t *listener, int argc, char *argv[])
+{
+	int port;
+	RAD_LISTEN_TYPE type;
+	fr_command_socket_t *sock = listener->data;
+	fr_ipaddr_t ipaddr;
+	rad_listen_t *found = NULL;
+
+	if (argc < 1) {
+		cprintf(listener, "ERROR: Must specify [auth/acct]\n");
+		return 0;
+	}
+
+	if (strcmp(argv[0], "auth") == 0) {
+		type = RAD_LISTEN_AUTH;
+
+	} else if (strcmp(argv[0], "acct") == 0) {
+#ifdef WITH_ACCOUNTING
+		type = RAD_LISTEN_ACCT;
+#else
+		cprintf(listener, "ERROR: This server was built without accounting support.\n");
+		return 0;
+#endif
+
+	} else {
+		cprintf(listener, "ERROR: Unknown socket type\n");
+		return 0;
+	}
+
+	if (argc < 3) {
+		cprintf(listener, "ERROR: No <ipaddr> <port> was given\n");
+		return 0;
+	}
+
+	/*
+	 *	FIXME:  Look for optional arg 4, and bind interface.
+	 */
+
+	if (ip_hton(argv[1], AF_UNSPEC, &ipaddr) < 0) {
+		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
+			fr_strerror());
+		return 0;
+	}
+	port = atoi(argv[2]);
+
+	found = listener_find_byipaddr(&ipaddr, port);
+	if (!found) {
+		cprintf(listener, "ERROR: Could not find matching listener\n");
+		return 0;
+	}
+
+	sock->inject_listener = found;
+	sock->dst_ipaddr = ipaddr;
+	sock->dst_port = port;
+
+	return 1;
+}
+
+static int command_inject_from(rad_listen_t *listener, int argc, char *argv[])
+{
+	RADCLIENT *client;
+	fr_command_socket_t *sock = listener->data;
+
+	if (argc < 1) {
+		cprintf(listener, "ERROR: No <ipaddr> was given\n");
+		return 0;
+	}
+
+	if (!sock->inject_listener) {
+		cprintf(listener, "ERROR: You must specify \"inject to\" before using \"inject from\"\n");
+		return 0;
+	}
+
+	sock->src_ipaddr.af = AF_UNSPEC;
+	if (ip_hton(argv[0], AF_UNSPEC, &sock->src_ipaddr) < 0) {
+		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
+			fr_strerror());
+		return 0;
+	}
+
+	client = client_listener_find(sock->inject_listener, &sock->src_ipaddr,
+				      0);
+	if (!client) {
+		cprintf(listener, "ERROR: No such client %s\n", argv[0]);
+		return 0;
+	}
+	sock->inject_client = client;
+
+	return 1;
+}
+
+static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
+{
+	static int inject_id = 0;
+	int filedone;
+	fr_command_socket_t *sock = listener->data;
+	rad_listen_t *fake;
+	REQUEST *request = NULL;
+	RADIUS_PACKET *packet;
+	VALUE_PAIR *vp;
+	FILE *fp;
+	RAD_REQUEST_FUNP fun = NULL;
+	char buffer[2048];
+
+	if (argc < 2) {
+		cprintf(listener, "ERROR: You must specify <input-file> <output-file>\n");
+		return 0;
+	}
+
+	/*
+	 *	Output files always go to the logging directory.
+	 */
+	snprintf(buffer, sizeof(buffer), "%s/%s", radlog_dir, argv[1]);
+
+	fp = fopen(argv[0], "r");
+	if (!fp ) {
+		cprintf(listener, "ERROR: Failed opening %s: %s\n",
+			argv[0], strerror(errno));
+		return 0;
+	}
+
+	vp = readvp2(fp, &filedone, "");
+	fclose(fp);
+	if (!vp) {
+		cprintf(listener, "ERROR: Failed reading attributes from %s: %s\n",
+			argv[0], fr_strerror());
+		return 0;
+	}
+
+	fake = rad_malloc(sizeof(*fake));
+	memcpy(fake, sock->inject_listener, sizeof(*fake));
+
+	/*
+	 *	Re-write the IO for the listener.
+	 */
+	fake->encode = null_socket_dencode;
+	fake->decode = null_socket_dencode;
+	fake->send = null_socket_send;
+
+	packet = rad_alloc(0);
+	packet->src_ipaddr = sock->src_ipaddr;
+	packet->src_port = 0;
+
+	packet->dst_ipaddr = sock->dst_ipaddr;
+	packet->dst_port = sock->dst_port;
+	packet->vps = vp;
+	packet->id = inject_id++;
+
+	if (fake->type == RAD_LISTEN_AUTH) {
+		packet->code = PW_AUTHENTICATION_REQUEST;
+		fun = rad_authenticate;
+
+	} else {
+#ifdef WITH_ACCOUNTING
+		packet->code = PW_ACCOUNTING_REQUEST;
+		fun = rad_accounting;
+#else
+		cprintf(listener, "ERROR: This server was built without accounting support.\n");
+		rad_free(&packet);
+		free(fake);
+		return 0;
+#endif
+	}
+
+	if (!received_request(fake, packet, &request, sock->inject_client)) {
+		cprintf(listener, "ERROR: Failed to inject request.  See log file for details\n");
+		rad_free(&packet);
+		free(fake);
+		return 0;
+	}
+
+	/*
+	 *	Remember what the output file is, and remember to
+	 *	delete the fake listener when done.
+	 */
+	request_data_add(request, null_socket_send, 0, strdup(buffer), free);
+	request_data_add(request, null_socket_send, 1, fake, free);
+
+	if (debug_flag) {
+		request->radlog(L_DBG, 0, request,
+				"Injected %s packet from host %s port 0 code=%d, id=%d",
+				fr_packet_codes[packet->code],
+				inet_ntop(packet->src_ipaddr.af,
+					  &packet->src_ipaddr.ipaddr,
+					  buffer, sizeof(buffer)),
+				packet->code, packet->id);
+		
+		for (vp = packet->vps; vp != NULL; vp = vp->next) {
+			vp_prints(buffer, sizeof(buffer), vp);
+			request->radlog(L_DBG, 0, request, "\t%s", buffer);
+		}
+	}
+
+	/*
+	 *	And go process it.
+	 */
+	thread_pool_addrequest(request, fun);
+
+	return 1;
+}
+
+
+static fr_command_table_t command_table_inject[] = {
+	{ "to", FR_WRITE,
+	  "inject to <ipaddr> <port> - Inject packets to the destination IP and port.",
+	  command_inject_to, NULL },
+
+	{ "from", FR_WRITE,
+	  "inject from <ipaddr> - Inject packets as if they came from <ipaddr>",
+	  command_inject_from, NULL },
+
+	{ "file", FR_WRITE,
+	  "inject file <input-file> <output-file> - Inject packet from input-file>, with results sent to <output-file>",
+	  command_inject_file, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
 
 static fr_command_table_t command_table_debug[] = {
 	{ "condition", FR_WRITE,
@@ -1364,6 +1657,9 @@ static fr_command_table_t command_table[] = {
 	{ "hup", FR_WRITE,
 	  "hup [module] - sends a HUP signal to the server, or optionally to one module",
 	  command_hup, NULL },
+	{ "inject", FR_WRITE,
+	  "inject <command> - commands to inject packets into a running server",
+	  NULL, command_table_inject },
 	{ "reconnect", FR_READ,
 	  "reconnect - reconnect to a running server",
 	  NULL, NULL },		/* just here for "help" */
