@@ -546,6 +546,7 @@ int listen_init(CONF_SECTION *cs, rad_listen_t **head);
 rad_listen_t *proxy_new_listener(void);
 RADCLIENT *client_listener_find(const rad_listen_t *listener,
 				const fr_ipaddr_t *ipaddr, int src_port);
+rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port);
 
 /* event.c */
 int radius_event_init(CONF_SECTION *cs, int spawn_flag);

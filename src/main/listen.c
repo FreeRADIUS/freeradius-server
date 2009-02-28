@@ -111,7 +111,7 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	/*
 	 *	It's a dynamically generated client, check it.
 	 */
-	if (client->dynamic) {
+	if (client->dynamic && (src_port != 0)) {
 		/*
 		 *	Lives forever.  Return it.
 		 */
