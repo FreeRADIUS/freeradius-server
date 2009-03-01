@@ -752,23 +752,31 @@ $INCLUDE policy.conf
 
 ######################################################################
 #
-#	As of 2.0.0, the "authorize", "authenticate", etc. sections
-#	are in separate configuration files, per virtual host.
+#	Load virtual servers.
 #
-######################################################################
+#	This next $INCLUDE line loads files in the directory that
+#	match the regular expression: /[a-zA-Z0-9_.]+/
+#
+#	It allows you to define new virtual servers simply by placing
+#	a file into the raddb/sites-enabled/ directory.
+#
+$INCLUDE sites-enabled/
 
 ######################################################################
 #
-#	Include all enabled virtual hosts.
+#	All of the other configuration sections like "authorize {}",
+#	"authenticate {}", "accounting{}", have been moved to the
+#	the file:
 #
-#	The following directory is searched for files that match
-#	the regex:
+#		raddb/sites-available/default.
 #
-#		/[a-zA-Z0-9_.]+/
+#	This is the "default" virtual server that has the same
+#	configuration as in version 1.0.x and 1.1.x.  The default
+#	installation enables this virtual server.  You should
+#	edit it to create policies for your local site.
 #
-#	The files are then included here, just as if they were cut
-#	and pasted into this file.
+#	For more documentation on virtual servers, see:
 #
-#	See "sites-enabled/default" for some additional documentation.
+#		raddb/sites-available/README
 #
-$INCLUDE sites-enabled/
+######################################################################
