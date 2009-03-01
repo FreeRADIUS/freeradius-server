@@ -765,10 +765,10 @@ $INCLUDE sites-enabled/
 ######################################################################
 #
 #	All of the other configuration sections like "authorize {}",
-#	"authenticate {}", "accounting{}", have been moved to the
+#	"authenticate {}", "accounting {}", have been moved to the
 #	the file:
 #
-#		raddb/sites-available/default.
+#		raddb/sites-available/default
 #
 #	This is the "default" virtual server that has the same
 #	configuration as in version 1.0.x and 1.1.x.  The default
