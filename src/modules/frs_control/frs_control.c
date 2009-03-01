@@ -1178,12 +1178,12 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 
 	if (fake->type == RAD_LISTEN_AUTH) {
 		packet->code = PW_AUTHENTICATION_REQUEST;
-		fun = rad_authenticate;
+		//		fun = rad_authenticate;
 
 	} else {
 #ifdef WITH_ACCOUNTING
 		packet->code = PW_ACCOUNTING_REQUEST;
-		fun = rad_accounting;
+		//		fun = rad_accounting;
 #else
 		cprintf(listener, "ERROR: This server was built without accounting support.\n");
 		rad_free(&packet);
