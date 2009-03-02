@@ -73,6 +73,7 @@ void request_stats_final(REQUEST *request)
 		request->listener->stats.total_access_accepts++;
 		if (request->client && request->client->auth) {
 			request->client->auth->total_access_accepts++;
+			request->client->auth->total_responses++;
 		}
 		break;
 
@@ -83,6 +84,7 @@ void request_stats_final(REQUEST *request)
 		request->listener->stats.total_access_rejects++;
 		if (request->client && request->client->auth) {
 			request->client->auth->total_access_rejects++;
+			request->client->auth->total_responses++;
 		}
 		break;
 
@@ -93,6 +95,7 @@ void request_stats_final(REQUEST *request)
 		request->listener->stats.total_access_challenges++;
 		if (request->client && request->client->auth) {
 			request->client->auth->total_access_challenges++;
+			request->client->auth->total_responses++;
 		}
 		break;
 
