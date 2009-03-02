@@ -1638,11 +1638,11 @@ static fr_command_table_t command_table_set[] = {
 
 static fr_command_table_t command_table_stats[] = {
 	{ "client", FR_READ,
-	  "stats client [auth/acct] <ipaddr> - show statistics for client",
+	  "stats client [auth/acct] <ipaddr> - show statistics for given client, or for all clients (auth or acct)",
 	  command_stats_client, NULL },
 #ifdef WITH_PROXY
 	{ "home_server", FR_READ,
-	  "stats home_server <ipaddr> <port> - show statistics for home server",
+	  "stats home_server [<ipaddr>/auth/acct] <port> - show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)",
 	  command_stats_home_server, NULL },
 #endif
 
