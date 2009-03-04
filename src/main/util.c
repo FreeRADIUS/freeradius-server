@@ -245,7 +245,7 @@ void request_free(REQUEST **request_ptr)
 #ifdef WITH_COA
 	if (request->coa) {
 		request->coa->parent = NULL;
-		request_free(&request->coa);
+		if (request->coa->ev != NULL) request_free(&request->coa);
 	}
 
 	if (request->parent && (request->parent->coa == request)) {
