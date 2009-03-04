@@ -1569,6 +1569,14 @@ static int originated_coa_request(REQUEST *request)
 	}
 
 	/*
+	 *	We CANNOT divorce the CoA request from the parent
+	 *	request.  This function is running in a child thread,
+	 *	and we need access to the main event loop in order to
+	 *	to add the timers for the CoA packet.  See
+	 *	wait_a_bit().
+	 */
+
+	/*
 	 *	Forget about the original request completely at this
 	 *	point.
 	 */
@@ -2802,46 +2810,10 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		return NULL;
 	}
 
-	gettimeofday(&now, NULL);
-
-	request->home_server->state = HOME_STATE_ALIVE;
-	
-#ifdef WITH_COA
 	/*
-	 *	This is a response to a CoA packet that we originated.
-	 *	It's handled differently from normal proxied packets.
-	 */
-	if (request->packet->code != request->proxy->code) {
-		/*
-		 *	The parent request is done, but we haven't
-		 *	figured that out yet.  Separate the two
-		 *	requests here, the FIRST time we process the
-		 *	packet.  If there is a proxy reply already, it
-		 *	gets ignored below.
-		 */
-		if (!request->proxy_reply && request->parent &&
-		    (request->parent->coa == request)) {
-			request->parent->coa = NULL;
-			request->parent = NULL;
-		}
-
-		/*
-		 *	request->reply exists, and we don't care about
-		 *	it here.  So we skip the next step.
-		 */
-		rad_assert(request->packet != NULL);
-		rad_assert(request->reply != NULL);
-	} else
-#endif
-
-	if (request->reply && request->reply->code != 0) {
-		RDEBUG2("We already replied to this request.  Discarding response.");
-		return NULL;
-	}
-	
-	/*
-	 *	We had previously received a reply, so we
-	 *	don't need to do anything here.
+	 *	We haven't replied to the NAS, but we have seen an
+	 *	earlier reply from the home server.  Ignore this packet,
+	 *	as we're likely still processing the previous reply.
 	 */
 	if (request->proxy_reply) {
 		if (memcmp(request->proxy_reply->vector,
@@ -2856,7 +2828,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		} else {
 			/*
 			 *	? The home server gave us a new proxy
-			 *	reply, which doesn't match the old
+			 *	reply which doesn't match the old
 			 *	one.  Delete it.
 			 */
 			RDEBUG2("Ignoring conflicting proxy reply");
@@ -2865,6 +2837,53 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		/* assert that there's an event queued for request? */
 		return NULL;
 	}
+
+	gettimeofday(&now, NULL);
+
+	/*
+	 *	Maybe move this earlier in the decision process?
+	 *	Having it here means that late or duplicate proxy
+	 *	replies no longer get the home server marked as
+	 *	"alive".  This might be good for stability, though.
+	 */
+	request->home_server->state = HOME_STATE_ALIVE;
+	
+#ifdef WITH_COA
+	/*
+	 *	When originating CoA, the "proxy" reply is the reply
+	 *	to the CoA request that we originated.  At this point,
+	 *	the original request is finished, and it has a reply.
+	 *
+	 *	However, if we haven't separated the two requests, do
+	 *	so now.  This is done so that cleaning up the original
+	 *	request won't cause the CoA request to be free'd.  See
+	 *	util.c, request_free()
+	 */
+	if (request->parent && (request->parent->coa == request)) {
+		request->parent->coa = NULL;
+		request->parent = NULL;
+
+	} else
+		/*
+		 *	Skip the next set of checks, as the original
+		 *	reply is cached.  We want to be able to still
+		 *	process the CoA reply, AND to reference the
+		 *	original request/reply.
+		 *
+		 *	This is getting to be really quite a bit of a
+		 *	hack.
+		 */
+#endif
+
+	/*
+	 *	If there's a reply to the NAS, ignore everything
+	 *	related to proxy responses
+	 */
+	if (request->reply && request->reply->code != 0) {
+		RDEBUG2("Ignoring proxy reply that arrived after we sent a reply to the NAS");
+		return NULL;
+	}
+	
 #ifdef WITH_STATS
 	/*
 	 *	The average includes our time to receive packets and
@@ -2874,7 +2893,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	 *	We update the response time only for the FIRST packet
 	 *	we receive.
 	 */
-	else if (request->home_server->ema.window > 0) {
+	if (request->home_server->ema.window > 0) {
 		radius_stats_ema(&request->home_server->ema,
 				 &now, &request->proxy_when);
 	}
