@@ -34,14 +34,6 @@ RCSID("$Id$")
 #ifdef HAVE_SYSLOG_H
 #include <syslog.h>
 
-#ifndef LOG_AUTHPRIV
-#define LOG_AUTHPRIV LOG_USER
-#endif
-
-#ifndef LOG_PID
-#define LOG_PID (0)
-#endif
-
 #ifndef LOG_INFO
 #define LOG_INFO (0)
 #endif
@@ -270,7 +262,7 @@ static int do_linelog(void *instance, REQUEST *request)
 
 #ifdef HAVE_SYSLOG_H
 	} else {
-		syslog(LOG_AUTHPRIV | LOG_PID | LOG_INFO, "%s", line);
+		syslog(LOG_INFO, "%s", line);
 #endif
 	}
 
