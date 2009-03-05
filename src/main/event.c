@@ -648,6 +648,12 @@ static void received_response_to_ping(REQUEST *request)
 
 	rad_assert(request->home_server != NULL);
 
+	if (rad_verify(request->proxy_reply, request->proxy,
+		       request->home_server->secret) != 0) {
+		DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
+		return;
+	}
+		
 	home = request->home_server;
 	home->num_received_pings++;
 
@@ -660,7 +666,6 @@ static void received_response_to_ping(REQUEST *request)
 	fr_event_delete(el, &request->ev);
 	remove_from_proxy_hash(request);
 	rad_assert(request->in_request_hash == FALSE);
-	request_free(&request);
 
 	/*
 	 *	The control socket may have marked the home server as
@@ -2965,6 +2970,8 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	 */
 	if (!request->packet) {
 		received_response_to_ping(request);
+		request->proxy_reply = NULL; /* caller will free it */
+		request_free(&request);
 		return NULL;
 	}
 
