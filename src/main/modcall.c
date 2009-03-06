@@ -272,6 +272,8 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request,
 {
 	int myresult = default_result;
 
+	rad_assert(request != NULL);
+
 	RDEBUG3("  modsingle[%s]: calling %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);

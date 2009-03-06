@@ -543,6 +543,9 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 
 	if (!packet) return;
 
+	rad_assert(debug_flag != 0);
+	rad_assert(request->radlog != NULL);
+
 	if (direction == 0) {
 		received = "Received";
 		from = "from";	/* what else? */
