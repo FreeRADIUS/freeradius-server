@@ -49,16 +49,48 @@ struct radclient_list {
 
 
 #ifdef WITH_STATS
-static rbtree_t		*tree_num;	/* client numbers 0..N */
-static int		tree_num_max;
+static rbtree_t		*tree_num = NULL;     /* client numbers 0..N */
+static int		tree_num_max = 0;
 #endif
-static RADCLIENT_LIST	*root_clients;
+static RADCLIENT_LIST	*root_clients = NULL;
+
+#ifdef WITH_DYNAMIC_CLIENTS
+static fr_fifo_t	*deleted_clients = NULL;
+#endif
 
 /*
  *	Callback for freeing a client.
  */
 void client_free(RADCLIENT *client)
 {
+#ifdef WITH_DYNAMIC_CLIENTS
+	if (client->dynamic == 2) {
+		time_t now;
+
+		if (!deleted_clients) {
+			deleted_clients = fr_fifo_create(1024,
+							 (void *) client_free);
+			if (!deleted_clients) return; /* MEMLEAK */
+		}
+
+		/*
+		 *	Mark it as in the fifo, and remember when we
+		 *	pushed it.
+		 */
+		client->dynamic = 3;
+		client->created = now = time(NULL); /* re-set it */
+		fr_fifo_push(deleted_clients, client);
+
+		/*
+		 *	Pop the head of the fifo.  If it might still
+		 *	be in use, return.  Otherwise, fall through
+		 *	and delete it.
+		 */
+		client = fr_fifo_peek(deleted_clients);
+		if ((client->created + 120) >= now) return;
+	}
+#endif
+
 	free(client->longname);
 	free(client->secret);
 	free(client->shortname);
@@ -124,6 +156,12 @@ void clients_free(RADCLIENT_LIST *clients)
 #endif
 		root_clients = NULL;
 	}
+
+#ifdef WITH_DYNAMIC_CLIENTS
+	/*
+	 *	FIXME: No fr_fifo_delete()
+	 */
+#endif
 
 	free(clients);
 }
@@ -317,6 +355,9 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	rad_assert((client->prefix >= 0) && (client->prefix <= 128));
 
+	client->dynamic = 2;	/* signal to client_free */
+
+	rbtree_deletebydata(tree_num, client);
 	rbtree_deletebydata(clients->trees[client->prefix], client);
 }
 #endif
