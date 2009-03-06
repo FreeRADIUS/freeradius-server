@@ -96,3 +96,6 @@ else
 LIBRADIUS += $(OPENSSL_LIBS)
 endif
 endif
+
+#  http://clang.llvm.org/StaticAnalysis.html
+SCAN_BUILD	= /path/to/checker-0.167/scan-build

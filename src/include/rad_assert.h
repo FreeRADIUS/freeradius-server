@@ -29,10 +29,15 @@ extern void rad_assert_fail (const char *file, unsigned int line, const char *ex
 
 #ifdef NDEBUG
 	#define rad_assert(expr) ((void) (0))
-#else
+
+#elsif !defined(FR_SCAN_BUILD)
 	#define rad_assert(expr) \
 		((void) ((expr) ? (void) 0 : \
 			(void) rad_assert_fail (__FILE__, __LINE__, #expr)))
+
+#else
+#include <assert.h>
+#define rad_assert assert
 #endif
 
 #endif

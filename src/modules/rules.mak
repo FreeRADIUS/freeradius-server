@@ -174,3 +174,7 @@ install:
 	    rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la; \
 	    ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la || exit $$?; \
 	fi
+
+.PHONY: scan
+scan:
+	@[ "$(SCAN_BUILD)" == "" ] || $(SCAN_BUILD) gcc $(CFLAGS) $(RLM_CFLAGS) -c $(SRCS)
