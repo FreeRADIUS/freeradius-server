@@ -2463,7 +2463,7 @@ static uint8_t *rad_coalesce(int attribute, size_t length, uint8_t *data,
 static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 				       const RADIUS_PACKET *original,
 				       const char *secret, int attribute,
-				       int length,
+				       int length, /* CANNOT be zero */
 				       uint8_t *data, size_t packet_length,
 				       int flag, DICT_ATTR *da)
 {
@@ -2844,6 +2844,11 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		vendorlen -= vsa_tlen + vsa_llen + vsa_offset + attrlen;
 		if (vendorlen == 0) vendorcode = 0;
 		packet_length -= (vsa_tlen + vsa_llen + vsa_offset);
+
+		/*
+		 *	Ignore VSAs that have no data.
+		 */
+		if (attrlen == 0) goto next;
 
 		/*
 		 *	WiMAX attributes of type 0 are ignored.  They
