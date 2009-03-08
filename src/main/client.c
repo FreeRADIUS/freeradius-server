@@ -82,12 +82,15 @@ void client_free(RADCLIENT *client)
 		fr_fifo_push(deleted_clients, client);
 
 		/*
-		 *	Pop the head of the fifo.  If it might still
-		 *	be in use, return.  Otherwise, fall through
-		 *	and delete it.
+		 *	Peek at the head of the fifo.  If it might
+		 *	still be in use, return.  Otherwise, pop it
+		 *	from the queue and delete it.
 		 */
 		client = fr_fifo_peek(deleted_clients);
 		if ((client->created + 120) >= now) return;
+
+		client = fr_fifo_pop(deleted_clients);
+		rad_assert(client != NULL);
 	}
 #endif
 
