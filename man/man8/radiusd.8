@@ -1,4 +1,4 @@
-.TH RADIUSD 8 "27 Dec 2007" "" "FreeRADIUS Daemon"
+.TH RADIUSD 8 "08 Mar 2009" "" "FreeRADIUS Daemon"
 .SH NAME
 radiusd - Authentication, Authorization and Accounting server
 .SH SYNOPSIS
@@ -24,8 +24,11 @@ SQL, LDAP, Perl, Python, etc.  It also supports many authentication
 protocols such as PAP, CHAP, MS-CHAP(v2), HTTP Digest, and EAP
 (EAP-MD5, EAP-TLS, PEAP, EAP-TTLS, EAP-SIM, etc.).
 
-Version 2.0 has preliminary support for Cisco's VLAN Query Protocol,
-also known as VMPS.
+It also has experimental support for Cisco's VLAN Query Protocol
+(VMPS) and DHCP.
+
+Please read the DEBUGGING section below.  It contains instructions
+for quickly configuring the server for your local system.
 .SH OPTIONS
 The following command-line options are accepted by the server.
 .IP \-C
@@ -57,7 +60,7 @@ If this command-line option is given, then the "bind_address" and all
 This option MUST be used in conjunction with "-p".
 .IP \-f
 Do not fork, stay running as a foreground process.
-.IP "\-n 
+.IP "\-n \fIname\fP"
 Read \fIraddb/name.conf\fP instead of \fIraddb/radiusd.conf\fP.
 .IP "\-p \fIport\fP"
 Normally radiusd listens on the ports specified in \fI/etc/services\fP
@@ -79,7 +82,8 @@ single server mode, the server will also not "daemonize"
 .IP \-v
 Print server version information and exit.
 .IP \-X
-Debugging mode.  Equivalent to -sfxx -l stdout
+Debugging mode.  Equivalent to "-sfxx -l stdout".  When trying to
+understand how the server works, ALWAYS run it with "radiusd -X".
 .IP \-x
 Finer-grained debug mode. In this mode the server will print details
 of every request on it's \fBstdout\fP output. You can specify this
@@ -95,27 +99,63 @@ following steps:
 server in debugging mode, you \fIwill not\fP be able to see what is
 doing, and you \fIwill not\fP be able to correct any problems.
 .PP
-2) When editing the \fIradiusd.conf\fP file, change as little as
-possible, especially in the \fIauthorize{}\fP section.  The ordering
-of the modules is critical for the server to be able to
-"automatically" figure out how to handle the request.  Changing the
-order of the modules ensures that the server will not work.
+2) Change as little as possible in the default configuration files.
+The server contains a decade of experience with protocols, databases,
+and different systems.  Its default configuration is designed to work
+almost everywhere, and to do almost everything.
 .PP
-3) When testing, start off by configuring a user and password in the
-\fIusers\fP file.  So long as the server knows about a user, and has a
-clear-text password for that user, \fBalmost all of the authentication
-methods will "just work"\fP.
+3) Make small changes to the configuration files, while testing each
+change as you make it.  If the change works, save a copy of the
+configuration, and make another change.  If the change doesn't work,
+debug it, and try to understand why it doesn't work.
 .PP
-4) Gradually add more complex configurations to the server, while
-testing them as you go.  If you start off by configuring the server in
-a complex configuration, you will never be able to debug it.
+If you begin by making large changes to the server configuration, it
+will never work, and you will never be able to debug it.
+.PP
+4) If you need to add a connection to a database FOO (e.g. LDAP or
+SQL), then:
+.PP
+.in +0.3i
+a) Edit raddb/modules/foo
+.br
+This file contains the default configuration for the module.  It
+contains comments describing what can be configured, and what those
+configuration entries mean.
+.br
+.br
+b) Edit raddb/sites-available/default
+.br
+This file contains the default policy for the server.  e.g. "enable
+CHAP, MS-CHAP, and EAP authentication".  Look in this file for all
+references to your module "foo".  Read the comments, and remove the
+leading hash '#' from the lines referencing the module.  This enables
+the module.
+.br
+.br
+c) Edit raddb/sites-available/inner-tunnel
+.br
+This file contains the default policy for the "tunneled" portion of
+certain EAP methods.  Perform the same kind of edits as above, for the
+"default" file..  If you are not using EAP (802.1X), then this step
+can be skipped.
+.br
+.br
+d) Start the server in debugging mode (
+.B radiusd -X
+), and start testing.
+.in -0.3i
 .PP
 5) Ask questions on the mailing list
 (freeradius-users@lists.freeradius.org).  When asking questions,
 include the output from debugging mode (
 .B radiusd -X
-).  This information will allow people to help you.  Without it, your
-message will get ignored.
+).  This information will allow people to help you.  If you do not
+include it, the first response to your message will be "post the
+output of debug mode".
+.PP
+Ask questions earlier, rather than later.  If you cannot solve a
+problem in a day, ask a question on the mailing list.  Most questions
+have been seen before, and can be answered quickly.
 .SH BACKGROUND
 \fBRADIUS\fP is a protocol spoken between an access server, typically
 a device connected to several modems or ISDN lines, and a \fBradius\fP
