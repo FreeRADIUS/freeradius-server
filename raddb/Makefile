@@ -81,6 +81,10 @@ install:
 		cd $(R)$(raddbdir)/sites-enabled/; \
 		ln -s ../sites-available/inner-tunnel; \
 	fi
+	if [ ! -f $(R)$(raddbdir)/sites-enabled/control-socket ]; then \
+		cd $(R)$(raddbdir)/sites-enabled/; \
+		ln -s ../sites-available/control-socket; \
+	fi
 
 clean:
 	rm -rf sites-enabled/inner-tunnel sites-enabled/default
