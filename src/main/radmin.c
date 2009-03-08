@@ -42,6 +42,10 @@ RCSID("$Id$")
 #include <getopt.h>
 #endif
 
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
+
 #ifdef HAVE_LIBREADLINE
 #if defined(HAVE_READLINE_READLINE_H)
 #include <readline/readline.h>
@@ -118,9 +122,21 @@ static int fr_domain_socket(const char *path)
 	socklen = SUN_LEN(&saremote);
 
         if (connect(sockfd, (struct sockaddr *)&saremote, socklen) < 0) {
+		struct stat buf;
+
+		close(sockfd);
 		fprintf(stderr, "%s: Failed connecting to %s: %s\n",
 			progname, path, strerror(errno));
-		close(sockfd);
+
+		/*
+		 *	The file doesn't exist.  Tell the user how to
+		 *	fix it.
+		 */
+		if ((stat(path, &buf) < 0) &&
+		    (errno == ENOENT)) {
+			fprintf(stderr, "  Perhaps you need to run the commands:\n\tcd /etc/raddb\n\tln -s sites-available/control-socket sites-enabled/control-socket\n  and then re-start the server?\n");
+		}
+
 		return -1;
         }
 
