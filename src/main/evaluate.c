@@ -554,6 +554,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 	return TRUE;
 }
 
+
 int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			      const char **ptr, int evaluate_it, int *presult)
 {
@@ -581,14 +582,19 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 	while (*p) {
 		while ((*p == ' ') || (*p == '\t')) p++;
 
+		/*
+		 *	! EXPR
+		 */
 		if (!found_condition && (*p == '!')) {
 			RDEBUG4(">>> INVERT");
 			invert = TRUE;
 			p++;
+
+			while ((*p == ' ') || (*p == '\t')) p++;
 		}
 
 		/*
-		 *	It's a subcondition.
+		 *	( EXPR ) 
 		 */
 		if (!found_condition && (*p == '(')) {
 			const char *end = p + 1;
@@ -632,9 +638,9 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 
 			if (*p == ')') p++; /* eat closing brace */
 			found_condition = TRUE;
-		}
 
-		while ((*p == ' ') || (*p == '\t')) p++;
+			while ((*p == ' ') || (*p == '\t')) p++;
+		}
 
 		/*
 		 *	At EOL or closing brace, update && return.
@@ -646,8 +652,8 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		 *
 		 *	WORD
 		 *	WORD1 op WORD2
-		 *	&& condition
-		 *	|| condition
+		 *	&& EXPR
+		 *	|| EXPR
 		 */
 		if (found_condition) {
 			/*
@@ -728,8 +734,8 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		 *
 		 *	WORD1 op WORD2
 		 *	WORD )
-		 *	WORD && condition
-		 *	WORD || condition
+		 *	WORD && EXPR
+		 *	WORD || EXPR
 		 */
 		q = p;
 		while ((*q == ' ') || (*q == '\t')) q++;
