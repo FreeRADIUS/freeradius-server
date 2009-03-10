@@ -11,7 +11,7 @@ include ../Make.inc
 #
 FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
 	attrs.pre-proxy clients.conf dictionary eap.conf templates.conf	\
-	experimental.conf hints huntgroups ldap.attrmap otp.conf	\
+	experimental.conf hints huntgroups ldap.attrmap			\
 	policy.txt preproxy_users proxy.conf radiusd.conf		\
 	sql.conf sqlippool.conf users	policy.conf
 
