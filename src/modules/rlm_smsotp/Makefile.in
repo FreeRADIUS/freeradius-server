@@ -3,7 +3,7 @@ SRCS        = rlm_smsotp.c
 HEADERS     = 
 RLM_CFLAGS  = @smsotp_cflags@
 RLM_LIBS    = @smsotp_ldflags@
-RLM_INSTALL = install-smsotp
+RLM_INSTALL = 
 
 ## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
 include ../rules.mak
