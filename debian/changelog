@@ -1,3 +1,37 @@
+freeradius (2.1.4-0) unstable; urgency=medium
+  * Permit multiple "-e" in radmin.
+  * Add support for originating CoA-Request and Disconnect-Request. See raddb/sites-available/originate-coa.
+  * Added "lifetime" and "max_queries" to raddb/sql.conf. This helps address the problem of hung SQL sockets.
+  * Allow packets to be injected via radmin.  See "inject help" in radmin.
+  * Answer VMPS reconfirmation request.  Patch from Hermann Lauer.
+  * Sample logrotate script in scripts/logrotate.freeradius
+  * Add configurable poll interval for "detail" listeners
+  * New "raddebug" command.  This prints debugging information from a running server.  See "man raddebug.
+  * Add "require_message_authenticator" configuration to home_server configuration.  This makes the server add Message-Authenticator to all outgoing Access-Request packets.
+  * Added smsotp module, as contributed by Siemens.
+  * Enabled the administration socket in the default install. See raddb/sites-available/control-socket, and "man radmin"
+  * Handle duplicate clients, such as with replicated or load-balanced SQL servers and "readclients = yes"
+  * Clean up control sockets when they are closed, so that we don't leak memory.
+  * Define SUN_LEN for systems that don't have it.
+  * Correct some boundary conditions in the conditional checker ("if") in "unlang".  Bug noted by Arran Cudbard-Bell.
+  * Work around minor building issues in gmake.  This should only have affected developers.
+  * Change how we manage unprivileged user/group, so that we do not create control sockets owned by root.
+  * Fixed more minor issues found by Coverity.
+  * Allow raddb/certs/bootstrap to run when there is no "make" command installed.
+  * In radiusd.conf, run_dir depends on the name of the program, and isn't hard-coded to "..../radiusd"
+  * Check for EOF in more places in the "detail" file reader.
+  * Added Freeswitch dictionary.
+  * Chop ethernet frames in VMPS, rather than droppping packets.
+  * Fix EAP-TLS bug.  Patch from Arnaud Ebalard
+  * Don't lose string for regex-compares in the "users" file.
+  * Expose more functions in rlm_sql to rlm_sqlippool, which  helps on systems where RTLD_GLOBAL is off.
+  * Fix typos in MySQL schemas for ippools.
+  * Remove macro that was causing build issues on some platforms.
+  * Fixed issues with dead home servers.  Bug noted by Chris Moules.
+  * Fixed "access after free" with some dynamic clients.
+
+ -- Alan DeKok <aland@freeradius.org>  Tue, 10 Mar 2009 9:48:00 +0100
+	
 freeradius (2.1.3-0) unstable; urgency=medium
   * Allow running with "user=radiusd" and binding to secure sockets.
   * Start sending Status-Server "are you alive" messages earlier, which helps with proxying multiple realms to a home server.
