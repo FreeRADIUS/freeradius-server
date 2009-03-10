@@ -18,6 +18,8 @@ FreeRADIUS 2.1.4 Thu Dec 25 17:40:00 CEST 2008;  , urgency=medium
 	* Added smsotp module, as contributed by Siemens.
 	* Enabled the administration socket in the default install.
 	  See raddb/sites-available/control-socket, and "man radmin"
+	* Handle duplicate clients, such as with replicated or
+	  load-balanced SQL servers and "readclients = yes"
 
 	Bug fixes
 	* Clean up control sockets when they are closed, so that we don't
