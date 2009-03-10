@@ -244,6 +244,8 @@ static int client_sane(RADCLIENT *client)
  */
 int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
+	RADCLIENT *old;
+
 	if (!client) {
 		return 0;
 	}
@@ -279,14 +281,42 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		}
 	}
 
+#define namecmp(a) ((!old->a && !client->a) || (old->a && client->a && (strcmp(old->a, client->a) == 0)))
+
 	/*
 	 *	Cannot insert the same client twice.
 	 */
-	if (rbtree_find(clients->trees[client->prefix], client)) {
+	old = rbtree_finddata(clients->trees[client->prefix], client);
+	if (old) {
+		/*
+		 *	If it's a complete duplicate, then free the new
+		 *	one, and return "OK".
+		 */
+		if ((fr_ipaddr_cmp(&old->ipaddr, &client->ipaddr) == 0) &&
+		    (old->prefix == client->prefix) &&
+		    namecmp(longname) && namecmp(secret) &&
+		    namecmp(shortname) && namecmp(nastype) &&
+		    namecmp(login) && namecmp(password) && namecmp(server) &&
+#ifdef WITH_DYNAMIC_CLIENTS
+		    (old->lifetime == client->lifetime) &&
+		    namecmp(client_server) &&
+#endif
+#ifdef WITH_COA
+		    namecmp(coa_name) &&
+		    (old->coa_server == client->coa_server) &&
+		    (old->coa_pool == client->coa_pool) &&
+#endif
+		    (old->message_authenticator == client->message_authenticator)) {
+			DEBUG("WARNING: Ignoring duplicate client %s", client->longname);
+			client_free(client);
+			return 1;
+		}
+
 		radlog(L_ERR, "Failed to add duplicate client %s",
 		       client->shortname);
 		return 0;
 	}
+#undef namecmp
 
 	/*
 	 *	Other error adding client: likely is fatal.
