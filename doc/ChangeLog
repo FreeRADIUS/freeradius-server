@@ -1,4 +1,4 @@
-FreeRADIUS 2.1.4 Thu Dec 25 17:40:00 CEST 2008;  , urgency=medium
+FreeRADIUS 2.1.4 Tue Mar 10 17:05:00 CEST 2009;  , urgency=medium
 	Feature improvements
 	* Permit multiple "-e" in radmin.
 	* Add support for originating CoA-Request and Disconnect-Request.
