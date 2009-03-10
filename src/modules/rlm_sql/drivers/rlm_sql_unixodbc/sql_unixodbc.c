@@ -166,7 +166,8 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
  *************************************************************************/
 static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
-    SQLINTEGER column, len;
+    SQLINTEGER column;
+    SQLLEN len;
     int numfields;
     int state;
 
@@ -184,7 +185,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 
     for(column=1; column<=numfields; column++) {
     	SQLColAttributes(unixodbc_sock->stmt_handle,((SQLUSMALLINT) column),SQL_COLUMN_LENGTH,NULL,0,NULL,&len);
-	unixodbc_sock->row[column-1] = (SQLCHAR*)rad_malloc((int)++len);
+	unixodbc_sock->row[column-1] = (char*)rad_malloc((int)++len);
 	SQLBindCol(unixodbc_sock->stmt_handle, column, SQL_C_CHAR, (SQLCHAR *)unixodbc_sock->row[column-1], len, NULL);
     }
 	return 0;
@@ -440,9 +441,9 @@ static int sql_state(long err_handle, SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *con
 static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
     long err_handle;
-    int affected_rows;
+    SQLLEN affected_rows;
 
-    err_handle = SQLRowCount(unixodbc_sock->stmt_handle, (SQLINTEGER *)&affected_rows);
+    err_handle = SQLRowCount(unixodbc_sock->stmt_handle, &affected_rows);
     if (sql_state(err_handle, sqlsocket, config))
 	return -1;
 
