@@ -87,8 +87,8 @@ ATTRIBUTE	ERX-Output-Gigapkts			43	integer
 ATTRIBUTE	ERX-Tunnel-Interface-Id			44	string
 ATTRIBUTE	ERX-IpV6-Virtual-Router			45	string
 ATTRIBUTE	ERX-IpV6-Local-Interface		46	string
-ATTRIBUTE	ERX-Ipv6-Primary-Dns			47	string
-ATTRIBUTE	ERX-Ipv6-Secondary-Dns			48	string
+ATTRIBUTE	ERX-Ipv6-Primary-Dns			47	ipv6addr
+ATTRIBUTE	ERX-Ipv6-Secondary-Dns			48	ipv6addr
 ATTRIBUTE	Sdx-Service-Name			49	string
 ATTRIBUTE	Sdx-Session-Volume-Quota		50	string
 ATTRIBUTE	Sdx-Tunnel-Disconnect-Cause-Info	51	string
@@ -126,6 +126,67 @@ ATTRIBUTE	ERX-IP-Mcast-Adm-Bw-Limit		79	integer
 ATTRIBUTE	ERX-IPv6-Mcast-Adm-Bw-Limit		80	integer
 ATTRIBUTE	ERX-Qos-Parameters			82	string
 ATTRIBUTE	ERX-Service-Session			83	string
+
+ATTRIBUTE	ERX-Mobile-IP-Algorithm			84	integer
+ATTRIBUTE	ERX-Mobile-IP-SPI			85	integer
+ATTRIBUTE	ERX-Mobile-IP-Key			86	string
+ATTRIBUTE	ERX-Mobile-IP-Replay			87	integer
+ATTRIBUTE	ERX-Mobile-IP-Access-Control		88	string
+ATTRIBUTE	ERX-Mobile-IP-Lifetime			89	integer
+
+ATTRIBUTE	ERX-L2TP-Resynch-Method			90	integer
+
+ATTRIBUTE	ERX-Tunnel-Switch-Profile		91	string
+
+ATTRIBUTE	ERX-L2c-Up-Stream-Data			92	string
+ATTRIBUTE	ERX-L2c-Down-Stream-Data		93	string
+
+ATTRIBUTE	ERX-Tunnel-Tx-Speed-Method		94	integer
+
+ATTRIBUTE	ERX-IGMP-Query-Interval			95	integer
+ATTRIBUTE	ERX-IGMP-Max-Resp-Time			96	integer
+ATTRIBUTE	ERX-IGMP-Immediate-Leave		97	integer
+ATTRIBUTE	ERX-MLD-Query-Interval			98	integer
+ATTRIBUTE	ERX-MLD-Max-Resp-Time			99	integer
+ATTRIBUTE	ERX-MLD-Immediate-Leave			100	integer
+ATTRIBUTE	ERX-IP-Block-Multicast			101	integer
+
+ATTRIBUTE	ERX-IGMP-Explicit-Tracking		102	integer
+ATTRIBUTE	ERX-IGMP-No-Tracking-V2-Grps		103	integer
+ATTRIBUTE	ERX-MLD-Explicit-Tracking		104	integer
+ATTRIBUTE	ERX-MLD-No-Tracking-V1-Grps		105	integer
+
+ATTRIBUTE	ERX-Acc-Loop-Cir-Id			110	string
+ATTRIBUTE	ERX-Acc-Aggr-Cir-Id-Bin			111	octets
+ATTRIBUTE	ERX-Acc-Aggr-Cir-Id-Asc			112	string
+ATTRIBUTE	ERX-Act-Data-Rate-Up			113	integer
+ATTRIBUTE	ERX-Act-Data-Rate-Dn			114	integer
+ATTRIBUTE	ERX-Min-Data-Rate-Up			115	integer
+ATTRIBUTE	ERX-Min-Data-Rate-Dn			116	integer
+ATTRIBUTE	ERX-Att-Data-Rate-Up			117	integer
+ATTRIBUTE	ERX-Att-Data-Rate-Dn			118	integer
+ATTRIBUTE	ERX-Max-Data-Rate-Up			119	integer
+ATTRIBUTE	ERX-Max-Data-Rate-Dn			120	integer
+ATTRIBUTE	ERX-Min-LP-Data-Rate-Up			121	integer
+ATTRIBUTE	ERX-Min-LP-Data-Rate-Dn			122	integer
+ATTRIBUTE	ERX-Max-Interlv-Delay-Up		123	integer
+ATTRIBUTE	ERX-Act-Interlv-Delay-Up		124	integer
+ATTRIBUTE	ERX-Max-Interlv-Delay-Dn		125	integer
+ATTRIBUTE	ERX-Act-Interlv-Delay-Dn		126	integer
+ATTRIBUTE	ERX-DSL-Line-State			127	integer
+ATTRIBUTE	ERX-DSL-Type				128	integer
+
+ATTRIBUTE	ERX-IPv6-NdRa-Prefix			129	ipv6prefix
+ATTRIBUTE	ERX-Qos-Set-Name			130	string
+
+ATTRIBUTE	ERX-Service-Acct-Interval		140	integer has_tag
+
+ATTRIBUTE	ERX-DownStream-Calc-Rate		141	integer
+ATTRIBUTE	ERX-UpStream-Calc-Rate			142	integer
+ATTRIBUTE	ERX-Max-Clients-Per-Interface		143	integer
+
+ATTRIBUTE	ERX-PPP-Monitor-Ingress-Only		144	integer
+
 
 #
 #  Values	Attribute		Name			Number
@@ -193,5 +254,51 @@ VALUE	ERX-IGMP-Version		v3			3
 VALUE	ERX-Service-Statistics		disabled		0
 VALUE	ERX-Service-Statistics		time			1
 VALUE	ERX-Service-Statistics		time-volume		2
+
+VALUE	ERX-L2TP-Resynch-Method		disable			0
+VALUE	ERX-L2TP-Resynch-Method		failover		1
+VALUE	ERX-L2TP-Resynch-Method		silent-failover		2
+VALUE	ERX-L2TP-Resynch-Method		failover-with-silent-backup	3
+
+VALUE	ERX-Tunnel-Tx-Speed-Method	static-layer2		1
+VALUE	ERX-Tunnel-Tx-Speed-Method	dynamic-layer2		2
+VALUE	ERX-Tunnel-Tx-Speed-Method	qos			3
+VALUE	ERX-Tunnel-Tx-Speed-Method	actual			4
+
+VALUE	ERX-IGMP-Immediate-Leave	disabled		0
+VALUE	ERX-IGMP-Immediate-Leave	enabled			1
+
+VALUE	ERX-MLD-Immediate-Leave		disabled		0
+VALUE	ERX-MLD-Immediate-Leave		enabled			1
+
+VALUE	ERX-IP-Block-Multicast		disabled		0
+VALUE	ERX-IP-Block-Multicast		enabled			1
+
+VALUE	ERX-IGMP-Explicit-Tracking	disabled		0
+VALUE	ERX-IGMP-Explicit-Tracking	enabled			1
+
+VALUE	ERX-IGMP-No-Tracking-V2-Grps	disabled		0
+VALUE	ERX-IGMP-No-Tracking-V2-Grps	enabled			1
+
+VALUE	ERX-MLD-Explicit-Tracking	disabled		0
+VALUE	ERX-MLD-Explicit-Tracking	enabled			1
+
+VALUE	ERX-MLD-No-Tracking-V1-Grps	disabled		0
+VALUE	ERX-MLD-No-Tracking-V1-Grps	enabled			1
+
+VALUE	ERX-DSL-Line-State		SHOWTIME		1
+VALUE	ERX-DSL-Line-State		IDLE			2
+VALUE	ERX-DSL-Line-State		SILENT			3
+
+VALUE	ERX-DSL-Type			ADSL1			1
+VALUE	ERX-DSL-Type			ADSL2			2
+VALUE	ERX-DSL-Type			ADSL2PLUS		3
+VALUE	ERX-DSL-Type			VDSL1			4
+VALUE	ERX-DSL-Type			VDSL2			5
+VALUE	ERX-DSL-Type			SDSL			6
+VALUE	ERX-DSL-Type			UNKNOWN			7
+
+VALUE	ERX-PPP-Monitor-Ingress-Only	disabled		0
+VALUE	ERX-PPP-Monitor-Ingress-Only	enabled			1
 
 END-VENDOR	ERX
