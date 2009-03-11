@@ -164,16 +164,16 @@ static const CONF_PARSER logdest_config[] = {
 	{ "destination",  PW_TYPE_STRING_PTR, 0, &radlog_dest, "files" },
 	{ "syslog_facility",  PW_TYPE_STRING_PTR, 0, &syslog_facility, Stringify(0) },
 
-	{ "file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, "${logdir}/radius.log" },
-	{ "requests", PW_TYPE_STRING_PTR, -1, &request_log_file, NULL },
+	{ "file", PW_TYPE_STRING_PTR, 0, &mainconfig.log_file, "${logdir}/radius.log" },
+	{ "requests", PW_TYPE_STRING_PTR, 0, &request_log_file, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 
 static const CONF_PARSER serverdest_config[] = {
 	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (const void *) logdest_config },
-	{ "log_file", PW_TYPE_STRING_PTR, -1, &mainconfig.log_file, NULL },
-	{ "log_destination", PW_TYPE_STRING_PTR, -1, &radlog_dest, NULL },
+	{ "log_file", PW_TYPE_STRING_PTR, 0, &mainconfig.log_file, NULL },
+	{ "log_destination", PW_TYPE_STRING_PTR, 0, &radlog_dest, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -181,7 +181,7 @@ static const CONF_PARSER serverdest_config[] = {
 static const CONF_PARSER log_config_nodest[] = {
 	{ "stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
 
-	{ "auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, "no" },
+	{ "auth", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth, "no" },
 	{ "auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
 	{ "auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
 
@@ -232,7 +232,7 @@ static const CONF_PARSER server_config[] = {
 	 *	DON'T exist in radiusd.conf, then the previously parsed
 	 *	values for "log { foo = bar}" will be used.
 	 */
-	{ "log_auth", PW_TYPE_BOOLEAN, -1, &mainconfig.log_auth, NULL },
+	{ "log_auth", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth, NULL },
 	{ "log_auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, NULL },
 	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, NULL },
 	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names, NULL },
