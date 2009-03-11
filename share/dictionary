@@ -75,6 +75,8 @@ $INCLUDE dictionary.rfc4072
 $INCLUDE dictionary.rfc4372
 $INCLUDE dictionary.rfc4675
 $INCLUDE dictionary.rfc4679
+$INCLUDE dictionary.rfc4818
+$INCLUDE dictionary.rfc4849
 $INCLUDE dictionary.rfc5176
 
 #
