@@ -1153,6 +1153,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 				port = sock->port + 2; /* skip acct port */
 				break;
 			}
+#ifdef WITH_VMPS
 			if (this->type == RAD_LISTEN_VQP) {
 				sock = this->data;
 				if (server_ipaddr.af == AF_UNSPEC) {
@@ -1161,6 +1162,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 				port = sock->port + 1;
 				break;
 			}
+#endif
 		}
 
 		if (port < 0) port = 1024 + (fr_rand() & 0x1ff);
