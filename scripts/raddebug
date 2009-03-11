@@ -61,7 +61,7 @@ do
 done
 shift $(($OPTIND - 1))
 
-radmin="/Users/alandekok/git/2_1_x.git.freeradius.org/src/main/radmin $extra"
+radmin="radmin $extra"
 
 #
 #  Start off by turning off debugging.
