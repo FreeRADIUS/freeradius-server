@@ -2523,6 +2523,14 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 
 	case REQUEST_CLEANUP_DELAY:
 	case REQUEST_DONE:
+		if (request->reply->code == 0) {
+			RDEBUG2("Ignoring retransmit from client %s port %d "
+				"- ID: %d, no reply was configured",
+				client->shortname,
+				request->packet->src_port, request->packet->id);
+			return;
+		}
+
 		/*
 		 *	FIXME: This sends duplicate replies to
 		 *	accounting requests, even if Acct-Delay-Time
