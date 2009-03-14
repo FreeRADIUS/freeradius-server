@@ -179,7 +179,6 @@ rm -rf `find . -name CVS`
 %build
 export CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing -DLDAP_DEPRECATED -fPIC -DPIC"
 #export CFLAGS="$CFLAGS -std=c99 -pedantic"
-autoreconf
 
 %configure \
 		--libdir=%{_libdir}/freeradius \
@@ -332,7 +331,6 @@ rm -rf $RPM_BUILD_ROOT
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql/oracle/msqlippool.txt
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/users
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/experimental.conf
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/otp.conf
 %dir %attr(750,-,radiusd) /etc/raddb/certs
 /etc/raddb/certs/Makefile
 /etc/raddb/certs/README
@@ -350,11 +348,7 @@ rm -rf $RPM_BUILD_ROOT
 %attr(700,radiusd,radiusd) %dir /var/run/radiusd/
 # binaries
 %defattr(-,root,root)
-/usr/sbin/checkrad
-/usr/sbin/radiusd
-/usr/sbin/radrelay
-/usr/sbin/radwatch
-/usr/sbin/radmin
+/usr/sbin/*
 # man-pages
 %doc %{_mandir}/man1/*
 %doc %{_mandir}/man5/*
