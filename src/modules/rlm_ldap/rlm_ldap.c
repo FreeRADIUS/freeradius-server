@@ -851,7 +851,7 @@ retry:
 		if (ldap_errno == 0) {
 			DEBUG("rlm_ldap: object not found");
 		} else {
-			DEBUG("rlm_ldap: got ambiguous search result (% results)", ldap_errno);
+			DEBUG("rlm_ldap: got ambiguous search result (%d results)", ldap_errno);
 		}
 		res = RLM_MODULE_NOTFOUND;
 		ldap_msgfree(*result);
@@ -2188,22 +2188,26 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 	tv.tv_usec = 0;
 	if (ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT,
 			    (void *) &tv) != LDAP_OPT_SUCCESS) {
-		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_NETWORK_TIMEOUT %d", inst->net_timeout);
+		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_NETWORK_TIMEOUT %d: %s", inst->net_timeout, ldap_err2string(ldap_errno));
 	}
 
 	if (ldap_set_option(ld, LDAP_OPT_TIMELIMIT,
 			    (void *) &(inst->timelimit)) != LDAP_OPT_SUCCESS) {
-		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_TIMELIMIT %d", inst->timelimit);
+		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_TIMELIMIT %d: %s", inst->timelimit, ldap_err2string(ldap_errno));
 	}
 
 	if (inst->ldap_debug && ldap_set_option(NULL, LDAP_OPT_DEBUG_LEVEL, &(inst->ldap_debug)) != LDAP_OPT_SUCCESS) {
-		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_DEBUG_LEVEL %d", inst->ldap_debug);
+		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_DEBUG_LEVEL %d: %s", inst->ldap_debug, ldap_err2string(ldap_errno));
 	}
 
 	ldap_version = LDAP_VERSION3;
 	if (ldap_set_option(ld, LDAP_OPT_PROTOCOL_VERSION,
 			    &ldap_version) != LDAP_OPT_SUCCESS) {
-		radlog(L_ERR, "rlm_ldap: Could not set LDAP version to V3");
+		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		radlog(L_ERR, "rlm_ldap: Could not set LDAP version to V3: %s", ldap_err2string(ldap_errno));
 	}
 
 #ifdef HAVE_LDAP_START_TLS
@@ -2212,7 +2216,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
         	if (ldap_set_option(ld, LDAP_OPT_X_TLS,
 				    (void *) &(inst->tls_mode)) != LDAP_OPT_SUCCESS) {
 			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
- 			radlog(L_ERR, "rlm_ldap: could not set LDAP_OPT_X_TLS option %s", ldap_err2string(ldap_errno));
+ 			radlog(L_ERR, "rlm_ldap: could not set LDAP_OPT_X_TLS option %s:", ldap_err2string(ldap_errno));
 		}
 	}
 
@@ -2222,8 +2226,11 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_CACERTFILE,
 				      (void *) inst->tls_cacertfile )
 		     != LDAP_OPT_SUCCESS) {
+			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 			radlog(L_ERR, "rlm_ldap: could not set "
-			       "LDAP_OPT_X_TLS_CACERTFILE option to %s", inst->tls_cacertfile);
+			       "LDAP_OPT_X_TLS_CACERTFILE option to %s: %s",
+			       inst->tls_cacertfile,
+			       ldap_err2string(ldap_errno));
 		}
 	}
 
@@ -2233,8 +2240,11 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_CACERTDIR,
 				      (void *) inst->tls_cacertdir )
 		     != LDAP_OPT_SUCCESS) {
+			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 			radlog(L_ERR, "rlm_ldap: could not set "
-			       "LDAP_OPT_X_TLS_CACERTDIR option to %s", inst->tls_cacertdir);
+			       "LDAP_OPT_X_TLS_CACERTDIR option to %s: %s",
+			       inst->tls_cacertdir,
+			       ldap_err2string(ldap_errno));
 		}
 	}
 
@@ -2247,9 +2257,11 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 #ifdef HAVE_LDAP_INT_TLS_CONFIG
 	if (ldap_int_tls_config(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT,
 				(inst->tls_require_cert)) != LDAP_OPT_SUCCESS) {
+		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		radlog(L_ERR, "rlm_ldap: could not set "
-		       "LDAP_OPT_X_TLS_REQUIRE_CERT option to %s",
-		       inst->tls_require_cert);
+		       "LDAP_OPT_X_TLS_REQUIRE_CERT option to %s: %s",
+		       inst->tls_require_cert,
+		       ldap_err2string(ldap_errno));
 	}
 #endif
 
@@ -2259,9 +2271,11 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 		if (ldap_set_option(NULL, LDAP_OPT_X_TLS_CERTFILE,
 				    (void *) inst->tls_certfile)
 		    != LDAP_OPT_SUCCESS) {
+			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 			radlog(L_ERR, "rlm_ldap: could not set "
-			       "LDAP_OPT_X_TLS_CERTFILE option to %s",
-			       inst->tls_certfile);
+			       "LDAP_OPT_X_TLS_CERTFILE option to %s: %s",
+			       inst->tls_certfile,
+			       ldap_err2string(ldap_errno));
 		}
 	}
 
@@ -2272,9 +2286,10 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 		if ( ldap_set_option( NULL, LDAP_OPT_X_TLS_KEYFILE,
 				      (void *) inst->tls_keyfile )
 		     != LDAP_OPT_SUCCESS) {
+			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 			radlog(L_ERR, "rlm_ldap: could not set "
-			       "LDAP_OPT_X_TLS_KEYFILE option to %s",
-			       inst->tls_keyfile);
+			       "LDAP_OPT_X_TLS_KEYFILE option to %s: %s",
+			       inst->tls_keyfile, ldap_err2string(ldap_errno));
 		}
 	}
 
@@ -2285,9 +2300,10 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 		if (ldap_set_option(NULL, LDAP_OPT_X_TLS_RANDOM_FILE,
 				    (void *) inst->tls_randfile)
 		    != LDAP_OPT_SUCCESS) {
+			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 			radlog(L_ERR, "rlm_ldap: could not set "
-			       "LDAP_OPT_X_TLS_RANDOM_FILE option to %s",
-			       inst->tls_randfile);
+			       "LDAP_OPT_X_TLS_RANDOM_FILE option to %s: %s",
+			       inst->tls_randfile, ldap_err2string(ldap_errno));
 		}
 	}
 
@@ -2541,8 +2557,8 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 	char          **vals;
 	int             vals_count;
 	int             vals_idx;
-	char           *ptr;
-	char	       *value;
+	const char      *ptr;
+	const char     *value;
 	TLDAP_RADIUS   *element;
 	FR_TOKEN      token, operator;
 	int             is_generic_attribute;
