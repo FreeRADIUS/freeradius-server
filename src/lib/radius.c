@@ -3447,6 +3447,35 @@ RADIUS_PACKET *rad_alloc(int newvector)
 	return rp;
 }
 
+RADIUS_PACKET *rad_alloc_reply(RADIUS_PACKET *packet)
+{
+	RADIUS_PACKET *reply;
+
+	if (!packet) return NULL;
+
+	reply = rad_alloc(0);
+	if (!reply) return NULL;
+
+	/*
+	 *	Initialize the fields from the request.
+	 */
+	reply->sockfd = packet->sockfd;
+	reply->dst_ipaddr = packet->src_ipaddr;
+	reply->src_ipaddr = packet->dst_ipaddr;
+	reply->dst_port = packet->src_port;
+	reply->src_port = packet->dst_port;
+	reply->id = packet->id;
+	reply->code = 0; /* UNKNOWN code */
+	memcpy(reply->vector, packet->vector,
+	       sizeof(reply->vector));
+	reply->vps = NULL;
+	reply->data = NULL;
+	reply->data_len = 0;
+
+	return reply;
+}
+
+
 /*
  *	Free a RADIUS_PACKET
  */

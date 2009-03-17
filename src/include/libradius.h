@@ -300,6 +300,7 @@ int		rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			 const char *secret);
 
 RADIUS_PACKET	*rad_alloc(int newvector);
+RADIUS_PACKET	*rad_alloc_reply(RADIUS_PACKET *);
 void		rad_free(RADIUS_PACKET **);
 int		rad_pwencode(char *encpw, size_t *len, const char *secret,
 			     const uint8_t *vector);
