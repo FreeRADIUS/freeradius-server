@@ -133,6 +133,9 @@ static size_t sql_escape_func(char *out, size_t outlen, const char *in);
 /*
  *	sql xlat function. Right now only SELECTs are supported. Only
  *	the first element of the SELECT result will be used.
+ *
+ *	For other statements (insert, update, delete, etc.), the
+ *	number of affected rows will be returned.
  */
 static int sql_xlat(void *instance, REQUEST *request,
 		    char *fmt, char *out, size_t freespace,
@@ -166,6 +169,59 @@ static int sql_xlat(void *instance, REQUEST *request,
 	sqlsocket = sql_get_socket(inst);
 	if (sqlsocket == NULL)
 		return 0;
+
+	/*
+	 *	If the query starts with any of the following prefixes,
+	 *	then return the number of rows affected
+	 */
+	if ((strncasecmp(querystr, "insert", 6) == 0) ||
+	    (strncasecmp(querystr, "update", 6) == 0) ||
+	    (strncasecmp(querystr, "delete", 6) == 0)) {
+		int numaffected;
+		char buffer[21]; /* 64bit max is 20 decimal chars + null byte */
+
+		if (rlm_sql_query(sqlsocket,inst,querystr)) {
+			radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
+				inst->config->xlat_name, querystr,
+				(inst->module->sql_error)(sqlsocket,
+							  inst->config));
+			sql_release_socket(inst,sqlsocket);
+			return 0;
+		}
+	       
+		numaffected = (inst->module->sql_affected_rows)(sqlsocket,
+								inst->config);
+		if (numaffected < 1) {
+			RDEBUG("rlm_sql (%s): SQL query affected no rows",
+				inst->config->xlat_name);
+		}
+
+		/*
+		 *	Don't chop the returned number if freespace is
+		 *	too small.  This hack is necessary because
+		 *	some implementations of snprintf return the
+		 *	size of the written data, and others return
+		 *	the size of the data they *would* have written
+		 *	if the output buffer was large enough.
+		 */
+		snprintf(buffer, sizeof(buffer), "%d", numaffected);
+		ret = strlen(buffer);
+		if (ret >= freespace){
+			RDEBUG("rlm_sql (%s): Can't write result, insufficient string space",
+			       inst->config->xlat_name);
+			(inst->module->sql_finish_query)(sqlsocket,
+							 inst->config);
+			sql_release_socket(inst,sqlsocket);
+			return 0;
+		}
+		
+		memcpy(out, buffer, ret + 1); /* we did bounds checking above */
+
+		(inst->module->sql_finish_query)(sqlsocket, inst->config);
+		sql_release_socket(inst,sqlsocket);
+		return ret;
+	} /* else it's a SELECT statement */
+
 	if (rlm_sql_select_query(sqlsocket,inst,querystr)){
 		radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
 		       inst->config->xlat_name,querystr,
