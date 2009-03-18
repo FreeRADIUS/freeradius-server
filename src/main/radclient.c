@@ -37,8 +37,9 @@ RCSID("$Id$")
 
 #include <assert.h>
 
-static int retries = 10;
-static float timeout = 3;
+static int success = 0;
+static int retries = 3;
+static float timeout = 5;
 static const char *secret = NULL;
 static int do_output = 1;
 static int totalapp = 0;
@@ -724,7 +725,12 @@ static int recv_one_packet(int wait_time)
 		       radclient->reply->data_len);
 		vp_printlist(stdout, radclient->reply->vps);
 	}
-	if (radclient->reply->code != PW_AUTHENTICATION_REJECT) {
+
+	if ((radclient->reply->code == PW_AUTHENTICATION_ACK) ||
+	    (radclient->reply->code == PW_ACCOUNTING_RESPONSE) ||
+	    (radclient->reply->code == PW_COA_ACK) ||
+	    (radclient->reply->code == PW_DISCONNECT_ACK)) {
+		success = 1;		/* have a good response */
 		totalapp++;
 	} else {
 		totaldeny++;
@@ -1186,5 +1192,7 @@ int main(int argc, char **argv)
 		printf("\t       Total lost auths:  %d\n", totallost);
 	}
 
-	return 0;
+	if (success) return 0;
+
+	return 1;
 }

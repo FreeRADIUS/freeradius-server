@@ -52,3 +52,4 @@ fi
 	fi
 ) | $radclient $DICTIONARY -x $3 auth $5
 
+exit $?
