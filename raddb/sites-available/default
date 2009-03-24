@@ -97,6 +97,15 @@ authorize {
 #	digest
 
 	#
+	#  The WiMAX specification says that the Calling-Station-Id
+	#  is 6 octets of the MAC.  This definition conflicts with
+	#  RFC 3580, and all common RADIUS practices.  Un-commenting
+	#  the "wimax" module here means that it will fix the
+	#  Calling-Station-Id attribute to the normal format as
+	#  specified in RFC 3580 Section 3.21
+#	wimax
+
+	#
 	#  Look for IPASS style 'realm/', and if not found, look for
 	#  '@realm', and decide whether or not to proxy, based on
 	#  that.
@@ -407,6 +416,28 @@ post-auth {
 #	ldap
 
 	exec
+
+	#
+	#  Calculate the various WiMAX keys.  In order for this to work,
+	#  you will need to define the WiMAX NAI, usually via
+	#
+	#	update request {
+	#	       WiMAX-MN-NAI = "%{User-Name}"
+	#	}
+	#
+	#  If you want various keys to be calculated, you will need to
+	#  update the reply with "template" values.  The module will see
+	#  this, and replace the template values with the correct ones
+	#  taken from the cryptographic calculations.  e.g.
+	#
+	# 	update reply {
+	#		WiMAX-FA-RK-Key = 0x00
+	#	}
+	#
+	#  Do this at some point before running the "wimax" module.
+	#
+#	wimax
+
 
 	#
 	#  Access-Reject packets are sent through the REJECT sub-section of the
