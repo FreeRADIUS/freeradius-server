@@ -972,7 +972,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 
 		found = FALSE;
 		for (j = 0; j < to_count; j++) {
-			if (edited[j]) continue;
+			if (edited[j] || !to_list[j]) continue;
 
 			/*
 			 *	Attributes aren't the same, skip them.
