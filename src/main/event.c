@@ -2671,6 +2671,26 @@ int received_request(rad_listen_t *listener,
 			struct timeval when;
 
 		default:
+			/*
+			 *	Special hacks for race conditions.
+			 *	The reply is encoded, and therefore
+			 *	likely sent.  We received a *new*
+			 *	packet from the client, likely before
+			 *	the next line or two of code which
+			 *	updated the child state.  In this
+			 *	case, just accept the new request.
+			 */
+			if ((request->reply->code != 0) &&
+			    request->reply->data) {
+				radlog(L_INFO, "WARNING: Allowing fast client %s port %d - ID: %d for recent request %d.",
+				       client->shortname,
+				       packet->src_port, packet->id,
+				       request->number);
+				remove_from_request_hash(request);
+				request = NULL;
+				break;
+			}
+
 			gettimeofday(&when, NULL);
 			when.tv_sec -= 1;
 
