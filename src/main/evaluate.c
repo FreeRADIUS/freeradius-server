@@ -1014,6 +1014,14 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 			}
 
 			/*
+			 *	Delete every attribute, independent
+			 *	of its value.
+			 */
+			if (from_list[i]->operator == T_OP_CMP_FALSE) {
+				goto delete;
+			}
+
+			/*
 			 *	Delete all matching attributes from
 			 *	"to"
 			 */
