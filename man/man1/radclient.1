@@ -1,4 +1,4 @@
-.TH RADCLIENT 1 "7 April 2005" "" "FreeRADIUS Daemon"
+.TH RADCLIENT 1 "2 April 2009" "" "FreeRADIUS Daemon"
 .SH NAME
 radclient - send packets to a RADIUS server, show reply
 .SH SYNOPSIS
@@ -54,9 +54,13 @@ logical packets within a file.
 .IP \-i\ \fIid\fP
 Use \fIid\fP as the RADIUS request Id.
 .IP \-n\ \fInum_requests_per_second\fP
-Send \fInum_requests_per_second\fP, evenly spaced over time.  By
-default, the requests are sent as fast as possible.  This option
+Try to send \fInum_requests_per_second\fP, evenly spaced.  This option
 allows you to slow down the rate at which radclient sends requests.
+When not using -n, the default is to send packets as quickly as
+possible, with no inter-packet delays.
+
+Due to limitations in radclient, this option does not accurately send
+the requested number of packets per second.
 .IP \-p\ \fInum_requests_in_parallel\fP
 Send \fInum_requests_in_parallel\fP, without waiting for a response
 for each one.  By default, radclient sends the first request it has
@@ -65,6 +69,9 @@ the second request in its list.  This option allows you to send many
 requests at simultaneously.  Once \fInum_requests_in_parallel\fP are
 sent, radclient waits for all of the responses to arrive (or for the
 requests to time out), before sending any more packets.
+
+This option permits you to discover the maximum load accepted by a
+RADIUS server.
 .IP \-q
 Go to quiet mode, and do not print out anything.
 .IP \-r\ \fInum_retries\fP
