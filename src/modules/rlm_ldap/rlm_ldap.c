@@ -136,6 +136,7 @@ typedef struct {
 	int		default_allow;
 	int		failed_conns;
 	int		is_url;
+	int		chase_referrals;
 	char           *login;
 	char           *password;
 	char           *filter;
@@ -272,6 +273,8 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(ldap_instance,access_attr), NULL, NULL},
 	{"access_attr_used_for_allow", PW_TYPE_BOOLEAN,
 	 offsetof(ldap_instance,default_allow), NULL, "yes"},
+	{"chase_referrals", PW_TYPE_BOOLEAN,
+	 offsetof(ldap_instance,chase_referrals), NULL, "no"},
 
 	/*
 	 *	Group checks.  These could probably be done
@@ -2190,6 +2193,16 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			    (void *) &tv) != LDAP_OPT_SUCCESS) {
 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_NETWORK_TIMEOUT %d: %s", inst->net_timeout, ldap_err2string(ldap_errno));
+	}
+
+	if (inst->chase_referrals) {
+		rc=ldap_set_option(ld, LDAP_OPT_REFERRALS, LDAP_OPT_ON);
+	} else {
+		rc=ldap_set_option(ld, LDAP_OPT_REFERRALS, LDAP_OPT_OFF);
+	}
+	if (rc != LDAP_OPT_SUCCESS) {
+		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		radlog(L_ERR, "rlm_ldap: Could not set LDAP_OPT_REFERRALS=%d  %s", inst->chase_referrals, ldap_err2string(ldap_errno));
 	}
 
 	if (ldap_set_option(ld, LDAP_OPT_TIMELIMIT,
