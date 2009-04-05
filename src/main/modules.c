@@ -856,6 +856,18 @@ static int load_byserver(CONF_SECTION *cs)
 		cf_log_module(cs, "Checking %s {...} for more modules to load",
 		       section_type_value[comp].section);
 
+#ifdef WITH_PROXY
+		/*
+		 *	Skip pre/post-proxy sections if we're not
+		 *	proxying.
+		 */
+		if (!mainconfig.proxy_requests &&
+		    ((comp == PW_PRE_PROXY_TYPE) ||
+		     (comp == PW_PRE_PROXY_TYPE))) {
+			continue;
+		}
+#endif
+
 		if (load_component_section(subcs, server, comp) < 0) {
 			cf_log_info(cs, " }");
 			return -1;
