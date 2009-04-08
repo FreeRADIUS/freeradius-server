@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/md5.h>
 #include	<freeradius-devel/rad_assert.h>
 
 #include	<ctype.h>
@@ -182,7 +183,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 			     vp = pairfind(vp->next, da->attr)) {
 				count++;
 			}
-			snprintf(out, outlen, "%d", count);
+			snprintf(out, outlen, "%d", (int) count);
 			return strlen(out);
 		}
 
@@ -440,6 +441,33 @@ static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
 
 
 /*
+ *	Calculate the MD5 hash of a string.
+ */
+static size_t xlat_md5(UNUSED void *instance, REQUEST *request,
+		       char *fmt, char *out, size_t outlen,
+		       UNUSED RADIUS_ESCAPE_STRING func)
+{
+	int i;
+	uint8_t digest[16];
+	FR_MD5_CTX ctx;
+
+	fr_MD5Init(&ctx);
+	fr_MD5Update(&ctx, (void *) fmt, strlen(fmt));
+	fr_MD5Final(digest, &ctx);
+
+	if (outlen < 33) {
+		snprintf(out, outlen, "md5_overflow");
+		return strlen(out);
+	}
+
+	for (i = 0; i < 16; i++) {
+		snprintf(out + i * 2, 3, "%02x", digest[i]);
+	}
+
+	return strlen(out);
+}
+
+/*
  *	Compare two xlat_t structs, based ONLY on the module name.
  */
 static int xlat_cmp(const void *a, const void *b)
@@ -542,6 +570,11 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 
 		xlat_register("debug", xlat_debug, &xlat_inst[0]);
 		c = xlat_find("debug");
+		rad_assert(c != NULL);
+		c->internal = TRUE;
+
+		xlat_register("md5", xlat_md5, &xlat_inst[0]);
+		c = xlat_find("md5");
 		rad_assert(c != NULL);
 		c->internal = TRUE;
 	}
