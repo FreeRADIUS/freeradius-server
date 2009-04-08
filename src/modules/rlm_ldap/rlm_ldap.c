@@ -277,7 +277,7 @@ static const CONF_PARSER module_config[] = {
 	{"chase_referrals", PW_TYPE_BOOLEAN,
 	 offsetof(ldap_instance,chase_referrals), NULL, NULL},
 	{"rebind", PW_TYPE_BOOLEAN,
-	 offsetof(ldap_instance,chase_referrals), NULL, NULL},
+	 offsetof(ldap_instance,rebind), NULL, NULL},
 
 	/*
 	 *	Group checks.  These could probably be done
