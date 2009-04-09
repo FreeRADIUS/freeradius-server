@@ -450,9 +450,15 @@ static size_t xlat_md5(UNUSED void *instance, REQUEST *request,
 	int i;
 	uint8_t digest[16];
 	FR_MD5_CTX ctx;
+	char buffer[1024];
+
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+		*out = '\0';
+		return 0;
+	}
 
 	fr_MD5Init(&ctx);
-	fr_MD5Update(&ctx, (void *) fmt, strlen(fmt));
+	fr_MD5Update(&ctx, (void *) buffer, strlen(buffer));
 	fr_MD5Final(digest, &ctx);
 
 	if (outlen < 33) {
