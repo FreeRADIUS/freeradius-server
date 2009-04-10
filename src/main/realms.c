@@ -1825,11 +1825,14 @@ home_server *home_server_ldb(const char *realmname,
 		/* FALL-THROUGH */
 				
 	case HOME_POOL_LOAD_BALANCE:
-		found = pool->servers[0];
-
-	default:
+	case HOME_POOL_FAIL_OVER:
 		start = 0;
 		break;
+
+	default:		/* this shouldn't happen... */
+		start = 0;
+		break;
+
 	}
 
 	/*
@@ -1841,6 +1844,8 @@ home_server *home_server_ldb(const char *realmname,
 	 */
 	for (count = 0; count < pool->num_home_servers; count++) {
 		home_server *home = pool->servers[(start + count) % pool->num_home_servers];
+
+		if (!home) continue;
 
 		if (home->state == HOME_STATE_IS_DEAD) {
 			continue;
@@ -1866,11 +1871,18 @@ home_server *home_server_ldb(const char *realmname,
 		}
 #endif
 
-		if (pool->type != HOME_POOL_LOAD_BALANCE) {
+		/*
+		 *	We've found the first "live" one.  Use that.
+		 */
+		if (pool->type == HOME_POOL_FAIL_OVER) {
 			found = home;
 			break;
 		}
 
+		/*
+		 *	Otherwise we're doing some kind of load balancing.
+		 *	If we haven't found one yet, pick this one.
+		 */
 		if (!found) {
 			found = home;
 			continue;
@@ -1882,7 +1894,7 @@ home_server *home_server_ldb(const char *realmname,
 
 		/*
 		 *	Prefer this server if it's less busy than the
-		 *	one we previously found.
+		 *	one we had previously found.
 		 */
 		if (home->currently_outstanding < found->currently_outstanding) {
 			RDEBUG3("PROXY Choosing %s: It's less busy than %s",
@@ -1908,7 +1920,6 @@ home_server *home_server_ldb(const char *realmname,
 		if (((count + 1) * (fr_rand() & 0xffff)) < (uint32_t) 0x10000) {
 			found = home;
 		}
-
 	} /* loop over the home servers */
 
 	/*
@@ -1991,6 +2002,8 @@ home_server *home_server_ldb(const char *realmname,
 	    realm_config->wake_all_if_all_dead) {
 		for (count = 0; count < pool->num_home_servers; count++) {
 			home_server *home = pool->servers[count];
+
+			if (!home) continue;
 
 			if ((home->state == HOME_STATE_IS_DEAD) &&
 			    (home->ping_check == HOME_PING_CHECK_NONE)) {
