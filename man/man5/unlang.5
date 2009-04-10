@@ -313,7 +313,7 @@ stand-alone condition, in which case they are evaluated as described
 in "Simple conditions", above.  They can also appear (with some
 exceptions noted below) on the left-hand or on the right-hand side of
 a comparison.
-.IP Numbers
+.IP numbers
 Numbers are composed of decimal digits.  Floating point, hex, and
 octal numbers are not supported.  The maximum value for a number is
 machine-dependent, but is usually 32-bits, including one bit for a
@@ -342,14 +342,14 @@ as seen in the examples below.
 	if (Service-Type == Login-User) { 
 .DE
 .RE
-.IP "strings"
+.IP """strings"""
 .RS
 Double-quoted strings are expanded by inserting the value of any
 variables (see VARIABLES, below) before being evaluated.  If
 the result is a number it is evaluated in a numerical context.
 
 String length is limited by line-length, usually about 8000
-characters.  A double quote character (") can be used in a string via
+characters.  A double quote character can be used in a string via
 the normal back-slash escaping method.  ("like \\"this\\" !")
 .RE
 .IP 'strings'
