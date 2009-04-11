@@ -79,6 +79,16 @@ server buffered-sql {
 		#
 		#  Useful range of values: 1 to 60
 		poll_interval = 1
+
+		#
+		#  Set the retry interval for when the home server
+		#  does not respond.  The current packet will be
+		#  sent repeatedly, at this interval, until the
+		#  home server responds.
+		#
+		#  Useful range of values: 5 to 30
+		retry_interval = 30
+
 	}
 
 	#
