@@ -3038,6 +3038,8 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 void event_new_fd(rad_listen_t *this)
 {
 	char buffer[1024];
+
+	if (this->status == RAD_LISTEN_STATUS_KNOWN) return;
 	
 	this->print(this, buffer, sizeof(buffer));
 	
@@ -3115,31 +3117,18 @@ static void handle_signal_self(int flag)
 		for (this = mainconfig.listen;
 		     this != NULL;
 		     this = this->next) {
-			int delay;
-			struct timeval when;
-
 			if (this->type != RAD_LISTEN_DETAIL) continue;
-			
-			delay = detail_delay(this);
-			if (!delay) continue;
-
-			fr_event_now(el, &now);
-			when = now;
-			tv_add(&when, delay);
-
-			if (delay > (USEC / 10)) {
-				DEBUG("Delaying next detail event for %d.%01u seconds.",
-				       delay / USEC, (delay % USEC) / 100000);
-			}
 
 			/*
-			 *	Reset the detail timer.
+			 *	This one didn't send the signal, skip
+			 *	it.
 			 */
-			if (!fr_event_insert(el, event_poll_detail, this,
-					     &when, NULL)) {
-				radlog(L_ERR, "Failed remembering detail timer");
-				exit(1);
-			}
+			if (!this->decode(this, NULL)) continue;
+
+			/*
+			 *	Go service the interrupt.
+			 */
+			event_poll_detail(this);
 		}
 	}
 #endif
@@ -3150,8 +3139,6 @@ static void handle_signal_self(int flag)
 		for (this = mainconfig.listen;
 		     this != NULL;
 		     this = this->next) {
-			if (this->status == RAD_LISTEN_STATUS_KNOWN) continue;
-
 			event_new_fd(this);
 		}
 	}
@@ -3232,6 +3219,9 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
 	}
 }
 
+typedef struct listen_detail_t {
+	fr_event_t	*ev;
+} listen_detail_t;
 
 /*
  *	This function is called periodically to see if this detail
@@ -3239,23 +3229,14 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
  */
 static void event_poll_detail(void *ctx)
 {
-	int rcode;
+	int rcode, delay;
 	RAD_REQUEST_FUNP fun;
 	REQUEST *request;
 	rad_listen_t *this = ctx;
 	struct timeval when;
-
-	fr_event_now(el, &now);
-	when = now;
+	listen_detail_t *detail = this->data;
 
 	rad_assert(this->type == RAD_LISTEN_DETAIL);
-
-	/*
-	 *	Set the next poll time to be X +/- 0.5s, to help
-	 *	spread the load a bit over time.
-	 */
-	when.tv_sec += detail_poll_interval(this);
-	when.tv_usec += fr_rand() % (USEC / 2);
 
 	/*
 	 *	Try to read something.
@@ -3272,15 +3253,17 @@ static void event_poll_detail(void *ctx)
 		}
 	}
 
+	if (!fr_event_now(el, &now)) gettimeofday(&now, NULL);
+	when = now;
+
 	/*
-	 *	Reset the poll to fire one second from now.  If the
-	 *	detail reader DOES read a packet, it will send us a
-	 *	signal when it's done, and the signal handler will
-	 *	reset the timer to a more appropriate (i.e. shorter)
-	 *	value.
+	 *	Backdoor API to get the delay until the next poll time.
 	 */
+	delay = this->encode(this, NULL);
+	tv_add(&when, delay);
+
 	if (!fr_event_insert(el, event_poll_detail, this,
-			     &when, NULL)) {
+			     &when, &detail->ev)) {
 		radlog(L_ERR, "Failed creating handler");
 		exit(1);
 	}
@@ -3471,23 +3454,19 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 		switch (this->type) {
 #ifdef WITH_DETAIL
-			struct timeval when;
-
 		case RAD_LISTEN_DETAIL:
 			DEBUG("Listening on %s", buffer);
 
 			/*
-			 *	Add some initial jitter to help spread
-			 *	the load a bit.
+			 *	Detail files are always known, and aren't
+			 *	put into the socket event loop.
 			 */
-			when.tv_sec = fr_start_time + 1;
-			when.tv_usec = fr_rand() % USEC;
+			this->status = RAD_LISTEN_STATUS_KNOWN;
 
-			if (!fr_event_insert(el, event_poll_detail, this,
-					     &when, NULL)) {
-				radlog(L_ERR, "Failed creating detail poll timer");
-				exit(1);
-			}
+			/*
+			 *	Set up the first poll interval.
+			 */
+			event_poll_detail(this);
 			break;
 #endif
 
@@ -3507,15 +3486,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 		default:
 			break;
-		}
-
-		/*
-		 *	The file descriptor isn't ready.  Poll for
-		 *	when it will become ready.  This is for the
-		 *	detail file fd's.
-		 */
-		if (this->fd < 0) {
-			continue;
 		}
 
 		event_new_fd(this);

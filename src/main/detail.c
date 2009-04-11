@@ -43,18 +43,31 @@ RCSID("$Id$")
 
 #define USEC (1000000)
 
+typedef enum detail_state_t {
+  STATE_UNOPENED = 0,
+  STATE_UNLOCKED,
+  STATE_HEADER,
+  STATE_READING,
+  STATE_QUEUED,
+  STATE_RUNNING,
+  STATE_NO_REPLY,
+  STATE_REPLIED
+} detail_state_t;
+
 typedef struct listen_detail_t {
-	int		delay_time; /* should be first entry */
+	fr_event_t	*ev;	/* has to be first entry (ugh) */
+	int		delay_time;
 	char		*filename;
 	char		*filename_work;
 	VALUE_PAIR	*vps;
 	FILE		*fp;
-	int		state;
+	detail_state_t 	state;
 	time_t		timestamp;
 	fr_ipaddr_t	client_ip;
 	int		load_factor; /* 1..100 */
 	int		signal;
 	int		poll_interval;
+	int		retry_interval;
 
 	int		has_rtt;
 	int		srtt;
@@ -63,15 +76,6 @@ typedef struct listen_detail_t {
 	RADCLIENT	detail_client;
 } listen_detail_t;
 
-
-#define STATE_UNOPENED	(0)
-#define STATE_UNLOCKED	(1)
-#define STATE_HEADER	(2)
-#define STATE_READING	(3)
-#define STATE_QUEUED	(4)
-#define STATE_RUNNING	(5)
-#define STATE_NO_REPLY	(6)
-#define STATE_REPLIED	(7)
 
 /*
  *	If we're limiting outstanding packets, then mark the response
@@ -91,7 +95,7 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 *	caller it's OK to read more "detail" file stuff.
 	 */
 	if (request->reply->code == 0) {
-		data->delay_time = USEC;
+		data->delay_time = data->retry_interval * USEC;
 		data->signal = 1;
 		data->state = STATE_NO_REPLY;
 		radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
@@ -175,17 +179,6 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
 
 	return 0;
-}
-
-int detail_delay(rad_listen_t *listener)
-{
-	listen_detail_t *data = listener->data;
-
-	if (!data->signal) return 0;
-
-	data->signal = 0;
-
-	return data->delay_time;
 }
 
 
@@ -326,6 +319,12 @@ int detail_recv(rad_listen_t *listener,
 	char		buffer[2048];
 	listen_detail_t *data = listener->data;
 
+	/*
+	 *	We may be in the main thread.  It needs to update the
+	 *	timers before we try to read from the file again.
+	 */
+	if (data->signal) return 0;
+
 	switch (data->state) {
 		case STATE_UNOPENED:
 	open_file:
@@ -379,6 +378,7 @@ int detail_recv(rad_listen_t *listener,
 			 *	Look for the header
 			 */
 			data->state = STATE_HEADER;
+			data->delay_time = USEC;
 			data->vps = NULL;
 
 			/* FALL-THROUGH */
@@ -728,20 +728,41 @@ int detail_print(rad_listen_t *this, char *buffer, size_t bufsize)
 			this->server);
 }
 
-int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
+/*
+ *	Overloaded to return delay times.
+ */
+int detail_encode(rad_listen_t *this, UNUSED REQUEST *request)
 {
+	listen_detail_t *data = this->data;
+
 	/*
-	 *	We never encode responses "sent to" the detail file.
+	 *	We haven't sent a packet... delay things a bit.
 	 */
-	return 0;
+	if (!data->signal) {
+		int delay = (data->poll_interval - 1) * USEC;
+
+		/*
+		 *	Add +/- 0.25s of jitter
+		 */
+		delay += (USEC * 3) / 4;
+		delay += fr_rand() % (USEC / 2);
+		return delay;
+	}
+
+	data->signal = 0;
+
+	return data->delay_time;
 }
 
-int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
+
+/*
+ *	Overloaded to return "should we fix delay times"
+ */
+int detail_decode(rad_listen_t *this, UNUSED REQUEST *request)
 {
-	/*
-	 *	We never decode responses read from the detail file.
-	 */
-	return 0;
+	listen_detail_t *data = this->data;
+
+	return data->signal;
 }
 
 
@@ -752,6 +773,8 @@ static const CONF_PARSER detail_config[] = {
 	  offsetof(listen_detail_t, load_factor), NULL, Stringify(10)},
 	{ "poll_interval",   PW_TYPE_INTEGER,
 	  offsetof(listen_detail_t, poll_interval), NULL, Stringify(1)},
+	{ "retry_interval",   PW_TYPE_INTEGER,
+	  offsetof(listen_detail_t, retry_interval), NULL, Stringify(30)},
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -773,7 +796,6 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 	data = this->data;
-	data->delay_time = USEC;
 
 	rcode = cf_section_parse(cs, data, detail_config);
 	if (rcode < 0) {
@@ -791,8 +813,8 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
-	if ((data->poll_interval < 1) || (data->poll_interval > 3600)) {
-		cf_log_err(cf_sectiontoitem(cs), "poll_interval must be between 1 and 3600");
+	if ((data->poll_interval < 1) || (data->poll_interval > 20)) {
+		cf_log_err(cf_sectiontoitem(cs), "poll_interval must be between 1 and 20");
 		return -1;
 	}
 
@@ -827,6 +849,8 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	data->vps = NULL;
 	data->fp = NULL;
 	data->state = STATE_UNOPENED;
+	data->delay_time = data->poll_interval * USEC;
+	data->signal = 1;
 
 	/*
 	 *	Initialize the fake client.
@@ -842,12 +866,4 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	return 0;
 }
-
-int detail_poll_interval(rad_listen_t *listener)
-{
-	listen_detail_t *data = listener->data;
-
-	return data->poll_interval;
-}
-
 #endif
