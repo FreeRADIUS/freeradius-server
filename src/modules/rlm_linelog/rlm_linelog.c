@@ -195,21 +195,6 @@ static int do_linelog(void *instance, REQUEST *request)
 	rlm_linelog_t *inst = (rlm_linelog_t*) instance;
 	const char *value = inst->line;
 
-	/*
-	 *	FIXME: Check length.
-	 */
-	if (strcmp(inst->filename, "syslog") != 0) {
-		radius_xlat(buffer, sizeof(buffer), inst->filename, request,
-			    NULL);
-		
-		fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, 0600);
-		if (fd == -1) {
-			radlog(L_ERR, "rlm_linelog: Failed to open %s: %s",
-			       buffer, strerror(errno));
-			return RLM_MODULE_FAIL;
-		}
-	}
-
 	if (inst->reference) {
 		CONF_ITEM *ci;
 		CONF_PAIR *cp;
@@ -248,6 +233,21 @@ static int do_linelog(void *instance, REQUEST *request)
 	}
 
  do_log:
+	/*
+	 *	FIXME: Check length.
+	 */
+	if (strcmp(inst->filename, "syslog") != 0) {
+		radius_xlat(buffer, sizeof(buffer), inst->filename, request,
+			    NULL);
+		
+		fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, 0600);
+		if (fd == -1) {
+			radlog(L_ERR, "rlm_linelog: Failed to open %s: %s",
+			       buffer, strerror(errno));
+			return RLM_MODULE_FAIL;
+		}
+	}
+
 	/*
 	 *	FIXME: Check length.
 	 */
