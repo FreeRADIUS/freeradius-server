@@ -1,0 +1,10 @@
+
+TARGET     = @targetname@
+SRCS       = rlm_ruby.c
+HEADERS    = @ruby_headers@
+RLM_LIBS   = @ruby_ldflags@
+RLM_CFLAGS = @ruby_cflags@
+
+include ../rules.mak
+
+$(LT_OBJS): $(HEADERS)
