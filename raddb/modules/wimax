@@ -90,4 +90,23 @@
 #		  thing.
 #
 wimax {
+	#
+	#  Some WiMAX equipement requires that the MS-MPPE-*-Key
+	#  attributes are sent in the Access-Accept, in addition to
+	#  the WiMAX-MSK attribute.
+	#
+	#  Other WiMAX equipment request that the MS-MPPE-*-Key
+	#  attributes are NOT sent in the Access-Accept.
+	#
+	#  By default, the EAP modules sends MS-MPPE-*-Key attributes.
+	#  The default virtual server (raddb/sites-available/default)
+	#  contains examples of adding the WiMAX-MSK.
+	#
+	#  This configuration option makes the WiMAX module delete
+	#  the MS-MPPE-*-Key attributes.  The default is to leave
+	#  them in place.
+	#
+	#  If the keys are deleted (by setting this to "yes"), then
+	#  the WiMAX-MSK attribute is automatically added to the reply.
+	delete_mppe_keys = no
 }

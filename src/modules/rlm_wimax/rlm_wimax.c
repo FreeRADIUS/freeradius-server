@@ -31,6 +31,74 @@ RCSID("$Id$")
  */
 #define WIMAX2ATTR(x) ((24757 << 16) | (x))
 
+typedef struct rlm_wimax_t {
+	int	delete_mppe_keys;
+} rlm_wimax_t;
+
+/*
+ *	A mapping of configuration file names to internal variables.
+ *
+ *	Note that the string is dynamically allocated, so it MUST
+ *	be freed.  When the configuration file parse re-reads the string,
+ *	it free's the old one, and strdup's the new one, placing the pointer
+ *	to the strdup'd string into 'config.string'.  This gets around
+ *	buffer over-flows.
+ */
+static const CONF_PARSER module_config[] = {
+  { "delete_mppe_keys", PW_TYPE_BOOLEAN,
+    offsetof(rlm_wimax_t,delete_mppe_keys), NULL,   "no" },
+
+  { NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+
+
+/*
+ *	Only free memory we allocated.  The strings allocated via
+ *	cf_section_parse() do not need to be freed.
+ */
+static int wimax_detach(void *instance)
+{
+	free(instance);
+	return 0;
+}
+
+/*
+ *	Do any per-module initialization that is separate to each
+ *	configured instance of the module.  e.g. set up connections
+ *	to external databases, read configuration files, set up
+ *	dictionary entries, etc.
+ *
+ *	If configuration information is given in the config section
+ *	that must be referenced in later calls, store a handle to it
+ *	in *instance otherwise put a null pointer there.
+ */
+static int wimax_instantiate(CONF_SECTION *conf, void **instance)
+{
+	rlm_wimax_t *inst;
+
+	/*
+	 *	Set up a storage area for instance data
+	 */
+	inst = rad_malloc(sizeof(*inst));
+	if (!inst) {
+		return -1;
+	}
+	memset(inst, 0, sizeof(*inst));
+
+	/*
+	 *	If the configuration parameters can't be parsed, then
+	 *	fail.
+	 */
+	if (cf_section_parse(conf, inst, module_config) < 0) {
+		wimax_detach(inst);
+		return -1;
+	}
+
+	*instance = inst;
+
+	return 0;
+}
+
 /*
  *	Find the named user in this modules database.  Create the set
  *	of attribute-value pairs to check and reply with for this user
@@ -99,8 +167,9 @@ static int wimax_accounting(void *instance, REQUEST *request)
 /*
  *	Generate the keys after the user has been authenticated.
  */
-static int wimax_postauth(UNUSED void *instance, REQUEST *request)
+static int wimax_postauth(void *instance, REQUEST *request)
 {
+	rlm_wimax_t *inst = instance;
 	VALUE_PAIR *msk, *emsk, *vp;
 	VALUE_PAIR *mn_nai, *ip, *fa_rk;
 	HMAC_CTX hmac;
@@ -116,6 +185,21 @@ static int wimax_postauth(UNUSED void *instance, REQUEST *request)
 	if (!msk || !emsk) {
 		RDEBUG("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys.");
 		return RLM_MODULE_NOOP;
+	}
+
+	/*
+	 *	If we delete the MS-MPPE-*-Key attributes, then add in
+	 *	the WiMAX-MSK so that the client has a key available.
+	 */
+	if (inst->delete_mppe_keys) {
+		pairdelete(&request->reply->vps, ((311 << 16) | 16));
+		pairdelete(&request->reply->vps, ((311 << 16) | 17));
+
+		vp = radius_pairmake(request, &request->reply->vps, "WiMAX-MSK", "0x00", T_OP_EQ);
+		if (vp) {
+			memcpy(vp->vp_octets, msk->vp_octets, msk->length);
+			vp->length = msk->length;
+		}
 	}
 
 	/*
@@ -477,8 +561,8 @@ module_t rlm_wimax = {
 	RLM_MODULE_INIT,
 	"wimax",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	NULL,				/* instantiation */
-	NULL,				/* detach */
+	wimax_instantiate,	        /* instantiation */
+	wimax_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		wimax_authorize,	/* authorization */
