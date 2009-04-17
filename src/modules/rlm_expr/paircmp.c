@@ -220,9 +220,32 @@ static int genericcmp(void *instance UNUSED,
 		snprintf(name, sizeof(name), "%%{%s}", check->name);
 
 		rcode = radius_xlat(value, sizeof(value), name, req, NULL);
-		vp = pairmake(check->name, value, T_OP_EQ);
+		vp = pairmake(check->name, value, check->operator);
 
-		rcode = radius_compare_vps(req, check, vp);
+		/*
+		 *	Paircmp returns 0 for failed comparison,
+		 *	1 for succeeded.
+		 */
+		rcode = paircmp(check, vp);
+
+		/*
+		 *	We're being called from radius_callback_compare,
+		 *	which wants 0 for success, and 1 for fail (sigh)
+		 *
+		 *	We should really fix the API so that it is
+		 *	consistent.  i.e. the comparison callbacks should
+		 *	return ONLY the resut of comparing A to B.
+		 *	The radius_callback_cmp function should then
+		 *	take care of using the operator to see if the
+		 *	condition (A OP B) is true or not.
+		 *
+		 *	This would also allow "<", etc. to work in the
+		 *	callback functions...
+		 *
+		 *	See rlm_ldap, ...groupcmp() for something that
+		 *	returns 0 for matched, and 1 for didn't match.
+		 */
+		rcode = !rcode;
 		pairfree(&vp);
 
 		return rcode;
