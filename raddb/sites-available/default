@@ -432,12 +432,25 @@ post-auth {
 	#
 	# 	update reply {
 	#		WiMAX-FA-RK-Key = 0x00
+	#		WiMAX-MSK = "%{EAP-MSK}"
 	#	}
 	#
-	#  Do this at some point before running the "wimax" module.
+	#  You may want to delete the MS-MPPE-*-Keys from the reply,
+	#  as some WiMAX clients behave badly when those attributes
+	#  are included.  See "raddb/modules/wimax", configuration
+	#  entry "delete_mppe_keys" for more information.
 	#
 #	wimax
 
+	#  If the WiMAX module did it's work, you may want to do more
+	#  things here, like delete the MS-MPPE-*-Key attributes.
+	#
+	#	if (updated) {
+	#		update reply {
+	#			MS-MPPE-Recv-Key !* 0x00
+	#			MS-MPPE-Send-Key !* 0x00
+	#		}
+	#	}
 
 	#
 	#  Access-Reject packets are sent through the REJECT sub-section of the
