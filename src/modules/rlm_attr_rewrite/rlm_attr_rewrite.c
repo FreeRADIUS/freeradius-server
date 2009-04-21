@@ -42,7 +42,7 @@ typedef struct rlm_attr_rewrite_t {
 	int  attr_num;		/* The attribute number */
 	char *search;		/* The pattern to search for */
 	int search_len;		/* The length of the search pattern */
-	char *searchin_str;	/* The VALUE_PAIR list to search in. Can be either packet,reply,proxy,proxy_reply or config */
+	char *searchin_str;	/* The VALUE_PAIR list to search in. Can be either packet,reply,proxy,proxy_reply or control (plus it's alias 'config') */
 	char searchin;		/* The same as above just coded as a number for speed */
 	char *replace;		/* The replacement */
 	int replace_len;	/* The length of the replacement string */
@@ -119,6 +119,8 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 		if (strcmp(data->searchin_str, "packet") == 0)
 			data->searchin = RLM_REGEX_INPACKET;
 		else if (strcmp(data->searchin_str, "config") == 0)
+			data->searchin = RLM_REGEX_INCONFIG;
+		else if (strcmp(data->searchin_str, "control") == 0)
 			data->searchin = RLM_REGEX_INCONFIG;
 		else if (strcmp(data->searchin_str, "reply") == 0)
 			data->searchin = RLM_REGEX_INREPLY;
