@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "01 Jul 2008" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "21 Apr 2009" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -22,7 +22,13 @@ Python modules rlm_perl, or rlm_python.
 
 The goal of the language is to allow simple policies to be written
 with minimal effort.  Those policies are then applied when a request
-is being processed.
+is being processed.  Requests are processed through virtual servers
+(including the default one), in the sections titled "authorize",
+"authenticate", "post-auth", "preacct", "accounting", "pre-proxy",
+"post-proxy", and "session".
+
+These policies cannot be used in any other part of the configuration
+files, such as module or client configuration.
 .SH KEYWORDS
 The keywords for the language are a combination of pre-defined
 keywords, and references to loadable module names.  We document only
