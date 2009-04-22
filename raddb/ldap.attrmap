@@ -70,3 +70,6 @@ replyItem	Framed-AppleTalk-Zone		radiusFramedAppleTalkZone
 replyItem	Port-Limit			radiusPortLimit
 replyItem	Login-LAT-Port			radiusLoginLATPort
 replyItem	Reply-Message			radiusReplyMessage
+replyItem	Tunnel-Type			radiusTunnelType
+replyItem	Tunnel-Medium-Type		radiusTunnelMediumType
+replyItem	Tunnel-Private-Group-Id		radiusTunnelPrivateGroupId
