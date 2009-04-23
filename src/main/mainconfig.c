@@ -62,6 +62,14 @@ struct main_config_t mainconfig;
 char *request_log_file = NULL;
 char *debug_condition = NULL;
 
+typedef struct cached_config_t {
+	struct cached_config_t *next;
+	time_t		created;
+	CONF_SECTION	*cs;
+} cached_config_t;
+
+static cached_config_t	*cs_cache = NULL;
+
 /*
  *	Temporary local variables for parsing the configuration
  *	file.
@@ -730,6 +738,7 @@ int read_mainconfig(int reload)
 	CONF_PAIR *cp;
 	CONF_SECTION *cs;
 	struct stat statbuf;
+	cached_config_t *cc;
 	char buffer[1024];
 
 	if (stat(radius_dir, &statbuf) < 0) {
@@ -913,6 +922,13 @@ int read_mainconfig(int reload)
 		}
 	}
 
+	cc = rad_malloc(sizeof(*cc));
+	memset(cc, 0, sizeof(*cc));
+
+	cc->cs = cs;
+	rad_assert(cs_cache == NULL);
+	cs_cache = cc;
+
 	return 0;
 }
 
@@ -921,11 +937,23 @@ int read_mainconfig(int reload)
  */
 int free_mainconfig(void)
 {
+	cached_config_t *cc, *next;
+
+	virtual_servers_free(0);
+
+	/*
+	 *	Free all of the cached configurations.
+	 */
+	for (cc = cs_cache; cc != NULL; cc = next) {
+		next = cc->next;
+		cf_section_free(&cc->cs);
+		free(cc);
+	}
+
 	/*
 	 *	Clean up the configuration data
 	 *	structures.
 	 */
-	cf_section_free(&mainconfig.config);
 	realms_free();
 	listen_free(&mainconfig.listen);
 	dict_free();
@@ -935,5 +963,35 @@ int free_mainconfig(void)
 
 void hup_mainconfig(void)
 {
+	cached_config_t *cc;
+	CONF_SECTION *cs;
+	char buffer[1024];
+
+	/* Read the configuration file */
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
+		 radius_dir, mainconfig.name);
+	if ((cs = cf_file_read(buffer)) == NULL) {
+		radlog(L_ERR, "Failed to re-read %s", buffer);
+		return;
+	}
+
+	cc = rad_malloc(sizeof(*cc));
+	memset(cc, 0, sizeof(*cc));
+
+	cc->created = time(NULL);
+	cc->cs = cs;
+	cc->next = cs_cache;
+	cs_cache = cc;
+
+	/*
+	 *	Load new servers BEFORE freeing old ones.
+	 */
+	virtual_servers_load(cs);
+
+	virtual_servers_free(cc->created - 120);
+
+	/*
+	 *	Unfortunatelty... we use the OLD configuration here.
+	 */
 	module_hup(cf_section_sub_find(mainconfig.config, "modules"));
 }

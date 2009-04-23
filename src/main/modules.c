@@ -40,6 +40,7 @@ typedef struct indexed_modcallable {
 
 typedef struct virtual_server_t {
 	const char	*name;
+	time_t		created;
 	CONF_SECTION	*cs;
 	rbtree_t	*components;
 	struct virtual_server_t *next;
@@ -157,6 +158,37 @@ static void virtual_server_free(virtual_server_t *server)
 	server->components = NULL;
 
 	free(server);
+}
+
+void virtual_servers_free(time_t when)
+{
+	int i;
+	virtual_server_t **last;
+	
+	for (i = 0; i < VIRTUAL_SERVER_HASH_SIZE; i++) {
+		virtual_server_t *server, *next;
+
+		last = &virtual_servers[i];
+		for (server = virtual_servers[i];
+		     server != NULL;
+		     server = next) {
+			next = server->next;
+
+			/*
+			 *	If we delete it, fix the links so that
+			 *	we don't orphan anything.
+			 *
+			 *	Otherwise, the last pointer gets set to
+			 *	the one we didn't delete.
+			 */
+			if ((when == 0) || (server->created < when)) {
+				*last = server->next;
+				virtual_server_free(server);
+			} else {
+				last = &(server->next);
+			}
+		}
+	}
 }
 
 static void indexed_modcallable_free(void *data)
@@ -283,19 +315,6 @@ static void module_entry_free(void *data)
  */
 int detach_modules(void)
 {
-	int i;
-
-	for (i = 0; i < VIRTUAL_SERVER_HASH_SIZE; i++) {
-		virtual_server_t *server, *next;
-
-		for (server = virtual_servers[i];
-		     server != NULL;
-		     server = next) {
-			next = server->next;
-			virtual_server_free(server);
-		}
-	}
-
 	rbtree_free(instance_tree);
 	rbtree_free(module_tree);
 
@@ -839,6 +858,7 @@ static int load_byserver(CONF_SECTION *cs)
 	memset(server, 0, sizeof(*server));
 
 	server->name = name;
+	server->created = time(NULL);
 	server->cs = cs;
 	server->components = components;
 
@@ -1021,7 +1041,7 @@ static int load_byserver(CONF_SECTION *cs)
 /*
  *	Load all of the virtual servers.
  */
-int virtual_server_load(CONF_SECTION *config)
+int virtual_servers_load(CONF_SECTION *config)
 {
 	int null_server = FALSE;
 	CONF_SECTION *cs;
@@ -1067,7 +1087,6 @@ int virtual_server_load(CONF_SECTION *config)
 
 	return 0;
 }
-
 
 int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 {
@@ -1287,7 +1306,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		}
 	}
 
-	if (virtual_server_load(config) < 0) return -1;
+	if (virtual_servers_load(config) < 0) return -1;
 
 	return 0;
 }
