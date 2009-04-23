@@ -1043,7 +1043,9 @@ static int load_byserver(CONF_SECTION *cs)
 	 */
 	server = server->next;
 	while (server) {
-		if (strcmp(server->name, name) == 0) {
+		if ((!name && !server->name) ||
+		    (name && server->name &&
+		     (strcmp(server->name, name) == 0))) {
 			server->can_free = TRUE;
 			break;
 		}
