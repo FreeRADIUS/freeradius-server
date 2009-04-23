@@ -369,6 +369,7 @@ static module_entry_t *linkto_module(const char *module_name,
 module_instance_t *find_module_instance(CONF_SECTION *modules,
 					const char *instname, int do_link)
 {
+	int check_config_safe = FALSE;
 	CONF_SECTION *cs;
 	const char *name1, *name2;
 	module_instance_t *node, myNode;
@@ -424,8 +425,18 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 
 	if (check_config && (node->entry->module->instantiate) &&
 	    (node->entry->module->type & RLM_TYPE_CHECK_CONFIG_SAFE) == 0) {
+		const char *value = NULL;
+		CONF_PAIR *cp;
+
+		cp = cf_pair_find(cs, "force_check_config");
+		if (cp) value = cf_pair_value(cp);
+
+		if (value && (strcmp(value, "yes") == 0)) goto print_inst;
+
 		cf_log_module(cs, "Skipping instantiation of %s", instname);
 	} else {
+	print_inst:
+		check_config_safe = TRUE;
 		cf_log_module(cs, "Instantiating %s", instname);
 	}
 
@@ -433,8 +444,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 *	Call the module's instantiation routine.
 	 */
 	if ((node->entry->module->instantiate) &&
-	    (!check_config ||
-	     ((node->entry->module->type & RLM_TYPE_CHECK_CONFIG_SAFE) != 0)) &&
+	    (!check_config || check_config_safe) &&
 	    ((node->entry->module->instantiate)(cs, &node->insthandle) < 0)) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Instantiation failed for module \"%s\"",
