@@ -1244,3 +1244,42 @@ void listen_free(rad_listen_t **head)
 	 *	FIXME: Unlink the handles, too.
 	 */
 }
+
+rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port)
+{
+	rad_listen_t *this;
+
+	for (this = mainconfig.listen; this != NULL; this = this->next) {
+		listen_socket_t *sock;
+
+		/*
+		 *	FIXME: For TCP, ignore the *secondary*
+		 *	listeners associated with the main socket.
+		 */
+		if ((this->type != RAD_LISTEN_AUTH) &&
+		    (this->type != RAD_LISTEN_ACCT)) continue;
+		
+		sock = this->data;
+
+		if ((sock->port == port) &&
+		    (fr_ipaddr_cmp(ipaddr, &sock->ipaddr) == 0)) {
+			return this;
+		}
+
+		if ((sock->port == port) &&
+		    ((sock->ipaddr.af == AF_INET) &&
+		     (sock->ipaddr.ipaddr.ip4addr.s_addr == INADDR_ANY))) {
+			return this;
+		}
+
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+		if ((sock->port == port) &&
+		    (sock->ipaddr.af == AF_INET6) &&
+		    (IN6_IS_ADDR_UNSPECIFIED(&sock->ipaddr.ipaddr.ip6addr))) {
+			return this;
+		}
+#endif
+	}
+
+	return NULL;
+}
