@@ -734,12 +734,16 @@ static const FR_NAME_NUMBER str2dest[] = {
 int read_mainconfig(int reload)
 {
 	const char *p = NULL;
-	static int old_debug_level = -1;
 	CONF_PAIR *cp;
 	CONF_SECTION *cs;
 	struct stat statbuf;
 	cached_config_t *cc;
 	char buffer[1024];
+
+	if (reload != 0) {
+		radlog(L_ERR, "Reload is not implemented");
+		return -1;
+	}
 
 	if (stat(radius_dir, &statbuf) < 0) {
 		radlog(L_ERR, "Errors reading %s: %s",
@@ -763,11 +767,7 @@ int read_mainconfig(int reload)
 	}
 #endif
 
-	if (!reload) {
-		radlog(L_INFO, "Starting - reading configuration files ...");
-	} else {
-		radlog(L_INFO, "Reloading - reading configuration files...");
-	}
+	radlog(L_INFO, "Starting - reading configuration files ...");
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
@@ -874,25 +874,14 @@ int read_mainconfig(int reload)
 	xlat_register("client", xlat_client, NULL);
 
 	/*
-	 *	Reload: change debug flag if it's changed in the
-	 *	configuration file.
+	 *	Starting the server, WITHOUT "-x" on the
+	 *	command-line: use whatever is in the config
+	 *	file.
 	 */
-	if (reload) {
-		if (mainconfig.debug_level != old_debug_level) {
-			debug_flag = mainconfig.debug_level;
-		}
-
-	} else if (debug_flag == 0) {
-
-		/*
-		 *	Starting the server, WITHOUT "-x" on the
-		 *	command-line: use whatever's in the config
-		 *	file.
-		 */
+	if (debug_flag == 0) {
 		debug_flag = mainconfig.debug_level;
 	}
 	fr_debug_flag = debug_flag;
-	old_debug_level = mainconfig.debug_level;
 
 	/*
 	 *  Go update our behaviour, based on the configuration
@@ -984,14 +973,14 @@ void hup_mainconfig(void)
 	cs_cache = cc;
 
 	/*
+	 *	Prefer the new module configuration.
+	 */
+	module_hup(cf_section_sub_find(cs, "modules"));
+
+	/*
 	 *	Load new servers BEFORE freeing old ones.
 	 */
 	virtual_servers_load(cs);
 
 	virtual_servers_free(cc->created - 120);
-
-	/*
-	 *	Unfortunatelty... we use the OLD configuration here.
-	 */
-	module_hup(cf_section_sub_find(mainconfig.config, "modules"));
 }
