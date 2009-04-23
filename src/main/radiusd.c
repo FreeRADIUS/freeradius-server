@@ -169,6 +169,9 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'l':
+				if (strcmp(optarg, "stdout") == 0) {
+					goto do_stdout;
+				}
 				mainconfig.log_file = strdup(optarg);
 				mainconfig.radlog_dest = RADLOG_FILES;
 				break;		  
@@ -219,6 +222,7 @@ int main(int argc, char *argv[])
 				mainconfig.log_auth = TRUE;
 				mainconfig.log_auth_badpass = TRUE;
 				mainconfig.log_auth_goodpass = TRUE;
+		do_stdout:
 				mainconfig.radlog_dest = RADLOG_STDOUT;
 				mainconfig.radlog_fd = STDOUT_FILENO;
 				fr_log_fp = stdout;
@@ -394,7 +398,7 @@ int main(int argc, char *argv[])
 	while ((rcode = radius_event_process()) == 0x80) {
 		radius_stats_init(1);
 		radlog(L_INFO, "Received HUP.");
-		module_hup(cf_section_sub_find(mainconfig.config, "modules"));
+		hup_mainconfig();
 	}
 	
 	radlog(L_INFO, "Exiting normally.");

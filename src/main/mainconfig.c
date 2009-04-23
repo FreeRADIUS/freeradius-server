@@ -932,3 +932,8 @@ int free_mainconfig(void)
 
 	return 0;
 }
+
+void hup_mainconfig(void)
+{
+	module_hup(cf_section_sub_find(mainconfig.config, "modules"));
+}
