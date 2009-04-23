@@ -155,6 +155,8 @@ static int virtual_server_idx(const char *name)
 
 static void virtual_server_free(virtual_server_t *server)
 {
+	if (!server) return;
+
 	if (server->components) rbtree_free(server->components);
 	server->components = NULL;
 
@@ -847,7 +849,13 @@ static int load_byserver(CONF_SECTION *cs)
 	int comp, flag;
 	const char *name = cf_section_name2(cs);
 	rbtree_t *components;
-	virtual_server_t *server;
+	virtual_server_t *server = NULL;
+
+	if (name) {
+		cf_log_info(cs, "server %s {", name);
+	} else {
+		cf_log_info(cs, "server {");
+	}
 
 	cf_log_info(cs, " modules {");
 
@@ -855,7 +863,7 @@ static int load_byserver(CONF_SECTION *cs)
 				   indexed_modcallable_free, 0);
 	if (!components) {
 		radlog(L_ERR, "Failed to initialize components\n");
-		return -1;
+		goto error;
 	}
 
 	server = rad_malloc(sizeof(*server));
@@ -888,8 +896,13 @@ static int load_byserver(CONF_SECTION *cs)
 			cf_log_err(cf_sectiontoitem(subcs),
 				   "No such attribute %s",
 				   section_type_value[comp].typename);
-			cf_log_info(cs, " }");
 		error:
+			cf_log_info(cs, " } # modules");
+			cf_log_info(cs, "} # server");
+			if (debug_flag == 0) {
+				radlog(L_ERR, "Failed to load virtual server %s",
+				       (name != NULL) ? name : "<default>");
+			}
 			virtual_server_free(server);
 			return -1;
 		}
@@ -1022,11 +1035,17 @@ static int load_byserver(CONF_SECTION *cs)
 #endif
 	}
 
-	cf_log_info(cs, " }");
+	cf_log_info(cs, " } # modules");
+	cf_log_info(cs, "} # server");
 
 	if (!flag && name) {
 		DEBUG("WARNING: Server %s is empty, and will do nothing!",
 		      name);
+	}
+
+	if (debug_flag == 0) {
+		radlog(L_INFO, "Loaded virtual server %s",
+		       (name != NULL) ? name : "<default>");
 	}
 
 	/*
@@ -1063,6 +1082,7 @@ int virtual_servers_load(CONF_SECTION *config)
 {
 	int null_server = FALSE;
 	CONF_SECTION *cs;
+	static int first_time = TRUE;
 
 	DEBUG2("%s: #### Loading Virtual Servers ####", mainconfig.name);
 
@@ -1072,21 +1092,16 @@ int virtual_servers_load(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "server");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
-		const char *name2 = cf_section_name2(cs);
+		if (!cf_section_name2(cs)) null_server = TRUE;
 
-		if (name2) {
-			cf_log_info(cs, "server %s {", name2);
-		} else {
-			cf_log_info(cs, "server {");
-			null_server = TRUE;
-		}
 		if (load_byserver(cs) < 0) {
-			cf_log_info(cs, "}");
+			/*
+			 *	Once we successfully staryed once,
+			 *	continue loading the OTHER servers,
+			 *	even if one fails.
+			 */
+			if (!first_time) continue;
 			return -1;
-		}
-		cf_log_info(cs, "}");
-		if (debug_flag == 0) {
-			radlog(L_INFO, "Loaded virtual server %s", name2);
 		}
 	}
 
@@ -1095,13 +1110,15 @@ int virtual_servers_load(CONF_SECTION *config)
 	 *	one for backwards compatibility.
 	 */
 	if (!null_server) {
-		cf_log_info(cs, "server {");
 		if (load_byserver(config) < 0) {
-			cf_log_info(cs, "}");
 			return -1;
 		}
-		cf_log_info(cs, "}");
 	}
+
+	/*
+	 *	If we succeed the first time around, remember that.
+	 */
+	first_time = FALSE;
 
 	return 0;
 }
