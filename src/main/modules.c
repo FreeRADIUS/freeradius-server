@@ -41,6 +41,7 @@ typedef struct indexed_modcallable {
 typedef struct virtual_server_t {
 	const char	*name;
 	time_t		created;
+	int		can_free;
 	CONF_SECTION	*cs;
 	rbtree_t	*components;
 	struct virtual_server_t *next;
@@ -176,12 +177,15 @@ void virtual_servers_free(time_t when)
 
 			/*
 			 *	If we delete it, fix the links so that
-			 *	we don't orphan anything.
+			 *	we don't orphan anything.  Also,
+			 *	delete it if it's old, AND a newer one
+			 *	was defined.
 			 *
 			 *	Otherwise, the last pointer gets set to
 			 *	the one we didn't delete.
 			 */
-			if ((when == 0) || (server->created < when)) {
+			if ((when == 0) ||
+			    ((server->created < when) && server->can_free)) {
 				*last = server->next;
 				virtual_server_free(server);
 			} else {
@@ -1033,6 +1037,18 @@ static int load_byserver(CONF_SECTION *cs)
 	comp = virtual_server_idx(name);
 	server->next = virtual_servers[comp];
 	virtual_servers[comp] = server;
+
+	/*
+	 *	Mark OLDER ones of the same name as being unused.
+	 */
+	server = server->next;
+	while (server) {
+		if (strcmp(server->name, name) == 0) {
+			server->can_free = TRUE;
+			break;
+		}
+		server = server->next;
+	}
 
 	return 0;
 }
