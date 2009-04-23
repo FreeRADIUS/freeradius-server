@@ -33,16 +33,23 @@ RCSID("$Id$")
 extern int check_config;
 
 typedef struct indexed_modcallable {
-	const		char *server;
 	int		comp;
 	int		idx;
 	modcallable	*modulelist;
 } indexed_modcallable;
 
+typedef struct virtual_server_t {
+	const char	*name;
+	CONF_SECTION	*cs;
+	rbtree_t	*components;
+	struct virtual_server_t *next;
+} virtual_server_t;
+
 /*
- *	For each component, keep an ordered list of ones to call.
+ *	Keep a hash of virtual servers, so that we can reload them.
  */
-static rbtree_t *components = NULL;
+#define VIRTUAL_SERVER_HASH_SIZE (256)
+static virtual_server_t *virtual_servers[VIRTUAL_SERVER_HASH_SIZE];
 
 static rbtree_t *module_tree = NULL;
 
@@ -133,6 +140,24 @@ void *lt_dlsym(lt_dlhandle handle, UNUSED const char *symbol)
 }
 #endif /* WITHOUT_LIBLTDL */
 
+static int virtual_server_idx(const char *name)
+{
+	uint32_t hash;
+
+	if (!name) return 0;
+
+	hash = fr_hash_string(name);
+		
+	return hash & (VIRTUAL_SERVER_HASH_SIZE - 1);
+}
+
+static void virtual_server_free(virtual_server_t *server)
+{
+	if (server->components) rbtree_free(server->components);
+	server->components = NULL;
+
+	free(server);
+}
 
 static void indexed_modcallable_free(void *data)
 {
@@ -144,16 +169,8 @@ static void indexed_modcallable_free(void *data)
 
 static int indexed_modcallable_cmp(const void *one, const void *two)
 {
-	int rcode;
 	const indexed_modcallable *a = one;
 	const indexed_modcallable *b = two;
-
-	if (a->server && !b->server) return -1;
-	if (!a->server && b->server) return +1;
-	if (a->server && b->server) {
-		rcode = strcmp(a->server, b->server);
-		if (rcode != 0) return rcode;
-	}
 
 	if (a->comp < b->comp) return -1;
 	if (a->comp >  b->comp) return +1;
@@ -266,8 +283,20 @@ static void module_entry_free(void *data)
  */
 int detach_modules(void)
 {
+	int i;
+
+	for (i = 0; i < VIRTUAL_SERVER_HASH_SIZE; i++) {
+		virtual_server_t *server, *next;
+
+		for (server = virtual_servers[i];
+		     server != NULL;
+		     server = next) {
+			next = server->next;
+			virtual_server_free(server);
+		}
+	}
+
 	rbtree_free(instance_tree);
-	rbtree_free(components);
 	rbtree_free(module_tree);
 
 	lt_dlexit();
@@ -484,14 +513,13 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	return node;
 }
 
-static indexed_modcallable *lookup_by_index(const char *server, int comp,
-					    int idx)
+static indexed_modcallable *lookup_by_index(rbtree_t *components,
+					    int comp, int idx)
 {
 	indexed_modcallable myc;
 	
 	myc.comp = comp;
 	myc.idx = idx;
-	myc.server = server;
 
 	return rbtree_finddata(components, &myc);
 }
@@ -499,11 +527,11 @@ static indexed_modcallable *lookup_by_index(const char *server, int comp,
 /*
  *	Create a new sublist.
  */
-static indexed_modcallable *new_sublist(const char *server, int comp, int idx)
+static indexed_modcallable *new_sublist(rbtree_t *components, int comp, int idx)
 {
 	indexed_modcallable *c;
 
-	c = lookup_by_index(server, comp, idx);
+	c = lookup_by_index(components, comp, idx);
 
 	/* It is an error to try to create a sublist that already
 	 * exists. It would almost certainly be caused by accidental
@@ -522,7 +550,6 @@ static indexed_modcallable *new_sublist(const char *server, int comp, int idx)
 
 	c = rad_malloc(sizeof(*c));
 	c->modulelist = NULL;
-	c->server = server;
 	c->comp = comp;
 	c->idx = idx;
 
@@ -539,8 +566,24 @@ int indexed_modcall(int comp, int idx, REQUEST *request)
 	int rcode;
 	indexed_modcallable *this;
 	modcallable *list = NULL;
+	virtual_server_t *server;
 
-	this = lookup_by_index(request->server, comp, idx);
+	rcode = virtual_server_idx(request->server);
+	for (server = virtual_servers[rcode];
+	     server != NULL;
+	     server = server->next) {
+		if (!request->server && !server->name) break;
+
+		if ((request->server && server->name) &&
+		    (strcmp(request->server, server->name) == 0)) break;
+	}
+
+	if (!server) {
+		RDEBUG("No such virtual server %s", request->server);
+		return RLM_MODULE_FAIL;
+	}
+
+	this = lookup_by_index(server->components, comp, idx);
 	if (!this) {
 		if (idx != 0) DEBUG2("  WARNING: Unknown value specified for %s.  Cannot perform requested action.",
 				     section_type_value[comp].typename);
@@ -562,7 +605,7 @@ int indexed_modcall(int comp, int idx, REQUEST *request)
  *	block
  */
 static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
-				     const char *server, int attr, int comp)
+				     rbtree_t *components, int attr, int comp)
 {
 	indexed_modcallable *subcomp;
 	modcallable *ml;
@@ -605,7 +648,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 		return 0;
 	}
 
-	subcomp = new_sublist(server, comp, dval->value);
+	subcomp = new_sublist(components, comp, dval->value);
 	if (!subcomp) {
 		modcallable_free(&ml);
 		return 1;
@@ -647,7 +690,7 @@ static int define_type(const DICT_ATTR *dattr, const char *name)
 }
 
 static int load_component_section(CONF_SECTION *cs,
-				  const char *server, int comp)
+				  rbtree_t *components, int comp)
 {
 	modcallable *this;
 	CONF_ITEM *modref;
@@ -687,7 +730,7 @@ static int load_component_section(CONF_SECTION *cs,
 			if (strcmp(name1,
 				   section_type_value[comp].typename) == 0) {
 				if (!load_subcomponent_section(NULL, scs,
-							       server,
+							       components,
 							       dattr->attr,
 							       comp)) {
 					return -1; /* FIXME: memleak? */
@@ -758,7 +801,7 @@ static int load_component_section(CONF_SECTION *cs,
 			idx = 0;
 		}
 
-		subcomp = new_sublist(server, comp, idx);
+		subcomp = new_sublist(components, comp, idx);
 		if (subcomp == NULL) {
 			modcallable_free(&this);
 			continue;
@@ -779,9 +822,25 @@ static int load_component_section(CONF_SECTION *cs,
 static int load_byserver(CONF_SECTION *cs)
 {
 	int comp, flag;
-	const char *server = cf_section_name2(cs);
+	const char *name = cf_section_name2(cs);
+	rbtree_t *components;
+	virtual_server_t *server;
 
 	cf_log_info(cs, " modules {");
+
+	components = rbtree_create(indexed_modcallable_cmp,
+				   indexed_modcallable_free, 0);
+	if (!components) {
+		radlog(L_ERR, "Failed to initialize components\n");
+		return -1;
+	}
+
+	server = rad_malloc(sizeof(*server));
+	memset(server, 0, sizeof(*server));
+
+	server->name = name;
+	server->cs = cs;
+	server->components = components;
 
 	/*
 	 *	Define types first.
@@ -806,6 +865,8 @@ static int load_byserver(CONF_SECTION *cs)
 				   "No such attribute %s",
 				   section_type_value[comp].typename);
 			cf_log_info(cs, " }");
+		error:
+			virtual_server_free(server);
 			return -1;
 		}
 
@@ -828,7 +889,7 @@ static int load_byserver(CONF_SECTION *cs)
 			    cf_item_is_pair(modref)) {
 				CONF_PAIR *cp = cf_itemtopair(modref);
 				if (!define_type(dattr, cf_pair_attr(cp))) {
-					return -1;
+					goto error;
 				}
 
 				continue;
@@ -843,7 +904,7 @@ static int load_byserver(CONF_SECTION *cs)
 				if (!define_type(dattr,
 						 cf_section_name2(subsubcs))) {
 					cf_log_info(cs, " }");
-					return -1;
+					goto error;
 				}
 			}
 		}
@@ -878,9 +939,9 @@ static int load_byserver(CONF_SECTION *cs)
 		}
 #endif
 
-		if (load_component_section(subcs, server, comp) < 0) {
+		if (load_component_section(subcs, components, comp) < 0) {
 			cf_log_info(cs, " }");
-			return -1;
+			goto error;
 		}
 		flag = 1;
 	} /* loop over components */
@@ -897,9 +958,9 @@ static int load_byserver(CONF_SECTION *cs)
 		subcs = cf_section_sub_find(cs, "vmps");
 		if (subcs) {
 			cf_log_module(cs, "Checking vmps {...} for more modules to load");		
-			if (load_component_section(subcs, server,
+			if (load_component_section(subcs, components,
 						   RLM_COMPONENT_POST_AUTH) < 0) {
-				return -1;
+				goto error;
 			}
 			flag = 1;
 		}
@@ -911,7 +972,7 @@ static int load_byserver(CONF_SECTION *cs)
 			dattr = dict_attrbyname("DHCP-Message-Type");
 			if (!dattr) {
 				radlog(L_ERR, "No DHCP-Message-Type attribute");
-				return -1;
+				goto error;
 			}
 
 			/*
@@ -926,10 +987,10 @@ static int load_byserver(CONF_SECTION *cs)
 
 				DEBUG2(" Module: Checking dhcp %s {...} for more modules to load", name2);
 				if (!load_subcomponent_section(NULL, subcs,
-							       server,
+							       components,
 							       dattr->attr,
 							       RLM_COMPONENT_POST_AUTH)) {
-					return -1; /* FIXME: memleak? */
+					goto error; /* FIXME: memleak? */
 				}
 				flag = 1;
 			}
@@ -939,9 +1000,69 @@ static int load_byserver(CONF_SECTION *cs)
 
 	cf_log_info(cs, " }");
 
-	if (!flag && server) {
+	if (!flag && name) {
 		DEBUG("WARNING: Server %s is empty, and will do nothing!",
-		      server);
+		      name);
+	}
+
+	/*
+	 *	Now that it is OK, insert it into the list.
+	 *
+	 *	This is thread-safe...
+	 */
+	comp = virtual_server_idx(name);
+	server->next = virtual_servers[comp];
+	virtual_servers[comp] = server;
+
+	return 0;
+}
+
+
+/*
+ *	Load all of the virtual servers.
+ */
+int virtual_server_load(CONF_SECTION *config)
+{
+	int null_server = FALSE;
+	CONF_SECTION *cs;
+
+	DEBUG2("%s: #### Loading Virtual Servers ####", mainconfig.name);
+
+	/*
+	 *	Load all of the virtual servers.
+	 */
+	for (cs = cf_subsection_find_next(config, NULL, "server");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(config, cs, "server")) {
+		const char *name2 = cf_section_name2(cs);
+
+		if (name2) {
+			cf_log_info(cs, "server %s {", name2);
+		} else {
+			cf_log_info(cs, "server {");
+			null_server = TRUE;
+		}
+		if (load_byserver(cs) < 0) {
+			cf_log_info(cs, "}");
+			return -1;
+		}
+		cf_log_info(cs, "}");
+		if (debug_flag == 0) {
+			radlog(L_INFO, "Loaded virtual server %s", name2);
+		}
+	}
+
+	/*
+	 *	No empty server defined.  Try to load an old-style
+	 *	one for backwards compatibility.
+	 */
+	if (!null_server) {
+		cf_log_info(cs, "server {");
+		if (load_byserver(config) < 0) {
+			cf_log_info(cs, "}");
+			return -1;
+		}
+		cf_log_info(cs, "}");
 	}
 
 	return 0;
@@ -1043,7 +1164,6 @@ int setup_modules(int reload, CONF_SECTION *config)
 {
 	CONF_SECTION	*cs, *modules;
 	rad_listen_t	*listener;
-	int		null_server = FALSE;
 
 	if (reload) return 0;
 
@@ -1091,12 +1211,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		}
 	}
 
-	components = rbtree_create(indexed_modcallable_cmp,
-				   indexed_modcallable_free, 0);
-	if (!components) {
-		radlog(L_ERR, "Failed to initialize components\n");
-		return -1;
-	}
+	memset(virtual_servers, 0, sizeof(virtual_servers));
 
 	/*
 	 *	Remember where the modules were stored.
@@ -1172,41 +1287,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		}
 	}
 
-	DEBUG2("%s: #### Loading Virtual Servers ####", mainconfig.name);
-
-	/*
-	 *	Load all of the virtual servers.
-	 */
-	for (cs = cf_subsection_find_next(config, NULL, "server");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "server")) {
-		const char *name2 = cf_section_name2(cs);
-
-		if (name2) {
-			cf_log_info(cs, "server %s {", name2);
-		} else {
-			cf_log_info(cs, "server {");
-			null_server = TRUE;
-		}
-		if (load_byserver(cs) < 0) {
-			cf_log_info(cs, "}");
-			return -1;
-		}
-		cf_log_info(cs, "}");
-	}
-
-	/*
-	 *	No empty server defined.  Try to load an old-style
-	 *	one for backwards compatibility.
-	 */
-	if (!null_server) {
-		cf_log_info(cs, "server {");
-		if (load_byserver(config) < 0) {
-			cf_log_info(cs, "}");
-			return -1;
-		}
-		cf_log_info(cs, "}");
-	}
+	if (virtual_server_load(config) < 0) return -1;
 
 	return 0;
 }
