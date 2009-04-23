@@ -2127,6 +2127,9 @@ static int command_domain_accept(rad_listen_t *listener,
 	salen = sizeof(src);
 
 	DEBUG2(" ... new connection request on command socket.");
+
+	*pfun = NULL;
+	*prequest = NULL;
 	
 	newfd = accept(listener->fd, (struct sockaddr *) &src, &salen);
 	if (newfd < 0) {
@@ -2138,7 +2141,7 @@ static int command_domain_accept(rad_listen_t *listener,
 		}
 
 		DEBUG2(" ... failed to accept connection.");
-		return -1;
+		return 0;
 	}
 
 	/*
@@ -2152,21 +2155,21 @@ static int command_domain_accept(rad_listen_t *listener,
 			radlog(L_ERR, "Failed getting peer credentials for %s: %s",
 			       sock->path, strerror(errno));
 			close(newfd);
-			return -1;
+			return 0;
 		}
 
 		if (sock->uid_name && (sock->uid != uid)) {
 			radlog(L_ERR, "Unauthorized connection to %s from uid %ld",
 			       sock->path, (long int) uid);
 			close(newfd);
-			return -1;
+			return 0;
 		}
 
 		if (sock->gid_name && (sock->gid != gid)) {
 			radlog(L_ERR, "Unauthorized connection to %s from gid %ld",
 			       sock->path, (long int) gid);
 			close(newfd);
-			return -1;
+			return 0;
 		}
 	}
 
@@ -2178,14 +2181,14 @@ static int command_domain_accept(rad_listen_t *listener,
 		radlog(L_ERR, "Failed writing initial data to socket: %s",
 		       strerror(errno));
 		close(newfd);
-		return -1;
+		return 0;
 	}
 	magic = htonl(1);	/* protocol version */
 	if (write(newfd, &magic, 4) < 0) {
 		radlog(L_ERR, "Failed writing initial data to socket: %s",
 		       strerror(errno));
 		close(newfd);
-		return -1;
+		return 0;
 	}
 
 	/*
