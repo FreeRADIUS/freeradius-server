@@ -70,4 +70,11 @@ int module_post_proxy(int type, REQUEST *request);
 int module_post_auth(int type, REQUEST *request);
 int indexed_modcall(int comp, int idx, REQUEST *request);
 
+/*
+ *	For now, these are strongly tied together.
+ */
+int virtual_servers_load(CONF_SECTION *config);
+void virtual_servers_free(time_t when);
+
+
 #endif /* RADIUS_MODULES_H */
