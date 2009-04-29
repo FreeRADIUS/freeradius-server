@@ -456,10 +456,14 @@ static int rad_authenticate(REQUEST *request)
 		 *	done by the server, by rejecting them here.
 		 */
 		case PW_AUTHENTICATION_REJECT:
-		default:
 			rad_authlog("Login incorrect (Home Server says so)",
 				    request, 0);
 			request->reply->code = PW_AUTHENTICATION_REJECT;
+			return RLM_MODULE_REJECT;
+
+		default:
+			rad_authlog("Login incorrect (Home Server failed to respond)",
+				    request, 0);
 			return RLM_MODULE_REJECT;
 		}
 	}
