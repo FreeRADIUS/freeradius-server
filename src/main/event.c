@@ -1911,6 +1911,15 @@ static int proxy_to_virtual_server(REQUEST *request)
 
 	process_proxy_reply(request);
 
+	if (request->server) RDEBUG("server %s {",
+				    request->server != NULL ?
+				    request->server : ""); 
+	fun(request);
+	
+	if (request->server) RDEBUG("} # server %s",
+				    request->server != NULL ?
+				    request->server : "");
+
 	/*
 	 *	And do all of this again...
 	 */
@@ -3562,11 +3571,13 @@ void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun)
 		rad_assert(request != NULL);
 		
 		if (request->server) RDEBUG("server %s {",
-					     request->server); 
+					    request->server != NULL ?
+					    request->server : ""); 
 		fun(request);
 
 		if (request->server) RDEBUG("} # server %s",
-					     request->server);
+					     request->server != NULL ?
+					    request->server : "");
 
 		request_post_handler(request);
 	}
