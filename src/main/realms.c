@@ -264,10 +264,12 @@ void realms_free(void)
 			free(this->realm);
 			free(this);
 		}
+		realms_regex = NULL;
 	}
 #endif
 
 	free(realm_config);
+	realm_config = NULL;
 }
 
 
