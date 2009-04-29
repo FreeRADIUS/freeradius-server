@@ -13,7 +13,16 @@ FreeRADIUS 2.1.5 Sun Jan 1 1:1:00 CEST 2009;  , urgency=medium
 	  This helps with Active Directory.  See raddb/modules/ldap
 	* Don't load pre/post-proxy if proxying is disabled.
 	* Added %{md5:...}, which returns MD5 hash in hex.
-	* Added configurable "retry_interval" for "detail" listeners.
+	* Added configurable "retry_interval" and "poll_interval"
+	  for "detail" listeners.
+	* Added "delete_mppe_keys" configuration option to rlm_wimax.
+	  Apparently some WiMAX clients misbehave when they see those keys.
+	* Added experimental rlm_ruby from
+	  http://github.com/Antti/freeradius-server/tree/master
+	* Add Tunnel attributes to ldap.attrmap
+	* Enable virtual servers to be reloaded on HUP.  For now, only
+	  the "authorize", "authenticate", etc. processing sections are
+	  reloaded.  Clients and "listen" sections are NOT reloaded.
 
 	Bug fixes
 	* Minor changes to allow building without VQP.
@@ -25,6 +34,9 @@ FreeRADIUS 2.1.5 Sun Jan 1 1:1:00 CEST 2009;  , urgency=medium
 	  and not many times in a row, leaking memory each time...
 	* Update comparison for Packet-Src-IP-Address (etc.) so that
 	  the operators other than '==' work.
+	* Did autoconf magic to work around weird libtool bug
+	* Make rlm_perl keep tags for tagged attributes in more situations
+	* Update UID checking for radmin
 
 FreeRADIUS 2.1.4 Tue Mar 10 17:05:00 CEST 2009;  , urgency=medium
 	Feature improvements
