@@ -44,6 +44,8 @@ typedef struct virtual_server_t {
 	int		can_free;
 	CONF_SECTION	*cs;
 	rbtree_t	*components;
+	modcallable	*mc[RLM_COMPONENT_COUNT];
+	CONF_SECTION	*subcs[RLM_COMPONENT_COUNT];
 	struct virtual_server_t *next;
 } virtual_server_t;
 
@@ -57,12 +59,6 @@ static rbtree_t *module_tree = NULL;
 
 static rbtree_t *instance_tree = NULL;
 
-typedef struct section_type_value_t {
-	const char	*section;
-	const char	*typename;
-	int		attr;
-} section_type_value_t;
-
 struct fr_module_hup_t {
 	module_instance_t	*mi;
 	time_t			when;
@@ -70,6 +66,12 @@ struct fr_module_hup_t {
 	fr_module_hup_t		*next;
 };
 
+
+typedef struct section_type_value_t {
+	const char	*section;
+	const char	*typename;
+	int		attr;
+} section_type_value_t;
 
 /*
  *	Ordered by component
@@ -589,10 +591,12 @@ static indexed_modcallable *new_sublist(rbtree_t *components, int comp, int idx)
 int indexed_modcall(int comp, int idx, REQUEST *request)
 {
 	int rcode;
-	indexed_modcallable *this;
 	modcallable *list = NULL;
 	virtual_server_t *server;
 
+	/*
+	 *	Hack to find the correct virtual server.
+	 */
 	rcode = virtual_server_idx(request->server);
 	for (server = virtual_servers[rcode];
 	     server != NULL;
@@ -608,12 +612,19 @@ int indexed_modcall(int comp, int idx, REQUEST *request)
 		return RLM_MODULE_FAIL;
 	}
 
-	this = lookup_by_index(server->components, comp, idx);
-	if (!this) {
-		if (idx != 0) DEBUG2("  WARNING: Unknown value specified for %s.  Cannot perform requested action.",
-				     section_type_value[comp].typename);
+	if (idx == 0) {
+		list = server->mc[comp];
+
 	} else {
-		list = this->modulelist;
+		indexed_modcallable *this;
+
+		this = lookup_by_index(server->components, comp, idx);
+		if (this) {
+			list = this->modulelist;
+		} else {
+			RDEBUG2("  WARNING: Unknown value specified for %s.  Cannot perform requested action.",
+				section_type_value[comp].typename);
+		}
 	}
 
 	request->component = section_type_value[comp].section;
@@ -897,8 +908,6 @@ static int load_byserver(CONF_SECTION *cs)
 				   "No such attribute %s",
 				   section_type_value[comp].typename);
 		error:
-			cf_log_info(cs, " } # modules");
-			cf_log_info(cs, "} # server");
 			if (debug_flag == 0) {
 				radlog(L_ERR, "Failed to load virtual server %s",
 				       (name != NULL) ? name : "<default>");
@@ -940,7 +949,6 @@ static int load_byserver(CONF_SECTION *cs)
 			if (strcmp(name1, section_type_value[comp].typename) == 0) {
 				if (!define_type(dattr,
 						 cf_section_name2(subsubcs))) {
-					cf_log_info(cs, " }");
 					goto error;
 				}
 			}
@@ -954,6 +962,7 @@ static int load_byserver(CONF_SECTION *cs)
 	flag = 0;
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
 		CONF_SECTION *subcs;
+		indexed_modcallable *c;
 
 		subcs = cf_section_sub_find(cs,
 					    section_type_value[comp].section);
@@ -977,9 +986,18 @@ static int load_byserver(CONF_SECTION *cs)
 #endif
 
 		if (load_component_section(subcs, components, comp) < 0) {
-			cf_log_info(cs, " }");
 			goto error;
 		}
+
+		/*
+		 *	Cache a default, if it exists.  Some people
+		 *	put empty sections for some reason...
+		 */
+		c = lookup_by_index(components, comp, 0);
+		if (c) server->mc[comp] = c->modulelist;
+
+		server->subcs[comp] = subcs;
+
 		flag = 1;
 	} /* loop over components */
 
