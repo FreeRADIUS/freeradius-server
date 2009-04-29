@@ -2257,10 +2257,20 @@ static void request_post_handler(REQUEST *request)
 				RDEBUG2("There was no response configured: rejecting request %d",
 				       request->number);
 				request->reply->code = PW_AUTHENTICATION_REJECT;
+
 			} else if (vp->vp_integer == 256) {
 				RDEBUG2("Not responding to request %d",
 				       request->number);
 
+				/*
+				 *	Force cleanup after a long
+				 *	time, so that we don't
+				 *	re-process the packet.
+				 */
+				request->next_when.tv_sec += request->root->max_request_time;
+				request->next_callback = cleanup_delay;
+				child_state = REQUEST_CLEANUP_DELAY;
+				break;
 			} else {
 				request->reply->code = vp->vp_integer;
 
