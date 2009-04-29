@@ -1914,16 +1914,14 @@ static int proxy_to_virtual_server(REQUEST *request)
 	if (request->server) RDEBUG("server %s {",
 				    request->server != NULL ?
 				    request->server : ""); 
-	fun(request);
-	
-	if (request->server) RDEBUG("} # server %s",
-				    request->server != NULL ?
-				    request->server : "");
-
 	/*
 	 *	And do all of this again...
 	 */
 	request->process(request);
+
+	if (request->server) RDEBUG("} # server %s",
+				    request->server != NULL ?
+				    request->server : "");
 
 	return 2;		/* success, but NOT '1' !*/
 }
