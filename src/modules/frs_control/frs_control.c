@@ -2195,7 +2195,7 @@ static int command_domain_accept(rad_listen_t *listener,
 	 *	Add the new listener.
 	 */
 	this = listen_alloc(listener->frs->name);
-	if (!this) return -1;
+	if (!this) return 0;
 
 	/*
 	 *	Copy everything, including the pointer to the socket
