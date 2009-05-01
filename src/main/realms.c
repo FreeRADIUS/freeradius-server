@@ -889,7 +889,7 @@ static int server_pool_add(realm_config_t *rc,
 
 	if (do_print) cf_log_info(cs, " }");
 
-	cf_data_add(cs, "home_server_pool", pool, free);
+	cf_data_add(cs, "home_server_pool", pool, NULL);
 
 	rad_assert(pool->server_type != 0);
 
