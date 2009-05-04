@@ -889,7 +889,7 @@ static int server_pool_add(realm_config_t *rc,
 
 	if (do_print) cf_log_info(cs, " }");
 
-	cf_data_add(cs, "home_server_pool", pool, NULL);
+	cf_data_add(cs, "home_server_pool", pool, free);
 
 	rad_assert(pool->server_type != 0);
 
@@ -1607,7 +1607,7 @@ int realms_init(CONF_SECTION *config)
 	}
 #endif
 
-	home_pools_byname = rbtree_create(home_pool_name_cmp, free, 0);
+	home_pools_byname = rbtree_create(home_pool_name_cmp, NULL, 0);
 	if (!home_pools_byname) {
 		realms_free();
 		return 0;
