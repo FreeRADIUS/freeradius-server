@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
 
 	if (debug_flag) {
 		radlog(L_INFO, "%s", radiusd_version);
-		radlog(L_INFO, "Copyright (C) 1999-2008 The FreeRADIUS server project and contributors.\n");
+		radlog(L_INFO, "Copyright (C) 1999-2009 The FreeRADIUS server project and contributors.\n");
 		radlog(L_INFO, "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 		radlog(L_INFO, "PARTICULAR PURPOSE.\n");
 		radlog(L_INFO, "You may redistribute copies of FreeRADIUS under the terms of the\n");
@@ -483,13 +483,6 @@ static void NEVER_RETURNS usage(int status)
 static void sig_fatal(int sig)
 {
 	switch(sig) {
-		case SIGSEGV:
-			/*
-			 *	We can't really do anything
-			 *	intelligent here so just die
-			 */
-			_exit(1);
-
 		case SIGTERM:
 			radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 			break;
@@ -505,8 +498,7 @@ static void sig_fatal(int sig)
 			/* FALL-THROUGH */
 
 		default:
-			radius_signal_self(RADIUS_SIGNAL_SELF_EXIT);
-			break;
+			_exit(sig);
 	}
 }
 
