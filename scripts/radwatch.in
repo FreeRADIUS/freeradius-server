@@ -1,60 +1,162 @@
-#! /bin/sh
+#!/bin/sh
+######################################################################
 #
-# radwatch	Script to watch RADIUS. Sends mail to root and
-#		restarts radiusd when it dies [which ofcourse
-#		never happens :)]
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
 #
-#   WARNING!  This script SHOULD NOT BE USED!  It's only here for historical
-#             purposes, and WILL be deleted in a future version of the
-#             the server.
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
 #
-#             If you want to watch and re-start the server, we recommend
-#             reading the file doc/supervise-radiusd.txt
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
 #
+#    Copyright (C) 2009 Network RADIUS SARL <info@networkradius.com>
 #
-# Version:	$Id$
+######################################################################
 #
+# radwatch - Start the radius daemon and restart upon crash.
+#
+#  It also catches signals sent to it, and then re-sends those signals
+#  to the radius server it is watching.
+#
+#  If you want to watch and re-start the server, we recommend
+#  reading the file doc/supervise-radiusd.txt
 
+#
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 sbindir=@sbindir@
 localstatedir=@localstatedir@
 logdir=@logdir@
 rundir=${localstatedir}/run/radiusd
+sysconfdir=@sysconfdir@
+pid_file=${rundir}/radiusd.pid
+log_file=${logdir}/radiusd_safe.log
 
-MAILTO=root
 RADIUSD=$sbindir/radiusd
+RADDBDIR=${sysconfdir}/raddb
 
-exec >> $logdir/radwatch.log 2>&1
+#
+#  Allow "radiusd_safe -X" for testing the radiusd_safe functionality.
+#
+ARGS="$@"
 
-# get the path to the radiusd
-if [ "$1" ] && [ -x "$1" ]
-then
-	RADIUSD=$1
-	shift
-fi
+test -f $RADIUSD || exit 0
+test -f $RADDBDIR/radiusd.conf || exit 0
 
-cd $logdir
-[ -d $logdir/radacct ] && cd $logdir/radacct
+#
+#  This simplifies the script, and avoids most issues with (say)
+#  Debian re-naming "radiusd" to "freeradius".
+#
+name=`basename $RADIUSD`
+
 ulimit -c unlimited
 
-(
-	trap 'echo `date`: exit; kill `cat $rundir/radiusd.pid`; exit 0' TERM
-	trap "" HUP TSTP
+#
+#  See if the PID file exists.  It might have been left over after
+#  a crash, or it might be because the RADIUS server is still running.
+#
+if test -f $pid_file
+then
+    PID=`cat $pid_file`
+    #
+    #  Check if the process exists, AND if it has the right name
+    #
+    if ps -p $PID | grep $name > /dev/null
+    then
+	echo "`date +'%a %b %e %H:%M:%S %Y'` : Fatal: A $name process already exists at PID $PID.  We cannot start another one." >> $log_file
+	echo "A $name process already exists"
+	exit 1
+    fi
+    
+    #
+    #  A RADIUS server doesn't exist.  Delete the stale PID file.
+    #
+    rm -f $pid_file
+    if test -f $pid_file
+    then
+	echo "`date +'%a %b %e %H:%M:%S %Y'` : Fatal: Cannot remove the pid file: $pid_file" >> $log_file
+	echo "Fatal error: Cannot remove the pid file: $pid_file"
+	echo "Please remove it manually and start $0 again"
+	echo "$name daemon not started"
+	exit 1
+    fi
+fi
 
-	while :
-	do
-		# Use `wait', otherwise the trap doesn't work.
-		$RADIUSD -f $* &
-		echo "$!" > $rundir/radiusd.pid
-		wait
-		exec >> $logdir/radwatch.log 2>&1
-		echo "`date`: Radius died, restarting.."
-		date | mail -s "Radius died, restarting.." $MAILTO
-		sleep 10
-	done
-) &
+#
+#  Loop forever, or until we're told to exit via a signal.
+#
+while :
+do
+    mysig=
+    trap 'mysig=yes' HUP TERM INT QUIT TSTP
 
-echo "$!" > $rundir/radwatch.pid
+    eval "$RADIUSD -f $ARGS < /dev/null >> $log_file 2>&1 &"
+    PID=$!
+    
+    if test "$?" != "0"
+    then
+	echo "Failed to start $name.  See $log_file for details"
+	echo "$name daemon not started"
+	exit 1
+    fi
 
-sleep 1
+    echo $PID > $pid_file
+
+    #
+    #  Wait for the process to exit.
+    #
+    wait $PID
+    code=$?
+    
+    case "$code" in
+	0)
+	    echo "`date +'%a %b %e %H:%M:%S %Y'` : Info: $name exited normally.  Exiting" | tee -a $log_file
+	    break
+	    ;;
+
+	127)
+	    echo "`date +'%a %b %e %H:%M:%S %Y'` : Info: $name exited unexpectedly.  Restarting it." | tee -a $log_file
+
+	    #
+	    #  If there is some kind of issue, we don't want to start
+	    #  a fork bomb.
+	    #
+	    sleep 1
+	    ;;
+
+	*)
+	    #
+	    #  The server exited of its own accord.
+	    #
+	    if test "$code" -lt 128
+	    then
+		echo "`date +'%a %b %e %H:%M:%S %Y'` : Info: $name exited unexpectedly on exit code $code.  Restarting it." | tee -a $log_file
+		sleep 1
+	    else
+		sig=`expr $code - 128`
+
+		#
+		#  Was the signal sent to us, or to the child process?
+		#
+		if test "$mysig" = "yes"
+		then
+		    echo "`date +'%a %b %e %H:%M:%S %Y'` : Info: Caught signal $sig: Signalling $name to exit." | tee -a $log_file
+		    kill -`expr $code - 128` $PID
+		    break
+		else
+		    echo "`date +'%a %b %e %H:%M:%S %Y'` : Info: $name exited unexpectedly on signal $sig.  Restarting it." | tee -a $log_file
+		    sleep 1
+		fi
+	    fi
+	    ;;
+    esac
+done
+
+rm -f $pid_file
+exit 0
