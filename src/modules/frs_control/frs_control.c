@@ -2086,11 +2086,13 @@ static int command_domain_recv(rad_listen_t *listener,
 	if (!len) {
 		if ((strcmp(argv[0], "help") == 0) ||
 		    (strcmp(argv[0], "?") == 0)) {
-			int recursive = 0;
+			int recursive;
 
 		do_help:
 			if ((argc > 1) && (strcmp(argv[1], "-r") == 0)) {
 				recursive = TRUE;
+			} else {
+				recursive = FALSE;
 			}
 
 			print_help(listener, table, recursive);
