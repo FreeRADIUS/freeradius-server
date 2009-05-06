@@ -2066,6 +2066,8 @@ static int command_domain_recv(rad_listen_t *listener,
 				goto retry;
 			}
 
+			if ((argc == 2) && (strcmp(argv[1], "?") == 0)) goto do_help;
+
 			if (!table[i].func) {
 				cprintf(listener, "ERROR: Invalid command\n");
 				goto do_next;
