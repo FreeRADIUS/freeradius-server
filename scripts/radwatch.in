@@ -88,6 +88,8 @@ then
     fi
 fi
 
+started=0
+
 #
 #  Loop forever, or until we're told to exit via a signal.
 #
@@ -95,6 +97,25 @@ while :
 do
     mysig=
     trap 'mysig=yes' HUP TERM INT QUIT TSTP
+
+    #
+    #  The first time around, just start the server.
+    #  After that, see if we are re-starting in the same second
+    #  as the last time.  If so, sleep for a second.  Otherwise,
+    #  if we're not starting in the same second, then just restart
+    #  the server.
+    #
+    #  This helps prevent CPU spikes when something goes catastrophically
+    #  wrong, and the server re-starts continuously.  (e.g. disk full, etc.)
+    #
+    if test "$started" != "0"
+    then
+	if test "$started" = `date +"%s"`
+	then
+	    sleep 1
+	fi
+    fi
+    started=`date +"%s"`
 
     eval "$RADIUSD -f $ARGS < /dev/null >> $log_file 2>&1 &"
     PID=$!
@@ -122,12 +143,6 @@ do
 
 	127)
 	    echo "`date +'%a %b %e %H:%M:%S %Y'` : Info: $name exited unexpectedly.  Restarting it." | tee -a $log_file
-
-	    #
-	    #  If there is some kind of issue, we don't want to start
-	    #  a fork bomb.
-	    #
-	    sleep 1
 	    ;;
 
 	*)
@@ -137,7 +152,6 @@ do
 	    if test "$code" -lt 128
 	    then
 		echo "`date +'%a %b %e %H:%M:%S %Y'` : Info: $name exited unexpectedly on exit code $code.  Restarting it." | tee -a $log_file
-		sleep 1
 	    else
 		sig=`expr $code - 128`
 
@@ -151,7 +165,6 @@ do
 		    break
 		else
 		    echo "`date +'%a %b %e %H:%M:%S %Y'` : Info: $name exited unexpectedly on signal $sig.  Restarting it." | tee -a $log_file
-		    sleep 1
 		fi
 	    fi
 	    ;;
