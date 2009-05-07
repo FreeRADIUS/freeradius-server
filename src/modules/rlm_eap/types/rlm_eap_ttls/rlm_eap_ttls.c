@@ -48,6 +48,17 @@ typedef struct rlm_eap_ttls_t {
 	int	copy_request_to_tunnel;
 
 	/*
+	 *	RFC 5281 (TTLS) says that the length field MUST NOT be
+	 *	in fragments after the first one.  However, we've done
+	 *	it that way for years, and no one has complained.
+	 *
+	 *	In the interests of allowing the server to follow the
+	 *	RFC, we add the option here.  If set to "no", it sends
+	 *	the length field in ONLY the first fragment.
+	 */
+	int	include_length;
+
+	/*
 	 *	Virtual server for inner tunnel session.
 	 */
 	char	*virtual_server;
@@ -66,6 +77,9 @@ static CONF_PARSER module_config[] = {
 
 	{ "virtual_server", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_ttls_t, virtual_server), NULL, NULL },
+
+	{ "include_length", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_ttls_t, include_length), NULL, "yes" },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -174,6 +188,8 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 	REQUEST *request = handler->request;
 
 	RDEBUG2("Authenticate");
+
+	tls_session->length_flag = inst->include_length;
 
 	/*
 	 *	Process TLS layer until done.
