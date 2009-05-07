@@ -28,18 +28,39 @@
 #  reading the file doc/supervise-radiusd.txt
 
 #
+#  This simplifies the script, and avoids most issues with (say)
+#  Debian re-naming "radiusd" to "freeradius".
+#
+name=radiusd
+
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 sbindir=@sbindir@
 localstatedir=@localstatedir@
 logdir=@logdir@
-rundir=${localstatedir}/run/radiusd
+rundir=${localstatedir}/run/${name}
 sysconfdir=@sysconfdir@
-pid_file=${rundir}/radiusd.pid
-log_file=${logdir}/radiusd_safe.log
+pid_file=${rundir}/${name}.pid
+log_file=${logdir}/${name}_safe.log
 
-RADIUSD=$sbindir/radiusd
+RADIUSD=$sbindir/${name}
 RADDBDIR=${sysconfdir}/raddb
+
+#
+#  If you want to send email, define this field to be an email address.
+#  This part of the functionality hasn't been well tested, so please
+#  test it before putting it into production.
+#
+#  It also presumes that you have a functioning mail system on
+#  the maching running RADIUS.  You will need to check that the
+#  "mail" command exists, and sends mail to the address below, e.g.:
+#
+#     echo test | mail -s "Testing" $MAILTO
+#
+#  If you receive the message, then enable MAILTO.  Otherwise, fix
+#  your mail system so that it delivers mail.
+#
+MAILTO=
 
 #
 #  Allow "radiusd_safe -X" for testing the radiusd_safe functionality.
@@ -48,12 +69,6 @@ ARGS="$@"
 
 test -f $RADIUSD || exit 0
 test -f $RADDBDIR/radiusd.conf || exit 0
-
-#
-#  This simplifies the script, and avoids most issues with (say)
-#  Debian re-naming "radiusd" to "freeradius".
-#
-name=`basename $RADIUSD`
 
 ulimit -c unlimited
 
@@ -89,6 +104,8 @@ then
 fi
 
 started=0
+restarts=0
+last_email=0
 
 #
 #  Loop forever, or until we're told to exit via a signal.
@@ -110,6 +127,43 @@ do
     #
     if test "$started" != "0"
     then
+	#  Send mail when the server starts
+	if test "$MAILTO" != ""
+	then
+	    now=`date +"%s"`
+	    restarts=`expr $restarts + 1`
+
+	    # send email the first time it restarts
+	    if test "$last_email" = "0"
+	    then
+		    cat |  mail -s "ERROR - $name died, restarting.." $MAILTO <<EOF
+$name has restarted unexpectedly at $now
+
+See $log_file for details.  Last 20 lines are:
+
+----------------------------------------------------------------------
+`tail -n 20 $log_file`
+EOF
+		$last_email="$now"
+		restarts=0
+	    else
+		#  Send email only once every hour.
+		if test "$now" -gt `expr $last_email + 3600`
+		then
+		    cat |  mail -s "ERROR - $name died, restarting.." $MAILTO <<EOF
+$name has restarted $restarts times since last email at $last_email
+
+See $log_file for details.  Last 100 lines are:
+
+----------------------------------------------------------------------
+`tail -n 100 $log_file`
+EOF
+		    $last_email="$now"
+		    restarts=0
+		fi
+	    fi
+	fi
+
 	if test "$started" = `date +"%s"`
 	then
 	    sleep 1
