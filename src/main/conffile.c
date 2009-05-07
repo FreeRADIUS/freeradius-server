@@ -908,7 +908,9 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		if (value == dflt) {
 			char buffer[8192];
 
-			int lineno = cs->item.lineno;
+			int lineno = 0;
+
+			if (cs) lineno = cs->item.lineno;
 
 			/*
 			 *	FIXME: sizeof(buffer)?
@@ -942,7 +944,9 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		if (value == dflt) {
 			char buffer[8192];
 
-			int lineno = cs->item.lineno;
+			int lineno = 0;
+
+			if (cs) lineno = cs->item.lineno;
 
 			/*
 			 *	FIXME: sizeof(buffer)?
