@@ -1,5 +1,10 @@
-freeradius (2.1.5-0) unstable; urgency=medium
+freeradius (2.1.6-0) unstable; urgency=medium
   * Place-holder for intermediate builds.
+
+ -- Alan DeKok <aland@freeradius.org>  Mon, 01 Jan 1970 9:48:00 +0100
+
+freeradius (2.1.5-0) unstable; urgency=medium
+  * Release number skipped due to procedural issues.
 
  -- Alan DeKok <aland@freeradius.org>  Mon, 01 Jan 1970 9:48:00 +0100
 
