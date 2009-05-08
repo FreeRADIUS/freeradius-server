@@ -194,9 +194,24 @@ static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 
 static void remove_from_proxy_hash(REQUEST *request)
 {
+	/*
+	 *	Check this without grabbing the mutex because it's a
+	 *	lot faster that way.
+	 */
 	if (!request->in_proxy_hash) return;
 
+	/*
+	 *	The "not in hash" flag is definitive.  However, if the
+	 *	flag says that it IS in the hash, there might still be
+	 *	a race condition where it isn't.
+	 */
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
+
+	if (!request->in_proxy_hash) {
+		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		return;
+	}
+
 	fr_packet_list_yank(proxy_list, request->proxy);
 	fr_packet_list_id_free(proxy_list, request->proxy);
 
@@ -211,9 +226,14 @@ static void remove_from_proxy_hash(REQUEST *request)
 		request->home_server->currently_outstanding--;
 	}
 
-  	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-
+	/*
+	 *	Got from YES in hash, to NO, not in hash while we hold
+	 *	the mutex.  This guarantees that when another thread
+	 *	grans the mutex, the "not in hash" flag is correct.
+	 */
 	request->in_proxy_hash = FALSE;
+
+  	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 }
 
 static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
@@ -347,6 +367,8 @@ static int insert_into_proxy_hash(REQUEST *request, int retransmit)
 		return 0;
 	}
 
+	request->in_proxy_hash = TRUE;
+
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 	RDEBUG3(" proxy: allocating destination %s port %d - Id %d",
@@ -354,8 +376,6 @@ static int insert_into_proxy_hash(REQUEST *request, int retransmit)
 			 &request->proxy->dst_ipaddr.ipaddr, buf, sizeof(buf)),
 	       request->proxy->dst_port,
 	       request->proxy->id);
-
-	request->in_proxy_hash = TRUE;
 
 	return 1;
 }
