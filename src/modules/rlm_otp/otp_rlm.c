@@ -175,7 +175,6 @@ otp_authorize(void *instance, REQUEST *request)
 
   char challenge[OTP_MAX_CHALLENGE_LEN + 1];	/* +1 for '\0' terminator */
   int auth_type_found;
-  otp_pwe_t pwe;
 
   /* Early exit if Auth-Type != inst->name */
   {
@@ -203,7 +202,7 @@ otp_authorize(void *instance, REQUEST *request)
     return RLM_MODULE_INVALID;
   }
 
-  if ((pwe = otp_pwe_present(request)) == 0) {
+  if (otp_pwe_present(request) == 0) {
     (void) radlog(L_AUTH, "rlm_otp: %s: Attribute \"User-Password\" "
                           "or equivalent required for authentication.",
                   __func__);
