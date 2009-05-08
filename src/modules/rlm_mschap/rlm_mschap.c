@@ -288,7 +288,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 	VALUE_PAIR	*chap_challenge, *response;
 	rlm_mschap_t	*inst = instance;
 
-	chap_challenge = response = NULL;
+	response = NULL;
 
 	func = func;		/* -Wunused */
 

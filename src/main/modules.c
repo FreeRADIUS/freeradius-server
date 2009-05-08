@@ -455,7 +455,6 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	if (!do_link) return NULL;
 
 	name1 = cf_section_name1(cs);
-	name2 = cf_section_name2(cs);
 
 	/*
 	 *	Found the configuration entry.

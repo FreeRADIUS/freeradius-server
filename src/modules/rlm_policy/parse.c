@@ -141,8 +141,7 @@ static const char *policy_lex_string(const char *input,
 				     char *buffer, size_t buflen)
 {
 	rad_assert(input != NULL);
-
-	if (buffer) *buffer = '\0';
+	rad_assert(buffer != NULL);
 
 	switch (*input) {
 	case '\0':
@@ -907,6 +906,7 @@ static int parse_if(policy_lex_file_t *lexer, policy_item_t **tail)
 			  POLICY_RESERVED_UNKNOWN) == POLICY_RESERVED_ELSE)) {
 		debug_tokens("[ELSE] ");
 		token = policy_lex_file(lexer, 0, mystring, sizeof(mystring));
+		rad_assert(token == POLICY_LEX_BARE_WORD);
 
 		token = policy_lex_file(lexer, POLICY_LEX_FLAG_PEEK,
 					mystring, sizeof(mystring));
@@ -915,6 +915,7 @@ static int parse_if(policy_lex_file_t *lexer, policy_item_t **tail)
 				  POLICY_RESERVED_UNKNOWN) == POLICY_RESERVED_IF)) {
 			token = policy_lex_file(lexer, 0,
 						mystring, sizeof(mystring));
+			rad_assert(token == POLICY_LEX_BARE_WORD);
 			rcode = parse_if(lexer, &(this->if_false));
 		} else {
 			rcode = parse_block(lexer, &(this->if_false));
@@ -1394,7 +1395,6 @@ static int parse_block(policy_lex_file_t *lexer, policy_item_t **tail)
 		return 0;
 	}
 
-	rcode = 0;
 	while ((rcode = parse_statement(lexer, tail)) != 0) {
 		if (rcode == 2) {
 			token = policy_lex_file(lexer, 0, NULL, 0);

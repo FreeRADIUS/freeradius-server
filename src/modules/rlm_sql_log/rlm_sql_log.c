@@ -204,6 +204,9 @@ static int sql_set_user(rlm_sql_log_t *inst, REQUEST *request, char *sqlusername
 	tmpuser[0] = '\0';
 	sqlusername[0] = '\0';
 
+	rad_assert(request != NULL);
+	rad_assert(request->packet != NULL);
+
 	/* Remove any user attr we added previously */
 	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
 
@@ -344,6 +347,9 @@ static int sql_log_accounting(void *instance, REQUEST *request)
 	DICT_VALUE	*dval;
 	CONF_PAIR	*cp;
 
+	rad_assert(request != NULL);
+	rad_assert(request->packet != NULL);
+
 	RDEBUG("Processing sql_log_accounting");
 
 	/* Find the Acct Status Type. */
@@ -382,6 +388,8 @@ static int sql_log_postauth(void *instance, REQUEST *request)
 	int		ret;
 	char		querystr[MAX_QUERY_LEN];
 	rlm_sql_log_t	*inst = (rlm_sql_log_t *)instance;
+
+	rad_assert(request != NULL);
 
 	RDEBUG("Processing sql_log_postauth");
 

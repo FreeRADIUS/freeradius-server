@@ -203,6 +203,8 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 
 	struct detail_instance *inst = instance;
 
+	rad_assert(request != NULL);
+
 	/*
 	 *	Nothing to log: don't do anything.
 	 */

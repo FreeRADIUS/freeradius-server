@@ -200,7 +200,7 @@ static int decode_it(const char *src, uint8_t *dst)
 
 	dst[2] = (unsigned char)(x & 255); x >>= 8;
 	dst[1] = (unsigned char)(x & 255); x >>= 8;
-	dst[0] = (unsigned char)(x & 255); x >>= 8;
+	dst[0] = (unsigned char)(x & 255);
 
 	return 1;
 }

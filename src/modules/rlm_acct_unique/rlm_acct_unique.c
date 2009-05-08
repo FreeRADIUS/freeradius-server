@@ -84,8 +84,7 @@ static int unique_parse_key(rlm_acct_unique_t *inst, char *key)
 	}
 	*ptr = '\0';
 
-
-	keyptr = ptr = key;
+	ptr = key;
 	while(ptr) {
 		switch(*ptr) {
 		case ',':
@@ -188,7 +187,6 @@ static int add_unique_id(void *instance, REQUEST *request)
 	/* initialize variables */
 	p = buffer;
 	left = BUFFERLEN;
-	length = 0;
 	cur = inst->head;
 
 	/*

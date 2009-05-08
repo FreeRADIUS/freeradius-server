@@ -183,13 +183,10 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	struct radutmp	ut, u;
 	VALUE_PAIR	*vp;
 	int		status = -1;
-	uint32_t	framed_address = 0;
 	int		protocol = -1;
 	time_t		t;
 	int		fd;
-	int		just_an_update = 0;
 	int		port_seen = 0;
-	int		nas_port_type = 0;
 	int		off;
 	rlm_radutmp_t	*inst = instance;
 	char		buffer[256];
@@ -264,7 +261,6 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		switch (vp->attribute) {
 			case PW_LOGIN_IP_HOST:
 			case PW_FRAMED_IP_ADDRESS:
-				framed_address = vp->vp_ipaddr;
 				ut.framed_address = vp->vp_ipaddr;
 				break;
 			case PW_FRAMED_PROTOCOL:
@@ -301,7 +297,6 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			case PW_NAS_PORT_TYPE:
 				if (vp->vp_integer <= 4)
 					ut.porttype = porttypes[vp->vp_integer];
-				nas_port_type = vp->vp_integer;
 				break;
 			case PW_CALLING_STATION_ID:
 				if(inst->callerid_ok)
@@ -496,8 +491,6 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 			 *	Keep the original login time.
 			 */
 			ut.time = u.time;
-			if (u.login[0] != 0)
-				just_an_update = 1;
 		}
 
 		if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
@@ -546,7 +539,6 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		} else if (r == 0) {
 			radlog(L_ERR, "rlm_radutmp: Logout for NAS %s port %u, but no Login record",
 			       nas, ut.nas_port);
-			r = -1;
 		}
 	}
 	close(fd);	/* and implicitely release the locks */

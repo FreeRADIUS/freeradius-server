@@ -184,7 +184,6 @@ static ssize_t run_command(int sockfd, const char *command,
 {
 	char *p;
 	ssize_t size, len;
-	int flag = 1;
 
 	if (echo) {
 		fprintf(outputfp, "%s\n", command);
@@ -204,7 +203,7 @@ static ssize_t run_command(int sockfd, const char *command,
 
 	memset(buffer, 0, bufsize);
 
-	while (flag == 1) {
+	while (1) {
 		int rcode;
 		fd_set readfds;
 
@@ -257,8 +256,6 @@ static ssize_t run_command(int sockfd, const char *command,
 			*p = '\0';
 
 			if (p[-1] == '\n') p[-1] = '\0';
-
-			flag = 0;
 			break;
 		}
 	}
