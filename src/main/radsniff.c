@@ -142,7 +142,7 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 
 	/* Define our packet's attributes */
 	ethernet = (const struct ethernet_header*)(data);
-	ip = (const struct ip_header*)(data + size_ethernet);
+	ip = (const struct ip_header*)(ethernet + size_ethernet);
 	udp = (const struct udp_header*)(data + size_ethernet + size_ip);
 	payload = (const uint8_t *)(data + size_ethernet + size_ip + size_udp);
 
