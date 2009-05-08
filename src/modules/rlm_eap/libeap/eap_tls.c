@@ -446,7 +446,8 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 		RDEBUG2("Received EAP-TLS ACK message");
 		return eaptls_ack_handler(handler);
 #else
-		if (prev_eap_ds->request->id == eap_ds->response->id) {
+		if (prev_eap_ds &&
+		    (prev_eap_ds->request->id == eap_ds->response->id)) {
 			/*
 			 *	Run the ACK handler directly from here.
 			 */
