@@ -88,7 +88,7 @@ static int verify_krb5_tgt(krb5_context context, rlm_krb5_t *instance,
 
 	server = krb5_princ_component(c, princ, 1);
 	if (!server) {
-		radlog(L_DBB, "rlm_krb5: [%s] krb5_princ_component failed.",
+		radlog(L_DBG, "rlm_krb5: [%s] krb5_princ_component failed.",
 		       user);
 		return RLM_MODULE_REJECT;
 	}
