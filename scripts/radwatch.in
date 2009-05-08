@@ -113,7 +113,11 @@ last_email=0
 while :
 do
     mysig=
-    trap 'mysig=yes' HUP TERM INT QUIT TSTP
+    trap 'mysig=1' HUP
+    trap 'mysig=2' INT
+    trap 'mysig=3' QUIT
+    trap 'mysig=15' TERM
+    trap 'mysig=18' TSTP
 
     #
     #  The first time around, just start the server.
@@ -188,7 +192,22 @@ EOF
     #
     wait $PID
     code=$?
-    
+
+    #
+    #  On *BSD and Linux, sending *us* a signal results in "wait" returning
+    #  with 128+sig.  On Solaris, it results in "wait" returning with "0".
+    #
+    #  If this happens, we reset our expectations here so that the code
+    #  below will work correctly.
+    #
+    if test "$code" = "0"
+    then
+	if "$mysig" != ""
+	then
+	    code=`expr $mysig + 128`
+	fi
+    fi
+
     case "$code" in
 	0)
 	    echo "`date +'%a %b %e %H:%M:%S %Y'` : Info: $name exited normally.  Exiting" | tee -a $log_file
