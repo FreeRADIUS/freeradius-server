@@ -1806,8 +1806,6 @@ home_server *home_server_ldb(const char *realmname,
 	home_server	*found = NULL;
 	VALUE_PAIR	*vp;
 
-	start = 0;
-
 	/*
 	 *	Determine how to pick choose the home server.
 	 */

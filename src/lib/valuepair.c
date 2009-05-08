@@ -821,6 +821,15 @@ static const char *hextab = "0123456789abcdef";
  *  double-check the parsed value, to be sure it's legal for that
  *  type (length, etc.)
  */
+static uint32_t getint(const char *value, char **end)
+{
+	if ((value[0] == '0') && (value[1] == 'x')) {
+		return strtoul(value, end, 16);
+	}
+
+	return strtoul(value, end, 10);
+}
+
 VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 {
 	char		*p, *s=0;
@@ -944,7 +953,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
-			vp->vp_integer = (uint32_t) strtoul(value, &p, 10);
+			vp->vp_integer = getint(value, &p);
 			if (!*p) {
 				if (vp->vp_integer > 255) {
 					fr_strerror_printf("Byte value \"%s\" is larger than 255", value);
@@ -971,7 +980,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
-			vp->vp_integer = (uint32_t) strtoul(value, &p, 10);
+			vp->vp_integer = getint(value, &p);
 			if (!*p) {
 				if (vp->vp_integer > 65535) {
 					fr_strerror_printf("Byte value \"%s\" is larger than 65535", value);
@@ -998,7 +1007,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
-			vp->vp_integer = (uint32_t) strtoul(value, &p, 10);
+			vp->vp_integer = getint(value, &p);
 			if (!*p) {
 				vp->length = 4;
 				break;
@@ -1259,7 +1268,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		return NULL;
 	}
 
-	attr = vendor = 0;
+	vendor = 0;
 
 	/*
 	 *	Pull off vendor prefix first.
@@ -1880,6 +1889,8 @@ VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
  *	e.g. "foo" != "bar"
  *
  *	Returns true (comparison is true), or false (comparison is not true);
+ *
+ *	FIXME: Ignores tags!
  */
 int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 {

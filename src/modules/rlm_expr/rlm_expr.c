@@ -171,10 +171,18 @@ static int get_number(REQUEST *request, const char **string, int *answer)
 			break;
 
 		case TOKEN_DIVIDE:
+			if (x == 0) {
+				result = 0; /* we don't have NaN for integers */
+				break;
+			}
 			result /= x;
 			break;
 
 		case TOKEN_REMAINDER:
+			if (x == 0) {
+				result = 0; /* we don't have NaN for integers */
+				break;
+			}
 			result %= x;
 			break;
 

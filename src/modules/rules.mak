@@ -177,4 +177,4 @@ install:
 
 .PHONY: scan
 scan:
-	@[ "$(SCAN_BUILD)" == "" ] || $(SCAN_BUILD) gcc $(CFLAGS) $(RLM_CFLAGS) -c $(SRCS)
+	@[ "$(SCAN_BUILD)" == "" ] || ($(MAKE) SCAN=yes LIBTOOL= 2>&1) | grep 'scan-view' || true

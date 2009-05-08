@@ -168,7 +168,6 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 	char *ptr, *ptr2;
 	char search_STR[MAX_STRING_LEN];
 	char replace_STR[MAX_STRING_LEN];
-	int replace_len = 0;
 
 	if ((attr_vp = pairfind(request->config_items, PW_REWRITE_RULE)) != NULL){
 		if (data->name == NULL || strcmp(data->name,attr_vp->vp_strvalue))
@@ -181,7 +180,6 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 			DEBUG2("%s: xlat on replace string failed.", data->name);
 			return ret;
 		}
-		replace_len = strlen(replace_STR);
 		attr_vp = pairmake(data->attribute,replace_STR,0);
 		if (attr_vp == NULL){
 			DEBUG2("%s: Could not add new attribute %s with value '%s'", data->name,
@@ -221,6 +219,8 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 		DEBUG2("%s: Added attribute %s with value '%s'", data->name,data->attribute,replace_STR);
 		ret = RLM_MODULE_OK;
 	} else {
+		int replace_len = 0;
+
 		/* new_attribute = no */
 		switch (data->searchin) {
 			case RLM_REGEX_INPACKET:

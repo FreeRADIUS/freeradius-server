@@ -267,10 +267,9 @@ static void safe_unlock(module_instance_t *instance)
 #define safe_unlock(foo)
 #endif
 
-static int call_modsingle(int component, modsingle *sp, REQUEST *request,
-			  int default_result)
+static int call_modsingle(int component, modsingle *sp, REQUEST *request)
 {
-	int myresult = default_result;
+	int myresult;
 
 	rad_assert(request != NULL);
 
@@ -450,6 +449,15 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						       g->vps, child->name);
 			if (rcode != RLM_MODULE_UPDATED) {
 				myresult = rcode;
+			} else {
+				/*
+				 *	FIXME: Set priority based on
+				 *	previous priority, so that we
+				 *	don't stop on reject when the
+				 *	default priority was to
+				 *	continue...
+				 *	
+				 */
 			}
 			goto handle_result;
 		}
@@ -628,8 +636,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 */
 		sp = mod_callabletosingle(child);
 
-		myresult = call_modsingle(child->method, sp, request,
-					  default_component_results[component]);
+		myresult = call_modsingle(child->method, sp, request);
 	handle_result:
 		RDEBUG2("%.*s[%s] returns %s",
 		       stack.pointer + 1, modcall_spaces,

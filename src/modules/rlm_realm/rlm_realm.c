@@ -91,7 +91,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *      it already ( via another rlm_realm instance ) and should return.
 	 */
 
-	if ( (vp = pairfind(request->packet->vps, PW_REALM)) != NULL ) {
+	if (pairfind(request->packet->vps, PW_REALM) != NULL ) {
 	        RDEBUG2("Request already proxied.  Ignoring.");
 		return RLM_MODULE_OK;
 	}

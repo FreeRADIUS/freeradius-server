@@ -560,6 +560,7 @@ static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *reque
 			*group_list = rad_malloc(sizeof(SQL_GROUPLIST));
 			group_list_tmp = *group_list;
 		} else {
+			rad_assert(group_list_tmp != NULL);
 			group_list_tmp->next = rad_malloc(sizeof(SQL_GROUPLIST));
 			group_list_tmp = group_list_tmp->next;
 		}

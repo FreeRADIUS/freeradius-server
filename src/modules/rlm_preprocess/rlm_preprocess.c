@@ -626,7 +626,7 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 		return RLM_MODULE_FAIL;
 	}
 
-	r = hints_setup(data->hints, request);
+	hints_setup(data->hints, request);
 
 	if ((r = huntgroup_access(request,
 				  data->huntgroups)) != RLM_MODULE_OK) {

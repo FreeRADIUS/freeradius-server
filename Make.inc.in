@@ -98,4 +98,11 @@ endif
 endif
 
 #  http://clang.llvm.org/StaticAnalysis.html
+#
+#  $ make scan | sed "s/.*Run '//;s/'.*//" > scan.sh
+#  $ ./scan.sh
+#
 SCAN_BUILD	= /path/to/checker-0.167/scan-build
+ifeq ($(SCAN),yes)
+CC		:= $(SCAN_BUILD) gcc -DFR_SCAN_BUILD
+endif

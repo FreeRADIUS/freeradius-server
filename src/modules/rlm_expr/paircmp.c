@@ -157,7 +157,8 @@ static int presufcmp(UNUSED void *instance,
 		 */
 		vp = radius_paircreate(req, &request,
 				       PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
-		if (vp) req->username = vp;
+		if (!vp) return ret;
+		req->username = vp;
 	}
 
 	strlcpy((char *)vp->vp_strvalue, rest, sizeof(vp->vp_strvalue));
@@ -219,7 +220,7 @@ static int genericcmp(void *instance UNUSED,
 
 		snprintf(name, sizeof(name), "%%{%s}", check->name);
 
-		rcode = radius_xlat(value, sizeof(value), name, req, NULL);
+		radius_xlat(value, sizeof(value), name, req, NULL);
 		vp = pairmake(check->name, value, check->operator);
 
 		/*

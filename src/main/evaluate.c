@@ -1155,6 +1155,9 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		last = &(*last)->next;
 	}
 
+	rad_assert(request != NULL);
+	rad_assert(request->packet != NULL);
+
 	/*
 	 *	Fix dumb cache issues
 	 */

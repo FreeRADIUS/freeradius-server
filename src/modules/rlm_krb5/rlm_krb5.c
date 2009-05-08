@@ -54,7 +54,7 @@ static int verify_krb5_tgt(krb5_context context, rlm_krb5_t *instance,
 	char phost[BUFSIZ];
 	krb5_principal princ;
 	krb5_keyblock *keyblock = 0;
-	krb5_data packet;
+	krb5_data packet, *server;
 	krb5_auth_context auth_context = NULL;
 	krb5_keytab keytab;
 	/* arbitrary 64-byte limit on service names; I've never seen a
@@ -86,7 +86,13 @@ static int verify_krb5_tgt(krb5_context context, rlm_krb5_t *instance,
 		return RLM_MODULE_REJECT;
 	}
 
-	strlcpy(phost, krb5_princ_component(c, princ, 1)->data, BUFSIZ);
+	server = krb5_princ_component(c, princ, 1);
+	if (!server) {
+		radlog(L_DBB, "rlm_krb5: [%s] krb5_princ_component failed.",
+		       user);
+		return RLM_MODULE_REJECT;
+	}
+	strlcpy(phost, server->data, BUFSIZ);
 	phost[BUFSIZ - 1] = '\0';
 
 	/*
