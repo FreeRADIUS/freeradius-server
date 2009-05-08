@@ -43,6 +43,11 @@ sysconfdir=@sysconfdir@
 pid_file=${rundir}/${name}.pid
 log_file=${logdir}/${name}_safe.log
 
+#
+#  On Solaris, this should be /usr/xpg4/bin/tail
+#
+tail=tail
+
 RADIUSD=$sbindir/${name}
 RADDBDIR=${sysconfdir}/raddb
 
@@ -134,7 +139,9 @@ do
 	#  Send mail when the server starts
 	if test "$MAILTO" != ""
 	then
-	    now=`date +"%s"`
+	    # don't print minutes and seconds: cheap way
+	    # of sending email only once an hour.
+	    now=`date +'%a %b %e %H %Y'`
 	    restarts=`expr $restarts + 1`
 
 	    # send email the first time it restarts
@@ -146,13 +153,13 @@ $name has restarted unexpectedly at $now
 See $log_file for details.  Last 20 lines are:
 
 ----------------------------------------------------------------------
-`tail -n 20 $log_file`
+`$tail -n 20 $log_file`
 EOF
-		$last_email="$now"
+		last_email="$now"
 		restarts=0
 	    else
-		#  Send email only once every hour.
-		if test "$now" -gt `expr $last_email + 3600`
+		#  Send email only once every hour (or so)
+		if test "$now" != "$last_emaiL"
 		then
 		    cat |  mail -s "ERROR - $name died, restarting.." $MAILTO <<EOF
 $name has restarted $restarts times since last email at $last_email
@@ -160,20 +167,20 @@ $name has restarted $restarts times since last email at $last_email
 See $log_file for details.  Last 100 lines are:
 
 ----------------------------------------------------------------------
-`tail -n 100 $log_file`
+`$tail -n 100 $log_file`
 EOF
-		    $last_email="$now"
+		    last_email="$now"
 		    restarts=0
 		fi
 	    fi
 	fi
 
-	if test "$started" = `date +"%s"`
+	if test "$started" = `date +'%a %b %e %H:%M:%S %Y'`
 	then
 	    sleep 1
 	fi
     fi
-    started=`date +"%s"`
+    started=`date +'%a %b %e %H:%M:%S %Y'`
 
     eval "$RADIUSD -f $ARGS < /dev/null >> $log_file 2>&1 &"
     PID=$!
