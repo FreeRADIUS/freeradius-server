@@ -570,9 +570,22 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 #ifdef WITH_UNLANG
 			case MOD_SWITCH:
-				radius_xlat(buffer, sizeof(buffer),
-					    child->name, request, NULL);
+				if (!strchr(child->name, '%')) {
+					VALUE_PAIR *vp = NULL;
 
+					radius_get_vp(request, child->name,
+						      &vp);
+					if (vp) {
+						vp_prints_value(buffer,
+								sizeof(buffer),
+								vp, 0);
+					} else {
+						*buffer = '\0';
+					}
+				} else {
+					radius_xlat(buffer, sizeof(buffer),
+						    child->name, request, NULL);
+				}
 				null_case = q = NULL;
 				for(p = g->children; p; p = p->next) {
 					if (!p->name) {

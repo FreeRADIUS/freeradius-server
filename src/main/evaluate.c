@@ -199,8 +199,7 @@ static const FR_NAME_NUMBER modreturn_table[] = {
 };
 
 
-static int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
-			
+int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 {
 	const char *vp_name = name;
 	REQUEST *myrequest = request;
