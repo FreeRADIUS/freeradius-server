@@ -236,6 +236,40 @@ static void remove_from_proxy_hash(REQUEST *request)
   	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 }
 
+static void ev_request_free(REQUEST **prequest)
+{
+	REQUEST *request;
+	
+	if (!prequest || !*prequest) return;
+
+	request = *prequest;
+
+#ifdef WITH_COA
+	if (request->coa) {
+		/*
+		 *	Divorce the child from the parent first,
+		 *	then clean up the child.
+		 */
+		request->coa->parent = NULL;
+		ev_request_free(&request->coa);
+	}
+
+	/*
+	 *	Divorce the parent from the child, and leave the
+	 *	parent still alive.
+	 */
+	if (request->parent && (request->parent->coa == request)) {
+		request->parent->coa = NULL;
+	}
+#endif
+
+	if (request->ev) fr_event_delete(el, &request->ev);
+	if (request->in_proxy_hash) remove_from_proxy_hash(request);
+	if (request->in_request_hash) remove_from_request_hash(request);
+
+	request_free(prequest);
+}
+
 static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
 {
 	int i, proxy, found;
@@ -414,10 +448,7 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 			       (unsigned int) (request->timestamp - fr_start_time));
 		}
 
-		fr_event_delete(el, &request->ev);
-		remove_from_proxy_hash(request);
-		remove_from_request_hash(request);
-		request_free(&request);
+		ev_request_free(&request);
 		return;
 	}
 
@@ -453,7 +484,7 @@ static void wait_for_child_to_die(void *ctx)
 	}
 #endif
 
-	request_free(&request);
+	ev_request_free(&request);
 }
 #endif
 
@@ -478,8 +509,7 @@ static void cleanup_delay(void *ctx)
 	       request->number, request->packet->id,
 	       (unsigned int) (request->timestamp - fr_start_time));
 
-	fr_event_delete(el, &request->ev);
-	request_free(&request);
+	ev_request_free(&request);
 }
 
 
@@ -796,7 +826,7 @@ static void ping_home_server(void *ctx)
 	if (!insert_into_proxy_hash(request, FALSE)) {
 		RDEBUG2("ERROR: Failed inserting status check %d into proxy hash.  Discarding it.",
 		       request->number);
-		request_free(&request);
+		ev_request_free(&request);
 		return;
 	}
 	rad_assert(request->proxy_listener != NULL);
@@ -1230,9 +1260,7 @@ static void wait_a_bit(void *ctx)
 			/*
 			 *	FIXME: Do CoA MIBs
 			 */
-			fr_event_delete(el, &request->ev);
-			remove_from_proxy_hash(request);
-			request_free(&request);
+			ev_request_free(&request);
 			return;
 		}
 #endif
@@ -1273,10 +1301,7 @@ static void wait_a_bit(void *ctx)
 	 */
 	if (!callback) {
 		RDEBUG("WARNING: Internal sanity check failed in event handler for request %d: Discarding the request!", request->number);
-		fr_event_delete(el, &request->ev);
-		remove_from_proxy_hash(request);
-		remove_from_request_hash(request);
-		request_free(&request);
+		ev_request_free(&request);
 		return;
 	}
 
@@ -1439,7 +1464,7 @@ static int originated_coa_request(REQUEST *request)
 	if (!vp && request->coa) vp = pairfind(request->coa->proxy->vps, PW_SEND_COA_REQUEST);
 	if (vp) {
 		if (vp->vp_integer == 0) {
-			request_free(&request->coa);
+			ev_request_free(&request->coa);
 			return 1;	/* success */
 		}
 
@@ -1471,7 +1496,7 @@ static int originated_coa_request(REQUEST *request)
 			RDEBUG2("WARNING: No such home_server_pool %s",
 			       vp->vp_strvalue);
 	fail:
-			request_free(&request->coa);
+			ev_request_free(&request->coa);
 			return 0;
 		}
 
@@ -1914,7 +1939,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 #endif
 		) {
 		RDEBUG2("Unknown packet type %d", request->proxy->code);
-		request_free(&fake);
+		ev_request_free(&fake);
 		return 0;
 	}
 
@@ -1927,7 +1952,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 	request->proxy_reply = fake->reply;
 	fake->reply = NULL;
 
-	request_free(&fake);
+	ev_request_free(&fake);
 
 	process_proxy_reply(request);
 
@@ -2019,7 +2044,7 @@ static int successfully_proxied_request(REQUEST *request)
 	 *	Once we've decided to proxy a request, we cannot send
 	 *	a CoA packet.  So we free up any CoA packet here.
 	 */
-	request_free(&request->coa);
+	ev_request_free(&request->coa);
 #endif
 	/*
 	 *	Remember that we sent the request to a Realm.
@@ -2811,7 +2836,7 @@ int received_request(rad_listen_t *listener,
 	 */
 	if (!fr_packet_list_insert(pl, &request->packet)) {
 		radlog(L_ERR, "Failed to insert request %d in the list of live requests: discarding", request->number);
-		request_free(&request);
+		ev_request_free(&request);
 		return 0;
 	}
 
@@ -3038,7 +3063,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	if (!request->packet) {
 		received_response_to_ping(request);
 		request->proxy_reply = NULL; /* caller will free it */
-		request_free(&request);
+		ev_request_free(&request);
 		return NULL;
 	}
 
@@ -3527,9 +3552,7 @@ static int request_hash_cb(UNUSED void *ctx, void *data)
 	rad_assert(request->in_proxy_hash == FALSE);
 #endif
 
-	fr_event_delete(el, &request->ev);
-	remove_from_request_hash(request);
-	request_free(&request);
+	ev_request_free(&request);
 
 	return 0;
 }
@@ -3540,13 +3563,7 @@ static int proxy_hash_cb(UNUSED void *ctx, void *data)
 {
 	REQUEST *request = fr_packet2myptr(REQUEST, proxy, data);
 
-	fr_packet_list_yank(proxy_list, request->proxy);
-	request->in_proxy_hash = FALSE;
-
-	if (!request->in_request_hash) {
-		fr_event_delete(el, &request->ev);
-		request_free(&request);
-	}
+	ev_request_free(&request);
 
 	return 0;
 }
