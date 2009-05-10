@@ -2014,6 +2014,13 @@ static int successfully_proxied_request(REQUEST *request)
 	}
 	request->home_pool = pool;
 
+#ifdef WITH_COA
+	/*
+	 *	Once we've decided to proxy a request, we cannot send
+	 *	a CoA packet.  So we free up any CoA packet here.
+	 */
+	request_free(&request->coa);
+#endif
 	/*
 	 *	Remember that we sent the request to a Realm.
 	 */
@@ -2206,15 +2213,7 @@ static void request_post_handler(REQUEST *request)
 	    (request->packet->code != PW_STATUS_SERVER)) {
 		int rcode = successfully_proxied_request(request);
 
-#ifdef WITH_COA
-		/*
-		 *	If we proxy it, we CANNOT originate a CoA
-		 *	request at the same time.
-		 */
-		if (rcode != 0) request_free(&request->coa);
-#endif
-
-		if (rcode == 1) return;
+		if (rcode == 1) return; /* request is invalid */
 
 		/*
 		 *	Failed proxying it (dead home servers, etc.)
