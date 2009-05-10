@@ -160,10 +160,9 @@ static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
-	if (rad_verify(request->proxy_reply, request->proxy,
-		       request->home_server->secret) < 0) {
-		return -1;
-	}
+	/*
+	 *	rad_verify is run in event.c, received_proxy_response()
+	 */
 
 	return rad_decode(request->proxy_reply, request->proxy,
 			   request->home_server->secret);

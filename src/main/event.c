@@ -701,12 +701,6 @@ static void received_response_to_ping(REQUEST *request)
 
 	rad_assert(request->home_server != NULL);
 
-	if (rad_verify(request->proxy_reply, request->proxy,
-		       request->home_server->secret) != 0) {
-		DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
-		return;
-	}
-		
 	home = request->home_server;
 	home->num_received_pings++;
 
@@ -2933,6 +2927,23 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		
 		/* assert that there's an event queued for request? */
 		return NULL;
+	}
+
+	/*
+	 *	Verify the packet before doing ANYTHING with it.  This
+	 *	means we're doing more MD5 checks in the server core.
+	 *	However, we can fix that by moving to multiple threads
+	 *	listening on sockets.
+	 *
+	 *	We do this AFTER looking the request up in the hash,
+	 *	and AFTER vhecking if we saw a previous request.  This
+	 *	helps minimize the DoS effect of people attacking us
+	 *	with spoofed packets.
+	 */
+	if (rad_verify(request->proxy_reply, packet,
+		       request->home_server->secret) != 0) {
+		DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
+		return;
 	}
 
 	gettimeofday(&now, NULL);
