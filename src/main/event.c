@@ -2940,7 +2940,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	 *	helps minimize the DoS effect of people attacking us
 	 *	with spoofed packets.
 	 */
-	if (rad_verify(request->proxy_reply, packet,
+	if (rad_verify(request->proxy, packet,
 		       request->home_server->secret) != 0) {
 		DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
 		return;
