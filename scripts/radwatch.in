@@ -44,9 +44,14 @@ pid_file=${rundir}/${name}.pid
 log_file=${logdir}/${name}_safe.log
 
 #
-#  On Solaris, this should be /usr/xpg4/bin/tail
+#  Figure out what arguments to pass tail
 #
-tail=tail
+tail="tail -n "
+echo foo | ${tail}1 > /dev/null 2>&1
+if test "$?" != "0"
+then
+    tail="tail +"
+fi
 
 RADIUSD=$sbindir/${name}
 RADDBDIR=${sysconfdir}/raddb
@@ -111,19 +116,18 @@ fi
 started=0
 restarts=0
 last_email=0
+now=0
+
+#
+#  Save our PID.
+#
+echo $$ > ${rundir}/${name}_safe.pid
 
 #
 #  Loop forever, or until we're told to exit via a signal.
 #
 while :
 do
-    mysig=
-    trap 'mysig=1' HUP
-    trap 'mysig=2' INT
-    trap 'mysig=3' QUIT
-    trap 'mysig=15' TERM
-    trap 'mysig=18' TSTP
-
     #
     #  The first time around, just start the server.
     #  After that, see if we are re-starting in the same second
@@ -134,6 +138,7 @@ do
     #  This helps prevent CPU spikes when something goes catastrophically
     #  wrong, and the server re-starts continuously.  (e.g. disk full, etc.)
     #
+    now_s=`date +'%a %b %e %H:%M:%S %Y'`
     if test "$started" != "0"
     then
 	#  Send mail when the server starts
@@ -153,7 +158,7 @@ $name has restarted unexpectedly at $now
 See $log_file for details.  Last 20 lines are:
 
 ----------------------------------------------------------------------
-`$tail -n 20 $log_file`
+`${tail}20 $log_file`
 EOF
 		last_email="$now"
 		restarts=0
@@ -167,7 +172,7 @@ $name has restarted $restarts times since last email at $last_email
 See $log_file for details.  Last 100 lines are:
 
 ----------------------------------------------------------------------
-`$tail -n 100 $log_file`
+`${tail}100 $log_file`
 EOF
 		    last_email="$now"
 		    restarts=0
@@ -175,12 +180,21 @@ EOF
 	    fi
 	fi
 
-	if test "$started" = `date +'%a %b %e %H:%M:%S %Y'`
+	if test "$started" = "$now_s"
 	then
+	    #  Allow us to be killed
+	    trap - HUP INT QUIT TERM TSTP
 	    sleep 1
 	fi
     fi
-    started=`date +'%a %b %e %H:%M:%S %Y'`
+    started="$now_s"
+
+    mysig=
+    trap 'mysig=1' HUP
+    trap 'mysig=2' INT
+    trap 'mysig=3' QUIT
+    trap 'mysig=15' TERM
+    trap 'mysig=18' TSTP
 
     eval "$RADIUSD -f $ARGS < /dev/null >> $log_file 2>&1 &"
     PID=$!
@@ -209,7 +223,7 @@ EOF
     #
     if test "$code" = "0"
     then
-	if "$mysig" != ""
+	if test "$mysig" != ""
 	then
 	    code=`expr $mysig + 128`
 	fi
@@ -238,10 +252,10 @@ EOF
 		#
 		#  Was the signal sent to us, or to the child process?
 		#
-		if test "$mysig" = "yes"
+		if test "$mysig" != ""
 		then
 		    echo "`date +'%a %b %e %H:%M:%S %Y'` : Info: Caught signal $sig: Signalling $name to exit." | tee -a $log_file
-		    kill -`expr $code - 128` $PID
+		    kill -$sig $PID
 		    break
 		else
 		    echo "`date +'%a %b %e %H:%M:%S %Y'` : Info: $name exited unexpectedly on signal $sig.  Restarting it." | tee -a $log_file
@@ -251,5 +265,5 @@ EOF
     esac
 done
 
-rm -f $pid_file
+rm -f $pid_file ${rundir}/${name}_safe.pid
 exit 0
