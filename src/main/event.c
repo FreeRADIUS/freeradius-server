@@ -2943,7 +2943,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	if (rad_verify(packet, request->proxy,
 		       request->home_server->secret) != 0) {
 		DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
-		return;
+		return NULL;
 	}
 
 	gettimeofday(&now, NULL);
