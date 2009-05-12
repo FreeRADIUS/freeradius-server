@@ -25,6 +25,8 @@ FreeRADIUS 2.1.6 Sun Jan 1 1:1:00 CEST 2009;  , urgency=medium
 	  the "authorize", "authenticate", etc. processing sections are
 	  reloaded.  Clients and "listen" sections are NOT reloaded.
 	* Updated "radwatch" script to be more robust.  See scripts/radwatch
+	* Added certificate compatibility notes in raddb/certs/README,
+	  for compatibility with different operating systems. (i.e. Windows)
 
 	Bug fixes
 	* Minor changes to allow building without VQP.

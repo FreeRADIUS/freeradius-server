@@ -157,3 +157,46 @@ $ openssl speed rsa2048
   A 1GHz system will likely do 30 calculations/s.  A 2Ghz system may
   do 50 calculations/s, or more.  That number is also the number of
   authentications/s that can be done for EAP-TLS (or TTLS, or PEAP).
+
+
+		COMPATIBILITY
+
+The certificates created using this method are known to be compatible
+with ALL operating systems.  Some common issues are:
+
+  - Windows requires certain OID's in the certificates.  If it doesn't
+    see them, it will stop doing EAP.  The most visibile effect is
+    that the client starts EAP, gets a few Access-Challenge packets,
+    and then a little while later re-starts EAP.  If this happens, see
+    the FAQ, and the comments in raddb/eap.conf for how to fix it.
+
+  - Windows requires the root certificates to be on the client PC.
+    If it doesn't have them, you will see the same issue as above.
+
+  - Windows XP post SP2 has a bug where it has problems with
+    certificate chains.  i.e. if the server certificate is an
+    intermediate one, and not a root one, then authentication will
+    silently fail, as above.
+
+  - Some versions of Windows CE cannot handle 4K RSA certificates.
+    They will (again) silently fail, as above.
+
+  - In none of these cases will Windows give the end user any
+    reasonable error message describing what went wrong.  This leads
+    people to blame the RADIUS server.  That blame is misplaced.
+
+  - Certificate chains of more than 64K bytes are known to not work.
+    This is a problem in FreeRADIUS.  However, most clients cannot
+    handle 64K certificate chains.  Most Access Points will shut down
+    the EAP session after about 50 round trips, while 64K certificate
+    chains will take about 60 round trips.  So don't use large
+    certificate chains.  They will only work after everyone upgrade
+    everything in the network.
+
+  - All other operating systems are known to work with EAP and
+    FreeRADIUS.  This includes Linux, *BSD, Mac OS X, Solaris,
+    Symbian, along with all known embedded systems, phones, WiFi
+    devices, etc.
+
+  - Someone needs to ask Microsoft to please stop making life hard for
+    their customers.
