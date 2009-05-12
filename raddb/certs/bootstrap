@@ -17,7 +17,7 @@ make all
 #
 #  If that worked, exit.  Otherwise, run the commands manually.
 #
-if [ "$?" == "0" ]
+if [ "$?" = "0" ]
 then
   exit 0
 fi
