@@ -64,8 +64,8 @@ ATTRIBUTE	h323-voice-quality			31	string
 ATTRIBUTE	h323-gw-id				33	string
 ATTRIBUTE	h323-incoming-conf-id			35	string
 
-ATTRIBUTE	Cisco-Policy-Down			37	string
-ATTRIBUTE	Cisco-Policy-Up				38	string
+ATTRIBUTE	Cisco-Policy-Up				37	string
+ATTRIBUTE	Cisco-Policy-Down			38	string
 
 ATTRIBUTE	sip-conf-id				100	string
 ATTRIBUTE	h323-credit-amount			101	string
