@@ -50,7 +50,7 @@ tail="tail -n "
 echo foo | ${tail}1 > /dev/null 2>&1
 if test "$?" != "0"
 then
-    tail="tail +"
+    tail="tail -"
 fi
 
 RADIUSD=$sbindir/${name}
@@ -164,7 +164,7 @@ EOF
 		restarts=0
 	    else
 		#  Send email only once every hour (or so)
-		if test "$now" != "$last_emaiL"
+		if test "$now" != "$last_email"
 		then
 		    cat |  mail -s "ERROR - $name died, restarting.." $MAILTO <<EOF
 $name has restarted $restarts times since last email at $last_email
