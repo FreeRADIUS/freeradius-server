@@ -1,12 +1,39 @@
 freeradius (2.1.6-0) unstable; urgency=medium
-  * Place-holder for intermediate builds.
+  * radclient exits with 0 on successful (accept / ack), and 1 otherwise (no response / reject)
+  * Added support for %{sql:UPDATE ..}, and insert/delete.  Patch from Arran Cudbard-Bell
+  * Added sample "do not respond" policy.  See raddb/policy.conf and raddb/sites-available/do_not_respond
+  * Cleanups to Suse spec file from Norbert Wegener
+  * New VSAs for Juniper from Bjorn Mork
+  * Include more RFC dictionaries in the default install
+  * More documentation for the WiMAX module
+  * Added "chase_referrals" and "rebind" configuration to rlm_ldap. This helps with Active Directory.  See raddb/modules/ldap
+  * Don't load pre/post-proxy if proxying is disabled.
+  * Added %{md5:...}, which returns MD5 hash in hex.
+  * Added configurable "retry_interval" and "poll_interval" for "detail" listeners.
+  * Added "delete_mppe_keys" configuration option to rlm_wimax.  Apparently some WiMAX clients misbehave when they see those keys.
+  * Added experimental rlm_ruby from http://github.com/Antti/freeradius-server/tree/master
+  * Add Tunnel attributes to ldap.attrmap
+  * Enable virtual servers to be reloaded on HUP.  For now, only the "authorize", "authenticate", etc. processing sections are reloaded.  Clients and "listen" sections are NOT reloaded.
+  * Updated "radwatch" script to be more robust.  See scripts/radwatch
+  * Added certificate compatibility notes in raddb/certs/README, for compatibility with different operating systems. (i.e. Windows)
+  * Minor changes to allow building without VQP.
+  * Minor fixes from John Center
+  * Fixed raddebug example
+  * Don't crash when deleting attributes via unlang
+  * Be friendlier to very fast clients
+  * Updated the "detail" listener so that it only polls once, and not many times in a row, leaking memory each time...
+  * Update comparison for Packet-Src-IP-Address (etc.) so that the operators other than '==' work.
+  * Did autoconf magic to work around weird libtool bug
+  * Make rlm_perl keep tags for tagged attributes in more situations
+  * Update UID checking for radmin
+  * Added "include_length" field for TTLS.  It's needed for RFC compliance, but not (apparently) for interoperability.
 
  -- Alan DeKok <aland@freeradius.org>  Mon, 01 Jan 1970 9:48:00 +0100
 
 freeradius (2.1.5-0) unstable; urgency=medium
   * Release number skipped due to procedural issues.
 
- -- Alan DeKok <aland@freeradius.org>  Mon, 01 Jan 1970 9:48:00 +0100
+ -- Alan DeKok <aland@freeradius.org>  Mon, 18 May 2009 10:00:00 +0100
 
 freeradius (2.1.4-0) unstable; urgency=medium
   * Permit multiple "-e" in radmin.

@@ -1,4 +1,4 @@
-FreeRADIUS 2.1.6 Sun Jan 1 1:1:00 CEST 2009;  , urgency=medium
+FreeRADIUS 2.1.6 Mon May 18 10:00:00 CEST 2009;  , urgency=medium
 	Feature improvements
 	* radclient exits with 0 on successful (accept / ack), and 1
 	  otherwise (no response / reject)
