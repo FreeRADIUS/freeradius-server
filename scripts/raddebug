@@ -15,7 +15,7 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
 #
-#    Copyright (C) 2009 Alan DeKok <aland@deployingradius.com>
+#    Copyright (C) 2009 Network RADIUS SARL <info@networkradius.com>
 #
 ######################################################################
 #
@@ -41,14 +41,14 @@ do
   case $OPTION in
   c)	condition="$OPTARG"
 	;;
-  d)    [ "$extra" == "" ] || usage
+  d)    [ "$extra" = "" ] || usage
 	extra="-d $OPTARG"
 	;;
   i)	condition="(Packet-Src-IP-Address == $OPTARG)"
 	;;
   I)	condition="(Packet-Src-IPv6-Address == $OPTARG)"
 	;;
-  f)	[ "$extra" == "" ] || usage
+  f)	[ "$extra" = "" ] || usage
 	extra="-f $OPTARG"
 	;;
   t)	timeout="$OPTARG"
