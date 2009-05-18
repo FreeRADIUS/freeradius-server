@@ -28,12 +28,12 @@ freeradius (2.1.6-0) unstable; urgency=medium
   * Update UID checking for radmin
   * Added "include_length" field for TTLS.  It's needed for RFC compliance, but not (apparently) for interoperability.
 
- -- Alan DeKok <aland@freeradius.org>  Mon, 01 Jan 1970 9:48:00 +0100
+ -- Alan DeKok <aland@freeradius.org>  Mon, 18 May 2009 10:00:00 +0100
 
 freeradius (2.1.5-0) unstable; urgency=medium
   * Release number skipped due to procedural issues.
 
- -- Alan DeKok <aland@freeradius.org>  Mon, 18 May 2009 10:00:00 +0100
+ -- Alan DeKok <aland@freeradius.org>  Mon, 01 Jan 1970 9:48:00 +0100
 
 freeradius (2.1.4-0) unstable; urgency=medium
   * Permit multiple "-e" in radmin.
