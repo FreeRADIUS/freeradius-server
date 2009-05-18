@@ -33,6 +33,10 @@ RCSID("$Id$")
 #include <freeradius-devel/vmps.h>
 #include <freeradius-devel/detail.h>
 
+#ifdef WITH_UDPFROMTO
+#include <freeradius-devel/udpfromto.h>
+#endif
+
 #ifdef HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
 #endif
