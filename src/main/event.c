@@ -1193,7 +1193,7 @@ static void wait_a_bit(void *ctx)
 			break;
 		}
 
-#if defined(HAVE_PTHREAD_H)
+#if defined(HAVE_PTHREAD_H) || defined(WITH_PROXY)
 		/*
 		 *	A child thread MAY still be running on the
 		 *	request.  Ask the thread to stop working on
