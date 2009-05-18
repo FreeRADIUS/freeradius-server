@@ -1,3 +1,8 @@
+freeradius (2.1.7-0) unstable; urgency=medium
+  * Place-holder
+
+ -- Alan DeKok <aland@freeradius.org>  Mon, 01 Jan 1970 9:48:00 +0100
+
 freeradius (2.1.6-0) unstable; urgency=medium
   * radclient exits with 0 on successful (accept / ack), and 1 otherwise (no response / reject)
   * Added support for %{sql:UPDATE ..}, and insert/delete.  Patch from Arran Cudbard-Bell
