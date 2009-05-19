@@ -434,8 +434,9 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 	request->when = request->proxy_when;
 
 #ifdef WITH_COA
-	if ((request->proxy->code == PW_COA_REQUEST) ||
-	    (request->proxy->code == PW_DISCONNECT_REQUEST)) {
+	if (((request->proxy->code == PW_COA_REQUEST) ||
+	     (request->proxy->code == PW_DISCONNECT_REQUEST)) &&
+	    (request->packet->code != request->proxy->code)) {
 		request->when.tv_sec += request->home_server->coa_mrd;
 	} else
 #endif
@@ -1992,13 +1993,50 @@ static int successfully_proxied_request(REQUEST *request)
 	 *
 	 *	FIXME: This should really be a serious error.
 	 */
-	if (request->in_proxy_hash) {
+	if (request->in_proxy_hash ||
+	    (request->proxy_reply && (request->proxy_reply->code != 0))) {
 		return 0;
 	}
 
 	realmpair = pairfind(request->config_items, PW_PROXY_TO_REALM);
 	if (!realmpair || (realmpair->length == 0)) {
-		return 0;
+		int pool_type;
+
+		vp = pairfind(request->config_items, PW_HOME_SERVER_POOL);
+		if (!vp) return 0;
+
+		switch (request->packet->code) {
+		case PW_AUTHENTICATION_REQUEST:
+			pool_type = HOME_TYPE_AUTH;
+			break;
+
+#ifdef WITH_ACCOUNTING
+		case PW_ACCOUNTING_REQUEST:
+			pool_type = HOME_TYPE_ACCT;
+			break;
+#endif
+
+#ifdef WITH_COA
+		case PW_COA_REQUEST:
+		case PW_DISCONNECT_REQUEST:
+			pool_type = HOME_TYPE_COA;
+			break;
+#endif
+
+		default:
+			return 0;
+		}
+
+		pool = home_pool_byname(vp->vp_strvalue, pool_type);
+		if (!pool) {
+			RDEBUG2("ERROR: Cannot proxy to unknown pool %s",
+				vp->vp_strvalue);
+			return 0;
+		}
+
+		realmname = NULL; /* no realms */
+		realm = NULL;
+		goto found_pool;
 	}
 
 	realmname = (char *) realmpair->vp_strvalue;
@@ -2020,6 +2058,12 @@ static int successfully_proxied_request(REQUEST *request)
 		pool = realm->acct_pool;
 #endif
 
+#ifdef WITH_COA
+	} else if ((request->packet->code == PW_COA_REQUEST) ||
+		   (request->packet->code == PW_DISCONNECT_REQUEST)) {
+		pool = realm->acct_pool;
+#endif
+
 	} else {
 		rad_panic("Internal sanity check failed");
 	}
@@ -2030,6 +2074,7 @@ static int successfully_proxied_request(REQUEST *request)
 		return 0;
 	}
 
+found_pool:
 	home = home_server_ldb(realmname, pool, request);
 	if (!home) {
 		RDEBUG2("ERROR: Failed to find live home server for realm %s",
@@ -2048,8 +2093,8 @@ static int successfully_proxied_request(REQUEST *request)
 	/*
 	 *	Remember that we sent the request to a Realm.
 	 */
-	pairadd(&request->packet->vps,
-		pairmake("Realm", realmname, T_OP_EQ));
+	if (realmname) pairadd(&request->packet->vps,
+			       pairmake("Realm", realmname, T_OP_EQ));
 
 	/*
 	 *	Strip the name, if told to.
@@ -2057,7 +2102,7 @@ static int successfully_proxied_request(REQUEST *request)
 	 *	Doing it here catches the case of proxied tunneled
 	 *	requests.
 	 */
-	if (realm->striprealm == TRUE &&
+	if (realm && (realm->striprealm == TRUE) &&
 	   (strippedname = pairfind(request->proxy->vps, PW_STRIPPED_USER_NAME)) != NULL) {
 		/*
 		 *	If there's a Stripped-User-Name attribute in
@@ -2096,7 +2141,8 @@ static int successfully_proxied_request(REQUEST *request)
 	 *	since we can't use the request authenticator
 	 *	anymore - we changed it.
 	 */
-	if (pairfind(request->proxy->vps, PW_CHAP_PASSWORD) &&
+	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+	    pairfind(request->proxy->vps, PW_CHAP_PASSWORD) &&
 	    pairfind(request->proxy->vps, PW_CHAP_CHALLENGE) == NULL) {
 		vp = radius_paircreate(request, &request->proxy->vps,
 				       PW_CHAP_CHALLENGE, PW_TYPE_OCTETS);
@@ -2355,6 +2401,10 @@ static void request_post_handler(REQUEST *request)
 			}
 		}
 
+#ifdef WITH_COA
+	case PW_COA_REQUEST:
+	case PW_DISCONNECT_REQUEST:
+#endif
 		request->next_when.tv_sec += request->root->cleanup_delay;
 		request->next_callback = cleanup_delay;
 		child_state = REQUEST_CLEANUP_DELAY;
