@@ -47,6 +47,10 @@ typedef struct rlm_ruby_t {
     RLM_RUBY_STRUCT(preproxy);
     RLM_RUBY_STRUCT(postproxy);
     RLM_RUBY_STRUCT(postauth);
+#ifdef WITH_COA
+    RLM_RUBY_STRUCT(recvcoa);
+    RLM_RUBY_STRUCT(sendcoa);
+#endif
     RLM_RUBY_STRUCT(detach);
 
     char *scriptFile;
@@ -388,6 +392,10 @@ static int ruby_instantiate(CONF_SECTION *conf, void **instance) {
     RLM_RUBY_LOAD(preproxy);
     RLM_RUBY_LOAD(postproxy);
     RLM_RUBY_LOAD(postauth);
+#ifdef WITH_COA
+    RLM_RUBY_LOAD(recvcoa);
+    RLM_RUBY_LOAD(sendcoa);
+#endif
     RLM_RUBY_LOAD(detach);
 
     *instance = data;
@@ -411,6 +419,10 @@ RLM_RUBY_FUNC(checksimul)
 RLM_RUBY_FUNC(preproxy)
 RLM_RUBY_FUNC(postproxy)
 RLM_RUBY_FUNC(postauth)
+#ifdef WITH_COA
+RLM_RUBY_FUNC(recvcoa)
+RLM_RUBY_FUNC(sendcoa)
+#endif
 
 static int ruby_detach(void *instance) {
     int return_value;
@@ -455,5 +467,9 @@ module_t rlm_ruby = {
         ruby_preproxy, /* pre-proxy */
         ruby_postproxy, /* post-proxy */
         ruby_postauth /* post-auth */
+#ifdef WITH_COA
+	, ruby_recv_coa,
+	ruby_send_coa
+#endif
     },
 };

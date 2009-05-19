@@ -1095,6 +1095,10 @@ const FR_NAME_NUMBER policy_component_names[] = {
 	{ "pre-proxy", RLM_COMPONENT_PRE_PROXY },
 	{ "post-proxy", RLM_COMPONENT_POST_PROXY },
 	{ "post-auth", RLM_COMPONENT_POST_AUTH },
+#ifdef WITH_COA
+	{ "recv-coa", RLM_COMPONENT_RECV_COA },
+	{ "send-coa", RLM_COMPONENT_SEND_COA },
+#endif
 	{ NULL, RLM_COMPONENT_COUNT }
 };
 

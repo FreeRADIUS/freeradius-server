@@ -304,7 +304,12 @@ static int default_component_results[RLM_COMPONENT_COUNT] = {
 	RLM_MODULE_FAIL,	/* SESS */
 	RLM_MODULE_NOOP,	/* PRE_PROXY */
 	RLM_MODULE_NOOP,	/* POST_PROXY */
-	RLM_MODULE_NOOP		/* POST_AUTH */
+	RLM_MODULE_NOOP       	/* POST_AUTH */
+#ifdef WITH_COA
+	,
+	RLM_MODULE_NOOP,       	/* RECV_COA_TYPE */
+	RLM_MODULE_NOOP		/* SEND_COA_TYPE */
+#endif
 };
 
 
@@ -1178,6 +1183,87 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN	/* updated  */
 		}
 	}
+#ifdef WITH_COA
+	,
+	/* recv-coa */
+	{
+		/* group */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			MOD_ACTION_RETURN,	/* fail     */
+			3,			/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			1,			/* notfound */
+			2,			/* noop     */
+			4			/* updated  */
+		},
+		/* redundant */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			1,			/* fail     */
+			MOD_ACTION_RETURN,	/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* notfound */
+			MOD_ACTION_RETURN,	/* noop     */
+			MOD_ACTION_RETURN	/* updated  */
+		},
+		/* append */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			1,			/* fail     */
+			MOD_ACTION_RETURN,	/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			2,			/* notfound */
+			MOD_ACTION_RETURN,	/* noop     */
+			MOD_ACTION_RETURN	/* updated  */
+		}
+	},
+	/* send-coa */
+	{
+		/* group */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			MOD_ACTION_RETURN,	/* fail     */
+			3,			/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			1,			/* notfound */
+			2,			/* noop     */
+			4			/* updated  */
+		},
+		/* redundant */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			1,			/* fail     */
+			MOD_ACTION_RETURN,	/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			MOD_ACTION_RETURN,	/* notfound */
+			MOD_ACTION_RETURN,	/* noop     */
+			MOD_ACTION_RETURN	/* updated  */
+		},
+		/* append */
+		{
+			MOD_ACTION_RETURN,	/* reject   */
+			1,			/* fail     */
+			MOD_ACTION_RETURN,	/* ok       */
+			MOD_ACTION_RETURN,	/* handled  */
+			MOD_ACTION_RETURN,	/* invalid  */
+			MOD_ACTION_RETURN,	/* userlock */
+			2,			/* notfound */
+			MOD_ACTION_RETURN,	/* noop     */
+			MOD_ACTION_RETURN	/* updated  */
+		}
+	}
+#endif
 };
 
 

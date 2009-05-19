@@ -54,6 +54,13 @@ struct rlm_python_t {
 		preacct,
 		accounting,
 		checksimul,
+		pre_proxy,
+		post_proxy,
+		post_auth,
+#ifdef WITH_COA
+		recv_coa,
+		send_coa,
+#endif
 		detach;
 };
 
@@ -77,6 +84,13 @@ static CONF_PARSER module_config[] = {
   A(preacct)
   A(accounting)
   A(checksimul)
+  A(pre_proxy)
+  A(post_proxy)
+  A(post_auth)
+#ifdef WITH_COA
+  A(recv_coa)
+  A(send_coa)
+#endif
   A(detach)
 
 #undef A
@@ -587,6 +601,13 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
         A(preacct);
         A(accounting);
         A(checksimul);
+        A(pre_proxy);
+        A(post_proxy);
+        A(post_auth);
+#ifdef WITH_COA
+        A(recv_coa);
+        A(send_coa);
+#endif
         A(detach);
 
 #undef A
@@ -628,6 +649,13 @@ A(authorize)
 A(preacct)
 A(accounting)
 A(checksimul)
+A(pre_proxy)
+A(post_proxy)
+A(post_auth)
+#ifdef WITH_COA
+A(recv_coa)
+A(send_coa)
+#endif
 
 #undef A
 
@@ -652,8 +680,12 @@ module_t rlm_python = {
 		python_preacct,		/* preaccounting */
 		python_accounting,	/* accounting */
 		python_checksimul,	/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+		python_pre_proxy,	/* pre-proxy */
+		python_post_proxy,	/* post-proxy */
+		python_post_auth	/* post-auth */
+#ifdef WITH_COA
+		, python_recv_coa,
+		python_send_coa
+#endif
 	}
 };

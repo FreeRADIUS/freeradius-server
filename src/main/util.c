@@ -489,6 +489,12 @@ REQUEST *request_alloc_coa(REQUEST *request)
 {
 	if (!request || request->coa) return NULL;
 
+	/*
+	 *	Originate CoA requests only when necessary.
+	 */
+	if ((request->packet->code != PW_AUTHENTICATION_REQUEST) &&
+	    (request->packet->code != PW_ACCOUNTING_REQUEST)) return NULL;
+
 	request->coa = request_alloc_fake(request);
 	request->coa->packet->code = 0; /* unknown, as of yet */
 	request->coa->child_state = REQUEST_RUNNING;

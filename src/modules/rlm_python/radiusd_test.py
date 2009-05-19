@@ -31,18 +31,28 @@ def accounting(p):
   print p 
   return radiusd.RLM_MODULE_OK
 
-def preproxy(p):
-  print "*** preproxy ***"
+def pre_proxy(p):
+  print "*** pre_proxy ***"
   print p 
   return radiusd.RLM_MODULE_OK
 
-def postproxy(p):
-  print "*** postproxy ***"
+def post_proxy(p):
+  print "*** post_proxy ***"
   print p 
   return radiusd.RLM_MODULE_OK
 
-def postauth(p):
-  print "*** postauth ***"
+def post_auth(p):
+  print "*** post_auth ***"
+  print p 
+  return radiusd.RLM_MODULE_OK
+
+def recv_coa(p):
+  print "*** recv_coa ***"
+  print p 
+  return radiusd.RLM_MODULE_OK
+
+def send_coa(p):
+  print "*** send_coa ***"
   print p 
   return radiusd.RLM_MODULE_OK
 

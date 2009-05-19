@@ -247,6 +247,9 @@ listen {
 	#               raddb/sites-available/copy-acct-to-home-server
 	#	status  listen for Status-Server packets.  For examples,
 	#		see raddb/sites-available/status
+	#	coa     listen for CoA-Request and Disconnect-Request
+	#		packets.  For examples, see the file
+	#		raddb/sites-available/coa-server
 	#
 	type = auth
 

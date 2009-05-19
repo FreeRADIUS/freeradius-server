@@ -966,11 +966,11 @@ int main(int argc, char **argv)
 		packet_code = PW_STATUS_SERVER;
 
 	} else if (strcmp(argv[2], "disconnect") == 0) {
-		if (server_port == 0) server_port = PW_POD_UDP_PORT;
+		if (server_port == 0) server_port = PW_COA_UDP_PORT;
 		packet_code = PW_DISCONNECT_REQUEST;
 
 	} else if (strcmp(argv[2], "coa") == 0) {
-		if (server_port == 0) server_port = PW_POD_UDP_PORT;
+		if (server_port == 0) server_port = PW_COA_UDP_PORT;
 		packet_code = PW_COA_REQUEST;
 
 	} else if (strcmp(argv[2], "auto") == 0) {

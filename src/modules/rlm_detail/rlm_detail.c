@@ -46,6 +46,46 @@ static const char *packet_codes[] = {
   "Password-Reject",
   "Accounting-Message",
   "Access-Challenge"
+  "Status-Server",
+  "Status-Client",
+  "14",
+  "15",
+  "16",
+  "17",
+  "18",
+  "19",
+  "20",
+  "Resource-Free-Request",
+  "Resource-Free-Response",
+  "Resource-Query-Request",
+  "Resource-Query-Response",
+  "Alternate-Resource-Reclaim-Request",
+  "NAS-Reboot-Request",
+  "NAS-Reboot-Response",
+  "28",
+  "Next-Passcode",
+  "New-Pin",
+  "Terminate-Session",
+  "Password-Expired",
+  "Event-Request",
+  "Event-Response",
+  "35",
+  "36",
+  "37",
+  "38",
+  "39",
+  "Disconnect-Request",
+  "Disconnect-ACK",
+  "Disconnect-NAK",
+  "CoA-Request",
+  "CoA-ACK",
+  "CoA-NAK",
+  "46",
+  "47",
+  "48",
+  "49",
+  "IP-Address-Allocate",
+  "IP-Address-Release"
 };
 
 
@@ -360,7 +400,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		 *	Numbers, if not.
 		 */
 		if ((packet->code > 0) &&
-		    (packet->code <= PW_ACCESS_CHALLENGE)) {
+		    (packet->code < 52)) {
 			fprintf(outfp, "\tPacket-Type = %s\n",
 				packet_codes[packet->code]);
 		} else {
@@ -515,6 +555,23 @@ static int detail_postauth(void *instance, REQUEST *request)
 	return do_detail(instance,request,request->reply, FALSE);
 }
 
+#ifdef WITH_COA
+/*
+ *	Incoming CoA - write the detail files.
+ */
+static int detail_recv_coa(void *instance, REQUEST *request)
+{
+	return do_detail(instance,request,request->packet, FALSE);
+}
+
+/*
+ *	Outgoing CoA - write the detail files.
+ */
+static int detail_send_coa(void *instance, REQUEST *request)
+{
+	return do_detail(instance,request,request->reply, FALSE);
+}
+#endif
 
 /*
  *	Outgoing Access-Request to home server - write the detail files.
@@ -577,6 +634,10 @@ module_t rlm_detail = {
 		detail_pre_proxy,      	/* pre-proxy */
 		detail_post_proxy,	/* post-proxy */
 		detail_postauth		/* post-auth */
+#ifdef WITH_COA
+		, detail_recv_coa,
+		detail_send_coa
+#endif
 	},
 };
 

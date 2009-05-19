@@ -84,7 +84,12 @@ static const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 	{ "session",      "Session-Type",    PW_SESSION_TYPE },
 	{ "pre-proxy",    "Pre-Proxy-Type",  PW_PRE_PROXY_TYPE },
 	{ "post-proxy",   "Post-Proxy-Type", PW_POST_PROXY_TYPE },
-	{ "post-auth",    "Post-Auth-Type",  PW_POST_AUTH_TYPE },
+	{ "post-auth",    "Post-Auth-Type",  PW_POST_AUTH_TYPE }
+#ifdef WITH_COA
+	,
+	{ "recv-coa",     "Recv-CoA-Type",   PW_RECV_COA_TYPE },
+	{ "send-coa",     "Send-CoA-Type",   PW_SEND_COA_TYPE }
+#endif
 };
 
 
@@ -1451,3 +1456,15 @@ int module_post_auth(int postauth_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_POST_AUTH, postauth_type, request);
 }
+
+#ifdef WITH_COA
+int module_recv_coa(int recv_coa_type, REQUEST *request)
+{
+	return indexed_modcall(RLM_COMPONENT_RECV_COA, recv_coa_type, request);
+}
+
+int module_send_coa(int send_coa_type, REQUEST *request)
+{
+	return indexed_modcall(RLM_COMPONENT_SEND_COA, send_coa_type, request);
+}
+#endif

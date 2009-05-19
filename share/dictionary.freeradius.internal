@@ -207,6 +207,12 @@ ATTRIBUTE	EAP-MSK					1129	octets
 ATTRIBUTE	EAP-EMSK				1130	octets
 
 #
+#	For send/recv CoA packets (like Auth-Type, Acct-Type, etc.)
+#
+ATTRIBUTE	Recv-CoA-Type				1131	integer
+ATTRIBUTE	Send-CoA-Type				1132	integer
+
+#
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.
 #

@@ -67,6 +67,10 @@ static const int JRADIUS_checksimul   = 5;
 static const int JRADIUS_pre_proxy    = 6;
 static const int JRADIUS_post_proxy   = 7;
 static const int JRADIUS_post_auth    = 8;
+#ifdef WITH_COA
+static const int JRADIUS_recv_coa     = 9;
+static const int JRADIUS_send_coa     = 10;
+#endif
 
 #define LOG_PREFIX  "rlm_jradius: "
 #define MAX_HOSTS   4
@@ -1062,6 +1066,17 @@ static int jradius_post_auth(void *instance, REQUEST *request)
   return rlm_jradius_call(JRADIUS_post_auth, instance, request, 0);
 }
 
+#ifdef WITH_COA
+static int jradius_recv_coa(void *instance, REQUEST *request)
+{
+  return rlm_jradius_call(JRADIUS_recv_coa, instance, request, 0);
+}
+static int jradius_send_coa(void *instance, REQUEST *request)
+{
+  return rlm_jradius_call(JRADIUS_send_coa, instance, request, 0);
+}
+#endif
+
 static int jradius_detach(void *instance)
 {
   JRADIUS *inst = (JRADIUS *) instance;
@@ -1085,6 +1100,10 @@ module_t rlm_jradius = {
     jradius_pre_proxy,
     jradius_post_proxy,
     jradius_post_auth
+#ifdef WITH_COA
+    , jradius_recv_coa,
+    jradius_send_coa
+#endif
   },
 };
 

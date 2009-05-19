@@ -117,7 +117,7 @@ home_server localhost-coa {
 home_server_pool coa {
 	type = fail-over
 
-	# Point to the CoA server aboce.
+	# Point to the CoA server above.
 	home_server = localhost-coa
 
 	#  CoA requests are run through the pre-proxy section.

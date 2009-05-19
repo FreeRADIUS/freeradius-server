@@ -288,5 +288,9 @@ module_t rlm_linelog = {
 		do_linelog, 	/* pre-proxy */
 		do_linelog,	/* post-proxy */
 		do_linelog	/* post-auth */
+#ifdef WITH_COA
+		, do_linelog,	/* recv-coa */
+		do_linelog	/* send-coa */
+#endif
 	},
 };

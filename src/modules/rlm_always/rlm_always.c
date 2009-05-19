@@ -166,5 +166,10 @@ module_t rlm_always = {
 		always_return,	       	/* pre-proxy */
 		always_return,		/* post-proxy */
 		always_return		/* post-auth */
+#ifdef WITH_COA
+		,
+		always_return,		/* recv-coa */
+		always_return		/* send-coa */
+#endif
 	},
 };

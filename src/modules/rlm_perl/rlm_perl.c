@@ -69,6 +69,10 @@ typedef struct perl_inst {
 	char	*func_pre_proxy;
 	char	*func_post_proxy;
 	char	*func_post_auth;
+#ifdef WITH_COA
+	char	*func_recv_coa;
+	char	*func_send_coa;
+#endif
 	char	*xlat_name;
 	char	*perl_flags;
 	PerlInterpreter *perl;
@@ -105,6 +109,12 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(PERL_INST,func_post_proxy), NULL, "post_proxy"},
 	{ "func_post_auth", PW_TYPE_STRING_PTR,
 	  offsetof(PERL_INST,func_post_auth), NULL, "post_auth"},
+#ifdef WITH_COA
+	{ "func_recv_coa", PW_TYPE_STRING_PTR,
+	  offsetof(PERL_INST,func_recv_coa), NULL, "recv_coa"},
+	{ "func_send_coa", PW_TYPE_STRING_PTR,
+	  offsetof(PERL_INST,func_send_coa), NULL, "send_coa"},
+#endif
 	{ "perl_flags", PW_TYPE_STRING_PTR,
 	  offsetof(PERL_INST,perl_flags), NULL, NULL},
 	{ "func_start_accounting", PW_TYPE_STRING_PTR,
@@ -868,6 +878,24 @@ static int perl_post_auth(void *instance, REQUEST *request)
 	return rlmperl_call(instance, request,
 			((PERL_INST *)instance)->func_post_auth);
 }
+#ifdef WITH_COA
+/*
+ *	Recv CoA request
+ */
+static int perl_recv_coa(void *instance, REQUEST *request)
+{
+	return rlmperl_call(instance, request,
+			((PERL_INST *)instance)->func_recv_coa);
+}
+/*
+ *	Send CoA request
+ */
+static int perl_send_coa(void *instance, REQUEST *request)
+{
+	return rlmperl_call(instance, request,
+			((PERL_INST *)instance)->func_send_coa);
+}
+#endif
 /*
  * Detach a instance give a chance to a module to make some internal setup ...
  */
@@ -970,5 +998,9 @@ module_t rlm_perl = {
 		perl_pre_proxy,		/* pre-proxy */
 		perl_post_proxy,	/* post-proxy */
 		perl_post_auth		/* post-auth */
+#ifdef WITH_COA
+		, perl_recv_coa,
+		perl_send_coa
+#endif
 	},
 };

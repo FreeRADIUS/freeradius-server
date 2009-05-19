@@ -24,7 +24,11 @@ enum {
   RLM_COMPONENT_PRE_PROXY,	/* 5 */
   RLM_COMPONENT_POST_PROXY,	/* 6 */
   RLM_COMPONENT_POST_AUTH,	/* 7 */
-  RLM_COMPONENT_COUNT		/* 8: How many components are there */
+#ifdef WITH_COA
+  RLM_COMPONENT_RECV_COA,	/* 8 */
+  RLM_COMPONENT_SEND_COA,	/* 9 */
+#endif
+  RLM_COMPONENT_COUNT		/* 8 / 10: How many components are there */
 };
 
 #define RLM_TYPE_THREAD_SAFE		(0 << 0)
@@ -68,6 +72,13 @@ int module_checksimul(int type, REQUEST *request, int maxsimul);
 int module_pre_proxy(int type, REQUEST *request);
 int module_post_proxy(int type, REQUEST *request);
 int module_post_auth(int type, REQUEST *request);
+#ifdef WITH_COA
+int module_recv_coa(int type, REQUEST *request);
+int module_send_coa(int type, REQUEST *request);
+#define MODULE_NULL_COA_FUNCS ,NULL,NULL
+#else
+#define MODULE_NULL_COA_FUNCS
+#endif
 int indexed_modcall(int comp, int idx, REQUEST *request);
 
 /*

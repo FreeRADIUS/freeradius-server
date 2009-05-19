@@ -189,6 +189,19 @@ static int policy_post_proxy(void *instance, REQUEST *request)
 				   "post-proxy");
 }
 
+#ifdef WITH_COA
+static int policy_recv_coa(void *instance, REQUEST *request)
+{
+	return rlm_policy_evaluate((rlm_policy_t *) instance, request,
+				   "recv-coa");
+}
+static int policy_send_coa(void *instance, REQUEST *request)
+{
+	return rlm_policy_evaluate((rlm_policy_t *) instance, request,
+				   "send-coa");
+}
+#endif
+
 /*
  *	The "free" functions are here, for no particular reason.
  */
@@ -322,5 +335,9 @@ module_t rlm_policy = {
 		policy_pre_proxy,	/* pre-proxy */
 		policy_post_proxy,	/* post-proxy */
 		policy_post_auth	/* post-auth */
+#ifdef WITH_COA
+		, policy_recv_coa,
+		policy_send_coa
+#endif
 	},
 };

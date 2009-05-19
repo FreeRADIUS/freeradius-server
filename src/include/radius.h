@@ -225,6 +225,8 @@
 #define PW_MODULE_RETURN_CODE		1108
 #define PW_PACKET_ORIGINAL_TIMESTAMP   	1109
 #define PW_HOME_SERVER_POOL		1111
+#define PW_RECV_COA_TYPE   		1131
+#define PW_SEND_COA_TYPE   		1132
 
 /*
  *	Integer Translations
