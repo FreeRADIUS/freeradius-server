@@ -348,6 +348,33 @@ static int rad_status_server(REQUEST *request)
 		break;
 #endif
 
+#ifdef WITH_COA
+		/*
+		 *	This is a vendor extension.  Suggested by Glen
+		 *	Zorn in IETF 72, and rejected by the rest of
+		 *	the WG.  We like it, so it goes in here.
+		 */
+	case RAD_LISTEN_COA:
+		dval = dict_valbyname(PW_RECV_COA_TYPE, "Status-Server");
+		if (dval) {
+			rcode = module_recv_coa(dval->value, request);
+		} else {
+			rcode = RLM_MODULE_OK;
+		}
+
+		switch (rcode) {
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			request->reply->code = PW_COA_ACK;
+			break;
+
+		default:
+			request->reply->code = 0; /* don't reply */
+			break;
+		}
+		break;
+#endif
+
 	default:
 		return 0;
 	}
@@ -404,6 +431,12 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 #ifdef WITH_DHCP
 	case RAD_LISTEN_DHCP:
 		name = "dhcp";
+		break;
+#endif
+
+#ifdef WITH_COA
+	case RAD_LISTEN_COA:
+		name = "coa";
 		break;
 #endif
 
@@ -933,6 +966,221 @@ static int rad_coa_reply(REQUEST *request)
 
 	return RLM_MODULE_OK;
 }
+
+/*
+ *	Receive a CoA packet.
+ */
+static int rad_coa_recv(REQUEST *request)
+{
+	int rcode = RLM_MODULE_OK;
+	int ack, nak;
+	VALUE_PAIR *vp;
+
+	/*
+	 *	Get the correct response
+	 */
+	switch (request->packet->code) {
+	case PW_COA_REQUEST:
+		ack = PW_COA_ACK;
+		nak = PW_COA_NAK;
+		break;
+
+	case PW_DISCONNECT_REQUEST:
+		ack = PW_DISCONNECT_ACK;
+		nak = PW_DISCONNECT_NAK;
+		break;
+
+	default:		/* shouldn't happen */
+		return RLM_MODULE_FAIL;
+	}
+
+#ifdef WITH_PROXY
+#define WAS_PROXIED (request->proxy)
+#else
+#define WAS_PROXIED (0)
+#endif
+
+	if (!WAS_PROXIED) {
+		/*
+		 *	RFC 5176 Section 3.3.  If we have a CoA-Request
+		 *	with Service-Type = Authorize-Only, it MUST
+		 *	have a State attribute in it.
+		 */
+		vp = pairfind(request->packet->vps, PW_SERVICE_TYPE);
+		if (request->packet->code == PW_COA_REQUEST) {
+			if (vp && (vp->vp_integer == 17)) {
+				vp = pairfind(request->packet->vps, PW_STATE);
+				if (!vp || (vp->length == 0)) {
+					RDEBUG("ERROR: CoA-Request with Service-Type = Authorize-Only MUST contain a State attribute");
+					request->reply->code = PW_COA_NAK;
+					return RLM_MODULE_FAIL;
+				}
+			}
+		} else if (vp) {
+			/*
+			 *	RFC 5176, Section 3.2.
+			 */
+			RDEBUG("ERROR: Disconnect-Request MUST NOT contain a Service-Type attribute");
+			request->reply->code = PW_DISCONNECT_NAK;
+			return RLM_MODULE_FAIL;
+		}
+
+		rcode = module_recv_coa(0, request);
+		switch (rcode) {
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_INVALID:
+		case RLM_MODULE_REJECT:
+		case RLM_MODULE_USERLOCK:
+		default:
+			request->reply->code = nak;
+			break;
+			
+		case RLM_MODULE_HANDLED:
+			return rcode;
+			
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			request->reply->code = ack;
+			break;
+		}
+	} else {
+		/*
+		 *	Start the reply code with the proxy reply
+		 *	code.
+		 */
+		request->reply->code = request->proxy_reply->code;
+	}
+
+	/*
+	 *	Copy State from the request to the reply.
+	 *	See RFC 5176 Section 3.3.
+	 */
+	vp = paircopy2(request->packet->vps, PW_STATE);
+	if (vp) pairadd(&request->reply->vps, vp);
+
+	/*
+	 *	We may want to over-ride the reply.
+	 */
+	rcode = module_send_coa(0, request);
+	switch (rcode) {
+		/*
+		 *	We need to send CoA-NAK back if Service-Type
+		 *	is Authorize-Only.  Rely on the user's policy
+		 *	to do that.  We're not a real NAS, so this
+		 *	restriction doesn't (ahem) apply to us.
+		 */
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_INVALID:
+		case RLM_MODULE_REJECT:
+		case RLM_MODULE_USERLOCK:
+		default:
+			request->reply->code = nak;
+			break;
+			
+		case RLM_MODULE_HANDLED:
+			return rcode;
+			
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_OK:
+		case RLM_MODULE_UPDATED:
+			request->reply->code = ack;
+			break;
+
+	}
+
+	return RLM_MODULE_OK;
+}
+
+
+/*
+ *	Check if an incoming request is "ok"
+ *
+ *	It takes packets, not requests.  It sees if the packet looks
+ *	OK.  If so, it does a number of sanity checks on it.
+  */
+static int coa_socket_recv(rad_listen_t *listener,
+			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+{
+	ssize_t		rcode;
+	int		code, src_port;
+	RADIUS_PACKET	*packet;
+	RAD_REQUEST_FUNP fun = NULL;
+	char		buffer[128];
+	RADCLIENT	*client;
+	fr_ipaddr_t	src_ipaddr;
+
+	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
+	if (rcode < 0) return 0;
+
+	RAD_STATS_TYPE_INC(listener, total_requests);
+
+	if (rcode < 20) {	/* AUTH_HDR_LEN */
+		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		return 0;
+	}
+
+	if ((client = client_listener_find(listener,
+					   &src_ipaddr, src_port)) == NULL) {
+		rad_recv_discard(listener->fd);
+		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
+
+		if (debug_flag > 0) {
+			char name[1024];
+
+			listener->print(listener, name, sizeof(name));
+
+			/*
+			 *	This is debugging rather than logging, so that
+			 *	DoS attacks don't affect us.
+			 */
+			DEBUG("Ignoring request to %s from unknown client %s port %d",
+			      name,
+			      inet_ntop(src_ipaddr.af, &src_ipaddr.ipaddr,
+					buffer, sizeof(buffer)), src_port);
+		}
+
+		return 0;
+	}
+
+	/*
+	 *	Some sanity checks, based on the packet code.
+	 */
+	switch(code) {
+	case PW_COA_REQUEST:
+	case PW_DISCONNECT_REQUEST:
+		fun = rad_coa_recv;
+		break;
+
+	default:
+		rad_recv_discard(listener->fd);
+		DEBUG("Invalid packet code %d sent to coa port from client %s port %d : IGNORED",
+		      code, client->shortname, src_port);
+		return 0;
+		break;
+	} /* switch over packet types */
+
+	/*
+	 *	Now that we've sanity checked everything, receive the
+	 *	packet.
+	 */
+	packet = rad_recv(listener->fd, client->message_authenticator);
+	if (!packet) {
+		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		DEBUG("%s", fr_strerror());
+		return 0;
+	}
+
+	if (!received_request(listener, packet, prequest, client)) {
+		rad_free(&packet);
+		return 0;
+	}
+
+	*pfun = fun;
+	return 1;
+}
 #endif
 
 #ifdef WITH_PROXY
@@ -996,6 +1244,17 @@ static int proxy_socket_recv(rad_listen_t *listener,
 		rad_free(&packet);
 		return 0;
 	}
+
+#ifdef WITH_COA
+	/*
+	 *	Distinguish proxied CoA requests from ones we
+	 *	originate.
+	 */
+	if ((fun == rad_coa_reply) &&
+	    (request->packet->code == request->proxy->code)) {
+		fun = rad_coa_recv;
+	}
+#endif
 
 	rad_assert(fun != NULL);
 	*pfun = fun;
@@ -1114,6 +1373,13 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 	  command_socket_print, command_socket_encode, command_socket_decode },
 #endif
 
+#ifdef WITH_COA
+	/* Change of Authorization */
+	{ common_socket_parse, NULL,
+	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
+	  socket_print, client_socket_encode, client_socket_decode },
+#endif
+
 };
 
 
@@ -1165,6 +1431,12 @@ static int listen_bind(rad_listen_t *this)
 #ifdef WITH_VMPS
 		case RAD_LISTEN_VQP:
 			sock->port = 1589;
+			break;
+#endif
+
+#ifdef WITH_COA
+		case RAD_LISTEN_COA:
+			sock->port = PW_COA_UDP_PORT;
 			break;
 #endif
 
@@ -1336,6 +1608,9 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 #ifdef WITH_DHCP
 	case RAD_LISTEN_DHCP:
 #endif
+#ifdef WITH_COA
+	case RAD_LISTEN_COA:
+#endif
 		this->data = rad_malloc(sizeof(listen_socket_t));
 		memset(this->data, 0, sizeof(listen_socket_t));
 		break;
@@ -1455,6 +1730,9 @@ static const FR_NAME_NUMBER listen_compare[] = {
 #endif
 #ifdef WITH_COMMAND_SOCKET
 	{ "control",	RAD_LISTEN_COMMAND },
+#endif
+#ifdef WITH_COA
+	{ "coa",	RAD_LISTEN_COA },
 #endif
 	{ NULL, 0 },
 };
