@@ -166,12 +166,15 @@ EAP-TTLS), the inner tunnel session can also reference
 allow you to address the relevant list in the outer tunnel session.
 
 The "coa" and "disconnect" sections can only be used when the server
-receives an Access-Request or Accounting-Request.  Adding one or more
-attributes to either of the "coa" or "disconnect" list causes server
-to originate a CoA-Request or Disconnect-Request packet.  That packet
-is sent when the current Access-Request or Accounting-Request has been
-finished, and a reply sent to the NAS.  See
-raddb/sites-available/originate-coa for additional information.
+receives an Access-Request or Accounting-Request.  Use "request" and
+"reply" instead of "coa" when the server receives a CoA-Request or
+Disconnect-Request packet.
+
+Adding one or more attributes to either of the "coa" or "disconnect"
+list causes server to originate a CoA-Request or Disconnect-Request
+packet.  That packet is sent when the current Access-Request or
+Accounting-Request has been finished, and a reply sent to the NAS.
+See raddb/sites-available/originate-coa for additional information.
 
 The only contents permitted in an "update" section are attributes and
 values.  The contents of the "update" section are described in the
