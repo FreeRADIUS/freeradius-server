@@ -438,19 +438,21 @@ static void make_passwd(uint8_t *output, int *outlen,
 	 *	If the length is zero, round it up.
 	 */
 	len = inlen;
+
+	if (len > MAX_PASS_LEN) len = MAX_PASS_LEN;
+
+	memcpy(passwd, input, len);
+	memset(passwd + len, 0, sizeof(passwd) - len);
+
 	if (len == 0) {
 		len = AUTH_PASS_LEN;
 	}
-	else if (len > MAX_PASS_LEN) len = MAX_PASS_LEN;
 
 	else if ((len & 0x0f) != 0) {
 		len += 0x0f;
 		len &= ~0x0f;
 	}
 	*outlen = len;
-
-	memcpy(passwd, input, len);
-	memset(passwd + len, 0, sizeof(passwd) - len);
 
 	fr_MD5Init(&context);
 	fr_MD5Update(&context, (const uint8_t *) secret, strlen(secret));
