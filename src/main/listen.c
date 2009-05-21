@@ -1646,7 +1646,7 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
  *	Not thread-safe, but all calls to it are protected by the
  *	proxy mutex in request_list.c
  */
-rad_listen_t *proxy_new_listener()
+rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr)
 {
 	int last_proxy_port, port;
 	rad_listen_t *this, *tmp, **last;
@@ -1656,35 +1656,38 @@ rad_listen_t *proxy_new_listener()
 
 	/*
 	 *	Find an existing proxy socket to copy.
-	 *
-	 *	FIXME: Make it per-realm, or per-home server!
 	 */
 	last_proxy_port = 0;
 	old = NULL;
 	last = &mainconfig.listen;
 	for (tmp = mainconfig.listen; tmp != NULL; tmp = tmp->next) {
-		if (tmp->type == RAD_LISTEN_PROXY) {
-			sock = tmp->data;
-			if (sock->port > last_proxy_port) {
-				last_proxy_port = sock->port + 1;
-			}
-			if (!old) old = sock;
+		/*
+		 *	Not proxy, ignore it.
+		 */
+		if (tmp->type != RAD_LISTEN_PROXY) continue;
+
+		sock = tmp->data;
+
+		/*
+		 *	If we were asked to copy a specific one, do
+		 *	so.
+		 */
+		if ((ipaddr->af != AF_UNSPEC) &&
+		    (fr_ipaddr_cmp(&sock->ipaddr, ipaddr) != 0)) continue;
+		
+		if (sock->port > last_proxy_port) {
+			last_proxy_port = sock->port + 1;
 		}
+		if (!old) old = sock;
 
 		last = &(tmp->next);
 	}
 
-	if (!old) {
+	if (!old) {		/* This is a serious error. */
 		listen_free(&this);
-		return NULL;	/* This is a serious error. */
+		return NULL;
 	}
 
-	/*
-	 *	FIXME: find a new IP address to listen on?
-	 *
-	 *	This could likely be done in the "home server"
-	 *	configuration, to have per-home-server source IP's.
-	 */
 	sock = this->data;
 	memcpy(&sock->ipaddr, &old->ipaddr, sizeof(sock->ipaddr));
 

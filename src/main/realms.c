@@ -297,6 +297,9 @@ static CONF_PARSER home_server_config[] = {
 	{ "secret",  PW_TYPE_STRING_PTR,
 	  offsetof(home_server,secret), NULL,  NULL},
 
+	{ "src_ipaddr",  PW_TYPE_IPADDR,
+	  offsetof(home_server,src_ipaddr), NULL,  NULL },
+
 	{ "response_window", PW_TYPE_INTEGER,
 	  offsetof(home_server,response_window), NULL,   "30" },
 	{ "max_outstanding", PW_TYPE_INTEGER,
@@ -1967,6 +1970,11 @@ home_server *home_server_ldb(const char *realmname,
 			 *	the 'hints' file.
 			 */
 			request->proxy->vps =  paircopy(request->packet->vps);
+
+			/*
+			 *	Set the source IP address for proxying.
+			 */
+			request->proxy->src_ipaddr = found->src_ipaddr;
 		}
 
 		/*

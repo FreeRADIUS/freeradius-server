@@ -256,10 +256,15 @@ listen {
 	#  Note: "type = proxy" lets you control the source IP used for
 	#        proxying packets, with some limitations:
 	#
-	#    * Only ONE proxy listener can be defined.
 	#    * A proxy listener CANNOT be used in a virtual server section.
 	#    * You should probably set "port = 0".
 	#    * Any "clients" configuration will be ignored.
+	#
+	#  See also proxy.conf, and the "src_ipaddr" configuration entry
+	#  in the sample "home_server" section.  It is possible to specify
+	#  the source IP address for packets sent to a home server.  In
+	#  that situation, you MUST have a proxy listener defined with
+	#  that IP address.
 
 	#  IP address on which to listen.
 	#  Allowed values are:

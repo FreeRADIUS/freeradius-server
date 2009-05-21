@@ -607,7 +607,7 @@ int fr_packet_list_num_elements(fr_packet_list_t *pl)
 int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 			      RADIUS_PACKET *request)
 {
-	int i, id, start;
+	int i, id, start, fd;
 	uint32_t free_mask;
 	fr_packet_dst2id_t my_pd, *pd;
 	fr_packet_socket_t *ps;
@@ -647,6 +647,7 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 	id = start = (int) fr_rand() & 0xff;
 
 	while (pd->id[id] == pl->mask) { /* all sockets are using this ID */
+	redo:
 		id++;
 		id &= 0xff;
 		if (id == start) return 0;
@@ -654,20 +655,48 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 
 	free_mask = ~((~pd->id[id]) & pl->mask);
 
-	start = -1;
+	/*
+	 *	This ID has at least one socket free.  Check the sockets
+	 *	to see if they are satisfactory for the caller.
+	 */
+	fd = -1;
 	for (i = 0; i < MAX_SOCKETS; i++) {
 		if (pl->sockets[i].sockfd == -1) continue; /* paranoia */
 
-		if ((free_mask & (1 << i)) == 0) {
-			start = i;
-			break;
-		}
+		/*
+		 *	This ID is allocated.
+		 */
+		if ((free_mask & (1 << i)) != 0) continue;
+		
+		/*
+		 *	If the caller cares about the source address,
+		 *	try to re-use that.  This means that the
+		 *	requested source address is set, AND this
+		 *	socket wasn't bound to "*", AND the requested
+		 *	source address is the same as this socket
+		 *	address.
+		 */
+		if ((request->src_ipaddr.af != AF_UNSPEC) &&
+		    !pl->sockets[i].inaddr_any &&
+		    (fr_ipaddr_cmp(&request->src_ipaddr, &pl->sockets[i].ipaddr) != 0)) continue;
+
+		/*
+		 *	They asked for a specific address, and this socket
+		 *	is bound to a wildcard address.  Ignore this one, too.
+		 */
+		if ((request->src_ipaddr.af != AF_UNSPEC) &&
+		    pl->sockets[i].inaddr_any) continue;
+		
+		fd = i;
+		break;
 	}
 
-	if (start < 0) return 0; /* bad error */
+	if (fd < 0) {
+		goto redo; /* keep searching IDs */
+	}
 
-	pd->id[id] |= (1 << start);
-	ps = &pl->sockets[start];
+	pd->id[id] |= (1 << fd);
+	ps = &pl->sockets[fd];
 
 	ps->num_outgoing++;
 	pl->num_outgoing++;

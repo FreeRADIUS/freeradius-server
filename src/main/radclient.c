@@ -490,6 +490,7 @@ static int send_one_packet(radclient_t *radclient)
 		 *	this packet.
 		 */
 	retry:
+		radclient->request->src_ipaddr.af = AF_UNSPEC;
 		rcode = fr_packet_list_id_alloc(pl, radclient->request);
 		if (rcode < 0) {
 			int mysockfd;

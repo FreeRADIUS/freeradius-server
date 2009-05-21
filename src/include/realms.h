@@ -78,6 +78,8 @@ typedef struct home_server {
 #ifdef WITH_STATS
 	int		number;
 
+	fr_ipaddr_t	src_ipaddr; /* preferred source IP address */
+
 	fr_stats_t	stats;
 
 	fr_stats_ema_t  ema;
