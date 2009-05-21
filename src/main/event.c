@@ -287,7 +287,7 @@ static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
 	 *	it to the tail of the list of listeners.  With
 	 *	some care, this can be thread-safe.
 	 */
-	proxy_listener = proxy_new_listener();
+	proxy_listener = proxy_new_listener(&packet->src_ipaddr);
 	if (!proxy_listener) {
 		RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
 		return 0;
