@@ -206,6 +206,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "\t-f filter\tPCAP filter. (default is udp port 1812 or 1813 or 1814)\n");
 	fprintf(output, "\t-h\t\tPrint this help message.\n");
 	fprintf(output, "\t-i interface\tInterface to capture.\n");
+	fprintf(output, "\t-I filename\tRead packets from filename.\n");
 	fprintf(output, "\t-p port\tList for packets on port.\n");
 	fprintf(output, "\t-r filter\tRADIUS attribute filter.\n");
 	fprintf(output, "\t-s secret\tRADIUS secret.\n");
@@ -224,6 +225,7 @@ int main(int argc, char *argv[])
 	char buffer[1024];
 	char *pcap_filter = NULL;
 	char *radius_filter = NULL;
+	char *filename = NULL;
 	int packet_count = -1;		/* how many packets to sniff */
 	int opt;
 	FR_TOKEN parsecode;
@@ -234,7 +236,7 @@ int main(int argc, char *argv[])
 	dev = pcap_lookupdev(errbuf);
 
 	/* Get options */
-	while ((opt = getopt(argc, argv, "c:d:f:hi:p:r:s:X")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:d:f:hi:I:p:r:s:X")) != EOF) {
 		switch (opt)
 		{
 		case 'c':
@@ -255,6 +257,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'i':
 			dev = optarg;
+			break;
+		case 'I':
+			filename = optarg;
 			break;
 		case 'p':
 			port = atoi(optarg);
@@ -312,7 +317,11 @@ int main(int argc, char *argv[])
 	printf("RADIUS secret: [%s]\n", radius_secret);
 
 	/* Open the device so we can spy */
-	descr = pcap_open_live(dev, SNAPLEN, 1, 0, errbuf);
+	if (filename) {
+		descr = pcap_open_offline(filename, errbuf);
+	} else {
+		descr = pcap_open_live(dev, SNAPLEN, 1, 0, errbuf);
+	}
 	if (descr == NULL)
 	{
 		printf("radsniff: pcap_open_live failed (%s)\n", errbuf);
