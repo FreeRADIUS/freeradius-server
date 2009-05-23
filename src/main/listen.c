@@ -1641,18 +1641,14 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 /*
  *	Externally visible function for creating a new proxy LISTENER.
  *
- *	For now, don't take ipaddr or port.
- *
  *	Not thread-safe, but all calls to it are protected by the
- *	proxy mutex in request_list.c
+ *	proxy mutex in event.c
  */
-rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr)
+rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists)
 {
 	int last_proxy_port, port;
 	rad_listen_t *this, *tmp, **last;
 	listen_socket_t *sock, *old;
-
-	this = listen_alloc(RAD_LISTEN_PROXY);
 
 	/*
 	 *	Find an existing proxy socket to copy.
@@ -1670,10 +1666,15 @@ rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr)
 
 		/*
 		 *	If we were asked to copy a specific one, do
-		 *	so.
+		 *	so.  If we're just finding one that already
+		 *	exists, return a pointer to it.  Otherwise,
+		 *	create ANOTHER one with the same IP address.
 		 */
 		if ((ipaddr->af != AF_UNSPEC) &&
-		    (fr_ipaddr_cmp(&sock->ipaddr, ipaddr) != 0)) continue;
+		    (fr_ipaddr_cmp(&sock->ipaddr, ipaddr) != 0)) {
+			if (exists) return tmp;
+			continue;
+		}
 		
 		if (sock->port > last_proxy_port) {
 			last_proxy_port = sock->port + 1;
@@ -1683,27 +1684,48 @@ rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr)
 		last = &(tmp->next);
 	}
 
-	if (!old) {		/* This is a serious error. */
-		listen_free(&this);
-		return NULL;
-	}
+	if (!old) {
+		/*
+		 *	The socket MUST already exist if we're binding
+		 *	to an address while proxying.
+		 *
+		 *	If we're initializing the server, it's OK for the
+		 *	socket to NOT exist.
+		 */
+		if (!exists) return NULL;
 
-	sock = this->data;
-	memcpy(&sock->ipaddr, &old->ipaddr, sizeof(sock->ipaddr));
+		this = listen_alloc(RAD_LISTEN_PROXY);
+
+		sock = this->data;
+		sock->ipaddr = *ipaddr;
+
+	} else {
+		this = listen_alloc(RAD_LISTEN_PROXY);
+		
+		sock = this->data;
+		sock->ipaddr = old->ipaddr;
+	}
 
 	/*
 	 *	Keep going until we find an unused port.
 	 */
 	for (port = last_proxy_port; port < 64000; port++) {
+		int rcode;
+
 		sock->port = port;
-		if (listen_bind(this) == 0) {
-			/*
-			 *	Add the new listener to the list of
-			 *	listeners.
-			 */
-			*last = this;
-			return this;
+
+		rcode = listen_bind(this);
+		if (rcode < 0) {
+			listen_free(&this);
+			return NULL;
 		}
+		
+		/*
+		 *	Add the new listener to the list of
+		 *	listeners.
+		 */
+		*last = this;
+		return this;
 	}
 
 	listen_free(&this);
@@ -2061,6 +2083,17 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		 */
 		if (!*head) return -1;
 
+		/*
+		 *	Create *additional* proxy listeners, based
+		 *	on their src_ipaddr.
+		 */
+		if (home_server_create_listeners(*head) != 0) return -1;
+
+		/*
+		 *
+		 */
+		while (*last) last = &((*last)->next);
+				
 		if (defined_proxy) goto done;
 
 		/*

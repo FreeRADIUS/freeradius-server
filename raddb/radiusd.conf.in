@@ -261,10 +261,9 @@ listen {
 	#    * Any "clients" configuration will be ignored.
 	#
 	#  See also proxy.conf, and the "src_ipaddr" configuration entry
-	#  in the sample "home_server" section.  It is possible to specify
-	#  the source IP address for packets sent to a home server.  In
-	#  that situation, you MUST have a proxy listener defined with
-	#  that IP address.
+	#  in the sample "home_server" section.  When you specify the
+	#  source IP address for packets sent to a home server, the
+	#  proxy listeners are automatically created.
 
 	#  IP address on which to listen.
 	#  Allowed values are:
