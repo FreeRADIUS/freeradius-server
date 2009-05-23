@@ -275,8 +275,8 @@ void realms_free(void)
 
 #ifdef WITH_PROXY
 static struct in_addr hs_ip4addr;
-static struct in_addr hs_srcip4addr;
 static struct in6_addr hs_ip6addr;
+static char *hs_srcipaddr = NULL;
 static char *hs_type = NULL;
 static char *hs_check = NULL;
 static char *hs_virtual_server = NULL;
@@ -298,8 +298,8 @@ static CONF_PARSER home_server_config[] = {
 	{ "secret",  PW_TYPE_STRING_PTR,
 	  offsetof(home_server,secret), NULL,  NULL},
 
-	{ "src_ipaddr",  PW_TYPE_IPADDR,
-	  0, &hs_srcip4addr,  NULL },
+	{ "src_ipaddr",  PW_TYPE_STRING_PTR,
+	  0, &hs_srcipaddr,  NULL },
 
 	{ "response_window", PW_TYPE_INTEGER,
 	  offsetof(home_server,response_window), NULL,   "30" },
@@ -385,7 +385,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 
 	memset(&hs_ip4addr, 0, sizeof(hs_ip4addr));
 	memset(&hs_ip6addr, 0, sizeof(hs_ip6addr));
-	memset(&hs_srcip4addr, 0, sizeof(hs_srcip4addr));
 	if (cf_section_parse(cs, home, home_server_config) < 0) {
 		free(home);
 		return 0;
@@ -436,6 +435,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 		hs_type = NULL;
 		free(hs_check);
 		hs_check = NULL;
+		free(hs_srcipaddr);
+		hs_srcipaddr = NULL;
 		return 0;
 	}
 
@@ -507,14 +508,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 	free(hs_type);
 	hs_type = NULL;
 
-	/*
-	 *	FIXME: Add support for IPv6 source addresses
-	 */
-	if (hs_srcip4addr.s_addr != htonl(INADDR_ANY)) {
-		home->src_ipaddr.af = AF_INET;
-		home->src_ipaddr.ipaddr.ip4addr = hs_srcip4addr;
-	}
-
 	if (!hs_check || (strcasecmp(hs_check, "none") == 0)) {
 		home->ping_check = HOME_PING_CHECK_NONE;
 
@@ -552,6 +545,19 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 		cf_log_err(cf_sectiontoitem(cs), "Duplicate home server");
 		goto error;
 	}
+
+	/*
+	 *	Look up the name using the *same* address family as
+	 *	for the home server.
+	 */
+	if (hs_srcipaddr && (home->ipaddr.af != AF_UNSPEC)) {
+		if (ip_hton(hs_srcipaddr, home->ipaddr.af, &home->src_ipaddr) < 0) {
+			cf_log_err(cf_sectiontoitem(cs), "Failed parsing src_ipaddr");
+			goto error;
+		}
+	}
+	free(hs_srcipaddr);
+	hs_srcipaddr = NULL;
 
 	if (!rbtree_insert(home_servers_byname, home)) {
 		cf_log_err(cf_sectiontoitem(cs),
