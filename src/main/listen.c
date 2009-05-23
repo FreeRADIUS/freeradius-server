@@ -1521,9 +1521,12 @@ static int listen_bind(rad_listen_t *this)
 	rcode = bind(this->fd, (struct sockaddr *) &salocal, salen);
 	fr_suid_down();
 	if (rcode < 0) {
+		char buffer[256];
 		close(this->fd);
-		radlog(L_ERR, "Failed binding to socket: %s\n",
-		       strerror(errno));
+		
+		this->print(this, buffer, sizeof(buffer));
+		radlog(L_ERR, "Failed binding to %s: %s\n",
+		       buffer, strerror(errno));
 		return -1;
 	}
 	
