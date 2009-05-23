@@ -2086,18 +2086,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		 */
 		if (!*head) return -1;
 
-		/*
-		 *	Create *additional* proxy listeners, based
-		 *	on their src_ipaddr.
-		 */
-		if (home_server_create_listeners(*head) != 0) return -1;
-
-		/*
-		 *
-		 */
-		while (*last) last = &((*last)->next);
-				
-		if (defined_proxy) goto done;
+		if (defined_proxy) goto check_home_servers;
 
 		/*
 		 *	Find the first authentication port,
@@ -2161,9 +2150,14 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 			radlog(L_ERR, "Failed to open socket for proxying");
 			return -1;
 		}
+		
+		/*
+		 *	Create *additional* proxy listeners, based
+		 *	on their src_ipaddr.
+		 */
+	check_home_servers:
+		if (home_server_create_listeners(*head) != 0) return -1;
 	}
-
- done:			/* used only in proxy code. */
 #endif
 
 	return 0;
