@@ -511,6 +511,11 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 	EAP_HANDLER	*handler;
 
 	/*
+	 *	Just in case the admin lists EAP in post-proxy-type Fail.
+	 */
+	if (!request->proxy_reply) return RLM_MODULE_NOOP;
+
+	/*
 	 *	If there was a handler associated with this request,
 	 *	then it's a tunneled request which was proxied...
 	 */
@@ -548,7 +553,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		 *	We are done, wrap the EAP-request in RADIUS to send
 		 *	with all other required radius attributes
 		 */
-		rcode = eap_compose(handler);
+		eap_compose(handler);
 
 		/*
 		 *	Add to the list only if it is EAP-Request, OR if
@@ -591,7 +596,6 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 	} else {
 		RDEBUG2("No pre-existing handler found");
 	}
-
 
 	/*
 	 *	There may be more than one Cisco-AVPair.
