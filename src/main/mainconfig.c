@@ -899,7 +899,6 @@ int read_mainconfig(int reload)
 
 	/*  Reload the modules.  */
 	if (setup_modules(reload, mainconfig.config) < 0) {
-		radlog(L_ERR, "Errors initializing modules");
 		return -1;
 	}
 
@@ -967,6 +966,15 @@ void hup_mainconfig(void)
 	cc = rad_malloc(sizeof(*cc));
 	memset(cc, 0, sizeof(*cc));
 
+	/*
+	 *	Save the current configuration.  Note that we do NOT
+	 *	free older ones.  We should probably do so at some
+	 *	point.  Doing so will require us to mark which modules
+	 *	are still in use, and which aren't.  Modules that
+	 *	can't be HUPed always use the original configuration.
+	 *	Modules that can be HUPed use one of the newer
+	 *	configurations.
+	 */
 	cc->created = time(NULL);
 	cc->cs = cs;
 	cc->next = cs_cache;
@@ -982,5 +990,5 @@ void hup_mainconfig(void)
 	 */
 	virtual_servers_load(cs);
 
-	virtual_servers_free(cc->created - 120);
+	virtual_servers_free(cc->created - mainconfig.max_request_time * 4);
 }
