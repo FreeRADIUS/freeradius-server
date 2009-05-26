@@ -587,6 +587,8 @@ static int WalkNodePostOrder(rbnode_t *X,
 int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order,
 		int (*callback)(void *, void *), void *context)
 {
+	if (tree->Root == NIL) return 0;
+
 	switch (order) {
 	case PreOrder:
 		return WalkNodePreOrder(tree->Root, callback, context);
