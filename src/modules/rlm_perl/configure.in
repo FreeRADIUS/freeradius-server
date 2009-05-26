@@ -50,6 +50,16 @@ if test x$with_[]modname != xno; then
 		targetname=
           fi
 
+	  AC_TRY_LINK([extern char Perl_hv_store();],
+		      [ Perl_hv_store()],
+		      BROKEN=,
+		      BROKEN="yes")
+
+	 if test "x$BROKEN" != "x"; then
+	 	fail="$fail libperl.so"
+		targetname=
+	  fi
+
           CFLAGS=$old_CFLAGS
         fi
 	targetname=modname
