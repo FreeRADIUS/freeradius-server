@@ -64,6 +64,11 @@ if test x$with_[]modname != xno; then
 		old_CFLAGS=$CFLAGS
 		CFLAGS="$CFLAGS $RB_CFLAGS -I${RB_ARCH_DIR} -I${RB_INC_DIR}"
 #		smart_try_dir=$RB_INC_DIR
+		FR_SMART_CHECK_INCLUDE(ruby.h)
+		if test "x$ac_cv_header_ruby_h" != "xyes"; then
+			fail="$fail ruby.h"
+			targetname=
+		fi
 		ruby_cflags=$CFLAGS
 		CFLAGS=$old_CFLAGS
 

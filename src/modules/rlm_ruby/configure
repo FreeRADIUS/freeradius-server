@@ -2903,6 +2903,209 @@ fi
 		old_CFLAGS=$CFLAGS
 		CFLAGS="$CFLAGS $RB_CFLAGS -I${RB_ARCH_DIR} -I${RB_INC_DIR}"
 #		smart_try_dir=$RB_INC_DIR
+
+
+
+ac_safe=`echo "ruby.h" | sed 'y%./+-%__pm%'`
+{ echo "$as_me:$LINENO: checking for ruby.h" >&5
+echo $ECHO_N "checking for ruby.h... $ECHO_C" >&6; }
+
+old_CFLAGS="$CFLAGS"
+smart_include=
+smart_include_dir=
+
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    CFLAGS="$old_CFLAGS -I$try"
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+		    #include <ruby.h>
+int
+main ()
+{
+ int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  smart_include="-I$try"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	smart_include=
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+    if test "x$smart_include" != "x"; then
+      break;
+    fi
+  done
+  CFLAGS="$old_CFLAGS"
+fi
+
+if test "x$smart_include" = "x"; then
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+		  #include <ruby.h>
+int
+main ()
+{
+ int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  smart_include=" "
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	smart_include=
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+if test "x$smart_include" = "x"; then
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=ruby.h
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
+
+
+  for try in $smart_include_dir /usr/local/include /opt/include; do
+    CFLAGS="$old_CFLAGS -I$try"
+    cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+
+		    #include <ruby.h>
+int
+main ()
+{
+ int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext
+if { (ac_try="$ac_compile"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_compile") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest.$ac_objext; then
+  smart_include="-I$try"
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	smart_include=
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+    if test "x$smart_include" != "x"; then
+      break;
+    fi
+  done
+  CFLAGS="$old_CFLAGS"
+fi
+
+if test "x$smart_include" != "x"; then
+  { echo "$as_me:$LINENO: result: yes" >&5
+echo "${ECHO_T}yes" >&6; }
+  eval "ac_cv_header_$ac_safe=yes"
+  CFLAGS="$old_CFLAGS $smart_include"
+  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+else
+  { echo "$as_me:$LINENO: result: no" >&5
+echo "${ECHO_T}no" >&6; }
+fi
+
+		if test "x$ac_cv_header_ruby_h" != "xyes"; then
+			fail="$fail ruby.h"
+			targetname=
+		fi
 		ruby_cflags=$CFLAGS
 		CFLAGS=$old_CFLAGS
 
