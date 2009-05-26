@@ -1094,7 +1094,7 @@ static int rad_coa_recv(REQUEST *request)
 			 *	Otherwise an "ok" here will re-write a
 			 *	NAK to an ACK.
 			 */
-			if (request->reply->code != 0) {
+			if (request->reply->code == 0) {
 				request->reply->code = ack;
 			}
 			break;
