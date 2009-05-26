@@ -468,8 +468,8 @@ module_t rlm_ruby = {
         ruby_postproxy, /* post-proxy */
         ruby_postauth /* post-auth */
 #ifdef WITH_COA
-	, ruby_recv_coa,
-	ruby_send_coa
+	, ruby_recvcoa,
+	ruby_sendcoa
 #endif
     },
 };
