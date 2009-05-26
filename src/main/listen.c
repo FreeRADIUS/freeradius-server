@@ -1076,6 +1076,9 @@ static int rad_coa_recv(REQUEST *request)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
+			/*
+			 *	Over-ride an ACK with a NAK
+			 */
 			request->reply->code = nak;
 			break;
 			
@@ -1086,7 +1089,14 @@ static int rad_coa_recv(REQUEST *request)
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			request->reply->code = ack;
+			/*
+			 *	Do NOT over-ride a previously set value.
+			 *	Otherwise an "ok" here will re-write a
+			 *	NAK to an ACK.
+			 */
+			if (request->reply->code != 0) {
+				request->reply->code = ack;
+			}
 			break;
 
 	}
