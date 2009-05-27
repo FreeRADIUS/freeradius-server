@@ -1820,7 +1820,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
  */
 RADIUS_PACKET *rad_recv(int fd, int flags)
 {
-	int sockflags = 0;
+	int sock_flags = 0;
 	RADIUS_PACKET		*packet;
 
 	/*
