@@ -1820,6 +1820,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
  */
 RADIUS_PACKET *rad_recv(int fd, int flags)
 {
+	int sockflags = 0;
 	RADIUS_PACKET		*packet;
 
 	/*
@@ -1831,7 +1832,12 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	}
 	memset(packet, 0, sizeof(*packet));
 
-	packet->data_len = rad_recvfrom(fd, &packet->data, 0,
+	if (flags & 0x02) {
+		sock_flags = MSG_PEEK;
+		flags &= ~0x02;
+	}
+
+	packet->data_len = rad_recvfrom(fd, &packet->data, sock_flags,
 					&packet->src_ipaddr, &packet->src_port,
 					&packet->dst_ipaddr, &packet->dst_port);
 

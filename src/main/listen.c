@@ -209,12 +209,12 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 
 	request->listener = listener;
 	request->client = client;
-	request->packet = rad_alloc(0);
-	if (!request->packet) {
+	request->packet = rad_recv(listener->fd, 0x02); /* MSG_PEEK */
+	if (!request->packet) {				/* badly formed, etc */
 		request_free(&request);
 		goto unknown;
 	}
-	request->reply = rad_alloc(0);
+	request->reply = rad_alloc_reply(request->packet);
 	if (!request->reply) {
 		request_free(&request);
 		goto unknown;
@@ -233,23 +233,6 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	 *
 	 *	and create the RADCLIENT structure from that.
 	 */
-
-	sock = listener->data;
-	request->packet->sockfd = listener->fd;
-	request->packet->src_ipaddr = *ipaddr;
-	request->packet->src_port = 0; /* who cares... */
-	request->packet->dst_ipaddr = sock->ipaddr;
-	request->packet->dst_port = sock->port;
-
-	request->reply->sockfd = request->packet->sockfd;
-	request->reply->dst_ipaddr = request->packet->src_ipaddr;
-	request->reply->src_ipaddr = request->packet->dst_ipaddr;
-	request->reply->dst_port = request->packet->src_port;
-	request->reply->src_port = request->packet->dst_port;
-	request->reply->id = request->packet->id;
-	request->reply->code = 0; /* UNKNOWN code */
-
-	
 	DEBUG("server %s {", request->server);
 
 	rcode = module_authorize(0, request);
