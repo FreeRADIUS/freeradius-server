@@ -763,7 +763,8 @@ static void ping_home_server(void *ctx)
 	REQUEST *request;
 	VALUE_PAIR *vp;
 
-	if (home->state == HOME_STATE_ALIVE) {
+	if ((home->state == HOME_STATE_ALIVE) ||
+	    (home->ping_check == HOME_PING_CHECK_NONE)) {
 		return;
 	}
 
