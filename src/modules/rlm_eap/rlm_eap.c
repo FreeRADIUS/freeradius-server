@@ -411,8 +411,11 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 */
 		vp = pairfind(request->reply->vps, PW_USER_NAME);
 		if (!vp) {
-			vp = pairmake("User-Name", request->username->vp_strvalue,
+			vp = pairmake("User-Name", "",
 				      T_OP_EQ);
+			strlcpy(vp->vp_strvalue, request->username->vp_strvalue,
+				sizeof(vp->vp_strvalue));
+			vp->length = request->username->length;
 			rad_assert(vp != NULL);
 			pairadd(&(request->reply->vps), vp);
 		}
