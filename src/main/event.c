@@ -3469,6 +3469,8 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 #ifdef WITH_PROXY
 	if (mainconfig.proxy_requests) {
+		pthread_mutexattr_t attr;
+
 		/*
 		 *	Create the tree for managing proxied requests and
 		 *	responses.
@@ -3477,11 +3479,23 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		if (!proxy_list) return 0;
 
 #ifdef HAVE_PTHREAD_H
+		pthread_mutexattr_init(&attr);
+
+#ifdef PTHREAD_MUTEX_RECURSIVE
+		if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) < 0) {
+			radlog(L_ERR, "FATAL: Failed to set type for proxy mutex: %s",
+			       strerror(errno));
+			exit(1);
+		}
+#endif
+
 		if (pthread_mutex_init(&proxy_mutex, NULL) != 0) {
 			radlog(L_ERR, "FATAL: Failed to initialize proxy mutex: %s",
 			       strerror(errno));
 			exit(1);
 		}
+
+		pthread_mutexattr_destroy(&attr);
 #endif
 	}
 #endif
