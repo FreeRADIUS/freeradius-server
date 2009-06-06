@@ -109,6 +109,45 @@ static int dhcp_header_sizes[] = {
 #define DEFAULT_PACKET_SIZE (300)
 #define MAX_PACKET_SIZE (1500 - 40)
 
+static int getcode(const uint8_t *data, size_t data_len, int *code)
+{
+	uint8_t *end, *p;
+
+	end = data + data_len;
+
+	while (p < end) {
+		/*
+		 *	End of packet or end of options
+		 */
+		if ((p[0] == 0) || (p[0] == 255)) return 0;
+
+		/*
+		 *	Not enough room for 0x3501cc
+		 */
+		if ((end - p) < 3) return 0; /* t l v */
+
+		/*
+		 *	Option is larger than the packet.
+		 */
+		if ((p + p[1] + 2) > end) return 0;
+
+		/*
+		 *	Found it.  Ensure it's well formed.
+		 */
+		if (p[0] == 53) {
+			if ((p[1] != 1) || (p[2] == 0) || (p[2] > 8)) {
+				return 0;
+			}
+			*code = p[2];
+			return 1;
+		}
+
+		p += 2 + p[1];
+	}
+
+	return 0;
+}
+
 /*
  *	DHCPv4 is only for IPv4.  Broadcast only works if udpfromto is
  *	defined.
@@ -191,10 +230,20 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	    (packet->data[241] != 1) ||
 	    (packet->data[242] == 0) ||
 	    (packet->data[242] > 8)) {
-		fprintf(stderr, "Unknown, or badly formatted DHCP packet\n");
-		rad_free(&packet);
-		return NULL;
+		/*
+		 *	Some clients send the packet type buried
+		 *	inside of the packet...
+		 */
+		if (!getcode(packet->data + 240, packet->data_len - 240,
+			     &packet->code)) {
+			fprintf(stderr, "Unknown, or badly formatted DHCP packet\n");
+			rad_free(&packet);
+			return NULL;
+		}
+	} else {
+		packet->code = packet->data[242];
 	}
+	packet->code |= PW_DHCP_OFFSET;
 
 	/*
 	 *	Create a unique vector from the MAC address and the
@@ -209,14 +258,12 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	 */
 	memset(packet->vector, 0, sizeof(packet->vector));
 	memcpy(packet->vector, packet->data + 28, packet->data[2]);
-	packet->vector[packet->data[2]] = packet->data[242];
+	packet->vector[packet->data[2]] = packet->code & 0xff;
 
 	/*
 	 *	FIXME: for DISCOVER / REQUEST: src_port == dst_port + 1
 	 *	FIXME: for OFFER / ACK       : src_port = dst_port - 1
 	 */
-
-	packet->code = PW_DHCP_OFFSET | packet->data[242];
 
 	/*
 	 *	Unique keys are xid, client mac, and client ID?
