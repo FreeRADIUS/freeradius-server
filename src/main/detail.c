@@ -98,6 +98,10 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 		data->delay_time = data->retry_interval * USEC;
 		data->signal = 1;
 		data->state = STATE_NO_REPLY;
+
+		RDEBUG("No response configured for request %d.  Will retry in %d seconds",
+		       request->number, data->retry_interval);
+
 		radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
 		return 0;
 	}
@@ -168,11 +172,10 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 *	handle this, then it's very broken.
 	 */
 	if (data->delay_time > (USEC / 4)) data->delay_time= USEC / 4;
-
-#if 0
-	DEBUG2("RTT %d\tdelay %d", data->srtt, data->delay_time);
-#endif
-
+	
+	RDEBUG3("Received response for request %d.  Will read the next packet in %d seconds",
+		request->number, data->delay_time / USEC);
+	
 	data->last_packet = now;
 	data->signal = 1;
 	data->state = STATE_REPLIED;
