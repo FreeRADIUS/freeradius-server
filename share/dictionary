@@ -98,6 +98,7 @@ $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.cablelabs
 $INCLUDE dictionary.cabletron
+$INCLUDE dictionary.chillispot
 $INCLUDE dictionary.cisco
 #
 #	 The Cisco VPN300 dictionary is the same as the altiga one.
