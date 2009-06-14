@@ -46,11 +46,14 @@ static int dhcp_process(REQUEST *request)
 	vp = pairfind(request->reply->vps, DHCP2ATTR(53)); /* DHCP-Message-Type */
 	if (vp) {
 		request->reply->code = vp->vp_integer;
+		if (request->reply->code < PW_DHCP_OFFSET) {
+			request->reply->code += PW_DHCP_OFFSET;
+		}
 	}
 	else switch (rcode) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
-		if (request->packet->code == (PW_DHCP_DISCOVER)) {
+		if (request->packet->code == PW_DHCP_DISCOVER) {
 			request->reply->code = PW_DHCP_OFFER;
 			break;
 
