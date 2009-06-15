@@ -1970,7 +1970,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 	 *	Process it through the normal section again, but ONLY
 	 *	if we received a proxy reply..
 	 */
-	if (!request->proxy_reply) {
+	if (request->proxy_reply) {
 		if (request->server) RDEBUG("server %s {",
 					    request->server != NULL ?
 					    request->server : ""); 
