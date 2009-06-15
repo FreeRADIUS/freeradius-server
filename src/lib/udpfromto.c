@@ -71,7 +71,7 @@ int udpfromto_init(int s)
 		flag = IP_PKTINFO;
 #endif
 		
-#ifdef HAVE_IP_RECVDSTADDR
+#ifdef IP_RECVDSTADDR
 		/*
 		 *	Set the IP_RECVDSTADDR option (BSD).  Note:
 		 *	IP_RECVDSTADDR == IP_SENDSRCADDR
@@ -117,7 +117,7 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	struct sockaddr_storage si;
 	socklen_t si_len = sizeof(si);
 
-#if !defined(HAVE_IP_PKTINFO) && !defined(HAVE_IP_RECVDSTADDR) && !defined (HAVE_IN6_PKTINFO)
+#if !defined(HAVE_IP_PKTINFO) && !defined(IP_RECVDSTADDR) && !defined (HAVE_IN6_PKTINFO)
 	/*
 	 *	If the recvmsg() flags aren't defined, fall back to
 	 *	using recvfrom().
@@ -154,7 +154,7 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 		*tolen = sizeof(*dst);
 		*dst = *src;
 
-#if !defined(HAVE_IP_PKTINFO) && !defined(HAVE_IP_RECVDSTADDR)
+#if !defined(HAVE_IP_PKTINFO) && !defined(IP_RECVDSTADDR)
 		/*
 		 *	recvmsg() flags aren't defined.  Use recvfrom()
 		 */
@@ -225,8 +225,8 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 		}
 #endif
 
-#ifdef HAVE_IP_RECVDSTADDR
-		if ((cmsg->cmsg_level == IPPROTO_IP)
+#ifdef IP_RECVDSTADDR
+		if ((cmsg->cmsg_level == IPPROTO_IP) &&
 		    (cmsg->cmsg_type == IP_RECVDSTADDR)) {
 			struct in_addr *i = (struct in_addr *) CMSG_DATA(cmsg);
 			((struct sockaddr_in *)to)->sin_addr = *i;
@@ -259,7 +259,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	struct iovec iov;
 	char cbuf[256];
 
-#if !defined(HAVE_IP_PKTINFO) && !defined(HAVE_IP_SENDSRCADDR) && !defined(HAVE_IN6_PKTINFO)
+#if !defined(HAVE_IP_PKTINFO) && !defined(IP_SENDSRCADDR) && !defined(HAVE_IN6_PKTINFO)
 	/*
 	 *	If the sendmsg() flags aren't defined, fall back to
 	 *	using sendto().
@@ -302,7 +302,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 		pkt->ipi_spec_dst = s4->sin_addr;
 #endif
 
-#ifdef HAVE_IP_SENDSRCADDR
+#ifdef IP_SENDSRCADDR
 		struct in_addr *in;
 
 		msgh.msg_control = cbuf;
