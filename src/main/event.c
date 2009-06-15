@@ -1952,21 +1952,34 @@ static int proxy_to_virtual_server(REQUEST *request)
 	radius_handle_request(fake, fun);
 	RDEBUG2("<<< Received proxied response code %d from internal virtual server.", fake->reply->code);
 
-	request->proxy_reply = fake->reply;
-	fake->reply = NULL;
+	if (fake->reply->code != 0) {
+		request->proxy_reply = fake->reply;
+		fake->reply = NULL;
+	} else {
+		/*
+		 *	There was no response
+		 */
+		setup_post_proxy_fail(request);
+	}
 
 	ev_request_free(&fake);
 
 	process_proxy_reply(request);
 
-	if (request->server) RDEBUG("server %s {",
-				    request->server != NULL ?
-				    request->server : ""); 
-	fun(request);
-	
-	if (request->server) RDEBUG("} # server %s",
-				    request->server != NULL ?
-				    request->server : "");
+	/*
+	 *	Process it through the normal section again, but ONLY
+	 *	if we received a proxy reply..
+	 */
+	if (!request->proxy_reply) {
+		if (request->server) RDEBUG("server %s {",
+					    request->server != NULL ?
+					    request->server : ""); 
+		fun(request);
+		
+		if (request->server) RDEBUG("} # server %s",
+					    request->server != NULL ?
+					    request->server : "");
+	}
 
 	return 2;		/* success, but NOT '1' !*/
 }
