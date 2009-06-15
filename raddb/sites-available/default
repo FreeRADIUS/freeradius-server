@@ -301,7 +301,7 @@ authenticate {
 #		if (handled && (Response-Packet-Type == Access-Challenge)) {
 #			attr_filter.access_challenge.post-auth
 #			handled  # override the "updated" code from attr_filter
-		}
+#		}
 #	}
 }
 
