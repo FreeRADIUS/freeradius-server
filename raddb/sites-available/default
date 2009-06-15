@@ -287,6 +287,22 @@ authenticate {
 	#
 	#  Allow EAP authentication.
 	eap
+
+	#
+	#  The older configurations sent a number of attributes in
+	#  Access-Challenge packets, which wasn't strictly correct.
+	#  If you want to filter out these attributes, uncomment
+	#  the following lines.
+	#
+#	Auth-Type eap {
+#		eap {
+#			handled = 1  
+#		}
+#		if (handled && (Response-Packet-Type == Access-Challenge)) {
+#			attr_filter.access_challenge.post-auth
+#			handled  # override the "updated" code from attr_filter
+		}
+#	}
 }
 
 
