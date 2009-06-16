@@ -35,64 +35,11 @@ RCSID("$Id$")
 
 static const char *radius_secret = "testing123";
 static VALUE_PAIR *filter_vps = NULL;
-static int debug_flag = 0;
 #undef DEBUG
-#define DEBUG if (debug_flag) printf
+#define DEBUG if (fr_debug_flag) printf
 
-static const char *packet_codes[] = {
-  "",
-  "Access-Request",
-  "Access-Accept",
-  "Access-Reject",
-  "Accounting-Request",
-  "Accounting-Response",
-  "Accounting-Status",
-  "Password-Request",
-  "Password-Accept",
-  "Password-Reject",
-  "Accounting-Message",
-  "Access-Challenge",
-  "Status-Server",
-  "Status-Client",
-  "14",
-  "15",
-  "16",
-  "17",
-  "18",
-  "19",
-  "20",
-  "Resource-Free-Request",
-  "Resource-Free-Response",
-  "Resource-Query-Request",
-  "Resource-Query-Response",
-  "Alternate-Resource-Reclaim-Request",
-  "NAS-Reboot-Request",
-  "NAS-Reboot-Response",
-  "28",
-  "Next-Passcode",
-  "New-Pin",
-  "Terminate-Session",
-  "Password-Expired",
-  "Event-Request",
-  "Event-Response",
-  "35",
-  "36",
-  "37",
-  "38",
-  "39",
-  "Disconnect-Request",
-  "Disconnect-ACK",
-  "Disconnect-NAK",
-  "CoF-Request",
-  "CoF-ACK",
-  "CoF-NAK",
-  "46",
-  "47",
-  "48",
-  "49",
-  "IP-Address-Allocate",
-  "IP-Address-Release"
-};
+static rbtree_t *filter_tree = NULL;
+typedef int (*rbcmp)(const void *, const void *);
 
 static int filter_packet(RADIUS_PACKET *packet)
 {
@@ -115,10 +62,61 @@ static int filter_packet(RADIUS_PACKET *packet)
 					fail++;
 			}
 	}
+
+
 	if (fail == 0 && pass != 0) {
-		return 0;
+		/*
+		 *	Cache authentication requests, as the replies
+		 *	may not match the RADIUS filter.
+		 */
+		if ((packet->code == PW_AUTHENTICATION_REQUEST) ||
+		    (packet->code == PW_ACCOUNTING_REQUEST)) {
+			rbtree_deletebydata(filter_tree, packet);
+			
+			if (!rbtree_insert(filter_tree, packet)) {
+			oom:
+				fprintf(stderr, "radsniff: Out of memory\n");
+				exit(1);
+			}
+		}
+		return 0;	/* matched */
 	}
 
+	/*
+	 *	Don't create erroneous matches.
+	 */
+	if ((packet->code == PW_AUTHENTICATION_REQUEST) ||
+	    (packet->code == PW_ACCOUNTING_REQUEST)) {
+		rbtree_deletebydata(filter_tree, packet);
+		return 1;
+	}
+	
+	/*
+	 *	Else see if a previous Access-Request
+	 *	matched.  If so, also print out the
+	 *	matching accept, reject, or challenge.
+	 */
+	if ((packet->code == PW_AUTHENTICATION_ACK) ||
+	    (packet->code == PW_AUTHENTICATION_REJECT) ||
+	    (packet->code == PW_ACCESS_CHALLENGE) ||
+	    (packet->code == PW_ACCOUNTING_RESPONSE)) {
+		RADIUS_PACKET *reply;
+
+		/*
+		 *	This swaps the various fields.
+		 */
+		reply = rad_alloc_reply(packet);
+		if (!reply) goto oom;
+		
+		compare = 1;
+		if (rbtree_finddata(filter_tree, reply)) {
+			compare = 0;
+		}
+		
+		rad_free(&reply);
+		return compare;
+	}
+	
 	return 1;
 }
 
@@ -142,7 +140,7 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 
 	/* Define our packet's attributes */
 	ethernet = (const struct ethernet_header*)(data);
-	ip = (const struct ip_header*)(ethernet + size_ethernet);
+	ip = (const struct ip_header*)(data + size_ethernet);
 	udp = (const struct udp_header*)(data + size_ethernet + size_ip);
 	payload = (const uint8_t *)(data + size_ethernet + size_ip + size_udp);
 
@@ -165,6 +163,11 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 
 	if (!rad_packet_ok(packet, 0)) {
 		fr_perror("Packet");
+		
+		fprintf(stderr, "\tFrom:    %s:%d\n", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
+		fprintf(stderr, "\tTo:      %s:%d\n", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
+		fprintf(stderr, "\tType:    %s\n", fr_packet_codes[packet->code]);
+
 		free(packet);
 		return;
 	}
@@ -177,23 +180,36 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 		fr_perror("decode");
 		return;
 	}
+
 	if (filter_vps && filter_packet(packet)) {
 		free(packet);
 		DEBUG("Packet number %d doesn't match\n", count++);
 		return;
 	}
+	printf("%s Id %d\t", fr_packet_codes[packet->code], packet->id);
 
 	/* Print the RADIUS packet */
-	printf("Packet number %d has just been sniffed\n", count++);
-	printf("\tFrom:    %s:%d\n", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
-	printf("\tTo:      %s:%d\n", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
-	printf("\tType:    %s\n", packet_codes[packet->code]);
+	printf("%s:%d -> ", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
+	printf("%s:%d", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
+	if (fr_debug_flag) printf("\t(%d packets)", count++);
+	printf("\t%08x", header->ts.tv_sec);
+	printf("\n");
 	if (packet->vps != NULL) {
 		vp_printlist(stdout, packet->vps);
 		pairfree(&packet->vps);
 	}
+	printf("\n");
 	fflush(stdout);
-	free(packet);
+
+	/*
+	 *	If we're doing filtering, Access-Requests are cached
+	 *	in the filter tree.
+	 */
+	if (!filter_vps ||
+	    ((packet->code != PW_AUTHENTICATION_REQUEST) &&
+	     (packet->code != PW_ACCOUNTING_REQUEST))) {
+		free(packet);
+	}
 }
 
 static void NEVER_RETURNS usage(int status)
@@ -271,7 +287,7 @@ int main(int argc, char *argv[])
 			radius_secret = optarg;
 			break;
 		case 'X':
-		  	debug_flag = 1;
+		  	fr_debug_flag++;
 			break;
 		default:
 			usage(1);
@@ -299,22 +315,32 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "radsniff: Empty RADIUS filter \"%s\"\n", radius_filter);
 			exit(1);
 		}
+
+		filter_tree = rbtree_create((rbcmp) fr_packet_cmp,
+					    free, 0);
+		if (!filter_tree) {
+			fprintf(stderr, "radsniff: Failed creating filter tree\n");
+			exit(1);
+		}
 	}
 
 	/* Set our device */
 	pcap_lookupnet(dev, &netp, &maskp, errbuf);
 
 	/* Print device to the user */
-	printf("Device: [%s]\n", dev);
-	if (packet_count > 0) {
-		printf("Num of packets: [%d]\n", packet_count);
+	if (fr_debug_flag) {
+		if (dev) printf("Device: [%s]\n", dev);
+		if (packet_count > 0) {
+			printf("Num of packets: [%d]\n",
+			       packet_count);
+		}
+		printf("PCAP filter: [%s]\n", pcap_filter);
+		if (filter_vps) {
+			printf("RADIUS filter:\n");
+			vp_printlist(stdout, filter_vps);
+		}
+		printf("RADIUS secret: [%s]\n", radius_secret);
 	}
-	printf("PCAP filter: [%s]\n", pcap_filter);
-	if (filter_vps != NULL) {
-		printf("RADIUS filter:\n");
-		vp_printlist(stdout, filter_vps);
-	}
-	printf("RADIUS secret: [%s]\n", radius_secret);
 
 	/* Open the device so we can spy */
 	if (filename) {
@@ -344,7 +370,8 @@ int main(int argc, char *argv[])
 	pcap_loop(descr, packet_count, got_packet, NULL);
 	pcap_close(descr);
 
-	printf("Done sniffing\n");
-	fflush(stdout);
+	if (filter_tree) rbtree_free(filter_tree);
+
+	DEBUG("Done sniffing\n");
 	return 0;
 }
