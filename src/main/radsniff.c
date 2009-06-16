@@ -38,6 +38,7 @@ static VALUE_PAIR *filter_vps = NULL;
 #undef DEBUG
 #define DEBUG if (fr_debug_flag) printf
 
+static int minimal = 0;
 static rbtree_t *filter_tree = NULL;
 typedef int (*rbcmp)(const void *, const void *);
 
@@ -194,7 +195,7 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 	if (fr_debug_flag) printf("\t(%d packets)", count++);
 	printf("\t%08x", header->ts.tv_sec);
 	printf("\n");
-	if (packet->vps != NULL) {
+	if (!minimal && packet->vps) {
 		vp_printlist(stdout, packet->vps);
 		pairfree(&packet->vps);
 	}
@@ -223,10 +224,11 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "\t-h\t\tPrint this help message.\n");
 	fprintf(output, "\t-i interface\tInterface to capture.\n");
 	fprintf(output, "\t-I filename\tRead packets from filename.\n");
+	fprintf(output, "\t-m\t\tPrint packet headers only, not contents.\n");
 	fprintf(output, "\t-p port\tList for packets on port.\n");
 	fprintf(output, "\t-r filter\tRADIUS attribute filter.\n");
 	fprintf(output, "\t-s secret\tRADIUS secret.\n");
-	fprintf(output, "\t-X\t\tPrint out debugging information.\n");
+	fprintf(output, "\t-x\t\tPrint out debugging information.\n");
 	exit(status);
 }
 
@@ -252,7 +254,7 @@ int main(int argc, char *argv[])
 	dev = pcap_lookupdev(errbuf);
 
 	/* Get options */
-	while ((opt = getopt(argc, argv, "c:d:f:hi:I:p:r:s:X")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:d:f:hi:I:mp:r:s:xX")) != EOF) {
 		switch (opt)
 		{
 		case 'c':
@@ -277,6 +279,9 @@ int main(int argc, char *argv[])
 		case 'I':
 			filename = optarg;
 			break;
+		case 'm':
+			minimal = 1;
+			break;
 		case 'p':
 			port = atoi(optarg);
 			break;
@@ -286,7 +291,8 @@ int main(int argc, char *argv[])
 		case 's':
 			radius_secret = optarg;
 			break;
-		case 'X':
+		case 'x':
+		case 'X':	/* for backwards compatibility */
 		  	fr_debug_flag++;
 			break;
 		default:
