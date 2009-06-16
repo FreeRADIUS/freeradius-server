@@ -45,6 +45,7 @@ typedef struct module_instance_t {
 	pthread_mutex_t		*mutex;
 #endif
 	CONF_SECTION		*cs;
+	int			dead;
 	fr_module_hup_t	       	*mh;
 } module_instance_t;
 

@@ -276,6 +276,12 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request)
 	RDEBUG3("  modsingle[%s]: calling %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
+
+	if (sp->modinst->dead) {
+		myresult = RLM_MODULE_FAIL;
+		goto fail;
+	}
+
 	safe_lock(sp->modinst);
 
 	/*
@@ -288,6 +294,8 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request)
 
 	request->module = "";
 	safe_unlock(sp->modinst);
+
+ fail:
 	RDEBUG3("  modsingle[%s]: returned from %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);

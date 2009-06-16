@@ -1439,6 +1439,40 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	return 1;		/* success */
 }
 
+static int command_set_module_status(rad_listen_t *listener, int argc, char *argv[])
+{
+	CONF_SECTION *cs;
+	module_instance_t *mi;
+
+	if (argc < 2) {
+		cprintf(listener, "ERROR: No module name or status was given\n");
+		return 0;
+	}
+
+	cs = cf_section_find("modules");
+	if (!cs) return 0;
+
+	mi = find_module_instance(cs, argv[0], 0);
+	if (!mi) {
+		cprintf(listener, "ERROR: No such module \"%s\"\n", argv[0]);
+		return 0;
+	}
+
+
+	if (strcmp(argv[1], "alive") == 0) {
+		mi->dead = FALSE;
+
+	} else if (strcmp(argv[1], "dead") == 0) {
+		mi->dead = TRUE;
+
+	} else {
+		cprintf(listener, "ERROR: Unknown status \"%s\"\n", argv[2]);
+		return 0;
+	}
+
+	return 1;		/* success */
+}
+
 static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 			       int auth)
 {
@@ -1617,6 +1651,10 @@ static fr_command_table_t command_table_set_module[] = {
 	{ "config", FR_WRITE,
 	  "set module config <module> variable value - set configuration for <module>",
 	  command_set_module_config, NULL },
+
+	{ "status", FR_WRITE,
+	  "set module status [alive|dead] - set the module to be alive or dead (always return \"fail\")",
+	  command_set_module_status, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
