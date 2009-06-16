@@ -88,7 +88,6 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 {
 #ifdef WITH_DYNAMIC_CLIENTS
 	int rcode;
-	listen_socket_t *sock;
 	REQUEST *request;
 	RADCLIENT *created;
 #endif
@@ -1601,15 +1600,19 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 #ifdef WITH_VMPS
 	case RAD_LISTEN_VQP:
 #endif
-#ifdef WITH_DHCP
-	case RAD_LISTEN_DHCP:
-#endif
 #ifdef WITH_COA
 	case RAD_LISTEN_COA:
 #endif
 		this->data = rad_malloc(sizeof(listen_socket_t));
 		memset(this->data, 0, sizeof(listen_socket_t));
 		break;
+
+#ifdef WITH_DHCP
+	case RAD_LISTEN_DHCP:
+		this->data = rad_malloc(sizeof(dhcp_socket_t));
+		memset(this->data, 0, sizeof(dhcp_socket_t));
+		break;
+#endif
 
 #ifdef WITH_DETAIL
 	case RAD_LISTEN_DETAIL:

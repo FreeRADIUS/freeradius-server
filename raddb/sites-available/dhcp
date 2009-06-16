@@ -61,27 +61,6 @@
 #
 server dhcp {
 
-#  This is part RADIUS legacy (sorry).  Clients have to be defined for
-#  DHCP.  This is not normal practice for a DHCP server, but it does
-#  enable a simple filter list of "known clients".
-#
-
-#  DHCP packets are normally sent with source IP address 0.0.0.0.
-#  If you want to accept packets from any IP, uncomment the "netmask"
-#  entry below, and delete the other "client" sections in this file.
-client any {
-	ipaddr = 0.0.0.0
-	#netmask = 0
-	dhcp = yes
-}
-
-#  For local testing.
-client localnet {
-	ipaddr = 127.0.0.0
-	netmask = 8
-	dhcp = yes
-}
-
 #  Define a DHCP socket.
 #
 #  The default port below is 6700, so you don't break your network.

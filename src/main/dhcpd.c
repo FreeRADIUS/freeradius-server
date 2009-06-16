@@ -23,6 +23,22 @@
 
 #ifdef WITH_DHCP
 
+/*
+ *	Same layout, etc. as listen_socket_t.
+ */
+typedef struct dhcp_socket_t {
+	/*
+	 *	For normal sockets.
+	 */
+	fr_ipaddr_t	ipaddr;
+	int		port;
+#ifdef SO_BINDTODEVICE
+	const char	*interface;
+#endif
+	int		suppress_responses;
+	RADCLIENT	dhcp_client;
+} dhcp_socket_t;
+
 static int dhcp_process(REQUEST *request)
 {
 	int rcode;
@@ -84,7 +100,9 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int rcode;
 	int on = 1;
-	listen_socket_t *sock;
+	dhcp_socket_t *sock;
+	RADCLIENT *client;
+	CONF_PAIR *cp;
 
 	rcode = common_socket_parse(cs, this);
 	if (rcode != 0) return rcode;
@@ -106,6 +124,34 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
+	/*
+	 *	Undocumented extension for testing without
+	 *	destroying your network!
+	 */
+	sock->suppress_responses = FALSE;
+	cp = cf_pair_find(cs, "suppress_responses");
+	if (cp) {
+		const char *value;
+
+		value = cf_pair_value(cp);
+
+		if (value && (strcmp(value, "yes") == 0)) {
+			sock->suppress_responses = TRUE;
+		}
+	}
+
+	/*
+	 *	Initialize the fake client.
+	 */
+	client = &sock->dhcp_client;
+	memset(client, 0, sizeof(*client));
+	client->ipaddr.af = AF_INET;
+	client->ipaddr.ipaddr.ip4addr.s_addr = INADDR_NONE;
+	client->prefix = 0;
+	client->longname = client->shortname = "dhcp";
+	client->secret = client->shortname;
+	client->nastype = strdup("none");
+
 	return 0;
 }
 
@@ -120,7 +166,7 @@ static int dhcp_socket_recv(rad_listen_t *listener,
 			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
 {
 	RADIUS_PACKET	*packet;
-	RADCLIENT	*client;
+	dhcp_socket_t	*sock;
 
 	packet = fr_dhcp_recv(listener->fd);
 	if (!packet) {
@@ -128,14 +174,8 @@ static int dhcp_socket_recv(rad_listen_t *listener,
 		return 0;
 	}
 
-	if ((client = client_listener_find(listener,
-					   &packet->src_ipaddr,
-					   packet->src_port)) == NULL) {
-		rad_free(&packet);
-		return 0;
-	}
-
-	if (!received_request(listener, packet, prequest, client)) {
+	sock = listener->data;
+	if (!received_request(listener, packet, prequest, &sock->dhcp_client)) {
 		rad_free(&packet);
 		return 0;
 	}
@@ -151,6 +191,8 @@ static int dhcp_socket_recv(rad_listen_t *listener,
  */
 static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 {
+	dhcp_socket_t	*sock;
+
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == dhcp_socket_send);
 
@@ -160,6 +202,12 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 		return -1;
 	}
 
+	sock = listener->data;
+	if (sock->suppress_responses) return 0;
+
+	/*
+	 *	Don't send anything
+	 */
 	return fr_dhcp_send(request->reply);
 }
 
