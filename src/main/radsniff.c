@@ -39,6 +39,8 @@ static VALUE_PAIR *filter_vps = NULL;
 #define DEBUG if (fr_debug_flag) printf
 
 static int minimal = 0;
+static int do_sort = 0;
+struct timeval start_pcap = {0, 0};
 static rbtree_t *filter_tree = NULL;
 typedef int (*rbcmp)(const void *, const void *);
 
@@ -121,6 +123,63 @@ static int filter_packet(RADIUS_PACKET *packet)
 	return 1;
 }
 
+/*
+ *	Bubble goodness
+ */
+static void sort(RADIUS_PACKET *packet)
+{
+	int i, j, size;
+	VALUE_PAIR *vp, *tmp;
+	VALUE_PAIR *array[1024]; /* way more than necessary */
+
+	size = 0;
+	for (vp = packet->vps; vp != NULL; vp = vp->next) {
+		array[size++] = vp;
+	}
+
+	if (size == 0) return;
+
+	for (i = 0; i < size - 1; i++)  {
+		for (j = 0; j < size - 1 - i; j++) {
+			if (array[j + 1]->attribute < array[j]->attribute)  {
+				tmp = array[j];         
+				array[j] = array[j + 1];
+				array[j + 1] = tmp;
+			}
+		}
+	}
+
+	/*
+	 *	And put them back again.
+	 */
+	vp = packet->vps = array[0];
+	for (i = 1; i < size; i++) {
+		vp->next = array[i];
+		vp = array[i];
+	}
+	vp->next = NULL;
+}
+
+#define USEC 1000000
+static void tv_sub(struct timeval *end, struct timeval *start,
+		   struct timeval *elapsed)
+{
+	elapsed->tv_sec = end->tv_sec - start->tv_sec;
+	if (elapsed->tv_sec > 0) {
+		elapsed->tv_sec--;
+		elapsed->tv_usec = USEC;
+	} else {
+		elapsed->tv_usec = 0;
+	}
+	elapsed->tv_usec += end->tv_usec;
+	elapsed->tv_usec -= start->tv_usec;
+	
+	if (elapsed->tv_usec >= USEC) {
+		elapsed->tv_usec -= USEC;
+		elapsed->tv_sec++;
+	}
+}
+
 static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const uint8_t *data)
 {
 	/* Just a counter of how many packets we've had */
@@ -136,6 +195,7 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 	int size_udp = sizeof(struct udp_header);
 	/* For FreeRADIUS */
 	RADIUS_PACKET *packet;
+	struct timeval elapsed;
 
 	args = args;		/* -Wunused */
 
@@ -193,9 +253,19 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 	printf("%s:%d -> ", inet_ntoa(ip->ip_src), ntohs(udp->udp_sport));
 	printf("%s:%d", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
 	if (fr_debug_flag) printf("\t(%d packets)", count++);
-	printf("\t%08x", header->ts.tv_sec);
-	printf("\n");
+
+	if (!start_pcap.tv_sec) {
+		start_pcap = header->ts;
+	}
+
+	tv_sub(&header->ts, &start_pcap, &elapsed);
+
+	printf("\t+%u.%03u", (unsigned int) elapsed.tv_sec,
+	       (unsigned int) elapsed.tv_usec / 1000);
+	if (!minimal) printf("\n");
 	if (!minimal && packet->vps) {
+		if (do_sort) sort(packet);
+
 		vp_printlist(stdout, packet->vps);
 		pairfree(&packet->vps);
 	}
@@ -228,6 +298,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "\t-p port\tList for packets on port.\n");
 	fprintf(output, "\t-r filter\tRADIUS attribute filter.\n");
 	fprintf(output, "\t-s secret\tRADIUS secret.\n");
+	fprintf(output, "\t-S\t\tSort attributes in the packet.  Used to compare server results.\n");
 	fprintf(output, "\t-x\t\tPrint out debugging information.\n");
 	exit(status);
 }
@@ -254,7 +325,7 @@ int main(int argc, char *argv[])
 	dev = pcap_lookupdev(errbuf);
 
 	/* Get options */
-	while ((opt = getopt(argc, argv, "c:d:f:hi:I:mp:r:s:xX")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:d:f:hi:I:mp:r:s:SxX")) != EOF) {
 		switch (opt)
 		{
 		case 'c':
@@ -290,6 +361,9 @@ int main(int argc, char *argv[])
 			break;
 		case 's':
 			radius_secret = optarg;
+			break;
+		case 'S':
+			do_sort = 1;
 			break;
 		case 'x':
 		case 'X':	/* for backwards compatibility */
