@@ -175,13 +175,13 @@ Not allowed as a reply item.
 .SH EXAMPLES
 
 .DS
-bob	User-Password == "hello"
+bob	Cleartext-Password := "hello"
 
 .DE
 .RS
 Requests containing the User-Name attribute, with value "bob", will be
-authenticated using the password "bob".  There are no reply items, so
-the reply will be empty.
+authenticated using the "known good" password "hello".  There are no
+reply items, so the reply will be empty.
 .RE
 
 .DS
