@@ -1,6 +1,41 @@
 FreeRADIUS 2.1.7 Sun Jan 1 1:1:00 CEST 1970;  , urgency=medium
-	* Place-holder
-	
+	Feature improvements
+	* Full support for CoA and Disconnect packets as per RFC 3576
+	  and RFC 5176.  Both receiving and proxying CoA is supported.
+	* Added "src_ipaddr" configuration to "home_server".  See
+	  proxy.conf for details.
+	* radsniff now accepts -I, to read from a filename instead of
+	  a device.
+	* radsniff also prints matching requests and any responses to those
+	  requests when '-r' is used.
+	* Added example of attr_filter for Access-Challenge packets
+	* Added support for udpfromto in DHCP code
+	* radmin can now selectively mark modules alive/dead.
+	  See "set module state".
+
+	Bug fixes
+	* Fixed corner case where proxied packets could have extra
+	  character in User-Password attribute.  Fix from Niko Tyni.
+	* Extended size of "attribute" field in SQL to 64.
+	* Fixes to ruby module to be more careful about when it builds.
+	* Updated Perl module "configure" script to check for broken
+	  Perl installations.
+	* Fix "status_check = none".  It would still send packets
+	  in some cases.
+	* Set recursive flag on the proxy mutex, which enables safer
+	  cleanup on some platforms.
+	* Copy the EAP username verbatim, rather than escaping it.
+	* Update handling so that robust-proxy-accounting works when
+	  all home servers are down for extended periods of time.
+	* Look for DHCP option 53 anywhere in the packet, not just 
+	  at the start.
+	* Mark proxy mutex as recursive.  This solves issues on some
+	  platfroms.
+	* Fix processing of proxy fail handler with virtual servers.
+	* DHCP code now prints out correct src/dst IP addresses
+	  when sending packets.
+	* Removed requirement for DHCP to have clients
+
 FreeRADIUS 2.1.6 Mon May 18 10:00:00 CEST 2009;  , urgency=medium
 	Feature improvements
 	* radclient exits with 0 on successful (accept / ack), and 1
