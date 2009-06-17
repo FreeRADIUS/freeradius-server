@@ -65,6 +65,7 @@ typedef struct listen_detail_t {
 	time_t		timestamp;
 	fr_ipaddr_t	client_ip;
 	int		load_factor; /* 1..100 */
+	int		overload;
 	int		signal;
 	int		poll_interval;
 	int		retry_interval;
@@ -106,8 +107,13 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 		return 0;
 	}
 
+	if (data->overload) {
+		data->delay_time = 0;
+		goto next;
+	}
+
 	/*
-	 *	We call gettimeofday a lot.  But here it should be OK,
+	 *	We call gettimeofday a lot.  But it should be OK,
 	 *	because there's nothing else to do.
 	 */
 	gettimeofday(&now, NULL);
@@ -173,6 +179,7 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (data->delay_time > (USEC / 4)) data->delay_time= USEC / 4;
 	
+next:
 	RDEBUG3("Received response for request %d.  Will read the next packet in %d seconds",
 		request->number, data->delay_time / USEC);
 	
@@ -778,6 +785,8 @@ static const CONF_PARSER detail_config[] = {
 	  offsetof(listen_detail_t, poll_interval), NULL, Stringify(1)},
 	{ "retry_interval",   PW_TYPE_INTEGER,
 	  offsetof(listen_detail_t, retry_interval), NULL, Stringify(30)},
+	{ "overload",   PW_TYPE_BOOLEAN,
+	  offsetof(listen_detail_t, overload), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
