@@ -135,12 +135,7 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
 	size = packet_size - offsetof(dhcp_packet_t, options);
 	data = &packet->options[where];
 
-	fprintf(stderr, "%u %u %u\n", packet_size, where, size);
-
 	while (where < size) {
-		fprintf(stderr, "Offset %u data %02x %02x %02x\n",
-			where, data[0], data[1], data[2]);
-
 		if (data[0] == 0) { /* padding */
 			where++;
 			continue;
@@ -1041,7 +1036,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	memcpy(p, &lvalue, 4);	/* your IP address */
 	p += 4;
 
-	pairfind(packet->vps, DHCP2ATTR(265)); /* server IP address */
+	vp = pairfind(packet->vps, DHCP2ATTR(265)); /* server IP address */
 	if (!vp) vp = pairfind(packet->vps, DHCP2ATTR(54)); /* identifier */
 	if (vp) {
 		lvalue = vp->vp_ipaddr;
