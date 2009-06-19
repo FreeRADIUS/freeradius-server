@@ -52,11 +52,16 @@ typedef struct dhcp_packet_t {
 	uint32_t	siaddr;	/* 20 */
 	uint32_t	giaddr;	/* 24 */
 	uint8_t		chaddr[DHCP_CHADDR_LEN]; /* 28 */
-	char		sname[DHCP_SNAME_LEN]; /* 44 */
-	char		file[DHCP_FILE_LEN]; /* 108 */
+	uint8_t		sname[DHCP_SNAME_LEN]; /* 44 */
+	uint8_t		file[DHCP_FILE_LEN]; /* 108 */
 	uint32_t	option_format; /* 236 */
 	uint8_t		options[DHCP_VEND_LEN];
 } dhcp_packet_t;
+
+typedef struct dhcp_option_t {
+	uint8_t		code;
+	uint8_t		length;
+} dhcp_option_t;
 
 /*
  *	INADDR_ANY : 68 -> INADDR_BROADCAST : 67	DISCOVER
@@ -113,43 +118,81 @@ static int dhcp_header_sizes[] = {
 #define DEFAULT_PACKET_SIZE (300)
 #define MAX_PACKET_SIZE (1500 - 40)
 
-static int getcode(const uint8_t *data, size_t data_len, unsigned int *code)
+#define DHCP_OPTION_FIELD (0)
+#define DHCP_FILE_FIELD	  (1)
+#define DHCP_SNAME_FIELD  (2)
+
+static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
+				unsigned int option)
+				
 {
-	const uint8_t *end, *p;
+	int overload = 0;
+	int field = DHCP_OPTION_FIELD;
+	size_t where, size;
+	uint8_t *data = packet->options;
 
-	end = data + data_len;
+	where = 0;
+	size = packet_size - offsetof(dhcp_packet_t, options);
+	data = &packet->options[where];
 
-	while (p < end) {
-		/*
-		 *	End of packet or end of options
-		 */
-		if ((p[0] == 0) || (p[0] == 255)) return 0;
+	fprintf(stderr, "%u %u %u\n", packet_size, where, size);
 
-		/*
-		 *	Not enough room for 0x3501cc
-		 */
-		if ((end - p) < 3) return 0; /* t l v */
+	while (where < size) {
+		fprintf(stderr, "Offset %u data %02x %02x %02x\n",
+			where, data[0], data[1], data[2]);
 
-		/*
-		 *	Option is larger than the packet.
-		 */
-		if ((p + p[1] + 2) > end) return 0;
-
-		/*
-		 *	Found it.  Ensure it's well formed.
-		 */
-		if (p[0] == 53) {
-			if ((p[1] != 1) || (p[2] == 0) || (p[2] > 8)) {
-				return 0;
-			}
-			*code = p[2];
-			return 1;
+		if (data[0] == 0) { /* padding */
+			where++;
+			continue;
 		}
 
-		p += 2 + p[1];
+		if (data[0] == 255) { /* end of options */
+			if ((field == DHCP_OPTION_FIELD) &&
+			    (overload & DHCP_FILE_FIELD)) {
+				data = packet->file;
+				where = 0;
+				size = sizeof(packet->file);
+				field = DHCP_FILE_FIELD;
+				continue;
+
+			} else if ((field == DHCP_FILE_FIELD) &&
+				   (overload && DHCP_SNAME_FIELD)) {
+				data = packet->sname;
+				where = 0;
+				size = sizeof(packet->sname);
+				field = DHCP_SNAME_FIELD;
+				continue;
+			}
+
+			return NULL;
+		}
+
+		/*
+		 *	We MUST have a real option here.
+		 */
+		if ((where + 2) > size) {
+			fr_strerror_printf("Options overflow field at %u",
+					   data - (uint8_t *) packet);
+			return NULL;
+		}
+
+		if ((where + 2 + data[1]) > size) {
+			fr_strerror_printf("Option length overflows field at %u",
+					   data - (uint8_t *) packet);
+			return NULL;
+		}
+
+		if (data[0] == option) return data;
+
+		if (data[0] == 52) { /* overload sname and/or file */
+			overload = data[3];
+		}
+
+		where += data[1] + 2;
+		data += data[1] + 2;
 	}
 
-	return 0;
+	return NULL;
 }
 
 /*
@@ -165,6 +208,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	socklen_t	        sizeof_dst;
 	RADIUS_PACKET		*packet;
 	int port;
+	uint8_t			*code;
 
 	packet = rad_alloc(0);
 	if (!packet) return NULL;
@@ -235,27 +279,21 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	memcpy(&magic, packet->data + 4, 4);
 	packet->id = ntohl(magic);
 
-	/*
-	 *	Check that it's a known packet type.
-	 */
-	if ((packet->data[240] != 53) ||
-	    (packet->data[241] != 1) ||
-	    (packet->data[242] == 0) ||
-	    (packet->data[242] > 8)) {
-		/*
-		 *	Some clients send the packet type buried
-		 *	inside of the packet...
-		 */
-		if (!getcode(packet->data + 240, packet->data_len - 240,
-			     &packet->code)) {
-			fprintf(stderr, "Unknown, or badly formatted DHCP packet\n");
-			rad_free(&packet);
-			return NULL;
-		}
-	} else {
-		packet->code = packet->data[242];
+	code = dhcp_get_option((dhcp_packet_t *) packet->data,
+			       packet->data_len, 53);
+	if (!code) {
+		fr_strerror_printf("No message-type option was found in the packet");
+		rad_free(&packet);
+		return NULL;
 	}
-	packet->code |= PW_DHCP_OFFSET;
+
+	if ((code[1] < 1) || (code[2] == 0) || (code[2] > 8)) {
+		fr_strerror_printf("Unknown value for message-type option");
+		rad_free(&packet);
+		return NULL;
+	}
+
+	packet->code = code[2] | PW_DHCP_OFFSET;
 
 	/*
 	 *	Create a unique vector from the MAC address and the
@@ -474,6 +512,10 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	p = packet->data + 240;
 	total = packet->data_len - 240;
 
+	/*
+	 *	FIXME: This should also check sname && file fields.
+	 *	See the dhcp_get_option() function above.
+	 */
 	while (total > 0) {
 		int num_entries, alen;
 		DICT_ATTR *da;
@@ -852,8 +894,11 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	} else if (packet->dst_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY)) {
 		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
 
-	} else {
+	} else if (dhcp->yiaddr != htonl(INADDR_ANY)) {
 		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->yiaddr;
+
+	} else {
+		/* leave destination IP alone. */
 	}
 
 	/*
@@ -996,7 +1041,14 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	memcpy(p, &lvalue, 4);	/* your IP address */
 	p += 4;
 
-	memset(p, 0, 4);	/* siaddr is zero */
+	pairfind(packet->vps, DHCP2ATTR(265)); /* server IP address */
+	if (!vp) vp = pairfind(packet->vps, DHCP2ATTR(54)); /* identifier */
+	if (vp) {
+		lvalue = vp->vp_ipaddr;
+	} else {
+		lvalue = htonl(INADDR_ANY);
+	}
+	memcpy(p, &lvalue, 4);	/* Server IP address */
 	p += 4;
 
 	memcpy(p, original->data + 24, 4); /* copy gateway IP address */
