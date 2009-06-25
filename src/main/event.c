@@ -594,7 +594,6 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 
 	if (!packet) return;
 
-	rad_assert(debug_flag != 0);
 	rad_assert(request->radlog != NULL);
 
 	if (direction == 0) {
@@ -3398,7 +3397,8 @@ static void event_poll_detail(void *ctx)
 	when = now;
 
 	/*
-	 *	Backdoor API to get the delay until the next poll time.
+	 *	Backdoor API to get the delay until the next poll
+	 *	time.
 	 */
 	delay = this->encode(this, NULL);
 	tv_add(&when, delay);
