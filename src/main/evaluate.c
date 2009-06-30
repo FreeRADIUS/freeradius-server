@@ -585,8 +585,14 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		 *	! EXPR
 		 */
 		if (!found_condition && (*p == '!')) {
-			RDEBUG4(">>> INVERT");
-			invert = TRUE;
+			/*
+			 *	Don't change the results if we're not
+			 *	evaluating the condition.
+			 */
+			if (evaluate_next_condition) {
+				RDEBUG4(">>> INVERT");
+				invert = TRUE;
+			}
 			p++;
 
 			while ((*p == ' ') || (*p == '\t')) p++;
@@ -611,13 +617,13 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			}
 
 			if (invert) {
-				if (evaluate_next_condition)
-				RDEBUG2("%.*s Converting !%s -> %s",
-				       depth, filler,
-				       (result != FALSE) ? "TRUE" : "FALSE",
-				       (result == FALSE) ? "TRUE" : "FALSE");
-
-				result = (result == FALSE);
+				if (evaluate_next_condition) {
+					RDEBUG2("%.*s Converting !%s -> %s",
+						depth, filler,
+						(result != FALSE) ? "TRUE" : "FALSE",
+						(result == FALSE) ? "TRUE" : "FALSE");
+					result = (result == FALSE);
+				}
 				invert = FALSE;
 			}
 
