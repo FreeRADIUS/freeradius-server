@@ -368,6 +368,8 @@ typedef struct main_config_t {
 	radlog_dest_t	radlog_dest;
 	CONF_SECTION	*config;
 	const char	*name;
+	const char	*auth_badpass_msg;
+	const char	*auth_goodpass_msg;
 } MAIN_CONFIG_T;
 
 #define DEBUG	if(debug_flag)log_debug
