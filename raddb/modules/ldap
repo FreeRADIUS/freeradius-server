@@ -134,6 +134,15 @@ ldap {
 	# access_attr_used_for_allow = yes
 
 	#
+	#  The following two configuration items are for Active Directory
+	#  compatibility.  If you see the helpful "operations error"
+	#  being returned to the LDAP module, uncomment the next
+	#  two lines.
+	#
+	# chase_referrals = yes
+	# rebind = yes
+
+	#
 	#  By default, if the packet contains a User-Password,
 	#  and no other module is configured to handle the
 	#  authentication, the LDAP module sets itself to do
