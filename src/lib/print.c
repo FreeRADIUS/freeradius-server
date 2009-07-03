@@ -176,7 +176,7 @@ void fr_print_string(const char *in, size_t inlen, char *out, size_t outlen)
 			continue;
 		}
 
-		utf8 = utf8_char((uint8_t *)str);
+		utf8 = fr_utf8_char((uint8_t *)str);
 		if (!utf8) {
 			snprintf(out, outlen, "\\%03o", *str);
 			out  += 4;
