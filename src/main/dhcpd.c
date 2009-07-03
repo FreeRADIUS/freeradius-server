@@ -56,8 +56,71 @@ static int dhcp_process(REQUEST *request)
 	}
 
 	/*
-	 *	Look for Relay attribute, and forward it if so...
+	 *	Look for Relay attribute, and forward it if necessary.
 	 */
+	vp = pairfind(request->config_items, DHCP2ATTR(270));
+	if (vp) {
+		VALUE_PAIR *giaddr;
+		RADIUS_PACKET relayed;
+		
+		request->reply->code = 0; /* don't reply to the client */
+
+		/*
+		 *	Find the original giaddr.
+		 *	FIXME: Maybe look in the original packet?
+		 *
+		 *	It's invalid to have giaddr=0 AND a relay option
+		 */
+		giaddr = pairfind(request->packet->vps, 266);
+		if (giaddr && (giaddr->vp_ipaddr == htonl(INADDR_ANY))) {
+			if (pairfind(request->packet->vps, DHCP2ATTR(82))) {
+				RDEBUG("DHCP: Received packet with giaddr = 0 and containing relay option: Discarding packet");
+				return 1;
+			}
+
+			/*
+			 *	FIXME: Add cache by XID.
+			 */
+			RDEBUG("DHCP: Cannot yet relay packets with giaddr = 0");
+			return 1;
+		}
+
+		if (packet->data[3] > 10) {
+			RDEBUG("DHCP: Number of hops is greater than 10: not relaying");
+			return 1;
+		}
+
+		/*
+		 *	Forward it VERBATIM to the next server, rather
+		 *	than to the client.
+		 */
+		memcpy(&relayed, packet, sizeof(relayed));
+
+		relayed.dst_ipaddr.af = AF_INET;
+		relayed.dst_ipaddr.ipaddr.s_addr = vp->vp_ipaddr;
+		relayed.dst_port = request->packet->dst_port;
+
+		relayed.src_ipaddr = request->packet->dst_ipaddr;
+		relayed.src_port = request->packet->dst_port;
+
+		relayed.data = rad_malloc(relayed.data_len);
+		memcpy(relayed.data, request->packet->data, data_len);
+		relayed.vps = NULL;
+
+		/*
+		 *	The only field that changes is the number of hops
+		 */
+		relayed.data[3]++; /* number of hops */
+		
+		/*
+		 *	Forward the relayed packet VERBATIM, don't
+		 *	respond to the client, and forget completely
+		 *	about this request.
+		 */
+		fr_dhcp_send(&relayed);
+		free(relayed.data);
+		return 1;
+	}
 
 	vp = pairfind(request->reply->vps, DHCP2ATTR(53)); /* DHCP-Message-Type */
 	if (vp) {
