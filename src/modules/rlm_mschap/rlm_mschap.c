@@ -736,35 +736,9 @@ static void mppe_add_reply(REQUEST *request,
 static int do_mschap(rlm_mschap_t *inst,
 		     REQUEST *request, VALUE_PAIR *password,
 		     uint8_t *challenge, uint8_t *response,
-		     uint8_t *nthashhash)
+		     uint8_t *nthashhash, int do_ntlm_auth)
 {
-	int		do_ntlm_auth = 0;
 	uint8_t		calculated[24];
-	VALUE_PAIR	*vp = NULL;
-
-	/*
-	 *	If we have ntlm_auth configured, use it unless told
-	 *	otherwise
-	 */
-	if (inst->ntlm_auth) do_ntlm_auth = 1;
-
-	/*
-	 *	If we have an ntlm_auth configuration, then we may
-	 *	want to use it.
-	 */
-	vp = pairfind(request->config_items,
-		      PW_MS_CHAP_USE_NTLM_AUTH);
-	if (vp) do_ntlm_auth = vp->vp_integer;
-
-	/*
-	 *	No ntlm_auth configured, attribute to tell us to
-	 *	use it exists, and we're told to use it.  We don't
-	 *	know what to do...
-	 */
-	if (!inst->ntlm_auth && do_ntlm_auth) {
-		RDEBUG2("Asked to use ntlm_auth, but it was not configured in the mschap{} section.");
-		return -1;
-	}
 
 	/*
 	 *	Do normal authentication.
@@ -1039,6 +1013,23 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	char msch2resp[42];
 	char *username_string;
 	int chap = 0;
+	int		do_ntlm_auth;
+
+	/*
+	 *	If we have ntlm_auth configured, use it unless told
+	 *	otherwise
+	 */
+	do_ntlm_auth = inst->ntlm_auth;
+
+	/*
+	 *	If we have an ntlm_auth configuration, then we may
+	 *	want to suppress it.
+	 */
+	if (do_ntlm_auth) {
+		VALUE_PAIR *vp = pairfind(request->config_items,
+					  PW_MS_CHAP_USE_NTLM_AUTH);
+		if (vp) do_ntlm_auth = vp->vp_integer;
+	}
 
 	/*
 	 *	Find the SMB-Account-Ctrl attribute, or the
@@ -1099,7 +1090,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		}
 
 	} else if (!password) {
-		RDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password.");
+		if (!do_ntlm_auth) RDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password.");
 
 	} else {		/* there is a configured Cleartext-Password */
 		lm_password = radius_pairmake(request, &request->config_items,
@@ -1130,7 +1121,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			nt_password = NULL;
 		}
 	} else if (!password) {
-		RDEBUG2("No Cleartext-Password configured.  Cannot create NT-Password.");
+		if (!do_ntlm_auth) RDEBUG2("No Cleartext-Password configured.  Cannot create NT-Password.");
 
 	} else {		/* there is a configured Cleartext-Password */
 		nt_password = radius_pairmake(request, &request->config_items,
@@ -1196,7 +1187,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	Do the MS-CHAP authentication.
 		 */
 		if (do_mschap(inst, request, password, challenge->vp_octets,
-			      response->vp_octets + offset, nthashhash) < 0) {
+			      response->vp_octets + offset, nthashhash,
+			      do_ntlm_auth) < 0) {
 			RDEBUG2("MS-CHAP-Response is incorrect.");
 			mschap_add_reply(request, &request->reply->vps,
 					 *response->vp_octets,
@@ -1275,7 +1267,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		       username_string);
 
 		if (do_mschap(inst, request, nt_password, mschapv1_challenge,
-			      response->vp_octets + 26, nthashhash) < 0) {
+			      response->vp_octets + 26, nthashhash,
+			      do_ntlm_auth) < 0) {
 			RDEBUG2("FAILED: MS-CHAP2-Response is incorrect");
 			mschap_add_reply(request, &request->reply->vps,
 					 *response->vp_octets,
