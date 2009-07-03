@@ -48,6 +48,7 @@ typedef struct rlm_sql_log_t {
 	char		*path;
 	char		*postauth_query;
 	char		*sql_user_name;
+	int		utf8;	
 	char		*allowed_chars;
 	CONF_SECTION	*conf_section;
 } rlm_sql_log_t;
@@ -62,6 +63,8 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(rlm_sql_log_t,postauth_query), NULL, ""},
 	{"sql_user_name", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_log_t,sql_user_name), NULL, ""},
+	{"utf8", PW_TYPE_BOOLEAN,
+         offsetof(rlm_sql_log_t,utf8), NULL, "no"},
 	{"safe-characters", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_log_t,allowed_chars), NULL,
 	"@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"},
@@ -194,6 +197,71 @@ static size_t sql_escape_func(char *out, size_t outlen, const char *in)
 	return len;
 }
 
+static size_t sql_utf8_escape_func(char *out, size_t outlen, const char *in)
+{
+	int len = 0;
+	int utf8 = 0;
+
+	while (in[0]) {
+		/* 
+		 * Skip over UTF8 characters
+		 */
+		utf8 = fr_utf8_char((uint8_t *)in);
+		if (utf8) {
+			if (outlen <= utf8) {
+				break;
+			}
+			while (utf8-- > 0) {
+				*out = *in;
+				out++;
+				in++;
+				outlen--;
+				len++;
+			}
+			continue;
+		}
+
+		/*
+		 *	Non-printable characters get replaced with their
+		 *	mime-encoded equivalents.
+		 */
+		if ((in[0] < 32) ||
+		    strchr(allowed_chars, *in) == NULL) {
+			/*
+			 *	Only 3 or less bytes available.
+			 */
+			if (outlen <= 3) {
+				break;
+			}
+
+			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
+			in++;
+			out += 3;
+			outlen -= 3;
+			len += 3;
+			continue;
+		}
+
+		/*
+		 *	Only one byte left.
+		 */
+		if (outlen <= 1) {
+			break;
+		}
+
+		/*
+		 *	Allowed character.
+		 */
+		*out = *in;
+		out++;
+		in++;
+		outlen--;
+		len++;
+	}
+	*out = '\0';
+	return len;
+}
+
 /*
  *	Add the 'SQL-User-Name' attribute to the packet.
  */
@@ -255,7 +323,8 @@ static int sql_xlat_query(rlm_sql_log_t *inst, REQUEST *request, const char *que
 
 	/* Expand variables in the query */
 	xlat_query[0] = '\0';
-	radius_xlat(xlat_query, len, query, request, sql_escape_func);
+	radius_xlat(xlat_query, len, query, request,
+		    inst->utf8 ? sql_utf8_escape_func : sql_escape_func);
 	if (xlat_query[0] == '\0') {
 		radlog_request(L_ERR, 0, request, "Couldn't xlat the query %s",
 		       query);

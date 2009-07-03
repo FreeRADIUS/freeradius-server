@@ -24,6 +24,13 @@ sql_log {
 	postauth_table = "radpostauth"
 	sql_user_name = "%{%{User-Name}:-DEFAULT}"
 
+	#
+	#  Setting this to "yes" will allow UTF-8 characters to be
+	#  written to the log file.  Otherwise, they are escaped
+	#  as being potentially invalid.
+	#
+	utf8 = no
+
 	Start = "INSERT INTO ${acct_table} (AcctSessionId, UserName, \
 	 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
 	 AcctSessionTime, AcctTerminateCause) VALUES                 \

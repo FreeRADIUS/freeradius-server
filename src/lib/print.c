@@ -35,7 +35,7 @@ RCSID("$Id$")
  *	Note that we don't care about the length of the input string,
  *	because '\0' is an invalid UTF-8 character.
  */
-static int utf8_char(uint8_t *str)
+int fr_utf8_char(uint8_t *str)
 {
 	if (*str < 0x20) return 0;
 
