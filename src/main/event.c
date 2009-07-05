@@ -3473,13 +3473,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 	request_num_counter = 0;
 
-	/*
-	 *	Move all of the thread calls to this file?
-	 *
-	 *	It may be best for the mutexes to be in this file...
-	 */
-	have_children = spawn_flag;
-
 #ifdef WITH_PROXY
 	if (mainconfig.proxy_requests) {
 		pthread_mutexattr_t attr;
@@ -3525,10 +3518,22 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 #else
 	NO_SUCH_CHILD_PID = pthread_self(); /* not a child thread */
 #endif
-	if (thread_pool_init(cs, spawn_flag) < 0) {
+	/*
+	 *	Initialize the threads ONLY if we're spawning, AND
+	 *	we're running normally.
+	 */
+	if (spawn_flag && !check_config &&
+	    (thread_pool_init(cs, &spawn_flag) < 0)) {
 		exit(1);
 	}
 #endif
+
+	/*
+	 *	Move all of the thread calls to this file?
+	 *
+	 *	It may be best for the mutexes to be in this file...
+	 */
+	have_children = spawn_flag;
 
 	if (check_config) {
 		DEBUG("%s: #### Skipping IP addresses and Ports ####",

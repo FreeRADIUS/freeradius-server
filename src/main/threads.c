@@ -693,7 +693,7 @@ static int pid_cmp(const void *one, const void *two)
  *
  *	FIXME: What to do on a SIGHUP???
  */
-int thread_pool_init(CONF_SECTION *cs, int spawn_flag)
+int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 {
 	int		i, rcode;
 	CONF_SECTION	*pool_cf;
@@ -701,52 +701,48 @@ int thread_pool_init(CONF_SECTION *cs, int spawn_flag)
 
 	now = time(NULL);
 
-	/*
-	 *	We're not spawning new threads, don't do
-	 *	anything.
-	 */
-	if (!spawn_flag) return 0;
-
-	/*
-	 *	After a SIGHUP, we don't over-write the previous values.
-	 */
-	if (!pool_initialized) {
-		/*
-		 *	Initialize the thread pool to some reasonable values.
-		 */
-		memset(&thread_pool, 0, sizeof(THREAD_POOL));
-		thread_pool.head = NULL;
-		thread_pool.tail = NULL;
-		thread_pool.total_threads = 0;
-		thread_pool.max_thread_num = 1;
-		thread_pool.cleanup_delay = 5;
-		thread_pool.spawn_flag = spawn_flag;
-
-#ifdef WNOHANG
-		if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
-			radlog(L_ERR, "FATAL: Failed to initialize wait mutex: %s",
-			       strerror(errno));
-			return -1;
-		}
-
-		/*
-		 *	Create the hash table of child PID's
-		 */
-		thread_pool.waiters = fr_hash_table_create(pid_hash,
-							     pid_cmp,
-							     free);
-		if (!thread_pool.waiters) {
-			radlog(L_ERR, "FATAL: Failed to set up wait hash");
-			return -1;
-		}
-#endif
-	}
+	rad_assert(spawn_flag != NULL);
+	rad_assert(*spawn_flag == TRUE);
+	rad_assert(pool_initialized == FALSE); /* not called on HUP */
 
 	pool_cf = cf_subsection_find_next(cs, NULL, "thread");
-	if (!pool_cf) {
-		radlog(L_ERR, "FATAL: Attempting to start in multi-threaded mode with no thread configuration in radiusd.conf");
+	if (!pool_cf) *spawn_flag = FALSE;
+
+	/*
+	 *	Initialize the thread pool to some reasonable values.
+	 */
+	memset(&thread_pool, 0, sizeof(THREAD_POOL));
+	thread_pool.head = NULL;
+	thread_pool.tail = NULL;
+	thread_pool.total_threads = 0;
+	thread_pool.max_thread_num = 1;
+	thread_pool.cleanup_delay = 5;
+	thread_pool.spawn_flag = *spawn_flag;
+	
+	/*
+	 *	Don't bother initializing the mutexes or
+	 *	creating the hash tables.  They won't be used.
+	 */
+	if (!*spawn_flag) return 0;
+	
+#ifdef WNOHANG
+	if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
+		radlog(L_ERR, "FATAL: Failed to initialize wait mutex: %s",
+		       strerror(errno));
 		return -1;
 	}
+	
+	/*
+	 *	Create the hash table of child PID's
+	 */
+	thread_pool.waiters = fr_hash_table_create(pid_hash,
+						   pid_cmp,
+						   free);
+	if (!thread_pool.waiters) {
+		radlog(L_ERR, "FATAL: Failed to set up wait hash");
+		return -1;
+	}
+#endif
 
 	if (cf_section_parse(pool_cf, NULL, thread_config) < 0) {
 		return -1;
