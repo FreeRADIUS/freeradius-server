@@ -85,7 +85,7 @@ static int dhcp_process(REQUEST *request)
 			return 1;
 		}
 
-		if (packet->data[3] > 10) {
+		if (request->packet->data[3] > 10) {
 			RDEBUG("DHCP: Number of hops is greater than 10: not relaying");
 			return 1;
 		}
@@ -97,14 +97,14 @@ static int dhcp_process(REQUEST *request)
 		memcpy(&relayed, packet, sizeof(relayed));
 
 		relayed.dst_ipaddr.af = AF_INET;
-		relayed.dst_ipaddr.ipaddr.s_addr = vp->vp_ipaddr;
+		relayed.dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 		relayed.dst_port = request->packet->dst_port;
 
 		relayed.src_ipaddr = request->packet->dst_ipaddr;
 		relayed.src_port = request->packet->dst_port;
 
 		relayed.data = rad_malloc(relayed.data_len);
-		memcpy(relayed.data, request->packet->data, data_len);
+		memcpy(relayed.data, request->packet->data, request->packet->data_len);
 		relayed.vps = NULL;
 
 		/*
