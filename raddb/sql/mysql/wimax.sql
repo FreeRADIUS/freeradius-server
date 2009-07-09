@@ -6,7 +6,7 @@
 CREATE TABLE wimax (
   id int(11) NOT NULL auto_increment,
   username varchar(64) NOT NULL default '',
-  authdate timestamp(14) NOT NULL,
+  authdate timestamp NOT NULL,
   spi varchar(16) NOT NULL default '',
   mipkey varchar(400) NOT NULL default '',
   lifetime int(12) default NULL,
