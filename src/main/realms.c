@@ -589,16 +589,16 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 	}
 #endif
 
-	if (home->response_window < 5) home->response_window = 5;
-	if (home->response_window > 60) home->response_window = 60;
-
 	if (home->max_outstanding < 8) home->max_outstanding = 8;
 	if (home->max_outstanding > 65536*16) home->max_outstanding = 65536*16;
 
 	if (home->ping_interval < 6) home->ping_interval = 6;
 	if (home->ping_interval > 120) home->ping_interval = 120;
 
-	if (home->zombie_period < 20) home->zombie_period = 20;
+	if (home->response_window < 1) home->response_window = 1;
+	if (home->response_window > 60) home->response_window = 60;
+
+	if (home->zombie_period < 1) home->zombie_period = 1;
 	if (home->zombie_period > 120) home->zombie_period = 120;
 
 	if (home->zombie_period < home->response_window) {
@@ -1866,7 +1866,10 @@ home_server *home_server_ldb(const char *realmname,
 
 		if (!home) continue;
 
-		if (home->state == HOME_STATE_IS_DEAD) {
+		/*
+		 *	Skip zombie && dead home servers.
+		 */
+		if (home->state != HOME_STATE_ALIVE) {
 			continue;
 		}
 
