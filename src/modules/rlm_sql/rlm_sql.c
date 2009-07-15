@@ -821,7 +821,12 @@ static int rlm_sql_detach(void *instance)
 			free(*p);
 			*p = NULL;
 		}
-		allowed_chars = NULL;
+		/*
+		 *	Catch multiple instances of the module.
+		 */
+		if (allowed_chars == inst->config->allowed_chars) {
+			allowed_chars = NULL;
+		}
 		free(inst->config);
 		inst->config = NULL;
 	}
