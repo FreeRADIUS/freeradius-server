@@ -94,7 +94,7 @@ static int dhcp_process(REQUEST *request)
 		 *	Forward it VERBATIM to the next server, rather
 		 *	than to the client.
 		 */
-		memcpy(&relayed, packet, sizeof(relayed));
+		memcpy(&relayed, request->packet, sizeof(relayed));
 
 		relayed.dst_ipaddr.af = AF_INET;
 		relayed.dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
