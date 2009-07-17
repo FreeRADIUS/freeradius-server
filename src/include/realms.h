@@ -48,6 +48,7 @@ typedef struct home_server {
 	struct timeval	when;
 
 	int		response_window;
+	int		no_response_fail;
 	int		max_outstanding; /* don't overload it */
 	int		currently_outstanding;
 	int		message_authenticator;

@@ -303,6 +303,8 @@ static CONF_PARSER home_server_config[] = {
 
 	{ "response_window", PW_TYPE_INTEGER,
 	  offsetof(home_server,response_window), NULL,   "30" },
+	{ "no_response_fail", PW_TYPE_BOOLEAN,
+	  offsetof(home_server,no_response_fail), NULL,   NULL },
 	{ "max_outstanding", PW_TYPE_INTEGER,
 	  offsetof(home_server,max_outstanding), NULL,   "65536" },
 	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
@@ -1783,6 +1785,7 @@ home_server *home_server_ldb(const char *realmname,
 	int		start;
 	int		count;
 	home_server	*found = NULL;
+	home_server	*zombie = NULL;
 	VALUE_PAIR	*vp;
 
 	/*
@@ -1867,6 +1870,15 @@ home_server *home_server_ldb(const char *realmname,
 		if (!home) continue;
 
 		/*
+		 *	Remember zombies, but skip them.  If there are
+		 *	no live servers, then we will use a zombie one.
+		 */
+		if (home->state == HOME_STATE_ZOMBIE) {
+			zombie = home;
+			continue;
+		}
+
+		/*
 		 *	Skip zombie && dead home servers.
 		 */
 		if (home->state != HOME_STATE_ALIVE) {
@@ -1943,6 +1955,15 @@ home_server *home_server_ldb(const char *realmname,
 			found = home;
 		}
 	} /* loop over the home servers */
+
+	/*
+	 *	We have no live servers, BUT we have a zombie.  Use
+	 *	the zombie as a last resort.
+	 */
+	if (!found && zombie) {
+		found = zombie;
+		zombie = NULL;
+	}
 
 	/*
 	 *	There's a fallback if they're all dead.
