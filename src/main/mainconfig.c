@@ -78,8 +78,8 @@ static cached_config_t	*cs_cache = NULL;
 /*
  *	Systems that have set/getresuid also have setuid.
  */
-uid_t server_uid;
-static gid_t server_gid;
+static uid_t server_uid = 0;
+static gid_t server_gid = 0;
 static const char *uid_name = NULL;
 static const char *gid_name = NULL;
 #endif
@@ -415,7 +415,7 @@ static int r_mkdir(const char *part)
 
 
 #ifdef HAVE_SETUID
-int did_setuid = FALSE;
+static int doing_setuid = FALSE;
 
 #if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
 void fr_suid_up(void)
@@ -440,7 +440,7 @@ void fr_suid_up(void)
 
 void fr_suid_down(void)
 {
-	if (!did_setuid) return;
+	if (!doing_setuid) return;
 
 	if (setresuid(-1, server_uid, geteuid()) < 0) {
 		fprintf(stderr, "%s: Failed switching to uid %s: %s\n",
@@ -457,14 +457,7 @@ void fr_suid_down(void)
 
 void fr_suid_down_permanent(void)
 {
-	uid_t ruid, euid, suid;
-
-	if (!did_setuid) return;
-
-	if (getresuid(&ruid, &euid, &suid) < 0) {
-		radlog(L_ERR, "Failed getting saved uid's");
-		_exit(1);
-	}
+	if (!doing_setuid) return;
 
 	if (setresuid(server_uid, server_uid, server_uid) < 0) {
 		radlog(L_ERR, "Failed in permanent switch to uid %s: %s",
@@ -474,13 +467,6 @@ void fr_suid_down_permanent(void)
 
 	if (geteuid() != server_uid) {
 		radlog(L_ERR, "Switched to unknown uid");
-		_exit(1);
-	}
-
-
-	if (getresuid(&ruid, &euid, &suid) < 0) {
-		radlog(L_ERR, "Failed getting saved uid's: %s",
-		       strerror(errno));
 		_exit(1);
 	}
 }
@@ -504,7 +490,20 @@ void fr_suid_down(void)
 void fr_suid_down_permanent(void)
 {
 }
-#endif
+#endif /* HAVE_SETRESUID && HAVE_GETRESUID */
+#else  /* HAVE_SETUID */
+void fr_suid_up(void)
+{
+}
+void fr_suid_down(void)
+{
+}
+void fr_suid_down_permanent(void)
+{
+}
+#endif /* HAVE_SETUID */
+ 
+#ifdef HAVE_SETUID
 
 /*
  *  Do chroot, if requested.
@@ -609,39 +608,41 @@ static int switch_users(CONF_SECTION *cs)
 	}
 #endif
 
-#ifdef HAVE_PWD_H
+#ifdef HAVE_SETUID
+	/*
+	 *	Just before losing root permissions, ensure that the
+	 *	log files have the correct owner && group.
+	 */
+	if (uid_name || gid_name) {
+		if ((mainconfig.radlog_dest == RADLOG_FILES) &&
+		    (mainconfig.log_file != NULL)) {
+			int fd = open(mainconfig.log_file,
+				      O_WRONLY | O_APPEND | O_CREAT, 0640);
+			if (fd < 0) {
+				fprintf(stderr, "%s: Cannot write to log file %s: %s\n",
+					progname, mainconfig.log_file, strerror(errno));
+				return 0;
+			}
+			close(fd);
+		}
+		
+		if (chown(mainconfig.log_file, server_uid, server_gid) < 0) {
+			fprintf(stderr, "%s: Cannot change ownership of log file: %s\n", 
+				progname, mainconfig.log_file, strerror(errno));
+			return 0;
+		}
+	}		
+
 	if (uid_name) {
+		doing_setuid = TRUE;
+
 		fr_suid_down();
 
 		/*
 		 *	Now core dumps are disabled on most secure systems.
 		 */
-		
-		did_setuid = TRUE;
 	}
 #endif
-
-	/*
-	 *	Double check that we can write to the log directory.
-	 *
-	 *	If we can't, don't start, as we can't log any errors!
-	 */
-	if ((mainconfig.radlog_dest == RADLOG_FILES) &&
-	    (mainconfig.log_file != NULL)) {
-		int fd = open(mainconfig.log_file,
-			      O_WRONLY | O_APPEND | O_CREAT, 0640);
-		if (fd < 0) {
-			fprintf(stderr, "%s: Cannot write to log file %s: %s\n",
-				progname, mainconfig.log_file, strerror(errno));
-			return 0;
-		}
-		close(fd);
-
-		/*
-		 *	After this it's safe to call radlog(), as it's going
-		 *	to the right place.
-		 */
-	}
 
 #ifdef HAVE_SYS_RESOURCE_H
 	/*  Get the current maximum for core files.  */
@@ -659,7 +660,7 @@ static int switch_users(CONF_SECTION *cs)
 	 *	Otherwise, disable core dumps for security.
 	 *	
 	 */
-	if (!(debug_flag || allow_core_dumps || did_setuid)) {
+	if (!(debug_flag || allow_core_dumps || doing_setuid)) {
 #ifdef HAVE_SYS_RESOURCE_H
 		struct rlimit no_core;
 
@@ -678,7 +679,7 @@ static int switch_users(CONF_SECTION *cs)
 		 *	running as a daemon, AND core dumps are
 		 *	allowed, AND we changed UID's.
 		 */
-	} else if ((debug_flag == 0) && allow_core_dumps && did_setuid) {
+	} else if ((debug_flag == 0) && allow_core_dumps && doing_setuid) {
 		/*
 		 *	Set the dumpable flag.
 		 */
@@ -715,7 +716,7 @@ static int switch_users(CONF_SECTION *cs)
 
 	return 1;
 }
-#endif
+#endif	/* HAVE_SETUID */
 
 
 static const FR_NAME_NUMBER str2dest[] = {
