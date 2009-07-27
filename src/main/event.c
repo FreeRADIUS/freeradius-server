@@ -958,6 +958,8 @@ static int setup_post_proxy_fail(REQUEST *request)
 	DICT_VALUE *dval = NULL;
 	VALUE_PAIR *vp;
 
+	request->child_state = REQUEST_RUNNING;
+
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, "Fail-Authentication");
 
@@ -1023,7 +1025,6 @@ static void post_proxy_fail_handler(REQUEST *request)
 	 *	to do next.
 	 */
 	if (!setup_post_proxy_fail(request)) {
-		request->child_state = REQUEST_RUNNING;
 		request_post_handler(request);
 
 	} else {
