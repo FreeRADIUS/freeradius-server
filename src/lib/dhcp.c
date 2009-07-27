@@ -982,7 +982,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 				vp->length = length + 11;
 			} else {
 				vp->length = 11 + 8;
-				memset(vp->vp_octets + 11, 8, 0);
+				memset(vp->vp_octets + 11, 0, 8);
 				vp->length = 11 + 8;
 			}
 		} else {	/* we don't support this type! */
