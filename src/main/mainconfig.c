@@ -624,12 +624,12 @@ static int switch_users(CONF_SECTION *cs)
 				return 0;
 			}
 			close(fd);
-		}
 		
-		if (chown(mainconfig.log_file, server_uid, server_gid) < 0) {
-			fprintf(stderr, "%s: Cannot change ownership of log file: %s\n", 
-				progname, mainconfig.log_file, strerror(errno));
-			return 0;
+			if (chown(mainconfig.log_file, server_uid, server_gid) < 0) {
+			  fprintf(stderr, "%s: Cannot change ownership of log file: %s\n", 
+				  progname, mainconfig.log_file, strerror(errno));
+			  return 0;
+			}
 		}
 	}		
 
