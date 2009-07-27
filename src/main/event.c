@@ -349,7 +349,6 @@ static int insert_into_proxy_hash(REQUEST *request, int retransmit)
 	 */
 	if (request->home_server) {
 		request->home_server->currently_outstanding++;
-		request->home_server->stats.total_requests++;
 	}
 
 	if (retransmit) {
