@@ -1116,7 +1116,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				break;
 			case 'l': /* request timestamp */
 				snprintf(tmpdt, sizeof(tmpdt), "%lu",
-					 (unsigned long) request->received.tv_sec);
+					 (unsigned long) request->timestamp);
 				strlcpy(q,tmpdt,freespace);
 				q += strlen(q);
 				p++;
