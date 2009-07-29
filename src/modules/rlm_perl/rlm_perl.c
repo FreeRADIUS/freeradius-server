@@ -76,6 +76,7 @@ typedef struct perl_inst {
 	char	*xlat_name;
 	char	*perl_flags;
 	PerlInterpreter *perl;
+	pthread_key_t	*thread_key;
 } PERL_INST;
 /*
  *	A mapping of configuration file names to internal variables.
@@ -239,25 +240,20 @@ static void rlm_destroy_perl(PerlInterpreter *perl)
 	rlm_perl_close_handles(handles);
 }
 
-static pthread_key_t  rlm_perl_key;
-static pthread_once_t rlm_perl_once = PTHREAD_ONCE_INIT;
-
 /* Create Key */
-static void rlm_perl_make_key(void)
+static void rlm_perl_make_key(pthread_key_t *key)
 {
-	pthread_key_create(&rlm_perl_key, rlm_destroy_perl);
+	pthread_key_create(key, rlm_destroy_perl);
 }
 
-static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl)
+static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key)
 {
 	PerlInterpreter *interp;
 	UV clone_flags = 0;
 
 	PERL_SET_CONTEXT(perl);
 
-	pthread_once(&rlm_perl_once, rlm_perl_make_key);
-
-	interp = pthread_getspecific(rlm_perl_key);
+	interp = pthread_getspecific(*key);
 	if (interp) return interp;
 
 	interp = perl_clone(perl, clone_flags);
@@ -273,7 +269,7 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl)
 	PERL_SET_CONTEXT(aTHX);
     	rlm_perl_clear_handles(aTHX);
 
-	pthread_setspecific(rlm_perl_key, interp);
+	pthread_setspecific(*key, interp);
 
 	fprintf(stderr, "GOT CLONE %d %p\n", pthread_self(), interp);
 
@@ -342,7 +338,7 @@ static size_t perl_xlat(void *instance, REQUEST *request, char *fmt, char *out,
 #ifndef WITH_ITHREADS
 	perl = inst->perl;
 #else
-	perl = rlm_perl_clone(inst->perl);
+	perl = rlm_perl_clone(inst->perl,inst->thread_key);
 	{
 	  dTHXa(perl);
 	}
@@ -430,8 +426,17 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 		free(inst);
 		return -1;
 	}
+	
+	/*
+	 *	Create pthread key. This key will be stored in instance
+	 */
 
-
+#ifdef USE_ITHREADS
+	inst->thread_key = rad_malloc(sizeof(*inst->thread_key));
+	memset(inst->thread_key,0,sizeof(*inst->thread_key));
+	
+	rlm_perl_make_key(inst->thread_key);
+#endif
 	embed[0] = NULL;
 	if (inst->perl_flags) {
 		embed[1] = inst->perl_flags;
@@ -646,7 +651,7 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 #ifdef USE_ITHREADS
 	PerlInterpreter *interp;
 
-	interp = rlm_perl_clone(inst->perl);
+	interp = rlm_perl_clone(inst->perl,inst->thread_key);
 	{
 	  dTHXa(interp);
 	  PERL_SET_CONTEXT(interp);
