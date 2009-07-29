@@ -492,6 +492,8 @@ static int eap_authorize(void *instance, REQUEST *request)
 	    (vp->vp_integer != PW_AUTHTYPE_REJECT)) {
 		vp = pairmake("Auth-Type", inst->xlat_name, T_OP_EQ);
 		if (!vp) {
+			RDEBUG2("Failed to create Auth-Type %s: %s\n",
+				inst->xlat_name, fr_strerror());
 			return RLM_MODULE_FAIL;
 		}
 		pairadd(&request->config_items, vp);
