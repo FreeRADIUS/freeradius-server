@@ -432,7 +432,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 {
 	int check_config_safe = FALSE;
 	CONF_SECTION *cs;
-	const char *name1, *name2;
+	const char *name1;
 	module_instance_t *node, myNode;
 	char module_name[256];
 
@@ -618,6 +618,7 @@ int indexed_modcall(int comp, int idx, REQUEST *request)
 
 	if (idx == 0) {
 		list = server->mc[comp];
+		if (!list) RDEBUG2("  WARNING: Empty section.  Using default return values.");
 
 	} else {
 		indexed_modcallable *this;
@@ -865,6 +866,7 @@ static int load_byserver(CONF_SECTION *cs)
 	const char *name = cf_section_name2(cs);
 	rbtree_t *components;
 	virtual_server_t *server = NULL;
+	indexed_modcallable *c;
 
 	if (name) {
 		cf_log_info(cs, "server %s {", name);
@@ -966,7 +968,6 @@ static int load_byserver(CONF_SECTION *cs)
 	flag = 0;
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
 		CONF_SECTION *subcs;
-		indexed_modcallable *c;
 
 		subcs = cf_section_sub_find(cs,
 					    section_type_value[comp].section);
@@ -1021,6 +1022,9 @@ static int load_byserver(CONF_SECTION *cs)
 						   RLM_COMPONENT_POST_AUTH) < 0) {
 				goto error;
 			}
+			c = lookup_by_index(components,
+					    RLM_COMPONENT_POST_AUTH, 0);
+			if (c) server->mc[RLM_COMPONENT_POST_AUTH] = c->modulelist;
 			flag = 1;
 		}
 
@@ -1029,19 +1033,14 @@ static int load_byserver(CONF_SECTION *cs)
 			const DICT_ATTR *dattr;
 
 			dattr = dict_attrbyname("DHCP-Message-Type");
-			if (!dattr) {
-				radlog(L_ERR, "No DHCP-Message-Type attribute");
-				goto error;
-			}
 
 			/*
 			 *	Handle each DHCP Message type separately.
 			 */
-			for (subcs = cf_subsection_find_next(cs, NULL,
-							     "dhcp");
-			     subcs != NULL;
-			     subcs = cf_subsection_find_next(cs, subcs,
-							     "dhcp")) {
+			if (dattr) for (subcs = cf_subsection_find_next(cs, NULL, "dhcp");
+					subcs != NULL;
+					subcs = cf_subsection_find_next(cs, subcs,
+									"dhcp")) {
 				const char *name2 = cf_section_name2(subcs);
 
 				DEBUG2(" Module: Checking dhcp %s {...} for more modules to load", name2);
@@ -1051,6 +1050,9 @@ static int load_byserver(CONF_SECTION *cs)
 							       RLM_COMPONENT_POST_AUTH)) {
 					goto error; /* FIXME: memleak? */
 				}
+				c = lookup_by_index(components,
+						    RLM_COMPONENT_POST_AUTH, 0);
+				if (c) server->mc[RLM_COMPONENT_POST_AUTH] = c->modulelist;
 				flag = 1;
 			}
 		}
