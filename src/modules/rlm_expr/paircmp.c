@@ -58,11 +58,15 @@ static int portcmp(void *instance,
 	char buf[MAX_STRING_LEN];
 	char *s, *p, *next;
 	uint32_t lo, hi;
-	uint32_t port = request->vp_integer;
+	uint32_t port;
 
 	instance = instance;
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
+
+	if (!request) return -1;
+
+	port = request->vp_integer;
 
 	if ((strchr((char *)check->vp_strvalue, ',') == NULL) &&
 			(strchr((char *)check->vp_strvalue, '-') == NULL)) {
