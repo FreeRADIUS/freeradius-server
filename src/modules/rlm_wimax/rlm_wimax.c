@@ -456,7 +456,7 @@ static int wimax_postauth(void *instance, REQUEST *request)
 	 *	FA-RK= H(MIP-RK, "FA-RK")
 	 */
 	fa_rk = pairfind(request->reply->vps, WIMAX2ATTR(14));
-	if (fa_rk && (fa_rk->length == 0)) {
+	if (fa_rk && (fa_rk->length <= 1)) {
 		HMAC_CTX_init(&hmac);
 		HMAC_Init_ex(&hmac, mip_rk, rk_len, EVP_sha1(), NULL);
 		
