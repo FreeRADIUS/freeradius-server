@@ -1725,7 +1725,7 @@ DICT_ATTR *dict_attrbyvalue(unsigned int attr)
 	if ((attr > 0) && (attr < 256)) return dict_base_attrs[attr];
 
 	dattr.attr = attr;
-	dattr.vendor = VENDOR(attr) & 0x7fff;
+	dattr.vendor = VENDOR(attr);
 
 	return fr_hash_table_finddata(attributes_byvalue, &dattr);
 }

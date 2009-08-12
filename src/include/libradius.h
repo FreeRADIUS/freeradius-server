@@ -59,7 +59,7 @@ RCSIDH(libradius_h, "$Id$")
 #define CHAP_VALUE_LENGTH       16
 #define MAX_STRING_LEN		254	/* RFC2138: string 0-253 octets */
 
-#  define VENDOR(x)		((x >> 16) & 0x7fff)
+#  define VENDOR(x)		((x >> 16) & 0xffff)
 
 #ifdef _LIBRADIUS
 #  define AUTH_HDR_LEN		20
