@@ -226,8 +226,8 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 				return NULL;
 			}
 
-			if (vendor > 32767) {
-				RDEBUG2("Cannot handle vendor Id greater than 32767");
+			if (vendor > 65535) {
+				RDEBUG2("Cannot handle vendor Id greater than 65535");
 				pairfree(&first);
 				return NULL;
 			}

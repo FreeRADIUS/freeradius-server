@@ -421,7 +421,7 @@ int dict_addvendor(const char *name, int value)
 	size_t length;
 	DICT_VENDOR *dv;
 
-	if (value >= 32767) {
+	if (value > 65535) {
 	       	fr_strerror_printf("dict_addvendor: Cannot handle vendor ID larger than 65535");
 		return -1;
 	}
