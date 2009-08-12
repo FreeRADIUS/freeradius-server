@@ -424,8 +424,8 @@ static void make_secret(uint8_t *digest, const uint8_t *vector,
 }
 
 #define MAX_PASS_LEN (128)
-static void make_passwd(uint8_t *output, int *outlen,
-			const uint8_t *input, int inlen,
+static void make_passwd(uint8_t *output, size_t *outlen,
+			const uint8_t *input, size_t inlen,
 			const char *secret, const uint8_t *vector)
 {
 	FR_MD5_CTX context, old;
@@ -480,8 +480,8 @@ static void make_passwd(uint8_t *output, int *outlen,
 	memcpy(output, passwd, len);
 }
 
-static void make_tunnel_passwd(uint8_t *output, int *outlen,
-			       const uint8_t *input, int inlen, int room,
+static void make_tunnel_passwd(uint8_t *output, size_t *outlen,
+			       const uint8_t *input, size_t inlen, size_t room,
 			       const char *secret, const uint8_t *vector)
 {
 	FR_MD5_CTX context, old;
@@ -573,7 +573,7 @@ static void make_tunnel_passwd(uint8_t *output, int *outlen,
 
 static int vp2data(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		   const char *secret, const VALUE_PAIR *vp, uint8_t *ptr,
-		   int offset, int room)
+		   size_t offset, size_t room)
 {
 	uint32_t lvalue;
 	size_t len;
@@ -741,7 +741,8 @@ static int vp2data(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps)
 {
 	int maxattr = 0;
-	int length, attribute;
+	int length;
+	unsigned int attribute;
 	uint8_t *ptr;
 	VALUE_PAIR *vp, *tlv;
 
@@ -993,7 +994,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			 *
 			 *	FIXME: Keep track of room in the packet!
 			 */
-			if (vp->length > (254 - (ptr - start))) {
+			if (vp->length > (((size_t) 254) - (ptr - start))) {
 				return rad_vp2continuation(vp, start, ptr);
 			}
 
@@ -2097,7 +2098,8 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 static VALUE_PAIR *data2vp(const RADIUS_PACKET *packet,
 			   const RADIUS_PACKET *original,
-			   const char *secret, int attribute, int length,
+			   const char *secret,
+			   UNUSED unsigned int attribute, size_t length,
 			   const uint8_t *data, VALUE_PAIR *vp)
 {
 	int offset = 0;
@@ -2385,7 +2387,8 @@ static void rad_sortvp(VALUE_PAIR **head)
  *	Sane clients should put the fragments next to each other, in
  *	which case this is O(N), in the number of fragments.
  */
-static uint8_t *rad_coalesce(int attribute, size_t length, uint8_t *data,
+static uint8_t *rad_coalesce(unsigned int attribute, size_t length,
+			     uint8_t *data,
 			     size_t packet_length, size_t *ptlv_length)
 			     
 {

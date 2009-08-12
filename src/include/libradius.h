@@ -115,7 +115,7 @@ typedef struct attr_flags {
 #define FLAG_ENCRYPT_ASCEND_SECRET   (3)
 
 typedef struct dict_attr {
-	int			attr;
+	unsigned int		attr;
 	int			type;
 	int			vendor;
         ATTR_FLAGS              flags;
@@ -123,7 +123,7 @@ typedef struct dict_attr {
 } DICT_ATTR;
 
 typedef struct dict_value {
-	int			attr;
+	unsigned int		attr;
 	int			value;
 	char			name[1];
 } DICT_VALUE;
@@ -244,10 +244,10 @@ int		dict_addattr(const char *name, int vendor, int type, int value, ATTR_FLAGS 
 int		dict_addvalue(const char *namestr, const char *attrstr, int value);
 int		dict_init(const char *dir, const char *fn);
 void		dict_free(void);
-DICT_ATTR	*dict_attrbyvalue(int attr);
+DICT_ATTR	*dict_attrbyvalue(unsigned int attr);
 DICT_ATTR	*dict_attrbyname(const char *attr);
-DICT_VALUE	*dict_valbyattr(int attr, int val);
-DICT_VALUE	*dict_valbyname(int attr, const char *val);
+DICT_VALUE	*dict_valbyattr(unsigned int attr, int val);
+DICT_VALUE	*dict_valbyname(unsigned int attr, const char *val);
 int		dict_vendorbyname(const char *name);
 DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 
