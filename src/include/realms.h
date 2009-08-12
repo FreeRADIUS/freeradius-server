@@ -132,7 +132,7 @@ home_server *home_server_ldb(const char *realmname, home_pool_t *pool, REQUEST *
 home_server *home_server_find(fr_ipaddr_t *ipaddr, int port);
 int	home_server_create_listeners(void *head);
 #ifdef WITH_COA
-home_server *home_server_byname(const char *name);
+home_server *home_server_byname(const char *name, int type);
 #endif
 #ifdef WITH_STATS
 home_server *home_server_bynumber(int number);

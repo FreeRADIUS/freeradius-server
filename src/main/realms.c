@@ -2139,11 +2139,12 @@ home_server *home_server_find(fr_ipaddr_t *ipaddr, int port)
 }
 
 #ifdef WITH_COA
-home_server *home_server_byname(const char *name)
+home_server *home_server_byname(const char *name, int type)
 {
 	home_server myhome;
 
 	memset(&myhome, 0, sizeof(myhome));
+	myhome.type = type;
 	myhome.name = name;
 
 	return rbtree_finddata(home_servers_byname, &myhome);
