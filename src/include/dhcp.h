@@ -60,12 +60,4 @@ int fr_dhcp_decode(RADIUS_PACKET *packet);
 #define DHCP_BASE_ATTR(x) (x & 0xff)
 #define DHCP_UNPACK_OPTION1(x) (((x) & 0xff00) >> 8)
 
-/*
- *	In src/lib/missing.c
- */
-void
-timeval2ntp(const struct timeval *tv, uint8_t *ntp);
-void
-ntp2timeval(struct timeval *tv, const char *ntp);
-
 #endif /* FR_DHCP_H */

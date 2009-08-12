@@ -395,4 +395,7 @@ int gettimeofday (struct timeval *tv, void *tz);
 # define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 #endif
 
+void timeval2ntp(const struct timeval *tv, uint8_t *ntp);
+void ntp2timeval(struct timeval *tv, const char *ntp);
+
 #endif /* _FR_MISSING_H */
