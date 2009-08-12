@@ -35,7 +35,7 @@ RCSID("$Id$")
  *	Note that we don't care about the length of the input string,
  *	because '\0' is an invalid UTF-8 character.
  */
-int fr_utf8_char(uint8_t *str)
+int fr_utf8_char(const uint8_t *str)
 {
 	if (*str < 0x20) return 0;
 
@@ -129,7 +129,7 @@ int fr_utf8_char(uint8_t *str)
  */
 void fr_print_string(const char *in, size_t inlen, char *out, size_t outlen)
 {
-	uint8_t		*str = (uint8_t *)in;
+	const uint8_t	*str = (const uint8_t *) in;
 	int		sp = 0;
 	int		utf8 = 0;
 
@@ -176,7 +176,7 @@ void fr_print_string(const char *in, size_t inlen, char *out, size_t outlen)
 			continue;
 		}
 
-		utf8 = fr_utf8_char((uint8_t *)str);
+		utf8 = fr_utf8_char(str);
 		if (!utf8) {
 			snprintf(out, outlen, "\\%03o", *str);
 			out  += 4;
