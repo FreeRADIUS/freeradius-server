@@ -358,9 +358,10 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 				if (da && radius_find_compare(da->attr)) {
 					VALUE_PAIR *check = pairmake(pleft, pright, token);
 					*presult = (radius_callback_compare(request, NULL, check, NULL, NULL) == 0);
+					RDEBUG3("  Callback returns %d",
+						*presult);
 					pairfree(&check);
-					if (*presult)  return TRUE;
-					return FALSE;
+					return TRUE;
 				}
 				
 				RDEBUG2("    (Attribute %s was not found)",
@@ -390,6 +391,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 
 			myvp.operator = token;
 			*presult = paircmp(&myvp, vp);
+			RDEBUG3("  paircmp -> %d", *presult);
 			return TRUE;
 		} /* else it's not a VP in a list */
 	}
@@ -832,6 +834,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 					   rt, pright, cflags, modreturn)) {
 				return FALSE;
 			}
+			RDEBUG4(">>> Comparison returned %d", result);
 
 			if (invert) {
 				RDEBUG4(">>> INVERTING result");
