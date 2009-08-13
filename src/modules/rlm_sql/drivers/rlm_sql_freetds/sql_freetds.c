@@ -32,9 +32,8 @@ RCSID("$Id$")
 #include <sys/stat.h>
 
 #include "rlm_sql.h"
-
-int query_timeout_handler(void *dbproc);
-int err_handler(UNUSED DBPROCESS *dbproc, UNUSED int severity, UNUSED int dberr, UNUSED int oserr, char *dberrstr, char *oserrstr);
+static int query_timeout_handler(void *dbproc);
+static int err_handler(UNUSED DBPROCESS *dbproc, UNUSED int severity, UNUSED int dberr, UNUSED int oserr, char *dberrstr, char *oserrstr);
 
 // As defined in tds.h
 #define TDS_INT_CONTINUE 1
@@ -49,11 +48,11 @@ typedef struct rlm_sql_freetds_sock {
  * FreeTDS calls this handler when dbsqlexec() or dbsqlok() blocks every seconds
  * This ensures that FreeTDS doesn't stay stuck on the same query for ever.
  */
-int query_timeout_handler(void *dbproc) {
+static int query_timeout_handler(void *dbproc) {
 	return TDS_INT_CONTINUE;
 }
 
-int err_handler(UNUSED DBPROCESS *dbproc, UNUSED int severity, UNUSED int dberr, UNUSED int oserr, char *dberrstr, char *oserrstr)
+static int err_handler(UNUSED DBPROCESS *dbproc, UNUSED int severity, UNUSED int dberr, UNUSED int oserr, char *dberrstr, char *oserrstr)
 {	
 		radlog(L_ERR, "rlm_sql_freetds: FreeTDS error: %s\n", dberrstr);
 		radlog(L_ERR, "rlm_sql_freetds: OS error: %s\n", oserrstr);
