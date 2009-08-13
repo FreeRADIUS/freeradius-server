@@ -108,6 +108,12 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,allowed_chars), NULL,
 	"@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"},
 
+	/*
+	 *	This only works for a few drivers.
+	 */
+	{"query_timeout", PW_TYPE_INTEGER,
+	 offsetof(SQL_CONFIG,query_timeout), NULL, NULL},
+	 
 	{NULL, -1, 0, NULL, NULL}
 };
 

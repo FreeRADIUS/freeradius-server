@@ -47,6 +47,7 @@ typedef struct sql_config {
 	int     connect_failure_retry_delay;
 	char   *postauth_query;
 	char   *allowed_chars;
+	int	query_timeout;
 
 	/* individual driver config */
 	void	*localcfg;
