@@ -1452,6 +1452,26 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			  &packet->dst_ipaddr, packet->dst_port);
 }
 
+/*
+ *	Do a comparison of two authentication digests by comparing
+ *	the FULL digest.  Otehrwise, the server can be subject to
+ *	timing attacks that allow attackers find a valid message
+ *	authenticator.
+ *
+ *	http://www.cs.rice.edu/~dwallach/pub/crosby-timing2009.pdf
+ */
+static int digest_cmp(const uint8_t *a, const uint8_t *b, size_t length)
+{
+	int result = 0;
+	size_t i;
+
+	for (i = 0; i < length; i++) {
+		result |= a[i] ^ b[i];
+	}
+
+	return (result == 0);
+}
+
 
 /*
  *	Validates the requesting client NAS.  Calculates the
@@ -1481,7 +1501,7 @@ static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
 	/*
 	 *	Return 0 if OK, 2 if not OK.
 	 */
-	if (memcmp(digest, packet->vector, AUTH_VECTOR_LEN) != 0) return 2;
+	if (digest_cmp(digest, packet->vector, AUTH_VECTOR_LEN) != 0) return 2;
 	return 0;
 }
 
@@ -1524,7 +1544,7 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	/*
 	 *	Return 0 if OK, 2 if not OK.
 	 */
-	if (memcmp(packet->vector, calc_digest, AUTH_VECTOR_LEN) != 0) return 2;
+	if (digest_cmp(packet->vector, calc_digest, AUTH_VECTOR_LEN) != 0) return 2;
 	return 0;
 }
 
@@ -1990,7 +2010,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			fr_hmac_md5(packet->data, packet->data_len,
 				    (const uint8_t *) secret, strlen(secret),
 				    calc_auth_vector);
-			if (memcmp(calc_auth_vector, msg_auth_vector,
+			if (digest_cmp(calc_auth_vector, msg_auth_vector,
 				   sizeof(calc_auth_vector)) != 0) {
 				char buffer[32];
 				fr_strerror_printf("Received packet from %s with invalid Message-Authenticator!  (Shared secret is incorrect.)",
