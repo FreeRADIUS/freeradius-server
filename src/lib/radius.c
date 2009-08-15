@@ -1469,7 +1469,7 @@ static int digest_cmp(const uint8_t *a, const uint8_t *b, size_t length)
 		result |= a[i] ^ b[i];
 	}
 
-	return (result == 0);
+	return result;		/* 0 is OK, !0 is !OK, just like memcmp */
 }
 
 
