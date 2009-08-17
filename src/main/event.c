@@ -2722,10 +2722,21 @@ static void received_conflicting_request(REQUEST *request,
 #endif
 
 		/*
+		 *	Catch race conditions.  It may have switched
+		 *	from running to done while this code is being
+		 *	executed.
+		 */
+	case REQUEST_REJECT_DELAY:
+	case REQUEST_CLEANUP_DELAY:
+	case REQUEST_DONE:
+		break;
+
+		/*
 		 *	It's in some other state, and therefore also
 		 *	in the event queue.  At some point, the
 		 *	child will notice, and we can then delete it.
 		 */
+	case REQUEST_PROXIED:
 	default:
 		rad_assert(request->ev != NULL);
 		break;
