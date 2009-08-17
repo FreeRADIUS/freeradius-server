@@ -125,7 +125,8 @@ static int dhcp_process(REQUEST *request)
 	vp = pairfind(request->reply->vps, DHCP2ATTR(53)); /* DHCP-Message-Type */
 	if (vp) {
 		request->reply->code = vp->vp_integer;
-		if (request->reply->code < PW_DHCP_OFFSET) {
+		if ((request->reply->code != 0) &&
+		    (request->reply->code < PW_DHCP_OFFSET)) {
 			request->reply->code += PW_DHCP_OFFSET;
 		}
 	}
