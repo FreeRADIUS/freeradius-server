@@ -235,7 +235,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 		 *	flag is zero.
 		 */
 		flag = IP_PMTUDISC_DONT;
-		setsockopt(sock->fd, IPPROTO_IP, IP_MTU_DISCOVER,
+		setsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER,
 			   &action, sizeof(action));
 #endif
 
@@ -244,7 +244,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 		 *	Ensure that the "don't fragment" flag is zero.
 		 */
 		flag = 0;
-		setsockopt(sock->fd, IPPROTO_IP, IP_DONTFRAG,
+		setsockopt(sockfd, IPPROTO_IP, IP_DONTFRAG,
 			   &off, sizeof(off));
 #endif
 	}
