@@ -225,6 +225,30 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 	}
 #endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 
+	if (ipaddr->af == AF_INET) {
+		UNUSED int flag;
+		
+#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
+		/*
+		 *	Disable PMTU discovery.  On Linux, this
+		 *	also makes sure that the "don't fragment"
+		 *	flag is zero.
+		 */
+		flag = IP_PMTUDISC_DONT;
+		setsockopt(sock->fd, IPPROTO_IP, IP_MTU_DISCOVER,
+			   &action, sizeof(action));
+#endif
+
+#if defined(IP_DONTFRAG)
+		/*
+		 *	Ensure that the "don't fragment" flag is zero.
+		 */
+		flag = 0;
+		setsockopt(sock->fd, IPPROTO_IP, IP_DONTFRAG,
+			   &off, sizeof(off));
+#endif
+	}
+
 	if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 		close(sockfd);
 		fr_strerror_printf("cannot bind socket: %s", strerror(errno));
