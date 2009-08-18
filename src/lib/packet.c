@@ -236,7 +236,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 		 */
 		flag = IP_PMTUDISC_DONT;
 		setsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER,
-			   &action, sizeof(action));
+			   &flag, sizeof(flag));
 #endif
 
 #if defined(IP_DONTFRAG)
@@ -245,7 +245,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 		 */
 		flag = 0;
 		setsockopt(sockfd, IPPROTO_IP, IP_DONTFRAG,
-			   &off, sizeof(off));
+			   &flag, sizeof(flag));
 #endif
 	}
 
