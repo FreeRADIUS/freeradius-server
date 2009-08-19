@@ -1497,13 +1497,12 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	if (value && (*value == ':' && da->flags.has_tag)) {
 	        /* If we already found a tag, this is invalid */
 	        if(found_tag) {
-		        pairbasicfree(vp);
 			fr_strerror_printf("Duplicate tag %s for attribute %s",
 				   value, vp->name);
 			DEBUG("Duplicate tag %s for attribute %s\n",
 				   value, vp->name);
+		        pairbasicfree(vp);
 			return NULL;
-
 		}
 	        /* Colon found and attribute allows a tag */
 	        if (value[1] == '*' && value[2] == ':') {
@@ -1546,6 +1545,13 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		 */
 	case T_OP_REG_EQ:	/* =~ */
 	case T_OP_REG_NE:	/* !~ */
+		if (!value) {
+			fr_strerror_printf("No regular expression found in %s",
+					   vp->name);
+		        pairbasicfree(vp);
+			return NULL;
+		}
+	  
 		strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
 		vp->length = strlen(vp->vp_strvalue);
 		/*
