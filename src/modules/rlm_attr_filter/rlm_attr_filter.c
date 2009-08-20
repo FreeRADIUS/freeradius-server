@@ -166,7 +166,7 @@ static int attr_filter_instantiate(CONF_SECTION *conf, void **instance)
  *	Common attr_filter checks
  */
 static int attr_filter_common(void *instance, REQUEST *request,
-			      VALUE_PAIR **input)
+			      RADIUS_PACKET *packet)
 {
 	struct attr_filter_instance *inst = instance;
 	VALUE_PAIR	*vp;
@@ -177,7 +177,12 @@ static int attr_filter_common(void *instance, REQUEST *request,
 	int		found = 0;
 	int		pass, fail = 0;
 	char		*keyname = NULL;
+	VALUE_PAIR	**input;
 	char		buffer[256];
+
+	if (!packet) return RLM_MODULE_NOOP;
+
+	input = &(packet->vps);
 
 	if (!inst->key) {
 		VALUE_PAIR	*namepair;
@@ -323,32 +328,32 @@ static int attr_filter_common(void *instance, REQUEST *request,
 
 static int attr_filter_preacct(void *instance, REQUEST *request)
 {
-	return attr_filter_common(instance, request, &request->packet->vps);
+	return attr_filter_common(instance, request, request->packet);
 }
 
 static int attr_filter_accounting(void *instance, REQUEST *request)
 {
-	return attr_filter_common(instance, request, &request->reply->vps);
+	return attr_filter_common(instance, request, request->reply);
 }
 
 static int attr_filter_preproxy(void *instance, REQUEST *request)
 {
-	return attr_filter_common(instance, request, &request->proxy->vps);
+	return attr_filter_common(instance, request, request->proxy);
 }
 
 static int attr_filter_postproxy(void *instance, REQUEST *request)
 {
-	return attr_filter_common(instance, request, &request->proxy_reply->vps);
+	return attr_filter_common(instance, request, request->proxy_reply);
 }
 
 static int attr_filter_postauth(void *instance, REQUEST *request)
 {
-	return attr_filter_common(instance, request, &request->reply->vps);
+	return attr_filter_common(instance, request, request->reply);
 }
 
 static int attr_filter_authorize(void *instance, REQUEST *request)
 {
-	return attr_filter_common(instance, request, &request->packet->vps);
+	return attr_filter_common(instance, request, request->packet);
 }
 
 
