@@ -65,7 +65,6 @@ typedef struct listen_detail_t {
 	time_t		timestamp;
 	fr_ipaddr_t	client_ip;
 	int		load_factor; /* 1..100 */
-	int		overload;
 	int		signal;
 	int		poll_interval;
 	int		retry_interval;
@@ -105,11 +104,6 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 
 		radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
 		return 0;
-	}
-
-	if (data->overload) {
-		data->delay_time = 0;
-		goto next;
 	}
 
 	/*
@@ -171,7 +165,6 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 *	rtt / (rtt + delay) = load_factor / 100
 	 */
 	data->delay_time = (data->srtt * (100 - data->load_factor)) / (data->load_factor);
-	if (data->delay_time == 0) data->delay_time = USEC / 10;
 
 	/*
 	 *	Cap delay at 4 packets/s.  If the end system can't
@@ -785,8 +778,6 @@ static const CONF_PARSER detail_config[] = {
 	  offsetof(listen_detail_t, poll_interval), NULL, Stringify(1)},
 	{ "retry_interval",   PW_TYPE_INTEGER,
 	  offsetof(listen_detail_t, retry_interval), NULL, Stringify(30)},
-	{ "overload",   PW_TYPE_BOOLEAN,
-	  offsetof(listen_detail_t, overload), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
