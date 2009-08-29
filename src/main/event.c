@@ -2289,7 +2289,11 @@ static void request_post_handler(REQUEST *request)
 	}
 #endif
 
-	if ((request->reply->code == 0) &&
+	/*
+	 *	Catch Auth-Type := Reject BEFORE proxying the packet.
+	 */
+	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+	    (request->reply->code == 0) &&
 	    ((vp = pairfind(request->config_items, PW_AUTH_TYPE)) != NULL) &&
 	    (vp->vp_integer == PW_AUTHTYPE_REJECT)) {
 		request->reply->code = PW_AUTHENTICATION_REJECT;
@@ -2445,14 +2449,9 @@ static void request_post_handler(REQUEST *request)
 		break;
 
 	default:
-		if ((request->packet->code > 1024) &&
-		    (request->packet->code < (1024 + 254 + 1))) {
-			request->next_callback = NULL;
-			child_state = REQUEST_DONE;
-			break;
-		}
-
-		radlog(L_ERR, "Unknown packet type %d", request->packet->code);
+		/*
+		 *	DHCP, VMPS, etc.
+		 */
 		request->next_callback = NULL;
 		child_state = REQUEST_DONE;
 		break;
