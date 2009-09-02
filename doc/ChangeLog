@@ -12,6 +12,20 @@ FreeRADIUS 2.1.7 Sun Jan 1 1:1:00 CEST 1970;  , urgency=medium
 	* Added support for udpfromto in DHCP code
 	* radmin can now selectively mark modules alive/dead.
 	  See "set module state".
+	* Added customizable messages on login success/fail.
+	  See msg_goodpass && msg_badpass in log{} section of radiusd.conf
+	* Document "chase_referrals" and "rebind" in raddb/modules/ldap
+	* Preliminary implementation of DHCP relay.
+	* Made thread pool section optional.  If it doesn't exist,
+	  The server will run single-threaded.
+	* Added sample radrelay.conf for people upgrading from 1.x
+	* Made proxying more stable by failing over, rather than
+	  rejecting the first request.  See "response_window" in proxy.conf
+	* Allow home_server_pools to exist without realms.
+	* Add dictionary.iea (closes bug #7)
+	* Added support for RFC 5580
+	* Added experimental sql_freetds module from Gabriel Blanchard.
+	* Updated dictionary.foundry
 
 	Bug fixes
 	* Fixed corner case where proxied packets could have extra
@@ -29,14 +43,35 @@ FreeRADIUS 2.1.7 Sun Jan 1 1:1:00 CEST 1970;  , urgency=medium
 	  all home servers are down for extended periods of time.
 	* Look for DHCP option 53 anywhere in the packet, not just 
 	  at the start.
-	* Mark proxy mutex as recursive.  This solves issues on some
-	  platfroms.
+	* Mark proxy mutex as recursive.  This solves issues on exit
+	  with some platforms.
 	* Fix processing of proxy fail handler with virtual servers.
 	* DHCP code now prints out correct src/dst IP addresses
 	  when sending packets.
 	* Removed requirement for DHCP to have clients
+	* Fixed handling of DHCP packets with message-type buried in the packet
+	* Fixed corner case with negation in unlang.
+	* Minor fixes to default MySQL & PostgreSQL schemas
+	* Suppress MSCHAP complaints in debugging mode.
+	* Fix SQL module for multiple instance, and possible crash on HUP
+	* Fix permissions for radius.log for sites that change user/group,
+	  but which don't create the file before starting radiusd.
+	* Fix double counting of packets when proxying
+	* Make %l work
+	* Fix pthread keys in rlm_perl
+	* Log reasons for EAP failure (closes bug #8)
+	* Load home servers and pools that aren't referenced from a realm.
+	* Handle return codes from virtual attributes in "unlang"
+	  (e.g. LDAP-Group).  This makes "!(expr)" work for them.
+	* Enable VMPS to see contents of virtual server again
+	* Fix WiMAX module to be consistent with examples.  (closes bug #10)
+	* Fixed crash with policies dependent on NAS-Port comparisons
+	* Allowed vendor IDs to be be higher than 32767.
+	* Fix crash on startup with certain regexes in "hints" file.
+	* Fix crash in attr_filter module when packets don't exist
+	* Allow detail file reader to be faster when "load_factor = 100"
 
-FreeRADIUS 2.1.6 Mon May 18 10:00:00 CEST 2009;  , urgency=medium
+FreeRADIUS 2.1.6 Mon May 18 10:00:00 CEST 2009;   urgency=medium
 	Feature improvements
 	* radclient exits with 0 on successful (accept / ack), and 1
 	  otherwise (no response / reject)
