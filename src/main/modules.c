@@ -94,41 +94,83 @@ static const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 
 
 #ifdef WITHOUT_LIBLTDL
+#ifdef WITH_DLOPEN
+#include <dlfcn.h>
+
+#ifndef RTLD_NOW
+#define RTLD_NOW (0)
+#endif
+#ifndef RTLD_LOCAL
+#define RTLD_LOCAL (0)
+#endif
+
+lt_dlhandle lt_dlopenext(const char *name)
+{
+	char buffer[256];
+
+	strlcpy(buffer, name, sizeof(buffer));
+
+	/*
+	 *	FIXME: Make this configurable...
+	 */
+	strlcat(buffer, ".so", sizeof(buffer));
+
+	return dlopen(buffer, RTLD_NOW | RTLD_LOCAL);
+}
+
+void *lt_dlsym(lt_dlhandle handle, UNUSED const char *symbol)
+{
+	return dlsym(handle, symbol);
+}
+
+int lt_dlclose(lt_dlhandle handle)
+{
+	return dlclose(handle);
+}
+
+const char *lt_dlerror(void)
+{
+	return dlerror();
+}
+
+
+#else  /* without dlopen */
 typedef struct lt_dlmodule_t {
   const char	*name;
   void		*ref;
 } lt_dlmodule_t;
 
+typedef struct eap_type_t EAP_TYPE;
+typedef struct rlm_sql_module_t rlm_sql_module_t;
+
 /*
- *	Define modules here.
+ *	FIXME: Write hackery to auto-generate this data.
+ *	We only need to do this on systems that don't have dlopen.
  */
 extern module_t rlm_pap;
 extern module_t rlm_chap;
 extern module_t rlm_eap;
+extern module_t rlm_sql;
+/* and so on ... */
 
-/*
- *	EAP structures are defined elsewhere.
- */
-typedef struct eap_type_t EAP_TYPE;
-
-/*
- *	And so on for other EAP types.
- */
 extern EAP_TYPE rlm_eap_md5;
+extern rlm_sql_module_t rlm_sql_mysql;
+/* and so on ... */
 
 static const lt_dlmodule_t lt_dlmodules[] = {
 	{ "rlm_pap", &rlm_pap },
 	{ "rlm_chap", &rlm_chap },
 	{ "rlm_eap", &rlm_eap },
+	/* and so on ... */
+
 	{ "rlm_eap_md5", &rlm_eap_md5 },
-	
-	/*
-	 *	Add other modules here.
-	 */
+	/* and so on ... */
+		
+	{ "rlm_sql_mysql", &rlm_sql_mysql },
+	/* and so on ... */
 		
 	{ NULL, NULL }
 };
-
 
 lt_dlhandle lt_dlopenext(const char *name)
 {
@@ -147,6 +189,18 @@ void *lt_dlsym(lt_dlhandle handle, UNUSED const char *symbol)
 {
 	return handle;
 }
+
+int lt_dlclose(lt_dlhandle handle)
+{
+	return 0;
+}
+
+const char *lt_dlerror(void)
+{
+	return "Unspecified error";
+}
+
+#endif	/* WITH_DLOPEN */
 #endif /* WITHOUT_LIBLTDL */
 
 static int virtual_server_idx(const char *name)
