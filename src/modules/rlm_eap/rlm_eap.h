@@ -27,7 +27,7 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(rlm_eap_h, "$Id$")
 
-#include <ltdl.h>
+#include <freeradius-devel/modpriv.h>
 #include "eap.h"
 #include "eap_types.h"
 
