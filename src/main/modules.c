@@ -1250,6 +1250,24 @@ int setup_modules(int reload, CONF_SECTION *config)
 	 */
 	if (!reload) {
 		/*
+		 *	This line works around a completely
+		 *
+		 *		RIDICULOUS INSANE IDIOTIC
+		 *
+		 *	bug in libltdl on certain systems.  The "set
+		 *	preloaded symbols" macro below ends up
+		 *	referencing this name, but it isn't defined
+		 *	anywhere in the libltdl source.  As a result,
+		 *	any program STUPID enough to rely on libltdl
+		 *	fails to link, because the symbol isn't
+		 *	defined anywhere.
+		 *
+		 *	It's like libtool and libltdl are some kind
+		 *	of sick joke.
+		 */
+#define lt__PROGRAM__LTX_preloaded_symbols lt_libltdl_LTX_preloaded_symbols
+
+		/*
 		 *	Set the default list of preloaded symbols.
 		 *	This is used to initialize libltdl's list of
 		 *	preloaded modules.
