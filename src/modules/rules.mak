@@ -42,7 +42,7 @@ all: build-module
 #######################################################################
 LT_OBJS		+= $(SRCS:.c=.lo)
 LT_OBJS		+= $(SRCS:.cpp=.lo)
-CFLAGS		+= -I$(top_builddir)/src -I$(top_builddir)/libltdl
+CFLAGS		+= -I$(top_builddir)/src $(INCLTDL)
 
 #######################################################################
 #
