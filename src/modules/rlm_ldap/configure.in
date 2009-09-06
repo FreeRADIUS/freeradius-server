@@ -124,6 +124,15 @@ if test x$with_[]modname != xno; then
 		[ SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_INITIALIZE" ])
 	    AC_CHECK_FUNC(ldap_int_tls_config,
 		[ SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_INT_TLS_CONFIG" ])
+
+
+        AC_CHECK_FUNCS(ldap_set_rebind_proc)
+        AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
+        AC_TRY_COMPILE([
+        #include <lber.h>
+        #include <ldap.h>], [ldap_set_rebind_proc(0, 0, 0);],
+	  [ac_cv_ldap_set_rebind_proc=3],
+	  [ac_cv_ldap_set_rebind_proc=2]) ])
 	fi
 
 	targetname=modname
@@ -164,7 +173,7 @@ AC_ARG_WITH(edir,
 )
 
 ldap_ldflags=$SMART_LIBS
-ldap_cflags="$SMART_CFLAGS -DLDAP_DEPRECATED"
+ldap_cflags="$SMART_CFLAGS -DLDAP_DEPRECATED -DLDAP_SET_REBIND_PROC_ARGS=$ac_cv_ldap_set_rebind_proc"
 AC_SUBST(edir)
 AC_SUBST(ldap_ldflags)
 AC_SUBST(ldap_cflags)

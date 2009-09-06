@@ -423,6 +423,19 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	inst->conns = NULL;
 	inst->failed_conns = 0;
 
+#if LDAP_SET_REBIND_PROC_ARGS != 3
+	/*
+	 *	The 2-argument rebind doesn't take an instance
+	 *	variable.  Our rebind function needs the instance
+	 *	variable for the username, password, etc.
+	 */
+	if (inst->rebind == 1) {
+		radlog(L_ERR, "rlm_ldap: Cannot use 'rebind' directive as this version of libldap does not support the API that we need.");
+		free(inst);
+		return -1;
+	}
+#endif
+
 	DEBUG("rlm_ldap: Registering ldap_groupcmp for Ldap-Group");
 	paircompare_register(PW_LDAP_GROUP, PW_USER_NAME, ldap_groupcmp, inst);
 	memset(&flags, 0, sizeof(flags));
