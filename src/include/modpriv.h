@@ -2,6 +2,9 @@
  * accessed from anywhere else.
  *
  * Version: $Id$ */
+#ifndef FR_MODPRIV_H
+#define FR_MODPRIV_H
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
@@ -52,3 +55,4 @@ typedef struct module_instance_t {
 module_instance_t *find_module_instance(CONF_SECTION *, const char *instname,
 					int do_link);
 int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when);
+#endif	/* FR_MODPRIV_H */
