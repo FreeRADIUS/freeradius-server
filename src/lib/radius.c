@@ -1964,6 +1964,11 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		 *	over-ride this one.
 		 */
 	create_pair:
+		/*
+		 *	Ignore VSAs that have no data.
+		 */
+		if (attrlen == 0) goto next;
+
 		pair = rad_attr2vp(packet, original, secret,
 				 attribute, attrlen, ptr);
 		if (!pair) {
@@ -1976,6 +1981,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		*tail = pair;
 		tail = &pair->next;
 
+	next:
 		ptr += attrlen;
 		packet_length -= attrlen;
 	}
