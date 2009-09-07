@@ -29,8 +29,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#include <freeradius-devel/modules.h>
-
 #include <rlm_sql.h>
 
 /*
