@@ -72,6 +72,7 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 	FILE *passwd;
 #ifdef HAVE_SHADOW_H
 	FILE *shadow;
+	struct mypasswd *cur;
 #endif
 	FILE *group;
 	char buffer[BUFSIZE];
@@ -79,8 +80,7 @@ struct pwcache *unix_buildpwcache(const char *passwd_file,
 	char username[256];
 	char *ptr, *bufptr;
 	int len, hashindex, numread=0;
-	struct mypasswd *new, *cur;
-
+	struct mypasswd *new;
 	int len2, idx;
 	struct group *grp;
 	struct mygroup *g_new;

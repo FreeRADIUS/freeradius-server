@@ -222,7 +222,6 @@ int eapmd5_compose(EAP_DS *eap_ds, MD5_PACKET *reply)
 		eap_ds->request->type.type = PW_EAP_MD5;
 
 		rad_assert(reply->length > 0);
-		rad_assert(reply->value_size < 256);
 
 		eap_ds->request->type.data = malloc(reply->length);
 		if (eap_ds->request->type.data == NULL) {

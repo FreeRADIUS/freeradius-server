@@ -628,7 +628,7 @@ EAP_TYPE rlm_eap_sim = {
 
 /*
  * $Log$
- * Revision 1.12.4.1  2007-02-15 12:51:38  aland
+ * Revision 1.12.4.1  2007/02/15 12:51:38  aland
  * 	Handle Client-Error code.  If the client sends us one, we stop
  * 	talking EAP-SIM.
  *

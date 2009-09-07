@@ -1,0 +1,113 @@
+.TH clients.conf 5 "13 June 2005" "" "FreeRADIUS client configuration"
+.SH NAME
+clients.conf \- FreeRADIUS client configuration
+.SH DESCRIPTION
+The 
+.I clients.conf
+file contains definitions of RADIUS clients.
+.PP
+The information in this file overrides any information provided in
+the deprecated 
+.BR clients (5)
+and 
+.BR naslist (5)
+files.
+.PP
+The file format is the same as that used for
+.I radiusd.conf.
+See 
+.BR radiusd.conf (5)
+for more details.
+.PP
+Each RADIUS client entry has the following basic form:
+.IP
+.nf
+client <hostname|ip-address|ip-network> {
+       <attribute> = <value>
+ }
+.fi
+.LP
+ip-network is used to specify a network of clients. Networks are
+specified in CIDR notation. If multiple overlapping networks are
+defined, the best match (smallest possible network) will be chosen for
+a packet.
+.SH ATTRIBUTES
+The attributes that can appear in a 
+.B client
+section are listed below. Required attributes are labelled as
+such. All other attributes are optional.
+.PP
+.TP 0.5i
+.B secret [Required]
+The RADIUS shared secret used for communication between the client/NAS
+and the RADIUS server.
+.TP 0.5i
+.B shortname [Required]
+A short alias that can be used in place of the IP address or fully
+qualified hostname provided in the first line of the section.
+.TP 0.5i
+.B nastype
+The nastype attribute is used to tell the 
+.BR checkrad.pl
+script which NAS-specific method it should use when checking
+simultaneous use.
+
+The following values are currently recognized:
+.nf
+cisco
+computone
+livingston
+max40xx
+multitech
+netserver
+pathras
+patton
+portslave
+tc
+usrhiper
+other
+.fi
+.TP 0.5i
+.B login
+Reserved for future use.
+.TP 0.5i
+.B password
+Reserved for future use.
+.SH EXAMPLES
+.IP
+.nf
+client 127.0.0.1 {
+        secret          = testing123
+        shortname       = localhost
+        nastype         = other     
+}
+.fi
+.LP
+This adds a client for the loopback address. This is useful in testing
+the 
+server locally, for example with 
+.BR radclient (1).
+.IP
+.nf
+client 192.168.0.0/24 {
+       secret          = testing123-1
+       shortname       = private-network-1
+}
+.fi
+.LP
+This entry represents any client from the 192.168.0.0/24 network. 
+.SH FILES
+.I /etc/raddb/clients.conf
+
+.I /etc/raddb/radiusd.conf
+.SH "SEE ALSO"
+.BR radiusd (8),
+.BR radiusd.conf (5),
+.BR clients (5),
+.BR naslist (5)
+
+.SH AUTHOR
+This manual page was authored by Shawn K. O'Shea <shawn@eth0.net>.
+
+FreeRADIUS is authored by the FreeRADIUS team. 
+http://freeradius.org/

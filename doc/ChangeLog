@@ -1,4 +1,4 @@
-FreeRADIUS 1.1.7 ; $Date$, urgency = medium
+FreeRADIUS 1.1.7 ; Date: 2007/07/13 09:39:11 , urgency = medium
 	Feature improvements
 	* Updated LDAP documentation
 	* Added note on DH parameters in eap.conf, and debugging messages

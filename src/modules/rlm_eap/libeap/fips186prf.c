@@ -264,7 +264,7 @@ main(int argc, char *argv[])
 
 /*
  * $Log$
- * Revision 1.3.2.1.2.1  2006-05-19 14:19:15  nbk
+ * Revision 1.3.2.1.2.1  2006/05/19 14:19:15  nbk
  * 	Don't use rad_assert in libeap, it's a server-only function.
  *
  * Revision 1.3.2.1  2005/08/24 14:37:52  nbk
