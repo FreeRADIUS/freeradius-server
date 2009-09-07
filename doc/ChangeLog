@@ -1,3 +1,10 @@
+FreeRADIUS 1.1.8 ; Date: 2009/09/08 10:00:00 , urgency = high
+	Feature improvements
+	* None.
+
+	Bug fixes
+	* Crash when malformed Tunnel-Password attribute is received
+
 FreeRADIUS 1.1.7 ; Date: 2007/07/13 09:39:11 , urgency = medium
 	Feature improvements
 	* Updated LDAP documentation
