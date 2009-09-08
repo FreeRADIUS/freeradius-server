@@ -375,8 +375,13 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row)
 	if (row[4] != NULL && row[4][0] != '\0') {
 		ptr = row[4];
 		operator = gettoken(&ptr, buf, sizeof(buf));
-	}
-	if (operator <= T_EOL) {
+		if ((operator < T_OP_ADD) ||
+		    (operator > T_OP_CMP_EQ)) {
+			radlog(L_ERR, "rlm_sql: Invalid operator \"%s\" for attribute %s", row[4], row[2]);
+			return -1;
+		}
+
+	} else {
 		/*
 		 *  Complain about empty or invalid 'op' field
 		 */
