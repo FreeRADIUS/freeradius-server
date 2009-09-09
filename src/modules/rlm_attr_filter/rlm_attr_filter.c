@@ -229,7 +229,8 @@ static int attr_filter_common(void *instance, REQUEST *request,
 		for (check_item = pl->check;
 		     check_item != NULL;
 		     check_item = check_item->next) {
-			if (check_item->attribute == PW_FALL_THROUGH) {
+			if ((check_item->attribute == PW_FALL_THROUGH) &&
+			    (check_item->vp_integer == 1)) {
 				fall_through = 1;
 				continue;
 			}
