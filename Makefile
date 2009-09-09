@@ -109,3 +109,70 @@ configure.in:
 
 TAGS:
 	etags `find src -type f -name '*.[ch]' -print`
+
+
+######################################################################
+#
+#  Make a release.
+#
+#  Note that "Make.inc" has to be updated with the release number
+#  BEFORE running this command!
+#
+######################################################################
+freeradius-$(RADIUSD_VERSION).tar.gz: .git
+	git archive --format=tar --prefix=freeradius-$(RADIUSD_VERSION)/ branch_1_1_7 | gzip > $@
+
+freeradius-$(RADIUSD_VERSION).tar.gz.sig: freeradius-$(RADIUSD_VERSION).tar.gz
+	gpg --default-key aland@freeradius.org -b $<
+
+freeradius-$(RADIUSD_VERSION).tar.bz2: .git
+	git archive --format=tar --prefix=freeradius-$(RADIUSD_VERSION)/ branch_1_1_7 | bzip2 > $@
+
+freeradius-$(RADIUSD_VERSION).tar.bz2.sig: freeradius-$(RADIUSD_VERSION).tar.bz2
+	gpg --default-key aland@freeradius.org -b $<
+
+# high-level targets
+.PHONY: dist-check
+dist-check: redhat/freeradius.spec suse/freeradius.spec debian/changelog
+	@if [ `grep ^Version: redhat/freeradius.spec | sed 's/.*://;s/ //'` != "$(RADIUSD_VERSION)" ]; then \
+		cat redhat/freeradius.spec | sed 's/^Version: .*/Version: $(RADIUSD_VERSION)/' > redhat/.foo; \
+		mv redhat/.foo redhat/freeradius.spec; \
+		echo redhat/freeradius.spec 'Version' needs to be updated; \
+		exit 1; \
+	fi
+	@if [ `grep ^Version: suse/freeradius.spec | sed 's/.*://;s/ //'` != "$(RADIUSD_VERSION)" ]; then \
+		cat suse/freeradius.spec | sed 's/^Version: .*/Version: $(RADIUSD_VERSION)/' > suse/.foo; \
+		mv suse/.foo suse/freeradius.spec; \
+		echo suse/freeradius.spec 'Version' needs to be updated; \
+		exit 1; \
+	fi
+	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/-0).*//;s/-1).*//;'`  != "$(RADIUSD_VERSION)" ]; then \
+		echo debian/changelog needs to be updated; \
+		exit 1; \
+	fi
+
+dist: dist-check freeradius-$(RADIUSD_VERSION).tar.gz freeradius-$(RADIUSD_VERSION).tar.bz2
+
+dist-sign: freeradius-$(RADIUSD_VERSION).tar.gz.sig freeradius-$(RADIUSD_VERSION).tar.bz2.sig
+
+dist-publish: freeradius-$(RADIUSD_VERSION).tar.gz.sig freeradius-$(RADIUSD_VERSION).tar.gz freeradius-$(RADIUSD_VERSION).tar.gz.sig freeradius-$(RADIUSD_VERSION).tar.bz2 freeradius-$(RADIUSD_VERSION).tar.gz.sig freeradius-$(RADIUSD_VERSION).tar.bz2.sig
+	scp $^ freeradius.org@ns5.freeradius.org:public_ftp
+	scp $^ freeradius.org@www.tr.freeradius.org:public_ftp
+
+#
+#  Note that we do NOT do the tagging here!  We just print out what
+#  to do!
+#
+dist-tag: freeradius-$(RADIUSD_VERSION).tar.gz freeradius-$(RADIUSD_VERSION).tar.bz2
+	@echo "git tag release_`echo $(RADIUSD_VERSION) | tr .- __`"
+
+#
+#	Build a debian package
+#
+.PHONY: deb
+deb:
+	fakeroot dpkg-buildpackage -b -uc
+
+.PHONY: diff-check
+diff-check:
+	diff -x .git -x '.lo' -r ../freeradius-1.1.7 freeradius-1.1.8 | egrep -v '\$|^diff|^---|^[0-9]+[a-z][0-9]+' | more 
