@@ -26,6 +26,8 @@ FreeRADIUS 2.1.7 Sun Jan 1 1:1:00 CEST 1970;  , urgency=medium
 	* Added support for RFC 5580
 	* Added experimental sql_freetds module from Gabriel Blanchard.
 	* Updated dictionary.foundry
+	* Added sample configuration for MySQL cluster in raddb/sql/ndb
+	  See the README file for explanations.
 
 	Bug fixes
 	* Fixed corner case where proxied packets could have extra
@@ -70,6 +72,11 @@ FreeRADIUS 2.1.7 Sun Jan 1 1:1:00 CEST 1970;  , urgency=medium
 	* Fix crash on startup with certain regexes in "hints" file.
 	* Fix crash in attr_filter module when packets don't exist
 	* Allow detail file reader to be faster when "load_factor = 100"
+	* Add work-around for build failures with errors related to
+	  lt__PROGRAM__LTX_preloaded_symbols.  libltdl / libtool are horrible.
+	* Made ldap module "rebind" option aware of older, incompatible
+	  versions of OpenLDAP.
+	* Check value of Fall-Through in attr_filter module.
 
 FreeRADIUS 2.1.6 Mon May 18 10:00:00 CEST 2009;   urgency=medium
 	Feature improvements
