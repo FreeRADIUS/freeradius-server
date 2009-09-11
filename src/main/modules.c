@@ -1319,7 +1319,9 @@ int setup_modules(int reload, CONF_SECTION *config)
 		 *	It's like libtool and libltdl are some kind
 		 *	of sick joke.
 		 */
+#ifdef I_HATE_LIBTOOL
 #define lt__PROGRAM__LTX_preloaded_symbols lt_libltdl_LTX_preloaded_symbols
+#endif
 
 		/*
 		 *	Set the default list of preloaded symbols.
