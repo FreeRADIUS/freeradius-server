@@ -519,66 +519,6 @@ static void cleanup_delay(void *ctx)
 
 
 /*
- *	FIXME: Put into a libradius function.
- */
-#define MAX_PACKET_CODE (52)
-static const char *packet_codes[] = {
-  "",
-  "Access-Request",
-  "Access-Accept",
-  "Access-Reject",
-  "Accounting-Request",
-  "Accounting-Response",
-  "Accounting-Status",
-  "Password-Request",
-  "Password-Accept",
-  "Password-Reject",
-  "Accounting-Message",
-  "Access-Challenge",
-  "Status-Server",
-  "Status-Client",
-  "14",
-  "15",
-  "16",
-  "17",
-  "18",
-  "19",
-  "20",
-  "Resource-Free-Request",
-  "Resource-Free-Response",
-  "Resource-Query-Request",
-  "Resource-Query-Response",
-  "Alternate-Resource-Reclaim-Request",
-  "NAS-Reboot-Request",
-  "NAS-Reboot-Response",
-  "28",
-  "Next-Passcode",
-  "New-Pin",
-  "Terminate-Session",
-  "Password-Expired",
-  "Event-Request",
-  "Event-Response",
-  "35",
-  "36",
-  "37",
-  "38",
-  "39",
-  "Disconnect-Request",
-  "Disconnect-ACK",
-  "Disconnect-NAK",
-  "CoA-Request",
-  "CoA-ACK",
-  "CoA-NAK",
-  "46",
-  "47",
-  "48",
-  "49",
-  "IP-Address-Allocate",
-  "IP-Address-Release"
-};
-
-
-/*
  *	In daemon mode, AND this request has debug flags set.
  */
 #define DEBUG_PACKET if (!debug_flag && request->options && request->radlog) debug_packet
@@ -614,9 +554,9 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	 *
 	 *	This really belongs in a utility library
 	 */
-	if ((packet->code > 0) && (packet->code < MAX_PACKET_CODE)) {
+	if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
 		RDEBUG("%s %s packet %s host %s port %d, id=%d, length=%d",
-		       received, packet_codes[packet->code], from,
+		       received, fr_packet_codes[packet->code], from,
 		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
 		       port, packet->id, packet->data_len);
 	} else {
