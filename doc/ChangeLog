@@ -1,4 +1,4 @@
-FreeRADIUS 2.1.7 Sun Jan 1 1:1:00 CEST 1970;  , urgency=medium
+FreeRADIUS 2.1.7 Mon Sept 14 11:20:00 CEST 2009;  , urgency=medium
 	Feature improvements
 	* Full support for CoA and Disconnect packets as per RFC 3576
 	  and RFC 5176.  Both receiving and proxying CoA is supported.
@@ -17,7 +17,7 @@ FreeRADIUS 2.1.7 Sun Jan 1 1:1:00 CEST 1970;  , urgency=medium
 	* Document "chase_referrals" and "rebind" in raddb/modules/ldap
 	* Preliminary implementation of DHCP relay.
 	* Made thread pool section optional.  If it doesn't exist,
-	  The server will run single-threaded.
+	  the server will run single-threaded.
 	* Added sample radrelay.conf for people upgrading from 1.x
 	* Made proxying more stable by failing over, rather than
 	  rejecting the first request.  See "response_window" in proxy.conf
@@ -45,8 +45,6 @@ FreeRADIUS 2.1.7 Sun Jan 1 1:1:00 CEST 1970;  , urgency=medium
 	  all home servers are down for extended periods of time.
 	* Look for DHCP option 53 anywhere in the packet, not just 
 	  at the start.
-	* Mark proxy mutex as recursive.  This solves issues on exit
-	  with some platforms.
 	* Fix processing of proxy fail handler with virtual servers.
 	* DHCP code now prints out correct src/dst IP addresses
 	  when sending packets.

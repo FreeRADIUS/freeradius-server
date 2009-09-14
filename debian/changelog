@@ -1,7 +1,59 @@
 freeradius (2.1.7-0) unstable; urgency=medium
-  * Place-holder
+  * Full support for CoA and Disconnect packets as per RFC 3576 and RFC 5176.  Both receiving and proxying CoA is supported.
+  * Added "src_ipaddr" configuration to "home_server".  See proxy.conf for details.
+  * radsniff now accepts -I, to read from a filename instead of a device.
+  * radsniff also prints matching requests and any responses to those requests when '-r' is used.
+  * Added example of attr_filter for Access-Challenge packets
+  * Added support for udpfromto in DHCP code
+  * radmin can now selectively mark modules alive/dead.  See "set module state".
+  * Added customizable messages on login success/fail.  See msg_goodpass && msg_badpass in log{} section of radiusd.conf
+  * Document "chase_referrals" and "rebind" in raddb/modules/ldap
+  * Preliminary implementation of DHCP relay.
+  * Made thread pool section optional.  If it doesn't exist, the server will run single-threaded.
+  * Added sample radrelay.conf for people upgrading from 1.x
+  * Made proxying more stable by failing over, rather than rejecting the first request.  See "response_window" in proxy.conf
+  * Allow home_server_pools to exist without realms.
+  * Add dictionary.iea (closes bug #7)
+  * Added support for RFC 5580
+  * Added experimental sql_freetds module from Gabriel Blanchard.
+  * Updated dictionary.foundry
+  * Added sample configuration for MySQL cluster in raddb/sql/ndb.  See the README file for explanations.
+  * Fixed corner case where proxied packets could have extra character in User-Password attribute.  Fix from Niko Tyni.
+  * Extended size of "attribute" field in SQL to 64.
+  * Fixes to ruby module to be more careful about when it builds.
+  * Updated Perl module "configure" script to check for broken Perl installations.
+  * Fix "status_check = none".  It would still send packets in some cases.
+  * Set recursive flag on the proxy mutex, which enables safer cleanup on some platforms.
+  * Copy the EAP username verbatim, rather than escaping it.
+  * Update handling so that robust-proxy-accounting works when all home servers are down for extended periods of time.
+  * Look for DHCP option 53 anywhere in the packet, not just at the start.
+  * Fix processing of proxy fail handler with virtual servers.
+  * DHCP code now prints out correct src/dst IP addresses when sending packets.
+  * Removed requirement for DHCP to have clients
+  * Fixed handling of DHCP packets with message-type buried in the packet
+  * Fixed corner case with negation in unlang.
+  * Minor fixes to default MySQL & PostgreSQL schemas
+  * Suppress MSCHAP complaints in debugging mode.
+  * Fix SQL module for multiple instance, and possible crash on HUP
+  * Fix permissions for radius.log for sites that change user/group, but which don't create the file before starting radiusd.
+  * Fix double counting of packets when proxying
+  * Make %l work
+  * Fix pthread keys in rlm_perl
+  * Log reasons for EAP failure (closes bug #8)
+  * Load home servers and pools that aren't referenced from a realm.
+  * Handle return codes from virtual attributes in "unlang" (e.g. LDAP-Group).  This makes "!(expr)" work for them.
+  * Enable VMPS to see contents of virtual server again
+  * Fix WiMAX module to be consistent with examples.  (closes bug #10)
+  * Fixed crash with policies dependent on NAS-Port comparisons
+  * Allowed vendor IDs to be be higher than 32767.
+  * Fix crash on startup with certain regexes in "hints" file.
+  * Fix crash in attr_filter module when packets don't exist
+  * Allow detail file reader to be faster when "load_factor = 100"
+  * Add work-around for build failures with errors related to lt__PROGRAM__LTX_preloaded_symbols.  libltdl / libtool are horrible.
+  * Made ldap module "rebind" option aware of older, incompatible versions of OpenLDAP.
+  * Check value of Fall-Through in attr_filter module.
 
- -- Alan DeKok <aland@freeradius.org>  Mon, 01 Jan 1970 9:48:00 +0100
+ -- Alan DeKok <aland@freeradius.org>  Mon, 14 Sep 2009 11:20:00 +0100
 
 freeradius (2.1.6-0) unstable; urgency=medium
   * radclient exits with 0 on successful (accept / ack), and 1 otherwise (no response / reject)
@@ -73,7 +125,7 @@ freeradius (2.1.4-0) unstable; urgency=medium
   * Fixed "access after free" with some dynamic clients.
 
  -- Alan DeKok <aland@freeradius.org>  Tue, 10 Mar 2009 9:48:00 +0100
-	
+  
 freeradius (2.1.3-0) unstable; urgency=medium
   * Allow running with "user=radiusd" and binding to secure sockets.
   * Start sending Status-Server "are you alive" messages earlier, which helps with proxying multiple realms to a home server.
@@ -118,7 +170,7 @@ freeradius (2.1.1-0) unstable; urgency=medium
   * Fix double free on exit() in rlm_attr_filter
   * Fixed build issues on Solaris.
   * Fixed fast session resumption for EAP-TLS
-	
+  
  -- Alan DeKok <aland@freeradius.org>  Thu, 25 Sep 2008 11:03:00 +0100
 
 freeradius (2.1.0-0) unstable; urgency=medium
@@ -141,8 +193,8 @@ freeradius (2.1.0-0) unstable; urgency=medium
   * Fix hints so that "Puser" works again.
   * Removed length restrictions on attribute names in the dictionaries.
   * Update socket code to avoid C compiler optimizations.
-	
- -- Alan DeKok <aland@freeradius.org>  Fri, 05 Sep 2008 13:20:01 +0100
+
+-- Alan DeKok <aland@freeradius.org>  Fri, 05 Sep 2008 13:20:01 +0100
 
 freeradius (2.0.5-0) unstable; urgency=medium
   * Permit SQL authorize_reply_query to be empty.
