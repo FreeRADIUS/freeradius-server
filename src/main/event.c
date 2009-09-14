@@ -1034,8 +1034,8 @@ static void no_response_to_proxied_request(void *ctx)
 	 *	well.
 	 */
 	if (home->no_response_fail) {
-		radlog(L_ERR, "Rejecting request %d due to lack of any response from home server %s port %d",
-		       request->number,
+		radlog(L_ERR, "Rejecting request %d (proxy Id %d) due to lack of any response from home server %s port %d",
+		       request->number, request->proxy->id,
 		       inet_ntop(request->proxy->dst_ipaddr.af,
 				 &request->proxy->dst_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
