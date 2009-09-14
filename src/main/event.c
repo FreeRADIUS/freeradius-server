@@ -702,7 +702,8 @@ static void ping_home_server(void *ctx)
 	VALUE_PAIR *vp;
 
 	if ((home->state == HOME_STATE_ALIVE) ||
-	    (home->ping_check == HOME_PING_CHECK_NONE)) {
+	    (home->ping_check == HOME_PING_CHECK_NONE) ||
+	    (home->ev != NULL)) {
 		return;
 	}
 
@@ -1057,12 +1058,13 @@ static void no_response_to_proxied_request(void *ctx)
 	 *	of the zombie period.
 	 */
 	if (home->state == HOME_STATE_ALIVE) {
+		home->state = HOME_STATE_ZOMBIE;
+		home->zombie_period_start = now;	
+
 		radlog(L_ERR, "PROXY: Marking home server %s port %d as zombie (it looks like it is dead).",
 		       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
 		       home->port);
-		home->state = HOME_STATE_ZOMBIE;
-		home->zombie_period_start = now;
 
 		/*
 		 *	Start pinging the home server.
