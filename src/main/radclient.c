@@ -59,6 +59,10 @@ static int client_port = 0;
 static int sockfd;
 static int last_used_id = -1;
 
+#ifdef WITH_TCP
+const char *proto = NULL;
+#endif
+
 static rbtree_t *filename_tree = NULL;
 static fr_packet_list_t *pl = NULL;
 
@@ -103,6 +107,9 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -x          Debugging mode.\n");
 	fprintf(stderr, "  -4          Use IPv4 address of server\n");
 	fprintf(stderr, "  -6          Use IPv6 address of server.\n");
+#ifdef WITH_TCP
+	fprintf(stderr, "  -P proto    Use proto (tcp or udp) for transport.\n");
+#endif
 
 	exit(1);
 }
@@ -190,6 +197,13 @@ static int radclient_init(const char *filename)
 			if (fp != stdin) fclose(fp);
 			return 0;
 		}
+
+#ifdef WITH_TCP
+		radclient->request->src_ipaddr = client_ipaddr;
+		radclient->request->src_port = client_port;
+		radclient->request->dst_ipaddr = server_ipaddr;
+		radclient->request->dst_port = server_port;
+#endif
 
 		radclient->filename = filename;
 		radclient->request->id = -1; /* allocate when sending */
@@ -495,6 +509,12 @@ static int send_one_packet(radclient_t *radclient)
 		if (rcode < 0) {
 			int mysockfd;
 
+#ifdef WITH_TCP
+			if (proto) {
+				mysockfd = fr_tcp_client_socket(&server_ipaddr,
+								server_port);
+			} else
+#endif
 			mysockfd = fr_socket(&client_ipaddr, 0);
 			if (!mysockfd) {
 				fprintf(stderr, "radclient: Can't open new socket\n");
@@ -559,6 +579,16 @@ static int send_one_packet(radclient_t *radclient)
 		if (!fr_packet_list_insert(pl, &radclient->request)) {
 			assert(0 == 1);
 		}
+
+#ifdef WITH_TCP
+		/*
+		 *	WTF?
+		 */
+		if (client_port == 0) {
+			client_ipaddr = radclient->request->src_ipaddr;
+			client_port = radclient->request->src_port;
+		}
+#endif
 
 	} else {		/* radclient->request->id >= 0 */
 		time_t now = time(NULL);
@@ -667,10 +697,19 @@ static int recv_one_packet(int wait_time)
 	/*
 	 *	Look for the packet.
 	 */
+
 	reply = fr_packet_list_recv(pl, &set);
 	if (!reply) {
 		fprintf(stderr, "radclient: received bad packet: %s\n",
 			fr_strerror());
+#ifdef WITH_TCP
+		/*
+		 *	If the packet is bad, we close the socket.
+		 *	I'm not sure how to do that now, so we just
+		 *	die...
+		 */
+		if (proto) exit(1);
+#endif
 		return -1;	/* bad packet */
 	}
 
@@ -680,6 +719,11 @@ static int recv_one_packet(int wait_time)
 	 *	(say) 127.0.0.1.
 	 */
 	reply->dst_ipaddr = client_ipaddr;
+	reply->dst_port = client_port;
+#ifdef WITH_TCP
+	reply->src_ipaddr = server_ipaddr;
+	reply->src_port = server_port;
+#endif
 
 	if (fr_debug_flag > 2) print_hex(reply);
 
@@ -782,7 +826,11 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	while ((c = getopt(argc, argv, "46c:d:f:Fhi:n:p:qr:sS:t:vx")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "46c:d:f:Fhi:n:p:qr:sS:t:vx"
+#ifdef WITH_TCP
+			   "P:"
+#endif
+			   )) != EOF) switch(c) {
 		case '4':
 			force_af = AF_INET;
 			break;
@@ -828,6 +876,20 @@ int main(int argc, char **argv)
 			parallel = atoi(optarg);
 			if (parallel <= 0) usage();
 			break;
+
+#ifdef WITH_TCP
+		case 'P':
+			proto = optarg;
+			if (strcmp(proto, "tcp") != 0) {
+				if (strcmp(proto, "udp") == 0) {
+					proto = NULL;
+				} else {
+					usage();
+				}
+			}
+			break;
+
+#endif
 
 		case 'q':
 			do_output = 0;
@@ -1024,6 +1086,11 @@ int main(int argc, char **argv)
 		client_ipaddr = radclient_head->request->src_ipaddr;
 		client_port = radclient_head->request->src_port;
 	}
+#ifdef WITH_TCP
+	if (proto) {
+		sockfd = fr_tcp_client_socket(&server_ipaddr, server_port);
+	} else
+#endif
 	sockfd = fr_socket(&client_ipaddr, client_port);
 	if (sockfd < 0) {
 		fprintf(stderr, "radclient: socket: %s\n", fr_strerror());
