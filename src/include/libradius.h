@@ -217,9 +217,12 @@ typedef struct radius_packet {
 	uint8_t			vector[AUTH_VECTOR_LEN];
 	time_t			timestamp;
 	uint8_t			*data;
-	int			data_len;
+	ssize_t			data_len;
 	VALUE_PAIR		*vps;
 	ssize_t			offset;
+#ifdef WITH_TCP
+	ssize_t			partial;
+#endif
 } RADIUS_PACKET;
 
 /*
@@ -472,5 +475,9 @@ void *fr_fifo_peek(fr_fifo_t *fi);
 int fr_fifo_num_elements(fr_fifo_t *fi);
 
 #include <freeradius-devel/packet.h>
+
+#ifdef WITH_TCP
+#include <freeradius-devel/tcp.h>
+#endif
 
 #endif /*LIBRADIUS_H*/
