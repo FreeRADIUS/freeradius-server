@@ -271,6 +271,9 @@ typedef struct fr_packet_socket_t {
 	int		inaddr_any;
 	fr_ipaddr_t	ipaddr;
 	int		port;
+#ifdef WITH_TCP
+	int		type;
+#endif
 } fr_packet_socket_t;
 
 
@@ -343,7 +346,7 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd)
 {
 	int i, start;
 	struct sockaddr_storage	src;
-	socklen_t	        sizeof_src = sizeof(src);
+	socklen_t	        sizeof_src;
 	fr_packet_socket_t	*ps;
 
 	if (!pl) return 0;
@@ -368,6 +371,13 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd)
 	memset(ps, 0, sizeof(*ps));
 	ps->sockfd = sockfd;
 	ps->offset = start;
+#ifdef WITH_TCP
+	sizeof_src = sizeof(ps->type);
+
+	if (getsockopt(sockfd, SOL_SOCKET, SO_TYPE, &ps->type, &sizeof_src) < 0) {
+		return 0;
+	}
+#endif
 
 	/*
 	 *	Get address family, etc. first, so we know if we
@@ -376,6 +386,7 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd)
 	 *	FIXME: udpfromto also does this, but it's not
 	 *	a critical problem.
 	 */
+	sizeof_src = sizeof(src);
 	memset(&src, 0, sizeof_src);
 	if (getsockname(sockfd, (struct sockaddr *) &src,
 			&sizeof_src) < 0) {
@@ -818,6 +829,11 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 
 		if (!FD_ISSET(pl->sockets[start].sockfd, set)) continue;
 
+#ifdef WITH_TCP
+		if (pl->sockets[start].type == SOCK_STREAM) {
+			packet = fr_tcp_recv(pl->sockets[start].sockfd, 0);
+		} else
+#endif
 		packet = rad_recv(pl->sockets[start].sockfd, 0);
 		if (!packet) continue;
 
