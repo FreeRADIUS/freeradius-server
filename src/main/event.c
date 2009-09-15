@@ -143,6 +143,19 @@ static void remove_from_request_hash(REQUEST *request)
 	request->in_request_hash = FALSE;
 
 	request_stats_final(request);
+
+#ifdef WITH_TCP
+	request->listener->count--;
+
+	/*
+	 *	The TCP socket was closed, but we've got to
+	 *	hang around until done.
+	 */
+	if ((request->listener->status == RAD_LISTEN_STATUS_FINISH) &&
+	    (request->listener->count == 0)) {
+		listen_free(&request->listener);
+	}
+#endif
 }
 
 
@@ -2887,6 +2900,9 @@ int received_request(rad_listen_t *listener,
 	request->in_request_hash = TRUE;
 	request->root = root;
 	root->refcount++;
+#ifdef WITH_TCP
+	request->listener->count++;
+#endif
 
 	/*
 	 *	The request passes many of our sanity checks.

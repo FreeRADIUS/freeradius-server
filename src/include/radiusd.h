@@ -318,6 +318,9 @@ struct rad_listen_t {
 	int		fd;
 	const char	*server;
 	int		status;
+#ifdef WITH_TCP
+	int		count;
+#endif
 
 	rad_listen_recv_t recv;
 	rad_listen_send_t send;
