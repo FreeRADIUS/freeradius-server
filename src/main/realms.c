@@ -148,6 +148,11 @@ static int home_server_addr_cmp(const void *one, const void *two)
 		return strcmp(a->server, b->server);
 	}
 
+#ifdef WITH_TCP
+	if (a->proto < b->proto) return -1;
+	if (a->proto > b->proto) return +1;
+#endif
+
 	if (a->port < b->port) return -1;
 	if (a->port > b->port) return +1;
 
@@ -234,6 +239,29 @@ static size_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
 }
 #endif
 
+#ifdef WITH_PROXY
+#ifndef WITH_TCP
+#define home_server_free free
+#else
+static void home_server_free(void *data)
+{
+	int i;
+	home_server *home = data;
+
+	if (home->proto == IPPROTO_TCP) {
+		for (i = 0; i < home->max_connections; i++) {
+			if (!home->listeners[i]) continue;
+			
+			listen_free(&home->listeners[i]);
+		}
+	}
+
+	free(home);
+}
+
+#endif /* WITH_TCP */
+#endif /* WITH_PROXY */
+
 void realms_free(void)
 {
 #ifdef WITH_PROXY
@@ -274,12 +302,33 @@ void realms_free(void)
 
 
 #ifdef WITH_PROXY
+#ifdef WITH_TCP
+static CONF_PARSER tcp_config[] = {
+	{ "max_connections", PW_TYPE_INTEGER,
+	  offsetof(home_server, max_connections), NULL,   "16" },
+
+	{ "max_requests", PW_TYPE_INTEGER,
+	  offsetof(home_server,max_requests), NULL,   "0" },
+
+	{ "lifetime", PW_TYPE_INTEGER,
+	  offsetof(home_server,lifetime), NULL,   "0" },
+
+	{ "idle_timeout", PW_TYPE_INTEGER,
+	  offsetof(home_server,idle_timeout), NULL,   "0" },
+
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+#endif
+
 static struct in_addr hs_ip4addr;
 static struct in6_addr hs_ip6addr;
 static char *hs_srcipaddr = NULL;
 static char *hs_type = NULL;
 static char *hs_check = NULL;
 static char *hs_virtual_server = NULL;
+#ifdef WITH_TCP
+static char *hs_proto = NULL;
+#endif
 
 static CONF_PARSER home_server_config[] = {
 	{ "ipaddr",  PW_TYPE_IPADDR,
@@ -294,6 +343,11 @@ static CONF_PARSER home_server_config[] = {
 
 	{ "type",  PW_TYPE_STRING_PTR,
 	  0, &hs_type, NULL },
+
+#ifdef WITH_TCP
+	{ "proto",  PW_TYPE_STRING_PTR,
+	  0, &hs_proto, NULL },
+#endif
 
 	{ "secret",  PW_TYPE_STRING_PTR,
 	  offsetof(home_server,secret), NULL,  NULL},
@@ -351,6 +405,10 @@ static CONF_PARSER home_server_config[] = {
 	  offsetof(home_server, coa_mrd), 0, Stringify(30) },
 #endif
 
+#ifdef WITH_TCP
+	{ "limit", PW_TYPE_SUBSECTION, 0, NULL, (const void *) tcp_config },
+#endif
+
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -361,6 +419,10 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 	home_server *home;
 	int dual = FALSE;
 	CONF_PAIR *cp;
+#ifdef WITH_TCP
+	CONF_SECTION *limit;
+	int	max_connections;
+#endif
 
 	free(hs_virtual_server); /* used only for printing during parsing */
 	hs_virtual_server = NULL;
@@ -379,8 +441,41 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 		return 0;
 	}
 
-	home = rad_malloc(sizeof(*home));
-	memset(home, 0, sizeof(*home));
+#ifdef WITH_TCP
+	max_connections = 16;
+	cp = NULL;
+	limit = cf_subsection_find_next(cs, NULL, "limit");
+	if (limit) cp = cf_pair_find(limit, "max_connections");
+	if (cp) {
+		const char *value = cf_pair_value(cp);
+
+		if (value) max_connections = atoi(value);
+
+		if ((max_connections > 1024) ||
+		    (max_connections == 0)) max_connections = 1024;
+
+		/*
+		 *	Set max_connections to 1 for non-TCP sockets.
+		 */
+		cp = cf_pair_find(cs, "proto");
+		if (!cp ||
+		    (((value = cf_pair_value(cp)) != NULL) &&
+		     (strcmp(value, "tcp") != 0))) {
+			max_connections = 1;
+		}
+	}
+#endif
+
+	home = rad_malloc(sizeof(*home)
+#ifdef WITH_TCP
+			  + (sizeof(home->listeners[0]) * max_connections)
+#endif
+		);
+	memset(home, 0, sizeof(*home)
+#ifdef WITH_TCP
+	       + (sizeof(home->listeners[0]) * max_connections)
+#endif
+		);
 
 	home->name = name2;
 	home->cs = cs;
@@ -388,8 +483,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 	memset(&hs_ip4addr, 0, sizeof(hs_ip4addr));
 	memset(&hs_ip6addr, 0, sizeof(hs_ip6addr));
 	if (cf_section_parse(cs, home, home_server_config) < 0) {
-		free(home);
-		return 0;
+		goto error;
 	}
 
 	/*
@@ -439,6 +533,10 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 		hs_check = NULL;
 		free(hs_srcipaddr);
 		hs_srcipaddr = NULL;
+#ifdef WITH_TCP
+		free(hs_proto);
+		hs_proto = NULL;
+#endif
 		return 0;
 	}
 
@@ -542,6 +640,44 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 		}
 	}
 
+#ifdef WITH_TCP
+	home->proto = IPPROTO_UDP;
+	if (hs_proto) {
+		if (strcmp(hs_proto, "udp") == 0) {
+			free(hs_proto);
+			hs_proto = NULL;
+			
+		} else if (strcmp(hs_proto, "tcp") == 0) {
+			free(hs_proto);
+			hs_proto = NULL;
+			home->proto = IPPROTO_TCP;
+			
+		} else {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Unknown proto \"%s\".", hs_proto);
+			goto error;
+		}
+	}
+
+	home->listeners[0] = NULL;
+
+	/*
+	 *	We need SOME value.  Set it high enough that no one
+	 *	will run into it.
+	 */
+
+	if (home->proto == IPPROTO_TCP) {
+		home->max_connections = max_connections;
+
+		/*
+		 *	FIXME: Parse "min_connections", too, and set
+		 *	those up.
+		 */
+		memset(home->listeners, 0,
+		       home->max_connections * sizeof(home->listeners[0]));
+	}
+#endif
+
 	if ((home->ipaddr.af != AF_UNSPEC) && /* could be virtual server */
 	    rbtree_finddata(home_servers_byaddr, home)) {
 		cf_log_err(cf_sectiontoitem(cs), "Duplicate home server");
@@ -630,6 +766,15 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 	if (home->coa_mrd > 60 ) home->coa_mrd = 60;
 #endif
 
+#ifdef WITH_TCP
+	if ((home->idle_timeout > 0) && (home->idle_timeout < 5))
+		home->idle_timeout = 5;
+	if ((home->lifetime > 0) && (home->lifetime < 5))
+		home->lifetime = 5;
+	if ((home->lifetime > 0) && (home->idle_timeout > home->lifetime))
+		home->idle_timeout = 0;
+#endif
+
 	if (dual) {
 		home_server *home2 = rad_malloc(sizeof(*home2));
 
@@ -657,6 +802,10 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 			free(home2);
 			return 0;
 		}
+
+#ifdef WITH_TCP
+		home2->proto = home->proto;
+#endif
 
 #ifdef WITH_STATS
 		home2->number = home_server_max_number++;
@@ -732,6 +881,9 @@ static int pool_check_home_server(realm_config_t *rc, CONF_PAIR *cp,
 	
 	home = rbtree_finddata(home_servers_byname, &myhome);
 	if (!home) {
+		cf_log_err(cf_pairtoitem(cp),
+			   "Internal error %d adding home server \"%s\".",
+			   __LINE__, name);
 		return 0;
 	}
 
@@ -776,7 +928,6 @@ static int server_pool_add(realm_config_t *rc,
 
 		if (!pool_check_home_server(rc, cp, cf_pair_value(cp),
 					    server_type, &home)) {
-					    
 			return 0;
 		}
 	}
@@ -1635,7 +1786,7 @@ int realms_init(CONF_SECTION *config)
 	}
 
 #ifdef WITH_PROXY
-	home_servers_byaddr = rbtree_create(home_server_addr_cmp, free, 0);
+	home_servers_byaddr = rbtree_create(home_server_addr_cmp, home_server_free, 0);
 	if (!home_servers_byaddr) {
 		realms_free();
 		return 0;

@@ -38,6 +38,15 @@ typedef struct home_server {
 	int		port;
 	int		type;		/* auth/acct */
 
+#ifdef WITH_TCP
+	int		proto;
+	int		max_connections;
+	int		num_connections;
+	int		max_requests;
+	int		lifetime;
+	int		idle_timeout;
+#endif
+
 	/*
 	 *	Maybe also have list of source IP/ports, && socket?
 	 */
@@ -84,6 +93,10 @@ typedef struct home_server {
 	fr_stats_t	stats;
 
 	fr_stats_ema_t  ema;
+#endif
+
+#ifdef WITH_TCP
+	struct rad_listen_t	*listeners[1];
 #endif
 } home_server;
 
