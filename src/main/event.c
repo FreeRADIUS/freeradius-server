@@ -1082,6 +1082,14 @@ static void wait_a_bit(void *ctx)
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 
+	/*
+	 *	The socket was closed.  Tell the request that
+	 *	there is no point in continuing.
+	 */
+	if (request->listener->status != RAD_LISTEN_STATUS_KNOWN) {
+		goto stop_processing;
+	}
+
 #ifdef WITH_COA
 	/*
 	 *	The CoA request is a new (internally generated)
@@ -1167,6 +1175,7 @@ static void wait_a_bit(void *ctx)
 				       request->component ? request->component : "<server core>");
 			}
 
+		stop_processing:
 			request->master_state = REQUEST_STOP_PROCESSING;
 			
 			request->delay = USEC / 4;
@@ -1174,6 +1183,8 @@ static void wait_a_bit(void *ctx)
 			callback = wait_for_child_to_die;
 			break;
 		}
+#else  /* no child threads */
+	stop_processing:
 #endif
 
 		/*
@@ -2522,11 +2533,13 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		check_for_zombie_home_server(request);
 
 		/*
-		 *	If we've just discovered that the home server is
-		 *	dead, send the packet to another one.
+		 *	If we've just discovered that the home server
+		 *	is dead, OR the socket has been closed, look for
+		 *	another connection to a home server.
 		 */
-		if ((request->packet->dst_port != 0) &&
-		    (request->home_server->state == HOME_STATE_IS_DEAD)) {
+		if (((request->packet->dst_port != 0) &&
+		     (request->home_server->state == HOME_STATE_IS_DEAD)) ||
+		    (request->proxy_listener->status != RAD_LISTEN_STATUS_KNOWN)) {
 			home_server *home;
 
 			remove_from_proxy_hash(request);
@@ -3609,6 +3622,8 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		}
 
 		event_new_fd(this);
+
+		this->status = RAD_LISTEN_STATUS_KNOWN;
 	}
 
 	mainconfig.listen = head;
