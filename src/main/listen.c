@@ -105,7 +105,11 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	 */
 	rad_assert(clients != NULL);
 
-	client = client_find(clients, ipaddr);
+	client = client_find(clients, ipaddr
+#ifdef WITH_TCP
+			     , IPPROTO_UDP
+#endif
+			     );
 	if (!client) {
 		static time_t last_printed = 0;
 		char name[256], buffer[128];
@@ -177,7 +181,11 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 		/*
 		 *	Go find the enclosing network again.
 		 */
-		client = client_find(clients, ipaddr);
+		client = client_find(clients, ipaddr
+#ifdef WITH_TCP
+				     , IPPROTO_UDP
+#endif
+				     );
 
 		/*
 		 *	WTF?

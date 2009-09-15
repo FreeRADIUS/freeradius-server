@@ -803,6 +803,10 @@ static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
 	RADCLIENT *client;
 	fr_ipaddr_t ipaddr;
 
+#ifdef WITH_TCP
+	int proto = IPPROTO_UDP;
+#endif
+
 	if (argc < 1) {
 		cprintf(listener, "ERROR: Must specify <ipaddr>\n");
 		return NULL;
@@ -814,7 +818,27 @@ static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
 		return NULL;
 	}
 
-	client = client_find(NULL, &ipaddr);
+#ifdef WITH_TCP
+	if (argc >= 2) {
+		if (strcmp(argv[1], "tcp") == 0) {
+			proto = IPPROTO_TCP;
+
+		} else if (strcmp(argv[1], "udp") == 0) {
+			proto = IPPROTO_UDP;
+
+		} else {
+			cprintf(listener, "ERROR: Unknown protocol %s.  Please use \"udp\" or \"tcp\"\n",
+				argv[1]);
+			return NULL;
+		}
+	}
+#endif
+
+	client = client_find(NULL, &ipaddr
+#ifdef WITH_TCP
+			     , proto
+#endif
+		);
 	if (!client) {
 		cprintf(listener, "ERROR: No such client\n");
 		return NULL;
@@ -1297,7 +1321,11 @@ static fr_command_table_t command_table_show_module[] = {
 
 static fr_command_table_t command_table_show_client[] = {
 	{ "config", FR_READ,
-	  "show client config <ipaddr> - show configuration for given client",
+	  "show client config <ipaddr> "
+#ifdef WITH_TCP
+	  "[proto] "
+#endif
+	  "- show configuration for given client",
 	  command_show_client_config, NULL },
 	{ "list", FR_READ,
 	  "show client list - shows list of global clients",
@@ -1676,7 +1704,11 @@ static fr_command_table_t command_table_set[] = {
 
 static fr_command_table_t command_table_stats[] = {
 	{ "client", FR_READ,
-	  "stats client [auth/acct] <ipaddr> - show statistics for given client, or for all clients (auth or acct)",
+	  "stats client [auth/acct] <ipaddr> "
+#ifdef WITH_TCP
+	  "[proto] "
+#endif
+	  "- show statistics for given client, or for all clients (auth or acct)",
 	  command_stats_client, NULL },
 #ifdef WITH_PROXY
 	{ "home_server", FR_READ,

@@ -128,6 +128,12 @@ typedef struct radclient {
 #endif
 #endif
 
+#ifdef WITH_TCP
+	int			proto;
+	int			max_connections;
+	int			num_connections;
+#endif
+
 #ifdef WITH_DYNAMIC_CLIENTS
 	int			lifetime;
 	int			dynamic; /* was dynamically defined */
@@ -512,7 +518,11 @@ void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
 RADCLIENT	*client_create(RADCLIENT_LIST *clients, REQUEST *request);
 #endif
 RADCLIENT	*client_find(const RADCLIENT_LIST *clients,
-			     const fr_ipaddr_t *ipaddr);
+			     const fr_ipaddr_t *ipaddr
+#ifdef WITH_TCP
+			     , int proto
+#endif
+);
 RADCLIENT	*client_findbynumber(const RADCLIENT_LIST *clients,
 				     int number);
 RADCLIENT	*client_find_old(const fr_ipaddr_t *ipaddr);
