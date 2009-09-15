@@ -253,6 +253,7 @@ static void remove_from_proxy_hash(REQUEST *request)
 
   	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 }
+#endif	/* WITH_PROXY */
 
 static void ev_request_free(REQUEST **prequest)
 {
@@ -282,12 +283,15 @@ static void ev_request_free(REQUEST **prequest)
 #endif
 
 	if (request->ev) fr_event_delete(el, &request->ev);
+#ifdef WITH_PROXY
 	if (request->in_proxy_hash) remove_from_proxy_hash(request);
+#endif
 	if (request->in_request_hash) remove_from_request_hash(request);
 
 	request_free(prequest);
 }
 
+#ifdef WITH_PROXY
 static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
 {
 	int i, proxy, found;
@@ -612,6 +616,10 @@ void revive_home_server(void *ctx)
 	home_server *home = ctx;
 	char buffer[128];
 
+#ifdef WITH_TCP
+	rad_assert(home->proto != IPPROTO_TCP);
+#endif
+
 	home->state = HOME_STATE_ALIVE;
 	home->currently_outstanding = 0;
 	home->revive_time = now;
@@ -638,6 +646,10 @@ static void no_response_to_ping(void *ctx)
 	rad_assert(request->home_server != NULL);
 
 	home = request->home_server;
+#ifdef WITH_TCP
+	rad_assert(home->proto != IPPROTO_TCP);
+#endif
+
 	home->num_received_pings = 0;
 
 	RDEBUG2("No response to status check %d from home server %s port %d",
@@ -659,6 +671,10 @@ static void received_response_to_ping(REQUEST *request)
 	rad_assert(request->home_server != NULL);
 
 	home = request->home_server;
+#ifdef WITH_TCP
+	rad_assert(home->proto != IPPROTO_TCP);
+#endif
+
 	home->num_received_pings++;
 
 	RDEBUG2("Received response to status check %d (%d in current sequence)",
@@ -713,6 +729,10 @@ static void ping_home_server(void *ctx)
 	home_server *home = ctx;
 	REQUEST *request;
 	VALUE_PAIR *vp;
+
+#ifdef WITH_TCP
+	rad_assert(home->proto != IPPROTO_TCP);
+#endif
 
 	if ((home->state == HOME_STATE_ALIVE) ||
 	    (home->ping_check == HOME_PING_CHECK_NONE) ||
