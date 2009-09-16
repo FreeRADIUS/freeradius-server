@@ -1327,13 +1327,8 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener,
 		return 0;
 	}
 
-#if 0
-	/*
-	 *	Commented out until the rest of the code is added.
-	 */
 	request = received_proxy_tcp_response(packet,
 					      fr_listen2tcp(listener));
-#endif
 	if (!request) {
 		return 0;
 	}

@@ -659,6 +659,10 @@ int received_request(rad_listen_t *listener,
 		     RADCLIENT *client);
 REQUEST *received_proxy_response(RADIUS_PACKET *packet);
 void event_new_fd(rad_listen_t *listener);
+#ifdef WITH_TCP
+REQUEST *received_proxy_tcp_response(RADIUS_PACKET *packet,
+				     fr_tcp_radius_t *tcp);
+#endif
 
 /* evaluate.c */
 int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,

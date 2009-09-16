@@ -1761,6 +1761,53 @@ static int process_proxy_reply(REQUEST *request)
 }
 #endif
 
+#ifdef WITH_TCP
+static void tcp_socket_lifetime(void *ctx)
+{
+	rad_listen_t *listener = ctx;
+
+	DEBUG("Reached lifetime on outgoing connection to home server");
+	proxy_close_tcp_listener(listener);
+}
+
+static void tcp_idle_timeout(void *ctx)
+{
+	rad_listen_t *listener = ctx;
+	fr_tcp_radius_t *tcp = fr_listen2tcp(listener);
+
+	/*
+	 *	Rather than adding && deleting the timer when "used"
+	 *	changes from 1->0, or from 0->1, we just add it when
+	 *	"used" reaches zero, and don't touch it after that.
+	 *	However, in order to avoid deleting used sockets, we
+	 *	double-check things here.
+	 */
+	if (tcp->used != 0) {
+		/*
+		 *	If it's NOT idle, we still need to enforce
+		 *	maximum lifetime.
+		 */
+		if (tcp->lifetime > 0) {
+				struct timeval when;
+
+				when.tv_sec = tcp->opened;
+				when.tv_sec += tcp->lifetime;
+				when.tv_usec = fr_rand() & 0xffff;
+
+				fr_event_insert(el, tcp_socket_lifetime,
+						listener,
+						&when, (fr_event_t **) &tcp->ev);
+		}
+		return;
+	}
+
+
+	DEBUG("Reasched idle timeout on outgoing connection to home server");
+	proxy_close_tcp_listener(listener);
+}
+#endif
+
+
 static int request_pre_handler(REQUEST *request)
 {
 	int rcode;
@@ -2968,15 +3015,37 @@ int received_request(rad_listen_t *listener,
 
 
 #ifdef WITH_PROXY
+#ifdef WITH_TCP
+/*
+ *	received_proxy_response is split in two for TCP handling.
+ */
+static REQUEST *received_proxy_response_p2(RADIUS_PACKET *packet,
+					    REQUEST *request);
+#endif
+
 REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 {
+#ifndef WITH_TCP
 	char		buffer[128];
+	home_server	*home;
+#endif
 	REQUEST		*request;
 
 	/*
 	 *	Also removes from the proxy hash if responses == requests
 	 */
 	request = lookup_in_proxy_hash(packet);
+
+#ifdef WITH_TCP
+	return received_proxy_response_p2(packet, request);
+}
+
+static REQUEST *received_proxy_response_p2(RADIUS_PACKET *packet,
+					   REQUEST *request)
+{
+	char		buffer[128];
+	fr_tcp_radius_t *tcp;
+#endif
 
 	if (!request) {
 		radlog(L_PROXY, "No outstanding request was found for reply from host %s port %d - ID %d",
@@ -3175,6 +3244,36 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	request->priority = RAD_LISTEN_PROXY;
 	tv_add(&request->when, request->delay);
 
+#ifdef WITH_TCP
+	tcp = fr_listen2tcp(request->proxy_listener);
+	if (tcp) {
+		if ((tcp->lifetime > 0) &&
+		    (now.tv_sec > (tcp->opened + tcp->lifetime))) {
+			proxy_close_tcp_listener(request->proxy_listener);
+		} else
+
+		/*
+		 *	No outstanding packets.  Set up idle timeout
+		 *	timer, but only if we didn't already do so
+		 *	this second.
+		 */
+		if ((tcp->used == 0) &&
+		    (request->home_server->idle_timeout != 0) &&
+		    (tcp->last_packet != now.tv_sec)) {
+			struct timeval when;
+			
+			when = now;
+			when.tv_sec += request->home_server->idle_timeout;
+			
+			fr_event_insert(el, tcp_idle_timeout,
+					request->proxy_listener,
+					&when, (fr_event_t **) &tcp->ev);
+		}
+
+		tcp->last_packet = request->proxy_reply->timestamp = now.tv_sec;
+	}
+#endif
+
 	/*
 	 *	Wait a bit will take care of max_request_time
 	 */
@@ -3182,7 +3281,39 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 
 	return request;
 }
-#endif
+
+#ifdef WITH_TCP
+REQUEST *received_proxy_tcp_response(RADIUS_PACKET *packet,
+				     fr_tcp_radius_t *tcp)
+{
+	REQUEST		*request;
+
+	/*
+	 *	Not found.  Print the same message as all the other
+	 *	code paths.
+	 */
+	if (!tcp || !tcp->ids[packet->id]) {
+		return received_proxy_response_p2(packet, NULL);
+	}
+
+	/*
+	 *	Find request from: tcp->ids[packet->id] = &request->proxy
+	 */
+	request = fr_packet2myptr(REQUEST, proxy, tcp->ids[packet->id]);
+
+	/*
+	 *	TCP sockets don't do re-transmits.  Just nuke it.
+	 */
+	remove_from_proxy_hash(request);
+
+	/*
+	 *	FIXME: Update RFC 3539 watchdog timer.
+	 */
+
+	return received_proxy_response_p2(packet, request);
+}
+#endif /* WITH_TCP */
+#endif /* WITH_PROXY */
 
 void event_new_fd(rad_listen_t *this)
 {
@@ -3204,6 +3335,23 @@ void event_new_fd(rad_listen_t *this)
 			exit(1);
 		}
 		
+#ifdef WITH_TCP
+		if (this->type == RAD_LISTEN_PROXY) {
+			fr_tcp_radius_t *tcp = fr_listen2tcp(this);
+
+			if (tcp && (tcp->lifetime > 0)) {
+				struct timeval when;
+
+				gettimeofday(&when, NULL);
+				when.tv_sec += tcp->lifetime;
+
+				fr_event_insert(el, tcp_socket_lifetime,
+						this,
+						&when, (fr_event_t **) &tcp->ev);
+			}
+		}
+#endif
+
 		this->status = RAD_LISTEN_STATUS_KNOWN;
 		return;
 	}
@@ -3214,6 +3362,45 @@ void event_new_fd(rad_listen_t *this)
 		fr_event_fd_delete(el, 0, this->fd);
 		this->status = RAD_LISTEN_STATUS_FINISH;
 		
+#ifdef WITH_TCP
+		/*
+		 *	FIXME: mark ALL requests for this connection
+		 *	as MASTER FORCE STOP!  we can't reply, so
+		 *	there's no point in doing anything
+		 *
+		 *	ALSO, create packet lists JUST for each proxy
+		 */
+
+		/*
+		 *	Once we're done, the caller free's the
+		 *	listener.  However, we've got to ensure that
+		 *	all of the requests using this listener are
+		 *	marked as dead.
+		 */
+		if (this->type == RAD_LISTEN_PROXY) {
+			int i;
+			REQUEST *request;
+			fr_tcp_radius_t *tcp = fr_listen2tcp(this);
+			
+			if (!tcp) return;
+			
+			for (i = 0; i < 256; i++) {
+				if (!tcp->ids[i]) continue;
+				
+				request = fr_packet2myptr(REQUEST, proxy,
+							  tcp->ids[i]);
+				request->proxy->sockfd = -1;
+				request->proxy_listener = NULL;
+				request->in_proxy_hash = FALSE;
+				tcp->ids[i] = NULL;
+				tcp->used--;
+			}
+			tcp->used = 0; /* just to be safe */
+
+			fr_event_delete(el, (fr_event_t **) &tcp->ev);
+		}
+#endif
+
 		/*
 		 *	Close the fd AFTER fixing up the requests and
 		 *	listeners, so that they don't send/recv on the
