@@ -1,3 +1,9 @@
+FreeRADIUS 2.1.8 Mon Jan 1 1:00:00 CEST 1999;  , urgency=medium
+	Feature improvements
+	* RADIUS over TCP is now supported.
+	
+	Bug fixes
+
 FreeRADIUS 2.1.7 Mon Sept 14 11:20:00 CEST 2009;  , urgency=medium
 	Feature improvements
 	* Full support for CoA and Disconnect packets as per RFC 3576

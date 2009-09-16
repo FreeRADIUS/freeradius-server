@@ -1,3 +1,7 @@
+freeradius (2.1.8-0) unstable; urgency=medium
+
+ -- Alan DeKok <aland@freeradius.org>  Mon, 1 Jan 1999 01:00:00 +0100
+
 freeradius (2.1.7-0) unstable; urgency=medium
   * Full support for CoA and Disconnect packets as per RFC 3576 and RFC 5176.  Both receiving and proxying CoA is supported.
   * Added "src_ipaddr" configuration to "home_server".  See proxy.conf for details.
