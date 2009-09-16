@@ -72,8 +72,25 @@ typedef struct listen_socket_t {
 	 */
 	fr_ipaddr_t	ipaddr;
 	int		port;
+
 #ifdef SO_BINDTODEVICE
 	const char		*interface;
+#endif
+	
+#ifdef WITH_TCP
+	int		proto;
+
+	int		max_connections;
+	int		num_connections;
+	struct listen_socket_t *parent;
+
+	fr_ipaddr_t	src_ipaddr;
+	int		src_port;
+	RADCLIENT	*client; /* for server sockets */
+
+	fr_tcp_radius_t *tcp;	/* for RAD_LISTEN_PROXY */
+	home_server	*home;
+	RADIUS_PACKET   *packet; /* for reading partial packets */
 #endif
 	RADCLIENT_LIST	*clients;
 } listen_socket_t;
@@ -1262,6 +1279,72 @@ static int proxy_socket_recv(rad_listen_t *listener,
 
 	return 1;
 }
+
+#ifdef WITH_TCP
+/*
+ *	Recieve packets from a proxy socket.
+ */
+static int proxy_socket_tcp_recv(rad_listen_t *listener,
+				 RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+{
+	REQUEST		*request;
+	RADIUS_PACKET	*packet;
+	RAD_REQUEST_FUNP fun = NULL;
+	char		buffer[128];
+
+	packet = fr_tcp_recv(listener->fd, 0);
+	if (!packet) {
+		proxy_close_tcp_listener(listener);
+		return 0;
+	}
+
+	/*
+	 *	FIXME: Client MIB updates?
+	 */
+	switch(packet->code) {
+	case PW_AUTHENTICATION_ACK:
+	case PW_ACCESS_CHALLENGE:
+	case PW_AUTHENTICATION_REJECT:
+		fun = rad_authenticate;
+		break;
+
+#ifdef WITH_ACCOUNTING
+	case PW_ACCOUNTING_RESPONSE:
+		fun = rad_accounting;
+		break;
+#endif
+
+	default:
+		/*
+		 *	FIXME: Update MIB for packet types?
+		 */
+		radlog(L_ERR, "Invalid packet code %d sent to a proxy port "
+		       "from home server %s port %d - ID %d : IGNORED",
+		       packet->code,
+		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		       packet->src_port, packet->id);
+		rad_free(&packet);
+		return 0;
+	}
+
+#if 0
+	/*
+	 *	Commented out until the rest of the code is added.
+	 */
+	request = received_proxy_tcp_response(packet,
+					      fr_listen2tcp(listener));
+#endif
+	if (!request) {
+		return 0;
+	}
+
+	rad_assert(fun != NULL);
+	*pfun = fun;
+	*prequest = request;
+
+	return 1;
+}
+#endif
 #endif
 
 
@@ -2221,6 +2304,170 @@ void listen_free(rad_listen_t **head)
 
 	*head = NULL;
 }
+
+#ifdef WITH_TCP
+fr_tcp_radius_t *fr_listen2tcp(rad_listen_t *this)
+{
+	listen_socket_t *sock;
+
+	if (!this || (this->type != RAD_LISTEN_PROXY) || !this->data) {
+		return NULL;
+	}
+
+	sock = this->data;
+	return sock->tcp;
+}
+
+rad_listen_t *proxy_new_tcp_listener(home_server *home)
+{
+	int i;
+	fr_tcp_radius_t *tcp;
+	struct sockaddr_storage	src;
+	socklen_t sizeof_src = sizeof(src);
+	rad_listen_t *this;
+	listen_socket_t *sock;
+
+	if (!home ||
+	    ((home->max_connections > 0) &&
+	     (home->num_connections >= home->max_connections))) {
+		DEBUG("WARNING: Home server has too many open connections (%d)",
+		      home->max_connections);
+		return NULL;
+	}
+
+	this = NULL;
+
+	/*
+	 *	FIXME: Move to RBTrees.
+	 */
+	for (i = 0; i < home->max_connections; i++) {
+		if (home->listeners[i]) continue;
+
+		this = home->listeners[i] = listen_alloc(RAD_LISTEN_PROXY);
+		if (!this) {
+			DEBUG("WARNING: Failed allocating memory");
+			return NULL;
+		}
+		break;
+	}
+
+	if (!this) {
+		DEBUG("WARNING: Failed to find a free connection slot");
+		return NULL;
+	}
+	sock = this->data;
+
+	tcp = sock->tcp = rad_malloc(sizeof(*tcp));
+	memset(tcp, 0, sizeof(*tcp));
+
+	/*
+	 *	Initialize th
+	 *
+	 *	Open a new socket...
+	 *
+	 *	Do stuff...
+	 */
+	tcp->dst_ipaddr = home->ipaddr;
+	tcp->dst_port = home->port;
+	tcp->lifetime = home->lifetime;
+	tcp->opened = time(NULL);	
+
+	/*
+	 *	FIXME: connect() is blocking!
+	 *	We do this with the proxy mutex locked, which may
+	 *	cause large delays!
+	 *
+	 *	http://www.developerweb.net/forum/showthread.php?p=13486
+	 */
+	this->fd = tcp->fd = fr_tcp_client_socket(&tcp->dst_ipaddr, tcp->dst_port);
+	if (tcp->fd < 0) {
+		listen_free(&this);
+		DEBUG("WARNING: Failed opening socket to home server");
+		return NULL;
+	}
+	memset(&src, 0, sizeof_src);
+	if (getsockname(tcp->fd, (struct sockaddr *) &src, &sizeof_src) < 0) {
+		close(tcp->fd);
+		listen_free(&this);
+		return NULL;
+	}
+
+	if (!fr_sockaddr2ipaddr(&src, sizeof_src,
+				&tcp->src_ipaddr, &tcp->src_port)) {
+		close(tcp->fd);
+		listen_free(&this);
+		return NULL;
+	}
+
+	/*
+	 *	Fill in socket information.
+	 */
+	sock->proto = IPPROTO_TCP;
+	sock->tcp = tcp;
+
+	sock->ipaddr = tcp->src_ipaddr;
+	sock->port = tcp->src_port;
+
+	/*
+	 *	Don't ask.  Just don't ask.
+	 */
+	sock->src_ipaddr = tcp->dst_ipaddr;
+	sock->src_port = tcp->dst_port;
+	sock->home = home;
+	sock->home->num_connections++;
+
+	this->recv = proxy_socket_tcp_recv;
+
+	/*
+	 *	Tell the event handler about the new socket.
+	 *
+	 *	It keeps track of "this", so we don't have to insert
+	 *	it into the main list of listeners.
+	 */
+	event_new_fd(this);
+
+	return this;
+}
+
+void proxy_close_tcp_listener(rad_listen_t *listener)
+{
+	int i;
+	listen_socket_t *sock = listener->data;
+	
+	/*
+	 *	This is the second time around for the socket.  Free
+	 *	the memory now.
+	 */
+	if (listener->status != RAD_LISTEN_STATUS_KNOWN) {
+		listen_free(&listener);
+		return;
+	}
+
+	listener->status = RAD_LISTEN_STATUS_CLOSED;
+	event_new_fd(listener);
+	
+	/*
+	 *	Find the home server, and mark this listener as
+	 *	no longer being active.
+	 */
+	for (i = 0; i < sock->home->max_connections; i++) {
+		if (sock->home->listeners[i] == listener) {
+			sock->home->listeners[i] = NULL;
+			sock->home->num_connections--;
+			break;
+		}
+	}
+
+	/*
+	 *	There are still one or more requests using this socket.
+	 *	leave it marked as "closed", but don't free it.  When the
+	 *	last requeast using it is cleaned up, it will be deleted.
+	 */
+	if (sock->tcp->used > 0) return;
+	
+	listen_free(&listener);
+}
+#endif
 
 #ifdef WITH_STATS
 RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,

@@ -637,6 +637,12 @@ int listen_init(CONF_SECTION *cs, rad_listen_t **head);
 rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists);
 RADCLIENT *client_listener_find(const rad_listen_t *listener,
 				const fr_ipaddr_t *ipaddr, int src_port);
+#ifdef WITH_TCP
+fr_tcp_radius_t *fr_listen2tcp(rad_listen_t *this);
+rad_listen_t *proxy_new_tcp_listener(home_server *home);
+void proxy_close_tcp_listener(rad_listen_t *listener);
+#endif
+
 #ifdef WITH_STATS
 RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
 					  int port);
