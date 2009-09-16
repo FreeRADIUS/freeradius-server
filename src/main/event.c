@@ -231,6 +231,22 @@ static void remove_from_proxy_hash(REQUEST *request)
 	}
 
 	fr_packet_list_yank(proxy_list, request->proxy);
+
+#ifdef WITH_TCP
+	/*
+	 *	This should be hit when accounting packets don't have
+	 *	responses, or when the home server is down.
+	 */
+	if (request->home_server->proto == IPPROTO_TCP) {
+		fr_tcp_radius_t *tcp;
+
+		tcp = fr_listen2tcp(request->proxy_listener);
+		if (tcp && tcp->ids[request->proxy->id]) {
+			tcp->ids[request->proxy->id] = NULL;
+			tcp->used--;
+		}
+	} else
+#endif
 	fr_packet_list_id_free(proxy_list, request->proxy);
 
 	/*
@@ -368,6 +384,108 @@ static int insert_into_proxy_hash(REQUEST *request, int retransmit)
 		request->home_server->currently_outstanding++;
 	}
 
+#ifdef WITH_TCP
+	if (request->home_server->proto == IPPROTO_TCP) {
+		rad_listen_t *this = NULL;
+		fr_tcp_radius_t *tcp = NULL;
+
+		/*
+		 *	FIXME: Order the TCP sockets by most recently
+		 *	used, so that we keep the TCP pipe full.
+		 *
+		 *	FIXME: Try to use the same TCP connection for
+		 *	all packets of an EAP conversation.  This will
+		 *	be hard...
+		 */
+		request->proxy->id = -1;
+		for (i = 0; i < request->home_server->max_connections; i++) {
+			this = request->home_server->listeners[i];
+			
+			if (!this) continue;
+			tcp = fr_listen2tcp(this);
+			if (!tcp) continue;
+
+			/*
+			 *	If max requests per connection are
+			 *	set, and we've reached that limit,
+			 *	then skip the connection.  It will be
+			 *	closed later, when all of the
+			 *	responses come back.
+			 */
+			if (request->home_server->max_requests &&
+			    (tcp->num_packets >= request->home_server->max_requests)) {
+				continue;
+			}
+
+			/*
+			 *	FIXME: This is inefficient.  Use
+			 *	something else, like MRU.
+			 */
+			for (i = 0; i < 256; i++) {
+				if (tcp->ids[i]) continue;
+				
+				request->proxy->id = i;
+				break;
+			}
+
+			if (request->proxy->id >= 0) break;
+		}
+
+		if (request->proxy->id < 0) {
+			/*
+			 *	Allocate new listener for this home
+			 *	server.
+			 *
+			 *	FIXME: split the "connect" portion
+			 *	into a separate call, so it can happen
+			 *	when the mutex is NOT held!
+			 */
+			this = proxy_new_tcp_listener(request->home_server);
+			if (!this) {
+				PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+				DEBUG2("ERROR: Failed to allocate id");
+				return 0;
+			}
+
+			tcp = fr_listen2tcp(this);
+			if (!tcp) return 0;
+
+			rad_assert(tcp->used == 0);
+			rad_assert(tcp->ids[0] == NULL);
+			request->proxy->id = 0;
+
+			/*
+			 *	FIXME: Start timers as per RFC 3539
+			 */
+
+		}
+
+		rad_assert(tcp != NULL);
+		rad_assert(tcp->ids[request->proxy->id] == NULL);
+
+		tcp->ids[request->proxy->id] = &request->proxy;
+		request->proxy_listener = this;
+		request->proxy->sockfd = tcp->fd;
+		request->proxy->src_ipaddr = tcp->src_ipaddr;
+		request->proxy->dst_ipaddr = tcp->dst_ipaddr;
+		request->proxy->src_port = tcp->src_port;
+		request->proxy->dst_port = tcp->dst_port;
+
+		tcp->num_packets++;
+
+		if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
+			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+			DEBUG2("ERROR: Failed to insert entry into proxy list");
+			return 0;
+		}
+
+		tcp->used++;
+		tcp->ids[request->proxy->id] = &request->proxy;
+
+		goto done;
+	}
+#endif
+
 	if (retransmit) {
 		RADIUS_PACKET packet;
 
@@ -422,6 +540,10 @@ static int insert_into_proxy_hash(REQUEST *request, int retransmit)
 		return 0;
 	}
 
+#ifdef WITH_TCP
+ done:
+#endif
+
 	request->in_proxy_hash = TRUE;
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
@@ -459,6 +581,9 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 	request->when.tv_sec += request->home_server->response_window;
 
 	if ((request->num_proxied_requests == request->num_proxied_responses) ||
+#ifdef WITH_TCP
+	    (request->home_server->proto == IPPROTO_TCP) ||
+#endif
 	    timercmp(&now, &request->when, >)) {
 		if (request->packet) {
 			RDEBUG2("Cleaning up request %d ID %d with timestamp +%d",
@@ -1035,6 +1160,47 @@ static void post_proxy_fail_handler(REQUEST *request)
 	if (have_children) wait_a_bit(request);
 }
 
+#ifdef WITH_TCP
+static void no_response_to_tcp_request(REQUEST *request)
+{
+	fr_tcp_radius_t *tcp;
+	rad_listen_t *proxy_listener;
+
+	proxy_listener = request->proxy_listener;
+	tcp = fr_listen2tcp(proxy_listener);
+	/* MAY be NULL if proxy_listener is NULL */
+
+	/*
+	 *	May have been closed by someone else.
+	 */
+	if (!request->proxy_listener) return;
+
+	rad_assert(tcp != NULL);
+	rad_assert(tcp->state != HOME_STATE_IS_DEAD);
+
+	/*
+	 *	There's already an event set up to mark it dead.
+	 */
+	if (tcp->state == HOME_STATE_ZOMBIE) {
+		rad_assert(tcp->ev != NULL);
+		return;
+	}
+
+	/*
+	 *	Enable the zombie period when we notice that the home
+	 *	server hasn't responded.  We do NOT back-date the start
+	 *	of the zombie period.
+	 */
+	if (tcp->state == HOME_STATE_ALIVE) {
+		char buffer[128];
+		radlog(L_ERR, "PROXY: Marking TCP connection to %s port %d as zombie (it looks like it is dead).",
+		       inet_ntop(tcp->dst_ipaddr.af, &tcp->dst_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+		       tcp->dst_port);
+		tcp->state = HOME_STATE_ZOMBIE;
+	}
+}
+#endif	/* WITH_TCP */
 
 /* maybe check this against wait_for_proxy_id_to_expire? */
 static void no_response_to_proxied_request(void *ctx)
@@ -1056,9 +1222,18 @@ static void no_response_to_proxied_request(void *ctx)
 		return;
 	}
 
-	check_for_zombie_home_server(request);
-
 	home = request->home_server;
+
+#ifdef WITH_TCP
+	/*
+	 *	If there's no response, then the connection is likely
+	 *	dead.
+	 */
+	if (home->proto == IPPROTO_TCP) {
+		no_response_to_tcp_request(request);
+	} else
+#endif
+	check_for_zombie_home_server(request);
 
 	/*
 	 *	The default as of 2.1.7 is to allow requests to
@@ -2673,6 +2848,18 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			request->next_callback = NULL;
 			return;
 		} /* else the home server is still alive */
+
+#ifdef WITH_TCP
+		if (request->home_server->proto == IPPROTO_TCP) {
+			DEBUG2("Suppressing duplicate proxied request to home server %s port %d proto TCP - ID: %d",
+			       inet_ntop(request->proxy->dst_ipaddr.af,
+					 &request->proxy->dst_ipaddr.ipaddr,
+					 buffer, sizeof(buffer)),
+			       request->proxy->dst_port,
+			       request->proxy->id);
+			break;
+		}
+#endif
 
 		RDEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
 		       inet_ntop(request->proxy->dst_ipaddr.af,
