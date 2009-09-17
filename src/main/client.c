@@ -501,7 +501,11 @@ RADCLIENT *client_find(const RADCLIENT_LIST *clients,
  */
 RADCLIENT *client_find_old(const fr_ipaddr_t *ipaddr)
 {
-	return client_find(root_clients, ipaddr, IPPROTO_UDP);
+	return client_find(root_clients, ipaddr
+#ifdef WITH_TCP
+			   , IPPROTO_UDP
+#endif
+			   );
 }
 
 static struct in_addr cl_ip4addr;
