@@ -1243,12 +1243,19 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 #ifdef __APPLE__
 		/*
-		 *	No "known good" NT-Password attribute.  Try to do
-		 *	OpenDirectory authentication.
+		 *  No "known good" NT-Password attribute.  Try to do
+		 *  OpenDirectory authentication.
+		 *
+		 *  If OD determines the user is an AD user it will return noop, which
+		 *  indicates the auth process should continue directly to AD.
+		 *  Otherwise OD will determine auth success/fail.
 		 */
 		if (!nt_password && inst->open_directory) {
-			RDEBUG2("No NT-Password configured. Trying DirectoryService Authentication.");
-			return od_mschap_auth(request, challenge, username);
+			RDEBUG2("No NT-Password configured. Trying OpenDirectory Authentication.");
+			int odStatus = od_mschap_auth(request, challenge, username);
+			if (odStatus != RLM_MODULE_NOOP) {
+				return odStatus;
+			}
 		}
 #endif
 		/*
