@@ -32,28 +32,30 @@ RCSID("$Id$")
 
 #include <DirectoryService/DirectoryService.h>
 
+#define kActiveDirLoc "/Active Directory/"
+
 static int getUserNodeRef(char* inUserName, char **outUserName,
 			  tDirNodeReference* userNodeRef, tDirReference dsRef)
 {
-	tDataBuffer		*tDataBuff	= NULL;
-	tDirNodeReference	nodeRef		= 0;
-	long			status		= eDSNoErr;
-	tContextData		context		= NULL;
-	unsigned long		nodeCount	= 0;
-	unsigned long		attrIndex	= 0;
-	tDataList		*nodeName	= NULL;
-	tAttributeEntryPtr	pAttrEntry	= NULL;
-	tDataList		*pRecName	= NULL;
-	tDataList		*pRecType	= NULL;
-	tDataList		*pAttrType	= NULL;
-	unsigned long		recCount	= 0;
-	tRecordEntry		*pRecEntry	= NULL;
-	tAttributeListRef	attrListRef	= 0;
-	char			*pUserLocation	= NULL;
-	tAttributeValueListRef	valueRef	= 0;
-	tAttributeValueEntry	*pValueEntry	= NULL;
-	tDataList		*pUserNode	= NULL;
-	int			result		= RLM_MODULE_FAIL;
+	tDataBuffer             *tDataBuff	= NULL;
+	tDirNodeReference       nodeRef		= 0;
+	long                    status		= eDSNoErr;
+	tContextData            context		= 0;
+	unsigned long           nodeCount	= 0;
+	uint32_t                attrIndex	= 0;
+	tDataList               *nodeName	= NULL;
+	tAttributeEntryPtr      pAttrEntry	= NULL;
+	tDataList               *pRecName	= NULL;
+	tDataList               *pRecType	= NULL;
+	tDataList               *pAttrType	= NULL;
+	unsigned long           recCount	= 0;
+	tRecordEntry            *pRecEntry	= NULL;
+	tAttributeListRef       attrListRef	= 0;
+	char                    *pUserLocation	= NULL;
+	tAttributeValueListRef  valueRef	= 0;
+	tAttributeValueEntry    *pValueEntry	= NULL;
+	tDataList               *pUserNode	= NULL;
+	int                     result		= RLM_MODULE_FAIL;
 	
 	if (inUserName == NULL) {
 		radlog(L_ERR, "rlm_mschap: getUserNodeRef(): no username");
@@ -155,6 +157,16 @@ static int getUserNodeRef(char* inUserName, char **outUserName,
 			}
 		}
 		
+		/* OpenDirectory doesn't support mschapv2 authentication against
+		 * Active Directory.  AD users need to be authenticated using the
+		 * normal freeradius AD path (i.e. ntlm_auth).
+		 */
+		if (strncmp(pUserLocation, kActiveDirLoc, strlen(kActiveDirLoc)) == 0) {
+			DEBUG2("[mschap] OpenDirectory authentication returning noop.  OD doesn't support MSCHAPv2 for ActiveDirectory users.");
+			result = RLM_MODULE_NOOP;
+			break;
+		}
+        
 		pUserNode = dsBuildFromPath(dsRef, pUserLocation, "/");
 		if (pUserNode == NULL) {
 			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsBuildFromPath() returned NULL");  
@@ -213,8 +225,8 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 	tDataBuffer		*tDataBuff	 = NULL;
 	tDataBuffer		*pStepBuff	 = NULL;
 	tDataNode		*pAuthType	 = NULL;
-	unsigned long		uiCurr		 = 0;
-	unsigned long		uiLen		 = 0;
+	uint32_t		uiCurr		 = 0;
+	uint32_t		uiLen		 = 0;
 	char			*username_string = NULL;
 	char			*shortUserName	 = NULL;
 	VALUE_PAIR		*response	 = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE);
@@ -238,7 +250,9 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
     
 	status = getUserNodeRef(username_string, &shortUserName, &userNodeRef, dsRef);
 	if(status != RLM_MODULE_OK) {
-		DEBUG2("rlm_osx_od: ds_mschap_auth: getUserNodeRef failed");
+		if (status != RLM_MODULE_NOOP) {
+			RDEBUG2("od_mschap_auth: getUserNodeRef() failed");
+		}
 		if (username_string != NULL)
 			free(username_string);
 		if (dsRef != 0)
@@ -273,16 +287,16 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 	pAuthType = dsDataNodeAllocateString(dsRef, kDSStdAuthMSCHAP2);
 	uiCurr = 0;
 	
-	DEBUG2("	rlm_mschap:username_string = %s, shortUserName=%s (length = %lu)\n", username_string, shortUserName, strlen(shortUserName));
+	RDEBUG2("OD username_string = %s, OD shortUserName=%s (length = %lu)\n", username_string, shortUserName, strlen(shortUserName));
 	
 	/* User name length + username */
-	uiLen = strlen(shortUserName);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
-	uiCurr += sizeof(size_t);
+	uiLen = (uint32_t)strlen(shortUserName);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
+	uiCurr += sizeof(uiLen);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), shortUserName, uiLen);
 	uiCurr += uiLen;
 #ifndef NDEBUG
-	DEBUG2("	rlm_mschap: stepbuf server challenge:\t");
+	RDEBUG2("	stepbuf server challenge:\t");
 	for (t = 0; t < challenge->length; t++) {
 		fprintf(stderr, "%02x", challenge->vp_strvalue[t]);
 	}
@@ -291,14 +305,14 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 	
 	/* server challenge (ie. my (freeRADIUS) challenge) */
 	uiLen = 16;
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
-	uiCurr += sizeof(size_t);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
+	uiCurr += sizeof(uiLen);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(challenge->vp_strvalue[0]),
 	       uiLen);
 	uiCurr += uiLen;
 	
 #ifndef NDEBUG
-	DEBUG2("	rlm_mschap: stepbuf peer challenge:\t\t");
+	RDEBUG2("	stepbuf peer challenge:\t\t");
 	for (t = 2; t < 18; t++) {
 		fprintf(stderr, "%02x", response->vp_strvalue[t]);
 	}
@@ -307,14 +321,14 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 	
 	/* peer challenge (ie. the client-generated response) */
 	uiLen = 16;
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
-	uiCurr += sizeof(size_t);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
+	uiCurr += sizeof(uiLen);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[2]),
 	       uiLen);
 	uiCurr += uiLen;	
 	
 #ifndef NDEBUG
-	DEBUG2("	rlm_mschap stepbuf p24:\t\t");
+	RDEBUG2("	stepbuf p24:\t\t");
 	for (t = 26; t < 50; t++) {
 		fprintf(stderr, "%02x", response->vp_strvalue[t]);
 	}
@@ -323,16 +337,16 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 	
 	/* p24 (ie. second part of client-generated response) */
 	uiLen =  24; /* strlen(&(response->vp_strvalue[26])); may contain NULL byte in the middle. */
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
-	uiCurr += sizeof(size_t);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
+	uiCurr += sizeof(uiLen);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[26]),
 	       uiLen);
 	uiCurr += uiLen;
 	
 	/* Client generated use name (short name?) */
-	uiLen =  strlen(username_string);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(size_t));
-	uiCurr += sizeof(size_t);
+	uiLen =  (uint32_t)strlen(username_string);
+	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
+	uiCurr += sizeof(uiLen);
 	memcpy(&(tDataBuff->fBufferData[uiCurr]), username_string, uiLen);
 	uiCurr += uiLen;
 
@@ -342,11 +356,11 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 				 pStepBuff, NULL);
 	if (status == eDSNoErr) {
 		if (pStepBuff->fBufferLength > 4) {
-			unsigned long len;
+			uint32_t len;
 			
-			memcpy(&len, pStepBuff->fBufferData, 4);
+			memcpy(&len, pStepBuff->fBufferData, sizeof(len));
 			if (len == 40) {
-				char mschap_reply[41] = { '\0' };
+				char mschap_reply[42] = { '\0' };
 				pStepBuff->fBufferData[len+4] = '\0';
 				mschap_reply[0] = 'S';
 				mschap_reply[1] = '=';
@@ -355,7 +369,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 						 *response->vp_strvalue,
 						 "MS-CHAP2-Success",
 						 mschap_reply, len+2);
-				DEBUG2("rlm_mschap: dsDoDirNodeAuth returns stepbuff: %s (len=%ld)\n", mschap_reply, len);
+				RDEBUG2("dsDoDirNodeAuth returns stepbuff: %s (len=%ld)\n", mschap_reply, len);
 			}
 		}
 	}
