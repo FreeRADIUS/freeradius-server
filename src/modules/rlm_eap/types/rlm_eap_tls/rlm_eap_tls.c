@@ -424,6 +424,49 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	 * Set the password to load private key
 	 */
 	if (conf->private_key_password) {
+#ifdef __APPLE__
+		/*
+		 * We don't want to put the private key password in eap.conf, so  check
+		 * for our special string which indicates we should get the password
+		 * programmatically. 
+		 */
+		const char* special_string = "Apple:UseCertAdmin";
+		if (strncmp(conf->private_key_password,
+					special_string,
+					strlen(special_string)) == 0)
+		{
+			char cmd[256];
+			const long max_password_len = 128;
+			snprintf(cmd, sizeof(cmd) - 1,
+					 "/usr/sbin/certadmin --get-private-key-passphrase \"%s\"",
+					 conf->private_key_file);
+
+			DEBUG2("rlm_eap: Getting private key passphrase using command \"%s\"", cmd);
+
+			FILE* cmd_pipe = popen(cmd, "r");
+			if (!cmd_pipe) {
+				radlog(L_ERR, "rlm_eap: %s command failed.	Unable to get private_key_password", cmd);
+				radlog(L_ERR, "rlm_eap: Error reading private_key_file %s", conf->private_key_file);
+				return NULL;
+			}
+
+			free(conf->private_key_password);
+			conf->private_key_password = malloc(max_password_len * sizeof(char));
+			if (!conf->private_key_password) {
+				radlog(L_ERR, "rlm_eap: Can't malloc space for private_key_password");
+				radlog(L_ERR, "rlm_eap: Error reading private_key_file %s", conf->private_key_file);
+				pclose(cmd_pipe);
+				return NULL;
+			}
+
+			fgets(conf->private_key_password, max_password_len, cmd_pipe);
+			pclose(cmd_pipe);
+
+			/* Get rid of newline at end of password. */
+			conf->private_key_password[strlen(conf->private_key_password) - 1] = '\0';
+			DEBUG2("rlm_eap:  Password from command = \"%s\"", conf->private_key_password);
+		}
+#endif
 		SSL_CTX_set_default_passwd_cb_userdata(ctx, conf->private_key_password);
 		SSL_CTX_set_default_passwd_cb(ctx, cbtls_password);
 	}
