@@ -51,6 +51,8 @@ int mbr_check_membership_refresh(const uuid_t user, uuid_t group, int *ismember)
 #define kRadiusSACLName		"com.apple.access_radius"
 #define kRadiusServiceName	"radius"
 
+#define kAuthType           "opendirectory"
+
 /*
  *	od_check_passwd
  *
@@ -64,9 +66,9 @@ static long od_check_passwd(const char *uname, const char *password)
     tDataBuffer				   *tDataBuff			= NULL;
     tDirNodeReference			nodeRef				= 0;
     long						status				= eDSNoErr;
-    tContextData				context				= NULL;
+    tContextData				context				= 0;
 	unsigned long				nodeCount			= 0;
-	unsigned long				attrIndex			= 0;
+	uint32_t			    	attrIndex			= 0;
 	tDataList				   *nodeName			= NULL;
     tAttributeEntryPtr			pAttrEntry			= NULL;
 	tDataList				   *pRecName			= NULL;
@@ -84,9 +86,9 @@ static long od_check_passwd(const char *uname, const char *password)
 	tDataBuffer					*pStepBuff			= NULL;
 	tDataNode				   *pAuthType			= NULL;
 	tAttributeValueEntry	   *pRecordType			= NULL;
-	unsigned long				uiCurr				= 0;
-	unsigned long				uiLen				= 0;
-	unsigned long				pwLen				= 0;
+	uint32_t    				uiCurr				= 0;
+	uint32_t    				uiLen				= 0;
+	uint32_t    				pwLen				= 0;
 	
 	if (uname == NULL || password == NULL)
 		return result;
@@ -193,16 +195,16 @@ static long od_check_passwd(const char *uname, const char *password)
 		uiCurr = 0;
 		
 		/* User name */
-		uiLen = strlen( pUserName );
-		memcpy( &(tDataBuff->fBufferData[ uiCurr ]), &uiLen, sizeof(unsigned long) );
-		uiCurr += sizeof( unsigned long );
+		uiLen = (uint32_t)strlen( pUserName );
+		memcpy( &(tDataBuff->fBufferData[ uiCurr ]), &uiLen, sizeof(uiLen) );
+		uiCurr += (uint32_t)sizeof( uiLen );
 		memcpy( &(tDataBuff->fBufferData[ uiCurr ]), pUserName, uiLen );
 		uiCurr += uiLen;
 		
 		/* pw */
-		pwLen = strlen( password );
-		memcpy( &(tDataBuff->fBufferData[ uiCurr ]), &pwLen, sizeof(unsigned long) );
-		uiCurr += sizeof( unsigned long );
+		pwLen = (uint32_t)strlen( password );
+		memcpy( &(tDataBuff->fBufferData[ uiCurr ]), &pwLen, sizeof(pwLen) );
+		uiCurr += (uint32_t)sizeof( pwLen );
 		memcpy( &(tDataBuff->fBufferData[ uiCurr ]), password, pwLen );
 		uiCurr += pwLen;
 		
@@ -328,7 +330,7 @@ int od_authenticate(void *instance, REQUEST *request)
 	
 	if (ret != RLM_MODULE_OK) {
 		radlog(L_AUTH, "rlm_opendirectory: [%s]: invalid password", name);
-		return ret;
+ 		return ret;
 	}
 		
 	return RLM_MODULE_OK;
@@ -412,6 +414,10 @@ int od_authorize(void *instance, REQUEST *request)
 	
 	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
 		radlog(L_DBG, "rlm_opendirectory: no access control groups, all users allowed.");
+    	if (pairfind(request->config_items, PW_AUTH_TYPE) == NULL) {
+    		pairadd(&request->config_items, pairmake("Auth-Type", kAuthType, T_OP_EQ));
+    		radlog(L_DBG, "rlm_opendirectory: Setting Auth-Type = %s", kAuthType);
+		}
 		return RLM_MODULE_OK;
 	}
 
@@ -459,6 +465,10 @@ int od_authorize(void *instance, REQUEST *request)
 	}
 	
 	radlog(L_AUTH, "rlm_opendirectory: User <%s> is authorized.", name ? name : "unknown");
+	if (pairfind(request->config_items, PW_AUTH_TYPE) == NULL) {
+		pairadd(&request->config_items, pairmake("Auth-Type", kAuthType, T_OP_EQ));
+		radlog(L_DBG, "rlm_opendirectory: Setting Auth-Type = %s", kAuthType);
+	}
 	return RLM_MODULE_OK;
 }
 
