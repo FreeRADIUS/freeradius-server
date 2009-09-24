@@ -1019,7 +1019,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	 *	If we have ntlm_auth configured, use it unless told
 	 *	otherwise
 	 */
-	do_ntlm_auth = inst->ntlm_auth;
+	do_ntlm_auth = (inst->ntlm_auth != NULL);
 
 	/*
 	 *	If we have an ntlm_auth configuration, then we may
