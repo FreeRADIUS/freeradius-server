@@ -271,11 +271,12 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 
 	if (!ef) return 0;
 
-	ef->fd = fd;
+       	if (fd > el->maxfd) el->maxfd = fd;
+
 	ef->handler = handler;
 	ef->ctx = ctx;
+	ef->fd = fd;
 
-       	if (fd > el->maxfd) el->maxfd = fd;
 	el->changed = 1;
 
 	return 1;
