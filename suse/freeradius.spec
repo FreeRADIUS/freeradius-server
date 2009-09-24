@@ -314,6 +314,7 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) /etc/raddb/acct_users
 %config(noreplace) /etc/raddb/attrs
 %config(noreplace) /etc/raddb/attrs.access_reject
+%config(noreplace) /etc/raddb/attrs.access_challenge
 %config(noreplace) /etc/raddb/attrs.accounting_response
 %config(noreplace) /etc/raddb/attrs.pre-proxy
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/clients.conf
