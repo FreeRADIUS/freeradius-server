@@ -32,7 +32,7 @@ attr_filter attr_filter.access_reject {
 # packets.  See the comments at the top of the file for
 # more details.
 #
-attr_filter attr_filter_access_challenge {
+attr_filter attr_filter.access_challenge {
 	key = %{User-Name}
 	attrsfile = ${confdir}/attrs.access_challenge
 }
