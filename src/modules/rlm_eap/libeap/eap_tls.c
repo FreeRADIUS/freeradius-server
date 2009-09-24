@@ -156,6 +156,10 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 		if (vps) {
 			SSL_SESSION_set_ex_data(tls_session->ssl->session,
 						eaptls_session_idx, vps);
+		} else {
+			RDEBUG2("WARNING: No information to cache: session caching will be disabled for this session.");
+			SSL_CTX_remove_session(tls_session->ctx,
+					       tls_session->ssl->session);
 		}
 
 		/*
@@ -168,6 +172,7 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 					     eaptls_session_idx);
 		if (!vp) {
 			RDEBUG("WARNING: No information in cached session!");
+			return eaptls_fail(handler, peap_flag);
 		} else {
 			RDEBUG("Adding cached attributes to the reply:");
 			debug_pair_list(vp);
