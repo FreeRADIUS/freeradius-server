@@ -51,8 +51,14 @@ int fr_tcp_socket(fr_ipaddr_t *ipaddr, int port)
 		return sockfd;
 	}
 
+	if (fr_nonblock(sockfd) < 0) {
+		close(sockfd);
+		return -1;
+	}
+
 	if (!fr_ipaddr2sockaddr(ipaddr, port, &salocal, &salen)) {
-		return sockfd;	/* don't bind it */
+		close(sockfd);
+		return -1;
 	}
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
@@ -91,28 +97,6 @@ int fr_tcp_socket(fr_ipaddr_t *ipaddr, int port)
 		return -1;
 	}
 
-#if 0
-#ifdef O_NONBLOCK
-	{
-		int flags;
-		
-		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
-			fr_strerror_printf("Failure getting socket flags: %s",
-				   strerror(errno));
-			close(sockfd);
-			return -1;
-		}
-		
-		flags |= O_NONBLOCK;
-		if( fcntl(sockfd, F_SETFL, flags) < 0) {
-			fr_strerror_printf("Failure setting socket flags: %s",
-				   strerror(errno));
-			close(sockfd);
-			return -1;
-		}
-	}
-#endif
-#endif
 	return sockfd;
 }
 
@@ -120,18 +104,22 @@ int fr_tcp_socket(fr_ipaddr_t *ipaddr, int port)
 /*
  *	Open a socket TO the given IP and port.
  */
-int fr_tcp_client_socket(fr_ipaddr_t *ipaddr, int port)
+int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
+			 fr_ipaddr_t *dst_ipaddr, int dst_port)
 {
 	int sockfd;
 	struct sockaddr_storage salocal;
 	socklen_t	salen;
 
-	if ((port < 0) || (port > 65535)) {
-		fr_strerror_printf("Port %d is out of allowed bounds", port);
+	if ((dst_port < 0) || (dst_port > 65535)) {
+		fr_strerror_printf("Port %d is out of allowed bounds",
+				   dst_port);
 		return -1;
 	}
 
-	sockfd = socket(ipaddr->af, SOCK_STREAM, 0);
+	if (!dst_ipaddr) return -1;
+
+	sockfd = socket(dst_ipaddr->af, SOCK_STREAM, 0);
 	if (sockfd < 0) {
 		return sockfd;
 	}
@@ -158,8 +146,25 @@ int fr_tcp_client_socket(fr_ipaddr_t *ipaddr, int port)
 	}
 #endif
 #endif
+	/*
+	 *	Allow the caller to bind us to a specific source IP.
+	 */
+	if (src_ipaddr && (src_ipaddr->af != AF_UNSPEC)) {
+		if (!fr_ipaddr2sockaddr(src_ipaddr, 0, &salocal, &salen)) {
+			close(sockfd);
+			return -1;
+		}
+		
+		if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
+			fr_strerror_printf("Failure binding to IP: %s",
+					   strerror(errno));
+			close(sockfd);
+			return -1;
+		}
+	}
 
-	if (!fr_ipaddr2sockaddr(ipaddr, port, &salocal, &salen)) {
+	if (!fr_ipaddr2sockaddr(dst_ipaddr, dst_port, &salocal, &salen)) {
+			close(sockfd);
 		return -1;
 	}
 

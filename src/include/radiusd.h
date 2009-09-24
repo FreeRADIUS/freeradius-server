@@ -335,10 +335,49 @@ struct rad_listen_t {
 #endif
 };
 
+/*
+ *	This shouldn't really be exposed...
+ */
+typedef struct listen_socket_t {
+	/*
+	 *	For normal sockets.
+	 */
+	fr_ipaddr_t	my_ipaddr;
+	int		my_port;
+
+#ifdef SO_BINDTODEVICE
+	const char		*interface;
+#endif
+	
+	/* for outgoing sockets */
+	home_server	*home;
+	fr_ipaddr_t	other_ipaddr;
+	int		other_port;
+
+#ifdef WITH_TCP
+	int		proto;
+
+  	/* for a proxy connecting to home servers */
+	time_t		last_packet;
+	time_t		opened;
+	fr_event_t	*ev;
+
+	/* for clients connecting to the server */
+	int		max_connections;
+	int		num_connections;
+	struct listen_socket_t *parent;
+	RADCLIENT	*client;
+
+	RADIUS_PACKET   *packet; /* for reading partial packets */
+#endif
+	RADCLIENT_LIST	*clients;
+} listen_socket_t;
+
 #define RAD_LISTEN_STATUS_INIT   (0)
 #define RAD_LISTEN_STATUS_KNOWN  (1)
-#define RAD_LISTEN_STATUS_CLOSED (2)
-#define RAD_LISTEN_STATUS_FINISH (3)
+#define RAD_LISTEN_STATUS_REMOVE_FD (2)
+#define RAD_LISTEN_STATUS_CLOSED (3)
+#define RAD_LISTEN_STATUS_FINISH (4)
 
 typedef enum radlog_dest_t {
   RADLOG_STDOUT = 0,
@@ -634,14 +673,9 @@ void fr_suid_down_permanent(void);
 /* listen.c */
 void listen_free(rad_listen_t **head);
 int listen_init(CONF_SECTION *cs, rad_listen_t **head);
-rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists);
+int proxy_new_listener(home_server *home, int src_port);
 RADCLIENT *client_listener_find(const rad_listen_t *listener,
 				const fr_ipaddr_t *ipaddr, int src_port);
-#ifdef WITH_TCP
-fr_tcp_radius_t *fr_listen2tcp(rad_listen_t *this);
-rad_listen_t *proxy_new_tcp_listener(home_server *home);
-void proxy_close_tcp_listener(rad_listen_t *listener);
-#endif
 
 #ifdef WITH_STATS
 RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
@@ -659,10 +693,6 @@ int received_request(rad_listen_t *listener,
 		     RADCLIENT *client);
 REQUEST *received_proxy_response(RADIUS_PACKET *packet);
 void event_new_fd(rad_listen_t *listener);
-#ifdef WITH_TCP
-REQUEST *received_proxy_tcp_response(RADIUS_PACKET *packet,
-				     fr_tcp_radius_t *tcp);
-#endif
 
 /* evaluate.c */
 int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,

@@ -30,9 +30,11 @@ RCSIDH(packet_h, "$Id$")
 uint32_t fr_request_packet_hash(const RADIUS_PACKET *packet);
 uint32_t fr_reply_packet_hash(const RADIUS_PACKET *packet);
 int fr_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b);
+int fr_inaddr_any(fr_ipaddr_t *ipaddr);
 void fr_request_from_reply(RADIUS_PACKET *request,
 			     const RADIUS_PACKET *reply);
 int fr_socket(fr_ipaddr_t *ipaddr, int port);
+int fr_nonblock(int fd);
 
 typedef struct fr_packet_list_t fr_packet_list_t;
 
@@ -49,11 +51,15 @@ RADIUS_PACKET **fr_packet_list_yank(fr_packet_list_t *pl,
 				      RADIUS_PACKET *request);
 int fr_packet_list_num_elements(fr_packet_list_t *pl);
 int fr_packet_list_id_alloc(fr_packet_list_t *pl,
-			      RADIUS_PACKET *request);
+			    RADIUS_PACKET *request, void **pctx);
 int fr_packet_list_id_free(fr_packet_list_t *pl,
 			     RADIUS_PACKET *request);
-int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd);
-int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd);
+int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd,
+			      fr_ipaddr_t *dst_ipaddr, int dst_port,
+			      void *ctx);
+int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd,
+				 void **pctx);
+int fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd);
 int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx,
 			  fr_hash_table_walk_t callback);
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set);

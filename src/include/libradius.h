@@ -53,6 +53,10 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/sha1.h>
 #include <freeradius-devel/md4.h>
 
+#ifndef WITHOUT_TCP
+#define WITH_TCP (1)
+#endif
+
 #define EAP_START               2
 
 #define AUTH_VECTOR_LEN		16

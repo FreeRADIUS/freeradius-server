@@ -50,6 +50,19 @@ RCSID("$Id$")
 #endif
 
 
+void print_packet(RADIUS_PACKET *packet)
+{
+	char src[256], dst[256];
+
+	ip_ntoh(&packet->src_ipaddr, src, sizeof(src));
+	ip_ntoh(&packet->dst_ipaddr, dst, sizeof(dst));
+
+	fprintf(stderr, "ID %d: %s %d -> %s %d\n", packet->id,
+		src, packet->src_port, dst, packet->dst_port);
+
+}
+
+
 /*
  *	We'll use this below.
  */
@@ -65,35 +78,6 @@ typedef struct rad_listen_master_t {
 	rad_listen_encode_t	encode;
 	rad_listen_decode_t	decode;
 } rad_listen_master_t;
-
-typedef struct listen_socket_t {
-	/*
-	 *	For normal sockets.
-	 */
-	fr_ipaddr_t	ipaddr;
-	int		port;
-
-#ifdef SO_BINDTODEVICE
-	const char		*interface;
-#endif
-	
-#ifdef WITH_TCP
-	int		proto;
-
-	int		max_connections;
-	int		num_connections;
-	struct listen_socket_t *parent;
-
-	fr_ipaddr_t	src_ipaddr;
-	int		src_port;
-	RADCLIENT	*client; /* for server sockets */
-
-	fr_tcp_radius_t *tcp;	/* for RAD_LISTEN_PROXY */
-	home_server	*home;
-	RADIUS_PACKET   *packet; /* for reading partial packets */
-#endif
-	RADCLIENT_LIST	*clients;
-} listen_socket_t;
 
 static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type);
 
@@ -130,7 +114,6 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 #endif
 			     );
 	if (!client) {
-		static time_t last_printed = 0;
 		char name[256], buffer[128];
 					
 #ifdef WITH_DYNAMIC_CLIENTS
@@ -138,11 +121,13 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 #endif
 
 		/*
-		 *	DoS attack quenching, but only in debug mode.
+		 *	DoS attack quenching, but only in daemon mode.
 		 *	If they're running in debug mode, show them
 		 *	every packet.
 		 */
 		if (debug_flag == 0) {
+			static time_t last_printed = 0;
+
 			now = time(NULL);
 			if (last_printed == now) return NULL;
 			
@@ -407,7 +392,247 @@ static int rad_status_server(REQUEST *request)
 	return 0;
 }
 
+#ifdef WITH_TCP
+static int auth_tcp_recv(rad_listen_t *listener,
+			 RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+{
+	int rcode;
+	RADIUS_PACKET	*packet;
+	RAD_REQUEST_FUNP fun = NULL;
+	listen_socket_t *sock = listener->data;
+	RADCLIENT	*client = sock->client;
 
+	/*
+	 *	Allocate a packet for partial reads.
+	 */
+	if (!sock->packet) {
+		sock->packet = rad_alloc(0);
+		if (!sock->packet) return 0;
+
+		sock->packet->sockfd = listener->fd;
+		sock->packet->src_ipaddr = sock->other_ipaddr;
+		sock->packet->src_port = sock->other_port;
+	}
+	
+	/*
+	 *	Grab the packet currently being processed.
+	 */
+	packet = sock->packet;
+	sock->packet = NULL;
+
+	rcode = fr_tcp_read_packet(packet, 0);
+
+	/*
+	 *	Still only a partial packet.  Put it back, and return,
+	 *	so that we'll read more data when it's ready.
+	 */
+	if (rcode == 0) {
+		sock->packet = packet;
+		return 0;
+	}
+
+	if (rcode == -1) {	/* error reading packet */
+		char buffer[256];
+
+		radlog(L_ERR, "Invalid packet from %s port %d: closing socket",
+		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		       packet->src_port);
+	}
+
+	if (rcode < 0) {	/* error or connection reset */
+		rad_free(&packet);
+
+		listener->status = RAD_LISTEN_STATUS_REMOVE_FD;
+
+		/*
+		 *	Decrement the number of connections.
+		 */
+		if (sock->parent->num_connections > 0) {
+			sock->parent->num_connections--;
+		}
+		if (sock->client->num_connections > 0) {
+			sock->client->num_connections--;
+		}
+
+		/*
+		 *	Tell the event handler that an FD has disappeared.
+		 */
+		DEBUG("Client has closed connection");
+		event_new_fd(listener);
+
+		/*
+		 *	Do NOT free the listener here.  It's in use by
+		 *	a request, and will need to hang around until
+		 *	all of the requests are done.
+		 *
+		 *	It is instead free'd in remove_from_request_hash()
+		 */
+
+		return 0;
+	}
+
+	RAD_STATS_TYPE_INC(listener, total_requests);
+
+	/*
+	 *	Some sanity checks, based on the packet code.
+	 */
+	switch(packet->code) {
+	case PW_AUTHENTICATION_REQUEST:
+		RAD_STATS_CLIENT_INC(listener, client, total_requests);
+		fun = rad_authenticate;
+		break;
+
+	case PW_STATUS_SERVER:
+		if (!mainconfig.status_server) {
+			rad_free(&packet);
+			RAD_STATS_TYPE_INC(listener, total_packets_dropped);
+			RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
+			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
+			return 0;
+		}
+		fun = rad_status_server;
+		break;
+
+	default:
+		rad_free(&packet);
+		RAD_STATS_INC(radius_auth_stats.total_unknown_types);
+		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
+
+		DEBUG("Invalid packet code %d sent to authentication port from client %s port %d : IGNORED",
+		      packet->code, client->shortname, packet->src_port);
+		return 0;
+		break;
+	} /* switch over packet types */
+
+	if (!received_request(listener, packet, prequest, sock->client)) {
+		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
+		RAD_STATS_CLIENT_INC(listener, sock->client, total_packets_dropped);
+		rad_free(&packet);
+		return 0;
+	}
+
+	packet->dst_ipaddr = sock->my_ipaddr;
+	packet->dst_port = sock->my_port;
+
+	*pfun = fun;
+	return 1;
+}
+
+static int auth_tcp_accept(rad_listen_t *listener,
+			   UNUSED RAD_REQUEST_FUNP *pfun,
+			   UNUSED REQUEST **prequest)
+{
+	int newfd, src_port;
+	rad_listen_t *this;
+	socklen_t salen;
+	struct sockaddr_storage src;
+	listen_socket_t *sock;
+	fr_ipaddr_t src_ipaddr;
+	RADCLIENT *client;
+	
+	salen = sizeof(src);
+
+	DEBUG2(" ... new connection request on TCP socket.");
+	
+	newfd = accept(listener->fd, (struct sockaddr *) &src, &salen);
+	if (newfd < 0) {
+		/*
+		 *	Non-blocking sockets must handle this.
+		 */
+		if (errno == EWOULDBLOCK) {
+			return 0;
+		}
+
+		DEBUG2(" ... failed to accept connection.");
+		return -1;
+	}
+
+	if (!fr_sockaddr2ipaddr(&src, salen, &src_ipaddr, &src_port)) {
+		DEBUG2(" ... unknown address family.");
+		return 0;
+	}
+
+	/*
+	 *	Enforce client IP address checks on accept, not on
+	 *	every packet.
+	 */
+	if ((client = client_listener_find(listener,
+					   &src_ipaddr, src_port)) == NULL) {
+		close(newfd);
+		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
+		return 0;
+	}
+
+	/*
+	 *	Enforce max_connectionsx on client && listen section.
+	 */
+	if ((client->max_connections != 0) &&
+	    (client->max_connections == client->num_connections)) {
+		/*
+		 *	FIXME: Print client IP/port, and server IP/port.
+		 */
+		radlog(L_INFO, "Ignoring new connection due to client max_connections (%d)", client->max_connections);
+		close(newfd);
+		return 0;
+	}
+
+	sock = listener->data;
+	if ((sock->max_connections != 0) &&
+	    (sock->max_connections == sock->num_connections)) {
+		/*
+		 *	FIXME: Print client IP/port, and server IP/port.
+		 */
+		radlog(L_INFO, "Ignoring new connection due to socket max_connections");
+		close(newfd);
+		return 0;
+	}
+	client->num_connections++;
+	sock->num_connections++;
+
+	/*
+	 *	Add the new listener.
+	 */
+	this = listen_alloc(listener->type);
+	if (!this) return -1;
+
+	/*
+	 *	Copy everything, including the pointer to the socket
+	 *	information.
+	 */
+	sock = this->data;
+	memcpy(this->data, listener->data, sizeof(*sock));
+	memcpy(this, listener, sizeof(*this));
+	this->next = NULL;
+	this->data = sock;	/* fix it back */
+
+	sock->parent = listener->data;
+	sock->other_ipaddr = src_ipaddr;
+	sock->other_port = src_port;
+	sock->client = client;
+
+	this->fd = newfd;
+	this->status = RAD_LISTEN_STATUS_INIT;
+	this->recv = auth_tcp_recv;
+
+	/*
+	 *	FIXME: set O_NONBLOCK on the accept'd fd.
+	 *	See djb's portability rants for details.
+	 */
+
+	/*
+	 *	Tell the event loop that we have a new FD.
+	 *	This can be called from a child thread...
+	 */
+	event_new_fd(this);
+
+	return 0;
+}
+#endif
+
+
+/*
+ *	This function is stupid and complicated.
+ */
 static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 {
 	size_t len;
@@ -473,34 +698,36 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 #endif
 
 #ifdef WITH_TCP
-	if (sock->proto == IPPROTO_TCP) {
+	if (this->recv == auth_tcp_accept) {
 		ADDSTRING(" proto tcp");
 	}
+#endif
 
+#ifdef WITH_TCP
 	/*
 	 *	TCP sockets get printed a little differently, to make
 	 *	it clear what's going on.
 	 */
 	if (sock->client) {
 		ADDSTRING(" from client (");
-		ip_ntoh(&sock->src_ipaddr, buffer, bufsize);
+		ip_ntoh(&sock->other_ipaddr, buffer, bufsize);
 		FORWARD;
 
 		ADDSTRING(", ");
-		snprintf(buffer, bufsize, "%d", sock->src_port);
+		snprintf(buffer, bufsize, "%d", sock->other_port);
 		FORWARD;
 		ADDSTRING(") -> (");
 
-		if ((sock->ipaddr.af == AF_INET) &&
-		    (sock->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
+		if ((sock->my_ipaddr.af == AF_INET) &&
+		    (sock->my_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
 			strlcpy(buffer, "*", bufsize);
 		} else {
-			ip_ntoh(&sock->ipaddr, buffer, bufsize);
+			ip_ntoh(&sock->my_ipaddr, buffer, bufsize);
 		}
 		FORWARD;
 		
 		ADDSTRING(", ");
-		snprintf(buffer, bufsize, "%d", sock->port);
+		snprintf(buffer, bufsize, "%d", sock->my_port);
 		FORWARD;
 
 		if (this->server) {
@@ -519,24 +746,24 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 	if ((sock->proto == IPPROTO_TCP) &&
 	    (this->type == RAD_LISTEN_PROXY)) {
 		ADDSTRING(" (");
-		ip_ntoh(&sock->src_ipaddr, buffer, bufsize);
+		ip_ntoh(&sock->my_ipaddr, buffer, bufsize);
 		FORWARD;
 
 		ADDSTRING(", ");
-		snprintf(buffer, bufsize, "%d", sock->src_port);
+		snprintf(buffer, bufsize, "%d", sock->my_port);
 		FORWARD;
 		ADDSTRING(") -> home_server (");
 
-		if ((sock->ipaddr.af == AF_INET) &&
-		    (sock->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
+		if ((sock->other_ipaddr.af == AF_INET) &&
+		    (sock->other_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
 			strlcpy(buffer, "*", bufsize);
 		} else {
-			ip_ntoh(&sock->ipaddr, buffer, bufsize);
+			ip_ntoh(&sock->other_ipaddr, buffer, bufsize);
 		}
 		FORWARD;
 		
 		ADDSTRING(", ");
-		snprintf(buffer, bufsize, "%d", sock->port);
+		snprintf(buffer, bufsize, "%d", sock->other_port);
 		FORWARD;
 
 		ADDSTRING(")");
@@ -547,16 +774,16 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 
 	ADDSTRING(" address ");
 	
-	if ((sock->ipaddr.af == AF_INET) &&
-	    (sock->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
+	if ((sock->my_ipaddr.af == AF_INET) &&
+	    (sock->my_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
 		strlcpy(buffer, "*", bufsize);
 	} else {
-		ip_ntoh(&sock->ipaddr, buffer, bufsize);
+		ip_ntoh(&sock->my_ipaddr, buffer, bufsize);
 	}
 	FORWARD;
 
 	ADDSTRING(" port ");
-	snprintf(buffer, bufsize, "%d", sock->port);
+	snprintf(buffer, bufsize, "%d", sock->my_port);
 	FORWARD;
 
 	if (this->server) {
@@ -651,11 +878,22 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 		}
 		free(proto);
+
+		/*
+		 *	TCP requires a destination IP for sockets.
+		 *	UDP doesn't, so it's allowed.
+		 */
+		if ((this->type == RAD_LISTEN_PROXY) &&
+		    (sock->proto != IPPROTO_UDP)) {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Proxy listeners can only listen on proto = udp");
+			return -1;
+		}
 #endif
 	}
 
-	sock->ipaddr = ipaddr;
-	sock->port = listen_port;
+	sock->my_ipaddr = ipaddr;
+	sock->my_port = listen_port;
 
 	/*
 	 *	If we can bind to interfaces, do so,
@@ -688,8 +926,8 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		char buffer[128];
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Error binding to port for %s port %d",
-			   ip_ntoh(&sock->ipaddr, buffer, sizeof(buffer)),
-			   sock->port);
+			   ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
+			   sock->my_port);
 		return -1;
 	}
 
@@ -759,8 +997,11 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 #ifdef WITH_TCP
 	if (sock->proto == IPPROTO_TCP) {
-		cf_log_err(cf_sectiontoitem(cs), "TCP is not yet finished");
-		return -1;
+		/*
+		 *	Re-write the listener receive function to
+		 *	allow us to accept the socket.
+		 */
+		this->recv = auth_tcp_accept;
 	}
 #endif
 
@@ -775,10 +1016,6 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == auth_socket_send);
 
-#ifdef WITH_TCP
-	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
-#endif
-
 	return rad_send(request->reply, request->packet,
 			request->client->secret);
 }
@@ -792,10 +1029,6 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 {
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == acct_socket_send);
-
-#ifdef WITH_TCP
-	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
-#endif
 
 	/*
 	 *	Accounting reject's are silently dropped.
@@ -818,17 +1051,8 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
  */
 static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 {
-	listen_socket_t *sock = listener->data;
-
 	rad_assert(request->proxy_listener == listener);
 	rad_assert(listener->send == proxy_socket_send);
-
-#ifdef WITH_TCP
-	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return 0;
-#endif
-
-	request->proxy->src_ipaddr = sock->ipaddr;
-	request->proxy->src_port = sock->port;
 
 	return rad_send(request->proxy, request->packet,
 			request->home_server->secret);
@@ -1262,7 +1486,6 @@ static int coa_socket_recv(rad_listen_t *listener,
 	int		code, src_port;
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
-	char		buffer[128];
 	RADCLIENT	*client;
 	fr_ipaddr_t	src_ipaddr;
 
@@ -1280,22 +1503,6 @@ static int coa_socket_recv(rad_listen_t *listener,
 					   &src_ipaddr, src_port)) == NULL) {
 		rad_recv_discard(listener->fd);
 		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
-
-		if (debug_flag > 0) {
-			char name[1024];
-
-			listener->print(listener, name, sizeof(name));
-
-			/*
-			 *	This is debugging rather than logging, so that
-			 *	DoS attacks don't affect us.
-			 */
-			DEBUG("Ignoring request to %s from unknown client %s port %d",
-			      name,
-			      inet_ntop(src_ipaddr.af, &src_ipaddr.ipaddr,
-					buffer, sizeof(buffer)), src_port);
-		}
-
 		return 0;
 	}
 
@@ -1427,11 +1634,13 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener,
 	REQUEST		*request;
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
+	listen_socket_t	*sock = listener->data;
 	char		buffer[128];
 
 	packet = fr_tcp_recv(listener->fd, 0);
 	if (!packet) {
-		proxy_close_tcp_listener(listener);
+		listener->status = RAD_LISTEN_STATUS_REMOVE_FD;
+		event_new_fd(listener);
 		return 0;
 	}
 
@@ -1464,13 +1673,26 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener,
 		return 0;
 	}
 
-	request = received_proxy_tcp_response(packet,
-					      fr_listen2tcp(listener));
+	packet->src_ipaddr = sock->other_ipaddr;
+	packet->src_port = sock->other_port;
+	packet->dst_ipaddr = sock->my_ipaddr;
+	packet->dst_port = sock->my_port;
+
+	/*
+	 *	FIXME: Have it return an indication of packets that
+	 *	are OK to ignore (dups, too late), versus ones that
+	 *	aren't OK to ignore (unknown response, spoofed, etc.)
+	 *
+	 *	Close the socket on bad packets...
+	 */
+	request = received_proxy_response(packet);
 	if (!request) {
 		return 0;
 	}
 
 	rad_assert(fun != NULL);
+	sock->opened = sock->last_packet = request->timestamp;
+
 	*pfun = fun;
 	*prequest = request;
 
@@ -1632,16 +1854,16 @@ static int listen_bind(rad_listen_t *this)
 	 *	If the port is zero, then it means the appropriate
 	 *	thing from /etc/services.
 	 */
-	if (sock->port == 0) {
+	if (sock->my_port == 0) {
 		struct servent	*svp;
 
 		switch (this->type) {
 		case RAD_LISTEN_AUTH:
 			svp = getservbyname ("radius", proto_for_port);
 			if (svp != NULL) {
-				sock->port = ntohs(svp->s_port);
+				sock->my_port = ntohs(svp->s_port);
 			} else {
-				sock->port = PW_AUTH_UDP_PORT;
+				sock->my_port = PW_AUTH_UDP_PORT;
 			}
 			break;
 
@@ -1649,28 +1871,28 @@ static int listen_bind(rad_listen_t *this)
 		case RAD_LISTEN_ACCT:
 			svp = getservbyname ("radacct", proto_for_port);
 			if (svp != NULL) {
-				sock->port = ntohs(svp->s_port);
+				sock->my_port = ntohs(svp->s_port);
 			} else {
-				sock->port = PW_ACCT_UDP_PORT;
+				sock->my_port = PW_ACCT_UDP_PORT;
 			}
 			break;
 #endif
 
 #ifdef WITH_PROXY
 		case RAD_LISTEN_PROXY:
-			sock->port = 0;
+			/* leave it at zero */
 			break;
 #endif
 
 #ifdef WITH_VMPS
 		case RAD_LISTEN_VQP:
-			sock->port = 1589;
+			sock->my_port = 1589;
 			break;
 #endif
 
 #ifdef WITH_COA
 		case RAD_LISTEN_COA:
-			sock->port = PW_COA_UDP_PORT;
+			sock->my_port = PW_COA_UDP_PORT;
 			break;
 #endif
 
@@ -1683,7 +1905,7 @@ static int listen_bind(rad_listen_t *this)
 	/*
 	 *	Copy fr_socket() here, as we may need to bind to a device.
 	 */
-	this->fd = socket(sock->ipaddr.af, sock_type, 0);
+	this->fd = socket(sock->my_ipaddr.af, sock_type, 0);
 	if (this->fd < 0) {
 		radlog(L_ERR, "Failed opening socket: %s", strerror(errno));
 		return -1;
@@ -1739,13 +1961,13 @@ static int listen_bind(rad_listen_t *this)
 	/*
 	 *	Set up sockaddr stuff.
 	 */
-	if (!fr_ipaddr2sockaddr(&sock->ipaddr, sock->port, &salocal, &salen)) {
+	if (!fr_ipaddr2sockaddr(&sock->my_ipaddr, sock->my_port, &salocal, &salen)) {
 		close(this->fd);
 		return -1;
 	}
 		
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
-	if (sock->ipaddr.af == AF_INET6) {
+	if (sock->my_ipaddr.af == AF_INET6) {
 		/*
 		 *	Listening on '::' does NOT get you IPv4 to
 		 *	IPv6 mapping.  You've got to listen on an IPv4
@@ -1754,7 +1976,7 @@ static int listen_bind(rad_listen_t *this)
 		 */
 #ifdef IPV6_V6ONLY
 		
-		if (IN6_IS_ADDR_UNSPECIFIED(&sock->ipaddr.ipaddr.ip6addr)) {
+		if (IN6_IS_ADDR_UNSPECIFIED(&sock->my_ipaddr.ipaddr.ip6addr)) {
 			int on = 1;
 			
 			setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
@@ -1764,8 +1986,7 @@ static int listen_bind(rad_listen_t *this)
 	}
 #endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 
-
-	if (sock->ipaddr.af == AF_INET) {
+	if (sock->my_ipaddr.af == AF_INET) {
 		UNUSED int flag;
 		
 #if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
@@ -1792,40 +2013,42 @@ static int listen_bind(rad_listen_t *this)
 	/*
 	 *	May be binding to priviledged ports.
 	 */
-	fr_suid_up();
-	rcode = bind(this->fd, (struct sockaddr *) &salocal, salen);
-	fr_suid_down();
-	if (rcode < 0) {
-		char buffer[256];
-		close(this->fd);
-		
-		this->print(this, buffer, sizeof(buffer));
-		radlog(L_ERR, "Failed binding to %s: %s\n",
-		       buffer, strerror(errno));
-		return -1;
-	}
-	
-	/*
-	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
-	 *	kernel instead binds us to a 1.2.3.4.  If this
-	 *	happens, notice, and remember our real IP.
-	 */
-	{
-		struct sockaddr_storage	src;
-		socklen_t	        sizeof_src = sizeof(src);
-
-		memset(&src, 0, sizeof_src);
-		if (getsockname(this->fd, (struct sockaddr *) &src,
-				&sizeof_src) < 0) {
-			radlog(L_ERR, "Failed getting socket name: %s",
-			       strerror(errno));
+	if (sock->my_port != 0) {
+		fr_suid_up();
+		rcode = bind(this->fd, (struct sockaddr *) &salocal, salen);
+		fr_suid_down();
+		if (rcode < 0) {
+			char buffer[256];
+			close(this->fd);
+			
+			this->print(this, buffer, sizeof(buffer));
+			radlog(L_ERR, "Failed binding to %s: %s\n",
+			       buffer, strerror(errno));
 			return -1;
 		}
-
-		if (!fr_sockaddr2ipaddr(&src, sizeof_src,
-					&sock->ipaddr, &sock->port)) {
-			radlog(L_ERR, "Socket has unsupported address family");
-			return -1;
+	
+		/*
+		 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
+		 *	kernel instead binds us to a 1.2.3.4.  If this
+		 *	happens, notice, and remember our real IP.
+		 */
+		{
+			struct sockaddr_storage	src;
+			socklen_t	        sizeof_src = sizeof(src);
+			
+			memset(&src, 0, sizeof_src);
+			if (getsockname(this->fd, (struct sockaddr *) &src,
+					&sizeof_src) < 0) {
+				radlog(L_ERR, "Failed getting socket name: %s",
+				       strerror(errno));
+				return -1;
+			}
+			
+			if (!fr_sockaddr2ipaddr(&src, sizeof_src,
+						&sock->my_ipaddr, &sock->my_port)) {
+				radlog(L_ERR, "Socket has unsupported address family");
+				return -1;
+			}
 		}
 	}
 
@@ -1839,24 +2062,17 @@ static int listen_bind(rad_listen_t *this)
 	} else
 #endif
 
-#ifdef O_NONBLOCK
-	{
-		int flags;
-		
-		if ((flags = fcntl(this->fd, F_GETFL, NULL)) < 0)  {
-			radlog(L_ERR, "Failure getting socket flags: %s)\n",
-			       strerror(errno));
-			return -1;
-		}
-		
-		flags |= O_NONBLOCK;
-		if( fcntl(this->fd, F_SETFL, flags) < 0) {
-			radlog(L_ERR, "Failure setting socket flags: %s)\n",
-			       strerror(errno));
-			return -1;
-		}
-	}
-#endif
+	  if (fr_nonblock(this->fd) < 0) {
+		  close(this->fd);
+		  radlog(L_ERR, "Failed setting non-blocking on socket: %s",
+			 strerror(errno));
+		  return -1;
+	  }
+
+	/*
+	 *	Mostly for proxy sockets.
+	 */
+	sock->other_ipaddr.af = sock->my_ipaddr.af;
 
 /*
  *	Don't screw up other people.
@@ -1934,7 +2150,6 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 	return this;
 }
 
-
 #ifdef WITH_PROXY
 /*
  *	Externally visible function for creating a new proxy LISTENER.
@@ -1942,94 +2157,89 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
  *	Not thread-safe, but all calls to it are protected by the
  *	proxy mutex in event.c
  */
-rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists)
+int proxy_new_listener(home_server *home, int src_port)
 {
-	int last_proxy_port, port;
-	rad_listen_t *this, *tmp, **last;
-	listen_socket_t *sock, *old;
+	rad_listen_t *this;
+	listen_socket_t *sock;
 
-	/*
-	 *	Find an existing proxy socket to copy.
-	 */
-	last_proxy_port = 0;
-	old = NULL;
-	last = &mainconfig.listen;
-	for (tmp = mainconfig.listen; tmp != NULL; tmp = tmp->next) {
-		/*
-		 *	Not proxy, ignore it.
-		 */
-		if (tmp->type != RAD_LISTEN_PROXY) continue;
+	if (!home) return 0;
 
-		sock = tmp->data;
-
-		/*
-		 *	If we were asked to copy a specific one, do
-		 *	so.  If we're just finding one that already
-		 *	exists, return a pointer to it.  Otherwise,
-		 *	create ANOTHER one with the same IP address.
-		 */
-		if ((ipaddr->af != AF_UNSPEC) &&
-		    (fr_ipaddr_cmp(&sock->ipaddr, ipaddr) != 0)) {
-			if (exists) return tmp;
-			continue;
-		}
-		
-		if (sock->port > last_proxy_port) {
-			last_proxy_port = sock->port + 1;
-		}
-		if (!old) old = sock;
-
-		last = &(tmp->next);
+	if ((home->max_connections > 0) &&
+	    (home->num_connections >= home->max_connections)) {
+		DEBUG("WARNING: Home server has too many open connections (%d)",
+		      home->max_connections);
+		return 0;
 	}
 
-	if (!old) {
+	this = listen_alloc(RAD_LISTEN_PROXY);
+
+	sock = this->data;
+	sock->other_ipaddr = home->ipaddr;
+	sock->other_port = home->port;
+	sock->home = home;
+
+	sock->my_ipaddr = home->src_ipaddr;
+	sock->my_port = src_port;
+	
+#ifdef WITH_TCP
+	sock->proto = home->proto;
+	sock->last_packet = time(NULL);
+
+	if (home->proto == IPPROTO_TCP) {
+		this->recv = proxy_socket_tcp_recv;
+
 		/*
-		 *	The socket MUST already exist if we're binding
-		 *	to an address while proxying.
+		 *	FIXME: connect() is blocking!
+		 *	We do this with the proxy mutex locked, which may
+		 *	cause large delays!
 		 *
-		 *	If we're initializing the server, it's OK for the
-		 *	socket to NOT exist.
+		 *	http://www.developerweb.net/forum/showthread.php?p=13486
 		 */
-		if (!exists) return NULL;
+		this->fd = fr_tcp_client_socket(&home->src_ipaddr,
+						&home->ipaddr, home->port);
+	} else
+#endif
+		this->fd = fr_socket(&home->src_ipaddr, src_port);
 
-		this = listen_alloc(RAD_LISTEN_PROXY);
-
-		sock = this->data;
-		sock->ipaddr = *ipaddr;
-
-	} else {
-		this = listen_alloc(RAD_LISTEN_PROXY);
-		
-		sock = this->data;
-		sock->ipaddr = old->ipaddr;
+	if (this->fd < 0) {
+		DEBUG("Failed opening client socket: %s", fr_strerror());
+		listen_free(&this);
+		return 0;
 	}
 
 	/*
-	 *	Keep going until we find an unused port.
+	 *	Figure out which port we were bound to.
 	 */
-	for (port = last_proxy_port; port < 64000; port++) {
-		int rcode;
-
-		sock->port = port;
-
-		rcode = listen_bind(this);
-		if (rcode < 0) {
+	if (sock->my_port == 0) {
+		struct sockaddr_storage	src;
+		socklen_t	        sizeof_src = sizeof(src);
+		
+		memset(&src, 0, sizeof_src);
+		if (getsockname(this->fd, (struct sockaddr *) &src,
+				&sizeof_src) < 0) {
+			radlog(L_ERR, "Failed getting socket name: %s",
+			       strerror(errno));
 			listen_free(&this);
-			return NULL;
+			return 0;
 		}
 		
-		/*
-		 *	Add the new listener to the list of
-		 *	listeners.
-		 */
-		*last = this;
-		return this;
+		if (!fr_sockaddr2ipaddr(&src, sizeof_src,
+					&sock->my_ipaddr, &sock->my_port)) {
+			radlog(L_ERR, "Socket has unsupported address family");
+			listen_free(&this);
+			return 0;
+		}
 	}
 
-	listen_free(&this);
-	return NULL;
+	/*
+	 *	Tell the event loop that we have a new FD
+	 */
+	event_new_fd(this);
+	
+	return 1;
 }
 #endif
+
 
 static const FR_NAME_NUMBER listen_compare[] = {
 #ifdef WITH_STATS
@@ -2090,7 +2300,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 		return NULL;
 	}
 	free(listen_type);
-	
+
 	/*
 	 *	Allow listen sections in the default config to
 	 *	refer to a server.
@@ -2104,6 +2314,18 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 		}
 		if (rcode < 0) return NULL;
 	}
+
+#ifdef WITH_PROXY
+	/*
+	 *	We were passed a virtual server, so the caller is
+	 *	defining a proxy listener inside of a virtual server.
+	 *	This isn't allowed right now.
+	 */
+	else if (this->type == RAD_LISTEN_PROXY) {
+		radlog(L_ERR, "Error: listen type \"proxy\" Cannot appear in a virtual server section");
+		return NULL;
+	}
+#endif
 
 	/*
 	 *	Set up cross-type data.
@@ -2195,8 +2417,8 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 
 		sock = this->data;
 
-		sock->ipaddr = server_ipaddr;
-		sock->port = auth_port;
+		sock->my_ipaddr = server_ipaddr;
+		sock->my_port = auth_port;
 
 		sock->clients = clients_parse_section(config);
 		if (!sock->clients) {
@@ -2208,11 +2430,11 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 
 		if (listen_bind(this) < 0) {
 			listen_free(head);
-			radlog(L_ERR, "There appears to be another RADIUS server running on the authentication port %d", sock->port);
+			radlog(L_ERR, "There appears to be another RADIUS server running on the authentication port %d", sock->my_port);
 			listen_free(&this);
 			return -1;
 		}
-		auth_port = sock->port;	/* may have been updated in listen_bind */
+		auth_port = sock->my_port;	/* may have been updated in listen_bind */
 		if (override) {
 			cs = cf_section_sub_find_name2(config, "server",
 						       mainconfig.name);
@@ -2226,7 +2448,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		/*
 		 *	No acct for vmpsd
 		 */
-		if (strcmp(progname, "vmpsd") == 0) goto do_proxy;
+		if (strcmp(progname, "vmpsd") == 0) goto add_sockets;
 #endif
 
 #ifdef WITH_ACCOUNTING
@@ -2245,8 +2467,8 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		 *	The accounting port is always the
 		 *	authentication port + 1
 		 */
-		sock->ipaddr = server_ipaddr;
-		sock->port = auth_port + 1;
+		sock->my_ipaddr = server_ipaddr;
+		sock->my_port = auth_port + 1;
 
 		sock->clients = clients_parse_section(config);
 		if (!sock->clients) {
@@ -2258,7 +2480,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		if (listen_bind(this) < 0) {
 			listen_free(&this);
 			listen_free(head);
-			radlog(L_ERR, "There appears to be another RADIUS server running on the accounting port %d", sock->port);
+			radlog(L_ERR, "There appears to be another RADIUS server running on the accounting port %d", sock->my_port);
 			return -1;
 		}
 
@@ -2287,7 +2509,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 
 		cs = cf_section_sub_find_name2(config, "server",
 					       mainconfig.name);
-		if (!cs) goto do_proxy;
+		if (!cs) goto add_sockets;
 
 		/*
 		 *	Should really abstract this code...
@@ -2301,15 +2523,11 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 				return -1;
 			}
 
-#ifdef WITH_PROXY
-			if (this->type == RAD_LISTEN_PROXY) defined_proxy = 1;
-#endif
-			
 			*last = this;
 			last = &(this->next);
 		} /* loop over "listen" directives in server <foo> */
 
-		goto do_proxy;
+		goto add_sockets;
 	}
 
 	/*
@@ -2323,10 +2541,6 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 			listen_free(head);
 			return -1;
 		}
-
-#ifdef WITH_PROXY
-		if (this->type == RAD_LISTEN_PROXY) defined_proxy = 1;
-#endif
 
 		*last = this;
 		last = &(this->next);
@@ -2352,36 +2566,47 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 				return -1;
 			}
 			
-#ifdef WITH_PROXY
-			if (this->type == RAD_LISTEN_PROXY) {
-				radlog(L_ERR, "Error: listen type \"proxy\" Cannot appear in a virtual server section");
-				listen_free(head);
-				return -1;
-			}
-#endif
-
 			*last = this;
 			last = &(this->next);
 		} /* loop over "listen" directives in virtual servers */
 	} /* loop over virtual servers */
 
+add_sockets:
+	/*
+	 *	Print out which sockets we're listening on, and
+	 *	add them to the event list.
+	 */
+	for (this = *head; this != NULL; this = this->next) {
+#ifdef WITH_PROXY
+		if (this->type == RAD_LISTEN_PROXY) {
+			defined_proxy = 1;
+		}
+
+#endif
+		event_new_fd(this);
+	}
+
 	/*
 	 *	If we're proxying requests, open the proxy FD.
 	 *	Otherwise, don't do anything.
 	 */
- do_proxy:
 #ifdef WITH_PROXY
-	if (mainconfig.proxy_requests == TRUE) {
-		int		port = -1;
+	if ((mainconfig.proxy_requests == TRUE) &&
+	    (*head != NULL) && !defined_proxy) {
 		listen_socket_t *sock = NULL;
+		int		port = 0;
+		home_server	home;
+
+		memset(&home, 0, sizeof(home));
 
 		/*
-		 *	No sockets to receive packets, therefore
-		 *	proxying is pointless.
+		 *	
 		 */
-		if (!*head) return -1;
-
-		if (defined_proxy) goto check_home_servers;
+#ifdef WITH_TCP
+		home.proto = IPPROTO_UDP;
+#endif
+		
+		home.src_ipaddr = server_ipaddr;
 
 		/*
 		 *	Find the first authentication port,
@@ -2390,70 +2615,47 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		for (this = *head; this != NULL; this = this->next) {
 			if (this->type == RAD_LISTEN_AUTH) {
 				sock = this->data;
-				if (server_ipaddr.af == AF_UNSPEC) {
-					server_ipaddr = sock->ipaddr;
+				if (home.src_ipaddr.af == AF_UNSPEC) {
+					home.src_ipaddr = sock->my_ipaddr;
 				}
-				port = sock->port + 2; /* skip acct port */
+				port = sock->my_port + 2;
 				break;
 			}
-#ifdef WITH_VMPS
-			if (this->type == RAD_LISTEN_VQP) {
+#ifdef WITH_ACCT
+			if (this->type == RAD_LISTEN_ACCT) {
 				sock = this->data;
-				if (server_ipaddr.af == AF_UNSPEC) {
-					server_ipaddr = sock->ipaddr;
+				if (home.src_ipaddr.af == AF_UNSPEC) {
+					home.src_ipaddr = sock->my_ipaddr;
 				}
-				port = sock->port + 1;
+				port = sock->my_port + 1;
 				break;
 			}
 #endif
 		}
-
-		if (port < 0) port = 1024 + (fr_rand() & 0x1ff);
 
 		/*
 		 *	Address is still unspecified, use IPv4.
 		 */
-		if (server_ipaddr.af == AF_UNSPEC) {
-			server_ipaddr.af = AF_INET;
-			server_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
+		if (home.src_ipaddr.af == AF_UNSPEC) {
+			home.src_ipaddr.af = AF_INET;
+			/* everything else is already set to zero */
 		}
 
-		this = listen_alloc(RAD_LISTEN_PROXY);
-		sock = this->data;
+		home.ipaddr.af = home.src_ipaddr.af;
+		/* everything else is already set to zero */
 
-		/*
-		 *	Create the first proxy socket.
-		 */
-		sock->ipaddr = server_ipaddr;
-
-		/*
-		 *	Try to find a proxy port (value doesn't matter)
-		 */
-		for (sock->port = port;
-		     sock->port < 64000;
-		     sock->port++) {
-			if (listen_bind(this) == 0) {
-				*last = this;
-				last = &(this->next); /* just in case */
-				break;
-			}
-		}
-
-		if (sock->port >= 64000) {
+		if (!proxy_new_listener(&home, port)) {
 			listen_free(head);
-			listen_free(&this);
-			radlog(L_ERR, "Failed to open socket for proxying");
 			return -1;
 		}
-		
-		/*
-		 *	Create *additional* proxy listeners, based
-		 *	on their src_ipaddr.
-		 */
-	check_home_servers:
-		if (home_server_create_listeners(*head) != 0) return -1;
 	}
 #endif
+
+	/*
+	 *	Haven't defined any sockets.  Die.
+	 */
+	if (!*head) return -1;
+
 
 	return 0;
 }
@@ -2479,12 +2681,21 @@ void listen_free(rad_listen_t **head)
 		if (master_listen[this->type].free) {
 			master_listen[this->type].free(this);
 		}
+
 #ifdef WITH_TCP
-		if (this->type == RAD_LISTEN_PROXY) {
+		if ((this->type == RAD_LISTEN_AUTH) ||
+#ifdef WITH_ACCT
+		    (this->type == RAD_LISTEN_ACCT) ||
+#endif
+#ifdef WITH_PROXY
+		    (this->type == RAD_LISTEN_PROXY)
+#endif
+			) {
 			listen_socket_t *sock = this->data;
-			free(sock->tcp);
+			rad_free(&sock->packet);
 		}
 #endif
+
 		free(this->data);
 		free(this);
 
@@ -2493,170 +2704,6 @@ void listen_free(rad_listen_t **head)
 
 	*head = NULL;
 }
-
-#ifdef WITH_TCP
-fr_tcp_radius_t *fr_listen2tcp(rad_listen_t *this)
-{
-	listen_socket_t *sock;
-
-	if (!this || (this->type != RAD_LISTEN_PROXY) || !this->data) {
-		return NULL;
-	}
-
-	sock = this->data;
-	return sock->tcp;
-}
-
-rad_listen_t *proxy_new_tcp_listener(home_server *home)
-{
-	int i;
-	fr_tcp_radius_t *tcp;
-	struct sockaddr_storage	src;
-	socklen_t sizeof_src = sizeof(src);
-	rad_listen_t *this;
-	listen_socket_t *sock;
-
-	if (!home ||
-	    ((home->max_connections > 0) &&
-	     (home->num_connections >= home->max_connections))) {
-		DEBUG("WARNING: Home server has too many open connections (%d)",
-		      home->max_connections);
-		return NULL;
-	}
-
-	this = NULL;
-
-	/*
-	 *	FIXME: Move to RBTrees.
-	 */
-	for (i = 0; i < home->max_connections; i++) {
-		if (home->listeners[i]) continue;
-
-		this = home->listeners[i] = listen_alloc(RAD_LISTEN_PROXY);
-		if (!this) {
-			DEBUG("WARNING: Failed allocating memory");
-			return NULL;
-		}
-		break;
-	}
-
-	if (!this) {
-		DEBUG("WARNING: Failed to find a free connection slot");
-		return NULL;
-	}
-	sock = this->data;
-
-	tcp = sock->tcp = rad_malloc(sizeof(*tcp));
-	memset(tcp, 0, sizeof(*tcp));
-
-	/*
-	 *	Initialize th
-	 *
-	 *	Open a new socket...
-	 *
-	 *	Do stuff...
-	 */
-	tcp->dst_ipaddr = home->ipaddr;
-	tcp->dst_port = home->port;
-	tcp->lifetime = home->lifetime;
-	tcp->opened = time(NULL);	
-
-	/*
-	 *	FIXME: connect() is blocking!
-	 *	We do this with the proxy mutex locked, which may
-	 *	cause large delays!
-	 *
-	 *	http://www.developerweb.net/forum/showthread.php?p=13486
-	 */
-	this->fd = tcp->fd = fr_tcp_client_socket(&tcp->dst_ipaddr, tcp->dst_port);
-	if (tcp->fd < 0) {
-		listen_free(&this);
-		DEBUG("WARNING: Failed opening socket to home server");
-		return NULL;
-	}
-	memset(&src, 0, sizeof_src);
-	if (getsockname(tcp->fd, (struct sockaddr *) &src, &sizeof_src) < 0) {
-		close(tcp->fd);
-		listen_free(&this);
-		return NULL;
-	}
-
-	if (!fr_sockaddr2ipaddr(&src, sizeof_src,
-				&tcp->src_ipaddr, &tcp->src_port)) {
-		close(tcp->fd);
-		listen_free(&this);
-		return NULL;
-	}
-
-	/*
-	 *	Fill in socket information.
-	 */
-	sock->proto = IPPROTO_TCP;
-	sock->tcp = tcp;
-
-	sock->ipaddr = tcp->src_ipaddr;
-	sock->port = tcp->src_port;
-
-	/*
-	 *	Don't ask.  Just don't ask.
-	 */
-	sock->src_ipaddr = tcp->dst_ipaddr;
-	sock->src_port = tcp->dst_port;
-	sock->home = home;
-	sock->home->num_connections++;
-
-	this->recv = proxy_socket_tcp_recv;
-
-	/*
-	 *	Tell the event handler about the new socket.
-	 *
-	 *	It keeps track of "this", so we don't have to insert
-	 *	it into the main list of listeners.
-	 */
-	event_new_fd(this);
-
-	return this;
-}
-
-void proxy_close_tcp_listener(rad_listen_t *listener)
-{
-	int i;
-	listen_socket_t *sock = listener->data;
-	
-	/*
-	 *	This is the second time around for the socket.  Free
-	 *	the memory now.
-	 */
-	if (listener->status != RAD_LISTEN_STATUS_KNOWN) {
-		listen_free(&listener);
-		return;
-	}
-
-	listener->status = RAD_LISTEN_STATUS_CLOSED;
-	event_new_fd(listener);
-	
-	/*
-	 *	Find the home server, and mark this listener as
-	 *	no longer being active.
-	 */
-	for (i = 0; i < sock->home->max_connections; i++) {
-		if (sock->home->listeners[i] == listener) {
-			sock->home->listeners[i] = NULL;
-			sock->home->num_connections--;
-			break;
-		}
-	}
-
-	/*
-	 *	There are still one or more requests using this socket.
-	 *	leave it marked as "closed", but don't free it.  When the
-	 *	last requeast using it is cleaned up, it will be deleted.
-	 */
-	if (sock->tcp->used > 0) return;
-	
-	listen_free(&listener);
-}
-#endif
 
 #ifdef WITH_STATS
 RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
@@ -2672,8 +2719,8 @@ RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
 		
 		sock = this->data;
 
-		if ((sock->port == port) &&
-		    (fr_ipaddr_cmp(ipaddr, &sock->ipaddr) == 0)) {
+		if ((sock->my_port == port) &&
+		    (fr_ipaddr_cmp(ipaddr, &sock->my_ipaddr) == 0)) {
 			return sock->clients;
 		}
 	}
@@ -2698,21 +2745,21 @@ rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port)
 		
 		sock = this->data;
 
-		if ((sock->port == port) &&
-		    (fr_ipaddr_cmp(ipaddr, &sock->ipaddr) == 0)) {
+		if ((sock->my_port == port) &&
+		    (fr_ipaddr_cmp(ipaddr, &sock->my_ipaddr) == 0)) {
 			return this;
 		}
 
-		if ((sock->port == port) &&
-		    ((sock->ipaddr.af == AF_INET) &&
-		     (sock->ipaddr.ipaddr.ip4addr.s_addr == INADDR_ANY))) {
+		if ((sock->my_port == port) &&
+		    ((sock->my_ipaddr.af == AF_INET) &&
+		     (sock->my_ipaddr.ipaddr.ip4addr.s_addr == INADDR_ANY))) {
 			return this;
 		}
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
-		if ((sock->port == port) &&
-		    (sock->ipaddr.af == AF_INET6) &&
-		    (IN6_IS_ADDR_UNSPECIFIED(&sock->ipaddr.ipaddr.ip6addr))) {
+		if ((sock->my_port == port) &&
+		    (sock->my_ipaddr.af == AF_INET6) &&
+		    (IN6_IS_ADDR_UNSPECIFIED(&sock->my_ipaddr.ipaddr.ip6addr))) {
 			return this;
 		}
 #endif

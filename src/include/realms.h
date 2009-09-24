@@ -40,12 +40,12 @@ typedef struct home_server {
 
 #ifdef WITH_TCP
 	int		proto;
+#endif
 	int		max_connections;
-	int		num_connections;
-	int		max_requests;
+	int		num_connections; /* protected by proxy mutex */
+	int		max_requests;	 /* for one connection */
 	int		lifetime;
 	int		idle_timeout;
-#endif
 
 	/*
 	 *	Maybe also have list of source IP/ports, && socket?
@@ -94,10 +94,6 @@ typedef struct home_server {
 
 	fr_stats_ema_t  ema;
 #endif
-
-#ifdef WITH_TCP
-	struct rad_listen_t	*listeners[1];
-#endif
 } home_server;
 
 
@@ -143,7 +139,6 @@ REALM *realm_find2(const char *name); /* ... with name taken from realm_find */
 
 home_server *home_server_ldb(const char *realmname, home_pool_t *pool, REQUEST *request);
 home_server *home_server_find(fr_ipaddr_t *ipaddr, int port);
-int	home_server_create_listeners(void *head);
 #ifdef WITH_COA
 home_server *home_server_byname(const char *name, int type);
 #endif

@@ -504,14 +504,15 @@ static int send_one_packet(radclient_t *radclient)
 		 *	this packet.
 		 */
 	retry:
-		radclient->request->src_ipaddr.af = AF_UNSPEC;
-		rcode = fr_packet_list_id_alloc(pl, radclient->request);
+		radclient->request->src_ipaddr.af = server_ipaddr.af;
+		rcode = fr_packet_list_id_alloc(pl, radclient->request, NULL);
 		if (rcode < 0) {
 			int mysockfd;
 
 #ifdef WITH_TCP
 			if (proto) {
-				mysockfd = fr_tcp_client_socket(&server_ipaddr,
+				mysockfd = fr_tcp_client_socket(NULL,
+								&server_ipaddr,
 								server_port);
 			} else
 #endif
@@ -520,7 +521,9 @@ static int send_one_packet(radclient_t *radclient)
 				fprintf(stderr, "radclient: Can't open new socket\n");
 				exit(1);
 			}
-			if (!fr_packet_list_socket_add(pl, mysockfd)) {
+			if (!fr_packet_list_socket_add(pl, mysockfd,
+						       &server_ipaddr,
+						       server_port, NULL)) {
 				fprintf(stderr, "radclient: Can't add new socket\n");
 				exit(1);
 			}
@@ -1088,7 +1091,7 @@ int main(int argc, char **argv)
 	}
 #ifdef WITH_TCP
 	if (proto) {
-		sockfd = fr_tcp_client_socket(&server_ipaddr, server_port);
+		sockfd = fr_tcp_client_socket(NULL, &server_ipaddr, server_port);
 	} else
 #endif
 	sockfd = fr_socket(&client_ipaddr, client_port);
@@ -1103,7 +1106,8 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	if (!fr_packet_list_socket_add(pl, sockfd)) {
+	if (!fr_packet_list_socket_add(pl, sockfd, &server_ipaddr,
+				       server_port, NULL)) {
 		fprintf(stderr, "radclient: Out of memory\n");
 		exit(1);
 	}

@@ -70,6 +70,7 @@ static int self_pipe[2];
 #ifdef HAVE_PTHREAD_H
 #ifdef WITH_PROXY
 static pthread_mutex_t	proxy_mutex;
+static rad_listen_t *proxy_listener_list = NULL;
 #endif
 
 #define PTHREAD_MUTEX_LOCK if (have_children) pthread_mutex_lock
@@ -89,17 +90,29 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 }
 #endif
 
+/*
+ *	We need mutexes around the event FD list *only* in certain
+ *	cases.
+ */
+#if defined (HAVE_PTHREAD_H) && (defined(WITH_PROXY) || defined(WITH_TCP))
+static pthread_mutex_t	fd_mutex;
+#define FD_MUTEX_LOCK if (have_children) pthread_mutex_lock
+#define FD_MUTEX_UNLOCK if (have_children) pthread_mutex_unlock
+#else
+/*
+ *	This is easier than ifdef's throughout the code.
+ */
+#define FD_MUTEX_LOCK(_x)
+#define FD_MUTEX_UNLOCK(_x)
+#endif
+
+
 #define INSERT_EVENT(_function, _ctx) if (!fr_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
 
 #ifdef WITH_PROXY
 static fr_packet_list_t *proxy_list = NULL;
+static void remove_from_proxy_hash(REQUEST *request);
 
-/*
- *	We keep the proxy FD's here.  The RADIUS Id's are marked
- *	"allocated" per Id, via a bit per proxy FD.
- */
-static int		proxy_fds[32];
-static rad_listen_t	*proxy_listeners[32];
 #else
 #define remove_from_proxy_hash(foo)
 #endif
@@ -146,18 +159,8 @@ static void remove_from_request_hash(REQUEST *request)
 
 #ifdef WITH_TCP
 	request->listener->count--;
-
-	/*
-	 *	The TCP socket was closed, but we've got to
-	 *	hang around until done.
-	 */
-	if ((request->listener->status == RAD_LISTEN_STATUS_FINISH) &&
-	    (request->listener->count == 0)) {
-		listen_free(&request->listener);
-	}
 #endif
 }
-
 
 #ifdef WITH_PROXY
 static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
@@ -187,21 +190,7 @@ static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 	 *	correctly.
 	 */
 	if (request->num_proxied_requests == request->num_proxied_responses) {
-		fr_packet_list_yank(proxy_list, request->proxy);
-		fr_packet_list_id_free(proxy_list, request->proxy);
-		request->in_proxy_hash = FALSE;
-	}
-
-	/*
-	 *	On the FIRST reply, decrement the count of outstanding
-	 *	requests.  Note that this is NOT the count of sent
-	 *	packets, but whether or not the home server has
-	 *	responded at all.
-	 */
-	if (!request->proxy_reply &&
-	    request->home_server &&
-	    request->home_server->currently_outstanding) {
-		request->home_server->currently_outstanding--;
+		remove_from_proxy_hash(request);
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
@@ -231,28 +220,13 @@ static void remove_from_proxy_hash(REQUEST *request)
 	}
 
 	fr_packet_list_yank(proxy_list, request->proxy);
-
-#ifdef WITH_TCP
-	/*
-	 *	This should be hit when accounting packets don't have
-	 *	responses, or when the home server is down.
-	 */
-	if (request->home_server->proto == IPPROTO_TCP) {
-		fr_tcp_radius_t *tcp;
-
-		tcp = fr_listen2tcp(request->proxy_listener);
-		if (tcp && tcp->ids[request->proxy->id]) {
-			tcp->ids[request->proxy->id] = NULL;
-			tcp->used--;
-		}
-	} else
-#endif
 	fr_packet_list_id_free(proxy_list, request->proxy);
 
 	/*
-	 *	The home server hasn't replied, but we've given up on
-	 *	this request.  Don't count this request against the
-	 *	home server.
+	 *	On the FIRST reply, decrement the count of outstanding
+	 *	requests.  Note that this is NOT the count of sent
+	 *	packets, but whether or not the home server has
+	 *	responded at all.
 	 */
 	if (!request->proxy_reply &&
 	    request->home_server &&
@@ -260,10 +234,15 @@ static void remove_from_proxy_hash(REQUEST *request)
 		request->home_server->currently_outstanding--;
 	}
 
+#ifdef WITH_TCP
+	request->proxy_listener->count--;
+	request->proxy_listener = NULL;
+#endif
+
 	/*
 	 *	Got from YES in hash, to NO, not in hash while we hold
 	 *	the mutex.  This guarantees that when another thread
-	 *	grans the mutex, the "not in hash" flag is correct.
+	 *	grabs the mutex, the "not in hash" flag is correct.
 	 */
 	request->in_proxy_hash = FALSE;
 
@@ -307,67 +286,113 @@ static void ev_request_free(REQUEST **prequest)
 	request_free(prequest);
 }
 
+#ifdef WITH_TCP
+static int remove_all_requests(void *ctx, void *data)
+{
+	rad_listen_t *this = ctx;
+	RADIUS_PACKET **packet_p = data;
+	REQUEST *request;
+	
+	request = fr_packet2myptr(REQUEST, packet, packet_p);
+	if (request->packet->sockfd != this->fd) return 0;
+
+	switch (request->child_state) {
+	case REQUEST_RUNNING:
+		rad_assert(request->ev != NULL); /* or it's lost forever */
+	case REQUEST_QUEUED:
+		request->master_state = REQUEST_STOP_PROCESSING;
+		return 0;
+
+		/*
+		 *	Waiting for a reply.  There's no point in
+		 *	doing anything else.  We remove it from the
+		 *	request hash so that we can close the upstream
+		 *	socket.
+		 */
+	case REQUEST_PROXIED:
+		remove_from_request_hash(request);
+		request->child_state = REQUEST_DONE;
+		return 0;
+
+	case REQUEST_REJECT_DELAY:
+	case REQUEST_CLEANUP_DELAY:
+	case REQUEST_DONE:
+		ev_request_free(&request);
+		break;
+	}
+
+	return 0;
+}
+
+#ifdef WITH_PROXY
+static int remove_all_proxied_requests(void *ctx, void *data)
+{
+	rad_listen_t *this = ctx;
+	RADIUS_PACKET **proxy_p = data;
+	REQUEST *request;
+	
+	request = fr_packet2myptr(REQUEST, proxy, proxy_p);
+	if (request->proxy->sockfd != this->fd) return 0;
+
+	switch (request->child_state) {
+	case REQUEST_RUNNING:
+		rad_assert(request->ev != NULL); /* or it's lost forever */
+	case REQUEST_QUEUED:
+		request->master_state = REQUEST_STOP_PROCESSING;
+		return 0;
+
+		/*
+		 *	Eventually we will discover that there is no
+		 *	response to the proxied request.
+		 */
+	case REQUEST_PROXIED:
+		break;
+
+		/*
+		 *	Keep it in the cache for duplicate detection.
+		 */
+	case REQUEST_REJECT_DELAY:
+	case REQUEST_CLEANUP_DELAY:
+	case REQUEST_DONE:
+		break;
+	}
+
+	remove_from_proxy_hash(request);
+	return 0;
+}
+#endif	/* WITH_PROXY */
+#endif	/* WITH_TCP */
+
+
 #ifdef WITH_PROXY
 static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
 {
-	int i, proxy, found;
-	rad_listen_t *proxy_listener;
+	void *proxy_listener;
 
-	if (fr_packet_list_id_alloc(proxy_list, packet)) return 1;
+	if (fr_packet_list_id_alloc(proxy_list, packet,
+				    &proxy_listener)) {
+		request->proxy_listener = proxy_listener;
+		return 1;
+	}
 
-	/*
-	 *	Allocate a new proxy fd.  This function adds
-	 *	it to the tail of the list of listeners.  With
-	 *	some care, this can be thread-safe.
-	 */
-	proxy_listener = proxy_new_listener(&packet->src_ipaddr, FALSE);
-	if (!proxy_listener) {
+	if (!proxy_new_listener(request->home_server, 0)) {
 		RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
 		return 0;
 	}
-	
-	/*
-	 *	Cache it locally.
-	 */
-	found = -1;
-	proxy = proxy_listener->fd;
-	for (i = 0; i < 32; i++) {
-		/*
-		 *	Found a free entry.  Save the socket,
-		 *	and remember where we saved it.
-		 */
-		if (proxy_fds[(proxy + i) & 0x1f] == -1) {
-			found = (proxy + i) & 0x1f;
-			proxy_fds[found] = proxy;
-			proxy_listeners[found] = proxy_listener;
-			break;
-		}
-	}
-	rad_assert(found >= 0);
-	
-	if (!fr_packet_list_socket_add(proxy_list, proxy_listener->fd)) {
-			RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
-		return 0;
-		
-	}
-	
-	if (!fr_packet_list_id_alloc(proxy_list, packet)) {
-			RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
+
+	if (!fr_packet_list_id_alloc(proxy_list, packet,
+				     &proxy_listener)) {
+		RDEBUG2("ERROR: Failed allocating Id for new socket when proxying requests.");
 		return 0;
 	}
 	
-	/*
-	 *	Signal the main thread to add the new FD to the list
-	 *	of listening FD's.
-	 */
-	radius_signal_self(RADIUS_SIGNAL_SELF_NEW_FD);
+	request->proxy_listener = proxy_listener;
 	return 1;
 }
 
 
 static int insert_into_proxy_hash(REQUEST *request, int retransmit)
 {
-	int i, proxy;
 	char buf[128];
 
 	rad_assert(request->proxy != NULL);
@@ -375,119 +400,17 @@ static int insert_into_proxy_hash(REQUEST *request, int retransmit)
 
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 
-	/*
-	 *	Keep track of maximum outstanding requests to a
-	 *	particular home server.  'max_outstanding' is
-	 *	enforced in home_server_ldb(), in realms.c.
-	 */
-	if (request->home_server) {
-		request->home_server->currently_outstanding++;
-	}
-
-#ifdef WITH_TCP
-	if (request->home_server->proto == IPPROTO_TCP) {
-		rad_listen_t *this = NULL;
-		fr_tcp_radius_t *tcp = NULL;
-
-		/*
-		 *	FIXME: Order the TCP sockets by most recently
-		 *	used, so that we keep the TCP pipe full.
-		 *
-		 *	FIXME: Try to use the same TCP connection for
-		 *	all packets of an EAP conversation.  This will
-		 *	be hard...
-		 */
-		request->proxy->id = -1;
-		for (i = 0; i < request->home_server->max_connections; i++) {
-			this = request->home_server->listeners[i];
-			
-			if (!this) continue;
-			tcp = fr_listen2tcp(this);
-			if (!tcp) continue;
-
-			/*
-			 *	If max requests per connection are
-			 *	set, and we've reached that limit,
-			 *	then skip the connection.  It will be
-			 *	closed later, when all of the
-			 *	responses come back.
-			 */
-			if (request->home_server->max_requests &&
-			    (tcp->num_packets >= request->home_server->max_requests)) {
-				continue;
-			}
-
-			/*
-			 *	FIXME: This is inefficient.  Use
-			 *	something else, like MRU.
-			 */
-			for (i = 0; i < 256; i++) {
-				if (tcp->ids[i]) continue;
-				
-				request->proxy->id = i;
-				break;
-			}
-
-			if (request->proxy->id >= 0) break;
-		}
-
-		if (request->proxy->id < 0) {
-			/*
-			 *	Allocate new listener for this home
-			 *	server.
-			 *
-			 *	FIXME: split the "connect" portion
-			 *	into a separate call, so it can happen
-			 *	when the mutex is NOT held!
-			 */
-			this = proxy_new_tcp_listener(request->home_server);
-			if (!this) {
-				PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-				DEBUG2("ERROR: Failed to allocate id");
-				return 0;
-			}
-
-			tcp = fr_listen2tcp(this);
-			if (!tcp) return 0;
-
-			rad_assert(tcp->used == 0);
-			rad_assert(tcp->ids[0] == NULL);
-			request->proxy->id = 0;
-
-			/*
-			 *	FIXME: Start timers as per RFC 3539
-			 */
-
-		}
-
-		rad_assert(tcp != NULL);
-		rad_assert(tcp->ids[request->proxy->id] == NULL);
-
-		tcp->ids[request->proxy->id] = &request->proxy;
-		request->proxy_listener = this;
-		request->proxy->sockfd = tcp->fd;
-		request->proxy->src_ipaddr = tcp->src_ipaddr;
-		request->proxy->dst_ipaddr = tcp->dst_ipaddr;
-		request->proxy->src_port = tcp->src_port;
-		request->proxy->dst_port = tcp->dst_port;
-
-		tcp->num_packets++;
-
-		if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
+	if (!retransmit) {
+		if (!proxy_id_alloc(request, request->proxy)) {
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			DEBUG2("ERROR: Failed to insert entry into proxy list");
 			return 0;
 		}
-
-		tcp->used++;
-		tcp->ids[request->proxy->id] = &request->proxy;
-
-		goto done;
-	}
-#endif
-
-	if (retransmit) {
+	} else {
 		RADIUS_PACKET packet;
+
+#ifdef WITH_TCP
+		rad_assert(request->home_server->proto != IPPROTO_TCP);
+#endif
 
 		packet = *request->proxy;
 
@@ -503,35 +426,7 @@ static int insert_into_proxy_hash(REQUEST *request, int retransmit)
 		fr_packet_list_yank(proxy_list, request->proxy);
 		fr_packet_list_id_free(proxy_list, request->proxy);
 		*request->proxy = packet;
-
-	} else if (!proxy_id_alloc(request, request->proxy)) {
-		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		return 0;
 	}
-
-	rad_assert(request->proxy->sockfd >= 0);
-
-	/*
-	 *	FIXME: Hack until we get rid of rad_listen_t, and put
-	 *	the information into the packet_list.
-	 */
-	proxy = -1;
-	for (i = 0; i < 32; i++) {
-		if (proxy_fds[i] == request->proxy->sockfd) {
-			proxy = i;
-			break;
-		}
-	}
-
-	if (proxy < 0) {
-		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		RDEBUG2("ERROR: All sockets are full.");
-		return 0;
-	}
-
-	rad_assert(proxy_fds[proxy] != -1);
-	rad_assert(proxy_listeners[proxy] != NULL);
-	request->proxy_listener = proxy_listeners[proxy];
 
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
 		fr_packet_list_id_free(proxy_list, request->proxy);
@@ -540,11 +435,20 @@ static int insert_into_proxy_hash(REQUEST *request, int retransmit)
 		return 0;
 	}
 
-#ifdef WITH_TCP
- done:
-#endif
-
 	request->in_proxy_hash = TRUE;
+
+	/*
+	 *	Keep track of maximum outstanding requests to a
+	 *	particular home server.  'max_outstanding' is
+	 *	enforced in home_server_ldb(), in realms.c.
+	 */
+	if (request->home_server) {
+		request->home_server->currently_outstanding++;
+	}
+
+#ifdef WITH_TCP
+	request->proxy_listener->count++;
+#endif
 
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
@@ -1160,48 +1064,6 @@ static void post_proxy_fail_handler(REQUEST *request)
 	if (have_children) wait_a_bit(request);
 }
 
-#ifdef WITH_TCP
-static void no_response_to_tcp_request(REQUEST *request)
-{
-	fr_tcp_radius_t *tcp;
-	rad_listen_t *proxy_listener;
-
-	proxy_listener = request->proxy_listener;
-	tcp = fr_listen2tcp(proxy_listener);
-	/* MAY be NULL if proxy_listener is NULL */
-
-	/*
-	 *	May have been closed by someone else.
-	 */
-	if (!request->proxy_listener) return;
-
-	rad_assert(tcp != NULL);
-	rad_assert(tcp->state != HOME_STATE_IS_DEAD);
-
-	/*
-	 *	There's already an event set up to mark it dead.
-	 */
-	if (tcp->state == HOME_STATE_ZOMBIE) {
-		rad_assert(tcp->ev != NULL);
-		return;
-	}
-
-	/*
-	 *	Enable the zombie period when we notice that the home
-	 *	server hasn't responded.  We do NOT back-date the start
-	 *	of the zombie period.
-	 */
-	if (tcp->state == HOME_STATE_ALIVE) {
-		char buffer[128];
-		radlog(L_ERR, "PROXY: Marking TCP connection to %s port %d as zombie (it looks like it is dead).",
-		       inet_ntop(tcp->dst_ipaddr.af, &tcp->dst_ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-		       tcp->dst_port);
-		tcp->state = HOME_STATE_ZOMBIE;
-	}
-}
-#endif	/* WITH_TCP */
-
 /* maybe check this against wait_for_proxy_id_to_expire? */
 static void no_response_to_proxied_request(void *ctx)
 {
@@ -1222,18 +1084,10 @@ static void no_response_to_proxied_request(void *ctx)
 		return;
 	}
 
-	home = request->home_server;
-
 #ifdef WITH_TCP
-	/*
-	 *	If there's no response, then the connection is likely
-	 *	dead.
-	 */
-	if (home->proto == IPPROTO_TCP) {
-		no_response_to_tcp_request(request);
-	} else
+	if (request->home_server->proto != IPPROTO_TCP)
 #endif
-	check_for_zombie_home_server(request);
+		check_for_zombie_home_server(request);
 
 	/*
 	 *	The default as of 2.1.7 is to allow requests to
@@ -1252,9 +1106,35 @@ static void no_response_to_proxied_request(void *ctx)
 		post_proxy_fail_handler(request);
 	}
 
+	home = request->home_server;
+
 	/*
 	 *	Don't touch request due to race conditions
 	 */
+
+#ifdef WITH_TCP
+	/*
+	 *	Do nothing more.  The home server didn't respond,
+	 *	but that isn't a catastrophic failure.  Some home
+	 *	servers don't respond to packets...
+	 */
+	if (home->proto == IPPROTO_TCP) {
+		/*
+		 *	FIXME: Set up TCP pinging on this connection.
+		 *
+		 *	Maybe the CONNECTION is dead, but the home
+		 *	server is alive.  In that case, we need to start
+		 *	pinging on the connection.
+		 *
+		 *	This means doing the pinging BEFORE the
+		 *	post_proxy_fail_handler above, as it may do
+		 *	something with the request, and cause the
+		 *	proxy listener to go away!
+		 */
+		return;
+	}
+#endif
+
 	if (home->state == HOME_STATE_IS_DEAD) {
 		rad_assert(home->ev != NULL); /* or it will never wake up */
 		return;
@@ -1936,53 +1816,6 @@ static int process_proxy_reply(REQUEST *request)
 }
 #endif
 
-#ifdef WITH_TCP
-static void tcp_socket_lifetime(void *ctx)
-{
-	rad_listen_t *listener = ctx;
-
-	DEBUG("Reached lifetime on outgoing connection to home server");
-	proxy_close_tcp_listener(listener);
-}
-
-static void tcp_idle_timeout(void *ctx)
-{
-	rad_listen_t *listener = ctx;
-	fr_tcp_radius_t *tcp = fr_listen2tcp(listener);
-
-	/*
-	 *	Rather than adding && deleting the timer when "used"
-	 *	changes from 1->0, or from 0->1, we just add it when
-	 *	"used" reaches zero, and don't touch it after that.
-	 *	However, in order to avoid deleting used sockets, we
-	 *	double-check things here.
-	 */
-	if (tcp->used != 0) {
-		/*
-		 *	If it's NOT idle, we still need to enforce
-		 *	maximum lifetime.
-		 */
-		if (tcp->lifetime > 0) {
-				struct timeval when;
-
-				when.tv_sec = tcp->opened;
-				when.tv_sec += tcp->lifetime;
-				when.tv_usec = fr_rand() & 0xffff;
-
-				fr_event_insert(el, tcp_socket_lifetime,
-						listener,
-						&when, (fr_event_t **) &tcp->ev);
-		}
-		return;
-	}
-
-
-	DEBUG("Reasched idle timeout on outgoing connection to home server");
-	proxy_close_tcp_listener(listener);
-}
-#endif
-
-
 static int request_pre_handler(REQUEST *request)
 {
 	int rcode;
@@ -2010,8 +1843,14 @@ static int request_pre_handler(REQUEST *request)
 	 *	Put the decoded packet into it's proper place.
 	 */
 	if (request->proxy_reply != NULL) {
-		rcode = request->proxy_listener->decode(request->proxy_listener,
-							request);
+		/*
+		 *	FIXME: For now, we can only proxy RADIUS packets.
+		 *
+		 *	In order to proxy other packets, we need to
+		 *	somehow cache the "decode" function.
+		 */
+		rcode = rad_decode(request->proxy_reply, request->proxy,
+				   request->home_server->secret);
 		DEBUG_PACKET(request, request->proxy_reply, 0);
 	} else
 #endif
@@ -2959,7 +2798,6 @@ static void received_conflicting_request(REQUEST *request,
 		 */
 	case REQUEST_PROXIED:
 	default:
-		rad_assert(request->ev != NULL);
 		break;
 	}
 }
@@ -3202,37 +3040,15 @@ int received_request(rad_listen_t *listener,
 
 
 #ifdef WITH_PROXY
-#ifdef WITH_TCP
-/*
- *	received_proxy_response is split in two for TCP handling.
- */
-static REQUEST *received_proxy_response_p2(RADIUS_PACKET *packet,
-					    REQUEST *request);
-#endif
-
 REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 {
-#ifndef WITH_TCP
 	char		buffer[128];
-	home_server	*home;
-#endif
 	REQUEST		*request;
 
 	/*
 	 *	Also removes from the proxy hash if responses == requests
 	 */
 	request = lookup_in_proxy_hash(packet);
-
-#ifdef WITH_TCP
-	return received_proxy_response_p2(packet, request);
-}
-
-static REQUEST *received_proxy_response_p2(RADIUS_PACKET *packet,
-					   REQUEST *request)
-{
-	char		buffer[128];
-	fr_tcp_radius_t *tcp;
-#endif
 
 	if (!request) {
 		radlog(L_PROXY, "No outstanding request was found for reply from host %s port %d - ID %d",
@@ -3431,36 +3247,6 @@ static REQUEST *received_proxy_response_p2(RADIUS_PACKET *packet,
 	request->priority = RAD_LISTEN_PROXY;
 	tv_add(&request->when, request->delay);
 
-#ifdef WITH_TCP
-	tcp = fr_listen2tcp(request->proxy_listener);
-	if (tcp) {
-		if ((tcp->lifetime > 0) &&
-		    (now.tv_sec > (tcp->opened + tcp->lifetime))) {
-			proxy_close_tcp_listener(request->proxy_listener);
-		} else
-
-		/*
-		 *	No outstanding packets.  Set up idle timeout
-		 *	timer, but only if we didn't already do so
-		 *	this second.
-		 */
-		if ((tcp->used == 0) &&
-		    (request->home_server->idle_timeout != 0) &&
-		    (tcp->last_packet != now.tv_sec)) {
-			struct timeval when;
-			
-			when = now;
-			when.tv_sec += request->home_server->idle_timeout;
-			
-			fr_event_insert(el, tcp_idle_timeout,
-					request->proxy_listener,
-					&when, (fr_event_t **) &tcp->ev);
-		}
-
-		tcp->last_packet = request->proxy_reply->timestamp = now.tv_sec;
-	}
-#endif
-
 	/*
 	 *	Wait a bit will take care of max_request_time
 	 */
@@ -3469,133 +3255,364 @@ static REQUEST *received_proxy_response_p2(RADIUS_PACKET *packet,
 	return request;
 }
 
+#endif /* WITH_PROXY */
+
 #ifdef WITH_TCP
-REQUEST *received_proxy_tcp_response(RADIUS_PACKET *packet,
-				     fr_tcp_radius_t *tcp)
+static void tcp_socket_lifetime(void *ctx)
 {
-	REQUEST		*request;
+	rad_listen_t *listener = ctx;
+	char buffer[256];
+
+	listener->print(listener, buffer, sizeof(buffer));
+
+	DEBUG("Reached maximum lifetime on socket %s", buffer);
+
+	listener->status = RAD_LISTEN_STATUS_CLOSED;
+	event_new_fd(listener);
+}
+
+static void tcp_socket_idle_timeout(void *ctx)
+{
+	rad_listen_t *listener = ctx;
+	listen_socket_t *sock = listener->data;
+	char buffer[256];
+
+	fr_event_now(el, &now);	/* should always succeed... */
+
+	rad_assert(sock->home != NULL);
 
 	/*
-	 *	Not found.  Print the same message as all the other
-	 *	code paths.
+	 *	We implement idle timeout by polling, because it's
+	 *	cheaper than resetting the idle timeout every time
+	 *	we send / receive a packet.
 	 */
-	if (!tcp || !tcp->ids[packet->id]) {
-		return received_proxy_response_p2(packet, NULL);
+	if ((sock->last_packet + sock->home->idle_timeout) > now.tv_sec) {
+		struct timeval when;
+		void *fun = tcp_socket_idle_timeout;
+		
+		when.tv_sec = sock->last_packet;
+		when.tv_sec += sock->home->idle_timeout;
+		when.tv_usec = 0;
+
+		if (sock->home->lifetime &&
+		    (sock->opened + sock->home->lifetime < when.tv_sec)) {
+			when.tv_sec = sock->opened + sock->home->lifetime;
+			fun = tcp_socket_lifetime;
+		}
+		
+		if (!fr_event_insert(el, fun, listener, &when, &sock->ev)) {
+			rad_panic("Failed to insert event");
+		}
+
+		return;
 	}
 
-	/*
-	 *	Find request from: tcp->ids[packet->id] = &request->proxy
-	 */
-	request = fr_packet2myptr(REQUEST, proxy, tcp->ids[packet->id]);
+	listener->print(listener, buffer, sizeof(buffer));
+	
+	DEBUG("Reached idle timeout on socket %s", buffer);
 
-	/*
-	 *	TCP sockets don't do re-transmits.  Just nuke it.
-	 */
-	remove_from_proxy_hash(request);
-
-	/*
-	 *	FIXME: Update RFC 3539 watchdog timer.
-	 */
-
-	return received_proxy_response_p2(packet, request);
+	listener->status = RAD_LISTEN_STATUS_CLOSED;
+	event_new_fd(listener);
 }
-#endif /* WITH_TCP */
-#endif /* WITH_PROXY */
+#endif
 
 void event_new_fd(rad_listen_t *this)
 {
 	char buffer[1024];
 
 	if (this->status == RAD_LISTEN_STATUS_KNOWN) return;
-	
+
 	this->print(this, buffer, sizeof(buffer));
-	
+
 	if (this->status == RAD_LISTEN_STATUS_INIT) {
 		if (just_started) {
 			DEBUG("Listening on %s", buffer);
 		} else {
 			DEBUG2(" ... adding new socket %s", buffer);
 		}
+
+#ifdef WITH_PROXY
+		/*
+		 *	Add it to the list of sockets we can use.
+		 *	Server sockets (i.e. auth/acct) are never
+		 *	added to the packet list.
+		 */
+		if (this->type == RAD_LISTEN_PROXY) {
+			listen_socket_t *sock = this->data;
+
+			PTHREAD_MUTEX_LOCK(&proxy_mutex);
+			if (!fr_packet_list_socket_add(proxy_list, this->fd,
+						       &sock->other_ipaddr, sock->other_port,
+						       this)) {
+				radlog(L_ERR, "Fatal error adding socket: %s",
+				       fr_strerror());
+				exit(1);
+
+			}
+
+			if (sock->home) {
+				sock->home->num_connections++;
+				
+				/*
+				 *	If necessary, add it to the list of
+				 *	new proxy listeners.
+				 */
+				if (sock->home->lifetime || sock->home->idle_timeout) {
+					this->next = proxy_listener_list;
+					proxy_listener_list = this;
+				}
+			}
+			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+
+			/*
+			 *	Tell the main thread that we've added
+			 *	a proxy listener, but only if we need
+			 *	to update the event list.  Do this
+			 *	with the mutex unlocked, to reduce
+			 *	contention.
+			 */
+			if (sock->home) {
+				if (sock->home->lifetime || sock->home->idle_timeout) {
+					radius_signal_self(RADIUS_SIGNAL_SELF_NEW_FD);
+				}
+			}
+		}
+#endif		
+
+#ifdef WITH_DETAIL
+		/*
+		 *	Detail files are always known, and aren't
+		 *	put into the socket event loop.
+		 */
+		if (this->type == RAD_LISTEN_DETAIL) {
+			this->status = RAD_LISTEN_STATUS_KNOWN;
+			
+			/*
+			 *	Set up the first poll interval.
+			 */
+			event_poll_detail(this);
+			return;
+		}
+#endif
+
+		FD_MUTEX_LOCK(&fd_mutex);
 		if (!fr_event_fd_insert(el, 0, this->fd,
 					event_socket_handler, this)) {
 			radlog(L_ERR, "Failed remembering handle for proxy socket!");
 			exit(1);
 		}
+		FD_MUTEX_UNLOCK(&fd_mutex);
 		
-#ifdef WITH_TCP
-		if (this->type == RAD_LISTEN_PROXY) {
-			fr_tcp_radius_t *tcp = fr_listen2tcp(this);
-
-			if (tcp && (tcp->lifetime > 0)) {
-				struct timeval when;
-
-				gettimeofday(&when, NULL);
-				when.tv_sec += tcp->lifetime;
-
-				fr_event_insert(el, tcp_socket_lifetime,
-						this,
-						&when, (fr_event_t **) &tcp->ev);
-			}
-		}
-#endif
-
 		this->status = RAD_LISTEN_STATUS_KNOWN;
 		return;
 	}
-	
-	if (this->status == RAD_LISTEN_STATUS_CLOSED) {
-		DEBUG2(" ... closing socket %s", buffer);
-		
+
+	/*
+	 *	Something went wrong with the socket: make it harmless.
+	 */
+	if (this->status == RAD_LISTEN_STATUS_REMOVE_FD) {
+		int devnull;
+
+		/*
+		 *	Remove it from the list of live FD's.
+		 */
+		FD_MUTEX_LOCK(&fd_mutex);
 		fr_event_fd_delete(el, 0, this->fd);
-		this->status = RAD_LISTEN_STATUS_FINISH;
-		
-#ifdef WITH_TCP
-		/*
-		 *	FIXME: mark ALL requests for this connection
-		 *	as MASTER FORCE STOP!  we can't reply, so
-		 *	there's no point in doing anything
-		 *
-		 *	ALSO, create packet lists JUST for each proxy
-		 */
+		FD_MUTEX_UNLOCK(&fd_mutex);
 
-		/*
-		 *	Once we're done, the caller free's the
-		 *	listener.  However, we've got to ensure that
-		 *	all of the requests using this listener are
-		 *	marked as dead.
-		 */
-		if (this->type == RAD_LISTEN_PROXY) {
-			int i;
-			REQUEST *request;
-			fr_tcp_radius_t *tcp = fr_listen2tcp(this);
-			
-			if (!tcp) return;
-			
-			for (i = 0; i < 256; i++) {
-				if (!tcp->ids[i]) continue;
-				
-				request = fr_packet2myptr(REQUEST, proxy,
-							  tcp->ids[i]);
-				request->proxy->sockfd = -1;
-				request->proxy_listener = NULL;
-				request->in_proxy_hash = FALSE;
-				tcp->ids[i] = NULL;
-				tcp->used--;
+#ifdef WITH_PROXY
+		if (this->type != RAD_LISTEN_PROXY)
+#endif
+		{
+			if (this->count != 0) {
+				fr_packet_list_walk(pl, this,
+						    remove_all_requests);
 			}
-			tcp->used = 0; /* just to be safe */
 
-			fr_event_delete(el, (fr_event_t **) &tcp->ev);
+			if (this->count == 0) {
+				this->status = RAD_LISTEN_STATUS_FINISH;
+				goto finish;
+			}
+		}		
+#ifdef WITH_PROXY
+		else {
+			int count = this->count;
+
+			/*
+			 *	Duplicate code
+			 */
+			PTHREAD_MUTEX_LOCK(&proxy_mutex);
+			if (!fr_packet_list_socket_freeze(proxy_list,
+							  this->fd)) {
+				radlog(L_ERR, "Fatal error freezing socket: %s",
+				       fr_strerror());
+				exit(1);
+			}
+
+			/*
+			 *	Doing this with the proxy mutex held
+			 *	is a Bad Thing.  We should move to
+			 *	finer-grained mutexes.
+			 */
+			count = this->count;
+			if (count > 0) {
+				fr_packet_list_walk(proxy_list, this,
+						    remove_all_proxied_requests);
+			}
+			count = this->count; /* protected by mutex */
+			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+
+			if (count == 0) {
+				this->status = RAD_LISTEN_STATUS_FINISH;
+				goto finish;
+			}
 		}
 #endif
 
 		/*
-		 *	Close the fd AFTER fixing up the requests and
-		 *	listeners, so that they don't send/recv on the
-		 *	wrong socket (if someone manages to open
-		 *	another one).
+		 *      Re-open the socket, pointing it to /dev/null.
+		 *      This means that all writes proceed without
+		 *      blocking, and all reads return "no data".
+		 *
+		 *      This leaves the socket active, so any child
+		 *      threads won't go insane.  But it means that
+		 *      they cannot send or receive any packets.
+		 *
+		 *	This is EXTRA work in the normal case, when
+		 *	sockets are closed without error.  But it lets
+		 *	us have one simple processing method for all
+		 *	sockets.
 		 */
-		close(this->fd);
-		this->fd = -1;
+		devnull = open("/dev/null", O_RDWR);
+		if (devnull < 0) {
+			radlog(L_ERR, "FATAL failure opening /dev/null: %s",
+			       strerror(errno));
+			exit(1);
+		}
+		if (dup2(devnull, this->fd) < 0) {
+			radlog(L_ERR, "FATAL failure closing socket: %s",
+			       strerror(errno));
+			exit(1);
+		}
+		close(devnull);
+
+		this->status = RAD_LISTEN_STATUS_CLOSED;
+
+		/*
+		 *	Fall through to the next section.
+		 */
+	}
+
+	/*
+	 *	Called ONLY from the main thread.  On the following
+	 *	conditions:
+	 *
+	 *	idle timeout
+	 *	max lifetime
+	 *
+	 *	(and falling through from "forcibly close FD" above)
+	 *	client closed connection on us
+	 *	client sent us a bad packet.
+	 */
+	if (this->status == RAD_LISTEN_STATUS_CLOSED) {
+		int count = this->count;
+		rad_assert(this->type != RAD_LISTEN_DETAIL);
+
+#ifdef WITH_PROXY
+		/*
+		 *	Remove it from the list of active sockets, so
+		 *	that it isn't used when proxying new packets.
+		 */
+		if (this->type == RAD_LISTEN_PROXY) {
+			PTHREAD_MUTEX_LOCK(&proxy_mutex);
+			if (!fr_packet_list_socket_freeze(proxy_list,
+							  this->fd)) {
+				radlog(L_ERR, "Fatal error freezing socket: %s",
+				       fr_strerror());
+				exit(1);
+			}
+			count = this->count; /* protected by mutex */
+			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		}
+#endif
+
+		/*
+		 *	Requests are still using the socket.  Wait for
+		 *	them to finish.
+		 */
+		if (count != 0) {
+			struct timeval when;
+			listen_socket_t *sock = this->data;
+
+			/*
+			 *	Try again to clean up the socket in 30
+			 *	seconds.
+			 */
+			gettimeofday(&when, NULL);
+			when.tv_sec += 30;
+			
+			if (!fr_event_insert(el,
+					     (fr_event_callback_t) event_new_fd,
+					     this, &when, &sock->ev)) {
+				rad_panic("Failed to insert event");
+			}
+		       
+			return;
+		}
+
+		/*
+		 *	No one is using this socket: we can delete it
+		 *	immediately.
+		 */
+		this->status = RAD_LISTEN_STATUS_FINISH;
+	}
+	
+finish:
+	if (this->status == RAD_LISTEN_STATUS_FINISH) {
+		listen_socket_t *sock = this->data;
+
+		rad_assert(this->count == 0);
+		DEBUG2(" ... closing socket %s", buffer);
+
+		/*
+		 *	Remove it from the list of live FD's.  Note
+		 *	that it MAY also have been removed above.  We
+		 *	do it again here, to catch the case of sockets
+		 *	closing on idle timeout, or max
+		 *	lifetime... AFTER all requests have finished
+		 *	using it.
+		 */
+		FD_MUTEX_LOCK(&fd_mutex);
+		fr_event_fd_delete(el, 0, this->fd);
+		FD_MUTEX_UNLOCK(&fd_mutex);
+		
+#ifdef WITH_PROXY
+		/*
+		 *	Remove it from the list of sockets to be used
+		 *	when proxying.
+		 */
+		if (this->type == RAD_LISTEN_PROXY) {
+			PTHREAD_MUTEX_LOCK(&proxy_mutex);
+			if (!fr_packet_list_socket_remove(proxy_list,
+							  this->fd, NULL)) {
+				radlog(L_ERR, "Fatal error removing socket: %s",
+				       fr_strerror());
+				exit(1);
+			}
+			if (sock->home) sock->home->num_connections--;
+			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		}
+#endif
+
+		/*
+		 *	Remove any pending cleanups.
+		 */
+		if (sock->ev) fr_event_delete(el, &sock->ev);
+
+		/*
+		 *	And finally, close the socket.
+		 */
+		listen_free(&this);
 	}
 }
 
@@ -3656,15 +3673,50 @@ static void handle_signal_self(int flag)
 	}
 #endif
 
+#ifdef WITH_PROXY
+	/*
+	 *	Add event handlers for idle timeouts && maximum lifetime.XXX
+	 */
 	if ((flag & RADIUS_SIGNAL_SELF_NEW_FD) != 0) {
-		rad_listen_t *this;
-		
-		for (this = mainconfig.listen;
-		     this != NULL;
-		     this = this->next) {
-			event_new_fd(this);
+		struct timeval when;
+		void *fun = NULL;
+
+		if (!fr_event_now(el, &now)) gettimeofday(&now, NULL);
+
+		PTHREAD_MUTEX_LOCK(&proxy_mutex);
+
+		while (proxy_listener_list) {
+			rad_listen_t *this = proxy_listener_list;
+			listen_socket_t *sock = this->data;
+
+			proxy_listener_list = this->next;
+			this->next = NULL;
+
+			if (!sock->home) continue; /* skip UDP sockets */
+
+			when = now;
+
+			if (!sock->home->idle_timeout) {
+				rad_assert(sock->home->lifetime != 0);
+
+				when.tv_sec += sock->home->lifetime;
+				fun = tcp_socket_lifetime;
+			} else {
+				rad_assert(sock->home->idle_timeout != 0);
+
+				when.tv_sec += sock->home->idle_timeout;
+				fun = tcp_socket_idle_timeout;
+			}
+
+			if (!fr_event_insert(el, fun, this, &when,
+					     &(sock->ev))) {
+				rad_panic("Failed to insert event");
+			}
 		}
+
+		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 	}
+#endif
 }
 
 #ifndef WITH_SELF_PIPE
@@ -3842,7 +3894,7 @@ static void event_status(struct timeval *wake)
  */
 int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 {
-	rad_listen_t *this, *head = NULL;
+	rad_listen_t *head = NULL;
 
 	if (el) return 0;
 
@@ -3952,17 +4004,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	}
 #endif	/* WITH_SELF_PIPE */
 
-#ifdef WITH_PROXY
-	/*
-	 *	Mark the proxy Fd's as unused.
-	 */
-	{
-		int i;
-
-		for (i = 0; i < 32; i++) proxy_fds[i] = -1;
-	}
-#endif
-
        DEBUG("%s: #### Opening IP addresses and Ports ####",
 	       mainconfig.name);
 
@@ -3979,64 +4020,13 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		_exit(1);
 	}
 	
+	mainconfig.listen = head;
+
 	/*
 	 *	At this point, no one has any business *ever* going
 	 *	back to root uid.
 	 */
 	fr_suid_down_permanent();
-
-	/*
-	 *	Add all of the sockets to the event loop.
-	 */
-	for (this = head;
-	     this != NULL;
-	     this = this->next) {
-		char buffer[256];
-
-		this->print(this, buffer, sizeof(buffer));
-
-		switch (this->type) {
-#ifdef WITH_DETAIL
-		case RAD_LISTEN_DETAIL:
-			DEBUG("Listening on %s", buffer);
-
-			/*
-			 *	Detail files are always known, and aren't
-			 *	put into the socket event loop.
-			 */
-			this->status = RAD_LISTEN_STATUS_KNOWN;
-
-			/*
-			 *	Set up the first poll interval.
-			 */
-			event_poll_detail(this);
-			break;
-#endif
-
-#ifdef WITH_PROXY
-		case RAD_LISTEN_PROXY:
-			rad_assert(proxy_fds[this->fd & 0x1f] == -1);
-			rad_assert(proxy_listeners[this->fd & 0x1f] == NULL);
-			
-			proxy_fds[this->fd & 0x1f] = this->fd;
-			proxy_listeners[this->fd & 0x1f] = this;
-			if (!fr_packet_list_socket_add(proxy_list,
-							 this->fd)) {
-				rad_assert(0 == 1);
-			}
-			/* FALL-THROUGH */
-#endif
-
-		default:
-			break;
-		}
-
-		event_new_fd(this);
-
-		this->status = RAD_LISTEN_STATUS_KNOWN;
-	}
-
-	mainconfig.listen = head;
 
 	return 1;
 }

@@ -29,6 +29,8 @@ RCSID("$Id$")
 #include	<freeradius-devel/udpfromto.h>
 #endif
 
+#include <fcntl.h>
+
 /*
  *	Take the key fields of a request packet, and convert it to a
  *	hash.
@@ -153,6 +155,29 @@ int fr_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b)
 	return fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
 }
 
+int fr_inaddr_any(fr_ipaddr_t *ipaddr)
+{
+
+	if (ipaddr->af == AF_INET) {
+		if (ipaddr->ipaddr.ip4addr.s_addr == INADDR_ANY) {
+			return 1;
+		}
+		
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+	} else if (ipaddr->af == AF_INET6) {
+		if (IN6_IS_ADDR_UNSPECIFIED(&(ipaddr->ipaddr.ip6addr))) {
+			return 1;
+		}
+#endif
+		
+	} else {
+		fr_strerror_printf("Unknown address family");
+		return -1;
+	}
+
+	return 0;
+}
+
 
 /*
  *	Create a fake "request" from a reply, for later lookup.
@@ -168,6 +193,21 @@ void fr_request_from_reply(RADIUS_PACKET *request,
 	request->dst_ipaddr = reply->src_ipaddr;
 }
 
+
+int fr_nonblock(UNUSED int fd)
+{
+	int flags = 0;
+
+#ifdef O_NONBLOCK
+
+	flags = fcntl(fd, F_GETFL, NULL);
+	if (flags >= 0) {
+		flags |= O_NONBLOCK;
+		return fcntl(fd, F_SETFL, flags);
+	}
+#endif
+	return flags;
+}
 
 /*
  *	Open a socket on the given IP and port.
@@ -200,6 +240,10 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 	}
 #endif
 
+	if (fr_nonblock(sockfd) < 0) {
+		close(sockfd);
+		return -1;
+	}
 
 	if (!fr_ipaddr2sockaddr(ipaddr, port, &salocal, &salen)) {
 		return sockfd;
@@ -264,21 +308,30 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
  */
 typedef struct fr_packet_socket_t {
 	int		sockfd;
+	void		*ctx;
 
 	int		num_outgoing;
 
-	int		offset;	/* 0..31 */
-	int		inaddr_any;
-	fr_ipaddr_t	ipaddr;
-	int		port;
+	int		src_any;
+	fr_ipaddr_t	src_ipaddr;
+	int		src_port;
+
+	int		dst_any;
+	fr_ipaddr_t	dst_ipaddr;
+	int		dst_port;
+
+	int		dont_use;
+
 #ifdef WITH_TCP
 	int		type;
 #endif
+
+	uint8_t		id[32];
 } fr_packet_socket_t;
 
 
 #define FNV_MAGIC_PRIME (0x01000193)
-#define MAX_SOCKETS (32)
+#define MAX_SOCKETS (256)
 #define SOCKOFFSET_MASK (MAX_SOCKETS - 1)
 #define SOCK2OFFSET(sockfd) ((sockfd * FNV_MAGIC_PRIME) & SOCKOFFSET_MASK)
 
@@ -291,13 +344,10 @@ typedef struct fr_packet_socket_t {
 struct fr_packet_list_t {
 	fr_hash_table_t *ht;
 
-	fr_hash_table_t *dst2id_ht;
-
 	int		alloc_id;
 	int		num_outgoing;
+	int		last_recv;
 
-	uint32_t mask;
-	int last_recv;
 	fr_packet_socket_t sockets[MAX_SOCKETS];
 };
 
@@ -306,7 +356,7 @@ struct fr_packet_list_t {
  *	Ugh.  Doing this on every sent/received packet is not nice.
  */
 static fr_packet_socket_t *fr_socket_find(fr_packet_list_t *pl,
-					     int sockfd)
+					  int sockfd)
 {
 	int i, start;
 
@@ -321,7 +371,21 @@ static fr_packet_socket_t *fr_socket_find(fr_packet_list_t *pl,
 	return NULL;
 }
 
-int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd)
+int fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd)
+{
+	fr_packet_socket_t *ps;
+
+	if (!pl) return 0;
+
+	ps = fr_socket_find(pl, sockfd);
+	if (!ps) return 0;
+
+	ps->dont_use = 1;
+	return 1;
+}
+
+int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd,
+				 void **pctx)
 {
 	fr_packet_socket_t *ps;
 
@@ -336,20 +400,24 @@ int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd)
 	if (ps->num_outgoing != 0) return 0;
 
 	ps->sockfd = -1;
-	pl->mask &= ~(1 << ps->offset);
-
+	if (pctx) *pctx = ps->ctx;
 
 	return 1;
 }
 
-int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd)
+int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd,
+			      fr_ipaddr_t *dst_ipaddr, int dst_port,
+			      void *ctx)
 {
 	int i, start;
 	struct sockaddr_storage	src;
 	socklen_t	        sizeof_src;
 	fr_packet_socket_t	*ps;
 
-	if (!pl) return 0;
+	if (!pl || !dst_ipaddr || (dst_ipaddr->af == AF_UNSPEC)) {
+		fr_strerror_printf("Invalid argument");
+		return 0;
+	}
 
 	ps = NULL;
 	i = start = SOCK2OFFSET(sockfd);
@@ -365,18 +433,21 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd)
 	} while (i != start);
 
 	if (!ps) {
+		fr_strerror_printf("All socket entries are full");
 		return 0;
 	}
 
 	memset(ps, 0, sizeof(*ps));
-	ps->sockfd = sockfd;
-	ps->offset = start;
+	ps->ctx = ctx;
+
 #ifdef WITH_TCP
 	sizeof_src = sizeof(ps->type);
 
 	if (getsockopt(sockfd, SOL_SOCKET, SO_TYPE, &ps->type, &sizeof_src) < 0) {
+		fr_strerror_printf("%s", strerror(errno));
 		return 0;
 	}
+
 #endif
 
 	/*
@@ -390,32 +461,30 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd)
 	memset(&src, 0, sizeof_src);
 	if (getsockname(sockfd, (struct sockaddr *) &src,
 			&sizeof_src) < 0) {
+		fr_strerror_printf("%s", strerror(errno));
 		return 0;
 	}
 
-	if (!fr_sockaddr2ipaddr(&src, sizeof_src, &ps->ipaddr, &ps->port)) {
+	if (!fr_sockaddr2ipaddr(&src, sizeof_src, &ps->src_ipaddr,
+				&ps->src_port)) {
+		fr_strerror_printf("Failed to get IP");
 		return 0;
 	}
+
+	ps->dst_ipaddr = *dst_ipaddr;
+	ps->dst_port = dst_port;
+
+	ps->src_any = fr_inaddr_any(&ps->src_ipaddr);
+	if (ps->src_any < 0) return 0;
+
+	ps->dst_any = fr_inaddr_any(&ps->dst_ipaddr);
+	if (ps->dst_any < 0) return 0;
 
 	/*
-	 *	Grab IP addresses & ports from the sockaddr.
+	 *	As the last step before returning.
 	 */
-	if (src.ss_family == AF_INET) {
-		if (ps->ipaddr.ipaddr.ip4addr.s_addr == INADDR_ANY) {
-			ps->inaddr_any = 1;
-		}
+	ps->sockfd = sockfd;
 
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	} else if (src.ss_family == AF_INET6) {
-		if (IN6_IS_ADDR_UNSPECIFIED(&ps->ipaddr.ipaddr.ip6addr)) {
-			ps->inaddr_any = 1;
-		}
-#endif
-	} else {
-		return 0;
-	}
-
-	pl->mask |= (1 << ps->offset);
 	return 1;
 }
 
@@ -432,76 +501,11 @@ static int packet_entry_cmp(const void *one, const void *two)
 	return fr_packet_cmp(*a, *b);
 }
 
-/*
- *	A particular socket can have 256 RADIUS ID's outstanding to
- *	any one destination IP/port.  So we have a structure that
- *	manages destination IP & port, and has an array of 256 ID's.
- *
- *	The only magic here is that we map the socket number (0..256)
- *	into an "internal" socket number 0..31, that we use to set
- *	bits in the ID array.  If a bit is 1, then that ID is in use
- *	for that socket, and the request MUST be in the packet hash!
- *
- *	Note that as a minor memory leak, we don't have an API to free
- *	this structure, except when we discard the whole packet list.
- *	This means that if destinations are added and removed, they
- *	won't be removed from this tree.
- */
-typedef struct fr_packet_dst2id_t {
-	fr_ipaddr_t	dst_ipaddr;
-	int		dst_port;
-	uint32_t	id[1];	/* really id[256] */
-} fr_packet_dst2id_t;
-
-
-static uint32_t packet_dst2id_hash(const void *data)
-{
-	uint32_t hash;
-	const fr_packet_dst2id_t *pd = data;
-
-	hash = fr_hash(&pd->dst_port, sizeof(pd->dst_port));
-
-	switch (pd->dst_ipaddr.af) {
-	case AF_INET:
-		hash = fr_hash_update(&pd->dst_ipaddr.ipaddr.ip4addr,
-					sizeof(pd->dst_ipaddr.ipaddr.ip4addr),
-					hash);
-		break;
-	case AF_INET6:
-		hash = fr_hash_update(&pd->dst_ipaddr.ipaddr.ip6addr,
-					sizeof(pd->dst_ipaddr.ipaddr.ip6addr),
-					hash);
-		break;
-	default:
-		break;
-	}
-
-	return hash;
-}
-
-static int packet_dst2id_cmp(const void *one, const void *two)
-{
-	const fr_packet_dst2id_t *a = one;
-	const fr_packet_dst2id_t *b = two;
-
-	if (a->dst_port < b->dst_port) return -1;
-	if (a->dst_port > b->dst_port) return +1;
-
-	return fr_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
-}
-
-static void packet_dst2id_free(void *data)
-{
-	free(data);
-}
-
-
 void fr_packet_list_free(fr_packet_list_t *pl)
 {
 	if (!pl) return;
 
 	fr_hash_table_free(pl->ht);
-	fr_hash_table_free(pl->dst2id_ht);
 	free(pl);
 }
 
@@ -530,17 +534,7 @@ fr_packet_list_t *fr_packet_list_create(int alloc_id)
 		pl->sockets[i].sockfd = -1;
 	}
 
-	if (alloc_id) {
-		pl->alloc_id = 1;
-
-		pl->dst2id_ht = fr_hash_table_create(packet_dst2id_hash,
-						       packet_dst2id_cmp,
-						       packet_dst2id_free);
-		if (!pl->dst2id_ht) {
-			fr_packet_list_free(pl);
-			return NULL;
-		}
-	}
+	pl->alloc_id = alloc_id;
 
 	return pl;
 }
@@ -593,12 +587,12 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 	my_request.sockfd = reply->sockfd;
 	my_request.id = reply->id;
 
-	if (ps->inaddr_any) {
-		my_request.src_ipaddr = ps->ipaddr;
+	if (ps->src_any) {
+		my_request.src_ipaddr = ps->src_ipaddr;
 	} else {
 		my_request.src_ipaddr = reply->dst_ipaddr;
 	}
-	my_request.src_port = ps->port;;
+	my_request.src_port = ps->src_port;
 
 	my_request.dst_ipaddr = reply->src_ipaddr;
 	my_request.dst_port = reply->src_port;
@@ -638,35 +632,42 @@ int fr_packet_list_num_elements(fr_packet_list_t *pl)
  *	should be protected by a mutex.  This does NOT have to be
  *	the same mutex as the one protecting the insert/find/yank
  *	calls!
+ *
+ *	We assume that the packet has dst_ipaddr && dst_port
+ *	already initialized.  We will use those to find an
+ *	outgoing socket.  The request MAY also have src_ipaddr set.
+ *
+ *	We also assume that the sender doesn't care which protocol
+ *	should be used.
  */
 int fr_packet_list_id_alloc(fr_packet_list_t *pl,
-			      RADIUS_PACKET *request)
+			    RADIUS_PACKET *request, void **pctx)
 {
-	int i, id, start, fd;
-	uint32_t free_mask;
-	fr_packet_dst2id_t my_pd, *pd;
+	int i, j, k, fd, id, start_i, start_j, start_k;
+	int src_any = 0;
 	fr_packet_socket_t *ps;
 
-	if (!pl || !pl->alloc_id || !request) return 0;
-
-	my_pd.dst_ipaddr = request->dst_ipaddr;
-	my_pd.dst_port = request->dst_port;
-
-	pd = fr_hash_table_finddata(pl->dst2id_ht, &my_pd);
-	if (!pd) {
-		pd = malloc(sizeof(*pd) + 255 * sizeof(pd->id[0]));
-		if (!pd) return 0;
-
-		memset(pd, 0, sizeof(*pd) + 255 * sizeof(pd->id[0]));
-
-		pd->dst_ipaddr = request->dst_ipaddr;
-		pd->dst_port = request->dst_port;
-
-		if (!fr_hash_table_insert(pl->dst2id_ht, pd)) {
-			free(pd);
-			return 0;
-		}
+	if ((request->dst_ipaddr.af == AF_UNSPEC) ||
+	    (request->dst_port == 0)) {
+		fr_strerror_printf("No destination address/port specified");
+		return 0;
 	}
+
+	/*
+	 *	Special case: unspec == "don't care"
+	 */
+	if (request->src_ipaddr.af == AF_UNSPEC) {
+		memset(&request->src_ipaddr, 0, sizeof(request->src_ipaddr));
+		request->src_ipaddr.af = request->dst_ipaddr.af;
+	}
+
+	src_any = fr_inaddr_any(&request->src_ipaddr);
+	if (src_any < 0) return 0;
+
+	/*
+	 *	MUST specify a destination address.
+	 */
+	if (fr_inaddr_any(&request->dst_ipaddr) != 0) return 0;
 
 	/*
 	 *	FIXME: Go to an LRU system.  This prevents ID re-use
@@ -678,60 +679,108 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 	 *	The LRU can be avoided if the caller takes care to free
 	 *	Id's only when all responses have been received, OR after
 	 *	a timeout.
+	 *
+	 *	Right now, the random approach is almost OK... it's
+	 *	brute-force over all of the available ID's, BUT using
+	 *	random numbers for everything spreads the load a bit.
+	 *
+	 *	The old method had a hash lookup on allocation AND
+	 *	on free.  The new method has brute-force on allocation,
+	 *	and near-zero cost on free.
 	 */
-	id = start = (int) fr_rand() & 0xff;
 
-	while (pd->id[id] == pl->mask) { /* all sockets are using this ID */
-	redo:
-		id++;
-		id &= 0xff;
-		if (id == start) return 0;
-	}
+	id = fd = -1;
+	start_i = fr_rand() & SOCKOFFSET_MASK;
 
-	free_mask = ~((~pd->id[id]) & pl->mask);
-
-	/*
-	 *	This ID has at least one socket free.  Check the sockets
-	 *	to see if they are satisfactory for the caller.
-	 */
-	fd = -1;
+#define ID_i ((i + start_i) & SOCKOFFSET_MASK)
 	for (i = 0; i < MAX_SOCKETS; i++) {
-		if (pl->sockets[i].sockfd == -1) continue; /* paranoia */
+		if (pl->sockets[ID_i].sockfd == -1) continue; /* paranoia */
+
+		ps = &(pl->sockets[ID_i]);
 
 		/*
-		 *	This ID is allocated.
+		 *	This socket is marked as "don't use for new
+		 *	packets".  But we can still receive packets
+		 *	that are outstanding.
 		 */
-		if ((free_mask & (1 << i)) != 0) continue;
-		
-		/*
-		 *	If the caller cares about the source address,
-		 *	try to re-use that.  This means that the
-		 *	requested source address is set, AND this
-		 *	socket wasn't bound to "*", AND the requested
-		 *	source address is the same as this socket
-		 *	address.
-		 */
-		if ((request->src_ipaddr.af != AF_UNSPEC) &&
-		    !pl->sockets[i].inaddr_any &&
-		    (fr_ipaddr_cmp(&request->src_ipaddr, &pl->sockets[i].ipaddr) != 0)) continue;
+		if (ps->dont_use) continue;
 
 		/*
-		 *	They asked for a specific address, and this socket
-		 *	is bound to a wildcard address.  Ignore this one, too.
+		 *	All IDs are allocated: ignore it.
 		 */
-		if ((request->src_ipaddr.af != AF_UNSPEC) &&
-		    pl->sockets[i].inaddr_any) continue;
+		if (ps->num_outgoing == 256) continue;
+
+		/*
+		 *	MUST match dst port, if one has been given.
+		 */
+		if ((ps->dst_port != 0) && 
+		    (ps->dst_port != request->dst_port)) continue;
+
+		/*
+		 *	We're sourcing from *, and they asked for a
+		 *	specific source address: ignore it.
+		 */
+		if (ps->src_any && !src_any) continue;
+
+		/*
+		 *	We're sourcing from a specific IP, and they
+		 *	asked for a source IP that isn't us: ignore
+		 *	it.
+		 */
+		if (!ps->src_any && !src_any &&
+		    (fr_ipaddr_cmp(&request->src_ipaddr,
+				   &ps->src_ipaddr) != 0)) continue;
+
+		/*
+		 *	UDP sockets are allowed to match
+		 *	destination IPs exactly, OR a socket
+		 *	with destination * is allowed to match
+		 *	any requested destination.
+		 *
+		 *	TCP sockets must match the destination
+		 *	exactly.  They *always* have dst_any=0,
+		 *	so the first check always matches.
+		 */
+		if (!ps->dst_any &&
+		    (fr_ipaddr_cmp(&request->dst_ipaddr,
+				   &ps->dst_ipaddr) != 0)) continue;
 		
-		fd = i;
+		/*
+		 *	Otherwise, this socket is OK to use.
+		 */
+
+		/*
+		 *	Look for a free Id, starting from a random number.
+		 */
+		start_j = fr_rand() & 0x1f;
+#define ID_j ((j + start_j) & 0x1f)
+		for (j = 0; j < 32; j++) {
+			if (ps->id[ID_j] == 0xff) continue;
+
+
+			start_k = fr_rand() & 0x07;
+#define ID_k ((k + start_k) & 0x07)
+			for (k = 0; k < 8; k++) {
+				if ((ps->id[ID_j] & (1 << ID_k)) != 0) continue;
+
+				ps->id[ID_j] |= (1 << ID_k);
+				id = (ID_j * 8) + ID_k;
+				fd = i;
+				break;
+			}
+			if (fd >= 0) break;
+		}
+#undef ID_i
+#undef ID_j
+#undef ID_k
+		if (fd >= 0) break;
 		break;
 	}
 
-	if (fd < 0) {
-		goto redo; /* keep searching IDs */
-	}
-
-	pd->id[id] |= (1 << fd);
-	ps = &pl->sockets[fd];
+	/*
+	 *	Ask the caller to allocate a new ID.
+	 */
+	if (fd < 0) return 0;
 
 	ps->num_outgoing++;
 	pl->num_outgoing++;
@@ -742,8 +791,10 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 	request->id = id;
 
 	request->sockfd = ps->sockfd;
-	request->src_ipaddr = ps->ipaddr;
-	request->src_port = ps->port;
+	request->src_ipaddr = ps->src_ipaddr;
+	request->src_port = ps->src_port;
+
+	if (pctx) *pctx = ps->ctx;
 
 	return 1;
 }
@@ -756,20 +807,19 @@ int fr_packet_list_id_free(fr_packet_list_t *pl,
 			     RADIUS_PACKET *request)
 {
 	fr_packet_socket_t *ps;
-	fr_packet_dst2id_t my_pd, *pd;
 
 	if (!pl || !request) return 0;
 
 	ps = fr_socket_find(pl, request->sockfd);
 	if (!ps) return 0;
 
-	my_pd.dst_ipaddr = request->dst_ipaddr;
-	my_pd.dst_port = request->dst_port;
+#if 0
+	if (!ps->id[(request->id >> 3) & 0x1f] & (1 << (request->id & 0x07))) {
+		exit(1);
+	}
+#endif
 
-	pd = fr_hash_table_finddata(pl->dst2id_ht, &my_pd);
-	if (!pd) return 0;
-
-	pd->id[request->id] &= ~(1 << ps->offset);
+	ps->id[(request->id >> 3) & 0x1f] &= ~(1 << (request->id & 0x07));
 	request->hash = 0;	/* invalidate the cached hash */
 
 	ps->num_outgoing--;

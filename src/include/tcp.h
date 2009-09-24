@@ -26,59 +26,10 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(tcp_h, "$Id$")
 
-/*
- *	Application-layer watchdog from RFC 3539, Appendix A.
- */
-typedef enum fr_watchdog_t {
-	ALW_INITIAL = 0,
-	ALW_OK,
-	ALW_SUSPECT,
-	ALW_DOWN,
-	ALW_REOPEN
-} fr_watchdog_t;
-
-#define ALW_TWINIT (6)
-
-typedef struct fr_tcp_radius_t {
-	int		fd;
-	fr_ipaddr_t	src_ipaddr;
-	fr_ipaddr_t	dst_ipaddr;
-	int		src_port;
-	int		dst_port;
-
-	int		num_packets;
-	int		lifetime;
-
-	time_t		opened;
-	time_t		last_packet;
-#ifdef WITH_TCP_PING
-	struct timeval	when;
-	void		*ev;
-#endif
-
-	int		state;
-	int		ping_interval;
-	int		num_pings_to_alive;
-	int		num_received_pings;
-	int		num_pings_sent;
-	int		ping_timeout;
-
-	int		used;
-	void		*ev;
-	RADIUS_PACKET	**ids[256];
-} fr_tcp_radius_t;
-
 int fr_tcp_socket(fr_ipaddr_t *ipaddr, int port);
-int fr_tcp_client_socket(fr_ipaddr_t *ipaddr, int port);
+int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, int dst_port);
 int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags);
 RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags);
 RADIUS_PACKET *fr_tcp_accept(int sockfd);
 ssize_t fr_tcp_write_packet(RADIUS_PACKET *packet);
-
-int fr_tcp_list_init(fr_tcp_radius_t *list);
-int fr_tcp_list_insert(RADIUS_PACKET **packet, int num,
-		       fr_tcp_radius_t *array[]);
-
-int fr_tcp_id_free(int ids[256], int id);
-
 #endif /* FR_TCP_H */
