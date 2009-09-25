@@ -487,6 +487,7 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 	if ((request->num_proxied_requests == request->num_proxied_responses) ||
 #ifdef WITH_TCP
 	    (request->home_server->proto == IPPROTO_TCP) ||
+	    !request->proxy_listener ||
 #endif
 	    timercmp(&now, &request->when, >)) {
 		if (request->packet) {
@@ -514,7 +515,7 @@ static void wait_for_child_to_die(void *ctx)
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 
-	if ((request->child_state == REQUEST_QUEUED) |
+	if ((request->child_state == REQUEST_QUEUED) ||
 	    (request->child_state == REQUEST_RUNNING)) {
 		request->delay += (request->delay >> 1);
 		tv_add(&request->when, request->delay);
@@ -2765,13 +2766,10 @@ static void received_conflicting_request(REQUEST *request,
 	remove_from_request_hash(request);
 
 	switch (request->child_state) {
-#ifdef HAVE_PTHREAD_H
 		/*
-		 *	It's queued or running.  Tell it to stop, and
-		 *	wait for it to do so.
+		 *	Tell it to stop, and wait for it to do so.
 		 */
-	case REQUEST_QUEUED:
-	case REQUEST_RUNNING:
+	default:
 		request->master_state = REQUEST_STOP_PROCESSING;
 		request->delay += request->delay >> 1;
 
@@ -2779,7 +2777,6 @@ static void received_conflicting_request(REQUEST *request,
 
 		INSERT_EVENT(wait_for_child_to_die, request);
 		return;
-#endif
 
 		/*
 		 *	Catch race conditions.  It may have switched
@@ -2789,15 +2786,6 @@ static void received_conflicting_request(REQUEST *request,
 	case REQUEST_REJECT_DELAY:
 	case REQUEST_CLEANUP_DELAY:
 	case REQUEST_DONE:
-		break;
-
-		/*
-		 *	It's in some other state, and therefore also
-		 *	in the event queue.  At some point, the
-		 *	child will notice, and we can then delete it.
-		 */
-	case REQUEST_PROXIED:
-	default:
 		break;
 	}
 }
