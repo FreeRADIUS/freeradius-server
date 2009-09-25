@@ -316,7 +316,7 @@ static int detail_open(rad_listen_t *this)
 int detail_recv(rad_listen_t *listener,
 		RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
 {
-	char		key[256], value[1024];
+	char		key[256], op[8], value[1024];
 	VALUE_PAIR	*vp, **tail;
 	RADIUS_PACKET	*packet;
 	char		buffer[2048];
@@ -509,9 +509,16 @@ int detail_recv(rad_listen_t *listener,
 		 *
 		 *	FIXME: print an error for badly formatted attributes?
 		 */
-		if (sscanf(buffer, "%255s = %1023s", key, value) != 2) {
+		if (sscanf(buffer, "%255s %8s %1023s", key, op, value) != 3) {
+			DEBUG2("WARNING: Skipping badly formatted line %s",
+			       buffer);
 			continue;
 		}
+
+		/*
+		 *	Should be =, :=, +=, ...
+		 */
+		if (!strchr(op, '=')) continue;
 
 		/*
 		 *	Skip non-protocol attributes.
