@@ -487,7 +487,6 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 	if ((request->num_proxied_requests == request->num_proxied_responses) ||
 #ifdef WITH_TCP
 	    (request->home_server->proto == IPPROTO_TCP) ||
-	    !request->proxy_listener ||
 #endif
 	    timercmp(&now, &request->when, >)) {
 		if (request->packet) {
