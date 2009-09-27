@@ -323,7 +323,7 @@ typedef struct fr_packet_socket_t {
 	int		dont_use;
 
 #ifdef WITH_TCP
-	int		type;
+	int		proto;
 #endif
 
 	uint8_t		id[32];
@@ -405,7 +405,7 @@ int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd,
 	return 1;
 }
 
-int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd,
+int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 			      fr_ipaddr_t *dst_ipaddr, int dst_port,
 			      void *ctx)
 {
@@ -439,16 +439,7 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd,
 
 	memset(ps, 0, sizeof(*ps));
 	ps->ctx = ctx;
-
-#ifdef WITH_TCP
-	sizeof_src = sizeof(ps->type);
-
-	if (getsockopt(sockfd, SOL_SOCKET, SO_TYPE, &ps->type, &sizeof_src) < 0) {
-		fr_strerror_printf("%s", strerror(errno));
-		return 0;
-	}
-
-#endif
+	ps->proto = proto;
 
 	/*
 	 *	Get address family, etc. first, so we know if we
@@ -640,7 +631,7 @@ int fr_packet_list_num_elements(fr_packet_list_t *pl)
  *	We also assume that the sender doesn't care which protocol
  *	should be used.
  */
-int fr_packet_list_id_alloc(fr_packet_list_t *pl,
+int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 			    RADIUS_PACKET *request, void **pctx)
 {
 	int i, j, k, fd, id, start_i, start_j, start_k;
@@ -652,6 +643,13 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 		fr_strerror_printf("No destination address/port specified");
 		return 0;
 	}
+
+#ifndef WITH_TCP
+	if ((proto != 0) && (proto != IPPROTO_UDP)) {
+		fr_strerror_printf("Invalid destination protocol");
+		return 0;
+	}
+#endif
 
 	/*
 	 *	Special case: unspec == "don't care"
@@ -710,10 +708,20 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 		 */
 		if (ps->num_outgoing == 256) continue;
 
+#ifdef WITH_TCP
+		if (ps->proto != proto) continue;
+#endif
+
 		/*
-		 *	MUST match dst port, if one has been given.
+		 *	MUST match dst port, if we have one.
 		 */
 		if ((ps->dst_port != 0) && 
+		    (ps->dst_port != request->dst_port)) continue;
+
+		/*
+		 *	MUST match requested src port, if one has been given.
+		 */
+		if ((request->src_port != 0) && 
 		    (ps->dst_port != request->dst_port)) continue;
 
 		/*
@@ -880,7 +888,7 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 		if (!FD_ISSET(pl->sockets[start].sockfd, set)) continue;
 
 #ifdef WITH_TCP
-		if (pl->sockets[start].type == SOCK_STREAM) {
+		if (pl->sockets[start].proto == IPPROTO_TCP) {
 			packet = fr_tcp_recv(pl->sockets[start].sockfd, 0);
 		} else
 #endif

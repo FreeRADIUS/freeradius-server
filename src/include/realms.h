@@ -38,9 +38,7 @@ typedef struct home_server {
 	int		port;
 	int		type;		/* auth/acct */
 
-#ifdef WITH_TCP
 	int		proto;
-#endif
 	int		max_connections;
 	int		num_connections; /* protected by proxy mutex */
 	int		max_requests;	 /* for one connection */

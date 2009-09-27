@@ -802,10 +802,7 @@ static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
 {
 	RADCLIENT *client;
 	fr_ipaddr_t ipaddr;
-
-#ifdef WITH_TCP
 	int proto = IPPROTO_UDP;
-#endif
 
 	if (argc < 1) {
 		cprintf(listener, "ERROR: Must specify <ipaddr>\n");
@@ -834,11 +831,7 @@ static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
 	}
 #endif
 
-	client = client_find(NULL, &ipaddr
-#ifdef WITH_TCP
-			     , proto
-#endif
-		);
+	client = client_find(NULL, &ipaddr, proto);
 	if (!client) {
 		cprintf(listener, "ERROR: No such client\n");
 		return NULL;

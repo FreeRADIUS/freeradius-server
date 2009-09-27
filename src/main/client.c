@@ -376,11 +376,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		 *	If there IS an enclosing network,
 		 *	inherit the lifetime from it.
 		 */
-		network = client_find(clients, &client->ipaddr
-#ifdef WITH_TCP
-				      , client->proto
-#endif
-			);
+		network = client_find(clients, &client->ipaddr, client->proto);
 		if (network) {
 			client->lifetime = network->lifetime;
 		}
@@ -448,11 +444,7 @@ RADCLIENT *client_findbynumber(const RADCLIENT_LIST *clients,
  *	Find a client in the RADCLIENTS list.
  */
 RADCLIENT *client_find(const RADCLIENT_LIST *clients,
-		       const fr_ipaddr_t *ipaddr
-#ifdef WITH_TCP
-		       , int proto
-#endif
-	)
+		       const fr_ipaddr_t *ipaddr, int proto)
 {
 	int i, max_prefix;
 	RADCLIENT myclient;
@@ -479,9 +471,7 @@ RADCLIENT *client_find(const RADCLIENT_LIST *clients,
 
 		myclient.prefix = i;
 		myclient.ipaddr = *ipaddr;
-#ifdef WITH_TCP
 		myclient.proto = proto;
-#endif
 		client_sane(&myclient);	/* clean up the ipaddress */
 
 		if (!clients->trees[i]) continue;
@@ -698,8 +688,8 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		 */
 		if (!c->shortname) c->shortname = strdup(name2);
 
-#ifdef WITH_TCP
 		c->proto = IPPROTO_UDP;
+#ifdef WITH_TCP
 		if (hs_proto) {
 			if (strcmp(hs_proto, "udp") == 0) {
 				free(hs_proto);

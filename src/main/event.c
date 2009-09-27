@@ -369,8 +369,8 @@ static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
 {
 	void *proxy_listener;
 
-	if (fr_packet_list_id_alloc(proxy_list, packet,
-				    &proxy_listener)) {
+	if (fr_packet_list_id_alloc(proxy_list, request->home_server->proto,
+				    packet, &proxy_listener)) {
 		request->proxy_listener = proxy_listener;
 		return 1;
 	}
@@ -380,8 +380,8 @@ static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
 		return 0;
 	}
 
-	if (!fr_packet_list_id_alloc(proxy_list, packet,
-				     &proxy_listener)) {
+	if (!fr_packet_list_id_alloc(proxy_list, request->home_server->proto,
+				     packet, &proxy_listener)) {
 		RDEBUG2("ERROR: Failed allocating Id for new socket when proxying requests.");
 		return 0;
 	}
@@ -525,7 +525,7 @@ static void wait_for_child_to_die(void *ctx)
 		return;
 	}
 
-	RDEBUG2("Child is finally responsive for request %d", request->number);
+	RDEBUG2("Child is responsive for request %d", request->number);
 	remove_from_request_hash(request);
 
 #ifdef WITH_PROXY
@@ -1072,6 +1072,12 @@ static void no_response_to_proxied_request(void *ctx)
 	char buffer[128];
 
 	rad_assert(request->magic == REQUEST_MAGIC);
+
+	if (request->master_state == REQUEST_STOP_PROCESSING) {
+		ev_request_free(&request);
+		return;
+	}
+
 	rad_assert(request->child_state == REQUEST_PROXIED);
 
 	/*
@@ -1940,7 +1946,7 @@ static int proxy_request(REQUEST *request)
 	       inet_ntop(request->proxy->dst_ipaddr.af,
 			 &request->proxy->dst_ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
-	       request->proxy->dst_port);
+		request->proxy->dst_port);
 
 	/*
 	 *	Note that we set proxied BEFORE sending the packet.
@@ -3329,6 +3335,7 @@ void event_new_fd(rad_listen_t *this)
 
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			if (!fr_packet_list_socket_add(proxy_list, this->fd,
+						       sock->proto,
 						       &sock->other_ipaddr, sock->other_port,
 						       this)) {
 				radlog(L_ERR, "Fatal error adding socket: %s",

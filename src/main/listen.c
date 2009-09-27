@@ -108,11 +108,7 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 	 */
 	rad_assert(clients != NULL);
 
-	client = client_find(clients, ipaddr
-#ifdef WITH_TCP
-			     ,sock->proto
-#endif
-			     );
+	client = client_find(clients, ipaddr,sock->proto);
 	if (!client) {
 		char name[256], buffer[128];
 					
@@ -191,11 +187,7 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 		/*
 		 *	Go find the enclosing network again.
 		 */
-		client = client_find(clients, ipaddr
-#ifdef WITH_TCP
-				     , sock->proto
-#endif
-				     );
+		client = client_find(clients, ipaddr, sock->proto);
 
 		/*
 		 *	WTF?
@@ -844,9 +836,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 	}
 
-#ifdef WITH_TCP
 	sock->proto = IPPROTO_UDP;
-#endif
 
 	if (cf_pair_find(cs, "proto")) {
 #ifndef WITH_TCP
@@ -2180,9 +2170,9 @@ int proxy_new_listener(home_server *home, int src_port)
 
 	sock->my_ipaddr = home->src_ipaddr;
 	sock->my_port = src_port;
-	
-#ifdef WITH_TCP
 	sock->proto = home->proto;
+
+#ifdef WITH_TCP
 	sock->last_packet = time(NULL);
 
 	if (home->proto == IPPROTO_TCP) {

@@ -576,8 +576,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 		}
 	}
 
-#ifdef WITH_TCP
 	home->proto = IPPROTO_UDP;
+#ifdef WITH_TCP
 	if (hs_proto) {
 		if (strcmp(hs_proto, "udp") == 0) {
 			free(hs_proto);

@@ -50,11 +50,11 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 RADIUS_PACKET **fr_packet_list_yank(fr_packet_list_t *pl,
 				      RADIUS_PACKET *request);
 int fr_packet_list_num_elements(fr_packet_list_t *pl);
-int fr_packet_list_id_alloc(fr_packet_list_t *pl,
+int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 			    RADIUS_PACKET *request, void **pctx);
 int fr_packet_list_id_free(fr_packet_list_t *pl,
 			     RADIUS_PACKET *request);
-int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd,
+int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 			      fr_ipaddr_t *dst_ipaddr, int dst_port,
 			      void *ctx);
 int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd,
