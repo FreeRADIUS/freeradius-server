@@ -62,6 +62,7 @@ static int last_used_id = -1;
 #ifdef WITH_TCP
 const char *proto = NULL;
 #endif
+static int ipproto = IPPROTO_UDP;
 
 static rbtree_t *filename_tree = NULL;
 static fr_packet_list_t *pl = NULL;
@@ -505,7 +506,8 @@ static int send_one_packet(radclient_t *radclient)
 		 */
 	retry:
 		radclient->request->src_ipaddr.af = server_ipaddr.af;
-		rcode = fr_packet_list_id_alloc(pl, radclient->request, NULL);
+		rcode = fr_packet_list_id_alloc(pl, ipproto,
+						radclient->request, NULL);
 		if (rcode < 0) {
 			int mysockfd;
 
@@ -521,7 +523,7 @@ static int send_one_packet(radclient_t *radclient)
 				fprintf(stderr, "radclient: Can't open new socket\n");
 				exit(1);
 			}
-			if (!fr_packet_list_socket_add(pl, mysockfd,
+			if (!fr_packet_list_socket_add(pl, mysockfd, ipproto,
 						       &server_ipaddr,
 						       server_port, NULL)) {
 				fprintf(stderr, "radclient: Can't add new socket\n");
@@ -768,7 +770,7 @@ static int recv_one_packet(int wait_time)
 
 	/* libradius debug already prints out the value pairs for us */
 	if (!fr_debug_flag && do_output) {
-		printf("Received response ID %d, code %d, length = %d\n",
+		printf("Received response ID %d, code %d, length = %ld\n",
 		       radclient->reply->id, radclient->reply->code,
 		       radclient->reply->data_len);
 		vp_printlist(stdout, radclient->reply->vps);
@@ -889,6 +891,8 @@ int main(int argc, char **argv)
 				} else {
 					usage();
 				}
+			} else {
+				ipproto = IPPROTO_TCP;
 			}
 			break;
 
@@ -1106,7 +1110,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	if (!fr_packet_list_socket_add(pl, sockfd, &server_ipaddr,
+	if (!fr_packet_list_socket_add(pl, sockfd, ipproto, &server_ipaddr,
 				       server_port, NULL)) {
 		fprintf(stderr, "radclient: Out of memory\n");
 		exit(1);
