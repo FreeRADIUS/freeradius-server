@@ -100,6 +100,7 @@ $INCLUDE dictionary.apc
 $INCLUDE dictionary.aruba
 $INCLUDE dictionary.azaire
 $INCLUDE dictionary.ascend
+$INCLUDE dictionary.ascend.illegal
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.cablelabs
