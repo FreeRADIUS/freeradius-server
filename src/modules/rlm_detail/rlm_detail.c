@@ -33,62 +33,6 @@ RCSID("$Id$")
 
 #define 	DIRLEN	8192
 
-static const char *packet_codes[] = {
-  "",
-  "Access-Request",
-  "Access-Accept",
-  "Access-Reject",
-  "Accounting-Request",
-  "Accounting-Response",
-  "Accounting-Status",
-  "Password-Request",
-  "Password-Accept",
-  "Password-Reject",
-  "Accounting-Message",
-  "Access-Challenge"
-  "Status-Server",
-  "Status-Client",
-  "14",
-  "15",
-  "16",
-  "17",
-  "18",
-  "19",
-  "20",
-  "Resource-Free-Request",
-  "Resource-Free-Response",
-  "Resource-Query-Request",
-  "Resource-Query-Response",
-  "Alternate-Resource-Reclaim-Request",
-  "NAS-Reboot-Request",
-  "NAS-Reboot-Response",
-  "28",
-  "Next-Passcode",
-  "New-Pin",
-  "Terminate-Session",
-  "Password-Expired",
-  "Event-Request",
-  "Event-Response",
-  "35",
-  "36",
-  "37",
-  "38",
-  "39",
-  "Disconnect-Request",
-  "Disconnect-ACK",
-  "Disconnect-NAK",
-  "CoA-Request",
-  "CoA-ACK",
-  "CoA-NAK",
-  "46",
-  "47",
-  "48",
-  "49",
-  "IP-Address-Allocate",
-  "IP-Address-Release"
-};
-
-
 struct detail_instance {
 	/* detail file */
 	char *detailfile;
@@ -400,9 +344,9 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		 *	Numbers, if not.
 		 */
 		if ((packet->code > 0) &&
-		    (packet->code < 52)) {
+		    (packet->code < FR_MAX_PACKET_CODE)) {
 			fprintf(outfp, "\tPacket-Type = %s\n",
-				packet_codes[packet->code]);
+				fr_packet_codes[packet->code]);
 		} else {
 			fprintf(outfp, "\tPacket-Type = %d\n", packet->code);
 		}
