@@ -921,7 +921,15 @@ static int process_attribute(const char* fn, const int line,
 							    fn, line);
 						return -1;
 				}
-				
+
+				/*
+				 *	The only thing is the vendor name,
+				 *	and it's a known name: allow it.
+				 */
+			} else if ((key == argv[3]) && !next && !block_vendor &&
+				   ((vendor = dict_vendorbyname(key)) !=0)) {
+				break;
+
 			} else {
 				fr_strerror_printf( "dict_init: %s[%d]: unknown option \"%s\"",
 					    fn, line, key);
