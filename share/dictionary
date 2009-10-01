@@ -186,6 +186,7 @@ $INCLUDE dictionary.tropos
 $INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.unix
 $INCLUDE dictionary.usr
+$INCLUDE dictionary.usr.illegal
 $INCLUDE dictionary.utstarcom
 $INCLUDE dictionary.valemount
 $INCLUDE dictionary.versanet
