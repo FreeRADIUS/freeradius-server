@@ -263,8 +263,6 @@ static void command_close_socket(rad_listen_t *this)
 	 *	will be calling us any more.
 	 */
 	event_new_fd(this);
-
-	listen_free(&this);
 }
 
 
