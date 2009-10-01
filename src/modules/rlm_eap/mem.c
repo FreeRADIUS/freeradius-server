@@ -295,6 +295,7 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 *	If we have a DoS attack, discard new sessions.
 	 */
 	if (rbtree_num_elements(inst->session_tree) >= inst->max_sessions) {
+		status = -1;
 		eaplist_expire(inst, handler->timestamp);
 		goto done;
 	}
@@ -361,13 +362,23 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	/*
 	 *	We don't need this any more.
 	 */
-	if (status) handler->request = NULL;
+	if (status > 0) handler->request = NULL;
 
 	pthread_mutex_unlock(&(inst->session_mutex));
 
-	if (!status) {
+	if (status <= 0) {
 		pairfree(&state);
-		radlog(L_ERR, "rlm_eap: Failed to store handler");
+
+		if (status < 0) {
+			static time_t last_logged = 0;
+
+			if (last_logged < handler->timestamp) {
+				last_logged = handler->timestamp;
+				radlog(L_ERR, "rlm_eap: Too many open sessions.  Try increasing \"max_sessions\" in the EAP module configuration");
+			}				       
+		} else {
+			radlog(L_ERR, "rlm_eap: Internal error: failed to store handler");
+		}
 		return 0;
 	}
 
