@@ -74,7 +74,7 @@ static FR_TOKEN getthing(const char **ptr, char *buf, int buflen, int tok,
 {
 	char *s;
 	const char *p;
-	int	quote;
+	int	quote, end = 0;
 	int	escape;
 	unsigned int	x;
 	const FR_NAME_NUMBER*t;
@@ -112,6 +112,7 @@ static FR_TOKEN getthing(const char **ptr, char *buf, int buflen, int tok,
 	    (*p == '\'') ||
 	    (*p == '`')) {
 		quote = *p;
+		end = 0;
 		p++;
 	}
 	s = buf;
@@ -148,6 +149,7 @@ static FR_TOKEN getthing(const char **ptr, char *buf, int buflen, int tok,
 			continue;
 		}
 		if (quote && (*p == quote)) {
+			end = 1;
 			p++;
 			break;
 		}
@@ -165,6 +167,11 @@ static FR_TOKEN getthing(const char **ptr, char *buf, int buflen, int tok,
 		*s++ = *p++;
 	}
 	*s++ = 0;
+
+	if (quote && !end) {
+		fr_strerror_printf("Unterminated string");
+		return T_OP_INVALID;
+	}
 
 	/* Skip whitespace again. */
 	while (*p && isspace((int) *p))
