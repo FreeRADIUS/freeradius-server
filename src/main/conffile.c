@@ -1521,6 +1521,12 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		case T_OP_SET:
 		do_set:
 			t3 = getstring(&ptr, buf3, sizeof(buf3));
+			if (t3 == T_OP_INVALID) {
+				radlog(L_ERR, "%s[%d]: Parse error: %s",
+				       filename, *lineno,
+				       fr_strerror());
+				return -1;
+			}
 
 			/*
 			 *	Handle variable substitution via ${foo}
