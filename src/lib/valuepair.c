@@ -950,6 +950,8 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 
 		case PW_TYPE_BYTE:
+			vp->length = 1;
+
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
@@ -959,60 +961,35 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 					fr_strerror_printf("Byte value \"%s\" is larger than 255", value);
 					return NULL;
 				}
-				vp->length = 1;
 				break;
 			}
-
-			/*
-			 *	Look for the named value for the given
-			 *	attribute.
-			 */
-			if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
-				fr_strerror_printf("Unknown value %s for attribute %s",
-					   value, vp->name);
-				return NULL;
-			}
-			vp->vp_integer = dval->value;
-			vp->length = 1;
-			break;
+			goto check_for_value;
 
 		case PW_TYPE_SHORT:
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
 			vp->vp_integer = getint(value, &p);
+			vp->length = 2;
 			if (!*p) {
 				if (vp->vp_integer > 65535) {
 					fr_strerror_printf("Byte value \"%s\" is larger than 65535", value);
 					return NULL;
 				}
-				vp->length = 2;
 				break;
 			}
 
-			/*
-			 *	Look for the named value for the given
-			 *	attribute.
-			 */
-			if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
-				fr_strerror_printf("Unknown value %s for attribute %s",
-					   value, vp->name);
-				return NULL;
-			}
-			vp->vp_integer = dval->value;
-			vp->length = 2;
-			break;
+			goto check_for_value;
 
 		case PW_TYPE_INTEGER:
 			/*
 			 *	Note that ALL integers are unsigned!
 			 */
 			vp->vp_integer = getint(value, &p);
-			if (!*p) {
-				vp->length = 4;
-				break;
-			}
+			vp->length = 4;
+			if (!*p) break;
 
+	check_for_value:
 			/*
 			 *	Look for the named value for the given
 			 *	attribute.
@@ -1023,7 +1000,6 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				return NULL;
 			}
 			vp->vp_integer = dval->value;
-			vp->length = 4;
 			break;
 
 		case PW_TYPE_DATE:
