@@ -192,6 +192,7 @@ static uint32_t dict_value_name_hash(const void *data)
 	const DICT_VALUE *dval = data;
 
 	hash = dict_hashname(dval->name);
+	hash = fr_hash_update(&dval->vendor, sizeof(dval->vendor), hash);
 	return fr_hash_update(&dval->attr, sizeof(dval->attr), hash);
 }
 
@@ -204,6 +205,9 @@ static int dict_value_name_cmp(const void *one, const void *two)
 	rcode = a->attr - b->attr;
 	if (rcode != 0) return rcode;
 
+	rcode = a->vendor - b->vendor;
+	if (rcode != 0) return rcode;
+
 	return strcasecmp(a->name, b->name);
 }
 
@@ -213,6 +217,7 @@ static uint32_t dict_value_value_hash(const void *data)
 	const DICT_VALUE *dval = data;
 
 	hash = fr_hash(&dval->attr, sizeof(dval->attr));
+	hash = fr_hash_update(&dval->vendor, sizeof(dval->vendor), hash);
 	return fr_hash_update(&dval->value, sizeof(dval->value), hash);
 }
 
@@ -221,6 +226,9 @@ static int dict_value_value_cmp(const void *one, const void *two)
 	int rcode;
 	const DICT_VALUE *a = one;
 	const DICT_VALUE *b = two;
+
+	if (a->vendor < b->vendor) return -1;
+	if (a->vendor > b->vendor) return +1;
 
 	rcode = a->attr - b->attr;
 	if (rcode != 0) return rcode;
@@ -708,6 +716,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 		}
 
 		dval->attr = dattr->attr;
+		dval->vendor = dattr->vendor;
 
 		/*
 		 *	Enforce valid values
@@ -1120,6 +1129,7 @@ static int process_value_alias(const char* fn, const int line, char **argv,
 
 	dval->name[0] = '\0';	/* empty name */
 	dval->attr = my_da->attr;
+	dval->vendor = my_da->vendor;
 	dval->value = da->attr;
 
 	if (!fr_hash_table_insert(values_byname, dval)) {

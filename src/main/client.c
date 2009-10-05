@@ -1065,7 +1065,7 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 			return NULL;
 		}
 
-		vp = pairfind(request->config_items, da->attr);
+		vp = pairfind(request->config_items, da->attr, da->vendor);
 		if (!vp) {
 			/*
 			 *	Not required.  Skip it.

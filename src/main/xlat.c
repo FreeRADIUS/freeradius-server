@@ -204,9 +204,9 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		if ((p[1] == '#') && (p[2] == ']')) {
 			count = 0;
 
-			for (vp = pairfind(vps, da->attr);
+			for (vp = pairfind(vps, da->attr, da->vendor);
 			     vp != NULL;
-			     vp = pairfind(vp->next, da->attr)) {
+			     vp = pairfind(vp->next, da->attr, da->vendor)) {
 				count++;
 			}
 			snprintf(out, outlen, "%d", (int) count);
@@ -220,9 +220,9 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		if ((p[1] == '*') && (p[2] == ']')) {
 			int total = 0;
 
-			for (vp = pairfind(vps, da->attr);
+			for (vp = pairfind(vps, da->attr, da->vendor);
 			     vp != NULL;
-			     vp = pairfind(vp->next, da->attr)) {
+			     vp = pairfind(vp->next, da->attr, da->vendor)) {
 				count = valuepair2str(out, outlen - 1, vp, da->type, func);
 				rad_assert(count <= outlen);
 				total += count + 1;
@@ -252,9 +252,9 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		/*
 		 *	Find the N'th value.
 		 */
-		for (vp = pairfind(vps, da->attr);
+		for (vp = pairfind(vps, da->attr, da->vendor);
 		     vp != NULL;
-		     vp = pairfind(vp->next, da->attr)) {
+		     vp = pairfind(vp->next, da->attr, da->vendor)) {
 			if (count == 0) break;
 			count--;
 		}
@@ -267,7 +267,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		return valuepair2str(out, outlen, vp, da->type, func);
 	}
 
-	vp = pairfind(vps, da->attr);
+	vp = pairfind(vps, da->attr, da->vendor);
 	if (!vp) {
 		/*
 		 *	Some "magic" handlers, which are never in VP's, but
@@ -286,7 +286,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 			{
 				DICT_VALUE *dval;
 
-				dval = dict_valbyattr(da->attr, packet->code);
+				dval = dict_valbyattr(da->attr, da->vendor, packet->code);
 				if (dval) {
 					snprintf(out, outlen, "%s", dval->name);
 				} else {

@@ -208,9 +208,14 @@ void pairfree(VALUE_PAIR **pair_ptr)
  */
 VALUE_PAIR * pairfind(VALUE_PAIR *first, int attr, int vendor)
 {
-	while(first && (first->attribute != attr) && (first->vendor != vendor))
+	while (first) {
+		if ((first->attribute == attr) && (first->vendor == vendor)) {
+			return first;
+		}
 		first = first->next;
-	return first;
+	}
+
+	return NULL;
 }
 
 

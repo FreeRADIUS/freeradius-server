@@ -759,7 +759,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 *	automatically.  If it isn't found, it's a serious
 	 *	error.
 	 */
-	dval = dict_valbyname(attr, name2);
+	dval = dict_valbyname(attr, 0, name2);
 	if (!dval) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "%s %s Not previously configured",
@@ -787,7 +787,7 @@ static int define_type(const DICT_ATTR *dattr, const char *name)
 	 *	If the value already exists, don't
 	 *	create it again.
 	 */
-	dval = dict_valbyname(dattr->attr, name);
+	dval = dict_valbyname(dattr->attr, dattr->vendor, name);
 	if (dval) return 1;
 
 	/*
@@ -799,7 +799,7 @@ static int define_type(const DICT_ATTR *dattr, const char *name)
 	 */
 	do {
 		value = fr_rand() & 0x00ffffff;
-	} while (dict_valbyattr(dattr->attr, value));
+	} while (dict_valbyattr(dattr->attr, dattr->vendor, value));
 
 	if (dict_addvalue(name, dattr->name, value) < 0) {
 		radlog(L_ERR, "%s", fr_strerror());
@@ -823,7 +823,7 @@ static int load_component_section(CONF_SECTION *cs,
 	/*
 	 *	Find the attribute used to store VALUEs for this section.
 	 */
-	dattr = dict_attrbyvalue(section_type_value[comp].attr);
+	dattr = dict_attrbyvalue(section_type_value[comp].attr, 0);
 	if (!dattr) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "No such attribute %s",
@@ -902,7 +902,7 @@ static int load_component_section(CONF_SECTION *cs,
 				}
 			}
 
-			dval = dict_valbyname(PW_AUTH_TYPE, modrefname);
+			dval = dict_valbyname(PW_AUTH_TYPE, 0, modrefname);
 			if (!dval) {
 				/*
 				 *	It's a section, but nothing we
@@ -987,7 +987,7 @@ static int load_byserver(CONF_SECTION *cs)
 		/*
 		 *	Find the attribute used to store VALUEs for this section.
 		 */
-		dattr = dict_attrbyvalue(section_type_value[comp].attr);
+		dattr = dict_attrbyvalue(section_type_value[comp].attr, 0);
 		if (!dattr) {
 			cf_log_err(cf_sectiontoitem(subcs),
 				   "No such attribute %s",

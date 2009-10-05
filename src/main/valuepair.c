@@ -266,7 +266,8 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 	 *	FIXME: use new RB-Tree code.
 	 */
 	for (c = cmp; c; c = c->next)
-		if (c->attribute == check->attribute) {
+		if ((c->attribute == check->attribute) &&
+		    (check->vendor == 0)) {
 			return (c->compare)(c->instance, req, request, check,
 				check_pairs, reply_pairs);
 		}
@@ -594,7 +595,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 			pairparsevalue(i, buffer);
 		}
 
-		found = pairfind(*to, i->attribute);
+		found = pairfind(*to, i->attribute, i->vendor);
 		switch (i->operator) {
 
 			/*
@@ -606,7 +607,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 				if (!i->vp_strvalue[0] ||
 				    (strcmp((char *)found->vp_strvalue,
 					    (char *)i->vp_strvalue) == 0)){
-					pairdelete(to, found->attribute);
+				  pairdelete(to, found->attribute, found->vendor);
 
 					/*
 					 *	'tailto' may have been
@@ -692,13 +693,13 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
  *	it causes the server to exit!
  */
 VALUE_PAIR *radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
-			      int attribute, int type)
+			      int attribute, int vendor, int type)
 {
 	VALUE_PAIR *vp;
 
 	request = request;	/* -Wunused */
 
-	vp = paircreate(attribute, type);
+	vp = paircreate(attribute, vendor, type);
 	if (!vp) {
 		radlog(L_ERR, "No memory!");
 		rad_assert("No memory" == NULL);

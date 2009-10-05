@@ -293,7 +293,7 @@ static int rad_status_server(REQUEST *request)
 	case RAD_LISTEN_NONE:
 #endif
 	case RAD_LISTEN_AUTH:
-		dval = dict_valbyname(PW_AUTZ_TYPE, "Status-Server");
+		dval = dict_valbyname(PW_AUTZ_TYPE, 0, "Status-Server");
 		if (dval) {
 			rcode = module_authorize(dval->value, request);
 		} else {
@@ -320,7 +320,7 @@ static int rad_status_server(REQUEST *request)
 
 #ifdef WITH_ACCOUNTING
 	case RAD_LISTEN_ACCT:
-		dval = dict_valbyname(PW_ACCT_TYPE, "Status-Server");
+		dval = dict_valbyname(PW_ACCT_TYPE, 0, "Status-Server");
 		if (dval) {
 			rcode = module_accounting(dval->value, request);
 		} else {
@@ -347,7 +347,7 @@ static int rad_status_server(REQUEST *request)
 		 *	the WG.  We like it, so it goes in here.
 		 */
 	case RAD_LISTEN_COA:
-		dval = dict_valbyname(PW_RECV_COA_TYPE, "Status-Server");
+		dval = dict_valbyname(PW_RECV_COA_TYPE, 0, "Status-Server");
 		if (dval) {
 			rcode = module_recv_coa(dval->value, request);
 		} else {
@@ -1436,7 +1436,7 @@ static int rad_coa_recv(REQUEST *request)
 	 *	Copy State from the request to the reply.
 	 *	See RFC 5176 Section 3.3.
 	 */
-	vp = paircopy2(request->packet->vps, PW_STATE);
+	vp = paircopy2(request->packet->vps, PW_STATE, 0);
 	if (vp) pairadd(&request->reply->vps, vp);
 
 	/*

@@ -953,10 +953,10 @@ static int setup_post_proxy_fail(REQUEST *request)
 	request->child_state = REQUEST_RUNNING;
 
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
-		dval = dict_valbyname(PW_POST_PROXY_TYPE, "Fail-Authentication");
+	  dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-Authentication");
 
 	} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
-		dval = dict_valbyname(PW_POST_PROXY_TYPE, "Fail-Accounting");
+		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-Accounting");
 
 #ifdef WITH_COA
 		/*
@@ -966,10 +966,10 @@ static int setup_post_proxy_fail(REQUEST *request)
 		request->packet->code &= 0xff; /* restore it */
 
 		if (request->proxy->code == PW_COA_REQUEST) {
-			dval = dict_valbyname(PW_POST_PROXY_TYPE, "Fail-CoA");
+			dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-CoA");
 
 		} else if (request->proxy->code == PW_DISCONNECT_REQUEST) {
-			dval = dict_valbyname(PW_POST_PROXY_TYPE, "Fail-Disconnect");
+			dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-Disconnect");
 		} else {
 			return 0;
 		}
@@ -979,16 +979,16 @@ static int setup_post_proxy_fail(REQUEST *request)
 		return 0;
 	}
 
-	if (!dval) dval = dict_valbyname(PW_POST_PROXY_TYPE, "Fail");
+	if (!dval) dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail");
 
 	if (!dval) {
-		pairdelete(&request->config_items, PW_POST_PROXY_TYPE);
+		pairdelete(&request->config_items, PW_POST_PROXY_TYPE, 0);
 		return 0;
 	}
 
 	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE, 0);
 	if (!vp) vp = radius_paircreate(request, &request->config_items,
-					PW_POST_PROXY_TYPE, PW_TYPE_INTEGER);
+					PW_POST_PROXY_TYPE, 0, PW_TYPE_INTEGER);
 	vp->vp_integer = dval->value;
 
 	rad_assert(request->proxy_reply == NULL);
@@ -1553,12 +1553,12 @@ static int originated_coa_request(REQUEST *request)
 		ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 
 	} else if ((vp = pairfind(coa->proxy->vps,
-				  PW_PACKET_DST_IPV6_ADDRESS)) != NULL) {
+				  PW_PACKET_DST_IPV6_ADDRESS, 0)) != NULL) {
 		ipaddr.af = AF_INET6;
 		ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
 		
 	} else if ((vp = pairfind(coa->proxy->vps,
-				  PW_HOME_SERVER_POOL)) != NULL) {
+				  PW_HOME_SERVER_POOL, 0)) != NULL) {
 		coa->home_pool = home_pool_byname(vp->vp_strvalue,
 						  HOME_TYPE_COA);
 		if (!coa->home_pool) {
@@ -1802,7 +1802,7 @@ static int process_proxy_reply(REQUEST *request)
 		 *	the reply.  These include Proxy-State
 		 *	attributes from us and remote server.
 		 */
-		pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE);
+		pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE, 0);
 		
 		/*
 		 *	Add the attributes left in the proxy
@@ -1851,9 +1851,9 @@ static int request_pre_handler(REQUEST *request)
 	 */
 	if (request->packet->dst_port == 0) {
 		request->username = pairfind(request->packet->vps,
-					     PW_USER_NAME);
+					     PW_USER_NAME, 0);
 		request->password = pairfind(request->packet->vps,
-					     PW_USER_PASSWORD);
+					     PW_USER_PASSWORD, 0);
 		return 1;
 	}
 
@@ -1906,7 +1906,7 @@ static int request_pre_handler(REQUEST *request)
 
 	if (!request->username) {
 		request->username = pairfind(request->packet->vps,
-					     PW_USER_NAME);
+					     PW_USER_NAME, 0);
 	}
 
 #ifdef WITH_PROXY
@@ -2211,7 +2211,7 @@ found_pool:
 		vp = pairfind(request->proxy->vps, PW_USER_NAME, 0);
 		if (!vp) {
 			vp = radius_paircreate(request, NULL,
-					       PW_USER_NAME, PW_TYPE_STRING);
+					       PW_USER_NAME, 0, PW_TYPE_STRING);
 			rad_assert(vp != NULL);	/* handled by above function */
 			/* Insert at the START of the list */
 			vp->next = request->proxy->vps;
@@ -2236,7 +2236,7 @@ found_pool:
 	    pairfind(request->proxy->vps, PW_CHAP_PASSWORD, 0) &&
 	    pairfind(request->proxy->vps, PW_CHAP_CHALLENGE, 0) == NULL) {
 		vp = radius_paircreate(request, &request->proxy->vps,
-				       PW_CHAP_CHALLENGE, PW_TYPE_OCTETS);
+				       PW_CHAP_CHALLENGE, 0, PW_TYPE_OCTETS);
 		vp->length = AUTH_VECTOR_LEN;
 		memcpy(vp->vp_strvalue, request->packet->vector, AUTH_VECTOR_LEN);
 	}
@@ -2246,7 +2246,7 @@ found_pool:
 	 *	doesn't need it.
 	 */
 	vp = radius_paircreate(request, &request->proxy->vps,
-			       PW_PROXY_STATE, PW_TYPE_OCTETS);
+			       PW_PROXY_STATE, 0, PW_TYPE_OCTETS);
 	snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%d",
 		 request->packet->id);
 	vp->length = strlen(vp->vp_strvalue);
@@ -2427,7 +2427,7 @@ static void request_post_handler(REQUEST *request)
 	/*
 	 *	Copy Proxy-State from the request to the reply.
 	 */
-	vp = paircopy2(request->packet->vps, PW_PROXY_STATE);
+	vp = paircopy2(request->packet->vps, PW_PROXY_STATE, 0);
 	if (vp) pairadd(&request->reply->vps, vp);
 #endif
 
@@ -2443,7 +2443,7 @@ static void request_post_handler(REQUEST *request)
 			 *	Check if the lack of response is intentional.
 			 */
 			vp = pairfind(request->config_items,
-				      PW_RESPONSE_PACKET_TYPE);
+				      PW_RESPONSE_PACKET_TYPE, 0);
 			if (!vp) {
 				RDEBUG2("There was no response configured: rejecting request");
 				request->reply->code = PW_AUTHENTICATION_REJECT;
@@ -2472,7 +2472,7 @@ static void request_post_handler(REQUEST *request)
 		 *	Post-Auth-Type = Reject
 		 */
 		if (request->reply->code == PW_AUTHENTICATION_REJECT) {
-			pairdelete(&request->config_items, PW_POST_AUTH_TYPE);
+			pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0);
 			vp = radius_pairmake(request, &request->config_items,
 					     "Post-Auth-Type", "Reject",
 					     T_OP_SET);

@@ -289,7 +289,7 @@ int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 	/*
 	 *	May not may not be found, but it *is* a known name.
 	 */
-	*vp_p = pairfind(vps, da->attr);
+	*vp_p = pairfind(vps, da->attr, da->vendor);
 	return TRUE;
 }
 
@@ -355,7 +355,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 				 *	If so, try looking for it.
 				 */
 				da = dict_attrbyname(pleft);
-				if (da && radius_find_compare(da->attr)) {
+				if (da && (da->vendor == 0) && radius_find_compare(da->attr)) {
 					VALUE_PAIR *check = pairmake(pleft, pright, token);
 					*presult = (radius_callback_compare(request, NULL, check, NULL, NULL) == 0);
 					RDEBUG3("  Callback returns %d",

@@ -102,7 +102,7 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass)
 			VALUE_PAIR *auth_type;
 
 			auth_type = pairfind(request->config_items,
-					     PW_AUTH_TYPE);
+					     PW_AUTH_TYPE, 0);
 			if (auth_type && (auth_type->vp_strvalue[0] != '\0')) {
 				snprintf(clean_password, sizeof(clean_password),
 					 "<via Auth-Type = %s>",
@@ -178,7 +178,7 @@ static int rad_check_password(REQUEST *request)
 		auth_type = auth_type_pair->vp_integer;
 		auth_type_count++;
 		DICT_VALUE *dv = dict_valbyattr(auth_type_pair->attribute,
-						auth_type_pair->vp_integer);
+						auth_type_pair->vp_integer, 0);
 
 		RDEBUG2("Found Auth-Type = %s",
 			(dv != NULL) ? dv->name : "?");
@@ -213,7 +213,7 @@ static int rad_check_password(REQUEST *request)
 	password_pair =  pairfind(request->config_items, PW_USER_PASSWORD, 0);
 	if (password_pair &&
 	    pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0)) {
-		pairdelete(&request->config_items, PW_USER_PASSWORD);
+	  pairdelete(&request->config_items, PW_USER_PASSWORD, 0);
 		password_pair = NULL;
 	}
 
@@ -227,7 +227,7 @@ static int rad_check_password(REQUEST *request)
 		RDEBUG("!!! clear text password is in Cleartext-Password, and not in User-Password. !!!");
 		RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		password_pair->attribute = PW_CLEARTEXT_PASSWORD;
-		da = dict_attrbyvalue(PW_CLEARTEXT_PASSWORD);
+		da = dict_attrbyvalue(PW_CLEARTEXT_PASSWORD, 0);
 		if (!da) {
 			radlog_request(L_ERR, 0, request, "FATAL: You broke the dictionaries.  Please use the default dictionaries!");
 			_exit(1);
@@ -311,7 +311,7 @@ static int rad_check_password(REQUEST *request)
 			auth_item = request->password;
 			if (!auth_item)
 				auth_item = pairfind(request->packet->vps,
-						     PW_CHAP_PASSWORD);
+						     PW_CHAP_PASSWORD, 0);
 			if (!auth_item) {
 				RDEBUG2("No User-Password or CHAP-Password attribute in the request.");
 				RDEBUG2("Cannot perform authentication.");
@@ -486,7 +486,7 @@ int rad_authenticate(REQUEST *request)
 		case PW_AUTHENTICATION_ACK:
 			tmp = radius_paircreate(request,
 						&request->config_items,
-						PW_AUTH_TYPE, PW_TYPE_INTEGER);
+						PW_AUTH_TYPE, 0, PW_TYPE_INTEGER);
 			if (tmp) tmp->vp_integer = PW_AUTHTYPE_ACCEPT;
 			goto authenticate;
 
@@ -531,7 +531,7 @@ int rad_authenticate(REQUEST *request)
 	 */
 	if (!request->password) {
 		request->password = pairfind(request->packet->vps,
-					     PW_USER_PASSWORD);
+					     PW_USER_PASSWORD, 0);
 	}
 
 	/*
@@ -546,7 +546,7 @@ int rad_authenticate(REQUEST *request)
 		 *	Maybe there's a CHAP-Password?
 		 */
 		if ((auth_item = pairfind(request->packet->vps,
-					  PW_CHAP_PASSWORD)) != NULL) {
+					  PW_CHAP_PASSWORD, 0)) != NULL) {
 			password = "<CHAP-PASSWORD>";
 
 		} else {
@@ -577,7 +577,7 @@ autz_redo:
 		case RLM_MODULE_USERLOCK:
 		default:
 			if ((module_msg = pairfind(request->packet->vps,
-					PW_MODULE_FAILURE_MESSAGE)) != NULL) {
+						   PW_MODULE_FAILURE_MESSAGE, 0)) != NULL) {
 				char msg[MAX_STRING_LEN + 16];
 				snprintf(msg, sizeof(msg), "Invalid user (%s)",
 					 module_msg->vp_strvalue);
@@ -769,7 +769,7 @@ autz_redo:
 	 *	vp->addport is set.
 	 */
 	if (((tmp = pairfind(request->reply->vps,
-			     PW_FRAMED_IP_ADDRESS)) != NULL) &&
+			     PW_FRAMED_IP_ADDRESS, 0)) != NULL) &&
 	    (tmp->flags.addport != 0)) {
 		VALUE_PAIR *vpPortId;
 
@@ -777,14 +777,14 @@ autz_redo:
 		 *  Find the NAS port ID.
 		 */
 		if ((vpPortId = pairfind(request->packet->vps,
-					 PW_NAS_PORT)) != NULL) {
+					 PW_NAS_PORT, 0)) != NULL) {
 		  unsigned long tvalue = ntohl(tmp->vp_integer);
 		  tmp->vp_integer = htonl(tvalue + vpPortId->vp_integer);
 		  tmp->flags.addport = 0;
 		  ip_ntoa(tmp->vp_strvalue, tmp->vp_integer);
 		} else {
 			RDEBUG2("WARNING: No NAS-Port attribute in request.  CANNOT return a Framed-IP-Address + NAS-Port.\n");
-			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS);
+			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS, 0);
 		}
 	}
 
