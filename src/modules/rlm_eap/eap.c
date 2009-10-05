@@ -523,7 +523,7 @@ int eap_compose(EAP_HANDLER *handler)
 	 *	Don't add a Message-Authenticator if it's already
 	 *	there.
 	 */
-	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR);
+	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0);
 	if (!vp) {
 		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, PW_TYPE_OCTETS);
 		memset(vp->vp_octets, 0, AUTH_VECTOR_LEN);
@@ -580,7 +580,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	VALUE_PAIR *vp, *proxy;
 	VALUE_PAIR *eap_msg;
 
-	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE);
+	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE, 0);
 	if (eap_msg == NULL) {
 		RDEBUG2("No EAP-Message, not doing EAP");
 		return EAP_NOOP;
@@ -590,7 +590,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Look for EAP-Type = None (FreeRADIUS specific attribute)
 	 *	this allows you to NOT do EAP for some users.
 	 */
-	vp = pairfind(request->packet->vps, PW_EAP_TYPE);
+	vp = pairfind(request->packet->vps, PW_EAP_TYPE, 0);
 	if (vp && vp->vp_integer == 0) {
 		RDEBUG2("Found EAP-Message, but EAP-Type = None, so we're not doing EAP.");
 		return EAP_NOOP;
@@ -606,7 +606,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Check for a Proxy-To-Realm.  Don't get excited over LOCAL
 	 *	realms (sigh).
 	 */
-	proxy = pairfind(request->config_items, PW_PROXY_TO_REALM);
+	proxy = pairfind(request->config_items, PW_PROXY_TO_REALM, 0);
 	if (proxy) {
 		REALM *realm;
 
@@ -997,7 +997,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 			return NULL;
 		}
 
-               vp = pairfind(request->packet->vps, PW_USER_NAME);
+               vp = pairfind(request->packet->vps, PW_USER_NAME, 0);
                if (!vp) {
                        /*
                         *	NAS did not set the User-Name
@@ -1056,7 +1056,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 			return NULL;
 		}
 
-               vp = pairfind(request->packet->vps, PW_USER_NAME);
+               vp = pairfind(request->packet->vps, PW_USER_NAME, 0);
                if (!vp) {
                        /*
                         *	NAS did not set the User-Name

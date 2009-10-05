@@ -1015,11 +1015,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				*q++ = *p++;
 				break;
 			case 'a': /* Protocol: */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_PROTOCOL),PW_TYPE_INTEGER, func);
+				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_PROTOCOL, 0),PW_TYPE_INTEGER, func);
 				p++;
 				break;
 			case 'c': /* Callback-Number */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_CALLBACK_NUMBER),PW_TYPE_STRING, func);
+				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_CALLBACK_NUMBER, 0),PW_TYPE_STRING, func);
 				p++;
 				break;
 			case 'd': /* request day */
@@ -1032,11 +1032,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'f': /* Framed IP address */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_IP_ADDRESS),PW_TYPE_IPADDR, func);
+				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_IP_ADDRESS, 0),PW_TYPE_IPADDR, func);
 				p++;
 				break;
 			case 'i': /* Calling station ID */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CALLING_STATION_ID),PW_TYPE_STRING, func);
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CALLING_STATION_ID, 0),PW_TYPE_STRING, func);
 				p++;
 				break;
 			case 'l': /* request timestamp */
@@ -1056,15 +1056,15 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'n': /* NAS IP address */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_IP_ADDRESS),PW_TYPE_IPADDR, func);
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_IP_ADDRESS, 0),PW_TYPE_IPADDR, func);
 				p++;
 				break;
 			case 'p': /* Port number */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_PORT),PW_TYPE_INTEGER, func);
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_PORT, 0),PW_TYPE_INTEGER, func);
 				p++;
 				break;
 			case 's': /* Speed */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CONNECT_INFO),PW_TYPE_STRING, func);
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CONNECT_INFO, 0),PW_TYPE_STRING, func);
 				p++;
 				break;
 			case 't': /* request timestamp */
@@ -1076,7 +1076,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'u': /* User name */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME),PW_TYPE_STRING, func);
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME, 0),PW_TYPE_STRING, func);
 				p++;
 				break;
 			case 'A': /* radacct_dir */
@@ -1113,7 +1113,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'M': /* MTU */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_MTU),PW_TYPE_INTEGER, func);
+				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_MTU, 0),PW_TYPE_INTEGER, func);
 				p++;
 				break;
 			case 'R': /* radius_dir */
@@ -1140,7 +1140,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 'U': /* Stripped User name */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_STRIPPED_USER_NAME),PW_TYPE_STRING, func);
+				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_STRIPPED_USER_NAME, 0),PW_TYPE_STRING, func);
 				p++;
 				break;
 			case 'V': /* Request-Authenticator */

@@ -224,13 +224,13 @@ static int radclient_init(const char *filename)
 		/*
 		 *	Keep a copy of the the User-Password attribute.
 		 */
-		if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD)) != NULL) {
+		if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD, 0)) != NULL) {
 			strlcpy(radclient->password, vp->vp_strvalue,
 				sizeof(radclient->password));
 			/*
 			 *	Otherwise keep a copy of the CHAP-Password attribute.
 			 */
-		} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD)) != NULL) {
+		} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD, 0)) != NULL) {
 			strlcpy(radclient->password, vp->vp_strvalue,
 				sizeof(radclient->password));
 		} else {
@@ -552,12 +552,12 @@ static int send_one_packet(radclient_t *radclient)
 		if (radclient->password[0] != '\0') {
 			VALUE_PAIR *vp;
 
-			if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD)) != NULL) {
+			if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD, 0)) != NULL) {
 				strlcpy(vp->vp_strvalue, radclient->password,
 					sizeof(vp->vp_strvalue));
 				vp->length = strlen(vp->vp_strvalue);
 
-			} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD)) != NULL) {
+			} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD, 0)) != NULL) {
 			  /*
 			   *	FIXME: AND there's no CHAP-Challenge,
 			   *	       AND vp->length != 17

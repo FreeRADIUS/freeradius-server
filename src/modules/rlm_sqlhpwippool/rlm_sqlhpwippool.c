@@ -368,7 +368,7 @@ static int sqlhpwippool_postauth(void *instance, REQUEST *request)
 	rlm_sqlhpwippool_t *data = (rlm_sqlhpwippool_t *) instance;
 
 	/* if IP is already there, then nothing to do */
-	vp = pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS);
+	vp = pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS, 0);
 	if (vp) {
 		nvp_log(__LINE__, data, L_DBG,
 		        "sqlhpwippool_postauth(): IP address "
@@ -377,7 +377,7 @@ static int sqlhpwippool_postauth(void *instance, REQUEST *request)
 	}
 
 	/* if no pool name, we don't need to do anything */
-	vp = pairfind(request->reply->vps, PW_ASN_IP_POOL_NAME);
+	vp = pairfind(request->reply->vps, PW_ASN_IP_POOL_NAME, 0);
 	if (vp) {
 		pname = vp->vp_strvalue;
 		nvp_log(__LINE__, data, L_DBG,
@@ -391,7 +391,7 @@ static int sqlhpwippool_postauth(void *instance, REQUEST *request)
 	}
 
 	/* if no NAS IP address, assign 0 */
-	vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS);
+	vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0);
 	if (vp) {
 		nasip = ntohl(vp->vp_ipaddr);
 	}
@@ -682,7 +682,7 @@ static int sqlhpwippool_accounting(void *instance, REQUEST *request)
 	rlm_sqlhpwippool_t *data = (rlm_sqlhpwippool_t *) instance;
 
 	/* if no unique session ID, don't even try */
-	vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID);
+	vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID, 0);
 	if (vp) {
 		sessid = vp->vp_strvalue;
 	}
@@ -692,7 +692,7 @@ static int sqlhpwippool_accounting(void *instance, REQUEST *request)
 		return RLM_MODULE_FAIL;
 	}
 
-	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE);
+	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0);
 	if (vp) {
 		acct_type = vp->vp_integer;
 	}
@@ -722,7 +722,7 @@ static int sqlhpwippool_accounting(void *instance, REQUEST *request)
 	switch (acct_type) {
 		case PW_STATUS_START:
 		case PW_STATUS_ALIVE:
-			vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS);
+			vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0);
 			if (!vp) {
 				nvp_log(__LINE__, data, L_ERR, "sqlhpwippool_accounting(): no framed IP");
 				sql_release_socket(data->sqlinst, sqlsock);
@@ -762,7 +762,7 @@ static int sqlhpwippool_accounting(void *instance, REQUEST *request)
 
 		case PW_STATUS_ACCOUNTING_OFF:
 		case PW_STATUS_ACCOUNTING_ON:
-			vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS);
+			vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0);
 			if (!vp) {
 				nvp_log(__LINE__, data, L_ERR, "sqlhpwippool_accounting(): no NAS IP");
 				sql_release_socket(data->sqlinst, sqlsock);

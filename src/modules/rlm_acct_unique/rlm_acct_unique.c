@@ -192,7 +192,7 @@ static int add_unique_id(void *instance, REQUEST *request)
 	/*
 	 *  A unique ID already exists: don't do anything.
 	 */
-	vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID);
+	vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID, 0);
 	if (vp) {
 		return RLM_MODULE_NOOP;
 	}

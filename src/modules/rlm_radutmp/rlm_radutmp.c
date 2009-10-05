@@ -204,7 +204,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) == NULL) {
+	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0)) == NULL) {
 		radlog(L_ERR, "rlm_radutmp: No Accounting-Status-Type record.");
 		return RLM_MODULE_NOOP;
 	}
@@ -227,10 +227,10 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 		int check1 = 0;
 		int check2 = 0;
 
-		if ((vp = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME))
+		if ((vp = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME, 0))
 		     == NULL || vp->vp_date == 0)
 			check1 = 1;
-		if ((vp = pairfind(request->packet->vps, PW_ACCT_SESSION_ID))
+		if ((vp = pairfind(request->packet->vps, PW_ACCT_SESSION_ID, 0))
 		     != NULL && vp->length == 8 &&
 		     memcmp(vp->vp_strvalue, "00000000", 8) == 0)
 			check2 = 1;
@@ -630,9 +630,9 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	/*
 	 *	Setup some stuff, like for MPP detection.
 	 */
-	if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS)) != NULL)
+	if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0)) != NULL)
 		ipno = vp->vp_ipaddr;
-	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
+	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0)) != NULL)
 		call_num = vp->vp_strvalue;
 
 	/*

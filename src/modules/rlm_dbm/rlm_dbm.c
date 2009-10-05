@@ -131,7 +131,7 @@ enum {
 static int isfallthrough(VALUE_PAIR *vp) {
   VALUE_PAIR * tmp;
 
-  tmp = pairfind(vp, PW_FALL_THROUGH);
+  tmp = pairfind(vp, PW_FALL_THROUGH, 0);
   return tmp ? tmp -> vp_integer : 1; /* if no  FALL_THROUGH - keep looking */
 }
 

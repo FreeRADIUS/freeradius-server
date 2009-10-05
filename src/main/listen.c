@@ -1329,9 +1329,9 @@ static int rad_coa_reply(REQUEST *request)
 	/*
 	 *	Inform the user about RFC requirements.
 	 */
-	s1 = pairfind(request->proxy->vps, PW_STATE);
+	s1 = pairfind(request->proxy->vps, PW_STATE, 0);
 	if (s1) {
-		s2 = pairfind(request->proxy_reply->vps, PW_STATE);
+		s2 = pairfind(request->proxy_reply->vps, PW_STATE, 0);
 
 		if (!s2) {
 			DEBUG("WARNING: Client was sent State in CoA, and did not respond with State.");
@@ -1385,10 +1385,10 @@ static int rad_coa_recv(REQUEST *request)
 		 *	with Service-Type = Authorize-Only, it MUST
 		 *	have a State attribute in it.
 		 */
-		vp = pairfind(request->packet->vps, PW_SERVICE_TYPE);
+		vp = pairfind(request->packet->vps, PW_SERVICE_TYPE, 0);
 		if (request->packet->code == PW_COA_REQUEST) {
 			if (vp && (vp->vp_integer == 17)) {
-				vp = pairfind(request->packet->vps, PW_STATE);
+				vp = pairfind(request->packet->vps, PW_STATE, 0);
 				if (!vp || (vp->length == 0)) {
 					RDEBUG("ERROR: CoA-Request with Service-Type = Authorize-Only MUST contain a State attribute");
 					request->reply->code = PW_COA_NAK;

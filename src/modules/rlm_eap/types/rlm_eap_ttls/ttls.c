@@ -1020,8 +1020,8 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	/*
 	 *	Update other items in the REQUEST data structure.
 	 */
-	fake->username = pairfind(fake->packet->vps, PW_USER_NAME);
-	fake->password = pairfind(fake->packet->vps, PW_USER_PASSWORD);
+	fake->username = pairfind(fake->packet->vps, PW_USER_NAME, 0);
+	fake->password = pairfind(fake->packet->vps, PW_USER_PASSWORD, 0);
 
 	/*
 	 *	No User-Name, try to create one from stored data.
@@ -1032,7 +1032,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		 *	an EAP-Identity, and pull it out of there.
 		 */
 		if (!t->username) {
-			vp = pairfind(fake->packet->vps, PW_EAP_MESSAGE);
+			vp = pairfind(fake->packet->vps, PW_EAP_MESSAGE, 0);
 			if (vp &&
 			    (vp->length >= EAP_HEADER_LEN + 2) &&
 			    (vp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
@@ -1078,7 +1078,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		if (t->username) {
 			vp = paircopy(t->username);
 			pairadd(&fake->packet->vps, vp);
-			fake->username = pairfind(fake->packet->vps, PW_USER_NAME);
+			fake->username = pairfind(fake->packet->vps, PW_USER_NAME, 0);
 		}
 	} /* else the request ALREADY had a User-Name */
 
@@ -1159,7 +1159,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		}
 	}
 
-	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER)) != NULL) {
+	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0)) != NULL) {
 		fake->server = vp->vp_strvalue;
 
 	} else if (t->virtual_server) {
@@ -1202,7 +1202,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = pairfind(fake->config_items, PW_PROXY_TO_REALM);
+	  vp = pairfind(fake->config_items, PW_PROXY_TO_REALM, 0);
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
 			RDEBUG("Tunneled authentication will be proxied to %s", vp->vp_strvalue);

@@ -89,9 +89,9 @@ static int groupcmp(void *instance, UNUSED REQUEST *req, VALUE_PAIR *request,
 	/*
 	 *	No user name, doesn't compare.
 	 */
-	vp = pairfind(request, PW_STRIPPED_USER_NAME);
+	vp = pairfind(request, PW_STRIPPED_USER_NAME, 0);
 	if (!vp) {
-		vp = pairfind(request, PW_USER_NAME);
+		vp = pairfind(request, PW_USER_NAME, 0);
 		if (!vp) {
 			return -1;
 		}
@@ -444,7 +444,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE))==NULL) {
+	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0))==NULL) {
 		radlog(L_ERR, "rlm_unix: no Accounting-Status-Type attribute in request.");
 		return RLM_MODULE_NOOP;
 	}
@@ -461,7 +461,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	We're only interested in accounting messages
 	 *	with a username in it.
 	 */
-	if (pairfind(request->packet->vps, PW_USER_NAME) == NULL)
+	if (pairfind(request->packet->vps, PW_USER_NAME, 0) == NULL)
 		return RLM_MODULE_NOOP;
 
 	t = request->timestamp;

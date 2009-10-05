@@ -339,9 +339,9 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 *	Some simple sanity checks.  These should really
 		 *	be handled by the radius library...
 		 */
-		vp = pairfind(request->proxy->vps, PW_EAP_MESSAGE);
+		vp = pairfind(request->proxy->vps, PW_EAP_MESSAGE, 0);
 		if (vp) {
-			vp = pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR);
+			vp = pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0);
 			if (!vp) {
 				vp = pairmake("Message-Authenticator",
 					      "0x00", T_OP_EQ);
@@ -422,7 +422,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	Doesn't exist, add it in.
 		 */
-		vp = pairfind(request->reply->vps, PW_USER_NAME);
+		vp = pairfind(request->reply->vps, PW_USER_NAME, 0);
 		if (!vp) {
 			vp = pairmake("User-Name", "",
 				      T_OP_EQ);
@@ -502,7 +502,7 @@ static int eap_authorize(void *instance, REQUEST *request)
 	 *	and to get excited if it doesn't appear.
 	 */
 
-	vp = pairfind(request->config_items, PW_AUTH_TYPE);
+	vp = pairfind(request->config_items, PW_AUTH_TYPE, 0);
 	if ((!vp) ||
 	    (vp->vp_integer != PW_AUTHTYPE_REJECT)) {
 		vp = pairmake("Auth-Type", inst->xlat_name, T_OP_EQ);
@@ -605,7 +605,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 			/*
 			 *	Doesn't exist, add it in.
 			 */
-			vp = pairfind(request->reply->vps, PW_USER_NAME);
+			vp = pairfind(request->reply->vps, PW_USER_NAME, 0);
 			if (!vp) {
 				vp = pairmake("User-Name", request->username->vp_strvalue,
 					      T_OP_EQ);

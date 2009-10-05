@@ -325,7 +325,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	FR_MD5_CTX md5_context;
 
 
-	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL)
+	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0)) != NULL)
 		acctstatustype = vp->vp_integer;
 	else {
 		RDEBUG("Could not find account status type in packet. Return NOOP.");
@@ -460,7 +460,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	/* Check if Pool-Name attribute exists. If it exists check our name and
 	 * run only if they match
 	 */
-	if ((vp = pairfind(request->config_items, PW_POOL_NAME)) != NULL){
+	if ((vp = pairfind(request->config_items, PW_POOL_NAME, 0)) != NULL){
 		if (data->name == NULL || (strcmp(data->name,vp->vp_strvalue) && strcmp(vp->vp_strvalue,"DEFAULT")))
 			return RLM_MODULE_NOOP;
 	} else {
@@ -472,7 +472,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	/*
 	 * Find the caller id
 	 */
-	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
+	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0)) != NULL)
 		cli = vp->vp_strvalue;
 
 
@@ -563,7 +563,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	/*
 	 * If there is a Framed-IP-Address attribute in the reply, check for override
 	 */
-	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS) != NULL) {
+	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS, 0) != NULL) {
 		RDEBUG("Found Framed-IP-Address attribute in reply attribute list.");
 		if (data->override)
 		{
@@ -729,7 +729,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		free(key_datum.dptr);
 		entry.active = 1;
 		entry.timestamp = request->timestamp;
-		if ((vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT)) != NULL)
+		if ((vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0)) != NULL)
 			entry.timeout = (time_t) vp->vp_integer;
 		else
 			entry.timeout = 0;
@@ -782,7 +782,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		 *	If there is no Framed-Netmask attribute in the
 		 *	reply, add one
 		 */
-		if (pairfind(request->reply->vps, PW_FRAMED_IP_NETMASK) == NULL) {
+		if (pairfind(request->reply->vps, PW_FRAMED_IP_NETMASK, 0) == NULL) {
 			vp = radius_paircreate(request, &request->reply->vps,
 					       PW_FRAMED_IP_NETMASK,
 					       PW_TYPE_IPADDR);

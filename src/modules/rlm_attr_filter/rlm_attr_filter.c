@@ -187,7 +187,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 	if (!inst->key) {
 		VALUE_PAIR	*namepair;
 
-		namepair = pairfind(request->packet->vps, PW_REALM);
+		namepair = pairfind(request->packet->vps, PW_REALM, 0);
 		if (!namepair) {
 			return (RLM_MODULE_NOOP);
 		}

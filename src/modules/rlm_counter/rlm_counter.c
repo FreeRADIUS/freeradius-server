@@ -572,7 +572,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	int acctstatustype = 0;
 	time_t diff;
 
-	if ((key_vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL)
+	if ((key_vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0)) != NULL)
 		acctstatustype = key_vp->vp_integer;
 	else {
 		DEBUG("rlm_counter: Could not find account status type in packet.");
@@ -582,7 +582,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 		DEBUG("rlm_counter: We only run on Accounting-Stop packets.");
 		return RLM_MODULE_NOOP;
 	}
-	uniqueid_vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID);
+	uniqueid_vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID, 0);
 	if (uniqueid_vp != NULL)
 		DEBUG("rlm_counter: Packet Unique ID = '%s'",uniqueid_vp->vp_strvalue);
 
@@ -606,7 +606,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	 * Check if we need to watch out for a specific service-type. If yes then check it
 	 */
 	if (data->service_type != NULL) {
-		if ((proto_vp = pairfind(request->packet->vps, PW_SERVICE_TYPE)) == NULL){
+		if ((proto_vp = pairfind(request->packet->vps, PW_SERVICE_TYPE, 0)) == NULL){
 			DEBUG("rlm_counter: Could not find Service-Type attribute in the request. Returning NOOP.");
 			return RLM_MODULE_NOOP;
 		}
@@ -619,7 +619,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	 * Check if request->timestamp - {Acct-Delay-Time} < last_reset
 	 * If yes reject the packet since it is very old
 	 */
-	key_vp = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME);
+	key_vp = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME, 0);
 	if (key_vp != NULL){
 		if (key_vp->vp_integer != 0 &&
 		    (request->timestamp - key_vp->vp_integer) < data->last_reset){
@@ -848,7 +848,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 				res += check_vp->vp_integer;
 			}
 
-			if ((reply_item = pairfind(request->reply->vps, PW_SESSION_TIMEOUT)) != NULL) {
+			if ((reply_item = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0)) != NULL) {
 				if (reply_item->vp_integer > res)
 					reply_item->vp_integer = res;
 			} else {

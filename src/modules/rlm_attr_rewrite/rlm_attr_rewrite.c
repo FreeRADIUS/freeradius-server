@@ -169,7 +169,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 	char search_STR[MAX_STRING_LEN];
 	char replace_STR[MAX_STRING_LEN];
 
-	if ((attr_vp = pairfind(request->config_items, PW_REWRITE_RULE)) != NULL){
+	if ((attr_vp = pairfind(request->config_items, PW_REWRITE_RULE, 0)) != NULL){
 		if (data->name == NULL || strcmp(data->name,attr_vp->vp_strvalue))
 			return RLM_MODULE_NOOP;
 	}

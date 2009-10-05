@@ -981,7 +981,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req,
                 return 1;
         }
 
-        while((vp_user_dn = pairfind(*request_pairs, PW_LDAP_USERDN)) == NULL){
+        while((vp_user_dn = pairfind(*request_pairs, PW_LDAP_USERDN, 0)) == NULL){
                 char            *user_dn = NULL;
 
                 if (!radius_xlat(filter, sizeof(filter), inst->filter,
@@ -1399,7 +1399,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	 * attributes it contains in the check and reply pairs
 	 */
 
-	user_profile = pairfind(request->config_items, PW_USER_PROFILE);
+	user_profile = pairfind(request->config_items, PW_USER_PROFILE, 0);
 	if (inst->default_profile || user_profile){
 		char *profile = inst->default_profile;
 
@@ -1561,12 +1561,12 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 			res = 0;
 
-			if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD)) == NULL){
+			if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0)) == NULL){
 
 				universal_password = rad_malloc(universal_password_len);
 				memset(universal_password, 0, universal_password_len);
 
-				vp_user_dn = pairfind(request->config_items,PW_LDAP_USERDN);
+				vp_user_dn = pairfind(request->config_items,PW_LDAP_USERDN, 0);
 				res = nmasldap_get_password(conn->ld,vp_user_dn->vp_strvalue,&universal_password_len,universal_password);
 
 				if (res == 0){
@@ -1720,8 +1720,8 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	*	to read the documentation.
 	*/
        if (debug_flag > 1) {
-	       if (!pairfind(request->config_items, PW_CLEARTEXT_PASSWORD) &&
-		   !pairfind(request->config_items, PW_USER_PASSWORD)) {
+	       if (!pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0) &&
+		   !pairfind(request->config_items, PW_USER_PASSWORD, 0)) {
 		       DEBUG("WARNING: No \"known good\" password was found in LDAP.  Are you sure that the user is configured correctly?");
 	       }
        }
@@ -1733,7 +1733,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	 * ldap instances to work.
 	 */
 	if (inst->set_auth_type &&
-	    (pairfind(*check_pairs, PW_AUTH_TYPE) == NULL) &&
+	    (pairfind(*check_pairs, PW_AUTH_TYPE, 0) == NULL) &&
 	    request->password &&
 	    (request->password->attribute == PW_USER_PASSWORD) &&
 	    !added_known_password) {
@@ -1916,7 +1916,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 				challenge = rad_malloc(MAX_CHALLENGE_LEN);
 
 				/*  If state attribute present in request it is a reply to challenge. */
-				if((vp_state = pairfind(request->packet->vps, PW_STATE))!= NULL ){
+				if((vp_state = pairfind(request->packet->vps, PW_STATE, 0))!= NULL ){
 					RDEBUG("Response to Access-Challenge");
 					strncpy(challenge, vp_state->vp_strvalue, sizeof(challenge));
 					challenge_len = vp_state->length;
@@ -2096,7 +2096,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 
 				if (request->reply->code == PW_AUTHENTICATION_REJECT) {
 				  /* Bind to eDirectory as the RADIUS user with a wrong password. */
-				  vp_pwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD);
+				  vp_pwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
 				  strcpy(password, vp_pwd->vp_strvalue);
 				  if (strlen(password) > 0) {
 					  if (password[0] != 'a') {
@@ -2110,7 +2110,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 				  res = RLM_MODULE_REJECT;
 				} else {
 					/* Bind to eDirectory as the RADIUS user using the user's UP */
-					vp_pwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD);
+					vp_pwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
 					if (vp_pwd == NULL) {
 						RDEBUG("User's Universal Password not in config items list.");
 						return RLM_MODULE_FAIL;

@@ -132,7 +132,7 @@ static int cram_authenticate(UNUSED void * instance, REQUEST *request)
 	VALUE_PAIR *authtype, *challenge, *response, *password;
 	char buffer[64];
 
-	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD);
+	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
 	if(!password) {
 		radlog(L_AUTH, "rlm_cram: Cleartext-Password is required for authentication.");
 		return RLM_MODULE_INVALID;

@@ -986,7 +986,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 		return 0;
 	}
 
-	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE);
+	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE, 0);
 	if (!vp) vp = radius_paircreate(request, &request->config_items,
 					PW_POST_PROXY_TYPE, PW_TYPE_INTEGER);
 	vp->vp_integer = dval->value;
@@ -1381,7 +1381,7 @@ static int update_event_timestamp(RADIUS_PACKET *packet, time_t when)
 {
 	VALUE_PAIR *vp;
 
-	vp = pairfind(packet->vps, PW_EVENT_TIMESTAMP);
+	vp = pairfind(packet->vps, PW_EVENT_TIMESTAMP, 0);
 	if (!vp) return 0;
 
 	vp->vp_date = when;
@@ -1529,14 +1529,8 @@ static int originated_coa_request(REQUEST *request)
 	rad_assert(!request->in_proxy_hash);
 	rad_assert(request->proxy_reply == NULL);
 
-	/*
-	 *	Check whether we want to originate one, or cancel one.
-	 */
-	vp = pairfind(request->config_items, PW_SEND_COA_REQUEST);
-	if (!vp && request->coa) {
-		vp = pairfind(request->coa->proxy->vps, PW_SEND_COA_REQUEST);
-	}
-
+	vp = pairfind(request->config_items, PW_SEND_COA_REQUEST, 0);
+	if (!vp && request->coa) vp = pairfind(request->coa->proxy->vps, PW_SEND_COA_REQUEST, 0);
 	if (vp) {
 		if (vp->vp_integer == 0) {
 			ev_request_free(&request->coa);
@@ -1553,7 +1547,7 @@ static int originated_coa_request(REQUEST *request)
 	 *	src_ipaddr will be set up in proxy_encode.
 	 */
 	memset(&ipaddr, 0, sizeof(ipaddr));
-	vp = pairfind(coa->proxy->vps, PW_PACKET_DST_IP_ADDRESS);
+	vp = pairfind(coa->proxy->vps, PW_PACKET_DST_IP_ADDRESS, 0);
 	if (vp) {
 		ipaddr.af = AF_INET;
 		ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
@@ -1605,7 +1599,7 @@ static int originated_coa_request(REQUEST *request)
 	} else if (!coa->home_server) {
 		int port = PW_COA_UDP_PORT;
 
-		vp = pairfind(coa->proxy->vps, PW_PACKET_DST_PORT);
+		vp = pairfind(coa->proxy->vps, PW_PACKET_DST_PORT, 0);
 		if (vp) port = vp->vp_integer;
 
 		coa->home_server = home_server_find(&ipaddr, port, IPPROTO_UDP);
@@ -1617,7 +1611,7 @@ static int originated_coa_request(REQUEST *request)
 		}
 	}
 
-	vp = pairfind(coa->proxy->vps, PW_PACKET_TYPE);
+	vp = pairfind(coa->proxy->vps, PW_PACKET_TYPE, 0);
 	if (vp) {
 		switch (vp->vp_integer) {
 		case PW_COA_REQUEST:
@@ -1654,7 +1648,7 @@ static int originated_coa_request(REQUEST *request)
 	/*
 	 *	Call the pre-proxy routines.
 	 */
-	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE);
+	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE, 0);
 	if (vp) {
 		RDEBUG2("  Found Pre-Proxy-Type %s", vp->vp_strvalue);
 		pre_proxy_type = vp->vp_integer;
@@ -1771,7 +1765,7 @@ static int process_proxy_reply(REQUEST *request)
 	 *	Run the packet through the post-proxy stage,
 	 *	BEFORE playing games with the attributes.
 	 */
-	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE);
+	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE, 0);
 	if (vp) {
 		RDEBUG2("  Found Post-Proxy-Type %s", vp->vp_strvalue);
 		post_proxy_type = vp->vp_integer;
@@ -2095,11 +2089,11 @@ static int successfully_proxied_request(REQUEST *request)
 		return 0;
 	}
 
-	realmpair = pairfind(request->config_items, PW_PROXY_TO_REALM);
+	realmpair = pairfind(request->config_items, PW_PROXY_TO_REALM, 0);
 	if (!realmpair || (realmpair->length == 0)) {
 		int pool_type;
 
-		vp = pairfind(request->config_items, PW_HOME_SERVER_POOL);
+		vp = pairfind(request->config_items, PW_HOME_SERVER_POOL, 0);
 		if (!vp) return 0;
 
 		switch (request->packet->code) {
@@ -2200,7 +2194,7 @@ found_pool:
 	 *	requests.
 	 */
 	if (realm && (realm->striprealm == TRUE) &&
-	   (strippedname = pairfind(request->proxy->vps, PW_STRIPPED_USER_NAME)) != NULL) {
+	   (strippedname = pairfind(request->proxy->vps, PW_STRIPPED_USER_NAME, 0)) != NULL) {
 		/*
 		 *	If there's a Stripped-User-Name attribute in
 		 *	the request, then use THAT as the User-Name
@@ -2214,7 +2208,7 @@ found_pool:
 		 *	from the vps list, and making the new
 		 *	User-Name the head of the vps list.
 		 */
-		vp = pairfind(request->proxy->vps, PW_USER_NAME);
+		vp = pairfind(request->proxy->vps, PW_USER_NAME, 0);
 		if (!vp) {
 			vp = radius_paircreate(request, NULL,
 					       PW_USER_NAME, PW_TYPE_STRING);
@@ -2239,8 +2233,8 @@ found_pool:
 	 *	anymore - we changed it.
 	 */
 	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-	    pairfind(request->proxy->vps, PW_CHAP_PASSWORD) &&
-	    pairfind(request->proxy->vps, PW_CHAP_CHALLENGE) == NULL) {
+	    pairfind(request->proxy->vps, PW_CHAP_PASSWORD, 0) &&
+	    pairfind(request->proxy->vps, PW_CHAP_CHALLENGE, 0) == NULL) {
 		vp = radius_paircreate(request, &request->proxy->vps,
 				       PW_CHAP_CHALLENGE, PW_TYPE_OCTETS);
 		vp->length = AUTH_VECTOR_LEN;
@@ -2266,7 +2260,7 @@ found_pool:
 	/*
 	 *	Call the pre-proxy routines.
 	 */
-	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE);
+	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE, 0);
 	if (vp) {
 		RDEBUG2("  Found Pre-Proxy-Type %s", vp->vp_strvalue);
 		pre_proxy_type = vp->vp_integer;
@@ -2371,7 +2365,7 @@ static void request_post_handler(REQUEST *request)
 	 */
 	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
 	    (request->reply->code == 0) &&
-	    ((vp = pairfind(request->config_items, PW_AUTH_TYPE)) != NULL) &&
+	    ((vp = pairfind(request->config_items, PW_AUTH_TYPE, 0)) != NULL) &&
 	    (vp->vp_integer == PW_AUTHTYPE_REJECT)) {
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 	}
@@ -2559,7 +2553,7 @@ static void request_post_handler(REQUEST *request)
 	 */
 	if (!request->proxy &&
 	    (request->coa ||
-	     (pairfind(request->config_items, PW_SEND_COA_REQUEST) != NULL))) {
+	     (pairfind(request->config_items, PW_SEND_COA_REQUEST, 0) != NULL))) {
 		if (!originated_coa_request(request)) {
 			RDEBUG2("Do CoA Fail handler here");
 		}

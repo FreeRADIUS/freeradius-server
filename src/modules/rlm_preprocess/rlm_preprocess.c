@@ -76,7 +76,7 @@ static const CONF_PARSER module_config[] = {
 static int fallthrough(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = pairfind(vp, PW_FALL_THROUGH);
+	tmp = pairfind(vp, PW_FALL_THROUGH, 0);
 
 	return tmp ? tmp->lvalue : 0;
 }
@@ -216,7 +216,7 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 	 *	If it isn't there, then we can't mangle the request.
 	 */
 	request_pairs = request->packet->vps;
-	namepair = pairfind(request_pairs, PW_USER_NAME);
+	namepair = pairfind(request_pairs, PW_USER_NAME, 0);
 	if ((namepair == NULL) ||
 	    (namepair->length <= 0)) {
 	  return;
@@ -264,8 +264,8 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 	 *	Small check: if Framed-Protocol present but Service-Type
 	 *	is missing, add Service-Type = Framed-User.
 	 */
-	if (pairfind(request_pairs, PW_FRAMED_PROTOCOL) != NULL &&
-	    pairfind(request_pairs, PW_SERVICE_TYPE) == NULL) {
+	if (pairfind(request_pairs, PW_FRAMED_PROTOCOL, 0) != NULL &&
+	    pairfind(request_pairs, PW_SERVICE_TYPE, 0) == NULL) {
 		tmp = radius_paircreate(request, &request->packet->vps,
 					PW_SERVICE_TYPE, PW_TYPE_INTEGER);
 		tmp->vp_integer = PW_FRAMED_USER;
@@ -322,7 +322,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 	/*
 	 *	Check for valid input, zero length names not permitted
 	 */
-	if ((tmp = pairfind(request_pairs, PW_USER_NAME)) == NULL)
+	if ((tmp = pairfind(request_pairs, PW_USER_NAME, 0)) == NULL)
 		name = NULL;
 	else
 		name = (char *)tmp->vp_strvalue;
@@ -397,7 +397,7 @@ static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 			 *  We've matched the huntgroup, so add it in
 			 *  to the list of request pairs.
 			 */
-			vp = pairfind(request_pairs, PW_HUNTGROUP_NAME);
+			vp = pairfind(request_pairs, PW_HUNTGROUP_NAME, 0);
 			if (!vp) {
 				vp = radius_paircreate(request,
 						       &request->packet->vps,
@@ -425,7 +425,7 @@ static int add_nas_attr(REQUEST *request)
 
 	switch (request->packet->src_ipaddr.af) {
 	case AF_INET:
-		nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS);
+		nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0);
 		if (!nas) {
 			nas = radius_paircreate(request, &request->packet->vps,
 						PW_NAS_IP_ADDRESS,
@@ -435,7 +435,7 @@ static int add_nas_attr(REQUEST *request)
 		break;
 
 	case AF_INET6:
-		nas = pairfind(request->packet->vps, PW_NAS_IPV6_ADDRESS);
+		nas = pairfind(request->packet->vps, PW_NAS_IPV6_ADDRESS, 0);
 		if (!nas) {
 			nas = radius_paircreate(request, &request->packet->vps,
 						PW_NAS_IPV6_ADDRESS,
@@ -566,8 +566,8 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 	 *      is PW_CHAP_CHALLENGE we need to add it so that other
 	 *	modules can use it as a normal attribute.
 	 */
-	if (pairfind(request->packet->vps, PW_CHAP_PASSWORD) &&
-	    pairfind(request->packet->vps, PW_CHAP_CHALLENGE) == NULL) {
+	if (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0) &&
+	    pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0) == NULL) {
 		VALUE_PAIR *vp;
 
 		vp = radius_paircreate(request, &request->packet->vps,

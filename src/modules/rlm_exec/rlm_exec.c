@@ -358,11 +358,11 @@ static int exec_postauth(void *instance, REQUEST *request)
 	VALUE_PAIR *vp, *tmp;
 	rlm_exec_t *inst = (rlm_exec_t *) instance;
 
-	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM);
+	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM, 0);
 	if (vp) {
 		exec_wait = 0;
 
-	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT)) != NULL) {
+	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT, 0)) != NULL) {
 		exec_wait = 1;
 	}
 	if (!vp) goto dispatch;

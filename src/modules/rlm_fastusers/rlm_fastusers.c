@@ -86,7 +86,7 @@ static const CONF_PARSER module_config[] = {
 static int fallthrough(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = pairfind(vp, PW_FALL_THROUGH);
+	tmp = pairfind(vp, PW_FALL_THROUGH, 0);
 	return tmp ? tmp->vp_integer : 0;
 }
 
@@ -102,7 +102,7 @@ static int rad_check_return(VALUE_PAIR *list)
        * We check for Auth-Type = Reject here
        */
 
-      authtype = pairfind(list, PW_AUTHTYPE);
+      authtype = pairfind(list, PW_AUTHTYPE, 0);
       if((authtype) && authtype->vp_integer == PW_AUTHTYPE_REJECT)  {
               DEBUG2("rad_check_return:  Auth-Type is Reject");
               return RLM_MODULE_REJECT;

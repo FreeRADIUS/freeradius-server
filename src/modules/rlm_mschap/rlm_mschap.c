@@ -434,7 +434,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 	} else if (strncasecmp(fmt, "NT-Domain", 9) == 0) {
 		char *p, *q;
 
-		user_name = pairfind(request->packet->vps, PW_USER_NAME);
+		user_name = pairfind(request->packet->vps, PW_USER_NAME, 0);
 		if (!user_name) {
 			RDEBUG2("No User-Name was found in the request.");
 			return 0;
@@ -489,7 +489,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 	} else if (strncasecmp(fmt, "User-Name", 9) == 0) {
 		char *p;
 
-		user_name = pairfind(request->packet->vps, PW_USER_NAME);
+		user_name = pairfind(request->packet->vps, PW_USER_NAME, 0);
 		if (!user_name) {
 			RDEBUG2("No User-Name was found in the request.");
 			return 0;
@@ -963,14 +963,14 @@ static int mschap_authorize(void * instance, REQUEST *request)
 #define inst ((rlm_mschap_t *)instance)
 	VALUE_PAIR *challenge = NULL, *response = NULL;
 
-	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE);
+	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE, 0);
 	if (!challenge) {
 		return RLM_MODULE_NOOP;
 	}
 
-	response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE);
+	response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE, 0);
 	if (!response)
-		response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE);
+		response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, 0);
 
 	/*
 	 *	Nothing we recognize.  Don't do anything.
@@ -980,7 +980,7 @@ static int mschap_authorize(void * instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-	if (pairfind(request->config_items, PW_AUTH_TYPE)) {
+	if (pairfind(request->config_items, PW_AUTH_TYPE, 0)) {
 		RDEBUG2("Found existing Auth-Type.  Not changing it.");
 		return RLM_MODULE_NOOP;
 	}
@@ -1052,7 +1052,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	 *	Find the SMB-Account-Ctrl attribute, or the
 	 *	SMB-Account-Ctrl-Text attribute.
 	 */
-	smb_ctrl = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL);
+	smb_ctrl = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL, 0);
 	if (!smb_ctrl) {
 		password = pairfind(request->config_items,
 				    PW_SMB_ACCOUNT_CTRL_TEXT);
@@ -1084,12 +1084,12 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	/*
 	 *	Decide how to get the passwords.
 	 */
-	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD);
+	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
 
 	/*
 	 *	We need an LM-Password.
 	 */
-	lm_password = pairfind(request->config_items, PW_LM_PASSWORD);
+	lm_password = pairfind(request->config_items, PW_LM_PASSWORD, 0);
 	if (lm_password) {
 		/*
 		 *	Allow raw octets.
@@ -1124,7 +1124,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	/*
 	 *	We need an NT-Password.
 	 */
-	nt_password = pairfind(request->config_items, PW_NT_PASSWORD);
+	nt_password = pairfind(request->config_items, PW_NT_PASSWORD, 0);
 	if (nt_password) {
 		if ((nt_password->length == 16) ||
 		    ((nt_password->length == 32) &&
@@ -1153,7 +1153,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		}
 	}
 
-	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE);
+	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE, 0);
 	if (!challenge) {
 		RDEBUG2("No MS-CHAP-Challenge in the request");
 		return RLM_MODULE_REJECT;
@@ -1162,7 +1162,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	/*
 	 *	We also require an MS-CHAP-Response.
 	 */
-	response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE);
+	response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE, 0);
 
 	/*
 	 *	MS-CHAP-Response, means MS-CHAPv1
@@ -1215,7 +1215,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 		chap = 1;
 
-	} else if ((response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE)) != NULL) {
+	} else if ((response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, 0)) != NULL) {
 		uint8_t	mschapv1_challenge[16];
 
 		/*
@@ -1237,7 +1237,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		/*
 		 *	We also require a User-Name
 		 */
-		username = pairfind(request->packet->vps, PW_USER_NAME);
+		username = pairfind(request->packet->vps, PW_USER_NAME, 0);
 		if (!username) {
 			radlog_request(L_AUTH, 0, request, "We require a User-Name for MS-CHAPv2");
 			return RLM_MODULE_INVALID;

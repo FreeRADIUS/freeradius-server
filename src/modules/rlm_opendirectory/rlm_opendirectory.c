@@ -414,7 +414,7 @@ int od_authorize(void *instance, REQUEST *request)
 	
 	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
 		radlog(L_DBG, "rlm_opendirectory: no access control groups, all users allowed.");
-    	if (pairfind(request->config_items, PW_AUTH_TYPE) == NULL) {
+	if (pairfind(request->config_items, PW_AUTH_TYPE, 0) == NULL) {
     		pairadd(&request->config_items, pairmake("Auth-Type", kAuthType, T_OP_EQ));
     		radlog(L_DBG, "rlm_opendirectory: Setting Auth-Type = %s", kAuthType);
 		}
@@ -465,7 +465,7 @@ int od_authorize(void *instance, REQUEST *request)
 	}
 	
 	radlog(L_AUTH, "rlm_opendirectory: User <%s> is authorized.", name ? name : "unknown");
-	if (pairfind(request->config_items, PW_AUTH_TYPE) == NULL) {
+	if (pairfind(request->config_items, PW_AUTH_TYPE, 0) == NULL) {
 		pairadd(&request->config_items, pairmake("Auth-Type", kAuthType, T_OP_EQ));
 		radlog(L_DBG, "rlm_opendirectory: Setting Auth-Type = %s", kAuthType);
 	}

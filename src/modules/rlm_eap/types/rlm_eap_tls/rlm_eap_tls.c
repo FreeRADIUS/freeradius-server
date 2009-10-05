@@ -929,7 +929,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *	just too much.
 	 */
 	ssn->offset = inst->conf->fragment_size;
-	vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU);
+	vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU, 0);
 	if (vp && ((vp->vp_integer - 14) < ssn->offset)) {
 		/*
 		 *	Discount the Framed-MTU by:

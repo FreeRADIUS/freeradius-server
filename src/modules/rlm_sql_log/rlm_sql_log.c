@@ -423,7 +423,7 @@ static int sql_log_accounting(void *instance, REQUEST *request)
 	RDEBUG("Processing sql_log_accounting");
 
 	/* Find the Acct Status Type. */
-	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) == NULL) {
+	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0)) == NULL) {
 		radlog_request(L_ERR, 0, request, "Packet has no account status type");
 		return RLM_MODULE_INVALID;
 	}

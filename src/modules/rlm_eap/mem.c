@@ -407,7 +407,7 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 	 *	We key the sessions off of the 'state' attribute, so it
 	 *	must exist.
 	 */
-	state = pairfind(request->packet->vps, PW_STATE);
+	state = pairfind(request->packet->vps, PW_STATE, 0);
 	if (!state ||
 	    (state->length != EAP_STATE_LEN)) {
 		return NULL;

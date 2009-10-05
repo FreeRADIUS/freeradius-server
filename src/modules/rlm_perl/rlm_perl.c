@@ -819,7 +819,7 @@ static int perl_accounting(void *instance, REQUEST *request)
 	VALUE_PAIR	*pair;
 	int 		acctstatustype=0;
 
-	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL) {
+	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0)) != NULL) {
 		acctstatustype = pair->vp_integer;
         } else {
                 radlog(L_ERR, "Invalid Accounting Packet");

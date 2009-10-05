@@ -192,7 +192,7 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 		/*
 		 *	For now, do clear-text password authentication.
 		 */
-		vp = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD);
+		vp = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD, 0);
 		if (!vp) {
 			DEBUG2("  rlm_eap_gtc: ERROR: Cleartext-Password is required for authentication.");
 			eap_ds->request->code = PW_EAP_FAILURE;

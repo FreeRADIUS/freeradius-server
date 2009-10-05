@@ -181,7 +181,7 @@ otp_authorize(void *instance, REQUEST *request)
     VALUE_PAIR *vp;
 
     auth_type_found = 0;
-    if ((vp = pairfind(request->config_items, PW_AUTHTYPE)) != NULL) {
+    if ((vp = pairfind(request->config_items, PW_AUTHTYPE, 0)) != NULL) {
       auth_type_found = 1;
       if (strcmp(vp->vp_strvalue, inst->name))
         return RLM_MODULE_NOOP;
@@ -189,7 +189,7 @@ otp_authorize(void *instance, REQUEST *request)
   }
 
   /* The State attribute will be present if this is a response. */
-  if (pairfind(request->packet->vps, PW_STATE) != NULL) {
+  if (pairfind(request->packet->vps, PW_STATE, 0) != NULL) {
     DEBUG("rlm_otp: autz: Found response to Access-Challenge");
     return RLM_MODULE_OK;
   }
@@ -313,7 +313,7 @@ otp_authenticate(void *instance, REQUEST *request)
                                           "rlm_otp", T_OP_EQ));
 
   /* Retrieve the challenge (from State attribute). */
-  if ((vp = pairfind(request->packet->vps, PW_STATE)) != NULL) {
+  if ((vp = pairfind(request->packet->vps, PW_STATE, 0)) != NULL) {
     unsigned char	state[OTP_MAX_RADSTATE_LEN];
     unsigned char	raw_state[OTP_MAX_RADSTATE_LEN];
     unsigned char	rad_state[OTP_MAX_RADSTATE_LEN];

@@ -400,7 +400,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 		/*
 		 * insert the identity here.
 		 */
-		vp = pairfind(rep->vps, PW_USER_NAME);
+		vp = pairfind(rep->vps, PW_USER_NAME, 0);
 		if(vp == NULL)
 		{
 			fprintf(stderr, "eap-sim: We need to have a User-Name attribute!\n");
@@ -796,15 +796,15 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	/*
 	 *	Keep a copy of the the User-Password attribute.
 	 */
-	if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD)) != NULL) {
+	if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0)) != NULL) {
 		strlcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 
-	} else 	if ((vp = pairfind(rep->vps, PW_USER_PASSWORD)) != NULL) {
+	} else 	if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0)) != NULL) {
 		strlcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 		/*
 		 *	Otherwise keep a copy of the CHAP-Password attribute.
 		 */
-	} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD)) != NULL) {
+	} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0)) != NULL) {
 		strlcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 	} else {
 		*password = '\0';
@@ -864,15 +864,15 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 			sizeof(rep->vector));
 
 	if (*password != '\0') {
-		if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD)) != NULL) {
+		if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0)) != NULL) {
 			strlcpy((char *)vp->vp_strvalue, password, sizeof(vp->vp_strvalue));
 			vp->length = strlen(password);
 
-		} else if ((vp = pairfind(rep->vps, PW_USER_PASSWORD)) != NULL) {
+		} else if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0)) != NULL) {
 			strlcpy((char *)vp->vp_strvalue, password, sizeof(vp->vp_strvalue));
 			vp->length = strlen(password);
 
-		} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD)) != NULL) {
+		} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0)) != NULL) {
 			strlcpy((char *)vp->vp_strvalue, password, sizeof(vp->vp_strvalue));
 			vp->length = strlen(password);
 

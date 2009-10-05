@@ -416,15 +416,15 @@ static int pap_authorize(void *instance, REQUEST *request)
 		 *	Likely going to be proxied.  Avoid printing
 		 *	warning message.
 		 */
-		if (pairfind(request->config_items, PW_REALM) ||
-		    (pairfind(request->config_items, PW_PROXY_TO_REALM))) {
+		if (pairfind(request->config_items, PW_REALM, 0) ||
+		    (pairfind(request->config_items, PW_PROXY_TO_REALM, 0))) {
 			return RLM_MODULE_NOOP;
 		}
 
 		/*
 		 *	The TLS types don't need passwords.
 		 */
-		vp = pairfind(request->packet->vps, PW_EAP_TYPE);
+		vp = pairfind(request->packet->vps, PW_EAP_TYPE, 0);
 		if (vp &&
 		    ((vp->vp_integer == 13) || /* EAP-TLS */
 		     (vp->vp_integer == 21) || /* EAP-TTLS */
@@ -562,14 +562,14 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		vp = NULL;
 
 		if (inst->sch == PAP_ENC_CRYPT) {
-			vp = pairfind(request->config_items, PW_CRYPT_PASSWORD);
+			vp = pairfind(request->config_items, PW_CRYPT_PASSWORD, 0);
 		}
 
 		/*
 		 *	Old-style: all passwords are in User-Password.
 		 */
 		if (!vp) {
-			vp = pairfind(request->config_items, PW_USER_PASSWORD);
+			vp = pairfind(request->config_items, PW_USER_PASSWORD, 0);
 			if (!vp) goto fail;
 		}
 	}

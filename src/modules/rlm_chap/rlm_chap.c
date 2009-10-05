@@ -38,11 +38,11 @@ static int chap_authorize(void *instance, REQUEST *request)
 	instance = instance;
 	request = request;
 
-	if (!pairfind(request->packet->vps, PW_CHAP_PASSWORD)) {
+	if (!pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0)) {
 		return RLM_MODULE_NOOP;
 	}
 
-	if (pairfind(request->config_items, PW_AUTHTYPE) != NULL) {
+	if (pairfind(request->config_items, PW_AUTHTYPE, 0) != NULL) {
 		RDEBUG2("WARNING: Auth-Type already set.  Not setting to CHAP");
 		return RLM_MODULE_NOOP;
 	}
@@ -76,7 +76,7 @@ static int chap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	chap = pairfind(request->packet->vps, PW_CHAP_PASSWORD);
+	chap = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0);
 	if (!chap) {
 		radlog_request(L_AUTH, 0, request, "rlm_chap: Attribute \"CHAP-Password\" is required for authentication.");
 		return RLM_MODULE_INVALID;
@@ -98,7 +98,7 @@ static int chap_authenticate(void *instance, REQUEST *request)
 	RDEBUG("login attempt by \"%s\" with CHAP password",
 		request->username->vp_strvalue);
 
-	if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD)) == NULL){
+	if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0)) == NULL){
 	  RDEBUG("Cleartext-Password is required for authentication");
 		snprintf(module_fmsg, sizeof(module_fmsg),
 			 "rlm_chap: Clear text password not available");

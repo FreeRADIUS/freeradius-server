@@ -419,7 +419,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 					DEBUG("WARNING: Are you sure you don't mean Cleartext-Password?");
 					DEBUG("WARNING: See \"man rlm_pap\" for more information.");
 				}
-				if (pairfind(request, PW_USER_PASSWORD) == NULL) {
+				if (pairfind(request, PW_USER_PASSWORD, 0) == NULL) {
 					continue;
 				}
 				break;

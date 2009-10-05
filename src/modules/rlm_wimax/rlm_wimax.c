@@ -116,7 +116,7 @@ static int wimax_authorize(void *instance, REQUEST *request)
 	/*
 	 *	Fix Calling-Station-Id.  Damn you, WiMAX!
 	 */
-	vp =  pairfind(request->packet->vps, PW_CALLING_STATION_ID);
+	vp =  pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0);
 	if (vp && (vp->length == 6)) {
 		int i;
 		uint8_t buffer[6];
@@ -229,7 +229,7 @@ static int wimax_postauth(void *instance, REQUEST *request)
 	HMAC_Update(&hmac, &usage_data[0], sizeof(usage_data));
 	HMAC_Final(&hmac, &mip_rk_2[0], &rk2_len);
 
-	vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT);
+	vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0);
 	if (vp) rk_lifetime = vp->vp_integer;
 
 	memcpy(mip_rk, mip_rk_1, rk1_len);

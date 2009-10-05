@@ -122,7 +122,7 @@ static const CONF_PARSER module_config[] = {
 static int fallthrough(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = pairfind(vp, PW_FALL_THROUGH);
+	tmp = pairfind(vp, PW_FALL_THROUGH, 0);
 
 	return tmp ? tmp->vp_integer : 0;
 }
@@ -1085,7 +1085,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		/*
 	 	* Check for a default_profile or for a User-Profile.
 		*/
-		user_profile = pairfind(request->config_items, PW_USER_PROFILE);
+		user_profile = pairfind(request->config_items, PW_USER_PROFILE, 0);
 		if (inst->config->default_profile[0] != 0 || user_profile != NULL){
 			char *profile = inst->config->default_profile;
 
@@ -1155,7 +1155,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	/*
 	 * Find the Acct Status Type
 	 */
-	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) != NULL) {
+	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0)) != NULL) {
 		acctstatustype = pair->vp_integer;
 	} else {
 		radius_xlat(logstr, sizeof(logstr), "packet has no accounting status type. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
@@ -1316,7 +1316,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				        	 * This is to fix CISCO's aaa from filling our
 				        	 * table with bogus crap
 					         */
-					        if ((pair = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME)) != NULL)
+					        if ((pair = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME, 0)) != NULL)
 					                acctsessiontime = pair->vp_integer;
 
 						if (acctsessiontime <= 0) {
@@ -1458,9 +1458,9 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
          */
 	request->simul_count = 0;
 
-        if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS)) != NULL)
+        if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0)) != NULL)
                 ipno = vp->vp_ipaddr;
-        if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) != NULL)
+        if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0)) != NULL)
                 call_num = vp->vp_strvalue;
 
 

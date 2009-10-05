@@ -1982,7 +1982,7 @@ home_server *home_server_ldb(const char *realmname,
 		break;
 
 	case HOME_POOL_KEYED_BALANCE:
-		if ((vp = pairfind(request->config_items, PW_LOAD_BALANCE_KEY)) != NULL) {
+		if ((vp = pairfind(request->config_items, PW_LOAD_BALANCE_KEY, 0)) != NULL) {
 			hash = fr_hash(vp->vp_strvalue, vp->length);
 			start = hash % pool->num_home_servers;
 			break;
@@ -2176,7 +2176,7 @@ home_server *home_server_ldb(const char *realmname,
 		 */
 		if (found->message_authenticator &&
 		    (request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-		    !pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR)) {
+		    !pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0)) {
 			radius_pairmake(request, &request->proxy->vps,
 					"Message-Authenticator", "0x00",
 					T_OP_SET);

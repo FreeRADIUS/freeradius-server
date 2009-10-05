@@ -263,11 +263,11 @@ static int caching_postauth(void *instance, REQUEST *request)
 	int size = 0;
 	int rcode = 0;
 
-	if (pairfind(request->packet->vps, PW_CACHE_NO_CACHING) != NULL){
+	if (pairfind(request->packet->vps, PW_CACHE_NO_CACHING, 0) != NULL){
 		DEBUG("rlm_caching: Cache-No-Caching is set. Returning NOOP");
 		return RLM_MODULE_NOOP;
 	}
-	if ((auth_type = pairfind(request->config_items, PW_AUTH_TYPE)) != NULL){
+	if ((auth_type = pairfind(request->config_items, PW_AUTH_TYPE, 0)) != NULL){
 		DEBUG("rlm_caching: Found Auth-Type, value: '%s'",auth_type->vp_strvalue);
 		if (strcmp(auth_type->vp_strvalue,"Reject") == 0 && data->cache_rejects == 0){
 			DEBUG("rlm_caching: No caching of Rejects. Returning NOOP");
@@ -363,11 +363,11 @@ static int caching_authorize(void *instance, REQUEST *request)
 	instance = instance;
 	request = request;
 
-	if (pairfind(request->packet->vps, PW_CACHE_NO_CACHING) != NULL){
+	if (pairfind(request->packet->vps, PW_CACHE_NO_CACHING, 0) != NULL){
 		DEBUG("rlm_caching: Cache-No-Caching is set. Returning NOOP");
 		return RLM_MODULE_NOOP;
 	}
-	if (pairfind(request->packet->vps, PW_CACHE_DELETE_CACHE) != NULL){
+	if (pairfind(request->packet->vps, PW_CACHE_DELETE_CACHE, 0) != NULL){
 		DEBUG("rlm_caching: Found Cache-Delete-Cache. Will delete record if found");
 		delete_cache = 1;
 	}
@@ -430,7 +430,7 @@ static int caching_authorize(void *instance, REQUEST *request)
 		if (cache_data.auth_type){
 			DEBUG("rlm_caching: Adding Auth-Type '%s'",cache_data.auth_type);
 
-			if ((item = pairfind(request->config_items, PW_AUTH_TYPE)) == NULL){
+			if ((item = pairfind(request->config_items, PW_AUTH_TYPE, 0)) == NULL){
 				item = pairmake("Auth-Type", cache_data.auth_type, T_OP_SET);
 				pairadd(&request->config_items, item);
 			}
@@ -442,7 +442,7 @@ static int caching_authorize(void *instance, REQUEST *request)
 		if (data->post_auth){
 			DEBUG("rlm_caching: Adding Post-Auth-Type '%s'",data->post_auth);
 
-			if ((item = pairfind(request->config_items, PW_POST_AUTH_TYPE)) == NULL){
+			if ((item = pairfind(request->config_items, PW_POST_AUTH_TYPE, 0)) == NULL){
 				item = pairmake("Post-Auth-Type", data->post_auth, T_OP_SET);
 				pairadd(&request->config_items, item);
 			}
