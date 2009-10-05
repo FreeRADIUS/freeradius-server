@@ -241,7 +241,7 @@ int vp_prints_value(char * out, size_t outlen, VALUE_PAIR *vp, int delimitst)
 		case PW_TYPE_INTEGER:
 		        if ( vp->flags.has_tag ) {
 			        /* Attribute value has a tag, need to ignore it */
-			        if ((v = dict_valbyattr(vp->attribute, (vp->vp_integer & 0xffffff)))
+				if ((v = dict_valbyattr(vp->attribute, vp->vendor, (vp->vp_integer & 0xffffff)))
 				    != NULL)
 				        a = v->name;
 				else {
@@ -252,7 +252,7 @@ int vp_prints_value(char * out, size_t outlen, VALUE_PAIR *vp, int delimitst)
 		case PW_TYPE_BYTE:
 		case PW_TYPE_SHORT:
 			        /* Normal, non-tagged attribute */
-			        if ((v = dict_valbyattr(vp->attribute, vp->vp_integer))
+				if ((v = dict_valbyattr(vp->attribute, vp->vendor, vp->vp_integer))
 				    != NULL)
 				        a = v->name;
 				else {
@@ -385,14 +385,12 @@ static const char *vp_tokens[] = {
   "<`STRING`>"
 };
 
-const char *vp_print_name(char *buffer, size_t bufsize, int attr)
+const char *vp_print_name(char *buffer, size_t bufsize, int attr, int vendor)
 {
-	int vendor;
 	size_t len = 0;
 
 	if (!buffer) return NULL;
 
-	vendor = VENDOR(attr);
 	if (vendor) {
 		DICT_VENDOR *v;
 		
@@ -436,7 +434,7 @@ int vp_prints(char *out, size_t outlen, VALUE_PAIR *vp)
 	len = 0;
 
 	if (!name || !*name) {
-		if (!vp_print_name(namebuf, sizeof(namebuf), vp->attribute)) {
+		if (!vp_print_name(namebuf, sizeof(namebuf), vp->attribute, vp->attribute)) {
 			return 0;
 		}
 		name = namebuf;

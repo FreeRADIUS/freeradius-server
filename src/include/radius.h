@@ -298,22 +298,23 @@
 /*
  *  Vendor Private Enterprise Codes
  */
+#define VENDORPEC_MICROSOFT	311
 #define VENDORPEC_FREERADIUS	11344
-
+#define VENDORPEC_WIMAX		24757
 
 /*
  * Vendor specific attributes
  */
-#define PW_FREERADIUS_PROXIED_TO	((VENDORPEC_FREERADIUS<<16)|1)
+#define PW_FREERADIUS_PROXIED_TO	1
 
 /*
  *  Microsoft has vendor code 311.
  */
-#define PW_MSCHAP_RESPONSE	((311 << 16) | 1)
-#define PW_MSCHAP_ERROR		((311 << 16) | 2)
-#define PW_MSCHAP_CHALLENGE	((311 << 16) | 11)
-#define PW_MSCHAP2_RESPONSE	((311 << 16) | 25)
-#define PW_MSCHAP2_SUCCESS	((311 << 16) | 26)
+#define PW_MSCHAP_RESPONSE	1
+#define PW_MSCHAP_ERROR		2
+#define PW_MSCHAP_CHALLENGE	11
+#define PW_MSCHAP2_RESPONSE	25
+#define PW_MSCHAP2_SUCCESS	26
 
 
 /*

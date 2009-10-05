@@ -160,7 +160,7 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 
 	memset(&flags, 0, sizeof(flags));
-	dict_addattr(data->check_name, 0, PW_TYPE_STRING, -1,flags);
+	dict_addattr(data->check_name, -1, 0, PW_TYPE_STRING, flags);
 	dattr = dict_attrbyname(data->check_name);
 	if (!dattr){
 		radlog(L_ERR, "rlm_checkval: No such attribute %s",

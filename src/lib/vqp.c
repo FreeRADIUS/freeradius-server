@@ -435,7 +435,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 	tail = &packet->vps;
 
-	vp = paircreate(PW_VQP_PACKET_TYPE, PW_TYPE_OCTETS);
+	vp = paircreate(PW_VQP_PACKET_TYPE, 0, PW_TYPE_OCTETS);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -446,7 +446,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	*tail = vp;
 	tail = &(vp->next);
 
-	vp = paircreate(PW_VQP_ERROR_CODE, PW_TYPE_OCTETS);
+	vp = paircreate(PW_VQP_ERROR_CODE, 0, PW_TYPE_OCTETS);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -457,7 +457,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	*tail = vp;
 	tail = &(vp->next);
 
-	vp = paircreate(PW_VQP_SEQUENCE_NUMBER, PW_TYPE_OCTETS);
+	vp = paircreate(PW_VQP_SEQUENCE_NUMBER, 0, PW_TYPE_OCTETS);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -485,7 +485,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		 *	Hack to get the dictionaries to work correctly.
 		 */
 		attribute |= 0x2000;
-		vp = paircreate(attribute, PW_TYPE_OCTETS);
+		vp = paircreate(attribute, 0, PW_TYPE_OCTETS);
 		if (!vp) {
 			pairfree(&packet->vps);
 
@@ -556,7 +556,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	if (packet->data) return 0;
 
-	vp = pairfind(packet->vps, PW_VQP_PACKET_TYPE);
+	vp = pairfind(packet->vps, PW_VQP_PACKET_TYPE, 0);
 	if (!vp) {
 		fr_strerror_printf("Failed to find VQP-Packet-Type in response packet");
 		return -1;
@@ -571,7 +571,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	length = VQP_HDR_LEN;
 	memset(vps, 0, sizeof(vps));
 
-	vp = pairfind(packet->vps, PW_VQP_ERROR_CODE);
+	vp = pairfind(packet->vps, PW_VQP_ERROR_CODE, 0);
 
 	/*
 	 *	FIXME: Map attributes from calling-station-Id, etc.
@@ -586,7 +586,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	if (!vp) for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
 		if (!contents[code][i]) break;
 
-		vps[i] = pairfind(packet->vps, contents[code][i] | 0x2000);
+		vps[i] = pairfind(packet->vps, contents[code][i] | 0x2000, 0);
 
 		/*
 		 *	FIXME: Print the name...

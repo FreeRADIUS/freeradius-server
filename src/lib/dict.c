@@ -481,12 +481,12 @@ int dict_addvendor(const char *name, int value)
 /*
  *	Add an attribute to the dictionary.
  */
-int dict_addattr(const char *name, int vendor, int type, int value,
+int dict_addattr(const char *name, int attr, int vendor, int type,
 		 ATTR_FLAGS flags)
 {
 	size_t namelen;
 	static int      max_attr = 0;
-	DICT_ATTR	*attr;
+	DICT_ATTR	*da;
 
 	namelen = strlen(name);
 	if (namelen >= DICT_ATTR_MAX_NAME_LEN) {
@@ -495,33 +495,33 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	}
 
 	/*
-	 *	If the value is '-1', that means use a pre-existing
+	 *	If the attr is '-1', that means use a pre-existing
 	 *	one (if it already exists).  If one does NOT already exist,
 	 *	then create a new attribute, with a non-conflicting value,
 	 *	and use that.
 	 */
-	if (value == -1) {
+	if (attr == -1) {
 		if (dict_attrbyname(name)) {
 			return 0; /* exists, don't add it again */
 		}
 
-		value = ++max_attr;
+		attr = ++max_attr;
 
 	} else if (vendor == 0) {
 		/*
 		 *  Update 'max_attr'
 		 */
-		if (value > max_attr) {
-			max_attr = value;
+		if (attr > max_attr) {
+			max_attr = attr;
 		}
 	}
 
-	if (value < 0) {
+	if (attr < 0) {
 		fr_strerror_printf("dict_addattr: ATTRIBUTE has invalid number (less than zero)");
 		return -1;
 	}
 
-	if (value >= 65536) {
+	if (attr >= 65536) {
 		fr_strerror_printf("dict_addattr: ATTRIBUTE has invalid number (larger than 65535).");
 		return -1;
 	}
@@ -575,7 +575,7 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 		 *	FIXME: Switch over dv->type, and limit things
 		 *	properly.
 		 */
-		if ((dv->type == 1) && (value >= 256) && !flags.is_tlv) {
+		if ((dv->type == 1) && (attr >= 256) && !flags.is_tlv) {
 			fr_strerror_printf("dict_addattr: ATTRIBUTE has invalid number (larger than 255).");
 			return -1;
 		} /* else 256..65535 are allowed */
@@ -584,35 +584,34 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	/*
 	 *	Create a new attribute for the list
 	 */
-	if ((attr = fr_pool_alloc(sizeof(*attr) + namelen)) == NULL) {
+	if ((da = fr_pool_alloc(sizeof(*da) + namelen)) == NULL) {
 		fr_strerror_printf("dict_addattr: out of memory");
 		return -1;
 	}
 
-	memcpy(attr->name, name, namelen);
-	attr->name[namelen] = '\0';
-	attr->attr = value;
-	attr->attr |= (vendor << 16); /* FIXME: hack */
-	attr->vendor = vendor;
-	attr->type = type;
-	attr->flags = flags;
-	attr->vendor = vendor;
+	memcpy(da->name, name, namelen);
+	da->name[namelen] = '\0';
+	da->attr = attr;
+	da->vendor = vendor;
+	da->type = type;
+	da->flags = flags;
+	da->vendor = vendor;
 
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
-	if (!fr_hash_table_insert(attributes_byname, attr)) {
+	if (!fr_hash_table_insert(attributes_byname, da)) {
 		DICT_ATTR	*a;
 
 		/*
 		 *	If the attribute has identical number, then
 		 *	ignore the duplicate.
 		 */
-		a = fr_hash_table_finddata(attributes_byname, attr);
-		if (a && (strcasecmp(a->name, attr->name) == 0)) {
-			if (a->attr != attr->attr) {
+		a = fr_hash_table_finddata(attributes_byname, da);
+		if (a && (strcasecmp(a->name, da->name) == 0)) {
+			if (a->attr != da->attr) {
 				fr_strerror_printf("dict_addattr: Duplicate attribute name %s", name);
-				fr_pool_free(attr);
+				fr_pool_free(da);
 				return -1;
 			}
 
@@ -627,9 +626,9 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 
 		fr_hash_table_delete(attributes_byvalue, a);
 
-		if (!fr_hash_table_replace(attributes_byname, attr)) {
+		if (!fr_hash_table_replace(attributes_byname, da)) {
 			fr_strerror_printf("dict_addattr: Internal error storing attribute %s", name);
-			fr_pool_free(attr);
+			fr_pool_free(da);
 			return -1;
 		}
 	}
@@ -643,13 +642,13 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 	 *	files, but when we're printing them, (and looking up
 	 *	by value) we want to use the NEW name.
 	 */
-	if (!fr_hash_table_replace(attributes_byvalue, attr)) {
+	if (!fr_hash_table_replace(attributes_byvalue, da)) {
 		fr_strerror_printf("dict_addattr: Failed inserting attribute name %s", name);
 		return -1;
 	}
 
-	if (!vendor && (value > 0) && (value < 256)) {
-	 	 dict_base_attrs[value] = attr;
+	if (!vendor && (attr > 0) && (attr < 256)) {
+		 dict_base_attrs[attr] = da;
 	}
 
 	return 0;
@@ -783,7 +782,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 			 *	name and value.  There are lots in
 			 *	dictionary.ascend.
 			 */
-			old = dict_valbyname(dattr->attr, namestr);
+			old = dict_valbyname(dattr->attr, dattr->vendor, namestr);
 			if (old && (old->value == dval->value)) {
 				fr_pool_free(dval);
 				return 0;
@@ -996,7 +995,7 @@ static int process_attribute(const char* fn, const int line,
 	/*
 	 *	Add it in.
 	 */
-	if (dict_addattr(argv[0], vendor, type, value, flags) < 0) {
+	if (dict_addattr(argv[0], value, vendor, type, flags) < 0) {
 		char buffer[256];
 
 		strlcpy(buffer, fr_strerror(), sizeof(buffer));
@@ -1738,14 +1737,14 @@ int dict_init(const char *dir, const char *fn)
 /*
  *	Get an attribute by its numerical value.
  */
-DICT_ATTR *dict_attrbyvalue(unsigned int attr)
+DICT_ATTR *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
 {
 	DICT_ATTR dattr;
 
-	if ((attr > 0) && (attr < 256)) return dict_base_attrs[attr];
+	if ((attr > 0) && (attr < 256) && !vendor) return dict_base_attrs[attr];
 
 	dattr.attr = attr;
-	dattr.vendor = VENDOR(attr);
+	dattr.vendor = vendor;
 
 	return fr_hash_table_finddata(attributes_byvalue, &dattr);
 }
@@ -1769,7 +1768,7 @@ DICT_ATTR *dict_attrbyname(const char *name)
 /*
  *	Associate a value with an attribute and return it.
  */
-DICT_VALUE *dict_valbyattr(unsigned int attr, int value)
+DICT_VALUE *dict_valbyattr(unsigned int attr, unsigned int vendor, int value)
 {
 	DICT_VALUE dval, *dv;
 
@@ -1777,6 +1776,7 @@ DICT_VALUE *dict_valbyattr(unsigned int attr, int value)
 	 *	First, look up aliases.
 	 */
 	dval.attr = attr;
+	dval.vendor = vendor;
 	dval.name[0] = '\0';
 
 	/*
@@ -1794,7 +1794,7 @@ DICT_VALUE *dict_valbyattr(unsigned int attr, int value)
 /*
  *	Get a value by its name, keyed off of an attribute.
  */
-DICT_VALUE *dict_valbyname(unsigned int attr, const char *name)
+DICT_VALUE *dict_valbyname(unsigned int attr, unsigned int vendor, const char *name)
 {
 	DICT_VALUE *my_dv, *dv;
 	uint32_t buffer[(sizeof(*my_dv) + DICT_VALUE_MAX_NAME_LEN + 3)/4];
@@ -1803,6 +1803,7 @@ DICT_VALUE *dict_valbyname(unsigned int attr, const char *name)
 
 	my_dv = (DICT_VALUE *) buffer;
 	my_dv->attr = attr;
+	my_dv->vendor = vendor;
 	my_dv->name[0] = '\0';
 
 	/*

@@ -528,7 +528,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	memset(&flags, 0, sizeof(flags));
-	dict_addattr(data->counter_name, 0, PW_TYPE_INTEGER, -1, flags);
+	dict_addattr(data->counter_name, -1, 0, PW_TYPE_INTEGER, flags);
 	dattr = dict_attrbyname(data->counter_name);
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: Failed to create counter attribute %s",

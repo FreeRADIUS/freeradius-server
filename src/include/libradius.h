@@ -63,8 +63,6 @@ RCSIDH(libradius_h, "$Id$")
 #define CHAP_VALUE_LENGTH       16
 #define MAX_STRING_LEN		254	/* RFC2138: string 0-253 octets */
 
-#  define VENDOR(x)		((x >> 16) & 0xffff)
-
 #ifdef _LIBRADIUS
 #  define AUTH_HDR_LEN		20
 #  define VENDORPEC_USR		429
@@ -128,6 +126,7 @@ typedef struct dict_attr {
 
 typedef struct dict_value {
 	unsigned int		attr;
+	unsigned int		vendor;
 	int			value;
 	char			name[1];
 } DICT_VALUE;
@@ -238,7 +237,7 @@ void		fr_print_string(const char *in, size_t inlen,
 				 char *out, size_t outlen);
 int     	vp_prints_value(char *out, size_t outlen,
 				VALUE_PAIR *vp, int delimitst);
-const char	*vp_print_name(char *buffer, size_t bufsize, int attr);
+const char	*vp_print_name(char *buffer, size_t bufsize, int attr, int vendor);
 int     	vp_prints(char *out, size_t outlen, VALUE_PAIR *vp);
 void		vp_print(FILE *, VALUE_PAIR *);
 void		vp_printlist(FILE *, VALUE_PAIR *);
@@ -248,14 +247,14 @@ void		vp_printlist(FILE *, VALUE_PAIR *);
  *	Dictionary functions.
  */
 int		dict_addvendor(const char *name, int value);
-int		dict_addattr(const char *name, int vendor, int type, int value, ATTR_FLAGS flags);
+int		dict_addattr(const char *name, int attr, int vendor, int type, ATTR_FLAGS flags);
 int		dict_addvalue(const char *namestr, const char *attrstr, int value);
 int		dict_init(const char *dir, const char *fn);
 void		dict_free(void);
-DICT_ATTR	*dict_attrbyvalue(unsigned int attr);
+DICT_ATTR	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
 DICT_ATTR	*dict_attrbyname(const char *attr);
-DICT_VALUE	*dict_valbyattr(unsigned int attr, int val);
-DICT_VALUE	*dict_valbyname(unsigned int attr, const char *val);
+DICT_VALUE	*dict_valbyattr(unsigned int attr, unsigned int vendor, int val);
+DICT_VALUE	*dict_valbyname(unsigned int attr, unsigned int vendor, const char *val);
 int		dict_vendorbyname(const char *name);
 DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 
@@ -322,27 +321,27 @@ int		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len,
 int		rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output,
 				int id, VALUE_PAIR *password);
 VALUE_PAIR	*rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-			     const char *secret, int attribute, int length,
-			     const uint8_t *data);
+			     const char *secret, int attribute, int vendor,
+			     int length, const uint8_t *data);
 int		rad_vp2attr(const RADIUS_PACKET *packet,
 			    const RADIUS_PACKET *original, const char *secret,
 			    const VALUE_PAIR *vp, uint8_t *ptr);
 
 /* valuepair.c */
 VALUE_PAIR	*pairalloc(DICT_ATTR *da);
-VALUE_PAIR	*paircreate(int attr, int type);
+VALUE_PAIR	*paircreate(int attr, int vendor, int type);
 void		pairfree(VALUE_PAIR **);
 void            pairbasicfree(VALUE_PAIR *pair);
-VALUE_PAIR	*pairfind(VALUE_PAIR *, int);
-void		pairdelete(VALUE_PAIR **, int);
+VALUE_PAIR	*pairfind(VALUE_PAIR *, int attr, int vendor);
+void		pairdelete(VALUE_PAIR **, int attr, int vendor);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void            pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int		paircmp(VALUE_PAIR *check, VALUE_PAIR *data);
 VALUE_PAIR	*paircopyvp(const VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy(VALUE_PAIR *vp);
-VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, int attr);
+VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, int attr, int vendor);
 void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
-void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr);
+void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr, int vendor);
 VALUE_PAIR	*pairparsevalue(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*pairmake(const char *attribute, const char *value, int operator);
 VALUE_PAIR	*pairread(const char **ptr, FR_TOKEN *eol);

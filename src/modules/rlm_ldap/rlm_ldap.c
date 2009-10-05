@@ -456,7 +456,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		group_name = rad_malloc((strlen(xlat_name) + 1 + 11) * sizeof(char));
 		sprintf(group_name,"%s-Ldap-Group",xlat_name);
 		DEBUG("rlm_ldap: Creating new attribute %s",group_name);
-		dict_addattr(group_name, 0, PW_TYPE_STRING, -1, flags);
+		dict_addattr(group_name, -1, 0, PW_TYPE_STRING, flags);
 		dattr = dict_attrbyname(group_name);
 		if (dattr == NULL){
 			radlog(L_ERR, "rlm_ldap: Failed to create attribute %s",group_name);
@@ -504,7 +504,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	 *	instance 'V1' of the LDAP module has processed this
 	 *	request.
 	 */
-	dict_addattr("LDAP-Instance", 0, PW_TYPE_STRING, -1, flags);
+	dict_addattr("LDAP-Instance", -1, 0, PW_TYPE_STRING, flags);
 
 	/*
 	 *	('eDir-APC', '1') in config items list
@@ -516,11 +516,11 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	 *	('eDir-APC', '3') in config items list
 	 *	eDirectory APC has been completed
 	 */
-	dict_addattr("eDir-APC", 0, PW_TYPE_STRING, -1, flags);
+	dict_addattr("eDir-APC", -1, 0, PW_TYPE_STRING, flags);
 	/*
 	 *	eDir-Auth-Option allows for a different NMAS Authentication method to be used instead of password
 	 */
-	dict_addattr("eDir-Auth-Option", 0, PW_TYPE_STRING, -1, flags);
+	dict_addattr("eDir-Auth-Option", -1, 0, PW_TYPE_STRING, flags);
 #endif
 
 	if (inst->num_conns <= 0){

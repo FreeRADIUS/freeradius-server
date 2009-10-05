@@ -800,7 +800,7 @@ static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps)
 	attribute = vps->attribute & 0xffff00ff;
 	maxattr = vps->attribute & 0x0ff;
 
-	tlv = paircreate(attribute, PW_TYPE_TLV);
+	tlv = paircreate(attribute, vps->vendor, PW_TYPE_TLV);
 	if (!tlv) return NULL;
 
 	tlv->length = 0;
@@ -812,6 +812,7 @@ static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps)
 		if (!vp->flags.is_tlv ||
 		    vp->flags.encoded ||
 		    (vp->flags.encrypt != FLAG_ENCRYPT_NONE) ||
+		    (vp->vendor != vps->vendor) ||
 		    ((vp->attribute & 0xffff00ff) != attribute) ||
 		    ((vp->attribute & 0x0000ff00) <= maxattr)) {
 			break;
@@ -963,8 +964,8 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *	For interoperability, always put vendor attributes
 	 *	into their own VSA.
 	 */
-	if ((vendorcode = VENDOR(vp->attribute)) == 0) {
-		*(ptr++) = vp->attribute & 0xFF;
+	if ((vendorcode = vp->vendor) == 0) {
+		*(ptr++) = vp->attribute & 0xff;
 		length_ptr = ptr;
 		*(ptr++) = 2;
 		total_length += 2;
@@ -1223,7 +1224,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		/*
 		 *	Ignore non-wire attributes
 		 */
-		if ((VENDOR(reply->attribute) == 0) &&
+		if ((reply->vendor == 0) &&
 		    ((reply->attribute & 0xFFFF) > 0xff)) {
 #ifndef NDEBUG
 			/*
@@ -1495,7 +1496,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		      packet->dst_port);
 
 		for (reply = packet->vps; reply; reply = reply->next) {
-			if ((VENDOR(reply->attribute) == 0) &&
+			if ((reply->vendor == 0) &&
 			    ((reply->attribute & 0xFFFF) > 0xff)) continue;
 			debug_pair(reply);
 		}
@@ -1635,7 +1636,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
-			   packet->data_len, AUTH_HDR_LEN);
+				   (int) packet->data_len, AUTH_HDR_LEN);
 		return 0;
 	}
 
@@ -1649,7 +1650,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
-			   packet->data_len, MAX_PACKET_LEN);
+				   (int) packet->data_len, MAX_PACKET_LEN);
 		return 0;
 	}
 
@@ -1735,7 +1736,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
-			   packet->data_len, totallen);
+				   (int) packet->data_len, totallen);
 		return 0;
 	}
 
@@ -1995,7 +1996,8 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 			      packet->src_port,
 			      packet->code);
 		}
-		DEBUG(", id=%d, length=%d\n", packet->id, packet->data_len);
+		DEBUG(", id=%d, length=%d\n",
+		      packet->id, (int) packet->data_len);
 	}
 
 	return packet;
@@ -2175,8 +2177,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 static VALUE_PAIR *data2vp(const RADIUS_PACKET *packet,
 			   const RADIUS_PACKET *original,
-			   const char *secret,
-			   UNUSED unsigned int attribute, size_t length,
+			   const char *secret, size_t length,
 			   const uint8_t *data, VALUE_PAIR *vp)
 {
 	int offset = 0;
@@ -2306,7 +2307,7 @@ static VALUE_PAIR *data2vp(const RADIUS_PACKET *packet,
 		 */
 		{
 			DICT_VALUE *dval;
-			dval = dict_valbyattr(vp->attribute,
+			dval = dict_valbyattr(vp->attribute, vp->vendor,
 					      vp->vp_integer);
 			if (dval) {
 				strlcpy(vp->vp_strvalue,
@@ -2464,8 +2465,8 @@ static void rad_sortvp(VALUE_PAIR **head)
  *	Sane clients should put the fragments next to each other, in
  *	which case this is O(N), in the number of fragments.
  */
-static uint8_t *rad_coalesce(unsigned int attribute, size_t length,
-			     uint8_t *data,
+static uint8_t *rad_coalesce(unsigned int attribute, int vendor,
+			     size_t length, uint8_t *data,
 			     size_t packet_length, size_t *ptlv_length)
 			     
 {
@@ -2476,9 +2477,12 @@ static uint8_t *rad_coalesce(unsigned int attribute, size_t length,
 	for (ptr = data + length;
 	     ptr != (data + packet_length);
 	     ptr += ptr[1]) {
+		/* FIXME: Check that there are 6 bytes of data here... */
 		if ((ptr[0] != PW_VENDOR_SPECIFIC) ||
 		    (ptr[1] < (2 + 4 + 3)) || /* WiMAX VSA with continuation */
-		    (ptr[2] != 0) || (ptr[3] != 0)) { /* our requirement */
+		    (ptr[2] != 0) || (ptr[3] != 0) ||  /* our requirement */
+		    (ptr[4] != ((vendor >> 8) & 0xff)) ||
+		    (ptr[5] != (vendor & 0xff))) {
 			continue;
 		}
 
@@ -2551,6 +2555,7 @@ static uint8_t *rad_coalesce(unsigned int attribute, size_t length,
 static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 				       const RADIUS_PACKET *original,
 				       const char *secret, int attribute,
+				       int vendor,
 				       int length, /* CANNOT be zero */
 				       uint8_t *data, size_t packet_length,
 				       int flag, DICT_ATTR *da)
@@ -2565,7 +2570,7 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 	 *	multiple attributes.
 	 */
 	if (flag) {
-		tlv_data = rad_coalesce(attribute, length,
+		tlv_data = rad_coalesce(attribute, vendor, length,
 					data, packet_length, &tlv_length);
 		if (!tlv_data) return NULL;
 	} else {
@@ -2592,7 +2597,7 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 			memcpy(tlv_data, data, tlv_length);
 		}
 		
-		vp = paircreate(attribute, PW_TYPE_OCTETS);
+		vp = paircreate(attribute, vendor, PW_TYPE_OCTETS);
 		if (!vp) return NULL;
 			
 		vp->type = PW_TYPE_TLV;
@@ -2629,14 +2634,14 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 	for (ptr = tlv_data;
 	     ptr != (tlv_data + tlv_length);
 	     ptr += ptr[1]) {
-		vp = paircreate(attribute | (ptr[0] << 8), PW_TYPE_OCTETS);
+		vp = paircreate(attribute | (ptr[0] << 8), vendor, PW_TYPE_OCTETS);
 		if (!vp) {
 			pairfree(&head);
 			goto not_well_formed;
 		}
 
 		if (!data2vp(packet, original, secret,
-			     ptr[0], ptr[1] - 2, ptr + 2, vp)) {
+			     ptr[1] - 2, ptr + 2, vp)) {
 			pairfree(&head);
 			goto not_well_formed;
 		}
@@ -2659,16 +2664,17 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 /*
  *	Parse a RADIUS attribute into a data structure.
  */
-VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-			const char *secret, int attribute, int length,
-			const uint8_t *data)
+VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet,
+			const RADIUS_PACKET *original,
+			const char *secret, int attribute, int vendor,
+			int length, const uint8_t *data)
 {
 	VALUE_PAIR *vp;
 
-	vp = paircreate(attribute, PW_TYPE_OCTETS);
+	vp = paircreate(attribute, vendor, PW_TYPE_OCTETS);
 	if (!vp) return NULL;
 
-	return data2vp(packet, original, secret, attribute, length, data, vp);
+	return data2vp(packet, original, secret, length, data, vp);
 }
 
 
@@ -2842,7 +2848,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 				switch (vsa_llen) {
 				case 0:
-					attribute = (myvendor << 16) | myattr;
+					attribute = myattr;
 					ptr += 4 + vsa_tlen;
 					attrlen -= (4 + vsa_tlen);
 					packet_length -= 4 + vsa_tlen;
@@ -2911,7 +2917,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		default:	/* can't hit this. */
 			return -1;
 		}
-		attribute |= (vendorcode << 16);
 		vsa_ptr = ptr;
 		ptr += vsa_tlen;
 
@@ -2943,12 +2948,14 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		 *	are a secret flag to us that the attribute has
 		 *	already been dealt with.
 		 */
-		if (attribute == 0x60b50000) goto next;
+		if ((vendorcode == VENDORPEC_WIMAX) && (attribute == 0)) {
+			goto next;
+		}
 
 		if (vsa_offset) {
 			DICT_ATTR *da;
 
-			da = dict_attrbyvalue(attribute);
+			da = dict_attrbyvalue(attribute, vendorcode);
 
 			/*
 			 *	If it's NOT continued, AND we know
@@ -2963,7 +2970,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			 *	Go do a lot of work to find the stuff.
 			 */
 			pair = rad_continuation2vp(packet, original, secret,
-						   attribute, attrlen, ptr,
+						   attribute, vendorcode,
+						   attrlen, ptr,
 						   packet_length,
 						   ((vsa_ptr[2] & 0x80) != 0),
 						   da);
@@ -2985,7 +2993,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		    (attribute != PW_CHARGEABLE_USER_IDENTITY)) goto next;
 
 		pair = rad_attr2vp(packet, original, secret,
-				   attribute, attrlen, ptr);
+				   attribute, vendorcode, attrlen, ptr);
 		if (!pair) {
 			pairfree(&packet->vps);
 			fr_strerror_printf("out of memory");
@@ -3407,7 +3415,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 	 *	Use Chap-Challenge pair if present,
 	 *	Request-Authenticator otherwise.
 	 */
-	challenge = pairfind(packet->vps, PW_CHAP_CHALLENGE);
+	challenge = pairfind(packet->vps, PW_CHAP_CHALLENGE, 0);
 	if (challenge) {
 		memcpy(ptr, challenge->vp_strvalue, challenge->length);
 		i += challenge->length;

@@ -138,12 +138,12 @@ VALUE_PAIR *pairalloc(DICT_ATTR *da)
 /*
  *	Create a new valuepair.
  */
-VALUE_PAIR *paircreate(int attr, int type)
+VALUE_PAIR *paircreate(int attr, int vendor, int type)
 {
 	VALUE_PAIR	*vp;
 	DICT_ATTR	*da;
 
-	da = dict_attrbyvalue(attr);
+	da = dict_attrbyvalue(attr, vendor);
 	if ((vp = pairalloc(da)) == NULL) {
 		fr_strerror_printf("out of memory");
 		return NULL;
@@ -156,12 +156,12 @@ VALUE_PAIR *paircreate(int attr, int type)
 	if (!da) {
 		char *p = (char *) (vp + 1);
 		
-		vp->vendor = VENDOR(attr);
+		vp->vendor = vendor;
 		vp->attribute = attr;
 		vp->name = p;
 		vp->type = type; /* be forgiving */
 
-		if (!vp_print_name(p, FR_VP_NAME_LEN, vp->attribute)) {
+		if (!vp_print_name(p, FR_VP_NAME_LEN, attr, vendor)) {
 			free(vp);
 			return NULL;
 		}
@@ -206,9 +206,9 @@ void pairfree(VALUE_PAIR **pair_ptr)
 /*
  *	Find the pair with the matching attribute
  */
-VALUE_PAIR * pairfind(VALUE_PAIR *first, int attr)
+VALUE_PAIR * pairfind(VALUE_PAIR *first, int attr, int vendor)
 {
-	while(first && first->attribute != attr)
+	while(first && (first->attribute != attr) && (first->vendor != vendor))
 		first = first->next;
 	return first;
 }
@@ -217,14 +217,14 @@ VALUE_PAIR * pairfind(VALUE_PAIR *first, int attr)
 /*
  *	Delete the pair(s) with the matching attribute
  */
-void pairdelete(VALUE_PAIR **first, int attr)
+void pairdelete(VALUE_PAIR **first, int attr, int vendor)
 {
 	VALUE_PAIR *i, *next;
 	VALUE_PAIR **last = first;
 
 	for(i = *first; i; i = next) {
 		next = i->next;
-		if (i->attribute == attr) {
+		if ((i->attribute == attr) && (i->vendor == vendor)) {
 			*last = next;
 			pairbasicfree(i);
 		} else {
@@ -335,7 +335,7 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 /*
  *	Copy just a certain type of pairs.
  */
-VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr)
+VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr, int vendor)
 {
 	VALUE_PAIR	*first, *n, **last;
 
@@ -343,7 +343,8 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr)
 	last = &first;
 
 	while (vp) {
-		if (attr >= 0 && vp->attribute != attr) {
+		if ((attr >= 0) &&
+		    (vp->attribute != attr) && (vp->vendor != vendor)) {
 			vp = vp->next;
 			continue;
 		}
@@ -363,7 +364,7 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr)
  */
 VALUE_PAIR *paircopy(VALUE_PAIR *vp)
 {
-	return paircopy2(vp, -1);
+	return paircopy2(vp, -1, 0);
 }
 
 
@@ -438,7 +439,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 		if (i->attribute == PW_FALL_THROUGH ||
 		    (i->attribute != PW_HINT && i->attribute != PW_FRAMED_ROUTE)) {
 
-			found = pairfind(*to, i->attribute);
+			found = pairfind(*to, i->attribute, i->vendor);
 			switch (i->operator) {
 
 			  /*
@@ -450,7 +451,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					if (!i->vp_strvalue[0] ||
 					    (strcmp((char *)found->vp_strvalue,
 						    (char *)i->vp_strvalue) == 0)){
-						pairdelete(to, found->attribute);
+						pairdelete(to, found->attribute, found->vendor);
 
 						/*
 						 *	'tailto' may have been
@@ -545,7 +546,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					memcpy(found, i, sizeof(*found));
 					found->next = mynext;
 
-					pairdelete(&found->next, found->attribute);
+					pairdelete(&found->next, found->attribute, found->vendor);
 
 					/*
 					 *	'tailto' may have been
@@ -591,7 +592,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 /*
  *	Move one kind of attributes from one list to the other
  */
-void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr)
+void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr, int vendor)
 {
 	VALUE_PAIR *to_tail, *i, *next;
 	VALUE_PAIR *iprev = NULL;
@@ -609,13 +610,13 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr)
 	for(i = *from; i; i = next) {
 		next = i->next;
 
-
 		/*
-		 *	If the attribute to move is NOT a VSA, then it
-		 *	ignores any attributes which do not match exactly.
+		 *	vendor=0, attr = PW_VENDOR_SPECIFIC means
+		 *	"match any vendor attribute".  Otherwise, do
+		 *	an exact match
 		 */
-		if ((attr != PW_VENDOR_SPECIFIC) &&
-		    (i->attribute != attr)) {
+		if (((vendor != 0) || (attr != PW_VENDOR_SPECIFIC)) &&
+		    (i->attribute != attr) && (i->vendor != vendor)) {
 			iprev = i;
 			continue;
 		}
@@ -624,8 +625,8 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr)
 		 *	If the attribute to move IS a VSA, then it ignores
 		 *	any non-VSA attribute.
 		 */
-		if ((attr == PW_VENDOR_SPECIFIC) &&
-		    (VENDOR(i->attribute) == 0)) {
+		if ((vendor == 0) && (attr == PW_VENDOR_SPECIFIC) &&
+		    (i->vendor == 0)) {
 			iprev = i;
 			continue;
 		}
@@ -1008,7 +1009,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			 *	Look for the named value for the given
 			 *	attribute.
 			 */
-			if ((dval = dict_valbyname(vp->attribute, value)) == NULL) {
+			if ((dval = dict_valbyname(vp->attribute, vp->vendor, value)) == NULL) {
 				fr_strerror_printf("Unknown value %s for attribute %s",
 					   value, vp->name);
 				return NULL;
@@ -1357,14 +1358,12 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		}
 	}
 
-	attr |= vendor << 16;
-
 	/*
 	 *	We've now parsed the attribute properly, Let's create
 	 *	it.  This next stop also looks the attribute up in the
 	 *	dictionary, and creates the appropriate type for it.
 	 */
-	if ((vp = paircreate(attr, PW_TYPE_OCTETS)) == NULL) {
+	if ((vp = paircreate(attr, vendor, PW_TYPE_OCTETS)) == NULL) {
 		fr_strerror_printf("out of memory");
 		return NULL;
 	}
