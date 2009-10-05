@@ -107,8 +107,8 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 	 */
 
 	/* the version list. We support only version 1. */
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_VERSION_LIST,
-			PW_TYPE_OCTETS);
+	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_VERSION_LIST, 0,
+			   PW_TYPE_OCTETS);
 	words = (uint16_t *)newvp->vp_strvalue;
 	newvp->length = 3*sizeof(uint16_t);
 	words[0] = htons(1*sizeof(uint16_t));
@@ -117,7 +117,7 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 	pairadd(vps, newvp);
 
 	/* set the EAP_ID - new value */
-	newvp = paircreate(ATTRIBUTE_EAP_ID, PW_TYPE_INTEGER);
+	newvp = paircreate(ATTRIBUTE_EAP_ID, 0, PW_TYPE_INTEGER);
 	newvp->vp_integer = ess->sim_id++;
 	pairreplace(vps, newvp);
 
@@ -127,14 +127,14 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 
 	/* the ANY_ID attribute. We do not support re-auth or pseudonym */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_FULLAUTH_ID_REQ,
-			   PW_TYPE_OCTETS);
+			   0, PW_TYPE_OCTETS);
 	newvp->length = 2;
 	newvp->vp_strvalue[0]=0;
 	newvp->vp_strvalue[0]=1;
 	pairadd(vps, newvp);
 
 	/* the SUBTYPE, set to start. */
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, PW_TYPE_INTEGER);
+	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, 0, PW_TYPE_INTEGER);
 	newvp->vp_integer = eapsim_start;
 	pairreplace(vps, newvp);
 
@@ -148,7 +148,7 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
 
 	rad_assert(chalno >= 0 && chalno < 3);
 
-	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_RAND1+chalno);
+	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_RAND1+chalno, 0);
 	if(vp == NULL) {
 		/* bad, we can't find stuff! */
 		DEBUG2("   eap-sim can not find sim-challenge%d",chalno+1);
@@ -156,12 +156,12 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
 	}
 	if(vp->length != EAPSIM_RAND_SIZE) {
 		DEBUG2("   eap-sim chal%d is not 8-bytes: %d", chalno+1,
-		       vp->length);
+		       (int) vp->length);
 		return 0;
 	}
 	memcpy(ess->keys.rand[chalno], vp->vp_strvalue, EAPSIM_RAND_SIZE);
 
-	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_SRES1+chalno);
+	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_SRES1+chalno, 0);
 	if(vp == NULL) {
 		/* bad, we can't find stuff! */
 		DEBUG2("   eap-sim can not find sim-sres%d",chalno+1);
@@ -169,12 +169,12 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
 	}
 	if(vp->length != EAPSIM_SRES_SIZE) {
 		DEBUG2("   eap-sim sres%d is not 16-bytes: %d", chalno+1,
-		       vp->length);
+		       (int) vp->length);
 		return 0;
 	}
 	memcpy(ess->keys.sres[chalno], vp->vp_strvalue, EAPSIM_SRES_SIZE);
 
-	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_KC1+chalno);
+	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_KC1+chalno, 0);
 	if(vp == NULL) {
 		/* bad, we can't find stuff! */
 		DEBUG2("   eap-sim can not find sim-kc%d",chalno+1);
@@ -182,7 +182,7 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
 	}
 	if(vp->length != EAPSIM_Kc_SIZE) {
 		DEBUG2("   eap-sim kc%d is not 8-bytes: %d", chalno+1,
-		       vp->length);
+		       (int) vp->length);
 		return 0;
 	}
 	memcpy(ess->keys.Kc[chalno], vp->vp_strvalue, EAPSIM_Kc_SIZE);
@@ -233,7 +233,7 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 
 	/* okay, we got the challenges! Put them into an attribute */
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_RAND,
-			   PW_TYPE_OCTETS);
+			   0, PW_TYPE_OCTETS);
 	memset(newvp->vp_strvalue,    0, 2); /* clear reserved bytes */
 	memcpy(newvp->vp_strvalue+2+EAPSIM_RAND_SIZE*0, ess->keys.rand[0], EAPSIM_RAND_SIZE);
 	memcpy(newvp->vp_strvalue+2+EAPSIM_RAND_SIZE*1, ess->keys.rand[1], EAPSIM_RAND_SIZE);
@@ -242,7 +242,7 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	pairadd(outvps, newvp);
 
 	/* set the EAP_ID - new value */
-	newvp = paircreate(ATTRIBUTE_EAP_ID, PW_TYPE_INTEGER);
+	newvp = paircreate(ATTRIBUTE_EAP_ID, 0, PW_TYPE_INTEGER);
 	newvp->vp_integer = ess->sim_id++;
 	pairreplace(outvps, newvp);
 
@@ -265,18 +265,18 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	 */
 
 	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC,
-			   PW_TYPE_OCTETS);
+			   0, PW_TYPE_OCTETS);
 	memcpy(newvp->vp_strvalue, ess->keys.nonce_mt, 16);
 	newvp->length = 16;
 	pairreplace(outvps, newvp);
 
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_KEY, PW_TYPE_OCTETS);
+	newvp = paircreate(ATTRIBUTE_EAP_SIM_KEY, 0, PW_TYPE_OCTETS);
 	memcpy(newvp->vp_strvalue, ess->keys.K_aut, 16);
 	newvp->length = 16;
 	pairreplace(outvps, newvp);
 
 	/* the SUBTYPE, set to challenge. */
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, PW_TYPE_INTEGER);
+	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, 0, PW_TYPE_INTEGER);
 	newvp->vp_integer = eapsim_challenge;
 	pairreplace(outvps, newvp);
 
@@ -306,7 +306,7 @@ static int eap_sim_sendsuccess(EAP_HANDLER *handler)
 	ess = (struct eap_sim_server_state *)handler->opaque;
 
 	/* set the EAP_ID - new value */
-	newvp = paircreate(ATTRIBUTE_EAP_ID, PW_TYPE_INTEGER);
+	newvp = paircreate(ATTRIBUTE_EAP_ID, 0, PW_TYPE_INTEGER);
 	newvp->vp_integer = ess->sim_id++;
 	pairreplace(outvps, newvp);
 
@@ -377,7 +377,7 @@ static int eap_sim_initiate(void *type_data, EAP_HANDLER *handler)
 
 	type_data = type_data;  /* shut up compiler */
 
-	vp = pairfind(outvps, ATTRIBUTE_EAP_SIM_RAND1);
+	vp = pairfind(outvps, ATTRIBUTE_EAP_SIM_RAND1, 0);
 	if(vp == NULL) {
 	        DEBUG2("   can not initiate sim, no RAND1 attribute");
 		return 0;
@@ -436,8 +436,8 @@ static int process_eap_sim_start(EAP_HANDLER *handler, VALUE_PAIR *vps)
 
 	ess = (struct eap_sim_server_state *)handler->opaque;
 
-	nonce_vp = pairfind(vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_NONCE_MT);
-	selectedversion_vp = pairfind(vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_SELECTED_VERSION);
+	nonce_vp = pairfind(vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_NONCE_MT, 0);
+	selectedversion_vp = pairfind(vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_SELECTED_VERSION, 0);
 
 	if(nonce_vp == NULL ||
 	   selectedversion_vp == NULL) {
@@ -468,7 +468,7 @@ static int process_eap_sim_start(EAP_HANDLER *handler, VALUE_PAIR *vps)
 	 * double check the nonce size.
 	 */
 	if(nonce_vp->length != 18) {
-		DEBUG2("   EAP-Sim nonce_mt must be 16 bytes (+2 bytes padding), not %d", nonce_vp->length);
+	  DEBUG2("   EAP-Sim nonce_mt must be 16 bytes (+2 bytes padding), not %d", (int) nonce_vp->length);
 		return 0;
 	}
 	memcpy(ess->keys.nonce_mt, nonce_vp->vp_strvalue+2, 16);
@@ -555,7 +555,7 @@ static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
 	}
 
 	/* see what kind of message we have gotten */
-	if((vp = pairfind(vps, ATTRIBUTE_EAP_SIM_SUBTYPE)) == NULL)
+	if((vp = pairfind(vps, ATTRIBUTE_EAP_SIM_SUBTYPE, 0)) == NULL)
 	{
 		DEBUG2("   no subtype attribute was created, message dropped");
 		return 0;

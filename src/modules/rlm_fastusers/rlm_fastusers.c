@@ -581,7 +581,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 		pairfree(&reply_tmp);
 
 		if(!fallthrough(user->reply)) {
-			pairdelete(&request->reply->vps, PW_FALL_THROUGH);
+			pairdelete(&request->reply->vps, PW_FALL_THROUGH, 0);
 			return(rad_check_return(user->check));
 		} else {
 			user=user->next;
@@ -645,7 +645,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 			pairfree(&reply_tmp);
 
 			if(!fallthrough(user->reply)) {
-				pairdelete(&request->reply->vps, PW_FALL_THROUGH);
+				pairdelete(&request->reply->vps, PW_FALL_THROUGH, 0);
 				return(rad_check_return(user->check));
 			}
 
@@ -661,7 +661,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 	}
 
 	if(userfound || defaultfound) {
-		pairdelete(&request->reply->vps, PW_FALL_THROUGH);
+		pairdelete(&request->reply->vps, PW_FALL_THROUGH, 0);
 		return(rad_check_return(request->config_items));
 	} else {
 		DEBUG2("rlm_fastusers:  user not found");

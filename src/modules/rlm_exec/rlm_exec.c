@@ -230,7 +230,7 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 	} else {
 		DICT_VALUE	*dval;
 
-		dval = dict_valbyname(PW_PACKET_TYPE, inst->packet_type);
+		dval = dict_valbyname(PW_PACKET_TYPE, 0, inst->packet_type);
 		if (!dval) {
 			radlog(L_ERR, "rlm_exec: Unknown packet type %s: See list of VALUEs for Packet-Type in share/dictionary", inst->packet_type);
 			exec_detach(inst);

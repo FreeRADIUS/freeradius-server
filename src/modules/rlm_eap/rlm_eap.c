@@ -355,7 +355,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 *	set to 127.0.0.1 for tunneled requests, and
 		 *	we don't want to tell the world that...
 		 */
-		pairdelete(&request->proxy->vps, PW_FREERADIUS_PROXIED_TO);
+		pairdelete(&request->proxy->vps, PW_FREERADIUS_PROXIED_TO, VENDORPEC_FREERADIUS);
 
 		RDEBUG2("  Tunneled session will be proxied.  Not doing EAP.");
 		return RLM_MODULE_HANDLED;
@@ -632,7 +632,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		 *	This is vendor Cisco (9), Cisco-AVPair
 		 *	attribute (1)
 		 */
-		vp = pairfind(vp, (9 << 16)  | 1);
+		vp = pairfind(vp, 1, 9);
 		if (!vp) {
 			return RLM_MODULE_NOOP;
 		}

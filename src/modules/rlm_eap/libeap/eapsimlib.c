@@ -82,7 +82,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	 * it might be too big for putting into an EAP-Type-SIM
 	 *
 	 */
-	vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_SUBTYPE);
+	vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_SUBTYPE, 0);
 	if(vp == NULL)
 	{
 		subtype = eapsim_start;
@@ -92,7 +92,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		subtype = vp->vp_integer;
 	}
 
-	vp = pairfind(r->vps, ATTRIBUTE_EAP_ID);
+	vp = pairfind(r->vps, ATTRIBUTE_EAP_ID, 0);
 	if(vp == NULL)
 	{
 		id = ((int)getpid() & 0xff);
@@ -102,7 +102,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		id = vp->vp_integer;
 	}
 
-	vp = pairfind(r->vps, ATTRIBUTE_EAP_CODE);
+	vp = pairfind(r->vps, ATTRIBUTE_EAP_CODE, 0);
 	if(vp == NULL)
 	{
 		eapcode = PW_EAP_REQUEST;
@@ -252,7 +252,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	 * then we should calculate the HMAC-SHA1 of the resulting EAP-SIM
 	 * packet, appended with the value of append.
 	 */
-	vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_KEY);
+	vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_KEY, 0);
 	if(macspace != NULL && vp != NULL)
 	{
 		unsigned char   *buffer;
@@ -330,7 +330,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		return 0;
 	}
 
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, PW_TYPE_INTEGER);
+	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, 0, PW_TYPE_INTEGER);
 	if (!newvp) return 0;
 	newvp->vp_integer = attr[0];
 	newvp->length = 1;
@@ -366,7 +366,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 			       return 0;
 		}
 
-		newvp = paircreate(eapsim_attribute+ATTRIBUTE_EAP_SIM_BASE, PW_TYPE_OCTETS);
+		newvp = paircreate(eapsim_attribute+ATTRIBUTE_EAP_SIM_BASE, 0, PW_TYPE_OCTETS);
 		memcpy(newvp->vp_strvalue, &attr[2], eapsim_len-2);
 		newvp->length = eapsim_len-2;
 		pairadd(&(r->vps), newvp);
@@ -398,7 +398,7 @@ eapsim_checkmac(VALUE_PAIR *rvps,
 	int elen,len;
 	VALUE_PAIR *mac;
 
-	mac = pairfind(rvps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC);
+	mac = pairfind(rvps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0);
 
 	if(mac == NULL
 	   || mac->length != 18) {

@@ -167,7 +167,7 @@ static VALUE_PAIR *eap2vp(REQUEST *request, EAP_DS *eap_ds,
 
 	if (data_len > 65535) return NULL; /* paranoia */
 
-	vp = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
+	vp = paircreate(PW_EAP_MESSAGE, 0, PW_TYPE_OCTETS);
 	if (!vp) {
 		RDEBUG2("Failure in creating VP");
 		return NULL;
@@ -193,7 +193,7 @@ static VALUE_PAIR *eap2vp(REQUEST *request, EAP_DS *eap_ds,
 		int vp_len;
 
 
-		vp = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
+		vp = paircreate(PW_EAP_MESSAGE, 0, PW_TYPE_OCTETS);
 		if (!vp) {
 			RDEBUG2("Failure in creating VP");
 			pairfree(&head);
@@ -237,7 +237,7 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 			if (this == vp) start = EAP_HEADER_LEN;
 			
 			for (i = start; i < vp->length; i++) {
-				if ((total & 0x0f) == 0) fprintf(fr_log_fp, "  PEAP tunnel data out %04x: ", total);
+			  if ((total & 0x0f) == 0) fprintf(fr_log_fp, "  PEAP tunnel data out %04x: ", (int) total);
 
 				fprintf(fr_log_fp, "%02x ", vp->vp_octets[i]);
 				
@@ -333,9 +333,9 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			/*
 			 *	Clean up the tunneled reply.
 			 */
-			pairdelete(&reply->vps, PW_PROXY_STATE);
-			pairdelete(&reply->vps, PW_EAP_MESSAGE);
-			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR);
+			pairdelete(&reply->vps, PW_PROXY_STATE, 0);
+			pairdelete(&reply->vps, PW_EAP_MESSAGE, 0);
+			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0);
 
 			t->accept_vps = reply->vps;
 			reply->vps = NULL;
@@ -358,7 +358,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	Get rid of the old State, too.
 		 */
 		pairfree(&t->state);
-		pairmove2(&t->state, &(reply->vps), PW_STATE);
+		pairmove2(&t->state, &(reply->vps), PW_STATE, 0);
 
 		/*
 		 *	PEAP takes only EAP-Message attributes inside
@@ -366,7 +366,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	Access-Challenge is ignored.
 		 */
 		vp = NULL;
-		pairmove2(&vp, &(reply->vps), PW_EAP_MESSAGE);
+		pairmove2(&vp, &(reply->vps), PW_EAP_MESSAGE, 0);
 
 		/*
 		 *	Handle EAP-MSCHAP-V2, where Access-Accept's
@@ -381,8 +381,8 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			/*
 			 *	Clean up the tunneled reply.
 			 */
-			pairdelete(&reply->vps, PW_PROXY_STATE);
-			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR);
+			pairdelete(&reply->vps, PW_PROXY_STATE, 0);
+			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0);
 
 			t->accept_vps = reply->vps;
 			reply->vps = NULL;
@@ -772,7 +772,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	AND attributes which are copied there
 			 *	from below.
 			 */
-			if (pairfind(fake->packet->vps, vp->attribute)) {
+			if (pairfind(fake->packet->vps, vp->attribute, vp->vendor)) {
 				continue;
 			}
 
@@ -807,7 +807,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = paircopy2(vp, vp->attribute);
+			copy = paircopy2(vp, vp->attribute, vp->vendor);
 			pairadd(&fake->packet->vps, copy);
 		}
 	}
@@ -917,7 +917,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				 *	of attributes.
 				 */
 				pairdelete(&fake->packet->vps,
-					   PW_EAP_MESSAGE);
+					   PW_EAP_MESSAGE, 0);
 			}
 
 			DEBUG2("  PEAP: Tunneled authentication will be proxied to %s", vp->vp_strvalue);
@@ -928,7 +928,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 */
 			pairmove2(&(request->config_items),
 				  &(fake->config_items),
-				  PW_PROXY_TO_REALM);
+				  PW_PROXY_TO_REALM, 0);
 
 			/*
 			 *	Seed the proxy packet with the

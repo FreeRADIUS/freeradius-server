@@ -88,9 +88,7 @@ static int diameter_verify(REQUEST *request,
 				return 0;
 			}
 
-			attribute = (vendor << 16) | attr;
-
-			da = dict_attrbyvalue(attribute);
+			da = dict_attrbyvalue(attribute, vendor);
 
 			/*
 			 *	SHOULD check ((length & (1 << 30)) != 0)
@@ -191,6 +189,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 			       const uint8_t *data, size_t data_len)
 {
 	uint32_t	attr;
+	uint32_t	vendor;
 	uint32_t	length;
 	size_t		offset;
 	size_t		size;
@@ -204,6 +203,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		memcpy(&attr, data, sizeof(attr));
 		data += 4;
 		attr = ntohl(attr);
+		vendor = 0;
 
 		memcpy(&length, data, sizeof(length));
 		data += 4;
@@ -215,8 +215,6 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		 */
 		offset = 8;
 		if ((length & (1 << 31)) != 0) {
-			uint32_t vendor;
-
 			memcpy(&vendor, data, sizeof(vendor));
 			vendor = ntohl(vendor);
 
@@ -232,8 +230,6 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 				return NULL;
 			}
 
-			attr |= (vendor << 16);
-
 			data += 4; /* skip the vendor field, it's zero */
 			offset += 4; /* offset to value field */
 		}
@@ -242,7 +238,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		 *	Vendor attributes can be larger than 255.
 		 *	Normal attributes cannot be.
 		 */
-		if ((attr > 255) && (VENDOR(attr) == 0)) {
+		if ((attr > 255) && (vendor == 0)) {
 			RDEBUG2("Cannot handle Diameter attributes");
 			pairfree(&first);
 			return NULL;
@@ -268,7 +264,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		/*
 		 *	Create it.
 		 */
-		vp = paircreate(attr, PW_TYPE_OCTETS);
+		vp = paircreate(attr, vendor, PW_TYPE_OCTETS);
 		if (!vp) {
 			RDEBUG2("Failure in creating VP");
 			pairfree(&first);
@@ -340,7 +336,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 
 					if (size == 0) break;
 
-					vp = paircreate(attr, PW_TYPE_OCTETS);
+					vp = paircreate(attr, vendor, PW_TYPE_OCTETS);
 					if (!vp) {
 						RDEBUG2("Failure in creating VP");
 						pairfree(&first);
@@ -594,7 +590,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 
 		if ((debug_flag > 2) && fr_log_fp) {
 			for (i = 0; i < total; i++) {
-			  if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  TTLS tunnel data out %04x: ", (int) i);
+				if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  TTLS tunnel data out %04x: ", (int) i);
 
 				fprintf(fr_log_fp, "%02x ", buffer[i]);
 
@@ -666,7 +662,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	packet, and we will send EAP-Success.
 		 */
 		vp = NULL;
-		pairmove2(&vp, &reply->vps, PW_MSCHAP2_SUCCESS);
+		pairmove2(&vp, &reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT);
 		if (vp) {
 			RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge.");
 			rcode = RLM_MODULE_HANDLED;
@@ -676,10 +672,10 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			 *	Delete MPPE keys & encryption policy.  We don't
 			 *	want these here.
 			 */
-			pairdelete(&reply->vps, ((311 << 16) | 7));
-			pairdelete(&reply->vps, ((311 << 16) | 8));
-			pairdelete(&reply->vps, ((311 << 16) | 16));
-			pairdelete(&reply->vps, ((311 << 16) | 17));
+			pairdelete(&reply->vps, 7, VENDORPEC_MICROSOFT);
+			pairdelete(&reply->vps, 8, VENDORPEC_MICROSOFT);
+			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT);
+			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT);
 
 			/*
 			 *	Use the tunneled reply, but not now.
@@ -699,7 +695,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			 *	can figure it out, from the non-tunneled
 			 *	EAP-Success packet.
 			 */
-			pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE);
+			pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE, 0);
 			pairfree(&vp);
 		}
 
@@ -720,7 +716,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	tunneled user!
 		 */
 		if (t->use_tunneled_reply) {
-			pairdelete(&reply->vps, PW_PROXY_STATE);
+			pairdelete(&reply->vps, PW_PROXY_STATE, 0);
 			pairadd(&request->reply->vps, reply->vps);
 			reply->vps = NULL;
 		}
@@ -747,7 +743,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	Get rid of the old State, too.
 		 */
 		pairfree(&t->state);
-		pairmove2(&t->state, &reply->vps, PW_STATE);
+		pairmove2(&t->state, &reply->vps, PW_STATE, 0);
 
 		/*
 		 *	We should really be a bit smarter about this,
@@ -757,7 +753,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	method works in 99.9% of the situations.
 		 */
 		vp = NULL;
-		pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE);
+		pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE, 0);
 
 		/*
 		 *	There MUST be a Reply-Message in the challenge,
@@ -767,7 +763,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	we MUST create one, with an empty string as
 		 *	it's value.
 		 */
-		pairmove2(&vp, &reply->vps, PW_REPLY_MESSAGE);
+		pairmove2(&vp, &reply->vps, PW_REPLY_MESSAGE, 0);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
@@ -973,7 +969,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		size_t i;
 
 		for (i = 0; i < data_len; i++) {
-		  if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  TTLS tunnel data in %04x: ", (int) i);
+			if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  TTLS tunnel data in %04x: ", (int) i);
 
 			fprintf(fr_log_fp, "%02x ", data[i]);
 
@@ -1058,7 +1054,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				 */
 				if (t->default_eap_type != 0) {
 					RDEBUG("Setting default EAP type for tunneled EAP session.");
-					vp = paircreate(PW_EAP_TYPE,
+					vp = paircreate(PW_EAP_TYPE, 0,
 							PW_TYPE_INTEGER);
 					rad_assert(vp != NULL);
 					vp->vp_integer = t->default_eap_type;
@@ -1119,7 +1115,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	AND attributes which are copied there
 			 *	from below.
 			 */
-			if (pairfind(fake->packet->vps, vp->attribute)) {
+			if (pairfind(fake->packet->vps, vp->attribute, vp->vendor)) {
 				continue;
 			}
 
@@ -1154,7 +1150,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = paircopy2(vp, vp->attribute);
+			copy = paircopy2(vp, vp->attribute, vp->vendor);
 			pairadd(&fake->packet->vps, copy);
 		}
 	}
@@ -1213,7 +1209,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 */
 			pairmove2(&(request->config_items),
 				  &(fake->config_items),
-				  PW_PROXY_TO_REALM);
+				  PW_PROXY_TO_REALM, 0);
 
 			/*
 			 *	Seed the proxy packet with the

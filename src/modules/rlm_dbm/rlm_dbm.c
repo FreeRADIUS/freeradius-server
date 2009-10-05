@@ -222,7 +222,7 @@ static int sm_parse_user(DBM *pdb, const char * username, REQUEST *req,
    	 					/* look for join-attribute */
    	 					DEBUG2("rlm_dbm: Reply found");
 						join_attr = vp;
-   	 					while( (join_attr = pairfind(join_attr,SM_JOIN_ATTR) ) != NULL ) {
+						while( (join_attr = pairfind(join_attr,SM_JOIN_ATTR, 0) ) != NULL ) {
    	 					 	DEBUG2("rlm_dbm: Proccess nested record: username %s",
    	 					 		(char *)join_attr->vp_strvalue);
    	 					 	/* res =  RLM_MODULE_NOTFOUND; */
@@ -240,7 +240,7 @@ static int sm_parse_user(DBM *pdb, const char * username, REQUEST *req,
 							}
 							join_attr = join_attr -> next;
    	 					}
-						pairdelete(&vp,SM_JOIN_ATTR);
+						pairdelete(&vp,SM_JOIN_ATTR, 0);
 						if ( parse_state != SMP_ERROR ) {
 							if ( ! isfallthrough(vp) ) {
 							  continue_search = 0;

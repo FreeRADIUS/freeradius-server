@@ -125,7 +125,7 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 	 *	user.
 	 */
 	if ((!tls_session->allow_session_resumption) ||
-	    (((vp = pairfind(request->config_items, 1127)) != NULL) &&
+	    (((vp = pairfind(request->config_items, 1127, 0)) != NULL) &&
 	     (vp->vp_integer == 0))) {
 		SSL_CTX_remove_session(tls_session->ctx,
 				       tls_session->ssl->session);
@@ -147,10 +147,10 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 	} else if (!SSL_session_reused(tls_session->ssl)) {
 		RDEBUG2("Saving response in the cache");
 		
-		vp = paircopy2(request->reply->vps, PW_USER_NAME);
+		vp = paircopy2(request->reply->vps, PW_USER_NAME, 0);
 		pairadd(&vps, vp);
 		
-		vp = paircopy2(request->packet->vps, PW_STRIPPED_USER_NAME);
+		vp = paircopy2(request->packet->vps, PW_STRIPPED_USER_NAME, 0);
 		pairadd(&vps, vp);
 		
 		if (vps) {

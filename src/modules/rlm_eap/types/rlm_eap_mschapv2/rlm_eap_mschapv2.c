@@ -309,7 +309,7 @@ static int mschap_postproxy(EAP_HANDLER *handler, void *tunnel_data)
 		 */
 		pairmove2(&response,
 			  &handler->request->reply->vps,
-			  PW_MSCHAP2_SUCCESS);
+			  PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT);
 		break;
 
 	default:
@@ -338,10 +338,10 @@ static int mschap_postproxy(EAP_HANDLER *handler, void *tunnel_data)
 	 *
 	 *	FIXME: Use intelligent names...
 	 */
-	pairdelete(&handler->request->reply->vps, ((311 << 16) | 7));
-	pairdelete(&handler->request->reply->vps, ((311 << 16) | 8));
-	pairdelete(&handler->request->reply->vps, ((311 << 16) | 16));
-	pairdelete(&handler->request->reply->vps, ((311 << 16) | 17));
+	pairdelete(&handler->request->reply->vps, 7, VENDORPEC_MICROSOFT);
+	pairdelete(&handler->request->reply->vps, 8, VENDORPEC_MICROSOFT);
+	pairdelete(&handler->request->reply->vps, 16, VENDORPEC_MICROSOFT);
+	pairdelete(&handler->request->reply->vps, 17, VENDORPEC_MICROSOFT);
 
 	/*
 	 *	And we need to challenge the user, not ack/reject them,
@@ -557,7 +557,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	the State attribute back, before passing
 		 *	the handler & request back into the tunnel.
 		 */
-		pairdelete(&handler->request->packet->vps, PW_STATE);
+		pairdelete(&handler->request->packet->vps, PW_STATE, 0);
 
 		/*
 		 *	Fix the User-Name when proxying, to strip off
@@ -567,7 +567,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		 */
 		if (inst->with_ntdomain_hack &&
 		    ((challenge = pairfind(handler->request->packet->vps,
-					   PW_USER_NAME)) != NULL) &&
+					   PW_USER_NAME, 0)) != NULL) &&
 		    ((username = strchr(challenge->vp_strvalue, '\\')) != NULL)) {
 			/*
 			 *	Wipe out the NT domain.
@@ -599,10 +599,10 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	 *	Delete MPPE keys & encryption policy.  We don't
 	 *	want these here.
 	 */
-	pairdelete(&handler->request->reply->vps, ((311 << 16) | 7));
-	pairdelete(&handler->request->reply->vps, ((311 << 16) | 8));
-	pairdelete(&handler->request->reply->vps, ((311 << 16) | 16));
-	pairdelete(&handler->request->reply->vps, ((311 << 16) | 17));
+	pairdelete(&handler->request->reply->vps, 7, VENDORPEC_MICROSOFT);
+	pairdelete(&handler->request->reply->vps, 8, VENDORPEC_MICROSOFT);
+	pairdelete(&handler->request->reply->vps, 16, VENDORPEC_MICROSOFT);
+	pairdelete(&handler->request->reply->vps, 17, VENDORPEC_MICROSOFT);
 
 	/*
 	 *	Take the response from the mschap module, and
@@ -611,7 +611,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	response = NULL;
 	if (rcode == RLM_MODULE_OK) {
 		pairmove2(&response, &handler->request->reply->vps,
-			 PW_MSCHAP2_SUCCESS);
+			 PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT);
 		data->code = PW_EAP_MSCHAPV2_SUCCESS;
 	} else {
 		/*

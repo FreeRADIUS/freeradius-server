@@ -275,7 +275,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 				 *	is always true.
 				 */
 				if ((check_item->attribute == PW_VENDOR_SPECIFIC) &&
-				    (VENDOR(vp->attribute) != 0) &&
+				    (vp->vendor != 0) &&
 				    (check_item->operator == T_OP_CMP_TRUE)) {
 					pass++;
 					continue;
@@ -316,12 +316,12 @@ static int attr_filter_common(void *instance, REQUEST *request,
 
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		request->username = pairfind(request->packet->vps,
-					     PW_STRIPPED_USER_NAME);
+					     PW_STRIPPED_USER_NAME, 0);
 		if (!request->username) 
 			request->username = pairfind(request->packet->vps,
-						     PW_USER_NAME);
+						     PW_USER_NAME, 0);
 		request->password = pairfind(request->packet->vps,
-					     PW_USER_PASSWORD);
+					     PW_USER_PASSWORD, 0);
 	}
 
 	return RLM_MODULE_UPDATED;

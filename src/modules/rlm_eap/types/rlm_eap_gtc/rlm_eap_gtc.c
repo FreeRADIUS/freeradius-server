@@ -90,7 +90,7 @@ static int gtc_attach(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-	dval = dict_valbyname(PW_AUTH_TYPE, inst->auth_type_name);
+	dval = dict_valbyname(PW_AUTH_TYPE, 0, inst->auth_type_name);
 	if (!dval) {
 		radlog(L_ERR, "rlm_eap_gtc: Unknown Auth-Type %s",
 		       inst->auth_type_name);
@@ -200,7 +200,7 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 		}
 
 		if (eap_ds->response->type.length != vp->length) {
-			DEBUG2("  rlm_eap_gtc: ERROR: Passwords are of different length. %d %d", eap_ds->response->type.length, vp->length);
+		  DEBUG2("  rlm_eap_gtc: ERROR: Passwords are of different length. %d %d", (int) eap_ds->response->type.length, (int) vp->length);
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
@@ -223,7 +223,7 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 		 *	If there was a User-Password in the request,
 		 *	why the heck are they using EAP-GTC?
 		 */
-		pairdelete(&handler->request->packet->vps, PW_USER_PASSWORD);
+		pairdelete(&handler->request->packet->vps, PW_USER_PASSWORD, 0);
 
 		vp = pairmake("User-Password", "", T_OP_EQ);
 		if (!vp) {

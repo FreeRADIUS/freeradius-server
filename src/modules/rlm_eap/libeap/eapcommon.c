@@ -146,7 +146,7 @@ const char *eaptype_type2name(unsigned int type, char *buffer, size_t buflen)
 		 *	Prefer the dictionary name over a number,
 		 *	if it exists.
 		 */
-		dval = dict_valbyattr(PW_EAP_TYPE, type);
+		dval = dict_valbyattr(PW_EAP_TYPE, 0, type);
 		if (dval) {
 			snprintf(buffer, buflen, "%s", dval->name);
 		}
@@ -157,7 +157,7 @@ const char *eaptype_type2name(unsigned int type, char *buffer, size_t buflen)
 		/*
 		 *	Prefer the dictionary name, if it exists.
 		 */
-		dval = dict_valbyattr(PW_EAP_TYPE, type);
+		dval = dict_valbyattr(PW_EAP_TYPE, 0, type);
 		if (dval) {
 			snprintf(buffer, buflen, "%s", dval->name);
 			return buffer;
@@ -258,7 +258,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 	}
 	eap_packet = (eap_packet_t *)reply->packet;
 
-	pairdelete(&(packet->vps), PW_EAP_MESSAGE);
+	pairdelete(&(packet->vps), PW_EAP_MESSAGE, 0);
 
 	vp = eap_packet2vp(eap_packet);
 	if (!vp) return RLM_MODULE_INVALID;
@@ -273,7 +273,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 	 */
 	vp = pairfind(packet->vps, PW_MESSAGE_AUTHENTICATOR, 0);
 	if (!vp) {
-		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, PW_TYPE_OCTETS);
+		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, 0, PW_TYPE_OCTETS);
 		memset(vp->vp_strvalue, 0, AUTH_VECTOR_LEN);
 		vp->length = AUTH_VECTOR_LEN;
 		pairadd(&(packet->vps), vp);
@@ -322,7 +322,7 @@ VALUE_PAIR *eap_packet2vp(const eap_packet_t *packet)
 		size = total;
 		if (size > 253) size = 253;
 
-		vp = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
+		vp = paircreate(PW_EAP_MESSAGE, 0, PW_TYPE_OCTETS);
 		if (!vp) {
 			pairfree(&head);
 			return NULL;

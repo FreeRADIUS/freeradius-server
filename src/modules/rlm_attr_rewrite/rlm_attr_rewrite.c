@@ -39,7 +39,7 @@ RCSID("$Id$")
 
 typedef struct rlm_attr_rewrite_t {
 	char *attribute;	/* The attribute to search for */
-	int  attr_num;		/* The attribute number */
+	DICT_ATTR *da;		/* The attribute definition */
 	char *search;		/* The pattern to search for */
 	int search_len;		/* The length of the search pattern */
 	char *searchin_str;	/* The VALUE_PAIR list to search in. Can be either packet,reply,proxy,proxy_reply or control (plus it's alias 'config') */
@@ -139,7 +139,7 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 				data->attribute);
 		return -1;
 	}
-	data->attr_num = dattr->attr;
+	data->da = dattr;
 	/* Add the module instance name */
 	data->name = cf_section_name2(conf); /* may be NULL */
 
@@ -224,9 +224,9 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 		/* new_attribute = no */
 		switch (data->searchin) {
 			case RLM_REGEX_INPACKET:
-				if (data->attr_num == PW_USER_NAME)
+				if (!data->da->vendor && (data->da->attr == PW_USER_NAME))
 					attr_vp = request->username;
-				else if (data->attr_num == PW_USER_PASSWORD)
+				else if (!data->da->vendor && (data->da->attr == PW_USER_PASSWORD))
 					attr_vp = request->password;
 				else
 					tmp = request->packet->vps;
@@ -250,12 +250,12 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 			default:
 				radlog(L_ERR, "%s: Illegal value for searchin. Changing to packet.", data->name);
 				data->searchin = RLM_REGEX_INPACKET;
-				attr_vp = pairfind(request->packet->vps, data->attr_num);
+				attr_vp = pairfind(request->packet->vps, data->da->attr, data->da->vendor);
 				break;
 		}
 do_again:
 		if (tmp != NULL)
-			attr_vp = pairfind(tmp, data->attr_num);
+			attr_vp = pairfind(tmp, data->da->attr, data->da->vendor);
 		if (attr_vp == NULL) {
 			DEBUG2("%s: Could not find value pair for attribute %s", data->name,data->attribute);
 			return ret;

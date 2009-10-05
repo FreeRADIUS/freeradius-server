@@ -482,13 +482,13 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	 *	in "authorize", but not "authenticate".
 	 */
 	if (inst->set_auth_type) {
-		DICT_VALUE *dv = dict_valbyname(PW_AUTH_TYPE, xlat_name);
+	  DICT_VALUE *dv = dict_valbyname(PW_AUTH_TYPE, 0, xlat_name);
 
 		/*
 		 *	No section of *my* name, but maybe there's an
 		 *	LDAP section...
 		 */
-		if (!dv) dv = dict_valbyname(PW_AUTH_TYPE, "LDAP");
+		if (!dv) dv = dict_valbyname(PW_AUTH_TYPE, 0, "LDAP");
 		if (!dv) {
 			DEBUG2("rlm_ldap: Over-riding set_auth_type, as there is no module %s listed in the \"authenticate\" section.", xlat_name);
 			inst->set_auth_type = 0;
@@ -1820,7 +1820,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 	       request->username->vp_strvalue, request->password->vp_strvalue);
 
 	while ((vp_user_dn = pairfind(request->config_items,
-				      PW_LDAP_USERDN)) == NULL) {
+				      PW_LDAP_USERDN, 0)) == NULL) {
 		if (!radius_xlat(filter, sizeof(filter), inst->filter,
 				request, ldap_escape_func)) {
 			radlog(L_ERR, "  [%s] unable to create filter.\n", inst->xlat_name);
@@ -2764,7 +2764,7 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 				 *	Add the pair into the packet.
 				 */
 				if (!vals_idx){
-					pairdelete(pairs, newpair->attribute);
+				  pairdelete(pairs, newpair->attribute, newpair->vendor);
 				}
 				pairadd(&pairlist, newpair);
 			}

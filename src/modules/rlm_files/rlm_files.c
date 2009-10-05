@@ -485,7 +485,7 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 	/*
 	 *	Remove server internal parameters.
 	 */
-	pairdelete(reply_pairs, PW_FALL_THROUGH);
+	pairdelete(reply_pairs, PW_FALL_THROUGH, 0);
 
 	/*
 	 *	See if we succeeded.

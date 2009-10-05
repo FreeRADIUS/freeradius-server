@@ -201,7 +201,7 @@ static int add_unique_id(void *instance, REQUEST *request)
 	while (cur) {
 		VALUE_PAIR hack;
 
-		vp = pairfind(request->packet->vps, cur->dattr->attr);
+		vp = pairfind(request->packet->vps, cur->dattr->attr, cur->dattr->vendor);
 		if (!vp) {
 			/*
 			 *	This was changed in 2.x, but it's still

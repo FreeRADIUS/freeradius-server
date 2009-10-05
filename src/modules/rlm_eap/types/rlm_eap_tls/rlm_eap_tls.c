@@ -872,7 +872,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 */
 	if (handler->eap_type != PW_EAP_TLS) {
 		vp = pairfind(handler->request->config_items,
-			      PW_EAP_TLS_REQUIRE_CLIENT_CERT);
+			      PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0);
 		if (!vp) {
 			client_cert = FALSE;
 		} else {

@@ -49,8 +49,8 @@ typedef struct rlm_checkval_t {
 	char 	*check_name;	/* The attribute to check it with ie Allowed-Calling-Station-Id */
 	char	*data_type;	/* string,integer,ipaddr,date,abinary,octets */
 	int	dat_type;
-	int	item_attr;
-	int	chk_attr;
+	DICT_ATTR *item_attr;
+	DICT_ATTR *chk_attr;
 	int	notfound_reject;	/* If we don't find the item_name in the request send back a reject */
 } rlm_checkval_t;
 
@@ -152,7 +152,7 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 		checkval_detach(data);
 		return -1;
 	}
-	data->item_attr = dattr->attr;
+	data->item_attr = dattr;
 
 	/*
 	 *	Add the check attribute name to the dictionary
@@ -168,7 +168,7 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 		checkval_detach(data);
 		return -1;
 	}
-	data->chk_attr = dattr->attr;
+	data->chk_attr = dattr;
 	DEBUG2("rlm_checkval: Registered name %s for attribute %d",
 		dattr->name,dattr->attr);
 
@@ -206,7 +206,7 @@ static int do_checkval(void *instance, REQUEST *request)
 	*      Look for the check item
 	*/
 
-	if (!(item_vp = pairfind(request->packet->vps, data->item_attr))){
+	if (!(item_vp = pairfind(request->packet->vps, data->item_attr->attr, data->item_attr->vendor))){
 		DEBUG2("rlm_checkval: Could not find item named %s in request", data->item_name);
 		if (data->notfound_reject)
 			ret = RLM_MODULE_REJECT;
@@ -217,7 +217,7 @@ static int do_checkval(void *instance, REQUEST *request)
 		DEBUG2("rlm_checkval: Item Name: %s, Value: %s",data->item_name, item_vp->vp_strvalue);
 	tmp = request->config_items;
 	do{
-		if (!(chk_vp = pairfind(tmp, data->chk_attr))){
+		if (!(chk_vp = pairfind(tmp, data->chk_attr->attr, data->chk_attr->vendor))){
 			if (!found){
 				DEBUG2("rlm_checkval: Could not find attribute named %s in check pairs",data->check_name);
 				ret = RLM_MODULE_NOTFOUND;

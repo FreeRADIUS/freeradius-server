@@ -232,7 +232,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 *	Allow per-user configuration of EAP types.
 		 */
 		vp = pairfind(handler->request->config_items,
-			      PW_EAP_TYPE);
+			      PW_EAP_TYPE, 0);
 		if (vp) default_eap_type = vp->vp_integer;
 
 	do_initiate:
@@ -310,7 +310,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 */
 		default_eap_type = 0;
 		vp = pairfind(handler->request->config_items,
-			      PW_EAP_TYPE);
+			      PW_EAP_TYPE, 0);
 		for (i = 0; i < eaptype->length; i++) {
 			/*
 			 *	It is invalid to request identity,
@@ -525,7 +525,7 @@ int eap_compose(EAP_HANDLER *handler)
 	 */
 	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0);
 	if (!vp) {
-		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, PW_TYPE_OCTETS);
+		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, 0, PW_TYPE_OCTETS);
 		memset(vp->vp_octets, 0, AUTH_VECTOR_LEN);
 		vp->length = AUTH_VECTOR_LEN;
 		pairadd(&(request->reply->vps), vp);
@@ -690,7 +690,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Create an EAP-Type containing the EAP-type
 	 *	from the packet.
 	 */
-	vp = paircreate(PW_EAP_TYPE, PW_TYPE_INTEGER);
+	vp = paircreate(PW_EAP_TYPE, 0, PW_TYPE_INTEGER);
 	if (vp) {
 		vp->vp_integer = eap_msg->vp_octets[4];
 		pairadd(&(request->packet->vps), vp);
@@ -804,8 +804,8 @@ void eap_fail(EAP_HANDLER *handler)
 	/*
 	 *	Delete any previous replies.
 	 */
-	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE);
-	pairdelete(&handler->request->reply->vps, PW_STATE);
+	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE, 0);
+	pairdelete(&handler->request->reply->vps, PW_STATE, 0);
 
 	eap_packet_free(&handler->eap_ds->request);
 	handler->eap_ds->request = eap_packet_alloc();
