@@ -2935,7 +2935,6 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 		ptr += vsa_llen + vsa_offset;
 		vendorlen -= vsa_tlen + vsa_llen + vsa_offset + attrlen;
-		if (vendorlen == 0) vendorcode = 0;
 		packet_length -= (vsa_tlen + vsa_llen + vsa_offset);
 
 		/*
@@ -3029,6 +3028,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		}
 
 	next:
+		if (vendorlen == 0) vendorcode = 0;
 		ptr += attrlen;
 		packet_length -= attrlen;
 	}
