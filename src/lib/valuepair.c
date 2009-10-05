@@ -281,7 +281,8 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 		 *	Found the first attribute, replace it,
 		 *	and return.
 		 */
-		if (i->attribute == replace->attribute) {
+		if ((i->attribute == replace->attribute) &&
+		    (i->vendor == replace->vendor)) {
 			*prev = replace;
 
 			/*
@@ -349,7 +350,7 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr, int vendor)
 
 	while (vp) {
 		if ((attr >= 0) &&
-		    (vp->attribute != attr) && (vp->vendor != vendor)) {
+		    !((vp->attribute == attr) && (vp->vendor == vendor))) {
 			vp = vp->next;
 			continue;
 		}
