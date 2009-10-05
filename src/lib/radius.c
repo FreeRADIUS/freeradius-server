@@ -859,7 +859,7 @@ static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps)
 		 *	Pack the attribute.
 		 */
 		ptr[0] = (vp->attribute & 0xff00) >> 8;
-		ptr[1] = length;
+		ptr[1] = (length & 0xff);
 
 		ptr += ptr[1];
 		vp->flags.encoded = 1;
