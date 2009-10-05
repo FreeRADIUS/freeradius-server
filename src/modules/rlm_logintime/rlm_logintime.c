@@ -226,7 +226,7 @@ static int logintime_authorize(void *instance, REQUEST *request)
 			} else {
 				reply_item = radius_paircreate(request,
 							       &request->reply->vps,
-							       PW_SESSION_TIMEOUT,
+							       PW_SESSION_TIMEOUT, 0,
 							       PW_TYPE_INTEGER);
 				reply_item->vp_integer = r;
 			}

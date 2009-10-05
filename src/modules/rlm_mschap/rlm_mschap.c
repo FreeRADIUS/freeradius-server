@@ -298,7 +298,8 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 	 */
 	if (strncasecmp(fmt, "Challenge", 9) == 0) {
 		chap_challenge = pairfind(request->packet->vps,
-					  PW_MSCHAP_CHALLENGE);
+					  PW_MSCHAP_CHALLENGE,
+					  VENDORPEC_MICROSOFT);
 		if (!chap_challenge) {
 			RDEBUG2("No MS-CHAP-Challenge in the request.");
 			return 0;
@@ -323,7 +324,8 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 
 			RDEBUG2(" mschap2: %02x", chap_challenge->vp_octets[0]);
 			response = pairfind(request->packet->vps,
-					    PW_MSCHAP2_RESPONSE);
+					    PW_MSCHAP2_RESPONSE,
+					    VENDORPEC_MICROSOFT);
 			if (!response) {
 				RDEBUG2("MS-CHAP2-Response is required to calculate MS-CHAPv1 challenge.");
 				return 0;
@@ -338,7 +340,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			}
 
 			user_name = pairfind(request->packet->vps,
-					     PW_USER_NAME);
+					     PW_USER_NAME, 0);
 			if (!user_name) {
 				RDEBUG2("User-Name is required to calculateMS-CHAPv1 Challenge.");
 				return 0;
@@ -379,9 +381,10 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 */
 	} else if (strncasecmp(fmt, "NT-Response", 11) == 0) {
 		response = pairfind(request->packet->vps,
-				    PW_MSCHAP_RESPONSE);
+				    PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
 		if (!response) response = pairfind(request->packet->vps,
-						   PW_MSCHAP2_RESPONSE);
+						   PW_MSCHAP2_RESPONSE,
+						   VENDORPEC_MICROSOFT);
 		if (!response) {
 			RDEBUG2("No MS-CHAP-Response or MS-CHAP2-Response was found in the request.");
 			return 0;
@@ -411,7 +414,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 */
 	} else if (strncasecmp(fmt, "LM-Response", 11) == 0) {
 		response = pairfind(request->packet->vps,
-				    PW_MSCHAP_RESPONSE);
+				    PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
 		if (!response) {
 			RDEBUG2("No MS-CHAP-Response was found in the request.");
 			return 0;
@@ -696,7 +699,7 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	For backwards compatibility
 	 */
-	if (!dict_valbyname(PW_AUTH_TYPE, inst->xlat_name)) {
+	if (!dict_valbyname(PW_AUTH_TYPE, 0, inst->xlat_name)) {
 		inst->auth_type = "MS-CHAP";
 	} else {
 		inst->auth_type = inst->xlat_name;
@@ -1044,7 +1047,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	 */
 	if (do_ntlm_auth) {
 		VALUE_PAIR *vp = pairfind(request->config_items,
-					  PW_MS_CHAP_USE_NTLM_AUTH);
+					  PW_MS_CHAP_USE_NTLM_AUTH, 0);
 		if (vp) do_ntlm_auth = vp->vp_integer;
 	}
 
@@ -1055,7 +1058,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	smb_ctrl = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL, 0);
 	if (!smb_ctrl) {
 		password = pairfind(request->config_items,
-				    PW_SMB_ACCOUNT_CTRL_TEXT);
+				    PW_SMB_ACCOUNT_CTRL_TEXT, 0);
 		if (password) {
 			smb_ctrl = radius_pairmake(request,
 						   &request->config_items,

@@ -277,7 +277,7 @@ static int sql_set_user(rlm_sql_log_t *inst, REQUEST *request, char *sqlusername
 	rad_assert(request->packet != NULL);
 
 	/* Remove any user attr we added previously */
-	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0);
 
 	if (username != NULL) {
 		strlcpy(tmpuser, username, MAX_STRING_LEN);
@@ -429,7 +429,7 @@ static int sql_log_accounting(void *instance, REQUEST *request)
 	}
 
 	/* Search the query in conf section of the module */
-	if ((dval = dict_valbyattr(PW_ACCT_STATUS_TYPE, pair->vp_integer)) == NULL) {
+	if ((dval = dict_valbyattr(PW_ACCT_STATUS_TYPE, 0, pair->vp_integer)) == NULL) {
 		radlog_request(L_ERR, 0, request, "Unsupported Acct-Status-Type = %d",
 			       pair->vp_integer);
 		return RLM_MODULE_NOOP;

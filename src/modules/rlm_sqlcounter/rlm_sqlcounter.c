@@ -72,9 +72,9 @@ typedef struct rlm_sqlcounter_t {
 	char *allowed_chars;	/* safe characters list for SQL queries */
 	time_t reset_time;
 	time_t last_reset;
-	int  key_attr;		/* attribute number for key field */
-	int  dict_attr;		/* attribute number for the counter. */
-	int  reply_attr;	/* attribute number for the reply */
+	DICT_ATTR *key_attr;		/* attribute number for key field */
+	DICT_ATTR *dict_attr;		/* attribute number for the counter. */
+	DICT_ATTR *reply_attr;	/* attribute number for the reply */
 } rlm_sqlcounter_t;
 
 /*
@@ -478,7 +478,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 		sqlcounter_detach(data);
 		return -1;
 	}
-	data->key_attr = dattr->attr;
+	data->key_attr = dattr;
 
 	/*
 	 *	Discover the attribute number of the reply.
@@ -487,7 +487,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->reply_name == NULL) {
 		DEBUG2("rlm_sqlcounter: Reply attribute set to Session-Timeout.");
-		data->reply_attr = PW_SESSION_TIMEOUT;
+		data->reply_attr = dict_attrbyvalue(PW_SESSION_TIMEOUT, 0);
 		data->reply_name = strdup("Session-Timeout");
 	}
 	else {
@@ -498,7 +498,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 			sqlcounter_detach(data);
 			return -1;
 		}
-		data->reply_attr = dattr->attr;
+		data->reply_attr = dattr;
 		DEBUG2("rlm_sqlcounter: Reply attribute %s is number %d",
 		       data->reply_name, dattr->attr);
 	}
@@ -536,9 +536,12 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 		sqlcounter_detach(data);
 		return -1;
 	}
-	data->dict_attr = dattr->attr;
-	DEBUG2("rlm_sqlcounter: Counter attribute %s is number %d",
-			data->counter_name, data->dict_attr);
+	if (dattr->vendor != 0) {
+		radlog(L_ERR, "Counter attribute must not be a VSA");
+		sqlcounter_detach(data);
+		return -1;
+	}
+	data->dict_attr = dattr;
 
 	/*
 	 * Create a new attribute for the check item.
@@ -590,7 +593,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Register the counter comparison operation.
 	 */
-	paircompare_register(data->dict_attr, 0, sqlcounter_cmp, data);
+	paircompare_register(data->dict_attr->attr, 0, sqlcounter_cmp, data);
 
 	*instance = data;
 
@@ -638,7 +641,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	 *      The REAL username, after stripping.
 	 */
 	DEBUG2("rlm_sqlcounter: Entering module authorize code");
-	key_vp = (data->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, data->key_attr);
+	key_vp = ((data->key_attr->vendor == 0) && (data->key_attr->attr == PW_USER_NAME)) ? request->username : pairfind(request->packet->vps, data->key_attr->attr, data->key_attr->vendor);
 	if (key_vp == NULL) {
 		DEBUG2("rlm_sqlcounter: Could not find Key value pair");
 		return ret;
@@ -651,7 +654,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		return ret;
 	}
 	/* DEBUG2("rlm_sqlcounter: Found Check item attribute %d", dattr->attr); */
-	if ((check_vp= pairfind(request->config_items, dattr->attr)) == NULL) {
+	if ((check_vp= pairfind(request->config_items, dattr->attr, dattr->vendor)) == NULL) {
 		DEBUG2("rlm_sqlcounter: Could not find Check item value pair");
 		return ret;
 	}
@@ -705,13 +708,14 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 			res += check_vp->vp_integer;
 		}
 
-		if ((reply_item = pairfind(request->reply->vps, data->reply_attr)) != NULL) {
+		if ((reply_item = pairfind(request->reply->vps, data->reply_attr->attr, data->reply_attr->vendor)) != NULL) {
 			if (reply_item->vp_integer > res)
 				reply_item->vp_integer = res;
 		} else {
 			reply_item = radius_paircreate(request,
 						       &request->reply->vps,
-						       data->reply_attr,
+						       data->reply_attr->attr,
+						       data->reply_attr->vendor,
 						       PW_TYPE_INTEGER);
 			reply_item->vp_integer = res;
 		}
@@ -756,7 +760,7 @@ static int sqlcounter_detach(void *instance)
 	rlm_sqlcounter_t *inst = (rlm_sqlcounter_t *)instance;
 
 	allowed_chars = NULL;
-	paircompare_unregister(inst->dict_attr, sqlcounter_cmp);
+	paircompare_unregister(inst->dict_attr->attr, sqlcounter_cmp);
 
 	/*
 	 *	Free up dynamically allocated string pointers.

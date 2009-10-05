@@ -77,7 +77,7 @@ extern int otp_gen_state(char [OTP_MAX_RADSTATE_LEN],
                          int32_t, int32_t, const unsigned char [16]);
 
 /* otp_pwe.c */
-extern int pwattr[8];
+extern DICT_ATTR *pwattr[8];
 extern void otp_pwe_init(void);
 extern otp_pwe_t otp_pwe_present(const REQUEST *);
 

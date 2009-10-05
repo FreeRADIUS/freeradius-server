@@ -626,7 +626,7 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 			    VALUE_PAIR **reply_pairs);
 int radius_find_compare(int attribute);
 VALUE_PAIR	*radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
-				  int attribute, int type);
+				   int attribute, int vendor, int type);
 VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 			    const char *attribute, const char *value,
 			    int operator);

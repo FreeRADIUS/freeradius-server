@@ -358,8 +358,7 @@ struct passwd_instance {
 	int nfields;
 	int keyfield;
 	int listable;
-	int keyattr;
-	int keyattrtype;
+	DICT_ATTR *keyattr;
 	int ignoreempty;
 };
 
@@ -477,8 +476,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 		release_ht(inst->ht);
 		return -1;
 	}
-	inst->keyattr = da->attr;
-	inst->keyattrtype = da->type;
+	inst->keyattr = da;
 	inst->nfields = nfields;
 	inst->keyfield = keyfield;
 	inst->listable = listable;
@@ -526,9 +524,9 @@ static int passwd_map(void *instance, REQUEST *request)
 	int found = 0;
 
 	for (key = request->packet->vps;
-	 key && (key = pairfind (key, inst->keyattr));
+	     key && (key = pairfind (key, inst->keyattr->attr, inst->keyattr->vendor));
 	  key = key->next ){
-		switch (inst->keyattrtype) {
+		switch (inst->keyattr->type) {
 			case PW_TYPE_INTEGER:
 				snprintf(buffer, 1024, "%u", key->vp_integer);
 				name = buffer;

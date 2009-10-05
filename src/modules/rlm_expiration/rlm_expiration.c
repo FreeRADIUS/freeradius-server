@@ -102,7 +102,7 @@ static int expiration_authorize(void *instance, REQUEST *request)
 		vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0);
 		if (!vp) {
 			vp = radius_paircreate(request, &request->reply->vps,
-					       PW_SESSION_TIMEOUT,
+					       PW_SESSION_TIMEOUT, 0,
 					       PW_TYPE_INTEGER);
 			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
 

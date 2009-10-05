@@ -163,8 +163,8 @@ static int presufcmp(UNUSED void *instance,
 		 *	If "request" is NULL, then the memory will be
 		 *	lost!
 		 */
-		vp = radius_paircreate(req, &request,
-				       PW_STRIPPED_USER_NAME, PW_TYPE_STRING);
+		vp = radius_paircreate(req, &request, PW_STRIPPED_USER_NAME,
+				       0, PW_TYPE_STRING);
 		if (!vp) return ret;
 		req->username = vp;
 	}

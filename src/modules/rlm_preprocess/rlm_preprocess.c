@@ -122,7 +122,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 	char		newattr[MAX_STRING_LEN];
 
 	for ( ; vp != NULL; vp = vp->next) {
-		vendorcode = VENDOR(vp->attribute);
+		vendorcode = vp->vendor;
 		if (!((vendorcode == 9) || (vendorcode == 6618))) continue; /* not a Cisco or Quintum VSA, continue */
 
 		if (vp->type != PW_TYPE_STRING) continue;
@@ -182,17 +182,15 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
  */
 static void alvarion_vsa_hack(VALUE_PAIR *vp)
 {
-	int		vendorcode;
 	int		number = 1;
 
 	for ( ; vp != NULL; vp = vp->next) {
 		DICT_ATTR *da;
 
-		vendorcode = VENDOR(vp->attribute);
-		if (vendorcode != 12394) continue;
+		if (vp->vendor != 12394) continue;
 		if (vp->type != PW_TYPE_STRING) continue;
 
-		da = dict_attrbyvalue(number | (12394 << 16));
+		da = dict_attrbyvalue(number, 12394);
 		if (!da) continue;
 
 		vp->attribute = da->attr;
@@ -267,7 +265,7 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 	if (pairfind(request_pairs, PW_FRAMED_PROTOCOL, 0) != NULL &&
 	    pairfind(request_pairs, PW_SERVICE_TYPE, 0) == NULL) {
 		tmp = radius_paircreate(request, &request->packet->vps,
-					PW_SERVICE_TYPE, PW_TYPE_INTEGER);
+					PW_SERVICE_TYPE, 0, PW_TYPE_INTEGER);
 		tmp->vp_integer = PW_FRAMED_USER;
 	}
 }
@@ -349,8 +347,8 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 			 */
 			add = paircopy(i->reply);
 			ft = fallthrough(add);
-			pairdelete(&add, PW_STRIP_USER_NAME);
-			pairdelete(&add, PW_FALL_THROUGH);
+			pairdelete(&add, PW_STRIP_USER_NAME, 0);
+			pairdelete(&add, PW_FALL_THROUGH, 0);
 			pairxlatmove(request, &request->packet->vps, &add);
 			pairfree(&add);
 			updated = 1;
@@ -401,7 +399,7 @@ static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 			if (!vp) {
 				vp = radius_paircreate(request,
 						       &request->packet->vps,
-						       PW_HUNTGROUP_NAME,
+						       PW_HUNTGROUP_NAME, 9,
 						       PW_TYPE_STRING);
 				strlcpy(vp->vp_strvalue, i->name,
 					sizeof(vp->vp_strvalue));
@@ -428,7 +426,7 @@ static int add_nas_attr(REQUEST *request)
 		nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0);
 		if (!nas) {
 			nas = radius_paircreate(request, &request->packet->vps,
-						PW_NAS_IP_ADDRESS,
+						PW_NAS_IP_ADDRESS, 0,
 						PW_TYPE_IPADDR);
 			nas->vp_ipaddr = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 		}
@@ -438,7 +436,7 @@ static int add_nas_attr(REQUEST *request)
 		nas = pairfind(request->packet->vps, PW_NAS_IPV6_ADDRESS, 0);
 		if (!nas) {
 			nas = radius_paircreate(request, &request->packet->vps,
-						PW_NAS_IPV6_ADDRESS,
+						PW_NAS_IPV6_ADDRESS, 0,
 						PW_TYPE_IPV6ADDR);
 			memcpy(nas->vp_strvalue,
 			       &request->packet->src_ipaddr.ipaddr,
@@ -529,7 +527,7 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 		 *	approaching rationality.
 		 */
 		ascend_nasport_hack(pairfind(request->packet->vps,
-					     PW_NAS_PORT),
+					     PW_NAS_PORT, 0),
 				    data->ascend_channels_per_line);
 	}
 
@@ -571,7 +569,7 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 		VALUE_PAIR *vp;
 
 		vp = radius_paircreate(request, &request->packet->vps,
-				       PW_CHAP_CHALLENGE, PW_TYPE_OCTETS);
+				       PW_CHAP_CHALLENGE, 0, PW_TYPE_OCTETS);
 		vp->length = AUTH_VECTOR_LEN;
 		memcpy(vp->vp_strvalue, request->packet->vector, AUTH_VECTOR_LEN);
 	}

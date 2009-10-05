@@ -45,7 +45,7 @@ RCSID("$Id$")
 
 /* Attribute IDs for supported password encodings. */
 #define SIZEOF_PWATTR (4 * 2)
-int pwattr[SIZEOF_PWATTR];
+DICT_ATTR *pwattr[SIZEOF_PWATTR];
 
 
 /* Initialize the pwattr array for supported password encodings. */
@@ -64,37 +64,37 @@ otp_pwe_init(void)
 
   /* PAP */
   if ((da = dict_attrbyname("User-Password")) != NULL) {
-    pwattr[0] = da->attr;
-    pwattr[1] = da->attr;
+    pwattr[0] = da;
+    pwattr[1] = da;
   }
 
   /* CHAP */
   if ((da = dict_attrbyname("CHAP-Challenge")) != NULL) {
-    pwattr[2] = da->attr;
+    pwattr[2] = da;
     if ((da = dict_attrbyname("CHAP-Password")) != NULL)
-      pwattr[3] = da->attr;
+      pwattr[3] = da;
     else
-      pwattr[2] = 0;
+      pwattr[2] = NULL;
   }
 
 #if 0
   /* MS-CHAP (recommended not to use) */
   if ((da = dict_attrbyname("MS-CHAP-Challenge")) != NULL) {
-    pwattr[4] = da->attr;
+    pwattr[4] = da;
     if ((da = dict_attrbyname("MS-CHAP-Response")) != NULL)
-      pwattr[5] = da->attr;
+      pwattr[5] = da;
     else
-      pwattr[4] = 0;
+      pwattr[4] = NULL;
   }
 #endif /* 0 */
 
   /* MS-CHAPv2 */
   if ((da = dict_attrbyname("MS-CHAP-Challenge")) != NULL) {
-    pwattr[6] = da->attr;
+    pwattr[6] = da;
     if ((da = dict_attrbyname("MS-CHAP2-Response")) != NULL)
-      pwattr[7] = da->attr;
+      pwattr[7] = da;
     else
-      pwattr[6] = 0;
+      pwattr[6] = NULL;
   }
 }
 
@@ -110,10 +110,10 @@ otp_pwe_present(const REQUEST *request)
   unsigned i;
 
   for (i = 0; i < SIZEOF_PWATTR; i += 2) {
-    if (pairfind(request->packet->vps, pwattr[i]) &&
-        pairfind(request->packet->vps, pwattr[i + 1])) {
-      DEBUG("rlm_otp: %s: password attributes %d, %d", __func__,
-             pwattr[i], pwattr[i + 1]);
+    if (pairfind(request->packet->vps, pwattr[i]->attr, pwattr[i]->vendor) &&
+        pairfind(request->packet->vps, pwattr[i + 1]->attr,  pwattr[i + 1]->vendor)) {
+      DEBUG("rlm_otp: %s: password attributes %s, %s", __func__,
+             pwattr[i]->name, pwattr[i + 1]->name);
       return i + 1; /* Can't return 0 (indicates failure) */
     }
   }

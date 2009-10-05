@@ -463,7 +463,7 @@ static VALUE_PAIR *find_vp(REQUEST *request, const char *name)
 		return NULL;	/* no such attribute */
 	}
 
-	return pairfind(vps, dattr->attr);
+	return pairfind(vps, dattr->attr, dattr->vendor);
 }
 
 

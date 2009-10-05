@@ -25,11 +25,6 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(otp_mppe_h, "$Id$")
 
-/* Some hardcoding here ... because not all types have #defines */
-#define PW_MS_CHAP_CHALLENGE  ((311 << 16) | 11)
-#define PW_MS_CHAP_RESPONSE   ((311 << 16) | 1)
-#define PW_MS_CHAP2_RESPONSE  ((311 << 16) | 25)
-
 /* MPPE encryption policy */
 #define MPPE_ENC_POL_ENCRYPTION_FORBIDDEN "0x00000000"
 #define MPPE_ENC_POL_ENCRYPTION_ALLOWED   "0x00000001"

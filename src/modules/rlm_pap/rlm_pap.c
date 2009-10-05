@@ -161,7 +161,7 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 		inst->name = cf_section_name1(conf);
 	}
 
-	dval = dict_valbyname(PW_AUTH_TYPE, inst->name);
+	dval = dict_valbyname(PW_AUTH_TYPE, 0, inst->name);
 	if (dval) {
 		inst->auth_type = dval->value;
 	} else {
@@ -342,7 +342,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 
 			new_vp = radius_paircreate(request,
 						   &request->config_items,
-						   attr, PW_TYPE_STRING);
+						   attr, 0, PW_TYPE_STRING);
 			strcpy(new_vp->vp_strvalue, p + 1);/* bounds OK */
 			new_vp->length = strlen(new_vp->vp_strvalue);
 
@@ -352,7 +352,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 			 *	attribute, so we should delete the old
 			 *	User-Password here.
 			 */
-			pairdelete(&request->config_items, PW_USER_PASSWORD);
+			pairdelete(&request->config_items, PW_USER_PASSWORD, 0);
 		}
 			break;
 
@@ -463,7 +463,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 
 	if (inst->auth_type) {
 		vp = radius_paircreate(request, &request->config_items,
-				       PW_AUTH_TYPE, PW_TYPE_INTEGER);
+				       PW_AUTH_TYPE, 0, PW_TYPE_INTEGER);
 		vp->vp_integer = inst->auth_type;
 	}
 

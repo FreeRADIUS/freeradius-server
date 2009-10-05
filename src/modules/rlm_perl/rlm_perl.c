@@ -534,7 +534,7 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 	AV		*av;
 	char		namebuf[256], *name;
 	char            buffer[1024];
-	int		attr, len;
+	int		attr, vendor, len;
 
 	hv_undef(rad_hv);
 	nvp = paircopy(vp);
@@ -542,7 +542,8 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 	while (nvp != NULL) {
 		name = nvp->name;
 		attr = nvp->attribute;
-		vpa = paircopy2(nvp,attr);
+		vendor = nvp->vendor;
+		vpa = paircopy2(nvp, attr, vendor);
 
 		if (vpa->next) {
 			av = newAV();
@@ -570,9 +571,9 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 		}
 
 		pairfree(&vpa);
-		vpa = nvp; while ((vpa != NULL) && (vpa->attribute == attr))
+		vpa = nvp; while ((vpa != NULL) && (vpa->attribute == attr) && (vpa->vendor == vendor))
 			vpa = vpa->next;
-		pairdelete(&nvp, attr);
+		pairdelete(&nvp, attr, vendor);
 		nvp = vpa;
 	}
 }
@@ -745,12 +746,12 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 		 *	Update cached copies
 		 */
 		request->username = pairfind(request->packet->vps,
-					     PW_USER_NAME);
+					     PW_USER_NAME, 0);
 		request->password = pairfind(request->packet->vps,
-					     PW_USER_PASSWORD);
+					     PW_USER_PASSWORD, 0);
 		if (!request->password)
 			request->password = pairfind(request->packet->vps,
-						     PW_CHAP_PASSWORD);
+						     PW_CHAP_PASSWORD, 0);
 	}
 
 	if ((get_hv_content(rad_reply_hv, &vp)) > 0 ) {

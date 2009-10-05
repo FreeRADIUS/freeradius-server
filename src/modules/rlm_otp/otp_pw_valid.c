@@ -92,8 +92,8 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
   otp_request.pwe.pwe = pwe;
 
   /* otp_pwe_present() (done by caller) guarantees that both of these exist */
-  cvp = pairfind(request->packet->vps, pwattr[pwe - 1]);
-  rvp = pairfind(request->packet->vps, pwattr[pwe]);
+  cvp = pairfind(request->packet->vps, pwattr[pwe - 1]->attr,  pwattr[pwe - 1]->vendor);
+  rvp = pairfind(request->packet->vps, pwattr[pwe]->attr, pwattr[pwe]->vendor);
   /* this is just to quiet Coverity */
   if (!rvp || !cvp)
     return RLM_MODULE_REJECT;

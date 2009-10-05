@@ -1536,7 +1536,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 			create_attr:
 				passwd_item = radius_paircreate(request,
 								&request->config_items,
-								attr,
+								attr, 0,
 								PW_TYPE_STRING);
 				strlcpy(passwd_item->vp_strvalue, value,
 					sizeof(passwd_item->vp_strvalue));
