@@ -2548,6 +2548,53 @@ static uint8_t *rad_coalesce(unsigned int attribute, int vendor,
 }
 
 /*
+ *	Walk over Evil WIMAX Hell, creating attributes.
+ *
+ *	Won't someone think of the children?  What if they read this code?
+ */
+static VALUE_PAIR *recurse_evil(const RADIUS_PACKET *packet,
+				const RADIUS_PACKET *original,
+				const char *secret,
+				int attribute, int vendor,
+				uint8_t *ptr, size_t len)
+{
+	VALUE_PAIR *head = NULL;
+	VALUE_PAIR **tail = &head;
+	VALUE_PAIR *vp;
+	uint8_t *y;		/* why do I need to do this? */
+
+	/*
+	 *	Sanity check the attribute.
+	 */
+	for (y = ptr; y < (ptr + len); y += y[1]) {
+		if ((y[0] == 0) || ((y + 2) > (ptr + len)) ||
+		    (y[1] < 2) || ((y + y[1]) > (ptr + len))) {
+			return NULL;
+		}
+	}
+
+	for (y = ptr; y < (ptr + len); y += y[1]) {
+		vp = paircreate(attribute | (ptr[0] << 16), vendor,
+				PW_TYPE_OCTETS);
+		if (!vp) {
+		error:
+			pairfree(&head);
+			return NULL;
+		}
+
+		if (!data2vp(packet, original, secret,
+			     y[1] - 2, y + 2, vp)) {
+			goto error;
+		}
+
+		*tail = vp;
+		tail = &(vp->next);
+	}
+
+	return head;
+}
+
+/*
  *	Start at the *data* portion of a continued attribute.  search
  *	through the rest of the attributes to find a matching one, and
  *	add it's contents to our contents.
@@ -2564,6 +2611,7 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 	uint8_t *ptr;
 	uint8_t *tlv_data;
 	VALUE_PAIR *vp, *head, **tail;
+	DICT_ATTR *tlv_da;
 
 	/*
 	 *	Ensure we have data that hasn't been split across
@@ -2622,6 +2670,7 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 		    (ptr[1] > left)) {
 			goto not_well_formed;
 		}
+
 		left -= ptr[1];
 	}
 
@@ -2634,7 +2683,16 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 	for (ptr = tlv_data;
 	     ptr != (tlv_data + tlv_length);
 	     ptr += ptr[1]) {
-		vp = paircreate(attribute | (ptr[0] << 8), vendor, PW_TYPE_OCTETS);
+
+		tlv_da = dict_attrbyvalue(attribute | (ptr[0] << 8), vendor);
+		if (tlv_da && (tlv_da->type == PW_TYPE_TLV)) {
+			vp = recurse_evil(packet, original, secret,
+					  attribute | (ptr[0] << 8),
+					  vendor, ptr + 2, ptr[1] - 1);
+		} else {
+			vp = paircreate(attribute | (ptr[0] << 8), vendor,
+					PW_TYPE_OCTETS);
+		}
 		if (!vp) {
 			pairfree(&head);
 			goto not_well_formed;
@@ -2647,7 +2705,7 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 		}
 
 		*tail = vp;
-		tail = &(vp->next);
+		while ((*tail)->next) tail = &((*tail)->next);
 	}
 
 	/*
