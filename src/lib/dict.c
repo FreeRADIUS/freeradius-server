@@ -529,11 +529,6 @@ int dict_addattr(const char *name, int attr, int vendor, int type,
 		return -1;
 	}
 
-	if (attr >= 65536) {
-		fr_strerror_printf("dict_addattr: ATTRIBUTE has invalid number (larger than 65535).");
-		return -1;
-	}
-
 	if (vendor) {
 		DICT_VENDOR *dv;
 		static DICT_VENDOR *last_vendor = NULL;
@@ -997,6 +992,7 @@ static int process_attribute(const char* fn, const int line,
 		 *	
 		 */
 		value <<= 8;
+		if (block_tlv->flags.is_tlv) value <<= 8;
 		value |= (block_tlv->attr & 0xffff);
 		flags.is_tlv = 1;
 	}
@@ -1316,7 +1312,12 @@ static int my_dict_init(const char *dir, const char *fn,
 	struct stat statbuf;
 	char	*argv[MAX_ARGV];
 	int	argc;
-	DICT_ATTR *da, *block_tlv = NULL;
+	DICT_ATTR *da, *block_tlv[3];
+	int	which_block_tlv = 0;
+
+	block_tlv[0] = NULL;
+	block_tlv[1] = NULL;
+	block_tlv[2] = NULL;
 
 	if (strlen(fn) >= sizeof(dirtmp) / 2 ||
 	    strlen(dir) >= sizeof(dirtmp) / 2) {
@@ -1418,7 +1419,7 @@ static int my_dict_init(const char *dir, const char *fn,
 		 */
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
 			if (process_attribute(fn, line, block_vendor,
-					      block_tlv,
+					      block_tlv[which_block_tlv],
 					      argv + 1, argc - 1) == -1) {
 				fclose(fp);
 				return -1;
@@ -1484,7 +1485,15 @@ static int my_dict_init(const char *dir, const char *fn,
 				return -1;
 			}
 
-			block_tlv = da;
+			if (which_block_tlv >= 2) {
+				fr_strerror_printf(
+					"dict_init: %s[%d]: TLVs are nested too deep",
+					fn, line);
+				fclose(fp);
+				return -1;
+			}
+
+			block_tlv[++which_block_tlv] = da;
 			continue;
 		} /* BEGIN-TLV */
 
@@ -1506,14 +1515,14 @@ static int my_dict_init(const char *dir, const char *fn,
 				return -1;
 			}
 
-			if (da != block_tlv) {
+			if (da != block_tlv[which_block_tlv]) {
 				fr_strerror_printf(
 					"dict_init: %s[%d]: END-TLV %s does not match any previous BEGIN-TLV",
 					fn, line, argv[1]);
 				fclose(fp);
 				return -1;
 			}
-			block_tlv = NULL;
+			block_tlv[which_block_tlv--] = NULL;
 			continue;
 		} /* END-VENDOR */
 
