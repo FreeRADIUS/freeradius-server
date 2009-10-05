@@ -909,6 +909,41 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 #endif
 	}
 
+#ifdef WITH_DHCP
+	/*
+	 *	If we can do broadcasts..
+	 */
+	if (cf_pair_find(cs, "broadcast")) {
+#ifndef SO_BROADCAST
+		cf_log_err(cf_sectiontoitem(cs),
+			   "System does not support broadcast sockets.  Delete this line from the configuration file.");
+		return -1;
+#else
+		const char *value;
+		CONF_PAIR *cp = cf_pair_find(cs, "broadcast");
+
+		if (this->type != RAD_LISTEN_DHCP) {
+			cf_log_err(cf_pairtoitem(cp),
+				   "Broadcast can only be set for DHCP listeners.  Delete this line from the configuration file.");
+			return -1;
+		}
+		
+		rad_assert(cp != NULL);
+		value = cf_pair_value(cp);
+		if (!value) {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "No broadcast value given");
+			return -1;
+		}
+
+		/*
+		 *	Hack... whatever happened to cf_section_parse?
+		 */
+		sock->broadcast = (strcmp(value, "yes") == 0);
+#endif
+	}
+#endif
+
 	/*
 	 *	And bind it to the port.
 	 */
@@ -2000,10 +2035,34 @@ static int listen_bind(rad_listen_t *this)
 #endif
 	}
 
+#ifdef WITH_DHCP
+#ifdef SO_BROADCAST
+	if (sock->broadcast) {
+		int on = 1;
+		
+		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
+			radlog(L_ERR, "Can't set broadcast option: %s\n",
+			       strerror(errno));
+			return -1;
+		}
+	}
+#endif
+#endif
+
 	/*
 	 *	May be binding to priviledged ports.
 	 */
 	if (sock->my_port != 0) {
+#ifdef SO_REUSEADDR
+		int on = 1;
+
+		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+			radlog(L_ERR, "Can't set re-use address option: %s\n",
+			       strerror(errno));
+			return -1;
+		}
+#endif
+
 		fr_suid_up();
 		rcode = bind(this->fd, (struct sockaddr *) &salocal, salen);
 		fr_suid_down();
