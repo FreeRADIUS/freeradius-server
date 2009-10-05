@@ -33,7 +33,6 @@
  *   netvim.ips.rsv_by
  */
 
-#include "config.h"
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/modpriv.h>
@@ -42,9 +41,8 @@
 
 #include "rlm_sql.h"
 
-#define VENDOR_ASN 23782
+#define VENDORPEC_ASN 23782
 #define ASN_IP_POOL_NAME 1
-#define PW_ASN_IP_POOL_NAME (ASN_IP_POOL_NAME | (VENDOR_ASN << 16))
 
 #define RLM_NETVIM_LOG_FMT "rlm_sqlhpwippool(%s, line %u): %s"
 #define RLM_NETVIM_MAX_ROWS 1000000
@@ -377,7 +375,7 @@ static int sqlhpwippool_postauth(void *instance, REQUEST *request)
 	}
 
 	/* if no pool name, we don't need to do anything */
-	vp = pairfind(request->reply->vps, PW_ASN_IP_POOL_NAME, 0);
+	vp = pairfind(request->reply->vps, ASN_IP_POOL_NAME, VENDORPEC_ASN);
 	if (vp) {
 		pname = vp->vp_strvalue;
 		nvp_log(__LINE__, data, L_DBG,
@@ -661,7 +659,7 @@ end_gid:
 
 	/* add IP address to reply packet */
 	vp = radius_paircreate(request, &request->reply->vps,
-			       PW_FRAMED_IP_ADDRESS, PW_TYPE_IPADDR);
+			       PW_FRAMED_IP_ADDRESS, 0, PW_TYPE_IPADDR);
 	vp->vp_ipaddr = ip.s_addr;
 
 	nvp_log(__LINE__, data, L_DBG, "sqlhpwippool_postauth(): returning %s",
