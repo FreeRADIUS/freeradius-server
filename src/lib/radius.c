@@ -2527,7 +2527,7 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 	 *	Note that we don't check "flag" here.  The calling
 	 *	code ensures that 
 	 */
-	if (da->type != PW_TYPE_TLV) {
+	if (!da || (da->type != PW_TYPE_TLV)) {
 	not_well_formed:
 		if (tlv_data == data) {	/* true if we had 'goto' */
 			tlv_data = malloc(tlv_length);
