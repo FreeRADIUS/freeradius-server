@@ -2688,20 +2688,25 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 		if (tlv_da && (tlv_da->type == PW_TYPE_TLV)) {
 			vp = recurse_evil(packet, original, secret,
 					  attribute | (ptr[0] << 8),
-					  vendor, ptr + 2, ptr[1] - 1);
+					  vendor, ptr + 2, ptr[1] - 2);
+
+			if (!vp) {
+				pairfree(&head);
+				goto not_well_formed;
+			}
 		} else {
 			vp = paircreate(attribute | (ptr[0] << 8), vendor,
 					PW_TYPE_OCTETS);
-		}
-		if (!vp) {
-			pairfree(&head);
-			goto not_well_formed;
-		}
+			if (!vp) {
+				pairfree(&head);
+				goto not_well_formed;
+			}
 
-		if (!data2vp(packet, original, secret,
-			     ptr[1] - 2, ptr + 2, vp)) {
-			pairfree(&head);
-			goto not_well_formed;
+			if (!data2vp(packet, original, secret,
+				     ptr[1] - 2, ptr + 2, vp)) {
+				pairfree(&head);
+				goto not_well_formed;
+			}
 		}
 
 		*tail = vp;
