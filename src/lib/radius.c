@@ -1006,6 +1006,54 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	return total_length;	/* of attribute */
 }
 
+static int rad_encode_wimax(const RADIUS_PACKET *packet,
+			    const RADIUS_PACKET *original,
+			    const char *secret, VALUE_PAIR *vp,
+			    uint8_t *start, size_t room)
+{
+	int len, total_len = 0;
+	uint8_t *wimax = NULL;
+	uint8_t *ptr = start;
+
+redo:
+	len = rad_vp2attr(packet, original, secret, vp, ptr,
+			  (start + room) - ptr);
+	if (len <= 0) return total_len;
+
+	/*
+	 *	After adding an attribute with the simplest
+	 *	encoding, check to see if we can append it to
+	 *	the previous one.
+	 */
+	if (wimax && (memcmp(wimax + 2, ptr + 2, 5) == 0)) {
+		if ((wimax[1] + (ptr[1] - 6)) <= 255) {
+			unsigned int hack;
+
+			hack = ptr[7] - 3;
+			memmove(ptr, ptr + 9, hack);
+			wimax[1] += hack;
+			wimax[7] += hack;
+			len -= 9;
+
+		} else {
+			wimax[8] = 0x80; /* set continuation */
+			wimax = ptr;
+		}
+	} else {
+		wimax = ptr;
+	}
+
+	total_len += len;
+	ptr += len;
+
+	vp->flags.encoded = 1;
+	vp = vp->next;
+
+	if (vp && vp->flags.is_tlv) goto redo;
+
+	return total_len;
+}
+
 
 /*
  *	Encode a packet.
@@ -1014,7 +1062,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	       const char *secret)
 {
 	radius_packet_t	*hdr;
-	uint8_t	        *ptr, *wimax = NULL;
+	uint8_t	        *ptr;
 	uint16_t	total_length;
 	int		len;
 	VALUE_PAIR	*reply;
@@ -1141,37 +1189,22 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 */
 		debug_pair(reply);
 
-		if (!reply->flags.is_tlv) wimax = NULL;
+		/*
+		 *	Skip attributes that are encoded.
+		 */
+		if (reply->flags.encoded) continue;
 
-		len = rad_vp2attr(packet, original, secret, reply, ptr,
-				  ((uint8_t *) data) + sizeof(data) - ptr);
+		if (reply->flags.is_tlv) {
+			len = rad_encode_wimax(packet, original, secret,
+					       reply, ptr,
+					       ((uint8_t *) data) + sizeof(data) - ptr);
+		} else {
+
+			len = rad_vp2attr(packet, original, secret, reply, ptr,
+					  ((uint8_t *) data) + sizeof(data) - ptr);
+		}
 
 		if (len < 0) return -1;
-
-		/*
-		 *	After adding an attribute with the simplest
-		 *	encoding, check to see if we can append it to
-		 *	the previous one.
-		 */
-		if ((len > 0) && reply->flags.is_tlv) {
-			if (wimax && (memcmp(wimax + 2, ptr + 2, 5) == 0)) {
-				if ((wimax[1] + (ptr[1] - 6)) <= 255) {
-					unsigned int hack;
-
-					hack = ptr[7] - 3;
-					memmove(ptr, ptr + 9, hack);
-					wimax[1] += hack;
-					wimax[7] += hack;
-					len -= 9;
-
-				} else {
-					wimax[8] = 0x80; /* set continuation */
-					wimax = ptr;
-				}
-			} else {
-				wimax = ptr;
-			}
-		}
 
 	next:
 		ptr += len;
