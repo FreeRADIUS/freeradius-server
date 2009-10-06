@@ -790,89 +790,6 @@ static uint8_t *vp2data(const RADIUS_PACKET *packet,
 }
 
 
-static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps, uint32_t mask)
-{
-	int maxattr = 0;
-	int length;
-	unsigned int attribute;
-	uint8_t *ptr, *end;
-	VALUE_PAIR *vp, *tlv;
-
-	attribute = vps->attribute & ~mask;
-	maxattr = vps->attribute & mask;
-
-	tlv = paircreate(attribute, vps->vendor, PW_TYPE_TLV);
-	if (!tlv) return NULL;
-
-	tlv->length = 0;
-	vp = vps;
-	while (vp != NULL) {
-		tlv->length += vp->length + 2;
-
-		/*
-		 *	Group the attributes ONLY until we see a
-		 *	non-TLV attribute.
-		 */
-		if (!vp->flags.is_tlv ||
-		    vp->flags.encoded ||
-		    (vp->flags.encrypt != FLAG_ENCRYPT_NONE) ||
-		    (vp->vendor != vps->vendor) ||
-		    ((vp->attribute & ~mask) != attribute) ||
-		    ((vp->attribute & mask) <= maxattr)) {
-			break;
-		}
-
-		maxattr = vp->attribute & mask;
-		vp = vp->next;
-	}
-
-	if (!tlv->length) {
-		pairfree(&tlv);
-		return NULL;
-	}
-
-	tlv->vp_tlv = malloc(tlv->length);
-	if (!tlv->vp_tlv) {
-		pairfree(&tlv);
-		return NULL;
-	}
-
-	ptr = tlv->vp_tlv;
-	maxattr = vps->attribute & 0x0ff;
-	for (vp = vps; vp != NULL; vp = vp->next) {
-		if (!vp->flags.is_tlv ||
-		    vp->flags.encoded ||
-		    (vp->flags.encrypt != FLAG_ENCRYPT_NONE) ||
-		    ((vp->attribute & 0xffff00ff) != attribute) ||
-		    ((vp->attribute & 0x0000ff00) <= maxattr)) {
-			break;
-		}
-
-		maxattr = vp->attribute & 0xff00;
-		end = vp2data(NULL, NULL, NULL, vp, ptr + 2,
-			      tlv->vp_tlv + tlv->length - ptr);
-		if (!end) {
-			vp->length = ptr - vp->vp_tlv;
-			return tlv; /* should be a more serious error... */
-		}
-
-		length = (end - ptr);
-		if (length > 255) return NULL;
-
-		/*
-		 *	Pack the attribute.
-		 */
-		ptr[0] = (vp->attribute & 0xff00) >> 8;
-		ptr[1] = (length & 0xff);
-
-		ptr += ptr[1];
-		vp->flags.encoded = 1;
-	}
-
-	return tlv;
-}
-
-
 /*
  *	Parse a data structure into a RADIUS attribute.
  */
@@ -988,7 +905,11 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			 *	Ignore TLVs that don't have data, OR
 			 *	have too much data to fit in the
 			 *	packet, OR have too much data to fit
-			 *	in the attribute.
+			 *	in the attribute
+			 *
+			 *	This shouldn't happen in normal
+			 *	operation, as the code assumes that
+			 *	the "tlv" type shouldn't be used.
 			 */
 			if (vp->flags.has_tlv &&
 			    (!vp->vp_tlv || (vp->length > room) ||
@@ -1079,7 +1000,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	       const char *secret)
 {
 	radius_packet_t	*hdr;
-	uint8_t	        *ptr;
+	uint8_t	        *ptr, *wimax = NULL;
 	uint16_t	total_length;
 	int		len;
 	VALUE_PAIR	*reply;
@@ -1206,25 +1127,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 */
 		debug_pair(reply);
 
-		/*
-		 *	Print them in order, even if they were encoded
-		 *	already.
-		 */
-		len = 0;
-		if (reply->flags.encoded) goto next;
-
-		if (reply->flags.is_tlv) {
-			VALUE_PAIR *tlv = rad_vp2tlv(reply, 0xff00);
-			if (tlv) {
-				tlv->next = reply->next;
-				reply->next = tlv;
-			}
-
-			/*
-			 *	The encoded flag MUST be set in reply!
-			 */
-			reply = reply->next;
-		}
+		if (!reply->flags.is_tlv) wimax = NULL;
 
 		len = rad_vp2attr(packet, original, secret, reply, ptr,
 				  ((uint8_t *) data) + sizeof(data) - ptr);
@@ -1232,15 +1135,28 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		if (len < 0) return -1;
 
 		/*
-		 *	Check that the packet is no more than 4k in
-		 *	size, AFTER writing the attribute past the 4k
-		 *	boundary, but BEFORE deciding to increase the
-		 *	size of the packet. Note that the 'data'
-		 *	buffer, above, is one attribute longer than
-		 *	necessary, in order to permit this overflow.
+		 *	After adding an attribute with the simplest
+		 *	encoding, check to see if we can append it to
+		 *	the previous one.
 		 */
-		if ((total_length + len) > MAX_PACKET_LEN) {
-			break;
+		if ((len > 0) && reply->flags.is_tlv) {
+			if (wimax && (memcmp(wimax + 2, ptr + 2, 5) == 0)) {
+				if ((wimax[1] + (ptr[1] - 6)) <= 255) {
+					unsigned int hack;
+
+					hack = ptr[7] - 3;
+					memmove(ptr, ptr + 9, hack);
+					wimax[1] += hack;
+					wimax[7] += hack;
+					len -= 9;
+
+				} else {
+					wimax[8] = 0x80; /* set continuation */
+					wimax = ptr;
+				}
+			} else {
+				wimax = ptr;
+			}
 		}
 
 	next:
