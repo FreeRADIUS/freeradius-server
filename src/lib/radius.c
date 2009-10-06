@@ -1008,13 +1008,14 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 
 static int rad_encode_wimax(const RADIUS_PACKET *packet,
 			    const RADIUS_PACKET *original,
-			    const char *secret, VALUE_PAIR *vp,
+			    const char *secret, VALUE_PAIR *reply,
 			    uint8_t *start, size_t room)
 {
 	int len, total_len = 0;
 	uint8_t *wimax = NULL;
 	uint8_t *ptr = start;
 	uint32_t maxattr;
+	VALUE_PAIR *vp = reply;
 
 	/*
 	 *	Swap the order of the WiMAX hacks, to make later
@@ -1028,11 +1029,10 @@ redo:
 	if (len <= 0) return total_len;
 
 	/*
-	 *	After adding an attribute with the simplest
-	 *	encoding, check to see if we can append it to
-	 *	the previous one.
+	 *	After adding an attribute with the simplest encoding,
+	 *	check to see if we can append it to the previous one.
 	 */
-	if (wimax && (memcmp(wimax + 2, ptr + 2, 5) == 0)) {
+	if (wimax) {
 		if ((wimax[1] + (ptr[1] - 6)) <= 255) {
 			unsigned int hack;
 
@@ -1063,10 +1063,12 @@ redo:
 
 	/*
 	 *	Look at the NEXT tlv.  Ensure that we encode
-	 *	attributes into a common VSA *only* if they are in
-	 *	increasing numerical order.  This is a bad hack.
+	 *	attributes into a common VSA *only* if they are for
+	 *	the same WiMAX VSA, AND if the TLVs are in numerically
+	 *	increasing order.
 	 */
-	if (vp && vp->flags.is_tlv) {
+	if (vp && vp->flags.is_tlv && (reply->vendor == vp->vendor) &&
+	    ((reply->attribute & 0xff) == (vp->attribute & 0xff))) {
 		uint32_t attr;
 
 		attr = (vp->attribute & 0xff00) | ((vp->attribute >> 16) & 0xff);
