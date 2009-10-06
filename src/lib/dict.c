@@ -1226,6 +1226,12 @@ static int process_vendor(const char* fn, const int line, char **argv,
 				return -1;
 			}
 			continuation = 1;
+
+			if (value != VENDORPEC_WIMAX) {
+				fr_strerror_printf("dict_init: %s[%d]: Only WiMAX VSAs can have continuations",
+					   fn, line);
+				return -1;
+			}
 		}
 
 		dv = dict_vendorbyvalue(value);
