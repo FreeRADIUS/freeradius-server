@@ -2585,7 +2585,8 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 		}
 
 		*tail = vp;
-		while ((*tail)->next) tail = &((*tail)->next);
+
+		while (*tail) tail = &((*tail)->next);
 	}
 
 	/*
