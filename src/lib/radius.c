@@ -789,7 +789,7 @@ static uint8_t *vp2data(const RADIUS_PACKET *packet,
 }
 
 
-static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps)
+static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps, uint32_t mask)
 {
 	int maxattr = 0;
 	int length;
@@ -797,14 +797,17 @@ static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps)
 	uint8_t *ptr, *end;
 	VALUE_PAIR *vp, *tlv;
 
-	attribute = vps->attribute & 0xffff00ff;
-	maxattr = vps->attribute & 0x0ff;
+	attribute = vps->attribute & ~mask;
+	maxattr = vps->attribute & mask;
 
 	tlv = paircreate(attribute, vps->vendor, PW_TYPE_TLV);
 	if (!tlv) return NULL;
 
 	tlv->length = 0;
-	for (vp = vps; vp != NULL; vp = vp->next) {
+	vp = vps;
+	while (vp != NULL) {
+		tlv->length += vp->length + 2;
+
 		/*
 		 *	Group the attributes ONLY until we see a
 		 *	non-TLV attribute.
@@ -813,13 +816,13 @@ static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps)
 		    vp->flags.encoded ||
 		    (vp->flags.encrypt != FLAG_ENCRYPT_NONE) ||
 		    (vp->vendor != vps->vendor) ||
-		    ((vp->attribute & 0xffff00ff) != attribute) ||
-		    ((vp->attribute & 0x0000ff00) <= maxattr)) {
+		    ((vp->attribute & ~mask) != attribute) ||
+		    ((vp->attribute & mask) <= maxattr)) {
 			break;
 		}
 
-		maxattr = vp->attribute & 0xff00;
-		tlv->length += vp->length + 2;
+		maxattr = vp->attribute & mask;
+		vp = vp->next;
 	}
 
 	if (!tlv->length) {
@@ -1270,7 +1273,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		if (reply->flags.encoded) goto next;
 
 		if (reply->flags.is_tlv) {
-			VALUE_PAIR *tlv = rad_vp2tlv(reply);
+			VALUE_PAIR *tlv = rad_vp2tlv(reply, 0xff00);
 			if (tlv) {
 				tlv->next = reply->next;
 				reply->next = tlv;
