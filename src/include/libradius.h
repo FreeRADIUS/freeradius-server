@@ -325,7 +325,7 @@ VALUE_PAIR	*rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *origin
 			     int length, const uint8_t *data);
 int		rad_vp2attr(const RADIUS_PACKET *packet,
 			    const RADIUS_PACKET *original, const char *secret,
-			    const VALUE_PAIR *vp, uint8_t *ptr);
+			    const VALUE_PAIR *vp, uint8_t *ptr, size_t room);
 
 /* valuepair.c */
 VALUE_PAIR	*pairalloc(DICT_ATTR *da);

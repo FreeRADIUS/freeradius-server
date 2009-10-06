@@ -950,7 +950,8 @@ static int rad_vp2continuation(const VALUE_PAIR *vp, uint8_t *start,
  *	Parse a data structure into a RADIUS attribute.
  */
 int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-		const char *secret, const VALUE_PAIR *vp, uint8_t *start)
+		const char *secret, const VALUE_PAIR *vp, uint8_t *start,
+		size_t room)
 {
 	int		vendorcode;
 	int		len, total_length;
@@ -959,7 +960,6 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	uint8_t		*end;
 
 	ptr = start;
-	end = ptr + 255;
 	vendorcode = total_length = 0;
 	length_ptr = vsa_length_ptr = tlv_length_ptr = NULL;
 
@@ -968,6 +968,9 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *	into their own VSA.
 	 */
 	if ((vendorcode = vp->vendor) == 0) {
+		if (room < 2) return 0;
+		room -= 2;
+
 		*(ptr++) = vp->attribute & 0xff;
 		length_ptr = ptr;
 		*(ptr++) = 2;
@@ -990,6 +993,9 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			vsa_llen = dv->length;
 			if (dv->flags) vsa_offset = 1;
 		}
+
+		if (room < (6 + vsa_tlen + vsa_llen + vsa_offset)) return 0;
+		room -= 6 + vsa_tlen + vsa_llen + vsa_offset;
 
 		/*
 		 *	Build a VSA header.
@@ -1065,6 +1071,9 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			 *	sub-TLV's can only be in one format.
 			 */
 			if (vp->flags.is_tlv) {
+				if (room < 2) return 0;
+				room -= 2;
+
 				*(ptr++) = (vp->attribute & 0xff00) >> 8;
 				tlv_length_ptr = ptr;
 				*(ptr++) = 2;
@@ -1084,10 +1093,13 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	if (vp->flags.has_tag && (vp->type == PW_TYPE_STRING) &&
 	    (TAG_VALID(vp->flags.tag) ||
 	     (vp->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
+		if (room < (1 + vp->length)) return 0;
+
 		ptr[0] = vp->flags.tag;
 		end = vp2data(packet, original, secret, vp, ptr + 1,
 			      (end - ptr) - 1);
 	} else {
+		if (room < vp->length) return 0;
 		end = vp2data(packet, original, secret, vp, ptr,
 			      (end - ptr));
 	}
@@ -1142,13 +1154,9 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	char		ip_buffer[128];
 
 	/*
-	 *	For simplicity in the following logic, we allow
-	 *	the attributes to "overflow" the 4k maximum
-	 *	RADIUS packet size, by one attribute.
-	 *
-	 *	It's uint32_t, for alignment purposes.
+	 *	A 4K packet, aligned on 64-bits.
 	 */
-	uint32_t	data[(MAX_PACKET_LEN + 256) / 4];
+	uint64_t	data[MAX_PACKET_LEN / sizeof(uint64_t)];
 
 	if ((packet->code > 0) && (packet->code < FR_MAX_PACKET_CODE)) {
 		what = fr_packet_codes[packet->code];
@@ -1285,7 +1293,8 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			reply = reply->next;
 		}
 
-		len = rad_vp2attr(packet, original, secret, reply, ptr);
+		len = rad_vp2attr(packet, original, secret, reply, ptr,
+				  ((uint8_t *) data) + sizeof(data) - ptr);
 
 		if (len < 0) return -1;
 
