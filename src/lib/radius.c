@@ -801,11 +801,11 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	int		len, total_length;
 	uint32_t	lvalue;
 	uint8_t		*ptr, *length_ptr, *vsa_length_ptr, *tlv_length_ptr;
-	uint8_t		*end;
+	uint8_t		*end, *sub_length_ptr; /* evil */
 
 	ptr = start;
 	vendorcode = total_length = 0;
-	length_ptr = vsa_length_ptr = tlv_length_ptr = NULL;
+	length_ptr = vsa_length_ptr = tlv_length_ptr = sub_length_ptr = NULL;
 
 	/*
 	 *	For interoperability, always put vendor attributes
@@ -932,6 +932,19 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				tlv_length_ptr = ptr;
 				*(ptr++) = 2;
 				vsa_offset += 2;
+
+				/*
+				 *	WiMAX is like sticking knitting
+				 *	needles up your nose, and claiming
+				 *	you like it.
+				 */
+				if ((vp->attribute & 0xff0000) != 0) {
+					*(ptr++) = (vp->attribute >> 16) & 0xff;
+					sub_length_ptr = ptr;
+					*(ptr++) = 2;
+					vsa_offset += 2;
+					*tlv_length_ptr += 2;
+				}
 			}
 		}
 
@@ -986,6 +999,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	*length_ptr += len;
 	if (vsa_length_ptr) *vsa_length_ptr += len;
 	if (tlv_length_ptr) *tlv_length_ptr += len;
+	if (sub_length_ptr) *sub_length_ptr += len;
 	ptr += len;
 	total_length += len;
 
