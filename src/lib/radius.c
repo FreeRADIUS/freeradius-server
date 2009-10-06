@@ -712,6 +712,7 @@ static uint8_t *vp2data(const RADIUS_PACKET *packet,
 			fr_strerror_printf("ERROR: Cannot encode NULL TLV");
 			return NULL;
 		}
+		if (vp->length > room) return 0; /* can't chop TLVs to fit */
 		break;
 
 	default:		/* unknown type: ignore it */
@@ -985,10 +986,18 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 
 			/*
 			 *	Ignore TLVs that don't have data, OR
-			 *	have too much data.
+			 *	have too much data to fit in the
+			 *	packet, OR have too much data to fit
+			 *	in the attribute.
 			 */
 			if (vp->flags.has_tlv &&
-			    (!vp->vp_tlv || (vp->length > room))) return 0;
+			    (!vp->vp_tlv || (vp->length > room) ||
+
+			     /*
+			      *		6 + 1 (vsa_tlen) + 1 (vsa_llen)
+			      *		+ 1 (vsa_offset).
+			      */
+			     (vp->length > (255 - 9)))) return 0;
 
 
 			/*
