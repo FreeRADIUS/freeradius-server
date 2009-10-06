@@ -1115,6 +1115,12 @@ static void no_response_to_proxied_request(void *ctx)
 		       request->proxy->dst_port);
 
 		post_proxy_fail_handler(request);
+	} else {
+		/*
+		 *	Ensure that there is a callback for the request.
+		 */
+		request->child_state = REQUEST_RUNNING;
+		wait_a_bit(request);
 	}
 
 	/*
