@@ -871,80 +871,6 @@ static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps, uint32_t mask)
 	return tlv;
 }
 
-/*
- *	Pack data without any encryption.
- *	start == start of RADIUS attribute
- *	ptr   == continuation byte (i.e. one after length)
- */
-static int rad_vp2continuation(const VALUE_PAIR *vp, uint8_t *start,
-			       uint8_t *ptr)
-{
-	size_t left, piece;
-	size_t hsize = (ptr - start);
-	uint8_t *this = start;
-	const uint8_t *data;
-	uint8_t	header[16];
-	
-	/*
-	 *	If it's too long and marked as encrypted, ignore it.
-	 */
-	if (vp->flags.encrypt != FLAG_ENCRYPT_NONE) {
-		return 0;
-	}
-	
-	memcpy(header, start, hsize);
-
-	left = vp->length;
-	
-	switch (vp->type) {
-	case PW_TYPE_TLV:
-		data = vp->vp_tlv;
-		break;
-
-	case PW_TYPE_OCTETS:
-	case PW_TYPE_STRING:
-		data = vp->vp_octets;
-		break;
-
-		/*
-		 *	This is invalid.
-		 */
-	default:
-		return 0;
-	}
-	
-	while (left > 0) {
-		memcpy(this, header, hsize);
-		ptr = this + hsize;
-		
-		/*
-		 *	254 to account for
-		 *	continuation flag.
-		 */
-		if (left > (254 - hsize)) {
-			piece = 254 - hsize;
-			*(ptr++) = 0x80;
-		} else {
-			piece = left;
-			*(ptr++) = 0x00;
-		}
-		
-		memcpy(ptr, data, piece);
-		this[1] = hsize + piece + 1;
-
-		/*
-		 *	
-		 */
-		this[hsize - 1] = hsize - 6 + 1 + piece;
-		data += piece;
-		ptr += piece;
-		left -= piece;
-		this = ptr;
-	}
-	
-	return (ptr - start);
-}
-
 
 /*
  *	Parse a data structure into a RADIUS attribute.
@@ -1054,18 +980,16 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 *	Allow for some continuation.
 		 */
 		if (vsa_offset) {
-			/*
-			 *	Allow TLV's to be encoded, if someone
-			 *	manages to somehow encode the sub-tlv's.
-			 *
-			 *	FIXME: Keep track of room in the packet!
-			 */
-			if (vp->length > (((size_t) 254) - (ptr - start))) {
-				return rad_vp2continuation(vp, start, ptr);
-			}
-
 			ptr[0] = 0x00;
 			ptr++;
+
+			/*
+			 *	Ignore TLVs that don't have data, OR
+			 *	have too much data.
+			 */
+			if (vp->flags.has_tlv &&
+			    (!vp->vp_tlv || (vp->length > room))) return 0;
+
 
 			/*
 			 *	sub-TLV's can only be in one format.
