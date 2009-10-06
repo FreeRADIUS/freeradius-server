@@ -1014,6 +1014,13 @@ static int rad_encode_wimax(const RADIUS_PACKET *packet,
 	int len, total_len = 0;
 	uint8_t *wimax = NULL;
 	uint8_t *ptr = start;
+	uint32_t maxattr;
+
+	/*
+	 *	Swap the order of the WiMAX hacks, to make later
+	 *	comparisons easier.
+	 */
+	maxattr = (vp->attribute & 0xff00) | ((vp->attribute >> 16) & 0xff);
 
 redo:
 	len = rad_vp2attr(packet, original, secret, vp, ptr,
@@ -1035,6 +1042,11 @@ redo:
 			wimax[7] += hack;
 			len -= 9;
 
+			/*
+			 *	See if we can nest sub-TLVs, too, in
+			 *	order to shorten the encoding.
+			 */
+
 		} else {
 			wimax[8] = 0x80; /* set continuation */
 			wimax = ptr;
@@ -1049,7 +1061,20 @@ redo:
 	vp->flags.encoded = 1;
 	vp = vp->next;
 
-	if (vp && vp->flags.is_tlv) goto redo;
+	/*
+	 *	Look at the NEXT tlv.  Ensure that we encode
+	 *	attributes into a common VSA *only* if they are in
+	 *	increasing numerical order.  This is a bad hack.
+	 */
+	if (vp && vp->flags.is_tlv) {
+		uint32_t attr;
+
+		attr = (vp->attribute & 0xff00) | ((vp->attribute >> 16) & 0xff);
+		if (attr >= maxattr) {
+			maxattr = attr;
+			goto redo;
+		}
+	}
 
 	return total_len;
 }
