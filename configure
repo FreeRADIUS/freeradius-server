@@ -4791,7 +4791,7 @@ fi
 # Check whether --with-system-libtldl was given.
 if test "${with_system_libtldl+set}" = set; then
   withval=$with_system_libtldl;
-LIBLTDL="-ltdl"
+LIBLTDL="-lltdl"
 INCLTDL=
 LTDL_SUBDIRS=
 
