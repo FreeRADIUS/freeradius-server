@@ -846,7 +846,7 @@ static int sscanf_i(const char *str, int *pvalue)
  */
 static int process_attribute(const char* fn, const int line,
 			     const int block_vendor, DICT_ATTR *block_tlv,
-			     char **argv, int argc)
+			     int tlv_depth, char **argv, int argc)
 {
 	int		vendor = 0;
 	int		value;
@@ -991,9 +991,8 @@ static int process_attribute(const char* fn, const int line,
 		/*
 		 *	
 		 */
-		value <<= 8;
-		if (block_tlv->flags.is_tlv) value <<= 8;
-		value |= (block_tlv->attr & 0xffff);
+		value <<= (8 * tlv_depth);
+		value |= block_tlv->attr;
 		flags.is_tlv = 1;
 	}
 
@@ -1301,6 +1300,7 @@ static int str2argv(char *str, char **argv, int max_argc)
 }
 
 #define MAX_ARGV (16)
+#define MAX_TLV_NEST (3)
 
 /*
  *	Initialize the dictionary.
@@ -1318,7 +1318,7 @@ static int my_dict_init(const char *dir, const char *fn,
 	struct stat statbuf;
 	char	*argv[MAX_ARGV];
 	int	argc;
-	DICT_ATTR *da, *block_tlv[3];
+	DICT_ATTR *da, *block_tlv[MAX_TLV_NEST + 1];
 	int	which_block_tlv = 0;
 
 	block_tlv[0] = NULL;
@@ -1426,6 +1426,7 @@ static int my_dict_init(const char *dir, const char *fn,
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
 			if (process_attribute(fn, line, block_vendor,
 					      block_tlv[which_block_tlv],
+					      which_block_tlv,
 					      argv + 1, argc - 1) == -1) {
 				fclose(fp);
 				return -1;
@@ -1491,7 +1492,7 @@ static int my_dict_init(const char *dir, const char *fn,
 				return -1;
 			}
 
-			if (which_block_tlv >= 2) {
+			if (which_block_tlv >= MAX_TLV_NEST) {
 				fr_strerror_printf(
 					"dict_init: %s[%d]: TLVs are nested too deep",
 					fn, line);
