@@ -757,7 +757,7 @@ static int vp2data(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				return -1;
 			}
 			ptr[0] = vp->flags.tag;
-			make_tunnel_passwd(ptr + 1, &len, data, len - 1, room,
+			make_tunnel_passwd(ptr + 1, &len, data, len, room - 1,
 					   secret, original->vector);
                 	break;
 	        case PW_ACCOUNTING_REQUEST:
@@ -826,21 +826,15 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		const char *secret, const VALUE_PAIR *vp, uint8_t *start,
 		size_t room)
 {
-	int		vendorcode;
-	int		len, total_length;
-	uint32_t	lvalue;
-	uint8_t		*ptr, *length_ptr, *vsa_length_ptr, *tlv_length_ptr;
-	uint8_t		*sub_length_ptr; /* evil */
-
-	ptr = start;
-	vendorcode = total_length = 0;
-	length_ptr = vsa_length_ptr = tlv_length_ptr = sub_length_ptr = NULL;
+	int len;
+	uint32_t lvalue;
+	uint8_t *ptr;
+	DICT_VENDOR *dv;
 
 	/*
-	 *	For interoperability, always put vendor attributes
-	 *	into their own VSA.
+	 *	RFC format attributes take the fast path.
 	 */
-	if ((vendorcode = vp->vendor) == 0) {
+	if (vp->vendor == 0) {
 		len = rad_vp2rfc(packet, original, secret, vp,
 				 vp->attribute, start, room);
 		if (len < 0) return -1;
@@ -858,39 +852,45 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 
 		return len;
 
-	} else {
-		int vsa_tlen = 1;
-		int vsa_llen = 1;
-		int vsa_offset = 0;
-		DICT_VENDOR *dv = dict_vendorbyvalue(vendorcode);
+	}
 
-		/*
-		 *	This must be an RFC-format attribute.  If it
-		 *	wasn't, then the "decode" function would have
-		 *	made a Vendor-Specific attribute (i.e. type
-		 *	26), and we would have "vendorcode == 0" here.
-		 */
-		if (dv) {
-			vsa_tlen = dv->type;
-			vsa_llen = dv->length;
-			if (dv->flags) vsa_offset = 1;
-		}
+	/*
+	 *	Not enough room for:
+	 *		attr, len, vendor-id, vsa, vsalen
+	 */
+	if (room < 8) return 0;
 
-		if (room < (6 + vsa_tlen + vsa_llen + vsa_offset)) return 0;
-		room -= 6 + vsa_tlen + vsa_llen + vsa_offset;
+	/*
+	 *	Build the Vendor-Specific header
+	 */
+	ptr = start;
+	*ptr++ = PW_VENDOR_SPECIFIC;
+	*ptr++ = 6;
+	room -= 6;
+	lvalue = htonl(vp->vendor);
+	memcpy(ptr, &lvalue, 4);
+	ptr += 4;
 
-		/*
-		 *	Build a VSA header.
-		 */
-		*ptr++ = PW_VENDOR_SPECIFIC;
-		vsa_length_ptr = ptr;
-		*ptr++ = 6;
-		lvalue = htonl(vendorcode);
-		memcpy(ptr, &lvalue, 4);
-		ptr += 4;
-		total_length += 6;
+	/*
+	 *	Unknown vendors, and type=1,length=1,no-continuation
+	 *	are RFC format attributes.
+	 */
+	dv = dict_vendorbyvalue(vp->vendor);
+	if (!dv ||
+	    ((dv->type == 1) && (dv->length = 1) && !dv->flags)) {
+		len = rad_vp2rfc(packet, original, secret, vp,
+				 vp->attribute, ptr, room);
+		if (len <= 0) return len;
 
-		switch (vsa_tlen) {
+		start[1] += len;
+		return start[1];
+	}
+
+	if (room < (dv->type + dv->length + dv->flags)) return 0;
+	room -= (dv->type + dv->length + dv->flags);
+	start[1] += (dv->type + dv->length + dv->flags);
+
+	switch (dv->type) {
 		case 1:
 			ptr[0] = (vp->attribute & 0xFF);
 			break;
@@ -902,109 +902,40 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 
 		case 4:
 			ptr[0] = 0;
-			ptr[1] = 0;
+			ptr[1] = ((vp->attribute >> 16) & 0xFF);
 			ptr[2] = ((vp->attribute >> 8) & 0xFF);
 			ptr[3] = (vp->attribute & 0xFF);
 			break;
 
 		default:
 			return 0; /* silently discard it */
-		}
-		ptr += vsa_tlen;
-
-		switch (vsa_llen) {
-		case 0:
-			length_ptr = vsa_length_ptr;
-			vsa_length_ptr = NULL;
-			break;
-		case 1:
-			ptr[0] = 0;
-			length_ptr = ptr;
-			break;
-		case 2:
-			ptr[0] = 0;
-			ptr[1] = 0;
-			length_ptr = ptr + 1;
-			break;
-
-		default:
-			return 0; /* silently discard it */
-		}
-		ptr += vsa_llen;
-
-		/*
-		 *	Allow for some continuation.
-		 */
-		if (vsa_offset) {
-			ptr[0] = 0x00;
-			ptr++;
-
-			/*
-			 *	Ignore TLVs that don't have data, OR
-			 *	have too much data to fit in the
-			 *	packet, OR have too much data to fit
-			 *	in the attribute
-			 *
-			 *	This shouldn't happen in normal
-			 *	operation, as the code assumes that
-			 *	the "tlv" type shouldn't be used.
-			 */
-			if (vp->flags.has_tlv &&
-			    (!vp->vp_tlv || (vp->length > room) ||
-
-			     /*
-			      *		6 + 1 (vsa_tlen) + 1 (vsa_llen)
-			      *		+ 1 (vsa_offset).
-			      */
-			     (vp->length > (255 - 9)))) return 0;
-
-
-			/*
-			 *	sub-TLV's can only be in one format.
-			 */
-			if (vp->flags.is_tlv) {
-				if (room < 2) return 0;
-				room -= 2;
-
-				*(ptr++) = (vp->attribute & 0xff00) >> 8;
-				tlv_length_ptr = ptr;
-				*(ptr++) = 2;
-				vsa_offset += 2;
-
-				/*
-				 *	WiMAX is like sticking knitting
-				 *	needles up your nose, and claiming
-				 *	you like it.
-				 */
-				if ((vp->attribute & 0xff0000) != 0) {
-					*(ptr++) = (vp->attribute >> 16) & 0xff;
-					sub_length_ptr = ptr;
-					*(ptr++) = 2;
-					vsa_offset += 2;
-					*tlv_length_ptr += 2;
-				}
-			}
-		}
-
-		total_length += vsa_tlen + vsa_llen + vsa_offset;
-		if (vsa_length_ptr) *vsa_length_ptr += vsa_tlen + vsa_llen + vsa_offset;
-		*length_ptr += vsa_tlen + vsa_llen + vsa_offset;
 	}
+	ptr += dv->type;
+
+	switch (dv->length) {
+	case 0:
+		break;
+	case 1:
+		ptr[0] = dv->type + 1;
+		break;
+	case 2:
+		ptr[0] = 0;
+		ptr[1] = dv->type + 2;
+		break;
+
+	default:
+		return 0; /* silently discard it */
+	}
+	ptr += dv->length;
 
 	len = vp2data(packet, original, secret, vp, ptr, room);
-	if (len < 0) return len;
+	if (len <= 0) return len;
 
-	/*
-	 *	Update the various lengths.
-	 */
-	*length_ptr += len;
-	if (vsa_length_ptr) *vsa_length_ptr += len;
-	if (tlv_length_ptr) *tlv_length_ptr += len;
-	if (sub_length_ptr) *sub_length_ptr += len;
-	ptr += len;
-	total_length += len;
+	if (dv->length != 0) ptr[-1] += len;
 
-	return total_length;	/* of attribute */
+	start[1] += len;
+
+	return start[1];
 }
 
 /*
