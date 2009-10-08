@@ -840,7 +840,7 @@ static int tlv2data(const RADIUS_PACKET *packet,
 		len = tlv2data(packet, original, secret, vp, attribute >> 8,
 			       ptr + 2, room);
 	}
-	if (len <= 0) return -1;
+	if (len <= 0) return len;
 
 	ptr[1] += len;
 
@@ -900,7 +900,7 @@ static int wimax2data(const RADIUS_PACKET *packet,
 			       ptr, room);
 	}
 
-	if (len <= 0) return -1;
+	if (len <= 0) return len;
 
 	start[VS_OFF] += len;
 	start[WM_OFF] += len;
@@ -1040,14 +1040,19 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
  */
 #define REORDER(x) ((x & 0xff00) << 8) | ((x & 0xff0000) >> 8) | ((x & 0xff000000 >> 24))
 
+
+/*
+ *	Encode a WiMAX sub-TLV.  It must NOT be called for WiMAX
+ *	attributes that are of type integer, string, etc.
+ */
 static int rad_encode_wimax(const RADIUS_PACKET *packet,
 			    const RADIUS_PACKET *original,
 			    const char *secret, VALUE_PAIR *reply,
 			    uint8_t *start, size_t room)
 {
-	int len, total_len = 0;
-	uint8_t *wimax = NULL;
-	uint8_t *ptr = start;
+	int len, redo;
+	uint32_t lvalue;
+	uint8_t *ptr = start, *vsa = start;
 	uint32_t maxattr;
 	VALUE_PAIR *vp = reply;
 
@@ -1057,40 +1062,47 @@ static int rad_encode_wimax(const RADIUS_PACKET *packet,
 	 */
 	maxattr = REORDER(vp->attribute);
 
-redo:
-	len = rad_vp2attr(packet, original, secret, vp, ptr,
-			  (start + room) - ptr);
-	if (len <= 0) return total_len;
+	/*
+	 *	Build the Vendor-Specific header
+	 */
+	ptr = start;
+	redo = 0;
+
+redo_vsa:
+	vsa = ptr;
+
+	if (room < 9) return 0;
+	*ptr++ = PW_VENDOR_SPECIFIC;
+	*ptr++ = 9;
+	room -= 9;
+	lvalue = htonl(vp->vendor);
+	memcpy(ptr, &lvalue, 4);
+	ptr += 4;
+	*(ptr++) = vp->attribute & 0xff;
+	*(ptr++) = 3;
+	*(ptr++) = 0;		/* continuation */
+	room -= 9;
+
+redo_tlv:
+	len = tlv2data(packet, original, secret, vp, vp->attribute >> 8,
+		       ptr, room);
+	if (len < 0) return len;
 
 	/*
-	 *	After adding an attribute with the simplest encoding,
-	 *	check to see if we can append it to the previous one.
+	 *	Not enough room.  Do a continuation.
 	 */
-	if (wimax) {
-		if ((wimax[1] + (ptr[1] - 6)) <= 255) {
-			unsigned int hack;
+	if ((len == 0) || ((vsa[VS_OFF] + len) > 255)) {
+		if (redo) return 0; /* really not enough room */
 
-			hack = ptr[7] - 3;
-			memmove(ptr, ptr + 9, hack);
-			wimax[1] += hack;
-			wimax[7] += hack;
-			len -= 9;
-
-			/*
-			 *	See if we can nest sub-TLVs, too, in
-			 *	order to shorten the encoding.
-			 */
-
-		} else {
-			wimax[8] = 0x80; /* set continuation */
-			wimax = ptr;
-		}
-	} else {
-		wimax = ptr;
+		vsa[8] = 0x80;
+		redo = 1;
+		goto redo_vsa;
 	}
+	redo = 0;
 
-	total_len += len;
 	ptr += len;
+	vsa[VS_OFF] += len;
+	vsa[WM_OFF] += len;
 
 	vp->flags.encoded = 1;
 	vp = vp->next;
@@ -1108,11 +1120,11 @@ redo:
 		attr = REORDER(vp->attribute);
 		if (attr >= maxattr) {
 			maxattr = attr;
-			goto redo;
+			goto redo_tlv;
 		}
 	}
 
-	return total_len;
+	return ptr - start;
 }
 
 
