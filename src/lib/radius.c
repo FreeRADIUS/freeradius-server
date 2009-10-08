@@ -790,6 +790,75 @@ static uint8_t *vp2data(const RADIUS_PACKET *packet,
 }
 
 
+static int packvp(const RADIUS_PACKET *packet,
+		  const RADIUS_PACKET *original,
+		  const char *secret, const VALUE_PAIR *vp,
+		  uint8_t *start, size_t room)
+{
+	uint8_t *ptr = start;
+	uint8_t *end;
+
+	/*
+	 *	Insert tags for string attributes.  They go BEFORE
+	 *	the string.
+	 */
+	if (vp->flags.has_tag && (vp->type == PW_TYPE_STRING) &&
+	    (TAG_VALID(vp->flags.tag) ||
+	     (vp->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
+		if (room < (1 + vp->length)) return 0;
+
+		ptr[0] = vp->flags.tag;
+		end = vp2data(packet, original, secret, vp, ptr + 1,
+			      room - 1);
+	} else {
+		if (room < vp->length) return 0;
+		end = vp2data(packet, original, secret, vp, ptr, room);
+	}
+	if (!end) return -1;
+
+	/*
+	 *	Insert tags for integer attributes.  They go at the START
+	 *	of the integer, and over-write the first byte.
+	 */
+	if (vp->flags.has_tag && (vp->type == PW_TYPE_INTEGER)) {
+		ptr[0] = vp->flags.tag;
+	}
+
+	return (end - ptr);
+}
+
+static int rad_vp2rfc(const RADIUS_PACKET *packet,
+		      const RADIUS_PACKET *original,
+		      const char *secret, const VALUE_PAIR *vp,
+		      unsigned int attribute, uint8_t *ptr, size_t room)
+{
+	int len;
+
+	if (room < 2) return 0;
+
+	ptr[0] = attribute & 0xff; /* NOT vp->attribute */
+	ptr[1] = 2;
+
+	len = packvp(packet, original, secret, vp, ptr + 2, room - 2);
+	if (len < 0) return len;
+
+	/*
+	 *	RFC 2865 section 5 says that zero-length attributes
+	 *	MUST NOT be sent.
+	 *
+	 *	... and the WiMAX forum ignores this... because of
+	 *	one vendor.  Don't they have anything better to do
+	 *	with their time?
+	 */
+	if ((len == 0) && (vp->vendor == 0) &&
+	    (vp->attribute != PW_CHARGEABLE_USER_IDENTITY)) return 0;
+
+	ptr[1] += len;
+
+	return ptr[1];
+}
+
+
 /*
  *	Parse a data structure into a RADIUS attribute.
  */
@@ -801,7 +870,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	int		len, total_length;
 	uint32_t	lvalue;
 	uint8_t		*ptr, *length_ptr, *vsa_length_ptr, *tlv_length_ptr;
-	uint8_t		*end, *sub_length_ptr; /* evil */
+	uint8_t		*sub_length_ptr; /* evil */
 
 	ptr = start;
 	vendorcode = total_length = 0;
@@ -953,32 +1022,8 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		*length_ptr += vsa_tlen + vsa_llen + vsa_offset;
 	}
 
-	/*
-	 *	Insert tags for string attributes.  They go BEFORE
-	 *	the string.
-	 */
-	if (vp->flags.has_tag && (vp->type == PW_TYPE_STRING) &&
-	    (TAG_VALID(vp->flags.tag) ||
-	     (vp->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
-		if (room < (1 + vp->length)) return 0;
-
-		ptr[0] = vp->flags.tag;
-		end = vp2data(packet, original, secret, vp, ptr + 1,
-			      (end - ptr) - 1);
-	} else {
-		if (room < vp->length) return 0;
-		end = vp2data(packet, original, secret, vp, ptr,
-			      (end - ptr));
-	}
-	if (!end) return -1;
-
-	/*
-	 *	Insert tags for integer attributes.  They go at the START
-	 *	of the integer, and over-write the first byte.
-	 */
-	if (vp->flags.has_tag && (vp->type == PW_TYPE_INTEGER)) {
-		ptr[0] = vp->flags.tag;
-	}
+	len = packvp(packet, original, secret, vp, ptr, room);
+	if (len < 0) return len;
 
 	/*
 	 *	RFC 2865 section 5 says that zero-length attributes
@@ -988,10 +1033,8 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *	one vendor.  Don't they have anything better to do
 	 *	with their time?
 	 */
-	if ((end == ptr) &&
+	if ((len == 0) &&
 	    (vp->attribute != PW_CHARGEABLE_USER_IDENTITY)) return 0;
-
-	len = (end - ptr);
 
 	/*
 	 *	Update the various lengths.
