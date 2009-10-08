@@ -1006,6 +1006,11 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	return total_length;	/* of attribute */
 }
 
+/*
+ *  Swap 123a -> 0321
+ */
+#define REORDER(x) ((x & 0xff00) << 8) | ((x & 0xff0000) >> 8) | ((x & 0xff000000 >> 24))
+
 static int rad_encode_wimax(const RADIUS_PACKET *packet,
 			    const RADIUS_PACKET *original,
 			    const char *secret, VALUE_PAIR *reply,
@@ -1021,7 +1026,7 @@ static int rad_encode_wimax(const RADIUS_PACKET *packet,
 	 *	Swap the order of the WiMAX hacks, to make later
 	 *	comparisons easier.
 	 */
-	maxattr = (vp->attribute & 0xff00) | ((vp->attribute >> 16) & 0xff);
+	maxattr = REORDER(vp->attribute);
 
 redo:
 	len = rad_vp2attr(packet, original, secret, vp, ptr,
@@ -1071,7 +1076,7 @@ redo:
 	    ((reply->attribute & 0xff) == (vp->attribute & 0xff))) {
 		uint32_t attr;
 
-		attr = (vp->attribute & 0xff00) | ((vp->attribute >> 16) & 0xff);
+		attr = REORDER(vp->attribute);
 		if (attr >= maxattr) {
 			maxattr = attr;
 			goto redo;
