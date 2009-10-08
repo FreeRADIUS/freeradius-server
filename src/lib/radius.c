@@ -818,6 +818,35 @@ static int rad_vp2rfc(const RADIUS_PACKET *packet,
 	return ptr[1];
 }
 
+static int tlv2data(const RADIUS_PACKET *packet,
+		    const RADIUS_PACKET *original,
+		    const char *secret, const VALUE_PAIR *vp, int attribute,
+		    uint8_t *ptr, size_t room)
+{
+	int len;
+
+	if (room < 2) return 0;
+	room -= 2;
+
+	ptr[0] = attribute & 0xff;
+	ptr[1] = 2;
+
+	/*
+	 *	No more nested TLVs: pack the data.
+	 */
+	if ((attribute & ~0xff) == 0) {
+		len = vp2data(packet, original, secret, vp, ptr + 2, room);
+	} else {
+		len = tlv2data(packet, original, secret, vp, attribute >> 8,
+			       ptr + 2, room);
+	}
+	if (len <= 0) return -1;
+
+	ptr[1] += len;
+
+	return ptr[1];
+}
+
 static int wimax2data(const RADIUS_PACKET *packet,
 		      const RADIUS_PACKET *original,
 		      const char *secret, const VALUE_PAIR *vp,
@@ -866,20 +895,17 @@ static int wimax2data(const RADIUS_PACKET *packet,
 	 */
 	if (!vp->flags.is_tlv) {
 		len = vp2data(packet, original, secret, vp, ptr, room);
-		if (len <= 0) return -1;
-
-		start[VS_OFF] += len;
-		start[WM_OFF] += len;
-
-		return start[VS_OFF];
+	} else {
+		len = tlv2data(packet, original, secret, vp, vp->attribute >> 8,
+			       ptr, room);
 	}
 
-	/*
-	 *	Otherwise it's a TLV.  We need to do more work to
-	 *	encode it.
-	 */
+	if (len <= 0) return -1;
 
-	return 0;
+	start[VS_OFF] += len;
+	start[WM_OFF] += len;
+
+	return start[VS_OFF];
 }
 
 
