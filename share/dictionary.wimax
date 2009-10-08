@@ -384,7 +384,7 @@ ATTRIBUTE	WiMAX-Flow-Descriptor-v2		83	tlv
 ATTRIBUTE	WiMAX-Packet-Flow-Descriptor-v2		84	tlv
 
 BEGIN-TLV	WiMAX-Packet-Flow-Descriptor-v2
-ATTRIBUTE	WiMAX-PFDv2-Paclket-Data-Flow-Id	1	short
+ATTRIBUTE	WiMAX-PFDv2-Packet-Data-Flow-Id		1	short
 ATTRIBUTE	WiMAX-PFDv2-Service-Data-Flow-Id	2	short
 ATTRIBUTE	WiMAX-PFDv2-Service-Profile-Id		3	integer
 ATTRIBUTE	WiMAX-PFDv2-Direction			4	byte
@@ -402,8 +402,24 @@ ATTRIBUTE	WiMAX-PFDv2-Classifier-Id		1	byte
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Priority		2	byte
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Protocol		3	byte
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Direction	4	byte
-ATTRIBUTE	WiMAX-PFDv2-Classifier-Source-Spec	5	byte
-ATTRIBUTE	WiMAX-PFDv2-Classifier-Dest-Spec	6	byte
+ATTRIBUTE	WiMAX-PFDv2-Classifier-Source-Spec	5	tlv
+ATTRIBUTE	WiMAX-PFDv2-Classifier-Dest-Spec	6	tlv
+
+# Why won't it end?
+BEGIN-TLV	WiMAX-PFDv2-Classifier-Source-Spec
+ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address		1	combo-ip
+# really two IPv4 OR IPv6 addresses
+ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address-Range	2	octets
+ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address-Mask		3	combo-ip
+ATTRIBUTE	WiMAX-PFDv2-Src-Port			4	short
+# 2 shorts
+ATTRIBUTE	WiMAX-PFDv2-Src-Port-Range		5	integer
+ATTRIBUTE	WiMAX-PFDv2-Src-Inverted		6	byte
+ATTRIBUTE	WiMAX-PFDv2-Src-Assigned		7	byte
+ATTRIBUTE	WiMAX-PFDv2-Src-MAC-Address		8	ether
+ATTRIBUTE	WiMAX-PFDv2-Src-MAC-Mask		9	ether
+END-TLV		WiMAX-PFDv2-Classifier-Source-Spec
+
 ATTRIBUTE	WiMAX-PFDv2-Classifier-IP-ToS-DSCP	7	byte
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Action		8	byte
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Eth-Option	9	byte
