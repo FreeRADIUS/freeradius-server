@@ -636,14 +636,14 @@ static void make_tunnel_passwd(uint8_t *output, size_t *outlen,
 /*
  *	Returns the end of the data.
  */
-static uint8_t *vp2data(const RADIUS_PACKET *packet,
-			const RADIUS_PACKET *original,
-			const char *secret, const VALUE_PAIR *vp, uint8_t *ptr,
-			size_t room)
+static int vp2data(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+		   const char *secret, const VALUE_PAIR *vp, uint8_t *start,
+		   size_t room)
 {
 	uint32_t lvalue;
 	size_t len;
 	const uint8_t *data;
+	uint8_t *ptr = start;
 	uint8_t	array[4];
 
 	/*
@@ -710,14 +710,14 @@ static uint8_t *vp2data(const RADIUS_PACKET *packet,
 		data = vp->vp_tlv;
 		if (!data) {
 			fr_strerror_printf("ERROR: Cannot encode NULL TLV");
-			return NULL;
+			return -1;
 		}
 		if (vp->length > room) return 0; /* can't chop TLVs to fit */
 		break;
 
 	default:		/* unknown type: ignore it */
 		fr_strerror_printf("ERROR: Unknown attribute type %d", vp->type);
-		return NULL;
+		return -1;
 	}
 
 	/*
@@ -745,7 +745,7 @@ static uint8_t *vp2data(const RADIUS_PACKET *packet,
 		 *	This is ONLY a problem if we have multiple VSA's
 		 *	in one Vendor-Specific, though.
 		 */
-		if (room < 18) return ptr;
+		if (room < 19) return 0;
 
         	switch (packet->code) {
 	        case PW_AUTHENTICATION_ACK:
@@ -754,15 +754,17 @@ static uint8_t *vp2data(const RADIUS_PACKET *packet,
         	default:
 			if (!original) {
 				fr_strerror_printf("ERROR: No request packet, cannot encrypt %s attribute in the vp.", vp->name);
-				return NULL;
+				return -1;
 			}
-			make_tunnel_passwd(ptr, &len, data, len, room,
+			ptr[0] = vp->flags.tag;
+			make_tunnel_passwd(ptr + 1, &len, data, len - 1, room,
 					   secret, original->vector);
                 	break;
 	        case PW_ACCOUNTING_REQUEST:
         	case PW_DISCONNECT_REQUEST:
 	        case PW_COA_REQUEST:
-			make_tunnel_passwd(ptr, &len, data, len, room,
+			ptr[0] = vp->flags.tag;
+			make_tunnel_passwd(ptr + 1, &len, data, len - 1, room,
 					   secret, packet->vector);
 	                break;
         	}
@@ -779,53 +781,22 @@ static uint8_t *vp2data(const RADIUS_PACKET *packet,
 
 
 	default:
-		/*
-		 *	Just copy the data over
-		 */
+		if (vp->flags.has_tag && TAG_VALID(vp->flags.tag)) {
+			if (vp->type == PW_TYPE_STRING) {
+				if (len > (room - 1)) len = room - 1;
+				ptr[0] = vp->flags.tag;
+				ptr++;
+			} else if (vp->type == PW_TYPE_INTEGER) {
+				array[0] = vp->flags.tag;
+			} /* else it can't be any other type */
+		}
 		memcpy(ptr, data, len);
 		break;
 	} /* switch over encryption flags */
 
-	return ptr + len;
+	return len + (ptr - start);;
 }
 
-
-static int packvp(const RADIUS_PACKET *packet,
-		  const RADIUS_PACKET *original,
-		  const char *secret, const VALUE_PAIR *vp,
-		  uint8_t *start, size_t room)
-{
-	uint8_t *ptr = start;
-	uint8_t *end;
-
-	/*
-	 *	Insert tags for string attributes.  They go BEFORE
-	 *	the string.
-	 */
-	if (vp->flags.has_tag && (vp->type == PW_TYPE_STRING) &&
-	    (TAG_VALID(vp->flags.tag) ||
-	     (vp->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
-		if (room < (1 + vp->length)) return 0;
-
-		ptr[0] = vp->flags.tag;
-		end = vp2data(packet, original, secret, vp, ptr + 1,
-			      room - 1);
-	} else {
-		if (room < vp->length) return 0;
-		end = vp2data(packet, original, secret, vp, ptr, room);
-	}
-	if (!end) return -1;
-
-	/*
-	 *	Insert tags for integer attributes.  They go at the START
-	 *	of the integer, and over-write the first byte.
-	 */
-	if (vp->flags.has_tag && (vp->type == PW_TYPE_INTEGER)) {
-		ptr[0] = vp->flags.tag;
-	}
-
-	return (end - ptr);
-}
 
 static int rad_vp2rfc(const RADIUS_PACKET *packet,
 		      const RADIUS_PACKET *original,
@@ -839,19 +810,8 @@ static int rad_vp2rfc(const RADIUS_PACKET *packet,
 	ptr[0] = attribute & 0xff; /* NOT vp->attribute */
 	ptr[1] = 2;
 
-	len = packvp(packet, original, secret, vp, ptr + 2, room - 2);
+	len = vp2data(packet, original, secret, vp, ptr + 2, room - 2);
 	if (len < 0) return len;
-
-	/*
-	 *	RFC 2865 section 5 says that zero-length attributes
-	 *	MUST NOT be sent.
-	 *
-	 *	... and the WiMAX forum ignores this... because of
-	 *	one vendor.  Don't they have anything better to do
-	 *	with their time?
-	 */
-	if ((len == 0) && (vp->vendor == 0) &&
-	    (vp->attribute != PW_CHARGEABLE_USER_IDENTITY)) return 0;
 
 	ptr[1] += len;
 
@@ -881,13 +841,22 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *	into their own VSA.
 	 */
 	if ((vendorcode = vp->vendor) == 0) {
-		if (room < 2) return 0;
-		room -= 2;
+		len = rad_vp2rfc(packet, original, secret, vp,
+				 vp->attribute, start, room);
+		if (len < 0) return -1;
 
-		*(ptr++) = vp->attribute & 0xff;
-		length_ptr = ptr;
-		*(ptr++) = 2;
-		total_length += 2;
+		/*
+		 *	RFC 2865 section 5 says that zero-length
+		 *	attributes MUST NOT be sent.
+		 *
+		 *	... and the WiMAX forum ignores
+		 *	this... because of one vendor.  Don't they
+		 *	have anything better to do with their time?
+		 */
+		if ((len == 0) &&
+		    (vp->attribute != PW_CHARGEABLE_USER_IDENTITY)) return 0;
+
+		return len;
 
 	} else {
 		int vsa_tlen = 1;
@@ -1022,19 +991,8 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		*length_ptr += vsa_tlen + vsa_llen + vsa_offset;
 	}
 
-	len = packvp(packet, original, secret, vp, ptr, room);
+	len = vp2data(packet, original, secret, vp, ptr, room);
 	if (len < 0) return len;
-
-	/*
-	 *	RFC 2865 section 5 says that zero-length attributes
-	 *	MUST NOT be sent.
-	 *
-	 *	... and the WiMAX forum ignores this... because of
-	 *	one vendor.  Don't they have anything better to do
-	 *	with their time?
-	 */
-	if ((len == 0) &&
-	    (vp->attribute != PW_CHARGEABLE_USER_IDENTITY)) return 0;
 
 	/*
 	 *	Update the various lengths.
