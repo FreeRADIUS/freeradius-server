@@ -818,6 +818,70 @@ static int rad_vp2rfc(const RADIUS_PACKET *packet,
 	return ptr[1];
 }
 
+static int wimax2data(const RADIUS_PACKET *packet,
+		      const RADIUS_PACKET *original,
+		      const char *secret, const VALUE_PAIR *vp,
+		      uint8_t *start, size_t room, uint8_t *ptr)
+{
+	int len;
+
+	/*
+	 *	Offsets to Vendor-Specific length, and to length of
+	 *	WiMAX attribute.
+	 */
+#define VS_OFF (1)
+#define WM_OFF (7)
+
+	if (room < 1) return 0;
+	room--;
+
+	/*
+	 *	Account for continuation bytes.  The caller has
+	 *	already accounting for the continuation byte in the
+	 *	Vendor-Specific "length" field.
+	 */
+	start[WM_OFF]++;
+	*(ptr++) = 0;
+
+	/*
+	 *	Chop everything to fit in one attribute.
+	 */
+	if (room > (255 - 9)) room = (255 - 9);
+
+	/*
+	 *	The attribute contains TLVs that we have NOT decoded
+	 *	properly, OR it contains TLV that the user has encoded
+	 *	manually.  If it has no data, OR it's too long,
+	 *	discard it.  We're not going to walk through its
+	 *	contents trying to figure out how to chop it across
+	 *	multiple continuations.
+	 */
+	if (vp->flags.has_tlv && (!vp->vp_tlv || (vp->length > room))) {
+		return 0;
+	}
+
+	/*
+	 *	The attribute is a top-level integer, ipaddr, etc.
+	 *	Encode it.
+	 */
+	if (!vp->flags.is_tlv) {
+		len = vp2data(packet, original, secret, vp, ptr, room);
+		if (len <= 0) return -1;
+
+		start[VS_OFF] += len;
+		start[WM_OFF] += len;
+
+		return start[VS_OFF];
+	}
+
+	/*
+	 *	Otherwise it's a TLV.  We need to do more work to
+	 *	encode it.
+	 */
+
+	return 0;
+}
+
 
 /*
  *	Parse a data structure into a RADIUS attribute.
@@ -927,6 +991,13 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		return 0; /* silently discard it */
 	}
 	ptr += dv->length;
+
+	/*
+	 *	WiMAX attributes take their own path through the
+	 *	system.
+	 */
+	if (dv->flags) return wimax2data(packet, original, secret, vp,
+					 start, room, ptr);
 
 	len = vp2data(packet, original, secret, vp, ptr, room);
 	if (len <= 0) return len;
