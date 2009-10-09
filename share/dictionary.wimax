@@ -372,8 +372,8 @@ ATTRIBUTE	WiMAX-Visited-Framed-IPv6-Prefix	80	ipv6prefix
 ATTRIBUTE	WiMAX-Visited-Framed-Interface-Id	81	ifid
 ATTRIBUTE	WiMAX-MIP-Authorization-Status		82	integer
 
-VALUE		WiMAX-MIP-Authorization-Status	False	0
-VALUE		WiMAX-MIP-Authorization-Status	True	1
+VALUE	WiMAX-MIP-Authorization-Status	False			0
+VALUE	WiMAX-MIP-Authorization-Status	True			1
 
 ATTRIBUTE	WiMAX-Flow-Descriptor-v2		83	tlv
 
@@ -420,9 +420,9 @@ ATTRIBUTE	WiMAX-PFDv2-Src-Port-Range		5	integer
 ATTRIBUTE	WiMAX-PFDv2-Src-Inverted		6	byte
 ATTRIBUTE	WiMAX-PFDv2-Src-Assigned		7	byte
 
-VALUE		WiMAX-PFDv2-Src-Assigned  Src-Assigned 1
-VALUE		WiMAX-PFDv2-Src-Assigned  Dst-Assigned 2
-VALUE		WiMAX-PFDv2-Src-Assigned  Src-Dst-Assigned 3
+VALUE	WiMAX-PFDv2-Src-Assigned	Src-Assigned		1
+VALUE	WiMAX-PFDv2-Src-Assigned	Dst-Assigned		2
+VALUE	WiMAX-PFDv2-Src-Assigned	Src-Dst-Assigned	3
 
 ATTRIBUTE	WiMAX-PFDv2-Src-MAC-Address		8	ether
 ATTRIBUTE	WiMAX-PFDv2-Src-MAC-Mask		9	ether
@@ -459,7 +459,6 @@ ATTRIBUTE	WiMAX-PFDv2-Eth-Priority-Range		3	octets
 #ATTRIBUTE	WiMAX-PFDv2-Eth-Priority-Range-High	2	byte
 #END-TLV		WiMAX-PFDv2-Eth-Priority-Range
 
-
 END-TLV		WiMAX-PFDv2-Classifier-Eth-Option
 
 END-TLV		WiMAX-PFDv2-Classifier
@@ -467,35 +466,75 @@ END-TLV		WiMAX-PFDv2-Classifier
 ATTRIBUTE	WiMAX-PFDv2-Paging-Preference		10	byte
 ATTRIBUTE	WiMAX-PFDv2-VLAN-Tag-Rule-Id		11	short
 
-VALUE		WiMAX-PFDv2-Direction		Uplink	 1
-VALUE		WiMAX-PFDv2-Direction		Downlink 2
-VALUE		WiMAX-PFDv2-Direction		Bi-Directional 3
+VALUE	WiMAX-PFDv2-Direction		Uplink			1
+VALUE	WiMAX-PFDv2-Direction		Downlink		2
+VALUE	WiMAX-PFDv2-Direction		Bi-Directional		3
 
-VALUE		WiMAX-PFDv2-Activation-Trigger	Provisioned 1
-VALUE		WiMAX-PFDv2-Activation-Trigger	Admit	    2
-VALUE		WiMAX-PFDv2-Activation-Trigger	Activate	4
-VALUE		WiMAX-PFDv2-Activation-Trigger	Dynamic	    8
+VALUE	WiMAX-PFDv2-Activation-Trigger	Provisioned		1
+VALUE	WiMAX-PFDv2-Activation-Trigger	Admit			2
+VALUE	WiMAX-PFDv2-Activation-Trigger	Activate		4
+VALUE	WiMAX-PFDv2-Activation-Trigger	Dynamic			8
 
-VALUE		WiMAX-PFDv2-Transport-Type	IPv4-CS	    1
-VALUE		WiMAX-PFDv2-Transport-Type	IPv6-CS	    2
-VALUE		WiMAX-PFDv2-Transport-Type	Ethernet	3
+VALUE	WiMAX-PFDv2-Transport-Type	IPv4-CS			1
+VALUE	WiMAX-PFDv2-Transport-Type	IPv6-CS			2
+VALUE	WiMAX-PFDv2-Transport-Type	Ethernet		3
 
 END-TLV		WiMAX-Packet-Flow-Descriptor-v2
 
-ATTRIBUTE	WiMAX-VLAN-Tag-Processing-Descriptor		85	tlv
+ATTRIBUTE	WiMAX-VLAN-Tag-Processing-Descriptor	85	tlv
 BEGIN-TLV	WiMAX-VLAN-Tag-Processing-Descriptor
-ATTRIBUTE	WiMAX-VLAN-Tag-Rule-Id			1 short
-ATTRIBUTE	WiMAX-VLAN-Tag-C-VLAN-Priority		2 byte
-ATTRIBUTE	WiMAX-VLAN-Tag-VLAN-Id-Assignment	3 short
-ATTRIBUTE	WiMAX-VLAN-Tag-C-VLAN-Id		4 short
-ATTRIBUTE	WiMAX-VLAN-Tag-S-VLAN-Id		5 short
-ATTRIBUTE	WiMAX-VLAN-Tag-C-S-VLAN-Id-Mapping	6 integer
-ATTRIBUTE	WiMAX-VLAN-Tag-Local-Config-Info	7 octets
+ATTRIBUTE	WiMAX-VLAN-Tag-Rule-Id			1	short
+ATTRIBUTE	WiMAX-VLAN-Tag-C-VLAN-Priority		2	byte
+ATTRIBUTE	WiMAX-VLAN-Tag-VLAN-Id-Assignment	3	short
+ATTRIBUTE	WiMAX-VLAN-Tag-C-VLAN-Id		4	short
+ATTRIBUTE	WiMAX-VLAN-Tag-S-VLAN-Id		5	short
+ATTRIBUTE	WiMAX-VLAN-Tag-C-S-VLAN-Id-Mapping	6	integer
+ATTRIBUTE	WiMAX-VLAN-Tag-Local-Config-Info	7	octets
 END-TLV		WiMAX-VLAN-Tag-Processing-Descriptor
 
-#ATTRIBUTE	WiMAX-			86	integer
-#ATTRIBUTE	WiMAX-			87	integer
-#ATTRIBUTE	WiMAX-			88	integer
-#ATTRIBUTE	WiMAX-			89	integer
-#ATTRIBUTE	WiMAX-			90	byte
+ATTRIBUTE	WiMAX-hDHCP-Server-Parameters		86	tlv
+BEGIN-TLV	WiMAX-hDHCP-Server-Parameters
+ATTRIBUTE	WiMAX-hDHCP-DHCPv4-Address		1	ipaddr
+ATTRIBUTE	WiMAX-hDHCP-DHCPv6-Address		2	ipv6addr
+ATTRIBUTE	WiMAX-hDHCP-DHCP-RK			3	string encrypt=2
+ATTRIBUTE	WiMAX-hDHCP-DHCP-RK-Key-Id		4	integer
+ATTRIBUTE	WiMAX-hDHCP-DHCP-RK-Lifetime		5	integer
+END-TLV		WiMAX-hDHCP-Server-Parameters
 
+ATTRIBUTE	WiMAX-vDHCP-Server-Parameters		87	tlv
+BEGIN-TLV	WiMAX-vDHCP-Server-Parameters
+ATTRIBUTE	WiMAX-vDHCP-DHCPv4-Address		1	ipaddr
+ATTRIBUTE	WiMAX-vDHCP-DHCPv6-Address		2	ipv6addr
+ATTRIBUTE	WiMAX-vDHCP-DHCP-RK			3	string encrypt=2
+ATTRIBUTE	WiMAX-vDHCP-DHCP-RK-Key-Id		4	integer
+ATTRIBUTE	WiMAX-vDHCP-DHCP-RK-Lifetime		5	integer
+END-TLV		WiMAX-vDHCP-Server-Parameters
+
+ATTRIBUTE	WiMAX-BS-Location			88	octets
+ATTRIBUTE	WiMAX-Visited-IPv4-HoA-PMIP6		89	byte
+
+VALUE	WiMAX-Visited-IPv4-HoA-PMIP6	Fixed			1
+VALUE	WiMAX-Visited-IPv4-HoA-PMIP6	Nomadic			2
+VALUE	WiMAX-Visited-IPv4-HoA-PMIP6	Mobile			3
+
+ATTRIBUTE	WiMAX-MS-Authenticated			90	byte
+
+VALUE	WiMAX-MS-Authenticated		No			0
+VALUE	WiMAX-MS-Authenticated		Yes			1
+
+ATTRIBUTE	WiMAX-PMIP6-Service-Info		126	short
+
+ATTRIBUTE	WiMAX-hLMA-IPv6-PMIP6			127	ipv6addr
+ATTRIBUTE	WiMAX-hLMA-IPv4-PMIP6			128	ipaddr
+ATTRIBUTE	WiMAX-vLMA-IPv6-PMIP6			129	ipv6addr
+ATTRIBUTE	WiMAX-vLMA-IPv4-PMIP6			130	ipaddr
+ATTRIBUTE	WiMAX-PMIP6-RK-Key			131	octets encrypt=2
+ATTRIBUTE	WiMAX-PMIP6-RK-SPI			132	integer
+ATTRIBUTE	WiMAX-Home-HNP-PMIP6			133	ipv6prefix
+ATTRIBUTE	WiMAX-Home-Interface-Id-PMIP6		134	ifid
+ATTRIBUTE	WiMAX-Home-IPv4-HoA-PMIP6		135	ipaddr
+ATTRIBUTE	WiMAX-Visited-HNP-PMIP6			136	ipv6prefix
+ATTRIBUTE	WiMAX-Visited-Interface-Id-PMIP6	137	ifid
+ATTRIBUTE	WiMAX-Visited-IPv4-HoA-PMIP6		138	ipaddr
+
+END-VENDOR	WiMAX
