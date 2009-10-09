@@ -1092,7 +1092,7 @@ redo_tlv:
 	 *	Not enough room.  Do a continuation.
 	 */
 	if ((len == 0) || ((vsa[VS_OFF] + len) > 255)) {
-		if (redo) return 0; /* really not enough room */
+		if (redo) return (start - vsa);
 
 		vsa[8] = 0x80;
 		redo = 1;
@@ -2537,12 +2537,14 @@ static VALUE_PAIR *recurse_evil(const RADIUS_PACKET *packet,
 				const RADIUS_PACKET *original,
 				const char *secret,
 				int attribute, int vendor,
-				uint8_t *ptr, size_t len)
+				uint8_t *ptr, size_t len, int shift)
 {
 	VALUE_PAIR *head = NULL;
 	VALUE_PAIR **tail = &head;
 	VALUE_PAIR *vp;
 	uint8_t *y;		/* why do I need to do this? */
+
+	if (shift > 24) return NULL;
 
 	/*
 	 *	Sanity check the attribute.
@@ -2555,21 +2557,32 @@ static VALUE_PAIR *recurse_evil(const RADIUS_PACKET *packet,
 	}
 
 	for (y = ptr; y < (ptr + len); y += y[1]) {
-		vp = paircreate(attribute | (ptr[0] << 16), vendor,
-				PW_TYPE_OCTETS);
-		if (!vp) {
-		error:
-			pairfree(&head);
-			return NULL;
-		}
+		DICT_ATTR *da;
 
-		if (!data2vp(packet, original, secret,
-			     y[1] - 2, y + 2, vp)) {
-			goto error;
+		da = dict_attrbyvalue(attribute | (ptr[0] << shift), vendor);
+		if (da && (da->type == PW_TYPE_TLV)) {
+			vp = recurse_evil(packet, original, secret,
+					  attribute | (ptr[0] << shift),
+					  vendor, ptr + 2, ptr[1] - 2,
+					  shift + 8);
+			if (!vp) goto error;
+		} else {
+			vp = paircreate(attribute | (ptr[0] << shift), vendor,
+					PW_TYPE_OCTETS);
+			if (!vp) {
+			error:
+				pairfree(&head);
+				return NULL;
+			}
+
+			if (!data2vp(packet, original, secret,
+				     y[1] - 2, y + 2, vp)) {
+				goto error;
+			}
 		}
 
 		*tail = vp;
-		tail = &(vp->next);
+		while (*tail) tail = &((*tail)->next);
 	}
 
 	return head;
@@ -2669,7 +2682,7 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 		if (tlv_da && (tlv_da->type == PW_TYPE_TLV)) {
 			vp = recurse_evil(packet, original, secret,
 					  attribute | (ptr[0] << 8),
-					  vendor, ptr + 2, ptr[1] - 2);
+					  vendor, ptr + 2, ptr[1] - 2, 16);
 
 			if (!vp) {
 				pairfree(&head);
