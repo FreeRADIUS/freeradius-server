@@ -383,6 +383,7 @@ ATTRIBUTE	WiMAX-Flow-Descriptor-v2		83	tlv
 
 ATTRIBUTE	WiMAX-Packet-Flow-Descriptor-v2		84	tlv
 
+# Nest 1
 BEGIN-TLV	WiMAX-Packet-Flow-Descriptor-v2
 ATTRIBUTE	WiMAX-PFDv2-Packet-Data-Flow-Id		1	short
 ATTRIBUTE	WiMAX-PFDv2-Service-Data-Flow-Id	2	short
@@ -397,6 +398,7 @@ ATTRIBUTE	WiMAX-PFDv2-Classifier			9	tlv
 #
 #  Classifiers
 #
+# Nest 2
 BEGIN-TLV	WiMAX-PFDv2-Classifier
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Id		1	byte
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Priority		2	byte
@@ -405,7 +407,8 @@ ATTRIBUTE	WiMAX-PFDv2-Classifier-Direction	4	byte
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Source-Spec	5	tlv
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Dest-Spec	6	tlv
 
-# Why won't it end?
+#
+# Nest 3
 BEGIN-TLV	WiMAX-PFDv2-Classifier-Source-Spec
 ATTRIBUTE	WiMAX-PFDv2-Src-IP-Address		1	combo-ip
 # really two IPv4 OR IPv6 addresses
@@ -416,13 +419,49 @@ ATTRIBUTE	WiMAX-PFDv2-Src-Port			4	short
 ATTRIBUTE	WiMAX-PFDv2-Src-Port-Range		5	integer
 ATTRIBUTE	WiMAX-PFDv2-Src-Inverted		6	byte
 ATTRIBUTE	WiMAX-PFDv2-Src-Assigned		7	byte
+
+VALUE		WiMAX-PFDv2-Src-Assigned  Src-Assigned 1
+VALUE		WiMAX-PFDv2-Src-Assigned  Dst-Assigned 2
+VALUE		WiMAX-PFDv2-Src-Assigned  Src-Dst-Assigned 3
+
 ATTRIBUTE	WiMAX-PFDv2-Src-MAC-Address		8	ether
 ATTRIBUTE	WiMAX-PFDv2-Src-MAC-Mask		9	ether
 END-TLV		WiMAX-PFDv2-Classifier-Source-Spec
 
 ATTRIBUTE	WiMAX-PFDv2-Classifier-IP-ToS-DSCP	7	byte
 ATTRIBUTE	WiMAX-PFDv2-Classifier-Action		8	byte
-ATTRIBUTE	WiMAX-PFDv2-Classifier-Eth-Option	9	byte
+ATTRIBUTE	WiMAX-PFDv2-Classifier-Eth-Option	9	tlv
+
+# Nest 3
+BEGIN-TLV	WiMAX-PFDv2-Classifier-Eth-Option
+#
+#  These are all really TLVs
+#
+ATTRIBUTE	WiMAX-PFDv2-Eth-Proto-Type		1	octets
+ATTRIBUTE	WiMAX-PFDv2-Eth-VLAN-Id			2	octets
+ATTRIBUTE	WiMAX-PFDv2-Eth-Priority-Range		3	octets
+
+# Nest 4: BOOM!
+#BEGIN-TLV	WiMAX-PFDv2-Eth-Proto-Type
+#ATTRIBUTE	WiMAX-PFDv2-Eth-Proto-Type-Ethertype	1	short
+#ATTRIBUTE	WiMAX-PFDv2-Eth-Proto-Type-DSAP		2	byte
+#END-TLV		WiMAX-PFDv2-Eth-Proto-Type
+
+# Nest 4: BOOM!
+#BEGIN-TLV	WiMAX-PFDv2-Eth-VLAN-Id
+#ATTRIBUTE	WiMAX-PFDv2-Eth-VLAN-Id-S-VID		1	integer
+#ATTRIBUTE	WiMAX-PFDv2-Eth-VLAN-Id-C-VID		2	integer
+#END-TLV		WiMAX-PFDv2-Eth-VLAN-Id
+
+# Nest 4: BOOM!
+#BEGIN-TLV	WiMAX-PFDv2-Eth-Priority-Range
+#ATTRIBUTE	WiMAX-PFDv2-Eth-Priority-Range-Low	1	byte
+#ATTRIBUTE	WiMAX-PFDv2-Eth-Priority-Range-High	2	byte
+#END-TLV		WiMAX-PFDv2-Eth-Priority-Range
+
+
+END-TLV		WiMAX-PFDv2-Classifier-Eth-Option
+
 END-TLV		WiMAX-PFDv2-Classifier
 
 ATTRIBUTE	WiMAX-PFDv2-Paging-Preference		10	byte
@@ -443,7 +482,17 @@ VALUE		WiMAX-PFDv2-Transport-Type	Ethernet	3
 
 END-TLV		WiMAX-Packet-Flow-Descriptor-v2
 
-#ATTRIBUTE	WiMAX-			85	integer
+ATTRIBUTE	WiMAX-VLAN-Tag-Processing-Descriptor		85	tlv
+BEGIN-TLV	WiMAX-VLAN-Tag-Processing-Descriptor
+ATTRIBUTE	WiMAX-VLAN-Tag-Rule-Id			1 short
+ATTRIBUTE	WiMAX-VLAN-Tag-C-VLAN-Priority		2 byte
+ATTRIBUTE	WiMAX-VLAN-Tag-VLAN-Id-Assignment	3 short
+ATTRIBUTE	WiMAX-VLAN-Tag-C-VLAN-Id		4 short
+ATTRIBUTE	WiMAX-VLAN-Tag-S-VLAN-Id		5 short
+ATTRIBUTE	WiMAX-VLAN-Tag-C-S-VLAN-Id-Mapping	6 integer
+ATTRIBUTE	WiMAX-VLAN-Tag-Local-Config-Info	7 octets
+END-TLV		WiMAX-VLAN-Tag-Processing-Descriptor
+
 #ATTRIBUTE	WiMAX-			86	integer
 #ATTRIBUTE	WiMAX-			87	integer
 #ATTRIBUTE	WiMAX-			88	integer
