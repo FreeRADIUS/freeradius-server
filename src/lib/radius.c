@@ -2529,15 +2529,13 @@ static uint8_t *rad_coalesce(unsigned int attribute, int vendor,
 }
 
 /*
- *	Walk over Evil WIMAX Hell, creating attributes.
- *
- *	Won't someone think of the children?  What if they read this code?
+ *	Walk over Evil WIMAX TLVs, creating attributes.
  */
-static VALUE_PAIR *recurse_evil(const RADIUS_PACKET *packet,
-				const RADIUS_PACKET *original,
-				const char *secret,
-				int attribute, int vendor,
-				uint8_t *ptr, size_t len, int shift)
+static VALUE_PAIR *tlv2wimax(const RADIUS_PACKET *packet,
+			     const RADIUS_PACKET *original,
+			     const char *secret,
+			     int attribute, int vendor,
+			     uint8_t *ptr, size_t len, int shift)
 {
 	VALUE_PAIR *head = NULL;
 	VALUE_PAIR **tail = &head;
@@ -2561,10 +2559,10 @@ static VALUE_PAIR *recurse_evil(const RADIUS_PACKET *packet,
 
 		da = dict_attrbyvalue(attribute | (ptr[0] << shift), vendor);
 		if (da && (da->type == PW_TYPE_TLV)) {
-			vp = recurse_evil(packet, original, secret,
-					  attribute | (ptr[0] << shift),
-					  vendor, ptr + 2, ptr[1] - 2,
-					  shift + 8);
+			vp = tlv2wimax(packet, original, secret,
+				       attribute | (ptr[0] << shift),
+				       vendor, ptr + 2, ptr[1] - 2,
+				       shift + 8);
 			if (!vp) goto error;
 		} else {
 			vp = paircreate(attribute | (ptr[0] << shift), vendor,
@@ -2680,26 +2678,23 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 
 		tlv_da = dict_attrbyvalue(attribute | (ptr[0] << 8), vendor);
 		if (tlv_da && (tlv_da->type == PW_TYPE_TLV)) {
-			vp = recurse_evil(packet, original, secret,
-					  attribute | (ptr[0] << 8),
-					  vendor, ptr + 2, ptr[1] - 2, 16);
+			vp = tlv2wimax(packet, original, secret,
+				       attribute | (ptr[0] << 8),
+				       vendor, ptr + 2, ptr[1] - 2, 16);
 
-			if (!vp) {
-				pairfree(&head);
-				goto not_well_formed;
-			}
+			if (!vp) goto error;
 		} else {
 			vp = paircreate(attribute | (ptr[0] << 8), vendor,
 					PW_TYPE_OCTETS);
 			if (!vp) {
+			error:
 				pairfree(&head);
 				goto not_well_formed;
 			}
 
 			if (!data2vp(packet, original, secret,
 				     ptr[1] - 2, ptr + 2, vp)) {
-				pairfree(&head);
-				goto not_well_formed;
+				goto error;
 			}
 		}
 
