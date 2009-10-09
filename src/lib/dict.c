@@ -533,11 +533,6 @@ int dict_addattr(const char *name, int attr, int vendor, int type,
 		DICT_VENDOR *dv;
 		static DICT_VENDOR *last_vendor = NULL;
 
-		if (flags.is_tlv && (flags.encrypt != FLAG_ENCRYPT_NONE)) {
-			fr_strerror_printf("Sub-TLV's cannot be encrypted");
-			return -1;
-		}
-
 		if (flags.has_tlv && (flags.encrypt != FLAG_ENCRYPT_NONE)) {
 			fr_strerror_printf("TLV's cannot be encrypted");
 			return -1;
@@ -982,12 +977,6 @@ static int process_attribute(const char* fn, const int line,
 			return -1;
 		}
 
-		if (flags.encrypt != FLAG_ENCRYPT_NONE) {
-			fr_strerror_printf( "dict_init: %s[%d]: sub-tlv's cannot be encrypted",
-				    fn, line);
-			return -1;
-		}
-
 		/*
 		 *	
 		 */
@@ -1226,7 +1215,8 @@ static int process_vendor(const char* fn, const int line, char **argv,
 			}
 			continuation = 1;
 
-			if (value != VENDORPEC_WIMAX) {
+			if ((value != VENDORPEC_WIMAX) ||
+			    (type != 1) || (length != 1)) {
 				fr_strerror_printf("dict_init: %s[%d]: Only WiMAX VSAs can have continuations",
 					   fn, line);
 				return -1;

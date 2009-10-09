@@ -626,6 +626,7 @@ static void make_tunnel_passwd(uint8_t *output, size_t *outlen,
 		}
 
 		fr_MD5Final(digest, &context);
+
 		for (i = 0; i < AUTH_PASS_LEN; i++) {
 			passwd[i + 2 + n] ^= digest[i];
 		}
@@ -738,6 +739,9 @@ static int vp2data(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		break;
 
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
+		lvalue = 0;
+		if (vp->flags.has_tag) lvalue = 1;
+
 		/*
 		 *	Check if there's enough room.  If there isn't,
 		 *	we discard the attribute.
@@ -745,7 +749,7 @@ static int vp2data(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 *	This is ONLY a problem if we have multiple VSA's
 		 *	in one Vendor-Specific, though.
 		 */
-		if (room < 19) return 0;
+		if (room < (18 + lvalue)) return 0;
 
         	switch (packet->code) {
 	        case PW_AUTHENTICATION_ACK:
@@ -756,8 +760,10 @@ static int vp2data(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				fr_strerror_printf("ERROR: No request packet, cannot encrypt %s attribute in the vp.", vp->name);
 				return -1;
 			}
-			ptr[0] = vp->flags.tag;
-			make_tunnel_passwd(ptr + 1, &len, data, len, room - 1,
+
+			if (lvalue) ptr[0] = vp->flags.tag;
+			make_tunnel_passwd(ptr + lvalue, &len, data, len,
+					   room - lvalue,
 					   secret, original->vector);
                 	break;
 	        case PW_ACCOUNTING_REQUEST:
@@ -2186,7 +2192,10 @@ static VALUE_PAIR *data2vp(const RADIUS_PACKET *packet,
 			vp->flags.tag = data[0];
 
 			if ((vp->type == PW_TYPE_STRING) ||
-			    (vp->type == PW_TYPE_OCTETS)) offset = 1;
+			    (vp->type == PW_TYPE_OCTETS)) {
+				if (length == 0) goto raw;
+				offset = 1;
+			}
 		}
 	}
 
