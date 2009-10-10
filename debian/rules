@@ -27,13 +27,15 @@ modulelist=krb5 ldap sql_mysql sql_iodbc sql_postgresql
 export DEB_HOST_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 export DEB_BUILD_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 
-export CFLAGS = -Wall -g
+CFLAGS := $(CFLAGS) -Wall -g
 
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
 	CFLAGS += -O0
 else
 	CFLAGS += -O2
 endif
+
+export CFLAGS
 
 # Autoconf 2.52+ arch support
 ifeq ($(DEB_BUILD_GNU_TYPE), $(DEB_HOST_GNU_TYPE))
