@@ -2027,7 +2027,7 @@ home_server *home_server_ldb(const char *realmname,
 		/*
 		 *	We've found the first "live" one.  Use that.
 		 */
-		if (pool->type == HOME_POOL_FAIL_OVER) {
+		if (pool->type != HOME_POOL_LOAD_BALANCE) {
 			found = home;
 			break;
 		}
