@@ -2370,7 +2370,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 	 *	defining a proxy listener inside of a virtual server.
 	 *	This isn't allowed right now.
 	 */
-	else if (this->type == RAD_LISTEN_PROXY) {
+	else if (type == RAD_LISTEN_PROXY) {
 		radlog(L_ERR, "Error: listen type \"proxy\" Cannot appear in a virtual server section");
 		return NULL;
 	}
