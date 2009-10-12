@@ -84,10 +84,20 @@ static int eap_handler_cmp(const void *a, const void *b)
 	if (one->eap_id < two->eap_id) return -1;
 	if (one->eap_id > two->eap_id) return +1;
 
-	rcode = fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr);
+	rcode = memcmp(one->state, two->state, sizeof(one->state));
 	if (rcode != 0) return rcode;
 
-	return memcmp(one->state, two->state, sizeof(one->state));
+	/*
+	 *	As of 2.1.8, we don't key off of source IP.  This
+	 *	a NAS to send packets load-balanced (or fail-over)
+	 *	across multiple intermediate proxies, and still have
+	 *	EAP work.
+	 */
+	if (fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr) != 0) {
+		DEBUG("WARNING: EAP packets are arriving from two different upstream servers.  Has there been a proxy fail-over?")
+	}
+
+	return 0;
 }
 
 
