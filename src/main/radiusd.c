@@ -289,30 +289,6 @@ int main(int argc, char *argv[])
 	radius_pid = getpid();
 
 	/*
-	 *  Only write the PID file if we're running as a daemon.
-	 *
-	 *  And write it AFTER we've forked, so that we write the
-	 *  correct PID.
-	 */
-	if (dont_fork == FALSE) {
-		FILE *fp;
-
-		fp = fopen(mainconfig.pid_file, "w");
-		if (fp != NULL) {
-			/*
-			 *	FIXME: What about following symlinks,
-			 *	and having it over-write a normal file?
-			 */
-			fprintf(fp, "%d\n", (int) radius_pid);
-			fclose(fp);
-		} else {
-			radlog(L_ERR|L_CONS, "Failed creating PID file %s: %s\n",
-			       mainconfig.pid_file, strerror(errno));
-			exit(1);
-		}
-	}
-
-	/*
 	 *	If we're running as a daemon, close the default file
 	 *	descriptors, AFTER forking.
 	 */
@@ -391,6 +367,30 @@ int main(int argc, char *argv[])
 	}
 
 	radius_stats_init(0);
+
+	/*
+	 *  Only write the PID file if we're running as a daemon.
+	 *
+	 *  And write it AFTER we've forked, so that we write the
+	 *  correct PID.
+	 */
+	if (dont_fork == FALSE) {
+		FILE *fp;
+
+		fp = fopen(mainconfig.pid_file, "w");
+		if (fp != NULL) {
+			/*
+			 *	FIXME: What about following symlinks,
+			 *	and having it over-write a normal file?
+			 */
+			fprintf(fp, "%d\n", (int) radius_pid);
+			fclose(fp);
+		} else {
+			radlog(L_ERR|L_CONS, "Failed creating PID file %s: %s\n",
+			       mainconfig.pid_file, strerror(errno));
+			exit(1);
+		}
+	}
 
 	/*
 	 *	Process requests until HUP or exit.
