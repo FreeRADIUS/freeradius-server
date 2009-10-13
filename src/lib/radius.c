@@ -2538,6 +2538,7 @@ static uint8_t *rad_coalesce(unsigned int attribute, int vendor,
 }
 
 extern int fr_wimax_shift[];
+extern int fr_wimax_mast[];
 
 
 /*
@@ -2562,6 +2563,15 @@ static VALUE_PAIR *tlv2wimax(const RADIUS_PACKET *packet,
 	for (y = ptr; y < (ptr + len); y += y[1]) {
 		if ((y[0] == 0) || ((y + 2) > (ptr + len)) ||
 		    (y[1] < 2) || ((y + y[1]) > (ptr + len))) {
+			return NULL;
+		}
+
+		/*
+		 *	Attribute number is too large for us to
+		 *	represent it in our horrible internal
+		 *	representation.
+		 */
+		if ((ptr[0] & ~fr_wimax_mask[nest]) != 0) {
 			return NULL;
 		}
 	}
