@@ -99,6 +99,27 @@ static const FR_NAME_NUMBER type_table[] = {
 
 
 /*
+ *	WiMAX craziness.
+ */
+#define MAX_TLV_NEST (3)
+/*
+ *	Bit packing:
+ *	8 bits of base VSA
+ *	8 bits for nested TLV 1
+ *	8 bits for nested TLV 2
+ *	5 bits for nested TLV 3
+ *	3 bits for nested TLV 4
+ */
+const int fr_wimax_shift[MAX_TLV_NEST + 1] = {
+  0, 8, 16, 24, 29
+};
+
+const int fr_wimax_mask[MAX_TLV_NEST + 1] = {
+  0, 0xff, 0xff, 0xff, 0x07
+};
+
+
+/*
  *	Create the hash of the name.
  *
  *	We copy the hash function here because it's substantially faster.
@@ -971,8 +992,8 @@ static int process_attribute(const char* fn, const int line,
 		/*
 		 *	TLV's can be only one octet.
 		 */
-		if ((value <= 0) || (value > 255)) {
-			fr_strerror_printf( "dict_init: %s[%d]: sub-tlv's cannot have value > 255",
+	  if ((value <= 0) || ((value & ~fr_wimax_mask[tlv_depth]) != 0)) {
+			fr_strerror_printf( "dict_init: %s[%d]: sub-tlv has invalid attribute number",
 				    fn, line);
 			return -1;
 		}
@@ -980,7 +1001,7 @@ static int process_attribute(const char* fn, const int line,
 		/*
 		 *	
 		 */
-		value <<= (8 * tlv_depth);
+		value <<= fr_wimax_shift[tlv_depth];
 		value |= block_tlv->attr;
 		flags.is_tlv = 1;
 	}
@@ -1290,7 +1311,6 @@ static int str2argv(char *str, char **argv, int max_argc)
 }
 
 #define MAX_ARGV (16)
-#define MAX_TLV_NEST (3)
 
 /*
  *	Initialize the dictionary.
@@ -1489,6 +1509,7 @@ static int my_dict_init(const char *dir, const char *fn,
 				fclose(fp);
 				return -1;
 			}
+
 
 			block_tlv[++which_block_tlv] = da;
 			continue;
