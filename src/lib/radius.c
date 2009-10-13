@@ -824,27 +824,30 @@ static int rad_vp2rfc(const RADIUS_PACKET *packet,
 	return ptr[1];
 }
 
+extern int fr_wimax_shift[];
+extern int fr_wimax_mask[];
+
 static int tlv2data(const RADIUS_PACKET *packet,
 		    const RADIUS_PACKET *original,
-		    const char *secret, const VALUE_PAIR *vp, int attribute,
-		    uint8_t *ptr, size_t room)
+		    const char *secret, const VALUE_PAIR *vp,
+		    uint8_t *ptr, size_t room, int nest)
 {
 	int len;
 
 	if (room < 2) return 0;
 	room -= 2;
 
-	ptr[0] = attribute & 0xff;
+	ptr[0] = (vp->attribute >> fr_wimax_shift[nest]) & fr_wimax_mask[nest];
 	ptr[1] = 2;
 
 	/*
 	 *	No more nested TLVs: pack the data.
 	 */
-	if ((attribute & ~0xff) == 0) {
+	if (!vp->flags.has_tlv) {
 		len = vp2data(packet, original, secret, vp, ptr + 2, room);
 	} else {
-		len = tlv2data(packet, original, secret, vp, attribute >> 8,
-			       ptr + 2, room);
+		len = tlv2data(packet, original, secret, vp, ptr + 2, room,
+			       nest + 1);
 	}
 	if (len <= 0) return len;
 
@@ -902,8 +905,7 @@ static int wimax2data(const RADIUS_PACKET *packet,
 	if (!vp->flags.is_tlv) {
 		len = vp2data(packet, original, secret, vp, ptr, room);
 	} else {
-		len = tlv2data(packet, original, secret, vp, vp->attribute >> 8,
-			       ptr, room);
+		len = tlv2data(packet, original, secret, vp, ptr, room, 1);
 	}
 
 	if (len <= 0) return len;
@@ -1090,8 +1092,7 @@ redo_vsa:
 	room -= 9;
 
 redo_tlv:
-	len = tlv2data(packet, original, secret, vp, vp->attribute >> 8,
-		       ptr, room);
+	len = tlv2data(packet, original, secret, vp, ptr, room, 1);
 	if (len < 0) return len;
 
 	/*
@@ -2536,9 +2537,6 @@ static uint8_t *rad_coalesce(unsigned int attribute, int vendor,
 	*ptlv_length = tlv_length;
 	return tlv_data;
 }
-
-extern int fr_wimax_shift[];
-extern int fr_wimax_mast[];
 
 
 /*
