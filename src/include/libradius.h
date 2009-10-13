@@ -156,7 +156,7 @@ typedef union value_pair_data {
 
 typedef struct value_pair {
 	const char	        *name;
-	int			attribute;
+	unsigned int		attribute;
 	int			vendor;
 	int			type;
 	size_t			length; /* of data */
