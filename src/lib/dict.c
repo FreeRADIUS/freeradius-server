@@ -101,7 +101,7 @@ static const FR_NAME_NUMBER type_table[] = {
 /*
  *	WiMAX craziness.
  */
-#define MAX_TLV_NEST (3)
+#define MAX_TLV_NEST (4)
 /*
  *	Bit packing:
  *	8 bits of base VSA
@@ -110,12 +110,13 @@ static const FR_NAME_NUMBER type_table[] = {
  *	5 bits for nested TLV 3
  *	3 bits for nested TLV 4
  */
+const int fr_wimax_max_tlv = MAX_TLV_NEST;
 const int fr_wimax_shift[MAX_TLV_NEST + 1] = {
   0, 8, 16, 24, 29
 };
 
 const int fr_wimax_mask[MAX_TLV_NEST + 1] = {
-  0, 0xff, 0xff, 0xff, 0x07
+  0, 0xff, 0xff, 0x1f, 0x07
 };
 
 

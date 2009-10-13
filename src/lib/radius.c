@@ -824,6 +824,7 @@ static int rad_vp2rfc(const RADIUS_PACKET *packet,
 	return ptr[1];
 }
 
+extern int fr_wimax_max_tlv;
 extern int fr_wimax_shift[];
 extern int fr_wimax_mask[];
 
@@ -834,6 +835,8 @@ static int tlv2data(const RADIUS_PACKET *packet,
 {
 	int len;
 
+	if (nest > fr_wimax_max_tlv) return -1;
+
 	if (room < 2) return 0;
 	room -= 2;
 
@@ -843,7 +846,8 @@ static int tlv2data(const RADIUS_PACKET *packet,
 	/*
 	 *	No more nested TLVs: pack the data.
 	 */
-	if (!vp->flags.has_tlv) {
+	if ((nest == fr_wimax_max_tlv) ||
+	    ((vp->attribute >> fr_wimax_shift[nest + 1]) == 0)) {
 		len = vp2data(packet, original, secret, vp, ptr + 2, room);
 	} else {
 		len = tlv2data(packet, original, secret, vp, ptr + 2, room,
@@ -2553,7 +2557,7 @@ static VALUE_PAIR *tlv2wimax(const RADIUS_PACKET *packet,
 	VALUE_PAIR *vp;
 	uint8_t *y;		/* why do I need to do this? */
 
-	if (nest > 4) return NULL;
+	if (nest > fr_wimax_max_tlv) return NULL;
 
 	/*
 	 *	Sanity check the attribute.
