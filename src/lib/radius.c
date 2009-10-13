@@ -2537,6 +2537,9 @@ static uint8_t *rad_coalesce(unsigned int attribute, int vendor,
 	return tlv_data;
 }
 
+extern int fr_wimax_shift[];
+
+
 /*
  *	Walk over Evil WIMAX TLVs, creating attributes.
  */
@@ -2544,14 +2547,14 @@ static VALUE_PAIR *tlv2wimax(const RADIUS_PACKET *packet,
 			     const RADIUS_PACKET *original,
 			     const char *secret,
 			     int attribute, int vendor,
-			     uint8_t *ptr, size_t len, int shift)
+			     uint8_t *ptr, size_t len, int nest)
 {
 	VALUE_PAIR *head = NULL;
 	VALUE_PAIR **tail = &head;
 	VALUE_PAIR *vp;
 	uint8_t *y;		/* why do I need to do this? */
 
-	if (shift > 24) return NULL;
+	if (nest > 4) return NULL;
 
 	/*
 	 *	Sanity check the attribute.
@@ -2566,15 +2569,15 @@ static VALUE_PAIR *tlv2wimax(const RADIUS_PACKET *packet,
 	for (y = ptr; y < (ptr + len); y += y[1]) {
 		DICT_ATTR *da;
 
-		da = dict_attrbyvalue(attribute | (ptr[0] << shift), vendor);
+		da = dict_attrbyvalue(attribute | (ptr[0] << fr_wimax_shift[nest]), vendor);
 		if (da && (da->type == PW_TYPE_TLV)) {
 			vp = tlv2wimax(packet, original, secret,
-				       attribute | (ptr[0] << shift),
+				       attribute | (ptr[0] << fr_wimax_shift[nest]),
 				       vendor, ptr + 2, ptr[1] - 2,
-				       shift + 8);
+				       nest + 1);
 			if (!vp) goto error;
 		} else {
-			vp = paircreate(attribute | (ptr[0] << shift), vendor,
+			vp = paircreate(attribute | (ptr[0] << fr_wimax_shift[nest]), vendor,
 					PW_TYPE_OCTETS);
 			if (!vp) {
 			error:
@@ -2685,15 +2688,15 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 	     ptr != (tlv_data + tlv_length);
 	     ptr += ptr[1]) {
 
-		tlv_da = dict_attrbyvalue(attribute | (ptr[0] << 8), vendor);
+		tlv_da = dict_attrbyvalue(attribute | (ptr[0] << fr_wimax_shift[1]), vendor);
 		if (tlv_da && (tlv_da->type == PW_TYPE_TLV)) {
 			vp = tlv2wimax(packet, original, secret,
 				       attribute | (ptr[0] << 8),
-				       vendor, ptr + 2, ptr[1] - 2, 16);
+				       vendor, ptr + 2, ptr[1] - 2, 2);
 
 			if (!vp) goto error;
 		} else {
-			vp = paircreate(attribute | (ptr[0] << 8), vendor,
+			vp = paircreate(attribute | (ptr[0] << fr_wimax_shift[1]), vendor,
 					PW_TYPE_OCTETS);
 			if (!vp) {
 			error:
