@@ -73,7 +73,7 @@ if test -z "$makever"; then
 fi
 
 AC_ARG_WITH(system-libtldl,
-[  --with-system-libtldl   Use the libtltdl installed in your system (default=use our own)],
+[  --with-system-libtldl   Use the libltdl installed in your system (default=use our own)],
 [
 LIBLTDL="-lltdl"
 INCLTDL=
