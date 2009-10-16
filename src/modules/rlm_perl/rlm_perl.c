@@ -938,7 +938,7 @@ static int perl_detach(void *instance)
 		}
 #endif
 
-	{
+		if (inst->func_detach) {
 	dTHXa(inst->perl);
 	PERL_SET_CONTEXT(inst->perl);
 	{
