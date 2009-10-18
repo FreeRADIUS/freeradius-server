@@ -1321,7 +1321,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 						if (acctsessiontime <= 0) {
 							radius_xlat(logstr, sizeof(logstr), "stop packet with zero session length. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
-							radlog_request(L_ERR, 0, request, "%s", logstr);
+							radlog_request(L_DBG, 0, request, "%s", logstr);
 							sql_release_socket(inst, sqlsocket);
 							return RLM_MODULE_NOOP;
 						}
