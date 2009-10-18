@@ -71,6 +71,8 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	char *argv[MAX_ARGV];
 	char answer[4096];
 	char argv_buf[4096];
+#define MAX_ENVP 1024
+	char *envp[MAX_ENVP];
 
 	if (user_msg) *user_msg = '\0';
 	if (output_pairs) *output_pairs = NULL;
@@ -222,6 +224,50 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		output_pairs = NULL;
 	}
 
+	envp[0] = NULL;
+
+	if (input_pairs) {
+		int envlen;
+		char buffer[1024];
+
+		/*
+		 *	Set up the environment variables in the
+		 *	parent, so we don't call libc functions that
+		 *	hold mutexes.  They might be locked when we fork,
+		 *	and will remain locked in the child.
+		 */
+		envlen = 0;
+
+		for (vp = input_pairs; vp != NULL; vp = vp->next) {
+			/*
+			 *	Hmm... maybe we shouldn't pass the
+			 *	user's password in an environment
+			 *	variable...
+			 */
+			snprintf(buffer, sizeof(buffer), "%s=", vp->name);
+			if (shell_escape) {
+				for (p = buffer; *p != '='; p++) {
+					if (*p == '-') {
+						*p = '_';
+					} else if (isalpha((int) *p)) {
+						*p = toupper(*p);
+					}
+				}
+			}
+
+			n = strlen(buffer);
+			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, shell_escape);
+
+			envp[envlen++] = strdup(buffer);
+
+			/*
+			 *	Don't add too many attributes.
+			 */
+			if (envlen == (MAX_ENVP - 1)) break;
+		}
+		envp[envlen] = NULL;
+	}
+
 	if (exec_wait) {
 		pid = rad_fork();	/* remember PID */
 	} else {
@@ -229,11 +275,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	}
 
 	if (pid == 0) {
-#define MAX_ENVP 1024
 		int devnull;
-		char *envp[MAX_ENVP];
-		int envlen;
-		char buffer[1024];
 
 		/*
 		 *	Child process.
@@ -302,46 +344,17 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 */
 		closefrom(3);
 
-		/*
-		 *	Set up the environment variables.
-		 *	We're in the child, and it will exit in 4 lines
-		 *	anyhow, so memory allocation isn't an issue.
-		 */
-		envlen = 0;
-
-		for (vp = input_pairs; vp != NULL; vp = vp->next) {
-			/*
-			 *	Hmm... maybe we shouldn't pass the
-			 *	user's password in an environment
-			 *	variable...
-			 */
-			snprintf(buffer, sizeof(buffer), "%s=", vp->name);
-			if (shell_escape) {
-				for (p = buffer; *p != '='; p++) {
-					if (*p == '-') {
-						*p = '_';
-					} else if (isalpha((int) *p)) {
-						*p = toupper(*p);
-					}
-				}
-			}
-
-			n = strlen(buffer);
-			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, shell_escape);
-
-			envp[envlen++] = strdup(buffer);
-
-			/*
-			 *	Don't add too many attributes.
-			 */
-			if (envlen == (MAX_ENVP - 1)) break;
-		}
-		envp[envlen] = NULL;
-
 		execve(argv[0], argv, envp);
 		radlog(L_ERR, "Exec-Program: FAILED to execute %s: %s",
 		       argv[0], strerror(errno));
 		exit(1);
+	}
+
+	/*
+	 *	Free child environment variables
+	 */
+	for (i = 0; envp[i] != NULL; i++) {
+		free(envp[i]);
 	}
 
 	/*
@@ -519,49 +532,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	user_msg = NULL;
 	output_pairs = NULL;
 
-	/*
-	 *	FIXME: Move to a common routine.
-	 */
 	{
-#define MAX_ENVP 1024
-		char *envp[MAX_ENVP];
-		int envlen;
-		char buffer[1024];
-
-		/*
-		 *	Set up the environment variables.
-		 */
-		envlen = 0;
-
-		for (vp = input_pairs; vp != NULL; vp = vp->next) {
-			/*
-			 *	Hmm... maybe we shouldn't pass the
-			 *	user's password in an environment
-			 *	variable...
-			 */
-			snprintf(buffer, sizeof(buffer), "%s=", vp->name);
-			if (shell_escape) {
-				for (p = buffer; *p != '='; p++) {
-					if (*p == '-') {
-						*p = '_';
-					} else if (isalpha((int) *p)) {
-						*p = toupper(*p);
-					}
-				}
-			}
-
-			n = strlen(buffer);
-			vp_prints_value(buffer+n, sizeof(buffer) - n, vp, shell_escape);
-
-			envp[envlen++] = strdup(buffer);
-
-			/*
-			 *	Don't add too many attributes.
-			 */
-			if (envlen == (MAX_ENVP - 1)) break;
-		}
-		envp[envlen] = NULL;
-
 		/*
 		 *	The _spawn and _exec families of functions are
 		 *	found in Windows compiler libraries for
@@ -587,12 +558,6 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 *	FIXME: check return code... what is it?
 		 */
 		_spawnve(_P_NOWAIT, argv[0], argv, envp);
-
-		for (i = 0; i < MAX_ENVP; i++) {
-			if (!envp[i]) break;
-			free(envp[i]);
-		}
-
 	}
 
 	return 0;
