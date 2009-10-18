@@ -239,6 +239,11 @@ static const char * const comp2str[] = {
 	"pre-proxy",
 	"post-proxy",
 	"post-auth"
+#ifdef WITH_COA
+	,
+	"recv-coa",
+	"send-coa"
+#endif
 };
 
 #ifdef HAVE_PTHREAD_H
