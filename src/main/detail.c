@@ -76,6 +76,7 @@ typedef struct listen_detail_t {
 	FILE		*fp;
 	detail_state_t 	state;
 	time_t		timestamp;
+	time_t		running;
 	fr_ipaddr_t	client_ip;
 	int		load_factor; /* 1..100 */
 	int		signal;
@@ -452,11 +453,18 @@ int detail_recv(rad_listen_t *listener,
 			goto alloc_packet;
 
 			/*
-			 *	We still have an outstanding packet.
-			 *	Don't read any more.
+			 *	Periodically check what's going on.
+			 *	If the request is taking too long,
+			 *	retry it.
 			 */
 		case STATE_RUNNING:
-			return 0;
+			if (time(NULL) < (data->running + data->retry_interval)) {
+				return 0;
+			}
+
+			DEBUG("No response to detail request.  Retrying");
+			data->state = STATE_NO_REPLY;
+			/* FALL-THROUGH */
 
 			/*
 			 *	If there's no reply, keep
@@ -722,6 +730,7 @@ int detail_recv(rad_listen_t *listener,
 	}
 
 	data->state = STATE_RUNNING;
+	data->running = packet->timestamp;
 
 	return 1;
 }
