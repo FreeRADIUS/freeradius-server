@@ -520,8 +520,9 @@ dnl Check for OpenSSL libraries.
 OPENSSL_LIBS=
 if test "x$WITH_OPENSSL" = xyes; then
   old_LIBS=$LIBS
+  old_LDFLAGS="$LDFLAGS"
   if test "x$OPENSSL_LIB_DIR" != "x"; then
-    LIBS="-L$OPENSSL_LIB_DIR $LIBS"
+    LDFLAGS="$LDFLAGS -L$OPENSSL_LIB_DIR"
   fi
   AC_CHECK_LIB(crypto, DH_new,
     [
@@ -539,6 +540,7 @@ if test "x$WITH_OPENSSL" = xyes; then
 	    ], [])
     ], [])
   LIBS=$old_LIBS
+  LDFLAGS="$old_LDFLAGS"
 fi
 
 AC_CHECK_LIB(ws2_32, htonl)
