@@ -1125,6 +1125,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		home->type = type;
 		home->secret = secret;
 		home->cs = cs;
+		home->proto = IPPROTO_UDP;
 
 		p = strchr(name, ':');
 		if (!p) {
