@@ -722,7 +722,7 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		 *	MUST match requested src port, if one has been given.
 		 */
 		if ((request->src_port != 0) && 
-		    (ps->dst_port != request->dst_port)) continue;
+		    (ps->src_port != request->src_port)) continue;
 
 		/*
 		 *	We're sourcing from *, and they asked for a
