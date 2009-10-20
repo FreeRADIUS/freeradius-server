@@ -3933,7 +3933,7 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		}
 #endif
 
-		if (pthread_mutex_init(&proxy_mutex, NULL) != 0) {
+		if (pthread_mutex_init(&proxy_mutex, &attr) != 0) {
 			radlog(L_ERR, "FATAL: Failed to initialize proxy mutex: %s",
 			       strerror(errno));
 			exit(1);
