@@ -166,6 +166,7 @@ static void remove_from_request_hash(REQUEST *request)
 #ifdef WITH_PROXY
 static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 {
+	int done = FALSE;
 	RADIUS_PACKET **proxy_p;
 	REQUEST *request;
 
@@ -178,23 +179,17 @@ static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 	}
 
 	request = fr_packet2myptr(REQUEST, proxy, proxy_p);
+	request->num_proxied_responses++; /* needs to be protected by lock */
 
-	if (!request) {
-		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		return NULL;
-	}
+	done = (request->num_proxied_requests == request->num_proxied_responses);
+	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
-	request->num_proxied_responses++;
 
 	/*
 	 *	Catch the most common case of everything working
 	 *	correctly.
 	 */
-	if (request->num_proxied_requests == request->num_proxied_responses) {
-		remove_from_proxy_hash(request);
-	}
-
-	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+	if (done) remove_from_proxy_hash(request);
 
 	return request;
 }
@@ -366,69 +361,47 @@ static int remove_all_proxied_requests(void *ctx, void *data)
 
 
 #ifdef WITH_PROXY
-static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
-{
-	void *proxy_listener;
-
-	if (fr_packet_list_id_alloc(proxy_list, request->home_server->proto,
-				    packet, &proxy_listener)) {
-		request->proxy_listener = proxy_listener;
-		return 1;
-	}
-
-	if (!proxy_new_listener(request->home_server, 0)) {
-		RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
-		return 0;
-	}
-
-	if (!fr_packet_list_id_alloc(proxy_list, request->home_server->proto,
-				     packet, &proxy_listener)) {
-		RDEBUG2("ERROR: Failed allocating Id for new socket when proxying requests.");
-		return 0;
-	}
-	
-	request->proxy_listener = proxy_listener;
-	return 1;
-}
-
-
-static int insert_into_proxy_hash(REQUEST *request, int retransmit)
+static int insert_into_proxy_hash(REQUEST *request)
 {
 	char buf[128];
+	int rcode, tries;
+	void *proxy_listener;
 
 	rad_assert(request->proxy != NULL);
 	rad_assert(proxy_list != NULL);
 
+	tries = 1;
+retry:
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-
-	if (!retransmit) {
-		if (!proxy_id_alloc(request, request->proxy)) {
-			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			return 0;
-		}
-	} else {
-		RADIUS_PACKET packet;
-
-#ifdef WITH_TCP
-		rad_assert(request->home_server->proto != IPPROTO_TCP);
-#endif
-
-		packet = *request->proxy;
-
-		if (!proxy_id_alloc(request, &packet)) {
-			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			return 0;
-		}
-
+	rcode = fr_packet_list_id_alloc(proxy_list,
+					request->home_server->proto,
+					request->proxy, &proxy_listener);
+	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+	
+	if (!rcode) {
 		/*
-		 *	Yank the request, free the old Id, and
-		 *	remember the new Id.
+		 *	Also locks the proxy mutex, so we have to call
+		 *	it with the mutex unlocked.  Some systems
+		 *	don't support recursive mutexes.
 		 */
-		fr_packet_list_yank(proxy_list, request->proxy);
-		fr_packet_list_id_free(proxy_list, request->proxy);
-		*request->proxy = packet;
+		if (!proxy_new_listener(request->home_server, 0)) {
+			RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
+			return 0;
+		}
+		request->proxy->src_port = 0; /* Use any new socket */
+
+		tries++;
+		if (tries > 2) {
+			RDEBUG2("ERROR: Failed allocating Id for new socket when proxying requests.");
+			return 0;
+		}
+		
+		goto retry;
 	}
 
+	request->proxy_listener = proxy_listener;
+
+	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
 		fr_packet_list_id_free(proxy_list, request->proxy);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
@@ -827,7 +800,7 @@ static void ping_home_server(void *ctx)
 
 	rad_assert(request->proxy_listener == NULL);
 
-	if (!insert_into_proxy_hash(request, FALSE)) {
+	if (!insert_into_proxy_hash(request)) {
 		RDEBUG2("ERROR: Failed inserting status check %d into proxy hash.  Discarding it.",
 		       request->number);
 		ev_request_free(&request);
@@ -1491,10 +1464,28 @@ static void retransmit_coa_request(void *ctx)
 	}
 	
 	if (update_event_timestamp(request->proxy, now.tv_sec)) {
-		if (!insert_into_proxy_hash(request, TRUE)) {
+		/*
+		 *	Keep a copy of the old Id so that the
+		 *	re-transmitted request doesn't re-use the old
+		 *	Id.
+		 */
+		RADIUS_PACKET old = *request->proxy;
+
+		/*
+		 *	Don't free the old Id on error.
+		 */
+		if (!insert_into_proxy_hash(request)) {
 			DEBUG("ERROR: Failed re-inserting CoA request into proxy hash.");
 			return;
 		}
+
+		/*
+		 *	Now that we have a new Id, free the old one.
+		 */
+		PTHREAD_MUTEX_LOCK(&proxy_mutex);
+		fr_packet_list_yank(proxy_list, &old);
+		fr_packet_list_id_free(proxy_list, &old);
+		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 		request->num_proxied_requests = 0;
 		request->num_proxied_responses = 0;
@@ -1679,7 +1670,7 @@ static int originated_coa_request(REQUEST *request)
 	coa->proxy->dst_ipaddr = coa->home_server->ipaddr;
 	coa->proxy->dst_port = coa->home_server->port;
 
-	if (!insert_into_proxy_hash(coa, FALSE)) {
+	if (!insert_into_proxy_hash(coa)) {
 		DEBUG("ERROR: Failed inserting CoA request into proxy hash.");
 		goto fail;
 	}
@@ -1928,7 +1919,7 @@ static int proxy_request(REQUEST *request)
 		return 0;
 	}
 
-	if (!insert_into_proxy_hash(request, FALSE)) {
+	if (!insert_into_proxy_hash(request)) {
 		RDEBUG("ERROR: Failed inserting request into proxy hash.");
 		return 0;
 	}
@@ -3678,7 +3669,7 @@ static void handle_signal_self(int flag)
 
 #ifdef WITH_PROXY
 	/*
-	 *	Add event handlers for idle timeouts && maximum lifetime.XXX
+	 *	Add event handlers for idle timeouts && maximum lifetime.
 	 */
 	if ((flag & RADIUS_SIGNAL_SELF_NEW_FD) != 0) {
 		struct timeval when;
@@ -3913,8 +3904,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 #ifdef WITH_PROXY
 	if (mainconfig.proxy_requests) {
-		pthread_mutexattr_t attr;
-
 		/*
 		 *	Create the tree for managing proxied requests and
 		 *	responses.
@@ -3923,23 +3912,11 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 		if (!proxy_list) return 0;
 
 #ifdef HAVE_PTHREAD_H
-		pthread_mutexattr_init(&attr);
-
-#ifdef PTHREAD_MUTEX_RECURSIVE
-		if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE) < 0) {
-			radlog(L_ERR, "FATAL: Failed to set type for proxy mutex: %s",
-			       strerror(errno));
-			exit(1);
-		}
-#endif
-
-		if (pthread_mutex_init(&proxy_mutex, &attr) != 0) {
+		if (pthread_mutex_init(&proxy_mutex, NULL) != 0) {
 			radlog(L_ERR, "FATAL: Failed to initialize proxy mutex: %s",
 			       strerror(errno));
 			exit(1);
 		}
-
-		pthread_mutexattr_destroy(&attr);
 #endif
 	}
 #endif
@@ -4074,9 +4051,7 @@ void radius_event_free(void)
 	 *	referenced from anywhere else.  Remove them first.
 	 */
 	if (proxy_list) {
-		PTHREAD_MUTEX_LOCK(&proxy_mutex);
 		fr_packet_list_walk(proxy_list, NULL, proxy_hash_cb);
-		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		fr_packet_list_free(proxy_list);
 		proxy_list = NULL;
 	}
