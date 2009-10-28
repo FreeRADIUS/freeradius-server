@@ -275,6 +275,9 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 				errorcode = PQresultErrorField(pg_sock->result, PG_DIAG_SQLSTATE);
 				errormsg  = PQresultErrorField(pg_sock->result, PG_DIAG_MESSAGE_PRIMARY);
+
+				if (!errormsg) errormsg = "FATAL ERROR";
+
 				radlog(L_DBG, "rlm_sql_postgresql: Error %s", errormsg);
 				return check_fatal_error(errorcode);
 #endif
