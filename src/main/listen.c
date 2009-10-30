@@ -1740,8 +1740,7 @@ rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists)
 
 		rcode = listen_bind(this);
 		if (rcode < 0) {
-			listen_free(&this);
-			return NULL;
+			continue;
 		}
 		
 		/*
