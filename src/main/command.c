@@ -1991,6 +1991,8 @@ static int command_domain_recv(rad_listen_t *listener,
 		co->offset++;
 	} while (1);
 
+	DEBUG("radmin> %s", co->buffer);
+
 	argc = str2argv(co->buffer, my_argv, MAX_ARGV);
 	if (argc == 0) goto do_next; /* empty strings are OK */
 
