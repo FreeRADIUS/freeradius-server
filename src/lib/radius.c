@@ -852,14 +852,15 @@ static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps)
 		}
 
 		length = (end - ptr);
+		if (length > 255) return NULL;
 
 		/*
 		 *	Pack the attribute.
 		 */
 		ptr[0] = (vp->attribute & 0xff00) >> 8;
-		ptr[1] = (length & 0xff) + 2;
+		ptr[1] = length;
 
-		ptr += vp->length + 2;
+		ptr += ptr[1];
 		vp->flags.encoded = 1;
 	}
 
