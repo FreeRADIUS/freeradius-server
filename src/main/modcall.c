@@ -1360,6 +1360,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		    (vp->operator != T_OP_SUB) &&
 		    (vp->operator != T_OP_LE) &&
 		    (vp->operator != T_OP_GE) &&
+		    (vp->operator != T_OP_CMP_FALSE) &&
 		    (vp->operator != T_OP_SET)) {
 			pairfree(&head);
 			pairfree(&vp);

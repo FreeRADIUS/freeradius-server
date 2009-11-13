@@ -774,8 +774,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		 */
 		token = gettoken(&p, comp, sizeof(comp));
 		if ((token < T_OP_NE) || (token > T_OP_CMP_EQ) ||
-		    (token == T_OP_CMP_TRUE) ||
-		    (token == T_OP_CMP_FALSE)) {
+		    (token == T_OP_CMP_TRUE)) {
 			radlog(L_ERR, "Expected comparison at: %s", comp);
 			return FALSE;
 		}

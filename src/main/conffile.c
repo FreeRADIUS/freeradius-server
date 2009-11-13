@@ -1511,6 +1511,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		case T_OP_SUB:
 		case T_OP_LE:
 		case T_OP_GE:
+		case T_OP_CMP_FALSE:
 			if (!this || (strcmp(this->name1, "update") != 0)) {
 				radlog(L_ERR, "%s[%d]: Invalid operator in assignment",
 				       filename, *lineno);
