@@ -222,8 +222,6 @@ static const CONF_PARSER server_config[] = {
 #ifdef DELETE_BLOCKED_REQUESTS
 	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &mainconfig.kill_unresponsive_children, Stringify(FALSE) },
 #endif
-	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, "no" },
-
 	{ "pidfile", PW_TYPE_STRING_PTR, 0, &mainconfig.pid_file, "${run_dir}/radiusd.pid"},
 	{ "checkrad", PW_TYPE_STRING_PTR, 0, &mainconfig.checkrad, "${sbindir}/checkrad" },
 
@@ -251,6 +249,17 @@ static const CONF_PARSER server_config[] = {
 
 	{ NULL, -1, 0, NULL, NULL }
 };
+
+static const CONF_PARSER bootstrap_config[] = {
+	{ "user",  PW_TYPE_STRING_PTR, 0, &uid_name, NULL },
+	{ "group",  PW_TYPE_STRING_PTR, 0, &gid_name, NULL },
+	{ "chroot",  PW_TYPE_STRING_PTR, 0, &chroot_dir, NULL },
+	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, "no" },
+
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+
 
 #define MAX_ARGV (256)
 
@@ -512,8 +521,6 @@ void fr_suid_down_permanent(void)
  */
 static int switch_users(CONF_SECTION *cs)
 {
-	CONF_PAIR *cp;
-
 #ifdef HAVE_SYS_RESOURCE_H
 	struct rlimit core_limits;
 #endif
@@ -524,14 +531,17 @@ static int switch_users(CONF_SECTION *cs)
 	 */
 	if (debug_flag && (getuid() != 0)) return 1;
 
+	if (cf_section_parse(cs, NULL, bootstrap_config) < 0) {
+		fprintf(stderr, "radiusd: Error: Failed to parse user/group information.\n");
+		return 0;
+	}
+
+
 #ifdef HAVE_GRP_H
 	/*  Set GID.  */
-	cp = cf_pair_find(cs, "group");
-	if (cp) gid_name = cf_pair_value(cp);
 	if (gid_name) {
 		struct group *gr;
 
-		DEBUG2("group = %s", gid_name);
 		gr = getgrnam(gid_name);
 		if (gr == NULL) {
 			fprintf(stderr, "%s: Cannot get ID for group %s: %s\n",
@@ -546,12 +556,9 @@ static int switch_users(CONF_SECTION *cs)
 
 #ifdef HAVE_PWD_H
 	/*  Set UID.  */
-	cp = cf_pair_find(cs, "user");
-	if (cp) uid_name = cf_pair_value(cp);
 	if (uid_name) {
 		struct passwd *pw;
 		
-		DEBUG2("user = %s", uid_name);
 		pw = getpwnam(uid_name);
 		if (pw == NULL) {
 			fprintf(stderr, "%s: Cannot get passwd entry for user %s: %s\n",
@@ -571,10 +578,7 @@ static int switch_users(CONF_SECTION *cs)
 	}
 #endif
 
-	cp = cf_pair_find(cs, "chroot");
-	if (cp) chroot_dir = cf_pair_value(cp);
 	if (chroot_dir) {
-		DEBUG2("chroot = %s", chroot_dir);
 		if (chroot(chroot_dir) < 0) {
 			fprintf(stderr, "%s: Failed to perform chroot %s: %s",
 				progname, chroot_dir, strerror(errno));
