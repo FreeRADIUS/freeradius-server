@@ -1,8 +1,34 @@
 FreeRADIUS 2.1.8 Mon Jan 1 1:00:00 CEST 1999;  , urgency=medium
 	Feature improvements
-	* RADIUS over TCP is now supported.
-	
+	* Print more descriptive error message for too many EAP sessions.
+	  This gives hints on what to do when "failed to store handler"
+	* Moved illegal attributes to dictionary.ascend.illegal and
+	  dictionary.usr.illegal.  You may need to manually re-enable them.
+	* Allow old-style dictionary formats, where the vendor name is the
+	  last field of a line.
+	* Commands received from radmin are now printed on stdout when
+	  in debugging mode.
+
 	Bug fixes
+	* DHCP sockets can now set the broadcast flag before binding to a
+	  socket.  You need to set "broadcast = yes" in the DHCP listener.
+	* Be more restrictive on string parsing in the config files
+	* Fix password length in scripts/create-users.pl
+	* Be more flexible about parsing the detail file.  This allows
+	  it to read files where the attributes have been edited.
+	* Ensure that requests read from the detail file are cleaned up
+	  (i.e. don't leak) if they are proxied without a response.
+	* Write the PID file after opening sockets, not before
+	  (closes bug #29)
+	* Proxying large numbers of packets no longer gives error
+	  "unable to open proxy socket".
+	* Avoid mutex locks in libc after fork
+	* Retry packet from  detail file if there was no response.
+	* removed all recursive use of mutexes.  Some systems just don't
+	  support this.
+	* Allow !* to work as documented.
+	* make templates work (see templates.conf)
+	* Enabled "allow_core_dumps" to work again
 
 FreeRADIUS 2.1.7 Mon Sept 14 11:20:00 CEST 2009;  , urgency=medium
 	Feature improvements
