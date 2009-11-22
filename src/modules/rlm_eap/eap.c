@@ -327,8 +327,16 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 
 			if ((eaptype->data[i] > PW_EAP_MAX_TYPES) ||
 			    !inst->types[eaptype->data[i]]) {
-				RDEBUG2("NAK asked for unsupported type %d",
-				       eaptype->data[i]);
+				DICT_VALUE *dv;
+
+				dv = dict_valbyattr(PW_EAP_TYPE, eaptype->data[i]);
+				if (dv) {
+					RDEBUG2("NAK asked for unsupported type %s",
+						dv->name);
+				} else {
+					RDEBUG2("NAK asked for unsupported type %d",
+						eaptype->data[i]);
+				}
 				continue;
 			}
 
