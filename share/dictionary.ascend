@@ -377,7 +377,6 @@ ATTRIBUTE	Ascend-MPP-Idle-Percent			254	integer
 ATTRIBUTE	Ascend-Xmit-Rate			255	integer
 
 # Ascend protocols
-VALUE	Service-Type			Dialout-Framed-User	5
 VALUE	Framed-Protocol			Ascend-ARA		255
 VALUE	Framed-Protocol			Ascend-MPP		256
 VALUE	Framed-Protocol			Ascend-EURAW		257
