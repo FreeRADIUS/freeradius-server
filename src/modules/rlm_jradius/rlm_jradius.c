@@ -797,6 +797,22 @@ static int read_vps(JRADIUS *inst, JRSOCK *jrsock, VALUE_PAIR **pl, int plen)
     }
 
     /*
+     *     WiMAX combo-ip address
+     *     paircreate() cannot recognize the real type of the address.
+     *     ..ugly code...
+     */
+    if (vp->type==PW_TYPE_COMBO_IP) {
+        switch (alen) {
+            case 4:
+                vp->type = PW_TYPE_IPADDR;
+                break;
+            case 16:
+                vp->type = PW_TYPE_IPV6ADDR;
+                break;
+        }
+    }
+
+    /*
      *     Fill in the attribute value based on type
      */
     switch (vp->type) {
