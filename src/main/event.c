@@ -405,7 +405,7 @@ retry:
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
 		fr_packet_list_id_free(proxy_list, request->proxy);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		RDEBUG2("ERROR: Failed to insert entry into proxy list");
+		radlog(L_PROXY, "Failed to insert entry into proxy list");
 		return 0;
 	}
 
@@ -801,7 +801,7 @@ static void ping_home_server(void *ctx)
 	rad_assert(request->proxy_listener == NULL);
 
 	if (!insert_into_proxy_hash(request)) {
-		RDEBUG2("ERROR: Failed inserting status check %d into proxy hash.  Discarding it.",
+		radlog(L_PROXY, "Failed inserting status check %d into proxy hash.  Discarding it.",
 		       request->number);
 		ev_request_free(&request);
 		return;
@@ -1137,7 +1137,7 @@ static void no_response_to_proxied_request(void *ctx)
 		home->state = HOME_STATE_ZOMBIE;
 		home->zombie_period_start = now;	
 
-		radlog(L_ERR, "PROXY: Marking home server %s port %d as zombie (it looks like it is dead).",
+		radlog(L_INFO, "PROXY: Marking home server %s port %d as zombie (it looks like it is dead).",
 		       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
 		       home->port);
@@ -1475,7 +1475,7 @@ static void retransmit_coa_request(void *ctx)
 		 *	Don't free the old Id on error.
 		 */
 		if (!insert_into_proxy_hash(request)) {
-			DEBUG("ERROR: Failed re-inserting CoA request into proxy hash.");
+			radlog(L_PROXY,"Failed re-inserting CoA request into proxy hash.");
 			return;
 		}
 
@@ -1671,7 +1671,7 @@ static int originated_coa_request(REQUEST *request)
 	coa->proxy->dst_port = coa->home_server->port;
 
 	if (!insert_into_proxy_hash(coa)) {
-		DEBUG("ERROR: Failed inserting CoA request into proxy hash.");
+		radlog(L_PROXY, "Failed inserting CoA request into proxy hash.");
 		goto fail;
 	}
 
@@ -1920,7 +1920,7 @@ static int proxy_request(REQUEST *request)
 	}
 
 	if (!insert_into_proxy_hash(request)) {
-		RDEBUG("ERROR: Failed inserting request into proxy hash.");
+		radlog(L_PROXY, "Failed inserting request into proxy hash.");
 		return 0;
 	}
 
@@ -3614,6 +3614,7 @@ static void handle_signal_self(int flag)
 {
 	if ((flag & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
 		if ((flag & RADIUS_SIGNAL_SELF_EXIT) != 0) {
+			radlog(L_INFO, "Received TERM signal");
 			fr_event_loop_exit(el, 1);
 		} else {
 			fr_event_loop_exit(el, 2);
