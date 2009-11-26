@@ -78,6 +78,7 @@ AC_ARG_WITH(system-libtldl,
 LIBLTDL="-lltdl"
 INCLTDL=
 LTDL_SUBDIRS=
+enable_ltdl_install=no
 ],
 [
 AC_LIBLTDL_INSTALLABLE
