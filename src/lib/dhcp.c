@@ -1208,12 +1208,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		plength = p;
 		*(p++) = 0;	/* header isn't included in attr length */
 
-		if (DHCP_BASE_ATTR(vp->attribute) == PW_DHCP_OPTION_82) {
-			*(p++) = DHCP_UNPACK_OPTION1(vp->attribute);
-			*(p++) = 0;
-			*plength = 2;
-		}
-
 		for (i = 0; i < num_entries; i++) {
 			if (fr_debug_flag > 1) {
 				vp_prints(buffer, sizeof(buffer), vp);
