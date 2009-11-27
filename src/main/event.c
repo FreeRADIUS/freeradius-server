@@ -812,6 +812,8 @@ static void ping_home_server(void *ctx)
 
 	request->next_callback = NULL;
 	request->child_state = REQUEST_PROXIED;
+	gettimeofday(&request->when, NULL);
+	home->when = request->when;
 	request->when.tv_sec += home->ping_timeout;;
 
 	INSERT_EVENT(no_response_to_ping, request);
@@ -3110,7 +3112,9 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	 *	mark it alive on *any* packet, even if it's lost all
 	 *	of the *other* packets in the last 10s.
 	 */
-	request->home_server->state = HOME_STATE_ALIVE;
+	if (request->proxy->code != PW_STATUS_SERVER) {
+		request->home_server->state = HOME_STATE_ALIVE;
+	}
 	
 #ifdef WITH_COA
 	/*
