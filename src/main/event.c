@@ -609,7 +609,7 @@ void revive_home_server(void *ctx)
 	 */
 	if (home->ev) fr_event_delete(el, &home->ev);
 
-	radlog(L_INFO, "PROXY: Marking home server %s port %d alive again... we have no idea if it really is alive or not.",
+	radlog(L_PROXY, "Marking home server %s port %d alive again... we have no idea if it really is alive or not.",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
 	       home->port);
@@ -804,7 +804,7 @@ void mark_home_server_dead(home_server *home, struct timeval *when)
 	int previous_state = home->state;
 	char buffer[128];
 
-	radlog(L_INFO, "PROXY: Marking home server %s port %d as dead.",
+	radlog(L_PROXY, "Marking home server %s port %d as dead.",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
 	       home->port);
@@ -1072,7 +1072,7 @@ static void no_response_to_proxied_request(void *ctx)
 		home->state = HOME_STATE_ZOMBIE;
 		home->zombie_period_start = now;	
 
-		radlog(L_ERR, "PROXY: Marking home server %s port %d as zombie (it looks like it is dead).",
+		radlog(L_PROXY, "Marking home server %s port %d as zombie (it looks like it is dead).",
 		       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
 		       home->port);
