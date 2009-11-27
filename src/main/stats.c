@@ -66,7 +66,7 @@ void request_stats_final(REQUEST *request)
 	 *	deleted, because only the main server thread calls
 	 *	this function, which makes it thread-safe.
 	 */
-	switch (request->reply->code) {
+	if (request->reply) switch (request->reply->code) {
 	case PW_AUTHENTICATION_ACK:
 		radius_auth_stats.total_responses++;
 		radius_auth_stats.total_access_accepts++;
@@ -564,7 +564,8 @@ void request_stats_reply(REQUEST *request)
 		
 		ipaddr.af = AF_INET;
 		ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
-		home = home_server_find(&ipaddr, server_port->vp_integer);
+		home = home_server_find(&ipaddr, server_port->vp_integer,
+					IPPROTO_UDP);
 
 		/*
 		 *	Not found: don't do anything

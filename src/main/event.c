@@ -1587,7 +1587,7 @@ static int originated_coa_request(REQUEST *request)
 		vp = pairfind(coa->proxy->vps, PW_PACKET_DST_PORT);
 		if (vp) port = vp->vp_integer;
 
-		coa->home_server = home_server_find(&ipaddr, port);
+		coa->home_server = home_server_find(&ipaddr, port, IPPROTO_UDP);
 		if (!coa->home_server) {
 			RDEBUG2("WARNING: Unknown destination %s:%d for CoA request.",
 			       inet_ntop(ipaddr.af, &ipaddr.ipaddr,
