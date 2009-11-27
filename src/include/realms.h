@@ -136,7 +136,7 @@ REALM *realm_find(const char *name); /* name is from a packet */
 REALM *realm_find2(const char *name); /* ... with name taken from realm_find */
 
 home_server *home_server_ldb(const char *realmname, home_pool_t *pool, REQUEST *request);
-home_server *home_server_find(fr_ipaddr_t *ipaddr, int port);
+home_server *home_server_find(fr_ipaddr_t *ipaddr, int port, int proto);
 #ifdef WITH_COA
 home_server *home_server_byname(const char *name, int type);
 #endif

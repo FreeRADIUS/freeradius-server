@@ -577,7 +577,7 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 {
 	int i;
 	home_server *home;
-	const char *type, *state;
+	const char *type, *state, *proto;
 
 	char buffer[256];
 
@@ -598,6 +598,16 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 
 		} else continue;
 
+		if (home->proto == IPPROTO_UDP) {
+			proto = "udp";
+		}
+#ifdef WITH_TCP
+		else if (home->proto == IPPROTO_TCP) {
+			proto = "tcp";
+		}
+#endif
+		else proto = "??";
+
 		if (home->state == HOME_STATE_ALIVE) {
 			state = "alive";
 
@@ -609,9 +619,9 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 
 		} else continue;
 
-		cprintf(listener, "%s\t%d\t%s\t%s\t%d\n",
+		cprintf(listener, "%s\t%d\t%s\t%s\t%s\t%d\n",
 			ip_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
-			home->port, type, state,
+			home->port, proto, type, state,
 			home->currently_outstanding);
 	}
 
@@ -864,14 +874,16 @@ static int command_show_client_config(rad_listen_t *listener, int argc, char *ar
 }
 
 #ifdef WITH_PROXY
-static home_server *get_home_server(rad_listen_t *listener, int argc, char *argv[])
+static home_server *get_home_server(rad_listen_t *listener, int argc,
+				    char *argv[], int *last)
 {
 	home_server *home;
 	int port;
+	int proto = IPPROTO_UDP;
 	fr_ipaddr_t ipaddr;
 
 	if (argc < 2) {
-		cprintf(listener, "ERROR: Must specify <ipaddr> <port>\n");
+		cprintf(listener, "ERROR: Must specify <ipaddr> <port> [proto]\n");
 		return NULL;
 	}
 
@@ -883,7 +895,21 @@ static home_server *get_home_server(rad_listen_t *listener, int argc, char *argv
 
 	port = atoi(argv[1]);
 
-	home = home_server_find(&ipaddr, port);
+	if (last) *last = 2;
+	if (argc > 2) {
+		if (strcmp(argv[2], "udp") == 0) {
+			proto = IPPROTO_UDP;
+			if (last) *last = 3;
+		}
+#ifdef WITH_TCP
+		if (strcmp(argv[2], "tcp") == 0) {
+			proto = IPPROTO_TCP;
+			if (last) *last = 3;
+		}
+#endif
+	}
+
+	home = home_server_find(&ipaddr, port, proto);
 	if (!home) {
 		cprintf(listener, "ERROR: No such home server\n");
 		return NULL;
@@ -897,7 +923,7 @@ static int command_show_home_server_config(rad_listen_t *listener, int argc, cha
 	home_server *home;
 	FILE *fp;
 
-	home = get_home_server(listener, argc, argv);
+	home = get_home_server(listener, argc, argv, NULL);
 	if (!home) {
 		return 0;
 	}
@@ -921,29 +947,30 @@ extern void mark_home_server_dead(home_server *home, struct timeval *when);
 
 static int command_set_home_server_state(rad_listen_t *listener, int argc, char *argv[])
 {
+	int last;
 	home_server *home;
 
 	if (argc < 3) {
-		cprintf(listener, "ERROR: Must specify <ipaddr> <port> <state>\n");
+		cprintf(listener, "ERROR: Must specify <ipaddr> <port> [proto] <state>\n");
 		return 0;
 	}
 
-	home = get_home_server(listener, argc, argv);
+	home = get_home_server(listener, argc, argv, &last);
 	if (!home) {
 		return 0;
 	}
 
-	if (strcmp(argv[2], "alive") == 0) {
+	if (strcmp(argv[last], "alive") == 0) {
 		revive_home_server(home);
 
-	} else if (strcmp(argv[2], "dead") == 0) {
+	} else if (strcmp(argv[last], "dead") == 0) {
 		struct timeval now;
 
 		gettimeofday(&now, NULL); /* we do this WAY too ofetn */
 		mark_home_server_dead(home, &now);
 
 	} else {
-		cprintf(listener, "ERROR: Unknown state \"%s\"\n", argv[2]);
+		cprintf(listener, "ERROR: Unknown state \"%s\"\n", argv[last]);
 		return 0;
 	}
 
@@ -954,7 +981,7 @@ static int command_show_home_server_state(rad_listen_t *listener, int argc, char
 {
 	home_server *home;
 
-	home = get_home_server(listener, argc, argv);
+	home = get_home_server(listener, argc, argv, NULL);
 	if (!home) {
 		return 0;
 	}
@@ -1328,13 +1355,13 @@ static fr_command_table_t command_table_show_client[] = {
 #ifdef WITH_PROXY
 static fr_command_table_t command_table_show_home[] = {
 	{ "config", FR_READ,
-	  "show home_server config <ipaddr> <port> - show configuration for given home server",
+	  "show home_server config <ipaddr> <port> [proto] - show configuration for given home server",
 	  command_show_home_server_config, NULL },
 	{ "list", FR_READ,
 	  "show home_server list - shows list of home servers",
 	  command_show_home_servers, NULL },
 	{ "state", FR_READ,
-	  "show home_server state <ipaddr> <port> - shows state of given home server",
+	  "show home_server state <ipaddr> <port> [proto] - shows state of given home server",
 	  command_show_home_server_state, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
@@ -1544,7 +1571,7 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 		return 0;
 	}
 
-	home = get_home_server(listener, argc, argv);
+	home = get_home_server(listener, argc, argv, NULL);
 	if (!home) {
 		return 0;
 	}
@@ -1659,7 +1686,7 @@ static fr_command_table_t command_table_add[] = {
 #ifdef WITH_PROXY
 static fr_command_table_t command_table_set_home[] = {
 	{ "state", FR_WRITE,
-	  "set home_server state <ipaddr> <port> [alive|dead] - set state for given home server",
+	  "set home_server state <ipaddr> <port> [proto] [alive|dead] - set state for given home server",
 	  command_set_home_server_state, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }

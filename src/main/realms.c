@@ -142,6 +142,7 @@ static int home_server_addr_cmp(const void *one, const void *two)
 
 	if (a->server && !b->server) return -1;
 	if (!a->server && b->server) return +1;
+
 	if (a->server && b->server) {
 		int rcode = a->type - b->type;
 		if (rcode != 0) return rcode;
@@ -2217,13 +2218,18 @@ home_server *home_server_ldb(const char *realmname,
 }
 
 
-home_server *home_server_find(fr_ipaddr_t *ipaddr, int port)
+home_server *home_server_find(fr_ipaddr_t *ipaddr, int port, int proto)
 {
 	home_server myhome;
 
 	memset(&myhome, 0, sizeof(myhome));
 	myhome.ipaddr = *ipaddr;
 	myhome.port = port;
+#ifdef WITH_TCP
+	myhome.proto = proto;
+#else
+	myhome.proto = IPPROTO_UDP;
+#endif
 	myhome.server = NULL;	/* we're not called for internal proxying */
 
 	return rbtree_finddata(home_servers_byaddr, &myhome);
