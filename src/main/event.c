@@ -144,8 +144,8 @@ static void tv_add(struct timeval *tv, int usec_delay)
 	tv->tv_usec += usec_delay;
 
 	if (tv->tv_usec > USEC) {
-		tv->tv_usec -= USEC;
-		tv->tv_sec++;
+		tv->tv_sec += tv->tv_usec / USEC;
+		tv->tv_usec %= USEC;
 	}
 }
 
@@ -490,10 +490,19 @@ static void wait_for_child_to_die(void *ctx)
 
 	if ((request->child_state == REQUEST_QUEUED) ||
 	    (request->child_state == REQUEST_RUNNING)) {
-		request->delay += (request->delay >> 1);
-		tv_add(&request->when, request->delay);
 
-		RDEBUG2("Child is still stuck for request %d", request->number);
+		/*
+		 *	Cap delay at five minutes.
+		 */
+		if (request->delay < (USEC * 60 * 5)) {
+			request->delay += (request->delay >> 1);
+			radlog(L_INFO, "WARNING: Child is hung for request %d.",
+			       request->number);
+		} else {
+			RDEBUG2("Child is still stuck for request %d",
+				request->number);
+		}
+		tv_add(&request->when, request->delay);
 
 		INSERT_EVENT(wait_for_child_to_die, request);
 		return;
@@ -1091,9 +1100,7 @@ static void no_response_to_proxied_request(void *ctx)
 
 		post_proxy_fail_handler(request);
 	} else {
-		/*
-		 *	Ensure that there is a callback for the request.
-		 */
+		rad_assert(request->ev == NULL);
 		request->child_state = REQUEST_RUNNING;
 		wait_a_bit(request);
 	}
@@ -1229,49 +1236,36 @@ static void wait_a_bit(void *ctx)
 			break;
 		}
 
+	stop_processing:
 #if defined(HAVE_PTHREAD_H) || defined(WITH_PROXY)
 		/*
 		 *	A child thread MAY still be running on the
 		 *	request.  Ask the thread to stop working on
 		 *	the request.
 		 */
-		if (have_children) {
-			/* FIXME: kill unresponsive children? */
-
-			/*
-			 *	Print this error message ONLY if
-			 *	there's a child currently processing
-			 *	the request.  As we don't have thread
-			 *	locks here, there may be race
-			 *	conditions on this check.  But it's
-			 *	just an error message, so that's OK.
-			 */
-			if (!pthread_equal(request->child_pid, NO_SUCH_CHILD_PID)) {
-				radlog(L_ERR, "WARNING: Unresponsive child for request %d, in module %s component %s",
-				       request->number,
-				       request->module ? request->module : "<server core>",
-				       request->component ? request->component : "<server core>");
-			}
-
-		stop_processing:
+		if (have_children &&
+		    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
 			request->master_state = REQUEST_STOP_PROCESSING;
+
+			radlog(L_ERR, "WARNING: Unresponsive child for request %d, in module %s component %s",
+			       request->number,
+			       request->module ? request->module : "<server core>",
+			       request->component ? request->component : "<server core>");
 			
 			request->delay = USEC / 4;
 			tv_add(&request->when, request->delay);
 			callback = wait_for_child_to_die;
 			break;
 		}
-#else  /* no child threads */
-	stop_processing:
 #endif
 
 		/*
-		 *	Else there are no child threads.  We probably
-		 *	should have just marked the request as 'done'
-		 *	elsewhere, like in the post-proxy-fail
-		 *	handler.  But doing that would involve
-		 *	checking for max_request_time in multiple
-		 *	places, so this may be simplest.
+		 *	Else no child thread is processing the
+		 *	request.  We probably should have just marked
+		 *	the request as 'done' elsewhere, like in the
+		 *	post-proxy-fail handler.  But doing that would
+		 *	involve checking for max_request_time in
+		 *	multiple places, so this may be simplest.
 		 */
 		request->child_state = REQUEST_DONE;
 		/* FALL-THROUGH */
