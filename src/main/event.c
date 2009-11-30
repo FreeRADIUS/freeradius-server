@@ -488,8 +488,14 @@ static void wait_for_child_to_die(void *ctx)
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 
+	/*
+	 *	If it's still queued (waiting for a thread to pick it
+	 *	up) OR, it's running AND there's still a child thread
+	 *	handling it, THEN delay some more.
+	 */
 	if ((request->child_state == REQUEST_QUEUED) ||
-	    (request->child_state == REQUEST_RUNNING)) {
+	    ((request->child_state == REQUEST_RUNNING) &&
+	     (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0))) {
 
 		/*
 		 *	Cap delay at five minutes.
