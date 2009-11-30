@@ -2322,8 +2322,9 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 	if (ldap_int_tls_config(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT,
 				(inst->tls_require_cert)) != LDAP_OPT_SUCCESS) {
 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		radlog(L_ERR, "  [%s] could not set ", inst->xlat_name
+		radlog(L_ERR, "  [%s] could not set ", 
 		       "LDAP_OPT_X_TLS_REQUIRE_CERT option to %s: %s",
+		       inst->xlat_name, 
 		       inst->tls_require_cert,
 		       ldap_err2string(ldap_errno));
 	}
