@@ -36,13 +36,13 @@ typedef struct fr_event_fd_t {
 } fr_event_fd_t;
 
 #define FR_EV_MAX_FDS (256)
-
+#undef USEC
+#define USEC (1000000)
 
 struct fr_event_list_t {
 	fr_heap_t	*times;
 
 	int		changed;
-	int		maxfd;
 
 	int		exit;
 
@@ -52,7 +52,6 @@ struct fr_event_list_t {
 	int		dispatch;
 
 	int		max_readers;
-	fd_set		read_fds;
 	fr_event_fd_t	readers[FR_EV_MAX_FDS];
 };
 
@@ -156,7 +155,7 @@ int fr_event_insert(fr_event_list_t *el,
 {
 	fr_event_t *ev;
 
-	if (!el || !callback | !when) return 0;
+	if (!el || !callback | !when || (when->tv_usec > USEC)) return 0;
 
 	if (ev_p && *ev_p) fr_event_delete(el, ev_p);
 
@@ -225,9 +224,14 @@ int fr_event_run(fr_event_list_t *el, struct timeval *when)
 
 int fr_event_now(fr_event_list_t *el, struct timeval *when)
 {
-	if (!el || !when || !el->dispatch) return 0;
+	if (!when) return 0;
 
-	*when = el->now;
+	if (el && el->dispatch) {
+		*when = el->now;
+	} else {
+		gettimeofday(when, NULL);
+	}
+
 	return 1;
 }
 
@@ -271,8 +275,6 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 
 	if (!ef) return 0;
 
-       	if (fd > el->maxfd) el->maxfd = fd;
-
 	ef->handler = handler;
 	ef->ctx = ctx;
 	ef->fd = fd;
@@ -294,7 +296,6 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 		if (el->readers[i].fd == fd) {
 			el->readers[i].fd = -1;
 			if ((i + 1) == el->max_readers) el->max_readers = i;
-			if (fd == el->maxfd) el->maxfd--;
 			el->changed = 1;
 			return 1;
 		}
@@ -314,24 +315,29 @@ void fr_event_loop_exit(fr_event_list_t *el, int code)
 
 int fr_event_loop(fr_event_list_t *el)
 {
-	int i, rcode;
+	int i, rcode, maxfd;
 	struct timeval when, *wake;
-	fd_set read_fds;
+	fd_set read_fds, master_fds;
 
 	el->exit = 0;
 	el->dispatch = 1;
+	el->changed = 1;
 
 	while (!el->exit) {
 		/*
 		 *	Cache the list of FD's to watch.
 		 */
 		if (el->changed) {
-			FD_ZERO(&el->read_fds);
+			maxfd = 0;
+			FD_ZERO(&master_fds);
 			
 			for (i = 0; i < el->max_readers; i++) {
 				if (el->readers[i].fd < 0) continue;
 				
-				FD_SET(el->readers[i].fd, &el->read_fds);
+				if (el->readers[i].fd > maxfd) {
+					maxfd = el->readers[i].fd;
+				}
+				FD_SET(el->readers[i].fd, &master_fds);
 			}
 			
 			el->changed = 0;
@@ -355,10 +361,15 @@ int fr_event_loop(fr_event_list_t *el)
 			if (timercmp(&el->now, &ev->when, <)) {
 				when = ev->when;
 				when.tv_sec -= el->now.tv_sec;
-				when.tv_usec -= el->now.tv_usec;
-				if (when.tv_usec < 0) {
+
+				if (when.tv_sec > 0) {
 					when.tv_sec--;
-					when.tv_usec += 1000000;
+					when.tv_usec += USEC;
+				}
+				when.tv_usec -= el->now.tv_usec;
+				if (when.tv_usec > USEC) {
+					when.tv_usec -= USEC;
+					when.tv_sec++;
 				}
 			} else { /* we've passed the event time */
 				when.tv_sec = 0;
@@ -375,8 +386,8 @@ int fr_event_loop(fr_event_list_t *el)
 		 */
 		if (el->status) el->status(wake);
 
-		read_fds = el->read_fds;
-		rcode = select(el->maxfd + 1, &read_fds, NULL, NULL, wake);
+		read_fds = master_fds;
+		rcode = select(maxfd + 1, &read_fds, NULL, NULL, wake);
 		if ((rcode < 0) && (errno != EINTR)) {
 			el->dispatch = 0;
 			return 0;
