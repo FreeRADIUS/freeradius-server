@@ -446,7 +446,7 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 	rad_assert(request->magic == REQUEST_MAGIC);
 	rad_assert(request->proxy != NULL);
 
-	if (!fr_event_now(el, &now)) gettimeofday(&now, NULL);
+	fr_event_now(el, &now);
 	request->when = request->proxy_when;
 
 #ifdef WITH_COA
@@ -827,8 +827,6 @@ static void ping_home_server(void *ctx)
 
 	request->next_callback = NULL;
 	request->child_state = REQUEST_PROXIED;
-	gettimeofday(&request->when, NULL);
-	home->when = request->when;
 	request->when.tv_sec += home->ping_timeout;;
 
 	INSERT_EVENT(no_response_to_ping, request);
@@ -1106,6 +1104,14 @@ static void no_response_to_proxied_request(void *ctx)
 
 		post_proxy_fail_handler(request);
 	} else {
+		/*
+		 *	Enforce max_request_time.
+		 *
+		 *	We fail over to another backup home server
+		 *	when the client re-transmits the request.  If
+		 *	the client doesn't re-transmit, no fail-over
+		 *	occurs.
+		 */
 		rad_assert(request->ev == NULL);
 		request->child_state = REQUEST_RUNNING;
 		wait_a_bit(request);
@@ -3680,7 +3686,7 @@ static void handle_signal_self(int flag)
 		struct timeval when;
 		void *fun = NULL;
 
-		if (!fr_event_now(el, &now)) gettimeofday(&now, NULL);
+		fr_event_now(el, &now);
 
 		PTHREAD_MUTEX_LOCK(&proxy_mutex);
 
@@ -3827,7 +3833,7 @@ static void event_poll_detail(void *ctx)
 		}
 	}
 
-	if (!fr_event_now(el, &now)) gettimeofday(&now, NULL);
+	fr_event_now(el, &now);
 	when = now;
 
 	/*
