@@ -1907,7 +1907,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		listen_socket_t *sock;
 		server_ipaddr.af = AF_INET;
 
-		radlog(L_INFO, "WARNING: The directive 'bind_adress' is deprecated, and will be removed in future versions of FreeRADIUS. Please edit the configuration files to use the directive 'listen'.");
+		radlog(L_INFO, "WARNING: The directive 'bind_address' is deprecated, and will be removed in future versions of FreeRADIUS. Please edit the configuration files to use the directive 'listen'.");
 
 	bind_it:
 #ifdef WITH_VMPS
