@@ -997,8 +997,12 @@ static int process_attribute(const char* fn, const int line,
 	 *	Add it in.
 	 */
 	if (dict_addattr(argv[0], vendor, type, value, flags) < 0) {
+		char buffer[256];
+
+		strlcpy(buffer, fr_strerror(), sizeof(buffer));
+
 		fr_strerror_printf("dict_init: %s[%d]: %s",
-			   fn, line, fr_strerror());
+				   fn, line, buffer);
 		return -1;
 	}
 
@@ -1035,8 +1039,12 @@ static int process_value(const char* fn, const int line, char **argv,
 	}
 
 	if (dict_addvalue(argv[1], argv[0], value) < 0) {
+		char buffer[256];
+
+		strlcpy(buffer, fr_strerror(), sizeof(buffer));
+
 		fr_strerror_printf("dict_init: %s[%d]: %s",
-			   fn, line, fr_strerror());
+				   fn, line, buffer);
 		return -1;
 	}
 
@@ -1154,8 +1162,12 @@ static int process_vendor(const char* fn, const int line, char **argv,
 
 	/* Create a new VENDOR entry for the list */
 	if (dict_addvendor(argv[0], value) < 0) {
+		char buffer[256];
+
+		strlcpy(buffer, fr_strerror(), sizeof(buffer));
+
 		fr_strerror_printf("dict_init: %s[%d]: %s",
-			   fn, line, fr_strerror());
+			   fn, line, buffer);
 		return -1;
 	}
 
