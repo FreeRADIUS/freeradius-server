@@ -550,6 +550,7 @@ int rad_copy_variable(char *to, const char *from)
 			if (sublen < 0) return sublen;
 			from += sublen;
 			to += sublen;
+			length += sublen;
 			break;
 
 		case '}':	/* end of variable expansion */
