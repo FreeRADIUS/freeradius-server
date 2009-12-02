@@ -575,11 +575,10 @@ int rad_copy_variable(char *to, const char *from)
 				from += sublen;
 				to += sublen;
 				length += sublen;
+				break;
 			} /* else FIXME: catch %%{ ?*/
 
 			/* FALL-THROUGH */
-			break;
-
 		default:
 			*(to++) = *(from++);
 			length++;
