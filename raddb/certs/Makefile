@@ -54,7 +54,6 @@ dh:
 ca.key ca.pem: ca.cnf
 	openssl req -new -x509 -keyout ca.key -out ca.pem \
 		-days $(CA_DEFAULT_DAYS) -config ./ca.cnf
-		
 
 ca.der: ca.pem
 	openssl x509 -inform PEM -outform DER -in ca.pem -out ca.der
@@ -89,8 +88,8 @@ server.vrfy: ca.pem
 client.csr client.key: client.cnf
 	openssl req -new  -out client.csr -keyout client.key -config ./client.cnf
 
-client.crt: client.csr server.crt server.key index.txt serial
-	openssl ca -batch -keyfile server.key -cert server.crt -in client.csr  -key $(PASSWORD_SERVER) -out client.crt -extensions xpclient_ext -extfile xpextensions -config ./client.cnf
+client.crt: client.csr ca.pem ca.key index.txt serial
+	openssl ca -batch -keyfile ca.key -cert ca.pem -in client.csr  -key $(PASSWORD_CA) -out client.crt -extensions xpclient_ext -extfile xpextensions -config ./client.cnf
 
 client.p12: client.crt
 	openssl pkcs12 -export -in client.crt -inkey client.key -out client.p12  -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
