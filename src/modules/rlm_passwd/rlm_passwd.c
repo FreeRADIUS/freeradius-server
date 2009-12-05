@@ -308,7 +308,10 @@ static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht)
 			}
 		return NULL;
 	}
-	if (ht->fp) fclose(ht->fp);
+	if (ht->fp) {
+		fclose(ht->fp);
+		ht->fp = NULL;
+	}
 	if (!(ht->fp=fopen(ht->filename, "r"))) return NULL;
 	return get_next(name, ht);
 }
