@@ -655,34 +655,39 @@ void xlat_free(void)
 /*
  *	Decode an attribute name into a string.
  */
-static void decode_attribute(const char **from, char **to, int freespace,
-			     int *open_p, REQUEST *request,
+static int decode_attribute(const char **from, char **to, int freespace,
+			     REQUEST *request,
 			     RADIUS_ESCAPE_STRING func)
 {
 	int	do_length = 0;
-	char	xlat_name[128];
-	char	*xlat_string = NULL; /* can be large */
-	int	free_xlat_string = FALSE;
-	const char *p;
-	char *q, *pa;
-	int found=0, retlen=0;
-	int openbraces = *open_p;
+	char	*xlat_name, *xlat_string;
+	char *p, *q, *l, *next = NULL;
+	int retlen=0;
 	const xlat_t *c;
-	int spaces = FALSE;
+	int varlen;
+	char buffer[8192];
 
-	p = *from;
 	q = *to;
-	pa = &xlat_name[0];
 
 	*q = '\0';
 
 	/*
-	 * Skip the '{' at the front of 'p'
-	 * Increment open braces
+	 *	Copy the input string to an intermediate buffer where
+	 *	we can mangle it.
 	 */
-	p++;
-	openbraces++;
+	varlen = rad_copy_variable(buffer, *from);
+	if (varlen < 0) {
+		RDEBUG2("Badly formatted variable: %s", *from);
+		return -1;
+	}
+	*from += varlen;
 
+	/*
+	 *	Kill the %{} around the data we are looking for.
+	 */
+	p = buffer;
+	p[varlen - 1] = '\0';	/*  */
+	p += 2;
 	if (*p == '#') {
 		p++;
 		do_length = 1;
@@ -694,284 +699,176 @@ static void decode_attribute(const char **from, char **to, int freespace,
 	 *	Did I mention that this parser is garbage?
 	 */
 	if ((p[0] == '%') && (p[1] == '{')) {
-		/*
-		 *	This is really bad, but it works.
-		 */
 		int len1, len2;
-		size_t mylen = strlen(p);
-		char *first = rad_malloc(mylen + 1);
-		char *second = rad_malloc(mylen + 1);
 		int expand2 = FALSE;
 
-		len1 = rad_copy_variable(first, p);
+		/*
+		 *	'p' is after the start of 'buffer', so we can
+		 *	safely do this.
+		 */
+		len1 = rad_copy_variable(buffer, p);
 		if (len1 < 0) {
 			RDEBUG2("Badly formatted variable: %s", p);
-			goto free_and_done;
+			return -1;
 		}
 
+		/*
+		 *	They did %{%{foo}}, which is stupid, but allowed.
+		 */
+		if (!p[len1]) {
+			RDEBUG2("Improperly nested variable; %%{%s}", p);
+			return -1;
+		}
+
+		/*
+		 *	It SHOULD be %{%{foo}:-%{bar}}.  If not, it's
+		 *	an error.
+		 */
 		if ((p[len1] != ':') || (p[len1 + 1] != '-')) {
 			RDEBUG2("No trailing :- after variable at %s", p);
-			goto free_and_done;
+			return -1;
 		}
 
+		/*
+		 *	Parse the second bit.  The second bit can be
+		 *	either %{foo}, or a string "foo", or a string
+		 *	'foo', or just a bare word: foo
+		 */
 		p += len1 + 2;
+		l = buffer + len1 + 1;
 
 		if ((p[0] == '%') && (p[1] == '{')) {
-			len2 = rad_copy_variable(second, p);
+			len2 = rad_copy_variable(l, p);
 
-			expand2 = TRUE;
 			if (len2 < 0) {
 				RDEBUG2("Invalid text after :- at %s", p);
-				goto free_and_done;
+				return -1;
 			}
 			p += len2;
+			expand2 = TRUE;
 
 		} else if ((p[0] == '"') || p[0] == '\'') {
-			getstring(&p, second, mylen);
+			getstring(&p, l, strlen(l));
 
 		} else {
-			char *s = second;
-
-			while (*p && (*p != '}')) {
-				*(s++) = *(p++);
-			}
-			*s = '\0';
+			l = p;
 		}
 
-		if (*p != '}') {
-			RDEBUG2("Failed to find trailing '}' in string");
-			goto free_and_done;
+		/*
+		 *	Expand the first one.  If we did, exit the
+		 *	conditional.
+		 */
+		retlen = radius_xlat(q, freespace, buffer, request, func);
+		if (retlen) {
+			q += retlen;
+			goto done;
 		}
 
-		mylen = radius_xlat(q, freespace, first, request, func);
-		if (mylen) {
-			q += mylen;
-			goto free_and_done;
-		}
-
-		if (!expand2) {
-			strlcpy(q, second, freespace);
-			q += strlen(q);
-		} else {
-			mylen = radius_xlat(q, freespace, second,
+		RDEBUG2("\t... expanding second conditional");
+		/*
+		 *	Expand / copy the second string if required.
+		 */
+		if (expand2) {
+			retlen = radius_xlat(q, freespace, l,
 					    request, func);
-			if (mylen) {
-				q += mylen;
-				goto free_and_done;
+			if (retlen) {
+				q += retlen;
 			}
+		} else {
+			strlcpy(q, l, freespace);
+			q += strlen(q);
 		}
 
 		/*
 		 *	Else the output is an empty string.
 		 */
-	free_and_done:
-		free(first);
-		free(second);
 		goto done;
 	}
 
-
 	/*
-	 *	First, copy the xlat key name to one buffer
+	 *	See if we're supposed to expand a module name.
 	 */
-	while (*p && (*p != '}') && (*p != ':')) {
-		*pa++ = *p++;
-
-		if (pa >= (xlat_name + sizeof(xlat_name) - 1)) {
-			/*
-			 *	Skip to the end of the input
-			 */
-			p += strlen(p);
-			RDEBUG("xlat: Module name is too long in string %%%s",
-			      *from);
-			goto done;
+	xlat_name = NULL;
+	for (l = p; *l != '\0'; l++) {
+		if (*l == '\\') {
+			l++;
+			continue;
 		}
-	}
-	*pa = '\0';
 
-	if (!*p) {
-		RDEBUG("xlat: Invalid syntax in %s", *from);
+		if (*l == ':') {
+			xlat_name = p; /* start of name */
+			*l = '\0';
+			p = l + 1;
+			break;
+		}
 
 		/*
-		 *	%{name} is a simple attribute reference,
-		 *	or regex reference.
+		 *	Module names can't have spaces.
 		 */
-	} else if (*p == '}') {
-		openbraces--;
-		rad_assert(openbraces == *open_p);
+		if ((*l == ' ') || (*l == '\t')) break;
+	}
 
-		p++;
-		xlat_string = xlat_name;
+	/*
+	 *	%{name} is a simple attribute reference,
+	 *	or regex reference.
+	 */
+	if (!xlat_name) {
+		xlat_name = xlat_string = p;
 		goto do_xlat;
+	}
 
-	} else if ((p[0] == ':') && (p[1] == '-')) { /* handle ':- */
+	/*
+	 *	Maybe it's the old-style %{foo:-bar}
+	 */
+	if (*p == '-') {
 		RDEBUG2("WARNING: Deprecated conditional expansion \":-\".  See \"man unlang\" for details");
-		p += 2;
+		p++;
+
 		xlat_string = xlat_name;
+		next = p;
 		goto do_xlat;
-
-	} else {      /* module name, followed by per-module string */
-		int stop = 0;
-		int delimitbrace = *open_p;
-
-		rad_assert(*p == ':');
-		p++;			/* skip the ':' */
-
-		/*
-		 *  If there's a brace immediately following the colon,
-		 *  then we've chosen to delimite the per-module string,
-		 *  so keep track of that.
-		 */
-		if (*p == '{') {
-			delimitbrace = openbraces;
-			openbraces++;
-			p++;
-		}
-
-		xlat_string = rad_malloc(strlen(p) + 1); /* always returns */
-		free_xlat_string = TRUE;
-		pa = xlat_string;
-
-		/*
-		 *  Copy over the rest of the string, which is per-module
-		 *  data.
-		 */
-		while (*p && !stop) {
-			switch(*p) {
-
-				/*
-				 *	What the heck is this supposed
-				 *	to be doing?
-				 */
-			case '\\':
-				p++; /* skip it */
-				*pa++ = *p++;
-				break;
-
-			case ':':
-				if (!spaces && p[1] == '-') {
-					p += 2;
-					stop = 1;
-					break;
-				}
-				*pa++ = *p++;
-				break;
-
-				/*
-				 *	This is pretty hokey...  we
-				 *	should use the functions in
-				 *	util.c
-				 */
-			case '{':
-				openbraces++;
-				*pa++ = *p++;
-				break;
-
-			case '}':
-				openbraces--;
-				if (openbraces == delimitbrace) {
-					p++;
-					stop=1;
-				} else {
-					*pa++ = *p++;
-				}
-				break;
-
-			case ' ':
-			case '\t':
-				spaces = TRUE;
-				/* FALL-THROUGH */
-
-			default:
-				*pa++ = *p++;
-				break;
-			}
-		}
-
-		*pa = '\0';
-
-		/*
-		 *	Now check to see if we're at the end of the string
-		 *	we were sent.  If we're not, check for :-
-		 */
-		if (openbraces == delimitbrace) {
-			if (p[0] == ':' && p[1] == '-') {
-				p += 2;
-			}
-		}
-
-		/*
-		 *	Look up almost everything in the new tree of xlat
-		 *	functions.  This makes it a little quicker...
-		 */
-	do_xlat:
-		if ((c = xlat_find(xlat_name)) != NULL) {
-			if (!c->internal) RDEBUG3("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
-						c->module, xlat_string);
-			retlen = c->do_xlat(c->instance, request, xlat_string,
-					    q, freespace, func);
-			/* If retlen is 0, treat it as not found */
-			if (retlen > 0) found = 1;
-
-#ifndef NRDEBUG
-		} else {
-			/*
-			 *	No attribute by that name, return an error.
-			 */
-			RDEBUG2("WARNING: Unknown module \"%s\" in string expansion \"%%%s\"", xlat_name, *from);
-#endif
-		}
 	}
 
 	/*
-	 * Skip to last '}' if attr is found
-	 * The rest of the stuff within the braces is
-	 * useless if we found what we need
+	 *	FIXME: For backwards "WTF" compatibility, check for
+	 *	{...}, (after the :), and copy that, too.
 	 */
-	if (found) {
-		if (do_length) {
-			snprintf(q, freespace, "%d", retlen);
-			retlen = strlen(q);
-		}
 
+	/* module name, followed by (possibly) per-module string */
+	xlat_string = p;
+	
+do_xlat:
+	if ((c = xlat_find(xlat_name)) != NULL) {
+		if (!c->internal) RDEBUG3("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
+					  c->module, xlat_string);
+		retlen = c->do_xlat(c->instance, request, xlat_string,
+				    q, freespace, func);
+		if (retlen > 0) {
+			if (do_length) {
+				snprintf(q, freespace, "%d", retlen);
+				retlen = strlen(q);
+			}
+
+		} else if (next) {
+			/*
+			 *	Expand the second bit.
+			 */
+			RDEBUG2("\t... expanding second conditional");
+			retlen = radius_xlat(q, freespace, next, request, func);
+		}
 		q += retlen;
 
-		while((*p != '\0') && (openbraces > *open_p)) {
-			/*
-			 *	Handle escapes outside of the loop.
-			 */
-			if (*p == '\\') {
-				p++;
-				if (!*p) break;
-				p++; /* get & ignore next character */
-				continue;
-			}
-
-			switch (*p) {
-			default:
-				break;
-
-				/*
-				 *  Bare brace
-				 */
-			case '{':
-				openbraces++;
-				break;
-
-			case '}':
-				openbraces--;
-				break;
-			}
-			p++;	/* skip the character */
-		}
+	} else {
+		/*
+		 *	No attribute by that name, return an error.
+		 */
+		RDEBUG2("WARNING: Unknown module \"%s\" in string expansion \"%%%s\"", xlat_name, *from);
+		return -1;
 	}
 
-	done:
-	if (free_xlat_string) free(xlat_string);
-
-	*open_p = openbraces;
-	*from = p;
+done:
 	*to = q;
+	return 0;
 }
 
 /*
@@ -1083,7 +980,8 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 
 		} else if (c == '%') switch(*p) {
 			case '{':
-				decode_attribute(&p, &q, freespace, &openbraces, request, func);
+				p--;
+				if (decode_attribute(&p, &q, freespace, request, func) < 0) return 0;
 				break;
 
 			case '%':
