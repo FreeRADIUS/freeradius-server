@@ -155,13 +155,13 @@ certs:
 #
 ######################################################################
 freeradius-server-$(RADIUSD_VERSION).tar.gz: .git
-	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/ stable | gzip > $@
+	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/ v2.1.x | gzip > $@
 
 freeradius-server-$(RADIUSD_VERSION).tar.gz.sig: freeradius-server-$(RADIUSD_VERSION).tar.gz
 	gpg --default-key aland@freeradius.org -b $<
 
 freeradius-server-$(RADIUSD_VERSION).tar.bz2: .git
-	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/ stable | bzip2 > $@
+	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/ v2.1.x | bzip2 > $@
 
 freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig: freeradius-server-$(RADIUSD_VERSION).tar.bz2
 	gpg --default-key aland@freeradius.org -b $<
