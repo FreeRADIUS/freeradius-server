@@ -249,11 +249,6 @@ the rlm_ldap module:
 
 	} }
 
-NOTE: As LDAP is case insensitive, you should probably also set "lower_user =
-yes" and "lower_time = before" in main section of radiusd.conf, to get limits
-on simultaneous logins working correctly. Otherwise, users will be able get
-large number of sessions, capitalizing parts of their login names.
-
 MODULE MESSAGES: On user rejection rlm_ldap will return the following module
 messages:
 
