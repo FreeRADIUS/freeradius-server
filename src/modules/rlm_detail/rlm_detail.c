@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/modules.h>
 #include	<freeradius-devel/rad_assert.h>
+#include	<freeradius-devel/detail.h>
 
 #include	<sys/stat.h>
 #include	<ctype.h>
@@ -475,7 +476,9 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
  */
 static int detail_accounting(void *instance, REQUEST *request)
 {
-	if (request->listener->type == RAD_LISTEN_DETAIL) {
+	if (request->listener->type == RAD_LISTEN_DETAIL &&
+	    strcmp(((struct detail_instance *)instance)->detailfile,
+	           ((listen_detail_t *)request->listener->data)->filename) == 0) {
 		RDEBUG("Suppressing writes to detail file as the request was just read from a detail file.");
 		return RLM_MODULE_NOOP;
 	}
