@@ -304,8 +304,6 @@ rm -rf $RPM_BUILD_ROOT
 /etc/init.d/freeradius-relay
 %config /etc/pam.d/radiusd
 %config /etc/logrotate.d/radiusd
-/usr/sbin/rcfreeradius
-/usr/sbin/rcfreeradius-relay
 %dir %attr(755,radiusd,radiusd) /var/lib/radiusd
 # configs
 %dir %attr(750,-,radiusd) /etc/raddb
@@ -329,6 +327,7 @@ rm -rf $RPM_BUILD_ROOT
 %dir %attr(640,-,radiusd) /etc/raddb/sql
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql/*/*.conf
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql/*/*.sql
+%attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql/*/README
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql/oracle/msqlippool.txt
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/users
 %attr(640,-,radiusd) %config(noreplace) /etc/raddb/experimental.conf
