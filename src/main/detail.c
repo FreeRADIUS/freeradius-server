@@ -43,17 +43,6 @@ RCSID("$Id$")
 
 #define USEC (1000000)
 
-typedef enum detail_state_t {
-  STATE_UNOPENED = 0,
-  STATE_UNLOCKED,
-  STATE_HEADER,
-  STATE_READING,
-  STATE_QUEUED,
-  STATE_RUNNING,
-  STATE_NO_REPLY,
-  STATE_REPLIED
-} detail_state_t;
-
 static FR_NAME_NUMBER state_names[] = {
 	{ "unopened", STATE_UNOPENED },
 	{ "unlocked", STATE_UNLOCKED },
@@ -66,30 +55,6 @@ static FR_NAME_NUMBER state_names[] = {
 
 	{ NULL, 0 }
 };
-
-typedef struct listen_detail_t {
-	fr_event_t	*ev;	/* has to be first entry (ugh) */
-	int		delay_time;
-	char		*filename;
-	char		*filename_work;
-	VALUE_PAIR	*vps;
-	FILE		*fp;
-	detail_state_t 	state;
-	time_t		timestamp;
-	time_t		running;
-	fr_ipaddr_t	client_ip;
-	int		load_factor; /* 1..100 */
-	int		signal;
-	int		poll_interval;
-	int		retry_interval;
-
-	int		has_rtt;
-	int		srtt;
-	int		rttvar;
-	struct timeval  last_packet;
-	RADCLIENT	detail_client;
-} listen_detail_t;
-
 
 /*
  *	If we're limiting outstanding packets, then mark the response
