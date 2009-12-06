@@ -115,7 +115,7 @@ serial:
 	@echo '01' > serial
 
 random:
-	@if [ -e /dev/urandom ] ; then \
+	@if [ -c /dev/urandom ] ; then \
 		dd if=/dev/urandom of=./random count=10 >/dev/null 2>&1; \
 	else \
 		date > ./random; \
