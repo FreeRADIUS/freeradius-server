@@ -3799,9 +3799,6 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
 	}
 }
 
-typedef struct listen_detail_t {
-	fr_event_t	*ev;
-} listen_detail_t;
 
 /*
  *	This function is called periodically to see if this detail
