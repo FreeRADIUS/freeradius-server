@@ -1670,14 +1670,12 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
  */
 rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists)
 {
-	int last_proxy_port, port;
 	rad_listen_t *this, *tmp, **last;
 	listen_socket_t *sock, *old;
 
 	/*
 	 *	Find an existing proxy socket to copy.
 	 */
-	last_proxy_port = 0;
 	old = NULL;
 	last = &mainconfig.listen;
 	for (tmp = mainconfig.listen; tmp != NULL; tmp = tmp->next) {
@@ -1700,9 +1698,6 @@ rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists)
 			continue;
 		}
 		
-		if (sock->port > last_proxy_port) {
-			last_proxy_port = sock->port + 1;
-		}
 		if (!old) old = sock;
 
 		last = &(tmp->next);
@@ -1730,19 +1725,9 @@ rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists)
 		sock->ipaddr = old->ipaddr;
 	}
 
-	/*
-	 *	Keep going until we find an unused port.
-	 */
-	for (port = last_proxy_port; port < 64000; port++) {
-		int rcode;
+	sock->port = 0;
 
-		sock->port = port;
-
-		rcode = listen_bind(this);
-		if (rcode < 0) {
-			continue;
-		}
-		
+	if (listen_bind(this) >= 0) {
 		/*
 		 *	Add the new listener to the list of
 		 *	listeners.
