@@ -98,6 +98,7 @@ static fr_packet_list_t *proxy_list = NULL;
  *	We keep the proxy FD's here.  The RADIUS Id's are marked
  *	"allocated" per Id, via a bit per proxy FD.
  */
+static int		proxy_all_used = FALSE;
 static int		proxy_fds[32];
 static rad_listen_t	*proxy_listeners[32];
 static void check_for_zombie_home_server(REQUEST *request);
@@ -283,6 +284,8 @@ static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
 
 	if (fr_packet_list_id_alloc(proxy_list, packet)) return 1;
 
+	if (proxy_all_used) return 0;
+
 	/*
 	 *	Allocate a new proxy fd.  This function adds
 	 *	it to the tail of the list of listeners.  With
@@ -311,7 +314,13 @@ static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
 			break;
 		}
 	}
-	rad_assert(found >= 0);
+	if (found < 0) {
+		proxy_all_used = TRUE;
+		listen_free(&proxy_listener);
+		radlog(L_ERR, "Failed creating new proxy socket: server is too busy and home servers appear to be down");
+		return 0;
+	}
+
 	
 	if (!fr_packet_list_socket_add(proxy_list, proxy_listener->fd)) {
 			RDEBUG2("ERROR: Failed to create a new socket for proxying requests.");
