@@ -1904,7 +1904,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 			RDEBUG("ldap auth option = %s", vp_auth_opt->vp_strvalue);
 			strncpy(seq, vp_auth_opt->vp_strvalue, vp_auth_opt->length);
 			seq[vp_auth_opt->length] = '\0';
-			if( strcmp(seq, "<No Default>") ){
+			if( strcasecmp(seq, "<No Default>") ){
 
 				/* Get the client IP address to check for packet validity */
 				inet_ntop(AF_INET, &request->packet->src_ipaddr, host_ipaddr, sizeof(host_ipaddr));
