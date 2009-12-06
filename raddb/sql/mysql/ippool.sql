@@ -12,4 +12,4 @@ CREATE TABLE radippool (
   username              varchar(64) NOT NULL default '',
   pool_key              varchar(30) NOT NULL,
   PRIMARY KEY (id)
-);
+) ENGINE=InnoDB;
