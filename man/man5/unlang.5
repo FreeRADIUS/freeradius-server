@@ -502,6 +502,15 @@ The number of characters in %{string}.  If %{string} is not
 set, then the length is not set.
 
 e.g. %{#Junk-junk:-foo} will yeild the string "foo".
+.IP %{Attribute-Name#}
+Will print the integer value of the attribute, rather than a decoded
+VALUE or date.  This feature applies only to attributes of type
+"date", "integer", "byte", and "short".  It has no effect on any other
+attributes.  It is used when the numerical value is needed (e.g. Unix
+seconds), rather than a humanly-readable string.
+
+e.g. If a request contains "Service-Type = Login-User", the expansion
+of %{Service-Type#} will yeild "1".
 .IP %{Attribute-Name[index]}
 Reference the N'th occurance of the given attribute.  The syntax
 %{<list>:Attribute-Name[index]} may also be used.  The indexes start
