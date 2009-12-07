@@ -71,6 +71,7 @@ static int self_pipe[2];
 #ifdef WITH_PROXY
 static pthread_mutex_t	proxy_mutex;
 static rad_listen_t *proxy_listener_list = NULL;
+static int proxy_no_new_sockets = FALSE;
 #endif
 
 #define PTHREAD_MUTEX_LOCK if (have_children) pthread_mutex_lock
@@ -379,6 +380,8 @@ retry:
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 	
 	if (!rcode) {
+		if (proxy_no_new_sockets) return 0;
+
 		/*
 		 *	Also locks the proxy mutex, so we have to call
 		 *	it with the mutex unlocked.  Some systems
@@ -2952,7 +2955,7 @@ int received_request(rad_listen_t *listener,
 
 	if ((request->reply = rad_alloc(0)) == NULL) {
 		radlog(L_ERR, "No memory");
-		exit(1);
+		return 0;
 	}
 
 	request->listener = listener;
@@ -3348,10 +3351,20 @@ void event_new_fd(rad_listen_t *this)
 						       sock->proto,
 						       &sock->other_ipaddr, sock->other_port,
 						       this)) {
-				radlog(L_ERR, "Fatal error adding socket: %s",
-				       fr_strerror());
-				exit(1);
 
+				proxy_no_new_sockets = TRUE;
+				listen_free(&this);
+				PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+
+				/*
+				 *	This is bad.  However, the
+				 *	packet list now supports 256
+				 *	open sockets, which should
+				 *	minimize this problem.
+				 */
+				radlog(L_ERR, "Failed adding proxy socket: %s",
+				       fr_strerror());
+				return;
 			}
 
 			if (sock->home) {
@@ -3402,7 +3415,7 @@ void event_new_fd(rad_listen_t *this)
 		FD_MUTEX_LOCK(&fd_mutex);
 		if (!fr_event_fd_insert(el, 0, this->fd,
 					event_socket_handler, this)) {
-			radlog(L_ERR, "Failed remembering handle for proxy socket!");
+			radlog(L_ERR, "Failed adding event handler for proxy socket!");
 			exit(1);
 		}
 		FD_MUTEX_UNLOCK(&fd_mutex);
