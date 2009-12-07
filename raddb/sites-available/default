@@ -311,6 +311,22 @@ preacct {
 	preprocess
 
 	#
+	#  Session start times are *implied* in RADIUS.
+	#  The NAS never sends a "start time".  Instead, it sends
+	#  a start packet, *possibly* with an Acct-Delay-Time.
+	#  The server is supposed to conclude that the start time
+	#  was "Acct-Delay-Time" seconds in the past.
+	#
+	#  The code below creates an explicit start time, which can
+	#  then be used in other modules.
+	#
+
+#	  update request {
+#	  	FreeRADIUS-Acct-Session-Start-Time = "%{expr: %l - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
+#	}
+
+
+	#
 	#  Ensure that we have a semi-unique identifier for every
 	#  request, and many NAS boxes are broken.
 	acct_unique
