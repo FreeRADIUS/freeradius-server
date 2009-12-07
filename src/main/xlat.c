@@ -159,17 +159,45 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 	 */
 	da = dict_attrbyname(fmt);
 	if (!da) {
+		int do_number = FALSE;
 		size_t count;
-		const char *p = strchr(fmt, '[');
+		const char *p;
 		char buffer[256];
 
-		if (!p) return 0;
 		if (strlen(fmt) > sizeof(buffer)) return 0;
+
+		DEBUG("GOT SHIT %s", fmt);
+
+		p = strchr(fmt, '[');
+		if (!p) {
+			p = strchr(fmt, '#');
+			if (!p) return 0;
+			do_number = TRUE;
+		}
 
 		strlcpy(buffer, fmt, p - fmt + 1);
 
 		da = dict_attrbyname(buffer);
 		if (!da) return 0;
+
+		if (do_number) {
+			vp = pairfind(vps, da->attr);
+			if (!vp) return 0;
+
+			switch (da->type) {
+			default:
+				break;
+
+			case PW_TYPE_INTEGER:
+			case PW_TYPE_DATE:
+			case PW_TYPE_SHORT:
+			case PW_TYPE_BYTE:
+				snprintf(out, outlen, "%u", vp->lvalue);
+				return strlen(out);
+			}
+
+			goto just_print;
+		}
 
 		/*
 		 *	%{Attribute-Name[#]} returns the count of
@@ -237,7 +265,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	Non-existent array reference.
 		 */
 		if (!vp) return 0;
-
+	just_print:
 		return valuepair2str(out, outlen, vp, da->type, func);
 	}
 
@@ -499,7 +527,8 @@ static xlat_t *xlat_find(const char *module)
 	 *	Look for dictionary attributes first.
 	 */
 	if ((dict_attrbyname(module) != NULL) ||
-	    (strchr(module, '[') != NULL)) {
+	    (strchr(module, '[') != NULL) ||
+	    (strchr(module, '#') != NULL)) {
 		module = "request";
 	}
 
