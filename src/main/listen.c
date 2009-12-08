@@ -2283,7 +2283,10 @@ int proxy_new_listener(home_server *home, int src_port)
 	/*
 	 *	Tell the event loop that we have a new FD
 	 */
-	event_new_fd(this);
+	if (!event_new_fd(this)) {
+		listen_free(&this);
+		return 0;
+	}
 	
 	return 1;
 }

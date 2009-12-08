@@ -3322,11 +3322,11 @@ static void tcp_socket_idle_timeout(void *ctx)
 }
 #endif
 
-void event_new_fd(rad_listen_t *this)
+int event_new_fd(rad_listen_t *this)
 {
 	char buffer[1024];
 
-	if (this->status == RAD_LISTEN_STATUS_KNOWN) return;
+	if (this->status == RAD_LISTEN_STATUS_KNOWN) return 1;
 
 	this->print(this, buffer, sizeof(buffer));
 
@@ -3353,7 +3353,6 @@ void event_new_fd(rad_listen_t *this)
 						       this)) {
 
 				proxy_no_new_sockets = TRUE;
-				listen_free(&this);
 				PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 				/*
@@ -3364,7 +3363,7 @@ void event_new_fd(rad_listen_t *this)
 				 */
 				radlog(L_ERR, "Failed adding proxy socket: %s",
 				       fr_strerror());
-				return;
+				return 0;
 			}
 
 			if (sock->home) {
@@ -3408,7 +3407,7 @@ void event_new_fd(rad_listen_t *this)
 			 *	Set up the first poll interval.
 			 */
 			event_poll_detail(this);
-			return;
+			return 1;
 		}
 #endif
 
@@ -3421,7 +3420,7 @@ void event_new_fd(rad_listen_t *this)
 		FD_MUTEX_UNLOCK(&fd_mutex);
 		
 		this->status = RAD_LISTEN_STATUS_KNOWN;
-		return;
+		return 1;
 	}
 
 	/*
@@ -3574,7 +3573,7 @@ void event_new_fd(rad_listen_t *this)
 				rad_panic("Failed to insert event");
 			}
 		       
-			return;
+			return 1;
 		}
 
 		/*
@@ -3631,6 +3630,8 @@ finish:
 		 */
 		listen_free(&this);
 	}
+
+	return 1;
 }
 
 static void handle_signal_self(int flag)
