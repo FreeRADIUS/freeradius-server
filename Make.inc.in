@@ -22,6 +22,7 @@ raddbdir	= @raddbdir@
 radacctdir	= @radacctdir@
 top_builddir	= @abs_top_builddir@
 top_srcdir	= @abs_top_srcdir@
+datarootdir	= @datarootdir@
 
 MAKE		= @MAKE@
 CC		= @CC@
