@@ -201,6 +201,31 @@ const char *lt_dlerror(void)
 }
 
 #endif	/* WITH_DLOPEN */
+#else	/* WITHOUT_LIBLTDL */
+
+/*
+ *	Solve the issues of libraries linking to other libraries
+ *	by using a newer libltdl API.
+ */
+#ifndef HAVE_LT_DLADVISE_INIT
+#define fr_dlopenext lt_dlopenext
+#else
+static lt_dlhandle fr_dlopenext(const char *filename)
+{
+	lt_dlhandle handle = 0;
+	lt_dladvise advise;
+
+	if (!lt_dladvise_init (&advise) &&
+	    !lt_dladvise_ext (&advise) &&
+	    !lt_dladvise_global (&advise)) {
+		handle = lt_dlopenadvise (filename, advise);
+	}
+
+	lt_dladvise_destroy (&advise);
+
+	return handle;
+}
+#endif	/* HAVE_LT_DLADVISE_INIT */
 #endif /* WITHOUT_LIBLTDL */
 
 static int virtual_server_idx(const char *name)
@@ -411,7 +436,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	/*
 	 *	Keep the handle around so we can dlclose() it.
 	 */
-	handle = lt_dlopenext(module_name);
+	handle = fr_dlopenext(module_name);
 	if (handle == NULL) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Failed to link to module '%s': %s\n",
