@@ -6,6 +6,8 @@ FreeRADIUS 2.1.8 Mon Jan 1 1:00:00 CEST 1999;  , urgency=medium
 	  last field in an ATTRIBUTE definition.
 	* Commands received from radmin are now printed on stdout when
 	  in debugging mode.
+	* Allow accounting packets to be written to a detail file, even
+	  if they were read from a different detail file.
 
 	Bug fixes
 	* DHCP sockets can now set the broadcast flag before binding to a
@@ -21,13 +23,20 @@ FreeRADIUS 2.1.8 Mon Jan 1 1:00:00 CEST 1999;  , urgency=medium
 	* Proxying large numbers of packets no longer gives error
 	  "unable to open proxy socket".
 	* Avoid mutex locks in libc after fork
-	* Retry packet from  detail file if there was no response.
+	* Retry packet from detail file if there was no response.
 	* Removed all recursive use of mutexes.  Some systems just don't
 	  support this.
 	* Allow !* to work as documented.
 	* make templates work (see templates.conf)
 	* Enabled "allow_core_dumps" to work again
-	* Fixed corner cases inconditional dynamic expansion.
+	* Print better errors when reading invalid dictionaries
+	* Sign client certificates with CA, rather than server certs.
+	* Fix potential crash in rlm_passwd when file was closed
+	* Fixed corner cases in conditional dynamic expansion.
+	* Use InnoDB for MySQL IP Pools, to gain transactional support
+	* Apply patch to libltdl for CVE-2009-3736.
+	* Fix corner case where proxying would erroneously mark home
+	  servers down.
 
 FreeRADIUS 2.1.7 Mon Sept 14 11:20:00 CEST 2009;  , urgency=medium
 	Feature improvements
