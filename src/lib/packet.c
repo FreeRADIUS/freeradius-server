@@ -154,6 +154,30 @@ int fr_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b)
 }
 
 
+static int fr_inaddr_any(fr_ipaddr_t *ipaddr)
+{
+
+	if (ipaddr->af == AF_INET) {
+		if (ipaddr->ipaddr.ip4addr.s_addr == INADDR_ANY) {
+			return 1;
+		}
+
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+	} else if (ipaddr->af == AF_INET6) {
+		if (IN6_IS_ADDR_UNSPECIFIED(&(ipaddr->ipaddr.ip6addr))) {
+			return 1;
+		}
+#endif
+
+	} else {
+		fr_strerror_printf("Unknown address family");
+		return -1;
+	}
+
+	return 0;
+}
+
+
 /*
  *	Create a fake "request" from a reply, for later lookup.
  */
@@ -632,11 +656,37 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 			      RADIUS_PACKET *request)
 {
 	int i, id, start, fd;
+	int src_any = 0;
 	uint32_t free_mask;
 	fr_packet_dst2id_t my_pd, *pd;
 	fr_packet_socket_t *ps;
 
 	if (!pl || !pl->alloc_id || !request) return 0;
+
+	/*
+	 *	Error out if no destination is specified.
+	 */
+	if ((request->dst_ipaddr.af == AF_UNSPEC) ||
+	    (request->dst_port == 0)) {
+		fr_strerror_printf("No destination address/port specified");
+		return 0;
+	}
+
+	/*
+	 *	Special case: unspec == "don't care"
+	 */
+	if (request->src_ipaddr.af == AF_UNSPEC) {
+		memset(&request->src_ipaddr, 0, sizeof(request->src_ipaddr));
+		request->src_ipaddr.af = request->dst_ipaddr.af;
+	}
+
+	src_any = fr_inaddr_any(&request->src_ipaddr);
+	if (src_any < 0) return 0;
+
+	/*
+	 *	MUST specify a destination address.
+	 */
+	if (fr_inaddr_any(&request->dst_ipaddr) != 0) return 0;
 
 	my_pd.dst_ipaddr = request->dst_ipaddr;
 	my_pd.dst_port = request->dst_port;
@@ -679,48 +729,37 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 
 	free_mask = ~((~pd->id[id]) & pl->mask);
 
-	/*
-	 *	This ID has at least one socket free.  Check the sockets
-	 *	to see if they are satisfactory for the caller.
-	 */
-	fd = -1;
+	start = -1;
 	for (i = 0; i < MAX_SOCKETS; i++) {
 		if (pl->sockets[i].sockfd == -1) continue; /* paranoia */
 
-		/*
-		 *	This ID is allocated.
-		 */
-		if ((free_mask & (1 << i)) != 0) continue;
-		
-		/*
-		 *	If the caller cares about the source address,
-		 *	try to re-use that.  This means that the
-		 *	requested source address is set, AND this
-		 *	socket wasn't bound to "*", AND the requested
-		 *	source address is the same as this socket
-		 *	address.
-		 */
-		if ((request->src_ipaddr.af != AF_UNSPEC) &&
-		    !pl->sockets[i].inaddr_any &&
-		    (fr_ipaddr_cmp(&request->src_ipaddr, &pl->sockets[i].ipaddr) != 0)) continue;
+		ps = &(pl->sockets[i]);
 
 		/*
-		 *	They asked for a specific address, and this socket
-		 *	is bound to a wildcard address.  Ignore this one, too.
+		 *	We're sourcing from *, and they asked for a
+		 *	specific source address: ignore it.
 		 */
-		if ((request->src_ipaddr.af != AF_UNSPEC) &&
-		    pl->sockets[i].inaddr_any) continue;
-		
-		fd = i;
-		break;
+		if (ps->inaddr_any && !src_any) continue;
+
+		/*
+		 *	We're sourcing from a specific IP, and they
+		 *	asked for a source IP that isn't us: ignore
+		 *	it.
+		 */
+		if (!ps->inaddr_any && !src_any &&
+		    (fr_ipaddr_cmp(&request->src_ipaddr,
+				   &ps->ipaddr) != 0)) continue;
+
+		if ((free_mask & (1 << i)) == 0) {
+			start = i;
+			break;
+		}
 	}
 
-	if (fd < 0) {
-		goto redo; /* keep searching IDs */
-	}
+	if (start < 0) return 0; /* bad error */
 
-	pd->id[id] |= (1 << fd);
-	ps = &pl->sockets[fd];
+	pd->id[id] |= (1 << start);
+	ps = &pl->sockets[start];
 
 	ps->num_outgoing++;
 	pl->num_outgoing++;
