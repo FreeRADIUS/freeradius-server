@@ -380,6 +380,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 	stack.pointer = 0;
 	stack.priority[0] = 0;
 	stack.children[0] = c;
+	stack.start[0] = NULL;
 	myresult = stack.result[0] = default_component_results[component];
 	was_if = if_taken = FALSE;
 
