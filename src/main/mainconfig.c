@@ -565,14 +565,20 @@ static int switch_users(CONF_SECTION *cs)
 				progname, uid_name, strerror(errno));
 			return 0;
 		}
-		server_uid = pw->pw_uid;
+
+		if (getuid() == pw->pw_uid) {
+			uid_name = NULL;
+		} else {
+
+			server_uid = pw->pw_uid;
 #ifdef HAVE_INITGROUPS
-		if (initgroups(uid_name, server_gid) < 0) {
-			fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
-				progname, uid_name, strerror(errno));
-			return 0;
-		}
+			if (initgroups(uid_name, server_gid) < 0) {
+				fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
+					progname, uid_name, strerror(errno));
+				return 0;
+			}
 #endif
+		}
 	} else {
 		server_uid = getuid();
 	}
