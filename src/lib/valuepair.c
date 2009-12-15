@@ -1626,7 +1626,7 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 	/*
 	 *	We may have Foo-Bar:= stuff, so back up.
 	 */
-	if (attr[len - 1] == ':') {
+	if ((len > 0) && (attr[len - 1] == ':')) {
 		p--;
 		len--;
 	}
