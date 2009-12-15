@@ -1432,17 +1432,25 @@ static int originated_coa_request(REQUEST *request)
 	rad_assert(!request->in_proxy_hash);
 	rad_assert(request->proxy_reply == NULL);
 
+	/*
+	 *	Check whether we want to originate one, or cancel one.
+	 */
 	vp = pairfind(request->config_items, PW_SEND_COA_REQUEST);
-	if (!vp && request->coa) vp = pairfind(request->coa->proxy->vps, PW_SEND_COA_REQUEST);
+	if (!vp && request->coa) {
+		vp = pairfind(request->coa->proxy->vps, PW_SEND_COA_REQUEST);
+	}
+
 	if (vp) {
 		if (vp->vp_integer == 0) {
 			ev_request_free(&request->coa);
 			return 1;	/* success */
 		}
 
-		if (!request->coa) request_alloc_coa(request);
-		if (!request->coa) return 0;
+		
 	}
+
+	if (!request->coa) request_alloc_coa(request);
+	if (!request->coa) return 0;
 
 	coa = request->coa;
 
