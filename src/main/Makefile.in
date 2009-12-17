@@ -148,7 +148,3 @@ endif
 	$(INSTALL) -m 755    radlast			$(R)$(bindir)
 	$(INSTALL) -m 755    radtest 			$(R)$(bindir)
 	$(INSTALL) -m 755    radzap			$(R)$(bindir)
-
-.PHONY: scan
-scan:
-	@[ "$(SCAN_BUILD)" == "" ] || ($(MAKE) SCAN=yes LIBTOOL= 2>&1) | grep 'scan-view' || true
