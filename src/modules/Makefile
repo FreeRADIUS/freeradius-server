@@ -50,7 +50,3 @@ common:
 			$(MAKE) $(MFLAGS) -C $$mod $(WHAT_TO_MAKE) || exit $$?; \
 		fi; \
 	done
-
-.PHONY: scan
-scan:
-	@[ "$(SCAN_BUILD)" == "" ] || ($(MAKE) SCAN=yes LIBTOOL= WHAT_TO_MAKE=scan common 2>&1) | grep 'scan-build' || true

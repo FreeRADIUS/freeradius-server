@@ -100,10 +100,9 @@ endif
 
 #  http://clang.llvm.org/StaticAnalysis.html
 #
-#  $ make scan | sed "s/.*Run '//;s/'.*//" > scan.sh
-#  $ ./scan.sh
+#  $ make SCAN=/path/to/checker/ 
 #
-SCAN_BUILD	= /path/to/checker-0.167/scan-build
-ifeq ($(SCAN),yes)
-CC		:= $(SCAN_BUILD) gcc -DFR_SCAN_BUILD
+ifne ($(SCAN),)
+CC		:= $(SCAN)/scan-build gcc -DFR_SCAN_BUILD
+LIBTOOL		:= 
 endif
