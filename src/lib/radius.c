@@ -2857,13 +2857,10 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			if (myvendor == 0) goto create_pair;
 
 			/*
-			 *	This is an implementation issue.
-			 *	We currently pack vendor into the upper
-			 *	16 bits of a 32-bit attribute number,
-			 *	so we can't handle vendor numbers larger
-			 *	than 16 bits.
+			 *	Allow vendors up to 2^24.  Past that,
+			 *	get confused.
 			 */
-			if (myvendor > 65535) goto create_pair;
+			if (myvendor > FR_MAX_VENDOR) goto create_pair;
 
 			vsa_tlen = vsa_llen = 1;
 			vsa_offset = 0;

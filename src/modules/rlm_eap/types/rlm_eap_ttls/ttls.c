@@ -83,8 +83,8 @@ static int diameter_verify(REQUEST *request,
 			memcpy(&vendor, data, sizeof(vendor));
 			vendor = ntohl(vendor);
 
-			if (vendor > 65535) {
-				RDEBUG2("Vendor codes larger than 65535 are not supported");
+			if (vendor > FR_MAX_VENDOR) {
+				RDEBUG2("Vendor codes larger than 2^24 are not supported");
 				return 0;
 			}
 
@@ -218,14 +218,8 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 			memcpy(&vendor, data, sizeof(vendor));
 			vendor = ntohl(vendor);
 
-			if (attr > 65535) {
-				RDEBUG2("Cannot handle vendor attributes greater than 65535");
-				pairfree(&first);
-				return NULL;
-			}
-
-			if (vendor > 65535) {
-				RDEBUG2("Cannot handle vendor Id greater than 65535");
+			if (vendor > FR_MAX_VENDOR) {
+				RDEBUG2("Cannot handle vendor Id greater than 2^&24");
 				pairfree(&first);
 				return NULL;
 			}

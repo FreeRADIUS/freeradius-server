@@ -1273,7 +1273,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	if (strncasecmp(p, "Attr-", 5) != 0) {
 		if (strncasecmp(p, "Vendor-", 7) == 0) {
 			vendor = (int) strtol(p + 7, &q, 10);
-			if ((vendor == 0) || (vendor > 65535)) {
+			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
 				fr_strerror_printf("Invalid vendor value in attribute name \"%s\"", attribute);
 				return NULL;
 			}
@@ -1354,8 +1354,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 				if (attr > 65535) goto attr_error;
 				break;
 
-			case 4:	/* Internal limitations! */
-				if (attr > 65535) goto attr_error;
+			case 4:
 				break;
 
 			default:
