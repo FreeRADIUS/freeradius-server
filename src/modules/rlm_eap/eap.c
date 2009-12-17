@@ -329,7 +329,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			    !inst->types[eaptype->data[i]]) {
 				DICT_VALUE *dv;
 
-				dv = dict_valbyattr(PW_EAP_TYPE, eaptype->data[i]);
+				dv = dict_valbyattr(PW_EAP_TYPE, 0, eaptype->data[i]);
 				if (dv) {
 					RDEBUG2("NAK asked for unsupported type %s",
 						dv->name);
