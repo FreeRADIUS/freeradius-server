@@ -166,8 +166,6 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 
 		if (strlen(fmt) > sizeof(buffer)) return 0;
 
-		DEBUG("GOT SHIT %s", fmt);
-
 		p = strchr(fmt, '[');
 		if (!p) {
 			p = strchr(fmt, '#');
