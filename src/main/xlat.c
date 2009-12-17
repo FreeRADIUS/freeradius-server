@@ -179,7 +179,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		if (!da) return 0;
 
 		if (do_number) {
-			vp = pairfind(vps, da->attr);
+			vp = pairfind(vps, da->attr, 0);
 			if (!vp) return 0;
 
 			switch (da->type) {
