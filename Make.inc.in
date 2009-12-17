@@ -102,7 +102,7 @@ endif
 #
 #  $ make SCAN=/path/to/checker/ 
 #
-ifne ($(SCAN),)
+ifneq ($(SCAN),)
 CC		:= $(SCAN)/scan-build gcc -DFR_SCAN_BUILD
 LIBTOOL		:= 
 endif
