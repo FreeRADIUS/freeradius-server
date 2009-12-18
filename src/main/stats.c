@@ -58,6 +58,13 @@ void request_stats_final(REQUEST *request)
 	    (request->listener->type != RAD_LISTEN_AUTH) &&
 	    (request->listener->type != RAD_LISTEN_ACCT)) return;
 
+#undef INC_AUTH
+#define INC_AUTH(_x) radius_auth_stats._x++;request->listener->stats._x++;if (request->client && request->client->auth) request->client->auth->_x++;
+
+
+#undef INC_ACCT
+#define INC_ACCT(_x) radius_acct_stats._x++;request->listener->stats._x++;if (request->client && request->client->acct) request->client->acct->_x++
+
 	/*
 	 *	Update the statistics.
 	 *
@@ -68,45 +75,23 @@ void request_stats_final(REQUEST *request)
 	 */
 	if (request->reply) switch (request->reply->code) {
 	case PW_AUTHENTICATION_ACK:
-		radius_auth_stats.total_responses++;
-		radius_auth_stats.total_access_accepts++;
-		request->listener->stats.total_responses++;
-		request->listener->stats.total_access_accepts++;
-		if (request->client && request->client->auth) {
-			request->client->auth->total_access_accepts++;
-			request->client->auth->total_responses++;
-		}
+		INC_AUTH(total_responses);
+		INC_AUTH(total_access_accepts);
 		break;
 
 	case PW_AUTHENTICATION_REJECT:
-		radius_auth_stats.total_responses++;
-		radius_auth_stats.total_access_rejects++;
-		request->listener->stats.total_responses++;
-		request->listener->stats.total_access_rejects++;
-		if (request->client && request->client->auth) {
-			request->client->auth->total_access_rejects++;
-			request->client->auth->total_responses++;
-		}
+		INC_AUTH(total_responses);
+		INC_AUTH(total_access_rejects);
 		break;
 
 	case PW_ACCESS_CHALLENGE:
-		radius_auth_stats.total_responses++;
-		radius_auth_stats.total_access_challenges++;
-		request->listener->stats.total_responses++;
-		request->listener->stats.total_access_challenges++;
-		if (request->client && request->client->auth) {
-			request->client->auth->total_access_challenges++;
-			request->client->auth->total_responses++;
-		}
+		INC_AUTH(total_responses);
+		INC_AUTH(total_access_challenges);
 		break;
 
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
-		radius_acct_stats.total_responses++;
-		request->listener->stats.total_responses++;
-		if (request->client && request->client->acct) {
-			request->client->acct->total_responses++;
-		}
+		INC_ACCT(total_responses);
 		break;
 #endif
 
@@ -116,10 +101,16 @@ void request_stats_final(REQUEST *request)
 		 */
 	case 0:
 		if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
-			radius_auth_stats.total_bad_authenticators++;
-			request->listener->stats.total_bad_authenticators++;
-			if (request->client && request->client->auth) {
-				request->client->auth->total_bad_authenticators++;
+			if (request->reply->offset == -2) {
+				INC_AUTH(total_bad_authenticators);
+			} else {
+				INC_AUTH(total_packets_dropped);
+			}
+		} else if (request->packet->code == PW_ACCOUNTING_REQUEST) {
+			if (request->reply->offset == -2) {
+				INC_ACCT(total_bad_authenticators);
+			} else {
+				INC_ACCT(total_packets_dropped);
 			}
 		}
 		break;
