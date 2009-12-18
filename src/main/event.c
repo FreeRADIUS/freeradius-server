@@ -1538,8 +1538,6 @@ static int originated_coa_request(REQUEST *request)
 			ev_request_free(&request->coa);
 			return 1;	/* success */
 		}
-
-		
 	}
 
 	if (!request->coa) request_alloc_coa(request);
@@ -1904,7 +1902,8 @@ static int request_pre_handler(REQUEST *request)
 	}
 
 	if (rcode < 0) {
-		radlog(L_ERR, "%s Dropping packet without response.", fr_strerror());
+		RDEBUG("%s Dropping packet without response.", fr_strerror());
+		request->reply->offset = -2; /* bad authenticator */
 		request->child_state = REQUEST_DONE;
 		return 0;
 	}
