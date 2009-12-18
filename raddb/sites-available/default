@@ -320,6 +320,8 @@ preacct {
 	#  The code below creates an explicit start time, which can
 	#  then be used in other modules.
 	#
+	#  The start time is: NOW - delay - session_length
+	#
 
 #	  update request {
 #	  	FreeRADIUS-Acct-Session-Start-Time = "%{expr: %l - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
@@ -379,6 +381,20 @@ accounting {
 	#
 	#  See "Accounting queries" in sql.conf
 #	sql
+
+	#
+	#  If you receive stop packets with zero session length,
+	#  they will NOT be logged in the database.  The SQL module
+	#  will print a message (only in debugging mode), and will
+	#  return "noop".
+	#
+	#  You can ignore these packets by uncommenting the following
+	#  three lines.  Otherwise, the server will not respond to the
+	#  accounting request, and the NAS will retransmit.
+	#
+#	if (noop) {
+#		ok
+#	}
 
 	#
 	#  Instead of sending the query to the SQL server,
