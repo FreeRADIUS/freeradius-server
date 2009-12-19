@@ -101,8 +101,12 @@ ATTRIBUTE	Sub-Profile-Name			91	string
 ATTRIBUTE	Forward-Policy				92	string
 ATTRIBUTE	Reauth-String				94	string
 ATTRIBUTE	Reauth-More				95	integer
-ATTRIBUTE	Agent-Remote-Id				96	string
-ATTRIBUTE	Agent-Circuit-Id			97	string
+
+#
+#  These next 2 seem to be copies of the DHCP options...
+#
+ATTRIBUTE	Agent-Remote-Id				96	octets
+ATTRIBUTE	Agent-Circuit-Id			97	octets
 ATTRIBUTE	Platform-Type				98	integer
 ATTRIBUTE	RB-Client-NBNS-Pri			99	ipaddr
 ATTRIBUTE	RB-Client-NBNS-Sec			100	ipaddr
