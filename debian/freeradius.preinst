@@ -1,0 +1,72 @@
+#! /bin/sh
+
+set -e
+
+# Remove a no-longer used conffile; taken from http://wiki.debian.org/DpkgConffileHandling
+rm_conffile() {
+    CONFFILE="$1"
+
+    if [ -e "$CONFFILE" ]; then
+        md5sum="`md5sum \"$CONFFILE\" | sed -e \"s/ .*//\"`"
+        old_md5sum="`dpkg-query -W -f='${Conffiles}' $PKGNAME | sed -n -e \"\\\\' $CONFFILE'{s/ obsolete$//;s/.* //p}\"`"
+        if [ "$md5sum" != "$old_md5sum" ]; then
+            echo "Obsolete conffile $CONFFILE has been modified by you."
+            echo "Saving as $CONFFILE.dpkg-bak ..."
+            mv -f "$CONFFILE" "$CONFFILE".dpkg-bak
+        else
+            echo "Removing obsolete conffile $CONFFILE ..."
+            rm -f "$CONFFILE"
+        fi
+    fi
+}
+
+case "$1" in
+  upgrade)
+    # Before 1.1.5, upstream shipped /etc/freeradius/otppasswd.sample
+    # and we install it (I still don't know why).  In 1.1.5 they
+    # got rid of it so handle removing the conffile.
+    if dpkg --compare-versions "$2" lt "1.1.5"; then
+        rm_conffile "/etc/freeradius/otppasswd.sample"
+    fi
+    # There are huge changes between 1.x and 2.x (we cleaned things up
+    # a lot), so sort it out here
+    if dpkg --compare-versions "$2" lt "2.0.0"; then
+
+        rm_conffile "/etc/freeradius/certs/demoCA/cacert.pem"
+        rm_conffile "/etc/freeradius/certs/demoCA/index.txt"
+        rm_conffile "/etc/freeradius/certs/demoCA/index.txt.old"
+        rm_conffile "/etc/freeradius/certs/demoCA/serial"
+        rm_conffile "/etc/freeradius/certs/demoCA/serial.old"
+
+        test -d /etc/freeradius/certs/demoCA && rmdir --ignore-fail-on-non-empty /etc/freeradius/certs/demoCA/
+
+        rm_conffile "/etc/freeradius/certs/cert-clt.der"
+        rm_conffile "/etc/freeradius/certs/cert-clt.p12"
+        rm_conffile "/etc/freeradius/certs/cert-clt.pem"
+        rm_conffile "/etc/freeradius/certs/cert-srv.der"
+        rm_conffile "/etc/freeradius/certs/cert-srv.p12"
+        rm_conffile "/etc/freeradius/certs/cert-srv.pem"
+        rm_conffile "/etc/freeradius/certs/dh"
+        rm_conffile "/etc/freeradius/certs/newcert.pem"
+        rm_conffile "/etc/freeradius/certs/newreq.pem"
+        rm_conffile "/etc/freeradius/certs/random"
+        rm_conffile "/etc/freeradius/certs/README"
+        rm_conffile "/etc/freeradius/certs/root.der"
+        rm_conffile "/etc/freeradius/certs/root.p12"
+        rm_conffile "/etc/freeradius/certs/root.pem"
+
+        rm_conffile "/etc/freeradius/sqlippool.conf"
+        rm_conffile "/etc/freeradius/mssql.conf"
+        rm_conffile "/etc/freeradius/postgresql.conf"
+
+        rm_conffile "/etc/freeradius/naslist"
+        rm_conffile "/etc/freeradius/naspasswd"
+        rm_conffile "/etc/freeradius/realms"
+
+    fi
+
+esac
+
+#DEBHELPER#
+
+exit 0

@@ -3,7 +3,7 @@
 set -e
 
 case "$1" in
-  configure)
+  remove)
         for file in /etc/freeradius/sql/postgresql/cisco_h323_db_schema.sql \
           /etc/freeradius/sql/postgresql/counter.conf \
           /etc/freeradius/sql/postgresql/dialup.conf \
@@ -14,30 +14,23 @@ case "$1" in
           /etc/freeradius/sql/postgresql/update_radacct_group_trigger.sql \
           /etc/freeradius/sql/postgresql/voip-postpaid.conf
         do
-          if ! dpkg-statoverride --list | grep -qw $file$; then
-            dpkg-statoverride --add --update root freerad 0640 $file
+          if dpkg-statoverride --list | grep -qw $file$; then
+            dpkg-statoverride --remove $file
           fi
         done
 
         for dir in /etc/freeradius/sql \
           /etc/freeradius/sql/postgresql
         do
-          if ! dpkg-statoverride --list | grep -qw $dir$; then
-            dpkg-statoverride --add --update root freerad 2751 $dir
+          if dpkg-statoverride --list | grep -qw $dir$; then
+            dpkg-statoverride --remove $dir
           fi
         done
-
-        if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
-          invoke-rc.d freeradius force-reload
-        else
-          /etc/init.d/freeradius force-reload
-        fi
 	;;
 esac
 
 #DEBHELPER#
 
 exit 0
-
 
 

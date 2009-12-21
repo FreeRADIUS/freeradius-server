@@ -1,2 +1,1 @@
-usr/lib/freeradius/rlm_sql_iodbc*.la
 usr/lib/freeradius/rlm_sql_iodbc*.so

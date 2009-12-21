@@ -2,88 +2,97 @@
 
 set -e
 
-new_install()
-{
-	# On a fresh install, add the necessary user and group.
-	if ! id freerad >/dev/null 2>&1; then
-		addgroup --system freerad || true
-		groups freerad 2>/dev/null || adduser --system --no-create-home --home /etc/freeradius --ingroup freerad --disabled-password freerad
-
-		# Put user freerad in group shadow, so the daemon can auth
-		# locally. Only do this on fresh install as the admin may not
-		# want freerad in shadow group if authenticating by another
-		# mechanism.
-		adduser freerad shadow
-	fi
-
-	# Changed in 1.1.5-1 for new installs (we used to start at S50
-	# and stop at K50)  We now start at S50 and stop at K19 so we
-	# start after services which may be used and stop before them.
-	update-rc.d freeradius start 50 2 3 4 5 . stop 19 0 1 6 . >/dev/null
-
-	# Set up initial permissions on all the FreeRADIUS directories.
-	if [ ! -d /var/log/freeradius ]; then
-		mkdir -p /var/log/freeradius
-	fi
-
-	if [ ! -f /var/log/freeradius/radius.log ]; then
-		touch /var/log/freeradius/radius.log
-	fi
-
-	if [ ! -f /var/log/freeradius/radwtmp ]; then
-		touch /var/log/freeradius/radwtmp
-	fi
-
-	if [ ! -d /var/run/freeradius ]; then
-		mkdir /var/run/freeradius
-	fi
-
-	chown -R freerad:freerad /var/log/freeradius
-	chown -R freerad:freerad /var/run/freeradius
-	chgrp -R freerad /etc/freeradius
-	find /etc/freeradius -type d -print0 | xargs -0 chmod 2750
-	find /etc/freeradius -type f -print0 | xargs -0 chmod 0640
-
-	# Relax permissions on local dictionary: it should not contain
-	# secrets, and this allows to run radclient with a non-privileged
-	# user. At any rate, only do it on fresh install.
-	chmod 2751 /etc/freeradius
-	chmod 0644 /etc/freeradius/dictionary
-
-	# Create default certificates to enable the EAP modules (tls, ttls,
-	# and peap) when the server starts for the first time.
-	# Comment the last line when building a package without OpenSSL for
-	# the Debian archive.
-	chmod 0750 /etc/freeradius/certs/bootstrap
-	/etc/freeradius/certs/bootstrap
-}
-
 case "$1" in
   configure)
-	if [ -z "$2" ]; then
-		new_install
-		action="start"
-	else
-		action="restart"
-	fi
+        if [ -z "$2" ]; then
+          # Changed in 1.1.5-1 for new installs (we used to start at S50
+          # and stop at K50)  We now start at S50 and stop at K19 so we
+          # start after services which may be used and stop before them.
+          update-rc.d freeradius start 50 2 3 4 5 . stop 19 0 1 6 . >/dev/null
 
-	if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
-		invoke-rc.d freeradius $action || true
-	else
-		/etc/init.d/freeradius $action
-	fi
-	;;
+          # Set up initial permissions on all the freeradius directories
+
+          if ! dpkg-statoverride --list | grep -q /var/run/freeradius$; then
+            dpkg-statoverride --add --update freerad freerad 0755 /var/run/freeradius
+          fi
+
+          if ! dpkg-statoverride --list | grep -q /var/log/freeradius$; then
+            dpkg-statoverride --add --update freerad freerad 0750 /var/log/freeradius
+          fi
+
+          for file in radius.log radwtmp; do
+            [ ! -f "/var/log/freeradius/${file}" ] && install -o freerad -g freerad -m 644 /dev/null /var/log/freeradius/${file}
+          done
+
+          for file in /etc/freeradius/preproxy_users \
+            /etc/freeradius/policy.conf \
+            /etc/freeradius/eap.conf \
+            /etc/freeradius/experimental.conf \
+            /etc/freeradius/huntgroups \
+            /etc/freeradius/proxy.conf \
+            /etc/freeradius/attrs.pre-proxy \
+            /etc/freeradius/hints \
+            /etc/freeradius/sql.conf \
+            /etc/freeradius/ldap.attrmap \
+            /etc/freeradius/attrs \
+            /etc/freeradius/policy.txt \
+            /etc/freeradius/attrs.accounting_response \
+            /etc/freeradius/attrs.access_reject \
+            /etc/freeradius/clients.conf \
+            /etc/freeradius/acct_users
+          do
+            if ! dpkg-statoverride --list | grep -qw $file$; then
+              dpkg-statoverride --add --update root freerad 0640 $file
+            fi
+          done
+
+          for dir in /etc/freeradius/certs/ \
+            /etc/freeradius/sites-available/ \
+            /etc/freeradius/sites-enabled/
+          do
+            if ! dpkg-statoverride --list | grep -qw $dir$; then
+              dpkg-statoverride --add --update freerad freerad 2751 $dir
+            fi
+          done
+
+          action="start"
+        else
+          action="restart"
+        fi
+
+        # Create links for default sites, but only if this is an initial
+        # install or an upgrade from before there were links; users may
+        # want to remove them...
+        if [ -z "$2" ] || dpkg --compare-versions "$2" lt 2.0.4+dfsg-4; then
+          for site in default inner-tunnel; do
+            if [ ! -e /etc/freeradius/sites-enabled/$site ]; then
+              ln -s ../sites-available/$site /etc/freeradius/sites-enabled/$site
+            fi
+          done
+        fi
+
+        if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+          invoke-rc.d freeradius $action || true
+        else
+          /etc/init.d/freeradius $action
+        fi
+        ;;
   abort-upgrade)
-	;;
+        if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+          invoke-rc.d freeradius restart || true
+        else
+          /etc/init.d/freeradius restart
+        fi
+        ;;
   abort-remove)
-	if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
-		invoke-rc.d freeradius start || true
-	else
-		/etc/init.d/freeradius start
-	fi
-	;;
+        if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+          invoke-rc.d freeradius start || true
+        else
+          /etc/init.d/freeradius start
+        fi
+        ;;
   abort-deconfigure)
-	;;
+        ;;
 esac
 
 #DEBHELPER#

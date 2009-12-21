@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+  remove)
+        for file in /etc/freeradius/radiusd.conf /etc/freeradius/dictionary; do
+          if dpkg-statoverride --list | grep -qw $file$; then
+            dpkg-statoverride --remove $file
+          fi
+        done
+
+        if dpkg-statoverride --list | grep -qw /etc/freeradius$; then
+          dpkg-statoverride --remove /etc/freeradius
+        fi
+        ;;
+esac
+
+#DEBHELPER#

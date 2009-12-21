@@ -1,10 +1,5 @@
-#! /bin/sh /usr/share/dpatch/dpatch-run
 ## 01-radiusd-to-freeradius.dpatch by Mark Hymers <mark@hymers.org.uk>
-##
-## All lines beginning with `## DP:' are a description of the patch.
 ## DP: change debian binary name from radiusd -> freeradius
-
-@DPATCH@
 
 --- old/Make.inc.in	(revision 1496)
 +++ new/Make.inc.in	(working copy)

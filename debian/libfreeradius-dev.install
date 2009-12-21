@@ -1,0 +1,5 @@
+usr/lib/freeradius/libfreeradius-radius.so
+usr/lib/freeradius/libfreeradius-eap.so
+usr/lib/freeradius/libfreeradius-radius.a
+usr/lib/freeradius/libfreeradius-eap.a
+usr/include/freeradius/*.h

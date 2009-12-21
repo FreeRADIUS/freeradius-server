@@ -3,38 +3,20 @@
 set -e
 
 case "$1" in
-	remove)
-		;;
-	purge)
-		update-rc.d -f freeradius remove >/dev/null
-		if [ -d /var/log/freeradius ]
-		then
-			rm -rf /var/log/freeradius
-		fi
-		# Make sure we remove the /var/run directory as well.
-		# It can sometimes get left behind and, as we remove
-		# the user, it ends up owned by a non-existant user.
-		if [ -d /var/run/freeradius ]
-		then
-			rm -rf /var/run/freeradius
-		fi
-		rmdir --ignore-fail-on-non-empty /etc/freeradius
-		# If we haven't managed to remove /etc/freeradius, make
-		# sure that freerad:freerad doesn't own anything before
-		# we remove the user and group.
-		if [ -d /etc/freeradius ]
-		then
-			find /etc/freeradius -user freerad -print0 | \
-				xargs -0 -r chown root
-			find /etc/freeradius -group freerad -print0 | \
-				xargs -0 -r chgrp root
-		fi
-		deluser freerad shadow || true
-		deluser freerad || true
-		delgroup freerad || true
-		;;
-	*)
-		;;
+        remove)
+               ;;
+        purge)
+               update-rc.d -f freeradius remove >/dev/null
+
+               # Remove dangling links from sites-enabled.
+               for link in /etc/freeradius/sites-enabled/*; do
+                 if [ -L "$link" ] && [ ! -e "$link" ]; then
+                   rm -f "$link"
+                 fi
+               done
+
+               rm -f /var/log/freeradius/radius.log* /var/log/freeradius/radwtmp*
+               ;;
 esac
 
 #DEBHELPER#
