@@ -2,5 +2,3 @@ radiusd-to-freeradius.diff
 dialupadmin-help.diff
 gitignore.diff
 rlm_sql.libs.diff
-rlm_perl.diff
-raddebug.man.diff
