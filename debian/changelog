@@ -1,8 +1,8 @@
-freeradius (2.1.7+git) experimental; urgency=low
+freeradius (2.1.8+git) experimental; urgency=low
 
   * Unreleased.
 
- -- Josip Rodin <joy-packages@debian.org>  Fri, 27 Nov 2009 16:03:31 +0100
+ -- Josip Rodin <joy-packages@debian.org>  Mon, 21 Dec 2009 13:04:52 +0100
 
 freeradius (2.1.7+dfsg-2) unstable; urgency=low
 

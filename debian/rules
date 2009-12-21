@@ -82,14 +82,9 @@ endif
 		--with-large-files --with-udpfromto --with-edir \
 		--enable-developer \
 		--config-cache \
-		--without-rlm_eap_tls \
-		--without-rlm_eap_ttls \
-		--without-rlm_eap_peap \
 		--without-rlm_eap_tnc \
-		--without-rlm_otp \
 		--with-rlm_sql_postgresql_lib_dir=`pg_config --libdir` \
 		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
-		--without-openssl \
 		--without-rlm_eap_ikev2 \
 		--without-rlm_sql_oracle \
 		--without-rlm_sql_unixodbc \
@@ -179,12 +174,6 @@ install-arch: build-arch-stamp
 	dh_strip -a --dbg-package=freeradius-dbg
 
 	dh_makeshlibs -a -n
-	for pkg in ${pkgs} ; do \
-	  if dh_shlibdeps -p $$pkg -- -O 2>/dev/null | grep -q libssl; then \
-	    echo "$$pkg links to openssl" ;\
-	    exit 1 ;\
-	  fi ;\
-	done
 	dh_shlibdeps
 
 binary-common:
