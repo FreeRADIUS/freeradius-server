@@ -1,0 +1,37 @@
+#! /bin/sh
+
+set -e
+
+case "$1" in
+  configure)
+        if [ -z "$2" ]; then
+          # On a fresh install, add the necessary user and group
+          adduser --quiet --system --no-create-home --home /etc/freeradius --group --disabled-password freerad
+
+          # Put user freerad in group shadow, so the daemon can auth locally
+          # Only do this on fresh install as the admin may not want freerad in shadow
+          # group if authenticating by another mechanism
+          adduser --quiet freerad shadow
+
+          if ! dpkg-statoverride --list | grep -qw /etc/freeradius$; then
+            dpkg-statoverride --add --update freerad freerad 2751 /etc/freeradius
+          fi
+
+          if ! dpkg-statoverride --list | grep -qw /etc/freeradius/radiusd.conf$; then
+            dpkg-statoverride --add --update root freerad 0640 /etc/freeradius/radiusd.conf 
+          fi
+
+          # Relax permissions on local dictionary - allows radclient to run and should
+          # not contain secrets.  At any rate, only do it on fresh install
+          if ! dpkg-statoverride --list | grep -qw /etc/freeradius/dictionary$; then
+            dpkg-statoverride --add --update root freerad 0644 /etc/freeradius/dictionary
+          fi
+
+        fi
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0
+

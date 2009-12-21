@@ -1,1 +1,1 @@
-debian/tmp/usr/share/freeradius-dialupadmin/bin/freeradius-dialupadmin.cron
+dialup_admin/bin/dialup_admin.cron

@@ -1,10 +1,5 @@
-#! /bin/sh /usr/share/dpatch/dpatch-run
 ## 02-dialupadmin-help.dpatch by Mark Hymers <mark@hymers.org.uk>
-##
-## All lines beginning with `## DP:' are a description of the patch.
 ## DP: Fix README location
-
-@DPATCH@
 
 --- old/dialup_admin/htdocs/help/help.php3	(revision 1519)
 +++ new/dialup_admin/htdocs/help/help.php3	(working copy)

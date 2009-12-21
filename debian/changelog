@@ -1,374 +1,335 @@
-freeradius (2.1.8-0) unstable; urgency=medium
-  * New upstream release.
+freeradius (2.1.7+git) experimental; urgency=low
 
- -- Alan DeKok <aland@freeradius.org>  Mon, 1 Jan 1999 01:00:00 +0100
+  * Unreleased.
 
-freeradius (2.1.7-0) unstable; urgency=medium
-  * Full support for CoA and Disconnect packets as per RFC 3576 and RFC 5176.  Both receiving and proxying CoA is supported.
-  * Added "src_ipaddr" configuration to "home_server".  See proxy.conf for details.
-  * radsniff now accepts -I, to read from a filename instead of a device.
-  * radsniff also prints matching requests and any responses to those requests when '-r' is used.
-  * Added example of attr_filter for Access-Challenge packets
-  * Added support for udpfromto in DHCP code
-  * radmin can now selectively mark modules alive/dead.  See "set module state".
-  * Added customizable messages on login success/fail.  See msg_goodpass && msg_badpass in log{} section of radiusd.conf
-  * Document "chase_referrals" and "rebind" in raddb/modules/ldap
-  * Preliminary implementation of DHCP relay.
-  * Made thread pool section optional.  If it doesn't exist, the server will run single-threaded.
-  * Added sample radrelay.conf for people upgrading from 1.x
-  * Made proxying more stable by failing over, rather than rejecting the first request.  See "response_window" in proxy.conf
-  * Allow home_server_pools to exist without realms.
-  * Add dictionary.iea (closes bug #7)
-  * Added support for RFC 5580
-  * Added experimental sql_freetds module from Gabriel Blanchard.
-  * Updated dictionary.foundry
-  * Added sample configuration for MySQL cluster in raddb/sql/ndb.  See the README file for explanations.
-  * Fixed corner case where proxied packets could have extra character in User-Password attribute.  Fix from Niko Tyni.
-  * Extended size of "attribute" field in SQL to 64.
-  * Fixes to ruby module to be more careful about when it builds.
-  * Updated Perl module "configure" script to check for broken Perl installations.
-  * Fix "status_check = none".  It would still send packets in some cases.
-  * Set recursive flag on the proxy mutex, which enables safer cleanup on some platforms.
-  * Copy the EAP username verbatim, rather than escaping it.
-  * Update handling so that robust-proxy-accounting works when all home servers are down for extended periods of time.
-  * Look for DHCP option 53 anywhere in the packet, not just at the start.
-  * Fix processing of proxy fail handler with virtual servers.
-  * DHCP code now prints out correct src/dst IP addresses when sending packets.
-  * Removed requirement for DHCP to have clients
-  * Fixed handling of DHCP packets with message-type buried in the packet
-  * Fixed corner case with negation in unlang.
-  * Minor fixes to default MySQL & PostgreSQL schemas
-  * Suppress MSCHAP complaints in debugging mode.
-  * Fix SQL module for multiple instance, and possible crash on HUP
-  * Fix permissions for radius.log for sites that change user/group, but which don't create the file before starting radiusd.
-  * Fix double counting of packets when proxying
-  * Make %l work
-  * Fix pthread keys in rlm_perl
-  * Log reasons for EAP failure (closes bug #8)
-  * Load home servers and pools that aren't referenced from a realm.
-  * Handle return codes from virtual attributes in "unlang" (e.g. LDAP-Group).  This makes "!(expr)" work for them.
-  * Enable VMPS to see contents of virtual server again
-  * Fix WiMAX module to be consistent with examples.  (closes bug #10)
-  * Fixed crash with policies dependent on NAS-Port comparisons
-  * Allowed vendor IDs to be be higher than 32767.
-  * Fix crash on startup with certain regexes in "hints" file.
-  * Fix crash in attr_filter module when packets don't exist
-  * Allow detail file reader to be faster when "load_factor = 100"
-  * Add work-around for build failures with errors related to lt__PROGRAM__LTX_preloaded_symbols.  libltdl / libtool are horrible.
-  * Made ldap module "rebind" option aware of older, incompatible versions of OpenLDAP.
-  * Check value of Fall-Through in attr_filter module.
+ -- Josip Rodin <joy-packages@debian.org>  Fri, 27 Nov 2009 16:03:31 +0100
 
- -- Alan DeKok <aland@freeradius.org>  Mon, 14 Sep 2009 11:20:00 +0100
+freeradius (2.1.7+dfsg-2) unstable; urgency=low
 
-freeradius (2.1.6-0) unstable; urgency=medium
-  * radclient exits with 0 on successful (accept / ack), and 1 otherwise (no response / reject)
-  * Added support for %{sql:UPDATE ..}, and insert/delete.  Patch from Arran Cudbard-Bell
-  * Added sample "do not respond" policy.  See raddb/policy.conf and raddb/sites-available/do_not_respond
-  * Cleanups to Suse spec file from Norbert Wegener
-  * New VSAs for Juniper from Bjorn Mork
-  * Include more RFC dictionaries in the default install
-  * More documentation for the WiMAX module
-  * Added "chase_referrals" and "rebind" configuration to rlm_ldap. This helps with Active Directory.  See raddb/modules/ldap
-  * Don't load pre/post-proxy if proxying is disabled.
-  * Added %{md5:...}, which returns MD5 hash in hex.
-  * Added configurable "retry_interval" and "poll_interval" for "detail" listeners.
-  * Added "delete_mppe_keys" configuration option to rlm_wimax.  Apparently some WiMAX clients misbehave when they see those keys.
-  * Added experimental rlm_ruby from http://github.com/Antti/freeradius-server/tree/master
-  * Add Tunnel attributes to ldap.attrmap
-  * Enable virtual servers to be reloaded on HUP.  For now, only the "authorize", "authenticate", etc. processing sections are reloaded.  Clients and "listen" sections are NOT reloaded.
-  * Updated "radwatch" script to be more robust.  See scripts/radwatch
-  * Added certificate compatibility notes in raddb/certs/README, for compatibility with different operating systems. (i.e. Windows)
-  * Minor changes to allow building without VQP.
-  * Minor fixes from John Center
-  * Fixed raddebug example
-  * Don't crash when deleting attributes via unlang
-  * Be friendlier to very fast clients
-  * Updated the "detail" listener so that it only polls once, and not many times in a row, leaking memory each time...
-  * Update comparison for Packet-Src-IP-Address (etc.) so that the operators other than '==' work.
-  * Did autoconf magic to work around weird libtool bug
-  * Make rlm_perl keep tags for tagged attributes in more situations
-  * Update UID checking for radmin
-  * Added "include_length" field for TTLS.  It's needed for RFC compliance, but not (apparently) for interoperability.
+  * Ship radmin and raddebug in the freeradius package.
+  * Correct section number inside raddebug(8) so it doesn't get misplaced.
 
- -- Alan DeKok <aland@freeradius.org>  Mon, 18 May 2009 10:00:00 +0100
+ -- Josip Rodin <joy-packages@debian.org>  Tue, 24 Nov 2009 15:29:59 +0100
 
-freeradius (2.1.5-0) unstable; urgency=medium
-  * Release number skipped due to procedural issues.
+freeradius (2.1.7+dfsg-1) unstable; urgency=low
 
- -- Alan DeKok <aland@freeradius.org>  Mon, 01 Jan 1970 9:48:00 +0100
+  * Adopting the package, closes: #536623.
+  * New upstream version, closes: #513484.
+    + Fixes the blooper in unlang evaluation logic, closes: #526175.
+  * Used quilt (and added README.source), and moved upstream file patching
+    into debian/patches/. The source is no longer in collab-maint git
+    (to make it simpler for me to finally get this out the door), but
+    kept the .gitignore should we need that again.
+  * Dropped the dialup_admin/bin/backup_radacct patch (integrated upstream).
+  * Dropped the raddb/Makefile patch (problem no longer exists upstream).
+  * Dropped the lib/packet.c lib/radius.c main/listen.c patches (was from
+    upstream 2.0.5 anyway).
+  * Dropped references to otp.conf, it no longer exists upstream.
+    Keep removing the conffile statoverride in prerm.
+  * Dropped references to snmp.conf, it no longer exists upstream.
+    Keep removing the conffile statoverride in prerm.
+  * Ship /etc/freeradius/modules/* in the freeradius package.
+  * Stop shipping sites-enabled symlinks in the package and instead create
+    them only on initial install, thanks to Matej Vela, closes: #533396.
+  * Add export PATH="${PATH:+$PATH:}/usr/sbin:/sbin" to the init script
+    at the request of John Morrissey, closes: #550143.
+  * Stop installing /var/run/freeradius in the package to silence Lintian.
+    The init script already recreates it at will.
+  * Remove executable bit from example.pl to silence Lintian.
 
-freeradius (2.1.4-0) unstable; urgency=medium
-  * Permit multiple "-e" in radmin.
-  * Add support for originating CoA-Request and Disconnect-Request. See raddb/sites-available/originate-coa.
-  * Added "lifetime" and "max_queries" to raddb/sql.conf. This helps address the problem of hung SQL sockets.
-  * Allow packets to be injected via radmin.  See "inject help" in radmin.
-  * Answer VMPS reconfirmation request.  Patch from Hermann Lauer.
-  * Sample logrotate script in scripts/logrotate.freeradius
-  * Add configurable poll interval for "detail" listeners
-  * New "raddebug" command.  This prints debugging information from a running server.  See "man raddebug.
-  * Add "require_message_authenticator" configuration to home_server configuration.  This makes the server add Message-Authenticator to all outgoing Access-Request packets.
-  * Added smsotp module, as contributed by Siemens.
-  * Enabled the administration socket in the default install. See raddb/sites-available/control-socket, and "man radmin"
-  * Handle duplicate clients, such as with replicated or load-balanced SQL servers and "readclients = yes"
-  * Clean up control sockets when they are closed, so that we don't leak memory.
-  * Define SUN_LEN for systems that don't have it.
-  * Correct some boundary conditions in the conditional checker ("if") in "unlang".  Bug noted by Arran Cudbard-Bell.
-  * Work around minor building issues in gmake.  This should only have affected developers.
-  * Change how we manage unprivileged user/group, so that we do not create control sockets owned by root.
-  * Fixed more minor issues found by Coverity.
-  * Allow raddb/certs/bootstrap to run when there is no "make" command installed.
-  * In radiusd.conf, run_dir depends on the name of the program, and isn't hard-coded to "..../radiusd"
-  * Check for EOF in more places in the "detail" file reader.
-  * Added Freeswitch dictionary.
-  * Chop ethernet frames in VMPS, rather than droppping packets.
-  * Fix EAP-TLS bug.  Patch from Arnaud Ebalard
-  * Don't lose string for regex-compares in the "users" file.
-  * Expose more functions in rlm_sql to rlm_sqlippool, which  helps on systems where RTLD_GLOBAL is off.
-  * Fix typos in MySQL schemas for ippools.
-  * Remove macro that was causing build issues on some platforms.
-  * Fixed issues with dead home servers.  Bug noted by Chris Moules.
-  * Fixed "access after free" with some dynamic clients.
+ -- Josip Rodin <joy-packages@debian.org>  Mon, 23 Nov 2009 03:57:37 +0100
 
- -- Alan DeKok <aland@freeradius.org>  Tue, 10 Mar 2009 9:48:00 +0100
-  
-freeradius (2.1.3-0) unstable; urgency=medium
-  * Allow running with "user=radiusd" and binding to secure sockets.
-  * Start sending Status-Server "are you alive" messages earlier, which helps with proxying multiple realms to a home server.
-  * Removed thread pool code from rlm_perl.  It's not necessary.
-  * Added example Perl configuration to raddb/modules/perl
-  * Force OpenSSL to support certificates with SHA256. This seems to be necessary for WiMAX certs.
-  * Fix Debian patch to allow it to build.
-  * Fix potential NULL dereference in debugging mode on certain platforms for TTLS and PEAP inner tunnels.
-  * Fix uninitialized memory in handling of vendor definitions
-  * Fix parsing of quoted (but non-string) attributes in the "users" file.
-  * Initialize uknown NAS IP to 255.255.255.255, rather than 0.0.0.0
-  * use SUN_LEN in control socket, to avoid truncation on some platforms.
-  * Correct internal handling of "debug condition" to prevent it from being over-written.
-  * Check return code of regcomp in "unlang", so that invalid regular expressions are caught rather than mishandled.
-  * Make rlm_sql use <ltdl.h>.  Addresses bug #610.
-  * Document list "type = status" better.  Closes bug #580.
-  * Set "default days" for certificates, because OpenSSL won't do it.  This closes bug #615.
-  * Reference correct list in example raddb/modules/ldap. Closes #596.
-  * Increase default schema size for Acct-Session-Id to 64. Closes #540.
-  * Fix use of temporary files in dialup-admin.  Closes #605 and addresses CVE-2008-4474.
-  * Addressed a number of minor issues found by Coverity.
-  * Added DHCP option 150 to the dictionary.  Closes #618.
+freeradius (2.0.4+dfsg-7) unstable; urgency=low
 
- -- Alan DeKok <aland@freeradius.org>  Fri, 04 Dec 2008 17:40:00 +0100
+  * Ignore rmdir failure on clean (closes: #545932)
+  * Do a better job of catching errors in the init script (closes: #533390)
+  * Init headers fixup (closes: #541882)
+  * Clean up some logs so dpkg can successfully rmdir (closes: #530727)
 
-freeradius (2.1.2-0) unstable; urgency=medium
-  * Due to packaging issues. 2.1.2 has been pulled from the net.
- -- Alan DeKok <aland@freeradius.org>  Thu, 03 Dec 2008 10:47:00 +0100
+ -- Stephen Gran <sgran@debian.org>  Sun, 13 Sep 2009 19:33:12 +0100
 
-freeradius (2.1.1-0) unstable; urgency=medium
-  * Many more options and features in radmin.  See "man radmin" and raddb/sites-available/control-socket
-  * Many more commands available via the control socket.  Connect via "radmin", and type "help" for more information.
-  * Added dictionary.networkphysics and dictionary.lancom.
-  * Calculate WiMAX MIP keys, and added sample WiMAX SQL tables.
-  * Fixed bug that made radmin not work
-  * Fixed Suse && Debian package scripts
-  * Fixed issues with dynamic clients
-  * Fixed configure checks for -lreadline
-  * rlm_sqlippool no longer needs to be linked to rlm_sql.
-  * Add statistics for detail file listeners.  This closes bug #593.
-  * Fixed printing of some WiMAX attributes.
-  * Fix double free on exit() in rlm_attr_filter
-  * Fixed build issues on Solaris.
-  * Fixed fast session resumption for EAP-TLS
-  
- -- Alan DeKok <aland@freeradius.org>  Thu, 25 Sep 2008 11:03:00 +0100
+freeradius (2.0.4+dfsg-6) unstable; urgency=low
 
-freeradius (2.1.0-0) unstable; urgency=medium
+  * Fix unsafe use of tempfile (closes: #496389)
 
-  * Clients may now be defined dynamically, based on IP address.  See raddb/sites-available/dynamic-clients.
-  * SNMP support is now available through an experimental Perl script.  See scripts/snmp-proxy/README
-  * SNMP statistics are available through Status-Server packets.  See raddb/sites-available/status
-  * Added more Microsoft attributes from bug #568.
-  * The "linelog" module has more functionality and flexibility. See raddb/modules/linelog.
-  * The debugging output has been sanitized.  It should be much more readable.
-  * Debug logs can now be turned on/off while the server is running, for a user, group, realm, etc.  See the "log" section of radiusd.conf.
-  * Added support for WiMAX Forum attributes.  The dynamic keys are not yet calculated.  See share/dictionary.wimax
-  * Added session resumption for PEAP and TTLS.  See raddb/eap.conf, "cache" sub-section.
-  * Added "radmin" command-line tool for administering a running server.  See "man radmin" and raddb/sites-available/control-socket.
-  * Double escaping of '\\' in the "users" (and some other) files has been fixed.  If you have '\\' in the "users" file, your configuration WILL NEED TO BE CHECKED, AND FIXED!
-  * Parse "security" section in radiusd.conf.  This was accidentally deleted in 2.0.5.  Closes bug #566.
-  * Bind to interface before IP, which allows DHCP sockets to listen on "*" for multiple interfaces.
-  * Fix handling of giaddr in DHCP responses.
-  * Corrected parsing of status_check in home_server so that it works.
-  * Fix hints so that "Puser" works again.
-  * Removed length restrictions on attribute names in the dictionaries.
-  * Update socket code to avoid C compiler optimizations.
+ -- Stephen Gran <sgran@debian.org>  Mon, 25 Aug 2008 14:18:48 +0100
 
--- Alan DeKok <aland@freeradius.org>  Fri, 05 Sep 2008 13:20:01 +0100
+freeradius (2.0.4+dfsg-5) unstable; urgency=low
 
-freeradius (2.0.5-0) unstable; urgency=medium
-  * Permit SQL authorize_reply_query to be empty.
-  * Allow setting response packet type in Post-Proxy-Type Fail handler.
-  * Added install-chown target to set correct permission and ownership make RADMIN=radmin RGROUP=radius install-chown
-  * Support for LDAP-Group and other dynamic comparison attributes in unlang.  Developed from a patch by Jason Alderfer.
-  * Added chroot support.  See radiusd.conf for comments.
-  * Allow clients of 0/0.  We do not recommend using this, though.
-  * Moved many module configurations into raddb/modules/*
-  * Allow proxying to virtual servers for accounting packets, too.
-  * Added "num fields" function to PostgreSQL client.
-  * Updated proxy fallback mechanism to validate fallback servers, and to process fallback requests in a child thread.
-  * rlm_realm returns "ok" for LOCAL realms, not "noop".
-  * Fixed some DHCP code handling.  The examples should now work.
+  [ Mark Hymers ]
+  * Cherry pick commit from 2.0.5 which fixes port binding issues.
+    Closes: #489773.
 
- -- Alan DeKok <aland@freeradius.org>  Sat, 07 Jun 2008 17:17:00 +0100
+  [ Stephen Gran ]
+  * add PERL_SYS_INIT3 and PERL_SYS_TERM calls to rlm_perl. (closes: #495073)
+  * Make the SQL modules link against rlm_sql.so in the most horrific
+    (and only) way possible.  (closes: #448699)
 
-freeradius (2.0.4-0) unstable; urgency=medium
-  * Allow "virtual_server" in "realm" and "home_server" sections. See raddb/proxy.conf and raddb/sites-available/virtual.example.com.
-  * Allow "passwd" module to be listed in "accounting" and "post-auth".
-  * Added "fallback" to "home_server_pool" configuration, to handle the case of all home servers being dead.  See raddb/proxy.conf.
-  * Added sample text to raddb/sites-available/inner-tunnel which can simplify debugging of inner tunnel configurations.
-  * Added regular expression matching in realm names.  See raddb/proxy.conf for examples.
-  * Added simple DHCP server functionality.  For comments, see raddb/sites-available/dhcp.
-  * Added file globbing capabilities to detail file reader
-  * Added sample raddb/sites-available/robust-proxy-accounting
-  * Clients in SQL can now refer to a virtual server. Patch from Michael Bretterklieber.
-  * Added some examples of creating RADIUS administrator in SQL, and assigning appropriate access rights.
-  * Install all files in raddb/sites-available
-  * Allow non-threaded builds.
-  * Don't treat '0x' as special for known attributes that are not of type "octets".
-  * Fix log error in rlm_pap.
-  * Remove documentation about non-existent functionality.
-  * Updated warning messages in debug output.
-  * Fix handling of timeouts in rlm_ldap that affected 64-bit systems. This fix was supposed to go into 2.0.3, but did not make it.
-  * Fix event handling in debug mode for failed proxy requests.
-  * Fix memleak in fifos.  Closes #537.
-  * Fix memleak on blocked threads.  Closes #538.
-  * Perform additional checks on NULL realms.  Closes #541.
-  * Fix handling of "clients" in "listen" section.
-  * When detail file cannot process a packet, sleep for longer to let the rest of the server do something.
-  * Add missing table to raddb/sql/mssql/schema.sql.  Closes #545.
-  * Updated rlm_sql_postgresql to build with PostgreSQL 7.x.  Closes #533.
-  * Fix "postauth" of rlm_ldap to look for LDAP-UserDn in the correct place.
-  * Update rlm_attr_filter for some corner cases.  Closes #543.
-  * Fixed memory leak in libfreeradius event handler.
-  * In the SQL Accounting on/off queries, remove the restriction that the session time had to be zero.
+ -- Stephen Gran <sgran@debian.org>  Thu, 14 Aug 2008 19:15:30 +0100
 
- -- Alan DeKok <aland@freeradius.org>  Wed, 30 Apr 2008 7:32:00 +0100
+freeradius (2.0.4+dfsg-4) unstable; urgency=low
 
-freeradius (2.0.3-0) unstable; urgency=medium
-  * Updated raddb/certs/ca.cnf with extensions to allow ca.der to be imported as a CA on Symbian and Windows Mobile devices. Closes bug #524
-  * Enable multiple matches in "hints" via Fall-Through = Yes. Closes bug #477
-  * Added preliminary SQLite driver, contibuted by Apple. Untested, with no sample configuration.  This address bug #470.
-  * Updated logging sub-system so that log messages from libfreeradius can go to the log file, and not stdout.
-  * Added dictionary.rfc5176
-  * EAP module now checks for instance name, and uses that for authentication.  This avoids the need to set Auth-Type when there are multiple instances of the EAP module.
-  * Corrected typos in rlm_dbm.  Closes bugs #521 and #522.
-  * Detail file "listen" sections now work much better.
-  * Don't allow old "log_*" to over-ride new format.  Closes bug #525
-  * Initialize allocated memory in Oracle SQL driver.  This fixes occasional crashes on some systems.  Closes bug #518
-  * Call correct function in rlm_protocol_filter.  This enables the module to build.  Closes bug #512.
-  * Added deprecated flag to build for rlm_krb5.  This allows it to run on 64-bit systems.  Closes bug #491
-  * Corrected error message when parsing invalid configurations so it doesn't crash.  Closes bug #527
-  * Fix handling of timeouts in rlm_ldap that affected 64-bit systems.
-  * Handle $INCLUDE's in "instantiate" section.  Closes #528.
+  * Create links from sites-enabled to sites-available for the files that
+    upstream enables by default (closes: #483914)
 
- -- Alan DeKok <aland@freeradius.org>  Thu, 17 Mar 2008 10:00:00 +0100
+ -- Stephen Gran <sgran@debian.org>  Sun, 01 Jun 2008 12:24:35 +0100
 
-freeradius (2.0.2-0) unstable; urgency=medium
-  * Added notes on how to debug the server in radiusd.conf
-  * Moved all "log_*" in radiusd.conf to log{} section.
-  * Added ca.der target in raddb/certs/Makefile.
-  * Added ability send raw attributes via "Raw-Attribute = 0x0102..."
-  * Permit "unlang" policies inside of Auth-Type{} sub-sections.
-  * "listen" sections can now have "type = proxy"
-  * Fixed reading of "detail" files.
-  * Allow inner EAP tunneled sessions to be proxied.
-  * Corrected MySQL schemas
-  * syslog now works in log{} section.
-  * Corrected typo in raddb/certs/client.cnf
-  * Updated raddb/sites-available/proxy-inner-tunnel.
-  * Ignore zero-length attributes in received packets.
-  * Correct memcpy when dealing with unknown attributes.
-  * Corrected debugging messages in attr_rewrite.
-  * Corrected generation of State attribute in EAP.
-  * Fall back to DEFAULT realm if no realm was found.
-  * Updated example raddb/sites-available/proxy-inner-tunnel
-  * Corrected behavior of attr_filter to match documentation.
+freeradius (2.0.4+dfsg-3) unstable; urgency=low
 
- -- Alan DeKok <aland@freeradius.org>  Thu, 14 Feb 2008 12:08:06 +0100
+  * brown paper bag release
+  * Really actually do the statoverride I thought we were doing with -2
+    (closes: #482380)
 
-freeradius (2.0.1-0) unstable; urgency=low
-  * Improve "unlang".  See "man unlang"
-  * update acct_module
-  * fix parsing of syslog logging
-  * Minor fixes over 2.0.0
+ -- Stephen Gran <sgran@debian.org>  Thu, 22 May 2008 11:18:12 +0100
 
- -- Alan DeKok <aland@freeradius.org>  Tue, 22 Jan 2008 14:25:44 +0100
+freeradius (2.0.4+dfsg-2) unstable; urgency=low
 
-freeradius (2.0.0-0) unstable; urgency=low
+  * Install /var/log/freeradius 0750 so that people writing their passwords to
+    logfiles don't accidentally leak them without noticing (closes: #482085)
 
-  * New upstream release.
-  * Upgrade debhelper compatibility to version 5. This breaks the build
-    on Sarge, which is no longer in stable.
-  * Rewrite large parts of debian/rules based on the changes from the
-    downstream debian package. (use dpatches and debhelper files where
-    possible)
-  * New initscript that uses the LSB functions instead of calling directly
-    start-stop-daemon.
-  * Create default certificates in postinst to enable the EAP modules (tls,
-    ttls and peap) when the server starts for the first time.
-  * Update Standards-Version to 3.7.3.
+ -- Stephen Gran <sgran@debian.org>  Tue, 20 May 2008 19:38:27 +0100
 
- -- Nicolas Baradakis <nbk@sitadelle.com>  Sat,  4 Jan 2008 20:15:42 +0100
+freeradius (2.0.4+dfsg-1) unstable; urgency=low
 
-freeradius (1.1.7-0) unstable; urgency=low
+  * Ok, actually remove all the cruft in debian/ shipped by upstream.  This
+    means repacking the tarball and all that, but it also means dpkg-source
+    won't get the chance to ignore removed files, resulting in files
+    reappearing, but not locally (closes: #481406)
+  * Also remove config.{cache,log} in clean target - damn you gitignore
 
-  * New upstream release.
+ -- Stephen Gran <sgran@debian.org>  Mon, 19 May 2008 03:55:55 +0100
 
- -- Alan DeKok <aland@freeradius.org>  Tue, 26 Jun 2007 09:52:41 +0100
+freeradius (2.0.4-3) unstable; urgency=low
 
-freeradius (1.1.6-0) unstable; urgency=low
+  * I have no god damn idea why the buildds are adding manpages to the wrong
+    binary.  Reuploading with DH_VERBOSE=1 to see if we can find it.  We
+    certainly can't reproduce it in our local builds, even calling the same
+    targets in the same order as the buildds.
 
-  * New upstream release.
+ -- Stephen Gran <sgran@debian.org>  Mon, 19 May 2008 00:17:06 +0100
 
- -- Alan DeKok <aland@freeradius.org>  Mon, 26 Mar 2007 14:57:03 +0100
+freeradius (2.0.4-2) unstable; urgency=low
 
-freeradius (1.1.5-0) unstable; urgency=low
+  * freeradius-{common,utils} needs to Conflict: with other radius
+    implementations that share files (closes: #480682)
 
-  * New upstream release.
+ -- Stephen Gran <sgran@debian.org>  Sun, 11 May 2008 18:41:45 +0100
 
- -- Nicolas Baradakis <nbk@sitadelle.com>  Tue,  6 Mar 2007 23:52:55 +0100
+freeradius (2.0.4-1) unstable; urgency=low
 
-freeradius (1.1.3-0) unstable; urgency=low
+  * New upstream release
+  * Make all directories in /etc/freeradius group +x (closes: #479835)
 
-  * New upstream release.
-  * Delete dpatch merged in mainstream CVS:
-    - 01-actually_check_for_unset_password
-  * Remove irrelevant dpatch after autotools upgrade:
-    - 13_a_libtool_to_call_your_own
-  * Update debian/rules because of autotools upgrade, too.
-  * Fix errors in initscript when trying to reload even if the server
-    isn't running.
+ -- Stephen Gran <sgran@debian.org>  Fri, 09 May 2008 12:58:55 +0100
 
- -- Nicolas Baradakis <nbk@sitadelle.com>  Mon, 10 Jul 2006 14:06:04 +0200
+freeradius (2.0.3-1) unstable; urgency=low
 
-freeradius (1.1.2-0) unstable; urgency=low
+  [ Mark Hymers ]
+  * New upstream release
+  * Bump Build-Dep on debhelper to 6.0.7 as we use dh_lintian
+  * Delete lots of obsolete conffiles
 
-  * New upstream release.
-  * Update dpatch for 1.1.2:
-    - 13_a_libtool14_to_call_your_own
+  [ Stephen Gran ]
+  * Create a -common package for some extra file that the -utils package
+    needs.  Also stuff in manpages and other arch all files to reduce the size
+    of the unnecessarily repeated stuff in the archive
+  * Change chown/chmod calls to dpkg-statoverride
 
- -- Nicolas Baradakis <nbk@sitadelle.com>  Sun, 21 May 2006 19:20:03 +0200
+ -- Mark Hymers <mhy@debian.org>  Sat, 03 May 2008 17:07:42 +0100
 
-freeradius (1.1.1-0) unstable; urgency=low
+freeradius (2.0.2-1) unstable; urgency=low
 
-  * New upstream release.
-  * Delete dpatches merged in mainstream CVS:
-    - 01_NET-SNMP_build_support
-    - 02_document_actual_shared_secret_maximum_length
-    - 12_more_dialup_admin_various_fixes
-  * Remove irrelevant dpatch after rlm_eap changes in CVS:
-    - 06_libtool14_vs_rlm_eap_tls
-  * Features that break compatibility with Sarge have not been merged:
-    - debhelper V5 support
-    - lsb-init functions
+  * Yet another new upstream version (closes: #465475)
+  * Cleanup manpages
+  * Add lintian overrides for rpath - this is intentional
+  * Packaging is now being done in git, we're dropping dpatch
+  * Split out client utilities (closes: #470977) - this means we also need to
+    split the library so the two binary packages can use it
+  * Major package rework
 
- -- Nicolas Baradakis <nbk@sitadelle.com>  Sun, 12 Feb 2006 16:29:20 +0100
+ -- Stephen Gran <sgran@debian.org>  Sun, 16 Mar 2008 22:58:16 +0000
+
+freeradius (2.0.0-1) unstable; urgency=low
+
+  * New upstream version
+  * Patches:
+    - freshen 02-radiusd-to-freeradius
+    - disable 03-dialupadmin-help until it's reworked properly
+
+ -- Stephen Gran <sgran@debian.org>  Thu, 10 Jan 2008 23:05:50 +0000
+
+freeradius (1.1.7-1) unstable; urgency=low
+
+  * New upstream version
+  * Update debian/copyright to reflect reality:
+    - package is GPL v2 only, so refer to the correct file in common-licenses
+    - Remove explanation of wy postgres and snmp modules can't be shipped,
+      since we do ship them.
+  * Remove 04-configure-openssl.dpatch, --without-openssl applied upstream
+
+ -- Stephen Gran <sgran@debian.org>  Thu, 09 Aug 2007 10:09:20 +0100
+
+freeradius (1.1.6-4) unstable; urgency=low
+
+  The "Give me GPLv2 compatibility or give me FTBFS" release
+  * Fix rlm_krb5 not to link with openssl unless it actually needs to
+  * debian/rules: move dependency on patch target to config.status
+  * debian/rules: FTBFS if a package accidentally directly links to openssl
+
+ -- Stephen Gran <sgran@debian.org>  Wed, 04 Jul 2007 17:08:45 +0100
+
+freeradius (1.1.6-3) unstable; urgency=low
+
+  * Change freeradius-dbg to Priority: extra.
+  * After discussions with one of the ftp-assistants, we can ship
+    freeradius-postgresql in main.  Yey!  (Closes: #264649, #382329)
+
+ -- Mark Hymers <mhy@debian.org>  Thu, 21 Jun 2007 13:32:09 +0100
+
+freeradius (1.1.6-2) unstable; urgency=low
+
+  [ Mark Hymers ]
+  * Add freeradius-dbg package.
+
+  [ Stephen Gran ]
+  * Update debian/control for php5 (dialupadmin) (closes: #424788, #412701)
+
+ -- Stephen Gran <sgran@debian.org>  Thu, 31 May 2007 02:47:02 +0100
+
+freeradius (1.1.6-1) unstable; urgency=low
+
+  * New upstream release.  Closes: #420003. 
+
+ -- Mark Hymers <mhy@debian.org>  Thu, 19 Apr 2007 15:14:05 +0100
+
+freeradius (1.1.5-1) unstable; urgency=low
+
+  * New upstream release.  Closes: #415980
+  * Remove 01-fix-proxy.dpatch as it was a backport from upstream.
+  * otppasswd.sample is no longer provided so make sure we remove the
+    conffile properly in preinst.
+  * Update my email address and remove Paul from Uploaders.  Thanks to him for
+    previously maintaining the package.
+  * Change so that we start at S50 and stop at K19 so that we start after
+    services we depend on and stop before them.  Closes: #408665.
+    Note that is only for new installs.
+
+ -- Mark Hymers <mhy@debian.org>  Fri, 13 Apr 2007 13:14:08 +0100
+
+freeradius (1.1.3-3) unstable; urgency=medium
+
+  * Fix POSIX compliance problem in init script.  Closes: #403384. 
+
+ -- Mark Hymers <mark@hymers.org.uk>  Sat, 16 Dec 2006 20:45:11 +0000
+
+freeradius (1.1.3-2) unstable; urgency=low
+
+  [ Stephen Gran ]
+  * Check for existence of pidfile in initscript.
+  * Clean some old cruft from debian/rules
+  * Write dialup_admin/Makefile
+  * Make binNMU safe
+  * Some lsb init headers
+
+  [ Mark Hymers ]
+  * Merge upstream patch to deal with proxy port settings.  Closes: #388024.
+  * Rewrite large parts of the Debian build system.
+
+ -- Stephen Gran <sgran@debian.org>  Sat,  7 Oct 2006 21:08:35 +0100
+
+freeradius (1.1.3-1) unstable; urgency=low
+
+  [ Stephen Gran ]
+  * Add and rework ubuntu /var/run/tmpfs patch
+  * Add LSB init script headers
+  * Actually trap errors in init script, how about?
+
+  [ Mark Hymers ]
+  * New upstream version.
+  * New version of autotools in 1.1.3. Closes: #380204
+  * Remove previous patches merged upstream:
+    - 01-actually_check_for_unset_password.dpatch
+  * Only do user creation, group addition, chmod and chown stuff in postinst
+    on an initial install to avoid clobbering local changes.
+
+ -- Mark Hymers <mark@hymers.org.uk>  Wed, 23 Aug 2006 14:48:57 +0100
+
+freeradius (1.1.2-2) unstable; urgency=low
+
+  [ Stephen Gran ]
+  * Acknowledge my previous NMU's (closes: #351732, #359042)
+  * Init scripts overhaul:
+    - now use reload on upgrade of modules
+    - replace sleep statements with --retry, as time based tests are
+      fragile
+    - no longer exit with an error if stop fails because the
+      daemon isn't running (closes: #374670, #351735)
+    - stop using command -v in /bin/sh scripts
+  * General maintainer script overhaul:
+    - Don't rm -rf something in /etc (ouch)
+    - Use chown -R instead of 'find .. -exec'
+    - should not need to manually remove the init script on purge (it's a dpkg
+      managed conffile)
+    - Only do user management stuff if user is missing.  No point rerunning it
+      every upgrade.
+    - Install /etc/freeradius/dictionary with relaxed permissions, but never
+      touch it again (closes: #334299)
+    - switch to debhelper files where possible.  I like an easy to read
+      Makefile.
+  * Arg.  Move README.rfc to the freeradius package where it belongs.
+
+  [ Mark Hymers ]
+  * Document building SSL/PostgreSQL modules in debian/rules, add
+    control.postgresql to make it more convenient.  Tested on AMD64 using
+    system libtool.
+
+ -- Stephen Gran <sgran@debian.org>  Sun, 25 Jun 2006 23:06:16 +0100
+
+freeradius (1.1.2-1) unstable; urgency=low
+
+  [ Mark Hymers ]
+  * New maintainers
+  * New upstream version.
+  * Remove previous patches merged upstream:
+    - 01_NET-SNMP_build_support.dpatch
+    - 02_document_actual_shared_secret_maximum_length.dpatch
+    - 12_more_dialup_admin_various_fixes.dpatch
+    - 14_broken_parse.dpatch
+    - 15_CVE-2006-1354.dpatch
+  * Use --with-system-libtool during configure.  Add B-D: on libtool
+    Removes obsolete dpatches:
+    - 06_libtool14_vs_rlm_eap_tls.dpatch
+    - 13_a_libtool_to_call_your_own.dpatch
+  * Remove freeradius.undocumented as we don't install links to
+    undocumented(7) anymore (not recommended since policy 3.5.8.0)
+
+  [ Stephen Gran ]
+  * Update to Standards Version 3.7.2 (no changes)
+  * Remove doc/rfc/ to make -legal happy (closes: #365192)
+    - this means repacked tarball.  See README.rfc for details
+  * Test for unset variable, rather than empty variable in clean_radacct,
+    monthly_tot_stats and truncate_radacct (closes: #374053)
+
+ -- Mark Hymers <mark@hymers.org.uk>  Sat, 17 Jun 2006 16:05:19 +0100
+
+freeradius (1.1.0-1.2) unstable; urgency=high
+
+  * Non-maintainer upload.
+  * [ CVE-2006-1354 ]:
+    src/modules/rlm_eap/types/rlm_eap_mschapv2/rlm_eap_mschapv2.c:
+    Due to insufficient input validation it is possible for a remote
+    attacker to bypass authentication or cause a denial of service.
+    (closes: #359042)
+
+ -- Stephen Gran <sgran@debian.org>  Wed, 17 May 2006 11:22:28 -0500
+
+freeradius (1.1.0-1.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Upstream patch to fix parsing config file (closes: #351732)
+    Fixes: fails to start on amd64 (error in dictionary parsing code)
+
+ -- Stephen Gran <sgran@debian.org>  Sat,  1 Apr 2006 11:07:55 +0100
 
 freeradius (1.1.0-1) unstable; urgency=low
   * ReDebianise upstream tarball:

@@ -1,0 +1,31 @@
+#! /bin/sh
+
+set -e
+
+case "$1" in
+        remove)
+               ;;
+        purge)
+               rmdir --ignore-fail-on-non-empty /etc/freeradius
+               # If we haven't managed to remove /etc/freeradius, make
+               # sure that freerad:freerad doesn't own anything before
+               # we remove the user and group
+               test ! -d /etc/freeradius || find /etc/freeradius -user freerad -exec chown root "{}" \; || true
+               test ! -d /etc/freeradius || find /etc/freeradius -group freerad -exec chgrp root "{}" \; || true
+
+               if [ -x `which deluser` ]; then
+                 deluser --quiet freerad shadow || true
+                 deluser --quiet freerad || true
+               fi
+               if [ -x `which delgroup` ]; then
+                 delgroup --quiet freerad || true
+               fi
+               ;;
+         *)
+               ;;
+esac
+
+#DEBHELPER#
+
+exit 0
+

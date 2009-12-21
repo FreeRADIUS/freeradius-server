@@ -1,71 +1,140 @@
 Source: freeradius
-Build-Depends: debhelper (>= 5), dpatch (>= 2), dpkg-dev (>= 1.13.19), autotools-dev, libtool (>= 1.5), libltdl3-dev, libpam0g-dev, libmysqlclient15-dev | libmysqlclient-dev, libgdbm-dev, libldap2-dev, libsasl2-dev, libiodbc2-dev, libkrb5-dev, libperl-dev, libpcap-dev, python-dev, snmp, libsnmp9-dev | libsnmp-dev, libpq-dev, libssl-dev
+Build-Depends: debhelper (>= 6.0.7),
+ quilt,
+ dpkg-dev (>= 1.13.19),
+ autotools-dev,
+ libtool,
+ libltdl3-dev,
+ libpam0g-dev,
+ libmysqlclient-dev,
+ libgdbm-dev,
+ libldap2-dev,
+ libsasl2-dev,
+ libiodbc2-dev,
+ libkrb5-dev,
+ libperl-dev,
+ libpcap-dev,
+ python-dev,
+ libsnmp-dev,
+ libpq-dev
 Section: net
 Priority: optional
-Maintainer: Nicolas Baradakis <nbk@sitadelle.com>
-Standards-Version: 3.7.3.0
+Maintainer: Josip Rodin <joy-packages@debian.org>
+Uploaders: Stephen Gran <sgran@debian.org>, Mark Hymers <mhy@debian.org>
+Standards-Version: 3.8.3
+Homepage: http://www.freeradius.org/
 
 Package: freeradius
 Architecture: any
-Depends: lsb-base (>= 3.1-23.2), adduser, openssl, ${shlibs:Depends}
+Depends: lsb-base (>= 3.1-23.2), ${shlibs:Depends}, freeradius-common, libfreeradius2 (= ${binary:Version})
 Provides: radius-server
+Recommends: freeradius-utils
 Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5
 Description: a high-performance and highly configurable RADIUS server
- FreeRADIUS is the world's most popular RADIUS Server. It is fast, flexible,
- configurable, and supports more authentication protocols than most commercial
- servers. It includes support for SQL, LDAP, RADIUS Proxying, failover, load
- balancing, and nearly 100 vendor dictionary files.
+ FreeRADIUS is a high-performance RADIUS server with support for:
+  - many vendor-specific attributes
+  - proxying and replicating requests by any criteria
+  - authentication on system passwd, SQL, Kerberos, LDAP, users file, or PAM
+  - multiple DEFAULT configurations
+  - regexp matching in string attributes
+ and lots more.
+
+Package: freeradius-common
+Depends: adduser
+Architecture: all
+Conflicts: radiusd-livingston, xtradius, yardradius
+Replaces: freeradius (<< 2.0)
+Description: FreeRADIUS common files
+ This package contains common files used by several of the other packages from
+ the FreeRADIUS project.
+
+Package: freeradius-utils
+Architecture: any
+Replaces: freeradius (<< 2.0)
+Conflicts: radiusd-livingston, yardradius
+Depends: ${shlibs:Depends}, freeradius-common, libfreeradius2 (= ${binary:Version})
+Recommends: libdbi-perl
+Description: FreeRADIUS client utilities
+ This package contains various client programs and utilities from
+ the FreeRADIUS Server project, including:
+  - radclient
+  - radeapclient
+  - radlast
+  - radsniff
+  - radsqlrelay
+  - radtest
+  - radwho
+  - radzap
+  - rlm_dbm_cat
+  - rlm_dbm_parser
+  - rlm_ippool_tool
+  - smbencrypt
+
+Package: libfreeradius2
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: FreeRADIUS shared library
+ The FreeRADIUS projects' libfreeradius-radius and libfreeradius-eap, used by
+ the FreeRADIUS server and some of the utilities.
+
+Package: libfreeradius-dev
+Architecture: any
+Section: libdevel
+Depends: ${shlibs:Depends}, libfreeradius2 (= ${binary:Version})
+Description: FreeRADIUS shared library development files
+ The FreeRADIUS projects' libfreeradius-radius and libfreeradius-eap, used by
+ the FreeRADIUS server and some of the utilities.
  .
- Web site: http://www.freeradius.org/
+ This package contains the development headers and static library version.
 
 Package: freeradius-krb5
 Architecture: any
-Depends: freeradius (= ${source:Version}), ${shlibs:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}
 Description: kerberos module for FreeRADIUS server
  The FreeRADIUS server can use Kerberos to authenticate users, and this module
  is necessary for that.
 
 Package: freeradius-ldap
 Architecture: any
-Depends: freeradius (= ${source:Version}), ${shlibs:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}
 Description: LDAP module for FreeRADIUS server
  The FreeRADIUS server can use LDAP to authenticate users, and this module
  is necessary for that.
 
 Package: freeradius-postgresql
 Architecture: any
-Depends: freeradius (= ${source:Version}), ${shlibs:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}
 Description: PostgreSQL module for FreeRADIUS server
  The FreeRADIUS server can use PostgreSQL to authenticate users and do
  accounting, and this module is necessary for that.
 
 Package: freeradius-mysql
 Architecture: any
-Depends: freeradius (= ${source:Version}), ${shlibs:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}
 Description: MySQL module for FreeRADIUS server
  The FreeRADIUS server can use MySQL to authenticate users and do accounting,
  and this module is necessary for that.
 
 Package: freeradius-iodbc
 Architecture: any
-Depends: freeradius (= ${source:Version}), ${shlibs:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}
 Description: iODBC module for FreeRADIUS server
  The FreeRADIUS server can use iODBC to access databases to authenticate users
  and do accounting, and this module is necessary for that.
 
 Package: freeradius-dialupadmin
 Architecture: all
-Depends: php5 | php5-cgi
-Recommends: ${perl:Depends}
-Suggests: apache2-mpm-prefork | httpd, php5-mysql | php5-pgsql, libdate-manip-perl
+Depends: php5 | libapache2-mod-php5 | php5-cgi, apache2-mpm-prefork | httpd, ${perl:Depends}
+Suggests: php5-mysql | php5-pgsql, php5-ldap, libdate-manip-perl
 Description: set of PHP scripts for administering a FreeRADIUS server
  These scripts provide a web-based interface for administering a FreeRADIUS
  server which stores authentication information in either SQL or LDAP.
 
 Package: freeradius-dbg
 Architecture: any
+Section: debug
 Priority: extra
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
 Description: debug symbols for the FreeRADIUS packages
  FreeRADIUS is a modular, high performance and feature-rich RADIUS server.
  This package contains the detached debugging symbols for the Debian FreeRADIUS

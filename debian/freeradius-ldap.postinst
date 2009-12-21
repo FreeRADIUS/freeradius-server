@@ -4,18 +4,19 @@ set -e
 
 case "$1" in
   configure)
-	if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
-		invoke-rc.d freeradius restart
-	else
-		/etc/init.d/freeradius restart
-	fi
-	;;
+        if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
+          invoke-rc.d freeradius force-reload
+        else
+          /etc/init.d/freeradius force-reload
+        fi
+        ;;
   abort-upgrade)
-	;;
+        ;;
   abort-remove)
-	;;
+        ;;
   abort-deconfigure)
-	;;
+        ;;
 esac
 
 #DEBHELPER#
+

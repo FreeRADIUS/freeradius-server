@@ -1,15 +1,3 @@
-usr/share/freeradius-dialupadmin/bin/backup_radacct
-usr/share/freeradius-dialupadmin/bin/clean_radacct 
-usr/share/freeradius-dialupadmin/bin/clearsession
-usr/share/freeradius-dialupadmin/bin/log_badlogins 
-usr/share/freeradius-dialupadmin/bin/monthly_tot_stats 
-usr/share/freeradius-dialupadmin/bin/showmodem
-usr/share/freeradius-dialupadmin/bin/snmpfinger 
-usr/share/freeradius-dialupadmin/bin/sqlrelay_query
-usr/share/freeradius-dialupadmin/bin/tot_stats
-usr/share/freeradius-dialupadmin/bin/truncate_radacct 
-usr/share/freeradius-dialupadmin/htdocs/
-usr/share/freeradius-dialupadmin/html/
-usr/share/freeradius-dialupadmin/lib/
-usr/share/freeradius-dialupadmin/sql/
 etc/freeradius-dialupadmin
+usr/share/doc/freeradius-dialupadmin
+usr/share/freeradius-dialupadmin

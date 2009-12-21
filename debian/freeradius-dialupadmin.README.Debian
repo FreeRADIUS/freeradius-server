@@ -3,10 +3,10 @@ Configuration is in /etc/freeradius-dialupadmin/
 which is linked into the dialupadmin tree in
 /usr/share/freeradius-dialupadmin.
 
-To put this into production, set a path on your
-webserver to point to
-/usr/share/freeradius-dialupadmin/htdocs
-and ensure .php3 is processed by PHP.
+To put this into production, add
+Include /etc/freeradius-dialupadmin/apache2.conf
+
+To the relevant section of your apache configuration.
 
 The scripts make use of .. to access the
 other paths, so symlinking into your webtree

@@ -2,108 +2,62 @@
 # Start/stop the FreeRADIUS daemon.
 
 ### BEGIN INIT INFO
-# Provides:          radiusd
-# Required-Start:    $network
-# Should-Start:      $time mysql ldap postgresql samba krb5-kdc
-# Required-Stop:
+# Provides:          freeradius
+# Required-Start:    $remote_fs $network $syslog
+# Should-Start:      $time mysql slapd postgresql samba krb5-kdc
+# Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: FreeRADIUS server
-# Description:       Extensible, configurable, high performance RADIUS server.
+# Short-Description: Radius Daemon 
+# Description:       Extensible, configurable radius daemon
 ### END INIT INFO
 
-# Do NOT "set -e"
+set -e
 
-PATH=/sbin:/usr/sbin:/bin:/usr/bin
-DESC="FreeRADIUS server"
-NAME=freeradius
-DAEMON=/usr/sbin/$NAME
-PIDFILE=/var/run/$NAME/$NAME.pid
-SCRIPTNAME=/etc/init.d/$NAME
-
-# Default values for config variables
-FR_USER=freerad
-FR_GROUP=freerad
-FR_ARGS=
-
-# Exit if the package is not installed
-[ -x $DAEMON ] || exit 0
-
-# Read configuration variable file if it is present
-[ -r /etc/default/$NAME ] && . /etc/default/$NAME
-
-# Load the VERBOSE setting and other rcS variables
-. /lib/init/vars.sh
-
-# Define LSB start_daemon, killproc and log_* functions.
 . /lib/lsb/init-functions
 
+PROG="freeradius"
+PROGRAM="/usr/sbin/freeradius"
+PIDFILE="/var/run/freeradius/freeradius.pid"
+DESCR="FreeRADIUS daemon"
+
+test -f $PROGRAM || exit 0
+
 # /var/run may be a tmpfs
-if [ ! -d /var/run/$NAME ]; then
-	install -o "$FR_USER" -g "$FR_GROUP" -m 0755 -d /var/run/$NAME
-	if [ $? -ne 0 ]; then
-		echo "Error creating the /var/run/$NAME directory."
-		exit 1
-	fi
+if [ ! -d /var/run/freeradius ]; then
+  mkdir -p /var/run/freeradius
+  chown freerad:freerad /var/run/freeradius
 fi
 
+export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
+
+ret=0
+
 case "$1" in
-  start)
-	[ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
-	start_daemon -p $PIDFILE $DAEMON $FR_ARGS
-	if [ $? -ne 0 ]; then
-		[ "$VERBOSE" != no ] && log_end_msg 1 || \
-		log_failure_msg "Run '$DAEMON -X' to find out why."
-		exit 1
-	fi
-	[ "$VERBOSE" != no ] && log_end_msg 0
-	;;
-  stop)
-	[ "$VERBOSE" != no ] && log_daemon_msg "Stopping $DESC" "$NAME"
-	killproc -p $PIDFILE $DAEMON
-	if [ $? -ne 0 ]; then
-		[ "$VERBOSE" != no ] && log_end_msg 1
-		exit 1
-	fi
-	[ "$VERBOSE" != no ] && log_end_msg 0
-	;;
-  restart)
-	log_daemon_msg "Restarting $DESC" "$NAME"
-	killproc -p $PIDFILE $DAEMON
-	if [ $? -ne 0 ]; then
-		log_end_msg 1
-		log_failure_msg "Failed to stop $NAME."
-		exit 1
-	fi
-	start_daemon -p $PIDFILE $DAEMON $FR_ARGS
-	if [ $? -ne 0 ]; then
-		log_end_msg 1
-		log_failure_msg "Failed to start $NAME."
-		log_failure_msg "Run '$DAEMON -X' to find out why."
-		exit 1
-	fi
-	log_end_msg 0
-	;;
-  reload|force-reload)
-	log_daemon_msg "Reloading $DESC" "$NAME"
-	killproc -p $PIDFILE $DAEMON -SIGHUP
-	if [ $? -ne 0 ]; then
-		log_end_msg 1
-		exit 1
-	fi
-	sleep 2
-	pidofproc -p $PIDFILE > /dev/null
-	if [ $? -ne 0 ]; then
-		log_end_msg 1
-		log_failure_msg "$NAME has died."
-		exit 1
-	fi
-	log_end_msg 0
-	;;
-  *)
-	echo "Usage: $SCRIPTNAME {start|stop|restart|reload|force-reload}" >&2
-	exit 3
-	;;
+        start)
+                log_daemon_msg "Starting $DESCR" "$PROG"
+                start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $PROGRAM || ret=$?
+                log_end_msg $ret
+                exit $ret
+                ;;
+        stop)
+                log_daemon_msg "Stopping $DESCR" "$PROG"
+                if [ -f "$PIDFILE" ] ; then
+                  start-stop-daemon --stop --retry=TERM/30/KILL/5 --quiet --pidfile $PIDFILE || ret=$?
+                  log_end_msg $ret
+                else 
+                  log_action_cont_msg "$PIDFILE not found"
+                  log_end_msg 0
+                fi
+                ;;
+        restart|force-reload)
+                $0 stop
+                $0 start
+                ;;
+        *)
+                echo "Usage: $0 start|stop|restart|force-reload"
+                exit 1 
+                ;;
 esac
 
 exit 0

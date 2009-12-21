@@ -1,0 +1,3 @@
+usr/share/freeradius/*
+etc/freeradius/radiusd.conf
+etc/freeradius/dictionary

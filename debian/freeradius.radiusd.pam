@@ -4,7 +4,7 @@
 
 # We fall back to the system default in /etc/pam.d/common-*
 # 
-
+        
 @include common-auth
 @include common-account
 @include common-password
