@@ -73,6 +73,7 @@ On Debian systems, the complete text of the GNU General Public License can be
 found in /usr/share/common-licenses/GPL-2 file.
 
 --
+
 /usr/lib/freeradius/libradius* is under the GNU LGPL version 2.
 
 This library is free software; you can redistribute it and/or
@@ -84,13 +85,24 @@ On Debian systems, the complete text of the GNU Lesser General Public
 License can be found in /usr/share/common-licenses/LGPL.
 
 --
-Some GPL parts of this software depend on OpenSSL, the combination of
-which cannot be distributed in compiled binary form. The following
-modules cannot be enabled as they directly depend on OpenSSL:
 
-rlm_eap_peap
-rlm_eap_tls
-rlm_eap_ttls
+src/LICENSE.openssl includes a modification to the main LICENSE file,
+which is GPLv2. It applies only to the files in the "src" directory.
+(That directory contains the source code which has links to OpenSSL
+and from which the Debian binaries are produced.)
+
+In addition, as a special exception, the copyright holders give
+permission to link the code of this program with the OpenSSL library,
+and distribute linked combinations including the two.
+You must obey the GNU General Public License in all respects
+for all of the code used other than OpenSSL.  If you modify
+file(s) with this exception, you may extend this exception to your
+version of the file(s), but you are not obligated to do so.  If you
+do not wish to do so, delete this exception statement from your
+version.  If you delete this exception statement from all source
+files in the program, then also delete it here.
+
+--
 
 The Debian packaging is (C) 2008, Stephen Gran <sgran@debian.org> and
 is licensed under the GPL, see /usr/share/common-licenses/GPL.
