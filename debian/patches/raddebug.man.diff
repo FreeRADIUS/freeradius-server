@@ -1,8 +1,0 @@
---- freeradius-2.1.7+dfsg/man/man8/raddebug.8	2009-09-14 16:43:29.000000000 +0200
-+++ freeradius-2.1.7+dfsg/man/man8/raddebug.8	2009-11-24 15:36:11.000000000 +0100
-@@ -1,4 +1,4 @@
--.TH RADDEBUG 1 "13 February 2009" "" "FreeRADIUS Daemon"
-+.TH RADDEBUG 8 "13 February 2009" "" "FreeRADIUS Daemon"
- .SH NAME
- raddebug - Display debugging output from a running server.
- .SH SYNOPSIS
