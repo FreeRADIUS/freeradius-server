@@ -303,7 +303,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 			 int cflags, int modreturn)
 {
 	int result;
-	int lint, rint;
+	uint32_t lint, rint;
 	VALUE_PAIR *vp = NULL;
 #ifdef HAVE_REGEX_H
 	char buffer[1024];
@@ -408,12 +408,12 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 			RDEBUG2("    (Right field is not a number at: %s)", pright);
 			return FALSE;
 		}
-		rint = atoi(pright);
+		rint = strtoul(pright, NULL, 0);
 		if (!all_digits(pleft)) {
 			RDEBUG2("    (Left field is not a number at: %s)", pleft);
 			return FALSE;
 		}
-		lint = atoi(pleft);
+		lint = strtoul(pleft, NULL, 0);
 		break;
 		
 	default:
@@ -427,7 +427,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 		 *	Check for truth or falsehood.
 		 */
 		if (all_digits(pleft)) {
-			lint = atoi(pleft);
+			lint = strtoul(pleft, NULL, 0);
 			result = (lint != 0);
 			
 		} else {
