@@ -408,10 +408,13 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	HV		*rad_request_proxy_reply_hv;
 	AV		*end_AV;
 
-	char *embed[4];
+	char **embed;
+        char **envp = NULL;
 	const char *xlat_name;
 	int exitstatus = 0, argc=0;
 
+        embed = rad_malloc(4*(sizeof(char *)));
+        memset(embed, 0, sizeof(4*(sizeof(char *))));
 	/*
 	 *	Set up a storage area for instance data
 	 */
@@ -449,6 +452,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 		argc = 3;
 	}
 
+        PERL_SYS_INIT3(&argc, &embed, &envp);
 #ifdef USE_ITHREADS
 	if ((inst->perl = perl_alloc()) == NULL) {
 		radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
@@ -970,6 +974,7 @@ static int perl_detach(void *instance)
 	perl_free(inst->perl);
 #endif
 
+        PERL_SYS_TERM();
 	free(inst);
 	return exitstatus;
 }
