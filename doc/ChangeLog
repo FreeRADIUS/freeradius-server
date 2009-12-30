@@ -1,13 +1,12 @@
-FreeRADIUS 2.1.8 Mon Jan 1 1:00:00 CEST 1999;  , urgency=medium
+FreeRADIUS 2.1.8 Wed 23 Dec 11:43:41 CEST 2009, urgency=medium
 	Feature improvements
 	* Print more descriptive error message for too many EAP sessions.
 	  This gives hints on what to do when "failed to store handler"
-	* Allow old-style dictionary formats, where the vendor name is the
-	  last field in an ATTRIBUTE definition.
 	* Commands received from radmin are now printed on stdout when
 	  in debugging mode.
 	* Allow accounting packets to be written to a detail file, even
 	  if they were read from a different detail file.
+	* Added OpenSSL license exception (src/LICENSE.openssl)
 
 	Bug fixes
 	* DHCP sockets can now set the broadcast flag before binding to a
@@ -24,6 +23,8 @@ FreeRADIUS 2.1.8 Mon Jan 1 1:00:00 CEST 1999;  , urgency=medium
 	  "unable to open proxy socket".
 	* Avoid mutex locks in libc after fork
 	* Retry packet from detail file if there was no response.
+	* Allow old-style dictionary formats, where the vendor name is the
+	  last field in an ATTRIBUTE definition.
 	* Removed all recursive use of mutexes.  Some systems just don't
 	  support this.
 	* Allow !* to work as documented.
@@ -35,8 +36,12 @@ FreeRADIUS 2.1.8 Mon Jan 1 1:00:00 CEST 1999;  , urgency=medium
 	* Fixed corner cases in conditional dynamic expansion.
 	* Use InnoDB for MySQL IP Pools, to gain transactional support
 	* Apply patch to libltdl for CVE-2009-3736.
-	* Fix corner case where proxying would erroneously mark home
-	  servers down.
+	* Fixed a few issues found by LLVM's static checker
+	* Keep track of "bad authenticators" for accounting packets
+	* Keep track of "dropped packets" for auth/acct packets
+	* Synced the "debian" directory with upstream
+	* Made "unlang" use unsigned 32-bit integers, to match the
+	  dictionaries.
 
 FreeRADIUS 2.1.7 Mon Sept 14 11:20:00 CEST 2009;  , urgency=medium
 	Feature improvements
