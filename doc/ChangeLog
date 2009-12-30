@@ -1,4 +1,4 @@
-FreeRADIUS 2.1.8 Wed 23 Dec 11:43:41 CEST 2009, urgency=medium
+FreeRADIUS 2.1.8 Wed 30 Dec 16:44:50 CEST 2009, urgency=medium
 	Feature improvements
 	* Print more descriptive error message for too many EAP sessions.
 	  This gives hints on what to do when "failed to store handler"
