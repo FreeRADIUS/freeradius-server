@@ -181,7 +181,7 @@ dist-check: redhat/freeradius.spec suse/freeradius.spec debian/changelog
 		echo suse/freeradius.spec 'Version' needs to be updated; \
 		exit 1; \
 	fi
-	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/-0).*//;s/-1).*//;'`  != "$(RADIUSD_VERSION)" ]; then \
+	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/\+.*).*//;s/-1).*//;'`  != "$(RADIUSD_VERSION)" ]; then \
 		echo debian/changelog needs to be updated; \
 		exit 1; \
 	fi
