@@ -1160,6 +1160,9 @@ static void no_response_to_proxied_request(void *ctx)
 	if (home->state == HOME_STATE_ALIVE) {
 		home->state = HOME_STATE_ZOMBIE;
 		home->zombie_period_start = now;	
+		fr_event_delete(el, &home->ev);
+		home->currently_outstanding = 0;
+		home->num_received_pings = 0;
 
 		radlog(L_PROXY, "Marking home server %s port %d as zombie (it looks like it is dead).",
 		       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
