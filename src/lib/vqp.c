@@ -374,7 +374,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 				rad_free(&packet);
 				return NULL;
 			}
-			attrlen = ptr[5];
+			attrlen = (ptr[4] << 8) | ptr[5];
 			ptr += 6 + attrlen;
 			length -= (6 + attrlen);
 		}
@@ -507,8 +507,8 @@ int vqp_decode(RADIUS_PACKET *packet)
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_STRING:
 			vp->length = (length > MAX_VMPS_LEN) ? MAX_VMPS_LEN : length;
-			memcpy(vp->vp_octets, ptr, length);
-			vp->vp_octets[length] = '\0';
+			memcpy(vp->vp_octets, ptr, vp->length);
+			vp->vp_octets[vp->length] = '\0';
 			break;
 		}
 		ptr += length;
