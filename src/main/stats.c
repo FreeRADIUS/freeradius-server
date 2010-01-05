@@ -164,7 +164,7 @@ void request_stats_final(REQUEST *request)
 
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
-		radius_acct_stats.total_responses++;
+		proxy_acct_stats.total_responses++;
 		request->proxy_listener->stats.total_responses++;
 		request->home_server->stats.total_responses++;
 		break;
