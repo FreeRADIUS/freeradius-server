@@ -1,3 +1,11 @@
+FreeRADIUS 2.1.9 Wed 1 Jan 16:44:50 CEST 2011, urgency=medium
+	Feature improvements
+
+	Bug fixes
+	* Handle large VMPS attributes
+	* Properly account for accounting responses from a home server
+	  in SNMP / statistics code.
+
 FreeRADIUS 2.1.8 Wed 30 Dec 16:44:50 CEST 2009, urgency=medium
 	Feature improvements
 	* Print more descriptive error message for too many EAP sessions.
