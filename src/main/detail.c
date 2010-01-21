@@ -272,6 +272,9 @@ static int detail_open(rad_listen_t *this)
 
 	data->client_ip.af = AF_UNSPEC;
 	data->timestamp = 0;
+	data->offset = 0;
+	data->packets = 0;
+	data->tries = 0;
 
 	return 1;
 }
@@ -457,6 +460,8 @@ int detail_recv(rad_listen_t *listener,
 	 *	Read a header, OR a value-pair.
 	 */
 	while (fgets(buffer, sizeof(buffer), data->fp)) {
+		data->offset = ftell(data->fp); /* for statistics */
+
 		/*
 		 *	Badly formatted file: delete it.
 		 *
@@ -566,10 +571,15 @@ int detail_recv(rad_listen_t *listener,
 	 */
 	if (ferror(data->fp)) goto cleanup;
 
+	data->tries = 0;
+	data->packets++;
+
 	/*
 	 *	Process the packet.
 	 */
  alloc_packet:
+	data->tries++;
+	
 	rad_assert(data->state == STATE_QUEUED);
 
 	/*
