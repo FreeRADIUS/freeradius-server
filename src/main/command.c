@@ -1499,6 +1499,69 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 }
 
 
+#ifdef WITH_DETAIL
+static FR_NAME_NUMBER state_names[] = {
+	{ "unopened", STATE_UNOPENED },
+	{ "unlocked", STATE_UNLOCKED },
+	{ "header", STATE_HEADER },
+	{ "reading", STATE_READING },
+	{ "queued", STATE_QUEUED },
+	{ "running", STATE_RUNNING },
+	{ "no-reply", STATE_NO_REPLY },
+	{ "replied", STATE_REPLIED },
+
+	{ NULL, 0 }
+};
+
+static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
+{
+	rad_listen_t *this;
+	listen_detail_t *data;
+	struct stat buf;
+
+	if (argc == 0) {
+		cprintf(listener, "ERROR: Must specify <filename>\n");
+		return 0;
+	}
+
+	data = NULL;
+	for (this = mainconfig.listen; this != NULL; this = this->next) {
+		if (this->type != RAD_LISTEN_DETAIL) continue;
+
+		data = this->data;
+		if (strcmp(argv[1], data->filename) != 0) continue;
+
+		break;
+	}
+
+	cprintf(listener, "\tstate\t%s\n",
+		fr_int2str(state_names, data->state, "?"));
+
+	if ((data->state == STATE_UNOPENED) ||
+	    (data->state == STATE_UNLOCKED)) {
+		return 1;
+	}
+
+	/*
+	 *	Race conditions: file might not exist.
+	 */
+	if (stat(data->filename_work, &buf) < 0) {
+		cprintf(listener, "packets\t0\n");
+		cprintf(listener, "tries\t0\n");
+		cprintf(listener, "offset\t0\n");
+		cprintf(listener, "size\t0\n");
+		return 1;
+	}
+
+	cprintf(listener, "packets\t%d\n", data->packets);
+	cprintf(listener, "tries\t%d\n", data->tries);
+	cprintf(listener, "offset\t%u\n", (unsigned int) data->offset);
+	cprintf(listener, "size\t%u\n", (unsigned int) buf.st_size);
+
+	return 1;
+}
+#endif
+
 #ifdef WITH_PROXY
 static int command_stats_home_server(rad_listen_t *listener, int argc, char *argv[])
 {
@@ -1682,6 +1745,12 @@ static fr_command_table_t command_table_stats[] = {
 	{ "home_server", FR_READ,
 	  "stats home_server [<ipaddr>/auth/acct] <port> - show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)",
 	  command_stats_home_server, NULL },
+#endif
+
+#ifdef WITH_DETAIL
+	{ "detail", FR_READ,
+	  "stats detail <filename> - show statistics for the given detail file",
+	  command_stats_detail, NULL },
 #endif
 
 	{ NULL, 0, NULL, NULL, NULL }

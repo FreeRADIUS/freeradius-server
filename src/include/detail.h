@@ -28,6 +28,7 @@ typedef struct listen_detail_t {
 	char		*filename_work;
 	VALUE_PAIR	*vps;
 	FILE		*fp;
+	off_t		offset;
 	detail_state_t 	state;
 	time_t		timestamp;
 	time_t		running;
@@ -36,6 +37,8 @@ typedef struct listen_detail_t {
 	int		signal;
 	int		poll_interval;
 	int		retry_interval;
+	int		packets;
+	int		tries;
 
 	int		has_rtt;
 	int		srtt;
