@@ -385,7 +385,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 			data = variables[i].data;;
 			
 		} else {
-			data = (((char *)base) + variables[i].offset);
+			data = (((const char *)base) + variables[i].offset);
 		}
 
 		switch (variables[i].type) {
@@ -396,7 +396,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 			
 		case PW_TYPE_INTEGER:
 			cprintf(listener, "%.*s%s = %u\n", indent, tabs,
-				variables[i].name, *(int *) data);
+				variables[i].name, *(const int *) data);
 			break;
 			
 		case PW_TYPE_IPADDR:
@@ -410,7 +410,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 		case PW_TYPE_BOOLEAN:
 			cprintf(listener, "%.*s%s = %s\n", indent, tabs,
 				variables[i].name, 
-				((*(int *) data) == 0) ? "no" : "yes");
+				((*(const int *) data) == 0) ? "no" : "yes");
 			break;
 			
 		case PW_TYPE_STRING_PTR:
@@ -418,9 +418,9 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 			/*
 			 *	FIXME: Escape things in the string!
 			 */
-			if (*(char **) data) {
+			if (*(const char * const *) data) {
 				cprintf(listener, "%.*s%s = \"%s\"\n", indent, tabs,
-					variables[i].name, *(char **) data);
+					variables[i].name, *(const char * const *) data);
 			} else {
 				cprintf(listener, "%.*s%s = \n", indent, tabs,
 					variables[i].name);
@@ -1522,24 +1522,24 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 			       int auth)
 {
-	cprintf(listener, "\trequests\t%d\n", stats->total_requests);
-	cprintf(listener, "\tresponses\t%d\n", stats->total_responses);
+	cprintf(listener, "\trequests\t%u\n", stats->total_requests);
+	cprintf(listener, "\tresponses\t%u\n", stats->total_responses);
 	
 	if (auth) {
-		cprintf(listener, "\taccepts\t\t%d\n",
+		cprintf(listener, "\taccepts\t\t%u\n",
 			stats->total_access_accepts);
-		cprintf(listener, "\trejects\t\t%d\n",
+		cprintf(listener, "\trejects\t\t%u\n",
 			stats->total_access_rejects);
-		cprintf(listener, "\tchallenges\t%d\n",
+		cprintf(listener, "\tchallenges\t%u\n",
 			stats->total_access_challenges);
 	}
 
-	cprintf(listener, "\tdup\t\t%d\n", stats->total_dup_requests);
-	cprintf(listener, "\tinvalid\t\t%d\n", stats->total_invalid_requests);
-	cprintf(listener, "\tmalformed\t%d\n", stats->total_malformed_requests);
-	cprintf(listener, "\tbad_signature\t%d\n", stats->total_bad_authenticators);
-	cprintf(listener, "\tdropped\t\t%d\n", stats->total_packets_dropped);
-	cprintf(listener, "\tunknown_types\t%d\n", stats->total_unknown_types);
+	cprintf(listener, "\tdup\t\t%u\n", stats->total_dup_requests);
+	cprintf(listener, "\tinvalid\t\t%u\n", stats->total_invalid_requests);
+	cprintf(listener, "\tmalformed\t%u\n", stats->total_malformed_requests);
+	cprintf(listener, "\tbad_signature\t%u\n", stats->total_bad_authenticators);
+	cprintf(listener, "\tdropped\t\t%u\n", stats->total_packets_dropped);
+	cprintf(listener, "\tunknown_types\t%u\n", stats->total_unknown_types);
 	
 	return 1;
 }
