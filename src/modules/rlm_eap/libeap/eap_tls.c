@@ -181,7 +181,7 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 			/*
 			 *	Mark the request as resumed.
 			 */
-			vp = pairmake("EAP-Session-Resumed", "0", T_OP_SET);
+			vp = pairmake("EAP-Session-Resumed", "1", T_OP_SET);
 			if (vp) pairadd(&request->packet->vps, vp);
 		}
 	}
