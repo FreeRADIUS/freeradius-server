@@ -189,6 +189,7 @@ $INCLUDE dictionary.versanet
 $INCLUDE dictionary.vqp
 $INCLUDE dictionary.waverider
 $INCLUDE dictionary.walabi
+$INCLUDE dictionary.wichorus
 $INCLUDE dictionary.wimax
 $INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia
