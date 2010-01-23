@@ -1355,6 +1355,9 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		return NULL;
 	}
 
+	vp->operator = (operator == 0) ? T_OP_EQ : operator;
+	if (!value) return vp;
+
 	size = strlen(value + 2);
 
 	/*
@@ -1397,8 +1400,6 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		break;
 	}
        
-	vp->operator = (operator == 0) ? T_OP_EQ : operator;
-
 	return vp;
 }
 
