@@ -496,9 +496,15 @@ REQUEST *request_alloc_coa(REQUEST *request)
 	    (request->packet->code != PW_ACCOUNTING_REQUEST)) return NULL;
 
 	request->coa = request_alloc_fake(request);
+	if (!request->coa) return NULL;
+
 	request->coa->packet->code = 0; /* unknown, as of yet */
 	request->coa->child_state = REQUEST_RUNNING;
 	request->coa->proxy = rad_alloc(0);
+	if (!request->coa->proxy) {
+		request_free(&request->coa);
+		return NULL;
+	}
 
 	return request->coa;
 }
