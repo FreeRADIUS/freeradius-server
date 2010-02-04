@@ -535,16 +535,25 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 */
 	} else if (strncasecmp(fmt, "NT-Hash ", 8) == 0) {
 		char *p;
+		char buf2[1024];
 
 		p = fmt + 8;	/* 7 is the length of 'NT-Hash' */
 		if ((p == '\0')	 || (outlen <= 32))
 			return 0;
-		RDEBUG("rlm_mschap: NT-Hash: %s",p);
-		ntpwdhash(buffer,p);
+
+		while (isspace(*p)) p++;
+
+		if (!radius_xlat(buf2, sizeof(buf2),p,request,NULL)) {
+			RDEBUG("xlat failed");
+			*buffer = '\0';
+			return 0;
+		}
+
+		ntpwdhash(buffer,buf2);
 
 		fr_bin2hex(buffer, out, 16);
 		out[32] = '\0';
-		RDEBUG("rlm_mschap: NT-Hash: Result: %s",out);
+		RDEBUG("NT-Hash of %s = %s", buf2, out);
 		return 32;
 
 		/*
@@ -552,16 +561,24 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 */
 	} else if (strncasecmp(fmt, "LM-Hash ", 8) == 0) {
 		char *p;
+		char buf2[1024];
 
 		p = fmt + 8;	/* 7 is the length of 'LM-Hash' */
 		if ((p == '\0') || (outlen <= 32))
 			return 0;
 
-		RDEBUG("rlm_mschap: LM-Hash: %s",p);
-		smbdes_lmpwdhash(p, buffer);
+		while (isspace(*p)) p++;
+
+		if (!radius_xlat(buf2, sizeof(buf2),p,request,NULL)) {
+			RDEBUG("xlat failed");
+			*buffer = '\0';
+			return 0;
+		}
+
+		smbdes_lmpwdhash(buf2, buffer);
 		fr_bin2hex(buffer, out, 16);
 		out[32] = '\0';
-		RDEBUG("rlm_mschap: LM-Hash: Result: %s",out);
+		RDEBUG("LM-Hash of %s = %s", buf2, out);
 		return 32;
 	} else {
 		RDEBUG2("Unknown expansion string \"%s\"",
