@@ -397,8 +397,13 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 	vsnprintf(buffer + len, sizeof(buffer) - len, msg, ap);
 	
 	if (!fp) {
-		radlog(lvl, "%s", buffer);
+		if (request) {
+			radlog(lvl, "(%u) %s", request->number, buffer);
+		} else {
+			radlog(lvl, "%s", buffer);
+		}
 	} else {
+		if (request) fprintf(fp, "(%u) ", request->number);
 		fputs(buffer, fp);
 		fputc('\n', fp);
 		fclose(fp);
