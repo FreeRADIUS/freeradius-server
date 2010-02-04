@@ -432,6 +432,13 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 		return 0;
 	}
 
+#ifndef WITH_TCP
+	if (proto != IPPROTO_UDP) {
+		fr_strerror_printf("only UDP is supported");
+		return 0;
+	}
+#endif
+
 	ps = NULL;
 	i = start = SOCK2OFFSET(sockfd);
 
@@ -452,7 +459,9 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 
 	memset(ps, 0, sizeof(*ps));
 	ps->ctx = ctx;
+#ifdef WITH_TCP
 	ps->proto = proto;
+#endif
 
 	/*
 	 *	Get address family, etc. first, so we know if we
