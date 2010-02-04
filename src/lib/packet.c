@@ -347,6 +347,7 @@ struct fr_packet_list_t {
 	int		alloc_id;
 	int		num_outgoing;
 	int		last_recv;
+	int		num_sockets;
 
 	fr_packet_socket_t sockets[MAX_SOCKETS];
 };
@@ -375,10 +376,16 @@ int fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd)
 {
 	fr_packet_socket_t *ps;
 
-	if (!pl) return 0;
+	if (!pl) {
+		fr_strerror_printf("Invalid argument");
+		return 0;
+	}
 
 	ps = fr_socket_find(pl, sockfd);
-	if (!ps) return 0;
+	if (!ps) {
+		fr_strerror_printf("No such socket");
+		return 0;
+	}
 
 	ps->dont_use = 1;
 	return 1;
@@ -400,6 +407,7 @@ int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd,
 	if (ps->num_outgoing != 0) return 0;
 
 	ps->sockfd = -1;
+	pl->num_sockets--;
 	if (pctx) *pctx = ps->ctx;
 
 	return 1;
@@ -416,6 +424,11 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 
 	if (!pl || !dst_ipaddr || (dst_ipaddr->af == AF_UNSPEC)) {
 		fr_strerror_printf("Invalid argument");
+		return 0;
+	}
+
+	if (pl->num_sockets >= MAX_SOCKETS) {
+		fr_strerror_printf("Too many open sockets");
 		return 0;
 	}
 
@@ -475,6 +488,7 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	 *	As the last step before returning.
 	 */
 	ps->sockfd = sockfd;
+	pl->num_sockets++;
 
 	return 1;
 }
