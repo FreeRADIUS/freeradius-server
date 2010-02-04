@@ -404,13 +404,14 @@ static int auth_tcp_recv(rad_listen_t *listener,
 		sock->packet->sockfd = listener->fd;
 		sock->packet->src_ipaddr = sock->other_ipaddr;
 		sock->packet->src_port = sock->other_port;
+		sock->packet->dst_ipaddr = sock->my_ipaddr;
+		sock->packet->dst_port = sock->my_port;
 	}
 	
 	/*
 	 *	Grab the packet currently being processed.
 	 */
 	packet = sock->packet;
-	sock->packet = NULL;
 
 	rcode = fr_tcp_read_packet(packet, 0);
 
@@ -419,7 +420,6 @@ static int auth_tcp_recv(rad_listen_t *listener,
 	 *	so that we'll read more data when it's ready.
 	 */
 	if (rcode == 0) {
-		sock->packet = packet;
 		return 0;
 	}
 
@@ -432,8 +432,6 @@ static int auth_tcp_recv(rad_listen_t *listener,
 	}
 
 	if (rcode < 0) {	/* error or connection reset */
-		rad_free(&packet);
-
 		listener->status = RAD_LISTEN_STATUS_REMOVE_FD;
 
 		/*
@@ -459,7 +457,6 @@ static int auth_tcp_recv(rad_listen_t *listener,
 		 *
 		 *	It is instead free'd in remove_from_request_hash()
 		 */
-
 		return 0;
 	}
 
@@ -476,37 +473,34 @@ static int auth_tcp_recv(rad_listen_t *listener,
 
 	case PW_STATUS_SERVER:
 		if (!mainconfig.status_server) {
-			rad_free(&packet);
 			RAD_STATS_TYPE_INC(listener, total_packets_dropped);
 			RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
+			rad_free(&sock->packet);
 			return 0;
 		}
 		fun = rad_status_server;
 		break;
 
 	default:
-		rad_free(&packet);
 		RAD_STATS_INC(radius_auth_stats.total_unknown_types);
 		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
 
 		DEBUG("Invalid packet code %d sent to authentication port from client %s port %d : IGNORED",
 		      packet->code, client->shortname, packet->src_port);
+		rad_free(&sock->packet);
 		return 0;
-		break;
 	} /* switch over packet types */
 
 	if (!received_request(listener, packet, prequest, sock->client)) {
 		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
 		RAD_STATS_CLIENT_INC(listener, sock->client, total_packets_dropped);
-		rad_free(&packet);
+		rad_free(&sock->packet);
 		return 0;
 	}
 
-	packet->dst_ipaddr = sock->my_ipaddr;
-	packet->dst_port = sock->my_port;
-
 	*pfun = fun;
+	sock->packet = NULL;	/* we have no need for more partial reads */
 	return 1;
 }
 
