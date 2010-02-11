@@ -315,7 +315,7 @@ void fr_event_loop_exit(fr_event_list_t *el, int code)
 
 int fr_event_loop(fr_event_list_t *el)
 {
-	int i, rcode, maxfd;
+	int i, rcode, maxfd = 0;
 	struct timeval when, *wake;
 	fd_set read_fds, master_fds;
 
@@ -328,7 +328,6 @@ int fr_event_loop(fr_event_list_t *el)
 		 *	Cache the list of FD's to watch.
 		 */
 		if (el->changed) {
-			maxfd = 0;
 			FD_ZERO(&master_fds);
 			
 			for (i = 0; i < el->max_readers; i++) {
