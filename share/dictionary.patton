@@ -4,6 +4,7 @@
 #               Written by Pawel Pierscionek <pawel@voiceworks.pl>
 #               based on specifications available from vendor
 #
+# Version:      @(#)dictionary.patton  5.00  urtho  20-Jan-2010
 # Version:      @(#)dictionary.patton  1.00  urtho  08-Sep-2006
 #  $Id$
 
@@ -20,12 +21,36 @@ ATTRIBUTE	Patton-Called-Unique-Id			48	string
 ATTRIBUTE	Patton-Called-IP-Address		49	ipaddr
 ATTRIBUTE	Patton-Called-Numbering-Plan		50	string
 ATTRIBUTE	Patton-Called-Type-Of-Number		51	string
+ATTRIBUTE	Patton-Called-Name			52	string
+ATTRIBUTE	Patton-Called-Rx-Octets			64	integer
+ATTRIBUTE	Patton-Called-Tx-Octets			65	integer
+ATTRIBUTE	Patton-Called-Rx-Packets		66	integer
+ATTRIBUTE	Patton-Called-Tx-Packets		67	integer
+ATTRIBUTE	Patton-Called-Rx-Lost-Packets		68	integer
+ATTRIBUTE	Patton-Called-Tx-Lost-Packets		69	integer
+ATTRIBUTE	Patton-Called-Rx-Jitter			70	integer
+ATTRIBUTE	Patton-Called-Tx-Jitter			71	integer
+ATTRIBUTE	Patton-Called-Codec			72	string
+ATTRIBUTE	Patton-Called-MOS			77	integer
+ATTRIBUTE	Patton-Called-Round-Trip-Time		78	integer
 ATTRIBUTE	Patton-Calling-Unique-Id		80	string
 ATTRIBUTE	Patton-Calling-IP-Address		81	ipaddr
 ATTRIBUTE	Patton-Calling-Numbering-Plan		82	string
 ATTRIBUTE	Patton-Calling-Type-Of-Number		83	string
 ATTRIBUTE	Patton-Calling-Presentation-Indicator	88	string
 ATTRIBUTE	Patton-Calling-Screening-Indicator	89	string
+ATTRIBUTE	Patton-Calling-Name			84	string
+ATTRIBUTE	Patton-Calling-Rx-Octets		96	integer
+ATTRIBUTE	Patton-Calling-Tx-Octets		97	integer
+ATTRIBUTE	Patton-Calling-Rx-Packets		98	integer
+ATTRIBUTE	Patton-Calling-Tx-Packets		99	integer
+ATTRIBUTE	Patton-Calling-Lost-Tx-Packets		100	integer
+ATTRIBUTE	Patton-Calling-Lost-Rx-Packets		101	integer
+ATTRIBUTE	Patton-Calling-Rx-Jitter		102	integer
+ATTRIBUTE	Patton-Calling-Tx-Jitter		103	integer
+ATTRIBUTE	Patton-Calling-Codec			104	string
+ATTRIBUTE	Patton-Calling-MOS			109	integer
+ATTRIBUTE	Patton-Calling-Round-Trip-Time		110	integer
 
 VALUE	Patton-Disconnect-Cause		Valid-cause-code-not-yet-received 0x00
 VALUE	Patton-Disconnect-Cause		Unallocated-runassigned-number 0x01
