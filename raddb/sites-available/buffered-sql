@@ -43,7 +43,7 @@ server buffered-sql {
 		#  The location where the detail file is located.
 		#  This should be on local disk, and NOT on an NFS
 		#  mounted location!
-		filename = ${radacctdir}/detail
+		filename = "${radacctdir}/detail-*"
 
 		#
 		#  The server can read accounting packets from the
