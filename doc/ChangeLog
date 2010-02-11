@@ -1,10 +1,20 @@
 FreeRADIUS 2.1.9 Wed 1 Jan 16:44:50 CEST 2011, urgency=medium
 	Feature improvements
+	* Add radmin command "stats detail <file>" to see what
+	  is going on inside of a detail file reader.
 
 	Bug fixes
+	* Reset "received ping" counter for Status-Server checks
+	  in some corner cases.
 	* Handle large VMPS attributes
 	* Properly account for accounting responses from a home server
 	  in SNMP / statistics code.
+	* Set EAP-Session-Resumes = Yes, not "No".
+	* radmin packet counter statistics are now unsigned.
+	  This lets us positive numbers for 2^31 packets.
+	* Be more careful about expanding data in PAP and MS-CHAP modules.
+	* Clean up zombie children if there were many "exec + wait = no"
+	  modules being run for a packet.
 
 FreeRADIUS 2.1.8 Wed 30 Dec 16:44:50 CEST 2009, urgency=medium
 	Feature improvements
