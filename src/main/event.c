@@ -492,8 +492,8 @@ static void wait_for_child_to_die(void *ctx)
 		 */
 		if (request->delay < (USEC * 60 * 5)) {
 			request->delay += (request->delay >> 1);
-			radlog(L_INFO, "WARNING: Child is hung for request %d.",
-			       request->number);
+			radlog(L_INFO, "WARNING: Child is hung for request %d in component %s module %s.",
+			       request->number, request->component, request->module);
 		} else {
 			RDEBUG2("Child is still stuck for request %d",
 				request->number);
