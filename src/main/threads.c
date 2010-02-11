@@ -263,12 +263,13 @@ static void reap_children(void)
 	pthread_mutex_lock(&thread_pool.wait_mutex);
 
 	do {
+	retry:
 		pid = waitpid(0, &status, WNOHANG);
 		if (pid <= 0) break;
 
 		mytf.pid = pid;
 		tf = fr_hash_table_finddata(thread_pool.waiters, &mytf);
-		if (!tf) continue;
+		if (!tf) goto retry;
 
 		tf->status = status;
 		tf->exited = 1;
@@ -1064,6 +1065,7 @@ pid_t rad_fork(void)
 		if (!rcode) {
 			radlog(L_ERR, "Failed to store PID, creating what will be a zombie process %d",
 			       (int) child_pid);
+			free(tf);
 		}
 	}
 
