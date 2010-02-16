@@ -417,6 +417,17 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 	home->name = name2;
 	home->cs = cs;
 
+	/*
+	 *	Authentication servers have a default "no_response_fail = 0".
+	 *	Accounting servers have a default "no_response_fail = 1".
+	 *
+	 *	This is because authentication packets are retried, so
+	 *	they can fail over to another home server.  Accounting
+	 *	packets are not retried, so they cannot fail over, and
+	 *	instead should be rejected immediately.
+	 */
+	home->no_response_fail = 2;
+
 	memset(&hs_ip4addr, 0, sizeof(hs_ip4addr));
 	memset(&hs_ip6addr, 0, sizeof(hs_ip6addr));
 	if (cf_section_parse(cs, home, home_server_config) < 0) {
@@ -506,6 +517,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 
 	if (strcasecmp(hs_type, "auth") == 0) {
 		home->type = HOME_TYPE_AUTH;
+		if (home->no_response_fail == 2) home->no_response_fail = 0;
 		if (pool_type != home->type) {
 		mismatch:
 			cf_log_err(cf_sectiontoitem(cs),
@@ -516,6 +528,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 
 	} else if (strcasecmp(hs_type, "acct") == 0) {
 		home->type = HOME_TYPE_ACCT;
+		if (home->no_response_fail == 2) home->no_response_fail = 1;
 		if (pool_type != home->type) goto mismatch;
 
 	} else if (strcasecmp(hs_type, "auth+acct") == 0) {
@@ -725,6 +738,9 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 		home2->port++;
 		home2->ping_user_password = NULL;
 		home2->cs = cs;
+
+		if (home->no_response_fail == 2) home->no_response_fail = 0;
+		if (home2->no_response_fail == 2) home2->no_response_fail = 1;
 
 		if (!rbtree_insert(home_servers_byname, home2)) {
 			cf_log_err(cf_sectiontoitem(cs),
