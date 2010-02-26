@@ -174,6 +174,12 @@ int main(int argc, char *argv[])
 				}
 				mainconfig.log_file = strdup(optarg);
 				mainconfig.radlog_dest = RADLOG_FILES;
+				mainconfig.radlog_fd = open(mainconfig.log_file,
+							    O_WRONLY | O_APPEND | O_CREAT, 0640);
+				if (mainconfig.radlog_fd < 0) {
+					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
+					exit(1);
+				}
 				break;		  
 
 			case 'i':
@@ -397,7 +403,6 @@ int main(int argc, char *argv[])
 	 */
 	while ((rcode = radius_event_process()) == 0x80) {
 		radius_stats_init(1);
-		radlog(L_INFO, "Received HUP.");
 		hup_mainconfig();
 	}
 	

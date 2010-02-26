@@ -43,7 +43,6 @@ RCSID("$Id$")
 extern pid_t radius_pid;
 extern int dont_fork;
 extern int check_config;
-extern void force_log_reopen(void);
 extern char *debug_condition;
 
 /*
@@ -3230,13 +3229,14 @@ static void handle_signal_self(int flag)
 		time_t when;
 		static time_t last_hup = 0;
 
-		radlog(L_INFO, "Received HUP signal.");
-
 		when = time(NULL);
 		if ((int) (when - last_hup) < 5) {
 			radlog(L_INFO, "Ignoring HUP (less than 5s since last one)");
 			return;
 		}
+
+		radlog(L_INFO, "Received HUP signal.");
+
 		last_hup = when;
 
 		fr_event_loop_exit(el, 0x80);
@@ -3483,12 +3483,6 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 #endif
 	}
 #endif
-
-	/*
-	 *	Just before we spawn the child threads, force the log
-	 *	subsystem to re-open the log file for every write.
-	 */
-	if (spawn_flag) force_log_reopen();
 
 #ifdef HAVE_PTHREAD_H
 #ifndef __MINGW32__
