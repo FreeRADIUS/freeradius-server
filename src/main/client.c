@@ -221,11 +221,16 @@ static int client_sane(RADCLIENT *client)
 			uint32_t mask, *addr;
 
 			addr = (uint32_t *) &client->ipaddr.ipaddr.ip6addr;
-			mask = ~ ((uint32_t) 0);
-			mask <<= (32 - (client->prefix & 0x1f));
-			mask = htonl(mask);
 
-			switch ((client->prefix - 1) >> 5) {
+			if ((client->prefix & 0x1f) == 0) {
+				mask = 0;
+			} else {
+				mask = ~ ((uint32_t) 0);
+				mask <<= (32 - (client->prefix & 0x1f));
+				mask = htonl(mask);
+			}
+
+			switch (client->prefix >> 5) {
 			case 0:
 				addr[0] &= mask;
 				mask = 0;
