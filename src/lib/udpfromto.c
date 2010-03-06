@@ -80,7 +80,7 @@ int udpfromto_init(int s)
 		flag = IP_RECVDSTADDR;
 #endif
 
-#ifdef HAVE_AF_INET6
+#ifdef AF_INET6
 	} else if (si.ss_family == AF_INET6) {
 #ifdef HAVE_IN6_PKTINFO
 		/*
