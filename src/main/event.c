@@ -3149,6 +3149,18 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		request->parent->coa = NULL;
 		request->parent = NULL;
 
+		/*
+		 *	The proxied packet was different from the
+		 *	original packet, AND the proxied packet was
+		 *	a CoA: allow it.
+		 */
+	} else if ((request->packet->code != request->proxy->code) &&
+		   ((request->proxy->code == PW_COA_REQUEST) ||
+		    (request->proxy->code == PW_DISCONNECT_REQUEST))) {
+	  /*
+	   *	It's already divorced: do nothing.
+	   */
+	  
 	} else
 		/*
 		 *	Skip the next set of checks, as the original
