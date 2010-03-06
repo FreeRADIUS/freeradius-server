@@ -198,6 +198,7 @@ typedef struct fr_ipaddr_t {
 		struct in_addr	ip4addr;
 		struct in6_addr ip6addr; /* maybe defined in missing.h */
 	} ipaddr;
+	uint32_t	scope;	/* for IPv6 */
 } fr_ipaddr_t;
 
 /*
