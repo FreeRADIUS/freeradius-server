@@ -79,6 +79,16 @@ typedef struct rad_listen_master_t {
 	rad_listen_decode_t	decode;
 } rad_listen_master_t;
 
+typedef struct listen_socket_t {
+	/*
+	 *	For normal sockets.
+	 */
+	fr_ipaddr_t	ipaddr;
+	int		port;
+	const char		*interface;
+	RADCLIENT_LIST	*clients;
+} listen_socket_t;
+
 static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type);
 
 /*
@@ -676,12 +686,10 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 
 	ADDSTRING(name);
 
-#ifdef SO_BINDTODEVICE
 	if (sock->interface) {
 		ADDSTRING(" interface ");
 		ADDSTRING(sock->interface);
 	}
-#endif
 
 #ifdef WITH_TCP
 	if (this->recv == auth_tcp_accept) {
@@ -884,11 +892,6 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	else don't.
 	 */
 	if (cf_pair_find(cs, "interface")) {
-#ifndef SO_BINDTODEVICE
-		cf_log_err(cf_sectiontoitem(cs),
-			   "System does not support binding to interfaces.  Delete this line from the configuration file.");
-		return -1;
-#else
 		const char *value;
 		CONF_PAIR *cp = cf_pair_find(cs, "interface");
 
@@ -900,7 +903,6 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 		}
 		sock->interface = value;
-#endif
 	}
 
 #ifdef WITH_DHCP
@@ -1911,7 +1913,12 @@ static int listen_bind(rad_listen_t *this)
 
 #ifdef WITH_COA
 		case RAD_LISTEN_COA:
-			sock->my_port = PW_COA_UDP_PORT;
+			svp = getservbyname ("radius-dynauth", "udp");
+			if (svp != NULL) {
+				sock->port = ntohs(svp->s_port);
+			} else {
+				sock->port = PW_COA_UDP_PORT;
+			}
 			break;
 #endif
 
@@ -1930,11 +1937,11 @@ static int listen_bind(rad_listen_t *this)
 		return -1;
 	}
 		
-#ifdef SO_BINDTODEVICE
 	/*
 	 *	Bind to a device BEFORE touching IP addresses.
 	 */
 	if (sock->interface) {
+#ifdef SO_BINDTODEVICE
 		struct ifreq ifreq;
 		strcpy(ifreq.ifr_name, sock->interface);
 
@@ -1948,8 +1955,43 @@ static int listen_bind(rad_listen_t *this)
 			       sock->interface, strerror(errno));
 			return -1;
 		} /* else it worked. */
-	}
+#else
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+#ifdef HAVE_NET_IF_H
+		/*
+		 *	Odds are that any system supporting "bind to
+		 *	device" also supports IPv6, so this next bit
+		 *	isn't necessary.  But it's here for
+		 *	completeness.
+		 *
+		 *	If we're doing IPv6, and the scope hasn't yet
+		 *	been defined, set the scope to the scope of
+		 *	the interface.
+		 */
+		if (sock->ipaddr.af == AF_INET6) {
+			if (sock->ipaddr.scope == 0) {
+				sock->ipaddr.scope = if_nametoindex(sock->interface);
+				if (sock->ipaddr.scope == 0) {
+					close(this->fd);
+					radlog(L_ERR, "Failed finding interface %s: %s",
+					       sock->interface, strerror(errno));
+					return -1;
+				}
+			} /* else scope was defined: we're OK. */
+		} else
 #endif
+#endif
+				/*
+				 *	IPv4: no link local addresses,
+				 *	and no bind to device.
+				 */
+		{
+			close(this->fd);
+			radlog(L_ERR, "Failed binding to interface %s: \"bind to device\" is unsupported", sock->interface);
+			return -1;
+		}
+#endif
+	}
 
 #ifdef WITH_TCP
 	if (sock->proto == IPPROTO_TCP) {
