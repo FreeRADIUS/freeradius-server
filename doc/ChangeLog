@@ -7,14 +7,17 @@ FreeRADIUS 2.1.9 Wed 1 Jan 16:44:50 CEST 2011, urgency=medium
 	* Reset "received ping" counter for Status-Server checks
 	  in some corner cases.
 	* Handle large VMPS attributes
-	* Properly account for accounting responses from a home server
-	  in SNMP / statistics code.
-	* Set EAP-Session-Resumes = Yes, not "No".
+	* Ccount accounting responses from a home server in SNMP / statistics
+	  code.
+	* Set EAP-Session-Resumed = Yes, not "No" when session is resumed.
 	* radmin packet counter statistics are now unsigned.
-	  This lets us positive numbers for 2^31 packets.
+	  This lets us have positive numbers for 2^31..2^32
 	* Be more careful about expanding data in PAP and MS-CHAP modules.
-	* Clean up zombie children if there were many "exec + wait = no"
-	  modules being run for a packet.
+	* Clean up zombie children if there were many "exec" modules with
+	  "wait = no" being run for a packet.
+	* re-open log file after HUP (closes bug #63)
+	* Fix "no response to proxied packet" error for Coa / Disconnect
+	  packets.
 
 FreeRADIUS 2.1.8 Wed 30 Dec 16:44:50 CEST 2009, urgency=medium
 	Feature improvements
