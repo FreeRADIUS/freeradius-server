@@ -345,9 +345,7 @@ typedef struct listen_socket_t {
 	fr_ipaddr_t	my_ipaddr;
 	int		my_port;
 
-#ifdef SO_BINDTODEVICE
-	const char		*interface;
-#endif
+	const char	*interface;
 #ifdef SO_BROADCAST
 	int		broadcast;
 #endif

@@ -79,16 +79,6 @@ typedef struct rad_listen_master_t {
 	rad_listen_decode_t	decode;
 } rad_listen_master_t;
 
-typedef struct listen_socket_t {
-	/*
-	 *	For normal sockets.
-	 */
-	fr_ipaddr_t	ipaddr;
-	int		port;
-	const char		*interface;
-	RADCLIENT_LIST	*clients;
-} listen_socket_t;
-
 static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type);
 
 /*
