@@ -1905,9 +1905,9 @@ static int listen_bind(rad_listen_t *this)
 		case RAD_LISTEN_COA:
 			svp = getservbyname ("radius-dynauth", "udp");
 			if (svp != NULL) {
-				sock->port = ntohs(svp->s_port);
+				sock->my_port = ntohs(svp->s_port);
 			} else {
-				sock->port = PW_COA_UDP_PORT;
+				sock->my_port = PW_COA_UDP_PORT;
 			}
 			break;
 #endif
@@ -1958,10 +1958,10 @@ static int listen_bind(rad_listen_t *this)
 		 *	been defined, set the scope to the scope of
 		 *	the interface.
 		 */
-		if (sock->ipaddr.af == AF_INET6) {
-			if (sock->ipaddr.scope == 0) {
-				sock->ipaddr.scope = if_nametoindex(sock->interface);
-				if (sock->ipaddr.scope == 0) {
+		if (sock->my_ipaddr.af == AF_INET6) {
+			if (sock->my_ipaddr.scope == 0) {
+				sock->my_ipaddr.scope = if_nametoindex(sock->interface);
+				if (sock->my_ipaddr.scope == 0) {
 					close(this->fd);
 					radlog(L_ERR, "Failed finding interface %s: %s",
 					       sock->interface, strerror(errno));
