@@ -34,12 +34,7 @@ RCSID("$Id$")
 
 #ifdef HAVE_SYSLOG_H
 #	include <syslog.h>
-/* keep track of whether we've run openlog() */
-static int openlog_run = 0;
 #endif
-
-static int can_update_log_fp = TRUE;
-static FILE *log_fp = NULL;
 
 /*
  * Logging facility names
@@ -61,11 +56,9 @@ static const FR_NAME_NUMBER levels[] = {
 int vradlog(int lvl, const char *fmt, va_list ap)
 {
 	struct main_config_t *myconfig = &mainconfig;
-	int fd = myconfig->radlog_fd;
-	FILE *fp = NULL;
 	unsigned char *p;
 	char buffer[8192];
-	int len, print_timestamp = 0;
+	int len;
 
 	/*
 	 *	NOT debugging, and trying to log debug messages.
@@ -84,6 +77,9 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		return 0;
 	}
 
+	*buffer = '\0';
+	len = 0;
+
 	/*
 	 *	Don't print timestamps to syslog, it does that for us.
 	 *	Don't print timestamps for low levels of debugging.
@@ -93,84 +89,6 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	 */
 	if ((myconfig->radlog_dest != RADLOG_SYSLOG) &&
 	    (debug_flag != 1) && (debug_flag != 2)) {
-		print_timestamp = 1;
-	}
-
-	if ((fd != -1) &&
-	    (myconfig->radlog_dest != RADLOG_STDOUT) &&
-	    (myconfig->radlog_dest != RADLOG_STDERR)) {
-		myconfig->radlog_fd = -1;
-		fd = -1;
-	}
-
-	*buffer = '\0';
-	len = 0;
-	if (fd != -1) {
-		/*
-		 *	Use it, rather than anything else.
-		 */
-
-#ifdef HAVE_SYSLOG_H
-	} else if (myconfig->radlog_dest == RADLOG_SYSLOG) {
-		/*
-		 *	Open run openlog() on the first log message
-		 */
-		if(!openlog_run) {
-			openlog(progname, LOG_PID, myconfig->syslog_facility);
-			openlog_run = 1;
-		}
-#endif
-
-	} else if (myconfig->radlog_dest == RADLOG_FILES) {
-		if (!myconfig->log_file) {
-			/*
-			 *	Errors go to stderr, in the hope that
-			 *	they will be printed somewhere.
-			 */
-			if (lvl & L_ERR) {
-				fd = STDERR_FILENO;
-				print_timestamp = 0;
-				snprintf(buffer, sizeof(buffer), "%s: ", progname);
-				len = strlen(buffer);
-			} else {
-				/*
-				 *	No log file set.  Discard it.
-				 */
-				return 0;
-			}
-			
-		} else if (log_fp) {
-			struct stat buf;
-
-			if (stat(myconfig->log_file, &buf) < 0) {
-				fclose(log_fp);
-				log_fp = fr_log_fp = NULL;
-			}
-		}
-
-		if (!log_fp && myconfig->log_file) {
-			fp = fopen(myconfig->log_file, "a");
-			if (!fp) {
-				fprintf(stderr, "%s: Couldn't open %s for logging: %s\n",
-					progname, myconfig->log_file, strerror(errno));
-				
-				fprintf(stderr, "  (");
-				vfprintf(stderr, fmt, ap);  /* the message that caused the log */
-				fprintf(stderr, ")\n");
-				return -1;
-			}
-			setlinebuf(fp);
-		}
-
-		/*
-		 *	We can only set the global variable log_fp IF
-		 *	we have no child threads.  If we do have child
-		 *	threads, each thread has to open it's own FP.
-		 */
-		if (can_update_log_fp && fp) fr_log_fp = log_fp = fp;
-	}
-
-	if (print_timestamp) {
 		const char *s;
 		time_t timeval;
 
@@ -197,8 +115,10 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	}
 	strcat(buffer, "\n");
 
+	switch (myconfig->radlog_dest) {
+
 #ifdef HAVE_SYSLOG_H
-	if (myconfig->radlog_dest == RADLOG_SYSLOG) {
+	case RADLOG_SYSLOG:
 		switch(lvl & ~L_CONS) {
 			case L_DBG:
 				lvl = LOG_DEBUG;
@@ -220,15 +140,24 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 				break;
 		}
 		syslog(lvl, "%s", buffer);
-	} else
+		break;
 #endif
-	if (log_fp != NULL) {
-		fputs(buffer, log_fp);
-	} else if (fp != NULL) {
-		fputs(buffer, fp);
-		fclose(fp);
-	} else if (fd >= 0) {
-		write(fd, buffer, strlen(buffer));
+
+	case RADLOG_FILES:
+		write(myconfig->radlog_fd, buffer, strlen(buffer));
+		break;
+
+	case RADLOG_STDOUT:
+		write(STDOUT_FILENO, buffer, strlen(buffer));
+		break;
+
+	case RADLOG_STDERR:
+		write(STDERR_FILENO, buffer, strlen(buffer));
+		break;
+
+	default:
+	case RADLOG_NULL:	/* should have been caught above */
+		break;
 	}
 
 	return 0;
@@ -269,30 +198,6 @@ void vp_listdebug(VALUE_PAIR *vp)
                 vp_prints(tmpPair, sizeof(tmpPair), vp);
                 DEBUG2("     %s", tmpPair);
         }
-}
-
-/*
- *	If the server is running with multiple threads, signal the log
- *	subsystem that we're about to START multiple threads.  Once
- *	that happens, we can no longer open/close the log_fp in a
- *	child thread, as writing to global variables causes a race
- *	condition.
- *
- *	We also close the fr_log_fp, as it can no longer write to the
- *	log file (if any).
- *
- *	All of this work is because we want to catch the case of the
- *	administrator deleting the log file.  If that happens, we want
- *	the logs to go to the *new* file, and not the *old* one.
- */
-void force_log_reopen(void)
-{
-	can_update_log_fp = 0;
-
-	if (mainconfig.radlog_dest != RADLOG_FILES) return;
-
-	if (log_fp) fclose(log_fp);
-	fr_log_fp = log_fp = NULL;
 }
 
 extern char *request_log_file;
