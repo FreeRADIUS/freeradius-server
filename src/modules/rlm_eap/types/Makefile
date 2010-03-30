@@ -16,10 +16,19 @@ install:
 reconfig:
 	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
-common:
-	@for mod in rlm_eap*; do \
-		if [ -d $$mod ] && [ -f $$mod/Makefile ]; then \
-			echo "Making $(WHAT_TO_MAKE) in $$mod..."; \
-			$(MAKE) $(MFLAGS) -C $$mod $(WHAT_TO_MAKE) || exit $$?; \
-		fi; \
-	done
+SUBDIRS := $(patsubst %/,%,$(dir $(wildcard rlm_eap*/Makefile)))
+
+.PHONY: common $(SUBDIRS)
+
+common: $(SUBDIRS)
+
+# The PEAP and TTLS sub-modules require eap_tls.
+#
+# If they're not being built, this rule is ignored because they're
+# phony targets.
+# 
+rlm_eap_peap rlm_eap_ttls: rlm_eap_tls
+
+$(PLUGINS): 
+	echo "Making $(WHAT_TO_MAKE) in $@..."
+	$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)

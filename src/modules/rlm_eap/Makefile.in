@@ -39,14 +39,17 @@ install-subdirs:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=install common
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radeapclient$(EXEEXT) $(R)$(bindir)
 
-common:
-	@for dir in $(RLM_SUBDIRS); do  \
-		echo "Making $(WHAT_TO_MAKE) in $$dir..."; \
-		$(MAKE) $(MFLAGS) -C $$dir $(WHAT_TO_MAKE) || exit $$?; \
-	done
+.PHONY: common $(RLM_SUBDIRS)
 
-libeap/$(LIBPREFIX)freeradius-eap.la:
-	$(MAKE) $(MFLAGS) -C libeap
+common: $(RLM_SUBDIRS)
+
+types: libeap
+
+$(RLM_SUBDIRS):
+	echo "Making $(WHAT_TO_MAKE) in $@..."
+	$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
+
+libeap/$(LIBPREFIX)freeradius-eap.la: libeap
 
 ## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
 include ../rules.mak
