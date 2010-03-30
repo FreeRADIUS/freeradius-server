@@ -691,7 +691,7 @@ int indexed_modcall(int comp, int idx, REQUEST *request)
 	}
 
 	if (!server) {
-		RDEBUG("No such virtual server %s", request->server);
+		RDEBUG("No such virtual server \"%s\"", request->server);
 		return RLM_MODULE_FAIL;
 	}
 
