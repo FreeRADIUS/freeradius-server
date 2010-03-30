@@ -41,12 +41,15 @@ reconfig:
 		)  || exit $$?; \
 	done
 
-common:
+# Requires GNU Make, but even older ones will do.
+SUBDIRS := $(patsubst %/,%,$(dir $(wildcard $(addsuffix /Makefile,$(MODULES)))))
+
+.PHONY: common $(SUBDIRS)
+
+common: $(SUBDIRS)
 	@[ -d lib/ ] || mkdir lib
 	@[ -d lib/.libs ] || mkdir lib/.libs
-	@for mod in $(MODULES); do \
-		if [ -d $$mod ] && [ -f $$mod/Makefile ]; then \
-			echo "Making $(WHAT_TO_MAKE) in $$mod..."; \
-			$(MAKE) $(MFLAGS) -C $$mod $(WHAT_TO_MAKE) || exit $$?; \
-		fi; \
-	done
+
+$(SUBDIRS): 
+	echo "Making $(WHAT_TO_MAKE) in $@..."
+	$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)

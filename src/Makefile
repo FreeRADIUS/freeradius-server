@@ -19,11 +19,13 @@ clean:
 install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
-common:
-	@for dir in $(SUBDIRS); do \
-		echo "Making $(WHAT_TO_MAKE) in $$dir..."; \
-		$(MAKE) $(MFLAGS) -C $$dir $(WHAT_TO_MAKE) || exit $$?; \
-	done
+.PHONY: common $(SUBDIRS)
+
+common: $(SUBDIRS)
+
+$(SUBDIRS): 
+	echo "Making $(WHAT_TO_MAKE) in $@..."
+	$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
 
 freeradius-devel:
 	ln -s include freeradius-devel

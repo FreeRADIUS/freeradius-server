@@ -88,11 +88,13 @@ install-chown:
 endif
 endif
 
-common:
-	@for dir in $(SUBDIRS); do \
-		echo "Making $(WHAT_TO_MAKE) in $$dir..."; \
-		$(MAKE) $(MFLAGS) -C $$dir $(WHAT_TO_MAKE) || exit $$?; \
-	done
+.PHONY: common $(SUBDIRS)
+
+common: $(SUBDIRS)
+
+$(SUBDIRS):
+	echo "Making $(WHAT_TO_MAKE) in $@..."
+	$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
 
 distclean: clean
 	rm -f config.cache config.log config.status libtool \
