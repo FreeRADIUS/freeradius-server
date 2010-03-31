@@ -398,7 +398,7 @@ static int generate_sql_clients(SQL_INST *inst)
 			c->nastype = strdup(row[3]);
 
 		numf = (inst->module->sql_num_fields)(sqlsocket, inst->config);
-		if ((numf > 5) && (row[5] != NULL)) c->server = strdup(row[5]);
+		if ((numf > 5) && (row[5] != NULL) && *row[5]) c->server = strdup(row[5]);
 
 		DEBUG("rlm_sql (%s): Adding client %s (%s, server=%s) to clients list",
 		      inst->config->xlat_name,
