@@ -1934,6 +1934,13 @@ static int proxy_request(REQUEST *request)
 	struct timeval when;
 	char buffer[128];
 
+#ifdef WITH_COA
+	if (request->coa) {
+		RDEBUG("WARNING: Cannot proxy and originate CoA packets at the same time.  Cancelling CoA request");
+		ev_request_free(&request->coa);
+	}
+#endif
+
 	if (request->home_server->server) {
 		RDEBUG("ERROR: Cannot perform real proxying to a virtual server.");
 		return 0;
@@ -2402,6 +2409,13 @@ static void request_post_handler(REQUEST *request)
 		 *	OR we proxied it internally to a virutal server.
 		 */
 	}
+
+#ifdef WITH_COA
+	else if (request->proxy && request->coa) {
+		RDEBUG("WARNING: Cannot proxy and originate CoA packets at the same time.  Cancelling CoA request");
+		ev_request_free(&request->coa);
+	}
+#endif
 #endif
 
 	/*
@@ -2546,10 +2560,12 @@ static void request_post_handler(REQUEST *request)
 #ifdef WITH_COA
 	/*
 	 *	Now that we've completely processed the request,
-	 *	see if we need to originate a CoA request.
+	 *	see if we need to originate a CoA request.  But ONLY
+	 *	if it wasn't proxied.
 	 */
-	if (request->coa ||
-	    (pairfind(request->config_items, PW_SEND_COA_REQUEST) != NULL)) {
+	if (!request->proxy &&
+	    (request->coa ||
+	     (pairfind(request->config_items, PW_SEND_COA_REQUEST) != NULL))) {
 		if (!originated_coa_request(request)) {
 			RDEBUG2("Do CoA Fail handler here");
 		}
