@@ -26,8 +26,10 @@ $(LT_OBJS): $(HEADERS)
 install-drivers:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=install common
 
-common:
-	@for dir in $(RLM_SUBDIRS); do \
-		echo "Making $(WHAT_TO_MAKE) in $$dir..."; \
-		$(MAKE) $(MFLAGS) -C $$dir $(WHAT_TO_MAKE) || exit $$?; \
-	done
+.PHONY: common $(RLM_SUBDIRS)
+
+common: $(RLM_SUBDIRS)
+
+$(RLM_SUBDIRS):
+	echo "Making $(WHAT_TO_MAKE) in $@..."
+	$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
