@@ -195,10 +195,16 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 
 	/*
 	 *	Add the realm name to the request.
+	 *	If the realm is a regex, the use the realm as entered
+	 *	by the user.  Otherwise, use the configured realm name,
+	 *	as realm name comparison is case insensitive.  We want
+	 *	to use the configured name, rather than what the user
+	 *	entered.
 	 */
-	pairadd(&request->packet->vps, pairmake("Realm", realm->name,
+	if (realm->name[0] != '~') realmname = realm->name;
+	pairadd(&request->packet->vps, pairmake("Realm", realmname,
 						T_OP_EQ));
-	RDEBUG2("Adding Realm = \"%s\"", realm->name);
+	RDEBUG2("Adding Realm = \"%s\"", realmname);
 
 	/*
 	 *	Figure out what to do with the request.
