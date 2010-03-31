@@ -58,6 +58,7 @@ MODULE_OBJS     += $(shell for x in $(SUB_MODULES);do test -f ../modules/*/types
 MODULE_OBJS     += $(shell for x in $(SUB_MODULES);do test -f ../modules/*/drivers/$$x/$$x.la && echo ../modules/*/drivers/$$x/$$x.la;done)
 endif
 
+.PHONY: all clean install reconfig
 all: $(BINARIES)
 
 $(SERVER_OBJS): $(INCLUDES)
@@ -148,3 +149,5 @@ endif
 	$(INSTALL) -m 755    radlast			$(R)$(bindir)
 	$(INSTALL) -m 755    radtest 			$(R)$(bindir)
 	$(INSTALL) -m 755    radzap			$(R)$(bindir)
+
+reconfig:

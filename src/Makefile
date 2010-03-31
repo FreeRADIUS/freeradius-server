@@ -9,6 +9,7 @@ include ../Make.inc
 SUBDIRS		= include lib modules main
 WHAT_TO_MAKE	= all
 
+.PHONY: all clean install reconfig
 all: freeradius-devel
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
@@ -19,12 +20,15 @@ clean:
 install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
+reconfig:
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+
 .PHONY: common $(SUBDIRS)
 
 common: $(SUBDIRS)
 
 $(SUBDIRS): 
-	echo "Making $(WHAT_TO_MAKE) in $@..."
+	@echo "Making $(WHAT_TO_MAKE) in $@..."
 	$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
 
 freeradius-devel:

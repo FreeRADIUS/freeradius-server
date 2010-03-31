@@ -30,5 +30,5 @@ common: $(SUBDIRS)
 rlm_eap_peap rlm_eap_ttls: rlm_eap_tls
 
 $(PLUGINS): 
-	echo "Making $(WHAT_TO_MAKE) in $@..."
-	$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
+	@echo "Making $(WHAT_TO_MAKE) in $@..."
+	@$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
