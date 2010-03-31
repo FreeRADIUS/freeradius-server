@@ -37,6 +37,7 @@ TARGET		= $(LIBPREFIX)freeradius-radius
 %.lo : %.c
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $<
 
+.PHONY: all clean install reconfig
 all: $(TARGET).la
 
 $(TARGET).la: $(LT_OBJS)
@@ -55,3 +56,5 @@ install: all
 		$(R)$(libdir)/$(TARGET).la
 	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la;
 	ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la
+
+reconfig:

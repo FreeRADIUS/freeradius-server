@@ -93,8 +93,8 @@ endif
 common: $(SUBDIRS)
 
 $(SUBDIRS):
-	echo "Making $(WHAT_TO_MAKE) in $@..."
-	$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
+	@echo "Making $(WHAT_TO_MAKE) in $@..."
+	@$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
 
 distclean: clean
 	rm -f config.cache config.log config.status libtool \
@@ -115,6 +115,7 @@ distclean: clean
 #
 ######################################################################
 reconfig: configure src/include/autoconf.h.in
+	@$(MAKE) $(MFLAGS) -C src reconfig
 
 configure: configure.in aclocal.m4
 	$(AUTOCONF)
