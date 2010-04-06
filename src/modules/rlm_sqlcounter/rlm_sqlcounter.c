@@ -337,6 +337,7 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, void *insta
 
 			case '%':
 				*q++ = *p;
+				break;
 			case 'b': /* last_reset */
 				snprintf(tmpdt, sizeof(tmpdt), "%lu", data->last_reset);
 				strlcpy(q, tmpdt, freespace);
