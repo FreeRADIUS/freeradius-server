@@ -141,16 +141,20 @@ static int dhcp_process(REQUEST *request)
 			request->reply->code = PW_DHCP_ACK;
 			break;
 		}
-
-		/* FALL-THROUGH */
+		request->reply->code = PW_DHCP_NAK;
+		break;
 
 	default:
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_NOOP:
-	case RLM_MODULE_NOTFOUND:
-		request->reply->code = PW_DHCP_NAK;
+	case RLM_MODULE_NOTFOUND:	
+		if (request->packet->code === PW_DHCP_DISCOVER) {
+			request->reply->code = 0; /* ignore the packet */
+		} else {
+			request->reply->code = PW_DHCP_NAK;
+		}
 		break;
 
 	case RLM_MODULE_HANDLED:
