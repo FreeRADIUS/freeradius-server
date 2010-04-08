@@ -25,11 +25,13 @@ distclean:
 # Requires GNU Make, but even older ones will do.
 SUBDIRS := $(patsubst %/,%,$(dir $(wildcard $(addsuffix /Makefile,$(MODULES)))))
 
-.PHONY: common $(SUBDIRS)
+.PHONY: common libs $(SUBDIRS)
 
-common: $(SUBDIRS)
+libs:
 	@[ -d lib/ ] || mkdir lib
 	@[ -d lib/.libs ] || mkdir lib/.libs
+
+common: libs $(SUBDIRS)
 
 $(SUBDIRS): 
 	@echo "Making $(WHAT_TO_MAKE) in $@..."
