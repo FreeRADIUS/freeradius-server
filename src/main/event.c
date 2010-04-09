@@ -453,11 +453,11 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 	if ((request->num_proxied_requests == request->num_proxied_responses) ||
 	    timercmp(&now, &request->when, >)) {
 		if (request->packet) {
-			RDEBUG2("Cleaning up request %d ID %d with timestamp +%d",
+			RDEBUG2("Cleaning up request %u ID %d with timestamp +%d",
 			       request->number, request->packet->id,
 			       (unsigned int) (request->timestamp - fr_start_time));
 		} else {
-			RDEBUG2("Cleaning up request %d with timestamp +%d",
+			RDEBUG2("Cleaning up request %u with timestamp +%d",
 			       request->number,
 			       (unsigned int) (request->timestamp - fr_start_time));
 		}
@@ -491,10 +491,10 @@ static void wait_for_child_to_die(void *ctx)
 		 */
 		if (request->delay < (USEC * 60 * 5)) {
 			request->delay += (request->delay >> 1);
-			radlog(L_INFO, "WARNING: Child is hung for request %d in component %s module %s.",
+			radlog(L_INFO, "WARNING: Child is hung for request %u in component %s module %s.",
 			       request->number, request->component, request->module);
 		} else {
-			RDEBUG2("Child is still stuck for request %d",
+			RDEBUG2("Child is still stuck for request %u",
 				request->number);
 		}
 		tv_add(&request->when, request->delay);
@@ -503,7 +503,7 @@ static void wait_for_child_to_die(void *ctx)
 		return;
 	}
 
-	RDEBUG2("Child is finally responsive for request %d", request->number);
+	RDEBUG2("Child is finally responsive for request %u", request->number);
 	remove_from_request_hash(request);
 
 #ifdef WITH_PROXY
@@ -534,7 +534,7 @@ static void cleanup_delay(void *ctx)
 	}
 #endif
 
-	RDEBUG2("Cleaning up request %d ID %d with timestamp +%d",
+	RDEBUG2("Cleaning up request %u ID %d with timestamp +%d",
 	       request->number, request->packet->id,
 	       (unsigned int) (request->timestamp - fr_start_time));
 
@@ -604,7 +604,7 @@ static void reject_delay(void *ctx)
 	rad_assert(request->magic == REQUEST_MAGIC);
 	rad_assert(request->child_state == REQUEST_REJECT_DELAY);
 
-	RDEBUG2("Sending delayed reject for request %d", request->number);
+	RDEBUG2("Sending delayed reject for request %u", request->number);
 
 	DEBUG_PACKET(request, request->reply, 1);
 
@@ -1062,7 +1062,7 @@ static void no_response_to_proxied_request(void *ctx)
 	 *	well.
 	 */
 	if (home->no_response_fail) {
-		radlog(L_ERR, "Rejecting request %d (proxy Id %d) due to lack of any response from home server %s port %d",
+		radlog(L_ERR, "Rejecting request %u (proxy Id %d) due to lack of any response from home server %s port %d",
 		       request->number, request->proxy->id,
 		       inet_ntop(request->proxy->dst_ipaddr.af,
 				 &request->proxy->dst_ipaddr.ipaddr,
@@ -1178,7 +1178,6 @@ static void wait_a_bit(void *ctx)
 			break;
 		}
 
-	stop_processing:
 #if defined(HAVE_PTHREAD_H) || defined(WITH_PROXY)
 		/*
 		 *	A child thread MAY still be running on the
@@ -1189,7 +1188,7 @@ static void wait_a_bit(void *ctx)
 		    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
 			request->master_state = REQUEST_STOP_PROCESSING;
 
-			radlog(L_ERR, "WARNING: Unresponsive child for request %d, in module %s component %s",
+			radlog(L_ERR, "WARNING: Unresponsive child for request %u, in module %s component %s",
 			       request->number,
 			       request->module ? request->module : "<server core>",
 			       request->component ? request->component : "<server core>");
@@ -1274,7 +1273,7 @@ static void wait_a_bit(void *ctx)
 	 *	mode, with no threads...
 	 */
 	if (!callback) {
-		RDEBUG("WARNING: Internal sanity check failed in event handler for request %d: Discarding the request!", request->number);
+		RDEBUG("WARNING: Internal sanity check failed in event handler for request %u: Discarding the request!", request->number);
 		ev_request_free(&request);
 		return;
 	}
@@ -1869,7 +1868,7 @@ static int proxy_request(REQUEST *request)
 	}
 	request->next_callback = no_response_to_proxied_request;
 
-	RDEBUG2("Proxying request %d to home server %s port %d",
+	RDEBUG2("Proxying request %u to home server %s port %d",
 	       request->number,
 	       inet_ntop(request->proxy->dst_ipaddr.af,
 			 &request->proxy->dst_ipaddr.ipaddr,
@@ -2226,7 +2225,7 @@ found_pool:
 	}
 
 	if (!proxy_request(request)) {
-		RDEBUG("ERROR: Failed to proxy request %d", request->number);
+		RDEBUG("ERROR: Failed to proxy request %u", request->number);
 		return -1;
 	}
 	
@@ -2243,7 +2242,7 @@ static void request_post_handler(REQUEST *request)
 	if ((request->master_state == REQUEST_STOP_PROCESSING) ||
 	    (request->parent &&
 	     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
-		RDEBUG2("Request %d was cancelled.", request->number);
+		RDEBUG2("request %u was cancelled.", request->number);
 #ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
 #endif
@@ -2355,12 +2354,12 @@ static void request_post_handler(REQUEST *request)
 			vp = pairfind(request->config_items,
 				      PW_RESPONSE_PACKET_TYPE);
 			if (!vp) {
-				RDEBUG2("There was no response configured: rejecting request %d",
+				RDEBUG2("There was no response configured: rejecting request %u",
 				       request->number);
 				request->reply->code = PW_AUTHENTICATION_REJECT;
 
 			} else if (vp->vp_integer == 256) {
-				RDEBUG2("Not responding to request %d",
+				RDEBUG2("Not responding to request %u",
 				       request->number);
 
 				/*
@@ -2400,7 +2399,7 @@ static void request_post_handler(REQUEST *request)
 			when.tv_sec += request->root->reject_delay;
 
 			if (timercmp(&when, &request->next_when, >)) {
-				RDEBUG2("Delaying reject of request %d for %d seconds",
+				RDEBUG2("Delaying reject of request %u for %d seconds",
 				       request->number,
 				       request->root->reject_delay);
 				request->next_when = when;
@@ -2509,7 +2508,7 @@ static void request_post_handler(REQUEST *request)
 	}
 #endif
 
-	RDEBUG2("Finished request %d.", request->number);
+	RDEBUG2("Finished request %u.", request->number);
 	rad_assert(child_state >= 0);
 	request->child_state = child_state;
 
@@ -2536,7 +2535,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 	discard:
 #endif
 		radlog(L_ERR, "Discarding duplicate request from "
-		       "client %s port %d - ID: %d due to unfinished request %d",
+		       "client %s port %d - ID: %d due to unfinished request %u",
 		       client->shortname,
 		       request->packet->src_port,request->packet->id,
 		       request->number);
@@ -2581,7 +2580,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 
 			home = home_server_ldb(NULL, request->home_pool, request);
 			if (!home) {
-				RDEBUG2("Failed to find live home server for request %d", request->number);
+				RDEBUG2("Failed to find live home server for request %u", request->number);
 			no_home_servers:
 				/*
 				 *	Do post-request processing,
@@ -2615,7 +2614,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			 *	Try to proxy the request.
 			 */
 			if (!proxy_request(request)) {
-				RDEBUG("ERROR: Failed to re-proxy request %d", request->number);
+				RDEBUG("ERROR: Failed to re-proxy request %u", request->number);
 				goto no_home_servers;
 			}
 
@@ -2682,7 +2681,7 @@ static void received_conflicting_request(REQUEST *request,
 					 const RADCLIENT *client)
 {
 	radlog(L_ERR, "Received conflicting packet from "
-	       "client %s port %d - ID: %d due to unfinished request %d.  Giving up on old request.",
+	       "client %s port %d - ID: %d due to unfinished request %u.  Giving up on old request.",
 	       client->shortname,
 	       request->packet->src_port, request->packet->id,
 	       request->number);
@@ -2822,7 +2821,7 @@ int received_request(rad_listen_t *listener,
 			 */
 			if ((request->reply->code != 0) &&
 			    request->reply->data) {
-				radlog(L_INFO, "WARNING: Allowing fast client %s port %d - ID: %d for recent request %d.",
+				radlog(L_INFO, "WARNING: Allowing fast client %s port %d - ID: %d for recent request %u.",
 				       client->shortname,
 				       packet->src_port, packet->id,
 				       request->number);
@@ -2845,7 +2844,7 @@ int received_request(rad_listen_t *listener,
 			 */
 			if (timercmp(&when, &request->received, <)) {
 				radlog(L_ERR, "Discarding conflicting packet from "
-				       "client %s port %d - ID: %d due to recent request %d.",
+				       "client %s port %d - ID: %d due to recent request %u.",
 				       client->shortname,
 				       packet->src_port, packet->id,
 				       request->number);
@@ -2914,7 +2913,7 @@ int received_request(rad_listen_t *listener,
 	 *	Remember the request in the list.
 	 */
 	if (!fr_packet_list_insert(pl, &request->packet)) {
-		radlog(L_ERR, "Failed to insert request %d in the list of live requests: discarding", request->number);
+		radlog(L_ERR, "Failed to insert request %u in the list of live requests: discarding", request->number);
 		ev_request_free(&request);
 		return 0;
 	}
@@ -2995,7 +2994,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		if (memcmp(request->proxy_reply->vector,
 			   packet->vector,
 			   sizeof(request->proxy_reply->vector)) == 0) {
-			RDEBUG2("Discarding duplicate reply from host %s port %d  - ID: %d for request %d",
+			RDEBUG2("Discarding duplicate reply from host %s port %d  - ID: %d for request %u",
 			       inet_ntop(packet->src_ipaddr.af,
 					 &packet->src_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
@@ -3120,7 +3119,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	case REQUEST_REJECT_DELAY:
 	case REQUEST_CLEANUP_DELAY:
 	case REQUEST_DONE:
-		radlog(L_ERR, "Reply from home server %s port %d  - ID: %d arrived too late for request %d. Try increasing 'retry_delay' or 'max_request_time'",
+		radlog(L_ERR, "Reply from home server %s port %d  - ID: %d arrived too late for request %u. Try increasing 'retry_delay' or 'max_request_time'",
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
