@@ -215,7 +215,7 @@ struct auth_req {
 	pthread_t    		child_pid;
 #endif
 	time_t			timestamp;
-	int			number; /* internal server number */
+	unsigned int	       	number; /* internal server number */
 
 	rad_listen_t		*listener;
 #ifdef WITH_PROXY
