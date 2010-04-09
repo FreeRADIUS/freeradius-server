@@ -25,6 +25,14 @@ reconfig:
 
 .PHONY: common $(SUBDIRS)
 
+#
+#  Ensure correct build order
+lib: include
+
+modules: lib
+
+main: modules
+
 common: $(SUBDIRS)
 
 $(SUBDIRS): 
