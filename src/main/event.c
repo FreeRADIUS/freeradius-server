@@ -1295,7 +1295,7 @@ static void wait_a_bit(void *ctx)
 		request->child_pid = NO_SUCH_CHILD_PID;
 #endif
 
-#ifdef WTH_COA
+#ifdef WITH_COA
 		/*
 		 *	This is a CoA request.  It's been divorced
 		 *	from everything else, so we clean it up now.
