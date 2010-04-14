@@ -243,14 +243,7 @@ static int list_delete(fr_hash_table_t *ht,
 	last = head;
 
 	for (cur = *head; cur != &ht->null; cur = cur->next) {
-		if (cur == node) {
-			if (ht->cmp) {
-				int cmp = ht->cmp(node->data, cur->data);
-				if (cmp > 0) break;
-				if (cmp < 0) continue;
-			}
-			break;
-		}
+		if (cur == node) break;
 		last = &(cur->next);
 	}
 
