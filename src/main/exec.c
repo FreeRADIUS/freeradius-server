@@ -44,6 +44,27 @@ RCSID("$Id$")
 
 #define MAX_ARGV (256)
 
+#define USEC 1000000
+static void tv_sub(struct timeval *end, struct timeval *start,
+		   struct timeval *elapsed)
+{
+	elapsed->tv_sec = end->tv_sec - start->tv_sec;
+	if (elapsed->tv_sec > 0) {
+		elapsed->tv_sec--;
+		elapsed->tv_usec = USEC;
+	} else {
+		elapsed->tv_usec = 0;
+	}
+	elapsed->tv_usec += end->tv_usec;
+	elapsed->tv_usec -= start->tv_usec;
+	
+	if (elapsed->tv_usec >= USEC) {
+		elapsed->tv_usec -= USEC;
+		elapsed->tv_sec++;
+	}
+}
+
+
 /*
  *	Execute a program on successful authentication.
  *	Return 0 if exec_wait == 0.
@@ -73,6 +94,10 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	char argv_buf[4096];
 #define MAX_ENVP 1024
 	char *envp[MAX_ENVP];
+	struct timeval start;
+#ifdef O_NONBLOCK
+	int nonblock = TRUE;
+#endif
 
 	if (user_msg) *user_msg = '\0';
 	if (output_pairs) *output_pairs = NULL;
@@ -389,14 +414,82 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		return -1;
 	}
 
+#ifdef O_NONBLOCK
+	/*
+	 *	Try to set it non-blocking.
+	 */
+	do {
+		int flags;
+		
+		if ((flags = fcntl(pd[0], F_GETFL, NULL)) < 0)  {
+			nonblock = FALSE;
+			break;
+		}
+		
+		flags |= O_NONBLOCK;
+		if( fcntl(pd[0], F_SETFL, flags) < 0) {
+			nonblock = FALSE;
+			break;
+		}
+	} while (0);
+#endif
+
+
 	/*
 	 *	Read from the pipe until we doesn't get any more or
 	 *	until the message is full.
 	 */
 	done = 0;
 	left = sizeof(answer) - 1;
+	gettimeofday(&start, NULL);
 	while (1) {
-		status = read(pd[0], answer + done, left);
+		int rcode;
+		fd_set fds;
+		struct timeval when, elapsed, wake;
+
+		FD_ZERO(&fds);
+		FD_SET(pd[0], &fds);
+
+		gettimeofday(&when, NULL);
+		tv_sub(&when, &start, &elapsed);
+		if (elapsed.tv_sec >= 10) goto too_long;
+		
+		when.tv_sec = 10;
+		when.tv_usec = 0;
+		tv_sub(&when, &elapsed, &wake);
+
+		rcode = select(pd[0] + 1, &fds, NULL, NULL, &wake);
+		if (rcode == 0) {
+		too_long:
+			radlog(L_ERR, "Child PID %u is taking too much time: forcing failure and killing child.", pid);
+			kill(pid, SIGTERM);
+			close(pd[0]); /* should give SIGPIPE to child, too */
+
+			/*
+			 *	Clean up the child entry.
+			 */
+			rad_waitpid(pid, &status);
+			return 1;			
+		}
+		if (rcode < 0) {
+			if (errno == EINTR) continue;
+			break;
+		}
+
+#ifdef O_NONBLOCK
+		/*
+		 *	Read as many bytes as possible.  The kernel
+		 *	will return the number of bytes available.
+		 */
+		if (nonblock) {
+			status = read(pd[0], answer + done, left);
+		} else 
+#endif
+			/*
+			 *	There's at least 1 byte ready: read it.
+			 */
+			status = read(pd[0], answer + done, 1);
+
 		/*
 		 *	Nothing more to read: stop.
 		 */
