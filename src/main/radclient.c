@@ -973,6 +973,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Resolve hostname.
 	 */
+	if (force_af == AF_UNSPEC) force_af = AF_INET;
 	server_ipaddr.af = force_af;
 	if (strcmp(argv[1], "-") != 0) {
 		const char *hostname = argv[1];
