@@ -106,13 +106,21 @@ static int eapmessage_verify(REQUEST *request,
 	uint8_t eap_type;
 	char buffer[256];
 
-	if (!data || (data_len <= 1)) {
+	/*
+	 *	No data, OR only 1 byte of EAP type.
+	 */
+	if (!data || (data_len == 0) ||
+	    ((data_len <= 1) && (data[0] != PW_EAP_IDENTITY))) {
 		return 0;
 	}
 
 	eap_type = *data;
 	switch (eap_type) {
 	case PW_EAP_IDENTITY:
+		if (data_len == 1) {
+			RDEBUG2("Identity - ");
+			return 1;
+		}
 		RDEBUG2("Identity - %*s",
 		       data_len - 1, data + 1);
 		return 1;
@@ -401,7 +409,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 	return rcode;
 }
 
-
+#ifdef WITH_PROXY
 /*
  *	Do post-proxy processing,
  */
@@ -551,6 +559,8 @@ static void my_request_free(void *data)
 
 	request_free(&request);
 }
+#endif
+
 
 static void print_tunneled_data(uint8_t *data, size_t data_len)
 {
@@ -843,6 +853,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 */
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
+#ifdef WITH_PROXY
 		vp = pairfind(fake->config_items, PW_PROXY_TO_REALM);
 
 		if (vp) {
@@ -979,10 +990,12 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 */
 			rcode = RLM_MODULE_UPDATED;
 
-		} else {
+		} else
+#endif	/* WITH_PROXY */
+		  {
 			DEBUG2("  PEAP: Unknown RADIUS packet type %d: rejecting tunneled user", fake->reply->code);
 			rcode = RLM_MODULE_REJECT;
-		}
+		  }
 		break;
 
 	default:

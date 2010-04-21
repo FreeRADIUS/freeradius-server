@@ -594,7 +594,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 
 		if ((debug_flag > 2) && fr_log_fp) {
 			for (i = 0; i < total; i++) {
-				if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  TTLS tunnel data out %04x: ", i);
+			  if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  TTLS tunnel data out %04x: ", (int) i);
 
 				fprintf(fr_log_fp, "%02x ", buffer[i]);
 
@@ -685,7 +685,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			 *	Use the tunneled reply, but not now.
 			 */
 			if (t->use_tunneled_reply) {
-				t->reply = reply->vps;
+				t->accept_vps = reply->vps;
 				reply->vps = NULL;
 			}
 
@@ -790,6 +790,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 }
 
 
+#ifdef WITH_PROXY
 /*
  *	Do post-proxy processing,
  */
@@ -924,7 +925,7 @@ static void my_request_free(void *data)
 
 	request_free(&request);
 }
-
+#endif	/* WITH_PROXY */
 
 /*
  *	Process the "diameter" contents of the tunneled data.
@@ -972,7 +973,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		size_t i;
 
 		for (i = 0; i < data_len; i++) {
-			if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  TTLS tunnel data in %04x: ", i);
+		  if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  TTLS tunnel data in %04x: ", (int) i);
 
 			fprintf(fr_log_fp, "%02x ", data[i]);
 
@@ -1200,6 +1201,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 */
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
+#ifdef WITH_PROXY
 		vp = pairfind(fake->config_items, PW_PROXY_TO_REALM);
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
@@ -1261,7 +1263,9 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 */
 			rcode = PW_STATUS_CLIENT;
 
-		} else {
+		} else
+#endif	/* WITH_PROXY */
+		  {
 			RDEBUG("No tunneled reply was found for request %d , and the request was not proxied: rejecting the user.",
 			       request->number);
 			rcode = PW_AUTHENTICATION_REJECT;
