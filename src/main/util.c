@@ -198,7 +198,9 @@ void request_free(REQUEST **request_ptr)
 	request = *request_ptr;
 
 	rad_assert(!request->in_request_hash);
+#ifdef WITH_PROXY
 	rad_assert(!request->in_proxy_hash);
+#endif
 	rad_assert(!request->ev);
 
 	if (request->packet)

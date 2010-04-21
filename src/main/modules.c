@@ -1452,7 +1452,9 @@ int setup_modules(int reload, CONF_SECTION *config)
 	     listener = listener->next) {
 		char buffer[256];
 
+#ifdef WITH_PROXY
 		if (listener->type == RAD_LISTEN_PROXY) continue;
+#endif
 
 		cs = cf_section_sub_find_name2(config,
 					       "server", listener->server);

@@ -533,6 +533,7 @@ void request_stats_reply(REQUEST *request)
 #endif
 	}
 
+#ifdef WITH_PROXY
 	/*
 	 *	Home servers.
 	 */
@@ -623,6 +624,7 @@ void request_stats_reply(REQUEST *request)
 		}
 #endif
 	}
+#endif	/* WITH_PROXY */
 }
 
 void radius_stats_init(int flag)
