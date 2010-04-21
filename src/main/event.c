@@ -147,6 +147,42 @@ static void remove_from_request_hash(REQUEST *request)
 }
 
 
+static void ev_request_free(REQUEST **prequest)
+{
+	REQUEST *request;
+	
+	if (!prequest || !*prequest) return;
+
+	request = *prequest;
+
+#ifdef WITH_COA
+	if (request->coa) {
+		/*
+		 *	Divorce the child from the parent first,
+		 *	then clean up the child.
+		 */
+		request->coa->parent = NULL;
+		ev_request_free(&request->coa);
+	}
+
+	/*
+	 *	Divorce the parent from the child, and leave the
+	 *	parent still alive.
+	 */
+	if (request->parent && (request->parent->coa == request)) {
+		request->parent->coa = NULL;
+	}
+#endif
+
+	if (request->ev) fr_event_delete(el, &request->ev);
+#ifdef WITH_PROXY
+	if (request->in_proxy_hash) remove_from_proxy_hash(request);
+#endif
+	if (request->in_request_hash) remove_from_request_hash(request);
+
+	request_free(prequest);
+}
+
 #ifdef WITH_PROXY
 static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 {
@@ -240,40 +276,6 @@ static void remove_from_proxy_hash(REQUEST *request)
 	request->in_proxy_hash = FALSE;
 
   	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-}
-
-static void ev_request_free(REQUEST **prequest)
-{
-	REQUEST *request;
-	
-	if (!prequest || !*prequest) return;
-
-	request = *prequest;
-
-#ifdef WITH_COA
-	if (request->coa) {
-		/*
-		 *	Divorce the child from the parent first,
-		 *	then clean up the child.
-		 */
-		request->coa->parent = NULL;
-		ev_request_free(&request->coa);
-	}
-
-	/*
-	 *	Divorce the parent from the child, and leave the
-	 *	parent still alive.
-	 */
-	if (request->parent && (request->parent->coa == request)) {
-		request->parent->coa = NULL;
-	}
-#endif
-
-	if (request->ev) fr_event_delete(el, &request->ev);
-	if (request->in_proxy_hash) remove_from_proxy_hash(request);
-	if (request->in_request_hash) remove_from_request_hash(request);
-
-	request_free(prequest);
 }
 
 static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
@@ -1178,7 +1180,7 @@ static void wait_a_bit(void *ctx)
 			break;
 		}
 
-#if defined(HAVE_PTHREAD_H) || defined(WITH_PROXY)
+#if defined(HAVE_PTHREAD_H)
 		/*
 		 *	A child thread MAY still be running on the
 		 *	request.  Ask the thread to stop working on
@@ -1647,7 +1649,9 @@ static int originated_coa_request(REQUEST *request)
 	 */
 	request->num_proxied_requests = 1;
 	request->num_proxied_responses = 0;
+#ifdef HAVE_PTHREAD_H
 	request->child_pid = NO_SUCH_CHILD_PID;
+#endif
 
 	update_event_timestamp(request->proxy, request->proxy_when.tv_sec);
 
@@ -1818,8 +1822,8 @@ static int request_pre_handler(REQUEST *request)
 #ifdef WITH_PROXY
 	if (request->proxy) {
 		return process_proxy_reply(request);
-#endif
 	}
+#endif
 
 	return 1;
 }
