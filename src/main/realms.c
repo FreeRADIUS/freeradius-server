@@ -1482,15 +1482,22 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 
 #ifdef HAVE_REGEX_H
 	if (name2[0] == '~') {
+		int rcode;
 		regex_t reg;
 		
 		/*
 		 *	Include substring matches.
 		 */
-		if (regcomp(&reg, name2 + 1,
-			    REG_EXTENDED | REG_NOSUB | REG_ICASE) != 0) {
+		rcode = regcomp(&reg, name2 + 1,
+				REG_EXTENDED | REG_NOSUB | REG_ICASE);
+		if (rcode != 0) {
+			char buffer[256];
+
+			regerror(rcode, &reg, buffer, sizeof(buffer));
+
 			cf_log_err(cf_sectiontoitem(cs),
-				   "Invalid regex in realm \"%s\"", name2);
+				   "Invalid regex \"%s\": %s",
+				   name2 + 1, buffer);
 			goto error;
 		}
 		regfree(&reg);
