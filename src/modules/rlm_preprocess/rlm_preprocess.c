@@ -151,8 +151,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 			p = vp->vp_strvalue;
 			gettoken(&p, newattr, sizeof(newattr));
 
-			if (((dattr = dict_attrbyname(newattr)) != NULL) &&
-			    (dattr->type == PW_TYPE_STRING)) {
+			if ((dattr = dict_attrbyname(newattr)) != NULL) {
 				VALUE_PAIR *newvp;
 
 				/*
