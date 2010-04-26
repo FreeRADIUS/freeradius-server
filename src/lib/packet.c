@@ -512,6 +512,8 @@ static int packet_entry_cmp(const void *one, const void *two)
 	const RADIUS_PACKET * const *a = one;
 	const RADIUS_PACKET * const *b = two;
 
+	if (!a || !*a || !b || !*b) return -1; /* work-around for bug #35 */
+
 	return fr_packet_cmp(*a, *b);
 }
 
