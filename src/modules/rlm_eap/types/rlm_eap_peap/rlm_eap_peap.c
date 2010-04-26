@@ -46,11 +46,13 @@ typedef struct rlm_eap_peap_t {
 	 */
 	int	copy_request_to_tunnel;
 
+#ifdef WITH_PROXY
 	/*
 	 *	Proxy tunneled session as EAP, or as de-capsulated
 	 *	protocol.
 	 */
 	int	proxy_tunneled_request_as_eap;
+#endif
 
 	/*
 	 *	Virtual server for inner tunnel session.
@@ -69,8 +71,10 @@ static CONF_PARSER module_config[] = {
 	{ "use_tunneled_reply", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_peap_t, use_tunneled_reply), NULL, "no" },
 
+#ifdef WITH_PROXY
 	{ "proxy_tunneled_request_as_eap", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_peap_t, proxy_tunneled_request_as_eap), NULL, "yes" },
+#endif
 
 	{ "virtual_server", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_peap_t, virtual_server), NULL, NULL },
@@ -160,7 +164,9 @@ static peap_tunnel_t *peap_alloc(rlm_eap_peap_t *inst)
 	t->default_eap_type = inst->default_eap_type;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
 	t->use_tunneled_reply = inst->use_tunneled_reply;
+#ifdef WITH_PROXY
 	t->proxy_tunneled_request_as_eap = inst->proxy_tunneled_request_as_eap;
+#endif
 	t->virtual_server = inst->virtual_server;
 	t->session_resumption_state = PEAP_RESUMPTION_MAYBE;
 
@@ -325,7 +331,9 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	will proxy it, rather than returning an EAP packet.
 		 */
 	case RLM_MODULE_UPDATED:
+#ifdef WITH_PROXY
 		rad_assert(handler->request->proxy != NULL);
+#endif
 		return 1;
 		break;
 
