@@ -293,6 +293,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
+#ifdef WITH_PROXY
 	/*
 	 *	If we're doing horrible tunneling work, remember it.
 	 */
@@ -311,8 +312,9 @@ static int eap_authenticate(void *instance, REQUEST *request)
 
 		return RLM_MODULE_HANDLED;
 	}
+#endif
 
-
+#ifdef WITH_PROXY
 	/*
 	 *	Maybe the request was marked to be proxied.  If so,
 	 *	proxy it.
@@ -358,6 +360,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		RDEBUG2("  Tunneled session will be proxied.  Not doing EAP.");
 		return RLM_MODULE_HANDLED;
 	}
+#endif
 
 	/*
 	 *	We are done, wrap the EAP-request in RADIUS to send
@@ -457,12 +460,14 @@ static int eap_authorize(void *instance, REQUEST *request)
 
 	inst = (rlm_eap_t *)instance;
 
+#ifdef WITH_PROXY
 	/*
 	 *	We don't do authorization again, once we've seen the
 	 *	proxy reply (or the proxied packet)
 	 */
 	if (request->proxy != NULL)
                 return RLM_MODULE_NOOP;
+#endif
 
 	/*
 	 *	For EAP_START, send Access-Challenge with EAP Identity
@@ -514,6 +519,8 @@ static int eap_authorize(void *instance, REQUEST *request)
 	return RLM_MODULE_UPDATED;
 }
 
+
+#ifdef WITH_PROXY
 /*
  *	If we're proxying EAP, then there may be magic we need
  *	to do.
@@ -675,7 +682,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 
 	return RLM_MODULE_UPDATED;
 }
-
+#endif
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -694,7 +701,11 @@ module_t rlm_eap = {
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
+#ifdef WITH_PROXY
 		eap_post_proxy,		/* post-proxy */
+#else
+		NULL,
+#endif
 		NULL			/* post-auth */
 	},
 };

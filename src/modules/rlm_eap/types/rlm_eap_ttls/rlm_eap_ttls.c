@@ -152,7 +152,7 @@ static void ttls_free(void *p)
 
 	pairfree(&t->username);
 	pairfree(&t->state);
-	pairfree(&t->reply);
+	pairfree(&t->accept_vps);
 	free(t);
 }
 
@@ -211,10 +211,10 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		}
 
 		if (t && t->authenticated) {
-			if (t->reply) {
-				pairmove(&handler->request->reply->vps,
-					 &t->reply);
-				pairfree(&t->reply);
+			if (t->accept_vps) {
+				pairadd(&handler->request->reply->vps,
+					 &t->accept_vps);
+				pairfree(&t->accept_vps);
 			}
 		do_keys:
 			/*
@@ -292,7 +292,9 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	will proxy it, rather than returning an EAP packet.
 		 */
 	case PW_STATUS_CLIENT:
+#ifdef WITH_PROXY
 		rad_assert(handler->request->proxy != NULL);
+#endif
 		return 1;
 		break;
 

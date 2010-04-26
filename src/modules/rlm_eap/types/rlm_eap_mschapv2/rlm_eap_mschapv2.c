@@ -256,11 +256,13 @@ static int mschapv2_initiate(void *type_data, EAP_HANDLER *handler)
 	eapmschapv2_compose(handler, challenge);
 	pairfree(&challenge);
 
+#ifdef WITH_PROXY
 	/*
 	 *	The EAP session doesn't have enough information to
 	 *	proxy the "inside EAP" protocol.  Disable EAP proxying.
 	 */
 	handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+#endif
 
 	/*
 	 *	We don't need to authorize the user at this point.
@@ -274,7 +276,7 @@ static int mschapv2_initiate(void *type_data, EAP_HANDLER *handler)
 	return 1;
 }
 
-
+#ifdef WITH_PROXY
 /*
  *	Do post-proxy processing,
  *	0 = fail
@@ -350,7 +352,7 @@ static int mschap_postproxy(EAP_HANDLER *handler, void *tunnel_data)
 
 	return 1;
 }
-
+#endif
 
 /*
  *	Authenticate a previously sent challenge.
@@ -454,10 +456,12 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 			return 0;
 		}
 
+#ifdef WITH_PROXY
 		/*
 		 *	It's a success.  Don't proxy it.
 		 */
 		handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+#endif
 
 		eap_ds->request->code = PW_EAP_SUCCESS;
 		return 1;
@@ -509,6 +513,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	pairadd(&handler->request->packet->vps, challenge);
 	pairadd(&handler->request->packet->vps, response);
 
+#ifdef WITH_PROXY
 	/*
 	 *	If this options is set, then we do NOT authenticate the
 	 *	user here.  Instead, now that we've added the MS-CHAP
@@ -583,6 +588,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		 */
 		return 1;
 	}
+#endif
 
 	/*
 	 *	This is a wild & crazy hack.
