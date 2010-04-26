@@ -101,6 +101,7 @@ static int		proxy_all_used = FALSE;
 static int		proxy_fds[32];
 static rad_listen_t	*proxy_listeners[32];
 static void check_for_zombie_home_server(REQUEST *request);
+static void remove_from_proxy_hash(REQUEST *request);
 #else
 #define remove_from_proxy_hash(foo)
 #endif
