@@ -114,7 +114,6 @@ static fr_packet_list_t *proxy_list = NULL;
 static void remove_from_proxy_hash(REQUEST *request);
 
 static void check_for_zombie_home_server(REQUEST *request);
-static void remove_from_proxy_hash(REQUEST *request);
 #else
 #define remove_from_proxy_hash(foo)
 #endif
@@ -203,7 +202,6 @@ static void ev_request_free(REQUEST **prequest)
 #ifdef WITH_PROXY
 static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 {
-	int done = FALSE;
 	RADIUS_PACKET **proxy_p;
 	REQUEST *request;
 
@@ -218,15 +216,7 @@ static REQUEST *lookup_in_proxy_hash(RADIUS_PACKET *reply)
 	request = fr_packet2myptr(REQUEST, proxy, proxy_p);
 	request->num_proxied_responses++; /* needs to be protected by lock */
 
-	done = (request->num_proxied_requests == request->num_proxied_responses);
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-
-
-	/*
-	 *	Catch the most common case of everything working
-	 *	correctly.
-	 */
-	if (done) remove_from_proxy_hash(request);
 
 	return request;
 }
@@ -377,6 +367,8 @@ retry:
 	rcode = fr_packet_list_id_alloc(proxy_list,
 					request->home_server->proto,
 					request->proxy, &proxy_listener);
+	request->num_proxied_requests = 1;
+	request->num_proxied_responses = 0;
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 	
 	if (!rcode) {
@@ -1484,6 +1476,8 @@ static void retransmit_coa_request(void *ctx)
 		 *	Id.
 		 */
 		RADIUS_PACKET old = *request->proxy;
+		home_server *home = request->home_server;
+		rad_listen_t *listener = request->proxy_listener;
 
 		/*
 		 *	Don't free the old Id on error.
@@ -1494,18 +1488,22 @@ static void retransmit_coa_request(void *ctx)
 		}
 
 		/*
-		 *	Now that we have a new Id, free the old one.
+		 *	Now that we have a new Id, free the old one
+		 *	and update the various statistics.
 		 */
 		PTHREAD_MUTEX_LOCK(&proxy_mutex);
 		fr_packet_list_yank(proxy_list, &old);
 		fr_packet_list_id_free(proxy_list, &old);
+		if (home) home->currently_outstanding--;
+#ifdef WITH_TCP
+		if (listener) listener->count--;
+#endif
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
-		request->num_proxied_requests = 0;
-		request->num_proxied_responses = 0;
+	} else {		/* FIXME: protect by a mutex? */
+		request->num_proxied_requests++;
 	}
 
-	request->num_proxied_requests++;
 	request->num_coa_requests++; /* is NOT reset by code 3 lines above! */
 
 	request->proxy_listener->send(request->proxy_listener,
@@ -1740,8 +1738,6 @@ static int originated_coa_request(REQUEST *request)
 	 *	another thread may have picked it up.  Don't
 	 *	touch it!
 	 */
-	request->num_proxied_requests = 1;
-	request->num_proxied_responses = 0;
 	request->child_pid = NO_SUCH_CHILD_PID;
 
 	update_event_timestamp(request->proxy, request->proxy_when.tv_sec);
@@ -1983,8 +1979,6 @@ static int proxy_request(REQUEST *request)
 	 *	another thread may have picked it up.  Don't
 	 *	touch it!
 	 */
-	request->num_proxied_requests = 1;
-	request->num_proxied_responses = 0;
 #ifdef HAVE_PTHREAD_H
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
@@ -3076,7 +3070,10 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	REQUEST		*request;
 
 	/*
-	 *	Also removes from the proxy hash if responses == requests
+	 *	Lookup *without* removal.  In versions prior to 2.2.0,
+	 *	this did lookup *and* removal.  That method allowed
+	 *	attackers to spoof replies that caused entries to be
+	 *	removed from the proxy hash prior to validation.
 	 */
 	request = lookup_in_proxy_hash(packet);
 
@@ -3090,48 +3087,67 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	}
 
 	/*
-	 *	We haven't replied to the NAS, but we have seen an
-	 *	earlier reply from the home server.  Ignore this packet,
-	 *	as we're likely still processing the previous reply.
+	 *	There's a reply: discard it if it's a conflicting one.
 	 */
 	if (request->proxy_reply) {
+		/*
+		 *	? The home server gave us a new proxy
+		 *	reply which doesn't match the old
+		 *	one.  Delete it.
+		 */
 		if (memcmp(request->proxy_reply->vector,
 			   packet->vector,
-			   sizeof(request->proxy_reply->vector)) == 0) {
-			RDEBUG2("Discarding duplicate reply from host %s port %d  - ID: %d for request %u",
-			       inet_ntop(packet->src_ipaddr.af,
-					 &packet->src_ipaddr.ipaddr,
-					 buffer, sizeof(buffer)),
-			       packet->src_port, packet->id,
-			       request->number);
-		} else {
-			/*
-			 *	? The home server gave us a new proxy
-			 *	reply which doesn't match the old
-			 *	one.  Delete it.
-			 */
+			   sizeof(request->proxy_reply->vector)) != 0) {
 			RDEBUG2("Ignoring conflicting proxy reply");
-		}
+			
 		
-		/* assert that there's an event queued for request? */
+			/* assert that there's an event queued for request? */
+			return NULL;
+		} /* else it had previously passed verification */
+
+		/*
+		 *	Verify the packet before doing ANYTHING with
+		 *	it.  This means we're doing more MD5 checks in
+		 *	the server core.  However, we can fix that by
+		 *	moving to multiple threads listening on
+		 *	sockets.
+		 *
+		 *	We do this AFTER looking the request up in the
+		 *	hash, and AFTER vhecking if we saw a previous
+		 *	request.  This helps minimize the DoS effect
+		 *	of people attacking us with spoofed packets.
+		 */
+	} else if (rad_verify(packet, request->proxy,
+			      request->home_server->secret) != 0) {
+		DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
 		return NULL;
 	}
 
 	/*
-	 *	Verify the packet before doing ANYTHING with it.  This
-	 *	means we're doing more MD5 checks in the server core.
-	 *	However, we can fix that by moving to multiple threads
-	 *	listening on sockets.
+	 *	Now that we know it's a good reply, see if we can
+	 *	delete it from the proxy hash.  This lets the source
+	 *	ports && Ids be re-used earlier.
 	 *
-	 *	We do this AFTER looking the request up in the hash,
-	 *	and AFTER vhecking if we saw a previous request.  This
-	 *	helps minimize the DoS effect of people attacking us
-	 *	with spoofed packets.
+	 *	FIXME: protect by mutex?  This is likely less relevant
+	 *	as if we have the reply, the originating thread knows to
+	 *	avoid touching the request.  Any retransmits are done from
+	 *	the main server thread (i.e. this thread).
 	 */
-	if (rad_verify(packet, request->proxy,
-		       request->home_server->secret) != 0) {
-		DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
-		return NULL;
+	if (request->num_proxied_requests <= request->num_proxied_responses) {
+		remove_from_proxy_hash(request);
+	}
+
+	/*
+	 *	Check (again) if it's a duplicate reply.  We do this
+	 *	after deleting the packet from the proxy hash.
+	 */
+	if (request->proxy_reply) {
+		RDEBUG2("Discarding duplicate reply from host %s port %d  - ID: %d for request %u",
+			inet_ntop(packet->src_ipaddr.af,
+				  &packet->src_ipaddr.ipaddr,
+				  buffer, sizeof(buffer)),
+			packet->src_port, packet->id,
+			request->number);
 	}
 
 	gettimeofday(&now, NULL);
