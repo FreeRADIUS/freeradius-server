@@ -114,6 +114,7 @@ static fr_packet_list_t *proxy_list = NULL;
 static void remove_from_proxy_hash(REQUEST *request);
 
 static void check_for_zombie_home_server(REQUEST *request);
+static void remove_from_proxy_hash(REQUEST *request);
 #else
 #define remove_from_proxy_hash(foo)
 #endif
