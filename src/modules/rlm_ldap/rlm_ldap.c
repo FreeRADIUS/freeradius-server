@@ -2186,6 +2186,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 }
 #endif
 
+#if LDAP_SET_REBIND_PROC_ARGS == 3
 static int ldap_rebind(LDAP *ld, LDAP_CONST char *url,
 		       UNUSED ber_tag_t request, UNUSED ber_int_t msgid,
 		       void *params )
@@ -2195,6 +2196,7 @@ static int ldap_rebind(LDAP *ld, LDAP_CONST char *url,
 	DEBUG("  [%s] rebind to URL %s", inst->xlat_name,url);
 	return ldap_bind_s(ld, inst->login, inst->password, LDAP_AUTH_SIMPLE);
 }
+#endif
 
 static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			  int auth, int *result, char **err)
@@ -2240,10 +2242,12 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			rc=ldap_set_option(ld, LDAP_OPT_REFERRALS,
 					   LDAP_OPT_ON);
 			
+#if LDAP_SET_REBIND_PROC_ARGS == 3
 			if (inst->rebind == 1) {
 				ldap_set_rebind_proc(ld, ldap_rebind,
 						     inst);
 			}
+#endif
 		} else {
 			rc=ldap_set_option(ld, LDAP_OPT_REFERRALS,
 					   LDAP_OPT_OFF);
