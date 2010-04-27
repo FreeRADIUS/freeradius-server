@@ -587,7 +587,8 @@ int dict_addattr(const char *name, int attr, int vendor, int type,
 		 *	If the vendor isn't defined, die.
 		 */
 		if (!dv) {
-			fr_strerror_printf("dict_addattr: Unknown vendor");
+			fr_strerror_printf("dict_addattr: Unknown vendor %d",
+					   vendor);
 			return -1;
 		}
 
@@ -1012,6 +1013,7 @@ static int process_attribute(const char* fn, const int line,
 		flags.is_tlv = 1;
 	}
 
+
 	/*
 	 *	Add it in.
 	 */
@@ -1286,7 +1288,7 @@ static int str2argv(char *str, char **argv, int max_argc)
 	int argc = 0;
 
 	while (*str) {
-		if (argc >= max_argc) return argc;
+		if (argc >= max_argc) break;
 
 		/*
 		 *	Chop out comments early.
@@ -1301,7 +1303,7 @@ static int str2argv(char *str, char **argv, int max_argc)
 		       (*str == '\r') ||
 		       (*str == '\n')) *(str++) = '\0';
 
-		if (!*str) return argc;
+		if (!*str) break;
 
 		argv[argc] = str;
 		argc++;
