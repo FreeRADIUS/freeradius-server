@@ -759,7 +759,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	don't copy it.
 			 */
 			if ((vp->attribute > 255) &&
-			    (((vp->attribute >> 16) & 0xffff) == 0)) {
+			    (vp->vendor == 0)) {
 				continue;
 			}
 

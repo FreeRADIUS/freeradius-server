@@ -144,7 +144,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 		 *	of the string, and if it exists, adds it as a new
 		 *	attribute.
 		 */
-		if ((vp->attribute & 0xffff) == 1) {
+		if (vp->attribute == 1) {
 			const char *p;
 			DICT_ATTR	*dattr;
 

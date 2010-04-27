@@ -1328,7 +1328,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 		if (!IS_DHCP_ATTR(vp)) goto next;
 		if (vp->attribute == DHCP2ATTR(53)) goto next; /* already done */
-		if (((vp->attribute & 0xffff) > 255) &&
+		if ((vp->attribute > 255) &&
 		    (DHCP_BASE_ATTR(vp->attribute) != PW_DHCP_OPTION_82)) goto next;
 
 		debug_pair(vp);

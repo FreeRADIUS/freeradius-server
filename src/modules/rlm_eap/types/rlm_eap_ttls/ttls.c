@@ -493,7 +493,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		 *	issues.
 		 */
 		length = vp->length;
-		vendor = (vp->attribute >> 16) & 0xffff;
+		vendor = vp->vendor;
 		if (vendor != 0) {
 			attr = vp->attribute & 0xffff;
 			length |= (1 << 31);
@@ -1096,7 +1096,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	don't copy it.
 			 */
 			if ((vp->attribute > 255) &&
-			    (((vp->attribute >> 16) & 0xffff) == 0)) {
+			    (vp->vendor == 0)) {
 				continue;
 			}
 

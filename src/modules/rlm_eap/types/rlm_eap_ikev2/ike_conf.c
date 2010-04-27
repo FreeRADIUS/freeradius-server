@@ -124,7 +124,7 @@ int getusersfile(const char *filename, PAIR_LIST **pair_list, const char *compat
 				 *	or it's a wire protocol,
 				 *	ensure it has '=='.
 				 */
-				if (((vp->attribute & ~0xffff) != 0) ||
+				if ((vp->vendor!= 0) ||
 						(vp->attribute < 0x100)) {
 					if (!compat_mode) {
 						DEBUG("[%s]:%d WARNING! Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
@@ -186,7 +186,7 @@ int getusersfile(const char *filename, PAIR_LIST **pair_list, const char *compat
 				 *	then bitch about it, giving a
 				 *	good warning message.
 				 */
-				if (!(vp->attribute & ~0xffff) &&
+			         if ((vp->vendor == 0) &&
 					(vp->attribute > 0xff) &&
 					(vp->attribute > 1000)) {
 					log_debug("[%s]:%d WARNING! Check item \"%s\"\n"

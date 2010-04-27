@@ -102,7 +102,7 @@ static int getattrsfile(const char *filename, PAIR_LIST **pair_list)
 		     * and we ignore Fall-Through,
 		     * then bitch about it, giving a good warning message.
 		     */
-		    if (!(vp->attribute & ~0xffff) &&
+		     if ((vp->vendor == 0) &&
 			 (vp->attribute > 0xff) &&
 			 (vp->attribute > 1000)) {
 			log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
