@@ -129,7 +129,7 @@ $ vi client.cnf
 
 $ make client.pem
 
-  The users certificate will be in "commonName.pem",
+  The users certificate will be in "emailAddress.pem",
   i.e. "user@example.com.pem".
 
   To create another client certificate, just repeat the steps for
