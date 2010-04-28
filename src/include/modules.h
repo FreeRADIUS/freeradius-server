@@ -36,7 +36,7 @@ enum {
 #define RLM_TYPE_CHECK_CONFIG_SAFE	(1 << 1)
 #define RLM_TYPE_HUP_SAFE		(1 << 2)
 
-#define RLM_MODULE_MAGIC_NUMBER ((uint32_t) (0xf4ee4ad2))
+#define RLM_MODULE_MAGIC_NUMBER ((uint32_t) (0xf4ee4ad3))
 #define RLM_MODULE_INIT RLM_MODULE_MAGIC_NUMBER
 
 typedef struct module_t {
