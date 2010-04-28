@@ -1529,8 +1529,14 @@ static int originated_coa_request(REQUEST *request)
 	rad_assert(!request->in_proxy_hash);
 	rad_assert(request->proxy_reply == NULL);
 
+	/*
+	 *	Check whether we want to originate one, or cancel one.
+	 */
 	vp = pairfind(request->config_items, PW_SEND_COA_REQUEST, 0);
-	if (!vp && request->coa) vp = pairfind(request->coa->proxy->vps, PW_SEND_COA_REQUEST, 0);
+	if (!vp && request->coa) {
+		vp = pairfind(request->coa->proxy->vps, PW_SEND_COA_REQUEST, 0);
+	}
+
 	if (vp) {
 		if (vp->vp_integer == 0) {
 			ev_request_free(&request->coa);
@@ -4175,4 +4181,3 @@ void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun)
 	DEBUG2("Going to the next request");
 	return;
 }
-
