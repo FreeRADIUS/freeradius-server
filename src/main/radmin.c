@@ -47,29 +47,26 @@ RCSID("$Id$")
 #endif
 
 #ifdef HAVE_LIBREADLINE
+
 #if defined(HAVE_READLINE_READLINE_H)
 #include <readline/readline.h>
+#define USE_READLINE (1)
 #elif defined(HAVE_READLINE_H)
 #include <readline.h>
-#else /* !defined(HAVE_READLINE_H) */
-extern char *readline ();
+#define USE_READLINE (1)
 #endif /* !defined(HAVE_READLINE_H) */
-char *cmdline = NULL;
-#else /* !defined(HAVE_READLINE_READLINE_H) */
-  /* no readline */
+
 #endif /* HAVE_LIBREADLINE */
 
 #ifdef HAVE_READLINE_HISTORY
 #if defined(HAVE_READLINE_HISTORY_H)
 #include <readline/history.h>
+#define USE_READLINE_HISTORY (1)
 #elif defined(HAVE_HISTORY_H)
 #include <history.h>
-#else /* !defined(HAVE_HISTORY_H) */
-extern void add_history ();
-extern int write_history ();
-extern int read_history ();
+#define USE_READLINE_HISTORY (1)
 #endif /* defined(HAVE_READLINE_HISTORY_H) */
-  /* no history */
+
 #endif /* HAVE_READLINE_HISTORY */
 
 /*
@@ -432,9 +429,11 @@ int main(int argc, char **argv)
 	 */
 	if (input_file && !quiet && !isatty(STDIN_FILENO)) quiet = 1;
 
-#ifdef HAVE_LIBREADLINE
+#ifdef USE_READLINE
 	if (!quiet) {
+#ifdef USE_READLINE_HISTORY
 		using_history();
+#endif
 		rl_bind_key('\t', rl_insert);
 	}
 #endif
@@ -511,7 +510,7 @@ int main(int argc, char **argv)
 	 */
 
 	while (1) {
-#ifndef HAVE_LIBREADLINE
+#ifndef USE_READLINE
 		if (!quiet) {
 			printf("radmin> ");
 			fflush(stdout);
@@ -527,7 +526,9 @@ int main(int argc, char **argv)
 				continue;
 			}
 			
+#ifdef USE_READLINE_HISTORY
 			add_history(line);
+#endif
 		} else		/* quiet, or no readline */
 #endif
 		{
