@@ -966,14 +966,20 @@ static int mschap_authorize(void * instance, REQUEST *request)
 #define inst ((rlm_mschap_t *)instance)
 	VALUE_PAIR *challenge = NULL, *response = NULL;
 
-	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE, 0);
+	challenge = pairfind(request->packet->vps,
+			     PW_MSCHAP_CHALLENGE,
+			     VENDORPEC_MICROSOFT);
 	if (!challenge) {
 		return RLM_MODULE_NOOP;
 	}
 
-	response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE, 0);
+	response = pairfind(request->packet->vps,
+			    PW_MSCHAP_RESPONSE,
+			    VENDORPEC_MICROSOFT);
 	if (!response)
-		response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, 0);
+		response = pairfind(request->packet->vps,
+				    PW_MSCHAP2_RESPONSE,
+				    VENDORPEC_MICROSOFT);
 
 	/*
 	 *	Nothing we recognize.  Don't do anything.
@@ -1156,7 +1162,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		}
 	}
 
-	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE, 0);
+	challenge = pairfind(request->packet->vps,
+			     PW_MSCHAP_CHALLENGE,
+			     VENDORPEC_MICROSOFT);
 	if (!challenge) {
 		RDEBUG2("No MS-CHAP-Challenge in the request");
 		return RLM_MODULE_REJECT;
@@ -1165,7 +1173,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	/*
 	 *	We also require an MS-CHAP-Response.
 	 */
-	response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE, 0);
+	response = pairfind(request->packet->vps,
+			    PW_MSCHAP_RESPONSE,
+			    VENDORPEC_MICROSOFT);
 
 	/*
 	 *	MS-CHAP-Response, means MS-CHAPv1
@@ -1218,7 +1228,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 		chap = 1;
 
-	} else if ((response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, 0)) != NULL) {
+	} else if ((response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT)) != NULL) {
 		uint8_t	mschapv1_challenge[16];
 
 		/*
