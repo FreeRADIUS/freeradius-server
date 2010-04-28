@@ -167,13 +167,13 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
 		 */
 		if ((where + 2) > size) {
 			fr_strerror_printf("Options overflow field at %u",
-					   data - (uint8_t *) packet);
+					   (unsigned int) (data - (uint8_t *) packet));
 			return NULL;
 		}
 
 		if ((where + 2 + data[1]) > size) {
 			fr_strerror_printf("Option length overflows field at %u",
-					   data - (uint8_t *) packet);
+					   (unsigned int) (data - (uint8_t *) packet));
 			return NULL;
 		}
 
@@ -206,11 +206,15 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	uint8_t			*code;
 
 	packet = rad_alloc(0);
-	if (!packet) return NULL;
+	if (!packet) {
+		fr_strerror_printf("Failed allocating packet");
+		return NULL;
+	}
 	memset(packet, 0, sizeof(packet));
 
 	packet->data = malloc(MAX_PACKET_SIZE);
 	if (!packet->data) {
+		fr_strerror_printf("Failed in malloc");
 		rad_free(&packet);
 		return NULL;
 	}
@@ -228,33 +232,27 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 #endif
 
 	if (packet->data_len <= 0) {
-		fprintf(stderr, "Failed reading DHCP socket: %s", strerror(errno));
+		fr_strerror_printf("Failed reading DHCP socket: %s", strerror(errno));
 		rad_free(&packet);
 		return NULL;
 	}
 
 	if (packet->data_len < MIN_PACKET_SIZE) {
-		fprintf(stderr, "DHCP packet is too small (%d < %d)",
+		fr_strerror_printf("DHCP packet is too small (%d < %d)",
 		      packet->data_len, MIN_PACKET_SIZE);
 		rad_free(&packet);
 		return NULL;
 	}
 
-	if (packet->data[0] != 1) {
-		fprintf(stderr, "Cannot receive DHCP server messages");
-		rad_free(&packet);
-		return NULL;
-	}
-
 	if (packet->data[1] != 1) {
-		fprintf(stderr, "DHCP can only receive ethernet requests, not type %02x",
+		fr_strerror_printf("DHCP can only receive ethernet requests, not type %02x",
 		      packet->data[1]);
 		rad_free(&packet);
 		return NULL;
 	}
 
 	if (packet->data[2] != 6) {
-		fprintf(stderr, "Ethernet HW length is wrong length %d\n",
+		fr_strerror_printf("Ethernet HW length is wrong length %d",
 			packet->data[2]);
 		rad_free(&packet);
 		return NULL;
@@ -263,7 +261,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	memcpy(&magic, packet->data + 236, 4);
 	magic = ntohl(magic);
 	if (magic != DHCP_OPTION_MAGIC_NUMBER) {
-		fprintf(stderr, "Cannot do BOOTP\n");
+		fr_strerror_printf("Cannot do BOOTP");
 		rad_free(&packet);
 		return NULL;
 	}
@@ -346,7 +344,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 				 packet->code - PW_DHCP_OFFSET);
 		}
 
-		printf("Received %s of id %08x from %s:%d to %s:%d\n",
+		DEBUG("Received %s of id %08x from %s:%d to %s:%d",
 		       name, (unsigned int) packet->id,
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,
@@ -356,7 +354,6 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 				 &packet->dst_ipaddr.ipaddr,
 				 dst_ip_buf, sizeof(dst_ip_buf)),
 		       packet->dst_port);
-		fflush(stdout);
 	}
 
 	return packet;
@@ -395,12 +392,128 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 #endif
 }
 
+static int fr_dhcp_attr2vp(VALUE_PAIR *vp, const uint8_t *p, size_t alen);
+
+static int decode_tlv(VALUE_PAIR *tlv, const uint8_t *data, size_t data_len)
+{
+	const uint8_t *p;
+	VALUE_PAIR *head, **tail, *vp;
+
+	/*
+	 *	Take a pass at parsing it.
+	 */
+	p = data;
+	while (p < (data + data_len)) {
+		if ((p + 2) > (data + data_len)) goto make_tlv;
+
+		if ((p + p[1] + 2) > (data + data_len)) goto make_tlv;
+		p += 2 + p[1];
+	}
+
+	/*
+	 *	Got here... must be well formed.
+	 */
+	head = NULL;
+	tail = &head;
+
+	p = data;
+	while (p < (data + data_len)) {
+		vp = paircreate(tlv->attribute | (p[0] << 8), PW_TYPE_OCTETS);
+		if (!vp) {
+			pairfree(&head);
+			goto make_tlv;
+		}
+
+		if (fr_dhcp_attr2vp(vp, p + 2, p[1]) < 0) {
+			pairfree(&head);
+			goto make_tlv;
+		}
+
+		*tail = vp;
+		tail = &(vp->next);
+		p += 2 + p[1];
+	}
+
+	/*
+	 *	The caller allocated TLV, so we need to copy the FIRST
+	 *	attribute over top of that.
+	 */
+	memcpy(tlv, head, sizeof(*tlv));
+	head->next = NULL;
+	pairfree(&head);
+	return 0;
+
+make_tlv:
+	tlv->vp_tlv = malloc(data_len);
+	if (!tlv->vp_tlv) {
+		fr_strerror_printf("No memory");
+		return -1;
+	}
+	memcpy(tlv->vp_tlv, data, data_len);
+	tlv->length = data_len;
+	
+	return 0;
+}
+
+
+/*
+ *	Decode ONE value into a VP
+ */
+static int fr_dhcp_attr2vp(VALUE_PAIR *vp, const uint8_t *p, size_t alen)
+{
+	switch (vp->type) {
+	case PW_TYPE_BYTE:
+		if (alen != 1) goto raw;
+		vp->vp_integer = p[0];
+		break;
+		
+	case PW_TYPE_SHORT:
+		if (alen != 2) goto raw;
+		vp->vp_integer = (p[0] << 8) | p[1];
+		break;
+		
+	case PW_TYPE_INTEGER:
+		if (alen != 4) goto raw;
+		memcpy(&vp->vp_integer, p, 4);
+		vp->vp_integer = ntohl(vp->vp_integer);
+		break;
+		
+	case PW_TYPE_IPADDR:
+		if (alen != 4) goto raw;
+		memcpy(&vp->vp_ipaddr, p , 4);
+		vp->length = 4;
+		break;
+		
+	case PW_TYPE_STRING:
+		if (alen > 253) return -1;
+		memcpy(vp->vp_strvalue, p , alen);
+		vp->vp_strvalue[alen] = '\0';
+		break;
+		
+	raw:
+		vp->type = PW_TYPE_OCTETS;
+
+	case PW_TYPE_OCTETS:
+		if (alen > 253) return -1;
+		memcpy(vp->vp_octets, p, alen);
+		break;
+		
+	case PW_TYPE_TLV:
+		return decode_tlv(vp, p, alen);
+		
+	default:
+		fr_strerror_printf("Internal sanity check %d %d", vp->type, __LINE__);
+		break;
+	} /* switch over type */
+
+	vp->length = alen;
+	return 0;
+}
 
 int fr_dhcp_decode(RADIUS_PACKET *packet)
 {
 	int i;
-	ssize_t total;
-	uint8_t *p;
+	uint8_t *p, *next;
 	uint32_t giaddr;
 	VALUE_PAIR *head, *vp, **tail;
 	VALUE_PAIR *maxms, *mtu;
@@ -412,7 +525,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	
 	if ((fr_debug_flag > 2) && fr_log_fp) {
 		for (i = 0; i < packet->data_len; i++) {
-			if ((i & 0x0f) == 0x00) fprintf(stderr, "%d: ", i);
+			if ((i & 0x0f) == 0x00) fr_strerror_printf("%d: ", i);
 			fprintf(fr_log_fp, "%02x ", packet->data[i]);
 			if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 		}
@@ -420,7 +533,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	}
 
 	if (packet->data[1] != 1) {
-		fprintf(stderr, "Packet is not Ethernet: %u\n",
+		fr_strerror_printf("Packet is not Ethernet: %u",
 		      packet->data[1]);
 		return -1;
 	}
@@ -431,11 +544,10 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	for (i = 0; i < 14; i++) {
 		vp = pairmake(dhcp_header_names[i], NULL, T_OP_EQ);
 		if (!vp) {
-			fprintf(stderr, "Parse error %s\n", fr_strerror());
+			fr_strerror_printf("Parse error %s", fr_strerror());
 			pairfree(&head);
 			return -1;
 		}
-
 
 		if ((i == 11) && 
 		    (packet->data[1] == 1) &&
@@ -485,7 +597,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			break;
 			
 		default:
-			fprintf(stderr, "BAD TYPE %d\n", vp->type);
+			fr_strerror_printf("BAD TYPE %d", vp->type);
 			pairfree(&vp);
 			break;
 		}
@@ -495,7 +607,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		
 		if (fr_debug_flag > 1) {
 			vp_prints(buffer, sizeof(buffer), vp);
-			fprintf(stderr, "\t%s\n", buffer);
+			fr_strerror_printf("\t%s", buffer);
 		}
 		*tail = vp;
 		tail = &vp->next;
@@ -504,35 +616,34 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	/*
 	 *	Loop over the options.
 	 */
-	p = packet->data + 240;
-	total = packet->data_len - 240;
+	next = packet->data + 240;
 
 	/*
 	 *	FIXME: This should also check sname && file fields.
 	 *	See the dhcp_get_option() function above.
 	 */
-	while (total > 0) {
+	while (next < (packet->data + packet->data_len)) {
 		int num_entries, alen;
 		DICT_ATTR *da;
+		
+		p = next;
 
 		if (*p == 0) break;
 		if (*p == 255) break; /* end of options signifier */
+		if ((p + 2) > (packet->data + packet->data_len)) break;
+
+		next = p + 2 + p[1];
 
 		if (p[1] >= 253) {
-			fprintf(stderr, "Attribute too long %u %u\n",
+			fr_strerror_printf("Attribute too long %u %u",
 			      p[0], p[1]);
-			goto do_next;
+			continue;
 		}
 				
 		da = dict_attrbyvalue(DHCP2ATTR(p[0]));
 		if (!da) {
-			fprintf(stderr, "Attribute not in our dictionary: %u\n",
+			fr_strerror_printf("Attribute not in our dictionary: %u",
 			      p[0]);
-		do_next:
-			total -= 2;
-			total -= p[1];
-			p += p[1];
-			p += 2;
 			continue;
 		}
 
@@ -541,6 +652,9 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		alen = p[1];
 		p += 2;
 
+		/*
+		 *	Could be an array of bytes, integers, etc.
+		 */
 		if (da->flags.array) {
 			switch (da->type) {
 			case PW_TYPE_BYTE:
@@ -548,124 +662,62 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 				alen = 1;
 				break;
 
-			case PW_TYPE_SHORT:
-				if ((alen & 0x01) != 0) goto raw;
-				num_entries = alen / 2;
+			case PW_TYPE_SHORT: /* ignore any trailing data */
+				num_entries = alen >> 1;
 				alen = 2;
 				break;
 
 			case PW_TYPE_IPADDR:
 			case PW_TYPE_INTEGER:
-			case PW_TYPE_DATE:
-				if ((alen & 0x03) != 0) goto raw;
-				num_entries = alen / 4;
+			case PW_TYPE_DATE: /* ignore any trailing data */
+				num_entries = alen >> 2;
 				alen = 4;
 				break;
 
 			default:
+
 				break; /* really an internal sanity failure */
-			}
-		} else {
-			num_entries = 1;
-
-			switch (da->type) {
-			case PW_TYPE_BYTE:
-				if (alen != 1) goto raw;
-				break;
-
-			case PW_TYPE_SHORT:
-				if (alen != 2) goto raw;
-				break;
-
-			case PW_TYPE_IPADDR:
-			case PW_TYPE_INTEGER:
-			case PW_TYPE_DATE:
-				if (alen != 4) goto raw;
-				break;
-
-			default:
-				break;
 			}
 		}
 
+		/*
+		 *	Loop over all of the entries, building VPs
+		 */
 		for (i = 0; i < num_entries; i++) {
 			vp = pairmake(da->name, NULL, T_OP_EQ);
 			if (!vp) {
-				fprintf(stderr, "Cannot build attribute %s\n",
+				fr_strerror_printf("Cannot build attribute %s",
 					fr_strerror());
 				pairfree(&head);
 				return -1;
 			}
 
 			/*
-			 *	Hacks for ease of use.
+			 *	Hack for ease of use.
 			 */
 			if ((da->attr == DHCP2ATTR(0x3d)) &&
 			    !da->flags.array &&
 			    (alen == 7) && (*p == 1) && (num_entries == 1)) {
 				vp->type = PW_TYPE_ETHERNET;
 				memcpy(vp->vp_octets, p + 1, 6);
-			} else
+				vp->length = alen;
 
-				switch (vp->type) {
-				case PW_TYPE_BYTE:
-					vp->vp_integer = p[0];
-					break;
-				
-				case PW_TYPE_SHORT:
-					vp->vp_integer = (p[0] << 8) | p[1];
-					break;
-
-				case PW_TYPE_INTEGER:
-					memcpy(&vp->vp_integer, p, 4);
-					vp->vp_integer = ntohl(vp->vp_integer);
-					break;
-
-				case PW_TYPE_IPADDR:
-					memcpy(&vp->vp_ipaddr, p , 4);
-					vp->length = 4;
-					break;
-
-				case PW_TYPE_STRING:
-					memcpy(vp->vp_strvalue, p , alen);
-					vp->vp_strvalue[alen] = '\0';
-					break;
-
-				raw:
-					vp = pairmake(da->name, NULL, T_OP_EQ);
-					if (!vp) {
-						fprintf(stderr, "Cannot build attribute %s\n", fr_strerror());
-						pairfree(&head);
-						return -1;
-					}
-
-					vp->type = PW_TYPE_OCTETS;
-				
-				case PW_TYPE_OCTETS:
-					memcpy(vp->vp_octets, p, alen);
-					break;
-				
-				default:
-					fprintf(stderr, "Internal sanity check %d %d\n", vp->type, __LINE__);
+			} else if (fr_dhcp_attr2vp(vp, p, alen) < 0) {
 					pairfree(&vp);
-					break;
-				} /* switch over type */
-				
-			vp->length = alen;
+					pairfree(&head);
+					return -1;
+			}
 
 			if (fr_debug_flag > 1) {
 				vp_prints(buffer, sizeof(buffer), vp);
-				fprintf(stderr, "\t%s\n", buffer);
+				fr_strerror_printf("\t%s", buffer);
 			}
 
 			*tail = vp;
-			tail = &vp->next;
+			while (*tail) tail = &vp->next;
 			p += alen;
 		} /* loop over array entries */
-		
-		total -= 2;
-		total -= (alen * num_entries);
-	}
+	} /* loop over the entire packet */
 
 	/*
 	 *	If DHCP request, set ciaddr to zero.
@@ -712,17 +764,17 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	mtu = pairfind(packet->vps, DHCP2ATTR(26));
 
 	if (mtu && (mtu->vp_integer < DEFAULT_PACKET_SIZE)) {
-		fprintf(stderr, "DHCP Fatal: Client says MTU is smaller than minimum permitted by the specification.");
+		fr_strerror_printf("DHCP Fatal: Client says MTU is smaller than minimum permitted by the specification.");
 		return -1;
 	}
 
 	if (maxms && (maxms->vp_integer < DEFAULT_PACKET_SIZE)) {
-		fprintf(stderr, "DHCP WARNING: Client says maximum message size is smaller than minimum permitted by the specification: fixing it");
+		fr_strerror_printf("DHCP WARNING: Client says maximum message size is smaller than minimum permitted by the specification: fixing it");
 		maxms->vp_integer = DEFAULT_PACKET_SIZE;
 	}
 
 	if (maxms && mtu && (maxms->vp_integer > mtu->vp_integer)) {
-		fprintf(stderr, "DHCP WARNING: Client says MTU is smaller than maximum message size: fixing it");
+		fr_strerror_printf("DHCP WARNING: Client says MTU is smaller than maximum message size: fixing it");
 		maxms->vp_integer = mtu->vp_integer;
 	}
 
@@ -801,19 +853,88 @@ static size_t fr_dhcp_vp2attr(VALUE_PAIR *vp, uint8_t *p, size_t room)
 		length = vp->length;
 		break;
 		
+	case PW_TYPE_TLV:	/* FIXME: split it on 255? */
+		memcpy(p, vp->vp_tlv, vp->length);
+		length = vp->length;
+		break;
+
 	case PW_TYPE_OCTETS:
 		memcpy(p, vp->vp_octets, vp->length);
 		length = vp->length;
 		break;
 		
 	default:
-		fprintf(stderr, "BAD TYPE2 %d\n", vp->type);
+		fr_strerror_printf("BAD TYPE2 %d", vp->type);
 		length = 0;
 		break;
 	}
 
 	return length;
 }
+
+static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
+{
+	int length;
+	unsigned int attribute;
+	uint8_t *ptr;
+	VALUE_PAIR *vp, *tlv;
+
+	attribute = vps->attribute & 0xffff00ff;
+
+	tlv = paircreate(attribute, PW_TYPE_TLV);
+	if (!tlv) return NULL;
+
+	tlv->length = 0;
+	for (vp = vps; vp != NULL; vp = vp->next) {
+		/*
+		 *	Group the attributes ONLY until we see a
+		 *	non-TLV attribute.
+		 */
+		if (!vp->flags.is_tlv ||
+		    vp->flags.encoded ||
+		    ((vp->attribute & 0xffff00ff) != attribute)) {
+			break;
+		}
+
+		tlv->length += vp->length + 2;
+	}
+
+	if (!tlv->length) {
+		pairfree(&tlv);
+		return NULL;
+	}
+
+	tlv->vp_tlv = malloc(tlv->length);
+	if (!tlv->vp_tlv) {
+		pairfree(&tlv);
+		return NULL;
+	}
+
+	ptr = tlv->vp_tlv;
+	for (vp = vps; vp != NULL; vp = vp->next) {
+		if (!vp->flags.is_tlv ||
+		    vp->flags.encoded ||
+		    ((vp->attribute & 0xffff00ff) != attribute)) {
+			break;
+		}
+
+		length = fr_dhcp_vp2attr(vp, ptr + 2,
+					 tlv->vp_tlv + tlv->length - ptr);
+		if (length > 255) return NULL;
+
+		/*
+		 *	Pack the attribute.
+		 */
+		ptr[0] = (vp->attribute & 0xff00) >> 8;
+		ptr[1] = length;
+
+		ptr += length + 2;
+		vp->flags.encoded = 1;
+	}
+
+	return tlv;
+}
+
 
 int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 {
@@ -835,72 +956,74 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	if (packet->code == 0) packet->code = PW_DHCP_NAK;
 
 	/*
-	 *	FIXME: allow it to send client packets.
+	 *	If there's a request, use it as a template.
+	 *	Otherwise, assume that the caller has set up
+	 *	everything appropriately.
 	 */
-	if (!original) {
-		fr_strerror_printf("Need original to send response!");
-		return -1;
-	}
+	if (original) {
+		packet->dst_ipaddr.af = AF_INET;
+		packet->src_ipaddr.af = AF_INET;
 
-	packet->dst_ipaddr.af = AF_INET;
-	packet->src_ipaddr.af = AF_INET;
+		packet->dst_port = original->src_port;
+		packet->src_port = original->dst_port;
 
-	packet->dst_port = original->src_port;
-	packet->src_port = original->dst_port;
-
-	/*
-	 *	Note that for DHCP, we NEVER send the response to the
-	 *	source IP address of the request.  It may have
-	 *	traversed multiple relays, and we need to send the request
-	 *	to the relay closest to the client.
-	 *
-	 *	if giaddr, send to giaddr.
-	 *	if NAK, send broadcast packet
-	 *	if ciaddr, unicast to ciaddr
-	 *	if flags & 0x8000, broadcast (client request)
-	 *	if sent from 0.0.0.0, broadcast response
-	 *	unicast to client yiaddr
-	 */
-
-	/*
-	 *	FIXME: alignment issues.  We likely don't want to
-	 *	de-reference the packet structure directly..
-	 */
-	dhcp = (dhcp_packet_t *) original->data;
-
-	if (dhcp->giaddr != htonl(INADDR_ANY)) {
-		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->giaddr;
-
-		if (dhcp->giaddr != htonl(INADDR_LOOPBACK)) {
-			packet->dst_port = original->dst_port;
+		/*
+		 *	Note that for DHCP, we NEVER send the response
+		 *	to the source IP address of the request.  It
+		 *	may have traversed multiple relays, and we
+		 *	need to send the request to the relay closest
+		 *	to the client.
+		 *
+		 *	if giaddr, send to giaddr.
+		 *	if NAK, send broadcast packet
+		 *	if ciaddr, unicast to ciaddr
+		 *	if flags & 0x8000, broadcast (client request)
+		 *	if sent from 0.0.0.0, broadcast response
+		 *	unicast to client yiaddr
+		 */
+		
+		/*
+		 *	FIXME: alignment issues.  We likely don't want to
+		 *	de-reference the packet structure directly..
+		 */
+		dhcp = (dhcp_packet_t *) original->data;
+		
+		if (dhcp->giaddr != htonl(INADDR_ANY)) {
+			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->giaddr;
+			
+			if (dhcp->giaddr != htonl(INADDR_LOOPBACK)) {
+				packet->dst_port = original->dst_port;
+			} else {
+				packet->dst_port = original->src_port; /* debugging */
+			}
+			
+		} else if (packet->code == PW_DHCP_NAK) {
+			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
+			
+		} else if (dhcp->ciaddr != htonl(INADDR_ANY)) {
+			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->ciaddr;
+			
+		} else if ((dhcp->flags & 0x8000) != 0) {
+			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
+			
+		} else if (packet->dst_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY)) {
+			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
+			
+		} else if (dhcp->yiaddr != htonl(INADDR_ANY)) {
+			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->yiaddr;
+			
 		} else {
-			packet->dst_port = original->src_port; /* debugging */
+			/* leave destination IP alone. */
 		}
 
-	} else if (packet->code == PW_DHCP_NAK) {
-		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-		
-	} else if (dhcp->ciaddr != htonl(INADDR_ANY)) {
-		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->ciaddr;
-
-	} else if ((dhcp->flags & 0x8000) != 0) {
-		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-
-	} else if (packet->dst_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY)) {
-		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-
-	} else if (dhcp->yiaddr != htonl(INADDR_ANY)) {
-		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->yiaddr;
-
+		/*
+		 *	Rewrite the source IP to be our own, if we know it.
+		 */
+		if (packet->src_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_BROADCAST)) {
+			packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
+		}
 	} else {
-		/* leave destination IP alone. */
-	}
-
-	/*
-	 *	Rewrite the source IP to be our own, if we know it.
-	 */
-	if (packet->src_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_BROADCAST)) {
-		packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
+		memset(packet->data, 0, packet->data_len);
 	}
 
 	if (fr_debug_flag > 1) {
@@ -916,7 +1039,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 				 packet->code - PW_DHCP_OFFSET);
 		}
 
-		printf("Sending %s of id %08x from %s:%d to %s:%d\n",
+		DEBUG("Sending %s of id %08x from %s:%d to %s:%d",
 		       name, (unsigned int) packet->id,
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,
@@ -933,15 +1056,18 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	mms = DEFAULT_PACKET_SIZE; /* maximum message size */
 
-	/*
-	 *	Client can request a LARGER size, but not a smaller
-	 *	one.  They also cannot request a size larger than MTU.
-	 */
-	vp = pairfind(original->vps, DHCP2ATTR(57));
-	if (vp && (vp->vp_integer > mms)) {
-		mms = vp->vp_integer;
-		
-		if (mms > MAX_PACKET_SIZE) mms = MAX_PACKET_SIZE;
+	if (original) {
+		/*
+		 *	Clients can request a LARGER size, but not a
+		 *	smaller one.  They also cannot request a size
+		 *	larger than MTU.
+		 */
+		vp = pairfind(original->vps, DHCP2ATTR(57));
+		if (vp && (vp->vp_integer > mms)) {
+			mms = vp->vp_integer;
+			
+			if (mms > MAX_PACKET_SIZE) mms = MAX_PACKET_SIZE;
+		}
 	}
 
 	/*
@@ -986,7 +1112,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 				vp->length = 11 + 8;
 			}
 		} else {	/* we don't support this type! */
-			fprintf(stderr, "DHCP-Authentication %d unsupported\n",
+			fr_strerror_printf("DHCP-Authentication %d unsupported",
 				vp->vp_octets[0]);
 		}
 	}
@@ -997,21 +1123,23 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		*p++ = 2;	/* server message */
 	}
 	*p++ = 1;		/* hardware type = ethernet */
-	*p++ = original->data[2];
+	*p++ = 6;		/* 6 bytes of ethernet */
 	*p++ = 0;		/* hops */
 
-	if (!original) {	/* Xid */
+	if (original) {	/* Xid */
+		memcpy(p, original->data + 4, 4);
+	} else {
 		lvalue = fr_rand();
 		memcpy(p, &lvalue, 4);
-	} else {
-		memcpy(p, original->data + 4, 4);
 	}
 	p += 4;
 
 	memset(p, 0, 2);	/* secs are zero */
 	p += 2;
 
-	memcpy(p, original->data + 10, 6); /* copy flags && ciaddr */
+	if (original) {
+		memcpy(p, original->data + 10, 6); /* copy flags && ciaddr */
+	}
 
 	/*
 	 *	Allow the admin to set the broadcast flag.
@@ -1046,10 +1174,31 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	memcpy(p, &lvalue, 4);	/* Server IP address */
 	p += 4;
 
-	memcpy(p, original->data + 24, 4); /* copy gateway IP address */
+	if (original) {
+		memcpy(p, original->data + 24, 4); /* copy gateway IP address */
+	} else {
+		vp = pairfind(packet->vps, DHCP2ATTR(266));
+		if (vp) {
+			lvalue = vp->vp_ipaddr;
+		} else {
+			lvalue = htonl(INADDR_NONE);
+		}
+		memcpy(p, &lvalue, 4);
+	}
 	p += 4;
 
-	memcpy(p, original->data + 28, DHCP_CHADDR_LEN);
+	if (original) {
+		memcpy(p, original->data + 28, DHCP_CHADDR_LEN);
+	} else {
+		vp = pairfind(packet->vps, DHCP2ATTR(267));
+		if (vp) {
+			if (vp->length > DHCP_CHADDR_LEN) {
+				memcpy(p, vp->vp_octets, DHCP_CHADDR_LEN);
+			} else {
+				memcpy(p, vp->vp_octets, vp->length);
+			}
+		}
+	}
 	p += DHCP_CHADDR_LEN;
 
 	memset(p, 0, 192);	/* bootp legacy */
@@ -1070,7 +1219,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		for (i = 0; i < 14; i++) {
 			vp = pairmake(dhcp_header_names[i], NULL, T_OP_EQ);
 			if (!vp) {
-				fprintf(stderr, "Parse error %s\n", fr_strerror());
+				fr_strerror_printf("Parse error %s", fr_strerror());
 				return -1;
 			}
 			
@@ -1113,7 +1262,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 				break;
 				
 			default:
-				fprintf(stderr, "Internal sanity check failed %d %d\n", vp->type, __LINE__);
+				fr_strerror_printf("Internal sanity check failed %d %d", vp->type, __LINE__);
 				pairfree(&vp);
 				break;
 			}
@@ -1121,7 +1270,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			p += dhcp_header_sizes[i];
 			
 			vp_prints(buffer, sizeof(buffer), vp);
-			fprintf(stderr, "\t%s\n", buffer);
+			fr_strerror_printf("\t%s", buffer);
 			pairfree(&vp);
 		}
 
@@ -1211,7 +1360,20 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		for (i = 0; i < num_entries; i++) {
 			if (fr_debug_flag > 1) {
 				vp_prints(buffer, sizeof(buffer), vp);
-				fprintf(stderr, "\t%s\n", buffer);
+				fr_strerror_printf("\t%s", buffer);
+			}
+
+			if (vp->flags.is_tlv) {
+				VALUE_PAIR *tlv = fr_dhcp_vp2suboption(vp);
+				if (vp) {
+					tlv->next = vp->next;
+					vp->next = tlv;
+				}
+				
+				/*
+				 *	The encoded flag MUST be set in the vp!
+				 */
+				vp = vp->next;
 			}
 
 			length = fr_dhcp_vp2attr(vp, p, 0);
@@ -1221,7 +1383,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			 *	limitations: sizeof(vp->vp_octets) < 255
 			 */
 			if (length > 255) {
-				fprintf(stderr, "WARNING Ignoring too long attribute %s!\n", vp->name);
+				fr_strerror_printf("WARNING Ignoring too long attribute %s!", vp->name);
 				break;
 			}
 
@@ -1232,7 +1394,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			 *	go bananas!
 			 */
 			if ((*plength + length) > 255) {
-				fprintf(stderr, "WARNING Ignoring too long attribute %s!\n", vp->name);
+				fr_strerror_printf("WARNING Ignoring too long attribute %s!", vp->name);
 				break;
 			}
 			
@@ -1243,10 +1405,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			    (vp->next->attribute == vp->attribute))
 				vp = vp->next;
 		} /* loop over num_entries */
-
-		if (DHCP_BASE_ATTR(vp->attribute) == PW_DHCP_OPTION_82) {
-			plength[2] = plength[0] - 2;
-		}
 
 	next:
 		vp = vp->next;
@@ -1272,14 +1430,16 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	 */
 	packet->data_len = dhcp_size;
 
-	/*
-	 *	FIXME: This may set it to broadcast, which we don't
-	 *	want.  Instead, set it to the real address of the
-	 *	socket.
-	 */
-	packet->src_ipaddr = original->dst_ipaddr;
-
-	packet->sockfd = original->sockfd;
+	if (original) {
+		/*
+		 *	FIXME: This may set it to broadcast, which we don't
+		 *	want.  Instead, set it to the real address of the
+		 *	socket.
+		 */
+		packet->src_ipaddr = original->dst_ipaddr;
+	
+		packet->sockfd = original->sockfd;
+	}
 
 	if (packet->data_len < DEFAULT_PACKET_SIZE) {
 		memset(packet->data + packet->data_len, 0,
