@@ -226,6 +226,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 		 */
 		if (inst->config->lifetime && (cur->state == sockconnected) &&
 		    ((cur->connected + inst->config->lifetime) < now)) {
+			DEBUG2("Closing socket %d as its lifetime has been exceeded", cur->id);
 			(inst->module->sql_close)(cur, inst->config);
 			cur->state = sockunconnected;
 			goto reconnect;
@@ -237,6 +238,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 		 */
 		if (inst->config->max_queries && (cur->state == sockconnected) &&
 		    (cur->queries >= inst->config->max_queries)) {
+			DEBUG2("Closing socket %d as its max_queries has been exceeded", cur->id);
 			(inst->module->sql_close)(cur, inst->config);
 			cur->state = sockunconnected;
 			goto reconnect;
@@ -257,7 +259,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 
 		/* if we still aren't connected, ignore this handle */
 		if (cur->state == sockunconnected) {
-			radlog(L_DBG, "rlm_sql (%s): Ignoring unconnected handle %d..", inst->config->xlat_name, cur->id);
+			DEBUG("rlm_sql (%s): Ignoring unconnected handle %d..", inst->config->xlat_name, cur->id);
 		        unconnected++;
 #ifdef HAVE_PTHREAD_H
 			pthread_mutex_unlock(&cur->mutex);
@@ -266,10 +268,10 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 		}
 
 		/* should be connected, grab it */
-		radlog(L_DBG, "rlm_sql (%s): Reserving sql socket id: %d", inst->config->xlat_name, cur->id);
+		DEBUG("rlm_sql (%s): Reserving sql socket id: %d", inst->config->xlat_name, cur->id);
 
 		if (unconnected != 0 || tried_to_connect != 0) {
-			radlog(L_INFO, "rlm_sql (%s): got socket %d after skipping %d unconnected handles, tried to reconnect %d though", inst->config->xlat_name, cur->id, unconnected, tried_to_connect);
+			DEBUG("rlm_sql (%s): got socket %d after skipping %d unconnected handles, tried to reconnect %d though", inst->config->xlat_name, cur->id, unconnected, tried_to_connect);
 		}
 
 		/*
