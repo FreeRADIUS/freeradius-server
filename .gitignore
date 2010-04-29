@@ -16,3 +16,4 @@ src/include/autoconf.h
 src/include/build-radpaths-h
 src/include/radpaths.h
 src/include/stamp-h
+autom4te.cache
