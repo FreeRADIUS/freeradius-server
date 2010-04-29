@@ -1049,7 +1049,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 				 &packet->dst_ipaddr.ipaddr,
 				 dst_ip_buf, sizeof(dst_ip_buf)),
 		       packet->dst_port);
-		fflush(stdout);
 	}
 
 	p = packet->data;
