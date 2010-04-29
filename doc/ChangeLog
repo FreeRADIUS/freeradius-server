@@ -2,22 +2,63 @@ FreeRADIUS 2.1.9 Wed 1 Jan 16:44:50 CEST 2011, urgency=medium
 	Feature improvements
 	* Add radmin command "stats detail <file>" to see what
 	  is going on inside of a detail file reader.
+	* Added documentation for CoA.  See raddb/sites-available/coa
+	* Add sub-option support for Option 82.  See dictionary.dhcp
 
 	Bug fixes
-	* Reset "received ping" counter for Status-Server checks
-	  in some corner cases.
-	* Handle large VMPS attributes
-	* Ccount accounting responses from a home server in SNMP / statistics
+	* Reset "received ping" counter for Status-Server checks.  In some
+	  corner cases it was not getting reset.
+	* Handle large VMPS attributes.
+	* Count accounting responses from a home server in SNMP / statistics
 	  code.
 	* Set EAP-Session-Resumed = Yes, not "No" when session is resumed.
-	* radmin packet counter statistics are now unsigned.
-	  This lets us have positive numbers for 2^31..2^32
+	* radmin packet counter statistics are now unsigned, for numbers
+	  2^31..2^32.  After that they roll over to zero.
 	* Be more careful about expanding data in PAP and MS-CHAP modules.
-	* Clean up zombie children if there were many "exec" modules with
-	  "wait = no" being run for a packet.
-	* re-open log file after HUP (closes bug #63)
-	* Fix "no response to proxied packet" error for Coa / Disconnect
-	  packets.
+	  This prevents login failures when passwords contain '{'.
+	* Clean up zombie children if there were many "exec" modules being
+	  run for one packet, all with "wait = no".
+	* re-open log file after HUP.  Closes bug #63.
+	* Fix "no response to proxied packet" complaint for Coa / Disconnect
+	  packets.  It shouldn't ignore replies to packets it sent.
+	* Calculate IPv6 netmasks correctly.  Closes bug #69.
+	* Fix SQL module to re-open sockets if they unexpectedly close.
+	* Track scope for IPv6 addresses.  This lets us use link-local
+	  addresses properly.  Closes bug #70.
+	* Updated Makefiles to no longer use the shell for recursing into
+	  subdirs.  "make -j 2" should now work.
+	* Updated raddb/sql/mysql/ippool.conf to use "= NULL".  Closes
+	  bug #75.
+	* Updated Makefiles so that "make reconfig" no longer uses the shell
+	  for recursing into subdirs, and re-builds all "configure" files.
+	* Used above method to regenerate all configure scripts.
+	  Closes bug #34.
+	* Updated SQL module to allow "server" field of "nas" table
+	  to be blank: "".  This means the same as it being NULL.
+	* Fixed regex realm example.  Create Realm attribute with value
+	  of realm from User-Name, not from regex.  Closes bug #40.
+	* If processing a DHCP Discover returns "fail / reject", ignore
+	  the packet rather than sending a NAK.
+	* Allow '%' to be escaped in sqlcounter module.
+	* Made request number unsigned (matters only for debug printing)
+	* Fix internal hash table.  Should close bug #35
+	* For PEAP and TTLS, the tunneled reply is added to the reply,
+	  rather than integrated via the operators.  This allows multiple
+	  VSAs to be added, where they would previously be discarded.
+	* Make request number unsigned.  This changes nothing other than
+	  the debug output when the server receives more than 2^31 packets.
+	* Don't block when reading child output in 'exec wait'.  This means
+	  that blocked children get killed, instead of blocking the server.
+	* Enabled building without any proxy functionality
+	* radclient now prefers IPv4, to match the default server config.
+	* Print useful error when a realm regex is invalid
+	* relaxed rules for preprocess module "with_cisco_vsa_hack".  The
+	  attributes can now be integer, ipaddr, etc.  (i.e. non-string)
+	* Allow rlm_ldap to build if ldap_set_rebind_proc() has only
+	  2 arguments.
+	* Update configure script for rlm_python to avoid dynamic linking
+	  problems on some platforms.
+	* Work-around for bug #35
 
 FreeRADIUS 2.1.8 Wed 30 Dec 16:44:50 CEST 2009, urgency=medium
 	Feature improvements
