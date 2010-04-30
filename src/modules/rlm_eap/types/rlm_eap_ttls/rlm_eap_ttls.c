@@ -213,8 +213,8 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		if (t && t->authenticated) {
 			if (t->accept_vps) {
 				pairadd(&handler->request->reply->vps,
-					 &t->accept_vps);
-				pairfree(&t->accept_vps);
+					t->accept_vps);
+				t->accept_vps = NULL;
 			}
 		do_keys:
 			/*
