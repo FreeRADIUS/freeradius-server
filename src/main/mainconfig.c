@@ -422,6 +422,53 @@ static int r_mkdir(const char *part)
 	return(0);
 }
 
+#ifdef HAVE_SYS_RESOURCE_H
+static struct rlimit core_limits;
+#endif
+
+static void fr_set_dumpable(void)
+{
+	/*
+	 *	If configured, turn core dumps off.
+	 */
+	if (!allow_core_dumps) {
+#ifdef HAVE_SYS_RESOURCE_H
+		struct rlimit no_core;
+
+
+		no_core.rlim_cur = 0;
+		no_core.rlim_max = 0;
+		
+		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
+			radlog(L_ERR, "Failed disabling core dumps: %s",
+			       strerror(errno));
+		}
+#endif
+		return;
+	}
+
+	/*
+	 *	Set or re-set the dumpable flag.
+	 */
+#ifdef HAVE_SYS_PRCTL_H
+#ifdef PR_SET_DUMPABLE
+	if (prctl(PR_SET_DUMPABLE, 1) < 0) {
+		radlog(L_ERR,"Cannot re-enable core dumps: prctl(PR_SET_DUMPABLE) failed: '%s'",
+		       strerror(errno));
+	}
+#endif
+#endif
+
+	/*
+	 *	Reset the core dump limits to their original value.
+	 */
+#ifdef HAVE_SYS_RESOURCE_H
+	if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
+		radlog(L_ERR, "Cannot update core dump limit: %s",
+		       strerror(errno));
+	}
+#endif
+}
 
 #ifdef HAVE_SETUID
 static int doing_setuid = FALSE;
@@ -462,6 +509,8 @@ void fr_suid_down(void)
 			progname);
 		_exit(1);
 	}
+
+	fr_set_dumpable();
 }
 
 void fr_suid_down_permanent(void)
@@ -478,6 +527,8 @@ void fr_suid_down_permanent(void)
 		radlog(L_ERR, "Switched to unknown uid");
 		_exit(1);
 	}
+
+	fr_set_dumpable();
 }
 #else
 /*
@@ -495,9 +546,12 @@ void fr_suid_down(void)
 			progname, uid_name, strerror(errno));
 		_exit(1);
 	}
+
+	fr_set_dumpable();
 }
 void fr_suid_down_permanent(void)
 {
+	fr_set_dumpable();
 }
 #endif /* HAVE_SETRESUID && HAVE_GETRESUID */
 #else  /* HAVE_SETUID */
@@ -506,9 +560,11 @@ void fr_suid_up(void)
 }
 void fr_suid_down(void)
 {
+	fr_set_dumpable();
 }
 void fr_suid_down_permanent(void)
 {
+	fr_set_dumpable();
 }
 #endif /* HAVE_SETUID */
  
@@ -522,7 +578,15 @@ void fr_suid_down_permanent(void)
 static int switch_users(CONF_SECTION *cs)
 {
 #ifdef HAVE_SYS_RESOURCE_H
-	struct rlimit core_limits;
+	/*
+	 *	Get the current maximum for core files.  Do this
+	 *	before anything else so as to ensure it's properly
+	 *	initialized.
+	 */
+	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
+		radlog(L_ERR, "Failed to get current core limit:  %s", strerror(errno));
+		return 0;
+	}
 #endif
 
 	/*
@@ -647,82 +711,18 @@ static int switch_users(CONF_SECTION *cs)
 		doing_setuid = TRUE;
 
 		fr_suid_down();
-
-		/*
-		 *	Now core dumps are disabled on most secure systems.
-		 */
-	}
-#endif
-
-#ifdef HAVE_SYS_RESOURCE_H
-	/*  Get the current maximum for core files.  */
-	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		radlog(L_ERR, "Failed to get current core limit:  %s", strerror(errno));
-		return 0;
 	}
 #endif
 
 	/*
-	 *	Core dumps are allowed if we're in debug mode, OR
-	 *	we've allowed them, OR we did a setuid (which turns
-	 *	core dumps off).
-	 *
-	 *	Otherwise, disable core dumps for security.
-	 *	
+	 *	This also clears the dumpable flag if core dumps
+	 *	aren't allowed.
 	 */
-	if (!(debug_flag || allow_core_dumps || doing_setuid)) {
-#ifdef HAVE_SYS_RESOURCE_H
-		struct rlimit no_core;
+	fr_set_dumpable();
 
-		no_core.rlim_cur = 0;
-		no_core.rlim_max = 0;
-
-		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
-			radlog(L_ERR, "Failed disabling core dumps: %s",
-			       strerror(errno));
-			return 0;
-		}
-#endif
-
-		/*
-		 *	Otherwise, re-enable core dumps if we're
-		 *	running as a daemon, AND core dumps are
-		 *	allowed, AND we changed UID's.
-		 */
-	} else if ((debug_flag == 0) && allow_core_dumps && doing_setuid) {
-		/*
-		 *	Set the dumpable flag.
-		 */
-#ifdef HAVE_SYS_PRCTL_H
-#ifdef PR_SET_DUMPABLE
-		if (prctl(PR_SET_DUMPABLE, 1) < 0) {
-			radlog(L_ERR,"Cannot enable core dumps: prctl(PR_SET_DUMPABLE) failed: '%s'",
-			       strerror(errno));
-		}
-#endif
-#endif
-
-		/*
-		 *	Reset the core dump limits again, just to
-		 *	double check that they haven't changed.
-		 */
-#ifdef HAVE_SYS_RESOURCE_H
-		if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
-			radlog(L_ERR, "Cannot update core dump limit: %s",
-					strerror(errno));
-			return 0;
-		}
-#endif
-
+	if (allow_core_dumps) {
 		radlog(L_INFO, "Core dumps are enabled.");
 	}
-	/*
-	 *	Else we're debugging (so core dumps are enabled)
-	 *	OR we're not debugging, AND "allow_core_dumps == FALSE",
-	 *	OR we're not debugging, AND core dumps are allowed,
-	 *	   BUT we didn't call setuid, so we haven't changed the
-	 *	   core dump capabilities inherited from the parent shell.
-	 */
 
 	return 1;
 }
