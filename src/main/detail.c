@@ -580,7 +580,16 @@ int detail_recv(rad_listen_t *listener,
  alloc_packet:
 	data->tries++;
 	
-	rad_assert(data->state == STATE_QUEUED);
+	/*
+	 *	The writer doesn't check that the record was
+	 *	completely written.  If the disk is full, this can
+	 *	result in a truncated record.  When that happens,
+	 *	treat it as EOF.
+	 */
+	if (data->state != STATE_QUEUED) {
+		radlog(L_ERR, "Truncated record: treating it as EOF for detail file %s", data->filename_work);
+		goto cleanup;	  
+	}
 
 	/*
 	 *	We're done reading the file, but we didn't read
