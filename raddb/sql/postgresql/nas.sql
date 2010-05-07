@@ -8,9 +8,7 @@ CREATE TABLE nas (
 	type		VARCHAR(30) NOT NULL DEFAULT 'other',
 	ports		int4,
 	secret		VARCHAR(60) NOT NULL,
-/*
 	server		VARCHAR(64),
- */
 	community	VARCHAR(50),
 	description	VARCHAR(200)
 );
