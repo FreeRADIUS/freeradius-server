@@ -284,6 +284,8 @@ post-auth {
 	#  'edir_account_policy_check = yes' in the ldap module configuration
 	#
 	Post-Auth-Type REJECT {
+		# log failed authentications in SQL, too.
+#		sql
 		attr_filter.access_reject
 	}
 
