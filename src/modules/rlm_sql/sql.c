@@ -51,11 +51,11 @@ RCSID("$Id$")
 static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst)
 {
 	int rcode;
-	radlog(L_DBG, "rlm_sql (%s): Attempting to connect %s #%d",
+	radlog(L_INFO, "rlm_sql (%s): Attempting to connect %s #%d",
 	       inst->config->xlat_name, inst->module->name, sqlsocket->id);
 	rcode = (inst->module->sql_init_socket)(sqlsocket, inst->config);
 	if (rcode == 0) {
-		radlog(L_DBG, "rlm_sql (%s): Connected new DB handle, #%d",
+		radlog(L_INFO, "rlm_sql (%s): Connected new DB handle, #%d",
 		       inst->config->xlat_name, sqlsocket->id);
 		sqlsocket->state = sockconnected;
 		if (inst->config->lifetime) time(&sqlsocket->connected);
@@ -166,7 +166,7 @@ void sql_poolfree(SQL_INST * inst)
  *************************************************************************/
 int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket)
 {
-	radlog(L_DBG, "rlm_sql (%s): Closing sqlsocket %d",
+	radlog(L_INFO, "rlm_sql (%s): Closing sqlsocket %d",
 	       inst->config->xlat_name, sqlsocket->id);
 	if (sqlsocket->state == sockconnected) {
 		(inst->module->sql_close)(sqlsocket, inst->config);
