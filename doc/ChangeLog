@@ -4,6 +4,7 @@ FreeRADIUS 2.1.9 Wed 1 Jan 16:44:50 CEST 2011, urgency=medium
 	  is going on inside of a detail file reader.
 	* Added documentation for CoA.  See raddb/sites-available/coa
 	* Add sub-option support for Option 82.  See dictionary.dhcp
+	* Add "server" field to default SQL NAS table, and documented it.
 
 	Bug fixes
 	* Reset "received ping" counter for Status-Server checks.  In some
@@ -40,8 +41,7 @@ FreeRADIUS 2.1.9 Wed 1 Jan 16:44:50 CEST 2011, urgency=medium
 	* If processing a DHCP Discover returns "fail / reject", ignore
 	  the packet rather than sending a NAK.
 	* Allow '%' to be escaped in sqlcounter module.
-	* Made request number unsigned (matters only for debug printing)
-	* Fix internal hash table.  Should close bug #35
+	* Fix typo internal hash table.
 	* For PEAP and TTLS, the tunneled reply is added to the reply,
 	  rather than integrated via the operators.  This allows multiple
 	  VSAs to be added, where they would previously be discarded.
@@ -59,6 +59,14 @@ FreeRADIUS 2.1.9 Wed 1 Jan 16:44:50 CEST 2011, urgency=medium
 	* Update configure script for rlm_python to avoid dynamic linking
 	  problems on some platforms.
 	* Work-around for bug #35
+	* Do suid to "user" when running in debug mode as root
+	* Make "allow_core_dumps" work in more situations.
+	* In detail file reader, treat bad records as EOF.
+	  This allows it to continue working when the disk is full.
+	* Fix Oracle default accounting queries to work when there are no
+	  gigawords attributes.  Other databases already had the fix.
+	* Fix rlm_sql to show when it opens and closes sockets.  It already
+	  sayswhen it cannot connect, so it should say when it can connect.
 
 FreeRADIUS 2.1.8 Wed 30 Dec 16:44:50 CEST 2009, urgency=medium
 	Feature improvements
