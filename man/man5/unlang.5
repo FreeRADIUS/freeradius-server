@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "21 Apr 2009" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "19 May 2010" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -661,6 +661,9 @@ When a module is called, it returns one of the following codes to
 
 These return codes can be tested for in a condition, as described
 above in the CONDITIONS section.
+
+See also the file doc/configurable_failover for additional methods of
+trapping and modifying module return codes.
 .SH FILES
 /etc/raddb/radiusd.conf
 .SH "SEE ALSO"
