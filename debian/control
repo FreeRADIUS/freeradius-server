@@ -17,7 +17,8 @@ Build-Depends: debhelper (>= 6.0.7),
  libpcap-dev,
  python-dev,
  libsnmp-dev,
- libpq-dev
+ libpq-dev,
+ libssl-dev
 Section: net
 Priority: optional
 Maintainer: Josip Rodin <joy-packages@debian.org>
@@ -27,7 +28,7 @@ Homepage: http://www.freeradius.org/
 
 Package: freeradius
 Architecture: any
-Depends: lsb-base (>= 3.1-23.2), ${shlibs:Depends}, freeradius-common, libfreeradius2 (= ${binary:Version})
+Depends: lsb-base (>= 3.1-23.2), ${shlibs:Depends}, freeradius-common, libfreeradius2 (= ${binary:Version}), ssl-cert, adduser
 Provides: radius-server
 Recommends: freeradius-utils
 Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5

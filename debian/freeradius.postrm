@@ -15,6 +15,20 @@ case "$1" in
                  fi
                done
 
+	       if [ -L /etc/freeradius/certs/server.pem ]; then
+	         rm -f /etc/freeradius/certs/server.pem
+	       fi
+	       if [ -L /etc/freeradius/certs/server.key ]; then
+	         rm -f /etc/freeradius/certs/server.key
+	       fi
+	       if [ -L /etc/freeradius/certs/ca.pem ]; then
+	         rm -f /etc/freeradius/certs/ca.pem
+	       fi
+	       if [ -L /etc/freeradius/certs/random ]; then
+	         rm -f /etc/freeradius/certs/random
+	       fi
+	       rm -f /etc/freeradius/certs/dh
+
                rm -f /var/log/freeradius/radius.log* /var/log/freeradius/radwtmp*
                ;;
 esac

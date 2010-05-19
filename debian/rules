@@ -179,7 +179,7 @@ install-arch: build-arch-stamp
 binary-common:
 	dh_testdir
 	dh_testroot
-	dh_installchangelogs 
+	dh_installchangelogs doc/ChangeLog
 	dh_installdocs
 	dh_installexamples
 	chmod -x debian/freeradius/usr/share/doc/freeradius/examples/example.pl

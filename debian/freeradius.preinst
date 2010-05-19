@@ -28,6 +28,7 @@ case "$1" in
     if dpkg --compare-versions "$2" lt "1.1.5"; then
         rm_conffile "/etc/freeradius/otppasswd.sample"
     fi
+
     # There are huge changes between 1.x and 2.x (we cleaned things up
     # a lot), so sort it out here
     if dpkg --compare-versions "$2" lt "2.0.0"; then
@@ -63,6 +64,23 @@ case "$1" in
         rm_conffile "/etc/freeradius/naspasswd"
         rm_conffile "/etc/freeradius/realms"
 
+    fi
+
+    # old files shipped by this package previously, but dropped upstream
+    if dpkg --compare-versions "$2" lt "2.1.8"; then
+        for file in \
+          /etc/freeradius/otp.conf \
+          /etc/freeradius/snmp.conf
+        do 
+
+          rm_conffile "$file"
+
+          # must get rid of the overrides otherwise they corrupt the database
+          if dpkg-statoverride --list | grep -qw $file$; then
+            dpkg-statoverride --remove $file
+          fi
+
+        done
     fi
 
 esac
