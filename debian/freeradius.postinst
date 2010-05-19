@@ -38,6 +38,7 @@ case "$1" in
             /etc/freeradius/policy.txt \
             /etc/freeradius/attrs.accounting_response \
             /etc/freeradius/attrs.access_reject \
+            /etc/freeradius/attrs.access_challenge \
             /etc/freeradius/clients.conf \
             /etc/freeradius/acct_users
           do
@@ -70,6 +71,56 @@ case "$1" in
             fi
           done
         fi
+
+	# Create stub SSL certificate file that became necessary in 2.1.8,
+	# with analogous disclaimers, because the admin may yet choose to
+	# switch to /usr/share/doc/freeradius/examples/certs/ stuff.
+        if [ -z "$2" ] || dpkg --compare-versions "$2" lt 2.1.8+dfsg-1; then
+          if egrep -q '^[ 	]*\$INCLUDE eap.conf' /etc/freeradius/radiusd.conf && \
+             egrep -q '^[ 	]*certdir = \${confdir}/certs' /etc/freeradius/eap.conf && \
+             egrep -q '^[ 	]*cadir = \${confdir}/certs' /etc/freeradius/eap.conf
+          then
+            echo "Updating default SSL certificate settings, if any..." >&2
+            test -d /etc/freeradius/certs || mkdir /etc/freeradius/certs
+            if test ! -e /etc/ssl/certs/ssl-cert-snakeoil.pem || \
+               test ! -e /etc/ssl/private/ssl-cert-snakeoil.key
+            then
+               make-ssl-cert generate-default-snakeoil
+            fi
+            if egrep -q '^[ 	]*certificate_file = \${certdir}/server.pem' /etc/freeradius/eap.conf && \
+               test ! -f /etc/freeradius/certs/server.pem
+            then
+              serverpem=wasnotthere
+	      ln -s /etc/ssl/certs/ssl-cert-snakeoil.pem /etc/freeradius/certs/server.pem
+	    fi
+            if egrep -q '^[ 	]*private_key_file = \${certdir}/server.pem' /etc/freeradius/eap.conf && \
+               [ "$serverpem" = "wasnotthere" ]
+            then
+	      ln -s /etc/ssl/private/ssl-cert-snakeoil.key /etc/freeradius/certs/server.key
+	      sed -i -e 's,^\([ 	]*private_key_file = \${certdir}\)/server.pem$,\1/server.key,' /etc/freeradius/eap.conf
+	      if getent group ssl-cert >/dev/null; then
+                # freeradius-common dependency also provides us with adduser
+	        adduser --quiet freerad ssl-cert
+	      fi
+	    fi
+            if egrep -q '^[ 	]*CA_file = \${cadir}/ca.pem' /etc/freeradius/eap.conf && \
+               test ! -f /etc/freeradius/certs/ca.pem
+            then
+	      ln -s /etc/ssl/certs/ca.pem /etc/freeradius/certs/ca.pem
+	    fi
+            if egrep -q '^[ 	]*random_file = \${certdir}/random' /etc/freeradius/eap.conf && \
+               test ! -f /etc/freeradius/certs/random
+            then
+	      ln -s /dev/urandom /etc/freeradius/certs/random
+	    fi
+            if egrep -q '^[ 	]*dh_file = \${certdir}/dh' /etc/freeradius/eap.conf && \
+               test ! -f /etc/freeradius/certs/dh
+            then
+              # ssl-cert dependency also provides us with openssl
+	      openssl dhparam -out /etc/freeradius/certs/dh 1024
+	    fi
+	  fi
+	fi
 
         if [ -x "`which invoke-rc.d 2>/dev/null`" ]; then
           invoke-rc.d freeradius $action || true

@@ -1,8 +1,24 @@
-freeradius (2.2.0-0) experimental; urgency=low
+freeradius (2.1.8+dfsg-1) unstable; urgency=medium
 
-  * Unreleased.
+  * New upstream version.
+    + Fixes several showstopper bugs, hence increased urgency.
+    + Includes OpenSSL+GPL license exception, closes: #499120.
+    + Fixes typo in a warning, closes: #523074.
+  * Added libssl-dev into build-depends and enabled the building of
+    modules that just depend on OpenSSL, namely rlm_eap_peap, rlm_eap_tls,
+    rlm_eap_ttls, and rlm_otp, closes: #266229.
+  * Because the configuration of EAP+SSL modules now actually kicks in, its
+    non-existent certificate file would break the server start by default.
+    Depend on ssl-cert, make use of make-ssl-cert and openssl, and add
+    freerad to the ssl-cert group in the postinst to get us past the
+    problematic default settings so that we don't crash and burn on clean
+    upgrades, but otherwise leave everything else to the admin.
+  * Ship /etc/freeradius/attrs.access_challenge, like the others.
+  * Moved otp.conf and snmp.conf statoverride handling to the preinst
+    and used rm_conffile on them as well.
+  * Updated upstream changelog handling a bit.
 
- -- Josip Rodin <joy-packages@debian.org>  Mon, 21 Dec 2009 13:04:52 +0100
+ -- Josip Rodin <joy-packages@debian.org>  Sat, 02 Jan 2010 20:22:47 +0100
 
 freeradius (2.1.7+dfsg-2) unstable; urgency=low
 
