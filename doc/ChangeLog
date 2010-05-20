@@ -66,7 +66,9 @@ FreeRADIUS 2.1.9 Wed 1 Jan 16:44:50 CEST 2011, urgency=medium
 	* Fix Oracle default accounting queries to work when there are no
 	  gigawords attributes.  Other databases already had the fix.
 	* Fix rlm_sql to show when it opens and closes sockets.  It already
-	  sayswhen it cannot connect, so it should say when it can connect.
+	  says when it cannot connect, so it should say when it can connect.
+	* "chmod -x" for a few C source files.
+	* Pull update spec files, etc. from RedHat into the redhat/ directory.
 
 FreeRADIUS 2.1.8 Wed 30 Dec 16:44:50 CEST 2009, urgency=medium
 	Feature improvements
