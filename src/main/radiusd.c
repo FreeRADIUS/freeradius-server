@@ -310,10 +310,12 @@ int main(int argc, char *argv[])
 		dup2(devnull, STDIN_FILENO);
 		if (mainconfig.radlog_dest == RADLOG_STDOUT) {
 			mainconfig.radlog_fd = dup(STDOUT_FILENO);
+			setlinebuf(stdout);
 		}
 		dup2(devnull, STDOUT_FILENO);
 		if (mainconfig.radlog_dest == RADLOG_STDERR) {
 			mainconfig.radlog_fd = dup(STDERR_FILENO);
+			setlinebuf(stdout);
 		}
 		dup2(devnull, STDERR_FILENO);
 		close(devnull);
