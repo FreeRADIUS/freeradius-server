@@ -1,4 +1,4 @@
-FreeRADIUS 2.1.9 Wed 1 Jan 16:44:50 CEST 2011, urgency=medium
+FreeRADIUS 2.1.9 Mon 24 May 8:00:00 CEST 2010, urgency=medium
 	Feature improvements
 	* Add radmin command "stats detail <file>" to see what
 	  is going on inside of a detail file reader.
@@ -69,6 +69,8 @@ FreeRADIUS 2.1.9 Wed 1 Jan 16:44:50 CEST 2011, urgency=medium
 	  says when it cannot connect, so it should say when it can connect.
 	* "chmod -x" for a few C source files.
 	* Pull update spec files, etc. from RedHat into the redhat/ directory.
+	* Allow spaces when parsing integer values.  This helps people who
+	  put "too much" into an SQL value field.
 
 FreeRADIUS 2.1.8 Wed 30 Dec 16:44:50 CEST 2009, urgency=medium
 	Feature improvements
