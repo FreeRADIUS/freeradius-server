@@ -830,6 +830,18 @@ static uint32_t getint(const char *value, char **end)
 	return strtoul(value, end, 10);
 }
 
+static int check_for_whitespace(const char *value)
+{
+	while (*value) {
+		if (!isspace((int) *value)) return 0;
+
+		value++;
+	}
+
+	return 1;
+}
+
+
 VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 {
 	char		*p, *s=0;
@@ -963,6 +975,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				}
 				break;
 			}
+			if (check_for_whitespace(p)) break;
 			goto check_for_value;
 
 		case PW_TYPE_SHORT:
@@ -978,7 +991,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				}
 				break;
 			}
-
+			if (check_for_whitespace(p)) break;
 			goto check_for_value;
 
 		case PW_TYPE_INTEGER:
@@ -988,6 +1001,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			vp->vp_integer = getint(value, &p);
 			vp->length = 4;
 			if (!*p) break;
+			if (check_for_whitespace(p)) break;
 
 	check_for_value:
 			/*
