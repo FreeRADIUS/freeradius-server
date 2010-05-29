@@ -344,7 +344,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 				 packet->code - PW_DHCP_OFFSET);
 		}
 
-		DEBUG("Received %s of id %08x from %s:%d to %s:%d",
+		DEBUG("Received %s of id %08x from %s:%d to %s:%d\n",
 		       name, (unsigned int) packet->id,
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,
@@ -503,7 +503,7 @@ static int fr_dhcp_attr2vp(VALUE_PAIR *vp, const uint8_t *p, size_t alen)
 		
 	default:
 		fr_strerror_printf("Internal sanity check %d %d", vp->type, __LINE__);
-		break;
+		return -1;
 	} /* switch over type */
 
 	vp->length = alen;
@@ -517,7 +517,6 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	uint32_t giaddr;
 	VALUE_PAIR *head, *vp, **tail;
 	VALUE_PAIR *maxms, *mtu;
-	char buffer[2048];
 
 	head = NULL;
 	tail = &head;
@@ -605,10 +604,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 
 		if (!vp) continue;
 		
-		if (fr_debug_flag > 1) {
-			vp_prints(buffer, sizeof(buffer), vp);
-			fr_strerror_printf("\t%s", buffer);
-		}
+		debug_pair(vp);
 		*tail = vp;
 		tail = &vp->next;
 	}
@@ -708,11 +704,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 					return -1;
 			}
 
-			if (fr_debug_flag > 1) {
-				vp_prints(buffer, sizeof(buffer), vp);
-				fr_strerror_printf("\t%s", buffer);
-			}
-
+			debug_pair(vp);
 			*tail = vp;
 			while (*tail) tail = &(*tail)->next;
 			p += alen;
@@ -776,6 +768,12 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	if (maxms && mtu && (maxms->vp_integer > mtu->vp_integer)) {
 		fr_strerror_printf("DHCP WARNING: Client says MTU is smaller than maximum message size: fixing it");
 		maxms->vp_integer = mtu->vp_integer;
+	}
+
+	if (fr_debug_flag > 0) {
+		for (vp = packet->vps; vp != NULL; vp = vp->next) {
+			
+		}
 	}
 
 	if (fr_debug_flag) fflush(stdout);
@@ -1039,7 +1037,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 				 packet->code - PW_DHCP_OFFSET);
 		}
 
-		DEBUG("Sending %s of id %08x from %s:%d to %s:%d",
+		DEBUG("Sending %s of id %08x from %s:%d to %s:%d\n",
 		       name, (unsigned int) packet->id,
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,
@@ -1333,6 +1331,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		if (((vp->attribute & 0xffff) > 255) &&
 		    (DHCP_BASE_ATTR(vp->attribute) != PW_DHCP_OPTION_82)) goto next;
 
+		debug_pair(vp);
 		length = vp->length;
 
 		for (same = vp->next; same != NULL; same = same->next) {
