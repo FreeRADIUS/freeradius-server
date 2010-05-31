@@ -151,6 +151,10 @@ static void remove_from_request_hash(REQUEST *request)
 	fr_packet_list_yank(pl, request->packet);
 	request->in_request_hash = FALSE;
 
+	/*
+	 *	FIXME: Move this to a "statistics" thread?
+	 *	Or (short term) add a mutex lock around it.
+	 */
 	request_stats_final(request);
 
 #ifdef WITH_TCP
@@ -1302,7 +1306,6 @@ static void wait_a_bit(void *ctx)
 			return;
 		}
 #endif
-		request_stats_final(request);
 		cleanup_delay(request);
 		return;
 
@@ -1311,7 +1314,6 @@ static void wait_a_bit(void *ctx)
 #ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
 #endif
-		request_stats_final(request);
 
 	case REQUEST_PROXIED:
 		rad_assert(request->next_callback != NULL);
