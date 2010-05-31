@@ -459,12 +459,11 @@ static void wait_for_proxy_id_to_expire(void *ctx)
 #endif
 	    timercmp(&now, &request->when, >)) {
 		if (request->packet) {
-			RDEBUG2("Cleaning up request %u ID %d with timestamp +%d",
-			       request->number, request->packet->id,
+			RDEBUG2("Cleaning up request packet ID %d with timestamp +%d",
+			       request->packet->id,
 			       (unsigned int) (request->timestamp - fr_start_time));
 		} else {
-			RDEBUG2("Cleaning up request %u with timestamp +%d",
-			       request->number,
+			RDEBUG2("Cleaning up request with timestamp +%d",
 			       (unsigned int) (request->timestamp - fr_start_time));
 		}
 
@@ -497,11 +496,10 @@ static void wait_for_child_to_die(void *ctx)
 		 */
 		if (request->delay < (USEC * 60 * 5)) {
 			request->delay += (request->delay >> 1);
-			radlog(L_INFO, "WARNING: Child is hung for request %u in component %s module %s.",
-			       request->number, request->component, request->module);
+			radlog_request(L_INFO, 0, request, "WARNING: Child is hung in component %s module %s.",
+			       request->component, request->module);
 		} else {
-			RDEBUG2("Child is still stuck for request %u",
-				request->number);
+			RDEBUG2("Child is still stuck");
 		}
 		tv_add(&request->when, request->delay);
 
@@ -509,7 +507,7 @@ static void wait_for_child_to_die(void *ctx)
 		return;
 	}
 
-	RDEBUG2("Child is finally responsive for request %u", request->number);
+	RDEBUG2("Child is finally responsive");
 	remove_from_request_hash(request);
 
 #ifdef WITH_PROXY
@@ -540,8 +538,8 @@ static void cleanup_delay(void *ctx)
 	}
 #endif
 
-	RDEBUG2("Cleaning up request %u ID %d with timestamp +%d",
-	       request->number, request->packet->id,
+	RDEBUG2("Cleaning up request packet ID %d with timestamp +%d",
+	        request->packet->id,
 	       (unsigned int) (request->timestamp - fr_start_time));
 
 	ev_request_free(&request);
@@ -610,7 +608,7 @@ static void reject_delay(void *ctx)
 	rad_assert(request->magic == REQUEST_MAGIC);
 	rad_assert(request->child_state == REQUEST_REJECT_DELAY);
 
-	RDEBUG2("Sending delayed reject for request %u", request->number);
+	RDEBUG2("Sending delayed reject");
 
 	DEBUG_PACKET(request, request->reply, 1);
 
@@ -678,6 +676,12 @@ static void no_response_to_ping(void *ctx)
 }
 
 
+/*
+ *	Note that we don't care what the value of the code field is.
+ *	If the response has a valid (src ip/port, dst ip/port), id,
+ *	and correctly signed Message-Authenticator, that's good
+ *	enough.
+ */
 static void received_response_to_ping(REQUEST *request)
 {
 	home_server *home;
@@ -1090,8 +1094,8 @@ static void no_response_to_proxied_request(void *ctx)
 	 *	well.
 	 */
 	if (home->no_response_fail) {
-		radlog(L_ERR, "Rejecting request %u (proxy Id %d) due to lack of any response from home server %s port %d",
-		       request->number, request->proxy->id,
+		radlog_request(L_ERR, 0, request, "Rejecting request (proxy Id %d) due to lack of any response from home server %s port %d",
+		       request->proxy->id,
 		       inet_ntop(request->proxy->dst_ipaddr.af,
 				 &request->proxy->dst_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
@@ -1257,8 +1261,7 @@ static void wait_a_bit(void *ctx)
 		    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
 			request->master_state = REQUEST_STOP_PROCESSING;
 
-			radlog(L_ERR, "WARNING: Unresponsive child for request %u, in module %s component %s",
-			       request->number,
+			radlog_request(L_ERR, 0, request, "WARNING: Unresponsive child in module %s component %s",
 			       request->module ? request->module : "<server core>",
 			       request->component ? request->component : "<server core>");
 			
@@ -1342,7 +1345,7 @@ static void wait_a_bit(void *ctx)
 	 *	mode, with no threads...
 	 */
 	if (!callback) {
-		RDEBUG("WARNING: Internal sanity check failed in event handler for request %u: Discarding the request!", request->number);
+		RDEBUG("WARNING: Internal sanity check failed in event handler: Discarding the request!");
 		ev_request_free(&request);
 		return;
 	}
@@ -1965,8 +1968,7 @@ static int proxy_request(REQUEST *request)
 	}
 	request->next_callback = no_response_to_proxied_request;
 
-	RDEBUG2("Proxying request %u to home server %s port %d",
-	       request->number,
+	RDEBUG2("Proxying request to home server %s port %d",
 	       inet_ntop(request->proxy->dst_ipaddr.af,
 			 &request->proxy->dst_ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
@@ -2320,7 +2322,7 @@ found_pool:
 	}
 
 	if (!proxy_request(request)) {
-		RDEBUG("ERROR: Failed to proxy request %u", request->number);
+		RDEBUG("ERROR: Failed to proxy request");
 		return -1;
 	}
 	
@@ -2337,7 +2339,7 @@ static void request_post_handler(REQUEST *request)
 	if ((request->master_state == REQUEST_STOP_PROCESSING) ||
 	    (request->parent &&
 	     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
-		RDEBUG2("request %u was cancelled.", request->number);
+		RDEBUG2("request was cancelled.");
 #ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
 #endif
@@ -2449,13 +2451,11 @@ static void request_post_handler(REQUEST *request)
 			vp = pairfind(request->config_items,
 				      PW_RESPONSE_PACKET_TYPE);
 			if (!vp) {
-				RDEBUG2("There was no response configured: rejecting request %u",
-				       request->number);
+				RDEBUG2("There was no response configured: rejecting request");
 				request->reply->code = PW_AUTHENTICATION_REJECT;
 
 			} else if (vp->vp_integer == 256) {
-				RDEBUG2("Not responding to request %u",
-				       request->number);
+				RDEBUG2("Not responding to request");
 
 				/*
 				 *	Force cleanup after a long
@@ -2494,8 +2494,7 @@ static void request_post_handler(REQUEST *request)
 			when.tv_sec += request->root->reject_delay;
 
 			if (timercmp(&when, &request->next_when, >)) {
-				RDEBUG2("Delaying reject of request %u for %d seconds",
-				       request->number,
+				RDEBUG2("Delaying reject  for %d seconds",
 				       request->root->reject_delay);
 				request->next_when = when;
 				request->next_callback = reject_delay;
@@ -2603,7 +2602,7 @@ static void request_post_handler(REQUEST *request)
 	}
 #endif
 
-	RDEBUG2("Finished request %u.", request->number);
+	RDEBUG2("Finished request.");
 	rad_assert(child_state >= 0);
 	request->child_state = child_state;
 
@@ -2677,7 +2676,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 
 			home = home_server_ldb(NULL, request->home_pool, request);
 			if (!home) {
-				RDEBUG2("Failed to find live home server for request %u", request->number);
+				RDEBUG2("Failed to find live home server for request");
 			no_home_servers:
 				/*
 				 *	Do post-request processing,
@@ -2711,7 +2710,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 			 *	Try to proxy the request.
 			 */
 			if (!proxy_request(request)) {
-				RDEBUG("ERROR: Failed to re-proxy request %u", request->number);
+				RDEBUG("ERROR: Failed to re-proxy request");
 				goto no_home_servers;
 			}
 
@@ -3116,6 +3115,12 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		 *	hash, and AFTER vhecking if we saw a previous
 		 *	request.  This helps minimize the DoS effect
 		 *	of people attacking us with spoofed packets.
+		 *
+		 *	FIXME: move the "read from proxy socket" code
+		 *	into one (or more) threads.  Have it read from
+		 *	the socket, do the validation, and write a
+		 *	pointer to the packet into a pipe? Or queue it
+		 *	to the main server?
 		 */
 	} else if (rad_verify(packet, request->proxy,
 			      request->home_server->secret) != 0) {
@@ -3142,12 +3147,11 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	 *	after deleting the packet from the proxy hash.
 	 */
 	if (request->proxy_reply) {
-		RDEBUG2("Discarding duplicate reply from host %s port %d  - ID: %d for request %u",
+		RDEBUG2("Discarding duplicate reply from host %s port %d  - ID: %d",
 			inet_ntop(packet->src_ipaddr.af,
 				  &packet->src_ipaddr.ipaddr,
 				  buffer, sizeof(buffer)),
-			packet->src_port, packet->id,
-			request->number);
+			packet->src_port, packet->id);
 	}
 
 	gettimeofday(&now, NULL);
