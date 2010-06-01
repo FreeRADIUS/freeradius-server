@@ -2611,11 +2611,99 @@ static void request_post_handler(REQUEST *request)
 }
 
 
+static void rad_retransmit_packet(REQUEST *request)
+{
+	char buffer[256];
+
+#ifdef WITH_TCP
+	if (request->home_server->proto == IPPROTO_TCP) {
+		DEBUG2("Suppressing duplicate proxied request to home server %s port %d proto TCP - ID: %d",
+		       inet_ntop(request->proxy->dst_ipaddr.af,
+				 &request->proxy->dst_ipaddr.ipaddr,
+				 buffer, sizeof(buffer)),
+		       request->proxy->dst_port,
+		       request->proxy->id);
+		return;		/* don't do anything else */
+	}
+#endif
+
+	RDEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
+		inet_ntop(request->proxy->dst_ipaddr.af,
+			  &request->proxy->dst_ipaddr.ipaddr,
+			  buffer, sizeof(buffer)),
+		request->proxy->dst_port,
+		request->proxy->id);
+	request->num_proxied_requests++;
+
+	DEBUG_PACKET(request, request->proxy, 1);
+	request->proxy_listener->send(request->proxy_listener,
+				      request);
+}
+
+
+static int rad_retransmit(REQUEST *request)
+{
+	/*
+	 *	If we've just discovered that the home server
+	 *	is dead, OR the socket has been closed, look for
+	 *	another connection to a home server.
+	 */
+	if ((request->home_server->state == HOME_STATE_IS_DEAD) ||
+	    (request->proxy_listener->status != RAD_LISTEN_STATUS_KNOWN)) {
+		home_server *home;
+		
+		remove_from_proxy_hash(request);
+		
+		home = home_server_ldb(NULL, request->home_pool, request);
+		if (!home) {
+			RDEBUG2("Failed to find live home server for request");
+		no_home_servers:
+			/*
+			 *	Do post-request processing,
+			 *	and any insertion of necessary
+			 *	events.
+			 */
+			post_proxy_fail_handler(request);
+			return 1;
+		}
+
+		request->proxy->code = request->packet->code;
+
+		/*
+		 *	Free the old packet, to force re-encoding
+		 */
+		free(request->proxy->data);
+		request->proxy->data = NULL;
+		request->proxy->data_len = 0;
+
+		/*
+		 *	This request failed over to a virtual
+		 *	server.  Push it back onto the queue
+		 *	to be processed.
+		 */
+		if (request->home_server->server) {
+			proxy_fallback_handler(request);
+			return 1;
+		}
+
+		/*
+		 *	Try to proxy the request.
+		 */
+		if (!proxy_request(request)) {
+			RDEBUG("ERROR: Failed to re-proxy request");
+			goto no_home_servers;
+		}
+		return 1;
+	} /* else the home server is still alive */
+
+	rad_retransmit_packet(request);
+
+	return 1;
+}
+
+
 static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 {
-#ifdef WITH_PROXY
-	char buffer[128];
-#endif
 
 	RAD_STATS_TYPE_INC(request->listener, total_dup_requests);
 	RAD_STATS_CLIENT_INC(request->listener, client, total_dup_requests);
@@ -2661,90 +2749,25 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 		check_for_zombie_home_server(request);
 
 		/*
-		 *	If we've just discovered that the home server
-		 *	is dead, OR the socket has been closed, look for
-		 *	another connection to a home server.
+		 *	Home server is still alive, and the proxy
+		 *	socket is OK.  Just re-send the packet.
 		 */
-		if (((request->packet->dst_port != 0) &&
-		     (request->home_server->state == HOME_STATE_IS_DEAD)) ||
-		    (request->proxy_listener->status != RAD_LISTEN_STATUS_KNOWN)) {
-			home_server *home;
-
-			remove_from_proxy_hash(request);
-
-			home = home_server_ldb(NULL, request->home_pool, request);
-			if (!home) {
-				RDEBUG2("Failed to find live home server for request");
-			no_home_servers:
-				/*
-				 *	Do post-request processing,
-				 *	and any insertion of necessary
-				 *	events.
-				 */
-				post_proxy_fail_handler(request);
-				return;
-			}
-
-			request->proxy->code = request->packet->code;
-
-			/*
-			 *	Free the old packet, to force re-encoding
-			 */
-			free(request->proxy->data);
-			request->proxy->data = NULL;
-			request->proxy->data_len = 0;
-
-			/*
-			 *	This request failed over to a virtual
-			 *	server.  Push it back onto the queue
-			 *	to be processed.
-			 */
-			if (request->home_server->server) {
-				proxy_fallback_handler(request);
-				return;
-			}
-
-			/*
-			 *	Try to proxy the request.
-			 */
-			if (!proxy_request(request)) {
-				RDEBUG("ERROR: Failed to re-proxy request");
-				goto no_home_servers;
-			}
-
-			/*
-			 *	This code executes in the main server
-			 *	thread, so there's no need for locking.
-			 */
-			rad_assert(request->next_callback != NULL);
-			INSERT_EVENT(request->next_callback, request);
-			request->next_callback = NULL;
-			return;
-		} /* else the home server is still alive */
-
-#ifdef WITH_TCP
-		if (request->home_server->proto == IPPROTO_TCP) {
-			DEBUG2("Suppressing duplicate proxied request to home server %s port %d proto TCP - ID: %d",
-			       inet_ntop(request->proxy->dst_ipaddr.af,
-					 &request->proxy->dst_ipaddr.ipaddr,
-					 buffer, sizeof(buffer)),
-			       request->proxy->dst_port,
-			       request->proxy->id);
+		if ((request->home_server->state != HOME_STATE_IS_DEAD) &&
+		    (request->proxy_listener->status == RAD_LISTEN_STATUS_KNOWN)) {
+			rad_retransmit_packet(request);
 			break;
 		}
-#endif
 
-		RDEBUG2("Sending duplicate proxied request to home server %s port %d - ID: %d",
-		       inet_ntop(request->proxy->dst_ipaddr.af,
-				 &request->proxy->dst_ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-		       request->proxy->dst_port,
-		       request->proxy->id);
-		request->num_proxied_requests++;
+		/*
+		 *	Otherwise, we need to fail over to another
+		 *	home server, and possibly run "post-proxy-type
+		 *	fail".  Add an event waiting for the child to
+		 *	have a result.
+		 */
+		INSERT_EVENT(wait_a_bit, request);
 
-		DEBUG_PACKET(request, request->proxy, 1);
-		request->proxy_listener->send(request->proxy_listener,
-					      request);
+		request->priority = RAD_LISTEN_PROXY;
+		thread_pool_addrequest(request, rad_retransmit);
 		break;
 #endif
 
@@ -3875,9 +3898,7 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
  */
 static void event_poll_detail(void *ctx)
 {
-	int rcode, delay;
-	RAD_REQUEST_FUNP fun;
-	REQUEST *request;
+	int delay;
 	rad_listen_t *this = ctx;
 	struct timeval when;
 	listen_detail_t *detail = this->data;
