@@ -1868,15 +1868,20 @@ static int request_pre_handler(REQUEST *request)
 	 *	Put the decoded packet into it's proper place.
 	 */
 	if (request->proxy_reply != NULL) {
-		/*
-		 *	FIXME: For now, we can only proxy RADIUS packets.
-		 *
-		 *	In order to proxy other packets, we need to
-		 *	somehow cache the "decode" function.
-		 */
-		rcode = rad_decode(request->proxy_reply, request->proxy,
-				   request->home_server->secret);
+		rcode = request->proxy_listener->decode(request->proxy_listener, request);
 		DEBUG_PACKET(request, request->proxy_reply, 0);
+
+		/*
+		 *	Pro-actively remove it from the proxy hash.
+		 *	This is later than in 2.1.x, but it means that
+		 *	the replies are authenticated before being
+		 *	removed from the hash.
+		 */
+		if ((rcode == 0) &&
+		    (request->num_proxied_requests <= request->num_proxied_responses)) {
+			remove_from_proxy_hash(request);
+		}
+
 	} else
 #endif
 	if (request->packet->vps == NULL) {
@@ -3112,7 +3117,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		 *	sockets.
 		 *
 		 *	We do this AFTER looking the request up in the
-		 *	hash, and AFTER vhecking if we saw a previous
+		 *	hash, and AFTER checking if we saw a previous
 		 *	request.  This helps minimize the DoS effect
 		 *	of people attacking us with spoofed packets.
 		 *
@@ -3126,20 +3131,6 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 			      request->home_server->secret) != 0) {
 		DEBUG("Ignoring spoofed proxy reply.  Signature is invalid");
 		return NULL;
-	}
-
-	/*
-	 *	Now that we know it's a good reply, see if we can
-	 *	delete it from the proxy hash.  This lets the source
-	 *	ports && Ids be re-used earlier.
-	 *
-	 *	FIXME: protect by mutex?  This is likely less relevant
-	 *	as if we have the reply, the originating thread knows to
-	 *	avoid touching the request.  Any retransmits are done from
-	 *	the main server thread (i.e. this thread).
-	 */
-	if (request->num_proxied_requests <= request->num_proxied_responses) {
-		remove_from_proxy_hash(request);
 	}
 
 	/*
