@@ -83,11 +83,6 @@ static pthread_t NO_SUCH_CHILD_PID;
  */
 #define PTHREAD_MUTEX_LOCK(_x)
 #define PTHREAD_MUTEX_UNLOCK(_x)
-int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
-{
-	radius_handle_request(request, fun);
-	return 1;
-}
 #endif
 
 /*
@@ -926,9 +921,7 @@ static void proxy_fallback_handler(REQUEST *request)
 	request->child_state = REQUEST_QUEUED;
 	
 	rad_assert(request->proxy != NULL);
-	if (!thread_pool_addrequest(request, virtual_server_handler)) {
-		request->child_state = REQUEST_DONE;
-	}
+	thread_pool_addrequest(request, virtual_server_handler);
 
 #ifdef HAVE_PTHREAD_H
 	/*
@@ -3869,9 +3862,10 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
 	
 	if (!listener->recv(listener, &fun, &request)) return;
 
-	if (!thread_pool_addrequest(request, fun)) {
-		request->child_state = REQUEST_DONE;
-	}
+	rad_assert(fun != NULL);
+	rad_assert(request != NULL);
+
+	thread_pool_addrequest(request, fun);
 }
 
 
@@ -3890,20 +3884,7 @@ static void event_poll_detail(void *ctx)
 
 	rad_assert(this->type == RAD_LISTEN_DETAIL);
 
-	/*
-	 *	Try to read something.
-	 *
-	 *	FIXME: This does poll AND receive.
-	 */
-	rcode = this->recv(this, &fun, &request);
-	if (rcode != 0) {
-		rad_assert(fun != NULL);
-		rad_assert(request != NULL);
-		
-		if (!thread_pool_addrequest(request, fun)) {
-			request->child_state = REQUEST_DONE;
-		}
-	}
+	event_socket_handler(el, this->fd, this);
 
 	fr_event_now(el, &now);
 	when = now;

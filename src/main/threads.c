@@ -1149,4 +1149,20 @@ void thread_pool_queue_stats(int *array)
 		}
 	}
 }
+#else
+int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
+{
+	radius_handle_request(request, fun);
+	
+#ifdef WNOHANG
+	/*
+	 *	Requests that care about child process exit
+	 *	codes have already either called
+	 *	rad_waitpid(), or they've given up.
+	 */
+	wait(NULL);
+#endif
+	return 1;
+}
+
 #endif /* HAVE_PTHREAD_H */
