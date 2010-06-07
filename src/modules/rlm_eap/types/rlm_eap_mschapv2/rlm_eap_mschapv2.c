@@ -486,7 +486,6 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 #endif
 
 		eap_ds->request->code = PW_EAP_SUCCESS;
-		DEBUG("SHIT %p", data->mppe_keys);
 
 		pairadd(&handler->request->reply->vps, data->mppe_keys);
 		data->mppe_keys = NULL;
