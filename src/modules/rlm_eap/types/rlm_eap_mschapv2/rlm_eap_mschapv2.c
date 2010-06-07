@@ -44,6 +44,30 @@ static CONF_PARSER module_config[] = {
 };
 
 
+static void fix_mppe_keys(EAP_HANDLER *handler, mschapv2_opaque_t *data)
+{
+	if (handler->request->parent) {
+		pairdelete(&handler->request->reply->vps, 7, VENDORPEC_MICROSOFT);
+		pairdelete(&handler->request->reply->vps, 8, VENDORPEC_MICROSOFT);
+		pairdelete(&handler->request->reply->vps, 16, VENDORPEC_MICROSOFT);
+		pairdelete(&handler->request->reply->vps, 17, VENDORPEC_MICROSOFT);
+	} else {
+		pairmove2(&data->mppe_keys, &handler->request->reply->vps, 7, VENDORPEC_MICROSOFT);
+		pairmove2(&data->mppe_keys, &handler->request->reply->vps, 8, VENDORPEC_MICROSOFT);
+		pairmove2(&data->mppe_keys, &handler->request->reply->vps, 16, VENDORPEC_MICROSOFT);
+		pairmove2(&data->mppe_keys, &handler->request->reply->vps, 17, VENDORPEC_MICROSOFT);
+
+	}
+}
+
+static void free_data(void *ptr)
+{
+	mschapv2_opaque_t *data = ptr;
+
+	pairfree(&data->mppe_keys);
+	free(data);
+}
+
 /*
  *	Detach the module.
  */
@@ -245,9 +269,10 @@ static int mschapv2_initiate(void *type_data, EAP_HANDLER *handler)
 	 */
 	data->code = PW_EAP_MSCHAPV2_CHALLENGE;
 	memcpy(data->challenge, challenge->vp_strvalue, MSCHAPV2_CHALLENGE_LEN);
+	data->mppe_keys = NULL;
 
 	handler->opaque = data;
-	handler->free_opaque = free;
+	handler->free_opaque = free_data;
 
 	/*
 	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
@@ -338,10 +363,7 @@ static int mschap_postproxy(EAP_HANDLER *handler, void *tunnel_data)
 	 *
 	 *	FIXME: Use intelligent names...
 	 */
-	pairdelete(&handler->request->reply->vps, 7, VENDORPEC_MICROSOFT);
-	pairdelete(&handler->request->reply->vps, 8, VENDORPEC_MICROSOFT);
-	pairdelete(&handler->request->reply->vps, 16, VENDORPEC_MICROSOFT);
-	pairdelete(&handler->request->reply->vps, 17, VENDORPEC_MICROSOFT);
+	fix_mppe_keys(handler, data);
 
 	/*
 	 *	And we need to challenge the user, not ack/reject them,
@@ -464,6 +486,10 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 #endif
 
 		eap_ds->request->code = PW_EAP_SUCCESS;
+		DEBUG("SHIT %p", data->mppe_keys);
+
+		pairadd(&handler->request->reply->vps, data->mppe_keys);
+		data->mppe_keys = NULL;
 		return 1;
 		break;
 
@@ -599,10 +625,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	 *	Delete MPPE keys & encryption policy.  We don't
 	 *	want these here.
 	 */
-	pairdelete(&handler->request->reply->vps, 7, VENDORPEC_MICROSOFT);
-	pairdelete(&handler->request->reply->vps, 8, VENDORPEC_MICROSOFT);
-	pairdelete(&handler->request->reply->vps, 16, VENDORPEC_MICROSOFT);
-	pairdelete(&handler->request->reply->vps, 17, VENDORPEC_MICROSOFT);
+	fix_mppe_keys(handler, data);
 
 	/*
 	 *	Take the response from the mschap module, and
