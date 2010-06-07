@@ -521,6 +521,9 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	 */
 	ctx_options |= SSL_OP_NO_SSLv2;
    	ctx_options |= SSL_OP_NO_SSLv3;
+#ifdef SSL_OP_NO_TICKET
+	ctx_options |= SSL_OP_NO_TICKET ;
+#endif
 
 	/*
 	 *	SSL_OP_SINGLE_DH_USE must be used in order to prevent
