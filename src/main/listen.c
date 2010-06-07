@@ -1733,6 +1733,9 @@ rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists)
 		last = &(tmp->next);
 	}
 
+	this = listen_alloc(RAD_LISTEN_PROXY);
+	sock = this->data;
+
 	if (!old) {
 		/*
 		 *	The socket MUST already exist if we're binding
@@ -1741,17 +1744,17 @@ rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists)
 		 *	If we're initializing the server, it's OK for the
 		 *	socket to NOT exist.
 		 */
-		if (!exists) return NULL;
+		if (!exists) {
+			DEBUG("WARNING: No previous template for proxy socket.  Source IP address may be chosen by the OS");
+		}
 
-		this = listen_alloc(RAD_LISTEN_PROXY);
-
-		sock = this->data;
-		sock->ipaddr = *ipaddr;
-
+		if (ipaddr->af != AF_UNSPEC) {
+			sock->ipaddr = *ipaddr;
+		} else {
+			memset(&sock->ipaddr, 0, sizeof(sock->ipaddr));
+			sock->ipaddr.af = AF_INET; /* Oh well */
+		}
 	} else {
-		this = listen_alloc(RAD_LISTEN_PROXY);
-		
-		sock = this->data;
 		sock->ipaddr = old->ipaddr;
 	}
 
@@ -1766,6 +1769,7 @@ rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists)
 		return this;
 	}
 
+	DEBUG("Failed binding to new proxy socket");
 	listen_free(&this);
 	return NULL;
 }
