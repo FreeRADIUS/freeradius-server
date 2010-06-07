@@ -1511,6 +1511,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		case T_EOL:
 		case T_HASH:
 		do_bare_word:
+			t3 = t2;
 			t2 = T_OP_EQ;
 			value = NULL;
 			goto do_set;
@@ -1529,7 +1530,6 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 
 		case T_OP_EQ:
 		case T_OP_SET:
-		do_set:
 			t3 = getstring(&ptr, buf3, sizeof(buf3));
 			if (t3 == T_OP_INVALID) {
 				radlog(L_ERR, "%s[%d]: Parse error: %s",
@@ -1556,6 +1556,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			/*
 			 *	Add this CONF_PAIR to our CONF_SECTION
 			 */
+		do_set:
 			cpn = cf_pair_alloc(buf1, value, t2, t3, this);
 			cpn->item.filename = filename;
 			cpn->item.lineno = *lineno;
