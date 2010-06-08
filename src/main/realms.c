@@ -2154,11 +2154,6 @@ home_server *home_server_ldb(const char *realmname,
 			 *	the 'hints' file.
 			 */
 			request->proxy->vps =  paircopy(request->packet->vps);
-
-			/*
-			 *	Set the source IP address for proxying.
-			 */
-			request->proxy->src_ipaddr = found->src_ipaddr;
 		}
 
 		/*

@@ -936,6 +936,12 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 */
 			rad_assert(request->proxy == NULL);
 			request->proxy = fake->packet;
+			memset(&request->proxy->src_ipaddr, 0,
+			       sizeof(request->proxy->src_ipaddr));
+			memset(&request->proxy->src_ipaddr, 0,
+			       sizeof(request->proxy->src_ipaddr));
+			request->proxy->src_port = 0;
+			request->proxy->dst_port = 0;
 			fake->packet = NULL;
 			rad_free(&fake->reply);
 			fake->reply = NULL;
