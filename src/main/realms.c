@@ -2064,16 +2064,12 @@ home_server *home_server_ldb(const char *realmname,
 			 *	the 'hints' file.
 			 */
 			request->proxy->vps =  paircopy(request->packet->vps);
-
-			/*
-			 *	Set the source IP address for proxying.
-			 */
-			request->proxy->src_ipaddr = found->src_ipaddr;
 		}
 
 		/*
 		 *	Update the various fields as appropriate.
 		 */
+		request->proxy->src_ipaddr = found->src_ipaddr;
 		request->proxy->dst_ipaddr = found->ipaddr;
 		request->proxy->dst_port = found->port;
 		request->home_server = found;
