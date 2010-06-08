@@ -1103,12 +1103,21 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			break;
 
 		case PW_TYPE_IPV6ADDR:
-			if (inet_pton(AF_INET6, value, &vp->vp_ipv6addr) <= 0) {
-				fr_strerror_printf("failed to parse IPv6 address "
-					   "string \"%s\"", value);
-				return NULL;
+			{
+				fr_ipaddr_t ipaddr;
+
+				if (ip_hton(value, AF_INET6, &ipaddr) < 0) {
+					char buffer[1024];
+
+					strlcpy(buffer, fr_strerror(), sizeof(buffer));
+
+					fr_strerror_printf("failed to parse IPv6 address "
+                                                           "string \"%s\": %s", value, buffer);
+					return NULL;
+				}
+				vp->vp_ipv6addr = ipaddr.ipaddr.ip6addr;
+				vp->length = 16; /* length of IPv6 address */
 			}
-			vp->length = 16; /* length of IPv6 address */
 			break;
 
 		case PW_TYPE_IPV6PREFIX:
