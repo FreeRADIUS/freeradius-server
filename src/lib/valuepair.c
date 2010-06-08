@@ -918,6 +918,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				*p++ = c;
 				length++;
 			}
+			vp->vp_strvalue[length] = '\0';
 			vp->length = length;
 			break;
 
