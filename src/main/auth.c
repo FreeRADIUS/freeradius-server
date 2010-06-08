@@ -262,7 +262,7 @@ static int rad_check_password(REQUEST *request)
 		 	*
 		 	*	This is fail-safe.
 		 	*/
-			RDEBUG2("No authenticate method (Auth-Type) configuration found for the request: Rejecting the user");
+			RDEBUG2("No authenticate method (Auth-Type) found for the request: Rejecting the user");
 			return -2;
 		}
 	}
