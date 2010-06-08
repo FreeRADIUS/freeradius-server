@@ -34,7 +34,10 @@ sub check_md5 {
 }
 
 sub usage {
-	die "Usage: cryptpasswd [--des|--md5|--check] plaintext_password [crypted_password]\n";
+	$name = $0;
+	$name =~ s,.*/,,;
+
+	die "Usage: $name [--des|--md5|--check] plaintext_password [crypted_password]\n";
 }
 
 @saltc = ( '.', '/', '0'..'9', 'A'..'Z', 'a'..'z' );
@@ -59,7 +62,7 @@ sub main {
 		}
 	}
 
-	usage() unless ($opt_des || $opt_md5);
+	$opt_des = 1 unless ($opt_des || $opt_md5);
 	usage() unless ($#ARGV == 0);
 
 	die "DES password hashing not available\n"
