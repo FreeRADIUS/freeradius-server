@@ -37,6 +37,9 @@ RCSID("$Id$")
 
 #include <assert.h>
 
+#include "smbdes.h"
+#include "mschap.h"
+
 static int success = 0;
 static int retries = 3;
 static float timeout = 5;
@@ -148,6 +151,44 @@ static void radclient_free(radclient_t *radclient)
 	free(radclient);
 }
 
+static int mschapv1_encode(VALUE_PAIR **request, const char *password)
+{
+	unsigned int i;
+	VALUE_PAIR *challenge, *response;
+	uint8_t nthash[16];
+
+	challenge = paircreate(PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, PW_TYPE_OCTETS);
+	if (!challenge) {
+		fprintf(stderr, "GOT IT %d!\n", __LINE__);
+		return 0;
+	}
+
+	pairadd(request, challenge);
+	challenge->length = 8;
+	for (i = 0; i < challenge->length; i++) {
+		challenge->vp_octets[i] = fr_rand();
+	}
+
+	response = paircreate(PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, PW_TYPE_OCTETS);
+	if (!response) {
+		fprintf(stderr, "GOT IT %d!\n", __LINE__);
+		return 0;
+	}
+
+	pairadd(request, response);
+	response->length = 50;
+	memset(response->vp_octets, 0, response->length);
+
+	response->vp_octets[1] = 0x01; /* NT hash */
+
+	mschap_ntpwdhash(nthash, password);
+
+	smbdes_mschap(nthash, challenge->vp_octets,
+		      response->vp_octets + 26);
+	return 1;
+}
+
+
 /*
  *	Initialize a radclient data structure and add it to
  *	the global linked list.
@@ -231,6 +272,10 @@ static int radclient_init(const char *filename)
 			 *	Otherwise keep a copy of the CHAP-Password attribute.
 			 */
 		} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD, 0)) != NULL) {
+			strlcpy(radclient->password, vp->vp_strvalue,
+				sizeof(radclient->password));
+
+		} else if ((vp = pairfind(radclient->request->vps, PW_MSCHAP_PASSWORD, 0)) != NULL) {
 			strlcpy(radclient->password, vp->vp_strvalue,
 				sizeof(radclient->password));
 		} else {
@@ -571,6 +616,12 @@ static int send_one_packet(radclient_t *radclient)
 						vp->vp_octets,
 						radclient->request->id, vp);
 				vp->length = 17;
+
+			} else if ((vp = pairfind(radclient->request->vps, PW_MSCHAP_PASSWORD, 0)) != NULL) {
+				mschapv1_encode(&radclient->request->vps,
+						radclient->password);
+			} else if (fr_debug_flag) {
+				printf("WARNING: No password in the request\n");
 			}
 		}
 

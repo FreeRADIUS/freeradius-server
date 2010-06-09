@@ -108,10 +108,20 @@ listen.lo: listen.c dhcpd.c command.c
 #
 
 radclient.lo: radclient.c $(INCLUDES)
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radclient.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -I ../modules/rlm_mschap -c radclient.c
 
-radclient: radclient.lo $(LIBRADIUS)
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radclient radclient.lo $(LIBRADIUS) $(LIBS)
+MSCHAP_OBJS := ../modules/rlm_mschap/smbdes.lo ../modules/rlm_mschap/mschap.lo 
+
+radclient: radclient.lo $(MSCHAP_OBJS) $(LIBRADIUS)
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radclient radclient.lo $(MSCHAP_OBJS) $(LIBRADIUS) $(LIBS)
+
+# These two rules need to be specific in order to supercede the generic
+# "compile C file" rules.
+../modules/rlm_mschap/smbdes.lo: ../modules/rlm_mschap/smbdes.c
+	${MAKE} -C ../modules/rlm_mschap/
+
+../modules/rlm_mschap/mschap.lo: ../modules/rlm_mschap/mschap.c
+	${MAKE} -C ../modules/rlm_mschap/
 
 radsniff.lo: radsniff.c $(INCLUDES) ../include/radsniff.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radsniff.c
