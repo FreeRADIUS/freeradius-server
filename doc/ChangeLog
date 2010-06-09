@@ -1,3 +1,24 @@
+FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
+	Feature improvements
+	* Enable radclient to send MS-CHAPv1
+
+	Bug fixes
+	* Fix endless loop when there are multiple sub-options for
+	  DHCP option 82.
+	* More debug output when sending / receiving DHCP packets.
+	* EAP-MSCHAPv2 should return the MPPE keys when used outside
+	  of a TLS tunnel.  This is needed for IKE.
+	* Added SSL "no ticket" option to prevent SSL from creating
+	  sessions without IDs.  We need them, so this option should be set.
+	* Fix proxying of packets from inside a TTLS/PEAP tunnel.
+	* Allow IPv6 address attributes to be created from domain names
+	  Closes bug #82.
+	* Set the string length to the correct value when parsing double
+	  quotes.
+	* Install the "radcrypt" program.
+	* Stop checking /etc/passwd in the default configuration.  This
+	  can be reverted by enabling "unix" in the "authorize" section.
+
 FreeRADIUS 2.1.9 Mon 24 May 8:00:00 CEST 2010, urgency=medium
 	Feature improvements
 	* Add radmin command "stats detail <file>" to see what
