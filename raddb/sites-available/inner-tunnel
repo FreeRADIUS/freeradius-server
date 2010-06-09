@@ -51,7 +51,7 @@ authorize {
 	#  to read /etc/passwd or /etc/shadow directly, see the
 	#  passwd module, above.
 	#
-	unix
+#	unix
 
 	#
 	#  Look for IPASS style 'realm/', and if not found, look for

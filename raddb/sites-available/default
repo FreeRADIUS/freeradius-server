@@ -145,7 +145,7 @@ authorize {
 	#  to read /etc/passwd or /etc/shadow directly, see the
 	#  passwd module in radiusd.conf.
 	#
-	unix
+#	unix
 
 	#
 	#  Read the 'users' file
