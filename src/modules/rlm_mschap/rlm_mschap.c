@@ -20,26 +20,6 @@
  * Copyright 2000,2001,2006  The FreeRADIUS server project
  */
 
-
-/*
- *  mschap.c    MS-CHAP module
- *
- *  This implements MS-CHAP, as described in RFC 2548
- *
- *  http://www.freeradius.org/rfc/rfc2548.txt
- *
- */
-
-/*
- *  If you have any questions on NTLM (Samba) passwords
- *  support, LM authentication and MS-CHAP v2 support
- *  please contact
- *
- *  Vladimir Dubrovin	vlad@sandy.ru
- *  aka
- *  ZARAZA		3APA3A@security.nnov.ru
- */
-
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
 
 #include	<freeradius-devel/ident.h>
@@ -53,6 +33,7 @@ RCSID("$Id$")
 
 #include 	<ctype.h>
 
+#include	"mschap.h"
 #include	"smbdes.h"
 
 #ifdef __APPLE__
@@ -144,115 +125,6 @@ static int pdb_decode_acct_ctrl(const char *p)
 	}
 
 	return acct_ctrl;
-}
-
-
-/*
- *	ntpwdhash converts Unicode password to 16-byte NT hash
- *	with MD4
- */
-static void ntpwdhash (uint8_t *szHash, const char *szPassword)
-{
-	char szUnicodePass[513];
-	int nPasswordLen;
-	int i;
-
-	/*
-	 *	NT passwords are unicode.  Convert plain text password
-	 *	to unicode by inserting a zero every other byte
-	 */
-	nPasswordLen = strlen(szPassword);
-	for (i = 0; i < nPasswordLen; i++) {
-		szUnicodePass[i << 1] = szPassword[i];
-		szUnicodePass[(i << 1) + 1] = 0;
-	}
-
-	/* Encrypt Unicode password to a 16-byte MD4 hash */
-	fr_md4_calc(szHash, (uint8_t *) szUnicodePass, (nPasswordLen<<1) );
-}
-
-
-/*
- *	challenge_hash() is used by mschap2() and auth_response()
- *	implements RFC2759 ChallengeHash()
- *	generates 64 bit challenge
- */
-static void challenge_hash( const uint8_t *peer_challenge,
-			    const uint8_t *auth_challenge,
-			    const char *user_name, uint8_t *challenge )
-{
-	fr_SHA1_CTX Context;
-	uint8_t hash[20];
-
-	fr_SHA1Init(&Context);
-	fr_SHA1Update(&Context, peer_challenge, 16);
-	fr_SHA1Update(&Context, auth_challenge, 16);
-	fr_SHA1Update(&Context, (const uint8_t *) user_name,
-		      strlen(user_name));
-	fr_SHA1Final(hash, &Context);
-	memcpy(challenge, hash, 8);
-}
-
-/*
- *	auth_response() generates MS-CHAP v2 SUCCESS response
- *	according to RFC 2759 GenerateAuthenticatorResponse()
- *	returns 42-octet response string
- */
-static void auth_response(const char *username,
-			  const uint8_t *nt_hash_hash,
-			  uint8_t *ntresponse,
-			  uint8_t *peer_challenge, uint8_t *auth_challenge,
-			  char *response)
-{
-	fr_SHA1_CTX Context;
-	static const uint8_t magic1[39] =
-	{0x4D, 0x61, 0x67, 0x69, 0x63, 0x20, 0x73, 0x65, 0x72, 0x76,
-	 0x65, 0x72, 0x20, 0x74, 0x6F, 0x20, 0x63, 0x6C, 0x69, 0x65,
-	 0x6E, 0x74, 0x20, 0x73, 0x69, 0x67, 0x6E, 0x69, 0x6E, 0x67,
-	 0x20, 0x63, 0x6F, 0x6E, 0x73, 0x74, 0x61, 0x6E, 0x74};
-
-	static const uint8_t magic2[41] =
-	{0x50, 0x61, 0x64, 0x20, 0x74, 0x6F, 0x20, 0x6D, 0x61, 0x6B,
-	 0x65, 0x20, 0x69, 0x74, 0x20, 0x64, 0x6F, 0x20, 0x6D, 0x6F,
-	 0x72, 0x65, 0x20, 0x74, 0x68, 0x61, 0x6E, 0x20, 0x6F, 0x6E,
-	 0x65, 0x20, 0x69, 0x74, 0x65, 0x72, 0x61, 0x74, 0x69, 0x6F,
-	 0x6E};
-
-	static const char hex[16] = "0123456789ABCDEF";
-
-	size_t i;
-        uint8_t challenge[8];
-	uint8_t digest[20];
-
-	fr_SHA1Init(&Context);
-	fr_SHA1Update(&Context, nt_hash_hash, 16);
-	fr_SHA1Update(&Context, ntresponse, 24);
-	fr_SHA1Update(&Context, magic1, 39);
-	fr_SHA1Final(digest, &Context);
-	challenge_hash(peer_challenge, auth_challenge, username, challenge);
-	fr_SHA1Init(&Context);
-	fr_SHA1Update(&Context, digest, 20);
-	fr_SHA1Update(&Context, challenge, 8);
-	fr_SHA1Update(&Context, magic2, 41);
-	fr_SHA1Final(digest, &Context);
-
-	/*
-	 *	Encode the value of 'Digest' as "S=" followed by
-	 *	40 ASCII hexadecimal digits and return it in
-	 *	AuthenticatorResponse.
-	 *	For example,
-	 *	"S=0123456789ABCDEF0123456789ABCDEF01234567"
-	 */
- 	response[0] = 'S';
-	response[1] = '=';
-
-	/*
-	 *	The hexadecimal digits [A-F] MUST be uppercase.
-	 */
-	for (i = 0; i < sizeof(digest); i++) {
-		response[2 + (i * 2)] = hex[(digest[i] >> 4) & 0x0f];
-		response[3 + (i * 2)] = hex[digest[i] & 0x0f];
-	}
 }
 
 
@@ -365,7 +237,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			 *	from the MS-CHAPv2 peer challenge,
 			 *	our challenge, and the user name.
 			 */
-			challenge_hash(response->vp_octets + 2,
+			mschap_challenge_hash(response->vp_octets + 2,
 				       chap_challenge->vp_octets,
 				       username_string, buffer);
 			data = buffer;
@@ -552,7 +424,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			return 0;
 		}
 
-		ntpwdhash(buffer,buf2);
+		mschap_ntpwdhash(buffer,buf2);
 
 		fr_bin2hex(buffer, out, 16);
 		out[32] = '\0';
@@ -1156,7 +1028,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			radlog_request(L_ERR, 0, request, "No memory");
 			return RLM_MODULE_FAIL;
 		} else {
-			ntpwdhash(nt_password->vp_octets,
+			mschap_ntpwdhash(nt_password->vp_octets,
 				  password->vp_strvalue);
 			nt_password->length = 16;
 		}
@@ -1295,7 +1167,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	MS-CHAPv2 takes some additional data to create an
 		 *	MS-CHAPv1 challenge, and then does MS-CHAPv1.
 		 */
-		challenge_hash(response->vp_octets + 2, /* peer challenge */
+		mschap_challenge_hash(response->vp_octets + 2, /* peer challenge */
 			       challenge->vp_octets, /* our challenge */
 			       username_string,	/* user name */
 			       mschapv1_challenge); /* resulting challenge */
@@ -1319,7 +1191,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		if (nt_password) {
 		}
 
-		auth_response(username_string, /* without the domain */
+		mschap_auth_response(username_string, /* without the domain */
 			      nthashhash, /* nt-hash-hash */
 			      response->vp_octets + 26, /* peer response */
 			      response->vp_octets + 2, /* peer challenge */
