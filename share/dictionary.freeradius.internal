@@ -212,6 +212,8 @@ ATTRIBUTE	EAP-EMSK				1130	octets
 ATTRIBUTE	Recv-CoA-Type				1131	integer
 ATTRIBUTE	Send-CoA-Type				1132	integer
 
+ATTRIBUTE	MS-CHAP-Password			1133	string
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.

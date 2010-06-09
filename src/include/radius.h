@@ -227,6 +227,7 @@
 #define PW_HOME_SERVER_POOL		1111
 #define PW_RECV_COA_TYPE   		1131
 #define PW_SEND_COA_TYPE   		1132
+#define PW_MSCHAP_PASSWORD		1133
 
 /*
  *	Integer Translations
