@@ -12,6 +12,6 @@ install:
 	$(INSTALL) -m 755 radsqlrelay		$(R)$(bindir)
 	$(INSTALL) -m 755 radwatch		$(R)$(sbindir)
 	$(INSTALL) -m 755 raddebug		$(R)$(sbindir)
-	$(INSTALL) -m 755 cryptpassword		$(R)$(bindir)/radcrypt
+	$(INSTALL) -m 755 cryptpasswd		$(R)$(bindir)/radcrypt
 
 clean:
