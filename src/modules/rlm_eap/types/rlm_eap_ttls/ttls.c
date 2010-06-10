@@ -76,7 +76,6 @@ static int diameter_verify(REQUEST *request,
 		 */
 		offset = 8;
 		if ((length & (1 << 31)) != 0) {
-			int attribute;
 			uint32_t vendor;
 			DICT_ATTR *da;
 
@@ -88,7 +87,7 @@ static int diameter_verify(REQUEST *request,
 				return 0;
 			}
 
-			da = dict_attrbyvalue(attribute, vendor);
+			da = dict_attrbyvalue(attr, vendor);
 
 			/*
 			 *	SHOULD check ((length & (1 << 30)) != 0)
