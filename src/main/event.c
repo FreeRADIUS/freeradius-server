@@ -3038,6 +3038,19 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	gettimeofday(&now, NULL);
 
 	/*
+	 *	"ping" packets have a different algorithm for marking
+	 *	a home server alive.  They also skip all of the CoA,
+	 *	etc. checks.
+	 */
+	if (!request->packet) {
+		request->proxy_reply = packet;
+		received_response_to_ping(request);
+		request->proxy_reply = NULL; /* caller will free it */
+		ev_request_free(&request);
+		return NULL;
+	}
+
+	/*
 	 *	Maybe move this earlier in the decision process?
 	 *	Having it here means that late or duplicate proxy
 	 *	replies no longer get the home server marked as
@@ -3048,9 +3061,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	 *	mark it alive on *any* packet, even if it's lost all
 	 *	of the *other* packets in the last 10s.
 	 */
-	if (request->proxy->code != PW_STATUS_SERVER) {
-		request->home_server->state = HOME_STATE_ALIVE;
-	}
+	request->home_server->state = HOME_STATE_ALIVE;
 	
 #ifdef WITH_COA
 	/*
@@ -3099,7 +3110,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		RDEBUG2("Ignoring proxy reply that arrived after we sent a reply to the NAS");
 		return NULL;
 	}
-	
+
 #ifdef WITH_STATS
 	/*
 	 *	The average includes our time to receive packets and
@@ -3174,17 +3185,6 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 		}
 	}
 #endif
-
-	/*
-	 *	There's no incoming request, so it's a proxied packet
-	 *	we originated.
-	 */
-	if (!request->packet) {
-		received_response_to_ping(request);
-		request->proxy_reply = NULL; /* caller will free it */
-		ev_request_free(&request);
-		return NULL;
-	}
 
 	request->child_state = REQUEST_QUEUED;
 	request->when = now;
