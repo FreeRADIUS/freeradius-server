@@ -3172,7 +3172,11 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	 */
 	if (!request->packet) {
 		request->proxy_reply = packet;
-		received_response_to_ping(request);
+#ifdef WITH_TCP
+		rad_assert(request->home_server != NULL);
+		if (request->home_server->proto != IPPROTO_TCP)
+#endif
+			received_response_to_ping(request);
 		request->proxy_reply = NULL; /* caller will free it */
 		ev_request_free(&request);
 		return NULL;
