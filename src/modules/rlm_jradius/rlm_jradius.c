@@ -784,7 +784,7 @@ static int read_vps(JRADIUS *inst, JRSOCK *jrsock, VALUE_PAIR **pl, int plen)
     /*
      *     Create new attribute
      */
-    vp = paircreate(atype, -1);
+    vp = paircreate(atype, 0, -1);
     vp->operator = aop;
 
     if (vp->type == -1) {

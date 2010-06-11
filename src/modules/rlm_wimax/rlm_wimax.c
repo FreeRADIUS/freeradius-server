@@ -178,8 +178,8 @@ static int wimax_postauth(void *instance, REQUEST *request)
 	uint8_t mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
 	uint8_t mip_rk[2 * EVP_MAX_MD_SIZE];
 
-	msk = pairfind(request->reply->vps, 1129);
-	emsk = pairfind(request->reply->vps, 1130);
+	msk = pairfind(request->reply->vps, 1129, 0);
+	emsk = pairfind(request->reply->vps, 1130, 0);
 	if (!msk || !emsk) {
 		RDEBUG("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys.");
 		return RLM_MODULE_NOOP;
@@ -270,8 +270,8 @@ static int wimax_postauth(void *instance, REQUEST *request)
 	/*
 	 *	Calculate mobility keys
 	 */
-	mn_nai = pairfind(request->packet->vps, 1900);
-	if (!mn_nai) mn_nai = pairfind(request->reply->vps, 1900);
+	mn_nai = pairfind(request->packet->vps, 1900, 0);
+	if (!mn_nai) mn_nai = pairfind(request->reply->vps, 1900, 0);
 	if (!mn_nai) {
 		RDEBUG("WARNING: WiMAX-MN-NAI was not found in the request or in the reply.");
 		RDEBUG("WARNING: We cannot calculate MN-HA keys.");
@@ -281,7 +281,7 @@ static int wimax_postauth(void *instance, REQUEST *request)
 	 *	WiMAX-IP-Technology
 	 */
 	vp = NULL;
-	if (mn_nai) vp = pairfind(request->reply->vps, WIMAX2ATTR(23));
+	if (mn_nai) vp = pairfind(request->reply->vps, 23, VENDORPEC_WIMAX);
 	if (!vp) {
 		RDEBUG("WARNING: WiMAX-IP-Technology not found in reply.");
 		RDEBUG("WARNING: Not calculating MN-HA keys");
@@ -486,7 +486,7 @@ static int wimax_postauth(void *instance, REQUEST *request)
 	/*
 	 *	Generate MN-FA = H(FA-RK, "MN FA" | FA-IP | MN-NAI)
 	 */
-	ip = pairfind(request->reply->vps, 1901);
+	ip = pairfind(request->reply->vps, 1901, 0);
 	if (fa_rk && ip && mn_nai) {
 		HMAC_CTX_init(&hmac);
 		HMAC_Init_ex(&hmac, fa_rk->vp_octets, fa_rk->length,
@@ -499,7 +499,7 @@ static int wimax_postauth(void *instance, REQUEST *request)
 		HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
 
 		vp = radius_paircreate(request, &request->reply->vps,
-				       1902, PW_TYPE_OCTETS);
+				       1902, 0, PW_TYPE_OCTETS);
 		if (!vp) {
 			RDEBUG("WARNING: Failed creating WiMAX-MN-FA");
 		} else {

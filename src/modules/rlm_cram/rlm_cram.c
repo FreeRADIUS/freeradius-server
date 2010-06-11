@@ -51,10 +51,10 @@ RCSID("$Id$")
 
 #include 	<ctype.h>
 
-
-#define		SM_AUTHTYPE	((11406<<16)|101)
-#define		SM_CHALLENGE	((11406<<16)|102)
-#define		SM_RESPONSE	((11406<<16)|103)
+#define VENDORPEC_SM  11406
+#define		SM_AUTHTYPE	101
+#define		SM_CHALLENGE	102
+#define		SM_RESPONSE     103
 
 
 
@@ -137,17 +137,17 @@ static int cram_authenticate(UNUSED void * instance, REQUEST *request)
 		radlog(L_AUTH, "rlm_cram: Cleartext-Password is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
-	authtype = pairfind(request->packet->vps, SM_AUTHTYPE);
+	authtype = pairfind(request->packet->vps, SM_AUTHTYPE, VENDORPEC_SM);
 	if(!authtype) {
 		radlog(L_AUTH, "rlm_cram: Required attribute Sandy-Mail-Authtype missed");
 		return RLM_MODULE_INVALID;
 	}
-	challenge = pairfind(request->packet->vps, SM_CHALLENGE);
+	challenge = pairfind(request->packet->vps, SM_CHALLENGE, VENDORPEC_SM);
 	if(!challenge) {
 		radlog(L_AUTH, "rlm_cram: Required attribute Sandy-Mail-Challenge missed");
 		return RLM_MODULE_INVALID;
 	}
-	response = pairfind(request->packet->vps, SM_RESPONSE);
+	response = pairfind(request->packet->vps, SM_RESPONSE, VENDORPEC_SM);
 	if(!response) {
 		radlog(L_AUTH, "rlm_cram: Required attribute Sandy-Mail-Response missed");
 		return RLM_MODULE_INVALID;

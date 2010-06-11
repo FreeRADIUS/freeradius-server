@@ -203,16 +203,16 @@ static int sim_file_authorize(void *instance, REQUEST *request)
 		}
 
 
-		r = paircreate(ATTRIBUTE_EAP_SIM_RAND1 + imsicount, PW_TYPE_OCTETS);
+		r = paircreate(ATTRIBUTE_EAP_SIM_RAND1 + imsicount, 0, PW_TYPE_OCTETS);
 		r = pairparsevalue(r, chal);
 		pairadd(reply_pairs, r);
 
-		k = paircreate(ATTRIBUTE_EAP_SIM_KC1 + imsicount, PW_TYPE_OCTETS);
+		k = paircreate(ATTRIBUTE_EAP_SIM_KC1 + imsicount, 0, PW_TYPE_OCTETS);
 		k = pairparsevalue(k, kc);
 		rad_assert(k != NULL);
 		pairadd(reply_pairs, k);
 
-		s = paircreate(ATTRIBUTE_EAP_SIM_SRES1 + imsicount, PW_TYPE_OCTETS);
+		s = paircreate(ATTRIBUTE_EAP_SIM_SRES1 + imsicount, 0, PW_TYPE_OCTETS);
 		s = pairparsevalue(s, sres);
 		pairadd(reply_pairs, s);
 
