@@ -9,6 +9,8 @@ include ../Make.inc
 SUBDIRS		= examples rfc
 WHAT_TO_MAKE	= all
 
+RST_FILES := $(wildcard *.rst)
+
 all:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
@@ -36,3 +38,10 @@ $(SUBDIRS):
 	@$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
 
 .PHONY: all clean install common $(SUBDIRS)
+
+%.html: %.rst
+	@rst2html.py $^ > $@
+
+.PHONY: html
+html: $(RST_FILES:.rst=.html)
+
