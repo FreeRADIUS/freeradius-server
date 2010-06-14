@@ -7,8 +7,8 @@ not familiar with "the system." This text is a collection of
 suggestions which can greatly increase the chances of your change
 being accepted.
 
-SECTION 1 - CREATING AND SENDING YOUR CHANGE 
---------------------------------------------
+Creating and Sending Your Change 
+--------------------------------
 
    1. "diff -u" 
 
@@ -132,8 +132,8 @@ SECTION 1 - CREATING AND SENDING YOUR CHANGE
 
       When in doubt, re-submit.
 
-SECTION 2 - HINTS, TIPS, AND TRICKS 
------------------------------------
+Hints, Tips, and Tricks 
+-----------------------
 
 This section lists many of the common "rules" associated with code
 submitted to the project. There are always exceptions... but you must
