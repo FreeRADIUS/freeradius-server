@@ -1,12 +1,11 @@
-  HOW TO ISSUE A RELEASE
+Release Method
+==============
 
-
-	As of 2.0, the release process is much simpler.  Edit the
-	Changelog with the version number and any last updates.
+As of 2.0, the release process is much simpler.  Edit the
+Changelog with the version number and any last updates.
 
 vi doc/ChangeLog
 cvs commit doc/ChangeLog
-
 
 	Change version numbers in the VERSION file:
 
@@ -27,7 +26,6 @@ make dist
 	have to run the command it prints out yourself.
 
 make dist-tag
-
 
 	Sign the packages.  You will need the correct GPG key for this
 	to work.
