@@ -1,12 +1,12 @@
-		Helpful coding methods
-			       by Alan DeKok <aland@ox.org>
+Helpful coding methods
+======================
 
-  The following is a short set of guidelines to follow while
+The following is a short set of guidelines to follow while
 programming.  It does not address coding styles, function naming
 methods, or debugging methods.  Rather, it describes the processes
 which SHOULD go on in the programmers mind, while he is programming.
 
-  Coding standards apply to function names, the look of the code, and
+Coding standards apply to function names, the look of the code, and
 coding consistency.  Coding methods apply to the daily practices used
 by the programmer to write code.
 
@@ -55,10 +55,10 @@ by the programmer to write code.
    Your function CANNOT do anything right if you called another
    function, and they gave you garbage output.
 
-   One of the most common mistakes is:
+   One of the most common mistakes is::
 
-   fp = fopen(...);
-   fgetc(fp);                 /* core dumps! */
+    fp = fopen(...);
+    fgetc(fp);                 /* core dumps! */
 
    If the programmer had bothered to check for a NULL fp (error
    condition), then he could have produced a DESCRIPTIVE error
@@ -138,7 +138,7 @@ by the programmer to write code.
     and numbers.
 
     Don't put tabs in string constants, either.  Always use '\t' to
-    represent a tab, instead of ASCII 9.  Literal tabs are presented to 
+    represent a tab, instead of ASCII 9.  Literal tabs are presented to
     readers of your code as arbitrary whitespace, and it's easy to mess
     up.
 
