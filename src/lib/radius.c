@@ -1765,6 +1765,18 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 
 	while (count > 0) {
 		/*
+		 *	We need at least 2 bytes to check the
+		 *	attribute header.
+		 */
+		if (count < 2) {
+			fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: attribute header overflows the packet",
+				   inet_ntop(packet->src_ipaddr.af,
+					     &packet->src_ipaddr.ipaddr,
+					     host_ipaddr, sizeof(host_ipaddr)));
+			return 0;
+		}
+
+		/*
 		 *	Attribute number zero is NOT defined.
 		 */
 		if (attr[0] == 0) {
@@ -1780,11 +1792,24 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 		 *	fields.  Anything shorter is an invalid attribute.
 		 */
        		if (attr[1] < 2) {
-			fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: attribute %d too short",
+			fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: attribute %u too short",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
 				   attr[0]);
+			return 0;
+		}
+
+		/*
+		 *	If there are fewer bytes in the packet than in the
+		 *	attribute, it's a bad packet.
+		 */
+		if (count < attr[1]) {
+			fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: attribute %u data overflows the packet",
+				   inet_ntop(packet->src_ipaddr.af,
+					     &packet->src_ipaddr.ipaddr,
+					     host_ipaddr, sizeof(host_ipaddr)),
+					   attr[0]);
 			return 0;
 		}
 
