@@ -404,6 +404,7 @@ static int generate_sql_clients(SQL_INST *inst)
 		      inst->config->xlat_name,
 		      c->longname,c->shortname, c->server ? c->server : "<none>");
 		if (!client_add(NULL, c)) {
+			sql_release_socket(inst, sqlsocket);
 			DEBUG("rlm_sql (%s): Failed to add client %s (%s) to clients list.  Maybe there's a duplicate?",
 			      inst->config->xlat_name,
 			      c->longname,c->shortname);
@@ -880,8 +881,33 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	}
 
 	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL)
+	if (xlat_name == NULL) {
 		xlat_name = cf_section_name1(conf);
+	} else {
+		char *group_name;
+		DICT_ATTR *dattr;
+		ATTR_FLAGS flags;
+
+		/*
+		 * Allocate room for <instance>-SQL-Group
+		 */
+		group_name = rad_malloc((strlen(xlat_name) + 1 + 11) * sizeof(char));
+		sprintf(group_name,"%s-SQL-Group",xlat_name);
+		DEBUG("rlm_sql Creating new attribute %s",group_name);
+
+		memset(&flags, 0, sizeof(flags));
+		dict_addattr(group_name, 0, PW_TYPE_STRING, -1, flags);
+		dattr = dict_attrbyname(group_name);
+		if (dattr == NULL){
+			radlog(L_ERR, "rlm_ldap: Failed to create attribute %s",group_name);
+			free(group_name);
+			free(inst);	/* FIXME: detach */
+			return -1;
+		}
+		DEBUG("rlm_sql: Registering sql_groupcmp for %s",group_name);
+		paircompare_register(dattr->attr, PW_USER_NAME, sql_groupcmp, inst);
+		free(group_name);
+	}
 	if (xlat_name){
 		inst->config->xlat_name = strdup(xlat_name);
 		xlat_register(xlat_name, (RAD_XLAT_FUNC)sql_xlat, inst);
