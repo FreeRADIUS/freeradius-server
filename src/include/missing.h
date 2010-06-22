@@ -371,6 +371,7 @@ int gettimeofday (struct timeval *tv, void *tz);
 #endif
 
 #ifdef WIN32
+#undef interface
 #undef mkdir
 #define mkdir(_d, _p) mkdir(_d)
 #define FR_DIR_SEP '\\'
