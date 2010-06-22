@@ -32,7 +32,6 @@ RCSID("$Id$")
 int		fr_dns_lookups = 0;
 int		fr_debug_flag = 0;
 
-
 /*
  *	Return an IP address in standard dot notation
  *
@@ -64,7 +63,7 @@ int rad_lockfd(int fd, int lock_len)
 #elif defined(LOCK_EX)
 	lock_len = lock_len;	/* -Wunused */
 	return flock(fd, LOCK_EX);
-#else
+#elif defined(F_WRLCK)
 	struct flock fl;
 	fl.l_start = 0;
 	fl.l_len = lock_len;
@@ -72,6 +71,8 @@ int rad_lockfd(int fd, int lock_len)
 	fl.l_type = F_WRLCK;
 	fl.l_whence = SEEK_CUR;
 	return fcntl(fd, F_SETLKW, (void *)&fl);
+#else
+	return -1;
 #endif
 }
 
@@ -88,7 +89,7 @@ int rad_lockfd_nonblock(int fd, int lock_len)
 #elif defined(LOCK_EX)
 	lock_len = lock_len;	/* -Wunused */
 	return flock(fd, LOCK_EX | LOCK_NB);
-#else
+#elif defined(F_WRLCK)
 	struct flock fl;
 	fl.l_start = 0;
 	fl.l_len = lock_len;
@@ -96,6 +97,8 @@ int rad_lockfd_nonblock(int fd, int lock_len)
 	fl.l_type = F_WRLCK;
 	fl.l_whence = SEEK_CUR;
 	return fcntl(fd, F_SETLK, (void *)&fl);
+#else
+	return -1;
 #endif
 }
 
@@ -112,7 +115,7 @@ int rad_unlockfd(int fd, int lock_len)
 #elif defined(LOCK_EX)
 	lock_len = lock_len;	/* -Wunused */
 	return flock(fd, LOCK_UN);
-#else
+#elif defined(F_WRLCK)
 	struct flock fl;
 	fl.l_start = 0;
 	fl.l_len = lock_len;
@@ -120,6 +123,8 @@ int rad_unlockfd(int fd, int lock_len)
 	fl.l_type = F_WRLCK;
 	fl.l_whence = SEEK_CUR;
 	return fcntl(fd, F_UNLCK, (void *)&fl);
+#else
+	return -1;
 #endif
 }
 
