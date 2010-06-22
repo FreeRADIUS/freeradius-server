@@ -251,8 +251,10 @@ static const CONF_PARSER server_config[] = {
 };
 
 static const CONF_PARSER bootstrap_config[] = {
+#ifdef HAVE_SETUID
 	{ "user",  PW_TYPE_STRING_PTR, 0, &uid_name, NULL },
 	{ "group",  PW_TYPE_STRING_PTR, 0, &gid_name, NULL },
+#endif
 	{ "chroot",  PW_TYPE_STRING_PTR, 0, &chroot_dir, NULL },
 	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, "no" },
 
@@ -834,11 +836,13 @@ int read_mainconfig(int reload)
 				return -1;
 			}
 
+#ifdef HAVE_SYSLOG_H
 			/*
 			 *	Call openlog only once, when the
 			 *	program starts.
 			 */
 			openlog(progname, LOG_PID, mainconfig.syslog_facility);
+#endif
 
 		} else if (mainconfig.radlog_dest == RADLOG_FILES) {
 			if (!mainconfig.log_file) {
