@@ -339,6 +339,7 @@ static int sql_xlat_query(rlm_sql_log_t *inst, REQUEST *request, const char *que
  */
 static int setlock(int fd)
 {
+#ifdef F_WRLCK
 	struct flock fl;
 	memset(&fl, 0, sizeof(fl));
 	fl.l_start = 0;
@@ -346,6 +347,9 @@ static int setlock(int fd)
 	fl.l_type = F_WRLCK;
 	fl.l_whence = SEEK_SET;
 	return fcntl(fd, F_SETLKW, &fl);
+#else
+	return -1;
+#endif
 }
 
 /*
