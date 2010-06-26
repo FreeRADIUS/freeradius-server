@@ -618,25 +618,35 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr, int vendor)
 
 		/*
 		 *	vendor=0, attr = PW_VENDOR_SPECIFIC means
-		 *	"match any vendor attribute".  Otherwise, do
-		 *	an exact match
+		 *	"match any vendor attribute".
 		 */
-		if (((vendor != 0) || (attr != PW_VENDOR_SPECIFIC)) &&
-		    (i->attribute != attr) && (i->vendor != vendor)) {
+		if ((vendor == 0) && (attr == PW_VENDOR_SPECIFIC)) {
+			/*
+			 *	It's a VSA: move it over.
+			 */
+			if (i->vendor != 0) goto move;
+
+			/*
+			 *	It's Vendor-Specific: move it over.
+			 */
+			if (i->attribute == attr) goto move;
+
+			/*
+			 *	It's not a VSA: ignore it.
+			 */
 			iprev = i;
 			continue;
 		}
 
 		/*
-		 *	If the attribute to move IS a VSA, then it ignores
-		 *	any non-VSA attribute.
+		 *	If it isn't an exact match, ignore it.
 		 */
-		if ((vendor == 0) && (attr == PW_VENDOR_SPECIFIC) &&
-		    (i->vendor == 0)) {
+		if (!((i->vendor == vendor) && (i->attribute == attr))) {
 			iprev = i;
 			continue;
 		}
 
+	move:
 		/*
 		 *	Remove the attribute from the "from" list.
 		 */
