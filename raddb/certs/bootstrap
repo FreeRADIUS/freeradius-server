@@ -12,14 +12,16 @@
 #
 umask 027
 cd `dirname $0`
-make all
+
+make -h 2>&1 > /dev/null
 
 #
-#  If that worked, exit.  Otherwise, run the commands manually.
+#  If we have a working "make", then use it.  Otherwise, run the commands
+#  manually.
 #
 if [ "$?" = "0" ]
 then
-  exit 0
+  exec make all
 fi
 
 #
