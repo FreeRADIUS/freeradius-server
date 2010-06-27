@@ -2145,7 +2145,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		case PW_ACCOUNTING_REQUEST:
 			if (calc_acctdigest(packet, secret) > 1) {
 				fr_strerror_printf("Received %s packet "
-					   "from %s with invalid signature!  (Shared secret is incorrect.)",
+					   "from client %s with invalid signature!  (Shared secret is incorrect.)",
 					   fr_packet_codes[packet->code],
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.ipaddr,
@@ -2166,13 +2166,12 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			rcode = calc_replydigest(packet, original, secret);
 			if (rcode > 1) {
 				fr_strerror_printf("Received %s packet "
-					   "from client %s port %d with invalid signature (err=%d)!  (Shared secret is incorrect.)",
+					   "from home server %s port %d with invalid signature!  (Shared secret is incorrect.)",
 					   fr_packet_codes[packet->code],
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.ipaddr,
 						     buffer, sizeof(buffer)),
-					   packet->src_port,
-					   rcode);
+					   packet->src_port);
 				return -1;
 			}
 			break;
