@@ -11,16 +11,16 @@
 server inner-tunnel {
 
 #
-#  Un-comment the next section to perform test on the inner tunnel
-#  without needing an outer tunnel session.  The tests will not be
-#  exactly the same as when TTLS or PEAP are used, but they will
-#  be close enough for many tests.
+#  This next section is here to allow testing of the "inner-tunnel"
+#  authentication methods, independently from the "default" server.
+#  It is listening on "localhost", so that it can only be used from
+#  the same machine.
 #
-#listen {
-#       ipaddr = 127.0.0.1
-#       port = 18120
-#       type = auth
-#}
+listen {
+       ipaddr = 127.0.0.1
+       port = 18120
+       type = auth
+}
 
 
 #  Authorization. First preprocess (hints and huntgroups files),
