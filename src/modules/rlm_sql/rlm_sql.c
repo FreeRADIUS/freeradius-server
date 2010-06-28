@@ -904,8 +904,13 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 			free(inst);	/* FIXME: detach */
 			return -1;
 		}
-		DEBUG("rlm_sql: Registering sql_groupcmp for %s",group_name);
-		paircompare_register(dattr->attr, PW_USER_NAME, sql_groupcmp, inst);
+
+		if (inst->config->groupmemb_query && 
+		    inst->config->groupmemb_query[0]) {
+			DEBUG("rlm_sql: Registering sql_groupcmp for %s",group_name);
+			paircompare_register(dattr->attr, PW_USER_NAME, sql_groupcmp, inst);
+		}
+
 		free(group_name);
 	}
 	if (xlat_name){
@@ -962,7 +967,10 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 		return -1;
 	}
 
-	paircompare_register(PW_SQL_GROUP, PW_USER_NAME, sql_groupcmp, inst);
+	if (inst->config->groupmemb_query && 
+	    inst->config->groupmemb_query[0]) {
+		paircompare_register(PW_SQL_GROUP, PW_USER_NAME, sql_groupcmp, inst);
+	}
 
 	if (inst->config->do_clients){
 		if (generate_sql_clients(inst) == -1){
