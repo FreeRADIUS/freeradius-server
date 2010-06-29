@@ -73,6 +73,7 @@ $INCLUDE dictionary.rfc3576
 $INCLUDE dictionary.rfc3580
 $INCLUDE dictionary.rfc4072
 $INCLUDE dictionary.rfc4372
+$INCLUDE dictionary.rfc4603
 $INCLUDE dictionary.rfc4675
 $INCLUDE dictionary.rfc4679
 $INCLUDE dictionary.rfc4818
@@ -114,7 +115,7 @@ $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.colubris
 $INCLUDE dictionary.cosine
-#$INCLUDE dictionary.dhcp
+$INCLUDE dictionary.dhcp
 $INCLUDE dictionary.digium
 $INCLUDE dictionary.epygi
 $INCLUDE dictionary.erx
