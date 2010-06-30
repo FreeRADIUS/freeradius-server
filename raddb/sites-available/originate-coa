@@ -150,7 +150,7 @@ server originate-coa.example.com {
   # Handle the responses here.
   #
   post-proxy {
-	switch "%{Response-Packet-Type}" {
+	switch "%{proxy-reply:Packet-Type}" {
 		case CoA-ACK {
 			ok
 		}
