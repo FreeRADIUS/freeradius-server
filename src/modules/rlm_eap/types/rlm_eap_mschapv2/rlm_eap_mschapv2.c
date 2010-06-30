@@ -46,18 +46,10 @@ static CONF_PARSER module_config[] = {
 
 static void fix_mppe_keys(EAP_HANDLER *handler, mschapv2_opaque_t *data)
 {
-	if (handler->request->parent) {
-		pairdelete(&handler->request->reply->vps, 7, VENDORPEC_MICROSOFT);
-		pairdelete(&handler->request->reply->vps, 8, VENDORPEC_MICROSOFT);
-		pairdelete(&handler->request->reply->vps, 16, VENDORPEC_MICROSOFT);
-		pairdelete(&handler->request->reply->vps, 17, VENDORPEC_MICROSOFT);
-	} else {
-		pairmove2(&data->mppe_keys, &handler->request->reply->vps, 7, VENDORPEC_MICROSOFT);
-		pairmove2(&data->mppe_keys, &handler->request->reply->vps, 8, VENDORPEC_MICROSOFT);
-		pairmove2(&data->mppe_keys, &handler->request->reply->vps, 16, VENDORPEC_MICROSOFT);
-		pairmove2(&data->mppe_keys, &handler->request->reply->vps, 17, VENDORPEC_MICROSOFT);
-
-	}
+	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 7, VENDORPEC_MICROSOFT);
+	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 8, VENDORPEC_MICROSOFT);
+	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 16, VENDORPEC_MICROSOFT);
+	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 17, VENDORPEC_MICROSOFT);
 }
 
 static void free_data(void *ptr)
