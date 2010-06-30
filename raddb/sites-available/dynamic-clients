@@ -60,7 +60,7 @@ client dynamic {
 	#  If the lifetime is "0", then the dynamic client is never
 	#  deleted.  The only way to delete the client is to re-start
 	#  the server.
-	lifetime = 86400
+	lifetime = 3600
 }
 
 #
@@ -139,6 +139,8 @@ server dynamic_client_server {
 				FreeRADIUS-Client-Secret = "%{sql: SELECT secret FROM nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
 
 				FreeRADIUS-Client-NAS-Type = "%{sql: SELECT type FROM nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
+
+				FreeRADIUS-Client-Virtual-Server = "%{sql: SELECT server FROM nas WHERE nasname = '%{Packet-Src-IP-Address}'}"
 			}
 
 		}

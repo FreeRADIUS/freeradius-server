@@ -201,7 +201,8 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 		 *	can be defined.
 		 */
 		rad_assert(client->dynamic == 0);
-	} else {
+
+	} else if (!client->dynamic && client->rate_limit) {
 		/*
 		 *	The IP is unknown, so we've found an enclosing
 		 *	network.  Enable DoS protection.  We only
