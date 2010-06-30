@@ -162,7 +162,7 @@ static FR_TOKEN getregex(const char **ptr, char *buffer, size_t buflen,
 
 			default:
 				if ((p[1] >= '0') && (p[1] <= '9') &&
-				    (sscanf(p, "%3o", &x) == 1)) {
+				    (sscanf(p + 1, "%3o", &x) == 1)) {
 					*q++ = x;
 					p += 2;
 				} else {
