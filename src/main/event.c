@@ -479,6 +479,7 @@ static void wait_for_child_to_die(void *ctx)
 	REQUEST *request = ctx;
 
 	rad_assert(request->magic == REQUEST_MAGIC);
+	remove_from_request_hash(request);
 
 	/*
 	 *	If it's still queued (waiting for a thread to pick it
@@ -490,14 +491,15 @@ static void wait_for_child_to_die(void *ctx)
 	     (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0))) {
 
 		/*
-		 *	Cap delay at five minutes.
+		 *	Cap delay at max_request_time
 		 */
-		if (request->delay < (USEC * 60 * 5)) {
+		if (request->delay < (USEC * request->root->max_request_time)) {
 			request->delay += (request->delay >> 1);
 			radlog(L_INFO, "WARNING: Child is hung for request %u in component %s module %s.",
 			       request->number, request->component, request->module);
 		} else {
-			RDEBUG2("Child is still stuck for request %u",
+			request->delay = USEC * request->root->max_request_time;
+			RDEBUG2("WARNING: Child is still stuck for request %u",
 				request->number);
 		}
 		tv_add(&request->when, request->delay);
@@ -507,7 +509,6 @@ static void wait_for_child_to_die(void *ctx)
 	}
 
 	RDEBUG2("Child is finally responsive for request %u", request->number);
-	remove_from_request_hash(request);
 
 #ifdef WITH_PROXY
 	if (request->proxy) {
@@ -1140,6 +1141,25 @@ static void wait_a_bit(void *ctx)
 	switch (request->child_state) {
 	case REQUEST_QUEUED:
 	case REQUEST_RUNNING:
+		/*
+		 *	If we're not thread-capable, OR we're capable,
+		 *	but have been told to run without threads,
+		 *	complain when the requests is queued for a
+		 *	thread, or running in a child thread.
+		 */
+#ifdef HAVE_PTHREAD_H
+		if (!have_children)
+#endif
+		{
+			rad_assert("We do not have threads, but the request is marked as queued or running in a child thread" == NULL);
+			break;
+		}
+
+#ifdef HAVE_PTHREAD_H
+		/*
+		 *	If we have threads, wait for the child thread
+		 *	to stop.
+		 */
 		when = request->received;
 		when.tv_sec += request->root->max_request_time;
 
@@ -1156,24 +1176,18 @@ static void wait_a_bit(void *ctx)
 		 *	Request still has more time.  Continue
 		 *	waiting.
 		 */
-		if (timercmp(&now, &when, <) ||
-		    ((request->listener->type == RAD_LISTEN_DETAIL) &&
-		     (request->child_state == REQUEST_QUEUED))) {
+		if (timercmp(&now, &when, <)) {
 			if (request->delay < (USEC / 10)) {
 				request->delay = USEC / 10;
 			}
 			request->delay += request->delay >> 1;
 
-#ifdef WITH_DETAIL
 			/*
-			 *	Cap wait at some sane value for detail
-			 *	files.
+			 *	Cap delays at something reasonable.
 			 */
-			if ((request->listener->type == RAD_LISTEN_DETAIL) &&
-			    (request->delay > (request->root->max_request_time * USEC))) {
+			if (request->delay > (request->root->max_request_time * USEC)) {
 				request->delay = request->root->max_request_time * USEC;
 			}
-#endif
 
 			request->when = now;
 			tv_add(&request->when, request->delay);
@@ -1181,7 +1195,8 @@ static void wait_a_bit(void *ctx)
 			break;
 		}
 
-#if defined(HAVE_PTHREAD_H)
+		request->master_state = REQUEST_STOP_PROCESSING;
+
 		/*
 		 *	A child thread MAY still be running on the
 		 *	request.  Ask the thread to stop working on
@@ -1189,30 +1204,17 @@ static void wait_a_bit(void *ctx)
 		 */
 		if (have_children &&
 		    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
-			request->master_state = REQUEST_STOP_PROCESSING;
-
 			radlog(L_ERR, "WARNING: Unresponsive child for request %u, in module %s component %s",
 			       request->number,
 			       request->module ? request->module : "<server core>",
 			       request->component ? request->component : "<server core>");
-			
-			request->delay = USEC / 4;
-			tv_add(&request->when, request->delay);
-			callback = wait_for_child_to_die;
-			break;
 		}
+			
+		request->delay = USEC;
+		tv_add(&request->when, request->delay);
+		callback = wait_for_child_to_die;
+		break;
 #endif
-
-		/*
-		 *	Else no child thread is processing the
-		 *	request.  We probably should have just marked
-		 *	the request as 'done' elsewhere, like in the
-		 *	post-proxy-fail handler.  But doing that would
-		 *	involve checking for max_request_time in
-		 *	multiple places, so this may be simplest.
-		 */
-		request->child_state = REQUEST_DONE;
-		/* FALL-THROUGH */
 
 		/*
 		 *	Mark the request as no longer running,
