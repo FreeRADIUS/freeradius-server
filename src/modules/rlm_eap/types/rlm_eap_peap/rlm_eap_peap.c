@@ -315,6 +315,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		peap = tls_session->opaque;
 		if (peap->accept_vps) {
 			RDEBUG2("Using saved attributes from the original Access-Accept");
+			debug_pair_list(peap->accept_vps);
 			pairadd(&handler->request->reply->vps, peap->accept_vps);
 			peap->accept_vps = NULL;
 		}

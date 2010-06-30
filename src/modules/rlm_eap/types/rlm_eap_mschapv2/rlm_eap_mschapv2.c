@@ -46,18 +46,11 @@ static CONF_PARSER module_config[] = {
 
 static void fix_mppe_keys(EAP_HANDLER *handler, mschapv2_opaque_t *data)
 {
-	if (handler->request->parent) {
-		pairdelete(&handler->request->reply->vps, ((311 << 16) | 7));
-		pairdelete(&handler->request->reply->vps, ((311 << 16) | 8));
-		pairdelete(&handler->request->reply->vps, ((311 << 16) | 16));
-		pairdelete(&handler->request->reply->vps, ((311 << 16) | 17));
-	} else {
-		pairmove2(&data->mppe_keys, &handler->request->reply->vps, ((311 << 16) | 7));
-		pairmove2(&data->mppe_keys, &handler->request->reply->vps, ((311 << 16) | 8));
-		pairmove2(&data->mppe_keys, &handler->request->reply->vps, ((311 << 16) | 16));
-		pairmove2(&data->mppe_keys, &handler->request->reply->vps, ((311 << 16) | 17));
-
-	}
+	pairmove2(&data->mppe_keys, &handler->request->reply->vps, ((311 << 16) | 7));
+	pairmove2(&data->mppe_keys, &handler->request->reply->vps, ((311 << 16) | 8));
+	pairmove2(&data->mppe_keys, &handler->request->reply->vps, ((311 << 16) | 16));
+	pairmove2(&data->mppe_keys, &handler->request->reply->vps, ((311 << 16) | 17));
+  
 }
 
 static void free_data(void *ptr)

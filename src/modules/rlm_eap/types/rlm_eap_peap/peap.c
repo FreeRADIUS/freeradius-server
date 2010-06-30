@@ -337,6 +337,15 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			pairdelete(&reply->vps, PW_EAP_MESSAGE);
 			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR);
 
+			/*
+			 *	Delete MPPE keys & encryption policy.  We don't
+			 *	want these here.
+			 */
+			pairdelete(&reply->vps, ((311 << 16) | 7));
+			pairdelete(&reply->vps, ((311 << 16) | 8));
+			pairdelete(&reply->vps, ((311 << 16) | 16));
+			pairdelete(&reply->vps, ((311 << 16) | 17));
+
 			t->accept_vps = reply->vps;
 			reply->vps = NULL;
 		}

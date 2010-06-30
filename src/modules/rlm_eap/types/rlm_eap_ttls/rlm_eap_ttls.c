@@ -211,11 +211,11 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		}
 
 		if (t && t->authenticated) {
-			if (t->accept_vps) {
-				pairadd(&handler->request->reply->vps,
-					t->accept_vps);
-				t->accept_vps = NULL;
-			}
+			RDEBUG2("Using saved attributes from the original Access-Accept");
+			debug_pair_list(t->accept_vps);
+			pairadd(&handler->request->reply->vps,
+				t->accept_vps);
+			t->accept_vps = NULL;
 		do_keys:
 			/*
 			 *	Success: Automatically return MPPE keys.
