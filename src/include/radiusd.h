@@ -134,6 +134,7 @@ typedef struct radclient {
 	time_t			created;
 	time_t			last_new_client;
 	char			*client_server;
+	int			rate_limit;
 #endif
 
 #ifdef WITH_COA
