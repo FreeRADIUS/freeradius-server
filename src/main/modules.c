@@ -105,6 +105,16 @@ static const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 #endif
 
 #define fr_dlopenext lt_dlopenext
+#ifndef LT_SHREXT
+#ifdef __APPLE__
+#define LT_SHREXT ".so"
+#elif defined (WIN32)
+#define LT_SHREXT ".dll"
+#else
+#define LT_SHREXT ".dylib"
+#endif
+#endif
+
 lt_dlhandle lt_dlopenext(const char *name)
 {
 	char buffer[256];
@@ -114,7 +124,7 @@ lt_dlhandle lt_dlopenext(const char *name)
 	/*
 	 *	FIXME: Make this configurable...
 	 */
-	strlcat(buffer, ".so", sizeof(buffer));
+	strlcat(buffer, LT_SHREXT, sizeof(buffer));
 
 	return dlopen(buffer, RTLD_NOW | RTLD_LOCAL);
 }
