@@ -432,5 +432,9 @@ module_t rlm_exec = {
 		exec_dispatch,		/* pre-proxy */
 		exec_dispatch,		/* post-proxy */
 		exec_postauth		/* post-auth */
+#ifdef WITH_COA
+		, exec_dispatch,
+		exec_dispatch
+#endif
 	},
 };
