@@ -8,6 +8,13 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
+/*
+ *	Using the native dlopen() API means that we don't want to use libltdl.
+ */
+#ifdef WITH_DLOPEN
+#define WITHOUT_LIBLTDL
+#endif
+
 #ifndef WITHOUT_LIBLTDL
 #include "ltdl.h"
 #else
