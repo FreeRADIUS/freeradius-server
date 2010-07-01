@@ -55,6 +55,7 @@
  */
 
 #include <freeradius-devel/ident.h>
+#include <freeradius-devel/modpriv.h>
 RCSID("$Id$")
 
 #include "rlm_eap.h"
@@ -76,19 +77,10 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	char		buffer[64];
 	char		namebuf[64];
 	const char	*eaptype_name;
-	lt_dlhandle	handle;
 	EAP_TYPES	*node;
 
 	eaptype_name = eaptype_type2name(eap_type, namebuf, sizeof(namebuf));
 	snprintf(buffer, sizeof(buffer), "rlm_eap_%s", eaptype_name);
-
-	/* Link the loaded EAP-Type */
-	handle = lt_dlopenext(buffer);
-	if (handle == NULL) {
-		radlog(L_ERR, "rlm_eap: Failed to link EAP-Type/%s: %s",
-		       eaptype_name, lt_dlerror());
-		return -1;
-	}
 
 	/* Make room for the EAP-Type */
 	node = (EAP_TYPES *)malloc(sizeof(EAP_TYPES));
@@ -99,7 +91,6 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	memset(node, 0, sizeof(*node));
 
 	/* fill in the structure */
-	node->handle = handle;
 	node->cs = cs;
 
 	/*
@@ -112,6 +103,26 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	node->typename = eaptype_name;
 	node->type_data = NULL;
 
+#ifdef WITHOUT_LIBLTDL
+#ifdef WITH_DLOPEN
+#include <dlfcn.h>
+
+#ifdef RTLD_SELF
+	node->type = (EAP_TYPE *)lt_dlsym(RTLD_SELF, buffer);
+	if (node->type) goto open_self;
+#endif
+#endif
+#endif
+
+	/* Link the loaded EAP-Type */
+	node->handle = lt_dlopenext(buffer);
+	if (node->handle == NULL) {
+		free(node);
+		radlog(L_ERR, "rlm_eap: Failed to link EAP-Type/%s: %s",
+		       eaptype_name, lt_dlerror());
+		return -1;
+	}
+
 	node->type = (EAP_TYPE *)lt_dlsym(node->handle, buffer);
 	if (!node->type) {
 		radlog(L_ERR, "rlm_eap: Failed linking to %s structure in %s: %s",
@@ -120,6 +131,10 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 		free(node);
 		return -1;
 	}
+
+#if defined(WITHOUT_LIBLTDL) && defined (WITH_DLOPEN) && defined(RTLD_SELF)
+open_self:
+#endif
 	cf_log_module(cs, "Linked to sub-module %s", buffer);
 
 	cf_log_module(cs, "Instantiating eap-%s", eaptype_name);

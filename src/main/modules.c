@@ -104,6 +104,7 @@ static const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 #define RTLD_LOCAL (0)
 #endif
 
+#define fr_dlopenext lt_dlopenext
 lt_dlhandle lt_dlopenext(const char *name)
 {
 	char buffer[256];
@@ -125,6 +126,8 @@ void *lt_dlsym(lt_dlhandle handle, UNUSED const char *symbol)
 
 int lt_dlclose(lt_dlhandle handle)
 {
+	if (!handle) return 0;
+
 	return dlclose(handle);
 }
 
@@ -172,6 +175,7 @@ static const lt_dlmodule_t lt_dlmodules[] = {
 	{ NULL, NULL }
 };
 
+#define fr_dlopenext lt_dlopenext
 lt_dlhandle lt_dlopenext(const char *name)
 {
 	int i;
@@ -424,7 +428,7 @@ static module_entry_t *linkto_module(const char *module_name,
 {
 	module_entry_t myentry;
 	module_entry_t *node;
-	lt_dlhandle handle;
+	lt_dlhandle handle = NULL;
 	char module_struct[256];
 	char *p;
 	const module_t *module;
@@ -432,6 +436,21 @@ static module_entry_t *linkto_module(const char *module_name,
 	strlcpy(myentry.name, module_name, sizeof(myentry.name));
 	node = rbtree_finddata(module_tree, &myentry);
 	if (node) return node;
+
+	/*
+	 *	Link to the module's rlm_FOO{} module structure.
+	 *
+	 *	The module_name variable has the version number
+	 *	embedded in it, and we don't want that here.
+	 */
+	strcpy(module_struct, module_name);
+	p = strrchr(module_struct, '-');
+	if (p) *p = '\0';
+
+#if defined(WITHOUT_LIBLTDL) && defined (WITH_DLOPEN) && defined(RTLD_SELF)
+	module = lt_dlsym(RTLD_SELF, module_struct);
+	if (module) goto open_self;
+#endif
 
 	/*
 	 *	Keep the handle around so we can dlclose() it.
@@ -443,16 +462,6 @@ static module_entry_t *linkto_module(const char *module_name,
 			   module_name, lt_dlerror());
 		return NULL;
 	}
-
-	/*
-	 *	Link to the module's rlm_FOO{} module structure.
-	 *
-	 *	The module_name variable has the version number
-	 *	embedded in it, and we don't want that here.
-	 */
-	strcpy(module_struct, module_name);
-	p = strrchr(module_struct, '-');
-	if (p) *p = '\0';
 
 	DEBUG3("    (Loaded %s, checking if it's valid)", module_name);
 
@@ -468,6 +477,10 @@ static module_entry_t *linkto_module(const char *module_name,
 		lt_dlclose(handle);
 		return NULL;
 	}
+
+#if defined(WITHOUT_LIBLTDL) && defined (WITH_DLOPEN) && defined(RTLD_SELF)
+ open_self:
+#endif
 	/*
 	 *	Before doing anything else, check if it's sane.
 	 */
