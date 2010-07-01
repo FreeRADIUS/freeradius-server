@@ -986,12 +986,6 @@ static int process_attribute(const char* fn, const int line,
 	}
 
 	if (type == PW_TYPE_TLV) {
-		if (!block_vendor || (block_vendor != VENDORPEC_WIMAX)) {
-			fr_strerror_printf("dict_init: %s[%d]: Only WiMAX attributes can be of type \"tlv\"",
-					   fn, line);
-			return -1;
-		}
-
 		flags.has_tlv = 1;
 	}
 
