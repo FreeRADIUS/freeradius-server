@@ -3891,7 +3891,17 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
 
 	xel = xel;
 
-	if (listener->fd < 0) rad_panic("Socket was closed on us!");
+	if ((listener->type != RAD_LISTEN_DETAIL) &&
+	    (listener->fd < 0)) {
+		char buffer[256];
+
+		listener->print(listener, buffer, sizeof(buffer));
+		radlog(L_ERR, "FATAL: Asked to read from closed socket: %s",
+		       buffer);
+	
+		rad_panic("Socket was closed on us!");
+		_exit(1);
+	}
 	
 	if (!listener->recv(listener, &fun, &request)) return;
 
