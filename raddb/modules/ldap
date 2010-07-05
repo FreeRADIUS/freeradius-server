@@ -100,9 +100,15 @@ ldap {
 	# directory attributes.
 	dictionary_mapping = ${confdir}/ldap.attrmap
 
-	#  Set password_attribute = nspmPassword to get the
-	#  user's password from a Novell eDirectory
-	#  backend. This will work ONLY IF FreeRADIUS has been
+	#  As of version 2.2.0, the "password_attribute" configuration item
+	#  is deprecated, and SHOULD NOT be used.
+	#  The default behavior now is to map the LDAP "userPassword" field
+	#  to a FreeRADIUS "password" field.  The PAP module will take care
+	#  of decoding headers (e.g. {crypt}, etc.), and doing any base-64
+	#  decoding.
+	#
+	#  It is only used for obtaining a password from a Novell eDirectory
+	#  backend. It will work ONLY IF FreeRADIUS has been
 	#  built with the --with-edir configure option.
 	#
 	#  See also the following links:
@@ -113,7 +119,7 @@ ldap {
 	#  Novell may require TLS encrypted sessions before returning
 	#  the user's password.
 	#
-	# password_attribute = userPassword
+	# password_attribute = nspmPassword
 
 	#  Un-comment the following to disable Novell
 	#  eDirectory account policy check and intruder

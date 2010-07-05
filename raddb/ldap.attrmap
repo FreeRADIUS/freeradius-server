@@ -41,6 +41,7 @@ checkItem	LM-Password			dBCSPwd
 checkItem	SMB-Account-CTRL-TEXT		acctFlags
 checkItem	Expiration			radiusExpiration
 checkItem	NAS-IP-Address			radiusNASIpAddress
+checkItem	Password-With-Header		userPassword
 
 replyItem	Service-Type			radiusServiceType
 replyItem	Framed-Protocol			radiusFramedProtocol
