@@ -351,6 +351,8 @@ RADIUS_PACKET *fr_tcp_accept(int sockfd)
 			packet->src_ipaddr.af = AF_UNSPEC;
 			return packet;
 		}
+
+		return -1;
 	}
 		
 	packet = rad_alloc(0);
