@@ -146,7 +146,6 @@ typedef struct {
 	char           *default_profile;
 	char           *profile_attr;
 	char           *access_attr;
-	char           *passwd_hdr;
 	char           *passwd_attr;
 	char           *dictionary_mapping;
 	char	       *groupname_attr;
@@ -258,8 +257,6 @@ static const CONF_PARSER module_config[] = {
 	/*
 	 *	Getting passwords from the database
 	 */
-	{"password_header", PW_TYPE_STRING_PTR,
-	 offsetof(ldap_instance,passwd_hdr), NULL, NULL},
 	{"password_attribute", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,passwd_attr), NULL, NULL},
 
@@ -1500,17 +1497,6 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					continue;
 
 				value = passwd_vals[i];
-
-				if (inst->passwd_hdr &&
-					   strlen(inst->passwd_hdr)) {
-					if (strncasecmp(value,
-							inst->passwd_hdr,
-							strlen(inst->passwd_hdr)) == 0) {
-						value += strlen(inst->passwd_hdr);
-					} else {
-						RDEBUG("Password header not found in password %s for user %s", passwd_vals[0], request->username->vp_strvalue);
-					}
-				}
 				if (!value) continue;
 
 			create_attr:
@@ -1551,16 +1537,6 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 				if (res == 0){
 					passwd_val = universal_password;
-
-					if (inst->passwd_hdr && strlen(inst->passwd_hdr)){
-						passwd_val = strstr(passwd_val,inst->passwd_hdr);
-
-						if (passwd_val != NULL)
-							passwd_val += strlen((char*)inst->passwd_hdr);
-						else
-							RDEBUG("Password header not found in password %s for user %s ",passwd_val,request->username->vp_strvalue);
-					}
-
 					if (passwd_val){
 						passwd_item = radius_paircreate(request, &request->config_items, PW_CLEARTEXT_PASSWORD, PW_TYPE_STRING);
 						strlcpy(passwd_item->vp_strvalue,passwd_val,sizeof(passwd_item->vp_strvalue));

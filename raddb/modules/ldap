@@ -167,7 +167,8 @@ ldap {
 	#	Example:(LDAP_DEBUG_FILTER+LDAP_DEBUG_CONNS)
 	#ldap_debug = 0x0028 
 
-	#  As of version 2.2.0, the "auto_header" configuration item
-	#  has been removed.  Since it was deprecated long ago, this
-	#  change should not affect anyone.
+	#  As of version 2.2.0, the "auto_header" and
+        #  "password_header" configuration items have been removed.
+        #  Since they were deprecated long ago, this change should not
+        #  affect anyone.
 }
