@@ -148,7 +148,6 @@ typedef struct {
 	char           *access_attr;
 	char           *passwd_hdr;
 	char           *passwd_attr;
-	int		auto_header;
 	char           *dictionary_mapping;
 	char	       *groupname_attr;
 	char	       *groupmemb_filt;
@@ -263,8 +262,6 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(ldap_instance,passwd_hdr), NULL, NULL},
 	{"password_attribute", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,passwd_attr), NULL, NULL},
-	{"auto_header", PW_TYPE_BOOLEAN,
-	 offsetof(ldap_instance,auto_header), NULL, "no"},
 
 	/*
 	 *	Access limitations
@@ -1504,24 +1501,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 				value = passwd_vals[i];
 
-				if (inst->auto_header) {
-					char *p;
-					char autobuf[16];
-
-					p = strchr(value, '}');
-					if (!p) continue;
-					if ((size_t)(p - value + 1) >= sizeof(autobuf))
-						continue; /* paranoia */
-					memcpy(autobuf, value, p - value + 1);
-					autobuf[p - value + 1] = '\0';
-
-					attr = fr_str2int(header_names,
-							    autobuf, 0);
-					if (!attr) continue;
-					value = p + 1;
-					goto create_attr;
-
-				} else if (inst->passwd_hdr &&
+				if (inst->passwd_hdr &&
 					   strlen(inst->passwd_hdr)) {
 					if (strncasecmp(value,
 							inst->passwd_hdr,
