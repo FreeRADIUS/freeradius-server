@@ -519,7 +519,6 @@ static void addresult (struct passwd_instance * inst, REQUEST *request, VALUE_PA
 static int passwd_map(void *instance, REQUEST *request)
 {
 #define inst ((struct passwd_instance *)instance)
-	char * name;
 	char buffer[1024];
 	VALUE_PAIR * key;
 	struct mypasswd * pw;
@@ -528,27 +527,18 @@ static int passwd_map(void *instance, REQUEST *request)
 	for (key = request->packet->vps;
 	 key && (key = pairfind (key, inst->keyattr));
 	  key = key->next ){
-		switch (inst->keyattrtype) {
-			case PW_TYPE_INTEGER:
-				snprintf(buffer, 1024, "%u", key->vp_integer);
-				name = buffer;
-				break;
-			case PW_TYPE_ETHERNET:
-				vp_prints_value(buffer, sizeof(buffer),
-						key, 0);
-				name = buffer;
-				break;
-			default:
-				name = key->vp_strvalue;
-		}
-		if (! (pw = get_pw_nam(name, inst->ht)) ) {
+		/*
+		 *	Ensure we have the string form of the attribute
+		 */
+		vp_prints_value(buffer, sizeof(buffer), key, 0);
+		if (! (pw = get_pw_nam(buffer, inst->ht)) ) {
 			continue;
 		}
 		do {
 			addresult(inst, request, &request->config_items, pw, 0, "config_items");
 			addresult(inst, request, &request->reply->vps, pw, 1, "reply_items");
 			addresult(inst, request, &request->packet->vps, 	pw, 2, "request_items");
-		} while ( (pw = get_next(name, inst->ht)) );
+		} while ( (pw = get_next(buffer, inst->ht)) );
 		found++;
 		if (!inst->allowmultiple) break;
 	}
