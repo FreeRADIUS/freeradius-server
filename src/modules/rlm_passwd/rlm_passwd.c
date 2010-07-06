@@ -565,6 +565,10 @@ module_t rlm_passwd = {
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
 		passwd_map	       	/* post-auth */
+#ifdef WITH_COA
+		, passwd_map,
+		passwd_map
+#endif
 	},
 };
 #endif /* TEST */
