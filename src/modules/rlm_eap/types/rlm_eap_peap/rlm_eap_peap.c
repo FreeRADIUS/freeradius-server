@@ -205,49 +205,9 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	an EAP-TLS-Success packet here.
 		 */
 	case EAPTLS_SUCCESS:
-		if (SSL_session_reused(tls_session->ssl)) {
-			uint8_t tlv_packet[11];
-			
-			RDEBUG2("Skipping Phase2 because of session resumption.");
-			peap->session_resumption_state = PEAP_RESUMPTION_YES;
-			
-			tlv_packet[0] = PW_EAP_REQUEST;
-			tlv_packet[1] = handler->eap_ds->response->id +1;
-			tlv_packet[2] = 0;
-			tlv_packet[3] = 11;     /* length of this packet */
-			tlv_packet[4] = PW_EAP_TLV;
-			tlv_packet[5] = 0x80;
-			tlv_packet[6] = EAP_TLV_ACK_RESULT;
-			tlv_packet[7] = 0;
-			tlv_packet[8] = 2;      /* length of the data portion */
-			tlv_packet[9] = 0;
-			tlv_packet[10] = EAP_TLV_SUCCESS;
-			
-			peap->status = PEAP_STATUS_SENT_TLV_SUCCESS;
-
-			(tls_session->record_plus)(&tls_session->clean_in, tlv_packet, 11);
-			tls_handshake_send(tls_session);
-			(tls_session->record_init)(&tls_session->clean_in);
-
-		} else {
-			eap_packet_t eap_packet;
-
-			eap_packet.code = PW_EAP_REQUEST;
-			eap_packet.id = handler->eap_ds->response->id + 1;
-			eap_packet.length[0] = 0;
-			eap_packet.length[1] = EAP_HEADER_LEN + 1;
-			eap_packet.data[0] = PW_EAP_IDENTITY;
-
-			(tls_session->record_plus)(&tls_session->clean_in,
-						  &eap_packet, sizeof(eap_packet));
-
-			tls_handshake_send(tls_session);
-			(tls_session->record_init)(&tls_session->clean_in);
-		}
-
-		eaptls_request(handler->eap_ds, tls_session);
 		RDEBUG2("EAPTLS_SUCCESS");
-		return 1;
+		peap->status = PEAP_STATUS_TUNNEL_ESTABLISHED;
+		break;
 
 		/*
 		 *	The TLS code is still working on the TLS
