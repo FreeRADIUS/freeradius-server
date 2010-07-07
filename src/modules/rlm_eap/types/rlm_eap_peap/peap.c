@@ -96,6 +96,26 @@ static int eappeap_success(EAP_HANDLER *handler, tls_session_t *tls_session)
 }
 
 
+static int eappeap_identity(EAP_HANDLER *handler, tls_session_t *tls_session)
+{
+	eap_packet_t eap_packet;
+
+	eap_packet.code = PW_EAP_REQUEST;
+	eap_packet.id = handler->eap_ds->response->id + 1;
+	eap_packet.length[0] = 0;
+	eap_packet.length[1] = EAP_HEADER_LEN + 1;
+	eap_packet.data[0] = PW_EAP_IDENTITY;
+
+	(tls_session->record_plus)(&tls_session->clean_in,
+				  &eap_packet, sizeof(eap_packet));
+
+	tls_handshake_send(tls_session);
+	(tls_session->record_init)(&tls_session->clean_in);
+
+	return 1;
+}
+
+
 /*
  *	Verify the tunneled EAP message.
  */
@@ -637,14 +657,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		 */
 		if ((t->session_resumption_state != PEAP_RESUMPTION_NO) &&
 		    SSL_session_reused(tls_session->ssl)) {
-			eap_packet_t eap_packet;
-			
 			RDEBUG2("Client rejected session resumption.  Re-starting full authentication");
-			eap_packet.code = PW_EAP_REQUEST;
-			eap_packet.id = handler->eap_ds->response->id + 1;
-			eap_packet.length[0] = 0;
-			eap_packet.length[1] = EAP_HEADER_LEN + 1;
-			eap_packet.data[0] = PW_EAP_IDENTITY;
 			
 			/*
 			 *	Mark session resumption status.
@@ -652,10 +665,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			t->status = 0;
 			t->session_resumption_state = PEAP_RESUMPTION_NO;
 			
-			(tls_session->record_plus)(&tls_session->clean_in,
-						   &eap_packet,
-						   sizeof(eap_packet));
-			tls_handshake_send(tls_session);
+			eappeap_identity(handler, tls_session);
 			return RLM_MODULE_HANDLED;
 		}
 
