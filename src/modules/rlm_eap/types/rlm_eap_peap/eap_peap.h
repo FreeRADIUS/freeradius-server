@@ -42,9 +42,13 @@ typedef struct peap_tunnel_t {
 	int		session_resumption_state;
 } peap_tunnel_t;
 
-#define PEAP_STATUS_START_PART2 0
+#define PEAP_STATUS_INVALID 0
 #define PEAP_STATUS_SENT_TLV_SUCCESS 1
 #define PEAP_STATUS_SENT_TLV_FAILURE 2
+#define PEAP_STATUS_TUNNEL_ESTABLISHED 3
+#define PEAP_STATUS_INNER_IDENTITY_REQ_SENT 4
+#define PEAP_STATUS_PHASE2_INIT 5
+#define PEAP_STATUS_PHASE2 6
 
 #define PEAP_RESUMPTION_NO	(0)
 #define PEAP_RESUMPTION_YES	(1)
