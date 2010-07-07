@@ -617,10 +617,11 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		return RLM_MODULE_REJECT;
 	}
 
+	switch (t->status) {
 	/*
 	 *	If we authenticated the user, then it's OK.
 	 */
-	if (t->status == PEAP_STATUS_SENT_TLV_SUCCESS) {
+	case PEAP_STATUS_SENT_TLV_SUCCESS:
 		if (eappeap_check_tlv(request, data)) {
 			RDEBUG2("Success");
 			return RLM_MODULE_OK;
@@ -660,13 +661,11 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 		return RLM_MODULE_REJECT;
 
-	}
-
 	/*
 	 *	Damned if I know why the clients continue sending EAP
 	 *	packets after we told them to f*ck off.
 	 */
-	if (t->status == PEAP_STATUS_SENT_TLV_FAILURE) {
+	case PEAP_STATUS_SENT_TLV_FAILURE:
 		RDEBUG(" The users session was previously rejected: returning reject (again.)");
 		RDEBUG(" *** This means you need to read the PREVIOUS messages in the debug output");
 		RDEBUG(" *** to find out the reason why the user was rejected.");
