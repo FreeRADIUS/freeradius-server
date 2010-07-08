@@ -114,6 +114,8 @@ static int check_fatal_error (char *errorcode)
 	http://www.postgresql.org/docs/8.1/interactive/errcodes-appendix.html
 	*/
 
+	if (!errorcode) return -1;
+
 	while(errorcodes[x].errorcode != NULL){
 		if (strcmp(errorcodes[x].errorcode, errorcode) == 0){
 			radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s: %s] Occurred!!", errorcode, errorcodes[x].meaning);
