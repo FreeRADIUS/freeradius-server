@@ -1198,8 +1198,30 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	}
 	p += DHCP_CHADDR_LEN;
 
-	memset(p, 0, 192);	/* bootp legacy */
-	p += 192;
+	/*
+	 *	Zero our sname && filename fields.
+	 */
+	memset(p, 0, DHCP_SNAME_LEN + DHCP_FILE_LEN);
+	p += DHCP_SNAME_LEN;
+
+	/*
+	 *	Copy over DHCP-Boot-Filename.
+	 *
+	 *	FIXME: This copy should be delayed until AFTER the options
+	 *	have been processed.  If there are too many options for
+	 *	the packet, then they go into the sname && filename fields.
+	 *	When that happens, the boot filename is passed as an option,
+	 *	instead of being placed verbatim in the filename field.
+	 */
+	vp = pairfind(packet->vps, DHCP2ATTR(269));
+	if (vp) {
+		if (vp->length > DHCP_FILE_LEN) {
+			memcpy(p, vp->vp_strvalue, DHCP_FILE_LEN);
+		} else {
+			memcpy(p, vp->vp_strvalue, vp->length);
+		}
+	}
+	p += DHCP_FILE_LEN;
 
 	lvalue = htonl(DHCP_OPTION_MAGIC_NUMBER); /* DHCP magic number */
 	memcpy(p, &lvalue, 4);
