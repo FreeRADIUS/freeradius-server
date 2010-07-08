@@ -27,7 +27,7 @@ CA_DEFAULT_DAYS = `grep default_days ca.cnf | sed 's/.*=//;s/^ *//'`
 #
 ######################################################################
 .PHONY: all
-all: dh random server ca
+all: index.txt serial dh random server ca
 
 .PHONY: client
 client: client.pem
@@ -66,7 +66,7 @@ ca.der: ca.pem
 server.csr server.key: server.cnf
 	openssl req -new  -out server.csr -keyout server.key -config ./server.cnf
 
-server.crt: server.csr ca.key ca.pem index.txt serial
+server.crt: server.csr ca.key ca.pem
 	openssl ca -batch -keyfile ca.key -cert ca.pem -in server.csr  -key $(PASSWORD_CA) -out server.crt -extensions xpserver_ext -extfile xpextensions -config ./server.cnf
 
 server.p12: server.crt
@@ -88,7 +88,7 @@ server.vrfy: ca.pem
 client.csr client.key: client.cnf
 	openssl req -new  -out client.csr -keyout client.key -config ./client.cnf
 
-client.crt: client.csr ca.pem ca.key index.txt serial
+client.crt: client.csr ca.pem ca.key
 	openssl ca -batch -keyfile ca.key -cert ca.pem -in client.csr  -key $(PASSWORD_CA) -out client.crt -extensions xpclient_ext -extfile xpextensions -config ./client.cnf
 
 client.p12: client.crt
