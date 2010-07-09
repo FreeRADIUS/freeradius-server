@@ -405,6 +405,9 @@ accounting {
 	#  Cisco VoIP specific bulk accounting
 #	pgsql-voip
 
+	# For Exec-Program and Exec-Program-Wait
+	exec
+
 	#  Filter attributes from the accounting response.
 	attr_filter.accounting_response
 
@@ -461,6 +464,7 @@ post-auth {
 	#
 #	ldap
 
+	# For Exec-Program and Exec-Program-Wait
 	exec
 
 	#

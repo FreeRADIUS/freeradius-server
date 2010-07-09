@@ -32,6 +32,7 @@ RCSID("$Id$")
  */
 typedef struct rlm_exec_t {
 	char	*xlat_name;
+	int	bare;
 	int	wait;
 	char	*program;
 	char	*input;
@@ -240,8 +241,10 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL)
+	if (xlat_name == NULL) {
 		xlat_name = cf_section_name1(conf);
+		inst->bare = 1;
+	}
 	if (xlat_name){
 		inst->xlat_name = strdup(xlat_name);
 		xlat_register(xlat_name, exec_xlat, inst);
@@ -365,7 +368,11 @@ static int exec_postauth(void *instance, REQUEST *request)
 	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT, 0)) != NULL) {
 		exec_wait = 1;
 	}
-	if (!vp) goto dispatch;
+	if (!vp) {
+		if (!inst->program) return RLM_MODULE_NOOP;
+		
+		return exec_dispatch(instance, request);
+	}
 
 	tmp = NULL;
 	result = radius_exec_program(vp->vp_strvalue, request, exec_wait,
@@ -402,10 +409,44 @@ static int exec_postauth(void *instance, REQUEST *request)
 		return RLM_MODULE_REJECT;
 	}
 
- dispatch:
-	if (!inst->program) return RLM_MODULE_NOOP;
+	return RLM_MODULE_OK;
+}
 
-	return exec_dispatch(instance, request);
+/*
+ *	First, look for Exec-Program && Exec-Program-Wait.
+ *
+ *	Then, call exec_dispatch.
+ */
+static int exec_accounting(void *instance, REQUEST *request)
+{
+	int result;
+	int exec_wait = 0;
+	VALUE_PAIR *vp;
+	rlm_exec_t *inst = (rlm_exec_t *) instance;
+
+	/*
+	 *	The "bare" exec module takes care of handling
+	 *	Exec-Program and Exec-Program-Wait.
+	 */
+	if (!inst->bare) return exec_dispatch(instance, request);
+
+	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM);
+	if (vp) {
+		exec_wait = 0;
+
+	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT)) != NULL) {
+		exec_wait = 1;
+	}
+	if (!vp) return RLM_MODULE_NOOP;
+
+	result = radius_exec_program(vp->vp_strvalue, request, exec_wait,
+				     NULL, 0, request->packet->vps, NULL,
+				     inst->shell_escape);
+	if (result != 0) {
+		return RLM_MODULE_REJECT;
+	}
+
+	return RLM_MODULE_OK;
 }
 
 /*
@@ -427,7 +468,7 @@ module_t rlm_exec = {
 		exec_dispatch,		/* authentication */
 		exec_dispatch,	        /* authorization */
 		exec_dispatch,		/* pre-accounting */
-		exec_dispatch,		/* accounting */
+		exec_accounting,	/* accounting */
 		NULL,			/* check simul */
 		exec_dispatch,		/* pre-proxy */
 		exec_dispatch,		/* post-proxy */
