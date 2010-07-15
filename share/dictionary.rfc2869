@@ -10,8 +10,8 @@ ATTRIBUTE	Acct-Output-Gigawords			53	integer
 
 ATTRIBUTE	Event-Timestamp				55	date
 
-ATTRIBUTE	ARAP-Password				70	octets	# 16 octets of data
-ATTRIBUTE	ARAP-Features				71	octets  # 14 octets of data
+ATTRIBUTE	ARAP-Password				70	octets[16]
+ATTRIBUTE	ARAP-Features				71	octets[14]
 ATTRIBUTE	ARAP-Zone-Access			72	integer
 ATTRIBUTE	ARAP-Security				73	integer
 ATTRIBUTE	ARAP-Security-Data			74	string
@@ -22,7 +22,7 @@ ATTRIBUTE	Configuration-Token			78	string
 ATTRIBUTE	EAP-Message				79	octets
 ATTRIBUTE	Message-Authenticator			80	octets
 
-ATTRIBUTE	ARAP-Challenge-Response			84	octets	# 8 octets of data
+ATTRIBUTE	ARAP-Challenge-Response			84	octets[8]
 ATTRIBUTE	Acct-Interim-Interval			85	integer
 # 86: RFC 2867
 ATTRIBUTE	NAS-Port-Id				87	string

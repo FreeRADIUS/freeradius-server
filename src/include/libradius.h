@@ -107,6 +107,7 @@ typedef struct attr_flags {
 
 	int8_t			tag;	      /* tag for tunneled attributes */
 	uint8_t		        encrypt;      /* encryption method */
+	uint8_t			length;
 } ATTR_FLAGS;
 
 /*

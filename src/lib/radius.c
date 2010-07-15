@@ -2209,6 +2209,15 @@ static VALUE_PAIR *data2vp(const RADIUS_PACKET *packet,
 	vp->next = NULL;
 
 	/*
+	 *	It's supposed to be a fixed length, but we found
+	 *	a different length instead.  Make it type "octets",
+	 *	and do no more processing on it.
+	 */
+	if ((vp->flags.length > 0) && (vp->flags.length != length)) {
+		goto raw;
+	}
+
+	/*
 	 *	Handle tags.
 	 */
 	if (vp->flags.has_tag) {

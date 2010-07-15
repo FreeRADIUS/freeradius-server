@@ -869,6 +869,7 @@ static int process_attribute(const char* fn, const int line,
 	int		vendor = 0;
 	int		value;
 	int		type;
+	int		length = 0;
 	ATTR_FLAGS	flags;
 
 	if ((argc < 3) || (argc > 4)) {
@@ -885,14 +886,37 @@ static int process_attribute(const char* fn, const int line,
 		return -1;
 	}
 
-	/*
-	 *	find the type of the attribute.
-	 */
-	type = fr_str2int(type_table, argv[2], -1);
-	if (type < 0) {
-		fr_strerror_printf("dict_init: %s[%d]: invalid type \"%s\"",
-			fn, line, argv[2]);
-		return -1;
+	if (strncmp(argv[2], "octets[", 7) != 0) {
+		/*
+		 *	find the type of the attribute.
+		 */
+		type = fr_str2int(type_table, argv[2], -1);
+		if (type < 0) {
+			fr_strerror_printf("dict_init: %s[%d]: invalid type \"%s\"",
+					   fn, line, argv[2]);
+			return -1;
+		}
+	} else {
+		char *p;
+		type = PW_TYPE_OCTETS;
+		
+		p = strchr(argv[2] + 7, ']');
+		if (!p) {
+			fr_strerror_printf("dict_init: %s[%d]: Invalid format for octets", fn, line);
+			return -1;
+		}
+
+		*p = 0;
+
+		if (!sscanf_i(argv[1], &length)) {
+			fr_strerror_printf("dict_init: %s[%d]: invalid length", fn, line);
+			return -1;
+		}
+
+		if ((length == 0) || (length > 253)) {
+			fr_strerror_printf("dict_init: %s[%d]: invalid length", fn, line);
+			return -1;
+		}
 	}
 
 	/*
@@ -900,8 +924,51 @@ static int process_attribute(const char* fn, const int line,
 	 *	is non-empty.
 	 */
 	memset(&flags, 0, sizeof(flags));
-	if (argc == 4) {
+	if (argc < 4) {
+		/*
+		 *	Force "length" for data types of fixed length;
+		 */
+		switch (type) {
+		case PW_TYPE_BYTE:
+			length = 1;
+			break;
+
+		case PW_TYPE_SHORT:
+			length = 2;
+			break;
+
+		case PW_TYPE_DATE:
+		case PW_TYPE_IPADDR:
+		case PW_TYPE_INTEGER:
+		case PW_TYPE_SIGNED:
+			length = 4;
+			break;
+
+		case PW_TYPE_ETHERNET:
+			length = 6;
+			break;
+
+		case PW_TYPE_IFID:
+			length = 8;
+			break;
+
+		case PW_TYPE_IPV6ADDR:
+			length = 16;
+			break;
+
+		default:
+			break;
+		}
+
+	  	flags.length = length;
+
+	} else {		/* argc == 4: we have options */
 		char *key, *next, *last;
+
+		if (length != 0) {
+			fr_strerror_printf("dict_init: %s[%d]: length cannot be used with options", fn, line);
+			return -1;
+		}
 
 		key = argv[3];
 		do {
