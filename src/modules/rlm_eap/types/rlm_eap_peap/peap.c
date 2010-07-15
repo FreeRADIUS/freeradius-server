@@ -779,7 +779,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 		t->status = PEAP_STATUS_PHASE2;
 
-		vp = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
+		vp = paircreate(PW_EAP_MESSAGE, 0, PW_TYPE_OCTETS);
 
 		vp->vp_octets[0] = PW_EAP_RESPONSE;
 		vp->vp_octets[1] = eap_ds->response->id;
