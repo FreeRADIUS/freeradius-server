@@ -8,8 +8,11 @@
 #  You will have to define the Etc-Group-Name in the 'dictionary' file
 #  as a 'string' type.
 #
-#  The Group-Name attribute is automatically created by the Unix module,
-#  and does checking against /etc/group automatically.
+#  The Group and Group-Name attributes are automatically created by
+#  the Unix module, and do checking against /etc/group automatically.
+#  This means that you CANNOT use Group or Group-Name to do any other
+#  kind of grouping in the server.  You MUST define a new group
+#  attribute.
 #
 #  i.e. this module should NOT be used as-is, but should be edited to
 #  point to a different group file.
