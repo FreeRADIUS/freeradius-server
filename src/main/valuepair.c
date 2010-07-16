@@ -645,6 +645,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 				vp = found->next;
 				memcpy(found, i, sizeof(*found));
 				found->next = vp;
+				tailfrom = i;
 				continue;
 			}
 			break;
