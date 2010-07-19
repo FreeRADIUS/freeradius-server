@@ -38,6 +38,7 @@ checkItem	NT-Password			ntPassword
 checkItem	LM-Password			sambaLmPassword
 checkItem	NT-Password			sambaNtPassword
 checkItem	LM-Password			dBCSPwd
+checkitem	Password-With-Header		userPassword
 checkItem	SMB-Account-CTRL-TEXT		acctFlags
 checkItem	Expiration			radiusExpiration
 checkItem	NAS-IP-Address			radiusNASIpAddress
