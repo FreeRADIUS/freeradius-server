@@ -438,9 +438,12 @@ static int decode_tlv(VALUE_PAIR *tlv, const uint8_t *data, size_t data_len)
 	 *	The caller allocated TLV, so we need to copy the FIRST
 	 *	attribute over top of that.
 	 */
-	memcpy(tlv, head, sizeof(*tlv));
-	head->next = NULL;
-	pairfree(&head);
+	if (head) {
+		memcpy(tlv, head, sizeof(*tlv));
+		head->next = NULL;
+		pairfree(&head);
+	}
+
 	return 0;
 
 make_tlv:
@@ -1354,6 +1357,8 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		    (DHCP_BASE_ATTR(vp->attribute) != PW_DHCP_OPTION_82)) goto next;
 
 		debug_pair(vp);
+		if (vp->flags.encoded) goto next;
+
 		length = vp->length;
 
 		for (same = vp->next; same != NULL; same = same->next) {
@@ -1384,16 +1389,22 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			}
 
 			if (vp->flags.is_tlv) {
-				VALUE_PAIR *tlv = fr_dhcp_vp2suboption(vp);
-				if (vp) {
-					tlv->next = vp->next;
-					vp->next = tlv;
-				}
-				
+				VALUE_PAIR *tlv;
+
 				/*
-				 *	The encoded flag MUST be set in the vp!
+				 *	Should NOT have been encoded yet!
 				 */
-				vp = vp->next;
+				tlv = fr_dhcp_vp2suboption(vp);
+
+				/*
+				 *	Ignore it if there's an issue
+				 *	encoding it.
+				 */
+				if (!tlv) goto next;
+
+				tlv->next = vp->next;
+				vp->next = tlv;
+				vp = tlv;
 			}
 
 			length = fr_dhcp_vp2attr(vp, p, 0);
