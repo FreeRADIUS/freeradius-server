@@ -352,7 +352,7 @@ RADIUS_PACKET *fr_tcp_accept(int sockfd)
 			return packet;
 		}
 
-		return -1;
+		return NULL;
 	}
 		
 	packet = rad_alloc(0);
