@@ -313,19 +313,41 @@ static int pap_authorize(void *instance, REQUEST *request)
 		{
 			int attr;
 			char *p, *q;
-			char buffer[64];
+			char buffer[128];
 			VALUE_PAIR *new_vp;
 
 			found_pw = TRUE;
+		redo:
 			q = vp->vp_strvalue;
 			p = strchr(q + 1, '}');
 			if (!p) {
+				int decoded;
+
 				/*
-				 *	FIXME: Turn it into a
-				 *	cleartext-password, unless it,
-				 *	or user-password already
-				 *	exists.
+				 *	Password already exists: use
+				 *	that instead of this one.
 				 */
+				if (pairfind(request->config_items, PW_USER_PASSWORD) ||
+				    pairfind(request->config_items, PW_CLEARTEXT_PASSWORD)) {
+					RDEBUG("Config already contains \"known good\" password.  Ignoring Password-With-Header");
+					break;
+				}
+
+				/*
+				 *	If it's binary, it may be
+				 *	base64 encoded.  Decode it,
+				 *	and re-write the attribute to
+				 *	have the decoded value.
+				 */
+				decoded = base64_decode(vp->vp_strvalue, buffer);
+				if ((decoded > 0) && (buffer[0] == '{') &&
+				    (strchr(buffer, '}') != NULL)) {
+					memcpy(vp->vp_octets, buffer, decoded);
+					vp->length = decoded;
+					goto redo;
+				}
+
+				RDEBUG("Failed to decode Password-With-Header = \"%s\"", vp->vp_strvalue);
 				break;
 			}
 
@@ -343,8 +365,14 @@ static int pap_authorize(void *instance, REQUEST *request)
 			new_vp = radius_paircreate(request,
 						   &request->config_items,
 						   attr, PW_TYPE_STRING);
-			strcpy(new_vp->vp_strvalue, p + 1);/* bounds OK */
-			new_vp->length = strlen(new_vp->vp_strvalue);
+			
+			/*
+			 *	The data after the '}' may be binary,
+			 *	so we copy it via memcpy.
+			 */
+			new_vp->length = vp->length;
+			new_vp->length -= (p - q + 1);
+			memcpy(new_vp->vp_strvalue, p + 1, new_vp->length);
 
 			/*
 			 *	May be old-style User-Password with header.
