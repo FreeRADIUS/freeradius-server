@@ -2562,6 +2562,8 @@ static void request_post_handler(REQUEST *request)
 	 *	if it wasn't proxied.
 	 */
 	if (!request->proxy &&
+	    (request->packet->code != PW_COA_REQUEST) &&
+	    (request->packet->code != PW_DISCONNECT_REQUEST) &&
 	    (request->coa ||
 	     (pairfind(request->config_items, PW_SEND_COA_REQUEST, 0) != NULL))) {
 		if (!originated_coa_request(request)) {
