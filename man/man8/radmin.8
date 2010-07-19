@@ -1,4 +1,4 @@
-.TH RADMIN 8 "15 Feb 2009" "" "FreeRADIUS Server Administration Tool"
+.TH RADMIN 8 "19 Jul 2010" "" "FreeRADIUS Server Administration Tool"
 .SH NAME
 radmin - FreeRADIUS Administration tool
 .SH SYNOPSIS
@@ -24,15 +24,10 @@ At this time, only a few commands are supported.  Please type "help"
 at the command prompt for detailed information about the supported
 commands.
 .SH WARNING
-This tool is experimental and should not be used in production
-environments.  Changes may be made at any time to the commands
-accepted by the server, and/or to the resulting output.
-
-The security protections offered by this command are pretty minimal.
-If someone has permission to connect to the server, they can do almost
-anything, from stopping the server, to changing its configuration.
-
-Please exercise caution when using this command!
+The security protections offered by this command are limited to the
+permissions on the Unix domain socket, and the server
+configuration.  If someone can connect to the Unix domain socket, they
+have a substantial amount of control over the server.
 .SH OPTIONS
 The following command-line options are accepted by the program.
 .IP "\-d \fIconfig directory\fP"
