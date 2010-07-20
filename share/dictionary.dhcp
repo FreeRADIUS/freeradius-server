@@ -202,8 +202,13 @@ ATTRIBUTE	DHCP-Client-FQDN			81	string
 ATTRIBUTE	DHCP-Relay-Agent-Information		82	tlv
 
 BEGIN-TLV	DHCP-Relay-Agent-Information
+
+ATTRIBUTE	DHCP-Agent-Circuit-Id			1	octets
+ATTRIBUTE	DHCP-Agent-Remote-Id			2	octets
+
 ATTRIBUTE	DHCP-Relay-Circuit-Id			1	octets
 ATTRIBUTE	DHCP-Relay-Remote-Id			2	octets
+
 # 3 is reserved and shouldn't be used for anything
 ATTRIBUTE	DHCP-Docsis-Device-Class		4	integer
 ATTRIBUTE	DHCP-Relay-Link-Selection		5	ipaddr	
@@ -429,12 +434,5 @@ VALUE	DHCP-Parameter-Request-List	DHCP-IEEE-802.1P-VLAN-ID 132
 VALUE	DHCP-Parameter-Request-List	DHCP-IEEE-802.1Q-L2-Priority 133
 VALUE	DHCP-Parameter-Request-List	DHCP-Diffserv-Code-Point 134
 VALUE	DHCP-Parameter-Request-List	DHCP-HTTP-Proxy		135
-
-#
-#  Don't pay too much attention to these values.  They will be fixed
-#  in a future release.
-#
-ATTRIBUTE DHCP-Agent-Circuit-Id		0x0152			octets
-ATTRIBUTE DHCP-Agent-Remote-Id		0x0252			octets
 
 END-VENDOR	DHCP
