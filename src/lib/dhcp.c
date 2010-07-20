@@ -707,9 +707,11 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 					return -1;
 			}
 
-			debug_pair(vp);
 			*tail = vp;
-			while (*tail) tail = &(*tail)->next;
+			while (*tail) {
+				debug_pair(*tail);
+				tail = &(*tail)->next;
+			}
 			p += alen;
 		} /* loop over array entries */
 	} /* loop over the entire packet */
@@ -1347,7 +1349,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	vp = packet->vps;
 	while (vp) {
 		int num_entries = 1;
-		
 		VALUE_PAIR *same;
 		uint8_t *plength, *pattr;
 
