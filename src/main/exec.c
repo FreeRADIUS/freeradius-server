@@ -175,6 +175,10 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 				}
 				break;
 
+			case '\\':
+				if (from[1] == ' ') from++;
+				/* FALL-THROUGH */
+
 			default:
 				*(to++) = *(from++);
 			}
