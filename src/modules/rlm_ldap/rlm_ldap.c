@@ -171,10 +171,38 @@ typedef struct {
 	int		 edir_account_policy_check;
 #endif
 	int		 set_auth_type;
+
+	/*
+	 *	For keep-alives.
+	 */
+#ifdef LDAP_OPT_X_KEEPALIVE_IDLE
+	int		keepalive_idle;
+#endif
+#ifdef LDAP_OPT_X_KEEPALIVE_PROBES
+	int		keepalive_probes;
+#endif
+#ifdef LDAP_OPT_ERROR_NUMBER
+	int		keepalive_interval;
+#endif
+
 }  ldap_instance;
 
 /* The default setting for TLS Certificate Verification */
 #define TLS_DEFAULT_VERIFY "allow"
+
+static CONF_PARSER keepalive_config[] = {
+#ifdef LDAP_OPT_X_KEEPALIVE_IDLE
+	{"idle", PW_TYPE_INTEGER, offsetof(ldap_instance,keepalive_idle), NULL, "60"},
+#endif
+#ifdef LDAP_OPT_X_KEEPALIVE_PROBES
+	{"probes", PW_TYPE_INTEGER, offsetof(ldap_instance,keepalive_probes), NULL, "3"},
+#endif
+#ifdef LDAP_OPT_ERROR_NUMBER
+	{"interval", PW_TYPE_INTEGER, offsetof(ldap_instance,keepalive_interval), NULL, "30"},
+#endif
+
+	{ NULL, -1, 0, NULL, NULL }
+};
 
 static CONF_PARSER tls_config[] = {
 	{"start_tls", PW_TYPE_BOOLEAN,
@@ -309,6 +337,8 @@ static const CONF_PARSER module_config[] = {
 #endif
 
 	{"set_auth_type", PW_TYPE_BOOLEAN, offsetof(ldap_instance,set_auth_type), NULL, "yes"},
+
+	{ "keepalive", PW_TYPE_SUBSECTION, 0, NULL, (const void *) keepalive_config },
 	{NULL, -1, 0, NULL, NULL}
 };
 
@@ -2231,6 +2261,30 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		radlog(L_ERR, "  [%s] Could not set LDAP version to V3: %s", inst->xlat_name, ldap_err2string(ldap_errno));
 	}
+
+#ifdef LDAP_OPT_X_KEEPALIVE_IDLE
+	if (ldap_set_option(ld, LDAP_OPT_X_KEEPALIVE_IDLE,
+			    (void *) &(inst->keepalive_idle)) != LDAP_OPT_SUCCESS) {
+		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		radlog(L_ERR, "  [%s] Could not set LDAP_OPT_X_KEEPALIVE_IDLE %d: %s", inst->xlat_name, inst->keepalive_idle, ldap_err2string(ldap_errno));
+	}
+#endif
+
+#ifdef LDAP_OPT_X_KEEPALIVE_PROBES
+	if (ldap_set_option(ld, LDAP_OPT_X_KEEPALIVE_PROBES,
+			    (void *) &(inst->keepalive_probes)) != LDAP_OPT_SUCCESS) {
+		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		radlog(L_ERR, "  [%s] Could not set LDAP_OPT_X_KEEPALIVE_PROBES %d: %s", inst->xlat_name, inst->keepalive_probes, ldap_err2string(ldap_errno));
+	}
+#endif
+
+#ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
+	if (ldap_set_option(ld, LDAP_OPT_X_KEEPALIVE_INTERVAL,
+			    (void *) &(inst->keepalive_interval)) != LDAP_OPT_SUCCESS) {
+		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		radlog(L_ERR, "  [%s] Could not set LDAP_OPT_X_KEEPALIVE_INTERVAL %d: %s", inst->xlat_name, inst->keepalive_interval, ldap_err2string(ldap_errno));
+	}
+#endif
 
 #ifdef HAVE_LDAP_START_TLS
         if (inst->tls_mode) {
