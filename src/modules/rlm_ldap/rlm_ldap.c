@@ -397,6 +397,18 @@ static inline void ldap_release_conn(int i, ldap_instance *inst)
 	pthread_mutex_unlock(&(conns[i].mutex));
 }
 
+#ifdef NOVELL
+static inline void ldap_release_apc_conn(int i, ldap_instance *inst)
+				     
+{
+	LDAP_CONN *conns = inst->apc_conns;
+
+	DEBUG("  [%s] ldap_release_conn: Release Id: %d", inst->xlat_name, i);
+	conns[i].locked = 0;
+	pthread_mutex_unlock(&(conns[i].mutex));
+}
+#endif
+
 /*************************************************************************
  *
  *	Function: rlm_ldap_instantiate
@@ -1684,7 +1696,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 				if ((vp_auth_opt = paircreate(auth_opt_attr, PW_TYPE_STRING)) == NULL){
 					radlog(L_ERR, "  [%s] Could not allocate memory. Aborting.", inst->xlat_name);
 					ldap_msgfree(result);
-					ldap_release_conn(conn_id, inst->conns);
+					ldap_release_conn(conn_id, inst);
 				}
 				strcpy(vp_auth_opt->vp_strvalue, auth_option[0]);
 				vp_auth_opt->length = strlen(auth_option[0]);
@@ -2187,7 +2199,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 						}
 
 						vp_apc->vp_strvalue[0] = '3';
-						ldap_release_conn(conn_id, inst->apc_conns);
+						ldap_release_apc_conn(conn_id, inst);
 						return RLM_MODULE_REJECT;
 					}
 					conn->bound = 1;
@@ -2204,11 +2216,11 @@ static int ldap_postauth(void *instance, REQUEST * request)
 						ldap_memfree((void *)error_msg);
 					}
 					vp_apc->vp_strvalue[0] = '3';
-					ldap_release_conn(conn_id, inst->apc_conns);
+					ldap_release_apc_conn(conn_id, inst);
 					return RLM_MODULE_REJECT;
 				}
 				vp_apc->vp_strvalue[0] = '3';
-				ldap_release_conn(conn_id, inst->apc_conns);
+				ldap_release_apc_conn(conn_id, inst);
 				return RLM_MODULE_OK;
 			}
 	}
