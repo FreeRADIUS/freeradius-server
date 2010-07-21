@@ -5,6 +5,8 @@
 #	http://www.cisco.com/univercd/cc/td/doc/product/access/acs_soft/csacs4nt/csnt30/user/ad.htm
 #	http://www.cisco.com/univercd/cc/td/doc/product/access/acs_soft/csacs4nt/acs31/acsuser/ad.htm
 #
+# http://www.cisco.com/en/US/docs/security/asa/asa80/configuration/guide/extsvr.html#wp1661512
+#
 #	$Id$
 #
 VENDOR		Cisco-VPN3000			3076
@@ -90,6 +92,16 @@ ATTRIBUTE	CVPN3000-Partition-Mobile-IP-Address	134	ipaddr
 ATTRIBUTE	CVPN3000-Partition-Mobile-IP-SPI	135	integer
 ATTRIBUTE	CVPN3000-Strip-Realm			136	integer
 ATTRIBUTE	CVPN3000-Group-Name			137	integer
+ATTRIBUTE	CPVN3000-Smart-Tunnel-Auto		138	integer
+ATTRIBUTE	CPVN3000-VLAN				140	integer
+ATTRIBUTE	CPVN3000-NAC-Settings			141	string
+ATTRIBUTE	CPVN3000-Member-Of			145	string
+ATTRIBUTE	CPVN3000-Address-Pools			217	string
+ATTRIBUTE	CPVN3000-IPv6-Address-Pools		218	string
+ATTRIBUTE	CPVN3000-IPv6-VPN-Filter		219	string
+ATTRIBUTE	CVPN3000-Privilege-Level		220	integer
+ATTRIBUTE	CPVN3000-WebVPN-Macro-Value1		223	string
+ATTRIBUTE	CPVN3000-WebVPN-Macro-Value2		224	string
 
 VALUE	CVPN3000-Allow-Alpha-Only-Passwords Disallow		0
 VALUE	CVPN3000-Allow-Alpha-Only-Passwords Allow		1
@@ -194,5 +206,9 @@ VALUE	CVPN3000-IPSec-Over-UDP		ON			1
 
 VALUE	CVPN3000-Strip-Realm		FALSE			0
 VALUE	CVPN3000-Strip-Realm		TRUE			1
+
+VALUE	CPVN3000-Smart-Tunnel-Auto	Disabled		0
+VALUE	CPVN3000-Smart-Tunnel-Auto	Enabled			1
+VALUE	CPVN3000-Smart-Tunnel-Auto	Auto			2
 
 END-VENDOR	Cisco-VPN3000
