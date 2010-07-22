@@ -86,6 +86,10 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 #else
 	sql_flags = CLIENT_FOUND_ROWS;
 #endif
+
+#ifdef CLIENT_MULTI_STATEMENTS
+	sql_flags |= CLIENT_MULTI_STATEMENTS;
+#endif
 	if (!(mysql_sock->sock = mysql_real_connect(&(mysql_sock->conn),
 						    config->sql_server,
 						    config->sql_login,
