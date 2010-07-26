@@ -191,17 +191,30 @@ static int fr_server_domain_socket(const char *path)
 		}
 
 		/*
-		 *	Refuse to open sockets not owned by us.
+		 *	In daemon mode, check the ownership.  If in
+		 *	debug mode, ignore ownership if we're root.
 		 */
-		if (buf.st_uid != geteuid()) {
-			radlog(L_ERR, "We do not own %s", path);
-			return -1;
-		}
-
-		if (unlink(path) < 0) {
-			radlog(L_ERR, "Failed to delete %s: %s",
-			       path, strerror(errno));
-			return -1;
+		if ((debug_flag == 0) || (geteuid() != 0)) {
+		    
+			/*
+			 *	Refuse to open sockets not owned by us.
+			 */
+			if (buf.st_uid != geteuid()) {
+				radlog(L_ERR, "We do not own %s", path);
+				return -1;
+			}
+			
+			/*
+			 *	In debug mode as root, leave the file
+			 *	there.  Otherwise, it will be owned by
+			 *	"root", which makes it difficult to
+			 *	open the file as user "radiusd".
+			 */			 
+			if (unlink(path) < 0) {
+				radlog(L_ERR, "Failed to delete %s: %s",
+				       path, strerror(errno));
+				return -1;
+			}
 		}
 	}
 
@@ -2282,6 +2295,17 @@ static int command_domain_accept(rad_listen_t *listener,
 	return 0;
 }
 
+
+/*
+ *	Delete the socket for safety.  If the server isn't running,
+ *	the socket shouldn't exist.
+ */
+static void command_socket_free(rad_listen_t *listener)
+{
+	fr_command_socket_t *sock = listener->data;
+
+	if (sock->path) unlink(sock->path);
+}
 
 /*
  *	Send an authentication response packet

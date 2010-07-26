@@ -256,6 +256,7 @@ static const CONF_PARSER bootstrap_config[] = {
 	{ "group",  PW_TYPE_STRING_PTR, 0, &gid_name, NULL },
 #endif
 	{ "chroot",  PW_TYPE_STRING_PTR, 0, &chroot_dir, NULL },
+	{ "libdir",             PW_TYPE_STRING_PTR, 0, &radlib_dir,        "${prefix}/lib"},
 	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, "no" },
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -651,6 +652,7 @@ static int switch_users(CONF_SECTION *cs)
 #endif
 
 	if (chroot_dir) {
+		DEBUG("Performing chroot to %s", chroot_dir);
 		if (chroot(chroot_dir) < 0) {
 			fprintf(stderr, "%s: Failed to perform chroot %s: %s",
 				progname, chroot_dir, strerror(errno));
@@ -712,6 +714,8 @@ static int switch_users(CONF_SECTION *cs)
 	if (uid_name) {
 		doing_setuid = TRUE;
 
+		DEBUG("Switching to user %s group %s",
+		      uid_name, gid_name ? gid_name : "");
 		fr_suid_down();
 	}
 #endif
@@ -949,6 +953,7 @@ int read_mainconfig(int reload)
 	}
 
 	if (chroot_dir) {
+		DEBUG("Changing current working directory to %s", radlog_dir);
 		if (chdir(radlog_dir) < 0) {
 			radlog(L_ERR, "Failed to 'chdir %s' after chroot: %s",
 			       radlog_dir, strerror(errno));
@@ -976,6 +981,13 @@ int free_mainconfig(void)
 	virtual_servers_free(0);
 
 	/*
+	 *	Close sockets before free'ing the configuration.  This
+	 *	allows us to removed the control socket before
+	 *	exiting.
+	 */
+	listen_free(&mainconfig.listen);
+
+	/*
 	 *	Free all of the cached configurations.
 	 */
 	for (cc = cs_cache; cc != NULL; cc = next) {
@@ -989,7 +1001,6 @@ int free_mainconfig(void)
 	 *	structures.
 	 */
 	realms_free();
-	listen_free(&mainconfig.listen);
 	dict_free();
 
 	return 0;
