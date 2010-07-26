@@ -66,6 +66,7 @@ struct fr_command_table_t {
 
 typedef struct fr_command_socket_t {
 	char	*path;
+	char	*copy;		/* <sigh> */
 	uid_t	uid;
 	gid_t	gid;
 	int	mode;
@@ -253,6 +254,7 @@ static int fr_server_domain_socket(const char *path)
 
 	return sockfd;
 }
+
 
 static void command_close_socket(rad_listen_t *this)
 {
@@ -1781,6 +1783,16 @@ static fr_command_table_t command_table[] = {
 };
 
 
+static void command_socket_free(rad_listen_t *this)
+{
+	fr_command_socket_t *sock = this->data;
+
+	unlink(sock->copy);
+	free(sock->copy);
+	sock->copy = NULL;
+}
+
+
 /*
  *	Parse the unix domain sockets.
  *
@@ -1795,6 +1807,9 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (cf_section_parse(cs, sock, command_config) < 0) {
 		return -1;
 	}
+
+	sock->copy = NULL;
+	if (sock->path) sock->copy = strdup(sock->path);
 
 #if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
 	if (sock->uid_name) {
