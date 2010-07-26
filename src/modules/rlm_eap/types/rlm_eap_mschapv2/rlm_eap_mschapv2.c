@@ -377,7 +377,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	int rcode;
 	mschapv2_opaque_t *data;
 	EAP_DS *eap_ds = handler->eap_ds;
-	VALUE_PAIR *challenge, *response;
+	VALUE_PAIR *challenge, *response, *name;
 
 	rad_assert(handler->request != NULL);
 	rad_assert(handler->stage == AUTHENTICATE);
@@ -524,12 +524,36 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	response->vp_strvalue[0] = eap_ds->response->type.data[1];
 	response->vp_strvalue[1] = eap_ds->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
 
+	name = pairmake("NTLM-User-Name", "", T_OP_EQ);
+	if (!name) {
+		pairfree(&challenge);
+		pairfree(&response);
+		radlog(L_ERR, "rlm_eap_mschapv2: Failed creating NTLM-User-Name: %s", fr_strerror());
+		return 0;
+	}
+	
+	/*
+	 *	MS-Length - MS-Value - 5.
+	 */
+	name->length = (((eap_ds->response->type.data[2] << 8) |
+                         eap_ds->response->type.data[3]) -
+			eap_ds->response->type.data[4] - 5);
+	if (name->length >= sizeof(name->vp_strvalue)) {
+		name->length = sizeof(name->vp_strvalue) - 1;
+	}
+
+	memcpy(name->vp_strvalue,
+	       &eap_ds->response->type.data[4 + MSCHAPV2_RESPONSE_LEN],
+	       name->length);
+	name->vp_strvalue[name->length] = '\0';
+
 	/*
 	 *	Add the pairs to the request, and call the 'mschap'
 	 *	module.
 	 */
 	pairadd(&handler->request->packet->vps, challenge);
 	pairadd(&handler->request->packet->vps, response);
+	pairadd(&handler->request->packet->vps, name);
 
 #ifdef WITH_PROXY
 	/*
