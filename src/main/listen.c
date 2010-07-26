@@ -1816,8 +1816,8 @@ static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
 #endif
 
 #ifdef WITH_COMMAND_SOCKET
-	/* TCP command socket */
-	{ command_socket_parse, NULL,
+	/* Unix domain command socket */
+	{ command_socket_parse, command_socket_free,
 	  command_domain_accept, command_domain_send,
 	  command_socket_print, command_socket_encode, command_socket_decode },
 #endif
