@@ -111,6 +111,7 @@ ATTRIBUTE	Response-Packet-Type			1080	integer
 ATTRIBUTE	Digest-HA1				1081	string
 ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1082	integer
 ATTRIBUTE	NTLM-User-Name				1083	string
+ATTRIBUTE	MS-CHAP-User-Name			1083	string
 ATTRIBUTE	Packet-Src-IP-Address			1084	ipaddr
 ATTRIBUTE	Packet-Dst-IP-Address			1085	ipaddr
 ATTRIBUTE	Packet-Src-Port				1086	integer
