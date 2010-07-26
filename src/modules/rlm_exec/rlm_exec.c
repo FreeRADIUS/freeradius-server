@@ -430,11 +430,11 @@ static int exec_accounting(void *instance, REQUEST *request)
 	 */
 	if (!inst->bare) return exec_dispatch(instance, request);
 
-	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM);
+	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM, 0);
 	if (vp) {
 		exec_wait = 0;
 
-	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT)) != NULL) {
+	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT, 0)) != NULL) {
 		exec_wait = 1;
 	}
 	if (!vp) return RLM_MODULE_NOOP;

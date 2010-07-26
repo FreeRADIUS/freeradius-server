@@ -327,8 +327,8 @@ static int pap_authorize(void *instance, REQUEST *request)
 				 *	Password already exists: use
 				 *	that instead of this one.
 				 */
-				if (pairfind(request->config_items, PW_USER_PASSWORD) ||
-				    pairfind(request->config_items, PW_CLEARTEXT_PASSWORD)) {
+				if (pairfind(request->config_items, PW_USER_PASSWORD, 0) ||
+				    pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0)) {
 					RDEBUG("Config already contains \"known good\" password.  Ignoring Password-With-Header");
 					break;
 				}
