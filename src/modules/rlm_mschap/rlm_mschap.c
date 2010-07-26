@@ -192,6 +192,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			 *	for MS-CHAPv2.
 			 */
 		} else if (chap_challenge->length == 16) {
+			VALUE_PAIR *name_attr, *response_name;
 			char *username_string;
 
 			RDEBUG2(" mschap2: %02x", chap_challenge->vp_octets[0]);
@@ -204,6 +205,12 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			}
 
 			/*
+			 *	FIXME: Much of this is copied from
+			 *	below.  We should put it into a
+			 *	separate function.
+			 */
+
+			/*
 			 *	Responses are 50 octets.
 			 */
 			if (response->length < 50) {
@@ -214,22 +221,44 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			user_name = pairfind(request->packet->vps,
 					     PW_USER_NAME, 0);
 			if (!user_name) {
-				RDEBUG2("User-Name is required to calculateMS-CHAPv1 Challenge.");
+				RDEBUG2("User-Name is required to calculate MS-CHAPv1 Challenge.");
 				return 0;
+			}
+
+ 			/*
+			 *      Check for MS-CHAP-User-Name and if found, use it
+			 *      to construct the MSCHAPv1 challenge.  This is
+			 *      set by rlm_eap_mschap to the MS-CHAP Response
+			 *      packet Name field.
+			 *
+			 *	We prefer this to the User-Name in the
+			 *	packet.
+			 */
+			response_name = pairfind(request->packet->vps, PW_MS_CHAP_USER_NAME);
+			if (response_name) {
+				name_attr = response_name;
+			} else {
+				name_attr = user_name;
 			}
 
 			/*
 			 *	with_ntdomain_hack moved here, too.
 			 */
-			if ((username_string = strchr(user_name->vp_strvalue, '\\')) != NULL) {
+			if ((username_string = strchr(name_attr->vp_strvalue, '\\')) != NULL) {
 				if (inst->with_ntdomain_hack) {
 					username_string++;
 				} else {
 					RDEBUG2("NT Domain delimeter found, should we have enabled with_ntdomain_hack?");
-					username_string = user_name->vp_strvalue;
+					username_string = name_attr->vp_strvalue;
 				}
 			} else {
-				username_string = user_name->vp_strvalue;
+				username_string = name_attr->vp_strvalue;
+			}
+
+			if (response_name &&
+			    ((user_name->length != response_name->length) ||
+			     (strncasecmp(user_name->vp_strvalue, response_name->vp_strvalue, user_name->length) != 0))) {
+				RDEBUG("WARNING: User-Name (%s) is not the same as MS-CHAP Name (%s) from EAP-MSCHAPv2", user_name->vp_strvalue, response_name->vp_strvalue);
 			}
 
 			/*
@@ -237,6 +266,8 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			 *	from the MS-CHAPv2 peer challenge,
 			 *	our challenge, and the user name.
 			 */
+			RDEBUG2("Creating challenge hash with username: %s",
+				username_string);
 			mschap_challenge_hash(response->vp_octets + 2,
 				       chap_challenge->vp_octets,
 				       username_string, buffer);
@@ -1102,6 +1133,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 	} else if ((response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT)) != NULL) {
 		uint8_t	mschapv1_challenge[16];
+		VALUE_PAIR *name_attr, *response_name;
 
 		/*
 		 *	MS-CHAPv2 challenges are 16 octets.
@@ -1128,19 +1160,41 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			return RLM_MODULE_INVALID;
 		}
 
-
 		/*
-		 *	with_ntdomain_hack moved here
+		 *      Check for MS-CHAP-User-Name and if found, use it
+		 *      to construct the MSCHAPv1 challenge.  This is
+		 *      set by rlm_eap_mschap to the MS-CHAP Response
+		 *      packet Name field.
+		 *
+		 *	We prefer this to the User-Name in the
+		 *	packet.
 		 */
-		if ((username_string = strchr(username->vp_strvalue, '\\')) != NULL) {
-		        if (inst->with_ntdomain_hack) {
-			        username_string++;
+		response_name = pairfind(request->packet->vps, PW_MS_CHAP_USER_NAME);
+		if (response_name) {
+			name_attr = response_name;
+		} else {
+			name_attr = username;
+		}
+		
+		/*
+		 *	with_ntdomain_hack moved here, too.
+		 */
+		if ((username_string = strchr(name_attr->vp_strvalue, '\\')) != NULL) {
+			if (inst->with_ntdomain_hack) {
+				username_string++;
 			} else {
-				RDEBUG2("  NT Domain delimeter found, should we have enabled with_ntdomain_hack?");
-				username_string = username->vp_strvalue;
+				RDEBUG2("NT Domain delimeter found, should we have enabled with_ntdomain_hack?");
+				username_string = name_attr->vp_strvalue;
 			}
 		} else {
-		        username_string = username->vp_strvalue;
+			username_string = name_attr->vp_strvalue;
+		}
+		
+		if (response_name &&
+		    ((username->length != response_name->length) ||
+		     (strncasecmp(username->vp_strvalue, response_name->vp_strvalue, username->length) != 0))) {
+			RDEBUG("ERROR: User-Name (%s) is not the same as MS-CHAP Name (%s) from EAP-MSCHAPv2", username->vp_strvalue, response_name->vp_strvalue);
+			return RLM_MODULE_REJECT;
 		}
 
 #ifdef __APPLE__
@@ -1167,6 +1221,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	MS-CHAPv2 takes some additional data to create an
 		 *	MS-CHAPv1 challenge, and then does MS-CHAPv1.
 		 */
+		RDEBUG2("Creating challenge hash with username: %s",
+			username_string);
 		mschap_challenge_hash(response->vp_octets + 2, /* peer challenge */
 			       challenge->vp_octets, /* our challenge */
 			       username_string,	/* user name */
@@ -1183,12 +1239,6 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 					 *response->vp_octets,
 					 "MS-CHAP-Error", "E=691 R=1", 9);
 			return RLM_MODULE_REJECT;
-		}
-
-		/*
-		 *	Get the NT-hash-hash, if necessary
-		 */
-		if (nt_password) {
 		}
 
 		mschap_auth_response(username_string, /* without the domain */
