@@ -728,9 +728,13 @@ void detail_free(rad_listen_t *this)
 	listen_detail_t *data = this->data;
 
 	free(data->filename);
+	data->filename = NULL;
 	pairfree(&data->vps);
 
-	if (data->fp != NULL) fclose(data->fp);
+	if (data->fp != NULL) {
+		fclose(data->fp);
+		data->fp = NULL;
+	}
 }
 
 
