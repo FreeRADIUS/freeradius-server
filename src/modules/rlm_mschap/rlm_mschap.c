@@ -234,7 +234,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			 *	We prefer this to the User-Name in the
 			 *	packet.
 			 */
-			response_name = pairfind(request->packet->vps, PW_MS_CHAP_USER_NAME);
+			response_name = pairfind(request->packet->vps, PW_MS_CHAP_USER_NAME, 0);
 			if (response_name) {
 				name_attr = response_name;
 			} else {
@@ -1169,7 +1169,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	We prefer this to the User-Name in the
 		 *	packet.
 		 */
-		response_name = pairfind(request->packet->vps, PW_MS_CHAP_USER_NAME);
+		response_name = pairfind(request->packet->vps, PW_MS_CHAP_USER_NAME, 0);
 		if (response_name) {
 			name_attr = response_name;
 		} else {
