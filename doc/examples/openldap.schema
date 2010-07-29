@@ -35,7 +35,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.44
      NAME 'radiusAuthType'
-     DESC ''
+     DESC 'checkItem: Auth-Type'
      EQUALITY caseIgnoreIA5Match
      SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
      SINGLE-VALUE
@@ -44,7 +44,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.4
       NAME 'radiusCallbackId'
-      DESC ''
+      DESC 'replyItem: Callback-Id'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -53,7 +53,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.5
       NAME 'radiusCallbackNumber'
-      DESC ''
+      DESC 'replyItem: Callback-Number'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -62,7 +62,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.6
       NAME 'radiusCalledStationId'
-      DESC ''
+      DESC 'checkItem: Called-Station-Id'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -71,7 +71,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.7
       NAME 'radiusCallingStationId'
-      DESC ''
+      DESC 'checkItem: Calling-Station-Id'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -80,7 +80,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.8
       NAME 'radiusClass'
-      DESC ''
+      DESC 'replyItem: Class'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
    )
@@ -97,7 +97,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.9
       NAME 'radiusFilterId'
-      DESC ''
+      DESC 'replyItem: Filter-Id'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
    )
@@ -105,7 +105,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.10
       NAME 'radiusFramedAppleTalkLink'
-      DESC ''
+      DESC 'replyItem: Framed-AppleTalk-Link'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -114,7 +114,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.11
       NAME 'radiusFramedAppleTalkNetwork'
-      DESC ''
+      DESC 'replyItem: Framed-AppleTalk-Network'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
    )
@@ -122,7 +122,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.12
       NAME 'radiusFramedAppleTalkZone'
-      DESC ''
+      DESC 'replyItem: Framed-AppleTalk-Zone'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -131,7 +131,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.13
       NAME 'radiusFramedCompression'
-      DESC ''
+      DESC 'replyItem: Framed-Compression'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
    )
@@ -139,7 +139,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.14
       NAME 'radiusFramedIPAddress'
-      DESC ''
+      DESC 'replyItem: Framed-IP-Address'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -148,7 +148,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.15
       NAME 'radiusFramedIPNetmask'
-      DESC ''
+      DESC 'replyItem: Framed-IP-Netmask'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -157,7 +157,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.16
       NAME 'radiusFramedIPXNetwork'
-      DESC ''
+      DESC 'replyItem: Framed-IPX-Network'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -166,7 +166,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.17
       NAME 'radiusFramedMTU'
-      DESC ''
+      DESC 'replyItem: Framed-MTU'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -175,7 +175,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.18
       NAME 'radiusFramedProtocol'
-      DESC ''
+      DESC 'replyItem: Framed-Protocol'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -184,7 +184,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.19
       NAME 'radiusFramedRoute'
-      DESC ''
+      DESC 'replyItem: Framed-Route'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
    )
@@ -192,7 +192,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.20
       NAME 'radiusFramedRouting'
-      DESC ''
+      DESC 'replyItem: Framed-Routing'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -226,7 +226,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.21
       NAME 'radiusIdleTimeout'
-      DESC ''
+      DESC 'replyItem: Idle-Timeout'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -235,7 +235,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.22
       NAME 'radiusLoginIPHost'
-      DESC ''
+      DESC 'replyItem: Login-IP-Host'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
    )
@@ -243,7 +243,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.23
       NAME 'radiusLoginLATGroup'
-      DESC ''
+      DESC 'replyItem: Login-LAT-Group'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -252,7 +252,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.24
       NAME 'radiusLoginLATNode'
-      DESC ''
+      DESC 'replyItem: Login-LAT-Node'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -261,7 +261,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.25
       NAME 'radiusLoginLATPort'
-      DESC ''
+      DESC 'replyItem: Login-LAT-Port'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -270,7 +270,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.26
       NAME 'radiusLoginLATService'
-      DESC ''
+      DESC 'replyItem: Login-LAT-Service'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -279,7 +279,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.27
       NAME 'radiusLoginService'
-      DESC ''
+      DESC 'replyItem: Login-Service'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -288,7 +288,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.28
       NAME 'radiusLoginTCPPort'
-      DESC ''
+      DESC 'replyItem: Login-TCP-Port'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -306,7 +306,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.30
       NAME 'radiusPortLimit'
-      DESC ''
+      DESC 'replyItem: Port-Limit'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -360,7 +360,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.32
       NAME 'radiusServiceType'
-      DESC ''
+      DESC 'replyItem: Service-Type'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -369,7 +369,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.33
       NAME 'radiusSessionTimeout'
-      DESC ''
+      DESC 'replyItem: Session-Timeout'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -378,7 +378,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.34
       NAME 'radiusTerminationAction'
-      DESC ''
+      DESC 'replyItem: Termination-Action'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -462,7 +462,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.53
       NAME 'radiusSimultaneousUse'
-      DESC ''
+      DESC 'checkItem: Simultaneous-Use'
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.27
       SINGLE-VALUE
    )
@@ -505,7 +505,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.58
       NAME 'radiusExpiration'
-      DESC ''
+      DESC 'checkItem: Expiration'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
       SINGLE-VALUE
@@ -514,7 +514,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.59
       NAME 'radiusCheckItem'
-      DESC ''
+      DESC 'checkItem: $GENERIC$'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
    )
@@ -522,7 +522,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.60
       NAME 'radiusReplyItem'
-      DESC ''
+      DESC 'replyItem: $GENERIC$'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
    )
@@ -539,7 +539,7 @@ attributetype
 attributetype
    ( 1.3.6.1.4.1.3317.4.3.1.62
       NAME 'radiusReplyMessage'
-      DESC ''
+      DESC 'replyItem: Reply-Message'
       EQUALITY caseIgnoreIA5Match
       SYNTAX 1.3.6.1.4.1.1466.115.121.1.26
    )
