@@ -760,7 +760,7 @@ static eaptls_status_t eaptls_operation(eaptls_status_t status,
 	 *	If more info
 	 *	is required then send another request.
 	 */
-	if (!tls_handshake_recv(tls_session)) {
+	if (!tls_handshake_recv(handler->request, tls_session)) {
 		DEBUG2("TLS receive handshake failed during operation");
 		eaptls_fail(handler, tls_session->peap_flag);
 		return EAPTLS_FAIL;

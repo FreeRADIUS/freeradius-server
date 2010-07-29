@@ -99,14 +99,16 @@ tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 /*
  *	Print out some text describing the error.
  */
-static int int_ssl_check(SSL *s, int ret, const char *text)
+static int int_ssl_check(REQUEST *request, SSL *s, int ret, const char *text)
 {
 	int e;
 	unsigned long l;
 
 	if ((l = ERR_get_error()) != 0) {
-		radlog(L_ERR, "rlm_eap: SSL error %s",
-		       ERR_error_string(l, NULL));
+		const char *p = ERR_error_string(l, NULL);
+		radlog(L_ERR, "rlm_eap: SSL error %s", p);
+		radius_pairmake(request, &request->packet->vps,
+				"Module-Failure-Message", p, T_OP_ADD);
 	}
 	e = SSL_get_error(s, ret);
 
@@ -172,7 +174,7 @@ static int int_ssl_check(SSL *s, int ret, const char *text)
  * Fill the Bio with the dirty data to clean it
  * Get the cleaned data from SSL, if it is not Handshake data
  */
-int tls_handshake_recv(tls_session_t *ssn)
+int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 {
 	int err;
 
@@ -186,7 +188,7 @@ int tls_handshake_recv(tls_session_t *ssn)
 		return 1;
 	}
 
-	if (!int_ssl_check(ssn->ssl, err, "SSL_read")) {
+	if (!int_ssl_check(request, ssn->ssl, err, "SSL_read")) {
 		return 0;
 	}
 
@@ -220,7 +222,7 @@ int tls_handshake_recv(tls_session_t *ssn)
 			return 1;
 
 		} else {
-			int_ssl_check(ssn->ssl, err, "BIO_read");
+			int_ssl_check(request, ssn->ssl, err, "BIO_read");
 			record_init(&ssn->dirty_in);
 			return 0;
 		}
@@ -239,7 +241,7 @@ int tls_handshake_recv(tls_session_t *ssn)
  *	Take clear-text user data, and encrypt it into the output buffer,
  *	to send to the client at the other end of the SSL connection.
  */
-int tls_handshake_send(tls_session_t *ssn)
+int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 {
 	int err;
 
@@ -264,7 +266,7 @@ int tls_handshake_send(tls_session_t *ssn)
 		if (err > 0) {
 			ssn->dirty_out.used = err;
 		} else {
-			int_ssl_check(ssn->ssl, err, "handshake_send");
+			int_ssl_check(request, ssn->ssl, err, "handshake_send");
 		}
 	}
 

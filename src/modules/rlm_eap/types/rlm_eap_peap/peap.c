@@ -55,7 +55,7 @@ static int eappeap_failure(EAP_HANDLER *handler, tls_session_t *tls_session)
 	/*
 	 *	FIXME: Check the return code.
 	 */
-	tls_handshake_send(tls_session);
+	tls_handshake_send(request, tls_session);
 
 	return 1;
 }
@@ -90,7 +90,7 @@ static int eappeap_success(EAP_HANDLER *handler, tls_session_t *tls_session)
 	/*
 	 *	FIXME: Check the return code.
 	 */
-	tls_handshake_send(tls_session);
+	tls_handshake_send(request, tls_session);
 
 	return 1;
 }
@@ -109,7 +109,7 @@ static int eappeap_identity(EAP_HANDLER *handler, tls_session_t *tls_session)
 	(tls_session->record_plus)(&tls_session->clean_in,
 				  &eap_packet, sizeof(eap_packet));
 
-	tls_handshake_send(tls_session);
+	tls_handshake_send(handler->request, tls_session);
 	(tls_session->record_init)(&tls_session->clean_in);
 
 	return 1;
@@ -238,7 +238,7 @@ static VALUE_PAIR *eap2vp(REQUEST *request, EAP_DS *eap_ds,
  *	Convert a list of VALUE_PAIR's to an EAP packet, through the
  *	simple expedient of dumping the EAP message
  */
-static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
+static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 {
 	/*
 	 *	Skip the id, code, and length.  Just write the EAP
@@ -284,7 +284,7 @@ static int vp2eap(tls_session_t *tls_session, VALUE_PAIR *vp)
 					   vp->vp_octets, vp->length);
 	}
 
-	tls_handshake_send(tls_session);
+	tls_handshake_send(request, tls_session);
 
 	return 1;
 }
@@ -422,7 +422,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	VP's back to the client.
 		 */
 		if (vp) {
-			vp2eap(tls_session, vp);
+			vp2eap(request, tls_session, vp);
 			pairfree(&vp);
 		}
 
