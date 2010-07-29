@@ -5,12 +5,12 @@ As of 2.0, the release process is much simpler.  Edit the
 Changelog with the version number and any last updates.
 
 vi doc/ChangeLog
-cvs commit doc/ChangeLog
+git commit doc/ChangeLog
 
 	Change version numbers in the VERSION file:
 
 vi VERSION
-cvs commit VERSION
+git commit VERSION
 
 	Make the files
 

@@ -1,6 +1,10 @@
 FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	Feature improvements
-	* Enable radclient to send MS-CHAPv1
+	* Install the "radcrypt" program.
+	* Enable radclient to send requests containing MS-CHAPv1
+	* Make the "inner-tunnel" virtual server listen on 127.0.0.1:18120
+	  This change makes PEAP testing much easier.
+	* Added more documentation and examples for the "passwd" module.
 
 	Bug fixes
 	* Fix endless loop when there are multiple sub-options for
@@ -8,16 +12,56 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	* More debug output when sending / receiving DHCP packets.
 	* EAP-MSCHAPv2 should return the MPPE keys when used outside
 	  of a TLS tunnel.  This is needed for IKE.
-	* Added SSL "no ticket" option to prevent SSL from creating
-	  sessions without IDs.  We need them, so this option should be set.
+	* Added SSL "no ticket" option to prevent SSL from creating sessions
+	  without IDs.  We need the IDs, so this option should be set.
 	* Fix proxying of packets from inside a TTLS/PEAP tunnel.
+	  Closes bug #25.
 	* Allow IPv6 address attributes to be created from domain names
 	  Closes bug #82.
 	* Set the string length to the correct value when parsing double
-	  quotes.
-	* Install the "radcrypt" program.
-	* Stop checking /etc/passwd in the default configuration.  This
-	  can be reverted by enabling "unix" in the "authorize" section.
+	  quotes.  Closes bug #88.
+	* No longer look users up in /etc/passwd in the default configuration.
+	  This can be reverted by enabling "unix" in the "authorize" section.
+	* More #ifdef's to enable building on systems without certain
+	  features.
+	* Fixed SQL-Group comparison to register only if the group
+	  query is defined.
+	* Fixed SQL-Group comparison to register <instance>-SQL-Group,
+	  just like rlm_ldap.  This lets you have multiple SQL group checks.
+	* Fix scanning of octal numbers in "unlang".  Closes bug #89.
+	* Be less aggressive about freeing "stuck" requests.  Closes bug #35.
+	* Fix example in "originate-coa" to refer to the correct packet.
+	* Change default timeout for dynamic clients to 1 hour, not 1 day.
+	* Allow passwd module to map IP addresses, too.
+	* Allow passwd module to be used for CoA packets
+	* Put boot filename into DHCP header when DHCP-Boot-Filename
+	  is specified.
+	* raddb/certs/Makefile no longer has certs depend on index.txt and
+	   serial.  Closes bug #64.
+	* Ignore NULL errorcode in PostgreSQL client.  Closes bug #39
+	* Made Exec-Program and Exec-Program-Wait work in accounting
+	  section again.  See sites-available/default.
+	* Fix long-standing memory leak in esoteric conditions.  Found
+	  by Jerry Nichols.
+	* Added "Password-With-Header == userPassword" to raddb/ldap.attrmap
+	  This will automatically convert more passwords.
+	* Updated rlm_pap to decode Password-With-Header, if it was base64
+	  encoded, and to treat the contents as potentially binary data.
+	* Fix Novell eDir code to use the right function parameters.
+	  Closes bug #86.
+	* Allow spaces to be escaped when executing external programs.
+	  Closes bug #93.
+	* Be less restrictive about checking permissions on control socket.
+	  If we're root, allow connecting to a non-root socket.
+	* Remove control socket on normal server exit.  If the server isn't
+	  running, the control socket should not exist.
+	* Use MS-CHAP-User-Name as Name field from EAP-MSCHAPv2 for MS-CHAP
+	  calculations.  It *MAY* be different (upper / lower case) from 
+	  the User-Name attribute.  Closes bug #17.
+	* If the EAP module fails, more SSL errors are now in
+	  Module-Failure-Message.
+	* Update Oracle configure scripts.  Closes bug #57.
+	* Added text to DESC fields of doc/examples/openldap.schema
 
 FreeRADIUS 2.1.9 Mon 24 May 8:00:00 CEST 2010, urgency=medium
 	Feature improvements
