@@ -1,5 +1,5 @@
 AC_INIT(sql_oracle.c)
-AC_REVISION($Revision$)
+AC_REVISION($Revision: 1.10 $)
 AC_DEFUN(modname,[rlm_sql_oracle])
 
 fail=
@@ -18,145 +18,120 @@ if test x$with_[]modname != xno; then
 	dnl # defined anyways.
 	dnl #
 
+	dnl ############################################################
+	dnl # Check for command line options
+	dnl ############################################################
+
+	dnl extra argument: --with-oracle-include-dir=DIR
+	oracle_include_dir=
+	AC_ARG_WITH(oracle-include-dir,
+		[AS_HELP_STRING([--with-oracle-include-dir=DIR],
+			    [Directory where the Oracle includes may be found. It should be located under ORACLE_HOME if you have client SDK installed. Use --with-oracle-include-dir=yes if you are sure that your compiler include path includes Oracle include dir. Hint: you might try to do: locate oci.h])],
+		[case "$withval" in
+			no)
+			    AC_MSG_ERROR(Need oracle-include-dir)
+			    ;;
+			yes)
+			    ;;
+			*)
+			    oracle_include_dir="$withval"
+			    ;;
+		esac])
+
+	dnl extra argument: --with-oracle-lib-dir=DIR
+	oracle_lib_dir=
+	AC_ARG_WITH(oracle-lib-dir,
+		[AS_HELP_STRING([--with-oracle-lib-dir=DIR],
+			    [Directory where the oracle libraries may be found. It should be located under ORACLE_HOME. iUse --with-oracle-lib-dir=yes if you are sure that your linker will find the necessary Oracle client libs. Hint: you might try to do: locate libclntsh.so])],
+		[case "$withval" in
+			no)
+			    AC_MSG_ERROR(Need oracle-lib-dir)
+			    ;;
+			yes)
+			    ;;
+			*)
+			    oracle_lib_dir="$withval"
+			    ;;
+        esac])
+
+
+
 	AC_TRY_COMPILE([#include <oci.h>],
 		[ int a = 1;],
 		ORACLE_INCLUDE=" ",
 		ORACLE_INCLUDE=
 	)
 
-        # Look for Oracle10g "Instant Client" installed from RPM
-        if test "x$ORACLE_INCLUDE" = "x"; then
-                old_CFLAGS="$CFLAGS"
-
-                FR_LOCATE_DIR(oracle_include_dir,oci.h)
-
-                for try in /usr/include/oracle/10.1.0.3/client $oracle_include_dir; do
-                        CFLAGS="$old_CFLAGS -I$try"
-                        AC_TRY_COMPILE([#include <oci.h>],
-                                [ int a = 1; ],
-                                ORACLE_INCLUDE="-I$try",
-                                ORACLE_INCLUDE=
-                        )
-                        if test "x$ORACLE_INCLUDE" != "x"; then
-                                ORACLE_LIBS="-L$/usr/lib/oracle/10.1.0.3/client/lib -lclntsh -lm"
-                                break;
-                        fi
-                done
-                CFLAGS="$old_CFLAGS"
-        fi
-        # Finish Looking for Oracle10g includes installed from RPM
-
-	# Look for Oracle8i.
-	if test "x$ORACLE_INCLUDE" = "x"; then
+	RLM_SQL_ORA_WORKING_CFLAGS_FOR_LINKING_TEST=
+	if test "x$ORACLE_INCLUDE" = "x" ; then
 		old_CFLAGS="$CFLAGS"
+		CFLAGS="$old_CFLAGS -I$oracle_include_dir"
+		AC_TRY_COMPILE([#include <oci.h>],
+			[ int a = 1;],
+			ORACLE_INCLUDE="-I$oracle_include_dir",
+			ORACLE_INCLUDE=
+		)
 
-		FR_LOCATE_DIR(oracle_home_dir,oci.h)
-
-		for try in $oracle_home_dir $oracle_include_dir; do
-			CFLAGS="$old_CFLAGS -I${try}/rdbms/demo -I${try}/rdbms/public -I${try}/plsql/public -I${try}/network/public -I${try}/oci/include"
-			AC_TRY_COMPILE([#include <oci.h>],
-				[ int a = 1; ],
-				OHOME=$try,
-				OHOME=
-			)
-			if test "x$OHOME" != "x"; then
-				break;
-			fi
-		done
-
-		if test "x$OHOME" = "x" -a "x$ORACLE_HOME" != "x"; then
-			CFLAGS="$old_CFLAGS -I${ORACLE_HOME}/rdbms/demo -I${ORACLE_HOME}/rdbms/public -I${ORACLE_HOME}/plsql/public -I${ORACLE_HOME}/network/public -I${ORACLE_HOME}/oci/include"
-			AC_TRY_COMPILE([#include <oci.h>],
-				[ int a = 1; ],
-				OHOME=$ORACLE_HOME,
-				OHOME=
-			)
-		fi
-
-		CFLAGS="$old_CFLAGS"
-
-		if test "x$OHOME" != "x"; then
-			ORACLE_HOME=$OHOME
-			ORACLE_INCLUDE="-I${ORACLE_HOME}/rdbms/demo -I${ORACLE_HOME}/rdbms/public -I${ORACLE_HOME}/plsql/public -I${ORACLE_HOME}/network/public -I${ORACLE_HOME}/oci/include"
-		fi
-	fi     ##  this section sets $ORACLE_HOME, if found.
-
-	# not Oracle8i, try older.
-	if test "x$ORACLE_INCLUDE" = "x"; then
-		old_CFLAGS="$CFLAGS"
-
-		FR_LOCATE_DIR(oracle_include_dir,oci.h)
-
-		for try in /usr/local/include/oracle /usr/local/oracle/include $oracle_include_dir; do
-			CFLAGS="$old_CFLAGS -I$try"
-			AC_TRY_COMPILE([#include <oci.h>],
-				[ int a = 1; ],
-				ORACLE_INCLUDE="-I$try",
-				ORACLE_INCLUDE=
-			)
-			if test "x$ORACLE_INCLUDE" != "x"; then
-				break;
-			fi
-		done
+		RLM_SQL_ORA_WORKING_CFLAGS_FOR_LINKING_TEST="$CFLAGS"
 		CFLAGS="$old_CFLAGS"
 	fi
 
+	# Proceed to linking makes only sense if include dir is OK.
+	if test "x$ORACLE_INCLUDE" != "x" ; then
+		old_LIBS="$LIBS"
+		old_CFLAGS="$CFLAGS"
+		CFLAGS="$RLM_SQL_ORA_WORKING_CFLAGS_FOR_LINKING_TEST"
+
+		ORACLE_LIBDIR_SWITCH=
+		if test "x$oracle_lib_dir" != "x" ; then
+			ORACLE_LIBDIR_SWITCH="-L${oracle_lib_dir} "
+		fi
+		LIBS="$old_LIBS $ORACLE_LIBDIR_SWITCH -lclntsh -lnnz10"
+		AC_TRY_LINK([#include <oci.h>
+	
+				static OCIEnv           *p_env;
+				static OCIError         *p_err;
+				static OCISvcCtx        *p_svc;
+				static OCIStmt          *p_sql;
+				static OCIDefine        *p_dfn    = (OCIDefine *) 0;
+				static OCIBind          *p_bnd    = (OCIBind *) 0;
+			],
+			[
+				  int             p_bvi;
+				  char            p_sli[20];
+				  int             rc;
+				  char            errbuf[100];
+				  int             errcode;
+				
+				  rc = OCIInitialize((ub4) OCI_DEFAULT, (dvoid *)0,  /* Initialize OCI */
+				          (dvoid * (*)(dvoid *, size_t)) 0,
+				          (dvoid * (*)(dvoid *, dvoid *, size_t))0,
+				          (void (*)(dvoid *, dvoid *)) 0 );
+
+			],
+			ORACLE_LIBS="$ORACLE_LIBDIR_SWITCH -lclntsh -lnnz10",
+			ORACLE_LIBS=
+		)
+
+		LIBS="$old_LIBS"
+		CFLAGS="$old_CFLAGS"
+	fi
+
+
 	if test "x$ORACLE_INCLUDE" = "x"; then
 		AC_MSG_RESULT(no)
-		AC_MSG_WARN([oracle headers not found.  Use --with-oracle-home-dir=<path>.])
+		AC_MSG_WARN([oracle headers not found.  Use --with-oracle-include-dir=<path>.])
 		fail="$fail oci.h"
 	else
 		sql_oracle_cflags="${sql_oracle_cflags} ${ORACLE_INCLUDE}"
 		AC_MSG_RESULT(yes)
 
 
-		## is this set, from above?
-		if test "x$ORACLE_HOME" != "x"; then
-			## we must have an Oracle8i tree
-
-			# FIXME: we might do some checking, just to be nice
-			ORACLE_LIBS="-L$ORACLE_HOME/lib -lclntsh -lm"
-
-		else
-			AC_MSG_CHECKING([for oracle_init in -loracleclient])
-
-			dnl #
-			dnl #  Look for it in a number of directories.
-			dnl #
-			old_LIBS="$LIBS"
-
-			FR_LOCATE_DIR(oracle_lib_dir,[oracleclient.so])
-			FR_LOCATE_DIR(oracle_lib_dir,[oracleclient.a])
-
-			for try in /usr/lib/oracle /usr/local/lib/oracle /usr/local/oracle/lib $oracle_lib_dir; do
-				LIBS="$old_LIBS -L$try -loracleclient"
-				AC_TRY_LINK([extern char oracle_init();],
-					[ oracle_init()],
-					ORACLE_LIBS="-L$try -loracleclient",
-					ORACLE_LIBS=
-				)
-				if test "x$ORACLE_LIBS" != "x"; then
-					break;
-				fi
-			done
-			LIBS="$old_LIBS"
-
-			dnl #
-			dnl #  If one or the other isn't found, disable
-			dnl #  them both..
-			dnl #  If both are found, enable them both.
-			dnl #
-			if test "x$ORACLE_LIBS" = "x"; then
-				AC_MSG_RESULT(no)
-				ORACLE_INCLUDE=
-			fi
-		fi
-
 		if test "x$ORACLE_LIBS" = "x"; then
 			AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path>.])
-			fail="$fail liboracleclient"
+			fail="$fail libclntsh libnnz10"
 		else
-			sql_oracle_ldflags="$sql_oracle_ldflags $ORACLE_LIBS"
+			sql_oracle_ldflags="${sql_oracle_ldflags} $ORACLE_LIBS"
 			AC_MSG_RESULT(yes)
 		fi
 	fi
