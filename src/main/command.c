@@ -1852,6 +1852,8 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	fr_command_socket_t *sock;
 
+	if (check_config) return 0;
+
 	sock = this->data;
 
 	if (cf_section_parse(cs, sock, command_config) < 0) {

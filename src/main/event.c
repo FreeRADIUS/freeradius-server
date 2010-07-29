@@ -4054,6 +4054,10 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 	if (check_config) {
 		DEBUG("%s: #### Skipping IP addresses and Ports ####",
 		       mainconfig.name);
+		if (listen_init(cs, &head) < 0) {
+			fflush(NULL);
+			exit(1);
+		}
 		return 1;
 	}
 

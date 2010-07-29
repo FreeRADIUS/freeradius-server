@@ -178,6 +178,8 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	rcode = common_socket_parse(cs, this);
 	if (rcode != 0) return rcode;
 
+	if (check_config) return 0;
+
 	sock = this->data;
 
 	/*
