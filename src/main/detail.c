@@ -813,6 +813,7 @@ static const CONF_PARSER detail_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
+extern int check_config;
 
 /*
  *	Parse a detail section.
@@ -823,6 +824,8 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	listen_detail_t *data;
 	RADCLIENT	*client;
 	char buffer[2048];
+
+	if (check_config) return 0;
 
 	if (!this->data) {
 		this->data = rad_malloc(sizeof(*data));

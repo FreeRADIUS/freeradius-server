@@ -461,6 +461,8 @@ static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
 	return 1;
 }
 
+extern int check_config;	/* radiusd.c */
+
 
 /*
  *	Parse an authentication or accounting socket.
@@ -510,6 +512,19 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	sock->ipaddr = ipaddr;
 	sock->port = listen_port;
+
+	if (check_config) {
+		if (home_server_find(&sock->ipaddr, sock->port)) {
+				char buffer[128];
+				
+				DEBUG("ERROR: We have been asked to listen on %s port %d, which is also listed as a home server.  This can create a proxy loop.",
+				      ip_ntoh(&sock->ipaddr, buffer, sizeof(buffer)),
+				      sock->port);
+				return -1;
+		}
+
+		return 0;	/* don't do anything */
+	}
 
 	/*
 	 *	If we can bind to interfaces, do so,
