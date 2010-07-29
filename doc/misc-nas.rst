@@ -1,19 +1,21 @@
 Miscellaneous NASes and RADIUS
+==============================
 
-INTRODUCTION
+Introduction
+------------
 
 Some NASes have quirks when it comes to speaking RADIUS.  This document
 exposes those flaws and, where applicable, workarounds for those quirks.
 
-
-1. Proxim
+Proxim
+^^^^^^
 
 Proxim AP-2000 NASes up to and including firmware version 2.4.5 ignore
 the Session-Timeout attribute, despite the fact that Proxim's firmware
-release notes specifically state that it is supported.  On top of this,
-firmware version 2.4.5 (the latest as of this writing) has a bug in
-which the reauthentication interval on the AP cannot be set to any value
-less than 2 hours.  As such, fine-grained control of client session
-times is not currently possible with this NAS.  Note that this NAS
-is OEMed to several vendors, including Avaya, and may be listed under
-different names with different vendors.
+release notes specifically state that it is supported.  On top of
+this, firmware version 2.4.5 (the latest as of this writing) has a bug
+in which the reauthentication interval on the AP cannot be set to any
+value less than 2 hours.  As such, fine-grained control of client
+session times is not currently possible with this NAS.  Note that this
+NAS is OEMed to several vendors, including Avaya, and may be listed
+under different names with different vendors.
