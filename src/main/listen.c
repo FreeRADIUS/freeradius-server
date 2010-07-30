@@ -881,12 +881,12 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->my_port = listen_port;
 
 	if (check_config) {
-		if (home_server_find(&sock->ipaddr, sock->port)) {
+		if (home_server_find(&sock->my_ipaddr, sock->my_port, sock->proto)) {
 				char buffer[128];
 				
 				DEBUG("ERROR: We have been asked to listen on %s port %d, which is also listed as a home server.  This can create a proxy loop.",
-				      ip_ntoh(&sock->ipaddr, buffer, sizeof(buffer)),
-				      sock->port);
+				      ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
+				      sock->my_port);
 				return -1;
 		}
 
