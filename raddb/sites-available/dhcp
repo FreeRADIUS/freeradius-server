@@ -73,13 +73,27 @@ server dhcp {
 #  multiple interfaces, each with a separate policy.
 #
 #  If you have multiple interfaces, it is a good idea to bind the
-#  listen section to an interface.  You will likely also need one
-#  listen section per interface.
+#  listen section to an interface.  You will also need one listen
+#  section per interface.
+#
+#  FreeBSD does *not* support binding sockets to interfaces.  Therefore,
+#  if you have multiple interfaces, broadcasts may go out of the wrong
+#  one, or even all interfaces.  The only solution is to update FreeRADIUS
+#  to use BPF sockets.
+#
 listen {
-	ipaddr = *
+	ipaddr = 127.0.0.1
 	port = 6700
 	type = dhcp
-	#interface = eth0
+#	interface = lo0
+
+	# The DHCP server defaults to allowing broadcast packets.
+	# Set this to "no" only when the server receives *all* packets
+	# from a relay agent.  i.e. when *no* clients are on the same
+	# LAN as the DHCP server.
+	#
+	# It's set to "no" here for testing.
+	broadcast = no
 }
 
 #  Packets received on the socket will be processed through one

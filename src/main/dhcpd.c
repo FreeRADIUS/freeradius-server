@@ -169,7 +169,7 @@ static int dhcp_process(REQUEST *request)
 
 static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
-	int rcode;
+	int rcode, broadcast = 1;
 	int on = 1;
 	dhcp_socket_t *sock;
 	RADCLIENT *client;
@@ -183,12 +183,22 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock = this->data;
 
 	/*
-	 *	FIXME: Parse config file option for "do broadast = yes/no"
+	 *	See whether or not we enable broadcast packets.
 	 */
-	if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
-		radlog(L_ERR, "Can't set broadcast option: %s\n",
-		       strerror(errno));
-		return -1;
+	cp = cf_pair_find(cs, "broadcast");
+	if (cp) {
+		const char *value = cf_pair_value(cp);
+		if (value && (strcmp(value, "no") == 0)) {
+			broadcast = 0;
+		}
+	}
+
+	if (broadcast) {
+		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
+			radlog(L_ERR, "Can't set broadcast option: %s\n",
+			       strerror(errno));
+			return -1;
+		}
 	}
 
 	if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
