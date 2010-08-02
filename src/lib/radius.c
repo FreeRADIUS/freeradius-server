@@ -2437,16 +2437,35 @@ static VALUE_PAIR *data2vp(const RADIUS_PACKET *packet,
 
 	default:
 	raw:
-		vp->type = PW_TYPE_OCTETS;
-		vp->length = length;
-		memcpy(vp->vp_octets, data, length);
-
-
 		/*
-		 *	Ensure there's no encryption or tag stuff,
-		 *	we just pass the attribute as-is.
+		 *	Change the name to show the user that the
+		 *	attribute is not of the correct format.
 		 */
-		memset(&vp->flags, 0, sizeof(vp->flags));
+		{
+			int attr = vp->attribute;
+			int vendor = vp->vendor;
+			VALUE_PAIR *vp2;
+
+			vp2 = pairalloc(NULL);
+			if (!vp2) {
+				pairfree(&vp);
+				return NULL;
+			}
+			pairfree(&vp);
+			vp = vp2;
+
+			/*
+			 *	This sets "vp->flags" appropriately,
+			 *	and vp->type.
+			 */
+			if (!paircreate_raw(attr, vendor, PW_TYPE_OCTETS, vp)) {
+				return NULL;
+			}
+
+			vp->length = length;
+			memcpy(vp->vp_octets, data, length);
+		}
+		break;
 	}
 
 	return vp;

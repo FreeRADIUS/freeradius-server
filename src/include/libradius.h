@@ -331,6 +331,7 @@ int		rad_vp2attr(const RADIUS_PACKET *packet,
 
 /* valuepair.c */
 VALUE_PAIR	*pairalloc(DICT_ATTR *da);
+VALUE_PAIR	*paircreate_raw(int attr, int vendor, int type, VALUE_PAIR *);
 VALUE_PAIR	*paircreate(int attr, int vendor, int type);
 void		pairfree(VALUE_PAIR **);
 void            pairbasicfree(VALUE_PAIR *pair);
