@@ -271,8 +271,6 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 
 	pthread_setspecific(*key, interp);
 
-	fprintf(stderr, "GOT CLONE %d %p\n", pthread_self(), interp);
-
 	return interp;
 }
 #endif
