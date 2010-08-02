@@ -791,13 +791,11 @@ static int gettime(const char *valstr, time_t *date)
 		f[2] = strchr(f[1], ':'); /* find : separator */
 		if (f[2]) {
 		  *(f[2]++) = '\0';	/* nuke it, and point to SS */
-		} else {
-		  strcpy(f[2], "0");	/* assignment would discard const */
-		}
+		  tm->tm_sec = atoi(f[2]);
+		}			/* else leave it as zero */
 
 		tm->tm_hour = atoi(f[0]);
 		tm->tm_min = atoi(f[1]);
-		tm->tm_sec = atoi(f[2]);
 	}
 
 	/*
