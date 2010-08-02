@@ -78,8 +78,20 @@ server dhcp {
 #
 #  FreeBSD does *not* support binding sockets to interfaces.  Therefore,
 #  if you have multiple interfaces, broadcasts may go out of the wrong
-#  one, or even all interfaces.  The only solution is to update FreeRADIUS
-#  to use BPF sockets.
+#  one, or even all interfaces.  The solution is to use the "setfib" command.
+#  If you have a network "10.10.0/24" on LAN1, you will need to do:
+#
+#  Pick any IP on the 10.10.0/24 network
+#	$ setfib 1 route add default 10.10.0.1
+#
+#  Edit /etc/rc.local, and add a line:
+#	setfib 1 /path/to/radiusd
+#
+#  The kern must be built with the following options:
+#	options    ROUTETABLES=2
+#  or any value larger than 2.
+#
+# The other only solution is to update FreeRADIUS to use BPF sockets.
 #
 listen {
 	ipaddr = 127.0.0.1
