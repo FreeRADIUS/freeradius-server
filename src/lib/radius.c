@@ -2200,7 +2200,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 static VALUE_PAIR *data2vp(const RADIUS_PACKET *packet,
 			   const RADIUS_PACKET *original,
 			   const char *secret,
-			   UNUSED unsigned int attribute, size_t length,
+			   unsigned int attribute, size_t length,
 			   const uint8_t *data, VALUE_PAIR *vp)
 {
 	int offset = 0;
@@ -2432,16 +2432,33 @@ static VALUE_PAIR *data2vp(const RADIUS_PACKET *packet,
 
 	default:
 	raw:
-		vp->type = PW_TYPE_OCTETS;
-		vp->length = length;
-		memcpy(vp->vp_octets, data, length);
-
-
 		/*
-		 *	Ensure there's no encryption or tag stuff,
-		 *	we just pass the attribute as-is.
+		 *	Change the name to show the user that the
+		 *	attribute is not of the correct format.
 		 */
-		memset(&vp->flags, 0, sizeof(vp->flags));
+		{
+			VALUE_PAIR *vp2;
+
+			vp2 = pairalloc(NULL);
+			if (!vp2) {
+				pairfree(&vp);
+				return NULL;
+			}
+			pairfree(&vp);
+			vp = vp2;
+
+			/*
+			 *	This sets "vp->flags" appropriately,
+			 *	and vp->type.
+			 */
+			if (!paircreate_raw(attribute, PW_TYPE_OCTETS, vp)) {
+				return NULL;
+			}
+
+			vp->length = length;
+			memcpy(vp->vp_octets, data, length);
+		}
+		break;
 	}
 
 	return vp;
@@ -2659,8 +2676,9 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 			goto not_well_formed;
 		}
 
-		if (!data2vp(packet, original, secret,
-			     ptr[0], ptr[1] - 2, ptr + 2, vp)) {
+		vp = data2vp(packet, original, secret,
+			     ptr[0], ptr[1] - 2, ptr + 2, vp);
+		if (!vp) {	/* called frees vp */
 			pairfree(&head);
 			goto not_well_formed;
 		}

@@ -135,6 +135,33 @@ VALUE_PAIR *pairalloc(DICT_ATTR *da)
 }
 
 
+VALUE_PAIR *paircreate_raw(int attr, int type, VALUE_PAIR *vp)
+{
+	char *p = (char *) (vp + 1);
+
+	if (!vp->flags.unknown_attr) {
+		pairfree(&vp);
+		return NULL;
+	}
+
+	vp->vendor = VENDOR(attr);
+	vp->attribute = attr;
+	vp->operator = T_OP_EQ;
+	vp->name = p;
+	vp->type = type;
+	vp->length = 0;
+	memset(&vp->flags, 0, sizeof(vp->flags));
+	vp->flags.unknown_attr = 1;
+	
+	if (!vp_print_name(p, FR_VP_NAME_LEN, vp->attribute)) {
+		free(vp);
+		return NULL;
+	}
+
+	return vp;
+}
+
+
 /*
  *	Create a new valuepair.
  */
@@ -153,19 +180,7 @@ VALUE_PAIR *paircreate(int attr, int type)
 	/*
 	 *	It isn't in the dictionary: update the name.
 	 */
-	if (!da) {
-		char *p = (char *) (vp + 1);
-		
-		vp->vendor = VENDOR(attr);
-		vp->attribute = attr;
-		vp->name = p;
-		vp->type = type; /* be forgiving */
-
-		if (!vp_print_name(p, FR_VP_NAME_LEN, vp->attribute)) {
-			free(vp);
-			return NULL;
-		}
-	}
+	if (!da) return paircreate_raw(attr, type, vp);
 
 	return vp;
 }
@@ -320,6 +335,12 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 		return NULL;
 	}
 	memcpy(n, vp, sizeof(*n) + name_len);
+
+	/*
+	 *	Reset the name field to point to the NEW attribute,
+	 *	rather than to the OLD one.
+	 */
+	if (vp->flags.unknown_attr) n->name = (char *) (n + 1);
 	n->next = NULL;
 
 	if ((n->type == PW_TYPE_TLV) &&
