@@ -27,12 +27,9 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-static int digest_authorize(void *instance, REQUEST *request)
+static int digest_fix(REQUEST *request)
 {
 	VALUE_PAIR *vp;
-
-	/* quiet the compiler */
-	instance = instance;
 
 	/*
 	 *	We need both of these attributes to do the authentication.
@@ -46,8 +43,7 @@ static int digest_authorize(void *instance, REQUEST *request)
 	 *	Check the sanity of the attribute.
 	 */
 	if (vp->length != 32) {
-		RDEBUG("ERROR: Received invalid Digest-Response attribute (length %d should be 32)", vp->length);
-		return RLM_MODULE_INVALID;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
@@ -55,68 +51,63 @@ static int digest_authorize(void *instance, REQUEST *request)
 	 */
 	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0);
 	if (vp == NULL) {
-		RDEBUG("ERROR: Received Digest-Response without Digest-Attributes");
-		return RLM_MODULE_INVALID;
+		return RLM_MODULE_NOOP;
 	}
 
 	/*
-	 *	Everything's OK, add a digest authentication type.
+	 *	Check for proper format of the Digest-Attributes
 	 */
-	if (pairfind(request->config_items, PW_AUTHTYPE, 0) == NULL) {
-		RDEBUG("Adding Auth-Type = DIGEST");
-		pairadd(&request->config_items,
-			pairmake("Auth-Type", "DIGEST", T_OP_EQ));
+	RDEBUG("Checking for correctly formatted Digest-Attributes");
+	while (vp) {
+		int length = vp->length;
+		int attrlen;
+		uint8_t *p = &vp->vp_octets[0];
+
+		/*
+		 *	Until this stupidly encoded attribute is exhausted.
+		 */
+		while (length > 0) {
+			/*
+			 *	The attribute type must be valid
+			 */
+			if ((p[0] == 0) || (p[0] > 10)) {
+				RDEBUG("Not formatted as Digest-Attributes");
+				return RLM_MODULE_NOOP;
+			}
+
+			attrlen = p[1];	/* stupid VSA format */
+
+			/*
+			 *	Too short.
+			 */
+			if (attrlen < 3) {
+				RDEBUG("Not formatted as Digest-Attributes");
+				return RLM_MODULE_NOOP;
+			}
+
+			/*
+			 *	Too long.
+			 */
+			if (attrlen > length) {
+				RDEBUG("Not formatted as Digest-Attributes");
+				return RLM_MODULE_NOOP;
+			}
+
+			length -= attrlen;
+			p += attrlen;
+		} /* loop over this one attribute */
+
+		/*
+		 *	Find the next one, if it exists.
+		 */
+		vp = pairfind(vp->next, PW_DIGEST_ATTRIBUTES, 0);
 	}
-
-	return RLM_MODULE_OK;
-}
-
-/*
- *	Perform all of the wondrous variants of digest authentication.
- */
-static int digest_authenticate(void *instance, REQUEST *request)
-{
-	int i;
-	size_t a1_len, a2_len, kd_len;
-	uint8_t a1[(MAX_STRING_LEN + 1) * 5]; /* can be 5 attributes */
-	uint8_t a2[(MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
-	uint8_t kd[(MAX_STRING_LEN + 1) * 5];
-	uint8_t hash[16];	/* MD5 output */
-	VALUE_PAIR *vp, *passwd, *algo;
-	VALUE_PAIR *qop, *nonce;
-
-	instance = instance;	/* -Wunused */
 
 	/*
-	 *	We require access to the plain-text password.
+	 *	Convert them to something sane.
 	 */
-	passwd = pairfind(request->config_items, PW_DIGEST_HA1, 0);
-	if (passwd) {
-		if (passwd->length != 32) {
-			radlog_request(L_AUTH, 0, request, "Digest-HA1 has invalid length, authentication failed.");
-			return RLM_MODULE_INVALID;
-		}
-	} else {
-		passwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
-	}
-	if (!passwd) {
-		radlog_request(L_AUTH, 0, request, "Cleartext-Password or Digest-HA1 is required for authentication.");
-		return RLM_MODULE_INVALID;
-	}
-
-	/*
-	 *	We need these, too.
-	 */
+	RDEBUG("Digest-Attributes look OK.  Converting them to something more usful.");
 	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0);
-	if (vp == NULL) {
-		RDEBUG("ERROR: You set 'Auth-Type = Digest' for a request that did not contain any digest attributes!");
-		return RLM_MODULE_INVALID;
-	}
-
-	/*
-	 *	Loop through the Digest-Attributes, sanity checking them.
-	 */
-	RDEBUG("    rlm_digest: Converting Digest-Attributes to something sane...");
 	while (vp) {
 		int length = vp->length;
 		int attrlen;
@@ -124,7 +115,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		VALUE_PAIR *sub;
 
 		/*
-		 *	Until this stupidly encoded attribure is exhausted.
+		 *	Until this stupidly encoded attribute is exhausted.
 		 */
 		while (length > 0) {
 			/*
@@ -160,8 +151,8 @@ static int digest_authenticate(void *instance, REQUEST *request)
 			 *	Didn't they know that VSA's exist?
 			 */
 			sub = radius_paircreate(request, &request->packet->vps,
-						PW_DIGEST_REALM - 1 + p[0],
-						0, PW_TYPE_STRING);
+						PW_DIGEST_REALM - 1 + p[0], 0,
+						PW_TYPE_STRING);
 			memcpy(&sub->vp_octets[0], &p[2], attrlen - 2);
 			sub->vp_octets[attrlen - 2] = '\0';
 			sub->length = attrlen - 2;
@@ -185,6 +176,99 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		 *	Find the next one, if it exists.
 		 */
 		vp = pairfind(vp->next, PW_DIGEST_ATTRIBUTES, 0);
+	}
+
+	return RLM_MODULE_OK;
+}
+
+static int digest_authorize(void *instance, REQUEST *request)
+{
+	int rcode;
+
+	/* quiet the compiler */
+	instance = instance;
+
+	/*
+	 *	Double-check and fix the attributes.
+	 */	  
+	rcode = digest_fix(request);
+	if (rcode != RLM_MODULE_OK) return rcode;
+
+	/*
+	 *	Everything's OK, add a digest authentication type.
+	 */
+	if (pairfind(request->config_items, PW_AUTHTYPE, 0) == NULL) {
+		RDEBUG("Adding Auth-Type = DIGEST");
+		pairadd(&request->config_items,
+			pairmake("Auth-Type", "DIGEST", T_OP_EQ));
+	}
+
+	return RLM_MODULE_OK;
+}
+
+/*
+ *	Perform all of the wondrous variants of digest authentication.
+ */
+static int digest_authenticate(void *instance, REQUEST *request)
+{
+	int i;
+	size_t a1_len, a2_len, kd_len;
+	uint8_t a1[(MAX_STRING_LEN + 1) * 5]; /* can be 5 attributes */
+	uint8_t a2[(MAX_STRING_LEN + 1) * 3]; /* can be 3 attributes */
+	uint8_t kd[(MAX_STRING_LEN + 1) * 5];
+	uint8_t hash[16];	/* MD5 output */
+	VALUE_PAIR *vp, *passwd, *algo;
+	VALUE_PAIR *qop, *nonce;
+
+	instance = instance;	/* -Wunused */
+
+	/*
+	 *	We require access to the plain-text password, or to the
+	 *	Digest-HA1 parameter.
+	 */
+	passwd = pairfind(request->config_items, PW_DIGEST_HA1, 0);
+	if (passwd) {
+		if (passwd->length != 32) {
+			radlog_request(L_AUTH, 0, request, "Digest-HA1 has invalid length, authentication failed.");
+			return RLM_MODULE_INVALID;
+		}
+	} else {
+		passwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
+	}
+	if (!passwd) {
+		radlog_request(L_AUTH, 0, request, "Cleartext-Password or Digest-HA1 is required for authentication.");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	We need these, too.
+	 */
+	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0);
+	if (vp == NULL) {
+	error:
+		RDEBUG("ERROR: You set 'Auth-Type = Digest' for a request that did not contain any digest attributes!w");
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	Look for the "internal" FreeRADIUS Digest attributes.
+	 *	If they don't exist, it means that someone forced
+	 *	Auth-Type = digest, without putting "digest" into the
+	 *	"authorize" section.  In that case, try to decode the
+	 *	attributes here.
+	 */
+	if (!pairfind(request->packet->vps, PW_DIGEST_NONCE, 0)) {
+		int rcode;
+
+		rcode = digest_fix(request);
+
+		/*
+		 *	NOOP means "couldn't find the attributes".
+		 *	That's bad.
+		 */
+		if (rcode == RLM_MODULE_NOOP) goto error;
+
+		if (rcode != RLM_MODULE_OK) return rcode;
 	}
 
 	/*
