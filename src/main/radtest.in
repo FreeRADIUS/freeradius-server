@@ -11,7 +11,10 @@ exec_prefix="@exec_prefix@"
 bindir="@bindir@"
 
 usage() {
-	echo "Usage: radtest user passwd radius-server[:port] nas-port-number secret [ppphint] [nasname]" >&2
+	echo "Usage: radtest [OPTIONS] user passwd radius-server[:port] nas-port-number secret [ppphint] [nasname]" >&2
+	echo "        -d RADIUS_DIR       Set radius directory" >&2
+	echo "        -t pap/chap/mschap  Set authentication method" >&2
+	echo "        -x                  Enable debug output" >&2
 	exit 1
 }
 
@@ -21,14 +24,54 @@ then
 	radclient=./radclient
 fi
 
-if [ "$1" = "-d" ]
+OPTIONS=
+PASSWORD="User-Password"
+
+#  We need at LEAST these many options
+if [ $# -lt 5 ] || [ $# -gt 7 ]
 then
-    DICTIONARY="-d $2"
-    shift;shift
-else
-    DICTIONARY=""
+	usage
 fi
 
+# Parse new command-line options
+while [ `echo "$1" | cut -c 1` = "-" ]
+do
+   case "$1" in
+	-d) 
+		OPTIONS="$OPTIONS -d $2"
+    		shift;shift
+		;;
+	-x)
+		OPTIONS="$OPTIONS -x"
+		shift
+		;;
+
+	-t)
+		shift;
+		case "$1" in
+			pap)
+				PASSWORD="User-Password"
+				;;
+			chap)
+				PASSWORD="CHAP-Password"
+				;;
+			mschap)
+				PASSWORD="MS-CHAP-Password"
+				;;
+			*)
+				usage
+				;;
+		esac
+		shift
+		;;
+
+        *)
+		usage
+		;;
+  esac
+done
+
+# Check that there are enough options left over.
 if [ $# -lt 5 ] || [ $# -gt 7 ]
 then
 	usage
@@ -43,13 +86,13 @@ fi
 
 (
 	echo "User-Name = \"$1\""
-	echo "User-Password = \"$2\""
+	echo "$PASSWORD = \"$2\""
 	echo "NAS-IP-Address = $nas"
 	echo "NAS-Port = $4"
 	if [ "$6" ]
 	then
 		echo "Framed-Protocol = PPP"
 	fi
-) | $radclient $DICTIONARY -x $3 auth $5
+) | $radclient $OPTIONS -x $3 auth $5
 
 exit $?
