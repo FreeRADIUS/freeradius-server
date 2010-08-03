@@ -92,7 +92,7 @@ authorize {
 	#  If you have a Cisco SIP server authenticating against
 	#  FreeRADIUS, uncomment the following line, and the 'digest'
 	#  line in the 'authenticate' section.
-#	digest
+	digest
 
 	#
 	#  The WiMAX specification says that the Calling-Station-Id
@@ -259,7 +259,7 @@ authenticate {
 	#  If you have a Cisco SIP server authenticating against
 	#  FreeRADIUS, uncomment the following line, and the 'digest'
 	#  line in the 'authorize' section.
-#	digest
+	digest
 
 	#
 	#  Pluggable Authentication Modules.
@@ -270,7 +270,12 @@ authenticate {
 	#  module checks the users password.  Note that packets
 	#  containing CHAP-Password attributes CANNOT be authenticated
 	#  against /etc/passwd!  See the FAQ for details.
-	#  
+	#
+	#  For normal "crypt" authentication, the "pap" module should
+	#  be used instead of the "unix" module.  The "unix" module should
+	#  be used for authentication ONLY for compatibility with legacy
+	#  FreeRADIUS configurations.
+	#
 	unix
 
 	# Uncomment it if you want to use ldap for authentication
