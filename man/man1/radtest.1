@@ -1,10 +1,14 @@
-.TH RADTEST 1 "24 February 2001" "" "FreeRADIUS Daemon"
+.TH RADTEST 1 "3 August 2010" "" "FreeRADIUS Daemon"
 .SH NAME
 radtest - send packets to a RADIUS server, show reply
 .SH SYNOPSIS
 .B radtest
 .RB [ \-d
 .IR raddb_directory ]
+.RB [ \-t
+.IR pap/chap/mschap ]
+.RB [ \-x
+.IR ]
 .I user password radius-server nas-port-number secret
 .RB [ ppphint ]
 .RB [ nasname ]
@@ -19,6 +23,13 @@ way to test a radius server.
 .IP "\-d \fIraddb_directory\fP"
 The directory that contains the RADIUS dictionary files. Defaults to
 \fI/etc/raddb\fP.
+
+.IP "\-t \fIpap/chap/mschap\fP"
+Choose the authentiction method to use.  e.g. "-t pap", or "-t
+mschap".  Defaults to "pap".
+
+.IP "\-x"
+Enables debugging output for the RADIUS client.
 
 .IP user
 Username to send.
