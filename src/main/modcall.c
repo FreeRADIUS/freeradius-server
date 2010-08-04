@@ -297,7 +297,7 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request)
 	myresult = sp->modinst->entry->module->methods[component](
 			sp->modinst->insthandle, request);
 
-	request->module = "";
+	request->module = "<processing>";
 	safe_unlock(sp->modinst);
 
  fail:

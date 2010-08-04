@@ -599,7 +599,8 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	} else {
 	print_inst:
 		check_config_safe = TRUE;
-		cf_log_module(cs, "Instantiating %s", instname);
+		cf_log_module(cs, "Instantiating module \"%s\" from file %s",
+			      instname, cf_section_filename(cs));
 	}
 
 	/*
@@ -733,13 +734,23 @@ int indexed_modcall(int comp, int idx, REQUEST *request)
 				section_type_value[comp].typename);
 		}
 	}
-
+	
+	if (server->subcs[comp]) {
+		if (idx == 0) {
+			RDEBUG("# Executing section %s from file %s",
+			       section_type_value[comp].section,
+			       cf_section_filename(server->subcs[comp]));
+		} else {
+			RDEBUG("# Executing group from file %s",
+			       cf_section_filename(server->subcs[comp]));
+		}
+	}
 	request->component = section_type_value[comp].section;
 
 	rcode = modcall(comp, list, request);
 
-	request->module = "";
-	request->component = "";
+	request->module = "<processing>";
+	request->component = "<core>";
 	return rcode;
 }
 
@@ -971,9 +982,11 @@ static int load_byserver(CONF_SECTION *cs)
 	indexed_modcallable *c;
 
 	if (name) {
-		cf_log_info(cs, "server %s {", name);
+		cf_log_info(cs, "server %s { # from file %s",
+			    name, cf_section_filename(cs));
 	} else {
-		cf_log_info(cs, "server {");
+		cf_log_info(cs, "server { # from file %s",
+			    cf_section_filename(cs));
 	}
 
 	cf_log_info(cs, " modules {");

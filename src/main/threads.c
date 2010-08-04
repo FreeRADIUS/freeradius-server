@@ -307,7 +307,8 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		return 0;
 	}
 	request->child_state = REQUEST_QUEUED;
-	request->component = "<queue>";
+	request->component = "<core>";
+	request->module = "<queue>";
 
 	entry = rad_malloc(sizeof(*entry));
 	entry->request = request;
@@ -411,7 +412,8 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	rad_assert((*request)->magic == REQUEST_MAGIC);
 	rad_assert(*fun != NULL);
 
-	(*request)->component = "";
+	(*request)->component = "<core>";
+	(*request)->module = "<thread>";
 
 	/*
 	 *	If the request has sat in the queue for too long,
@@ -422,6 +424,7 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	have acknowledged it as "done".
 	 */
 	if ((*request)->master_state == REQUEST_STOP_PROCESSING) {
+		(*request)->module = "<done>";
 		(*request)->child_state = REQUEST_DONE;
 		goto retry;
 	}
