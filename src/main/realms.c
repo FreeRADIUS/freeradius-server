@@ -417,6 +417,13 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 	home->name = name2;
 	home->cs = cs;
 
+        /*
+	 *      For zombie period calculations.  We want to count
+	 *      zombies from the time when the server starts, instead
+	 *      of from 1970.
+	 */
+	home->last_packet = time(NULL);
+
 	/*
 	 *	Authentication servers have a default "no_response_fail = 0".
 	 *	Accounting servers have a default "no_response_fail = 1".
