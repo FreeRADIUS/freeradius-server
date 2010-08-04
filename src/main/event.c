@@ -399,7 +399,7 @@ retry:
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
 		fr_packet_list_id_free(proxy_list, request->proxy);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		radlog(L_PROXY, "Failed to insert entry into proxy list");
+		radlog(L_PROXY, "Failed to insert entry into proxy list.");
 		return 0;
 	}
 
@@ -815,7 +815,7 @@ static void ping_home_server(void *ctx)
 	rad_assert(request->proxy_listener == NULL);
 
 	if (!insert_into_proxy_hash(request)) {
-		radlog(L_PROXY, "Failed inserting status check %d into proxy hash.  Discarding it.",
+		radlog(L_PROXY, "Failed to insert status check %d into proxy list.  Discarding it.",
 		       request->number);
 		ev_request_free(&request);
 		return;
@@ -1485,7 +1485,7 @@ static void retransmit_coa_request(void *ctx)
 		 *	Don't free the old Id on error.
 		 */
 		if (!insert_into_proxy_hash(request)) {
-			radlog(L_PROXY,"Failed re-inserting CoA request into proxy hash.");
+			radlog(L_PROXY,"Failed to insert retransmission of CoA request into proxy list.");
 			return;
 		}
 
@@ -1691,7 +1691,7 @@ static int originated_coa_request(REQUEST *request)
 	coa->proxy->dst_port = coa->home_server->port;
 
 	if (!insert_into_proxy_hash(coa)) {
-		radlog(L_PROXY, "Failed inserting CoA request into proxy hash.");
+		radlog(L_PROXY, "Failed to insert CoA request into proxy list.");
 		goto fail;
 	}
 
@@ -1946,12 +1946,12 @@ static int proxy_request(REQUEST *request)
 #endif
 
 	if (request->home_server->server) {
-		RDEBUG("ERROR: Cannot perform real proxying to a virtual server.");
+		RDEBUG("ERROR: Cannot proxy to a virtual server.");
 		return 0;
 	}
 
 	if (!insert_into_proxy_hash(request)) {
-		radlog(L_PROXY, "Failed inserting request into proxy hash.");
+		radlog(L_PROXY, "Failed to insert request into proxy list.");
 		return 0;
 	}
 
@@ -2664,7 +2664,7 @@ static int rad_retransmit(REQUEST *request)
 		
 		home = home_server_ldb(NULL, request->home_pool, request);
 		if (!home) {
-			RDEBUG2("Failed to find live home server for request");
+			RDEBUG2("ERROR: Failed to find live home server for request");
 		no_home_servers:
 			/*
 			 *	Do post-request processing,
