@@ -413,7 +413,7 @@ static int insert_into_proxy_hash(REQUEST *request, int retransmit)
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
 		fr_packet_list_id_free(proxy_list, request->proxy);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		RDEBUG2("ERROR: Failed to insert entry into proxy list");
+		RDEBUG2("ERROR: Failed to insert entry into proxy list.");
 		return 0;
 	}
 
@@ -793,7 +793,7 @@ static void ping_home_server(void *ctx)
 	rad_assert(request->proxy_listener == NULL);
 
 	if (!insert_into_proxy_hash(request, FALSE)) {
-		RDEBUG2("ERROR: Failed inserting status check %d into proxy hash.  Discarding it.",
+		RDEBUG2("ERROR: Failed to insert status check %d into proxy list.  Discarding it.",
 		       request->number);
 		ev_request_free(&request);
 		return;
@@ -1407,7 +1407,7 @@ static void retransmit_coa_request(void *ctx)
 	
 	if (update_event_timestamp(request->proxy, now.tv_sec)) {
 		if (!insert_into_proxy_hash(request, TRUE)) {
-			DEBUG("ERROR: Failed re-inserting CoA request into proxy hash.");
+			DEBUG("ERROR: Failed to insert retransmission of CoA request into proxy list.");
 			return;
 		}
 
@@ -1601,7 +1601,7 @@ static int originated_coa_request(REQUEST *request)
 	coa->proxy->dst_port = coa->home_server->port;
 
 	if (!insert_into_proxy_hash(coa, FALSE)) {
-		DEBUG("ERROR: Failed inserting CoA request into proxy hash.");
+		DEBUG("ERROR: Failed to insert CoA request into proxy list.");
 		goto fail;
 	}
 
@@ -1849,12 +1849,12 @@ static int proxy_request(REQUEST *request)
 #endif
 
 	if (request->home_server->server) {
-		RDEBUG("ERROR: Cannot perform real proxying to a virtual server.");
+		RDEBUG("ERROR: Cannot proxy to a virtual server.");
 		return 0;
 	}
 
 	if (!insert_into_proxy_hash(request, FALSE)) {
-		RDEBUG("ERROR: Failed inserting request into proxy hash.");
+		RDEBUG("ERROR: Failed to insert entry into proxy list.");
 		return 0;
 	}
 
@@ -2589,7 +2589,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 
 			home = home_server_ldb(NULL, request->home_pool, request);
 			if (!home) {
-				RDEBUG2("Failed to find live home server for request %u", request->number);
+				RDEBUG2("ERROR: Failed to find live home server for request %u", request->number);
 			no_home_servers:
 				/*
 				 *	Do post-request processing,
