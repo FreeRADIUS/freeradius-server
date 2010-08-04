@@ -1444,7 +1444,7 @@ static int listen_bind(rad_listen_t *this)
 #endif
 
 		default:
-			radlog(L_ERR, "ERROR: Non-fatal internal sanity check failed in bind.");
+			DEBUG("WARNING: Internal sanity check failed in binding to socket.  Ignoring problem.");
 			return -1;
 		}
 	}
