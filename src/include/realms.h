@@ -53,6 +53,7 @@ typedef struct home_server {
 	int		currently_outstanding;
 	int		message_authenticator;
 
+	time_t		last_packet;
 	struct timeval	revive_time;
 	struct timeval	zombie_period_start;
 	int		zombie_period; /* unresponsive for T, mark it dead */

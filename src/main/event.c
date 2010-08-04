@@ -1083,33 +1083,54 @@ static void no_response_to_proxied_request(void *ctx)
 	/*
 	 *	Don't touch request due to race conditions
 	 */
-	if (home->state == HOME_STATE_IS_DEAD) {
-		rad_assert(home->ev != NULL); /* or it will never wake up */
+
+	/*
+	 *	If it's not alive, don't try to make it a zombie.
+	 */
+	if (home->state != HOME_STATE_ALIVE) {
+		/*
+		 *	Don't check home->ev due to race conditions.
+		 */
+		return;
+	}
+
+	/*
+	 *	We've received a real packet recently.  Don't mark the
+	 *	server as zombie until we've received NO packets for a
+	 *	while.  The "1/4" of zombie period was chosen rather
+	 *	arbitrarily.  It's a balance between too short, which
+	 *	gives quick fail-over and fail-back, or too long,
+	 *	where the proxy still sends packets to an unresponsive
+	 *	home server.
+	 */
+	if ((home->last_packet + ((home->zombie_period + 3) / 4)) >= now.tv_sec) {
 		return;
 	}
 
 	/*
 	 *	Enable the zombie period when we notice that the home
-	 *	server hasn't responded.  We do NOT back-date the start
-	 *	of the zombie period.
+	 *	server hasn't responded for a while.  We back-date the
+	 *	zombie period to when we last received a response from
+	 *	the home server.
 	 */
-	if (home->state == HOME_STATE_ALIVE) {
-		home->state = HOME_STATE_ZOMBIE;
-		home->zombie_period_start = now;	
-		fr_event_delete(el, &home->ev);
-		home->currently_outstanding = 0;
-		home->num_received_pings = 0;
-
-		radlog(L_PROXY, "Marking home server %s port %d as zombie (it looks like it is dead).",
-		       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-		       home->port);
-
-		/*
-		 *	Start pinging the home server.
-		 */
-		ping_home_server(home);
-	}
+	home->state = HOME_STATE_ZOMBIE;
+	
+	home->zombie_period_start.tv_sec = home->last_packet;
+	home->zombie_period_start.tv_sec = USEC / 2;
+	
+	fr_event_delete(el, &home->ev);
+	home->currently_outstanding = 0;
+	home->num_received_pings = 0;
+	
+	radlog(L_PROXY, "Marking home server %s port %d as zombie (it looks like it is dead).",
+	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
+			 buffer, sizeof(buffer)),
+	       home->port);
+	
+	/*
+	 *	Start pinging the home server.
+	 */
+	ping_home_server(home);
 }
 #endif
 
@@ -3064,8 +3085,11 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 	 *	receive a packet?  Setting this here means that we
 	 *	mark it alive on *any* packet, even if it's lost all
 	 *	of the *other* packets in the last 10s.
+	 *
+	 *	This behavior could be configurable.
 	 */
 	request->home_server->state = HOME_STATE_ALIVE;
+	request->home_server->last_packet = now.tv_sec;
 	
 #ifdef WITH_COA
 	/*
