@@ -391,7 +391,7 @@ REQUEST *request_alloc(void)
 	request->timestamp = time(NULL);
 	request->options = RAD_REQUEST_OPTION_NONE;
 
-	request->module = "<receive>";
+	request->module = "";
 	request->component = "<core>";
 	if (debug_flag) request->radlog = radlog_request;
 

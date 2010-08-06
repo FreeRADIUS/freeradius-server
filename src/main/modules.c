@@ -749,7 +749,7 @@ int indexed_modcall(int comp, int idx, REQUEST *request)
 
 	rcode = modcall(comp, list, request);
 
-	request->module = "<processing>";
+	request->module = "";
 	request->component = "<core>";
 	return rcode;
 }
