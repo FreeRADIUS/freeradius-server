@@ -257,6 +257,11 @@ static int eap_authenticate(void *instance, REQUEST *request)
 
 	inst = (rlm_eap_t *) instance;
 
+	if (!pairfind(request->packet->vps, PW_EAP_MESSAGE)) {
+		RDEBUG("ERROR: You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
+		return RLM_MODULE_INVALID;
+	}
+
 	/*
 	 *	Get the eap packet  to start with
 	 */
@@ -512,6 +517,8 @@ static int eap_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_FAIL;
 		}
 		pairadd(&request->config_items, vp);
+	} else {
+		RDEBUG2("WARNING: Auth-Type already set.  Not setting to EAP");
 	}
 
 	if (status == EAP_OK) return RLM_MODULE_OK;

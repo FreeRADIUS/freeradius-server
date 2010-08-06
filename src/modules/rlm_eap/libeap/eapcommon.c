@@ -361,7 +361,7 @@ eap_packet_t *eap_vp2packet(VALUE_PAIR *vps)
 	 */
 	first = pairfind(vps, PW_EAP_MESSAGE);
 	if (first == NULL) {
-		radlog(L_ERR, "rlm_eap: EAP-Message not found");
+		DEBUG("rlm_eap: EAP-Message not found");
 		return NULL;
 	}
 
@@ -369,7 +369,7 @@ eap_packet_t *eap_vp2packet(VALUE_PAIR *vps)
 	 *	Sanity check the length before doing anything.
 	 */
 	if (first->length < 4) {
-		radlog(L_ERR, "rlm_eap: EAP packet is too short.");
+		DEBUG("rlm_eap: EAP packet is too short.");
 		return NULL;
 	}
 
@@ -384,7 +384,7 @@ eap_packet_t *eap_vp2packet(VALUE_PAIR *vps)
 	 *	Take out even more weird things.
 	 */
 	if (len < 4) {
-		radlog(L_ERR, "rlm_eap: EAP packet has invalid length.");
+		DEBUG("rlm_eap: EAP packet has invalid length.");
 		return NULL;
 	}
 
@@ -396,7 +396,7 @@ eap_packet_t *eap_vp2packet(VALUE_PAIR *vps)
 		total_len += vp->length;
 
 		if (total_len > len) {
-			radlog(L_ERR, "rlm_eap: Malformed EAP packet.  Length in packet header does not match actual length");
+			DEBUG("rlm_eap: Malformed EAP packet.  Length in packet header does not match actual length");
 			return NULL;
 		}
 	}
@@ -405,7 +405,7 @@ eap_packet_t *eap_vp2packet(VALUE_PAIR *vps)
 	 *	If the length is SMALLER, die, too.
 	 */
 	if (total_len < len) {
-		radlog(L_ERR, "rlm_eap: Malformed EAP packet.  Length in packet header does not match actual length");
+		DEBUG("rlm_eap: Malformed EAP packet.  Length in packet header does not match actual length");
 		return NULL;
 	}
 
