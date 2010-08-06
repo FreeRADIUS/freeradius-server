@@ -194,14 +194,18 @@ static int digest_authorize(void *instance, REQUEST *request)
 	rcode = digest_fix(request);
 	if (rcode != RLM_MODULE_OK) return rcode;
 
+
+	if (pairfind(request->config_items, PW_AUTHTYPE)) {
+		RDEBUG2("WARNING: Auth-Type already set.  Not setting to DIGEST");
+		return RLM_MODULE_NOOP;
+	}
+
 	/*
 	 *	Everything's OK, add a digest authentication type.
 	 */
-	if (pairfind(request->config_items, PW_AUTHTYPE) == NULL) {
-		RDEBUG("Adding Auth-Type = DIGEST");
-		pairadd(&request->config_items,
-			pairmake("Auth-Type", "DIGEST", T_OP_EQ));
-	}
+	RDEBUG("Adding Auth-Type = DIGEST");
+	pairadd(&request->config_items,
+		pairmake("Auth-Type", "DIGEST", T_OP_EQ));
 
 	return RLM_MODULE_OK;
 }
@@ -246,7 +250,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES);
 	if (vp == NULL) {
 	error:
-		RDEBUG("ERROR: You set 'Auth-Type = Digest' for a request that did not contain any digest attributes!w");
+		RDEBUG("ERROR: You set 'Auth-Type = Digest' for a request that does not contain any digest attributes!");
 		return RLM_MODULE_INVALID;
 	}
 
