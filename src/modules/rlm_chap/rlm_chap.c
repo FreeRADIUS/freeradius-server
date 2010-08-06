@@ -78,17 +78,17 @@ static int chap_authenticate(void *instance, REQUEST *request)
 
 	chap = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0);
 	if (!chap) {
-		radlog_request(L_AUTH, 0, request, "rlm_chap: Attribute \"CHAP-Password\" is required for authentication.");
+		RDEBUG("ERROR: You set 'Auth-Type = CHAP' for a request that does not contain a CHAP-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (chap->length == 0) {
-		radlog_request(L_ERR, 0, request, "rlm_chap: empty password supplied");
+		RDEBUG("ERROR: CHAP-Password is empty");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (chap->length != CHAP_VALUE_LENGTH + 1) {
-		radlog_request(L_ERR, 0, request, "rlm_chap: password supplied has wrong length");
+		RDEBUG("ERROR: CHAP-Password has invalid length");
 		return RLM_MODULE_INVALID;
 	}
 
