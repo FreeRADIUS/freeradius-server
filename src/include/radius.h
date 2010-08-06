@@ -229,6 +229,7 @@
 #define PW_RECV_COA_TYPE   		1131
 #define PW_SEND_COA_TYPE   		1132
 #define PW_MSCHAP_PASSWORD		1133
+#define PW_PACKET_TRANSMIT_COUNTER     	1134
 
 /*
  *	Integer Translations

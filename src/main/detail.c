@@ -370,6 +370,7 @@ int detail_recv(rad_listen_t *listener,
 
 		case STATE_HEADER:
 		do_header:
+			data->tries = 0;
 			if (!data->fp) {
 				data->state = STATE_UNOPENED;
 				goto open_file;
@@ -690,6 +691,17 @@ int detail_recv(rad_listen_t *listener,
 	if (data->timestamp != 0) {
 		vp->vp_integer += time(NULL) - data->timestamp;
 	}
+
+	/*
+	 *	Set the transmission count.
+	 */
+	vp = pairfind(packet->vps, PW_PACKET_TRANSMIT_COUNTER);
+	if (!vp) {
+		vp = paircreate(PW_PACKET_TRANSMIT_COUNTER, PW_TYPE_INTEGER);
+		rad_assert(vp != NULL);
+		pairadd(&packet->vps, vp);
+	}
+	vp->vp_integer = data->tries;
 
 	*pfun = rad_accounting;
 
