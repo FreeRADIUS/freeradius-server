@@ -933,6 +933,11 @@ dnl #  7. Checks for library functions
 dnl #
 dnl #############################################################
 
+old_LIBS="$LIBS"
+LIBS="$LIBS $LIBLTDL"
+AC_CHECK_FUNC(lt_dladvise_init, AC_DEFINE(HAVE_HAVE_LT_DLADVISE_INIT, [], [Do we have the lt_dladvise_init function]))
+LIBS="$old_LIBS"
+
 dnl Check for libcrypt
 dnl We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)
 AC_CHECK_LIB(crypt, crypt,
