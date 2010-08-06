@@ -884,7 +884,7 @@ static int mschap_authorize(void * instance, REQUEST *request)
 	}
 
 	if (pairfind(request->config_items, PW_AUTH_TYPE)) {
-		RDEBUG2("Found existing Auth-Type.  Not changing it.");
+		RDEBUG2("WARNING: Auth-Type already set.  Not setting to MS-CHAP");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -1058,7 +1058,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE);
 	if (!challenge) {
-		RDEBUG2("No MS-CHAP-Challenge in the request");
+		RDEBUG("ERROR: You set 'Auth-Type = MS-CHAP' for a request that does not contain any MS-CHAP attributes!");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -1239,7 +1239,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		chap = 2;
 
 	} else {		/* Neither CHAPv1 or CHAPv2 response: die */
-		radlog_request(L_AUTH, 0, request, "No MS-CHAP response found");
+		RDEBUG("ERROR: You set 'Auth-Type = MS-CHAP' for a request that does not contain any MS-CHAP attributes!");
 		return RLM_MODULE_INVALID;
 	}
 
