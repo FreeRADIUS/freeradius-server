@@ -468,7 +468,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 	 *	Don't touch existing Auth-Types.
 	 */
 	if (auth_type) {
-		RDEBUG2("Found existing Auth-Type, not changing it.");
+		RDEBUG2("WARNING: Auth-Type already set.  Not setting to PAP");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -515,16 +515,9 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	char buff2[MAX_STRING_LEN + 50];
 	int scheme = PAP_ENC_INVALID;
 
-	if (!request->password){
-		radlog_request(L_AUTH, 0, request, "Attribute \"Password\" is required for authentication.");
-		return RLM_MODULE_INVALID;
-	}
-
-	/*
-	 *	Clear-text passwords are the only ones we support.
-	 */
-	if (request->password->attribute != PW_USER_PASSWORD) {
-		radlog_request(L_AUTH, 0, request, "Attribute \"User-Password\" is required for authentication. Cannot use \"%s\".", request->password->name);
+	if (!request->password ||
+	    (request->password->attribute != PW_USER_PASSWORD)) {
+		RDEBUG("ERROR: You set 'Auth-Type = PAP' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
 
