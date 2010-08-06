@@ -1476,7 +1476,7 @@ Optional Features:
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-system-libtldl   Use the libtltdl installed in your system (default=use our own)
+  --with-system-libtldl   Use the libltdl installed in your system (default=use our own)
   --with-system-libtool   Use the libtool installed in your system (default=use our own)
   --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
   --with-pic              try to use only PIC/non-PIC objects [default=use
@@ -21388,8 +21388,9 @@ fi
 OPENSSL_LIBS=
 if test "x$WITH_OPENSSL" = xyes; then
   old_LIBS=$LIBS
+  old_LDFLAGS="$LDFLAGS"
   if test "x$OPENSSL_LIB_DIR" != "x"; then
-    LIBS="-L$OPENSSL_LIB_DIR $LIBS"
+    LDFLAGS="$LDFLAGS -L$OPENSSL_LIB_DIR"
   fi
   { echo "$as_me:$LINENO: checking for DH_new in -lcrypto" >&5
 echo $ECHO_N "checking for DH_new in -lcrypto... $ECHO_C" >&6; }
@@ -21539,6 +21540,7 @@ fi
 fi
 
   LIBS=$old_LIBS
+  LDFLAGS="$old_LDFLAGS"
 fi
 
 
@@ -24985,7 +24987,7 @@ _ACEOF
 cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
- static __thread int val; int main() { return 0; }
+ static __thread int val; int main(int argc, char *argv[]) { return val = argc; }
 _ACEOF
 rm -f conftest$ac_exeext
 if { (ac_try="$ac_link"
@@ -25031,6 +25033,99 @@ _ACEOF
     fi
 
 
+
+old_LIBS="$LIBS"
+LIBS="$LIBS $LIBLTDL"
+{ echo "$as_me:$LINENO: checking for lt_dladvise_init" >&5
+echo $ECHO_N "checking for lt_dladvise_init... $ECHO_C" >&6; }
+if test "${ac_cv_func_lt_dladvise_init+set}" = set; then
+  echo $ECHO_N "(cached) $ECHO_C" >&6
+else
+  cat >conftest.$ac_ext <<_ACEOF
+/* confdefs.h.  */
+_ACEOF
+cat confdefs.h >>conftest.$ac_ext
+cat >>conftest.$ac_ext <<_ACEOF
+/* end confdefs.h.  */
+/* Define lt_dladvise_init to an innocuous variant, in case <limits.h> declares lt_dladvise_init.
+   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
+#define lt_dladvise_init innocuous_lt_dladvise_init
+
+/* System header to define __stub macros and hopefully few prototypes,
+    which can conflict with char lt_dladvise_init (); below.
+    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
+    <limits.h> exists even on freestanding compilers.  */
+
+#ifdef __STDC__
+# include <limits.h>
+#else
+# include <assert.h>
+#endif
+
+#undef lt_dladvise_init
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char lt_dladvise_init ();
+/* The GNU C library defines this for functions which it implements
+    to always fail with ENOSYS.  Some functions are actually named
+    something starting with __ and the normal name is an alias.  */
+#if defined __stub_lt_dladvise_init || defined __stub___lt_dladvise_init
+choke me
+#endif
+
+int
+main ()
+{
+return lt_dladvise_init ();
+  ;
+  return 0;
+}
+_ACEOF
+rm -f conftest.$ac_objext conftest$ac_exeext
+if { (ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
+  (eval "$ac_link") 2>conftest.er1
+  ac_status=$?
+  grep -v '^ *+' conftest.er1 >conftest.err
+  rm -f conftest.er1
+  cat conftest.err >&5
+  echo "$as_me:$LINENO: \$? = $ac_status" >&5
+  (exit $ac_status); } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext &&
+       $as_test_x conftest$ac_exeext; then
+  ac_cv_func_lt_dladvise_init=yes
+else
+  echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_cv_func_lt_dladvise_init=no
+fi
+
+rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
+      conftest$ac_exeext conftest.$ac_ext
+fi
+{ echo "$as_me:$LINENO: result: $ac_cv_func_lt_dladvise_init" >&5
+echo "${ECHO_T}$ac_cv_func_lt_dladvise_init" >&6; }
+if test $ac_cv_func_lt_dladvise_init = yes; then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_HAVE_LT_DLADVISE_INIT
+_ACEOF
+
+fi
+
+LIBS="$old_LIBS"
 
 { echo "$as_me:$LINENO: checking for crypt in -lcrypt" >&5
 echo $ECHO_N "checking for crypt in -lcrypt... $ECHO_C" >&6; }
