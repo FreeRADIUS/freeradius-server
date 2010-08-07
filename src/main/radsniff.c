@@ -161,7 +161,7 @@ static void sort(RADIUS_PACKET *packet)
 }
 
 #define USEC 1000000
-static void tv_sub(struct timeval *end, struct timeval *start,
+static void tv_sub(const struct timeval *end, const struct timeval *start,
 		   struct timeval *elapsed)
 {
 	elapsed->tv_sec = end->tv_sec - start->tv_sec;
@@ -425,19 +425,23 @@ int main(int argc, char *argv[])
 	/* Open the device so we can spy */
 	if (filename) {
 		descr = pcap_open_offline(filename, errbuf);
+	} else if (!dev) {
+		fprintf(stderr, "radsniff: No filename or device was specified.\n");
+		exit(1);
+
 	} else {
 		descr = pcap_open_live(dev, SNAPLEN, 1, 0, errbuf);
 	}
 	if (descr == NULL)
 	{
-		printf("radsniff: pcap_open_live failed (%s)\n", errbuf);
+		fprintf(stderr, "radsniff: pcap_open_live failed (%s)\n", errbuf);
 		exit(1);
 	}
 
 	/* Apply the rules */
 	if( pcap_compile(descr, &fp, pcap_filter, 0, netp) == -1)
 	{
-		printf("radsniff: pcap_compile failed\n");
+		fprintf(stderr, "radsniff: pcap_compile failed\n");
 		exit(1);
 	}
 	if (pcap_setfilter(descr, &fp) == -1)
