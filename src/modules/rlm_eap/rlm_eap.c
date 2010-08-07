@@ -257,7 +257,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 
 	inst = (rlm_eap_t *) instance;
 
-	if (!pairfind(request->packet->vps, PW_EAP_MESSAGE)) {
+	if (!pairfind(request->packet->vps, PW_EAP_MESSAGE, 0)) {
 		RDEBUG("ERROR: You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
 		return RLM_MODULE_INVALID;
 	}
