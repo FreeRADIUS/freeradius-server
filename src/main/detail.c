@@ -695,9 +695,9 @@ int detail_recv(rad_listen_t *listener,
 	/*
 	 *	Set the transmission count.
 	 */
-	vp = pairfind(packet->vps, PW_PACKET_TRANSMIT_COUNTER);
+	vp = pairfind(packet->vps, PW_PACKET_TRANSMIT_COUNTER, 0);
 	if (!vp) {
-		vp = paircreate(PW_PACKET_TRANSMIT_COUNTER, PW_TYPE_INTEGER);
+		vp = paircreate(PW_PACKET_TRANSMIT_COUNTER, 0, PW_TYPE_INTEGER);
 		rad_assert(vp != NULL);
 		pairadd(&packet->vps, vp);
 	}
