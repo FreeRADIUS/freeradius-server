@@ -2,9 +2,19 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	Feature improvements
 	* Install the "radcrypt" program.
 	* Enable radclient to send requests containing MS-CHAPv1
+	  Send packets with: MS-CHAP-Password = "password".  It will
+	  be automatically converted to the correct MS-CHAP attributes.
+	* Added "-t" command-line option to radtest.  You can use "-t pap",
+	 "-t chap", or "-t mschap".
 	* Make the "inner-tunnel" virtual server listen on 127.0.0.1:18120
 	  This change makes PEAP testing much easier.
 	* Added more documentation and examples for the "passwd" module.
+	* Added dictionaries for RFC 5607 and RFC 5904.
+	* Added note in proxy.conf we recommend "require_message_authenticator"
+	  be set for sending packets to home servers.
+	* Added example of second "files" configuration, with documentation.
+	  This shows how and where to use two instances of a module.
+	* Updated radsniff to have it write pcap files, too.  See '-w'.
 
 	Bug fixes
 	* Fix endless loop when there are multiple sub-options for
@@ -58,10 +68,30 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	* Use MS-CHAP-User-Name as Name field from EAP-MSCHAPv2 for MS-CHAP
 	  calculations.  It *MAY* be different (upper / lower case) from 
 	  the User-Name attribute.  Closes bug #17.
-	* If the EAP module fails, more SSL errors are now in
-	  Module-Failure-Message.
+	* If the EAP-TLS methods have problems, more SSL errors are now
+	  available in the Module-Failure-Message attribute.
 	* Update Oracle configure scripts.  Closes bug #57.
 	* Added text to DESC fields of doc/examples/openldap.schema
+	* Updated more documentation to use "Restructured Text" format.
+	  Thanks to James Lockie.
+	* Fixed typos in raddb/sql/mssql/dialup.conf.  Closes bug #11.
+	* Return error for potential proxy loops when using "-XC"
+	* Produce better error messages when slow databases block
+	  the server.
+	* Added notes on DHCP broadcast packets for FreeBSD.
+	* Fixed crash when parsing some date strings.  Closes bug #98
+	* Improperly formatted Attributes are now printed as "Attr-##".
+	  If they are not correct, they should not use the dictionary name.
+	* Fix rlm_digest to be check the format of the Digest attributes,
+	  and return "noop" rather than "fail" if they're not right.
+	* Enable "digest" in raddb/sites-available/default.  This change
+	  enables digest authentication to work "out of the box".
+	* Be less aggressive about marking home servers as zombie.
+	  If they are responding to some packets, they are still alive.
+	* Added Packet-Transmit-Counter, to track detail file retransmits.
+	  Closes bug #13.
+	* Added configure check for lt_dladvise_init().  If it exists, then
+	  using it solves some issues related to libraries loading libraries.
 
 FreeRADIUS 2.1.9 Mon 24 May 8:00:00 CEST 2010, urgency=medium
 	Feature improvements
