@@ -229,10 +229,15 @@ static void eaplist_expire(rlm_eap_t *inst, time_t timestamp)
 	 *	handlers to be deleted.
 	 *
 	 */
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < 3; i++) {
 		handler = inst->session_head;
-		if (handler &&
-		    ((timestamp - handler->timestamp) > inst->timer_limit)) {
+		if (!handler) break;
+
+		/*
+		 *	Expire entries from the start of the list.
+		 *	They should be the oldest ones.
+		 */
+		if ((timestamp - handler->timestamp) > inst->timer_limit) {
 			rbnode_t *node;
 			node = rbtree_find(inst->session_tree, handler);
 			rad_assert(node != NULL);
