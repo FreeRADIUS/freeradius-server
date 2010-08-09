@@ -112,19 +112,32 @@ void eap_ds_free(EAP_DS **eap_ds_p)
 /*
  * Allocate a new EAP_HANDLER
  */
-EAP_HANDLER *eap_handler_alloc(void)
+EAP_HANDLER *eap_handler_alloc(rlm_eap_t *inst)
 {
 	EAP_HANDLER	*handler;
 
 	handler = rad_malloc(sizeof(EAP_HANDLER));
 	memset(handler, 0, sizeof(EAP_HANDLER));
+
+	if (fr_debug_flag && inst->handler_tree) {
+		pthread_mutex_lock(&(inst->session_mutex));
+		rbtree_insert(inst->handler_tree, handler);
+		pthread_mutex_unlock(&(inst->session_mutex));
+	
+	}
 	return handler;
 }
 
-void eap_handler_free(EAP_HANDLER *handler)
+void eap_handler_free(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
 	if (!handler)
 		return;
+
+	if (inst->handler_tree) {
+		pthread_mutex_lock(&(inst->session_mutex));
+		rbtree_deletebydata(inst->handler_tree, handler);
+		pthread_mutex_unlock(&(inst->session_mutex));
+	}
 
 	if (handler->identity) {
 		free(handler->identity);
@@ -147,6 +160,49 @@ void eap_handler_free(EAP_HANDLER *handler)
 	free(handler);
 }
 
+
+typedef struct check_handler_t {
+	rlm_eap_t	*inst;
+	EAP_HANDLER	*handler;
+	int		trips;
+} check_handler_t;
+
+static void check_handler(void *data)
+{
+	check_handler_t *check = data;
+
+	if (!check) return;
+	if (!check->inst || !check->handler) {
+		free(check);
+		return;
+	}
+
+	pthread_mutex_lock(&(check->inst->session_mutex));
+	if (!rbtree_finddata(check->inst->handler_tree, check->handler)) {
+		goto done;
+	}
+
+	if (check->handler->trips > check->trips) {
+		goto done;
+	}
+
+	if (check->handler->tls && !check->handler->finished) {
+		DEBUG("WARNING: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		DEBUG("WARNING: !! EAP session for state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!",
+		      check->handler->state[0], check->handler->state[1],
+		      check->handler->state[2], check->handler->state[3],
+		      check->handler->state[4], check->handler->state[5],
+		      check->handler->state[6], check->handler->state[7]);
+
+		DEBUG("WARNING: !! Please read http://wiki.freeradius.org/Certificate_Compatibility");
+		DEBUG("WARNING: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+	}
+
+done:
+	pthread_mutex_unlock(&(check->inst->session_mutex));
+	free(check);
+}
+
 void eaptype_free(EAP_TYPES *i)
 {
 	if (i->type->detach) (i->type->detach)(i->type_data);
@@ -162,7 +218,7 @@ void eaplist_free(rlm_eap_t *inst)
 
        	for (node = inst->session_head; node != NULL; node = next) {
 		next = node->next;
-		eap_handler_free(node);
+		eap_handler_free(inst, node);
 	}
 
 	inst->session_head = inst->session_tail = NULL;
@@ -183,6 +239,7 @@ static uint32_t eap_rand(fr_randctx *ctx)
 
 	return num;
 }
+
 
 static EAP_HANDLER *eaplist_delete(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
@@ -253,7 +310,7 @@ static void eaplist_expire(rlm_eap_t *inst, time_t timestamp)
 				inst->session_head = NULL;
 				inst->session_tail = NULL;
 			}
-			eap_handler_free(handler);
+			eap_handler_free(inst, handler);
 		}
 	}
 }
@@ -342,6 +399,18 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 *	Big-time failure.
 	 */
 	status = rbtree_insert(inst->session_tree, handler);
+
+	/*
+	 *	Catch Access-Challenge without response.
+	 */
+	if (fr_debug_flag) {
+		check_handler_t *check = rad_malloc(sizeof(*check));
+
+		check->inst = inst;
+		check->handler = handler;
+		check->trips = handler->trips;
+		request_data_add(request, inst, 0, check, check_handler);
+	}
 
 	if (status) {
 		EAP_HANDLER *prev;
@@ -443,7 +512,7 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 
 	if (handler->trips >= 50) {
 		RDEBUG2("More than 50 authentication packets for this EAP session.  Aborted.");
-		eap_handler_free(handler);
+		eap_handler_free(inst, handler);
 		return NULL;
 	}
 	handler->trips++;

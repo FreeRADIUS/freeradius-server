@@ -51,6 +51,7 @@ typedef struct eap_types_t {
 typedef struct rlm_eap_t {
 	rbtree_t	*session_tree;
 	EAP_HANDLER	*session_head, *session_tail;
+	rbtree_t	*handler_tree; /* for debugging only */
 	EAP_TYPES 	*types[PW_EAP_MAX_TYPES + 1];
 
 	/*
@@ -100,10 +101,10 @@ EAP_HANDLER 	*eap_handler(rlm_eap_t *inst, eap_packet_t **eap_msg, REQUEST *requ
 /* Memory Management */
 EAP_PACKET  	*eap_packet_alloc(void);
 EAP_DS      	*eap_ds_alloc(void);
-EAP_HANDLER 	*eap_handler_alloc(void);
+EAP_HANDLER 	*eap_handler_alloc(rlm_eap_t *inst);
 void	    	eap_packet_free(EAP_PACKET **eap_packet);
 void	    	eap_ds_free(EAP_DS **eap_ds);
-void	    	eap_handler_free(EAP_HANDLER *handler);
+void	    	eap_handler_free(rlm_eap_t *inst, EAP_HANDLER *handler);
 
 int 	    	eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler);
 EAP_HANDLER 	*eaplist_find(rlm_eap_t *inst, REQUEST *request,

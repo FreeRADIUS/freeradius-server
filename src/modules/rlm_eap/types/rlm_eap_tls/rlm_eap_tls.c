@@ -851,6 +851,9 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 
 	inst = (eap_tls_t *)type_arg;
 
+	handler->tls = TRUE;
+	handler->finished = FALSE;
+
 	/*
 	 *	Manually flush the sessions every so often.  If HALF
 	 *	of the session lifetime has passed since we last
