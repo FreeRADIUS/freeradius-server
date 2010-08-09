@@ -56,6 +56,7 @@ static int eap_detach(void *instance)
 	inst = (rlm_eap_t *)instance;
 
 	rbtree_free(inst->session_tree);
+	if (inst->handler_tree) rbtree_free(inst->handler_tree);
 	inst->session_tree = NULL;
 	eaplist_free(inst);
 
@@ -98,6 +99,15 @@ static int eap_handler_cmp(const void *a, const void *b)
 	}
 
 	return 0;
+}
+
+
+/*
+ *	Compare two handler pointers
+ */
+static int eap_handler_ptr_cmp(const void *a, const void *b)
+{
+  return (a - b);
 }
 
 
@@ -238,6 +248,15 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+	if (fr_debug_flag) {
+		inst->handler_tree = rbtree_create(eap_handler_ptr_cmp, NULL, 0);
+		if (!inst->handler_tree) {
+			radlog(L_ERR|L_CONS, "rlm_eap: Cannot initialize tree");
+			eap_detach(inst);
+			return -1;
+		}
+	}
+
 	pthread_mutex_init(&(inst->session_mutex), NULL);
 
 	*instance = inst;
@@ -293,7 +312,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 	 */
 	if (rcode == EAP_INVALID) {
 		eap_fail(handler);
-		eap_handler_free(handler);
+		eap_handler_free(inst, handler);
 		RDEBUG2("Failed in EAP select");
 		return RLM_MODULE_INVALID;
 	}
@@ -405,14 +424,14 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 */
 		if (!eaplist_add(inst, handler)) {
 			eap_fail(handler);
-			eap_handler_free(handler);
+			eap_handler_free(inst, handler);
 			return RLM_MODULE_FAIL;
 		}
 
 	} else {
 		RDEBUG2("Freeing handler");
 		/* handler is not required any more, free it now */
-		eap_handler_free(handler);
+		eap_handler_free(inst, handler);
 	}
 
 	/*
@@ -561,7 +580,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 							      REQUEST_DATA_EAP_TUNNEL_CALLBACK);
 		if (!data) {
 			radlog_request(L_ERR, 0, request, "Failed to retrieve callback for tunneled session!");
-			eap_handler_free(handler);
+			eap_handler_free(inst, handler);
 			return RLM_MODULE_FAIL;
 		}
 
@@ -574,7 +593,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		if (rcode == 0) {
 			RDEBUG2("Failed in post-proxy callback");
 			eap_fail(handler);
-			eap_handler_free(handler);
+			eap_handler_free(inst, handler);
 			return RLM_MODULE_REJECT;
 		}
 
@@ -592,14 +611,14 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 		    (handler->eap_ds->request->type.type >= PW_EAP_MD5)) {
 			if (!eaplist_add(inst, handler)) {
 				eap_fail(handler);
-				eap_handler_free(handler);
+				eap_handler_free(inst, handler);
 				return RLM_MODULE_FAIL;
 			}
 			
 		} else {	/* couldn't have been LEAP, there's no tunnel */
 			RDEBUG2("Freeing handler");
 			/* handler is not required any more, free it now */
-			eap_handler_free(handler);
+			eap_handler_free(inst, handler);
 		}
 
 		/*

@@ -1051,7 +1051,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
                        }
 	       }
 	} else {		/* packet was EAP identity */
-		handler = eap_handler_alloc();
+		handler = eap_handler_alloc(inst);
 		if (handler == NULL) {
 			RDEBUG("Out of memory.");
 			free(*eap_packet_p);
@@ -1067,7 +1067,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 			RDEBUG("Identity Unknown, authentication failed");
 			free(*eap_packet_p);
 			*eap_packet_p = NULL;
-			eap_handler_free(handler);
+			eap_handler_free(inst, handler);
 			return NULL;
 		}
 
@@ -1086,7 +1086,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
                                RDEBUG("Out of memory");
                                free(*eap_packet_p);
                                *eap_packet_p = NULL;
-			       eap_handler_free(handler);
+			       eap_handler_free(inst, handler);
                                return NULL;
                        }
                        vp->next = request->packet->vps;
@@ -1103,7 +1103,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
                                RDEBUG("Identity does not match User-Name, setting from EAP Identity.");
                                free(*eap_packet_p);
                                *eap_packet_p = NULL;
-                               eap_handler_free(handler);
+                               eap_handler_free(inst, handler);
                                return NULL;
                        }
 	       }
@@ -1113,7 +1113,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 	if (handler->eap_ds == NULL) {
 		free(*eap_packet_p);
 		*eap_packet_p = NULL;
-		eap_handler_free(handler);
+		eap_handler_free(inst, handler);
 		return NULL;
 	}
 

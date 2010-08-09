@@ -109,6 +109,7 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 	REQUEST *request = handler->request;
 	tls_session_t *tls_session = handler->opaque;
 
+	handler->finished = TRUE;
 	reply.code = EAPTLS_SUCCESS;
 	reply.length = TLS_HEADER_LEN;
 	reply.flags = peap_flag;
@@ -209,6 +210,7 @@ int eaptls_fail(EAP_HANDLER *handler, int peap_flag)
 	EAPTLS_PACKET	reply;
 	tls_session_t *tls_session = handler->opaque;
 
+	handler->finished = TRUE;
 	reply.code = EAPTLS_FAIL;
 	reply.length = TLS_HEADER_LEN;
 	reply.flags = peap_flag;
