@@ -61,12 +61,13 @@ void cbtls_info(const SSL *s, int where, int ret)
 			radlog(L_ERR, "%s:failed in %s", str, state);
 
 			if (request) {
+				VALUE_PAIR *vp;
 				char buffer[128];
 
 				snprintf(buffer, sizeof(buffer), "%s:failed in %s");
 
-				radius_pairmake(request, &request->packet->vps,
-						"Module-Failure-Message", buffer, T_OP_ADD);
+				vp = pairmake("Module-Failure-Message", buffer, T_OP_ADD);
+				if (vp) pairadd(&request->packet->vps, vp);
 			}
 
 		} else if (ret < 0) {

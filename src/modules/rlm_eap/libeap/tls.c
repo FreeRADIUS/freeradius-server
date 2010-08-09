@@ -106,9 +106,14 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, const char *text)
 
 	if ((l = ERR_get_error()) != 0) {
 		const char *p = ERR_error_string(l, NULL);
+		VALUE_PAIR *vp;
+
 		radlog(L_ERR, "rlm_eap: SSL error %s", p);
-		radius_pairmake(request, &request->packet->vps,
-				"Module-Failure-Message", p, T_OP_ADD);
+
+		if (request) {
+			vp = pairmake("Module-Failure-Message", p, T_OP_ADD);
+			if (vp) pairadd(&request->packet->vps, vp);
+		}
 	}
 	e = SSL_get_error(s, ret);
 
