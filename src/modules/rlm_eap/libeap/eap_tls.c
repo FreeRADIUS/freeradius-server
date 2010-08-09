@@ -149,10 +149,13 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 		RDEBUG2("Saving response in the cache");
 		
 		vp = paircopy2(request->reply->vps, PW_USER_NAME);
-		pairadd(&vps, vp);
+		if (vp) pairadd(&vps, vp);
 		
 		vp = paircopy2(request->packet->vps, PW_STRIPPED_USER_NAME);
-		pairadd(&vps, vp);
+		if (vp) pairadd(&vps, vp);
+		
+		vp = paircopy2(request->reply->vps, PW_CACHED_SESSION_POLICY);
+		if (vp) pairadd(&vps, vp);
 		
 		if (vps) {
 			SSL_SESSION_set_ex_data(tls_session->ssl->session,
