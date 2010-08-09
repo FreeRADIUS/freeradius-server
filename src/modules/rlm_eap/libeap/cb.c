@@ -58,7 +58,17 @@ void cbtls_info(const SSL *s, int where, int ret)
 			SSL_alert_desc_string_long(ret));
 	} else if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			radlog(L_ERR, "%s:failed in %s\n", str, state);
+			radlog(L_ERR, "%s:failed in %s", str, state);
+
+			if (request) {
+				char buffer[128];
+
+				snprintf(buffer, sizeof(buffer), "%s:failed in %s");
+
+				radius_pairmake(request, &request->packet->vps,
+						"Module-Failure-Message", buffer, T_OP_ADD);
+			}
+
 		} else if (ret < 0) {
 			if (SSL_want_read(s)) {
 				RDEBUG2("%s: Need to read more data: %s",
