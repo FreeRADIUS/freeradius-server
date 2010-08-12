@@ -204,6 +204,8 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 	for (i = 0; i < retries; i++) {
 		fd_set		rdfdesc;
 
+		debug_packet(req, R_SENT);
+
 		rad_send(req, NULL, secret);
 
 		/* And wait for reply, timing out as necessary */
@@ -693,8 +695,6 @@ static int respond_eap_sim(RADIUS_PACKET *req,
 	 */
 	unmap_eapsim_types(req);
 
-	debug_packet(req, R_SENT);
-
 	if((vp = pairfind(req->vps, ATTRIBUTE_EAP_SIM_SUBTYPE, 0)) == NULL)
 	{
 		return 0;
@@ -861,8 +861,6 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 
  again:
 	rep->id++;
-
-	debug_packet(rep, R_SENT);
 
 	/*
 	 * if there are EAP types, encode them into an EAP-Message
