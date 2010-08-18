@@ -116,6 +116,7 @@ typedef struct _eap_handler {
 
 	int		tls;
 	int		finished;
+	VALUE_PAIR	*certs;
 } EAP_HANDLER;
 
 /*
