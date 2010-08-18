@@ -214,6 +214,18 @@ static SSL_SESSION *cbtls_get_session(UNUSED SSL *s,
 }
 
 /*
+ *	For creating certificate attributes.
+ */
+static const char *cert_attr_names[5][2] = {
+  { "TLS-Client-Cert-Serial",		"TLS-Cert-Serial" },
+  { "TLS-Client-Cert-Expiration",	"TLS-Cert-Expiraton" },
+  { "TLS-Client-Cert-Issuer",		"TLS-Cert-Issuer" },
+  { "TLS-Client-Cert-Subject",		"TLS-Cert-Subject" },
+  { "TLS-Client-Cert-Common-Name",	"TLS-Cert-Common-Name" }
+};
+
+
+/*
  *	Before trusting a certificate, you must make sure that the
  *	certificate is 'valid'. There are several steps that your
  *	application can take in determining if a certificate is
@@ -244,23 +256,23 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	char issuer[1024]; /* Used for the issuer name */
 	char common_name[1024];
 	char cn_str[1024];
+	char buf[64];
 	EAP_HANDLER *handler = NULL;
 	X509 *client_cert;
 	SSL *ssl;
-	int err, depth;
+	int err, depth, lookup;
 	EAP_TLS_CONF *conf;
 	int my_ok = ok;
 	REQUEST *request;
+	ASN1_INTEGER *sn = NULL;
+	ASN1_TIME *asn_time = NULL;
 
 	client_cert = X509_STORE_CTX_get_current_cert(ctx);
 	err = X509_STORE_CTX_get_error(ctx);
 	depth = X509_STORE_CTX_get_error_depth(ctx);
 
-	if (!my_ok) {
-		radlog(L_ERR,"--> verify error:num=%d:%s\n",err,
-			X509_verify_cert_error_string(err));
-		return my_ok;
-	}
+	lookup = depth;
+	if (lookup > 1) lookup = 1;
 
 	/*
 	 * Retrieve the pointer to the SSL of the connection currently treated
@@ -272,16 +284,54 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	conf = (EAP_TLS_CONF *)SSL_get_ex_data(ssl, 1);
 
 	/*
+	 *	Get the Serial Number
+	 */
+	buf[0] = '\0';
+	sn = X509_get_serialNumber(client_cert);
+	if (sn && (sn->length < (sizeof(buf) / 2))) {
+		char *p = buf;
+		int i;
+
+		for (i = 0; i < sn->length; i++) {
+			sprintf(buf, "%02x", (unsigned int)sn->data[i]);
+			p += 2;
+		}
+		pairadd(&handler->certs,
+			pairmake(cert_attr_names[0][lookup], buf, T_OP_SET));
+	}
+
+
+	/*
+	 *	Get the Expiration Date
+	 */
+	buf[0] = '\0';
+	asn_time = X509_get_notAfter(client_cert);
+	if (asn_time && (asn_time->length < MAX_STRING_LEN)) {
+		memcpy(buf, (char*) asn_time->data, asn_time->length);
+		buf[asn_time->length] = '\0';
+		pairadd(&handler->certs,
+			pairmake(cert_attr_names[1][lookup], buf, T_OP_SET));
+	}
+
+	/*
 	 *	Get the Subject & Issuer
 	 */
 	subject[0] = issuer[0] = '\0';
 	X509_NAME_oneline(X509_get_subject_name(client_cert), subject,
 			  sizeof(subject));
+	subject[sizeof(subject) - 1] = '\0';
+	if (subject[0] && (strlen(subject) < MAX_STRING_LEN)) {
+		pairadd(&handler->certs,
+			pairmake(cert_attr_names[2][lookup], subject, T_OP_SET));
+	}
+
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
 			  sizeof(issuer));
-
-	subject[sizeof(subject) - 1] = '\0';
 	issuer[sizeof(issuer) - 1] = '\0';
+	if (issuer[0] && (strlen(issuer) < MAX_STRING_LEN)) {
+		pairadd(&handler->certs,
+			pairmake(cert_attr_names[3][lookup], issuer, T_OP_SET));
+	}
 
 	/*
 	 *	Get the Common Name
@@ -289,6 +339,18 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_NAME_get_text_by_NID(X509_get_subject_name(client_cert),
 				  NID_commonName, common_name, sizeof(common_name));
 	common_name[sizeof(common_name) - 1] = '\0';
+	if (common_name[0] && (strlen(common_name) < MAX_STRING_LEN)) {
+		pairadd(&handler->certs,
+			pairmake(cert_attr_names[4][lookup], common_name, T_OP_SET));
+	}
+
+	if (!my_ok) {
+		const char *p = X509_verify_cert_error_string(err);
+		radlog(L_ERR,"--> verify error:num=%d:%s\n",err, p);
+		radius_pairmake(request, &request->packet->vps,
+				"Module-Failure-Message", p, T_OP_SET);
+		return my_ok;
+	}
 
 	switch (ctx->error) {
 

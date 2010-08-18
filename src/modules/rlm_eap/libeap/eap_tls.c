@@ -840,6 +840,8 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	REQUEST *request = handler->request;
 
 	RDEBUG2("processing EAP-TLS");
+	if (handler->certs) pairadd(&request->packet->vps,
+				    paircopy(handler->certs));
 
 	/* This case is when SSL generates Alert then we
 	 * send that alert to the client and then send the EAP-Failure

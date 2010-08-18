@@ -157,6 +157,8 @@ void eap_handler_free(rlm_eap_t *inst, EAP_HANDLER *handler)
 	handler->opaque = NULL;
 	handler->free_opaque = NULL;
 
+	if (handler->certs) pairfree(&handler->certs);
+
 	free(handler);
 }
 

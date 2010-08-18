@@ -497,6 +497,31 @@ post-auth {
 	#
 #	wimax
 
+	#  If there is a client certificate (EAP-TLS, sometimes PEAP
+	#  and TTLS), then some attributes are filled out after the
+	#  certificate verification has been performed.  These fields
+	#  MAY be available during the authentication, or they may be
+	#  available only in the "post-auth" section.
+	#
+	#  The first set of attributes contains information about the
+	#  CA which is being used.  The second contains information
+	#  about the client certificate (if available).
+#
+#	update reply {
+#	       Reply-Message += "%{TLS-Cert-Serial}"
+#	       Reply-Message += "%{TLS-Cert-Expiration}"
+#	       Reply-Message += "%{TLS-Cert-Subject}"
+#	       Reply-Message += "%{TLS-Cert-Issuer}"
+#	       Reply-Message += "%{TLS-Cert-Common-Name}"
+#
+#	       Reply-Message += "%{TLS-Client-Cert-Serial}"
+#	       Reply-Message += "%{TLS-Client-Cert-Expiration}"
+#	       Reply-Message += "%{TLS-Client-Cert-Subject}"
+#	       Reply-Message += "%{TLS-Client-Cert-Issuer}"
+#	       Reply-Message += "%{TLS-Client-Cert-Common-Name}"
+#x	}
+
+
 	#  If the WiMAX module did it's work, you may want to do more
 	#  things here, like delete the MS-MPPE-*-Key attributes.
 	#
