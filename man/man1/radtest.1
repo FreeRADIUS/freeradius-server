@@ -24,9 +24,10 @@ way to test a radius server.
 The directory that contains the RADIUS dictionary files. Defaults to
 \fI/etc/raddb\fP.
 
-.IP "\-t \fIpap/chap/mschap\fP"
-Choose the authentiction method to use.  e.g. "-t pap", or "-t
-mschap".  Defaults to "pap".
+.IP "\-t \fIpap/chap/mschap/eap-md5\fP"
+Choose the authentiction method to use.  e.g. "-t pap", "-t chap", "-t
+mschap", or "-t eap-md5",.  Defaults to "pap".  Using EAP-MD5 requires
+that the "radeapclient" program is installed.
 
 .IP "\-x"
 Enables debugging output for the RADIUS client.
