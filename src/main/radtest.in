@@ -13,7 +13,8 @@ bindir="@bindir@"
 usage() {
 	echo "Usage: radtest [OPTIONS] user passwd radius-server[:port] nas-port-number secret [ppphint] [nasname]" >&2
 	echo "        -d RADIUS_DIR       Set radius directory" >&2
-	echo "        -t pap/chap/mschap  Set authentication method" >&2
+	echo "        -t <type>           Set authentication method" >&2
+	echo "                            type can be pap, chap, mschap, or eap-md5" >&2
 	echo "        -x                  Enable debug output" >&2
 	exit 1
 }
@@ -24,11 +25,14 @@ then
 	radclient=./radclient
 fi
 
+# radeapclient is used for EAP-MD5.
+radeapclient=$bindir/radeapclient
+
 OPTIONS=
 PASSWORD="User-Password"
 
 #  We need at LEAST these many options
-if [ $# -lt 5 ] || [ $# -gt 7 ]
+if [ $# -lt 5 ]
 then
 	usage
 fi
@@ -57,6 +61,15 @@ do
 				;;
 			mschap)
 				PASSWORD="MS-CHAP-Password"
+				;;
+			eap-md5)
+				PASSWORD="User-Password"
+				if [ ! -x "$radeapclient" ]
+				then
+				    echo "radtest: No 'radeapclient' program was found.  Cannot perform EAP-MD5." >&1
+				    exit 1
+				fi
+				radclient="$radeapclient"
 				;;
 			*)
 				usage
@@ -89,6 +102,12 @@ fi
 	echo "$PASSWORD = \"$2\""
 	echo "NAS-IP-Address = $nas"
 	echo "NAS-Port = $4"
+	if [ "$radclient" = "$radeapclient" ]
+	then
+	    echo "EAP-Code = Response"
+	    echo "EAP-Type-Identity = \"$1\""
+	    echo "Message-Authenticator = 0x00"
+	fi
 	if [ "$6" ]
 	then
 		echo "Framed-Protocol = PPP"
