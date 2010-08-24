@@ -1294,6 +1294,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 *	necessary, in order to permit this overflow.
 		 */
 		if ((total_length + len) > MAX_PACKET_LEN) {
+			DEBUG("WARNING: Attributes are too long for packet.  Discarding data past %d bytes", total_length);
 			break;
 		}
 
