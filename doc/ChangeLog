@@ -5,7 +5,7 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	  Send packets with: MS-CHAP-Password = "password".  It will
 	  be automatically converted to the correct MS-CHAP attributes.
 	* Added "-t" command-line option to radtest.  You can use "-t pap",
-	 "-t chap", or "-t mschap".
+	 "-t chap", "-t mschap", or "-t eap-md5".  The default is "-t pap"
 	* Make the "inner-tunnel" virtual server listen on 127.0.0.1:18120
 	  This change makes PEAP testing much easier.
 	* Added more documentation and examples for the "passwd" module.
@@ -15,6 +15,12 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	* Added example of second "files" configuration, with documentation.
 	  This shows how and where to use two instances of a module.
 	* Updated radsniff to have it write pcap files, too.  See '-w'.
+	* Print out large WARNING message if we send an Access-Challenge
+	  for EAP, and receive no follow-up messages from the client.
+	* Added Cached-Session-Policy for EAP session resumption.  See
+	  raddb/eap.conf.
+	* Added support for TLS-Cert-* attributes. For details, see
+	  raddb/sites-available/default, "post-auth" section.
 
 	Bug fixes
 	* Fix endless loop when there are multiple sub-options for
@@ -66,7 +72,7 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	* Remove control socket on normal server exit.  If the server isn't
 	  running, the control socket should not exist.
 	* Use MS-CHAP-User-Name as Name field from EAP-MSCHAPv2 for MS-CHAP
-	  calculations.  It *MAY* be different (upper / lower case) from 
+	  calculations.  It *MAY* be different (upper / lower case) from
 	  the User-Name attribute.  Closes bug #17.
 	* If the EAP-TLS methods have problems, more SSL errors are now
 	  available in the Module-Failure-Message attribute.
@@ -92,6 +98,8 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	  Closes bug #13.
 	* Added configure check for lt_dladvise_init().  If it exists, then
 	  using it solves some issues related to libraries loading libraries.
+	* Added indexes to the MySQL IP Pool schema.
+	* Print WARNING message if too many attributes are put into a packet.
 
 FreeRADIUS 2.1.9 Mon 24 May 8:00:00 CEST 2010, urgency=medium
 	Feature improvements
@@ -338,7 +346,7 @@ FreeRADIUS 2.1.6 Mon May 18 10:00:00 CEST 2009;   urgency=medium
 
 FreeRADIUS 2.1.5 Sun Jan 1 1:1:00 CEST 2009;  , urgency=medium
 	* Release number skipped due to procedural issues.
-	
+
 FreeRADIUS 2.1.4 Tue Mar 10 17:05:00 CEST 2009;  , urgency=medium
 	Feature improvements
 	* Permit multiple "-e" in radmin.
