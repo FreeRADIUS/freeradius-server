@@ -937,23 +937,8 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *	RFC format attributes take the fast path.
 	 */
 	if (vp->vendor == 0) {
-		len = rad_vp2rfc(packet, original, secret, vp,
-				 vp->attribute, start, room);
-		if (len < 0) return -1;
-
-		/*
-		 *	RFC 2865 section 5 says that zero-length
-		 *	attributes MUST NOT be sent.
-		 *
-		 *	... and the WiMAX forum ignores
-		 *	this... because of one vendor.  Don't they
-		 *	have anything better to do with their time?
-		 */
-		if ((len == 0) &&
-		    (vp->attribute != PW_CHARGEABLE_USER_IDENTITY)) return 0;
-
-		return len;
-
+		return rad_vp2rfc(packet, original, secret, vp,
+				  vp->attribute, start, room);
 	}
 
 	/*
@@ -1289,6 +1274,16 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		}
 
 		if (len < 0) return -1;
+
+		/*
+		 *	Failed to encode the attribute, likely because
+		 *	the packet is full.
+		 */
+		if ((len == 0) &&
+		    (total_length > (sizeof(data) - 2 - reply->length))) {
+			DEBUG("WARNING: Attributes are too long for packet.  Discarding data past %d bytes", total_length);
+			break;
+		}
 
 	next:
 		ptr += len;
