@@ -1,0 +1,15 @@
+# -*- text -*-
+#
+#  $Id$
+
+# This module loads RADIUS clients as needed, rather than when the server
+# starts.
+#
+#  There are no configuration entries for this module.
+#  For documentation, see the file:
+#
+#	raddb/sites-available/dynamic-clients 
+#
+dynamic_clients {
+
+}
