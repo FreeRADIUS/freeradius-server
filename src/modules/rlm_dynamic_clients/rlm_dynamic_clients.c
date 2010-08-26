@@ -99,9 +99,9 @@ static int dynamic_client_authorize(UNUSED void *instance, REQUEST *request)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
-module_t rlm_dynamic_client = {
+module_t rlm_dynamic_clients = {
 	RLM_MODULE_INIT,
-	"example",
+	"dynamic_clients",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	NULL,				/* instantiation */
 	NULL,				/* detach */
