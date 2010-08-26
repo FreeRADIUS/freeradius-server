@@ -89,6 +89,8 @@ typedef struct auth_req REQUEST;
 #ifndef WITHOUT_COMMAND_SOCKET
 #ifdef HAVE_SYS_UN_H
 #define WITH_COMMAND_SOCKET (1)
+#else
+#define WITHOUT_COMMAND_SOCKET (1)
 #endif
 #endif
 
