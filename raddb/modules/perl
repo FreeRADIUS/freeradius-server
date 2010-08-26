@@ -17,9 +17,9 @@ perl {
 	#  The following hashes are given to the module and
         #  filled with value-pairs (Attribute names and values)
 	#
-	#  %RAD_CHECK		Read-only	Check items
-	#  %RAD_REQUEST		Read-only	Attributes from the request
-	#  %RAD_REPLY		Read-write	Attributes for the reply
+	#  %RAD_CHECK		Check items
+	#  %RAD_REQUEST		Attributes from the request
+	#  %RAD_REPLY		Attributes for the reply
 	# 
 	#  The return codes from functions in the perl_script
 	#  are passed directly back to the server.  These

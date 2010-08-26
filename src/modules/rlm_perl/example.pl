@@ -22,6 +22,9 @@
 #
 # You can use every module that comes with your perl distribution!
 #
+# If you are using DBI and do some queries to DB, please be sure to
+# use the CLONE function to initialize the DBI connection to DB.
+#
 
 use strict;
 # use ...
