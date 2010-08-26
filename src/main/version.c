@@ -38,12 +38,45 @@ void NEVER_RETURNS version(void)
 	printf("Compilation flags: ");
 
 	/* here are all the conditional feature flags */
+#if defined(WITH_DHCP)
+	printf(" WITH_DHCP");
+#endif
+#if defined(WITH_VMPS)
+	printf(" WITH_VMPS");
+#endif
 #if defined(OSFC2)
 	printf(" OSFC2");
 #endif
+#if defined(WITHOUT_PROXY)
+	printf(" WITHOUT_PROXY");
+#endif
+#if defined(WITHOUT_DETAIL)
+	printf(" WITHOUT_DETAIL");
+#endif
+#if defined(WITHOUT_SESSION_MGMT)
+	printf(" WITHOUT_SESSION_MGMT");
+#endif
+#if defined(WITHOUT_UNLANG)
+	printf(" WITHOUT_UNLANG");
+#endif
+#if defined(WITHOUT_ACCOUNTING)
+	printf(" WITHOUT_ACCOUNTING");
+#endif
+#if defined(WITHOUT_DYNAMIC_CLIENTS)
+	printf(" WITHOUT_DYNAMIC_CLIENTS");
+#endif
+#if defined(WITHOUT_STATS)
+	printf(" WITHOUT_STATS");
+#endif
+#if defined(WITHOUT_COMMAND_SOCKET)
+	printf(" WITHOUT_COMMAND_SOCKET");
+#endif
+#if defined(WITHOUT_COA)
+	printf(" WITHOUT_COA");
+#endif
 	printf("\n");
 #endif
-	printf("Copyright (C) 1999-2009 The FreeRADIUS server project and contributors.\n");
+	printf("Copyright (C) 1999-2010 The FreeRADIUS server project and contributors.\n");
 	printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 	printf("PARTICULAR PURPOSE.\n");
 	printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
