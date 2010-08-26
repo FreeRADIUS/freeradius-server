@@ -54,6 +54,17 @@ client dynamic {
 	dynamic_clients = dynamic_client_server
 
 	#
+	#  The directory where client definitions are stored.  This
+	#  needs to be used ONLY if the client definitions are stored
+	#  in flat-text files.  Each file in that directory should be
+	#  ONE and only one client definition.  The name of the file
+	#  should be the IP address of the client.
+	#
+	#  If you are storing clients in SQL, this entry should not
+	#  be used.
+#	directory = ${confdir}/dynamic-clients/
+
+	#
 	#  Define the lifetime (in seconds) for dynamic clients.
 	#  They will be cached for this lifetime, and deleted afterwards.
 	#
