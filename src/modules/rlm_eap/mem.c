@@ -120,9 +120,9 @@ EAP_HANDLER *eap_handler_alloc(rlm_eap_t *inst)
 	memset(handler, 0, sizeof(EAP_HANDLER));
 
 	if (fr_debug_flag && inst->handler_tree) {
-		pthread_mutex_lock(&(inst->session_mutex));
+		pthread_mutex_lock(&(inst->handler_mutex));
 		rbtree_insert(inst->handler_tree, handler);
-		pthread_mutex_unlock(&(inst->session_mutex));
+		pthread_mutex_unlock(&(inst->handler_mutex));
 	
 	}
 	return handler;
@@ -134,9 +134,9 @@ void eap_handler_free(rlm_eap_t *inst, EAP_HANDLER *handler)
 		return;
 
 	if (inst->handler_tree) {
-		pthread_mutex_lock(&(inst->session_mutex));
+		pthread_mutex_lock(&(inst->handler_mutex));
 		rbtree_deletebydata(inst->handler_tree, handler);
-		pthread_mutex_unlock(&(inst->session_mutex));
+		pthread_mutex_unlock(&(inst->handler_mutex));
 	}
 
 	if (handler->identity) {
