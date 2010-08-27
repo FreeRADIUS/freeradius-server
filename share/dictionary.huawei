@@ -43,6 +43,7 @@ ATTRIBUTE	Huawei-Destnation-IP-Addr		39	string
 ATTRIBUTE	Huawei-Destnation-Volume		40	string
 ATTRIBUTE	Huawei-Startup-Stamp			59	integer
 ATTRIBUTE	Huawei-IPHost-Addr			60	string
+ATTRIBUTE	Huawei-VT-Name				64	integer
 ATTRIBUTE	Huawei-PPP-NCP-Type			70	integer
 ATTRIBUTE	Huawei-VSI-Name				71	string
 ATTRIBUTE	Huawei-Subnet-Mask			72	ipaddr
