@@ -66,6 +66,7 @@ typedef struct rlm_eap_t {
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	session_mutex;
+	pthread_mutex_t	handler_mutex;
 #endif
 
 	const char	*xlat_name; /* no xlat's yet */

@@ -66,6 +66,7 @@ static int eap_detach(void *instance)
 	}
 
 	pthread_mutex_destroy(&(inst->session_mutex));
+	if (fr_debug_flag) pthread_mutex_destroy(&(inst->handler_mutex));
 
 	free(inst);
 
@@ -255,9 +256,19 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 			eap_detach(inst);
 			return -1;
 		}
+
+		if (pthread_mutex_init(&(inst->handler_mutex), NULL) < 0) {
+			radlog(L_ERR|L_CONS, "rlm_eap: Failed initializing mutex: %s", strerror(errno));
+			eap_detach(inst);
+			return -1;
+		}
 	}
 
-	pthread_mutex_init(&(inst->session_mutex), NULL);
+	if (pthread_mutex_init(&(inst->session_mutex), NULL) < 0) {
+		radlog(L_ERR|L_CONS, "rlm_eap: Failed initializing mutex: %s", strerror(errno));
+		eap_detach(inst);
+		return -1;
+	}
 
 	*instance = inst;
 	return 0;
