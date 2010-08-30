@@ -1719,7 +1719,9 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	*/
        if (debug_flag > 1) {
 	       if (!pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0) &&
-		   !pairfind(request->config_items, PW_USER_PASSWORD, 0)) {
+		   !pairfind(request->config_items, PW_USER_PASSWORD, 0) &&
+		   !pairfind(request->config_items, PW_PASSWORD_WITH_HEADER, 0) &&
+		   !pairfind(request->config_items, PW_CRYPT_PASSWORD, 0)) {
 		       DEBUG("WARNING: No \"known good\" password was found in LDAP.  Are you sure that the user is configured correctly?");
 	       }
        }
@@ -2483,6 +2485,14 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			radlog(L_ERR, "  [%s] LDAP login failed: check identity, password settings in ldap section of radiusd.conf", inst->xlat_name);
 			*result = RLM_MODULE_FAIL;
 		}
+		if(err != NULL){
+			ldap_get_option(ld, LDAP_OPT_ERROR_STRING, err);
+		}
+		break;
+
+	case LDAP_CONSTRAINT_VIOLATION:
+		DEBUG("rlm_ldap: Bind failed with constraint violation");
+		*result = RLM_MODULE_REJECT;
 		if(err != NULL){
 			ldap_get_option(ld, LDAP_OPT_ERROR_STRING, err);
 		}
