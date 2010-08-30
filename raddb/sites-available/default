@@ -519,7 +519,7 @@ post-auth {
 #	       Reply-Message += "%{TLS-Client-Cert-Subject}"
 #	       Reply-Message += "%{TLS-Client-Cert-Issuer}"
 #	       Reply-Message += "%{TLS-Client-Cert-Common-Name}"
-#x	}
+#	}
 
 
 	#  If the WiMAX module did it's work, you may want to do more
