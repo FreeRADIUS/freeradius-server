@@ -35,7 +35,7 @@ usage() {
 
 extra=
 condition=1
-timeout=10
+timeout=60
 while getopts 'd:c:i:I:f:t:u:' OPTION
 do
   case $OPTION in
