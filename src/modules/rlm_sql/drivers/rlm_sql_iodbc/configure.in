@@ -57,7 +57,7 @@ if test x$with_[]modname != xno; then
 		esac])
 
 	dnl Check for SQLConnect in -liodbc
-	smart_try_dir="$iodbc_lib_dir /usr/lib/iodbc /usr/local/lib/iodbc /usr/local/iodbc/lib/iodbc"
+	smart_try_dir="$iodbc_lib_dir /usr/lib /usr/lib/iodbc /usr/local/lib/iodbc /usr/local/iodbc/lib/iodbc"
 	FR_SMART_CHECK_LIB(iodbc, SQLConnect)
 	if test "x$ac_cv_lib_iodbc_SQLConnect" != xyes; then
 		fail="$fail libiodbc"
