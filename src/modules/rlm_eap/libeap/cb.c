@@ -48,15 +48,15 @@ void cbtls_info(const SSL *s, int where, int ret)
 	buffer[0] = '\0';
 
 	if (where & SSL_CB_LOOP) {
-		RDEBUG2("%s: %s\n", str, state);
+		RDEBUG2("%s: %s", str, state);
 	} else if (where & SSL_CB_HANDSHAKE_START) {
-		RDEBUG2("%s: %s\n", str, state);
+		RDEBUG2("%s: %s", str, state);
 	} else if (where & SSL_CB_HANDSHAKE_DONE) {
-		RDEBUG2("%s: %s\n", str, state);
+		RDEBUG2("%s: %s", str, state);
 	} else if (where & SSL_CB_ALERT) {
 		str=(where & SSL_CB_READ)?"read":"write";
 
-		snprintf(buffer, sizeof(buffer), "TLS Alert %s:%s:%s\n",
+		snprintf(buffer, sizeof(buffer), "TLS Alert %s:%s:%s",
 			 str,
 			 SSL_alert_type_string_long(ret),
 			 SSL_alert_desc_string_long(ret));
@@ -71,7 +71,7 @@ void cbtls_info(const SSL *s, int where, int ret)
 				       str, state);
 			} else {
 				snprintf(buffer, sizeof(buffer),
-					 "%s: error in %s\n", str, state);
+					 "%s: error in %s", str, state);
 			}
 		}
 	}
