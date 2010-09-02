@@ -58,13 +58,14 @@ void cbtls_info(const SSL *s, int where, int ret)
 			SSL_alert_desc_string_long(ret));
 	} else if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			radlog(L_ERR, "%s:failed in %s", str, state);
+			char buffer[128];
+			
+			snprintf(buffer, sizeof(buffer), "%s: failed in %s",
+				 str, state);
+			radlog(L_ERR, "%s", buffer);
 
 			if (request) {
 				VALUE_PAIR *vp;
-				char buffer[128];
-
-				snprintf(buffer, sizeof(buffer), "%s:failed in %s");
 
 				vp = pairmake("Module-Failure-Message", buffer, T_OP_ADD);
 				if (vp) pairadd(&request->packet->vps, vp);
