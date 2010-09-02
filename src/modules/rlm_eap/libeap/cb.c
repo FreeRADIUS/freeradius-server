@@ -34,6 +34,7 @@ void cbtls_info(const SSL *s, int where, int ret)
 	int w;
 	EAP_HANDLER *handler = (EAP_HANDLER *)SSL_get_ex_data(s, 0);
 	REQUEST *request = NULL;
+	char buffer[1024];
 
 	if (handler) request = handler->request;
 
@@ -44,6 +45,7 @@ void cbtls_info(const SSL *s, int where, int ret)
 
 	state = SSL_state_string_long(s);
 	state = state ? state : "NULL";
+	buffer[0] = '\0';
 
 	if (where & SSL_CB_LOOP) {
 		RDEBUG2("%s: %s\n", str, state);
@@ -53,31 +55,35 @@ void cbtls_info(const SSL *s, int where, int ret)
 		RDEBUG2("%s: %s\n", str, state);
 	} else if (where & SSL_CB_ALERT) {
 		str=(where & SSL_CB_READ)?"read":"write";
-		radlog(L_ERR,"TLS Alert %s:%s:%s\n", str,
-			SSL_alert_type_string_long(ret),
-			SSL_alert_desc_string_long(ret));
+
+		snprintf(buffer, sizeof(buffer), "TLS Alert %s:%s:%s\n",
+			 str,
+			 SSL_alert_type_string_long(ret),
+			 SSL_alert_desc_string_long(ret));
 	} else if (where & SSL_CB_EXIT) {
 		if (ret == 0) {
-			char buffer[128];
-			
 			snprintf(buffer, sizeof(buffer), "%s: failed in %s",
 				 str, state);
-			radlog(L_ERR, "%s", buffer);
-
-			if (request) {
-				VALUE_PAIR *vp;
-
-				vp = pairmake("Module-Failure-Message", buffer, T_OP_ADD);
-				if (vp) pairadd(&request->packet->vps, vp);
-			}
 
 		} else if (ret < 0) {
 			if (SSL_want_read(s)) {
 				RDEBUG2("%s: Need to read more data: %s",
 				       str, state);
 			} else {
-				radlog(L_ERR, "%s:error in %s\n", str, state);
+				snprintf(buffer, sizeof(buffer),
+					 "%s: error in %s\n", str, state);
 			}
+		}
+	}
+
+	if (buffer[0]) {
+		radlog(L_ERR, "%s", buffer);
+		
+		if (request) {
+			VALUE_PAIR *vp;
+			
+			vp = pairmake("Module-Failure-Message", buffer, T_OP_ADD);
+			if (vp) pairadd(&request->packet->vps, vp);
 		}
 	}
 }
