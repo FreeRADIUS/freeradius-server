@@ -1,8 +1,3 @@
-bob	Cleartext-Password := "bob"
-	Tunnel-Password := "hello",
-	Tunnel-Private-Group-Id:1 = "foo",
-	Tunnel-Medium-Type:1 = IP
-
 #
 #	Please read the documentation file ../doc/processing_users_file,
 #	or 'man 5 users' (after installing the server) for more information.
