@@ -55,6 +55,14 @@ static CONF_PARSER cache_config[] = {
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
 
+static CONF_PARSER verify_config[] = {
+	{ "tmpdir", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, verify_tmp_dir), NULL, NULL},
+	{ "client", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, verify_client_cert_cmd), NULL, NULL},
+ 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+};
+
 static CONF_PARSER module_config[] = {
 	{ "rsa_key_exchange", PW_TYPE_BOOLEAN,
 	  offsetof(EAP_TLS_CONF, rsa_key), NULL, "no" },
@@ -98,6 +106,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(EAP_TLS_CONF, make_cert_command), NULL, NULL},
 
 	{ "cache", PW_TYPE_SUBSECTION, 0, NULL, (const void *) cache_config },
+
+	{ "verify", PW_TYPE_SUBSECTION, 0, NULL, (const void *) verify_config },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -408,6 +418,59 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				}
 			}
 		} /* check_cert_cn */
+
+		while (conf->verify_client_cert_cmd) {
+			char filename[256];
+			FILE *fp;
+
+			snprintf(filename, sizeof(filename), "%s/%s.client.XXXXXXXX",
+				 conf->verify_tmp_dir, progname);
+			if (mkstemp(filename) < 0) {
+				RDEBUG("Failed creating file in %s: %s",
+				       conf->verify_tmp_dir, strerror(errno));
+				break;				       
+			}
+
+			fp = fopen(filename, "w");
+			if (!fp) {
+				RDEBUG("Failed opening file %s: %s",
+				       filename, strerror(errno));
+				break;
+			}
+
+			if (!PEM_write_X509(fp, client_cert)) {
+				fclose(fp);
+				RDEBUG("Failed writing certificate to file");
+				goto do_unlink;
+			}
+			fclose(fp);
+
+			if (!radius_pairmake(request, &request->packet->vps,
+					     "TLS-Client-Cert-Filename",
+					     filename, T_OP_SET)) {
+				RDEBUG("Failed creating TLS-Client-Cert-Filename");
+				
+				goto do_unlink;
+			}
+
+			RDEBUG("Verifying client certificate: %s",
+			       conf->verify_client_cert_cmd);
+			if (radius_exec_program(conf->verify_client_cert_cmd,
+						request, 1, NULL, 0, 
+						request->packet->vps,
+						NULL, 1) != 0) {
+				radlog(L_AUTH, "rlm_eap_tls: Certificate CN (%s) fails external verification!", common_name);
+				my_ok = 0;
+			} else {
+				RDEBUG("Client certificate CN %s passed external validation", common_name);
+			}
+
+		do_unlink:
+			unlink(filename);
+			break;
+		}
+
+
 	} /* depth == 0 */
 
 	if (debug_flag > 0) {
@@ -873,8 +936,25 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 	}
 
         if (generate_eph_rsa_key(inst->ctx) < 0) {
+		eaptls_detach(inst);
                 return -1;
         }
+
+	if (conf->verify_tmp_dir) {
+		char filename[256];
+
+		if (chmod(conf->verify_tmp_dir, S_IRWXU) < 0) {
+			radlog(L_ERR, "rlm_eap_tls: Failed changing permissions on %s: %s", conf->verify_tmp_dir, strerror(errno));
+			eaptls_detach(inst);
+			return -1;
+		}
+	}
+
+	if (conf->verify_client_cert_cmd && !conf->verify_tmp_dir) {
+		radlog(L_ERR, "rlm_eap_tls: You MUST set the verify directory in order to use verify_client_cmd");
+		eaptls_detach(inst);
+		return -1;
+	}
 
 	*instance = inst;
 
