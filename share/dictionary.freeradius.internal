@@ -355,6 +355,7 @@ ATTRIBUTE	TLS-Client-Cert-Expiration		1921	string
 ATTRIBUTE	TLS-Client-Cert-Issuer			1922	string
 ATTRIBUTE	TLS-Client-Cert-Subject			1923	string
 ATTRIBUTE	TLS-Client-Cert-Common-Name		1924	string
+ATTRIBUTE	TLS-Client-Cert-Filename		1925	string
 
 #
 #	Range:	1910-2999
