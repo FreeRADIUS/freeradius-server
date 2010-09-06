@@ -103,6 +103,7 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{sha}",	PW_SHA_PASSWORD },
 	{ "{ssha}",	PW_SSHA_PASSWORD },
 	{ "{nt}",	PW_NT_PASSWORD },
+	{ "{nthash}",	PW_NT_PASSWORD },
 	{ "{x-nthash}",	PW_NT_PASSWORD },
 	{ "{ns-mta-md5}", PW_NS_MTA_MD5_PASSWORD },
 	{ "{x- orcllmv}", PW_LM_PASSWORD },
@@ -603,8 +604,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	do_clear:
 		RDEBUG("Using clear text password \"%s\"",
 		      vp->vp_strvalue);
-		if (strcmp((char *) vp->vp_strvalue,
-			   (char *) request->password->vp_strvalue) != 0){
+		if (strcmp(vp->vp_strvalue,
+			   request->password->vp_strvalue) != 0){
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CLEAR TEXT password check failed");
 			goto make_msg;
 		}
@@ -615,9 +616,10 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 	case PAP_ENC_CRYPT:
 	do_crypt:
-		RDEBUG("Using CRYPT encryption.");
-		if (fr_crypt_check((char *) request->password->vp_strvalue,
-				     (char *) vp->vp_strvalue) != 0) {
+		RDEBUG("Using CRYPT password \"%s\"",
+		       vp->vp_strvalue);
+		if (fr_crypt_check(request->password->vp_strvalue,
+				   vp->vp_strvalue) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CRYPT password check failed");
 			goto make_msg;
 		}
