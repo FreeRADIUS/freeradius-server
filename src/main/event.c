@@ -500,7 +500,8 @@ static void wait_for_child_to_die(void *ctx)
 			       request->component, request->module);
 		} else {
 			request->delay = USEC * request->root->max_request_time;
-			RDEBUG2("WARNING: Child is still stuck");
+			RDEBUG2("WARNING: Child is hung after \"max_request_time\" for request %u",
+				request->number);
 		}
 		tv_add(&request->when, request->delay);
 
@@ -1293,9 +1294,11 @@ static void wait_a_bit(void *ctx)
 		 */
 		if (have_children &&
 		    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
-			radlog(L_ERR, "WARNING: Unresponsive child in module %s component %s",
-			       request->module ? request->module : "<server core>",
-			       request->component ? request->component : "<server core>");
+			radlog(L_ERR, "WARNING: Unresponsive child for request %u, in component %s module %s",
+			       request->number,
+			       request->component ? request->component : "<server core>",
+			       request->module ? request->module : "<server core>");
+
 		}
 			
 		request->delay = USEC;
