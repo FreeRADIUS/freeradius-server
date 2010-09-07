@@ -504,8 +504,9 @@ post-auth {
 	#  available only in the "post-auth" section.
 	#
 	#  The first set of attributes contains information about the
-	#  CA which is being used.  The second contains information
-	#  about the client certificate (if available).
+	#  issuing certificate which is being used.  The second
+	#  contains information about the client certificate (if
+	#  available).
 #
 #	update reply {
 #	       Reply-Message += "%{TLS-Cert-Serial}"

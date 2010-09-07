@@ -287,7 +287,12 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	depth = X509_STORE_CTX_get_error_depth(ctx);
 
 	lookup = depth;
-	if (lookup > 1) lookup = 1;
+
+	/*
+	 *	Log client/issuing cert.  If there's an error, log
+	 *	issuing cert.
+	 */
+	if ((lookup > 1) && !my_ok) lookup = 1;
 
 	/*
 	 * Retrieve the pointer to the SSL of the connection currently treated
@@ -303,7 +308,12 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 */
 	buf[0] = '\0';
 	sn = X509_get_serialNumber(client_cert);
-	if (sn && (sn->length < (sizeof(buf) / 2))) {
+
+	/*
+	 *	For this next bit, we create the attributes *only* if
+	 *	we're at the client or issuing certificate.
+	 */
+	if ((lookup <= 1) && sn && (sn->length < (sizeof(buf) / 2))) {
 		char *p = buf;
 		int i;
 
@@ -321,7 +331,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 */
 	buf[0] = '\0';
 	asn_time = X509_get_notAfter(client_cert);
-	if (asn_time && (asn_time->length < MAX_STRING_LEN)) {
+	if ((lookup <= 1) && asn_time && (asn_time->length < MAX_STRING_LEN)) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
 		pairadd(&handler->certs,
@@ -335,7 +345,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_NAME_oneline(X509_get_subject_name(client_cert), subject,
 			  sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
-	if (subject[0] && (strlen(subject) < MAX_STRING_LEN)) {
+	if ((lookup <= 1) && subject[0] && (strlen(subject) < MAX_STRING_LEN)) {
 		pairadd(&handler->certs,
 			pairmake(cert_attr_names[EAPTLS_SUBJECT][lookup], subject, T_OP_SET));
 	}
@@ -343,7 +353,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
 			  sizeof(issuer));
 	issuer[sizeof(issuer) - 1] = '\0';
-	if (issuer[0] && (strlen(issuer) < MAX_STRING_LEN)) {
+	if ((lookup <= 1) && issuer[0] && (strlen(issuer) < MAX_STRING_LEN)) {
 		pairadd(&handler->certs,
 			pairmake(cert_attr_names[EAPTLS_ISSUER][lookup], issuer, T_OP_SET));
 	}
